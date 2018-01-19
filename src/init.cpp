@@ -1649,6 +1649,10 @@ bool AppInit2(boost::thread_group& threadGroup, CScheduler& scheduler)
             MilliSleep(10);
     }
 
+//ANIM-->
+    fMasterNode = GetBoolArg("-masternode", false);
+//<--ANIM
+
     // ********************************************************* Step 11: start node
 
     if (!CheckDiskSpace())
