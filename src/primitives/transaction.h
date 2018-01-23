@@ -182,7 +182,7 @@ public:
 
     std::string ToString() const;
 //ANIM-->
-    std::string COutPoint::ToStringShort() const;
+    std::string ToStringShort() const;
 //<--ANIM
 };
 
@@ -231,6 +231,13 @@ public:
         return !(a == b);
     }
 
+//ANIM-->
+    friend bool operator<(const CTxIn& a, const CTxIn& b)
+    {
+        return a.prevout<b.prevout;
+    }
+//<--ANIM
+    
     std::string ToString() const;
 };
 

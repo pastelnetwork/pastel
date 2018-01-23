@@ -5,7 +5,7 @@
 #include "activemasternode.h"
 #include "masternode.h"
 #include "masternodeman.h"
-#include "masternode-sync.h"
+#include "masternodesync.h"
 
 void CActiveMasternode::ManageState(CConnman& connman)
 {
@@ -15,7 +15,7 @@ void CActiveMasternode::ManageState(CConnman& connman)
         return;
     }
 
-    if(!masterNodePlugin.IsRegTest() && !masternodeSync.IsBlockchainSynced()) {
+    if(!masterNodePlugin.IsRegTest() && !masterNodePlugin.masternodeSync.IsBlockchainSynced()) {
         nState = ACTIVE_MASTERNODE_SYNC_IN_PROCESS;
         LogPrintf("CActiveMasternode::ManageState -- %s: %s\n", GetStateString(), GetStatus());
         return;
@@ -89,7 +89,7 @@ bool CActiveMasternode::SendMasternodePing(CConnman& connman)
     }
 
 /*ANIM-->
-    if(!mnodeman.Has(outpoint)) {
+    if(!masterNodePlugin.masternodeManager.Has(outpoint)) {
         strNotCapableReason = "Masternode not in masternode list";
         nState = ACTIVE_MASTERNODE_NOT_CAPABLE;
         LogPrintf("CActiveMasternode::SendMasternodePing -- %s: %s\n", GetStateString(), strNotCapableReason);
@@ -109,12 +109,12 @@ bool CActiveMasternode::SendMasternodePing(CConnman& connman)
     }
 
     // Update lastPing for our masternode in Masternode list
-    if(mnodeman.IsMasternodePingedWithin(outpoint, MASTERNODE_MIN_MNP_SECONDS, mnp.sigTime)) {
+    if(masterNodePlugin.masternodeManager.IsMasternodePingedWithin(outpoint, MASTERNODE_MIN_MNP_SECONDS, mnp.sigTime)) {
         LogPrintf("CActiveMasternode::SendMasternodePing -- Too early to send Masternode Ping\n");
         return false;
     }
 
-    mnodeman.SetMasternodeLastPing(outpoint, mnp);
+    masterNodePlugin.masternodeManager.SetMasternodeLastPing(outpoint, mnp);
 
 //ANIM-->
     // LogPrintf("CActiveMasternode::SendMasternodePing -- Relaying ping, collateral=%s\n", outpoint.ToStringShort());
@@ -212,9 +212,9 @@ void CActiveMasternode::ManageStateRemote()
     LogPrint("masternode", "CActiveMasternode::ManageStateRemote -- Start status = %s, type = %s, pinger enabled = %d, pubKeyMasternode.GetID() = %s\n", 
              GetStatus(), GetTypeString(), fPingerEnabled, pubKeyMasternode.GetID().ToString());
 
-    mnodeman.CheckMasternode(pubKeyMasternode, true);
+    masterNodePlugin.masternodeManager.CheckMasternode(pubKeyMasternode, true);
     masternode_info_t infoMn;
-    if(mnodeman.GetMasternodeInfo(pubKeyMasternode, infoMn)) {
+    if(masterNodePlugin.masternodeManager.GetMasternodeInfo(pubKeyMasternode, infoMn)) {
         if(infoMn.nProtocolVersion != PROTOCOL_VERSION) {
             nState = ACTIVE_MASTERNODE_NOT_CAPABLE;
             strNotCapableReason = "Invalid protocol version";

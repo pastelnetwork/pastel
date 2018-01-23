@@ -17,10 +17,7 @@
 
 using namespace std;
 
-class CMasternodeMan;
 class CConnman;
-
-extern CMasternodeMan mnodeman;
 
 class CMasternodeMan
 {

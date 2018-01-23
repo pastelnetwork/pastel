@@ -29,6 +29,9 @@
 #include "validation.h"
 #include "netbase.h"
 #include "serialize.h"
+#include "clientversion.h"
+#include "streams.h"
+
 
 // #include "script/standard.h"
 // #include "addrman.h"
@@ -43,14 +46,25 @@
 // #include "wallet/wallet.h"
 #endif // ENABLE_WALLET
 
-#include "activemasternode.h"
 #include "masternodeconfig.h"
+#include "activemasternode.h"
+#include "masternodesync.h"
+#include "masternodeman.h"
 #include "netfulfilledman.h"
 
 class CConnman;
 
 class CMasterNodePlugin;
 extern CMasterNodePlugin masterNodePlugin;
+
+class CMasternodePayments
+{
+public:
+    std::map<int, CMasternodeBlockPayees> mapMasternodeBlocks;
+    bool IsScheduled(CMasternode& mn, int nNotBlockHeight) {return true;}
+    int GetStorageLimit() {return 0;}
+    bool IsEnoughData() {return true;}
+};
 
 class CMasterNodePlugin
 {
@@ -60,14 +74,20 @@ public:
     // Keep track of the active Masternode
     CActiveMasternode activeMasternode;
 
-    // Keep track of what node has/was asked for and when
-    CNetFulfilledRequestManager netfulfilledman;
-
-    //
+    // 
     CMasternodeSync masternodeSync;
 
+    // Masternode manager
+    CMasternodeMan masternodeManager;
+
+    //
+    CMasternodePayments masternodePayments;
+
+    // Keep track of what node has/was asked for and when
+    CNetFulfilledRequestManager netFulfilledManager;
+
     //Connection Manger - wrapper around network operations
-    std::unique_ptr<CConnman> connman;
+    CConnman connectionManager;
 
     bool fMasterNode;
     std::string strNetworkName;
@@ -76,6 +96,8 @@ public:
 public:
     int nMasternodeMinimumConfirmations, nMasternodePaymentsStartBlock, nMasternodePaymentsIncreaseBlock, nMasternodePaymentsIncreasePeriod;
     int nFulfilledRequestExpireTime;
+
+    static const int MASTERNODE_PROTOCOL_VERSION;
 
     static CCriticalSection cs_mapMasternodeBlocks;
 
@@ -92,15 +114,21 @@ public:
     operator bool() const {return fMasterNode;}
 
     bool EnableMasterNode(std::ostringstream& strErrors);
-
     boost::filesystem::path GetMasternodeConfigFile();
+    void CMasterNodePlugin::StoreData();
 
-    bool GetBlockHash(uint256& hashRet, int nBlockHeight);
-    CAmount GetMasternodePayment(int nHeight, CAmount blockValue);
+    bool ProcessMessage(CNode* pfrom, std::string& strCommand, CDataStream& vRecv);
 
     inline bool IsMainNet() {return network == CBaseChainParams::MAIN;}
     inline bool IsTestNet() {return network == CBaseChainParams::TESTNET;}
     inline bool IsRegTest() {return network == CBaseChainParams::REGTEST;}
+
+    CAmount GetMasternodePayment(int nHeight, CAmount blockValue);
+
+    static bool GetBlockHash(uint256& hashRet, int nBlockHeight);
+    static bool GetUTXOCoin(const COutPoint& outpoint, CCoins& coins);
+    static int GetUTXOHeight(const COutPoint& outpoint);
+    static int GetUTXOConfirmations(const COutPoint& outpoint);
 };
 
 namespace NetMsgType {
