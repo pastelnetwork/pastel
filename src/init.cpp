@@ -63,6 +63,11 @@
 #include "amqp/amqpnotificationinterface.h"
 #endif
 
+//ANIM-->
+#include "mnode/masternodeplugin.h"
+CMasterNodePlugin masterNodePlugin;
+//<--ANIM
+
 using namespace std;
 
 extern void ThreadSendAlert();
@@ -1650,7 +1655,10 @@ bool AppInit2(boost::thread_group& threadGroup, CScheduler& scheduler)
     }
 
 //ANIM-->
-    fMasterNode = GetBoolArg("-masternode", false);
+    // ********************************************************* Step 10.5: start masternode
+    if (!masterNodePlugin.EnableMasterNode(strErrors)) {
+        return InitError(strErrors.str());
+    }
 //<--ANIM
 
     // ********************************************************* Step 11: start node
