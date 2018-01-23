@@ -6,7 +6,7 @@
 #include "masternode.h"
 #include "masternodeman.h"
 #include "messagesigner.h"
-#include "masternode-sync.h"
+#include "masternodesync.h"
 
 // #include "masternode-payments.h"
 
@@ -63,7 +63,7 @@ bool CMasternode::UpdateFromNewBroadcast(CMasternodeBroadcast& mnb, CConnman& co
     int nDos = 0;
     if(mnb.lastPing == CMasternodePing() || (mnb.lastPing != CMasternodePing() && mnb.lastPing.CheckAndUpdate(this, true, nDos, connman))) {
         lastPing = mnb.lastPing;
-        mnodeman.mapSeenMasternodePing.insert(std::make_pair(lastPing.GetHash(), lastPing));
+        masterNodePlugin.masternodeManager.mapSeenMasternodePing.insert(std::make_pair(lastPing.GetHash(), lastPing));
     }
     // if it matches our Masternode privkey...
     if(masterNodePlugin && pubKeyMasternode == masterNodePlugin.activeMasternode.pubKeyMasternode) {
@@ -157,7 +157,7 @@ void CMasternode::Check(bool fForce)
     } else if(nPoSeBanScore >= MASTERNODE_POSE_BAN_MAX_SCORE) {
         nActiveState = MASTERNODE_POSE_BAN;
         // ban for the whole payment cycle
-        nPoSeBanHeight = nHeight + mnodeman.size();
+        nPoSeBanHeight = nHeight + masterNodePlugin.masternodeManager.size();
         LogPrintf("CMasternode::Check -- Masternode %s is banned till block %d now\n", vin.prevout.ToStringShort(), nPoSeBanHeight);
         return;
     }
@@ -166,7 +166,7 @@ void CMasternode::Check(bool fForce)
     bool fOurMasternode = masterNodePlugin && masterNodePlugin.activeMasternode.pubKeyMasternode == pubKeyMasternode;
 
                    // masternode doesn't meet payment protocol requirements ...
-    bool fRequireUpdate = nProtocolVersion < mnpayments.GetMinMasternodePaymentsProto() ||
+    bool fRequireUpdate = nProtocolVersion < CMasterNodePlugin::MASTERNODE_PROTOCOL_VERSION ||
                    // or it's our own node and we just updated it to the new protocol but we are still waiting for activation ...
                    (fOurMasternode && nProtocolVersion < PROTOCOL_VERSION);
 
@@ -200,7 +200,7 @@ void CMasternode::Check(bool fForce)
             return;
         }
 
-        bool fWatchdogActive = masterNodePlugin.masternodeSync.IsSynced() && mnodeman.IsWatchdogActive();
+        bool fWatchdogActive = masterNodePlugin.masternodeSync.IsSynced() && masterNodePlugin.masternodeManager.IsWatchdogActive();
         bool fWatchdogExpired = (fWatchdogActive && ((GetAdjustedTime() - nTimeLastWatchdogVote) > MASTERNODE_WATCHDOG_MAX_SECONDS));
 
         LogPrint("masternode", "CMasternode::Check -- outpoint=%s, nTimeLastWatchdogVote=%d, GetAdjustedTime()=%d, fWatchdogExpired=%d\n",
@@ -311,8 +311,8 @@ void CMasternode::UpdateLastPaid(const CBlockIndex *pindex, int nMaxBlocksToScan
     LOCK(CMasterNodePlugin::cs_mapMasternodeBlocks);
 
     for (int i = 0; BlockReading && BlockReading->nHeight > nBlockLastPaid && i < nMaxBlocksToScanBack; i++) {
-        if(mnpayments.mapMasternodeBlocks.count(BlockReading->nHeight) &&
-            mnpayments.mapMasternodeBlocks[BlockReading->nHeight].HasPayeeWithVotes(mnpayee, 2))
+        if(masternodePayments.mapMasternodeBlocks.count(BlockReading->nHeight) &&
+            masternodePayments.mapMasternodeBlocks[BlockReading->nHeight].HasPayeeWithVotes(mnpayee, 2))
         {
             CBlock block;
             if(!ReadBlockFromDisk(block, BlockReading)) // shouldn't really happen
@@ -435,7 +435,7 @@ bool CMasternodeBroadcast::SimpleCheck(int& nDos)
         nActiveState = MASTERNODE_EXPIRED;
     }
 
-    if(nProtocolVersion < mnpayments.GetMinMasternodePaymentsProto()) {
+    if(nProtocolVersion < CMasterNodePlugin::MASTERNODE_PROTOCOL_VERSION) {
         LogPrintf("CMasternodeBroadcast::SimpleCheck -- ignoring outdated Masternode: masternode=%s  nProtocolVersion=%d\n", vin.prevout.ToStringShort(), nProtocolVersion);
         return false;
     }
@@ -542,7 +542,7 @@ bool CMasternodeBroadcast::CheckOutpoint(int& nDos)
         if(!lockMain) {
             // not mnb fault, let it to be checked again later
             LogPrint("masternode", "CMasternodeBroadcast::CheckOutpoint -- Failed to aquire lock, addr=%s", addr.ToString());
-            mnodeman.mapSeenMasternodeBroadcast.erase(GetHash());
+            masterNodePlugin.masternodeManager.mapSeenMasternodeBroadcast.erase(GetHash());
             return false;
         }
 
@@ -562,7 +562,7 @@ bool CMasternodeBroadcast::CheckOutpoint(int& nDos)
             LogPrintf("CMasternodeBroadcast::CheckOutpoint -- Masternode UTXO must have at least %d confirmations, masternode=%s\n",
                     masterNodePlugin.nMasternodeMinimumConfirmations, vin.prevout.ToStringShort());
             // maybe we miss few blocks, let this mnb to be checked again later
-            mnodeman.mapSeenMasternodeBroadcast.erase(GetHash());
+            masterNodePlugin.masternodeManager.mapSeenMasternodeBroadcast.erase(GetHash());
             return false;
         }
         // remember the hash of the block where masternode collateral had minimum required confirmations
@@ -793,11 +793,11 @@ bool CMasternodePing::CheckAndUpdate(CMasternode* pmn, bool fFromNewBroadcast, i
     LogPrint("masternode", "CMasternodePing::CheckAndUpdate -- Masternode ping accepted, masternode=%s\n", vin.prevout.ToStringShort());
     pmn->lastPing = *this;
 
-    // and update mnodeman.mapSeenMasternodeBroadcast.lastPing which is probably outdated
+    // and update masterNodePlugin.masternodeManager.mapSeenMasternodeBroadcast.lastPing which is probably outdated
     CMasternodeBroadcast mnb(*pmn);
     uint256 hash = mnb.GetHash();
-    if (mnodeman.mapSeenMasternodeBroadcast.count(hash)) {
-        mnodeman.mapSeenMasternodeBroadcast[hash].second.lastPing = *this;
+    if (masterNodePlugin.masternodeManager.mapSeenMasternodeBroadcast.count(hash)) {
+        masterNodePlugin.masternodeManager.mapSeenMasternodeBroadcast[hash].second.lastPing = *this;
     }
 
     // force update, ignoring cache
@@ -864,6 +864,6 @@ void CMasternode::FlagGovernanceItemsAsDirty()
         }
     }
     for(size_t i = 0; i < vecDirty.size(); ++i) {
-        mnodeman.AddDirtyGovernanceObjectHash(vecDirty[i]);
+        masterNodePlugin.masternodeManager.AddDirtyGovernanceObjectHash(vecDirty[i]);
     }
 }

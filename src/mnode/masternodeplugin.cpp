@@ -4,11 +4,13 @@
 
 #include "masternodeplugin.h"
 #include "messagesigner.h"
-
+#include "flat-database.h"
 
 /*
 MasterNode specific logic and initializations
 */
+const int CMasterNodePlugin::MASTERNODE_PROTOCOL_VERSION = 0x1;
+
 CCriticalSection CMasterNodePlugin::cs_mapMasternodeBlocks;
 
 bool CMasterNodePlugin::EnableMasterNode(std::ostringstream& strErrors)
@@ -90,6 +92,27 @@ bool CMasterNodePlugin::EnableMasterNode(std::ostringstream& strErrors)
     }
 }
 
+bool CMasterNodePlugin::ProcessMessage(CNode* pfrom, std::string& strCommand, CDataStream& vRecv)
+{
+    masternodeManager.ProcessMessage(pfrom, strCommand, vRecv, connectionManager);
+    // mnpayments.ProcessMessage(pfrom, strCommand, vRecv, connectionManager);
+    masternodeSync.ProcessMessage(pfrom, strCommand, vRecv);
+
+    return true;
+}
+
+
+void CMasterNodePlugin::StoreData()
+{
+    // STORE DATA CACHES INTO SERIALIZED DAT FILES
+    CFlatDB<CMasternodeMan> flatdb1("mncache.dat", "magicMasternodeCache");
+    flatdb1.Dump(masternodeManager);
+    // CFlatDB<CMasternodePayments> flatdb2("mnpayments.dat", "magicMasternodePaymentsCache");
+    // flatdb2.Dump(mnpayments);
+    CFlatDB<CNetFulfilledRequestManager> flatdb4("netfulfilled.dat", "magicFulfilledCache");
+    flatdb4.Dump(netFulfilledManager);
+}
+
 boost::filesystem::path CMasterNodePlugin::GetMasternodeConfigFile()
 {
     boost::filesystem::path pathConfigFile(GetArg("-mnconf", "masternode.conf"));
@@ -100,16 +123,6 @@ boost::filesystem::path CMasterNodePlugin::GetMasternodeConfigFile()
 /*
 Wrappers for BlockChain specific logic
 */
-
-bool CMasterNodePlugin::GetBlockHash(uint256& hashRet, int nBlockHeight)
-{
-    LOCK(cs_main);
-    if(chainActive.Tip() == NULL) return false;
-    if(nBlockHeight < -1 || nBlockHeight > chainActive.Height()) return false;
-    if(nBlockHeight == -1) nBlockHeight = chainActive.Height();
-    hashRet = chainActive[nBlockHeight]->GetBlockHash();
-    return true;
-}
 
 CAmount CMasterNodePlugin::GetMasternodePayment(int nHeight, CAmount blockValue)
 {
@@ -130,6 +143,41 @@ CAmount CMasterNodePlugin::GetMasternodePayment(int nHeight, CAmount blockValue)
     if(nHeight > nMNPIBlock+(nMNPIPeriod* 9)) ret += blockValue / 40; // 313520 - 50.0% - 2015-08-03
 
     return ret;
+}
+
+/* static */ bool CMasterNodePlugin::GetBlockHash(uint256& hashRet, int nBlockHeight)
+{
+    LOCK(cs_main);
+    if(chainActive.Tip() == NULL) return false;
+    if(nBlockHeight < -1 || nBlockHeight > chainActive.Height()) return false;
+    if(nBlockHeight == -1) nBlockHeight = chainActive.Height();
+    hashRet = chainActive[nBlockHeight]->GetBlockHash();
+    return true;
+}
+
+/* static */ bool CMasterNodePlugin::GetUTXOCoin(const COutPoint& outpoint, CCoins& coins)
+{
+    LOCK(cs_main);
+    if (!pcoinsTip->GetCoins(outpoint.hash, coins))
+        return false;
+    if (coins.vout[outpoint.n].IsNull())
+        return false;
+    return true;
+}
+
+/* static */ int CMasterNodePlugin::GetUTXOHeight(const COutPoint& outpoint)
+{
+    // -1 means UTXO is yet unknown or already spent
+    CCoins coins;
+    return GetUTXOCoin(outpoint, coins) ? coins.nHeight : -1;
+}
+
+/* static */ int CMasterNodePlugin::GetUTXOConfirmations(const COutPoint& outpoint)
+{
+    // -1 means UTXO is yet unknown or already spent
+    LOCK(cs_main);
+    int nPrevoutHeight = GetUTXOHeight(outpoint);
+    return (nPrevoutHeight > -1 && chainActive.Tip()) ? chainActive.Height() - nPrevoutHeight + 1 : -1;
 }
 
 namespace NetMsgType {

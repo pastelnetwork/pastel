@@ -4,8 +4,6 @@
 
 #include "netfulfilledman.h"
 
-CNetFulfilledRequestManager netfulfilledman;
-
 void CNetFulfilledRequestManager::AddFulfilledRequest(CAddress addr, std::string strRequest)
 {
     LOCK(cs_mapFulfilledRequests);

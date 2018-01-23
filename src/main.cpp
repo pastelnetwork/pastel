@@ -39,6 +39,10 @@
 #include <boost/thread.hpp>
 #include <boost/static_assert.hpp>
 
+//ANIM-->
+#include "masternodeplugin.h"
+//<--ANIM
+
 using namespace std;
 
 #if defined(NDEBUG)
@@ -5161,8 +5165,11 @@ bool static ProcessMessage(CNode* pfrom, string strCommand, CDataStream& vRecv, 
     }
 
     else {
-        // Ignore unknown commands for extensibility
-        LogPrint("net", "Unknown command \"%s\" from peer=%d\n", SanitizeString(strCommand), pfrom->id);
+        if (!masterNodePlugin.ProcessMessage(pfrom, strCommand, vRecv))
+        {
+            // Ignore unknown commands for extensibility
+            LogPrint("net", "Unknown command \"%s\" from peer=%d\n", SanitizeString(strCommand), pfrom->id);
+        }
     }
 
 
