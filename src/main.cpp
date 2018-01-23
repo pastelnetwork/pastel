@@ -42,7 +42,7 @@
 using namespace std;
 
 #if defined(NDEBUG)
-# error "Zcash cannot be compiled without assertions."
+# error "AnimeCoin cannot be compiled without assertions."
 #endif
 
 /**

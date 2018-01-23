@@ -181,6 +181,9 @@ public:
     }
 
     std::string ToString() const;
+//ANIM-->
+    std::string COutPoint::ToStringShort() const;
+//<--ANIM
 };
 
 /** An input of a transaction.  It contains the location of the previous

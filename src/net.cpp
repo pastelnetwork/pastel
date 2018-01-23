@@ -44,6 +44,10 @@
 #endif
 #endif
 
+//ANIM-->
+#include "masternodeplugin.h"
+//<--ANIM
+
 using namespace std;
 
 namespace {
@@ -351,17 +355,31 @@ CNode* FindNode(const CService& addr)
     return NULL;
 }
 
-CNode* ConnectNode(CAddress addrConnect, const char *pszDest)
+//ANIM-->
+// CNode* ConnectNode(CAddress addrConnect, const char *pszDest)
+CNode* ConnectNode(CAddress addrConnect, const char *pszDest = NULL, bool fConnectToMasternode = false)
+//<--ANIM
 {
     if (pszDest == NULL) {
-        if (IsLocal(addrConnect))
+//ANIM-->
+        // we clean masternode connections in CMasternodeMan::ProcessMasternodeConnections()
+        // so should be safe to skip this and connect to local Hot MN on CActiveMasternode::ManageState()
+        if (IsLocal(addrConnect) && !fConnectToMasternode)
             return NULL;
+//<--ANIM
 
         // Look for an existing connection
         CNode* pnode = FindNode((CService)addrConnect);
         if (pnode)
         {
-            pnode->AddRef();
+//ANIM-->
+            // we have existing connection to this node but it was not a connection to masternode,
+            // change flag and add reference so that we can correctly clear it later
+            if(fConnectToMasternode && !pnode->fMasternode) {
+                pnode->AddRef();
+                pnode->fMasternode = true;
+            }
+//<--ANIM
             return pnode;
         }
     }
@@ -395,6 +413,12 @@ CNode* ConnectNode(CAddress addrConnect, const char *pszDest)
         }
 
         pnode->nTimeConnected = GetTime();
+//ANIM-->
+        if(fConnectToMasternode) {
+            pnode->AddRef();
+            pnode->fMasternode = true;
+        }
+//<--ANIM
 
         return pnode;
     } else if (!proxyConnectionFailed) {
@@ -919,6 +943,15 @@ static void AcceptConnection(const ListenSocket& hListenSocket) {
         }
     }
 
+//ANIM-->
+    // don't accept incoming connections until fully synced
+    if(fMasterNode && !masterNodePlugin.masternodeSync.IsSynced()) {
+        LogPrintf("AcceptConnection -- masternode is not synced yet, skipping inbound connection attempt\n");
+        CloseSocket(hSocket);
+        return;
+    }
+//<--ANIM
+
     // According to the internet TCP_NODELAY is not carried into accepted sockets
     // on all platforms.  Set it again here just to be sure.
     int set = 1;
@@ -957,6 +990,11 @@ void ThreadSocketHandler()
                 if (pnode->fDisconnect ||
                     (pnode->GetRefCount() <= 0 && pnode->vRecvMsg.empty() && pnode->nSendSize == 0 && pnode->ssSend.empty()))
                 {
+//ANIM-->
+                    LogPrintf("ThreadSocketHandler -- removing node: peer=%d addr=%s nRefCount=%d fNetworkNode=%d fInbound=%d fMasternode=%d\n",
+                              pnode->id, pnode->addr.ToString(), pnode->GetRefCount(), pnode->fNetworkNode, pnode->fInbound, pnode->fMasternode);
+//<--ANIM
+                    
                     // remove from vNodes
                     vNodes.erase(remove(vNodes.begin(), vNodes.end(), pnode), vNodes.end());
 
@@ -969,6 +1007,10 @@ void ThreadSocketHandler()
                     // hold in disconnected pool until all refs are released
                     if (pnode->fNetworkNode || pnode->fInbound)
                         pnode->Release();
+//ANIM-->
+                    if (pnode->fMasternode)
+                        pnode->Release();
+//<--ANIM
                     vNodesDisconnected.push_back(pnode);
                 }
             }
@@ -1345,7 +1387,9 @@ void ThreadOpenConnections()
         {
             LOCK(cs_vNodes);
             BOOST_FOREACH(CNode* pnode, vNodes) {
-                if (!pnode->fInbound) {
+//ANIM-->
+                if (!pnode->fInbound && !pnode->fMasternode) {
+//<--ANIM
                     setConnected.insert(pnode->addr.GetGroup());
                     nOutbound++;
                 }
@@ -2062,6 +2106,9 @@ CNode::CNode(SOCKET hSocketIn, const CAddress& addrIn, const std::string& addrNa
     nPingUsecStart = 0;
     nPingUsecTime = 0;
     fPingQueued = false;
+//ANIM-->
+    fMasternode = false;
+//<--ANIM
     nMinPingUsecTime = std::numeric_limits<int64_t>::max();
 
     {
