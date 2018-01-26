@@ -64,7 +64,7 @@
 #endif
 
 //ANIM-->
-#include "mnode/masternodeplugin.h"
+#include "mnode-plugin.h"
 CMasterNodePlugin masterNodePlugin;
 //<--ANIM
 
@@ -1656,9 +1656,13 @@ bool AppInit2(boost::thread_group& threadGroup, CScheduler& scheduler)
 
 //ANIM-->
     // ********************************************************* Step 10.5: start masternode
+#ifdef ENABLE_WALLET
+    if (!masterNodePlugin.EnableMasterNode(strErrors, pwalletMain)) {
+#else
     if (!masterNodePlugin.EnableMasterNode(strErrors)) {
-        return InitError(strErrors.str());
-    }
+#endif
+       return InitError(strErrors.str());
+   }
 //<--ANIM
 
     // ********************************************************* Step 11: start node

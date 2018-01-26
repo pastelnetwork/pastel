@@ -45,7 +45,7 @@
 #endif
 
 //ANIM-->
-#include "masternodeplugin.h"
+// #include "mnode-plugin.h"
 //<--ANIM
 
 using namespace std;
@@ -357,7 +357,7 @@ CNode* FindNode(const CService& addr)
 
 //ANIM-->
 // CNode* ConnectNode(CAddress addrConnect, const char *pszDest)
-CNode* ConnectNode(CAddress addrConnect, const char *pszDest = NULL, bool fConnectToMasternode = false)
+CNode* ConnectNode(CAddress addrConnect, const char *pszDest /*= NULL*/, bool fConnectToMasternode /*= false*/)
 //<--ANIM
 {
     if (pszDest == NULL) {
@@ -401,24 +401,47 @@ CNode* ConnectNode(CAddress addrConnect, const char *pszDest = NULL, bool fConne
             return NULL;
         }
 
+        if (pszDest && addrConnect.IsValid()) {
+            // It is possible that we already have a connection to the IP/port pszDest resolved to.
+            // In that case, drop the connection that was just created, and return the existing CNode instead.
+            // Also store the name we used to connect in that CNode, so that future FindNode() calls to that
+            // name catch this early.
+            //FindNode locks vector
+            CNode* pnode = FindNode((CService)addrConnect);
+            if (pnode)
+            {
+                // we have existing connection to this node but it was not a connection to masternode,
+                // change flag and add reference so that we can correctly clear it later
+                if(fConnectToMasternode && !pnode->fMasternode) {
+                    pnode->AddRef();
+                    pnode->fMasternode = true;
+                }
+                if (pnode->addrName.empty()) {
+                    pnode->addrName = std::string(pszDest);
+                }
+                CloseSocket(hSocket);
+                return pnode;
+            }
+        }
+
         addrman.Attempt(addrConnect);
 
         // Add node
         CNode* pnode = new CNode(hSocket, addrConnect, pszDest ? pszDest : "", false);
         pnode->AddRef();
 
+//ANIM-->
+        if(fConnectToMasternode) {
+            pnode->fMasternode = true;
+        }
+//<--ANIM
+        pnode->nTimeConnected = GetTime();
+
         {
             LOCK(cs_vNodes);
             vNodes.push_back(pnode);
         }
 
-        pnode->nTimeConnected = GetTime();
-//ANIM-->
-        if(fConnectToMasternode) {
-            pnode->AddRef();
-            pnode->fMasternode = true;
-        }
-//<--ANIM
 
         return pnode;
     } else if (!proxyConnectionFailed) {
@@ -945,11 +968,11 @@ static void AcceptConnection(const ListenSocket& hListenSocket) {
 
 //ANIM-->
     // don't accept incoming connections until fully synced
-    if(fMasterNode && !masterNodePlugin.masternodeSync.IsSynced()) {
-        LogPrintf("AcceptConnection -- masternode is not synced yet, skipping inbound connection attempt\n");
-        CloseSocket(hSocket);
-        return;
-    }
+    // if(fMasterNode && !masterNodePlugin.IsSynced()) {
+    //     LogPrintf("AcceptConnection -- masternode is not synced yet, skipping inbound connection attempt\n");
+    //     CloseSocket(hSocket);
+    //     return;
+    // }
 //<--ANIM
 
     // According to the internet TCP_NODELAY is not carried into accepted sockets
@@ -1799,6 +1822,11 @@ void StartNode(boost::thread_group& threadGroup, CScheduler& scheduler)
 
     // Initiate outbound connections
     threadGroup.create_thread(boost::bind(&TraceThread<void (*)()>, "opencon", &ThreadOpenConnections));
+
+//ANIM-->
+    // Initiate masternode connections
+    // threadGroup.create_thread(boost::bind(&TraceThread<void (*)()>, "mnbcon", &CConnman::ThreadMnbRequestConnections));
+//<--ANIM
 
     // Process messages
     threadGroup.create_thread(boost::bind(&TraceThread<void (*)()>, "msghand", &ThreadMessageHandler));

@@ -280,6 +280,7 @@ public:
 //ANIM-->
     // If 'true' this node will be disconnected on CMasternodeMan::ProcessMasternodeConnections()
     bool fMasternode;
+    CSemaphoreGrant grantMasternodeOutbound;
 //<--ANIM
     CSemaphoreGrant grantOutbound;
     CCriticalSection cs_filter;

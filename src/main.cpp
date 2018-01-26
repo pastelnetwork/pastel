@@ -40,7 +40,7 @@
 #include <boost/static_assert.hpp>
 
 //ANIM-->
-#include "masternodeplugin.h"
+// #include "mnode-plugin.h"
 //<--ANIM
 
 using namespace std;
@@ -4192,6 +4192,11 @@ bool static AlreadyHave(const CInv& inv) EXCLUSIVE_LOCKS_REQUIRED(cs_main)
         return mapBlockIndex.count(inv.hash);
     }
     // Don't know what it is, just say we already got one
+
+//ANIM-->
+    // masterNodePlugin.AlreadyHave(inv);
+//<--ANIM
+
     return true;
 }
 
@@ -4301,6 +4306,13 @@ void static ProcessGetData(CNode* pfrom)
                         pushed = true;
                     }
                 }
+
+//ANIM-->
+            //    if (!pushed) {
+            //        pushed = masterNodePlugin.ProcessGetData(pfrom, inv);
+            //    }
+//<--ANIM
+
                 if (!pushed) {
                     vNotFound.push_back(inv);
                 }
@@ -5165,7 +5177,9 @@ bool static ProcessMessage(CNode* pfrom, string strCommand, CDataStream& vRecv, 
     }
 
     else {
-        if (!masterNodePlugin.ProcessMessage(pfrom, strCommand, vRecv))
+//ANIM-->
+        // if (!masterNodePlugin.ProcessMessage(pfrom, strCommand, vRecv))
+//<--ANIM
         {
             // Ignore unknown commands for extensibility
             LogPrint("net", "Unknown command \"%s\" from peer=%d\n", SanitizeString(strCommand), pfrom->id);

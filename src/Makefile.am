@@ -65,6 +65,7 @@ EXTRA_LIBRARIES = \
   libbitcoin_server.a \
   libbitcoin_cli.a \
   libzcash.a
+
 if ENABLE_WALLET
 BITCOIN_INCLUDES += $(BDB_CPPFLAGS)
 EXTRA_LIBRARIES += libbitcoin_wallet.a
@@ -222,6 +223,29 @@ obj/build.h: FORCE
 	  $(abs_top_srcdir)
 libbitcoin_util_a-clientversion.$(OBJEXT): obj/build.h
 
+MNODE_CPP = \
+  mnode-active.cpp \
+  mnode-config.cpp \
+  mnode-connman.cpp \
+  mnode-manager.cpp \
+  mnode-masternode.cpp \
+  mnode-msgsigner.cpp \
+  mnode-netfulfilledman.cpp \
+  mnode-plugin.cpp \
+  mnode-sync.cpp
+
+MNODE_H = \
+  mnode-active.h \
+  mnode-config.h \
+  mnode-connman.h \
+  mnode-db.h \
+  mnode-manager.h \
+  mnode-masternode.h \
+  mnode-msgsigner.h \
+  mnode-netfulfilledman.h \
+  mnode-plugin.h \
+  mnode-sync.h
+
 # server: animecoind
 libbitcoin_server_a_CPPFLAGS = $(AM_CPPFLAGS) $(BITCOIN_INCLUDES) $(EVENT_CFLAGS) $(EVENT_PTHREADS_CFLAGS)
 libbitcoin_server_a_CXXFLAGS = $(AM_CXXFLAGS) $(PIE_FLAGS)
@@ -264,7 +288,9 @@ libbitcoin_server_a_SOURCES = \
   txmempool.cpp \
   validationinterface.cpp \
   $(BITCOIN_CORE_H) \
-  $(LIBZCASH_H)
+  $(LIBZCASH_H) \
+  $(MNODE_CPP) \
+  $(MNODE_H)
 
 if ENABLE_ZMQ
 LIBBITCOIN_ZMQ=libbitcoin_zmq.a
