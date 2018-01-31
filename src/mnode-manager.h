@@ -70,14 +70,6 @@ private:
     std::map<uint256, std::vector<CMasternodeBroadcast> > mMnbRecoveryGoodReplies;
     std::list< std::pair<CService, uint256> > listScheduledMnbRequestConnections;
 
-    /// Set when masternodes are added, cleared when CGovernanceManager is notified
-    bool fMasternodesAdded;
-
-    /// Set when masternodes are removed, cleared when CGovernanceManager is notified
-    bool fMasternodesRemoved;
-
-    std::vector<uint256> vecDirtyGovernanceObjectHashes;
-
     int64_t nLastWatchdogVoteTime;
 
     friend class CMasternodeSync;
@@ -209,24 +201,8 @@ public:
 
     void UpdateLastPaid(const CBlockIndex* pindex);
 
-    void AddDirtyGovernanceObjectHash(const uint256& nHash)
-    {
-        LOCK(cs);
-        vecDirtyGovernanceObjectHashes.push_back(nHash);
-    }
-
-    std::vector<uint256> GetAndClearDirtyGovernanceObjectHashes()
-    {
-        LOCK(cs);
-        std::vector<uint256> vecTmp = vecDirtyGovernanceObjectHashes;
-        vecDirtyGovernanceObjectHashes.clear();
-        return vecTmp;;
-    }
-
     bool IsWatchdogActive();
     void UpdateWatchdogVoteTime(const COutPoint& outpoint, uint64_t nVoteTime = 0);
-    bool AddGovernanceVote(const COutPoint& outpoint, uint256 nGovernanceObjectHash);
-    void RemoveGovernanceObject(uint256 nGovernanceObjectHash);
 
     void CheckMasternode(const CPubKey& pubKeyMasternode, bool fForce);
 
@@ -234,13 +210,6 @@ public:
     void SetMasternodeLastPing(const COutPoint& outpoint, const CMasternodePing& mnp);
 
     void UpdatedBlockTip(const CBlockIndex *pindex);
-
-    /**
-     * Called to notify CGovernanceManager that the masternode index has been updated.
-     * Must be called while not holding the CMasternodeMan::cs mutex
-     */
-    void NotifyMasternodeUpdates(CConnman& connman);
-
 };
 
 #endif

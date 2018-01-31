@@ -7,8 +7,6 @@
 
 #include <string>
 
-#include "sync.h"
-#include "chainparams.h"
 #include "coins.h"
 
 #include "mnode-connman.h"
@@ -17,6 +15,7 @@
 #include "mnode-sync.h"
 #include "mnode-netfulfilledman.h"
 #include "mnode-active.h"
+// #include "mnode-payments.h"
 
 #ifdef ENABLE_WALLET
 #include "wallet/wallet.h"
@@ -134,8 +133,6 @@ public:
 namespace NetMsgType {
 // extern const char *TXLOCKREQUEST;
 // extern const char *TXLOCKVOTE;
-// extern const char *SPORK;
-// extern const char *GETSPORKS;
 extern const char *MASTERNODEPAYMENTVOTE;
 extern const char *MASTERNODEPAYMENTBLOCK;
 extern const char *MASTERNODEPAYMENTSYNC;
@@ -151,9 +148,6 @@ extern const char *MNPING;
 // extern const char *DSQUEUE;
 extern const char *DSEG;
 extern const char *SYNCSTATUSCOUNT;
-// extern const char *MNGOVERNANCESYNC;
-// extern const char *MNGOVERNANCEOBJECT;
-// extern const char *MNGOVERNANCEOBJECTVOTE;
 extern const char *MNVERIFY;
 };
 

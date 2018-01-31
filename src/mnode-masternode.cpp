@@ -837,51 +837,11 @@ void CMasternodePing::Relay(CConnman& connman)
     connman.RelayInv(inv);
 }
 
-void CMasternode::AddGovernanceVote(uint256 nGovernanceObjectHash)
-{
-    if(mapGovernanceObjectsVotedOn.count(nGovernanceObjectHash)) {
-        mapGovernanceObjectsVotedOn[nGovernanceObjectHash]++;
-    } else {
-        mapGovernanceObjectsVotedOn.insert(std::make_pair(nGovernanceObjectHash, 1));
-    }
-}
-
-void CMasternode::RemoveGovernanceObject(uint256 nGovernanceObjectHash)
-{
-    std::map<uint256, int>::iterator it = mapGovernanceObjectsVotedOn.find(nGovernanceObjectHash);
-    if(it == mapGovernanceObjectsVotedOn.end()) {
-        return;
-    }
-    mapGovernanceObjectsVotedOn.erase(it);
-}
-
 void CMasternode::UpdateWatchdogVoteTime(uint64_t nVoteTime)
 {
     LOCK(cs);
     nTimeLastWatchdogVote = (nVoteTime == 0) ? GetAdjustedTime() : nVoteTime;
 }
-
-/**
-*   FLAG GOVERNANCE ITEMS AS DIRTY
-*
-*   - When masternode come and go on the network, we must flag the items they voted on to recalc it's cached flags
-*
-*/
-void CMasternode::FlagGovernanceItemsAsDirty()
-{
-    std::vector<uint256> vecDirty;
-    {
-        std::map<uint256, int>::iterator it = mapGovernanceObjectsVotedOn.begin();
-        while(it != mapGovernanceObjectsVotedOn.end()) {
-            vecDirty.push_back(it->first);
-            ++it;
-        }
-    }
-    for(size_t i = 0; i < vecDirty.size(); ++i) {
-        masterNodePlugin.masternodeManager.AddDirtyGovernanceObjectHash(vecDirty[i]);
-    }
-}
-
 
 void CMasternodeVerification::Relay() const
 {

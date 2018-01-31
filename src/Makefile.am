@@ -107,6 +107,29 @@ LIBZCASH_H = \
   zcash/util.h \
   zcash/Zcash.h
 
+MNODE_CPP = \
+  mnode-connman.cpp \
+  mnode-config.cpp \
+  mnode-active.cpp \
+  mnode-manager.cpp \
+  mnode-masternode.cpp \
+  mnode-msgsigner.cpp \
+  mnode-netfulfilledman.cpp \
+  mnode-sync.cpp \
+  mnode-plugin.cpp
+
+MNODE_H = \
+  mnode-active.h \
+  mnode-config.h \
+  mnode-connman.h \
+  mnode-db.h \
+  mnode-manager.h \
+  mnode-masternode.h \
+  mnode-msgsigner.h \
+  mnode-netfulfilledman.h \
+  mnode-plugin.h \
+  mnode-sync.h
+
 .PHONY: FORCE collate-libsnark check-symbols check-security
 # bitcoin core #
 BITCOIN_CORE_H = \
@@ -214,37 +237,14 @@ BITCOIN_CORE_H = \
   zmq/zmqabstractnotifier.h \
   zmq/zmqconfig.h\
   zmq/zmqnotificationinterface.h \
-  zmq/zmqpublishnotifier.h
-
+  zmq/zmqpublishnotifier.h \
+  $(MNODE_H)
 
 obj/build.h: FORCE
 	@$(MKDIR_P) $(builddir)/obj
 	@$(top_srcdir)/share/genbuild.sh $(abs_top_builddir)/src/obj/build.h \
 	  $(abs_top_srcdir)
 libbitcoin_util_a-clientversion.$(OBJEXT): obj/build.h
-
-MNODE_CPP = \
-  mnode-active.cpp \
-  mnode-config.cpp \
-  mnode-connman.cpp \
-  mnode-manager.cpp \
-  mnode-masternode.cpp \
-  mnode-msgsigner.cpp \
-  mnode-netfulfilledman.cpp \
-  mnode-plugin.cpp \
-  mnode-sync.cpp
-
-MNODE_H = \
-  mnode-active.h \
-  mnode-config.h \
-  mnode-connman.h \
-  mnode-db.h \
-  mnode-manager.h \
-  mnode-masternode.h \
-  mnode-msgsigner.h \
-  mnode-netfulfilledman.h \
-  mnode-plugin.h \
-  mnode-sync.h
 
 # server: animecoind
 libbitcoin_server_a_CPPFLAGS = $(AM_CPPFLAGS) $(BITCOIN_INCLUDES) $(EVENT_CFLAGS) $(EVENT_PTHREADS_CFLAGS)
@@ -287,10 +287,10 @@ libbitcoin_server_a_SOURCES = \
   txdb.cpp \
   txmempool.cpp \
   validationinterface.cpp \
-  $(BITCOIN_CORE_H) \
-  $(LIBZCASH_H) \
   $(MNODE_CPP) \
-  $(MNODE_H)
+  $(BITCOIN_CORE_H) \
+  $(LIBZCASH_H)
+
 
 if ENABLE_ZMQ
 LIBBITCOIN_ZMQ=libbitcoin_zmq.a

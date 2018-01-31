@@ -2,9 +2,10 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#include "mnode-connman.h"
 #include "util.h"
 
+#include "mnode-connman.h"
+#include "mnode-manager.h"
 #include "mnode-plugin.h"
 #include "mnode-db.h"
 

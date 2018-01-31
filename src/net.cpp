@@ -45,7 +45,7 @@
 #endif
 
 //ANIM-->
-// #include "mnode-plugin.h"
+#include "mnode-plugin.h"
 //<--ANIM
 
 using namespace std;
@@ -967,12 +967,12 @@ static void AcceptConnection(const ListenSocket& hListenSocket) {
     }
 
 //ANIM-->
-    // don't accept incoming connections until fully synced
-    // if(fMasterNode && !masterNodePlugin.IsSynced()) {
-    //     LogPrintf("AcceptConnection -- masternode is not synced yet, skipping inbound connection attempt\n");
-    //     CloseSocket(hSocket);
-    //     return;
-    // }
+    // // don't accept incoming connections until fully synced
+    if(fMasterNode && !masterNodePlugin.IsSynced()) {
+        LogPrintf("AcceptConnection -- masternode is not synced yet, skipping inbound connection attempt\n");
+        CloseSocket(hSocket);
+        return;
+    }
 //<--ANIM
 
     // According to the internet TCP_NODELAY is not carried into accepted sockets
@@ -1825,7 +1825,7 @@ void StartNode(boost::thread_group& threadGroup, CScheduler& scheduler)
 
 //ANIM-->
     // Initiate masternode connections
-    // threadGroup.create_thread(boost::bind(&TraceThread<void (*)()>, "mnbcon", &CConnman::ThreadMnbRequestConnections));
+    threadGroup.create_thread(boost::bind(&TraceThread<void (*)()>, "mnbcon", &CConnman::ThreadMnbRequestConnections));
 //<--ANIM
 
     // Process messages
