@@ -65,9 +65,6 @@ CMasternodeMan::CMasternodeMan()
   mMnbRecoveryRequests(),
   mMnbRecoveryGoodReplies(),
   listScheduledMnbRequestConnections(),
-  fMasternodesAdded(false),
-  fMasternodesRemoved(false),
-  vecDirtyGovernanceObjectHashes(),
   nLastWatchdogVoteTime(0),
   mapSeenMasternodeBroadcast(),
   mapSeenMasternodePing(),
@@ -82,7 +79,6 @@ bool CMasternodeMan::Add(CMasternode &mn)
 
     LogPrint("masternode", "CMasternodeMan::Add -- Adding new Masternode: addr=%s, %i now\n", mn.addr.ToString(), size() + 1);
     mapMasternodes[mn.vin.prevout] = mn;
-    fMasternodesAdded = true;
     return true;
 }
 
@@ -112,9 +108,6 @@ void CMasternodeMan::AskForMN(CNode* pnode, const COutPoint& outpoint, CConnman&
     }
     mWeAskedForMasternodeListEntry[outpoint][pnode->addr] = GetTime() + DSEG_UPDATE_SECONDS;
 
-/*ANIM-->
-    connman.PushMessage(pnode, NetMsgType::DSEG, CTxIn(outpoint));
-<--ANIM*/
     pnode->PushMessage(NetMsgType::DSEG, CTxIn(outpoint));
 }
 
@@ -197,9 +190,7 @@ void CMasternodeMan::CheckAndRemove(CConnman& connman)
                 mWeAskedForMasternodeListEntry.erase(it->first);
 
                 // and finally remove it from the list
-                it->second.FlagGovernanceItemsAsDirty();
                 mapMasternodes.erase(it++);
-                fMasternodesRemoved = true;
             } else {
                 bool fAsk = (nAskForMnbRecovery > 0) &&
                             masterNodePlugin.masternodeSync.IsSynced() &&
@@ -344,10 +335,6 @@ void CMasternodeMan::CheckAndRemove(CConnman& connman)
 
         LogPrintf("CMasternodeMan::CheckAndRemove -- %s\n", ToString());
     }
-
-    if(fMasternodesRemoved) {
-        NotifyMasternodeUpdates(connman);
-    }
 }
 
 void CMasternodeMan::Clear()
@@ -422,9 +409,6 @@ void CMasternodeMan::DsegUpdate(CNode* pnode, CConnman& connman)
         }
     }
 
-/*ANIM-->
-    connman.PushMessage(pnode, NetMsgType::DSEG, CTxIn());
-<--ANIM*/
     pnode->PushMessage(NetMsgType::DSEG, CTxIn());
     int64_t askAgain = GetTime() + DSEG_UPDATE_SECONDS;
     mWeAskedForMasternodeList[pnode->addr] = askAgain;
@@ -767,18 +751,12 @@ void CMasternodeMan::ProcessMessage(CNode* pfrom, std::string& strCommand, CData
 
         if (CheckMnbAndUpdateMasternodeList(pfrom, mnb, nDos, connman)) {
             // use announced Masternode as a peer
-/*ANIM-->
-            connman.AddNewAddress(CAddress(mnb.addr, NODE_NETWORK), pfrom->addr, 2*60*60);
-<--ANIM*/
             addrman.Add(CAddress(mnb.addr, NODE_NETWORK), pfrom->addr, 2*60*60);
 
         } else if(nDos > 0) {
             Misbehaving(pfrom->GetId(), nDos);
         }
 
-        if(fMasternodesAdded) {
-            NotifyMasternodeUpdates(connman);
-        }
     } else if (strCommand == NetMsgType::MNPING) { //Masternode Ping
 
         CMasternodePing mnp;
@@ -802,14 +780,6 @@ void CMasternodeMan::ProcessMessage(CNode* pfrom, std::string& strCommand, CData
 
         // see if we have this Masternode
         CMasternode* pmn = Find(mnp.vin.prevout);
-
-/*ANIM-->
-        // if masternode uses sentinel ping instead of watchdog
-        // we shoud update nTimeLastWatchdogVote here if sentinel
-        // ping flag is actual
-        if(pmn && mnp.fSentinelIsCurrent)
-            UpdateWatchdogVoteTime(mnp.vin.prevout, mnp.sigTime);
-<--ANIM*/
 
         // too late, new MNANNOUNCE is required
         if(pmn && pmn->IsNewStartRequired()) return;
@@ -884,9 +854,6 @@ void CMasternodeMan::ProcessMessage(CNode* pfrom, std::string& strCommand, CData
         }
 
         if(vin == CTxIn()) {
-/*ANIM-->
-            connman.PushMessage(pfrom, NetMsgType::SYNCSTATUSCOUNT, MASTERNODE_SYNC_LIST, nInvCount);
-<--ANIM*/
             pfrom->PushMessage(NetMsgType::SYNCSTATUSCOUNT, MASTERNODE_SYNC_LIST, nInvCount);
             LogPrintf("DSEG -- Sent %d Masternode invs to peer %d\n", nInvCount, pfrom->id);
             return;
@@ -1063,9 +1030,6 @@ bool CMasternodeMan::SendVerifyRequest(const CAddress& addr, const std::vector<C
         return false;
     }
 
-/*ANIM-->
-    CNode* pnode = connman.ConnectNode(addr, NULL, true);
-<--ANIM*/
     CNode* pnode = ConnectNode(addr, NULL, true);
     if(pnode == NULL) {
         LogPrintf("CMasternodeMan::SendVerifyRequest -- can't connect to node to verify it, addr=%s\n", addr.ToString());
@@ -1077,9 +1041,6 @@ bool CMasternodeMan::SendVerifyRequest(const CAddress& addr, const std::vector<C
     CMasternodeVerification mnv(addr, GetRandInt(999999), nCachedBlockHeight - 1);
     mWeAskedForVerification[addr] = mnv;
     LogPrintf("CMasternodeMan::SendVerifyRequest -- verifying node using nonce %d addr=%s\n", mnv.nonce, addr.ToString());
-/*ANIM-->
-    connman.PushMessage(pnode, NetMsgType::MNVERIFY, mnv);
-<--ANIM*/
     pnode->PushMessage(NetMsgType::MNVERIFY, mnv);
 
     return true;
@@ -1121,9 +1082,6 @@ void CMasternodeMan::SendVerifyReply(CNode* pnode, CMasternodeVerification& mnv,
         return;
     }
 
-/*ANIM-->
-    connman.PushMessage(pnode, NetMsgType::MNVERIFY, mnv);
-<--ANIM*/
     pnode->PushMessage(NetMsgType::MNVERIFY, mnv);
     masterNodePlugin.netFulfilledManager.AddFulfilledRequest(pnode->addr, strprintf("%s", NetMsgType::MNVERIFY)+"-reply");
 }
@@ -1473,10 +1431,10 @@ void CMasternodeMan::UpdateLastPaid(const CBlockIndex* pindex)
 {
     LOCK(cs);
 
-    if(!masterNodePlugin.masternodeSync.IsWinnersListSynced() || mapMasternodes.empty()) return;
 /*ANIM-->
     if(fLiteMode || !masterNodePlugin.masternodeSync.IsWinnersListSynced() || mapMasternodes.empty()) return;
 <--ANIM*/
+    if(!masterNodePlugin.masternodeSync.IsWinnersListSynced() || mapMasternodes.empty()) return;
 
     static bool IsFirstRun = true;
     // Do full scan on first run or if we are not a masternode
@@ -1511,25 +1469,6 @@ bool CMasternodeMan::IsWatchdogActive()
     return (GetTime() - nLastWatchdogVoteTime) <= MASTERNODE_WATCHDOG_MAX_SECONDS;
 }
 
-bool CMasternodeMan::AddGovernanceVote(const COutPoint& outpoint, uint256 nGovernanceObjectHash)
-{
-    LOCK(cs);
-    CMasternode* pmn = Find(outpoint);
-    if(!pmn) {
-        return false;
-    }
-    pmn->AddGovernanceVote(nGovernanceObjectHash);
-    return true;
-}
-
-void CMasternodeMan::RemoveGovernanceObject(uint256 nGovernanceObjectHash)
-{
-    LOCK(cs);
-    for(auto& mnpair : mapMasternodes) {
-        mnpair.second.RemoveGovernanceObject(nGovernanceObjectHash);
-    }
-}
-
 void CMasternodeMan::CheckMasternode(const CPubKey& pubKeyMasternode, bool fForce)
 {
     LOCK(cs);
@@ -1556,14 +1495,6 @@ void CMasternodeMan::SetMasternodeLastPing(const COutPoint& outpoint, const CMas
         return;
     }
     pmn->lastPing = mnp;
-/*ANIM-->
-    // if masternode uses sentinel ping instead of watchdog
-    // we shoud update nTimeLastWatchdogVote here if sentinel
-    // ping flag is actual
-    if(mnp.fSentinelIsCurrent) {
-        UpdateWatchdogVoteTime(mnp.vin.prevout, mnp.sigTime);
-    }
-<--ANIM*/
     mapSeenMasternodePing.insert(std::make_pair(mnp.GetHash(), mnp));
 
     CMasternodeBroadcast mnb(*pmn);
@@ -1584,30 +1515,4 @@ void CMasternodeMan::UpdatedBlockTip(const CBlockIndex *pindex)
         // normal wallet does not need to update this every block, doing update on rpc call should be enough
         UpdateLastPaid(pindex);
     }
-}
-
-void CMasternodeMan::NotifyMasternodeUpdates(CConnman& connman)
-{
-    // Avoid double locking
-    bool fMasternodesAddedLocal = false;
-    bool fMasternodesRemovedLocal = false;
-    {
-        LOCK(cs);
-        fMasternodesAddedLocal = fMasternodesAdded;
-        fMasternodesRemovedLocal = fMasternodesRemoved;
-    }
-
-/*ANIM-->
-    if(fMasternodesAddedLocal) {
-        governance.CheckMasternodeOrphanObjects(connman);
-        governance.CheckMasternodeOrphanVotes(connman);
-    }
-    if(fMasternodesRemovedLocal) {
-        governance.UpdateCachesAndClean();
-    }
-<--ANIM*/
-
-    LOCK(cs);
-    fMasternodesAdded = false;
-    fMasternodesRemoved = false;
 }

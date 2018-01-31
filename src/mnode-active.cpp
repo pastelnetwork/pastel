@@ -56,15 +56,10 @@ std::string CActiveMasternode::GetStateString() const
 
 std::string CActiveMasternode::GetStatus() const
 {
-//ANIM-->
-    //Params().GetConsensus().nMasternodeMinimumConfirmations
-    int nMasternodeMinimumConfirmations = 15;
-//<--ANIM
-
     switch (nState) {
         case ACTIVE_MASTERNODE_INITIAL:         return "Node just started, not yet activated";
         case ACTIVE_MASTERNODE_SYNC_IN_PROCESS: return "Sync in progress. Must wait until sync is complete to start Masternode";
-        case ACTIVE_MASTERNODE_INPUT_TOO_NEW:   return strprintf("Masternode input must have at least %d confirmations", nMasternodeMinimumConfirmations);
+        case ACTIVE_MASTERNODE_INPUT_TOO_NEW:   return strprintf("Masternode input must have at least %d confirmations", masterNodePlugin.nMasternodeMinimumConfirmations);
         case ACTIVE_MASTERNODE_NOT_CAPABLE:     return "Not capable masternode: " + strNotCapableReason;
         case ACTIVE_MASTERNODE_STARTED:         return "Masternode successfully started";
         default:                                return "Unknown";
@@ -92,21 +87,14 @@ bool CActiveMasternode::SendMasternodePing(CConnman& connman)
         return false;
     }
 
-/*ANIM-->
     if(!masterNodePlugin.masternodeManager.Has(outpoint)) {
         strNotCapableReason = "Masternode not in masternode list";
         nState = ACTIVE_MASTERNODE_NOT_CAPABLE;
         LogPrintf("CActiveMasternode::SendMasternodePing -- %s: %s\n", GetStateString(), strNotCapableReason);
         return false;
     }
-<--ANIM*/
 
     CMasternodePing mnp(outpoint);
-/*ANIM-->
-    mnp.nSentinelVersion = nSentinelVersion;
-    mnp.fSentinelIsCurrent =
-            (abs(GetAdjustedTime() - nSentinelPingTime) < MASTERNODE_WATCHDOG_MAX_SECONDS);
-<--ANIM*/
     if(!mnp.Sign(keyMasternode, pubKeyMasternode)) {
         LogPrintf("CActiveMasternode::SendMasternodePing -- ERROR: Couldn't sign Masternode Ping\n");
         return false;
@@ -120,24 +108,12 @@ bool CActiveMasternode::SendMasternodePing(CConnman& connman)
 
     masterNodePlugin.masternodeManager.SetMasternodeLastPing(outpoint, mnp);
 
-//ANIM-->
-    // LogPrintf("CActiveMasternode::SendMasternodePing -- Relaying ping, collateral=%s\n", outpoint.ToStringShort());
-    LogPrintf("CActiveMasternode::SendMasternodePing -- Relaying ping, collateral=%s\n", outpoint.ToString());
-//<--ANIM
+    LogPrintf("CActiveMasternode::SendMasternodePing -- Relaying ping, collateral=%s\n", outpoint.ToStringShort());
+
     mnp.Relay(connman);
 
     return true;
 }
-
-//ANIM -->
-// bool CActiveMasternode::UpdateSentinelPing(int version)
-// {
-//     nSentinelVersion = version;
-//     nSentinelPingTime = GetAdjustedTime();
-
-//     return true;
-// }
-//<--
 
 void CActiveMasternode::ManageStateInitial(CConnman& connman)
 {
@@ -180,9 +156,7 @@ void CActiveMasternode::ManageStateInitial(CConnman& connman)
     }
 
     int mainnetDefaultPort = Params(CBaseChainParams::MAIN).GetDefaultPort();
-//ANIM-->
     if(masterNodePlugin.IsMainNet()) {
-//<--ANIM
         if(service.GetPort() != mainnetDefaultPort) {
             nState = ACTIVE_MASTERNODE_NOT_CAPABLE;
             strNotCapableReason = strprintf("Invalid port: %u - only %d is supported on mainnet.", service.GetPort(), mainnetDefaultPort);
@@ -198,9 +172,6 @@ void CActiveMasternode::ManageStateInitial(CConnman& connman)
 
     LogPrintf("CActiveMasternode::ManageStateInitial -- Checking inbound connection to '%s'\n", service.ToString());
 
-/*ANIM-->
-    if(!connman.ConnectNode(CAddress(service, NODE_NETWORK), NULL, true)) {
-<--ANIM*/
     if(!ConnectNode(CAddress(service, NODE_NETWORK), NULL, true)) {
         nState = ACTIVE_MASTERNODE_NOT_CAPABLE;
         strNotCapableReason = "Could not connect to " + service.ToString();

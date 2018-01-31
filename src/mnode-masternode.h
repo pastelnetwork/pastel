@@ -32,11 +32,6 @@ static const int MASTERNODE_POSE_BAN_MAX_SCORE          = 5;
 // The Masternode Ping Class : Contains a different serialize method for sending pings from masternodes throughout the network
 //
 
-// sentinel version before sentinel ping implementation
-/*ANIM-->
-#define DEFAULT_SENTINEL_VERSION 0x010001
-<--ANIM*/
-
 class CMasternodePing
 {
 public:
@@ -44,12 +39,6 @@ public:
     uint256 blockHash{};
     int64_t sigTime{}; //mnb message times
     std::vector<unsigned char> vchSig{};
-
-/*ANIM-->
-    bool fSentinelIsCurrent = false; // true if last sentinel ping was actual
-    // MSB is always 0, other 3 bits corresponds to x.x.x version scheme
-    uint32_t nSentinelVersion{DEFAULT_SENTINEL_VERSION};
-<--ANIM*/
 
     CMasternodePing() = default;
 
@@ -63,16 +52,6 @@ public:
         READWRITE(blockHash);
         READWRITE(sigTime);
         READWRITE(vchSig);
-/*ANIM-->
-        if(ser_action.ForRead() && (s.size() == 0))
-        {
-            fSentinelIsCurrent = false;
-            nSentinelVersion = DEFAULT_SENTINEL_VERSION;
-            return;
-        }
-        READWRITE(fSentinelIsCurrent);
-        READWRITE(nSentinelVersion);
-<--ANIM*/
     }
 
     uint256 GetHash() const
@@ -176,9 +155,6 @@ public:
     bool fAllowMixingTx{};
     bool fUnitTest = false;
 
-    // KEEP TRACK OF GOVERNANCE ITEMS EACH MASTERNODE HAS VOTE UPON FOR RECALCULATION
-    std::map<uint256, int> mapGovernanceObjectsVotedOn;
-
     CMasternode();
     CMasternode(const CMasternode& other);
     CMasternode(const CMasternodeBroadcast& mnb);
@@ -208,7 +184,6 @@ public:
         READWRITE(nPoSeBanHeight);
         READWRITE(fAllowMixingTx);
         READWRITE(fUnitTest);
-        READWRITE(mapGovernanceObjectsVotedOn);
     }
 
     // CALCULATE A RANK AGAINST OF GIVEN BLOCK
@@ -256,12 +231,6 @@ public:
         if(nActiveState == MASTERNODE_ENABLED) {
             return true;
         }
-/*ANIM-->
-        if(!sporkManager.IsSporkActive(SPORK_14_REQUIRE_SENTINEL_FLAG) &&
-           (nActiveState == MASTERNODE_WATCHDOG_EXPIRED)) {
-            return true;
-        }
-<--ANIM*/
 
         return false;
     }
@@ -286,13 +255,6 @@ public:
     int GetLastPaidBlock() { return nBlockLastPaid; }
     void UpdateLastPaid(const CBlockIndex *pindex, int nMaxBlocksToScanBack);
 
-    // KEEP TRACK OF EACH GOVERNANCE ITEM INCASE THIS NODE GOES OFFLINE, SO WE CAN RECALC THEIR STATUS
-    void AddGovernanceVote(uint256 nGovernanceObjectHash);
-    // RECALCULATE CACHED STATUS FLAGS FOR ALL AFFECTED OBJECTS
-    void FlagGovernanceItemsAsDirty();
-
-    void RemoveGovernanceObject(uint256 nGovernanceObjectHash);
-
     void UpdateWatchdogVoteTime(uint64_t nVoteTime = 0);
 
     CMasternode& operator=(CMasternode const& from)
@@ -306,7 +268,6 @@ public:
         nPoSeBanHeight = from.nPoSeBanHeight;
         fAllowMixingTx = from.fAllowMixingTx;
         fUnitTest = from.fUnitTest;
-        mapGovernanceObjectsVotedOn = from.mapGovernanceObjectsVotedOn;
         return *this;
     }
 };

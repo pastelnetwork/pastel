@@ -7,9 +7,10 @@
 #include "base58.h"
 
 #include "mnode-plugin.h"
+#include "mnode-sync.h"
+#include "mnode-manager.h"
 #include "mnode-msgsigner.h"
 #include "mnode-db.h"
-#include "mnode-connman.h"
 
 #include <boost/lexical_cast.hpp>
 
@@ -353,9 +354,6 @@ const char *MNPING="mnp";
 // const char *DSQUEUE="dsq";
 const char *DSEG="dseg";
 const char *SYNCSTATUSCOUNT="ssc";
-// const char *MNGOVERNANCESYNC="govsync";
-// const char *MNGOVERNANCEOBJECT="govobj";
-// const char *MNGOVERNANCEOBJECTVOTE="govobjvote";
 const char *MNVERIFY="mnv";
 };
 

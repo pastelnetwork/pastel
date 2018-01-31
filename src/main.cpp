@@ -40,7 +40,7 @@
 #include <boost/static_assert.hpp>
 
 //ANIM-->
-// #include "mnode-plugin.h"
+#include "mnode-plugin.h"
 //<--ANIM
 
 using namespace std;
@@ -4194,7 +4194,7 @@ bool static AlreadyHave(const CInv& inv) EXCLUSIVE_LOCKS_REQUIRED(cs_main)
     // Don't know what it is, just say we already got one
 
 //ANIM-->
-    // masterNodePlugin.AlreadyHave(inv);
+    masterNodePlugin.AlreadyHave(inv);
 //<--ANIM
 
     return true;
@@ -4308,9 +4308,9 @@ void static ProcessGetData(CNode* pfrom)
                 }
 
 //ANIM-->
-            //    if (!pushed) {
-            //        pushed = masterNodePlugin.ProcessGetData(pfrom, inv);
-            //    }
+               if (!pushed) {
+                   pushed = masterNodePlugin.ProcessGetData(pfrom, inv);
+               }
 //<--ANIM
 
                 if (!pushed) {
@@ -5178,7 +5178,7 @@ bool static ProcessMessage(CNode* pfrom, string strCommand, CDataStream& vRecv, 
 
     else {
 //ANIM-->
-        // if (!masterNodePlugin.ProcessMessage(pfrom, strCommand, vRecv))
+        if (!masterNodePlugin.ProcessMessage(pfrom, strCommand, vRecv))
 //<--ANIM
         {
             // Ignore unknown commands for extensibility
