@@ -105,11 +105,11 @@ bool CMasterNodePlugin::EnableMasterNode(std::ostringstream& strErrors, boost::t
     if(masternodeManager.size()) {
         strDBName = "mnpayments.dat";
         uiInterface.InitMessage(_("Loading masternode payment cache..."));
-        CFlatDB<CMasternodePayments> flatDB2(strDBName, "magicMasternodePaymentsCache");
-        if(!flatDB2.Load(masternodePayments)) {
-            strErrors << _("Failed to load masternode payments cache from") + "\n" + (pathDB / strDBName).string();
-            return false;
-        }
+        // CFlatDB<CMasternodePayments> flatDB2(strDBName, "magicMasternodePaymentsCache");
+        // if(!flatDB2.Load(masternodePayments)) {
+        //     strErrors << _("Failed to load masternode payments cache from") + "\n" + (pathDB / strDBName).string();
+        //     return false;
+        // }
     } else {
         uiInterface.InitMessage(_("Masternode cache is empty, skipping payments and governance cache..."));
     }
@@ -126,9 +126,9 @@ bool CMasterNodePlugin::EnableMasterNode(std::ostringstream& strErrors, boost::t
     //TEMP!!! pdsNotificationInterface->InitializeCurrentBlockTip();
 
     //Enable Maintenance thread
-    threadGroup.create_thread(boost::bind(&TraceThread<void (*)()>, "mn-maint", &ThreadMasterNodeMaintenance, boost::ref(connectionManager)));
+    threadGroup.create_thread(boost::bind(&CMasterNodePlugin::ThreadMasterNodeMaintenance, boost::ref(connectionManager)));
     //Enable Broadcast re-requests thread
-    threadGroup.create_thread(boost::bind(&TraceThread<void (*)()>, "mn-mnbreq", &CMasterNodePlugin::ThreadMnbRequestConnections));
+    threadGroup.create_thread(&CMasterNodePlugin::ThreadMnbRequestConnections);
 
 
 //TODO - must move to chainnparams
@@ -253,8 +253,8 @@ void CMasterNodePlugin::StoreData()
     // STORE DATA CACHES INTO SERIALIZED DAT FILES
     CFlatDB<CMasternodeMan> flatDB1("mncache.dat", "magicMasternodeCache");
     flatDB1.Dump(masternodeManager);
-    CFlatDB<CMasternodePayments> flatDB2("mnpayments.dat", "magicMasternodePaymentsCache");
-    flatDB2.Dump(masternodePayments);
+    // CFlatDB<CMasternodePayments> flatDB2("mnpayments.dat", "magicMasternodePaymentsCache");
+    // flatDB2.Dump(masternodePayments);
     CFlatDB<CNetFulfilledRequestManager> flatDB3("netfulfilled.dat", "magicFulfilledCache");
     flatDB3.Dump(netFulfilledManager);
 }
@@ -413,6 +413,8 @@ static CSemaphore *semMasternodeOutbound = NULL;
 
 /* static */ void CMasterNodePlugin::ThreadMnbRequestConnections()
 {
+    RenameThread("animecoin-mn-mnbreq");
+
     // Connecting to specific addresses, no masternode connections available
     if (mapArgs.count("-connect") && mapMultiArgs["-connect"].size() > 0)
         return;
