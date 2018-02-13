@@ -98,11 +98,6 @@ namespace boost {
 
 using namespace std;
 
-//ANIM-->
-bool fMasterNode = false;
-//<--ANIM
-
-
 map<string, string> mapArgs;
 map<string, vector<string> > mapMultiArgs;
 bool fDebug = false;

@@ -190,7 +190,7 @@ void Shutdown()
     /// for example if the data directory was found to be locked.
     /// Be sure that anything that writes files or flushes caches only does this if the respective
     /// module was initialized.
-    RenameThread("zcash-shutoff");
+    RenameThread("animecoin-shutoff");
     mempool.AddTransactionsUpdated(1);
 
     StopHTTPRPC();
@@ -601,7 +601,7 @@ void CleanupBlockRevFiles()
 
 void ThreadImport(std::vector<boost::filesystem::path> vImportFiles)
 {
-    RenameThread("zcash-loadblk");
+    RenameThread("animecoin-loadblk");
     // -reindex
     if (fReindex) {
         CImportingNow imp;
@@ -1657,9 +1657,9 @@ bool AppInit2(boost::thread_group& threadGroup, CScheduler& scheduler)
 //ANIM-->
     // ********************************************************* Step 10.5: start masternode
 #ifdef ENABLE_WALLET
-    if (!masterNodePlugin.EnableMasterNode(strErrors, pwalletMain)) {
+    if (!masterNodePlugin.EnableMasterNode(strErrors, threadGroup, pwalletMain)) {
 #else
-    if (!masterNodePlugin.EnableMasterNode(strErrors)) {
+    if (!masterNodePlugin.EnableMasterNode(strErrors, threadGroup)) {
 #endif
        return InitError(strErrors.str());
    }

@@ -14,7 +14,7 @@
 void CActiveMasternode::ManageState(CConnman& connman)
 {
     LogPrint("masternode", "CActiveMasternode::ManageState -- Start\n");
-    if(!masterNodePlugin) {
+    if(!masterNodePlugin.IsMasterNode()) {
         LogPrint("masternode", "CActiveMasternode::ManageState -- Not a masternode, returning\n");
         return;
     }

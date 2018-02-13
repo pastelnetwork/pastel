@@ -73,6 +73,18 @@ void CMasternodeSync::SwitchToNextAsset(CConnman& connman)
             LogPrintf("CMasternodeSync::SwitchToNextAsset -- Completed %s in %llds\n", GetAssetName(), GetTime() - nTimeAssetSyncStarted);
             nRequestedMasternodeAssets = MASTERNODE_SYNC_FINISHED;
             LogPrintf("CMasternodeSync::SwitchToNextAsset -- Starting %s\n", GetAssetName());
+
+            //try to activate our masternode if possible
+            masterNodePlugin.activeMasternode.ManageState(connman);
+
+            // TODO: Find out whether we can just use LOCK instead of:
+            // TRY_LOCK(cs_vNodes, lockRecv);
+            // if(lockRecv) { ... }
+
+            connman.ForEachNode(CConnman::AllNodes, [](CNode* pnode) {
+                masterNodePlugin.netFulfilledManager.AddFulfilledRequest(pnode->addr, "full-sync");
+            });
+            LogPrintf("CMasternodeSync::SwitchToNextAsset -- Sync has finished\n");
             break;
     }
     nRequestedMasternodeAttempt = 0;
@@ -164,7 +176,7 @@ void CMasternodeSync::ProcessTick(CConnman& connman)
         // Inbound connection this early is most likely a "masternode" connection
         // initiated from another node, so skip it too.
         
-        if(pnode->fMasternode || (masterNodePlugin && pnode->fInbound)) continue;
+        if(pnode->fMasternode || (masterNodePlugin.IsMasterNode() && pnode->fInbound)) continue;
 
         // QUICK MODE (REGTEST ONLY!)
         if(masterNodePlugin.IsRegTest())
@@ -343,7 +355,7 @@ void CMasternodeSync::UpdatedBlockTip(const CBlockIndex *pindexNew, bool fInitia
     bool fReachedBestHeaderNew = pindexNew->GetBlockHash() == pindexBestHeader->GetBlockHash();
 
     if (fReachedBestHeader && !fReachedBestHeaderNew) {
-        // Switching from true to false means that we previousely stuck syncing headers for some reason,
+        // Switching from true to false means that we previously stuck syncing headers for some reason,
         // probably initial timeout was not enough,
         // because there is no way we can update tip not having best header
         Reset();

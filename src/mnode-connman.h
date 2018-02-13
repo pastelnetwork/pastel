@@ -15,9 +15,6 @@
 class CConnman 
 {
 public:
-/***** MasterNode operations *****/
-    static void ThreadMnbRequestConnections();
-
 /***** vNodes vector operations *****/
     std::vector<CNode*> CopyNodeVector()
     {
@@ -40,7 +37,7 @@ public:
         }
     }
 
-/***** vNodes itterators *****/
+/***** vNodes iterators *****/
     template<typename Condition, typename Callable>
     bool ForEachNodeContinueIf(const Condition& cond, Callable&& func)
     {
