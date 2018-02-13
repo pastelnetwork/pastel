@@ -67,8 +67,7 @@ CMasternodeMan::CMasternodeMan()
   listScheduledMnbRequestConnections(),
   nLastWatchdogVoteTime(0),
   mapSeenMasternodeBroadcast(),
-  mapSeenMasternodePing(),
-  nDsqCount(0)
+  mapSeenMasternodePing()
 {}
 
 bool CMasternodeMan::Add(CMasternode &mn)
@@ -109,32 +108,6 @@ void CMasternodeMan::AskForMN(CNode* pnode, const COutPoint& outpoint, CConnman&
     mWeAskedForMasternodeListEntry[outpoint][pnode->addr] = GetTime() + DSEG_UPDATE_SECONDS;
 
     pnode->PushMessage(NetMsgType::DSEG, CTxIn(outpoint));
-}
-
-bool CMasternodeMan::AllowMixing(const COutPoint &outpoint)
-{
-    LOCK(cs);
-    CMasternode* pmn = Find(outpoint);
-    if (!pmn) {
-        return false;
-    }
-    nDsqCount++;
-    pmn->nLastDsq = nDsqCount;
-    pmn->fAllowMixingTx = true;
-
-    return true;
-}
-
-bool CMasternodeMan::DisallowMixing(const COutPoint &outpoint)
-{
-    LOCK(cs);
-    CMasternode* pmn = Find(outpoint);
-    if (!pmn) {
-        return false;
-    }
-    pmn->fAllowMixingTx = false;
-
-    return true;
 }
 
 bool CMasternodeMan::PoSeBan(const COutPoint &outpoint)
@@ -346,7 +319,6 @@ void CMasternodeMan::Clear()
     mWeAskedForMasternodeListEntry.clear();
     mapSeenMasternodeBroadcast.clear();
     mapSeenMasternodePing.clear();
-    nDsqCount = 0;
     nLastWatchdogVoteTime = 0;
 }
 
@@ -1049,7 +1021,7 @@ bool CMasternodeMan::SendVerifyRequest(const CAddress& addr, const std::vector<C
 void CMasternodeMan::SendVerifyReply(CNode* pnode, CMasternodeVerification& mnv, CConnman& connman)
 {
     // only masternodes can sign this, why would someone ask regular node?
-    if(!masterNodePlugin) {
+    if(!masterNodePlugin.IsMasterNode()) {
         // do not ban, malicious node might be using my IP
         // and trying to confuse the node which tries to verify it
         return;
@@ -1306,8 +1278,7 @@ std::string CMasternodeMan::ToString() const
     info << "Masternodes: " << (int)mapMasternodes.size() <<
             ", peers who asked us for Masternode list: " << (int)mAskedUsForMasternodeList.size() <<
             ", peers we asked for Masternode list: " << (int)mWeAskedForMasternodeList.size() <<
-            ", entries in Masternode list we asked for: " << (int)mWeAskedForMasternodeListEntry.size() <<
-            ", nDsqCount: " << (int)nDsqCount;
+            ", entries in Masternode list we asked for: " << (int)mWeAskedForMasternodeListEntry.size();
 
     return info.str();
 }
@@ -1404,7 +1375,7 @@ bool CMasternodeMan::CheckMnbAndUpdateMasternodeList(CNode* pfrom, CMasternodeBr
         Add(mnb);
         masterNodePlugin.masternodeSync.BumpAssetLastTime("CMasternodeMan::CheckMnbAndUpdateMasternodeList - new");
         // if it matches our Masternode privkey...
-        if(masterNodePlugin && mnb.pubKeyMasternode == masterNodePlugin.activeMasternode.pubKeyMasternode) {
+        if(masterNodePlugin.IsMasterNode() && mnb.pubKeyMasternode == masterNodePlugin.activeMasternode.pubKeyMasternode) {
             mnb.nPoSeBanScore = -MASTERNODE_POSE_BAN_MAX_SCORE;
             if(mnb.nProtocolVersion == PROTOCOL_VERSION) {
                 // ... and PROTOCOL_VERSION, then we've been remotely activated ...
@@ -1439,7 +1410,7 @@ void CMasternodeMan::UpdateLastPaid(const CBlockIndex* pindex)
     static bool IsFirstRun = true;
     // Do full scan on first run or if we are not a masternode
     // (MNs should update this info on every block, so limited scan should be enough for them)
-    int nMaxBlocksToScanBack = (IsFirstRun || !masterNodePlugin) ? masterNodePlugin.masternodePayments.GetStorageLimit() : LAST_PAID_SCAN_BLOCKS;
+    int nMaxBlocksToScanBack = (IsFirstRun || !masterNodePlugin.IsMasterNode()) ? masterNodePlugin.masternodePayments.GetStorageLimit() : LAST_PAID_SCAN_BLOCKS;
 
     // LogPrint("mnpayments", "CMasternodeMan::UpdateLastPaid -- nHeight=%d, nMaxBlocksToScanBack=%d, IsFirstRun=%s\n",
     //                         nCachedBlockHeight, nMaxBlocksToScanBack, IsFirstRun ? "true" : "false");
@@ -1511,7 +1482,7 @@ void CMasternodeMan::UpdatedBlockTip(const CBlockIndex *pindex)
 
     CheckSameAddr();
 
-    if(masterNodePlugin) {
+    if(masterNodePlugin.IsMasterNode()) {
         // normal wallet does not need to update this every block, doing update on rpc call should be enough
         UpdateLastPaid(pindex);
     }

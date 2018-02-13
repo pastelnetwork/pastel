@@ -109,7 +109,6 @@ struct masternode_info_t
     CPubKey pubKeyMasternode{};
     int64_t nTimeLastWatchdogVote = 0;
 
-    int64_t nLastDsq = 0; //the dsq count from the last dsq broadcast of this node
     int64_t nTimeLastChecked = 0;
     int64_t nTimeLastPaid = 0;
     int64_t nTimeLastPing = 0; //* not in CMN
@@ -152,7 +151,6 @@ public:
     int nBlockLastPaid{};
     int nPoSeBanScore{};
     int nPoSeBanHeight{};
-    bool fAllowMixingTx{};
     bool fUnitTest = false;
 
     CMasternode();
@@ -172,7 +170,6 @@ public:
         READWRITE(lastPing);
         READWRITE(vchSig);
         READWRITE(sigTime);
-        READWRITE(nLastDsq);
         READWRITE(nTimeLastChecked);
         READWRITE(nTimeLastPaid);
         READWRITE(nTimeLastWatchdogVote);
@@ -182,7 +179,6 @@ public:
         READWRITE(nProtocolVersion);
         READWRITE(nPoSeBanScore);
         READWRITE(nPoSeBanHeight);
-        READWRITE(fAllowMixingTx);
         READWRITE(fUnitTest);
     }
 
@@ -266,7 +262,6 @@ public:
         nBlockLastPaid = from.nBlockLastPaid;
         nPoSeBanScore = from.nPoSeBanScore;
         nPoSeBanHeight = from.nPoSeBanHeight;
-        fAllowMixingTx = from.fAllowMixingTx;
         fUnitTest = from.fUnitTest;
         return *this;
     }

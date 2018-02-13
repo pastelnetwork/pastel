@@ -17,9 +17,12 @@
 #include "mnode-active.h"
 // #include "mnode-payments.h"
 
+
 #ifdef ENABLE_WALLET
 #include "wallet/wallet.h"
 #endif
+
+#include <boost/thread.hpp>
 
 class CMasternodePayee
 {
@@ -100,15 +103,14 @@ public:
     {
     }
 
-    operator bool() const {return fMasterNode;}
+    bool IsMasterNode() const {return fMasterNode;}
 
 #ifdef ENABLE_WALLET
-    static bool GetMasternodeOutpointAndKeys(CWallet* pwalletMain, COutPoint& outpointRet, CPubKey& pubKeyRet, CKey& keyRet, std::string strTxHash, std::string strOutputIndex);
-    static bool GetOutpointAndKeysFromOutput(CWallet* pwalletMain, const COutput& out, COutPoint& outpointRet, CPubKey& pubKeyRet, CKey& keyRet);
-    bool EnableMasterNode(std::ostringstream& strErrors, CWallet* pwalletMain);
+    bool EnableMasterNode(std::ostringstream& strErrors, boost::thread_group& threadGroup, CWallet* pwalletMain);
 #else
-    bool EnableMasterNode(std::ostringstream& strErrors);
+    bool EnableMasterNode(std::ostringstream& strErrors, boost::thread_group& threadGroup);
 #endif
+
     boost::filesystem::path GetMasternodeConfigFile();
     void StoreData();
 
@@ -128,27 +130,28 @@ public:
     static bool GetUTXOCoin(const COutPoint& outpoint, CCoins& coins);
     static int GetUTXOHeight(const COutPoint& outpoint);
     static int GetUTXOConfirmations(const COutPoint& outpoint);
+#ifdef ENABLE_WALLET
+    static bool GetMasternodeOutpointAndKeys(CWallet* pwalletMain, COutPoint& outpointRet, CPubKey& pubKeyRet, CKey& keyRet, std::string strTxHash, std::string strOutputIndex);
+    static bool GetOutpointAndKeysFromOutput(CWallet* pwalletMain, const COutput& out, COutPoint& outpointRet, CPubKey& pubKeyRet, CKey& keyRet);
+#endif
+
+/***** MasterNode operations *****/
+    static void ThreadMasterNodeMaintenance(CConnman& connman);
+    static void ThreadMnbRequestConnections();
 };
 
 namespace NetMsgType {
+extern const char *MNANNOUNCE;
+extern const char *MNPING;
+extern const char *MNVERIFY;
+extern const char *DSEG;
+extern const char *SYNCSTATUSCOUNT;
+
 // extern const char *TXLOCKREQUEST;
 // extern const char *TXLOCKVOTE;
 extern const char *MASTERNODEPAYMENTVOTE;
 extern const char *MASTERNODEPAYMENTBLOCK;
 extern const char *MASTERNODEPAYMENTSYNC;
-extern const char *MNANNOUNCE;
-extern const char *MNPING;
-// extern const char *DSACCEPT;
-// extern const char *DSVIN;
-// extern const char *DSFINALTX;
-// extern const char *DSSIGNFINALTX;
-// extern const char *DSCOMPLETE;
-// extern const char *DSSTATUSUPDATE;
-// extern const char *DSTX;
-// extern const char *DSQUEUE;
-extern const char *DSEG;
-extern const char *SYNCSTATUSCOUNT;
-extern const char *MNVERIFY;
 };
 
 class InsecureRand

@@ -968,7 +968,7 @@ static void AcceptConnection(const ListenSocket& hListenSocket) {
 
 //ANIM-->
     // // don't accept incoming connections until fully synced
-    if(fMasterNode && !masterNodePlugin.IsSynced()) {
+    if(masterNodePlugin.IsMasterNode() && !masterNodePlugin.IsSynced()) {
         LogPrintf("AcceptConnection -- masternode is not synced yet, skipping inbound connection attempt\n");
         CloseSocket(hSocket);
         return;
@@ -1822,11 +1822,6 @@ void StartNode(boost::thread_group& threadGroup, CScheduler& scheduler)
 
     // Initiate outbound connections
     threadGroup.create_thread(boost::bind(&TraceThread<void (*)()>, "opencon", &ThreadOpenConnections));
-
-//ANIM-->
-    // Initiate masternode connections
-    threadGroup.create_thread(boost::bind(&TraceThread<void (*)()>, "mnbcon", &CConnman::ThreadMnbRequestConnections));
-//<--ANIM
 
     // Process messages
     threadGroup.create_thread(boost::bind(&TraceThread<void (*)()>, "msghand", &ThreadMessageHandler));

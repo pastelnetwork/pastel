@@ -28,14 +28,12 @@
 #include "main.h"
 
 CMasternode::CMasternode() :
-    masternode_info_t{ MASTERNODE_ENABLED, PROTOCOL_VERSION, GetAdjustedTime()},
-    fAllowMixingTx(true)
+    masternode_info_t{ MASTERNODE_ENABLED, PROTOCOL_VERSION, GetAdjustedTime()}
 {}
 
 CMasternode::CMasternode(CService addr, COutPoint outpoint, CPubKey pubKeyCollateralAddress, CPubKey pubKeyMasternode, int nProtocolVersionIn) :
     masternode_info_t{ MASTERNODE_ENABLED, nProtocolVersionIn, GetAdjustedTime(),
-                       outpoint, addr, pubKeyCollateralAddress, pubKeyMasternode},
-    fAllowMixingTx(true)
+                       outpoint, addr, pubKeyCollateralAddress, pubKeyMasternode}
 {}
 
 CMasternode::CMasternode(const CMasternode& other) :
@@ -46,7 +44,6 @@ CMasternode::CMasternode(const CMasternode& other) :
     nBlockLastPaid(other.nBlockLastPaid),
     nPoSeBanScore(other.nPoSeBanScore),
     nPoSeBanHeight(other.nPoSeBanHeight),
-    fAllowMixingTx(other.fAllowMixingTx),
     fUnitTest(other.fUnitTest)
 {}
 
@@ -55,8 +52,7 @@ CMasternode::CMasternode(const CMasternodeBroadcast& mnb) :
                        mnb.vin.prevout, mnb.addr, mnb.pubKeyCollateralAddress, mnb.pubKeyMasternode,
                        mnb.sigTime /*nTimeLastWatchdogVote*/},
     lastPing(mnb.lastPing),
-    vchSig(mnb.vchSig),
-    fAllowMixingTx(true)
+    vchSig(mnb.vchSig)
 {}
 
 //
@@ -80,7 +76,7 @@ bool CMasternode::UpdateFromNewBroadcast(CMasternodeBroadcast& mnb, CConnman& co
         // masterNodePlugin.masternodeManager.mapSeenMasternodePing.insert(std::make_pair(lastPing.GetHash(), lastPing));
     }
     // if it matches our Masternode privkey...
-    if(masterNodePlugin && pubKeyMasternode == masterNodePlugin.activeMasternode.pubKeyMasternode) {
+    if(masterNodePlugin.IsMasterNode() && pubKeyMasternode == masterNodePlugin.activeMasternode.pubKeyMasternode) {
         nPoSeBanScore = -MASTERNODE_POSE_BAN_MAX_SCORE;
         if(nProtocolVersion == PROTOCOL_VERSION) {
             // ... and PROTOCOL_VERSION, then we've been remotely activated ...
@@ -118,17 +114,17 @@ CMasternode::CollateralStatus CMasternode::CheckCollateral(const COutPoint& outp
 {
     AssertLockHeld(cs_main);
 
-/*ANIM-->
-    Coin coin;
-    if(!GetUTXOCoin(outpoint, coin)) {
+    CCoins coins;
+    if(!CMasterNodePlugin::GetUTXOCoin(outpoint, coins)) {
         return COLLATERAL_UTXO_NOT_FOUND;
     }
-    if(coin.out.nValue != 1000 * COIN) {
+
+    if(coins.vout[outpoint.n].nValue != 1000 * COIN) {
         return COLLATERAL_INVALID_AMOUNT;
     }
 
-    nHeightRet = coin.nHeight;
-<--ANIM*/
+    nHeightRet = coins.nHeight;
+
     return COLLATERAL_OK;
 }
 
@@ -177,7 +173,7 @@ void CMasternode::Check(bool fForce)
     }
 
     int nActiveStatePrev = nActiveState;
-    bool fOurMasternode = masterNodePlugin && masterNodePlugin.activeMasternode.pubKeyMasternode == pubKeyMasternode;
+    bool fOurMasternode = masterNodePlugin.IsMasterNode() && masterNodePlugin.activeMasternode.pubKeyMasternode == pubKeyMasternode;
 
                    // masternode doesn't meet payment protocol requirements ...
     bool fRequireUpdate = nProtocolVersion < CMasterNodePlugin::MASTERNODE_PROTOCOL_VERSION ||
@@ -525,7 +521,7 @@ bool CMasternodeBroadcast::Update(CMasternode* pmn, int& nDos, CConnman& connman
     }
 
     // if ther was no masternode broadcast recently or if it matches our Masternode privkey...
-    if(!pmn->IsBroadcastedWithin(MASTERNODE_MIN_MNB_SECONDS) || (masterNodePlugin && pubKeyMasternode == masterNodePlugin.activeMasternode.pubKeyMasternode)) {
+    if(!pmn->IsBroadcastedWithin(MASTERNODE_MIN_MNB_SECONDS) || (masterNodePlugin.IsMasterNode() && pubKeyMasternode == masterNodePlugin.activeMasternode.pubKeyMasternode)) {
         // take the newest entry
         LogPrintf("CMasternodeBroadcast::Update -- Got UPDATED Masternode entry: addr=%s\n", addr.ToString());
         if(pmn->UpdateFromNewBroadcast(*this, connman)) {
@@ -542,7 +538,7 @@ bool CMasternodeBroadcast::CheckOutpoint(int& nDos)
 {
     // we are a masternode with the same vin (i.e. already activated) and this mnb is ours (matches our Masternode privkey)
     // so nothing to do here for us
-    if(masterNodePlugin && vin.prevout == masterNodePlugin.activeMasternode.outpoint && pubKeyMasternode == masterNodePlugin.activeMasternode.pubKeyMasternode) {
+    if(masterNodePlugin.IsMasterNode() && vin.prevout == masterNodePlugin.activeMasternode.outpoint && pubKeyMasternode == masterNodePlugin.activeMasternode.pubKeyMasternode) {
         return false;
     }
 
