@@ -30,7 +30,7 @@ namespace nsfw {
             schedulerThread = std::thread(&ITaskScheduler::SchedulerRoutine, this);
             workQueue = std::unique_ptr<AsynchronousQueue<std::shared_ptr<ITask>>>(
                     new AsynchronousQueue<std::shared_ptr<ITask>>());
-            nextQueue = std::unique_ptr<AsynchronousQueue<std::shared_ptr<ITask>>>(
+            pendingQueue = std::unique_ptr<AsynchronousQueue<std::shared_ptr<ITask>>>(
                     new AsynchronousQueue<std::shared_ptr<ITask>>());
         }
 
@@ -59,10 +59,11 @@ namespace nsfw {
         }
 
         void OnTaskCompleted(ITaskResult taskResult) {
+            std::lock_guard<std::mutex> mlock(mapMutex);
             auto found = tasksInWork.find(taskResult.GetId());
             if (found != tasksInWork.end()) {
                 found->second->GetResponseCallback()(taskResult);
-                DeleteTask(taskResult.GetId());
+                tasksInWork.erase(taskResult.GetId());
             }
         }
 
@@ -82,7 +83,7 @@ namespace nsfw {
                         continue;
                     }
                     if (SECONDS_BETWEEN_ATTEMPTS > task->GetSecondsFromLastAttempt()) {
-                        nextQueue->Push(task);
+                        pendingQueue->Push(task);
                         continue;
                     }
                     if (!IsTaskInWork(task->GetId())) {
@@ -91,9 +92,10 @@ namespace nsfw {
                     }
                     HandleTask(task);
                     task->MakeAttempt();
-                    nextQueue->Push(task);
+                    pendingQueue->Push(task);
                 } else {
-                    std::swap(workQueue, nextQueue);    // TODO: check operation for thread safe
+                    std::lock_guard<std::mutex> mlock(mapMutex);
+                    std::swap(workQueue, pendingQueue);
                     std::this_thread::sleep_for(SCHEDULER_SLEEP_TIME);
                 }
             }
@@ -113,7 +115,7 @@ namespace nsfw {
         std::unordered_map<boost::uuids::uuid, std::shared_ptr<ITask>, boost::hash<boost::uuids::uuid>> tasksInWork;
         mutable std::mutex mapMutex;
         std::unique_ptr<AsynchronousQueue<std::shared_ptr<ITask>>> workQueue;
-        std::unique_ptr<AsynchronousQueue<std::shared_ptr<ITask>>> nextQueue;
+        std::unique_ptr<AsynchronousQueue<std::shared_ptr<ITask>>> pendingQueue;
     };
 }
 
