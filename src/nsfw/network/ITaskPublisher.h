@@ -4,12 +4,14 @@
 
 #include <thread>
 #include <functional>
+#include <network/protocol/IProtocol.h>
 #include "task/task/ITask.h"
 
 namespace nsfw {
 
     enum SendResult {
-
+        Successful,
+        ProtocolError,
     };
 
     class ITaskPublisher {
@@ -19,13 +21,21 @@ namespace nsfw {
             callback = onReceiveCallback;
         }
 
-        SendResult Send(const std::shared_ptr<nsfw::ITask> &task);
+        SendResult Send(const std::shared_ptr<nsfw::ITask> &task) {
+            std::vector buf;
+            auto serializeResult = protocol.serialize(buf, task);
+            if (Result::Successful == serializeResult) {
+                return Send(buf);
+            } else {
+                return ProtocolError;
+            }
+        }
 
     protected:
-//        virtual void ListenerRoutine() = 0;
+        virtual SendResult Send(const std::vector<byte> &buffer) = 0;
 
+        IProtocol protocol;
         ResponseCallback callback;
-//        std::thread listenerThread;
     };
 
 }
