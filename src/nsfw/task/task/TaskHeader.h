@@ -9,7 +9,7 @@
 namespace nsfw {
     enum TaskType {
         FinishWork,
-
+        CheckNSFW,
     };
 
     class TaskHeader {

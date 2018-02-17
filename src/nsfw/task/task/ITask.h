@@ -15,8 +15,6 @@ namespace nsfw {
 
         ITask(const TaskHeader &hdr) : header(hdr) {}
 
-        TaskType GetType() { return header.GetType(); }
-
         ResponseCallback GetResponseCallback() const { return header.GetResponseCallback(); }
 
         TaskHeader GetHeader() const { return header; }
