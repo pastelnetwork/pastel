@@ -123,13 +123,10 @@ bool CMasterNodePlugin::EnableMasterNode(std::ostringstream& strErrors, boost::t
     }
 
     // force UpdatedBlockTip to initialize nCachedBlockHeight for DS, MN payments and budgets
-    //TEMP!!! pdsNotificationInterface->InitializeCurrentBlockTip();
+    //TEMP--> pdsNotificationInterface->InitializeCurrentBlockTip();
 
     //Enable Maintenance thread
-    threadGroup.create_thread(boost::bind(&CMasterNodePlugin::ThreadMasterNodeMaintenance, boost::ref(connectionManager)));
-    //Enable Broadcast re-requests thread
-    threadGroup.create_thread(&CMasterNodePlugin::ThreadMnbRequestConnections);
-
+    threadGroup.create_thread(boost::bind(std::function<void()>(std::bind(&CMasterNodePlugin::ThreadMasterNodeMaintenance, this))));
 
 //TODO - must move to chainnparams
     strNetworkName = Params().NetworkIDString();
@@ -161,10 +158,32 @@ bool CMasterNodePlugin::EnableMasterNode(std::ostringstream& strErrors, boost::t
     return true;
 }
 
+bool CMasterNodePlugin::StartMasterNode(boost::thread_group& threadGroup)
+{
+    if (semMasternodeOutbound == NULL) {
+        // initialize semaphore
+        semMasternodeOutbound = new CSemaphore(nMasterNodeMaximumOutboundConnections);
+    }
+
+    //Enable Broadcast re-requests thread
+    threadGroup.create_thread(boost::bind(std::function<void()>(std::bind(&CMasterNodePlugin::ThreadMnbRequestConnections, this))));
+
+}
+bool CMasterNodePlugin::StopMasterNode()
+{
+    if (semMasternodeOutbound)
+        for (int i=0; i<nMasterNodeMaximumOutboundConnections; i++)
+            semMasternodeOutbound->post();
+
+    delete semMasternodeOutbound;
+    semMasternodeOutbound = NULL;
+}
+
+
 bool CMasterNodePlugin::ProcessMessage(CNode* pfrom, std::string& strCommand, CDataStream& vRecv)
 {
     masternodeManager.ProcessMessage(pfrom, strCommand, vRecv, connectionManager);
-    //TEMP!!! masternodePayments.ProcessMessage(pfrom, strCommand, vRecv, connectionManager);
+    //TEMP--> masternodePayments.ProcessMessage(pfrom, strCommand, vRecv, connectionManager);
     masternodeSync.ProcessMessage(pfrom, strCommand, vRecv);
 
     return true;
@@ -202,7 +221,7 @@ bool CMasterNodePlugin::ProcessGetData(CNode* pfrom, const CInv& inv)
         if(masternodePayments.HasVerifiedPaymentVote(inv.hash)) {
             CDataStream ss(SER_NETWORK, PROTOCOL_VERSION);
             ss.reserve(1000);
-//TEMP!!!!!            ss << masternodePayments.mapMasternodePaymentVotes[inv.hash];
+//TEMP-->            ss << masternodePayments.mapMasternodePaymentVotes[inv.hash];
             pfrom->PushMessage(NetMsgType::MASTERNODEPAYMENTVOTE, ss);
             pushed = true;
         }
@@ -218,7 +237,7 @@ bool CMasterNodePlugin::ProcessGetData(CNode* pfrom, const CInv& inv)
                     if(masternodePayments.HasVerifiedPaymentVote(hash)) {
                         CDataStream ss(SER_NETWORK, PROTOCOL_VERSION);
                         ss.reserve(1000);
-//TEMP!!!!!                        ss << masternodePayments.mapMasternodePaymentVotes[hash];
+//TEMP-->                        ss << masternodePayments.mapMasternodePaymentVotes[hash];
                         pfrom->PushMessage(NetMsgType::MASTERNODEPAYMENTVOTE, ss);
                     }
                 }
@@ -409,9 +428,7 @@ const char *MASTERNODEPAYMENTSYNC="mnget";
 Threads
 */
 
-static CSemaphore *semMasternodeOutbound = NULL;
-
-/* static */ void CMasterNodePlugin::ThreadMnbRequestConnections()
+void CMasterNodePlugin::ThreadMnbRequestConnections()
 {
     RenameThread("animecoin-mn-mnbreq");
 
@@ -453,7 +470,7 @@ static CSemaphore *semMasternodeOutbound = NULL;
     }
 }
 
-/* static */ void CMasterNodePlugin::ThreadMasterNodeMaintenance(CConnman& connman)
+void CMasterNodePlugin::ThreadMasterNodeMaintenance()
 {
     // if(fLiteMode) return; // disable all Masternode specific functionality
 
@@ -461,7 +478,6 @@ static CSemaphore *semMasternodeOutbound = NULL;
     if(fOneThread) return;
     fOneThread = true;
 
-    // Make this thread recognizable as the Masternode thread
     RenameThread("animecoin-mn");
 
     unsigned int nTick = 0;
@@ -471,7 +487,7 @@ static CSemaphore *semMasternodeOutbound = NULL;
         MilliSleep(1000);
 
         // try to sync from all available nodes, one step at a time
-        masterNodePlugin.masternodeSync.ProcessTick(connman);
+        masterNodePlugin.masternodeSync.ProcessTick(connectionManager);
 
         if(masterNodePlugin.masternodeSync.IsBlockchainSynced() && !ShutdownRequested()) {
 
@@ -483,15 +499,15 @@ static CSemaphore *semMasternodeOutbound = NULL;
             // check if we should activate or ping every few minutes,
             // slightly postpone first run to give net thread a chance to connect to some peers
             if(nTick % MASTERNODE_MIN_MNP_SECONDS == 15)
-                masterNodePlugin.activeMasternode.ManageState(connman);
+                masterNodePlugin.activeMasternode.ManageState(connectionManager);
 
             if(nTick % 60 == 0) {
-                masterNodePlugin.masternodeManager.ProcessMasternodeConnections(connman);
-                masterNodePlugin.masternodeManager.CheckAndRemove(connman);
-                //TEMP!!! masterNodePlugin.masternodePayments.CheckAndRemove();
+                masterNodePlugin.masternodeManager.ProcessMasternodeConnections(connectionManager);
+                masterNodePlugin.masternodeManager.CheckAndRemove(connectionManager);
+                //TEMP--> masterNodePlugin.masternodePayments.CheckAndRemove();
             }
             if(masterNodePlugin.IsMasterNode() && (nTick % (60 * 5) == 0)) {
-                masterNodePlugin.masternodeManager.DoFullVerificationStep(connman);
+                masterNodePlugin.masternodeManager.DoFullVerificationStep(connectionManager);
             }
         }
     }
