@@ -1411,6 +1411,7 @@ void ThreadOpenConnections()
             LOCK(cs_vNodes);
             BOOST_FOREACH(CNode* pnode, vNodes) {
 //ANIM-->
+//                if (!pnode->fInbound) {
                 if (!pnode->fInbound && !pnode->fMasternode) {
 //<--ANIM
                     setConnected.insert(pnode->addr.GetGroup());
@@ -1826,6 +1827,10 @@ void StartNode(boost::thread_group& threadGroup, CScheduler& scheduler)
     // Process messages
     threadGroup.create_thread(boost::bind(&TraceThread<void (*)()>, "msghand", &ThreadMessageHandler));
 
+//ANIM-->
+    masterNodePlugin.StartMasterNode(threadGroup);
+//<--ANIM
+
     // Dump network addresses
     scheduler.scheduleEvery(&DumpAddresses, DUMP_ADDRESSES_INTERVAL);
 }
@@ -1836,6 +1841,10 @@ bool StopNode()
     if (semOutbound)
         for (int i=0; i<MAX_OUTBOUND_CONNECTIONS; i++)
             semOutbound->post();
+
+//ANIM-->
+    masterNodePlugin.StopMasterNode();
+//<--ANIM
 
     if (fAddressesInitialized)
     {

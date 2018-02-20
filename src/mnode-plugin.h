@@ -87,6 +87,7 @@ public:
 
 public:
     int nMasternodeMinimumConfirmations, nMasternodePaymentsStartBlock, nMasternodePaymentsIncreaseBlock, nMasternodePaymentsIncreasePeriod;
+    int nMasterNodeMaximumOutboundConnections;
     int nFulfilledRequestExpireTime;
 
     static const int MASTERNODE_PROTOCOL_VERSION;
@@ -99,7 +100,9 @@ public:
         nMasternodePaymentsStartBlock(100000),
         nMasternodePaymentsIncreaseBlock(158000),
         nMasternodePaymentsIncreasePeriod(576*30),
-        nFulfilledRequestExpireTime(60*60) // fulfilled requests expire in 1 hour    
+        nFulfilledRequestExpireTime(60*60), // fulfilled requests expire in 1 hour
+        nMasterNodeMaximumOutboundConnections(20),
+        semMasternodeOutbound(NULL)
     {
     }
 
@@ -110,6 +113,8 @@ public:
 #else
     bool EnableMasterNode(std::ostringstream& strErrors, boost::thread_group& threadGroup);
 #endif
+    bool StartMasterNode(boost::thread_group& threadGroup);
+    bool StopMasterNode();
 
     boost::filesystem::path GetMasternodeConfigFile();
     void StoreData();
@@ -136,8 +141,10 @@ public:
 #endif
 
 /***** MasterNode operations *****/
-    static void ThreadMasterNodeMaintenance(CConnman& connman);
-    static void ThreadMnbRequestConnections();
+    CSemaphore *semMasternodeOutbound;
+
+    void ThreadMasterNodeMaintenance();
+    void ThreadMnbRequestConnections();
 };
 
 namespace NetMsgType {
