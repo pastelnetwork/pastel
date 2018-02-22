@@ -5,9 +5,9 @@
 #pragma once
 
 
-#include "ITaskResult.h"
+#include <task/task_result/ITaskResult.h>
 
-namespace nsfw {
+namespace services {
     class AttemptsExhaustedResult : public ITaskResult {
     public:
         AttemptsExhaustedResult(boost::uuids::uuid id) : ITaskResult(id) {

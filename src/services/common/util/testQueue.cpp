@@ -1,4 +1,5 @@
 #include <iostream>
+#include <thread>
 #include "util/AsynchronousQueue.h"
 
 void ConsumerFunction(AsynchronousQueue<int> &queue) {
@@ -18,8 +19,8 @@ void ProducerFunction(AsynchronousQueue<int> &queue) {
 
 int testQueue() {
     AsynchronousQueue<int> queue;
-    std::thread producer(ProducerFunction, std::ref(queue));
-    std::thread consumer(ConsumerFunction, std::ref(queue));
+    auto producer = std::thread (ProducerFunction, std::ref(queue));
+    auto consumer = std::thread (ConsumerFunction, std::ref(queue));
     consumer.join();
     producer.join();
     return 0;

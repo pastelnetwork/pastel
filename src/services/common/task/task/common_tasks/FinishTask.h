@@ -1,6 +1,6 @@
-#include "ITask.h"
+#include <task/task/ITask.h>
 
-namespace nsfw {
+namespace services {
     class FinishTask : public ITask {
     public:
         FinishTask(){}

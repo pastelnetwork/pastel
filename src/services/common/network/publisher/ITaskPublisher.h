@@ -7,7 +7,7 @@
 #include <network/protocol/IProtocol.h>
 #include "task/task/ITask.h"
 
-namespace nsfw {
+namespace services {
 
     enum SendResult {
         Successful,
@@ -21,7 +21,7 @@ namespace nsfw {
             callback = onReceiveCallback;
         }
 
-        SendResult Send(const std::shared_ptr<nsfw::ITask> &task) {
+        SendResult Send(const std::shared_ptr<ITask> &task) {
             std::vector buf;
             auto serializeResult = protocol.serialize(buf, task);
             if (Result::Successful == serializeResult) {

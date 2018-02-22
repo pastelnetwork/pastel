@@ -9,14 +9,13 @@
 #include <unordered_map>
 #include <mutex>
 #include <boost/functional/hash.hpp>
-#include <task/task/FinishTask.h>
-#include <util/AsynchronousQueue.h>
-#include <task/task_result/InappropriateTaskResult.h>
-#include <task/task_result/AttemptsExhaustedResult.h>
-#include <network/ITaskPublisher.h>
-#include <functional>
+#include "task/task/common_tasks/FinishTask.h"
+#include "util/AsynchronousQueue.h"
+#include "task/task_result/common_task_results/InappropriateTaskResult.h"
+#include "task/task_result/common_task_results/AttemptsExhaustedResult.h"
+#include "network/publisher/ITaskPublisher.h"
 
-namespace nsfw {
+namespace services {
     class ITaskScheduler {
     public:
         const double SECONDS_BETWEEN_ATTEMPTS = 20.0;

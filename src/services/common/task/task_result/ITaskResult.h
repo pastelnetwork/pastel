@@ -5,26 +5,29 @@
 #pragma once
 
 #include <boost/uuid/uuid.hpp>
+#include <functional>
 
 
-enum TaskResultStatus {
-    Success,
-    InappropriateTask,
-    AllAttemptsExhausted
-};
+namespace services {
+    enum TaskResultStatus {
+        Success,
+        InappropriateTask,
+        AllAttemptsExhausted
+    };
 
-class ITaskResult {
-public:
-    ITaskResult(const boost::uuids::uuid &id) : id(id) {}
+    class ITaskResult {
+    public:
+        ITaskResult(const boost::uuids::uuid &id) : id(id) {}
 
-    TaskResultStatus GetStatus() const { return status; }
+        TaskResultStatus GetStatus() const { return status; }
 
-    const boost::uuids::uuid &GetId() const { return id; }
+        const boost::uuids::uuid &GetId() const { return id; }
 
-protected:
-    boost::uuids::uuid id;
-    TaskResultStatus status;
-};
+    protected:
+        boost::uuids::uuid id;
+        TaskResultStatus status;
+    };
 
-typedef std::function<void(ITaskResult)> ResponseCallback;
+    typedef std::function<void(ITaskResult)> ResponseCallback;
+}
 

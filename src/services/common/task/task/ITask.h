@@ -6,45 +6,47 @@
 
 #include "TaskHeader.h"
 
-class ITask {
-public:
-    ITask() {}
+namespace services {
+    class ITask {
+    public:
+        ITask() {}
 
-    ITask(const TaskHeader &hdr) : header(hdr) {}
+        ITask(const TaskHeader &hdr) : header(hdr) {}
 
-    ResponseCallback GetResponseCallback() const { return header.GetResponseCallback(); }
+        ResponseCallback GetResponseCallback() const { return header.GetResponseCallback(); }
 
-    TaskHeader GetHeader() const { return header; }
+        TaskHeader GetHeader() const { return header; }
 
-    boost::uuids::uuid GetId() const { return header.GetId(); }
+        boost::uuids::uuid GetId() const { return header.GetId(); }
 
-    TaskType GetType() const { return header.GetType(); }
+        TaskType GetType() const { return header.GetType(); }
 
-    time_t GetCreateTime() const {
-        return header.GetCreateTime();
-    }
+        time_t GetCreateTime() const {
+            return header.GetCreateTime();
+        }
 
-    time_t GetLastAttemptTime() const {
-        return header.GetLastAttemptTime();
-    }
+        time_t GetLastAttemptTime() const {
+            return header.GetLastAttemptTime();
+        }
 
-    size_t GetAttemptsCount() const {
-        return header.GetAttemptsCount();
-    }
+        size_t GetAttemptsCount() const {
+            return header.GetAttemptsCount();
+        }
 
-    bool operator==(ITask const &another) const {
-        return GetId() == another.GetId();
-    }
+        bool operator==(ITask const &another) const {
+            return GetId() == another.GetId();
+        }
 
-    double GetSecondsFromLastAttempt() const {
-        time_t current;
-        time(&current);
-        return difftime(current, GetLastAttemptTime());
-    }
+        double GetSecondsFromLastAttempt() const {
+            time_t current;
+            time(&current);
+            return difftime(current, GetLastAttemptTime());
+        }
 
-    void MakeAttempt() { header.MakeAttempt(); }
+        void MakeAttempt() { header.MakeAttempt(); }
 
-protected:
-    TaskHeader header;
-};
+    protected:
+        TaskHeader header;
+    };
+}
 

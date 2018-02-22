@@ -1,5 +1,5 @@
-
 #pragma once
-namespace nsfw {
+
+namespace services {
     typedef unsigned char byte;
 }

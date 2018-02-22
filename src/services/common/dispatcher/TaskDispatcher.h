@@ -2,13 +2,15 @@
 #pragma once
 
 
-class TaskDispatcher {
-    enum Result{
-        Success,
-        NotSupporting
-    };
+namespace services {
+    class TaskDispatcher {
+        enum Result {
+            Success,
+            NotSupporting
+        };
 
-public:
-    Result AddTask()
-};
+    public:
+        Result AddTask();
+    };
+}
 
