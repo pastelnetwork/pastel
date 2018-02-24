@@ -4,5 +4,6 @@ enum AddTaskResult {
     NotSupporting,
     DispatcherIsMutable, // need finish initializing of dispatcher and make it immutable
     UnknownTaskType,
-    ResponseCallbackNotSet
+    ResponseCallbackNotSet,
+    NoAvailableExecutor
 };

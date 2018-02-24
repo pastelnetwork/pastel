@@ -3,8 +3,8 @@
 
 #include <vector>
 #include <bits/unique_ptr.h>
+#include "scheduler/SchedulerFactory.h"
 
-#include "scheduler/ITaskScheduler.h"
 
 namespace services {
     class ExecutorDispatcher {
@@ -18,19 +18,50 @@ namespace services {
 
 
         AddTaskResult AddTask(const std::shared_ptr<ITask> &task) {
-            auto index = ChooseExecutor();
-            return executors[index].get()->AddTask(task);
+            auto executor = ChooseExecutor();
+            if (executor.get())
+                return executor->AddTask(task);
+            else
+                return AddTaskResult::NoAvailableExecutor;
         }
 
 
     private:
-        size_t ChooseExecutor() {
-            return 0;
+        std::shared_ptr<ITaskScheduler> ChooseExecutor() {
+            std::lock_guard<std::mutex> mlock(executorsMutex);
+            if (executors.empty()) {
+                return AddNewExecutor();
+            } else {
+                std::shared_ptr<ITaskScheduler> selectedExecutor;
+                size_t minTasksCount = UINTMAX_MAX;
+                size_t currentTasksCount;
+                for (auto executor : executors) {
+                    currentTasksCount = executor->TasksCount();
+                    if (currentTasksCount < minTasksCount) {
+                        minTasksCount = currentTasksCount;
+                        selectedExecutor = executor;
+                    }
+                }
+                if ((minTasksCount > threshold) && (executors.size() < maxExecutorsNumber)) {
+                    selectedExecutor = AddNewExecutor();
+                }
+                return selectedExecutor;
+            }
+
+
+        }
+
+        std::shared_ptr<ITaskScheduler> AddNewExecutor() {
+            std::shared_ptr<ITaskScheduler> newExecutor = factory->MakeScheduler();
+            executors.push_back(newExecutor);
+            return newExecutor;
         }
 
         size_t threshold;
         size_t maxExecutorsNumber;
-        std::vector<std::unique_ptr<ITaskScheduler>> executors;
+        std::mutex executorsMutex;
+        std::vector<std::shared_ptr<ITaskScheduler>> executors;
+        std::unique_ptr<SchedulerFactory> factory;
     };
 }
 

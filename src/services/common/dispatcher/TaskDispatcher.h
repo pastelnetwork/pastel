@@ -40,7 +40,7 @@ namespace services {
             } else {
                 auto found = map.find(task->GetType());
                 if (found != map.end()) {
-                    return found->second.AddTask(std::shared_ptr<ITask>(task));
+                    return found->second->AddTask(std::shared_ptr<ITask>(task));
                 } else {
                     return AddTaskResult::UnknownTaskType;
                 }

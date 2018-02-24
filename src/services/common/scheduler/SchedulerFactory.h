@@ -11,9 +11,9 @@ namespace services {
 
         }
 
-        ITaskScheduler *MakeScheduler(std::string key) {
+        ITaskScheduler *MakeScheduler();
 
-        }
+
 
     private:
         std::unordered_map<std::string, ITaskScheduler>

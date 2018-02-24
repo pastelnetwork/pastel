@@ -65,6 +65,11 @@ namespace services {
             tasksInWork.erase(id);
         }
 
+        size_t TasksCount(){
+            std::lock_guard<std::mutex> mlock(mapMutex);
+            return workQueue->Size();
+        }
+
         bool IsTaskInWork(const boost::uuids::uuid &id) const {
             std::lock_guard<std::mutex> mlock(mapMutex);
             bool result = tasksInWork.count(id) > 0;
