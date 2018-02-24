@@ -53,6 +53,7 @@ namespace services {
 
         std::shared_ptr<ITaskScheduler> AddNewExecutor() {
             std::shared_ptr<ITaskScheduler> newExecutor = factory->MakeScheduler();
+            newExecutor->Run();
             executors.push_back(newExecutor);
             return newExecutor;
         }
