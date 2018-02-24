@@ -4,6 +4,7 @@
 
 #pragma once
 
+#include <util/Types.h>
 #include "TaskHeader.h"
 
 namespace services {
@@ -44,6 +45,8 @@ namespace services {
         }
 
         void MakeAttempt() { header.MakeAttempt(); }
+
+        virtual std::unordered_map<std::string, std::vector<byte>> AdditionalFieldsToSerialize() = 0;
 
     protected:
         TaskHeader header;

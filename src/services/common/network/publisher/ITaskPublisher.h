@@ -28,7 +28,7 @@ namespace services {
 
         SendResult Send(const std::shared_ptr<ITask> &task) {
             std::vector<byte> buf;
-            auto serializeResult = protocol.get()->serialize(buf, task);
+            auto serializeResult = protocol.get()->Serialize(buf, task);
             if (IProtocol::Result::Successful == serializeResult) {
                 return Send(buf);
             } else {

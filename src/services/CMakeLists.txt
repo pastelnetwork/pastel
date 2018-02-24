@@ -8,6 +8,7 @@ set(BOOST_ROOT "/usr/local/boost_1_66_0/")
 set(SOURCE_FILES
         common/dispatcher/TaskDispatcher.h
         common/network/protocol/IProtocol.h
+        common/network/protocol/JSONProtocol.h
         common/network/publisher/ITaskPublisher.h
         common/scheduler/ITaskScheduler.h
         common/task/task/common_tasks/FinishTask.h
@@ -19,7 +20,7 @@ set(SOURCE_FILES
         common/util/AsynchronousQueue.h
 #        common/util/testQueue.cpp
         common/util/Types.h common/scheduler/SchedulerFactory.h common/dispatcher/ExecutorDispatcher.cpp common/dispatcher/ExecutorDispatcher.h
-        common/main.cpp common/consts/Enums.h)
+        )
 
 add_executable(services ${SOURCE_FILES})
 
@@ -28,7 +29,7 @@ include_directories(common)
 
 find_package(Boost 1.66.0)
 if(NOT Boost_FOUND)
-    message(FATAL_ERROR "Could not find boost!")
+#    message(FATAL_ERROR "Could not find boost!")
 else()
     message(STATUS "Boost_INCLUDE_DIRS: ${Boost_INCLUDE_DIRS}")
     message(STATUS "Boost_LIBRARIES: ${Boost_LIBRARIES}")

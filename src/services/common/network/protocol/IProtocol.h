@@ -8,13 +8,18 @@
 namespace services {
     class IProtocol {
     public:
-        enum Result {
-            Successful,
+        enum SerializeResult {
+            Success,
+            NullTaskPtr,
+            SerializationError
+        };
+        enum DeserializeResult {
+            Success,
         };
 
-        virtual Result serialize(std::vector<byte> &dstBuffer, const std::shared_ptr<ITask> &srcTask) = 0;
+        virtual SerializeResult Serialize(std::vector<byte> &dstBuffer, const std::shared_ptr<ITask> &srcTask) = 0;
 
-        virtual Result deserialize(std::shared_ptr<ITask> &dstTask, const std::vector<byte> &srcBuffer) = 0;
+        virtual DeserializeResult Deserialize(ITaskResult &dstTaskResult, const std::vector<byte> &srcBuffer) = 0;
     };
 }
 
