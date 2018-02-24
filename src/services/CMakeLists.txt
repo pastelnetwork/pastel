@@ -20,6 +20,7 @@ set(SOURCE_FILES
         common/util/AsynchronousQueue.h
 #        common/util/testQueue.cpp
         common/util/Types.h common/scheduler/SchedulerFactory.h common/dispatcher/ExecutorDispatcher.cpp common/dispatcher/ExecutorDispatcher.h
+        common/consts/Enums.h
         )
 
 add_executable(services ${SOURCE_FILES})
@@ -29,7 +30,7 @@ include_directories(common)
 
 find_package(Boost 1.66.0)
 if(NOT Boost_FOUND)
-#    message(FATAL_ERROR "Could not find boost!")
+    message(FATAL_ERROR "Could not find boost!")
 else()
     message(STATUS "Boost_INCLUDE_DIRS: ${Boost_INCLUDE_DIRS}")
     message(STATUS "Boost_LIBRARIES: ${Boost_LIBRARIES}")
