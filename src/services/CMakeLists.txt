@@ -19,7 +19,7 @@ set(SOURCE_FILES
         common/util/AsynchronousQueue.h
 #        common/util/testQueue.cpp
         common/util/Types.h common/scheduler/SchedulerFactory.h common/dispatcher/ExecutorDispatcher.cpp common/dispatcher/ExecutorDispatcher.h
-        common/main.cpp)
+        common/main.cpp common/consts/Enums.h)
 
 add_executable(services ${SOURCE_FILES})
 

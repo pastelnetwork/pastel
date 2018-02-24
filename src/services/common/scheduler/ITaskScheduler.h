@@ -9,6 +9,7 @@
 #include <unordered_map>
 #include <mutex>
 #include <boost/functional/hash.hpp>
+#include <consts/Enums.h>
 #include "task/task/common_tasks/FinishTask.h"
 #include "util/AsynchronousQueue.h"
 #include "task/task_result/common_task_results/InappropriateTaskResult.h"
@@ -22,28 +23,41 @@ namespace services {
         const size_t MAX_NUMBER_OF_ATTEMPTS = 5;
         const std::chrono::milliseconds SCHEDULER_SLEEP_TIME = std::chrono::milliseconds(100);
 
-        ITaskScheduler() {
+        // Assume to call new ITaskScheduler (make_unique<ITaskPublisher> (make_unique<IProtocol>()))
+        ITaskScheduler(std::unique_ptr<ITaskPublisher> publisher) {
+            this->publisher = std::move(publisher);
+        }
+
+        bool Run() {
             ResponseCallback callback = (ResponseCallback)
                     std::bind(&ITaskScheduler::OnTaskCompleted, this, std::placeholders::_1);
-            publisher.StartService(callback);
-            schedulerThread = std::thread(&ITaskScheduler::SchedulerRoutine, this);
-            workQueue = std::unique_ptr<AsynchronousQueue<std::shared_ptr<ITask>>>(
-                    new AsynchronousQueue<std::shared_ptr<ITask>>());
-            pendingQueue = std::unique_ptr<AsynchronousQueue<std::shared_ptr<ITask>>>(
-                    new AsynchronousQueue<std::shared_ptr<ITask>>());
+            if (!publisher.get()) {
+                return false;
+            } else {
+                publisher.get()->StartService(callback);
+                schedulerThread = std::thread(&ITaskScheduler::SchedulerRoutine, this);
+                workQueue = std::unique_ptr<AsynchronousQueue<std::shared_ptr<ITask>>>(
+                        new AsynchronousQueue<std::shared_ptr<ITask>>());
+                pendingQueue = std::unique_ptr<AsynchronousQueue<std::shared_ptr<ITask>>>(
+                        new AsynchronousQueue<std::shared_ptr<ITask>>());
+
+            }
         }
+
+        virtual ITaskScheduler *Clone() = 0;
 
         ~ITaskScheduler() {
             AddTask(std::shared_ptr<ITask>(new FinishTask()));
             schedulerThread.join();
         }
 
-        void AddTask(const std::shared_ptr<ITask> &task) {
+        AddTaskResult AddTask(const std::shared_ptr<ITask> &task) {
             if (!task->GetResponseCallback())
-                return; // there is no one who want to get the result of task
+                return AddTaskResult::ResponseCallbackNotSet; // there is no one who want to get the result of task
             std::lock_guard<std::mutex> mlock(mapMutex);
             tasksInWork.emplace(task->GetId(), task);
             workQueue->Push(task);
+            return AddTaskResult::Success;
         }
 
         void DeleteTask(const boost::uuids::uuid &id) {
@@ -109,7 +123,7 @@ namespace services {
 
         virtual void HandleTask(std::shared_ptr<ITask> &task) = 0;
 
-        ITaskPublisher publisher;
+        std::unique_ptr<ITaskPublisher> publisher;
         std::thread schedulerThread;
         std::unordered_map<boost::uuids::uuid, std::shared_ptr<ITask>, boost::hash<boost::uuids::uuid>> tasksInWork;
         mutable std::mutex mapMutex;

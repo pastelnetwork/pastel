@@ -16,15 +16,20 @@ namespace services {
 
     class ITaskPublisher {
     public:
+        // Assume to call new ITaskPublisher (make_unique<IProtocolImpementation> ())
+        ITaskPublisher(std::unique_ptr<IProtocol> protocol) {
+            this->protocol = std::move(protocol);
+        }
 
         void StartService(ResponseCallback &onReceiveCallback) {
             callback = onReceiveCallback;
+
         }
 
         SendResult Send(const std::shared_ptr<ITask> &task) {
-            std::vector buf;
-            auto serializeResult = protocol.serialize(buf, task);
-            if (Result::Successful == serializeResult) {
+            std::vector<byte> buf;
+            auto serializeResult = protocol.get()->serialize(buf, task);
+            if (IProtocol::Result::Successful == serializeResult) {
                 return Send(buf);
             } else {
                 return ProtocolError;
@@ -34,7 +39,7 @@ namespace services {
     protected:
         virtual SendResult Send(const std::vector<byte> &buffer) = 0;
 
-        IProtocol protocol;
+        std::unique_ptr<IProtocol> protocol;
         ResponseCallback callback;
     };
 
