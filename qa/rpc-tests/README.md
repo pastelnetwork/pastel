@@ -25,7 +25,7 @@ Possible options:
 -h, --help       show this help message and exit
   --nocleanup      Leave bitcoinds and test.* datadir on exit or error
   --noshutdown     Don't stop bitcoinds after the test execution
-  --srcdir=SRCDIR  Source directory containing bitcoind/bitcoin-cli (default:
+  --srcdir=SRCDIR  Source directory containing animecoin/animecoin-cli (default:
                    ../../src)
   --tmpdir=TMPDIR  Root directory for datadirs
   --tracerpc       Print out all RPC calls as they are made

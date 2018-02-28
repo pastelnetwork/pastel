@@ -116,6 +116,7 @@ MNODE_CPP = \
   mnode-msgsigner.cpp \
   mnode-netfulfilledman.cpp \
   mnode-sync.cpp \
+  mnode-rpc.cpp \
   mnode-plugin.cpp
 
 MNODE_H = \
@@ -482,7 +483,7 @@ if ENABLE_PROTON
 animecoind_LDADD += $(LIBBITCOIN_PROTON) $(PROTON_LIBS)
 endif
 
-# bitcoin-cli binary #
+# animecoin-cli binary #
 animecoin_cli_SOURCES = bitcoin-cli.cpp
 animecoin_cli_CPPFLAGS = $(AM_CPPFLAGS) $(BITCOIN_INCLUDES) $(EVENT_CFLAGS)
 animecoin_cli_CXXFLAGS = $(AM_CXXFLAGS) $(PIE_FLAGS)
