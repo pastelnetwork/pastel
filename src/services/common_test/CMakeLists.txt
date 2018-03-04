@@ -1,11 +1,12 @@
 project(common_test)
 
 set(TEST_SOURCE_FILES
-        dispatcher/TestTaskDispatcher.h.cpp
+        dispatcher/TestTaskDispatcher.cpp
         scheduler/TestTaskScheduler.cpp
-        TestMain.cpp)
+        TestMain.cpp task/TestTask.h network/protocol/TestJSONProtocol.cpp task/TestTaskWithAdditionalField.h)
 
 include_directories(./)
+include_directories(../common/include)
 
 set(BOOST_ROOT "/usr/local/boost_1_66_0/")
 find_package(Boost 1.66.0)

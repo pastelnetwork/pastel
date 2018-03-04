@@ -10,7 +10,8 @@
 namespace services {
     class AttemptsExhaustedResult : public ITaskResult {
     public:
-        AttemptsExhaustedResult(boost::uuids::uuid id) : ITaskResult(id) {
+        AttemptsExhaustedResult(boost::uuids::uuid id) {
+            this->id = id;
             status = TaskResultStatus::TRS_AllAttemptsExhausted;
         }
     };

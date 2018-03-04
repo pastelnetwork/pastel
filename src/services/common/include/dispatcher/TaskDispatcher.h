@@ -15,6 +15,12 @@ namespace services {
             DispatcherIsImmutable,
         };
 
+        struct HashTaskType {
+            size_t operator()(const TaskType &type) const {
+                return std::hash<int>()(static_cast<int>(type));
+            }
+        };
+
         RegisterResult Register(TaskType type, std::unique_ptr<ExecutorDispatcher> executor) {
             std::unique_lock<std::mutex> mlock(mutableMutex);
             if (isMutable) {
@@ -50,7 +56,7 @@ namespace services {
     private:
         bool isMutable = true;
         std::mutex mutableMutex;
-        std::unordered_map<TaskType, std::unique_ptr<ExecutorDispatcher>> map;
+        std::unordered_map<TaskType, std::unique_ptr<ExecutorDispatcher>, HashTaskType> map;
     };
 }
 

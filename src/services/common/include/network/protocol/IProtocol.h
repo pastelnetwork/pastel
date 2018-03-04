@@ -14,7 +14,7 @@ namespace services {
             SR_SerializationError
         };
         enum DeserializeResult {
-            DR_Success,
+            DR_Success, DR_InvalidJSON, DR_InvalidFormatJSON
         };
 
         virtual SerializeResult Serialize(std::vector<byte> &dstBuffer, const std::shared_ptr<ITask> &srcTask) = 0;

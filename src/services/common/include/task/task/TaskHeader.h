@@ -8,6 +8,7 @@
 
 namespace services {
     enum TaskType {
+        TT_Test,
         TT_FinishWork,
         TT_CheckNSFW,
     };

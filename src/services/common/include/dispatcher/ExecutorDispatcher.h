@@ -11,9 +11,10 @@ namespace services {
     public:
         const size_t MIN_THRESHOLD = 4;
 
-        ExecutorDispatcher(size_t threshold, size_t maxExecutorsNumber) {
+        ExecutorDispatcher(size_t threshold, size_t maxExecutorsNumber, std::unique_ptr<SchedulerFactory> factory) {
             this->maxExecutorsNumber = std::max(maxExecutorsNumber, 1ul);
             this->threshold = std::max(threshold, MIN_THRESHOLD);
+            this->factory = std::move(factory);
         }
 
 

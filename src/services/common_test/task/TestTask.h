@@ -1,11 +1,16 @@
-#include "task/task/ITask.h"
+
+#pragma once
+
+
+#include <task/task/ITask.h>
+#include <unordered_map>
 
 namespace services {
-    class FinishTask : public ITask {
+    class TestTask : public ITask {
     public:
-        FinishTask() {}
-
-        TaskType GetType() { return TT_FinishWork; }
+        TaskType GetType() const override {
+            return TaskType::TT_Test;
+        }
 
         std::unordered_map<std::string, std::vector<byte>> AdditionalFieldsToSerialize() override {
             return std::unordered_map<std::string, std::vector<byte>>();
