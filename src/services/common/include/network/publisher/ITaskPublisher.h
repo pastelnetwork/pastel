@@ -4,15 +4,10 @@
 
 #include <thread>
 #include <functional>
-#include <network/protocol/IProtocol.h>
+#include "network/protocol/IProtocol.h"
 #include "task/task/ITask.h"
 
 namespace services {
-
-    enum SendResult {
-        Successful,
-        ProtocolError,
-    };
 
     class ITaskPublisher {
     public:
@@ -29,10 +24,10 @@ namespace services {
         SendResult Send(const std::shared_ptr<ITask> &task) {
             std::vector<byte> buf;
             auto serializeResult = protocol.get()->Serialize(buf, task);
-            if (IProtocol::Result::Successful == serializeResult) {
+            if (IProtocol::SerializeResult ::SR_Success == serializeResult) {
                 return Send(buf);
             } else {
-                return ProtocolError;
+                return SendResult_ProtocolError;
             }
         }
 

@@ -11,7 +11,7 @@ namespace services {
     public:
         FactoryException(const std::string &msg) throw() : message(msg) {}
 
-        virtual ~ObjectFactoryException() throw() {}
+        virtual ~FactoryException() throw() {}
 
         virtual const char *what() const throw() {
             return message.c_str();

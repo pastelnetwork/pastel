@@ -9,7 +9,7 @@
 #include <unordered_map>
 #include <mutex>
 #include <boost/functional/hash.hpp>
-#include <consts/Enums.h>
+#include "consts/Enums.h"
 #include "task/task/common_tasks/FinishTask.h"
 #include "util/AsynchronousQueue.h"
 #include "task/task_result/common_task_results/InappropriateTaskResult.h"
@@ -53,11 +53,11 @@ namespace services {
 
         AddTaskResult AddTask(const std::shared_ptr<ITask> &task) {
             if (!task->GetResponseCallback())
-                return AddTaskResult::ResponseCallbackNotSet; // there is no one who want to get the result of task
+                return AddTaskResult::ATR_ResponseCallbackNotSet; // there is no one who want to get the result of task
             std::lock_guard<std::mutex> mlock(mapMutex);
             tasksInWork.emplace(task->GetId(), task);
             workQueue->Push(task);
-            return AddTaskResult::Success;
+            return AddTaskResult::ATR_Success;
         }
 
         void DeleteTask(const boost::uuids::uuid &id) {
@@ -90,7 +90,7 @@ namespace services {
             while (true) {
                 std::shared_ptr<ITask> task;
                 if (workQueue->PopNoWait(task)) {
-                    if (task->GetType() == TaskType::FinishWork)
+                    if (task->GetType() == TaskType::TT_FinishWork)
                         break;
                     if (!IsAppropriateTask(task)) {
                         task->GetResponseCallback()(InappropriateTaskResult(task->GetId()));

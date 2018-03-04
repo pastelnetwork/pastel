@@ -10,9 +10,9 @@
 
 namespace services {
     enum TaskResultStatus {
-        Success,
-        InappropriateTask,
-        AllAttemptsExhausted
+        TRS_Success,
+        TRS_InappropriateTask,
+        TRS_AllAttemptsExhausted
     };
 
     class ITaskResult {

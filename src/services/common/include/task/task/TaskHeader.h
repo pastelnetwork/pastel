@@ -8,8 +8,8 @@
 
 namespace services {
     enum TaskType {
-        FinishWork,
-        CheckNSFW,
+        TT_FinishWork,
+        TT_CheckNSFW,
     };
 
     class TaskHeader {

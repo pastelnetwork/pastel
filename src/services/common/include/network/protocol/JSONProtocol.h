@@ -3,8 +3,8 @@
 #include <boost/uuid/uuid_io.hpp>
 #include <unordered_map>
 #include "network/protocol/IProtocol.h"
-#include "../../../src/univalue/include/univalue.h" // TODO:include UniValue
-#include "../../../src/utilstrencodings.h" // TODO:include Encode/Decode Base64
+#include "../../../../../univalue/include/univalue.h" // TODO:include UniValue
+#include "../../../../../utilstrencodings.h" // TODO:include Encode/Decode Base64
 
 namespace services {
     class JSONProtocol : public IProtocol {
@@ -12,7 +12,7 @@ namespace services {
         virtual SerializeResult
         Serialize(std::vector<byte> &dstBuffer, const std::shared_ptr<ITask> &srcTask) override {
             if (!srcTask.get())
-                return SerializeResult::NullTaskPtr;
+                return SerializeResult::SR_NullTaskPtr;
 
             bool result = true;
             UniValue uniValue(UniValue::VOBJ);
@@ -25,7 +25,7 @@ namespace services {
                         )
                 );
             }
-            return result ? SerializeResult::Success : SerializeResult::SerializationError;
+            return result ? SerializeResult::SR_Success : SerializeResult::SR_SerializationError;
         }
 
         virtual DeserializeResult Deserialize(ITaskResult &dstTaskResult, const std::vector<byte> &srcBuffer) = 0;

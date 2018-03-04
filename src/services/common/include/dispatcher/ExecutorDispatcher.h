@@ -22,7 +22,7 @@ namespace services {
             if (executor.get())
                 return executor->AddTask(task);
             else
-                return AddTaskResult::NoAvailableExecutor;
+                return AddTaskResult::ATR_NoAvailableExecutor;
         }
 
 
@@ -52,7 +52,7 @@ namespace services {
         }
 
         std::shared_ptr<ITaskScheduler> AddNewExecutor() {
-            std::shared_ptr<ITaskScheduler> newExecutor = factory->MakeScheduler();
+            std::shared_ptr<ITaskScheduler> newExecutor = std::shared_ptr<ITaskScheduler>(factory->MakeScheduler());
             newExecutor->Run();
             executors.push_back(newExecutor);
             return newExecutor;

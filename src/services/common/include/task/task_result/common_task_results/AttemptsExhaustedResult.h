@@ -5,13 +5,13 @@
 #pragma once
 
 
-#include <task/task_result/ITaskResult.h>
+#include "task/task_result/ITaskResult.h"
 
 namespace services {
     class AttemptsExhaustedResult : public ITaskResult {
     public:
         AttemptsExhaustedResult(boost::uuids::uuid id) : ITaskResult(id) {
-            status = TaskResultStatus::AllAttemptsExhausted;
+            status = TaskResultStatus::TRS_AllAttemptsExhausted;
         }
     };
 }

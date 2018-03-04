@@ -2,8 +2,8 @@
 #pragma once
 
 
-#include <consts/Enums.h>
-#include <task/task/TaskHeader.h>
+#include "consts/Enums.h"
+#include "task/task/TaskHeader.h"
 #include "ExecutorDispatcher.h"
 
 namespace services {
@@ -36,13 +36,13 @@ namespace services {
 
         AddTaskResult AddTask(ITask *task) {
             if (isMutable) {
-                return AddTaskResult::DispatcherIsMutable;
+                return AddTaskResult::ATR_DispatcherIsMutable;
             } else {
                 auto found = map.find(task->GetType());
                 if (found != map.end()) {
                     return found->second->AddTask(std::shared_ptr<ITask>(task));
                 } else {
-                    return AddTaskResult::UnknownTaskType;
+                    return AddTaskResult::ATR_UnknownTaskType;
                 }
             }
         }
