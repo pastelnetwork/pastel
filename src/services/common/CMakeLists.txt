@@ -9,6 +9,9 @@ set(SOURCE_FILES
         include/dispatcher/ExecutorDispatcher.h
         include/network/protocol/IProtocol.h
         include/network/protocol/JSONProtocol.h
+        ../../univalue/lib/univalue.cpp
+        ../../univalue/lib/univalue_read.cpp
+        ../../univalue/lib/univalue_write.cpp
         include/network/publisher/ITaskPublisher.h
         include/scheduler/ITaskScheduler.h
         include/task/task/common_tasks/FinishTask.h
@@ -22,12 +25,12 @@ set(SOURCE_FILES
         include/util/Types.h
         include/scheduler/SchedulerFactory.h
         include/consts/Enums.h
-        main.cpp
         )
 
 include_directories(include)
 
-add_executable(common ${SOURCE_FILES})
+add_executable(common-exec ${SOURCE_FILES} main.cpp)
+add_library(common ${SOURCE_FILES})
 
 find_package(Boost 1.66.0)
 if (NOT Boost_FOUND)

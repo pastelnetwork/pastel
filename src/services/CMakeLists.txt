@@ -2,9 +2,10 @@ cmake_minimum_required(VERSION 3.8)
 project(services)
 
 set(CMAKE_CXX_STANDARD 14)
+enable_testing()
 
-add_subdirectory(common_test)
 add_subdirectory(common)
+add_subdirectory(common_test)
 
 #set(BOOST_ROOT "/usr/local/boost_1_66_0/")
 #find_package(Boost 1.66.0)

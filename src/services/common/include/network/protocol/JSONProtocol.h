@@ -25,12 +25,14 @@ namespace services {
                         )
                 );
             }
+            std::string str = uniValue.write();
+            dstBuffer = std::vector<byte>(str.begin(), str.end());
             return result ? SerializeResult::SR_Success : SerializeResult::SR_SerializationError;
         }
 
         virtual DeserializeResult Deserialize(ITaskResult &dstTaskResult, const std::vector<byte> &srcBuffer) override {
             UniValue uniValue;
-            if (!uniValue.read(static_cast<const char *>(srcBuffer.data()), srcBuffer.size())) {
+            if (!uniValue.read(reinterpret_cast<const char *>(srcBuffer.data()), srcBuffer.size())) {
                 return DeserializeResult::DR_InvalidJSON;
             }
             if (!uniValue.isObject()) {
