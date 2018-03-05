@@ -3,8 +3,8 @@
 #include <boost/uuid/uuid_io.hpp>
 #include <unordered_map>
 #include "network/protocol/IProtocol.h"
-#include "../../../../../univalue/include/univalue.h" // TODO:include UniValue
-#include "../../../../../utilstrencodings.h" // TODO:include Encode/Decode Base64
+#include "util/univalue.h" // TODO:include UniValue
+#include "util/utilstrencodings.h" // TODO:include Encode/Decode Base64
 
 namespace services {
     class JSONProtocol : public IProtocol {
@@ -24,10 +24,18 @@ namespace services {
                              EncodeBase64(item.second.data(), item.second.size())
                         )
                 );
+                if (!result) {
+                    break;
+                }
             }
-            std::string str = uniValue.write();
-            dstBuffer = std::vector<byte>(str.begin(), str.end());
-            return result ? SerializeResult::SR_Success : SerializeResult::SR_SerializationError;
+
+            if (!result) {
+                return SerializeResult::SR_SerializationError;
+            } else {
+                std::string str = uniValue.write();
+                dstBuffer = std::vector<byte>(str.begin(), str.end());
+                return SerializeResult::SR_Success;
+            }
         }
 
         virtual DeserializeResult Deserialize(ITaskResult &dstTaskResult, const std::vector<byte> &srcBuffer) override {
@@ -40,16 +48,22 @@ namespace services {
             }
 
             ITaskResult result;
-            auto idVal = find_value(uniValue, "id");
-            if (!idVal.isStr()) {
+
+            if (!ParseIdField(uniValue, result)) {
                 return DeserializeResult::DR_InvalidFormatJSON;
             }
-            boost::uuids::string_generator string_gen;
-            result.SetId(string_gen(idVal.get_str()));
-
             if (!ParseStatusField(uniValue, result)) {
                 return DeserializeResult::DR_InvalidFormatJSON;
             }
+            if (!ParseResultField(uniValue, result)) {
+                return DeserializeResult::DR_InvalidFormatJSON;
+            }
+            if (!ParseMessageField(uniValue, result)) {
+                return DeserializeResult::DR_InvalidFormatJSON;
+            }
+
+            dstTaskResult = result;
+            return DeserializeResult::DR_Success;
         };
 
     protected:
@@ -64,7 +78,7 @@ namespace services {
 
         bool ParseStatusField(const UniValue &uniValue, ITaskResult &result) {
             auto statusVal = find_value(uniValue, "status");
-            if (!statusVal.isStr() || !statusVal.isNum()) {
+            if (!statusVal.isStr() && !statusVal.isNum()) {
                 return false;
             }
             int status;
@@ -80,8 +94,44 @@ namespace services {
 
             if (TaskResultStatus::TRS_Last > status && status >= 0) {
                 result.SetStatus(static_cast<TaskResultStatus >(status));
+                return true;
             };
 
+            return false;
+        }
+
+        bool ParseIdField(const UniValue &uniValue, ITaskResult &result) {
+            auto idVal = find_value(uniValue, "id");
+            if (!idVal.isStr()) {
+                return false;
+            }
+            boost::uuids::string_generator string_gen;
+            try {
+                result.SetId(string_gen(idVal.get_str()));
+                return true;
+            } catch (int e) {
+                return false;
+            }
+        }
+
+        bool ParseResultField(const UniValue &uniValue, ITaskResult &result) {
+            auto resultVal = find_value(uniValue, "result");
+            if (resultVal.isStr()) {
+                result.SetResult(resultVal.get_str());
+                return true;
+            }
+            return false;
+        }
+
+        bool ParseMessageField(const UniValue &uniValue, ITaskResult &result) {
+            auto messageVal = find_value(uniValue, "message");
+            if (messageVal.isStr()) {
+                result.SetMessage(messageVal.get_str());
+                return true;
+            } else if (messageVal.isNull()) {    // may be zero (if no error occur)
+                result.SetMessage(std::string());
+                return true;
+            }
             return false;
         }
     };

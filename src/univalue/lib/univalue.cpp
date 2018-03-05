@@ -12,7 +12,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "univalue.h"
+#include "util/univalue.h"
 
 namespace 
 {

@@ -9,9 +9,12 @@ set(SOURCE_FILES
         include/dispatcher/ExecutorDispatcher.h
         include/network/protocol/IProtocol.h
         include/network/protocol/JSONProtocol.h
-        ../../univalue/lib/univalue.cpp
-        ../../univalue/lib/univalue_read.cpp
-        ../../univalue/lib/univalue_write.cpp
+        src/util/univalue/univalue.cpp
+        src/util/univalue/univalue_read.cpp
+        src/util/univalue/univalue_write.cpp
+        src/util/univalue/univalue_escapes.h
+        src/util/univalue/univalue_utffilter.h
+        src/util/utilstrencodings.cpp
         include/network/publisher/ITaskPublisher.h
         include/scheduler/ITaskScheduler.h
         include/task/task/common_tasks/FinishTask.h
@@ -21,7 +24,9 @@ set(SOURCE_FILES
         include/task/task_result/common_task_results/InappropriateTaskResult.h
         include/task/task_result/ITaskResult.h
         include/util/AsynchronousQueue.h
-        #        util/testQueue.cpp
+        include/util/univalue.h
+        include/util/tinyformat.h
+        include/util/utilstrencodings.h
         include/util/Types.h
         include/scheduler/SchedulerFactory.h
         include/consts/Enums.h
