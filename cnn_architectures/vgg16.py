@@ -28,14 +28,14 @@ def vgg16_model(height, width, channels=3, num_classes=None):
     for layer in model.layers[:15]:
         layer.trainable = False
 
-    model.load_weights('pretrained_weights/vgg16_weights_notop.h5')
+    model.load_weights('saved_models/vgg16_weights_notop.h5')
 
     x = Flatten()(x)
     x = Dense(4096, activation='relu')(x)
     x = Dropout(0.5)(x)
     x = Dense(4096, activation='relu')(x)
-    x = Dropout(0.5)(x)
-    x = Dense(num_classes, activation='softmax')(x)
+    # x = Dropout(0.5)(x)
+    # x = Dense(num_classes, activation='softmax')(x)
 
     model = Model(inputs=input_layer, outputs=x)
     print(model.summary())
