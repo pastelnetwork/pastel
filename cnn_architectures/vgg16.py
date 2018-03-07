@@ -38,5 +38,5 @@ def vgg16_model(height, width, channels=3, num_classes=None):
     # x = Dense(num_classes, activation='softmax')(x)
 
     model = Model(inputs=input_layer, outputs=x)
-    print(model.summary())
+    # print(model.summary())
     return model
