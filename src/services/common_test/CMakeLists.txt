@@ -1,9 +1,15 @@
 project(common_test)
 
+SET(CMAKE_CXX_FLAGS -pthread)
 set(TEST_SOURCE_FILES
         dispatcher/TestTaskDispatcher.cpp
-        scheduler/TestTaskScheduler.cpp
-        TestMain.cpp task/TestTask.h network/protocol/TestJSONProtocol.cpp task/TestTaskWithAdditionalField.h)
+        scheduler/test_TestTaskScheduler.cpp
+        TestMain.cpp task/TestTask.h
+        network/protocol/test_JSONProtocol.cpp
+        task/TestTaskWithAdditionalField.h
+        scheduler/TestTaskScheduler.h
+        network/publisher/TestTaskPublisher.h
+        network/publisher/test_TestTaskPublisher.cpp)
 
 include_directories(./)
 include_directories(../common/include)

@@ -34,7 +34,7 @@ namespace services {
             if (!publisher.get()) {
                 return false;
             } else {
-                publisher.get()->StartService(callback);
+                publisher->StartService(callback);
                 schedulerThread = std::thread(&ITaskScheduler::SchedulerRoutine, this);
                 workQueue = std::unique_ptr<AsynchronousQueue<std::shared_ptr<ITask>>>(
                         new AsynchronousQueue<std::shared_ptr<ITask>>());

@@ -1,6 +1,7 @@
 project(common)
 
 set(CMAKE_CXX_STANDARD 14)
+SET(CMAKE_CXX_FLAGS -pthread)
 set(BOOST_ROOT "/usr/local/boost_1_66_0/")
 
 set(SOURCE_FILES

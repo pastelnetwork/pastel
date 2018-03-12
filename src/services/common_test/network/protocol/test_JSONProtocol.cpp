@@ -55,6 +55,7 @@ BOOST_AUTO_TEST_SUITE(TestJSONProtocol)
         std::string result("42 %");
         ss << R"({"id":")" << id << R"(","status":")" << status << R"(","result":")" << result << "\"}";
         std::string rawStr = ss.str();
+//        std::cout<<rawStr<<std::endl;
         std::vector<services::byte> buf(rawStr.begin(), rawStr.end());
         auto deserializeResult = jsonProtocol.Deserialize(taskResult, buf);
         BOOST_CHECK_EQUAL(deserializeResult, services::IProtocol::DeserializeResult::DR_Success);
