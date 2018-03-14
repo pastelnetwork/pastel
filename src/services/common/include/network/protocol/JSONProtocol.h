@@ -10,7 +10,7 @@ namespace services {
     class JSONProtocol : public IProtocol {
     public:
         virtual SerializeResult
-        Serialize(std::vector<byte> &dstBuffer, const std::shared_ptr<ITask> &srcTask) override {
+        Serialize(std::vector<byte>& dstBuffer, const std::shared_ptr<ITask>& srcTask) const override {
             if (!srcTask.get())
                 return SerializeResult::SR_NullTaskPtr;
 
@@ -38,9 +38,10 @@ namespace services {
             }
         }
 
-        virtual DeserializeResult Deserialize(ITaskResult &dstTaskResult, const std::vector<byte> &srcBuffer) override {
+        virtual DeserializeResult
+        Deserialize(ITaskResult& dstTaskResult, const std::vector<byte>& srcBuffer) const override {
             UniValue uniValue;
-            if (!uniValue.read(reinterpret_cast<const char *>(srcBuffer.data()), srcBuffer.size())) {
+            if (!uniValue.read(reinterpret_cast<const char*>(srcBuffer.data()), srcBuffer.size())) {
                 return DeserializeResult::DR_InvalidJSON;
             }
             if (!uniValue.isObject()) {
@@ -66,8 +67,12 @@ namespace services {
             return DeserializeResult::DR_Success;
         };
 
+        IProtocol* Clone() const override {
+            return new JSONProtocol();
+        }
+
     protected:
-        bool SerializeTaskHeader(UniValue &uniValue, const TaskHeader &taskHeader) {
+        bool SerializeTaskHeader(UniValue& uniValue, const TaskHeader& taskHeader) const {
             bool result = true;
             UniValue hdrUniValue(UniValue::VOBJ);
             result &= hdrUniValue.push_back(Pair("type", taskHeader.GetType()));
@@ -76,7 +81,7 @@ namespace services {
             return result;
         }
 
-        bool ParseStatusField(const UniValue &uniValue, ITaskResult &result) {
+        bool ParseStatusField(const UniValue& uniValue, ITaskResult& result) const {
             auto statusVal = find_value(uniValue, "status");
             if (!statusVal.isStr() && !statusVal.isNum()) {
                 return false;
@@ -100,7 +105,7 @@ namespace services {
             return false;
         }
 
-        bool ParseIdField(const UniValue &uniValue, ITaskResult &result) {
+        bool ParseIdField(const UniValue& uniValue, ITaskResult& result) const {
             auto idVal = find_value(uniValue, "id");
             if (!idVal.isStr()) {
                 return false;
@@ -114,7 +119,7 @@ namespace services {
             }
         }
 
-        bool ParseResultField(const UniValue &uniValue, ITaskResult &result) {
+        bool ParseResultField(const UniValue& uniValue, ITaskResult& result) const {
             auto resultVal = find_value(uniValue, "result");
             if (resultVal.isStr()) {
                 result.SetResult(resultVal.get_str());
@@ -123,7 +128,7 @@ namespace services {
             return false;
         }
 
-        bool ParseMessageField(const UniValue &uniValue, ITaskResult &result) {
+        bool ParseMessageField(const UniValue& uniValue, ITaskResult& result) const {
             auto messageVal = find_value(uniValue, "message");
             if (messageVal.isStr()) {
                 result.SetMessage(messageVal.get_str());

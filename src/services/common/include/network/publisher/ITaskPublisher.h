@@ -17,11 +17,11 @@ namespace services {
             this->protocol = std::move(protocol);
         }
 
-        void StartService(ResponseCallback &onReceiveCallback) {
+        void StartService(ResponseCallback& onReceiveCallback) {
             callback = onReceiveCallback;
         }
 
-        SendResult Send(const std::shared_ptr<ITask> &task) {
+        SendResult Send(const std::shared_ptr<ITask>& task) const {
             std::vector<byte> buf;
             auto serializeResult = protocol->Serialize(buf, task);
             if (IProtocol::SerializeResult::SR_Success == serializeResult) {
@@ -31,10 +31,12 @@ namespace services {
             }
         }
 
-    protected:
-        virtual SendResult Send(const std::vector<byte> &buffer) = 0;
+        virtual ITaskPublisher* Clone() const =0;
 
-        void OnRecieve(const std::vector<byte> &buffer) {
+    protected:
+        virtual SendResult Send(const std::vector<byte>& buffer) const = 0;
+
+        void OnRecieve(const std::vector<byte>& buffer) const {
             ITaskResult result;
             if (IProtocol::DeserializeResult::DR_Success == protocol->Deserialize(result, buffer)) {
                 callback(result);

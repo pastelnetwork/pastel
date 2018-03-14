@@ -7,9 +7,9 @@
 
 namespace services {
     struct HashVector {
-        size_t operator()(const std::vector<byte> &vec) const {
+        size_t operator()(const std::vector<byte>& vec) const {
             std::size_t seed = vec.size();
-            for (auto &i : vec) {
+            for (auto& i : vec) {
                 seed ^= i + 0x9e3779b9 + (seed << 6) + (seed >> 2);
             }
             return seed;
@@ -24,19 +24,23 @@ namespace services {
             this->sendStatus = status;
         }
 
-        void SetAnswer(const std::vector<byte> &request, std::chrono::milliseconds &timeout,
-                       const std::vector<byte> &response) {
+        void SetAnswer(const std::vector<byte>& request, std::chrono::milliseconds& timeout,
+                       const std::vector<byte>& response) {
             answers[request] = {timeout, response};
         }
 
 
-        SendResult TestSend(const std::vector<byte> &vector, SendResult result) {
+        SendResult TestSend(const std::vector<byte>& vector, SendResult result) {
             SetSendStatus(result);
             return Send(vector);
         }
 
+        ITaskPublisher* Clone() const override {
+            return new TestTaskPublisher(std::unique_ptr<IProtocol>(protocol->Clone()));
+        }
+
     protected:
-        SendResult Send(const std::vector<byte> &buffer) override {
+        SendResult Send(const std::vector<byte>& buffer) const override {
             auto response = answers.find(buffer);
             if (response != answers.end()) {
                 auto val = response->second;

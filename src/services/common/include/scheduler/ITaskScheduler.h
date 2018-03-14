@@ -44,11 +44,13 @@ namespace services {
             }
         }
 
-        virtual ITaskScheduler *Clone() = 0;
+        virtual ITaskScheduler *Clone() const = 0;
 
         ~ITaskScheduler() {
             AddTask(std::shared_ptr<ITask>(new FinishTask()));
-            schedulerThread.join();
+            if (schedulerThread.joinable()){
+                schedulerThread.join();
+            }
         }
 
         AddTaskResult AddTask(const std::shared_ptr<ITask> &task) {
