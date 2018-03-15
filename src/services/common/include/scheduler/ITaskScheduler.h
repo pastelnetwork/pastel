@@ -31,29 +31,33 @@ namespace services {
         bool Run() {
             ResponseCallback callback = (ResponseCallback)
                     std::bind(&ITaskScheduler::OnTaskCompleted, this, std::placeholders::_1);
-            if (!publisher.get()) {
+            if (!publisher.get()){
                 return false;
-            } else {
+            } else{
                 publisher->StartService(callback);
                 schedulerThread = std::thread(&ITaskScheduler::SchedulerRoutine, this);
-                workQueue = std::unique_ptr<AsynchronousQueue<std::shared_ptr<ITask>>>(
-                        new AsynchronousQueue<std::shared_ptr<ITask>>());
-                pendingQueue = std::unique_ptr<AsynchronousQueue<std::shared_ptr<ITask>>>(
-                        new AsynchronousQueue<std::shared_ptr<ITask>>());
+                workQueue = std::make_unique<AsynchronousQueue<std::shared_ptr<ITask>>>();
+                pendingQueue = std::make_unique<AsynchronousQueue<std::shared_ptr<ITask>>>();
 
             }
         }
 
-        virtual ITaskScheduler *Clone() const = 0;
+        bool Stop() {
+            if (schedulerThread.joinable()){
+                AddTask(std::shared_ptr<ITask>(new FinishTask()));
+                schedulerThread.join();
+                return true;
+            }
+            return false;
+        }
+
+        virtual ITaskScheduler* Clone() const = 0;
 
         ~ITaskScheduler() {
-            AddTask(std::shared_ptr<ITask>(new FinishTask()));
-            if (schedulerThread.joinable()){
-                schedulerThread.join();
-            }
+            Stop();
         }
 
-        AddTaskResult AddTask(const std::shared_ptr<ITask> &task) {
+        AddTaskResult AddTask(const std::shared_ptr<ITask>& task) {
             if (!task->GetResponseCallback())
                 return AddTaskResult::ATR_ResponseCallbackNotSet; // there is no one who want to get the result of task
             std::lock_guard<std::mutex> mlock(mapMutex);
@@ -62,17 +66,17 @@ namespace services {
             return AddTaskResult::ATR_Success;
         }
 
-        void DeleteTask(const boost::uuids::uuid &id) {
+        void DeleteTask(const boost::uuids::uuid& id) {
             std::lock_guard<std::mutex> mlock(mapMutex);
             tasksInWork.erase(id);
         }
 
-        size_t TasksCount(){
+        size_t TasksCount() {
             std::lock_guard<std::mutex> mlock(mapMutex);
             return workQueue->Size();
         }
 
-        bool IsTaskInWork(const boost::uuids::uuid &id) const {
+        bool IsTaskInWork(const boost::uuids::uuid& id) const {
             std::lock_guard<std::mutex> mlock(mapMutex);
             bool result = tasksInWork.count(id) > 0;
             return result;
@@ -81,7 +85,7 @@ namespace services {
         void OnTaskCompleted(ITaskResult taskResult) {
             std::lock_guard<std::mutex> mlock(mapMutex);
             auto found = tasksInWork.find(taskResult.GetId());
-            if (found != tasksInWork.end()) {
+            if (found != tasksInWork.end()){
                 found->second->GetResponseCallback()(taskResult);
                 tasksInWork.erase(taskResult.GetId());
             }
@@ -89,31 +93,31 @@ namespace services {
 
     protected:
         void SchedulerRoutine() {
-            while (true) {
+            while (true){
                 std::shared_ptr<ITask> task;
-                if (workQueue->PopNoWait(task)) {
+                if (workQueue->PopNoWait(task)){
                     if (task->GetType() == TaskType::TT_FinishWork)
                         break;
-                    if (!IsAppropriateTask(task)) {
+                    if (!IsAppropriateTask(task)){
                         task->GetResponseCallback()(InappropriateTaskResult(task->GetId()));
                         continue;
                     }
-                    if (MAX_NUMBER_OF_ATTEMPTS > task->GetAttemptsCount()) {
+                    if (MAX_NUMBER_OF_ATTEMPTS > task->GetAttemptsCount()){
                         task->GetResponseCallback()(AttemptsExhaustedResult(task->GetId()));
                         continue;
                     }
-                    if (SECONDS_BETWEEN_ATTEMPTS > task->GetSecondsFromLastAttempt()) {
+                    if (SECONDS_BETWEEN_ATTEMPTS > task->GetSecondsFromLastAttempt()){
                         pendingQueue->Push(task);
                         continue;
                     }
-                    if (!IsTaskInWork(task->GetId())) {
+                    if (!IsTaskInWork(task->GetId())){
                         // we already processed this task and answered in OnTaskCompleted
                         continue;
                     }
                     HandleTask(task);
                     task->MakeAttempt();
                     pendingQueue->Push(task);
-                } else {
+                } else{
                     std::lock_guard<std::mutex> mlock(mapMutex);
                     std::swap(workQueue, pendingQueue);
                     std::this_thread::sleep_for(SCHEDULER_SLEEP_TIME);
@@ -126,9 +130,9 @@ namespace services {
 //            return callback;
 //        }
 
-        virtual bool IsAppropriateTask(std::shared_ptr<ITask> &task) = 0;
+        virtual bool IsAppropriateTask(std::shared_ptr<ITask>& task) = 0;
 
-        virtual void HandleTask(std::shared_ptr<ITask> &task) = 0;
+        virtual void HandleTask(std::shared_ptr<ITask>& task) = 0;
 
         std::unique_ptr<ITaskPublisher> publisher;
         std::thread schedulerThread;
