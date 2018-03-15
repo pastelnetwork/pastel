@@ -5,6 +5,7 @@ set(TEST_SOURCE_FILES
         dispatcher/TestTaskDispatcher.cpp
         scheduler/test_TestTaskScheduler.cpp
         TestMain.cpp task/TestTask.h
+        TestMain.cpp task/TestInappropriateTask.h
         network/protocol/test_JSONProtocol.cpp
         task/TestTaskWithAdditionalField.h
         scheduler/TestTaskScheduler.h
