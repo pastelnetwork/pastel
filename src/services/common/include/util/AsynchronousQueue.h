@@ -12,7 +12,7 @@ public:
 
     bool PopNoWait(T &item) {
         bool result = false;
-        std::unique_lock<std::mutex> mlock(mutex);
+        std::lock_guard<std::mutex> mlock(mutex);
         if (!queue.empty()) {
             item = queue.front();
             queue.pop();
@@ -41,23 +41,20 @@ public:
     }
 
     void Push(const T &item) {
-        std::unique_lock<std::mutex> mlock(mutex);
+        std::lock_guard<std::mutex> mlock(mutex);
         queue.push(item);
-        mlock.unlock();
         cond.notify_one();
     }
 
     bool Empty() {
-        std::unique_lock<std::mutex> mlock(mutex);
+        std::lock_guard<std::mutex> mlock(mutex);
         bool empty = queue.empty();
-        mlock.unlock();
         return empty;
     }
 
     size_t Size() {
-        std::unique_lock<std::mutex> mlock(mutex);
+        std::lock_guard<std::mutex> mlock(mutex);
         size_t size = queue.size();
-        mlock.unlock();
         return size;
     }
 
