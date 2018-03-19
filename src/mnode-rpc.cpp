@@ -285,10 +285,8 @@ UniValue masternode(const UniValue& params, bool fHelp)
     if (strCommand == "outputs") {
         // Find possible candidates
         std::vector<COutput> vPossibleCoins;
-/*ANIM-->
-        pwalletMain->AvailableCoins(vPossibleCoins, true, NULL, false, ONLY_1000);
-<--ANIM*/
-        pwalletMain->AvailableCoins(vPossibleCoins, true, NULL, false, false);
+
+        pwalletMain->AvailableCoins(vPossibleCoins, true, NULL, false, true, masterNodePlugin.MasternodeCollateral, true);
 
         UniValue obj(UniValue::VOBJ);
         BOOST_FOREACH(COutput& out, vPossibleCoins) {
@@ -759,7 +757,7 @@ UniValue mnsync(const UniValue& params, bool fHelp)
     if(strMode == "status") {
         UniValue objStatus(UniValue::VOBJ);
         objStatus.push_back(Pair("AssetID", masterNodePlugin.masternodeSync.GetAssetID()));
-        objStatus.push_back(Pair("AssetName", masterNodePlugin.masternodeSync.GetAssetName()));
+        objStatus.push_back(Pair("AssetName", masterNodePlugin.masternodeSync.GetSyncStatusShort()));
         objStatus.push_back(Pair("AssetStartTime", masterNodePlugin.masternodeSync.GetAssetStartTime()));
         objStatus.push_back(Pair("Attempt", masterNodePlugin.masternodeSync.GetAttempt()));
         objStatus.push_back(Pair("IsBlockchainSynced", masterNodePlugin.masternodeSync.IsBlockchainSynced()));
@@ -773,7 +771,7 @@ UniValue mnsync(const UniValue& params, bool fHelp)
     if(strMode == "next")
     {
         masterNodePlugin.masternodeSync.SwitchToNextAsset(masterNodePlugin.connectionManager);
-        return "sync updated to " + masterNodePlugin.masternodeSync.GetAssetName();
+        return "sync updated to " + masterNodePlugin.masternodeSync.GetSyncStatusShort();
     }
 
     if(strMode == "reset")

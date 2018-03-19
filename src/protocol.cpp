@@ -12,12 +12,39 @@
 # include <arpa/inet.h>
 #endif
 
+/*
+
+*/
+namespace NetMsgType {
+const char *MNANNOUNCE="mnb";       //MasterNode Announce
+const char *MNPING="mnp";           //MasterNode Ping
+const char *MNVERIFY="mnv";         //
+const char *DSEG="dseg";            //MasterNode Sync request
+const char *SYNCSTATUSCOUNT="ssc";  //MasterNode Sync status
+
+// const char *TXLOCKREQUEST="ix";
+// const char *TXLOCKVOTE="txlvote";
+const char *MASTERNODEPAYMENTVOTE="mnw";
+const char *MASTERNODEPAYMENTBLOCK="mnwb";
+const char *MASTERNODEPAYMENTSYNC="mnget";
+const char *DSTX="dstx";
+};
+
 static const char* ppszTypeName[] =
 {
     "ERROR",
     "tx",
     "block",
-    "filtered block"
+    "filtered block",
+
+//ANIM-->
+    NetMsgType::MASTERNODEPAYMENTVOTE,
+    NetMsgType::MASTERNODEPAYMENTBLOCK,
+    NetMsgType::MNANNOUNCE,
+    NetMsgType::MNPING,
+    NetMsgType::DSTX,
+    NetMsgType::MNVERIFY,
+//<--ANIM
 };
 
 CMessageHeader::CMessageHeader(const MessageStartChars& pchMessageStartIn)

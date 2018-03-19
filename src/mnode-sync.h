@@ -12,27 +12,34 @@
 
 class CConnman;
 
-static const int MASTERNODE_SYNC_FAILED          = -1;
-static const int MASTERNODE_SYNC_INITIAL         = 0; // sync just started, was reset recently or still in IDB
-static const int MASTERNODE_SYNC_WAITING         = 1; // waiting after initial to see if we can get more headers/blocks
-static const int MASTERNODE_SYNC_LIST            = 2;
-static const int MASTERNODE_SYNC_MNW             = 3;
-static const int MASTERNODE_SYNC_FINISHED        = 999;
-
-static const int MASTERNODE_SYNC_TICK_SECONDS    = 6;
-static const int MASTERNODE_SYNC_TIMEOUT_SECONDS = 30; // our blocks are 2.5 minutes so 30 seconds should be fine
-
-static const int MASTERNODE_SYNC_ENOUGH_PEERS    = 6;
-
 //
 // CMasternodeSync : Sync masternode assets in stages
 //
 
 class CMasternodeSync
 {
+public:
+    enum class MasternodeType {
+        Unknown = 0,
+        Remote  = 1
+    };
+
+    enum class MasternodeSyncState {
+        Failed          = -1,
+        Initial         = 0,    // sync just started, was reset recently or still in IDB
+        Waiting         = 1,    // waiting after initial to see if we can get more headers/blocks
+        List            = 2,
+        Winners         = 3,
+        Finished        = 999
+    };
+    
 private:
+    int MasternodeSyncTickSeconds;
+    int MasternodeSyncTimeoutSeconds;
+    int MasternodeSyncEnoughPeers;
+
     // Keep track of current asset
-    int nRequestedMasternodeAssets;
+    MasternodeSyncState syncState;
     // Count peers we've requested the asset from
     int nRequestedMasternodeAttempt;
 
@@ -46,20 +53,26 @@ private:
     void Fail();
     void ClearFulfilledRequests(CConnman& connman);
 
+    void SetSyncParameters();
+
 public:
-    CMasternodeSync() { Reset(); }
+    CMasternodeSync()
+    {
+        SetSyncParameters();
+        Reset();
+    }
 
-    bool IsFailed() { return nRequestedMasternodeAssets == MASTERNODE_SYNC_FAILED; }
-    bool IsBlockchainSynced() { return nRequestedMasternodeAssets > MASTERNODE_SYNC_WAITING; }
-    bool IsMasternodeListSynced() { return nRequestedMasternodeAssets > MASTERNODE_SYNC_LIST; }
-    bool IsWinnersListSynced() { return nRequestedMasternodeAssets > MASTERNODE_SYNC_MNW; }
-    bool IsSynced() { return nRequestedMasternodeAssets == MASTERNODE_SYNC_FINISHED; }
+    bool IsFailed() { return syncState == MasternodeSyncState::Failed; }
+    bool IsBlockchainSynced() { return syncState > MasternodeSyncState::Waiting; }
+    bool IsMasternodeListSynced() { return syncState > MasternodeSyncState::List; }
+    bool IsWinnersListSynced() { return syncState > MasternodeSyncState::Winners; }
+    bool IsSynced() { return syncState == MasternodeSyncState::Finished; }
 
-    int GetAssetID() { return nRequestedMasternodeAssets; }
+    int GetAssetID() { return (int)syncState; }
     int GetAttempt() { return nRequestedMasternodeAttempt; }
     void BumpAssetLastTime(std::string strFuncName);
     int64_t GetAssetStartTime() { return nTimeAssetSyncStarted; }
-    std::string GetAssetName();
+    std::string GetSyncStatusShort();
     std::string GetSyncStatus();
 
     void Reset();

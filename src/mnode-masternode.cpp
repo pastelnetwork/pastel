@@ -77,7 +77,7 @@ bool CMasternode::UpdateFromNewBroadcast(CMasternodeBroadcast& mnb, CConnman& co
     }
     // if it matches our Masternode privkey...
     if(masterNodePlugin.IsMasterNode() && pubKeyMasternode == masterNodePlugin.activeMasternode.pubKeyMasternode) {
-        nPoSeBanScore = -MASTERNODE_POSE_BAN_MAX_SCORE;
+        nPoSeBanScore = -masterNodePlugin.MasternodePOSEBanMaxScore;
         if(nProtocolVersion == PROTOCOL_VERSION) {
             // ... and PROTOCOL_VERSION, then we've been remotely activated ...
             masterNodePlugin.activeMasternode.ManageState(connman);
@@ -119,7 +119,7 @@ CMasternode::CollateralStatus CMasternode::CheckCollateral(const COutPoint& outp
         return COLLATERAL_UTXO_NOT_FOUND;
     }
 
-    if(coins.vout[outpoint.n].nValue != 1000 * COIN) {
+    if(coins.vout[outpoint.n].nValue != masterNodePlugin.MasternodeCollateral*COIN) {
         return COLLATERAL_INVALID_AMOUNT;
     }
 
@@ -134,7 +134,7 @@ void CMasternode::Check(bool fForce)
 
     if(ShutdownRequested()) return;
 
-    if(!fForce && (GetTime() - nTimeLastChecked < MASTERNODE_CHECK_SECONDS)) return;
+    if(!fForce && (GetTime() - nTimeLastChecked < masterNodePlugin.MasternodeCheckSeconds)) return;
     nTimeLastChecked = GetTime();
 
     LogPrint("masternode", "CMasternode::Check -- Masternode %s is in %s state\n", vin.prevout.ToStringShort(), GetStateString());
@@ -164,7 +164,7 @@ void CMasternode::Check(bool fForce)
         // or connect attempts. Will require few mnverify messages to strengthen its position in mn list.
         LogPrintf("CMasternode::Check -- Masternode %s is unbanned and back in list now\n", vin.prevout.ToStringShort());
         DecreasePoSeBanScore();
-    } else if(nPoSeBanScore >= MASTERNODE_POSE_BAN_MAX_SCORE) {
+    } else if(nPoSeBanScore >= masterNodePlugin.MasternodePOSEBanMaxScore) {
         nActiveState = MASTERNODE_POSE_BAN;
         // ban for the whole payment cycle
         nPoSeBanHeight = nHeight + masterNodePlugin.masternodeManager.size();
@@ -176,7 +176,7 @@ void CMasternode::Check(bool fForce)
     bool fOurMasternode = masterNodePlugin.IsMasterNode() && masterNodePlugin.activeMasternode.pubKeyMasternode == pubKeyMasternode;
 
                    // masternode doesn't meet payment protocol requirements ...
-    bool fRequireUpdate = nProtocolVersion < CMasterNodePlugin::MASTERNODE_PROTOCOL_VERSION ||
+    bool fRequireUpdate = nProtocolVersion < masterNodePlugin.MasternodeCollateral ||
                    // or it's our own node and we just updated it to the new protocol but we are still waiting for activation ...
                    (fOurMasternode && nProtocolVersion < PROTOCOL_VERSION);
 
@@ -189,7 +189,7 @@ void CMasternode::Check(bool fForce)
     }
 
     // keep old masternodes on start, give them a chance to receive updates...
-    bool fWaitForPing = !masterNodePlugin.masternodeSync.IsMasternodeListSynced() && !IsPingedWithin(MASTERNODE_MIN_MNP_SECONDS);
+    bool fWaitForPing = !masterNodePlugin.masternodeSync.IsMasternodeListSynced() && !IsPingedWithin(masterNodePlugin.MasternodeMinMNPSeconds);
 
     if(fWaitForPing && !fOurMasternode) {
         // ...but if it was already expired before the initial check - return right away
@@ -202,7 +202,7 @@ void CMasternode::Check(bool fForce)
     // don't expire if we are still in "waiting for ping" mode unless it's our own masternode
     if(!fWaitForPing || fOurMasternode) {
 
-        if(!IsPingedWithin(MASTERNODE_NEW_START_REQUIRED_SECONDS)) {
+        if(!IsPingedWithin(masterNodePlugin.MasternodeNewStartRequiredSeconds)) {
             nActiveState = MASTERNODE_NEW_START_REQUIRED;
             if(nActiveStatePrev != nActiveState) {
                 LogPrint("masternode", "CMasternode::Check -- Masternode %s is in %s state now\n", vin.prevout.ToStringShort(), GetStateString());
@@ -211,7 +211,7 @@ void CMasternode::Check(bool fForce)
         }
 
         bool fWatchdogActive = masterNodePlugin.masternodeSync.IsSynced() && masterNodePlugin.masternodeManager.IsWatchdogActive();
-        bool fWatchdogExpired = (fWatchdogActive && ((GetAdjustedTime() - nTimeLastWatchdogVote) > MASTERNODE_WATCHDOG_MAX_SECONDS));
+        bool fWatchdogExpired = (fWatchdogActive && ((GetAdjustedTime() - nTimeLastWatchdogVote) > masterNodePlugin.MasternodeWatchdogMaxSeconds));
 
         LogPrint("masternode", "CMasternode::Check -- outpoint=%s, nTimeLastWatchdogVote=%d, GetAdjustedTime()=%d, fWatchdogExpired=%d\n",
                 vin.prevout.ToStringShort(), nTimeLastWatchdogVote, GetAdjustedTime(), fWatchdogExpired);
@@ -224,7 +224,7 @@ void CMasternode::Check(bool fForce)
             return;
         }
 
-        if(!IsPingedWithin(MASTERNODE_EXPIRATION_SECONDS)) {
+        if(!IsPingedWithin(masterNodePlugin.MasternodeExpirationSeconds)) {
             nActiveState = MASTERNODE_EXPIRED;
             if(nActiveStatePrev != nActiveState) {
                 LogPrint("masternode", "CMasternode::Check -- Masternode %s is in %s state now\n", vin.prevout.ToStringShort(), GetStateString());
@@ -233,7 +233,7 @@ void CMasternode::Check(bool fForce)
         }
     }
 
-    if(lastPing.sigTime - sigTime < MASTERNODE_MIN_MNP_SECONDS) {
+    if(lastPing.sigTime - sigTime < masterNodePlugin.MasternodeMinMNPSeconds) {
         nActiveState = MASTERNODE_PRE_ENABLED;
         if(nActiveStatePrev != nActiveState) {
             LogPrint("masternode", "CMasternode::Check -- Masternode %s is in %s state now\n", vin.prevout.ToStringShort(), GetStateString());
@@ -256,7 +256,7 @@ bool CMasternode::IsInputAssociatedWithPubkey()
     uint256 hash;
     if(GetTransaction(vin.prevout.hash, tx, hash, true)) {
         BOOST_FOREACH(CTxOut out, tx.vout)
-            if(out.nValue == 1000*COIN && out.scriptPubKey == payee) return true;
+            if(out.nValue == masterNodePlugin.MasternodeCollateral*COIN && out.scriptPubKey == payee) return true;
     }
 
     return false;
@@ -347,6 +347,24 @@ void CMasternode::UpdateLastPaid(const CBlockIndex *pindex, int nMaxBlocksToScan
     // or it was found in mnpayments blocks but wasn't found in the blockchain.
     // LogPrint("masternode", "CMasternode::UpdateLastPaidBlock -- searching for block with payment to %s -- keeping old %d\n", vin.prevout.ToStringShort(), nBlockLastPaid);
 }
+
+bool CMasternode::IsPoSeVerified()
+{
+    return nPoSeBanScore <= -masterNodePlugin.MasternodePOSEBanMaxScore;
+}
+void CMasternode::IncreasePoSeBanScore()
+{
+    if(nPoSeBanScore < masterNodePlugin.MasternodePOSEBanMaxScore) nPoSeBanScore++;
+}
+void CMasternode::DecreasePoSeBanScore()
+{
+    if(nPoSeBanScore > -masterNodePlugin.MasternodePOSEBanMaxScore) nPoSeBanScore--;
+}
+void CMasternode::PoSeBan()
+{
+    nPoSeBanScore = masterNodePlugin.MasternodePOSEBanMaxScore;
+}
+
 
 #ifdef ENABLE_WALLET
 bool CMasternodeBroadcast::Create(std::string strService, std::string strKeyMasternode, std::string strTxHash, std::string strOutputIndex, std::string& strErrorRet, CMasternodeBroadcast &mnbRet, bool fOffline)
@@ -445,7 +463,7 @@ bool CMasternodeBroadcast::SimpleCheck(int& nDos)
         nActiveState = MASTERNODE_EXPIRED;
     }
 
-    if(nProtocolVersion < CMasterNodePlugin::MASTERNODE_PROTOCOL_VERSION) {
+    if(nProtocolVersion < masterNodePlugin.MasternodeCollateral) {
         LogPrintf("CMasternodeBroadcast::SimpleCheck -- ignoring outdated Masternode: masternode=%s  nProtocolVersion=%d\n", vin.prevout.ToStringShort(), nProtocolVersion);
         return false;
     }
@@ -521,7 +539,7 @@ bool CMasternodeBroadcast::Update(CMasternode* pmn, int& nDos, CConnman& connman
     }
 
     // if ther was no masternode broadcast recently or if it matches our Masternode privkey...
-    if(!pmn->IsBroadcastedWithin(MASTERNODE_MIN_MNB_SECONDS) || (masterNodePlugin.IsMasterNode() && pubKeyMasternode == masterNodePlugin.activeMasternode.pubKeyMasternode)) {
+    if(!pmn->IsBroadcastedWithin(masterNodePlugin.MasternodeMinMNBSeconds) || (masterNodePlugin.IsMasterNode() && pubKeyMasternode == masterNodePlugin.activeMasternode.pubKeyMasternode)) {
         // take the newest entry
         LogPrintf("CMasternodeBroadcast::Update -- Got UPDATED Masternode entry: addr=%s\n", addr.ToString());
         if(pmn->UpdateFromNewBroadcast(*this, connman)) {
@@ -780,8 +798,8 @@ bool CMasternodePing::CheckAndUpdate(CMasternode* pmn, bool fFromNewBroadcast, i
 
     // LogPrintf("mnping - Found corresponding mn for vin: %s\n", vin.prevout.ToStringShort());
     // update only if there is no known ping for this masternode or
-    // last ping was more then MASTERNODE_MIN_MNP_SECONDS-60 ago comparing to this one
-    if (pmn->IsPingedWithin(MASTERNODE_MIN_MNP_SECONDS - 60, sigTime)) {
+    // last ping was more then masterNodePlugin.MasternodeMinMNPSeconds-60 ago comparing to this one
+    if (pmn->IsPingedWithin(masterNodePlugin.MasternodeMinMNPSeconds - 60, sigTime)) {
         LogPrint("masternode", "CMasternodePing::CheckAndUpdate -- Masternode ping arrived too early, masternode=%s\n", vin.prevout.ToStringShort());
         //nDos = 1; //disable, this is happening frequently and causing banned peers
         return false;
@@ -792,8 +810,8 @@ bool CMasternodePing::CheckAndUpdate(CMasternode* pmn, bool fFromNewBroadcast, i
     // so, ping seems to be ok
 
     // if we are still syncing and there was no known ping for this mn for quite a while
-    // (NOTE: assuming that MASTERNODE_EXPIRATION_SECONDS/2 should be enough to finish mn list sync)
-    if(!masterNodePlugin.masternodeSync.IsMasternodeListSynced() && !pmn->IsPingedWithin(MASTERNODE_EXPIRATION_SECONDS/2)) {
+    // (NOTE: assuming that masterNodePlugin.MasternodeExpirationSeconds/2 should be enough to finish mn list sync)
+    if(!masterNodePlugin.masternodeSync.IsMasternodeListSynced() && !pmn->IsPingedWithin(masterNodePlugin.MasternodeExpirationSeconds/2)) {
         // let's bump sync timeout
         LogPrint("masternode", "CMasternodePing::CheckAndUpdate -- bumping sync timeout, masternode=%s\n", vin.prevout.ToStringShort());
         masterNodePlugin.masternodeSync.BumpAssetLastTime("CMasternodePing::CheckAndUpdate");
@@ -819,6 +837,11 @@ bool CMasternodePing::CheckAndUpdate(CMasternode* pmn, bool fFromNewBroadcast, i
     Relay(connman);
 
     return true;
+}
+
+bool CMasternodePing::IsExpired() const
+{
+    return GetAdjustedTime() - sigTime > masterNodePlugin.MasternodeNewStartRequiredSeconds;
 }
 
 void CMasternodePing::Relay(CConnman& connman)

@@ -242,6 +242,8 @@ void Shutdown()
         pwalletMain->Flush(true);
 #endif
 
+    masterNodePlugin.ShutdownMasterNode();
+
 #if ENABLE_ZMQ
     if (pzmqNotificationInterface) {
         UnregisterValidationInterface(pzmqNotificationInterface);

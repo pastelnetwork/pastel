@@ -4194,10 +4194,8 @@ bool static AlreadyHave(const CInv& inv) EXCLUSIVE_LOCKS_REQUIRED(cs_main)
     // Don't know what it is, just say we already got one
 
 //ANIM-->
-    masterNodePlugin.AlreadyHave(inv);
+    return masterNodePlugin.AlreadyHave(inv);
 //<--ANIM
-
-    return true;
 }
 
 void static ProcessGetData(CNode* pfrom)

@@ -326,7 +326,7 @@ int CMasternodeMan::CountMasternodes(int nProtocolVersion)
 {
     LOCK(cs);
     int nCount = 0;
-    nProtocolVersion = nProtocolVersion == -1 ? CMasterNodePlugin::MASTERNODE_PROTOCOL_VERSION : nProtocolVersion;
+    nProtocolVersion = nProtocolVersion == -1 ? masterNodePlugin.MasternodeCollateral : nProtocolVersion;
 
     for (auto& mnpair : mapMasternodes) {
         if(mnpair.second.nProtocolVersion < nProtocolVersion) continue;
@@ -340,7 +340,7 @@ int CMasternodeMan::CountEnabled(int nProtocolVersion)
 {
     LOCK(cs);
     int nCount = 0;
-    nProtocolVersion = nProtocolVersion == -1 ? CMasterNodePlugin::MASTERNODE_PROTOCOL_VERSION : nProtocolVersion;
+    nProtocolVersion = nProtocolVersion == -1 ? masterNodePlugin.MasternodeCollateral : nProtocolVersion;
 
     for (auto& mnpair : mapMasternodes) {
         if(mnpair.second.nProtocolVersion < nProtocolVersion || !mnpair.second.IsEnabled()) continue;
@@ -483,7 +483,7 @@ bool CMasternodeMan::GetNextMasternodeInQueueForPayment(int nBlockHeight, bool f
         if(!mnpair.second.IsValidForPayment()) continue;
 
         //check protocol version
-        if(mnpair.second.nProtocolVersion < CMasterNodePlugin::MASTERNODE_PROTOCOL_VERSION) continue;
+        if(mnpair.second.nProtocolVersion < masterNodePlugin.MasternodeCollateral) continue;
 
         //it's in the list (up to 8 entries ahead of current block to allow propagation) -- so let's skip it
         if(masterNodePlugin.masternodePayments.IsScheduled(mnpair.second, nBlockHeight)) continue;
@@ -538,7 +538,7 @@ masternode_info_t CMasternodeMan::FindRandomNotInVec(const std::vector<COutPoint
 {
     LOCK(cs);
 
-    nProtocolVersion = nProtocolVersion == -1 ? CMasterNodePlugin::MASTERNODE_PROTOCOL_VERSION : nProtocolVersion;
+    nProtocolVersion = nProtocolVersion == -1 ? masterNodePlugin.MasternodeCollateral : nProtocolVersion;
 
     int nCountEnabled = CountEnabled(nProtocolVersion);
     int nCountNotExcluded = nCountEnabled - vecToExclude.size();
@@ -804,7 +804,9 @@ void CMasternodeMan::ProcessMessage(CNode* pfrom, std::string& strCommand, CData
 
         for (auto& mnpair : mapMasternodes) {
             if (vin != CTxIn() && vin != mnpair.second.vin) continue; // asked for specific vin but we are not there yet
-            if (mnpair.second.addr.IsRFC1918() || mnpair.second.addr.IsLocal()) continue; // do not send local network masternode
+            if (!masterNodePlugin.IsRegTest() && 
+                (mnpair.second.addr.IsRFC1918() || mnpair.second.addr.IsLocal()))
+                    continue; // do not send local network masternode
             if (mnpair.second.IsUpdateRequired()) continue; // do not send outdated masternodes
 
             LogPrint("masternode", "DSEG -- Sending Masternode entry: masternode=%s  addr=%s\n", mnpair.first.ToStringShort(), mnpair.second.addr.ToString());
@@ -826,7 +828,7 @@ void CMasternodeMan::ProcessMessage(CNode* pfrom, std::string& strCommand, CData
         }
 
         if(vin == CTxIn()) {
-            pfrom->PushMessage(NetMsgType::SYNCSTATUSCOUNT, MASTERNODE_SYNC_LIST, nInvCount);
+            pfrom->PushMessage(NetMsgType::SYNCSTATUSCOUNT, (int)CMasternodeSync::MasternodeSyncState::List, nInvCount);
             LogPrintf("DSEG -- Sent %d Masternode invs to peer %d\n", nInvCount, pfrom->id);
             return;
         }
@@ -900,7 +902,9 @@ void CMasternodeMan::DoFullVerificationStep(CConnman& connman)
     // send verify requests to up to MAX_POSE_CONNECTIONS masternodes
     // starting from MAX_POSE_RANK + nMyRank and using MAX_POSE_CONNECTIONS as a step
     int nOffset = MAX_POSE_RANK + nMyRank - 1;
-    if(nOffset >= (int)vecMasternodeRanks.size()) return;
+    if (masterNodePlugin.IsRegTest()) {
+        nOffset = 1;
+    } else if(nOffset >= (int)vecMasternodeRanks.size()) return;
 
     std::vector<CMasternode*> vSortedByAddr;
     for (auto& mnpair : mapMasternodes) {
@@ -1319,7 +1323,7 @@ bool CMasternodeMan::CheckMnbAndUpdateMasternodeList(CNode* pfrom, CMasternodeBr
         if(mapSeenMasternodeBroadcast.count(hash) && !mnb.fRecovery) { //seen
             LogPrint("masternode", "CMasternodeMan::CheckMnbAndUpdateMasternodeList -- masternode=%s seen\n", mnb.vin.prevout.ToStringShort());
             // less then 2 pings left before this MN goes into non-recoverable state, bump sync timeout
-            if(GetTime() - mapSeenMasternodeBroadcast[hash].first > MASTERNODE_NEW_START_REQUIRED_SECONDS - MASTERNODE_MIN_MNP_SECONDS * 2) {
+            if(GetTime() - mapSeenMasternodeBroadcast[hash].first > masterNodePlugin.MasternodeNewStartRequiredSeconds - masterNodePlugin.MasternodeMinMNPSeconds * 2) {
                 LogPrint("masternode", "CMasternodeMan::CheckMnbAndUpdateMasternodeList -- masternode=%s seen update\n", mnb.vin.prevout.ToStringShort());
                 mapSeenMasternodeBroadcast[hash].first = GetTime();
                 masterNodePlugin.masternodeSync.BumpAssetLastTime("CMasternodeMan::CheckMnbAndUpdateMasternodeList - seen");
@@ -1376,7 +1380,7 @@ bool CMasternodeMan::CheckMnbAndUpdateMasternodeList(CNode* pfrom, CMasternodeBr
         masterNodePlugin.masternodeSync.BumpAssetLastTime("CMasternodeMan::CheckMnbAndUpdateMasternodeList - new");
         // if it matches our Masternode privkey...
         if(masterNodePlugin.IsMasterNode() && mnb.pubKeyMasternode == masterNodePlugin.activeMasternode.pubKeyMasternode) {
-            mnb.nPoSeBanScore = -MASTERNODE_POSE_BAN_MAX_SCORE;
+            mnb.nPoSeBanScore = -masterNodePlugin.MasternodePOSEBanMaxScore;
             if(mnb.nProtocolVersion == PROTOCOL_VERSION) {
                 // ... and PROTOCOL_VERSION, then we've been remotely activated ...
                 LogPrintf("CMasternodeMan::CheckMnbAndUpdateMasternodeList -- Got NEW Masternode entry: masternode=%s  sigTime=%lld  addr=%s\n",
@@ -1437,7 +1441,7 @@ bool CMasternodeMan::IsWatchdogActive()
 {
     LOCK(cs);
     // Check if any masternodes have voted recently, otherwise return false
-    return (GetTime() - nLastWatchdogVoteTime) <= MASTERNODE_WATCHDOG_MAX_SECONDS;
+    return (GetTime() - nLastWatchdogVoteTime) <= masterNodePlugin.MasternodeWatchdogMaxSeconds;
 }
 
 void CMasternodeMan::CheckMasternode(const CPubKey& pubKeyMasternode, bool fForce)

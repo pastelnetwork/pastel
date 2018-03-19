@@ -16,26 +16,28 @@
 
 class CConnman;
 
-static const int ACTIVE_MASTERNODE_INITIAL          = 0; // initial state
-static const int ACTIVE_MASTERNODE_SYNC_IN_PROCESS  = 1;
-static const int ACTIVE_MASTERNODE_INPUT_TOO_NEW    = 2;
-static const int ACTIVE_MASTERNODE_NOT_CAPABLE      = 3;
-static const int ACTIVE_MASTERNODE_STARTED          = 4;
-
 // Responsible for activating the Masternode and pinging the network
 class CActiveMasternode
 {
 public:
-    enum masternode_type_enum_t {
-        MASTERNODE_UNKNOWN = 0,
-        MASTERNODE_REMOTE  = 1
+    enum class MasternodeType {
+        Unknown = 0,
+        Remote  = 1
+    };
+
+    enum class ActiveMasternodeState {
+        Initial        = 0, // initial state
+        SyncInProcess  = 1,
+        InputTooNew    = 2,
+        NotCapable     = 3,
+        Started        = 4
     };
 
 private:
     // critical section to protect the inner data structures
     mutable CCriticalSection cs;
 
-    masternode_type_enum_t eType;
+    MasternodeType mnType;
 
     bool fPingerEnabled;
 
@@ -51,18 +53,18 @@ public:
     COutPoint outpoint;
     CService service;
 
-    int nState; // should be one of ACTIVE_MASTERNODE_XXXX
+    ActiveMasternodeState nState;
     std::string strNotCapableReason;
 
 
     CActiveMasternode()
-        : eType(MASTERNODE_UNKNOWN),
+        : mnType(MasternodeType::Unknown),
           fPingerEnabled(false),
           pubKeyMasternode(),
           keyMasternode(),
           outpoint(),
           service(),
-          nState(ACTIVE_MASTERNODE_INITIAL)
+          nState(ActiveMasternodeState::Initial)
     {}
 
     /// Manage state of active Masternode

@@ -60,6 +60,9 @@ public:
 
 class CMasterNodePlugin
 {
+private:
+    void SetParameters();
+
 public:
     CMasternodeConfig masternodeConfig;
 
@@ -86,23 +89,21 @@ public:
     CBaseChainParams::Network network;
 
 public:
+    int MasternodeProtocolVersion;
+    int MasternodeCollateral;
+
+    int MasternodeCheckSeconds, MasternodeMinMNBSeconds, MasternodeMinMNPSeconds, MasternodeExpirationSeconds, MasternodeWatchdogMaxSeconds, MasternodeNewStartRequiredSeconds;
+    int MasternodePOSEBanMaxScore;
+
     int nMasternodeMinimumConfirmations, nMasternodePaymentsStartBlock, nMasternodePaymentsIncreaseBlock, nMasternodePaymentsIncreasePeriod;
     int nMasterNodeMaximumOutboundConnections;
     int nFulfilledRequestExpireTime;
 
-    static const int MASTERNODE_PROTOCOL_VERSION;
-
     static CCriticalSection cs_mapMasternodeBlocks;
 
     CMasterNodePlugin() : 
-        fMasterNode(false),
-        nMasternodeMinimumConfirmations(15),
-        nMasternodePaymentsStartBlock(100000),
-        nMasternodePaymentsIncreaseBlock(158000),
-        nMasternodePaymentsIncreasePeriod(576*30),
-        nFulfilledRequestExpireTime(60*60), // fulfilled requests expire in 1 hour
-        nMasterNodeMaximumOutboundConnections(20),
-        semMasternodeOutbound(NULL)
+        semMasternodeOutbound(NULL),
+        fMasterNode(false)
     {
     }
 
@@ -116,8 +117,9 @@ public:
     bool StartMasterNode(boost::thread_group& threadGroup);
     bool StopMasterNode();
 
+    void ShutdownMasterNode();
+
     boost::filesystem::path GetMasternodeConfigFile();
-    void StoreData();
 
     bool IsSynced() {return masternodeSync.IsSynced();}
 
@@ -145,20 +147,6 @@ public:
 
     void ThreadMasterNodeMaintenance();
     void ThreadMnbRequestConnections();
-};
-
-namespace NetMsgType {
-extern const char *MNANNOUNCE;
-extern const char *MNPING;
-extern const char *MNVERIFY;
-extern const char *DSEG;
-extern const char *SYNCSTATUSCOUNT;
-
-// extern const char *TXLOCKREQUEST;
-// extern const char *TXLOCKVOTE;
-extern const char *MASTERNODEPAYMENTVOTE;
-extern const char *MASTERNODEPAYMENTBLOCK;
-extern const char *MASTERNODEPAYMENTSYNC;
 };
 
 class InsecureRand

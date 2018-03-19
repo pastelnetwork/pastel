@@ -164,4 +164,17 @@ enum {
 //<--ANIM
 };
 
+namespace NetMsgType {
+extern const char *MASTERNODEPAYMENTVOTE;
+extern const char *MASTERNODEPAYMENTBLOCK;
+extern const char *MASTERNODEPAYMENTSYNC;
+extern const char *DSTX;
+
+extern const char *MNANNOUNCE;
+extern const char *MNPING;
+extern const char *MNVERIFY;
+extern const char *DSEG;
+extern const char *SYNCSTATUSCOUNT;
+};
+
 #endif // BITCOIN_PROTOCOL_H

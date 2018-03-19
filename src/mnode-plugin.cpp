@@ -22,9 +22,54 @@ constexpr const CConnman::CAllNodes CConnman::AllNodes;
 /*
 MasterNode specific logic and initializations
 */
-const int CMasterNodePlugin::MASTERNODE_PROTOCOL_VERSION = 0x1;
 
 CCriticalSection CMasterNodePlugin::cs_mapMasternodeBlocks;
+
+
+void CMasterNodePlugin::SetParameters()
+{
+    MasternodeProtocolVersion           = 0x1;
+    MasternodeCollateral                = 1000;
+
+    MasternodeCheckSeconds              =   5;
+    MasternodeMinMNBSeconds             =   5 * 60;
+    MasternodeMinMNPSeconds             =  10 * 60;
+    MasternodeExpirationSeconds         =  65 * 60;
+    MasternodeWatchdogMaxSeconds        = 120 * 60;
+    MasternodeNewStartRequiredSeconds   = 180 * 60;
+    
+    MasternodePOSEBanMaxScore           = 5;
+    nMasterNodeMaximumOutboundConnections = 20;
+
+    strNetworkName = Params().NetworkIDString();
+    if (strNetworkName == "main") {
+        network = CBaseChainParams::MAIN;
+        nMasternodeMinimumConfirmations = 15;
+        nMasternodePaymentsStartBlock = 100000;
+        nMasternodePaymentsIncreaseBlock = 150000;
+        nMasternodePaymentsIncreasePeriod = 576*30;
+        nFulfilledRequestExpireTime = 60*60; // 60 minutes
+    }
+    else if (strNetworkName == "testnet") {
+        network = CBaseChainParams::TESTNET;
+        nMasternodeMinimumConfirmations = 1;
+        nMasternodePaymentsStartBlock = 4010;
+        nMasternodePaymentsIncreaseBlock = 4030;
+        nMasternodePaymentsIncreasePeriod = 10;
+        nFulfilledRequestExpireTime = 5*60; // 5 minutes
+    }
+    else if (strNetworkName == "regtest") {
+        network = CBaseChainParams::REGTEST;
+        nMasternodeMinimumConfirmations = 1;
+        nMasternodePaymentsStartBlock = 240;
+        nMasternodePaymentsIncreaseBlock = 350;
+        nMasternodePaymentsIncreasePeriod = 10;
+        nFulfilledRequestExpireTime = 5*60; // 5 minutes
+
+        MasternodeMinMNPSeconds             =  1 * 60;    
+    }
+}
+
 
 #ifdef ENABLE_WALLET
 bool CMasterNodePlugin::EnableMasterNode(std::ostringstream& strErrors, boost::thread_group& threadGroup, CWallet* pWalletMain)
@@ -32,23 +77,25 @@ bool CMasterNodePlugin::EnableMasterNode(std::ostringstream& strErrors, boost::t
 bool CMasterNodePlugin::EnableMasterNode(std::ostringstream& strErrors, boost::thread_group& threadGroup)
 #endif
 {
+    SetParameters();
+
+    // parse masternode.conf
+    std::string strErr;
+    if(!masternodeConfig.read(strErr)) {
+        fprintf(stderr,"Error reading masternode configuration file: %s\n", strErr.c_str());
+        return false;
+    }
+
     // NOTE: Masternode should have no wallet
     fMasterNode = GetBoolArg("-masternode", false);
 
-    if(fMasterNode) {
-        // parse masternode.conf
-        std::string strErr;
-        if(!masternodeConfig.read(strErr)) {
-            fprintf(stderr,"Error reading masternode configuration file: %s\n", strErr.c_str());
-            return false;
-        }
-    
-        if(fTxIndex == false) {
-            strErrors << _("Enabling Masternode support requires turning on transaction indexing.")
-                    << _("Please add txindex=1 to your configuration and start with -reindex");
-            return false;
-        }
+    if((fMasterNode || masternodeConfig.getCount() > 0) && fTxIndex == false) {
+        strErrors << _("Enabling Masternode support requires turning on transaction indexing.")
+                << _("Please add txindex=1 to your configuration and start with -reindex");
+        return false;
+    }
 
+    if(fMasterNode) {
         LogPrintf("MASTERNODE:\n");
 
         std::string strMasterNodePrivKey = GetArg("-masternodeprivkey", "");
@@ -105,11 +152,13 @@ bool CMasterNodePlugin::EnableMasterNode(std::ostringstream& strErrors, boost::t
     if(masternodeManager.size()) {
         strDBName = "mnpayments.dat";
         uiInterface.InitMessage(_("Loading masternode payment cache..."));
-        // CFlatDB<CMasternodePayments> flatDB2(strDBName, "magicMasternodePaymentsCache");
-        // if(!flatDB2.Load(masternodePayments)) {
-        //     strErrors << _("Failed to load masternode payments cache from") + "\n" + (pathDB / strDBName).string();
-        //     return false;
-        // }
+/*ANIM-->
+        CFlatDB<CMasternodePayments> flatDB2(strDBName, "magicMasternodePaymentsCache");
+        if(!flatDB2.Load(masternodePayments)) {
+            strErrors << _("Failed to load masternode payments cache from") + "\n" + (pathDB / strDBName).string();
+            return false;
+        }
+<--ANIM*/
     } else {
         uiInterface.InitMessage(_("Masternode cache is empty, skipping payments and governance cache..."));
     }
@@ -123,37 +172,12 @@ bool CMasterNodePlugin::EnableMasterNode(std::ostringstream& strErrors, boost::t
     }
 
     // force UpdatedBlockTip to initialize nCachedBlockHeight for DS, MN payments and budgets
-    //TEMP--> pdsNotificationInterface->InitializeCurrentBlockTip();
+/*ANIM-->
+    pdsNotificationInterface->InitializeCurrentBlockTip();
+<--ANIM*/
 
     //Enable Maintenance thread
     threadGroup.create_thread(boost::bind(std::function<void()>(std::bind(&CMasterNodePlugin::ThreadMasterNodeMaintenance, this))));
-
-//TODO - must move to chainnparams
-    strNetworkName = Params().NetworkIDString();
-    if (strNetworkName == "main") {
-        network = CBaseChainParams::MAIN;
-        nMasternodeMinimumConfirmations = 15;
-        nMasternodePaymentsStartBlock = 100000;
-        nMasternodePaymentsIncreaseBlock = 150000;
-        nMasternodePaymentsIncreasePeriod = 576*30;
-        nFulfilledRequestExpireTime = 60*60; // 60 minutes
-    }
-    else if (strNetworkName == "testnet") {
-        network = CBaseChainParams::TESTNET;
-        nMasternodeMinimumConfirmations = 1;
-        nMasternodePaymentsStartBlock = 4010;
-        nMasternodePaymentsIncreaseBlock = 4030;
-        nMasternodePaymentsIncreasePeriod = 10;
-        nFulfilledRequestExpireTime = 5*60; // 5 minutes
-    }
-    else if (strNetworkName == "regtest") {
-        network = CBaseChainParams::REGTEST;
-        nMasternodeMinimumConfirmations = 1;
-        nMasternodePaymentsStartBlock = 240;
-        nMasternodePaymentsIncreaseBlock = 350;
-        nMasternodePaymentsIncreasePeriod = 10;
-        nFulfilledRequestExpireTime = 5*60; // 5 minutes
-    }
 
     return true;
 }
@@ -183,7 +207,9 @@ bool CMasterNodePlugin::StopMasterNode()
 bool CMasterNodePlugin::ProcessMessage(CNode* pfrom, std::string& strCommand, CDataStream& vRecv)
 {
     masternodeManager.ProcessMessage(pfrom, strCommand, vRecv, connectionManager);
-    //TEMP--> masternodePayments.ProcessMessage(pfrom, strCommand, vRecv, connectionManager);
+/*ANIM-->
+    masternodePayments.ProcessMessage(pfrom, strCommand, vRecv, connectionManager);
+<--ANIM*/
     masternodeSync.ProcessMessage(pfrom, strCommand, vRecv);
 
     return true;
@@ -211,6 +237,8 @@ bool CMasterNodePlugin::AlreadyHave(const CInv& inv)
     case MSG_MASTERNODE_VERIFY:
         return masternodeManager.mapSeenMasternodeVerification.count(inv.hash);
     };
+
+    return true;
 }
 
 bool CMasterNodePlugin::ProcessGetData(CNode* pfrom, const CInv& inv)
@@ -221,7 +249,9 @@ bool CMasterNodePlugin::ProcessGetData(CNode* pfrom, const CInv& inv)
         if(masternodePayments.HasVerifiedPaymentVote(inv.hash)) {
             CDataStream ss(SER_NETWORK, PROTOCOL_VERSION);
             ss.reserve(1000);
-//TEMP-->            ss << masternodePayments.mapMasternodePaymentVotes[inv.hash];
+/*ANIM-->
+            ss << masternodePayments.mapMasternodePaymentVotes[inv.hash];
+<--ANIM*/
             pfrom->PushMessage(NetMsgType::MASTERNODEPAYMENTVOTE, ss);
             pushed = true;
         }
@@ -237,7 +267,9 @@ bool CMasterNodePlugin::ProcessGetData(CNode* pfrom, const CInv& inv)
                     if(masternodePayments.HasVerifiedPaymentVote(hash)) {
                         CDataStream ss(SER_NETWORK, PROTOCOL_VERSION);
                         ss.reserve(1000);
-//TEMP-->                        ss << masternodePayments.mapMasternodePaymentVotes[hash];
+/*ANIM-->
+                        ss << masternodePayments.mapMasternodePaymentVotes[hash];
+<--ANIM*/
                         pfrom->PushMessage(NetMsgType::MASTERNODEPAYMENTVOTE, ss);
                     }
                 }
@@ -267,13 +299,16 @@ bool CMasterNodePlugin::ProcessGetData(CNode* pfrom, const CInv& inv)
     }
     return pushed;
 }
-void CMasterNodePlugin::StoreData()
+
+void CMasterNodePlugin::ShutdownMasterNode()
 {
     // STORE DATA CACHES INTO SERIALIZED DAT FILES
     CFlatDB<CMasternodeMan> flatDB1("mncache.dat", "magicMasternodeCache");
     flatDB1.Dump(masternodeManager);
-    // CFlatDB<CMasternodePayments> flatDB2("mnpayments.dat", "magicMasternodePaymentsCache");
-    // flatDB2.Dump(masternodePayments);
+/*ANIM-->
+    CFlatDB<CMasternodePayments> flatDB2("mnpayments.dat", "magicMasternodePaymentsCache");
+    flatDB2.Dump(masternodePayments);
+<--ANIM*/
     CFlatDB<CNetFulfilledRequestManager> flatDB3("netfulfilled.dat", "magicFulfilledCache");
     flatDB3.Dump(netFulfilledManager);
 }
@@ -353,10 +388,7 @@ CAmount CMasterNodePlugin::GetMasternodePayment(int nHeight, CAmount blockValue)
 
     // Find possible candidates
     std::vector<COutput> vPossibleCoins;
-/*ANIM-->
-    pWalletMain->AvailableCoins(vPossibleCoins, true, NULL, false, ONLY_1000);
-<--ANIM*/
-    pWalletMain->AvailableCoins(vPossibleCoins, true, NULL, false, false);
+    pWalletMain->AvailableCoins(vPossibleCoins, true, NULL, false, true, masterNodePlugin.MasternodeCollateral, true);
     if(vPossibleCoins.empty()) {
         LogPrintf("CMasterNodePlugin::GetMasternodeOutpointAndKeys -- Could not locate any valid masternode vin\n");
         return false;
@@ -406,23 +438,6 @@ CAmount CMasterNodePlugin::GetMasternodePayment(int nHeight, CAmount blockValue)
     return true;
 }
 #endif
-
-/*
-
-*/
-namespace NetMsgType {
-const char *MNANNOUNCE="mnb";       //MasterNode Announce
-const char *MNPING="mnp";           //MasterNode Ping
-const char *MNVERIFY="mnv";         //
-const char *DSEG="dseg";            //MasterNode Sync request
-const char *SYNCSTATUSCOUNT="ssc";  //MasterNode Sync status
-
-// const char *TXLOCKREQUEST="ix";
-// const char *TXLOCKVOTE="txlvote";
-const char *MASTERNODEPAYMENTVOTE="mnw";
-const char *MASTERNODEPAYMENTBLOCK="mnwb";
-const char *MASTERNODEPAYMENTSYNC="mnget";
-};
 
 /*
 Threads
@@ -498,13 +513,15 @@ void CMasterNodePlugin::ThreadMasterNodeMaintenance()
 
             // check if we should activate or ping every few minutes,
             // slightly postpone first run to give net thread a chance to connect to some peers
-            if(nTick % MASTERNODE_MIN_MNP_SECONDS == 15)
+            if(nTick % masterNodePlugin.MasternodeMinMNPSeconds == 15)
                 masterNodePlugin.activeMasternode.ManageState(connectionManager);
 
             if(nTick % 60 == 0) {
                 masterNodePlugin.masternodeManager.ProcessMasternodeConnections(connectionManager);
                 masterNodePlugin.masternodeManager.CheckAndRemove(connectionManager);
-                //TEMP--> masterNodePlugin.masternodePayments.CheckAndRemove();
+/*ANIM-->
+                masterNodePlugin.masternodePayments.CheckAndRemove();
+<--ANIM*/
             }
             if(masterNodePlugin.IsMasterNode() && (nTick % (60 * 5) == 0)) {
                 masterNodePlugin.masternodeManager.DoFullVerificationStep(connectionManager);
