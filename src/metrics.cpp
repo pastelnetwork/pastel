@@ -114,10 +114,14 @@ int EstimateNetHeightInner(int height, int64_t tipmediantime,
     int medianHeight = height > CBlockIndex::nMedianTimeSpan ?
             height - (1 + ((CBlockIndex::nMedianTimeSpan - 1) / 2)) :
             height / 2;
-    double checkpointSpacing = medianHeight > heightLastCheckpoint ?
-            (double (tipmediantime - timeLastCheckpoint)) / (medianHeight - heightLastCheckpoint) :
-            (double (timeLastCheckpoint - genesisTime)) / heightLastCheckpoint;
-    double averageSpacing = (targetSpacing + checkpointSpacing) / 2;
+    
+    double checkpointSpacing = 0;
+    if (medianHeight > heightLastCheckpoint) {
+        checkpointSpacing = (double (tipmediantime - timeLastCheckpoint)) / (medianHeight - heightLastCheckpoint);
+    } else if (heightLastCheckpoint != 0) {
+        checkpointSpacing = (double (timeLastCheckpoint - genesisTime)) / heightLastCheckpoint;
+    }
+    double averageSpacing = checkpointSpacing == 0? targetSpacing: (targetSpacing + checkpointSpacing) / 2;
     int netheight = medianHeight + ((GetTime() - tipmediantime) / averageSpacing);
     // Round to nearest ten to reduce noise
     return ((netheight + 5) / 10) * 10;
@@ -409,7 +413,7 @@ int printInitMessage()
 
 void ThreadShowMetricsScreen()
 {
-    // Make this thread recognizable as the metrics screen thread
+    // Make this thread recognisable as the metrics screen thread
     RenameThread("animecoin-metrics-screen");
 
     // Determine whether we should render a persistent UI or rolling metrics

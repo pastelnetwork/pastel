@@ -19,6 +19,144 @@ using namespace std;
 
 #include "chainparamsseeds.h"
 
+static CBlock CreateGenesisBlock(const char* pszTimestamp, 
+                                 const std::vector<unsigned char> &genesisPubKey, 
+                                 uint32_t nTime, 
+                                 uint256 nNonce, 
+                                 const std::vector<unsigned char> &nSolution, 
+                                 uint32_t nBits, 
+                                 int32_t nVersion = 4, 
+                                 const CAmount& genesisReward = 0)
+{
+    CMutableTransaction txNew;
+    txNew.nVersion = 1;
+    txNew.vin.resize(1);
+    txNew.vout.resize(1);
+    txNew.vin[0].scriptSig = CScript() << (int)nBits << CScriptNum(4) << vector<unsigned char>((const unsigned char*)pszTimestamp, (const unsigned char*)pszTimestamp + strlen(pszTimestamp));
+    txNew.vout[0].nValue = genesisReward;
+    txNew.vout[0].scriptPubKey = CScript() << genesisPubKey << OP_CHECKSIG;
+
+    CBlock genesis;
+    genesis.nTime    = nTime;
+    genesis.nBits    = nBits;
+    genesis.nNonce   = nNonce;
+    genesis.nSolution = nSolution;
+    genesis.nVersion = nVersion;
+    genesis.vtx.push_back(txNew);
+    genesis.hashPrevBlock.SetNull();
+    genesis.hashMerkleRoot = genesis.BuildMerkleTree();
+    return genesis;
+}
+
+static void __mineGenBlock(unsigned int n, unsigned int k, CBlock *pblock)
+{
+    pblock->nNonce.SetNull();
+    pblock->nSolution.clear();
+
+    arith_uint256 hashTarget = arith_uint256().SetCompact(pblock->nBits);
+
+    while (true) {
+        // Hash state
+        crypto_generichash_blake2b_state state;
+        EhInitialiseState(n, k, state);
+
+        // I = the block header minus nonce and solution.
+        CEquihashInput I{*pblock};
+        CDataStream ss(SER_NETWORK, PROTOCOL_VERSION);
+        ss << I;
+
+        // H(I||...
+        crypto_generichash_blake2b_update(&state, (unsigned char*)&ss[0], ss.size());
+
+        // H(I||V||...
+        crypto_generichash_blake2b_state curr_state;
+        curr_state = state;
+        crypto_generichash_blake2b_update(&curr_state,
+                                            pblock->nNonce.begin(),
+                                            pblock->nNonce.size());
+
+        // (x_1, x_2, ...) = A(I, V, n, k)
+        std::function<bool(std::vector<unsigned char>)> validBlock =
+            [&pblock, &hashTarget]
+            (std::vector<unsigned char> soln) {
+            
+            // Write the solution to the hash and compute the result.
+            pblock->nSolution = soln;
+
+            if (UintToArith256(pblock->GetHash()) > hashTarget) {
+                return false;
+            }
+            printf("Genesis block found  \n  merkle root hash: %s\n  header hash: %s\n  nonce: %s\n  solution: %s\n", 
+                                                        pblock->hashMerkleRoot.GetHex().c_str(),
+                                                        pblock->GetHash().GetHex().c_str(), 
+                                                        pblock->nNonce.GetHex().c_str(),
+                                                        HexStr(pblock->nSolution).c_str());
+
+            return true;
+        };
+
+        if (EhOptimisedSolveUncancellable(n, k, curr_state, validBlock))
+            break;
+
+        pblock->nNonce = ArithToUint256(UintToArith256(pblock->nNonce) + 1);
+    }
+}
+
+/**
+ * Build the genesis block. Note that the output of its generation
+ * transaction cannot be spent since it did not originally exist in the
+ * database (and is in any case of zero value).
+ *
+ * >>> from pyblake2 import blake2s
+ * >>> 'AnimeCoin' + blake2s(b'The Economist 2018-03-15 the infant world of cryptocurrencies is already mind-bogglingly crowded. BTC#514336 000000000000000000421fe5078b5e3011e572d596374af44516fe1745ec0dc3 ZEC#291407 000000000151900c0248f3eb0b3fbabdb8fe47ec0a56d09a9e8e44f9c7787568 DJIA close on 19 March 2018: 24,610.91').hexdigest()
+ * 
+ * CBlock(hash=00040fe8, ver=4, hashPrevBlock=00000000000000, hashMerkleRoot=c4eaa5, nTime=1477641360, nBits=1f07ffff, nNonce=4695, vtx=1)
+ *   CTransaction(hash=c4eaa5, ver=1, vin.size=1, vout.size=1, nLockTime=0)
+ *     CTxIn(COutPoint(000000, -1), coinbase 04ffff071f0104455a6361736830623963346565663862376363343137656535303031653335303039383462366665613335363833613763616331343161303433633432303634383335643334)
+ *     CTxOut(nValue=0.00000000, scriptPubKey=0x5F1DF16B2B704C8A578D0B)
+ *   vMerkleTree: c4eaa5
+ */
+static const char* AnimeGenesisTimestamp = "AnimeCoin2a1f1b88e25c065678459c577460879513340d2e110eb8d2c735e066ab604907";
+static const std::vector<unsigned char> AnimeGenesisPubKey = ParseHex("0421105e5dc396643b48ece657fac0e254cba81b93f1290030869b26097f277281e226f708aa4e98156aae3ee23be7c2793e972081c356cc5afdd6a458fde59f9b");
+
+static CBlock CreateMainnetGenesisBlock()
+{
+    uint32_t nTime = 1521515598;
+    uint256 nNonce = uint256S("0000000000000000000000000000000000000000000000000000000000000130");
+    std::vector<unsigned char> nSolution = ParseHex("001f8eabd201d45f6531b20c0e9de4cd38a34f5b01074ee7440f49b6c9383f4863badcbb1ae803fd196c0895820fb9a36ff9f6f5f12f0a96f29710faddecd3138f30b9f51ea3cdb34775a8eb3854a701b1bb5cb30143f7a1caaecca9c39632c4eba4011d4c401f7e8025b2f30257cfe492a199c2a3ef6ba1ce4b5e7624c202b2f7bc3d380981d6b9b04ee2a9915ea06a9d9182640f975ed323406fcc0e8819a473bf5278c57e8ce9004c7457f48030173d6d024988e9fd1d8187108ba6350d2b6ba065fa65510ad3dadeb133356dc14bb4c50277e6d77ed271a770117030d10e045da16cafec0a33870ff28470961fff2ff4f28a4890d6a37f371030086c546f67aba0f7698f3138a9e4c265f84f3e34cc3b4dfb892a92060e91cb33db30c385868164f7719119eb0b40694e253f116c67e1a2f71622b90378ad0f25a846d978169d47067fc26514c520edaf4a92bd2c011d825892a671878e08106b19b6ea468313d7bfa1303303d49a53abe7231a36efd1c202ce52a11fa61f240b3359dfcaff8af676855afbf3912b3276dfa665373e9dc731154e4d6e03e4abf142751a1f98b679480385d8b2acc28daaa1594083f38ef1f442f5f885972b41d56a159546872977042dd4c03025cb85180fd907bbe657728ec33968eb05c07b6fe89586784e4e46101b668c154e9f33379d0228adfa6db5cba52f7dce040ffa800922a8fbfb0c3673b2eedb4e9bba1555b14a85452cb61f6fbdc25ab518f7545d668e3697d3b707547f42f3c4c276980b126d7ec346ee548bfefdd6330cdb43a3159bed9e1a49f239d1f152e5427884bb0a191912c6c6bbc779ba95a112f1d1ca672e5cca252b4f2510d2f7d227f5daf829b2c86a426bbb93c8470bdad99c9dec4413a9581477e6ea0ee92a5bdfa57d2db3be31b455b38d7ec315ab49c39ef581174e5913007fa7f54acc36751c6080b8401f8e1c7ca13f687225c7645c2f17a296de01a70a1138ec49e14518f88017d9035618144e8b05da147fb2fb11aa21415816003d2f12df6e10780b4b2f47960fcd853a6402fda15805a415f8eed378b96aa0033c634d17450e8e785d532c8e118cc3912a89e69be6bd786ad8822caa1384a7061e2b58768be101629f91059a927d4d25aefdfad168d53422b81ae0b37dcc6b6420f29e5ae0b0bd44340445a12419c93a034a5d330ee8c4923da2a93514350a3c1c2ba487a31761dcb7d3dc41e78f126298e2741792135b7146c03b8028a227832b00a52c21bd77233a5e25d81fdd10ed411e544a70a778c1553712d7de151901b97746cd359190b329b4e42832a63c9b88bb189d433b7e6940b3950ed7d3f5f8becfbd0e7e0a39161a6a59940fdaaf8cd1e3da695226eef18917a9c223b6e4caa61492236f8732b1369fd37d81999cb8ca00cc854fbf8aeb806f51c754b4e5945676c81fa9741eb775f743b191a3c3ee5343b44919b5aa9a3474803097c382422a3737856d149771c72b7a0a8056298242879fec5226581d958a678b6d450457c06b3fe2490595cc432597ed8add779587b6385c098e01f121f316a8eb6a6a0936e117d9b254b7b1d568e9e72e3ee625abaa0cb1964eeabc20576c897d6c8f6f597f671e318ecee89234beede1bf78783c6acc02ff943de73e05e1c6c058e2023743a57595ee71edcdfece34f67d0c71a0ba7be387377676f44ac5f6d49a6dd0173e78238764f28c98ee8ba8d075b7cce5338641b35ae47f242786dc43691539dfc67528c76590d2d7b957a07f0b8172bb89a983d1c5a79281b81d295557f790f60c2c423e5b92cfafb1133d47662447175e94065e5864388ec361c259b3ffdfbec81f5d48e982997cb7ed1a7c6cffa3f9ab2cd594ccfa4b0ae02b9393327e5cc1");
+    uint32_t nBits = 0x1f07ffff;
+
+    return CreateGenesisBlock(AnimeGenesisTimestamp, AnimeGenesisPubKey, nTime, nNonce, nSolution, nBits);
+}
+static const uint256 MainnetHashMerkleRoot = uint256S("0x69390f621a08c045270a5b43253cf269105b395c67e442468f91b879bb403c1f");
+static const uint256 MainnetHashGenesisBlock = uint256S("0x000733cc513d293a4f6f2d49c8b0c27c8700b3b546e100b194742deb9d52db81");
+
+static CBlock CreateTestnetGenesisBlock()
+{
+    uint32_t nTime = 1521515598;
+    uint256 nNonce = uint256S("000000000000000000000000000000000000000000000000000000000000000c");
+    std::vector<unsigned char> nSolution = ParseHex("0037c32e5f02856791383894426e0f5651aa3aaad4448195fd5d1e5e272b5a650b5a6ab10255bb1ae581009d4bbea14a49a29a4c8096403698a9b5be91f06743d2778b29554dd8c1465aa0b667e80f2fbf79aa1401b2fe96311e9851ca65f79d63ced3e211e15f35e903a94340e7a1da03a2c6e7aa12efe3922f1a12d6d704005535f84c1886a3fe433feab5414cfa6157664e1056128ba207e740621241bdbaf38be0a11029eb69027f46c9de14db15f561510515184ad1cf6a9202f710c48d31aa04f732cdd4f1670921ea9d36416f187625b353bcf86be147de9eb50070acb76d405ddfaeff2a1507f1c2f02eedd64cb2b66a29c82e7bd19427070928b967b119db1504d55253296ed30e5d1878a345350e61e4819cbe43d10755a66c31e89ef77f3e90ff11974399fc5dca5b3668b313877fc7bb01fb7a5fea6022bb9daf2413f9fa6dd9f6f6ee2ac2a95e5dafa7080f94766d49fcc481abb6f788ecbc3b01831f7e2e2b7c6454809430abd4db3698dc7acdd6393e5760bc1a3c51e0259d4d2f726f140701b4f03170eebd7df92e6052ef6da07ac9239833ddbe9f08b93b544d1dd10dde1a27a40d8a6b207815896b5877de7717bbc04622827ab40153d9d9989d4255e9d1370132565193c12c99cfa4034db899721bf3eae96e94457347d9d60650133b7973ebe8f9d231b76a90f5a2f702713891600cca739940a1c509f659b222b5c9a3a1e191ba2f5d24c2427f298bd428a19c05aed4f15785c69a1330750cfdd366edc3e641fd6558e3f9ddd4ee5dd0fa0e191e6dbd4ec59968b9865ad2b00ffab9aacf2dde56a31c28e268626f3ea78f9694c6bf65860e1801d3459b3f6b7dd183dd38bfd2cd97457d42e5f5f6f2b3a995323cac302de4ea2f929325654b354c43d9f6df854054d94f5898337c73bc0805b3e8e675f21876f39dc6014e8cd17e5dbc61a03048adf16407af66729ba09b03506b14a544dcfbddff235efae4dcd514651c156d201ca2c34da001bdba24e422cbc4d1099bbe9c7e935d391d8de01ef601594fae2d5a7939b7aa9c1f8faa07a4bc0f090383a35d849b9f53e3e5d72cc07e7c4918db4d541fe4249b7ec6f622d7d8d26656095840ff2a922f245d225193a10216731cc22882f637791ac82b5c0bbb6a2faca5db9a84c324628b4219d4d0e3650257ae8edbc48b71b21719c800f4ba42de415b9e181d8161f1cfca9c7774d7a48260b64c3b131a794ed11defc5f8860edcddf3afa42034453e5a1d3cfddc612a893d517dd5ea36cfce67b495c6519a6facd4caa3028e7361d273e289ddf7f297bfa66e8a9b96dfe5200aed27f2a68b7e1ed997615cecee01a868e7ec4c740bb078754505cb016bb240e99f24a5fc4ded77f18f1c0f5530e37304e3d62e01dc8c621e90944127c5bf0168cc8088d139d1154b755b826fa06acc0b9d121c08bea4cfc304e3418ce3e377e8faa821c7297d9d4217f23d3c4230387b887be3bbdefbf145981736da312a652e0232939c81b556161e53dbd9becffc96b5dc01a4f040f0922b68967162c12322ef74bf2a7443974842060d7113018ebb15254bcdd167a6c8129fff17154ea91b800a11e8b8baea502a6be81fb2abddb6562ee42322175eaaf188943784f0e09c8e500f5335070724a12ab252f91d43a76256366371a55fab9194be4052f6a574943c96b84324f8f72a6a3e016a7c7214142c635c870cb3dca2b844f1336dc29577df918e001721e6ce548b3cebe2a9b69d675e5a1eb26739d49909bb84d2f14c3d49f3e260ca841ce248c19f9d20172833af93e0938de51bc273973ec638b934a31e80e7268027dd424e73aecd02d8adb6d83c7e6cb29d3a885bd165b274d9cf3edde9f7e86f7314e68bf8381b7b");
+    uint32_t nBits = 0x2007ffff;
+
+    return CreateGenesisBlock(AnimeGenesisTimestamp, AnimeGenesisPubKey, nTime, nNonce, nSolution, nBits);
+}
+static const uint256 TestnetHashGenesisBlock = uint256S("05cb336861b74bc7f081c0f244dc9e73250dcda39beef2ffea4c382dc79c0080");
+
+static CBlock CreateRegtestGenesisBlock()
+{
+    uint32_t nTime = 1521515598;
+    uint256 nNonce = uint256S("000000000000000000000000000000000000000000000000000000000000001d");
+    std::vector<unsigned char> nSolution = ParseHex("05b1aa5d42bf1315c230bb4c74c4ddada4d316491bfb128beccd462d17eef9e4cb3653ea");
+    uint32_t nBits = 0x200f0f0f;
+
+    CBlock block = CreateGenesisBlock(AnimeGenesisTimestamp, AnimeGenesisPubKey, nTime, nNonce, nSolution, nBits);
+
+    // __mineGenBlock(48, 5, &block);
+
+    return block;
+}
+static const uint256 RegtestHashGenesisBlock = uint256S("07e5442be390f1e52fa99963279ed335a6794f34704def1dd3de753828b09ffc");
+
 /**
  * Main network
  */
@@ -37,7 +175,7 @@ public:
     CMainParams() {
         strNetworkID = "main";
         strCurrencyUnits = "ANI";
-        consensus.fCoinbaseMustBeProtected = true;
+        consensus.fCoinbaseMustBeProtected = false;
         consensus.nSubsidySlowStartInterval = 20000;
         consensus.nSubsidyHalvingInterval = 840000;
         consensus.nMajorityEnforceBlockUpgrade = 750;
@@ -50,13 +188,13 @@ public:
         consensus.nPowMaxAdjustUp = 16; // 16% adjustment up
         consensus.nPowTargetSpacing = 2.5 * 60;
         /**
-         * The message start string should be awesome! ⓩ❤
+         * The message start string
          */
-        pchMessageStart[0] = 0x24;
-        pchMessageStart[1] = 0xe9;
-        pchMessageStart[2] = 0x27;
-        pchMessageStart[3] = 0x64;
-        vAlertPubKey = ParseHex("04b7ecf0baa90495ceb4e4090f6b2fd37eec1e9c85fac68a487f3ce11589692e4a317479316ee814e066638e1db54e37a10689b70286e6315b1087b6615d179264");
+        pchMessageStart[0] = 0x40;
+        pchMessageStart[1] = 0x83;
+        pchMessageStart[2] = 0x22;
+        pchMessageStart[3] = 0x38;
+        vAlertPubKey = ParseHex("04a40ca15344822fd6bc9719929050614ab045775fcca1e46880ba7e4c55dc999b6f618091a7e5f5c24bd80854f14ebbc369c35cd2e4944c6cf27a3dc5f54f52dc");
         nDefaultPort = 9933;
         nMaxTipAge = 24 * 60 * 60;
         nPruneAfterHeight = 100000;
@@ -65,39 +203,14 @@ public:
         nEquihashN = N;
         nEquihashK = K;
 
-        /**
-         * Build the genesis block. Note that the output of its generation
-         * transaction cannot be spent since it did not originally exist in the
-         * database (and is in any case of zero value).
-         *
-         * >>> from pyblake2 import blake2s
-         * >>> 'Zcash' + blake2s(b'The Economist 2016-10-29 Known unknown: Another crypto-currency is born. BTC#436254 0000000000000000044f321997f336d2908cf8c8d6893e88dbf067e2d949487d ETH#2521903 483039a6b6bd8bd05f0584f9a078d075e454925eb71c1f13eaff59b405a721bb DJIA close on 27 Oct 2016: 18,169.68').hexdigest()
-         */
-        const char* pszTimestamp = "Zcash0b9c4eef8b7cc417ee5001e3500984b6fea35683a7cac141a043c42064835d34";
-        CMutableTransaction txNew;
-        txNew.vin.resize(1);
-        txNew.vout.resize(1);
-        txNew.vin[0].scriptSig = CScript() << 520617983 << CScriptNum(4) << vector<unsigned char>((const unsigned char*)pszTimestamp, (const unsigned char*)pszTimestamp + strlen(pszTimestamp));
-        txNew.vout[0].nValue = 0;
-        txNew.vout[0].scriptPubKey = CScript() << ParseHex("04678afdb0fe5548271967f1a67130b7105cd6a828e03909a67962e0ea1f61deb649f6bc3f4cef38c4f35504e51ec112de5c384df7ba0b8d578a4c702b6bf11d5f") << OP_CHECKSIG;
-        genesis.vtx.push_back(txNew);
-        genesis.hashPrevBlock.SetNull();
-        genesis.hashMerkleRoot = genesis.BuildMerkleTree();
-        genesis.nVersion = 4;
-        genesis.nTime    = 1477641360;
-        genesis.nBits    = 0x1f07ffff;
-        genesis.nNonce   = uint256S("0x0000000000000000000000000000000000000000000000000000000000001257");
-        genesis.nSolution = ParseHex("000a889f00854b8665cd555f4656f68179d31ccadc1b1f7fb0952726313b16941da348284d67add4686121d4e3d930160c1348d8191c25f12b267a6a9c131b5031cbf8af1f79c9d513076a216ec87ed045fa966e01214ed83ca02dc1797270a454720d3206ac7d931a0a680c5c5e099057592570ca9bdf6058343958b31901fce1a15a4f38fd347750912e14004c73dfe588b903b6c03166582eeaf30529b14072a7b3079e3a684601b9b3024054201f7440b0ee9eb1a7120ff43f713735494aa27b1f8bab60d7f398bca14f6abb2adbf29b04099121438a7974b078a11635b594e9170f1086140b4173822dd697894483e1c6b4e8b8dcd5cb12ca4903bc61e108871d4d915a9093c18ac9b02b6716ce1013ca2c1174e319c1a570215bc9ab5f7564765f7be20524dc3fdf8aa356fd94d445e05ab165ad8bb4a0db096c097618c81098f91443c719416d39837af6de85015dca0de89462b1d8386758b2cf8a99e00953b308032ae44c35e05eb71842922eb69797f68813b59caf266cb6c213569ae3280505421a7e3a0a37fdf8e2ea354fc5422816655394a9454bac542a9298f176e211020d63dee6852c40de02267e2fc9d5e1ff2ad9309506f02a1a71a0501b16d0d36f70cdfd8de78116c0c506ee0b8ddfdeb561acadf31746b5a9dd32c21930884397fb1682164cb565cc14e089d66635a32618f7eb05fe05082b8a3fae620571660a6b89886eac53dec109d7cbb6930ca698a168f301a950be152da1be2b9e07516995e20baceebecb5579d7cdbc16d09f3a50cb3c7dffe33f26686d4ff3f8946ee6475e98cf7b3cf9062b6966e838f865ff3de5fb064a37a21da7bb8dfd2501a29e184f207caaba364f36f2329a77515dcb710e29ffbf73e2bbd773fab1f9a6b005567affff605c132e4e4dd69f36bd201005458cfbd2c658701eb2a700251cefd886b1e674ae816d3f719bac64be649c172ba27a4fd55947d95d53ba4cbc73de97b8af5ed4840b659370c556e7376457f51e5ebb66018849923db82c1c9a819f173cccdb8f3324b239609a300018d0fb094adf5bd7cbb3834c69e6d0b3798065c525b20f040e965e1a161af78ff7561cd874f5f1b75aa0bc77f720589e1b810f831eac5073e6dd46d00a2793f70f7427f0f798f2f53a67e615e65d356e66fe40609a958a05edb4c175bcc383ea0530e67ddbe479a898943c6e3074c6fcc252d6014de3a3d292b03f0d88d312fe221be7be7e3c59d07fa0f2f4029e364f1f355c5d01fa53770d0cd76d82bf7e60f6903bc1beb772e6fde4a70be51d9c7e03c8d6d8dfb361a234ba47c470fe630820bbd920715621b9fbedb49fcee165ead0875e6c2b1af16f50b5d6140cc981122fcbcf7c5a4e3772b3661b628e08380abc545957e59f634705b1bbde2f0b4e055a5ec5676d859be77e20962b645e051a880fddb0180b4555789e1f9344a436a84dc5579e2553f1e5fb0a599c137be36cabbed0319831fea3fddf94ddc7971e4bcf02cdc93294a9aab3e3b13e3b058235b4f4ec06ba4ceaa49d675b4ba80716f3bc6976b1fbf9c8bf1f3e3a4dc1cd83ef9cf816667fb94f1e923ff63fef072e6a19321e4812f96cb0ffa864da50ad74deb76917a336f31dce03ed5f0303aad5e6a83634f9fcc371096f8288b8f02ddded5ff1bb9d49331e4a84dbe1543164438fde9ad71dab024779dcdde0b6602b5ae0a6265c14b94edd83b37403f4b78fcd2ed555b596402c28ee81d87a909c4e8722b30c71ecdd861b05f61f8b1231795c76adba2fdefa451b283a5d527955b9f3de1b9828e7b2e74123dd47062ddcc09b05e7fa13cb2212a6fdbc65d7e852cec463ec6fd929f5b8483cf3052113b13dac91b69f49d1b7d1aec01c4a68e41ce157");
-
+        genesis = CreateMainnetGenesisBlock();
         consensus.hashGenesisBlock = genesis.GetHash();
-        assert(consensus.hashGenesisBlock == uint256S("0x00040fe8ec8471911baa1db1266ea15dd06b4a8a5c453883c000b031973dce08"));
-        assert(genesis.hashMerkleRoot == uint256S("0xc4eaa58879081de3c24a7b117ed2b28300e7ec4c4c1dff1d3f1268b7857a4ddb"));
+        assert(consensus.hashGenesisBlock == MainnetHashGenesisBlock);
+        assert(genesis.hashMerkleRoot == MainnetHashMerkleRoot);
 
         vFixedSeeds.clear();
         vSeeds.clear();
-        // vSeeds.push_back(CDNSSeedData("z.cash", "dnsseed.z.cash")); // Zcash
-        // vSeeds.push_back(CDNSSeedData("str4d.xyz", "dnsseed.str4d.xyz")); // @str4d
-        // vSeeds.push_back(CDNSSeedData("znodes.org", "dnsseed.znodes.org")); // @bitcartel
+        // vSeeds.push_back(CDNSSeedData("z.cash", "dnsseed.z.cash"));
 
         // guarantees the first 2 characters, when base58 encoded, are "t1"
         base58Prefixes[PUBKEY_ADDRESS]     = {0x1C,0xB8};
@@ -125,15 +238,12 @@ public:
 
         checkpointData = (Checkpoints::CCheckpointData) {
             boost::assign::map_list_of
-            (0, consensus.hashGenesisBlock)
-            (2500, uint256S("0x00000006dc968f600be11a86cbfbf7feb61c7577f45caced2e82b6d261d19744"))
-            (15000, uint256S("0x00000000b6bc56656812a5b8dcad69d6ad4446dec23b5ec456c18641fb5381ba"))
-            (67500, uint256S("0x000000006b366d2c1649a6ebb4787ac2b39c422f451880bc922e3a6fbd723616")),
-            1487767578,     // * UNIX timestamp of last checkpoint block
-            325430,         // * total number of transactions between genesis and last checkpoint
-                            //   (the tx=... number in the SetBestChain debug.log lines)
-            2777            // * estimated number of transactions per day after checkpoint
-                            //   total number of tx / (checkpoint block height / (24 * 24))
+            (0, consensus.hashGenesisBlock),
+            genesis.nTime,      // * UNIX timestamp of last checkpoint block
+            0,                  // * total number of transactions between genesis and last checkpoint
+                                //   (the tx=... number in the SetBestChain debug.log lines)
+            500                 // * estimated number of transactions per day after checkpoint
+                                //   total number of tx / (checkpoint block height / (24 * 24))
         };
     }
 };
@@ -142,35 +252,43 @@ static CMainParams mainParams;
 /**
  * Testnet (v3)
  */
-class CTestNetParams : public CMainParams {
+class CTestNetParams : public CChainParams {
 public:
     CTestNetParams() {
         strNetworkID = "test";
-        strCurrencyUnits = "TAZ";
+        strCurrencyUnits = "INA";
+        consensus.fCoinbaseMustBeProtected = false;
+        consensus.nSubsidySlowStartInterval = 20000;
+        consensus.nSubsidyHalvingInterval = 840000;
         consensus.nMajorityEnforceBlockUpgrade = 51;
         consensus.nMajorityRejectBlockOutdated = 75;
         consensus.nMajorityWindow = 400;
         consensus.powLimit = uint256S("07ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff");
+        consensus.nPowAveragingWindow = 17;
         assert(maxUint/UintToArith256(consensus.powLimit) >= consensus.nPowAveragingWindow);
-        pchMessageStart[0] = 0xfa;
-        pchMessageStart[1] = 0x1a;
-        pchMessageStart[2] = 0xf9;
-        pchMessageStart[3] = 0xbf;
-        vAlertPubKey = ParseHex("044e7a1553392325c871c5ace5d6ad73501c66f4c185d6b0453cf45dec5a1322e705c672ac1a27ef7cdaf588c10effdf50ed5f95f85f2f54a5f6159fca394ed0c6");
+        consensus.nPowMaxAdjustDown = 32; // 32% adjustment down
+        consensus.nPowMaxAdjustUp = 16; // 16% adjustment up
+        consensus.nPowTargetSpacing = 2.5 * 60;
+        pchMessageStart[0] = 0x1b;
+        pchMessageStart[1] = 0x16;
+        pchMessageStart[2] = 0x83;
+        pchMessageStart[3] = 0xd2;
+        vAlertPubKey = ParseHex("04e2c4bfd845e0de6b3fced1bbae723154f751f1a11c41765ce8ca0d97b9d44989964b6e733520bd1d265c18710d307ad4a7cc7042225955c3d38e3c9138dc1eac");
         nDefaultPort = 19933;
+        nMaxTipAge = 24 * 60 * 60;
         nPruneAfterHeight = 1000;
+        const size_t N = 200, K = 9;
+        BOOST_STATIC_ASSERT(equihash_parameters_acceptable(N, K));
+        nEquihashN = N;
+        nEquihashK = K;
 
-        //! Modify the testnet genesis block so the timestamp is valid for a later start.
-        genesis.nTime = 1477648033;
-        genesis.nBits = 0x2007ffff;
-        genesis.nNonce = uint256S("0x0000000000000000000000000000000000000000000000000000000000000006");
-        genesis.nSolution = ParseHex("00a6a51259c3f6732481e2d035197218b7a69504461d04335503cd69759b2d02bd2b53a9653f42cb33c608511c953673fa9da76170958115fe92157ad3bb5720d927f18e09459bf5c6072973e143e20f9bdf0584058c96b7c2234c7565f100d5eea083ba5d3dbaff9f0681799a113e7beff4a611d2b49590563109962baa149b628aae869af791f2f70bb041bd7ebfa658570917f6654a142b05e7ec0289a4f46470be7be5f693b90173eaaa6e84907170f32602204f1f4e1c04b1830116ffd0c54f0b1caa9a5698357bd8aa1f5ac8fc93b405265d824ba0e49f69dab5446653927298e6b7bdc61ee86ff31c07bde86331b4e500d42e4e50417e285502684b7966184505b885b42819a88469d1e9cf55072d7f3510f85580db689302eab377e4e11b14a91fdd0df7627efc048934f0aff8e7eb77eb17b3a95de13678004f2512293891d8baf8dde0ef69be520a58bbd6038ce899c9594cf3e30b8c3d9c7ecc832d4c19a6212747b50724e6f70f6451f78fd27b58ce43ca33b1641304a916186cfbe7dbca224f55d08530ba851e4df22baf7ab7078e9cbea46c0798b35a750f54103b0cdd08c81a6505c4932f6bfbd492a9fced31d54e98b6370d4c96600552fcf5b37780ed18c8787d03200963600db297a8f05dfa551321d17b9917edadcda51e274830749d133ad226f8bb6b94f13b4f77e67b35b71f52112ce9ba5da706ad9573584a2570a4ff25d29ab9761a06bdcf2c33638bf9baf2054825037881c14adf3816ba0cbd0fca689aad3ce16f2fe362c98f48134a9221765d939f0b49677d1c2447e56b46859f1810e2cf23e82a53e0d44f34dae932581b3b7f49eaec59af872cf9de757a964f7b33d143a36c270189508fcafe19398e4d2966948164d40556b05b7ff532f66f5d1edc41334ef742f78221dfe0c7ae2275bb3f24c89ae35f00afeea4e6ed187b866b209dc6e83b660593fce7c40e143beb07ac86c56f39e895385924667efe3a3f031938753c7764a2dbeb0a643fd359c46e614873fd0424e435fa7fac083b9a41a9d6bf7e284eee537ea7c50dd239f359941a43dc982745184bf3ee31a8dc850316aa9c6b66d6985acee814373be3458550659e1a06287c3b3b76a185c5cb93e38c1eebcf34ff072894b6430aed8d34122dafd925c46a515cca79b0269c92b301890ca6b0dc8b679cdac0f23318c105de73d7a46d16d2dad988d49c22e9963c117960bdc70ef0db6b091cf09445a516176b7f6d58ec29539166cc8a38bbff387acefffab2ea5faad0e8bb70625716ef0edf61940733c25993ea3de9f0be23d36e7cb8da10505f9dc426cd0e6e5b173ab4fff8c37e1f1fb56d1ea372013d075e0934c6919393cfc21395eea20718fad03542a4162a9ded66c814ad8320b2d7c2da3ecaf206da34c502db2096d1c46699a91dd1c432f019ad434e2c1ce507f91104f66f491fed37b225b8e0b2888c37276cfa0468fc13b8d593fd9a2675f0f5b20b8a15f8fa7558176a530d6865738ddb25d3426dab905221681cf9da0e0200eea5b2eba3ad3a5237d2a391f9074bf1779a2005cee43eec2b058511532635e0fea61664f531ac2b356f40db5c5d275a4cf5c82d468976455af4e3362cc8f71aa95e71d394aff3ead6f7101279f95bcd8a0fedce1d21cb3c9f6dd3b182fce0db5d6712981b651f29178a24119968b14783cafa713bc5f2a65205a42e4ce9dc7ba462bdb1f3e4553afc15f5f39998fdb53e7e231e3e520a46943734a007c2daa1eda9f495791657eefcac5c32833936e568d06187857ed04d7b97167ae207c5c5ae54e528c36016a984235e9c5b2f0718d7b3aa93c7822ccc772580b6599671b3c02ece8a21399abd33cfd3028790133167d0a97e7de53dc8ff");
+        genesis = CreateTestnetGenesisBlock();
         consensus.hashGenesisBlock = genesis.GetHash();
-        assert(consensus.hashGenesisBlock == uint256S("0x05a60a92d99d85997cce3b87616c089f6124d7342af37106edc76126334a2c38"));
+        assert(consensus.hashGenesisBlock == TestnetHashGenesisBlock);
 
         vFixedSeeds.clear();
         vSeeds.clear();
-        // vSeeds.push_back(CDNSSeedData("z.cash", "dnsseed.testnet.z.cash")); // Zcash
+        // vSeeds.push_back(CDNSSeedData("z.cash", "dnsseed.testnet.z.cash"));
 
         // guarantees the first 2 characters, when base58 encoded, are "tm"
         base58Prefixes[PUBKEY_ADDRESS]     = {0x1D,0x25};
@@ -198,12 +316,12 @@ public:
 
         checkpointData = (Checkpoints::CCheckpointData) {
             boost::assign::map_list_of
-            (0, consensus.hashGenesisBlock)
-            (38000, uint256S("0x001e9a2d2e2892b88e9998cf7b079b41d59dd085423a921fe8386cecc42287b8")),
-            1486897419,  // * UNIX timestamp of last checkpoint block
-            47163,       // * total number of transactions between genesis and last checkpoint
-                         //   (the tx=... number in the SetBestChain debug.log lines)
-            715          //   total number of tx / (checkpoint block height / (24 * 24))
+            (0, consensus.hashGenesisBlock),
+            genesis.nTime,      // * UNIX timestamp of last checkpoint block
+            0,                  // * total number of transactions between genesis and last checkpoint
+                                //   (the tx=... number in the SetBestChain debug.log lines)
+            250                 // * estimated number of transactions per day after checkpoint
+                                //   total number of tx / (checkpoint block height / (24 * 24))
         };
     }
 };
@@ -212,7 +330,7 @@ static CTestNetParams testNetParams;
 /**
  * Regression test
  */
-class CRegTestParams : public CTestNetParams {
+class CRegTestParams : public CChainParams {
 public:
     CRegTestParams() {
         strNetworkID = "regtest";
@@ -224,29 +342,39 @@ public:
         consensus.nMajorityRejectBlockOutdated = 950;
         consensus.nMajorityWindow = 1000;
         consensus.powLimit = uint256S("0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f");
+        consensus.nPowAveragingWindow = 17;
         assert(maxUint/UintToArith256(consensus.powLimit) >= consensus.nPowAveragingWindow);
         consensus.nPowMaxAdjustDown = 0; // Turn off adjustment down
         consensus.nPowMaxAdjustUp = 0; // Turn off adjustment up
-        pchMessageStart[0] = 0xaa;
-        pchMessageStart[1] = 0xe8;
-        pchMessageStart[2] = 0x3f;
-        pchMessageStart[3] = 0x5f;
+        consensus.nPowTargetSpacing = 2.5 * 60;
+        pchMessageStart[0] = 0x31;
+        pchMessageStart[1] = 0x20;
+        pchMessageStart[2] = 0x76;
+        pchMessageStart[3] = 0x22;
+        nDefaultPort = 18344;
         nMaxTipAge = 24 * 60 * 60;
+        nPruneAfterHeight = 1000;
         const size_t N = 48, K = 5;
         BOOST_STATIC_ASSERT(equihash_parameters_acceptable(N, K));
         nEquihashN = N;
         nEquihashK = K;
-        genesis.nTime = 1296688602;
-        genesis.nBits = 0x200f0f0f;
-        genesis.nNonce = uint256S("0x0000000000000000000000000000000000000000000000000000000000000009");
-        genesis.nSolution = ParseHex("01936b7db1eb4ac39f151b8704642d0a8bda13ec547d54cd5e43ba142fc6d8877cab07b3");
+        
+        genesis = CreateRegtestGenesisBlock();
         consensus.hashGenesisBlock = genesis.GetHash();
-        nDefaultPort = 18344;
-        assert(consensus.hashGenesisBlock == uint256S("0x029f11d80ef9765602235e1bc9727e3eb6ba20839319f761fee920d63401e327"));
-        nPruneAfterHeight = 1000;
+        assert(consensus.hashGenesisBlock == RegtestHashGenesisBlock);
 
         vFixedSeeds.clear(); //! Regtest mode doesn't have any fixed seeds.
         vSeeds.clear();  //! Regtest mode doesn't have any DNS seeds.
+
+        // These prefixes are the same as the testnet prefixes
+        base58Prefixes[PUBKEY_ADDRESS]     = {0x1D,0x25};
+        base58Prefixes[SCRIPT_ADDRESS]     = {0x1C,0xBA};
+        base58Prefixes[SECRET_KEY]         = {0xEF};
+        // do not rely on these BIP32 prefixes; they are not specified and may change
+        base58Prefixes[EXT_PUBLIC_KEY]     = {0x04,0x35,0x87,0xCF};
+        base58Prefixes[EXT_SECRET_KEY]     = {0x04,0x35,0x83,0x94};
+        base58Prefixes[ZCPAYMENT_ADDRRESS] = {0x16,0xB6};
+        base58Prefixes[ZCSPENDING_KEY]     = {0xAC,0x08};
 
         fMiningRequiresPeers = false;
         fDefaultConsistencyChecks = true;
@@ -256,8 +384,8 @@ public:
 
         checkpointData = (Checkpoints::CCheckpointData){
             boost::assign::map_list_of
-            ( 0, uint256S("0f9188f13cb7b2c71f2a335e3a4fc328bf5beb436012afca590b1a11466e2206")),
-            0,
+            (0, consensus.hashGenesisBlock),
+            genesis.nTime,
             0,
             0
         };

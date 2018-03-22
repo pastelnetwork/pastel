@@ -25,7 +25,7 @@ static CBaseMainParams mainParams;
 /**
  * Testnet (v3)
  */
-class CBaseTestNetParams : public CBaseMainParams
+class CBaseTestNetParams : public CBaseChainParams
 {
 public:
     CBaseTestNetParams()
@@ -39,7 +39,7 @@ static CBaseTestNetParams testNetParams;
 /*
  * Regression test
  */
-class CBaseRegTestParams : public CBaseTestNetParams
+class CBaseRegTestParams : public CBaseChainParams
 {
 public:
     CBaseRegTestParams()
