@@ -154,14 +154,14 @@ enum {
     // MSG_FILTERED_BLOCK should not appear in any invs except as a part of getdata.
     MSG_FILTERED_BLOCK,
     
-//ANIM-->
+    //MasterNode
     MSG_MASTERNODE_PAYMENT_VOTE,
     MSG_MASTERNODE_PAYMENT_BLOCK,
     MSG_MASTERNODE_ANNOUNCE,
     MSG_MASTERNODE_PING,
     MSG_DSTX,
     MSG_MASTERNODE_VERIFY
-//<--ANIM
+
 };
 
 namespace NetMsgType {

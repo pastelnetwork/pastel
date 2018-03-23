@@ -14,8 +14,6 @@
 #include "primitives/transaction.h"
 #include "key.h"
 
-class CConnman;
-
 // Responsible for activating the Masternode and pinging the network
 class CActiveMasternode
 {
@@ -42,7 +40,7 @@ private:
     bool fPingerEnabled;
 
     /// Ping Masternode
-    bool SendMasternodePing(CConnman& connman);
+    bool SendMasternodePing();
 
 public:
     // Keys for the active Masternode
@@ -68,14 +66,14 @@ public:
     {}
 
     /// Manage state of active Masternode
-    void ManageState(CConnman& connman);
+    void ManageState();
 
     std::string GetStateString() const;
     std::string GetStatus() const;
     std::string GetTypeString() const;
 
 private:
-    void ManageStateInitial(CConnman& connman);
+    void ManageStateInitial();
     void ManageStateRemote();
 };
 

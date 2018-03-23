@@ -15,7 +15,7 @@
 #include "utilmoneystr.h"
 #include "rpcserver.h"
 
-#include "mnode-plugin.h"
+#include "mnode-controller.h"
 #include "mnode-active.h"
 #include "mnode-sync.h"
 #include "mnode-config.h"
@@ -103,23 +103,23 @@ UniValue masternode(const UniValue& params, bool fHelp)
             throw JSONRPCError(RPC_INVALID_PARAMETER, "Too many parameters");
 
         if (params.size() == 1)
-            return masterNodePlugin.masternodeManager.size();
+            return masterNodeCtrl.masternodeManager.size();
 
         std::string strMode = params[1].get_str();
 
         if (strMode == "enabled")
-            return masterNodePlugin.masternodeManager.CountEnabled();
+            return masterNodeCtrl.masternodeManager.CountEnabled();
 
         int nCount;
         masternode_info_t mnInfo;
-        masterNodePlugin.masternodeManager.GetNextMasternodeInQueueForPayment(true, nCount, mnInfo);
+        masterNodeCtrl.masternodeManager.GetNextMasternodeInQueueForPayment(true, nCount, mnInfo);
 
         if (strMode == "qualify")
             return nCount;
 
         if (strMode == "all")
             return strprintf("Total: %d (Enabled: %d / Qualify: %d)",
-                masterNodePlugin.masternodeManager.size(), masterNodePlugin.masternodeManager.CountEnabled(), nCount);
+                masterNodeCtrl.masternodeManager.size(), masterNodeCtrl.masternodeManager.CountEnabled(), nCount);
     }
 
     if (strCommand == "current" || strCommand == "winner")
@@ -133,9 +133,9 @@ UniValue masternode(const UniValue& params, bool fHelp)
             pindex = chainActive.Tip();
         }
         nHeight = pindex->nHeight + (strCommand == "current" ? 1 : 10);
-        masterNodePlugin.masternodeManager.UpdateLastPaid(pindex);
+        masterNodeCtrl.masternodeManager.UpdateLastPaid(pindex);
 
-        if(!masterNodePlugin.masternodeManager.GetNextMasternodeInQueueForPayment(nHeight, true, nCount, mnInfo))
+        if(!masterNodeCtrl.masternodeManager.GetNextMasternodeInQueueForPayment(nHeight, true, nCount, mnInfo))
             return "unknown";
 
         UniValue obj(UniValue::VOBJ);
@@ -168,7 +168,7 @@ UniValue masternode(const UniValue& params, bool fHelp)
         UniValue statusObj(UniValue::VOBJ);
         statusObj.push_back(Pair("alias", strAlias));
 
-        BOOST_FOREACH(CMasternodeConfig::CMasternodeEntry mne, masterNodePlugin.masternodeConfig.getEntries()) {
+        BOOST_FOREACH(CMasternodeConfig::CMasternodeEntry mne, masterNodeCtrl.masternodeConfig.getEntries()) {
             if(mne.getAlias() == strAlias) {
                 fFound = true;
                 std::string strError;
@@ -178,8 +178,8 @@ UniValue masternode(const UniValue& params, bool fHelp)
 
                 statusObj.push_back(Pair("result", fResult ? "successful" : "failed"));
                 if(fResult) {
-                    masterNodePlugin.masternodeManager.UpdateMasternodeList(mnb, masterNodePlugin.connectionManager);
-                    mnb.Relay(masterNodePlugin.connectionManager);
+                    masterNodeCtrl.masternodeManager.UpdateMasternodeList(mnb);
+                    mnb.Relay();
                 } else {
                     statusObj.push_back(Pair("errorMessage", strError));
                 }
@@ -203,7 +203,7 @@ UniValue masternode(const UniValue& params, bool fHelp)
             EnsureWalletIsUnlocked();
         }
 
-        if((strCommand == "start-missing" || strCommand == "start-disabled") && !masterNodePlugin.masternodeSync.IsMasternodeListSynced()) {
+        if((strCommand == "start-missing" || strCommand == "start-disabled") && !masterNodeCtrl.masternodeSync.IsMasternodeListSynced()) {
             throw JSONRPCError(RPC_CLIENT_IN_INITIAL_DOWNLOAD, "You can't use this command until masternode list is synced");
         }
 
@@ -212,12 +212,12 @@ UniValue masternode(const UniValue& params, bool fHelp)
 
         UniValue resultsObj(UniValue::VOBJ);
 
-        BOOST_FOREACH(CMasternodeConfig::CMasternodeEntry mne, masterNodePlugin.masternodeConfig.getEntries()) {
+        BOOST_FOREACH(CMasternodeConfig::CMasternodeEntry mne, masterNodeCtrl.masternodeConfig.getEntries()) {
             std::string strError;
 
             COutPoint outpoint = COutPoint(uint256S(mne.getTxHash()), uint32_t(atoi(mne.getOutputIndex().c_str())));
             CMasternode mn;
-            bool fFound = masterNodePlugin.masternodeManager.Get(outpoint, mn);
+            bool fFound = masterNodeCtrl.masternodeManager.Get(outpoint, mn);
             CMasternodeBroadcast mnb;
 
             if(strCommand == "start-missing" && fFound) continue;
@@ -231,8 +231,8 @@ UniValue masternode(const UniValue& params, bool fHelp)
 
             if (fResult) {
                 nSuccessful++;
-                masterNodePlugin.masternodeManager.UpdateMasternodeList(mnb, masterNodePlugin.connectionManager);
-                mnb.Relay(masterNodePlugin.connectionManager);
+                masterNodeCtrl.masternodeManager.UpdateMasternodeList(mnb);
+                mnb.Relay();
             } else {
                 nFailed++;
                 statusObj.push_back(Pair("errorMessage", strError));
@@ -261,10 +261,10 @@ UniValue masternode(const UniValue& params, bool fHelp)
     {
         UniValue resultObj(UniValue::VOBJ);
 
-        BOOST_FOREACH(CMasternodeConfig::CMasternodeEntry mne, masterNodePlugin.masternodeConfig.getEntries()) {
+        BOOST_FOREACH(CMasternodeConfig::CMasternodeEntry mne, masterNodeCtrl.masternodeConfig.getEntries()) {
             COutPoint outpoint = COutPoint(uint256S(mne.getTxHash()), uint32_t(atoi(mne.getOutputIndex().c_str())));
             CMasternode mn;
-            bool fFound = masterNodePlugin.masternodeManager.Get(outpoint, mn);
+            bool fFound = masterNodeCtrl.masternodeManager.Get(outpoint, mn);
 
             std::string strStatus = fFound ? mn.GetStatus() : "MISSING";
 
@@ -286,7 +286,7 @@ UniValue masternode(const UniValue& params, bool fHelp)
         // Find possible candidates
         std::vector<COutput> vPossibleCoins;
 
-        pwalletMain->AvailableCoins(vPossibleCoins, true, NULL, false, true, masterNodePlugin.MasternodeCollateral, true);
+        pwalletMain->AvailableCoins(vPossibleCoins, true, NULL, false, true, masterNodeCtrl.MasternodeCollateral, true);
 
         UniValue obj(UniValue::VOBJ);
         BOOST_FOREACH(COutput& out, vPossibleCoins) {
@@ -299,24 +299,24 @@ UniValue masternode(const UniValue& params, bool fHelp)
 
     if (strCommand == "status")
     {
-        if (!masterNodePlugin.IsMasterNode())
+        if (!masterNodeCtrl.IsMasterNode())
             throw JSONRPCError(RPC_INTERNAL_ERROR, "This is not a masternode");
 
         UniValue mnObj(UniValue::VOBJ);
 
-        mnObj.push_back(Pair("outpoint", masterNodePlugin.activeMasternode.outpoint.ToStringShort()));
-        mnObj.push_back(Pair("service", masterNodePlugin.activeMasternode.service.ToString()));
+        mnObj.push_back(Pair("outpoint", masterNodeCtrl.activeMasternode.outpoint.ToStringShort()));
+        mnObj.push_back(Pair("service", masterNodeCtrl.activeMasternode.service.ToString()));
 
         CMasternode mn;
-        if(masterNodePlugin.masternodeManager.Get(masterNodePlugin.activeMasternode.outpoint, mn)) {
+        if(masterNodeCtrl.masternodeManager.Get(masterNodeCtrl.activeMasternode.outpoint, mn)) {
             mnObj.push_back(Pair("payee", CBitcoinAddress(mn.pubKeyCollateralAddress.GetID()).ToString()));
         }
 
-        mnObj.push_back(Pair("status", masterNodePlugin.activeMasternode.GetStatus()));
+        mnObj.push_back(Pair("status", masterNodeCtrl.activeMasternode.GetStatus()));
         return mnObj;
     }
 
-/*ANIM-->
+/*TEMP-->
     if (strCommand == "winners")
     {
         int nHeight;
@@ -351,7 +351,7 @@ UniValue masternode(const UniValue& params, bool fHelp)
 
         return obj;
     }
-<--ANIM*/
+<--TEMP*/
 
 
     return NullUniValue;
@@ -405,20 +405,20 @@ UniValue masternodelist(const UniValue& params, bool fHelp)
             LOCK(cs_main);
             pindex = chainActive.Tip();
         }
-        masterNodePlugin.masternodeManager.UpdateLastPaid(pindex);
+        masterNodeCtrl.masternodeManager.UpdateLastPaid(pindex);
     }
 
     UniValue obj(UniValue::VOBJ);
     if (strMode == "rank") {
         CMasternodeMan::rank_pair_vec_t vMasternodeRanks;
-        masterNodePlugin.masternodeManager.GetMasternodeRanks(vMasternodeRanks);
+        masterNodeCtrl.masternodeManager.GetMasternodeRanks(vMasternodeRanks);
         BOOST_FOREACH(PAIRTYPE(int, CMasternode)& s, vMasternodeRanks) {
             std::string strOutpoint = s.second.vin.prevout.ToStringShort();
             if (strFilter !="" && strOutpoint.find(strFilter) == std::string::npos) continue;
             obj.push_back(Pair(strOutpoint, s.first));
         }
     } else {
-        std::map<COutPoint, CMasternode> mapMasternodes = masterNodePlugin.masternodeManager.GetFullMasternodeMap();
+        std::map<COutPoint, CMasternode> mapMasternodes = masterNodeCtrl.masternodeManager.GetFullMasternodeMap();
         for (auto& mnpair : mapMasternodes) {
             CMasternode mn = mnpair.second;
             std::string strOutpoint = mnpair.first.ToStringShort();
@@ -557,7 +557,7 @@ UniValue masternodebroadcast(const UniValue& params, bool fHelp)
 
         statusObj.push_back(Pair("alias", strAlias));
 
-        BOOST_FOREACH(CMasternodeConfig::CMasternodeEntry mne, masterNodePlugin.masternodeConfig.getEntries()) {
+        BOOST_FOREACH(CMasternodeConfig::CMasternodeEntry mne, masterNodeCtrl.masternodeConfig.getEntries()) {
             if(mne.getAlias() == strAlias) {
                 fFound = true;
                 std::string strError;
@@ -599,7 +599,7 @@ UniValue masternodebroadcast(const UniValue& params, bool fHelp)
         }
 
         std::vector<CMasternodeConfig::CMasternodeEntry> mnEntries;
-        mnEntries = masterNodePlugin.masternodeConfig.getEntries();
+        mnEntries = masterNodeCtrl.masternodeConfig.getEntries();
 
         int nSuccessful = 0;
         int nFailed = 0;
@@ -607,7 +607,7 @@ UniValue masternodebroadcast(const UniValue& params, bool fHelp)
         UniValue resultsObj(UniValue::VOBJ);
         std::vector<CMasternodeBroadcast> vecMnb;
 
-        BOOST_FOREACH(CMasternodeConfig::CMasternodeEntry mne, masterNodePlugin.masternodeConfig.getEntries()) {
+        BOOST_FOREACH(CMasternodeConfig::CMasternodeEntry mne, masterNodeCtrl.masternodeConfig.getEntries()) {
             std::string strError;
             CMasternodeBroadcast mnb;
 
@@ -716,10 +716,10 @@ UniValue masternodebroadcast(const UniValue& params, bool fHelp)
             bool fResult;
             if (mnb.CheckSignature(nDos)) {
                 if (fSafe) {
-                    fResult = masterNodePlugin.masternodeManager.CheckMnbAndUpdateMasternodeList(NULL, mnb, nDos, masterNodePlugin.connectionManager);
+                    fResult = masterNodeCtrl.masternodeManager.CheckMnbAndUpdateMasternodeList(NULL, mnb, nDos);
                 } else {
-                    masterNodePlugin.masternodeManager.UpdateMasternodeList(mnb, masterNodePlugin.connectionManager);
-                    mnb.Relay(masterNodePlugin.connectionManager);
+                    masterNodeCtrl.masternodeManager.UpdateMasternodeList(mnb);
+                    mnb.Relay();
                     fResult = true;
                 }
             } else fResult = false;
@@ -756,28 +756,28 @@ UniValue mnsync(const UniValue& params, bool fHelp)
 
     if(strMode == "status") {
         UniValue objStatus(UniValue::VOBJ);
-        objStatus.push_back(Pair("AssetID", masterNodePlugin.masternodeSync.GetAssetID()));
-        objStatus.push_back(Pair("AssetName", masterNodePlugin.masternodeSync.GetSyncStatusShort()));
-        objStatus.push_back(Pair("AssetStartTime", masterNodePlugin.masternodeSync.GetAssetStartTime()));
-        objStatus.push_back(Pair("Attempt", masterNodePlugin.masternodeSync.GetAttempt()));
-        objStatus.push_back(Pair("IsBlockchainSynced", masterNodePlugin.masternodeSync.IsBlockchainSynced()));
-        objStatus.push_back(Pair("IsMasternodeListSynced", masterNodePlugin.masternodeSync.IsMasternodeListSynced()));
-        objStatus.push_back(Pair("IsWinnersListSynced", masterNodePlugin.masternodeSync.IsWinnersListSynced()));
-        objStatus.push_back(Pair("IsSynced", masterNodePlugin.masternodeSync.IsSynced()));
-        objStatus.push_back(Pair("IsFailed", masterNodePlugin.masternodeSync.IsFailed()));
+        objStatus.push_back(Pair("AssetID", masterNodeCtrl.masternodeSync.GetAssetID()));
+        objStatus.push_back(Pair("AssetName", masterNodeCtrl.masternodeSync.GetSyncStatusShort()));
+        objStatus.push_back(Pair("AssetStartTime", masterNodeCtrl.masternodeSync.GetAssetStartTime()));
+        objStatus.push_back(Pair("Attempt", masterNodeCtrl.masternodeSync.GetAttempt()));
+        objStatus.push_back(Pair("IsBlockchainSynced", masterNodeCtrl.masternodeSync.IsBlockchainSynced()));
+        objStatus.push_back(Pair("IsMasternodeListSynced", masterNodeCtrl.masternodeSync.IsMasternodeListSynced()));
+        objStatus.push_back(Pair("IsWinnersListSynced", masterNodeCtrl.masternodeSync.IsWinnersListSynced()));
+        objStatus.push_back(Pair("IsSynced", masterNodeCtrl.masternodeSync.IsSynced()));
+        objStatus.push_back(Pair("IsFailed", masterNodeCtrl.masternodeSync.IsFailed()));
         return objStatus;
     }
 
     if(strMode == "next")
     {
-        masterNodePlugin.masternodeSync.SwitchToNextAsset(masterNodePlugin.connectionManager);
-        return "sync updated to " + masterNodePlugin.masternodeSync.GetSyncStatusShort();
+        masterNodeCtrl.masternodeSync.SwitchToNextAsset();
+        return "sync updated to " + masterNodeCtrl.masternodeSync.GetSyncStatusShort();
     }
 
     if(strMode == "reset")
     {
-        masterNodePlugin.masternodeSync.Reset();
-        masterNodePlugin.masternodeSync.SwitchToNextAsset(masterNodePlugin.connectionManager);
+        masterNodeCtrl.masternodeSync.Reset();
+        masterNodeCtrl.masternodeSync.SwitchToNextAsset();
         return "success";
     }
     return "failure";

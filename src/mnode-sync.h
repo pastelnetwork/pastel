@@ -10,8 +10,6 @@
 #include "net.h"
 #include "univalue.h"
 
-class CConnman;
-
 //
 // CMasternodeSync : Sync masternode assets in stages
 //
@@ -51,7 +49,7 @@ private:
     int64_t nTimeLastFailure;
 
     void Fail();
-    void ClearFulfilledRequests(CConnman& connman);
+    void ClearFulfilledRequests();
 
     void SetSyncParameters();
 
@@ -76,14 +74,14 @@ public:
     std::string GetSyncStatus();
 
     void Reset();
-    void SwitchToNextAsset(CConnman& connman);
+    void SwitchToNextAsset();
 
     void ProcessMessage(CNode* pfrom, std::string& strCommand, CDataStream& vRecv);
-    void ProcessTick(CConnman& connman);
+    void ProcessTick();
 
     void AcceptedBlockHeader(const CBlockIndex *pindexNew);
-    void NotifyHeaderTip(const CBlockIndex *pindexNew, bool fInitialDownload, CConnman& connman);
-    void UpdatedBlockTip(const CBlockIndex *pindexNew, bool fInitialDownload, CConnman& connman);
+    void NotifyHeaderTip(const CBlockIndex *pindexNew, bool fInitialDownload);
+    void UpdatedBlockTip(const CBlockIndex *pindexNew, bool fInitialDownload);
 };
 
 #endif

@@ -2,18 +2,18 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#ifndef MASTERNODEPLUGIN_H
-#define MASTERNODEPLUGIN_H
+#ifndef MASTERNODECTRL_H
+#define MASTERNODECTRL_H
 
 #include <string>
 
 #include "coins.h"
+#include "nodehelper.h"
 
-#include "mnode-connman.h"
 #include "mnode-config.h"
 #include "mnode-manager.h"
 #include "mnode-sync.h"
-#include "mnode-netfulfilledman.h"
+#include "mnode-requesttracker.h"
 #include "mnode-active.h"
 // #include "mnode-payments.h"
 
@@ -24,6 +24,7 @@
 
 #include <boost/thread.hpp>
 
+//TEMP-->
 class CMasternodePayee
 {
 public:
@@ -52,13 +53,14 @@ public:
 
     bool HasPayeeWithVotes(const CScript& payeeIn, int nVotesReq) {return true;}
     bool IsScheduled(CMasternode& mn, int nNotBlockHeight) {return true;}
-    void RequestLowDataPaymentBlocks(CNode* pnode, CConnman& connman) {}
+    void RequestLowDataPaymentBlocks(CNode* pnode) {}
     bool HasVerifiedPaymentVote(uint256 hashIn) {return true;}
     int GetStorageLimit() {return 0;}
     bool IsEnoughData() {return true;}
 };
+//<--TEMP
 
-class CMasterNodePlugin
+class CMasterNodeController
 {
 private:
     void SetParameters();
@@ -79,14 +81,9 @@ public:
     CMasternodePayments masternodePayments;
 
     // Keep track of what node has/was asked for and when
-    CNetFulfilledRequestManager netFulfilledManager;
-
-    //Connection Manger - wrapper around network operations
-    CConnman connectionManager;
+    CMasternodeRequestTracker requestTracker;
 
     bool fMasterNode;
-    std::string strNetworkName;
-    CBaseChainParams::Network network;
 
 public:
     int MasternodeProtocolVersion;
@@ -101,7 +98,7 @@ public:
 
     static CCriticalSection cs_mapMasternodeBlocks;
 
-    CMasterNodePlugin() : 
+    CMasterNodeController() : 
         semMasternodeOutbound(NULL),
         fMasterNode(false)
     {
@@ -127,10 +124,6 @@ public:
     bool AlreadyHave(const CInv& inv);
     bool ProcessGetData(CNode* pfrom, const CInv& inv);
 
-    inline bool IsMainNet() {return network == CBaseChainParams::MAIN;}
-    inline bool IsTestNet() {return network == CBaseChainParams::TESTNET;}
-    inline bool IsRegTest() {return network == CBaseChainParams::REGTEST;}
-
     CAmount GetMasternodePayment(int nHeight, CAmount blockValue);
 
     static bool GetBlockHash(uint256& hashRet, int nBlockHeight);
@@ -149,31 +142,6 @@ public:
     void ThreadMnbRequestConnections();
 };
 
-class InsecureRand
-{
-private:
-    uint32_t nRz;
-    uint32_t nRw;
-    bool fDeterministic;
-
-public:
-    InsecureRand(bool _fDeterministic = false);
-
-   /**
-    * MWC RNG of George Marsaglia
-    * This is intended to be fast. It has a period of 2^59.3, though the
-    * least significant 16 bits only have a period of about 2^30.1.
-    *
-    * @return random value < nMax
-    */
-    int64_t operator()(int64_t nMax)
-    {
-        nRz = 36969 * (nRz & 65535) + (nRz >> 16);
-        nRw = 18000 * (nRw & 65535) + (nRw >> 16);
-        return ((nRw << 16) + nRz) % nMax;
-    }
-};
-
-extern CMasterNodePlugin masterNodePlugin;
+extern CMasterNodeController masterNodeCtrl;
 
 #endif

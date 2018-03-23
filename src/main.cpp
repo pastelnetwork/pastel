@@ -39,9 +39,9 @@
 #include <boost/thread.hpp>
 #include <boost/static_assert.hpp>
 
-//ANIM-->
-#include "mnode-plugin.h"
-//<--ANIM
+//MasterNode
+#include "mnode-controller.h"
+
 
 using namespace std;
 
@@ -4193,9 +4193,9 @@ bool static AlreadyHave(const CInv& inv) EXCLUSIVE_LOCKS_REQUIRED(cs_main)
     }
     // Don't know what it is, just say we already got one
 
-//ANIM-->
-    return masterNodePlugin.AlreadyHave(inv);
-//<--ANIM
+    //MasterNode
+    return masterNodeCtrl.AlreadyHave(inv);
+
 }
 
 void static ProcessGetData(CNode* pfrom)
@@ -4305,11 +4305,10 @@ void static ProcessGetData(CNode* pfrom)
                     }
                 }
 
-//ANIM-->
-               if (!pushed) {
-                   pushed = masterNodePlugin.ProcessGetData(pfrom, inv);
-               }
-//<--ANIM
+                //MasterNode
+                if (!pushed) {
+                    pushed = masterNodeCtrl.ProcessGetData(pfrom, inv);
+                }
 
                 if (!pushed) {
                     vNotFound.push_back(inv);
@@ -5175,9 +5174,8 @@ bool static ProcessMessage(CNode* pfrom, string strCommand, CDataStream& vRecv, 
     }
 
     else {
-//ANIM-->
-        if (!masterNodePlugin.ProcessMessage(pfrom, strCommand, vRecv))
-//<--ANIM
+        //MasterNode
+        if (!masterNodeCtrl.ProcessMessage(pfrom, strCommand, vRecv))
         {
             // Ignore unknown commands for extensibility
             LogPrint("net", "Unknown command \"%s\" from peer=%d\n", SanitizeString(strCommand), pfrom->id);

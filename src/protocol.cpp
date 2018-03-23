@@ -37,14 +37,14 @@ static const char* ppszTypeName[] =
     "block",
     "filtered block",
 
-//ANIM-->
+    //MasterNode
     NetMsgType::MASTERNODEPAYMENTVOTE,
     NetMsgType::MASTERNODEPAYMENTBLOCK,
     NetMsgType::MNANNOUNCE,
     NetMsgType::MNPING,
     NetMsgType::DSTX,
     NetMsgType::MNVERIFY,
-//<--ANIM
+
 };
 
 CMessageHeader::CMessageHeader(const MessageStartChars& pchMessageStartIn)

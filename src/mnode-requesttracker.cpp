@@ -5,16 +5,16 @@
 #include "main.h"
 #include "util.h"
 
-#include "mnode-plugin.h"
-#include "mnode-netfulfilledman.h"
+#include "mnode-controller.h"
+#include "mnode-requesttracker.h"
 
-void CNetFulfilledRequestManager::AddFulfilledRequest(CAddress addr, std::string strRequest)
+void CMasternodeRequestTracker::AddFulfilledRequest(CAddress addr, std::string strRequest)
 {
     LOCK(cs_mapFulfilledRequests);
-    mapFulfilledRequests[addr][strRequest] = GetTime() + masterNodePlugin.nFulfilledRequestExpireTime;
+    mapFulfilledRequests[addr][strRequest] = GetTime() + masterNodeCtrl.nFulfilledRequestExpireTime;
 }
 
-bool CNetFulfilledRequestManager::HasFulfilledRequest(CAddress addr, std::string strRequest)
+bool CMasternodeRequestTracker::HasFulfilledRequest(CAddress addr, std::string strRequest)
 {
     LOCK(cs_mapFulfilledRequests);
     fulfilledreqmap_t::iterator it = mapFulfilledRequests.find(addr);
@@ -24,7 +24,7 @@ bool CNetFulfilledRequestManager::HasFulfilledRequest(CAddress addr, std::string
             it->second[strRequest] > GetTime();
 }
 
-void CNetFulfilledRequestManager::RemoveFulfilledRequest(CAddress addr, std::string strRequest)
+void CMasternodeRequestTracker::RemoveFulfilledRequest(CAddress addr, std::string strRequest)
 {
     LOCK(cs_mapFulfilledRequests);
     fulfilledreqmap_t::iterator it = mapFulfilledRequests.find(addr);
@@ -34,7 +34,7 @@ void CNetFulfilledRequestManager::RemoveFulfilledRequest(CAddress addr, std::str
     }
 }
 
-void CNetFulfilledRequestManager::CheckAndRemove()
+void CMasternodeRequestTracker::CheckAndErase()
 {
     LOCK(cs_mapFulfilledRequests);
 
@@ -58,13 +58,13 @@ void CNetFulfilledRequestManager::CheckAndRemove()
     }
 }
 
-void CNetFulfilledRequestManager::Clear()
+void CMasternodeRequestTracker::Clear()
 {
     LOCK(cs_mapFulfilledRequests);
     mapFulfilledRequests.clear();
 }
 
-std::string CNetFulfilledRequestManager::ToString() const
+std::string CMasternodeRequestTracker::ToString() const
 {
     std::ostringstream info;
     info << "Nodes with fulfilled requests: " << (int)mapFulfilledRequests.size();

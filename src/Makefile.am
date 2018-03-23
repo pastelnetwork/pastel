@@ -108,27 +108,25 @@ LIBZCASH_H = \
   zcash/Zcash.h
 
 MNODE_CPP = \
-  mnode-connman.cpp \
   mnode-config.cpp \
   mnode-active.cpp \
   mnode-manager.cpp \
   mnode-masternode.cpp \
   mnode-msgsigner.cpp \
-  mnode-netfulfilledman.cpp \
+  mnode-requesttracker.cpp \
   mnode-sync.cpp \
   mnode-rpc.cpp \
-  mnode-plugin.cpp
+  mnode-controller.cpp
 
 MNODE_H = \
   mnode-active.h \
   mnode-config.h \
-  mnode-connman.h \
   mnode-db.h \
   mnode-manager.h \
   mnode-masternode.h \
   mnode-msgsigner.h \
-  mnode-netfulfilledman.h \
-  mnode-plugin.h \
+  mnode-requesttracker.h \
+  mnode-controller.h \
   mnode-sync.h
 
 .PHONY: FORCE collate-libsnark check-symbols check-security
@@ -182,6 +180,7 @@ BITCOIN_CORE_H = \
   miner.h \
   mruset.h \
   net.h \
+  nodehelper.h \
   netbase.h \
   noui.h \
   paymentdisclosure.h \

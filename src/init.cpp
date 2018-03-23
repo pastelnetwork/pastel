@@ -63,10 +63,9 @@
 #include "amqp/amqpnotificationinterface.h"
 #endif
 
-//ANIM-->
-#include "mnode-plugin.h"
-CMasterNodePlugin masterNodePlugin;
-//<--ANIM
+//MasterNode
+#include "mnode-controller.h"
+CMasterNodeController masterNodeCtrl;
 
 using namespace std;
 
@@ -242,7 +241,7 @@ void Shutdown()
         pwalletMain->Flush(true);
 #endif
 
-    masterNodePlugin.ShutdownMasterNode();
+    masterNodeCtrl.ShutdownMasterNode();
 
 #if ENABLE_ZMQ
     if (pzmqNotificationInterface) {
@@ -1656,18 +1655,17 @@ bool AppInit2(boost::thread_group& threadGroup, CScheduler& scheduler)
             MilliSleep(10);
     }
 
-//ANIM-->
-    // ********************************************************* Step 10.5: start masternode
+    // ********************************************************* Step 11: start masternode
 #ifdef ENABLE_WALLET
-    if (!masterNodePlugin.EnableMasterNode(strErrors, threadGroup, pwalletMain)) {
+    if (!masterNodeCtrl.EnableMasterNode(strErrors, threadGroup, pwalletMain)) {
 #else
-    if (!masterNodePlugin.EnableMasterNode(strErrors, threadGroup)) {
+    if (!masterNodeCtrl.EnableMasterNode(strErrors, threadGroup)) {
 #endif
        return InitError(strErrors.str());
    }
-//<--ANIM
 
-    // ********************************************************* Step 11: start node
+
+    // ********************************************************* Step 12: start node
 
     if (!CheckDiskSpace())
         return false;
@@ -1705,7 +1703,7 @@ bool AppInit2(boost::thread_group& threadGroup, CScheduler& scheduler)
  #endif
 #endif
 
-    // ********************************************************* Step 11: finished
+    // ********************************************************* Step 13: finished
 
     SetRPCWarmupFinished();
     uiInterface.InitMessage(_("Done loading"));

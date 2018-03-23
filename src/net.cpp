@@ -44,9 +44,9 @@
 #endif
 #endif
 
-//ANIM-->
-#include "mnode-plugin.h"
-//<--ANIM
+//MasterNode
+#include "mnode-controller.h"
+
 
 using namespace std;
 
@@ -355,31 +355,28 @@ CNode* FindNode(const CService& addr)
     return NULL;
 }
 
-//ANIM-->
-// CNode* ConnectNode(CAddress addrConnect, const char *pszDest)
 CNode* ConnectNode(CAddress addrConnect, const char *pszDest /*= NULL*/, bool fConnectToMasternode /*= false*/)
-//<--ANIM
+
 {
     if (pszDest == NULL) {
-//ANIM-->
         // we clean masternode connections in CMasternodeMan::ProcessMasternodeConnections()
         // so should be safe to skip this and connect to local Hot MN on CActiveMasternode::ManageState()
         if (IsLocal(addrConnect) && !fConnectToMasternode)
             return NULL;
-//<--ANIM
+
 
         // Look for an existing connection
         CNode* pnode = FindNode((CService)addrConnect);
         if (pnode)
         {
-//ANIM-->
+            //MasterNode
             // we have existing connection to this node but it was not a connection to masternode,
             // change flag and add reference so that we can correctly clear it later
             if(fConnectToMasternode && !pnode->fMasternode) {
                 pnode->AddRef();
                 pnode->fMasternode = true;
             }
-//<--ANIM
+
             return pnode;
         }
     }
@@ -410,6 +407,7 @@ CNode* ConnectNode(CAddress addrConnect, const char *pszDest /*= NULL*/, bool fC
             CNode* pnode = FindNode((CService)addrConnect);
             if (pnode)
             {
+                //MasterNode
                 // we have existing connection to this node but it was not a connection to masternode,
                 // change flag and add reference so that we can correctly clear it later
                 if(fConnectToMasternode && !pnode->fMasternode) {
@@ -430,11 +428,11 @@ CNode* ConnectNode(CAddress addrConnect, const char *pszDest /*= NULL*/, bool fC
         CNode* pnode = new CNode(hSocket, addrConnect, pszDest ? pszDest : "", false);
         pnode->AddRef();
 
-//ANIM-->
+        //MasterNode
         if(fConnectToMasternode) {
             pnode->fMasternode = true;
         }
-//<--ANIM
+
         pnode->nTimeConnected = GetTime();
 
         {
@@ -966,14 +964,14 @@ static void AcceptConnection(const ListenSocket& hListenSocket) {
         }
     }
 
-//ANIM-->
+    //MasterNode
     // // don't accept incoming connections until fully synced
-    if(masterNodePlugin.IsMasterNode() && !masterNodePlugin.IsSynced()) {
+    if(masterNodeCtrl.IsMasterNode() && !masterNodeCtrl.IsSynced()) {
         LogPrintf("AcceptConnection -- masternode is not synced yet, skipping inbound connection attempt\n");
         CloseSocket(hSocket);
         return;
     }
-//<--ANIM
+
 
     // According to the internet TCP_NODELAY is not carried into accepted sockets
     // on all platforms.  Set it again here just to be sure.
@@ -1013,10 +1011,8 @@ void ThreadSocketHandler()
                 if (pnode->fDisconnect ||
                     (pnode->GetRefCount() <= 0 && pnode->vRecvMsg.empty() && pnode->nSendSize == 0 && pnode->ssSend.empty()))
                 {
-//ANIM-->
                     LogPrintf("ThreadSocketHandler -- removing node: peer=%d addr=%s nRefCount=%d fNetworkNode=%d fInbound=%d fMasternode=%d\n",
                               pnode->id, pnode->addr.ToString(), pnode->GetRefCount(), pnode->fNetworkNode, pnode->fInbound, pnode->fMasternode);
-//<--ANIM
                     
                     // remove from vNodes
                     vNodes.erase(remove(vNodes.begin(), vNodes.end(), pnode), vNodes.end());
@@ -1030,10 +1026,10 @@ void ThreadSocketHandler()
                     // hold in disconnected pool until all refs are released
                     if (pnode->fNetworkNode || pnode->fInbound)
                         pnode->Release();
-//ANIM-->
+
                     if (pnode->fMasternode)
                         pnode->Release();
-//<--ANIM
+
                     vNodesDisconnected.push_back(pnode);
                 }
             }
@@ -1410,10 +1406,8 @@ void ThreadOpenConnections()
         {
             LOCK(cs_vNodes);
             BOOST_FOREACH(CNode* pnode, vNodes) {
-//ANIM-->
-//                if (!pnode->fInbound) {
                 if (!pnode->fInbound && !pnode->fMasternode) {
-//<--ANIM
+
                     setConnected.insert(pnode->addr.GetGroup());
                     nOutbound++;
                 }
@@ -1827,9 +1821,9 @@ void StartNode(boost::thread_group& threadGroup, CScheduler& scheduler)
     // Process messages
     threadGroup.create_thread(boost::bind(&TraceThread<void (*)()>, "msghand", &ThreadMessageHandler));
 
-//ANIM-->
-    masterNodePlugin.StartMasterNode(threadGroup);
-//<--ANIM
+    //MasterNode
+    masterNodeCtrl.StartMasterNode(threadGroup);
+
 
     // Dump network addresses
     scheduler.scheduleEvery(&DumpAddresses, DUMP_ADDRESSES_INTERVAL);
@@ -1842,9 +1836,8 @@ bool StopNode()
         for (int i=0; i<MAX_OUTBOUND_CONNECTIONS; i++)
             semOutbound->post();
 
-//ANIM-->
-    masterNodePlugin.StopMasterNode();
-//<--ANIM
+    //MasterNode
+    masterNodeCtrl.StopMasterNode();
 
     if (fAddressesInitialized)
     {
@@ -2138,9 +2131,8 @@ CNode::CNode(SOCKET hSocketIn, const CAddress& addrIn, const std::string& addrNa
     nPingUsecStart = 0;
     nPingUsecTime = 0;
     fPingQueued = false;
-//ANIM-->
     fMasternode = false;
-//<--ANIM
+
     nMinPingUsecTime = std::numeric_limits<int64_t>::max();
 
     {

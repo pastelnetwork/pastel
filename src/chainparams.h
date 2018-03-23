@@ -71,13 +71,18 @@ public:
     /** In the future use NetworkIDString() for RPC fields */
     bool TestnetToBeDeprecatedFieldRPC() const { return fTestnetToBeDeprecatedFieldRPC; }
     /** Return the BIP70 network string (main, test or regtest) */
-    std::string NetworkIDString() const { return strNetworkID; }
+    std::string NetworkIDString() const { return strNetworkID; }    
     const std::vector<CDNSSeedData>& DNSSeeds() const { return vSeeds; }
     const std::vector<unsigned char>& Base58Prefix(Base58Type type) const { return base58Prefixes[type]; }
     const std::vector<SeedSpec6>& FixedSeeds() const { return vFixedSeeds; }
     const Checkpoints::CCheckpointData& Checkpoints() const { return checkpointData; }
     /** Enforce coinbase consensus rule in regtest mode */
     void SetRegTestCoinbaseMustBeProtected() { consensus.fCoinbaseMustBeProtected = true; }
+
+    bool IsMainNet() const {return network == CBaseChainParams::MAIN;}
+    bool IsTestNet() const {return network == CBaseChainParams::TESTNET;}
+    bool IsRegTest() const {return network == CBaseChainParams::REGTEST;}
+
 protected:
     CChainParams() {}
 
@@ -93,6 +98,7 @@ protected:
     std::vector<CDNSSeedData> vSeeds;
     std::vector<unsigned char> base58Prefixes[MAX_BASE58_TYPES];
     std::string strNetworkID;
+    CBaseChainParams::Network network;
     std::string strCurrencyUnits;
     CBlock genesis;
     std::vector<SeedSpec6> vFixedSeeds;

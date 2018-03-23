@@ -134,6 +134,7 @@ class MasterNodeMainTest (BitcoinTestFramework):
         assert_equal(self.nodes[1].masternode("list")[mnId], "ENABLED")
         assert_equal(self.nodes[2].masternode("list")[mnId], "ENABLED")
         assert_equal(self.nodes[3].masternode("list")[mnId], "ENABLED")
+        print("All set...")
 
 def create_masternode_conf(n, dirname, txid, vin, privKey, mnPort):
     datadir = os.path.join(dirname, "node"+str(n))

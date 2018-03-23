@@ -181,9 +181,7 @@ public:
     }
 
     std::string ToString() const;
-//ANIM-->
     std::string ToStringShort() const;
-//<--ANIM
 };
 
 /** An input of a transaction.  It contains the location of the previous
@@ -231,13 +229,11 @@ public:
         return !(a == b);
     }
 
-//ANIM-->
     friend bool operator<(const CTxIn& a, const CTxIn& b)
     {
         return a.prevout<b.prevout;
     }
-//<--ANIM
-    
+
     std::string ToString() const;
 };
 

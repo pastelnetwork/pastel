@@ -2,15 +2,15 @@
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#ifndef NETFULFILLEDMAN_H
-#define NETFULFILLEDMAN_H
+#ifndef MASTERNODEREQUESTTRACKER_H
+#define MASTERNODEREQUESTTRACKER_H
 
 #include "protocol.h"
 
 
 // Fulfilled requests are used to prevent nodes from asking for the same data on sync
 // and from being banned for doing so too often.
-class CNetFulfilledRequestManager
+class CMasternodeRequestTracker
 {
 private:
     typedef std::map<std::string, int64_t> fulfilledreqmapentry_t;
@@ -21,7 +21,7 @@ private:
     CCriticalSection cs_mapFulfilledRequests;
 
 public:
-    CNetFulfilledRequestManager() {}
+    CMasternodeRequestTracker() {}
 
     ADD_SERIALIZE_METHODS;
 
@@ -35,7 +35,7 @@ public:
     bool HasFulfilledRequest(CAddress addr, std::string strRequest);
     void RemoveFulfilledRequest(CAddress addr, std::string strRequest);
 
-    void CheckAndRemove();
+    void CheckAndErase();
     void Clear();
 
     std::string ToString() const;

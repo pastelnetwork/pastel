@@ -174,6 +174,7 @@ class CMainParams : public CChainParams {
 public:
     CMainParams() {
         strNetworkID = "main";
+        network = CBaseChainParams::MAIN;
         strCurrencyUnits = "ANI";
         consensus.fCoinbaseMustBeProtected = false;
         consensus.nSubsidySlowStartInterval = 20000;
@@ -256,6 +257,7 @@ class CTestNetParams : public CChainParams {
 public:
     CTestNetParams() {
         strNetworkID = "test";
+        network = CBaseChainParams::TESTNET;
         strCurrencyUnits = "INA";
         consensus.fCoinbaseMustBeProtected = false;
         consensus.nSubsidySlowStartInterval = 20000;
@@ -334,6 +336,7 @@ class CRegTestParams : public CChainParams {
 public:
     CRegTestParams() {
         strNetworkID = "regtest";
+        network = CBaseChainParams::REGTEST;
         strCurrencyUnits = "REG";
         consensus.fCoinbaseMustBeProtected = false;
         consensus.nSubsidySlowStartInterval = 0;

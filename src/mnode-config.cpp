@@ -2,7 +2,7 @@
 #include <boost/filesystem/fstream.hpp>
 
 #include "mnode-config.h"
-#include "mnode-plugin.h"
+#include "mnode-controller.h"
 
 #include "netbase.h"
 #include "chainparams.h"
@@ -15,7 +15,7 @@ void CMasternodeConfig::add(std::string alias, std::string ip, std::string privK
 
 bool CMasternodeConfig::read(std::string& strErr) {
     int linenumber = 1;
-    boost::filesystem::path pathMasternodeConfigFile = masterNodePlugin.GetMasternodeConfigFile();
+    boost::filesystem::path pathMasternodeConfigFile = masterNodeCtrl.GetMasternodeConfigFile();
     boost::filesystem::ifstream streamConfig(pathMasternodeConfigFile);
 
     if (!streamConfig.good()) {
@@ -64,7 +64,7 @@ bool CMasternodeConfig::read(std::string& strErr) {
             return false;
         }
         int mainnetDefaultPort = Params(CBaseChainParams::MAIN).GetDefaultPort();
-        if(masterNodePlugin.IsMainNet()) {
+        if(Params().IsMainNet()) {
             if(port != mainnetDefaultPort) {
                 strErr = _("Invalid port detected in masternode.conf") + "\n" +
                         strprintf(_("Port: %d"), port) + "\n" +

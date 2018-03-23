@@ -12,11 +12,11 @@
 #include "protocol.h"
 #include "net.h"
 
-class CConnman 
+class CNodeHelper 
 {
 public:
 /***** vNodes vector operations *****/
-    std::vector<CNode*> CopyNodeVector()
+    static std::vector<CNode*> CopyNodeVector()
     {
         std::vector<CNode*> vecNodesCopy;
         LOCK(cs_vNodes);
@@ -28,7 +28,7 @@ public:
         return vecNodesCopy;
     }
 
-    void ReleaseNodeVector(const std::vector<CNode*>& vecNodes)
+    static void ReleaseNodeVector(const std::vector<CNode*>& vecNodes)
     {
         LOCK(cs_vNodes);
         for(size_t i = 0; i < vecNodes.size(); ++i) {
@@ -39,7 +39,7 @@ public:
 
 /***** vNodes iterators *****/
     template<typename Condition, typename Callable>
-    bool ForEachNodeContinueIf(const Condition& cond, Callable&& func)
+    static bool ForEachNodeContinueIf(const Condition& cond, Callable&& func)
     {
         LOCK(cs_vNodes);
         for (auto&& node : vNodes)
@@ -50,31 +50,13 @@ public:
     };
 
     template<typename Callable>
-    bool ForEachNodeContinueIf(Callable&& func)
+    static bool ForEachNodeContinueIf(Callable&& func)
     {
         return ForEachNodeContinueIf(FullyConnectedOnly, func);
     }
 
     template<typename Condition, typename Callable>
-    bool ForEachNodeContinueIf(const Condition& cond, Callable&& func) const
-    {
-        LOCK(cs_vNodes);
-        for (const auto& node : vNodes)
-            if (cond(node))
-                if(!func(node))
-                    return false;
-        return true;
-    };
-
-    template<typename Callable>
-    bool ForEachNodeContinueIf(Callable&& func) const
-    {
-        return ForEachNodeContinueIf(FullyConnectedOnly, func);
-    }
-
-
-    template<typename Condition, typename Callable>
-    void ForEachNode(const Condition& cond, Callable&& func)
+    static void ForEachNode(const Condition& cond, Callable&& func)
     {
         LOCK(cs_vNodes);
         for (auto&& node : vNodes) {
@@ -84,29 +66,13 @@ public:
     };
 
     template<typename Callable>
-    void ForEachNode(Callable&& func)
-    {
-        ForEachNode(FullyConnectedOnly, func);
-    }
-
-    template<typename Condition, typename Callable>
-    void ForEachNode(const Condition& cond, Callable&& func) const
-    {
-        LOCK(cs_vNodes);
-        for (auto&& node : vNodes) {
-            if (cond(node))
-                func(node);
-        }
-    };
-
-    template<typename Callable>
-    void ForEachNode(Callable&& func) const
+    static void ForEachNode(Callable&& func)
     {
         ForEachNode(FullyConnectedOnly, func);
     }
 
     template<typename Condition, typename Callable, typename CallableAfter>
-    void ForEachNodeThen(const Condition& cond, Callable&& pre, CallableAfter&& post)
+    static void ForEachNodeThen(const Condition& cond, Callable&& pre, CallableAfter&& post)
     {
         LOCK(cs_vNodes);
         for (auto&& node : vNodes) {
@@ -117,30 +83,13 @@ public:
     };
 
     template<typename Callable, typename CallableAfter>
-    void ForEachNodeThen(Callable&& pre, CallableAfter&& post)
-    {
-        ForEachNodeThen(FullyConnectedOnly, pre, post);
-    }
-
-    template<typename Condition, typename Callable, typename CallableAfter>
-    void ForEachNodeThen(const Condition& cond, Callable&& pre, CallableAfter&& post) const
-    {
-        LOCK(cs_vNodes);
-        for (auto&& node : vNodes) {
-            if (cond(node))
-                pre(node);
-        }
-        post();
-    };
-
-    template<typename Callable, typename CallableAfter>
-    void ForEachNodeThen(Callable&& pre, CallableAfter&& post) const
+    static void ForEachNodeThen(Callable&& pre, CallableAfter&& post)
     {
         ForEachNodeThen(FullyConnectedOnly, pre, post);
     }
 
 /***** Push message helpers *****/
-    void RelayInv(CInv &inv, const int minProtoVersion = MIN_PEER_PROTO_VERSION) {
+    static void RelayInv(CInv &inv, const int minProtoVersion = MIN_PEER_PROTO_VERSION) {
         LOCK(cs_vNodes);
         BOOST_FOREACH(CNode* pnode, vNodes)
             if(pnode->nVersion >= minProtoVersion)
