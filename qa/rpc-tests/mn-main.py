@@ -41,8 +41,8 @@ class MasterNodeMainTest (BitcoinTestFramework):
         assert_equal(self.nodes[1].getbalance(), self._coin*100)    # node_1 has 100 blocks over maturity
 
         print("Sending 1000 coins to node 2...")
-        collateraladdr = self.nodes[2].getnewaddress();
-        collateraltxid = self.nodes[1].sendtoaddress(collateraladdr, 1000, "", "", False);
+        collateraladdr = self.nodes[2].getnewaddress()
+        collateraltxid = self.nodes[1].sendtoaddress(collateraladdr, 1000, "", "", False)
         self.sync_all()
         self.nodes[1].generate(1)
         self.sync_all()
@@ -76,7 +76,7 @@ class MasterNodeMainTest (BitcoinTestFramework):
         assert_equal(self.nodes[2].mnsync("status")["IsFailed"], False)
 
         print("Enabling MN...")
-        res = self.nodes[2].masternode("start-alias", "mn1");
+        res = self.nodes[2].masternode("start-alias", "mn1")
         print(res)
         assert_equal(res["alias"], "mn1")
         assert_equal(res["result"], "successful")
@@ -144,7 +144,7 @@ def create_masternode_conf(n, dirname, txid, vin, privKey, mnPort):
     if not os.path.isdir(regtestdir):
         os.makedirs(regtestdir)    
     with open(os.path.join(regtestdir, "masternode.conf"), 'w') as f:
-        f.write("mn1 127.0.0.1:" + str(mnPort) + " " + str(privKey) + " " + str(txid) + " " + str(vin));
+        f.write("mn1 127.0.0.1:" + str(mnPort) + " " + str(privKey) + " " + str(txid) + " " + str(vin))
     return datadir
 
 if __name__ == '__main__':
