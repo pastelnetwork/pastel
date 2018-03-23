@@ -17,9 +17,12 @@ namespace services {
             DR_Success, DR_InvalidJSON, DR_InvalidFormatJSON
         };
 
-        virtual SerializeResult Serialize(std::vector<byte> &dstBuffer, const std::shared_ptr<ITask> &srcTask) = 0;
+        virtual SerializeResult
+        Serialize(std::vector<byte>& dstBuffer, const std::shared_ptr<ITask>& srcTask) const = 0;
 
-        virtual DeserializeResult Deserialize(ITaskResult &dstTaskResult, const std::vector<byte> &srcBuffer) = 0;
+        virtual DeserializeResult Deserialize(ITaskResult& dstTaskResult, const std::vector<byte>& srcBuffer) const = 0;
+
+        virtual IProtocol* Clone() const = 0;
     };
 }
 

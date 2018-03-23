@@ -114,3 +114,8 @@ libzcashconsensus.pc
 
 contrib/debian/files
 contrib/debian/substvars
+
+#conv nn
+cnn_architectures/datsets/*
+cnn_architectures/pretrained_weights/*
+cnn_architectures/.idea
