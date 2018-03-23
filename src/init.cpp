@@ -63,6 +63,11 @@
 #include "amqp/amqpnotificationinterface.h"
 #endif
 
+//ANIM-->
+#include "mnode-plugin.h"
+CMasterNodePlugin masterNodePlugin;
+//<--ANIM
+
 using namespace std;
 
 extern void ThreadSendAlert();
@@ -236,6 +241,8 @@ void Shutdown()
     if (pwalletMain)
         pwalletMain->Flush(true);
 #endif
+
+    masterNodePlugin.ShutdownMasterNode();
 
 #if ENABLE_ZMQ
     if (pzmqNotificationInterface) {
@@ -1648,6 +1655,17 @@ bool AppInit2(boost::thread_group& threadGroup, CScheduler& scheduler)
         while (!fRequestShutdown && chainActive.Tip() == NULL)
             MilliSleep(10);
     }
+
+//ANIM-->
+    // ********************************************************* Step 10.5: start masternode
+#ifdef ENABLE_WALLET
+    if (!masterNodePlugin.EnableMasterNode(strErrors, threadGroup, pwalletMain)) {
+#else
+    if (!masterNodePlugin.EnableMasterNode(strErrors, threadGroup)) {
+#endif
+       return InitError(strErrors.str());
+   }
+//<--ANIM
 
     // ********************************************************* Step 11: start node
 

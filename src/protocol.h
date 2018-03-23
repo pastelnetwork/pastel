@@ -153,6 +153,28 @@ enum {
     // Nodes may always request a MSG_FILTERED_BLOCK in a getdata, however,
     // MSG_FILTERED_BLOCK should not appear in any invs except as a part of getdata.
     MSG_FILTERED_BLOCK,
+    
+//ANIM-->
+    MSG_MASTERNODE_PAYMENT_VOTE,
+    MSG_MASTERNODE_PAYMENT_BLOCK,
+    MSG_MASTERNODE_ANNOUNCE,
+    MSG_MASTERNODE_PING,
+    MSG_DSTX,
+    MSG_MASTERNODE_VERIFY
+//<--ANIM
+};
+
+namespace NetMsgType {
+extern const char *MASTERNODEPAYMENTVOTE;
+extern const char *MASTERNODEPAYMENTBLOCK;
+extern const char *MASTERNODEPAYMENTSYNC;
+extern const char *DSTX;
+
+extern const char *MNANNOUNCE;
+extern const char *MNPING;
+extern const char *MNVERIFY;
+extern const char *DSEG;
+extern const char *SYNCSTATUSCOUNT;
 };
 
 #endif // BITCOIN_PROTOCOL_H

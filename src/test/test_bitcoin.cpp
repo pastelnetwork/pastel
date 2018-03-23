@@ -27,6 +27,11 @@ CClientUIInterface uiInterface; // Declared but not defined in ui_interface.h
 CWallet* pwalletMain;
 ZCJoinSplit *pzcashParams;
 
+//ANIM-->
+#include "mnode-plugin.h"
+CMasterNodePlugin masterNodePlugin;
+//<--ANIM
+
 extern bool fPrintToConsole;
 extern void noui_connect();
 

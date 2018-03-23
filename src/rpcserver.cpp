@@ -337,6 +337,12 @@ static const CRPCCommand vRPCCommands[] =
     { "hidden",             "resendwallettransactions", &resendwallettransactions, true},
 #endif
 
+    /* Masternode */
+    { "mnode",               "masternode",             &masternode,             true  },
+    { "mnode",               "masternodelist",         &masternodelist,         true  },
+    { "mnode",               "masternodebroadcast",    &masternodebroadcast,    true  },
+    { "mnode",               "mnsync",                 &mnsync,                 true  },
+
 #ifdef ENABLE_WALLET
     /* Wallet */
     { "wallet",             "addmultisigaddress",     &addmultisigaddress,     true  },

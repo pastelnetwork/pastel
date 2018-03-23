@@ -39,10 +39,14 @@
 #include <boost/thread.hpp>
 #include <boost/static_assert.hpp>
 
+//ANIM-->
+#include "mnode-plugin.h"
+//<--ANIM
+
 using namespace std;
 
 #if defined(NDEBUG)
-# error "Zcash cannot be compiled without assertions."
+# error "AnimeCoin cannot be compiled without assertions."
 #endif
 
 /**
@@ -4188,7 +4192,10 @@ bool static AlreadyHave(const CInv& inv) EXCLUSIVE_LOCKS_REQUIRED(cs_main)
         return mapBlockIndex.count(inv.hash);
     }
     // Don't know what it is, just say we already got one
-    return true;
+
+//ANIM-->
+    return masterNodePlugin.AlreadyHave(inv);
+//<--ANIM
 }
 
 void static ProcessGetData(CNode* pfrom)
@@ -4297,6 +4304,13 @@ void static ProcessGetData(CNode* pfrom)
                         pushed = true;
                     }
                 }
+
+//ANIM-->
+               if (!pushed) {
+                   pushed = masterNodePlugin.ProcessGetData(pfrom, inv);
+               }
+//<--ANIM
+
                 if (!pushed) {
                     vNotFound.push_back(inv);
                 }
@@ -5161,8 +5175,13 @@ bool static ProcessMessage(CNode* pfrom, string strCommand, CDataStream& vRecv, 
     }
 
     else {
-        // Ignore unknown commands for extensibility
-        LogPrint("net", "Unknown command \"%s\" from peer=%d\n", SanitizeString(strCommand), pfrom->id);
+//ANIM-->
+        if (!masterNodePlugin.ProcessMessage(pfrom, strCommand, vRecv))
+//<--ANIM
+        {
+            // Ignore unknown commands for extensibility
+            LogPrint("net", "Unknown command \"%s\" from peer=%d\n", SanitizeString(strCommand), pfrom->id);
+        }
     }
 
 

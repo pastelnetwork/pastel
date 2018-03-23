@@ -2,11 +2,11 @@
 set -e -o pipefail
 
 CURDIR=$(cd $(dirname "$0"); pwd)
-# Get BUILDDIR and REAL_BITCOIND
+# Get BUILDDIR and REAL_ANIMECOIND
 . "${CURDIR}/tests-config.sh"
 
-export BITCOINCLI=${BUILDDIR}/qa/pull-tester/run-bitcoin-cli
-export BITCOIND=${REAL_BITCOIND}
+export ANIMECOINCLI=${BUILDDIR}/qa/pull-tester/run-bitcoin-cli
+export ANIMECOIND=${REAL_ANIMECOIND}
 
 #Run the tests
 
@@ -47,6 +47,7 @@ testScripts=(
     'getblocktemplate.py'             #Good
     'bip65-cltv-p2p.py'               #Good
     'bipdersig-p2p.py'                #Good
+    'mn-main.py'
 );
 testScriptsExt=(
     'getblocktemplate_longpoll.py'    #Good

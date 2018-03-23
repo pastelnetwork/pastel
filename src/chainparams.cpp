@@ -210,7 +210,7 @@ public:
 
         vFixedSeeds.clear();
         vSeeds.clear();
-        // vSeeds.push_back(CDNSSeedData("z.cash", "dnsseed.z.cash")); // ANIMECoin
+        // vSeeds.push_back(CDNSSeedData("z.cash", "dnsseed.z.cash"));
 
         // guarantees the first 2 characters, when base58 encoded, are "t1"
         base58Prefixes[PUBKEY_ADDRESS]     = {0x1C,0xB8};
@@ -288,7 +288,7 @@ public:
 
         vFixedSeeds.clear();
         vSeeds.clear();
-        // vSeeds.push_back(CDNSSeedData("z.cash", "dnsseed.testnet.z.cash")); // ANIMECoin
+        // vSeeds.push_back(CDNSSeedData("z.cash", "dnsseed.testnet.z.cash"));
 
         // guarantees the first 2 characters, when base58 encoded, are "tm"
         base58Prefixes[PUBKEY_ADDRESS]     = {0x1D,0x25};
