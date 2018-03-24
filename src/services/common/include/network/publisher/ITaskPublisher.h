@@ -17,7 +17,7 @@ namespace services {
             this->protocol = std::move(protocol);
         }
 
-        void StartService(ResponseCallback& onReceiveCallback) {
+        virtual void StartService(ResponseCallback& onReceiveCallback) {
             callback = onReceiveCallback;
         }
 

@@ -36,7 +36,7 @@ set(SOURCE_FILES
 include_directories(include)
 
 add_executable(common-exec ${SOURCE_FILES} main.cpp)
-add_library(common ${SOURCE_FILES})
+add_library(common ${SOURCE_FILES} include/network/publisher/BoostAsioTaskPublisher.h include/util/Exceptions.h)
 
 find_package(Boost 1.66.0)
 if (NOT Boost_FOUND)
