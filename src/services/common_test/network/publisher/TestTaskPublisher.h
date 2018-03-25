@@ -40,7 +40,7 @@ namespace services {
         }
 
     protected:
-        SendResult Send(const std::vector<byte>& buffer) const override {
+        SendResult Send(const std::vector<byte>& buffer) override {
             auto response = answers.find(buffer);
             if (response != answers.end()) {
                 auto val = response->second;

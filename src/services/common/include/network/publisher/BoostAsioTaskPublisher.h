@@ -15,7 +15,6 @@
 namespace services {
     class BoostAsioTaskPublisher
             : public ITaskPublisher, public boost::enable_shared_from_this<BoostAsioTaskPublisher> {
-//        using namespace boost::asio;
 
     public:
         typedef std::shared_ptr<boost::asio::ip::tcp::socket> socket_ptr;
@@ -40,9 +39,8 @@ namespace services {
         }
 
     protected:
-        SendResult Send(const std::vector<byte>& buffer) const override {
-            std::shared_ptr<boost::asio::ip::tcp::socket> sock(new boost::asio::ip::tcp::socket(ioService));
-//            auto sock = std::make_shared<boost::asio::ip::tcp::socket>(ioService);
+        SendResult Send(const std::vector<byte>& buffer) override {
+            auto sock = std::make_shared<boost::asio::ip::tcp::socket>(ioService);
             auto bufferCopy = std::make_shared<std::vector<byte>>(buffer);
             auto onConnect = [sock, bufferCopy](const boost::system::error_code& errorCode) {
                 if (errorCode)
