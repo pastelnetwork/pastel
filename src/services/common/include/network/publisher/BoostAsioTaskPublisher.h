@@ -13,13 +13,16 @@
 #include "ITaskPublisher.h"
 
 namespace services {
-    class BoostAsioTaskPublisher
-            : public ITaskPublisher, public boost::enable_shared_from_this<BoostAsioTaskPublisher> {
+    class BoostAsioTaskPublisher : public ITaskPublisher {
 
     public:
         typedef std::shared_ptr<boost::asio::ip::tcp::socket> socket_ptr;
 
         BoostAsioTaskPublisher(std::unique_ptr<IProtocol> protocol) : ITaskPublisher(std::move(protocol)) {}
+
+        SendResult Send(const std::shared_ptr<ITask>& task) {
+            return ITaskPublisher::Send(task);
+        }
 
         ITaskPublisher* Clone() const override {
             return new BoostAsioTaskPublisher(std::unique_ptr<IProtocol>(protocol->Clone()));
@@ -27,7 +30,17 @@ namespace services {
 
         void StartService(ResponseCallback& onReceiveCallback) override {
             ITaskPublisher::StartService(onReceiveCallback);
-            StartServer();
+            if (!serverThread.joinable()) {
+                serverThread = std::thread(&BoostAsioTaskPublisher::StartServer, this);
+            }
+        }
+
+        void StartService(ResponseCallback& onReceiveCallback, std::string ipAddress, unsigned short port) {
+            SetRemoteEndPoint(ipAddress, port);
+            ITaskPublisher::StartService(onReceiveCallback);
+            if (!serverThread.joinable()) {
+                serverThread = std::thread(&BoostAsioTaskPublisher::StartServer, this);
+            }
         }
 
         void SetRemoteEndPoint(std::string ipAddress, unsigned short port) {
@@ -36,6 +49,13 @@ namespace services {
 
         void SetListenPort(unsigned short port) {
             listenPort = port;
+        }
+
+        void StopServer() {
+            ioService.stop();
+            if (serverThread.joinable()) {
+                serverThread.join();
+            }
         }
 
     protected:
@@ -54,13 +74,8 @@ namespace services {
             sock->async_connect(remoteEndPoint, onConnect);
         }
 
-        void StopServer() {
-            ioService.stop();
-            throw NotImplementedException();
-        }
-
         bool CheckParams() const {
-            throw NotImplementedException();
+            return remoteEndPoint.port() > 0 && !remoteEndPoint.address().is_unspecified();
         }
 
         bool InitializeAcceptor() {
@@ -129,6 +144,7 @@ namespace services {
         boost::asio::io_service ioService;
         boost::asio::ip::tcp::endpoint remoteEndPoint;
         std::unique_ptr<boost::asio::ip::tcp::acceptor> acceptor;
+        std::thread serverThread;
     };
 }
 
