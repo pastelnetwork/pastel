@@ -9,6 +9,7 @@
 #include <boost/asio/ip/tcp.hpp>
 #include <boost/asio/ip/tcp.hpp>
 #include <boost/asio/streambuf.hpp>
+#include <boost/asio/read.hpp>
 #include <util/Exceptions.h>
 #include "ITaskPublisher.h"
 
@@ -58,6 +59,10 @@ namespace services {
             }
         }
 
+        unsigned short GetListeningPort() {
+            return listenPort;
+        }
+
     protected:
         SendResult Send(const std::vector<byte>& buffer) override {
             auto sock = std::make_shared<boost::asio::ip::tcp::socket>(ioService);
@@ -91,6 +96,8 @@ namespace services {
             while (listenPort < 65535) {
                 acceptor->bind({boost::asio::ip::tcp::v4(), listenPort}, errorCode);
                 if (!errorCode) {
+                    try { acceptor->listen(); }
+                    catch (...) { return false; }
                     return true;
                 } else if (errorCode == boost::asio::error::address_in_use) {
                     listenPort++;
@@ -120,19 +127,21 @@ namespace services {
 
         void HandleConnection(socket_ptr sock, const boost::system::error_code& err) {
             if (!err) {
-                // at this point, you can read/write to the socket
                 auto buf = std::make_shared<boost::asio::streambuf>();
-                // reserve 1024 bytes in output sequence
-                boost::asio::streambuf::mutable_buffers_type preparedBuf = buf->prepare(1024);
                 auto handler = [buf, this](const boost::system::error_code& e, size_t bytes) {
                     ITaskResult result;
-                    std::vector<byte> receivedBytes(buf->size());
+                    // received data is "committed" from output sequence to input sequence
+                    buf->commit(bytes);
+                    std::vector<byte> receivedBytes(bytes);
                     buffer_copy(boost::asio::buffer(receivedBytes), buf->data());
                     if (IProtocol::DeserializeResult::DR_Success == protocol->Deserialize(result, receivedBytes)) {
                         callback(result);
                     }
                 };
-                sock->async_receive(preparedBuf, handler);
+                boost::asio::async_read(*sock, *buf, boost::asio::transfer_at_least(sock->available()), handler);
+            } else {
+                auto msg = err.message();
+                std::cout << msg;
             }
             socket_ptr newSock(new boost::asio::ip::tcp::socket(ioService));
             StartAccept(newSock);
