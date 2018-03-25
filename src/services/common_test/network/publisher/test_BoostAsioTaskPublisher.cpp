@@ -25,16 +25,6 @@ BOOST_AUTO_TEST_SUITE(test_BoostAsioestTaskPublisher)
         }
     }
 
-    void SimpleClient(std::string sendData, unsigned short port) {
-        boost::system::error_code ec;
-        boost::asio::io_service service;
-        boost::asio::ip::tcp::endpoint ep(boost::asio::ip::address::from_string("127.0.0.1"), port);
-        boost::asio::ip::tcp::socket sock(service);
-        sock.connect(ep, ec);
-        sock.write_some(boost::asio::buffer(sendData), ec);
-        sock.close(ec);
-    }
-
     BOOST_AUTO_TEST_CASE(test_send) {
         auto timeout = std::chrono::milliseconds(500);
         std::string receivedData;
@@ -62,6 +52,20 @@ BOOST_AUTO_TEST_SUITE(test_BoostAsioestTaskPublisher)
         std::this_thread::sleep_for(timeout);
     }
 
+
+    void SimpleClient(std::string sendData, unsigned short port) {
+        boost::asio::io_service service;
+        boost::asio::ip::tcp::endpoint ep(boost::asio::ip::address::from_string("127.0.0.1"), port);
+        boost::asio::ip::tcp::socket sock(service);
+        try {
+            sock.connect(ep);
+            sock.write_some(boost::asio::buffer(sendData));
+            sock.close();
+        } catch (boost::system::system_error e) {
+            BOOST_TEST_MESSAGE(e.what());
+        }
+    }
+
     BOOST_AUTO_TEST_CASE(test_receive) {
         auto timeout = std::chrono::milliseconds(500);
         std::string responseStr = R"({"id":"d4e39cdd-5b50-4305-8bce-bd8a762f1711","status":"1","result":"42 %"})";
@@ -76,12 +80,104 @@ BOOST_AUTO_TEST_SUITE(test_BoostAsioestTaskPublisher)
         SimpleClient(responseStr, publisher.GetListeningPort());
         std::this_thread::sleep_for(timeout);
 
-        BOOST_CHECK_EQUAL("d4e39cdd-5b50-4305-8bce-bd8a762f1711",  boost::uuids::to_string(responseResult.GetId()));
+        BOOST_CHECK_EQUAL("d4e39cdd-5b50-4305-8bce-bd8a762f1711", boost::uuids::to_string(responseResult.GetId()));
         BOOST_CHECK_EQUAL(1, responseResult.GetStatus());
         BOOST_CHECK_EQUAL("42 %", responseResult.GetResult());
 
         publisher.StopServer();
         std::this_thread::sleep_for(timeout);
     }
+
+    BOOST_AUTO_TEST_CASE(test_multiple_senders) {
+        auto timeout = std::chrono::milliseconds(500);
+        const size_t SENDERS_NUMBER = 5;
+        const size_t PACKAGES_PER_THREAD = 1;
+        unsigned char* met = new unsigned char[SENDERS_NUMBER * PACKAGES_PER_THREAD];
+        memset(met, 0, SENDERS_NUMBER * PACKAGES_PER_THREAD);
+        std::vector<std::thread> threads;
+
+
+        services::ITaskResult responseResult;
+        services::ResponseCallback callback = [met](services::ITaskResult res) {
+            try {
+                int index = std::stoi(res.GetResult());
+                met[index] += 1;
+            } catch (...) {}
+        };
+        services::BoostAsioTaskPublisher publisher(std::make_unique<services::JSONProtocol>());
+        publisher.StartService(callback, "127.0.0.1", 12345);
+        std::this_thread::sleep_for(timeout);
+        auto routine = [PACKAGES_PER_THREAD](int result, unsigned short port) {
+            for (size_t index = 0; index < PACKAGES_PER_THREAD; ++index) {
+                std::stringstream ss;
+                ss << R"({"id":"d4e39cdd-5b50-4305-8bce-bd8a762f1711","status":"1","result":")" << index + result
+                   << "\"}";
+                SimpleClient(ss.str(), port);
+            }
+        };
+        for (int i = 0; i < SENDERS_NUMBER; ++i) {
+            threads.emplace_back(routine, i * PACKAGES_PER_THREAD, publisher.GetListeningPort());
+        }
+        for (auto& thread : threads) thread.join();
+
+        std::this_thread::sleep_for(SENDERS_NUMBER * timeout);
+
+        for (size_t i = 0; i < PACKAGES_PER_THREAD * SENDERS_NUMBER; ++i) {
+            if (1 != met[i]) {
+                BOOST_CHECK(1 == met[i]);
+                BOOST_TEST_MESSAGE("At " << i << " found: " << (unsigned short) met[i]);
+            }
+        }
+        publisher.StopServer();
+        std::this_thread::sleep_for(timeout);
+    }
+
+//    void OnResultCallback(std::vector<services::ITaskResult>& v, services::ITaskResult res){
+//        v.push_back(res);
+//    }
+//
+//    BOOST_AUTO_TEST_CASE(test_multiple_senders_2) {
+//        auto timeout = std::chrono::milliseconds(500);
+//        const size_t SENDERS_NUMBER = 5;
+//        const size_t PACKAGES_PER_THREAD = 1;
+//        unsigned char* met = new unsigned char[SENDERS_NUMBER * PACKAGES_PER_THREAD];
+//        memset(met, 0, SENDERS_NUMBER * PACKAGES_PER_THREAD);
+//        std::vector<std::thread> threads;
+//
+//
+//        services::ITaskResult responseResult;
+//        services::ResponseCallback callback = [met](services::ITaskResult res) {
+//            try {
+//                int index = std::stoi(res.GetResult());
+//                met[index] += 1;
+//            } catch (...) {}
+//        };
+//        services::BoostAsioTaskPublisher publisher(std::make_unique<services::JSONProtocol>());
+//        publisher.StartService(callback, "127.0.0.1", 12345);
+//        std::this_thread::sleep_for(timeout);
+//        auto routine = [PACKAGES_PER_THREAD](int result, unsigned short port) {
+//            for (size_t index = 0; index < PACKAGES_PER_THREAD; ++index) {
+//                std::stringstream ss;
+//                ss << R"({"id":"d4e39cdd-5b50-4305-8bce-bd8a762f1711","status":"1","result":")" << index + result
+//                   << "\"}";
+//                SimpleClient(ss.str(), port);
+//            }
+//        };
+//        for (int i = 0; i < SENDERS_NUMBER; ++i) {
+//            threads.emplace_back(routine, i * PACKAGES_PER_THREAD, publisher.GetListeningPort());
+//        }
+//        for (auto& thread : threads) thread.join();
+//
+//        std::this_thread::sleep_for(SENDERS_NUMBER * timeout);
+//
+//        for (size_t i = 0; i < PACKAGES_PER_THREAD * SENDERS_NUMBER; ++i) {
+//            if (1 != met[i]) {
+//                BOOST_CHECK(1 == met[i]);
+//                BOOST_TEST_MESSAGE("At " << i << " found: " << (unsigned short) met[i]);
+//            }
+//        }
+//        publisher.StopServer();
+//        std::this_thread::sleep_for(timeout);
+//    }
 
 BOOST_AUTO_TEST_SUITE_END()

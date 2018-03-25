@@ -128,14 +128,9 @@ namespace services {
         void HandleConnection(socket_ptr sock, const boost::system::error_code& err) {
             if (!err) {
                 auto buf = std::make_shared<boost::asio::streambuf>();
-                auto handler = [buf, this](const boost::system::error_code& e, size_t bytes) {
-                    ITaskResult result;
-                    // received data is "committed" from output sequence to input sequence
-                    buf->commit(bytes);
-                    std::vector<byte> receivedBytes(bytes);
-                    buffer_copy(boost::asio::buffer(receivedBytes), buf->data());
-                    if (IProtocol::DeserializeResult::DR_Success == protocol->Deserialize(result, receivedBytes)) {
-                        callback(result);
+                auto handler = [buf, this](const boost::system::error_code& errorCode, size_t bytes) {
+                    if (!errorCode) {
+                        std::thread(&BoostAsioTaskPublisher::HandleReceivedMessage, this, buf, bytes).detach();
                     }
                 };
                 boost::asio::async_read(*sock, *buf, boost::asio::transfer_at_least(sock->available()), handler);
@@ -147,6 +142,16 @@ namespace services {
             StartAccept(newSock);
         }
 
+        void HandleReceivedMessage(std::shared_ptr<boost::asio::streambuf> buf, size_t bytes) {
+            ITaskResult result;
+            // received data is "committed" from output sequence to input sequence
+            buf->commit(bytes);
+            std::vector<byte> receivedBytes(bytes);
+            buffer_copy(boost::asio::buffer(receivedBytes), buf->data());
+            if (IProtocol::DeserializeResult::DR_Success == protocol->Deserialize(result, receivedBytes)) {
+                callback(result);
+            }
+        }
 
     private:
         unsigned short listenPort;
