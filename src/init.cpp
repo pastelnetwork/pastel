@@ -685,9 +685,9 @@ static void ZC_LoadParams()
 
     if (!(boost::filesystem::exists(pk_path) && boost::filesystem::exists(vk_path))) {
         uiInterface.ThreadSafeMessageBox(strprintf(
-            _("Cannot find the Zcash network parameters in the following directory:\n"
+            _("Cannot find the Animecoin network parameters in the following directory:\n"
               "%s\n"
-              "Please run 'zcash-fetch-params' or './acutil/fetch-params.sh' and then restart."),
+              "Please run 'animecoin-fetch-params' or './acutil/fetch-params.sh' and then restart."),
                 ZC_GetParamsDir()),
             "", CClientUIInterface::MSG_ERROR);
         StartShutdown();

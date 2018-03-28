@@ -40,7 +40,7 @@ chmod 0755 -R $BUILD_DIR/*
 # Copy binaries
 cp $SRC_PATH/src/animecoind $DEB_BIN
 cp $SRC_PATH/src/animecoin-cli $DEB_BIN
-cp $SRC_PATH/acutil/fetch-params.sh $DEB_BIN/zcash-fetch-params
+cp $SRC_PATH/acutil/fetch-params.sh $DEB_BIN/animecoin-fetch-params
 # Copy docs
 cp $SRC_PATH/doc/release-notes/release-notes-1.0.0.md $DEB_DOC/changelog
 cp $SRC_DEB/changelog $DEB_DOC/changelog.Debian
@@ -49,7 +49,7 @@ cp -r $SRC_DEB/examples $DEB_DOC
 # Copy manpages
 cp $SRC_DOC/man/animecoind.1 $DEB_MAN
 cp $SRC_DOC/man/animecoin-cli.1 $DEB_MAN
-cp $SRC_DOC/man/zcash-fetch-params.1 $DEB_MAN
+cp $SRC_DOC/man/animecoin-fetch-params.1 $DEB_MAN
 # Copy bash completion files
 cp $SRC_PATH/contrib/animecoind.bash-completion $DEB_CMP/animecoind
 cp $SRC_PATH/contrib/animecoin-cli.bash-completion $DEB_CMP/animecoin-cli
@@ -58,7 +58,7 @@ gzip --best -n $DEB_DOC/changelog
 gzip --best -n $DEB_DOC/changelog.Debian
 gzip --best -n $DEB_MAN/animecoind.1
 gzip --best -n $DEB_MAN/animecoin-cli.1
-gzip --best -n $DEB_MAN/zcash-fetch-params.1
+gzip --best -n $DEB_MAN/animecoin-fetch-params.1
 
 cd $SRC_PATH/contrib
 
