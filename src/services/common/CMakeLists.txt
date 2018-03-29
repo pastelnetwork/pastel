@@ -31,12 +31,11 @@ set(SOURCE_FILES
         include/util/Types.h
         include/scheduler/SchedulerFactory.h
         include/consts/Enums.h
-        )
+        include/network/publisher/BoostAsioTaskPublisher.h
+        include/util/Exceptions.h
+        include/network/connection/Connection.h include/network/connection/ConnectionManager.h src/network/connection/Connection.cpp)
 
 include_directories(include)
-
-add_executable(common-exec ${SOURCE_FILES} main.cpp)
-add_library(common ${SOURCE_FILES})
 
 find_package(Boost 1.66.0)
 if (NOT Boost_FOUND)
@@ -47,4 +46,10 @@ else ()
     #    message(STATUS "Boost_VERSION: ${Boost_VERSION}")
     message(STATUS "Services: Common: boost found, VERSION: ${Boost_VERSION}")
     include_directories(${Boost_INCLUDE_DIRS})
+    link_directories(${Boost_LIBRARY_DIRS})
 endif ()
+
+add_executable(common-exec ${SOURCE_FILES} main.cpp)
+target_link_libraries(common-exec ${Boost_LIBRARIES})
+add_library(common ${SOURCE_FILES})
+target_link_libraries(common ${Boost_LIBRARIES})

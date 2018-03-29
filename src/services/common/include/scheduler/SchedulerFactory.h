@@ -3,19 +3,13 @@
 
 
 #include <string>
+#include <util/Exceptions.h>
 #include "ITaskScheduler.h"
 
 namespace services {
-    class FactoryException : public std::exception {
-        std::string message;
+    class FactoryException : public BaseException {
     public:
-        FactoryException(const std::string &msg) throw() : message(msg) {}
-
-        virtual ~FactoryException() throw() {}
-
-        virtual const char *what() const throw() {
-            return message.c_str();
-        }
+        FactoryException(std::string message) : BaseException(message) {}
     };
 
     class SchedulerFactory {
@@ -26,7 +20,7 @@ namespace services {
             prototype = std::move(proto);
         }
 
-        ITaskScheduler *MakeScheduler(){
+        ITaskScheduler* MakeScheduler() {
             return prototype->Clone();
         }
 
