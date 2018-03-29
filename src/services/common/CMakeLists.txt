@@ -33,7 +33,7 @@ set(SOURCE_FILES
         include/consts/Enums.h
         include/network/publisher/BoostAsioTaskPublisher.h
         include/util/Exceptions.h
-        )
+        include/network/connection/Connection.h include/network/connection/ConnectionManager.h src/network/connection/Connection.cpp)
 
 include_directories(include)
 

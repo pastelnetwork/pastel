@@ -10,7 +10,9 @@
 #include <boost/asio/ip/tcp.hpp>
 #include <boost/asio/streambuf.hpp>
 #include <boost/asio/read.hpp>
-#include <util/Exceptions.h>
+#include "util/Exceptions.h"
+#include "network/connection/ConnectionManager.h"
+#include "network/connection/Connection.h"
 #include "ITaskPublisher.h"
 
 namespace services {
@@ -126,30 +128,37 @@ namespace services {
         }
 
         void HandleConnection(socket_ptr sock, const boost::system::error_code& err) {
+            socket_ptr newSock(new boost::asio::ip::tcp::socket(ioService));
+            StartAccept(newSock);
             if (!err) {
-                auto buf = std::make_shared<boost::asio::streambuf>();
-                auto handler = [buf, this](const boost::system::error_code& errorCode, size_t bytes) {
-                    if (!errorCode) {
-                        std::thread(&BoostAsioTaskPublisher::HandleReceivedMessage, this, buf, bytes).detach();
-                    }
-                };
-                boost::asio::async_read(*sock, *buf, boost::asio::transfer_at_least(sock->available()), handler);
+
+                connectioManager.Start(std::make_shared<Connection>(std::move(sock), connectioManager),
+                                       std::bind(&BoostAsioTaskPublisher::OnRecieve, this, std::placeholders::_1));
+
+//                auto buf = std::make_shared<boost::asio::streambuf>();
+//                auto handler = std::bind(&BoostAsioTaskPublisher::HandleReceivedMessage, this, buf, std::placeholders::_1, std::placeholders::_2);
+//                auto handler = [buf, this](const boost::system::error_code& errorCode, size_t bytes) {
+//                    if (!errorCode) {
+//                        std::thread(&BoostAsioTaskPublisher::HandleReceivedMessage, this, buf, bytes).detach();
+//                    }
+//                };
+//                boost::asio::async_read(*sock, *buf, boost::asio::transfer_at_least(sock->available()), handler);
             } else {
                 auto msg = err.message();
                 std::cout << msg;
             }
-            socket_ptr newSock(new boost::asio::ip::tcp::socket(ioService));
-            StartAccept(newSock);
         }
 
-        void HandleReceivedMessage(std::shared_ptr<boost::asio::streambuf> buf, size_t bytes) {
-            ITaskResult result;
-            // received data is "committed" from output sequence to input sequence
-            buf->commit(bytes);
-            std::vector<byte> receivedBytes(bytes);
-            buffer_copy(boost::asio::buffer(receivedBytes), buf->data());
-            if (IProtocol::DeserializeResult::DR_Success == protocol->Deserialize(result, receivedBytes)) {
-                callback(result);
+        void HandleReceivedMessage(std::shared_ptr<boost::asio::streambuf> buf, const boost::system::error_code& errorCode, size_t bytes) {
+            if (!errorCode) {
+                ITaskResult result;
+                // received data is "committed" from output sequence to input sequence
+                buf->commit(bytes);
+                std::vector<byte> receivedBytes(bytes);
+                buffer_copy(boost::asio::buffer(receivedBytes), buf->data());
+                if (IProtocol::DeserializeResult::DR_Success == protocol->Deserialize(result, receivedBytes)) {
+                    callback(result);
+                }
             }
         }
 
@@ -159,6 +168,7 @@ namespace services {
         boost::asio::ip::tcp::endpoint remoteEndPoint;
         std::unique_ptr<boost::asio::ip::tcp::acceptor> acceptor;
         std::thread serverThread;
+        ConnectionManager connectioManager;
     };
 }
 
