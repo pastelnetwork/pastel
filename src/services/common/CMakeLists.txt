@@ -37,13 +37,13 @@ set(SOURCE_FILES
 
 include_directories(include)
 
-find_package(Boost 1.66.0)
+set(BOOST_INCLUDEDIR "/usr/local/boost_1_66_0")
+set(BOOST_LIBRARYDIR /usr/local/boost_1_66_0/stage/lib)
+
+find_package(Boost 1.66.0 REQUIRED COMPONENTS system)
 if (NOT Boost_FOUND)
     message(FATAL_ERROR "Could not find boost!")
 else ()
-    #    message(STATUS "Boost_INCLUDE_DIRS: ${Boost_INCLUDE_DIRS}")
-    #    message(STATUS "Boost_LIBRARIES: ${Boost_LIBRARIES}")
-    #    message(STATUS "Boost_VERSION: ${Boost_VERSION}")
     message(STATUS "Services: Common: boost found, VERSION: ${Boost_VERSION}")
     include_directories(${Boost_INCLUDE_DIRS})
     link_directories(${Boost_LIBRARY_DIRS})
