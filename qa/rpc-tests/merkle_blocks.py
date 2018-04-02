@@ -12,7 +12,8 @@ from test_framework.authproxy import JSONRPCException
 from test_framework.util import assert_equal, assert_raises, \
     initialize_chain_clean, start_node, connect_nodes
 
-from decimal import Decimal
+from decimal import Decimal, getcontext
+getcontext().prec = 16
 
 class MerkleBlockTest(BitcoinTestFramework):
 
@@ -45,7 +46,7 @@ class MerkleBlockTest(BitcoinTestFramework):
         assert_equal(self.nodes[1].getbalance(), 0)
         assert_equal(self.nodes[2].getbalance(), 0)
 
-        amount = Decimal(self._coin)
+        amount = self._reward
 
         node0utxos = self.nodes[0].listunspent(1)
         tx1 = self.nodes[0].createrawtransaction([node0utxos.pop()], {self.nodes[1].getnewaddress(): amount})

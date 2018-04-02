@@ -13,7 +13,8 @@ import os
 import sys
 import time
 
-from decimal import Decimal
+from decimal import Decimal, getcontext
+getcontext().prec = 16
 
 class MasterNodeMainTest (BitcoinTestFramework):
     def setup_chain(self):
@@ -38,7 +39,7 @@ class MasterNodeMainTest (BitcoinTestFramework):
         self.nodes[1].generate(100)
         self.sync_all()
 
-        assert_equal(self.nodes[1].getbalance(), self._coin*100)    # node_1 has 100 blocks over maturity
+        assert_equal(self.nodes[1].getbalance(), self._reward*100)    # node_1 has 100 blocks over maturity
 
         print("Sending 1000 coins to node 2...")
         collateraladdr = self.nodes[2].getnewaddress()

@@ -15,7 +15,8 @@ import struct
 import binascii
 import json
 import StringIO
-from decimal import Decimal
+from decimal import Decimal, getcontext
+getcontext().prec = 16
 
 try:
     import http.client as httplib
@@ -77,7 +78,7 @@ class RESTTest (BitcoinTestFramework):
         self.nodes[2].generate(100)
         self.sync_all()
 
-        assert_equal(self.nodes[0].getbalance(), self._coin)
+        assert_equal(self.nodes[0].getbalance(), self._reward)
 
         txid = self.nodes[0].sendtoaddress(self.nodes[1].getnewaddress(), 0.1)
         self.sync_all()

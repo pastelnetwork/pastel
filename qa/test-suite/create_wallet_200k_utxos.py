@@ -21,7 +21,8 @@ from test_framework.util import (
     start_nodes,
 )
 
-from decimal import Decimal
+from decimal import Decimal, getcontext
+getcontext().prec = 16
 
 
 class LargeWalletTest(BitcoinTestFramework):

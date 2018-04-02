@@ -3,7 +3,8 @@
 # Distributed under the MIT software license, see the accompanying
 # file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-from decimal import Decimal
+from decimal import Decimal, getcontext
+getcontext().prec = 16
 from test_framework.test_framework import BitcoinTestFramework
 from test_framework.util import assert_equal, assert_greater_than, start_nodes, initialize_chain_clean, connect_nodes_bi
 
@@ -73,7 +74,7 @@ class ZkeyImportExportTest (BitcoinTestFramework):
         def z_getbalance(node, zaddr):
             bal = node.z_getbalance(zaddr)
             # Ignore fees for sake of comparison
-            round_balance = math.ceil(bal*100)/100
+            round_balance = math.ceil(bal)
             return round_balance
 
         def verify_utxos(node, amts, zaddr):
@@ -123,7 +124,7 @@ class ZkeyImportExportTest (BitcoinTestFramework):
         # verify_utxos(charlie, [])
 
         # the amounts of each txn embodied which generates a single UTXO:
-        amounts = map(Decimal, ['2.3', '3.7', '0.1', '0.5', '1.0', '0.19'])
+        amounts = map(Decimal, ['23', '37', '1', '5', '10', '19'])
 
         # Internal test consistency assertion:
         assert_greater_than(
@@ -173,6 +174,8 @@ class ZkeyImportExportTest (BitcoinTestFramework):
         for amount in amounts[:2]:
             print("Sending amount from bob to alice: ", amount)
             z_send(bob, bob_zaddr, alice_zaddr, amount)
+
+        print(z_getbalance(bob, bob_zaddr))
 
         balance = float(sum(amounts) - sum(amounts[:2]))
         assert_equal(z_getbalance(bob, bob_zaddr), balance)

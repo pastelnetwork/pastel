@@ -5,7 +5,7 @@
 #
 
 from test_framework.test_framework import ComparisonTestFramework
-from test_framework.util import start_nodes
+from test_framework.util import start_nodes, connect_nodes_bi
 from test_framework.mininode import CTransaction, NetworkThread
 from test_framework.blocktools import create_coinbase, create_block
 from test_framework.comptool import TestInstance, TestManager
@@ -32,7 +32,9 @@ class BIP66Test(ComparisonTestFramework):
         self.nodes = start_nodes(1, self.options.tmpdir,
                                  extra_args=[['-debug', '-whitelist=127.0.0.1']],
                                  binary=[self.options.testbinary])
-        self.is_network_split = False
+        connect_nodes_bi(self.nodes,0,1)
+        self.is_network_split=False
+        self.sync_all()
 
     def run_test(self):
         test = TestManager(self, self.options.tmpdir)

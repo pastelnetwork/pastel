@@ -13,7 +13,8 @@ from test_framework.authproxy import JSONRPCException
 from test_framework.util import assert_equal, initialize_chain_clean, \
     start_nodes, connect_nodes_bi
 
-from decimal import Decimal
+from decimal import Decimal, getcontext
+getcontext().prec = 16
 
 # Create one-input, one-output, no-fee transaction:
 class RawTransactionsTest(BitcoinTestFramework):
@@ -89,7 +90,7 @@ class RawTransactionsTest(BitcoinTestFramework):
         self.sync_all()
         self.nodes[0].generate(1)
         self.sync_all()
-        assert_equal(self.nodes[2].getbalance(), bal+Decimal('1.20000000')) #node2 has both keys of the 2of2 ms addr., tx should affect the balance
+        assert_equal(self.nodes[2].getbalance(), bal+Decimal('1.20000')) #node2 has both keys of the 2of2 ms addr., tx should affect the balance
 
 
 
@@ -125,7 +126,7 @@ class RawTransactionsTest(BitcoinTestFramework):
         rawTx = self.nodes[0].decoderawtransaction(txDetails['hex'])
         vout = False
         for outpoint in rawTx['vout']:
-            if outpoint['value'] == Decimal('2.20000000'):
+            if outpoint['value'] == Decimal('2.20000'):
                 vout = outpoint
                 break;
 
@@ -143,7 +144,7 @@ class RawTransactionsTest(BitcoinTestFramework):
         self.sync_all()
         self.nodes[0].generate(1)
         self.sync_all()
-        assert_equal(self.nodes[0].getbalance(), bal + Decimal(self._coin)+Decimal('2.19900000')) #block reward + tx
+        assert_equal(self.nodes[0].getbalance(), bal + self._reward+Decimal('2.19900')) #block reward + tx
 
 if __name__ == '__main__':
     RawTransactionsTest().main()

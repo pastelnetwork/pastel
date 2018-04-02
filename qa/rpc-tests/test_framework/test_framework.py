@@ -19,16 +19,31 @@ from util import assert_equal, check_json_precision, \
     start_nodes, connect_nodes_bi, stop_nodes, \
     sync_blocks, sync_mempools, wait_bitcoinds
 
-from decimal import Decimal
+from decimal import Decimal, getcontext, ROUND_DOWN
+getcontext().prec = 16
 
 class BitcoinTestFramework(object):
-    _coin = 12.5
+    _coin       = Decimal('100000')
+    _maxmoney   = Decimal('21000000000')
 
+    _reward     = Decimal('6250')
+    _reward00   = Decimal('6250.00')
+    _fee        = Decimal('0.1')
+    _fee00      = Decimal('0.10')
+
+    _null           = Decimal("0.00000")
+    _atoshi         = Decimal('0.00001')
+    _2atoshi        = Decimal('0.00002')
+    _10atoshi       = Decimal('0.0001')
+    _100atoshi      = Decimal('0.001')
+    _1000atoshi     = Decimal('0.01')
+    _10000atoshi    = Decimal('0.1')
+    
     # These may be over-ridden by subclasses:
     def run_test(self):
         for node in self.nodes:
             assert_equal(node.getblockcount(), 200)
-            assert_equal(node.getbalance(), 25*Decimal(self._coin))
+            assert_equal(node.getbalance(), 25*self._reward)
 
     def add_options(self, parser):
         pass

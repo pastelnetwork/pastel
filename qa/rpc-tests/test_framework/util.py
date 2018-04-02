@@ -29,10 +29,10 @@ def rpc_port(n):
     return 12000 + n + os.getpid()%999
 
 def check_json_precision():
-    """Make sure json library being used does not lose precision converting BTC values"""
-    n = Decimal("20000000.00000003")
-    satoshis = int(json.loads(json.dumps(float(n)))*1.0e8)
-    if satoshis != 2000000000000003:
+    """Make sure json library being used does not lose precision converting ANIME values"""
+    n = Decimal("20000000.00003")
+    atoshis = int(json.loads(json.dumps(float(n)))*1.0e5)
+    if atoshis != 2000000000003:
         raise RuntimeError("JSON encode/decode loses precision")
 
 def bytes_to_hex_str(byte_str):
@@ -94,7 +94,7 @@ def initialize_chain(test_dir):
 
     if not os.path.isdir(os.path.join("cache", "node0")):
         devnull = open("/dev/null", "w+")
-        # Create cache directories, run bitcoinds:
+        # Create cache directories, run animecoind:
         for i in range(4):
             datadir=initialize_datadir("cache", i)
             args = [ os.getenv("ANIMECOIND", "animecoind"), "-keypool=1", "-datadir="+datadir, "-discover=0" ]
@@ -120,8 +120,8 @@ def initialize_chain(test_dir):
         # Create a 200-block-long chain; each of the 4 nodes
         # gets 25 mature blocks and 25 immature.
         # blocks are created with timestamps 10 minutes apart, starting
-        # at 1 Jan 2014
-        block_time = 1388534400
+        # at 28 March 2018
+        block_time = 1522195200
         for i in range(2):
             for peer in range(4):
                 for j in range(25):
@@ -265,7 +265,7 @@ def gather_inputs(from_node, amount_needed, confirmations_required=1):
     utxo = from_node.listunspent(confirmations_required)
     random.shuffle(utxo)
     inputs = []
-    total_in = Decimal("0.00000000")
+    total_in = Decimal("0.00000")
     while total_in < amount_needed and len(utxo) > 0:
         t = utxo.pop()
         total_in += t["amount"]
@@ -285,7 +285,7 @@ def make_change(from_node, amount_in, amount_out, fee):
         # Create an extra change output to break up big inputs
         change_address = from_node.getnewaddress()
         # Split change in two, being careful of rounding:
-        outputs[change_address] = Decimal(change/2).quantize(Decimal('0.00000001'), rounding=ROUND_DOWN)
+        outputs[change_address] = Decimal(change/2).quantize(Decimal('0.00001'), rounding=ROUND_DOWN)
         change = amount_in - amount - outputs[change_address]
     if change > 0:
         outputs[from_node.getnewaddress()] = change
@@ -392,7 +392,8 @@ def wait_and_assert_operationid_status(node, myopid, in_status='success', in_err
     assert_equal(in_status, status)
     if errormsg is not None:
         assert(in_errormsg is not None)
-        # print errormsg
+        print in_errormsg
+        print errormsg
         assert_equal(in_errormsg in errormsg, True)
     if os.getenv("PYTHON_DEBUG", ""):
         print('...returned status: {}'.format(status))

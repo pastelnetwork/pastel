@@ -7,7 +7,8 @@
 
 from test_framework.test_framework import BitcoinTestFramework
 
-from decimal import Decimal
+from decimal import Decimal, getcontext
+getcontext().prec = 16
 
 def get_sub_array_from_array(object_array, to_match):
     '''

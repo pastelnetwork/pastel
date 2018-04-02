@@ -11,7 +11,8 @@
 from test_framework.test_framework import BitcoinTestFramework
 from test_framework.util import assert_equal, start_node, connect_nodes
 
-from decimal import Decimal
+from decimal import Decimal, getcontext
+getcontext().prec = 16
 
 # Create one-input, one-output, no-fee transaction:
 class MempoolCoinbaseTest(BitcoinTestFramework):
@@ -51,7 +52,7 @@ class MempoolCoinbaseTest(BitcoinTestFramework):
         # Use invalidatblock to make all of the above coinbase spends invalid (immature coinbase),
         # and make sure the mempool code behaves correctly.
 
-        amount = Decimal(self._coin)
+        amount = self._reward
                
         b = [ self.nodes[0].getblockhash(n) for n in range(102, 105) ]
         coinbase_txids = [ self.nodes[0].getblock(h)['tx'][0] for h in b ]

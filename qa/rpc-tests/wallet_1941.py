@@ -10,9 +10,11 @@ from test_framework.util import assert_equal, initialize_chain_clean, \
     initialize_datadir, start_nodes, start_node, connect_nodes_bi, \
     bitcoind_processes, wait_and_assert_operationid_status
 
-from decimal import Decimal
+from decimal import Decimal, getcontext
+getcontext().prec = 16
 
-starttime = 1388534400
+# at 28 March 2018
+starttime = 1522195200
 
 class Wallet1941RegressionTest (BitcoinTestFramework):
 
@@ -22,12 +24,14 @@ class Wallet1941RegressionTest (BitcoinTestFramework):
 
     # Start nodes with -regtestprotectcoinbase to set fCoinbaseMustBeProtected to true.
     def setup_network(self, split=False):
-        self.nodes = start_nodes(1, self.options.tmpdir, extra_args=[['-regtestprotectcoinbase','-debug=zrpc']] )
+        # self.nodes = start_nodes(1, self.options.tmpdir, extra_args=[['-regtestprotectcoinbase','-debug=zrpc']] )
+        self.nodes = start_nodes(1, self.options.tmpdir, extra_args=[['-debug=zrpc']] )
         self.is_network_split=False
 
     def add_second_node(self):
         initialize_datadir(self.options.tmpdir, 1)
-        self.nodes.append(start_node(1, self.options.tmpdir, extra_args=['-regtestprotectcoinbase','-debug=zrpc']))
+        # self.nodes.append(start_node(1, self.options.tmpdir, extra_args=['-regtestprotectcoinbase','-debug=zrpc']))
+        self.nodes.append(start_node(1, self.options.tmpdir, extra_args=['-debug=zrpc']))
         self.nodes[1].setmocktime(starttime + 9000)
         connect_nodes_bi(self.nodes,0,1)
         self.sync_all()
@@ -35,7 +39,8 @@ class Wallet1941RegressionTest (BitcoinTestFramework):
     def restart_second_node(self, extra_args=[]):
         self.nodes[1].stop()
         bitcoind_processes[1].wait()
-        self.nodes[1] = start_node(1, self.options.tmpdir, extra_args=['-regtestprotectcoinbase','-debug=zrpc'] + extra_args)
+        # self.nodes[1] = start_node(1, self.options.tmpdir, extra_args=['-regtestprotectcoinbase','-debug=zrpc'] + extra_args)
+        self.nodes[1] = start_node(1, self.options.tmpdir, extra_args=['-debug=zrpc'] + extra_args)
         self.nodes[1].setmocktime(starttime + 9000)
         connect_nodes_bi(self.nodes, 0, 1)
         self.sync_all()
@@ -51,7 +56,7 @@ class Wallet1941RegressionTest (BitcoinTestFramework):
 
         # Send 10 coins to our zaddr.
         recipients = []
-        recipients.append({"address":myzaddr, "amount":Decimal(self._coin) - Decimal('0.0001')})
+        recipients.append({"address":myzaddr, "amount":self._reward - self._fee})
         myopid = self.nodes[0].z_sendmany(mytaddr, recipients)
         wait_and_assert_operationid_status(self.nodes[0], myopid)
         self.nodes[0].generate(1)
@@ -66,7 +71,7 @@ class Wallet1941RegressionTest (BitcoinTestFramework):
 
         # Confirm the balance on node 0.
         resp = self.nodes[0].z_getbalance(myzaddr)
-        assert_equal(Decimal(resp), Decimal(self._coin) - Decimal('0.0001'))
+        assert_equal(Decimal(resp), self._reward - self._fee)
 
         # Export the key for the zaddr from node 0.
         key = self.nodes[0].z_exportkey(myzaddr)
@@ -93,7 +98,7 @@ class Wallet1941RegressionTest (BitcoinTestFramework):
         # Confirm that the balance on node 1 is valid now (node 1 must
         # have rescanned)
         resp = self.nodes[1].z_getbalance(myzaddr)
-        assert_equal(Decimal(resp), Decimal(self._coin) - Decimal('0.0001'))
+        assert_equal(Decimal(resp), self._reward - self._fee)
 
 
 if __name__ == '__main__':

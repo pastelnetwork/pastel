@@ -176,8 +176,7 @@ public:
         strNetworkID = "main";
         network = CBaseChainParams::MAIN;
         strCurrencyUnits = "ANI";
-        consensus.fCoinbaseMustBeProtected = false;
-        consensus.nSubsidySlowStartInterval = 20000;
+        // consensus.fCoinbaseMustBeProtected = false;
         consensus.nSubsidyHalvingInterval = 840000;
         consensus.nMajorityEnforceBlockUpgrade = 750;
         consensus.nMajorityRejectBlockOutdated = 950;
@@ -259,8 +258,7 @@ public:
         strNetworkID = "test";
         network = CBaseChainParams::TESTNET;
         strCurrencyUnits = "INA";
-        consensus.fCoinbaseMustBeProtected = false;
-        consensus.nSubsidySlowStartInterval = 20000;
+        // consensus.fCoinbaseMustBeProtected = false;
         consensus.nSubsidyHalvingInterval = 840000;
         consensus.nMajorityEnforceBlockUpgrade = 51;
         consensus.nMajorityRejectBlockOutdated = 75;
@@ -271,6 +269,9 @@ public:
         consensus.nPowMaxAdjustDown = 32; // 32% adjustment down
         consensus.nPowMaxAdjustUp = 16; // 16% adjustment up
         consensus.nPowTargetSpacing = 2.5 * 60;
+        /**
+         * The message start string
+         */
         pchMessageStart[0] = 0x1b;
         pchMessageStart[1] = 0x16;
         pchMessageStart[2] = 0x83;
@@ -338,8 +339,7 @@ public:
         strNetworkID = "regtest";
         network = CBaseChainParams::REGTEST;
         strCurrencyUnits = "REG";
-        consensus.fCoinbaseMustBeProtected = false;
-        consensus.nSubsidySlowStartInterval = 0;
+        // consensus.fCoinbaseMustBeProtected = false;
         consensus.nSubsidyHalvingInterval = 150;
         consensus.nMajorityEnforceBlockUpgrade = 750;
         consensus.nMajorityRejectBlockOutdated = 950;
@@ -350,10 +350,14 @@ public:
         consensus.nPowMaxAdjustDown = 0; // Turn off adjustment down
         consensus.nPowMaxAdjustUp = 0; // Turn off adjustment up
         consensus.nPowTargetSpacing = 2.5 * 60;
+        /**
+         * The message start string
+         */
         pchMessageStart[0] = 0x31;
         pchMessageStart[1] = 0x20;
         pchMessageStart[2] = 0x76;
         pchMessageStart[3] = 0x22;
+        vAlertPubKey = ParseHex("04a40ca15344822fd6bc9719929050614ab045775fcca1e46880ba7e4c55dc999b6f618091a7e5f5c24bd80854f14ebbc369c35cd2e4944c6cf27a3dc5f54f52dc");
         nDefaultPort = 18344;
         nMaxTipAge = 24 * 60 * 60;
         nPruneAfterHeight = 1000;
@@ -370,13 +374,20 @@ public:
         vSeeds.clear();  //! Regtest mode doesn't have any DNS seeds.
 
         // These prefixes are the same as the testnet prefixes
+        // guarantees the first 2 characters, when base58 encoded, are "tm"
         base58Prefixes[PUBKEY_ADDRESS]     = {0x1D,0x25};
+        // guarantees the first 2 characters, when base58 encoded, are "t2"
         base58Prefixes[SCRIPT_ADDRESS]     = {0x1C,0xBA};
+        // the first character, when base58 encoded, is "9" or "c" (as in Bitcoin)
         base58Prefixes[SECRET_KEY]         = {0xEF};
         // do not rely on these BIP32 prefixes; they are not specified and may change
         base58Prefixes[EXT_PUBLIC_KEY]     = {0x04,0x35,0x87,0xCF};
         base58Prefixes[EXT_SECRET_KEY]     = {0x04,0x35,0x83,0x94};
+        // guarantees the first 2 characters, when base58 encoded, are "zt"
         base58Prefixes[ZCPAYMENT_ADDRRESS] = {0x16,0xB6};
+        // guarantees the first 4 characters, when base58 encoded, are "ZiVt"
+        base58Prefixes[ZCVIEWING_KEY]      = {0xA8,0xAC,0x0C};
+        // guarantees the first 2 characters, when base58 encoded, are "ST"
         base58Prefixes[ZCSPENDING_KEY]     = {0xAC,0x08};
 
         fMiningRequiresPeers = false;
@@ -422,9 +433,9 @@ void SelectParams(CBaseChainParams::Network network) {
     pCurrentParams = &Params(network);
 
     // Some python qa rpc tests need to enforce the coinbase consensus rule
-    if (network == CBaseChainParams::REGTEST && mapArgs.count("-regtestprotectcoinbase")) {
-        regTestParams.SetRegTestCoinbaseMustBeProtected();
-    }
+    // if (network == CBaseChainParams::REGTEST && mapArgs.count("-regtestprotectcoinbase")) {
+    //     regTestParams.SetRegTestCoinbaseMustBeProtected();
+    // }
 }
 
 bool SelectParamsFromCommandLine()

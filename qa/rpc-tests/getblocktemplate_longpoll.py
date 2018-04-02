@@ -6,8 +6,9 @@
 from test_framework.test_framework import BitcoinTestFramework
 from test_framework.authproxy import AuthServiceProxy
 from test_framework.util import random_transaction
+from decimal import Decimal, getcontext
+getcontext().prec = 16
 
-from decimal import Decimal
 
 def check_array_result(object_array, to_match, expected):
     """

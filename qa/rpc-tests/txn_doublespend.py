@@ -11,7 +11,8 @@ from test_framework.test_framework import BitcoinTestFramework
 from test_framework.util import assert_equal, connect_nodes, \
     sync_blocks, gather_inputs
 
-from decimal import Decimal
+from decimal import Decimal, getcontext
+getcontext().prec = 16
 
 class TxnMallTest(BitcoinTestFramework):
 
@@ -24,7 +25,7 @@ class TxnMallTest(BitcoinTestFramework):
         return super(TxnMallTest, self).setup_network(True)
 
     def run_test(self):
-        mining_reward = Decimal(self._coin)
+        mining_reward = self._reward
         starting_balance = mining_reward * 25
 
         for i in range(4):

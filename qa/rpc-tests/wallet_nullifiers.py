@@ -9,7 +9,8 @@ from test_framework.util import assert_equal, start_node, \
     start_nodes, connect_nodes_bi, bitcoind_processes
 
 import time
-from decimal import Decimal
+from decimal import Decimal, getcontext
+getcontext().prec = 16
 
 class WalletNullifiersTest (BitcoinTestFramework):
 
@@ -24,7 +25,7 @@ class WalletNullifiersTest (BitcoinTestFramework):
         # send node 0 taddr to zaddr to get out of coinbase
         mytaddr = self.nodes[0].getnewaddress();
         recipients = []
-        recipients.append({"address":myzaddr0, "amount":Decimal(self._coin)-Decimal('0.0001')}) # utxo amount less fee
+        recipients.append({"address":myzaddr0, "amount":self._reward-self._fee}) # utxo amount less fee
         myopid = self.nodes[0].z_sendmany(mytaddr, recipients)
 
         opids = []
@@ -121,7 +122,7 @@ class WalletNullifiersTest (BitcoinTestFramework):
 
         # check zaddr balance
         zsendmany2notevalue = Decimal('2.0')
-        zsendmanyfee = Decimal('0.0001')
+        zsendmanyfee = self._fee
         zaddrremaining = zsendmanynotevalue - zsendmany2notevalue - zsendmanyfee
         assert_equal(self.nodes[3].z_getbalance(myzaddr3), zsendmany2notevalue)
         assert_equal(self.nodes[2].z_getbalance(myzaddr), zaddrremaining)
@@ -172,7 +173,7 @@ class WalletNullifiersTest (BitcoinTestFramework):
 
         # Test viewing keys
 
-        node3mined = Decimal(self._coin)*25
+        node3mined = self._reward*25
         assert_equal({k: Decimal(v) for k, v in self.nodes[3].z_gettotalbalance().items()}, {
             'transparent': node3mined,
             'private': zsendmany2notevalue,

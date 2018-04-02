@@ -7,6 +7,9 @@
 from mininode import CBlock, CTransaction, CTxIn, CTxOut, COutPoint
 from script import CScript, OP_0, OP_EQUAL, OP_HASH160
 
+_reward = 6250
+_coin = 100000
+
 # Create a block (with regtest difficulty)
 def create_block(hashprev, coinbase, nTime=None, nBits=None):
     block = CBlock()
@@ -49,7 +52,7 @@ def create_coinbase(heightAdjust = 0):
                 CScript([counter+heightAdjust, OP_0]), 0xffffffff))
     counter += 1
     coinbaseoutput = CTxOut()
-    coinbaseoutput.nValue = int(12.5*100000000)
+    coinbaseoutput.nValue = int(_reward*_coin)
     halvings = int((counter+heightAdjust)/150) # regtest
     coinbaseoutput.nValue >>= halvings
     coinbaseoutput.scriptPubKey = ""

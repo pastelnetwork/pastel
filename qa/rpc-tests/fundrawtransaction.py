@@ -9,7 +9,8 @@ from test_framework.util import assert_equal, assert_greater_than, \
     initialize_chain_clean, start_nodes, connect_nodes_bi, stop_nodes, \
     wait_bitcoinds
 
-from decimal import Decimal
+from decimal import Decimal, getcontext
+getcontext().prec = 16
 
 # Create one-input, one-output, no-fee transaction:
 class RawTransactionsTest(BitcoinTestFramework):
@@ -31,7 +32,7 @@ class RawTransactionsTest(BitcoinTestFramework):
 
     def run_test(self):
         print "Mining blocks..."
-        feeTolerance = Decimal(0.00000002) #if the fee's positive delta is higher than this value tests will fail, neg. delta always fail the tests
+        feeTolerance = self._2atoshi #if the fee's positive delta is higher than this value tests will fail, neg. delta always fail the tests
 
         self.nodes[2].generate(1)
         self.sync_all()
@@ -423,7 +424,7 @@ class RawTransactionsTest(BitcoinTestFramework):
         self.sync_all()
 
         # make sure funds are received at node1
-        assert_equal(oldBalance+Decimal('1.10000000'), self.nodes[1].getbalance())
+        assert_equal(oldBalance+Decimal('1.10000'), self.nodes[1].getbalance())
 
         ############################################################
         # locked wallet test
@@ -463,7 +464,7 @@ class RawTransactionsTest(BitcoinTestFramework):
         self.sync_all()
 
         # make sure funds are received at node1
-        assert_equal(oldBalance + Decimal(self._coin) + Decimal('1.10000000'), self.nodes[0].getbalance())
+        assert_equal(oldBalance + self._reward + Decimal('1.10000'), self.nodes[0].getbalance())
 
 
 
@@ -478,14 +479,14 @@ class RawTransactionsTest(BitcoinTestFramework):
         self.sync_all()
 
         for i in range(0,20):
-            self.nodes[0].sendtoaddress(self.nodes[1].getnewaddress(), 0.01);
+            self.nodes[0].sendtoaddress(self.nodes[1].getnewaddress(), 10);
         self.sync_all()
         self.nodes[0].generate(1)
         self.sync_all()
 
         #fund a tx with ~20 small inputs
         inputs = []
-        outputs = {self.nodes[0].getnewaddress():0.15,self.nodes[0].getnewaddress():0.04}
+        outputs = {self.nodes[0].getnewaddress():150,self.nodes[0].getnewaddress():40}
         rawTx = self.nodes[1].createrawtransaction(inputs, outputs)
         fundedTx = self.nodes[1].fundrawtransaction(rawTx)
 
@@ -509,7 +510,7 @@ class RawTransactionsTest(BitcoinTestFramework):
         self.sync_all()
 
         for i in range(0,20):
-            self.nodes[0].sendtoaddress(self.nodes[1].getnewaddress(), 0.01);
+            self.nodes[0].sendtoaddress(self.nodes[1].getnewaddress(), 10);
         self.sync_all()
         self.nodes[0].generate(1)
         self.sync_all()
@@ -518,7 +519,7 @@ class RawTransactionsTest(BitcoinTestFramework):
         oldBalance = self.nodes[0].getbalance()
 
         inputs = []
-        outputs = {self.nodes[0].getnewaddress():0.15,self.nodes[0].getnewaddress():0.04}
+        outputs = {self.nodes[0].getnewaddress():150,self.nodes[0].getnewaddress():40}
         rawTx = self.nodes[1].createrawtransaction(inputs, outputs)
         fundedTx = self.nodes[1].fundrawtransaction(rawTx)
         fundedAndSignedTx = self.nodes[1].signrawtransaction(fundedTx['hex'])
@@ -526,7 +527,7 @@ class RawTransactionsTest(BitcoinTestFramework):
         self.sync_all()
         self.nodes[0].generate(1)
         self.sync_all()
-        assert_equal(oldBalance+Decimal(self._coin)+Decimal('0.19000000'), self.nodes[0].getbalance()) #0.19+block reward
+        assert_equal(oldBalance+self._reward+Decimal('190'), self.nodes[0].getbalance()) #190+block reward
 
         #####################################################
         # test fundrawtransaction with OP_RETURN and no vin #
