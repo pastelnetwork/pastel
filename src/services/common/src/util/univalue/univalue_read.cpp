@@ -217,7 +217,7 @@ enum jtokentype getJsonToken(string& tokenVal, unsigned int& consumed,
 
             else if (*raw == '"') {
                 raw++;                        // skip "
-                break;                        // stop scanning
+                break;                        // Stop scanning
             }
 
             else {
