@@ -11,6 +11,7 @@ import sqlite3
 import warnings
 import base64
 import json
+from struct import pack, unpack, error
 from shutil import copyfile
 from fs.memoryfs import MemoryFS
 from random import randint
@@ -315,16 +316,20 @@ def decode_folder_of_block_files_into_original_zip_file_func(sha256_hash_of_desi
                     f.write(block_bytes)
                 else:
                     f.write(block_bytes[:filesize%blocksize])
-        
-    with open(decoded_file_destination_file_path,'rb') as f:
-        reconstructed_file = f.read()
-        reconstructed_file_hash = hashlib.sha256(reconstructed_file).hexdigest()
-        if reported_file_sha256_hash == reconstructed_file_hash:
-            completed_successfully = 1
-            print('\nThe SHA256 hash of the reconstructed file matches the reported file hash-- file is valid!\n')
-        else:
-            completed_successfully = 0
-            print('\nProblem! The SHA256 hash of the reconstructed file does NOT match the expected hash! File is not valid.\n')
+    
+    try:
+        with open(decoded_file_destination_file_path,'rb') as f:
+            reconstructed_file = f.read()
+            reconstructed_file_hash = hashlib.sha256(reconstructed_file).hexdigest()
+            if reported_file_sha256_hash == reconstructed_file_hash:
+                completed_successfully = 1
+                print('\nThe SHA256 hash of the reconstructed file matches the reported file hash-- file is valid!\n')
+            else:
+                completed_successfully = 0
+                print('\nProblem! The SHA256 hash of the reconstructed file does NOT match the expected hash! File is not valid.\n')
+    except Exception as e:
+        print('Error: '+ str(e))
+    
     duration_in_seconds = round(time.time() - start_time, 1)
     print('\n\nFinished processing in '+str(duration_in_seconds) + ' seconds!')
     return completed_successfully
@@ -333,16 +338,17 @@ def decode_folder_of_block_files_into_original_zip_file_func(sha256_hash_of_desi
 ########################################################################################################################################
 #Input Parameters:
 use_demo_mode = 1
-use_stress_test = 0
-use_reconstruct_files = 0
+use_stress_test = 1
+use_reconstruct_files = 1
 block_redundancy_factor = 20 #How many times more blocks should we store than are required to regenerate the file?
 desired_block_size_in_bytes = 1024*1000*10
-percentage_of_block_files_to_randomly_delete = 0.90
-use_random_corruption = 1 
+percentage_of_block_files_to_randomly_delete = 0.85
+use_random_corruption = 0 
 percentage_of_block_files_to_randomly_corrupt = 0.05
 folder_path_of_art_folders_to_encode = 'C:\\animecoin\\art_folders_to_encode\\' #Each subfolder contains the various art files pertaining to a given art asset.
 block_storage_folder_path = 'C:\\animecoin\\art_block_storage\\'
 chunk_db_file_path = 'C:\\animecoin\\anime_chunkdb.sqlite'
+decoded_file_destination_folder_path = 'C:\\animecoin\\reconstructed_files\\'
 
 if not os.path.exists(chunk_db_file_path):
     conn = sqlite3.connect(chunk_db_file_path)
@@ -363,7 +369,7 @@ if use_demo_mode:
     print('\nWelcome! This is a demo of the file storage system that is being used for the Animecoin project to store art files in a decentralized, robust way.')    
     print('\n\nFirst, we begin by taking a bunch of folders; each one contains one or images representing a single digital artwork to be registered.')
     print('\nWe will now iterate through these files, adding each to a zip file, so that every artwork has a corresponding zip file. Then we will encode each of these zip files into a collection of chunks as follows:\n\n')
-    sys.exit(0)
+    #sys.exit(0)
 
 list_of_block_file_paths = glob.glob(block_storage_folder_path+'*.block')
 if len(list_of_block_file_paths) > 0:
@@ -427,7 +433,7 @@ if use_stress_test: #Check how robust system is to lost/corrupted blocks:
         print('\n\nGreat, we just finished turning the file into a bunch of "fungible" blocks! If you check the output folder now, you will see a collection of the resulting files.')
         print('Now we can see the purpose of all this. Suppose something really bad happens, and that most of the master nodes hosting these files disappear.')
         print('On top of that, suppose that many of the remaining nodes also lose some of the file chunks to corruption or disk failure. Still, we will be able to reconstruct the file.')
-        sys.exit(0)
+        #sys.exit(0)
     list_of_block_file_paths = glob.glob(block_storage_folder_path+'*.block')
     number_of_deleted_blocks = 0
     pbar = tqdm(total=ceil(percentage_of_block_files_to_randomly_delete*len(list_of_block_file_paths)))
@@ -465,10 +471,35 @@ if use_stress_test: #Check how robust system is to lost/corrupted blocks:
                         pass
         print('\n\nNow let\'s try to reconstruct the original file despite this *random* loss of most of the block files...')
 
+
+use_reset_system_for_demo = 0 
+if use_reset_system_for_demo:
+    if len(list_of_block_file_paths) > 0:
+        print('\nDeleting all the previously generated block files...')
+        try:
+            check_output('rmdir /S /Q '+ block_storage_folder_path, shell=True)
+            print('Done!\n')
+        except:
+            print('.')
+    
+    previous_reconstructed_zip_file_paths = glob.glob(decoded_file_destination_folder_path+'*.zip')
+    for current_existing_zip_file_path in previous_reconstructed_zip_file_paths:
+        try:
+            os.remove(current_existing_zip_file_path)
+        except:
+            pass
+
 if use_reconstruct_files:
     list_of_block_file_paths = glob.glob(block_storage_folder_path+'*.block')
     available_art_file_hashes = [p.split('\\')[-1].split('__')[1] for p in list_of_block_file_paths]
-    decoded_file_destination_folder_path = 'C:\\animecoin\\reconstructed_files\\'
+    #Delete previous existing reconstructed zip files so we don't have any problems:
+
+        
+    if not os.path.exists(decoded_file_destination_folder_path):
+        try:
+            os.makedirs(decoded_file_destination_folder_path)
+        except Exception as e:
+            print('Error: '+ str(e)) 
     
     for current_file_path in list_of_block_file_paths:
         reported_file_sha256_hash = current_file_path.split('\\')[-1].split('__')[1]
@@ -487,4 +518,6 @@ if use_reconstruct_files:
     if number_of_failed_files == 0:
         print('All files reconstructed successfully!')
     else:
-        print('Some files were NOT successfully reconstructed! '+str(number_of_failed_files)+' Files had errors:\n '+failed_file_hash_list)
+        print('Some files were NOT successfully reconstructed! '+str(number_of_failed_files)+' Files had errors:\n ')
+        for current_hash in failed_file_hash_list:
+            print(current_hash+'\n')
