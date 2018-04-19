@@ -1,6 +1,4 @@
- 
-import sys, time, os.path, io, glob, hashlib, imghdr, random, os, zlib, pickle, sqlite3, uuid, socket, warnings, base64, json, hmac, logging, asyncio
-#import bencode, crc32c, dht, krpc, tracker, utils #TinyBT
+import sys, time, os.path, io, glob, hashlib, imghdr, random, os, zlib, pickle, sqlite3, uuid, socket, warnings, base64, json, hmac, logging, asyncio, binascii
 from shutil import copyfile
 from random import randint
 from math import ceil, log, floor, sqrt
@@ -9,9 +7,13 @@ from zipfile import ZipFile
 from subprocess import check_output
 from datetime import datetime
 from kademlia.network import Server
-#from pyp2p.net import *
-#from pyp2p.unl import UNL
-#from pyp2p.dht_msg import DHT
+from pyxolotl.config import config
+from pyxolotl.core import Pyxolotl
+from pyxolotl.protocol.basic import Message
+from pyxolotl.exceptions import NoSessionException, PendingKeyExchangeException
+from pyxolotl.cryptostorage import CryptoStorage
+from pyxolotl.encoder import base64
+from pyxolotl.transport import plaintext 
 with warnings.catch_warnings():
     warnings.filterwarnings("ignore",category=DeprecationWarning)
     from fs.copy import copy_fs
@@ -19,26 +21,24 @@ with warnings.catch_warnings():
 try:
     from tqdm import tqdm
     import yenc
-    import pyxolotl
 except:
     pass
-try:
-    from socket import socketpair
-except ImportError:
-    from asyncio.windows_utils import socketpair
 #Requirements:
-# pip install kademlia, pyxolotl, yenc, tqdm, fs
+# pip install kademlia, pyxolotl, yenc, tqdm, fs, pyftpdlib
 
 #Parameters:
 use_start_new_network = 0
 use_connect_to_existing_network = 0
 use_register_local_blocks_on_dht = 1 
 use_demonstrate_asking_network_for_file_blocks = 0
-use_demonstrate_transferring_block_file_using_nat_upnp = 0
+use_demonstrate_ftp_based_block_file_transfer = 0
+use_demonstrate_signal_protocol_encrypted_file_transfer = 0
 use_integrity_scan_of_block_files_on_startup = 0
 folder_path_of_art_folders_to_encode = 'C:\\animecoin\\art_folders_to_encode\\' #Each subfolder contains the various art files pertaining to a given art asset.
 block_storage_folder_path = 'C:\\animecoin\\art_block_storage\\'
 chunk_db_file_path = 'C:\\animecoin\\anime_chunkdb.sqlite'
+pyxolotl_folder_path = 'C:\\animecoin\\pyxolotl\\'
+_, my_node_ip, my_node_port, my_node_id = unpackage_hash_table_entry_func(package_hash_table_entry_func([]))
 
 if use_integrity_scan_of_block_files_on_startup:
     if not os.path.exists(chunk_db_file_path):
@@ -188,7 +188,6 @@ def package_hash_table_entry_func(data_as_python_list):
     data_as_json = json.dumps(data_as_python_list)
     data_as_json_zipped = zlib.compress(data_as_json.encode('utf-8'))
     _, _, data_as_json_zipped_yenc_encoded = yenc.encode(data_as_json_zipped)
-    #print(data_as_json_zipped_yenc_encoded.decode('unicode-escape'))
     return data_as_json_zipped_yenc_encoded
 
     use_demonstrate_size_of_encodings = 0
@@ -252,7 +251,6 @@ def advertise_local_blocks_to_network(server):
     global list_of_local_potential_block_hashes
     global list_of_local_potential_file_hashes
     global list_of_local_potential_file_hashes_unique
-    
     for cnt, current_file_hash in enumerate(list_of_local_potential_file_hashes_unique):
         list_of_block_hashes = get_blocks_for_given_file_hash_func(current_file_hash)
         yencoded_zipped_json = package_hash_table_entry_func(list_of_block_hashes)
@@ -267,12 +265,25 @@ def ask_network_for_blocks_corresponding_to_hash_of_given_zipfile_func(server,sh
     try:
         print('\nAsking network for any block hashes that correspond to the zip file with the SHA256 hash: '+sha256_hash_of_desired_zipfile+'\n')
         yencoded_zipped_json = asyncio.get_event_loop().run_until_complete(server.get(sha256_hash_of_desired_zipfile))
-        time.sleep(5)
+        time.sleep(1)
         data_as_list, node_ip, node_port, node_id = unpackage_hash_table_entry_func(yencoded_zipped_json)
         return data_as_list, node_ip, node_port, node_id
     except:
         pass
 
+def get_local_block_bytes_from_block_hash_func(sha256_hash_of_desired_block_file):
+    global block_storage_folder_path
+    list_of_block_file_paths = glob.glob(os.path.join(block_storage_folder_path,'*'+sha256_hash_of_desired_block_file+'*.block'))
+    if len(list_of_block_file_paths) > 0:
+        current_block_file_path = list_of_block_file_paths[0]
+        try:
+            with open(current_block_file_path,'rb') as f:
+                current_block_data = f.read()
+            return current_block_data
+        except Exception as e:
+            print('Error: '+ str(e)) 
+            
+    
 def start_new_network_func(port):
     try:
         server = Server()
@@ -315,7 +326,7 @@ if use_connect_to_existing_network:
         #test_file_hash = 'a75a1757d54ad0876f9b2cf9b64b1017b6293ceed61e80cd64aae5abfdc8514e' #Arturo_number_04
         #test_file_hash = '734ad8214cb20deab6474f19397d012678de4acc61c4c24de35ce3b8cc466d5f' #Mark_Kong_number_02
         test_file_hash = '105c4c9b9d79ed544c36df792f7bbbddb6700209f51e4b9e1073fa41653d2aa8' #Iris Madula Number 11
-        
+        sha256hashsize = sys.getsizeof(test_file_hash)
         print('Now asking network for hashes of blocks that correspond to the zipfile with a SHA256 hash of: '+test_file_hash)
         list_of_block_hashes, remote_node_ip, remote_node_port, remote_node_id = ask_network_for_blocks_corresponding_to_hash_of_given_zipfile_func(server,test_file_hash)
         print('\n\nDone! Got back '+str(len(list_of_block_hashes))+' Block Hashes:\n')
@@ -324,19 +335,103 @@ if use_connect_to_existing_network:
         for current_block_hash in list_of_block_hashes:
             print(current_block_hash+', ',end='')
 
-    if use_demonstrate_transferring_block_file_using_nat_upnp:
-         _, my_node_ip, my_node_port, my_node_id = unpackage_hash_table_entry_func( package_hash_table_entry_func([]))
-        
-    if 0: #Experiments with PyP2P:
-        my_dht = DHT()
-        my_node_direct = Net(passive_bind=my_node_ip, passive_port=my_node_port, net_type='p2p', dht_node=my_dht, debug=1)
-        my_node_direct.start()
-        remote_dht = DHT()
-        remote_node_direct = Net(passive_bind=remote_node_ip, passive_port=remote_node_port, net_type='p2p', dht_node=remote_dht, debug=1)
-        remote_node_direct.start()
-        my_node_direct.unl.connect(bob_direct.unl.construct(), events)
+    if use_demonstrate_ftp_based_block_file_transfer:
+        from pyftpdlib.handlers import FTPHandler, ThrottledDTPHandler
+        from pyftpdlib.authorizers import DummyAuthorizer
+        from pyftpdlib.servers import FTPServer
+        from ftplib import FTP
+        #Server:
+        authorizer = DummyAuthorizer()
+        authorizer.add_anonymous(block_storage_folder_path)
+        ftp_handler  = FTPHandler
+        ftp_handler .authorizer = authorizer
+        ftp_handler .banner = 'You are now connected to Node_ID: '+my_node_id
+        address = ('0.0.0.0', 21)
+        dtp_handler = ThrottledDTPHandler
+        dtp_handler.read_limit = 30720*250  # 250*30 Kb/sec (250* 30 * 1024)
+        dtp_handler.write_limit = 30720*250  # 250*30 Kb/sec (250* 30 * 1024)
+        ftp_handler .dtp_handler = dtp_handler
 
+        server = FTPServer(address, ftp_handler )
+        server.max_cons_per_ip = 5
+        server.max_cons = 256
+        logging.basicConfig(filename='C:\\animecoin\\anime_storage_log.txt', level=logging.DEBUG)
+        #ftp_handler .masquerade_address = '151.25.42.11'
+        #ftp_handler .passive_ports = range(60000, 65535)
+        server.serve_forever()
+        #Client:
+        ftp = FTP(remote_node_ip)  
+        ftp.login() 
+        ftp.retrbinary('RETR README', open('README', 'wb').write)
+        ftp.quit()
+    
+    
+    if use_demonstrate_signal_protocol_encrypted_file_transfer:
+        pyxolotl_log_path = os.path.join(user_data_dir(pyxolotl_folder_path), 'pyxolotl.log')
+        pyxolotl_db_path = os.path.join(user_data_dir(pyxolotl_folder_path), 'pyxolotl.db')
+        pyxolotl_config_path = os.path.join(user_data_dir(pyxolotl_folder_path), 'pyxolotl.json')
+        for current_pyxolotl_path in [pyxolotl_log_path, pyxolotl_db_path, pyxolotl_config_path]:
+            directory = os.path.dirname(current_pyxolotl_path)
+            if directory and not os.path.isdir(directory):
+                try:
+                    os.makedirs(directory)
+                except OSError as e:
+                    parser.exit(1, 'Failed to create directory: {}'.format(e))
+        log_format = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+        logging.basicConfig(filename=pyxolotl_log_path, level=logging.DEBUG, format=log_format)
+        config.filename = pyxolotl_config_path
+        config.load()
+        my_encoder = base64.Encoder()
+        transport_obj = plaintext.Transport(encoder=my_encoder)
+        your_public_key = axo.store.getIdentityKeyPair().getPublicKey().serialize()
+        print('Your public key: {}'.format(binascii.hexlify(your_public_key).decode('ascii')))
+        all_sessions = axo.store.sessionStore.getAllSessions()
+        if all_sessions:
+            print('Existing sessions:')
+            for identity, device_id, record in all_sessions:
+                try:
+                    public_key = binascii.hexlify(
+                        record.getSessionState().getRemoteIdentityKey().serialize()
+                    ).decode('ascii')
+                except IndexError:
+                    public_key = 'UNKNOWN'
+                print('\tIdentity: {}, Pending key exchange: {}'.format(
+                    identity.decode('utf-8'),
+                    record.getSessionState().hasPendingKeyExchange()
+                ))
+                print('\t\tPublic key: {}'.format(public_key))
+        else:
+            print('No sessions found.')
+            
+        my_cryptostorage = CryptoStorage()
+        axo = Pyxolotl(pyxolotl_db_path, cryptostorage=my_cryptostorage)
+        transport_obj.send(axo.init_key_exchange(remote_node_id)) #Initiate key exchange with remote node
+        session_passphrase = my_node_id^remote_node_id #Bitwise XOR of the local and remote NodeID
+        try:
+            my_cryptostorage.change_passphrase(session_passphrase)
+        except:
+            my_cryptostorage.init_storage(session_passphrase)
+        config['mastersecret'] = base64.b64encode(my_cryptostorage.mastersecret).decode('utf-8')
+        config.save()
         
+        def give_local_block_data_to_remote_nodeid_func(sha256_hash_of_desired_block_file,remote_node_id,transport_obj):
+            current_block_data = get_local_block_bytes_from_block_hash_func(sha256_hash_of_desired_block_file)
+            transport_obj.send(axo.send(remote_node_id,current_block_data))
+
+        def get_remote_block_data_from_remote_nodeid_func(sha256_hash_of_desired_block_file,remote_node_id,transport_obj):
+            transport_obj.send(axo.send(remote_node_id,sha256_hash_of_desired_block_file))#Request the block we want
+            current_block_data_encrypted = transport_obj.receive(encrypted_message)
+            current_block_data_decrypted = axo.receive(current_block_data_encrypted)
+            if current_block_data_decrypted and isinstance(current_block_data_decrypted, Message):
+                transport_obj.send(current_block_data_decrypted) #In this case, we still need to respond with the decrypted text to finish the key exchange.
+
+        #def respond_to_remote_block_request_func(sha256_hash_of_desired_block_file):
+            
+
+if 0:
+    import bond
+    js = bond.make_bond('JavaScript', timeout=TIMEOUT)
+    js.call('test_multi_arg', "Hello", "world!")
 
 if 0:
     loop.call_soon_threadsafe(loop.stop)
