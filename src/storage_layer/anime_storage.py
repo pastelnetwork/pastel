@@ -20,7 +20,8 @@ from collections import defaultdict
 from zipfile import ZipFile
 from tqdm import tqdm
 from subprocess import check_output
-
+#Requirements:
+# pip install tqdm, fs
 
 with warnings.catch_warnings():
     warnings.filterwarnings("ignore",category=DeprecationWarning)
@@ -335,14 +336,17 @@ def decode_folder_of_block_files_into_original_zip_file_func(sha256_hash_of_desi
     return completed_successfully
 
 
+
+
+
 ########################################################################################################################################
 #Input Parameters:
 use_demo_mode = 1
 use_stress_test = 1
 use_reconstruct_files = 1
-block_redundancy_factor = 20 #How many times more blocks should we store than are required to regenerate the file?
-desired_block_size_in_bytes = 1024*1000*10
-percentage_of_block_files_to_randomly_delete = 0.85
+block_redundancy_factor = 10 #How many times more blocks should we store than are required to regenerate the file?
+desired_block_size_in_bytes = 1024*1000*2
+percentage_of_block_files_to_randomly_delete = 0.75
 use_random_corruption = 0 
 percentage_of_block_files_to_randomly_corrupt = 0.05
 folder_path_of_art_folders_to_encode = 'C:\\animecoin\\art_folders_to_encode\\' #Each subfolder contains the various art files pertaining to a given art asset.
@@ -470,7 +474,6 @@ if use_stress_test: #Check how robust system is to lost/corrupted blocks:
                     except OSError:
                         pass
         print('\n\nNow let\'s try to reconstruct the original file despite this *random* loss of most of the block files...')
-
 
 use_reset_system_for_demo = 0 
 if use_reset_system_for_demo:
