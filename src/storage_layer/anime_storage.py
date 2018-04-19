@@ -23,6 +23,22 @@ from subprocess import check_output
 #Requirements:
 # pip install tqdm, fs
 
+def user_data_dir(appname=None):
+    """Return path to the user data directory for this application"""
+    if sys.platform == 'win32':
+        path = os.getenv('LOCALAPPDATA', os.path.normpath(os.path.expanduser('~/AppData/Local/')))
+        if appname:
+            path = os.path.join(path, appname, appname)
+    elif sys.platform == 'darwin':
+        path = os.path.expanduser('~/Library/Application Support/')
+        if appname:
+            path = os.path.join(path, appname)
+    else:
+        path = os.getenv('XDG_DATA_HOME', os.path.expanduser('~/.local/share/'))
+        if appname:
+            path = os.path.join(path, appname)
+    return path
+
 with warnings.catch_warnings():
     warnings.filterwarnings("ignore",category=DeprecationWarning)
     from fs.copy import copy_fs
@@ -524,3 +540,4 @@ if use_reconstruct_files:
         print('Some files were NOT successfully reconstructed! '+str(number_of_failed_files)+' Files had errors:\n ')
         for current_hash in failed_file_hash_list:
             print(current_hash+'\n')
+
