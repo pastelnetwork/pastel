@@ -1,21 +1,36 @@
 import time, sys, os.path, io, glob, hashlib, platform, imghdr, random, os, sqlite3, warnings, base64, json, pickle
+warnings.simplefilter(action='ignore', category=FutureWarning)
+warnings.filterwarnings("ignore",category=DeprecationWarning)
 import rsa
 import tensorflow as tf
+import numpy as np
+import h5py
 from struct import pack, unpack
 from shutil import copyfile
 from fs.memoryfs import MemoryFS
+from fs.copy import copy_fs
+from fs.osfs import OSFS
 from random import randint
 from math import ceil, floor, sqrt, log
 from collections import defaultdict
 from zipfile import ZipFile
 from tqdm import tqdm
 from subprocess import check_output
+from PIL import Image
+from keras.models import Sequential
+from keras.optimizers import SGD
+from keras.layers.core import Layer
+from keras.layers import merge, Input, Dense, Convolution2D, Conv2D, MaxPooling2D, AveragePooling2D, ZeroPadding2D, Dropout, Flatten, merge, Reshape, Activation
+from keras.layers.normalization import BatchNormalization
+from keras.models import Model
+from keras.engine import InputSpec
+from keras import initializers
+from keras import backend as K
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
-#Requirements: pip install tqdm, fs, rsa, tensorflow
-with warnings.catch_warnings():
-    warnings.filterwarnings("ignore",category=DeprecationWarning)
-    from fs.copy import copy_fs
-    from fs.osfs import OSFS
+sys.setrecursionlimit(3000)
+
+#Requirements: pip install tqdm, fs, rsa, numpy, tensorflow, keras, h5py==2.8.0rc1
+warnings.resetwarnings()
 
 def gen_tau(S, K, delta):
     """The Robust part of the RSD, we precompute an array for speed"""
@@ -147,6 +162,7 @@ class BlockGraph(object):
             if len(check.src_nodes) == 1:
                 yield (next(iter(check.src_nodes)), check.check)
 
+#Various Utility Functions:
 def regenerate_sqlite_chunk_database_func():
     global chunk_db_file_path
     try:
@@ -232,6 +248,7 @@ def delete_all_blocks_and_zip_files_to_reset_system_func():
         except:
             pass
 
+#Artist digital signature functions:
 def generate_artist_public_and_private_keys_func():
     (artist_public_key, artist_private_key) = rsa.newkeys(512)
     return artist_public_key, artist_private_key
@@ -333,6 +350,7 @@ def verify_artist_signatures_in_art_folder_func(path_to_art_folder,artist_public
         print('One or more art files could NOT be verified as being correctly signed with the correct digital signature!')
     return all_verified
 
+#Artwork Metadata Functions:
 def create_metadata_file_for_given_art_folder_func(path_to_art_folder,
                                                   artist_name,
                                                   artwork_title,
@@ -435,6 +453,7 @@ def read_artwork_metadata_from_art_folder_func(path_to_art_folder): #Convenience
         artist_concatenated_hash_signature_base64_encoded, hash_of_the_concatenated_file_hashes, datetime_art_was_signed, artist_name, artwork_title, artwork_max_quantity, artwork_series_name, artist_website, artwork_artist_statement = read_artwork_metadata_from_metadata_file(path_to_artwork_metadata_file)
         return artist_concatenated_hash_signature_base64_encoded, hash_of_the_concatenated_file_hashes, datetime_art_was_signed, artist_name, artwork_title, artwork_max_quantity, artwork_series_name, artist_website, artwork_artist_statement
 
+#NSFW Function:
 def check_art_folder_for_nsfw_content(path_to_art_folder):
    global nsfw_score_threshold
    start_time = time.time()
@@ -471,6 +490,146 @@ def check_art_folder_for_nsfw_content(path_to_art_folder):
    return list_of_art_file_hashes, list_of_nsfw_scores
    duration_in_seconds = round(time.time() - start_time, 1)
    print('\n\nFinished processing in '+str(duration_in_seconds) + ' seconds!')
+
+#Dupe detection helper functions:
+class Scale(Layer):
+    '''Learns a set of weights and biases used for scaling the input data. '''
+    def __init__(self, weights=None, axis=-1, momentum = 0.9, beta_init='zero', gamma_init='one', **kwargs):
+        self.momentum = momentum
+        self.axis = axis 
+        self.beta_init = initializers.get(beta_init)
+        self.gamma_init = initializers.get(gamma_init)
+        self.initial_weights = weights
+        super(Scale, self).__init__(**kwargs)
+
+    def build(self, input_shape):
+        self.input_spec = [InputSpec(shape=input_shape)]
+        shape = (int(input_shape[self.axis]),)
+        self.gamma = K.variable(self.gamma_init(shape), name='{}_gamma'.format(self.name))
+        self.beta = K.variable(self.beta_init(shape), name='{}_beta'.format(self.name))
+        self.trainable_weights = [self.gamma, self.beta]
+        if self.initial_weights is not None:
+            self.set_weights(self.initial_weights)
+            del self.initial_weights
+
+    def call(self, x, mask=None):
+        input_shape = self.input_spec[0].shape
+        broadcast_shape = [1] * len(input_shape)
+        broadcast_shape[self.axis] = input_shape[self.axis]
+        out = K.reshape(self.gamma, broadcast_shape) * x + K.reshape(self.beta, broadcast_shape)
+        return out
+
+    def get_config(self):
+        config = {"momentum": self.momentum, "axis": self.axis}
+        base_config = super(Scale, self).get_config()
+        return dict(list(base_config.items()) + list(config.items()))
+
+def identity_block(input_tensor, kernel_size, filters, stage, block):
+    '''The identity_block is the block that has no conv layer at shortcut'''
+    eps = 1.1e-5
+    nb_filter1, nb_filter2, nb_filter3 = filters
+    conv_name_base = 'res' + str(stage) + block + '_branch'
+    bn_name_base = 'bn' + str(stage) + block + '_branch'
+    scale_name_base = 'scale' + str(stage) + block + '_branch'
+    x = Conv2D(64, (1, 1), name=conv_name_base + '2a', use_bias=False)(input_tensor)
+    x = BatchNormalization(epsilon=eps, axis=bn_axis, name=bn_name_base + '2a')(x)
+    x = Scale(axis=bn_axis, name=scale_name_base + '2a')(x)
+    x = Activation('relu', name=conv_name_base + '2a_relu')(x)
+    x = ZeroPadding2D((1, 1), name=conv_name_base + '2b_zeropadding')(x)
+    x = Conv2D(64, (3, 3), name=conv_name_base + '2b', use_bias=False)(x)
+    x = BatchNormalization(epsilon=eps, axis=bn_axis, name=bn_name_base + '2b')(x)
+    x = Scale(axis=bn_axis, name=scale_name_base + '2b')(x)
+    x = Activation('relu', name=conv_name_base + '2b_relu')(x)
+    x = Conv2D(256, (1, 1), name=conv_name_base + '2c', use_bias=False)(x)
+    x = BatchNormalization(epsilon=eps, axis=bn_axis, name=bn_name_base + '2c')(x)
+    x = Scale(axis=bn_axis, name=scale_name_base + '2c')(x)
+    x = merge([x, input_tensor], mode='sum', name='res' + str(stage) + block)
+    x = Activation('relu', name='res' + str(stage) + block + '_relu')(x)
+    return x
+
+def conv_block(input_tensor, kernel_size, filters, stage, block, strides=(2, 2)):
+    '''conv_block is the block that has a conv layer at shortcut'''
+    eps = 1.1e-5
+    nb_filter1, nb_filter2, nb_filter3 = filters
+    conv_name_base = 'res2' + str(stage) + block + '_branch'
+    bn_name_base = 'bn2' + str(stage) + block + '_branch'
+    scale_name_base = 'scale2' + str(stage) + block + '_branch'
+    x = Conv2D(64, (1, 1), name=conv_name_base + '2a', use_bias=False)(input_tensor)
+    x = BatchNormalization(epsilon=eps, axis=bn_axis, name=bn_name_base + '2a')(x)
+    x = Scale(axis=bn_axis, name=scale_name_base + '2a')(x)
+    x = Activation('relu', name=conv_name_base + '2a_relu')(x)
+    x = ZeroPadding2D((1, 1), name=conv_name_base + '2b_zeropadding')(x)
+    x = Conv2D(64, (3, 3), name=conv_name_base + '2b', use_bias=False)(x)
+    x = BatchNormalization(epsilon=eps, axis=bn_axis, name=bn_name_base + '2b')(x)
+    x = Scale(axis=bn_axis, name=scale_name_base + '2b')(x)
+    x = Activation('relu', name=conv_name_base + '2b_relu')(x)
+    x = Conv2D(256, (1, 1), name=conv_name_base + '2c', use_bias=False)(x)
+    x = BatchNormalization(epsilon=eps, axis=bn_axis, name=bn_name_base + '2c')(x)
+    x = Scale(axis=bn_axis, name=scale_name_base + '2c')(x)
+    shortcut = Conv2D(256, (1, 1), name=conv_name_base + '1', strides=(1, 1), use_bias=False)(input_tensor)
+    shortcut = BatchNormalization(epsilon=eps, axis=bn_axis, name=bn_name_base + '1')(shortcut)
+    shortcut = Scale(axis=bn_axis, name=scale_name_base + '1')(shortcut)
+    x = merge([x, shortcut], mode='sum', name='res' + str(stage) + block)
+    x = merge([x, shortcut], mode='sum', name='res' + str(stage) + block)
+    x = Activation('relu', name='res' + str(stage) + block + '_relu')(x)
+    return x
+    
+def resnet152_model(img_rows, img_cols, color_type=3, num_classes=None):
+    """Resnet 152 Model for Keras  Parameters: img_rows, img_cols - resolution of inputs; color_type 3 for color (1 for gs); num_classes - number of class labels for our classification task"""
+    global bn_axis
+    bn_axis = 3
+    eps = 1.1e-5
+    img_input = Input(shape=(img_rows, img_cols, color_type), name='data')
+    x = ZeroPadding2D((3, 3), name='conv1_zeropadding')(img_input)
+    #x = Convolution2D(64, 7, 7, subsample=(2, 2), name='conv1', bias=False)(x)
+    x = Conv2D(64, (7, 7), name="conv1", strides=(2, 2), use_bias=False)(x)
+    x = BatchNormalization(epsilon=eps, axis=bn_axis, name='bn_conv1')(x)
+    x = Scale(axis=bn_axis, name='scale_conv1')(x)
+    x = Activation('relu', name='conv1_relu')(x)
+    x = MaxPooling2D((3, 3), strides=(2, 2), name='pool1')(x)
+    x = conv_block(x, 3, [64, 64, 256], stage=2, block='a', strides=(1, 1))
+    x = identity_block(x, 3, [64, 64, 256], stage=2, block='b')
+    x = identity_block(x, 3, [64, 64, 256], stage=2, block='c')
+    x = conv_block(x, 3, [128, 128, 512], stage=3, block='a')
+    for i in range(1,8):
+      x = identity_block(x, 3, [128, 128, 512], stage=3, block='b'+str(i))
+    x = conv_block(x, 3, [256, 256, 1024], stage=4, block='a')
+    for i in range(1,36):
+      x = identity_block(x, 3, [256, 256, 1024], stage=4, block='b'+str(i))
+    x = conv_block(x, 3, [512, 512, 2048], stage=5, block='a')
+    x = identity_block(x, 3, [512, 512, 2048], stage=5, block='b')
+    x = identity_block(x, 3, [512, 512, 2048], stage=5, block='c')
+    x_fc = AveragePooling2D((7, 7), name='avg_pool')(x)
+    x_fc = Flatten()(x_fc)
+    x_fc = Dense(1000, activation='softmax', name='fc1000')(x_fc)
+    model = Model(img_input, x_fc)
+    weights_path = 'resnet152_weights_tf.h5'# Use pre-trained weights for Tensorflow backend
+    model.load_weights(weights_path, by_name=True)
+    x_newfc = AveragePooling2D((7, 7), name='avg_pool')(x) # Truncate and replace softmax layer for transfer learning;  Cannot use model.layers.pop() since model is not of Sequential() type;The method below works since pre-trained weights are stored in layers but not in the model 
+    x_newfc = Flatten()(x_newfc)
+    x_newfc = Dense(num_classes, activation='softmax', name='fc8')(x_newfc)
+    model = Model(img_input, x_newfc)
+    sgd = SGD(lr=1e-3, decay=1e-6, momentum=0.9, nesterov=True)    # Learning rate is changed to 0.001
+    model.compile(optimizer=sgd, loss='categorical_crossentropy', metrics=['accuracy'])
+    return model
+
+def add_to_duplicate_detection_model_func(path_to_art_image_file):
+    global path_to_all_registered_works_for_dupe_detection
+    img = Image.open(path_to_art_image_file)
+    resized_width = 5000
+    resized_height = 5000
+    original_height, original_width = img.size
+    resized_image_matrix = img.resize((resized_width,resized_height), Image.ANTIALIAS)
+    #img.save('resized.png') 
+    number_of_channels = 3
+    number_of_classes = 1000 
+    dummy_label = np.ones(number_of_classes)
+    batch_size = 1
+    nb_epoch = 1
+    model = resnet152_model(resized_height, resized_width, number_of_channels, number_of_classes)
+    model.fit(resized_image_matrix, dummy_label, batch_size=batch_size, nb_epoch=nb_epoch, verbose=1)# Start Fine-tuning
+    predictions_valid = model.predict(resized_image_matrix, batch_size=batch_size, verbose=1)# Make predictions
+
 
 def turn_art_image_folder_into_encoded_block_files_func(folder_path_of_art_folders_to_encode, block_storage_folder_path, desired_block_size_in_bytes, block_redundancy_factor):
     global nsfw_score_threshold
@@ -558,7 +717,6 @@ def turn_art_image_folder_into_encoded_block_files_func(folder_path_of_art_folde
                 print('Error: '+ str(e))
         duration_in_seconds = round(time.time() - start_time, 1)
         print('\n\nFinished processing in '+str(duration_in_seconds) + ' seconds! \nOriginal zip file was encoded into ' + str(number_of_blocks_generated) + ' blocks of ' + str(ceil(desired_block_size_in_bytes/1000)) + ' kilobytes each. Total size of all blocks is ~' + str(ceil((number_of_blocks_generated*desired_block_size_in_bytes)/1000000)) + ' megabytes\n')
-            
     print('Now copying encoded files from ram disk to local storage...')
     if not os.path.exists(block_storage_folder_path):
         try:
@@ -579,7 +737,6 @@ def turn_art_image_folder_into_encoded_block_files_func(folder_path_of_art_folde
     print('All Done! The entire process took '+ str(round(total_duration_in_seconds/60,2))+' minutes!\n')
     ramdisk_object.close()
     return total_duration_in_seconds
-
 
 def decode_folder_of_block_files_into_original_zip_file_func(sha256_hash_of_desired_file, block_storage_folder_path, decoded_file_destination_folder_path):
     #First, scan the blocks folder:
@@ -647,10 +804,60 @@ def decode_folder_of_block_files_into_original_zip_file_func(sha256_hash_of_desi
         print('Error: '+ str(e))
     duration_in_seconds = round(time.time() - start_time, 1)
     print('\n\nFinished processing in '+str(duration_in_seconds) + ' seconds!')
-    
-    
     return completed_successfully
 
+def refresh_block_storage_folder_and_check_block_integrity_func(use_verify_integrity=0):
+    global chunk_db_file_path
+    global block_storage_folder_path
+    if not os.path.exists(chunk_db_file_path):
+       regenerate_sqlite_chunk_database_func()
+    potential_local_block_hashes_list = []
+    potential_local_file_hashes_list = []
+    list_of_block_file_paths = glob.glob(block_storage_folder_path+'*.block')
+    if use_verify_integrity:
+        print('Now Verifying Block Files ('+str(len(list_of_block_file_paths))+' files found)\n')
+        try:
+            pbar = tqdm(total=len(list_of_block_file_paths))
+        except:
+            print('.')
+        for current_block_file_path in list_of_block_file_paths:
+            with open(current_block_file_path, 'rb') as f:
+                try:
+                    current_block_binary_data = f.read()
+                except:
+                    print('\nProblem reading block file!\n')
+                    continue
+            try:
+                pbar.update(1)
+            except:
+                pass
+            hash_of_block = hashlib.sha256(current_block_binary_data).hexdigest()
+            reported_block_sha256_hash = current_block_file_path.split('\\')[-1].split('__')[-1].replace('BlockHash_','').replace('.block','')
+            if hash_of_block == reported_block_sha256_hash:
+                reported_file_sha256_hash = current_block_file_path.split('\\')[-1].split('__')[1]
+                if reported_block_sha256_hash not in potential_local_block_hashes_list:
+                    potential_local_block_hashes_list.append(reported_block_sha256_hash)
+                    potential_local_file_hashes_list.append(reported_file_sha256_hash)
+            else:
+                print('\nBlock '+reported_block_sha256_hash+' did not hash to the correct value-- file is corrupt! Skipping to next file...\n')
+        print('\n\nDone verifying block files!\nNow writing local block metadata to SQLite database...\n')
+    else:
+        for current_block_file_path in list_of_block_file_paths:
+            reported_block_sha256_hash = current_block_file_path.split('\\')[-1].split('__')[-1].replace('BlockHash_','').replace('.block','')
+            reported_file_sha256_hash = current_block_file_path.split('\\')[-1].split('__')[1]
+            if reported_block_sha256_hash not in potential_local_block_hashes_list:
+                potential_local_block_hashes_list.append(reported_block_sha256_hash)
+                potential_local_file_hashes_list.append(reported_file_sha256_hash)
+    conn = sqlite3.connect(chunk_db_file_path)
+    c = conn.cursor()
+    c.execute("""DELETE FROM potential_local_hashes""")
+    for hash_cnt, current_block_hash in enumerate(potential_local_block_hashes_list):
+        current_file_hash = potential_local_file_hashes_list[hash_cnt]
+        sql_string = """INSERT OR IGNORE INTO potential_local_hashes (block_hash, file_hash) VALUES (\"{blockhash}\", \"{filehash}\")""".format(blockhash=current_block_hash, filehash=current_file_hash)
+        c.execute(sql_string)
+    conn.commit()
+    #print('Done writing file hash data to SQLite file!\n')  
+    return potential_local_block_hashes_list, potential_local_file_hashes_list
 
 ########################################################################################################################################
 #Input Parameters:
@@ -661,7 +868,12 @@ use_reset_system_for_demo = 0
 block_redundancy_factor = 10 #How many times more blocks should we store than are required to regenerate the file?
 desired_block_size_in_bytes = 1024*1000*2
 percentage_of_block_files_to_randomly_delete = 0.75
-use_random_corruption = 0 
+use_random_corruption = 0
+use_generate_new_sqlite_chunk_database = 0
+use_digital_signature_sanity_check = 0
+use_demonstrate_signing_art_folder_with_artists_private_key = 1
+use_demonstrate_meta_data_construction = 0
+use_generate_new_key_pair = 0
 percentage_of_block_files_to_randomly_corrupt = 0.05
 percentage_of_each_selected_file_to_be_randomly_corrupted = 0.01
 nsfw_score_threshold = 0.95 #Most actual porn will come up over 99% confident.
@@ -669,13 +881,10 @@ folder_path_of_art_folders_to_encode = 'C:\\animecoin\\art_folders_to_encode\\' 
 block_storage_folder_path = 'C:\\animecoin\\art_block_storage\\'
 chunk_db_file_path = 'C:\\animecoin\\anime_chunkdb.sqlite'
 decoded_file_destination_folder_path = 'C:\\animecoin\\reconstructed_files\\'
-use_digital_signature_sanity_check = 0
-use_demonstrate_signing_art_folder_with_artists_private_key = 1
-use_demonstrate_meta_data_construction = 0
-use_generate_new_key_pair = 0
 path_to_art_folder = 'C:\\animecoin\\art_folders_to_encode\\Arturo_Lopez__Number_02\\'
+path_to_art_image_file = os.path.join(path_to_art_folder,'Arturo_Lopez__Number_02.png')
+path_to_all_registered_works_for_dupe_detection = 'C:\\Users\\jeffr\Cointel Dropbox\\Jeffrey Emanuel\\Animecoin_All_Finished_Works\\'
 path_to_artwork_metadata_file = os.path.join(path_to_art_folder,'artwork_metadata_file.db')
-use_generate_new_sqlite_chunk_database = 0
 current_platform = platform.platform()
 
 if use_generate_new_sqlite_chunk_database:
@@ -688,50 +897,10 @@ if use_demo_mode:
     sys.exit(0)
 
 list_of_block_file_paths = glob.glob(block_storage_folder_path+'*.block')
-
 run_time = turn_art_image_folder_into_encoded_block_files_func(folder_path_of_art_folders_to_encode, block_storage_folder_path, desired_block_size_in_bytes, block_redundancy_factor)
 print('Total Run Time: '+str(run_time)+' seconds')
-list_of_block_file_paths = glob.glob(block_storage_folder_path+'*.block')
-potential_local_file_hashes_list = []
-potential_local_block_hashes_list = []
-list_of_block_file_paths = glob.glob(block_storage_folder_path+'*.block')
-print('Now Verifying Block Files ('+str(len(list_of_block_file_paths))+' files found)\n')
-pbar = tqdm(total=len(list_of_block_file_paths))
-for current_block_file_path in list_of_block_file_paths:
-    with open(current_block_file_path, 'rb') as f:
-        try:
-            current_block_binary_data = f.read()
-        except:
-            print('\nProblem reading block file!\n')
-            continue
-    pbar.update(1)
-    hash_of_block = hashlib.sha256(current_block_binary_data).hexdigest()
-    reported_block_sha256_hash = current_block_file_path.split('\\')[-1].split('__')[-1].replace('BlockHash_','').replace('.block','')
-    if hash_of_block == reported_block_sha256_hash:
-        reported_file_sha256_hash = current_block_file_path.split('\\')[-1].split('__')[1]
-        if reported_block_sha256_hash not in potential_local_block_hashes_list:
-            potential_local_block_hashes_list.append(reported_block_sha256_hash)
-            potential_local_file_hashes_list.append(reported_file_sha256_hash)
-    else:
-        print('\nBlock '+reported_block_sha256_hash+' did not hash to the correct value-- file is corrupt! Skipping to next file...\n')
 
-print('\n\nDone verifying block files!\nNow writing local block metadata to SQLite database...\n')
-table_name= 'potential_local_hashes'
-id_column = 'block_hash'
-column_name = 'file_hash'
-conn = sqlite3.connect(chunk_db_file_path)
-c = conn.cursor()
-c.execute("""DELETE FROM potential_local_hashes""")
-
-for hash_cnt, current_block_hash in enumerate(potential_local_block_hashes_list):
-    current_file_hash = potential_local_file_hashes_list[hash_cnt]
-    sql_string = """INSERT OR IGNORE INTO potential_local_hashes (block_hash, file_hash) VALUES (\"{blockhash}\", \"{filehash}\")""".format(blockhash=current_block_hash, filehash=current_file_hash)
-    c.execute(sql_string)
-conn.commit()
-print('Done writing file hash data to SQLite file!\n')
-set_of_local_potential_block_hashes = c.execute('SELECT block_hash FROM potential_local_hashes').fetchall()
-set_of_local_potential_file_hashes = c.execute('SELECT DISTINCT file_hash FROM potential_local_hashes').fetchall()
-conn.close()
+potential_local_block_hashes_list, potential_local_file_hashes_list = refresh_block_storage_folder_and_check_block_integrity_func()
 
 if use_stress_test: #Check how robust system is to lost/corrupted blocks:
     if use_demo_mode:
@@ -742,9 +911,9 @@ if use_stress_test: #Check how robust system is to lost/corrupted blocks:
     number_of_deleted_blocks = randomly_delete_percentage_of_local_block_files_func(percentage_of_block_files_to_randomly_delete)
     if use_demo_mode:
         print('\n\nJust deleted '+str(number_of_deleted_blocks) +' of the generated blocks, or '+ str(round(100*number_of_deleted_blocks/len(list_of_block_file_paths),2))+'% of the blocks')
-        #sys.exit(0)
     if use_random_corruption:
        number_of_corrupted_blocks = randomly_corrupt_a_percentage_of_bytes_in_a_random_sample_of_block_files_func(percentage_of_block_files_to_randomly_corrupt,percentage_of_each_selected_file_to_be_randomly_corrupted)
+       print('\n\nJust Corrupted '+str(number_of_corrupted_blocks) +' of the generated blocks, or '+ str(round(100*number_of_corrupted_blocks/len(list_of_block_file_paths),2))+'% of the blocks')
 
 if use_reset_system_for_demo:
     delete_all_blocks_and_zip_files_to_reset_system_func()
@@ -773,7 +942,6 @@ if use_reconstruct_files:
         print('Some files were NOT successfully reconstructed! '+str(number_of_failed_files)+' Files had errors:\n ')
         for current_hash in failed_file_hash_list:
             print(current_hash+'\n')
-
 
 if use_demonstrate_signing_art_folder_with_artists_private_key:
     if use_generate_new_key_pair:
