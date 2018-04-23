@@ -43,7 +43,6 @@ use_demonstrate_ftp_based_block_file_transfer = 0
 folder_path_of_art_folders_to_encode = 'C:\\animecoin\\art_folders_to_encode\\' #Each subfolder contains the various art files pertaining to a given art asset.
 block_storage_folder_path = 'C:\\animecoin\\art_block_storage\\'
 chunk_db_file_path = 'C:\\animecoin\\anime_chunkdb.sqlite'
-storage_key_cert_file_path = 'C:\\animecoin\\keycert.pem'
 file_storage_log_file_path = 'C:\\animecoin\\anime_storage_log.txt'
 reconstructed_file_destination_folder_path = 'C:\\animecoin\\reconstructed_files\\'
 default_port = 14142
@@ -53,20 +52,77 @@ target_number_of_nodes_per_unique_block_hash = 10
 target_block_redundancy_factor = 10 #How many times more blocks should we store than are required to regenerate the file?
 desired_block_size_in_bytes = 1024*1000*2
 
+
 ###############################################################################################################
 # Functions:
 ###############################################################################################################
+
+#Utility functions:
+def generate_node_mac_hash_id():
+    return hashlib.sha256(str(int(uuid.getnode())).encode('utf-8')).hexdigest()
+        
+def get_my_local_ip_func():
+    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    s.connect(("8.8.8.8", 80))
+    my_node_ip_address = s.getsockname()[0]
+    s.close()
+    return my_node_ip_address 
+
+def regenerate_sqlite_chunk_database_func():
+    global chunk_db_file_path
+    try:
+        conn = sqlite3.connect(chunk_db_file_path)
+        c = conn.cursor()
+        local_hash_table_creation_string= """CREATE TABLE potential_local_hashes (block_hash text PRIMARY KEY, file_hash);"""
+        global_hash_table_creation_string= """CREATE TABLE potential_global_hashes (block_hash text, file_hash text, remote_node_ip text, remote_node_id text, datetime_peer_last_seen TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL, PRIMARY KEY (block_hash, remote_node_id));"""
+        node_ip_to_id_table_creation_string= """CREATE TABLE node_ip_to_id_table (remote_node_id text PRIMARY KEY, remote_node_ip text, datetime_peer_last_seen TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL);"""
+        c.execute(local_hash_table_creation_string)
+        c.execute(global_hash_table_creation_string)
+        c.execute(node_ip_to_id_table_creation_string)
+        conn.commit()
+    except Exception as e:
+        print('Error: '+ str(e))
+
+    
+def get_node_ip_address_from_node_id_func(remote_node_id):
+    try:
+        global node_ip_to_node_id_dict
+        list_of_node_ids_from_dict = node_ip_to_node_id_dict.values()
+        list_of_node_ips_from_dict = node_ip_to_node_id_dict.keys()
+        for node_count, current_node_id in enumerate(list_of_node_ids_from_dict):
+            current_node_ip_address = list_of_node_ips_from_dict[node_count]
+            sql_string = """INSERT OR REPLACE INTO node_ip_to_id_table (remote_node_id, remote_node_ip) VALUES (\"{remotenodeid}\", \"{remotenodeip}\")""".format(remotenodeid=current_node_id, remotenodeip=current_node_ip_address)
+        c.execute(sql_string)
+        conn.commit()
+        node_ip_query_results = c.execute("""SELECT DISTINCT remote_node_ip FROM potential_global_hashes WHERE remote_node_id=? ORDER BY datetime_peer_last_seen DESC""",[remote_node_id]).fetchall()
+        list_of_matching_remote_node_ips = [x[0] for x in node_ip_query_results]
+        return list_of_matching_remote_node_ips[0]
+    except Exception as e:
+        print('Error: '+ str(e))
+        return 0
+
+def get_node_id_from_node_ip_address_func(remote_node_ip):
+    try:
+        global node_ip_to_node_id_dict
+        list_of_node_ids_from_dict = node_ip_to_node_id_dict.values()
+        list_of_node_ips_from_dict = node_ip_to_node_id_dict.keys()
+        for node_count, current_node_id in enumerate(list_of_node_ids_from_dict):
+            current_node_ip_address = list_of_node_ips_from_dict[node_count]
+            sql_string = """INSERT OR REPLACE INTO node_ip_to_id_table (remote_node_id, remote_node_ip) VALUES (\"{remotenodeid}\", \"{remotenodeip}\")""".format(remotenodeid=current_node_id, remotenodeip=current_node_ip_address)
+        c.execute(sql_string)
+        conn.commit()
+        node_id_query_results = c.execute("""SELECT DISTINCT remote_node_id FROM potential_global_hashes WHERE remote_node_ip=? ORDER BY datetime_peer_last_seen DESC""",[remote_node_ip]).fetchall()
+        list_of_matching_remote_node_ids = [x[0] for x in node_id_query_results]
+        return list_of_matching_remote_node_ids[0]
+    except Exception as e:
+        print('Error: '+ str(e))
+        return 0
+    
 def refresh_block_storage_folder_and_check_block_integrity_func(use_verify_integrity=0):
     global chunk_db_file_path
     global block_storage_folder_path
     if not os.path.exists(chunk_db_file_path):
-        conn = sqlite3.connect(chunk_db_file_path)
-        c = conn.cursor()
-        local_hash_table_creation_string= """CREATE TABLE potential_local_hashes (block_hash text PRIMARY KEY, file_hash text);"""
-        global_hash_table_creation_string= """CREATE TABLE potential_global_hashes (block_hash text, file_hash text, remote_node_ip text, remote_node_id text, datetime_peer_last_seen TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL, PRIMARY KEY (block_hash, remote_node_ip, datetime_peer_last_seen));"""
-        c.execute(local_hash_table_creation_string)
-        c.execute(global_hash_table_creation_string)
-        conn.commit()
+       regenerate_sqlite_chunk_database_func()
     potential_local_block_hashes_list = []
     potential_local_file_hashes_list = []
     list_of_block_file_paths = glob.glob(block_storage_folder_path+'*.block')
@@ -115,9 +171,6 @@ def refresh_block_storage_folder_and_check_block_integrity_func(use_verify_integ
     #print('Done writing file hash data to SQLite file!\n')  
     return potential_local_block_hashes_list, potential_local_file_hashes_list
 
-def generate_node_mac_hash_id():
-    return hashlib.sha256(str(int(uuid.getnode())).encode('utf-8')).hexdigest()
-
 def get_local_matching_blocks_from_zipfile_hash_func(sha256_hash_of_desired_zipfile):
     global block_storage_folder_path
     list_of_block_file_paths = glob.glob(os.path.join(block_storage_folder_path,'*'+sha256_hash_of_desired_zipfile+'*.block'))
@@ -130,7 +183,7 @@ def get_local_matching_blocks_from_zipfile_hash_func(sha256_hash_of_desired_zipf
         list_of_block_hashes.append(reported_block_file_sha256_hash)
     return list_of_block_file_paths, list_of_block_hashes, list_of_file_hashes
 
-def get_local_blocks_from_sqlite_for_given_file_hash_func(file_hash):
+def get_local_block_list_from_sqlite_for_given_file_hash_func(file_hash):
     global chunk_db_file_path
     conn = sqlite3.connect(chunk_db_file_path)
     c = conn.cursor()
@@ -140,7 +193,7 @@ def get_local_blocks_from_sqlite_for_given_file_hash_func(file_hash):
         list_of_block_hashes.append(current_block[0])
     return list_of_block_hashes
 
-def read_local_block_file_binary_data_func(sha256_hash_of_desired_block):
+def get_local_block_file_binary_data_func(sha256_hash_of_desired_block):
     global block_storage_folder_path
     list_of_block_file_paths = glob.glob(os.path.join(block_storage_folder_path,'*'+sha256_hash_of_desired_block+'*.block'))
     try:
@@ -157,7 +210,6 @@ def get_local_block_file_header_data_func(sha256_hash_of_desired_block):
         try:
             with open(list_of_block_file_paths[0],'rb') as f:
                 block_binary_data= f.read()
-            
             input_stream = io.BufferedReader(io.BytesIO(block_binary_data),buffer_size=1000000)
             header = unpack('!III', input_stream.read(12))
             filesize = header[0]
@@ -177,20 +229,13 @@ def package_dht_hash_table_entry_func(data_as_python_list):
     global default_port
     my_node_id = generate_node_mac_hash_id()
     data_as_python_list.insert(0,my_node_id)
-    try:
-        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        s.connect(("8.8.8.8", 80))
-        my_node_ip_address = s.getsockname()[0]
-        s.close()
-    except Exception as e:
-        print('Error: '+ str(e)) 
+    my_node_ip_address =  get_my_local_ip_func()
     my_node_ip_and_port = my_node_ip_address+ ':' + str(default_port)
     data_as_python_list.insert(0,my_node_ip_and_port)
     data_as_json = json.dumps(data_as_python_list)
     data_as_json_zipped = zlib.compress(data_as_json.encode('utf-8'))
     _, _, data_as_json_zipped_yenc_encoded = yenc.encode(data_as_json_zipped)
     return data_as_json_zipped_yenc_encoded
-
     use_demonstrate_size_of_encodings = 0
     if use_demonstrate_size_of_encodings:
         data_as_json_zipped_base64_encoded = base64.b64encode(data_as_json_zipped)
@@ -220,6 +265,8 @@ def package_dht_hash_table_entry_func(data_as_python_list):
             print('Unzipped the data successfully!')
 
 def unpackage_dht_hash_table_entry_func(data_as_yenc_encoded_zipped_data):
+    global node_ip_to_node_id_dict
+    global node_id_to_node_ip_dict
     _, _, yenc_decoded = yenc.decode(data_as_yenc_encoded_zipped_data)
     data_as_json_unzipped = zlib.decompress(yenc_decoded)
     data_as_list_with_headers = json.loads(data_as_json_unzipped)
@@ -228,6 +275,8 @@ def unpackage_dht_hash_table_entry_func(data_as_yenc_encoded_zipped_data):
     node_port = int(node_ip_and_port.split(':')[1])
     node_id = data_as_list_with_headers[1]
     data_as_list = data_as_list_with_headers[2:]
+    node_ip_to_node_id_dict[node_ip] = node_id
+    node_id_to_node_ip_dict[node_id] = node_ip
     return data_as_list, node_ip, node_port, node_id
 
 def advertise_local_blocks_to_dht_network_func():
@@ -238,7 +287,7 @@ def advertise_local_blocks_to_dht_network_func():
     global list_of_local_potential_file_hashes
     global list_of_local_potential_file_hashes_unique
     for cnt, current_file_hash in enumerate(list_of_local_potential_file_hashes_unique):
-        list_of_block_hashes = get_local_blocks_from_sqlite_for_given_file_hash_func(current_file_hash)
+        list_of_block_hashes = get_local_block_list_from_sqlite_for_given_file_hash_func(current_file_hash)
         yencoded_zipped_json = package_dht_hash_table_entry_func(list_of_block_hashes)
         try:
             print('Broadcasting to the DHT network the list of blocks for the zip file with hash: '+current_file_hash)
@@ -258,19 +307,7 @@ def ask_dht_network_for_blocks_corresponding_to_hash_of_given_zipfile_func(sha25
     except:
         pass
 
-def get_local_block_bytes_using_block_hash_func(sha256_hash_of_desired_block_file):
-    global block_storage_folder_path
-    list_of_block_file_paths = glob.glob(os.path.join(block_storage_folder_path,'*'+sha256_hash_of_desired_block_file+'*.block'))
-    if len(list_of_block_file_paths) > 0:
-        current_block_file_path = list_of_block_file_paths[0]
-        try:
-            with open(current_block_file_path,'rb') as f:
-                current_block_data = f.read()
-            return current_block_data
-        except Exception as e:
-            print('Error: '+ str(e)) 
-            
-def start_new_dht_network_func(port):
+def start_new_dht_network_func(port=default_port):
     try:
         server = Server()
         server.listen(port)
@@ -286,7 +323,7 @@ def start_new_dht_network_func(port):
     except Exception as e:
         print('Error: '+ str(e))
 
-def connect_to_existing_dht_network(port):
+def connect_to_existing_dht_network(port=default_port):
     try:
         loop = asyncio.get_event_loop()
         loop.set_debug(True)
@@ -295,14 +332,11 @@ def connect_to_existing_dht_network(port):
         return server, loop
     except Exception as e:
         print('Error: '+ str(e))
-        
-def get_my_local_ip_func():
-    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    s.connect(("8.8.8.8", 80))
-    my_node_ip_address = s.getsockname()[0]
-    s.close()
-    return my_node_ip_address 
-            
+
+def get_peer_node_ips(server):
+    peers = server.bootstrappableNeighbors()
+    return peers
+
 def start_file_server_func():
     global my_node_id
     global block_storage_folder_path
@@ -327,30 +361,40 @@ def start_file_server_func():
     logging.basicConfig(filename=file_storage_log_file_path, level=logging.DEBUG)
     file_server.serve_forever() #handler.masquerade_address = '151.25.42.11' #handler.passive_ports = range(60000, 65535)
 
-def get_list_of_available_blocks_on_remote_node_file_server_func(remote_node_ip,remote_note_id):
+def get_list_of_available_blocks_on_remote_node_file_server_func(remote_note_id):
     global block_storage_folder_path
     global file_storage_log_file_path
-    print('\n\nNow connecting to remote node: '+ remote_node_ip + ' at IP: '+remote_node_ip)
-    ftp = FTP(remote_node_ip)
-    file_server_user_name = 'masternode_user'
-    file_server_password = remote_note_id
-    ftp.login(file_server_user_name, file_server_password)# password is the remote node's node_id
-    print('Connected Successfully! Now getting list of available block files...')
-    block_file_names_on_remote_node = []
-    ftp.retrlines('LIST',lambda x: block_file_names_on_remote_node.append(x))
-    block_file_names_on_remote_node_clean = []
-    for current_block_file_name in block_file_names_on_remote_node:
-        current_block_file_name_clean = current_block_file_name.split()[-1]
-        block_file_names_on_remote_node_clean.append(current_block_file_name_clean)
-    print('Done getting list of block files!\n')
-    ftp.quit()
-    return block_file_names_on_remote_node_clean
-
+    remote_node_ip = get_node_ip_address_from_node_id_func(remote_node_id)
+    if remote_node_ip != 0:
+        print('\n\nNow connecting to remote node: '+ remote_node_ip + ' at IP: '+remote_node_ip)
+        ftp = FTP(remote_node_ip)
+        file_server_user_name = 'masternode_user'
+        file_server_password = remote_note_id
+        ftp.login(file_server_user_name, file_server_password)# password is the remote node's node_id
+        print('Connected Successfully! Now getting list of available block files...')
+        block_file_names_on_remote_node = []
+        ftp.retrlines('LIST',lambda x: block_file_names_on_remote_node.append(x))
+        block_file_names_on_remote_node_clean = []
+        for current_block_file_name in block_file_names_on_remote_node:
+            current_block_file_name_clean = current_block_file_name.split()[-1]
+            block_file_names_on_remote_node_clean.append(current_block_file_name_clean)
+        print('Done getting list of block files!\n')
+        ftp.quit()
+        return block_file_names_on_remote_node_clean
+    else:
+        return 0
+    
+def get_block_file_lists_from_all_nodes_func():
+    list_of_unique_node_ip_addresses = get_all_remote_node_ips_func()
+    for current_node_ip in list_of_unique_node_ip_addresses:
+        get_list_of_available_blocks_on_remote_node_file_server_func(remote_note_id)
+    #FINISH THIS
+    
 def check_sqlitedb_for_remote_blocks_func(sha256_hash_of_desired_zipfile):
     global chunk_db_file_path
     conn = sqlite3.connect(chunk_db_file_path)
     c = conn.cursor()
-    query_results_table = c.execute("""SELECT * FROM potential_global_hashes where file_hash = ? ORDER BY datetime_peer_last_seen LIMIT 1000""",[sha256_hash_of_desired_zipfile]).fetchall()
+    query_results_table = c.execute("""SELECT * FROM potential_global_hashes where file_hash = ? ORDER BY datetime_peer_last_seen""",[sha256_hash_of_desired_zipfile]).fetchall()
     list_of_block_hashes = [x[0] for x in query_results_table]
     list_of_file_hashes = [x[1] for x in query_results_table]
     list_of_ip_addresses = [x[2] for x in query_results_table]
@@ -358,19 +402,18 @@ def check_sqlitedb_for_remote_blocks_func(sha256_hash_of_desired_zipfile):
     #list_of_datetimes_peer_last_seen = [x[4] for x in query_results_table]
     potential_local_block_hashes_list, potential_local_file_hashes_list = refresh_block_storage_folder_and_check_block_integrity_func()
     return list_of_block_hashes, list_of_file_hashes, list_of_ip_addresses, list_of_node_ids
-            
-def regenerate_sqlite_chunk_database_func():
+
+def get_all_remote_node_ips_func():
     global chunk_db_file_path
-    try:
-        conn = sqlite3.connect(chunk_db_file_path)
-        c = conn.cursor()
-        local_hash_table_creation_string= """CREATE TABLE potential_local_hashes (block_hash text PRIMARY KEY, file_hash);"""
-        global_hash_table_creation_string= """CREATE TABLE potential_global_hashes (block_hash text, file_hash text, remote_node_ip text, remote_node_id text, datetime_peer_last_seen TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL, PRIMARY KEY (block_hash, remote_node_ip, datetime_peer_last_seen));"""
-        c.execute(local_hash_table_creation_string)
-        c.execute(global_hash_table_creation_string)
-        conn.commit()
-    except Exception as e:
-        print('Error: '+ str(e))    
+    global bootstrap_node_list
+    conn = sqlite3.connect(chunk_db_file_path)
+    c = conn.cursor()
+    list_of_unique_node_ip_addresses = c.execute("""SELECT DISTINCT remote_node_ip FROM potential_global_hashes""").fetchall()
+    list_of_unique_node_ip_addresses =  [x[0] for x in list_of_unique_node_ip_addresses]
+    list_of_bootstrap_node_ip_addresses = list(set([x[0] for x in bootstrap_node_list]))
+    list_of_unique_node_ip_addresses = list(set(list_of_unique_node_ip_addresses + list_of_bootstrap_node_ip_addresses))
+    return list_of_unique_node_ip_addresses
+    
 
 def verify_locally_reconstructed_zipfile_func(sha256_hash_of_desired_zipfile):
     global reconstructed_file_destination_folder_path
@@ -821,6 +864,13 @@ def reconstruct_block_files_into_original_zip_file_func(sha256_hash_of_desired_z
 # Script:
 ###############################################################################################################
 my_node_ip_address = get_my_local_ip_func()
+node_ip_to_node_id_dict = {}
+node_id_to_node_ip_dict = {}
+my_node_ip_address = get_my_local_ip_func()
+my_node_id = generate_node_mac_hash_id()
+node_ip_to_node_id_dict[my_node_ip_address] = my_node_id
+node_id_to_node_ip_dict[my_node_id] = my_node_ip_address
+
 bootstrap_node_list = [(x,int(default_port)) for x in list_of_ips if x[0] != my_node_ip_address] +  [(x,int(alternative_port)) for x in list_of_ips if x[0] != my_node_ip_address]
 handler = logging.StreamHandler()
 formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
@@ -828,7 +878,6 @@ handler.setFormatter(formatter)
 dht_log = logging.getLogger('kademlia')
 dht_log.addHandler(handler)
 dht_log.setLevel(logging.DEBUG)   
-my_node_id = generate_node_mac_hash_id()
 conn = sqlite3.connect(chunk_db_file_path)
 c = conn.cursor()
 if use_generate_new_sqlite_chunk_database:
@@ -895,11 +944,11 @@ if use_connect_to_existing_dht_network:
 
     sha256_hash_of_desired_zipfile = 'a75a1757d54ad0876f9b2cf9b64b1017b6293ceed61e80cd64aae5abfdc8514e'
     remote_node_ip = '140.82.14.38'#'108.61.86.243' #'140.82.2.58'
-    remote_note_id = 'ab5476e2a797c669ae7fdc5f2a8684301db812061357b703aa4e990457c86179'
+    remote_node_id = 'ab5476e2a797c669ae7fdc5f2a8684301db812061357b703aa4e990457c86179'
     sha256_hash_of_desired_block = '1e6864df358abd54b3ebcdb8da05c16149f208ef10aab4ac86e12cb1b0074ac9'
     wrapper_reconstruct_zipfile_from_hash_func(sha256_hash_of_desired_zipfile)
 
     if use_demonstrate_ftp_based_block_file_transfer:
-        retrieve_block_files_from_remote_node_using_file_hash_func(sha256_hash_of_desired_zipfile,remote_node_ip,remote_note_id)
+        retrieve_block_files_from_remote_node_using_file_hash_func(sha256_hash_of_desired_zipfile,remote_node_ip,remote_node_id)
         list_of_block_hashes, list_of_file_hashes, list_of_ip_addresses, list_of_node_ids = check_sqlitedb_for_remote_blocks_func(sha256_hash_of_desired_zipfile)
         filesize, blocksize, number_of_blocks_required = get_local_block_file_header_data_func(sha256_hash_of_desired_zipfile)
