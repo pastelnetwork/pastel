@@ -1,9 +1,12 @@
-import time, sys, os.path, io, glob, hashlib, platform, imghdr, random, os, sqlite3, warnings, base64, json, pickle, shutil
+import time, sys, os.path, io, glob, hashlib, platform, imghdr, random, os, sqlite3, warnings, base64, json, pickle, shutil, math
 warnings.simplefilter(action='ignore', category=FutureWarning)
-warnings.filterwarnings("ignore",category=DeprecationWarning)
+warnings.filterwarnings('ignore',category=DeprecationWarning)
 import rsa, h5py
 import tensorflow as tf
 import numpy as np
+import cv2
+import keras
+import matplotlib.pyplot
 from struct import pack, unpack
 from shutil import copyfile
 from fs.memoryfs import MemoryFS
@@ -16,6 +19,7 @@ from zipfile import ZipFile
 from tqdm import tqdm
 from subprocess import check_output
 from PIL import Image
+from time import time
 from keras.models import Sequential
 from keras.models import Model
 from keras.optimizers import SGD
@@ -25,7 +29,15 @@ from keras.layers.core import Layer
 from keras.engine import InputSpec
 from keras import initializers
 from keras import backend as K
-os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
+from keras import layers
+from keras import applications
+from keras.applications.resnet50 import preprocess_input
+from matplotlib.pyplot import imshow
+from keras.preprocessing import image
+from keras.applications.imagenet_utils import decode_predictions, preprocess_input
+from sklearn import decomposition, manifold, pipeline
+from scipy.spatial import distance
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 sys.setrecursionlimit(3000)
 #Requirements: pip install tqdm, fs, rsa, numpy, tensorflow, keras, h5py==2.8.0rc1
         
@@ -33,15 +45,15 @@ sys.setrecursionlimit(3000)
 # Parameters:
 ###############################################################################################################
 use_demo_mode = 1
-use_stress_test = 1
+use_stress_test = 0
 use_random_corruption = 0
 use_reconstruct_files = 1
 use_reset_system_for_demo = 0 
 use_generate_new_sqlite_chunk_database = 1
 use_generate_new_demonstration_artist_key_pair = 0
-block_redundancy_factor = 10 #How many times more blocks should we store than are required to regenerate the file?
-desired_block_size_in_bytes = 1024*1000*2
-percentage_of_block_files_to_randomly_delete = 0.75
+block_redundancy_factor = 3 #How many times more blocks should we store than are required to regenerate the file?
+desired_block_size_in_bytes = 1024*1000*10
+percentage_of_block_files_to_randomly_delete = 0.55
 percentage_of_block_files_to_randomly_corrupt = 0.05
 percentage_of_each_selected_file_to_be_randomly_corrupted = 0.01
 nsfw_score_threshold = 0.95 #Most actual porn will come up over 99% confident.
@@ -54,9 +66,13 @@ prepared_final_art_zipfiles_folder_path = os.path.join(root_animecoin_folder_pat
 folder_path_of_art_folders_to_encode = os.path.join(root_animecoin_folder_path,'art_folders_to_encode' + os.sep) #Each subfolder contains the various art files pertaining to a given art asset.
 chunk_db_file_path = os.path.join(misc_masternode_files_folder_path,'anime_chunkdb.sqlite')
 masternode_keypair_db_file_path = os.path.join(misc_masternode_files_folder_path,'masternode_keypair_db.sqlite')
+dupe_detection_image_fingerprint_database_file_path = os.path.join(misc_masternode_files_folder_path,'dupe_detection_image_fingerprint_database.sqlite')
+
 #For testing purposes:
 path_to_art_folder = os.path.join(folder_path_of_art_folders_to_encode,'Arturo_Lopez__Number_02' + os.sep)
 path_to_art_image_file = os.path.join(path_to_art_folder,'Arturo_Lopez__Number_02.png')
+path_to_another_similar_art_image_file = os.path.join(path_to_art_folder,'Arturo_Lopez__Number_02__With_Background.png')
+path_to_another_different_art_image_file = 'C:\\animecoin\\art_folders_to_encode\\Arturo_Lopez__Number_04\\Arturo_Lopez__Number_04.png'
 path_to_artwork_metadata_file = os.path.join(path_to_art_folder,'artwork_metadata_file.db')
 path_to_all_registered_works_for_dupe_detection = 'C:\\Users\\jeffr\Cointel Dropbox\\Jeffrey Emanuel\\Animecoin_All_Finished_Works\\'
 current_platform = platform.platform()
@@ -156,9 +172,9 @@ class BlockGraph(object):
 
     def add_block(self, nodes, data):
         """Adds a new check node and edges between that node and all source nodes it connects, resolving all message passes that become possible as a result. """
-        if len(nodes) == 1: # We can eliminate this source node
+        if len(nodes) == 1:# We can eliminate this source node
             to_eliminate = list(self.eliminate(next(iter(nodes)), data))
-            while len(to_eliminate): # Recursively eliminate all nodes that can now be resolved
+            while len(to_eliminate):# Recursively eliminate all nodes that can now be resolved
                 other, check = to_eliminate.pop()
                 to_eliminate.extend(self.eliminate(other, check))
         else:
@@ -168,8 +184,8 @@ class BlockGraph(object):
                     data ^= self.eliminated[node]
             if len(nodes) == 1: # Resolve if we are left with a single non-resolved source node
                 return self.add_block(nodes, data)
-            else:
-                check = CheckNode(nodes, data) # Add edges for all remaining nodes to this check
+            else: # Add edges for all remaining nodes to this check
+                check = CheckNode(nodes, data)
                 for node in nodes:
                     self.checks[node].append(check)
         return len(self.eliminated) >= self.num_blocks # Are we done yet?
@@ -186,6 +202,56 @@ class BlockGraph(object):
                 yield (next(iter(check.src_nodes)), check.check)
 
 #Dupe detection helper functions:
+def get_named_model_func(model_name):
+    if model_name == 'Xception':
+        return applications.xception.Xception(weights='imagenet', include_top=False, pooling='avg')
+    if model_name == 'VGG16':
+        return applications.vgg16.VGG16(weights='imagenet', include_top=False, pooling='avg')
+    if model_name == 'VGG19':
+        return applications.vgg19.VGG19(weights='imagenet', include_top=False, pooling='avg')
+    if model_name == 'InceptionV3':
+        return applications.inception_v3.InceptionV3(weights='imagenet', include_top=False, pooling='avg')
+    if model_name == 'MobileNet':
+        return applications.mobilenet.MobileNet(weights='imagenet', include_top=False, pooling='avg')
+    if model_name == 'ResNet50':
+        return applications.resnet50.ResNet50(weights='imagenet', include_top=False, pooling='avg')
+    if model_name == 'TSNE':
+        return manifold.TSNE(random_state=0)
+    if model_name == 'PCA-TSNE':
+        tsne = manifold.TSNE(random_state=0, perplexity=50, early_exaggeration=6.0)
+        pca = decomposition.PCA(n_components=48)
+        return pipeline.Pipeline([('reduce_dims', pca), ('tsne', tsne)])
+    if model_name == 'PCA':
+        return decomposition.PCA(n_components=48)
+    raise ValueError('Unknown model')
+
+def get_image_features(path_to_art_image_file):
+    try:
+        if os.path.isfile(path_to_art_image_file):
+            with open(path_to_art_image_file,'rb') as f:
+                image_file_binary_data = f.read()
+                sha256_hash_of_art_image_file = hashlib.sha256(image_file_binary_data).hexdigest()
+            img = image.load_img(path_to_art_image_file, target_size=(224, 224)) # load image setting the image size to 224 x 224
+            x = image.img_to_array(img) # convert image to numpy array
+            x = np.expand_dims(x, axis=0) # the image is now in an array of shape (3, 224, 224) but we need to expand it to (1, 2, 224, 224) as Keras is expecting a list of images
+            x = preprocess_input(x)
+            print('Loading deep learning model...')
+            deeplearning_model = get_named_model_func('VGG19')
+            features = deeplearning_model.predict(x)[0] # extract the features
+            features_arr = np.char.mod('%f', features) # convert from Numpy to a list of values
+            x_data = np.asarray(features_arr).astype('float64') # convert image data to float64 matrix. float64 is need for bh_sne
+            x_data = x_data.reshape((x_data.shape[0], -1))
+            print('Loading tSNE model...')
+            tsne_model = manifold.TSNE(random_state=0)
+            vis_data = tsne_model.fit_transform(x_data) # perform t-SNE
+            tsne_x_coordinate = vis_data[0]
+            tsne_y_coordinate = vis_data[1]
+            print('Done getting image fingerprint!')
+            return tsne_x_coordinate, tsne_y_coordinate, sha256_hash_of_art_image_file
+    except Exception as e:
+        print('Error: '+ str(e))
+
+
 class Scale(Layer):
     """Learns a set of weights and biases used for scaling the input data."""
     def __init__(self, weights=None, axis=-1, momentum = 0.9, beta_init='zero', gamma_init='one', **kwargs):
@@ -225,19 +291,19 @@ def identity_block(input_tensor, kernel_size, filters, stage, block):
     conv_name_base = 'res' + str(stage) + block + '_branch'
     bn_name_base = 'bn' + str(stage) + block + '_branch'
     scale_name_base = 'scale' + str(stage) + block + '_branch'
-    x = Conv2D(64, (1, 1), name=conv_name_base + '2a', use_bias=False)(input_tensor)
+    x = Conv2D(nb_filter1, (1, 1), name=conv_name_base + '2a', use_bias=False)(input_tensor)
     x = BatchNormalization(epsilon=eps, axis=bn_axis, name=bn_name_base + '2a')(x)
     x = Scale(axis=bn_axis, name=scale_name_base + '2a')(x)
     x = Activation('relu', name=conv_name_base + '2a_relu')(x)
     x = ZeroPadding2D((1, 1), name=conv_name_base + '2b_zeropadding')(x)
-    x = Conv2D(64, (3, 3), name=conv_name_base + '2b', use_bias=False)(x)
+    x = Conv2D(nb_filter2, (kernel_size, kernel_size), name=conv_name_base + '2b', use_bias=False)(x)
     x = BatchNormalization(epsilon=eps, axis=bn_axis, name=bn_name_base + '2b')(x)
     x = Scale(axis=bn_axis, name=scale_name_base + '2b')(x)
     x = Activation('relu', name=conv_name_base + '2b_relu')(x)
-    x = Conv2D(256, (1, 1), name=conv_name_base + '2c', use_bias=False)(x)
+    x = Conv2D(nb_filter3, (1, 1), name=conv_name_base + '2c', use_bias=False)(x)
     x = BatchNormalization(epsilon=eps, axis=bn_axis, name=bn_name_base + '2c')(x)
     x = Scale(axis=bn_axis, name=scale_name_base + '2c')(x)
-    x = merge([x, input_tensor], mode='sum', name='res' + str(stage) + block)
+    x = layers.add([x, input_tensor], name='res' + str(stage) + block)
     x = Activation('relu', name='res' + str(stage) + block + '_relu')(x)
     return x
 
@@ -245,37 +311,36 @@ def conv_block(input_tensor, kernel_size, filters, stage, block, strides=(2, 2))
     """conv_block is the block that has a conv layer at shortcut"""
     eps = 1.1e-5
     nb_filter1, nb_filter2, nb_filter3 = filters
-    conv_name_base = 'res2' + str(stage) + block + '_branch'
-    bn_name_base = 'bn2' + str(stage) + block + '_branch'
-    scale_name_base = 'scale2' + str(stage) + block + '_branch'
-    x = Conv2D(64, (1, 1), name=conv_name_base + '2a', use_bias=False)(input_tensor)
+    conv_name_base = 'res' + str(stage) + block + '_branch'
+    bn_name_base = 'bn' + str(stage) + block + '_branch'
+    scale_name_base = 'scale' + str(stage) + block + '_branch'
+    x = Conv2D(nb_filter1, (1, 1), strides=strides, name=conv_name_base + '2a', use_bias=False)(input_tensor)
     x = BatchNormalization(epsilon=eps, axis=bn_axis, name=bn_name_base + '2a')(x)
     x = Scale(axis=bn_axis, name=scale_name_base + '2a')(x)
     x = Activation('relu', name=conv_name_base + '2a_relu')(x)
     x = ZeroPadding2D((1, 1), name=conv_name_base + '2b_zeropadding')(x)
-    x = Conv2D(64, (3, 3), name=conv_name_base + '2b', use_bias=False)(x)
+    x = Conv2D(nb_filter2, (kernel_size, kernel_size), name=conv_name_base + '2b', use_bias=False)(x)
     x = BatchNormalization(epsilon=eps, axis=bn_axis, name=bn_name_base + '2b')(x)
     x = Scale(axis=bn_axis, name=scale_name_base + '2b')(x)
     x = Activation('relu', name=conv_name_base + '2b_relu')(x)
-    x = Conv2D(256, (1, 1), name=conv_name_base + '2c', use_bias=False)(x)
+    x = Conv2D(nb_filter3, (1, 1), name=conv_name_base + '2c', use_bias=False)(x)
     x = BatchNormalization(epsilon=eps, axis=bn_axis, name=bn_name_base + '2c')(x)
     x = Scale(axis=bn_axis, name=scale_name_base + '2c')(x)
-    shortcut = Conv2D(256, (1, 1), name=conv_name_base + '1', strides=(1, 1), use_bias=False)(input_tensor)
+    shortcut = Conv2D(nb_filter3, (1, 1), strides=strides,name=conv_name_base + '1', use_bias=False)(input_tensor)
     shortcut = BatchNormalization(epsilon=eps, axis=bn_axis, name=bn_name_base + '1')(shortcut)
     shortcut = Scale(axis=bn_axis, name=scale_name_base + '1')(shortcut)
-    x = merge([x, shortcut], mode='sum', name='res' + str(stage) + block)
-    x = merge([x, shortcut], mode='sum', name='res' + str(stage) + block)
+    x = layers.add([x, shortcut], name='res' + str(stage) + block)
     x = Activation('relu', name='res' + str(stage) + block + '_relu')(x)
     return x
     
-def resnet152_model(img_rows, img_cols, color_type=3, num_classes=None):
+def resnet152_model(weights_path):
     """Resnet 152 Model for Keras  Parameters: img_rows, img_cols - resolution of inputs; color_type 3 for color (1 for gs); num_classes - number of class labels for our classification task"""
     global bn_axis
-    bn_axis = 3
     eps = 1.1e-5
-    img_input = Input(shape=(img_rows, img_cols, color_type), name='data')
+    bn_axis = 3
+    img_input = Input(shape=(224, 224, 3), name='data')
     x = ZeroPadding2D((3, 3), name='conv1_zeropadding')(img_input)
-    x = Conv2D(64, (7, 7), name="conv1", strides=(2, 2), use_bias=False)(x)
+    x = Conv2D(64, (7, 7), strides=(2, 2), name='conv1', use_bias=False)(x)
     x = BatchNormalization(epsilon=eps, axis=bn_axis, name='bn_conv1')(x)
     x = Scale(axis=bn_axis, name='scale_conv1')(x)
     x = Activation('relu', name='conv1_relu')(x)
@@ -285,10 +350,10 @@ def resnet152_model(img_rows, img_cols, color_type=3, num_classes=None):
     x = identity_block(x, 3, [64, 64, 256], stage=2, block='c')
     x = conv_block(x, 3, [128, 128, 512], stage=3, block='a')
     for i in range(1,8):
-      x = identity_block(x, 3, [128, 128, 512], stage=3, block='b'+str(i))
+        x = identity_block(x, 3, [128, 128, 512], stage=3, block='b'+str(i))
     x = conv_block(x, 3, [256, 256, 1024], stage=4, block='a')
     for i in range(1,36):
-      x = identity_block(x, 3, [256, 256, 1024], stage=4, block='b'+str(i))
+        x = identity_block(x, 3, [256, 256, 1024], stage=4, block='b'+str(i))
     x = conv_block(x, 3, [512, 512, 2048], stage=5, block='a')
     x = identity_block(x, 3, [512, 512, 2048], stage=5, block='b')
     x = identity_block(x, 3, [512, 512, 2048], stage=5, block='c')
@@ -296,39 +361,143 @@ def resnet152_model(img_rows, img_cols, color_type=3, num_classes=None):
     x_fc = Flatten()(x_fc)
     x_fc = Dense(1000, activation='softmax', name='fc1000')(x_fc)
     model = Model(img_input, x_fc)
-    weights_path = 'resnet152_weights_tf.h5'# Use pre-trained weights for Tensorflow backend
-    model.load_weights(weights_path, by_name=True)
-    x_newfc = AveragePooling2D((7, 7), name='avg_pool')(x) # Truncate and replace softmax layer for transfer learning;  Cannot use model.layers.pop() since model is not of Sequential() type;The method below works since pre-trained weights are stored in layers but not in the model 
-    x_newfc = Flatten()(x_newfc)
-    x_newfc = Dense(num_classes, activation='softmax', name='fc8')(x_newfc)
-    model = Model(img_input, x_newfc)
-    sgd = SGD(lr=1e-3, decay=1e-6, momentum=0.9, nesterov=True)    # Learning rate is changed to 0.001
-    model.compile(optimizer=sgd, loss='categorical_crossentropy', metrics=['accuracy'])
+    if weights_path:# load weights
+        model.load_weights(weights_path, by_name=True)
     return model
 
-def add_image_to_duplicate_detection_model_func(path_to_art_image_file):
-    global path_to_all_registered_works_for_dupe_detection
-    img = Image.open(path_to_art_image_file)
-    resized_width = 5000
-    resized_height = 5000
-    original_height, original_width = img.size
-    resized_image_matrix = img.resize((resized_width,resized_height), Image.ANTIALIAS)
-    number_of_channels = 3
-    number_of_classes = 1000 
-    dummy_label = np.ones(number_of_classes)
-    batch_size = 1
-    nb_epoch = 1
-    model = resnet152_model(resized_height, resized_width, number_of_channels, number_of_classes)
-    model.fit(resized_image_matrix, dummy_label, batch_size=batch_size, nb_epoch=nb_epoch, verbose=1)# Start Fine-tuning
-    predictions_valid = model.predict(resized_image_matrix, batch_size=batch_size, verbose=1)# Make predictions
+def add_image_fingerprint_to_dupe_detection_database_func(path_to_art_image_file):
+    global dupe_detection_image_fingerprint_database_file_path
+    global dupe_detection_model
+    with open(path_to_art_image_file,'rb') as f:
+        image_file_binary_data = f.read()
+        sha256_hash_of_art_image_file = hashlib.sha256(image_file_binary_data).hexdigest()
+    im = cv2.resize(cv2.imread(path_to_art_image_file), (224, 224)).astype(np.float32)
+    im[:,:,0] -= 103.939 # Remove training image mean
+    im[:,:,1] -= 116.779
+    im[:,:,2] -= 123.68
+    weights_path = 'resnet152_weights_tf.h5'
+    im = np.expand_dims(im, axis=0)
+    fingerprint_db_loaded_already = 'dupe_detection_model' in globals()
+    if not fingerprint_db_loaded_already:
+        dupe_detection_model = resnet152_model(weights_path)
+        sgd = SGD(lr=1e-2, decay=1e-6, momentum=0.9, nesterov=True)
+        dupe_detection_model.compile(optimizer=sgd, loss='categorical_crossentropy', metrics=['accuracy'])
+    image_fingerprint_vector = dupe_detection_model.predict(im)
+    try:
+        conn = sqlite3.connect(dupe_detection_image_fingerprint_database_file_path)
+        c = conn.cursor()
+        data_insertion_query_string = """INSERT OR REPLACE INTO image_hash_to_image_fingerprint_table (sha256_hash_of_art_image_file, dupe_detection_image_fingerprint_vector) VALUES (?,?);"""
+        c.execute(data_insertion_query_string,[sha256_hash_of_art_image_file, image_fingerprint_vector])
+        conn.commit()
+        conn.close()
+    except Exception as e:
+        print('Error: '+ str(e))
+        conn.close()
+    return image_fingerprint_vector
+
+def add_image_fingerprint_to_dupe_detection_databaseV2_func(path_to_art_image_file):
+    global dupe_detection_image_fingerprint_database_file_path
+    global dupe_detection_model
+    with open(path_to_art_image_file,'rb') as f:
+        image_file_binary_data = f.read()
+        sha256_hash_of_art_image_file = hashlib.sha256(image_file_binary_data).hexdigest()
+    im = cv2.resize(cv2.imread(path_to_art_image_file), (224, 224)).astype(np.float32)
+    im[:,:,0] -= 103.939 # Remove training image mean
+    im[:,:,1] -= 116.779
+    im[:,:,2] -= 123.68
+    im = np.expand_dims(im, axis=0)
+    fingerprint_db_loaded_already = 'dupe_detection_model' in globals()
+    if not fingerprint_db_loaded_already:
+        dupe_detection_model = get_named_model_func('VGG19')
+    image_fingerprint_vector = dupe_detection_model.predict(im)
+    try:
+        conn = sqlite3.connect(dupe_detection_image_fingerprint_database_file_path)
+        c = conn.cursor()
+        data_insertion_query_string = """INSERT OR REPLACE INTO image_hash_to_image_fingerprint_table (sha256_hash_of_art_image_file, dupe_detection_image_fingerprint_vector) VALUES (?,?);"""
+        c.execute(data_insertion_query_string,[sha256_hash_of_art_image_file, image_fingerprint_vector])
+        conn.commit()
+        conn.close()
+    except Exception as e:
+        print('Error: '+ str(e))
+        conn.close()
+    return image_fingerprint_vector
+
+def add_all_images_in_folder_to_image_fingerprint_database_func(path_to_art_folder):
+    valid_image_file_paths = get_all_valid_image_file_paths_in_folder_func(path_to_art_folder)
+    for current_image_file_path in valid_image_file_paths:
+        print('\nNow adding image file '+ current_image_file_path+' to image fingerprint database.')
+        add_image_fingerprint_to_dupe_detection_databaseV2_func(current_image_file_path)
+        
+
+
+        
+def get_image_fingerprint_from_dupe_detection_database_func(sha256_hash_of_art_image_file):
+    global dupe_detection_image_fingerprint_database_file_path
+    try:
+        conn = sqlite3.connect(dupe_detection_image_fingerprint_database_file_path,detect_types=sqlite3.PARSE_DECLTYPES)
+        c = conn.cursor()
+        dupe_detection_fingerprint_query_results = c.execute("""SELECT dupe_detection_image_fingerprint_vector FROM image_hash_to_image_fingerprint_table where sha256_hash_of_art_image_file = ? ORDER BY datetime_fingerprint_added_to_database DESC""",[sha256_hash_of_art_image_file,]).fetchall()
+        if len(dupe_detection_fingerprint_query_results) == 0:
+            print('Fingerprint for this image could not be found, try adding it to the system!')
+        dupe_detection_image_fingerprint_vector = dupe_detection_fingerprint_query_results[0][0]
+        conn.close()
+        return dupe_detection_image_fingerprint_vector
+    except Exception as e:
+        print('Error: '+ str(e))
+        conn.close()
+
+def calculate_distance_between_two_image_fingerprint_vectors_func(image1_fingerprint_vector,image2_fingerprint_vector):
+    distance_between_fingerprint_vectors = np.linalg.norm(image1_fingerprint_vector - image2_fingerprint_vector)
+    distance_between_fingerprint_vectors = sklearn.metrics.mean_squared_error(image1_fingerprint_vector,image2_fingerprint_vector)
+    return distance_between_fingerprint_vectors
+
+def calculate_image_similarity_between_two_image_hashes_func(image1_sha256_hash,image2_sha256_hash):
+    image1_fingerprint_vector = get_image_fingerprint_from_dupe_detection_database_func(image1_sha256_hash)
+    image2_fingerprint_vector = get_image_fingerprint_from_dupe_detection_database_func(image2_sha256_hash)
+    distance_between_fingerprint_vectors = np.linalg.norm(image1_fingerprint_vector - image2_fingerprint_vector)
+    return distance_between_fingerprint_vectors
+
+def subdivide_image_into_array_of_equally_sized_image_tiles_func(path_to_art_image_file,number_of_horiz_and_vert_segments):
+    im = cv2.imread(path_to_art_image_file)#Note: number_of_horiz_and_vert_segments = 2 will cut the image into quarters;  number_of_horiz_and_vert_segments = 3 will make 9 equal sized tiles. 
+    M = im.shape[0]//number_of_horiz_and_vert_segments
+    N = im.shape[1]//number_of_horiz_and_vert_segments
+    image_tiles = [im[x:x+M,y:y+N] for x in range(0,im.shape[0],M) for y in range(0,im.shape[1],N)]
+    return image_tiles
+
+
+#number_of_horiz_and_vert_segments = 3
+#image_tiles = subdivide_image_into_array_of_equally_sized_image_tiles_func(path_to_art_image_file,number_of_horiz_and_vert_segments)
+#cv2.imshow('tst',image_tiles[0])
+if 0:
+    image_fingerprint_vector1 = add_image_fingerprint_to_dupe_detection_databaseV2_func(path_to_art_image_file)
+    image_fingerprint_vector2 = add_image_fingerprint_to_dupe_detection_databaseV2_func(path_to_another_similar_art_image_file)
+    image_fingerprint_vector3 = add_image_fingerprint_to_dupe_detection_databaseV2_func(path_to_another_different_art_image_file)
+    
+    add_all_images_in_folder_to_image_fingerprint_database_func(path_to_all_registered_works_for_dupe_detection)        
+    add_all_images_in_folder_to_image_fingerprint_database_func('C:\\anime_image_database\\')        
+
+    distance_between_fingerprint_vectors1 = calculate_distance_between_two_image_fingerprint_vectors_func(image_fingerprint_vector1,image_fingerprint_vector2) #Very similar image
+    distance_between_fingerprint_vectors2 = calculate_distance_between_two_image_fingerprint_vectors_func(image_fingerprint_vector1,image_fingerprint_vector3) #Different image
 
 #Various Utility Functions:
+def convert_numpy_array_to_sqlite_func(input_numpy_array):
+    """ Store Numpy array natively in SQlite (see: http://stackoverflow.com/a/31312102/190597"""
+    output_data = io.BytesIO()
+    np.save(output_data, input_numpy_array)
+    output_data.seek(0)
+    return sqlite3.Binary(output_data.read())
+
+def convert_sqlite_data_to_numpy_array_func(sqlite_data_in_text_format):
+    output_data = io.BytesIO(sqlite_data_in_text_format)
+    output_data.seek(0)
+    return np.load(output_data)
+
 def regenerate_sqlite_chunk_database_func():
     global chunk_db_file_path
     try:
         conn = sqlite3.connect(chunk_db_file_path)
         c = conn.cursor()
-        local_hash_table_creation_string= """CREATE TABLE potential_local_hashes (block_hash text PRIMARY KEY, file_hash);"""
+        local_hash_table_creation_string= """CREATE TABLE potential_local_hashes (block_hash text PRIMARY KEY, file_hash text);"""
         global_hash_table_creation_string= """CREATE TABLE potential_global_hashes (block_hash text, file_hash text, remote_node_ip text, remote_node_id text, datetime_peer_last_seen TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL, PRIMARY KEY (block_hash, remote_node_id));"""
         node_ip_to_id_table_creation_string= """CREATE TABLE node_ip_to_id_table (remote_node_id text PRIMARY KEY, remote_node_ip text, datetime_peer_last_seen TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL);"""
         c.execute(local_hash_table_creation_string)
@@ -338,7 +507,25 @@ def regenerate_sqlite_chunk_database_func():
         conn.close()
     except Exception as e:
         print('Error: '+ str(e))
-        
+        conn.close()
+
+def regenerate_dupe_detection_image_fingerprint_database_func():
+    global dupe_detection_image_fingerprint_database_file_path
+    if os.path.exists(dupe_detection_image_fingerprint_database_file_path):
+        print('Found an existing dupe detection image fingerprint database, so using that instead!')
+        return
+    else:
+        try:
+            conn = sqlite3.connect(dupe_detection_image_fingerprint_database_file_path, detect_types=sqlite3.PARSE_DECLTYPES)
+            c = conn.cursor()
+            dupe_detection_image_fingerprint_database_creation_string= """CREATE TABLE image_hash_to_image_fingerprint_table (sha256_hash_of_art_image_file text, dupe_detection_image_fingerprint_vector array,datetime_fingerprint_added_to_database TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL, PRIMARY KEY (sha256_hash_of_art_image_file, dupe_detection_image_fingerprint_vector));"""
+            c.execute(dupe_detection_image_fingerprint_database_creation_string)
+            conn.commit()
+            conn.close()
+        except Exception as e:
+            print('Error: '+ str(e))
+            conn.close()
+            
 def check_if_file_path_is_a_valid_image_func(path_to_file):
     is_image = 0
     try:
@@ -358,7 +545,7 @@ def clean_up_art_folder_after_registration_func(path_to_art_folder):
         except Exception as e:
             print('Error: '+ str(e))
     if deletion_count > 0:
-        print('\nFinished cleaning up art folder! A total of '+str(deletion_count)+' files were deleted.')
+        print('Finished cleaning up art folder! A total of '+str(deletion_count)+' files were deleted.')
         
 def remove_existing_remaining_zip_files_func(path_to_art_folder):
     print('\nNow removing any existing remaining zip files...')
@@ -693,7 +880,7 @@ def get_artwork_metadata_from_artist_func(hash_of_the_concatenated_file_hashes):
 #NSFW Function:
 def check_art_folder_for_nsfw_content(path_to_art_folder):
    global nsfw_score_threshold
-   start_time = time.time()
+   start_time = time()
    art_input_file_paths = get_all_valid_image_file_paths_in_folder_func(path_to_art_folder)
    list_of_art_file_hashes = []
    list_of_nsfw_scores = []
@@ -724,14 +911,13 @@ def check_art_folder_for_nsfw_content(path_to_art_folder):
               if nsfw_score > nsfw_score_threshold:
                   print('\n\n***Warning, current image is NFSW!***\n\n')
    return list_of_art_file_hashes, list_of_nsfw_scores
-   duration_in_seconds = round(time.time() - start_time, 1)
+   duration_in_seconds = round(time() - start_time, 1)
    print('\nFinished checking for NSFW images in '+str(duration_in_seconds) + ' seconds!')
    
 def prepare_artwork_folder_for_registration_func(path_to_art_folder):
     global nsfw_score_threshold
     global artist_public_key # These two variables won't exist in the real version; they will instead be 
     global artist_private_key# supplied by the artist at the time of submission for the art registration process.
-    start_time = time.time()
     remove_existing_remaining_zip_files_func(path_to_art_folder)
     file_base_name = path_to_art_folder.split(os.sep)[-2].replace(' ','_').lower()
     art_input_file_paths = get_all_valid_image_file_paths_in_folder_func(path_to_art_folder)
@@ -765,7 +951,7 @@ def prepare_artwork_folder_for_registration_func(path_to_art_folder):
                 final_art_zipfile_binary_data = f.read()
                 art_zipfile_hash = hashlib.sha256(final_art_zipfile_binary_data).hexdigest()
             final_artwork_zipfile_base_name = 'Final_Art_Zipfile_Hash__' + art_zipfile_hash + '.zip'
-            path_to_final_artwork_zipfile_including_metadata = os.path.join(path_to_art_folder,final_artwork_zipfile_base_name)
+            path_to_final_artwork_zipfile_including_metadata = os.path.join(prepared_final_art_zipfiles_folder_path,final_artwork_zipfile_base_name)
             artist_signature_for_final_artwork_zipfile_including_metadata = sign_final_artwork_zipfile_including_metadata_with_artist_signature_func(zip_file_path, artist_private_key) #Again, this part will need to be done on the artists machin so the artist never has to reveal his private key.
             artist_signature_for_final_artwork_zipfile_including_metadata_base64_encoded = base64.b64encode(artist_signature_for_final_artwork_zipfile_including_metadata).decode('utf-8')
             final_signature_file_path = os.path.join(path_to_art_folder,'Final_Artist_Signature_for_Zipfile_with_Hash__' + art_zipfile_hash + '.sig')
@@ -776,78 +962,86 @@ def prepare_artwork_folder_for_registration_func(path_to_art_folder):
         except Exception as e:
             print('Error: '+ str(e))
             
-def encode_final_art_zipfile_into_luby_transform_blocks_func(path_to_art_folder):
+def encode_final_art_zipfile_into_luby_transform_blocks_func(sha256_hash_of_art_file):
     global block_storage_folder_path
     global block_redundancy_factor
     global desired_block_size_in_bytes
-    start_time = time.time()
+    global prepared_final_art_zipfiles_folder_path
+    start_time = time()
     ramdisk_object = MemoryFS()
-    path_to_final_artwork_zipfile_including_metadata = glob.glob(path_to_art_folder+'*Final_Art_Zipfile_Hash__*.zip')[0]    
+    filesystem_object = OSFS(block_storage_folder_path)     
+    c_constant = 0.1
+    delta_constant = 0.5
+    seed = randint(0, 1 << 31 - 1)
+    path_to_final_artwork_zipfile_including_metadata = glob.glob(prepared_final_art_zipfiles_folder_path+'*'+sha256_hash_of_art_file+'*')[0]    
     final_art_file__original_size_in_bytes = os.path.getsize(path_to_final_artwork_zipfile_including_metadata)
-    output_blocks_list = []
-    DEFAULT_C = 0.1
-    DEFAULT_DELTA = 0.5
-    seed = randint(0, 1 << 31 - 1) #Process ZIP file into a stream of encoded blocks, and save those blocks as separate files in the output folder:
+    output_blocks_list = [] #Process ZIP file into a stream of encoded blocks, and save those blocks as separate files in the output folder:
     print('Now encoding file ' + os.path.split(path_to_final_artwork_zipfile_including_metadata)[-1] + ' (' + str(round(final_art_file__original_size_in_bytes/1000000)) + 'mb)\n\n')
-    total_number_of_blocks_required = ceil((1.00*block_redundancy_factor*final_art_file__original_size_in_bytes) / desired_block_size_in_bytes)
-    pbar = tqdm(total=total_number_of_blocks_required)
+    total_number_of_blocks_to_generate = ceil((1.00*block_redundancy_factor*final_art_file__original_size_in_bytes) / desired_block_size_in_bytes)
+    print('Total number of blocks to generate for target level of redundancy: '+str(total_number_of_blocks_to_generate))
+    pbar = tqdm(total=total_number_of_blocks_to_generate)
     with open(path_to_final_artwork_zipfile_including_metadata,'rb') as f:
         f_bytes = f.read()
-        art_zipfile_hash = hashlib.sha256(f_bytes).hexdigest()
-    filesize = len(f_bytes)    #Convert file byte contents into blocksize chunks, padding last one if necessary
-    blocks = [int.from_bytes(f_bytes[ii:ii+desired_block_size_in_bytes].ljust(desired_block_size_in_bytes, b'0'), sys.byteorder) for ii in range(0, len(f_bytes), desired_block_size_in_bytes)]
-    K = len(blocks) # init stream vars
-    prng = PRNG(params=(K, DEFAULT_DELTA, DEFAULT_C))
-    prng.set_seed(seed)
-    number_of_blocks_generated = 0# block generation loop
-    while number_of_blocks_generated <= total_number_of_blocks_required:
-        update_skip = 1
-        if (number_of_blocks_generated % update_skip) == 0:
-            pbar.update(update_skip)
-        blockseed, d, ix_samples = prng.get_src_blocks()
-        block_data = 0
-        for ix in ix_samples:
-            block_data ^= blocks[ix]
-        block = (filesize, desired_block_size_in_bytes, blockseed, int.to_bytes(block_data, desired_block_size_in_bytes, sys.byteorder)) # Generate blocks of XORed data in network byte order
-        number_of_blocks_generated = number_of_blocks_generated + 1
-        packed_block_data = pack('!III%ss'%desired_block_size_in_bytes, *block)
-        output_blocks_list.append(packed_block_data)
-        hash_of_block = hashlib.sha256(packed_block_data).hexdigest()
-        output_block_file_path = 'FileHash__'+art_zipfile_hash + '__Block__' + '{0:09}'.format(number_of_blocks_generated) + '__BlockHash_' + hash_of_block +'.block'
-        try:
-            with ramdisk_object.open(output_block_file_path,'wb') as f:
-                f.write(packed_block_data)
-        except Exception as e:
-            print('Error: '+ str(e))
-    duration_in_seconds = round(time.time() - start_time, 1)
-    print('\n\nFinished processing in '+str(duration_in_seconds) + ' seconds! \nOriginal zip file was encoded into ' + str(number_of_blocks_generated) + ' blocks of ' + str(ceil(desired_block_size_in_bytes/1000)) + ' kilobytes each. Total size of all blocks is ~' + str(ceil((number_of_blocks_generated*desired_block_size_in_bytes)/1000000)) + ' megabytes\n')
-    print('Now copying encoded files from ram disk to local storage...')
-    filesystem_object = OSFS(block_storage_folder_path)     
-    copy_fs(ramdisk_object,filesystem_object)
-    print('Done!\n')
-    ramdisk_object.close()
-    return duration_in_seconds
+    filesize = len(f_bytes) 
+    art_zipfile_hash = hashlib.sha256(f_bytes).hexdigest()
+    if art_zipfile_hash == sha256_hash_of_art_file: #Convert file byte contents into blocksize chunks, padding last one if necessary:
+        blocks = [int.from_bytes(f_bytes[ii:ii+desired_block_size_in_bytes].ljust(desired_block_size_in_bytes, b'0'), sys.byteorder) for ii in range(0, len(f_bytes), desired_block_size_in_bytes)]
+        K = len(blocks)
+        print('The length of the blocks list: '+str(K))
+        prng = PRNG(params=(K, delta_constant, c_constant))
+        prng.set_seed(seed)
+        number_of_blocks_generated = 0# block generation loop
+        while number_of_blocks_generated <= total_number_of_blocks_to_generate:
+            update_skip = 1
+            if (number_of_blocks_generated % update_skip) == 0:
+                pbar.update(update_skip)
+            blockseed, d, ix_samples = prng.get_src_blocks()
+            block_data = 0
+            for ix in ix_samples:
+                block_data ^= blocks[ix]
+            block = (filesize, desired_block_size_in_bytes, blockseed, int.to_bytes(block_data, desired_block_size_in_bytes, sys.byteorder)) # Generate blocks of XORed data in network byte order
+            number_of_blocks_generated = number_of_blocks_generated + 1
+            packed_block_data = pack('!III%ss'%desired_block_size_in_bytes, *block)
+            output_blocks_list.append(packed_block_data)
+            hash_of_block = hashlib.sha256(packed_block_data).hexdigest()
+            output_block_file_path = 'FileHash__'+art_zipfile_hash + '__Block__' + '{0:09}'.format(number_of_blocks_generated) + '__BlockHash_' + hash_of_block +'.block'
+            try:
+                with ramdisk_object.open(output_block_file_path,'wb') as f:
+                    f.write(packed_block_data)
+            except Exception as e:
+                print('Error: '+ str(e))
+        duration_in_seconds = round(time() - start_time, 1)
+        print('\n\nFinished processing in '+str(duration_in_seconds) + ' seconds! \nOriginal zip file was encoded into ' + str(number_of_blocks_generated) + ' blocks of ' + str(ceil(desired_block_size_in_bytes/1000)) + ' kilobytes each. Total size of all blocks is ~' + str(ceil((number_of_blocks_generated*desired_block_size_in_bytes)/1000000)) + ' megabytes\n')
+        print('Now copying encoded files from ram disk to local storage...')
+        copy_fs(ramdisk_object,filesystem_object)
+        print('Done!\n')
+        ramdisk_object.close()
+        return duration_in_seconds
 
 def register_new_artwork_folder_func(path_to_art_folder):
     global artist_final_signature_files_folder_path
     global prepared_final_art_zipfiles_folder_path
     successfully_registered_artwork = 0
     final_signature_file_path, path_to_final_artwork_zipfile_including_metadata = prepare_artwork_folder_for_registration_func(path_to_art_folder)
-    duration_in_seconds = encode_final_art_zipfile_into_luby_transform_blocks_func(path_to_art_folder)
+    parsed_final_art_zipfile_hash = path_to_final_artwork_zipfile_including_metadata.split(os.sep)[-1].split('__')[-1].replace('.zip','')
+    duration_in_seconds = encode_final_art_zipfile_into_luby_transform_blocks_func(parsed_final_art_zipfile_hash)
     if duration_in_seconds > 0:
         shutil.copy(final_signature_file_path, artist_final_signature_files_folder_path)
-        shutil.copy(path_to_final_artwork_zipfile_including_metadata, prepared_final_art_zipfiles_folder_path)
     clean_up_art_folder_after_registration_func(path_to_art_folder)
     successfully_registered_artwork = 1
     return successfully_registered_artwork
 
 def decode_block_files_into_art_zipfile_func(sha256_hash_of_art_file):
     global block_storage_folder_path
+    global reconstructed_files_destination_folder_path
+    global prepared_final_art_zipfiles_folder_path
+    start_time = time()
+    reconstructed_file_destination_file_path = os.path.join(reconstructed_files_destination_folder_path,'Reconstructed_File_with_SHA256_Hash_of__' + sha256_hash_of_art_file + '.zip')
     list_of_block_file_paths = glob.glob(os.path.join(block_storage_folder_path,'*'+sha256_hash_of_art_file+'*.block'))
     reported_file_sha256_hash = list_of_block_file_paths[0].split(os.sep)[-1].split('__')[1]
     print('\nFound '+str(len(list_of_block_file_paths))+' block files in folder! The SHA256 hash of the original zip file is reported to be: '+reported_file_sha256_hash+'\n')
-    c = 0.1
-    delta = 0.5
+    c_constant = 0.1
+    delta_constant = 0.5
     block_graph = BlockGraph(len(list_of_block_file_paths))
     for block_count, current_block_file_path in enumerate(list_of_block_file_paths):
         with open(current_block_file_path,'rb') as f:
@@ -859,45 +1053,28 @@ def decode_block_files_into_art_zipfile_func(sha256_hash_of_art_file):
         else:
             print('\nError, the block hash does NOT match the reported hash, so this block is corrupted! Skipping to next block...\n')
             continue
-        input_stream = io.BufferedReader(io.BytesIO(packed_block_data),buffer_size=1000000)
+        input_stream = io.BufferedReader(io.BytesIO(packed_block_data)) #,buffer_size=1000000
         header = unpack('!III', input_stream.read(12))
         filesize = header[0]
         blocksize = header[1]
         blockseed = header[2]
-        block = int.from_bytes(input_stream.read(blocksize), 'big')
         number_of_blocks_required = ceil(filesize/blocksize)
+        if block_count == 0:
+            print('\nA total of '+str(number_of_blocks_required)+' blocks are required!\n')
+        block = int.from_bytes(input_stream.read(blocksize),'big')
+        input_stream.close
         if (block_count % 1) == 0:
             name_parts_list = current_block_file_path.split(os.sep)[-1].split('_')
             parsed_block_hash = name_parts_list[-1].replace('.block','')
-            parsed_block_number = name_parts_list[6].replace('.block','')
-            parsed_file_hash = name_parts_list[3].replace('.block','')
+            parsed_block_number = name_parts_list[6]
+            parsed_file_hash = name_parts_list[2]
             print('\nNow decoding:\nBlock Number: ' + parsed_block_number + '\nFile Hash: ' + parsed_file_hash + '\nBlock Hash: '+ parsed_block_hash)
-        prng = PRNG(params=(number_of_blocks_required, delta, c))
+        prng = PRNG(params=(number_of_blocks_required, delta_constant, c_constant))
         _, _, src_blocks = prng.get_src_blocks(seed = blockseed)
         file_reconstruction_complete = block_graph.add_block(src_blocks, block)
         if file_reconstruction_complete:
             print('\nDone building file! Processed a total of '+str(block_count)+' blocks\n')
             break
-
-def retrieve_artwork_zipfile_or_reconstruct_from_blocks_func(sha256_hash_of_art_file):
-    global block_storage_folder_path
-    global reconstructed_files_destination_folder_path
-    global prepared_final_art_zipfiles_folder_path
-    start_time = time.time() 
-    potential_final_art_zipfile_file_path = glob.glob(prepared_final_art_zipfiles_folder_path+'*'+sha256_hash_of_art_file+'*.zip')
-    if len(potential_final_art_zipfile_file_path)>0:
-        final_art_zipfile_file_path = potential_final_art_zipfile_file_path[0]
-        print('Already had the final prepared art zipfile locally!')
-        return final_art_zipfile_file_path
-    decode_block_files_into_art_zipfile_func(sha256_hash_of_art_file)
-    reconstructed_file_destination_file_path = os.path.join(reconstructed_files_destination_folder_path,'Reconstructed_File_with_SHA256_Hash_of__' + reported_file_sha256_hash + '.zip')
-    if os.path.isfile(reconstructed_file_destination_file_path):
-        print('\nA file with that name exists already; deleting this first before attempting to write new file!\n')
-        try:
-            os.remove(reconstructed_file_destination_file_path)
-        except:
-            print('Error removing file!')
-    else:
         with open(reconstructed_file_destination_file_path,'wb') as f: 
             for ix, block_bytes in enumerate(map(lambda p: int.to_bytes(p[1], blocksize, 'big'), sorted(block_graph.eliminated.items(), key = lambda p:p[0]))):
                 if ix < number_of_blocks_required - 1 or filesize % blocksize == 0:
@@ -916,7 +1093,7 @@ def retrieve_artwork_zipfile_or_reconstruct_from_blocks_func(sha256_hash_of_art_
                 print('\nProblem! The SHA256 hash of the reconstructed file does NOT match the expected hash! File is not valid.\n')
     except Exception as e:
         print('Error: '+ str(e))
-    duration_in_seconds = round(time.time() - start_time, 1)
+    duration_in_seconds = round(time() - start_time, 1)
     print('\n\nFinished processing in '+str(duration_in_seconds) + ' seconds!')
     return completed_successfully
 
@@ -954,7 +1131,7 @@ def refresh_block_storage_folder_and_check_block_integrity_func(use_verify_integ
                     potential_local_file_hashes_list.append(reported_file_sha256_hash)
             else:
                 print('\nBlock '+reported_block_sha256_hash+' did not hash to the correct value-- file is corrupt! Skipping to next file...\n')
-        print('\n\nDone verifying block files!\nNow writing local block metadata to SQLite database...\n')
+        print('\nDone verifying block files!\nNow writing local block metadata to SQLite database...\n')
     else:
         for current_block_file_path in list_of_block_file_paths:
             reported_block_sha256_hash = current_block_file_path.split(os.sep)[-1].split('__')[-1].replace('BlockHash_','').replace('.block','')
@@ -978,7 +1155,10 @@ def refresh_block_storage_folder_and_check_block_integrity_func(use_verify_integ
 ###############################################################################################################
 # Script:
 ###############################################################################################################
-list_of_required_folder_paths = [root_animecoin_folder_path,reconstructed_files_destination_folder_path,artist_final_signature_files_folder_path,misc_masternode_files_folder_path,folder_path_of_art_folders_to_encode,prepared_final_art_zipfiles_folder_path]
+sqlite3.register_adapter(np.ndarray, convert_numpy_array_to_sqlite_func) # Converts np.array to TEXT when inserting
+sqlite3.register_converter('array', convert_sqlite_data_to_numpy_array_func) # Converts TEXT to np.array when selecting
+regenerate_dupe_detection_image_fingerprint_database_func() #only generates a new db file if it can't find an existing one.
+list_of_required_folder_paths = [root_animecoin_folder_path,reconstructed_files_destination_folder_path,artist_final_signature_files_folder_path,misc_masternode_files_folder_path,folder_path_of_art_folders_to_encode,prepared_final_art_zipfiles_folder_path,block_storage_folder_path]
 for current_required_folder_path in list_of_required_folder_paths:
     if not os.path.exists(current_required_folder_path):
         try:
@@ -994,7 +1174,7 @@ except:
 try:
     masternode_public_key, masternode_private_key = get_local_masternode_identification_keypair_func()
 except:
-    print('\nCouldm\'t retrieve local masternode identification keypair!\nGenerating a new keypair now...')
+    print('Generating a new  local masternode identification keypair now...')
     generate_and_save_local_masternode_identification_keypair_func()#We don't have a masternode keypair so we first need to generate one. 
 
 if use_generate_new_sqlite_chunk_database:
@@ -1013,7 +1193,8 @@ if use_demo_mode:
     print('\nWe will now perform a series of steps on these files. First we verify they are valid images and that they are not NSFW or dupes.')
     print('\nThen we will have the artist sign all the art files with his digital signature, create the art metadata file, and finally have the artist sign the final art zipfile with metadata.')
     sys.exit(0)
-    for current_art_folder in folder_path_of_art_folders_to_encode:
+    list_of_art_sub_folder_paths = glob.glob(folder_path_of_art_folders_to_encode + '*' + os.sep)
+    for current_art_folder in list_of_art_sub_folder_paths:
         successfully_registered_artwork = register_new_artwork_folder_func(current_art_folder)
 
 if use_reset_system_for_demo:
@@ -1037,9 +1218,6 @@ if use_reconstruct_files:
     print('\n\nNow let\'s try to reconstruct the original file despite this *random* loss of most of the block files...')
     list_of_block_file_paths = glob.glob(block_storage_folder_path+'*.block')
     available_art_file_hashes = [p.split(os.sep)[-1].split('__')[1] for p in list_of_block_file_paths]
-    for current_file_path in list_of_block_file_paths:
-        reported_file_sha256_hash = current_file_path.split(os.sep)[-1].split('__')[1]
-        available_art_file_hashes.append(reported_file_sha256_hash)
     available_art_file_hashes = list(set(available_art_file_hashes))
     failed_file_hash_list = []
     for current_file_hash in available_art_file_hashes:
