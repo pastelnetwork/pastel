@@ -1,9 +1,10 @@
-import time, sys, os.path, io, glob, hashlib, platform, imghdr, random, os, sqlite3, warnings, base64, json, pickle, shutil, math
+import sys, os.path, io, glob, hashlib, platform, imghdr, random, os, sqlite3, warnings, base64, json, pickle, shutil, math
 warnings.simplefilter(action='ignore', category=FutureWarning)
 warnings.filterwarnings('ignore',category=DeprecationWarning)
-import rsa, h5py
+import rsa
 import tensorflow as tf
 import numpy as np
+import pandas as pd
 import cv2
 import keras
 import matplotlib.pyplot
@@ -28,7 +29,6 @@ from keras.layers.normalization import BatchNormalization
 from keras.layers.core import Layer
 from keras.engine import InputSpec
 from keras import initializers
-from keras import backend as K
 from keras import layers
 from keras import applications
 from keras.applications.resnet50 import preprocess_input
@@ -44,19 +44,21 @@ sys.setrecursionlimit(3000)
 ###############################################################################################################
 # Parameters:
 ###############################################################################################################
-use_demo_mode = 1
+use_demo_mode = 0
+use_reset_system_for_demo = 0 
 use_stress_test = 0
 use_random_corruption = 0
 use_reconstruct_files = 1
-use_reset_system_for_demo = 0 
 use_generate_new_sqlite_chunk_database = 1
 use_generate_new_demonstration_artist_key_pair = 0
-block_redundancy_factor = 3 #How many times more blocks should we store than are required to regenerate the file?
+use_demonstrate_duplicate_detection = 0 
+block_redundancy_factor = 10 #How many times more blocks should we store than are required to regenerate the file?
 desired_block_size_in_bytes = 1024*1000*10
 percentage_of_block_files_to_randomly_delete = 0.55
 percentage_of_block_files_to_randomly_corrupt = 0.05
 percentage_of_each_selected_file_to_be_randomly_corrupted = 0.01
 nsfw_score_threshold = 0.95 #Most actual porn will come up over 99% confident.
+duplicate_image_threshold = 0.08 #Any image which has another image in our image fingerprint database with a "distance" of less than this threshold will be considered a duplicate. 
 root_animecoin_folder_path = 'C:\\animecoin\\'
 block_storage_folder_path = os.path.join(root_animecoin_folder_path,'art_block_storage' + os.sep)
 reconstructed_files_destination_folder_path = os.path.join(root_animecoin_folder_path,'reconstructed_files' + os.sep)
@@ -226,6 +228,7 @@ def get_named_model_func(model_name):
     raise ValueError('Unknown model')
 
 def get_image_features(path_to_art_image_file):
+    global dupe_detection_model
     try:
         if os.path.isfile(path_to_art_image_file):
             with open(path_to_art_image_file,'rb') as f:
@@ -235,154 +238,21 @@ def get_image_features(path_to_art_image_file):
             x = image.img_to_array(img) # convert image to numpy array
             x = np.expand_dims(x, axis=0) # the image is now in an array of shape (3, 224, 224) but we need to expand it to (1, 2, 224, 224) as Keras is expecting a list of images
             x = preprocess_input(x)
-            print('Loading deep learning model...')
-            deeplearning_model = get_named_model_func('VGG19')
-            features = deeplearning_model.predict(x)[0] # extract the features
+            dupe_detection_model_loaded_already = 'dupe_detection_model' in globals()
+            if not dupe_detection_model_loaded_already:
+                print('Loading deep learning model...')
+                dupe_detection_model = get_named_model_func('VGG19')
+            features = dupe_detection_model.predict(x)[0] # extract the features
             features_arr = np.char.mod('%f', features) # convert from Numpy to a list of values
             x_data = np.asarray(features_arr).astype('float64') # convert image data to float64 matrix. float64 is need for bh_sne
-            x_data = x_data.reshape((x_data.shape[0], -1))
-            print('Loading tSNE model...')
-            tsne_model = manifold.TSNE(random_state=0)
-            vis_data = tsne_model.fit_transform(x_data) # perform t-SNE
-            tsne_x_coordinate = vis_data[0]
-            tsne_y_coordinate = vis_data[1]
-            print('Done getting image fingerprint!')
-            return tsne_x_coordinate, tsne_y_coordinate, sha256_hash_of_art_image_file
+            image_fingerprint_vector = x_data.reshape((x_data.shape[0], -1))
+            return image_fingerprint_vector, sha256_hash_of_art_image_file
     except Exception as e:
         print('Error: '+ str(e))
-
-
-class Scale(Layer):
-    """Learns a set of weights and biases used for scaling the input data."""
-    def __init__(self, weights=None, axis=-1, momentum = 0.9, beta_init='zero', gamma_init='one', **kwargs):
-        self.momentum = momentum
-        self.axis = axis 
-        self.beta_init = initializers.get(beta_init)
-        self.gamma_init = initializers.get(gamma_init)
-        self.initial_weights = weights
-        super(Scale, self).__init__(**kwargs)
-
-    def build(self, input_shape):
-        self.input_spec = [InputSpec(shape=input_shape)]
-        shape = (int(input_shape[self.axis]),)
-        self.gamma = K.variable(self.gamma_init(shape), name='{}_gamma'.format(self.name))
-        self.beta = K.variable(self.beta_init(shape), name='{}_beta'.format(self.name))
-        self.trainable_weights = [self.gamma, self.beta]
-        if self.initial_weights is not None:
-            self.set_weights(self.initial_weights)
-            del self.initial_weights
-
-    def call(self, x, mask=None):
-        input_shape = self.input_spec[0].shape
-        broadcast_shape = [1] * len(input_shape)
-        broadcast_shape[self.axis] = input_shape[self.axis]
-        out = K.reshape(self.gamma, broadcast_shape) * x + K.reshape(self.beta, broadcast_shape)
-        return out
-
-    def get_config(self):
-        config = {"momentum": self.momentum, "axis": self.axis}
-        base_config = super(Scale, self).get_config()
-        return dict(list(base_config.items()) + list(config.items()))
-
-def identity_block(input_tensor, kernel_size, filters, stage, block):
-    """The identity_block is the block that has no conv layer at shortcut"""
-    eps = 1.1e-5
-    nb_filter1, nb_filter2, nb_filter3 = filters
-    conv_name_base = 'res' + str(stage) + block + '_branch'
-    bn_name_base = 'bn' + str(stage) + block + '_branch'
-    scale_name_base = 'scale' + str(stage) + block + '_branch'
-    x = Conv2D(nb_filter1, (1, 1), name=conv_name_base + '2a', use_bias=False)(input_tensor)
-    x = BatchNormalization(epsilon=eps, axis=bn_axis, name=bn_name_base + '2a')(x)
-    x = Scale(axis=bn_axis, name=scale_name_base + '2a')(x)
-    x = Activation('relu', name=conv_name_base + '2a_relu')(x)
-    x = ZeroPadding2D((1, 1), name=conv_name_base + '2b_zeropadding')(x)
-    x = Conv2D(nb_filter2, (kernel_size, kernel_size), name=conv_name_base + '2b', use_bias=False)(x)
-    x = BatchNormalization(epsilon=eps, axis=bn_axis, name=bn_name_base + '2b')(x)
-    x = Scale(axis=bn_axis, name=scale_name_base + '2b')(x)
-    x = Activation('relu', name=conv_name_base + '2b_relu')(x)
-    x = Conv2D(nb_filter3, (1, 1), name=conv_name_base + '2c', use_bias=False)(x)
-    x = BatchNormalization(epsilon=eps, axis=bn_axis, name=bn_name_base + '2c')(x)
-    x = Scale(axis=bn_axis, name=scale_name_base + '2c')(x)
-    x = layers.add([x, input_tensor], name='res' + str(stage) + block)
-    x = Activation('relu', name='res' + str(stage) + block + '_relu')(x)
-    return x
-
-def conv_block(input_tensor, kernel_size, filters, stage, block, strides=(2, 2)):
-    """conv_block is the block that has a conv layer at shortcut"""
-    eps = 1.1e-5
-    nb_filter1, nb_filter2, nb_filter3 = filters
-    conv_name_base = 'res' + str(stage) + block + '_branch'
-    bn_name_base = 'bn' + str(stage) + block + '_branch'
-    scale_name_base = 'scale' + str(stage) + block + '_branch'
-    x = Conv2D(nb_filter1, (1, 1), strides=strides, name=conv_name_base + '2a', use_bias=False)(input_tensor)
-    x = BatchNormalization(epsilon=eps, axis=bn_axis, name=bn_name_base + '2a')(x)
-    x = Scale(axis=bn_axis, name=scale_name_base + '2a')(x)
-    x = Activation('relu', name=conv_name_base + '2a_relu')(x)
-    x = ZeroPadding2D((1, 1), name=conv_name_base + '2b_zeropadding')(x)
-    x = Conv2D(nb_filter2, (kernel_size, kernel_size), name=conv_name_base + '2b', use_bias=False)(x)
-    x = BatchNormalization(epsilon=eps, axis=bn_axis, name=bn_name_base + '2b')(x)
-    x = Scale(axis=bn_axis, name=scale_name_base + '2b')(x)
-    x = Activation('relu', name=conv_name_base + '2b_relu')(x)
-    x = Conv2D(nb_filter3, (1, 1), name=conv_name_base + '2c', use_bias=False)(x)
-    x = BatchNormalization(epsilon=eps, axis=bn_axis, name=bn_name_base + '2c')(x)
-    x = Scale(axis=bn_axis, name=scale_name_base + '2c')(x)
-    shortcut = Conv2D(nb_filter3, (1, 1), strides=strides,name=conv_name_base + '1', use_bias=False)(input_tensor)
-    shortcut = BatchNormalization(epsilon=eps, axis=bn_axis, name=bn_name_base + '1')(shortcut)
-    shortcut = Scale(axis=bn_axis, name=scale_name_base + '1')(shortcut)
-    x = layers.add([x, shortcut], name='res' + str(stage) + block)
-    x = Activation('relu', name='res' + str(stage) + block + '_relu')(x)
-    return x
-    
-def resnet152_model(weights_path):
-    """Resnet 152 Model for Keras  Parameters: img_rows, img_cols - resolution of inputs; color_type 3 for color (1 for gs); num_classes - number of class labels for our classification task"""
-    global bn_axis
-    eps = 1.1e-5
-    bn_axis = 3
-    img_input = Input(shape=(224, 224, 3), name='data')
-    x = ZeroPadding2D((3, 3), name='conv1_zeropadding')(img_input)
-    x = Conv2D(64, (7, 7), strides=(2, 2), name='conv1', use_bias=False)(x)
-    x = BatchNormalization(epsilon=eps, axis=bn_axis, name='bn_conv1')(x)
-    x = Scale(axis=bn_axis, name='scale_conv1')(x)
-    x = Activation('relu', name='conv1_relu')(x)
-    x = MaxPooling2D((3, 3), strides=(2, 2), name='pool1')(x)
-    x = conv_block(x, 3, [64, 64, 256], stage=2, block='a', strides=(1, 1))
-    x = identity_block(x, 3, [64, 64, 256], stage=2, block='b')
-    x = identity_block(x, 3, [64, 64, 256], stage=2, block='c')
-    x = conv_block(x, 3, [128, 128, 512], stage=3, block='a')
-    for i in range(1,8):
-        x = identity_block(x, 3, [128, 128, 512], stage=3, block='b'+str(i))
-    x = conv_block(x, 3, [256, 256, 1024], stage=4, block='a')
-    for i in range(1,36):
-        x = identity_block(x, 3, [256, 256, 1024], stage=4, block='b'+str(i))
-    x = conv_block(x, 3, [512, 512, 2048], stage=5, block='a')
-    x = identity_block(x, 3, [512, 512, 2048], stage=5, block='b')
-    x = identity_block(x, 3, [512, 512, 2048], stage=5, block='c')
-    x_fc = AveragePooling2D((7, 7), name='avg_pool')(x)
-    x_fc = Flatten()(x_fc)
-    x_fc = Dense(1000, activation='softmax', name='fc1000')(x_fc)
-    model = Model(img_input, x_fc)
-    if weights_path:# load weights
-        model.load_weights(weights_path, by_name=True)
-    return model
 
 def add_image_fingerprint_to_dupe_detection_database_func(path_to_art_image_file):
     global dupe_detection_image_fingerprint_database_file_path
-    global dupe_detection_model
-    with open(path_to_art_image_file,'rb') as f:
-        image_file_binary_data = f.read()
-        sha256_hash_of_art_image_file = hashlib.sha256(image_file_binary_data).hexdigest()
-    im = cv2.resize(cv2.imread(path_to_art_image_file), (224, 224)).astype(np.float32)
-    im[:,:,0] -= 103.939 # Remove training image mean
-    im[:,:,1] -= 116.779
-    im[:,:,2] -= 123.68
-    weights_path = 'resnet152_weights_tf.h5'
-    im = np.expand_dims(im, axis=0)
-    fingerprint_db_loaded_already = 'dupe_detection_model' in globals()
-    if not fingerprint_db_loaded_already:
-        dupe_detection_model = resnet152_model(weights_path)
-        sgd = SGD(lr=1e-2, decay=1e-6, momentum=0.9, nesterov=True)
-        dupe_detection_model.compile(optimizer=sgd, loss='categorical_crossentropy', metrics=['accuracy'])
-    image_fingerprint_vector = dupe_detection_model.predict(im)
+    image_fingerprint_vector, sha256_hash_of_art_image_file = get_image_features(path_to_art_image_file)
     try:
         conn = sqlite3.connect(dupe_detection_image_fingerprint_database_file_path)
         c = conn.cursor()
@@ -392,44 +262,31 @@ def add_image_fingerprint_to_dupe_detection_database_func(path_to_art_image_file
         conn.close()
     except Exception as e:
         print('Error: '+ str(e))
-        conn.close()
     return image_fingerprint_vector
 
-def add_image_fingerprint_to_dupe_detection_databaseV2_func(path_to_art_image_file):
-    global dupe_detection_image_fingerprint_database_file_path
-    global dupe_detection_model
-    with open(path_to_art_image_file,'rb') as f:
-        image_file_binary_data = f.read()
-        sha256_hash_of_art_image_file = hashlib.sha256(image_file_binary_data).hexdigest()
-    im = cv2.resize(cv2.imread(path_to_art_image_file), (224, 224)).astype(np.float32)
-    im[:,:,0] -= 103.939 # Remove training image mean
-    im[:,:,1] -= 116.779
-    im[:,:,2] -= 123.68
-    im = np.expand_dims(im, axis=0)
-    fingerprint_db_loaded_already = 'dupe_detection_model' in globals()
-    if not fingerprint_db_loaded_already:
-        dupe_detection_model = get_named_model_func('VGG19')
-    image_fingerprint_vector = dupe_detection_model.predict(im)
-    try:
-        conn = sqlite3.connect(dupe_detection_image_fingerprint_database_file_path)
-        c = conn.cursor()
-        data_insertion_query_string = """INSERT OR REPLACE INTO image_hash_to_image_fingerprint_table (sha256_hash_of_art_image_file, dupe_detection_image_fingerprint_vector) VALUES (?,?);"""
-        c.execute(data_insertion_query_string,[sha256_hash_of_art_image_file, image_fingerprint_vector])
-        conn.commit()
-        conn.close()
-    except Exception as e:
-        print('Error: '+ str(e))
-        conn.close()
-    return image_fingerprint_vector
+def get_image_filename_from_image_hash_func(sha256_hash_of_art_image_file,path_to_images_folder=path_to_all_registered_works_for_dupe_detection):
+    global image_sha256_hash_to_image_file_path_dict
+    if 'image_sha256_hash_to_image_file_path_dict' not in globals():
+        image_sha256_hash_to_image_file_path_dict = {}
+    else:
+        try:
+            image_file_path = image_sha256_hash_to_image_file_path_dict[sha256_hash_of_art_image_file]
+            return image_file_path
+        except:
+            pass
+    valid_image_file_paths = get_all_valid_image_file_paths_in_folder_func(path_to_images_folder)
+    for current_image_file_path in valid_image_file_paths:
+        with open(current_image_file_path,'rb') as f:
+            image_file_binary_data = f.read()
+        sha256_hash_of_current_art_file = hashlib.sha256(image_file_binary_data).hexdigest()                    
+        image_sha256_hash_to_image_file_path_dict[sha256_hash_of_current_art_file] = current_image_file_path
+    return image_sha256_hash_to_image_file_path_dict[sha256_hash_of_art_image_file]
 
 def add_all_images_in_folder_to_image_fingerprint_database_func(path_to_art_folder):
     valid_image_file_paths = get_all_valid_image_file_paths_in_folder_func(path_to_art_folder)
     for current_image_file_path in valid_image_file_paths:
         print('\nNow adding image file '+ current_image_file_path+' to image fingerprint database.')
-        add_image_fingerprint_to_dupe_detection_databaseV2_func(current_image_file_path)
-        
-
-
+        add_image_fingerprint_to_dupe_detection_database_func(current_image_file_path)
         
 def get_image_fingerprint_from_dupe_detection_database_func(sha256_hash_of_art_image_file):
     global dupe_detection_image_fingerprint_database_file_path
@@ -444,40 +301,100 @@ def get_image_fingerprint_from_dupe_detection_database_func(sha256_hash_of_art_i
         return dupe_detection_image_fingerprint_vector
     except Exception as e:
         print('Error: '+ str(e))
-        conn.close()
 
-def calculate_distance_between_two_image_fingerprint_vectors_func(image1_fingerprint_vector,image2_fingerprint_vector):
-    distance_between_fingerprint_vectors = np.linalg.norm(image1_fingerprint_vector - image2_fingerprint_vector)
-    distance_between_fingerprint_vectors = sklearn.metrics.mean_squared_error(image1_fingerprint_vector,image2_fingerprint_vector)
-    return distance_between_fingerprint_vectors
+def apply_tsne_to_image_fingerprint_database_func():
+    global dupe_detection_image_fingerprint_database_file_path
+    global tsne_model
+    try:
+        print('Now applying tSNE to image fingerprint database...')
+        conn = sqlite3.connect(dupe_detection_image_fingerprint_database_file_path,detect_types=sqlite3.PARSE_DECLTYPES)
+        c = conn.cursor()
+        dupe_detection_fingerprint_query_results = c.execute("""SELECT sha256_hash_of_art_image_file, dupe_detection_image_fingerprint_vector FROM image_hash_to_image_fingerprint_table ORDER BY datetime_fingerprint_added_to_database DESC""").fetchall()
+        conn.close()
+        list_of_image_sha256_hashes = [x[0] for x in dupe_detection_fingerprint_query_results]
+        list_of_image_fingerprint_vectors =  [x[1] for x in dupe_detection_fingerprint_query_results]
+        for cnt, current_image_fingerprint_vector in enumerate(list_of_image_fingerprint_vectors):
+            if cnt == 0:
+                 combined_fingerprint_matrix = current_image_fingerprint_vector
+            else:
+                combined_fingerprint_matrix = np.append(combined_fingerprint_matrix,current_image_fingerprint_vector)
+        combined_fingerprint_matrix = combined_fingerprint_matrix.reshape((len(list_of_image_sha256_hashes), -1))
+        combined_fingerprint_matrix = combined_fingerprint_matrix.reshape((combined_fingerprint_matrix.shape[0], -1))
+        tsne_model_loaded_already = 'tsne_model' in globals()
+        if not tsne_model_loaded_already:
+            print('Loading tSNE model...')
+            tsne_model = manifold.TSNE(random_state=0)
+        vis_data = tsne_model.fit_transform(combined_fingerprint_matrix) # perform t-SNE
+        tsne_x_coordinates = vis_data[:,0]
+        tsne_y_coordinates = vis_data[:,1]
+        pbar = tqdm(total=len(list_of_image_sha256_hashes))
+        for file_cnt,current_image_hash in enumerate(list_of_image_sha256_hashes):
+            current_tsne_x_coordinate = float(tsne_x_coordinates[file_cnt])
+            current_tsne_y_coordinate = float(tsne_y_coordinates[file_cnt])
+            try:
+                conn = sqlite3.connect(dupe_detection_image_fingerprint_database_file_path)
+                c = conn.cursor()
+                data_insertion_query_string = """INSERT OR REPLACE INTO tsne_coordinates_table (sha256_hash_of_art_image_file, tsne_x_coordinate, tsne_y_coordinate) VALUES (?,?,?);"""
+                c.execute(data_insertion_query_string,[current_image_hash, current_tsne_x_coordinate, current_tsne_y_coordinate])
+                conn.commit()
+                conn.close()
+                pbar.update(1)
+            except Exception as e:
+                print('Error: '+ str(e))
+        print('Done!\n')
+        return list_of_image_sha256_hashes, tsne_x_coordinates, tsne_y_coordinates
+    except Exception as e:
+        print('Error: '+ str(e))
+        
+def get_tsne_coordinates_for_desired_image_file_hash_func(sha256_hash_of_art_image_file):
+    global dupe_detection_image_fingerprint_database_file_path
+    try:
+        conn = sqlite3.connect(dupe_detection_image_fingerprint_database_file_path,detect_types=sqlite3.PARSE_DECLTYPES)
+        c = conn.cursor()
+        tsne_coordinates_query_results = c.execute("""SELECT tsne_x_coordinate, tsne_y_coordinate FROM tsne_coordinates_table where sha256_hash_of_art_image_file = ? ORDER BY datetime_fingerprint_added_to_database DESC""",[sha256_hash_of_art_image_file,]).fetchall()
+        conn.close()
+        tsne_x_coordinate = tsne_coordinates_query_results[0][0]
+        tsne_y_coordinate = tsne_coordinates_query_results[0][1]
+        art_image_file_path = get_image_filename_from_image_hash_func(sha256_hash_of_art_image_file)
+        art_image_file_name = os.path.split(art_image_file_path)[-1]
+        return tsne_x_coordinate, tsne_y_coordinate, art_image_file_name
+    except Exception as e:
+        print('Error: '+ str(e))
 
 def calculate_image_similarity_between_two_image_hashes_func(image1_sha256_hash,image2_sha256_hash):
-    image1_fingerprint_vector = get_image_fingerprint_from_dupe_detection_database_func(image1_sha256_hash)
-    image2_fingerprint_vector = get_image_fingerprint_from_dupe_detection_database_func(image2_sha256_hash)
-    distance_between_fingerprint_vectors = np.linalg.norm(image1_fingerprint_vector - image2_fingerprint_vector)
-    return distance_between_fingerprint_vectors
+    image1_tsne_x_coordinate, image1_tsne_y_coordinate, _ = get_tsne_coordinates_for_desired_image_file_hash_func(image1_sha256_hash)
+    image2_tsne_x_coordinate, image2_tsne_y_coordinate, _ = get_tsne_coordinates_for_desired_image_file_hash_func(image2_sha256_hash)
+    image_similarity_metric = np.linalg.norm(np.array([image1_tsne_x_coordinate, image1_tsne_y_coordinate]) - np.array([image2_tsne_x_coordinate,image2_tsne_y_coordinate]))
+    return image_similarity_metric
 
-def subdivide_image_into_array_of_equally_sized_image_tiles_func(path_to_art_image_file,number_of_horiz_and_vert_segments):
-    im = cv2.imread(path_to_art_image_file)#Note: number_of_horiz_and_vert_segments = 2 will cut the image into quarters;  number_of_horiz_and_vert_segments = 3 will make 9 equal sized tiles. 
-    M = im.shape[0]//number_of_horiz_and_vert_segments
-    N = im.shape[1]//number_of_horiz_and_vert_segments
-    image_tiles = [im[x:x+M,y:y+N] for x in range(0,im.shape[0],M) for y in range(0,im.shape[1],N)]
-    return image_tiles
+def find_most_similar_images_to_given_image_from_fingerprint_data_func(sha256_hash_of_art_image_file):
+    global image_sha256_hash_to_image_file_path_dict
+    list_of_image_hashes_from_folder = image_sha256_hash_to_image_file_path_dict.keys()
+    total_number_of_images_hashes = len(list_of_image_hashes_from_folder)
+    list_of_image_file_names = []
+    list_of_similarity_metrics = []
+    pbar = tqdm(total=(total_number_of_images_hashes-1))
+    print('\nScanning specified image against all image fingerprints in database...')
+    for current_image_sha256_hash in list_of_image_hashes_from_folder:
+        if (current_image_sha256_hash != sha256_hash_of_art_image_file):
+            current_image_file_path = get_image_filename_from_image_hash_func(current_image_sha256_hash)
+            list_of_image_file_names.append(os.path.split(current_image_file_path)[-1])
+            image_similarity_metric = calculate_image_similarity_between_two_image_hashes_func(sha256_hash_of_art_image_file, current_image_sha256_hash)
+            list_of_similarity_metrics.append(image_similarity_metric)
+            pbar.update(1)
+    image_similarity_df = pd.DataFrame([list_of_image_hashes_from_folder,list_of_image_file_names,list_of_similarity_metrics]).T
+    image_similarity_df.columns = ['image_sha_256_hash','image_file_name', 'image_similarity_metric']
+    return image_similarity_df.sort_values('image_similarity_metric')
 
-
-#number_of_horiz_and_vert_segments = 3
-#image_tiles = subdivide_image_into_array_of_equally_sized_image_tiles_func(path_to_art_image_file,number_of_horiz_and_vert_segments)
-#cv2.imshow('tst',image_tiles[0])
-if 0:
-    image_fingerprint_vector1 = add_image_fingerprint_to_dupe_detection_databaseV2_func(path_to_art_image_file)
-    image_fingerprint_vector2 = add_image_fingerprint_to_dupe_detection_databaseV2_func(path_to_another_similar_art_image_file)
-    image_fingerprint_vector3 = add_image_fingerprint_to_dupe_detection_databaseV2_func(path_to_another_different_art_image_file)
-    
-    add_all_images_in_folder_to_image_fingerprint_database_func(path_to_all_registered_works_for_dupe_detection)        
-    add_all_images_in_folder_to_image_fingerprint_database_func('C:\\anime_image_database\\')        
-
-    distance_between_fingerprint_vectors1 = calculate_distance_between_two_image_fingerprint_vectors_func(image_fingerprint_vector1,image_fingerprint_vector2) #Very similar image
-    distance_between_fingerprint_vectors2 = calculate_distance_between_two_image_fingerprint_vectors_func(image_fingerprint_vector1,image_fingerprint_vector3) #Different image
+def check_if_image_is_likely_dupe(sha256_hash_of_art_image_file):
+    global duplicate_image_threshold
+    image_similarity_df = find_most_similar_images_to_given_image_from_fingerprint_data_func(sha256_hash_of_art_image_file)
+    possible_dupes = image_similarity_df[image_similarity_df['image_similarity_metric'] <= duplicate_image_threshold ]
+    if len(possible_dupes) > 0:
+        is_dupe = 1
+    else:
+        is_dupe = 0
+    return is_dupe
 
 #Various Utility Functions:
 def convert_numpy_array_to_sqlite_func(input_numpy_array):
@@ -507,7 +424,6 @@ def regenerate_sqlite_chunk_database_func():
         conn.close()
     except Exception as e:
         print('Error: '+ str(e))
-        conn.close()
 
 def regenerate_dupe_detection_image_fingerprint_database_func():
     global dupe_detection_image_fingerprint_database_file_path
@@ -520,11 +436,12 @@ def regenerate_dupe_detection_image_fingerprint_database_func():
             c = conn.cursor()
             dupe_detection_image_fingerprint_database_creation_string= """CREATE TABLE image_hash_to_image_fingerprint_table (sha256_hash_of_art_image_file text, dupe_detection_image_fingerprint_vector array,datetime_fingerprint_added_to_database TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL, PRIMARY KEY (sha256_hash_of_art_image_file, dupe_detection_image_fingerprint_vector));"""
             c.execute(dupe_detection_image_fingerprint_database_creation_string)
+            tsne_table_creation_string= """CREATE TABLE tsne_coordinates_table (sha256_hash_of_art_image_file text, tsne_x_coordinate real, tsne_y_coordinate real, datetime_fingerprint_added_to_database TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL, PRIMARY KEY (sha256_hash_of_art_image_file, tsne_x_coordinate, tsne_y_coordinate));"""
+            c.execute(tsne_table_creation_string)
             conn.commit()
             conn.close()
         except Exception as e:
             print('Error: '+ str(e))
-            conn.close()
             
 def check_if_file_path_is_a_valid_image_func(path_to_file):
     is_image = 0
@@ -566,8 +483,16 @@ def get_all_valid_image_file_paths_in_folder_func(path_to_art_folder):
                 valid_image_file_paths.append(current_art_file_path)
         return valid_image_file_paths
     except Exception as e:
-        print('Error: '+ str(e))    
+        print('Error: '+ str(e))
+        
+def subdivide_image_into_array_of_equally_sized_image_tiles_func(path_to_art_image_file,number_of_horiz_and_vert_segments):
+    im = cv2.imread(path_to_art_image_file)#Note: number_of_horiz_and_vert_segments = 2 will cut the image into quarters;  number_of_horiz_and_vert_segments = 3 will make 9 equal sized tiles. 
+    M = im.shape[0]//number_of_horiz_and_vert_segments
+    N = im.shape[1]//number_of_horiz_and_vert_segments
+    image_tiles = [im[x:x+M,y:y+N] for x in range(0,im.shape[0],M) for y in range(0,im.shape[1],N)]
+    return image_tiles
 
+#Stress testing functions:
 def randomly_delete_percentage_of_local_block_files_func(percentage_of_block_files_to_randomly_delete):
     global block_storage_folder_path
     list_of_block_file_paths = glob.glob(block_storage_folder_path+'*.block')
@@ -647,7 +572,6 @@ def generate_and_save_local_masternode_identification_keypair_func():
         return generated_id_keys_successfully
     except Exception as e:
         print('Error: '+ str(e))
-        conn.close()
         
 def get_local_masternode_identification_keypair_func():
     global masternode_keypair_db_file_path
@@ -667,7 +591,6 @@ def get_local_masternode_identification_keypair_func():
         return masternode_public_key, masternode_private_key
     except Exception as e:
         print('Error: '+ str(e))
-        conn.close()
         
 def generate_artist_public_and_private_keys_func():
     (artist_public_key, artist_private_key) = rsa.newkeys(512)
@@ -718,7 +641,6 @@ def sign_art_files_in_folder_with_artist_digital_signature_func(path_to_art_fold
             return artist_signature_for_hash_of_the_concatenated_hashes_base64_encoded, hash_of_the_concatenated_file_hashes 
         except Exception as e:
             print('Error: '+ str(e))
-            conn.close()
             
 def sign_final_artwork_zipfile_including_metadata_with_artist_signature_func(path_to_final_artwork_zipfile_including_metadata, artist_private_key):
     try:
@@ -758,7 +680,6 @@ def verify_artist_signature_in_art_folder_func(path_to_art_folder,artist_public_
         conn.close()
     except Exception as e:
         print('Error: '+ str(e))
-        conn.close()
     verified = verify_artist_signature_on_art_file_func(hash_of_the_concatenated_hashes,artist_public_key,artist_digital_signature)
     if verified == 1:
         print('Successfully verified the artist signature for art folder: '+ path_to_art_folder)
@@ -837,7 +758,6 @@ def create_metadata_file_for_given_art_folder_func(path_to_art_folder,
         return created_metadata_file_successfully
     except Exception as e:
         print('Error: '+ str(e))
-        conn.close()
         return created_metadata_file_successfully
     
 def read_artwork_metadata_from_metadata_file(path_to_artwork_metadata_file):
@@ -859,7 +779,6 @@ def read_artwork_metadata_from_metadata_file(path_to_artwork_metadata_file):
         return artist_concatenated_hash_signature_base64_encoded, hash_of_the_concatenated_file_hashes, datetime_art_was_signed, artist_name, artwork_title, artwork_max_quantity, artwork_series_name, artist_website, artwork_artist_statement
     except Exception as e:
         print('Error: '+ str(e))
-        conn.close()
 
 def read_artwork_metadata_from_art_folder_func(path_to_art_folder): #Convenience function
     artwork_metadata_sqlite_file_path = path_to_art_folder+'artwork_metadata_file__hash_*.db'
@@ -884,9 +803,9 @@ def check_art_folder_for_nsfw_content(path_to_art_folder):
    art_input_file_paths = get_all_valid_image_file_paths_in_folder_func(path_to_art_folder)
    list_of_art_file_hashes = []
    list_of_nsfw_scores = []
-   label_lines = [line.rstrip() for line in tf.gfile.GFile('retrained_labels.txt')] # Loads label file, strips off carriage return
+   label_text = ['sfw', 'nsfw']
    print('Now loading NSFW detection TensorFlow Library...')
-   with tf.gfile.FastGFile('retrained_graph.pb', 'rb') as f:# Unpersists graph from file
+   with tf.gfile.FastGFile('nsfw_trained_model.pb', 'rb') as f:# Unpersists graph from file
        graph_def = tf.GraphDef()
        graph_def.ParseFromString(f.read())
        tf.import_graph_def(graph_def, name='')
@@ -904,7 +823,7 @@ def check_art_folder_for_nsfw_content(path_to_art_folder):
           predictions = sess.run(softmax_tensor,  {'DecodeJpeg/contents:0': image_data})
           top_k = predictions[0].argsort()[-len(predictions[0]):][::-1]  # Sort to show labels of first prediction in order of confidence
           for node_id in top_k:
-              human_string = label_lines[node_id]
+              human_string = label_text[node_id]
               nsfw_score = predictions[0][node_id]
               list_of_nsfw_scores.append(nsfw_score)
               print('%s (score = %.5f)' % (human_string, nsfw_score))
@@ -986,9 +905,9 @@ def encode_final_art_zipfile_into_luby_transform_blocks_func(sha256_hash_of_art_
     art_zipfile_hash = hashlib.sha256(f_bytes).hexdigest()
     if art_zipfile_hash == sha256_hash_of_art_file: #Convert file byte contents into blocksize chunks, padding last one if necessary:
         blocks = [int.from_bytes(f_bytes[ii:ii+desired_block_size_in_bytes].ljust(desired_block_size_in_bytes, b'0'), sys.byteorder) for ii in range(0, len(f_bytes), desired_block_size_in_bytes)]
-        K = len(blocks)
-        print('The length of the blocks list: '+str(K))
-        prng = PRNG(params=(K, delta_constant, c_constant))
+        number_of_blocks = len(blocks)
+        print('The length of the blocks list: '+str(number_of_blocks))
+        prng = PRNG(params=(number_of_blocks, delta_constant, c_constant))
         prng.set_seed(seed)
         number_of_blocks_generated = 0# block generation loop
         while number_of_blocks_generated <= total_number_of_blocks_to_generate:
@@ -1151,86 +1070,122 @@ def refresh_block_storage_folder_and_check_block_integrity_func(use_verify_integ
     #print('Done writing file hash data to SQLite file!\n')  
     return potential_local_block_hashes_list, potential_local_file_hashes_list
 
-
 ###############################################################################################################
 # Script:
 ###############################################################################################################
 sqlite3.register_adapter(np.ndarray, convert_numpy_array_to_sqlite_func) # Converts np.array to TEXT when inserting
 sqlite3.register_converter('array', convert_sqlite_data_to_numpy_array_func) # Converts TEXT to np.array when selecting
-regenerate_dupe_detection_image_fingerprint_database_func() #only generates a new db file if it can't find an existing one.
-list_of_required_folder_paths = [root_animecoin_folder_path,reconstructed_files_destination_folder_path,artist_final_signature_files_folder_path,misc_masternode_files_folder_path,folder_path_of_art_folders_to_encode,prepared_final_art_zipfiles_folder_path,block_storage_folder_path]
-for current_required_folder_path in list_of_required_folder_paths:
-    if not os.path.exists(current_required_folder_path):
-        try:
-            os.makedirs(current_required_folder_path)
-        except Exception as e:
-                print('Error: '+ str(e)) 
-try:
-    artist_public_key = pickle.load(open(os.path.join(root_animecoin_folder_path,'artist_public_key.p'),'rb'))
-    artist_private_key = pickle.load(open(os.path.join(root_animecoin_folder_path,'artist_private_key.p'),'rb'))
-except:
-    print('Couldn\'t load the demonstration artist pub/priv keys!')
-
-try:
-    masternode_public_key, masternode_private_key = get_local_masternode_identification_keypair_func()
-except:
-    print('Generating a new  local masternode identification keypair now...')
-    generate_and_save_local_masternode_identification_keypair_func()#We don't have a masternode keypair so we first need to generate one. 
-
-if use_generate_new_sqlite_chunk_database:
-    regenerate_sqlite_chunk_database_func()
-
-if use_generate_new_demonstration_artist_key_pair:
-    artist_public_key, artist_private_key = generate_artist_public_and_private_keys_func()
-    pickle.dump(artist_public_key, open(os.path.join(root_animecoin_folder_path,'artist_public_key.p'),'wb'))
-    pickle.dump(artist_private_key, open(os.path.join(root_animecoin_folder_path,'artist_private_key.p'),'wb'))
-    artist_public_key_export_format = rsa.PublicKey.save_pkcs1(artist_public_key,format='PEM').decode('utf-8')
-    artist_private_key_export_format = rsa.PrivateKey.save_pkcs1(artist_private_key,format='PEM').decode('utf-8')
-    
 if use_demo_mode:
+    if use_reset_system_for_demo:
+        delete_all_blocks_and_zip_files_to_reset_system_func()
+    list_of_required_folder_paths = [root_animecoin_folder_path,reconstructed_files_destination_folder_path,artist_final_signature_files_folder_path,misc_masternode_files_folder_path,folder_path_of_art_folders_to_encode,prepared_final_art_zipfiles_folder_path,block_storage_folder_path]
+    for current_required_folder_path in list_of_required_folder_paths:
+        if not os.path.exists(current_required_folder_path):
+            try:
+                os.makedirs(current_required_folder_path)
+            except Exception as e:
+                    print('Error: '+ str(e)) 
+    regenerate_dupe_detection_image_fingerprint_database_func() #only generates a new db file if it can't find an existing one.
+    try:
+        artist_public_key = pickle.load(open(os.path.join(root_animecoin_folder_path,'artist_public_key.p'),'rb'))
+        artist_private_key = pickle.load(open(os.path.join(root_animecoin_folder_path,'artist_private_key.p'),'rb'))
+    except:
+        print('Couldn\'t load the demonstration artist pub/priv keys!')
+        
+    try:
+        masternode_public_key, masternode_private_key = get_local_masternode_identification_keypair_func()
+    except:
+        print('Generating a new  local masternode identification keypair now...')
+        generate_and_save_local_masternode_identification_keypair_func()#We don't have a masternode keypair so we first need to generate one. 
+    if use_generate_new_sqlite_chunk_database:
+        regenerate_sqlite_chunk_database_func()
+    if use_generate_new_demonstration_artist_key_pair:
+        artist_public_key, artist_private_key = generate_artist_public_and_private_keys_func()
+        pickle.dump(artist_public_key, open(os.path.join(root_animecoin_folder_path,'artist_public_key.p'),'wb'))
+        pickle.dump(artist_private_key, open(os.path.join(root_animecoin_folder_path,'artist_private_key.p'),'wb'))
+        artist_public_key_export_format = rsa.PublicKey.save_pkcs1(artist_public_key,format='PEM').decode('utf-8')
+        artist_private_key_export_format = rsa.PrivateKey.save_pkcs1(artist_private_key,format='PEM').decode('utf-8')
     print('\nWelcome! This is a demo of the file storage system that is being used for the Animecoin project to store art files in a decentralized, robust way.')    
     print('\nFirst, we begin by taking a bunch of folders; each one contains one or images representing a single digital artwork to be registered.')
     print('\nWe will now perform a series of steps on these files. First we verify they are valid images and that they are not NSFW or dupes.')
     print('\nThen we will have the artist sign all the art files with his digital signature, create the art metadata file, and finally have the artist sign the final art zipfile with metadata.')
-    sys.exit(0)
+    #sys.exit(0)
     list_of_art_sub_folder_paths = glob.glob(folder_path_of_art_folders_to_encode + '*' + os.sep)
     for current_art_folder in list_of_art_sub_folder_paths:
         successfully_registered_artwork = register_new_artwork_folder_func(current_art_folder)
+    potential_local_block_hashes_list, potential_local_file_hashes_list = refresh_block_storage_folder_and_check_block_integrity_func()
+    if use_stress_test: #Check how robust system is to lost/corrupted blocks:
+        if use_demo_mode:
+            print('\n\nGreat, we just finished turning the file into a bunch of "fungible" blocks! If you check the output folder now, you will see a collection of the resulting files.')
+            print('Now we can see the purpose of all this. Suppose something really bad happens, and that most of the master nodes hosting these files disappear.')
+            print('On top of that, suppose that many of the remaining nodes also lose some of the file chunks to corruption or disk failure. Still, we will be able to reconstruct the file.')
+        number_of_deleted_blocks = randomly_delete_percentage_of_local_block_files_func(percentage_of_block_files_to_randomly_delete)
+        if use_demo_mode:
+            print('\n\nJust deleted '+str(number_of_deleted_blocks) +' of the generated blocks, or '+ str(round(100*number_of_deleted_blocks/len(potential_local_block_hashes_list),2))+'% of the blocks')
+        if use_random_corruption:
+           number_of_corrupted_blocks = randomly_corrupt_a_percentage_of_bytes_in_a_random_sample_of_block_files_func(percentage_of_block_files_to_randomly_corrupt,percentage_of_each_selected_file_to_be_randomly_corrupted)
+           print('\n\nJust Corrupted '+str(number_of_corrupted_blocks) +' of the generated blocks, or '+ str(round(100*number_of_corrupted_blocks/len(potential_local_block_hashes_list),2))+'% of the blocks')
+    if use_reconstruct_files:
+        print('\n\nNow let\'s try to reconstruct the original file despite this *random* loss of most of the block files...')
+        list_of_block_file_paths = glob.glob(block_storage_folder_path+'*.block')
+        available_art_file_hashes = [p.split(os.sep)[-1].split('__')[1] for p in list_of_block_file_paths]
+        available_art_file_hashes = list(set(available_art_file_hashes))
+        failed_file_hash_list = []
+        for current_file_hash in available_art_file_hashes:
+            print('Now reconstructing file with SHA256 Hash of: ' + current_file_hash)
+            completed_successfully = decode_block_files_into_art_zipfile_func(current_file_hash)
+            if not completed_successfully:
+                failed_file_hash_list.append(current_file_hash)
+            if completed_successfully:
+                print('\nBoom, we\'ve done it!')
+        number_of_failed_files = len(failed_file_hash_list)
+        if number_of_failed_files == 0:
+            print('All files reconstructed successfully!')
+        else:
+            print('Some files were NOT successfully reconstructed! '+str(number_of_failed_files)+' Files had errors:\n ')
+            for current_hash in failed_file_hash_list:
+                print(current_hash+'\n')
 
-if use_reset_system_for_demo:
-    delete_all_blocks_and_zip_files_to_reset_system_func()
+if use_demonstrate_duplicate_detection:
+    add_all_images_in_folder_to_image_fingerprint_database_func(path_to_all_registered_works_for_dupe_detection)        
+    add_all_images_in_folder_to_image_fingerprint_database_func('C:\\anime_image_database\\')
+        
+    list_of_image_sha256_hashes, tsne_x_coordinates, tsne_y_coordinates = apply_tsne_to_image_fingerprint_database_func()
+    list_of_image_hashes_from_folder = image_sha256_hash_to_image_file_path_dict.keys()
+    list_of_tsne_x_coordinates = []
+    list_of_tsne_y_coordinates = []
+    list_of_art_image_file_names = []
+    for current_image_hash in list_of_image_hashes_from_folder:
+        tsne_x_coordinate, tsne_y_coordinate, art_image_file_name = get_tsne_coordinates_for_desired_image_file_hash_func(current_image_hash)
+        list_of_tsne_x_coordinates.append(tsne_x_coordinate)
+        list_of_tsne_y_coordinates.append(tsne_y_coordinate)
+        list_of_art_image_file_names.append(art_image_file_name)
+    tsne_df = pd.DataFrame([list_of_image_hashes_from_folder,list_of_art_image_file_names,list_of_tsne_x_coordinates,list_of_tsne_y_coordinates]).T
+    tsne_df.columns = ['image_sha256_hash','image_file_name','tsne_x_coordinate','tsne_y_coordinate']
+    
+    list_of_first_image_hashes = [] 
+    list_of_second_image_hashes = [] 
+    list_of_first_image_file_names = [] 
+    list_of_second_image_file_names = [] 
+    list_of_similarity_metrics = []
+    total_number_of_images_hashes = len(list_of_image_hashes_from_folder)
+    stopping_point = ceil(0.5*total_number_of_images_hashes)
+    total_iterations = 0.5*(total_number_of_images_hashes*total_number_of_images_hashes) - total_number_of_images_hashes
+    pbar = tqdm(total=(total_iterations))
+    for cnt1, image1_sha256_hash in enumerate(list_of_image_hashes_from_folder):
+        for cnt2, image2_sha256_hash in enumerate(list_of_image_hashes_from_folder):
+            if (image1_sha256_hash != image2_sha256_hash) and (cnt2 <= stopping_point):
+                list_of_first_image_hashes.append(image1_sha256_hash)
+                list_of_second_image_hashes.append(image2_sha256_hash)
+                first_image_file_path = get_image_filename_from_image_hash_func(image1_sha256_hash)
+                list_of_first_image_file_names.append(os.path.split(first_image_file_path)[-1])
+                second_image_file_path = get_image_filename_from_image_hash_func(image2_sha256_hash)
+                list_of_second_image_file_names.append(os.path.split(second_image_file_path)[-1])
+                image_similarity_metric = calculate_image_similarity_between_two_image_hashes_func(image1_sha256_hash,image2_sha256_hash)
+                list_of_similarity_metrics.append(image_similarity_metric)
+                pbar.update(1)
+    image_similarity_df = pd.DataFrame([list_of_first_image_hashes,list_of_second_image_hashes,list_of_first_image_file_names,list_of_second_image_file_names,list_of_similarity_metrics]).T
+    image_similarity_df.columns = ['first_image_hash','second_image_hash','first_image_file_name','second_image_file_name', 'image_similarity_metric']
 
-potential_local_block_hashes_list, potential_local_file_hashes_list = refresh_block_storage_folder_and_check_block_integrity_func()
-
-if use_stress_test: #Check how robust system is to lost/corrupted blocks:
-    if use_demo_mode:
-        print('\n\nGreat, we just finished turning the file into a bunch of "fungible" blocks! If you check the output folder now, you will see a collection of the resulting files.')
-        print('Now we can see the purpose of all this. Suppose something really bad happens, and that most of the master nodes hosting these files disappear.')
-        print('On top of that, suppose that many of the remaining nodes also lose some of the file chunks to corruption or disk failure. Still, we will be able to reconstruct the file.')
-    number_of_deleted_blocks = randomly_delete_percentage_of_local_block_files_func(percentage_of_block_files_to_randomly_delete)
-    if use_demo_mode:
-        print('\n\nJust deleted '+str(number_of_deleted_blocks) +' of the generated blocks, or '+ str(round(100*number_of_deleted_blocks/len(potential_local_block_hashes_list),2))+'% of the blocks')
-    if use_random_corruption:
-       number_of_corrupted_blocks = randomly_corrupt_a_percentage_of_bytes_in_a_random_sample_of_block_files_func(percentage_of_block_files_to_randomly_corrupt,percentage_of_each_selected_file_to_be_randomly_corrupted)
-       print('\n\nJust Corrupted '+str(number_of_corrupted_blocks) +' of the generated blocks, or '+ str(round(100*number_of_corrupted_blocks/len(potential_local_block_hashes_list),2))+'% of the blocks')
-
-if use_reconstruct_files:
-    print('\n\nNow let\'s try to reconstruct the original file despite this *random* loss of most of the block files...')
-    list_of_block_file_paths = glob.glob(block_storage_folder_path+'*.block')
-    available_art_file_hashes = [p.split(os.sep)[-1].split('__')[1] for p in list_of_block_file_paths]
-    available_art_file_hashes = list(set(available_art_file_hashes))
-    failed_file_hash_list = []
-    for current_file_hash in available_art_file_hashes:
-        print('Now reconstructing file with SHA256 Hash of: ' + current_file_hash)
-        completed_successfully = decode_block_files_into_art_zipfile_func(current_file_hash)
-        if not completed_successfully:
-            failed_file_hash_list.append(current_file_hash)
-        if completed_successfully:
-            print('\nBoom, we\'ve done it!')
-    number_of_failed_files = len(failed_file_hash_list)
-    if number_of_failed_files == 0:
-        print('All files reconstructed successfully!')
-    else:
-        print('Some files were NOT successfully reconstructed! '+str(number_of_failed_files)+' Files had errors:\n ')
-        for current_hash in failed_file_hash_list:
-            print(current_hash+'\n')
+    image_similarity_df = find_most_similar_images_to_given_image_from_fingerprint_data_func(sha256_hash_of_art_image_file)
+    is_dupe = check_if_image_is_likely_dupe(sha256_hash_of_art_image_file)
