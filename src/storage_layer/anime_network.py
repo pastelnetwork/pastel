@@ -1,13 +1,9 @@
 import sys, time, os.path, io, string, glob, hashlib, imghdr, random, os, zlib, pickle, sqlite3, uuid, socket, warnings, base64, json, hmac, logging, asyncio, binascii
-from shutil import copyfile
-from struct import pack, unpack, error
+warnings.simplefilter(action='ignore', category=FutureWarning)
+warnings.filterwarnings('ignore',category=DeprecationWarning)
+from struct import pack, unpack
 from multiprocessing import Process, Queue
-from random import randint
-from math import ceil, floor, sqrt, log
-from collections import defaultdict
 from collections import OrderedDict
-from zipfile import ZipFile
-from subprocess import check_output
 from datetime import datetime
 from itertools import compress
 from kademlia.network import Server
@@ -15,16 +11,13 @@ from pyftpdlib.handlers import FTPHandler, ThrottledDTPHandler
 from pyftpdlib.authorizers import DummyAuthorizer
 from pyftpdlib.servers import FTPServer
 from ftplib import FTP
-from fs.memoryfs import MemoryFS
-with warnings.catch_warnings():
-    warnings.filterwarnings("ignore",category=DeprecationWarning)
-    from fs.copy import copy_fs
-    from fs.osfs import OSFS
+
 try:
     from tqdm import tqdm
     import yenc
 except:
     pass
+from anime_storage import *
 #Requirements: pip install kademlia, yenc, tqdm, fs, pyftpdlib
         
 ###############################################################################################################
@@ -64,21 +57,6 @@ def get_my_local_ip_func():
     my_node_ip_address = s.getsockname()[0]
     s.close()
     return my_node_ip_address 
-
-def regenerate_sqlite_chunk_database_func():
-    global chunk_db_file_path
-    try:
-        conn = sqlite3.connect(chunk_db_file_path)
-        c = conn.cursor()
-        local_hash_table_creation_string= """CREATE TABLE potential_local_hashes (block_hash text PRIMARY KEY, file_hash);"""
-        global_hash_table_creation_string= """CREATE TABLE potential_global_hashes (block_hash text, file_hash text, remote_node_ip text, remote_node_id text, datetime_peer_last_seen TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL, PRIMARY KEY (block_hash, remote_node_id));"""
-        node_ip_to_id_table_creation_string= """CREATE TABLE node_ip_to_id_table (remote_node_id text PRIMARY KEY, remote_node_ip text, datetime_peer_last_seen TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL);"""
-        c.execute(local_hash_table_creation_string)
-        c.execute(global_hash_table_creation_string)
-        c.execute(node_ip_to_id_table_creation_string)
-        conn.commit()
-    except Exception as e:
-        print('Error: '+ str(e))
 
 def get_node_ip_address_from_node_id_func(remote_node_id):
     try:
@@ -592,272 +570,6 @@ def wrapper_reconstruct_zipfile_from_hash_func(sha256_hash_of_desired_zipfile):
         print('\n\nError! We were unable to successfully reconstruct the desired zip file!\n')
     return completed_successfully
 
-#LT-Code helper functions:
-def gen_tau(S, K, delta):
-    """The Robust part of the RSD, we precompute an array for speed"""
-    pivot = floor(K/S)
-    return [S/K * 1/d for d in range(1, pivot)] \
-            + [S/K * log(S/delta)] \
-            + [0 for d in range(pivot, K)] 
-
-def gen_rho(K):
-    """The Ideal Soliton Distribution, we precompute an array for speed"""
-    return [1/K] + [1/(d*(d-1)) for d in range(2, K+1)]
-
-def gen_mu(K, delta, c):
-    """The Robust Soliton Distribution on the degree of transmitted blocks"""
-    S = c * log(K/delta) * sqrt(K) 
-    tau = gen_tau(S, K, delta)
-    rho = gen_rho(K)
-    normalizer = sum(rho) + sum(tau)
-    return [(rho[d] + tau[d])/normalizer for d in range(K)]
-
-def gen_rsd_cdf(K, delta, c):
-    """The CDF of the RSD on block degree, precomputed for sampling speed"""
-    mu = gen_mu(K, delta, c)
-    return [sum(mu[:d+1]) for d in range(K)]
-
-class PRNG(object):
-    """A Pseudorandom Number Generator that yields samples from the set of source blocks using the RSD degree distribution described above. """
-    def __init__(self, params):
-        """Provide RSD parameters on construction """
-        self.state = None  # Seed is set by interfacing code using set_seed
-        K, delta, c = params
-        self.K = K
-        self.cdf = gen_rsd_cdf(K, delta, c)
-
-    def _get_next(self):
-        """Executes the next iteration of the PRNG evolution process, and returns the result"""
-        PRNG_A = 16807
-        PRNG_M = (1 << 31) - 1
-        self.state = PRNG_A * self.state % PRNG_M
-        return self.state
-
-    def _sample_d(self):
-        """Samples degree given the precomputed distributions above and the linear PRNG output """
-        PRNG_M = (1 << 31) - 1
-        PRNG_MAX_RAND = PRNG_M - 1
-        p = self._get_next() / PRNG_MAX_RAND
-        for ix, v in enumerate(self.cdf):
-            if v > p:
-                return ix + 1
-        return ix + 1
-
-    def set_seed(self, seed):
-        """Reset the state of the PRNG to the given seed"""
-        self.state = seed
-
-    def get_src_blocks(self, seed=None):
-        """Returns the indices of a set of `d` source blocks sampled from indices i = 1, ..., K-1 uniformly, where `d` is sampled from the RSD described above.     """
-        if seed:
-            self.state = seed
-        blockseed = self.state
-        d = self._sample_d()
-        have = 0
-        nums = set()
-        while have < d:
-            num = self._get_next() % self.K
-            if num not in nums:
-                nums.add(num)
-                have += 1
-        return blockseed, d, nums
-  
-def _split_file(f, blocksize):
-    """Block file byte contents into blocksize chunks, padding last one if necessary
-    """
-    f_bytes = f.read()
-    blocks = [int.from_bytes(f_bytes[i:i+blocksize].ljust(blocksize, b'0'), sys.byteorder) 
-            for i in range(0, len(f_bytes), blocksize)]
-    return len(f_bytes), blocks
-
-class CheckNode(object):
-     def __init__(self, src_nodes, check):
-        self.check = check
-        self.src_nodes = src_nodes
-
-class BlockGraph(object):
-    """Graph on which we run Belief Propagation to resolve source node data"""
-    def __init__(self, num_blocks):
-        self.checks = defaultdict(list)
-        self.num_blocks = num_blocks
-        self.eliminated = {}
-
-    def add_block(self, nodes, data):
-        """Adds a new check node and edges between that node and all source nodes it connects, resolving all message passes that become possible as a result. """
-        # We can eliminate this source node
-        if len(nodes) == 1:
-            to_eliminate = list(self.eliminate(next(iter(nodes)), data))
-            # Recursively eliminate all nodes that can now be resolved
-            while len(to_eliminate):
-                other, check = to_eliminate.pop()
-                to_eliminate.extend(self.eliminate(other, check))
-        else:
-            # Pass messages from already-resolved source nodes
-            for node in list(nodes):
-                if node in self.eliminated:
-                    nodes.remove(node)
-                    data ^= self.eliminated[node]
-
-            # Resolve if we are left with a single non-resolved source node
-            if len(nodes) == 1:
-                return self.add_block(nodes, data)
-            else:
-                # Add edges for all remaining nodes to this check
-                check = CheckNode(nodes, data)
-                for node in nodes:
-                    self.checks[node].append(check)
-        # Are we done yet?
-        return len(self.eliminated) >= self.num_blocks
-
-    def eliminate(self, node, data):
-        """Resolves a source node, passing the message to all associated checks """
-        # Cache resolved value
-        self.eliminated[node] = data
-        others = self.checks[node]
-        del self.checks[node]
-        # Pass messages to all associated checks
-        for check in others:
-            check.check ^= data
-            check.src_nodes.remove(node)
-            # Yield all nodes that can now be resolved
-            if len(check.src_nodes) == 1:
-                yield (next(iter(check.src_nodes)), check.check)
-
-def turn_art_zip_file_into_encoded_block_files_func(sha256_hash_of_desired_zipfile):
-    global block_storage_folder_path
-    global desired_block_size_in_bytes
-    global target_block_redundancy_factor
-    global reconstructed_file_destination_folder_path
-    start_time = time.time()
-    zip_file_path = glob.glob(reconstructed_file_destination_folder_path+'*'+sha256_hash_of_desired_zipfile+'*.zip')
-    if len(zip_file_path) > 0:
-        ramdisk_object = MemoryFS()
-        with open(zip_file_path,'rb') as f:
-            final_art_file = f.read()
-            art_zipfile_hash = hashlib.sha256(final_art_file).hexdigest()
-        final_art_file__original_size_in_bytes = os.path.getsize(zip_file_path)
-        output_blocks_list = []
-        DEFAULT_C = 0.1
-        DEFAULT_DELTA = 0.5
-        seed = randint(0, 1 << 31 - 1)
-        #Process ZIP file into a stream of encoded blocks, and save those blocks as separate files in the output folder:
-        print('Now encoding file ' + zip_file_path + ', (' + str(round(final_art_file__original_size_in_bytes/1000000)) + 'mb);\nFile Hash is: '+ art_zipfile_hash+'\n\n')
-        total_number_of_blocks_required = ceil((1.00*target_block_redundancy_factor*final_art_file__original_size_in_bytes) / desired_block_size_in_bytes)
-        pbar = tqdm(total=total_number_of_blocks_required)
-        with open(zip_file_path,'rb') as f:
-            f_bytes = f.read()
-        filesize = len(f_bytes)
-        #Convert file byte contents into blocksize chunks, padding last one if necessary
-        blocks = [int.from_bytes(f_bytes[ii:ii+desired_block_size_in_bytes].ljust(desired_block_size_in_bytes, b'0'), sys.byteorder) for ii in range(0, len(f_bytes), desired_block_size_in_bytes)]
-        K = len(blocks) # init stream vars
-        prng = PRNG(params=(K, DEFAULT_DELTA, DEFAULT_C))
-        prng.set_seed(seed)
-        number_of_blocks_generated = 0# block generation loop
-        while number_of_blocks_generated <= total_number_of_blocks_required:
-            update_skip = 1
-            if (number_of_blocks_generated % update_skip) == 0:
-                pbar.update(update_skip)
-            blockseed, d, ix_samples = prng.get_src_blocks()
-            block_data = 0
-            for ix in ix_samples:
-                block_data ^= blocks[ix]
-            block = (filesize, desired_block_size_in_bytes, blockseed, int.to_bytes(block_data, desired_block_size_in_bytes, sys.byteorder)) # Generate blocks of XORed data in network byte order
-            number_of_blocks_generated = number_of_blocks_generated + 1
-            packed_block_data = pack('!III%ss'%desired_block_size_in_bytes, *block)
-            output_blocks_list.append(packed_block_data)
-            hash_of_block = hashlib.sha256(packed_block_data).hexdigest()
-            output_block_file_path = 'FileHash__'+art_zipfile_hash + '__Block__' + '{0:09}'.format(number_of_blocks_generated) + '__BlockHash_' + hash_of_block +'.block'
-            try:
-                with ramdisk_object.open(output_block_file_path,'wb') as f:
-                    f.write(packed_block_data)
-            except Exception as e:
-                print('Error: '+ str(e))
-        duration_in_seconds = round(time.time() - start_time, 1)
-        print('\n\nFinished processing in '+str(duration_in_seconds) + ' seconds! \nOriginal zip file was encoded into ' + str(number_of_blocks_generated) + ' blocks of ' + str(ceil(desired_block_size_in_bytes/1000)) + ' kilobytes each. Total size of all blocks is ~' + str(ceil((number_of_blocks_generated*desired_block_size_in_bytes)/1000000)) + ' megabytes\n')
-        if not os.path.exists(block_storage_folder_path):
-            try:
-                os.makedirs(block_storage_folder_path)
-            except Exception as e:
-                print('Error: '+ str(e))
-        filesystem_object = OSFS(block_storage_folder_path)   
-        print('Now copying encoded files from ram disk to local storage...')
-        try:
-            copy_fs(ramdisk_object,filesystem_object)
-        except Exception as e:
-            print('Error: '+ str(e))
-        #ramdisk_object.close()
-
-def reconstruct_block_files_into_original_zip_file_func(sha256_hash_of_desired_zipfile):
-    global block_storage_folder_path
-    global reconstructed_file_destination_folder_path
-    #First, scan the blocks folder:
-    start_time = time.time()
-    list_of_block_file_paths = glob.glob(os.path.join(block_storage_folder_path,'*'+sha256_hash_of_desired_zipfile+'*.block'))
-    reported_file_sha256_hash = list_of_block_file_paths[0].split('\\')[-1].split('__')[1]
-    print('\nFound '+str(len(list_of_block_file_paths))+' block files in folder! The SHA256 hash of the original zip file is reported to be: '+reported_file_sha256_hash+'\n')
-    reconstructed_file_destination_file_path = reconstructed_file_destination_folder_path + 'Reconstructed_File_with_SHA256_Hash_of__' + reported_file_sha256_hash + '.zip'
-    c = 0.1
-    delta = 0.5
-    block_graph = BlockGraph(len(list_of_block_file_paths))
-    for block_count, current_block_file_path in enumerate(list_of_block_file_paths):
-        with open(current_block_file_path,'rb') as f:
-            packed_block_data = f.read()
-        hash_of_block = hashlib.sha256(packed_block_data).hexdigest()
-        reported_hash_of_block = current_block_file_path.split('__')[-1].replace('.block','').replace('BlockHash_','')
-        if hash_of_block == reported_hash_of_block:
-            pass
-            #print('Block hash matches reported hash, so block is not corrupted!')
-        else:
-            print('\nError, the block hash does NOT match the reported hash, so this block is corrupted! Skipping to next block...\n')
-            continue
-        input_stream = io.BufferedReader(io.BytesIO(packed_block_data),buffer_size=1000000)
-        header = unpack('!III', input_stream.read(12))
-        filesize = header[0]
-        blocksize = header[1]
-        blockseed = header[2]
-        block = int.from_bytes(input_stream.read(blocksize), 'big')
-        number_of_blocks_required = ceil(filesize/blocksize)
-        if (block_count % 1) == 0:
-            name_parts_list = current_block_file_path.split('\\')[-1].split('_')
-            parsed_block_hash = name_parts_list[-1].replace('.block','')
-            parsed_block_number = name_parts_list[6].replace('.block','')
-            parsed_file_hash = name_parts_list[3].replace('.block','')
-            print('\nNow decoding:\nBlock Number: ' + parsed_block_number + '\nFile Hash: ' + parsed_file_hash + '\nBlock Hash: '+ parsed_block_hash)
-        prng = PRNG(params=(number_of_blocks_required, delta, c))
-        _, _, src_blocks = prng.get_src_blocks(seed = blockseed)
-        file_reconstruction_complete = block_graph.add_block(src_blocks, block)
-        if file_reconstruction_complete:
-            print('\nDone building file! Processed a total of '+str(block_count)+' blocks\n')
-            break
-    if os.path.isfile(reconstructed_file_destination_folder_path):
-        print('\nA file with that name exists already; deleting this first before attempting to write new file!\n')
-        try:
-            os.remove(reconstructed_file_destination_folder_path)
-        except:
-            print('Error removing file!')
-    else:
-        with open(reconstructed_file_destination_folder_path,'wb') as f: 
-            for ix, block_bytes in enumerate(map(lambda p: int.to_bytes(p[1], blocksize, 'big'), sorted(block_graph.eliminated.items(), key = lambda p:p[0]))):
-                if ix < number_of_blocks_required - 1 or filesize % blocksize == 0:
-                    f.write(block_bytes)
-                else:
-                    f.write(block_bytes[:filesize%blocksize])
-    try:
-        with open(reconstructed_file_destination_folder_path,'rb') as f:
-            reconstructed_file = f.read()
-            reconstructed_file_hash = hashlib.sha256(reconstructed_file).hexdigest()
-            if reported_file_sha256_hash == reconstructed_file_hash:
-                completed_successfully = 1
-                print('\nThe SHA256 hash of the reconstructed file matches the reported file hash-- file is valid!\n')
-            else:
-                completed_successfully = 0
-                print('\nProblem! The SHA256 hash of the reconstructed file does NOT match the expected hash! File is not valid.\n')
-    except Exception as e:
-        print('Error: '+ str(e))
-    duration_in_seconds = round(time.time() - start_time, 1)
-    print('\n\nFinished processing in '+str(duration_in_seconds) + ' seconds!')
-    return completed_successfully
-
 #query_results_table = c.execute("""SELECT * FROM potential_global_hashes where file_hash = ?""",[sha256_hash_of_desired_zipfile]).fetchall()
 #query_results_table = c.execute("""SELECT * FROM potential_global_hashes""").fetchall()
 
@@ -877,11 +589,12 @@ handler.setFormatter(formatter)
 dht_log = logging.getLogger('kademlia')
 dht_log.addHandler(handler)
 dht_log.setLevel(logging.DEBUG)   
-conn = sqlite3.connect(chunk_db_file_path)
-c = conn.cursor()
 if use_generate_new_sqlite_chunk_database:
     regenerate_sqlite_chunk_database_func()
+    
 potential_local_block_hashes_list, potential_local_file_hashes_list = refresh_block_storage_folder_and_check_block_integrity_func()
+conn = sqlite3.connect(chunk_db_file_path)
+c = conn.cursor()
 list_of_local_potential_block_hashes = c.execute('SELECT block_hash FROM potential_local_hashes').fetchall()
 list_of_local_potential_block_hashes = [x[0] for x in list_of_local_potential_block_hashes]
 list_of_local_potential_file_hashes = c.execute('SELECT file_hash FROM potential_local_hashes').fetchall()
@@ -891,6 +604,7 @@ list_of_local_potential_file_hashes_json = json.dumps(list_of_local_potential_fi
 list_of_local_potential_file_hashes_unique = c.execute('SELECT DISTINCT file_hash FROM potential_local_hashes').fetchall()
 list_of_local_potential_file_hashes_unique = [x[0] for x in list_of_local_potential_file_hashes_unique]
 list_of_local_potential_file_hashes_unique_json = json.dumps(list_of_local_potential_file_hashes_unique)
+conn.close()
 _, my_node_ip, my_node_port, my_node_id = unpackage_dht_hash_table_entry_func(package_dht_hash_table_entry_func([]))
 
 try:
