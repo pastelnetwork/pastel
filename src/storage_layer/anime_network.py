@@ -1,25 +1,27 @@
-import sys, time, os.path, io, string, glob, hashlib, imghdr, random, os, zlib, pickle, sqlite3, uuid, socket, warnings, base64, json, hmac, logging, asyncio, binascii
+import sys, time, os.path, io, string, glob, hashlib, imghdr, random, os, zlib, pickle, sqlite3, uuid, socket, warnings, base64, json, hmac, logging, asyncio, binascii, subprocess
 warnings.simplefilter(action='ignore', category=FutureWarning)
 warnings.filterwarnings('ignore',category=DeprecationWarning)
+import requests
+import lxml.html
 from struct import pack, unpack
 from multiprocessing import Process, Queue
 from collections import OrderedDict
 from datetime import datetime
 from itertools import compress
 from kademlia.network import Server
-from pyftpdlib.handlers import FTPHandler, ThrottledDTPHandler
-from pyftpdlib.authorizers import DummyAuthorizer
-from pyftpdlib.servers import FTPServer
-from ftplib import FTP
-
+from math import ceil
 try:
     from tqdm import tqdm
     import yenc
 except:
     pass
-from anime_storage import *
-#Requirements: pip install kademlia, yenc, tqdm, fs, pyftpdlib
-        
+#from anime_storage import *
+#Requirements: pip install kademlia, yenc, tqdm, fs, lxml, requests
+
+#Add to crontab:
+#* * * * * 
+# (first install tree: apt install tree)
+    
 ###############################################################################################################
 # Parameters:
 ###############################################################################################################
@@ -27,14 +29,15 @@ use_verify_integrity = 1
 use_generate_new_sqlite_chunk_database = 1
 use_advertise_local_blocks_on_dht = 1 
 use_demonstrate_asking_dht_network_for_file_blocks = 0
-use_demonstrate_ftp_based_block_file_transfer = 0
 root_animecoin_folder_path = 'C:\\animecoin\\'
 folder_path_of_art_folders_to_encode = os.path.join(root_animecoin_folder_path,'art_folders_to_encode' + os.sep)#Each subfolder contains the various art files pertaining to a given art asset.
 block_storage_folder_path = os.path.join(root_animecoin_folder_path,'art_block_storage' + os.sep)
+folder_path_of_remote_node_sqlite_files = os.path.join(root_animecoin_folder_path,'remote_node_sqlite_files' + os.sep)
 reconstructed_file_destination_folder_path = os.path.join(root_animecoin_folder_path,'reconstructed_files' + os.sep)
 misc_masternode_files_folder_path = os.path.join(root_animecoin_folder_path,'misc_masternode_files' + os.sep) #Where we store some of the SQlite databases
 chunk_db_file_path = os.path.join(misc_masternode_files_folder_path,'anime_chunkdb.sqlite')
 file_storage_log_file_path = os.path.join(misc_masternode_files_folder_path,'anime_storage_log.txt')
+nginx_allowed_ip_whitelist_file_path = os.path.join(misc_masternode_files_folder_path,'masternode_ip_whitelist.conf')
 
 default_port = 14142
 alternative_port = 2718
@@ -42,15 +45,16 @@ list_of_ips = ['108.61.86.243','140.82.14.38','140.82.2.58']
 target_number_of_nodes_per_unique_block_hash = 10
 target_block_redundancy_factor = 10 #How many times more blocks should we store than are required to regenerate the file?
 desired_block_size_in_bytes = 1024*1000*2
+if 0: #NAT traversal experiments
+    import stun
+    nat_type, external_ip, external_port = stun.get_ip_info()
 
+example_list_of_valid_masternode_ip_addresses = ['65.200.165.210','207.246.93.232','140.82.14.38','140.82.2.58']
 ###############################################################################################################
 # Functions:
 ###############################################################################################################
 
 #Utility functions:
-def generate_node_mac_hash_id():
-    return hashlib.sha256(str(int(uuid.getnode())).encode('utf-8')).hexdigest()
-        
 def get_my_local_ip_func():
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     s.connect(("8.8.8.8", 80))
@@ -58,40 +62,30 @@ def get_my_local_ip_func():
     s.close()
     return my_node_ip_address 
 
-def get_node_ip_address_from_node_id_func(remote_node_id):
+def generate_nginx_ip_whitelist_file_func(python_list_of_masternode_ip_addresses):
+    global nginx_allowed_ip_whitelist_file_path
     try:
-        global node_ip_to_node_id_dict
-        list_of_node_ids_from_dict = node_ip_to_node_id_dict.values()
-        list_of_node_ips_from_dict = node_ip_to_node_id_dict.keys()
-        for node_count, current_node_id in enumerate(list_of_node_ids_from_dict):
-            current_node_ip_address = list_of_node_ips_from_dict[node_count]
-            sql_string = """INSERT OR REPLACE INTO node_ip_to_id_table (remote_node_id, remote_node_ip) VALUES (\"{remotenodeid}\", \"{remotenodeip}\")""".format(remotenodeid=current_node_id, remotenodeip=current_node_ip_address)
-        c.execute(sql_string)
-        conn.commit()
-        node_ip_query_results = c.execute("""SELECT DISTINCT remote_node_ip FROM potential_global_hashes WHERE remote_node_id=? ORDER BY datetime_peer_last_seen DESC""",[remote_node_id]).fetchall()
-        list_of_matching_remote_node_ips = [x[0] for x in node_ip_query_results]
-        return list_of_matching_remote_node_ips[0]
+        with open(nginx_allowed_ip_whitelist_file_path,'w') as f:
+            for current_ip_address in python_list_of_masternode_ip_addresses:
+                allow_string = 'allow ' +current_ip_address+';\n'
+                f.write(allow_string)
     except Exception as e:
-        print('Error: '+ str(e))
-        return 0
+        print('Error: '+ str(e))    
 
-def get_node_id_from_node_ip_address_func(remote_node_ip):
+def regenerate_sqlite_chunk_database_func():
+    global chunk_db_file_path
     try:
-        global node_ip_to_node_id_dict
-        list_of_node_ids_from_dict = node_ip_to_node_id_dict.values()
-        list_of_node_ips_from_dict = node_ip_to_node_id_dict.keys()
-        for node_count, current_node_id in enumerate(list_of_node_ids_from_dict):
-            current_node_ip_address = list_of_node_ips_from_dict[node_count]
-            sql_string = """INSERT OR REPLACE INTO node_ip_to_id_table (remote_node_id, remote_node_ip) VALUES (\"{remotenodeid}\", \"{remotenodeip}\")""".format(remotenodeid=current_node_id, remotenodeip=current_node_ip_address)
-        c.execute(sql_string)
+        conn = sqlite3.connect(chunk_db_file_path)
+        c = conn.cursor()
+        local_hash_table_creation_string= """CREATE TABLE potential_local_hashes (block_hash text PRIMARY KEY, file_hash text);"""
+        global_hash_table_creation_string= """CREATE TABLE potential_global_hashes (block_hash text, file_hash text, remote_node_ip text, datetime_peer_last_seen TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL, PRIMARY KEY (block_hash, remote_node_ip));"""
+        c.execute(local_hash_table_creation_string)
+        c.execute(global_hash_table_creation_string)
         conn.commit()
-        node_id_query_results = c.execute("""SELECT DISTINCT remote_node_id FROM potential_global_hashes WHERE remote_node_ip=? ORDER BY datetime_peer_last_seen DESC""",[remote_node_ip]).fetchall()
-        list_of_matching_remote_node_ids = [x[0] for x in node_id_query_results]
-        return list_of_matching_remote_node_ids[0]
+        conn.close()
     except Exception as e:
         print('Error: '+ str(e))
-        return 0
-    
+        
 def refresh_block_storage_folder_and_check_block_integrity_func(use_verify_integrity=0):
     global chunk_db_file_path
     global block_storage_folder_path
@@ -201,8 +195,6 @@ def get_local_block_file_header_data_func(sha256_hash_of_desired_block):
     
 def package_dht_hash_table_entry_func(data_as_python_list):
     global default_port
-    my_node_id = generate_node_mac_hash_id()
-    data_as_python_list.insert(0,my_node_id)
     my_node_ip_address =  get_my_local_ip_func()
     my_node_ip_and_port = my_node_ip_address+ ':' + str(default_port)
     data_as_python_list.insert(0,my_node_ip_and_port)
@@ -238,21 +230,51 @@ def package_dht_hash_table_entry_func(data_as_python_list):
         if data_as_json_unzipped == data_as_json.encode('utf-8'):
             print('Unzipped the data successfully!')
 
+def package_binary_dht_hash_table_entry_func(binary_data):
+    zipped_data = zlib.compress(binary_data)
+    _, _, data_as_zipped_yenc_encoded = yenc.encode(zipped_data)
+    return data_as_zipped_yenc_encoded
+
 def unpackage_dht_hash_table_entry_func(data_as_yenc_encoded_zipped_data):
-    global node_ip_to_node_id_dict
-    global node_id_to_node_ip_dict
     _, _, yenc_decoded = yenc.decode(data_as_yenc_encoded_zipped_data)
     data_as_json_unzipped = zlib.decompress(yenc_decoded)
     data_as_list_with_headers = json.loads(data_as_json_unzipped)
     node_ip_and_port = data_as_list_with_headers[0]
     node_ip = node_ip_and_port.split(':')[0]
     node_port = int(node_ip_and_port.split(':')[1])
-    node_id = data_as_list_with_headers[1]
-    data_as_list = data_as_list_with_headers[2:]
-    node_ip_to_node_id_dict[node_ip] = node_id
-    node_id_to_node_ip_dict[node_id] = node_ip
-    return data_as_list, node_ip, node_port, node_id
+    data_as_list = data_as_list_with_headers[1:]
+    return data_as_list, node_ip, node_port
 
+def broadcast_sqlite_chunkdb_to_dht_network_func():
+    global chunk_db_file_path
+    global server
+    global default_port
+    global alternative_port
+    my_node_ip_address =  get_my_local_ip_func()
+    try:
+        with open(chunk_db_file_path,'rb') as f:
+            sqlitedb_chunkdb_binary_data = f.read()
+        data_as_zipped_yenc_encoded = package_binary_dht_hash_table_entry_func(sqlitedb_chunkdb_binary_data)
+        print('Broadcasting SQlite chunkdb file to the DHT network, using this node\'s IP address ('+str(my_node_ip_address)+') as the key!')
+        asyncio.get_event_loop().run_until_complete(server.set(my_node_ip_address,data_as_zipped_yenc_encoded))
+    except Exception as e:
+        print('Error: '+ str(e))
+
+def get_remote_node_chunkdb_file_from_dht_network_func(remote_node_ip):
+    global folder_path_of_remote_node_sqlite_files
+    remote_node_ip = str(remote_node_ip)
+    try:
+        print('\nAsking DHT network for the chunkdb file from the remote node at IP address '+remote_node_ip)
+        yencoded_zipped_data = asyncio.get_event_loop().run_until_complete(server.get(remote_node_ip))
+        _, _, yenc_decoded = yenc.decode(yencoded_zipped_data)
+        data_unzipped = zlib.decompress(yenc_decoded)
+        output_file_name = 'Remote_Node__'+ remote_node_ip.replace('.','_') + '__chunkdb.sqlite'
+        remote_node_chunkd_output_filepath = os.path.join(folder_path_of_remote_node_sqlite_files,output_file_name)
+        with open(remote_node_chunkd_output_filepath,'wb') as f:
+            f.write(data_unzipped)
+    except Exception as e:
+        print('Error: '+ str(e))
+        
 def advertise_local_blocks_to_dht_network_func():
     global server
     global default_port
@@ -275,9 +297,11 @@ def ask_dht_network_for_blocks_corresponding_to_hash_of_given_zipfile_func(sha25
     try:
         print('\nAsking DHT network for any block hashes that correspond to the zip file with the SHA256 hash: '+sha256_hash_of_desired_zipfile+'\n')
         yencoded_zipped_json = asyncio.get_event_loop().run_until_complete(server.get(sha256_hash_of_desired_zipfile))
-        time.sleep(1)
-        data_as_list, node_ip, node_port, node_id = unpackage_dht_hash_table_entry_func(yencoded_zipped_json)
-        return data_as_list, node_ip, node_port, node_id
+        if len(yencoded_zipped_json) > 0:
+            data_as_list, node_ip, node_port = unpackage_dht_hash_table_entry_func(yencoded_zipped_json)
+            return data_as_list, node_ip, node_port
+        else:
+            print('Did not get back a valid response!')
     except:
         pass
 
@@ -311,58 +335,87 @@ def get_peer_node_ips(server):
     peers = server.bootstrappableNeighbors()
     return peers
 
-def start_file_server_func():
-    global my_node_id
-    global block_storage_folder_path
-    global file_storage_log_file_path
-    global storage_key_cert_file_path
-    authorizer = DummyAuthorizer()
-    file_server_user_name = 'masternode_user'
-    file_server_password = my_node_id
-    authorizer.add_user(file_server_user_name, file_server_password, block_storage_folder_path, perm='lr')
-    handler = FTPHandler
-    handler.authorizer = authorizer
-    handler.banner = 'You are now connected to Node_ID: '+my_node_id
-    file_server_port = 21
-    address = ('0.0.0.0', file_server_port) #Listen for requests from any IP. Should restrict this just to MN IPs later for security against DoS attacks.
-    dtp_handler = ThrottledDTPHandler
-    dtp_handler.read_limit = 30720*250  # 250*30 Kb/sec (250* 30 * 1024)
-    dtp_handler.write_limit = 30720*250  # 250*30 Kb/sec (250* 30 * 1024)
-    handler.dtp_handler = dtp_handler 
-    file_server = FTPServer(address, handler)
-    file_server.max_cons_per_ip = 5
-    file_server.max_cons = 256 
-    logging.basicConfig(filename=file_storage_log_file_path, level=logging.DEBUG)
-    file_server.serve_forever() #handler.masquerade_address = '151.25.42.11' #handler.passive_ports = range(60000, 65535)
+def get_list_of_available_blocks_on_remote_node_file_server_func(remote_node_ip,type_of_file_to_retrieve='blocks'):
+    try:
+        r = requests.get('http://'+remote_node_ip+'/')
+        html_file_listing = r.text
+        parsed_file_listing = lxml.html.fromstring(html_file_listing)
+        list_of_links = parsed_file_listing.xpath('//a/@href')
+        list_of_links = list_of_links[1:]
+        list_of_block_filenames = []
+        list_of_signature_filenames = []
+        list_of_zipfile_filenames = []
+        for link in list_of_links:
+            if '.block' in link:
+                list_of_block_filenames.append(link)
+            if '.sig' in link:
+                list_of_signature_filenames.append(link)
+            if '.zip' in link:
+                list_of_zipfile_filenames.append(link)
+        list_of_block_hashes = []
+        list_of_file_hashes = []
+        if (len(list_of_block_filenames) > 0) and (type_of_file_to_retrieve == 'blocks'):
+            for current_block_file_name in list_of_block_filenames:
+                reported_file_sha256_hash = current_block_file_name.split('__')[1]
+                list_of_file_hashes.append(reported_file_sha256_hash)
+                reported_block_file_sha256_hash = current_block_file_name.split('__')[-1].replace('.block','').replace('BlockHash_','')
+                list_of_block_hashes.append(reported_block_file_sha256_hash)
+            return list_of_block_filenames, list_of_block_hashes, list_of_file_hashes
+        if (len(list_of_signature_filenames) > 0) and (type_of_file_to_retrieve == 'signatures'):
+            for current_signature_file_name in list_of_signature_filenames:
+                reported_file_sha256_hash = current_signature_file_name.split('__')[1].replace('.sig','')
+                list_of_file_hashes.append(reported_file_sha256_hash)
+            return list_of_signature_filenames, list_of_file_hashes
+        if (len(list_of_zipfile_filenames) > 0) and (type_of_file_to_retrieve == 'zipfiles'):
+            for current_zipfile_file_name in list_of_zipfile_filenames:
+                reported_file_sha256_hash = current_zipfile_file_name.split('__')[1].replace('.zip','')
+                list_of_file_hashes.append(reported_file_sha256_hash)
+            return list_of_zipfile_filenames, list_of_file_hashes        
+    except Exception as e:
+        print('Error: '+ str(e))
 
-def get_list_of_available_blocks_on_remote_node_file_server_func(remote_node_id):
-    global block_storage_folder_path
-    global file_storage_log_file_path
-    remote_node_ip = get_node_ip_address_from_node_id_func(remote_node_id)
-    if remote_node_ip != 0:
-        print('\n\nNow connecting to remote node: '+ remote_node_ip + ' at IP: '+remote_node_ip)
-        ftp = FTP(remote_node_ip)
-        file_server_user_name = 'masternode_user'
-        file_server_password = remote_node_id
-        ftp.login(file_server_user_name, file_server_password)# password is the remote node's node_id
-        print('Connected Successfully! Now getting list of available block files...')
-        block_file_names_on_remote_node = []
-        ftp.retrlines('LIST',lambda x: block_file_names_on_remote_node.append(x))
-        block_file_names_on_remote_node_clean = []
-        for current_block_file_name in block_file_names_on_remote_node:
-            current_block_file_name_clean = current_block_file_name.split()[-1]
-            block_file_names_on_remote_node_clean.append(current_block_file_name_clean)
-        print('Done getting list of block files!\n')
-        ftp.quit()
-        return block_file_names_on_remote_node_clean
-    else:
-        print('Could not find node IP from node ID!')
-        return 0
-    
+def download_file_func(url_of_file_to_download, folder_path_for_saved_file):
+    path_to_downloaded_file = os.path.join(folder_path_for_saved_file, url_of_file_to_download.split('/')[-1])
+    r = requests.get(url_of_file_to_download, stream=True)
+    with open(path_to_downloaded_file, 'wb') as f:
+        for chunk in r.iter_content(chunk_size=1024): 
+            if chunk: # filter out keep-alive new chunks
+                f.write(chunk)
+    return path_to_downloaded_file
+
+def download_remote_block_files_for_given_zipfile_hash_func(remote_node_ip,sha256_hash_of_desired_zipfile):
+   global block_storage_folder_path
+   try:
+        _, list_of_local_block_hashes, _ = get_local_matching_blocks_from_zipfile_hash_func(sha256_hash_of_desired_zipfile)
+        file_listing_url = 'http://'+remote_node_ip+'/'
+        r = requests.get(file_listing_url)
+        html_file_listing = r.text
+        parsed_file_listing = lxml.html.fromstring(html_file_listing)
+        list_of_links = parsed_file_listing.xpath('//a/@href')
+        list_of_links = list_of_links[1:]
+        list_of_filenames = [x.split('FileHash__')[1] for x in list_of_links]
+        list_of_downloaded_files = []
+        for cnt, current_block_file_name in enumerate(list_of_filenames):
+            reported_file_sha256_hash = current_block_file_name.split('__')[0]
+            reported_block_file_sha256_hash = current_block_file_name.split('__')[-1].replace('.block','').replace('BlockHash_','')
+            if (reported_file_sha256_hash == sha256_hash_of_desired_zipfile) and (reported_block_file_sha256_hash not in list_of_local_block_hashes):
+                url_of_file_to_download = file_listing_url+list_of_links[cnt]
+                try:
+                    print('Downloading new block file with hash '+reported_block_file_sha256_hash+' from node at '+remote_node_ip)
+                    path_to_downloaded_file = download_file_func(url_of_file_to_download, block_storage_folder_path)
+                    list_of_downloaded_files.append(path_to_downloaded_file)
+                    print('Done!')
+                except Exception as e:
+                    print('Error: '+ str(e))
+        return list_of_downloaded_files
+   except Exception as e:
+       print('Error: '+ str(e))
+       
+
 def get_block_file_lists_from_all_nodes_func():
     list_of_unique_node_ip_addresses = get_all_remote_node_ips_func()
     for current_node_ip in list_of_unique_node_ip_addresses:
-        get_list_of_available_blocks_on_remote_node_file_server_func(remote_node_id)
+        get_list_of_available_blocks_on_remote_node_file_server_func(remote_node_ip)
     #FINISH THIS
     
 def check_sqlitedb_for_remote_blocks_func(sha256_hash_of_desired_zipfile):
@@ -373,10 +426,8 @@ def check_sqlitedb_for_remote_blocks_func(sha256_hash_of_desired_zipfile):
     list_of_block_hashes = [x[0] for x in query_results_table]
     list_of_file_hashes = [x[1] for x in query_results_table]
     list_of_ip_addresses = [x[2] for x in query_results_table]
-    list_of_node_ids = [x[3] for x in query_results_table]
-    #list_of_datetimes_peer_last_seen = [x[4] for x in query_results_table]
     potential_local_block_hashes_list, potential_local_file_hashes_list = refresh_block_storage_folder_and_check_block_integrity_func()
-    return list_of_block_hashes, list_of_file_hashes, list_of_ip_addresses, list_of_node_ids
+    return list_of_block_hashes, list_of_file_hashes, list_of_ip_addresses
 
 def get_all_remote_node_ips_func():
     global chunk_db_file_path
@@ -404,62 +455,6 @@ def verify_locally_reconstructed_zipfile_func(sha256_hash_of_desired_zipfile):
         if reported_hash_of_zip_file != calculated_hash_of_zip_file:
             print('Reconstructed hash in the file name doesn\'t match the calculated hash!')
     return successful_reconstruction
-
-def retrieve_block_files_from_remote_node_using_file_hash_func(sha256_hash_of_desired_zipfile,remote_node_id):
-    global block_storage_folder_path
-    global file_storage_log_file_path
-    global chunk_db_file_path
-    remote_node_ip = get_node_ip_address_from_node_id_func(remote_node_id)
-    if remote_node_ip != 0:
-        remote_block_file_hash_list = []
-        remote_zipfile_hash_list = []
-        block_file_names_on_remote_node = []
-        block_file_names_on_remote_node_clean = []
-        print('\n\nNow connecting to remote node: '+ remote_node_ip + ' at IP: '+remote_node_ip)
-        ftp = FTP(remote_node_ip)
-        file_server_user_name = 'masternode_user'
-        file_server_password = remote_node_id
-        ftp.login(file_server_user_name, file_server_password)# password is the remote node's node_id
-        print('Connected Successfully! Now getting list of available block files...')
-        ftp.retrlines('LIST',lambda x: block_file_names_on_remote_node.append(x))
-        for current_block_file_name in block_file_names_on_remote_node:
-            current_block_file_name_clean = current_block_file_name.split()[-1]
-            block_file_names_on_remote_node_clean.append(current_block_file_name_clean)
-            
-        for current_file_name in block_file_names_on_remote_node_clean:
-            reported_block_sha256_hash = current_file_name.split('\\')[-1].split('__')[-1].replace('BlockHash_','').replace('.block','')
-            reported_file_sha256_hash = current_file_name.split('\\')[-1].split('__')[1]
-            remote_block_file_hash_list.append(reported_block_sha256_hash)
-            remote_zipfile_hash_list.append(reported_file_sha256_hash)
-        print('Done!')
-        potential_local_block_hashes_list, potential_local_file_hashes_list = refresh_block_storage_folder_and_check_block_integrity_func()
-    
-        if len(block_file_names_on_remote_node_clean) > 0:
-            for block_file_counter,current_block_file_name in enumerate(block_file_names_on_remote_node_clean):
-                current_block_file_hash = remote_block_file_hash_list[block_file_counter]
-                current_zipfile_hash = remote_zipfile_hash_list[block_file_counter]
-                if sha256_hash_of_desired_zipfile in current_block_file_name:
-                    if current_block_file_hash not in potential_local_block_hashes_list:
-                        try:
-                            print('\nNow retrieving file: '+current_block_file_name)
-                            ftp.retrbinary('RETR '+current_block_file_name, open(os.path.join(block_storage_folder_path,current_block_file_name),'wb').write)
-                            print('Done!')
-                        except Exception as e:
-                            print('Error: '+ str(e))    
-        ftp.quit()
-        datetime_peer_last_seen = datetime.now().time()
-        print('Now writing remote block metadata to SQLite database...')
-        conn = sqlite3.connect(chunk_db_file_path)
-        datetime_peer_last_seen = datetime.now()
-        c = conn.cursor()
-        for hash_cnt, current_block_hash in enumerate(remote_block_file_hash_list):
-            current_file_hash = remote_zipfile_hash_list[hash_cnt]
-            c.execute('INSERT OR IGNORE INTO potential_global_hashes (block_hash, file_hash, remote_node_ip, remote_node_id) VALUES (?,?,?,?)',[current_block_hash, current_file_hash, remote_node_ip, remote_node_id]) 
-        conn.commit()
-        print('Done!')
-    else:
-        print('Could not find node IP from node ID!')
-        return 0
 
 def count_number_of_nodes_reporting_having_block_hash_for_all_known_blocks_in_network_func():
     global chunk_db_file_path
@@ -499,7 +494,7 @@ def run_self_healing_loop_func():
                 completed_successfully = wrapper_reconstruct_zipfile_from_hash_func(current_zipfile_hash)
                 if completed_successfully:
                     try:
-                        turn_art_zip_file_into_encoded_block_files_func(current_zipfile_hash)
+                        encode_final_art_zipfile_into_luby_transform_blocks_func(current_zipfile_hash)
                     except Exception as e:
                         print('Error: '+ str(e))
             except Exception as e:
@@ -515,32 +510,29 @@ def wrapper_reconstruct_zipfile_from_hash_func(sha256_hash_of_desired_zipfile):
     number_of_relevant_blocks_found_locally = len(list_of_block_hashes__local)
     if number_of_blocks_required == 0:
         number_of_blocks_required = 1 #Dummy value 
-    
     if number_of_relevant_blocks_found_locally >= number_of_blocks_required:
         print('We appear to have enough blocks locally to reconstruct the file! Attempting to do that now...')
         try:
-            completed_successfully = reconstruct_block_files_into_original_zip_file_func(sha256_hash_of_desired_zipfile)
+            completed_successfully = decode_block_files_into_art_zipfile_func(sha256_hash_of_desired_zipfile)
         except Exception as e:
             print('Error: '+ str(e))  
     else: #Next, we check remote machines that we already know about from our local SQlite chunk database:
         print('Checking with the local SQlite database for block files on remote nodes...')
-        list_of_block_hashes__remote, list_of_file_hashes__remote, list_of_ip_addresses, list_of_node_ids = check_sqlitedb_for_remote_blocks_func(sha256_hash_of_desired_zipfile)
+        list_of_block_hashes__remote, list_of_file_hashes__remote, list_of_ip_addresses = check_sqlitedb_for_remote_blocks_func(sha256_hash_of_desired_zipfile)
         unique_block_hashes__remote = list(OrderedDict.fromkeys(list_of_block_hashes__remote)) 
         unique_node_ips = list(OrderedDict.fromkeys(list_of_ip_addresses)) 
-        unique_node_ids = list(OrderedDict.fromkeys(list_of_node_ids))
         number_of_relevant_blocks_found_remotely = len(unique_block_hashes__remote)
         if number_of_relevant_blocks_found_remotely >= number_of_blocks_required:
             print('There appear to be enough blocks remotely to reconstruct the file! Attempting to do that now...')
             for remote_node_counter, current_remote_node_ip in enumerate(unique_node_ips):
-                current_remote_node_id = unique_node_ids[remote_node_counter]
                 try:
-                    print('Now attempting to download block files from Node at IP address: '+current_remote_node_ip + ' (node_id: '+current_remote_node_id+')')
-                    retrieve_block_files_from_remote_node_using_file_hash_func(sha256_hash_of_desired_zipfile,current_remote_node_ip,current_remote_node_id)
+                    print('Now attempting to download block files from Node at IP address: '+current_remote_node_ip)
+                    retrieve_block_files_from_remote_node_using_file_hash_func(sha256_hash_of_desired_zipfile,current_remote_node_ip)
                 except Exception as e:
                     print('Error: '+ str(e))  
                 print('Checking if if we now have enough blocks locally to reconstruct file...')
                 try:
-                    completed_successfully = reconstruct_block_files_into_original_zip_file_func(sha256_hash_of_desired_zipfile)
+                    completed_successfully = decode_block_files_into_art_zipfile_func(sha256_hash_of_desired_zipfile)
                 except Exception as e:
                     completed_successfully = 0
                     print('Error: '+ str(e))  
@@ -550,9 +542,9 @@ def wrapper_reconstruct_zipfile_from_hash_func(sha256_hash_of_desired_zipfile):
                 successful_reconstruction = verify_locally_reconstructed_zipfile_func(sha256_hash_of_desired_zipfile)
             else:
                 try:#As a last resort, we will now attempt to query the DHT to find more nodes with blocks that we are interested in.
-                    list_of_remote_block_hashes, remote_node_ip, remote_node_port, remote_node_id = ask_dht_network_for_blocks_corresponding_to_hash_of_given_zipfile_func(sha256_hash_of_desired_zipfile)
+                    list_of_remote_block_hashes, remote_node_ip, remote_node_port = ask_dht_network_for_blocks_corresponding_to_hash_of_given_zipfile_func(sha256_hash_of_desired_zipfile)
                     time.sleep(10)
-                    retrieve_block_files_from_remote_node_using_file_hash_func(sha256_hash_of_desired_zipfile,remote_node_ip,remote_node_id)
+                    retrieve_block_files_from_remote_node_using_file_hash_func(sha256_hash_of_desired_zipfile,remote_node_ip)
                     print('Checking if if we now have enough blocks locally to reconstruct file...')
                     try:
                         completed_successfully = reconstruct_block_files_into_original_zip_file_func(sha256_hash_of_desired_zipfile)
@@ -577,11 +569,6 @@ def wrapper_reconstruct_zipfile_from_hash_func(sha256_hash_of_desired_zipfile):
 # Script:
 ###############################################################################################################
 my_node_ip_address = get_my_local_ip_func()
-node_ip_to_node_id_dict = {}
-node_id_to_node_ip_dict = {}
-my_node_id = generate_node_mac_hash_id()
-node_ip_to_node_id_dict[my_node_ip_address] = my_node_id
-node_id_to_node_ip_dict[my_node_id] = my_node_ip_address
 bootstrap_node_list = [(x,int(default_port)) for x in list_of_ips if x[0] != my_node_ip_address] +  [(x,int(alternative_port)) for x in list_of_ips if x[0] != my_node_ip_address]
 handler = logging.StreamHandler()
 formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
@@ -605,11 +592,13 @@ list_of_local_potential_file_hashes_unique = c.execute('SELECT DISTINCT file_has
 list_of_local_potential_file_hashes_unique = [x[0] for x in list_of_local_potential_file_hashes_unique]
 list_of_local_potential_file_hashes_unique_json = json.dumps(list_of_local_potential_file_hashes_unique)
 conn.close()
-_, my_node_ip, my_node_port, my_node_id = unpackage_dht_hash_table_entry_func(package_dht_hash_table_entry_func([]))
+_, my_node_ip, my_node_port = unpackage_dht_hash_table_entry_func(package_dht_hash_table_entry_func([]))
+sys.exit(0)
 
 try:
-    file_server_process = Process(target=start_file_server_func, args=())
-    file_server_process.start()
+    subprocess.Popen(['python','run_animecoin_file_server.py'])
+    #file_server_process = Process(target=start_file_server_func, args=())
+    #file_server_process.start()
 except Exception as e:
     print('Error: '+ str(e))
 
@@ -621,15 +610,10 @@ except:
 
 try:
     server, loop = connect_to_existing_dht_network(default_port)
+    time.sleep(5)
 except:
     print('Some kind of error, loop is probably running already!')
-    try:
-        loop = asyncio.get_event_loop()
-        server = Server()
-        server.listen(default_port)
-    except:
-        pass
-    
+
 try:
     print('Bootstrapping network now!\n')
     loop.run_until_complete(server.bootstrap(bootstrap_node_list))
@@ -641,27 +625,25 @@ advertise_local_blocks_to_dht_network_func()
 if use_demonstrate_asking_dht_network_for_file_blocks:
     sys.exit(0)
     #test_file_hash = 'a75a1757d54ad0876f9b2cf9b64b1017b6293ceed61e80cd64aae5abfdc8514e' #Arturo_number_04
-    test_file_hash = '734ad8214cb20deab6474f19397d012678de4acc61c4c24de35ce3b8cc466d5f' #Mark_Kong_number_02
+    test_file_hash = '405801baada7151188942c23f66768987c114ff5d950bc70bb2cfcdcbc5d4679'
     #test_file_hash = '105c4c9b9d79ed544c36df792f7bbbddb6700209f51e4b9e1073fa41653d2aa8' #Iris Madula Number 11
     sha256hashsize = sys.getsizeof(test_file_hash)
     print('Now asking network for hashes of blocks that correspond to the zipfile with a SHA256 hash of: '+test_file_hash)
     try:
-        list_of_remote_block_hashes, remote_node_ip, remote_node_port, remote_node_id = ask_dht_network_for_blocks_corresponding_to_hash_of_given_zipfile_func(test_file_hash)
+        list_of_remote_block_hashes, remote_node_ip, remote_node_port = ask_dht_network_for_blocks_corresponding_to_hash_of_given_zipfile_func(test_file_hash)
         print('\n\nDone! Got back '+str(len(list_of_remote_block_hashes))+' Block Hashes:\n')
         print('\nNode IP:port is '+remote_node_ip+':'+str(remote_node_port))
-        print('\nNode ID is '+remote_node_id+'\n\n')
         for current_block_hash in list_of_remote_block_hashes:
             print(current_block_hash+', ',end='')
     except:
         print('Problem requesting block files from DHT network!')
 
-    sha256_hash_of_desired_zipfile = 'a75a1757d54ad0876f9b2cf9b64b1017b6293ceed61e80cd64aae5abfdc8514e'
+    sha256_hash_of_desired_zipfile = '405801baada7151188942c23f66768987c114ff5d950bc70bb2cfcdcbc5d4679'
     remote_node_ip = '140.82.14.38'#'108.61.86.243' #'140.82.2.58'
-    remote_node_id = 'ab5476e2a797c669ae7fdc5f2a8684301db812061357b703aa4e990457c86179'
     sha256_hash_of_desired_block = '1e6864df358abd54b3ebcdb8da05c16149f208ef10aab4ac86e12cb1b0074ac9'
-    wrapper_reconstruct_zipfile_from_hash_func(sha256_hash_of_desired_zipfile)
+    #wrapper_reconstruct_zipfile_from_hash_func(sha256_hash_of_desired_zipfile)
 
-    if use_demonstrate_ftp_based_block_file_transfer:
-        retrieve_block_files_from_remote_node_using_file_hash_func(sha256_hash_of_desired_zipfile,remote_node_ip,remote_node_id)
-        list_of_block_hashes, list_of_file_hashes, list_of_ip_addresses, list_of_node_ids = check_sqlitedb_for_remote_blocks_func(sha256_hash_of_desired_zipfile)
-        filesize, blocksize, number_of_blocks_required = get_local_block_file_header_data_func(sha256_hash_of_desired_zipfile)
+    list_of_block_filenames, list_of_block_hashes, list_of_file_hashes = get_list_of_available_blocks_on_remote_node_file_server_func(remote_node_ip,type_of_file_to_retrieve='blocks')
+    list_of_signature_filenames, list_of_file_hashes = get_list_of_available_blocks_on_remote_node_file_server_func(remote_node_ip,type_of_file_to_retrieve='signatures')
+    list_of_zipfile_filenames, list_of_file_hashes = get_list_of_available_blocks_on_remote_node_file_server_func(remote_node_ip,type_of_file_to_retrieve='zipfiles')
+    list_of_downloaded_files = download_remote_block_files_for_given_zipfile_hash_func(remote_node_ip,sha256_hash_of_desired_zipfile)
