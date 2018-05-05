@@ -61,6 +61,7 @@ nsfw_score_threshold = 0.95 #Most actual porn will come up over 99% confident.
 duplicate_image_threshold = 0.08 #Any image which has another image in our image fingerprint database with a "distance" of less than this threshold will be considered a duplicate. 
 root_animecoin_folder_path = 'C:\\animecoin\\'
 block_storage_folder_path = os.path.join(root_animecoin_folder_path,'art_block_storage' + os.sep)
+folder_path_of_remote_node_sqlite_files = os.path.join(root_animecoin_folder_path,'remote_node_sqlite_files' + os.sep)
 reconstructed_files_destination_folder_path = os.path.join(root_animecoin_folder_path,'reconstructed_files' + os.sep)
 artist_final_signature_files_folder_path = os.path.join(root_animecoin_folder_path,'art_signature_files' + os.sep)
 misc_masternode_files_folder_path = os.path.join(root_animecoin_folder_path,'misc_masternode_files' + os.sep) #Where we store some of the SQlite databases
@@ -505,11 +506,9 @@ def regenerate_sqlite_chunk_database_func():
         conn = sqlite3.connect(chunk_db_file_path)
         c = conn.cursor()
         local_hash_table_creation_string= """CREATE TABLE potential_local_hashes (block_hash text PRIMARY KEY, file_hash text);"""
-        global_hash_table_creation_string= """CREATE TABLE potential_global_hashes (block_hash text, file_hash text, remote_node_ip text, remote_node_id text, datetime_peer_last_seen TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL, PRIMARY KEY (block_hash, remote_node_id));"""
-        node_ip_to_id_table_creation_string= """CREATE TABLE node_ip_to_id_table (remote_node_id text PRIMARY KEY, remote_node_ip text, datetime_peer_last_seen TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL);"""
+        global_hash_table_creation_string= """CREATE TABLE potential_global_hashes (block_hash text, file_hash text, remote_node_ip text, datetime_peer_last_seen TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL, PRIMARY KEY (block_hash, remote_node_ip));"""
         c.execute(local_hash_table_creation_string)
         c.execute(global_hash_table_creation_string)
-        c.execute(node_ip_to_id_table_creation_string)
         conn.commit()
         conn.close()
     except Exception as e:
@@ -894,9 +893,9 @@ def check_art_folder_for_nsfw_content(path_to_art_folder):
           softmax_tensor = sess.graph.get_tensor_by_name('final_result:0')    # Feed the image_data as input to the graph and get first prediction
           predictions = sess.run(softmax_tensor,  {'DecodeJpeg/contents:0': image_data})
           top_k = predictions[0].argsort()[-len(predictions[0]):][::-1]  # Sort to show labels of first prediction in order of confidence
-          for node_id in top_k:
-              human_string = label_text[node_id]
-              nsfw_score = predictions[0][node_id]
+          for graph_node_id in top_k:
+              human_string = label_text[graph_node_id]
+              nsfw_score = predictions[0][graph_node_id]
               list_of_nsfw_scores.append(nsfw_score)
               print('%s (score = %.5f)' % (human_string, nsfw_score))
               if nsfw_score > nsfw_score_threshold:
@@ -1027,7 +1026,7 @@ def decode_block_files_into_art_zipfile_func(sha256_hash_of_art_file):
     global reconstructed_files_destination_folder_path
     global prepared_final_art_zipfiles_folder_path
     start_time = time()
-    reconstructed_file_destination_file_path = os.path.join(reconstructed_files_destination_folder_path,'Reconstructed_File_with_SHA256_Hash_of__' + sha256_hash_of_art_file + '.zip')
+    reconstructed_file_destination_file_path = os.path.join(reconstructed_files_destination_folder_path,'Final_Art_Zipfile_Hash__' + sha256_hash_of_art_file + '.zip')
     list_of_block_file_paths = glob.glob(os.path.join(block_storage_folder_path,'*'+sha256_hash_of_art_file+'*.block'))
     reported_file_sha256_hash = list_of_block_file_paths[0].split(os.sep)[-1].split('__')[1]
     print('\nFound '+str(len(list_of_block_file_paths))+' block files in folder! The SHA256 hash of the original zip file is reported to be: '+reported_file_sha256_hash+'\n')
@@ -1078,7 +1077,9 @@ def decode_block_files_into_art_zipfile_func(sha256_hash_of_art_file):
             reconstructed_file_hash = hashlib.sha256(reconstructed_file).hexdigest()
             if reported_file_sha256_hash == reconstructed_file_hash:
                 completed_successfully = 1
-                print('\nThe SHA256 hash of the reconstructed file matches the reported file hash-- file is valid!\n')
+                print('\nThe SHA256 hash of the reconstructed file matches the reported file hash-- file is valid! Now copying to prepared final art zipfiles folder...\n')
+                shutil.copy(reconstructed_file,prepared_final_art_zipfiles_folder_path)
+                print('Done!')
             else:
                 completed_successfully = 0
                 print('\nProblem! The SHA256 hash of the reconstructed file does NOT match the expected hash! File is not valid.\n')
@@ -1150,7 +1151,7 @@ sqlite3.register_converter('array', convert_sqlite_data_to_numpy_array_func) # C
 if use_demo_mode:
     if use_reset_system_for_demo:
         delete_all_blocks_and_zip_files_to_reset_system_func()
-    list_of_required_folder_paths = [root_animecoin_folder_path,reconstructed_files_destination_folder_path,artist_final_signature_files_folder_path,misc_masternode_files_folder_path,folder_path_of_art_folders_to_encode,prepared_final_art_zipfiles_folder_path,block_storage_folder_path]
+    list_of_required_folder_paths = [root_animecoin_folder_path,folder_path_of_remote_node_sqlite_files,reconstructed_files_destination_folder_path,artist_final_signature_files_folder_path,misc_masternode_files_folder_path,folder_path_of_art_folders_to_encode,prepared_final_art_zipfiles_folder_path,block_storage_folder_path]
     for current_required_folder_path in list_of_required_folder_paths:
         if not os.path.exists(current_required_folder_path):
             try:
