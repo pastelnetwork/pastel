@@ -1,8 +1,10 @@
-import sys, time, os.path, io, string, glob, hashlib, imghdr, random, os, zlib, pickle, sqlite3, uuid, socket, warnings, base64, json, hmac, logging, asyncio, binascii, subprocess
+import sys, time, os.path, io, string, glob, hashlib, imghdr, random, os, zlib, pickle, sqlite3, uuid, socket, warnings, base64, json, hmac, logging, asyncio, binascii, subprocess, locale
 warnings.simplefilter(action='ignore', category=FutureWarning)
 warnings.filterwarnings('ignore',category=DeprecationWarning)
 import requests
 import lxml.html
+import shortuuid
+import rsa
 from struct import pack, unpack
 from multiprocessing import Process, Queue
 from collections import OrderedDict
@@ -16,7 +18,7 @@ try:
 except:
     pass
 #from anime_storage import *
-#Requirements: pip install kademlia, yenc, tqdm, fs, lxml, requests
+#Requirements: pip install kademlia, yenc, tqdm, fs, lxml, requests, shortuuid, rsa
 
 #Add to crontab:
 #* * * * * 
@@ -27,33 +29,43 @@ except:
 ###############################################################################################################
 use_verify_integrity = 1
 use_generate_new_sqlite_chunk_database = 1
-use_advertise_local_blocks_on_dht = 1 
+use_connect_to_dht_network = 0
 use_demonstrate_asking_dht_network_for_file_blocks = 0
+use_demonstrate_nginx_file_transfers = 0
+use_demonstrate_trade_ticket_generation = 1
+use_demonstrate_trade_ticket_parsing = 1
 root_animecoin_folder_path = 'C:\\animecoin\\'
 folder_path_of_art_folders_to_encode = os.path.join(root_animecoin_folder_path,'art_folders_to_encode' + os.sep)#Each subfolder contains the various art files pertaining to a given art asset.
 block_storage_folder_path = os.path.join(root_animecoin_folder_path,'art_block_storage' + os.sep)
 folder_path_of_remote_node_sqlite_files = os.path.join(root_animecoin_folder_path,'remote_node_sqlite_files' + os.sep)
 reconstructed_file_destination_folder_path = os.path.join(root_animecoin_folder_path,'reconstructed_files' + os.sep)
 misc_masternode_files_folder_path = os.path.join(root_animecoin_folder_path,'misc_masternode_files' + os.sep) #Where we store some of the SQlite databases
+masternode_keypair_db_file_path = os.path.join(misc_masternode_files_folder_path,'masternode_keypair_db.sqlite')
+trade_ticket_files_folder_path = os.path.join(root_animecoin_folder_path,'trade_ticket_files' + os.sep) #Where we store the html trade tickets for the masternode DEX
+completed_trade_ticket_files_folder_path = os.path.join(trade_ticket_files_folder_path,'completed' + os.sep) 
+pending_trade_ticket_files_folder_path = os.path.join(trade_ticket_files_folder_path,'pending' + os.sep) 
 chunk_db_file_path = os.path.join(misc_masternode_files_folder_path,'anime_chunkdb.sqlite')
 file_storage_log_file_path = os.path.join(misc_masternode_files_folder_path,'anime_storage_log.txt')
 nginx_allowed_ip_whitelist_file_path = os.path.join(misc_masternode_files_folder_path,'masternode_ip_whitelist.conf')
-
+path_to_animecoin_trade_ticket_template = os.path.join(trade_ticket_files_folder_path,'animecoin_trade_ticket_template.html')
 default_port = 14142
 alternative_port = 2718
 list_of_ips = ['108.61.86.243','140.82.14.38','140.82.2.58']
 target_number_of_nodes_per_unique_block_hash = 10
 target_block_redundancy_factor = 10 #How many times more blocks should we store than are required to regenerate the file?
 desired_block_size_in_bytes = 1024*1000*2
+example_list_of_valid_masternode_ip_addresses = ['65.200.165.210','207.246.93.232','140.82.14.38','140.82.2.58']
+example_animecoin_masternode_blockchain_address = 'AdaAvFegJbBdH4fB8AiWw8Z4Ek75Xsja6i'
+example_trader_blockchain_address = 'ANQTCifwMdh1Lsda9DsMcXuXBwtkyHRrZe'
+locale.setlocale(locale.LC_ALL, '')
 if 0: #NAT traversal experiments
     import stun
     nat_type, external_ip, external_port = stun.get_ip_info()
-
-example_list_of_valid_masternode_ip_addresses = ['65.200.165.210','207.246.93.232','140.82.14.38','140.82.2.58']
 ###############################################################################################################
 # Functions:
 ###############################################################################################################
 
+    
 #Utility functions:
 def get_my_local_ip_func():
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -61,6 +73,11 @@ def get_my_local_ip_func():
     my_node_ip_address = s.getsockname()[0]
     s.close()
     return my_node_ip_address 
+
+def generate_trade_id_func():
+    shortuuid.set_alphabet('ANME0123456789')
+    trade_id = shortuuid.uuid()[0:8]
+    return trade_id
 
 def generate_nginx_ip_whitelist_file_func(python_list_of_masternode_ip_addresses):
     global nginx_allowed_ip_whitelist_file_path
@@ -410,7 +427,6 @@ def download_remote_block_files_for_given_zipfile_hash_func(remote_node_ip,sha25
         return list_of_downloaded_files
    except Exception as e:
        print('Error: '+ str(e))
-       
 
 def get_block_file_lists_from_all_nodes_func():
     list_of_unique_node_ip_addresses = get_all_remote_node_ips_func()
@@ -562,9 +578,151 @@ def wrapper_reconstruct_zipfile_from_hash_func(sha256_hash_of_desired_zipfile):
         print('\n\nError! We were unable to successfully reconstruct the desired zip file!\n')
     return completed_successfully
 
-#query_results_table = c.execute("""SELECT * FROM potential_global_hashes where file_hash = ?""",[sha256_hash_of_desired_zipfile]).fetchall()
-#query_results_table = c.execute("""SELECT * FROM potential_global_hashes""").fetchall()
+def get_local_masternode_identification_keypair_func():
+    global masternode_keypair_db_file_path
+    if not os.path.exists(masternode_keypair_db_file_path):
+        print('Error, could not find local masternode identification keypair file--try generating a new one!')
+        return
+    try:
+        conn = sqlite3.connect(masternode_keypair_db_file_path)
+        c = conn.cursor()
+        masternode_identification_keypair_query_results = c.execute("""SELECT * FROM masternode_identification_keypair_table""").fetchall()
+        masternode_public_key_export_format = masternode_identification_keypair_query_results[0][0]
+        masternode_private_key_export_format = masternode_identification_keypair_query_results[0][1]
+        masternode_public_key = rsa.PublicKey.load_pkcs1(masternode_public_key_export_format,format='PEM')
+        masternode_private_key = rsa.PrivateKey.load_pkcs1(masternode_private_key_export_format,format='PEM')
+        conn.close()
+        print('\nGot local masternode identification keypair successfully!')
+        return masternode_public_key, masternode_private_key
+    except Exception as e:
+        print('Error: '+ str(e))
+        
+def generate_trade_ticket_func(submitting_trader_animecoin_identity_public_key, submitting_trader_animecoin_blockchain_address, desired_trade_type, desired_art_asset_hash, desired_quantity, specified_price_in_anime, submitting_traders_digital_signature_on_trade_ticket_details_hash):
+    global example_animecoin_masternode_blockchain_address
+    global path_to_animecoin_trade_ticket_template
+    global example_masternode_public_key
+    global example_masternode_private_key
+    global trade_ticket_files_folder_path
+    global pending_trade_ticket_files_folder_path
+    with open(path_to_animecoin_trade_ticket_template,'r') as f:
+        trade_ticket_template_html_string = f.read()
+    datetime_trade_submitted = datetime.now().strftime('%Y-%m-%d %H:%M:%S:%f')
+    new_trade_id = generate_trade_id_func()
+    desired_quantity_formatted = locale.format('%d', desired_quantity, grouping=True)
+    specified_price_in_anime_formatted = locale.format('%f', specified_price_in_anime, grouping=True)
+    submitting_trader_animecoin_identity_public_key_pem_format = submitting_trader_animecoin_identity_public_key.save_pkcs1(format='PEM').decode('utf-8')
+    new_trade_ticket_html_string = trade_ticket_template_html_string
+    new_trade_ticket_html_string = new_trade_ticket_html_string.replace('TRADE_ID_VAR', new_trade_id)
+    new_trade_ticket_html_string = new_trade_ticket_html_string.replace('TRADE_DATETIME_VAR', datetime_trade_submitted)
+    new_trade_ticket_html_string = new_trade_ticket_html_string.replace('TRADE_TRADER_PUBLIC_KEY_ID_VAR', submitting_trader_animecoin_identity_public_key_pem_format)
+    new_trade_ticket_html_string = new_trade_ticket_html_string.replace('TRADE_TRADER_ANIME_ADDRESS_VAR', submitting_trader_animecoin_blockchain_address)
+    new_trade_ticket_html_string = new_trade_ticket_html_string.replace('TRADE_TYPE_VAR', desired_trade_type)
+    new_trade_ticket_html_string = new_trade_ticket_html_string.replace('TRADE_ART_ASSET_HASH_VAR', desired_art_asset_hash)
+    new_trade_ticket_html_string = new_trade_ticket_html_string.replace('TRADE_QUANTITY_VAR', desired_quantity_formatted)
+    new_trade_ticket_html_string = new_trade_ticket_html_string.replace('TRADE_PRICE_VAR', specified_price_in_anime_formatted)
+    assigned_masternode_broker_ip_address = get_my_local_ip_func()
+    assigned_masternode_broker_animecoin_identity_public_key, assigned_masternode_broker_animecoin_identity_private_key = get_local_masternode_identification_keypair_func()
+    assigned_masternode_broker_animecoin_identity_public_key_pem_format = assigned_masternode_broker_animecoin_identity_public_key.save_pkcs1(format='PEM')
+    assigned_masternode_broker_animecoin_blockchain_address = example_animecoin_masternode_blockchain_address
+    trade_ticket_details_sha256_hash, assigned_masternode_broker_digital_signature_on_trade_ticket_details_hash_base64_encoded = sign_trade_ticket_hash_func(assigned_masternode_broker_animecoin_identity_private_key, assigned_masternode_broker_animecoin_identity_public_key_pem_format, submitting_trader_animecoin_blockchain_address, assigned_masternode_broker_ip_address, assigned_masternode_broker_animecoin_identity_public_key, desired_trade_type, desired_art_asset_hash, desired_quantity, specified_price_in_anime)#This would happen on the artist/trader's machine.
+    new_trade_ticket_html_string = new_trade_ticket_html_string.replace('TRADE_TICKET_HASH_VAR', trade_ticket_details_sha256_hash)
+    new_trade_ticket_html_string = new_trade_ticket_html_string.replace('TRADE_TRADER_SIGNATURE_VAR', submitting_traders_digital_signature_on_trade_ticket_details_hash)
+    new_trade_ticket_html_string = new_trade_ticket_html_string.replace('TRADE_ASSIGNED_BROKER_IP_ADDRESS_VAR', assigned_masternode_broker_ip_address)
+    new_trade_ticket_html_string = new_trade_ticket_html_string.replace('TRADE_ASSIGNED_BROKER_ANIME_ADDRESS_VAR', assigned_masternode_broker_animecoin_blockchain_address)
+    new_trade_ticket_html_string = new_trade_ticket_html_string.replace('TRADE_ASSIGNED_BROKER_PUBLIC_KEY_ID_VAR', assigned_masternode_broker_animecoin_identity_public_key_pem_format.decode('utf-8'))
+    new_trade_ticket_html_string = new_trade_ticket_html_string.replace('TRADE_ASSIGNED_BROKER_SIGNATURE_VAR', assigned_masternode_broker_digital_signature_on_trade_ticket_details_hash_base64_encoded)
+    trade_ticket_output_file_path = os.path.join(pending_trade_ticket_files_folder_path,'Animecoin_Trade_Ticket__TradeID__'+new_trade_id+'__DateTime_Submitted__'+datetime_trade_submitted.replace(':','_').replace('-','_').replace(' ','_')+'.html')
+    with open(trade_ticket_output_file_path,'w') as f:
+        f.write(new_trade_ticket_html_string)
+    print('Successfully generated trade ticket for TradeID '+new_trade_id)
+    return trade_ticket_output_file_path
 
+def sign_trade_ticket_hash_func(signer_private_key, submitting_trader_animecoin_identity_public_key, submitting_trader_animecoin_blockchain_address, assigned_masternode_broker_ip_address, assigned_masternode_broker_animecoin_identity_public_key, desired_trade_type, desired_art_asset_hash, desired_quantity, specified_price_in_anime):
+    desired_quantity_formatted = locale.format('%d', desired_quantity, grouping=True)
+    specified_price_in_anime_formatted = locale.format('%f', specified_price_in_anime, grouping=True)
+    submitting_trader_animecoin_identity_public_key_pem_format = artist_public_key.save_pkcs1(format='PEM').decode('utf-8')
+    assigned_masternode_broker_animecoin_identity_public_key_pem_format = assigned_masternode_broker_animecoin_identity_public_key.save_pkcs1(format='PEM').decode('utf-8')
+    data_for_trade_ticket_hash = submitting_trader_animecoin_identity_public_key_pem_format + submitting_trader_animecoin_blockchain_address +  assigned_masternode_broker_ip_address + assigned_masternode_broker_animecoin_identity_public_key_pem_format + desired_trade_type + desired_art_asset_hash + desired_quantity_formatted + specified_price_in_anime_formatted
+    data_for_trade_ticket_hash = data_for_trade_ticket_hash.encode('utf-8')
+    trade_ticket_details_sha256_hash = hashlib.sha256(data_for_trade_ticket_hash).hexdigest()
+    signed_trade_ticket_details_sha256_hash = rsa.sign(trade_ticket_details_sha256_hash.encode('utf-8'), signer_private_key,'SHA-256') #This would happen on the artist/trader's machine.
+    signed_trade_ticket_details_sha256_hash_base64_encoded = base64.b64encode(signed_trade_ticket_details_sha256_hash).decode('utf-8')
+    return trade_ticket_details_sha256_hash, signed_trade_ticket_details_sha256_hash_base64_encoded
+
+def verify_trade_ticket_hash_signature_func(trade_ticket_details_sha256_hash, signed_trade_ticket_details_sha256_hash_base64_encoded, signer_public_key):
+    verified = 0
+    trade_ticket_details_sha256_hash_utf8_encoded = trade_ticket_details_sha256_hash.encode('utf-8')
+    if isinstance(signed_trade_ticket_details_sha256_hash_base64_encoded,str):
+        signed_trade_ticket_details_sha256_hash = base64.b64decode(signed_trade_ticket_details_sha256_hash_base64_encoded)
+    else:
+        signed_trade_ticket_details_sha256_hash = signed_trade_ticket_details_sha256_hash_base64_encoded
+    try:
+        rsa.verify(trade_ticket_details_sha256_hash_utf8_encoded, signed_trade_ticket_details_sha256_hash, signer_public_key)
+        verified = 1
+        return verified
+    except Exception as e:
+        print('Error: '+ str(e))
+        return verified
+    
+def parse_trade_ticket_func(path_to_trade_ticket_html_file):
+    with open(path_to_trade_ticket_html_file,'r') as f:
+        trade_ticket_html_string = f.read()    
+    trade_ticket_html_string_parsed = lxml.html.fromstring(trade_ticket_html_string)
+    parsed_trade_data = trade_ticket_html_string_parsed.xpath('//td')
+    parsed_trade_data_list = [x.text for x in parsed_trade_data]
+    trade_id = parsed_trade_data_list[0]
+    datetime_trade_submitted = parsed_trade_data_list[1]
+    submitting_trader_animecoin_blockchain_address = parsed_trade_data_list[2]
+    submitting_trader_animecoin_identity_public_key_pem_format = parsed_trade_data_list[3]
+    submitting_trader_animecoin_identity_public_key = rsa.PublicKey.load_pkcs1(submitting_trader_animecoin_identity_public_key_pem_format,format='PEM')
+    desired_trade_type = parsed_trade_data_list[4]
+    desired_art_asset_hash = parsed_trade_data_list[5]
+    desired_quantity = int(parsed_trade_data_list[6])
+    specified_price_in_anime = locale.atof(parsed_trade_data_list[7])
+    trade_ticket_details_sha256_hash = parsed_trade_data_list[8]
+    submitting_traders_digital_signature_on_trade_ticket_details_hash_base64_encoded = parsed_trade_data_list[9]
+    submitting_traders_digital_signature_on_trade_ticket_details_hash = base64.b64decode(submitting_traders_digital_signature_on_trade_ticket_details_hash_base64_encoded)
+    assigned_masternode_broker_ip_address = parsed_trade_data_list[10]
+    assigned_masternode_broker_animecoin_blockchain_address = parsed_trade_data_list[11]
+    assigned_masternode_broker_animecoin_identity_public_key_pem_format = parsed_trade_data_list[12]
+    assigned_masternode_broker_animecoin_identity_public_key = rsa.PublicKey.load_pkcs1(assigned_masternode_broker_animecoin_identity_public_key_pem_format,format='PEM')
+    assigned_masternode_broker_digital_signature_on_trade_ticket_details_hash_base64_encoded = parsed_trade_data_list[13]
+    assigned_masternode_broker_digital_signature_on_trade_ticket_details_hash = base64.b64decode(assigned_masternode_broker_digital_signature_on_trade_ticket_details_hash_base64_encoded)
+    return trade_id, datetime_trade_submitted, submitting_trader_animecoin_blockchain_address, submitting_trader_animecoin_identity_public_key, desired_trade_type, desired_art_asset_hash, desired_quantity, specified_price_in_anime, trade_ticket_details_sha256_hash, submitting_traders_digital_signature_on_trade_ticket_details_hash, assigned_masternode_broker_ip_address, assigned_masternode_broker_animecoin_blockchain_address, assigned_masternode_broker_animecoin_identity_public_key, assigned_masternode_broker_digital_signature_on_trade_ticket_details_hash
+
+def verify_signatures_on_trade_ticket_func(path_to_trade_ticket_html_file):
+    all_verified = 0
+    trade_id, datetime_trade_submitted, submitting_trader_animecoin_blockchain_address, submitting_trader_animecoin_identity_public_key, desired_trade_type, desired_art_asset_hash, desired_quantity, specified_price_in_anime, trade_ticket_details_sha256_hash, submitting_traders_digital_signature_on_trade_ticket_details_hash, assigned_masternode_broker_ip_address, assigned_masternode_broker_animecoin_blockchain_address, assigned_masternode_broker_animecoin_identity_public_key, assigned_masternode_broker_digital_signature_on_trade_ticket_details_hash = parse_trade_ticket_func(path_to_trade_ticket_html_file)
+    desired_quantity_formatted = locale.format('%d', desired_quantity, grouping=True)
+    specified_price_in_anime_formatted = locale.format('%f', specified_price_in_anime, grouping=True)
+    submitting_trader_animecoin_identity_public_key_pem_format = submitting_trader_animecoin_identity_public_key.save_pkcs1(format='PEM').decode('utf-8')    
+    assigned_masternode_broker_animecoin_identity_public_key_pem_format = assigned_masternode_broker_animecoin_identity_public_key.save_pkcs1(format='PEM').decode('utf-8')
+    data_for_trade_ticket_hash = submitting_trader_animecoin_identity_public_key_pem_format + submitting_trader_animecoin_blockchain_address +  assigned_masternode_broker_ip_address + assigned_masternode_broker_animecoin_identity_public_key_pem_format + desired_trade_type + desired_art_asset_hash + desired_quantity_formatted + specified_price_in_anime_formatted
+    data_for_trade_ticket_hash = data_for_trade_ticket_hash.encode('utf-8')
+    computed_trade_ticket_details_sha256_hash = hashlib.sha256(data_for_trade_ticket_hash).hexdigest()
+    if computed_trade_ticket_details_sha256_hash == trade_ticket_details_sha256_hash:
+        print('Computed trade ticket hash matches the reported hash in the trade ticket! Now checking that digital signatures are valid...')
+        submitting_trader_signatured_was_verified = verify_trade_ticket_hash_signature_func(trade_ticket_details_sha256_hash, submitting_traders_digital_signature_on_trade_ticket_details_hash, submitting_trader_animecoin_identity_public_key)
+        if submitting_trader_signatured_was_verified:
+            print('Submitting trader\'s digital signature on trade ticket hash was successfully verified as being authentic!' )
+        else:
+            print('Error! Submitting trader\'s digital signature on trade ticket was NOT valid!')
+        assigned_masternode_broker_signatured_was_verified = verify_trade_ticket_hash_signature_func(trade_ticket_details_sha256_hash, assigned_masternode_broker_digital_signature_on_trade_ticket_details_hash, assigned_masternode_broker_animecoin_identity_public_key)
+        if assigned_masternode_broker_signatured_was_verified:
+            print('Assigned masternode\'s digital signature on trade ticket hash was successfully verified as being authentic!' )
+        else:
+            print('Error!Assigned masternode\'s digital signature on trade ticket was NOT valid!')
+        all_verified = (computed_trade_ticket_details_sha256_hash == trade_ticket_details_sha256_hash) and submitting_trader_signatured_was_verified and assigned_masternode_broker_signatured_was_verified
+        if all_verified:
+            print('Everything was verified successfully! Trade ticket is valid!')
+            return all_verified
+        else:
+            print('There was a problem verifying the trade ticket!')
+            return all_verified
+    else:
+        print('Error! Computed trade ticket hash does NOT match the reported hash in the trade ticket! Ticket has been corrupted and is invalid!')
+        return all_verified
+    
 ###############################################################################################################
 # Script:
 ###############################################################################################################
@@ -575,10 +733,16 @@ formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(messag
 handler.setFormatter(formatter)
 dht_log = logging.getLogger('kademlia')
 dht_log.addHandler(handler)
-dht_log.setLevel(logging.DEBUG)   
+dht_log.setLevel(logging.DEBUG)
+list_of_required_folder_paths = [root_animecoin_folder_path,folder_path_of_remote_node_sqlite_files,misc_masternode_files_folder_path,folder_path_of_art_folders_to_encode,block_storage_folder_path,trade_ticket_files_folder_path, completed_trade_ticket_files_folder_path, pending_trade_ticket_files_folder_path]
+for current_required_folder_path in list_of_required_folder_paths:
+    if not os.path.exists(current_required_folder_path):
+        try:
+            os.makedirs(current_required_folder_path)
+        except Exception as e:
+                print('Error: '+ str(e)) 
 if use_generate_new_sqlite_chunk_database:
     regenerate_sqlite_chunk_database_func()
-    
 potential_local_block_hashes_list, potential_local_file_hashes_list = refresh_block_storage_folder_and_check_block_integrity_func()
 conn = sqlite3.connect(chunk_db_file_path)
 c = conn.cursor()
@@ -595,38 +759,29 @@ conn.close()
 _, my_node_ip, my_node_port = unpackage_dht_hash_table_entry_func(package_dht_hash_table_entry_func([]))
 sys.exit(0)
 
-try:
-    subprocess.Popen(['python','run_animecoin_file_server.py'])
-    #file_server_process = Process(target=start_file_server_func, args=())
-    #file_server_process.start()
-except Exception as e:
-    print('Error: '+ str(e))
-
-try:
- dht_process = Process(target=start_new_dht_network_func, args=(alternative_port,))
- dht_process.start()
-except:
-    print('Some kind of error, loop is probably running already!')
-
-try:
-    server, loop = connect_to_existing_dht_network(default_port)
-    time.sleep(5)
-except:
-    print('Some kind of error, loop is probably running already!')
-
-try:
-    print('Bootstrapping network now!\n')
-    loop.run_until_complete(server.bootstrap(bootstrap_node_list))
-except:
-    print('Error bootstrapping network! Probably already using socket, try closing and restarting system!')
-
-advertise_local_blocks_to_dht_network_func()
+if use_connect_to_dht_network:
+    try:
+     dht_process = Process(target=start_new_dht_network_func, args=(alternative_port,))
+     dht_process.start()
+    except:
+        print('Some kind of error, loop is probably running already!')
+    
+    try:
+        server, loop = connect_to_existing_dht_network(default_port)
+        time.sleep(5)
+    except:
+        print('Some kind of error, loop is probably running already!')
+    
+    try:
+        print('Bootstrapping network now!\n')
+        loop.run_until_complete(server.bootstrap(bootstrap_node_list))
+        advertise_local_blocks_to_dht_network_func()
+    except:
+        print('Error bootstrapping network! Probably already using socket, try closing and restarting system!')
     
 if use_demonstrate_asking_dht_network_for_file_blocks:
     sys.exit(0)
-    #test_file_hash = 'a75a1757d54ad0876f9b2cf9b64b1017b6293ceed61e80cd64aae5abfdc8514e' #Arturo_number_04
     test_file_hash = '405801baada7151188942c23f66768987c114ff5d950bc70bb2cfcdcbc5d4679'
-    #test_file_hash = '105c4c9b9d79ed544c36df792f7bbbddb6700209f51e4b9e1073fa41653d2aa8' #Iris Madula Number 11
     sha256hashsize = sys.getsizeof(test_file_hash)
     print('Now asking network for hashes of blocks that correspond to the zipfile with a SHA256 hash of: '+test_file_hash)
     try:
@@ -637,13 +792,49 @@ if use_demonstrate_asking_dht_network_for_file_blocks:
             print(current_block_hash+', ',end='')
     except:
         print('Problem requesting block files from DHT network!')
-
     sha256_hash_of_desired_zipfile = '405801baada7151188942c23f66768987c114ff5d950bc70bb2cfcdcbc5d4679'
     remote_node_ip = '140.82.14.38'#'108.61.86.243' #'140.82.2.58'
     sha256_hash_of_desired_block = '1e6864df358abd54b3ebcdb8da05c16149f208ef10aab4ac86e12cb1b0074ac9'
     #wrapper_reconstruct_zipfile_from_hash_func(sha256_hash_of_desired_zipfile)
 
+if use_demonstrate_nginx_file_transfers:
     list_of_block_filenames, list_of_block_hashes, list_of_file_hashes = get_list_of_available_blocks_on_remote_node_file_server_func(remote_node_ip,type_of_file_to_retrieve='blocks')
     list_of_signature_filenames, list_of_file_hashes = get_list_of_available_blocks_on_remote_node_file_server_func(remote_node_ip,type_of_file_to_retrieve='signatures')
     list_of_zipfile_filenames, list_of_file_hashes = get_list_of_available_blocks_on_remote_node_file_server_func(remote_node_ip,type_of_file_to_retrieve='zipfiles')
     list_of_downloaded_files = download_remote_block_files_for_given_zipfile_hash_func(remote_node_ip,sha256_hash_of_desired_zipfile)
+
+if use_demonstrate_trade_ticket_generation:
+    sys.exit(0)
+    try:
+        artist_public_key = pickle.load(open(os.path.join(root_animecoin_folder_path,'artist_public_key.p'),'rb'))
+        artist_private_key = pickle.load(open(os.path.join(root_animecoin_folder_path,'artist_private_key.p'),'rb'))
+    except:
+        print('Couldn\'t load the demonstration artist pub/priv keys!')
+    submitting_trader_animecoin_blockchain_address = example_trader_blockchain_address
+    desired_trade_type = 'BUY'
+    desired_art_asset_hash = '570f4b835404a83e9870b9e98a0e2ca3b58b43c775cf1275a6690ab618f0e73c'
+    desired_quantity = 1
+    specified_price_in_anime = 75000
+    submitting_trader_animecoin_identity_public_key = artist_public_key
+    submitting_trader_animecoin_identity_private_key = artist_private_key
+    assigned_masternode_broker_ip_address = get_my_local_ip_func()
+    assigned_masternode_broker_animecoin_identity_public_key, assigned_masternode_broker_animecoin_identity_private_key = get_local_masternode_identification_keypair_func()
+
+    trade_ticket_details_sha256_hash, submitting_traders_digital_signature_on_trade_ticket_details_hash = sign_trade_ticket_hash_func(submitting_trader_animecoin_identity_private_key, submitting_trader_animecoin_identity_public_key, submitting_trader_animecoin_blockchain_address,  assigned_masternode_broker_ip_address, assigned_masternode_broker_animecoin_identity_public_key, desired_trade_type, desired_art_asset_hash, desired_quantity, specified_price_in_anime)#This would happen on the artist/trader's machine.
+    
+    trade_ticket_signature_is_valid = verify_trade_ticket_hash_signature_func(trade_ticket_details_sha256_hash, submitting_traders_digital_signature_on_trade_ticket_details_hash, submitting_trader_animecoin_identity_public_key)
+
+    trade_ticket_output_file_path = generate_trade_ticket_func(submitting_trader_animecoin_identity_public_key,
+                                                               submitting_trader_animecoin_blockchain_address,
+                                                               desired_trade_type,
+                                                               desired_art_asset_hash,
+                                                               desired_quantity,
+                                                               specified_price_in_anime,
+                                                               submitting_traders_digital_signature_on_trade_ticket_details_hash)
+
+if use_demonstrate_trade_ticket_parsing:
+    list_of_pending_trade_ticket_filepaths = glob.glob(os.path.join(pending_trade_ticket_files_folder_path,'*.html'))
+    path_to_trade_ticket_html_file = list_of_pending_trade_ticket_filepaths[0]
+    
+    trade_id, datetime_trade_submitted, submitting_trader_animecoin_blockchain_address, submitting_trader_animecoin_identity_public_key, desired_trade_type, desired_art_asset_hash, desired_quantity, specified_price_in_anime, trade_ticket_details_sha256_hash, submitting_traders_digital_signature_on_trade_ticket_details_hash, assigned_masternode_broker_ip_address, assigned_masternode_broker_animecoin_blockchain_address, assigned_masternode_broker_animecoin_identity_public_key, assigned_masternode_broker_digital_signature_on_trade_ticket_details_hash = parse_trade_ticket_func(path_to_trade_ticket_html_file)
+    all_verified = verify_signatures_on_trade_ticket_func(path_to_trade_ticket_html_file)
