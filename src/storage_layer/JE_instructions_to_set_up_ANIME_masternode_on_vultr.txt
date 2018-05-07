@@ -44,6 +44,7 @@ ________________________________________________________________________________
 sudo ln -s /home/$USER/animecoin/art_block_storage/*.block /var/www/masternode_file_server/html/
 sudo ln -s /home/$USER/animecoin/prepared_final_art_zipfiles/*.zip /var/www/masternode_file_server/html/
 sudo ln -s /home/$USER/animecoin/art_signature_files/*.sig /var/www/masternode_file_server/html/
+sudo ln -s /home/$USER/animecoin/trade_ticket_files/pending/*.html /var/www/masternode_file_server/html/
 cd  /var/www/masternode_file_server/html/
 tree -s -D -t -l -H '.' -L 1 --noreport --charset utf-8 -P "*.block" > index.html
 now=$(date +%m-%d-%Y-%M:%S)
@@ -135,3 +136,22 @@ sudo systemctl restart nginx
 service nginx status
 
 ________________________________________________________________________________
+
+#RPC connection command in linux:
+
+./animecoin-cli -conf=/home/jemanuel/.animecoin/animecoin.conf -testnet -datadir=/home/jemanuel/.animecoin/testnet3/ -rpcconnect=127.0.0.1 rpcport=19932 -rpcuser=test -rpcpassword=testpw
+
+
+#animecoin.conf:
+
+testnet=1
+addnode=108.61.89.25
+addnode=45.77.151.230
+rpcuser=test
+rpcpassword=testpw
+rpcallowip=127.0.0.1
+server=1
+listen=1
+daemon=1
+logtimestamps=1
+maxconnections=256
