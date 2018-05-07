@@ -10,15 +10,13 @@ from multiprocessing import Process, Queue
 from collections import OrderedDict
 from datetime import datetime
 from itertools import compress
-from kademlia.network import Server
 from math import ceil
 try:
     from tqdm import tqdm
-    import yenc
 except:
     pass
 #from anime_storage import *
-#Requirements: pip install kademlia, yenc, tqdm, fs, lxml, requests, shortuuid, rsa
+#Requirements: pip install tqdm, fs, lxml, requests, shortuuid, rsa
 
 #Add to crontab:
 #* * * * * 
@@ -29,8 +27,6 @@ except:
 ###############################################################################################################
 use_verify_integrity = 1
 use_generate_new_sqlite_chunk_database = 1
-use_connect_to_dht_network = 0
-use_demonstrate_asking_dht_network_for_file_blocks = 0
 use_demonstrate_nginx_file_transfers = 0
 use_demonstrate_trade_ticket_generation = 1
 use_demonstrate_trade_ticket_parsing = 1
@@ -44,6 +40,7 @@ masternode_keypair_db_file_path = os.path.join(misc_masternode_files_folder_path
 trade_ticket_files_folder_path = os.path.join(root_animecoin_folder_path,'trade_ticket_files' + os.sep) #Where we store the html trade tickets for the masternode DEX
 completed_trade_ticket_files_folder_path = os.path.join(trade_ticket_files_folder_path,'completed' + os.sep) 
 pending_trade_ticket_files_folder_path = os.path.join(trade_ticket_files_folder_path,'pending' + os.sep) 
+prepared_final_art_zipfiles_folder_path = os.path.join(root_animecoin_folder_path,'prepared_final_art_zipfiles' + os.sep) 
 chunk_db_file_path = os.path.join(misc_masternode_files_folder_path,'anime_chunkdb.sqlite')
 file_storage_log_file_path = os.path.join(misc_masternode_files_folder_path,'anime_storage_log.txt')
 nginx_allowed_ip_whitelist_file_path = os.path.join(misc_masternode_files_folder_path,'masternode_ip_whitelist.conf')
@@ -54,7 +51,8 @@ list_of_ips = ['108.61.86.243','140.82.14.38','140.82.2.58']
 target_number_of_nodes_per_unique_block_hash = 10
 target_block_redundancy_factor = 10 #How many times more blocks should we store than are required to regenerate the file?
 desired_block_size_in_bytes = 1024*1000*2
-example_list_of_valid_masternode_ip_addresses = ['65.200.165.210','207.246.93.232','140.82.14.38','140.82.2.58']
+example_list_of_valid_masternode_ip_addresses = ['207.246.93.232','149.28.41.105','149.28.34.59']
+nginx_ip_whitelist_override_addresses = ['65.200.165.210'] #For debugging purposes
 example_animecoin_masternode_blockchain_address = 'AdaAvFegJbBdH4fB8AiWw8Z4Ek75Xsja6i'
 example_trader_blockchain_address = 'ANQTCifwMdh1Lsda9DsMcXuXBwtkyHRrZe'
 locale.setlocale(locale.LC_ALL, '')
@@ -64,7 +62,6 @@ if 0: #NAT traversal experiments
 ###############################################################################################################
 # Functions:
 ###############################################################################################################
-
     
 #Utility functions:
 def get_my_local_ip_func():
@@ -81,9 +78,11 @@ def generate_trade_id_func():
 
 def generate_nginx_ip_whitelist_file_func(python_list_of_masternode_ip_addresses):
     global nginx_allowed_ip_whitelist_file_path
+    global example_animecoin_masternode_blockchain_address
     try:
+        combined_list_of_whitelisted_ips = python_list_of_masternode_ip_addresses + example_animecoin_masternode_blockchain_address
         with open(nginx_allowed_ip_whitelist_file_path,'w') as f:
-            for current_ip_address in python_list_of_masternode_ip_addresses:
+            for current_ip_address in combined_list_of_whitelisted_ips:
                 allow_string = 'allow ' +current_ip_address+';\n'
                 f.write(allow_string)
     except Exception as e:
@@ -94,10 +93,18 @@ def regenerate_sqlite_chunk_database_func():
     try:
         conn = sqlite3.connect(chunk_db_file_path)
         c = conn.cursor()
-        local_hash_table_creation_string= """CREATE TABLE potential_local_hashes (block_hash text PRIMARY KEY, file_hash text);"""
-        global_hash_table_creation_string= """CREATE TABLE potential_global_hashes (block_hash text, file_hash text, remote_node_ip text, datetime_peer_last_seen TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL, PRIMARY KEY (block_hash, remote_node_ip));"""
+        local_hash_table_creation_string = """CREATE TABLE potential_local_hashes (block_hash text PRIMARY KEY, file_hash text);"""
         c.execute(local_hash_table_creation_string)
+        global_hash_table_creation_string = """CREATE TABLE potential_global_hashes (block_hash text, file_hash text, remote_node_ip text, datetime_inserted TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL, PRIMARY KEY (block_hash, remote_node_ip));"""
         c.execute(global_hash_table_creation_string)
+        final_art_zipfile_table_creation_string = """CREATE TABLE final_art_zipfile_table (file_hash text, remote_node_ip text, datetime_inserted TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL, PRIMARY KEY (file_hash, remote_node_ip));"""
+        c.execute(final_art_zipfile_table_creation_string)
+        final_art_signatures_table_creation_string = """CREATE TABLE final_art_signatures_table (file_hash text, remote_node_ip text, final_signature_base64_encoded text, datetime_inserted TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL, PRIMARY KEY (file_hash, remote_node_ip));"""
+        c.execute(final_art_signatures_table_creation_string)
+        pending_trade_tickets_table_creation_string = """CREATE TABLE pending_trade_tickets_table (desired_art_asset_hash text, trade_ticket_details_sha256_hash text, submitting_trader_animecoin_identity_public_key text, submitting_traders_digital_signature_on_trade_ticket_details_hash text, submitting_trader_animecoin_blockchain_address text,  assigned_masternode_broker_ip_address text, assigned_masternode_broker_animecoin_identity_public_key text, assigned_masternode_broker_animecoin_blockchain_address text, assigned_masternode_broker_digital_signature_on_trade_ticket_details_hash text, desired_trade_type text, desired_quantity integer, specified_price_in_anime real, tradeid text, datetime_trade_submitted text, datetime_trade_executed text, datetime_inserted TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL, PRIMARY KEY (trade_ticket_details_sha256_hash));"""
+        c.execute(pending_trade_tickets_table_creation_string)
+        completed_trade_tickets_table_creation_string = """CREATE TABLE completed_trade_tickets_table (desired_art_asset_hash text, trade_ticket_details_sha256_hash text, submitting_trader_animecoin_identity_public_key text, submitting_traders_digital_signature_on_trade_ticket_details_hash text, submitting_trader_animecoin_blockchain_address text,  assigned_masternode_broker_ip_address text, assigned_masternode_broker_animecoin_identity_public_key text, assigned_masternode_broker_animecoin_blockchain_address text, assigned_masternode_broker_digital_signature_on_trade_ticket_details_hash text, desired_trade_type text, desired_quantity integer, specified_price_in_anime real, tradeid text, datetime_trade_submitted text, datetime_trade_executed text, datetime_inserted TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL, PRIMARY KEY (trade_ticket_details_sha256_hash));"""
+        c.execute(completed_trade_tickets_table_creation_string)        
         conn.commit()
         conn.close()
     except Exception as e:
@@ -153,7 +160,6 @@ def refresh_block_storage_folder_and_check_block_integrity_func(use_verify_integ
         sql_string = """INSERT OR IGNORE INTO potential_local_hashes (block_hash, file_hash) VALUES (\"{blockhash}\", \"{filehash}\")""".format(blockhash=current_block_hash, filehash=current_file_hash)
         c.execute(sql_string)
     conn.commit()
-    #print('Done writing file hash data to SQLite file!\n')  
     return potential_local_block_hashes_list, potential_local_file_hashes_list
 
 def get_local_matching_blocks_from_zipfile_hash_func(sha256_hash_of_desired_zipfile):
@@ -188,172 +194,11 @@ def get_local_block_file_binary_data_func(sha256_hash_of_desired_block):
     except Exception as e:
         print('Error: '+ str(e))     
 
-def get_local_block_file_header_data_func(sha256_hash_of_desired_block):
-    global block_storage_folder_path
-    list_of_block_file_paths = glob.glob(os.path.join(block_storage_folder_path,'*'+sha256_hash_of_desired_block+'*.block'))
-    if len(list_of_block_file_paths) > 0:
-        try:
-            with open(list_of_block_file_paths[0],'rb') as f:
-                block_binary_data= f.read()
-            input_stream = io.BufferedReader(io.BytesIO(block_binary_data),buffer_size=1000000)
-            header = unpack('!III', input_stream.read(12))
-            filesize = header[0]
-            blocksize = header[1]
-            number_of_blocks_required = ceil(filesize/blocksize)
-            return filesize, blocksize, number_of_blocks_required
-        except Exception as e:
-            print('Error: '+ str(e))     
-    else:
-        print('Don\'t have that file locally!')
-        filesize = 0
-        blocksize = 0
-        number_of_blocks_required = 0
-        return filesize, blocksize, number_of_blocks_required
-    
-def package_dht_hash_table_entry_func(data_as_python_list):
-    global default_port
-    my_node_ip_address =  get_my_local_ip_func()
-    my_node_ip_and_port = my_node_ip_address+ ':' + str(default_port)
-    data_as_python_list.insert(0,my_node_ip_and_port)
-    data_as_json = json.dumps(data_as_python_list)
-    data_as_json_zipped = zlib.compress(data_as_json.encode('utf-8'))
-    _, _, data_as_json_zipped_yenc_encoded = yenc.encode(data_as_json_zipped)
-    return data_as_json_zipped_yenc_encoded
-    use_demonstrate_size_of_encodings = 0
-    if use_demonstrate_size_of_encodings:
-        data_as_json_zipped_base64_encoded = base64.b64encode(data_as_json_zipped)
-        size_of_data_as_json = sys.getsizeof(data_as_json)
-        size_of_data_as_json_zipped = sys.getsizeof(data_as_json_zipped)
-        size_of_data_as_json_zipped_yenc_encoded = sys.getsizeof(data_as_json_zipped_yenc_encoded)
-        size_of_data_as_json_zipped_base64_encoded = sys.getsizeof(data_as_json_zipped_base64_encoded)
-        with open('data_as_json','wb') as f:
-            f.write(data_as_json.encode('utf-8'))
-        with open('data_as_json_zipped','wb') as f:
-            f.write(data_as_json_zipped)   
-        with open('data_as_json_zipped_yenc_encoded','wb') as f:
-            f.write(data_as_json_zipped_yenc_encoded)
-        with open('data_as_json_zipped_base64_encoded','wb') as f:
-            f.write(data_as_json_zipped_base64_encoded)    
-        print('Comparison of the size of different representations of the data:\n')
-        print('data_as_json: '+str(size_of_data_as_json))
-        print('data_as_json_zipped: '+str(size_of_data_as_json_zipped))
-        print('data_as_json_zipped_yenc_encoded: '+str(size_of_data_as_json_zipped_yenc_encoded))
-        print('data_as_json_zipped_base64_encoded: '+str(size_of_data_as_json_zipped_base64_encoded))
-        print('Now verifying that we can decode the Yenc text and then unzip the data to get the original json:')
-        _, _, yenc_decoded = yenc.decode(data_as_json_zipped_yenc_encoded)
-        data_as_json_unzipped = zlib.decompress(yenc_decoded)
-        if yenc_decoded == data_as_json_zipped:
-            print('Decoded the Yenc successfully!')
-        if data_as_json_unzipped == data_as_json.encode('utf-8'):
-            print('Unzipped the data successfully!')
-
-def package_binary_dht_hash_table_entry_func(binary_data):
-    zipped_data = zlib.compress(binary_data)
-    _, _, data_as_zipped_yenc_encoded = yenc.encode(zipped_data)
-    return data_as_zipped_yenc_encoded
-
-def unpackage_dht_hash_table_entry_func(data_as_yenc_encoded_zipped_data):
-    _, _, yenc_decoded = yenc.decode(data_as_yenc_encoded_zipped_data)
-    data_as_json_unzipped = zlib.decompress(yenc_decoded)
-    data_as_list_with_headers = json.loads(data_as_json_unzipped)
-    node_ip_and_port = data_as_list_with_headers[0]
-    node_ip = node_ip_and_port.split(':')[0]
-    node_port = int(node_ip_and_port.split(':')[1])
-    data_as_list = data_as_list_with_headers[1:]
-    return data_as_list, node_ip, node_port
-
-def broadcast_sqlite_chunkdb_to_dht_network_func():
+def get_list_of_available_files_on_remote_node_file_server_func(remote_node_ip, type_of_file_to_retrieve='blocks'):
     global chunk_db_file_path
-    global server
-    global default_port
-    global alternative_port
-    my_node_ip_address =  get_my_local_ip_func()
     try:
-        with open(chunk_db_file_path,'rb') as f:
-            sqlitedb_chunkdb_binary_data = f.read()
-        data_as_zipped_yenc_encoded = package_binary_dht_hash_table_entry_func(sqlitedb_chunkdb_binary_data)
-        print('Broadcasting SQlite chunkdb file to the DHT network, using this node\'s IP address ('+str(my_node_ip_address)+') as the key!')
-        asyncio.get_event_loop().run_until_complete(server.set(my_node_ip_address,data_as_zipped_yenc_encoded))
-    except Exception as e:
-        print('Error: '+ str(e))
-
-def get_remote_node_chunkdb_file_from_dht_network_func(remote_node_ip):
-    global folder_path_of_remote_node_sqlite_files
-    remote_node_ip = str(remote_node_ip)
-    try:
-        print('\nAsking DHT network for the chunkdb file from the remote node at IP address '+remote_node_ip)
-        yencoded_zipped_data = asyncio.get_event_loop().run_until_complete(server.get(remote_node_ip))
-        _, _, yenc_decoded = yenc.decode(yencoded_zipped_data)
-        data_unzipped = zlib.decompress(yenc_decoded)
-        output_file_name = 'Remote_Node__'+ remote_node_ip.replace('.','_') + '__chunkdb.sqlite'
-        remote_node_chunkd_output_filepath = os.path.join(folder_path_of_remote_node_sqlite_files,output_file_name)
-        with open(remote_node_chunkd_output_filepath,'wb') as f:
-            f.write(data_unzipped)
-    except Exception as e:
-        print('Error: '+ str(e))
-        
-def advertise_local_blocks_to_dht_network_func():
-    global server
-    global default_port
-    global alternative_port
-    global list_of_local_potential_block_hashes
-    global list_of_local_potential_file_hashes
-    global list_of_local_potential_file_hashes_unique
-    for cnt, current_file_hash in enumerate(list_of_local_potential_file_hashes_unique):
-        list_of_block_hashes = get_local_block_list_from_sqlite_for_given_file_hash_func(current_file_hash)
-        yencoded_zipped_json = package_dht_hash_table_entry_func(list_of_block_hashes)
-        try:
-            print('Broadcasting to the DHT network the list of blocks for the zip file with hash: '+current_file_hash)
-            asyncio.get_event_loop().run_until_complete(server.set(current_file_hash,yencoded_zipped_json))
-            time.sleep(1)
-        except:
-            pass
-        
-def ask_dht_network_for_blocks_corresponding_to_hash_of_given_zipfile_func(sha256_hash_of_desired_zipfile):
-    global server
-    try:
-        print('\nAsking DHT network for any block hashes that correspond to the zip file with the SHA256 hash: '+sha256_hash_of_desired_zipfile+'\n')
-        yencoded_zipped_json = asyncio.get_event_loop().run_until_complete(server.get(sha256_hash_of_desired_zipfile))
-        if len(yencoded_zipped_json) > 0:
-            data_as_list, node_ip, node_port = unpackage_dht_hash_table_entry_func(yencoded_zipped_json)
-            return data_as_list, node_ip, node_port
-        else:
-            print('Did not get back a valid response!')
-    except:
-        pass
-
-def start_new_dht_network_func(port=default_port):
-    try:
-        server = Server()
-        server.listen(port)
-        loop = asyncio.get_event_loop()
-        loop.set_debug(True)
-        try:
-            loop.run_forever()
-        except KeyboardInterrupt:
-            pass
-        finally:
-            server.stop()
-            loop.close()
-    except Exception as e:
-        print('Error: '+ str(e))
-
-def connect_to_existing_dht_network(port=default_port):
-    try:
-        loop = asyncio.get_event_loop()
-        loop.set_debug(True)
-        server = Server()
-        server.listen(port)
-        return server, loop
-    except Exception as e:
-        print('Error: '+ str(e))
-
-def get_peer_node_ips(server):
-    peers = server.bootstrappableNeighbors()
-    return peers
-
-def get_list_of_available_blocks_on_remote_node_file_server_func(remote_node_ip,type_of_file_to_retrieve='blocks'):
-    try:
+        conn = sqlite3.connect(chunk_db_file_path)
+        c = conn.cursor()
         r = requests.get('http://'+remote_node_ip+'/')
         html_file_listing = r.text
         parsed_file_listing = lxml.html.fromstring(html_file_listing)
@@ -362,6 +207,7 @@ def get_list_of_available_blocks_on_remote_node_file_server_func(remote_node_ip,
         list_of_block_filenames = []
         list_of_signature_filenames = []
         list_of_zipfile_filenames = []
+        list_of_trade_ticket_filenames = []
         for link in list_of_links:
             if '.block' in link:
                 list_of_block_filenames.append(link)
@@ -369,14 +215,21 @@ def get_list_of_available_blocks_on_remote_node_file_server_func(remote_node_ip,
                 list_of_signature_filenames.append(link)
             if '.zip' in link:
                 list_of_zipfile_filenames.append(link)
+            if 'TradeID' in link:
+                list_of_trade_ticket_filenames.append(link)            
         list_of_block_hashes = []
         list_of_file_hashes = []
+        list_of_trade_ids = []
         if (len(list_of_block_filenames) > 0) and (type_of_file_to_retrieve == 'blocks'):
             for current_block_file_name in list_of_block_filenames:
                 reported_file_sha256_hash = current_block_file_name.split('__')[1]
                 list_of_file_hashes.append(reported_file_sha256_hash)
                 reported_block_file_sha256_hash = current_block_file_name.split('__')[-1].replace('.block','').replace('BlockHash_','')
                 list_of_block_hashes.append(reported_block_file_sha256_hash)
+            for hash_cnt, current_block_hash in enumerate(list_of_block_hashes):
+                current_file_hash = list_of_file_hashes[hash_cnt]
+                c.execute('INSERT OR IGNORE INTO potential_global_hashes (block_hash, file_hash, remote_node_ip) VALUES (?,?,?)',[current_block_hash, current_file_hash, remote_node_ip]) 
+            conn.commit()
             return list_of_block_filenames, list_of_block_hashes, list_of_file_hashes
         if (len(list_of_signature_filenames) > 0) and (type_of_file_to_retrieve == 'signatures'):
             for current_signature_file_name in list_of_signature_filenames:
@@ -387,11 +240,40 @@ def get_list_of_available_blocks_on_remote_node_file_server_func(remote_node_ip,
             for current_zipfile_file_name in list_of_zipfile_filenames:
                 reported_file_sha256_hash = current_zipfile_file_name.split('__')[1].replace('.zip','')
                 list_of_file_hashes.append(reported_file_sha256_hash)
+            for current_zipfile_hash in list_of_file_hashes:
+                c.execute('INSERT OR IGNORE INTO final_art_zipfile_table (file_hash, remote_node_ip) VALUES (?,?)',[current_zipfile_hash, remote_node_ip])
             return list_of_zipfile_filenames, list_of_file_hashes        
+        if (len(list_of_trade_ticket_filenames) > 0) and (type_of_file_to_retrieve == 'trade_tickets'):
+            for current_trade_ticket_file_name in list_of_trade_ticket_filenames:
+                reported_trade_id = current_trade_ticket_file_name.split('__')[2]
+                list_of_trade_ids.append(reported_trade_id)
+            return list_of_trade_ticket_filenames, list_of_trade_ids  
     except Exception as e:
         print('Error: '+ str(e))
 
-def download_file_func(url_of_file_to_download, folder_path_for_saved_file):
+def query_all_masternodes_for_relevant_block_files_and_download_them_func(sha256_hash_of_desired_zipfile):
+    global block_storage_folder_path
+    list_of_unique_node_ip_addresses = get_all_remote_node_ips_func()
+    list_of_local_block_file_paths, _ , _ = get_local_matching_blocks_from_zipfile_hash_func(sha256_hash_of_desired_zipfile)
+    list_of_local_block_file_names = [os.path.split(x)[-1] for x in list_of_local_block_file_paths]
+    for current_remote_node_ip in list_of_unique_node_ip_addresses:
+        list_of_remote_block_filenames, list_of_remote_block_hashes, list_of_remote_file_hashess = get_list_of_available_files_on_remote_node_file_server_func(current_remote_node_ip, type_of_file_to_retrieve='blocks') 
+        file_listing_url = 'http://'+current_remote_node_ip+'/'
+        for cnt, current_block_file_name in enumerate(list_of_remote_block_filenames):
+            if current_block_file_name not in list_of_local_block_file_names:
+                url_of_file_to_download = file_listing_url+current_block_file_name
+                current_block_hash = list_of_remote_block_hashes[cnt]
+                current_file_hash = list_of_remote_file_hashess[cnt]
+                try:
+                    print('Downloading new block file with hash '+ current_block_hash + ' for art zipfile with hash '+current_file_hash+' from node at ' + current_remote_node_ip)
+                    path_to_downloaded_file = download_remote_file_func(url_of_file_to_download, block_storage_folder_path)
+                    list_of_downloaded_files.append(path_to_downloaded_file)
+                    print('Done!')
+                except Exception as e:
+                    print('Error: '+ str(e))
+    return list_of_downloaded_files
+
+def download_remote_file_func(url_of_file_to_download, folder_path_for_saved_file):
     path_to_downloaded_file = os.path.join(folder_path_for_saved_file, url_of_file_to_download.split('/')[-1])
     r = requests.get(url_of_file_to_download, stream=True)
     with open(path_to_downloaded_file, 'wb') as f:
@@ -419,7 +301,7 @@ def download_remote_block_files_for_given_zipfile_hash_func(remote_node_ip,sha25
                 url_of_file_to_download = file_listing_url+list_of_links[cnt]
                 try:
                     print('Downloading new block file with hash '+reported_block_file_sha256_hash+' from node at '+remote_node_ip)
-                    path_to_downloaded_file = download_file_func(url_of_file_to_download, block_storage_folder_path)
+                    path_to_downloaded_file = download_remote_file_func(url_of_file_to_download, block_storage_folder_path)
                     list_of_downloaded_files.append(path_to_downloaded_file)
                     print('Done!')
                 except Exception as e:
@@ -428,12 +310,27 @@ def download_remote_block_files_for_given_zipfile_hash_func(remote_node_ip,sha25
    except Exception as e:
        print('Error: '+ str(e))
 
-def get_block_file_lists_from_all_nodes_func():
+def download_all_new_pending_trade_tickets_from_masternodes_func():
+    global pending_trade_ticket_files_folder_path
     list_of_unique_node_ip_addresses = get_all_remote_node_ips_func()
-    for current_node_ip in list_of_unique_node_ip_addresses:
-        get_list_of_available_blocks_on_remote_node_file_server_func(remote_node_ip)
-    #FINISH THIS
-    
+    list_of_existing_local_trade_ticket_file_paths = glob.glob(os.path.join(pending_trade_ticket_files_folder_path,'*.html'))
+    list_of_existing_local_trade_ticket_file_names = [os.path.split(x)[-1] for x in list_of_existing_local_trade_ticket_file_paths]
+    for current_remote_node_ip in list_of_unique_node_ip_addresses:
+        list_of_trade_ticket_filenames, list_of_trade_ids = get_list_of_available_files_on_remote_node_file_server_func(current_remote_node_ip, type_of_file_to_retrieve='trade_tickets') 
+        file_listing_url = 'http://'+current_remote_node_ip+'/'
+        for cnt, current_trade_ticket_file_name in enumerate(list_of_trade_ticket_filenames):
+            if current_trade_ticket_file_name not in list_of_existing_local_trade_ticket_file_names:
+                url_of_file_to_download = file_listing_url+current_trade_ticket_file_name
+                current_trade_id = list_of_trade_ids[cnt]
+                try:
+                    print('Downloading new pending trade ticket for TradeID '+ current_trade_id + ' from node at ' + current_remote_node_ip)
+                    path_to_downloaded_file = download_remote_file_func(url_of_file_to_download, pending_trade_ticket_files_folder_path)
+                    list_of_downloaded_files.append(path_to_downloaded_file)
+                    print('Done!')
+                except Exception as e:
+                    print('Error: '+ str(e))
+    return list_of_downloaded_files
+     
 def check_sqlitedb_for_remote_blocks_func(sha256_hash_of_desired_zipfile):
     global chunk_db_file_path
     conn = sqlite3.connect(chunk_db_file_path)
@@ -472,6 +369,14 @@ def verify_locally_reconstructed_zipfile_func(sha256_hash_of_desired_zipfile):
             print('Reconstructed hash in the file name doesn\'t match the calculated hash!')
     return successful_reconstruction
 
+def check_if_finished_art_zipfile_is_stored_locally_func(sha256_hash_of_desired_zipfile):
+    global prepared_final_art_zipfiles_folder_path
+    zipfile_stored_locally = 0
+    list_of_matching_zipfile_paths = glob.glob(os.path.join(prepared_final_art_zipfiles_folder_path,'*'+sha256_hash_of_desired_zipfile+'.zip'))
+    if len(list_of_matching_zipfile_paths) > 0:
+        zipfile_stored_locally = 1
+    return zipfile_stored_locally
+    
 def count_number_of_nodes_reporting_having_block_hash_for_all_known_blocks_in_network_func():
     global chunk_db_file_path
     global target_number_of_nodes_per_unique_block_hash
@@ -515,12 +420,10 @@ def run_self_healing_loop_func():
                         print('Error: '+ str(e))
             except Exception as e:
                 print('Error: '+ str(e))
-                
+             
 def wrapper_reconstruct_zipfile_from_hash_func(sha256_hash_of_desired_zipfile):
     global reconstructed_file_destination_folder_path
     completed_successfully = 0
-    print('Now attempting to locate and reconstruct the original zip file using its SHA256 hash...')
-    #First, check this machine:
     list_of_block_file_paths__local, list_of_block_hashes__local, list_of_file_hashes__local = get_local_matching_blocks_from_zipfile_hash_func(sha256_hash_of_desired_zipfile)
     filesize, blocksize, number_of_blocks_required = get_local_block_file_header_data_func(sha256_hash_of_desired_zipfile)
     number_of_relevant_blocks_found_locally = len(list_of_block_hashes__local)
@@ -543,10 +446,11 @@ def wrapper_reconstruct_zipfile_from_hash_func(sha256_hash_of_desired_zipfile):
             for remote_node_counter, current_remote_node_ip in enumerate(unique_node_ips):
                 try:
                     print('Now attempting to download block files from Node at IP address: '+current_remote_node_ip)
-                    retrieve_block_files_from_remote_node_using_file_hash_func(sha256_hash_of_desired_zipfile,current_remote_node_ip)
+                    list_of_downloaded_files = download_remote_block_files_for_given_zipfile_hash_func(current_remote_node_ip, sha256_hash_of_desired_zipfile)
+                    print('Successfully downloaded '+str(len(list_of_downloaded_files))+' block files!')
                 except Exception as e:
                     print('Error: '+ str(e))  
-                print('Checking if if we now have enough blocks locally to reconstruct file...')
+                print('Checking if we now have enough blocks locally to reconstruct file...')
                 try:
                     completed_successfully = decode_block_files_into_art_zipfile_func(sha256_hash_of_desired_zipfile)
                 except Exception as e:
@@ -557,10 +461,8 @@ def wrapper_reconstruct_zipfile_from_hash_func(sha256_hash_of_desired_zipfile):
             if completed_successfully:
                 successful_reconstruction = verify_locally_reconstructed_zipfile_func(sha256_hash_of_desired_zipfile)
             else:
-                try:#As a last resort, we will now attempt to query the DHT to find more nodes with blocks that we are interested in.
-                    list_of_remote_block_hashes, remote_node_ip, remote_node_port = ask_dht_network_for_blocks_corresponding_to_hash_of_given_zipfile_func(sha256_hash_of_desired_zipfile)
-                    time.sleep(10)
-                    retrieve_block_files_from_remote_node_using_file_hash_func(sha256_hash_of_desired_zipfile,remote_node_ip)
+                try:#As a last resort, we will now query all masternodes to look for more block files:
+                    list_of_downloaded_files = query_all_masternodes_for_relevant_block_files_and_download_them_func(sha256_hash_of_desired_zipfile)
                     print('Checking if if we now have enough blocks locally to reconstruct file...')
                     try:
                         completed_successfully = reconstruct_block_files_into_original_zip_file_func(sha256_hash_of_desired_zipfile)
@@ -723,17 +625,62 @@ def verify_signatures_on_trade_ticket_func(path_to_trade_ticket_html_file):
         print('Error! Computed trade ticket hash does NOT match the reported hash in the trade ticket! Ticket has been corrupted and is invalid!')
         return all_verified
     
+def write_pending_trade_ticket_to_chunkdb_func(path_to_trade_ticket_html_file):
+    global chunk_db_file_path
+    imported_trade_ticket_successfully = 0
+    trade_id, datetime_trade_submitted, submitting_trader_animecoin_blockchain_address, submitting_trader_animecoin_identity_public_key, desired_trade_type, desired_art_asset_hash, desired_quantity, specified_price_in_anime, trade_ticket_details_sha256_hash, submitting_traders_digital_signature_on_trade_ticket_details_hash, assigned_masternode_broker_ip_address, assigned_masternode_broker_animecoin_blockchain_address, assigned_masternode_broker_animecoin_identity_public_key, assigned_masternode_broker_digital_signature_on_trade_ticket_details_hash = parse_trade_ticket_func(path_to_trade_ticket_html_file)
+    try:
+        conn = sqlite3.connect(chunk_db_file_path)
+        c = conn.cursor()
+        update_table_data_query_string = """
+        INSERT OR REPLACE INTO pending_trade_tickets_table (
+        desired_art_asset_hash,
+        trade_ticket_details_sha256_hash, 
+        submitting_trader_animecoin_identity_public_key,
+        submitting_traders_digital_signature_on_trade_ticket_details_hash, 
+        submitting_trader_animecoin_blockchain_address,
+        assigned_masternode_broker_ip_address,
+        assigned_masternode_broker_animecoin_identity_public_key,
+        assigned_masternode_broker_animecoin_blockchain_address,
+        assigned_masternode_broker_digital_signature_on_trade_ticket_details_hash,
+        desired_trade_type,
+        desired_quantity,
+        specified_price_in_anime,
+        tradeid,
+        datetime_trade_submitted,
+        datetime_trade_executed) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?);"""
+        submitting_trader_animecoin_identity_public_key_pem_format = submitting_trader_animecoin_identity_public_key.save_pkcs1(format='PEM').decode('utf-8')   
+        submitting_traders_digital_signature_on_trade_ticket_details_hash_base64_encoded = base64.b64encode(submitting_traders_digital_signature_on_trade_ticket_details_hash).decode('utf-8')
+        assigned_masternode_broker_animecoin_identity_public_key_pem_format = assigned_masternode_broker_animecoin_identity_public_key.save_pkcs1(format='PEM').decode('utf-8')   
+        assigned_masternode_broker_digital_signature_on_trade_ticket_details_hash_base64_encoded = base64.b64encode(assigned_masternode_broker_digital_signature_on_trade_ticket_details_hash).decode('utf-8')
+        c.execute(update_table_data_query_string, [desired_art_asset_hash,
+                                                  trade_ticket_details_sha256_hash, 
+                                                  submitting_trader_animecoin_identity_public_key_pem_format,
+                                                  submitting_traders_digital_signature_on_trade_ticket_details_hash_base64_encoded,
+                                                  submitting_trader_animecoin_blockchain_address,
+                                                  assigned_masternode_broker_ip_address,
+                                                  assigned_masternode_broker_animecoin_identity_public_key_pem_format,
+                                                  assigned_masternode_broker_animecoin_blockchain_address,
+                                                  assigned_masternode_broker_digital_signature_on_trade_ticket_details_hash_base64_encoded,
+                                                  desired_trade_type,
+                                                  desired_quantity,
+                                                  specified_price_in_anime,
+                                                  trade_id,
+                                                  datetime_trade_submitted])
+        conn.commit()
+        conn.close()
+        print('Successfully imported trade ticket file to SQlite database!')
+        imported_trade_ticket_successfully = 1
+        return imported_trade_ticket_successfully
+    except Exception as e:
+        print('Error: '+ str(e))
+        return imported_trade_ticket_successfully
+    
+    
 ###############################################################################################################
 # Script:
 ###############################################################################################################
 my_node_ip_address = get_my_local_ip_func()
-bootstrap_node_list = [(x,int(default_port)) for x in list_of_ips if x[0] != my_node_ip_address] +  [(x,int(alternative_port)) for x in list_of_ips if x[0] != my_node_ip_address]
-handler = logging.StreamHandler()
-formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-handler.setFormatter(formatter)
-dht_log = logging.getLogger('kademlia')
-dht_log.addHandler(handler)
-dht_log.setLevel(logging.DEBUG)
 list_of_required_folder_paths = [root_animecoin_folder_path,folder_path_of_remote_node_sqlite_files,misc_masternode_files_folder_path,folder_path_of_art_folders_to_encode,block_storage_folder_path,trade_ticket_files_folder_path, completed_trade_ticket_files_folder_path, pending_trade_ticket_files_folder_path]
 for current_required_folder_path in list_of_required_folder_paths:
     if not os.path.exists(current_required_folder_path):
@@ -756,52 +703,13 @@ list_of_local_potential_file_hashes_unique = c.execute('SELECT DISTINCT file_has
 list_of_local_potential_file_hashes_unique = [x[0] for x in list_of_local_potential_file_hashes_unique]
 list_of_local_potential_file_hashes_unique_json = json.dumps(list_of_local_potential_file_hashes_unique)
 conn.close()
-_, my_node_ip, my_node_port = unpackage_dht_hash_table_entry_func(package_dht_hash_table_entry_func([]))
 sys.exit(0)
 
-if use_connect_to_dht_network:
-    try:
-     dht_process = Process(target=start_new_dht_network_func, args=(alternative_port,))
-     dht_process.start()
-    except:
-        print('Some kind of error, loop is probably running already!')
-    
-    try:
-        server, loop = connect_to_existing_dht_network(default_port)
-        time.sleep(5)
-    except:
-        print('Some kind of error, loop is probably running already!')
-    
-    try:
-        print('Bootstrapping network now!\n')
-        loop.run_until_complete(server.bootstrap(bootstrap_node_list))
-        advertise_local_blocks_to_dht_network_func()
-    except:
-        print('Error bootstrapping network! Probably already using socket, try closing and restarting system!')
-    
-if use_demonstrate_asking_dht_network_for_file_blocks:
-    sys.exit(0)
-    test_file_hash = '405801baada7151188942c23f66768987c114ff5d950bc70bb2cfcdcbc5d4679'
-    sha256hashsize = sys.getsizeof(test_file_hash)
-    print('Now asking network for hashes of blocks that correspond to the zipfile with a SHA256 hash of: '+test_file_hash)
-    try:
-        list_of_remote_block_hashes, remote_node_ip, remote_node_port = ask_dht_network_for_blocks_corresponding_to_hash_of_given_zipfile_func(test_file_hash)
-        print('\n\nDone! Got back '+str(len(list_of_remote_block_hashes))+' Block Hashes:\n')
-        print('\nNode IP:port is '+remote_node_ip+':'+str(remote_node_port))
-        for current_block_hash in list_of_remote_block_hashes:
-            print(current_block_hash+', ',end='')
-    except:
-        print('Problem requesting block files from DHT network!')
-    sha256_hash_of_desired_zipfile = '405801baada7151188942c23f66768987c114ff5d950bc70bb2cfcdcbc5d4679'
-    remote_node_ip = '140.82.14.38'#'108.61.86.243' #'140.82.2.58'
-    sha256_hash_of_desired_block = '1e6864df358abd54b3ebcdb8da05c16149f208ef10aab4ac86e12cb1b0074ac9'
-    #wrapper_reconstruct_zipfile_from_hash_func(sha256_hash_of_desired_zipfile)
-
 if use_demonstrate_nginx_file_transfers:
-    list_of_block_filenames, list_of_block_hashes, list_of_file_hashes = get_list_of_available_blocks_on_remote_node_file_server_func(remote_node_ip,type_of_file_to_retrieve='blocks')
-    list_of_signature_filenames, list_of_file_hashes = get_list_of_available_blocks_on_remote_node_file_server_func(remote_node_ip,type_of_file_to_retrieve='signatures')
-    list_of_zipfile_filenames, list_of_file_hashes = get_list_of_available_blocks_on_remote_node_file_server_func(remote_node_ip,type_of_file_to_retrieve='zipfiles')
-    list_of_downloaded_files = download_remote_block_files_for_given_zipfile_hash_func(remote_node_ip,sha256_hash_of_desired_zipfile)
+    list_of_block_filenames, list_of_block_hashes, list_of_file_hashes = get_list_of_available_files_on_remote_node_file_server_func(remote_node_ip, type_of_file_to_retrieve='blocks')
+    list_of_signature_filenames, list_of_file_hashes = get_list_of_available_files_on_remote_node_file_server_func(remote_node_ip, type_of_file_to_retrieve='signatures')
+    list_of_zipfile_filenames, list_of_file_hashes = get_list_of_available_files_on_remote_node_file_server_func(remote_node_ip, type_of_file_to_retrieve='zipfiles')
+    list_of_downloaded_files = download_remote_block_files_for_given_zipfile_hash_func(remote_node_ip, sha256_hash_of_desired_zipfile)
 
 if use_demonstrate_trade_ticket_generation:
     sys.exit(0)
@@ -835,6 +743,6 @@ if use_demonstrate_trade_ticket_generation:
 if use_demonstrate_trade_ticket_parsing:
     list_of_pending_trade_ticket_filepaths = glob.glob(os.path.join(pending_trade_ticket_files_folder_path,'*.html'))
     path_to_trade_ticket_html_file = list_of_pending_trade_ticket_filepaths[0]
-    
+    imported_trade_ticket_successfully = write_pending_trade_ticket_to_chunkdb_func(path_to_trade_ticket_html_file)
     trade_id, datetime_trade_submitted, submitting_trader_animecoin_blockchain_address, submitting_trader_animecoin_identity_public_key, desired_trade_type, desired_art_asset_hash, desired_quantity, specified_price_in_anime, trade_ticket_details_sha256_hash, submitting_traders_digital_signature_on_trade_ticket_details_hash, assigned_masternode_broker_ip_address, assigned_masternode_broker_animecoin_blockchain_address, assigned_masternode_broker_animecoin_identity_public_key, assigned_masternode_broker_digital_signature_on_trade_ticket_details_hash = parse_trade_ticket_func(path_to_trade_ticket_html_file)
     all_verified = verify_signatures_on_trade_ticket_func(path_to_trade_ticket_html_file)
