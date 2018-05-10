@@ -44,7 +44,7 @@ sys.setrecursionlimit(3000)
 ###############################################################################################################
 # Parameters:
 ###############################################################################################################
-use_demo_mode = 0
+use_demo_mode = 1
 use_reset_system_for_demo = 0 
 use_stress_test = 0
 use_random_corruption = 0
@@ -59,7 +59,12 @@ percentage_of_block_files_to_randomly_corrupt = 0.05
 percentage_of_each_selected_file_to_be_randomly_corrupted = 0.01
 nsfw_score_threshold = 0.95 #Most actual porn will come up over 99% confident.
 duplicate_image_threshold = 0.08 #Any image which has another image in our image fingerprint database with a "distance" of less than this threshold will be considered a duplicate. 
-root_animecoin_folder_path = 'C:\\animecoin\\'
+current_platform = platform.platform()
+if 'Windows' in current_platform:
+    root_animecoin_folder_path = 'C:\\animecoin\\'
+else:
+    username = os.getlogin()
+    root_animecoin_folder_path = '/home/'+username+'/animecoin/'
 block_storage_folder_path = os.path.join(root_animecoin_folder_path,'art_block_storage' + os.sep)
 folder_path_of_remote_node_sqlite_files = os.path.join(root_animecoin_folder_path,'remote_node_sqlite_files' + os.sep)
 reconstructed_files_destination_folder_path = os.path.join(root_animecoin_folder_path,'reconstructed_files' + os.sep)
@@ -78,7 +83,6 @@ path_to_another_similar_art_image_file = os.path.join(path_to_art_folder,'Arturo
 path_to_another_different_art_image_file = 'C:\\animecoin\\art_folders_to_encode\\Arturo_Lopez__Number_04\\Arturo_Lopez__Number_04.png'
 path_to_artwork_metadata_file = os.path.join(path_to_art_folder,'artwork_metadata_file.db')
 path_to_all_registered_works_for_dupe_detection = 'C:\\Users\\jeffr\Cointel Dropbox\\Jeffrey Emanuel\\Animecoin_All_Finished_Works\\'
-current_platform = platform.platform()
 
 ###############################################################################################################
 # Functions:
@@ -203,6 +207,389 @@ class BlockGraph(object):
             check.src_nodes.remove(node)
             if len(check.src_nodes) == 1: # Yield all nodes that can now be resolved
                 yield (next(iter(check.src_nodes)), check.check)
+
+#Various Utility Functions:
+def convert_numpy_array_to_sqlite_func(input_numpy_array):
+    """ Store Numpy array natively in SQlite (see: http://stackoverflow.com/a/31312102/190597"""
+    output_data = io.BytesIO()
+    np.save(output_data, input_numpy_array)
+    output_data.seek(0)
+    return sqlite3.Binary(output_data.read())
+
+def convert_sqlite_data_to_numpy_array_func(sqlite_data_in_text_format):
+    output_data = io.BytesIO(sqlite_data_in_text_format)
+    output_data.seek(0)
+    return np.load(output_data)
+
+def regenerate_sqlite_chunk_database_func():
+    global chunk_db_file_path
+    try:
+        conn = sqlite3.connect(chunk_db_file_path)
+        c = conn.cursor()
+        local_hash_table_creation_string = """CREATE TABLE potential_local_hashes (block_hash text PRIMARY KEY, file_hash text);"""
+        c.execute(local_hash_table_creation_string)
+        global_hash_table_creation_string = """CREATE TABLE potential_global_hashes (block_hash text, file_hash text, remote_node_ip text, datetime_inserted TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL, PRIMARY KEY (block_hash, remote_node_ip));"""
+        c.execute(global_hash_table_creation_string)
+        final_art_zipfile_table_creation_string = """CREATE TABLE final_art_zipfile_table (file_hash text, remote_node_ip text, datetime_inserted TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL, PRIMARY KEY (file_hash, remote_node_ip));"""
+        c.execute(final_art_zipfile_table_creation_string)
+        final_art_signatures_table_creation_string = """CREATE TABLE final_art_signatures_table (file_hash text, remote_node_ip text, final_signature_base64_encoded text, datetime_inserted TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL, PRIMARY KEY (file_hash, remote_node_ip));"""
+        c.execute(final_art_signatures_table_creation_string)
+        trade_tickets_table_creation_string = """CREATE TABLE trade_tickets_table (desired_art_asset_hash text, remote_node_ip text, final_artist_signature text, trade_ticket_details_sha256_hash text, submitting_trader_animecoin_identity_public_key text, submitting_traders_digital_signature_on_trade_ticket_details_hash text, submitting_trader_animecoin_blockchain_address text,  assigned_masternode_broker_ip_address text, assigned_masternode_broker_animecoin_identity_public_key text, assigned_masternode_broker_animecoin_blockchain_address text, assigned_masternode_broker_digital_signature_on_trade_ticket_details_hash text, desired_trade_type text, desired_quantity integer, specified_price_in_anime real, tradeid text, datetime_trade_submitted text, datetime_inserted TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL, PRIMARY KEY (desired_art_asset_hash, remote_node_ip, trade_ticket_details_sha256_hash));"""
+        c.execute(trade_tickets_table_creation_string)
+        conn.commit()
+        conn.close()
+    except Exception as e:
+        print('Error: '+ str(e))
+        
+def check_if_file_path_is_a_valid_image_func(path_to_file):
+    is_image = 0
+    try:
+        if (imghdr.what(path_to_file) == 'gif') or (imghdr.what(path_to_file) == 'jpeg') or (imghdr.what(path_to_file) == 'png') or (imghdr.what(path_to_file) == 'bmp'):
+            is_image = 1
+            return is_image
+    except Exception as e:
+        print('Error: '+ str(e))
+
+def clean_up_art_folder_after_registration_func(path_to_art_folder):
+    deletion_count = 0
+    list_of_file_paths_to_clean_up = glob.glob(path_to_art_folder+'*.zip')+glob.glob(path_to_art_folder+'*.db') + glob.glob(path_to_art_folder+'*.sig')
+    for current_file_path in list_of_file_paths_to_clean_up:
+        try:
+            os.remove(current_file_path)
+            deletion_count = deletion_count + 1
+        except Exception as e:
+            print('Error: '+ str(e))
+    if deletion_count > 0:
+        print('Finished cleaning up art folder! A total of '+str(deletion_count)+' files were deleted.')
+        
+def remove_existing_remaining_zip_files_func(path_to_art_folder):
+    print('\nNow removing any existing remaining zip files...')
+    zip_file_paths = glob.glob(path_to_art_folder+'\\*.zip')
+    for current_zip_file_path in zip_file_paths:
+        try:
+            os.remove(current_zip_file_path)
+        except Exception as e:
+            print('Error: '+ str(e))
+    print('Done removing old zip files!\n')
+
+def get_all_valid_image_file_paths_in_folder_func(path_to_art_folder):
+    valid_image_file_paths = []
+    try:
+        art_input_file_paths =  glob.glob(path_to_art_folder + os.sep + '*.jpg') + glob.glob(path_to_art_folder + os.sep + '*.png') + glob.glob(path_to_art_folder + os.sep + '*.bmp') + glob.glob(path_to_art_folder + os.sep + '*.gif')
+        for current_art_file_path in art_input_file_paths:
+            if check_if_file_path_is_a_valid_image_func(current_art_file_path):
+                valid_image_file_paths.append(current_art_file_path)
+        return valid_image_file_paths
+    except Exception as e:
+        print('Error: '+ str(e))
+        
+#Stress testing functions:
+def randomly_delete_percentage_of_local_block_files_func(percentage_of_block_files_to_randomly_delete):
+    global block_storage_folder_path
+    list_of_block_file_paths = glob.glob(block_storage_folder_path+'*.block')
+    number_of_deleted_blocks = 0
+    pbar = tqdm(total=ceil(percentage_of_block_files_to_randomly_delete*len(list_of_block_file_paths)))
+    print('\nNow deleting random block files!\n')
+    for current_file_path in list_of_block_file_paths:
+        if random.random() <= percentage_of_block_files_to_randomly_delete:
+            try:
+                os.remove(current_file_path)
+                number_of_deleted_blocks = number_of_deleted_blocks + 1
+                pbar.update(1)
+            except OSError:
+                pass
+    return number_of_deleted_blocks
+            
+def randomly_corrupt_a_percentage_of_bytes_in_a_random_sample_of_block_files_func(percentage_of_block_files_to_randomly_corrupt,percentage_of_each_selected_file_to_be_randomly_corrupted):
+    global block_storage_folder_path
+    list_of_block_file_paths = glob.glob(block_storage_folder_path+'*.block')
+    number_of_corrupted_blocks = 0
+    for current_file_path in list_of_block_file_paths:
+        if random.random() <= percentage_of_block_files_to_randomly_corrupt:
+            number_of_corrupted_blocks = number_of_corrupted_blocks + 1
+            total_bytes_of_data_in_chunk = os.path.getsize(current_file_path)
+            random_bytes_to_write = 5
+            number_of_bytes_to_corrupt = ceil(total_bytes_of_data_in_chunk*percentage_of_affected_file_to_be_randomly_corrupted)
+            specific_bytes_to_corrupt = random.sample(range(1, total_bytes_of_data_in_chunk), ceil(number_of_bytes_to_corrupt/random_bytes_to_write))
+            print('\n\nNow intentionally corrupting block file: ' + current_file_path.split('\\')[-1] )
+            with open(current_file_path,'wb') as f:
+                try:
+                    for byte_index in specific_bytes_to_corrupt:
+                        f.seek(byte_index)
+                        f.write(os.urandom(random_bytes_to_write))
+                except OSError:
+                    pass
+    return number_of_corrupted_blocks
+
+def delete_all_blocks_and_zip_files_to_reset_system_func():
+    global block_storage_folder_path
+    global reconstructed_files_destination_folder_path
+    list_of_block_file_paths = glob.glob(block_storage_folder_path+'*.block')
+    if len(list_of_block_file_paths) > 0:
+        print('\nDeleting all the previously generated block files...')
+        try:
+            if 'Windows' in current_platform:
+                check_output('rmdir /S /Q '+ block_storage_folder_path, shell=True)
+                print('Done!\n')
+            else:
+                shutil.rmtree(block_storage_folder_path)
+        except:
+            print('.')
+    previous_reconstructed_zip_file_paths = glob.glob(reconstructed_files_destination_folder_path+'*.zip')
+    for current_existing_zip_file_path in previous_reconstructed_zip_file_paths:
+        try:
+            os.remove(current_existing_zip_file_path)
+        except:
+            pass
+
+#Digital signature functions:
+def generate_and_save_local_masternode_identification_keypair_func():
+    global masternode_keypair_db_file_path
+    generated_id_keys_successfully = 0
+    (masternode_public_key, masternode_private_key) = rsa.newkeys(512)
+    masternode_public_key_export_format = rsa.PublicKey.save_pkcs1(masternode_public_key,format='PEM').decode('utf-8')
+    masternode_private_key_export_format = rsa.PrivateKey.save_pkcs1(masternode_private_key,format='PEM').decode('utf-8')
+    try:
+        conn = sqlite3.connect(masternode_keypair_db_file_path)
+        c = conn.cursor()
+        concatenated_hash_signature_table_creation_string= """CREATE TABLE masternode_identification_keypair_table (masternode_public_key text, masternode_private_key text, datetime_masternode_keypair_was_generated TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL, PRIMARY KEY (masternode_public_key));"""
+        c.execute(concatenated_hash_signature_table_creation_string)
+        data_insertion_query_string = """INSERT OR REPLACE INTO masternode_identification_keypair_table (masternode_public_key, masternode_private_key) VALUES (?,?);"""
+        c.execute(data_insertion_query_string,[masternode_public_key_export_format, masternode_private_key_export_format])
+        generated_id_keys_successfully = 1
+        conn.commit()
+        conn.close()
+        print('Just generated a new public/private keypair for identifying the local masternode on the network!')
+        return generated_id_keys_successfully
+    except Exception as e:
+        print('Error: '+ str(e))
+        
+def get_local_masternode_identification_keypair_func():
+    global masternode_keypair_db_file_path
+    if not os.path.exists(masternode_keypair_db_file_path):
+        print('Error, could not find local masternode identification keypair file--try generating a new one!')
+        return
+    try:
+        conn = sqlite3.connect(masternode_keypair_db_file_path)
+        c = conn.cursor()
+        masternode_identification_keypair_query_results = c.execute("""SELECT * FROM masternode_identification_keypair_table""").fetchall()
+        masternode_public_key_export_format = masternode_identification_keypair_query_results[0][0]
+        masternode_private_key_export_format = masternode_identification_keypair_query_results[0][1]
+        masternode_public_key = rsa.PublicKey.load_pkcs1(masternode_public_key_export_format,format='PEM')
+        masternode_private_key = rsa.PrivateKey.load_pkcs1(masternode_private_key_export_format,format='PEM')
+        conn.close()
+        print('\nGot local masternode identification keypair successfully!')
+        return masternode_public_key, masternode_private_key
+    except Exception as e:
+        print('Error: '+ str(e))
+        
+def generate_artist_public_and_private_keys_func():
+    (artist_public_key, artist_private_key) = rsa.newkeys(512)
+    return artist_public_key, artist_private_key
+
+def sign_art_file_with_artist_signature_func(sha256_hash_of_art_file, artist_private_key):
+    sha256_hash_of_art_file_utf8_encoded = sha256_hash_of_art_file.encode('utf-8')
+    artist_signature_for_art_file = rsa.sign(sha256_hash_of_art_file_utf8_encoded, artist_private_key, 'SHA-256')
+    artist_signature_for_art_file_base64_encoded = base64.b64encode(artist_signature_for_art_file).decode('utf-8')
+    return artist_signature_for_art_file_base64_encoded
+
+def sign_art_files_in_folder_with_artist_digital_signature_func(path_to_art_folder,artist_public_key,artist_private_key):
+    sqlite_file_path = path_to_art_folder+os.sep+'artist_signature_file.sig'
+    if os.path.exists(sqlite_file_path):
+        try:
+            os.remove(sqlite_file_path)
+        except:
+            print('Could not remove existing signature file! Please remove manually.')
+    art_input_file_paths = get_all_valid_image_file_paths_in_folder_func(path_to_art_folder)
+    list_of_art_file_hashes = []
+    list_of_artist_signatures_for_each_art_file_hash = []
+    for current_file_path in art_input_file_paths:
+        with open(current_file_path,'rb') as f:
+            current_art_file_data = f.read()
+        sha256_hash_of_current_art_file = hashlib.sha256(current_art_file_data).hexdigest()                    
+        artist_signature_for_art_file = sign_art_file_with_artist_signature_func(sha256_hash_of_current_art_file,artist_private_key)
+        list_of_art_file_hashes.append(sha256_hash_of_current_art_file)
+        list_of_artist_signatures_for_each_art_file_hash.append(artist_signature_for_art_file)
+    if len(list_of_art_file_hashes) > 0:
+        try:
+            conn = sqlite3.connect(sqlite_file_path)
+            c = conn.cursor()
+            concatenated_file_hashes = ''.join(list_of_art_file_hashes).encode('utf-8')
+            hash_of_the_concatenated_file_hashes = hashlib.sha256(concatenated_file_hashes).hexdigest()
+            artist_signature_for_hash_of_the_concatenated_hashes_base64_encoded = sign_art_file_with_artist_signature_func(hash_of_the_concatenated_file_hashes,artist_private_key)
+            concatenated_hash_signature_table_creation_string= """CREATE TABLE concatenated_hash_artist_signature_table (artist_signature text, hash_of_the_concatenated_hashes text, datetime_art_was_signed TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL, PRIMARY KEY (artist_signature, hash_of_the_concatenated_hashes));"""
+            c.execute(concatenated_hash_signature_table_creation_string)
+            update_concatenated_hash_query_string = """INSERT OR REPLACE INTO concatenated_hash_artist_signature_table (artist_signature, hash_of_the_concatenated_hashes) VALUES (?,?);"""
+            c.execute(update_concatenated_hash_query_string,[artist_signature_for_hash_of_the_concatenated_hashes_base64_encoded, hash_of_the_concatenated_file_hashes]) 
+            artist_public_key_export_format = rsa.PublicKey.save_pkcs1(artist_public_key,format='PEM')
+            artist_public_key_export_format_table_creation_string = """CREATE TABLE artist_public_key_table (artist_public_key text);"""
+            c.execute(artist_public_key_export_format_table_creation_string)
+            artist_public_key_insert_string = """INSERT OR REPLACE INTO artist_public_key_table (artist_public_key) VALUES (?);"""
+            c.execute(artist_public_key_insert_string,[artist_public_key_export_format]) 
+            conn.commit()
+            conn.close()
+            print('Successfully wrote signature file to disk!')
+            return artist_signature_for_hash_of_the_concatenated_hashes_base64_encoded, hash_of_the_concatenated_file_hashes 
+        except Exception as e:
+            print('Error: '+ str(e))
+            
+def sign_final_artwork_zipfile_including_metadata_with_artist_signature_func(path_to_final_artwork_zipfile_including_metadata, artist_private_key):
+    try:
+        with open(path_to_final_artwork_zipfile_including_metadata,'rb') as f:
+            final_zipfile_binary_data = f.read()
+        sha256_hash_of_final_artwork_zipfile_including_metadata = hashlib.sha256(final_zipfile_binary_data).hexdigest()                    
+        sha256_hash_of_final_artwork_zipfile_including_metadata_utf8_encoded = sha256_hash_of_final_artwork_zipfile_including_metadata.encode('utf-8')
+        artist_signature_for_final_artwork_zipfile_including_metadata = rsa.sign(sha256_hash_of_final_artwork_zipfile_including_metadata_utf8_encoded, artist_private_key, 'SHA-256')
+        return artist_signature_for_final_artwork_zipfile_including_metadata
+    except Exception as e:
+        print('Error: '+ str(e))
+
+def verify_artist_signature_on_art_file_func(sha256_hash_of_art_file, artist_public_key, artist_signature_for_art_file):
+    verified = 0
+    sha256_hash_of_art_file_utf8_encoded = sha256_hash_of_art_file.encode('utf-8')
+    if isinstance(artist_signature_for_art_file,str): #This way we can use one function for base64 encoded signatures and for bytes like objects
+        artist_signature_for_art_file = base64.b64decode(artist_signature_for_art_file)
+    try:
+        rsa.verify(sha256_hash_of_art_file_utf8_encoded, artist_signature_for_art_file, artist_public_key)
+        verified = 1
+        return verified
+    except Exception as e:
+        print('Error: '+ str(e))
+        return verified
+    
+def verify_artist_signature_in_art_folder_func(path_to_art_folder,artist_public_key):
+    sqlite_file_path = path_to_art_folder+os.sep+'artist_signature_file.sig'
+    if not os.path.exists(sqlite_file_path):
+        print('Error, could not find signature file!')
+        return
+    try:
+        conn = sqlite3.connect(sqlite_file_path)
+        c = conn.cursor()
+        artist_signature_query_results = c.execute("""SELECT artist_signature, hash_of_the_concatenated_hashes, datetime_art_was_signed FROM concatenated_hash_artist_signature_table ORDER BY datetime_art_was_signed DESC""").fetchall()
+        artist_digital_signature = artist_signature_query_results[0][0]
+        hash_of_the_concatenated_hashes = artist_signature_query_results[0][1]
+        conn.close()
+    except Exception as e:
+        print('Error: '+ str(e))
+    verified = verify_artist_signature_on_art_file_func(hash_of_the_concatenated_hashes,artist_public_key,artist_digital_signature)
+    if verified == 1:
+        print('Successfully verified the artist signature for art folder: '+ path_to_art_folder)
+    else:
+        print('Unable to verify signature!')
+    return verified
+
+#Artwork Metadata Functions:
+def create_metadata_file_for_given_art_folder_func(path_to_art_folder,
+                                                  artist_name,
+                                                  artwork_title,
+                                                  artwork_max_quantity,
+                                                  artwork_series_name='',
+                                                  artist_website='',
+                                                  artwork_artist_statement=''):
+    created_metadata_file_successfully = 0
+    artist_signatures_sqlite_file_path = path_to_art_folder+'artist_signature_file.sig'
+    try:#First get the digital signature and file hash data:
+        conn = sqlite3.connect(artist_signatures_sqlite_file_path)
+        c = conn.cursor()
+        artist_public_key_query_results = c.execute("""SELECT artist_public_key FROM artist_public_key_table""").fetchall()
+        artist_public_key_query_results = artist_public_key_query_results[0][0]
+        artist_public_key = artist_public_key_query_results.decode('utf-8')
+        artist_concatenated_hash_signature_table_results = c.execute("""SELECT artist_signature, hash_of_the_concatenated_hashes, datetime_art_was_signed FROM concatenated_hash_artist_signature_table ORDER BY datetime_art_was_signed DESC""").fetchall()[0]
+        artist_concatenated_hash_signature_base64_encoded = artist_concatenated_hash_signature_table_results[0]
+        hash_of_the_concatenated_file_hashes = artist_concatenated_hash_signature_table_results[1]
+        datetime_art_was_signed = artist_concatenated_hash_signature_table_results[2]
+        conn.close()
+    except Exception as e:
+        print('Error: '+ str(e))
+    artwork_metadata_sqlite_file_path = path_to_art_folder+'artwork_metadata_file__hash_ '+hash_of_the_concatenated_file_hashes+'.db'
+    try:
+        conn = sqlite3.connect(artwork_metadata_sqlite_file_path)
+        c = conn.cursor()
+        artwork_metadata__table_creation_string= """
+        CREATE TABLE artwork_metadata_table (
+        artist_public_key TEXT,
+        artist_concatenated_hash_signature_base64_encoded TEXT, 
+        hash_of_the_concatenated_file_hashes TEXT,
+        datetime_art_was_signed TIMESTAMP, 
+        artist_name TEXT,
+        artwork_title TEXT, 
+        artwork_max_quantity INTEGER,
+        artwork_series_name TEXT,
+        artist_website TEXT,
+        artwork_artist_statement TEXT,
+        PRIMARY KEY (artist_concatenated_hash_signature_base64_encoded, hash_of_the_concatenated_file_hashes));"""
+        try:
+            c.execute(artwork_metadata__table_creation_string)
+        except Exception as e:
+                print('Error: '+ str(e))
+        update_table_data_query_string = """
+        INSERT OR REPLACE INTO artwork_metadata_table (
+        artist_public_key,
+        artist_concatenated_hash_signature_base64_encoded, 
+        hash_of_the_concatenated_file_hashes,
+        datetime_art_was_signed, 
+        artist_name,
+        artwork_title, 
+        artwork_max_quantity,
+        artwork_series_name,
+        artist_website,
+        artwork_artist_statement) VALUES (?,?,?,?,?,?,?,?,?,?);"""
+        c.execute(update_table_data_query_string,[artist_public_key,
+                                                  artist_concatenated_hash_signature_base64_encoded, 
+                                                  hash_of_the_concatenated_file_hashes, 
+                                                  datetime_art_was_signed, 
+                                                  artist_name, 
+                                                  artwork_title,
+                                                  int(artwork_max_quantity),
+                                                  artwork_series_name,
+                                                  artist_website,
+                                                  artwork_artist_statement])
+        conn.commit()
+        conn.close()
+        print('Successfully wrote metadata file to disk!')
+        created_metadata_file_successfully = 1
+        return created_metadata_file_successfully
+    except Exception as e:
+        print('Error: '+ str(e))
+        return created_metadata_file_successfully
+    
+def read_artwork_metadata_from_metadata_file(path_to_artwork_metadata_file):
+    try:
+        conn = sqlite3.connect(path_to_artwork_metadata_file)
+        c = conn.cursor()
+        metadata_query_results_table = c.execute("""SELECT * FROM artwork_metadata_table ORDER BY datetime_art_was_signed DESC""").fetchall()
+        metadata_query_results_table = metadata_query_results_table[0]
+        artist_public_key = metadata_query_results_table[1]
+        artist_concatenated_hash_signature_base64_encoded = metadata_query_results_table[2]
+        hash_of_the_concatenated_file_hashes = metadata_query_results_table[3]
+        datetime_art_was_signed = metadata_query_results_table[4]
+        artist_name = metadata_query_results_table[5]
+        artwork_title = metadata_query_results_table[6] 
+        artwork_max_quantity = metadata_query_results_table[7]
+        artwork_series_name = metadata_query_results_table[8]
+        artist_website = metadata_query_results_table[9]
+        artwork_artist_statement = metadata_query_results_table[10]
+        conn.close()
+        return artist_public_key, artist_concatenated_hash_signature_base64_encoded, hash_of_the_concatenated_file_hashes, datetime_art_was_signed, artist_name, artwork_title, artwork_max_quantity, artwork_series_name, artist_website, artwork_artist_statement
+    except Exception as e:
+        print('Error: '+ str(e))
+
+def read_artwork_metadata_from_art_folder_func(path_to_art_folder): #Convenience function
+    artwork_metadata_sqlite_file_path = path_to_art_folder+'artwork_metadata_file__hash_*.db'
+    if os.path.exists(artwork_metadata_sqlite_file_path):
+        artist_public_key, artist_concatenated_hash_signature_base64_encoded, hash_of_the_concatenated_file_hashes, datetime_art_was_signed, artist_name, artwork_title, artwork_max_quantity, artwork_series_name, artist_website, artwork_artist_statement = read_artwork_metadata_from_metadata_file(path_to_artwork_metadata_file)
+        return artist_public_key, artist_concatenated_hash_signature_base64_encoded, hash_of_the_concatenated_file_hashes, datetime_art_was_signed, artist_name, artwork_title, artwork_max_quantity, artwork_series_name, artist_website, artwork_artist_statement
+
+def get_artwork_metadata_from_artist_func(hash_of_the_concatenated_file_hashes):
+    #This is a dummy function to just supply some data; in reality this will run on the artists computer and will be supplied along with the art image files to the masternode for registration
+    artist_name = 'Arturo Lopez'
+    artwork_title = 'Girl with a Bitcoin Earring'
+    artwork_max_quantity = 100
+    artwork_series_name = 'Animecoin Initial Release Crew: The Great Works Collection'
+    artist_website='http://www.anime-coin.com'
+    artwork_artist_statement = 'This work is a reference to astronomers in ancient times, using tools like astrolabes.'
+    return artist_name, artwork_title, artwork_max_quantity, artwork_series_name, artist_website, artwork_artist_statement
+
 
 #Dupe detection helper functions:
 def get_image_filename_from_image_hash_func(sha256_hash_of_art_image_file,path_to_images_folder=path_to_all_registered_works_for_dupe_detection):
@@ -480,394 +867,16 @@ def find_most_similar_images_to_given_image_from_fingerprint_data_func(sha256_ha
 def check_if_image_is_likely_dupe(sha256_hash_of_art_image_file):
     global duplicate_image_threshold
     image_similarity_df = find_most_similar_images_to_given_image_from_fingerprint_data_func(sha256_hash_of_art_image_file)
-    possible_dupes = image_similarity_df[image_similarity_df['image_similarity_metric'] <= duplicate_image_threshold ]
+    possible_dupes = image_similarity_df[image_similarity_df['overall_image_similarity_metric'] <= duplicate_image_threshold ]
     if len(possible_dupes) > 0:
         is_dupe = 1
+        print('WARNING! Art image file appears to be a dupe! Hash of suspected duplicate image file: '+sha256_hash_of_art_image_file)
     else:
+        print('Art image file appears to be original! (i.e., not a duplicate of an existing image in our image fingerprint database)')
         is_dupe = 0
     return is_dupe
 
-#Various Utility Functions:
-def convert_numpy_array_to_sqlite_func(input_numpy_array):
-    """ Store Numpy array natively in SQlite (see: http://stackoverflow.com/a/31312102/190597"""
-    output_data = io.BytesIO()
-    np.save(output_data, input_numpy_array)
-    output_data.seek(0)
-    return sqlite3.Binary(output_data.read())
-
-def convert_sqlite_data_to_numpy_array_func(sqlite_data_in_text_format):
-    output_data = io.BytesIO(sqlite_data_in_text_format)
-    output_data.seek(0)
-    return np.load(output_data)
-
-def regenerate_sqlite_chunk_database_func():
-    global chunk_db_file_path
-    try:
-        conn = sqlite3.connect(chunk_db_file_path)
-        c = conn.cursor()
-        local_hash_table_creation_string= """CREATE TABLE potential_local_hashes (block_hash text PRIMARY KEY, file_hash text);"""
-        global_hash_table_creation_string= """CREATE TABLE potential_global_hashes (block_hash text, file_hash text, remote_node_ip text, datetime_peer_last_seen TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL, PRIMARY KEY (block_hash, remote_node_ip));"""
-        c.execute(local_hash_table_creation_string)
-        c.execute(global_hash_table_creation_string)
-        conn.commit()
-        conn.close()
-    except Exception as e:
-        print('Error: '+ str(e))
-
-def check_if_file_path_is_a_valid_image_func(path_to_file):
-    is_image = 0
-    try:
-        if (imghdr.what(path_to_file) == 'gif') or (imghdr.what(path_to_file) == 'jpeg') or (imghdr.what(path_to_file) == 'png') or (imghdr.what(path_to_file) == 'bmp'):
-            is_image = 1
-            return is_image
-    except Exception as e:
-        print('Error: '+ str(e))
-
-def clean_up_art_folder_after_registration_func(path_to_art_folder):
-    deletion_count = 0
-    list_of_file_paths_to_clean_up = glob.glob(path_to_art_folder+'*.zip')+glob.glob(path_to_art_folder+'*.db') + glob.glob(path_to_art_folder+'*.sig')
-    for current_file_path in list_of_file_paths_to_clean_up:
-        try:
-            os.remove(current_file_path)
-            deletion_count = deletion_count + 1
-        except Exception as e:
-            print('Error: '+ str(e))
-    if deletion_count > 0:
-        print('Finished cleaning up art folder! A total of '+str(deletion_count)+' files were deleted.')
-        
-def remove_existing_remaining_zip_files_func(path_to_art_folder):
-    print('\nNow removing any existing remaining zip files...')
-    zip_file_paths = glob.glob(path_to_art_folder+'\\*.zip')
-    for current_zip_file_path in zip_file_paths:
-        try:
-            os.remove(current_zip_file_path)
-        except Exception as e:
-            print('Error: '+ str(e))
-    print('Done removing old zip files!\n')
-
-def get_all_valid_image_file_paths_in_folder_func(path_to_art_folder):
-    valid_image_file_paths = []
-    try:
-        art_input_file_paths =  glob.glob(path_to_art_folder + os.sep + '*.jpg') + glob.glob(path_to_art_folder + os.sep + '*.png') + glob.glob(path_to_art_folder + os.sep + '*.bmp') + glob.glob(path_to_art_folder + os.sep + '*.gif')
-        for current_art_file_path in art_input_file_paths:
-            if check_if_file_path_is_a_valid_image_func(current_art_file_path):
-                valid_image_file_paths.append(current_art_file_path)
-        return valid_image_file_paths
-    except Exception as e:
-        print('Error: '+ str(e))
-        
-def subdivide_image_into_array_of_equally_sized_image_tiles_func(path_to_art_image_file,number_of_horiz_and_vert_segments):
-    im = cv2.imread(path_to_art_image_file)#Note: number_of_horiz_and_vert_segments = 2 will cut the image into quarters;  number_of_horiz_and_vert_segments = 3 will make 9 equal sized tiles. 
-    M = im.shape[0]//number_of_horiz_and_vert_segments
-    N = im.shape[1]//number_of_horiz_and_vert_segments
-    image_tiles = [im[x:x+M,y:y+N] for x in range(0,im.shape[0],M) for y in range(0,im.shape[1],N)]
-    return image_tiles
-
-#Stress testing functions:
-def randomly_delete_percentage_of_local_block_files_func(percentage_of_block_files_to_randomly_delete):
-    global block_storage_folder_path
-    list_of_block_file_paths = glob.glob(block_storage_folder_path+'*.block')
-    number_of_deleted_blocks = 0
-    pbar = tqdm(total=ceil(percentage_of_block_files_to_randomly_delete*len(list_of_block_file_paths)))
-    print('\nNow deleting random block files!\n')
-    for current_file_path in list_of_block_file_paths:
-        if random.random() <= percentage_of_block_files_to_randomly_delete:
-            try:
-                os.remove(current_file_path)
-                number_of_deleted_blocks = number_of_deleted_blocks + 1
-                pbar.update(1)
-            except OSError:
-                pass
-    return number_of_deleted_blocks
-            
-def randomly_corrupt_a_percentage_of_bytes_in_a_random_sample_of_block_files_func(percentage_of_block_files_to_randomly_corrupt,percentage_of_each_selected_file_to_be_randomly_corrupted):
-    global block_storage_folder_path
-    list_of_block_file_paths = glob.glob(block_storage_folder_path+'*.block')
-    number_of_corrupted_blocks = 0
-    for current_file_path in list_of_block_file_paths:
-        if random.random() <= percentage_of_block_files_to_randomly_corrupt:
-            number_of_corrupted_blocks = number_of_corrupted_blocks + 1
-            total_bytes_of_data_in_chunk = os.path.getsize(current_file_path)
-            random_bytes_to_write = 5
-            number_of_bytes_to_corrupt = ceil(total_bytes_of_data_in_chunk*percentage_of_affected_file_to_be_randomly_corrupted)
-            specific_bytes_to_corrupt = random.sample(range(1, total_bytes_of_data_in_chunk), ceil(number_of_bytes_to_corrupt/random_bytes_to_write))
-            print('\n\nNow intentionally corrupting block file: ' + current_file_path.split('\\')[-1] )
-            with open(current_file_path,'wb') as f:
-                try:
-                    for byte_index in specific_bytes_to_corrupt:
-                        f.seek(byte_index)
-                        f.write(os.urandom(random_bytes_to_write))
-                except OSError:
-                    pass
-    return number_of_corrupted_blocks
-
-def delete_all_blocks_and_zip_files_to_reset_system_func():
-    global block_storage_folder_path
-    global reconstructed_files_destination_folder_path
-    list_of_block_file_paths = glob.glob(block_storage_folder_path+'*.block')
-    if len(list_of_block_file_paths) > 0:
-        print('\nDeleting all the previously generated block files...')
-        try:
-            if 'Windows' in current_platform:
-                check_output('rmdir /S /Q '+ block_storage_folder_path, shell=True)
-                print('Done!\n')
-            else:
-                shutil.rmtree(block_storage_folder_path)
-        except:
-            print('.')
-    previous_reconstructed_zip_file_paths = glob.glob(reconstructed_files_destination_folder_path+'*.zip')
-    for current_existing_zip_file_path in previous_reconstructed_zip_file_paths:
-        try:
-            os.remove(current_existing_zip_file_path)
-        except:
-            pass
-
-#Digital signature functions:
-def generate_and_save_local_masternode_identification_keypair_func():
-    global masternode_keypair_db_file_path
-    generated_id_keys_successfully = 0
-    (masternode_public_key, masternode_private_key) = rsa.newkeys(512)
-    masternode_public_key_export_format = rsa.PublicKey.save_pkcs1(masternode_public_key,format='PEM').decode('utf-8')
-    masternode_private_key_export_format = rsa.PrivateKey.save_pkcs1(masternode_private_key,format='PEM').decode('utf-8')
-    try:
-        conn = sqlite3.connect(masternode_keypair_db_file_path)
-        c = conn.cursor()
-        concatenated_hash_signature_table_creation_string= """CREATE TABLE masternode_identification_keypair_table (masternode_public_key text, masternode_private_key text, datetime_masternode_keypair_was_generated TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL, PRIMARY KEY (masternode_public_key));"""
-        c.execute(concatenated_hash_signature_table_creation_string)
-        data_insertion_query_string = """INSERT OR REPLACE INTO masternode_identification_keypair_table (masternode_public_key, masternode_private_key) VALUES (?,?);"""
-        c.execute(data_insertion_query_string,[masternode_public_key_export_format, masternode_private_key_export_format])
-        generated_id_keys_successfully = 1
-        conn.commit()
-        conn.close()
-        print('Just generated a new public/private keypair for identifying the local masternode on the network!')
-        return generated_id_keys_successfully
-    except Exception as e:
-        print('Error: '+ str(e))
-        
-def get_local_masternode_identification_keypair_func():
-    global masternode_keypair_db_file_path
-    if not os.path.exists(masternode_keypair_db_file_path):
-        print('Error, could not find local masternode identification keypair file--try generating a new one!')
-        return
-    try:
-        conn = sqlite3.connect(masternode_keypair_db_file_path)
-        c = conn.cursor()
-        masternode_identification_keypair_query_results = c.execute("""SELECT * FROM masternode_identification_keypair_table""").fetchall()
-        masternode_public_key_export_format = masternode_identification_keypair_query_results[0][0]
-        masternode_private_key_export_format = masternode_identification_keypair_query_results[0][1]
-        masternode_public_key = rsa.PublicKey.load_pkcs1(masternode_public_key_export_format,format='PEM')
-        masternode_private_key = rsa.PrivateKey.load_pkcs1(masternode_private_key_export_format,format='PEM')
-        conn.close()
-        print('\nGot local masternode identification keypair successfully!')
-        return masternode_public_key, masternode_private_key
-    except Exception as e:
-        print('Error: '+ str(e))
-        
-def generate_artist_public_and_private_keys_func():
-    (artist_public_key, artist_private_key) = rsa.newkeys(512)
-    return artist_public_key, artist_private_key
-
-def sign_art_file_with_artist_signature_func(sha256_hash_of_art_file, artist_private_key):
-    sha256_hash_of_art_file_utf8_encoded = sha256_hash_of_art_file.encode('utf-8')
-    artist_signature_for_art_file = rsa.sign(sha256_hash_of_art_file_utf8_encoded, artist_private_key, 'SHA-256')
-    artist_signature_for_art_file_base64_encoded = base64.b64encode(artist_signature_for_art_file).decode('utf-8')
-    return artist_signature_for_art_file_base64_encoded
-
-def sign_art_files_in_folder_with_artist_digital_signature_func(path_to_art_folder,artist_public_key,artist_private_key):
-    sqlite_file_path = path_to_art_folder+os.sep+'artist_signature_file.sig'
-    if os.path.exists(sqlite_file_path):
-        try:
-            os.remove(sqlite_file_path)
-        except:
-            print('Could not remove existing signature file! Please remove manually.')
-    art_input_file_paths = get_all_valid_image_file_paths_in_folder_func(path_to_art_folder)
-    list_of_art_file_hashes = []
-    list_of_artist_signatures_for_each_art_file_hash = []
-    for current_file_path in art_input_file_paths:
-        with open(current_file_path,'rb') as f:
-            current_art_file_data = f.read()
-        sha256_hash_of_current_art_file = hashlib.sha256(current_art_file_data).hexdigest()                    
-        artist_signature_for_art_file = sign_art_file_with_artist_signature_func(sha256_hash_of_current_art_file,artist_private_key)
-        list_of_art_file_hashes.append(sha256_hash_of_current_art_file)
-        list_of_artist_signatures_for_each_art_file_hash.append(artist_signature_for_art_file)
-    if len(list_of_art_file_hashes) > 0:
-        try:
-            conn = sqlite3.connect(sqlite_file_path)
-            c = conn.cursor()
-            concatenated_file_hashes = ''.join(list_of_art_file_hashes).encode('utf-8')
-            hash_of_the_concatenated_file_hashes = hashlib.sha256(concatenated_file_hashes).hexdigest()
-            artist_signature_for_hash_of_the_concatenated_hashes_base64_encoded = sign_art_file_with_artist_signature_func(hash_of_the_concatenated_file_hashes,artist_private_key)
-            concatenated_hash_signature_table_creation_string= """CREATE TABLE concatenated_hash_artist_signature_table (artist_signature text, hash_of_the_concatenated_hashes text, datetime_art_was_signed TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL, PRIMARY KEY (artist_signature, hash_of_the_concatenated_hashes));"""
-            c.execute(concatenated_hash_signature_table_creation_string)
-            update_concatenated_hash_query_string = """INSERT OR REPLACE INTO concatenated_hash_artist_signature_table (artist_signature, hash_of_the_concatenated_hashes) VALUES (?,?);"""
-            c.execute(update_concatenated_hash_query_string,[artist_signature_for_hash_of_the_concatenated_hashes_base64_encoded, hash_of_the_concatenated_file_hashes]) 
-            artist_public_key_export_format = rsa.PublicKey.save_pkcs1(artist_public_key,format='PEM')
-            artist_public_key_export_format_table_creation_string = """CREATE TABLE artist_public_key_table (artist_public_key text);"""
-            c.execute(artist_public_key_export_format_table_creation_string)
-            artist_public_key_insert_string = """INSERT OR REPLACE INTO artist_public_key_table (artist_public_key) VALUES (?);"""
-            c.execute(artist_public_key_insert_string,[artist_public_key_export_format]) 
-            conn.commit()
-            conn.close()
-            print('Successfully wrote signature file to disk!')
-            return artist_signature_for_hash_of_the_concatenated_hashes_base64_encoded, hash_of_the_concatenated_file_hashes 
-        except Exception as e:
-            print('Error: '+ str(e))
-            
-def sign_final_artwork_zipfile_including_metadata_with_artist_signature_func(path_to_final_artwork_zipfile_including_metadata, artist_private_key):
-    try:
-        with open(path_to_final_artwork_zipfile_including_metadata,'rb') as f:
-            final_zipfile_binary_data = f.read()
-        sha256_hash_of_final_artwork_zipfile_including_metadata = hashlib.sha256(final_zipfile_binary_data).hexdigest()                    
-        sha256_hash_of_final_artwork_zipfile_including_metadata_utf8_encoded = sha256_hash_of_final_artwork_zipfile_including_metadata.encode('utf-8')
-        artist_signature_for_final_artwork_zipfile_including_metadata = rsa.sign(sha256_hash_of_final_artwork_zipfile_including_metadata_utf8_encoded, artist_private_key, 'SHA-256')
-        return artist_signature_for_final_artwork_zipfile_including_metadata
-    except Exception as e:
-        print('Error: '+ str(e))
-
-def verify_artist_signature_on_art_file_func(sha256_hash_of_art_file, artist_public_key, artist_signature_for_art_file):
-    verified = 0
-    sha256_hash_of_art_file_utf8_encoded = sha256_hash_of_art_file.encode('utf-8')
-    if isinstance(artist_signature_for_art_file,str): #This way we can use one function for base64 encoded signatures and for bytes like objects
-        artist_signature_for_art_file = base64.b64decode(artist_signature_for_art_file)
-    try:
-        rsa.verify(sha256_hash_of_art_file_utf8_encoded, artist_signature_for_art_file, artist_public_key)
-        verified = 1
-        return verified
-    except Exception as e:
-        print('Error: '+ str(e))
-        return verified
-    
-def verify_artist_signature_in_art_folder_func(path_to_art_folder,artist_public_key):
-    sqlite_file_path = path_to_art_folder+os.sep+'artist_signature_file.sig'
-    if not os.path.exists(sqlite_file_path):
-        print('Error, could not find signature file!')
-        return
-    try:
-        conn = sqlite3.connect(sqlite_file_path)
-        c = conn.cursor()
-        artist_signature_query_results = c.execute("""SELECT artist_signature, hash_of_the_concatenated_hashes, datetime_art_was_signed FROM concatenated_hash_artist_signature_table ORDER BY datetime_art_was_signed DESC""").fetchall()
-        artist_digital_signature = artist_signature_query_results[0][0]
-        hash_of_the_concatenated_hashes = artist_signature_query_results[0][1]
-        conn.close()
-    except Exception as e:
-        print('Error: '+ str(e))
-    verified = verify_artist_signature_on_art_file_func(hash_of_the_concatenated_hashes,artist_public_key,artist_digital_signature)
-    if verified == 1:
-        print('Successfully verified the artist signature for art folder: '+ path_to_art_folder)
-    else:
-        print('Unable to verify signature!')
-    return verified
-
-#Artwork Metadata Functions:
-def create_metadata_file_for_given_art_folder_func(path_to_art_folder,
-                                                  artist_name,
-                                                  artwork_title,
-                                                  artwork_max_quantity,
-                                                  artwork_series_name='',
-                                                  artist_website='',
-                                                  artwork_artist_statement=''):
-    created_metadata_file_successfully = 0
-    artist_signatures_sqlite_file_path = path_to_art_folder+'artist_signature_file.sig'
-    try:#First get the digital signature and file hash data:
-        conn = sqlite3.connect(artist_signatures_sqlite_file_path)
-        c = conn.cursor()
-        artist_public_key_query_results = c.execute("""SELECT artist_public_key FROM artist_public_key_table""").fetchall()
-        artist_public_key_query_results = artist_public_key_query_results[0][0]
-        artist_public_key = artist_public_key_query_results.decode('utf-8')
-        artist_concatenated_hash_signature_table_results = c.execute("""SELECT artist_signature, hash_of_the_concatenated_hashes, datetime_art_was_signed FROM concatenated_hash_artist_signature_table ORDER BY datetime_art_was_signed DESC""").fetchall()[0]
-        artist_concatenated_hash_signature_base64_encoded = artist_concatenated_hash_signature_table_results[0]
-        hash_of_the_concatenated_file_hashes = artist_concatenated_hash_signature_table_results[1]
-        datetime_art_was_signed = artist_concatenated_hash_signature_table_results[2]
-        conn.close()
-    except Exception as e:
-        print('Error: '+ str(e))
-    artwork_metadata_sqlite_file_path = path_to_art_folder+'artwork_metadata_file__hash_ '+hash_of_the_concatenated_file_hashes+'.db'
-    try:
-        conn = sqlite3.connect(artwork_metadata_sqlite_file_path)
-        c = conn.cursor()
-        artwork_metadata__table_creation_string= """
-        CREATE TABLE artwork_metadata_table (
-        artist_public_key TEXT,
-        artist_concatenated_hash_signature_base64_encoded TEXT, 
-        hash_of_the_concatenated_file_hashes TEXT,
-        datetime_art_was_signed TIMESTAMP, 
-        artist_name TEXT,
-        artwork_title TEXT, 
-        artwork_max_quantity INTEGER,
-        artwork_series_name TEXT,
-        artist_website TEXT,
-        artwork_artist_statement TEXT,
-        PRIMARY KEY (artist_concatenated_hash_signature_base64_encoded, hash_of_the_concatenated_file_hashes));"""
-        try:
-            c.execute(artwork_metadata__table_creation_string)
-        except Exception as e:
-                print('Error: '+ str(e))
-        update_table_data_query_string = """
-        INSERT OR REPLACE INTO artwork_metadata_table (
-        artist_concatenated_hash_signature_base64_encoded, 
-        hash_of_the_concatenated_file_hashes,
-        datetime_art_was_signed, 
-        artist_name,
-        artwork_title, 
-        artwork_max_quantity,
-        artwork_series_name,
-        artist_website,
-        artwork_artist_statement) VALUES (?,?,?,?,?,?,?,?,?);"""
-        c.execute(update_table_data_query_string,[artist_concatenated_hash_signature_base64_encoded, 
-                                                  hash_of_the_concatenated_file_hashes, 
-                                                  datetime_art_was_signed, 
-                                                  artist_name, 
-                                                  artwork_title,
-                                                  int(artwork_max_quantity),
-                                                  artwork_series_name,
-                                                  artist_website,
-                                                  artwork_artist_statement])
-        conn.commit()
-        conn.close()
-        print('Successfully wrote metadata file to disk!')
-        created_metadata_file_successfully = 1
-        return created_metadata_file_successfully
-    except Exception as e:
-        print('Error: '+ str(e))
-        return created_metadata_file_successfully
-    
-def read_artwork_metadata_from_metadata_file(path_to_artwork_metadata_file):
-    try:
-        conn = sqlite3.connect(path_to_artwork_metadata_file)
-        c = conn.cursor()
-        metadata_query_results_table = c.execute("""SELECT * FROM artwork_metadata_table ORDER BY datetime_art_was_signed DESC""").fetchall()
-        metadata_query_results_table = metadata_query_results_table[0]
-        artist_concatenated_hash_signature_base64_encoded = metadata_query_results_table[1]
-        hash_of_the_concatenated_file_hashes = metadata_query_results_table[2]
-        datetime_art_was_signed = metadata_query_results_table[3]
-        artist_name = metadata_query_results_table[4]
-        artwork_title = metadata_query_results_table[5] 
-        artwork_max_quantity = metadata_query_results_table[6]
-        artwork_series_name = metadata_query_results_table[7]
-        artist_website = metadata_query_results_table[8]
-        artwork_artist_statement = metadata_query_results_table[9]
-        conn.close()
-        return artist_concatenated_hash_signature_base64_encoded, hash_of_the_concatenated_file_hashes, datetime_art_was_signed, artist_name, artwork_title, artwork_max_quantity, artwork_series_name, artist_website, artwork_artist_statement
-    except Exception as e:
-        print('Error: '+ str(e))
-
-def read_artwork_metadata_from_art_folder_func(path_to_art_folder): #Convenience function
-    artwork_metadata_sqlite_file_path = path_to_art_folder+'artwork_metadata_file__hash_*.db'
-    if os.path.exists(artwork_metadata_sqlite_file_path):
-        artist_concatenated_hash_signature_base64_encoded, hash_of_the_concatenated_file_hashes, datetime_art_was_signed, artist_name, artwork_title, artwork_max_quantity, artwork_series_name, artist_website, artwork_artist_statement = read_artwork_metadata_from_metadata_file(path_to_artwork_metadata_file)
-        return artist_concatenated_hash_signature_base64_encoded, hash_of_the_concatenated_file_hashes, datetime_art_was_signed, artist_name, artwork_title, artwork_max_quantity, artwork_series_name, artist_website, artwork_artist_statement
-
-def get_artwork_metadata_from_artist_func(hash_of_the_concatenated_file_hashes):
-    #This is a dummy function to just supply some data; in reality this will run on the artists computer and will be supplied along with the art image files to the masternode for registration
-    artist_name = 'Arturo Lopez'
-    artwork_title = 'Girl with a Bitcoin Earring'
-    artwork_max_quantity = 100
-    artwork_series_name = 'Animecoin Initial Release Crew: The Great Works Collection'
-    artist_website='http://www.anime-coin.com'
-    artwork_artist_statement = 'This work is a reference to astronomers in ancient times, using tools like astrolabes.'
-    return artist_name, artwork_title, artwork_max_quantity, artwork_series_name, artist_website, artwork_artist_statement
-
-#NSFW Function:
+#NSFW Detection Function:
 def check_art_folder_for_nsfw_content(path_to_art_folder):
    global nsfw_score_threshold
    start_time = time()
@@ -924,9 +933,12 @@ def prepare_artwork_folder_for_registration_func(path_to_art_folder):
                 current_art_file = f.read()
                 sha256_hash_of_current_art_file = hashlib.sha256(current_art_file).hexdigest()                    
                 current_image_nsfw_score = art_file_hash_to_nsfw_dict[sha256_hash_of_current_art_file]
+                print('Now checking for duplicates...')
                 if current_image_nsfw_score <= nsfw_score_threshold:
-                    myzip.write(current_file_path,arcname=current_file_path.split(os.sep)[-1])
-                    list_of_accepted_art_file_hashes.append(sha256_hash_of_current_art_file)
+                    is_dupe = check_if_image_is_likely_dupe(sha256_hash_of_current_art_file)
+                    if not is_dupe:
+                        myzip.write(current_file_path,arcname=current_file_path.split(os.sep)[-1])
+                        list_of_accepted_art_file_hashes.append(sha256_hash_of_current_art_file)
     if len(list_of_accepted_art_file_hashes) > 0:
         print('\nSuccessfully added '+str(len(list_of_accepted_art_file_hashes))+ ' art image files that passed the NSFW test!\n')
     successfully_created_metadata_file = create_metadata_file_for_given_art_folder_func(path_to_art_folder, artist_name, artwork_title, artwork_max_quantity, artwork_series_name, artist_website,  artwork_artist_statement)#Now we use the artist's digital signature on the hash of the concatenated hashes for all image files included in the art folder, together with the various pieces of metadata, to construct the final metadata file that will be included in the art zip file.
@@ -1078,7 +1090,7 @@ def decode_block_files_into_art_zipfile_func(sha256_hash_of_art_file):
             if reported_file_sha256_hash == reconstructed_file_hash:
                 completed_successfully = 1
                 print('\nThe SHA256 hash of the reconstructed file matches the reported file hash-- file is valid! Now copying to prepared final art zipfiles folder...\n')
-                shutil.copy(reconstructed_file,prepared_final_art_zipfiles_folder_path)
+                shutil.copy(reconstructed_file_destination_file_path, prepared_final_art_zipfiles_folder_path)
                 print('Done!')
             else:
                 completed_successfully = 0
@@ -1229,7 +1241,6 @@ if use_demonstrate_duplicate_detection:
     path_to_original_dupe_test_image = os.path.join(dupe_detection_test_images_base_folder_path,'Arturo_Lopez__Number_02.png')
     hash_of_original_dupe_test_image = get_image_hash_from_image_file_path_func(path_to_original_dupe_test_image)
     image_similarity_df = find_most_similar_images_to_given_image_from_fingerprint_data_func(hash_of_original_dupe_test_image)
-    
     #model_1_tsne_x_coordinate, model_1_tsne_y_coordinate, model_2_tsne_x_coordinate, model_2_tsne_y_coordinate,model_3_tsne_x_coordinate, model_3_tsne_y_coordinate,art_image_file_name = get_tsne_coordinates_for_desired_image_file_hash_func(hash_of_original_dupe_test_image)
     #is_dupe = check_if_image_is_likely_dupe(sha256_hash_of_art_image_file)
-  
+   
