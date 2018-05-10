@@ -63,8 +63,7 @@ current_platform = platform.platform()
 if 'Windows' in current_platform:
     root_animecoin_folder_path = 'C:\\animecoin\\'
 else:
-    username = os.getlogin()
-    root_animecoin_folder_path = '/home/'+username+'/animecoin/'
+    root_animecoin_folder_path = '/home/animecoinuser/animecoin/'
 block_storage_folder_path = os.path.join(root_animecoin_folder_path,'art_block_storage' + os.sep)
 folder_path_of_remote_node_sqlite_files = os.path.join(root_animecoin_folder_path,'remote_node_sqlite_files' + os.sep)
 reconstructed_files_destination_folder_path = os.path.join(root_animecoin_folder_path,'reconstructed_files' + os.sep)
