@@ -1,4 +1,4 @@
-import sys, time, os.path, io, string, glob, hashlib, imghdr, random, os, zlib, pickle, sqlite3, uuid, socket, warnings, base64, json, hmac, logging, asyncio, binascii, subprocess, locale
+import sys, time, os.path, io, string, glob, hashlib, imghdr, random, os, zlib, pickle, sqlite3, uuid, socket, warnings, base64, json, hmac, logging, asyncio, binascii, subprocess, locale, platform
 warnings.simplefilter(action='ignore', category=FutureWarning)
 warnings.filterwarnings('ignore',category=DeprecationWarning)
 import requests
@@ -30,7 +30,11 @@ use_generate_new_sqlite_chunk_database = 1
 use_demonstrate_nginx_file_transfers = 0
 use_demonstrate_trade_ticket_generation = 1
 use_demonstrate_trade_ticket_parsing = 1
-root_animecoin_folder_path = 'C:\\animecoin\\'
+current_platform = platform.platform()
+if 'Windows' in current_platform:
+    root_animecoin_folder_path = 'C:\\animecoin\\'
+else:
+    root_animecoin_folder_path = '/home/animecoinuser/animecoin/'
 folder_path_of_art_folders_to_encode = os.path.join(root_animecoin_folder_path,'art_folders_to_encode' + os.sep)#Each subfolder contains the various art files pertaining to a given art asset.
 block_storage_folder_path = os.path.join(root_animecoin_folder_path,'art_block_storage' + os.sep)
 folder_path_of_remote_node_sqlite_files = os.path.join(root_animecoin_folder_path,'remote_node_sqlite_files' + os.sep)
@@ -43,7 +47,7 @@ pending_trade_ticket_files_folder_path = os.path.join(trade_ticket_files_folder_
 prepared_final_art_zipfiles_folder_path = os.path.join(root_animecoin_folder_path,'prepared_final_art_zipfiles' + os.sep) 
 chunk_db_file_path = os.path.join(misc_masternode_files_folder_path,'anime_chunkdb.sqlite')
 file_storage_log_file_path = os.path.join(misc_masternode_files_folder_path,'anime_storage_log.txt')
-nginx_allowed_ip_whitelist_file_path = os.path.join(misc_masternode_files_folder_path,'masternode_ip_whitelist.conf')
+nginx_allowed_ip_whitelist_file_path = '/var/www/masternode_file_server/html/masternode_ip_whitelist.conf'
 path_to_animecoin_trade_ticket_template = os.path.join(trade_ticket_files_folder_path,'animecoin_trade_ticket_template.html')
 default_port = 14142
 alternative_port = 2718
@@ -51,11 +55,12 @@ list_of_ips = ['108.61.86.243','140.82.14.38','140.82.2.58']
 target_number_of_nodes_per_unique_block_hash = 10
 target_block_redundancy_factor = 10 #How many times more blocks should we store than are required to regenerate the file?
 desired_block_size_in_bytes = 1024*1000*2
-example_list_of_valid_masternode_ip_addresses = ['207.246.93.232','149.28.41.105','149.28.34.59']
+example_list_of_valid_masternode_ip_addresses = ['207.246.93.232','149.28.41.105','149.28.34.59','173.52.208.74']
 nginx_ip_whitelist_override_addresses = ['65.200.165.210'] #For debugging purposes
 example_animecoin_masternode_blockchain_address = 'AdaAvFegJbBdH4fB8AiWw8Z4Ek75Xsja6i'
 example_trader_blockchain_address = 'ANQTCifwMdh1Lsda9DsMcXuXBwtkyHRrZe'
 locale.setlocale(locale.LC_ALL, '')
+
 if 0: #NAT traversal experiments
     import stun
     nat_type, external_ip, external_port = stun.get_ip_info()
@@ -76,17 +81,7 @@ def generate_trade_id_func():
     trade_id = shortuuid.uuid()[0:8]
     return trade_id
 
-def generate_nginx_ip_whitelist_file_func(python_list_of_masternode_ip_addresses):
-    global nginx_allowed_ip_whitelist_file_path
-    global example_animecoin_masternode_blockchain_address
-    try:
-        combined_list_of_whitelisted_ips = python_list_of_masternode_ip_addresses + example_animecoin_masternode_blockchain_address
-        with open(nginx_allowed_ip_whitelist_file_path,'w') as f:
-            for current_ip_address in combined_list_of_whitelisted_ips:
-                allow_string = 'allow ' +current_ip_address+';\n'
-                f.write(allow_string)
-    except Exception as e:
-        print('Error: '+ str(e))    
+
 
 def regenerate_sqlite_chunk_database_func():
     global chunk_db_file_path
@@ -203,7 +198,6 @@ def get_list_of_available_files_on_remote_node_file_server_func(remote_node_ip, 
         html_file_listing = r.text
         parsed_file_listing = lxml.html.fromstring(html_file_listing)
         list_of_links = parsed_file_listing.xpath('//a/@href')
-        list_of_links = list_of_links[1:]
         list_of_block_filenames = []
         list_of_signature_filenames = []
         list_of_zipfile_filenames = []

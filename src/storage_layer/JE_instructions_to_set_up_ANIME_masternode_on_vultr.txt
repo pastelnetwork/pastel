@@ -1,17 +1,23 @@
 
 
 #Make 8gb VPS on vultr using Ubuntu 18.04
-#replace jemanuel with your own desired username
 
-adduser jemanuel
-usermod -aG sudo jemanuel
-su - jemanuel
+adduser animecoinuser
+#password is "2tkq5hyr"
+usermod -aG sudo animecoinuser
+#check that it worked:
+su - animecoinuser
 sudo ls -la /root
+
+root pw (from vultr) is: "hT)7=+UWhxDnYznx"
 ________________________________________________________________________________
 
 sudo apt-get update
 sudo apt upgrade -y
-sudo apt install build-essential autoconf automake libtool git clang gcc make cmake llvm htop ncdu nginx tree software-properties-common python-certbot-nginx -y
+sudo apt install -y build-essential pip autoconf automake libtool git clang gcc make cmake llvm htop ncdu nginx tree software-properties-common python-certbot-nginx apt-utils libcurl4-openssl-dev libgeoip-dev liblmdb-dev libpcre++-dev libtool libxml2-dev libyajl-dev pkgconf wget zlib1g-dev mesa-common-dev libxslt1.1 libfontconfig1 libglu1-mesa-dev libsm6 libxrender1 python3-pyqt5.qtwebengine
+curl -sL https://deb.nodesource.com/setup_10.x | sudo -E bash -
+sudo apt install -y nodejs
+sudo apt install -y 
 sudo apt clean 
 sudo apt autoclean
 sudo apt autoremove
@@ -22,31 +28,40 @@ cd /tmp
 curl -O https://repo.continuum.io/archive/Anaconda3-5.0.1-Linux-x86_64.sh
 bash Anaconda3-5.0.1-Linux-x86_64.sh
 
+echo 'export PATH=/home/animecoinuser/anaconda3/bin:$PATH' >> ~/.profile
+pip install --upgrade pip
+pip install opencv-python twisted requests lxml psycopg2 sqlalchemy joblib cython pbr tensorflow keras rsa fs httplib2 tqdm shortuuid python-bitcoinrpc
+
 conda config --add channels conda-forge 
 conda update conda -y
 conda update anaconda -y
 conda update --all -y
-conda install twisted requests lxml.html psycopg2 sqlalchemy joblib cython rsa httplib2 pbr tensorflow keras fs -y
-pip install kademlia yenc
-________________________________________________________________________________
+conda update qt pyqt -c conda-forge
 
-#make bash script: configure_animecoin_directories.sh
-
-#!/bin/bash
-ANIME_ROOT_FOLDER = /$USER/animecoin/
-export ANIME_ROOT_FOLDER
 
 ________________________________________________________________________________
 
-#make bash script: update_block_listing.sh
+
+sudo nano /etc/ssh/sshd_config 
+
+#Add these lines:
+
+ClientAliveInterval 120
+ClientAliveCountMax 720
+________________________________________________________________________________
+
+
+
+#make bash script: update_block_listing.sh ; Paste into it:
 
 #!/bin/bash
-sudo ln -s /home/$USER/animecoin/art_block_storage/*.block /var/www/masternode_file_server/html/
-sudo ln -s /home/$USER/animecoin/prepared_final_art_zipfiles/*.zip /var/www/masternode_file_server/html/
-sudo ln -s /home/$USER/animecoin/art_signature_files/*.sig /var/www/masternode_file_server/html/
-sudo ln -s /home/$USER/animecoin/trade_ticket_files/pending/*.html /var/www/masternode_file_server/html/
+ln -sf /home/animecoinuser/animecoin/art_block_storage/*.block /var/www/masternode_file_server/html/
+ln -sf /home/animecoinuser/animecoin/prepared_final_art_zipfiles/*.zip /var/www/masternode_file_server/html/
+ln -sf /home/animecoinuser/animecoin/art_signature_files/*.sig /var/www/masternode_file_server/html/
+ln -sf /home/animecoinuser/animecoin/trade_ticket_files/pending/*.html /var/www/masternode_file_server/html/
 cd  /var/www/masternode_file_server/html/
-tree -s -D -t -l -H '.' -L 1 --noreport --charset utf-8 -P "*.block" > index.html
+rm '*.html'  2>/dev/null; rm '*.zip'  2>/dev/null; rm '*.sig'  2>/dev/null; rm '*.block' 2>/dev/null
+tree -s -D -l -H '.' -L 1 --noreport --charset utf-8 -P "*.*" > index.html
 now=$(date +%m-%d-%Y-%M:%S)
 sed -i -e "s/tree v1.7.0 © 1996 - 2014 by Steve Baker and Thomas Moore <br>/AnimeCoin Storage Server (Last Updated on ${now})/g" index.html
 sed -i -e 's/HTML output hacked and copyleft © 1998 by Francesc Rocher <br>//g' index.html
@@ -54,48 +69,83 @@ sed -i -e 's/JSON output hacked and copyleft © 2014 by Florian Sesser <br>//g' 
 sed -i -e 's/Charsets \/ OS\/2 support © 2001 by Kyosuke Tokoro//g' index.html
 sed -i -e 's/<h1>Directory Tree<\/h1><p>/<h1>Animecoin Masternode: Available Files<\/h1><p>/g' index.html
 sed -i -e 's/<title>Directory Tree<\/title>/<title>Animecoin Masternode File Server Listing<\/title>/g' index.html
-cp $ANIME_ROOT_FOLDER/misc_masternode_files/masternode_ip_whitelist.conf /var/www/masternode_file_server/html/masternode_ip_whitelist.conf
-service nginx reload
-________________________________________________________________________________
+sudo service nginx reload
 
-#Add to crontab: (crontab -e):
 
-* * * * * $user bash update_block_listing.sh
+#Make it executable:
+sudo chmod +x /home/animecoinuser/animecoin/update_block_listing.sh
 
-________________________________________________________________________________
+#Create symbolic link:
+sudo ln -sf /home/animecoinuser/animecoin/update_block_listing.sh /usr/bin
 
-#To generate self-signed TLS keys (not currently used):
 
-openssl genrsa -out xip.io.key 1024
-openssl req -new -key xip.io.key -out xip.io.csr
-openssl x509 -req -days 365 -in xip.io.csr -signkey xip.io.key -out xip.io.crt
-________________________________________________________________________________
+#make another bash script:
+nano /home/animecoinuser/animecoin/animecoin_fileserver_script.sh
 
-#Trick to turn any IP address into a valid domain name: (can also use Vultr for this: 	http://207.246.93.232.vultr.com )
+#Paste into it:
 
-http://www.207.246.93.232.xip.io/
+#!/bin/bash
+nohup watch -n5 -x bash /home/animecoinuser/animecoin/update_block_listing.sh &>/dev/null &
 
-#Unfortunately it doesn't work with Let's Encrypt; could try setting up our own system like this for under $250/year: https://content.pivotal.io/blog/sslip-io-a-valid-ssl-certificate-for-every-ip-address 
-________________________________________________________________________________
+#Make it executable:
+sudo chmod +x /home/animecoinuser/animecoin/update_block_listing.sh
 
-#Let's Encrypt:
+#Add to crontab -e
+@reboot /home/animecoinuser/animecoin/animecoin_fileserver_script.sh
 
-sudo apt-get update
-sudo apt-get install software-properties-common
-sudo add-apt-repository ppa:certbot/certbot
-sudo apt-get update
-sudo apt-get install python-certbot-nginx
+#Make sure we are the owner of all files:
+sudo chown -R animecoinuser:animecoinuser ./animecoin
+sudo chown -R animecoinuser:animecoinuser ./.animecoin
+sudo chown -R animecoinuser:animecoinuser ./.animecoin-params
 
-sudo certbot --nginx
 
-#add to crontab (crontab -e):
-17 7 * * * certbot renew --post-hook "systemctl reload nginx"
+
+https://askubuntu.com/questions/886620/how-can-i-execute-command-on-startup-rc-local-alternative-on-ubuntu-16-10
+
+printf '%s\n' '#!/bin/bash' 'exit 0' | sudo tee -a /etc/rc.local
+sudo chmod +x /etc/rc.local
+sudo nano /etc/rc.local
+sudo reboot
+
+
+https://serversforhackers.com/c/compiling-third-party-modules-into-nginx
+
+#IGNORE THIS FOR NOW:
+
+#Create systemd service file:
+sudo nano /etc/systemd/system/animecoin_fileserver.service
+
+#Paste into it:
+
+[Unit]
+Description=Animecoin Fileserver Update Service
+After=network.target
+
+[Service]
+User=jemanuel
+Type=forking
+ExecStart=/bin/bash /home/jemanuel/animecoin_fileserver_script.sh start
+TimeoutSec=30
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target
+
+
+#Then:
+
+chmod u+x /home/jemanuel/animecoin_fileserver_script.sh
+sudo systemctl start animecoin_fileserver.service
+sudo systemctl stop animecoin_fileserver.service
+sudo systemctl enable animecoin_fileserver.service
+
+
 ________________________________________________________________________________
 
 #NGINX config:
 
 sudo mkdir -p /var/www/masternode_file_server/html
-sudo chown -R $USER:$USER /var/www/masternode_file_server/html
+sudo chown -R animecoinuser:animecoinuser /var/www/masternode_file_server/html
 sudo chmod -R 755 /var/www/masternode_file_server
 
 sudo nano /etc/nginx/sites-available/masternode_file_server
@@ -110,8 +160,8 @@ server {
         #listen 443;
         #server_name *.xip.io;
         #ssl on;
-        #ssl_certificate /home/jemanuel/xip.io.crt;
-        #ssl_certificate_key /home/jemanuel/xip.io.key;
+        #ssl_certificate /home/animecoinuser/xip.io.crt;
+        #ssl_certificate_key /home/animecoinuser/xip.io.key;
         root /var/www/masternode_file_server/html;
         index index.html index.htm zipfile_index.html final_art_signatures_index
         server_name _ ;
@@ -120,10 +170,24 @@ server {
         }
 }
 
-
-service nginx reload
-
+cd /etc/nginx/sites-enabled/
+sudo rm default
+cd /etc/nginx/sites-available/
+sudo rm default
 sudo ln -s /etc/nginx/sites-available/masternode_file_server /etc/nginx/sites-enabled/
+
+sudo nano /var/www/masternode_file_server/html/masternode_ip_whitelist.conf
+#paste this:
+
+allow 207.246.93.232;
+allow 149.28.41.105;
+allow 149.28.34.59;
+allow 65.200.165.210;
+allow 96.230.56.79;
+allow 173.52.208.74;
+allow 81.171.97.147;
+
+
 
 sudo nano /etc/nginx/nginx.conf
 
@@ -132,14 +196,20 @@ sudo nano /etc/nginx/nginx.conf
 #check syntax:
 sudo nginx -t
 
+sudo ufw allow 'Nginx Full'
+
 sudo systemctl restart nginx
+sudo systemctl enable nginx
+
 service nginx status
+
 
 ________________________________________________________________________________
 
 #RPC connection command in linux:
 
-./animecoin-cli -conf=/home/jemanuel/.animecoin/animecoin.conf -testnet -datadir=/home/jemanuel/.animecoin/testnet3/ -rpcconnect=127.0.0.1 rpcport=19932 -rpcuser=test -rpcpassword=testpw
+
+./animecoin-cli -conf=/home/animecoinuser/.animecoin/animecoin.conf -testnet -datadir=/home/animecoinuser/.animecoin/testnet3/ -rpcconnect=127.0.0.1 rpcport=19932 -rpcuser=test -rpcpassword=testpw
 
 
 #animecoin.conf:
@@ -155,3 +225,32 @@ listen=1
 daemon=1
 logtimestamps=1
 maxconnections=256
+________________________________________________________________________________
+#IGNORE FOR NOW
+#To generate self-signed TLS keys (not currently used):
+
+openssl genrsa -out xip.io.key 1024
+openssl req -new -key xip.io.key -out xip.io.csr
+openssl x509 -req -days 365 -in xip.io.csr -signkey xip.io.key -out xip.io.crt
+
+#Trick to turn any IP address into a valid domain name: (can also use Vultr for this: 	http://207.246.93.232.vultr.com )
+
+http://www.207.246.93.232.xip.io/
+
+#Unfortunately it doesn't work with Let's Encrypt; could try setting up our own system like this for under $250/year: https://content.pivotal.io/blog/sslip-io-a-valid-ssl-certificate-for-every-ip-address 
+
+#Let's Encrypt:
+
+sudo apt-get update
+sudo apt-get install software-properties-common
+sudo add-apt-repository ppa:certbot/certbot
+sudo apt-get update
+sudo apt-get install python-certbot-nginx
+
+sudo certbot --nginx
+
+#add to crontab (crontab -e):
+17 7 * * * certbot renew --post-hook "systemctl reload nginx"
+
+
+
