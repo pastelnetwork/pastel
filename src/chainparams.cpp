@@ -212,21 +212,21 @@ public:
         vSeeds.clear();
         // vSeeds.push_back(CDNSSeedData("z.cash", "dnsseed.z.cash"));
 
-        // guarantees the first 2 characters, when base58 encoded, are "t1"
-        base58Prefixes[PUBKEY_ADDRESS]     = {0x1C,0xB8};
-        // guarantees the first 2 characters, when base58 encoded, are "t3"
-        base58Prefixes[SCRIPT_ADDRESS]     = {0x1C,0xBD};
+        // guarantees the first 2 characters, when base58 encoded, are "Ae"
+        base58Prefixes[PUBKEY_ADDRESS]     = {0x05,0x6E};
+        // guarantees the first 2 characters, when base58 encoded, are "ae"
+        base58Prefixes[SCRIPT_ADDRESS]     = {0x12,0xF1};
         // the first character, when base58 encoded, is "5" or "K" or "L" (as in Bitcoin)
         base58Prefixes[SECRET_KEY]         = {0x80};
         // do not rely on these BIP32 prefixes; they are not specified and may change
         base58Prefixes[EXT_PUBLIC_KEY]     = {0x04,0x88,0xB2,0x1E};
         base58Prefixes[EXT_SECRET_KEY]     = {0x04,0x88,0xAD,0xE4};
-        // guarantees the first 2 characters, when base58 encoded, are "zc"
-        base58Prefixes[ZCPAYMENT_ADDRRESS] = {0x16,0x9A};
-        // guarantees the first 4 characters, when base58 encoded, are "ZiVK"
-        base58Prefixes[ZCVIEWING_KEY]      = {0xA8,0xAB,0xD3};
-        // guarantees the first 2 characters, when base58 encoded, are "SK"
-        base58Prefixes[ZCSPENDING_KEY]     = {0xAB,0x36};
+        // guarantees the first 2 characters, when base58 encoded, are "aZ"
+        base58Prefixes[ZCPAYMENT_ADDRRESS] = {0x0D,0x2A};
+        // guarantees the first 4 characters, when base58 encoded, are "aX"
+        base58Prefixes[ZCVIEWING_KEY]      = {0x0D,0x27};
+        // guarantees the first 2 characters, when base58 encoded, are "aS"
+        base58Prefixes[ZCSPENDING_KEY]     = {0xE1,0xFF};
 
         vFixedSeeds = std::vector<SeedSpec6>(pnSeed6_main, pnSeed6_main + ARRAYLEN(pnSeed6_main));
 
@@ -293,21 +293,21 @@ public:
         vSeeds.clear();
         vSeeds.push_back(CDNSSeedData("anime.cash", "testnet.anime.cash"));
 
-        // guarantees the first 2 characters, when base58 encoded, are "tm"
-        base58Prefixes[PUBKEY_ADDRESS]     = {0x1D,0x25};
-        // guarantees the first 2 characters, when base58 encoded, are "t2"
-        base58Prefixes[SCRIPT_ADDRESS]     = {0x1C,0xBA};
+        // guarantees the first 2 characters, when base58 encoded, are "eA"
+        base58Prefixes[PUBKEY_ADDRESS]     = {0x14,0xEC};
+        // guarantees the first 2 characters, when base58 encoded, are "ee"
+        base58Prefixes[SCRIPT_ADDRESS]     = {0x15,0x32};
         // the first character, when base58 encoded, is "9" or "c" (as in Bitcoin)
         base58Prefixes[SECRET_KEY]         = {0xEF};
         // do not rely on these BIP32 prefixes; they are not specified and may change
         base58Prefixes[EXT_PUBLIC_KEY]     = {0x04,0x35,0x87,0xCF};
         base58Prefixes[EXT_SECRET_KEY]     = {0x04,0x35,0x83,0x94};
-        // guarantees the first 2 characters, when base58 encoded, are "zt"
-        base58Prefixes[ZCPAYMENT_ADDRRESS] = {0x16,0xB6};
-        // guarantees the first 4 characters, when base58 encoded, are "ZiVt"
-        base58Prefixes[ZCVIEWING_KEY]      = {0xA8,0xAC,0x0C};
-        // guarantees the first 2 characters, when base58 encoded, are "ST"
-        base58Prefixes[ZCSPENDING_KEY]     = {0xAC,0x08};
+        // guarantees the first 2 characters, when base58 encoded, are "eZ"
+        base58Prefixes[ZCPAYMENT_ADDRRESS] = {0x0E,0xBC};
+        // guarantees the first 4 characters, when base58 encoded, are "eX"
+        base58Prefixes[ZCVIEWING_KEY]      = {0x0E,0xB9};
+        // guarantees the first 2 characters, when base58 encoded, are "eS"
+        base58Prefixes[ZCSPENDING_KEY]     = {0xFD,0x09};
 
         vFixedSeeds = std::vector<SeedSpec6>(pnSeed6_test, pnSeed6_test + ARRAYLEN(pnSeed6_test));
 
@@ -374,21 +374,22 @@ public:
         vSeeds.clear();  //! Regtest mode doesn't have any DNS seeds.
 
         // These prefixes are the same as the testnet prefixes
-        // guarantees the first 2 characters, when base58 encoded, are "tm"
-        base58Prefixes[PUBKEY_ADDRESS]     = {0x1D,0x25};
-        // guarantees the first 2 characters, when base58 encoded, are "t2"
-        base58Prefixes[SCRIPT_ADDRESS]     = {0x1C,0xBA};
+
+        // guarantees the first 2 characters, when base58 encoded, are "eA"
+        base58Prefixes[PUBKEY_ADDRESS]     = {0x14,0xEC};
+        // guarantees the first 2 characters, when base58 encoded, are "ee"
+        base58Prefixes[SCRIPT_ADDRESS]     = {0x15,0x32};
         // the first character, when base58 encoded, is "9" or "c" (as in Bitcoin)
         base58Prefixes[SECRET_KEY]         = {0xEF};
         // do not rely on these BIP32 prefixes; they are not specified and may change
         base58Prefixes[EXT_PUBLIC_KEY]     = {0x04,0x35,0x87,0xCF};
         base58Prefixes[EXT_SECRET_KEY]     = {0x04,0x35,0x83,0x94};
-        // guarantees the first 2 characters, when base58 encoded, are "zt"
-        base58Prefixes[ZCPAYMENT_ADDRRESS] = {0x16,0xB6};
-        // guarantees the first 4 characters, when base58 encoded, are "ZiVt"
-        base58Prefixes[ZCVIEWING_KEY]      = {0xA8,0xAC,0x0C};
-        // guarantees the first 2 characters, when base58 encoded, are "ST"
-        base58Prefixes[ZCSPENDING_KEY]     = {0xAC,0x08};
+        // guarantees the first 2 characters, when base58 encoded, are "eZ"
+        base58Prefixes[ZCPAYMENT_ADDRRESS] = {0x0E,0xBC};
+        // guarantees the first 4 characters, when base58 encoded, are "eX"
+        base58Prefixes[ZCVIEWING_KEY]      = {0x0E,0xB9};
+        // guarantees the first 2 characters, when base58 encoded, are "eS"
+        base58Prefixes[ZCSPENDING_KEY]     = {0xFD,0x09};
 
         fMiningRequiresPeers = false;
         fDefaultConsistencyChecks = true;
