@@ -49,7 +49,7 @@ use_reset_system_for_demo = 0
 use_stress_test = 0
 use_random_corruption = 0
 use_reconstruct_files = 1
-use_generate_new_sqlite_chunk_database = 1
+use_generate_new_sqlite_chunk_database = 0
 use_generate_new_demonstration_artist_key_pair = 0
 use_demonstrate_duplicate_detection = 0 
 block_redundancy_factor = 10 #How many times more blocks should we store than are required to regenerate the file?
@@ -59,6 +59,10 @@ percentage_of_block_files_to_randomly_corrupt = 0.05
 percentage_of_each_selected_file_to_be_randomly_corrupted = 0.01
 nsfw_score_threshold = 0.95 #Most actual porn will come up over 99% confident.
 duplicate_image_threshold = 0.08 #Any image which has another image in our image fingerprint database with a "distance" of less than this threshold will be considered a duplicate. 
+registration_fee_anime_per_megabyte_of_images_pre_difficulty_adjustment = 12
+forfeitable_deposit_to_initiate_registration_as_percentage_of_adjusted_registration_fee = 0.1
+avg_anime_mining_difficulty_rate_first_20k_blocks = 100 #Todo: Replace this with whatever the number turns out to be on average in the first month of mining.
+latest_anime_mining_difficulty_rate = 350 #Todo: Get this dynamically from a function which uses the RPC interface with the C++ code
 current_platform = platform.platform()
 if 'Windows' in current_platform:
     root_animecoin_folder_path = 'C:\\animecoin\\'
@@ -74,7 +78,8 @@ folder_path_of_art_folders_to_encode = os.path.join(root_animecoin_folder_path,'
 chunk_db_file_path = os.path.join(misc_masternode_files_folder_path,'anime_chunkdb.sqlite')
 masternode_keypair_db_file_path = os.path.join(misc_masternode_files_folder_path,'masternode_keypair_db.sqlite')
 dupe_detection_image_fingerprint_database_file_path = os.path.join(misc_masternode_files_folder_path,'dupe_detection_image_fingerprint_database.sqlite')
-
+path_to_animecoin_artwork_metadata_template = os.path.join(misc_masternode_files_folder_path,'animecoin_trade_ticket_template.html')
+anime_metadata_format_version_number = '1.00'
 #For testing purposes:
 path_to_art_folder = os.path.join(folder_path_of_art_folders_to_encode,'Arturo_Lopez__Number_02' + os.sep)
 path_to_art_image_file = os.path.join(path_to_art_folder,'Arturo_Lopez__Number_02.png')
@@ -477,15 +482,221 @@ def verify_artist_signature_in_art_folder_func(path_to_art_folder,artist_public_
         print('Unable to verify signature!')
     return verified
 
+def check_current_bitcoin_blockchain_stats_func():
+    successfully_retrieved_data = 0
+    try:
+        latest_block_number_url = 'https://blockchain.info/q/getblockcount'
+        r = requests.get(latest_block_number_url)
+        latest_block_number = r.text
+        latest_block_hash_url = 'https://blockchain.info/q/latesthash'
+        r = requests.get(latest_block_hash_url)
+        latest_block_hash = r.text
+        if (len(latest_block_number) > 0) and (len(latest_block_hash) > 0):
+            successfully_retrieved_data = 1
+    except Exception as e:
+        print('Error: '+ str(e))    
+    if successfully_retrieved_data == 0:        
+        try:
+            blockcypher_api_url = 'https://api.blockcypher.com/v1/btc/main'
+            r = requests.get(blockcypher_api_url)
+            blockcypher_api_response = r.text
+            blockcypher_api_response_parsed = json.loads(blockcypher_api_response)
+            latest_block_number = blockcypher_api_response_parsed['height']
+            latest_block_hash = blockcypher_api_response_parsed['hash']
+            if (len(latest_block_number) > 0) and (len(latest_block_hash) > 0):
+                successfully_retrieved_data = 1
+        except Exception as e:
+            print('Error: '+ str(e))
+    if successfully_retrieved_data == 0:        
+        try:
+            btcdotcom_api_url = 'https://chain.api.btc.com/v3/block/latest/'
+            r = requests.get(btcdotcom_api_url)
+            btcdotcom_api_response = r.text
+            btcdotcom_api_response_parsed = json.loads(btcdotcom_api_response)
+            btcdotcom_api_response_parsed = btcdotcom_api_response_parsed['data']
+            latest_block_number = btcdotcom_api_response_parsed['height']
+            latest_block_hash = btcdotcom_api_response_parsed['hash']
+            if (len(latest_block_number) > 0) and (len(latest_block_hash) > 0):
+                successfully_retrieved_data = 1
+        except Exception as e:
+            print('Error: '+ str(e))
+    if successfully_retrieved_data == 1:
+        return latest_block_number, latest_block_hash
+    else:
+        print('Error! Unable to retrieve latest bitcoin blockchain statistics!')
+        latest_block_number = ''
+        latest_block_hash = ''
+        return latest_block_number, latest_block_hash
+
+def get_concatenated_art_image_file_hashes_and_total_size_in_mb_func(path_to_art_folder):
+    art_input_file_paths = get_all_valid_image_file_paths_in_folder_func(path_to_art_folder)
+    list_of_art_file_hashes = []
+    combined_image_file_size_in_mb = 0
+    for current_file_path in art_input_file_paths:
+        with open(current_file_path,'rb') as f:
+            current_art_file_data = f.read()
+        sha256_hash_of_current_art_file = hashlib.sha256(current_art_file_data).hexdigest()                    
+        list_of_art_file_hashes.append(sha256_hash_of_current_art_file)
+        current_file_size_in_mb = os.path.getsize(current_file_path)/1000000
+        combined_image_file_size_in_mb = combined_image_file_size_in_mb + current_file_size_in_mb
+    combined_image_file_size_in_mb = str(combined_image_file_size_in_mb)
+    if len(list_of_art_file_hashes) > 0:
+        try:
+            concatenated_file_hashes = ''.join(list_of_art_file_hashes).encode('utf-8')
+            return concatenated_file_hashes, combined_image_file_size_in_mb
+        except Exception as e:
+            print('Error: '+ str(e))
+
+def calculate_artwork_registration_fee_func(combined_size_of_artwork_image_files_in_megabytes, latest_anime_mining_difficulty_rate):
+    global avg_anime_mining_difficulty_rate_first_20k_blocks
+    global registration_fee_anime_per_megabyte_of_images_pre_difficulty_adjustment
+    global forfeitable_deposit_to_initiate_registration_as_percentage_of_adjusted_registration_fee
+    anime_mining_difficulty_adjustment_ratio = float(latest_anime_mining_difficulty_rate) / float(avg_anime_mining_difficulty_rate_first_20k_blocks)
+    registration_fee_in_anime_pre_difficulty_adjustment = round(float(registration_fee_anime_per_megabyte_of_images_pre_difficulty_adjustment)*float(combined_size_of_artwork_image_files_in_megabytes))
+    registration_fee_in_anime_post_difficulty_adjustment = round(float(registration_fee_in_anime_pre_difficulty_adjustment) / float(anime_mining_difficulty_adjustment_ratio))
+    forfeitable_deposit_in_anime_to_initiate_registration = round(float(registration_fee_in_anime_post_difficulty_adjustment)*float(forfeitable_deposit_to_initiate_registration_as_percentage_of_adjusted_registration_fee))
+    return registration_fee_in_anime_post_difficulty_adjustment, registration_fee_in_anime_pre_difficulty_adjustment, anime_mining_difficulty_adjustment_ratio, forfeitable_deposit_in_anime_to_initiate_registration
+
+def generate_combined_image_and_metadata_hash_func(path_to_art_folder,
+                                                  registering_masternode_ip_address,
+                                                  registering_masternode_animecoin_id_public_key_pem_format,
+                                                  registering_masternode_collateral_anime_blockchain_address,
+                                                  latest_anime_mining_difficulty_rate,
+                                                  artists_name,
+                                                  artists_animecoin_id_public_key_pem_format,
+                                                  artists_receiving_anime_blockchain_address,
+                                                  artwork_title,
+                                                  total_number_of_unique_copies_of_artwork,
+                                                  artwork_series_name='',
+                                                  artists_website='',
+                                                  artists_statement_about_artwork=''):
+    global anime_metadata_format_version_number
+    concatenated_image_file_hashes, combined_size_of_artwork_image_files_in_megabytes = get_concatenated_art_image_file_hashes_and_total_size_in_mb_func(path_to_art_folder)
+    latest_bitcoin_blockchain_block_number, latest_bitcoin_blockchain_block_hash = check_current_bitcoin_blockchain_stats_func()
+    registration_fee_in_anime_post_difficulty_adjustment, registration_fee_in_anime_pre_difficulty_adjustment, anime_mining_difficulty_adjustment_ratio, forfeitable_deposit_in_anime_to_initiate_registration = calculate_artwork_registration_fee_func(combined_size_of_artwork_image_files_in_megabytes, latest_anime_mining_difficulty_rate)
+    concatenated_core_metadata = concatenated_image_file_hashes+anime_metadata_format_version_number+artists_name+artists_animecoin_id_public_key_pem_format+artists_receiving_anime_blockchain_address+artwork_title+total_number_of_unique_copies_of_artwork+artwork_series_name+artists_website+artists_statement_about_artwork+registering_masternode_ip_address+registering_masternode_animecoin_id_public_key_pem_format+registration_fee_in_anime_post_difficulty_adjustment+anime_mining_difficulty_adjustment_ratio+forfeitable_deposit_in_anime_to_initiate_registration+latest_bitcoin_blockchain_block_number+latest_bitcoin_blockchain_block_hash
+    computed_combined_image_and_metadata_hash = hashlib.sha256(concatenated_core_metadata.encode('utf-8')).hexdigest()         
+    return computed_combined_image_and_metadata_hash, concatenated_core_metadata
+    
 #Artwork Metadata Functions:
-def create_metadata_file_for_given_art_folder_func(path_to_art_folder,
+def create_metadata_html_table_for_given_art_folder_func(path_to_art_folder,
+                                                  artists_name,
+                                                  artists_animecoin_id_public_key_pem_format,
+                                                  artists_receiving_anime_blockchain_address,
+                                                  artwork_title,
+                                                  total_number_of_unique_copies_of_artwork,
+                                                  artwork_series_name='',
+                                                  artists_website='',
+                                                  artists_statement_about_artwork='',
+                                                  combined_image_and_metadata_hash,
+                                                  artists_digital_signature_on_the_combined_image_and_metadata_hash_base64_encoded):
+    global path_to_animecoin_artwork_metadata_template
+    global anime_metadata_format_version_number
+    global forfeitable_deposit_to_initiate_registration_as_percentage_of_adjusted_registration_fee
+    global example_animecoin_masternode_blockchain_address #Todo: Replace this with real address from RPC interface
+    concatenated_image_file_hashes, combined_size_of_artwork_image_files_in_megabytes = get_concatenated_art_image_file_hashes_and_total_size_in_mb_func(path_to_art_folder)
+    try:
+      with open(path_to_animecoin_artwork_metadata_template,'r') as f:
+        animecoin_metadata_template_html_string = f.read()
+    except Exception as e:
+        print('Error: '+ str(e))
+    latest_bitcoin_blockchain_block_number, latest_bitcoin_blockchain_block_hash = check_current_bitcoin_blockchain_stats_func()
+    date_time_masternode_registered_artwork = datetime.now().strftime('%Y-%m-%d %H:%M:%S:%f')
+    number_of_unique_copies_of_artwork_formatted = locale.format('%d', total_number_of_unique_copies_of_artwork, grouping=True)
+    registering_masternode_ip_address = get_my_local_ip_func()
+    registering_masternode_animecoin_id_public_key, registering_masternode_animecoin_id_private_key = get_local_masternode_identification_keypair_func()
+    registering_masternode_animecoin_id_public_key_pem_format = registering_masternode_animecoin_id_public_key.save_pkcs1(format='PEM')
+    registering_masternode_collateral_anime_blockchain_address = example_animecoin_masternode_blockchain_address
+    registration_fee_in_anime_post_difficulty_adjustment, registration_fee_in_anime_pre_difficulty_adjustment, anime_mining_difficulty_adjustment_ratio, forfeitable_deposit_in_anime_to_initiate_registration = calculate_artwork_registration_fee_func(combined_size_of_artwork_image_files_in_megabytes, latest_anime_mining_difficulty_rate)
+    concatenated_core_metadata = concatenated_image_file_hashes+anime_metadata_format_version_number+artists_name+artists_animecoin_id_public_key_pem_format+artists_receiving_anime_blockchain_address+artwork_title+total_number_of_unique_copies_of_artwork+artwork_series_name+artists_website+artists_statement_about_artwork+registering_masternode_ip_address+registration_fee_in_anime_post_difficulty_adjustment+forfeitable_deposit_in_anime_to_initiate_registration+latest_bitcoin_blockchain_block_number+latest_bitcoin_blockchain_block_hash
+    computed_combined_image_and_metadata_hash = hashlib.sha256(concatenated_core_metadata.encode('utf-8')).hexdigest()         
+    if combined_image_and_metadata_hash != computed_combined_image_and_metadata_hash:
+        print('Error! Registering artist has provided a concatenated image and metadata hash that does NOT match the locally computed hash!')
+        break
+    x = animecoin_metadata_template_html_string
+    x = x.replace('ANIME_METADATA_FORMAT_VERSION_NUMBER', anime_metadata_format_version_number)
+    x = x.replace('ANIME_ARTIST_ID_PUBLIC_KEY', artists_animecoin_id_public_key)
+    x = x.replace('ANIME_ARTIST_RECEIVING_BLOCKCHAIN_ADDRESS', artists_receiving_anime_blockchain_address)
+    x = x.replace('ANIME_COMBINED_IMAGE_AND_METADATA_HASH', computed_hash_of_the_concatenated_image_and_core_metadata_hashes)
+    x = x.replace('ANIME_ARTIST_SIGNATURE_ON_COMBINED_IMAGE_AND_METADATA_HASH', artists_digital_signature_on_the_combined_image_and_metadata_hash_base64_encoded)
+    x = x.replace('ANIME_TOTAL_NUMBER_OF_UNIQUE_COPIES_OF_ARTWORK', total_number_of_unique_copies_of_artwork)
+    x = x.replace('ANIME_DATE_TIME_ARTWORK_SIGNED', date_time_artwork_was_signed_by_artist)
+    x = x.replace('ANIME_ARTIST_NAME', artists_name)
+    x = x.replace('ANIME_ARTWORK_TITLE', artwork_title)
+    x = x.replace('ANIME_SERIES_NAME', artwork_series_name)
+    x = x.replace('ANIME_ARTIST_WEBSITE', artists_website)
+    x = x.replace('ANIME_ARTIST_STATEMENT', artists_statement_about_artwork)
+    x = x.replace('ANIME_COMBINED_IMAGE_SIZE_IN_MB', combined_size_of_artwork_image_files_in_megabytes)
+    x = x.replace('ANIME_MN_LATEST_BITCOIN_BLOCK_NUMBER', latest_bitcoin_blockchain_block_number)
+    x = x.replace('ANIME_MN_LATEST_BITCOIN_BLOCK_HASH', latest_bitcoin_blockchain_block_hash)
+    x = x.replace('ANIME_MN_LATEST_ANIME_MINING_DIFFICULTY_RATE', latest_anime_mining_difficulty_rate)
+    x = x.replace('ANIME_MN_AVG_ANIME_MINING_DIFFICULTY_RATE_FIRST_20K_BLOCKS', avg_anime_mining_difficulty_rate_first_20k_blocks)
+    x = x.replace('ANIME_MN_MINING_DIFFICULTY_ADJUSTMENT_RATIO', anime_mining_difficulty_adjustment_ratio)
+    x = x.replace('ANIME_MN_REGISTRATION_FEE_IN_ANIME_PRE_ADJUSTMENT', registration_fee_in_anime_pre_difficulty_adjustment)
+    x = x.replace('ANIME_MN_REGISTRATION_FEE_IN_ANIME_POST_ADJUSTMENT', registration_fee_in_anime_post_difficulty_adjustment)
+    x = x.replace('ANIME_MN_FORFEITABLE_DEPOSIT_IN_ANIME_TO_INITIATE_REGISTRATION', forfeitable_deposit_in_anime_to_initiate_registration)
+    x = x.replace('ANIME_MN_COLLATERAL_BLOCKCHAIN_ADDRESS', registering_masternode_collateral_anime_blockchain_address)
+    x = x.replace('ANIME_MN_ANIMECOIN_ID_PUBLIC_KEY', registering_masternode_animecoin_id_public_key_pem_format)
+    x = x.replace('ANIME_MN_IP_ADDRESS', registering_masternode_ip_address)
+    x = x.replace('ANIME_MN_COLLATERAL_SIGNATURE_ON_HASH_OF_HASHES', registering_masternodes_collateral_address_digital_signature_on_the_hash_of_the_concatenated_hashes_base64_encoded)
+    x = x.replace('ANIME_MN_ANIMECOIN_ID_SIGNATURE_ON_HASH_OF_HASHES', registering_masternodes_animecoin_public_id_digital_signature_on_the_hash_of_the_concatenated_hashes_base64_encoded)
+    x = x.replace('ANIME_DATE_TIME_MN_REGISTERED_ARTWORK', date_time_masternode_registered_artwork)
+    new_animecoin_metadata_html_string = x
+    metadata_html_table_output_file_path = os.path.join(path_to_art_folder,'Animecoin_Metadata_File__Hash__'+computed_hash_of_the_concatenated_image_and_core_metadata_hashes+'.html')
+    with open(metadata_html_table_output_file_path,'w') as f:
+        f.write(new_animecoin_metadata_html_string)
+    print('Successfully generated HTML metadata file for Artwork with Hash of Hashes:'+computed_hash_of_the_concatenated_image_and_core_metadata_hashes)
+    return metadata_html_table_output_file_path
+
+
+
+
+def read_artwork_metadata_from_metadata_file(path_to_artwork_metadata_file):
+    try:
+        conn = sqlite3.connect(path_to_artwork_metadata_file)
+        c = conn.cursor()
+        metadata_query_results_table = c.execute("""SELECT * FROM artwork_metadata_table ORDER BY datetime_art_was_signed DESC""").fetchall()
+        metadata_query_results_table = metadata_query_results_table[0]
+        artist_public_key = metadata_query_results_table[1]
+        artist_concatenated_hash_signature_base64_encoded = metadata_query_results_table[2]
+        hash_of_the_concatenated_file_hashes = metadata_query_results_table[3]
+        datetime_art_was_signed = metadata_query_results_table[4]
+        artist_name = metadata_query_results_table[5]
+        artwork_title = metadata_query_results_table[6] 
+        artwork_max_quantity = metadata_query_results_table[7]
+        artwork_series_name = metadata_query_results_table[8]
+        artist_website = metadata_query_results_table[9]
+        artwork_artist_statement = metadata_query_results_table[10]
+        conn.close()
+        return artist_public_key, artist_concatenated_hash_signature_base64_encoded, hash_of_the_concatenated_file_hashes, datetime_art_was_signed, artist_name, artwork_title, artwork_max_quantity, artwork_series_name, artist_website, artwork_artist_statement
+    except Exception as e:
+        print('Error: '+ str(e))
+
+def read_artwork_metadata_from_art_folder_func(path_to_art_folder): #Convenience function
+    artwork_metadata_sqlite_file_path = path_to_art_folder+'artwork_metadata_file__hash_*.db'
+    if os.path.exists(artwork_metadata_sqlite_file_path):
+        artist_public_key, artist_concatenated_hash_signature_base64_encoded, hash_of_the_concatenated_file_hashes, datetime_art_was_signed, artist_name, artwork_title, artwork_max_quantity, artwork_series_name, artist_website, artwork_artist_statement = read_artwork_metadata_from_metadata_file(path_to_artwork_metadata_file)
+        return artist_public_key, artist_concatenated_hash_signature_base64_encoded, hash_of_the_concatenated_file_hashes, datetime_art_was_signed, artist_name, artwork_title, artwork_max_quantity, artwork_series_name, artist_website, artwork_artist_statement
+
+def get_artwork_metadata_from_artist_func(hash_of_the_concatenated_file_hashes):
+    #This is a dummy function to just supply some data; in reality this will run on the artists computer and will be supplied along with the art image files to the masternode for registration
+    artist_name = 'Arturo Lopez'
+    artwork_title = 'Girl with a Bitcoin Earring'
+    artwork_max_quantity = 100
+    artwork_series_name = 'Animecoin Initial Release Crew: The Great Works Collection'
+    artist_website='http://www.anime-coin.com'
+    artwork_artist_statement = 'This work is a reference to astronomers in ancient times, using tools like astrolabes.'
+    return artist_name, artwork_title, artwork_max_quantity, artwork_series_name, artist_website, artwork_artist_statement
+
+def insert_artwork_metadata_into_chunkdb_func(path_to_art_folder,
                                                   artist_name,
                                                   artwork_title,
                                                   artwork_max_quantity,
                                                   artwork_series_name='',
                                                   artist_website='',
                                                   artwork_artist_statement=''):
-    created_metadata_file_successfully = 0
+    global chunk_db_file_path
+    wrote_metadata_successfully = 0
     artist_signatures_sqlite_file_path = path_to_art_folder+'artist_signature_file.sig'
     try:#First get the digital signature and file hash data:
         conn = sqlite3.connect(artist_signatures_sqlite_file_path)
@@ -500,9 +711,8 @@ def create_metadata_file_for_given_art_folder_func(path_to_art_folder,
         conn.close()
     except Exception as e:
         print('Error: '+ str(e))
-    artwork_metadata_sqlite_file_path = path_to_art_folder+'artwork_metadata_file__hash_ '+hash_of_the_concatenated_file_hashes+'.db'
     try:
-        conn = sqlite3.connect(artwork_metadata_sqlite_file_path)
+        conn = sqlite3.connect(chunk_db_file_path)
         c = conn.cursor()
         artwork_metadata__table_creation_string= """
         CREATE TABLE artwork_metadata_table (
@@ -545,49 +755,12 @@ def create_metadata_file_for_given_art_folder_func(path_to_art_folder,
                                                   artwork_artist_statement])
         conn.commit()
         conn.close()
-        print('Successfully wrote metadata file to disk!')
-        created_metadata_file_successfully = 1
-        return created_metadata_file_successfully
+        print('Successfully wrote metadata to SQLite database!')
+        wrote_metadata_successfully = 1
+        return wrote_metadata_successfully
     except Exception as e:
         print('Error: '+ str(e))
-        return created_metadata_file_successfully
-    
-def read_artwork_metadata_from_metadata_file(path_to_artwork_metadata_file):
-    try:
-        conn = sqlite3.connect(path_to_artwork_metadata_file)
-        c = conn.cursor()
-        metadata_query_results_table = c.execute("""SELECT * FROM artwork_metadata_table ORDER BY datetime_art_was_signed DESC""").fetchall()
-        metadata_query_results_table = metadata_query_results_table[0]
-        artist_public_key = metadata_query_results_table[1]
-        artist_concatenated_hash_signature_base64_encoded = metadata_query_results_table[2]
-        hash_of_the_concatenated_file_hashes = metadata_query_results_table[3]
-        datetime_art_was_signed = metadata_query_results_table[4]
-        artist_name = metadata_query_results_table[5]
-        artwork_title = metadata_query_results_table[6] 
-        artwork_max_quantity = metadata_query_results_table[7]
-        artwork_series_name = metadata_query_results_table[8]
-        artist_website = metadata_query_results_table[9]
-        artwork_artist_statement = metadata_query_results_table[10]
-        conn.close()
-        return artist_public_key, artist_concatenated_hash_signature_base64_encoded, hash_of_the_concatenated_file_hashes, datetime_art_was_signed, artist_name, artwork_title, artwork_max_quantity, artwork_series_name, artist_website, artwork_artist_statement
-    except Exception as e:
-        print('Error: '+ str(e))
-
-def read_artwork_metadata_from_art_folder_func(path_to_art_folder): #Convenience function
-    artwork_metadata_sqlite_file_path = path_to_art_folder+'artwork_metadata_file__hash_*.db'
-    if os.path.exists(artwork_metadata_sqlite_file_path):
-        artist_public_key, artist_concatenated_hash_signature_base64_encoded, hash_of_the_concatenated_file_hashes, datetime_art_was_signed, artist_name, artwork_title, artwork_max_quantity, artwork_series_name, artist_website, artwork_artist_statement = read_artwork_metadata_from_metadata_file(path_to_artwork_metadata_file)
-        return artist_public_key, artist_concatenated_hash_signature_base64_encoded, hash_of_the_concatenated_file_hashes, datetime_art_was_signed, artist_name, artwork_title, artwork_max_quantity, artwork_series_name, artist_website, artwork_artist_statement
-
-def get_artwork_metadata_from_artist_func(hash_of_the_concatenated_file_hashes):
-    #This is a dummy function to just supply some data; in reality this will run on the artists computer and will be supplied along with the art image files to the masternode for registration
-    artist_name = 'Arturo Lopez'
-    artwork_title = 'Girl with a Bitcoin Earring'
-    artwork_max_quantity = 100
-    artwork_series_name = 'Animecoin Initial Release Crew: The Great Works Collection'
-    artist_website='http://www.anime-coin.com'
-    artwork_artist_statement = 'This work is a reference to astronomers in ancient times, using tools like astrolabes.'
-    return artist_name, artwork_title, artwork_max_quantity, artwork_series_name, artist_website, artwork_artist_statement
+        return wrote_metadata_successfully
 
 
 #Dupe detection helper functions:
