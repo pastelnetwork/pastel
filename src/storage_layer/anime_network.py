@@ -1,4 +1,4 @@
-import sys, time, os.path, io, string, glob, hashlib, imghdr, random, os, zlib, pickle, sqlite3, uuid, socket, warnings, base64, json, hmac, logging, asyncio, binascii, subprocess, locale, platform
+import sys, time, os.path, io, string, glob, hashlib, imghdr, random, os, zlib, pickle, sqlite3, stat, uuid, socket, warnings, base64, json, hmac, logging, asyncio, binascii, subprocess, locale, platform
 warnings.simplefilter(action='ignore', category=FutureWarning)
 warnings.filterwarnings('ignore',category=DeprecationWarning)
 import requests
@@ -11,10 +11,8 @@ from collections import OrderedDict
 from datetime import datetime
 from itertools import compress
 from math import ceil
-try:
-    from tqdm import tqdm
-except:
-    pass
+from bitcoinrpc.authproxy import AuthServiceProxy, JSONRPCException
+from tqdm import tqdm
 #from anime_storage import *
 #Requirements: pip install tqdm, fs, lxml, requests, shortuuid, rsa
 
@@ -26,7 +24,7 @@ except:
 # Parameters:
 ###############################################################################################################
 use_verify_integrity = 1
-use_generate_new_sqlite_chunk_database = 1
+use_generate_new_sqlite_chunk_database = 0
 use_demonstrate_nginx_file_transfers = 0
 use_demonstrate_trade_ticket_generation = 1
 use_demonstrate_trade_ticket_parsing = 1
@@ -40,7 +38,7 @@ block_storage_folder_path = os.path.join(root_animecoin_folder_path,'art_block_s
 folder_path_of_remote_node_sqlite_files = os.path.join(root_animecoin_folder_path,'remote_node_sqlite_files' + os.sep)
 reconstructed_file_destination_folder_path = os.path.join(root_animecoin_folder_path,'reconstructed_files' + os.sep)
 misc_masternode_files_folder_path = os.path.join(root_animecoin_folder_path,'misc_masternode_files' + os.sep) #Where we store some of the SQlite databases
-masternode_keypair_db_file_path = os.path.join(misc_masternode_files_folder_path,'masternode_keypair_db.sqlite')
+masternode_keypair_db_file_path = os.path.join(misc_masternode_files_folder_path,'masternode_keypair_db.secret')
 trade_ticket_files_folder_path = os.path.join(root_animecoin_folder_path,'trade_ticket_files' + os.sep) #Where we store the html trade tickets for the masternode DEX
 completed_trade_ticket_files_folder_path = os.path.join(trade_ticket_files_folder_path,'completed' + os.sep) 
 pending_trade_ticket_files_folder_path = os.path.join(trade_ticket_files_folder_path,'pending' + os.sep) 
@@ -49,18 +47,21 @@ chunk_db_file_path = os.path.join(misc_masternode_files_folder_path,'anime_chunk
 file_storage_log_file_path = os.path.join(misc_masternode_files_folder_path,'anime_storage_log.txt')
 nginx_allowed_ip_whitelist_file_path = '/var/www/masternode_file_server/html/masternode_ip_whitelist.conf'
 path_to_animecoin_trade_ticket_template = os.path.join(trade_ticket_files_folder_path,'animecoin_trade_ticket_template.html')
-default_port = 14142
-alternative_port = 2718
 list_of_ips = ['108.61.86.243','140.82.14.38','140.82.2.58']
 target_number_of_nodes_per_unique_block_hash = 10
 target_block_redundancy_factor = 10 #How many times more blocks should we store than are required to regenerate the file?
 desired_block_size_in_bytes = 1024*1000*2
+remote_node_chunkdb_refresh_time_in_minutes = 5
+remote_node_image_fingerprintdb_refresh_time_in_minutes = 12*60
 example_list_of_valid_masternode_ip_addresses = ['207.246.93.232','149.28.41.105','149.28.34.59','173.52.208.74']
 nginx_ip_whitelist_override_addresses = ['65.200.165.210'] #For debugging purposes
 example_animecoin_masternode_blockchain_address = 'AdaAvFegJbBdH4fB8AiWw8Z4Ek75Xsja6i'
 example_trader_blockchain_address = 'ANQTCifwMdh1Lsda9DsMcXuXBwtkyHRrZe'
 locale.setlocale(locale.LC_ALL, '')
-
+rpc_user = 'test'
+rpc_password = 'testpw'
+rpc_port = '19932'
+rpc_connection_string = 'http://'+rpc_user+':'+rpc_password+'@127.0.0.1:'+rpc_port
 if 0: #NAT traversal experiments
     import stun
     nat_type, external_ip, external_port = stun.get_ip_info()
@@ -81,8 +82,24 @@ def generate_trade_id_func():
     trade_id = shortuuid.uuid()[0:8]
     return trade_id
 
-
-
+def get_all_remote_node_ips_func():
+    #For now we are just using the static set of IPs; later we will use the RPC interface to get the list of masternode IPs
+    global example_list_of_valid_masternode_ip_addresses
+    global rpc_connection_string
+    #rpc_connection = AuthServiceProxy(rpc_connection_string)
+    return example_list_of_valid_masternode_ip_addresses
+        
+def filter_list_with_boolean_vector_func(python_list, boolean_vector):
+    if len(python_list) == len(boolean_vector):
+        filtered_list = []
+        for cnt, current_element in enumerate(python_list):
+            current_boolean = boolean_vector[cnt]
+            if (current_boolean == True) or (current_boolean==1):
+                filtered_list.append(current_element)
+        return filtered_list
+    else:    
+        print('Error! Boolean vector must be the same length as python list!')
+        
 def regenerate_sqlite_chunk_database_func():
     global chunk_db_file_path
     try:
@@ -115,10 +132,7 @@ def refresh_block_storage_folder_and_check_block_integrity_func(use_verify_integ
     list_of_block_file_paths = glob.glob(block_storage_folder_path+'*.block')
     if use_verify_integrity:
         print('Now Verifying Block Files ('+str(len(list_of_block_file_paths))+' files found)\n')
-        try:
-            pbar = tqdm(total=len(list_of_block_file_paths))
-        except:
-            print('.')
+        pbar = tqdm(total=len(list_of_block_file_paths))
         for current_block_file_path in list_of_block_file_paths:
             with open(current_block_file_path, 'rb') as f:
                 try:
@@ -126,10 +140,7 @@ def refresh_block_storage_folder_and_check_block_integrity_func(use_verify_integ
                 except:
                     print('\nProblem reading block file!\n')
                     continue
-            try:
-                pbar.update(1)
-            except:
-                pass
+            pbar.update(1)
             hash_of_block = hashlib.sha256(current_block_binary_data).hexdigest()
             reported_block_sha256_hash = current_block_file_path.split('\\')[-1].split('__')[-1].replace('BlockHash_','').replace('.block','')
             if hash_of_block == reported_block_sha256_hash:
@@ -202,6 +213,7 @@ def get_list_of_available_files_on_remote_node_file_server_func(remote_node_ip, 
         list_of_signature_filenames = []
         list_of_zipfile_filenames = []
         list_of_trade_ticket_filenames = []
+        list_of_sqlite_filenames = []
         for link in list_of_links:
             if '.block' in link:
                 list_of_block_filenames.append(link)
@@ -209,6 +221,8 @@ def get_list_of_available_files_on_remote_node_file_server_func(remote_node_ip, 
                 list_of_signature_filenames.append(link)
             if '.zip' in link:
                 list_of_zipfile_filenames.append(link)
+            if '.sqlite' in link:
+                list_of_sqlite_filenames.append(link)
             if 'TradeID' in link:
                 list_of_trade_ticket_filenames.append(link)            
         list_of_block_hashes = []
@@ -230,6 +244,8 @@ def get_list_of_available_files_on_remote_node_file_server_func(remote_node_ip, 
                 reported_file_sha256_hash = current_signature_file_name.split('__')[1].replace('.sig','')
                 list_of_file_hashes.append(reported_file_sha256_hash)
             return list_of_signature_filenames, list_of_file_hashes
+        if (len(list_of_sqlite_filenames) > 0) and (type_of_file_to_retrieve == 'sqlite_files'):
+            return list_of_sqlite_filenames
         if (len(list_of_zipfile_filenames) > 0) and (type_of_file_to_retrieve == 'zipfiles'):
             for current_zipfile_file_name in list_of_zipfile_filenames:
                 reported_file_sha256_hash = current_zipfile_file_name.split('__')[1].replace('.zip','')
@@ -244,31 +260,38 @@ def get_list_of_available_files_on_remote_node_file_server_func(remote_node_ip, 
             return list_of_trade_ticket_filenames, list_of_trade_ids  
     except Exception as e:
         print('Error: '+ str(e))
-
-def query_all_masternodes_for_relevant_block_files_and_download_them_func(sha256_hash_of_desired_zipfile):
+        
+def query_all_masternodes_for_relevant_block_files_and_download_them_func(sha256_hash_of_desired_zipfile, max_number_of_blocks_to_download=10):
     global block_storage_folder_path
-    list_of_unique_node_ip_addresses = get_all_remote_node_ips_func()
+    download_count = 0
+    list_of_node_ip_addresses = get_all_remote_node_ips_func()
     list_of_local_block_file_paths, _ , _ = get_local_matching_blocks_from_zipfile_hash_func(sha256_hash_of_desired_zipfile)
     list_of_local_block_file_names = [os.path.split(x)[-1] for x in list_of_local_block_file_paths]
-    for current_remote_node_ip in list_of_unique_node_ip_addresses:
-        list_of_remote_block_filenames, list_of_remote_block_hashes, list_of_remote_file_hashess = get_list_of_available_files_on_remote_node_file_server_func(current_remote_node_ip, type_of_file_to_retrieve='blocks') 
+    for current_remote_node_ip in list_of_node_ip_addresses:
+        list_of_remote_block_filenames, list_of_remote_block_hashes, list_of_remote_file_hashes = get_list_of_available_files_on_remote_node_file_server_func(current_remote_node_ip, type_of_file_to_retrieve='blocks') 
+        boolean_download_vector = [ (x==sha256_hash_of_desired_zipfile) for x in list_of_remote_file_hashes]
+        filtered_list_of_remote_block_filenames = filter_list_with_boolean_vector_func(list_of_remote_block_filenames, boolean_download_vector)
+        filtered_list_of_remote_block_hashes = filter_list_with_boolean_vector_func(list_of_remote_block_hashes, boolean_download_vector)
+        filtered_list_of_remote_file_hashes = filter_list_with_boolean_vector_func(list_of_remote_file_hashes, boolean_download_vector)
         file_listing_url = 'http://'+current_remote_node_ip+'/'
-        for cnt, current_block_file_name in enumerate(list_of_remote_block_filenames):
+        for cnt, current_block_file_name in enumerate(filtered_list_of_remote_file_hashes):
             if current_block_file_name not in list_of_local_block_file_names:
-                url_of_file_to_download = file_listing_url+current_block_file_name
-                current_block_hash = list_of_remote_block_hashes[cnt]
-                current_file_hash = list_of_remote_file_hashess[cnt]
-                try:
-                    print('Downloading new block file with hash '+ current_block_hash + ' for art zipfile with hash '+current_file_hash+' from node at ' + current_remote_node_ip)
-                    path_to_downloaded_file = download_remote_file_func(url_of_file_to_download, block_storage_folder_path)
-                    list_of_downloaded_files.append(path_to_downloaded_file)
-                    print('Done!')
-                except Exception as e:
-                    print('Error: '+ str(e))
+                if download_count <= max_number_of_blocks_to_download:
+                    url_of_file_to_download = file_listing_url+current_block_file_name
+                    current_block_hash = filtered_list_of_remote_block_hashes[cnt]
+                    current_file_hash = filtered_list_of_remote_file_hashes[cnt]
+                    try:
+                        print('Downloading new block file with hash '+ current_block_hash + ' for art zipfile with hash '+current_file_hash+' from node at ' + current_remote_node_ip)
+                        path_to_downloaded_file = download_remote_file_func(url_of_file_to_download, block_storage_folder_path)
+                        list_of_downloaded_files.append(path_to_downloaded_file)
+                        download_count = download_count + 1
+                        print('Done!')
+                    except Exception as e:
+                        print('Error: '+ str(e))
     return list_of_downloaded_files
 
-def download_remote_file_func(url_of_file_to_download, folder_path_for_saved_file):
-    path_to_downloaded_file = os.path.join(folder_path_for_saved_file, url_of_file_to_download.split('/')[-1])
+def download_remote_file_func(url_of_file_to_download, folder_path_for_saved_file, output_filename_prefix=''):
+    path_to_downloaded_file = os.path.join(folder_path_for_saved_file, output_filename_prefix + url_of_file_to_download.split('/')[-1])
     r = requests.get(url_of_file_to_download, stream=True)
     with open(path_to_downloaded_file, 'wb') as f:
         for chunk in r.iter_content(chunk_size=1024): 
@@ -276,7 +299,7 @@ def download_remote_file_func(url_of_file_to_download, folder_path_for_saved_fil
                 f.write(chunk)
     return path_to_downloaded_file
 
-def download_remote_block_files_for_given_zipfile_hash_func(remote_node_ip,sha256_hash_of_desired_zipfile):
+def download_remote_block_files_for_given_zipfile_hash_func(remote_node_ip, sha256_hash_of_desired_zipfile):
    global block_storage_folder_path
    try:
         _, list_of_local_block_hashes, _ = get_local_matching_blocks_from_zipfile_hash_func(sha256_hash_of_desired_zipfile)
@@ -306,10 +329,11 @@ def download_remote_block_files_for_given_zipfile_hash_func(remote_node_ip,sha25
 
 def download_all_new_pending_trade_tickets_from_masternodes_func():
     global pending_trade_ticket_files_folder_path
-    list_of_unique_node_ip_addresses = get_all_remote_node_ips_func()
+    list_of_downloaded_files = []
+    list_of_node_ip_addresses = get_all_remote_node_ips_func()
     list_of_existing_local_trade_ticket_file_paths = glob.glob(os.path.join(pending_trade_ticket_files_folder_path,'*.html'))
     list_of_existing_local_trade_ticket_file_names = [os.path.split(x)[-1] for x in list_of_existing_local_trade_ticket_file_paths]
-    for current_remote_node_ip in list_of_unique_node_ip_addresses:
+    for current_remote_node_ip in list_of_node_ip_addresses:
         list_of_trade_ticket_filenames, list_of_trade_ids = get_list_of_available_files_on_remote_node_file_server_func(current_remote_node_ip, type_of_file_to_retrieve='trade_tickets') 
         file_listing_url = 'http://'+current_remote_node_ip+'/'
         for cnt, current_trade_ticket_file_name in enumerate(list_of_trade_ticket_filenames):
@@ -324,28 +348,77 @@ def download_all_new_pending_trade_tickets_from_masternodes_func():
                 except Exception as e:
                     print('Error: '+ str(e))
     return list_of_downloaded_files
-     
+
+def download_sqlite_files_from_remote_node(remote_node_ip, sqlite_file_type='chunkdb'): 
+    global folder_path_of_remote_node_sqlite_files
+    global remote_node_chunkdb_refresh_time_in_minutes
+    global remote_node_image_fingerprintdb_refresh_time_in_minutes
+    if sqlite_file_type == 'chunkdb':
+        required_refresh_time_in_minutes = remote_node_chunkdb_refresh_time_in_minutes
+    else:
+        required_refresh_time_in_minutes = remote_node_image_fingerprintdb_refresh_time_in_minutes
+    list_of_downloaded_files = []
+    list_of_sqlite_filenames = get_list_of_available_files_on_remote_node_file_server_func(remote_node_ip, 'sqlite_files')
+    file_listing_url = 'http://'+remote_node_ip
+    output_filename_prefix = 'Remote_Node__'+remote_node_ip.replace('.','_')+'__'
+    existing_file_path = glob.glob(folder_path_of_remote_node_sqlite_files+output_filename_prefix+'*'+sqlite_file_type+'*')
+    minutes_since_file_last_updated = (time.time() - os.stat(existing_file_path[0])[stat.ST_MTIME])/60
+    if minutes_since_file_last_updated >= required_refresh_time_in_minutes:    
+        for current_sqlite_file_name in list_of_sqlite_filenames:
+            if sqlite_file_type in current_sqlite_file_name:
+                url_of_file_to_download = file_listing_url+current_sqlite_file_name[1:]
+                try:
+                    print('Downloading sqlite file '+ current_sqlite_file_name + ' from node at ' + remote_node_ip)
+                    path_to_downloaded_file = download_remote_file_func(url_of_file_to_download, folder_path_of_remote_node_sqlite_files, output_filename_prefix)
+                    list_of_downloaded_files.append(path_to_downloaded_file)
+                    print('Done!')
+                except Exception as e:
+                    print('Error: '+ str(e))
+  
+def import_remote_chunkdb_file_func(path_to_remote_chunkdb_file):
+    conn = sqlite3.connect(path_to_remote_chunkdb_file)
+    c = conn.cursor()
+    try:
+        potential_global_hashes_table_results = c.execute("""SELECT * FROM potential_global_hashes""").fetchall()
+    except Exception as e:
+        print('Error: '+ str(e))
+    try:
+        final_art_zipfile_table_results = c.execute("""SELECT * FROM final_art_zipfile_table""").fetchall()
+    except Exception as e:
+        print('Error: '+ str(e))
+    try:
+        final_art_signatures_table_results = c.execute("""SELECT * FROM final_art_signatures_table""").fetchall()
+    except Exception as e:
+        print('Error: '+ str(e))
+    try:
+        pending_trade_tickets_table_results = c.execute("""SELECT * FROM pending_trade_tickets_table""").fetchall()
+    except Exception as e:
+        print('Error: '+ str(e))
+    try:
+        completed_trade_tickets_table_results = c.execute("""SELECT * FROM completed_trade_tickets_table""").fetchall()
+    except Exception as e:
+        print('Error: '+ str(e))        
+    conn.commit()
+    conn.close()
+ 
+def import_downloaded_signature_files_func():
+    global chunk_db_file_path
+    conn = sqlite3.connect(chunk_db_file_path)
+    c = conn.cursor()
+# for current_file_hash in list_of_file_hashes:
+# c.execute('INSERT OR IGNORE INTO final_art_signatures_table (file_hash, final_signature_base64_encoded, remote_node_ip) VALUES (?,?,?)',[current_file_hash, current_file_hash, remote_node_ip]) 
+
+
 def check_sqlitedb_for_remote_blocks_func(sha256_hash_of_desired_zipfile):
     global chunk_db_file_path
     conn = sqlite3.connect(chunk_db_file_path)
     c = conn.cursor()
-    query_results_table = c.execute("""SELECT * FROM potential_global_hashes where file_hash = ? ORDER BY datetime_peer_last_seen""",[sha256_hash_of_desired_zipfile]).fetchall()
+    query_results_table = c.execute("""SELECT * FROM potential_global_hashes where file_hash = ? ORDER BY datetime_inserted""",[sha256_hash_of_desired_zipfile]).fetchall()
     list_of_block_hashes = [x[0] for x in query_results_table]
     list_of_file_hashes = [x[1] for x in query_results_table]
     list_of_ip_addresses = [x[2] for x in query_results_table]
     potential_local_block_hashes_list, potential_local_file_hashes_list = refresh_block_storage_folder_and_check_block_integrity_func()
     return list_of_block_hashes, list_of_file_hashes, list_of_ip_addresses
-
-def get_all_remote_node_ips_func():
-    global chunk_db_file_path
-    global bootstrap_node_list
-    conn = sqlite3.connect(chunk_db_file_path)
-    c = conn.cursor()
-    list_of_unique_node_ip_addresses = c.execute("""SELECT DISTINCT remote_node_ip FROM potential_global_hashes""").fetchall()
-    list_of_unique_node_ip_addresses =  [x[0] for x in list_of_unique_node_ip_addresses]
-    list_of_bootstrap_node_ip_addresses = list(set([x[0] for x in bootstrap_node_list]))
-    list_of_unique_node_ip_addresses = list(set(list_of_unique_node_ip_addresses + list_of_bootstrap_node_ip_addresses))
-    return list_of_unique_node_ip_addresses
 
 def verify_locally_reconstructed_zipfile_func(sha256_hash_of_desired_zipfile):
     global reconstructed_file_destination_folder_path
@@ -704,6 +777,8 @@ if use_demonstrate_nginx_file_transfers:
     list_of_signature_filenames, list_of_file_hashes = get_list_of_available_files_on_remote_node_file_server_func(remote_node_ip, type_of_file_to_retrieve='signatures')
     list_of_zipfile_filenames, list_of_file_hashes = get_list_of_available_files_on_remote_node_file_server_func(remote_node_ip, type_of_file_to_retrieve='zipfiles')
     list_of_downloaded_files = download_remote_block_files_for_given_zipfile_hash_func(remote_node_ip, sha256_hash_of_desired_zipfile)
+    list_of_downloaded_files = download_sqlite_files_from_remote_node(remote_node_ip,'chunkdb')
+    list_of_downloaded_files = download_sqlite_files_from_remote_node(remote_node_ip,'dupe_detection_image_fingerprint_database')
 
 if use_demonstrate_trade_ticket_generation:
     sys.exit(0)
