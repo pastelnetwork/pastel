@@ -54,36 +54,37 @@ def generate_trade_ticket_func(submitting_trader_animecoin_identity_public_key, 
     desired_quantity_formatted = locale.format('%d', desired_quantity, grouping=True)
     specified_price_in_anime_formatted = locale.format('%f', specified_price_in_anime, grouping=True)
     submitting_trader_animecoin_identity_public_key_pem_format = submitting_trader_animecoin_identity_public_key.save_pkcs1(format='PEM').decode('utf-8')
-    new_trade_ticket_html_string = trade_ticket_template_html_string
-    new_trade_ticket_html_string = new_trade_ticket_html_string.replace('TRADE_ID_VAR', new_trade_id)
-    new_trade_ticket_html_string = new_trade_ticket_html_string.replace('TRADE_DATETIME_VAR', datetime_trade_submitted)
-    new_trade_ticket_html_string = new_trade_ticket_html_string.replace('TRADE_TRADER_PUBLIC_KEY_ID_VAR', submitting_trader_animecoin_identity_public_key_pem_format)
-    new_trade_ticket_html_string = new_trade_ticket_html_string.replace('TRADE_TRADER_ANIME_ADDRESS_VAR', submitting_trader_animecoin_blockchain_address)
-    new_trade_ticket_html_string = new_trade_ticket_html_string.replace('TRADE_TYPE_VAR', desired_trade_type)
-    new_trade_ticket_html_string = new_trade_ticket_html_string.replace('TRADE_ART_ASSET_HASH_VAR', desired_art_asset_hash)
-    new_trade_ticket_html_string = new_trade_ticket_html_string.replace('TRADE_QUANTITY_VAR', desired_quantity_formatted)
-    new_trade_ticket_html_string = new_trade_ticket_html_string.replace('TRADE_PRICE_VAR', specified_price_in_anime_formatted)
     assigned_masternode_broker_ip_address = get_my_local_ip_func()
     assigned_masternode_broker_animecoin_identity_public_key, assigned_masternode_broker_animecoin_identity_private_key = get_local_masternode_identification_keypair_func()
     assigned_masternode_broker_animecoin_identity_public_key_pem_format = assigned_masternode_broker_animecoin_identity_public_key.save_pkcs1(format='PEM')
     assigned_masternode_broker_animecoin_blockchain_address = example_animecoin_masternode_blockchain_address
     trade_ticket_details_sha256_hash, assigned_masternode_broker_digital_signature_on_trade_ticket_details_hash_base64_encoded = sign_trade_ticket_hash_func(assigned_masternode_broker_animecoin_identity_private_key, assigned_masternode_broker_animecoin_identity_public_key_pem_format, submitting_trader_animecoin_blockchain_address, assigned_masternode_broker_ip_address, assigned_masternode_broker_animecoin_identity_public_key, desired_trade_type, desired_art_asset_hash, desired_quantity, specified_price_in_anime)#This would happen on the artist/trader's machine.
-    new_trade_ticket_html_string = new_trade_ticket_html_string.replace('TRADE_TICKET_HASH_VAR', trade_ticket_details_sha256_hash)
-    new_trade_ticket_html_string = new_trade_ticket_html_string.replace('TRADE_TRADER_SIGNATURE_VAR', submitting_traders_digital_signature_on_trade_ticket_details_hash)
-    new_trade_ticket_html_string = new_trade_ticket_html_string.replace('TRADE_ASSIGNED_BROKER_IP_ADDRESS_VAR', assigned_masternode_broker_ip_address)
-    new_trade_ticket_html_string = new_trade_ticket_html_string.replace('TRADE_ASSIGNED_BROKER_ANIME_ADDRESS_VAR', assigned_masternode_broker_animecoin_blockchain_address)
-    new_trade_ticket_html_string = new_trade_ticket_html_string.replace('TRADE_ASSIGNED_BROKER_PUBLIC_KEY_ID_VAR', assigned_masternode_broker_animecoin_identity_public_key_pem_format.decode('utf-8'))
-    new_trade_ticket_html_string = new_trade_ticket_html_string.replace('TRADE_ASSIGNED_BROKER_SIGNATURE_VAR', assigned_masternode_broker_digital_signature_on_trade_ticket_details_hash_base64_encoded)
-    trade_ticket_output_file_path = os.path.join(pending_trade_ticket_files_folder_path,'Animecoin_Trade_Ticket__TradeID__'+new_trade_id+'__DateTime_Submitted__'+datetime_trade_submitted.replace(':','_').replace('-','_').replace(' ','_')+'.html')
+    x = trade_ticket_template_html_string
+    x = x.replace('TRADE_ID_VAR', new_trade_id)
+    x = x.replace('TRADE_DATETIME_VAR', datetime_trade_submitted)
+    x = x.replace('TRADE_TRADER_PUBLIC_KEY_ID_VAR', submitting_trader_animecoin_identity_public_key_pem_format)
+    x = x.replace('TRADE_TRADER_ANIME_ADDRESS_VAR', submitting_trader_animecoin_blockchain_address)
+    x = x.replace('TRADE_TYPE_VAR', desired_trade_type)
+    x = x.replace('TRADE_ART_ASSET_HASH_VAR', desired_art_asset_hash)
+    x = x.replace('TRADE_QUANTITY_VAR', desired_quantity_formatted)
+    x = x.replace('TRADE_PRICE_VAR', specified_price_in_anime_formatted)
+    x = x.replace('TRADE_TICKET_HASH_VAR', trade_ticket_details_sha256_hash)
+    x = x.replace('TRADE_TRADER_SIGNATURE_VAR', submitting_traders_digital_signature_on_trade_ticket_details_hash)
+    x = x.replace('TRADE_ASSIGNED_BROKER_IP_ADDRESS_VAR', assigned_masternode_broker_ip_address)
+    x = x.replace('TRADE_ASSIGNED_BROKER_ANIME_ADDRESS_VAR', assigned_masternode_broker_animecoin_blockchain_address)
+    x = x.replace('TRADE_ASSIGNED_BROKER_PUBLIC_KEY_ID_VAR', assigned_masternode_broker_animecoin_identity_public_key_pem_format.decode('utf-8'))
+    x = x.replace('TRADE_ASSIGNED_BROKER_SIGNATURE_VAR', assigned_masternode_broker_digital_signature_on_trade_ticket_details_hash_base64_encoded)
+    new_trade_ticket_html_string = x
+    trade_ticket_output_file_path = os.path.join(pending_trade_ticket_files_folder_path,'Animecoin_Trade_Ticket__TradeID__' + new_trade_id + '__DateTime_Submitted__'+datetime_trade_submitted.replace(':','_').replace('-','_').replace(' ','_') + '.html')
     with open(trade_ticket_output_file_path,'w') as f:
         f.write(new_trade_ticket_html_string)
-    print('Successfully generated trade ticket for TradeID '+new_trade_id)
+    print('Successfully generated trade ticket for TradeID ' + new_trade_id)
     return trade_ticket_output_file_path
 
 def sign_trade_ticket_hash_func(signer_private_key, submitting_trader_animecoin_identity_public_key, submitting_trader_animecoin_blockchain_address, assigned_masternode_broker_ip_address, assigned_masternode_broker_animecoin_identity_public_key, desired_trade_type, desired_art_asset_hash, desired_quantity, specified_price_in_anime):
     desired_quantity_formatted = locale.format('%d', desired_quantity, grouping=True)
     specified_price_in_anime_formatted = locale.format('%f', specified_price_in_anime, grouping=True)
-    submitting_trader_animecoin_identity_public_key_pem_format = artist_public_key.save_pkcs1(format='PEM').decode('utf-8')
+    submitting_trader_animecoin_identity_public_key_pem_format = submitting_trader_animecoin_identity_public_key.save_pkcs1(format='PEM').decode('utf-8')
     assigned_masternode_broker_animecoin_identity_public_key_pem_format = assigned_masternode_broker_animecoin_identity_public_key.save_pkcs1(format='PEM').decode('utf-8')
     data_for_trade_ticket_hash = submitting_trader_animecoin_identity_public_key_pem_format + submitting_trader_animecoin_blockchain_address +  assigned_masternode_broker_ip_address + assigned_masternode_broker_animecoin_identity_public_key_pem_format + desired_trade_type + desired_art_asset_hash + desired_quantity_formatted + specified_price_in_anime_formatted
     data_for_trade_ticket_hash = data_for_trade_ticket_hash.encode('utf-8')
