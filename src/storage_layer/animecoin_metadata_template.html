@@ -2,7 +2,7 @@
 <html lang=en>
 <head>
 <meta charset=utf-8>
-<style> body { font-family: 'Sailec', Vardana, sans-serif;} table {border-collapse: collapse; border: 3px solid rgb(200,200,200); letter-spacing: 1px; font-size: 0.8rem;}td, th {border: 1px solid rgb(190,190,190); padding: 25px 25px;}</style>
+<style> body { font-family: 'Sailec', Vardana, sans-serif;} table {border-collapse: collapse; border: 3px solid rgb(200,200,200); letter-spacing: 1px; font-size: 0.8rem;}td, th {border: 1px solid rgb(190,190,190); padding: 20px 20px;}</style>
 <title>Animecoin Artwork Metadata</font></title>
 <body>
 <table align="left" summary="Animecoin Artwork Metadata">
@@ -11,8 +11,9 @@
 <tr> <th align="left">ANIME Metadata Format Version Number:</th> <td>ANIME_METADATA_FORMAT_VERSION_NUMBER</td> </tr>
 <tr> <th align="left">Artist's Animecoin ID Public Key:</th> <td>ANIME_ARTIST_ID_PUBLIC_KEY</td> </tr>
 <tr> <th align="left">Artist's Receiving ANIME Blockchain Address:</th> <td>ANIME_ARTIST_RECEIVING_BLOCKCHAIN_ADDRESS</td> </tr>
-<tr> <th align="left">Hash of the Concatenated Image and Core Metadata Hashes:</th> <td>ANIME_HASH_OF_HASHES</td></tr>
-<tr> <th align="left">Artist's Digital Signature on the Hash of the Concatenated Hashes (Base64 Encoded):</th> <td>ANIME_ARTIST_SIGNATURE_ON_COMBINED_IMAGE_AND_METADATA_HASH</td></tr>
+<tr> <th align="left">Combined Image and Metadata String:</th> <td>ANIME_COMBINED_IMAGE_AND_METADATA_STRING</td></tr>
+<tr> <th align="left">Combined Image and Metadata Hash:</th> <td>ANIME_COMBINED_IMAGE_AND_METADATA_HASH</td></tr>
+<tr> <th align="left">Artist's Digital Signature on the Combined Image and Metadata Hash (Base64 Encoded):</th> <td>ANIME_ARTIST_SIGNATURE_ON_COMBINED_IMAGE_AND_METADATA_HASH</td></tr>
 <tr> <th align="left">Total Number of Unique Copies of Artwork:</th> <td>ANIME_TOTAL_NUMBER_OF_UNIQUE_COPIES_OF_ARTWORK</td></tr>
 <tr> <th align="left">Date-Time Artwork was Signed by Artist:</th> <td>ANIME_DATE_TIME_ARTWORK_SIGNED</td> </tr>
 <tr> <th align="left">Artist's Name:</th> <td>ANIME_ARTIST_NAME</td> </tr>
@@ -21,9 +22,9 @@
 <tr> <th align="left">Artist's Website:</th> <td>ANIME_ARTIST_WEBSITE</td> </tr>
 <tr> <th align="left">Artist's Statement about Artwork:</th> <td>ANIME_ARTIST_STATEMENT</td></tr>
 <tr> <th align="left">Combined Size of Artwork Image Files in Megabytes:</th> <td>ANIME_COMBINED_IMAGE_SIZE_IN_MB</td></tr>
-<tr> <th align="left">Latest Bitcoin Blockchain Block Number:</th> <td>ANIME_MN_LATEST_BITCOIN_BLOCK_NUMBER</td></tr>
-<tr> <th align="left">Latest Bitcoin Blockchain Block Hash:</th> <td>ANIME_MN_LATEST_BITCOIN_BLOCK_HASH</td></tr>
-<tr> <th align="left">Latest ANIME Mining Difficulty Rate:</th> <td>ANIME_MN_LATEST_ANIME_MINING_DIFFICULTY_RATE</td></tr>
+<tr> <th align="left">Current Bitcoin Blockchain Block Number:</th> <td>ANIME_MN_CURRENT_BITCOIN_BLOCK_NUMBER</td></tr>
+<tr> <th align="left">Current Bitcoin Blockchain Block Hash:</th> <td>ANIME_MN_CURRENT_BITCOIN_BLOCK_HASH</td></tr>
+<tr> <th align="left">Current ANIME Mining Difficulty Rate:</th> <td>ANIME_MN_CURRENT_ANIME_MINING_DIFFICULTY_RATE</td></tr>
 <tr> <th align="left">Average ANIME Mining Difficulty Rate for First 20,000 Blocks:</th> <td>ANIME_MN_AVG_ANIME_MINING_DIFFICULTY_RATE_FIRST_20K_BLOCKS</td></tr>
 <tr> <th align="left">ANIME Mining Difficulty Adjustment Ratio:</th> <td>ANIME_MN_MINING_DIFFICULTY_ADJUSTMENT_RATIO</td></tr>
 <tr> <th align="left">Required Registration Fee in ANIME Coins Before Difficulty Adjustment:</th> <td>ANIME_MN_REGISTRATION_FEE_IN_ANIME_PRE_ADJUSTMENT</td></tr>
@@ -32,9 +33,21 @@
 <tr> <th align="left">Registering Masternode Collateral ANIME Blockchain Address:</th> <td>ANIME_MN_COLLATERAL_BLOCKCHAIN_ADDRESS</td></tr>
 <tr> <th align="left">Registering Masternode Animecoin ID Public Key:</th> <td>ANIME_MN_ANIMECOIN_ID_PUBLIC_KEY</td></tr>
 <tr> <th align="left">Registering Masternode IP Address:</th> <td>ANIME_MN_IP_ADDRESS</td></tr>
-<tr> <th align="left">Registering Masternode's Collateral Address Digital Signature on the Hash of the Concatenated Hashes (Base64 Encoded):</th> <td>ANIME_MN_COLLATERAL_SIGNATURE_ON_HASH_OF_HASHES</td></tr>
-<tr> <th align="left">Registering Masternode's Animecoin Public ID Digital Signature on the Hash of the Concatenated Hashes (Base64 Encoded):</th> <td>ANIME_MN_ANIMECOIN_ID_SIGNATURE_ON_HASH_OF_HASHES</td></tr>
+<tr> <th align="left">Registering Masternode's Collateral Address Digital Signature on the Combined Image and Metadata Hash (Base64 Encoded):</th> <td>ANIME_MN_COLLATERAL_SIGNATURE_ON_COMBINED_IMAGE_AND_METADATA_HASH</td></tr>
+<tr> <th align="left">Registering Masternode's Animecoin Public ID Digital Signature on the Combined Image and Metadata Hash (Base64 Encoded):</th> <td>ANIME_MN_ANIMECOIN_ID_SIGNATURE_ON_COMBINED_IMAGE_AND_METADATA_HASH</td></tr>
 <tr> <th align="left">Date-Time Masternode Registered Artwork:</th> <td>ANIME_DATE_TIME_MN_REGISTERED_ARTWORK</td> </tr>
+<tr> <th align="left">Confirming Masternode 1 Collateral ANIME Blockchain Address:</th> <td>ANIME_CONFIRMING_MN_1_COLLATERAL_BLOCKCHAIN_ADDRESS</td></tr>
+<tr> <th align="left">Confirming Masternode 1 Animecoin ID Public Key:</th> <td>ANIME_CONFIRMING_MN_1_ANIMECOIN_ID_PUBLIC_KEY</td></tr>
+<tr> <th align="left">Confirming Masternode 1 IP Address:</th> <td>ANIME_CONFIRMING_MN_1_IP_ADDRESS</td></tr>
+<tr> <th align="left">Confirming Masternode 1's Collateral Address Digital Signature on the Combined Image and Metadata Hash (Base64 Encoded):</th> <td>ANIME_CONFIRMING_MN_1_COLLATERAL_SIGNATURE_ON_COMBINED_IMAGE_AND_METADATA_HASH</td></tr>
+<tr> <th align="left">Confirming Masternode 1's Animecoin Public ID Digital Signature on the Combined Image and Metadata Hash (Base64 Encoded):</th> <td>ANIME_CONFIRMING_MN_1_ANIMECOIN_ID_SIGNATURE_ON_COMBINED_IMAGE_AND_METADATA_HASH</td></tr>
+<tr> <th align="left">Date-Time Confirming Masternode 1 Attested to Artwork:</th> <td>ANIME_DATE_TIME_CONFIRMING_MN_1_ATTESTED_TO_ARTWORK</td> </tr>
+<tr> <th align="left">Confirming Masternode 2 Collateral ANIME Blockchain Address:</th> <td>ANIME_CONFIRMING_MN_2_COLLATERAL_BLOCKCHAIN_ADDRESS</td></tr>
+<tr> <th align="left">Confirming Masternode 2 Animecoin ID Public Key:</th> <td>ANIME_CONFIRMING_MN_2_ANIMECOIN_ID_PUBLIC_KEY</td></tr>
+<tr> <th align="left">Confirming Masternode 2 IP Address:</th> <td>ANIME_CONFIRMING_MN_2_IP_ADDRESS</td></tr>
+<tr> <th align="left">Confirming Masternode 2's Collateral Address Digital Signature on the Combined Image and Metadata Hash (Base64 Encoded):</th> <td>ANIME_CONFIRMING_MN_2_COLLATERAL_SIGNATURE_ON_COMBINED_IMAGE_AND_METADATA_HASH</td></tr>
+<tr> <th align="left">Confirming Masternode 2's Animecoin Public ID Digital Signature on the Combined Image and Metadata Hash (Base64 Encoded):</th> <td>ANIME_CONFIRMING_MN_2_ANIMECOIN_ID_SIGNATURE_ON_COMBINED_IMAGE_AND_METADATA_HASH</td></tr>
+<tr> <th align="left">Date-Time Confirming Masternode 2 Attested to Artwork:</th> <td>ANIME_DATE_TIME_CONFIRMING_MN_2_ATTESTED_TO_ARTWORK</td> </tr>
 </tbody>
 </table>
 
@@ -43,10 +56,8 @@
 <br> <br>
 
 <table align="left" summary="Included Images and their SHA256 Hashes">
-<caption><font size="4" color="blue">Included Images:</font></caption>
-<tbody>
-<tr> <th align="left"><img src="ANIME_IMAGE_$NUMBER$_FILENAME" alt="ANIME_IMAGE_$NUMBER$_HASH" style="width:ANIME_IMAGE_$NUMBER$_PIXEL_WIDTHpx;height:ANIME_IMAGE_$NUMBER$_PIXEL_HEIGHTpx;"></th> <td>ANIME_IMAGE_$NUMBER$_HASH</td> </tr>
-</tbody>
+<caption><font size="6" color="blue">Included Images and their SHA256 Hashes:</font></caption>
+<tbody> ANIME_IMAGE_FILEPATHS_AND_HASH_DATA </tbody>
 </table>
 
 </body>
