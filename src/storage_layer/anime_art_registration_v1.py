@@ -15,8 +15,8 @@ from anime_fountain_coding_v1 import encode_final_art_zipfile_into_luby_transfor
 anime_metadata_format_version_number, minimum_total_number_of_unique_copies_of_artwork, maximum_total_number_of_unique_copies_of_artwork, target_number_of_nodes_per_unique_block_hash, target_block_redundancy_factor, desired_block_size_in_bytes, \
 remote_node_chunkdb_refresh_time_in_minutes, remote_node_image_fingerprintdb_refresh_time_in_minutes, percentage_of_block_files_to_randomly_delete, percentage_of_block_files_to_randomly_corrupt, percentage_of_each_selected_file_to_be_randomly_corrupted, \
 registration_fee_anime_per_megabyte_of_images_pre_difficulty_adjustment, example_list_of_valid_masternode_ip_addresses, forfeitable_deposit_to_initiate_registration_as_percentage_of_adjusted_registration_fee, nginx_ip_whitelist_override_addresses, \
-example_animecoin_masternode_blockchain_address, example_trader_blockchain_address, example_artists_receiving_blockchain_address, rpc_connection_string, max_number_of_blocks_to_download_before_checking, \
-earliest_possible_artwork_signing_date, maximum_length_in_characters_of_text_field, maximum_combined_image_size_in_megabytes_for_single_artwork = get_all_animecoin_parameters_func()
+example_animecoin_masternode_blockchain_address, example_trader_blockchain_address, example_artists_receiving_blockchain_address, rpc_connection_string, max_number_of_blocks_to_download_before_checking, earliest_possible_artwork_signing_date, \
+maximum_length_in_characters_of_text_field, maximum_combined_image_size_in_megabytes_for_single_artwork, nsfw_score_threshold, duplicate_image_threshold = get_all_animecoin_parameters_func()
 #Get various directories:
 root_animecoin_folder_path, folder_path_of_art_folders_to_encode, block_storage_folder_path, folder_path_of_remote_node_sqlite_files, reconstructed_file_destination_folder_path, \
 misc_masternode_files_folder_path, masternode_keypair_db_file_path, trade_ticket_files_folder_path, completed_trade_ticket_files_folder_path, pending_trade_ticket_files_folder_path, \
@@ -252,7 +252,7 @@ def perform_superficial_validation_of_html_metadata_table_func(path_to_art_folde
     global maximum_length_in_characters_of_text_field
     global maximum_combined_image_size_in_megabytes_for_single_artwork
     list_of_validation_steps = []
-    latest_possible_artwork_signing_date = datetime.now() - timedelta(hours=24)
+    latest_possible_artwork_signing_date = datetime.now() + timedelta(hours=24)
     path_to_metadata_html_table_file = get_metadata_file_path_from_art_folder_func(path_to_art_folder)    
     anime_metadata_format_version_number, artists_animecoin_id_public_key_pem_format, artists_receiving_anime_blockchain_address, artists_receiving_anime_blockchain_address, computed_combined_image_and_metadata_string, computed_combined_image_and_metadata_hash, \
         artists_digital_signature_on_the_combined_image_and_metadata_hash_base64_encoded, total_number_of_unique_copies_of_artwork, date_time_artwork_was_signed_by_artist, artists_name, artwork_title, artwork_series_name, \
@@ -270,7 +270,7 @@ def perform_superficial_validation_of_html_metadata_table_func(path_to_art_folde
     else:
         list_of_validation_steps.append(1)
     if (total_number_of_unique_copies_of_artwork < minimum_total_number_of_unique_copies_of_artwork) or (total_number_of_unique_copies_of_artwork > maximum_total_number_of_unique_copies_of_artwork):
-        print('Error! The metadata table specifies an invalid total number of unique copiues of the artwork.')
+        print('Error! The metadata table specifies an invalid total number of unique copies of the artwork.')
     else:
         list_of_validation_steps.append(1)
     if (date_time_artwork_was_signed_by_artist < earliest_possible_artwork_signing_date) or (date_time_artwork_was_signed_by_artist > latest_possible_artwork_signing_date):
@@ -350,7 +350,37 @@ def perform_superficial_validation_of_html_metadata_table_func(path_to_art_folde
         list_of_validation_steps.append(1)
     #masternode_anime_public_id_signature_verified = verify_signature_on_data_func(computed_combined_image_and_metadata_hash, registering_masternode_collateral_address_public_key_pem_format, registering_masternodes_collateral_address_digital_signature_on_the_hash_of_the_concatenated_hashes_base64_encoded)
     return list_of_validation_steps
-    
+
+def validate_folder_for_nsfw_and_dupe_content_func(path_to_art_folder):
+    global nsfw_score_threshold
+    art_input_file_paths = get_all_valid_image_file_paths_in_folder_func(path_to_art_folder)
+    list_of_art_file_hashes, list_of_nsfw_scores = check_art_folder_for_nsfw_content_func(path_to_art_folder)
+    art_file_hash_to_nsfw_dict = dict(zip(list_of_art_file_hashes, list_of_nsfw_scores))
+    list_of_accepted_art_file_hashes = []
+    list_of_accepted_art_file_paths = []
+    for current_file_path in art_input_file_paths:
+        with open(current_file_path,'rb') as f:
+            current_art_file = f.read()
+        current_file_name_without_extension = current_file_path.split(os.sep)[-1].split('.')[0]
+        sha256_hash_of_current_art_file = hashlib.sha256(current_art_file).hexdigest()                    
+        current_image_nsfw_score = art_file_hash_to_nsfw_dict[sha256_hash_of_current_art_file]
+        if current_image_nsfw_score > nsfw_score_threshold:
+            print('Renaming offending file to end with NSFW: '+current_file_name_without_extension)
+            modified_file_path = path_to_art_folder + current_file_name_without_extension + '.nsfw'
+            os.rename(current_file_path,modified_file_path)
+        else:
+            print('\nNow checking for duplicates...')
+            is_dupe = check_if_image_is_likely_dupe_func(sha256_hash_of_current_art_file)
+            if is_dupe:
+                print('Renaming offending file to end with DUPE: '+current_file_name_without_extension)
+                modified_file_path = path_to_art_folder + current_file_name_without_extension + '.dupe'
+                os.rename(current_file_path,modified_file_path)
+            else:
+                list_of_accepted_art_file_hashes.append(sha256_hash_of_current_art_file)
+                list_of_accepted_art_file_paths.append(current_file_path)
+    return list_of_accepted_art_file_hashes, list_of_accepted_art_file_paths
+
+
 def confirm_and_attest_to_artwork_registered_by_another_masternode_func(path_to_art_folder):
     path_to_metadata_html_table_file = get_metadata_file_path_from_art_folder_func(path_to_art_folder)
     with open(path_to_metadata_html_table_file,'r') as f:
@@ -392,118 +422,7 @@ def confirm_and_attest_to_artwork_registered_by_another_masternode_func(path_to_
         x = x.replace('ANIME_CONFIRMING_MN_2_COLLATERAL_SIGNATURE_ON_HASH_OF_HASHES', confirming_masternode_2_collateral_address_digital_signature_on_the_hash_of_the_concatenated_hashes_base64_encoded)
         x = x.replace('ANIME_CONFIRMING_MN_2_ANIMECOIN_ID_SIGNATURE_ON_HASH_OF_HASHES', confirming_masternode_2_animecoin_public_id_digital_signature_on_the_hash_of_the_concatenated_hashes_base64_encoded)
         x = x.replace('ANIME_DATE_TIME_CONFIRMING_MN_2_ATTESTED_TO_ARTWORK', date_time_confirming_masternode_2_attested_to_artwork)
-
-def insert_artwork_metadata_into_chunkdb_func(path_to_art_folder,
-                                                  artist_name,
-                                                  artwork_title,
-                                                  artwork_max_quantity,
-                                                  artwork_series_name='',
-                                                  artist_website='',
-                                                  artwork_artist_statement=''):
-    global chunk_db_file_path
-    try:
-        conn = sqlite3.connect(chunk_db_file_path)
-        c = conn.cursor()
-        artwork_metadata__table_creation_string= """
-        CREATE TABLE artwork_metadata_table (
-        artist_public_key TEXT,
-        artist_concatenated_hash_signature_base64_encoded TEXT, 
-        hash_of_the_concatenated_file_hashes TEXT,
-        datetime_art_was_signed TIMESTAMP, 
-        artist_name TEXT,
-        artwork_title TEXT, 
-        artwork_max_quantity INTEGER,
-        artwork_series_name TEXT,
-        artist_website TEXT,
-        artwork_artist_statement TEXT,
-        PRIMARY KEY (artist_concatenated_hash_signature_base64_encoded, hash_of_the_concatenated_file_hashes));"""
-        try:
-            c.execute(artwork_metadata__table_creation_string)
-        except Exception as e:
-                print('Error: '+ str(e))
-        update_table_data_query_string = """
-        INSERT OR REPLACE INTO artwork_metadata_table (
-        artist_public_key,
-        artist_concatenated_hash_signature_base64_encoded, 
-        hash_of_the_concatenated_file_hashes,
-        datetime_art_was_signed, 
-        artist_name,
-        artwork_title, 
-        artwork_max_quantity,
-        artwork_series_name,
-        artist_website,
-        artwork_artist_statement) VALUES (?,?,?,?,?,?,?,?,?,?);"""
-        c.execute(update_table_data_query_string,[artist_public_key,
-                                                  artist_concatenated_hash_signature_base64_encoded, 
-                                                  hash_of_the_concatenated_file_hashes, 
-                                                  datetime_art_was_signed, 
-                                                  artist_name, 
-                                                  artwork_title,
-                                                  int(artwork_max_quantity),
-                                                  artwork_series_name,
-                                                  artist_website,
-                                                  artwork_artist_statement])
-        conn.commit()
-        conn.close()
-        print('Successfully wrote metadata to SQLite database!')
-        wrote_metadata_successfully = 1
-        return wrote_metadata_successfully
-    except Exception as e:
-        print('Error: '+ str(e))
-        return wrote_metadata_successfully
    
-def prepare_artwork_folder_for_registration_func(path_to_art_folder):
-    global nsfw_score_threshold
-    global artist_public_key # These two variables won't exist in the real version; they will instead be 
-    global artist_private_key# supplied by the artist at the time of submission for the art registration process.
-    remove_existing_remaining_zip_files_func(path_to_art_folder)
-    file_base_name = path_to_art_folder.split(os.sep)[-2].replace(' ','_').lower()
-    art_input_file_paths = get_all_valid_image_file_paths_in_folder_func(path_to_art_folder)
-    #These next two lines would actually be run on the artists machine and the resulting files would be included in the folder of art files already:
-    artist_signature_for_hash_of_the_concatenated_hashes_base64_encoded, hash_of_the_concatenated_file_hashes = sign_art_files_in_folder_with_artist_digital_signature_func(path_to_art_folder,artist_public_key,artist_private_key)
-    #artists_name, artwork_title, artwork_max_quantity, artwork_series_name, artist_website, artwork_artist_statement = get_artwork_metadata_from_artist_func(hash_of_the_concatenated_file_hashes)
-    list_of_art_file_hashes, list_of_nsfw_scores = check_art_folder_for_nsfw_content_func(path_to_art_folder)
-    art_file_hash_to_nsfw_dict = dict(zip(list_of_art_file_hashes,list_of_nsfw_scores))
-    list_of_accepted_art_file_hashes = []
-    zip_file_path = os.path.join(path_to_art_folder,file_base_name+'.zip')
-    with ZipFile(zip_file_path,'w') as myzip:
-        for current_file_path in art_input_file_paths:
-            with open(current_file_path,'rb') as f:
-                current_art_file = f.read()
-                sha256_hash_of_current_art_file = hashlib.sha256(current_art_file).hexdigest()                    
-                current_image_nsfw_score = art_file_hash_to_nsfw_dict[sha256_hash_of_current_art_file]
-                print('Now checking for duplicates...')
-                if current_image_nsfw_score <= nsfw_score_threshold:
-                    is_dupe = check_if_image_is_likely_dupe_func(sha256_hash_of_current_art_file)
-                    if not is_dupe:
-                        myzip.write(current_file_path,arcname=current_file_path.split(os.sep)[-1])
-                        list_of_accepted_art_file_hashes.append(sha256_hash_of_current_art_file)
-    if len(list_of_accepted_art_file_hashes) > 0:
-        print('\nSuccessfully added '+str(len(list_of_accepted_art_file_hashes))+ ' art image files that passed the NSFW test!\n')
-    #successfully_created_metadata_file = create_metadata_file_for_given_art_folder_func(path_to_art_folder, artist_name, artwork_title, artwork_max_quantity, artwork_series_name, artist_website,  artwork_artist_statement)#Now we use the artist's digital signature on the hash of the concatenated hashes for all image files included in the art folder, together with the various pieces of metadata, to construct the final metadata file that will be included in the art zip file.
-    metadata_html_table_output_file_path = create_metadata_html_table_for_given_art_folder_func(path_to_art_folder, artists_name, artists_animecoin_id_public_key_pem_format, artists_receiving_anime_blockchain_address, artwork_title, total_number_of_unique_copies_of_artwork, artwork_series_name, artists_website, artists_statement_about_artwork, date_time_artwork_was_signed_by_artist, combined_image_and_metadata_hash, artists_digital_signature_on_the_combined_image_and_metadata_hash_base64_encoded)
-    if os.path.exists(metadata_html_table_output_file_path):
-        try:
-            print('Now adding metadata file to zip file...')
-            metadata_sqlitedb_file_path = glob.glob(path_to_art_folder+'*.db')[0]
-            with ZipFile(zip_file_path,'a') as myzip:
-                myzip.write(metadata_sqlitedb_file_path, arcname=metadata_sqlitedb_file_path.split(os.sep)[-1])
-            print('Done!')
-            with open(zip_file_path,'rb') as f:
-                final_art_zipfile_binary_data = f.read()
-                art_zipfile_hash = hashlib.sha256(final_art_zipfile_binary_data).hexdigest()
-            final_artwork_zipfile_base_name = 'Final_Art_Zipfile_Hash__' + art_zipfile_hash + '.zip'
-            path_to_final_artwork_zipfile_including_metadata = os.path.join(prepared_final_art_zipfiles_folder_path,final_artwork_zipfile_base_name)
-            artist_signature_for_final_artwork_zipfile_including_metadata = sign_final_artwork_zipfile_including_metadata_with_artist_signature_func(zip_file_path, artist_private_key) #Again, this part will need to be done on the artists machin so the artist never has to reveal his private key.
-            artist_signature_for_final_artwork_zipfile_including_metadata_base64_encoded = base64.b64encode(artist_signature_for_final_artwork_zipfile_including_metadata).decode('utf-8')
-            final_signature_file_path = os.path.join(path_to_art_folder,'Final_Artist_Signature_for_Zipfile_with_Hash__' + art_zipfile_hash + '.sig')
-            with open(final_signature_file_path,'w') as f:
-                f.write(artist_signature_for_final_artwork_zipfile_including_metadata_base64_encoded)
-            copyfile(zip_file_path, path_to_final_artwork_zipfile_including_metadata)
-            return final_signature_file_path, path_to_final_artwork_zipfile_including_metadata
-        except Exception as e:
-            print('Error: '+ str(e))
-            
 def register_new_artwork_folder_func(path_to_art_folder):
     global artist_final_signature_files_folder_path
     global prepared_final_art_zipfiles_folder_path
