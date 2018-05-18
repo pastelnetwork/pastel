@@ -2,7 +2,8 @@ import sys, os, os.path, hashlib, sqlite3, warnings
 warnings.simplefilter(action='ignore', category=FutureWarning)
 warnings.filterwarnings('ignore',category=DeprecationWarning)
 #import anime_parameters_v1
-from anime_utility_functions_v1 import get_all_valid_image_file_paths_in_folder_func, convert_numpy_array_to_sqlite_func, convert_sqlite_data_to_numpy_array_func, get_animecoin_root_directory_func
+from anime_utility_functions_v1 import get_all_valid_image_file_paths_in_folder_func, convert_numpy_array_to_sqlite_func, convert_sqlite_data_to_numpy_array_func, \
+    get_animecoin_root_directory_func, get_all_animecoin_parameters_func
 import tensorflow as tf
 import numpy as np
 import pandas as pd
@@ -21,6 +22,12 @@ path_to_all_registered_works_for_dupe_detection = 'C:\\Users\\jeffr\Cointel Drop
 root_animecoin_folder_path = get_animecoin_root_directory_func()
 misc_masternode_files_folder_path = os.path.join(root_animecoin_folder_path,'misc_masternode_files' + os.sep)
 dupe_detection_image_fingerprint_database_file_path = os.path.join(misc_masternode_files_folder_path,'dupe_detection_image_fingerprint_database.sqlite')
+#Get various settings:
+anime_metadata_format_version_number, minimum_total_number_of_unique_copies_of_artwork, maximum_total_number_of_unique_copies_of_artwork, target_number_of_nodes_per_unique_block_hash, target_block_redundancy_factor, desired_block_size_in_bytes, \
+remote_node_chunkdb_refresh_time_in_minutes, remote_node_image_fingerprintdb_refresh_time_in_minutes, percentage_of_block_files_to_randomly_delete, percentage_of_block_files_to_randomly_corrupt, percentage_of_each_selected_file_to_be_randomly_corrupted, \
+registration_fee_anime_per_megabyte_of_images_pre_difficulty_adjustment, example_list_of_valid_masternode_ip_addresses, forfeitable_deposit_to_initiate_registration_as_percentage_of_adjusted_registration_fee, nginx_ip_whitelist_override_addresses, \
+example_animecoin_masternode_blockchain_address, example_trader_blockchain_address, example_artists_receiving_blockchain_address, rpc_connection_string, max_number_of_blocks_to_download_before_checking, earliest_possible_artwork_signing_date, \
+maximum_length_in_characters_of_text_field, maximum_combined_image_size_in_megabytes_for_single_artwork, nsfw_score_threshold, duplicate_image_threshold = get_all_animecoin_parameters_func()
 
 ###############################################################################################################
 # Functions:
