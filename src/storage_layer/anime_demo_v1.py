@@ -11,7 +11,7 @@ from anime_image_processing_v1 import check_if_image_is_likely_dupe_func, add_al
 from anime_fountain_coding_v1 import refresh_block_storage_folder_and_check_block_integrity_func, decode_block_files_into_art_zipfile_func, randomly_delete_percentage_of_local_block_files_func, \
     randomly_corrupt_a_percentage_of_bytes_in_a_random_sample_of_block_files_func
 from anime_art_registration_v1 import register_new_artwork_folder_func, generate_combined_image_and_metadata_hash_func, get_concatenated_art_image_file_hashes_and_total_size_in_mb_func, create_metadata_html_table_for_given_art_folder_func, \
-    perform_superficial_validation_of_html_metadata_table_func
+    perform_superficial_validation_of_html_metadata_table_func, validate_folder_for_nsfw_and_dupe_content_func
 from anime_trading_v1 import sign_trade_ticket_hash_func, verify_trade_ticket_hash_signature_func, generate_trade_ticket_func
 ###############################################################################################################
 # Parameters:
@@ -20,8 +20,8 @@ from anime_trading_v1 import sign_trade_ticket_hash_func, verify_trade_ticket_ha
 anime_metadata_format_version_number, minimum_total_number_of_unique_copies_of_artwork, maximum_total_number_of_unique_copies_of_artwork, target_number_of_nodes_per_unique_block_hash, target_block_redundancy_factor, desired_block_size_in_bytes, \
 remote_node_chunkdb_refresh_time_in_minutes, remote_node_image_fingerprintdb_refresh_time_in_minutes, percentage_of_block_files_to_randomly_delete, percentage_of_block_files_to_randomly_corrupt, percentage_of_each_selected_file_to_be_randomly_corrupted, \
 registration_fee_anime_per_megabyte_of_images_pre_difficulty_adjustment, example_list_of_valid_masternode_ip_addresses, forfeitable_deposit_to_initiate_registration_as_percentage_of_adjusted_registration_fee, nginx_ip_whitelist_override_addresses, \
-example_animecoin_masternode_blockchain_address, example_trader_blockchain_address, example_artists_receiving_blockchain_address, rpc_connection_string, max_number_of_blocks_to_download_before_checking, \
-earliest_possible_artwork_signing_date, maximum_length_in_characters_of_text_field, maximum_combined_image_size_in_megabytes_for_single_artwork = get_all_animecoin_parameters_func()
+example_animecoin_masternode_blockchain_address, example_trader_blockchain_address, example_artists_receiving_blockchain_address, rpc_connection_string, max_number_of_blocks_to_download_before_checking, earliest_possible_artwork_signing_date, \
+maximum_length_in_characters_of_text_field, maximum_combined_image_size_in_megabytes_for_single_artwork, nsfw_score_threshold, duplicate_image_threshold = get_all_animecoin_parameters_func()
 #Get various directories:
 root_animecoin_folder_path, folder_path_of_art_folders_to_encode, block_storage_folder_path, folder_path_of_remote_node_sqlite_files, reconstructed_file_destination_folder_path, \
 misc_masternode_files_folder_path, masternode_keypair_db_file_path, trade_ticket_files_folder_path, completed_trade_ticket_files_folder_path, pending_trade_ticket_files_folder_path, \
@@ -121,6 +121,7 @@ if use_demonstrate_duplicate_detection:
     is_dupe = check_if_image_is_likely_dupe_func(sha256_hash_of_art_image_file)
 
 if use_demonstrate_combined_metadata_hash_generation:
+    list_of_accepted_art_file_hashes, list_of_accepted_art_file_paths = validate_folder_for_nsfw_and_dupe_content_func(path_to_art_folder)
     artists_name, artwork_title, total_number_of_unique_copies_of_artwork, artwork_series_name, artists_website, artists_statement_about_artwork = generate_example_artwork_metadata_func()
     concatenated_image_file_hashes, combined_size_of_artwork_image_files_in_megabytes = get_concatenated_art_image_file_hashes_and_total_size_in_mb_func(path_to_art_folder)
     artists_animecoin_id_public_key_pem_format = example_artist_public_key_pem_format
