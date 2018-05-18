@@ -9,21 +9,50 @@
 <table align="left" summary="Animecoin Trade Ticket">
 <caption><font size="7" color="blue">Animecoin Trade Ticket</font></caption>
 <tbody>
-<tr> <th align="left">TradeID:</th> <td>TRADE_ID_VAR</td> </tr>
-<tr> <th align="left">Date-Time Trade Submitted:</th> <td>TRADE_DATETIME_VAR</td> </tr>
-<tr> <th align="left">Submitting Trader's Animecoin Blockchain Address:</th> <td>TRADE_TRADER_ANIME_ADDRESS_VAR</td></tr>
-<tr> <th align="left">Submitting Trader's Animecoin Identity Public Key:</th> <td>TRADE_TRADER_PUBLIC_KEY_ID_VAR</td></tr>
-<tr> <th align="left">Trade Type (Buy or Sell):</th> <td>TRADE_TYPE_VAR</td> </tr>
-<tr> <th align="left">Art Asset Hash:</th> <td>TRADE_ART_ASSET_HASH_VAR</td> </tr>
-<tr> <th align="left">Desired Quantity:</th> <td>TRADE_QUANTITY_VAR</td></tr>
-<tr> <th align="left">Specified Price in ANIME:</th> <td>TRADE_PRICE_VAR</td></tr>
-<tr> <th align="left">Trade Ticket Details Hash:</th> <td>TRADE_TICKET_HASH_VAR</td></tr>
-<tr> <th align="left">Trader's Digital Signature on Trade Ticket Details Hash:</th> <td>TRADE_TRADER_SIGNATURE_VAR</td></tr>
-<tr> <th align="left">Assigned Masternode Broker IP Address:</th> <td>TRADE_ASSIGNED_BROKER_IP_ADDRESS_VAR</td> </tr>
-<tr> <th align="left">Assigned Masternode Broker Animecoin Blockchain Address:</th> <td>TRADE_ASSIGNED_BROKER_ANIME_ADDRESS_VAR</td></tr>
-<tr> <th align="left">Assigned Masternode Broker's Animecoin Identity Public Key:</th> <td>TRADE_ASSIGNED_BROKER_PUBLIC_KEY_ID_VAR</td> </tr>
-<tr> <th align="left">Assigned Masternode Broker's Digital Signature on Trade Ticket Details Hash:</th> <td>TRADE_ASSIGNED_BROKER_SIGNATURE_VAR</td></tr>
+<tr> <th align="left">Animecoin Trade Ticket Format Version Number:</th> <td>ANIME_TRADE_TICKET_FORMAT_VERSION_NUMBER</td> </tr>
+<tr> <th align="left">Date-Time when Trader Submitted Trade Ticket:</th> <td>ANIME_DATETIME_TRADER_SUBMITTED_ANIME_TICKET</td> </tr>
+<tr> <th align="left">Current Bitcoin Blockchain Block Number (for validation purposes):</th> <td>ANIME_CURRENT_BITCOIN_BLOCK_NUMBER</td></tr>
+<tr> <th align="left">Current Bitcoin Blockchain Block Hash (for validation purposes):</th> <td>ANIME_CURRENT_BITCOIN_BLOCK_HASH</td></tr>
+<tr> <th align="left">Submitting Trader's Animecoin ID Public Key::</th> <td>ANIME_TRADER_ANIMECOIN_PUBLIC_ID_PUBKEY</td></tr>
+<tr> <th align="left">Submitting Trader's Animecoin Blockchain Address:</th> <td>ANIME_TRADER_ANIME_BLOCKCHAIN_ADDRESS</td></tr>
+<tr> <th align="left">Desired Trade Type (Buy or Sell):</th> <td>ANIME_TRADE_TYPE_BUY_OR_SELL</td> </tr>
+<tr> <th align="left">Traded Artwork's Combined Image and Metadata String:</th> <td>ANIME_TRADED_ARTWORK_COMBINED_IMAGE_AND_METADATA_STRING</td></tr>
+<tr> <th align="left">Traded Artwork's Combined Image and Metadata Hash:</th> <td>ANIME_TRADED_ARTWORK_COMBINED_IMAGE_AND_METADATA_HASH</td></tr>
+<tr> <th align="left">Artist's Animecoin Public ID Signature on the Traded Artwork's Combined Image and Metadata Hash:</th> <td>ANIME_ARTIST_SIGNATURE_ON_COMBINED_IMAGE_AND_METADATA_HASH</td></tr>
+<tr> <th align="left">Number of Unique Copies of Traded Artwork to Buy or Sell (Trade Quantity):</th> <td>ANIME_NUMBER_OF_UNIQUE_COPIES_OF_ARTWORK_TO_BUY_OR_SELL</td></tr>
+<tr> <th align="left">Price (measured in ANIME coins) at which the Submitting Trader is willing to Buy or Sell the Traded Artwork (Trade Price):</th> <td>ANIME_DESIRED_PRICE_IN_ANIME_TERMS</td></tr>
+<tr> <th align="left">Total Amount of ANIME to Pay or Receive in Trade (Trade Price times Trade Quantity):</th> <td>ANIME_TOTAL_TRADE_AMOUNT_IN_ANIME_TERMS</td></tr>
+<tr> <th align="left">Total Amount of ANIME that Submitting Trader Agrees to Pay Assigned Masternode Broker as a Commission for Completing the Trade (Trade Commission):</th> <td>ANIME_TOTAL_TRADE_COMMISSION_IN_ANIME_TERMS</td></tr>
+<tr> <th align="left">Trade Ticket Details String:</th> <td>ANIME_TRADE_TICKET_DETAILS_STRING</td></tr>
+<tr> <th align="left">Trade Ticket Details Hash:</th> <td>ANIME_TRADE_TICKET_DETAILS_HASH</td></tr>
+<tr> <th align="left">Submitting Trader's Animecoin Public ID Signature on Trade Ticket Details Hash:</th> <td>ANIME_TRADER_SIGNATURE_ON_TRADE_TICKET</td></tr>
+<tr> <th align="left">Assigned Masternode Broker's IP Address:</th> <td>ANIME_ASSIGNED_BROKER_IP_ADDRESS</td> </tr>
+<tr> <th align="left">Assigned Masternode Broker's Animecoin ID Public Key:</th> <td>ANIME_ASSIGNED_BROKER_ANIMECOIN_ID_PUBLIC_KEY</td></tr>
+<tr> <th align="left">Assigned Masternode Broker's ANIME Collateral Blockchain Address:</th> <td>ANIME_ASSIGNED_BROKER_COLLATERAL_BLOCKCHAIN_ADDRESS</td></tr>
+<tr> <th align="left">Assigned Masternode Broker's Collateral Address Digital Signature on Trade Ticket Details Hash:</th> <td>ANIME_ASSIGNED_BROKER_COLLATERAL_SIGNATURE_ON_TRADE_TICKET_DETAILS_HASH</td></tr>
+<tr> <th align="left">Assigned Masternode Broker's Animecoin Public ID Digital Signature on Trade Ticket Details Hash:</th> <td>ANIME_ASSIGNED_BROKER_ANIMECOIN_ID_SIGNATURE_ON_TRADE_TICKET_DETAILS_HASH</td></tr>
+<tr> <th align="left">Assigned Masternode Broker's Animecoin Blockchain Address:</th> <td>ANIME_ASSIGNED_BROKER_ANIME_BLOCKCHAIN_ADDRESS</td></tr>
+<tr> <th align="left">Assigned Masternode Broker's Animecoin Blockchain Address for Receiving Trade Commision:</th> <td>ANIME_ASSIGNED_BROKER_ANIMECOIN_BLOCKCHAIN_ADDRESS_FOR_RECEIVING_COMMISSION</td></tr>
+<tr> <th align="left">Date-Time when Assigned Masternode Broker Processed Trade Ticket:</th> <td>ANIME_DATE_TIME_ASSIGNED_BROKER_PROCESSED_TRADE_TICKET</td> </tr>
+<tr> <th align="left">Confirming Masternode Broker 1's ANIME Collateral Blockchain Address:</th> <td>ANIME_CONFIRMING_MN_BROKER_1_ANIME_COLLATERAL_BLOCKCHAIN_ADDRESS</td></tr>
+<tr> <th align="left">Confirming Masternode Broker 1's Animecoin ID Public Key:</th> <td>ANIME_CONFIRMING_MN_BROKER_1_ANIMECOIN_ID_PUBLIC_KEY</td></tr>
+<tr> <th align="left">Confirming Masternode Broker 1's IP Address:</th> <td>ANIME_CONFIRMING_MN_BROKER_1_IP_ADDRESS</td></tr>
+<tr> <th align="left">Confirming Masternode Broker 1's Collateral Address Digital Signature on the Combined Image and Metadata Hash:</th> <td>ANIME_CONFIRMING_MN_BROKER_1_COLLATERAL_SIGNATURE_ON_TRADE_TICKET_DETAILS_HASH</td></tr>
+<tr> <th align="left">Confirming Masternode Broker 1's Animecoin Public ID Digital Signature on the Combined Image and Metadata Hash:</th> <td>ANIME_CONFIRMING_MN_BROKER_1_ANIMECOIN_ID_SIGNATURE_ON_TRADE_TICKET_DETAILS_HASH</td></tr>
+<tr> <th align="left">Confirming Masternode Broker 1's Animecoin Blockchain Address for Receiving Share of Trade Commision (paid by the Assigned Maternode Broker):</th> <td>ANIME_CONFIRMING_MN_BROKER_1_ANIMECOIN_BLOCKCHAIN_ADDRESS_FOR_RECEIVING_SHARE_OF_TRADE_COMMISSION</td></tr>
+<tr> <th align="left">Date-Time when Confirming Masternode Broker 1 Processed Trade Ticket:</th> <td>ANIME_DATE_TIME_CONFIRMING_MN_BROKER_1_PROCESSED_TRADE_TICKET</td> </tr>
+<tr> <th align="left">Confirming Masternode Broker 2's ANIME Collateral Blockchain Address:</th> <td>ANIME_CONFIRMING_MN_BROKER_2_ANIME_COLLATERAL_BLOCKCHAIN_ADDRESS</td></tr>
+<tr> <th align="left">Confirming Masternode Broker 2's Animecoin ID Public Key:</th> <td>ANIME_CONFIRMING_MN_BROKER_2_ANIMECOIN_ID_PUBLIC_KEY</td></tr>
+<tr> <th align="left">Confirming Masternode Broker 2's IP Address:</th> <td>ANIME_CONFIRMING_MN_BROKER_2_IP_ADDRESS</td></tr>
+<tr> <th align="left">Confirming Masternode Broker 2's Collateral Address Digital Signature on the Combined Image and Metadata Hash:</th> <td>ANIME_CONFIRMING_MN_BROKER_2_COLLATERAL_SIGNATURE_ON_TRADE_TICKET_DETAILS_HASH</td></tr>
+<tr> <th align="left">Confirming Masternode Broker 2's Animecoin Public ID Digital Signature on the Combined Image and Metadata Hash:</th> <td>ANIME_CONFIRMING_MN_BROKER_2_ANIMECOIN_ID_SIGNATURE_ON_TRADE_TICKET_DETAILS_HASH</td></tr>
+<tr> <th align="left">Confirming Masternode Broker 2's Animecoin Blockchain Address for Receiving Share of Trade Commision (paid by the Assigned Maternode Broker):</th> <td>ANIME_CONFIRMING_MN_BROKER_2_ANIMECOIN_BLOCKCHAIN_ADDRESS_FOR_RECEIVING_SHARE_OF_TRADE_COMMISSION</td></tr>
+<tr> <th align="left">Date-Time when Confirming Masternode Broker 2 Processed Trade Ticket:</th> <td>ANIME_DATE_TIME_CONFIRMING_MN_BROKER_2_PROCESSED_TRADE_TICKET</td> </tr>
+<tr> <th align="left">ANIME Blockchain Address containing Traded Artwork's Metadata file in Compressed Form:</th> <td>ANIME_ARTWORK_METADATA_FILE_BLOCKCHAIN_STORAGE_ADDRESS</td></tr>
+<tr> <th align="left">ANIME Blockchain Address containing this Trade Ticket File in Compressed Form:</th> <td>ANIME_TRADE_TICKET_FILE_BLOCKCHAIN_STORAGE_ADDRESS</td></tr>
+<tr> <th align="left">Animecoin Blockchain File Storage File Compression Method Description String:</th> <td>ANIME_BLOCKCHAIN_FILE_STORAGE_FILE_COMPRESSION_METHOD_DESCRIPTION_STRING</td></tr>
 </tbody>
 </table>
+
 </body>
 </html>
