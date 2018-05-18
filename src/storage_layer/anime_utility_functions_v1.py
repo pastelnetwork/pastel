@@ -3,10 +3,11 @@ warnings.simplefilter(action='ignore', category=FutureWarning)
 warnings.filterwarnings('ignore',category=DeprecationWarning)
 import requests
 import rsa
+import zstd
 import numpy as np
 from datetime import datetime
 from bitcoinrpc.authproxy import AuthServiceProxy, JSONRPCException
-#Requirements: pip install numpy, requests, rsa, bitcoinrpc
+#Requirements: pip install numpy, requests, rsa, bitcoinrpc, zstandard
 ###############################################################################################################
 # Functions:
 ###############################################################################################################
@@ -70,18 +71,21 @@ def get_all_animecoin_parameters_func():
     earliest_possible_artwork_signing_date = datetime(2018, 5, 15)
     maximum_length_in_characters_of_text_field = 5000
     maximum_combined_image_size_in_megabytes_for_single_artwork = 1000
+    nsfw_score_threshold = 0.97
+    duplicate_image_threshold = 0.08 #Any image which has another image in our image fingerprint database with a "distance" of less than this threshold will be considered a duplicate. 
     return anime_metadata_format_version_number, minimum_total_number_of_unique_copies_of_artwork, maximum_total_number_of_unique_copies_of_artwork, target_number_of_nodes_per_unique_block_hash, target_block_redundancy_factor, desired_block_size_in_bytes, \
             remote_node_chunkdb_refresh_time_in_minutes, remote_node_image_fingerprintdb_refresh_time_in_minutes, percentage_of_block_files_to_randomly_delete, percentage_of_block_files_to_randomly_corrupt, percentage_of_each_selected_file_to_be_randomly_corrupted, \
             registration_fee_anime_per_megabyte_of_images_pre_difficulty_adjustment, example_list_of_valid_masternode_ip_addresses, forfeitable_deposit_to_initiate_registration_as_percentage_of_adjusted_registration_fee, nginx_ip_whitelist_override_addresses, \
             example_animecoin_masternode_blockchain_address, example_trader_blockchain_address, example_artists_receiving_blockchain_address, rpc_connection_string, \
-            max_number_of_blocks_to_download_before_checking, earliest_possible_artwork_signing_date, maximum_length_in_characters_of_text_field, maximum_combined_image_size_in_megabytes_for_single_artwork
+            max_number_of_blocks_to_download_before_checking, earliest_possible_artwork_signing_date, maximum_length_in_characters_of_text_field, maximum_combined_image_size_in_megabytes_for_single_artwork, \
+            nsfw_score_threshold, duplicate_image_threshold
 
 #Get various settings:
 anime_metadata_format_version_number, minimum_total_number_of_unique_copies_of_artwork, maximum_total_number_of_unique_copies_of_artwork, target_number_of_nodes_per_unique_block_hash, target_block_redundancy_factor, desired_block_size_in_bytes, \
 remote_node_chunkdb_refresh_time_in_minutes, remote_node_image_fingerprintdb_refresh_time_in_minutes, percentage_of_block_files_to_randomly_delete, percentage_of_block_files_to_randomly_corrupt, percentage_of_each_selected_file_to_be_randomly_corrupted, \
 registration_fee_anime_per_megabyte_of_images_pre_difficulty_adjustment, example_list_of_valid_masternode_ip_addresses, forfeitable_deposit_to_initiate_registration_as_percentage_of_adjusted_registration_fee, nginx_ip_whitelist_override_addresses, \
-example_animecoin_masternode_blockchain_address, example_trader_blockchain_address, example_artists_receiving_blockchain_address, rpc_connection_string, max_number_of_blocks_to_download_before_checking, \
-earliest_possible_artwork_signing_date, maximum_length_in_characters_of_text_field, maximum_combined_image_size_in_megabytes_for_single_artwork = get_all_animecoin_parameters_func()
+example_animecoin_masternode_blockchain_address, example_trader_blockchain_address, example_artists_receiving_blockchain_address, rpc_connection_string, max_number_of_blocks_to_download_before_checking, earliest_possible_artwork_signing_date, \
+maximum_length_in_characters_of_text_field, maximum_combined_image_size_in_megabytes_for_single_artwork, nsfw_score_threshold, duplicate_image_threshold = get_all_animecoin_parameters_func()
 #Get various directories:
 root_animecoin_folder_path, folder_path_of_art_folders_to_encode, block_storage_folder_path, folder_path_of_remote_node_sqlite_files, reconstructed_file_destination_folder_path, \
 misc_masternode_files_folder_path, masternode_keypair_db_file_path, trade_ticket_files_folder_path, completed_trade_ticket_files_folder_path, pending_trade_ticket_files_folder_path, \
@@ -552,9 +556,45 @@ def validate_url_func(url_string_to_check):
 
 def check_if_ip_address_responds_to_pings_func(ip_address_to_ping):
     try:
-        output = subprocess.check_output("ping -{} 1 {}".format('n' if platform.system().lower()=="windows" else 'c', ip_address_to_ping), shell=True)
+        output = subprocess.check_output('ping -{} 1 {}'.format('n' if platform.system().lower()=='windows' else 'c', ip_address_to_ping), shell=True)
         print('Results of Ping:' + os.linesep + output.decode('utf-8'))
     except Exception as e:
         return False
     return True
    
+def generate_zstd_dictionary_from_folder_path_and_file_matching_string_func(path_to_folder_containing_files_for_dictionary, file_matching_string):
+    print('Now generating compression dictionary for ZSTD:')
+    list_of_matching_input_file_paths = glob.glob(path_to_folder_containing_files_for_dictionary + file_matching_string)
+    for cnt, current_input_file_path in enumerate(list_of_matching_input_file_paths):
+        print('Now loading input file '+ str(cnt + 1) + ' out of ' + str(len(list_of_matching_input_file_paths)))
+        with open(current_input_file_path,'rb') as f:
+            if cnt == 0:
+                combined_dictionary_input_data = f.read()
+            else:
+                new_file_data = f.read()
+                combined_dictionary_input_data = combined_dictionary_input_data + new_file_data
+    animecoin_zstd_compression_dictionary = zstd.ZstdCompressionDict(combined_dictionary_input_data)
+    print('Done generating compression dictionary!')
+    return animecoin_zstd_compression_dictionary
+
+def compress_data_with_animecoin_zstd_func(input_data, animecoin_zstd_compression_dictionary):
+    zstd_compression_level = 22 #Highest (best) compression level is 22
+    zstandard_animecoin_compressor = zstd.ZstdCompressor(dict_data=animecoin_zstd_compression_dictionary, level=zstd_compression_level, write_content_size=True)
+    if isinstance(input_data,str):
+        input_data = input_data.encode('utf-8')
+    animecoin_zstd_compressed_data = zstandard_animecoin_compressor.compress(input_data)
+    return animecoin_zstd_compressed_data
+
+def decompress_data_with_animecoin_zstd_func(animecoin_zstd_compressed_data, animecoin_zstd_compression_dictionary):
+    zstandard_animecoin_decompressor = zstd.ZstdDecompressor(dict_data=animecoin_zstd_compression_dictionary)
+    uncompressed_data = zstandard_animecoin_decompressor.decompress(animecoin_zstd_compressed_data)
+    return uncompressed_data
+
+def convert_list_of_strings_into_list_of_utf_encoded_byte_objects_func(list_of_strings):
+    list_of_utf_encoded_byte_objects = []
+    for current_string in list_of_strings:
+        if isinstance(current_string,str):
+            list_of_utf_encoded_byte_objects.append(current_string.encode('utf-8'))
+        else:
+            print('Error! Invalid string given as input.')
+    return list_of_utf_encoded_byte_objects     
