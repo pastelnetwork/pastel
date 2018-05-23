@@ -8,6 +8,7 @@
 
 #include "script/interpreter.h"
 #include "uint256.h"
+#include "chainparams.h"
 
 #include <boost/variant.hpp>
 
@@ -82,6 +83,8 @@ public:
  */
 typedef boost::variant<CNoDestination, CKeyID, CScriptID> CTxDestination;
 
+bool IsValidDestination(const CTxDestination& dest);
+
 const char* GetTxnOutputType(txnouttype t);
 
 bool Solver(const CScript& scriptPubKey, txnouttype& typeRet, std::vector<std::vector<unsigned char> >& vSolutionsRet);
@@ -92,5 +95,8 @@ bool ExtractDestinations(const CScript& scriptPubKey, txnouttype& typeRet, std::
 
 CScript GetScriptForDestination(const CTxDestination& dest);
 CScript GetScriptForMultisig(int nRequired, const std::vector<CPubKey>& keys);
+
+CTxDestination DecodeDestination(const std::string& str, const CChainParams& params);
+CTxDestination DecodeDestination(const std::string& str);
 
 #endif // BITCOIN_SCRIPT_STANDARD_H

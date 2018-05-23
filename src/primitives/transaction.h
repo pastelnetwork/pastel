@@ -445,6 +445,8 @@ struct CMutableTransaction
         }
     }
 
+    std::string ToString() const;
+
     /** Compute the hash of this CMutableTransaction. This is computed on the
      * fly, as opposed to GetHash() in CTransaction, which uses a cached result.
      */

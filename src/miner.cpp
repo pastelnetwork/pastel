@@ -39,6 +39,7 @@
 #include <functional>
 #endif
 #include <mutex>
+ #include "mnode-validation.h"
 
 using namespace std;
 
@@ -341,12 +342,14 @@ CBlockTemplate* CreateNewBlock(const CScript& scriptPubKeyIn)
         txNew.vin[0].prevout.SetNull();
         txNew.vout.resize(1);
         txNew.vout[0].scriptPubKey = scriptPubKeyIn;
-        txNew.vout[0].nValue = GetBlockSubsidy(nHeight, chainparams.GetConsensus());
 
-        // Add fees
-        txNew.vout[0].nValue += nFees;
+        CAmount blockReward = nFees + GetBlockSubsidy(nHeight, chainparams.GetConsensus());        
+        txNew.vout[0].nValue = blockReward;
+
+        FillOtherBlockPayments(txNew, nHeight, blockReward, pblock->txoutMasternode, pblock->txoutGovernance);
+
         txNew.vin[0].scriptSig = CScript() << nHeight << OP_0;
-
+        
         pblock->vtx[0] = txNew;
         pblocktemplate->vTxFees[0] = -nFees;
 
@@ -528,7 +531,7 @@ void static BitcoinMiner()
                         LOCK(cs_vNodes);
                         fvNodesEmpty = vNodes.empty();
                     }
-                    if (!fvNodesEmpty && !IsInitialBlockDownload())
+                    // if (!fvNodesEmpty && !IsInitialBlockDownload())
                         break;
                     MilliSleep(1000);
                 } while (true);

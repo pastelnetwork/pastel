@@ -492,7 +492,7 @@ bool CMasternodeMan::GetNextMasternodeInQueueForPayment(int nBlockHeight, bool f
         if(fFilterSigTime && mnpair.second.sigTime + (nMnCount*2.6*60) > GetAdjustedTime()) continue;
 
         //make sure it has at least as many confirmations as there are masternodes
-        if(CMasterNodeController::GetUTXOConfirmations(mnpair.first) < nMnCount) continue;
+        if(GetUTXOConfirmations(mnpair.first) < nMnCount) continue;
 
         vecMasternodeLastPaid.push_back(std::make_pair(mnpair.second.GetLastPaidBlock(), &mnpair.second));
     }
@@ -507,7 +507,7 @@ bool CMasternodeMan::GetNextMasternodeInQueueForPayment(int nBlockHeight, bool f
     sort(vecMasternodeLastPaid.begin(), vecMasternodeLastPaid.end(), CompareLastPaidBlock());
 
     uint256 blockHash;
-    if(!CMasterNodeController::GetBlockHash(blockHash, nBlockHeight - 101)) {
+    if(!GetBlockHash(blockHash, nBlockHeight - 101)) {
         LogPrintf("CMasternode::GetNextMasternodeInQueueForPayment -- ERROR: GetBlockHash() failed at nBlockHeight %d\n", nBlockHeight - 101);
         return false;
     }
@@ -609,7 +609,7 @@ bool CMasternodeMan::GetMasternodeRank(const COutPoint& outpoint, int& nRankRet,
 
     // make sure we know about this block
     uint256 nBlockHash = uint256();
-    if (!CMasterNodeController::GetBlockHash(nBlockHash, nBlockHeight)) {
+    if (!GetBlockHash(nBlockHash, nBlockHeight)) {
         LogPrintf("CMasternodeMan::%s -- ERROR: GetBlockHash() failed at nBlockHeight %d\n", __func__, nBlockHeight);
         return false;
     }
@@ -641,7 +641,7 @@ bool CMasternodeMan::GetMasternodeRanks(CMasternodeMan::rank_pair_vec_t& vecMast
 
     // make sure we know about this block
     uint256 nBlockHash = uint256();
-    if (!CMasterNodeController::GetBlockHash(nBlockHash, nBlockHeight)) {
+    if (!GetBlockHash(nBlockHash, nBlockHeight)) {
         LogPrintf("CMasternodeMan::%s -- ERROR: GetBlockHash() failed at nBlockHeight %d\n", __func__, nBlockHeight);
         return false;
     }
@@ -1035,7 +1035,7 @@ void CMasternodeMan::SendVerifyReply(CNode* pnode, CMasternodeVerification& mnv)
     }
 
     uint256 blockHash;
-    if(!CMasterNodeController::GetBlockHash(blockHash, mnv.nBlockHeight)) {
+    if(!GetBlockHash(blockHash, mnv.nBlockHeight)) {
         LogPrintf("MasternodeMan::SendVerifyReply -- can't get block hash for unknown block height %d, peer=%d\n", mnv.nBlockHeight, pnode->id);
         return;
     }
@@ -1086,7 +1086,7 @@ void CMasternodeMan::ProcessVerifyReply(CNode* pnode, CMasternodeVerification& m
     }
 
     uint256 blockHash;
-    if(!CMasterNodeController::GetBlockHash(blockHash, mnv.nBlockHeight)) {
+    if(!GetBlockHash(blockHash, mnv.nBlockHeight)) {
         // this shouldn't happen...
         LogPrintf("MasternodeMan::ProcessVerifyReply -- can't get block hash for unknown block height %d, peer=%d\n", mnv.nBlockHeight, pnode->id);
         return;
@@ -1194,7 +1194,7 @@ void CMasternodeMan::ProcessVerifyBroadcast(CNode* pnode, const CMasternodeVerif
     }
 
     uint256 blockHash;
-    if(!CMasterNodeController::GetBlockHash(blockHash, mnv.nBlockHeight)) {
+    if(!GetBlockHash(blockHash, mnv.nBlockHeight)) {
         // this shouldn't happen...
         LogPrintf("CMasternodeMan::ProcessVerifyBroadcast -- Can't get block hash for unknown block height %d, peer=%d\n", mnv.nBlockHeight, pnode->id);
         return;

@@ -116,6 +116,9 @@ MNODE_CPP = \
   mnode-requesttracker.cpp \
   mnode-sync.cpp \
   mnode-rpc.cpp \
+  mnode-validation.cpp \
+  mnode-payments.cpp \
+  mnode-governance.cpp \
   mnode-controller.cpp
 
 MNODE_H = \
@@ -126,6 +129,9 @@ MNODE_H = \
   mnode-masternode.h \
   mnode-msgsigner.h \
   mnode-requesttracker.h \
+  mnode-validation.h \
+  mnode-payments.h \
+  mnode-governance.h \
   mnode-controller.h \
   mnode-sync.h
 

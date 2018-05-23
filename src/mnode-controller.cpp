@@ -23,9 +23,6 @@ constexpr const CNodeHelper::CAllNodes CNodeHelper::AllNodes;
 MasterNode specific logic and initializations
 */
 
-CCriticalSection CMasterNodeController::cs_mapMasternodeBlocks;
-
-
 void CMasterNodeController::SetParameters()
 {
     MasternodeProtocolVersion           = 0x1;
@@ -43,21 +40,18 @@ void CMasterNodeController::SetParameters()
 
     if (Params().IsMainNet()) {
         nMasternodeMinimumConfirmations = 15;
-        nMasternodePaymentsStartBlock = 100000;
         nMasternodePaymentsIncreaseBlock = 150000;
         nMasternodePaymentsIncreasePeriod = 576*30;
         nFulfilledRequestExpireTime = 60*60; // 60 minutes
     }
     else if (Params().IsTestNet()) {
         nMasternodeMinimumConfirmations = 1;
-        nMasternodePaymentsStartBlock = 4010;
         nMasternodePaymentsIncreaseBlock = 4030;
         nMasternodePaymentsIncreasePeriod = 10;
         nFulfilledRequestExpireTime = 5*60; // 5 minutes
     }
     else if (Params().IsRegTest()) {
         nMasternodeMinimumConfirmations = 1;
-        nMasternodePaymentsStartBlock = 240;
         nMasternodePaymentsIncreaseBlock = 350;
         nMasternodePaymentsIncreasePeriod = 10;
         nFulfilledRequestExpireTime = 5*60; // 5 minutes
@@ -170,7 +164,7 @@ bool CMasterNodeController::EnableMasterNode(std::ostringstream& strErrors, boos
         return false;
     }
 
-    // force UpdatedBlockTip to initialize nCachedBlockHeight for DS, MN payments and budgets
+    // force UpdatedBlockTip to initialize nCachedBlockHeight for DS, MN and governances payments
 /*TEMP-->
     pdsNotificationInterface->InitializeCurrentBlockTip();
 <--TEMP*/
@@ -224,7 +218,7 @@ bool CMasterNodeController::AlreadyHave(const CInv& inv)
     case MSG_MASTERNODE_PAYMENT_BLOCK:
         {
             BlockMap::iterator mi = mapBlockIndex.find(inv.hash);
-            return mi != mapBlockIndex.end() && masternodePayments.mapMasternodeBlocks.find(mi->second->nHeight) != masternodePayments.mapMasternodeBlocks.end();
+            return mi != mapBlockIndex.end() && masternodePayments.mapMasternodeBlockPayees.find(mi->second->nHeight) != masternodePayments.mapMasternodeBlockPayees.end();
         }
 
     case MSG_MASTERNODE_ANNOUNCE:
@@ -258,9 +252,9 @@ bool CMasterNodeController::ProcessGetData(CNode* pfrom, const CInv& inv)
 
     if (!pushed && inv.type == MSG_MASTERNODE_PAYMENT_BLOCK) {
         BlockMap::iterator mi = mapBlockIndex.find(inv.hash);
-        LOCK(cs_mapMasternodeBlocks);
-        if (mi != mapBlockIndex.end() && masternodePayments.mapMasternodeBlocks.count(mi->second->nHeight)) {
-            BOOST_FOREACH(CMasternodePayee& payee, masternodePayments.mapMasternodeBlocks[mi->second->nHeight].vecPayees) {
+        LOCK(cs_mapMasternodeBlockPayees);
+        if (mi != mapBlockIndex.end() && masternodePayments.mapMasternodeBlockPayees.count(mi->second->nHeight)) {
+            BOOST_FOREACH(CMasternodePayee& payee, masternodePayments.mapMasternodeBlockPayees[mi->second->nHeight].vecPayees) {
                 std::vector<uint256> vecVoteHashes = payee.GetVoteHashes();
                 BOOST_FOREACH(uint256& hash, vecVoteHashes) {
                     if(masternodePayments.HasVerifiedPaymentVote(hash)) {
@@ -318,125 +312,6 @@ boost::filesystem::path CMasterNodeController::GetMasternodeConfigFile()
     if (!pathConfigFile.is_complete()) pathConfigFile = GetDataDir() / pathConfigFile;
     return pathConfigFile;
 }
-
-/*
-Wrappers for BlockChain specific logic
-*/
-
-CAmount CMasterNodeController::GetMasternodePayment(int nHeight, CAmount blockValue)
-{
-    CAmount ret = blockValue/5; // start at 20%
-
-    int nMNPIBlock = nMasternodePaymentsIncreaseBlock;
-    int nMNPIPeriod = nMasternodePaymentsIncreasePeriod;
-
-                                                                      // mainnet:
-    if(nHeight > nMNPIBlock)                  ret += blockValue / 20; // 158000 - 25.0% - 2014-10-24
-    if(nHeight > nMNPIBlock+(nMNPIPeriod* 1)) ret += blockValue / 20; // 175280 - 30.0% - 2014-11-25
-    if(nHeight > nMNPIBlock+(nMNPIPeriod* 2)) ret += blockValue / 20; // 192560 - 35.0% - 2014-12-26
-    if(nHeight > nMNPIBlock+(nMNPIPeriod* 3)) ret += blockValue / 40; // 209840 - 37.5% - 2015-01-26
-    if(nHeight > nMNPIBlock+(nMNPIPeriod* 4)) ret += blockValue / 40; // 227120 - 40.0% - 2015-02-27
-    if(nHeight > nMNPIBlock+(nMNPIPeriod* 5)) ret += blockValue / 40; // 244400 - 42.5% - 2015-03-30
-    if(nHeight > nMNPIBlock+(nMNPIPeriod* 6)) ret += blockValue / 40; // 261680 - 45.0% - 2015-05-01
-    if(nHeight > nMNPIBlock+(nMNPIPeriod* 7)) ret += blockValue / 40; // 278960 - 47.5% - 2015-06-01
-    if(nHeight > nMNPIBlock+(nMNPIPeriod* 9)) ret += blockValue / 40; // 313520 - 50.0% - 2015-08-03
-
-    return ret;
-}
-
-/* static */ bool CMasterNodeController::GetBlockHash(uint256& hashRet, int nBlockHeight)
-{
-    LOCK(cs_main);
-    if(chainActive.Tip() == NULL) return false;
-    if(nBlockHeight < -1 || nBlockHeight > chainActive.Height()) return false;
-    if(nBlockHeight == -1) nBlockHeight = chainActive.Height();
-    hashRet = chainActive[nBlockHeight]->GetBlockHash();
-    return true;
-}
-
-/* static */ bool CMasterNodeController::GetUTXOCoin(const COutPoint& outpoint, CCoins& coins)
-{
-    LOCK(cs_main);
-    if (!pcoinsTip->GetCoins(outpoint.hash, coins))
-        return false;
-    if (coins.vout[outpoint.n].IsNull())
-        return false;
-    return true;
-}
-
-/* static */ int CMasterNodeController::GetUTXOHeight(const COutPoint& outpoint)
-{
-    // -1 means UTXO is yet unknown or already spent
-    CCoins coins;
-    return GetUTXOCoin(outpoint, coins) ? coins.nHeight : -1;
-}
-
-/* static */ int CMasterNodeController::GetUTXOConfirmations(const COutPoint& outpoint)
-{
-    // -1 means UTXO is yet unknown or already spent
-    LOCK(cs_main);
-    int nPrevoutHeight = GetUTXOHeight(outpoint);
-    return (nPrevoutHeight > -1 && chainActive.Tip()) ? chainActive.Height() - nPrevoutHeight + 1 : -1;
-}
-
-#ifdef ENABLE_WALLET
-/* static */ bool CMasterNodeController::GetMasternodeOutpointAndKeys(CWallet* pWalletMain, COutPoint& outpointRet, CPubKey& pubKeyRet, CKey& keyRet, std::string strTxHash, std::string strOutputIndex)
-{
-    // wait for reindex and/or import to finish
-    if (fImporting || fReindex || pWalletMain == NULL) return false;
-
-    // Find possible candidates
-    std::vector<COutput> vPossibleCoins;
-    pWalletMain->AvailableCoins(vPossibleCoins, true, NULL, false, true, masterNodeCtrl.MasternodeCollateral, true);
-    if(vPossibleCoins.empty()) {
-        LogPrintf("CMasterNodeController::GetMasternodeOutpointAndKeys -- Could not locate any valid masternode vin\n");
-        return false;
-    }
-
-    if(strTxHash.empty()) // No output specified, select the first one
-        return GetOutpointAndKeysFromOutput(pWalletMain, vPossibleCoins[0], outpointRet, pubKeyRet, keyRet);
-
-    // Find specific vin
-    uint256 txHash = uint256S(strTxHash);
-    int nOutputIndex = atoi(strOutputIndex.c_str());
-
-    BOOST_FOREACH(COutput& out, vPossibleCoins)
-        if(out.tx->GetHash() == txHash && out.i == nOutputIndex) // found it!
-            return GetOutpointAndKeysFromOutput(pWalletMain, out, outpointRet, pubKeyRet, keyRet);
-
-    LogPrintf("CMasterNodeController::GetMasternodeOutpointAndKeys -- Could not locate specified masternode vin\n");
-    return false;
-}
-
-/* static */ bool CMasterNodeController::GetOutpointAndKeysFromOutput(CWallet* pWalletMain, const COutput& out, COutPoint& outpointRet, CPubKey& pubKeyRet, CKey& keyRet)
-{
-    // wait for reindex and/or import to finish
-    if (fImporting || fReindex || pWalletMain == NULL) return false;
-
-    CScript pubScript;
-
-    outpointRet = COutPoint(out.tx->GetHash(), out.i);
-    pubScript = out.tx->vout[out.i].scriptPubKey; // the inputs PubKey
-
-    CTxDestination address1;
-    ExtractDestination(pubScript, address1);
-    CBitcoinAddress address2(address1);
-
-    CKeyID keyID;
-    if (!address2.GetKeyID(keyID)) {
-        LogPrintf("CMasterNodeController::GetOutpointAndKeysFromOutput -- Address does not refer to a key\n");
-        return false;
-    }
-
-    if (!pWalletMain->GetKey(keyID, keyRet)) {
-        LogPrintf ("CMasterNodeController::GetOutpointAndKeysFromOutput -- Private key for address is not known\n");
-        return false;
-    }
-
-    pubKeyRet = keyRet.GetPubKey();
-    return true;
-}
-#endif
 
 /*
 Threads

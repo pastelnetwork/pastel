@@ -85,6 +85,8 @@ public:
     std::vector<CTransaction> vtx;
 
     // memory only
+    mutable CTxOut txoutMasternode; // masternode payment
+    mutable CTxOut txoutGovernance; // governance payment
     mutable std::vector<uint256> vMerkleTree;
 
     CBlock()
@@ -110,6 +112,8 @@ public:
     {
         CBlockHeader::SetNull();
         vtx.clear();
+        txoutMasternode = CTxOut();
+        txoutGovernance = CTxOut();
         vMerkleTree.clear();
     }
 

@@ -23,6 +23,7 @@
 #include <boost/lexical_cast.hpp>
 
 #include "mnode-sync.h"
+#include "mnode-validation.h"
 #include "mnode-controller.h"
 
 #include "main.h"
@@ -115,7 +116,7 @@ CMasternode::CollateralStatus CMasternode::CheckCollateral(const COutPoint& outp
     AssertLockHeld(cs_main);
 
     CCoins coins;
-    if(!CMasterNodeController::GetUTXOCoin(outpoint, coins)) {
+    if(!GetUTXOCoin(outpoint, coins)) {
         return COLLATERAL_UTXO_NOT_FOUND;
     }
 
@@ -318,17 +319,17 @@ void CMasternode::UpdateLastPaid(const CBlockIndex *pindex, int nMaxBlocksToScan
     CScript mnpayee = GetScriptForDestination(pubKeyCollateralAddress.GetID());
     LogPrint("masternode", "CMasternode::UpdateLastPaidBlock -- searching for block with payment to %s\n", vin.prevout.ToStringShort());
 
-    LOCK(CMasterNodeController::cs_mapMasternodeBlocks);
+    LOCK(cs_mapMasternodeBlockPayees);
 
     for (int i = 0; BlockReading && BlockReading->nHeight > nBlockLastPaid && i < nMaxBlocksToScanBack; i++) {
-        if(masterNodeCtrl.masternodePayments.mapMasternodeBlocks.count(BlockReading->nHeight) &&
-            masterNodeCtrl.masternodePayments.mapMasternodeBlocks[BlockReading->nHeight].HasPayeeWithVotes(mnpayee, 2))
+        if(masterNodeCtrl.masternodePayments.mapMasternodeBlockPayees.count(BlockReading->nHeight) &&
+            masterNodeCtrl.masternodePayments.mapMasternodeBlockPayees[BlockReading->nHeight].HasPayeeWithVotes(mnpayee, 2))
         {
             CBlock block;
             if(!ReadBlockFromDisk(block, BlockReading)) // shouldn't really happen
                 continue;
 
-            CAmount nMasternodePayment = masterNodeCtrl.GetMasternodePayment(BlockReading->nHeight, block.vtx[0].GetValueOut());
+            CAmount nMasternodePayment = masterNodeCtrl.masternodePayments.GetMasternodePayment(BlockReading->nHeight, block.vtx[0].GetValueOut());
 
             BOOST_FOREACH(CTxOut txout, block.vtx[0].vout)
                 if(mnpayee == txout.scriptPubKey && nMasternodePayment == txout.nValue) {
@@ -389,7 +390,7 @@ bool CMasternodeBroadcast::Create(std::string strService, std::string strKeyMast
     if (!CMessageSigner::GetKeysFromSecret(strKeyMasternode, keyMasternodeNew, pubKeyMasternodeNew))
         return Log(strprintf("Invalid masternode key %s", strKeyMasternode));
 
-    if (!masterNodeCtrl.GetMasternodeOutpointAndKeys(pwalletMain, outpoint, pubKeyCollateralAddressNew, keyCollateralAddressNew, strTxHash, strOutputIndex))
+    if (!GetMasternodeOutpointAndKeys(pwalletMain, outpoint, pubKeyCollateralAddressNew, keyCollateralAddressNew, strTxHash, strOutputIndex))
         return Log(strprintf("Could not allocate outpoint %s:%s for masternode %s", strTxHash, strOutputIndex, strService));
 
     CService service;

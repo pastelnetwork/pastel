@@ -15,50 +15,15 @@
 #include "mnode-sync.h"
 #include "mnode-requesttracker.h"
 #include "mnode-active.h"
-// #include "mnode-payments.h"
-
+#include "mnode-payments.h"
+#include "mnode-validation.h"
+#include "mnode-governance.h"
 
 #ifdef ENABLE_WALLET
 #include "wallet/wallet.h"
 #endif
 
 #include <boost/thread.hpp>
-
-//TEMP-->
-class CMasternodePayee
-{
-public:
-    std::vector<uint256> vecVoteHashes;
-    std::vector<uint256> GetVoteHashes() { return vecVoteHashes; }
-};
-
-class CMasternodeBlockPayees
-{
-public:
-    std::vector<CMasternodePayee> vecPayees;
-    bool HasPayeeWithVotes(const CScript& payeeIn, int nVotesReq) {return true;}
-};
-
-class CMasternodePaymentVote
-{
-
-};
-
-class CMasternodePayments
-{
-public:
-    std::map<uint256, CMasternodePaymentVote> mapMasternodePaymentVotes;
-
-    std::map<int, CMasternodeBlockPayees> mapMasternodeBlocks;
-
-    bool HasPayeeWithVotes(const CScript& payeeIn, int nVotesReq) {return true;}
-    bool IsScheduled(CMasternode& mn, int nNotBlockHeight) {return true;}
-    void RequestLowDataPaymentBlocks(CNode* pnode) {}
-    bool HasVerifiedPaymentVote(uint256 hashIn) {return true;}
-    int GetStorageLimit() {return 0;}
-    bool IsEnoughData() {return true;}
-};
-//<--TEMP
 
 class CMasterNodeController
 {
@@ -67,21 +32,18 @@ private:
 
 public:
     CMasternodeConfig masternodeConfig;
-
     // Keep track of the active Masternode
     CActiveMasternode activeMasternode;
-
     // 
     CMasternodeSync masternodeSync;
-
     // Masternode manager
     CMasternodeMan masternodeManager;
-
     //
     CMasternodePayments masternodePayments;
-
     // Keep track of what node has/was asked for and when
     CMasternodeRequestTracker requestTracker;
+    // Keep track of what node has/was asked for and when
+    CMasternodeGovernance masternodeGovernance;
 
     bool fMasterNode;
 
@@ -92,11 +54,9 @@ public:
     int MasternodeCheckSeconds, MasternodeMinMNBSeconds, MasternodeMinMNPSeconds, MasternodeExpirationSeconds, MasternodeWatchdogMaxSeconds, MasternodeNewStartRequiredSeconds;
     int MasternodePOSEBanMaxScore;
 
-    int nMasternodeMinimumConfirmations, nMasternodePaymentsStartBlock, nMasternodePaymentsIncreaseBlock, nMasternodePaymentsIncreasePeriod;
+    int nMasternodeMinimumConfirmations, nMasternodePaymentsIncreaseBlock, nMasternodePaymentsIncreasePeriod;
     int nMasterNodeMaximumOutboundConnections;
     int nFulfilledRequestExpireTime;
-
-    static CCriticalSection cs_mapMasternodeBlocks;
 
     CMasterNodeController() : 
         semMasternodeOutbound(NULL),
@@ -123,17 +83,6 @@ public:
     bool ProcessMessage(CNode* pfrom, std::string& strCommand, CDataStream& vRecv);
     bool AlreadyHave(const CInv& inv);
     bool ProcessGetData(CNode* pfrom, const CInv& inv);
-
-    CAmount GetMasternodePayment(int nHeight, CAmount blockValue);
-
-    static bool GetBlockHash(uint256& hashRet, int nBlockHeight);
-    static bool GetUTXOCoin(const COutPoint& outpoint, CCoins& coins);
-    static int GetUTXOHeight(const COutPoint& outpoint);
-    static int GetUTXOConfirmations(const COutPoint& outpoint);
-#ifdef ENABLE_WALLET
-    static bool GetMasternodeOutpointAndKeys(CWallet* pwalletMain, COutPoint& outpointRet, CPubKey& pubKeyRet, CKey& keyRet, std::string strTxHash, std::string strOutputIndex);
-    static bool GetOutpointAndKeysFromOutput(CWallet* pwalletMain, const COutput& out, COutPoint& outpointRet, CPubKey& pubKeyRet, CKey& keyRet);
-#endif
 
 /***** MasterNode operations *****/
     CSemaphore *semMasternodeOutbound;
