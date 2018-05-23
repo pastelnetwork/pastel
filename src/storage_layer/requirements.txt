@@ -1,0 +1,13 @@
+numpy==1.14.3
+tqdm==4.23.3
+python_bitcoinrpc==1.0
+tensorflow==1.8.0
+rsa==3.4.2
+pandas==0.23.0
+requests==2.18.4
+Keras==2.1.6
+Pillow==5.1.0
+fs==2.0.21
+lxml==4.2.1
+shortuuid==0.5.0
+scikit_learn==0.19.1
