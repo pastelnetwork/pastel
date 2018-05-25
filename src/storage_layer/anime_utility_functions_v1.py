@@ -21,6 +21,7 @@ from bitcoinrpc.authproxy import AuthServiceProxy, JSONRPCException
 from tqdm import tqdm
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 sys.setrecursionlimit(3000)
+
 #Requirements: pip install numpy, requests, rsa, bitcoinrpc, zstandard, shortuuid, PIL, python-resize-image
 ###############################################################################################################
 # Functions:
@@ -600,6 +601,7 @@ def get_local_block_list_from_sqlite_for_given_file_hash_func(file_hash):
     list_of_block_hashes = []
     for current_block in blocks_for_this_file_hash:
         list_of_block_hashes.append(current_block[0])
+    conn.close()
     return list_of_block_hashes
 
 def get_local_block_file_binary_data_func(sha256_hash_of_desired_block):
@@ -635,20 +637,17 @@ def generate_and_save_local_masternode_identification_keypair_func():
     (masternode_public_key, masternode_private_key) = rsa.newkeys(512)
     masternode_public_key_export_format = rsa.PublicKey.save_pkcs1(masternode_public_key,format='PEM').decode('utf-8')
     masternode_private_key_export_format = rsa.PrivateKey.save_pkcs1(masternode_private_key,format='PEM').decode('utf-8')
-    try:
-        conn = sqlite3.connect(masternode_keypair_db_file_path)
-        c = conn.cursor()
-        concatenated_hash_signature_table_creation_string= """CREATE TABLE masternode_identification_keypair_table (masternode_public_key text, masternode_private_key text, datetime_masternode_keypair_was_generated TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL, PRIMARY KEY (masternode_public_key));"""
-        c.execute(concatenated_hash_signature_table_creation_string)
-        data_insertion_query_string = """INSERT OR REPLACE INTO masternode_identification_keypair_table (masternode_public_key, masternode_private_key) VALUES (?,?);"""
-        c.execute(data_insertion_query_string,[masternode_public_key_export_format, masternode_private_key_export_format])
-        generated_id_keys_successfully = 1
-        conn.commit()
-        conn.close()
-        print('Just generated a new public/private keypair for identifying the local masternode on the network!')
-        return generated_id_keys_successfully
-    except Exception as e:
-        print('Error: '+ str(e))
+    conn = sqlite3.connect(masternode_keypair_db_file_path)
+    c = conn.cursor()
+    concatenated_hash_signature_table_creation_string= """CREATE TABLE masternode_identification_keypair_table (masternode_public_key text, masternode_private_key text, datetime_masternode_keypair_was_generated TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL, PRIMARY KEY (masternode_public_key));"""
+    c.execute(concatenated_hash_signature_table_creation_string)
+    data_insertion_query_string = """INSERT OR REPLACE INTO masternode_identification_keypair_table (masternode_public_key, masternode_private_key) VALUES (?,?);"""
+    c.execute(data_insertion_query_string,[masternode_public_key_export_format, masternode_private_key_export_format])
+    generated_id_keys_successfully = 1
+    conn.commit()
+    conn.close()
+    print('Just generated a new public/private keypair for identifying the local masternode on the network!')
+    return generated_id_keys_successfully
 
 def get_local_masternode_animecoin_id_keypair_func():
     global masternode_keypair_db_file_path
@@ -737,28 +736,8 @@ def get_image_deep_learning_features_func(path_to_art_image_file):
         print('Error: '+ str(e))
 
 #Dupe detection helper functions:
-def get_image_filename_from_image_hash_func(sha256_hash_of_art_image_file,path_to_images_folder=path_to_all_registered_works_for_dupe_detection):
-    global image_sha256_hash_to_image_file_path_dict
-    if 'image_sha256_hash_to_image_file_path_dict' not in globals():
-        image_sha256_hash_to_image_file_path_dict = {}
-    else:
-        try:
-            image_file_path = image_sha256_hash_to_image_file_path_dict[sha256_hash_of_art_image_file]
-            return image_file_path
-        except:
-            pass
-    valid_image_file_paths = get_all_valid_image_file_paths_in_folder_func(path_to_images_folder)
-    for current_image_file_path in valid_image_file_paths:
-        with open(current_image_file_path,'rb') as f:
-            image_file_binary_data = f.read()
-        sha256_hash_of_current_art_file = get_sha256_hash_of_input_data_func(image_file_binary_data)                
-        image_sha256_hash_to_image_file_path_dict[sha256_hash_of_current_art_file] = current_image_file_path
-    return image_sha256_hash_to_image_file_path_dict[sha256_hash_of_art_image_file]
-
 def regenerate_dupe_detection_image_fingerprint_database_func():
     global dupe_detection_image_fingerprint_database_file_path
-    sqlite3.register_adapter(np.ndarray, convert_numpy_array_to_sqlite_func) # Converts np.array to TEXT when inserting
-    sqlite3.register_converter('array', convert_sqlite_data_to_numpy_array_func) # Converts TEXT to np.array when selecting
     try:
         conn = sqlite3.connect(dupe_detection_image_fingerprint_database_file_path, detect_types=sqlite3.PARSE_DECLTYPES)
         c = conn.cursor()
@@ -771,14 +750,21 @@ def regenerate_dupe_detection_image_fingerprint_database_func():
         dupe_detection_image_fingerprint_database_deletion_string = """DROP TABLE tsne_coordinates_table_model_3"""
         c.execute(dupe_detection_image_fingerprint_database_deletion_string)
         conn.commit()
+    except Exception as e:
+        print('Error: '+ str(e))    
+    try:
         dupe_detection_image_fingerprint_database_creation_string = """CREATE TABLE image_hash_to_image_fingerprint_table (sha256_hash_of_art_image_file text, model_1_image_fingerprint_vector array, model_2_image_fingerprint_vector array, model_3_image_fingerprint_vector array, datetime_fingerprint_added_to_database TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL, PRIMARY KEY (sha256_hash_of_art_image_file));"""
         c.execute(dupe_detection_image_fingerprint_database_creation_string)
+        conn.commit()
         model_1_tsne_table_creation_string= """CREATE TABLE tsne_coordinates_table_model_1 (sha256_hash_of_art_image_file text, tsne_x_coordinate real, tsne_y_coordinate real, datetime_fingerprint_added_to_database TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL, PRIMARY KEY (sha256_hash_of_art_image_file, tsne_x_coordinate, tsne_y_coordinate));"""
         c.execute(model_1_tsne_table_creation_string)
+        conn.commit()
         model_2_tsne_table_creation_string= """CREATE TABLE tsne_coordinates_table_model_2 (sha256_hash_of_art_image_file text, tsne_x_coordinate real, tsne_y_coordinate real, datetime_fingerprint_added_to_database TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL, PRIMARY KEY (sha256_hash_of_art_image_file, tsne_x_coordinate, tsne_y_coordinate));"""
         c.execute(model_2_tsne_table_creation_string)
+        conn.commit()
         model_3_tsne_table_creation_string= """CREATE TABLE tsne_coordinates_table_model_3 (sha256_hash_of_art_image_file text, tsne_x_coordinate real, tsne_y_coordinate real, datetime_fingerprint_added_to_database TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL, PRIMARY KEY (sha256_hash_of_art_image_file, tsne_x_coordinate, tsne_y_coordinate));"""
         c.execute(model_3_tsne_table_creation_string)
+        conn.commit()
         conn.commit()
         conn.close()
     except Exception as e:
@@ -789,7 +775,7 @@ def add_image_fingerprints_to_dupe_detection_database_func(path_to_art_image_fil
     global dupe_detection_model_1, dupe_detection_model_2, dupe_detection_model_3
     model_1_image_fingerprint_vector, model_2_image_fingerprint_vector, model_3_image_fingerprint_vector, sha256_hash_of_art_image_file, \
     dupe_detection_model_1, dupe_detection_model_2, dupe_detection_model_3 = get_image_deep_learning_features_func(path_to_art_image_file)
-    conn = sqlite3.connect(dupe_detection_image_fingerprint_database_file_path)
+    conn = sqlite3.connect(dupe_detection_image_fingerprint_database_file_path,detect_types=sqlite3.PARSE_DECLTYPES)
     c = conn.cursor()
     data_insertion_query_string = """INSERT OR REPLACE INTO image_hash_to_image_fingerprint_table (sha256_hash_of_art_image_file, model_1_image_fingerprint_vector, model_2_image_fingerprint_vector, model_3_image_fingerprint_vector) VALUES (?,?,?,?);"""
     c.execute(data_insertion_query_string,[sha256_hash_of_art_image_file, model_1_image_fingerprint_vector, model_2_image_fingerprint_vector, model_3_image_fingerprint_vector])
@@ -807,19 +793,16 @@ def add_all_images_in_folder_to_image_fingerprint_database_func(path_to_art_fold
 
 def get_image_fingerprints_from_dupe_detection_database_func(sha256_hash_of_art_image_file):
     global dupe_detection_image_fingerprint_database_file_path
-    try:
-        conn = sqlite3.connect(dupe_detection_image_fingerprint_database_file_path,detect_types=sqlite3.PARSE_DECLTYPES)
-        c = conn.cursor()
-        dupe_detection_fingerprint_query_results = c.execute("""SELECT model_1_image_fingerprint_vector, model_2_image_fingerprint_vector, model_3_image_fingerprint_vector FROM image_hash_to_image_fingerprint_table where sha256_hash_of_art_image_file = ? ORDER BY datetime_fingerprint_added_to_database DESC""",[sha256_hash_of_art_image_file,]).fetchall()
-        if len(dupe_detection_fingerprint_query_results) == 0:
-            print('Fingerprints for this image could not be found, try adding it to the system!')
-        model_1_image_fingerprint_vector = dupe_detection_fingerprint_query_results[0][0]
-        model_2_image_fingerprint_vector = dupe_detection_fingerprint_query_results[0][1]
-        model_3_image_fingerprint_vector = dupe_detection_fingerprint_query_results[0][2]
-        conn.close()
-        return model_1_image_fingerprint_vector, model_2_image_fingerprint_vector, model_3_image_fingerprint_vector
-    except Exception as e:
-        print('Error: '+ str(e))
+    conn = sqlite3.connect(dupe_detection_image_fingerprint_database_file_path,detect_types=sqlite3.PARSE_DECLTYPES)
+    c = conn.cursor()
+    dupe_detection_fingerprint_query_results = c.execute("""SELECT model_1_image_fingerprint_vector, model_2_image_fingerprint_vector, model_3_image_fingerprint_vector FROM image_hash_to_image_fingerprint_table where sha256_hash_of_art_image_file = ? ORDER BY datetime_fingerprint_added_to_database DESC""",[sha256_hash_of_art_image_file,]).fetchall()
+    if len(dupe_detection_fingerprint_query_results) == 0:
+        print('Fingerprints for this image could not be found, try adding it to the system!')
+    model_1_image_fingerprint_vector = dupe_detection_fingerprint_query_results[0][0]
+    model_2_image_fingerprint_vector = dupe_detection_fingerprint_query_results[0][1]
+    model_3_image_fingerprint_vector = dupe_detection_fingerprint_query_results[0][2]
+    conn.close()
+    return model_1_image_fingerprint_vector, model_2_image_fingerprint_vector, model_3_image_fingerprint_vector
 
 def construct_image_fingerprint_matrix_from_database_func(list_of_image_fingerprint_vectors):
     combined_fingerprint_matrix = np.vstack(list_of_image_fingerprint_vectors).T[0]
@@ -836,13 +819,12 @@ def apply_tsne_to_image_fingerprint_matrix_func(combined_fingerprint_matrix):
 def apply_tsne_to_image_fingerprint_database_func():
     global dupe_detection_image_fingerprint_database_file_path
     global tsne_model
+    print('Now applying tSNE to image fingerprint database...')
     sqlite3.register_adapter(np.ndarray, convert_numpy_array_to_sqlite_func) # Converts np.array to TEXT when inserting
     sqlite3.register_converter('array', convert_sqlite_data_to_numpy_array_func) # Converts TEXT to np.array when selecting
-    print('Now applying tSNE to image fingerprint database...')
     conn = sqlite3.connect(dupe_detection_image_fingerprint_database_file_path,detect_types=sqlite3.PARSE_DECLTYPES)
     c = conn.cursor()
     dupe_detection_fingerprint_query_results = c.execute("""SELECT sha256_hash_of_art_image_file, model_1_image_fingerprint_vector, model_2_image_fingerprint_vector, model_3_image_fingerprint_vector FROM image_hash_to_image_fingerprint_table ORDER BY datetime_fingerprint_added_to_database DESC""").fetchall()
-    conn.close()
     list_of_image_sha256_hashes = [x[0] for x in dupe_detection_fingerprint_query_results]
     list_of_model_1_image_fingerprint_vectors =  [x[1] for x in dupe_detection_fingerprint_query_results]
     list_of_model_2_image_fingerprint_vectors =  [x[2] for x in dupe_detection_fingerprint_query_results]
@@ -858,23 +840,21 @@ def apply_tsne_to_image_fingerprint_database_func():
     model_2_tsne_x_coordinates, model_2_tsne_y_coordinates = apply_tsne_to_image_fingerprint_matrix_func(combined_model_2_fingerprint_matrix)
     model_3_tsne_x_coordinates, model_3_tsne_y_coordinates = apply_tsne_to_image_fingerprint_matrix_func(combined_model_3_fingerprint_matrix)
     pbar = tqdm(total=len(list_of_image_sha256_hashes))
-    for file_cnt,current_image_hash in enumerate(list_of_image_sha256_hashes):
+    for file_cnt, current_image_hash in enumerate(list_of_image_sha256_hashes):
         current_model_1_tsne_x_coordinate = float(model_1_tsne_x_coordinates[file_cnt])
         current_model_1_tsne_y_coordinate = float(model_1_tsne_y_coordinates[file_cnt])
         current_model_2_tsne_x_coordinate = float(model_2_tsne_x_coordinates[file_cnt])
         current_model_2_tsne_y_coordinate = float(model_2_tsne_y_coordinates[file_cnt])
         current_model_3_tsne_x_coordinate = float(model_3_tsne_x_coordinates[file_cnt])
         current_model_3_tsne_y_coordinate = float(model_3_tsne_y_coordinates[file_cnt])            
-        conn = sqlite3.connect(dupe_detection_image_fingerprint_database_file_path)
-        c = conn.cursor()
         model_1_data_insertion_query_string = """INSERT OR REPLACE INTO tsne_coordinates_table_model_1 (sha256_hash_of_art_image_file, tsne_x_coordinate, tsne_y_coordinate) VALUES (?,?,?);"""
         c.execute(model_1_data_insertion_query_string,[current_image_hash, current_model_1_tsne_x_coordinate, current_model_1_tsne_y_coordinate])
         model_2_data_insertion_query_string = """INSERT OR REPLACE INTO tsne_coordinates_table_model_2 (sha256_hash_of_art_image_file, tsne_x_coordinate, tsne_y_coordinate) VALUES (?,?,?);"""
         c.execute(model_2_data_insertion_query_string,[current_image_hash, current_model_2_tsne_x_coordinate, current_model_2_tsne_y_coordinate])
         model_3_data_insertion_query_string = """INSERT OR REPLACE INTO tsne_coordinates_table_model_3 (sha256_hash_of_art_image_file, tsne_x_coordinate, tsne_y_coordinate) VALUES (?,?,?);"""
         c.execute(model_3_data_insertion_query_string,[current_image_hash, current_model_3_tsne_x_coordinate, current_model_3_tsne_y_coordinate])
+        conn.commit()
         pbar.update(1)
-    conn.commit()
     conn.close()
     print('Done!\n')
     return list_of_image_sha256_hashes, model_1_tsne_x_coordinates, model_1_tsne_y_coordinates, model_2_tsne_x_coordinates, model_2_tsne_y_coordinates, model_3_tsne_x_coordinates, model_3_tsne_y_coordinates
@@ -895,47 +875,43 @@ def get_tsne_coordinates_for_desired_image_file_hash_func(sha256_hash_of_art_ima
     model_2_tsne_y_coordinate = model_2_tsne_coordinates_query_results[0][1]        
     model_3_tsne_x_coordinate = model_3_tsne_coordinates_query_results[0][0]
     model_3_tsne_y_coordinate = model_3_tsne_coordinates_query_results[0][1]        
-    art_image_file_path = get_image_filename_from_image_hash_func(sha256_hash_of_art_image_file)
-    art_image_file_name = os.path.split(art_image_file_path)[-1]
-    return model_1_tsne_x_coordinate, model_1_tsne_y_coordinate, model_2_tsne_x_coordinate, model_2_tsne_y_coordinate,model_3_tsne_x_coordinate, model_3_tsne_y_coordinate,art_image_file_name
+    return model_1_tsne_x_coordinate, model_1_tsne_y_coordinate, model_2_tsne_x_coordinate, model_2_tsne_y_coordinate,model_3_tsne_x_coordinate, model_3_tsne_y_coordinate
 
 def calculate_image_similarity_between_two_image_hashes_func(image1_sha256_hash, image2_sha256_hash):
-    image1_model_1_tsne_x_coordinate, image1_model_1_tsne_y_coordinate, image1_model_2_tsne_x_coordinate, image1_model_2_tsne_y_coordinate, image1_model_3_tsne_x_coordinate, image1_model_3_tsne_y_coordinate, _ = get_tsne_coordinates_for_desired_image_file_hash_func(image1_sha256_hash)
-    image2_model_1_tsne_x_coordinate, image2_model_1_tsne_y_coordinate, image2_model_2_tsne_x_coordinate, image2_model_2_tsne_y_coordinate, image2_model_3_tsne_x_coordinate, image2_model_3_tsne_y_coordinate, _ = get_tsne_coordinates_for_desired_image_file_hash_func(image2_sha256_hash)
+    image1_model_1_tsne_x_coordinate, image1_model_1_tsne_y_coordinate, image1_model_2_tsne_x_coordinate, image1_model_2_tsne_y_coordinate, image1_model_3_tsne_x_coordinate, image1_model_3_tsne_y_coordinate = get_tsne_coordinates_for_desired_image_file_hash_func(image1_sha256_hash)
+    image2_model_1_tsne_x_coordinate, image2_model_1_tsne_y_coordinate, image2_model_2_tsne_x_coordinate, image2_model_2_tsne_y_coordinate, image2_model_3_tsne_x_coordinate, image2_model_3_tsne_y_coordinate = get_tsne_coordinates_for_desired_image_file_hash_func(image2_sha256_hash)
     model_1_image_similarity_metric = np.linalg.norm(np.array([image1_model_1_tsne_x_coordinate, image1_model_1_tsne_y_coordinate]) - np.array([image2_model_1_tsne_x_coordinate, image2_model_1_tsne_y_coordinate]))
     model_2_image_similarity_metric = np.linalg.norm(np.array([image1_model_2_tsne_x_coordinate, image1_model_2_tsne_y_coordinate]) - np.array([image2_model_2_tsne_x_coordinate, image2_model_2_tsne_y_coordinate]))
     model_3_image_similarity_metric = np.linalg.norm(np.array([image1_model_3_tsne_x_coordinate, image1_model_3_tsne_y_coordinate]) - np.array([image2_model_3_tsne_x_coordinate, image2_model_3_tsne_y_coordinate]))
     return model_1_image_similarity_metric, model_2_image_similarity_metric, model_3_image_similarity_metric
 
 def find_most_similar_images_to_given_image_from_fingerprint_data_func(sha256_hash_of_art_image_file):
-    global image_sha256_hash_to_image_file_path_dict
-    if 'image_sha256_hash_to_image_file_path_dict' not in globals():
-        get_image_filename_from_image_hash_func(sha256_hash_of_art_image_file)
-    list_of_image_hashes_from_folder = image_sha256_hash_to_image_file_path_dict.keys()
-    total_number_of_images_hashes = len(list_of_image_hashes_from_folder)
-    list_of_image_file_names = []
     list_of_model_1_similarity_metrics = []
     list_of_model_2_similarity_metrics = []
     list_of_model_3_similarity_metrics = []
-    pbar = tqdm(total=(total_number_of_images_hashes-1))
+    conn = sqlite3.connect(dupe_detection_image_fingerprint_database_file_path,detect_types=sqlite3.PARSE_DECLTYPES)
+    c = conn.cursor()
+    dupe_detection_fingerprint_query_results = c.execute("""SELECT sha256_hash_of_art_image_file, model_1_image_fingerprint_vector, model_2_image_fingerprint_vector, model_3_image_fingerprint_vector FROM image_hash_to_image_fingerprint_table ORDER BY datetime_fingerprint_added_to_database DESC""").fetchall()
+    conn.close()
+    list_of_image_sha256_hashes = [x[0] for x in dupe_detection_fingerprint_query_results]
+    pbar = tqdm(total=(len(list_of_image_sha256_hashes)-1))
     print('\nScanning specified image against all image fingerprints in database...')
-    for current_image_sha256_hash in list_of_image_hashes_from_folder:
+    for current_image_sha256_hash in list_of_image_sha256_hashes:
         if (current_image_sha256_hash != sha256_hash_of_art_image_file):
-            current_image_file_path = get_image_filename_from_image_hash_func(current_image_sha256_hash)
-            list_of_image_file_names.append(os.path.split(current_image_file_path)[-1])
             model_1_image_similarity_metric, model_2_image_similarity_metric, model_3_image_similarity_metric = calculate_image_similarity_between_two_image_hashes_func(sha256_hash_of_art_image_file, current_image_sha256_hash)
             list_of_model_1_similarity_metrics.append(model_1_image_similarity_metric)
             list_of_model_2_similarity_metrics.append(model_2_image_similarity_metric)
             list_of_model_3_similarity_metrics.append(model_3_image_similarity_metric)
             pbar.update(1)
-    image_similarity_df = pd.DataFrame([list_of_image_hashes_from_folder,list_of_image_file_names,list_of_model_1_similarity_metrics,list_of_model_2_similarity_metrics,list_of_model_3_similarity_metrics]).T
-    image_similarity_df.columns = ['image_sha_256_hash','image_file_name', 'model_1_image_similarity_metric', 'model_2_image_similarity_metric', 'model_3_image_similarity_metric',]
+    image_similarity_df = pd.DataFrame([list_of_image_sha256_hashes, list_of_model_1_similarity_metrics, list_of_model_2_similarity_metrics, list_of_model_3_similarity_metrics]).T
+    image_similarity_df.columns = ['image_sha_256_hash', 'model_1_image_similarity_metric', 'model_2_image_similarity_metric', 'model_3_image_similarity_metric',]
     image_similarity_df_rescaled = image_similarity_df
     image_similarity_df_rescaled['model_1_image_similarity_metric'] = 1 / (image_similarity_df['model_1_image_similarity_metric']/ image_similarity_df['model_1_image_similarity_metric'].max())
     image_similarity_df_rescaled['model_2_image_similarity_metric'] = 1 / (image_similarity_df['model_2_image_similarity_metric']/ image_similarity_df['model_2_image_similarity_metric'].max())
     image_similarity_df_rescaled['model_3_image_similarity_metric'] = 1 / (image_similarity_df['model_3_image_similarity_metric']/ image_similarity_df['model_3_image_similarity_metric'].max())
     image_similarity_df_rescaled['overall_image_similarity_metric'] = (1/3)*(image_similarity_df_rescaled['model_1_image_similarity_metric'] + image_similarity_df_rescaled['model_2_image_similarity_metric'] + image_similarity_df_rescaled['model_3_image_similarity_metric'])
-    return image_similarity_df.sort_values('model_1_image_similarity_metric')
+    image_similarity_df_rescaled = image_similarity_df_rescaled.sort_values('overall_image_similarity_metric')
+    return image_similarity_df_rescaled
 
 def check_if_image_is_likely_dupe_func(sha256_hash_of_art_image_file):
     global duplicate_image_threshold
@@ -943,9 +919,9 @@ def check_if_image_is_likely_dupe_func(sha256_hash_of_art_image_file):
     possible_dupes = image_similarity_df[image_similarity_df['overall_image_similarity_metric'] <= duplicate_image_threshold ]
     if len(possible_dupes) > 0:
         is_dupe = 1
-        print('WARNING! Art image file appears to be a dupe! Hash of suspected duplicate image file: '+sha256_hash_of_art_image_file)
+        print('\nWARNING! Art image file appears to be a dupe! Hash of suspected duplicate image file: '+sha256_hash_of_art_image_file)
     else:
-        print('Art image file appears to be original! (i.e., not a duplicate of an existing image in our image fingerprint database)')
+        print('\nArt image file appears to be original! (i.e., not a duplicate of an existing image in our image fingerprint database)')
         is_dupe = 0
     return is_dupe
 
@@ -1231,11 +1207,12 @@ def add_image_files_to_metadata_html_table_string_func(animecoin_metadata_html_s
         current_model_1_image_fingerprint_vector_string = '['+ ', '.join([str(x) for x in current_model_1_image_fingerprint_vector]) + ']'
         current_model_2_image_fingerprint_vector_string = '['+ ', '.join([str(x) for x in current_model_2_image_fingerprint_vector]) + ']'
         current_model_3_image_fingerprint_vector_string = '['+ ', '.join([str(x) for x in current_model_3_image_fingerprint_vector]) + ']'
-        current_image_file_sha256hash = get_image_hash_from_image_file_path_func(path_to_art_image_file)
+        current_image_file_sha256hash = get_image_hash_from_image_file_path_func(current_image_file_path)
         print('Got image fingerprints. Now computing similarity to images in fingerprint database...')
         list_of_image_sha256_hashes, model_1_tsne_x_coordinates, model_1_tsne_y_coordinates, model_2_tsne_x_coordinates, \
         model_2_tsne_y_coordinates, model_3_tsne_x_coordinates, model_3_tsne_y_coordinates = apply_tsne_to_image_fingerprint_database_func()
         print('Done!')
+        current_image_file_sha256hash in list_of_image_sha256_hashes
         image_is_likely_dupe = check_if_image_is_likely_dupe_func(current_image_file_sha256hash)
         if image_is_likely_dupe:
             print('Warning: Current image is a likely dupe, renaming file to end in ".DUPE" and skipping to next image file.')
@@ -1268,12 +1245,15 @@ def add_image_files_to_metadata_html_table_string_func(animecoin_metadata_html_s
             print('Error: '+ str(e))
     return updated_animecoin_metadata_html_string, dupe_detection_model_1, dupe_detection_model_2, dupe_detection_model_3, nsfw_graph_def
 
+#Script: (required to store numpy arrays in SQlite)
+sqlite3.register_adapter(np.ndarray, convert_numpy_array_to_sqlite_func) # Converts np.array to TEXT when inserting
+sqlite3.register_converter('array', convert_sqlite_data_to_numpy_array_func) # Converts TEXT to np.array when selecting
+
 if 0:
-    sqlite3.register_adapter(np.ndarray, convert_numpy_array_to_sqlite_func) # Converts np.array to TEXT when inserting
-    sqlite3.register_converter('array', convert_sqlite_data_to_numpy_array_func) # Converts TEXT to np.array when selecting
     artwork_metadata_object = generate_new_animecoin_html_ticket_data_object_func('artwork_metadata_ticket')
     filled_in_animecoin_html_ticket_html_string, selected_art_folder_path, animecoin_ticket_output_file_path = fill_in_new_animecoin_html_ticket_data_object_func(artwork_metadata_object)
     updated_animecoin_metadata_html_string, dupe_detection_model_1, dupe_detection_model_2, dupe_detection_model_3, nsfw_graph_def = add_image_files_to_metadata_html_table_string_func(filled_in_animecoin_html_ticket_html_string, artwork_metadata_object, animecoin_ticket_output_file_path )
+
 
 if 0: #For debugging metadata functions:
     selected_art_folder = 'C:\\animecoin\\art_folders_to_encode\\Arturo_Lopez__Number_02\\'
@@ -1284,9 +1264,8 @@ if 0: #For debugging metadata functions:
     current_image_file_path = list_of_paths_to_art_image_files[0]
     sha256_hash_of_art_image_file = get_image_hash_from_image_file_path_func(path_to_art_image_file)
     
-if 0: 
+if 0: #Don't use unless the Dupe Detection database has problems:
     generate_and_save_example_rsa_keypair_files_func()
+    regenerate_dupe_detection_image_fingerprint_database_func()
     anime_image_database_folder = 'C:\\Users\\jeffr\\Cointel Dropbox\\Animecoin_Code\\dupe_detection_image_files_for_db\\'
     dupe_detection_model_1, dupe_detection_model_2, dupe_detection_model_3 = add_all_images_in_folder_to_image_fingerprint_database_func(anime_image_database_folder)
-    dupe_detection_model_1, dupe_detection_model_2, dupe_detection_model_3 = add_all_images_in_folder_to_image_fingerprint_database_func(path_to_all_registered_works_for_dupe_detection)
-
