@@ -1,6 +1,13 @@
-import subprocess, json, os.path, binascii, struct, re, hashlib, sys
+import subprocess, json, os.path, binascii, struct, re, hashlib, sys, io, os, random, base64, glob
+import zstd
+from math import ceil, floor, sqrt
+from decimal import Decimal
+from time import sleep
+from binascii import crc32, hexlify, unhexlify
+from bitcoinrpc.authproxy import AuthServiceProxy, JSONRPCException
 from anime_utility_functions_v1 import generate_zstd_dictionary_from_folder_path_and_file_matching_string_func, compress_data_with_animecoin_zstd_func, \
         decompress_data_with_animecoin_zstd_func, get_all_animecoin_directories_func, get_all_animecoin_parameters_func
+# pip install jsonrpc
 #Get various settings:
 anime_metadata_format_version_number, minimum_total_number_of_unique_copies_of_artwork, maximum_total_number_of_unique_copies_of_artwork, target_number_of_nodes_per_unique_block_hash, target_block_redundancy_factor, desired_block_size_in_bytes, \
 remote_node_chunkdb_refresh_time_in_minutes, remote_node_image_fingerprintdb_refresh_time_in_minutes, percentage_of_block_files_to_randomly_delete, percentage_of_block_files_to_randomly_corrupt, percentage_of_each_selected_file_to_be_randomly_corrupted, \
@@ -11,501 +18,254 @@ dupe_detection_model_3_name, max_image_preview_pixel_dimension = get_all_animeco
 #Get various directories:
 root_animecoin_folder_path, folder_path_of_art_folders_to_encode, block_storage_folder_path, folder_path_of_remote_node_sqlite_files, reconstructed_file_destination_folder_path, \
 misc_masternode_files_folder_path, masternode_keypair_db_file_path, trade_ticket_files_folder_path, completed_trade_ticket_files_folder_path, pending_trade_ticket_files_folder_path, \
-temp_files_folder_path, prepared_final_art_zipfiles_folder_path, chunk_db_file_path, file_storage_log_file_path, nginx_allowed_ip_whitelist_file_path, path_to_animecoin_trade_ticket_template, \
+temp_files_folder_path, path_to_zstd_compression_dictionaries, prepared_final_art_zipfiles_folder_path, chunk_db_file_path, file_storage_log_file_path, nginx_allowed_ip_whitelist_file_path, path_to_animecoin_trade_ticket_template, \
 artist_final_signature_files_folder_path, dupe_detection_image_fingerprint_database_file_path, path_to_animecoin_artwork_metadata_template, path_where_animecoin_html_ticket_templates_are_stored, \
 path_to_nsfw_detection_model_file = get_all_animecoin_directories_func()
 
-#Parameters:
-OP_RETURN_BITCOIN_IP='127.0.0.1' # IP address of your bitcoin node
-OP_RETURN_BITCOIN_PORT = '' # leave empty to use default port for mainnet/testnet
-OP_RETURN_BITCOIN_USER = 'test' # leave empty to read from ~/.bitcoin/bitcoin.conf (Unix only)
-OP_RETURN_BITCOIN_PASSWORD ='testpw' # leave empty to read from ~/.bitcoin/bitcoin.conf (Unix only)
-OP_RETURN_BTC_FEE = 0.0001 # BTC fee to pay per transaction
-OP_RETURN_BTC_DUST = 0.00001 # omit BTC outputs smaller than this
-OP_RETURN_MAX_BYTES = 80 # maximum bytes in an OP_RETURN (80 as of Bitcoin 0.11)
-OP_RETURN_MAX_BLOCKS = 10 # maximum number of blocks to try when retrieving data
-OP_RETURN_NET_TIMEOUT = 10 # how long to time out (in seconds) when communicating with bitcoin node
-OP_RETURN_BITCOIN_PATH = 'bitcoin-cli.exe'
+rpc_user = 'test' 
+rpc_password ='testpw'
+rpc_port = '18443' #mainnet: 8332; testnet: 18332; regtest: 18443 
+rpc_connection_string = 'http://'+rpc_user+':'+rpc_password+'@127.0.0.1:'+rpc_port
+base_transaction_amount = 0.0001
+COIN = 100000000 #satoshis in 1 btc
+FEEPERKB = Decimal(0.0001)
+OP_CHECKSIG = b'\xac'
+OP_CHECKMULTISIG = b'\xae'
+OP_PUSHDATA1 = b'\x4c'
+OP_DUP = b'\x76'
+OP_HASH160 = b'\xa9'
+OP_EQUALVERIFY = b'\x88'
 
-def OP_RETURN_send(send_address, send_amount, metadata, testnet=False):
-    if not OP_RETURN_bitcoin_check(testnet): # Validate some parameters
-        return {'error': 'Please check Bitcoin Core is running and OP_RETURN_BITCOIN_* constants are set correctly'}
-    result = OP_RETURN_bitcoin_cmd('validateaddress', testnet, send_address)
-    if not ('isvalid' in result and result['isvalid']):
-        return {'error': 'Send address could not be validated: '+send_address}
-    metadata_len = len(metadata)
-    if metadata_len > 65536:
-        return {'error': 'This library only supports metadata up to 65536 bytes in size'}
-    if metadata_len > OP_RETURN_MAX_BYTES:
-        return {'error': 'Metadata has ' + str(metadata_len)+' bytes but is limited to '+ str(OP_RETURN_MAX_BYTES)+' (see OP_RETURN_MAX_BYTES)'}
-    output_amount = send_amount+OP_RETURN_BTC_FEE     # Calculate amounts and choose inputs
-    inputs_spend = OP_RETURN_select_inputs(output_amount, testnet)
-    if 'error' in inputs_spend:
-        return {'error': inputs_spend['error']}
-    change_amount = inputs_spend['total'] - output_amount
-    change_address = OP_RETURN_bitcoin_cmd('getrawchangeaddress', testnet) # Build the raw transaction
-    outputs = {send_address: send_amount}
-    if change_amount >= OP_RETURN_BTC_DUST:
-        outputs[change_address] = change_amount
-    raw_txn = OP_RETURN_create_txn(inputs_spend['inputs'], outputs, metadata, len(outputs), testnet)    # Sign and send the transaction, return result
-    return OP_RETURN_sign_send_txn(raw_txn, testnet)
+def unhexstr(str):
+    return unhexlify(str.encode('utf8'))
 
-def OP_RETURN_store(data, testnet=False):
-    if not OP_RETURN_bitcoin_check(testnet): # Data is stored in OP_RETURNs within a series of chained transactions. If the OP_RETURN is followed by another output, the data continues in the transaction spending that output. When the OP_RETURN is the last output, this also signifies the end of the data.
-        return {'error': 'Please check Bitcoin Core is running and OP_RETURN_BITCOIN_* constants are set correctly'}
-    data_len = len(data)
-    if data_len == 0:
-        return {'error': 'Some data is required to be stored'}
-    change_address = OP_RETURN_bitcoin_cmd('getrawchangeaddress', testnet)# Calculate amounts and choose first inputs to use:
-    output_amount = OP_RETURN_BTC_FEE*int((data_len+OP_RETURN_MAX_BYTES - 1)/OP_RETURN_MAX_BYTES) # number of transactions required
-    inputs_spend=OP_RETURN_select_inputs(output_amount, testnet)
-    if 'error' in inputs_spend:
-        return {'error': inputs_spend['error']}
-    inputs = inputs_spend['inputs']
-    input_amount = inputs_spend['total']
-    height = int(OP_RETURN_bitcoin_cmd('getblockcount', testnet))    # Find the current blockchain height and mempool txids
-    avoid_txids = OP_RETURN_bitcoin_cmd('getrawmempool', testnet)
-    result = {'txids':[]} # Loop to build and send transactions
-    for data_ptr in range(0, data_len, OP_RETURN_MAX_BYTES): # Some preparation for this iteration
-        last_txn = ((data_ptr+OP_RETURN_MAX_BYTES)>=data_len) # is this the last tx in the chain?
-        change_amount = input_amount-OP_RETURN_BTC_FEE
-        metadata = data[data_ptr:data_ptr+OP_RETURN_MAX_BYTES]
-        outputs = {} # Build and send this transaction
-        if change_amount >= OP_RETURN_BTC_DUST: # might be skipped for last transaction
-            outputs[change_address] = change_amount
-        raw_txn = OP_RETURN_create_txn(inputs, outputs, metadata, len(outputs) if last_txn else 0, testnet)
-        send_result=OP_RETURN_sign_send_txn(raw_txn, testnet)
-        if 'error' in send_result: # Check for errors and collect the txid
-            result['error']=send_result['error']
+def select_txins(value):
+    unspent = list(rpc_connection.listunspent())
+    random.shuffle(unspent)
+    r = []
+    total = 0
+    for tx in unspent:
+        total += tx['amount']
+        r.append(tx)
+        if total >= value:
             break
-    result['txids'].append(send_result['txid'])
-    if data_ptr == 0:
-        result['ref'] = OP_RETURN_calc_ref(height, send_result['txid'], avoid_txids) # Prepare inputs for next iteration
-    inputs = [{'txid': send_result['txid'], 'vout': 1,}]
-    input_amount = change_amount
-    return result
-
-def OP_RETURN_retrieve(ref, max_results=1, testnet=False):
-    if not OP_RETURN_bitcoin_check(testnet): # Validate parameters and get status of Bitcoin Core
-        return {'error': 'Please check Bitcoin Core is running and OP_RETURN_BITCOIN_* constants are set correctly'}
-    max_height = int(OP_RETURN_bitcoin_cmd('getblockcount', testnet))
-    heights = OP_RETURN_get_ref_heights(ref, max_height)
-    if not isinstance(heights, list):
-        return {'error': 'Ref is not valid'}
-    results=[]
-    for height in heights:
-        if height == 0:
-            txids = OP_RETURN_list_mempool_txns(testnet) # if mempool, only get list for now (to save RPC calls)
-            txns = None
-        else:
-            txns = OP_RETURN_get_block_txns(height, testnet) # if block, get all fully unpacked
-            txids = txns.keys()
-    for txid in txids:
-        if OP_RETURN_match_ref_txid(ref, txid):
-            if height == 0:
-                txn_unpacked = OP_RETURN_get_mempool_txn(txid, testnet)
-            else:
-                txn_unpacked = txns[txid]
-            found = OP_RETURN_find_txn_data(txn_unpacked)
-        if found: # Collect data from txid which matches ref and contains an OP_RETURN        
-            result = {'txids': [str(txid)], 'data': found['op_return'],}
-            key_heights = {height: True}
-            if height == 0: # Work out which other block heights / mempool we should try
-                try_heights = [] # nowhere else to look if first still in mempool
-            else:
-                result['ref'] = OP_RETURN_calc_ref(height, txid, txns.keys())
-                try_heights = OP_RETURN_get_try_heights(height+1, max_height, False)
-            if height == 0: # Collect the rest of the data, if appropriate
-                this_txns = OP_RETURN_get_mempool_txns(testnet) # now retrieve all to follow chain
-            else:
-                this_txns = txns
-            last_txid = txid
-            this_height = height
-            while found['index'] < (len(txn_unpacked['vout']) - 1): # this means more data to come
-                next_txid = OP_RETURN_find_spent_txid(this_txns, last_txid, found['index']+1) # If we found the next txid in the data chain
-                if next_txid:
-                    result['txids'].append(str(next_txid))
-                    txn_unpacked = this_txns[next_txid]
-                    found = OP_RETURN_find_txn_data(txn_unpacked)
-                    if found:
-                        result['data'] += found['op_return']
-                        key_heights[this_height] = True
-                    else:
-                        result['error'] = 'Data incomplete - missing OP_RETURN'
-                        break
-                    last_txid = next_txid
-            else: # Otherwise move on to the next height to keep looking
-                if len(try_heights):
-                    this_height = try_heights.pop(0)
-                    if this_height == 0:
-                        this_txns = OP_RETURN_get_mempool_txns(testnet)
-                    else:
-                        this_txns = OP_RETURN_get_block_txns(this_height, testnet)    
-                else:
-                    result['error'] = 'Data incomplete - could not find next transaction'
-                    break
-            result['heights'] = list(key_heights.keys()) # Finish up the information about this result             
-            results.append(result)
-            if len(results) >= max_results:
-                break # stop if we have collected enough
-    return results
-
-# Utility functions
-def OP_RETURN_select_inputs(total_amount, testnet):
-    unspent_inputs = OP_RETURN_bitcoin_cmd('listunspent', testnet, 0) # List and sort unspent inputs by priority
-    if not isinstance(unspent_inputs, list):
-        return {'error': 'Could not retrieve list of unspent inputs'}
-    unspent_inputs.sort(key = lambda unspent_input: unspent_input['amount']*unspent_input['confirmations'], reverse=True)
-    inputs_spend=[] # Identify which inputs should be spent
-    input_amount=0
-    for unspent_input in unspent_inputs:
-        inputs_spend.append(unspent_input)
-        input_amount += unspent_input['amount']
-        if input_amount >= total_amount:
-            break # stop when we have enough
-    if input_amount<total_amount:
-        return {'error': 'Not enough funds are available to cover the amount and fee'}
-    return {'inputs': inputs_spend, 'total': input_amount,}
-
-def OP_RETURN_create_txn(inputs, outputs, metadata, metadata_pos, testnet):
-    raw_txn = OP_RETURN_bitcoin_cmd('createrawtransaction', testnet, inputs, outputs)
-    txn_unpacked = OP_RETURN_unpack_txn(OP_RETURN_hex_to_bin(raw_txn))
-    metadata_len = len(metadata)
-    if metadata_len <= 75:
-        payload = bytearray((metadata_len,))+metadata # length byte + data (https://en.bitcoin.it/wiki/Script)
-    elif metadata_len <= 256:
-        payload = "\x4c"+bytearray((metadata_len,))+metadata # OP_PUSHDATA1 format
+    if total < value:
+        return None
     else:
-        payload = "\x4d"+bytearray((metadata_len%256,))+bytearray((int(metadata_len/256),))+metadata # OP_PUSHDATA2 format
-    metadata_pos = min(max(0, metadata_pos), len(txn_unpacked['vout'])) # constrain to valid values
-    txn_unpacked['vout'][metadata_pos:metadata_pos] = [{'value': 0, 'scriptPubKey': '6a' + OP_RETURN_bin_to_hex(payload)}] # here's the OP_RETURN
-    return OP_RETURN_bin_to_hex(OP_RETURN_pack_txn(txn_unpacked))
+        return (r, total)
 
-def OP_RETURN_sign_send_txn(raw_txn, testnet):
-    signed_txn = OP_RETURN_bitcoin_cmd('signrawtransaction', testnet, raw_txn)
-    if not ('complete' in signed_txn and signed_txn['complete']):
-        return {'error': 'Could not sign the transaction'}
-    send_txid = OP_RETURN_bitcoin_cmd('sendrawtransaction', testnet, signed_txn['hex'])
-    if not (isinstance(send_txid, str) and len(send_txid)==64):
-        return {'error': 'Could not send the transaction'}
-    return {'txid': str(send_txid)}
+def varint(n):
+    if n < 0xfd:
+        return bytes([n])
+    elif n < 0xffff:
+        return b'\xfd' + struct.pack('<H',n)
+    else:
+        assert False
 
-def OP_RETURN_list_mempool_txns(testnet):
-    return OP_RETURN_bitcoin_cmd('getrawmempool', testnet)
+def packtxin(prevout, scriptSig, seq=0xffffffff):
+    return prevout[0][::-1] + struct.pack('<L',prevout[1]) + varint(len(scriptSig)) + scriptSig + struct.pack('<L', seq)
 
-def OP_RETURN_get_mempool_txn(txid, testnet):
-    raw_txn = OP_RETURN_bitcoin_cmd('getrawtransaction', testnet, txid)
-    return OP_RETURN_unpack_txn(OP_RETURN_hex_to_bin(raw_txn))
+def packtxout(value, scriptPubKey):
+    return struct.pack('<Q',int(value*COIN)) + varint(len(scriptPubKey)) + scriptPubKey
 
-def OP_RETURN_get_mempool_txns(testnet):
-    txids = OP_RETURN_list_mempool_txns(testnet)
-    txns = {}
-    for txid in txids:
-        txns[txid] = OP_RETURN_get_mempool_txn(txid, testnet)
-    return txns
-    
-def OP_RETURN_get_raw_block(height, testnet):
-    block_hash = OP_RETURN_bitcoin_cmd('getblockhash', testnet, height)
-    if not (isinstance(block_hash, str) and len(block_hash) == 64):
-        return {'error': 'Block at height '+str(height)+' not found'}
-    return {'block': OP_RETURN_hex_to_bin(OP_RETURN_bitcoin_cmd('getblock', testnet, block_hash, False))}
+def packtx(txins, txouts, locktime=0):
+    r = b'\x01\x00\x00\x00' # version
+    r += varint(len(txins))
+    for txin in txins:
+        r += packtxin((unhexstr(txin['txid']),txin['vout']), b'')
+    r += varint(len(txouts))
+    for (value, scriptPubKey) in txouts:
+        r += packtxout(value, scriptPubKey)
+    r += struct.pack('<L', locktime)
+    return r
 
-def OP_RETURN_get_block_txns(height, testnet):
-    raw_block = OP_RETURN_get_raw_block(height, testnet)
-    if 'error' in raw_block:
-        return {'error': raw_block['error']}
-    block = OP_RETURN_unpack_block(raw_block['block'])
-    return block['txs']
+def pushdata(data):
+    assert len(data) < OP_PUSHDATA1[0]
+    return bytes([len(data)]) + data
 
-# Talking to bitcoin-cli
-def OP_RETURN_bitcoin_check(testnet):
-    info = OP_RETURN_bitcoin_cmd('getwalletinfo', testnet)
-    return isinstance(info, dict) and 'balance' in info
-    
-def OP_RETURN_bitcoin_cmd(command, testnet, *args): # more params are read from here
-    sub_args = [OP_RETURN_BITCOIN_PATH]
-    sub_args.append('-rpcuser=' + OP_RETURN_BITCOIN_USER)
-    sub_args.append('-rpcpassword=' + OP_RETURN_BITCOIN_PASSWORD)
-    sub_args.append('-regtest') #ToDo: Remove this when done testing.
-    if testnet:
-        sub_args.append('-testnet')
-    sub_args.append(command)
-    for arg in args:
-        sub_args.append(json.dumps(arg) if isinstance(arg, (dict, list, tuple)) else str(arg))
-    raw_result = subprocess.check_output(sub_args).decode('utf-8').rstrip("\n")
-    try: # decode JSON if possible
-        result = json.loads(raw_result)
-    except ValueError:
-        result = raw_result
-    return result
-    
-def OP_RETURN_calc_ref(next_height, txid, avoid_txids):
-    txid_binary = OP_RETURN_hex_to_bin(txid)
-    for txid_offset in range(15):
-        sub_txid = txid_binary[2*txid_offset:2*txid_offset+2]
-    clashed = False
-    for avoid_txid in avoid_txids:
-        avoid_txid_binary = OP_RETURN_hex_to_bin(avoid_txid)
-        if ((avoid_txid_binary[2*txid_offset:2*txid_offset+2] == sub_txid) and (txid_binary != avoid_txid_binary)):
-            clashed = True
-            break
-        if not clashed:
-            break
-        if clashed: # could not find a good reference
-            return None
-    tx_ref = ord(txid_binary[2*txid_offset:1+2*txid_offset])+256*ord(txid_binary[1+2*txid_offset:2+2*txid_offset])+65536*txid_offset
-    return '%06d-%06d' % (next_height, tx_ref)
+def pushint(n):
+    assert 0 < n <= 16
+    return bytes([0x51 + n-1])
 
-def OP_RETURN_get_ref_parts(ref):
-    if not re.search('^[0-9]+\-[0-9A-Fa-f]+$', ref): # also support partial txid for second half
-        return None
-    parts = ref.split('-')
-    if re.search('[A-Fa-f]', parts[1]):
-        if len(parts[1]) >= 4:
-            txid_binary = OP_RETURN_hex_to_bin(parts[1][0:4])
-            parts[1] = ord(txid_binary[0:1])+256*ord(txid_binary[1:2])+65536*0
+def addr2bytes(s):
+    digits58 = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz'
+    n = 0
+    for c in s:
+        n *= 58
+        if c not in digits58:
+            raise ValueError
+        n += digits58.index(c)
+    h = '%x' % n
+    if len(h) % 2:
+        h = '0' + h
+    for c in s:
+        if c == digits58[0]:
+            h = '00' + h
         else:
-            return None
-    parts = list(map(int, parts))
-    if parts[1] > 983039: # 14*65536+65535
-        return None
-    return parts
+            break
+    return unhexstr(h)[1:-4] # skip version and checksum
 
-def OP_RETURN_get_ref_heights(ref, max_height):
-    parts = OP_RETURN_get_ref_parts(ref)
-    if not parts:
+def checkmultisig_scriptPubKey_dump(fd):
+    data = fd.read(65*3)
+    if not data:
         return None
-    return OP_RETURN_get_try_heights(parts[0], max_height, True)
+    r = pushint(1)
+    n = 0
+    while data:
+        chunk = data[0:65]
+        data = data[65:]
+        if len(chunk) < 33:
+            chunk += b'\x00'*(33-len(chunk))
+        elif len(chunk) < 65:
+            chunk += b'\x00'*(65-len(chunk))
+        r += pushdata(chunk)
+        n += 1
+    r += pushint(n) + OP_CHECKMULTISIG
+    return r
 
-def OP_RETURN_get_try_heights(est_height, max_height, also_back):
-    forward_height = est_height
-    back_height = min(forward_height - 1, max_height)
-    heights = []
-    mempool = False
-    try_height = 0
+def get_sha256_hash_of_input_data_func(input_data_or_string):
+    if isinstance(input_data_or_string, str):
+        input_data_or_string = input_data_or_string.encode('utf-8')
+    sha256_hash_of_input_data = hashlib.sha256(input_data_or_string).hexdigest()         
+    return sha256_hash_of_input_data
+
+def get_raw_sha256_hash_of_input_data_func(input_data_or_string):
+    if isinstance(input_data_or_string, str):
+        input_data_or_string = input_data_or_string.encode('utf-8')
+    sha256_hash_of_input_data = hashlib.sha256(input_data_or_string).digest()         
+    return sha256_hash_of_input_data
+
+def store_data_in_animecoin_blockchain_func(input_data, animecoin_zstd_compression_dictionary, receiving_animecoin_blockchain_address):
+    global rpc_connection_string, path_where_animecoin_html_ticket_templates_are_stored
+    rpc_connection = AuthServiceProxy(rpc_connection_string)
+    animecoin_zstd_compressed_data = compress_data_with_animecoin_zstd_func(input_data, animecoin_zstd_compression_dictionary)
+    animecoin_zstd_uncompressed_data = decompress_data_with_animecoin_zstd_func(animecoin_zstd_compressed_data, animecoin_zstd_compression_dictionary)
+    assert(animecoin_ticket_html_string == animecoin_zstd_uncompressed_data.decode('utf-8')) #Check that we can decompress successfully
+    animecoin_zstd_compression_dictionary_raw_data = animecoin_zstd_compression_dictionary.as_bytes() #Required to be able to calculate the hash of the dictionary file
+    compression_dictionary_file_hash =  get_raw_sha256_hash_of_input_data_func(animecoin_zstd_compression_dictionary_raw_data)
+    uncompressed_data_file_hash = get_raw_sha256_hash_of_input_data_func(animecoin_zstd_uncompressed_data)
+    compressed_data_file_hash = get_raw_sha256_hash_of_input_data_func(animecoin_zstd_compressed_data)
+    (txins, change) = select_txins(0)
+    txouts = []
+    encoded_animecoin_zstd_compressed_data = hexlify(animecoin_zstd_compressed_data)
+    length_of_compressed_data_string = '{0:015}'.format(len(encoded_animecoin_zstd_compressed_data)).encode('utf-8')
+    combined_data_hex = hexlify(length_of_compressed_data_string) + hexlify(compression_dictionary_file_hash) + hexlify(uncompressed_data_file_hash) + hexlify(compressed_data_file_hash) + encoded_animecoin_zstd_compressed_data + hexlify(('0'*100).encode('utf-8'))
+    fd = io.BytesIO(combined_data_hex)
     while True:
-        if also_back and ((try_height%3) == 2): # step back every 3 tries
-            heights.append(back_height)
-            back_height -= 1
-        else:
-            if forward_height > max_height:
-                if not mempool:
-                    heights.append(0) # indicates to try mempool
-                    mempool = True
-                elif not also_back:
-                    break # nothing more to do here
-            else:
-                heights.append(forward_height)
-            forward_height += 1
-        if len(heights) >= OP_RETURN_MAX_BLOCKS:
+        scriptPubKey = checkmultisig_scriptPubKey_dump(fd)
+        if scriptPubKey is None:
             break
-    try_height += 1
-    return heights
+        value = Decimal(1/COIN)
+        txouts.append((value, scriptPubKey))
+        change -= value
+    out_value = Decimal(base_transaction_amount) # dest output
+    change -= out_value
+    txouts.append((out_value, OP_DUP + OP_HASH160 + pushdata(addr2bytes(receiving_animecoin_blockchain_address)) + OP_EQUALVERIFY + OP_CHECKSIG))
+    change_address = rpc_connection.getnewaddress() # change output
+    txouts.append([change, OP_DUP + OP_HASH160 + pushdata(addr2bytes(change_address)) + OP_EQUALVERIFY + OP_CHECKSIG])
+    tx = packtx(txins, txouts)
+    signed_tx = rpc_connection.signrawtransaction(hexlify(tx).decode('utf-8'))
+    fee = Decimal(len(signed_tx['hex'])/1000) * FEEPERKB
+    change -= fee
+    txouts[-1][0] = change
+    final_tx = packtx(txins, txouts)
+    signed_tx = rpc_connection.signrawtransaction(hexlify(final_tx).decode('utf-8'))
+    assert signed_tx['complete']
+    hex_signed_transaction = signed_tx['hex']
+    print('Sending data transaction to address: ' + receiving_animecoin_blockchain_address)
+    print('Size: %d  Fee: %2.8f' % (len(hex_signed_transaction)/2, fee), file=sys.stderr)
+    send_raw_transaction_result = rpc_connection.sendrawtransaction(hex_signed_transaction)
+    blockchain_transaction_id = send_raw_transaction_result
+    print('Transaction ID: ' + blockchain_transaction_id)
+    return blockchain_transaction_id
 
-def OP_RETURN_match_ref_txid(ref, txid):
-    parts = OP_RETURN_get_ref_parts(ref)
-    if not parts:
-        return None
-    txid_offset = int(parts[1]/65536)
-    txid_binary = OP_RETURN_hex_to_bin(txid)
-    txid_part = txid_binary[2*txid_offset:2*txid_offset+2]
-    txid_match = bytearray([parts[1]%256, int((parts[1]%65536)/256)])
-    return txid_part == txid_match # exact binary comparison
-
-def OP_RETURN_unpack_block(binary): # Unpacking and packing bitcoin blocks and transactions    
-    buffer = OP_RETURN_buffer(binary)
-    block = {}
-    block['version'] = buffer.shift_unpack(4, '<L')
-    block['hashPrevBlock'] = OP_RETURN_bin_to_hex(buffer.shift(32)[::-1])
-    block['hashMerkleRoot'] = OP_RETURN_bin_to_hex(buffer.shift(32)[::-1])
-    block['time'] = buffer.shift_unpack(4, '<L')
-    block['bits'] = buffer.shift_unpack(4, '<L')
-    block['nonce'] = buffer.shift_unpack(4, '<L')
-    block['tx_count'] = buffer.shift_varint()
-    block['txs'] = {}
-    old_ptr = buffer.used()
-    while buffer.remaining():
-        transaction = OP_RETURN_unpack_txn_buffer(buffer)
-        new_ptr = buffer.used()
-        size = new_ptr-old_ptr
-        raw_txn_binary = binary[old_ptr:old_ptr+size]
-        txid = OP_RETURN_bin_to_hex(hashlib.sha256(hashlib.sha256(raw_txn_binary).digest()).digest()[::-1])
-        old_ptr = new_ptr
-        transaction['size'] = size
-        block['txs'][txid] = transaction
-    return block
-
-def OP_RETURN_unpack_txn(binary):
-    return OP_RETURN_unpack_txn_buffer(OP_RETURN_buffer(binary))
-
-def OP_RETURN_unpack_txn_buffer(buffer): # see: https://en.bitcoin.it/wiki/Transactions
-    txn = {'vin': [], 'vout': [],}
-    txn['version'] = buffer.shift_unpack(4, '<L') # small-endian 32-bits
-    inputs = buffer.shift_varint()
-    if inputs > 100000: # sanity check
-        return None
-    for _ in range(inputs):
-        input = {}
-        input['txid'] = OP_RETURN_bin_to_hex(buffer.shift(32)[::-1])
-        input['vout'] = buffer.shift_unpack(4, '<L')
-        length = buffer.shift_varint()
-        input['scriptSig'] = OP_RETURN_bin_to_hex(buffer.shift(length))
-        input['sequence'] = buffer.shift_unpack(4, '<L')
-        txn['vin'].append(input)
-    outputs = buffer.shift_varint()
-    if outputs > 100000: # sanity check
-        return None
-    for _ in range(outputs):
-        output = {}
-        output['value'] = float(buffer.shift_uint64())/100000000
-        length = buffer.shift_varint()
-        output['scriptPubKey'] = OP_RETURN_bin_to_hex(buffer.shift(length))
-        txn['vout'].append(output)
-    txn['locktime'] = buffer.shift_unpack(4, '<L')
-    return txn
-
-def OP_RETURN_find_spent_txid(txns, spent_txid, spent_vout):
-    for txid, txn_unpacked in txns.items():
-        for input in txn_unpacked['vin']:
-            if (input['txid'] == spent_txid) and (input['vout']==spent_vout):
-                return txid
-        return None
-
-def OP_RETURN_find_txn_data(txn_unpacked):
-    for index, output in enumerate(txn_unpacked['vout']):
-        op_return = OP_RETURN_get_script_data(OP_RETURN_hex_to_bin(output['scriptPubKey']))
-    if op_return:
-        return {'index': index, 'op_return': op_return,}
-    return None
-    
-def OP_RETURN_get_script_data(scriptPubKeyBinary):
-    op_return = None
-    if scriptPubKeyBinary[0:1] == b'\x6a':
-        first_ord = ord(scriptPubKeyBinary[1:2])
-    if first_ord <= 75:
-        op_return = scriptPubKeyBinary[2:2+first_ord]
-    elif first_ord == 0x4c:
-        op_return = scriptPubKeyBinary[3:3+ord(scriptPubKeyBinary[2:3])]
-    elif first_ord == 0x4d:
-        op_return = scriptPubKeyBinary[4:4+ord(scriptPubKeyBinary[2:3])+256*ord(scriptPubKeyBinary[3:4])]
-    return op_return    
-
-def OP_RETURN_pack_txn(txn):
-    binary = b''
-    binary += struct.pack('<L', txn['version'])
-    binary += OP_RETURN_pack_varint(len(txn['vin']))
-    for input in txn['vin']:
-        binary += OP_RETURN_hex_to_bin(input['txid'])[::-1]
-        binary += struct.pack('<L', input['vout'])
-        binary += OP_RETURN_pack_varint(int(len(input['scriptSig'])/2)) # divide by 2 because it is currently in hex
-        binary += OP_RETURN_hex_to_bin(input['scriptSig'])
-        binary += struct.pack('<L', input['sequence'])
-    binary += OP_RETURN_pack_varint(len(txn['vout']))
-    for output in txn['vout']:
-        binary += OP_RETURN_pack_uint64(int(round(output['value']*100000000)))
-        binary += OP_RETURN_pack_varint(int(len(output['scriptPubKey'])/2)) # divide by 2 because it is currently in hex
-        binary += OP_RETURN_hex_to_bin(output['scriptPubKey'])
-    binary += struct.pack('<L', txn['locktime'])
-    return binary
-
-def OP_RETURN_pack_varint(integer):
-    if integer > 0xFFFFFFFF:
-        packed = "\xFF"+OP_RETURN_pack_uint64(integer)
-    elif integer>0xFFFF:
-        packed = "\xFE"+struct.pack('<L', integer)
-    elif integer>0xFC:
-        packed = "\xFD".struct.pack('<H', integer)
+def retrieve_data_from_animecoin_blockchain_func(blockchain_transaction_id):
+    global rpc_connection_string, path_where_animecoin_html_ticket_templates_are_stored
+    rpc_connection = AuthServiceProxy(rpc_connection_string)
+    raw = rpc_connection.getrawtransaction(blockchain_transaction_id)
+    outputs = raw.split('0100000000000000')
+    encoded_hex_data = ''
+    for output in outputs[1:-2]: # there are 3 65-byte parts in this that we need
+        cur = 6
+        encoded_hex_data += output[cur:cur+130]
+        cur += 132
+        encoded_hex_data += output[cur:cur+130]
+        cur += 132
+        encoded_hex_data += output[cur:cur+130]
+    encoded_hex_data += outputs[-2][6:-4]
+    reconstructed_combined_data = binascii.a2b_hex(encoded_hex_data).decode('utf-8')
+    reconstructed_length_of_compressed_data_hex_string = reconstructed_combined_data[0:30] # len(hexlify('{0:015}'.format(len(encoded_animecoin_zstd_compressed_data)).encode('utf-8'))) is 30
+    reconstructed_length_of_compressed_data_hex_string = int(unhexstr(reconstructed_length_of_compressed_data_hex_string).decode('utf-8').lstrip('0'))
+    reconstructed_combined_data__remainder_1 = reconstructed_combined_data[30:]
+    length_of_standard_hash_string = len(get_sha256_hash_of_input_data_func('test'))
+    reconstructed_compression_dictionary_file_hash = reconstructed_combined_data__remainder_1[0:length_of_standard_hash_string]
+    reconstructed_combined_data__remainder_2 = reconstructed_combined_data__remainder_1[length_of_standard_hash_string:]
+    reconstructed_uncompressed_data_file_hash = reconstructed_combined_data__remainder_2[0:length_of_standard_hash_string]
+    reconstructed_combined_data__remainder_3 = reconstructed_combined_data__remainder_2[length_of_standard_hash_string:]
+    reconstructed_compressed_data_file_hash = reconstructed_combined_data__remainder_3[0:length_of_standard_hash_string]
+    reconstructed_combined_data__remainder_4 = reconstructed_combined_data__remainder_3[length_of_standard_hash_string:]
+    reconstructed_encoded_animecoin_zstd_compressed_data_padded = reconstructed_combined_data__remainder_4.replace('A','') #Note sure where this comes from; somehow it is introduced into the data (note this is "A" not "a").
+    calculated_padding_length = len(reconstructed_encoded_animecoin_zstd_compressed_data_padded) - reconstructed_length_of_compressed_data_hex_string 
+    reconstructed_encoded_animecoin_zstd_compressed_data = reconstructed_encoded_animecoin_zstd_compressed_data_padded[0:-calculated_padding_length]
+    reconstructed_animecoin_zstd_compressed_data = unhexstr(reconstructed_encoded_animecoin_zstd_compressed_data)
+    hash_of_reconstructed_animecoin_zstd_compressed_data = get_sha256_hash_of_input_data_func(reconstructed_animecoin_zstd_compressed_data)
+    assert(hash_of_reconstructed_animecoin_zstd_compressed_data == reconstructed_compressed_data_file_hash)
+    list_of_available_compression_dictionary_files = glob.glob(path_to_zstd_compression_dictionaries + '*.dict')
+    found_dictionary_file = 0
+    if len(list_of_available_compression_dictionary_files) == 0:
+        print('Error! No dictionary files were found. Try generating one or downloading one from the blockchain.')
     else:
-        packed = struct.pack('B', integer)
-    return packed
-
-def OP_RETURN_pack_uint64(integer):
-    upper = int(integer/4294967296)
-    lower = integer-upper*4294967296
-    return struct.pack('<L', lower)+struct.pack('<L', upper)
-
-class OP_RETURN_buffer(): # Helper class for unpacking bitcoin binary data
-    def __init__(self, data, ptr=0):
-        self.data = data
-        self.len = len(data)
-        self.ptr = ptr
-    def shift(self, chars):
-        prefix = self.data[self.ptr:self.ptr+chars]
-        self.ptr += chars
-        return prefix
-    def shift_unpack(self, chars, format):
-        unpack = struct.unpack(format, self.shift(chars))
-        return unpack[0]
-    def shift_varint(self):
-        value = self.shift_unpack(1, 'B')
-        if value == 0xFF:
-            value = self.shift_uint64()
-        elif value == 0xFE:
-            value=self.shift_unpack(4, '<L')
-        elif value == 0xFD:
-            value = self.shift_unpack(2, '<H')
-        return value
-    def shift_uint64(self):
-        return self.shift_unpack(4, '<L')+4294967296*self.shift_unpack(4, '<L')
-    def used(self):
-        return min(self.ptr, self.len)
-    def remaining(self):
-        return max(self.len-self.ptr, 0)
-
-def OP_RETURN_hex_to_bin(hex): # Converting binary <-> hexadecimal
-    try:
-        raw = binascii.a2b_hex(hex)
-    except Exception:
-        return None
-    return raw
+        available_dictionary_file_hashes = [os.path.split(x)[-1].replace('.dict','') for x in list_of_available_compression_dictionary_files]
+        if reconstructed_compression_dictionary_file_hash not in available_dictionary_file_hashes:
+            print('Error! Cannot find the compression dictionary file used! Try downloading from the blockchain the dictionary with file hash: ' + reconstructed_compression_dictionary_file_hash)
+        else:
+            found_dictionary_file = 1
+            dictionary_file_index_number = available_dictionary_file_hashes.index(reconstructed_compression_dictionary_file_hash)
+            dictionary_file_path = list_of_available_compression_dictionary_files[dictionary_file_index_number]
+            with open(dictionary_file_path, 'rb') as f:
+                reconstructed_animecoin_zstd_compression_dictionary_raw_data = f.read()
+                reconstructed_animecoin_zstd_compression_dictionary = zstd.ZstdCompressionDict(reconstructed_animecoin_zstd_compression_dictionary_raw_data)
+    if not found_dictionary_file:
+        print('Attempting to generate dictionary file before giving up (not guaranteed to work!)')
+        reconstructed_animecoin_zstd_compression_dictionary = generate_zstd_dictionary_from_folder_path_and_file_matching_string_func(path_where_animecoin_html_ticket_templates_are_stored, '*ticket*.html')
+        reconstructed_animecoin_zstd_compression_dictionary_raw_data = reconstructed_animecoin_zstd_compression_dictionary.as_bytes()
+    hash_of_compression_dictionary = get_sha256_hash_of_input_data_func(reconstructed_animecoin_zstd_compression_dictionary_raw_data)
+    assert(hash_of_compression_dictionary == reconstructed_compression_dictionary_file_hash)
+    reconstructed_animecoin_zstd_uncompressed_data = decompress_data_with_animecoin_zstd_func(reconstructed_animecoin_zstd_compressed_data, reconstructed_animecoin_zstd_compression_dictionary)
+    hash_of_reconstructed_animecoin_zstd_uncompressed_data = get_sha256_hash_of_input_data_func(reconstructed_animecoin_zstd_uncompressed_data)
+    assert(hash_of_reconstructed_animecoin_zstd_uncompressed_data == reconstructed_uncompressed_data_file_hash)
+    print('Successfully reconstructed and decompressed data!')
+    return reconstructed_animecoin_zstd_uncompressed_data
     
-def OP_RETURN_bin_to_hex(string):
-    return binascii.b2a_hex(string).decode('utf-8')
 
 if 0: #Demo:
-    rpc_auth_command_string = '-rpcuser=' + OP_RETURN_BITCOIN_USER + ' -rpcpassword=' + OP_RETURN_BITCOIN_PASSWORD
-    bitcoind_launch_string = 'bitcoind.exe' + rpc_auth_command_string + ' -regtest -server'
-    proc = subprocess.Popen(bitcoind_launch_string, shell=True)
-    block_generation_test_command_string = 'bitcoin-cli.exe ' + rpc_auth_command_string + ' -regtest generate 101'
-    block_generation_result = subprocess.check_output(block_generation_test_command_string)
-    get_new_address_command_string = 'bitcoin-cli.exe ' + rpc_auth_command_string + ' -regtest getnewaddress'
-    get_new_address_result = subprocess.check_output(get_new_address_command_string)
-    send_btc_to_new_address_command_string = 'bitcoin-cli.exe ' + rpc_auth_command_string + ' -regtest sendtoaddress ' + get_new_address_result.decode('utf-8').rstrip() + ' 10.5'
-    send_btc_to_new_address_result = subprocess.check_output(send_btc_to_new_address_command_string)
-    list_unspent_command_string = 'bitcoin-cli.exe ' + rpc_auth_command_string + ' -regtest listunspent 0'
-    list_unspent_result = subprocess.check_output(list_unspent_command_string)
-    
-if 0:
-    path_to_animecoin_html_ticket_file = 'C:\\animecoin\\art_folders_to_encode\\Midori_Matsui__Number_05\\artwork_metadata_ticket__2018_05_25__18_37_51_580510.html'
+    if 0: #Start up bitcoind using the regtest network and generate some coins to use:
+        rpc_auth_command_string = '-rpcuser=' + rpc_user + ' -rpcpassword=' + rpc_password
+        bitcoind_launch_string = 'bitcoind.exe ' + rpc_auth_command_string + ' -regtest -server -addresstype=legacy' #Without -addresstype=legacy the current bitcoind will default to using segwit addresses, which suck (you can't sign messages with them)
+        proc = subprocess.Popen(bitcoind_launch_string, shell=True)
+        sleep(5)
+        rpc_connection = AuthServiceProxy(rpc_connection_string)
+        block_generation_output = rpc_connection.generate(101) #Generate some coins to work with
+        
+    path_to_animecoin_html_ticket_file = 'C:\\animecoin\\art_folders_to_encode\\Carlo_Angelo__Felipe_Number_02\\artwork_metadata_ticket__2018_05_27__23_42_33_964953.html'
     with open(path_to_animecoin_html_ticket_file,'r') as f:
        animecoin_ticket_html_string = f.read()
-    animecoin_zstd_compression_dictionary = generate_zstd_dictionary_from_folder_path_and_file_matching_string_func(path_where_animecoin_html_ticket_templates_are_stored, '*ticket*.html')
-    animecoin_zstd_compressed_data = compress_data_with_animecoin_zstd_func(animecoin_ticket_html_string, animecoin_zstd_compression_dictionary)
-    animecoin_zstd_uncompressed_data = decompress_data_with_animecoin_zstd_func(animecoin_zstd_compressed_data, animecoin_zstd_compression_dictionary)
-    assert(animecoin_ticket_html_string == animecoin_zstd_uncompressed_data.decode('utf-8'))
-    animecoin_ticket_uncompressed_data_size_in_bytes = sys.getsizeof(animecoin_ticket_html_string)
-    animecoin_ticket_compressed_data_size_in_bytes = sys.getsizeof(animecoin_zstd_compressed_data)
-    result = OP_RETURN_store(animecoin_zstd_compressed_data)
-    data = OP_RETURN_retrieve(ref, max_results=1, testnet=False)
+       
+    use_generate_new_compression_dictionary = 1
+    if use_generate_new_compression_dictionary:
+        animecoin_zstd_compression_dictionary = generate_zstd_dictionary_from_folder_path_and_file_matching_string_func(path_where_animecoin_html_ticket_templates_are_stored, '*ticket*.html')
+        animecoin_zstd_compression_dictionary_raw_data = animecoin_zstd_compression_dictionary.as_bytes()
+        compression_dictionary_hash = get_sha256_hash_of_input_data_func(animecoin_zstd_compression_dictionary_raw_data)
+        with open(path_to_zstd_compression_dictionaries + compression_dictionary_hash + '.dict','wb') as f:
+            f.write(animecoin_zstd_compression_dictionary_raw_data)
     
-     
-
+    rpc_connection = AuthServiceProxy(rpc_connection_string)
+    receiving_animecoin_blockchain_address = rpc_connection.getnewaddress()
     
+    input_data = animecoin_ticket_html_string
+    blockchain_transaction_id = store_data_in_animecoin_blockchain_func(input_data, animecoin_zstd_compression_dictionary, receiving_animecoin_blockchain_address)
     
+    reconstructed_animecoin_zstd_uncompressed_data = retrieve_data_from_animecoin_blockchain_func(blockchain_transaction_id)
+    reconstructed_animecoin_zstd_uncompressed_data_decoded = reconstructed_animecoin_zstd_uncompressed_data.decode('utf-8')
     
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
+    assert(reconstructed_animecoin_zstd_uncompressed_data_decoded == input_data)
