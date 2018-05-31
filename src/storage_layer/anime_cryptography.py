@@ -1,17 +1,18 @@
-import itertools, os, struct, time, base64, hashlib, glob, random, sys, binascii, shutil, io
+import itertools, os, time, base64, hashlib, glob, random, sys, binascii, io
 from math import ceil, floor, log, log2, sqrt
+from time import sleep
 from binascii import hexlify
+from struct import pack, unpack
 from PIL import Image, ImageChops, ImageOps, ImageEnhance
-import pyqrcode
 from pyzbar.pyzbar import decode
+import pyqrcode
+import zstd
 import nacl.encoding
 import nacl.signing
 import imageio
-import zstd
 import moviepy.editor as mpy
-from fs.memoryfs import MemoryFS
-from fs.copy import copy_fs
-from fs.osfs import OSFS
+import numpy as np
+from matplotlib.pyplot import imshow
 from tqdm import tqdm
 from anime_utility_functions_v1 import get_sha256_hash_of_input_data_func
 from anime_fountain_coding_v1 import PRNG, BlockGraph
@@ -19,7 +20,7 @@ from anime_fountain_coding_v1 import PRNG, BlockGraph
 sys.setrecursionlimit(2000)
 sigma = "expand 32-byte k"
 tau = "expand 16-byte k"
-#pip install pyqrcode, pypng, pyzbar, tqdm, numpy, piexif, pynacl, imageio, zstd
+#pip install pyqrcode, pypng, pyzbar, tqdm, numpy, piexif, pynacl, imageio, zstd, matplotlib
 
 def xor(b1, b2): # Expects two bytes objects of equal length, returns their XOR
     assert len(b1) == len(b2)
@@ -531,16 +532,16 @@ class BLAKE(object):
         return hexlify(self.final(data)).decode('UTF-8')
     
     def _fourByte2int(self, bytestr):      # convert a 4-byte string to an int (long); see also long2byt() below
-        return struct.unpack('!L', bytestr)[0]
+        return unpack('!L', bytestr)[0]
     
     def _eightByte2int(self, bytestr): #convert a 8-byte string to an int (long long) 
-        return struct.unpack('!Q', bytestr)[0]
+        return unpack('!Q', bytestr)[0]
     
     def _int2fourByte(self, x): #convert a number to a 4-byte string, high order truncation possible (in Python x could be a BIGNUM) see also long2byt() below
-        return struct.pack('!L', x)
+        return pack('!L', x)
     
     def _int2eightByte(self, x): #convert a number to a 8-byte string, high order truncation possible (in Python x could be a BIGNUM)
-        return struct.pack('!Q', x)
+        return pack('!Q', x)
 
 class SPHINCS(object): #Source: https://github.com/joostrijneveld/SPHINCS-256-py
     def __init__(self, n=256, m=512, h=60, d=12, w=16, tau=16, k=32):
@@ -649,19 +650,19 @@ class SPHINCS(object): #Source: https://github.com/joostrijneveld/SPHINCS-256-py
             ii>>= subh
         return PK1 == pk
 
-    def pack(self, x):
+    def my_pack(self, x):
         if type(x) is bytes:
             return x
         if type(x) is int:  # needed for index i
             return int.to_bytes(x, length=(self.h+7)//8, byteorder='little')
-        return b''.join([self.pack(a) for a in iter(x)])
+        return b''.join([self.my_pack(a) for a in iter(x)])
 
-    def unpack(self, sk=None, pk=None, sig=None, byteseq=None):
+    def my_unpack(self, sk=None, pk=None, sig=None, byteseq=None):
         n = self.n // 8
         if sk:
-            return sk[:n], sk[n:2*n], self.unpack(byteseq=sk[2*n:])
+            return sk[:n], sk[n:2*n], self.my_unpack(byteseq=sk[2*n:])
         elif pk:
-            return pk[:n], self.unpack(byteseq=pk[n:])
+            return pk[:n], self.my_unpack(byteseq=pk[n:])
         elif byteseq:
             return [byteseq[ii:ii+n] for ii in range(0, len(byteseq), n)]
         elif sig:
@@ -674,15 +675,15 @@ class SPHINCS(object): #Source: https://github.com/joostrijneveld/SPHINCS-256-py
             for _ in range(self.k):
                 sk, sig = prefix(sig, n)
                 auth, sig = prefix(sig, (self.tau - self.horst.x)*n)
-                sig_horst.append((sk, self.unpack(byteseq=auth)))
+                sig_horst.append((sk, self.my_unpack(byteseq=auth)))
             sigma_k, sig = prefix(sig, (1<< self.horst.x) * n)
-            sig_horst.append(self.unpack(byteseq=sigma_k))
+            sig_horst.append(self.my_unpack(byteseq=sigma_k))
             wots = []
             for _ in range(self.d):
                 wots_sig, sig = prefix(sig, self.wots.l*n)
                 path, sig = prefix(sig, self.h//self.d*n)
-                wots.append(self.unpack(byteseq=wots_sig))
-                wots.append(self.unpack(byteseq=path))
+                wots.append(self.my_unpack(byteseq=wots_sig))
+                wots.append(self.my_unpack(byteseq=path))
             return (ii, R1, sig_horst) + tuple(wots)
 
 class Sha512():
@@ -751,7 +752,7 @@ class Sha512():
             b = [int(), int(), int(), int(), int(), int(), int(), int()]
             for i in range(8): 
                 a[i] = self.h[i]
-            w = list(struct.unpack('16Q', bytes(m.encode('utf-8'))))
+            w = list(unpack('16Q', bytes(m.encode('utf-8'))))
             for i in range(80):
                 for j in range(8): b[j] = a[j]
                 t = a[7] + self.Sigma1(a[4]) + self.Ch(a[4], a[5], a[6]) + self.K[i] + w[i % 16]
@@ -766,7 +767,7 @@ class Sha512():
                 a[i] += self.h[i]; a[i] &= 0xffffffffffffffff; self.h[i] = a[i]
 
         def digest(self):
-            return ''.join([struct.pack('!Q', i) for i in self.h])
+            return ''.join([pack('!Q', i) for i in self.h])
 
 def sha512iv(self,m):
     iv = [ 0x6a09e667f3bcc908, 0xbb67ae8584caa73b, 0x3c6ef372fe94f82b, 0xa54ff53a5f1d36f1,  0x510e527fade682d1, 0x9b05688c2b3e6c1f, 0x1f83d9abfb41bd6b, 0x5be0cd19137e2179]
@@ -1090,19 +1091,33 @@ def check_if_image_is_all_white_func(pil_image):
     return not ImageChops.invert(pil_image).getbbox()
 
 def invert_image_if_needed_func(pil_image):
+    threshold = 120
+    pil_image = pil_image.convert('RGB')
     upper_left_pixel = pil_image.getpixel((0, 0))
-    threshold = 20
+    average_pixel_value = (upper_left_pixel[0] + upper_left_pixel[1] + upper_left_pixel[2])/3
+    if average_pixel_value < threshold:
+        pil_image = ImageOps.invert(pil_image)
+    pil_image = enhance_pil_image_func(pil_image, enhancement_amount=9)
+    return pil_image
+
+def enhance_pil_image_func(pil_image, enhancement_amount):
     try:
-        average_pixel_value = (upper_left_pixel[0] + upper_left_pixel[1] + upper_left_pixel[2])/3
-        if average_pixel_value < threshold:
-            pil_image = ImageOps.invert(pil_image)
-        return pil_image
+        x = pil_image.convert('RGB')
+        contrast = ImageEnhance.Contrast(x) 
+        x = contrast.enhance(enhancement_amount)
+        brightness = ImageEnhance.Brightness(x) 
+        x = brightness.enhance(enhancement_amount)
+        color = ImageEnhance.Color(x) 
+        x = color.enhance(enhancement_amount)
+        improved_pil_image = x
+        return improved_pil_image
     except:
         return pil_image
     
 def add_base32_padding_characters_func(encoded_string):
+    encoded_string_stripped = encoded_string.replace('=','')
     padding = ''
-    remainder = len(encoded_string) % 8 
+    remainder = len(encoded_string_stripped) % 8 
     if remainder == 2:
         padding = '======'
     elif remainder == 4:
@@ -1111,8 +1126,20 @@ def add_base32_padding_characters_func(encoded_string):
         padding = '==='
     elif remainder == 7:
         padding = '=='
-    encoded_string = encoded_string + padding
-    return encoded_string
+    encoded_string_padded = encoded_string_stripped + padding
+    try:
+        decoded_data_raw_binary = base64.b32decode(encoded_string_padded)
+    except:
+        encoded_string_adjusted = encoded_string.replace('A=','')
+        encoded_string_adjusted_padded = add_base32_padding_characters_func(encoded_string_adjusted)
+        try:
+            decoded_data_raw_binary = base64.b32decode(encoded_string_adjusted_padded)
+            if len(decoded_data_raw_binary) > 0:
+                encoded_string_padded = encoded_string_adjusted_padded
+        except:
+            print('Problem with string!')
+            return
+    return encoded_string_padded
 
 def clear_existing_qr_code_image_files_func():
     existing_qr_code_filepaths = glob.glob('ANIME_QR_CODE__*.png')
@@ -1122,8 +1149,6 @@ def clear_existing_qr_code_image_files_func():
 def compress_data_with_zstd_func(input_data):
     zstd_compression_level = 22 #Highest (best) compression level is 22
     zstandard_compressor = zstd.ZstdCompressor(level=zstd_compression_level, write_content_size=True)
-    if isinstance(input_data, str):
-        input_data = input_data.encode('utf-8')
     zstd_compressed_data = zstandard_compressor.compress(input_data)
     return zstd_compressed_data
 
@@ -1132,64 +1157,64 @@ def decompress_data_with_zstd_func(zstd_compressed_data):
     uncompressed_data = zstandard_decompressor.decompress(zstd_compressed_data)
     return uncompressed_data
 
-def encode_file_into_lt_block_qr_codes_func(path_to_input_file): #sphincs_secret_key_raw_bytes
-    if isinstance(path_to_input_file, str): 
-        with open(path_to_input_file,'rb') as f:
-            f_bytes = f.read()
-        input_data_original_size_in_bytes = os.path.getsize(path_to_input_file)
+def encode_file_into_ztd_luby_block_qr_codes_func(input_data_or_path): #sphincs_secret_key_raw_bytes
+    block_redundancy_factor = 1.9
+    desired_block_size_in_bytes = 2200
+    c_constant = 0.1 #Don't touch
+    delta_constant = 0.5 #Don't touch
+    pyqrcode_version_number = 40 #Max is 40;
+    qr_error_correcting_level = 'L' # L, M, Q, H
+    qr_encoding_type = 'alphanumeric'
+    qr_scale_factor = 3
+    print('\nEncoding file into a collection of redundant QR codes...')
+    if isinstance(input_data_or_path, str):
+        if os.path.exists(input_data_or_path):
+            with open(input_data_or_path,'rb') as f:
+                input_data = f.read()
+            filename = os.path.split(input_data_or_path)[-1] 
     else:
-        f_bytes = path_to_input_file
-        input_data_original_size_in_bytes = len(f_bytes)
-    existing_qr_code_filepaths = glob.glob('ANIME_QR_CODE__*.png')
-    for current_filepath in existing_qr_code_filepaths:
-        os.remove(current_filepath)
-    block_redundancy_factor = 2
-    desired_block_size_in_bytes = 2500
-    c_constant = 0.1
-    delta_constant = 0.5
+        if type(input_data_or_path) in [bytes, bytearray]:
+            input_data = input_data_or_path
+            filename = ''
+    clear_existing_qr_code_image_files_func()
+    uncompressed_input_data_size_in_bytes = len(input_data)
+    print('Now compressing input data with Z-standard at level 22 (original file size: ' + str(uncompressed_input_data_size_in_bytes) + ' bytes)...')
+    compressed_input_data = compress_data_with_zstd_func(input_data)
+    compressed_input_data_size_in_bytes = len(compressed_input_data)
+    compressed_input_data_hash = get_sha256_hash_of_input_data_func(compressed_input_data)
+    print('Done compressing! (compressed file size: ' + str(compressed_input_data_size_in_bytes) + ' bytes, or ' +str(round(float(compressed_input_data_size_in_bytes/uncompressed_input_data_size_in_bytes)*100.0,3)) + '% of original data size)...')
     seed = random.randint(0, 1 << 31 - 1)
-    if not isinstance(path_to_input_file, str):
-        filename = ''
-    else:
-        filename = os.path.split(path_to_input_file)[-1] 
-    print('Now encoding file ' + filename + ' (' + str(round(input_data_original_size_in_bytes/1000000)) + 'mb)\n\n')
-    total_number_of_blocks_to_generate = ceil((1.00*block_redundancy_factor*input_data_original_size_in_bytes) / desired_block_size_in_bytes)
-    print('Total number of blocks to generate for target level of redundancy: '+str(total_number_of_blocks_to_generate))
-    pbar = tqdm(total=total_number_of_blocks_to_generate)
-    input_data_hash = get_sha256_hash_of_input_data_func(f_bytes)
-    blocks = [int.from_bytes(f_bytes[ii:ii+desired_block_size_in_bytes].ljust(desired_block_size_in_bytes, b'0'), sys.byteorder) for ii in range(0, len(f_bytes), desired_block_size_in_bytes)]
+    print('Now encoding data - ' + filename + ' (' + str(round(compressed_input_data_size_in_bytes/1000000)) + 'mb)\n\n')
+    total_number_of_blocks_to_generate = ceil( (1.00*block_redundancy_factor*compressed_input_data_size_in_bytes) / desired_block_size_in_bytes )
+    print('Total number of blocks to generate for target level of redundancy: ' + str(total_number_of_blocks_to_generate))
+    blocks = [int.from_bytes(compressed_input_data[ii:ii+desired_block_size_in_bytes].ljust(desired_block_size_in_bytes, b'0'), sys.byteorder) for ii in range(0, compressed_input_data_size_in_bytes, desired_block_size_in_bytes)]
     number_of_blocks = len(blocks)
-    print('The length of the blocks list: ' + str(number_of_blocks))
+    print('The length of the blocks list: '+str(number_of_blocks))
+    pbar = tqdm(total=total_number_of_blocks_to_generate)
     prng = PRNG(params=(number_of_blocks, delta_constant, c_constant))
     prng.set_seed(seed)
+    output_blocks_list = list()
+    output_block_hashes_list = list()
     number_of_blocks_generated = 0
-    list_of_compressed_block_data = list()
-    list_of_compressed_block_data_hashes = list()
     while number_of_blocks_generated <= total_number_of_blocks_to_generate:
-        update_skip = 1
-        if (number_of_blocks_generated % update_skip) == 0:
-            pbar.update(update_skip)
         blockseed, d, ix_samples = prng.get_src_blocks()
         block_data = 0
         for ix in ix_samples:
             block_data ^= blocks[ix]
-        block = (input_data_original_size_in_bytes, desired_block_size_in_bytes, blockseed, int.to_bytes(block_data, desired_block_size_in_bytes, sys.byteorder)) # Generate blocks of XORed data in network byte order
+        block = (compressed_input_data_size_in_bytes, desired_block_size_in_bytes, blockseed, int.to_bytes(block_data, desired_block_size_in_bytes, 'little')) # Generate blocks of XORed data in network byte order
+        packed_block_data = pack('!III%ss'%desired_block_size_in_bytes, *block)
+        output_blocks_list.append(packed_block_data)
+        hash_of_block = get_sha256_hash_of_input_data_func(packed_block_data)
+        output_block_hashes_list.append(hash_of_block)
         number_of_blocks_generated = number_of_blocks_generated + 1
-        packed_block_data = struct.pack('!III%ss'%desired_block_size_in_bytes, *block)
-        compressed_packed_block_data = compress_data_with_zstd_func(packed_block_data)
-        list_of_compressed_block_data.append(compressed_packed_block_data)
-        list_of_compressed_block_data_hashes.append(get_sha256_hash_of_input_data_func(compressed_packed_block_data))
-    print('\n\nFinished processing! \nOriginal file ('+input_data_hash+') was encoded into ' + str(number_of_blocks_generated) + ' blocks of ' + str(ceil(desired_block_size_in_bytes/1000)) + ' kilobytes each. Total size of all blocks is ~' + str(ceil((number_of_blocks_generated*desired_block_size_in_bytes))) + ' bytes\n')
+        pbar.update(1)
+    print('\nFinished processing compressed data into LT blocks! \nOriginal data (' + compressed_input_data_hash + ') was encoded into ' + str(number_of_blocks_generated) + ' blocks of ' + str(ceil(desired_block_size_in_bytes)) + ' bytes each. Total size of all blocks is ~' + str(ceil((number_of_blocks_generated*desired_block_size_in_bytes))) + ' bytes.\n')
     overall_counter = 0
-    for block_cnt, current_block_data in enumerate(list_of_compressed_block_data):
-        current_block_data_hash = list_of_compressed_block_data_hashes[block_cnt]
-        current_block_data_base32_encoded = base64.b32encode(current_block_data).decode('utf-8')
+    for current_block_data in output_blocks_list:
+        current_block_data_base32_encoded = base64.b32encode(current_block_data).decode('utf-8') #test: current_luby_block_data_binary = base64.b32decode(current_block_data_base32_encoded)
         current_block_data_base32_encoded_character_length = len(current_block_data_base32_encoded)
         print('Total data length is ' + str(current_block_data_base32_encoded_character_length) + ' characters.')
-        pyqrcode_version_number = 25 #Max is 40;
-        qr_error_correcting_level = 'Q' # L, M, Q, H
-        qr_encoding_type = 'alphanumeric'
-        qr_scale_factor = 4
+       
         qr_encoding_type_index = pyqrcode.tables.modes[qr_encoding_type]
         qrcode_capacity_dict = pyqrcode.tables.data_capacity[pyqrcode_version_number] # Using max error corrections; see: pyqrcode.tables.data_capacity[40]
         max_characters_in_single_qr_code = qrcode_capacity_dict[qr_error_correcting_level][qr_encoding_type_index]
@@ -1203,110 +1228,146 @@ def encode_file_into_lt_block_qr_codes_func(path_to_input_file): #sphincs_secret
             starting_index = cnt*max_characters_in_single_qr_code
             ending_index = min([len(current_block_data_base32_encoded), (cnt+1)*max_characters_in_single_qr_code])
             encoded_data_for_current_qr_code = current_block_data_base32_encoded[starting_index:ending_index]
-            encoded_data_for_current_qr_code = encoded_data_for_current_qr_code.replace('=','A')
+            encoded_data_for_current_qr_code = encoded_data_for_current_qr_code.replace('=','')
             list_of_encoded_data_blobs.append(encoded_data_for_current_qr_code)
             current_qr_code = pyqrcode.create(encoded_data_for_current_qr_code, error=qr_error_correcting_level, version=pyqrcode_version_number, mode=qr_encoding_type)
-            qr_code_png_output_file_name = 'ANIME_QR_CODE__'+ str(current_block_data_hash) + '__' '{0:03}'.format(overall_counter) + '.png'
-            print('Saving: '+qr_code_png_output_file_name)
+            qr_code_png_output_file_name = 'ANIME_QR_CODE__'+ str(compressed_input_data_hash) + '__' '{0:05}'.format(overall_counter) + '.png'
             first_random_color = random.choice(random.choice(combined_hex_color_strings))
             if first_random_color in list_of_light_hex_color_strings:
                 second_random_color = random.choice(list_of_dark_hex_color_strings)
             else:
                 second_random_color = random.choice(list_of_light_hex_color_strings)
+            print('Saving: ' + qr_code_png_output_file_name)
             current_qr_code.png(qr_code_png_output_file_name, scale=qr_scale_factor, module_color=first_random_color, background=second_random_color)
             overall_counter = overall_counter + 1
-    qr_code_file_paths = glob.glob('ANIME_QR_CODE__*.png')
-    if len(qr_code_file_paths) > 0:
-        first_path = qr_code_file_paths[0]
+    print('Done generating individual QR code images!')
+    relevant_qr_code_file_paths = glob.glob('ANIME_QR_CODE__'+ str(compressed_input_data_hash)+'*.png')
+    if len(relevant_qr_code_file_paths) > 0:
+        first_path = relevant_qr_code_file_paths[0]
         first_qr_image_data = Image.open(first_path)
-        image_pixel_width, image_pixel_height = first_qr_image_data.size
-    print('Pixel width/height of QR codes generated: '+str(image_pixel_width)+', '+str(image_pixel_height))
-    N = pow(ceil(sqrt(len(qr_code_file_paths))), 2) #Find nearest square
-    total_width = int(sqrt(N)*image_pixel_width)
-    total_height = int(sqrt(N)*image_pixel_height)
-    print('Combined Image Dimensions: '+str(total_width)+', '+str(total_height))
-    combined_qr_code_image = Image.new('RGBA', (total_width, total_height))
+        qr_image_pixel_width, qr_image_pixel_height = first_qr_image_data.size
+        first_qr_image_data = enhance_pil_image_func(first_qr_image_data, enhancement_amount=9)
+        first_qr_image_data = invert_image_if_needed_func(first_qr_image_data)
+        decoded_data = decode(first_qr_image_data)
+        decoded_data_raw = decoded_data[0].data.decode('utf-8')
+        decoded_data_raw_padded = add_base32_padding_characters_func(decoded_data_raw)
+        decoded_data_raw_binary = base64.b32decode(decoded_data_raw_padded)
+        if type(decoded_data_raw_binary) not in [bytes, bytearray]:
+            print('Warning: problem decoding data base32 encoded stream!')
+        first_qr_image_data.close()
+    else:
+        print('Warning: Could not find any generated QR code files!')
+    print('Pixel width/height of QR codes generated: ' + str(qr_image_pixel_width) + ', ' + str(qr_image_pixel_height))
+    N = pow(ceil(sqrt(len(relevant_qr_code_file_paths))), 2) #Find nearest square
+    combined_qr_code_image_width = int(sqrt(N)*qr_image_pixel_width)
+    combined_qr_code_image_height = int(sqrt(N)*qr_image_pixel_height)
+    print('Combined Image Dimensions: '+str(combined_qr_code_image_width)+', '+str(combined_qr_code_image_height))
+    combined_qr_code_image = Image.new('RGBA', (combined_qr_code_image_width, combined_qr_code_image_height) )
     number_in_each_row = int(sqrt(N))
     number_in_each_column = int(sqrt(N))
     image_counter = 0
     for ii in range(number_in_each_row):
         for jj in range(number_in_each_column):
-            print('Row Counter: '+str(ii)+'; Column Counter: '+str(jj)+';')
-            if image_counter < len(qr_code_file_paths):
-                current_image_file_path = qr_code_file_paths[image_counter]
+            print('Row Counter: ' + str(ii) + '; Column Counter: ' + str(jj)+';')
+            if image_counter < len(relevant_qr_code_file_paths):
+                current_image_file_path = relevant_qr_code_file_paths[image_counter]
                 current_image_data = Image.open(current_image_file_path)
-                new_image_coords =  (ii*image_pixel_width, jj*image_pixel_height)
-                print('New Image Upper-Left Corner: '+str(new_image_coords[0])+', '+str(new_image_coords[1]))
-                combined_qr_code_image.paste(current_image_data, new_image_coords)
+                new_image_coords =  (ii*qr_image_pixel_width, jj*qr_image_pixel_height)
+                print('New Image Upper-Left Corner: ' + str(new_image_coords[0]) + ', ' + str(new_image_coords[1]))
+                combined_qr_code_image.paste(current_image_data, new_image_coords)                
+                current_image_data.close()
                 image_counter = image_counter + 1
-    combined_qr_code_png_output_file_name = 'ANIME_QR_CODE_COMBINED__' + input_data_hash + '.png'
+    print('Done generating combined QR code image with compressed LT block data!')
+    combined_qr_code_png_output_file_name = 'ANIME_QR_CODE_COMBINED__' + compressed_input_data_hash + '.png'
     combined_qr_code_image.save(combined_qr_code_png_output_file_name)
-    return image_pixel_width, combined_qr_code_png_output_file_name
+    clear_existing_qr_code_image_files_func()
+    return qr_image_pixel_width, combined_qr_code_png_output_file_name, output_blocks_list, output_block_hashes_list
     
-def encode_data_as_qr_codes_func(input_data):
-    if isinstance(input_data, str):
-        input_data = input_data.encode('utf-8')
-    input_data_hash = hashlib.sha3_256(input_data).hexdigest().encode('utf-8')
-    input_data_combined = input_data_hash + input_data
-    input_data_base32_encoded = base64.b32encode(input_data_combined).decode('utf-8')
-    input_data_base32_encoded_character_length = len(input_data_base32_encoded)
-    print('Total data length is ' + str(input_data_base32_encoded_character_length) + ' characters.')
-    pyqrcode_version_number = 4 #Max is 40;
-    qr_error_correcting_level = 'M' # L, M, Q, H
-    qr_encoding_type = 'alphanumeric'
-    qr_scale_factor = 6
-    qr_encoding_type_index = pyqrcode.tables.modes[qr_encoding_type]
-    qrcode_capacity_dict = pyqrcode.tables.data_capacity[pyqrcode_version_number] # Using max error corrections; see: pyqrcode.tables.data_capacity[40]
-    max_characters_in_single_qr_code = qrcode_capacity_dict[qr_error_correcting_level][qr_encoding_type_index]
-    required_number_of_qr_codes = ceil(float(input_data_base32_encoded_character_length)/float(max_characters_in_single_qr_code))
-    print('A total of '+str(required_number_of_qr_codes) +' QR codes is required.')
-    list_of_light_hex_color_strings = ['#C9D6FF','#DBE6F6','#F0F2F0','#E0EAFC','#ffdde1','#FFEEEE','#E4E5E6','#DAE2F8','#D4D3DD','#d9a7c7','#fffcdc','#f2fcfe','#F8FFAE','#F0F2F0']
-    list_of_dark_hex_color_strings = ['#203A43','#2C5364','#373B44','#3c1053','#333333','#23074d','#302b63','#24243e','#0f0c29','#2F0743','#3C3B3F','#000046','#200122','#1D4350','#2948ff']
-    combined_hex_color_strings = [list_of_light_hex_color_strings,list_of_dark_hex_color_strings]
-    list_of_encoded_data_blobs = list()
-    list_of_generated_qr_images = list()
-    for cnt in range(required_number_of_qr_codes):
-        starting_index = cnt*max_characters_in_single_qr_code
-        ending_index = min([len(input_data_base32_encoded), (cnt+1)*max_characters_in_single_qr_code])
-        encoded_data_for_current_qr_code = input_data_base32_encoded[starting_index:ending_index]
-        encoded_data_for_current_qr_code = encoded_data_for_current_qr_code.replace('=','A')
-        list_of_encoded_data_blobs.append(encoded_data_for_current_qr_code)
-        current_qr_code = pyqrcode.create(encoded_data_for_current_qr_code, error=qr_error_correcting_level, version=pyqrcode_version_number, mode=qr_encoding_type)
-        qr_code_png_output_file_name = 'ANIME_QR_CODE__'+ input_data_hash.decode('utf-8') + '__' '{0:03}'.format(cnt) + '.png'
-        print('Saving: '+qr_code_png_output_file_name)
-        first_random_color = random.choice(random.choice(combined_hex_color_strings))
-        if first_random_color in list_of_light_hex_color_strings:
-            second_random_color = random.choice(list_of_dark_hex_color_strings)
-        else:
-            second_random_color = random.choice(list_of_light_hex_color_strings)
-        current_qr_code.png(qr_code_png_output_file_name, scale=qr_scale_factor, module_color=first_random_color, background=second_random_color)
-        qr_code_png_image_data = Image.open(qr_code_png_output_file_name)
-        list_of_generated_qr_images.append(qr_code_png_image_data)
-        image_pixel_width, image_pixel_height = list_of_generated_qr_images[0].size
-    print('Pixel width/height of QR codes generated: '+str(image_pixel_width)+', '+str(image_pixel_height))
-    N = pow(ceil(sqrt(required_number_of_qr_codes)), 2) #Find nearest square
-    total_width = int(sqrt(N)*image_pixel_width)
-    total_height = int(sqrt(N)*image_pixel_height)
-    print('Combined Image Dimensions: '+str(total_width)+', '+str(total_height))
-    combined_qr_code_image = Image.new('RGBA ', (total_width, total_height))
+def reconstruct_data_from_list_of_luby_blocks(list_of_luby_block_data_binaries, output_file_path='luby_scratchpad.tmp'):
+    c_constant = 0.1
+    delta_constant = 0.5
+    first_block_data_stream = io.BufferedReader(io.BytesIO(list_of_luby_block_data_binaries[0]))
+    header = unpack('!III', first_block_data_stream.read(12))
+    first_block_data_stream.close
+    filesize = header[0]
+    blocksize = header[1]
+    number_of_blocks_required = ceil(filesize/blocksize)
+    block_graph = BlockGraph(number_of_blocks_required)
+    for block_count, current_packed_block_data in enumerate(list_of_luby_block_data_binaries):
+        input_stream = io.BufferedReader(io.BytesIO(current_packed_block_data))
+        header = unpack('!III', input_stream.read(12))
+        blocksize = header[1]
+        blockseed = header[2]
+        block = int.from_bytes(input_stream.read(blocksize), 'little')
+        input_stream.close
+        prng = PRNG(params=(number_of_blocks_required, delta_constant, c_constant))
+        _, _, src_blocks = prng.get_src_blocks(seed = blockseed)
+        file_reconstruction_complete = block_graph.add_block(src_blocks, block)
+    if file_reconstruction_complete:
+        print('\nDone reconstructing data from blocks! Processed a total of '+str(block_count)+' blocks\n')
+    else:
+        print('Warning! Processed all available LT blocks but still do not have the entire file!')
+    with open(output_file_path,'wb') as f: 
+        for ix, block_bytes in enumerate(map(lambda p: int.to_bytes(p[1], blocksize, 'little'), sorted(block_graph.eliminated.items(), key = lambda p:p[0]))):
+            if ix < number_of_blocks_required - 1 or filesize % blocksize == 0:
+                f.write(block_bytes)
+            else:
+                f.write(block_bytes[:filesize%blocksize])
+    with open(output_file_path,'rb') as f:
+        reconstructed_data = f.read()
+    os.remove(output_file_path)
+    if type(reconstructed_data) in [bytes, bytearray]:
+        print('Successfully reconstructed file from LT blocks! Reconstucted file size is '+str(len(reconstructed_data))+' bytes.')
+        return reconstructed_data
+
+def decode_combined_ztd_luby_block_qr_code_image_func(path_to_image_file_with_qr_codes, qr_image_pixel_width):
+    standard_qr_code_pixel_width = qr_image_pixel_width
+    standard_qr_code_pixel_height = standard_qr_code_pixel_width
+    combined_qr_code_image = Image.open(path_to_image_file_with_qr_codes)
+    combined_width, combined_height = combined_qr_code_image.size
+    N = pow((combined_width/standard_qr_code_pixel_width), 2)
     number_in_each_row = int(sqrt(N))
     number_in_each_column = int(sqrt(N))
-    image_counter = 0
+    list_of_qr_code_image_data = list()
+    iteration_counter = 0
     for ii in range(number_in_each_row):
         for jj in range(number_in_each_column):
+            current_subimage_area = (ii*standard_qr_code_pixel_width, jj*standard_qr_code_pixel_height, (ii+1)*standard_qr_code_pixel_width, (jj+1)*standard_qr_code_pixel_height)
+            current_qr_image_data = combined_qr_code_image.crop(current_subimage_area)
+            #if jj < 4: current_qr_image_data.show()
             print('Row Counter: '+str(ii)+'; Column Counter: '+str(jj)+';')
-            if image_counter < len(list_of_generated_qr_images):
-                current_image_data = list_of_generated_qr_images[image_counter]
-                new_image_coords =  (ii*image_pixel_width, jj*image_pixel_height)
-                print('New Image Upper-Left Corner: '+str(new_image_coords[0])+', '+str(new_image_coords[1]))
-                combined_qr_code_image.paste(current_image_data,new_image_coords)
-                image_counter = image_counter + 1
-    combined_qr_code_png_output_file_name = 'ANIME_QR_CODE_COMBINED__' + input_data_hash.decode('utf-8') + '.png'
-    combined_qr_code_image.save(combined_qr_code_png_output_file_name)
-    existing_qr_code_filepaths = glob.glob('ANIME_QR_CODE__*.png')
-    for current_filepath in existing_qr_code_filepaths:
-        os.remove(current_filepath)
-    return list_of_encoded_data_blobs, image_pixel_width, input_data_base32_encoded
+            iteration_counter = iteration_counter + 1
+            print('Iteration Count: '+str(iteration_counter)+'; Current Sub-Image Area Tuple: ('+str(current_subimage_area[0])+', '+str(current_subimage_area[1])+', '+str(current_subimage_area[2])+', '+str(current_subimage_area[3])+')')
+            thresholded_current_qr_image_data = binarize_image_func(current_qr_image_data)
+            if check_if_image_is_all_black_func(thresholded_current_qr_image_data) or check_if_image_is_all_white_func(thresholded_current_qr_image_data):
+                print('Skipping empty QR code...')
+            else:
+                list_of_qr_code_image_data.append(current_qr_image_data)
+    print('Found '+str(len(list_of_qr_code_image_data))+' QR code images in combined image.\n')
+    list_of_luby_block_data_binaries = list()
+    for current_qr_image in list_of_qr_code_image_data:
+        current_qr_image_enhanced = enhance_pil_image_func(current_qr_image, enhancement_amount=9)
+        current_qr_image_enhanced = invert_image_if_needed_func(current_qr_image_enhanced)
+        decoded_data = decode(current_qr_image_enhanced)
+        if len(decoded_data) > 0:
+            decoded_data_raw = decoded_data[0].data.decode('utf-8')
+            decoded_data_raw_padded = add_base32_padding_characters_func(decoded_data_raw)
+            current_luby_block_data_binary = base64.b32decode(decoded_data_raw_padded)
+            list_of_luby_block_data_binaries.append(current_luby_block_data_binary)
+    print('Successfully decoded '+str(len(list_of_luby_block_data_binaries))+' QR codes!')
+    reconstructed_compressed_data = reconstruct_data_from_list_of_luby_blocks(list_of_luby_block_data_binaries)
+    if 0:
+        reconstructed_compressed_data_stripped = reconstructed_compressed_data[:reconstructed_compressed_data.find(b'00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000')]
+        reconstructed_compressed_data = reconstructed_compressed_data_stripped
+    print('Now attempting to reconstruct compressed data from recovered Luby blocks...')
+    if len(reconstructed_compressed_data) > 0:
+        reconstructed_uncompressed_data = decompress_data_with_zstd_func(reconstructed_compressed_data)
+        reconstructed_uncompressed_data_hash = get_sha256_hash_of_input_data_func(reconstructed_compressed_data)
+        print('Successfully decompressed file!')
+        combined_qr_code_image.close()
+    else:
+        print('Error, data could not be decompressed!')
+    return list_of_luby_block_data_binaries, reconstructed_uncompressed_data, reconstructed_uncompressed_data_hash
 
 def generate_data_animation_func(input_data):
     if isinstance(input_data, str):
@@ -1334,7 +1395,7 @@ def generate_data_animation_func(input_data):
         starting_index = cnt*max_characters_in_single_qr_code
         ending_index = min([len(input_data_base32_encoded), (cnt+1)*max_characters_in_single_qr_code])
         encoded_data_for_current_qr_code = input_data_base32_encoded[starting_index:ending_index]
-        encoded_data_for_current_qr_code = encoded_data_for_current_qr_code.replace('=','A')
+        encoded_data_for_current_qr_code = encoded_data_for_current_qr_code.replace('=','')
         list_of_encoded_data_blobs.append(encoded_data_for_current_qr_code)
         current_qr_code = pyqrcode.create(encoded_data_for_current_qr_code, error=qr_error_correcting_level, version=pyqrcode_version_number, mode=qr_encoding_type)
         first_random_color = random.choice(random.choice(combined_hex_color_strings))
@@ -1345,8 +1406,8 @@ def generate_data_animation_func(input_data):
         qr_code_png_output_file_name = 'ANIME_QR_CODE__'+ input_data_hash.decode('utf-8') + '__' '{0:03}'.format(cnt) + '.png'
         #current_qr_code.png(qr_code_png_output_file_name, scale=qr_scale_factor, module_color=first_random_color, background=second_random_color)
         current_qr_code.png(qr_code_png_output_file_name, scale=qr_scale_factor, module_color=first_random_color, background=second_random_color)
-        image_pixel_width, image_pixel_height = current_qr_code.size
-    return image_pixel_width
+        qr_image_pixel_width, qr_image_pixel_height = current_qr_code.size
+    return qr_image_pixel_width
 #    gif_name = 'outputName'
 #    fps = 12
 #    file_list = glob.glob('*.png') # Get all the pngs in the current directory
@@ -1356,178 +1417,7 @@ def generate_data_animation_func(input_data):
 #    writer = imageio.get_writer('ANIME_QR_VID__' + input_data_hash.decode('utf-8') + '__' '{0:03}'.format(cnt) + '.mp4', 45)
   
 #    print('Pixel width/height of QR codes generated: '+str(image_pixel_width)+', '+str(image_pixel_height))
-if 0: #Debugging:
-    image_to_embed = combined_qr_code_data
-    host_image = art_image_data_resized
-    pil_image = art_image_data_resized
-    input_data = combined_qr_code_data
-    
-def enhance_pil_image_func(pil_image, enhancement_amount):
-    try:
-        x = pil_image
-        contrast = ImageEnhance.Contrast(x) 
-        x = contrast.enhance(enhancement_amount)
-        brightness = ImageEnhance.Brightness(x) 
-        x = brightness.enhance(enhancement_amount)
-        color = ImageEnhance.Color(x) 
-        x = color.enhance(enhancement_amount)
-        improved_pil_image = x
-        return improved_pil_image
-    except:
-        return pil_image
-    
-def decode_data_lt_coded_qr_code_images_func(path_to_image_file_with_qr_codes, image_pixel_width):
-    enhancement_amount = 5
-    standard_qr_code_pixel_width = image_pixel_width
-    standard_qr_code_pixel_height = standard_qr_code_pixel_width
-    combined_qr_code_image = Image.open(path_to_image_file_with_qr_codes)
-    combined_width, combined_height = combined_qr_code_image.size
-    N = pow((combined_width/standard_qr_code_pixel_width), 2)
-    number_in_each_row = int(sqrt(N))
-    number_in_each_column = int(sqrt(N))
-    list_of_qr_code_image_data = list()
-    iteration_counter = 0
-    for ii in range(number_in_each_row):
-        for jj in range(number_in_each_column):
-            print('Row Counter: '+str(ii)+'; Column Counter: '+str(jj)+';')
-            current_subimage_area = (ii*standard_qr_code_pixel_width, jj*standard_qr_code_pixel_height, (ii+1)*standard_qr_code_pixel_width, (jj+1)*standard_qr_code_pixel_height)
-            current_qr_image_data = combined_qr_code_image.crop(current_subimage_area)
-            iteration_counter = iteration_counter + 1
-            print('Iteration Count: '+str(iteration_counter)+'; Current Sub-Image Area Tuple: ('+str(current_subimage_area[0])+', '+str(current_subimage_area[1])+', '+str(current_subimage_area[2])+', '+str(current_subimage_area[3])+')')
-            list_of_qr_code_image_data.append(current_qr_image_data)
-    list_of_decoded_data_blobs = list()   
-    combined_reconstructed_string = ''
-    for current_qr_image in list_of_qr_code_image_data:
-        rgb_version_of_current_qr_image = Image.new('RGB', current_qr_image.size, (0, 0, 0))
-        rgb_version_of_current_qr_image.paste(current_qr_image, mask=current_qr_image.split()[3])
-        rgb_version_of_current_qr_image_enhanced = enhance_pil_image_func(rgb_version_of_current_qr_image, enhancement_amount)
-        rgb_version_of_current_qr_image_enhanced = invert_image_if_needed_func(rgb_version_of_current_qr_image_enhanced)
-        #rgb_version_of_current_qr_image_enhanced = binarize_image_func(rgb_version_of_current_qr_image_enhanced)
-        decoded_data = decode(rgb_version_of_current_qr_image_enhanced)
-        if len(decoded_data) == 0:
-            decoded_data = decode(invert_image_if_needed_func(rgb_version_of_current_qr_image_enhanced))
-        if len(decoded_data) == 0:
-            decoded_data = decode(enhance_pil_image_func(rgb_version_of_current_qr_image_enhanced, 9))
-        if len(decoded_data) > 0:
-            decoded_data_raw = decoded_data[0].data.decode('utf-8')
-            list_of_decoded_data_blobs.append(decoded_data_raw)
-            combined_reconstructed_string = combined_reconstructed_string + decoded_data_raw
-    combined_reconstructed_string = combined_reconstructed_string.split('AAAAAA')[0]
-    combined_reconstructed_string_padded = add_base32_padding_characters_func(combined_reconstructed_string)
-    reconstructed_input_data_base32_decoded = base64.b32decode(combined_reconstructed_string_padded)
-    reconstructed_input_data_hash = reconstructed_input_data_base32_decoded[:64]
-    reconstructed_data = reconstructed_input_data_base32_decoded[64:]
-    reconstructed_data_hash = hashlib.sha3_256(reconstructed_data).hexdigest().encode('utf-8')
-    assert(reconstructed_input_data_hash == reconstructed_data_hash)
-        
-def decode_data_from_qr_code_images_func(path_to_image_file_with_qr_codes, image_pixel_width):
-    enhancement_amount = 5
-    standard_qr_code_pixel_width = image_pixel_width
-    standard_qr_code_pixel_height = standard_qr_code_pixel_width
-    combined_qr_code_image = Image.open(path_to_image_file_with_qr_codes)
-    combined_width, combined_height = combined_qr_code_image.size
-    N = pow((combined_width/standard_qr_code_pixel_width), 2)
-    number_in_each_row = int(sqrt(N))
-    number_in_each_column = int(sqrt(N))
-    list_of_qr_code_image_data = list()
-    iteration_counter = 0
-    for ii in range(number_in_each_row):
-        for jj in range(number_in_each_column):
-            print('Row Counter: '+str(ii)+'; Column Counter: '+str(jj)+';')
-            current_subimage_area = (ii*standard_qr_code_pixel_width, jj*standard_qr_code_pixel_height, (ii+1)*standard_qr_code_pixel_width, (jj+1)*standard_qr_code_pixel_height)
-            current_qr_image_data = combined_qr_code_image.crop(current_subimage_area)
-            iteration_counter = iteration_counter + 1
-            print('Iteration Count: '+str(iteration_counter)+'; Current Sub-Image Area Tuple: ('+str(current_subimage_area[0])+', '+str(current_subimage_area[1])+', '+str(current_subimage_area[2])+', '+str(current_subimage_area[3])+')')
-            list_of_qr_code_image_data.append(current_qr_image_data)
-    list_of_decoded_data_blobs = list()   
-    combined_reconstructed_string = ''
-    for current_qr_image in list_of_qr_code_image_data:
-        rgb_version_of_current_qr_image = Image.new('RGB', current_qr_image.size, (0, 0, 0))
-        rgb_version_of_current_qr_image.paste(current_qr_image, mask=current_qr_image.split()[3])
-        rgb_version_of_current_qr_image_enhanced = enhance_pil_image_func(rgb_version_of_current_qr_image, enhancement_amount)
-        rgb_version_of_current_qr_image_enhanced = invert_image_if_needed_func(rgb_version_of_current_qr_image_enhanced)
-        #rgb_version_of_current_qr_image_enhanced = binarize_image_func(rgb_version_of_current_qr_image_enhanced)
-        decoded_data = decode(rgb_version_of_current_qr_image_enhanced)
-        if len(decoded_data) == 0:
-            decoded_data = decode(invert_image_if_needed_func(rgb_version_of_current_qr_image_enhanced))
-        if len(decoded_data) == 0:
-            decoded_data = decode(enhance_pil_image_func(rgb_version_of_current_qr_image_enhanced, 9))
-        if len(decoded_data) > 0:
-            decoded_data_raw = decoded_data[0].data.decode('utf-8')
-            list_of_decoded_data_blobs.append(decoded_data_raw)
-            combined_reconstructed_string = combined_reconstructed_string + decoded_data_raw
-    combined_reconstructed_string = combined_reconstructed_string.split('AAAAAA')[0]
-    return combined_reconstructed_string, list_of_decoded_data_blobs
 
-def decode_block_files_into_art_zipfile_func(sha256_hash_of_art_file):
-    global block_storage_folder_path
-    global reconstructed_files_destination_folder_path
-    global prepared_final_art_zipfiles_folder_path
-    start_time = time()
-    reconstructed_file_destination_file_path = os.path.join(reconstructed_files_destination_folder_path,'Final_Art_Zipfile_Hash__' + sha256_hash_of_art_file + '.zip')
-    list_of_block_file_paths = glob.glob(os.path.join(block_storage_folder_path,'*'+sha256_hash_of_art_file+'*.block'))
-    reported_file_sha256_hash = list_of_block_file_paths[0].split(os.sep)[-1].split('__')[1]
-    print('\nFound '+str(len(list_of_block_file_paths))+' block files in folder! The SHA256 hash of the original zip file is reported to be: '+reported_file_sha256_hash+'\n')
-    c_constant = 0.1
-    delta_constant = 0.5
-    block_graph = BlockGraph(len(list_of_block_file_paths))
-    for block_count, current_block_file_path in enumerate(list_of_block_file_paths):
-        with open(current_block_file_path,'rb') as f:
-            packed_block_data = f.read()
-        hash_of_block = get_sha256_hash_of_input_data_func(packed_block_data)
-        reported_hash_of_block = current_block_file_path.split('__')[-1].replace('.block','').replace('BlockHash_','')
-        if hash_of_block == reported_hash_of_block:
-            pass #Block hash matches reported hash, so block is not corrupted
-        else:
-            print('\nError, the block hash does NOT match the reported hash, so this block is corrupted! Skipping to next block...\n')
-            continue
-        input_stream = io.BufferedReader(io.BytesIO(packed_block_data)) #,buffer_size=1000000
-        header = struct.unpack('!III', input_stream.read(12))
-        filesize = header[0]
-        blocksize = header[1]
-        blockseed = header[2]
-        number_of_blocks_required = ceil(filesize/blocksize)
-        if block_count == 0:
-            print('\nA total of '+str(number_of_blocks_required)+' blocks are required!\n')
-        block = int.from_bytes(input_stream.read(blocksize),'big')
-        input_stream.close
-        if (block_count % 1) == 0:
-            name_parts_list = current_block_file_path.split(os.sep)[-1].split('_')
-            parsed_block_hash = name_parts_list[-1].replace('.block','')
-            parsed_block_number = name_parts_list[6]
-            parsed_file_hash = name_parts_list[2]
-            print('\nNow decoding:\nBlock Number: ' + parsed_block_number + '\nFile Hash: ' + parsed_file_hash + '\nBlock Hash: '+ parsed_block_hash)
-        prng = PRNG(params=(number_of_blocks_required, delta_constant, c_constant))
-        _, _, src_blocks = prng.get_src_blocks(seed = blockseed)
-        file_reconstruction_complete = block_graph.add_block(src_blocks, block)
-        if file_reconstruction_complete:
-            print('\nDone building file! Processed a total of '+str(block_count)+' blocks\n')
-            break
-        with open(reconstructed_file_destination_file_path,'wb') as f: 
-            for ix, block_bytes in enumerate(map(lambda p: int.to_bytes(p[1], blocksize, 'big'), sorted(block_graph.eliminated.items(), key = lambda p:p[0]))):
-                if ix < number_of_blocks_required - 1 or filesize % blocksize == 0:
-                    f.write(block_bytes)
-                else:
-                    f.write(block_bytes[:filesize%blocksize])
-    try:
-        with open(reconstructed_file_destination_file_path,'rb') as f:
-            reconstructed_file = f.read()
-            reconstructed_file_hash = get_sha256_hash_of_input_data_func(reconstructed_file)
-            if reported_file_sha256_hash == reconstructed_file_hash:
-                completed_successfully = 1
-                print('\nThe SHA256 hash of the reconstructed file matches the reported file hash-- file is valid! Now copying to prepared final art zipfiles folder...\n')
-                shutil.copy(reconstructed_file_destination_file_path, prepared_final_art_zipfiles_folder_path)
-                print('Done!')
-            else:
-                completed_successfully = 0
-                print('\nProblem! The SHA256 hash of the reconstructed file does NOT match the expected hash! File is not valid.\n')
-    except Exception as e:
-        print('Error: '+ str(e))
-    duration_in_seconds = round(time() - start_time, 1)
-    print('\n\nFinished processing in '+str(duration_in_seconds) + ' seconds!')
-    return completed_successfully
-
-# encode_file_into_lt_block_qr_codes_func(path_to_input_file)
 
 ################################################################################
 #  Demo:
@@ -1548,8 +1438,8 @@ if use_demonstrate_sphincs_crypto:
         print('Now generating SPHINCS public/secret keypair...')
         sphincs256 = SPHINCS()
         sk, pk = sphincs256.keygen()
-        secret_key = sphincs256.pack(sk)
-        public_key = sphincs256.pack(pk)
+        secret_key = sphincs256.my_pack(sk)
+        public_key = sphincs256.my_pack(pk)
         with open('sphincs_secret_key.dat','wb') as f:
             f.write(secret_key)
         with open('sphincs_public_key.dat','wb') as f:
@@ -1559,20 +1449,20 @@ if use_demonstrate_sphincs_crypto:
     with MyTimer():
         print('Now signing art metadata with key...')
         with open('sphincs_secret_key.dat','rb') as f:
-            sphincs_secret_key = sphincs256.unpack(f.read())
+            sphincs_secret_key = sphincs256.my_unpack(f.read())
         signature = sphincs256.sign(message, sphincs_secret_key)
         print('Done! Writing signature file now...')
         with open('sphincs_signature.dat','wb') as f:
-            f.write(sphincs256.pack(signature))
+            f.write(sphincs256.my_pack(signature))
     
     with MyTimer():
         print('Now Verifying SPHINCS Signature...')
         with open('sphincs_signature.dat','rb') as f:
             signature_data = f.read()
-            sphincs_signature = sphincs256.unpack(signature_data)
+            sphincs_signature = sphincs256.my_unpack(signature_data)
         with open('sphincs_public_key.dat','rb') as f:
-            private_key_data = sphincs256.unpack(f.read())
-            sphincs_public_key = sphincs256.unpack(private_key_data)
+            private_key_data = sphincs256.my_unpack(f.read())
+            sphincs_public_key = sphincs256.my_unpack(private_key_data)
         signature_verified = sphincs256.verify(message, signature_data, sphincs_public_key)
         if signature_verified:
             print('Verification succeeded!')
@@ -1613,39 +1503,22 @@ if use_demonstrate_libsodium_crypto:
     verify_key_hex = verify_key.encode(encoder=nacl.encoding.HexEncoder) # Serialize the verify key to send it to a third party
     
 if use_demonstrate_qr_code_generation:
-    with open('sphincs_secret_key.dat','rb') as f:
+    path_to_input_file = 'pride_and_prejudice.txt'
+    #path_to_input_file = 'sphincs_secret_key.dat'
+    with open(path_to_input_file,'rb') as f:
         sphincs_secret_key_raw_bytes = f.read()
     input_data = sphincs_secret_key_raw_bytes
-    existing_qr_code_filepaths = glob.glob('ANIME_QR_CODE__*.png')
-    for current_filepath in existing_qr_code_filepaths:
-        os.remove(current_filepath)
-    list_of_encoded_data_blobs, image_pixel_width, input_data_base32_encoded = encode_data_as_qr_codes_func(input_data)
-    existing_qr_code_filepaths = glob.glob('ANIME_QR_CODE__*.png')
-    path_to_image_file_with_qr_codes = glob.glob('ANIME_QR_CODE_COMBINED__*.png')
-    path_to_image_file_with_qr_codes = path_to_image_file_with_qr_codes[0]
-    combined_reconstructed_string, list_of_decoded_data_blobs = decode_data_from_qr_code_images_func(path_to_image_file_with_qr_codes, image_pixel_width)
-    image_file_with_qr_codes = Image.open(path_to_image_file_with_qr_codes)
-    excess_padding = len(list_of_decoded_data_blobs) - len(list_of_encoded_data_blobs)
-    if excess_padding > 0:
-        list_of_decoded_data_blobs = list_of_decoded_data_blobs[:-excess_padding]
-    combined_reconstructed_string_stripped = combined_reconstructed_string.rstrip('A')
-    combined_reconstructed_string_stripped_padded = add_base32_padding_characters_func(combined_reconstructed_string_stripped)
-    input_data_base32_decoded = base64.b32decode(combined_reconstructed_string_stripped_padded)
-    print('Input length: '+ str(len(input_data_base32_encoded)) + '; Reconstructed Length: ' + str(len(combined_reconstructed_string_stripped_padded)))
-    assert(input_data_base32_encoded == combined_reconstructed_string_stripped_padded)
-    input_data_hash = input_data_base32_decoded[:64]
-    reconstructed_data = input_data_base32_decoded[64:]
-    reconstructed_data_hash = hashlib.sha3_256(reconstructed_data).hexdigest().encode('utf-8')
-    assert(reconstructed_data_hash== input_data_hash)
+    input_data_or_path = input_data
+    input_data_hash = get_sha256_hash_of_input_data_func(input_data_or_path)
+    qr_image_pixel_width, combined_qr_code_png_output_file_name, output_blocks_list, output_block_hashes_list = encode_file_into_ztd_luby_block_qr_codes_func(input_data_or_path)
+    path_to_image_file_with_qr_codes = combined_qr_code_png_output_file_name
+    list_of_luby_block_data_binaries, reconstructed_uncompressed_data, reconstructed_uncompressed_data_hash = decode_combined_ztd_luby_block_qr_code_image_func(path_to_image_file_with_qr_codes, qr_image_pixel_width)
+    if input_data_hash != reconstructed_uncompressed_data_hash:
+        reconstructed_uncompressed_data = reconstructed_uncompressed_data.decode('utf-8')
+        reconstructed_uncompressed_data_hash = get_sha256_hash_of_input_data_func(reconstructed_uncompressed_data)
+    assert(input_data_hash == reconstructed_uncompressed_data_hash)
+    print('Decompressed file hash matches original file!')
     
-if 0: 
-    #path_to_input_file = 'pride_and_prejudice.txt'
-    with open('sphincs_secret_key.dat','rb') as f:
-        sphincs_secret_key_raw_bytes = f.read()
-    input_data = sphincs_secret_key_raw_bytes
-    image_pixel_width, combined_qr_code_png_output_file_name = encode_file_into_lt_block_qr_codes_func(sphincs_secret_key_raw_bytes)
-    decode_data_lt_coded_qr_code_images_func(combined_qr_code_png_output_file_name, image_pixel_width)
-
 if use_demonstrate_qr_steganography:
     path_to_image_file = 'C:\\animecoin\\art_folders_to_encode\\Carlo_Angelo__Felipe_Number_02\\Carlo_Angelo__Felipe_Number_02.png'
     path_to_image_file_with_qr_codes = glob.glob('ANIME_QR_CODE_COMBINED__*.png')
@@ -1664,6 +1537,7 @@ if use_demonstrate_qr_steganography:
         art_image_data_resized = art_image_data.resize((art_image_data_width_new, art_image_data_height_new), Image.LANCZOS)
     else:
         art_image_data_resized = art_image_data
+    art_image_data.close()
     merged_image_data = merge_two_images_func(art_image_data_resized, combined_qr_code_data)
     merged_image_data_png_output_file_name = 'ANIME_ART_Watermarked.png'
     merged_image_data.save(merged_image_data_png_output_file_name)
@@ -1672,7 +1546,7 @@ if use_demonstrate_qr_steganography:
     embedded_image_data_png_output_file_name = 'ANIME_ART_SIGNATURE.png'
     embedded_image.save(embedded_image_data_png_output_file_name)
     path_to_reconstructed_image_file_with_qr_codes = 'ANIME_ART_SIGNATURE.png'
-    combined_reconstructed_string_stego, list_of_decoded_data_blobs_stego = decode_data_from_qr_code_images_func(path_to_reconstructed_image_file_with_qr_codes, image_pixel_width)
+    combined_reconstructed_string_stego, list_of_decoded_data_blobs_stego = decode_data_from_qr_code_images_func(path_to_reconstructed_image_file_with_qr_codes, qr_image_pixel_width)
     assert(list_of_encoded_data_blobs == list_of_decoded_data_blobs_stego)
     combined_reconstructed_string_stego_stripped = combined_reconstructed_string_stego.rstrip('A')
     combined_reconstructed_string_stego_stripped_padded = add_base32_padding_characters_func(combined_reconstructed_string_stego_stripped)
