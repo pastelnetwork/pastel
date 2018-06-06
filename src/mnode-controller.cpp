@@ -25,7 +25,10 @@ MasterNode specific logic and initializations
 
 void CMasterNodeController::SetParameters()
 {
-    MasternodeProtocolVersion           = 0x1;
+    //CURRENT VERSION OF MASTERNODE NETWORK - SHOULD BE EQUAL TO PROTOCOL_VERSION
+    //this will allow to filter out old MN when ALL NETWORK is updated 
+    MasternodeProtocolVersion           = 170002;
+    
     MasternodeCollateral                = 1000;
 
     MasternodeCheckSeconds              =   5;
@@ -145,13 +148,11 @@ bool CMasterNodeController::EnableMasterNode(std::ostringstream& strErrors, boos
     if(masternodeManager.size()) {
         strDBName = "mnpayments.dat";
         uiInterface.InitMessage(_("Loading masternode payment cache..."));
-/*TEMP-->
         CFlatDB<CMasternodePayments> flatDB2(strDBName, "magicMasternodePaymentsCache");
         if(!flatDB2.Load(masternodePayments)) {
             strErrors << _("Failed to load masternode payments cache from") + "\n" + (pathDB / strDBName).string();
             return false;
         }
-<--TEMP*/
     } else {
         uiInterface.InitMessage(_("Masternode cache is empty, skipping payments and governance cache..."));
     }
@@ -164,10 +165,11 @@ bool CMasterNodeController::EnableMasterNode(std::ostringstream& strErrors, boos
         return false;
     }
 
+    pacNotificationInterface = new CACNotificationInterface();
+    RegisterValidationInterface(pacNotificationInterface);
+
     // force UpdatedBlockTip to initialize nCachedBlockHeight for DS, MN and governances payments
-/*TEMP-->
-    pdsNotificationInterface->InitializeCurrentBlockTip();
-<--TEMP*/
+    pacNotificationInterface->InitializeCurrentBlockTip();
 
     //Enable Maintenance thread
     threadGroup.create_thread(boost::bind(std::function<void()>(std::bind(&CMasterNodeController::ThreadMasterNodeMaintenance, this))));
@@ -200,9 +202,7 @@ bool CMasterNodeController::StopMasterNode()
 bool CMasterNodeController::ProcessMessage(CNode* pfrom, std::string& strCommand, CDataStream& vRecv)
 {
     masternodeManager.ProcessMessage(pfrom, strCommand, vRecv);
-/*TEMP-->
     masternodePayments.ProcessMessage(pfrom, strCommand, vRecv);
-<--TEMP*/
     masternodeSync.ProcessMessage(pfrom, strCommand, vRecv);
 
     return true;
@@ -242,9 +242,7 @@ bool CMasterNodeController::ProcessGetData(CNode* pfrom, const CInv& inv)
         if(masternodePayments.HasVerifiedPaymentVote(inv.hash)) {
             CDataStream ss(SER_NETWORK, PROTOCOL_VERSION);
             ss.reserve(1000);
-/*TEMP-->
             ss << masternodePayments.mapMasternodePaymentVotes[inv.hash];
-<--TEMP*/
             pfrom->PushMessage(NetMsgType::MASTERNODEPAYMENTVOTE, ss);
             pushed = true;
         }
@@ -260,9 +258,7 @@ bool CMasterNodeController::ProcessGetData(CNode* pfrom, const CInv& inv)
                     if(masternodePayments.HasVerifiedPaymentVote(hash)) {
                         CDataStream ss(SER_NETWORK, PROTOCOL_VERSION);
                         ss.reserve(1000);
-/*TEMP-->
                         ss << masternodePayments.mapMasternodePaymentVotes[hash];
-<--TEMP*/
                         pfrom->PushMessage(NetMsgType::MASTERNODEPAYMENTVOTE, ss);
                     }
                 }
@@ -295,13 +291,17 @@ bool CMasterNodeController::ProcessGetData(CNode* pfrom, const CInv& inv)
 
 void CMasterNodeController::ShutdownMasterNode()
 {
+    if (pacNotificationInterface) {
+        UnregisterValidationInterface(pacNotificationInterface);
+        delete pacNotificationInterface;
+        pacNotificationInterface = NULL;
+    }
+
     // STORE DATA CACHES INTO SERIALIZED DAT FILES
     CFlatDB<CMasternodeMan> flatDB1("mncache.dat", "magicMasternodeCache");
     flatDB1.Dump(masternodeManager);
-/*TEMP-->
     CFlatDB<CMasternodePayments> flatDB2("mnpayments.dat", "magicMasternodePaymentsCache");
     flatDB2.Dump(masternodePayments);
-<--TEMP*/
     CFlatDB<CMasternodeRequestTracker> flatDB3("netfulfilled.dat", "magicFulfilledCache");
     flatDB3.Dump(requestTracker);
 }
@@ -390,10 +390,8 @@ void CMasterNodeController::ThreadMasterNodeMaintenance()
 
             if(nTick % 60 == 0) {
                 masterNodeCtrl.masternodeManager.ProcessMasternodeConnections();
-                masterNodeCtrl.masternodeManager.CheckAndRemove();
-/*TEMP-->
+                masterNodeCtrl.masternodeManager.CheckAndRemove(true);
                 masterNodeCtrl.masternodePayments.CheckAndRemove();
-<--TEMP*/
             }
             if(masterNodeCtrl.IsMasterNode() && (nTick % (60 * 5) == 0)) {
                 masterNodeCtrl.masternodeManager.DoFullVerificationStep();

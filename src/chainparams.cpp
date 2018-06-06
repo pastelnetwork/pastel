@@ -187,6 +187,7 @@ public:
         consensus.nPowMaxAdjustDown = 32; // 32% adjustment down
         consensus.nPowMaxAdjustUp = 16; // 16% adjustment up
         consensus.nPowTargetSpacing = 2.5 * 60;
+        consensus.nMaxGovernanceAmount = 1000000*COIN;
         /**
          * The message start string
          */
@@ -269,6 +270,7 @@ public:
         consensus.nPowMaxAdjustDown = 32; // 32% adjustment down
         consensus.nPowMaxAdjustUp = 16; // 16% adjustment up
         consensus.nPowTargetSpacing = 2.5 * 60;
+        consensus.nMaxGovernanceAmount = 1000000*COIN;
         /**
          * The message start string
          */
@@ -350,6 +352,7 @@ public:
         consensus.nPowMaxAdjustDown = 0; // Turn off adjustment down
         consensus.nPowMaxAdjustUp = 0; // Turn off adjustment up
         consensus.nPowTargetSpacing = 2.5 * 60;
+        consensus.nMaxGovernanceAmount = 1000000*COIN;
         /**
          * The message start string
          */

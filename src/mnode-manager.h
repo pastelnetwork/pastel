@@ -129,9 +129,7 @@ public:
     void Check();
 
     /// Check all Masternodes and remove inactive
-    void CheckAndRemove();
-    /// This is dummy to be used for dumping/loading mncache.dat
-    void CheckAndErase() {}
+    void CheckAndRemove(bool bCheckAndRemove=false);
 
     /// Clear Masternode vector
     void Clear();

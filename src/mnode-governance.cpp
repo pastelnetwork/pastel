@@ -9,7 +9,7 @@
 
 CAmount CMasternodeGovernance::GetGovernancePayment(int nHeight, CAmount blockValue)
 {
-    CAmount ret = blockValue/20; // Always at 5%
+    CAmount ret = blockValue/20; // Always at 5% per CB
     return ret;
 }
 
@@ -19,10 +19,11 @@ bool CMasternodeGovernance::GetCurrentGovernanceRewardAddress(CAmount governance
     if (ticketsQueue.empty()){
         return false;
     }
-    destiantionRet = DecodeDestination(ticketsQueue.front().first.c_str());
-    ticketsQueue.front().second -= governancePayment;
+    destiantionRet = DecodeDestination(ticketsQueue.front().strPayeeAddress.c_str());
 
-    if (ticketsQueue.front().second <= 0){
+    // each CB increases the payed amount of governance payment
+    // when it reach the approved -> the address is removed from the payment queue
+    if (ticketsQueue.front().IncrementPayed(governancePayment)){
         ticketsQueue.pop_front();
     }
     return true;
@@ -45,7 +46,7 @@ void CMasternodeGovernance::FillGovernancePayment(CMutableTransaction& txNew, in
 
     // split reward between miner ...
     txNew.vout[0].nValue -= governancePayment;
-    // ... and masternode
+    // ... and voted address
     txoutGovernanceRet = CTxOut(governancePayment, scriptPubKey);
     txNew.vout.push_back(txoutGovernanceRet);
 
@@ -64,5 +65,33 @@ void CMasternodeGovernance::AddGovernanceRewardAddress(std::string address, CAmo
     assert(IsValidDestination(dest));
 
     LOCK(cs_ticketsQueue);
-    ticketsQueue.push_back(make_pair(address, totalReward));
+    CGovernancePayee payee(address, totalReward);
+    ticketsQueue.push_back(payee);
+}
+
+bool CMasternodeGovernance::IsTransactionValid(const CTransaction& txNew, int nHeight)
+{
+    LOCK(cs_ticketsQueue);
+
+    CAmount nGovernancePayment = masterNodeCtrl.masternodeGovernance.GetGovernancePayment(nHeight, txNew.GetValueOut());
+
+    BOOST_FOREACH(CTxOut txout, txNew.vout) {
+        CTxDestination destiantionRet = DecodeDestination(ticketsQueue.front().strPayeeAddress.c_str());
+        CScript scriptPubKey = GetScriptForDestination(destiantionRet);
+        if (scriptPubKey == txout.scriptPubKey && nGovernancePayment == txout.nValue) {
+            LogPrint("mnpayments", "CMasternodeBlockPayees::IsTransactionValid -- Found required payment\n");
+            return true;
+        }
+    }
+    LogPrintf("CMasternodeBlockPayees::IsTransactionValid -- ERROR: Missing required govenrnace payment, possible payees: '%s', amount: %f ANIME\n", ticketsQueue.front().strPayeeAddress, (float)nGovernancePayment/COIN);
+    return false;
+}
+
+bool CGovernancePayee::IncrementPayed(CAmount payment)
+{
+    nAmountPayed += payment;
+    if(nAmountPayed <= nAmountToPay) {
+        return true;
+    }
+    return false;
 }

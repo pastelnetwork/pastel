@@ -116,3 +116,48 @@ void FillOtherBlockPayments(CMutableTransaction& txNew, int nBlockHeight, CAmoun
     LogPrint("mnpayments", "FillOtherBlockPayments -- nBlockHeight %d blockReward %lld txoutMasternodeRet %s txoutGovernanceRet %s txNew %s",
                             nBlockHeight, blockReward, txoutMasternodeRet.ToString(), txoutGovernanceRet.ToString(), txNew.ToString());
 }
+
+/**
+* IsBlockValid
+*
+*   Determine if coinbase outgoing created money is the correct value
+*
+*   Called from ConnectBlock
+*
+*   Governance payments in each CB should not exceed the amount in the current voted payment
+*/
+bool IsBlockValid(const CBlock& block, int nBlockHeight, CAmount blockReward, std::string &strErrorRet)
+{
+    strErrorRet = "";
+
+    //1. less then total reward per block
+    if (block.vtx[0].GetValueOut() <= blockReward) {
+        strErrorRet = strprintf("coinbase pays too much at height %d (actual=%d vs limit=%d), exceeded block reward, budgets are disabled",
+                                nBlockHeight, block.vtx[0].GetValueOut(), blockReward);
+        return false;
+    }
+
+    //2. Check high limit of governance payments
+    const Consensus::Params& consensusParams = Params().GetConsensus();
+    if (masterNodeCtrl.masternodeGovernance.GetCurrentPaymentAmount() > consensusParams.nMaxGovernanceAmount) {
+        strErrorRet = strprintf("coinbase pays too much at height %d (actual=%d vs limit=%d), exceeded governance max value",
+                                nBlockHeight, block.vtx[0].GetValueOut(), consensusParams.nMaxGovernanceAmount);
+        return false;
+    }
+
+    if(!masterNodeCtrl.masternodeSync.IsSynced()) {
+        //there is no data to use to check anything, let's just accept the longest chain
+        if(fDebug) LogPrintf("IsBlockValid -- WARNING: Client not synced, skipping block payee checks\n");
+        return true;
+    }
+
+    //3. check governance and masternode payments and payee
+    if(masterNodeCtrl.masternodePayments.IsTransactionValid(block.vtx[0], nBlockHeight)) {
+        strErrorRet = strprintf("InValid coinbase transaction at height %d: %s", nBlockHeight, block.vtx[0].ToString());
+        return false;
+    }
+
+    // there was no MN nor Govenrance payments on this block
+    LogPrint("mnpayments", "IsBlockValid -- Valid masternode payment at height %d: %s", nBlockHeight, block.vtx[0].ToString());
+    return true;
+}

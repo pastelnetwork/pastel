@@ -7,10 +7,33 @@
 
 #include <queue>
 
+class CGovernancePayee
+{
+public:
+    std::string strPayeeAddress;
+    CAmount nAmountToPay;
+    CAmount nAmountPayed;
+    // int votes;
+
+public:
+    CGovernancePayee(std::string address, CAmount amount) : strPayeeAddress(address), nAmountToPay(amount), nAmountPayed(0) {}
+
+    ADD_SERIALIZE_METHODS;
+
+    template <typename Stream, typename Operation>
+    inline void SerializationOp(Stream& s, Operation ser_action, int nType, int nVersion) {
+        READWRITE(strPayeeAddress);
+        READWRITE(nAmountToPay);
+        READWRITE(nAmountPayed);
+    }
+
+    bool IncrementPayed(CAmount payment);
+};
+
 class CMasternodeGovernance
 {
 private:
-    std::list<std::pair<std::string, CAmount> > ticketsQueue;
+    std::list<CGovernancePayee> ticketsQueue;
     CCriticalSection cs_ticketsQueue;
 
 public:
@@ -24,13 +47,14 @@ public:
         READWRITE(ticketsQueue);
     }
 
-    void AddFulfilledRequest(CAddress addr, std::string strRequest); // expire after 1 hour by default
-
 public:
     void FillGovernancePayment(CMutableTransaction& txNew, int nBlockHeight, CAmount blockReward, CTxOut& txoutGovernanceRet);
     CAmount GetGovernancePayment(int nHeight, CAmount blockValue);
     bool GetCurrentGovernanceRewardAddress(CAmount governancePayment, CTxDestination& destinationRet);
     void AddGovernanceRewardAddress(std::string address, CAmount totalReward);
+
+    CAmount GetCurrentPaymentAmount() {return ticketsQueue.front().nAmountPayed;}
+    bool IsTransactionValid(const CTransaction& txNew, int nHeight);
 };
 
 #endif

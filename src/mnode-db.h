@@ -151,7 +151,7 @@ private:
         LogPrintf("     %s\n", objToLoad.ToString());
         if(!fDryRun) {
             LogPrintf("%s: Cleaning....\n", __func__);
-            objToLoad.CheckAndErase();
+            objToLoad.CheckAndRemove();
             LogPrintf("     %s\n", objToLoad.ToString());
         }
 

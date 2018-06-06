@@ -18,6 +18,7 @@
 #include "mnode-payments.h"
 #include "mnode-validation.h"
 #include "mnode-governance.h"
+#include "mnode-notificationinterface.h"
 
 #ifdef ENABLE_WALLET
 #include "wallet/wallet.h"
@@ -29,6 +30,8 @@ class CMasterNodeController
 {
 private:
     void SetParameters();
+
+    CACNotificationInterface* pacNotificationInterface;
 
 public:
     CMasternodeConfig masternodeConfig;
@@ -59,6 +62,7 @@ public:
     int nFulfilledRequestExpireTime;
 
     CMasterNodeController() : 
+        pacNotificationInterface(NULL),
         semMasternodeOutbound(NULL),
         fMasterNode(false)
     {

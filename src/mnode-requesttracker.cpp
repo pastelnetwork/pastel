@@ -34,7 +34,7 @@ void CMasternodeRequestTracker::RemoveFulfilledRequest(CAddress addr, std::strin
     }
 }
 
-void CMasternodeRequestTracker::CheckAndErase()
+void CMasternodeRequestTracker::CheckAndRemove()
 {
     LOCK(cs_mapFulfilledRequests);
 

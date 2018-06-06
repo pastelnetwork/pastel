@@ -18,9 +18,6 @@ class CMasternodePaymentVote;
 static const int MNPAYMENTS_SIGNATURES_REQUIRED         = 6;
 static const int MNPAYMENTS_SIGNATURES_TOTAL            = 10;
 
-static const int MIN_MASTERNODE_PAYMENT_PROTO_VERSION_2 = 70208;
-
-
 class CMasternodePayee
 {
 private:
@@ -145,28 +142,62 @@ public:
 
 class CMasternodePayments
 {
-protected:
-    std::string GetGovernanceAddressAtHeight(int nHeight) const;
-    CScript GetGovernanceScriptAtHeight(int nHeight) const;
+    // masternode count times nStorageCoeff payments blocks should be stored ...
+    const float nStorageCoeff;
+    // ... but at least nMinBlocksToStore (payments blocks)
+    const int nMinBlocksToStore;
+
+    // Keep track of current block height
+    int nCachedBlockHeight;
 
 public:
     std::map<uint256, CMasternodePaymentVote> mapMasternodePaymentVotes;
     std::map<int, CMasternodeBlockPayees> mapMasternodeBlockPayees;
+    std::map<COutPoint, int> mapMasternodesLastVote;
+    std::map<COutPoint, int> mapMasternodesDidNotVote;
 
+    CMasternodePayments() : nStorageCoeff(1.25), nMinBlocksToStore(5000) {}
 
-    CAmount GetMasternodePayment(int nHeight, CAmount blockValue);
-    void FillGovernancePayment(CMutableTransaction& txNew, int nBlockHeight, CAmount blockReward, CTxOut& txoutGovernanceRet);
-    void FillMasterNodePayment(CMutableTransaction& txNew, int nBlockHeight, CAmount blockReward, CTxOut& txoutMasternodeRet);
+    ADD_SERIALIZE_METHODS;
+
+    template <typename Stream, typename Operation>
+    inline void SerializationOp(Stream& s, Operation ser_action, int nType, int nVersion) {
+        READWRITE(mapMasternodePaymentVotes);
+        READWRITE(mapMasternodeBlockPayees);
+    }
+
+    void Clear();
+
+    bool AddPaymentVote(const CMasternodePaymentVote& vote);
+    bool HasVerifiedPaymentVote(uint256 hashIn);
+    bool ProcessBlock(int nBlockHeight);
+    void CheckPreviousBlockVotes(int nPrevBlockHeight);
+
+    void Sync(CNode* node);
+    void RequestLowDataPaymentBlocks(CNode* pnode);
+    void CheckAndRemove();
 
     bool GetBlockPayee(int nBlockHeight, CScript& payee);
+    bool IsTransactionValid(const CTransaction& txNew, int nBlockHeight);
+    bool IsScheduled(CMasternode& mn, int nNotBlockHeight);
 
+    bool CanVote(COutPoint outMasternode, int nBlockHeight);
 
-    bool HasPayeeWithVotes(const CScript& payeeIn, int nVotesReq) {return true;}
-    bool IsScheduled(CMasternode& mn, int nNotBlockHeight) {return true;}
-    void RequestLowDataPaymentBlocks(CNode* pnode) {}
-    bool HasVerifiedPaymentVote(uint256 hashIn) {return true;}
-    int GetStorageLimit() {return 0;}
-    bool IsEnoughData() {return true;}
+    void ProcessMessage(CNode* pfrom, std::string& strCommand, CDataStream& vRecv);
+    std::string GetRequiredPaymentsString(int nBlockHeight);
+    void FillGovernancePayment(CMutableTransaction& txNew, int nBlockHeight, CAmount blockReward, CTxOut& txoutGovernanceRet);
+    void FillMasterNodePayment(CMutableTransaction& txNew, int nBlockHeight, CAmount blockReward, CTxOut& txoutMasternodeRet);
+    std::string ToString() const;
+
+    int GetBlockCount() { return mapMasternodeBlockPayees.size(); }
+    int GetVoteCount() { return mapMasternodePaymentVotes.size(); }
+
+    bool IsEnoughData();
+    int GetStorageLimit();
+
+    void UpdatedBlockTip(const CBlockIndex *pindex);
+    
+    CAmount GetMasternodePayment(int nHeight, CAmount blockValue);
 };
 
 #endif

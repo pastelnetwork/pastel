@@ -258,7 +258,6 @@ void CMasternodeSync::ProcessTick()
                 if(masterNodeCtrl.requestTracker.HasFulfilledRequest(pnode->addr, "masternode-list-sync")) continue;
                 masterNodeCtrl.requestTracker.AddFulfilledRequest(pnode->addr, "masternode-list-sync");
 
-                if (pnode->nVersion < masterNodeCtrl.MasternodeCollateral) continue;
                 nRequestedMasternodeAttempt++;
 
                 masterNodeCtrl.masternodeManager.DsegUpdate(pnode);
@@ -302,7 +301,6 @@ void CMasternodeSync::ProcessTick()
                 if(masterNodeCtrl.requestTracker.HasFulfilledRequest(pnode->addr, "masternode-payment-sync")) continue;
                 masterNodeCtrl.requestTracker.AddFulfilledRequest(pnode->addr, "masternode-payment-sync");
 
-                if(pnode->nVersion < masterNodeCtrl.MasternodeCollateral) continue;
                 nRequestedMasternodeAttempt++;
 
                 // ask node for all payment votes it has (new nodes will only return votes for future payments)

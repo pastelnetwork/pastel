@@ -177,7 +177,7 @@ void CMasternode::Check(bool fForce)
     bool fOurMasternode = masterNodeCtrl.IsMasterNode() && masterNodeCtrl.activeMasternode.pubKeyMasternode == pubKeyMasternode;
 
                    // masternode doesn't meet payment protocol requirements ...
-    bool fRequireUpdate = nProtocolVersion < masterNodeCtrl.MasternodeCollateral ||
+    bool fRequireUpdate = nProtocolVersion < masterNodeCtrl.MasternodeProtocolVersion ||
                    // or it's our own node and we just updated it to the new protocol but we are still waiting for activation ...
                    (fOurMasternode && nProtocolVersion < PROTOCOL_VERSION);
 
@@ -464,7 +464,7 @@ bool CMasternodeBroadcast::SimpleCheck(int& nDos)
         nActiveState = MASTERNODE_EXPIRED;
     }
 
-    if(nProtocolVersion < masterNodeCtrl.MasternodeCollateral) {
+    if(nProtocolVersion < masterNodeCtrl.MasternodeProtocolVersion) {
         LogPrintf("CMasternodeBroadcast::SimpleCheck -- ignoring outdated Masternode: masternode=%s  nProtocolVersion=%d\n", vin.prevout.ToStringShort(), nProtocolVersion);
         return false;
     }

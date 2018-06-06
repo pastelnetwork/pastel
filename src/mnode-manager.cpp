@@ -133,8 +133,10 @@ void CMasternodeMan::Check()
     }
 }
 
-void CMasternodeMan::CheckAndRemove()
+void CMasternodeMan::CheckAndRemove(bool bCheckAndRemove)
 {
+    if(!bCheckAndRemove) return;
+
     if(!masterNodeCtrl.masternodeSync.IsMasternodeListSynced()) return;
 
     LogPrintf("CMasternodeMan::CheckAndRemove\n");
@@ -326,7 +328,7 @@ int CMasternodeMan::CountMasternodes(int nProtocolVersion)
 {
     LOCK(cs);
     int nCount = 0;
-    nProtocolVersion = nProtocolVersion == -1 ? masterNodeCtrl.MasternodeCollateral : nProtocolVersion;
+    nProtocolVersion = nProtocolVersion == -1 ? masterNodeCtrl.MasternodeProtocolVersion : nProtocolVersion;
 
     for (auto& mnpair : mapMasternodes) {
         if(mnpair.second.nProtocolVersion < nProtocolVersion) continue;
@@ -340,7 +342,7 @@ int CMasternodeMan::CountEnabled(int nProtocolVersion)
 {
     LOCK(cs);
     int nCount = 0;
-    nProtocolVersion = nProtocolVersion == -1 ? masterNodeCtrl.MasternodeCollateral : nProtocolVersion;
+    nProtocolVersion = nProtocolVersion == -1 ? masterNodeCtrl.MasternodeProtocolVersion : nProtocolVersion;
 
     for (auto& mnpair : mapMasternodes) {
         if(mnpair.second.nProtocolVersion < nProtocolVersion || !mnpair.second.IsEnabled()) continue;
@@ -483,7 +485,7 @@ bool CMasternodeMan::GetNextMasternodeInQueueForPayment(int nBlockHeight, bool f
         if(!mnpair.second.IsValidForPayment()) continue;
 
         //check protocol version
-        if(mnpair.second.nProtocolVersion < masterNodeCtrl.MasternodeCollateral) continue;
+        if(mnpair.second.nProtocolVersion < masterNodeCtrl.MasternodeProtocolVersion) continue;
 
         //it's in the list (up to 8 entries ahead of current block to allow propagation) -- so let's skip it
         if(masterNodeCtrl.masternodePayments.IsScheduled(mnpair.second, nBlockHeight)) continue;
@@ -538,7 +540,7 @@ masternode_info_t CMasternodeMan::FindRandomNotInVec(const std::vector<COutPoint
 {
     LOCK(cs);
 
-    nProtocolVersion = nProtocolVersion == -1 ? masterNodeCtrl.MasternodeCollateral : nProtocolVersion;
+    nProtocolVersion = nProtocolVersion == -1 ? masterNodeCtrl.MasternodeProtocolVersion : nProtocolVersion;
 
     int nCountEnabled = CountEnabled(nProtocolVersion);
     int nCountNotExcluded = nCountEnabled - vecToExclude.size();

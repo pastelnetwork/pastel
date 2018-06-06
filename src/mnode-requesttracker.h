@@ -35,7 +35,7 @@ public:
     bool HasFulfilledRequest(CAddress addr, std::string strRequest);
     void RemoveFulfilledRequest(CAddress addr, std::string strRequest);
 
-    void CheckAndErase();
+    void CheckAndRemove();
     void Clear();
 
     std::string ToString() const;

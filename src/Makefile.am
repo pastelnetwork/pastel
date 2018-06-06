@@ -119,6 +119,7 @@ MNODE_CPP = \
   mnode-validation.cpp \
   mnode-payments.cpp \
   mnode-governance.cpp \
+  mnode-notificationinterface.cpp \
   mnode-controller.cpp
 
 MNODE_H = \
@@ -133,6 +134,7 @@ MNODE_H = \
   mnode-payments.h \
   mnode-governance.h \
   mnode-controller.h \
+  mnode-notificationinterface.h \
   mnode-sync.h
 
 .PHONY: FORCE collate-libsnark check-symbols check-security

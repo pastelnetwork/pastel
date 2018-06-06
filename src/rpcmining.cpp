@@ -29,6 +29,7 @@
 #include <boost/assign/list_of.hpp>
 
 #include <univalue.h>
+#include <mnode-controller.h>
 
 using namespace std;
 
@@ -557,6 +558,13 @@ UniValue getblocktemplate(const UniValue& params, bool fHelp)
 
     if (IsInitialBlockDownload())
         throw JSONRPCError(RPC_CLIENT_IN_INITIAL_DOWNLOAD, "AnimeCoin is downloading blocks...");
+
+//ANIME
+    CScript payee;
+    if (!masterNodeCtrl.masternodeSync.IsWinnersListSynced()
+        && !masterNodeCtrl.masternodePayments.GetBlockPayee(chainActive.Height() + 1, payee))
+            throw JSONRPCError(RPC_CLIENT_IN_INITIAL_DOWNLOAD, "Anime Core is downloading masternode winners...");
+//ANIME
 
     static unsigned int nTransactionsUpdatedLast;
 

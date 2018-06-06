@@ -31,10 +31,14 @@ void SyncWithWallets(const CTransaction& tx, const CBlock* pblock = NULL);
 
 class CValidationInterface {
 protected:
-    virtual void UpdatedBlockTip(const CBlockIndex *pindex) {}
-    virtual void SyncTransaction(const CTransaction &tx, const CBlock *pblock) {}
-    virtual void EraseFromWallet(const uint256 &hash) {}
     virtual void ChainTip(const CBlockIndex *pindex, const CBlock *pblock, ZCIncrementalMerkleTree tree, bool added) {}
+    virtual void EraseFromWallet(const uint256 &hash) {}
+
+    virtual void AcceptedBlockHeader(const CBlockIndex *pindexNew) {}
+    virtual void NotifyHeaderTip(const CBlockIndex *pindexNew, bool fInitialDownload) {}
+
+    virtual void UpdatedBlockTip(const CBlockIndex *pindex, bool fInitialDownload) {}
+    virtual void SyncTransaction(const CTransaction &tx, const CBlock *pblock) {}
     virtual void SetBestChain(const CBlockLocator &locator) {}
     virtual void UpdatedTransaction(const uint256 &hash) {}
     virtual void Inventory(const uint256 &hash) {}
@@ -46,8 +50,12 @@ protected:
 };
 
 struct CMainSignals {
+    /** Notifies listeners of accepted block header */
+    boost::signals2::signal<void (const CBlockIndex *)> AcceptedBlockHeader;
+    /** Notifies listeners of updated block header tip */
+    boost::signals2::signal<void (const CBlockIndex *, bool fInitialDownload)> NotifyHeaderTip;
     /** Notifies listeners of updated block chain tip */
-    boost::signals2::signal<void (const CBlockIndex *)> UpdatedBlockTip;
+    boost::signals2::signal<void (const CBlockIndex *, bool fInitialDownload)> UpdatedBlockTip;
     /** Notifies listeners of updated transaction data (transaction, and optionally the block it is found in. */
     boost::signals2::signal<void (const CTransaction &, const CBlock *)> SyncTransaction;
     /** Notifies listeners of an erased transaction (currently disabled, requires transaction replacement). */
