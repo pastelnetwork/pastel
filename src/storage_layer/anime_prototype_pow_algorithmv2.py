@@ -58,10 +58,10 @@ def check_score_of_hash_list_func(input_hash_list, difficulty_level, use_verbose
     if combined_hash_hex[0:difficulty_level] == difficulty_level*'1':
         hash_list_score = 1
     if USE_VERBOSE:
-        print('Step 1: ' + str(round(combined_hash_step_1, 30)))
-        print('Step 2: ' + str(round(combined_hash_step_2, 30)))
-        print('Step 3: ' + str(round(combined_hash_step_3, 30)))
-        print('Combined Hash as Integer: ' + str(round(combined_hash, 30)))
+        print('Step 1: ' + str(combined_hash_step_1))
+        print('Step 2: ' + str(combined_hash_step_2))
+        print('Step 3: ' + str(combined_hash_step_3))
+        print('Combined Hash as Integer: ' + str(combined_hash))
         print('Combined Hash in Hex: ' + combined_hash_hex)
     return hash_list_score, combined_hash, combined_hash_hex
 
@@ -103,28 +103,29 @@ def mine_for_new_block_func(block_transaction_data, difficulty_level, block_coun
                 print('\nCurrent Difficulty Level: ' + str(difficulty_level))
                 print('\nCurrent Number of Digits of Precision: '+str(getcontext().prec))
                 print('\nCurrent Difficulty Level: ' + str(difficulty_level))
-                sleep(3)
+                print('Sleeping for 5 seconds...')
+                sleep(5)
                 return current_hash_list, current_hash_list_score, current_combined_hash, combined_hash_hex,  block_duration_in_minutes
 
 try:
   block_count
 except NameError:
-  block_count = 0
-
+  block_count = 1
 use_demo = 1
 number_of_demo_blocks_to_mine = 500
 USE_VERBOSE = 0
 MIN_HASH_LIST_SCORE = 1
-baseline_digits_of_precision = 100
+baseline_digits_of_precision = 8
 getcontext().prec = baseline_digits_of_precision
 current_required_number_of_digits_of_precision = baseline_digits_of_precision
 number_of_digits_of_precision = baseline_digits_of_precision
-final_digits_of_precision = 1000 #How many digits we want to keep track of in the decimal expansion of numbers
+final_digits_of_precision = 300 #How many digits we want to keep track of in the decimal expansion of numbers
 increase_hash_difficulty_every_k_blocks = 10
 reset_numerical_precision_every_r_blocks = increase_hash_difficulty_every_k_blocks
-max_increase_per_iteration = 3*log(final_digits_of_precision/baseline_digits_of_precision)/log(10) # X% increase per round, so final precision will be ~ final_digits_of_precision digits
+startup_period_in_number_of_blocks = 2
 max_difficulty_increase_per_block = 1
-target_minutes_per_block_mined = 2.5
+difficulty_level = 2 #Starting level 
+target_block_duration_in_minutes = 1
 FORMULAS_STRING = """\nlist_of_hash_integers = list()
                         for current_hash in input_hash_list:
                             list_of_hash_integers.append(Decimal(int(current_hash, 16)))
@@ -140,25 +141,70 @@ FORMULAS_STRING = """\nlist_of_hash_integers = list()
                         combined_hash = int(floor( (combined_hash_step_1*combined_hash_step_2*combined_hash_step_3)/(Decimal(1/100)*max([combined_hash_step_1, combined_hash_step_2, combined_hash_step_3])) ))
                         combined_hash_hex = str(hex(combined_hash)).replace('0x','')"""
 
+ascii_art = """
+               _,u-*P"9\w__     __..e-w.__                                 
+            _a*^          ^w.e*'"_____   `*mw____                          
+          _wP               'm_m^"   "'*L    ""~~*vL__                     
+        _gK                   5L         Y,          "*x,_                 
+      _u@0'                ___ #          1             "^m_               
+   _a*"  0               _#" ^LjL         7     gL         `#r--x,_        
+  a@"    b              gK    `@P         7   ,#"#           \_  "^w       
+ jP      0              0                 #  d"  Mr            ",   9w     
+ #       0              #                aE,P    `#              #,  *#w   
+JF       0,      a+     #                ""       7L              9,   "g_ 
+#         #,  _q#"     0"                          #               9_    Q 
+#          "mP"0"  _,rP                            'Q             __7w   0 
+#_             ""'""~                                *w             P#MW  E 
+JF                                                   #               ?L  *K
+ #_                                                  0                 aw# 
+  7L                           ,,   _     _          *,         __       #'
+   7L                       _,g@_.adK _,m*#           1         #^6,     5_
+    !w_                 __g#6w##5MM@gK5,,# _w  ,      1        g'  9,     0
+      9w,              gM"@M5  "*u,_   _#m+_# ##__    S_      _#   JFam,  5
+        "\w__  _   ___ # g'0  _.wgM#'     _0w# J#@W    0x_  _J@     ## '# d
+           ""-*#Kr-#K# # 0_0 q@ "#JK      d#M  7#&}L     "--P       J#r 9g#
+                0_JF## # "P#w_ pMa#      ""  a  a_"0#               jF   d"
+                J& M_# #     "PP9        ,p g1    WgMQ             a#L _#" 
+                 AK "# #                ,   #  a#mC#9#            d'JL/"   
+                  Am## #                '   "^m_dWP  9w   am    a#~ -"    
+                  J#'# 7_               P   9m ""~ _m"_wr"\# _pP'"          
+                  MF # #Mw           q_          _#"   j#m^          
+                __0L.JL!K_&_         _          J#       "                
+              .*""~____#_# "^w_      *~        uK]#L                        
+               #*^"   9K0w--4#w             _0'  ##                        
+               #       Q #    `*m_ ____.w-*^"    ]M#                       
+              g"       !W0       *#0ME            9MQ                      
+                        0M,       40J&             `WQ_                    
+                         0#                          0M_                   
+                         0#,                          X#,                  
+                         *W1                           A#,                 
+                          #Q                            3#,                
+                          0#                             ]#                
+                          0#                             JP                
+                          3#                                """
 if use_demo:
-    if block_count==0:
-        print('WELCOME TO ANIMECOIN POW')
+    if block_count==1:
+        if block_count <= startup_period_in_number_of_blocks:
+            max_precision_increase_per_iteration = 2
+        print('***WELCOME TO ANIMECOIN POW***')
+        print(ascii_art)
         print('Generating fake transaction data for block...')
         block_transaction_data = os.urandom(pow(10,5))
-        difficulty_level = 1
         print('Initial Block Difficulty: '+ str(difficulty_level))
         print('Initial Number of decimal places of accuracy: '+str(baseline_digits_of_precision))
-        print('Target block duration in minutes: '+str(target_minutes_per_block_mined))
-        sleep(2)
+        print('Target block duration in minutes: '+str(target_block_duration_in_minutes))
+        print('Sleeping for 5 seconds...')
+        sleep(5)
     for ii in range(number_of_demo_blocks_to_mine):
         current_hash_list, current_hash_list_score, current_combined_hash, current_combined_hash_hex,  current_block_duration_in_minutes = mine_for_new_block_func(block_transaction_data, difficulty_level, block_count)
         block_count = block_count + 1
-        ratio_of_actual_block_time_to_target_block_time = target_minutes_per_block_mined/current_block_duration_in_minutes
+        ratio_of_actual_block_time_to_target_block_time = target_block_duration_in_minutes/current_block_duration_in_minutes
         print('Ratio of actual block time to target block time: '+ str(ratio_of_actual_block_time_to_target_block_time))
         getcontext().prec = current_required_number_of_digits_of_precision
-
         if ratio_of_actual_block_time_to_target_block_time > 1: #Block size was too short; increase difficulty and numerical precision:
-            current_required_number_of_digits_of_precision = floor(current_required_number_of_digits_of_precision*min([(1+max_increase_per_iteration), ratio_of_actual_block_time_to_target_block_time]))
+            current_required_number_of_digits_of_precision = floor(current_required_number_of_digits_of_precision*min([(1 + max_precision_increase_per_iteration), ratio_of_actual_block_time_to_target_block_time]))
+            if block_count > startup_period_in_number_of_blocks:
+                max_precision_increase_per_iteration = log(final_digits_of_precision/current_required_number_of_digits_of_precision)/log(increase_hash_difficulty_every_k_blocks - startup_period_in_number_of_blocks) # X% increase per round, so final precision will be ~ final_digits_of_precision digits
             if reset_numerical_precision_every_r_blocks%block_count==0:
                 current_required_number_of_digits_of_precision = baseline_digits_of_precision
             if increase_hash_difficulty_every_k_blocks%block_count==0:
@@ -166,7 +212,9 @@ if use_demo:
             else:
                 computed_difficulty_level_increase = 0
         else: #Block size was too long; reduce difficulty and numerical precision:
-            current_required_number_of_digits_of_precision = floor(current_required_number_of_digits_of_precision*max([(1 - max_increase_per_iteration), ratio_of_actual_block_time_to_target_block_time]))
+            current_required_number_of_digits_of_precision = floor(current_required_number_of_digits_of_precision*max([(1 - max_precision_increase_per_iteration), ratio_of_actual_block_time_to_target_block_time]))
+            if block_count > startup_period_in_number_of_blocks:
+                max_precision_increase_per_iteration = log(current_required_number_of_digits_of_precision/final_digits_of_precision)/log(increase_hash_difficulty_every_k_blocks - startup_period_in_number_of_blocks) # X% decrease per round, so final precision will be ~ final_digits_of_precision digits
             if reset_numerical_precision_every_r_blocks%block_count==0:
                 current_required_number_of_digits_of_precision = baseline_digits_of_precision
             if increase_hash_difficulty_every_k_blocks%block_count==0:
