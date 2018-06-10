@@ -180,20 +180,20 @@ def select_list_of_mpmath_functions_from_previous_block_final_hash_func(previous
     previous_block_final_hash_as_string_reversed = reverse_string_func(previous_block_final_hash_as_string)
     previous_block_final_hash_as_string_reversed_leading_zeros_stripped = previous_block_final_hash_as_string_reversed.lstrip('0')
     list_of_2_digits_chunks = list()
-    list_of_mpath_function_names = list()
+    list_of_mpmath_function_names = list()
     number_of_functions_to_use = min([5, len(previous_block_final_hash_as_string_reversed_leading_zeros_stripped)])
     for ii in range(2*number_of_functions_to_use):
         if ii%2 == 1:
             current_2_digit_chunk = previous_block_final_hash_as_string_reversed_leading_zeros_stripped[ii-1] + previous_block_final_hash_as_string_reversed_leading_zeros_stripped[ii]
             list_of_2_digits_chunks.append(current_2_digit_chunk)
-    list_of_mpath_functions = list()
+    list_of_mpmath_functions = list()
     for current_chunk in list_of_2_digits_chunks:
-        corresponding_mpath_function = mpmath_function_constructor_func(int(current_chunk))
-        list_of_mpath_functions.append(corresponding_mpath_function)
-        list_of_mpath_function_names.append(list_of_function_strings[int(current_chunk)])
-    return list_of_2_digits_chunks, list_of_mpath_functions, list_of_mpath_function_names, previous_block_final_hash_as_string_reversed_leading_zeros_stripped
+        corresponding_mpmath_function = mpmath_function_constructor_func(int(current_chunk))
+        list_of_mpmath_functions.append(corresponding_mpmath_function)
+        list_of_mpmath_function_names.append(list_of_function_strings[int(current_chunk)])
+    return list_of_2_digits_chunks, list_of_mpmath_functions, list_of_mpmath_function_names, previous_block_final_hash_as_string_reversed_leading_zeros_stripped
 
-def check_score_of_hash_list_func(input_hash_list, difficulty_level, list_of_2_digits_chunks, list_of_mpath_functions, list_of_mpath_function_names, previous_block_final_hash_as_string_reversed_leading_zeros_stripped, use_verbose):
+def check_score_of_hash_list_func(input_hash_list, difficulty_level, list_of_2_digits_chunks, list_of_mpmath_functions, list_of_mpmath_function_names, previous_block_final_hash_as_string_reversed_leading_zeros_stripped, use_verbose):
     hash_is_valid = 0
     list_of_hash_integers = list()
     for current_hash in input_hash_list:
@@ -214,8 +214,8 @@ def check_score_of_hash_list_func(input_hash_list, difficulty_level, list_of_2_d
     if use_verbose:
         printc('Previous final hash: ' + str(previous_block_final_hash),'b')
         printc('After being reversed and removing leading zeros: '+ previous_block_final_hash_as_string_reversed_leading_zeros_stripped + '\n\n','b')
-    for cnt, current_formula in enumerate(list_of_mpath_functions):
-        current_formula_name = list_of_mpath_function_names[cnt]
+    for cnt, current_formula in enumerate(list_of_mpmath_functions):
+        current_formula_name = list_of_mpmath_function_names[cnt]
         two_digit_hash_chunk = list_of_2_digits_chunks[cnt]
         hash_index = cnt%len(list_of_hashes_by_name)
         current_hash_value = list_of_hashes_by_name[hash_index]
@@ -228,7 +228,7 @@ def check_score_of_hash_list_func(input_hash_list, difficulty_level, list_of_2_d
         list_of_intermediate_results_first_k_digits.append(int(current_intermediate_result_as_string_decimal_point_and_leading_zeros_stripped_first_k_digits))
         if use_verbose:
             printc('Current 2-digit chunk of reversed previous hash: '+str(two_digit_hash_chunk),'m')
-            printc('Corresponding mathematical formula for index '+str(two_digit_hash_chunk)+' (out of 100 distinct formulas from mpath):   y =' + current_formula_name,'r')
+            printc('Corresponding mathematical formula for index '+str(two_digit_hash_chunk)+' (out of 100 distinct formulas from mpmath):   y =' + current_formula_name,'r')
             printc('Current hash value to use in the formula: ' + list_of_hash_types_sorted[cnt] + ':  ' + input_hash_list_sorted[cnt] + ')','y')
             printc('Hash Value as an Integer (i.e., whole number): ' + current_hash_name_string + ' =  ' + str(int(current_hash_value)),'y')
             printc('Rescaled hash value (i.e., x = fractional_part( log(hash_value) ) in the formula): ' + str(current_hash_value_rescaled),'y')
@@ -262,9 +262,9 @@ def generate_next_mining_attempt_func(block_transaction_data, nonce_number, prev
     nonce_number = nonce_number + 1
     block_transaction_data_with_nonce = generate_block_candidate_func(block_transaction_data, nonce_number, use_verbose)
     current_hash_list = get_hash_list_func(block_transaction_data_with_nonce, use_verbose)
-    list_of_2_digits_chunks, list_of_mpath_functions, list_of_mpath_function_names, previous_block_final_hash_as_string_reversed_leading_zeros_stripped = select_list_of_mpmath_functions_from_previous_block_final_hash_func(previous_block_final_hash)
-    current_number_of_matching_leading_characters, current_hash_is_valid, current_final_hash = check_score_of_hash_list_func(current_hash_list, difficulty_level, list_of_2_digits_chunks, list_of_mpath_functions, list_of_mpath_function_names, previous_block_final_hash_as_string_reversed_leading_zeros_stripped, use_verbose)
-    return current_hash_list, nonce_number, list_of_2_digits_chunks, list_of_mpath_functions, list_of_mpath_function_names, previous_block_final_hash_as_string_reversed_leading_zeros_stripped, current_number_of_matching_leading_characters, current_hash_is_valid, current_final_hash
+    list_of_2_digits_chunks, list_of_mpmath_functions, list_of_mpmath_function_names, previous_block_final_hash_as_string_reversed_leading_zeros_stripped = select_list_of_mpmath_functions_from_previous_block_final_hash_func(previous_block_final_hash)
+    current_number_of_matching_leading_characters, current_hash_is_valid, current_final_hash = check_score_of_hash_list_func(current_hash_list, difficulty_level, list_of_2_digits_chunks, list_of_mpmath_functions, list_of_mpmath_function_names, previous_block_final_hash_as_string_reversed_leading_zeros_stripped, use_verbose)
+    return current_hash_list, nonce_number, list_of_2_digits_chunks, list_of_mpmath_functions, list_of_mpmath_function_names, previous_block_final_hash_as_string_reversed_leading_zeros_stripped, current_number_of_matching_leading_characters, current_hash_is_valid, current_final_hash
 
 def execute_next_mining_attempt_func(block_transaction_data, nonce_number, previous_block_final_hash, use_verbose):
     current_hash_list = 0
@@ -275,13 +275,13 @@ def execute_next_mining_attempt_func(block_transaction_data, nonce_number, previ
         current_hash_list = outputs[0]
         nonce_number = outputs[1]
         list_of_2_digits_chunks = outputs[2]
-        list_of_mpath_functions = outputs[3]
-        list_of_mpath_function_names = outputs[4]
+        list_of_mpmath_functions = outputs[3]
+        list_of_mpmath_function_names = outputs[4]
         previous_block_final_hash_as_string_reversed_leading_zeros_stripped = outputs[5]
         current_number_of_matching_leading_characters = outputs[6]
         current_hash_is_valid = outputs[7]
         current_final_hash = outputs[8]
-        return  current_hash_list, nonce_number, list_of_2_digits_chunks, list_of_mpath_functions, list_of_mpath_function_names, previous_block_final_hash_as_string_reversed_leading_zeros_stripped, current_number_of_matching_leading_characters, current_hash_is_valid, current_final_hash
+        return  current_hash_list, nonce_number, list_of_2_digits_chunks, list_of_mpmath_functions, list_of_mpmath_function_names, previous_block_final_hash_as_string_reversed_leading_zeros_stripped, current_number_of_matching_leading_characters, current_hash_is_valid, current_final_hash
     else:
         if tqdm_import_successful:
             pbar = tqdm()
@@ -313,7 +313,7 @@ def mine_for_new_block_func(block_transaction_data, difficulty_level, block_coun
             if tqdm_import_successful:
                 pbar.update(1)
             try:
-                current_hash_list, nonce_number, list_of_2_digits_chunks, list_of_mpath_functions, list_of_mpath_function_names, previous_block_final_hash_as_string_reversed_leading_zeros_stripped, \
+                current_hash_list, nonce_number, list_of_2_digits_chunks, list_of_mpmath_functions, list_of_mpmath_function_names, previous_block_final_hash_as_string_reversed_leading_zeros_stripped, \
                     current_number_of_matching_leading_characters, current_hash_is_valid, current_final_hash = execute_next_mining_attempt_func(block_transaction_data, nonce_number, previous_block_final_hash, use_verbose)
             except:
                 current_hash_list = 0
@@ -351,7 +351,7 @@ def mine_for_new_block_func(block_transaction_data, difficulty_level, block_coun
                         printc('\nNumber of Digits in Final Hash Integer: ' + str(len(str((current_final_hash)))), 'y')
                         print_line_func()
                         sleep(SLEEP_PERIOD*0.5)
-                        current_number_of_matching_leading_characters, current_hash_is_valid, current_final_hash = check_score_of_hash_list_func(current_hash_list, difficulty_level, list_of_2_digits_chunks, list_of_mpath_functions, list_of_mpath_function_names, previous_block_final_hash_as_string_reversed_leading_zeros_stripped, use_verbose=1)
+                        current_number_of_matching_leading_characters, current_hash_is_valid, current_final_hash = check_score_of_hash_list_func(current_hash_list, difficulty_level, list_of_2_digits_chunks, list_of_mpmath_functions, list_of_mpmath_function_names, previous_block_final_hash_as_string_reversed_leading_zeros_stripped, use_verbose=1)
                         list_of_hash_types = ['SHA-256 + (Repeated again in reverse)', 'SHA3-256 + (Repeated again in reverse)', 'SHA3-512', 'BLAKE2S + (Repeated again in reverse)', 'BLAKE2B']
                         printc('\n\nList of computed hashes:\n','b')
                         for hash_count, current_hash in enumerate(current_hash_list):
