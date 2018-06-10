@@ -3,21 +3,21 @@ from time import sleep
 from math import floor
 from mpmath import mp, mpf
 from concurrent.futures import ThreadPoolExecutor
-from colorama import Fore
 try: #For Pythonista:
     import console
     console.set_font('Menlo-Regular',6)
 except:
     pass
+
 SLEEP_PERIOD = 4 #seconds
 SLOWDOWN = 0
 use_verbose = 0
 #pip install mpmath, gmpy2, tqdm
 try:
     from tqdm import tqdm
-    tqdm_import_successful = 0
-except NameError:
     tqdm_import_successful = 1
+except NameError:
+    tqdm_import_successful = 0
 LIST_OF_FUNCTION_STRINGS = [' acosh(x)',  ' acosh(x**2)',  ' acos(x)',  ' acot(x)',  ' acot(x**2)',  ' acoth(x)',  ' acsc(x)',  ' acsc(x**2)',  ' acsch(x)',  ' agm(x, x**2)',  ' airyai(x)',  ' airybi(1/x)',  ' asec(x)',  ' asech(x)',  ' asin(x)',  ' asinh(x)',  ' atan(x)',  ' atan2(x, x)',  ' atanh(x)',  ' barnesg(1/x)',  ' bernoulli(x)',  ' besseli(x, 1/x)',  ' besselk(x, 1/x)',  ' bessely(x, 1/x)',  ' beta(x, x)',  ' cbrt(x**0.1)',  ' chebyt(x, x**2)',  ' chebyu(x, x**2)',  ' chi(x)',  ' clcos(x, x)',  ' clsin(x, x)',  ' cos(x)',  ' cos(x**2)',  ' cosh(x)',  ' cot(x)',  ' csch(x)',  ' degrees(x)',  ' ellipk(x)',  ' elliprc(x, x)',  ' elliprg(x, x, x)',  ' erfc(x)',  ' exp(x)',  ' exp(x**2)',  ' expm1(x)',  ' gamma(x)',  ' hankel1(x, 2)',  ' hankel2(x, 2)',  ' harmonic(x)',  ' harmonic(x**2)',  ' hermite(x, x)',  ' hypot(x,x**2)',  ' jacobi(x, x, x, x)',  ' laguerre(x, 1/x, 1/x)',  ' lambertw(x)',  ' lambertw(x**2)',  ' legendre(x, x)',  ' ln(x)',  ' ln(x**2)',  ' log(x)',  ' log(x**2)',  ' log10(x)',  ' loggamma(x**2)',  ' powm1(x,x)',  ' power(x, 3)',  ' power(x, 4)',  ' power(x, 5)',  ' power(x, 6)',  ' power(x, 7)',  ' power(x, 8)',  ' power(x, 9)',  ' power(x, 10)',  ' power(x, 11)',  ' power(x, 12)',  ' psi(x, x**2)',  ' radians(x)',  ' riemannr(x)',  ' root(x,3)',  ' root(x,4)',  ' root(x,5)',  ' root(x,6)',  ' root(x,7)',  ' root(x,8)',  ' root(x,9)',  ' root(x,10)',  ' root(x,11)',  ' root(x,12)',  ' scorerhi(x)',  ' sec(x)',  ' sech(x)',  ' shi(x**2)',  ' shi(x)',  ' si(x**2)',  ' si(x)',  ' siegeltheta(x)',  ' sin(x)',  ' sin(x**2)',  ' sinc(x)',  ' sinh(x)',  ' sqrt(x)',  ' tanh(x)']
 
 def reverse_string_func(input_string):
@@ -66,9 +66,9 @@ def printc(input_string, color_code):
 def print_line_func():
     seconds, _ = math.modf(time.time())
     if seconds%2==0:
-        printc('\n_______________________________________________________________________________________________________________________________________________________\n','c')
+        printc('\n_______________________________________________________________________________________________________________________________________\n','c')
     else:
-        printc('\n_______________________________________________________________________________________________________________________________________________________\n','y')
+        printc('\n_______________________________________________________________________________________________________________________________________\n','y')
 
 def print_welcome_message_func():
     print_line_func()
@@ -77,14 +77,14 @@ def print_welcome_message_func():
 
 def print_mining_congratulations_message_func():
     print_line_func()
-    seconds, _ = math.modf(time.time())
-    if seconds >= 45:
+    random_number = random.random()
+    if random_number > 0.75:
         printc(make_text_indented_func('\n\n███████╗██╗  ██╗ ██████╗███████╗██╗     ██╗     ███████╗███╗   ██╗████████╗\n██╔════╝╚██╗██╔╝██╔════╝██╔════╝██║     ██║     ██╔════╝████╗  ██║╚══██╔══╝\n█████╗   ╚███╔╝ ██║     █████╗  ██║     ██║     █████╗  ██╔██╗ ██║   ██║   \n██╔══╝   ██╔██╗ ██║     ██╔══╝  ██║     ██║     ██╔══╝  ██║╚██╗██║   ██║   \n███████╗██╔╝ ██╗╚██████╗███████╗███████╗███████╗███████╗██║ ╚████║   ██║   \n╚══════╝╚═╝  ╚═╝ ╚═════╝╚══════╝╚══════╝╚══════╝╚══════╝╚═╝  ╚═══╝   ╚═╝',random.randint(5,30)),'c')
-    elif seconds >= 30:
+    elif random_number > 0.55:
         printc(make_text_indented_func('\n\n╔╦╗╔═╗╔═╗╔╗╔╦╔═╗╦╔═╗╔═╗╔╗╔╔╦╗\n║║║╠═╣║ ╦║║║║╠╣ ║║  ║╣ ║║║ ║ \n╩ ╩╩ ╩╚═╝╝╚╝╩╚  ╩╚═╝╚═╝╝╚╝ ╩',random.randint(5,30)),'r')
-    elif seconds >= 15:
+    elif random_number > 0.25:
         printc(make_text_indented_func('\n\n   ▄████████ ███    █▄     ▄███████▄    ▄████████    ▄████████ ▀█████████▄  \n  ███    ███ ███    ███   ███    ███   ███    ███   ███    ███   ███    ███ \n  ███    █▀  ███    ███   ███    ███   ███    █▀    ███    ███   ███    ███ \n  ███        ███    ███   ███    ███  ▄███▄▄▄      ▄███▄▄▄▄██▀  ▄███▄▄▄██▀  \n▀███████████ ███    ███ ▀█████████▀  ▀▀███▀▀▀     ▀▀███▀▀▀▀▀   ▀▀███▀▀▀██▄  \n         ███ ███    ███   ███          ███    █▄  ▀███████████   ███    ██▄ \n   ▄█    ███ ███    ███   ███          ███    ███   ███    ███   ███    ███ \n ▄████████▀  ████████▀   ▄████▀        ██████████   ███    ███ ▄█████████▀  \n                                                    ███    ███',random.randint(5,30)),'m')
-    else:
+    elif random_number > 0.00:
         printc(make_text_indented_func("\n\n                                      ,----,                      ,----,                                                                                 \n    ,----..                         ,/   .`|                    ,/   .`|                          ,--.                                 ,--.              \n   /   /   \\                      ,`   .'  :   .--.--.        ,`   .'  :    ,---,               ,--.'|     ,---,        ,---,        ,--.'|   ,----..    \n  /   .     :           ,--,    ;    ;     /  /  /    '.    ;    ;     /   '  .' \\          ,--,:  : |   .'  .' `\\   ,`--.' |    ,--,:  : |  /   /   \\   \n .   /   ;.  \\        ,'_ /|  .'___,/    ,'  |  :  /`. /  .'___,/    ,'   /  ;    '.     ,`--.'`|  ' : ,---.'     \\  |   :  : ,`--.'`|  ' : |   :     :  \n.   ;   /  ` ;   .--. |  | :  |    :     |   ;  |  |--`   |    :     |   :  :       \\    |   :  :  | | |   |  .`\\  | :   |  ' |   :  :  | | .   |  ;. /  \n;   |  ; \\ ; | ,'_ /| :  . |  ;    |.';  ;   |  :  ;_     ;    |.';  ;   :  |   /\\   \\   :   |   \\ | : :   : |  '  | |   :  | :   |   \\ | : .   ; /--`   \n|   :  | ; | ' |  ' | |  . .  `----'  |  |    \\  \\    `.  `----'  |  |   |  :  ' ;.   :  |   : '  '; | |   ' '  ;  : '   '  ; |   : '  '; | ;   | ;  __  \n.   |  ' ' ' : |  | ' |  | |      '   :  ;     `----.   \\     '   :  ;   |  |  ;/  \\   \\ '   ' ;.    ; '   | ;  .  | |   |  | '   ' ;.    ; |   : |.' .' \n'   ;  \\; /  | :  | | :  ' ;      |   |  '     __ \\  \\  |     |   |  '   '  :  | \\  \\ ,' |   | | \\   | |   | :  |  ' '   :  ; |   | | \\   | .   | '_.' : \n \\   \\  ',  /  |  ; ' |  | '      '   :  |    /  /`--'  /     '   :  |   |  |  '  '--'   '   : |  ; .' '   : | /  ;  |   |  ' '   : |  ; .' '   ; : \\  | \n  ;   :    /   :  | : ;  ; |      ;   |.'    '--'.     /      ;   |.'    |  :  :         |   | '`--'   |   | '` ,/   '   :  | |   | '`--'   '   | '/  .' \n   \\   \\ .'    '  :  `--'   \\     '---'        `--'---'       '---'      |  | ,'         '   : |       ;   :  .'     ;   |.'  '   : |       |   :    /   \n    `---`      :  ,      .-./                                            `--''           ;   |.'       |   ,.'       '---'    ;   |.'        \\   \\ .'    \n                `--`----'                                                                '---'         '---'                  '---'           `---`",random.randint(5,30)),'y')
     printc('\n\n\nCongratulations, you just mined a valid Animecoin block!\n\n\n', 'g')
     print_ascii_art_func(random.randint(0,5))
@@ -365,19 +365,25 @@ def mine_for_new_block_func(block_transaction_data, difficulty_level, block_coun
     return current_number_of_matching_leading_characters, current_final_hash, nonce_number, block_duration_in_minutes
 
 try:
+    from colorama import Fore
+except:
+    printc = print
+    printrc = print
+
+try:
     block_count
 except NameError:
     block_count = 0
 use_demo = 1
-number_of_demo_blocks_to_mine = 50
-baseline_digits_of_precision = 64
-maximum_digits_of_precision = 1024
+number_of_demo_blocks_to_mine = 10
+baseline_digits_of_precision = 32
+maximum_digits_of_precision = 512
 set_numerical_precision_func(baseline_digits_of_precision)
 current_required_number_of_digits_of_precision = baseline_digits_of_precision
 adjust_hash_difficulty_every_k_blocks = 5
 reset_numerical_precision_every_r_blocks = adjust_hash_difficulty_every_k_blocks
 max_difficulty_change_per_block = 1
-initial_difficulty_level = 4
+initial_difficulty_level = 3
 target_block_duration_in_minutes = 1
 
 use_debug_mode = 1
