@@ -4,15 +4,14 @@ from math import floor
 from mpmath import mp, mpf
 from concurrent.futures import ThreadPoolExecutor
 from colorama import Fore
-
-try:
+try: #For Pythonista:
     import console
     console.set_font('Menlo-Regular',6)
 except:
     pass
-
 SLEEP_PERIOD = 4 #seconds
-use_verbose = 1
+SLOWDOWN = 0
+use_verbose = 0
 #pip install mpmath, gmpy2, tqdm
 try:
     from tqdm import tqdm
@@ -65,7 +64,11 @@ def printc(input_string, color_code):
     print(Fore.RESET)
 
 def print_line_func():
-    printc('\n_______________________________________________________________________________________________________________________________________________________\n','k')
+    seconds, _ = math.modf(time.time())
+    if seconds%2==0:
+        printc('\n_______________________________________________________________________________________________________________________________________________________\n','c')
+    else:
+        printc('\n_______________________________________________________________________________________________________________________________________________________\n','y')
 
 def print_welcome_message_func():
     print_line_func()
@@ -141,7 +144,6 @@ def get_number_of_matching_leading_characters_in_string_func(input_string_or_int
     else:
         number_of_matching_leading_characters = 0
         for cnt, current_match_character in enumerate(match_string):
-            #print(input_string[cnt] + '==' + current_match_character + '\n')
             current_input_character = input_string[cnt]
             if current_input_character == current_match_character:
                 number_of_matching_leading_characters = number_of_matching_leading_characters + 1
@@ -231,10 +233,10 @@ def check_score_of_hash_list_func(input_hash_list, difficulty_level, list_of_2_d
             printc('Corresponding mathematical formula for index '+str(two_digit_hash_chunk)+' (out of 100 distinct formulas from mpmath):   y =' + current_formula_name,'r')
             printc('Current hash value to use in the formula: ' + list_of_hash_types_sorted[cnt] + ':  ' + input_hash_list_sorted[cnt] + ')','y')
             printc('Hash Value as an Integer (i.e., whole number): ' + current_hash_name_string + ' =  ' + str(int(current_hash_value)),'y')
-            printc('Rescaled hash value (i.e., x = fractional_part( log(hash_value) ) in the formula): ' + str(current_hash_value_rescaled),'y')
-            printc('Output from formula: (i.e., y in the formula): ' + str(current_intermediate_result),'k')
-            printc('Output as string with decimal point and leading zeros removed: ' + str(current_intermediate_result_as_string_decimal_point_and_leading_zeros_stripped),'k')
-            printc('First '+str(first_k_digits_to_extract_from_each_intermediate_result)+' digits of rescaled output (these are multiplied together to produce the final hash): ' + str(current_intermediate_result_as_string_decimal_point_and_leading_zeros_stripped_first_k_digits)+'\n\n','k')
+            printc('Rescaled hash value (i.e., x = fractional_part( log(hash_value) ) in the formula): ' + str(current_hash_value_rescaled),'g')
+            printc('Output from formula: (i.e., y in the formula): ' + str(current_intermediate_result),'g')
+            printc('Output as string with decimal point and leading zeros removed: ' + str(current_intermediate_result_as_string_decimal_point_and_leading_zeros_stripped),'g')
+            printc('First '+str(first_k_digits_to_extract_from_each_intermediate_result)+' digits of rescaled output (these are multiplied together to produce the final hash): ' + str(current_intermediate_result_as_string_decimal_point_and_leading_zeros_stripped_first_k_digits)+'\n\n','c')
     final_hash = 1
     for current_k_digit_chunk in list_of_intermediate_results_first_k_digits:
         final_hash = final_hash*current_k_digit_chunk
@@ -255,7 +257,9 @@ def check_score_of_hash_list_func(input_hash_list, difficulty_level, list_of_2_d
             print_mining_congratulations_message_func()
             printc('\nSince the first ' + digit_text + ' of the final hash match all of the digits in the difficulty string, the hash is valid!', 'b')
         else:
-            printc('\nHash is invalid, sorry!\n', 'k')
+            printc('\nHash is invalid, sorry!\n', 'b')
+    if SLOWDOWN:
+        sleep(0.1)
     return number_of_matching_leading_characters, hash_is_valid, final_hash
 
 def generate_next_mining_attempt_func(block_transaction_data, nonce_number, previous_block_final_hash, use_verbose):
@@ -289,12 +293,6 @@ def execute_next_mining_attempt_func(block_transaction_data, nonce_number, previ
         else:
             printc('There was a problem computing the candidate block, skipping to the next one!', 'r')
         return current_hash_list
-#    except:
-#        if tqdm_import_successful:
-#            pbar.set_description('Candidate block taking too long, skipping to the next one!')
-#        else:
-#            printc('Candidate block taking too long, skipping to the next one!', 'r')
-#        return current_hash_list
 
 def get_nonce_func():
     return random.randint(1, 100000)
@@ -310,6 +308,8 @@ def mine_for_new_block_func(block_transaction_data, difficulty_level, block_coun
     all_transactions_are_valid = check_that_all_block_transactions_are_valid_func(block_transaction_data)
     if all_transactions_are_valid:
         while block_is_valid == 0:
+            if SLOWDOWN:
+                sleep(0.3)
             if tqdm_import_successful:
                 pbar.update(1)
             try:
@@ -369,15 +369,15 @@ try:
 except NameError:
     block_count = 0
 use_demo = 1
-number_of_demo_blocks_to_mine = 100
+number_of_demo_blocks_to_mine = 50
 baseline_digits_of_precision = 64
 maximum_digits_of_precision = 1024
 set_numerical_precision_func(baseline_digits_of_precision)
 current_required_number_of_digits_of_precision = baseline_digits_of_precision
-adjust_hash_difficulty_every_k_blocks = 10
+adjust_hash_difficulty_every_k_blocks = 5
 reset_numerical_precision_every_r_blocks = adjust_hash_difficulty_every_k_blocks
 max_difficulty_change_per_block = 1
-initial_difficulty_level = 2
+initial_difficulty_level = 4
 target_block_duration_in_minutes = 1
 
 use_debug_mode = 1
@@ -405,6 +405,8 @@ if use_demo:
         numerical_precision_reset_countdown = reset_numerical_precision_every_r_blocks
         previous_block_final_hash = int(hashlib.sha3_512(b'anime').hexdigest(), 16)
     for ii in range(number_of_demo_blocks_to_mine):
+        if SLOWDOWN:
+            sleep(2)
         printc('Current Block Count: '+str(block_count),'b')
         printc('\nTarget block duration in seconds: '+str(round(target_block_duration_in_minutes*60)),'g')
         current_number_of_matching_leading_characters, current_final_hash, nonce_number, current_block_duration_in_minutes = mine_for_new_block_func(block_transaction_data, difficulty_level, block_count, previous_block_final_hash, use_verbose)
