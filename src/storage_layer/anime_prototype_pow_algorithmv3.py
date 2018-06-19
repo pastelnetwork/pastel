@@ -1,24 +1,77 @@
-import os, time, hashlib, base64, random, math
+import os, time, hashlib, base64, random, math, socket
 from time import sleep
 from math import floor
 from mpmath import mp, mpf
+from datetime import datetime
 from concurrent.futures import ThreadPoolExecutor
-try: #For Pythonista:
-    import console
-    console.set_font('Menlo-Regular',6)
-except:
-    pass
 
-SLEEP_PERIOD = 4 #seconds
+#pip install mpmath, gmpy2, tqdm
+try: #For Pythonista:
+    import console, speech
+    console.set_font('Menlo-Regular', 7)
+    speech.say('Welcome to Animecoin My ning!', 'fr_FR')
+    while speech.is_speaking():
+       time.sleep(0.1)
+    def printc_ios_helper_func(input_string, r, g, b):
+        console.set_color(r, g, b)
+        print(input_string)
+    def printc_ios_func(input_string, color_code):
+        if color_code == 'g':
+            printc_ios_helper_func(input_string, 46,204,64)
+        elif color_code == 'r':
+            printc_ios_helper_func(input_string, 255,65,54)
+        elif color_code == 'c':
+            printc_ios_helper_func(input_string, 127,219,255)
+        elif color_code == 'b':
+            printc_ios_helper_func(input_string, 0,116,217)
+        elif color_code == 'y':
+            printc_ios_helper_func(input_string, 255,220,0)
+        elif color_code == 'm':
+            printc_ios_helper_func(input_string, 240,18,190)
+        elif color_code == 'k':
+            printc_ios_helper_func(input_string, 25,25,25)
+    def printrc_ios_func(input_string):
+            color_code_list = ['r','g','b','c','y','m','k']
+            printc(input_string, color_code_list[random.randint(0, len(color_code_list) - 1)])
+    printc = printc_ios_func
+    printrc = printrc_ios_func
+except: #Color:
+    from colorama import Fore
+    def printc(input_string, color_code):
+        if color_code == 'g':
+            print(Fore.LIGHTGREEN_EX + input_string)
+        elif color_code == 'r':
+            print(Fore.LIGHTRED_EX + input_string)
+        elif color_code == 'c':
+            print(Fore.LIGHTCYAN_EX + input_string)
+        elif color_code == 'b':
+            print(Fore.LIGHTBLUE_EX + input_string)
+        elif color_code == 'y':
+            print(Fore.LIGHTYELLOW_EX + input_string)
+        elif color_code == 'm':
+            print(Fore.LIGHTMAGENTA_EX + input_string)
+        elif color_code == 'k':
+            print(Fore.LIGHTBLACK_EX + input_string)
+        print(Fore.RESET)
+    def printrc(input_string):
+        color_code_list = ['r','g','b','c','y','m','k']
+        printc(input_string, color_code_list[random.randint(0, len(color_code_list) - 1)])
+SLEEP_PERIOD = 2 #seconds
 SLOWDOWN = 0
 use_verbose = 0
-#pip install mpmath, gmpy2, tqdm
 try:
     from tqdm import tqdm
     tqdm_import_successful = 1
 except NameError:
     tqdm_import_successful = 0
 LIST_OF_FUNCTION_STRINGS = [' acosh(x)',  ' acosh(x**2)',  ' acos(x)',  ' acot(x)',  ' acot(x**2)',  ' acoth(x)',  ' acsc(x)',  ' acsc(x**2)',  ' acsch(x)',  ' agm(x, x**2)',  ' airyai(x)',  ' airybi(1/x)',  ' asec(x)',  ' asech(x)',  ' asin(x)',  ' asinh(x)',  ' atan(x)',  ' atan2(x, x)',  ' atanh(x)',  ' barnesg(1/x)',  ' bernoulli(x)',  ' besseli(x, 1/x)',  ' besselk(x, 1/x)',  ' bessely(x, 1/x)',  ' beta(x, x)',  ' cbrt(x**0.1)',  ' chebyt(x, x**2)',  ' chebyu(x, x**2)',  ' chi(x)',  ' clcos(x, x)',  ' clsin(x, x)',  ' cos(x)',  ' cos(x**2)',  ' cosh(x)',  ' cot(x)',  ' csch(x)',  ' degrees(x)',  ' ellipk(x)',  ' elliprc(x, x)',  ' elliprg(x, x, x)',  ' erfc(x)',  ' exp(x)',  ' exp(x**2)',  ' expm1(x)',  ' gamma(x)',  ' hankel1(x, 2)',  ' hankel2(x, 2)',  ' harmonic(x)',  ' harmonic(x**2)',  ' hermite(x, x)',  ' hypot(x,x**2)',  ' jacobi(x, x, x, x)',  ' laguerre(x, 1/x, 1/x)',  ' lambertw(x)',  ' lambertw(x**2)',  ' legendre(x, x)',  ' ln(x)',  ' ln(x**2)',  ' log(x)',  ' log(x**2)',  ' log10(x)',  ' loggamma(x**2)',  ' powm1(x,x)',  ' power(x, 3)',  ' power(x, 4)',  ' power(x, 5)',  ' power(x, 6)',  ' power(x, 7)',  ' power(x, 8)',  ' power(x, 9)',  ' power(x, 10)',  ' power(x, 11)',  ' power(x, 12)',  ' psi(x, x**2)',  ' radians(x)',  ' riemannr(x)',  ' root(x,3)',  ' root(x,4)',  ' root(x,5)',  ' root(x,6)',  ' root(x,7)',  ' root(x,8)',  ' root(x,9)',  ' root(x,10)',  ' root(x,11)',  ' root(x,12)',  ' scorerhi(x)',  ' sec(x)',  ' sech(x)',  ' shi(x**2)',  ' shi(x)',  ' si(x**2)',  ' si(x)',  ' siegeltheta(x)',  ' sin(x)',  ' sin(x**2)',  ' sinc(x)',  ' sinh(x)',  ' sqrt(x)',  ' tanh(x)']
+
+def get_my_local_ip_func():
+    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    s.connect(("8.8.8.8", 80))
+    my_node_ip_address = s.getsockname()[0]
+    s.close()
+    return my_node_ip_address
 
 def reverse_string_func(input_string):
     return input_string[::-1]
@@ -40,28 +93,6 @@ def sort_list_based_on_another_list_func(list_to_sort, another_list):
 
 def make_text_indented_func(s, numSpaces):
     return "\n".join((numSpaces * " ") + i for i in s.splitlines())
-
-def printrc(input_string):
-    color_name_list = ['YELLOW','GREEN','CYAN', 'BLUE', 'RED', 'MAGENTA', 'LIGHTBLACK_EX', 'LIGHTGREEN_EX', 'LIGHTBLUE_EX', 'LIGHTCYAN_EX', 'LIGHTMAGENTA_EX', 'LIGHTRED_EX', 'LIGHTYELLOW_EX']
-    print(str(eval('Fore.'+random.choice(color_name_list))) + str(input_string))
-    print(Fore.RESET)
-
-def printc(input_string, color_code):
-    if color_code == 'g':
-        print(Fore.LIGHTGREEN_EX + input_string)
-    elif color_code == 'r':
-        print(Fore.LIGHTRED_EX + input_string)
-    elif color_code == 'c':
-        print(Fore.LIGHTCYAN_EX + input_string)
-    elif color_code == 'b':
-        print(Fore.LIGHTBLUE_EX + input_string)
-    elif color_code == 'y':
-        print(Fore.LIGHTYELLOW_EX + input_string)
-    elif color_code == 'm':
-        print(Fore.LIGHTMAGENTA_EX + input_string)
-    elif color_code == 'k':
-        print(Fore.LIGHTBLACK_EX + input_string)
-    print(Fore.RESET)
 
 def print_line_func():
     seconds, _ = math.modf(time.time())
@@ -87,15 +118,18 @@ def print_mining_congratulations_message_func():
     elif random_number > 0.00:
         printc(make_text_indented_func("\n\n                                      ,----,                      ,----,                                                                                 \n    ,----..                         ,/   .`|                    ,/   .`|                          ,--.                                 ,--.              \n   /   /   \\                      ,`   .'  :   .--.--.        ,`   .'  :    ,---,               ,--.'|     ,---,        ,---,        ,--.'|   ,----..    \n  /   .     :           ,--,    ;    ;     /  /  /    '.    ;    ;     /   '  .' \\          ,--,:  : |   .'  .' `\\   ,`--.' |    ,--,:  : |  /   /   \\   \n .   /   ;.  \\        ,'_ /|  .'___,/    ,'  |  :  /`. /  .'___,/    ,'   /  ;    '.     ,`--.'`|  ' : ,---.'     \\  |   :  : ,`--.'`|  ' : |   :     :  \n.   ;   /  ` ;   .--. |  | :  |    :     |   ;  |  |--`   |    :     |   :  :       \\    |   :  :  | | |   |  .`\\  | :   |  ' |   :  :  | | .   |  ;. /  \n;   |  ; \\ ; | ,'_ /| :  . |  ;    |.';  ;   |  :  ;_     ;    |.';  ;   :  |   /\\   \\   :   |   \\ | : :   : |  '  | |   :  | :   |   \\ | : .   ; /--`   \n|   :  | ; | ' |  ' | |  . .  `----'  |  |    \\  \\    `.  `----'  |  |   |  :  ' ;.   :  |   : '  '; | |   ' '  ;  : '   '  ; |   : '  '; | ;   | ;  __  \n.   |  ' ' ' : |  | ' |  | |      '   :  ;     `----.   \\     '   :  ;   |  |  ;/  \\   \\ '   ' ;.    ; '   | ;  .  | |   |  | '   ' ;.    ; |   : |.' .' \n'   ;  \\; /  | :  | | :  ' ;      |   |  '     __ \\  \\  |     |   |  '   '  :  | \\  \\ ,' |   | | \\   | |   | :  |  ' '   :  ; |   | | \\   | .   | '_.' : \n \\   \\  ',  /  |  ; ' |  | '      '   :  |    /  /`--'  /     '   :  |   |  |  '  '--'   '   : |  ; .' '   : | /  ;  |   |  ' '   : |  ; .' '   ; : \\  | \n  ;   :    /   :  | : ;  ; |      ;   |.'    '--'.     /      ;   |.'    |  :  :         |   | '`--'   |   | '` ,/   '   :  | |   | '`--'   '   | '/  .' \n   \\   \\ .'    '  :  `--'   \\     '---'        `--'---'       '---'      |  | ,'         '   : |       ;   :  .'     ;   |.'  '   : |       |   :    /   \n    `---`      :  ,      .-./                                            `--''           ;   |.'       |   ,.'       '---'    ;   |.'        \\   \\ .'    \n                `--`----'                                                                '---'         '---'                  '---'           `---`",random.randint(5,30)),'y')
     printc('\n\n\nCongratulations, you just mined a valid Animecoin block!\n\n\n', 'g')
-    print_ascii_art_func(random.randint(0,5))
+    print_ascii_art_func(random.randint(0,7))
     print_line_func()
 
 def print_ascii_art_func(pic_number):
     list_of_ascii_art = ["\n\n                _ ___                /^^\\ /^\\  /^^\\_\n    _          _@)@) \\            ,,/ '` ~ `'~~ ', `\\.\n  _/o\\_ _ _ _/~`.`...'~\\        ./~~..,'`','',.,' '  ~:\n / `,'.~,~.~  .   , . , ~|,   ,/ .,' , ,. .. ,,.   `,  ~\\_\n( ' _' _ '_` _  '  .    , `\\_/ .' ..' '  `  `   `..  `,   \\_\n ~V~ V~ V~ V~ ~\\ `   ' .  '    , ' .,.,''`.,.''`.,.``. ',   \\_\n  _/\\ /\\ /\\ /\\_/, . ' ,   `_/~\\_ .' .,. ,, , _/~\\_ `. `. '.,  \\_\n < ~ ~ '~`'~'`, .,  .   `_: ::: \\_ '      `_/ ::: \\_ `.,' . ',  \\_\n  \\ ' `_  '`_    _    ',/ _::_::_ \\ _    _/ _::_::_ \\   `.,'.,`., \\-,-,-,_,_,\n   `'~~ `'~~ `'~~ `'~~  \\(_)(_)(_)/  `~~' \\(_)(_)(_)/ ~'`\\_.._,._,'_;_;_;_;_;",
-                         "\n     .---.        .-----------\n    /     \\  __  /    ------\n   / /     \\(  )/    -----\n  //////   ' \\/ `   ---\n //// / // :    : ---      ANIMECOIN \n// /   /  /`    '--         FIDELIS\n//          //..      ====UU====UU====\n          '//||\\`\n            ''``",
-                         '\n                              __\n                            .d$$b\n                          .\' TO$;\\\n                         /  : TP._;\n                        / _.;  :Tb|\n                       /   /   ;j$j\n                   _.-"       d$$$$\n                 .\' ..       d$$$$;\n                /  /P\'      d$$$$P. |\\\n               /   "      .d$$$P\' |\\^"l\n             .\'           `T$P^  :\n         ._.\'      _.\'                ;\n      `-.-".-\'-\' ._.       _.-"    .-"\n    `.-" _____  ._              .-"\n   -(.g$$$$$$$b.              .\'\n     ""^^T$$$P^)            .(:\n       _/  -"  /.\'         /:/;\n    ._.\'-\'`-\'  ")/         /;/;\n `-.-"..--""   " /         /  ;\n.-" ..--""        -\'          :\n..--""--.-"         (\\      .-(\\\n  ..--""              `-\\(\\/;`\n    _.                      :\n                            ;`-\n                           :\\\n                           ;',
+                         "\n      .---.        .-----------\n     /     \\  __  /    ------\n    / /     \\(  )/    -----\n   //////   ' \\/ `   ---\n  //// / // :    : ---\n // /   /  /`    '--        ANIMECOIN FIDELIS\n//          //..\\\n       ====UU====UU====\n           '//||\\`\n             ''``",
+                         '\n                     .\n                    / V                  / `  /\n                 <<   |\n                 /    |\n               /      |     "ANIMEEEEEEEEEEEE"\n             /        |\n           /    \\  \\ /\n          (      ) | |\n  ________|   _/_  | |\n<__________\\______)\\__)',
+                         '\n                               /T /I\n                              / |/ | .-~/\n                          T\\ Y  I  |/  /  _\n         /T               | \\I  |  I  Y.-~/\n        I l   /I       T\\ |  |  l  |  T  /\n     T\\ |  \\ Y l  /T   | \\I  l   \\ `  l Y\n __  | \\l   \\l  \\I l __l  l   \\   `  _. |\n \\ ~-l  `\\   `\\  \\  \\ ~\\  \\   `. .-~   |\n  \\   ~-. "-.  `  \\  ^._ ^. "-.  /  \\   |\n.--~-._  ~-  `  _  ~-_.-"-." ._ /._ ." ./\n >--.  ~-.   ._  ~>-"    "\\   7   7   ]\n^.___~"--._    ~-{  .-~ .  `\\ Y . /    |\n <__ ~"-.  ~       /_/   \\   \\I  Y   : |\n   ^-.__           ~(_/   \\   >._:   | l______\n       ^--.,___.-~"  /_/   !  `-.~"--l_ /     ~"-.\n              (_/ .  ~(   /\'     "~"--,Y   -=b-. _)\n               (_/ .  \\  :           / l      c"~o                 \\ /    `.    .     .^   \\_.-~"~--.  )\n                 (_/ .   `  /     /       !       )/\n                  / / _.   \'.   .\':      /        \'\n                  ~(_/ .   /    _  `  .-<_\n                    /_/ . \' .-~" `.  / \\  \\          ,z=.\n                    ~( /   \'  :   | K   "-.~-.______//\n                      "-,.    l   I/ \\_    __{--->._(==.\n                       //(     \\  <    ~"~"     //\n                      /\' /\\     \\  \\     ,v=.  ((\n                    .^. / /\\     "  }__ //===-  `\n                   / / \' \'  "-.,__ {---(==-\n                 .^ \'       :  T  ~"   ll       ~ANIMECOIN~\n                / .  .  . : | :!        \\    "Pauca sed Matura"\n               (_/  /   | | j-"          ~^\n                 ~-<_(_.^-~"',
+                         '\n\n  ____    _    _   _______    _____   _______              _   _   _____    _____   _   _    _____ \n / __ \\  | |  | | |__   __|  / ____| |__   __|     /\\     | \\ | | |  __ \\  |_   _| | \\ | |  / ____|\n| |  | | | |  | |    | |    | (___      | |       /  \\    |  \\| | | |  | |   | |   |  \\| | | |  __ \n| |  | | | |  | |    | |     \\___ \\     | |      / /\\ \\   | . ` | | |  | |   | |   | . ` | | | |_ |\n| |__| | | |__| |    | |     ____) |    | |     / ____ \\  | |\\  | | |__| |  _| |_  | |\\  | | |__| |\n \\____/   \\____/     |_|    |_____/     |_|    /_/    \\_\\ |_| \\_| |_____/  |_____| |_| \\_|  \\_____|',
                          "\n _____________________\n|          |\\         |\n|   |\\     | .        |\n|   | `\\___|_/        |\n|    `/\'   `\\-. -._   |\n|   .-.   ,-.. `\\._`. |\n|   | +| | + |  ;. `  |\n|   (\\,--.\\_.\'), ;    |   ----Animecoin Mining System----\n|   /\\`--\' _./\' /_.   |   ""Everyone should be able to mine.\n|   OO`m/`m/\'OO\'      |    At least until someone makes an ASIC!""\n|_____________________|                       --Ancient Proverb\n\n",
                          '\n`;-.          ___,\n  `.`\\_...._/`.-"`\n    \\        /      ,\n    /()   () \\    .\' `-._\n   |)  .    ()\\  /   _.\'\n   \\  -\'-     ,; \'. <\n    ;.__     ,;|   >\n    / ,    / ,  |.-\'.-\'\n  (_/    (_/ ,;|.<`\n    \\    ,     ;-`\n     >   \\    /\n    (_,-\'`> .\'\n         (_,\'',
+                         '\n                    ,.\n                  ,_> `.   ,\';\n              ,-`\'      `\'   \'`\'._\n           ,,-) ---._   |   .---\'\'`-),.\n         ,\'      `.  \\  ;  /   _,\'     `,\n      ,--\' ____       \\   \'  ,\'    ___  `-,\n     _>   /--. `-.              .-\'.--\\   \\__\n    \'-,  (    `.  `.,`~ \\~\'-. ,\' ,\'    )    _\\\n    _<    \\     \\ ,\'  \') )   `. /     /    <,.\n ,-\'   _,  \\    ,\'    ( /      `.    /        `-,\n `-.,-\'     `.,\'       `         `.,\'  `\\    ,-\'\n  ,\'       _  /   ,,,      ,,,     \\     `-. `-._\n /-,     ,\'  ;   \' _ \\    / _ `     ; `.     `(`-\\\n  /-,        ;    (o)      (o)      ;          `\'`,\n,~-\'  ,-\'    \\     \'        `      /     \\      <_\n/-. ,\'        \\                   /       \\     ,-\'\n  \'`,     ,\'   `-/             \\-\' `.      `-. <\n   /_    /      /   (_     _)   \\    \\          `,\n     `-._;  ,\' |  .::.`-.-\' :..  |       `-.    _\\\n       _/       \\  `:: ,^. :.:\' / `.        \\,-\'\n     \'`.   ,-\'  /`-..-\'-.-`-..-\'\\            `-.\n       >_ /     ;  (\\/( \' )\\/)  ;     `-.    _<\n       ,-\'      `.  \\`-^^^-\'/  ,\'        \\ _<\n        `-,  ,\'   `. `"`"`"\' ,\'   `-.   <`\'\n          \')        `._.,,_.\'        \\ ,-\'\n           \'._        \'`\'`\'   \\       <\n              >   ,\'       ,   `-.   <`\'\n               `,/          \\      ,-`\n                `,   ,\' |   /     /\n                 \'; /   ;        (\n                  _)|   `       (\n                  `\')         .-\'\n                    <_   \\   /       ANIMECOIN\n                      \\   /\\(   "theoria cum praxi"\n                       `;/  `',
                          "\n _________________.---.______\n(_(______________(_o o_(____()\n             .___.'. .'.___.\n             \\ o    Y    o /\n              \\ \\__   __/ /\n               '.__'-'__.'",
                         ]
     selected_pic = list_of_ascii_art[pic_number]
@@ -262,6 +296,7 @@ def check_score_of_hash_list_func(input_hash_list, difficulty_level, list_of_2_d
         sleep(0.1)
     return number_of_matching_leading_characters, hash_is_valid, final_hash
 
+
 def generate_next_mining_attempt_func(block_transaction_data, nonce_number, previous_block_final_hash, use_verbose):
     nonce_number = nonce_number + 1
     block_transaction_data_with_nonce = generate_block_candidate_func(block_transaction_data, nonce_number, use_verbose)
@@ -297,7 +332,34 @@ def execute_next_mining_attempt_func(block_transaction_data, nonce_number, previ
 def get_nonce_func():
     return random.randint(1, 100000)
 
-def mine_for_new_block_func(block_transaction_data, difficulty_level, block_count, previous_block_final_hash, use_verbose):
+def get_animecoin_id_public_key_func(): #Placeholder
+    my_animecoin_id_public_key = '54fda990775aac0d54d8c5330cddbd52f5e4d816dd18a6f48b07f64c08f'
+    return my_animecoin_id_public_key
+
+class solution_object(object):
+  def __init__(self, block_transaction_data, block_count, difficulty_level, current_required_number_of_digits_of_precision, nonce_number, previous_block_final_hash, \
+               current_hash_list, list_of_2_digits_chunks, list_of_mpmath_functions, list_of_mpmath_function_names, previous_block_final_hash_as_string_reversed_leading_zeros_stripped, \
+               current_number_of_matching_leading_characters, current_hash_is_valid, current_final_hash):
+          self.block_transaction_data = block_transaction_data
+          self.block_count = block_count
+          self.difficulty_level = difficulty_level
+          self.current_required_number_of_digits_of_precision = current_required_number_of_digits_of_precision
+          self.nonce_number = nonce_number
+          self.previous_block_final_hash = previous_block_final_hash
+          self.current_hash_list = current_hash_list
+          self.list_of_2_digits_chunks = list_of_2_digits_chunks
+          self.list_of_mpmath_functions = list_of_mpmath_functions
+          self.list_of_mpmath_function_names = list_of_mpmath_function_names
+          self.previous_block_final_hash_as_string_reversed_leading_zeros_stripped = previous_block_final_hash_as_string_reversed_leading_zeros_stripped
+          self.current_number_of_matching_leading_characters = current_number_of_matching_leading_characters
+          self.current_hash_is_valid = current_hash_is_valid
+          self.current_final_hash = current_final_hash
+          self.current_hash_list = current_hash_list
+          self.date_time_solution_found = datetime.now()
+          self.miner_ip_address = get_my_local_ip_func()
+          self.miner_animecoin_id_public_key = get_animecoin_id_public_key_func()
+
+def mine_for_new_block_func(block_transaction_data, difficulty_level, block_count, previous_block_final_hash, current_required_number_of_digits_of_precision, use_verbose):
     start_time = time.time()
     if tqdm_import_successful:
         pbar = tqdm()
@@ -305,6 +367,7 @@ def mine_for_new_block_func(block_transaction_data, difficulty_level, block_coun
     initial_nonce = get_nonce_func()
     nonce_number = initial_nonce
     current_best_number_of_matching_leading_characters = 0
+    list_of_hash_types = ['SHA-256 + (Repeated again in reverse)', 'SHA3-256 + (Repeated again in reverse)', 'SHA3-512', 'BLAKE2S + (Repeated again in reverse)', 'BLAKE2B']
     all_transactions_are_valid = check_that_all_block_transactions_are_valid_func(block_transaction_data)
     if all_transactions_are_valid:
         while block_is_valid == 0:
@@ -317,6 +380,8 @@ def mine_for_new_block_func(block_transaction_data, difficulty_level, block_coun
                     current_number_of_matching_leading_characters, current_hash_is_valid, current_final_hash = execute_next_mining_attempt_func(block_transaction_data, nonce_number, previous_block_final_hash, use_verbose)
             except:
                 current_hash_list = 0
+            if (time.time() - start_time) > (2.5*60):
+                break
             if current_hash_list != 0:
                 if nonce_number == 1:
                     current_best_number_of_matching_leading_characters = current_number_of_matching_leading_characters
@@ -334,10 +399,12 @@ def mine_for_new_block_func(block_transaction_data, difficulty_level, block_coun
                         pbar.set_description(update_string)
                     else:
                         printc(update_string,'y')
+                    block_duration_in_minutes = (time.time() - start_time)/60
+                    packaged_solution_object = solution_object(block_transaction_data, block_count, difficulty_level, current_required_number_of_digits_of_precision, nonce_number, previous_block_final_hash, current_hash_list, \
+                                           list_of_2_digits_chunks, list_of_mpmath_functions, list_of_mpmath_function_names, previous_block_final_hash_as_string_reversed_leading_zeros_stripped, \
+                                           current_number_of_matching_leading_characters, current_hash_is_valid, current_final_hash)
                 if current_hash_is_valid:
                     block_is_valid = 1
-                    end_time = time.time()
-                    block_duration_in_minutes = (end_time - start_time)/60
                     try:
                         current_best_final_hash
                     except NameError:
@@ -352,7 +419,6 @@ def mine_for_new_block_func(block_transaction_data, difficulty_level, block_coun
                         print_line_func()
                         sleep(SLEEP_PERIOD*0.5)
                         current_number_of_matching_leading_characters, current_hash_is_valid, current_final_hash = check_score_of_hash_list_func(current_hash_list, difficulty_level, list_of_2_digits_chunks, list_of_mpmath_functions, list_of_mpmath_function_names, previous_block_final_hash_as_string_reversed_leading_zeros_stripped, use_verbose=1)
-                        list_of_hash_types = ['SHA-256 + (Repeated again in reverse)', 'SHA3-256 + (Repeated again in reverse)', 'SHA3-512', 'BLAKE2S + (Repeated again in reverse)', 'BLAKE2B']
                         printc('\n\nList of computed hashes:\n','b')
                         for hash_count, current_hash in enumerate(current_hash_list):
                             printc(make_text_indented_func(list_of_hash_types[hash_count], 5)+ ':', 'y')
@@ -362,29 +428,23 @@ def mine_for_new_block_func(block_transaction_data, difficulty_level, block_coun
                         printc('\nSleeping for ' + str(SLEEP_PERIOD) + ' seconds...', 'r')
                         print_line_func()
                         sleep(SLEEP_PERIOD*0.5)
-    return current_number_of_matching_leading_characters, current_final_hash, nonce_number, block_duration_in_minutes
-
-try:
-    from colorama import Fore
-except:
-    printc = print
-    printrc = print
+    return current_number_of_matching_leading_characters, current_final_hash, nonce_number, block_duration_in_minutes, packaged_solution_object
 
 try:
     block_count
 except NameError:
     block_count = 0
 use_demo = 1
-number_of_demo_blocks_to_mine = 10
-baseline_digits_of_precision = 32
-maximum_digits_of_precision = 512
+number_of_demo_blocks_to_mine = 100
+baseline_digits_of_precision = 128  
+maximum_digits_of_precision = 1000
 set_numerical_precision_func(baseline_digits_of_precision)
 current_required_number_of_digits_of_precision = baseline_digits_of_precision
-adjust_hash_difficulty_every_k_blocks = 5
+adjust_hash_difficulty_every_k_blocks = 100
 reset_numerical_precision_every_r_blocks = adjust_hash_difficulty_every_k_blocks
 max_difficulty_change_per_block = 1
-initial_difficulty_level = 3
-target_block_duration_in_minutes = 1
+initial_difficulty_level = 6
+target_block_duration_in_minutes = 2.5
 
 use_debug_mode = 1
 if use_debug_mode:
@@ -399,7 +459,7 @@ if use_demo:
     if block_count == 0:
         print_welcome_message_func()
         print('\n\n')
-        print_ascii_art_func(random.randint(0, 4))
+        print_ascii_art_func(random.randint(0, 7))
         print('\nGenerating fake transaction data for block...')
         block_transaction_data = os.urandom(10**5)
         print('\nInitial Block Difficulty: '+ str(initial_difficulty_level))
@@ -415,7 +475,7 @@ if use_demo:
             sleep(2)
         printc('Current Block Count: '+str(block_count),'b')
         printc('\nTarget block duration in seconds: '+str(round(target_block_duration_in_minutes*60)),'g')
-        current_number_of_matching_leading_characters, current_final_hash, nonce_number, current_block_duration_in_minutes = mine_for_new_block_func(block_transaction_data, difficulty_level, block_count, previous_block_final_hash, use_verbose)
+        current_number_of_matching_leading_characters, current_final_hash, nonce_number, current_block_duration_in_minutes, packaged_solution_object = mine_for_new_block_func(block_transaction_data, difficulty_level, block_count, previous_block_final_hash, current_required_number_of_digits_of_precision, use_verbose)
         previous_block_final_hash = current_final_hash
         blocks_until_next_difficulty_level_increase = adjust_hash_difficulty_every_k_blocks - ii%adjust_hash_difficulty_every_k_blocks
         set_numerical_precision_func(current_required_number_of_digits_of_precision)
@@ -469,4 +529,3 @@ if use_demo:
                 printc('\nThere are '+str(blocks_until_next_difficulty_level_increase)+' more blocks remaining before the next difficulty level adjustment.\n','y')
         set_numerical_precision_func(current_required_number_of_digits_of_precision)
         block_count = block_count + 1
-
