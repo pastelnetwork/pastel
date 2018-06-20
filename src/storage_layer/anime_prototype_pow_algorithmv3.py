@@ -61,7 +61,7 @@ SLOWDOWN = 0
 use_verbose = 0
 try:
     from tqdm import tqdm
-    tqdm_import_successful = 1
+    tqdm_import_successful = 0
 except NameError:
     tqdm_import_successful = 0
 LIST_OF_FUNCTION_STRINGS = [' acosh(x)',  ' acosh(x**2)',  ' acos(x)',  ' acot(x)',  ' acot(x**2)',  ' acoth(x)',  ' acsc(x)',  ' acsc(x**2)',  ' acsch(x)',  ' agm(x, x**2)',  ' airyai(x)',  ' airybi(1/x)',  ' asec(x)',  ' asech(x)',  ' asin(x)',  ' asinh(x)',  ' atan(x)',  ' atan2(x, x)',  ' atanh(x)',  ' barnesg(1/x)',  ' bernoulli(x)',  ' besseli(x, 1/x)',  ' besselk(x, 1/x)',  ' bessely(x, 1/x)',  ' beta(x, x)',  ' cbrt(x**0.1)',  ' chebyt(x, x**2)',  ' chebyu(x, x**2)',  ' chi(x)',  ' clcos(x, x)',  ' clsin(x, x)',  ' cos(x)',  ' cos(x**2)',  ' cosh(x)',  ' cot(x)',  ' csch(x)',  ' degrees(x)',  ' ellipk(x)',  ' elliprc(x, x)',  ' elliprg(x, x, x)',  ' erfc(x)',  ' exp(x)',  ' exp(x**2)',  ' expm1(x)',  ' gamma(x)',  ' hankel1(x, 2)',  ' hankel2(x, 2)',  ' harmonic(x)',  ' harmonic(x**2)',  ' hermite(x, x)',  ' hypot(x,x**2)',  ' jacobi(x, x, x, x)',  ' laguerre(x, 1/x, 1/x)',  ' lambertw(x)',  ' lambertw(x**2)',  ' legendre(x, x)',  ' ln(x)',  ' ln(x**2)',  ' log(x)',  ' log(x**2)',  ' log10(x)',  ' loggamma(x**2)',  ' powm1(x,x)',  ' power(x, 3)',  ' power(x, 4)',  ' power(x, 5)',  ' power(x, 6)',  ' power(x, 7)',  ' power(x, 8)',  ' power(x, 9)',  ' power(x, 10)',  ' power(x, 11)',  ' power(x, 12)',  ' psi(x, x**2)',  ' radians(x)',  ' riemannr(x)',  ' root(x,3)',  ' root(x,4)',  ' root(x,5)',  ' root(x,6)',  ' root(x,7)',  ' root(x,8)',  ' root(x,9)',  ' root(x,10)',  ' root(x,11)',  ' root(x,12)',  ' scorerhi(x)',  ' sec(x)',  ' sech(x)',  ' shi(x**2)',  ' shi(x)',  ' si(x**2)',  ' si(x)',  ' siegeltheta(x)',  ' sin(x)',  ' sin(x**2)',  ' sinc(x)',  ' sinh(x)',  ' sqrt(x)',  ' tanh(x)']
@@ -245,8 +245,8 @@ def check_score_of_hash_list_func(input_hash_list, difficulty_level, list_of_2_d
     largest_hash = list_of_hashes_in_size_order[-1]
     list_of_hashes_by_name = [smallest_hash, largest_hash, middle_hash, second_smallest_hash, second_largest_hash]
     list_of_hash_name_strings = ['smallest_hash', 'largest_hash', 'middle_hash', 'second_smallest_hash', 'second_largest_hash']
-    first_k_digits_to_extract_from_each_intermediate_result = difficulty_level*5
-    list_of_intermediate_results_first_k_digits = list()
+    last_k_digits_to_extract_from_each_intermediate_result = difficulty_level*5
+    list_of_intermediate_results_last_k_digits = list()
     if use_verbose:
         printc('Previous final hash: ' + str(previous_block_final_hash),'b')
         printc('After being reversed and removing leading zeros: '+ previous_block_final_hash_as_string_reversed_leading_zeros_stripped + '\n\n','b')
@@ -260,8 +260,8 @@ def check_score_of_hash_list_func(input_hash_list, difficulty_level, list_of_2_d
         current_intermediate_result = current_formula(current_hash_value_rescaled)
         current_intermediate_result_as_string = str(current_intermediate_result)
         current_intermediate_result_as_string_decimal_point_and_leading_zeros_stripped = current_intermediate_result_as_string.replace('.','').lstrip('0')
-        current_intermediate_result_as_string_decimal_point_and_leading_zeros_stripped_first_k_digits = current_intermediate_result_as_string_decimal_point_and_leading_zeros_stripped[:first_k_digits_to_extract_from_each_intermediate_result]
-        list_of_intermediate_results_first_k_digits.append(int(current_intermediate_result_as_string_decimal_point_and_leading_zeros_stripped_first_k_digits))
+        current_intermediate_result_as_string_decimal_point_and_leading_zeros_stripped_last_k_digits = current_intermediate_result_as_string_decimal_point_and_leading_zeros_stripped[-last_k_digits_to_extract_from_each_intermediate_result:]
+        list_of_intermediate_results_last_k_digits.append(int(current_intermediate_result_as_string_decimal_point_and_leading_zeros_stripped_last_k_digits))
         if use_verbose:
             printc('Current 2-digit chunk of reversed previous hash: '+str(two_digit_hash_chunk),'m')
             printc('Corresponding mathematical formula for index '+str(two_digit_hash_chunk)+' (out of 100 distinct formulas from mpmath):   y =' + current_formula_name,'r')
@@ -270,9 +270,9 @@ def check_score_of_hash_list_func(input_hash_list, difficulty_level, list_of_2_d
             printc('Rescaled hash value (i.e., x = fractional_part( log(hash_value) ) in the formula): ' + str(current_hash_value_rescaled),'g')
             printc('Output from formula: (i.e., y in the formula): ' + str(current_intermediate_result),'g')
             printc('Output as string with decimal point and leading zeros removed: ' + str(current_intermediate_result_as_string_decimal_point_and_leading_zeros_stripped),'g')
-            printc('First '+str(first_k_digits_to_extract_from_each_intermediate_result)+' digits of rescaled output (these are multiplied together to produce the final hash): ' + str(current_intermediate_result_as_string_decimal_point_and_leading_zeros_stripped_first_k_digits)+'\n\n','c')
+            printc('Last '+str(last_k_digits_to_extract_from_each_intermediate_result)+' digits of rescaled output (these are multiplied together to produce the final hash): ' + str(current_intermediate_result_as_string_decimal_point_and_leading_zeros_stripped_last_k_digits)+'\n\n','c')
     final_hash = 1
-    for current_k_digit_chunk in list_of_intermediate_results_first_k_digits:
+    for current_k_digit_chunk in list_of_intermediate_results_last_k_digits:
         final_hash = final_hash*current_k_digit_chunk
     difficulty_string = construct_difficulty_string_func(difficulty_level)
     number_of_matching_leading_characters = get_number_of_matching_leading_characters_in_string_func(final_hash, difficulty_string)
@@ -436,14 +436,14 @@ except NameError:
     block_count = 0
 use_demo = 1
 number_of_demo_blocks_to_mine = 100
-baseline_digits_of_precision = 128  
+baseline_digits_of_precision = 128
 maximum_digits_of_precision = 1000
 set_numerical_precision_func(baseline_digits_of_precision)
 current_required_number_of_digits_of_precision = baseline_digits_of_precision
 adjust_hash_difficulty_every_k_blocks = 100
 reset_numerical_precision_every_r_blocks = adjust_hash_difficulty_every_k_blocks
 max_difficulty_change_per_block = 1
-initial_difficulty_level = 6
+initial_difficulty_level = 4
 target_block_duration_in_minutes = 2.5
 
 use_debug_mode = 1
