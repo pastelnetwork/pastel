@@ -47,6 +47,7 @@ std::string CMasternodeSync::GetSyncStatusShort()
         case MasternodeSyncState::Waiting:      return "Waiting";
         case MasternodeSyncState::List:         return "List";
         case MasternodeSyncState::Winners:      return "Winners";
+        case MasternodeSyncState::Governance:   return "Governance";
         case MasternodeSyncState::Failed:       return "Failed";
         case MasternodeSyncState::Finished:     return "Finished";
         default:                                return "Unknown";
@@ -61,6 +62,7 @@ std::string CMasternodeSync::GetSyncStatus()
         case MasternodeSyncState::Waiting:      return _("Synchronization pending...");
         case MasternodeSyncState::List:         return _("Synchronizing masternodes...");
         case MasternodeSyncState::Winners:      return _("Synchronizing masternode payments...");
+        case MasternodeSyncState::Governance:   return _("Synchronizing governance payments...");
         case MasternodeSyncState::Failed:       return _("Synchronization failed");
         case MasternodeSyncState::Finished:     return _("Synchronization finished");
         default:                                return "";
@@ -91,6 +93,11 @@ void CMasternodeSync::SwitchToNextAsset()
             LogPrintf("CMasternodeSync::SwitchToNextAsset -- Starting %s\n", GetSyncStatus());
             break;
         case(MasternodeSyncState::Winners):
+            LogPrintf("CMasternodeSync::SwitchToNextAsset -- Completed %s in %llds\n", GetSyncStatus(), GetTime() - nTimeAssetSyncStarted);
+            syncState = MasternodeSyncState::Governance;
+            LogPrintf("CMasternodeSync::SwitchToNextAsset -- Starting %s\n", GetSyncStatus());
+            break;
+        case(MasternodeSyncState::Governance):
             LogPrintf("CMasternodeSync::SwitchToNextAsset -- Completed %s in %llds\n", GetSyncStatus(), GetTime() - nTimeAssetSyncStarted);
             syncState = MasternodeSyncState::Finished;
             LogPrintf("CMasternodeSync::SwitchToNextAsset -- Starting %s\n", GetSyncStatus());
@@ -137,8 +144,27 @@ void CMasternodeSync::ClearFulfilledRequests()
     CNodeHelper::ForEachNode(CNodeHelper::AllNodes, [](CNode* pnode) {
         masterNodeCtrl.requestTracker.RemoveFulfilledRequest(pnode->addr, "masternode-list-sync");
         masterNodeCtrl.requestTracker.RemoveFulfilledRequest(pnode->addr, "masternode-payment-sync");
+        masterNodeCtrl.requestTracker.RemoveFulfilledRequest(pnode->addr, "governance-payment-sync");
         masterNodeCtrl.requestTracker.RemoveFulfilledRequest(pnode->addr, "full-sync");
     });
+}
+
+void CMasternodeSync::CheckSyncTimeout(int nTick, std::vector<CNode*> &vNodesCopy)
+{
+    // check for timeout first
+    if(GetTime() - nTimeLastBumped > MasternodeSyncTimeoutSeconds) {
+        LogPrintf("CMasternodeSync::ProcessTick -- nTick %d syncState %d -- timeout\n", nTick, (int)syncState);
+        if (nRequestedMasternodeAttempt == 0) {
+            LogPrintf("CMasternodeSync::ProcessTick -- ERROR: failed to sync %s\n", GetSyncStatusShort());
+            // there is no way we can continue without masternode list, fail here and try later
+            Fail();
+            CNodeHelper::ReleaseNodeVector(vNodesCopy);
+            return;
+        }
+        SwitchToNextAsset();
+        CNodeHelper::ReleaseNodeVector(vNodesCopy);
+        return;
+    }    
 }
 
 void CMasternodeSync::ProcessTick()
@@ -201,6 +227,10 @@ void CMasternodeSync::ProcessTick()
                 syncState = MasternodeSyncState::Winners;
                 int nMnCount = masterNodeCtrl.masternodeManager.CountMasternodes();
                 pnode->PushMessage(NetMsgType::MASTERNODEPAYMENTSYNC, nMnCount);
+            } else if(nRequestedMasternodeAttempt < 10) {
+                syncState = MasternodeSyncState::Governance;
+                int nMnCount = masterNodeCtrl.masternodeManager.CountMasternodes();
+                pnode->PushMessage(NetMsgType::GOVERNANCESYNC, nMnCount);
             } else {
                 syncState = MasternodeSyncState::Finished;
             }
@@ -240,19 +270,7 @@ void CMasternodeSync::ProcessTick()
             if(syncState == MasternodeSyncState::List) {
                 LogPrint("masternode", "CMasternodeSync::ProcessTick -- nTick %d syncState %d nTimeLastBumped %lld GetTime() %lld diff %lld\n", nTick, (int)syncState, nTimeLastBumped, GetTime(), GetTime() - nTimeLastBumped);
                 // check for timeout first
-                if(GetTime() - nTimeLastBumped > MasternodeSyncTimeoutSeconds) {
-                    LogPrintf("CMasternodeSync::ProcessTick -- nTick %d syncState %d -- timeout\n", nTick, (int)syncState);
-                    if (nRequestedMasternodeAttempt == 0) {
-                        LogPrintf("CMasternodeSync::ProcessTick -- ERROR: failed to sync %s\n", GetSyncStatusShort());
-                        // there is no way we can continue without masternode list, fail here and try later
-                        Fail();
-                        CNodeHelper::ReleaseNodeVector(vNodesCopy);
-                        return;
-                    }
-                    SwitchToNextAsset();
-                    CNodeHelper::ReleaseNodeVector(vNodesCopy);
-                    return;
-                }
+                CheckSyncTimeout(nTick, vNodesCopy);
 
                 // only request once from each peer
                 if(masterNodeCtrl.requestTracker.HasFulfilledRequest(pnode->addr, "masternode-list-sync")) continue;
@@ -273,19 +291,7 @@ void CMasternodeSync::ProcessTick()
                 // check for timeout first
                 // This might take a lot longer than MasternodeSyncTimeoutSeconds due to new blocks,
                 // but that should be OK and it should timeout eventually.
-                if(GetTime() - nTimeLastBumped > MasternodeSyncTimeoutSeconds) {
-                    LogPrintf("CMasternodeSync::ProcessTick -- nTick %d syncState %d -- timeout\n", nTick, (int)syncState);
-                    if (nRequestedMasternodeAttempt == 0) {
-                        LogPrintf("CMasternodeSync::ProcessTick -- ERROR: failed to sync %s\n", GetSyncStatusShort());
-                        // probably not a good idea to proceed without winner list
-                        Fail();
-                        CNodeHelper::ReleaseNodeVector(vNodesCopy);
-                        return;
-                    }
-                    SwitchToNextAsset();
-                    CNodeHelper::ReleaseNodeVector(vNodesCopy);
-                    return;
-                }
+                CheckSyncTimeout(nTick, vNodesCopy);
 
                 // check for data
                 // if mnpayments already has enough blocks and votes, switch to the next asset
@@ -307,6 +313,23 @@ void CMasternodeSync::ProcessTick()
                 pnode->PushMessage(NetMsgType::MASTERNODEPAYMENTSYNC, masterNodeCtrl.masternodePayments.GetStorageLimit());
                 // ask node for missing pieces only (old nodes will not be asked)
                 masterNodeCtrl.masternodePayments.RequestLowDataPaymentBlocks(pnode);
+
+                CNodeHelper::ReleaseNodeVector(vNodesCopy);
+                return; //this will cause each peer to get one request each six seconds for the various assets we need
+            }
+            if(syncState == MasternodeSyncState::Governance) {
+                LogPrint("mnpayments", "CMasternodeSync::ProcessTick -- nTick %d syncState %d nTimeLastBumped %lld GetTime() %lld diff %lld\n", nTick, (int)syncState, nTimeLastBumped, GetTime(), GetTime() - nTimeLastBumped);
+                // check for timeout first
+                CheckSyncTimeout(nTick, vNodesCopy);
+
+                // only request once from each peer
+                if(masterNodeCtrl.requestTracker.HasFulfilledRequest(pnode->addr, "governance-payment-sync")) continue;
+                masterNodeCtrl.requestTracker.AddFulfilledRequest(pnode->addr, "governance-payment-sync");
+
+                nRequestedMasternodeAttempt++;
+
+                // ask node for all governance info it has
+                pnode->PushMessage(NetMsgType::GOVERNANCESYNC, 1000); //TODO: REAL VALUE!!!!
 
                 CNodeHelper::ReleaseNodeVector(vNodesCopy);
                 return; //this will cause each peer to get one request each six seconds for the various assets we need

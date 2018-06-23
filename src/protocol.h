@@ -155,6 +155,7 @@ enum {
     MSG_FILTERED_BLOCK,
     
     //MasterNode
+    MSG_MASTERNODE_GOVERNANCE,
     MSG_MASTERNODE_PAYMENT_VOTE,
     MSG_MASTERNODE_PAYMENT_BLOCK,
     MSG_MASTERNODE_ANNOUNCE,
@@ -168,6 +169,7 @@ namespace NetMsgType {
 extern const char *MASTERNODEPAYMENTVOTE;
 extern const char *MASTERNODEPAYMENTBLOCK;
 extern const char *MASTERNODEPAYMENTSYNC;
+extern const char *GOVERNANCESYNC;
 extern const char *DSTX;
 
 extern const char *MNANNOUNCE;

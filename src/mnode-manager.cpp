@@ -6,6 +6,7 @@
 #include <map>
 #include <set>
 #include <vector>
+#include <algorithm>
 
 #include "mnode-active.h"
 
@@ -1373,7 +1374,7 @@ bool CMasternodeMan::CheckMnbAndUpdateMasternodeList(CNode* pfrom, CMasternodeBr
         }
     }
 
-    if(mnb.CheckOutpoint(nDos)) {
+    if(mnb.CheckOutpoint(nDos)) { // if Announce messsage has correct collateral tnx
         Add(mnb);
         masterNodeCtrl.masternodeSync.BumpAssetLastTime("CMasternodeMan::CheckMnbAndUpdateMasternodeList - new");
         // if it matches our Masternode privkey...

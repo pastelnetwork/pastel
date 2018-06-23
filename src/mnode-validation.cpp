@@ -131,7 +131,7 @@ bool IsBlockValid(const CBlock& block, int nBlockHeight, CAmount blockReward, st
     strErrorRet = "";
 
     //1. less then total reward per block
-    if (block.vtx[0].GetValueOut() <= blockReward) {
+    if (block.vtx[0].GetValueOut() < blockReward) {
         strErrorRet = strprintf("coinbase pays too much at height %d (actual=%d vs limit=%d), exceeded block reward, budgets are disabled",
                                 nBlockHeight, block.vtx[0].GetValueOut(), blockReward);
         return false;
@@ -141,7 +141,7 @@ bool IsBlockValid(const CBlock& block, int nBlockHeight, CAmount blockReward, st
     const Consensus::Params& consensusParams = Params().GetConsensus();
     if (masterNodeCtrl.masternodeGovernance.GetCurrentPaymentAmount() > consensusParams.nMaxGovernanceAmount) {
         strErrorRet = strprintf("coinbase pays too much at height %d (actual=%d vs limit=%d), exceeded governance max value",
-                                nBlockHeight, block.vtx[0].GetValueOut(), consensusParams.nMaxGovernanceAmount);
+                                nBlockHeight, masterNodeCtrl.masternodeGovernance.GetCurrentPaymentAmount(), consensusParams.nMaxGovernanceAmount);
         return false;
     }
 

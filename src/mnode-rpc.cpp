@@ -6,20 +6,21 @@
 #include <iomanip>
 #include <univalue.h>
 
-#include "main.h"
-#include "base58.h"
-#include "init.h"
-#include "netbase.h"
-#include "consensus/validation.h"
-#include "util.h"
-#include "utilmoneystr.h"
-#include "rpcserver.h"
-
 #include "mnode-controller.h"
 #include "mnode-active.h"
 #include "mnode-sync.h"
 #include "mnode-config.h"
 #include "mnode-manager.h"
+
+#include "main.h"
+#include "netbase.h"
+#include "base58.h"
+#include "init.h"
+#include "consensus/validation.h"
+#include "util.h"
+#include "utilmoneystr.h"
+#include "rpcserver.h"
+#include "utilstrencodings.h"
 
 #ifdef ENABLE_WALLET
 #include "wallet/wallet.h"
@@ -778,4 +779,87 @@ UniValue mnsync(const UniValue& params, bool fHelp)
         return "success";
     }
     return "failure";
+}
+
+UniValue governance(const UniValue& params, bool fHelp)
+{
+    std::string strMode;
+    if (params.size() >= 1)
+        strMode = params[0].get_str();
+
+       if (fHelp || (strMode != "ticket" && strMode != "list"))
+            throw runtime_error(
+            "governance [ticket|list]\n"
+            "Cast a governance vote for new or existing ticket.\n"
+        );
+
+    std::string strCmd;
+    if (strMode == "ticket")
+    {
+        if (params.size() < 4 || params.size() > 6)
+            throw JSONRPCError(RPC_INVALID_PARAMETER,   "1.\n"
+                                                        "governance ticket add \"address\" amount \"note\" <yes|no>\n"
+                                                        "2.\n"
+                                                        "governance ticket vote \"ticketID\" <yes|no>\n");
+
+        strCmd = params[1].get_str();
+        if (strCmd == "add")
+        {
+            if (params.size() != 6)
+                throw JSONRPCError(RPC_INVALID_PARAMETER,   "governance ticket add \"address\" amount \"note\" <yes|no>\n");
+
+            std::string address = params[2].get_str();
+            int amount = atoi(params[3].get_str());
+            std::string note = params[4].get_str();
+            std::string vote = params[5].get_str();
+
+            if (vote != "yes" && vote != "no")
+                throw JSONRPCError(RPC_INVALID_PARAMETER,   "governance ticket add \"address\" amount \"note\" <yes|no>\n");
+
+            masterNodeCtrl.masternodeGovernance.AddTicket(address, amount, note, (vote == "yes"));
+        }
+        if (strCmd == "vote")
+        {
+            if (params.size() != 4)
+                throw JSONRPCError(RPC_INVALID_PARAMETER,   "governance ticket vote \"ticketID\" <yes|no>\n");
+
+            std::string ticketIdstr = params[2].get_str();
+            std::string vote = params[3].get_str();
+
+            if (vote != "yes" && vote != "no")
+                throw JSONRPCError(RPC_INVALID_PARAMETER,   "governance ticket add \"address\" amount \"note\" <yes|no>\n");
+
+            if (!IsHex(ticketIdstr))
+                throw JSONRPCError(RPC_INVALID_PARAMETER, "Invalid parameter, expected hex ticketId");
+
+            uint256 ticketId = uint256S(ticketIdstr);
+
+            masterNodeCtrl.masternodeGovernance.VoteForTicket(ticketId, (vote == "yes"));
+        }
+    }
+
+    if(strMode == "list")
+    {
+        if (params.size() != 2)
+            throw JSONRPCError(RPC_INVALID_PARAMETER,   "1.\n"
+                                                        "governance list tickets\n"
+                                                        "2.\n"
+                                                        "governance list winners\n");
+        strCmd = params[1].get_str();
+        UniValue obj(UniValue::VOBJ);
+        if (strCmd == "tickets")
+        {
+            BOOST_FOREACH(PAIRTYPE(const uint256, CGovernanceTicket)& s, masterNodeCtrl.masternodeGovernance.mapTickets) {
+                std::string id = s.first.ToString();
+                // obj.push_back(Pair("id: ", id));
+                obj.push_back(Pair(": ", s.second.ToString()));
+            }
+        }
+        if (strCmd == "winners")
+        {
+        }
+
+        return obj;
+    }
+    return NullUniValue;
 }

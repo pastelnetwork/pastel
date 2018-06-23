@@ -552,7 +552,13 @@ bool CMasternodeBroadcast::Update(CMasternode* pmn, int& nDos)
 
     return true;
 }
-
+/*
+Check collateral tnx in the Anounce message is correct - 
+    - it exists
+    - it has correct amount, 
+    - there were right number of confirmations (number of blocks after)
+    - verify signature
+*/
 bool CMasternodeBroadcast::CheckOutpoint(int& nDos)
 {
     // we are a masternode with the same vin (i.e. already activated) and this mnb is ours (matches our Masternode privkey)

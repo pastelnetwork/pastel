@@ -57,6 +57,8 @@ public:
     int MasternodeCheckSeconds, MasternodeMinMNBSeconds, MasternodeMinMNPSeconds, MasternodeExpirationSeconds, MasternodeWatchdogMaxSeconds, MasternodeNewStartRequiredSeconds;
     int MasternodePOSEBanMaxScore;
 
+    int nGovernanceVotingPeriodBlocks;
+
     int nMasternodeMinimumConfirmations, nMasternodePaymentsIncreaseBlock, nMasternodePaymentsIncreasePeriod;
     int nMasterNodeMaximumOutboundConnections;
     int nFulfilledRequestExpireTime;

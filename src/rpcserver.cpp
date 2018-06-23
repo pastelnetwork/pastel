@@ -342,6 +342,7 @@ static const CRPCCommand vRPCCommands[] =
     { "mnode",               "masternodelist",         &masternodelist,         true  },
     { "mnode",               "masternodebroadcast",    &masternodebroadcast,    true  },
     { "mnode",               "mnsync",                 &mnsync,                 true  },
+    { "mnode",               "governance",             &governance,             true  },
 
 #ifdef ENABLE_WALLET
     /* Wallet */

@@ -41,6 +41,8 @@ void CMasterNodeController::SetParameters()
     MasternodePOSEBanMaxScore           = 5;
     nMasterNodeMaximumOutboundConnections = 20;
 
+    nGovernanceVotingPeriodBlocks = 576; //24 hours, 1 block per 2.5 minutes
+
     if (Params().IsMainNet()) {
         nMasternodeMinimumConfirmations = 15;
         nMasternodePaymentsIncreaseBlock = 150000;
@@ -157,10 +159,18 @@ bool CMasterNodeController::EnableMasterNode(std::ostringstream& strErrors, boos
         uiInterface.InitMessage(_("Masternode cache is empty, skipping payments and governance cache..."));
     }
 
+    strDBName = "governance.dat";
+    uiInterface.InitMessage(_("Loading governance cache..."));
+    CFlatDB<CMasternodeGovernance> flatDB3(strDBName, "magicGovernanceCache");
+    if(!flatDB3.Load(masternodeGovernance)) {
+        strErrors << _("Failed to load governance cache from") + "\n" + (pathDB / strDBName).string();
+        return false;
+    }
+
     strDBName = "netfulfilled.dat";
     uiInterface.InitMessage(_("Loading fulfilled requests cache..."));
-    CFlatDB<CMasternodeRequestTracker> flatDB3(strDBName, "magicFulfilledCache");
-    if(!flatDB3.Load(requestTracker)) {
+    CFlatDB<CMasternodeRequestTracker> flatDB4(strDBName, "magicFulfilledCache");
+    if(!flatDB4.Load(requestTracker)) {
         strErrors << _("Failed to load fulfilled requests cache from") + "\n" + (pathDB / strDBName).string();
         return false;
     }
@@ -203,6 +213,7 @@ bool CMasterNodeController::ProcessMessage(CNode* pfrom, std::string& strCommand
 {
     masternodeManager.ProcessMessage(pfrom, strCommand, vRecv);
     masternodePayments.ProcessMessage(pfrom, strCommand, vRecv);
+    masternodeGovernance.ProcessMessage(pfrom, strCommand, vRecv);
     masternodeSync.ProcessMessage(pfrom, strCommand, vRecv);
 
     return true;
@@ -302,8 +313,10 @@ void CMasterNodeController::ShutdownMasterNode()
     flatDB1.Dump(masternodeManager);
     CFlatDB<CMasternodePayments> flatDB2("mnpayments.dat", "magicMasternodePaymentsCache");
     flatDB2.Dump(masternodePayments);
-    CFlatDB<CMasternodeRequestTracker> flatDB3("netfulfilled.dat", "magicFulfilledCache");
-    flatDB3.Dump(requestTracker);
+    CFlatDB<CMasternodeGovernance> flatDB3("governance.dat", "magicGovernanceCache");
+    flatDB3.Dump(masternodeGovernance);
+    CFlatDB<CMasternodeRequestTracker> flatDB4("netfulfilled.dat", "magicFulfilledCache");
+    flatDB4.Dump(requestTracker);
 }
 
 boost::filesystem::path CMasterNodeController::GetMasternodeConfigFile()
@@ -392,6 +405,7 @@ void CMasterNodeController::ThreadMasterNodeMaintenance()
                 masterNodeCtrl.masternodeManager.ProcessMasternodeConnections();
                 masterNodeCtrl.masternodeManager.CheckAndRemove(true);
                 masterNodeCtrl.masternodePayments.CheckAndRemove();
+                masterNodeCtrl.masternodeGovernance.CheckAndRemove();
             }
             if(masterNodeCtrl.IsMasterNode() && (nTick % (60 * 5) == 0)) {
                 masterNodeCtrl.masternodeManager.DoFullVerificationStep();

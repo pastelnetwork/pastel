@@ -28,6 +28,7 @@ public:
         Waiting         = 1,    // waiting after initial to see if we can get more headers/blocks
         List            = 2,
         Winners         = 3,
+        Governance      = 4,
         Finished        = 999
     };
     
@@ -52,6 +53,7 @@ private:
     void ClearFulfilledRequests();
 
     void SetSyncParameters();
+    void CheckSyncTimeout(int nTick, std::vector<CNode*> &vNodesCopy);
 
 public:
     CMasternodeSync()
@@ -64,6 +66,7 @@ public:
     bool IsBlockchainSynced() { return syncState > MasternodeSyncState::Waiting; }
     bool IsMasternodeListSynced() { return syncState > MasternodeSyncState::List; }
     bool IsWinnersListSynced() { return syncState > MasternodeSyncState::Winners; }
+    bool IsGovernanceSynced() { return syncState > MasternodeSyncState::Governance; }
     bool IsSynced() { return syncState == MasternodeSyncState::Finished; }
 
     int GetAssetID() { return (int)syncState; }
