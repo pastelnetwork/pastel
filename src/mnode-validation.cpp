@@ -137,14 +137,6 @@ bool IsBlockValid(const CBlock& block, int nBlockHeight, CAmount blockReward, st
         return false;
     }
 
-    //2. Check high limit of governance payments
-    const Consensus::Params& consensusParams = Params().GetConsensus();
-    if (masterNodeCtrl.masternodeGovernance.GetCurrentPaymentAmount() > consensusParams.nMaxGovernanceAmount) {
-        strErrorRet = strprintf("coinbase pays too much at height %d (actual=%d vs limit=%d), exceeded governance max value",
-                                nBlockHeight, masterNodeCtrl.masternodeGovernance.GetCurrentPaymentAmount(), consensusParams.nMaxGovernanceAmount);
-        return false;
-    }
-
     if(!masterNodeCtrl.masternodeSync.IsSynced()) {
         //there is no data to use to check anything, let's just accept the longest chain
         if(fDebug) LogPrintf("IsBlockValid -- WARNING: Client not synced, skipping block payee checks\n");
@@ -153,6 +145,10 @@ bool IsBlockValid(const CBlock& block, int nBlockHeight, CAmount blockReward, st
 
     //3. check governance and masternode payments and payee
     if(masterNodeCtrl.masternodePayments.IsTransactionValid(block.vtx[0], nBlockHeight)) {
+        strErrorRet = strprintf("InValid coinbase transaction at height %d: %s", nBlockHeight, block.vtx[0].ToString());
+        return false;
+    }
+    if(masterNodeCtrl.masternodeGovernance.IsTransactionValid(block.vtx[0], nBlockHeight)) {
         strErrorRet = strprintf("InValid coinbase transaction at height %d: %s", nBlockHeight, block.vtx[0].ToString());
         return false;
     }

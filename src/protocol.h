@@ -169,6 +169,7 @@ namespace NetMsgType {
 extern const char *MASTERNODEPAYMENTVOTE;
 extern const char *MASTERNODEPAYMENTBLOCK;
 extern const char *MASTERNODEPAYMENTSYNC;
+extern const char *GOVERNANCE;
 extern const char *GOVERNANCESYNC;
 extern const char *DSTX;
 

@@ -9,28 +9,42 @@
 
 CCriticalSection cs_ticketsVotes;
 CCriticalSection cs_mapTickets;
-CCriticalSection cs_queuePayments;
+CCriticalSection cs_mapPayments;
 
+CAmount CMasternodeGovernance::GetGovernancePaymentForHeight(int nHeight)
+{
+    const CChainParams& chainparams = Params();
+    const Consensus::Params& params = chainparams.GetConsensus();
 
-CAmount CMasternodeGovernance::GetGovernancePayment(int nHeight, CAmount blockValue)
+    CAmount reward = GetBlockSubsidy(nHeight, params);
+    return GetGovernancePayment(reward);
+}
+
+CAmount CMasternodeGovernance::GetGovernancePayment(CAmount blockValue)
 {
     CAmount ret = blockValue/20; // Always at 5% per CB
     return ret;
 }
 
-bool CMasternodeGovernance::GetCurrentGovernanceRewardAddress(CAmount governancePayment, CScript& scriptPubKey)
+bool CMasternodeGovernance::GetCurrentPaymentTicket(int nBlockHeight, CGovernanceTicket& ticket)
 {
-    LOCK(cs_queuePayments);
-    if (queuePayments.empty()){
+    LOCK(cs_mapPayments);
+    if (mapPayments.empty()){
+        LogPrintf("CMasternodeGovernance::GetCurrentPaymentTicket -- Payment Ticket Queue is empty\n");
         return false;
     }
-    scriptPubKey = queuePayments.front().scriptPubKey;
 
-    // each CB increases the payed amount of governance payment
-    // when it reach the approved -> the address is removed from the payment queue
-    if (queuePayments.front().IncrementPayed(governancePayment)){
-        queuePayments.pop_front();
-    }
+    if (mapPayments.count(nBlockHeight)) {
+        ticket = mapPayments[nBlockHeight];
+    } else {
+        auto it = mapPayments.upper_bound(nBlockHeight);
+        if (it != mapPayments.end())
+            ticket = it->second;
+        else {
+            LogPrintf("CMasternodeGovernance::GetCurrentPaymentTicket -- no tickets for the height - %d\n", nBlockHeight);
+            return false;
+        }
+    }    
     return true;
 }
 
@@ -39,13 +53,13 @@ void CMasternodeGovernance::FillGovernancePayment(CMutableTransaction& txNew, in
     // make sure it's not filled yet
     txoutGovernanceRet = CTxOut();
 
-    CAmount governancePayment = GetGovernancePayment(nBlockHeight, blockReward);
-
-    CScript scriptPubKey;
-    if (!GetCurrentGovernanceRewardAddress(governancePayment, scriptPubKey)) {
-        LogPrintf("CMasternodeGovernance::FillGovernancePayment -- Governance Ticket Queue is empty\n");
+    CGovernanceTicket ticket;
+    if (!GetCurrentPaymentTicket(nBlockHeight, ticket)){
         return;
     }
+
+    CAmount governancePayment = GetGovernancePayment(blockReward);
+    CScript scriptPubKey = ticket.scriptPubKey;
 
     // split reward between miner ...
     txNew.vout[0].nValue -= governancePayment;
@@ -53,11 +67,21 @@ void CMasternodeGovernance::FillGovernancePayment(CMutableTransaction& txNew, in
     txoutGovernanceRet = CTxOut(governancePayment, scriptPubKey);
     txNew.vout.push_back(txoutGovernanceRet);
 
+    CAmount payed = ticket.IncrementPayed(governancePayment);
+
     CTxDestination address1;
     ExtractDestination(scriptPubKey, address1);
     CBitcoinAddress address2(address1);
 
-    LogPrintf("CMasternodeGovernance::FillGovernancePayment -- Governance payment %lld to %s\n", governancePayment, address2.ToString());
+    LogPrintf("CMasternodeGovernance::FillGovernancePayment -- Governance payment %lld to %s (already payed - %d)\n", governancePayment, address2.ToString(), payed);
+}
+
+int CMasternodeGovernance::CalculateLastPaymentBlock(CAmount amount, int nHeight)
+{
+    while (amount > 0){
+        amount -= GetGovernancePaymentForHeight(++nHeight);
+    }
+    return nHeight-1;
 }
 
 void CMasternodeGovernance::AddTicket(std::string address, CAmount totalReward, std::string note, bool vote)
@@ -65,7 +89,12 @@ void CMasternodeGovernance::AddTicket(std::string address, CAmount totalReward, 
     //1. validate parameters
     assert(totalReward > 0);
 
-    CTxDestination destination = DecodeDestination(address.c_str());
+    const CChainParams& chainparams = Params();
+    const Consensus::Params& params = chainparams.GetConsensus();
+    if (totalReward > params.nMaxGovernanceAmount)
+        LogPrintf("Ticket reward is too high %d vs limit=%d, exceeded governance max value", totalReward, params.nMaxGovernanceAmount);
+
+    CTxDestination destination = DecodeDestination(address);
     assert(IsValidDestination(destination));
 
     //2. Create ticket
@@ -89,7 +118,7 @@ void CMasternodeGovernance::AddTicket(std::string address, CAmount totalReward, 
         LogPrintf("CMasternodeGovernance::AddTicket -- Voting is disabled on ticket (Address: %s; Amount: %d). Stop Height=%d, but current height = %d\n", 
             mapTickets[ticketId].scriptPubKey.ToString(), 
             mapTickets[ticketId].nAmountToPay,
-            mapTickets[ticketId].nStopBlockHeight,
+            mapTickets[ticketId].nStopVoteBlockHeight,
             nHeight);
         return;
     }
@@ -120,12 +149,12 @@ void CMasternodeGovernance::VoteForTicket(uint256 ticketId, bool vote)
         LogPrintf("CMasternodeGovernance::VoteForTicket -- Voting is disabled on ticket (Address: %s; Amount: %d). Stop Height=%d, but current height = %d\n", 
             mapTickets[ticketId].scriptPubKey.ToString(), 
             mapTickets[ticketId].nAmountToPay,
-            mapTickets[ticketId].nStopBlockHeight,
+            mapTickets[ticketId].nStopVoteBlockHeight,
             nHeight);
         return;
     }
 
-    //4. Sing the ticket with MN private key
+    //4. Sign the ticket with MN private key
     std::vector<unsigned char> vchSigRet;
     masterNodeCtrl.activeMasternode.keyMasternode.SignCompact(ticketId, vchSigRet);
 
@@ -135,13 +164,13 @@ void CMasternodeGovernance::VoteForTicket(uint256 ticketId, bool vote)
 
 bool CMasternodeGovernance::IsTransactionValid(const CTransaction& txNew, int nHeight)
 {
-    LOCK(cs_queuePayments);
+    CGovernanceTicket ticket;
+    if (!GetCurrentPaymentTicket(nHeight, ticket))
+        return true; //no tickets - no payments
 
-    CAmount nGovernancePayment = masterNodeCtrl.masternodeGovernance.GetGovernancePayment(nHeight, txNew.GetValueOut());
-
-    CScript scriptPubKey;
+    CAmount nGovernancePayment = GetGovernancePayment(txNew.GetValueOut());
+    CScript scriptPubKey = ticket.scriptPubKey;
     BOOST_FOREACH(CTxOut txout, txNew.vout) {
-        scriptPubKey = queuePayments.front().scriptPubKey;
         if (scriptPubKey == txout.scriptPubKey && nGovernancePayment == txout.nValue) {
             LogPrint("mnpayments", "CMasternodeBlockPayees::IsTransactionValid -- Found required payment\n");
             return true;
@@ -185,33 +214,62 @@ void CMasternodeGovernance::ProcessMessage(CNode* pfrom, std::string& strCommand
 
         Sync(pfrom);
         LogPrintf("GOVERNANCESYNC -- Sent Governance payment votes to peer %d\n", pfrom->id);
+
+    } else if (strCommand == NetMsgType::GOVERNANCE) { // Masternode Governance ticket
+
+        CGovernanceTicket ticket;
+        vRecv >> ticket;
+
+        uint256 ticketId = ticket.GetHash();
+
+        pfrom->setAskFor.erase(ticketId);
+
+        if(!masterNodeCtrl.masternodeSync.IsMasternodeListSynced()) return;
+
+        {
+            LOCK(cs_mapTickets);
+
+            if (!mapTickets.count(ticketId)) {
+                //TODO verify ticket
+                mapTickets[ticketId] = ticket;
+            }
+        }
+
+        if (ticket.nLastPaymentBlockHeight != 0) {
+            LOCK(cs_mapPayments);
+
+            mapPayments[ticket.nLastPaymentBlockHeight]= ticket;
+        }
+
+        //Add into mapTickets
+        //if winner and not paid add it also to the payment queue (how to recreate the same order???)
     }
 }
 
 // Send only tockets and votes for future blocks, node should request every other missing Governance data individually
 void CMasternodeGovernance::Sync(CNode* pnode)
 {
-    LOCK(cs_queuePayments);
+    LOCK(cs_mapTickets);
 
     if(!masterNodeCtrl.masternodeSync.IsGovernanceSynced()) return;
 
     int nInvCount = 0;
 
-    // for(int h = nCachedBlockHeight; h < nCachedBlockHeight + 20; h++) {
-    //     if(mapMasternodeBlockPayees.count(h)) {
-    //         BOOST_FOREACH(CMasternodePayee& payee, mapMasternodeBlockPayees[h].vecPayees) {
-    //             std::vector<uint256> vecVoteHashes = payee.GetVoteHashes();
-    //             BOOST_FOREACH(uint256& hash, vecVoteHashes) {
-    //                 if(!HasVerifiedPaymentVote(hash)) continue;
-    //                 pnode->PushInventory(CInv(MSG_MASTERNODE_GOVERNANCE, hash));
-    //                 nInvCount++;
-    //             }
-    //         }
-    //     }
-    // }
+    for(auto& it : mapTickets) {
+        pnode->PushInventory(CInv(MSG_MASTERNODE_GOVERNANCE, it.first));
+        nInvCount++;
+    }
 
     LogPrintf("CMasternodeGovernance::Sync -- Sent %d votes to peer %d\n", nInvCount, pnode->id);
-    pnode->PushMessage(NetMsgType::SYNCSTATUSCOUNT, (int)CMasternodeSync::MasternodeSyncState::List, nInvCount);
+    pnode->PushMessage(NetMsgType::SYNCSTATUSCOUNT, (int)CMasternodeSync::MasternodeSyncState::Governance, nInvCount);
+}
+
+int CMasternodeGovernance::GetLastScheduledPaymentBlock()
+{
+    auto it = mapPayments.rbegin();
+    if (it != mapPayments.rend())
+        return it->first;
+    return 0;
 }
 
 void CMasternodeGovernance::CheckAndRemove()
@@ -221,26 +279,32 @@ void CMasternodeGovernance::CheckAndRemove()
     const CBlockIndex *pindex = chainActive.Tip();
     int nHeight = pindex->nHeight;
 
-    LOCK2(cs_mapTickets,cs_queuePayments);
+    LOCK2(cs_mapTickets,cs_mapPayments);
+
+    int lastScheduledPaymentBlock = GetLastScheduledPaymentBlock();
 
     int nPastWinners = 0;
     auto it = mapTickets.begin();
     while(it != mapTickets.end()) {
-        CGovernanceTicket ticket = (*it).second;
+        CGovernanceTicket& ticket = (*it).second;
 
         if (ticket.IsWinner()) {
-            if (!ticket.bInThePaymentQueue) {
-                queuePayments.push_back(ticket);
-                ticket.bInThePaymentQueue = true;
+            //process winners
+            if (ticket.nLastPaymentBlockHeight == 0) {
+                ticket.nFirstPaymentBlockHeight = lastScheduledPaymentBlock == 0? nHeight+1: lastScheduledPaymentBlock+1;
+                ticket.nLastPaymentBlockHeight = CalculateLastPaymentBlock(ticket.nAmountToPay, ticket.nFirstPaymentBlockHeight);
+                lastScheduledPaymentBlock = ticket.nLastPaymentBlockHeight;
+                mapPayments[lastScheduledPaymentBlock] = ticket;
                 LogPrint("governance", "CMasternodeGovernance::CheckAndRemove -- Add winner ticket to payment queue: %s\n", 
                         ticket.ToString());
                 ++it;
             } else {
                 nPastWinners++;
             }
-        } else if(ticket.nStopBlockHeight < nHeight) {
-            LogPrint("governance", "CMasternodeGovernance::CheckAndRemove -- Removing old, not winning ticket: nStopBlockHeight=%d; current Height=%d\n", 
-                    ticket.nStopBlockHeight,
+        } else if(ticket.nStopVoteBlockHeight < nHeight) {
+            //remove losers
+            LogPrint("governance", "CMasternodeGovernance::CheckAndRemove -- Removing old, not winning ticket: nStopVoteBlockHeight=%d; current Height=%d\n", 
+                    ticket.nStopVoteBlockHeight,
                     nHeight);
             mapTickets.erase(it++);
         } else {
@@ -249,7 +313,7 @@ void CMasternodeGovernance::CheckAndRemove()
     }
 
     if (nPastWinners > nMaxPaidTicketsToStore) {
-        //TODO
+        //TODO: prune paid winners
     }
     LogPrintf("CMasternodeGovernance::CheckAndRemove -- %s\n", ToString());
 }
@@ -259,16 +323,26 @@ std::string CMasternodeGovernance::ToString() const
     std::ostringstream info;
 
     info << "Tickets: " << (int)mapTickets.size() <<
-            ", Payments: " << (int)queuePayments.size();
+            ", Payments: " << (int)mapPayments.size();
 
     return info.str();
 }
 
 void CMasternodeGovernance::Clear()
 {
-    LOCK2(cs_mapTickets,cs_queuePayments);
+    LOCK2(cs_mapTickets,cs_mapPayments);
+    mapPayments.clear();
     mapTickets.clear();
-    queuePayments.clear();
+}
+
+void CMasternodeGovernance::UpdatedBlockTip(const CBlockIndex *pindex)
+{
+    if(!pindex) return;
+
+    nCachedBlockHeight = pindex->nHeight;
+    LogPrint("governance", "CMasternodeGovernance::UpdatedBlockTip -- nCachedBlockHeight=%d\n", nCachedBlockHeight);
+
+    ProcessBlock(nCachedBlockHeight);
 }
 
 bool CGovernanceTicket::AddVote(std::vector<unsigned char> vchSig, bool vote)
@@ -280,6 +354,9 @@ bool CGovernanceTicket::AddVote(std::vector<unsigned char> vchSig, bool vote)
     }
     mapVotes[vchSig] = vote;
     if (vote) nYesVotes++;
+
+    Relay(); //if remote node already has this ticket, it will not update it, even if there are new vote, should I sync votes separate? 
+
     return true;
 }
 
@@ -299,13 +376,10 @@ uint256 CGovernanceTicket::GetHash() const
     return ss.GetHash();
 }
 
-bool CGovernanceTicket::IncrementPayed(CAmount payment)
+CAmount CGovernanceTicket::IncrementPayed(CAmount payment)
 {
     nAmountPayed += payment;
-    if(nAmountPayed <= nAmountToPay) {
-        return true;
-    }
-    return false;
+    return nAmountPayed;
 }
 
 std::string CGovernanceTicket::ToString() const
@@ -320,11 +394,23 @@ std::string CGovernanceTicket::ToString() const
             ", Address: " << address2.ToString() <<
             ", Amount to pay: " << nAmountToPay <<
             ", Note: " << strDescription <<
-            ", Vote until block: " << nStopBlockHeight <<
+            ", Vote until block: " << nStopVoteBlockHeight <<
             ", Total votes: " << mapVotes.size() <<
             ", Yes votes: " << nYesVotes <<
             ", Amount paid: " << nAmountPayed;
 
     return info.str();
+}
+
+void CGovernanceTicket::Relay()
+{
+    // Do not relay until fully synced
+    if(!masterNodeCtrl.masternodeSync.IsSynced()) {
+        LogPrint("govenrnace", "CGovernanceTicket::Relay -- won't relay until fully synced\n");
+        return;
+    }
+
+    CInv inv(MSG_MASTERNODE_GOVERNANCE, GetHash());
+    CNodeHelper::RelayInv(inv);
 }
 

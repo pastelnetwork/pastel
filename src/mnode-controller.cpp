@@ -223,6 +223,9 @@ bool CMasterNodeController::AlreadyHave(const CInv& inv)
 {
     switch (inv.type)
     {
+    case MSG_MASTERNODE_GOVERNANCE:
+        return masternodeGovernance.mapTickets.count(inv.hash);
+
     case MSG_MASTERNODE_PAYMENT_VOTE:
         return masternodePayments.mapMasternodePaymentVotes.count(inv.hash);
 
@@ -248,6 +251,16 @@ bool CMasterNodeController::AlreadyHave(const CInv& inv)
 bool CMasterNodeController::ProcessGetData(CNode* pfrom, const CInv& inv)
 {
     bool pushed = false;
+
+    if (!pushed && inv.type == MSG_MASTERNODE_GOVERNANCE) {
+        if(masternodeGovernance.mapTickets.count(inv.hash)) {
+            CDataStream ss(SER_NETWORK, PROTOCOL_VERSION);
+            ss.reserve(1000);
+            ss << masternodeGovernance.mapTickets[inv.hash];
+            pfrom->PushMessage(NetMsgType::GOVERNANCE, ss);
+            pushed = true;
+        }
+    }
 
     if (!pushed && inv.type == MSG_MASTERNODE_PAYMENT_VOTE) {
         if(masternodePayments.HasVerifiedPaymentVote(inv.hash)) {

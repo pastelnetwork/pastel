@@ -33,5 +33,5 @@ void CACNotificationInterface::UpdatedBlockTip(const CBlockIndex *pindexNew, boo
 
     masterNodeCtrl.masternodeManager.UpdatedBlockTip(pindexNew);
     masterNodeCtrl.masternodePayments.UpdatedBlockTip(pindexNew);
-    //masterNodeCtrl.masternodeGovernance.UpdatedBlockTip(pindexNew);
+    masterNodeCtrl.masternodeGovernance.UpdatedBlockTip(pindexNew);
 }

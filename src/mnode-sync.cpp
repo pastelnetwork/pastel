@@ -329,7 +329,7 @@ void CMasternodeSync::ProcessTick()
                 nRequestedMasternodeAttempt++;
 
                 // ask node for all governance info it has
-                pnode->PushMessage(NetMsgType::GOVERNANCESYNC, 1000); //TODO: REAL VALUE!!!!
+                pnode->PushMessage(NetMsgType::GOVERNANCESYNC, masterNodeCtrl.masternodeGovernance.Size());
 
                 CNodeHelper::ReleaseNodeVector(vNodesCopy);
                 return; //this will cause each peer to get one request each six seconds for the various assets we need

@@ -27,7 +27,8 @@ const char *SYNCSTATUSCOUNT="ssc";  //MasterNode Sync status
 const char *MASTERNODEPAYMENTVOTE="mnw";
 const char *MASTERNODEPAYMENTBLOCK="mnwb";
 const char *MASTERNODEPAYMENTSYNC="mnget";
-const char *GOVERNANCESYNC="gvs";
+const char *GOVERNANCESYNC="gvget";
+const char *GOVERNANCE="gov";
 const char *DSTX="dstx";
 };
 
