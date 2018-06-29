@@ -100,10 +100,7 @@ void CMasternodeGovernance::AddTicket(std::string address, CAmount totalReward, 
     //2. Create ticket
     CScript scriptPubKey = GetScriptForDestination(destination);
 
-    const CBlockIndex *pindex = chainActive.Tip();
-    int nHeight = pindex->nHeight;
-
-    CGovernanceTicket ticket(scriptPubKey, totalReward, note, nHeight+masterNodeCtrl.nGovernanceVotingPeriodBlocks);
+    CGovernanceTicket ticket(scriptPubKey, totalReward, note, nCachedBlockHeight+masterNodeCtrl.nGovernanceVotingPeriodBlocks);
     uint256 ticketId = ticket.GetHash();
 
     //3. Search map if the ticket is already in it
@@ -112,14 +109,14 @@ void CMasternodeGovernance::AddTicket(std::string address, CAmount totalReward, 
     if (!mapTickets.count(ticketId)) {
         //3.a if not - add the new ticket
         mapTickets[ticketId] = ticket;
-    } else if (!mapTickets[ticketId].VoteOpen(nHeight)) {
+    } else if (!mapTickets[ticketId].VoteOpen(nCachedBlockHeight)) {
         //3.b if yes - see if voting is still open
         //it is not OK anymore to vote on taht ticket
         LogPrintf("CMasternodeGovernance::AddTicket -- Voting is disabled on ticket (Address: %s; Amount: %d). Stop Height=%d, but current height = %d\n", 
             mapTickets[ticketId].scriptPubKey.ToString(), 
             mapTickets[ticketId].nAmountToPay,
             mapTickets[ticketId].nStopVoteBlockHeight,
-            nHeight);
+            nCachedBlockHeight);
         return;
     }
 
@@ -133,9 +130,6 @@ void CMasternodeGovernance::AddTicket(std::string address, CAmount totalReward, 
 
 void CMasternodeGovernance::VoteForTicket(uint256 ticketId, bool vote)
 {
-    const CBlockIndex *pindex = chainActive.Tip();
-    int nHeight = pindex->nHeight;
-
     //1. Search map if the ticket is already in it
     LOCK(cs_mapTickets);
 
@@ -143,14 +137,14 @@ void CMasternodeGovernance::VoteForTicket(uint256 ticketId, bool vote)
         //3.a if not - error
         LogPrintf("CMasternodeGovernance::VoteForTicket -- Ticket ID (%ss) not found\n", ticketId.ToString());
         return;
-    } else if (!mapTickets[ticketId].VoteOpen(nHeight)) {
+    } else if (!mapTickets[ticketId].VoteOpen(nCachedBlockHeight)) {
         //3.b if yes - see if voting is still open
         //it is not OK anymore to vote on taht ticket
         LogPrintf("CMasternodeGovernance::VoteForTicket -- Voting is disabled on ticket (Address: %s; Amount: %d). Stop Height=%d, but current height = %d\n", 
             mapTickets[ticketId].scriptPubKey.ToString(), 
             mapTickets[ticketId].nAmountToPay,
             mapTickets[ticketId].nStopVoteBlockHeight,
-            nHeight);
+            nCachedBlockHeight);
         return;
     }
 
@@ -229,20 +223,36 @@ void CMasternodeGovernance::ProcessMessage(CNode* pfrom, std::string& strCommand
         {
             LOCK(cs_mapTickets);
 
+            //TODO verify ticket
+
             if (!mapTickets.count(ticketId)) {
-                //TODO verify ticket
+                //if we don't have this ticket - add it
                 mapTickets[ticketId] = ticket;
+
+                ticket.Relay();
+            } else {
+                //if we have this ticket, but if the vote still open - compare votes and update if needed
+                if (ticket.VoteOpen(nCachedBlockHeight)) {
+                    CGovernanceTicket& ownTicket = mapTickets[ticketId];
+
+                    LOCK(cs_ticketsVotes);
+
+                    for(auto a: ticket.mapVotes) {
+                        if (!ownTicket.mapVotes.count(a.first)) {
+                            ownTicket.mapVotes[a.first] = a.second;
+                            if (a.second) ownTicket.nYesVotes++;
+                        }
+                    }
+                    ticket.Relay();
+                }
             }
         }
 
         if (ticket.nLastPaymentBlockHeight != 0) {
             LOCK(cs_mapPayments);
 
-            mapPayments[ticket.nLastPaymentBlockHeight]= ticket;
+            mapPayments[ticket.nLastPaymentBlockHeight] = ticket;
         }
-
-        //Add into mapTickets
-        //if winner and not paid add it also to the payment queue (how to recreate the same order???)
     }
 }
 
@@ -276,9 +286,6 @@ void CMasternodeGovernance::CheckAndRemove()
 {
     if(!masterNodeCtrl.masternodeSync.IsBlockchainSynced()) return;
 
-    const CBlockIndex *pindex = chainActive.Tip();
-    int nHeight = pindex->nHeight;
-
     LOCK2(cs_mapTickets,cs_mapPayments);
 
     int lastScheduledPaymentBlock = GetLastScheduledPaymentBlock();
@@ -291,7 +298,7 @@ void CMasternodeGovernance::CheckAndRemove()
         if (ticket.IsWinner()) {
             //process winners
             if (ticket.nLastPaymentBlockHeight == 0) {
-                ticket.nFirstPaymentBlockHeight = lastScheduledPaymentBlock == 0? nHeight+1: lastScheduledPaymentBlock+1;
+                ticket.nFirstPaymentBlockHeight = lastScheduledPaymentBlock == 0? nCachedBlockHeight+1: lastScheduledPaymentBlock+1;
                 ticket.nLastPaymentBlockHeight = CalculateLastPaymentBlock(ticket.nAmountToPay, ticket.nFirstPaymentBlockHeight);
                 lastScheduledPaymentBlock = ticket.nLastPaymentBlockHeight;
                 mapPayments[lastScheduledPaymentBlock] = ticket;
@@ -301,11 +308,11 @@ void CMasternodeGovernance::CheckAndRemove()
             } else {
                 nPastWinners++;
             }
-        } else if(ticket.nStopVoteBlockHeight < nHeight) {
+        } else if(ticket.nStopVoteBlockHeight < nCachedBlockHeight) {
             //remove losers
             LogPrint("governance", "CMasternodeGovernance::CheckAndRemove -- Removing old, not winning ticket: nStopVoteBlockHeight=%d; current Height=%d\n", 
                     ticket.nStopVoteBlockHeight,
-                    nHeight);
+                    nCachedBlockHeight);
             mapTickets.erase(it++);
         } else {
             ++it;
@@ -355,7 +362,7 @@ bool CGovernanceTicket::AddVote(std::vector<unsigned char> vchSig, bool vote)
     mapVotes[vchSig] = vote;
     if (vote) nYesVotes++;
 
-    Relay(); //if remote node already has this ticket, it will not update it, even if there are new vote, should I sync votes separate? 
+    Relay();
 
     return true;
 }
