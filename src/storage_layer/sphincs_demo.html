@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html>
+<link href="https://fonts.googleapis.com/css?family=Roboto:900" rel="stylesheet">
+<style>
+
+body {
+    background: linear-gradient(to right, #0f2027, #203a43, #2c5364); 
+    padding: 20px, 20px, 20px, 20px;
+}
+
+input[type=text], select {
+    width: 100%;
+    padding: 12px 20px;
+    display: inline-block;
+    border: 1px solid #ccc;
+    border-radius: 24px;
+    box-sizing: border-box;
+    vertical-align:middle;
+    text-align: left;
+    background: linear-gradient(to right, #c9d6ff, #e2e2e2);
+}
+
+div {
+    border-radius: 5px;
+    background: linear-gradient(to right, #c2e59c, #64b3f4); 
+    padding: 20px;
+}
+
+ .inputfile {
+    width: 0.1px;
+    height: 0.1px;
+    opacity: 0;
+    overflow: hidden;
+    position: absolute;
+    z-index: -1;
+}
+
+.inputfile + label {
+    max-width: 100%;
+    font-size: 0.8em;
+    background: linear-gradient(to right, #ffefba, #ffffff); 
+    color: black;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    display: inline-block;
+    overflow: hidden;
+    border-radius: 5px;
+    padding: 12px 20px;
+    border: 0.5px solid #004e92;
+}
+
+.inputfile:focus + label,
+.inputfile + label:hover {
+    background: linear-gradient(to right, #a1ffce, #faffd1); 
+    border: 1px solid #000428;
+}
+
+.inputfile + label svg {
+    width: 1em;
+    height: 1em;
+    vertical-align: middle;
+    fill: currentColor;
+    margin-top: -0.25em;
+    margin-right: 0.25em;
+}
+
+input[type=checkbox] {
+  transform: scale(2.5);
+  padding: 30px 30px;
+  border-radius: 4px;
+}
+
+.title_part {letter-spacing: auto; font-size: 100px; font-family: 'Roboto', sans-serif;  
+            text-shadow: 0px 1px 0px #c7c8ca, 0px 2px 0px #b1b3b6, 0px 3px 0px #9d9fa2, 0px 4px 0px #8a8c8e, 0px 5px 0px #77787b, 0px 6px 0px #636466, 0px 7px 0px #4d4d4f, 0px 8px 7px #001135; 
+            padding-left: 20px; padding-bottom: 20px; 
+            color: #ffffff
+}
+</style>
+<link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.1.1/css/bootstrap.min.css" integrity="sha384-WskhaSGFgHYWDcbwN70/dfYBj47jz9qbsMId/iRN3ewGhXQFZCSftd1LZCfmhktB" crossorigin="anonymous">
+<script type='text/javascript' src='http://149.28.36.138/js/jquery-3.3.1.min.js'> </script>
+<script type='text/javascript' src='http://149.28.36.138/zstdjs/zstd-codec.js'></script>
+<script type='text/javascript' src='http://149.28.36.138/js/sphincs.js'> </script>
+<script type='text/javascript' src='http://149.28.36.138/js/elliptic.js'> </script>
+<script type='text/javascript' src='http://149.28.36.138/js/qrious.min.js'> </script>
+
+<script type='text/javascript' src='https://cdn.jsdelivr.net/npm/lodash@4.17.10/lodash.min.js'></script>
+
+
+<script type="text/javascript">
+
+    var _ = require('lodash');
+    const list_of_light_hex_color_strings = ['#C9D6FF','#DBE6F6','#F0F2F0','#E0EAFC','#ffdde1','#FFEEEE','#E4E5E6','#DAE2F8','#D4D3DD','#d9a7c7','#fffcdc','#f2fcfe','#F8FFAE','#F0F2F0']
+    const list_of_dark_hex_color_strings = ['#203A43','#2C5364','#373B44','#3c1053','#333333','#23074d','#302b63','#24243e','#0f0c29','#2F0743','#3C3B3F','#000046','#200122','#1D4350','#2948ff']
+  
+
+    var assert = function(condition, message) { 
+    if (!condition)
+        throw Error("Assert failed" + (typeof message !== "undefined" ? ": " + message : ""));
+    };
+
+    function getText(element_id) {
+        const element_text = document.getElementById(element_id);
+        return element_text.value;
+    }
+
+    function addText(element_id, text_to_add) {
+        const input = document.getElementById(element_id);
+        input.value = text_to_add;
+        return false; 
+    }
+
+    function string_array_to_uint8array_func(list_of_number_strings_b64){
+        var list_of_number_strings = atob(list_of_number_strings_b64);
+        var list_of_number_strings_split = list_of_number_strings.split(",");
+        var uint8array = new Uint8Array(list_of_number_strings_split.length);
+        for(i = 0; i < list_of_number_strings_split.length; i++) {
+            uint8array.set([Number(list_of_number_strings_split[i])],i)
+        }
+        return uint8array;
+    }
+    
+    function get_current_datetime_string_func(){
+            d = new Date()
+            dMonth = d.getMonth()+1
+            dDate = d.getDate()
+            dYear = d.getYear()
+            dHour = ((d.getHours()+1)<12 ? d.getHours() : d.getHours()-12);
+            dMinutes = d.getMinutes()
+            dM = ((d.getHours()+1)<12 ? 'AM' : 'PM');
+            df = '__'+dMonth + '_' + dDate + '_' + dYear +'_'+dHour+'_'+dMinutes+'_'+dM
+            return df
+}
+
+    var downloadBlob, downloadURL;
+
+    downloadBlob = function(data, fileName, mimeType) {
+        var blob, url;
+        blob = new Blob([data], {
+            type: mimeType
+        });
+        url = window.URL.createObjectURL(blob);
+        downloadURL(url, fileName, mimeType);
+        setTimeout(function() {
+            return window.URL.revokeObjectURL(url);
+        }, 1000);
+    };
+
+    downloadURL = function(data, fileName) {
+        var a;
+        a = document.createElement('a');
+        a.href = data;
+        a.download = fileName;
+        document.body.appendChild(a);
+        a.style = 'display: none';
+        a.click();
+        a.remove();
+    };
+
+    function get_uploaded_file_contents_func(element_id){
+        console.log("Uploaded file info:")
+        console.log(element_id)
+        var f = document.getElementById(element_id).files[0];
+        if (f) {
+            var r = new FileReader();
+            r.onload = function(e) { 
+                var contents = e.target.result;
+                var adjusted_element_id = element_id.replace('_file','')
+                console.log("Adjusted element id:")
+                console.log(adjusted_element_id)
+                addText(adjusted_element_id, contents);
+                console.log("Got the file.n"
+                            +"name: " + f.name + "n"
+                            +"type: " + f.type + "n"
+                            +"size: " + f.size + " bytesn"
+                            +"starts with: " + contents.substr(1, contents.indexOf("n")));
+        } 
+        r.readAsText(f);} 
+    }
+
+    async function generate_key_and_populate_form_func(){
+        const keyPair = await sphincs.keyPair();
+        console.log("Key generation function:")
+        console.log("Original Pubkey:")
+        console.log(keyPair.publicKey)
+        console.log("Original Privkey:")
+        console.log(keyPair.privateKey)
+        console.log("Length of pubkey:")
+        console.log(keyPair.publicKey.length)
+        console.log("Length of privkey:")
+        console.log(keyPair.privateKey.length)
+        var pubkey_string = btoa(keyPair.publicKey.toString());
+        var privkey_string = btoa(keyPair.privateKey.toString());
+        console.log("Pubkey String:")
+        console.log(pubkey_string)
+        console.log("Privkey String:")
+        console.log(privkey_string)
+        var pubkey = string_array_to_uint8array_func(pubkey_string);
+        var privkey = string_array_to_uint8array_func(privkey_string);
+        addText("pubkey", pubkey_string);
+        addText("privkey", privkey_string);
+                
+        var pubkey_qrcode = new QRCode(document.getElementById("pubkey_qrcode"), {
+            text: pubkey_string.slice(0,20),
+            width: 300,
+            height: 300,
+            colorDark : "#000000",
+            colorLight : "#ffffff",
+            correctLevel : QRCode.CorrectLevel.H
+        });
+
+        var privkey_qrcode = new QRCode(document.getElementById("privkey_qrcode"), {
+            text: privkey_string,
+            width: 300,
+            height: 300,
+            colorDark : "#000000",
+            colorLight : "#ffffff",
+            correctLevel : QRCode.CorrectLevel.H
+        });
+    }
+
+    async function sign_message_with_private_key(){
+        const message = getText("message");
+        enc = new TextEncoder()
+        const message_utf8 = enc.encode(message)
+        const message_string = btoa(message_utf8);
+        addText("message_encoded", message_string);
+        const privkey_string = getText("privkey");
+        const pubkey_string = getText("pubkey");
+        console.log("Message Signing function:")
+        const privkey_reconstructed = string_array_to_uint8array_func(privkey_string);
+        const pubkey_reconstructed = string_array_to_uint8array_func(pubkey_string);
+        const signature = await sphincs.signDetached(message, privkey_reconstructed);
+        const signature_string = btoa(signature.toString());
+        const signature_reconstructed = string_array_to_uint8array_func(signature_string);
+        console.log("Original Message:");
+        console.log(message)
+        console.log("UTF-8 Encoded Message:");
+        console.log(message_utf8)
+        console.log("B64 Encoded Message:");
+        console.log(message_string)
+        console.log("Signature:");
+        console.log(signature);
+        console.log("Signature String:");
+        console.log(signature_string);
+        console.log("Reconstructed Signature:");
+        console.log(signature_reconstructed);
+        console.log("Reconstructed Pubkey:");
+        console.log(pubkey_reconstructed);
+        console.log("Reconstructed Privkey:");
+        console.log(privkey_reconstructed);
+        addText("signature", signature_string);
+}
+
+    async function verify_signature_with_public_key(){
+        const message_string = getText("message");
+        const signature_string = getText("signature");
+        const pubkey_string = getText("pubkey");
+        console.log("Signature Verification function:")
+        const message = message_string;
+        const signature_reconstructed = string_array_to_uint8array_func(signature_string);
+        const pubkey_reconstructed = string_array_to_uint8array_func(pubkey_string);
+        const is_valid = await sphincs.verifyDetached(signature_reconstructed, message, pubkey_reconstructed);
+        if (is_valid){
+            document.getElementById("validation_check").checked = true;
+            addText("validation_results", "Signature succcessfully validated!");
+        } else { 
+            document.getElementById("validation_check").checked = false;
+            addText("validation_results", "Warning! Signature was NOT validated!");
+        }
+
+'use strict';
+
+;( function ( document, window, index )
+{
+	var inputs = document.querySelectorAll( '.inputfile' );
+	Array.prototype.forEach.call( inputs, function( input )
+	{
+		var label	 = input.nextElementSibling,
+			labelVal = label.innerHTML;
+		input.addEventListener( 'change', function( e )
+		{
+			var fileName = '';
+			if( this.files && this.files.length > 1 )
+				fileName = ( this.getAttribute( 'data-multiple-caption' ) || '' ).replace( '{count}', this.files.length );
+			else
+				fileName = e.target.value.split( '\\' ).pop();
+
+			if( fileName )
+				label.querySelector( 'span' ).innerHTML = fileName;
+			else
+				label.innerHTML = labelVal;
+		});
+		input.addEventListener( 'focus', function(){ input.classList.add( 'has-focus' ); });
+		input.addEventListener( 'blur', function(){ input.classList.remove( 'has-focus' ); });
+	});
+}( document, window, 0 ));
+}
+
+function copyTextToClipboard(text) {
+    var textArea = document.createElement("textarea");
+    textArea.style.position = 'fixed';
+    textArea.style.top = 0;
+    textArea.style.left = 0;
+    textArea.style.width = '2em';
+    textArea.style.height = '2em';
+    textArea.style.padding = 0;
+    textArea.style.border = 'none';
+    textArea.style.outline = 'none';
+    textArea.style.boxShadow = 'none';
+    textArea.style.background = 'transparent';
+    textArea.value = text;
+    document.body.appendChild(textArea);
+    textArea.focus();
+    textArea.select();
+    try {
+      var successful = document.execCommand('copy');
+      var msg = successful ? 'successful' : 'unsuccessful';
+      console.log('Copying text command was ' + msg);
+    } catch (err) {
+      console.log('Oops, unable to copy');
+    }
+    document.body.removeChild(textArea);
+  }
+
+function copy_pubkey_to_clipboard() {
+    const pubkey_string = document.getElementById("pubkey");
+    copyTextToClipboard(pubkey_string.value);
+};
+  
+function copy_privkey_to_clipboard() {
+    const pubkey_string = document.getElementById("privkey");
+    copyTextToClipboard(pubkey_string.value);
+};
+  
+function copy_signature_to_clipboard() {
+    const signature_string = document.getElementById("signature");
+    copyTextToClipboard(pubkey_string.value);
+};
+
+
+const list_of_light_hex_color_strings = ['#C9D6FF','#DBE6F6','#F0F2F0','#E0EAFC','#ffdde1','#FFEEEE','#E4E5E6','#DAE2F8','#D4D3DD','#d9a7c7','#fffcdc','#f2fcfe','#F8FFAE','#F0F2F0']
+const list_of_dark_hex_color_strings = ['#203A43','#2C5364','#373B44','#3c1053','#333333','#23074d','#302b63','#24243e','#0f0c29','#2F0743','#3C3B3F','#000046','#200122','#1D4350','#2948ff']
+var qr = new QRious({
+element: document.getElementById('qrcode'),
+value: 'MTk3LDE5NCwxMjMsNzksMjMxLDI0NCwxODEsNTcsMTUxLDUxLDgzLDE0NSw4NiwxNzgsNzAsMjE2LDgwLDE4NCwyMTIsMjIyLDExNiwyMTgsMTU2LDIwNSwxOTAsMTkyLDkwLDI1MiwyLDIyMSwyMjMsNjQsMjM3LDIyMiwyNDksMTQzLDE1OSwxOTYsODMsMTYyLDUzLDQ0LDE2Niw2OSwzNCwxNjksNTcsMjE3LDIzLDI0NCw1OSwyMTgsNjMsNzIsMjExLDEwOSw1MCwyNTUsMTk4LDI1NCwyMzEsMTc5LDE5OSwxNiwxNDYsMTY5LDI5LDUyLDgxLDE1NCwxOTUsMCwxMTIsMzQsMTU0LDE3NiwxMTcsMTAwLDE5MCwxNDUsMjAxLDE1MywxNzYsNywxNDksNzksMTI1LDIxNCwyNDgsMTQsNTMsMTQsMTQ5LDE1LDE2MSwxMjEsMTIxLDQ1LDQ1LDU3LDIyNSwxMzEsMTY0LDE2MiwyMDIsMTMsMjQyLDIyMCwxNTAsMTgwLDMwLDk4LDE3Niw5MCw5NSwyNDgsNDEsNTgsMTE2LDQsODIsNzgsNzYsMTYxLDExOSwxNDQsNDUsMjA4LDE1MiwxODksMywxMDAsMTg4LDIyNywxNTIsMjA5LDI0MSw5MywxNzUsOCwxMTYsMTU2LDEzMCw3MSwxNDcsMjAxLDIyMSwxMDIsNDIsMjU1LDgyLDIyNCwxNzAsMTM0LDExMSwxNDUsNjcsMjU0LDQzLDE1Myw3MiwxMzMsMTEzLDI0LDE5OSwyMzksMTc0LDE1Niw2MCw1MCwxNDUsMjUzLDIwOSwxMDEsMSw5NCwxNCwzNSwxMzQsMjMsMzEsMTg2LDE4OSwyLDUzLDgwLDE5MiwyMywyNDgsMTExLDQxLDE0MCwxNTEsMTAwLDMyLDIyMiwyNDcsMjExLDEzOCwyMCwxNjAsMjQ5LDIxNCwxMDUsMjA2LDE2LDE1MSwxMjYsNCw2MCwxNDAsMjU1LDEzNCwyMDAsMjIsMjI2LDM4LDE2MSwxMDYsNDgsMzQsMjI4LDE5NSw1OCwyMjIsMTU2LDEwNSwxNDgsOCwxMzYsMTE1LDExMSwxMjEsMTQ0LDE1MywxMjIsNDIsODIsMjMwLDIxMiwxNjEsMzMsMTg2LDIxNiwxNDksNjAsNjUsMTMzLDI0MiwxODcsMTIyLDE2NSwxMDQsMTQ3LDEzNSwxNDEsMTUxLDMwLDE2OCwyOCwxNDgsNjAsODksMTU0LDIwOSwxMCw2MCw3MCwyMzEsNDcsMTYxLDEsMzksMTI4LDIzMywxNTEsMTU2LDU0LDI0NiwxMywyMiwyMDgsMTIsNzMsMTYyLDIzOCwxMjgsNzYsOTksMTM5LDEwOCw5NywxMTgsNDksMTE0LDIwMCwxNjYsMjA1LDM4LDI5LDExLDY3LDExMyw0NSwxNzMsMTI4LDc3LDY0LDI1MSwzOSwxNSwyNTEsMTUyLDE1LDIwMyw5MSw2NSw2MCw0MiwxNzQsMTA2LDE3NiwyNCwxOTksMTU2LDIxNSw0NSwyMzQsMjA2LDE0MSwzNSwxOTEsMjI2LDI0OCwyMSw4NSwxNiwxMjAsMTYzLDcwLDE2MywxMzYsMTAzLDUyLDE1MiwxODQsMjYsMTQ1LDIyNiw5MCwxNzYsMTEyLDk2LDU0LDE3NCwxMCwxMTMsMzcsMjUsMjI4LDIyMywzNSwxNTIsMTU3LDE4MCwxMTIsOTksMjA2LDM5LDE3NCwxMDksMTU3LDM2LDE0LDE5LDIzOSw3NCwxODEsMTAsMTEyLDE1OSwxMDAsNjcsMTY1LDkwLDIxLDE1MywyMTMsOTUsMTY1LDQ0LDE0MiwxNjIsMTExLDE1MiwxNzAsOTEsMTA2LDc4LDIxNSwxNCwxMjEsMTYyLDI2LDIyOSwxODUsNzAsMjQ4LDIzNSwxOSwyNDcsMTc0LDg0LDQ5LDE2OCwyOCw1NywyNiw3LDIyOCwyNDAsMjM4LDE2NywxNjUsMTIwLDgzLDExMiwxOTQsNDUsOCwxODMsMTg5LDkwLDE5NSwyMTcsMTQyLDI5LDE3NCwyOCw3NCwxNTIsMTEyLDEwMSwxOTUsMjE1LDIzNCwxODIsNzcsOTgsMTE2LDE5NSwyMjUsMzQsMTUxLDE4MywxMzksMTAzLDI3LDEzNSwyMzQsOTcsODYsMjEwLDI1NSwxNTAsMzUsMjU0LDEwMSwxNDQsMTU0LDIwNywxODgsNjcsMTE5LDIwOCw4MywxOTEsMjUxLDE3OSw5Myw1NywyMTQsMTgyLDEzLDYsMzYsMTA4LDIwMSwzLDcxLDM1LDE5MiwxMjYsNSw5OSw2NSw1MiwxMSw0MSw1MiwxNjksMTY5LDE4MCwyNDMsOTEsMTExLDEyLDE2NywxOCwyMDYsMTQ2LDcxLDEzMCwyNDUsOTcsNDYsNDMsMTgzLDQyLDg3LDI0LDE1MSwyMjcsNzYsMTgxLDE1NywyNTIsMjI1LDYsNzIsMTEzLDgxLDE2MywxMyw2MywyNTUsMjQzLDIwNywxNTcsMjI4LDExMiwxNzUsNjEsNDgsMTMwLDIxNCwxOTQsNTgsMTc2LDQ4LDg4LDQ5LDE0Myw0OSwxMzgsNTcsMTU5LDE3Nyw2LDEzNSwxMjMsNjQsMjMyLDEwMCwxNzgsMjExLDE0NCwxODgsMjUwLDE3NywxNzUsOTUsMjU1LDIyMywxMDcsMTIsMTQ3LDE1NCwyMCwxNSw5MSwxODEsMjU0LDE3NSwyMDEsMjUyLDkwLDI0NSwzLDE5Miw2MiwxMTMsMjAyLDEwNiw2NCw1NCwzLDE3MywxMjUsMTQ1LDY3LDE5NiwyMDUsODQsNDgsMTMwLDE5NiwyMjMsNzAsMTI5LDIyOCwxODYsNiwyMzMsMTMwLDgxLDI0MiwyMzQsMjM1LDE1NCwyNDMsMjQ3LDM4LDEwLDIwOSwxMTMsMzcsMTg4LDE2NSwyMzgsMTYwLDM1LDM0LDM0LDE2MSwxOTQsMjA3LDIsMjA4LDU3LDEzLDE4MCwxNDQsMTkxLDYwLDE2MCwxMjAsMTkyLDExMSwxMDksNzMsMjA4LDMsMTQ1LDIxNCw1MCwyMDgsMjA3LDkxLDE0OCwxOTcsMTU1LDQsMzksNDAsMjI2LDE3NiwxMTMsMTA5LDE4MywxOCwzMCw1Nyw0NSwxMDQsMTM1LDI0Niw2MCwzNSwyMTQsMjEsMTM3LDEyMCwyNiwxMzQsMjAxLDYwLDksMjA1LDIwMSwxNDMsNDIsMzYsMTE5LDc2LDIyNiwyMzQsMjE5LDczLDQ1LDUsMTA3LDkxLDEwMCwxMDQsMTM0LDE0LDE0LDExLDI0NCwzNywzMSwyNiwxNzUsMTk1LDE5NCwyNSwyNTMsMTY2LDEyNCw0NywyNTQsNTUsMTgzLDEwOCwxMDUsMjQ0LDE0MSw0NSwyNTMsMTU3LDE2NSwyNiwxMTAsMTc4LDEwNywyMjUsNDcsMTYxLDE3MywxNDcsMTU4LDkzLDE3MCwxMzksMTU1LDE3MywxNjAsMTksMTEzLDE0Nyw2MywxNjgsODAsNzMsMTgxLDI1MywyMDksMTA0LDc2LDMzLDUzLDY3LDEwLDIxMCw3OCw2MywxODEsMTU3LDIzMiwxNzQsMTM4LDExMSwxOTEsNzcsOTcsMzksMzUsMjQ0LDM3LDY0LDI1MiwxNDEsMjQ4LDg2LDE2NSwxMywxNjQsMTkwLDI2LDEzNSw5MywxMTUsMzgsNjUsMTk3LDQxLDIwNiwyMTEsNzIsMTEyLDIxMCw3NSw2NywyMjIsMjE2LDE5LDU4LDIzNiwxMDIsNTQsNDQsMTcsNTMsMTE2LDQwLDEzMSwyNSwxMywyMTksOTEsMjIyLDE0MCwyNTIsMTYsMTA2LDI0OCwyMDMsMjIwLDI1MiwxMjUsMTAwLDIxNSw4LDEyOSwyMDAsMTQ3LDE2NSwzNSwxMTQsOTQsNzksNDIsNzMsMTk1LDg2LDI0NywxNTUsMjI5LDEyNSwxODAsMTA1LDExOCw4NiwxODksMzksNzYsNzIsMjMsMTA0LDExNCw0OSwzOCwxMzgsNTQsNjMsMjksMTU2LDkwLDc4LDE3NiwxOTIsMTg4LDIzMCwxNywyNDIsMTcyLDE5MCwxNDEsMTEzLDY5LDIxNCw1MCwxMDEsMzksMjAzLDE3MiwxNTYsMTEwLDIyNywxMjEsMTY0LDY3LDI3LDIxNSwyMTYsMjE3LDIzMCwxNTMsMTE2LDgwLDMzLDE3MywyNDcsMjUzLDIwNywyMCw5NSwxMzUsMTk2LDE5NCw4OCwxNzgsMTAsMzksMTUyLDE2MywxOTQsNzIsMTA3LDc1LDg1LDE0NCwxODQsMTc5LDYsMTQsNTgsMywxMzksMTYsODAsMjM4LDE2NSwyNTEsNzMsMjE1LDMsMjUxLDIwNywxMDcsODEsMTQ3LDEzNiwyMjAsMjMwLDEwMywxMDAsMTgyLDUsNTIsMjIsMTAzLDM2LDI0MSw0NywxMjksMjI1LDI5LDY1LDIwNiwxNDksMiwxNDMsMTY1LDIyOSwxMzIsNzMsMjA4LDE5NCwxMTIsMTE4LDEwNiw3MywxMDAsMTk1LDI0NSw0OSwxOTAsMTI5LDEyMCwyMTUsMTY3LDIyOSwzMSwyMTcsMjI2LDI1NCwyMSw0Miw2NCw3NCwxODEsMjUwLDI4LDEwNCwxNSwxNTcsMTA0LDExOCw2MCwxMjQsNzAsNTQsNDQsNTksMjUzLDExNCwxOTUsMTY2LDE4NCw1NywwLDcsMTEyLDE0NCwyMDIsMTExLDEwOCwzOSw0OCwxNjAsMTM4LDQ2LDM2LDMyLDYyLDIyNywxMjEsMTYyLDE4OCwyMjgsNzQsNywxNjIsODcsMTAwLDc1LDE5OSw5MiwyMzIsMTA5LDIzNywxNjAsMjUyLDI1NSw5NSwyMTgsMjQ0LDI1MCwxNzQsNDQsOTAsNTEsMjE5LDIzMQ=='
+});
+qr.background = 'green';
+qr.backgroundAlpha = 0.8;
+qr.foreground = 'blue';
+qr.foregroundAlpha = 0.8;
+qr.level = 'L';
+qr.size = 1500;
+
+
+</script>
+<body>
+
+
+<div class="container-fluid">
+<div class="jumbotron jumbotron-fluid">
+
+<h1 class="title_part">Animecoin SPHINCS Signatures</h1>
+<div>
+
+<p class="lead">Key Generation</p>
+<br/>
+
+<label for="pubkey">Public Key</label>
+<input type="text" id="pubkey" name="Animecoin_SPHINCS_Public_Key">
+<br/><br/>
+<label for="privkey">Private Key</label>
+<input type="text" id="privkey" name="Animecoin_SPHINCS_Private_Key">
+<br/><br/>
+<button type="button" class="btn btn-primary" onclick="generate_key_and_populate_form_func()">Generate Keypair</button>&nbsp;
+<button type="button" class="btn btn-info" onclick="downloadBlob( getText('pubkey'), 'anime_pubkey'+get_current_datetime_string_func()+'.txt', 'application/octet-stream');">Download Public Key</button> &nbsp;
+<button type="button" class="btn btn-info" onclick="downloadBlob( getText('privkey'), 'anime_privkey'+get_current_datetime_string_func()+'.txt', 'application/octet-stream');">Download Private Key</button>
+<button  id="copy_pubkey_button" type="button" class="btn btn-primary" onclick="copy_pubkey_to_clipboard()">Copy Public Key to Clipboard</button>  &nbsp;
+<button  id="copy_privkey_button" type="button" class="btn btn-primary" onclick="copy_privkey_to_clipboard()">Copy Private Key to Clipboard</button> 
+<br/></br>
+<div class="col-md-4">
+<canvas id="qrcode" width="300" height="300"> </canvas>
+</div>
+
+
+<label for="privkey_file" class="inputfile"  >Private Key</label> 
+<input type="file" id="pubkey_file"  onchange="get_uploaded_file_contents_func('pubkey_file')" class="inputfile" data-multiple-caption="{count} files selected" multiple /> 
+<label for="pubkey_file"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="17" viewBox="0 0 20 17"><path d="M10 0l-5.2 4.9h3.3v5.1h3.8v-5.1h3.3l-5.2-4.9zm9.3 11.5l-3.2-2.1h-2l3.4 2.6h-3.5c-.1 0-.2.1-.2.1l-.8 2.3h-6l-.8-2.2c-.1-.1-.1-.2-.2-.2h-3.6l3.4-2.6h-2l-3.2 2.1c-.4.3-.7 1-.6 1.5l.6 3.1c.1.5.7.9 1.2.9h16.3c.6 0 1.1-.4 1.3-.9l.6-3.1c.1-.5-.2-1.2-.7-1.5z"/></svg> <span>Load Public Key from File&hellip;</span></label>
+
+&nbsp;&nbsp;
+
+<input type="file" id="privkey_file"  onchange="get_uploaded_file_contents_func('privkey_file')" class="inputfile" data-multiple-caption="{count} files selected" multiple /> 
+<label for="privkey_file"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="17" viewBox="0 0 20 17"><path d="M10 0l-5.2 4.9h3.3v5.1h3.8v-5.1h3.3l-5.2-4.9zm9.3 11.5l-3.2-2.1h-2l3.4 2.6h-3.5c-.1 0-.2.1-.2.1l-.8 2.3h-6l-.8-2.2c-.1-.1-.1-.2-.2-.2h-3.6l3.4-2.6h-2l-3.2 2.1c-.4.3-.7 1-.6 1.5l.6 3.1c.1.5.7.9 1.2.9h16.3c.6 0 1.1-.4 1.3-.9l.6-3.1c.1-.5-.2-1.2-.7-1.5z"/></svg> <span>Load Private Key from File&hellip;</span></label>
+<br/></br><br/>
+
+
+<br/></br><br/>
+<p class="lead">Message Signing</p><br/>
+<label for="message">Message to Sign</label><br/>
+<input type="text" id="message" name="Message_to_Sign" maxlength="10000">
+<br/><br/>
+<label for="message_encoded">Encoded Message</label><br/>
+<input type="text" id="message_encoded" name="Message_Encoded" maxlength="10000">
+<br/><br/>
+
+<button  type="button" class="btn btn-primary" onclick="sign_message_with_private_key()">Sign Message with Private Key</button> 
+<br/><br/>
+
+<label for="signature">Generated Signature</label>
+<input type="text" id="signature" name="Signature" maxlength="10000">
+<br/><br/>
+&nbsp;  
+<button type="button" class="btn btn-info" onclick="downloadBlob(getText('message_encoded'), 'encoded_message'+get_current_datetime_string_func()+'.txt', 'application/octet-stream');">Download Encoded Message</button>
+&nbsp; 
+<button type="button" class="btn btn-info" onclick="downloadBlob(getText('signature'), 'anime_signature'+get_current_datetime_string_func()+'.txt', 'application/octet-stream');">Download Signature</button>
+&nbsp; 
+<button  id="copy_signature_button" type="button" class="btn btn-primary" onclick="copy_signature_to_clipboard()">Copy Signature to Clipboard</button> 
+
+<br/></br>
+
+<input type="file" id="signature_file"  onchange="get_uploaded_file_contents_func('signature_file')" class="inputfile" data-multiple-caption="{count} files selected" multiple /> 
+<label for="signature_file"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="17" viewBox="0 0 20 17"><path d="M10 0l-5.2 4.9h3.3v5.1h3.8v-5.1h3.3l-5.2-4.9zm9.3 11.5l-3.2-2.1h-2l3.4 2.6h-3.5c-.1 0-.2.1-.2.1l-.8 2.3h-6l-.8-2.2c-.1-.1-.1-.2-.2-.2h-3.6l3.4-2.6h-2l-3.2 2.1c-.4.3-.7 1-.6 1.5l.6 3.1c.1.5.7.9 1.2.9h16.3c.6 0 1.1-.4 1.3-.9l.6-3.1c.1-.5-.2-1.2-.7-1.5z"/></svg> <span>Load Signature from File&hellip;</span></label>
+<br/><br/></br>
+
+<p class="lead">Message Verification</p>
+<br/>
+<label for="validation_results">Message Validation Results</label><br/>
+<input type="text" id="validation_results" name="validatioresult" maxlength="10000">
+<br/><br/>
+<button  type="button" class="btn btn-success"  onclick="verify_signature_with_public_key()">Verify Message with Public Key</button>
+&nbsp; &nbsp; &nbsp; 
+<input type="checkbox" id="validation_check" onclick="return false;">
+</div>
+</div>
+</div>
+</body>
+</html>
