@@ -1,11 +1,16 @@
-import hashlib, sqlite3, imghdr, glob, os, io, heapq
+import hashlib, sqlite3, imghdr, glob, os, io, heapq, time
 import numpy as np
 import pandas as pd
 from sklearn import decomposition, manifold, pipeline
 from sklearn.metrics import precision_recall_curve, auc
+from sklearn.neighbors import NearestNeighbors
+from sklearn.cluster import AffinityPropagation
+from sklearn.metrics.pairwise import chi2_kernel, rbf_kernel, laplacian_kernel, polynomial_kernel, cosine_similarity
+from sklearn.decomposition import PCA
 from keras.preprocessing import image
 from keras.applications.imagenet_utils import preprocess_input
 from keras import applications
+
 # requirements: pip install numpy keras pillow sklearn pandas
 # Test files:
 # Registered images to populate the image fingerprint database: https://www.dropbox.com/sh/w4ef54k68qxtr9k/AADwBzgmvh6Do32bH7oLsxhca?dl=0
@@ -33,6 +38,17 @@ def convert_sqlite_data_to_numpy_array_func(sqlite_data_in_text_format):
 
 sqlite3.register_adapter(np.ndarray, convert_numpy_array_to_sqlite_func) # Converts np.array to TEXT when inserting
 sqlite3.register_converter('array', convert_sqlite_data_to_numpy_array_func) # Converts TEXT to np.array when selecting
+
+class MyTimer():
+    def __init__(self):
+        self.start = time.time()
+    def __enter__(self):
+        return self
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        end = time.time()
+        runtime = end - self.start
+        msg = '({time} seconds to complete)'
+        print(msg.format(time=round(runtime,5)))
 
 def prepare_image_fingerprint_data_for_export_func(image_feature_data):
     image_feature_data_arr = np.char.mod('%f', image_feature_data) # convert from Numpy to a list of values
@@ -131,6 +147,17 @@ def get_image_deep_learning_features_func(path_to_art_image_file):
     except Exception as e:
         print('Error: '+ str(e))
 
+def get_image_deep_learning_features_combined_vector_for_single_image_func(path_to_art_image_file):
+    model_1_image_fingerprint_vector, model_2_image_fingerprint_vector, model_3_image_fingerprint_vector, sha256_hash_of_art_image_file, dupe_detection_model_1, dupe_detection_model_2, dupe_detection_model_3 = get_image_deep_learning_features_func(path_to_art_image_file)
+    model_1_image_fingerprint_vector_clean = [x[0] for x in model_1_image_fingerprint_vector]
+    model_2_image_fingerprint_vector_clean = [x[0] for x in model_2_image_fingerprint_vector]
+    model_3_image_fingerprint_vector_clean = [x[0] for x in model_3_image_fingerprint_vector]
+    combined_image_fingerprint_vector = model_1_image_fingerprint_vector_clean + model_2_image_fingerprint_vector_clean + model_3_image_fingerprint_vector_clean
+    A = pd.DataFrame([sha256_hash_of_art_image_file, path_to_art_image_file]).T
+    B = pd.DataFrame(combined_image_fingerprint_vector).T
+    combined_image_fingerprint_df_row = pd.concat([A, B], axis=1, join_axes=[A.index])
+    return combined_image_fingerprint_df_row
+
 def add_image_fingerprints_to_dupe_detection_database_func(path_to_art_image_file):
     global dupe_detection_image_fingerprint_database_file_path
     model_1_image_fingerprint_vector,model_2_image_fingerprint_vector, model_3_image_fingerprint_vector, sha256_hash_of_art_image_file, dupe_detection_model_1, dupe_detection_model_2, dupe_detection_model_3 = get_image_deep_learning_features_func(path_to_art_image_file)
@@ -148,15 +175,16 @@ def add_all_images_in_folder_to_image_fingerprint_database_func(path_to_art_fold
         print('\nNow adding image file '+ current_image_file_path + ' to image fingerprint database.')
         add_image_fingerprints_to_dupe_detection_database_func(current_image_file_path)
 
-def get_image_filename_from_image_hash_func(sha256_hash_of_art_image_file):
+def get_image_file_path_from_image_hash_func(sha256_hash_of_art_image_file):
     try:
         conn = sqlite3.connect(dupe_detection_image_fingerprint_database_file_path, detect_types=sqlite3.PARSE_DECLTYPES)
         c = conn.cursor()
         query_results = c.execute("""SELECT path_to_art_image_file FROM image_hash_to_image_fingerprint_table where sha256_hash_of_art_image_file = ? ORDER BY datetime_fingerprint_added_to_database DESC""",[sha256_hash_of_art_image_file,]).fetchall()
         conn.close()
     except Exception as e:
-        print('Error: '+ str(e))    
-    return query_results[0][0]
+        print('Error: '+ str(e))  
+    path_to_art_image_file = query_results[0][0]
+    return path_to_art_image_file
     
 def get_list_of_all_registered_image_file_hashes_func():
     try:
@@ -184,6 +212,133 @@ def get_image_fingerprints_from_dupe_detection_database_func(sha256_hash_of_art_
         return model_1_image_fingerprint_vector, model_2_image_fingerprint_vector, model_3_image_fingerprint_vector
     except Exception as e:
         print('Error: '+ str(e))
+
+def get_all_image_fingerprints_from_dupe_detection_database_as_dataframe_func():
+    global dupe_detection_image_fingerprint_database_file_path
+    list_of_registered_image_file_hashes = get_list_of_all_registered_image_file_hashes_func()
+    conn = sqlite3.connect(dupe_detection_image_fingerprint_database_file_path,detect_types=sqlite3.PARSE_DECLTYPES)
+    c = conn.cursor()
+    combined_image_fingerprint_df = pd.DataFrame()
+    list_of_combined_image_fingerprint_rows = list()
+    for current_image_file_hash in list_of_registered_image_file_hashes:
+        # current_image_file_hash = list_of_registered_image_file_hashes[0]
+        dupe_detection_fingerprint_query_results = c.execute("""SELECT model_1_image_fingerprint_vector, model_2_image_fingerprint_vector, model_3_image_fingerprint_vector FROM image_hash_to_image_fingerprint_table where sha256_hash_of_art_image_file = ? ORDER BY datetime_fingerprint_added_to_database DESC""",[current_image_file_hash,]).fetchall()
+        if len(dupe_detection_fingerprint_query_results) == 0:
+            print('Fingerprints for this image could not be found, try adding it to the system!')
+        model_1_image_fingerprint_results = dupe_detection_fingerprint_query_results[0][0]
+        model_2_image_fingerprint_results = dupe_detection_fingerprint_query_results[0][1]
+        model_3_image_fingerprint_results = dupe_detection_fingerprint_query_results[0][2]
+        model_1_image_fingerprint_vector = [x[0] for x in model_1_image_fingerprint_results]
+        model_2_image_fingerprint_vector = [x[0] for x in model_2_image_fingerprint_results]
+        model_3_image_fingerprint_vector = [x[0] for x in model_3_image_fingerprint_results]
+        combined_image_fingerprint_vector = model_1_image_fingerprint_vector + model_2_image_fingerprint_vector + model_3_image_fingerprint_vector
+        list_of_combined_image_fingerprint_rows.append(combined_image_fingerprint_vector)
+        current_image_file_path = get_image_file_path_from_image_hash_func(current_image_file_hash)
+        current_combined_image_fingerprint_df_row = pd.DataFrame([current_image_file_hash, current_image_file_path]).T
+        combined_image_fingerprint_df = combined_image_fingerprint_df.append(current_combined_image_fingerprint_df_row)
+    conn.close()
+    combined_image_fingerprint_df_vectors = pd.DataFrame()
+    for cnt, current_combined_image_fingerprint_vector in enumerate(list_of_combined_image_fingerprint_rows):
+        current_combined_image_fingerprint_vector_df = pd.DataFrame(list_of_combined_image_fingerprint_rows[cnt]).T
+        combined_image_fingerprint_df_vectors = combined_image_fingerprint_df_vectors.append(current_combined_image_fingerprint_vector_df)
+    final_combined_image_fingerprint_df = pd.concat([combined_image_fingerprint_df, combined_image_fingerprint_df_vectors], axis=1, join_axes=[combined_image_fingerprint_df.index])
+    return final_combined_image_fingerprint_df
+ 
+def find_most_similar_images_to_given_image_using_clustering_func(path_to_art_image_file):
+    final_combined_image_fingerprint_df = get_all_image_fingerprints_from_dupe_detection_database_as_dataframe_func()
+    combined_image_fingerprint_df_row_for_candidate_image = get_image_deep_learning_features_combined_vector_for_single_image_func(path_to_art_image_file)
+    final_combined_image_fingerprint_df_with_candidate_image_on_top = combined_image_fingerprint_df_row_for_candidate_image.append(final_combined_image_fingerprint_df)
+    if 0:
+        final_combined_image_fingerprint_df_with_candidate_image_on_top.to_csv(path_or_buf='final_combined_image_fingerprint_df_with_candidate_image_on_top.csv')
+    final_combined_image_fingerprint_np_array = final_combined_image_fingerprint_df_with_candidate_image_on_top.iloc[:,2:].values
+    
+    if 0:
+        nbrs = NearestNeighbors(n_neighbors=2, algorithm='ball_tree').fit(final_combined_image_fingerprint_np_array)
+        distances, indices = nbrs.kneighbors(final_combined_image_fingerprint_np_array)
+    
+    if 0:    
+        af = AffinityPropagation(preference=-50).fit(final_combined_image_fingerprint_np_array)
+        cluster_centers_indices = af.cluster_centers_indices_
+        labels = af.labels_
+        n_clusters_ = len(cluster_centers_indices)
+    if 0:   
+        pca = PCA(n_components=10)
+        pca.fit(final_combined_image_fingerprint_np_array)
+        final_combined_image_fingerprint_principle_components = pca.transform(final_combined_image_fingerprint_np_array)
+        A = pd.DataFrame(final_combined_image_fingerprint_df_with_candidate_image_on_top.iloc[:,0:2].values)
+        B = pd.DataFrame(final_combined_image_fingerprint_principle_components)
+        final_combined_image_fingerprint_principle_components_df = pd.concat([A, B], axis=1)
+        if 0:
+            final_combined_image_fingerprint_principle_components_df.to_csv(path_or_buf='final_combined_image_fingerprint_principle_components_df.csv')
+        print(pca.explained_variance_ratio_)      
+        print(sum(pca.explained_variance_ratio_))      
+    
+    final_combined_image_fingerprint_df_with_candidate_image_on_top__values = pd.DataFrame(final_combined_image_fingerprint_df_with_candidate_image_on_top.iloc[:,2:].values)
+    final_combined_image_fingerprint_df_with_candidate_image_on_top__values_transposed = final_combined_image_fingerprint_df_with_candidate_image_on_top__values.T
+    correlation_pearson = final_combined_image_fingerprint_df_with_candidate_image_on_top__values_transposed.corr(method='pearson')
+    correlation_spearman = final_combined_image_fingerprint_df_with_candidate_image_on_top__values_transposed.corr(method='spearman')
+    correlation_kendall = final_combined_image_fingerprint_df_with_candidate_image_on_top__values_transposed.corr(method='kendall')
+    if 0:
+        correlation_pearson.to_csv(path_or_buf='correlation_pearson.csv')
+        correlation_spearman.to_csv(path_or_buf='correlation_spearman.csv')
+        correlation_kendall.to_csv(path_or_buf='correlation_kendall.csv')
+    
+
+def check_for_duplicates_using_correlation_of_combined_image_fingerprint_func(path_to_art_image_file):
+    print('\nChecking if candidate image is a likely duplicate of a previously registered artwork:\n')
+    print('Retrieving image fingerprints of previously registered images from local database...')
+    with MyTimer():
+        final_combined_image_fingerprint_df = get_all_image_fingerprints_from_dupe_detection_database_as_dataframe_func()
+    number_of_previously_registered_images_to_compare = str(len(final_combined_image_fingerprint_df))
+    print('Comparing candidate image to ' + number_of_previously_registered_images_to_compare + ' previously registered images.')
+    print('Computing image fingerprint of candidate image...')
+    with MyTimer():
+        combined_image_fingerprint_df_row_for_candidate_image = get_image_deep_learning_features_combined_vector_for_single_image_func(path_to_art_image_file)
+        final_combined_image_fingerprint_df_with_candidate_image_on_top = combined_image_fingerprint_df_row_for_candidate_image.append(final_combined_image_fingerprint_df)
+        final_combined_image_fingerprint_df_with_candidate_image_on_top__values = pd.DataFrame(final_combined_image_fingerprint_df_with_candidate_image_on_top.iloc[:,2:].values)
+        final_combined_image_fingerprint_df_with_candidate_image_on_top__values_transposed = final_combined_image_fingerprint_df_with_candidate_image_on_top__values.T
+    print('\nComputing Pearson correlations of image fingerprint vectors...')
+    with MyTimer():
+        correlation_pearson = final_combined_image_fingerprint_df_with_candidate_image_on_top__values_transposed.corr(method='pearson')
+    print('Computing Spearman correlations of image fingerprint vectors...')
+    with MyTimer():
+        correlation_spearman = final_combined_image_fingerprint_df_with_candidate_image_on_top__values_transposed.corr(method='spearman')
+    print('Computing Kendall correlations of image fingerprint vectors...')
+    with MyTimer():
+        correlation_kendall = final_combined_image_fingerprint_df_with_candidate_image_on_top__values_transposed.corr(method='kendall')
+    correlation_pearson__dupe_threshold = 0.90
+    correlation_spearman__dupe_threshold = 0.85
+    correlation_kendall__dupe_threshold = 0.75
+    correlation_pearson__ratio_of_max_to_second_largest__dupe_threshold = 1.02
+    correlation_spearman__ratio_of_max_to_second_largest__dupe_threshold = 1.05
+    correlation_kendall__ratio_of_max_to_second_largest__dupe_threshold = 1.08
+    strictness_factor = 0.95
+    overall_dupe_score_threshold = 4
+    correlation_pearson__max = correlation_pearson.iloc[:,0].sort_values().iloc[-2]
+    correlation_spearman__max = correlation_spearman.iloc[:,0].sort_values().iloc[-2]
+    correlation_kendall__max = correlation_kendall.iloc[:,0].sort_values().iloc[-2]
+    correlation_pearson__second_largest = correlation_pearson.iloc[:,0].sort_values().iloc[-3]
+    correlation_spearman__second_largest  = correlation_spearman.iloc[:,0].sort_values().iloc[-3]
+    correlation_kendall__second_largest  = correlation_kendall.iloc[:,0].sort_values().iloc[-3]
+    correlation_pearson__ratio_of_max_to_second_largest = correlation_pearson__max/correlation_pearson__second_largest
+    correlation_spearman__ratio_of_max_to_second_largest = correlation_spearman__max/correlation_spearman__second_largest
+    correlation_kendall__ratio_of_max_to_second_largest = correlation_kendall__max/correlation_kendall__second_largest
+    column_headers = ['correlation_pearson__dupe_threshold', 'correlation_spearman__dupe_threshold', 'correlation_kendall__dupe_threshold', 'correlation_pearson__ratio_of_max_to_second_largest__dupe_threshold', 'correlation_spearman__ratio_of_max_to_second_largest__dupe_threshold', 'correlation_kendall__ratio_of_max_to_second_largest__dupe_threshold', 'strictness_factor', 'number_of_previously_registered_images_to_compare', 'correlation_pearson__max', 'correlation_spearman__max', 'correlation_kendall__max', 'correlation_pearson__ratio_of_max_to_second_largest', 'correlation_spearman__ratio_of_max_to_second_largest', 'correlation_kendall__ratio_of_max_to_second_largest']
+    params_df = pd.DataFrame([correlation_pearson__dupe_threshold, correlation_spearman__dupe_threshold, correlation_kendall__dupe_threshold, correlation_pearson__ratio_of_max_to_second_largest__dupe_threshold, correlation_spearman__ratio_of_max_to_second_largest__dupe_threshold, correlation_kendall__ratio_of_max_to_second_largest__dupe_threshold, strictness_factor, float(number_of_previously_registered_images_to_compare), correlation_pearson__max, correlation_spearman__max, correlation_kendall__max, correlation_pearson__ratio_of_max_to_second_largest, correlation_spearman__ratio_of_max_to_second_largest, correlation_kendall__ratio_of_max_to_second_largest]).T
+    params_df.columns=column_headers
+    params_df = params_df.T
+    is_likely_dupe_step_1 = int(correlation_pearson__max >= strictness_factor*correlation_pearson__dupe_threshold) + int(correlation_spearman__max >= strictness_factor*correlation_spearman__dupe_threshold) + int(correlation_kendall__max >= strictness_factor*correlation_kendall__dupe_threshold)
+    print('Dupe Score Step 1: ' + str(is_likely_dupe_step_1))
+    is_likely_dupe_step_2 = int(correlation_pearson__ratio_of_max_to_second_largest >= strictness_factor*correlation_pearson__ratio_of_max_to_second_largest__dupe_threshold) + int(correlation_spearman__ratio_of_max_to_second_largest >= strictness_factor*correlation_spearman__ratio_of_max_to_second_largest__dupe_threshold) + int(correlation_kendall__ratio_of_max_to_second_largest >= strictness_factor*correlation_kendall__ratio_of_max_to_second_largest__dupe_threshold)
+    print('Dupe Score Step 2: ' + str(is_likely_dupe_step_2))
+    overall_dupe_score = is_likely_dupe_step_1 + is_likely_dupe_step_2
+    print('Overall Dupe Score: ' + str(overall_dupe_score))
+    is_likely_dupe = (overall_dupe_score >= overall_dupe_score_threshold)
+    if is_likely_dupe:
+        print('\n\nWARNING! Art image file appears to be a duplicate!')
+    else:
+        print('\n\nArt image file appears to be original! (i.e., not a duplicate of an existing image in the image fingerprint database)')
+    return is_likely_dupe, params_df
 
 def construct_image_fingerprint_matrix_from_database_func(list_of_image_fingerprint_vectors):
     combined_fingerprint_matrix = np.vstack(list_of_image_fingerprint_vectors).T[0]
@@ -220,7 +375,7 @@ def apply_tsne_to_image_fingerprint_database_func():
         model_1_tsne_x_coordinates, model_1_tsne_y_coordinates = apply_tsne_to_image_fingerprint_matrix_func(combined_model_1_fingerprint_matrix)
         model_2_tsne_x_coordinates, model_2_tsne_y_coordinates = apply_tsne_to_image_fingerprint_matrix_func(combined_model_2_fingerprint_matrix)
         model_3_tsne_x_coordinates, model_3_tsne_y_coordinates = apply_tsne_to_image_fingerprint_matrix_func(combined_model_3_fingerprint_matrix)
-        for file_cnt,current_image_hash in enumerate(list_of_image_sha256_hashes):
+        for file_cnt, current_image_hash in enumerate(list_of_image_sha256_hashes):
             current_model_1_tsne_x_coordinate = float(model_1_tsne_x_coordinates[file_cnt])
             current_model_1_tsne_y_coordinate = float(model_1_tsne_y_coordinates[file_cnt])
             current_model_2_tsne_x_coordinate = float(model_2_tsne_x_coordinates[file_cnt])
@@ -244,13 +399,55 @@ def apply_tsne_to_image_fingerprint_database_func():
         return list_of_image_sha256_hashes, model_1_tsne_x_coordinates, model_1_tsne_y_coordinates, model_2_tsne_x_coordinates, model_2_tsne_y_coordinates, model_3_tsne_x_coordinates, model_3_tsne_y_coordinates
     except Exception as e:
         print('Error: '+ str(e))
-        
+
+def get_all_tsne_image_coordinates_as_dataframe_func():
+    global dupe_detection_image_fingerprint_database_file_path
+    global tsne_model
+    try:
+        print('Now applying tSNE to image fingerprint database...')
+        conn = sqlite3.connect(dupe_detection_image_fingerprint_database_file_path,detect_types=sqlite3.PARSE_DECLTYPES)
+        c = conn.cursor()
+        dupe_detection_fingerprint_query_results = c.execute("""SELECT sha256_hash_of_art_image_file, model_1_image_fingerprint_vector, model_2_image_fingerprint_vector, model_3_image_fingerprint_vector FROM image_hash_to_image_fingerprint_table ORDER BY datetime_fingerprint_added_to_database DESC""").fetchall()
+        conn.close()
+        list_of_image_sha256_hashes = [x[0] for x in dupe_detection_fingerprint_query_results]
+        list_of_model_1_image_fingerprint_vectors =  [x[1] for x in dupe_detection_fingerprint_query_results]
+        list_of_model_2_image_fingerprint_vectors =  [x[2] for x in dupe_detection_fingerprint_query_results]
+        list_of_model_3_image_fingerprint_vectors =  [x[3] for x in dupe_detection_fingerprint_query_results]
+        combined_model_1_fingerprint_matrix = construct_image_fingerprint_matrix_from_database_func(list_of_model_1_image_fingerprint_vectors)
+        combined_model_2_fingerprint_matrix = construct_image_fingerprint_matrix_from_database_func(list_of_model_2_image_fingerprint_vectors)
+        combined_model_3_fingerprint_matrix = construct_image_fingerprint_matrix_from_database_func(list_of_model_3_image_fingerprint_vectors)
+        tsne_model_loaded_already = 'tsne_model' in globals()
+        if not tsne_model_loaded_already:
+            print('Loading tSNE model...')
+            tsne_model = manifold.TSNE(random_state=0)
+        model_1_tsne_x_coordinates, model_1_tsne_y_coordinates = apply_tsne_to_image_fingerprint_matrix_func(combined_model_1_fingerprint_matrix)
+        model_2_tsne_x_coordinates, model_2_tsne_y_coordinates = apply_tsne_to_image_fingerprint_matrix_func(combined_model_2_fingerprint_matrix)
+        model_3_tsne_x_coordinates, model_3_tsne_y_coordinates = apply_tsne_to_image_fingerprint_matrix_func(combined_model_3_fingerprint_matrix)
+        column_headers = ['sha256_hash_of_art_image_file', 'path_to_art_image_file', 'model_1_tsne_x_coordinates', 'model_1_tsne_y_coordinates', 'model_2_tsne_x_coordinates', 'model_2_tsne_y_coordinates', 'model_3_tsne_x_coordinates', 'model_3_tsne_y_coordinates']
+        combined_models_tsne_coordinates_df = pd.DataFrame(columns=column_headers)
+        for file_cnt, current_image_hash in enumerate(list_of_image_sha256_hashes):
+            current_model_1_tsne_x_coordinate = float(model_1_tsne_x_coordinates[file_cnt])
+            current_model_1_tsne_y_coordinate = float(model_1_tsne_y_coordinates[file_cnt])
+            current_model_2_tsne_x_coordinate = float(model_2_tsne_x_coordinates[file_cnt])
+            current_model_2_tsne_y_coordinate = float(model_2_tsne_y_coordinates[file_cnt])
+            current_model_3_tsne_x_coordinate = float(model_3_tsne_x_coordinates[file_cnt])
+            current_model_3_tsne_y_coordinate = float(model_3_tsne_y_coordinates[file_cnt])
+            current_image_file_path = get_image_file_path_from_image_hash_func(current_image_hash)
+            current_image_tsne_coordinates_row = pd.DataFrame([current_image_hash, current_image_file_path, current_model_1_tsne_x_coordinate, current_model_1_tsne_y_coordinate, current_model_2_tsne_x_coordinate, current_model_2_tsne_y_coordinate, current_model_3_tsne_x_coordinate, current_model_3_tsne_y_coordinate]).T
+            current_image_tsne_coordinates_row.columns = column_headers
+            combined_models_tsne_coordinates_df = combined_models_tsne_coordinates_df.append(current_image_tsne_coordinates_row)
+        if 0:
+            combined_models_tsne_coordinates_df.to_csv(path_or_buf='combined_models_tsne_coordinates_df.csv')
+        print('Done!\n')
+        return combined_models_tsne_coordinates_df
+    except Exception as e:
+        print('Error: '+ str(e))
+
 def get_tsne_coordinates_for_desired_image_file_hash_func(sha256_hash_of_art_image_file):
     global dupe_detection_image_fingerprint_database_file_path
     try:
         conn = sqlite3.connect(dupe_detection_image_fingerprint_database_file_path,detect_types=sqlite3.PARSE_DECLTYPES)
         c = conn.cursor()
-        # model_1_tsne_coordinates_query_results = c.execute("""SELECT tsne_x_coordinate, tsne_y_coordinate FROM tsne_coordinates_table_model_1 ORDER BY datetime_fingerprint_added_to_database DESC""").fetchall()
         model_1_tsne_coordinates_query_results = c.execute("""SELECT tsne_x_coordinate, tsne_y_coordinate FROM tsne_coordinates_table_model_1 where sha256_hash_of_art_image_file = ? ORDER BY datetime_fingerprint_added_to_database DESC""",[sha256_hash_of_art_image_file,]).fetchall()
         model_2_tsne_coordinates_query_results = c.execute("""SELECT tsne_x_coordinate, tsne_y_coordinate FROM tsne_coordinates_table_model_2 where sha256_hash_of_art_image_file = ? ORDER BY datetime_fingerprint_added_to_database DESC""",[sha256_hash_of_art_image_file,]).fetchall()
         model_3_tsne_coordinates_query_results = c.execute("""SELECT tsne_x_coordinate, tsne_y_coordinate FROM tsne_coordinates_table_model_3 where sha256_hash_of_art_image_file = ? ORDER BY datetime_fingerprint_added_to_database DESC""",[sha256_hash_of_art_image_file,]).fetchall()
@@ -261,14 +458,11 @@ def get_tsne_coordinates_for_desired_image_file_hash_func(sha256_hash_of_art_ima
         model_2_tsne_y_coordinate = model_2_tsne_coordinates_query_results[0][1]        
         model_3_tsne_x_coordinate = model_3_tsne_coordinates_query_results[0][0]
         model_3_tsne_y_coordinate = model_3_tsne_coordinates_query_results[0][1]        
-        art_image_file_path = get_image_filename_from_image_hash_func(sha256_hash_of_art_image_file)
+        art_image_file_path = get_image_file_path_from_image_hash_func(sha256_hash_of_art_image_file)
         art_image_file_name = os.path.split(art_image_file_path)[-1]
         return model_1_tsne_x_coordinate, model_1_tsne_y_coordinate, model_2_tsne_x_coordinate, model_2_tsne_y_coordinate,model_3_tsne_x_coordinate, model_3_tsne_y_coordinate,art_image_file_name
     except Exception as e:
         print('Error: '+ str(e))
-
-#image1_sha256_hash = sha256_hash_of_art_image_file
-#image2_sha256_hash = current_image_sha256_hash
 
 def calculate_image_similarity_between_two_image_hashes_func(image1_sha256_hash, image2_sha256_hash):
     use_verbose = 0
@@ -289,13 +483,13 @@ def find_most_similar_images_to_given_image_from_fingerprint_data_func(path_to_a
     list_of_model_2_similarity_metrics = []
     list_of_model_3_similarity_metrics = []
     list_of_registered_image_file_hashes = get_list_of_all_registered_image_file_hashes_func()
-    sha256_hash_of_art_image_file = get_image_hash_from_image_file_path_func(path_to_art_image_file)
+    sha256_hash_of_candidate_art_image_file = get_image_hash_from_image_file_path_func(path_to_art_image_file)
     print('Scanning specified image against all image fingerprints in database...')
     for current_image_sha256_hash in list_of_registered_image_file_hashes:
-        if (current_image_sha256_hash != sha256_hash_of_art_image_file):
-            current_image_file_path = get_image_filename_from_image_hash_func(current_image_sha256_hash)
+        if (current_image_sha256_hash != sha256_hash_of_candidate_art_image_file):
+            current_image_file_path = get_image_file_path_from_image_hash_func(current_image_sha256_hash)
             list_of_image_file_names.append(os.path.split(current_image_file_path)[-1])
-            model_1_image_similarity_metric, model_2_image_similarity_metric, model_3_image_similarity_metric = calculate_image_similarity_between_two_image_hashes_func(sha256_hash_of_art_image_file, current_image_sha256_hash)
+            model_1_image_similarity_metric, model_2_image_similarity_metric, model_3_image_similarity_metric = calculate_image_similarity_between_two_image_hashes_func(sha256_hash_of_candidate_art_image_file, current_image_sha256_hash)
             list_of_model_1_similarity_metrics.append(model_1_image_similarity_metric)
             list_of_model_2_similarity_metrics.append(model_2_image_similarity_metric)
             list_of_model_3_similarity_metrics.append(model_3_image_similarity_metric)
@@ -307,6 +501,7 @@ def find_most_similar_images_to_given_image_from_fingerprint_data_func(path_to_a
     image_similarity_df_rescaled['model_3_image_similarity_metric'] = 1 / (image_similarity_df['model_3_image_similarity_metric']/ image_similarity_df['model_3_image_similarity_metric'].max())
     image_similarity_df_rescaled['overall_image_similarity_metric'] = (1/3)*(image_similarity_df_rescaled['model_1_image_similarity_metric'] + image_similarity_df_rescaled['model_2_image_similarity_metric'] + image_similarity_df_rescaled['model_3_image_similarity_metric'])
     return image_similarity_df_rescaled.sort_values('model_1_image_similarity_metric')
+
 
 def check_if_image_is_likely_dupe_func(path_to_art_image_file):
     duplicate_image_similarity_metric_threshold =  20
@@ -365,33 +560,33 @@ if use_demonstrate_duplicate_detection:
         regenerate_empty_dupe_detection_image_fingerprint_database_func()
         add_all_images_in_folder_to_image_fingerprint_database_func(path_to_all_registered_works_for_dupe_detection)
     
+    
     print('\n\nNow testing duplicate-detection scheme on known near-duplicate images:\n')
     list_of_file_paths_of_near_duplicate_images = glob.glob(dupe_detection_test_images_base_folder_path+'*')
     list_of_duplicate_check_results__near_dupes = list()
+    list_of_duplicate_check_params__near_dupes = list()
     for current_near_dupe_file_path in list_of_file_paths_of_near_duplicate_images:
         print('\nCurrent Near Duplicate Image: ' + current_near_dupe_file_path)
-        model_1_image_fingerprint_vector, model_2_image_fingerprint_vector, model_3_image_fingerprint_vector = add_image_fingerprints_to_dupe_detection_database_func(current_near_dupe_file_path)
-        list_of_image_sha256_hashes, _, _, _, _, _, _ = apply_tsne_to_image_fingerprint_database_func()
-        if 0: #To see the intermediate results:
-            image_similarity_df_rescaled = find_most_similar_images_to_given_image_from_fingerprint_data_func(current_near_dupe_file_path)
-            image_similarity_df_rescaled.to_csv(path_or_buf='image_similarity_df_rescaled__near_dupes.csv')
-        is_likely_duplicate = check_if_image_is_likely_dupe_func(current_near_dupe_file_path)
-        list_of_duplicate_check_results__near_dupes.append(is_likely_duplicate)
+        is_likely_dupe, params_df = check_for_duplicates_using_correlation_of_combined_image_fingerprint_func(current_near_dupe_file_path)
+        print('Parameters for current image:')
+        print(params_df)
+        list_of_duplicate_check_results__near_dupes.append(is_likely_dupe)
+        list_of_duplicate_check_params__near_dupes.append(params_df)
     duplicate_detection_accuracy_percentage__near_dupes = sum(list_of_duplicate_check_results__near_dupes)/len(list_of_duplicate_check_results__near_dupes)
     print('\n\nAccuracy Percentage in Detecting Near-Duplicate Images: ' + str(round(100*duplicate_detection_accuracy_percentage__near_dupes,2)) + '%')
+    print('________________________________________________________________________________________________________________')
 
     print('\n\nNow testing duplicate-detection scheme on known non-duplicate images:\n')
     list_of_file_paths_of_non_duplicate_test_images = glob.glob(non_dupe_test_images_base_folder_path+'*')
     list_of_duplicate_check_results__non_dupes = list()
+    list_of_duplicate_check_params__non_dupes = list()
     for current_non_dupe_file_path in list_of_file_paths_of_non_duplicate_test_images:
         print('\nCurrent Non-Duplicate Test Image: ' + current_non_dupe_file_path)
-        model_1_image_fingerprint_vector, model_2_image_fingerprint_vector, model_3_image_fingerprint_vector = add_image_fingerprints_to_dupe_detection_database_func(current_non_dupe_file_path)
-        list_of_image_sha256_hashes, _, _, _, _, _, _ = apply_tsne_to_image_fingerprint_database_func()
-        if 0: #To see the intermediate results:
-            image_similarity_df_rescaled = find_most_similar_images_to_given_image_from_fingerprint_data_func(current_non_dupe_file_path)
-            image_similarity_df_rescaled.to_csv(path_or_buf='image_similarity_df_rescaled__non_dupes.csv')
-        is_likely_duplicate = check_if_image_is_likely_dupe_func(current_non_dupe_file_path)
-        list_of_duplicate_check_results__non_dupes.append(is_likely_duplicate)
+        is_likely_dupe, params_df = check_for_duplicates_using_correlation_of_combined_image_fingerprint_func(current_non_dupe_file_path)
+        print('Parameters for current image:')
+        print(params_df)
+        list_of_duplicate_check_results__non_dupes.append(is_likely_dupe)
+        list_of_duplicate_check_params__non_dupes.append(params_df)
     duplicate_detection_accuracy_percentage__non_dupes = 1 - sum(list_of_duplicate_check_results__non_dupes)/len(list_of_duplicate_check_results__non_dupes)
     print('\n\nAccuracy Percentage in Detecting Non-Duplicate Images: ' + str(round(100*duplicate_detection_accuracy_percentage__non_dupes,2)) + '%')
     
