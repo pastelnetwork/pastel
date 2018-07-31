@@ -26,8 +26,8 @@ bool GetUTXOCoin(const COutPoint& outpoint, CCoins& coins)
     LOCK(cs_main);
     if (!pcoinsTip->GetCoins(outpoint.hash, coins))
         return false;
-    if (coins.vout[outpoint.n].IsNull())
-        return false;
+    if (outpoint.n >= coins.vout.size() || coins.vout[outpoint.n].IsNull())
+        return false; // SPENT!!! (spent outputs are .IsNull(); spent outputs at the end of the array are dropped!!!)
     return true;
 }
 
@@ -144,11 +144,11 @@ bool IsBlockValid(const CBlock& block, int nBlockHeight, CAmount blockReward, st
     }
 
     //3. check governance and masternode payments and payee
-    if(masterNodeCtrl.masternodePayments.IsTransactionValid(block.vtx[0], nBlockHeight)) {
+    if(!masterNodeCtrl.masternodePayments.IsTransactionValid(block.vtx[0], nBlockHeight)) {
         strErrorRet = strprintf("InValid coinbase transaction at height %d: %s", nBlockHeight, block.vtx[0].ToString());
         return false;
     }
-    if(masterNodeCtrl.masternodeGovernance.IsTransactionValid(block.vtx[0], nBlockHeight)) {
+    if(!masterNodeCtrl.masternodeGovernance.IsTransactionValid(block.vtx[0], nBlockHeight)) {
         strErrorRet = strprintf("InValid coinbase transaction at height %d: %s", nBlockHeight, block.vtx[0].ToString());
         return false;
     }
