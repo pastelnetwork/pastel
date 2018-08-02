@@ -47,7 +47,8 @@ testScripts=(
     'getblocktemplate.py'             #Good
     # 'bip65-cltv-p2p.py'             #TODO - FIXME
     # 'bipdersig-p2p.py'              #TODO - FIXME
-    'mn-main.py'
+    'mn_main.py'
+    'mn_payment.py'
 );
 testScriptsExt=(
     'getblocktemplate_longpoll.py'    #Good

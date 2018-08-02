@@ -105,9 +105,9 @@ CNodeSignals& GetNodeSignals() { return g_signals; }
 
 //Adress used for seeder 
 static const char *strMainNetDNSSeed[][2] = {
-{"anime-coin.com", " dnsseed.anime-coin.com "};
-        {NULL, NULL}
-}
+    {"anime-coin.com", " dnsseed.anime-coin.com "},
+    {NULL, NULL}
+};
 
 void AddOneShot(const std::string& strDest)
 {

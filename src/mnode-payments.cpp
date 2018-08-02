@@ -40,6 +40,7 @@ void CMasternodePayments::FillMasterNodePayment(CMutableTransaction& txNew, int 
         }
         // fill scriptPubKey with locally calculated winner and hope for the best
         scriptPubKey = GetScriptForDestination(mnInfo.pubKeyCollateralAddress.GetID());
+        LogPrintf("CMasternodePayments::FillMasterNodePayment -- Locally calculated winner!!!\n");
     }
 
     CAmount masternodePayment = GetMasternodePayment(nBlockHeight, blockReward);
@@ -365,7 +366,15 @@ bool CMasternodeBlockPayees::IsTransactionValid(const CTransaction& txNew)
         }
     }
 
-    LogPrintf("CMasternodeBlockPayees::IsTransactionValid -- ERROR: Missing required payment, possible payees: '%s', amount: %f DASH\n", strPayeesPossible, (float)nMasternodePayment/COIN);
+    LogPrintf("CMasternodeBlockPayees::IsTransactionValid -- ERROR: Missing required payment, possible payees: '%s', amount: %f ANIME\n", strPayeesPossible, (float)nMasternodePayment/COIN);
+    BOOST_FOREACH(CTxOut txout, txNew.vout) {
+        CTxDestination address1;
+        ExtractDestination(txout.scriptPubKey, address1);
+        CBitcoinAddress address2(address1);
+        LogPrintf("\t%s -- %f \n", address2.ToString(), (float)txout.nValue);
+        LogPrintf("\t%s\n", txout.scriptPubKey.ToString());
+    }
+
     return false;
 }
 

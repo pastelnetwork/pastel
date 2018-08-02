@@ -2184,7 +2184,7 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
 //ANIME
     std::string strError = "";
     if (!IsBlockValid(block, pindex->nHeight, blockReward, strError)) {
-        return state.DoS(0, error("ConnectBlock(DASH): %s", strError), REJECT_INVALID, "bad-cb-amount");
+        return state.DoS(0, error("ConnectBlock(ANIME): %s", strError), REJECT_INVALID, "bad-cb-amount");
     }
 //ANIME
     

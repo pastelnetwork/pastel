@@ -40,6 +40,7 @@ static const char* ppszTypeName[] =
     "filtered block",
 
     //MasterNode
+    NetMsgType::GOVERNANCE,
     NetMsgType::MASTERNODEPAYMENTVOTE,
     NetMsgType::MASTERNODEPAYMENTBLOCK,
     NetMsgType::MNANNOUNCE,
