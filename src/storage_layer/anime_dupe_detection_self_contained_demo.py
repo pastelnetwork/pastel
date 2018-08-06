@@ -263,16 +263,12 @@ def get_all_image_fingerprints_from_dupe_detection_database_as_dataframe_func():
     return final_combined_image_fingerprint_df
             
 def hoeffd_inner_loop_func(i, R, S):
-    Q = 0 # See slow_exact_hoeffdings_d_func for definition of R, S
-    helper_1 = R<R[i]
-    helper_2 = S<S[i]
-    helper_3 = R==R[i]
-    helper_4 = S==S[i]
-    Q = 1 + sum(np.logical_and(helper_1, helper_2))
-    Q = Q + 1/4 * (sum(np.logical_and(helper_3, helper_4) - 1))
-    Q = Q + 1/2 * sum(np.logical_and(helper_3, helper_2))
-    Q = Q + 1/2 * sum(np.logical_and(helper_1, helper_4))
-    return Q
+    # See slow_exact_hoeffdings_d_func for definition of R, S
+    Q_i = 1 + sum(np.logical_and(R<R[i], S<S[i]))
+    Q_i = Q_i + (1/4)*(sum(np.logical_and(R==R[i], S==S[i])) - 1)
+    Q_i = Q_i + (1/2)*sum(np.logical_and(R==R[i], S<S[i]))
+    Q_i = Q_i + (1/2)*sum(np.logical_and(R<R[i], S==S[i]))
+    return Q_i
 
 def slow_exact_hoeffdings_d_func(x, y, pool):
     #Based on code from here: https://stackoverflow.com/a/9322657/1006379
@@ -282,8 +278,8 @@ def slow_exact_hoeffdings_d_func(x, y, pool):
     N = x.shape[0]
     print('Computing tied ranks...')
     with MyTimer():
-        R = scipy.stats.rankdata(x)
-        S = scipy.stats.rankdata(y)
+        R = scipy.stats.rankdata(x, method='average')
+        S = scipy.stats.rankdata(y, method='average')
     if 0:
         print('Computing Q with list comprehension...')
         with MyTimer():
@@ -294,19 +290,12 @@ def slow_exact_hoeffdings_d_func(x, y, pool):
         Q = pool.map(hoeffd, range(N))
     print('Computing helper arrays...')
     with MyTimer():
-        helper_1 = np.array(Q) - 1
-        helper_2 = np.array(Q) - 2
-        helper_3 = np.array(R) - 1
-        helper_4 = np.array(R) - 2
-        helper_5 = np.array(S) - 1
-        helper_6 = np.array(S) - 2
-    print('Computing second helper arrays...')
-    with MyTimer():
-        D1 = sum(helper_1*helper_2)
-        D2 = sum(helper_3*helper_4*helper_5*helper_6)
-        D3 = sum(helper_4*helper_6*helper_1)
+        Q = np.array(Q)
+        D1 = sum(((Q-1)*(Q-2)))
+        D2 = sum((R-1)*(R-2)*(S-1)*(S-2))
+        D3 = sum((R-2)*(S-2)*(Q-1))
         D = 30*((N-2)*(N-3)*D1 + D2 - 2*(N-2)*D3) / (N*(N-1)*(N-2)*(N-3)*(N-4))
-    print('Exact Hoeffding D: '+ str(round(D,5)))
+    print('Exact Hoeffding D: '+ str(round(D,8)))
     return D
 
 def generate_bootstrap_sample_func(original_length_of_input, sample_size):
@@ -336,15 +325,10 @@ def compute_bootstrapped_hoeffdings_d_func(x, y, pool, sample_size):
     S_bootstrap = scipy.stats.rankdata(y_bootstrap_sample)
     hoeffdingd = functools.partial(hoeffd_inner_loop_func, R=R_bootstrap, S=S_bootstrap)
     Q_bootstrap = pool.map(hoeffdingd, range(sample_size))
-    helper_1 = np.array(Q_bootstrap) - 1
-    helper_2 = np.array(Q_bootstrap) - 2
-    helper_3 = np.array(R_bootstrap) - 1
-    helper_4 = np.array(R_bootstrap) - 2
-    helper_5 = np.array(S_bootstrap) - 1
-    helper_6 = np.array(S_bootstrap) - 2
-    D1 = sum(helper_1*helper_2)
-    D2 = sum(helper_3*helper_4*helper_5*helper_6)
-    D3 = sum(helper_4*helper_6*helper_1)
+    Q = np.array(Q_bootstrap)
+    D1 = sum(((Q-1)*(Q-2)))
+    D2 = sum((R_bootstrap-1)*(R_bootstrap-2)*(S_bootstrap-1)*(S_bootstrap-2))
+    D3 = sum((R_bootstrap-2)*(S_bootstrap-2)*(Q-1))
     D = 30*((N-2)*(N-3)*D1 + D2 - 2*(N-2)*D3) / (N*(N-1)*(N-2)*(N-3)*(N-4))
     return D
 
@@ -464,9 +448,9 @@ def bootstrapped_hoeffd(x, y, sample_size, number_of_bootstraps, pool):
 
 def measure_similarity_of_candidate_image_to_database_func(path_to_art_image_file): 
     #For debugging: path_to_art_image_file = glob.glob(dupe_detection_test_images_base_folder_path+'*')[0]
-    spearman__dupe_threshold = 0.83
-    kendall__dupe_threshold = 0.81
-    hoeffding__dupe_threshold = 0.61
+    spearman__dupe_threshold = 0.86
+    kendall__dupe_threshold = 0.80
+    hoeffding__dupe_threshold = 0.48
     strictness_factor = 0.99
     kendall_max = 0
     hoeffding_max = 0
@@ -511,8 +495,8 @@ def measure_similarity_of_candidate_image_to_database_func(path_to_art_image_fil
     if len(indices_of_kendall_scores_above_threshold) > 0:
         print('Selected '+str(len(indices_of_kendall_scores_above_threshold))+' fingerprints for further testing ('+ str(round(100*percentage_of_fingerprints_requiring_further_testing,2))+'% of the total registered fingerprints).')
         print('Now computing bootstrapped Hoeffding D for selected fingerprints...')
-        sample_size = 250
-        number_of_bootstraps = 50
+        sample_size = 80
+        number_of_bootstraps = 30
         with MyTimer():
             print('Sample Size: ' + str(sample_size) + '; Number of Bootstraps: ' + str(number_of_bootstraps))
             similarity_score_vector__hoeffding = [bootstrapped_hoeffd(candidate_image_fingerprint_transposed_values, current_fingerprint, sample_size, number_of_bootstraps, pool) for current_fingerprint in list_of_fingerprints_requiring_even_further_testing]
@@ -546,64 +530,6 @@ def measure_similarity_of_candidate_image_to_database_func(path_to_art_image_fil
     params_df = params_df.T
     return is_likely_dupe, params_df
 
-
-def check_for_duplicates_using_correlation_of_combined_image_fingerprint_func(path_to_art_image_file): 
-    #     path_to_art_image_file = glob.glob(dupe_detection_test_images_base_folder_path+'*')[0]
-    correlation_spearman__dupe_threshold = 0.92
-    correlation_spearman__dupe_threshold_early_termination = 0.97
-    correlation_kendall__dupe_threshold = 0.82
-    strictness_factor = 0.99
-    dupe_score_threshold = 2
-    print('\nChecking if candidate image is a likely duplicate of a previously registered artwork:\n')
-    print('Retrieving image fingerprints of previously registered images from local database...')
-    with MyTimer():
-        final_combined_image_fingerprint_df = get_all_image_fingerprints_from_dupe_detection_database_as_dataframe_func()
-    number_of_previously_registered_images_to_compare = str(len(final_combined_image_fingerprint_df))
-    length_of_each_image_fingerprint_vector = len(final_combined_image_fingerprint_df.columns)
-    print('Comparing candidate image to the fingerprints of ' + number_of_previously_registered_images_to_compare + ' previously registered images. Each fingerprint consists of ' + str(length_of_each_image_fingerprint_vector) + ' numbers.')
-    print('Computing image fingerprint of candidate image...')
-    with MyTimer():
-        combined_image_fingerprint_df_row_for_candidate_image = get_image_deep_learning_features_combined_vector_for_single_image_func(path_to_art_image_file)
-        final_combined_image_fingerprint_df_with_candidate_image_on_top = combined_image_fingerprint_df_row_for_candidate_image.append(final_combined_image_fingerprint_df)
-        final_combined_image_fingerprint_df_with_candidate_image_on_top__values = pd.DataFrame(final_combined_image_fingerprint_df_with_candidate_image_on_top.iloc[:,2:].values)
-        final_combined_image_fingerprint_df_with_candidate_image_on_top__values_transposed = final_combined_image_fingerprint_df_with_candidate_image_on_top__values.T
-    print('\nComputing Spearman correlations of image fingerprint vectors...')
-    with MyTimer():
-        correlation_spearman = final_combined_image_fingerprint_df_with_candidate_image_on_top__values_transposed.corr(method='spearman')
-    correlation_spearman__max = correlation_spearman.iloc[:,0].sort_values().iloc[-2]
-    if correlation_spearman__max >= correlation_spearman__dupe_threshold_early_termination:
-        print('Spearman correlation is sufficiently high to terminate early: image is definitely a duplicate of a previously registered artwork!')
-        is_likely_dupe = True
-        column_headers = ['correlation_spearman__dupe_threshold','strictness_factor', 'number_of_previously_registered_images_to_compare', 'correlation_spearman__max']
-        params_df = pd.DataFrame([correlation_spearman__dupe_threshold, strictness_factor, float(number_of_previously_registered_images_to_compare), correlation_spearman__max]).T
-        params_df.columns=column_headers
-        params_df = params_df.T
-        return is_likely_dupe, params_df
-    
-    print('\nComputing Kendall correlations of image fingerprint vectors...')
-    with MyTimer():
-        correlation_kendall = final_combined_image_fingerprint_df_with_candidate_image_on_top__values_transposed.corr(method='kendall')
-    correlation_kendall__max = correlation_kendall.iloc[:,0].sort_values().iloc[-2]
-    
-    if 0: #Save correlation tables for inspection:
-        final_combined_image_fingerprint_df_with_candidate_image_on_top.to_csv(path_or_buf='final_combined_image_fingerprint_df_with_candidate_image_on_top.csv')
-        correlation_spearman.to_csv(path_or_buf='correlation_spearman.csv')
-        correlation_kendall.to_csv(path_or_buf='correlation_kendall.csv')
-        
-    column_headers = ['correlation_spearman__dupe_threshold', 'correlation_kendall__dupe_threshold', 'strictness_factor', 'number_of_previously_registered_images_to_compare', 'correlation_spearman__max', 'correlation_kendall__max']
-    params_df = pd.DataFrame([correlation_spearman__dupe_threshold, correlation_kendall__dupe_threshold, strictness_factor, float(number_of_previously_registered_images_to_compare), correlation_spearman__max, correlation_kendall__max]).T
-    params_df.columns=column_headers
-    params_df = params_df.T
-    dupe_score = int(correlation_spearman__max >= strictness_factor*correlation_spearman__dupe_threshold) + int(correlation_kendall__max >= strictness_factor*correlation_kendall__dupe_threshold)
-    print('Dupe Score: ' + str(dupe_score))
-    is_likely_dupe = (dupe_score >= dupe_score_threshold)
-    if is_likely_dupe:
-        print('\n\nWARNING! Art image file appears to be a duplicate!')
-    else:
-        print('\n\nArt image file appears to be original! (i.e., not a duplicate of an existing image in the image fingerprint database)')
-    return is_likely_dupe, params_df
-
-
 if use_demonstrate_duplicate_detection:
     try:    
         list_of_registered_image_file_hashes = get_list_of_all_registered_image_file_hashes_func()
@@ -615,14 +541,13 @@ if use_demonstrate_duplicate_detection:
     
     print('\n\nNow testing duplicate-detection scheme on known near-duplicate images:\n')
     list_of_file_paths_of_near_duplicate_images = glob.glob(dupe_detection_test_images_base_folder_path+'*')
-    random_sample_size__near_dupes = 8
+    random_sample_size__near_dupes = 10
     list_of_file_paths_of_near_duplicate_images_random_sample = [list_of_file_paths_of_near_duplicate_images[i] for i in sorted(random.sample(range(len(list_of_file_paths_of_near_duplicate_images)), random_sample_size__near_dupes))]
     list_of_duplicate_check_results__near_dupes = list()
     list_of_duplicate_check_params__near_dupes = list()
     for current_near_dupe_file_path in list_of_file_paths_of_near_duplicate_images_random_sample:
         print('\n________________________________________________________________________________________________________________')
         print('\nCurrent Near Duplicate Image: ' + current_near_dupe_file_path)
-        #is_likely_dupe, params_df = check_for_duplicates_using_correlation_of_combined_image_fingerprint_func(current_near_dupe_file_path)
         is_likely_dupe, params_df = measure_similarity_of_candidate_image_to_database_func(current_near_dupe_file_path)
         print('\nParameters for current image:')
         print(params_df)
@@ -638,14 +563,13 @@ if use_demonstrate_duplicate_detection:
     
     print('\n\nNow testing duplicate-detection scheme on known non-duplicate images:\n')
     list_of_file_paths_of_non_duplicate_test_images = glob.glob(non_dupe_test_images_base_folder_path+'*')
-    random_sample_size__non_dupes = 8
+    random_sample_size__non_dupes = 10
     list_of_file_paths_of_non_duplicate_images_random_sample = [list_of_file_paths_of_non_duplicate_test_images[i] for i in sorted(random.sample(range(len(list_of_file_paths_of_non_duplicate_test_images)), random_sample_size__non_dupes))]
     list_of_duplicate_check_results__non_dupes = list()
     list_of_duplicate_check_params__non_dupes = list()
     for current_non_dupe_file_path in list_of_file_paths_of_non_duplicate_images_random_sample:
         print('\n________________________________________________________________________________________________________________')
         print('\nCurrent Non-Duplicate Test Image: ' + current_non_dupe_file_path)
-        #is_likely_dupe, params_df = check_for_duplicates_using_correlation_of_combined_image_fingerprint_func(current_non_dupe_file_path)
         is_likely_dupe, params_df = measure_similarity_of_candidate_image_to_database_func(current_non_dupe_file_path)
         print('\nParameters for current image:')
         print(params_df)
