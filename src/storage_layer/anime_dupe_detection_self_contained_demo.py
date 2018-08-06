@@ -22,7 +22,7 @@ dupe_detection_image_fingerprint_database_file_path = os.path.join(misc_masterno
 path_to_all_registered_works_for_dupe_detection = '/Users/jemanuel/Cointel Dropbox/Animecoin_Code/Animecoin_All_Finished_Works/'
 dupe_detection_test_images_base_folder_path = '/Users/jemanuel/Cointel Dropbox/Animecoin_Code/dupe_detector_test_images/' #Stress testing with sophisticated "modified" duplicates
 non_dupe_test_images_base_folder_path = '/Users/jemanuel/Cointel Dropbox/Animecoin_Code/non_duplicate_test_images/' #These are non-dupes, used to check for false positives.
-use_demonstrate_duplicate_detection = 0
+use_demonstrate_duplicate_detection = 1
 
 def convert_numpy_array_to_sqlite_func(input_numpy_array):
     """ Store Numpy array natively in SQlite (see: http://stackoverflow.com/a/31312102/190597"""
@@ -262,7 +262,17 @@ def get_all_image_fingerprints_from_dupe_detection_database_as_dataframe_func():
     final_combined_image_fingerprint_df = pd.concat([combined_image_fingerprint_df, combined_image_fingerprint_df_vectors], axis=1, join_axes=[combined_image_fingerprint_df.index])
     return final_combined_image_fingerprint_df
             
-
+def hoeffd_inner_loop_func(i, R, S):
+    Q = 0 # See slow_exact_hoeffdings_d_func for definition of R, S
+    helper_1 = R<R[i]
+    helper_2 = S<S[i]
+    helper_3 = R==R[i]
+    helper_4 = S==S[i]
+    Q = 1 + sum(np.logical_and(helper_1, helper_2))
+    Q = Q + 1/4 * (sum(np.logical_and(helper_3, helper_4) - 1))
+    Q = Q + 1/2 * sum(np.logical_and(helper_3, helper_2))
+    Q = Q + 1/2 * sum(np.logical_and(helper_1, helper_4))
+    return Q
 
 def slow_exact_hoeffdings_d_func(x, y, pool):
     #Based on code from here: https://stackoverflow.com/a/9322657/1006379
@@ -270,17 +280,6 @@ def slow_exact_hoeffdings_d_func(x, y, pool):
     x = np.array(x)
     y = np.array(y)
     N = x.shape[0]
-    def hoeffd_inner_loop_func(i, R, S):
-        Q = 0 # See slow_exact_hoeffdings_d_func for definition of R, S
-        helper_1 = R<R[i]
-        helper_2 = S<S[i]
-        helper_3 = R==R[i]
-        helper_4 = S==S[i]
-        Q = 1 + sum(np.logical_and(helper_1, helper_2))
-        Q = Q + 1/4 * (sum(np.logical_and(helper_3, helper_4) - 1))
-        Q = Q + 1/2 * sum(np.logical_and(helper_3, helper_2))
-        Q = Q + 1/2 * sum(np.logical_and(helper_1, helper_4))
-        return Q
     print('Computing tied ranks...')
     with MyTimer():
         R = scipy.stats.rankdata(x)
@@ -465,9 +464,9 @@ def bootstrapped_hoeffd(x, y, sample_size, number_of_bootstraps, pool):
 
 def measure_similarity_of_candidate_image_to_database_func(path_to_art_image_file): 
     #For debugging: path_to_art_image_file = glob.glob(dupe_detection_test_images_base_folder_path+'*')[0]
-    spearman__dupe_threshold = 0.80
-    kendall__dupe_threshold = 0.76
-    hoeffding__dupe_threshold = 0.61
+    spearman__dupe_threshold = 0.83
+    kendall__dupe_threshold = 0.80
+    hoeffding__dupe_threshold = 0.64
     strictness_factor = 0.99
     kendall_max = 0
     hoeffding_max = 0
@@ -512,7 +511,7 @@ def measure_similarity_of_candidate_image_to_database_func(path_to_art_image_fil
     if len(indices_of_kendall_scores_above_threshold) > 0:
         print('Selected '+str(len(indices_of_kendall_scores_above_threshold))+' fingerprints for further testing ('+ str(round(100*percentage_of_fingerprints_requiring_further_testing,2))+'% of the total registered fingerprints).')
         print('Now computing bootstrapped Hoeffding D for selected fingerprints...')
-        sample_size = 500
+        sample_size = 300
         number_of_bootstraps = 20
         with MyTimer():
             print('Sample Size: ' + str(sample_size) + '; Number of Bootstraps: ' + str(number_of_bootstraps))
@@ -527,7 +526,7 @@ def measure_similarity_of_candidate_image_to_database_func(path_to_art_image_fil
         if len(list_of_fingerprints_of_suspected_dupes) > 0:
            is_likely_dupe = 1
            print('\n\nWARNING! Art image file appears to be a duplicate!')
-           print('Candidate Image appears to be a duplicate of the image fingerprint beginning with '+ str(list_of_fingerprints_of_suspected_dupes[0][0:9]))
+           print('Candidate Image appears to be a duplicate of the image fingerprint beginning with '+ str(list_of_fingerprints_of_suspected_dupes[0][0:5]))
            fingerprint_of_image_that_candidate_is_a_dupe_of = list_of_fingerprints_of_suspected_dupes[0]
            for ii in range(number_of_previously_registered_images_to_compare):
                current_fingerprint = registered_image_fingerprints_transposed_values[:,ii].tolist() 
@@ -616,7 +615,7 @@ if use_demonstrate_duplicate_detection:
     
     print('\n\nNow testing duplicate-detection scheme on known near-duplicate images:\n')
     list_of_file_paths_of_near_duplicate_images = glob.glob(dupe_detection_test_images_base_folder_path+'*')
-    random_sample_size__near_dupes = 10
+    random_sample_size__near_dupes = 8
     list_of_file_paths_of_near_duplicate_images_random_sample = [list_of_file_paths_of_near_duplicate_images[i] for i in sorted(random.sample(range(len(list_of_file_paths_of_near_duplicate_images)), random_sample_size__near_dupes))]
     list_of_duplicate_check_results__near_dupes = list()
     list_of_duplicate_check_params__near_dupes = list()
@@ -639,7 +638,7 @@ if use_demonstrate_duplicate_detection:
     
     print('\n\nNow testing duplicate-detection scheme on known non-duplicate images:\n')
     list_of_file_paths_of_non_duplicate_test_images = glob.glob(non_dupe_test_images_base_folder_path+'*')
-    random_sample_size__non_dupes = 10
+    random_sample_size__non_dupes = 8
     list_of_file_paths_of_non_duplicate_images_random_sample = [list_of_file_paths_of_non_duplicate_test_images[i] for i in sorted(random.sample(range(len(list_of_file_paths_of_non_duplicate_test_images)), random_sample_size__non_dupes))]
     list_of_duplicate_check_results__non_dupes = list()
     list_of_duplicate_check_params__non_dupes = list()
