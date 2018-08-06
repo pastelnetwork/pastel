@@ -465,8 +465,8 @@ def bootstrapped_hoeffd(x, y, sample_size, number_of_bootstraps, pool):
 def measure_similarity_of_candidate_image_to_database_func(path_to_art_image_file): 
     #For debugging: path_to_art_image_file = glob.glob(dupe_detection_test_images_base_folder_path+'*')[0]
     spearman__dupe_threshold = 0.83
-    kendall__dupe_threshold = 0.80
-    hoeffding__dupe_threshold = 0.64
+    kendall__dupe_threshold = 0.81
+    hoeffding__dupe_threshold = 0.61
     strictness_factor = 0.99
     kendall_max = 0
     hoeffding_max = 0
@@ -511,8 +511,8 @@ def measure_similarity_of_candidate_image_to_database_func(path_to_art_image_fil
     if len(indices_of_kendall_scores_above_threshold) > 0:
         print('Selected '+str(len(indices_of_kendall_scores_above_threshold))+' fingerprints for further testing ('+ str(round(100*percentage_of_fingerprints_requiring_further_testing,2))+'% of the total registered fingerprints).')
         print('Now computing bootstrapped Hoeffding D for selected fingerprints...')
-        sample_size = 300
-        number_of_bootstraps = 20
+        sample_size = 250
+        number_of_bootstraps = 50
         with MyTimer():
             print('Sample Size: ' + str(sample_size) + '; Number of Bootstraps: ' + str(number_of_bootstraps))
             similarity_score_vector__hoeffding = [bootstrapped_hoeffd(candidate_image_fingerprint_transposed_values, current_fingerprint, sample_size, number_of_bootstraps, pool) for current_fingerprint in list_of_fingerprints_requiring_even_further_testing]
