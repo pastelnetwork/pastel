@@ -103,8 +103,8 @@ public:
     bool GetCurrentPaymentTicket(int nBlockHeight, CGovernanceTicket& ticket);
     CAmount GetCurrentPaymentAmount();
 
-    void AddTicket(std::string address, CAmount totalReward, std::string note, bool vote);
-    void VoteForTicket(uint256 ticketId, bool vote);
+    bool AddTicket(std::string address, CAmount totalReward, std::string note, bool vote, std::string& strErrorRet);
+    bool VoteForTicket(uint256 ticketId, bool vote, std::string& strErrorRet);
     
     int CalculateLastPaymentBlock(CAmount amount, int nHeight);
     int GetLastScheduledPaymentBlock();

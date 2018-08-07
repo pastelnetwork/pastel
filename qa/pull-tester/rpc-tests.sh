@@ -49,6 +49,7 @@ testScripts=(
     # 'bipdersig-p2p.py'              #TODO - FIXME
     'mn_main.py'
     'mn_payment.py'
+    'mn_governance.py'
 );
 testScriptsExt=(
     'getblocktemplate_longpoll.py'    #Good

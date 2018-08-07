@@ -793,7 +793,8 @@ UniValue governance(const UniValue& params, bool fHelp)
             "Cast a governance vote for new or existing ticket.\n"
         );
 
-    std::string strCmd;
+    std::string strCmd, strError;
+    UniValue resultObj(UniValue::VOBJ);
     if (strMode == "ticket")
     {
         if (params.size() < 4 || params.size() > 6)
@@ -816,7 +817,10 @@ UniValue governance(const UniValue& params, bool fHelp)
             if (vote != "yes" && vote != "no")
                 throw JSONRPCError(RPC_INVALID_PARAMETER,   "governance ticket add \"address\" amount \"note\" <yes|no>\n");
 
-            masterNodeCtrl.masternodeGovernance.AddTicket(address, amount, note, (vote == "yes"));
+            if (!masterNodeCtrl.masternodeGovernance.AddTicket(address, amount, note, (vote == "yes"), strError)) {
+                resultObj.push_back(Pair("errorMessage", strError));
+                return resultObj;
+            }
         }
         if (strCmd == "vote")
         {
@@ -834,7 +838,10 @@ UniValue governance(const UniValue& params, bool fHelp)
 
             uint256 ticketId = uint256S(ticketIdstr);
 
-            masterNodeCtrl.masternodeGovernance.VoteForTicket(ticketId, (vote == "yes"));
+            if (!masterNodeCtrl.masternodeGovernance.VoteForTicket(ticketId, (vote == "yes"), strError)) {
+                resultObj.push_back(Pair("errorMessage", strError));
+                return resultObj;
+            }
         }
     }
 
@@ -846,20 +853,19 @@ UniValue governance(const UniValue& params, bool fHelp)
                                                         "2.\n"
                                                         "governance list winners\n");
         strCmd = params[1].get_str();
-        UniValue obj(UniValue::VOBJ);
         if (strCmd == "tickets")
         {
             BOOST_FOREACH(PAIRTYPE(const uint256, CGovernanceTicket)& s, masterNodeCtrl.masternodeGovernance.mapTickets) {
                 std::string id = s.first.ToString();
                 // obj.push_back(Pair("id: ", id));
-                obj.push_back(Pair(": ", s.second.ToString()));
+                resultObj.push_back(Pair(": ", s.second.ToString()));
             }
         }
         if (strCmd == "winners")
         {
         }
 
-        return obj;
+        return resultObj;
     }
     return NullUniValue;
 }

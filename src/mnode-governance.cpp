@@ -84,15 +84,21 @@ int CMasternodeGovernance::CalculateLastPaymentBlock(CAmount amount, int nHeight
     return nHeight-1;
 }
 
-void CMasternodeGovernance::AddTicket(std::string address, CAmount totalReward, std::string note, bool vote)
+bool CMasternodeGovernance::AddTicket(std::string address, CAmount totalReward, std::string note, bool vote, std::string& strErrorRet)
 {
-    //1. validate parameters
-    assert(totalReward > 0);
+    if (!masterNodeCtrl.fMasterNode || 
+         masterNodeCtrl.activeMasternode.nState != CActiveMasternode::ActiveMasternodeState::Started){
+        strErrorRet = strprintf("Only Active Master Node can vote");
+        return false;
+    }
 
+    //1. validate parameters
     const CChainParams& chainparams = Params();
     const Consensus::Params& params = chainparams.GetConsensus();
-    if (totalReward > params.nMaxGovernanceAmount)
-        LogPrintf("Ticket reward is too high %d vs limit=%d, exceeded governance max value", totalReward, params.nMaxGovernanceAmount);
+    if (totalReward > params.nMaxGovernanceAmount) {
+        strErrorRet = strprintf("Ticket reward is too high %d vs limit %d, exceeded governance max value", totalReward, params.nMaxGovernanceAmount);
+        return false;
+    }
 
     CTxDestination destination = DecodeDestination(address);
     assert(IsValidDestination(destination));
@@ -111,13 +117,13 @@ void CMasternodeGovernance::AddTicket(std::string address, CAmount totalReward, 
         mapTickets[ticketId] = ticket;
     } else if (!mapTickets[ticketId].VoteOpen(nCachedBlockHeight)) {
         //3.b if yes - see if voting is still open
-        //it is not OK anymore to vote on taht ticket
-        LogPrintf("CMasternodeGovernance::AddTicket -- Voting is disabled on ticket (Address: %s; Amount: %d). Stop Height=%d, but current height = %d\n", 
+        //it is not OK anymore to vote on that ticket
+        strErrorRet = strprintf("CMasternodeGovernance::AddTicket -- Voting has ended on ticket (Address: %s; Amount: %d). Stop Height=%d, but current height = %d\n", 
             mapTickets[ticketId].scriptPubKey.ToString(), 
             mapTickets[ticketId].nAmountToPay,
             mapTickets[ticketId].nStopVoteBlockHeight,
             nCachedBlockHeight);
-        return;
+        return false;
     }
 
     //4. Sing the ticket with MN private key
@@ -126,26 +132,33 @@ void CMasternodeGovernance::AddTicket(std::string address, CAmount totalReward, 
 
     //5. Add the MN's vote and the signature to the ticket
     mapTickets[ticketId].AddVote(vchSigRet, vote);
+    return true;
 }
 
-void CMasternodeGovernance::VoteForTicket(uint256 ticketId, bool vote)
+bool CMasternodeGovernance::VoteForTicket(uint256 ticketId, bool vote, std::string& strErrorRet)
 {
+    if (!masterNodeCtrl.fMasterNode || 
+         masterNodeCtrl.activeMasternode.nState != CActiveMasternode::ActiveMasternodeState::Started){
+        strErrorRet = strprintf("Only Active Master Node can vote");
+        return false;
+    }
+
     //1. Search map if the ticket is already in it
     LOCK(cs_mapTickets);
 
     if (!mapTickets.count(ticketId)) {
         //3.a if not - error
-        LogPrintf("CMasternodeGovernance::VoteForTicket -- Ticket ID (%ss) not found\n", ticketId.ToString());
-        return;
+        strErrorRet = strprintf("CMasternodeGovernance::VoteForTicket -- Ticket ID (%ss) not found\n", ticketId.ToString());
+        return false;
     } else if (!mapTickets[ticketId].VoteOpen(nCachedBlockHeight)) {
         //3.b if yes - see if voting is still open
-        //it is not OK anymore to vote on taht ticket
-        LogPrintf("CMasternodeGovernance::VoteForTicket -- Voting is disabled on ticket (Address: %s; Amount: %d). Stop Height=%d, but current height = %d\n", 
+        //it is not OK anymore to vote on that ticket
+        strErrorRet = strprintf("CMasternodeGovernance::VoteForTicket -- Voting has ended on ticket (Address: %s; Amount: %d). Stop Height=%d, but current height = %d\n", 
             mapTickets[ticketId].scriptPubKey.ToString(), 
             mapTickets[ticketId].nAmountToPay,
             mapTickets[ticketId].nStopVoteBlockHeight,
             nCachedBlockHeight);
-        return;
+        return false;
     }
 
     //4. Sign the ticket with MN private key
@@ -154,6 +167,7 @@ void CMasternodeGovernance::VoteForTicket(uint256 ticketId, bool vote)
 
     //5. Add the MN's vote and the signature to the ticket
     mapTickets[ticketId].AddVote(vchSigRet, vote);
+    return true;
 }
 
 bool CMasternodeGovernance::IsTransactionValid(const CTransaction& txNew, int nHeight)
@@ -356,7 +370,7 @@ bool CGovernanceTicket::AddVote(std::vector<unsigned char> vchSig, bool vote)
 {
     LOCK(cs_ticketsVotes);
     if (mapVotes.count(vchSig)) {
-        LogPrintf("CGovernanceTicket::AddVote -- signature already exists: MN has alredy voted\n");
+        LogPrintf("CGovernanceTicket::AddVote -- signature already exists: MN has already voted\n");
         return false;
     }
     mapVotes[vchSig] = vote;
