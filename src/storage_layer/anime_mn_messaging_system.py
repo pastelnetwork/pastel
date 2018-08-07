@@ -14,7 +14,7 @@ def get_sha3_512_func(input_data_or_string):
     return hash_of_input_data
     
 def compress_data_with_zstd_func(input_data):
-    zstd_compression_level = 18 #Highest (best) compression level is 22
+    zstd_compression_level = 22 #Highest (best) compression level is 22
     zstandard_compressor = zstd.ZstdCompressor(level=zstd_compression_level, write_content_size=True)
     if isinstance(input_data, str):
         input_data = input_data.encode('utf-8')
@@ -128,6 +128,7 @@ class messengerObject(object):
                     if current_field[:len(message_body_string)] == message_body_string:
                         message_body = current_field.replace(message_body_string,'').replace('\n','')
                 assert(timestamp_of_message > 1533673000)
+                assert(timestamp_of_message < time.time())
                 assert(len(senders_animecoin_id) == 132)
                 assert(len(receivers_animecoin_id) == 132)
                 assert(sys.getsizeof(message_body) == message_size)
@@ -182,7 +183,7 @@ def make_messenger_object_func(receiver_id, message_body):
 if 'test_receiver__animecoin_id_private_key_b16_encoded' not in globals():
     test_receiver__animecoin_id_private_key_b16_encoded, test_receiver__animecoin_id_public_key_b16_encoded = animecoin_id_keypair_generation_func()
 
-message_body = "This is a test of our new messaging system. We hope that it's secure from attacks."
+message_body = "This is a test of our new messaging system. We hope that it's secure from attacks. Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum."
 receiver_id = test_receiver__animecoin_id_public_key_b16_encoded
 x = make_messenger_object_func(receiver_id, message_body)
 x = x.generate_combined_message()
@@ -238,17 +239,3 @@ if isinstance(decompressed_message_data, str):
     print('Successfully read unverified compressed file!')
 else:
     print('Error!')
-
-
-
-
-
-
-
-
-
-
-
-
-
-
