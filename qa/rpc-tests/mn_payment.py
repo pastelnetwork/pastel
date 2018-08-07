@@ -79,7 +79,8 @@ class MasterNodePaymentTest (MasterNodeCommon):
             address = item[1]
             mn_payments = winners_counts.get(address, 0)
             print("{0} - {1}".format(address, mn_payments))
-            assert_greater_than(mn_payments, 1)
+            # test that MN was selected as winner at least 80% times (8 out of 10 in this case)
+            assert_greater_than(mn_payments, 7)
             number_mn_payments += mn_payments
 
         assert_equal(number_mn_payments, 120)
