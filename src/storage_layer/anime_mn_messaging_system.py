@@ -3,7 +3,7 @@ import nacl
 import zstd
 from anime_animecoin_id_self_contained_demo import import_animecoin_public_and_private_keys_from_pem_files_func, animecoin_id_keypair_generation_func, \
     write_animecoin_public_and_private_key_to_file_func, animecoin_id_write_signature_on_data_func, animecoin_id_verify_signature_with_public_key_func
-
+    
 def sleep_rand():
      time.sleep(0.05*random.random())
 
@@ -36,7 +36,8 @@ class messengerObject(object):
     def __init__(self, receiver_id, message_body):
         message_format_version = '1.00'
         sleep_rand()
-        animecoin_id_public_key_b16_encoded, animecoin_id_private_key_b16_encoded = import_animecoin_public_and_private_keys_from_pem_files_func()
+        use_require_otp = 0
+        animecoin_id_public_key_b16_encoded, animecoin_id_private_key_b16_encoded = import_animecoin_public_and_private_keys_from_pem_files_func(use_require_otp)
         if animecoin_id_public_key_b16_encoded == '':
             animecoin_id_private_key_b16_encoded, animecoin_id_public_key_b16_encoded = animecoin_id_keypair_generation_func()
             write_animecoin_public_and_private_key_to_file_func(animecoin_id_public_key_b16_encoded, animecoin_id_private_key_b16_encoded)
@@ -50,7 +51,7 @@ class messengerObject(object):
         max_nonce_length = 1200
         max_message_size = 1000
         nonce_length = random.randint(min_nonce_length, max_nonce_length)
-        self.random_nonce = base64.b64encode(nacl.utils.random(nonce_length)).decode('utf-8')
+        self.random_nonce = str(base64.b64encode(nacl.utils.random(nonce_length)).decode('utf-8') + str(time.time()).replace('.','')).replace('/','').replace('+','').replace('=','')
         if isinstance(message_body, str):
             print('Nonce Length:' + str(len(self.random_nonce)))
             message_size = len(message_body)
@@ -112,12 +113,12 @@ class messengerObject(object):
     
     def verify_raw_message_file(self, raw_message_contents):
         if isinstance(raw_message_contents, str):
-            if len(raw_message_contents) < 5000:
+            if len(raw_message_contents) < 4000:
                 signature_string = '\n\ndigital_signature: \n'
                 start_string = 'START_OF_MESSAGE'
                 end_string = 'END_OF_MESSAGE'
                 id_character_set = 'ABCDEF1234567890'
-                nonce_character_set = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz1234567890+/='
+                nonce_character_set = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz1234567890'
                 version_character_set = '1234567890.'
                 assert(raw_message_contents[0]=='\n')
                 assert(raw_message_contents.split(start_string)[0]=='\n______________________\n\n')
@@ -146,6 +147,7 @@ class messengerObject(object):
                         receivers_animecoin_id = current_field.replace(receiver_string,'').replace('\n','')
                         assert(len(receivers_animecoin_id)==132)
                         assert([(x in id_character_set) for x in receivers_animecoin_id])
+                        assert(senders_animecoin_id!=receivers_animecoin_id)
                     timestamp_string = '\n\ntimestamp:\n'
                     assert(len(message_contents.split(timestamp_string))==2)
                     if current_field[:len(timestamp_string)]==timestamp_string:
@@ -170,6 +172,7 @@ class messengerObject(object):
                     if current_field[:len(message_body_string)]==message_body_string:
                         message_body = current_field.replace(message_body_string,'').replace('\n','')
                         assert(len(message_body) == message_size)
+                        assert(message_body == message_body.encode('utf-8', 'strict').decode('utf-8', 'strict'))
                     random_nonce_string = '\n\nrandom_nonce:\n'
                     assert(len(message_contents.split(random_nonce_string))==2)
                     if current_field[:len(random_nonce_string)]==random_nonce_string:
@@ -234,6 +237,7 @@ def generate_message_func(messenger_object):
     return messenger_object
 
 #For testing:
+
 message_body = ""
 message_body = "1234"
 message_body = "Crud far in far oh immoral and more caribou hiccupped tyrannically tortoise rode sheepishly where gorilla metric radical the badger a and gosh smugly manatee devilishly that."
@@ -281,7 +285,9 @@ with open(path_of_most_recent_signature_file, 'r') as f:
         compressed_signature = f.read()
     except Exception as e:
         print('Error: '+ str(e))
-senders_animecoin_id, _ = import_animecoin_public_and_private_keys_from_pem_files_func()
+
+use_require_otp = 0
+senders_animecoin_id, _ = import_animecoin_public_and_private_keys_from_pem_files_func(use_require_otp)
 decompressed_message_data = messenger_object.verify_compressed_message_file(senders_animecoin_id, compressed_message_contents, compressed_signature)
 verified, senders_animecoin_id, receivers_animecoin_id, timestamp_of_message, message_size, message_body, random_nonce, message_contents, signature_line = messenger_object.verify_raw_message_file(decompressed_message_data)
 if verified:
@@ -295,17 +301,3 @@ if isinstance(decompressed_message_data, str):
     print('Successfully read unverified compressed file!')
 else:
     print('Error!')
-
-
-
-
-
-
-
-
-
-
-
-
-
-
