@@ -13,6 +13,75 @@
 extern CCriticalSection cs_ticketsVotes;
 extern CCriticalSection cs_mapPayments;
 extern CCriticalSection cs_mapTickets;
+extern CCriticalSection cs_mapVotes;
+
+class CGovernanceVote
+{
+public:
+    CTxIn vinMasternode;
+    uint256 ticketId;
+    int nVoteBlockHeight;
+    bool bVote;
+    std::vector<unsigned char> vchSig;
+
+    int nWaitForTicketRank;
+    int nSyncBlockHeight;
+
+    CGovernanceVote() {}
+
+    CGovernanceVote(COutPoint outpointMasternode, uint256 id, int height, bool vote) :
+        vinMasternode(outpointMasternode),
+        ticketId(id),
+        nVoteBlockHeight(height),
+        bVote(vote),
+        nWaitForTicketRank(0),
+        nSyncBlockHeight(height)
+    {}
+
+    ADD_SERIALIZE_METHODS;
+
+    template <typename Stream, typename Operation>
+    inline void SerializationOp(Stream& s, Operation ser_action, int nType, int nVersion) {
+        READWRITE(vinMasternode);
+        READWRITE(ticketId);
+        READWRITE(nVoteBlockHeight);
+        READWRITE(bVote);
+        READWRITE(vchSig);
+        READWRITE(nWaitForTicketRank);
+        READWRITE(nSyncBlockHeight);
+    }
+
+    uint256 GetHash() const {
+        CHashWriter ss(SER_GETHASH, PROTOCOL_VERSION);
+        ss << vinMasternode.prevout;
+        ss << ticketId;
+        ss << nVoteBlockHeight;
+        ss << bVote;
+        return ss.GetHash();
+    }
+
+    bool Sign();
+    bool CheckSignature(const CPubKey& pubKeyMasternode, int stopVoteHeight, int &nDos);
+    void Relay();
+
+    bool IsVerified() { return !vchSig.empty(); }
+    void MarkAsNotVerified() { vchSig.clear(); }
+
+    bool ReprocessVote()
+    {
+        if (nWaitForTicketRank == 0 || nWaitForTicketRank > 3) return false;
+
+        LOCK(cs_main);
+        return chainActive.Height() > nSyncBlockHeight+nWaitForTicketRank*5;
+    }
+    bool SetReprocessWaiting(int nBlockHeight)
+    {
+        nWaitForTicketRank++;
+        nSyncBlockHeight = nBlockHeight;
+    }
+
+    std::string ToString() const;
+};
 
 class CGovernanceTicket
 {
@@ -20,16 +89,19 @@ class CGovernanceTicket
 public:
     CScript         scriptPubKey;           // address to send payments
     CAmount         nAmountToPay;           // amount of payments
-    CAmount         nAmountPayed;
+    CAmount         nAmountPaid;
     std::string     strDescription;         // optional description
     
     int             nStopVoteBlockHeight;   // blockheight when the voting for this ticket ends
-    std::map< std::vector<unsigned char>, bool > mapVotes; //map of signed votes and their values
     int             nYesVotes;
+
+    std::map<std::vector<unsigned char>, CGovernanceVote> mapVotes;
 
     //if a winner
     int             nFirstPaymentBlockHeight;   // blockheight when the payment to this ticket starts
     int             nLastPaymentBlockHeight;    // blockheight when the payment to this ticket ends
+
+    uint256         ticketId;
 
     CGovernanceTicket()
     {}
@@ -37,7 +109,7 @@ public:
     CGovernanceTicket(CScript& address, CAmount amount, std::string& description, int height) :
         scriptPubKey(address), 
         nAmountToPay(amount), 
-        nAmountPayed(0), 
+        nAmountPaid(0), 
         strDescription(description),
         nStopVoteBlockHeight(height),
         nYesVotes(0),
@@ -51,7 +123,7 @@ public:
     inline void SerializationOp(Stream& s, Operation ser_action, int nType, int nVersion) {
         READWRITE(*(CScript*)(&scriptPubKey));
         READWRITE(nAmountToPay);
-        READWRITE(nAmountPayed);
+        READWRITE(nAmountPaid);
         READWRITE(strDescription);
         READWRITE(nStopVoteBlockHeight);
         LOCK(cs_ticketsVotes);
@@ -59,17 +131,18 @@ public:
         READWRITE(nYesVotes);
         READWRITE(nFirstPaymentBlockHeight);
         READWRITE(nLastPaymentBlockHeight);
+        READWRITE(ticketId);
     }
 
     bool VoteOpen(int height) { return height <= nStopVoteBlockHeight;}
-    bool AddVote(std::vector<unsigned char> vchSig, bool vote);
-    bool IsWinner();
-    CAmount IncrementPayed(CAmount payment);
-    bool IsPayed() {return nAmountPayed >= nAmountToPay;}
+    bool VoteOpen();
+    bool AddVote(CGovernanceVote& voteNew, std::string& strErrorRet);
+    bool IsWinner(int height);
+    bool IsPayed() {return nAmountPaid >= nAmountToPay;}
 
     uint256 GetHash() const;
 
-    std::string ToString() const;
+    std::string ToString();
     void Relay();
 };
 
@@ -82,8 +155,9 @@ private:
     int nCachedBlockHeight;
 
 public:
+    std::map<uint256, CGovernanceVote> mapVotes;
     std::map<uint256, CGovernanceTicket> mapTickets;
-    std::map<int, CGovernanceTicket> mapPayments;
+    std::map<int, uint256> mapPayments;
 
     CMasternodeGovernance() : nMaxPaidTicketsToStore(5000), nCachedBlockHeight(0) {}
 
@@ -94,6 +168,8 @@ public:
         LOCK2(cs_mapTickets,cs_mapPayments);
         READWRITE(mapTickets);
         READWRITE(mapPayments);
+        LOCK(cs_mapVotes);
+        READWRITE(mapVotes);
     }
 
 public:
@@ -103,11 +179,13 @@ public:
     bool GetCurrentPaymentTicket(int nBlockHeight, CGovernanceTicket& ticket);
     CAmount GetCurrentPaymentAmount();
 
-    bool AddTicket(std::string address, CAmount totalReward, std::string note, bool vote, std::string& strErrorRet);
+    bool AddTicket(std::string address, CAmount totalReward, std::string note, bool vote, uint256& newTicketId, std::string& strErrorRet);
     bool VoteForTicket(uint256 ticketId, bool vote, std::string& strErrorRet);
+    bool AddNewVote(uint256 ticketId, bool vote, std::string& strErrorRet);
     
     int CalculateLastPaymentBlock(CAmount amount, int nHeight);
     int GetLastScheduledPaymentBlock();
+    CAmount IncrementTicketPaidAmount(CAmount payment, CGovernanceTicket& ticket);
 
     bool IsTransactionValid(const CTransaction& txNew, int nHeight);
     bool ProcessBlock(int nBlockHeight);

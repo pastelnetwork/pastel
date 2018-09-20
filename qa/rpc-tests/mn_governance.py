@@ -20,17 +20,17 @@ getcontext().prec = 16
 
 # 12 Master Nodes
 private_keys_list = ["91sY9h4AQ62bAhNk1aJ7uJeSnQzSFtz7QmW5imrKmiACm7QJLXe", #0 
-                     "923JtwGJqK6mwmzVkLiG6mbLkhk1ofKE1addiM8CYpCHFdHDNGo"#, #1
-                    #  "91wLgtFJxdSRLJGTtbzns5YQYFtyYLwHhqgj19qnrLCa1j5Hp5Z", #2
-                    #  "92XctTrjQbRwEAAMNEwKqbiSAJsBNuiR2B8vhkzDX4ZWQXrckZv", #3
-                    #  "923JCnYet1pNehN6Dy4Ddta1cXnmpSiZSLbtB9sMRM1r85TWym6", #4
-                    #  "93BdbmxmGp6EtxFEX17FNqs2rQfLD5FMPWoN1W58KEQR24p8A6j", #5
-                    #  "92av9uhRBgwv5ugeNDrioyDJ6TADrM6SP7xoEqGMnRPn25nzviq", #6
-                    #  "91oHXFR2NVpUtBiJk37i8oBMChaQRbGjhnzWjN9KQ8LeAW7JBdN", #7
-                    #  "92MwGh67mKTcPPTCMpBA6tPkEE5AK3ydd87VPn8rNxtzCmYf9Yb", #8
-                    #  "92VSXXnFgArfsiQwuzxSAjSRuDkuirE1Vf7KvSX7JE51dExXtrc", #9
-                    #  "91hruvJfyRFjo7JMKnAPqCXAMiJqecSfzn9vKWBck2bKJ9CCRuo", #10
-                    #  "92sYv5JQHzn3UDU6sYe5kWdoSWEc6B98nyY5JN7FnTTreP8UNrq"  #11
+                     "923JtwGJqK6mwmzVkLiG6mbLkhk1ofKE1addiM8CYpCHFdHDNGo", #1
+                     "91wLgtFJxdSRLJGTtbzns5YQYFtyYLwHhqgj19qnrLCa1j5Hp5Z", #2
+                     "92XctTrjQbRwEAAMNEwKqbiSAJsBNuiR2B8vhkzDX4ZWQXrckZv", #3
+                     "923JCnYet1pNehN6Dy4Ddta1cXnmpSiZSLbtB9sMRM1r85TWym6", #4
+                     "93BdbmxmGp6EtxFEX17FNqs2rQfLD5FMPWoN1W58KEQR24p8A6j", #5
+                     "92av9uhRBgwv5ugeNDrioyDJ6TADrM6SP7xoEqGMnRPn25nzviq", #6
+                     "91oHXFR2NVpUtBiJk37i8oBMChaQRbGjhnzWjN9KQ8LeAW7JBdN", #7
+                     "92MwGh67mKTcPPTCMpBA6tPkEE5AK3ydd87VPn8rNxtzCmYf9Yb", #8
+                     "92VSXXnFgArfsiQwuzxSAjSRuDkuirE1Vf7KvSX7JE51dExXtrc", #9
+                     "91hruvJfyRFjo7JMKnAPqCXAMiJqecSfzn9vKWBck2bKJ9CCRuo", #10
+                     "92sYv5JQHzn3UDU6sYe5kWdoSWEc6B98nyY5JN7FnTTreP8UNrq"  #11
                     ]
 
 class MasterNodeGovernanceTest (MasterNodeCommon):
@@ -54,13 +54,105 @@ class MasterNodeGovernanceTest (MasterNodeCommon):
         cold_nodes = {k: v for k, v in enumerate(private_keys_list)}
         _, _, _ = self.start_mn(self.mining_node_num, self.hot_node_num, cold_nodes, self.total_number_of_nodes)
 
-        address1 = self.nodes[0].getnewaddress()
-        res = self.nodes[0].governance("ticket", "add", address1, "1000", "test", "yes")
-        print(res)
+        self.reconnect_nodes(0, self.number_of_master_nodes)
+        self.sync_all()
 
-        address1 = self.nodes[self.mining_node_num].getnewaddress()
-        res = self.nodes[self.mining_node_num].governance("ticket", "add", address1, "1000", "test", "yes")
-        print(res)
+        print("Register first ticket")
+        #1. First ticket
+        address1 = self.nodes[0].getnewaddress()
+        res1 = self.nodes[0].governance("ticket", "add", address1, "100000000", "test", "yes")
+        assert_equal(res1['result'], 'successful')
+        ticket1_id = res1['ticketId']
+        print(ticket1_id)
+
+        res1 = self.nodes[0].governance("ticket", "add", address1, "100000000", "test", "yes")
+        assert_equal(res1['result'], 'failed')
+
+        res1 = self.nodes[0].governance("ticket", "vote", ticket1_id, "yes")
+        assert_equal(res1['result'], 'failed')
+
+        time.sleep(3)
+        
+        print("Vote yes for first ticket")
+        res1 = self.nodes[1].governance("ticket", "vote", ticket1_id, "yes")
+        assert_equal(res1['result'], 'successful')
+
+        res1 = self.nodes[1].governance("ticket", "add", address1, "100000000", "test", "no")
+        assert_equal(res1['result'], 'failed')
+
+        time.sleep(3)
+
+        res1 = self.nodes[2].governance("ticket", "add", address1, "100000000", "test", "no")
+        assert_equal(res1['result'], 'failed')
+
+        print("Vote no for first ticket")
+        res1 = self.nodes[2].governance("ticket", "vote", ticket1_id, "no")
+        assert_equal(res1['result'], 'successful')
+
+        time.sleep(3)
+
+        res1 = self.nodes[self.mining_node_num].governance("ticket", "add", address1, "1000", "test", "no")
+        assert_equal(res1['result'], 'failed')
+
+        res1 = self.nodes[self.mining_node_num].governance("ticket", "vote", ticket1_id, "yes")
+        assert_equal(res1['result'], 'failed')
+
+        address2 = self.nodes[self.mining_node_num].getnewaddress()
+        res1 = self.nodes[self.mining_node_num].governance("ticket", "add", address2, "1000", "test", "yes")
+        assert_equal(res1['errorMessage'], "Only Active Master Node can vote")
+
+        time.sleep(3)
+
+        print("Register second ticket")
+        #2. Second ticket
+        res1 = self.nodes[2].governance("ticket", "add", address2, "200000000", "test", "yes")
+        assert_equal(res1['result'], 'successful')
+        ticket2_id = res1['ticketId']
+
+        print("Waiting 60 seconds")
+        time.sleep(60)
+
+        print("Test tickets votes")
+        #3. Preliminary test, should be 2 tickets: 1st ticket - 3 votes, 2 yes; 2nd ticket - 1 vote, 1 yes
+        for i in range(0, self.total_number_of_nodes):
+            res1 = self.nodes[i].governance("list", "tickets")
+            print(res1)
+            for j in range(0, 2):
+                if res1[j]['id'] == ticket1_id:
+                    assert_equal("Total votes: 3, Yes votes: 2" in res1[j]['ticket'], True)
+                elif res1[j]['id'] == ticket2_id:
+                    assert_equal("Total votes: 1, Yes votes: 1" in res1[j]['ticket'], True)
+                else:
+                    assert_equal(res1[0]['id'], res1[1]['id'])
+
+        print("Mining 577 blocks")
+        #4. mine 576 blocks - ticket 1 should become winner
+        # 12 active MN/s - needs min 10% voted (2) => need 2 yes votes (51% of 3) 
+        for ind in range (577):
+            self.nodes[self.mining_node_num].generate(1)
+            self.sync_all()
+            time.sleep(1)
+
+        print("Waiting 60 seconds")
+        time.sleep(60)
+
+        print(self.nodes[0].governance("list", "tickets"))
+        print(self.nodes[0].governance("list", "winners"))
+
+        print("Mining 10 more blocks")
+        #4. mine 576 blocks - ticket 1 should become winner
+        # 12 active MN/s - needs min 10% voted (2) => need 2 yes votes (51% of 3) 
+        for ind in range (10):
+            self.nodes[self.mining_node_num].generate(1)
+            self.sync_all()
+            time.sleep(1)
+
+        print("Test winner tickets, should be "+ticket1_id)
+        for i in range(0, self.total_number_of_nodes):
+            res1 = self.nodes[i].governance("list", "winners")
+            print(res1)
+            assert_equal(len(res1), 1)
+            assert_equal(res1[0]['id'], ticket1_id)  
 
 if __name__ == '__main__':
     MasterNodeGovernanceTest ().main ()

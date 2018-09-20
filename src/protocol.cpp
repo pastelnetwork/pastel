@@ -29,6 +29,7 @@ const char *MASTERNODEPAYMENTBLOCK="mnwb";
 const char *MASTERNODEPAYMENTSYNC="mnget";
 const char *GOVERNANCESYNC="gvget";
 const char *GOVERNANCE="gov";
+const char *GOVERNANCEVOTE="gvt";
 const char *DSTX="dstx";
 };
 
@@ -41,6 +42,7 @@ static const char* ppszTypeName[] =
 
     //MasterNode
     NetMsgType::GOVERNANCE,
+    NetMsgType::GOVERNANCEVOTE,
     NetMsgType::MASTERNODEPAYMENTVOTE,
     NetMsgType::MASTERNODEPAYMENTBLOCK,
     NetMsgType::MNANNOUNCE,

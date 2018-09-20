@@ -156,6 +156,7 @@ enum {
     
     //MasterNode
     MSG_MASTERNODE_GOVERNANCE,
+    MSG_MASTERNODE_GOVERNANCE_VOTE,
     MSG_MASTERNODE_PAYMENT_VOTE,
     MSG_MASTERNODE_PAYMENT_BLOCK,
     MSG_MASTERNODE_ANNOUNCE,
@@ -170,6 +171,7 @@ extern const char *MASTERNODEPAYMENTVOTE;
 extern const char *MASTERNODEPAYMENTBLOCK;
 extern const char *MASTERNODEPAYMENTSYNC;
 extern const char *GOVERNANCE;
+extern const char *GOVERNANCEVOTE;
 extern const char *GOVERNANCESYNC;
 extern const char *DSTX;
 

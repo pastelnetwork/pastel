@@ -232,7 +232,13 @@ bool CMasterNodeController::AlreadyHave(const CInv& inv)
     switch (inv.type)
     {
     case MSG_MASTERNODE_GOVERNANCE:
-        return masternodeGovernance.mapTickets.count(inv.hash);
+            return masternodeGovernance.mapTickets.count(inv.hash);
+
+    case MSG_MASTERNODE_GOVERNANCE_VOTE:
+        {
+            auto vi = masternodeGovernance.mapVotes.find(inv.hash);
+            return vi != masternodeGovernance.mapVotes.end() && !vi->second.ReprocessVote();
+        }
 
     case MSG_MASTERNODE_PAYMENT_VOTE:
         return masternodePayments.mapMasternodePaymentVotes.count(inv.hash);
@@ -266,6 +272,18 @@ bool CMasterNodeController::ProcessGetData(CNode* pfrom, const CInv& inv)
             ss.reserve(1000);
             ss << masternodeGovernance.mapTickets[inv.hash];
             pfrom->PushMessage(NetMsgType::GOVERNANCE, ss);
+            pushed = true;
+        }
+    }
+
+    if (!pushed && inv.type == MSG_MASTERNODE_GOVERNANCE_VOTE) {
+        LOCK(cs_mapVotes);
+        auto vi = masternodeGovernance.mapVotes.find(inv.hash);
+        if(vi != masternodeGovernance.mapVotes.end() && vi->second.IsVerified()) {
+            CDataStream ss(SER_NETWORK, PROTOCOL_VERSION);
+            ss.reserve(1000);
+            ss << masternodeGovernance.mapVotes[inv.hash];
+            pfrom->PushMessage(NetMsgType::GOVERNANCEVOTE, ss);
             pushed = true;
         }
     }

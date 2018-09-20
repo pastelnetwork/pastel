@@ -42,11 +42,13 @@ TEST(mnode_governance, TicketProcessing) {
     std::string note1("ticket1");
     CGovernanceTicket ticket1(scriptPubKey, 3125000000, note1, 0); //31250 - need 100 blocks to pay
     uint256 ticketId1 = ticket1.GetHash();
+    ticket1.ticketId = ticketId1;
     gov.mapTickets[ticketId1] = ticket1;
 
     std::string note2("ticket2");
     CGovernanceTicket ticket2(scriptPubKey, 60000000, note2, 1); //600 - needs 2 blocks to pay
     uint256 ticketId2 = ticket2.GetHash();
+    ticket2.ticketId = ticketId2;
     gov.mapTickets[ticketId2] = ticket2;
 
 
@@ -64,7 +66,7 @@ TEST(mnode_governance, TicketProcessing) {
                     ticket.nFirstPaymentBlockHeight = lastScheduledPaymentBlock == 0? 0+1: lastScheduledPaymentBlock+1;
                     ticket.nLastPaymentBlockHeight = gov.CalculateLastPaymentBlock(ticket.nAmountToPay, ticket.nFirstPaymentBlockHeight);
                     lastScheduledPaymentBlock = ticket.nLastPaymentBlockHeight;
-                    gov.mapPayments[lastScheduledPaymentBlock] = ticket;
+                    gov.mapPayments[lastScheduledPaymentBlock] = ticket.ticketId;
                 }
             }
             ++it;
@@ -111,6 +113,7 @@ TEST(mnode_governance, TicketProcessing) {
     std::string note3("ticket3");
     CGovernanceTicket ticket3(scriptPubKey, 1250000000, note3, 2); //12500 - needs 40 blocks to pay
     uint256 ticketId3 = ticket3.GetHash();
+    ticket3.ticketId = ticketId3;
     ticket3.nFirstPaymentBlockHeight = gov.GetLastScheduledPaymentBlock()+1;
     ticket3.nLastPaymentBlockHeight = gov.CalculateLastPaymentBlock(ticket3.nAmountToPay, ticket3.nFirstPaymentBlockHeight);
 
@@ -120,7 +123,7 @@ TEST(mnode_governance, TicketProcessing) {
     }
 
     if (ticket3.nLastPaymentBlockHeight != 0) {
-        gov.mapPayments[ticket3.nLastPaymentBlockHeight] = ticket3;
+        gov.mapPayments[ticket3.nLastPaymentBlockHeight] = ticket3.ticketId;
     }
     EXPECT_EQ(142, gov.GetLastScheduledPaymentBlock());
 

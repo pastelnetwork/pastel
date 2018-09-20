@@ -19,7 +19,7 @@ from decimal import Decimal, getcontext
 getcontext().prec = 16
 
 class MasterNodeCommon (BitcoinTestFramework):
-    def setup_masternodes_network(self, private_keys_list, number_of_non_mn_to_start=0, debug_flags="masternode,mnpayments"):
+    def setup_masternodes_network(self, private_keys_list, number_of_non_mn_to_start=0, debug_flags="masternode,mnpayments,governance"):
         for index, key in enumerate(private_keys_list):
             print("start MN {0}".format(index))
             self.nodes.append(start_node(index, self.options.tmpdir, ["-debug={0}".format(debug_flags), "-masternode", "-txindex=1", "-reindex", "-masternodeprivkey={0}".format(key)]))
@@ -116,6 +116,10 @@ class MasterNodeCommon (BitcoinTestFramework):
             wait_for_it(wait, 20, "ENABLED", self.nodes[0:num_of_nodes], mn_ids[num])
 
         return mn_ids, mn_aliases, mn_collateral_addresses
+
+    def reconnect_nodes(self, fromindex, toindex):
+        for pair in itertools.combinations(range(fromindex, toindex), 2):
+            connect_nodes_bi(self.nodes, pair[0], pair[1])        
 
 def create_masternode_conf(name, n, dirname, txid, vin, private_key, mn_port):
     datadir = os.path.join(dirname, "node"+str(n))

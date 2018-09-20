@@ -794,7 +794,6 @@ UniValue governance(const UniValue& params, bool fHelp)
         );
 
     std::string strCmd, strError;
-    UniValue resultObj(UniValue::VOBJ);
     if (strMode == "ticket")
     {
         if (params.size() < 4 || params.size() > 6)
@@ -803,6 +802,8 @@ UniValue governance(const UniValue& params, bool fHelp)
                                                         "2.\n"
                                                         "governance ticket vote \"ticketID\" <yes|no>\n");
 
+        UniValue resultObj(UniValue::VOBJ);
+    
         strCmd = params[1].get_str();
         if (strCmd == "add")
         {
@@ -817,10 +818,15 @@ UniValue governance(const UniValue& params, bool fHelp)
             if (vote != "yes" && vote != "no")
                 throw JSONRPCError(RPC_INVALID_PARAMETER,   "governance ticket add \"address\" amount \"note\" <yes|no>\n");
 
-            if (!masterNodeCtrl.masternodeGovernance.AddTicket(address, amount, note, (vote == "yes"), strError)) {
+            uint256 newTicketId;
+            if (!masterNodeCtrl.masternodeGovernance.AddTicket(address, amount, note, (vote == "yes"), newTicketId, strError)) {
+                resultObj.push_back(Pair("result", "failed"));
                 resultObj.push_back(Pair("errorMessage", strError));
-                return resultObj;
+            } else {
+                resultObj.push_back(Pair("result", "successful"));
+                resultObj.push_back(Pair("ticketId", newTicketId.ToString()));
             }
+            return resultObj;
         }
         if (strCmd == "vote")
         {
@@ -839,14 +845,19 @@ UniValue governance(const UniValue& params, bool fHelp)
             uint256 ticketId = uint256S(ticketIdstr);
 
             if (!masterNodeCtrl.masternodeGovernance.VoteForTicket(ticketId, (vote == "yes"), strError)) {
+                resultObj.push_back(Pair("result", "failed"));
                 resultObj.push_back(Pair("errorMessage", strError));
-                return resultObj;
+            } else {
+                resultObj.push_back(Pair("result", "successful"));
             }
+            return resultObj;
         }
     }
 
     if(strMode == "list")
     {
+        UniValue resultArray(UniValue::VARR);
+    
         if (params.size() != 2)
             throw JSONRPCError(RPC_INVALID_PARAMETER,   "1.\n"
                                                         "governance list tickets\n"
@@ -857,15 +868,28 @@ UniValue governance(const UniValue& params, bool fHelp)
         {
             BOOST_FOREACH(PAIRTYPE(const uint256, CGovernanceTicket)& s, masterNodeCtrl.masternodeGovernance.mapTickets) {
                 std::string id = s.first.ToString();
-                // obj.push_back(Pair("id: ", id));
-                resultObj.push_back(Pair(": ", s.second.ToString()));
+
+                UniValue obj(UniValue::VOBJ);
+                obj.push_back(Pair("id", id));
+                obj.push_back(Pair("ticket", s.second.ToString()));
+                resultArray.push_back(obj);
             }
         }
         if (strCmd == "winners")
         {
+            BOOST_FOREACH(PAIRTYPE(const uint256, CGovernanceTicket)& s, masterNodeCtrl.masternodeGovernance.mapTickets) {
+                if (s.second.nLastPaymentBlockHeight != 0) {
+                    std::string id = s.first.ToString();
+    
+                    UniValue obj(UniValue::VOBJ);
+                    obj.push_back(Pair("id", id));
+                    obj.push_back(Pair("ticket", s.second.ToString()));
+                    resultArray.push_back(obj);
+                }
+            }
         }
 
-        return resultObj;
+        return resultArray;
     }
     return NullUniValue;
 }
