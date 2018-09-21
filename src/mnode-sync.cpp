@@ -149,7 +149,7 @@ void CMasternodeSync::ClearFulfilledRequests()
     });
 }
 
-void CMasternodeSync::CheckSyncTimeout(int nTick, std::vector<CNode*> &vNodesCopy)
+bool CMasternodeSync::CheckSyncTimeout(int nTick, std::vector<CNode*> &vNodesCopy)
 {
     // check for timeout first
     if(GetTime() - nTimeLastBumped > MasternodeSyncTimeoutSeconds) {
@@ -158,13 +158,11 @@ void CMasternodeSync::CheckSyncTimeout(int nTick, std::vector<CNode*> &vNodesCop
             LogPrintf("CMasternodeSync::ProcessTick -- ERROR: failed to sync %s\n", GetSyncStatusShort());
             // there is no way we can continue without masternode list, fail here and try later
             Fail();
-            CNodeHelper::ReleaseNodeVector(vNodesCopy);
-            return;
+            return false;
         }
         SwitchToNextAsset();
-        CNodeHelper::ReleaseNodeVector(vNodesCopy);
-        return;
     }    
+    return true;
 }
 
 void CMasternodeSync::ProcessTick()
@@ -270,7 +268,10 @@ void CMasternodeSync::ProcessTick()
             if(syncState == MasternodeSyncState::List) {
                 LogPrint("masternode", "CMasternodeSync::ProcessTick -- nTick %d syncState %d nTimeLastBumped %lld GetTime() %lld diff %lld\n", nTick, (int)syncState, nTimeLastBumped, GetTime(), GetTime() - nTimeLastBumped);
                 // check for timeout first
-                CheckSyncTimeout(nTick, vNodesCopy);
+                if (!CheckSyncTimeout(nTick, vNodesCopy)) {
+                    CNodeHelper::ReleaseNodeVector(vNodesCopy);
+                    return; //this will cause each peer to get one request each six seconds for the various assets we need
+                }
 
                 // only request once from each peer
                 if(masterNodeCtrl.requestTracker.HasFulfilledRequest(pnode->addr, "masternode-list-sync")) continue;
@@ -291,7 +292,10 @@ void CMasternodeSync::ProcessTick()
                 // check for timeout first
                 // This might take a lot longer than MasternodeSyncTimeoutSeconds due to new blocks,
                 // but that should be OK and it should timeout eventually.
-                CheckSyncTimeout(nTick, vNodesCopy);
+                if (!CheckSyncTimeout(nTick, vNodesCopy)) {
+                    CNodeHelper::ReleaseNodeVector(vNodesCopy);
+                    return; //this will cause each peer to get one request each six seconds for the various assets we need
+                }
 
                 // check for data
                 // if mnpayments already has enough blocks and votes, switch to the next asset
@@ -320,7 +324,10 @@ void CMasternodeSync::ProcessTick()
             if(syncState == MasternodeSyncState::Governance) {
                 LogPrint("mnpayments", "CMasternodeSync::ProcessTick -- nTick %d syncState %d nTimeLastBumped %lld GetTime() %lld diff %lld\n", nTick, (int)syncState, nTimeLastBumped, GetTime(), GetTime() - nTimeLastBumped);
                 // check for timeout first
-                CheckSyncTimeout(nTick, vNodesCopy);
+                if (!CheckSyncTimeout(nTick, vNodesCopy)) {
+                    CNodeHelper::ReleaseNodeVector(vNodesCopy);
+                    return; //this will cause each peer to get one request each six seconds for the various assets we need
+                }
 
                 // only request once from each peer
                 if(masterNodeCtrl.requestTracker.HasFulfilledRequest(pnode->addr, "governance-payment-sync")) continue;

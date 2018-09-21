@@ -53,7 +53,7 @@ private:
     void ClearFulfilledRequests();
 
     void SetSyncParameters();
-    void CheckSyncTimeout(int nTick, std::vector<CNode*> &vNodesCopy);
+    bool CheckSyncTimeout(int nTick, std::vector<CNode*> &vNodesCopy);
 
 public:
     CMasternodeSync()
