@@ -21,20 +21,6 @@ is an automatic deprecation shutdown feature which will halt the node some
 time after this 16 week time period. The automatic feature is based on block
 height and can be explicitly disabled.
 
-Where do I begin?
------------------
-We have a guide for joining the main AnimeCoin network:
-https://github.com/ANIM-AnimeCoin/AnimeCoin/wiki/1.0-User-Guide
-
-### Need Help?
-
-* See the documentation at the [AnimeCoin Wiki](https://github.com/ANIM-AnimeCoin/AnimeCoin/wiki)
-  for help and more information.
-* Ask for help on the [AnimeCoin]() forum.
-
-Participation in the AnimeCoin project is subject to a
-[Code of Conduct](code_of_conduct.md).
-
 Building
 --------
 
