@@ -9,6 +9,8 @@
 #include <string>
 #include <vector>
 
+#include "json/json.hpp"
+
 class CMasternodeConfig
 {
 
@@ -95,5 +97,40 @@ private:
 
 };
 
+class CMasternodePyConfig
+{
+    nlohmann::json jObj;
+
+    std::string get_str(std::string alias, std::string name)
+    {
+        auto a = jObj[alias];
+        if (a != nullptr){
+            auto b = a[name];
+            if (b != nullptr)
+                return b;
+            else
+                return name + " is not specified";
+        }
+        return "alias not found";
+    }
+
+public:
+    CMasternodePyConfig() {}
+
+
+    std::string getIp(std::string alias) {
+        return get_str(alias, "ip");
+    }
+
+    std::string getPort(std::string alias) {
+        return get_str(alias, "port");
+    }
+
+    std::string getPubKey(std::string alias) {
+        return get_str(alias, "pubKey");
+    }
+
+    void Read();
+};
 
 #endif /* SRC_MASTERNODECONFIG_H_ */

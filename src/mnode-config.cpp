@@ -88,3 +88,31 @@ bool CMasternodeConfig::read(std::string& strErr) {
     streamConfig.close();
     return true;
 }
+
+/*
+    {
+        "mn1": {
+            "ip": "10.10.10.10",
+            "port": "1111",
+            "key": "..."
+        },
+        "mn2": {
+            "ip": "20.20.20.20",
+            "port": "2222",
+            "key": "..."
+        }
+    }
+*/
+void CMasternodePyConfig::Read()
+{
+    boost::filesystem::path pathMasternodePyConfigFile = masterNodeCtrl.GetMasternodePyConfigFile();
+    boost::filesystem::ifstream streamConfigPy(pathMasternodePyConfigFile);
+
+    if (!streamConfigPy.good()) {
+        //TODO: ERROR
+    } else {
+        streamConfigPy >> jObj;
+    }
+
+    streamConfigPy.close();
+}

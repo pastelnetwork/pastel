@@ -358,6 +358,13 @@ void CMasterNodeController::ShutdownMasterNode()
     flatDB4.Dump(requestTracker);
 }
 
+boost::filesystem::path CMasterNodeController::GetMasternodePyConfigFile()
+{
+    boost::filesystem::path pathConfigFile(GetArg("-mnpyconf", "masternodepy.conf"));
+    if (!pathConfigFile.is_complete()) pathConfigFile = GetDataDir() / pathConfigFile;
+    return pathConfigFile;
+}
+
 boost::filesystem::path CMasterNodeController::GetMasternodeConfigFile()
 {
     boost::filesystem::path pathConfigFile(GetArg("-mnconf", "masternode.conf"));

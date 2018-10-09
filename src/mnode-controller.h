@@ -83,6 +83,7 @@ public:
     void ShutdownMasterNode();
 
     boost::filesystem::path GetMasternodeConfigFile();
+    boost::filesystem::path GetMasternodePyConfigFile();
 
     bool IsSynced() {return masternodeSync.IsSynced();}
 
