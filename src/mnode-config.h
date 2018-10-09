@@ -97,7 +97,7 @@ private:
 
 };
 
-class CMasternodePyConfig
+class CMasternodeConfig2
 {
     nlohmann::json jObj;
 
@@ -115,7 +115,7 @@ class CMasternodePyConfig
     }
 
 public:
-    CMasternodePyConfig() {}
+    CMasternodeConfig2() {}
 
 
     std::string getIp(std::string alias) {
@@ -130,7 +130,7 @@ public:
         return get_str(alias, "pubKey");
     }
 
-    void Read();
+    void read(std::string& strErr);
 };
 
 #endif /* SRC_MASTERNODECONFIG_H_ */

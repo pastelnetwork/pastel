@@ -33,8 +33,10 @@ private:
 
     CACNotificationInterface* pacNotificationInterface;
 
+
 public:
     CMasternodeConfig masternodeConfig;
+    CMasternodeConfig2 masternodeConfig2;
     // Keep track of the active Masternode
     CActiveMasternode activeMasternode;
     // 
@@ -83,7 +85,7 @@ public:
     void ShutdownMasterNode();
 
     boost::filesystem::path GetMasternodeConfigFile();
-    boost::filesystem::path GetMasternodePyConfigFile();
+    boost::filesystem::path GetMasternodeConfigFile2();
 
     bool IsSynced() {return masternodeSync.IsSynced();}
 

@@ -103,16 +103,16 @@ bool CMasternodeConfig::read(std::string& strErr) {
         }
     }
 */
-void CMasternodePyConfig::Read()
+void CMasternodeConfig2::read(std::string& strErr)
 {
-    boost::filesystem::path pathMasternodePyConfigFile = masterNodeCtrl.GetMasternodePyConfigFile();
-    boost::filesystem::ifstream streamConfigPy(pathMasternodePyConfigFile);
+    boost::filesystem::path pathMasternodeConfigFile2 = masterNodeCtrl.GetMasternodeConfigFile2();
+    boost::filesystem::ifstream streamConfig2(pathMasternodeConfigFile2;
 
-    if (!streamConfigPy.good()) {
-        //TODO: ERROR
+    if (!streamConfig2.good()) {
+        strErr = _("Could not parse masternode2.conf");
     } else {
-        streamConfigPy >> jObj;
+        streamConfig2 >> jObj;
     }
 
-    streamConfigPy.close();
+    streamConfig2.close();
 }
