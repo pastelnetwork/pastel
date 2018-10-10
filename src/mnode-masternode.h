@@ -104,6 +104,10 @@ struct masternode_info_t
     int64_t nTimeLastPaid = 0;
     int64_t nTimeLastPing = 0; //* not in CMN
     bool fInfoValid = false; //* not in CMN
+
+    CPubKey pubKeyPyMN {};
+    CService addrPyMN {};
+    std::string strJsonPyMNCfg {};
 };
 
 //
@@ -171,6 +175,9 @@ public:
         READWRITE(nPoSeBanScore);
         READWRITE(nPoSeBanHeight);
         READWRITE(fUnitTest);
+        READWRITE(pubKeyPyMN);
+        READWRITE(addrPyMN);
+        READWRITE(strJsonPyMNCfg);
     }
 
     // CALCULATE A RANK AGAINST OF GIVEN BLOCK
@@ -295,6 +302,9 @@ public:
         READWRITE(sigTime);
         READWRITE(nProtocolVersion);
         READWRITE(lastPing);
+        READWRITE(pubKeyPyMN);
+        READWRITE(addrPyMN);
+        READWRITE(strJsonPyMNCfg);
     }
 
     uint256 GetHash() const

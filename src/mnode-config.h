@@ -9,8 +9,6 @@
 #include <string>
 #include <vector>
 
-#include "json/json.hpp"
-
 class CMasternodeConfig
 {
 
@@ -20,58 +18,57 @@ public:
 
     private:
         std::string alias;
-        std::string ip;
-        std::string privKey;
+        std::string mnAddress;
+        std::string mnPrivKey;
         std::string txHash;
         std::string outputIndex;
+        std::string pyAddress;
+        std::string pyPrivKey;
+        std::string pyCfg;
     public:
 
-        CMasternodeEntry(std::string alias, std::string ip, std::string privKey, std::string txHash, std::string outputIndex) {
+        CMasternodeEntry(std::string alias, std::string mnAddress, std::string mnPrivKey, std::string txHash, std::string outputIndex,
+                         std::string pyAddress, std::string pyPrivKey, std::string pyCfg) {
             this->alias = alias;
-            this->ip = ip;
-            this->privKey = privKey;
+            this->mnAddress = mnAddress;
+            this->mnPrivKey = mnPrivKey;
             this->txHash = txHash;
             this->outputIndex = outputIndex;
+            this->pyAddress = pyAddress;
+            this->pyPrivKey = pyPrivKey;
+            this->pyCfg = pyCfg;
         }
 
         const std::string& getAlias() const {
             return alias;
         }
 
-        void setAlias(const std::string& alias) {
-            this->alias = alias;
-        }
-
-        const std::string& getOutputIndex() const {
-            return outputIndex;
-        }
-
-        void setOutputIndex(const std::string& outputIndex) {
-            this->outputIndex = outputIndex;
+        const std::string& getIp() const {
+            return mnAddress;
         }
 
         const std::string& getPrivKey() const {
-            return privKey;
-        }
-
-        void setPrivKey(const std::string& privKey) {
-            this->privKey = privKey;
+            return mnPrivKey;
         }
 
         const std::string& getTxHash() const {
             return txHash;
         }
 
-        void setTxHash(const std::string& txHash) {
-            this->txHash = txHash;
+        const std::string& getOutputIndex() const {
+            return outputIndex;
         }
 
-        const std::string& getIp() const {
-            return ip;
+        const std::string& getPyIp() const {
+            return pyAddress;
         }
 
-        void setIp(const std::string& ip) {
-            this->ip = ip;
+        const std::string& getPyPrivKey() const {
+            return pyPrivKey;
+        }
+
+        const std::string& getPyCfg() const {
+            return pyCfg;
         }
     };
 
@@ -79,9 +76,7 @@ public:
         entries = std::vector<CMasternodeEntry>();
     }
 
-    void clear();
     bool read(std::string& strErr);
-    void add(std::string alias, std::string ip, std::string privKey, std::string txHash, std::string outputIndex);
 
     std::vector<CMasternodeEntry>& getEntries() {
         return entries;
@@ -93,44 +88,6 @@ public:
 
 private:
     std::vector<CMasternodeEntry> entries;
-
-
-};
-
-class CMasternodeConfig2
-{
-    nlohmann::json jObj;
-
-    std::string get_str(std::string alias, std::string name)
-    {
-        auto a = jObj[alias];
-        if (a != nullptr){
-            auto b = a[name];
-            if (b != nullptr)
-                return b;
-            else
-                return name + " is not specified";
-        }
-        return "alias not found";
-    }
-
-public:
-    CMasternodeConfig2() {}
-
-
-    std::string getIp(std::string alias) {
-        return get_str(alias, "ip");
-    }
-
-    std::string getPort(std::string alias) {
-        return get_str(alias, "port");
-    }
-
-    std::string getPubKey(std::string alias) {
-        return get_str(alias, "pubKey");
-    }
-
-    void read(std::string& strErr);
 };
 
 #endif /* SRC_MASTERNODECONFIG_H_ */

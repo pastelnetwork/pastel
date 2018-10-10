@@ -36,7 +36,6 @@ private:
 
 public:
     CMasternodeConfig masternodeConfig;
-    CMasternodeConfig2 masternodeConfig2;
     // Keep track of the active Masternode
     CActiveMasternode activeMasternode;
     // 
