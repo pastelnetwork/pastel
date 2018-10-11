@@ -17,23 +17,23 @@ using json = nlohmann::json;
             "mnAddress": "10.10.10.10:1111",    //MN's ip and port
             "mnPrivKey": "",                    //MN's private key
             "txid": "",                         //collateral_output_txid
-            "index": "",                        //collateral_output_index
+            "outIndex": "",                     //collateral_output_index
 
             "pyAddress": "10.10.10.10:1111",    //pyMN's ip and port
-            "pyPrivKey": "",                    //pyMN's private key
+            "pyPubKey": "",                     //pyMN's private key
             "pyCfg": {},                        //extra config for pyMN
         }
     }
 */
 
-bool checkIPAddressPort(std::string& address, int itemnumber, bool checkPort, std::string& strErr)
+bool checkIPAddressPort(std::string& address, std::string alias, bool checkPort, std::string& strErr)
 {
     int port = 0;
     std::string hostname = "";
     SplitHostPort(address, port, hostname);
     if(port == 0 || hostname == "") {
         strErr = _("Failed to parse host:port string") + "\n" +
-                strprintf(_("Item: %d"), itemnumber);
+                strprintf(_("Alias: %s"), alias);
         return false;
     }
     if (checkPort) {
@@ -42,13 +42,13 @@ bool checkIPAddressPort(std::string& address, int itemnumber, bool checkPort, st
             if(port != mainnetDefaultPort) {
                 strErr = _("Invalid port detected in masternode.conf") + "\n" +
                         strprintf(_("Port: %d"), port) + "\n" +
-                        strprintf(_("Item: %d"), itemnumber) + "\n" +
+                        strprintf(_("Alias: %s"), alias) + "\n" +
                         strprintf(_("(must be %d for mainnet)"), mainnetDefaultPort);
                 return false;
             }
         } else if(port == mainnetDefaultPort) {
             strErr = _("Invalid port detected in masternode.conf") + "\n" +
-                    strprintf(_("Item: %d"), itemnumber) + "\n" +
+                    strprintf(_("Alias: %s"), alias) + "\n" +
                     strprintf(_("(%d could be used only on mainnet)"), mainnetDefaultPort);
             return false;
         }
@@ -79,15 +79,16 @@ bool CMasternodeConfig::read(std::string& strErr)
         jsonObj = 
         {
             {"mnAlias", {
-                {"mnAddress", "IP:Port"},
-                {"mnPrivKey", "masternodeprivkey"},
-                {"txid", "collateral_output_txid"},
-                {"index", "collateral_output_index"},
-                {"pyAddress", "IP:Port"},
-                {"pyPrivKey", "pymasternodeprivkey"},
+                {"mnAddress", ""},
+                {"mnPrivKey", ""},
+                {"txid", ""},
+                {"outIndex", ""},
+                {"pyAddress", ""},
+                {"pyPubKey", ""},
                 {"pyCfg", {}}
             }}
         };
+        pathMasternodeConfigFile += "-sample";
         std::ofstream o(pathMasternodeConfigFile.string().c_str());
         o << std::setw(4) << jsonObj << std::endl;
 
@@ -112,42 +113,49 @@ bool CMasternodeConfig::read(std::string& strErr)
         return false;
     }
 
-    int itemnumber = 1;
     for (json::iterator it = jsonObj.begin(); it != jsonObj.end(); ++it) {
         
-        if (it.key().empty() || !it->count("mnAddress") || !it->count("mnPrivKey") || !it->count("txid") || !it->count("index")) {
-            strErr = _("Could not parse masternode.conf") + "\n" +
-                    strprintf(_("Item: %d"), itemnumber);
-            return false;
+        if (it.key().empty() || !it->count("mnAddress") || !it->count("mnPrivKey") || !it->count("txid") || !it->count("outIndex")) {
+            continue;
         }
 
-        std::string alias, mnAddress, mnPrivKey, txid, index, pyAddress, pyPrivKey, pyCfg;
+        std::string alias, mnAddress, mnPrivKey, txid, outIndex, pyAddress, pyPubKey, pyCfg;
         
         alias = it.key();
 
         mnAddress = get_string(it, "mnAddress");
-        if (!checkIPAddressPort(mnAddress, itemnumber, true, strErr)) {
-            return false;
-        }
-
         mnPrivKey = get_string(it, "mnPrivKey");
         txid = get_string(it, "txid");
-        index = get_string(it, "index");
+        outIndex = get_string(it, "outIndex");
 
-        pyAddress = get_string(it, "pyAddress");
-        if (!checkIPAddressPort(pyAddress, itemnumber, false, strErr)) {
+        if (mnAddress.empty() || mnPrivKey.empty() || txid.empty() || outIndex.empty()) {
+            continue;
+        }
+
+        if (!checkIPAddressPort(mnAddress, alias, true, strErr)) {
+            strErr += " (mnAddress)";
             return false;
         }
 
-        pyPrivKey = get_string(it, "pyPrivKey");
+        pyAddress = get_string(it, "pyAddress");
+        if (!pyAddress.empty() && !checkIPAddressPort(pyAddress, alias, false, strErr)) {
+            strErr += " (pyAddress)";
+            return false;
+        }
+
+        pyPubKey = get_string(it, "pyPubKey");
         pyCfg = get_obj_as_string(it, "pyCfg");
 
         if (pyCfg.length() > 1024) pyCfg.erase(1024, std::string::npos);
 
-        CMasternodeEntry cme(alias, mnAddress, mnPrivKey, txid, index, pyAddress, pyPrivKey, pyCfg);
+        CMasternodeEntry cme(alias, mnAddress, mnPrivKey, txid, outIndex, pyAddress, pyPubKey, pyCfg);
         entries.push_back(cme);
-
-        itemnumber++;
     }
+
+    if (getCount() == 0) {
+        strErr = strprintf("Config file is invalid - no correct records found\n");
+        return false;
+    }
+
     return true;
 }

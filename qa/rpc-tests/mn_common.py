@@ -14,6 +14,7 @@ import os
 import sys
 import time
 import itertools
+import json
 
 from decimal import Decimal, getcontext
 getcontext().prec = 16
@@ -128,8 +129,25 @@ def create_masternode_conf(name, n, dirname, txid, vin, private_key, mn_port):
     regtestdir = os.path.join(datadir, "regtest")
     if not os.path.isdir(regtestdir):
         os.makedirs(regtestdir)    
-    with open(os.path.join(regtestdir, "masternode.conf"), 'a') as f:
-        f.write(name + " 127.0.0.1:" + str(mn_port) + " " + str(private_key) + " " + str(txid) + " " + str(vin) + "\n")
+    
+    cfg_file = os.path.join(regtestdir, "masternode.conf")
+    
+    config = {}
+    if os.path.isfile(cfg_file):
+        with open(cfg_file) as json_file:  
+            config = json.load(json_file)
+
+    config[name] = {}
+    config[name]["mnAddress"] = "127.0.0.1:" + str(mn_port)
+    config[name]["mnPrivKey"] = str(private_key)
+    config[name]["txid"] = str(txid)
+    config[name]["outIndex"] = str(vin)
+    config[name]["pyAddress"] = "127.0.0.1:9999"
+    config[name]["pyPubKey"] = "key"
+    config[name]["pyCfg"] = {}
+
+    with open(cfg_file, 'w') as f:
+        json.dump(config, f, indent=4)
     return datadir
 
 def wait_for_it(init_wait, more_wait, wait_for, node_list, mnId, repeatMore=1):

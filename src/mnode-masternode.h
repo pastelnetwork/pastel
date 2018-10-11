@@ -84,10 +84,12 @@ struct masternode_info_t
     masternode_info_t(int activeState, int protoVer, int64_t sTime,
                       COutPoint const& outpoint, CService const& addr,
                       CPubKey const& pkCollAddr, CPubKey const& pkMN,
+                      const std::string& pyAddress, const std::string& pyPubKey, const std::string& pyCfg,
                       int64_t tWatchdogV = 0) :
         nActiveState{activeState}, nProtocolVersion{protoVer}, sigTime{sTime},
         vin{outpoint}, addr{addr},
         pubKeyCollateralAddress{pkCollAddr}, pubKeyMasternode{pkMN},
+        strPyAddress{pyAddress}, strPyPubKey{pyPubKey}, strPyCfg{pyCfg},
         nTimeLastWatchdogVote{tWatchdogV} {}
 
     int nActiveState = 0;
@@ -98,16 +100,17 @@ struct masternode_info_t
     CService addr{};
     CPubKey pubKeyCollateralAddress{};
     CPubKey pubKeyMasternode{};
+
+    std::string strPyAddress {};
+    std::string strPyPubKey {};
+    std::string strPyCfg {};
+
     int64_t nTimeLastWatchdogVote = 0;
 
     int64_t nTimeLastChecked = 0;
     int64_t nTimeLastPaid = 0;
     int64_t nTimeLastPing = 0; //* not in CMN
     bool fInfoValid = false; //* not in CMN
-
-    CPubKey pubKeyPyMN {};
-    CService addrPyMN {};
-    std::string strJsonPyMNCfg {};
 };
 
 //
@@ -151,7 +154,9 @@ public:
     CMasternode();
     CMasternode(const CMasternode& other);
     CMasternode(const CMasternodeBroadcast& mnb);
-    CMasternode(CService addrNew, COutPoint outpointNew, CPubKey pubKeyCollateralAddressNew, CPubKey pubKeyMasternodeNew, int nProtocolVersionIn);
+    CMasternode(CService addrNew, COutPoint outpointNew, CPubKey pubKeyCollateralAddressNew, CPubKey pubKeyMasternodeNew, 
+                const std::string& strPyAddress, const std::string& strPyPubKey, const std::string& strPyCfg,
+                int nProtocolVersionIn);
 
     ADD_SERIALIZE_METHODS;
 
@@ -175,9 +180,9 @@ public:
         READWRITE(nPoSeBanScore);
         READWRITE(nPoSeBanHeight);
         READWRITE(fUnitTest);
-        READWRITE(pubKeyPyMN);
-        READWRITE(addrPyMN);
-        READWRITE(strJsonPyMNCfg);
+        READWRITE(strPyPubKey);
+        READWRITE(strPyAddress);
+        READWRITE(strPyCfg);
     }
 
     // CALCULATE A RANK AGAINST OF GIVEN BLOCK
@@ -287,8 +292,12 @@ public:
 
     CMasternodeBroadcast() : CMasternode(), fRecovery(false) {}
     CMasternodeBroadcast(const CMasternode& mn) : CMasternode(mn), fRecovery(false) {}
-    CMasternodeBroadcast(CService addrNew, COutPoint outpointNew, CPubKey pubKeyCollateralAddressNew, CPubKey pubKeyMasternodeNew, int nProtocolVersionIn) :
-        CMasternode(addrNew, outpointNew, pubKeyCollateralAddressNew, pubKeyMasternodeNew, nProtocolVersionIn), fRecovery(false) {}
+    CMasternodeBroadcast(CService addrNew, COutPoint outpointNew, CPubKey pubKeyCollateralAddressNew, CPubKey pubKeyMasternodeNew, 
+                            const std::string& strPyAddress, const std::string& strPyPubKey, const std::string& strPyCfg,
+                            int nProtocolVersionIn) :
+        CMasternode(addrNew, outpointNew, pubKeyCollateralAddressNew, pubKeyMasternodeNew, 
+                    strPyAddress, strPyPubKey, strPyCfg,
+                    nProtocolVersionIn), fRecovery(false) {}
 
     ADD_SERIALIZE_METHODS;
 
@@ -302,9 +311,9 @@ public:
         READWRITE(sigTime);
         READWRITE(nProtocolVersion);
         READWRITE(lastPing);
-        READWRITE(pubKeyPyMN);
-        READWRITE(addrPyMN);
-        READWRITE(strJsonPyMNCfg);
+        READWRITE(strPyPubKey);
+        READWRITE(strPyAddress);
+        READWRITE(strPyCfg);
     }
 
     uint256 GetHash() const
@@ -317,8 +326,15 @@ public:
     }
 
     /// Create Masternode broadcast, needs to be relayed manually after that
-    static bool Create(const COutPoint& outpoint, const CService& service, const CKey& keyCollateralAddressNew, const CPubKey& pubKeyCollateralAddressNew, const CKey& keyMasternodeNew, const CPubKey& pubKeyMasternodeNew, std::string &strErrorRet, CMasternodeBroadcast &mnbRet);
-    static bool Create(std::string strService, std::string strKey, std::string strTxHash, std::string strOutputIndex, std::string& strErrorRet, CMasternodeBroadcast &mnbRet, bool fOffline = false);
+    static bool Create(const COutPoint& outpoint, 
+                        const CService& service, 
+                        const CKey& keyCollateralAddressNew, const CPubKey& pubKeyCollateralAddressNew, 
+                        const CKey& keyMasternodeNew, const CPubKey& pubKeyMasternodeNew, 
+                        const std::string& strPyAddress, const std::string& strPyPubKey, const std::string& strPyCfg,
+                        std::string &strErrorRet, CMasternodeBroadcast &mnbRet);
+    static bool Create(std::string strService, std::string strKey, std::string strTxHash, std::string strOutputIndex, 
+        std::string strPyAddress, std::string strPyPubKey, std::string strPyCfg,
+        std::string& strErrorRet, CMasternodeBroadcast &mnbRet, bool fOffline = false);
 
     bool SimpleCheck(int& nDos);
     bool Update(CMasternode* pmn, int& nDos);

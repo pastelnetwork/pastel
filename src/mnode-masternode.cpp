@@ -32,9 +32,13 @@ CMasternode::CMasternode() :
     masternode_info_t{ MASTERNODE_ENABLED, PROTOCOL_VERSION, GetAdjustedTime()}
 {}
 
-CMasternode::CMasternode(CService addr, COutPoint outpoint, CPubKey pubKeyCollateralAddress, CPubKey pubKeyMasternode, int nProtocolVersionIn) :
+CMasternode::CMasternode(CService addr, COutPoint outpoint, CPubKey pubKeyCollateralAddress, CPubKey pubKeyMasternode, 
+                            const std::string& strPyAddress, const std::string& strPyPubKey, const std::string& strPyCfg,
+                            int nProtocolVersionIn) :
     masternode_info_t{ MASTERNODE_ENABLED, nProtocolVersionIn, GetAdjustedTime(),
-                       outpoint, addr, pubKeyCollateralAddress, pubKeyMasternode}
+                       outpoint, addr, pubKeyCollateralAddress, pubKeyMasternode,
+                       strPyAddress, strPyPubKey, strPyCfg,
+                       }
 {}
 
 CMasternode::CMasternode(const CMasternode& other) :
@@ -51,6 +55,7 @@ CMasternode::CMasternode(const CMasternode& other) :
 CMasternode::CMasternode(const CMasternodeBroadcast& mnb) :
     masternode_info_t{ mnb.nActiveState, mnb.nProtocolVersion, mnb.sigTime,
                        mnb.vin.prevout, mnb.addr, mnb.pubKeyCollateralAddress, mnb.pubKeyMasternode,
+                       mnb.strPyAddress, mnb.strPyPubKey, mnb.strPyCfg,
                        mnb.sigTime /*nTimeLastWatchdogVote*/},
     lastPing(mnb.lastPing),
     vchSig(mnb.vchSig)
@@ -368,7 +373,9 @@ void CMasternode::PoSeBan()
 
 
 #ifdef ENABLE_WALLET
-bool CMasternodeBroadcast::Create(std::string strService, std::string strKeyMasternode, std::string strTxHash, std::string strOutputIndex, std::string& strErrorRet, CMasternodeBroadcast &mnbRet, bool fOffline)
+bool CMasternodeBroadcast::Create(std::string strService, std::string strKeyMasternode, std::string strTxHash, std::string strOutputIndex, 
+                                    std::string strPyAddress, std::string strPyPubKey, std::string strPyCfg,
+                                    std::string& strErrorRet, CMasternodeBroadcast &mnbRet, bool fOffline)
 {
     COutPoint outpoint;
     CPubKey pubKeyCollateralAddressNew;
@@ -403,10 +410,20 @@ bool CMasternodeBroadcast::Create(std::string strService, std::string strKeyMast
     } else if (service.GetPort() == mainnetDefaultPort)
         return Log(strprintf("Invalid port %u for masternode %s, %d is the only supported on mainnet.", service.GetPort(), strService, mainnetDefaultPort));
 
-    return Create(outpoint, service, keyCollateralAddressNew, pubKeyCollateralAddressNew, keyMasternodeNew, pubKeyMasternodeNew, strErrorRet, mnbRet);
+    return Create(outpoint, 
+                    service, 
+                    keyCollateralAddressNew, pubKeyCollateralAddressNew, 
+                    keyMasternodeNew, pubKeyMasternodeNew,
+                    strPyAddress, strPyPubKey, strPyCfg, 
+                    strErrorRet, mnbRet);
 }
 
-bool CMasternodeBroadcast::Create(const COutPoint& outpoint, const CService& service, const CKey& keyCollateralAddressNew, const CPubKey& pubKeyCollateralAddressNew, const CKey& keyMasternodeNew, const CPubKey& pubKeyMasternodeNew, std::string &strErrorRet, CMasternodeBroadcast &mnbRet)
+bool CMasternodeBroadcast::Create(const COutPoint& outpoint, 
+                                    const CService& service, 
+                                    const CKey& keyCollateralAddressNew, const CPubKey& pubKeyCollateralAddressNew, 
+                                    const CKey& keyMasternodeNew, const CPubKey& pubKeyMasternodeNew, 
+                                    const std::string& strPyAddress, const std::string& strPyPubKey, const std::string& strPyCfg,
+                                    std::string &strErrorRet, CMasternodeBroadcast &mnbRet)
 {
     // wait for reindex and/or import to finish
     if (fImporting || fReindex) return false;
@@ -427,7 +444,9 @@ bool CMasternodeBroadcast::Create(const COutPoint& outpoint, const CService& ser
     if (!mnp.Sign(keyMasternodeNew, pubKeyMasternodeNew))
         return Log(strprintf("Failed to sign ping, masternode=%s", outpoint.ToStringShort()));
 
-    mnbRet = CMasternodeBroadcast(service, outpoint, pubKeyCollateralAddressNew, pubKeyMasternodeNew, PROTOCOL_VERSION);
+    mnbRet = CMasternodeBroadcast(service, outpoint, pubKeyCollateralAddressNew, pubKeyMasternodeNew, 
+                                    strPyAddress, strPyPubKey, strPyCfg,
+                                    PROTOCOL_VERSION);
 
     if (!mnbRet.IsValidNetAddr())
         return Log(strprintf("Invalid IP address, masternode=%s", outpoint.ToStringShort()));

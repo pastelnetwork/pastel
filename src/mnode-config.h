@@ -23,19 +23,19 @@ public:
         std::string txHash;
         std::string outputIndex;
         std::string pyAddress;
-        std::string pyPrivKey;
+        std::string pyPubKey;
         std::string pyCfg;
     public:
 
         CMasternodeEntry(std::string alias, std::string mnAddress, std::string mnPrivKey, std::string txHash, std::string outputIndex,
-                         std::string pyAddress, std::string pyPrivKey, std::string pyCfg) {
+                         std::string pyAddress, std::string pyPubKey, std::string pyCfg) {
             this->alias = alias;
             this->mnAddress = mnAddress;
             this->mnPrivKey = mnPrivKey;
             this->txHash = txHash;
             this->outputIndex = outputIndex;
             this->pyAddress = pyAddress;
-            this->pyPrivKey = pyPrivKey;
+            this->pyPubKey = pyPubKey;
             this->pyCfg = pyCfg;
         }
 
@@ -63,8 +63,8 @@ public:
             return pyAddress;
         }
 
-        const std::string& getPyPrivKey() const {
-            return pyPrivKey;
+        const std::string& getPyPubKey() const {
+            return pyPubKey;
         }
 
         const std::string& getPyCfg() const {

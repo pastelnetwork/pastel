@@ -175,7 +175,10 @@ UniValue masternode(const UniValue& params, bool fHelp)
                 std::string strError;
                 CMasternodeBroadcast mnb;
 
-                bool fResult = CMasternodeBroadcast::Create(mne.getIp(), mne.getPrivKey(), mne.getTxHash(), mne.getOutputIndex(), strError, mnb);
+
+                bool fResult = CMasternodeBroadcast::Create(mne.getIp(), mne.getPrivKey(), mne.getTxHash(), mne.getOutputIndex(), 
+                                                            mne.getPyIp(), mne.getPyPubKey(), mne.getPyCfg(),
+                                                            strError, mnb);
 
                 statusObj.push_back(Pair("result", fResult ? "successful" : "failed"));
                 if(fResult) {
@@ -224,7 +227,9 @@ UniValue masternode(const UniValue& params, bool fHelp)
             if(strCommand == "start-missing" && fFound) continue;
             if(strCommand == "start-disabled" && fFound && mn.IsEnabled()) continue;
 
-            bool fResult = CMasternodeBroadcast::Create(mne.getIp(), mne.getPrivKey(), mne.getTxHash(), mne.getOutputIndex(), strError, mnb);
+            bool fResult = CMasternodeBroadcast::Create(mne.getIp(), mne.getPrivKey(), mne.getTxHash(), mne.getOutputIndex(), 
+                                                        mne.getPyIp(), mne.getPyPubKey(), mne.getPyCfg(),
+                                                        strError, mnb);
 
             UniValue statusObj(UniValue::VOBJ);
             statusObj.push_back(Pair("alias", mne.getAlias()));
@@ -275,6 +280,9 @@ UniValue masternode(const UniValue& params, bool fHelp)
             mnObj.push_back(Pair("privateKey", mne.getPrivKey()));
             mnObj.push_back(Pair("txHash", mne.getTxHash()));
             mnObj.push_back(Pair("outputIndex", mne.getOutputIndex()));
+            mnObj.push_back(Pair("pyAddress", mne.getPyIp()));
+            mnObj.push_back(Pair("pyPubKey", mne.getPyPubKey()));
+            mnObj.push_back(Pair("pyCfg", mne.getPyCfg()));
             mnObj.push_back(Pair("status", strStatus));
             resultObj.push_back(Pair("masternode", mnObj));
         }
@@ -367,7 +375,7 @@ UniValue masternodelist(const UniValue& params, bool fHelp)
                 strMode != "activeseconds" && strMode != "addr" && strMode != "full" && strMode != "info" &&
                 strMode != "lastseen" && strMode != "lastpaidtime" && strMode != "lastpaidblock" &&
                 strMode != "protocol" && strMode != "payee" && strMode != "pubkey" &&
-                strMode != "rank" && strMode != "status"))
+                strMode != "rank" && strMode != "status" && strMode != "extra"))
     {
         throw std::runtime_error(
                 "masternodelist ( \"mode\" \"filter\" )\n"
@@ -394,6 +402,7 @@ UniValue masternodelist(const UniValue& params, bool fHelp)
                 "  rank           - Print rank of a masternode based on current block\n"
                 "  status         - Print masternode status: PRE_ENABLED / ENABLED / EXPIRED / WATCHDOG_EXPIRED / NEW_START_REQUIRED /\n"
                 "                   UPDATE_REQUIRED / POSE_BAN / OUTPOINT_SPENT (can be additionally filtered, partial match)\n"
+                "  extra          - Print ANIMECOIN data associated with the masternode\n"
                 );
     }
 
@@ -483,6 +492,12 @@ UniValue masternodelist(const UniValue& params, bool fHelp)
                 if (strFilter !="" && strStatus.find(strFilter) == std::string::npos &&
                     strOutpoint.find(strFilter) == std::string::npos) continue;
                 obj.push_back(Pair(strOutpoint, strStatus));
+            } else if (strMode == "extra") {
+                std::ostringstream streamExtra;
+                streamExtra << mn.strPyAddress << " " <<
+                               mn.strPyPubKey << " " <<
+                               "\"" << mn.strPyCfg << "\"";
+                obj.push_back(Pair(strOutpoint, streamExtra.str()));
             }
         }
     }
@@ -561,7 +576,9 @@ UniValue masternodebroadcast(const UniValue& params, bool fHelp)
                 std::string strError;
                 CMasternodeBroadcast mnb;
 
-                bool fResult = CMasternodeBroadcast::Create(mne.getIp(), mne.getPrivKey(), mne.getTxHash(), mne.getOutputIndex(), strError, mnb, true);
+                bool fResult = CMasternodeBroadcast::Create(mne.getIp(), mne.getPrivKey(), mne.getTxHash(), mne.getOutputIndex(), 
+                                                            mne.getPyIp(), mne.getPyPubKey(), mne.getPyCfg(),
+                                                            strError, mnb, true);
 
                 statusObj.push_back(Pair("result", fResult ? "successful" : "failed"));
                 if(fResult) {
@@ -609,7 +626,9 @@ UniValue masternodebroadcast(const UniValue& params, bool fHelp)
             std::string strError;
             CMasternodeBroadcast mnb;
 
-            bool fResult = CMasternodeBroadcast::Create(mne.getIp(), mne.getPrivKey(), mne.getTxHash(), mne.getOutputIndex(), strError, mnb, true);
+            bool fResult = CMasternodeBroadcast::Create(mne.getIp(), mne.getPrivKey(), mne.getTxHash(), mne.getOutputIndex(), 
+                                                        mne.getPyIp(), mne.getPyPubKey(), mne.getPyCfg(),
+                                                        strError, mnb, true);
 
             UniValue statusObj(UniValue::VOBJ);
             statusObj.push_back(Pair("alias", mne.getAlias()));
