@@ -15,6 +15,7 @@ import sys
 import time
 import itertools
 import json
+import random
 
 from decimal import Decimal, getcontext
 getcontext().prec = 16
@@ -142,9 +143,11 @@ def create_masternode_conf(name, n, dirname, txid, vin, private_key, mn_port):
     config[name]["mnPrivKey"] = str(private_key)
     config[name]["txid"] = str(txid)
     config[name]["outIndex"] = str(vin)
-    config[name]["pyAddress"] = "127.0.0.1:9999"
-    config[name]["pyPubKey"] = "key"
+    config[name]["pyAddress"] = "127.0.0.1:" + str(random.randint(2000, 5000))
+    config[name]["pyPubKey"] = ''.join(random.sample(private_key,len(private_key)))
     config[name]["pyCfg"] = {}
+    config[name]["pyCfg"]["param1"] = str(random.randint(0, 9))
+    config[name]["pyCfg"]["param2"] = str(random.randint(0, 9))
 
     with open(cfg_file, 'w') as f:
         json.dump(config, f, indent=4)

@@ -493,11 +493,12 @@ UniValue masternodelist(const UniValue& params, bool fHelp)
                     strOutpoint.find(strFilter) == std::string::npos) continue;
                 obj.push_back(Pair(strOutpoint, strStatus));
             } else if (strMode == "extra") {
-                std::ostringstream streamExtra;
-                streamExtra << mn.strPyAddress << " " <<
-                               mn.strPyPubKey << " " <<
-                               "\"" << mn.strPyCfg << "\"";
-                obj.push_back(Pair(strOutpoint, streamExtra.str()));
+                UniValue objItem(UniValue::VOBJ);
+                objItem.push_back(Pair("pyAddress", mn.strPyAddress)); 
+                objItem.push_back(Pair("pyPubKey", mn.strPyPubKey)); 
+                objItem.push_back(Pair("pyCfg", mn.strPyCfg)); 
+
+                obj.push_back(Pair(strOutpoint, objItem));
             }
         }
     }
