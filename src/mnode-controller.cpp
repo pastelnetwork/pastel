@@ -53,11 +53,6 @@ void CMasterNodeController::SetParameters()
         nMasternodeMinimumConfirmations = 1;
         nMasternodePaymentsIncreaseBlock = 4030;
         nMasternodePaymentsIncreasePeriod = 10;
-        nFulfilledRequestExpireTime = 5*60; // 5 minutes
-
-        MasternodeMinMNPSeconds             =  1 * 60;    
-        MasternodeExpirationSeconds         =  5 * 60;
-        MasternodeNewStartRequiredSeconds   = 10 * 60;
     }
     else if (Params().IsRegTest()) {
         nMasternodeMinimumConfirmations = 1;
