@@ -45,6 +45,9 @@ class PrioritiseTransactionTest (BitcoinTestFramework):
         # Older transactions get mined first, so this lower value, newer tx is unlikely to be mined without prioritisation
         priority_tx_0 = self.nodes[0].sendtoaddress(self.nodes[1].getnewaddress(), 0.1)
 
+        print "Waiting 20 sec for mnsync to finish..."
+        time.sleep(20)
+
         # Check that priority_tx_0 is not in block_template() prior to prioritisation
         block_template = self.nodes[0].getblocktemplate()
         in_block_template = False

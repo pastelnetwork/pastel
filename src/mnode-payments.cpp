@@ -22,7 +22,7 @@ CAmount CMasternodePayments::GetMasternodePayment(int nHeight, CAmount blockValu
     return ret;
 }
 
-void CMasternodePayments::FillMasterNodePayment(CMutableTransaction& txNew, int nBlockHeight, CAmount blockReward, CTxOut& txoutMasternodeRet)
+void CMasternodePayments::FillMasterNodePayment(CMutableTransaction& txNew, int nBlockHeight, CAmount blockReward, CTxOut& txoutMasternodeRet, outpoint_vector& blockWorkersRet)
 {
     // make sure it's not filled yet
     txoutMasternodeRet = CTxOut();
@@ -51,6 +51,10 @@ void CMasternodePayments::FillMasterNodePayment(CMutableTransaction& txNew, int 
     txoutMasternodeRet = CTxOut(masternodePayment, scriptPubKey);
     txNew.vout.push_back(txoutMasternodeRet);
 
+    if (!GetWorkersForBlock(nBlockHeight, blockWorkersRet)){
+        LogPrintf("CMasternodePayments::FillMasterNodePayment -- Failed to find workers!!!\n");
+    }
+
     CTxDestination address1;
     ExtractDestination(scriptPubKey, address1);
     CBitcoinAddress address2(address1);
@@ -67,6 +71,19 @@ std::string CMasternodePayments::GetRequiredPaymentsString(int nBlockHeight)
     }
 
     return "Unknown";
+}
+
+bool CMasternodePayments::GetWorkersForBlock(int nBlockHeight, outpoint_vector& workers)
+{
+    LOCK(cs_mapMasternodeBlockPayees);
+
+    //Index in winners array where workers for this height are
+    int nIndex = nBlockHeight + masterNodeCtrl.nMasternodeWorkersIndexDelta;
+
+    if(mapMasternodeBlockPayees.count(nIndex)){
+        return mapMasternodeBlockPayees[nIndex].GetBestWorkers(workers);
+    }
+    return false;
 }
 
 void CMasternodePayments::Clear()
@@ -203,6 +220,8 @@ bool CMasternodePaymentVote::Sign()
     std::string strMessage = vinMasternode.prevout.ToStringShort() +
                 boost::lexical_cast<std::string>(nBlockHeight) +
                 ScriptToAsmStr(payee);
+    for (auto &worker : vecWorkers)
+        strMessage += worker.ToStringShort();
 
     if(!CMessageSigner::SignMessage(strMessage, vchSig, masterNodeCtrl.activeMasternode.keyMasternode)) {
         LogPrintf("CMasternodePaymentVote::Sign -- SignMessage() failed\n");
@@ -251,7 +270,7 @@ bool CMasternodePayments::IsScheduled(CMasternode& mn, int nNotBlockHeight)
 bool CMasternodePayments::AddPaymentVote(const CMasternodePaymentVote& vote)
 {
     uint256 blockHash = uint256();
-    if(!GetBlockHash(blockHash, vote.nBlockHeight - 101)) return false;
+    if(!GetBlockHash(blockHash, vote.nBlockHeight + masterNodeCtrl.nMasternodePaymentsVotersIndexDelta)) return false;
 
     if(HasVerifiedPaymentVote(vote.GetHash())) return false;
 
@@ -282,12 +301,15 @@ void CMasternodeBlockPayees::AddPayee(const CMasternodePaymentVote& vote)
     LOCK(cs_vecPayees);
 
     BOOST_FOREACH(CMasternodePayee& payee, vecPayees) {
-        if (payee.GetPayee() == vote.payee) {
+        if (payee.GetPayee() == vote.payee &&
+            payee.vecWorkers.size() == vote.vecWorkers.size() && 
+            std::equal(payee.vecWorkers.begin(), payee.vecWorkers.end(),
+                       vote.vecWorkers.begin()) ) {
             payee.AddVoteHash(vote.GetHash());
             return;
         }
     }
-    CMasternodePayee payeeNew(vote.payee, vote.GetHash());
+    CMasternodePayee payeeNew(vote.payee, vote.GetHash(), vote.vecWorkers);
     vecPayees.push_back(payeeNew);
 }
 
@@ -304,6 +326,21 @@ bool CMasternodeBlockPayees::GetBestPayee(CScript& payeeRet)
     BOOST_FOREACH(CMasternodePayee& payee, vecPayees) {
         if (payee.GetVoteCount() > nVotes) {
             payeeRet = payee.GetPayee();
+            nVotes = payee.GetVoteCount();
+        }
+    }
+
+    return (nVotes > -1);
+}
+
+bool CMasternodeBlockPayees::GetBestWorkers(outpoint_vector& workers)
+{
+    LOCK(cs_vecPayees);
+
+    int nVotes = -1;
+    BOOST_FOREACH(CMasternodePayee& payee, vecPayees) {
+        if (payee.GetVoteCount() > nVotes) {
+            workers = payee.vecWorkers;
             nVotes = payee.GetVoteCount();
         }
     }
@@ -459,7 +496,7 @@ bool CMasternodePaymentVote::IsValid(CNode* pnode, int nValidationHeight, std::s
 
     int nRank;
 
-    if(!masterNodeCtrl.masternodeManager.GetMasternodeRank(vinMasternode.prevout, nRank, nBlockHeight - 101, nMinRequiredProtocol)) {
+    if(!masterNodeCtrl.masternodeManager.GetMasternodeRank(vinMasternode.prevout, nRank, nBlockHeight + masterNodeCtrl.nMasternodePaymentsVotersIndexDelta, nMinRequiredProtocol)) {
         LogPrint("mnpayments", "CMasternodePaymentVote::IsValid -- Can't calculate rank for masternode %s\n",
                     vinMasternode.prevout.ToStringShort());
         return false;
@@ -495,7 +532,7 @@ bool CMasternodePayments::ProcessBlock(int nBlockHeight)
 
     int nRank;
 
-    if (!masterNodeCtrl.masternodeManager.GetMasternodeRank(masterNodeCtrl.activeMasternode.outpoint, nRank, nBlockHeight - 101)) {
+    if (!masterNodeCtrl.masternodeManager.GetMasternodeRank(masterNodeCtrl.activeMasternode.outpoint, nRank, nBlockHeight + masterNodeCtrl.nMasternodePaymentsVotersIndexDelta)) {
         LogPrint("mnpayments", "CMasternodePayments::ProcessBlock -- Unknown Masternode\n");
         return false;
     }
@@ -524,7 +561,19 @@ bool CMasternodePayments::ProcessBlock(int nBlockHeight)
 
     CScript payee = GetScriptForDestination(mnInfo.pubKeyCollateralAddress.GetID());
 
-    CMasternodePaymentVote voteNew(masterNodeCtrl.activeMasternode.outpoint, nBlockHeight, payee);
+    // SELECT THREE WORKER MASTERNODEs
+    CMasternodeMan::rank_pair_vec_t vMasternodeRanks;
+    if (!masterNodeCtrl.masternodeManager.GetMasternodeRanks(vMasternodeRanks) ||
+        vMasternodeRanks.size() < masterNodeCtrl.nMasternodeWorkersNumber) {
+        LogPrintf("CMasternodePayments::ProcessBlock -- ERROR: Failed to find workers masternode\n");
+        return false;
+    }
+
+    outpoint_vector vecWorkers;
+    for (auto mn : CMasternodeMan::rank_pair_vec_t(vMasternodeRanks.begin(), vMasternodeRanks.begin()+masterNodeCtrl.nMasternodeWorkersNumber))
+        vecWorkers.push_back(mn.second.vin.prevout);
+
+    CMasternodePaymentVote voteNew(masterNodeCtrl.activeMasternode.outpoint, nBlockHeight, payee, vecWorkers);
 
     CTxDestination address1;
     ExtractDestination(payee, address1);
@@ -556,7 +605,7 @@ void CMasternodePayments::CheckPreviousBlockVotes(int nPrevBlockHeight)
     debugStr += strprintf("CMasternodePayments::CheckPreviousBlockVotes -- nPrevBlockHeight=%d, expected voting MNs:\n", nPrevBlockHeight);
 
     CMasternodeMan::rank_pair_vec_t mns;
-    if (!masterNodeCtrl.masternodeManager.GetMasternodeRanks(mns, nPrevBlockHeight - 101)) {
+    if (!masterNodeCtrl.masternodeManager.GetMasternodeRanks(mns, nPrevBlockHeight + masterNodeCtrl.nMasternodePaymentsVotersIndexDelta)) {
         debugStr += "CMasternodePayments::CheckPreviousBlockVotes -- GetMasternodeRanks failed\n";
         LogPrint("mnpayments", "%s", debugStr);
         return;
@@ -629,6 +678,8 @@ bool CMasternodePaymentVote::CheckSignature(const CPubKey& pubKeyMasternode, int
     std::string strMessage = vinMasternode.prevout.ToStringShort() +
                 boost::lexical_cast<std::string>(nBlockHeight) +
                 ScriptToAsmStr(payee);
+    for (auto &worker : vecWorkers)
+        strMessage += worker.ToStringShort();
 
     std::string strError = "";
     if (!CMessageSigner::VerifyMessage(pubKeyMasternode, vchSig, strMessage, strError)) {
@@ -650,8 +701,14 @@ std::string CMasternodePaymentVote::ToString() const
 
     info << vinMasternode.prevout.ToStringShort() <<
             ", " << nBlockHeight <<
-            ", " << ScriptToAsmStr(payee) <<
-            ", " << (int)vchSig.size();
+            ", " << ScriptToAsmStr(payee);
+
+    info << "[";
+    for (auto &worker : vecWorkers)
+        info << "," << worker.ToStringShort();
+    info << "]";
+
+    info << ", " << (int)vchSig.size();
 
     return info.str();
 }
@@ -790,7 +847,7 @@ void CMasternodePayments::UpdatedBlockTip(const CBlockIndex *pindex)
     nCachedBlockHeight = pindex->nHeight;
     LogPrint("mnpayments", "CMasternodePayments::UpdatedBlockTip -- nCachedBlockHeight=%d\n", nCachedBlockHeight);
 
-    int nFutureBlock = nCachedBlockHeight + 10;
+    int nFutureBlock = nCachedBlockHeight + masterNodeCtrl.nMasternodePaymentsFeatureWinnerBlockIndexDelta;
 
     CheckPreviousBlockVotes(nFutureBlock - 1);
     ProcessBlock(nFutureBlock);

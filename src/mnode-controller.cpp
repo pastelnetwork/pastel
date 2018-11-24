@@ -41,6 +41,12 @@ void CMasterNodeController::SetParameters()
     MasternodePOSEBanMaxScore           = 5;
     nMasterNodeMaximumOutboundConnections = 20;
 
+    nMasternodePaymentsVotersIndexDelta = -101;
+    nMasternodePaymentsFeatureWinnerBlockIndexDelta = 10;
+    
+    nMasternodeWorkersIndexDelta = 8;
+    nMasternodeWorkersNumber = 3;
+
     nGovernanceVotingPeriodBlocks = 576; //24 hours, 1 block per 2.5 minutes
 
     if (Params().IsMainNet()) {
@@ -190,7 +196,7 @@ bool CMasterNodeController::EnableMasterNode(std::ostringstream& strErrors, boos
     return true;
 }
 
-bool CMasterNodeController::StartMasterNode(boost::thread_group& threadGroup)
+void CMasterNodeController::StartMasterNode(boost::thread_group& threadGroup)
 {
     if (semMasternodeOutbound == NULL) {
         // initialize semaphore
@@ -199,9 +205,9 @@ bool CMasterNodeController::StartMasterNode(boost::thread_group& threadGroup)
 
     //Enable Broadcast re-requests thread
     threadGroup.create_thread(boost::bind(std::function<void()>(std::bind(&CMasterNodeController::ThreadMnbRequestConnections, this))));
-
 }
-bool CMasterNodeController::StopMasterNode()
+
+void CMasterNodeController::StopMasterNode()
 {
     if (semMasternodeOutbound)
         for (int i=0; i<nMasterNodeMaximumOutboundConnections; i++)

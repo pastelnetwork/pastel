@@ -93,6 +93,7 @@ def initialize_chain(test_dir):
     """
 
     if not os.path.isdir(os.path.join("cache", "node0")):
+        print "Rebuilding cache..."
         devnull = open("/dev/null", "w+")
         # Create cache directories, run animecoind:
         for i in range(4):
@@ -139,6 +140,8 @@ def initialize_chain(test_dir):
             os.remove(log_filename("cache", i, "db.log"))
             os.remove(log_filename("cache", i, "peers.dat"))
             os.remove(log_filename("cache", i, "fee_estimates.dat"))
+
+        print "Finished Rebuilding cache..."
 
     for i in range(4):
         from_dir = os.path.join("cache", "node"+str(i))

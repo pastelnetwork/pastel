@@ -31,6 +31,7 @@ public:
     uint32_t nBits;
     uint256 nNonce;
     std::vector<unsigned char> nSolution;
+    std::vector<COutPoint> blockWorkers;
 
     CBlockHeader()
     {
@@ -50,6 +51,7 @@ public:
         READWRITE(nBits);
         READWRITE(nNonce);
         READWRITE(nSolution);
+        READWRITE(blockWorkers);
     }
 
     void SetNull()
@@ -62,6 +64,7 @@ public:
         nBits = 0;
         nNonce = uint256();
         nSolution.clear();
+        blockWorkers.clear();
     }
 
     bool IsNull() const
@@ -114,6 +117,7 @@ public:
         vtx.clear();
         txoutMasternode = CTxOut();
         txoutGovernance = CTxOut();
+        blockWorkers.clear();
         vMerkleTree.clear();
     }
 
@@ -128,6 +132,7 @@ public:
         block.nBits          = nBits;
         block.nNonce         = nNonce;
         block.nSolution      = nSolution;
+        block.blockWorkers   = blockWorkers;
         return block;
     }
 

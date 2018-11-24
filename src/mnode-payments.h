@@ -9,6 +9,9 @@
 #include "vector"
 #include "map"
 
+#include "main.h"
+#include "mnode-masternode.h"
+
 extern CCriticalSection cs_vecPayees;
 extern CCriticalSection cs_mapMasternodeBlockPayees;
 extern CCriticalSection cs_mapMasternodePayeeVotes;
@@ -18,6 +21,8 @@ class CMasternodePaymentVote;
 static const int MNPAYMENTS_SIGNATURES_REQUIRED         = 6;
 static const int MNPAYMENTS_SIGNATURES_TOTAL            = 10;
 
+typedef std::vector<COutPoint> outpoint_vector;
+
 class CMasternodePayee
 {
 private:
@@ -25,14 +30,18 @@ private:
     std::vector<uint256> vecVoteHashes;
 
 public:
+    outpoint_vector vecWorkers;
+
     CMasternodePayee() :
         scriptPubKey(),
-        vecVoteHashes()
+        vecVoteHashes(),
+        vecWorkers()
         {}
 
-    CMasternodePayee(CScript payee, uint256 hashIn) :
+    CMasternodePayee(CScript payee, uint256 hashIn, outpoint_vector workers) :
         scriptPubKey(payee),
-        vecVoteHashes()
+        vecVoteHashes(),
+        vecWorkers(workers)
     {
         vecVoteHashes.push_back(hashIn);
     }
@@ -43,6 +52,7 @@ public:
     inline void SerializationOp(Stream& s, Operation ser_action, int nType, int nVersion) {
         READWRITE(*(CScript*)(&scriptPubKey));
         READWRITE(vecVoteHashes);
+        READWRITE(vecWorkers);
     }
 
     CScript GetPayee() { return scriptPubKey; }
@@ -81,6 +91,8 @@ public:
     bool GetBestPayee(CScript& payeeRet);
     bool HasPayeeWithVotes(const CScript& payeeIn, int nVotesReq);
 
+    bool GetBestWorkers(outpoint_vector& workers);
+
     bool IsTransactionValid(const CTransaction& txNew);
 
     std::string GetRequiredPaymentsString();
@@ -96,17 +108,21 @@ public:
     CScript payee;
     std::vector<unsigned char> vchSig;
 
+    outpoint_vector vecWorkers;
+
     CMasternodePaymentVote() :
         vinMasternode(),
         nBlockHeight(0),
         payee(),
+        vecWorkers(),
         vchSig()
         {}
 
-    CMasternodePaymentVote(COutPoint outpointMasternode, int nBlockHeight, CScript payee) :
+    CMasternodePaymentVote(COutPoint outpointMasternode, int nBlockHeight, CScript payee, outpoint_vector workers) :
         vinMasternode(outpointMasternode),
         nBlockHeight(nBlockHeight),
         payee(payee),
+        vecWorkers(workers),
         vchSig()
         {}
 
@@ -117,6 +133,7 @@ public:
         READWRITE(vinMasternode);
         READWRITE(nBlockHeight);
         READWRITE(*(CScript*)(&payee));
+        READWRITE(vecWorkers);
         READWRITE(vchSig);
     }
 
@@ -125,6 +142,8 @@ public:
         ss << *(CScript*)(&payee);
         ss << nBlockHeight;
         ss << vinMasternode.prevout;
+        for (auto &worker : vecWorkers)
+            ss << worker;
         return ss.GetHash();
     }
 
@@ -185,8 +204,8 @@ public:
 
     void ProcessMessage(CNode* pfrom, std::string& strCommand, CDataStream& vRecv);
     std::string GetRequiredPaymentsString(int nBlockHeight);
-    void FillGovernancePayment(CMutableTransaction& txNew, int nBlockHeight, CAmount blockReward, CTxOut& txoutGovernanceRet);
-    void FillMasterNodePayment(CMutableTransaction& txNew, int nBlockHeight, CAmount blockReward, CTxOut& txoutMasternodeRet);
+    bool GetWorkersForBlock(int nBlockHeight, outpoint_vector& workers);
+    void FillMasterNodePayment(CMutableTransaction& txNew, int nBlockHeight, CAmount blockReward, CTxOut& txoutMasternodeRet, outpoint_vector& blockWorkersRet);
     std::string ToString() const;
 
     int GetBlockCount() { return mapMasternodeBlockPayees.size(); }

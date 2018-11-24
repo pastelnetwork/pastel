@@ -1,6 +1,8 @@
-CMakeLists.txt
-cmake-build-debug/
+#CMakeLists.txt
+#cmake-build-debug/
 .idea/
+
+compile_commands.json
 
 *.tar.gz
 *.deb

@@ -27,6 +27,34 @@
 void EnsureWalletIsUnlocked();
 #endif // ENABLE_WALLET
 
+UniValue _format_workers_info(outpoint_vector &vecWorkers)
+{
+    UniValue workersArray(UniValue::VARR);
+
+    int i = 0;
+    for (auto &worker : vecWorkers) {
+        masternode_info_t mnInfo;
+        if (masterNodeCtrl.masternodeManager.GetMasternodeInfo(worker, mnInfo)){
+            UniValue objItem(UniValue::VOBJ);
+            objItem.push_back(Pair("rank", strprintf("%d", ++i)));
+
+            objItem.push_back(Pair("IP:port",       mnInfo.addr.ToString()));
+            objItem.push_back(Pair("protocol",      (int64_t)mnInfo.nProtocolVersion));
+            objItem.push_back(Pair("outpoint",      mnInfo.vin.prevout.ToStringShort()));
+            objItem.push_back(Pair("payee",         CBitcoinAddress(mnInfo.pubKeyCollateralAddress.GetID()).ToString()));
+            objItem.push_back(Pair("lastseen",      mnInfo.nTimeLastPing));
+            objItem.push_back(Pair("activeseconds", mnInfo.nTimeLastPing - mnInfo.sigTime));
+
+            objItem.push_back(Pair("pyAddress", mnInfo.strPyAddress));
+            objItem.push_back(Pair("pyPubKey", mnInfo.strPyPubKey));
+            objItem.push_back(Pair("pyCfg", mnInfo.strPyCfg));
+
+            workersArray.push_back(objItem);
+        }
+    }
+    return workersArray;
+}
+
 UniValue masternode(const UniValue& params, bool fHelp)
 {
     std::string strCommand;
@@ -42,12 +70,12 @@ UniValue masternode(const UniValue& params, bool fHelp)
     if (fHelp  ||
         (
 #ifdef ENABLE_WALLET
-            strCommand != "start-alias" && strCommand != "start-all" && strCommand != "start-missing" &&
+         strCommand != "start-alias" && strCommand != "start-all" && strCommand != "start-missing" &&
          strCommand != "start-disabled" && strCommand != "outputs" &&
 #endif // ENABLE_WALLET
          strCommand != "list" && strCommand != "list-conf" && strCommand != "count" &&
          strCommand != "debug" && strCommand != "current" && strCommand != "winner" && strCommand != "winners" && strCommand != "genkey" &&
-         strCommand != "connect" && strCommand != "status"))
+         strCommand != "connect" && strCommand != "status" && strCommand != "workers"))
             throw std::runtime_error(
                 "masternode \"command\"...\n"
                 "Set of commands to execute masternode related actions\n"
@@ -67,6 +95,7 @@ UniValue masternode(const UniValue& params, bool fHelp)
                 "  list-conf    - Print masternode.conf in JSON format\n"
                 "  winner       - Print info on next masternode winner to vote for\n"
                 "  winners      - Print list of masternode winners\n"
+                "  workers <n>  - Print 3 worker masternodes for the current or n-th block."
                 );
 
     if (strCommand == "list")
@@ -133,7 +162,7 @@ UniValue masternode(const UniValue& params, bool fHelp)
             LOCK(cs_main);
             pindex = chainActive.Tip();
         }
-        nHeight = pindex->nHeight + (strCommand == "current" ? 1 : 10);
+        nHeight = pindex->nHeight + (strCommand == "current" ? 1 : masterNodeCtrl.nMasternodePaymentsFeatureWinnerBlockIndexDelta);
         masterNodeCtrl.masternodeManager.UpdateLastPaid(pindex);
 
         if(!masterNodeCtrl.masternodeManager.GetNextMasternodeInQueueForPayment(nHeight, true, nCount, mnInfo))
@@ -356,6 +385,47 @@ UniValue masternode(const UniValue& params, bool fHelp)
             if (strFilter !="" && strPayment.find(strFilter) == std::string::npos) continue;
             obj.push_back(Pair(strprintf("%d", i), strPayment));
         }
+
+        return obj;
+    }
+    if (strCommand == "workers")
+    {
+        if (params.size() > 3)
+            throw JSONRPCError(RPC_INVALID_PARAMETER, "Correct usage is 'masternode workers' OR 'masternode workers \"block-height\"'");
+
+        UniValue obj(UniValue::VOBJ);
+
+        int nHeight;
+        if (params.size() >= 2) {
+            nHeight = atoi(params[1].get_str());
+        } else {
+            LOCK(cs_main);
+            CBlockIndex* pindex = chainActive.Tip();
+            if(!pindex) return false;
+            nHeight = pindex->nHeight;
+        }
+
+        if (nHeight < 0 || nHeight > chainActive.Height()) {
+            throw JSONRPCError(RPC_INVALID_PARAMETER, "Block height out of range");
+        }
+
+        std::string strHash = chainActive[nHeight]->GetBlockHash().GetHex();
+        uint256 hash(uint256S(strHash));
+
+        if (mapBlockIndex.count(hash) == 0)
+            throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Block not found");
+
+        CBlock block;
+        CBlockIndex* pblockindex = mapBlockIndex[hash];
+
+        if (fHavePruned && !(pblockindex->nStatus & BLOCK_HAVE_DATA) && pblockindex->nTx > 0)
+            throw JSONRPCError(RPC_INTERNAL_ERROR, "Block not available (pruned data)");
+
+        if(!ReadBlockFromDisk(block, pblockindex))
+            throw JSONRPCError(RPC_INTERNAL_ERROR, "Can't read block from disk");
+
+        UniValue workersArray = _format_workers_info(block.blockWorkers);
+        obj.push_back(Pair(strprintf("%d", nHeight), workersArray));
 
         return obj;
     }

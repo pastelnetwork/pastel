@@ -111,6 +111,13 @@ UniValue blockheaderToJSON(const CBlockIndex* blockindex)
     result.push_back(Pair("time", (int64_t)blockindex->nTime));
     result.push_back(Pair("nonce", blockindex->nNonce.GetHex()));
     result.push_back(Pair("solution", HexStr(blockindex->nSolution)));
+    UniValue workersArray(UniValue::VARR);
+    for (auto &worker : blockindex->blockWorkers) {
+        UniValue objWorker(UniValue::VOBJ);
+        objWorker.push_back(Pair("worker", worker.ToStringShort()));
+        workersArray.push_back(objWorker);
+    }
+    result.push_back(Pair("workers", workersArray));
     result.push_back(Pair("bits", strprintf("%08x", blockindex->nBits)));
     result.push_back(Pair("difficulty", GetDifficulty(blockindex)));
     result.push_back(Pair("chainwork", blockindex->nChainWork.GetHex()));

@@ -74,7 +74,7 @@ public:
         LOCK(cs_main);
         return chainActive.Height() > nSyncBlockHeight+nWaitForTicketRank*5;
     }
-    bool SetReprocessWaiting(int nBlockHeight)
+    void SetReprocessWaiting(int nBlockHeight)
     {
         nWaitForTicketRank++;
         nSyncBlockHeight = nBlockHeight;

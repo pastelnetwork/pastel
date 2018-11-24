@@ -61,6 +61,8 @@ public:
     int nGovernanceVotingPeriodBlocks;
 
     int nMasternodeMinimumConfirmations, nMasternodePaymentsIncreaseBlock, nMasternodePaymentsIncreasePeriod;
+    int nMasternodePaymentsVotersIndexDelta, nMasternodePaymentsFeatureWinnerBlockIndexDelta;
+    int nMasternodeWorkersNumber, nMasternodeWorkersIndexDelta;
     int nMasterNodeMaximumOutboundConnections;
     int nFulfilledRequestExpireTime;
 
@@ -78,8 +80,8 @@ public:
 #else
     bool EnableMasterNode(std::ostringstream& strErrors, boost::thread_group& threadGroup);
 #endif
-    bool StartMasterNode(boost::thread_group& threadGroup);
-    bool StopMasterNode();
+    void StartMasterNode(boost::thread_group& threadGroup);
+    void StopMasterNode();
 
     void ShutdownMasterNode();
 

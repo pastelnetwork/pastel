@@ -7,6 +7,7 @@ from test_framework.test_framework import BitcoinTestFramework
 from test_framework.util import initialize_chain_clean, start_nodes, \
     connect_nodes_bi
 
+import time
 
 class GetBlockTemplateTest(BitcoinTestFramework):
     '''
@@ -26,6 +27,10 @@ class GetBlockTemplateTest(BitcoinTestFramework):
     def run_test(self):
         node = self.nodes[0]
         node.generate(1) # Mine a block to leave initial block download
+        self.sync_all()
+
+        print "Waiting 60 sec for mnsync to finish..."
+        time.sleep(60)
 
         # Test 1: Default to coinbasetxn
         tmpl = node.getblocktemplate()

@@ -346,7 +346,7 @@ CBlockTemplate* CreateNewBlock(const CScript& scriptPubKeyIn)
         CAmount blockReward = nFees + GetBlockSubsidy(nHeight, chainparams.GetConsensus());        
         txNew.vout[0].nValue = blockReward;
 
-        FillOtherBlockPayments(txNew, nHeight, blockReward, pblock->txoutMasternode, pblock->txoutGovernance);
+        FillOtherBlockPayments(txNew, nHeight, blockReward, pblock->txoutMasternode, pblock->txoutGovernance, pblock->blockWorkers);
 
         txNew.vin[0].scriptSig = CScript() << nHeight << OP_0;
         

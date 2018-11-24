@@ -163,6 +163,7 @@ public:
     unsigned int nBits;
     uint256 nNonce;
     std::vector<unsigned char> nSolution;
+    std::vector<COutPoint> blockWorkers;
 
     //! (memory only) Sequential id assigned to distinguish order in which blocks are received.
     uint32_t nSequenceId;
@@ -193,6 +194,7 @@ public:
         nBits          = 0;
         nNonce         = uint256();
         nSolution.clear();
+        blockWorkers.clear();
     }
 
     CBlockIndex()
@@ -211,6 +213,7 @@ public:
         nBits          = block.nBits;
         nNonce         = block.nNonce;
         nSolution      = block.nSolution;
+        blockWorkers   = block.blockWorkers;
     }
 
     CDiskBlockPos GetBlockPos() const {
@@ -243,6 +246,7 @@ public:
         block.nBits          = nBits;
         block.nNonce         = nNonce;
         block.nSolution      = nSolution;
+        block.blockWorkers   = blockWorkers;
         return block;
     }
 
@@ -352,6 +356,7 @@ public:
         READWRITE(nBits);
         READWRITE(nNonce);
         READWRITE(nSolution);
+        READWRITE(blockWorkers);
 
         // Only read/write nSproutValue if the client version used to create
         // this index was storing them.
@@ -371,6 +376,7 @@ public:
         block.nBits           = nBits;
         block.nNonce          = nNonce;
         block.nSolution       = nSolution;
+        block.blockWorkers    = blockWorkers;
         return block.GetHash();
     }
 

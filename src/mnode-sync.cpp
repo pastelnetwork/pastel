@@ -322,7 +322,7 @@ void CMasternodeSync::ProcessTick()
                 return; //this will cause each peer to get one request each six seconds for the various assets we need
             }
             if(syncState == MasternodeSyncState::Governance) {
-                LogPrint("mnpayments", "CMasternodeSync::ProcessTick -- nTick %d syncState %d nTimeLastBumped %lld GetTime() %lld diff %lld\n", nTick, (int)syncState, nTimeLastBumped, GetTime(), GetTime() - nTimeLastBumped);
+                LogPrint("governace", "CMasternodeSync::ProcessTick -- nTick %d syncState %d nTimeLastBumped %lld GetTime() %lld diff %lld\n", nTick, (int)syncState, nTimeLastBumped, GetTime(), GetTime() - nTimeLastBumped);
                 // check for timeout first
                 if (!CheckSyncTimeout(nTick, vNodesCopy)) {
                     CNodeHelper::ReleaseNodeVector(vNodesCopy);

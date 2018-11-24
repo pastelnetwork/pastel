@@ -125,7 +125,7 @@ protected:
 public:
     CZCViewingKey() {}
 
-    CZCViewingKey(const std::string& strViewingKey) { SetString(strViewingKey.c_str(), 3); }
+    CZCViewingKey(const std::string& strViewingKey) { SetString(strViewingKey.c_str(), 2); }
     CZCViewingKey(const libzcash::ViewingKey& vk) { Set(vk); }
 };
 

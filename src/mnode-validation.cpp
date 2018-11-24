@@ -2,8 +2,6 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#include "main.h"
-
 #include "mnode-validation.h"
 #include "mnode-controller.h"
 
@@ -105,13 +103,13 @@ bool GetOutpointAndKeysFromOutput(CWallet* pWalletMain, const COutput& out, COut
 }
 #endif
 
-void FillOtherBlockPayments(CMutableTransaction& txNew, int nBlockHeight, CAmount blockReward, CTxOut& txoutMasternodeRet, CTxOut& txoutGovernanceRet)
+void FillOtherBlockPayments(CMutableTransaction& txNew, int nBlockHeight, CAmount blockReward, CTxOut& txoutMasternodeRet, CTxOut& txoutGovernanceRet, std::vector<COutPoint>& blockWorkersRet)
 {
     // Fill Governance payment
     masterNodeCtrl.masternodeGovernance.FillGovernancePayment(txNew, nBlockHeight, blockReward, txoutGovernanceRet);
     
     // FILL BLOCK PAYEE WITH MASTERNODE PAYMENT
-    masterNodeCtrl.masternodePayments.FillMasterNodePayment(txNew, nBlockHeight, blockReward, txoutMasternodeRet);
+    masterNodeCtrl.masternodePayments.FillMasterNodePayment(txNew, nBlockHeight, blockReward, txoutMasternodeRet, blockWorkersRet);
 
     LogPrint("mnpayments", "FillOtherBlockPayments -- nBlockHeight %d blockReward %lld txoutMasternodeRet %s txoutGovernanceRet %s txNew %s",
                             nBlockHeight, blockReward, txoutMasternodeRet.ToString(), txoutGovernanceRet.ToString(), txNew.ToString());
