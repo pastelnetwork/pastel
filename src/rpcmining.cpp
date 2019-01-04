@@ -481,6 +481,22 @@ UniValue getblocktemplate(const UniValue& params, bool fHelp)
             "  \"curtime\" : ttt,                  (numeric) current timestamp in seconds since epoch (Jan 1 1970 GMT)\n"
             "  \"bits\" : \"xxx\",                 (string) compressed target of next block\n"
             "  \"height\" : n                      (numeric) The height of the next block\n"
+            "  \"masternode\" : {                  (json object) required masternode payee that must be included in the next block\n"
+            "      \"payee\" : \"xxxx\",             (string) payee address\n"
+            "      \"script\" : \"xxxx\",            (string) payee scriptPubKey\n"
+            "      \"amount\": n                     (numeric) required amount to pay\n"
+            "  },\n"
+            "  \"governance\" : {                  (json object) required governance payee that must be included in the next block, can be empty\n"
+            "      \"payee\" : \"xxxx\",             (string) payee address\n"
+            "      \"script\" : \"xxxx\",            (string) payee scriptPubKey\n"
+            "      \"amount\": n                     (numeric) required amount to pay\n"
+            "  },\n"
+            "  \"workers\" : [                     (json array) masternode workers that must be included in the next block header, can be empty\n"
+            "      {                                 (json object) collateral transaction representing masternode\n"
+            "        \"hash\" : \"xxxx\",               (string) hash of collateral transaction\n"
+            "        \"n\"    : \"n\"                   (numeric) vout index of collateral transaction\n"
+            "      },\n"
+            "  ]\n"
             "}\n"
 
             "\nExamples:\n"
@@ -727,6 +743,40 @@ UniValue getblocktemplate(const UniValue& params, bool fHelp)
     result.push_back(Pair("curtime", pblock->GetBlockTime()));
     result.push_back(Pair("bits", strprintf("%08x", pblock->nBits)));
     result.push_back(Pair("height", (int64_t)(pindexPrev->nHeight+1)));
+
+    //ANIME-->
+    //MN payment
+    UniValue masternodeObj(UniValue::VOBJ);
+    if(pblock->txoutMasternode != CTxOut()) {
+        CTxDestination address1;
+        ExtractDestination(pblock->txoutMasternode.scriptPubKey, address1);
+        CBitcoinAddress address2(address1);
+        masternodeObj.push_back(Pair("payee", address2.ToString().c_str()));
+        masternodeObj.push_back(Pair("script", HexStr(pblock->txoutMasternode.scriptPubKey.begin(), pblock->txoutMasternode.scriptPubKey.end())));
+        masternodeObj.push_back(Pair("amount", pblock->txoutMasternode.nValue));
+    }
+    result.push_back(Pair("masternode", masternodeObj));
+    //Governance payment
+    UniValue governanceObj(UniValue::VOBJ);
+    if(pblock->txoutGovernance != CTxOut()) {
+        CTxDestination address1;
+        ExtractDestination(pblock->txoutGovernance.scriptPubKey, address1);
+        CBitcoinAddress address2(address1);
+        masternodeObj.push_back(Pair("payee", address2.ToString().c_str()));
+        masternodeObj.push_back(Pair("script", HexStr(pblock->txoutGovernance.scriptPubKey.begin(), pblock->txoutGovernance.scriptPubKey.end())));
+        masternodeObj.push_back(Pair("amount", pblock->txoutGovernance.nValue));
+    }
+    result.push_back(Pair("governance", governanceObj));
+    //Block Workers
+    UniValue workersArray(UniValue::VARR);
+    for (auto &worker : pblock->blockWorkers) {
+        UniValue objItem(UniValue::VOBJ);
+        objItem.push_back(Pair("hash", worker.hash.ToString().substr(0,64)));
+        objItem.push_back(Pair("n", static_cast<uint64_t>(worker.n)));
+        workersArray.push_back(objItem);
+    }
+    result.push_back(Pair("workers", workersArray));
+    //<--ANIME
 
     return result;
 }
