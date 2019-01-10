@@ -161,9 +161,9 @@ public:
     uint256 hashReserved;
     unsigned int nTime;
     unsigned int nBits;
+    COutPoint blockWorkers[3];
     uint256 nNonce;
     std::vector<unsigned char> nSolution;
-    std::vector<COutPoint> blockWorkers;
 
     //! (memory only) Sequential id assigned to distinguish order in which blocks are received.
     uint32_t nSequenceId;
@@ -192,9 +192,11 @@ public:
         hashReserved   = uint256();
         nTime          = 0;
         nBits          = 0;
+        blockWorkers[0].SetNull();
+        blockWorkers[1].SetNull();
+        blockWorkers[2].SetNull();
         nNonce         = uint256();
         nSolution.clear();
-        blockWorkers.clear();
     }
 
     CBlockIndex()
@@ -211,9 +213,11 @@ public:
         hashReserved   = block.hashReserved;
         nTime          = block.nTime;
         nBits          = block.nBits;
+        blockWorkers[0]   = block.blockWorkers[0];
+        blockWorkers[1]   = block.blockWorkers[1];
+        blockWorkers[2]   = block.blockWorkers[2];
         nNonce         = block.nNonce;
         nSolution      = block.nSolution;
-        blockWorkers   = block.blockWorkers;
     }
 
     CDiskBlockPos GetBlockPos() const {
@@ -244,9 +248,11 @@ public:
         block.hashReserved   = hashReserved;
         block.nTime          = nTime;
         block.nBits          = nBits;
+        block.blockWorkers[0]   = blockWorkers[0];
+        block.blockWorkers[1]   = blockWorkers[1];
+        block.blockWorkers[2]   = blockWorkers[2];
         block.nNonce         = nNonce;
         block.nSolution      = nSolution;
-        block.blockWorkers   = blockWorkers;
         return block;
     }
 
@@ -354,9 +360,11 @@ public:
         READWRITE(hashReserved);
         READWRITE(nTime);
         READWRITE(nBits);
+        READWRITE(blockWorkers[0]);
+        READWRITE(blockWorkers[1]);
+        READWRITE(blockWorkers[2]);
         READWRITE(nNonce);
         READWRITE(nSolution);
-        READWRITE(blockWorkers);
 
         // Only read/write nSproutValue if the client version used to create
         // this index was storing them.
@@ -374,9 +382,11 @@ public:
         block.hashReserved    = hashReserved;
         block.nTime           = nTime;
         block.nBits           = nBits;
+        block.blockWorkers[0]   = blockWorkers[0];
+        block.blockWorkers[1]   = blockWorkers[1];
+        block.blockWorkers[2]   = blockWorkers[2];
         block.nNonce          = nNonce;
         block.nSolution       = nSolution;
-        block.blockWorkers    = blockWorkers;
         return block.GetHash();
     }
 

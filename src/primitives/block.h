@@ -9,6 +9,7 @@
 #include "primitives/transaction.h"
 #include "serialize.h"
 #include "uint256.h"
+#include <sstream>
 
 /** Nodes collect new transactions into a block, hash them into a hash tree,
  * and scan through nonce values to make the block's hash satisfy proof-of-work
@@ -21,7 +22,7 @@ class CBlockHeader
 {
 public:
     // header
-    static const size_t HEADER_SIZE=4+32+32+32+4+4+32; // excluding Equihash solution
+    static const size_t HEADER_SIZE=4+32+32+32+4+4+32+(32+4)*3; // excluding Equihash solution
     static const int32_t CURRENT_VERSION=4;
     int32_t nVersion;
     uint256 hashPrevBlock;
@@ -29,9 +30,9 @@ public:
     uint256 hashReserved;
     uint32_t nTime;
     uint32_t nBits;
+    COutPoint blockWorkers[3];
     uint256 nNonce;
     std::vector<unsigned char> nSolution;
-    std::vector<COutPoint> blockWorkers;
 
     CBlockHeader()
     {
@@ -49,9 +50,11 @@ public:
         READWRITE(hashReserved);
         READWRITE(nTime);
         READWRITE(nBits);
+        READWRITE(blockWorkers[0]);
+        READWRITE(blockWorkers[1]);
+        READWRITE(blockWorkers[2]);
         READWRITE(nNonce);
         READWRITE(nSolution);
-        READWRITE(blockWorkers);
     }
 
     void SetNull()
@@ -62,9 +65,11 @@ public:
         hashReserved.SetNull();
         nTime = 0;
         nBits = 0;
+        blockWorkers[0].SetNull();
+        blockWorkers[1].SetNull();
+        blockWorkers[2].SetNull();
         nNonce = uint256();
         nSolution.clear();
-        blockWorkers.clear();
     }
 
     bool IsNull() const
@@ -117,7 +122,6 @@ public:
         vtx.clear();
         txoutMasternode = CTxOut();
         txoutGovernance = CTxOut();
-        blockWorkers.clear();
         vMerkleTree.clear();
     }
 
@@ -130,9 +134,11 @@ public:
         block.hashReserved   = hashReserved;
         block.nTime          = nTime;
         block.nBits          = nBits;
+        block.blockWorkers[0]   = blockWorkers[0];
+        block.blockWorkers[1]   = blockWorkers[1];
+        block.blockWorkers[2]   = blockWorkers[2];
         block.nNonce         = nNonce;
         block.nSolution      = nSolution;
-        block.blockWorkers   = blockWorkers;
         return block;
     }
 
@@ -172,6 +178,9 @@ public:
         READWRITE(hashReserved);
         READWRITE(nTime);
         READWRITE(nBits);
+        READWRITE(blockWorkers[0]);
+        READWRITE(blockWorkers[1]);
+        READWRITE(blockWorkers[2]);
     }
 };
 

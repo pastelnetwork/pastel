@@ -98,12 +98,12 @@ uint256 JSDescription::h_sig(ZCJoinSplit& params, const uint256& pubKeyHash) con
 
 std::string COutPoint::ToString() const
 {
-    return strprintf("COutPoint(%s, %u)", hash.ToString().substr(0,10), n);
+    return strprintf("COutPoint(%s, %u)", hash.ToString().substr(0,10), n == -1? 0: n);
 }
 
 std::string COutPoint::ToStringShort() const
 {
-    return strprintf("%s-%u", hash.ToString().substr(0,64), n);
+    return strprintf("%s-%u", hash.ToString().substr(0,64), n == -1? 0: n);
 }
 
 

@@ -771,8 +771,9 @@ UniValue getblocktemplate(const UniValue& params, bool fHelp)
     UniValue workersArray(UniValue::VARR);
     for (auto &worker : pblock->blockWorkers) {
         UniValue objItem(UniValue::VOBJ);
+        objItem.push_back(Pair("data", EncodeHexOutPoint(worker)));
         objItem.push_back(Pair("hash", worker.hash.ToString().substr(0,64)));
-        objItem.push_back(Pair("n", static_cast<uint64_t>(worker.n)));
+        objItem.push_back(Pair("n", worker.n == -1? 0: static_cast<uint64_t>(worker.n)));
         workersArray.push_back(objItem);
     }
     result.push_back(Pair("workers", workersArray));

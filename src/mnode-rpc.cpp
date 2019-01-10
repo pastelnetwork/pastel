@@ -27,12 +27,12 @@
 void EnsureWalletIsUnlocked();
 #endif // ENABLE_WALLET
 
-UniValue _format_workers_info(outpoint_vector &vecWorkers)
+UniValue _format_workers_info(COutPoint (&blockWorkers)[3])
 {
     UniValue workersArray(UniValue::VARR);
 
     int i = 0;
-    for (auto &worker : vecWorkers) {
+    for (auto &worker : blockWorkers) {
         masternode_info_t mnInfo;
         if (masterNodeCtrl.masternodeManager.GetMasternodeInfo(worker, mnInfo)){
             UniValue objItem(UniValue::VOBJ);

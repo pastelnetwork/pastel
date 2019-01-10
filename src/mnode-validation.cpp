@@ -103,13 +103,25 @@ bool GetOutpointAndKeysFromOutput(CWallet* pWalletMain, const COutput& out, COut
 }
 #endif
 
-void FillOtherBlockPayments(CMutableTransaction& txNew, int nBlockHeight, CAmount blockReward, CTxOut& txoutMasternodeRet, CTxOut& txoutGovernanceRet, std::vector<COutPoint>& blockWorkersRet)
+void FillOtherBlockPayments(CMutableTransaction& txNew, int nBlockHeight, CAmount blockReward, 
+                            CTxOut& txoutMasternodeRet, CTxOut& txoutGovernanceRet, 
+                            COutPoint (&blockWorkersRet)[3])
 {
     // Fill Governance payment
     masterNodeCtrl.masternodeGovernance.FillGovernancePayment(txNew, nBlockHeight, blockReward, txoutGovernanceRet);
     
     // FILL BLOCK PAYEE WITH MASTERNODE PAYMENT
-    masterNodeCtrl.masternodePayments.FillMasterNodePayment(txNew, nBlockHeight, blockReward, txoutMasternodeRet, blockWorkersRet);
+    outpoint_vector blockWorkers;
+    masterNodeCtrl.masternodePayments.FillMasterNodePayment(txNew, nBlockHeight, blockReward, txoutMasternodeRet, blockWorkers);
+    if (blockWorkers.size() > 2){
+        blockWorkersRet[2] = blockWorkers[2];
+    }
+    if (blockWorkers.size() > 1){
+        blockWorkersRet[1] = blockWorkers[1];
+    }
+    if (blockWorkers.size() > 0){
+        blockWorkersRet[0] = blockWorkers[0];
+    }
 
     LogPrint("mnpayments", "FillOtherBlockPayments -- nBlockHeight %d blockReward %lld txoutMasternodeRet %s txoutGovernanceRet %s txNew %s",
                             nBlockHeight, blockReward, txoutMasternodeRet.ToString(), txoutGovernanceRet.ToString(), txNew.ToString());

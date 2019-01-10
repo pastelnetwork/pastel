@@ -124,6 +124,13 @@ string EncodeHexTx(const CTransaction& tx)
     return HexStr(ssTx.begin(), ssTx.end());
 }
 
+string EncodeHexOutPoint(const COutPoint& t)
+{
+    CDataStream ss(SER_NETWORK, PROTOCOL_VERSION);
+    ss << t;
+    return HexStr(ss.begin(), ss.end());
+}
+
 void ScriptPubKeyToUniv(const CScript& scriptPubKey,
                         UniValue& out, bool fIncludeHex)
 {
