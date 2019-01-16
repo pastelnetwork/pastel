@@ -938,6 +938,8 @@ UniValue getblocksubsidy(const UniValue& params, bool fHelp)
             "\nResult:\n"
             "{\n"
             "  \"miner\" : x.xxx           (numeric) The mining reward amount in " + CURRENCY_UNIT + ".\n"
+            "  \"masternode\" : x.xxx           (numeric) The mining reward amount in " + CURRENCY_UNIT + ".\n"
+            "  \"governance\" : x.xxx           (numeric) The mining reward amount in " + CURRENCY_UNIT + ".\n"
             "}\n"
             "\nExamples:\n"
             + HelpExampleCli("getblocksubsidy", "1000")
@@ -950,7 +952,20 @@ UniValue getblocksubsidy(const UniValue& params, bool fHelp)
         throw JSONRPCError(RPC_INVALID_PARAMETER, "Block height out of range");
 
     CAmount nReward = GetBlockSubsidy(nHeight, Params().GetConsensus());
+
+    CAmount nGovernancePayment = 0;
+    if (!masterNodeCtrl.masternodeGovernance.mapTickets.empty()){
+        nGovernancePayment = masterNodeCtrl.masternodeGovernance.GetGovernancePayment(nReward);
+    }
+
+    CAmount nMasternodePayment = 0;
+    if (!masterNodeCtrl.masternodePayments.mapMasternodeBlockPayees.empty()){
+        nMasternodePayment = masterNodeCtrl.masternodePayments.GetMasternodePayment(0, nReward);//same for any height currently
+    }
+
     UniValue result(UniValue::VOBJ);
-    result.push_back(Pair("miner", ValueFromAmount(nReward)));
+    result.push_back(Pair("miner", ValueFromAmount(nReward-nGovernancePayment-nMasternodePayment)));
+    result.push_back(Pair("masternode", ValueFromAmount(nMasternodePayment)));
+    result.push_back(Pair("governance", ValueFromAmount(nGovernancePayment)));
     return result;
 }
