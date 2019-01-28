@@ -19,8 +19,9 @@
 #include "consensus/validation.h"
 #include "util.h"
 #include "utilmoneystr.h"
-#include "rpcserver.h"
+#include "rpc/server.h"
 #include "utilstrencodings.h"
+#include "key_io.h"
 
 #ifdef ENABLE_WALLET
 #include "wallet/wallet.h"
@@ -41,7 +42,10 @@ UniValue _format_workers_info(COutPoint (&blockWorkers)[3])
             objItem.push_back(Pair("IP:port",       mnInfo.addr.ToString()));
             objItem.push_back(Pair("protocol",      (int64_t)mnInfo.nProtocolVersion));
             objItem.push_back(Pair("outpoint",      mnInfo.vin.prevout.ToStringShort()));
-            objItem.push_back(Pair("payee",         CBitcoinAddress(mnInfo.pubKeyCollateralAddress.GetID()).ToString()));
+
+            CTxDestination dest = mnInfo.pubKeyCollateralAddress.GetID();
+            std::string address = EncodeDestination(dest);
+            objItem.push_back(Pair("payee",         address));
             objItem.push_back(Pair("lastseen",      mnInfo.nTimeLastPing));
             objItem.push_back(Pair("activeseconds", mnInfo.nTimeLastPing - mnInfo.sigTime));
 
@@ -53,6 +57,150 @@ UniValue _format_workers_info(COutPoint (&blockWorkers)[3])
         }
     }
     return workersArray;
+}
+
+UniValue masternodelist(const UniValue& params, bool fHelp)
+{
+    std::string strMode = "status";
+    std::string strFilter = "";
+
+    if (params.size() >= 1) strMode = params[0].get_str();
+    if (params.size() == 2) strFilter = params[1].get_str();
+
+    if (fHelp || (
+                strMode != "activeseconds" && strMode != "addr" && strMode != "full" && strMode != "info" &&
+                strMode != "lastseen" && strMode != "lastpaidtime" && strMode != "lastpaidblock" &&
+                strMode != "protocol" && strMode != "payee" && strMode != "pubkey" &&
+                strMode != "rank" && strMode != "status" && strMode != "extra"))
+    {
+        throw std::runtime_error(
+                "masternodelist ( \"mode\" \"filter\" )\n"
+                "Get a list of masternodes in different modes\n"
+                "\nArguments:\n"
+                "1. \"mode\"      (string, optional/required to use filter, defaults = status) The mode to run list in\n"
+                "2. \"filter\"    (string, optional) Filter results. Partial match by outpoint by default in all modes,\n"
+                "                                    additional matches in some modes are also available\n"
+                "\nAvailable modes:\n"
+                "  activeseconds  - Print number of seconds masternode recognized by the network as enabled\n"
+                "                   (since latest issued \"masternode start/start-many/start-alias\")\n"
+                "  addr           - Print ip address associated with a masternode (can be additionally filtered, partial match)\n"
+                "  full           - Print info in format 'status protocol payee lastseen activeseconds lastpaidtime lastpaidblock IP'\n"
+                "                   (can be additionally filtered, partial match)\n"
+                "  info           - Print info in format 'status protocol payee lastseen activeseconds sentinelversion sentinelstate IP'\n"
+                "                   (can be additionally filtered, partial match)\n"
+                "  lastpaidblock  - Print the last block height a node was paid on the network\n"
+                "  lastpaidtime   - Print the last time a node was paid on the network\n"
+                "  lastseen       - Print timestamp of when a masternode was last seen on the network\n"
+                "  payee          - Print Dash address associated with a masternode (can be additionally filtered,\n"
+                "                   partial match)\n"
+                "  protocol       - Print protocol of a masternode (can be additionally filtered, exact match)\n"
+                "  pubkey         - Print the masternode (not collateral) public key\n"
+                "  rank           - Print rank of a masternode based on current block\n"
+                "  status         - Print masternode status: PRE_ENABLED / ENABLED / EXPIRED / WATCHDOG_EXPIRED / NEW_START_REQUIRED /\n"
+                "                   UPDATE_REQUIRED / POSE_BAN / OUTPOINT_SPENT (can be additionally filtered, partial match)\n"
+                "  extra          - Print ANIMECOIN data associated with the masternode\n"
+                );
+    }
+
+    if (strMode == "full" || strMode == "lastpaidtime" || strMode == "lastpaidblock") {
+        CBlockIndex* pindex = NULL;
+        {
+            LOCK(cs_main);
+            pindex = chainActive.Tip();
+        }
+        masterNodeCtrl.masternodeManager.UpdateLastPaid(pindex);
+    }
+
+    UniValue obj(UniValue::VOBJ);
+    if (strMode == "rank") {
+        CMasternodeMan::rank_pair_vec_t vMasternodeRanks;
+        masterNodeCtrl.masternodeManager.GetMasternodeRanks(vMasternodeRanks);
+        BOOST_FOREACH(PAIRTYPE(int, CMasternode)& s, vMasternodeRanks) {
+            std::string strOutpoint = s.second.vin.prevout.ToStringShort();
+            if (strFilter !="" && strOutpoint.find(strFilter) == std::string::npos) continue;
+            obj.push_back(Pair(strOutpoint, s.first));
+        }
+    } else {
+        std::map<COutPoint, CMasternode> mapMasternodes = masterNodeCtrl.masternodeManager.GetFullMasternodeMap();
+        for (auto& mnpair : mapMasternodes) {
+            CMasternode mn = mnpair.second;
+            std::string strOutpoint = mnpair.first.ToStringShort();
+            CTxDestination dest = mn.pubKeyCollateralAddress.GetID();
+            std::string address = EncodeDestination(dest);
+
+            if (strMode == "activeseconds") {
+                if (strFilter !="" && strOutpoint.find(strFilter) == std::string::npos) continue;
+                obj.push_back(Pair(strOutpoint, (int64_t)(mn.lastPing.sigTime - mn.sigTime)));
+            } else if (strMode == "addr") {
+                std::string strAddress = mn.addr.ToString();
+                if (strFilter !="" && strAddress.find(strFilter) == std::string::npos &&
+                    strOutpoint.find(strFilter) == std::string::npos) continue;
+                obj.push_back(Pair(strOutpoint, strAddress));
+            } else if (strMode == "full") {
+                std::ostringstream streamFull;
+
+                streamFull << std::setw(18) <<
+                                mn.GetStatus() << " " <<
+                                mn.nProtocolVersion << " " <<
+                                address << " " <<
+                                (int64_t)mn.lastPing.sigTime << " " << std::setw(8) <<
+                                (int64_t)(mn.lastPing.sigTime - mn.sigTime) << " " << std::setw(10) <<
+                                mn.GetLastPaidTime() << " "  << std::setw(6) <<
+                                mn.GetLastPaidBlock() << " " <<
+                                mn.addr.ToString();
+                std::string strFull = streamFull.str();
+                if (strFilter !="" && strFull.find(strFilter) == std::string::npos &&
+                    strOutpoint.find(strFilter) == std::string::npos) continue;
+                obj.push_back(Pair(strOutpoint, strFull));
+            } else if (strMode == "info") {
+                std::ostringstream streamInfo;
+                streamInfo << std::setw(18) <<
+                                mn.GetStatus() << " " <<
+                                mn.nProtocolVersion << " " <<
+                                address << " " <<
+                                (int64_t)mn.lastPing.sigTime << " " << std::setw(8) <<
+                                (int64_t)(mn.lastPing.sigTime - mn.sigTime) << " " <<
+                                mn.addr.ToString();
+                std::string strInfo = streamInfo.str();
+                if (strFilter !="" && strInfo.find(strFilter) == std::string::npos &&
+                    strOutpoint.find(strFilter) == std::string::npos) continue;
+                obj.push_back(Pair(strOutpoint, strInfo));
+            } else if (strMode == "lastpaidblock") {
+                if (strFilter !="" && strOutpoint.find(strFilter) == std::string::npos) continue;
+                obj.push_back(Pair(strOutpoint, mn.GetLastPaidBlock()));
+            } else if (strMode == "lastpaidtime") {
+                if (strFilter !="" && strOutpoint.find(strFilter) == std::string::npos) continue;
+                obj.push_back(Pair(strOutpoint, mn.GetLastPaidTime()));
+            } else if (strMode == "lastseen") {
+                if (strFilter !="" && strOutpoint.find(strFilter) == std::string::npos) continue;
+                obj.push_back(Pair(strOutpoint, (int64_t)mn.lastPing.sigTime));
+            } else if (strMode == "payee") {
+                if (strFilter !="" && address.find(strFilter) == std::string::npos &&
+                    strOutpoint.find(strFilter) == std::string::npos) continue;
+                obj.push_back(Pair(strOutpoint, address));
+            } else if (strMode == "protocol") {
+                if (strFilter !="" && strFilter != strprintf("%d", mn.nProtocolVersion) &&
+                    strOutpoint.find(strFilter) == std::string::npos) continue;
+                obj.push_back(Pair(strOutpoint, (int64_t)mn.nProtocolVersion));
+            } else if (strMode == "pubkey") {
+                if (strFilter !="" && strOutpoint.find(strFilter) == std::string::npos) continue;
+                obj.push_back(Pair(strOutpoint, HexStr(mn.pubKeyMasternode)));
+            } else if (strMode == "status") {
+                std::string strStatus = mn.GetStatus();
+                if (strFilter !="" && strStatus.find(strFilter) == std::string::npos &&
+                    strOutpoint.find(strFilter) == std::string::npos) continue;
+                obj.push_back(Pair(strOutpoint, strStatus));
+            } else if (strMode == "extra") {
+                UniValue objItem(UniValue::VOBJ);
+                objItem.push_back(Pair("pyAddress", mn.strPyAddress)); 
+                objItem.push_back(Pair("pyPubKey", mn.strPyPubKey)); 
+                objItem.push_back(Pair("pyCfg", mn.strPyCfg)); 
+
+                obj.push_back(Pair(strOutpoint, objItem));
+            }
+        }
+    }
+    return obj;
 }
 
 UniValue masternode(const UniValue& params, bool fHelp)
@@ -174,7 +322,11 @@ UniValue masternode(const UniValue& params, bool fHelp)
         obj.push_back(Pair("IP:port",       mnInfo.addr.ToString()));
         obj.push_back(Pair("protocol",      (int64_t)mnInfo.nProtocolVersion));
         obj.push_back(Pair("outpoint",      mnInfo.vin.prevout.ToStringShort()));
-        obj.push_back(Pair("payee",         CBitcoinAddress(mnInfo.pubKeyCollateralAddress.GetID()).ToString()));
+
+        CTxDestination dest = mnInfo.pubKeyCollateralAddress.GetID();
+        std::string address = EncodeDestination(dest);
+        obj.push_back(Pair("payee",         address));
+
         obj.push_back(Pair("lastseen",      mnInfo.nTimeLastPing));
         obj.push_back(Pair("activeseconds", mnInfo.nTimeLastPing - mnInfo.sigTime));
         return obj;
@@ -289,7 +441,7 @@ UniValue masternode(const UniValue& params, bool fHelp)
         CKey secret;
         secret.MakeNewKey(false);
 
-        return CBitcoinSecret(secret).ToString();
+        return EncodeSecret(secret);
     }
 
     if (strCommand == "list-conf")
@@ -347,7 +499,9 @@ UniValue masternode(const UniValue& params, bool fHelp)
 
         CMasternode mn;
         if(masterNodeCtrl.masternodeManager.Get(masterNodeCtrl.activeMasternode.outpoint, mn)) {
-            mnObj.push_back(Pair("payee", CBitcoinAddress(mn.pubKeyCollateralAddress.GetID()).ToString()));
+            CTxDestination dest = mn.pubKeyCollateralAddress.GetID();
+            std::string address = EncodeDestination(dest);
+            mnObj.push_back(Pair("payee", address));
         }
 
         mnObj.push_back(Pair("status", masterNodeCtrl.activeMasternode.GetStatus()));
@@ -431,148 +585,6 @@ UniValue masternode(const UniValue& params, bool fHelp)
     }
 
     return NullUniValue;
-}
-
-UniValue masternodelist(const UniValue& params, bool fHelp)
-{
-    std::string strMode = "status";
-    std::string strFilter = "";
-
-    if (params.size() >= 1) strMode = params[0].get_str();
-    if (params.size() == 2) strFilter = params[1].get_str();
-
-    if (fHelp || (
-                strMode != "activeseconds" && strMode != "addr" && strMode != "full" && strMode != "info" &&
-                strMode != "lastseen" && strMode != "lastpaidtime" && strMode != "lastpaidblock" &&
-                strMode != "protocol" && strMode != "payee" && strMode != "pubkey" &&
-                strMode != "rank" && strMode != "status" && strMode != "extra"))
-    {
-        throw std::runtime_error(
-                "masternodelist ( \"mode\" \"filter\" )\n"
-                "Get a list of masternodes in different modes\n"
-                "\nArguments:\n"
-                "1. \"mode\"      (string, optional/required to use filter, defaults = status) The mode to run list in\n"
-                "2. \"filter\"    (string, optional) Filter results. Partial match by outpoint by default in all modes,\n"
-                "                                    additional matches in some modes are also available\n"
-                "\nAvailable modes:\n"
-                "  activeseconds  - Print number of seconds masternode recognized by the network as enabled\n"
-                "                   (since latest issued \"masternode start/start-many/start-alias\")\n"
-                "  addr           - Print ip address associated with a masternode (can be additionally filtered, partial match)\n"
-                "  full           - Print info in format 'status protocol payee lastseen activeseconds lastpaidtime lastpaidblock IP'\n"
-                "                   (can be additionally filtered, partial match)\n"
-                "  info           - Print info in format 'status protocol payee lastseen activeseconds sentinelversion sentinelstate IP'\n"
-                "                   (can be additionally filtered, partial match)\n"
-                "  lastpaidblock  - Print the last block height a node was paid on the network\n"
-                "  lastpaidtime   - Print the last time a node was paid on the network\n"
-                "  lastseen       - Print timestamp of when a masternode was last seen on the network\n"
-                "  payee          - Print Dash address associated with a masternode (can be additionally filtered,\n"
-                "                   partial match)\n"
-                "  protocol       - Print protocol of a masternode (can be additionally filtered, exact match)\n"
-                "  pubkey         - Print the masternode (not collateral) public key\n"
-                "  rank           - Print rank of a masternode based on current block\n"
-                "  status         - Print masternode status: PRE_ENABLED / ENABLED / EXPIRED / WATCHDOG_EXPIRED / NEW_START_REQUIRED /\n"
-                "                   UPDATE_REQUIRED / POSE_BAN / OUTPOINT_SPENT (can be additionally filtered, partial match)\n"
-                "  extra          - Print ANIMECOIN data associated with the masternode\n"
-                );
-    }
-
-    if (strMode == "full" || strMode == "lastpaidtime" || strMode == "lastpaidblock") {
-        CBlockIndex* pindex = NULL;
-        {
-            LOCK(cs_main);
-            pindex = chainActive.Tip();
-        }
-        masterNodeCtrl.masternodeManager.UpdateLastPaid(pindex);
-    }
-
-    UniValue obj(UniValue::VOBJ);
-    if (strMode == "rank") {
-        CMasternodeMan::rank_pair_vec_t vMasternodeRanks;
-        masterNodeCtrl.masternodeManager.GetMasternodeRanks(vMasternodeRanks);
-        BOOST_FOREACH(PAIRTYPE(int, CMasternode)& s, vMasternodeRanks) {
-            std::string strOutpoint = s.second.vin.prevout.ToStringShort();
-            if (strFilter !="" && strOutpoint.find(strFilter) == std::string::npos) continue;
-            obj.push_back(Pair(strOutpoint, s.first));
-        }
-    } else {
-        std::map<COutPoint, CMasternode> mapMasternodes = masterNodeCtrl.masternodeManager.GetFullMasternodeMap();
-        for (auto& mnpair : mapMasternodes) {
-            CMasternode mn = mnpair.second;
-            std::string strOutpoint = mnpair.first.ToStringShort();
-            if (strMode == "activeseconds") {
-                if (strFilter !="" && strOutpoint.find(strFilter) == std::string::npos) continue;
-                obj.push_back(Pair(strOutpoint, (int64_t)(mn.lastPing.sigTime - mn.sigTime)));
-            } else if (strMode == "addr") {
-                std::string strAddress = mn.addr.ToString();
-                if (strFilter !="" && strAddress.find(strFilter) == std::string::npos &&
-                    strOutpoint.find(strFilter) == std::string::npos) continue;
-                obj.push_back(Pair(strOutpoint, strAddress));
-            } else if (strMode == "full") {
-                std::ostringstream streamFull;
-                streamFull << std::setw(18) <<
-                               mn.GetStatus() << " " <<
-                               mn.nProtocolVersion << " " <<
-                               CBitcoinAddress(mn.pubKeyCollateralAddress.GetID()).ToString() << " " <<
-                               (int64_t)mn.lastPing.sigTime << " " << std::setw(8) <<
-                               (int64_t)(mn.lastPing.sigTime - mn.sigTime) << " " << std::setw(10) <<
-                               mn.GetLastPaidTime() << " "  << std::setw(6) <<
-                               mn.GetLastPaidBlock() << " " <<
-                               mn.addr.ToString();
-                std::string strFull = streamFull.str();
-                if (strFilter !="" && strFull.find(strFilter) == std::string::npos &&
-                    strOutpoint.find(strFilter) == std::string::npos) continue;
-                obj.push_back(Pair(strOutpoint, strFull));
-            } else if (strMode == "info") {
-                std::ostringstream streamInfo;
-                streamInfo << std::setw(18) <<
-                               mn.GetStatus() << " " <<
-                               mn.nProtocolVersion << " " <<
-                               CBitcoinAddress(mn.pubKeyCollateralAddress.GetID()).ToString() << " " <<
-                               (int64_t)mn.lastPing.sigTime << " " << std::setw(8) <<
-                               (int64_t)(mn.lastPing.sigTime - mn.sigTime) << " " <<
-                               mn.addr.ToString();
-                std::string strInfo = streamInfo.str();
-                if (strFilter !="" && strInfo.find(strFilter) == std::string::npos &&
-                    strOutpoint.find(strFilter) == std::string::npos) continue;
-                obj.push_back(Pair(strOutpoint, strInfo));
-            } else if (strMode == "lastpaidblock") {
-                if (strFilter !="" && strOutpoint.find(strFilter) == std::string::npos) continue;
-                obj.push_back(Pair(strOutpoint, mn.GetLastPaidBlock()));
-            } else if (strMode == "lastpaidtime") {
-                if (strFilter !="" && strOutpoint.find(strFilter) == std::string::npos) continue;
-                obj.push_back(Pair(strOutpoint, mn.GetLastPaidTime()));
-            } else if (strMode == "lastseen") {
-                if (strFilter !="" && strOutpoint.find(strFilter) == std::string::npos) continue;
-                obj.push_back(Pair(strOutpoint, (int64_t)mn.lastPing.sigTime));
-            } else if (strMode == "payee") {
-                CBitcoinAddress address(mn.pubKeyCollateralAddress.GetID());
-                std::string strPayee = address.ToString();
-                if (strFilter !="" && strPayee.find(strFilter) == std::string::npos &&
-                    strOutpoint.find(strFilter) == std::string::npos) continue;
-                obj.push_back(Pair(strOutpoint, strPayee));
-            } else if (strMode == "protocol") {
-                if (strFilter !="" && strFilter != strprintf("%d", mn.nProtocolVersion) &&
-                    strOutpoint.find(strFilter) == std::string::npos) continue;
-                obj.push_back(Pair(strOutpoint, (int64_t)mn.nProtocolVersion));
-            } else if (strMode == "pubkey") {
-                if (strFilter !="" && strOutpoint.find(strFilter) == std::string::npos) continue;
-                obj.push_back(Pair(strOutpoint, HexStr(mn.pubKeyMasternode)));
-            } else if (strMode == "status") {
-                std::string strStatus = mn.GetStatus();
-                if (strFilter !="" && strStatus.find(strFilter) == std::string::npos &&
-                    strOutpoint.find(strFilter) == std::string::npos) continue;
-                obj.push_back(Pair(strOutpoint, strStatus));
-            } else if (strMode == "extra") {
-                UniValue objItem(UniValue::VOBJ);
-                objItem.push_back(Pair("pyAddress", mn.strPyAddress)); 
-                objItem.push_back(Pair("pyPubKey", mn.strPyPubKey)); 
-                objItem.push_back(Pair("pyCfg", mn.strPyCfg)); 
-
-                obj.push_back(Pair(strOutpoint, objItem));
-            }
-        }
-    }
-    return obj;
 }
 
 bool DecodeHexVecMnb(std::vector<CMasternodeBroadcast>& vecMnb, std::string strHexMnb) {
@@ -749,8 +761,15 @@ UniValue masternodebroadcast(const UniValue& params, bool fHelp)
                 nSuccessful++;
                 resultObj.push_back(Pair("outpoint", mnb.vin.prevout.ToStringShort()));
                 resultObj.push_back(Pair("addr", mnb.addr.ToString()));
-                resultObj.push_back(Pair("pubKeyCollateralAddress", CBitcoinAddress(mnb.pubKeyCollateralAddress.GetID()).ToString()));
-                resultObj.push_back(Pair("pubKeyMasternode", CBitcoinAddress(mnb.pubKeyMasternode.GetID()).ToString()));
+
+                CTxDestination dest1 = mnb.pubKeyCollateralAddress.GetID();
+                std::string address1 = EncodeDestination(dest1);
+                resultObj.push_back(Pair("pubKeyCollateralAddress", address1));
+
+                CTxDestination dest2 = mnb.pubKeyMasternode.GetID();
+                std::string address2 = EncodeDestination(dest2);
+                resultObj.push_back(Pair("pubKeyMasternode", address2));
+
                 resultObj.push_back(Pair("vchSig", EncodeBase64(&mnb.vchSig[0], mnb.vchSig.size())));
                 resultObj.push_back(Pair("sigTime", mnb.sigTime));
                 resultObj.push_back(Pair("protocolVersion", mnb.nProtocolVersion));
@@ -982,4 +1001,20 @@ UniValue governance(const UniValue& params, bool fHelp)
         return resultArray;
     }
     return NullUniValue;
+}
+
+static const CRPCCommand commands[] =
+{ //  category              name                        actor (function)           okSafeMode
+    /* Masternode */
+    { "mnode",               "masternode",             &masternode,             true  },
+    { "mnode",               "masternodelist",         &masternodelist,         true  },
+    { "mnode",               "masternodebroadcast",    &masternodebroadcast,    true  },
+    { "mnode",               "mnsync",                 &mnsync,                 true  },
+    { "mnode",               "governance",             &governance,             true  },
+};
+
+void RegisterMasternodeRPCCommands(CRPCTable &tableRPC)
+{
+    for (unsigned int vcidx = 0; vcidx < ARRAYLEN(commands); vcidx++)
+        tableRPC.appendCommand(commands[vcidx].name, &commands[vcidx]);
 }

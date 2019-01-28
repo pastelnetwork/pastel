@@ -14,11 +14,24 @@ testScripts=(
     'paymentdisclosure.py'            #Good
     'prioritisetransaction.py'        #Good
     'wallet_treestate.py'             #Good
+    'wallet_anchorfork.py'
+    'wallet_changeindicator.py'
+    'wallet_import_export.py'
     'wallet_protectcoinbase.py'       #Good
     'wallet_shieldcoinbase.py'        #Good
+    'wallet_shieldcoinbase_sprout.py'
+    'wallet_shieldcoinbase_sapling.py'
+    'wallet_listreceived.py'
     'wallet.py'                       #Good
+    'wallet_overwintertx.py'
+    'wallet_persistence.py'
     # 'wallet_nullifiers.py'            #FIXME - wallet_nullifiers.py", line 220
     # 'wallet_1941.py'                  #FIXME - wallet_1941.py", line 52
+    'wallet_addresses.py'
+    'wallet_sapling.py'
+    'wallet_listnotes.py'
+    'mergetoaddress_sprout.py'
+    'mergetoaddress_sapling.py'
     # 'listtransactions.py'             #FIXME - listtransactions.py", line 38
     # 'mempool_resurrect_test.py'       #FIXME - mempool_resurrect_test.py", line 45
     # 'txn_doublespend.py'              #FIXME - txn_doublespend.py", line 32
@@ -28,28 +41,41 @@ testScripts=(
     # 'rest.py'                         #FIXME - rest.py", line 240
     # 'mempool_spendcoinbase.py'        #FIXME - mempool_spendcoinbase.py", line 42
     # 'mempool_coinbase_spends.py'      #FIXME - mempool_coinbase_spends.py", line 57
+    'mempool_reorg.py'
     'mempool_tx_input_limit.py'       #Good
+    'mempool_nu_activation.py'
+    'mempool_tx_expiry.py'
     'httpbasics.py'                   #Good
     'zapwallettxes.py'                #Good
     'proxy_test.py'                   #Good
     'merkle_blocks.py'                #Good
     'fundrawtransaction.py'           #Good
     'signrawtransactions.py'          #Good
+    'signrawtransaction_offline.py'
     'walletbackup.py'                 #Good
     'key_import_export.py'            #Good
     'nodehandling.py'                 #Good
     'reindex.py'                      #Good
     'decodescript.py'                 #Good
+    'blockchain.py'
     'disablewallet.py'                #Good
     # 'zcjoinsplit.py'                  #FIXME - zcjoinsplit.py", line 29
     # 'zcjoinsplitdoublespend.py'       #???
     # 'zkey_import_export.py'           #FIXME - 
+    'reorg_limit.py'
     'getblocktemplate.py'             #Good
     # 'bip65-cltv-p2p.py'             #FIXME
     # 'bipdersig-p2p.py'              #FIXME
     'mn_main.py'                     #Good
     'mn_payment.py'                  #Good
     'mn_governance.py'
+    'p2p_nu_peer_management.py'
+    'rewind_index.py'
+    'p2p_txexpiry_dos.py'
+    'p2p_txexpiringsoon.py'
+    'p2p_node_bloom.py'
+    'regtest_signrawtransaction.py'
+    'finalsaplingroot.py'
 );
 testScriptsExt=(
     'getblocktemplate_longpoll.py'    #Good

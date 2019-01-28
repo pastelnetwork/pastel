@@ -39,9 +39,13 @@ from .equihash import (
     zcash_person,
 )
 
+OVERWINTER_PROTO_VERSION = 170003
 BIP0031_VERSION = 60000
-MY_VERSION = 170002  # past bip-31 for ping/pong
+SPROUT_PROTO_VERSION = 170002  # past bip-31 for ping/pong
+SAPLING_PROTO_VERSION = 170006
 MY_SUBVERSION = "/python-mininode-tester:0.0.1/"
+
+OVERWINTER_VERSION_GROUP_ID = 0x03C48270
 
 MAX_INV_SZ = 50000
 
@@ -327,7 +331,7 @@ class CInv(object):
 
 class CBlockLocator(object):
     def __init__(self):
-        self.nVersion = MY_VERSION
+        self.nVersion = SPROUT_PROTO_VERSION
         self.vHave = []
 
     def deserialize(self, f):
@@ -564,20 +568,26 @@ class CTxOut(object):
 class CTransaction(object):
     def __init__(self, tx=None):
         if tx is None:
+            self.fOverwintered = False
             self.nVersion = 1
+            self.nVersionGroupId = 0
             self.vin = []
             self.vout = []
             self.nLockTime = 0
+            self.nExpiryHeight = 0
             self.vjoinsplit = []
             self.joinSplitPubKey = None
             self.joinSplitSig = None
             self.sha256 = None
             self.hash = None
         else:
+            self.fOverwintered = tx.fOverwintered
             self.nVersion = tx.nVersion
+            self.nVersionGroupId = tx.nVersionGroupId
             self.vin = copy.deepcopy(tx.vin)
             self.vout = copy.deepcopy(tx.vout)
             self.nLockTime = tx.nLockTime
+            self.nExpiryHeight = tx.nExpiryHeight
             self.vjoinsplit = copy.deepcopy(tx.vjoinsplit)
             self.joinSplitPubKey = tx.joinSplitPubKey
             self.joinSplitSig = tx.joinSplitSig
@@ -585,24 +595,46 @@ class CTransaction(object):
             self.hash = None
 
     def deserialize(self, f):
-        self.nVersion = struct.unpack("<i", f.read(4))[0]
+        header = struct.unpack("<I", f.read(4))[0]
+        self.fOverwintered = bool(header >> 31)
+        self.nVersion = header & 0x7FFFFFFF
+        self.nVersionGroupId = (struct.unpack("<I", f.read(4))[0]
+                                if self.fOverwintered else 0)
+
+        isOverwinterV3 = (self.fOverwintered and
+                          self.nVersionGroupId == OVERWINTER_VERSION_GROUP_ID and
+                          self.nVersion == 3)
+
         self.vin = deser_vector(f, CTxIn)
         self.vout = deser_vector(f, CTxOut)
         self.nLockTime = struct.unpack("<I", f.read(4))[0]
+        if isOverwinterV3:
+            self.nExpiryHeight = struct.unpack("<I", f.read(4))[0]
+
         if self.nVersion >= 2:
             self.vjoinsplit = deser_vector(f, JSDescription)
             if len(self.vjoinsplit) > 0:
                 self.joinSplitPubKey = deser_uint256(f)
                 self.joinSplitSig = f.read(64)
+
         self.sha256 = None
         self.hash = None
 
     def serialize(self):
+        header = (int(self.fOverwintered)<<31) | self.nVersion
+        isOverwinterV3 = (self.fOverwintered and
+                          self.nVersionGroupId == OVERWINTER_VERSION_GROUP_ID and
+                          self.nVersion == 3)
+
         r = ""
-        r += struct.pack("<i", self.nVersion)
+        r += struct.pack("<I", header)
+        if self.fOverwintered:
+            r += struct.pack("<I", self.nVersionGroupId)
         r += ser_vector(self.vin)
         r += ser_vector(self.vout)
         r += struct.pack("<I", self.nLockTime)
+        if isOverwinterV3:
+            r += struct.pack("<I", self.nExpiryHeight)
         if self.nVersion >= 2:
             r += ser_vector(self.vjoinsplit)
             if len(self.vjoinsplit) > 0:
@@ -627,8 +659,10 @@ class CTransaction(object):
         return True
 
     def __repr__(self):
-        r = "CTransaction(nVersion=%i vin=%s vout=%s nLockTime=%i" \
-            % (self.nVersion, repr(self.vin), repr(self.vout), self.nLockTime)
+        r = ("CTransaction(fOverwintered=%r nVersion=%i nVersionGroupId=0x%08x "
+             "vin=%s vout=%s nLockTime=%i nExpiryHeight=%i"
+             % (self.fOverwintered, self.nVersion, self.nVersionGroupId,
+                repr(self.vin), repr(self.vout), self.nLockTime, self.nExpiryHeight))
         if self.nVersion >= 2:
             r += " vjoinsplit=%s" % repr(self.vjoinsplit)
             if len(self.vjoinsplit) > 0:
@@ -868,8 +902,8 @@ class CAlert(object):
 class msg_version(object):
     command = "version"
 
-    def __init__(self):
-        self.nVersion = MY_VERSION
+    def __init__(self, protocol_version=SPROUT_PROTO_VERSION):
+        self.nVersion = protocol_version
         self.nServices = 1
         self.nTime = time.time()
         self.addrTo = CAddress()
@@ -1004,6 +1038,22 @@ class msg_getdata(object):
 
     def __repr__(self):
         return "msg_getdata(inv=%s)" % (repr(self.inv))
+
+
+class msg_notfound(object):
+    command = "notfound"
+
+    def __init__(self):
+        self.inv = []
+
+    def deserialize(self, f):
+        self.inv = deser_vector(f, CInv)
+
+    def serialize(self):
+        return ser_vector(self.inv)
+
+    def __repr__(self):
+        return "msg_notfound(inv=%s)" % (repr(self.inv))
 
 
 class msg_getblocks(object):
@@ -1226,6 +1276,38 @@ class msg_reject(object):
             % (self.message, self.code, self.reason, self.data)
 
 
+class msg_filteradd(object):
+    command = "filteradd"
+
+    def __init__(self):
+        self.data = ""
+
+    def deserialize(self, f):
+        self.data = deser_string(f)
+
+    def serialize(self):
+        return ser_string(self.data)
+
+    def __repr__(self):
+        return "msg_filteradd(data=%s)" % (repr(self.data))
+
+
+class msg_filterclear(object):
+    command = "filterclear"
+
+    def __init__(self):
+        pass
+
+    def deserialize(self, f):
+        pass
+
+    def serialize(self):
+        return ""
+
+    def __repr__(self):
+        return "msg_filterclear()"
+
+
 # This is what a callback should look like for NodeConn
 # Reimplement the on_* functions to provide handling for events
 class NodeConnCB(object):
@@ -1242,6 +1324,7 @@ class NodeConnCB(object):
             "alert": self.on_alert,
             "inv": self.on_inv,
             "getdata": self.on_getdata,
+            "notfound": self.on_notfound,
             "getblocks": self.on_getblocks,
             "tx": self.on_tx,
             "block": self.on_block,
@@ -1265,7 +1348,7 @@ class NodeConnCB(object):
     def on_version(self, conn, message):
         if message.nVersion >= 209:
             conn.send_message(msg_verack())
-        conn.ver_send = min(MY_VERSION, message.nVersion)
+        conn.ver_send = min(SPROUT_PROTO_VERSION, message.nVersion)
         if message.nVersion < 209:
             conn.ver_recv = conn.ver_send
 
@@ -1284,6 +1367,7 @@ class NodeConnCB(object):
     def on_addr(self, conn, message): pass
     def on_alert(self, conn, message): pass
     def on_getdata(self, conn, message): pass
+    def on_notfound(self, conn, message): pass
     def on_getblocks(self, conn, message): pass
     def on_tx(self, conn, message): pass
     def on_block(self, conn, message): pass
@@ -1309,6 +1393,7 @@ class NodeConn(asyncore.dispatcher):
         "alert": msg_alert,
         "inv": msg_inv,
         "getdata": msg_getdata,
+        "notfound": msg_notfound,
         "getblocks": msg_getblocks,
         "tx": msg_tx,
         "block": msg_block,
@@ -1326,7 +1411,7 @@ class NodeConn(asyncore.dispatcher):
         "regtest": "\xaa\xe8\x3f\x5f"    # regtest
     }
 
-    def __init__(self, dstaddr, dstport, rpc, callback, net="regtest"):
+    def __init__(self, dstaddr, dstport, rpc, callback, net="regtest", protocol_version=SPROUT_PROTO_VERSION):
         asyncore.dispatcher.__init__(self, map=mininode_socket_map)
         self.log = logging.getLogger("NodeConn(%s:%d)" % (dstaddr, dstport))
         self.dstaddr = dstaddr
@@ -1343,14 +1428,15 @@ class NodeConn(asyncore.dispatcher):
         self.disconnect = False
 
         # stuff version msg into sendbuf
-        vt = msg_version()
+        vt = msg_version(protocol_version)
         vt.addrTo.ip = self.dstaddr
         vt.addrTo.port = self.dstport
         vt.addrFrom.ip = "0.0.0.0"
         vt.addrFrom.port = 0
         self.send_message(vt, True)
         print 'MiniNode: Connecting to Bitcoin Node IP # ' + dstaddr + ':' \
-            + str(dstport)
+            + str(dstport) + ' using version ' + str(protocol_version)
+
         try:
             self.connect((dstaddr, dstport))
         except:

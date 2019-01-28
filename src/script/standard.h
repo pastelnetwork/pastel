@@ -79,11 +79,11 @@ public:
  *  * CNoDestination: no destination set
  *  * CKeyID: TX_PUBKEYHASH destination
  *  * CScriptID: TX_SCRIPTHASH destination
- *  A CTxDestination is the internal data type encoded in a CBitcoinAddress
+ *  A CTxDestination is the internal data type encoded in a bitcoin address
  */
 typedef boost::variant<CNoDestination, CKeyID, CScriptID> CTxDestination;
 
-bool IsValidDestination(const CTxDestination& dest);
+// bool IsValidDestination(const CTxDestination& dest);
 
 const char* GetTxnOutputType(txnouttype t);
 
@@ -96,7 +96,7 @@ bool ExtractDestinations(const CScript& scriptPubKey, txnouttype& typeRet, std::
 CScript GetScriptForDestination(const CTxDestination& dest);
 CScript GetScriptForMultisig(int nRequired, const std::vector<CPubKey>& keys);
 
-CTxDestination DecodeDestination(const std::string& str, const CChainParams& params);
-CTxDestination DecodeDestination(const std::string& str);
+// CTxDestination DecodeDestination(const std::string& str, const CChainParams& params);
+// CTxDestination DecodeDestination(const std::string& str);
 
 #endif // BITCOIN_SCRIPT_STANDARD_H

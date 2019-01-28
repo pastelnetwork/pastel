@@ -7,6 +7,7 @@
 #include "util.h"
 #include "base58.h"
 #include "ui_interface.h"
+#include "key_io.h"
 
 #include "mnode-controller.h"
 #include "mnode-sync.h"
@@ -112,7 +113,10 @@ bool CMasterNodeController::EnableMasterNode(std::ostringstream& strErrors, boos
                 return false;
             }
 
-            LogPrintf("  pubKeyMasternode: %s\n", CBitcoinAddress(activeMasternode.pubKeyMasternode.GetID()).ToString());
+            CTxDestination dest = activeMasternode.pubKeyMasternode.GetID();
+            std::string address = EncodeDestination(dest);
+
+            LogPrintf("  pubKeyMasternode: %s\n", address);
         } else {
             strErrors << _("You must specify a masternodeprivkey in the configuration. Please see documentation for help.");
             return false;

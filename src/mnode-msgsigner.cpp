@@ -4,16 +4,17 @@
 
 #include "main.h"
 #include "base58.h"
+#include "key_io.h"
 
 #include "mnode-msgsigner.h"
 
 bool CMessageSigner::GetKeysFromSecret(const std::string strSecret, CKey& keyRet, CPubKey& pubkeyRet)
 {
-    CBitcoinSecret vchSecret;
+    CKey key = DecodeSecret(strSecret);
+    if (!key.IsValid()) {
+        return false;
+    }
 
-    if(!vchSecret.SetString(strSecret)) return false;
-
-    keyRet = vchSecret.GetKey();
     pubkeyRet = keyRet.GetPubKey();
 
     return true;

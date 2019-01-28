@@ -41,7 +41,7 @@ public:
     ADD_SERIALIZE_METHODS;
 
     template <typename Stream, typename Operation>
-    inline void SerializationOp(Stream& s, Operation ser_action, int nType, int nVersion) {
+    inline void SerializationOp(Stream& s, Operation ser_action) {
         READWRITE(vinMasternode);
         READWRITE(ticketId);
         READWRITE(nVoteBlockHeight);
@@ -120,8 +120,8 @@ public:
     ADD_SERIALIZE_METHODS;
 
     template <typename Stream, typename Operation>
-    inline void SerializationOp(Stream& s, Operation ser_action, int nType, int nVersion) {
-        READWRITE(*(CScript*)(&scriptPubKey));
+    inline void SerializationOp(Stream& s, Operation ser_action) {
+        READWRITE(*(CScriptBase*)(&scriptPubKey));
         READWRITE(nAmountToPay);
         READWRITE(nAmountPaid);
         READWRITE(strDescription);
@@ -164,7 +164,7 @@ public:
     ADD_SERIALIZE_METHODS;
 
     template <typename Stream, typename Operation>
-    inline void SerializationOp(Stream& s, Operation ser_action, int nType, int nVersion) {
+    inline void SerializationOp(Stream& s, Operation ser_action) {
         LOCK2(cs_mapTickets,cs_mapPayments);
         READWRITE(mapTickets);
         READWRITE(mapPayments);

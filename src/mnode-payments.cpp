@@ -4,6 +4,7 @@
 
 #include "main.h"
 #include "core_io.h"
+#include "key_io.h"
 
 #include "mnode-controller.h"
 #include "mnode-payments.h"
@@ -55,11 +56,11 @@ void CMasternodePayments::FillMasterNodePayment(CMutableTransaction& txNew, int 
         LogPrintf("CMasternodePayments::FillMasterNodePayment -- Failed to find workers!!!\n");
     }
 
-    CTxDestination address1;
-    ExtractDestination(scriptPubKey, address1);
-    CBitcoinAddress address2(address1);
+    CTxDestination dest;
+    ExtractDestination(scriptPubKey, dest);
+    std::string address = EncodeDestination(dest);
 
-    LogPrintf("CMasternodePayments::FillMasterNodePayment -- Masternode payment %lld to %s\n", masternodePayment, address2.ToString());
+    LogPrintf("CMasternodePayments::FillMasterNodePayment -- Masternode payment %lld to %s\n", masternodePayment, address);
 }
 
 std::string CMasternodePayments::GetRequiredPaymentsString(int nBlockHeight)
@@ -200,12 +201,12 @@ void CMasternodePayments::ProcessMessage(CNode* pfrom, std::string& strCommand, 
             return;
         }
 
-        CTxDestination address1;
-        ExtractDestination(vote.payee, address1);
-        CBitcoinAddress address2(address1);
+        CTxDestination dest;
+        ExtractDestination(vote.payee, dest);
+        std::string address = EncodeDestination(dest);
 
         LogPrint("mnpayments", "MASTERNODEPAYMENTVOTE -- vote: address=%s, nBlockHeight=%d, nHeight=%d, prevout=%s, hash=%s new\n",
-                    address2.ToString(), vote.nBlockHeight, nCachedBlockHeight, vote.vinMasternode.prevout.ToStringShort(), nHash.ToString());
+                    address, vote.nBlockHeight, nCachedBlockHeight, vote.vinMasternode.prevout.ToStringShort(), nHash.ToString());
 
         if(AddPaymentVote(vote)){
             vote.Relay();
@@ -391,24 +392,25 @@ bool CMasternodeBlockPayees::IsTransactionValid(const CTransaction& txNew)
                 }
             }
 
-            CTxDestination address1;
-            ExtractDestination(payee.GetPayee(), address1);
-            CBitcoinAddress address2(address1);
+            CTxDestination dest;
+            ExtractDestination(payee.GetPayee(), dest);
+            std::string address = EncodeDestination(dest);
 
             if(strPayeesPossible == "") {
-                strPayeesPossible = address2.ToString();
+                strPayeesPossible = address;
             } else {
-                strPayeesPossible += "," + address2.ToString();
+                strPayeesPossible += "," + address;
             }
         }
     }
 
     LogPrintf("CMasternodeBlockPayees::IsTransactionValid -- ERROR: Missing required payment, possible payees: '%s', amount: %f ANIME\n", strPayeesPossible, (float)nMasternodePayment/COIN);
     BOOST_FOREACH(CTxOut txout, txNew.vout) {
-        CTxDestination address1;
-        ExtractDestination(txout.scriptPubKey, address1);
-        CBitcoinAddress address2(address1);
-        LogPrintf("\t%s -- %f \n", address2.ToString(), (float)txout.nValue);
+        CTxDestination dest;
+        ExtractDestination(txout.scriptPubKey, dest);
+        std::string address = EncodeDestination(dest);
+        LogPrintf("\t%s -- %f \n", address, (float)txout.nValue);
+    
         LogPrintf("\t%s\n", txout.scriptPubKey.ToString());
     }
 
@@ -423,14 +425,14 @@ std::string CMasternodeBlockPayees::GetRequiredPaymentsString()
 
     BOOST_FOREACH(CMasternodePayee& payee, vecPayees)
     {
-        CTxDestination address1;
-        ExtractDestination(payee.GetPayee(), address1);
-        CBitcoinAddress address2(address1);
-
+        CTxDestination dest;
+        ExtractDestination(payee.GetPayee(), dest);
+        std::string address = EncodeDestination(dest);
+    
         if (strRequiredPayments != "Unknown") {
-            strRequiredPayments += ", " + address2.ToString() + ":" + boost::lexical_cast<std::string>(payee.GetVoteCount());
+            strRequiredPayments += ", " + address + ":" + boost::lexical_cast<std::string>(payee.GetVoteCount());
         } else {
-            strRequiredPayments = address2.ToString() + ":" + boost::lexical_cast<std::string>(payee.GetVoteCount());
+            strRequiredPayments = address + ":" + boost::lexical_cast<std::string>(payee.GetVoteCount());
         }
     }
 
@@ -575,11 +577,11 @@ bool CMasternodePayments::ProcessBlock(int nBlockHeight)
 
     CMasternodePaymentVote voteNew(masterNodeCtrl.activeMasternode.outpoint, nBlockHeight, payee, vecWorkers);
 
-    CTxDestination address1;
-    ExtractDestination(payee, address1);
-    CBitcoinAddress address2(address1);
+    CTxDestination dest;
+    ExtractDestination(payee, dest);
+    std::string address = EncodeDestination(dest);
 
-    LogPrintf("CMasternodePayments::ProcessBlock -- vote: payee=%s, nBlockHeight=%d\n", address2.ToString(), nBlockHeight);
+    LogPrintf("CMasternodePayments::ProcessBlock -- vote: payee=%s, nBlockHeight=%d\n", address, nBlockHeight);
 
     // SIGN MESSAGE TO NETWORK WITH OUR MASTERNODE KEYS
 
@@ -643,12 +645,12 @@ void CMasternodePayments::CheckPreviousBlockVotes(int nPrevBlockHeight)
             continue;
         }
 
-        CTxDestination address1;
-        ExtractDestination(payee, address1);
-        CBitcoinAddress address2(address1);
+        CTxDestination dest;
+        ExtractDestination(payee, dest);
+        std::string address = EncodeDestination(dest);
 
         debugStr += strprintf("CMasternodePayments::CheckPreviousBlockVotes --   %s - voted for %s\n",
-                              mn.second.vin.prevout.ToStringShort(), address2.ToString());
+                              mn.second.vin.prevout.ToStringShort(), address);
     }
     debugStr += "CMasternodePayments::CheckPreviousBlockVotes -- Masternodes which missed a vote in the past:\n";
     for (auto it : mapMasternodesDidNotVote) {
@@ -789,10 +791,10 @@ void CMasternodePayments::RequestLowDataPaymentBlocks(CNode* pnode)
         #if 0
             // Let's see why this failed
             BOOST_FOREACH(CMasternodePayee& payee, it->second.vecPayees) {
-                CTxDestination address1;
-                ExtractDestination(payee.GetPayee(), address1);
-                CBitcoinAddress address2(address1);
-                printf("payee %s votes %d\n", address2.ToString().c_str(), payee.GetVoteCount());
+                CTxDestination dest;
+                ExtractDestination(payee.GetPayee(), dest);
+                std::string address = EncodeDestination(dest);
+                printf("payee %s votes %d\n", address, payee.GetVoteCount());
             }
             printf("block %d votes total %d\n", it->first, nTotalVotes);
         #endif

@@ -7,6 +7,7 @@
 #include "base58.h"
 #include "init.h"
 #include "netbase.h"
+#include "key_io.h"
 
 #include "mnode-masternode.h"
 //#include "masternode-payments.h"
@@ -428,8 +429,11 @@ bool CMasternodeBroadcast::Create(const COutPoint& outpoint,
     // wait for reindex and/or import to finish
     if (fImporting || fReindex) return false;
 
+    CTxDestination dest = pubKeyCollateralAddressNew.GetID();
+    std::string address = EncodeDestination(dest);
+
     LogPrint("masternode", "CMasternodeBroadcast::Create -- pubKeyCollateralAddressNew = %s, pubKeyMasternodeNew.GetID() = %s\n",
-             CBitcoinAddress(pubKeyCollateralAddressNew.GetID()).ToString(),
+             address,
              pubKeyMasternodeNew.GetID().ToString());
 
     auto Log = [&strErrorRet,&mnbRet](std::string sErr)->bool
@@ -689,7 +693,13 @@ bool CMasternodeBroadcast::CheckSignature(int& nDos)
                     pubKeyCollateralAddress.GetID().ToString() + pubKeyMasternode.GetID().ToString() +
                     boost::lexical_cast<std::string>(nProtocolVersion);
 
-    LogPrint("masternode", "CMasternodeBroadcast::CheckSignature -- strMessage: %s  pubKeyCollateralAddress address: %s  sig: %s\n", strMessage, CBitcoinAddress(pubKeyCollateralAddress.GetID()).ToString(), EncodeBase64(&vchSig[0], vchSig.size()));
+    CTxDestination dest = pubKeyCollateralAddress.GetID();
+    std::string address = EncodeDestination(dest);
+
+    LogPrint("masternode", "CMasternodeBroadcast::CheckSignature -- strMessage: %s  pubKeyCollateralAddress address: %s  sig: %s\n", 
+                strMessage, 
+                address, 
+                EncodeBase64(&vchSig[0], vchSig.size()));
 
     if(!CMessageSigner::VerifyMessage(pubKeyCollateralAddress, vchSig, strMessage, strError)){
         LogPrintf("CMasternodeBroadcast::CheckSignature -- Got bad Masternode announce signature, error: %s\n", strError);

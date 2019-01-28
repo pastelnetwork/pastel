@@ -18,7 +18,7 @@ There are multiple ways to make sure you have at least one other copy of the pri
 
 For all methods, you will need to include an export directory setting in your config file (`animecoin.conf` located in the data directory which is `~/.animecoin/` unless it's been overridden with `datadir=` setting):
 
-`exportdir=/path/to/chosen/export/directory`
+`exportdir=path/to/chosen/export/directory`
 
 You may chose any directory within the home directory as the location for export & backup files. If the directory doesn't exist, it will be created.
 

@@ -1,14 +1,16 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python
 # Copyright (c) 2014 The Bitcoin Core developers
 # Distributed under the MIT software license, see the accompanying
 # file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
+import sys; assert sys.version_info < (3,), ur"This script does not run under Python 3. Please use Python 2.7.x."
 
 from test_framework.test_framework import BitcoinTestFramework
 from test_framework.authproxy import JSONRPCException
 from test_framework.util import assert_equal, assert_greater_than, \
     initialize_chain_clean, start_nodes, start_node, connect_nodes_bi, \
-    stop_nodes, sync_blocks, sync_mempools, wait_bitcoinds
+    stop_nodes, sync_blocks, sync_mempools, wait_and_assert_operationid_status, \
+    wait_bitcoinds
 
 import time
 from decimal import Decimal, getcontext
@@ -93,6 +95,26 @@ class WalletTest (BitcoinTestFramework):
         node2utxos = self.nodes[2].listunspent(1)
         assert_equal(len(node2utxos), 2)
         assert_equal(sum(int(uxto["generated"] is True) for uxto in node2utxos), 0)
+
+        # Catch an attempt to send a transaction with an absurdly high fee.
+        # Send 1.0 from an utxo of value 10.0 but don't specify a change output, so then
+        # the change of 9.0 becomes the fee, which is greater than estimated fee of 0.0019.
+        inputs = []
+        outputs = {}
+        for utxo in node2utxos:
+            if utxo["amount"] == Decimal("10.0"):
+                break
+        assert_equal(utxo["amount"], Decimal("10.0"))
+        inputs.append({ "txid" : utxo["txid"], "vout" : utxo["vout"]})
+        outputs[self.nodes[2].getnewaddress("")] = Decimal("1.0")
+        raw_tx = self.nodes[2].createrawtransaction(inputs, outputs)
+        signed_tx = self.nodes[2].signrawtransaction(raw_tx)
+        try:
+            self.nodes[2].sendrawtransaction(signed_tx["hex"])
+        except JSONRPCException,e:
+            errorString = e.error['message']
+        assert("absurdly high fees" in errorString)
+        assert("900000000 > 190000" in errorString)
 
         # create both transactions
         txns_to_send = []
@@ -225,7 +247,7 @@ class WalletTest (BitcoinTestFramework):
         connect_nodes_bi(self.nodes,0,2)
         self.sync_all()
 
-        txIdNotBroadcasted  = self.nodes[0].sendtoaddress(self.nodes[2].getnewaddress(), 2);
+        txIdNotBroadcasted  = self.nodes[0].sendtoaddress(self.nodes[2].getnewaddress(), 2)
         txObjNotBroadcasted = self.nodes[0].gettransaction(txIdNotBroadcasted)
         self.sync_all()
         self.nodes[1].generate(1) #mine a block, tx should not be in there
@@ -244,7 +266,7 @@ class WalletTest (BitcoinTestFramework):
         assert_equal(self.nodes[2].getbalance("*"), self._reward-self._fee-self._fee+Decimal('2.000')); #should not be
 
         #create another tx
-        txIdNotBroadcasted  = self.nodes[0].sendtoaddress(self.nodes[2].getnewaddress(), 2);
+        txIdNotBroadcasted  = self.nodes[0].sendtoaddress(self.nodes[2].getnewaddress(), 2)
 
         #restart the nodes with -walletbroadcast=1
         stop_nodes(self.nodes)
@@ -277,7 +299,7 @@ class WalletTest (BitcoinTestFramework):
         assert_equal(0, len(myvjoinsplits))
 
         # z_sendmany is expected to fail if tx size breaks limit
-        myzaddr = self.nodes[0].z_getnewaddress()
+        myzaddr = self.nodes[0].z_getnewaddress('sprout')
 
         recipients = []
         num_t_recipients = 3000
@@ -311,7 +333,7 @@ class WalletTest (BitcoinTestFramework):
             newtaddr = self.nodes[2].getnewaddress()
             recipients.append({"address":newtaddr, "amount":amount_per_recipient})
         for i in xrange(0,num_z_recipients):
-            newzaddr = self.nodes[2].z_getnewaddress()
+            newzaddr = self.nodes[2].z_getnewaddress('sprout')
             recipients.append({"address":newzaddr, "amount":amount_per_recipient})
 
         # Issue #2759 Workaround START
@@ -329,7 +351,7 @@ class WalletTest (BitcoinTestFramework):
         amount_per_recipient = self._atoshi
         errorString = ''
         for i in xrange(0,num_z_recipients):
-            newzaddr = self.nodes[2].z_getnewaddress()
+            newzaddr = self.nodes[2].z_getnewaddress('sprout')
             recipients.append({"address":newzaddr, "amount":amount_per_recipient})
         try:
             self.nodes[0].z_sendmany(myzaddr, recipients)
@@ -338,28 +360,14 @@ class WalletTest (BitcoinTestFramework):
         assert("Invalid parameter, too many zaddr outputs" in errorString)
 
         # add zaddr to node 2
-        myzaddr = self.nodes[2].z_getnewaddress()
+        myzaddr = self.nodes[2].z_getnewaddress('sprout')
 
         # send node 2 taddr to zaddr
         recipients = []
         recipients.append({"address":myzaddr, "amount":7})
-        myopid = self.nodes[2].z_sendmany(mytaddr, recipients)
 
-        opids = []
-        opids.append(myopid)
+        mytxid = wait_and_assert_operationid_status(self.nodes[2], self.nodes[2].z_sendmany(mytaddr, recipients))
 
-        timeout = 300
-        status = None
-        for x in xrange(1, timeout):
-            results = self.nodes[2].z_getoperationresult(opids)
-            if len(results)==0:
-                time.sleep(1)
-            else:
-                status = results[0]["status"]
-                mytxid = results[0]["result"]["txid"]
-                break
-
-        assert_equal("success", status)
         self.sync_all()
         self.nodes[2].generate(1)
         self.sync_all()
@@ -374,7 +382,7 @@ class WalletTest (BitcoinTestFramework):
         assert_equal(self.nodes[2].getbalance("*"), node2utxobalance)
 
         # check zaddr balance
-        assert_equal(self.nodes[2].z_getbalance(myzaddr), zsendmanynotevalue);
+        assert_equal(self.nodes[2].z_getbalance(myzaddr), zsendmanynotevalue)
 
         # check via z_gettotalbalance
         resp = self.nodes[2].z_gettotalbalance()
@@ -395,7 +403,6 @@ class WalletTest (BitcoinTestFramework):
         assert("randomSeed" in myjoinsplit.keys())
         assert("ciphertexts" in myjoinsplit.keys())
 
-
         # send from private note to node 0 and node 2
         node0balance = self.nodes[0].getbalance() # 
         node2balance = self.nodes[2].getbalance() # 
@@ -403,20 +410,9 @@ class WalletTest (BitcoinTestFramework):
         recipients = []
         recipients.append({"address":self.nodes[0].getnewaddress(), "amount":1})
         recipients.append({"address":self.nodes[2].getnewaddress(), "amount":1.0})
-        myopid = self.nodes[2].z_sendmany(myzaddr, recipients)
+        
+        wait_and_assert_operationid_status(self.nodes[2], self.nodes[2].z_sendmany(myzaddr, recipients))
 
-        status = None
-        opids = []
-        opids.append(myopid)
-        for x in xrange(1, timeout):
-            results = self.nodes[2].z_getoperationresult(opids)
-            if len(results)==0:
-                time.sleep(1)
-            else:
-                status = results[0]["status"]
-                break
-
-        assert_equal("success", status)
         self.sync_all()
         self.nodes[2].generate(1)
         self.sync_all()
@@ -449,7 +445,7 @@ class WalletTest (BitcoinTestFramework):
         except JSONRPCException,e:
             errorString = e.error['message']
 
-        assert_equal("Invalid amount" in errorString, True);
+        assert_equal("Invalid amount" in errorString, True)
 
         errorString = ""
         try:
@@ -457,7 +453,63 @@ class WalletTest (BitcoinTestFramework):
         except JSONRPCException,e:
             errorString = e.error['message']
 
-        assert_equal("not an integer" in errorString, True);
+        assert_equal("not an integer" in errorString, True)
+
+        myzaddr     = self.nodes[0].z_getnewaddress('sprout')
+        recipients  = [ {"address": myzaddr, "amount": Decimal('0.0') } ]
+        errorString = ''
+
+        # Make sure that amount=0 transactions can use the default fee
+        # without triggering "absurd fee" errors
+        try:
+            myopid = self.nodes[0].z_sendmany(myzaddr, recipients)
+            assert(myopid)
+        except JSONRPCException,e:
+            errorString = e.error['message']
+            print errorString
+            assert(False)
+
+        # This fee is larger than the default fee and since amount=0
+        # it should trigger error
+        fee         = Decimal('0.1')
+        recipients  = [ {"address": myzaddr, "amount": Decimal('0.0') } ]
+        minconf     = 1
+        errorString = ''
+
+        try:
+            myopid = self.nodes[0].z_sendmany(myzaddr, recipients, minconf, fee)
+        except JSONRPCException,e:
+            errorString = e.error['message']
+        assert('Small transaction amount' in errorString)
+
+        # This fee is less than default and greater than amount, but still valid
+        fee         = Decimal('0.0000001')
+        recipients  = [ {"address": myzaddr, "amount": Decimal('0.00000001') } ]
+        minconf     = 1
+        errorString = ''
+
+        try:
+            myopid = self.nodes[0].z_sendmany(myzaddr, recipients, minconf, fee)
+            assert(myopid)
+        except JSONRPCException,e:
+            errorString = e.error['message']
+            print errorString
+            assert(False)
+
+        # Make sure amount=0, fee=0 transaction are valid to add to mempool
+        # though miners decide whether to add to a block
+        fee         = Decimal('0.0')
+        minconf     = 1
+        recipients  = [ {"address": myzaddr, "amount": Decimal('0.0') } ]
+        errorString = ''
+
+        try:
+            myopid = self.nodes[0].z_sendmany(myzaddr, recipients, minconf, fee)
+            assert(myopid)
+        except JSONRPCException,e:
+            errorString = e.error['message']
+            print errorString
+            assert(False)
 
 
 if __name__ == '__main__':

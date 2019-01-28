@@ -1,7 +1,9 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python
 # Copyright (c) 2017 The Zcash developers
 # Distributed under the MIT software license, see the accompanying
 # file COPYING or http://www.opensource.org/licenses/mit-license.php.
+
+import sys; assert sys.version_info < (3,), ur"This script does not run under Python 3. Please use Python 2.7.x."
 
 from test_framework.test_framework import BitcoinTestFramework
 from test_framework.authproxy import JSONRPCException
@@ -18,7 +20,7 @@ class MempoolTxInputLimitTest(BitcoinTestFramework):
     alert_filename = None  # Set by setup_network
 
     def setup_network(self):
-        args = ["-checkmempool", "-debug=mempool", "-mempooltxinputlimit=2"]
+        args = ["-checkmempool", "-debug=mempool", "-mempooltxinputlimit=2", "-nuparams=5ba81b19:110"]
         self.nodes = []
         self.nodes.append(start_node(0, self.options.tmpdir, args))
         self.nodes.append(start_node(1, self.options.tmpdir, args))
@@ -47,30 +49,16 @@ class MempoolTxInputLimitTest(BitcoinTestFramework):
         # Check 1: z_sendmany is limited by -mempooltxinputlimit
 
         # Add zaddr to node 0
-        node0_zaddr = self.nodes[0].z_getnewaddress()
+        node0_zaddr = self.nodes[0].z_getnewaddress('sprout')
 
         # Send three inputs from node 0 taddr to zaddr to get out of coinbase
-        node0_taddr = self.nodes[0].getnewaddress();
+        node0_taddr = self.nodes[0].getnewaddress()
         recipients = []
         recipients.append({"address":node0_zaddr, "amount":self._reward*3-self._fee}) # utxo amount less fee
         myopid = self.nodes[0].z_sendmany(node0_taddr, recipients)
 
-        opids = []
-        opids.append(myopid)
-
         # Spend should fail due to -mempooltxinputlimit
-        timeout = 120
-        status = None
-        for x in xrange(1, timeout):
-            results = self.nodes[0].z_getoperationresult(opids)
-            if len(results)==0:
-                time.sleep(1)
-            else:
-                status = results[0]["status"]
-                msg = results[0]["error"]["message"]
-                assert_equal("failed", status)
-                assert_equal("Too many transparent inputs 3 > limit 2", msg)
-                break
+        wait_and_assert_operationid_status(self.nodes[0], myopid, "failed", "Too many transparent inputs 3 > limit 2", 120)
 
         # Mempool should be empty.
         assert_equal(set(self.nodes[0].getrawmempool()), set())
@@ -101,6 +89,7 @@ class MempoolTxInputLimitTest(BitcoinTestFramework):
 
         myopid = self.nodes[0].z_sendmany(node0_zaddr, recipients)
         wait_and_assert_operationid_status(self.nodes[0], myopid)
+        self.sync_all()
         self.nodes[1].generate(1)
         self.sync_all()
 
@@ -120,6 +109,32 @@ class MempoolTxInputLimitTest(BitcoinTestFramework):
 
         # Spend should be in the mempool
         assert_equal(set(self.nodes[1].getrawmempool()), set([ spend_taddr_id2 ]))
+
+        # Mine three blocks
+        self.nodes[1].generate(3)
+        self.sync_all()
+        # The next block to be mined, 109, is the last Sprout block
+        bci = self.nodes[0].getblockchaininfo()
+        assert_equal(bci['consensus']['chaintip'], '00000000')
+        assert_equal(bci['consensus']['nextblock'], '00000000')
+
+        # z_sendmany should be limited by -mempooltxinputlimit
+        recipients = []
+        recipients.append({"address":node0_zaddr, "amount":Decimal('30.0')-Decimal('0.0001')}) # utxo amount less fee
+        myopid = self.nodes[0].z_sendmany(node0_taddr, recipients)
+        wait_and_assert_operationid_status(self.nodes[0], myopid, 'failed', 'Too many transparent inputs 3 > limit 2')
+
+        # Mine one block
+        self.nodes[1].generate(1)
+        self.sync_all()
+        # The next block to be mined, 110, is the first Overwinter block
+        bci = self.nodes[0].getblockchaininfo()
+        assert_equal(bci['consensus']['chaintip'], '00000000')
+        assert_equal(bci['consensus']['nextblock'], '5ba81b19')
+
+        # z_sendmany should no longer be limited by -mempooltxinputlimit
+        myopid = self.nodes[0].z_sendmany(node0_taddr, recipients)
+        wait_and_assert_operationid_status(self.nodes[0], myopid)
 
 if __name__ == '__main__':
     MempoolTxInputLimitTest().main()

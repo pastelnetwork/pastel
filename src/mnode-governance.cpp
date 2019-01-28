@@ -3,6 +3,7 @@
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
 #include "main.h"
+#include "key_io.h"
 
 #include "mnode-controller.h"
 #include "mnode-msgsigner.h"
@@ -78,11 +79,11 @@ void CMasternodeGovernance::FillGovernancePayment(CMutableTransaction& txNew, in
     txoutGovernanceRet = CTxOut(governancePayment, scriptPubKey);
     txNew.vout.push_back(txoutGovernanceRet);
 
-    CTxDestination address1;
-    ExtractDestination(scriptPubKey, address1);
-    CBitcoinAddress address2(address1);
+    CTxDestination dest;
+    ExtractDestination(scriptPubKey, dest);
+    std::string address = EncodeDestination(dest);
 
-    LogPrintf("CMasternodeGovernance::FillGovernancePayment -- Governance payment %lld to %s\n", governancePayment, address2.ToString());
+    LogPrintf("CMasternodeGovernance::FillGovernancePayment -- Governance payment %lld to %s\n", governancePayment, address);
 }
 
 int CMasternodeGovernance::CalculateLastPaymentBlock(CAmount amount, int nHeight)
@@ -233,13 +234,13 @@ bool CMasternodeGovernance::IsTransactionValid(const CTransaction& txNew, int nH
         }
     }
 
-    CTxDestination address1;
-    ExtractDestination(scriptPubKey, address1);
-    CBitcoinAddress address2(address1);
+    CTxDestination dest;
+    ExtractDestination(scriptPubKey, dest);
+    std::string address = EncodeDestination(dest);
 
     LogPrintf("CMasternodeBlockPayees::IsTransactionValid -- ERROR: %s required governance payment, possible payees: '%s', actual amount: %f ANIME. Should be %f ANIME\n", 
             (tnxPayment == 0)? "Missing": "Invalid",
-            address2.ToString(),
+            address,
             (float)tnxPayment/COIN,
             (float)nGovernancePayment/COIN);
     return false;
@@ -537,7 +538,7 @@ bool CGovernanceTicket::IsWinner(int height)
 uint256 CGovernanceTicket::GetHash() const
 {
     CHashWriter ss(SER_GETHASH, PROTOCOL_VERSION);
-    ss << scriptPubKey;
+    ss << *(CScriptBase*)(&scriptPubKey);
     ss << nAmountToPay;
     return ss.GetHash();
 }
@@ -552,12 +553,12 @@ std::string CGovernanceTicket::ToString()
 {
     std::ostringstream info;
 
-    CTxDestination address1;
-    ExtractDestination(scriptPubKey, address1);
-    CBitcoinAddress address2(address1);
+    CTxDestination dest;
+    ExtractDestination(scriptPubKey, dest);
+    std::string address = EncodeDestination(dest);
 
     info << "Governance Ticket( Hash: " << GetHash().ToString() <<
-            ", Address: " << address2.ToString() <<
+            ", Address: " << address <<
             ", Amount to pay: " << nAmountToPay <<
             ", Note: " << strDescription <<
             ", Vote until block: " << nStopVoteBlockHeight <<
