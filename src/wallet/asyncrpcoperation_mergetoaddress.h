@@ -21,7 +21,7 @@
 #include <univalue.h>
 
 // Default transaction fee if caller does not specify one.
-#define MERGE_TO_ADDRESS_OPERATION_DEFAULT_MINERS_FEE 10000
+#define MERGE_TO_ADDRESS_OPERATION_DEFAULT_MINERS_FEE 0.1 * COIN //10 time more then regular fee
 
 using namespace libzcash;
 

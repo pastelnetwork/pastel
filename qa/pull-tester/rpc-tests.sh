@@ -11,18 +11,18 @@ export ANIMECOIND=${REAL_ANIMECOIND}
 #Run the tests
 
 testScripts=(
-    'paymentdisclosure.py'            #Good
-    'prioritisetransaction.py'        #Good
-    'wallet_treestate.py'             #Good
+    'paymentdisclosure.py'
+    'prioritisetransaction.py'
+    'wallet_treestate.py'
     'wallet_anchorfork.py'
     'wallet_changeindicator.py'
     'wallet_import_export.py'
-    'wallet_protectcoinbase.py'       #Good
-    'wallet_shieldcoinbase.py'        #Good
+    'wallet_protectcoinbase.py'
+    'wallet_shieldcoinbase.py'
     'wallet_shieldcoinbase_sprout.py'
     'wallet_shieldcoinbase_sapling.py'
     'wallet_listreceived.py'
-    'wallet.py'                       #Good
+    'wallet.py'
     'wallet_overwintertx.py'
     'wallet_persistence.py'
     # 'wallet_nullifiers.py'            #FIXME - wallet_nullifiers.py", line 220
@@ -37,69 +37,69 @@ testScripts=(
     # 'txn_doublespend.py'              #FIXME - txn_doublespend.py", line 32
     # 'txn_doublespend.py --mineblock'  #FIXME - txn_doublespend.py", line 32
     # 'getchaintips.py'                 #FIXME - getchaintips.py", line 16
-    'rawtransactions.py'              #Good
+    'rawtransactions.py'
     # 'rest.py'                         #FIXME - rest.py", line 240
     # 'mempool_spendcoinbase.py'        #FIXME - mempool_spendcoinbase.py", line 42
     # 'mempool_coinbase_spends.py'      #FIXME - mempool_coinbase_spends.py", line 57
     'mempool_reorg.py'
-    'mempool_tx_input_limit.py'       #Good
+    'mempool_tx_input_limit.py'
     'mempool_nu_activation.py'
     'mempool_tx_expiry.py'
-    'httpbasics.py'                   #Good
-    'zapwallettxes.py'                #Good
-    'proxy_test.py'                   #Good
-    'merkle_blocks.py'                #Good
-    'fundrawtransaction.py'           #Good
-    'signrawtransactions.py'          #Good
-    'signrawtransaction_offline.py'
-    'walletbackup.py'                 #Good
-    'key_import_export.py'            #Good
-    'nodehandling.py'                 #Good
-    'reindex.py'                      #Good
-    'decodescript.py'                 #Good
+    'httpbasics.py'
+    'zapwallettxes.py'
+    'proxy_test.py'
+    'merkle_blocks.py'
+    'fundrawtransaction.py'
+    'signrawtransactions.py'
+    'signrawtransaction_offline.py'     #BROKEN
+    'walletbackup.py'
+    'key_import_export.py'
+    'nodehandling.py'
+    'reindex.py'
+    'decodescript.py'
     'blockchain.py'
-    'disablewallet.py'                #Good
+    'disablewallet.py'
     # 'zcjoinsplit.py'                  #FIXME - zcjoinsplit.py", line 29
     # 'zcjoinsplitdoublespend.py'       #???
     # 'zkey_import_export.py'           #FIXME - 
     'reorg_limit.py'
-    'getblocktemplate.py'             #Good
+    'getblocktemplate.py'
     # 'bip65-cltv-p2p.py'             #FIXME
     # 'bipdersig-p2p.py'              #FIXME
-    'mn_main.py'                     #Good
-    'mn_payment.py'                  #Good
+    'mn_main.py'
+    'mn_payment.py'
     'mn_governance.py'
-    'p2p_nu_peer_management.py'
+    'p2p_nu_peer_management.py'         #BROKEN
     'rewind_index.py'
     'p2p_txexpiry_dos.py'
-    'p2p_txexpiringsoon.py'
-    'p2p_node_bloom.py'
-    'regtest_signrawtransaction.py'
-    'finalsaplingroot.py'
+    'p2p_txexpiringsoon.py'             #BROKEN
+    'p2p_node_bloom.py'                 #BROKEN
+    'regtest_signrawtransaction.py'     #??
+    'finalsaplingroot.py'               #??
 );
 testScriptsExt=(
-    'getblocktemplate_longpoll.py'    #Good
+    'getblocktemplate_longpoll.py'      #??
     # 'getblocktemplate_proposals.py' #FIXME
     # 'pruning.py'                    #FIXME
-    'forknotify.py'                   #Good
+    'forknotify.py'                     #??
     # 'hardforkdetection.py'          #FIXME
     # 'invalidateblock.py'            #FIXME
-    'keypool.py'                      #Good
+    'keypool.py'                        #??
     # 'receivedby.py'                 #FIXME
-    'rpcbind_test.py'                 #Good
+    'rpcbind_test.py'                   #??Good
 #   'script_test.py'                  #???
     # 'smartfees.py'                  #FIXME
-    'maxblocksinflight.py'            #Good
+    'maxblocksinflight.py'            #??Good
     # 'invalidblockrequest.py'        #FIXME
     # 'p2p-acceptblock.py'            #FIXME
 );
 
 if [ "x$ENABLE_ZMQ" = "x1" ]; then
-#    testScripts+=('zmq_test.py')          #FIXME - hangs
+    testScripts+=('zmq_test.py')      #FIXME - hangs
 fi
 
 if [ "x$ENABLE_PROTON" = "x1" ]; then
-  testScripts+=('proton_test.py')
+  testScripts+=('proton_test.py')     #???  
 fi
 
 extArg="-extended"

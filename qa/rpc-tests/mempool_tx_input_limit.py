@@ -80,7 +80,7 @@ class MempoolTxInputLimitTest(BitcoinTestFramework):
         # Check 2: sendfrom is limited by -mempooltxinputlimit
         recipients = []
         spend_taddr_amount = spend_zaddr_amount - self._fee
-        spend_taddr_output = Decimal('8')
+        spend_taddr_output = Decimal('5000')
 
         # Create three outputs
         recipients.append({"address":self.nodes[1].getnewaddress(), "amount": spend_taddr_output})
@@ -95,7 +95,7 @@ class MempoolTxInputLimitTest(BitcoinTestFramework):
 
         # Should use three UTXOs and fail
         try:
-            self.nodes[1].sendfrom("", node0_taddr, spend_taddr_amount - Decimal('1'))
+            self.nodes[1].sendfrom("", node0_taddr, spend_taddr_amount - Decimal('625'))
             assert(False)
         except JSONRPCException,e:
             msg = e.error['message']
@@ -105,7 +105,7 @@ class MempoolTxInputLimitTest(BitcoinTestFramework):
         assert_equal(set(self.nodes[1].getrawmempool()), set())
 
         # Should use two UTXOs and succeed
-        spend_taddr_id2 = self.nodes[1].sendfrom("", node0_taddr, spend_taddr_output + spend_taddr_output - Decimal('1'))
+        spend_taddr_id2 = self.nodes[1].sendfrom("", node0_taddr, spend_taddr_output + spend_taddr_output - Decimal('625'))
 
         # Spend should be in the mempool
         assert_equal(set(self.nodes[1].getrawmempool()), set([ spend_taddr_id2 ]))
@@ -120,7 +120,7 @@ class MempoolTxInputLimitTest(BitcoinTestFramework):
 
         # z_sendmany should be limited by -mempooltxinputlimit
         recipients = []
-        recipients.append({"address":node0_zaddr, "amount":Decimal('30.0')-Decimal('0.0001')}) # utxo amount less fee
+        recipients.append({"address":node0_zaddr, "amount":self._reward*3 - self._fee}) # utxo amount less fee
         myopid = self.nodes[0].z_sendmany(node0_taddr, recipients)
         wait_and_assert_operationid_status(self.nodes[0], myopid, 'failed', 'Too many transparent inputs 3 > limit 2')
 

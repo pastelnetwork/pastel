@@ -17,9 +17,8 @@ class WalletAnchorForkTest (BitcoinTestFramework):
         print("Initializing test directory "+self.options.tmpdir)
         initialize_chain_clean(self.options.tmpdir, 4)
 
-    # Start nodes with -regtestprotectcoinbase to set fCoinbaseMustBeProtected to true.
     def setup_network(self, split=False):
-        self.nodes = start_nodes(3, self.options.tmpdir, extra_args=[['-regtestprotectcoinbase', '-debug=zrpc']] * 3 )
+        self.nodes = start_nodes(3, self.options.tmpdir, extra_args=[['-debug=zrpc']] * 3 )
         connect_nodes_bi(self.nodes,0,1)
         connect_nodes_bi(self.nodes,1,2)
         connect_nodes_bi(self.nodes,0,2)
@@ -31,15 +30,15 @@ class WalletAnchorForkTest (BitcoinTestFramework):
         self.nodes[0].generate(4)
 
         walletinfo = self.nodes[0].getwalletinfo()
-        assert_equal(walletinfo['immature_balance'], 40)
+        assert_equal(walletinfo['immature_balance'], self._reward*4)
         assert_equal(walletinfo['balance'], 0)
 
         self.sync_all()
         self.nodes[1].generate(102)
         self.sync_all()
 
-        assert_equal(self.nodes[0].getbalance(), 40)
-        assert_equal(self.nodes[1].getbalance(), 20)
+        assert_equal(self.nodes[0].getbalance(), self._reward*4)
+        assert_equal(self.nodes[1].getbalance(), self._reward*2)
         assert_equal(self.nodes[2].getbalance(), 0)
 
         # At this point in time, commitment tree is the empty root
@@ -48,7 +47,7 @@ class WalletAnchorForkTest (BitcoinTestFramework):
         mytaddr0 = self.nodes[0].getnewaddress()
         myzaddr0 = self.nodes[0].z_getnewaddress('sprout')
         recipients = []
-        recipients.append({"address":myzaddr0, "amount": Decimal('10.0') - Decimal('0.0001')})
+        recipients.append({"address":myzaddr0, "amount": self._reward - self._fee})
         myopid = self.nodes[0].z_sendmany(mytaddr0, recipients)
         wait_and_assert_operationid_status(self.nodes[0], myopid)
 
@@ -64,7 +63,7 @@ class WalletAnchorForkTest (BitcoinTestFramework):
         # Relaunch nodes and partition network into two:
         # A: node 0
         # B: node 1, 2
-        self.nodes = start_nodes(3, self.options.tmpdir, extra_args=[['-regtestprotectcoinbase', '-debug=zrpc']] * 3 )
+        self.nodes = start_nodes(3, self.options.tmpdir, extra_args=[['-debug=zrpc']] * 3 )
         connect_nodes_bi(self.nodes,1,2)
 
         # Partition B, node 1 mines an empty block
@@ -72,7 +71,7 @@ class WalletAnchorForkTest (BitcoinTestFramework):
 
         # Partition A, node 0 creates a joinsplit transaction
         recipients = []
-        recipients.append({"address":myzaddr0, "amount": Decimal('10.0') - Decimal('0.0001')})
+        recipients.append({"address":myzaddr0, "amount": self._reward - self._fee})
         myopid = self.nodes[0].z_sendmany(mytaddr0, recipients)
         txid = wait_and_assert_operationid_status(self.nodes[0], myopid)
         rawhex = self.nodes[0].getrawtransaction(txid)
@@ -94,7 +93,7 @@ class WalletAnchorForkTest (BitcoinTestFramework):
         wait_bitcoinds()
 
         # Relaunch nodes and reconnect the entire network
-        self.nodes = start_nodes(3, self.options.tmpdir, extra_args=[['-regtestprotectcoinbase', '-debug=zrpc']] * 3 )
+        self.nodes = start_nodes(3, self.options.tmpdir, extra_args=[['-debug=zrpc']] * 3 )
         connect_nodes_bi(self.nodes,0, 1)
         connect_nodes_bi(self.nodes,1, 2)
         connect_nodes_bi(self.nodes,0, 2)

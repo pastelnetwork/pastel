@@ -15,8 +15,6 @@ my_memo = my_memo + '0'*(1024-len(my_memo))
 
 no_memo = 'f6' + ('0'*1022) # see section 5.5 of the protocol spec
 
-fee = Decimal('0.0001')
-
 class ListReceivedTest (BitcoinTestFramework):
 
     def setup_nodes(self):
@@ -76,7 +74,7 @@ class ListReceivedTest (BitcoinTestFramework):
         assert_equal(2, len(r), "zaddr1 Should have received 2 notes")
 
         assert_equal(txid, r[0]['txid'])
-        assert_equal(Decimal('0.4')-fee, r[0]['amount'])
+        assert_equal(Decimal('0.4')-self._fee, r[0]['amount'])
         assert_true(r[0]['change'], "Note valued at (0.4-fee) should be change")
         assert_equal(no_memo, r[0]['memo'])
 

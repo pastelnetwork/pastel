@@ -4,6 +4,7 @@
 
 #include "main.h"
 #include "key.h"
+#include "key_io.h"
 #include "chain.h"
 #include "chainparams.h"
 #include "mnode-governance.h"

@@ -24,8 +24,8 @@ class WalletShieldCoinbaseTest (BitcoinTestFramework):
         initialize_chain_clean(self.options.tmpdir, 4)
 
     def setup_network(self, split=False):
-        args = ['-regtestprotectcoinbase', '-debug=zrpcunsafe']
-        args2 = ['-regtestprotectcoinbase', '-debug=zrpcunsafe', "-mempooltxinputlimit=7"]
+        args = ['-debug=zrpcunsafe']
+        args2 = ['-debug=zrpcunsafe', "-mempooltxinputlimit=7"]
         if self.addr_type != 'sprout':
             nu = [
                 '-nuparams=5ba81b19:0', # Overwinter

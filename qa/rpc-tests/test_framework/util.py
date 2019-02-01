@@ -121,8 +121,8 @@ def initialize_chain(test_dir):
         # Create a 200-block-long chain; each of the 4 nodes
         # gets 25 mature blocks and 25 immature.
         # blocks are created with timestamps 10 minutes apart, starting
-        # at 28 March 2018
-        block_time = 1522195200
+        # at 1 Jan 2019
+        block_time = 1546300800
         for i in range(2):
             for peer in range(4):
                 for j in range(25):

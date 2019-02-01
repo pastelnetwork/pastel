@@ -29,6 +29,7 @@ class BitcoinTestFramework(object):
     # 6250
     _reward     = Decimal('6250')
     _reward00   = Decimal('6250.00')
+    _highfee    = Decimal('1')
     _fee        = Decimal('0.1')
     _fee00      = Decimal('0.10')
 
@@ -39,6 +40,7 @@ class BitcoinTestFramework(object):
     _100atoshi      = Decimal('0.001')
     _1000atoshi     = Decimal('0.01')
     _10000atoshi    = Decimal('0.1')
+    _1ani           = Decimal('1.0')
     
     # These may be over-ridden by subclasses:
     def run_test(self):

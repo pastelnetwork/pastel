@@ -588,11 +588,6 @@ bool AsyncRPCOperation_sendmany::main_impl() {
      * 
      * taddr -> taddrs
      *       -> zaddrs
-     * 
-     * Note: Consensus rule states that coinbase utxos can only be sent to a zaddr.
-     *       Local wallet rule does not allow any change when sending coinbase utxos
-     *       since there is currently no way to specify a change address and we don't
-     *       want users accidentally sending excess funds to a recipient.
      */
     if (isfromtaddr_) {
         add_taddr_outputs_to_tx();
@@ -602,19 +597,11 @@ bool AsyncRPCOperation_sendmany::main_impl() {
         CAmount change = funds - fundsSpent;
         
         if (change > 0) {
-            if (selectedUTXOCoinbase) {
-                assert(isSingleZaddrOutput);
-                throw JSONRPCError(RPC_WALLET_ERROR, strprintf(
-                    "Change %s not allowed. When shielding coinbase funds, the wallet does not "
-                    "allow any change as there is currently no way to specify a change address "
-                    "in z_sendmany.", FormatMoney(change)));
-            } else {
-                add_taddr_change_output_to_tx(change);
-                LogPrint("zrpc", "%s: transparent change in transaction output (amount=%s)\n",
-                        getId(),
-                        FormatMoney(change)
-                        );
-            }
+            add_taddr_change_output_to_tx(change);
+            LogPrint("zrpc", "%s: transparent change in transaction output (amount=%s)\n",
+                    getId(),
+                    FormatMoney(change)
+                    );
         }
 
         // Create joinsplits, where each output represents a zaddr recipient.

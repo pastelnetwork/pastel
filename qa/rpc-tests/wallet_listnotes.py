@@ -38,8 +38,8 @@ class WalletListNotes(BitcoinTestFramework):
         mining_addr = self.nodes[0].listunspent()[0]['address']
 
         # Shield coinbase funds (must be a multiple of 10, no change allowed pre-sapling)
-        receive_amount_10 = Decimal('10.0') - Decimal('0.0001')
-        recipients = [{"address":sproutzaddr, "amount":receive_amount_10}]
+        receive_amount = self._reward - self._fee
+        recipients = [{"address":sproutzaddr, "amount":receive_amount}]
         myopid = self.nodes[0].z_sendmany(mining_addr, recipients)
         txid_1 = wait_and_assert_operationid_status(self.nodes[0], myopid)
         self.sync_all()
@@ -58,7 +58,7 @@ class WalletListNotes(BitcoinTestFramework):
         assert_equal(txid_1,            unspent_cb[0]['txid'])
         assert_equal(True,              unspent_cb[0]['spendable'])
         assert_equal(sproutzaddr,       unspent_cb[0]['address'])
-        assert_equal(receive_amount_10, unspent_cb[0]['amount'])
+        assert_equal(receive_amount, unspent_cb[0]['amount'])
 
         # list unspent, filtering by address, should produce same result
         unspent_cb_filter = self.nodes[0].z_listunspent(0, 9999, False, [sproutzaddr])
@@ -73,8 +73,8 @@ class WalletListNotes(BitcoinTestFramework):
 
         # Send 1.0 (actually 0.9999) from sproutzaddr to a new zaddr
         sproutzaddr2 = self.nodes[0].z_getnewaddress('sprout')
-        receive_amount_1 = Decimal('1.0') - Decimal('0.0001')
-        change_amount_9 = receive_amount_10 - Decimal('1.0')
+        receive_amount_1 = Decimal('1.0') - self._fee
+        change_amount_9 = receive_amount - Decimal('1.0')
         assert_equal('sprout', self.nodes[0].z_validateaddress(sproutzaddr2)['type'])
         recipients = [{"address": sproutzaddr2, "amount":receive_amount_1}]
         myopid = self.nodes[0].z_sendmany(sproutzaddr, recipients)
@@ -117,7 +117,7 @@ class WalletListNotes(BitcoinTestFramework):
         # Send 0.9999 to our sapling zaddr
         # (sending from a sprout zaddr to a sapling zaddr is disallowed,
         # so send from coin base)
-        receive_amount_2 = Decimal('2.0') - Decimal('0.0001')
+        receive_amount_2 = Decimal('2.0') - self._fee
         recipients = [{"address": saplingzaddr, "amount":receive_amount_2}]
         myopid = self.nodes[0].z_sendmany(mining_addr, recipients)
         txid_3 = wait_and_assert_operationid_status(self.nodes[0], myopid)

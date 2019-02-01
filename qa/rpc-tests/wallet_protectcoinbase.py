@@ -3,6 +3,8 @@
 # Distributed under the MIT software license, see the accompanying
 # file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
+# ANIMECOIN doesnt support protected coinbase, so this test will NOT test for this!!!
+
 import sys; assert sys.version_info < (3,), ur"This script does not run under Python 3. Please use Python 2.7.x."
 
 from test_framework.test_framework import BitcoinTestFramework
@@ -33,9 +35,7 @@ class WalletProtectCoinbaseTest (BitcoinTestFramework):
         print("Initializing test directory "+self.options.tmpdir)
         initialize_chain_clean(self.options.tmpdir, 4)
 
-    # Start nodes with -regtestprotectcoinbase to set fCoinbaseMustBeProtected to true.
     def setup_network(self, split=False):
-        # self.nodes = start_nodes(4, self.options.tmpdir, extra_args=[['-regtestprotectcoinbase', '-debug=zrpcunsafe']] * 4 )
         self.nodes = start_nodes(4, self.options.tmpdir, extra_args=[['-debug=zrpcunsafe']] * 4 )
         connect_nodes_bi(self.nodes,0,1)
         connect_nodes_bi(self.nodes,1,2)
@@ -85,18 +85,19 @@ class WalletProtectCoinbaseTest (BitcoinTestFramework):
         recipients= [{"address":myzaddr, "amount": Decimal('1')}]
         myopid = self.nodes[3].z_sendmany(mytaddr, recipients)
 
-        wait_and_assert_operationid_status(self.nodes[3], myopid, "failed", "no UTXOs found for taddr from address", 10)
+        wait_and_assert_operationid_status(self.nodes[3], myopid, "failed", "no UTXOs found for taddr from address", self._reward)
 
         # This send will fail because our wallet does not allow any change when protecting a coinbase utxo,
         # as it's currently not possible to specify a change address in z_sendmany.
         recipients = []
         recipients.append({"address":myzaddr, "amount":Decimal('1.23456')})
+
         myopid = self.nodes[0].z_sendmany(mytaddr, recipients)
-        error_result = wait_and_assert_operationid_status(self.nodes[0], myopid, "failed", "wallet does not allow any change", 10)
+        error_result = wait_and_assert_operationid_status(self.nodes[0], myopid, "failed", "wallet does not allow any change", self._reward)
 
         # Test that the returned status object contains a params field with the operation's input parameters
-        assert_equal(results[0]["method"], "z_sendmany")
-        params =results[0]["params"]
+        assert_equal(error_result["method"], "z_sendmany")
+        params =error_result["params"]
         assert_equal(params["fee"], self._fee) # default
         assert_equal(params["minconf"], Decimal('1')) # default
         assert_equal(params["fromaddress"], mytaddr)
@@ -219,7 +220,7 @@ class WalletProtectCoinbaseTest (BitcoinTestFramework):
         # UTXO selection in z_sendmany sorts in ascending order, so smallest utxos are consumed first.
         # At this point in time, unspent notes all have a value of self._reward and standard z_sendmany fee is self._fee.
         recipients = []
-        amount = self._reward - self._fee - self._atoshi    # this leaves change at 1 zatoshi less than dust threshold
+        amount = self._reward - self._fee - self._atoshi    # this leaves change at 1 atoshi less than dust threshold
         recipients.append({"address":self.nodes[0].getnewaddress(), "amount":amount })
         myopid = self.nodes[0].z_sendmany(mytaddr, recipients)
         wait_and_assert_operationid_status(self.nodes[0], myopid, "failed", "Insufficient transparent funds, have " + str(self._reward00) + ", need 0.00053 more to avoid creating invalid change output 0.00001 (dust threshold is 0.00054)")
@@ -238,7 +239,7 @@ class WalletProtectCoinbaseTest (BitcoinTestFramework):
         myopid = self.nodes[0].z_sendmany(mytaddr, recipients)
         wait_and_assert_operationid_status(self.nodes[0], myopid, "failed", "Insufficient transparent funds, have " + str(self._reward00) + ", need 10000.10")
         myopid = self.nodes[0].z_sendmany(myzaddr, recipients)
-        wait_and_assert_operationid_status(self.nodes[0], myopid, "failed", "Insufficient protected funds, have " + str(self._reward00 - self._fee00*2) + ", need 10000.10")
+        wait_and_assert_operationid_status(self.nodes[0], myopid, "failed", "Insufficient shielded funds, have " + str(self._reward00 - self._fee00*2) + ", need 10000.10")
 
         # Send will fail because of insufficient funds unless sender uses coinbase utxos
         errorString = ""

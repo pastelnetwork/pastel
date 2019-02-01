@@ -66,8 +66,6 @@ struct NetworkUpgrade {
 struct Params {
     uint256 hashGenesisBlock;
 
-    // bool fCoinbaseMustBeProtected;
-
     int nSubsidyHalvingInterval;
     /** Used to check majorities for block version upgrade */
     int nMajorityEnforceBlockUpgrade;

@@ -1989,16 +1989,6 @@ bool CheckTxInputs(const CTransaction& tx, CValidationState& state, const CCoins
                         error("CheckInputs(): tried to spend coinbase at depth %d", nSpendHeight - coins->nHeight),
                         REJECT_INVALID, "bad-txns-premature-spend-of-coinbase");
                 }
-
-                // // Ensure that coinbases cannot be spent to transparent outputs
-                // // Disabled on regtest
-                // if (fCoinbaseEnforcedProtectionEnabled &&
-                //     consensusParams.fCoinbaseMustBeProtected &&
-                //     !tx.vout.empty()) {
-                //     return state.Invalid(
-                //         error("CheckInputs(): tried to spend coinbase with transparent outputs"),
-                //         REJECT_INVALID, "bad-txns-coinbase-spend-has-transparent-outputs");
-                // }
             }
 
             // Check for negative or overflow input values

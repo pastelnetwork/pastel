@@ -3058,31 +3058,7 @@ bool CWallet::SelectCoins(const CAmount& nTargetValue, set<pair<const CWalletTx*
     AvailableCoins(vCoinsWithCoinbase, true, coinControl, false, true);
     fOnlyCoinbaseCoinsRet = vCoinsNoCoinbase.size() == 0 && vCoinsWithCoinbase.size() > 0;
 
-    // // If coinbase utxos can only be sent to zaddrs, exclude any coinbase utxos from coin selection.
-    // bool fProtectCoinbase = Params().GetConsensus().fCoinbaseMustBeProtected;
-    // vector<COutput> vCoins = (fProtectCoinbase) ? vCoinsNoCoinbase : vCoinsWithCoinbase;
     vector<COutput> vCoins = vCoinsWithCoinbase;
-
-    // // Output parameter fNeedCoinbaseCoinsRet is set to true if coinbase utxos need to be spent to meet target amount
-    // if (fProtectCoinbase && vCoinsWithCoinbase.size() > vCoinsNoCoinbase.size()) {
-    //     CAmount value = 0;
-    //     for (const COutput& out : vCoinsNoCoinbase) {
-    //         if (!out.fSpendable) {
-    //             continue;
-    //         }
-    //         value += out.tx->vout[out.i].nValue;
-    //     }
-    //     if (value <= nTargetValue) {
-    //         CAmount valueWithCoinbase = 0;
-    //         for (const COutput& out : vCoinsWithCoinbase) {
-    //             if (!out.fSpendable) {
-    //                 continue;
-    //             }
-    //             valueWithCoinbase += out.tx->vout[out.i].nValue;
-    //         }
-    //         fNeedCoinbaseCoinsRet = (valueWithCoinbase >= nTargetValue);
-    //     }
-    // }
 
     // coin control -> return all selected outputs (we want all selected to go into the transaction for sure)
     if (coinControl && coinControl->HasSelected() && !coinControl->fAllowOtherInputs)
@@ -3305,13 +3281,7 @@ bool CWallet::CreateTransaction(const vector<CRecipient>& vecSend, CWalletTx& wt
                 bool fNeedCoinbaseCoins = false;
                 if (!SelectCoins(nTotalValue, setCoins, nValueIn, fOnlyCoinbaseCoins, fNeedCoinbaseCoins, coinControl))
                 {
-                    // if (fOnlyCoinbaseCoins && Params().GetConsensus().fCoinbaseMustBeProtected) {
-                    //     strFailReason = _("Coinbase funds can only be sent to a zaddr");
-                    // } else if (fNeedCoinbaseCoins) {
-                    //     strFailReason = _("Insufficient funds, coinbase funds can only be spent after they have been sent to a zaddr");
-                    // } else {
-                        strFailReason = _("Insufficient funds");
-                    // }
+                    strFailReason = _("Insufficient funds");
                     return false;
                 }
                 BOOST_FOREACH(PAIRTYPE(const CWalletTx*, unsigned int) pcoin, setCoins)

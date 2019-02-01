@@ -97,14 +97,14 @@ class WalletTest (BitcoinTestFramework):
         assert_equal(sum(int(uxto["generated"] is True) for uxto in node2utxos), 0)
 
         # Catch an attempt to send a transaction with an absurdly high fee.
-        # Send 1.0 from an utxo of value 10.0 but don't specify a change output, so then
-        # the change of 9.0 becomes the fee, which is greater than estimated fee of 0.0019.
+        # Send 1.0 from an utxo of value 6250.0 but don't specify a change output, so then
+        # the change of 6249.0 becomes the fee, which is greater than estimated fee of 0.0019.
         inputs = []
         outputs = {}
         for utxo in node2utxos:
-            if utxo["amount"] == Decimal("10.0"):
+            if utxo["amount"] == self._reward:
                 break
-        assert_equal(utxo["amount"], Decimal("10.0"))
+        assert_equal(utxo["amount"], self._reward)
         inputs.append({ "txid" : utxo["txid"], "vout" : utxo["vout"]})
         outputs[self.nodes[2].getnewaddress("")] = Decimal("1.0")
         raw_tx = self.nodes[2].createrawtransaction(inputs, outputs)
@@ -114,7 +114,8 @@ class WalletTest (BitcoinTestFramework):
         except JSONRPCException,e:
             errorString = e.error['message']
         assert("absurdly high fees" in errorString)
-        assert("900000000 > 190000" in errorString)
+        print errorString
+        assert("624900000 > 190000" in errorString)
 
         # create both transactions
         txns_to_send = []
@@ -166,7 +167,7 @@ class WalletTest (BitcoinTestFramework):
         assert_equal(self.nodes[2].getbalance("*"), Decimal(self._reward*3)-self._fee)
         assert_equal(self.nodes[0].getbalance("*"), Decimal(self._reward*2)-self._fee)
 
-        # Sendmany 10 BTC
+        # Sendmany
         self.nodes[2].sendmany("", {address: self._reward}, 0, "", [])
         self.sync_all()
         self.nodes[2].generate(1)
@@ -177,7 +178,7 @@ class WalletTest (BitcoinTestFramework):
         assert_equal(self.nodes[2].getbalance("*"), Decimal(self._reward*2)-self._fee-self._fee)
         assert_equal(self.nodes[0].getbalance("*"), Decimal(self._reward*3)-self._fee)
 
-        # Sendmany 10 BTC with subtract fee from amount
+        # Sendmany with subtract fee from amount
         self.nodes[2].sendmany("", {address: self._reward}, 0, "", [address])
         self.sync_all()
         self.nodes[2].generate(1)
@@ -471,7 +472,7 @@ class WalletTest (BitcoinTestFramework):
 
         # This fee is larger than the default fee and since amount=0
         # it should trigger error
-        fee         = Decimal('0.1')
+        fee         = self._fee*1000
         recipients  = [ {"address": myzaddr, "amount": Decimal('0.0') } ]
         minconf     = 1
         errorString = ''
@@ -480,11 +481,12 @@ class WalletTest (BitcoinTestFramework):
             myopid = self.nodes[0].z_sendmany(myzaddr, recipients, minconf, fee)
         except JSONRPCException,e:
             errorString = e.error['message']
+        print errorString
         assert('Small transaction amount' in errorString)
 
         # This fee is less than default and greater than amount, but still valid
-        fee         = Decimal('0.0000001')
-        recipients  = [ {"address": myzaddr, "amount": Decimal('0.00000001') } ]
+        fee         = self._fee/1000 # 0.0001
+        recipients  = [ {"address": myzaddr, "amount": self._fee/10000 } ] # 0.0001
         minconf     = 1
         errorString = ''
 

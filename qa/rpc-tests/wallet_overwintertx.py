@@ -68,7 +68,7 @@ class WalletOverwinterTxTest (BitcoinTestFramework):
         txid_zsendmany = wait_and_assert_operationid_status(self.nodes[2], myopid)
 
         # Node 0 shields to Node 2, a coinbase utxo of value 10.0 less fee 0.00010000
-        zsendamount = Decimal('10.0') - Decimal('0.0001')
+        zsendamount = self._reward - self._fee
         recipients = []
         recipients.append({"address":zaddr2, "amount": zsendamount})
         myopid = self.nodes[0].z_sendmany(taddr0, recipients)
@@ -80,7 +80,7 @@ class WalletOverwinterTxTest (BitcoinTestFramework):
 
         # Verify balance
         assert_equal(self.nodes[1].z_getbalance(taddr1), Decimal('0.5'))
-        assert_equal(self.nodes[2].getbalance(), Decimal('0.4999'))
+        assert_equal(self.nodes[2].getbalance(), Decimal('0.5') - self._fee)
         assert_equal(self.nodes[2].z_getbalance(zaddr2), zsendamount)
 
         # Verify transaction versions are 1 or 2 (intended for Sprout)
@@ -137,7 +137,7 @@ class WalletOverwinterTxTest (BitcoinTestFramework):
         txid_zsendmany = wait_and_assert_operationid_status(self.nodes[3], myopid)
 
         # Node 0 shields to Node 3, a coinbase utxo of value 10.0 less fee 0.00010000
-        zsendamount = Decimal('10.0') - Decimal('0.0001')
+        zsendamount = self._reward - self._fee
         recipients = []
         recipients.append({"address":zaddr3, "amount": zsendamount})
         myopid = self.nodes[0].z_sendmany(taddr0, recipients)
@@ -154,7 +154,7 @@ class WalletOverwinterTxTest (BitcoinTestFramework):
 
         # Verify balance
         assert_equal(self.nodes[1].z_getbalance(taddr1), Decimal('1.0'))
-        assert_equal(self.nodes[3].getbalance(), Decimal('0.4999'))
+        assert_equal(self.nodes[3].getbalance(), Decimal('0.5') - self._fee)
         assert_equal(self.nodes[3].z_getbalance(zaddr3), zsendamount)
 
         # Verify transaction version is 3 (intended for Overwinter)

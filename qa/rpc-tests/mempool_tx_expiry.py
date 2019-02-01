@@ -15,7 +15,8 @@ from test_framework.util import assert_equal, \
     connect_nodes_bi, sync_blocks, start_nodes, \
     wait_and_assert_operationid_status
 
-from decimal import Decimal
+from decimal import Decimal, getcontext
+getcontext().prec = 16
 
 SAPLING_ACTIVATION_HEIGHT = 300
 TX_EXPIRING_SOON_THRESHOLD = 3
@@ -40,8 +41,13 @@ class MempoolTxExpiryTest(BitcoinTestFramework):
         bob = self.nodes[2].getnewaddress()
         z_bob = self.nodes[2].z_getnewaddress('sapling')
 
+        tsendamount_bob = Decimal('0.01')
+        tsendamount_alice = Decimal('0.1')
+        zsendamount = self._reward/10 - self._fee
+        final_balance = self._reward - 2*(self._reward/10) - self._fee 
+
         # When Overwinter not yet activated, no expiryheight in tx
-        tx = self.nodes[0].sendtoaddress(bob, 0.01)
+        tx = self.nodes[0].sendtoaddress(bob, tsendamount_bob)
         rawtx = self.nodes[0].getrawtransaction(tx, 1)
         assert_equal(rawtx["overwintered"], False)
         assert("expiryheight" not in rawtx)
@@ -53,7 +59,7 @@ class MempoolTxExpiryTest(BitcoinTestFramework):
         self.split_network()
 
         # When Overwinter is activated, test dependent txs
-        firstTx = self.nodes[0].sendtoaddress(alice, 0.1)
+        firstTx = self.nodes[0].sendtoaddress(alice, tsendamount_alice)
         firstTxInfo = self.nodes[0].getrawtransaction(firstTx, 1)
         assert_equal(firstTxInfo["version"], 3)
         assert_equal(firstTxInfo["overwintered"], True)
@@ -62,11 +68,11 @@ class MempoolTxExpiryTest(BitcoinTestFramework):
         # Mine first transaction
         self.nodes[0].generate(1)
         for outpoint in firstTxInfo['vout']:
-            if outpoint['value'] == Decimal('0.10000000'):
+            if outpoint['value'] == tsendamount_alice:
                 vout = outpoint
                 break
         inputs = [{'txid': firstTx, 'vout': vout['n'], 'scriptPubKey': vout['scriptPubKey']['hex']}]
-        outputs = {alice: 0.1}
+        outputs = {alice: tsendamount_alice}
         rawTx = self.nodes[0].createrawtransaction(inputs, outputs)
         rawTxSigned = self.nodes[0].signrawtransaction(rawTx)
         assert(rawTxSigned['complete'])
@@ -95,7 +101,7 @@ class MempoolTxExpiryTest(BitcoinTestFramework):
         self.sync_all()
 
         ## Shield one of Alice's coinbase funds to her zaddr
-        res = self.nodes[0].z_shieldcoinbase("*", z_alice, 0.0001, 1)
+        res = self.nodes[0].z_shieldcoinbase("*", z_alice, self._fee, 1)
         wait_and_assert_operationid_status(self.nodes[0], res['opid'])
         self.nodes[0].generate(1)
         self.sync_all()
@@ -103,19 +109,18 @@ class MempoolTxExpiryTest(BitcoinTestFramework):
         # Get balance on node 0
         bal = self.nodes[0].z_gettotalbalance()
         print "Balance before zsend, after shielding 10: ", bal
-        assert_equal(Decimal(bal["private"]), Decimal("9.9999"))
+        assert_equal(Decimal(bal["private"]), self._reward - self._fee)
 
         print "Splitting network..."
         self.split_network()
 
         # Create transactions
         blockheight = self.nodes[0].getblockchaininfo()['blocks']
-        zsendamount = Decimal('1.0') - Decimal('0.0001')
         recipients = []
         recipients.append({"address": z_bob, "amount": zsendamount})
         myopid = self.nodes[0].z_sendmany(z_alice, recipients)
         persist_shielded = wait_and_assert_operationid_status(self.nodes[0], myopid)
-        persist_transparent = self.nodes[0].sendtoaddress(bob, 0.01)
+        persist_transparent = self.nodes[0].sendtoaddress(bob, tsendamount_bob)
         # Verify transparent transaction is version 4 intended for Sapling branch
         rawtx = self.nodes[0].getrawtransaction(persist_transparent, 1)
         assert_equal(rawtx["version"], 4)
@@ -179,7 +184,7 @@ class MempoolTxExpiryTest(BitcoinTestFramework):
         print "\n Blockheight advances to equal expiry block height. After reorg, txs should persist in mempool"
         myopid = self.nodes[0].z_sendmany(z_alice, recipients)
         persist_shielded_2 = wait_and_assert_operationid_status(self.nodes[0], myopid)
-        persist_transparent_2 = self.nodes[0].sendtoaddress(bob, 0.01)
+        persist_transparent_2 = self.nodes[0].sendtoaddress(bob, tsendamount_bob)
         rawtx_trans = self.nodes[0].getrawtransaction(persist_transparent_2, 1)
         rawtx_shield = self.nodes[0].getrawtransaction(persist_shielded_2, 1)
         print "Blockheight node 0 at persist_transparent_2 creation:", self.nodes[0].getblockchaininfo()['blocks']
@@ -214,7 +219,7 @@ class MempoolTxExpiryTest(BitcoinTestFramework):
         print "Balance before expire_shielded is sent: ", self.nodes[0].z_gettotalbalance()
         myopid = self.nodes[0].z_sendmany(z_alice, recipients)
         expire_shielded = wait_and_assert_operationid_status(self.nodes[0], myopid)
-        expire_transparent = self.nodes[0].sendtoaddress(bob, 0.01)
+        expire_transparent = self.nodes[0].sendtoaddress(bob, tsendamount_bob)
         print "Blockheight node 0 at expire_transparent creation:", self.nodes[0].getblockchaininfo()['blocks']
         print "Blockheight node 2 at expire_shielded creation:", self.nodes[2].getblockchaininfo()['blocks']
         print "Expiryheight of expire_transparent:", self.nodes[0].getrawtransaction(expire_transparent, 1)['expiryheight']
@@ -236,7 +241,7 @@ class MempoolTxExpiryTest(BitcoinTestFramework):
         print "Ensure balance of node 0 is correct"
         bal = self.nodes[0].z_gettotalbalance()
         print "Balance after expire_shielded has expired: ", bal
-        assert_equal(Decimal(bal["private"]), Decimal("7.9999"))
+        assert_equal(Decimal(bal["private"]), final_balance)
 
         print "Splitting network..."
         self.split_network()
@@ -245,7 +250,7 @@ class MempoolTxExpiryTest(BitcoinTestFramework):
         print "Balance before expire_shielded is sent: ", self.nodes[0].z_gettotalbalance()
         myopid = self.nodes[0].z_sendmany(z_alice, recipients)
         expire_shielded = wait_and_assert_operationid_status(self.nodes[0], myopid)
-        expire_transparent = self.nodes[0].sendtoaddress(bob, 0.01)
+        expire_transparent = self.nodes[0].sendtoaddress(bob, tsendamount_bob)
         print "Blockheight node 0 at expire_transparent creation:", self.nodes[0].getblockchaininfo()['blocks']
         print "Blockheight node 2 at expire_shielded creation:", self.nodes[2].getblockchaininfo()['blocks']
         print "Expiryheight of expire_transparent:", self.nodes[0].getrawtransaction(expire_transparent, 1)['expiryheight']
