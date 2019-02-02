@@ -4,6 +4,7 @@
 # file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
 import sys; assert sys.version_info < (3,), ur"This script does not run under Python 3. Please use Python 2.7.x."
+import time
 
 from test_framework.test_framework import BitcoinTestFramework
 from test_framework.authproxy import AuthServiceProxy
@@ -54,8 +55,9 @@ class GetBlockTemplateLPTest(BitcoinTestFramework):
     '''
 
     def run_test(self):
-        print "Warning: this test will take about 70 seconds in the best case. Be patient."
+        print "Warning: this test will take about 120 seconds in the best case. Be patient."
         self.nodes[0].generate(10)
+        time.sleep(60)
         templat = self.nodes[0].getblocktemplate()
         longpollid = templat['longpollid']
         # longpollid should not change between successive invocations if nothing else happens

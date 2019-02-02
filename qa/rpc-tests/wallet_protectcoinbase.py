@@ -87,22 +87,23 @@ class WalletProtectCoinbaseTest (BitcoinTestFramework):
 
         wait_and_assert_operationid_status(self.nodes[3], myopid, "failed", "no UTXOs found for taddr from address", self._reward)
 
+        ## !!!In ANIME this will NOT fail, as it allows to send change from coinbase utxo!!! 
+        ## !!!Because it is not required to be shielded first!!!
         # This send will fail because our wallet does not allow any change when protecting a coinbase utxo,
         # as it's currently not possible to specify a change address in z_sendmany.
-        recipients = []
-        recipients.append({"address":myzaddr, "amount":Decimal('1.23456')})
+        # recipients = []
+        # recipients.append({"address":myzaddr, "amount":Decimal('1.23456')})
+        # myopid = self.nodes[0].z_sendmany(mytaddr, recipients)        
+        # error_result = wait_and_assert_operationid_status(self.nodes[0], myopid, "failed", "wallet does not allow any change", self._reward)
 
-        myopid = self.nodes[0].z_sendmany(mytaddr, recipients)
-        error_result = wait_and_assert_operationid_status(self.nodes[0], myopid, "failed", "wallet does not allow any change", self._reward)
-
-        # Test that the returned status object contains a params field with the operation's input parameters
-        assert_equal(error_result["method"], "z_sendmany")
-        params =error_result["params"]
-        assert_equal(params["fee"], self._fee) # default
-        assert_equal(params["minconf"], Decimal('1')) # default
-        assert_equal(params["fromaddress"], mytaddr)
-        assert_equal(params["amounts"][0]["address"], myzaddr)
-        assert_equal(params["amounts"][0]["amount"], Decimal('1.23456'))
+        # # Test that the returned status object contains a params field with the operation's input parameters
+        # assert_equal(error_result["method"], "z_sendmany")
+        # params =error_result["params"]
+        # assert_equal(params["fee"], self._fee) # default
+        # assert_equal(params["minconf"], Decimal('1')) # default
+        # assert_equal(params["fromaddress"], mytaddr)
+        # assert_equal(params["amounts"][0]["address"], myzaddr)
+        # assert_equal(params["amounts"][0]["amount"], Decimal('1.23456'))
 
         # Add viewing key for myzaddr to Node 3
         myviewingkey = self.nodes[0].z_exportviewingkey(myzaddr)
@@ -131,6 +132,7 @@ class WalletProtectCoinbaseTest (BitcoinTestFramework):
 
         # Verify that z_listunspent returns one note which has been confirmed
         results = self.nodes[0].z_listunspent()
+        print(len(results))
         assert(len(results) == 1)
         assert_equal(results[0]["address"], myzaddr)
         assert_equal(results[0]["amount"], shieldvalue)
@@ -139,6 +141,7 @@ class WalletProtectCoinbaseTest (BitcoinTestFramework):
 
         # Verify that z_listunspent returns note for watchonly address on node 3.
         results = self.nodes[3].z_listunspent(1, 999, True)
+        print(len(results))
         assert(len(results) == 1)
         assert_equal(results[0]["address"], myzaddr)
         assert_equal(results[0]["amount"], shieldvalue)

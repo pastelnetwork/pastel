@@ -18,29 +18,27 @@ testScripts=(
     'wallet_changeindicator.py'
     'wallet_import_export.py'
     'wallet_protectcoinbase.py'
-    'wallet_shieldcoinbase.py'
     'wallet_shieldcoinbase_sprout.py'
     'wallet_shieldcoinbase_sapling.py'
     'wallet_listreceived.py'
     'wallet.py'
     'wallet_overwintertx.py'
     'wallet_persistence.py'
-    # 'wallet_nullifiers.py'            #FIXME - wallet_nullifiers.py", line 220
-    # 'wallet_1941.py'                  #FIXME - wallet_1941.py", line 52
+    'wallet_nullifiers.py'
+    'wallet_1941.py'                  #FIXME - wallet_1941.py", line 52
     'wallet_addresses.py'
     'wallet_sapling.py'
     'wallet_listnotes.py'
     'mergetoaddress_sprout.py'
     'mergetoaddress_sapling.py'
-    # 'listtransactions.py'             #FIXME - listtransactions.py", line 38
-    # 'mempool_resurrect_test.py'       #FIXME - mempool_resurrect_test.py", line 45
-    # 'txn_doublespend.py'              #FIXME - txn_doublespend.py", line 32
-    # 'txn_doublespend.py --mineblock'  #FIXME - txn_doublespend.py", line 32
-    # 'getchaintips.py'                 #FIXME - getchaintips.py", line 16
+    'listtransactions.py'
+    'mempool_resurrect_test.py'
+    'txn_doublespend.py'
+    'txn_doublespend.py --mineblock'
+    'getchaintips.py'
     'rawtransactions.py'
-    # 'rest.py'                         #FIXME - rest.py", line 240
-    # 'mempool_spendcoinbase.py'        #FIXME - mempool_spendcoinbase.py", line 42
-    # 'mempool_coinbase_spends.py'      #FIXME - mempool_coinbase_spends.py", line 57
+    'rest.py'                         #FIXME - rest.py", line 240
+    'mempool_spendcoinbase.py'
     'mempool_reorg.py'
     'mempool_tx_input_limit.py'
     'mempool_nu_activation.py'
@@ -51,7 +49,7 @@ testScripts=(
     'merkle_blocks.py'
     'fundrawtransaction.py'
     'signrawtransactions.py'
-    'signrawtransaction_offline.py'     #BROKEN
+    'signrawtransaction_offline.py'
     'walletbackup.py'
     'key_import_export.py'
     'nodehandling.py'
@@ -59,43 +57,44 @@ testScripts=(
     'decodescript.py'
     'blockchain.py'
     'disablewallet.py'
-    # 'zcjoinsplit.py'                  #FIXME - zcjoinsplit.py", line 29
-    # 'zcjoinsplitdoublespend.py'       #???
-    # 'zkey_import_export.py'           #FIXME - 
+    'zcjoinsplit.py'
+    'zcjoinsplitdoublespend.py'
+    'zkey_import_export.py' 
     'reorg_limit.py'
     'getblocktemplate.py'
-    # 'bip65-cltv-p2p.py'             #FIXME
-    # 'bipdersig-p2p.py'              #FIXME
+    'bip65-cltv-p2p.py'                 #FIXME
+    'bipdersig-p2p.py'                  #FIXME
+    'p2p_nu_peer_management.py'         #FIXME
+    'rewind_index.py'
+    'p2p_txexpiry_dos.py'               #FIXME
+    'p2p_txexpiringsoon.py'             #FIXME
+    'p2p_node_bloom.py'                 #FIXME
+    'regtest_signrawtransaction.py'
+    'finalsaplingroot.py'
     'mn_main.py'
     'mn_payment.py'
     'mn_governance.py'
-    'p2p_nu_peer_management.py'         #BROKEN
-    'rewind_index.py'
-    'p2p_txexpiry_dos.py'
-    'p2p_txexpiringsoon.py'             #BROKEN
-    'p2p_node_bloom.py'                 #BROKEN
-    'regtest_signrawtransaction.py'     #??
-    'finalsaplingroot.py'               #??
 );
 testScriptsExt=(
-    'getblocktemplate_longpoll.py'      #??
-    # 'getblocktemplate_proposals.py' #FIXME
-    # 'pruning.py'                    #FIXME
-    'forknotify.py'                     #??
-    # 'hardforkdetection.py'          #FIXME
-    # 'invalidateblock.py'            #FIXME
-    'keypool.py'                        #??
-    # 'receivedby.py'                 #FIXME
-    'rpcbind_test.py'                   #??Good
-#   'script_test.py'                  #???
-    # 'smartfees.py'                  #FIXME
-    'maxblocksinflight.py'            #??Good
-    # 'invalidblockrequest.py'        #FIXME
-    # 'p2p-acceptblock.py'            #FIXME
+    'getblocktemplate_longpoll.py'
+    # 'getblocktemplate_proposals.py' #BROKEN in zcash
+    # 'pruning.py'                    #BROKEN in zcash
+    'forknotify.py'
+    # 'hardforkdetection.py'          #BROKEN in zcash
+    # 'invalidateblock.py'            #BROKEN in zcash
+    'keypool.py'
+    # 'receivedby.py'                 #BROKEN in zcash
+    'rpcbind_test.py'
+#   'script_test.py'
+    # 'smartfees.py'                  #BROKEN in zcash
+    'maxblocksinflight.py'
+    # 'invalidblockrequest.py'        #BROKEN in zcash
+    # 'p2p-acceptblock.py'            #BROKEN in zcash
 );
 
 if [ "x$ENABLE_ZMQ" = "x1" ]; then
-    testScripts+=('zmq_test.py')      #FIXME - hangs
+    echo -e "=== ZMQ test disabled ==="
+    # testScripts+=('zmq_test.py')      #FIXME - hangs
 fi
 
 if [ "x$ENABLE_PROTON" = "x1" ]; then

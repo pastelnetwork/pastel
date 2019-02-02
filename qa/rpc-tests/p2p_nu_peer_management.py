@@ -87,6 +87,7 @@ class NUPeerManagementTest(BitcoinTestFramework):
 
         # Verify mininodes are still connected to zcashd node
         peerinfo = self.nodes[0].getpeerinfo()
+        print(peerinfo)
         versions = [x["version"] for x in peerinfo]
         assert_equal(10, versions.count(SPROUT_PROTO_VERSION))
         assert_equal(10, versions.count(OVERWINTER_PROTO_VERSION))
