@@ -307,7 +307,8 @@ public:
         pchMessageStart[1] = 0x83;
         pchMessageStart[2] = 0x22;
         pchMessageStart[3] = 0x38;
-        vAlertPubKey = ParseHex("04a40ca15344822fd6bc9719929050614ab045775fcca1e46880ba7e4c55dc999b6f618091a7e5f5c24bd80854f14ebbc369c35cd2e4944c6cf27a3dc5f54f52dc");
+        //vAlertPubKey = ParseHex("04a40ca15344822fd6bc9719929050614ab045775fcca1e46880ba7e4c55dc999b6f618091a7e5f5c24bd80854f14ebbc369c35cd2e4944c6cf27a3dc5f54f52dc");
+        vAlertPubKey = ParseHex("04b4c6cd309cd91173a3033b57eaa0798df23614da65ca4c20d8651420d9a8eff375d7305dd393bb4be982a4e92518340b3d6c9eb2fb124af260f52e745c5c62b5");
         nDefaultPort = 9933;
         nPruneAfterHeight = 100000;
         const size_t N = 200, K = 9;
@@ -409,7 +410,8 @@ public:
         pchMessageStart[1] = 0x16;
         pchMessageStart[2] = 0x83;
         pchMessageStart[3] = 0xd2;
-        vAlertPubKey = ParseHex("04e2c4bfd845e0de6b3fced1bbae723154f751f1a11c41765ce8ca0d97b9d44989964b6e733520bd1d265c18710d307ad4a7cc7042225955c3d38e3c9138dc1eac");
+        // vAlertPubKey = ParseHex("04e2c4bfd845e0de6b3fced1bbae723154f751f1a11c41765ce8ca0d97b9d44989964b6e733520bd1d265c18710d307ad4a7cc7042225955c3d38e3c9138dc1eac");
+        vAlertPubKey = ParseHex("044bd4eb66eff4a989fce3c35dd179e0d86c4ea865300b52dcee6e005e9f6d2ebf15e6fb55f66a65a8be67c98f74830f0ab943c2d647e8fd1f2a6ce89d3d18e649");
         nDefaultPort = 19933;
         nPruneAfterHeight = 1000;
         const size_t N = 200, K = 9;
@@ -511,7 +513,7 @@ public:
         pchMessageStart[1] = 0x20;
         pchMessageStart[2] = 0x76;
         pchMessageStart[3] = 0x22;
-        vAlertPubKey = ParseHex("04a40ca15344822fd6bc9719929050614ab045775fcca1e46880ba7e4c55dc999b6f618091a7e5f5c24bd80854f14ebbc369c35cd2e4944c6cf27a3dc5f54f52dc");
+        // vAlertPubKey = ParseHex("04a40ca15344822fd6bc9719929050614ab045775fcca1e46880ba7e4c55dc999b6f618091a7e5f5c24bd80854f14ebbc369c35cd2e4944c6cf27a3dc5f54f52dc");
         nDefaultPort = 18344;
         nPruneAfterHeight = 1000;
         const size_t N = 48, K = 5;

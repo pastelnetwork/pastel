@@ -303,10 +303,10 @@ BOOST_AUTO_TEST_CASE(rpc_wallet_getbalance)
 
     BOOST_CHECK_THROW(CallRPC("z_getbalance too many args"), runtime_error);
     BOOST_CHECK_THROW(CallRPC("z_getbalance invalidaddress"), runtime_error);
-    BOOST_CHECK_NO_THROW(CallRPC("z_getbalance tmC6YZnCUhm19dEXxh3Jb7srdBJxDawaCab"));
-    BOOST_CHECK_THROW(CallRPC("z_getbalance tmC6YZnCUhm19dEXxh3Jb7srdBJxDawaCab -1"), runtime_error);
-    BOOST_CHECK_NO_THROW(CallRPC("z_getbalance tmC6YZnCUhm19dEXxh3Jb7srdBJxDawaCab 0"));
-    BOOST_CHECK_THROW(CallRPC("z_getbalance tnRZ8bPq2pff3xBWhTJhNkVUkm2uhzksDeW5PvEa7aFKGT9Qi3YgTALZfjaY4jU3HLVKBtHdSXxoPoLA3naMPcHBcY88FcF 1"), runtime_error);
+    BOOST_CHECK_NO_THROW(CallRPC("z_getbalance eAPZXrzS62ifksSx7Hzbav3U4dzaC5PLZWL"));
+    BOOST_CHECK_THROW(CallRPC("z_getbalance eAPZXrzS62ifksSx7Hzbav3U4dzaC5PLZWL -1"), runtime_error);
+    BOOST_CHECK_NO_THROW(CallRPC("z_getbalance eAPZXrzS62ifksSx7Hzbav3U4dzaC5PLZWL 0"));
+    BOOST_CHECK_THROW(CallRPC("z_getbalance ztestsapling1reqfmcscsce8l3g9h30wyp06t5d4cn5y7h640vu8ug6vr7p3alr7xv0vhaee9y36frddsjhz7c4 1"), runtime_error);
 
 
     BOOST_CHECK_THROW(CallRPC("z_gettotalbalance too manyargs"), runtime_error);

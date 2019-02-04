@@ -111,7 +111,7 @@ BOOST_AUTO_TEST_CASE(rpc_rawsign)
       "\"vout\":1,\"scriptPubKey\":\"a914b10c9df5f7edf436c697f02f1efdba4cf399615187\","
       "\"redeemScript\":\"512103debedc17b3df2badbcdd86d5feb4562b86fe182e5998abd8bcd4f122c6155b1b21027e940bb73ab8732bfdf7f9216ecefca5b94d6df834e77e108f68e66f126044c052ae\"}]";
     r = CallRPC(string("createrawtransaction ")+prevout+" "+
-      "{\"t3ahmeUm2LWXPUJPx9QMheGtqTEfdDdgr7p\":11}");
+      "{\"eAPZXrzS62ifksSx7Hzbav3U4dzaC5PLZWL\":11}");
     string notsigned = r.get_str();
     string privkey1 = "\"KzsXybp9jX64P5ekX1KUxRQ79Jht9uzW7LorgwE65i5rWACL6LQe\"";
     string privkey2 = "\"Kyhdf5LuKTRx4ge69ybABsiUAWjVRK4XGxAKk2FQLp2HjGMy87Z4\"";
@@ -123,37 +123,34 @@ BOOST_AUTO_TEST_CASE(rpc_rawsign)
 
 BOOST_AUTO_TEST_CASE(rpc_format_monetary_values)
 {
-    BOOST_CHECK(ValueFromAmount(0LL).write() == "0.00000000");
-    BOOST_CHECK(ValueFromAmount(1LL).write() == "0.00000001");
-    BOOST_CHECK(ValueFromAmount(17622195LL).write() == "0.17622195");
-    BOOST_CHECK(ValueFromAmount(50000000LL).write() == "0.50000000");
-    BOOST_CHECK(ValueFromAmount(89898989LL).write() == "0.89898989");
-    BOOST_CHECK(ValueFromAmount(100000000LL).write() == "1.00000000");
-    BOOST_CHECK(ValueFromAmount(2099999999999990LL).write() == "20999999.99999990");
-    BOOST_CHECK(ValueFromAmount(2099999999999999LL).write() == "20999999.99999999");
+    BOOST_CHECK(ValueFromAmount(0LL).write() == "0.00000");
+    BOOST_CHECK(ValueFromAmount(1LL).write() == "0.00001");
+    BOOST_CHECK(ValueFromAmount(17622195LL).write() == "176.22195");
+    BOOST_CHECK(ValueFromAmount(50000000LL).write() == "500.00000");
+    BOOST_CHECK(ValueFromAmount(89898989LL).write() == "898.98989");
+    BOOST_CHECK(ValueFromAmount(100000000LL).write() == "1000.00000");
+    BOOST_CHECK(ValueFromAmount(2099999999999990LL).write() == "20999999999.99990");
+    BOOST_CHECK(ValueFromAmount(2099999999999999LL).write() == "20999999999.99999");
 
-    BOOST_CHECK_EQUAL(ValueFromAmount(0).write(), "0.00000000");
-    BOOST_CHECK_EQUAL(ValueFromAmount((COIN/10000)*123456789).write(), "12345.67890000");
-    BOOST_CHECK_EQUAL(ValueFromAmount(-COIN).write(), "-1.00000000");
-    BOOST_CHECK_EQUAL(ValueFromAmount(-COIN/10).write(), "-0.10000000");
+    BOOST_CHECK_EQUAL(ValueFromAmount(0).write(), "0.00000");
+    BOOST_CHECK_EQUAL(ValueFromAmount((COIN/10000)*123456789).write(), "12345.67890");
+    BOOST_CHECK_EQUAL(ValueFromAmount(-COIN).write(), "-1.00000");
+    BOOST_CHECK_EQUAL(ValueFromAmount(-COIN/10).write(), "-0.10000");
 
-    BOOST_CHECK_EQUAL(ValueFromAmount(COIN*100000000).write(), "100000000.00000000");
-    BOOST_CHECK_EQUAL(ValueFromAmount(COIN*10000000).write(), "10000000.00000000");
-    BOOST_CHECK_EQUAL(ValueFromAmount(COIN*1000000).write(), "1000000.00000000");
-    BOOST_CHECK_EQUAL(ValueFromAmount(COIN*100000).write(), "100000.00000000");
-    BOOST_CHECK_EQUAL(ValueFromAmount(COIN*10000).write(), "10000.00000000");
-    BOOST_CHECK_EQUAL(ValueFromAmount(COIN*1000).write(), "1000.00000000");
-    BOOST_CHECK_EQUAL(ValueFromAmount(COIN*100).write(), "100.00000000");
-    BOOST_CHECK_EQUAL(ValueFromAmount(COIN*10).write(), "10.00000000");
-    BOOST_CHECK_EQUAL(ValueFromAmount(COIN).write(), "1.00000000");
-    BOOST_CHECK_EQUAL(ValueFromAmount(COIN/10).write(), "0.10000000");
-    BOOST_CHECK_EQUAL(ValueFromAmount(COIN/100).write(), "0.01000000");
-    BOOST_CHECK_EQUAL(ValueFromAmount(COIN/1000).write(), "0.00100000");
-    BOOST_CHECK_EQUAL(ValueFromAmount(COIN/10000).write(), "0.00010000");
-    BOOST_CHECK_EQUAL(ValueFromAmount(COIN/100000).write(), "0.00001000");
-    BOOST_CHECK_EQUAL(ValueFromAmount(COIN/1000000).write(), "0.00000100");
-    BOOST_CHECK_EQUAL(ValueFromAmount(COIN/10000000).write(), "0.00000010");
-    BOOST_CHECK_EQUAL(ValueFromAmount(COIN/100000000).write(), "0.00000001");
+    BOOST_CHECK_EQUAL(ValueFromAmount(COIN*100000000).write(), "100000000.00000");
+    BOOST_CHECK_EQUAL(ValueFromAmount(COIN*10000000).write(), "10000000.00000");
+    BOOST_CHECK_EQUAL(ValueFromAmount(COIN*1000000).write(), "1000000.00000");
+    BOOST_CHECK_EQUAL(ValueFromAmount(COIN*100000).write(), "100000.00000");
+    BOOST_CHECK_EQUAL(ValueFromAmount(COIN*10000).write(), "10000.00000");
+    BOOST_CHECK_EQUAL(ValueFromAmount(COIN*1000).write(), "1000.00000");
+    BOOST_CHECK_EQUAL(ValueFromAmount(COIN*100).write(), "100.00000");
+    BOOST_CHECK_EQUAL(ValueFromAmount(COIN*10).write(), "10.00000");
+    BOOST_CHECK_EQUAL(ValueFromAmount(COIN).write(), "1.00000");
+    BOOST_CHECK_EQUAL(ValueFromAmount(COIN/10).write(), "0.10000");
+    BOOST_CHECK_EQUAL(ValueFromAmount(COIN/100).write(), "0.01000");
+    BOOST_CHECK_EQUAL(ValueFromAmount(COIN/1000).write(), "0.00100");
+    BOOST_CHECK_EQUAL(ValueFromAmount(COIN/10000).write(), "0.00010");
+    BOOST_CHECK_EQUAL(ValueFromAmount(COIN/100000).write(), "0.00001");
 }
 
 static UniValue ValueFromString(const std::string &str)
@@ -315,7 +312,7 @@ BOOST_AUTO_TEST_CASE(rpc_raw_create_overwinter_v3)
       "[{\"txid\":\"b4cc287e58f87cdae59417329f710f3ecd75a4ee1d2872b7248f50977c8493f3\","
       "\"vout\":1}]";
     r = CallRPC(string("createrawtransaction ") + prevout + " " +
-      "{\"tmHU5HLMu3yS8eoNvbrU1NWeJaGf6jxehru\":11}");
+      "{\"eAPZXrzS62ifksSx7Hzbav3U4dzaC5PLZWL\":11}");
     std::string rawhex = r.get_str();
     BOOST_CHECK_NO_THROW(r = CallRPC(string("decoderawtransaction ") + rawhex));
     BOOST_CHECK_EQUAL(find_value(r.get_obj(), "overwintered").get_bool(), true);

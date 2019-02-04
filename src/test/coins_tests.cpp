@@ -879,49 +879,49 @@ BOOST_AUTO_TEST_CASE(coins_cache_simulation_test)
     BOOST_CHECK(missed_an_entry);
 }
 
-BOOST_AUTO_TEST_CASE(coins_coinbase_spends)
-{
-    CCoinsViewTest base;
-    CCoinsViewCacheTest cache(&base);
+// BOOST_AUTO_TEST_CASE(coins_coinbase_spends)
+// {
+//     CCoinsViewTest base;
+//     CCoinsViewCacheTest cache(&base);
 
-    // Create coinbase transaction
-    CMutableTransaction mtx;
-    mtx.vin.resize(1);
-    mtx.vin[0].scriptSig = CScript() << OP_1;
-    mtx.vin[0].nSequence = 0;
-    mtx.vout.resize(1);
-    mtx.vout[0].nValue = 500;
-    mtx.vout[0].scriptPubKey = CScript() << OP_1;
+//     // Create coinbase transaction
+//     CMutableTransaction mtx;
+//     mtx.vin.resize(1);
+//     mtx.vin[0].scriptSig = CScript() << OP_1;
+//     mtx.vin[0].nSequence = 0;
+//     mtx.vout.resize(1);
+//     mtx.vout[0].nValue = 500;
+//     mtx.vout[0].scriptPubKey = CScript() << OP_1;
 
-    CTransaction tx(mtx);
+//     CTransaction tx(mtx);
 
-    BOOST_CHECK(tx.IsCoinBase());
+//     BOOST_CHECK(tx.IsCoinBase());
 
-    CValidationState state;
-    UpdateCoins(tx, cache, 100);
+//     CValidationState state;
+//     UpdateCoins(tx, cache, 100);
 
-    // Create coinbase spend
-    CMutableTransaction mtx2;
-    mtx2.vin.resize(1);
-    mtx2.vin[0].prevout = COutPoint(tx.GetHash(), 0);
-    mtx2.vin[0].scriptSig = CScript() << OP_1;
-    mtx2.vin[0].nSequence = 0;
+//     // Create coinbase spend
+//     CMutableTransaction mtx2;
+//     mtx2.vin.resize(1);
+//     mtx2.vin[0].prevout = COutPoint(tx.GetHash(), 0);
+//     mtx2.vin[0].scriptSig = CScript() << OP_1;
+//     mtx2.vin[0].nSequence = 0;
 
-    {
-        CTransaction tx2(mtx2);
-        BOOST_CHECK(Consensus::CheckTxInputs(tx2, state, cache, 100+COINBASE_MATURITY, Params().GetConsensus()));
-    }
+//     {
+//         CTransaction tx2(mtx2);
+//         BOOST_CHECK(Consensus::CheckTxInputs(tx2, state, cache, 100+COINBASE_MATURITY, Params().GetConsensus()));
+//     }
 
-    mtx2.vout.resize(1);
-    mtx2.vout[0].nValue = 500;
-    mtx2.vout[0].scriptPubKey = CScript() << OP_1;
+//     mtx2.vout.resize(1);
+//     mtx2.vout[0].nValue = 500;
+//     mtx2.vout[0].scriptPubKey = CScript() << OP_1;
 
-    {
-        CTransaction tx2(mtx2);
-        BOOST_CHECK(!Consensus::CheckTxInputs(tx2, state, cache, 100+COINBASE_MATURITY, Params().GetConsensus()));
-        BOOST_CHECK(state.GetRejectReason() == "bad-txns-coinbase-spend-has-transparent-outputs");
-    }
-}
+//     {
+//         CTransaction tx2(mtx2);
+//         BOOST_CHECK(!Consensus::CheckTxInputs(tx2, state, cache, 100+COINBASE_MATURITY, Params().GetConsensus()));
+//         BOOST_CHECK(state.GetRejectReason() == "bad-txns-coinbase-spend-has-transparent-outputs");
+//     }
+// }
 
 // This test is similar to the previous test
 // except the emphasis is on testing the functionality of UpdateCoins
