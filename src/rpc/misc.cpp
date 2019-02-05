@@ -378,9 +378,9 @@ UniValue createmultisig(const UniValue& params, bool fHelp)
 
             "\nExamples:\n"
             "\nCreate a multisig address from 2 addresses\n"
-            + HelpExampleCli("createmultisig", "2 \"[\\\"t16sSauSf5pF2UkUwvKGq4qjNRzBZYqgEL5\\\",\\\"t171sgjn4YtPu27adkKGrdDwzRTxnRkBfKV\\\"]\"") +
+            + HelpExampleCli("createmultisig", "2 \"[\\\"AeWFpn4BfwQk3S6hVyDBFeh9PyTFATwAUuz\\\",\\\"AeYpT8KgepWV14Zktkc7WoVfeiRbsnnZEbi\\\"]\"") +
             "\nAs a json rpc call\n"
-            + HelpExampleRpc("createmultisig", "2, \"[\\\"t16sSauSf5pF2UkUwvKGq4qjNRzBZYqgEL5\\\",\\\"t171sgjn4YtPu27adkKGrdDwzRTxnRkBfKV\\\"]\"")
+            + HelpExampleRpc("createmultisig", "2, \"[\\\"AeWFpn4BfwQk3S6hVyDBFeh9PyTFATwAUuz\\\",\\\"AeYpT8KgepWV14Zktkc7WoVfeiRbsnnZEbi\\\"]\"")
         ;
         throw runtime_error(msg);
     }
@@ -412,11 +412,11 @@ UniValue verifymessage(const UniValue& params, bool fHelp)
             "\nUnlock the wallet for 30 seconds\n"
             + HelpExampleCli("walletpassphrase", "\"mypassphrase\" 30") +
             "\nCreate the signature\n"
-            + HelpExampleCli("signmessage", "\"t14oHp2v54vfmdgQ3v3SNuQga8JKHTNi2a1\" \"my message\"") +
+            + HelpExampleCli("signmessage", "\"AeWFpn4BfwQk3S6hVyDBFeh9PyTFATwAUuz\" \"my message\"") +
             "\nVerify the signature\n"
-            + HelpExampleCli("verifymessage", "\"t14oHp2v54vfmdgQ3v3SNuQga8JKHTNi2a1\" \"signature\" \"my message\"") +
+            + HelpExampleCli("verifymessage", "\"AeWFpn4BfwQk3S6hVyDBFeh9PyTFATwAUuz\" \"signature\" \"my message\"") +
             "\nAs json rpc\n"
-            + HelpExampleRpc("verifymessage", "\"t14oHp2v54vfmdgQ3v3SNuQga8JKHTNi2a1\", \"signature\", \"my message\"")
+            + HelpExampleRpc("verifymessage", "\"AeWFpn4BfwQk3S6hVyDBFeh9PyTFATwAUuz\", \"signature\", \"my message\"")
         );
 
     LOCK(cs_main);

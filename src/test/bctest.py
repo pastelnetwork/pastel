@@ -18,6 +18,8 @@ def bctest(testDir, testObj, exeext):
 		inputData = open(filename).read()
 		stdinCfg = subprocess.PIPE
 
+	# print(execrun)
+
 	outputFn = None
 	outputData = None
 	if "output_cmp" in testObj:
@@ -29,6 +31,9 @@ def bctest(testDir, testObj, exeext):
 	except OSError:
 		print("OSError, Failed to execute " + execprog)
 		sys.exit(1)
+
+	# print outs[0]
+	# print outputData
 
 	if outputData and (outs[0] != outputData):
 		print("Output data mismatch for " + outputFn)
