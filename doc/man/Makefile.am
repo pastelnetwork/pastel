@@ -1,1 +1,1 @@
-dist_man1_MANS=animecoind.1 animecoin-cli.1 animecoin-fetch-params.1 animecoin-tx.1
+dist_man1_MANS=pasteld.1 pastel-cli.1 pastel-fetch-params.1 pastel-tx.1

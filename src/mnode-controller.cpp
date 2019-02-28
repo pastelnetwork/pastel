@@ -376,7 +376,7 @@ Threads
 
 void CMasterNodeController::ThreadMnbRequestConnections()
 {
-    RenameThread("animecoin-mn-mnbreq");
+    RenameThread("pastel-mn-mnbreq");
 
     // Connecting to specific addresses, no masternode connections available
     if (mapArgs.count("-connect") && mapMultiArgs["-connect"].size() > 0)
@@ -422,7 +422,7 @@ void CMasterNodeController::ThreadMasterNodeMaintenance()
     if(fOneThread) return;
     fOneThread = true;
 
-    RenameThread("animecoin-mn");
+    RenameThread("pastel-mn");
 
     unsigned int nTick = 0;
 

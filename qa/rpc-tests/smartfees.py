@@ -25,7 +25,7 @@ P2SH_2 = "2NBdpwq8Aoo1EEKEXPNrKvr5xQr3M9UfcZA" # P2SH of "OP_2 OP_DROP"
 # 4 bytes of OP_TRUE and push 2-byte redeem script of "OP_1 OP_DROP" or "OP_2 OP_DROP"
 SCRIPT_SIG = ["0451025175", "0451025275"]
 
-def satoshi_round(amount):
+def patoshi_round(amount):
     return  Decimal(amount).quantize(Decimal('0.00001'), rounding=ROUND_DOWN)
 
 def small_txpuzzle_randfee(from_node, conflist, unconflist, amount, min_fee, fee_increment):
@@ -43,7 +43,7 @@ def small_txpuzzle_randfee(from_node, conflist, unconflist, amount, min_fee, fee
     # Exponentially distributed from 1-128 * fee_increment
     rand_fee = float(fee_increment)*(1.1892**random.randint(0,28))
     # Total fee ranges from min_fee to min_fee + 127*fee_increment
-    fee = min_fee - fee_increment + satoshi_round(rand_fee)
+    fee = min_fee - fee_increment + patoshi_round(rand_fee)
     inputs = []
     total_in = Decimal("0.00000")
     while total_in <= (amount + fee) and len(conflist) > 0:
@@ -89,8 +89,8 @@ def split_inputs(from_node, txins, txouts, initial_split = False):
     inputs = []
     outputs = {}
     inputs.append({ "txid" : prevtxout["txid"], "vout" : prevtxout["vout"] })
-    half_change = satoshi_round(prevtxout["amount"]/2)
-    rem_change = prevtxout["amount"] - half_change  - self._1000atoshi
+    half_change = patoshi_round(prevtxout["amount"]/2)
+    rem_change = prevtxout["amount"] - half_change  - self._1000patoshi
     outputs[P2SH_1] = half_change
     outputs[P2SH_2] = rem_change
     rawtx = from_node.createrawtransaction(inputs, outputs)
@@ -206,7 +206,7 @@ class EstimateFeeTest(BitcoinTestFramework):
         self.sync_all()
 
     def transact_and_mine(self, numblocks, mining_node):
-        min_fee = self._atoshi
+        min_fee = self._patoshi
         # We will now mine numblocks blocks generating on average 100 transactions between each block
         # We shuffle our confirmed txout set before each set of transactions
         # small_txpuzzle_randfee will use the transactions that have inputs already in the chain when possible

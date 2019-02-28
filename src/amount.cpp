@@ -7,27 +7,27 @@
 
 #include "tinyformat.h"
 
-const std::string CURRENCY_UNIT = "ANI";
+const std::string CURRENCY_UNIT = "PSL";
 
 CFeeRate::CFeeRate(const CAmount& nFeePaid, size_t nSize)
 {
     if (nSize > 0)
-        nSatoshisPerK = nFeePaid*1000/nSize;
+        nPatoshisPerK = nFeePaid*1000/nSize;
     else
-        nSatoshisPerK = 0;
+        nPatoshisPerK = 0;
 }
 
 CAmount CFeeRate::GetFee(size_t nSize) const
 {
-    CAmount nFee = nSatoshisPerK*nSize / 1000;
+    CAmount nFee = nPatoshisPerK*nSize / 1000;
 
-    if (nFee == 0 && nSatoshisPerK > 0)
-        nFee = nSatoshisPerK;
+    if (nFee == 0 && nPatoshisPerK > 0)
+        nFee = nPatoshisPerK;
 
     return nFee;
 }
 
 std::string CFeeRate::ToString() const
 {
-    return strprintf("%d.%05d %s/kB", nSatoshisPerK / COIN, nSatoshisPerK % COIN, CURRENCY_UNIT);
+    return strprintf("%d.%05d %s/kB", nPatoshisPerK / COIN, nPatoshisPerK % COIN, CURRENCY_UNIT);
 }

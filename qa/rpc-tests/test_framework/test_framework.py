@@ -34,12 +34,12 @@ class BitcoinTestFramework(object):
     _fee00      = Decimal('0.10')
 
     _null           = Decimal("0.00000")
-    _atoshi         = Decimal('0.00001')
-    _2atoshi        = Decimal('0.00002')
-    _10atoshi       = Decimal('0.0001')
-    _100atoshi      = Decimal('0.001')
-    _1000atoshi     = Decimal('0.01')
-    _10000atoshi    = Decimal('0.1')
+    _patoshi         = Decimal('0.00001')
+    _2patoshi        = Decimal('0.00002')
+    _10patoshi       = Decimal('0.0001')
+    _100patoshi      = Decimal('0.001')
+    _1000patoshi     = Decimal('0.01')
+    _10000patoshi    = Decimal('0.1')
     _1ani           = Decimal('1.0')
     
     # These may be over-ridden by subclasses:
@@ -114,7 +114,7 @@ class BitcoinTestFramework(object):
         parser.add_option("--noshutdown", dest="noshutdown", default=False, action="store_true",
                           help="Don't stop bitcoinds after the test execution")
         parser.add_option("--srcdir", dest="srcdir", default="../../src",
-                          help="Source directory containing animecoind/animecoin-cli (default: %default)")
+                          help="Source directory containing pasteld/pastel-cli (default: %default)")
         parser.add_option("--tmpdir", dest="tmpdir", default=tempfile.mkdtemp(prefix="test"),
                           help="Root directory for datadirs")
         parser.add_option("--tracerpc", dest="trace_rpc", default=False, action="store_true",
@@ -171,7 +171,7 @@ class BitcoinTestFramework(object):
             sys.exit(1)
 
 
-# Test framework for doing p2p comparison testing, which sets up some animecoind
+# Test framework for doing p2p comparison testing, which sets up some pasteld
 # binaries:
 # 1 binary: test binary
 # 2 binaries: 1 test binary, 1 ref binary
@@ -185,11 +185,11 @@ class ComparisonTestFramework(BitcoinTestFramework):
 
     def add_options(self, parser):
         parser.add_option("--testbinary", dest="testbinary",
-                          default=os.getenv("ANIMECOIND", "animecoind"),
-                          help="animecoind binary to test")
+                          default=os.getenv("PASTELD", "pasteld"),
+                          help="pasteld binary to test")
         parser.add_option("--refbinary", dest="refbinary",
-                          default=os.getenv("ANIMECOIND", "animecoind"),
-                          help="animecoind binary to use for reference nodes (if any)")
+                          default=os.getenv("PASTELD", "pasteld"),
+                          help="pasteld binary to use for reference nodes (if any)")
 
     def setup_chain(self):
         print "Initializing test directory "+self.options.tmpdir

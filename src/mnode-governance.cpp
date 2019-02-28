@@ -1,4 +1,4 @@
-// Copyright (c) 2018 The ANIMECoin Developers
+// Copyright (c) 2018 The PASTELCoin Developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -238,7 +238,7 @@ bool CMasternodeGovernance::IsTransactionValid(const CTransaction& txNew, int nH
     ExtractDestination(scriptPubKey, dest);
     std::string address = EncodeDestination(dest);
 
-    LogPrintf("CMasternodeBlockPayees::IsTransactionValid -- ERROR: %s required governance payment, possible payees: '%s', actual amount: %f ANIME. Should be %f ANIME\n", 
+    LogPrintf("CMasternodeBlockPayees::IsTransactionValid -- ERROR: %s required governance payment, possible payees: '%s', actual amount: %f PASTEL. Should be %f PASTEL\n", 
             (tnxPayment == 0)? "Missing": "Invalid",
             address,
             (float)tnxPayment/COIN,

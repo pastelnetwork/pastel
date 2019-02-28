@@ -7,7 +7,7 @@ SHA256CMD="$(command -v sha256sum || echo shasum)"
 SHA256ARGS="$(command -v sha256sum >/dev/null || echo '-a 256')"
 
 function zcash_rpc {
-    ./src/animecoin-cli -datadir="$DATADIR" -rpcuser=user -rpcpassword=password -rpcport=5983 "$@"
+    ./src/pastel-cli -datadir="$DATADIR" -rpcuser=user -rpcpassword=password -rpcport=5983 "$@"
 }
 
 function zcash_rpc_slow {
@@ -24,7 +24,7 @@ function zcash_rpc_wait_for_start {
     zcash_rpc -rpcwait getinfo > /dev/null
 }
 
-function animecoind_generate {
+function pasteld_generate {
     zcash_rpc generate 101 > /dev/null
 }
 
@@ -40,7 +40,7 @@ EOF
         ARCHIVE_RESULT=1
     fi
     if [ $ARCHIVE_RESULT -ne 0 ]; then
-        animecoind_stop
+        pasteld_stop
         echo
         echo "Please download it and place it in the base directory of the repository."
         exit 1
@@ -54,7 +54,7 @@ function use_200k_benchmark {
     DATADIR="./benchmark-200k-UTXOs/node$1"
 }
 
-function animecoind_start {
+function pasteld_start {
     case "$1" in
         sendtoaddress|loadwallet|listunspent)
             case "$2" in
@@ -65,25 +65,25 @@ function animecoind_start {
                     use_200k_benchmark 1
                     ;;
                 *)
-                    echo "Bad arguments to animecoind_start."
+                    echo "Bad arguments to pasteld_start."
                     exit 1
             esac
             ;;
         *)
             rm -rf "$DATADIR"
             mkdir -p "$DATADIR/regtest"
-animecoin    esac
-    ./src/animecoind -regtest -datadir="$DATADIR" -rpcuser=user -rpcpassword=password -rpcport=5983 -showmetrics=0 &
-    animecoind_PID=$!
+pastel    esac
+    ./src/pasteld -regtest -datadir="$DATADIR" -rpcuser=user -rpcpassword=password -rpcport=5983 -showmetrics=0 &
+    pasteld_PID=$!
     zcash_rpc_wait_for_start
 }
 
-function animecoind_stop {
+function pasteld_stop {
     zcash_rpc stop > /dev/null
-    wait $animecoind_PID
+    wait $pasteld_PID
 }
 
-function animecoind_massif_start {
+function pasteld_massif_start {
     case "$1" in
         sendtoaddress|loadwallet|listunspent)
             case "$2" in
@@ -94,40 +94,40 @@ function animecoind_massif_start {
                     use_200k_benchmark 1
                     ;;
                 *)
-                    echo "Bad arguments to animecoind_massif_start."
+                    echo "Bad arguments to pasteld_massif_start."
                     exit 1
             esac
             ;;
         *)
             rm -rf "$DATADIR"
             mkdir -p "$DATADIR/regtest"
-            touch "$DATADIR/animecoin.conf"
+            touch "$DATADIR/pastel.conf"
     esac
     rm -f massif.out
-    valgrind --tool=massif --time-unit=ms --massif-out-file=massif.out ./src/animecoind -regtest -datadir="$DATADIR" -rpcuser=user -rpcpassword=password -rpcport=5983 -showmetrics=0 &
-    animecoind_PID=$!
+    valgrind --tool=massif --time-unit=ms --massif-out-file=massif.out ./src/pasteld -regtest -datadir="$DATADIR" -rpcuser=user -rpcpassword=password -rpcport=5983 -showmetrics=0 &
+    pasteld_PID=$!
     zcash_rpc_wait_for_start
 }
 
-function animecoind_massif_stop {
+function pasteld_massif_stop {
     zcash_rpc stop > /dev/null
-    wait $animecoind_PID
+    wait $pasteld_PID
     ms_print massif.out
 }
 
-function animecoind_valgrind_start {
+function pasteld_valgrind_start {
     rm -rf "$DATADIR"
     mkdir -p "$DATADIR/regtest"
-    touch "$DATADIR/animecoin.conf"
+    touch "$DATADIR/pastel.conf"
     rm -f valgrind.out
-    valgrind --leak-check=yes -v --error-limit=no --log-file="valgrind.out" ./src/animecoind -regtest -datadir="$DATADIR" -rpcuser=user -rpcpassword=password -rpcport=5983 -showmetrics=0 &
-    animecoind_PID=$!
+    valgrind --leak-check=yes -v --error-limit=no --log-file="valgrind.out" ./src/pasteld -regtest -datadir="$DATADIR" -rpcuser=user -rpcpassword=password -rpcport=5983 -showmetrics=0 &
+    pasteld_PID=$!
     zcash_rpc_wait_for_start
 }
 
-function animecoind_valgrind_stop {
+function pasteld_valgrind_stop {
     zcash_rpc stop > /dev/null
-    wait $animecoind_PID
+    wait $pasteld_PID
     cat valgrind.out
 }
 
@@ -143,7 +143,7 @@ EOF
         ARCHIVE_RESULT=1
     fi
     if [ $ARCHIVE_RESULT -ne 0 ]; then
-        animecoind_stop
+        pasteld_stop
         echo
         echo "Please generate it using qa/test-suite/create_benchmark_archive.py"
         echo "and place it in the base directory of the repository."
@@ -165,15 +165,15 @@ case "$1" in
     *)
         case "$2" in
             verifyjoinsplit)
-                animecoind_start "${@:2}"
+                pasteld_start "${@:2}"
                 RAWJOINSPLIT=$(zcash_rpc zcsamplejoinsplit)
-                animecoind_stop
+                pasteld_stop
         esac
 esac
 
 case "$1" in
     time)
-        animecoind_start "${@:2}"
+        pasteld_start "${@:2}"
         case "$2" in
             sleep)
                 zcash_rpc zcbenchmark sleep 10
@@ -216,14 +216,14 @@ case "$1" in
                 zcash_rpc zcbenchmark listunspent 10
                 ;;
             *)
-                animecoind_stop
+                pasteld_stop
                 echo "Bad arguments to time."
                 exit 1
         esac
-        animecoind_stop
+        pasteld_stop
         ;;
     memory)
-        animecoind_massif_start "${@:2}"
+        pasteld_massif_start "${@:2}"
         case "$2" in
             sleep)
                 zcash_rpc zcbenchmark sleep 1
@@ -266,15 +266,15 @@ case "$1" in
                 zcash_rpc zcbenchmark listunspent 1
                 ;;
             *)
-                animecoind_massif_stop
+                pasteld_massif_stop
                 echo "Bad arguments to memory."
                 exit 1
         esac
-        animecoind_massif_stop
+        pasteld_massif_stop
         rm -f massif.out
         ;;
     valgrind)
-        animecoind_valgrind_start
+        pasteld_valgrind_start
         case "$2" in
             sleep)
                 zcash_rpc zcbenchmark sleep 1
@@ -305,18 +305,18 @@ case "$1" in
                 zcash_rpc zcbenchmark connectblockslow 1
                 ;;
             *)
-                animecoind_valgrind_stop
+                pasteld_valgrind_stop
                 echo "Bad arguments to valgrind."
                 exit 1
         esac
-        animecoind_valgrind_stop
+        pasteld_valgrind_stop
         rm -f valgrind.out
         ;;
     valgrind-tests)
         case "$2" in
             gtest)
                 rm -f valgrind.out
-                valgrind --leak-check=yes -v --error-limit=no --log-file="valgrind.out" ./src/animecoin-gtest
+                valgrind --leak-check=yes -v --error-limit=no --log-file="valgrind.out" ./src/pastel-gtest
                 cat valgrind.out
                 rm -f valgrind.out
                 ;;

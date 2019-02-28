@@ -1,4 +1,4 @@
-// Copyright (c) 2018 The Animecoin developers
+// Copyright (c) 2018 The Pastel developers
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -98,7 +98,7 @@ UniValue masternodelist(const UniValue& params, bool fHelp)
                 "  rank           - Print rank of a masternode based on current block\n"
                 "  status         - Print masternode status: PRE_ENABLED / ENABLED / EXPIRED / WATCHDOG_EXPIRED / NEW_START_REQUIRED /\n"
                 "                   UPDATE_REQUIRED / POSE_BAN / OUTPOINT_SPENT (can be additionally filtered, partial match)\n"
-                "  extra          - Print ANIMECOIN data associated with the masternode\n"
+                "  extra          - Print PASTEL data associated with the masternode\n"
                 );
     }
 

@@ -1,4 +1,4 @@
-AnimeCoin Contributors
+Pastel Contributors
 ----------------------
 
 Bitcoin and Zcash Contributors

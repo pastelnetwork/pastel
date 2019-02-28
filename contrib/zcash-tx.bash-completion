@@ -1,15 +1,15 @@
-# bash programmable completion for animecoin-tx(1)
+# bash programmable completion for pastel-tx(1)
 # Copyright (c) 2016 The Bitcoin Core developers
 # Distributed under the MIT software license, see the accompanying
 # file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-_animecoin_tx() {
+_pastel_tx() {
     local cur prev words=() cword
-    local animecoin_tx
+    local pastel_tx
 
-    # save and use original argument to invoke animecoin-tx for -help
+    # save and use original argument to invoke pastel-tx for -help
     # it might not be in $PATH
-    animecoin_tx="$1"
+    pastel_tx="$1"
 
     COMPREPLY=()
     _get_comp_words_by_ref -n =: cur prev words cword
@@ -27,15 +27,15 @@ _animecoin_tx() {
 
     if [[ "$cword" == 1 || ( "$prev" != "-create" && "$prev" == -* ) ]]; then
         # only options (or an uncompletable hex-string) allowed
-        # parse animecoin-tx -help for options
+        # parse pastel-tx -help for options
         local helpopts
-        helpopts=$($animecoin_tx -help | sed -e '/^  -/ p' -e d )
+        helpopts=$($pastel_tx -help | sed -e '/^  -/ p' -e d )
         COMPREPLY=( $( compgen -W "$helpopts" -- "$cur" ) )
     else
         # only commands are allowed
         # parse -help for commands
         local helpcmds
-        helpcmds=$($animecoin_tx -help | sed -e '1,/Commands:/d' -e 's/=.*/=/' -e '/^  [a-z]/ p' -e d )
+        helpcmds=$($pastel_tx -help | sed -e '1,/Commands:/d' -e 's/=.*/=/' -e '/^  [a-z]/ p' -e d )
         COMPREPLY=( $( compgen -W "$helpcmds" -- "$cur" ) )
     fi
 
@@ -46,7 +46,7 @@ _animecoin_tx() {
 
     return 0
 } &&
-complete -F _animecoin_tx animecoin-tx
+complete -F _pastel_tx pastel-tx
 
 # Local variables:
 # mode: shell-script

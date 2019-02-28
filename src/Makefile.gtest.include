@@ -1,10 +1,10 @@
-TESTS += animecoin-gtest
-noinst_PROGRAMS += animecoin-gtest
+TESTS += pastel-gtest
+noinst_PROGRAMS += pastel-gtest
 
 # tool for generating our public parameters.
 # test_checktransaction.cpp MUST be before
 # any test that calls SelectParams().
-animecoin_gtest_SOURCES = \
+pastel_gtest_SOURCES = \
 	gtest/main.cpp \
 	gtest/utils.cpp \
 	gtest/test_checktransaction.cpp \
@@ -13,10 +13,10 @@ animecoin_gtest_SOURCES = \
 # These tests are order-dependent, because they
 # depend on global state (see #1539)
 if ENABLE_WALLET
-animecoin_gtest_SOURCES += \
+pastel_gtest_SOURCES += \
 	wallet/gtest/test_wallet_zkeys.cpp
 endif
-animecoin_gtest_SOURCES += \
+pastel_gtest_SOURCES += \
 	gtest/test_tautology.cpp \
 	gtest/test_deprecation.cpp \
 	gtest/test_equihash.cpp \
@@ -47,33 +47,33 @@ animecoin_gtest_SOURCES += \
 	gtest/test_zip32.cpp \
 	gtest/test_mnode_governance.cpp
 if ENABLE_WALLET
-animecoin_gtest_SOURCES += \
+pastel_gtest_SOURCES += \
 	wallet/gtest/test_wallet.cpp
 endif
 
-animecoin_gtest_CPPFLAGS = $(AM_CPPFLAGS) -DBINARY_OUTPUT -DCURVE_ALT_BN128 -DSTATIC $(BITCOIN_INCLUDES)
-animecoin_gtest_CXXFLAGS = $(AM_CXXFLAGS) $(PIE_FLAGS)
+pastel_gtest_CPPFLAGS = $(AM_CPPFLAGS) -DBINARY_OUTPUT -DCURVE_ALT_BN128 -DSTATIC $(BITCOIN_INCLUDES)
+pastel_gtest_CXXFLAGS = $(AM_CXXFLAGS) $(PIE_FLAGS)
 
-animecoin_gtest_LDADD = -lgtest -lgmock $(LIBBITCOIN_SERVER) $(LIBBITCOIN_CLI) $(LIBBITCOIN_COMMON) $(LIBBITCOIN_UTIL) $(LIBBITCOIN_CRYPTO) $(LIBUNIVALUE) $(LIBLEVELDB) $(LIBMEMENV) \
+pastel_gtest_LDADD = -lgtest -lgmock $(LIBBITCOIN_SERVER) $(LIBBITCOIN_CLI) $(LIBBITCOIN_COMMON) $(LIBBITCOIN_UTIL) $(LIBBITCOIN_CRYPTO) $(LIBUNIVALUE) $(LIBLEVELDB) $(LIBMEMENV) \
   $(BOOST_LIBS) $(BOOST_UNIT_TEST_FRAMEWORK_LIB) $(LIBSECP256K1)
 if ENABLE_ZMQ
-animecoin_gtest_LDADD += $(LIBBITCOIN_ZMQ) $(ZMQ_LIBS)
+pastel_gtest_LDADD += $(LIBBITCOIN_ZMQ) $(ZMQ_LIBS)
 endif
 if ENABLE_WALLET
-animecoin_gtest_LDADD += $(LIBBITCOIN_WALLET)
+pastel_gtest_LDADD += $(LIBBITCOIN_WALLET)
 endif
 
-animecoin_gtest_LDADD += $(LIBZCASH_CONSENSUS) $(BDB_LIBS) $(SSL_LIBS) $(CRYPTO_LIBS) $(EVENT_PTHREADS_LIBS) $(EVENT_LIBS) $(LIBZCASH) $(LIBSNARK) $(LIBZCASH_LIBS)
+pastel_gtest_LDADD += $(LIBZCASH_CONSENSUS) $(BDB_LIBS) $(SSL_LIBS) $(CRYPTO_LIBS) $(EVENT_PTHREADS_LIBS) $(EVENT_LIBS) $(LIBZCASH) $(LIBSNARK) $(LIBZCASH_LIBS)
 
 if ENABLE_PROTON
-animecoin_gtest_LDADD += $(LIBBITCOIN_PROTON) $(PROTON_LIBS)
+pastel_gtest_LDADD += $(LIBBITCOIN_PROTON) $(PROTON_LIBS)
 endif
 
 
-animecoin_gtest_LDFLAGS = $(RELDFLAGS) $(AM_LDFLAGS) $(LIBTOOL_APP_LDFLAGS) -static
+pastel_gtest_LDFLAGS = $(RELDFLAGS) $(AM_LDFLAGS) $(LIBTOOL_APP_LDFLAGS) -static
 
-animecoin-gtest_check: animecoin-gtest FORCE
-	./animecoin-gtest
+pastel-gtest_check: pastel-gtest FORCE
+	./pastel-gtest
 
-animecoin-gtest-expected-failures: animecoin-gtest FORCE
-	./animecoin-gtest --gtest_filter=*DISABLED_* --gtest_also_run_disabled_tests
+pastel-gtest-expected-failures: pastel-gtest FORCE
+	./pastel-gtest --gtest_filter=*DISABLED_* --gtest_also_run_disabled_tests

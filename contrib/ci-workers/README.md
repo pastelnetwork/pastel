@@ -1,7 +1,7 @@
-# AnimeCoin CI workers
+# Pastel CI workers
 
 This folder contains the Ansible playbooks for configuring a fresh OS
-installation for use as a Buildbot worker in AnimeCoin's CI.
+installation for use as a Buildbot worker in Pastel's CI.
 
 # Criteria for Adding Workers
 
@@ -25,7 +25,7 @@ c. When adding workers, start by adding workers for the "most common" variant of
     connecting to the master.
 
 2. Start a basic EC2 instance using the template AMI for the target OS.
-  - Choose the smallest instance size, it won't be used for building AnimeCoin.
+  - Choose the smallest instance size, it won't be used for building Pastel.
 
 3. Figure out which user to log into the instance with.
   - E.g. for the Ubuntu template, use "ubuntu" instead of "root"
@@ -37,7 +37,7 @@ c. When adding workers, start by adding workers for the "most common" variant of
 
 4. Create `inventory/hosts` containing the following:
 
-    [animecoin-ci-worker-unix]
+    [pastel-ci-worker-unix]
     some-name ansible_host=<INSTANCE_IP> ansible_ssh_user=<USERNAME>
 
 5. Run `ansible-playbook -e buildbot_worker_host_template=templates/host.ec2.j2 -i inventory/hosts unix.yml`,

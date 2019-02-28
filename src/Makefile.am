@@ -92,11 +92,11 @@ noinst_PROGRAMS =
 TESTS =
 
 if BUILD_BITCOIND
-  bin_PROGRAMS += animecoind
+  bin_PROGRAMS += pasteld
 endif
 
 if BUILD_BITCOIN_UTILS
-  bin_PROGRAMS += animecoin-cli animecoin-tx
+  bin_PROGRAMS += pastel-cli pastel-tx
 endif
 
 LIBZCASH_H = \
@@ -266,7 +266,7 @@ obj/build.h: FORCE
 	  $(abs_top_srcdir)
 libbitcoin_util_a-clientversion.$(OBJEXT): obj/build.h
 
-# server: animecoind
+# server: pasteld
 libbitcoin_server_a_CPPFLAGS = $(AM_CPPFLAGS) $(BITCOIN_INCLUDES) $(EVENT_CFLAGS) $(EVENT_PTHREADS_CFLAGS)
 libbitcoin_server_a_CXXFLAGS = $(AM_CXXFLAGS) $(PIE_FLAGS)
 libbitcoin_server_a_SOURCES = \
@@ -330,7 +330,7 @@ libbitcoin_proton_a_SOURCES = \
   amqp/amqppublishnotifier.cpp
 endif
 
-# wallet: animecoind, but only linked when wallet enabled
+# wallet: pasteld, but only linked when wallet enabled
 libbitcoin_wallet_a_CPPFLAGS = $(AM_CPPFLAGS) $(BITCOIN_INCLUDES)
 libbitcoin_wallet_a_CXXFLAGS = $(AM_CXXFLAGS) $(PIE_FLAGS)
 libbitcoin_wallet_a_SOURCES = \
@@ -387,7 +387,7 @@ crypto_libbitcoin_crypto_a_SOURCES += \
   ${EQUIHASH_TROMP_SOURCES}
 endif
 
-# common: shared between animecoind and non-server tools
+# common: shared between pasteld and non-server tools
 libbitcoin_common_a_CPPFLAGS = $(AM_CPPFLAGS) $(BITCOIN_INCLUDES)
 libbitcoin_common_a_CXXFLAGS = $(AM_CXXFLAGS) $(PIE_FLAGS)
 libbitcoin_common_a_SOURCES = \
@@ -448,7 +448,7 @@ if GLIBC_BACK_COMPAT
 libbitcoin_util_a_SOURCES += compat/glibc_compat.cpp
 endif
 
-# cli: animecoin-cli
+# cli: pastel-cli
 libbitcoin_cli_a_CPPFLAGS = $(AM_CPPFLAGS) $(BITCOIN_INCLUDES)
 libbitcoin_cli_a_CXXFLAGS = $(AM_CXXFLAGS) $(PIE_FLAGS)
 libbitcoin_cli_a_SOURCES = \
@@ -460,16 +460,16 @@ nodist_libbitcoin_util_a_SOURCES = $(srcdir)/obj/build.h
 #
 
 # bitcoind binary #
-animecoind_SOURCES = bitcoind.cpp
-animecoind_CPPFLAGS = $(AM_CPPFLAGS) $(BITCOIN_INCLUDES)
-animecoind_CXXFLAGS = $(AM_CXXFLAGS) $(PIE_FLAGS)
-animecoind_LDFLAGS = $(RELDFLAGS) $(AM_LDFLAGS) $(LIBTOOL_APP_LDFLAGS)
+pasteld_SOURCES = bitcoind.cpp
+pasteld_CPPFLAGS = $(AM_CPPFLAGS) $(BITCOIN_INCLUDES)
+pasteld_CXXFLAGS = $(AM_CXXFLAGS) $(PIE_FLAGS)
+pasteld_LDFLAGS = $(RELDFLAGS) $(AM_LDFLAGS) $(LIBTOOL_APP_LDFLAGS)
 
 if TARGET_WINDOWS
-animecoind_SOURCES += bitcoind-res.rc
+pasteld_SOURCES += bitcoind-res.rc
 endif
 
-animecoind_LDADD = \
+pasteld_LDADD = \
   $(LIBBITCOIN_SERVER) \
   $(LIBBITCOIN_WALLET) \
   $(LIBBITCOIN_COMMON) \
@@ -484,7 +484,7 @@ animecoind_LDADD = \
   $(LIBMEMENV) \
   $(LIBSECP256K1)
 
-animecoind_LDADD += \
+pasteld_LDADD += \
   $(BOOST_LIBS) \
   $(BDB_LIBS) \
   $(SSL_LIBS) \
@@ -497,16 +497,16 @@ animecoind_LDADD += \
   $(LIBZCASH_LIBS)
 
 # bitcoin-cli binary #
-animecoin_cli_SOURCES = bitcoin-cli.cpp
-animecoin_cli_CPPFLAGS = $(AM_CPPFLAGS) $(BITCOIN_INCLUDES) $(EVENT_CFLAGS)
-animecoin_cli_CXXFLAGS = $(AM_CXXFLAGS) $(PIE_FLAGS)
-animecoin_cli_LDFLAGS = $(RELDFLAGS) $(AM_LDFLAGS) $(LIBTOOL_APP_LDFLAGS)
+pastel_cli_SOURCES = bitcoin-cli.cpp
+pastel_cli_CPPFLAGS = $(AM_CPPFLAGS) $(BITCOIN_INCLUDES) $(EVENT_CFLAGS)
+pastel_cli_CXXFLAGS = $(AM_CXXFLAGS) $(PIE_FLAGS)
+pastel_cli_LDFLAGS = $(RELDFLAGS) $(AM_LDFLAGS) $(LIBTOOL_APP_LDFLAGS)
 
 if TARGET_WINDOWS
-animecoin_cli_SOURCES += bitcoin-cli-res.rc
+pastel_cli_SOURCES += bitcoin-cli-res.rc
 endif
 
-animecoin_cli_LDADD = \
+pastel_cli_LDADD = \
   $(LIBBITCOIN_CLI) \
   $(LIBUNIVALUE) \
   $(LIBBITCOIN_UTIL) \
@@ -520,18 +520,18 @@ animecoin_cli_LDADD = \
   $(LIBZCASH_LIBS)
 #
 
-# animecoin-tx binary #
-animecoin_tx_SOURCES = bitcoin-tx.cpp
-animecoin_tx_CPPFLAGS = $(AM_CPPFLAGS) $(BITCOIN_INCLUDES)
-animecoin_tx_CXXFLAGS = $(AM_CXXFLAGS) $(PIE_FLAGS)
-animecoin_tx_LDFLAGS = $(RELDFLAGS) $(AM_LDFLAGS) $(LIBTOOL_APP_LDFLAGS)
+# pastel-tx binary #
+pastel_tx_SOURCES = bitcoin-tx.cpp
+pastel_tx_CPPFLAGS = $(AM_CPPFLAGS) $(BITCOIN_INCLUDES)
+pastel_tx_CXXFLAGS = $(AM_CXXFLAGS) $(PIE_FLAGS)
+pastel_tx_LDFLAGS = $(RELDFLAGS) $(AM_LDFLAGS) $(LIBTOOL_APP_LDFLAGS)
 
 if TARGET_WINDOWS
-animecoin_tx_SOURCES += bitcoin-tx-res.rc
+pastel_tx_SOURCES += bitcoin-tx-res.rc
 endif
 
-# FIXME: Is libzcash needed for animecoin_tx?
-animecoin_tx_LDADD = \
+# FIXME: Is libzcash needed for pastel_tx?
+pastel_tx_LDADD = \
   $(LIBUNIVALUE) \
   $(LIBBITCOIN_COMMON) \
   $(LIBBITCOIN_UTIL) \
@@ -541,7 +541,7 @@ animecoin_tx_LDADD = \
   $(LIBBITCOIN_CRYPTO) \
   $(LIBZCASH_LIBS)
 
-animecoin_tx_LDADD += $(BOOST_LIBS) $(CRYPTO_LIBS)
+pastel_tx_LDADD += $(BOOST_LIBS) $(CRYPTO_LIBS)
 #
 
 # zcash protocol primitives #

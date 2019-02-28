@@ -50,7 +50,7 @@ OVERWINTER_VERSION_GROUP_ID = 0x03C48270
 MAX_INV_SZ = 50000
 
 
-COIN = 100000 # 1 ANI in zatoshis
+COIN = 100000 # 1 PSL in patoshis
 
 # Keep our own socket map for asyncore, so that we can track disconnects
 # ourselves (to workaround an issue with closing an asyncore socket when

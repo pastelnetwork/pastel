@@ -3,7 +3,7 @@
 - include: unix.yml
 
 - name: Install grind-specific worker dependencies
-  hosts: animecoin-ci-worker-unix
+  hosts: pastel-ci-worker-unix
   become: true
 
   vars_files:

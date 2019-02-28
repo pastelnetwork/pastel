@@ -28,7 +28,7 @@ class DisableWalletTest (BitcoinTestFramework):
         # Check regression: https://github.com/bitcoin/bitcoin/issues/6963#issuecomment-154548880
         x = self.nodes[0].validateaddress('t3b1jtLvxCstdo1pJs9Tjzc5dmWyvGQSZj8')
         assert(x['isvalid'] == False)
-        x = self.nodes[0].validateaddress('eAHtptqoXS9L8etA2UuLLcErCkzKTMapvLF')
+        x = self.nodes[0].validateaddress('tPhPPKTfvm6JMw1TKyiEGkk41PaWGzteQ8M')
         assert(x['isvalid'] == True)
 
 if __name__ == '__main__':

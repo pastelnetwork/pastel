@@ -1,10 +1,10 @@
 // Copyright (c) 2015 The Bitcoin Core developers
-// Copyright (c) 2018 The AnimeCoin developers
+// Copyright (c) 2018 The Pastel developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#ifndef ANIME_ACNOTIFICATIONINTERFACE_H
-#define ANIME_ACNOTIFICATIONINTERFACE_H
+#ifndef PASTEL_ACNOTIFICATIONINTERFACE_H
+#define PASTEL_ACNOTIFICATIONINTERFACE_H
 
 #include "validationinterface.h"
 
@@ -24,4 +24,4 @@ protected:
     void UpdatedBlockTip(const CBlockIndex *pindexNew, bool fInitialDownload) override;
 };
 
-#endif // ANIME_ACNOTIFICATIONINTERFACE_H
+#endif // PASTEL_ACNOTIFICATIONINTERFACE_H

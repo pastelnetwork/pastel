@@ -29,10 +29,10 @@ def rpc_port(n):
     return 12000 + n + os.getpid()%999
 
 def check_json_precision():
-    """Make sure json library being used does not lose precision converting ANIME values"""
+    """Make sure json library being used does not lose precision converting PASTEL values"""
     n = Decimal("20000000.00003")
-    atoshis = int(json.loads(json.dumps(float(n)))*1.0e5)
-    if atoshis != 2000000000003:
+    patoshis = int(json.loads(json.dumps(float(n)))*1.0e5)
+    if patoshis != 2000000000003:
         raise RuntimeError("JSON encode/decode loses precision")
 
 def bytes_to_hex_str(byte_str):
@@ -75,7 +75,7 @@ def initialize_datadir(dirname, n):
     datadir = os.path.join(dirname, "node"+str(n))
     if not os.path.isdir(datadir):
         os.makedirs(datadir)
-    with open(os.path.join(datadir, "animecoin.conf"), 'w') as f:
+    with open(os.path.join(datadir, "pastel.conf"), 'w') as f:
         f.write("regtest=1\n")
         f.write("showmetrics=0\n")
         f.write("rpcuser=rt\n")
@@ -89,25 +89,25 @@ def initialize_chain(test_dir):
     """
     Create (or copy from cache) a 200-block-long chain and
     4 wallets.
-    animecoind and animecoin-cli must be in search path.
+    pasteld and pastel-cli must be in search path.
     """
 
     if not os.path.isdir(os.path.join("cache", "node0")):
         print "Rebuilding cache..."
         devnull = open("/dev/null", "w+")
-        # Create cache directories, run animecoind:
+        # Create cache directories, run pasteld:
         for i in range(4):
             datadir=initialize_datadir("cache", i)
-            args = [ os.getenv("ANIMECOIND", "animecoind"), "-keypool=1", "-datadir="+datadir, "-discover=0" ]
+            args = [ os.getenv("PASTELD", "pasteld"), "-keypool=1", "-datadir="+datadir, "-discover=0" ]
             if i > 0:
                 args.append("-connect=127.0.0.1:"+str(p2p_port(0)))
             bitcoind_processes[i] = subprocess.Popen(args)
             if os.getenv("PYTHON_DEBUG", ""):
-                print "initialize_chain: animecoind started, calling animecoin-cli -rpcwait getblockcount"
-            subprocess.check_call([ os.getenv("ANIMECOINDCLI", "animecoin-cli"), "-datadir="+datadir,
+                print "initialize_chain: pasteld started, calling pastel-cli -rpcwait getblockcount"
+            subprocess.check_call([ os.getenv("PASTELDCLI", "pastel-cli"), "-datadir="+datadir,
                                     "-rpcwait", "getblockcount"], stdout=devnull)
             if os.getenv("PYTHON_DEBUG", ""):
-                print "initialize_chain: animecoin-cli -rpcwait getblockcount completed"
+                print "initialize_chain: pastel-cli -rpcwait getblockcount completed"
         devnull.close()
         rpcs = []
         for i in range(4):
@@ -147,7 +147,7 @@ def initialize_chain(test_dir):
         from_dir = os.path.join("cache", "node"+str(i))
         to_dir = os.path.join(test_dir,  "node"+str(i))
         shutil.copytree(from_dir, to_dir)
-        initialize_datadir(test_dir, i) # Overwrite port/rpcport in animecoin.conf
+        initialize_datadir(test_dir, i) # Overwrite port/rpcport in pastel.conf
 
 def initialize_chain_clean(test_dir, num_nodes):
     """
@@ -180,22 +180,22 @@ def _rpchost_to_args(rpchost):
 
 def start_node(i, dirname, extra_args=None, rpchost=None, timewait=None, binary=None):
     """
-    Start a animecoind and return RPC connection to it
+    Start a pasteld and return RPC connection to it
     """
     datadir = os.path.join(dirname, "node"+str(i))
     if binary is None:
-        binary = os.getenv("ANIMECOIND", "animecoind")
+        binary = os.getenv("PASTELD", "pasteld")
     args = [ binary, "-datadir="+datadir, "-keypool=1", "-discover=0", "-rest" ]
     if extra_args is not None: args.extend(extra_args)
     bitcoind_processes[i] = subprocess.Popen(args)
     devnull = open("/dev/null", "w+")
     if os.getenv("PYTHON_DEBUG", ""):
-        print "start_node: animecoind started, calling animecoin-cli -rpcwait getblockcount"
-    subprocess.check_call([ os.getenv("ANIMECOINCLI", "animecoin-cli"), "-datadir="+datadir] +
+        print "start_node: pasteld started, calling pastel-cli -rpcwait getblockcount"
+    subprocess.check_call([ os.getenv("PASTELCLI", "pastel-cli"), "-datadir="+datadir] +
                           _rpchost_to_args(rpchost)  +
                           ["-rpcwait", "getblockcount"], stdout=devnull)
     if os.getenv("PYTHON_DEBUG", ""):
-        print "start_node: calling animecoin-cli -rpcwait getblockcount returned"
+        print "start_node: calling pastel-cli -rpcwait getblockcount returned"
     devnull.close()
     url = "http://rt:rt@%s:%d" % (rpchost or '127.0.0.1', rpc_port(i))
     if timewait is not None:
@@ -236,8 +236,8 @@ def set_node_times(nodes, t):
 
 def wait_bitcoinds():
     # Wait for all bitcoinds to cleanly exit
-    for animecoind in bitcoind_processes.values():
-        animecoind.wait()
+    for pasteld in bitcoind_processes.values():
+        pasteld.wait()
     bitcoind_processes.clear()
 
 def connect_nodes(from_connection, node_num):

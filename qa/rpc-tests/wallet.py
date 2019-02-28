@@ -51,7 +51,7 @@ class WalletTest (BitcoinTestFramework):
         assert_equal(self.nodes[1].getbalance("*"), self._reward)
         assert_equal(self.nodes[2].getbalance("*"), 0)
 
-        # Send 26 ANIME from 0 to 2 using sendtoaddress call. Now node_0 has 24, node_2 has 26
+        # Send 26 PASTEL from 0 to 2 using sendtoaddress call. Now node_0 has 24, node_2 has 26
         # Second transaction will be child of first, and will require a fee
         self.nodes[0].sendtoaddress(self.nodes[2].getnewaddress(), self._reward+1)
         self.nodes[0].sendtoaddress(self.nodes[2].getnewaddress(), self._reward)
@@ -304,7 +304,7 @@ class WalletTest (BitcoinTestFramework):
 
         recipients = []
         num_t_recipients = 3000
-        amount_per_recipient = self._atoshi
+        amount_per_recipient = self._patoshi
         errorString = ''
         for i in xrange(0,num_t_recipients):
             newtaddr = self.nodes[2].getnewaddress()
@@ -328,7 +328,7 @@ class WalletTest (BitcoinTestFramework):
         recipients = []
         num_t_recipients = 2000
         num_z_recipients = 50
-        amount_per_recipient = self._atoshi
+        amount_per_recipient = self._patoshi
         errorString = ''
         for i in xrange(0,num_t_recipients):
             newtaddr = self.nodes[2].getnewaddress()
@@ -349,7 +349,7 @@ class WalletTest (BitcoinTestFramework):
 
         recipients = []
         num_z_recipients = 100
-        amount_per_recipient = self._atoshi
+        amount_per_recipient = self._patoshi
         errorString = ''
         for i in xrange(0,num_z_recipients):
             newzaddr = self.nodes[2].z_getnewaddress('sprout')

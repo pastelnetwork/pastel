@@ -28,8 +28,8 @@ BASE_FEE=Decimal("0.001")
 def check_json_precision():
     """Make sure json library being used does not lose precision converting BTC values"""
     n = Decimal("20000000.00000003")
-    satoshis = int(json.loads(json.dumps(float(n)))*1.0e8)
-    if satoshis != 2000000000000003:
+    patoshis = int(json.loads(json.dumps(float(n)))*1.0e8)
+    if patoshis != 2000000000000003:
         raise RuntimeError("JSON encode/decode loses precision")
 
 def determine_db_dir():

@@ -24,10 +24,10 @@ static const CAmount CENT = 1000;
 
 extern const std::string CURRENCY_UNIT;
 
-/** No amount larger than this (in satoshi) is valid.
+/** No amount larger than this (in patoshi) is valid.
  *
  * Note that this constant is *not* the total money supply, which in Bitcoin
- * currently happens to be less than 21,000,000,000 ANIMECASH for various reasons, but
+ * currently happens to be less than 21,000,000,000 PASTELCASH for various reasons, but
  * rather a sanity check. As this sanity check is used by consensus-critical
  * validation code, the exact value of the MAX_MONEY constant is consensus
  * critical; in unusual circumstances like a(nother) overflow bug that allowed
@@ -42,28 +42,28 @@ inline bool MoneyRange(const CAmount& nValue) { return (nValue >= 0 && nValue <=
 class CFeeRate
 {
 private:
-    CAmount nSatoshisPerK; // unit is satoshis-per-1,000-bytes
+    CAmount nPatoshisPerK; // unit is patoshis-per-1,000-bytes
 public:
-    CFeeRate() : nSatoshisPerK(0) { }
-    explicit CFeeRate(const CAmount& _nSatoshisPerK): nSatoshisPerK(_nSatoshisPerK) { }
+    CFeeRate() : nPatoshisPerK(0) { }
+    explicit CFeeRate(const CAmount& _nPatoshisPerK): nPatoshisPerK(_nPatoshisPerK) { }
     CFeeRate(const CAmount& nFeePaid, size_t nSize);
-    CFeeRate(const CFeeRate& other) { nSatoshisPerK = other.nSatoshisPerK; }
+    CFeeRate(const CFeeRate& other) { nPatoshisPerK = other.nPatoshisPerK; }
 
-    CAmount GetFee(size_t size) const; // unit returned is satoshis
-    CAmount GetFeePerK() const { return GetFee(1000); } // satoshis-per-1000-bytes
+    CAmount GetFee(size_t size) const; // unit returned is patoshis
+    CAmount GetFeePerK() const { return GetFee(1000); } // patoshis-per-1000-bytes
 
-    friend bool operator<(const CFeeRate& a, const CFeeRate& b) { return a.nSatoshisPerK < b.nSatoshisPerK; }
-    friend bool operator>(const CFeeRate& a, const CFeeRate& b) { return a.nSatoshisPerK > b.nSatoshisPerK; }
-    friend bool operator==(const CFeeRate& a, const CFeeRate& b) { return a.nSatoshisPerK == b.nSatoshisPerK; }
-    friend bool operator<=(const CFeeRate& a, const CFeeRate& b) { return a.nSatoshisPerK <= b.nSatoshisPerK; }
-    friend bool operator>=(const CFeeRate& a, const CFeeRate& b) { return a.nSatoshisPerK >= b.nSatoshisPerK; }
+    friend bool operator<(const CFeeRate& a, const CFeeRate& b) { return a.nPatoshisPerK < b.nPatoshisPerK; }
+    friend bool operator>(const CFeeRate& a, const CFeeRate& b) { return a.nPatoshisPerK > b.nPatoshisPerK; }
+    friend bool operator==(const CFeeRate& a, const CFeeRate& b) { return a.nPatoshisPerK == b.nPatoshisPerK; }
+    friend bool operator<=(const CFeeRate& a, const CFeeRate& b) { return a.nPatoshisPerK <= b.nPatoshisPerK; }
+    friend bool operator>=(const CFeeRate& a, const CFeeRate& b) { return a.nPatoshisPerK >= b.nPatoshisPerK; }
     std::string ToString() const;
 
     ADD_SERIALIZE_METHODS;
 
     template <typename Stream, typename Operation>
     inline void SerializationOp(Stream& s, Operation ser_action) {
-        READWRITE(nSatoshisPerK);
+        READWRITE(nPatoshisPerK);
     }
 };
 

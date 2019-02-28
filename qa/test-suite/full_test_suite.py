@@ -65,23 +65,23 @@ def check_security_hardening():
 
    # The remaining checks are only for ELF binaries
     # Assume that if zcashd is an ELF binary, they all are
-    with open(repofile('src/animecoind'), 'rb') as f:
+    with open(repofile('src/pasteld'), 'rb') as f:
         magic = f.read(4)
         if not magic.startswith(b'\x7fELF'):
             return ret
 
-    ret &= test_rpath_runpath('src/animecoind')
-    ret &= test_rpath_runpath('src/animecoin-cli')
-    ret &= test_rpath_runpath('src/animecoin-gtest')
-    ret &= test_rpath_runpath('src/animecoin-tx')
+    ret &= test_rpath_runpath('src/pasteld')
+    ret &= test_rpath_runpath('src/pastel-cli')
+    ret &= test_rpath_runpath('src/pastel-gtest')
+    ret &= test_rpath_runpath('src/pastel-tx')
     ret &= test_rpath_runpath('src/test/test_bitcoin')
 
     # NOTE: checksec.sh does not reliably determine whether FORTIFY_SOURCE
     # is enabled for the entire binary. See issue #915.
-    ret &= test_fortify_source('src/animecoind')
-    ret &= test_fortify_source('src/animecoin-cli')
-    ret &= test_fortify_source('src/animecoin-gtest')
-    ret &= test_fortify_source('src/animecoin-tx')
+    ret &= test_fortify_source('src/pasteld')
+    ret &= test_fortify_source('src/pastel-cli')
+    ret &= test_fortify_source('src/pastel-gtest')
+    ret &= test_fortify_source('src/pastel-tx')
     ret &= test_fortify_source('src/test/test_bitcoin')
 
     return ret
@@ -145,7 +145,7 @@ STAGES = [
 
 STAGE_COMMANDS = {
     'btest': [repofile('src/test/test_bitcoin'), '-p'],
-    'gtest': [repofile('src/animecoin-gtest')],
+    'gtest': [repofile('src/pastel-gtest')],
     'sec-hard': check_security_hardening,
     'no-dot-so': ensure_no_dot_so_in_depends,
     'util-test': util_test,

@@ -359,21 +359,21 @@ qr.size = 1500;
 <div class="container-fluid">
 <div class="jumbotron jumbotron-fluid">
 
-<h1 class="title_part">Animecoin SPHINCS Signatures</h1>
+<h1 class="title_part">Pastel SPHINCS Signatures</h1>
 <div>
 
 <p class="lead">Key Generation</p>
 <br/>
 
 <label for="pubkey">Public Key</label>
-<input type="text" id="pubkey" name="Animecoin_SPHINCS_Public_Key">
+<input type="text" id="pubkey" name="Pastel_SPHINCS_Public_Key">
 <br/><br/>
 <label for="privkey">Private Key</label>
-<input type="text" id="privkey" name="Animecoin_SPHINCS_Private_Key">
+<input type="text" id="privkey" name="Pastel_SPHINCS_Private_Key">
 <br/><br/>
 <button type="button" class="btn btn-primary" onclick="generate_key_and_populate_form_func()">Generate Keypair</button>&nbsp;
-<button type="button" class="btn btn-info" onclick="downloadBlob( getText('pubkey'), 'anime_pubkey'+get_current_datetime_string_func()+'.txt', 'application/octet-stream');">Download Public Key</button> &nbsp;
-<button type="button" class="btn btn-info" onclick="downloadBlob( getText('privkey'), 'anime_privkey'+get_current_datetime_string_func()+'.txt', 'application/octet-stream');">Download Private Key</button>
+<button type="button" class="btn btn-info" onclick="downloadBlob( getText('pubkey'), 'pastel_pubkey'+get_current_datetime_string_func()+'.txt', 'application/octet-stream');">Download Public Key</button> &nbsp;
+<button type="button" class="btn btn-info" onclick="downloadBlob( getText('privkey'), 'pastel_privkey'+get_current_datetime_string_func()+'.txt', 'application/octet-stream');">Download Private Key</button>
 <button  id="copy_pubkey_button" type="button" class="btn btn-primary" onclick="copy_pubkey_to_clipboard()">Copy Public Key to Clipboard</button>  &nbsp;
 <button  id="copy_privkey_button" type="button" class="btn btn-primary" onclick="copy_privkey_to_clipboard()">Copy Private Key to Clipboard</button> 
 <br/></br>
@@ -411,7 +411,7 @@ qr.size = 1500;
 &nbsp;  
 <button type="button" class="btn btn-info" onclick="downloadBlob(getText('message_encoded'), 'encoded_message'+get_current_datetime_string_func()+'.txt', 'application/octet-stream');">Download Encoded Message</button>
 &nbsp; 
-<button type="button" class="btn btn-info" onclick="downloadBlob(getText('signature'), 'anime_signature'+get_current_datetime_string_func()+'.txt', 'application/octet-stream');">Download Signature</button>
+<button type="button" class="btn btn-info" onclick="downloadBlob(getText('signature'), 'pastel_signature'+get_current_datetime_string_func()+'.txt', 'application/octet-stream');">Download Signature</button>
 &nbsp; 
 <button  id="copy_signature_button" type="button" class="btn btn-primary" onclick="copy_signature_to_clipboard()">Copy Signature to Clipboard</button> 
 

@@ -5,9 +5,9 @@
 # Linux since shells will interpret the line-endings as part of the result.
 
 CURDIR=$(cd $(dirname "$0"); pwd)
-# Get BUILDDIR and REAL_ANIMECOIND
+# Get BUILDDIR and REAL_PASTELD
 
-# Grab the value of $REAL_ANIMECOINCLI which may be bitcoin-cli.exe.
+# Grab the value of $REAL_PASTELCLI which may be bitcoin-cli.exe.
 . "${CURDIR}/tests-config.sh"
 
-"${REAL_ANIMECOINCLI}" "$@" | sed 's/\r//'
+"${REAL_PASTELCLI}" "$@" | sed 's/\r//'

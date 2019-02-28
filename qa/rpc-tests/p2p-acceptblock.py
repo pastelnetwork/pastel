@@ -117,8 +117,8 @@ class TestNode(NodeConnCB):
 class AcceptBlockTest(BitcoinTestFramework):
     def add_options(self, parser):
         parser.add_option("--testbinary", dest="testbinary",
-                          default=os.getenv("ANIMECOIND", "animecoind"),
-                          help="animecoind binary to test")
+                          default=os.getenv("PASTELD", "pasteld"),
+                          help="pasteld binary to test")
 
     def setup_chain(self):
         initialize_chain_clean(self.options.tmpdir, 2)

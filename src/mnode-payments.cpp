@@ -1,4 +1,4 @@
-// Copyright (c) 2018 The ANIMECoin Developers
+// Copyright (c) 2018 The PASTELCoin Developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -404,7 +404,7 @@ bool CMasternodeBlockPayees::IsTransactionValid(const CTransaction& txNew)
         }
     }
 
-    LogPrintf("CMasternodeBlockPayees::IsTransactionValid -- ERROR: Missing required payment, possible payees: '%s', amount: %f ANIME\n", strPayeesPossible, (float)nMasternodePayment/COIN);
+    LogPrintf("CMasternodeBlockPayees::IsTransactionValid -- ERROR: Missing required payment, possible payees: '%s', amount: %f PASTEL\n", strPayeesPossible, (float)nMasternodePayment/COIN);
     BOOST_FOREACH(CTxOut txout, txNew.vout) {
         CTxDestination dest;
         ExtractDestination(txout.scriptPubKey, dest);

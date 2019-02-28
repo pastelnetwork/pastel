@@ -1,5 +1,5 @@
 #!/bin/sh
-# postinst script for animecoin
+# postinst script for pastel
 #
 # see: dh_installdeb(1)
 

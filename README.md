@@ -1,14 +1,14 @@
-AnimeCoin 1.0.1
+Pastel 1.0.1
 
-What is AnimeCoin?
+What is Pastel?
 --------------
 
 #### :lock: Security Warnings
 
 See important security warnings on the
-[AnimeCoin Security Information page](http://anime-coin.com/).
+[Pastel Security Information page](http://pastel.network/).
 
-**AnimeCoin is experimental and a work-in-progress.** Use at your own risk.
+**Pastel is experimental and a work-in-progress.** Use at your own risk.
 
 ####  :ledger: Deprecation Policy
 
@@ -22,8 +22,8 @@ height.
 Building
 --------
 
-Build AnimeCoin along with most dependencies from source by running
-./acutil/build.sh. Currently only Linux is officially supported.
+Build Pastel along with most dependencies from source by running
+./pcutil/build.sh. Currently only Linux is officially supported.
 
 License
 -------

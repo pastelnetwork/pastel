@@ -34,7 +34,7 @@ class RawTransactionsTest(BitcoinTestFramework):
 
     def run_test(self):
         print "Mining blocks..."
-        feeTolerance = self._2atoshi #if the fee's positive delta is higher than this value tests will fail, neg. delta always fail the tests
+        feeTolerance = self._2patoshi #if the fee's positive delta is higher than this value tests will fail, neg. delta always fail the tests
 
         self.nodes[2].generate(1)
         self.sync_all()

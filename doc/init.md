@@ -1,4 +1,4 @@
-*** Warning: This document has not been updated for AnimeCoin and may be inaccurate. ***
+*** Warning: This document has not been updated for Pastel and may be inaccurate. ***
 
 Sample init scripts and service configuration for bitcoind
 ==========================================================

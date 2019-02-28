@@ -2,11 +2,11 @@
 set -e -o pipefail
 
 CURDIR=$(cd $(dirname "$0"); pwd)
-# Get BUILDDIR and REAL_ANIMECOIND
+# Get BUILDDIR and REAL_PASTELD
 . "${CURDIR}/tests-config.sh"
 
-export ANIMECOINCLI=${BUILDDIR}/qa/pull-tester/run-bitcoin-cli
-export ANIMECOIND=${REAL_ANIMECOIND}
+export PASTELCLI=${BUILDDIR}/qa/pull-tester/run-bitcoin-cli
+export PASTELD=${REAL_PASTELD}
 
 #Run the tests
 

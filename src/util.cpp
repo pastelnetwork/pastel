@@ -438,7 +438,7 @@ static std::string FormatException(const std::exception* pex, const char* pszThr
     char pszModule[MAX_PATH] = "";
     GetModuleFileNameA(NULL, pszModule, sizeof(pszModule));
 #else
-    const char* pszModule = "AnimeCoin";
+    const char* pszModule = "Pastel";
 #endif
     if (pex)
         return strprintf(
@@ -459,13 +459,13 @@ void PrintExceptionContinue(const std::exception* pex, const char* pszThread)
 boost::filesystem::path GetDefaultDataDir()
 {
     namespace fs = boost::filesystem;
-    // Windows < Vista: C:\Documents and Settings\Username\Application Data\AnimeCoin
-    // Windows >= Vista: C:\Users\Username\AppData\Roaming\AnimeCoin
-    // Mac: ~/Library/Application Support/AnimeCoin
-    // Unix: ~/.animecoin
+    // Windows < Vista: C:\Documents and Settings\Username\Application Data\Pastel
+    // Windows >= Vista: C:\Users\Username\AppData\Roaming\Pastel
+    // Mac: ~/Library/Application Support/Pastel
+    // Unix: ~/.pastel
 #ifdef WIN32
     // Windows
-    return GetSpecialFolderPath(CSIDL_APPDATA) / "AnimeCoin";
+    return GetSpecialFolderPath(CSIDL_APPDATA) / "Pastel";
 #else
     fs::path pathRet;
     char* pszHome = getenv("HOME");
@@ -477,10 +477,10 @@ boost::filesystem::path GetDefaultDataDir()
     // Mac
     pathRet /= "Library/Application Support";
     TryCreateDirectory(pathRet);
-    return pathRet / "AnimeCoin";
+    return pathRet / "Pastel";
 #else
     // Unix
-    return pathRet / ".animecoin";
+    return pathRet / ".pastel";
 #endif
 #endif
 }
@@ -492,16 +492,16 @@ static CCriticalSection csPathCached;
 
 static boost::filesystem::path ZC_GetBaseParamsDir()
 {
-    // Copied from GetDefaultDataDir and adapter for animecoin params.
+    // Copied from GetDefaultDataDir and adapter for pastel params.
 
     namespace fs = boost::filesystem;
-    // Windows < Vista: C:\Documents and Settings\Username\Application Data\AnimeCoinParams
-    // Windows >= Vista: C:\Users\Username\AppData\Roaming\AnimeCoinParams
-    // Mac: ~/Library/Application Support/AnimeCoinParams
-    // Unix: ~/.animecoin-params
+    // Windows < Vista: C:\Documents and Settings\Username\Application Data\PastelParams
+    // Windows >= Vista: C:\Users\Username\AppData\Roaming\PastelParams
+    // Mac: ~/Library/Application Support/PastelParams
+    // Unix: ~/.pastel-params
 #ifdef WIN32
     // Windows
-    return GetSpecialFolderPath(CSIDL_APPDATA) / "AnimeCoinParams";
+    return GetSpecialFolderPath(CSIDL_APPDATA) / "PastelParams";
 #else
     fs::path pathRet;
     char* pszHome = getenv("HOME");
@@ -513,10 +513,10 @@ static boost::filesystem::path ZC_GetBaseParamsDir()
     // Mac
     pathRet /= "Library/Application Support";
     TryCreateDirectory(pathRet);
-    return pathRet / "AnimeCoinParams";
+    return pathRet / "PastelParams";
 #else
     // Unix
-    return pathRet / ".animecoin-params";
+    return pathRet / ".pastel-params";
 #endif
 #endif
 }
@@ -597,7 +597,7 @@ void ClearDatadirCache()
 
 boost::filesystem::path GetConfigFile()
 {
-    boost::filesystem::path pathConfigFile(GetArg("-conf", "animecoin.conf"));
+    boost::filesystem::path pathConfigFile(GetArg("-conf", "pastel.conf"));
     if (!pathConfigFile.is_complete())
         pathConfigFile = GetDataDir(false) / pathConfigFile;
 
@@ -609,14 +609,14 @@ void ReadConfigFile(map<string, string>& mapSettingsRet,
 {
     boost::filesystem::ifstream streamConfig(GetConfigFile());
     if (!streamConfig.good())
-        throw missing_animecoin_conf();
+        throw missing_pastel_conf();
 
     set<string> setOptions;
     setOptions.insert("*");
 
     for (boost::program_options::detail::config_file_iterator it(streamConfig, setOptions), end; it != end; ++it)
     {
-        // Don't overwrite existing settings so command line settings override animecoin.conf
+        // Don't overwrite existing settings so command line settings override pastel.conf
         string strKey = string("-") + it->string_key;
         if (mapSettingsRet.count(strKey) == 0)
         {
@@ -633,7 +633,7 @@ void ReadConfigFile(map<string, string>& mapSettingsRet,
 #ifndef WIN32
 boost::filesystem::path GetPidFile()
 {
-    boost::filesystem::path pathPidFile(GetArg("-pid", "animecoind.pid"));
+    boost::filesystem::path pathPidFile(GetArg("-pid", "pasteld.pid"));
     if (!pathPidFile.is_complete()) pathPidFile = GetDataDir() / pathPidFile;
     return pathPidFile;
 }
@@ -906,7 +906,7 @@ void SetThreadPriority(int nPriority)
 std::string PrivacyInfo()
 {
     return "\n" +
-           FormatParagraph(strprintf(_("In order to ensure you are adequately protecting your privacy when using AnimeCoin, please see <%s>."),
+           FormatParagraph(strprintf(_("In order to ensure you are adequately protecting your privacy when using Pastel, please see <%s>."),
                                      "")) + "\n";
 }
 
@@ -915,7 +915,7 @@ std::string LicenseInfo()
     return "\n" +
            FormatParagraph(strprintf(_("Copyright (C) 2009-%i The Bitcoin Core Developers"), COPYRIGHT_YEAR)) + "\n" +
            FormatParagraph(strprintf(_("Copyright (C) 2015-%i The Zcash Developers"), COPYRIGHT_YEAR)) + "\n" +
-           FormatParagraph(strprintf(_("Copyright (C) 2018-%i The AnimeCoin Developers"), COPYRIGHT_YEAR)) + "\n" +
+           FormatParagraph(strprintf(_("Copyright (C) 2018-%i The Pastel Developers"), COPYRIGHT_YEAR)) + "\n" +
            "\n" +
            FormatParagraph(_("This is experimental software.")) + "\n" +
            "\n" +

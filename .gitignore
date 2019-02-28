@@ -8,11 +8,11 @@ compile_commands.json
 *.deb
 *.exe
 src/bitcoin
-src/animecoind
-src/animecoin-cli
+src/pasteld
+src/pastel-cli
 src/zcash-gtest
-src/animecoin-gtest
-src/animecoin-tx
+src/pastel-gtest
+src/pastel-tx
 src/test/test_bitcoin
 
 *zcashTest.pk
@@ -59,7 +59,7 @@ src/univalue/gen
 *.pyc
 *.o
 *.o-*
-.animecoin
+.pastel
 *.a
 *.pb.cc
 *.pb.h

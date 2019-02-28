@@ -63,12 +63,12 @@ Run the release script, which will verify you are on the latest clean
 checkout of master, create a branch, then commit standard automated
 changes to that branch locally:
 
-    $ ./acutil/make-release.py <RELEASE> <RELEASE_PREV> <RELEASE_FROM> <APPROX_RELEASE_HEIGHT>
+    $ ./pcutil/make-release.py <RELEASE> <RELEASE_PREV> <RELEASE_FROM> <APPROX_RELEASE_HEIGHT>
 
 Examples:
 
-    $ ./acutil/make-release.py v1.0.9 v1.0.8-1 v1.0.8-1 120000
-    $ ./acutil/make-release.py v1.0.13 v1.0.13-rc1 v1.0.12 222900
+    $ ./pcutil/make-release.py v1.0.9 v1.0.8-1 v1.0.8-1 120000
+    $ ./pcutil/make-release.py v1.0.13 v1.0.13-rc1 v1.0.12 222900
 
 ### Create, Review, and Merge the release branch pull request
 
@@ -78,7 +78,7 @@ Review the automated changes in git:
 
 Push the resulting branch to github:
 
-    $ git push 'git@github.com:$YOUR_GITHUB_NAME/AnimeCoin' $(git rev-parse --abbrev-ref HEAD)
+    $ git push 'git@github.com:$YOUR_GITHUB_NAME/Pastel' $(git rev-parse --abbrev-ref HEAD)
 
 Then create the PR on github. Complete the standard review process,
 then merge, then wait for CI to complete.
@@ -106,7 +106,7 @@ signed. **CAUTION:** Remember the `v` at the beginning here:
 
 ## Add release notes to GitHub
 
-- Go to the [GitHub tags page](https://github.com/ANIME-AnimeCoin/AnimeCoin/tags).
+- Go to the [GitHub tags page](https://github.com/PASTEL-Pastel/Pastel/tags).
 - Click "Add release notes" beside the tag for this release.
 - Copy the release blog post into the release description, and edit to suit
   publication on GitHub. See previous release notes for examples.
@@ -124,17 +124,17 @@ the marking to see what GitHub wants to be done.
 
 ### Deploy testnet
 
-Notify the AnimeCoin DevOps engineer/sysadmin that the release has been tagged. They update some variables in the company's automation code and then run an Ansible playbook, which:
+Notify the Pastel DevOps engineer/sysadmin that the release has been tagged. They update some variables in the company's automation code and then run an Ansible playbook, which:
 
-* builds AnimeCoin based on the specified branch
+* builds Pastel based on the specified branch
 * deploys it as a public service 
 * often the same server can be re-used, and the role idempotently handles upgrades, but if not then they also need to update DNS records
 * possible manual steps: blowing away the `testnet3` dir, deleting old parameters, restarting DNS seeder
 
-Then, verify that nodes can connect to the testnet server, and update the guide on the wiki to ensure the correct hostname is listed in the recommended animecoin.conf.
+Then, verify that nodes can connect to the testnet server, and update the guide on the wiki to ensure the correct hostname is listed in the recommended pastel.conf.
 
 ### Update the 1.0 User Guide
 
-### Publish the release announcement (blog, github, animecoin-dev, slack)
+### Publish the release announcement (blog, github, pastel-dev, slack)
 
 ## Celebrate

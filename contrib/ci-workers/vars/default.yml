@@ -9,23 +9,23 @@ buildbot_deps:
 fetch_deps:
   - curl # For depends/
   - git
-  - wget # For acutil/fetch-params.sh
+  - wget # For pcutil/fetch-params.sh
 
-# Dependencies required to configure AnimeCoin
+# Dependencies required to configure Pastel
 conf_deps:
   - autoconf
   - automake
   - m4
   - pkg-config
 
-# Dependencies required to compile AnimeCoin
+# Dependencies required to compile Pastel
 build_deps:
   - cmake
   - g++
   - gcc
   - make
 
-# Dependencies required to link AnimeCoin
+# Dependencies required to link Pastel
 link_deps:
   - libtool
 
@@ -41,13 +41,13 @@ grind_deps:
 system_modules:
   - virtualenv
 
-# Python modules required for a AnimeCoin Buildbot worker
+# Python modules required for a Pastel Buildbot worker
 buildbot_modules:
   - pip # Needs to be updated first so Buildbot installs
   - buildbot-worker
   - pyflakes
 
-# Python modules required to run the AnimeCoin RPC test suite
+# Python modules required to run the Pastel RPC test suite
 rpc_test_modules:
   - pyblake2
   - pyzmq

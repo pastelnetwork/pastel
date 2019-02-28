@@ -9,7 +9,7 @@
 #include <vector>
 
 /**
- * CBaseChainParams defines the base parameters (shared between animecoin-cli and animecoind)
+ * CBaseChainParams defines the base parameters (shared between pastel-cli and pasteld)
  * of a given instance of the Bitcoin system.
  */
 class CBaseChainParams

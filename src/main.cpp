@@ -50,7 +50,7 @@
 using namespace std;
 
 #if defined(NDEBUG)
-# error "AnimeCoin cannot be compiled without assertions."
+# error "Pastel cannot be compiled without assertions."
 #endif
 
 #include "librustzcash.h"
@@ -87,7 +87,7 @@ int64_t nMaxTipAge = DEFAULT_MAX_TIP_AGE;
 
 unsigned int expiryDelta = DEFAULT_TX_EXPIRY_DELTA;
 
-/** Fees smaller than this (in satoshi) are considered zero fee (for relaying and mining) */
+/** Fees smaller than this (in patoshi) are considered zero fee (for relaying and mining) */
 CFeeRate minRelayTxFee = CFeeRate(DEFAULT_MIN_RELAY_TX_FEE);
 
 CTxMemPool mempool(::minRelayTxFee);
@@ -2312,7 +2312,7 @@ bool FindUndoPos(CValidationState &state, int nFile, CDiskBlockPos &pos, unsigne
 static CCheckQueue<CScriptCheck> scriptcheckqueue(128);
 
 void ThreadScriptCheck() {
-    RenameThread("animecoin-scriptch");
+    RenameThread("pastel-scriptch");
     scriptcheckqueue.Thread();
 }
 
@@ -2561,12 +2561,12 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
     LogPrint("bench", "      - Connect %u transactions: %.2fms (%.3fms/tx, %.3fms/txin) [%.2fs]\n", (unsigned)block.vtx.size(), 0.001 * (nTime1 - nTimeStart), 0.001 * (nTime1 - nTimeStart) / block.vtx.size(), nInputs <= 1 ? 0 : 0.001 * (nTime1 - nTimeStart) / (nInputs-1), nTimeConnect * 0.000001);
 
     CAmount blockReward = nFees + GetBlockSubsidy(pindex->nHeight, chainparams.GetConsensus());
-//ANIME
+//PASTEL
     std::string strError = "";
     if (!IsBlockValid(block, pindex->nHeight, blockReward, strError)) {
-        return state.DoS(0, error("ConnectBlock(ANIME): %s", strError), REJECT_INVALID, "bad-cb-amount");
+        return state.DoS(0, error("ConnectBlock(PASTEL): %s", strError), REJECT_INVALID, "bad-cb-amount");
     }
-//ANIME
+//PASTEL
     
     if (block.vtx[0].GetValueOut() > blockReward)
         return state.DoS(100,

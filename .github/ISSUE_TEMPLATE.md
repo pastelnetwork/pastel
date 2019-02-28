@@ -1,6 +1,6 @@
 <!--- Remove text and sections that do not apply -->
 
-This issue tracker is only for technical issues related to animecoind.
+This issue tracker is only for technical issues related to pasteld.
 
 General Zcash questions and/or support requests and are best directed to the [Zcash Forums](https://forum.z.cash) or [Community Rocket.Chat](https://chat.zcashcommunity.com).
 
@@ -22,7 +22,7 @@ Tell us what should happen
 Tell us what happens instead including any noticable error output (any messages displayed on-screen when e.g. a crash occurred)
 
 ### The version of Zcash you were using:
-Run `animecoind --version` to find out
+Run `pasteld --version` to find out
 
 ### Machine specs:
 - OS name + version:
@@ -34,9 +34,9 @@ Run `animecoind --version` to find out
 - Compiler version (gcc -version):
 
 ### Any extra information that might be useful in the debugging process.
-This includes the relevant contents of `~/.animecoin/debug.log`. You can paste raw text, attach the file directly in the issue or link to the text via a pastebin type site.
+This includes the relevant contents of `~/.pastel/debug.log`. You can paste raw text, attach the file directly in the issue or link to the text via a pastebin type site.
 Please also include any non-standard things you did during compilation (extra flags, dependency version changes etc.) if applicable.
 
-### Do you have a back up of `~/.animecoin` directory and/or take a VM snapshot?
-- Backing up / making a copy of the `~/.animecoin` directory might help make the problem reproducible. Please redact appropriately.
+### Do you have a back up of `~/.pastel` directory and/or take a VM snapshot?
+- Backing up / making a copy of the `~/.pastel` directory might help make the problem reproducible. Please redact appropriately.
 - Taking a VM snapshot is really helpful for interactively testing fixes

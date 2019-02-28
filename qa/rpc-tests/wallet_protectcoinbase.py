@@ -3,7 +3,7 @@
 # Distributed under the MIT software license, see the accompanying
 # file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-# ANIMECOIN doesnt support protected coinbase, so this test will NOT test for this!!!
+# PASTEL doesnt support protected coinbase, so this test will NOT test for this!!!
 
 import sys; assert sys.version_info < (3,), ur"This script does not run under Python 3. Please use Python 2.7.x."
 
@@ -87,7 +87,7 @@ class WalletProtectCoinbaseTest (BitcoinTestFramework):
 
         wait_and_assert_operationid_status(self.nodes[3], myopid, "failed", "no UTXOs found for taddr from address", self._reward)
 
-        ## !!!In ANIME this will NOT fail, as it allows to send change from coinbase utxo!!! 
+        ## !!!In PASTEL this will NOT fail, as it allows to send change from coinbase utxo!!! 
         ## !!!Because it is not required to be shielded first!!!
         # This send will fail because our wallet does not allow any change when protecting a coinbase utxo,
         # as it's currently not possible to specify a change address in z_sendmany.
@@ -223,7 +223,7 @@ class WalletProtectCoinbaseTest (BitcoinTestFramework):
         # UTXO selection in z_sendmany sorts in ascending order, so smallest utxos are consumed first.
         # At this point in time, unspent notes all have a value of self._reward and standard z_sendmany fee is self._fee.
         recipients = []
-        amount = self._reward - self._fee - self._atoshi    # this leaves change at 1 atoshi less than dust threshold
+        amount = self._reward - self._fee - self._patoshi    # this leaves change at 1 patoshi less than dust threshold
         recipients.append({"address":self.nodes[0].getnewaddress(), "amount":amount })
         myopid = self.nodes[0].z_sendmany(mytaddr, recipients)
         wait_and_assert_operationid_status(self.nodes[0], myopid, "failed", "Insufficient transparent funds, have " + str(self._reward00) + ", need 0.00053 more to avoid creating invalid change output 0.00001 (dust threshold is 0.00054)")
@@ -308,14 +308,14 @@ class WalletProtectCoinbaseTest (BitcoinTestFramework):
 
         # Send will fail because fee is larger than MAX_MONEY
         try:
-            self.nodes[0].z_sendmany(myzaddr, recipients, 1, self._maxmoney + self._atoshi)
+            self.nodes[0].z_sendmany(myzaddr, recipients, 1, self._maxmoney + self._patoshi)
         except JSONRPCException,e:
             errorString = e.error['message']
         assert_equal("Amount out of range" in errorString, True)
 
         # Send will fail because fee is larger than sum of outputs
         try:
-            self.nodes[0].z_sendmany(myzaddr, recipients, 1, (amount_per_recipient * num_t_recipients) + self._atoshi)
+            self.nodes[0].z_sendmany(myzaddr, recipients, 1, (amount_per_recipient * num_t_recipients) + self._patoshi)
         except JSONRPCException,e:
             errorString = e.error['message']
         assert_equal("is greater than the sum of outputs" in errorString, True)

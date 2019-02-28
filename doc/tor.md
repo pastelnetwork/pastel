@@ -1,18 +1,18 @@
-*** Warning: Do not assume Tor support does the correct thing in AnimeCoin; better Tor support is a future feature goal. ***
+*** Warning: Do not assume Tor support does the correct thing in Pastel; better Tor support is a future feature goal. ***
 
-TOR SUPPORT IN ANIMECOIN
+TOR SUPPORT IN PASTEL
 ====================
 
-It is possible to run AnimeCoin as a Tor hidden service, and connect to such services.
+It is possible to run Pastel as a Tor hidden service, and connect to such services.
 
 The following directions assume you have a Tor proxy running on port 9050. Many distributions default to having a SOCKS proxy listening on port 9050, but others may not. In particular, the Tor Browser Bundle defaults to listening on port 9150. See [Tor Project FAQ:TBBSocksPort](https://www.torproject.org/docs/faq.html.en#TBBSocksPort) for how to properly
 configure Tor.
 
 
-1. Run AnimeCoin behind a Tor proxy
+1. Run Pastel behind a Tor proxy
 -------------------------------
 
-The first step is running AnimeCoin behind a Tor proxy. This will already make all
+The first step is running Pastel behind a Tor proxy. This will already make all
 outgoing connections be anonymized, but more is possible.
 
 	-proxy=ip:port  Set the proxy server. If SOCKS5 is selected (default), this proxy
@@ -33,27 +33,27 @@ outgoing connections be anonymized, but more is possible.
 
 In a typical situation, this suffices to run behind a Tor proxy:
 
-	./animecoind -proxy=127.0.0.1:9050
+	./pasteld -proxy=127.0.0.1:9050
 
 
-2. Run a AnimeCoin hidden server
+2. Run a Pastel hidden server
 ----------------------------
 
 If you configure your Tor system accordingly, it is possible to make your node also
 reachable from the Tor network. Add these lines to your /etc/tor/torrc (or equivalent
 config file):
 
-	HiddenServiceDir /var/lib/tor/animecoin-service/
+	HiddenServiceDir /var/lib/tor/pastel-service/
 	HiddenServicePort 9933 127.0.0.1:9933
 	HiddenServicePort 19933 127.0.0.1:19933
 
 The directory can be different of course, but (both) port numbers should be equal to
-your animecoind's P2P listen port (9933 by default).
+your pasteld's P2P listen port (9933 by default).
 
-	-externalip=X   You can tell AnimeCoin about its publicly reachable address using
+	-externalip=X   You can tell Pastel about its publicly reachable address using
 	                this option, and this can be a .onion address. Given the above
 	                configuration, you can find your onion address in
-	                /var/lib/tor/animecoin-service/hostname. Onion addresses are given
+	                /var/lib/tor/pastel-service/hostname. Onion addresses are given
 	                preference for your node to advertize itself with, for connections
 	                coming from unroutable addresses (such as 127.0.0.1, where the
 	                Tor proxy typically runs).
@@ -70,25 +70,25 @@ your animecoind's P2P listen port (9933 by default).
 
 In a typical situation, where you're only reachable via Tor, this should suffice:
 
-	./animecoind -proxy=127.0.0.1:9050 -externalip=zctestseie6wxgio.onion -listen
+	./pasteld -proxy=127.0.0.1:9050 -externalip=zctestseie6wxgio.onion -listen
 
 (obviously, replace the Onion address with your own). It should be noted that you still
 listen on all devices and another node could establish a clearnet connection, when knowing
 your address. To mitigate this, additionally bind the address of your Tor proxy:
 
-	./animecoind ... -bind=127.0.0.1
+	./pasteld ... -bind=127.0.0.1
 
 If you don't care too much about hiding your node, and want to be reachable on IPv4
 as well, use `discover` instead:
 
-	./animecoind ... -discover
+	./pasteld ... -discover
 
 and open port 9933 on your firewall (or use -upnp).
 
 If you only want to use Tor to reach onion addresses, but not use it as a proxy
 for normal IPv4/IPv6 communication, use:
 
-	./animecoind -onion=127.0.0.1:9050 -externalip=zctestseie6wxgio.onion -discover
+	./pasteld -onion=127.0.0.1:9050 -externalip=zctestseie6wxgio.onion -discover
 
 
 3. Automatically listen on Tor
@@ -96,42 +96,42 @@ for normal IPv4/IPv6 communication, use:
 
 Starting with Tor version 0.2.7.1 it is possible, through Tor's control socket
 API, to create and destroy 'ephemeral' hidden services programmatically.
-AnimeCoin has been updated to make use of this.
+Pastel has been updated to make use of this.
 
 This means that if Tor is running (and proper authentication has been configured),
-AnimeCoin automatically creates a hidden service to listen on. AnimeCoin will also use Tor
+Pastel automatically creates a hidden service to listen on. Pastel will also use Tor
 automatically to connect to other .onion nodes if the control socket can be
 successfully opened. This will positively affect the number of available .onion
 nodes and their usage.
 
-This new feature is enabled by default if AnimeCoin is listening (`-listen`), and
+This new feature is enabled by default if Pastel is listening (`-listen`), and
 requires a Tor connection to work. It can be explicitly disabled with `-listenonion=0`
 and, if not disabled, configured using the `-torcontrol` and `-torpassword` settings.
 To show verbose debugging information, pass `-debug=tor`.
 
 Connecting to Tor's control socket API requires one of two authentication methods to be 
-configured. For cookie authentication the user running animecoind must have write access 
+configured. For cookie authentication the user running pasteld must have write access 
 to the `CookieAuthFile` specified in Tor configuration. In some cases this is 
 preconfigured and the creation of a hidden service is automatic. If permission problems 
 are seen with `-debug=tor` they can be resolved by adding both the user running tor and 
-the user running animecoind to the same group and setting permissions appropriately. On 
-Debian-based systems the user running animecoind can be added to the debian-tor group, 
+the user running pasteld to the same group and setting permissions appropriately. On 
+Debian-based systems the user running pasteld can be added to the debian-tor group, 
 which has the appropriate permissions. An alternative authentication method is the use 
 of the `-torpassword` flag and a `hash-password` which can be enabled and specified in 
 Tor configuration.
 
 
-4. Connect to a AnimeCoin hidden server
+4. Connect to a Pastel hidden server
 -----------------------------------
 
 To test your set-up, you might want to try connecting via Tor on a different computer to just a
-a single AnimeCoin hidden server. Launch animecoind as follows:
+a single Pastel hidden server. Launch pasteld as follows:
 
-	./animecoind -onion=127.0.0.1:9050 -connect=zctestseie6wxgio.onion
+	./pasteld -onion=127.0.0.1:9050 -connect=zctestseie6wxgio.onion
 
-Now use animecoin-cli to verify there is only a single peer connection.
+Now use pastel-cli to verify there is only a single peer connection.
 
-	animecoin-cli getpeerinfo
+	pastel-cli getpeerinfo
 
 	[
 	    {
@@ -146,4 +146,4 @@ Now use animecoin-cli to verify there is only a single peer connection.
 
 To connect to multiple Tor nodes, use:
 
-	./animecoind -onion=127.0.0.1:9050 -addnode=zctestseie6wxgio.onion -dnsseed=0 -onlynet=onion
+	./pasteld -onion=127.0.0.1:9050 -addnode=zctestseie6wxgio.onion -dnsseed=0 -onlynet=onion

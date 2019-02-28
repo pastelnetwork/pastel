@@ -24,7 +24,7 @@ COVERAGE_INFO = baseline_filtered_combined.info baseline.info \
   leveldb_baseline.info test_bitcoin_filtered.info total_coverage.info \
   baseline_filtered.info \
   leveldb_baseline_filtered.info test_bitcoin_coverage.info test_bitcoin.info \
-  animecoin-gtest.info animecoin-gtest_filtered.info animecoin-gtest_coverage.info
+  pastel-gtest.info pastel-gtest_filtered.info pastel-gtest_coverage.info
 
 dist-hook:
 	-$(MAKE) -C $(top_distdir)/src/leveldb clean
@@ -101,13 +101,13 @@ test_bitcoin_filtered.info: test_bitcoin.info
                       "$(abs_builddir)/src/wallet/test/*" \
                       -o $@
 
-animecoin-gtest.info: baseline_filtered_combined.info
-	$(MAKE) -C src/ animecoin-gtest_check
-	$(LCOV) -c -d $(abs_builddir)/src -t animecoin-gtest -o $@
+pastel-gtest.info: baseline_filtered_combined.info
+	$(MAKE) -C src/ pastel-gtest_check
+	$(LCOV) -c -d $(abs_builddir)/src -t pastel-gtest -o $@
 	$(LCOV) -z -d $(abs_builddir)/src
 	$(LCOV) -z -d $(abs_builddir)/src/leveldb
 
-animecoin-gtest_filtered.info: animecoin-gtest.info
+pastel-gtest_filtered.info: pastel-gtest.info
 	$(LCOV) -r $< "/usr/include/*" \
                       "$(abs_builddir)/depends/x86_64-unknown-linux-gnu/include/*.h" \
                       "$(abs_builddir)/depends/x86_64-unknown-linux-gnu/include/boost/*" \
@@ -122,41 +122,41 @@ animecoin-gtest_filtered.info: animecoin-gtest.info
 test_bitcoin_coverage.info: baseline_filtered_combined.info test_bitcoin_filtered.info
 	$(LCOV) -a baseline_filtered.info -a leveldb_baseline_filtered.info -a test_bitcoin_filtered.info -o $@
 
-animecoin-gtest_coverage.info: baseline_filtered_combined.info animecoin-gtest_filtered.info
-	$(LCOV) -a baseline_filtered.info -a leveldb_baseline_filtered.info -a animecoin-gtest_filtered.info -o $@
+pastel-gtest_coverage.info: baseline_filtered_combined.info pastel-gtest_filtered.info
+	$(LCOV) -a baseline_filtered.info -a leveldb_baseline_filtered.info -a pastel-gtest_filtered.info -o $@
 
-total_coverage.info:  baseline_filtered_combined.info test_bitcoin_filtered.info animecoin-gtest_filtered.info
-	$(LCOV) -a baseline_filtered.info -a leveldb_baseline_filtered.info -a test_bitcoin_filtered.info -a animecoin-gtest_filtered.info -o $@ | $(GREP) "\%" | $(AWK) '{ print substr($$3,2,50) "/" $$5 }' > coverage_percent.txt
+total_coverage.info:  baseline_filtered_combined.info test_bitcoin_filtered.info pastel-gtest_filtered.info
+	$(LCOV) -a baseline_filtered.info -a leveldb_baseline_filtered.info -a test_bitcoin_filtered.info -a pastel-gtest_filtered.info -o $@ | $(GREP) "\%" | $(AWK) '{ print substr($$3,2,50) "/" $$5 }' > coverage_percent.txt
 
 test_bitcoin.coverage/.dirstamp:  test_bitcoin_coverage.info
 	$(GENHTML) -s $< -o $(@D)
 	@touch $@
 
-animecoin-gtest.coverage/.dirstamp:  animecoin-gtest_coverage.info
+pastel-gtest.coverage/.dirstamp:  pastel-gtest_coverage.info
 	$(GENHTML) -s $< -o $(@D)
 	@touch $@
 
-cov-animecoin: animecoin-gtest.coverage/.dirstamp
+cov-pastel: pastel-gtest.coverage/.dirstamp
 
 total.coverage/.dirstamp: total_coverage.info
 	$(GENHTML) -s $< -o $(@D)
 	@touch $@
 
-cov: test_bitcoin.coverage/.dirstamp cov-animecoin total.coverage/.dirstamp
+cov: test_bitcoin.coverage/.dirstamp cov-pastel total.coverage/.dirstamp
 
 endif
 
-dist_bin_SCRIPTS = acutil/fetch-params.sh
-dist_noinst_SCRIPTS = autogen.sh acutil/build-debian-package.sh acutil/build.sh
+dist_bin_SCRIPTS = pcutil/fetch-params.sh
+dist_noinst_SCRIPTS = autogen.sh pcutil/build-debian-package.sh pcutil/build.sh
 
 EXTRA_DIST = $(top_srcdir)/share/genbuild.sh qa/pull-tester/rpc-tests.sh qa/pull-tester/run-bitcoin-cli qa/rpc-tests qa/test-suite $(DIST_DOCS) $(BIN_CHECKS)
 
 install-exec-hook:
-	mv $(DESTDIR)$(bindir)/fetch-params.sh $(DESTDIR)$(bindir)/animecoin-fetch-params
+	mv $(DESTDIR)$(bindir)/fetch-params.sh $(DESTDIR)$(bindir)/pastel-fetch-params
 
 .INTERMEDIATE: $(COVERAGE_INFO)
 
 DISTCHECK_CONFIGURE_FLAGS = --enable-man
 
 clean-local:
-	rm -rf test_bitcoin.coverage/ animecoin-gtest.coverage/ total.coverage/
+	rm -rf test_bitcoin.coverage/ pastel-gtest.coverage/ total.coverage/

@@ -3,8 +3,8 @@ exec_prefix=@exec_prefix@
 libdir=@libdir@
 includedir=@includedir@
 
-Name: AnimeCoin consensus library
-Description: Library for the AnimeCoin consensus protocol.
+Name: Pastel consensus library
+Description: Library for the Pastel consensus protocol.
 Version: @PACKAGE_VERSION@
 Libs: -L${libdir} -lzcashconsensus
 Cflags: -I${includedir}
