@@ -15,8 +15,8 @@ from test_framework.util import assert_equal, initialize_chain_clean, \
 from decimal import Decimal, getcontext
 getcontext().prec = 16
 
-# at 28 March 2018
-starttime = 1522195200
+# at 20 Feb 2019
+starttime = 1550620800
 
 class Wallet1941RegressionTest (BitcoinTestFramework):
 

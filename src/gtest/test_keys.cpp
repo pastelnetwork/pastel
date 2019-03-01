@@ -18,7 +18,7 @@ TEST(Keys, EncodeAndDecodeSapling)
         {
             std::string sk_string = EncodeSpendingKey(sk);
             EXPECT_EQ(
-                sk_string.substr(0, 24),
+                sk_string.substr(0, 26),
                 Params().Bech32HRP(CChainParams::SAPLING_EXTENDED_SPEND_KEY));
 
             auto spendingkey2 = DecodeSpendingKey(sk_string);

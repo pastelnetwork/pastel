@@ -123,11 +123,11 @@ BOOST_AUTO_TEST_CASE(rpc_wallet)
     BOOST_CHECK_NO_THROW(CallRPC("setaccount " + EncodeDestination(setaccountDemoAddress) + " \"\""));
     /* Accounts are disabled */
     BOOST_CHECK_THROW(CallRPC("setaccount " + EncodeDestination(setaccountDemoAddress) + " nullaccount"), runtime_error);
-    /* t1VtArtnn1dGPiD2WFfMXYXW5mHM3q1GpgV is not owned by the test wallet. */
-    BOOST_CHECK_THROW(CallRPC("setaccount t1VtArtnn1dGPiD2WFfMXYXW5mHM3q1GpgV nullaccount"), runtime_error);
+    /* PtkqegiGBYiKjGorBWW78i6dgXCHaYY7mdE is not owned by the test wallet. */
+    BOOST_CHECK_THROW(CallRPC("setaccount PtkqegiGBYiKjGorBWW78i6dgXCHaYY7mdE nullaccount"), runtime_error);
     BOOST_CHECK_THROW(CallRPC("setaccount"), runtime_error);
-    /* t1VtArtnn1dGPiD2WFfMXYXW5mHM3q1Gpg (34 chars) is an illegal address (should be 35 chars) */
-    BOOST_CHECK_THROW(CallRPC("setaccount t1VtArtnn1dGPiD2WFfMXYXW5mHM3q1Gpg nullaccount"), runtime_error);
+    /* PtkqegiGBYiKjGorBWW78i6dgXCHaYY7md (34 chars) is an illegal address (should be 35 chars) */
+    BOOST_CHECK_THROW(CallRPC("setaccount PtkqegiGBYiKjGorBWW78i6dgXCHaYY7md nullaccount"), runtime_error);
 
 
     /*********************************
@@ -230,15 +230,15 @@ BOOST_AUTO_TEST_CASE(rpc_wallet)
     BOOST_CHECK_NO_THROW(retValue = CallRPC("signmessage " + EncodeDestination(demoAddress) + " mymessage"));
     BOOST_CHECK_THROW(CallRPC("signmessage"), runtime_error);
     /* Should throw error because this address is not loaded in the wallet */
-    BOOST_CHECK_THROW(CallRPC("signmessage t1h8SqgtM3QM5e2M8EzhhT1yL2PXXtA6oqe mymessage"), runtime_error);
+    BOOST_CHECK_THROW(CallRPC("signmessage PtkqegiGBYiKjGorBWW78i6dgXCHaYY7mdE mymessage"), runtime_error);
 
     /* missing arguments */
     BOOST_CHECK_THROW(CallRPC("verifymessage " + EncodeDestination(demoAddress)), runtime_error);
     BOOST_CHECK_THROW(CallRPC("verifymessage " + EncodeDestination(demoAddress) + " " + retValue.get_str()), runtime_error);
     /* Illegal address */
-    BOOST_CHECK_THROW(CallRPC("verifymessage t1VtArtnn1dGPiD2WFfMXYXW5mHM3q1Gpg " + retValue.get_str() + " mymessage"), runtime_error);
+    BOOST_CHECK_THROW(CallRPC("verifymessage PtkqegiGBYiKjGorBWW78i6dgXCHaYY7mdE " + retValue.get_str() + " mymessage"), runtime_error);
     /* wrong address */
-    BOOST_CHECK(CallRPC("verifymessage t1VtArtnn1dGPiD2WFfMXYXW5mHM3q1GpgV " + retValue.get_str() + " mymessage").get_bool() == false);
+    BOOST_CHECK(CallRPC("verifymessage PtczsZ91Bt3oDPDQotzUsrx1wjmsFVgf28n " + retValue.get_str() + " mymessage").get_bool() == false);
     /* Correct address and signature but wrong message */
     BOOST_CHECK(CallRPC("verifymessage " + EncodeDestination(demoAddress) + " " + retValue.get_str() + " wrongmessage").get_bool() == false);
     /* Correct address, message and signature*/
@@ -303,10 +303,10 @@ BOOST_AUTO_TEST_CASE(rpc_wallet_getbalance)
 
     BOOST_CHECK_THROW(CallRPC("z_getbalance too many args"), runtime_error);
     BOOST_CHECK_THROW(CallRPC("z_getbalance invalidaddress"), runtime_error);
-    BOOST_CHECK_NO_THROW(CallRPC("z_getbalance eAPZXrzS62ifksSx7Hzbav3U4dzaC5PLZWL"));
-    BOOST_CHECK_THROW(CallRPC("z_getbalance eAPZXrzS62ifksSx7Hzbav3U4dzaC5PLZWL -1"), runtime_error);
-    BOOST_CHECK_NO_THROW(CallRPC("z_getbalance eAPZXrzS62ifksSx7Hzbav3U4dzaC5PLZWL 0"));
-    BOOST_CHECK_THROW(CallRPC("z_getbalance ztestsapling1reqfmcscsce8l3g9h30wyp06t5d4cn5y7h640vu8ug6vr7p3alr7xv0vhaee9y36frddsjhz7c4 1"), runtime_error);
+    BOOST_CHECK_NO_THROW(CallRPC("z_getbalance tPViri8Zo9JTsE4gh9pU9EbtPGnm1L66y1g"));
+    BOOST_CHECK_THROW(CallRPC("z_getbalance tPViri8Zo9JTsE4gh9pU9EbtPGnm1L66y1g -1"), runtime_error);
+    BOOST_CHECK_NO_THROW(CallRPC("z_getbalance tPViri8Zo9JTsE4gh9pU9EbtPGnm1L66y1g 0"));
+    BOOST_CHECK_THROW(CallRPC("z_getbalance ptestsapling1zlgc9r90eqapx0vxc00hv3gunpgtm4wj3w9u29ehs4n5dgtdmg406dsemzl5rc7602ravnt3zr6 1"), runtime_error);
 
 
     BOOST_CHECK_THROW(CallRPC("z_gettotalbalance too manyargs"), runtime_error);
@@ -316,9 +316,9 @@ BOOST_AUTO_TEST_CASE(rpc_wallet_getbalance)
 
     BOOST_CHECK_THROW(CallRPC("z_listreceivedbyaddress too many args"), runtime_error);
     // negative minconf not allowed
-    BOOST_CHECK_THROW(CallRPC("z_listreceivedbyaddress tmC6YZnCUhm19dEXxh3Jb7srdBJxDawaCab -1"), runtime_error);
+    BOOST_CHECK_THROW(CallRPC("z_listreceivedbyaddress tPWB75duYHtmDGgnM1A9hvDQijnNY8AULXk -1"), runtime_error);
     // invalid zaddr, taddr not allowed
-    BOOST_CHECK_THROW(CallRPC("z_listreceivedbyaddress tmC6YZnCUhm19dEXxh3Jb7srdBJxDawaCab 0"), runtime_error);
+    BOOST_CHECK_THROW(CallRPC("z_listreceivedbyaddress tPWB75duYHtmDGgnM1A9hvDQijnNY8AULXk 0"), runtime_error);
     // don't have the spending key
     BOOST_CHECK_THROW(CallRPC("z_listreceivedbyaddress tnRZ8bPq2pff3xBWhTJhNkVUkm2uhzksDeW5PvEa7aFKGT9Qi3YgTALZfjaY4jU3HLVKBtHdSXxoPoLA3naMPcHBcY88FcF 1"), runtime_error);
 }
@@ -344,13 +344,13 @@ BOOST_AUTO_TEST_CASE(rpc_wallet_z_validateaddress)
     BOOST_CHECK(addrs.size()==0);
 
     // This address is not valid, it belongs to another network
-    BOOST_CHECK_NO_THROW(retValue = CallRPC("z_validateaddress ztaaga95QAPyp1kSQ1hD2kguCpzyMHjxWZqaYDEkzbvo7uYQYAw2S8X4Kx98AvhhofMtQL8PAXKHuZsmhRcanavKRKmdCzk"));
+    BOOST_CHECK_NO_THROW(retValue = CallRPC("z_validateaddress tZRprtxz3ZzEYaSYSTZmptBSSaHwavexM1ivj78Vv2QppzpUcqQAhwPAYF99Ld6onX1i9b6YhJSLmsz1dcYzCnA5RpUgUQG"));
     UniValue resultObj = retValue.get_obj();
     bool b = find_value(resultObj, "isvalid").get_bool();
     BOOST_CHECK_EQUAL(b, false);
 
     // This address is valid, but the spending key is not in this wallet
-    BOOST_CHECK_NO_THROW(retValue = CallRPC("z_validateaddress zcfA19SDAKRYHLoRDoShcoz4nPohqWxuHcqg8WAxsiB2jFrrs6k7oSvst3UZvMYqpMNSRBkxBsnyjjngX5L55FxMzLKach8"));
+    BOOST_CHECK_NO_THROW(retValue = CallRPC("z_validateaddress PzWcy67ygestjagHaFZxjWxmawMeShmQWNPE8FNJp23pQS2twecwps5223ajUtN7iihxR4MmLDFQ19heHkBx5AKaDooS6aQ"));
     resultObj = retValue.get_obj();
     b = find_value(resultObj, "isvalid").get_bool();
     BOOST_CHECK_EQUAL(b, true);
@@ -359,8 +359,8 @@ BOOST_AUTO_TEST_CASE(rpc_wallet_z_validateaddress)
     BOOST_CHECK_EQUAL(b, false);
 
     // Let's import a spending key to the wallet and validate its payment address
-    BOOST_CHECK_NO_THROW(CallRPC("z_importkey SKxoWv77WGwFnUJitQKNEcD636bL4X5Gd6wWmgaA4Q9x8jZBPJXT"));
-    BOOST_CHECK_NO_THROW(retValue = CallRPC("z_validateaddress zcWsmqT4X2V4jgxbgiCzyrAfRT1vi1F4sn7M5Pkh66izzw8Uk7LBGAH3DtcSMJeUb2pi3W4SQF8LMKkU2cUuVP68yAGcomL"));
+    BOOST_CHECK_NO_THROW(CallRPC("z_importkey Ps87xdReaLnkQdfFpxtN8EVmXD6ZSQSdF2W9KU7R2UN7tTQ68QzJ"));
+    BOOST_CHECK_NO_THROW(retValue = CallRPC("z_validateaddress PzcUi7fe8dgjCH2bgVxhrHDkYFGnMp4i35GtvFhHbdR3Pb7w9fxD6xj17LyMPwyQi9yayQKkqtP2Ypicj9wMLX8QNA5zNFv"));
     resultObj = retValue.get_obj();
     b = find_value(resultObj, "isvalid").get_bool();
     BOOST_CHECK_EQUAL(b, true);
@@ -371,13 +371,13 @@ BOOST_AUTO_TEST_CASE(rpc_wallet_z_validateaddress)
     BOOST_CHECK_EQUAL(find_value(resultObj, "transmissionkey").get_str(), "7a58c7132446564e6b810cf895c20537b3528357dc00150a8e201f491efa9c1a");
 
     // This Sapling address is not valid, it belongs to another network
-    BOOST_CHECK_NO_THROW(retValue = CallRPC("z_validateaddress ztestsapling1knww2nyjc62njkard0jmx7hlsj6twxmxwprn7anvrv4dc2zxanl3nemc0qx2hvplxmd2uau8gyw"));
+    BOOST_CHECK_NO_THROW(retValue = CallRPC("z_validateaddress ptestsapling1vqv3eu7n68k2n4fkngtqcc4qc0gca0rzx9pygyydzv9um4qty58hf9qx3pumfs2klzacxaykwnq"));
     resultObj = retValue.get_obj();
     b = find_value(resultObj, "isvalid").get_bool();
     BOOST_CHECK_EQUAL(b, false);
 
     // This Sapling address is valid, but the spending key is not in this wallet
-    BOOST_CHECK_NO_THROW(retValue = CallRPC("z_validateaddress zs1z7rejlpsa98s2rrrfkwmaxu53e4ue0ulcrw0h4x5g8jl04tak0d3mm47vdtahatqrlkngh9slya"));
+    BOOST_CHECK_NO_THROW(retValue = CallRPC("z_validateaddress ps1d5pj2rmj07ndntpfasjppv6cd0ru00rv06a6pudqp948knn9zmt39caxgj6gyjawljgtgpetpr0"));
     resultObj = retValue.get_obj();
     b = find_value(resultObj, "isvalid").get_bool();
     BOOST_CHECK_EQUAL(b, true);
@@ -911,7 +911,7 @@ BOOST_AUTO_TEST_CASE(rpc_z_sendmany_parameters)
             "INVALIDtmRr6yJonqGK23UVhrKuyvTpF8qxQQjKigJ []"), runtime_error);
     // empty amounts
     BOOST_CHECK_THROW(CallRPC("z_sendmany "
-            "tmRr6yJonqGK23UVhrKuyvTpF8qxQQjKigJ []"), runtime_error);
+            "tPmCf9DhN5jv5CgrxDMHRz6wsEjWwM6qJnZ []"), runtime_error);
 
     // don't have the spending key for this address
     BOOST_CHECK_THROW(CallRPC("z_sendmany "
@@ -920,29 +920,29 @@ BOOST_AUTO_TEST_CASE(rpc_z_sendmany_parameters)
 
     // duplicate address
     BOOST_CHECK_THROW(CallRPC("z_sendmany "
-            "tmRr6yJonqGK23UVhrKuyvTpF8qxQQjKigJ "
-            "[{\"address\":\"tmQP9L3s31cLsghVYf2Jb5MhKj1jRBPoeQn\", \"amount\":50.0},"
-            " {\"address\":\"tmQP9L3s31cLsghVYf2Jb5MhKj1jRBPoeQn\", \"amount\":12.0} ]"
+            "tPmCf9DhN5jv5CgrxDMHRz6wsEjWwM6qJnZ "
+            "[{\"address\":\"tPp3pfmLi57S8qoccfWnn2o4tXyoQ23wVSp\", \"amount\":50.0},"
+            " {\"address\":\"tPp3pfmLi57S8qoccfWnn2o4tXyoQ23wVSp\", \"amount\":12.0} ]"
             ), runtime_error);
 
     // invalid fee amount, cannot be negative
     BOOST_CHECK_THROW(CallRPC("z_sendmany "
-            "tmRr6yJonqGK23UVhrKuyvTpF8qxQQjKigJ "
-            "[{\"address\":\"tmQP9L3s31cLsghVYf2Jb5MhKj1jRBPoeQn\", \"amount\":50.0}] "
+            "tPmCf9DhN5jv5CgrxDMHRz6wsEjWwM6qJnZ "
+            "[{\"address\":\"tPp3pfmLi57S8qoccfWnn2o4tXyoQ23wVSp\", \"amount\":50.0}] "
             "1 -0.0001"
             ), runtime_error);
 
     // invalid fee amount, bigger than MAX_MONEY
     BOOST_CHECK_THROW(CallRPC("z_sendmany "
-            "tmRr6yJonqGK23UVhrKuyvTpF8qxQQjKigJ "
-            "[{\"address\":\"tmQP9L3s31cLsghVYf2Jb5MhKj1jRBPoeQn\", \"amount\":50.0}] "
+            "tPmCf9DhN5jv5CgrxDMHRz6wsEjWwM6qJnZ "
+            "[{\"address\":\"tPp3pfmLi57S8qoccfWnn2o4tXyoQ23wVSp\", \"amount\":50.0}] "
             "1 21000001"
             ), runtime_error);
 
     // fee amount is bigger than sum of outputs
     BOOST_CHECK_THROW(CallRPC("z_sendmany "
-            "tmRr6yJonqGK23UVhrKuyvTpF8qxQQjKigJ "
-            "[{\"address\":\"tmQP9L3s31cLsghVYf2Jb5MhKj1jRBPoeQn\", \"amount\":50.0}] "
+            "tPmCf9DhN5jv5CgrxDMHRz6wsEjWwM6qJnZ "
+            "[{\"address\":\"tPp3pfmLi57S8qoccfWnn2o4tXyoQ23wVSp\", \"amount\":50.0}] "
             "1 50.00000001"
             ), runtime_error);
 
@@ -952,7 +952,7 @@ BOOST_AUTO_TEST_CASE(rpc_z_sendmany_parameters)
     std::string badmemo(v.begin(), v.end());
     auto pa = pwalletMain->GenerateNewSproutZKey();
     std::string zaddr1 = EncodePaymentAddress(pa);
-    BOOST_CHECK_THROW(CallRPC(string("z_sendmany tmRr6yJonqGK23UVhrKuyvTpF8qxQQjKigJ ")
+    BOOST_CHECK_THROW(CallRPC(string("z_sendmany tPmCf9DhN5jv5CgrxDMHRz6wsEjWwM6qJnZ ")
             + "[{\"address\":\"" + zaddr1 + "\", \"amount\":123.456}]"), runtime_error);
 
     // Mutable tx containing contextual information we need to build tx
@@ -977,7 +977,7 @@ BOOST_AUTO_TEST_CASE(rpc_z_sendmany_parameters)
     }
 
     try {
-        std::shared_ptr<AsyncRPCOperation> operation( new AsyncRPCOperation_sendmany(boost::none, mtx, "tmRr6yJonqGK23UVhrKuyvTpF8qxQQjKigJ", {}, {}, 1) );
+        std::shared_ptr<AsyncRPCOperation> operation( new AsyncRPCOperation_sendmany(boost::none, mtx, "tPmCf9DhN5jv5CgrxDMHRz6wsEjWwM6qJnZ", {}, {}, 1) );
     } catch (const UniValue& objError) {
         BOOST_CHECK( find_error(objError, "No recipients"));
     }
@@ -989,10 +989,10 @@ BOOST_AUTO_TEST_CASE(rpc_z_sendmany_parameters)
         BOOST_CHECK( find_error(objError, "Invalid from address"));
     }
 
-    // Testnet payment addresses begin with 'zt'.  This test detects an incorrect prefix.
+    // Testnet payment addresses begin with 'tZ'.  This test detects an incorrect prefix.
     try {
         std::vector<SendManyRecipient> recipients = { SendManyRecipient("dummy",1.0, "") };
-        std::shared_ptr<AsyncRPCOperation> operation( new AsyncRPCOperation_sendmany(boost::none, mtx, "zcMuhvq8sEkHALuSU2i4NbNQxshSAYrpCExec45ZjtivYPbuiFPwk6WHy4SvsbeZ4siy1WheuRGjtaJmoD1J8bFqNXhsG6U", recipients, {}, 1) );
+        std::shared_ptr<AsyncRPCOperation> operation( new AsyncRPCOperation_sendmany(boost::none, mtx, "tTWgZLnrRJ13fF6YDJmnL32QZqJJD8UfMBcjGhECgF8GTT54SrAkHyvUW5AgbqTF2v4WLRq7Nchrymbr3eyWY2RNoGJjmNL", recipients, {}, 1) );
     } catch (const UniValue& objError) {
         BOOST_CHECK( find_error(objError, "Invalid from address"));
     }
@@ -1001,7 +1001,7 @@ BOOST_AUTO_TEST_CASE(rpc_z_sendmany_parameters)
     // invokes a method on pwalletMain, which is undefined in the google test environment.
     try {
         std::vector<SendManyRecipient> recipients = { SendManyRecipient("dummy",1.0, "") };
-        std::shared_ptr<AsyncRPCOperation> operation( new AsyncRPCOperation_sendmany(boost::none, mtx, "ztjiDe569DPNbyTE6TSdJTaSDhoXEHLGvYoUnBU1wfVNU52TEyT6berYtySkd21njAeEoh8fFJUT42kua9r8EnhBaEKqCpP", recipients, {}, 1) );
+        std::shared_ptr<AsyncRPCOperation> operation( new AsyncRPCOperation_sendmany(boost::none, mtx, "tZWgZLnrRJ13fF6YDJmnL32QZqJJD8UfMBcjGhECgF8GTT54SrAkHyvUW5AgbqTF2v4WLRq7Nchrymbr3eyWY2RNoGJjmNL", recipients, {}, 1) );
     } catch (const UniValue& objError) {
         BOOST_CHECK( find_error(objError, "no spending key found for zaddr"));
     }
@@ -1142,9 +1142,9 @@ BOOST_AUTO_TEST_CASE(rpc_z_sendmany_internals)
     // add_taddr_outputs_to_tx() will append many vouts to a raw transaction
     {
         std::vector<SendManyRecipient> recipients = {
-            SendManyRecipient("tmTGScYwiLMzHe4uGZtBYmuqoW4iEoYNMXt",CAmount(1.23), ""),
-            SendManyRecipient("tmUSbHz3vxnwLvRyNDXbwkZxjVyDodMJEhh",CAmount(4.56), ""),
-            SendManyRecipient("tmYZAXYPCP56Xa5JQWWPZuK7o7bfUQW6kkd",CAmount(7.89), ""),
+            SendManyRecipient("tPp3pfmLi57S8qoccfWnn2o4tXyoQ23wVSp",CAmount(1.23), ""),
+            SendManyRecipient("tPhxitAoytRWebVC2kFnv8XYfdsKdBuqSkG",CAmount(4.56), ""),
+            SendManyRecipient("tPViri8Zo9JTsE4gh9pU9EbtPGnm1L66y1g",CAmount(7.89), ""),
         };
         std::shared_ptr<AsyncRPCOperation> operation( new AsyncRPCOperation_sendmany(boost::none, mtx, zaddr1, recipients, {}, 1) );
         std::shared_ptr<AsyncRPCOperation_sendmany> ptr = std::dynamic_pointer_cast<AsyncRPCOperation_sendmany> (operation);
@@ -1489,19 +1489,19 @@ BOOST_AUTO_TEST_CASE(rpc_z_listunspent_parameters)
     BOOST_CHECK_THROW(CallRPC("z_listunspent 1 9999999999"), runtime_error);
 
     // must be an array of addresses
-    BOOST_CHECK_THROW(CallRPC("z_listunspent 1 999 false ztjiDe569DPNbyTE6TSdJTaSDhoXEHLGvYoUnBU1wfVNU52TEyT6berYtySkd21njAeEoh8fFJUT42kua9r8EnhBaEKqCpP"), runtime_error);
+    BOOST_CHECK_THROW(CallRPC("z_listunspent 1 999 false tZWgZLnrRJ13fF6YDJmnL32QZqJJD8UfMBcjGhECgF8GTT54SrAkHyvUW5AgbqTF2v4WLRq7Nchrymbr3eyWY2RNoGJjmNL"), runtime_error);
 
     // address must be string
     BOOST_CHECK_THROW(CallRPC("z_listunspent 1 999 false [123456]"), runtime_error);
 
     // no spending key
-    BOOST_CHECK_THROW(CallRPC("z_listunspent 1 999 false [\"ztjiDe569DPNbyTE6TSdJTaSDhoXEHLGvYoUnBU1wfVNU52TEyT6berYtySkd21njAeEoh8fFJUT42kua9r8EnhBaEKqCpP\"]"), runtime_error);
+    BOOST_CHECK_THROW(CallRPC("z_listunspent 1 999 false [\"tZWgZLnrRJ13fF6YDJmnL32QZqJJD8UfMBcjGhECgF8GTT54SrAkHyvUW5AgbqTF2v4WLRq7Nchrymbr3eyWY2RNoGJjmNL\"]"), runtime_error);
 
     // allow watch only
-    BOOST_CHECK_NO_THROW(CallRPC("z_listunspent 1 999 true [\"ztjiDe569DPNbyTE6TSdJTaSDhoXEHLGvYoUnBU1wfVNU52TEyT6berYtySkd21njAeEoh8fFJUT42kua9r8EnhBaEKqCpP\"]"));
+    BOOST_CHECK_NO_THROW(CallRPC("z_listunspent 1 999 true [\"tZWgZLnrRJ13fF6YDJmnL32QZqJJD8UfMBcjGhECgF8GTT54SrAkHyvUW5AgbqTF2v4WLRq7Nchrymbr3eyWY2RNoGJjmNL\"]"));
 
     // wrong network, mainnet instead of testnet
-    BOOST_CHECK_THROW(CallRPC("z_listunspent 1 999 true [\"zcMuhvq8sEkHALuSU2i4NbNQxshSAYrpCExec45ZjtivYPbuiFPwk6WHy4SvsbeZ4siy1WheuRGjtaJmoD1J8bFqNXhsG6U\"]"), runtime_error);
+    BOOST_CHECK_THROW(CallRPC("z_listunspent 1 999 true [\"PzWcy67ygestjagHaFZxjWxmawMeShmQWNPE8FNJp23pQS2twecwps5223ajUtN7iihxR4MmLDFQ19heHkBx5AKaDooS6aQ\"]"), runtime_error);
 
     // create shielded address so we have the spending key
     BOOST_CHECK_NO_THROW(retValue = CallRPC("z_getnewaddress sprout"));
@@ -1537,25 +1537,25 @@ BOOST_AUTO_TEST_CASE(rpc_z_shieldcoinbase_parameters)
 
     // bad to address
     BOOST_CHECK_THROW(CallRPC("z_shieldcoinbase "
-    "tmRr6yJonqGK23UVhrKuyvTpF8qxQQjKigJ INVALIDtnpoQJVnYBZZqkFadj2bJJLThNCxbADGB5gSGeYTAGGrT5tejsxY9Zc1BtY8nnHmZkB"), runtime_error);
+    "tPmCf9DhN5jv5CgrxDMHRz6wsEjWwM6qJnZ INVALIDtnpoQJVnYBZZqkFadj2bJJLThNCxbADGB5gSGeYTAGGrT5tejsxY9Zc1BtY8nnHmZkB"), runtime_error);
 
     // invalid fee amount, cannot be negative
     BOOST_CHECK_THROW(CallRPC("z_shieldcoinbase "
-            "tmRr6yJonqGK23UVhrKuyvTpF8qxQQjKigJ "
+            "tPmCf9DhN5jv5CgrxDMHRz6wsEjWwM6qJnZ "
             "tnpoQJVnYBZZqkFadj2bJJLThNCxbADGB5gSGeYTAGGrT5tejsxY9Zc1BtY8nnHmZkB "
             "-0.0001"
             ), runtime_error);
 
     // invalid fee amount, bigger than MAX_MONEY
     BOOST_CHECK_THROW(CallRPC("z_shieldcoinbase "
-            "tmRr6yJonqGK23UVhrKuyvTpF8qxQQjKigJ "
+            "tPmCf9DhN5jv5CgrxDMHRz6wsEjWwM6qJnZ "
             "tnpoQJVnYBZZqkFadj2bJJLThNCxbADGB5gSGeYTAGGrT5tejsxY9Zc1BtY8nnHmZkB "
             "21000001"
             ), runtime_error);
 
     // invalid limit, must be at least 0
     BOOST_CHECK_THROW(CallRPC("z_shieldcoinbase "
-    "tmRr6yJonqGK23UVhrKuyvTpF8qxQQjKigJ "
+    "tPmCf9DhN5jv5CgrxDMHRz6wsEjWwM6qJnZ "
     "tnpoQJVnYBZZqkFadj2bJJLThNCxbADGB5gSGeYTAGGrT5tejsxY9Zc1BtY8nnHmZkB "
     "100 -1"
     ), runtime_error);
@@ -1569,8 +1569,8 @@ BOOST_AUTO_TEST_CASE(rpc_z_shieldcoinbase_parameters)
     }
 
     // Test constructor of AsyncRPCOperation_sendmany
-    std::string testnetzaddr = "ztjiDe569DPNbyTE6TSdJTaSDhoXEHLGvYoUnBU1wfVNU52TEyT6berYtySkd21njAeEoh8fFJUT42kua9r8EnhBaEKqCpP";
-    std::string mainnetzaddr = "zcMuhvq8sEkHALuSU2i4NbNQxshSAYrpCExec45ZjtivYPbuiFPwk6WHy4SvsbeZ4siy1WheuRGjtaJmoD1J8bFqNXhsG6U";
+    std::string testnetzaddr = "tZRprtxz3ZzEYaSYSTZmptBSSaHwavexM1ivj78Vv2QppzpUcqQAhwPAYF99Ld6onX1i9b6YhJSLmsz1dcYzCnA5RpUgUQG";
+    std::string mainnetzaddr = "PzWcy67ygestjagHaFZxjWxmawMeShmQWNPE8FNJp23pQS2twecwps5223ajUtN7iihxR4MmLDFQ19heHkBx5AKaDooS6aQ";
 
     try {
         std::shared_ptr<AsyncRPCOperation> operation(new AsyncRPCOperation_shieldcoinbase(TransactionBuilder(), mtx, {}, testnetzaddr, -1 ));
@@ -1584,7 +1584,7 @@ BOOST_AUTO_TEST_CASE(rpc_z_shieldcoinbase_parameters)
         BOOST_CHECK( find_error(objError, "Empty inputs"));
     }
 
-    // Testnet payment addresses begin with 'zt'.  This test detects an incorrect prefix.
+    // Testnet payment addresses begin with 'tZ'.  This test detects an incorrect prefix.
     try {
         std::vector<ShieldCoinbaseUTXO> inputs = { ShieldCoinbaseUTXO{uint256(),0,0} };
         std::shared_ptr<AsyncRPCOperation> operation( new AsyncRPCOperation_shieldcoinbase(TransactionBuilder(), mtx, inputs, mainnetzaddr, 1) );
@@ -1696,10 +1696,10 @@ BOOST_AUTO_TEST_CASE(rpc_z_mergetoaddress_parameters)
     BOOST_CHECK_THROW(CallRPC("z_mergetoaddress toofewargs"), runtime_error);
     BOOST_CHECK_THROW(CallRPC("z_mergetoaddress just too many args present for this method"), runtime_error);
 
-    std::string taddr1 = "tmRr6yJonqGK23UVhrKuyvTpF8qxQQjKigJ";
-    std::string taddr2 = "tmYmhvdKqEte49iohoB9utgL1kPbGgWSdNc";
-    std::string aSproutAddr = "ztVtBC7vJFXPsZC8S3hXRu51rZysoJkSe6r1t9wk56bELrV9xTK6dx5TgSCH6RTw1dRD7HuApmcY1nhuQW9QfvE4MQXRRYU";
-    std::string aSaplingAddr = "ztestsapling19rnyu293v44f0kvtmszhx35lpdug574twc0lwyf4s7w0umtkrdq5nfcauxrxcyfmh3m7slemqsj";
+    std::string taddr1 = "tPmCf9DhN5jv5CgrxDMHRz6wsEjWwM6qJnZ";
+    std::string taddr2 = "tPp3pfmLi57S8qoccfWnn2o4tXyoQ23wVSp";
+    std::string aSproutAddr = "tZRprtxz3ZzEYaSYSTZmptBSSaHwavexM1ivj78Vv2QppzpUcqQAhwPAYF99Ld6onX1i9b6YhJSLmsz1dcYzCnA5RpUgUQG";
+    std::string aSaplingAddr = "ptestsapling1vqv3eu7n68k2n4fkngtqcc4qc0gca0rzx9pygyydzv9um4qty58hf9qx3pumfs2klzacxaykwnq";
 
     CheckRPCThrows("z_mergetoaddress [] " + taddr1,
         "Invalid parameter, fromaddresses array is empty.");
@@ -1771,10 +1771,10 @@ BOOST_AUTO_TEST_CASE(rpc_z_mergetoaddress_parameters)
 
     // Test constructor of AsyncRPCOperation_mergetoaddress
     MergeToAddressRecipient testnetzaddr(
-        "ztjiDe569DPNbyTE6TSdJTaSDhoXEHLGvYoUnBU1wfVNU52TEyT6berYtySkd21njAeEoh8fFJUT42kua9r8EnhBaEKqCpP",
+        "tZRprtxz3ZzEYaSYSTZmptBSSaHwavexM1ivj78Vv2QppzpUcqQAhwPAYF99Ld6onX1i9b6YhJSLmsz1dcYzCnA5RpUgUQG",
         "testnet memo");
     MergeToAddressRecipient mainnetzaddr(
-        "zcMuhvq8sEkHALuSU2i4NbNQxshSAYrpCExec45ZjtivYPbuiFPwk6WHy4SvsbeZ4siy1WheuRGjtaJmoD1J8bFqNXhsG6U",
+        "PzcUi7fe8dgjCH2bgVxhrHDkYFGnMp4i35GtvFhHbdR3Pb7w9fxD6xj17LyMPwyQi9yayQKkqtP2Ypicj9wMLX8QNA5zNFv",
         "mainnet memo");
 
     try {
@@ -1821,7 +1821,7 @@ BOOST_AUTO_TEST_CASE(rpc_z_mergetoaddress_parameters)
         BOOST_CHECK(find_error(objError, "Sprout notes are not supported by the TransactionBuilder"));
     }
 
-    // Testnet payment addresses begin with 'zt'.  This test detects an incorrect prefix.
+    // Testnet payment addresses begin with 'tZ'.  This test detects an incorrect prefix.
     try {
         std::vector<MergeToAddressInputUTXO> inputs = { MergeToAddressInputUTXO{ COutPoint{uint256(), 0}, 0, CScript()} };
         std::shared_ptr<AsyncRPCOperation> operation( new AsyncRPCOperation_mergetoaddress(boost::none, mtx, inputs, {}, {}, mainnetzaddr, 1) );

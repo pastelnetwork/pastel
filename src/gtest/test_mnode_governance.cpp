@@ -25,13 +25,13 @@ TEST(mnode_governance, CalculateLastPaymentBlock) {
     blocks = gov.CalculateLastPaymentBlock(60000000, 1);
     EXPECT_EQ(2, blocks);
 
-    // gov.AddTicket("eAJx7GUq4BKbMEWaCJgLEjXkQofA5HqQvxu", 1000000, "", true);
+    // gov.AddTicket("tPVQMdSyVnSYgrww5TTXSJeF75aPQ3bAfdm", 1000000, "", true);
 }
 
 TEST(mnode_governance, TicketProcessing) {
     SelectParams(CBaseChainParams::TESTNET);
 
-    std::string address("eAJx7GUq4BKbMEWaCJgLEjXkQofA5HqQvxu");
+    std::string address("tPVQMdSyVnSYgrww5TTXSJeF75aPQ3bAfdm");
     
     CTxDestination destination = DecodeDestination(address);
     assert(IsValidDestination(destination));

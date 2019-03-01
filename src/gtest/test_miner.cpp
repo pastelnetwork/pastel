@@ -49,7 +49,7 @@ TEST(Miner, GetMinerScriptPubKey) {
     EXPECT_FALSE((bool) scriptPubKey);
 
     // Partial address
-    mapArgs["-mineraddress"] = "AeWFpn4BfwQk3S6hVyDBF";
+    mapArgs["-mineraddress"] = "Ptq6hqeeAXta25PGaKHs1";
 #ifdef ENABLE_WALLET
     scriptPubKey = GetMinerScriptPubKey(reservekey);
 #else
@@ -58,7 +58,7 @@ TEST(Miner, GetMinerScriptPubKey) {
     EXPECT_FALSE((bool) scriptPubKey);
 
     // Typo in address
-    mapArgs["-mineraddress"] = "AeWFpn48fwQk3S6hVyDBFeh9PyTFATwAUuz"; //48 instead of 4B
+    mapArgs["-mineraddress"] = "Ptq6hqeeAXta25PGaKHs1ymktHbEbBugxeG"; //bB instead of b8
     
 #ifdef ENABLE_WALLET
     scriptPubKey = GetMinerScriptPubKey(reservekey);
@@ -67,13 +67,13 @@ TEST(Miner, GetMinerScriptPubKey) {
 #endif
     EXPECT_FALSE((bool) scriptPubKey);
 
-    // Set up expected scriptPubKey for AeWFpn4BfwQk3S6hVyDBFeh9PyTFATwAUuz
+    // Set up expected scriptPubKey for Ptq6hqeeAXta25PGaKHs1ymktHbEb8ugxeG
     CKeyID keyID;
-    keyID.SetHex("6bc0b8196c163a95b5aece93b8efeebdd083a77d");
+    keyID.SetHex("9E7848625B3B465D273EC83851907A143B483BF2");
     CScript expectedScriptPubKey = CScript() << OP_DUP << OP_HASH160 << ToByteVector(keyID) << OP_EQUALVERIFY << OP_CHECKSIG;
 
     // Valid address
-    mapArgs["-mineraddress"] = "AeWFpn4BfwQk3S6hVyDBFeh9PyTFATwAUuz";
+    mapArgs["-mineraddress"] = "Ptq6hqeeAXta25PGaKHs1ymktHbEb8ugxeG";
 #ifdef ENABLE_WALLET
     scriptPubKey = GetMinerScriptPubKey(reservekey);
 #else
@@ -83,7 +83,7 @@ TEST(Miner, GetMinerScriptPubKey) {
     EXPECT_EQ(expectedScriptPubKey, *scriptPubKey);
 
     // Valid address with leading whitespace
-    mapArgs["-mineraddress"] = "  AeWFpn4BfwQk3S6hVyDBFeh9PyTFATwAUuz";
+    mapArgs["-mineraddress"] = "  Ptq6hqeeAXta25PGaKHs1ymktHbEb8ugxeG";
 #ifdef ENABLE_WALLET
     scriptPubKey = GetMinerScriptPubKey(reservekey);
 #else
@@ -93,7 +93,7 @@ TEST(Miner, GetMinerScriptPubKey) {
     EXPECT_EQ(expectedScriptPubKey, *scriptPubKey);
 
     // Valid address with trailing whitespace
-    mapArgs["-mineraddress"] = "AeWFpn4BfwQk3S6hVyDBFeh9PyTFATwAUuz  ";
+    mapArgs["-mineraddress"] = "Ptq6hqeeAXta25PGaKHs1ymktHbEb8ugxeG  ";
 #ifdef ENABLE_WALLET
     scriptPubKey = GetMinerScriptPubKey(reservekey);
 #else

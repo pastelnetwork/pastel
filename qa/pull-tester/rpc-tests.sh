@@ -25,7 +25,7 @@ testScripts=(
     'wallet_overwintertx.py'
     'wallet_persistence.py'
     'wallet_nullifiers.py'
-    'wallet_1941.py'                  #FIXME - wallet_1941.py", line 52
+    'wallet_1941.py'
     'wallet_addresses.py'
     'wallet_sapling.py'
     'wallet_listnotes.py'
