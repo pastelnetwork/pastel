@@ -22,35 +22,41 @@
 using namespace std;
 using namespace libzcash;
 
-static const std::string strSecret1 = "KwP3Uea1FzaSi5L2qamYzuKyDzbQZWNREvopM6SEEfhSa6K23M2R";
-static const std::string strSecret2 = "L2RNGrpDxRVvUE98iZCivjek5Gccf8zaKTbxi6Zi2SoM5bKm292s";
-static const std::string strSecret1C = "L2gN2WpTbde7UQsuQSpA34FDAHSVWJpEKLvFW48wJZTWsnPSjAqf";
-static const std::string strSecret2C = "Kz41CxoPb5sPBoSzhxaiNEFTU2cw3EuRFTdxxAtTrpgoz9ZquBih";
-static const std::string addr1 = "PtkqegiGBYiKjGorBWW78i6dgXCHaYY7mdE";
-static const std::string addr2 = "PtiScdavG18NkzWqYYEKp1QMQ31ttWHR7u6";
-static const std::string addr1C = "PtkTSfL5X5AoRcjZXYReRvr5ujyAqAKJ3SN";
-static const std::string addr2C = "PtczsZ91Bt3oDPDQotzUsrx1wjmsFVgf28n";
+
+static const std::string strSecret1 = "5JNwExviH7LPkkqGSQWPFXv7CSSL9iVcXErbCTGhrS8a115gYXL";
+static const std::string addr1 = "Ptic9C5VyMVLr4i2YiXxtLjb1aFmuwexBEH";
+static const std::string strSecret2 = "5JeXXL3zo3WxqXduCsk2JEHHk4sfdaY3xAjzKkCoZ26hfETvm8A";
+static const std::string addr2 = "PtdhxECoCif19aaFaqYkLrYLB3qKpFV96Wj";
+//compressed
+static const std::string strSecret1C = "KyAsVxzBTXQcPGGiyzbjmJGwNYZsVv7zWZzWu5NjzPid2gsGvc2n";
+static const std::string addr1C = "PtWCkTisD1uVJjbBn45aCPrLaW8m87RjHGf";
+static const std::string strSecret2C = "KyV3kyWuUN7PbYkhBuiQebvzVkiGxu9N1jCjkXhY6Qazf7D8KMgz";
+static const std::string addr2C = "PtdZFnJnBFerFNmiVg9nKAJhS5ZzgNGSVbr";
+
+
 
 static const std::string strAddressBad = "PtVaZg6kVAXtXeag431je98ExWEndS7Y2bG";
 
+// #define KEY_TESTS_DUMPINFO
 #ifdef KEY_TESTS_DUMPINFO
 void dumpKeyInfo()
 {
-    for (int count=0; count<2; count++)
-        for (int nCompressed=0; nCompressed<2; nCompressed++)
+    for (int count1=1; count1<=2; count1++)
+    {
+        bool fCompressed = count1 == 2;
+        printf("//%s\n", fCompressed ? "compressed" : "uncompressed");
+        for (int count2=1; count2<=2; count2++)
         {
-            bool fCompressed = nCompressed == 1;
-            printf("  * %s:\n", fCompressed ? "compressed" : "uncompressed");
-
             CKey key;
             key.MakeNewKey(fCompressed);
-            printf("    * secret (base58): %s\n", EncodeSecret(key).c_str());
+            printf("static const std::string strSecret%d%s = \"%s\";\n", count2, fCompressed? "C": "", EncodeSecret(key).c_str());
             
             CPubKey pubkey = key.GetPubKey();
             vector<unsigned char> vchPubKey(pubkey.begin(), pubkey.end());
-            printf("    * pubkey (hex): %s\n", HexStr(vchPubKey).c_str());
-            printf("    * address (base58): %s\n", EncodeDestination(pubkey.GetID()).c_str());
+            //printf("    * pubkey (hex): %s\n", HexStr(vchPubKey).c_str());
+            printf("static const std::string addr%d%s = \"%s\";\n", count2, fCompressed? "C": "", EncodeDestination(pubkey.GetID()).c_str());
         }
+    }
 }
 #endif
 
@@ -59,6 +65,9 @@ BOOST_FIXTURE_TEST_SUITE(key_tests, BasicTestingSetup)
 
 BOOST_AUTO_TEST_CASE(key_test1)
 {
+#ifdef KEY_TESTS_DUMPINFO
+    dumpKeyInfo(); return;
+#endif
     CKey key1  = DecodeSecret(strSecret1);
     BOOST_CHECK(key1.IsValid() && !key1.IsCompressed());
     CKey key2  = DecodeSecret(strSecret2);

@@ -236,7 +236,7 @@ BOOST_AUTO_TEST_CASE(rpc_wallet)
     BOOST_CHECK_THROW(CallRPC("verifymessage " + EncodeDestination(demoAddress)), runtime_error);
     BOOST_CHECK_THROW(CallRPC("verifymessage " + EncodeDestination(demoAddress) + " " + retValue.get_str()), runtime_error);
     /* Illegal address */
-    BOOST_CHECK_THROW(CallRPC("verifymessage PtkqegiGBYiKjGorBWW78i6dgXCHaYY7mdE " + retValue.get_str() + " mymessage"), runtime_error);
+    BOOST_CHECK_THROW(CallRPC("verifymessage PtkqegiGBYiKjGorBWW78i6dgXCHaYY7md " + retValue.get_str() + " mymessage"), runtime_error);
     /* wrong address */
     BOOST_CHECK(CallRPC("verifymessage PtczsZ91Bt3oDPDQotzUsrx1wjmsFVgf28n " + retValue.get_str() + " mymessage").get_bool() == false);
     /* Correct address and signature but wrong message */
@@ -273,10 +273,10 @@ BOOST_AUTO_TEST_CASE(rpc_wallet)
     BOOST_CHECK_EQUAL(find_value(obj, "miner").get_real(), REWARD);
     BOOST_CHECK_NO_THROW(retValue = CallRPC("getblocksubsidy 1000000"));
     obj = retValue.get_obj();
-    BOOST_CHECK_EQUAL(find_value(obj, "miner").get_real(), REWARD/2);
+    BOOST_CHECK_EQUAL(find_value(obj, "miner").get_real(), REWARD/2.0);
     BOOST_CHECK_NO_THROW(retValue = CallRPC("getblocksubsidy 2000000"));
     obj = retValue.get_obj();
-    BOOST_CHECK_EQUAL(find_value(obj, "miner").get_real(), REWARD/4);
+    BOOST_CHECK_EQUAL(find_value(obj, "miner").get_real(), REWARD/4.0);
 
     /*
      * getblock
@@ -367,8 +367,8 @@ BOOST_AUTO_TEST_CASE(rpc_wallet_z_validateaddress)
     BOOST_CHECK_EQUAL(find_value(resultObj, "type").get_str(), "sprout");
     b = find_value(resultObj, "ismine").get_bool();
     BOOST_CHECK_EQUAL(b, true);
-    BOOST_CHECK_EQUAL(find_value(resultObj, "payingkey").get_str(), "f5bb3c888ccc9831e3f6ba06e7528e26a312eec3acc1823be8918b6a3a5e20ad");
-    BOOST_CHECK_EQUAL(find_value(resultObj, "transmissionkey").get_str(), "7a58c7132446564e6b810cf895c20537b3528357dc00150a8e201f491efa9c1a");
+    BOOST_CHECK_EQUAL(find_value(resultObj, "payingkey").get_str(), "e8afc660acc0fe48b792c553ed108bd24735bec48ccc45072666a4f9a3322b7c");
+    BOOST_CHECK_EQUAL(find_value(resultObj, "transmissionkey").get_str(), "26542394325b445ad87e286593c4fa93aaa847790d06e6f4258b6f402ac7d833");
 
     // This Sapling address is not valid, it belongs to another network
     BOOST_CHECK_NO_THROW(retValue = CallRPC("z_validateaddress ptestsapling1vqv3eu7n68k2n4fkngtqcc4qc0gca0rzx9pygyydzv9um4qty58hf9qx3pumfs2klzacxaykwnq"));
@@ -384,8 +384,8 @@ BOOST_AUTO_TEST_CASE(rpc_wallet_z_validateaddress)
     BOOST_CHECK_EQUAL(find_value(resultObj, "type").get_str(), "sapling");
     b = find_value(resultObj, "ismine").get_bool();
     BOOST_CHECK_EQUAL(b, false);
-    BOOST_CHECK_EQUAL(find_value(resultObj, "diversifier").get_str(), "1787997c30e94f050c634d");
-    BOOST_CHECK_EQUAL(find_value(resultObj, "diversifiedtransmissionkey").get_str(), "34ed1f60f5db5763beee1ddbb37dd5f7e541d4d4fbdcc09fbfcc6b8e949bbe9d");
+    BOOST_CHECK_EQUAL(find_value(resultObj, "diversifier").get_str(), "6d03250f727fa6d9ac29ec");
+    BOOST_CHECK_EQUAL(find_value(resultObj, "diversifiedtransmissionkey").get_str(), "b490fcae4b82b444a6e312d716654e7b6a09a0f1a0bb7e6cbcc7c76b58b31024");
 }
 
 /*
@@ -1686,7 +1686,7 @@ BOOST_AUTO_TEST_CASE(rpc_z_mergetoaddress_parameters)
     LOCK(pwalletMain->cs_wallet);
 
     CheckRPCThrows("z_mergetoaddress 1 2",
-        "Error: z_mergetoaddress is disabled. Run './zcash-cli help z_mergetoaddress' for instructions on how to enable this feature.");
+        "Error: z_mergetoaddress is disabled. Run './pascal-cli help z_mergetoaddress' for instructions on how to enable this feature.");
 
     // Set global state required for z_mergetoaddress
     fExperimentalMode = true;
@@ -1737,7 +1737,7 @@ BOOST_AUTO_TEST_CASE(rpc_z_mergetoaddress_parameters)
         "Amount out of range");
 
     // invalid fee amount, bigger than MAX_MONEY
-    CheckRPCThrows("z_mergetoaddress [\"" + taddr1 + "\"] "  + taddr2 + " 21000001",
+    CheckRPCThrows("z_mergetoaddress [\"" + taddr1 + "\"] "  + taddr2 + " 210000000001",
         "Amount out of range");
 
     // invalid transparent limit, must be at least 0
@@ -1877,7 +1877,7 @@ BOOST_AUTO_TEST_CASE(rpc_z_mergetoaddress_internals)
         operation->main();
         BOOST_CHECK(operation->isFailed());
         std::string msg = operation->getErrorMessage();
-        BOOST_CHECK( msg.find("Insufficient funds, have 0.00 and miners fee is 0.0001") != string::npos);
+        BOOST_CHECK( msg.find("Insufficient funds, have 0.00 and miners fee is 0.10") != string::npos);
     }
 
     // get_memo_from_hex_string())

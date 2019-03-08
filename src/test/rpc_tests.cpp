@@ -111,7 +111,7 @@ BOOST_AUTO_TEST_CASE(rpc_rawsign)
       "\"vout\":1,\"scriptPubKey\":\"a914b10c9df5f7edf436c697f02f1efdba4cf399615187\","
       "\"redeemScript\":\"512103debedc17b3df2badbcdd86d5feb4562b86fe182e5998abd8bcd4f122c6155b1b21027e940bb73ab8732bfdf7f9216ecefca5b94d6df834e77e108f68e66f126044c052ae\"}]";
     r = CallRPC(string("createrawtransaction ")+prevout+" "+
-      "{\"tPVQMdSyVnSYgrww5TTXSJeF75aPQ3bAfdm\":11}");
+      "{\"ptEg3T6LmUjonhxHzU419tbVXkoRycNGLZ8\":11}");
     string notsigned = r.get_str();
     string privkey1 = "\"KzsXybp9jX64P5ekX1KUxRQ79Jht9uzW7LorgwE65i5rWACL6LQe\"";
     string privkey2 = "\"Kyhdf5LuKTRx4ge69ybABsiUAWjVRK4XGxAKk2FQLp2HjGMy87Z4\"";
@@ -156,38 +156,41 @@ BOOST_AUTO_TEST_CASE(rpc_format_monetary_values)
 static UniValue ValueFromString(const std::string &str)
 {
     UniValue value;
+    //printf("%s\n", str.c_str());
     BOOST_CHECK(value.setNumStr(str));
     return value;
 }
 
 BOOST_AUTO_TEST_CASE(rpc_parse_monetary_values)
 {
+    //COIN_DECIMALS is 5 for Pastel
+
     BOOST_CHECK_THROW(AmountFromValue(ValueFromString("-0.00000001")), UniValue);
     BOOST_CHECK_EQUAL(AmountFromValue(ValueFromString("0")), 0LL);
-    BOOST_CHECK_EQUAL(AmountFromValue(ValueFromString("0.00000000")), 0LL);
-    BOOST_CHECK_EQUAL(AmountFromValue(ValueFromString("0.00000001")), 1LL);
-    BOOST_CHECK_EQUAL(AmountFromValue(ValueFromString("0.17622195")), 17622195LL);
-    BOOST_CHECK_EQUAL(AmountFromValue(ValueFromString("0.5")), 50000000LL);
-    BOOST_CHECK_EQUAL(AmountFromValue(ValueFromString("0.50000000")), 50000000LL);
-    BOOST_CHECK_EQUAL(AmountFromValue(ValueFromString("0.89898989")), 89898989LL);
-    BOOST_CHECK_EQUAL(AmountFromValue(ValueFromString("1.00000000")), 100000000LL);
-    BOOST_CHECK_EQUAL(AmountFromValue(ValueFromString("20999999.9999999")), 2099999999999990LL);
-    BOOST_CHECK_EQUAL(AmountFromValue(ValueFromString("20999999.99999999")), 2099999999999999LL);
+    BOOST_CHECK_EQUAL(AmountFromValue(ValueFromString("0.00000")), 0LL);
+    BOOST_CHECK_EQUAL(AmountFromValue(ValueFromString("0.00001")), 1LL);
+    BOOST_CHECK_EQUAL(AmountFromValue(ValueFromString("0.17622")), 17622LL);
+    BOOST_CHECK_EQUAL(AmountFromValue(ValueFromString("0.5")), 50000LL);
+    BOOST_CHECK_EQUAL(AmountFromValue(ValueFromString("0.50000")), 50000LL);
+    BOOST_CHECK_EQUAL(AmountFromValue(ValueFromString("0.89898")), 89898LL);
+    BOOST_CHECK_EQUAL(AmountFromValue(ValueFromString("1.00000")), 100000LL);
+    BOOST_CHECK_EQUAL(AmountFromValue(ValueFromString("20999999.9999")),  2099999999990LL);
+    BOOST_CHECK_EQUAL(AmountFromValue(ValueFromString("20999999.99999")), 2099999999999LL);
 
-    BOOST_CHECK_EQUAL(AmountFromValue(ValueFromString("1e-8")), COIN/100000000);
-    BOOST_CHECK_EQUAL(AmountFromValue(ValueFromString("0.1e-7")), COIN/100000000);
-    BOOST_CHECK_EQUAL(AmountFromValue(ValueFromString("0.01e-6")), COIN/100000000);
-    BOOST_CHECK_EQUAL(AmountFromValue(ValueFromString("0.0000000000000000000000000000000000000000000000000000000000000000000000000001e+68")), COIN/100000000);
+    BOOST_CHECK_EQUAL(AmountFromValue(ValueFromString("1e-5")), COIN/100000);
+    BOOST_CHECK_EQUAL(AmountFromValue(ValueFromString("0.1e-4")), COIN/100000);
+    BOOST_CHECK_EQUAL(AmountFromValue(ValueFromString("0.01e-3")), COIN/100000);
+    BOOST_CHECK_EQUAL(AmountFromValue(ValueFromString("0.0000000000000000000000000000000000000000000000000000000000000000000000001e+68")), COIN/100000);
     BOOST_CHECK_EQUAL(AmountFromValue(ValueFromString("10000000000000000000000000000000000000000000000000000000000000000e-64")), COIN);
     BOOST_CHECK_EQUAL(AmountFromValue(ValueFromString("0.000000000000000000000000000000000000000000000000000000000000000100000000000000000000000000000000000000000000000000000e64")), COIN);
 
-    BOOST_CHECK_THROW(AmountFromValue(ValueFromString("1e-9")), UniValue); //should fail
-    BOOST_CHECK_THROW(AmountFromValue(ValueFromString("0.000000019")), UniValue); //should fail
-    BOOST_CHECK_EQUAL(AmountFromValue(ValueFromString("0.00000001000000")), 1LL); //should pass, cut trailing 0
-    BOOST_CHECK_THROW(AmountFromValue(ValueFromString("19e-9")), UniValue); //should fail
-    BOOST_CHECK_EQUAL(AmountFromValue(ValueFromString("0.19e-6")), 19); //should pass, leading 0 is present
+    BOOST_CHECK_THROW(AmountFromValue(ValueFromString("1e-6")), UniValue); //should fail
+    BOOST_CHECK_THROW(AmountFromValue(ValueFromString("0.000019")), UniValue); //should fail
+    BOOST_CHECK_EQUAL(AmountFromValue(ValueFromString("0.00001000000")), 1LL); //should pass, cut trailing 0
+    BOOST_CHECK_THROW(AmountFromValue(ValueFromString("19e-6")), UniValue); //should fail
+    BOOST_CHECK_EQUAL(AmountFromValue(ValueFromString("0.19e-3")), 19); //should pass, leading 0 is present
 
-    BOOST_CHECK_THROW(AmountFromValue(ValueFromString("92233720368.54775808")), UniValue); //overflow error
+    BOOST_CHECK_THROW(AmountFromValue(ValueFromString("92233720368.54775")), UniValue); //overflow error
     BOOST_CHECK_THROW(AmountFromValue(ValueFromString("1e+11")), UniValue); //overflow error
     BOOST_CHECK_THROW(AmountFromValue(ValueFromString("1e11")), UniValue); //overflow error signless
     BOOST_CHECK_THROW(AmountFromValue(ValueFromString("93e+9")), UniValue); //overflow error
@@ -201,8 +204,8 @@ BOOST_AUTO_TEST_CASE(json_parse_errors)
     BOOST_CHECK_EQUAL(ParseNonRFCJSONValue(" 1.0").get_real(), 1.0);
     BOOST_CHECK_EQUAL(ParseNonRFCJSONValue("1.0 ").get_real(), 1.0);
 
-    BOOST_CHECK_THROW(AmountFromValue(ParseNonRFCJSONValue(".19e-6")), std::runtime_error); //should fail, missing leading 0, therefore invalid JSON
-    BOOST_CHECK_EQUAL(AmountFromValue(ParseNonRFCJSONValue("0.00000000000000000000000000000000000001e+30 ")), 1);
+    BOOST_CHECK_THROW(AmountFromValue(ParseNonRFCJSONValue(".19e-3")), std::runtime_error); //should fail, missing leading 0, therefore invalid JSON
+    BOOST_CHECK_EQUAL(AmountFromValue(ParseNonRFCJSONValue("0.00000000000000000000000000000000001e+30 ")), 1);
     // Invalid, initial garbage
     BOOST_CHECK_THROW(ParseNonRFCJSONValue("[1.0"), std::runtime_error);
     BOOST_CHECK_THROW(ParseNonRFCJSONValue("a1.0"), std::runtime_error);
@@ -312,7 +315,7 @@ BOOST_AUTO_TEST_CASE(rpc_raw_create_overwinter_v3)
       "[{\"txid\":\"b4cc287e58f87cdae59417329f710f3ecd75a4ee1d2872b7248f50977c8493f3\","
       "\"vout\":1}]";
     r = CallRPC(string("createrawtransaction ") + prevout + " " +
-      "{\"tPVQMdSyVnSYgrww5TTXSJeF75aPQ3bAfdm\":11}");
+      "{\"ttTigMmXu3SJwFsJfBxyTcAY3zD2CxrE9YG\":11}");
     std::string rawhex = r.get_str();
     BOOST_CHECK_NO_THROW(r = CallRPC(string("decoderawtransaction ") + rawhex));
     BOOST_CHECK_EQUAL(find_value(r.get_obj(), "overwintered").get_bool(), true);
