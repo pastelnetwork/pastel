@@ -25,7 +25,7 @@ class WalletShieldCoinbaseTest (BitcoinTestFramework):
 
     def setup_network(self, split=False):
         args = ['-debug=zrpcunsafe']
-        args2 = ['-debug=zrpcunsafe', "-mempooltxinputlimit=7"]
+        args2 = ['-debug=zrpcunsafe']
         if self.addr_type != 'sprout':
             nu = [
                 '-nuparams=5ba81b19:0', # Overwinter
@@ -184,18 +184,6 @@ class WalletShieldCoinbaseTest (BitcoinTestFramework):
         self.nodes[1].generate(1)
         self.sync_all()
 
-        if self.addr_type == 'sprout':
-            # Verify maximum number of utxos which node 2 can shield is limited by option -mempooltxinputlimit
-            # This option is used when the limit parameter is set to 0.
-            mytaddr = self.nodes[2].getnewaddress()
-            result = self.nodes[2].z_shieldcoinbase(mytaddr, myzaddr, self._fee, 0)
-            assert_equal(result["shieldingUTXOs"], Decimal('7'))
-            assert_equal(result["remainingUTXOs"], Decimal('13'))
-            wait_and_assert_operationid_status(self.nodes[2], result['opid'])
-            self.sync_all()
-            self.nodes[1].generate(1)
-            self.sync_all()
-
         # Verify maximum number of utxos which node 0 can shield is set by default limit parameter of 50
         self.nodes[0].generate(200)
         self.sync_all()
@@ -210,8 +198,7 @@ class WalletShieldCoinbaseTest (BitcoinTestFramework):
         assert_equal(result["shieldingUTXOs"], Decimal('33'))
         assert_equal(result["remainingUTXOs"], Decimal('17'))
         wait_and_assert_operationid_status(self.nodes[0], result['opid'])
-        # Don't sync node 2 which rejects the tx due to its mempooltxinputlimit
-        sync_blocks(self.nodes[:2])
-        sync_mempools(self.nodes[:2])
+        sync_blocks(self.nodes)
+        sync_mempools(self.nodes)
         self.nodes[1].generate(1)
         self.sync_all()

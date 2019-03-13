@@ -19,6 +19,9 @@
 
 using namespace std;
 
+#define OVERWINTER_STARTING_BLOCK 10
+#define SAPLING_STARTING_BLOCK 20
+
 static CBlock CreateGenesisBlock(const char* pszTimestamp, 
                                  const std::vector<unsigned char> &genesisPubKey, 
                                  uint32_t nTime, 
@@ -277,9 +280,9 @@ public:
         consensus.vUpgrades[Consensus::UPGRADE_TESTDUMMY].nProtocolVersion = 170002;
         consensus.vUpgrades[Consensus::UPGRADE_TESTDUMMY].nActivationHeight = Consensus::NetworkUpgrade::NO_ACTIVATION_HEIGHT;
         consensus.vUpgrades[Consensus::UPGRADE_OVERWINTER].nProtocolVersion = 170005;
-        consensus.vUpgrades[Consensus::UPGRADE_OVERWINTER].nActivationHeight = 347500;
+        consensus.vUpgrades[Consensus::UPGRADE_OVERWINTER].nActivationHeight = OVERWINTER_STARTING_BLOCK;
         consensus.vUpgrades[Consensus::UPGRADE_SAPLING].nProtocolVersion = 170007;
-        consensus.vUpgrades[Consensus::UPGRADE_SAPLING].nActivationHeight = 419200;
+        consensus.vUpgrades[Consensus::UPGRADE_SAPLING].nActivationHeight = SAPLING_STARTING_BLOCK;
         consensus.nMaxGovernanceAmount = 1000000*COIN;
 
         // The best chain should have at least this much work.
@@ -380,9 +383,9 @@ public:
         consensus.vUpgrades[Consensus::UPGRADE_TESTDUMMY].nProtocolVersion = 170002;
         consensus.vUpgrades[Consensus::UPGRADE_TESTDUMMY].nActivationHeight = Consensus::NetworkUpgrade::NO_ACTIVATION_HEIGHT;
         consensus.vUpgrades[Consensus::UPGRADE_OVERWINTER].nProtocolVersion = 170003;
-        consensus.vUpgrades[Consensus::UPGRADE_OVERWINTER].nActivationHeight = 207500;
+        consensus.vUpgrades[Consensus::UPGRADE_OVERWINTER].nActivationHeight = OVERWINTER_STARTING_BLOCK;
         consensus.vUpgrades[Consensus::UPGRADE_SAPLING].nProtocolVersion = 170007;
-        consensus.vUpgrades[Consensus::UPGRADE_SAPLING].nActivationHeight = 280000;
+        consensus.vUpgrades[Consensus::UPGRADE_SAPLING].nActivationHeight = SAPLING_STARTING_BLOCK;
         consensus.nMaxGovernanceAmount = 1000000*COIN;
 
         // The best chain should have at least this much work.

@@ -24,7 +24,7 @@ class WalletMergeToAddressTest (BitcoinTestFramework):
         self.nodes = []
         self.nodes.append(start_node(0, self.options.tmpdir, args))
         self.nodes.append(start_node(1, self.options.tmpdir, args))
-        args2 = ['-debug=zrpcunsafe', '-experimentalfeatures', '-zmergetoaddress', '-mempooltxinputlimit=7']
+        args2 = ['-debug=zrpcunsafe', '-experimentalfeatures', '-zmergetoaddress']
         self.nodes.append(start_node(2, self.options.tmpdir, args2))
         connect_nodes_bi(self.nodes,0,1)
         connect_nodes_bi(self.nodes,1,2)
@@ -285,18 +285,6 @@ class WalletMergeToAddressTest (BitcoinTestFramework):
             self.nodes[1].generate(1)
         self.sync_all()
 
-        # Verify maximum number of UTXOs which node 2 can shield is limited by option -mempooltxinputlimit
-        # This option is used when the limit parameter is set to 0.
-        result = self.nodes[2].z_mergetoaddress([n2taddr], myzaddr, Decimal('0.0001'), 0)
-        assert_equal(result["mergingUTXOs"], Decimal('7'))
-        assert_equal(result["remainingUTXOs"], Decimal('13'))
-        assert_equal(result["mergingNotes"], Decimal('0'))
-        assert_equal(result["remainingNotes"], Decimal('0'))
-        wait_and_assert_operationid_status(self.nodes[2], result['opid'])
-        self.sync_all()
-        self.nodes[1].generate(1)
-        self.sync_all()
-
         # Verify maximum number of UTXOs which node 0 can shield is set by default limit parameter of 50
         mytaddr = self.nodes[0].getnewaddress()
         for i in range(100):
@@ -319,9 +307,8 @@ class WalletMergeToAddressTest (BitcoinTestFramework):
         # Remaining notes are only counted if we are trying to merge any notes
         assert_equal(result["remainingNotes"], Decimal('0'))
         wait_and_assert_operationid_status(self.nodes[0], result['opid'])
-        # Don't sync node 2 which rejects the tx due to its mempooltxinputlimit
-        sync_blocks(self.nodes[:2])
-        sync_mempools(self.nodes[:2])
+        sync_blocks(self.nodes)
+        sync_mempools(self.nodes)
         self.nodes[1].generate(1)
         self.sync_all()
 
@@ -358,9 +345,8 @@ class WalletMergeToAddressTest (BitcoinTestFramework):
         assert_equal(result["mergingNotes"], Decimal('2'))
         assert_equal(result["remainingNotes"], Decimal('1'))
         wait_and_assert_operationid_status(self.nodes[0], result['opid'])
-        # Don't sync node 2 which rejects the tx due to its mempooltxinputlimit
-        sync_blocks(self.nodes[:2])
-        sync_mempools(self.nodes[:2])
+        sync_blocks(self.nodes)
+        sync_mempools(self.nodes)
         self.nodes[1].generate(1)
         self.sync_all()
 

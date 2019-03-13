@@ -186,20 +186,6 @@ bool AsyncRPCOperation_shieldcoinbase::main_impl() {
 
     size_t numInputs = inputs_.size();
 
-    // Check mempooltxinputlimit to avoid creating a transaction which the local mempool rejects
-    size_t limit = (size_t)GetArg("-mempooltxinputlimit", 0);
-    {
-        LOCK(cs_main);
-        if (NetworkUpgradeActive(chainActive.Height() + 1, Params().GetConsensus(), Consensus::UPGRADE_OVERWINTER)) {
-            limit = 0;
-        }
-    }
-    if (limit>0 && numInputs > limit) {
-        throw JSONRPCError(RPC_WALLET_ERROR,
-            strprintf("Number of inputs %d is greater than mempooltxinputlimit of %d",
-            numInputs, limit));
-    }
-
     CAmount targetAmount = 0;
     for (ShieldCoinbaseUTXO & utxo : inputs_) {
         targetAmount += utxo.amount;

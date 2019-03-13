@@ -10,7 +10,7 @@ from mergetoaddress_helper import MergeToAddressHelper
 
 
 class MergeToAddressSprout (BitcoinTestFramework):
-    helper = MergeToAddressHelper('sprout', 'ANY_SPROUT', 800, 662, 138, True)
+    helper = MergeToAddressHelper('sprout', 'ANY_SPROUT', 800, 662, 138)
 
     def setup_chain(self):
         self.helper.setup_chain(self)
