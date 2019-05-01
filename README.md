@@ -23,7 +23,31 @@ Building
 --------
 
 Build Pastel along with most dependencies from source by running
-./pcutil/build.sh. Currently only Linux is officially supported.
+./pcutil/build.sh. Currently only Linux and Windows are officially supported.
+
+### Dependencies
+#### Main
+```shell
+sudo apt-get install \
+build-essential pkg-config libc6-dev m4 g++-multilib \
+autoconf libtool ncurses-dev unzip git python python-zmq \
+zlib1g-dev wget curl bsdmainutils automake
+```
+
+#### To build for Windows (on Linux)
+```shell
+sudo apt-get install mingw-w64
+
+## To display a current selection and make a new selection
+sudo update-alternatives --config x86_64-w64-mingw32-gcc
+sudo update-alternatives --config x86_64-w64-mingw32-g++
+```
+
+#### To run test suite
+```shell
+sudo apt-get install python-pip
+sudo pip install pyblake2
+```
 
 License
 -------
