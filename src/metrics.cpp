@@ -222,7 +222,7 @@ int printStats(bool mining)
 
     if (IsInitialBlockDownload()) {
         int netheight = EstimateNetHeight(height, tipmediantime, Params());
-        int downloadPercent = height * 100 / netheight;
+        int downloadPercent = netheight == 0? netheight: height * 100 / netheight;
         std::cout << "     " << _("Downloading blocks") << " | " << height << " / ~" << netheight << " (" << downloadPercent << "%)" << std::endl;
     } else {
         std::cout << "           " << _("Block height") << " | " << height << std::endl;
