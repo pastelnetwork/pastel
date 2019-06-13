@@ -74,6 +74,9 @@ bool CMasternode::UpdateFromNewBroadcast(CMasternodeBroadcast& mnb)
     vchSig = mnb.vchSig;
     nProtocolVersion = mnb.nProtocolVersion;
     addr = mnb.addr;
+    strPyAddress = mnb.strPyAddress;
+    strPyPubKey = mnb.strPyPubKey;
+    strPyCfg = mnb.strPyCfg;
     nPoSeBanScore = 0;
     nPoSeBanHeight = 0;
     nTimeLastChecked = 0;
