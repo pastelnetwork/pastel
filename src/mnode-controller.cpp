@@ -390,6 +390,18 @@ boost::filesystem::path CMasterNodeController::GetMasternodeConfigFile()
 
 CAmount CMasterNodeController::GetNetworkFeePerMB()
 {
+
+    if (fMasterNode) {
+        CAmount nFee = 0;
+        std::map<COutPoint, CMasternode> mapMasternodes = masternodeManager.GetFullMasternodeMap();
+        for (auto& mnpair : mapMasternodes) {
+            CMasternode mn = mnpair.second;
+            nFee += mn.aMNFeePerMB > 0? mn.aMNFeePerMB: masterNodeCtrl.MasternodeFeePerMBDefault;
+        }
+        nFee /= mapMasternodes.size();
+        return nFee;
+    }
+
     return MasternodeFeePerMBDefault;
 }
 
@@ -474,6 +486,7 @@ void CMasterNodeController::ThreadMasterNodeMaintenance()
                 masterNodeCtrl.masternodeManager.CheckAndRemove(true);
                 masterNodeCtrl.masternodePayments.CheckAndRemove();
                 masterNodeCtrl.masternodeGovernance.CheckAndRemove();
+                masterNodeCtrl.masternodeMessages.CheckAndRemove();
             }
             if(masterNodeCtrl.IsMasterNode() && (nTick % (60 * 5) == 0)) {
                 masterNodeCtrl.masternodeManager.DoFullVerificationStep();

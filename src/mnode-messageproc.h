@@ -12,7 +12,7 @@
 
 extern CCriticalSection cs_mapSeenMessages;
 extern CCriticalSection cs_mapOurMessages;
-extern CCriticalSection cs_mapLatestSender;
+//extern CCriticalSection cs_mapLatestSender;
 
 class CMasternodeMessage
 {
@@ -24,7 +24,7 @@ public:
     int64_t sigTime; //message times
     std::vector<unsigned char> vchSig;
 
-    CMasternodeMessage() = default;
+    CMasternodeMessage() {}
 
     CMasternodeMessage(COutPoint outpointMasternodeFrom, COutPoint outpointMasternodeTo, std::string& msg) :
         vinMasternodeFrom(outpointMasternodeFrom),
@@ -77,7 +77,7 @@ public:
 
     template<typename Stream, typename Operation>
     inline void SerializationOp(Stream &s, Operation ser_action, int nType, int nVersion) {
-        LOCK(cs_mapSeenMessages);
+        LOCK2(cs_mapSeenMessages, cs_mapOurMessages);
         READWRITE(mapSeenMessages);
         READWRITE(mapOurMessages);
     }
@@ -86,7 +86,7 @@ public:
     void ProcessMessage(CNode *pfrom, std::string &strCommand, CDataStream &vRecv);
     void CheckAndRemove();
     void Clear();
-    int SizeAll() { return mapSeenMessages.size(); }
+    int Size() { return mapSeenMessages.size(); }
     int SizeOur() { return mapOurMessages.size(); }
     std::string ToString() const;
 };

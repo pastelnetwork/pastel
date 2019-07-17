@@ -11,7 +11,7 @@
 
 CCriticalSection cs_mapSeenMessages;
 CCriticalSection cs_mapOurMessages;
-CCriticalSection cs_mapLatestSender;
+//CCriticalSection cs_mapLatestSender;
 
 bool CMasternodeMessage::Sign()
 {
@@ -81,7 +81,6 @@ void CMasternodeMessage::Relay()
 
 std::string CMasternodeMessage::ToString() const
 {
-
     std::ostringstream info;
     info << vinMasternodeFrom.prevout.ToStringShort() <<
          ", " << vinMasternodeTo.prevout.ToStringShort() <<
@@ -94,7 +93,7 @@ std::string CMasternodeMessage::ToString() const
 
 void CMasternodeMessageProcessor::ProcessMessage(CNode* pfrom, std::string& strCommand, CDataStream& vRecv)
 {
-    if (strCommand == NetMsgType::MASTERNODEMESSAGE) {
+/*    if (strCommand == NetMsgType::MASTERNODEMESSAGE) {
 
         CMasternodeMessage message;
         vRecv >> message;
@@ -108,7 +107,7 @@ void CMasternodeMessageProcessor::ProcessMessage(CNode* pfrom, std::string& strC
         if(!masterNodeCtrl.masternodeSync.IsMasternodeListSynced()) return;
 
 //        check
-//        cs_mapOurMessages
+//        cs_mapLatestSender
 
         {
             LOCK(cs_mapSeenMessages);
@@ -170,17 +169,18 @@ void CMasternodeMessageProcessor::ProcessMessage(CNode* pfrom, std::string& strC
         //masterNodeCtrl.masternodeSync.BumpAssetLastTime("MASTERNODEMESSAGE");
 
         LogPrintf("MASTERNODEMESSAGE -- %s message %s from %d.\n", bOurMessage? "Got": "Relaid", message.ToString(), pfrom->id);
-    }}
+    }*/
+}
 
 void CMasternodeMessageProcessor::CheckAndRemove()
 {
-    if(!masterNodeCtrl.masternodeSync.IsBlockchainSynced()) return;
+/*    if(!masterNodeCtrl.masternodeSync.IsBlockchainSynced()) return;
 
     LOCK(cs_mapSeenMessages);
 
-    auto it = mapSeenMessages.begin();
-    while(it != mapSeenMessages.end()) {
-        CMasternodeMessage& item = (*it).second;
+    for (auto& mnpair : mapSeenMessages) {
+
+        CMasternodeMessage& item = mnpair.second;
 
         //remove old (1 day old?) stuff from Seen map - mapSeenMessages
 
@@ -194,18 +194,21 @@ void CMasternodeMessageProcessor::CheckAndRemove()
         //     ++it;
         // }
     }
-    LogPrintf("CMasternodeMessageProcessor::CheckAndRemove -- %s\n", ToString());
+    LogPrintf("CMasternodeMessageProcessor::CheckAndRemove -- %s\n", ToString());*/
 }
 
 void CMasternodeMessageProcessor::Clear()
 {
-    LOCK(cs_mapSeenMessages);
-    mapSeenMessages.clear();
+//    LOCK2(cs_mapSeenMessages, cs_mapOurMessages);
+//    mapSeenMessages.clear();
+//    mapOurMessages.clear();
 }
 
 std::string CMasternodeMessageProcessor::ToString() const
 {
-    std::ostringstream info;
-    info << "Messages: " << (int)mapSeenMessages.size();
-    return info.str();
+//    std::ostringstream info;
+//    info << "Seen messages: " << (int)mapSeenMessages.size() <<
+//            "; Our messages: " << (int)mapOurMessages.size();
+//    return info.str();
+    return "";
 }

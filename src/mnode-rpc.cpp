@@ -601,22 +601,7 @@ UniValue masternode(const UniValue& params, bool fHelp)
     }
     if (strCommand == "getnetworkfee")
     {
-        CAmount nFee = 0;
-
-        std::map<COutPoint, CMasternode> mapMasternodes = masterNodeCtrl.masternodeManager.GetFullMasternodeMap();
-
-        if (!masterNodeCtrl.IsMasterNode()) {
-            if(!masterNodeCtrl.masternodeSync.IsMasternodeListSynced())
-                throw JSONRPCError(RPC_INTERNAL_ERROR, "Masternode list is still syncing");
-            else
-                throw JSONRPCError(RPC_INTERNAL_ERROR, "Masternode list is empty");
-        }
-
-        for (auto& mnpair : mapMasternodes) {
-            CMasternode mn = mnpair.second;
-            nFee += mn.aMNFeePerMB > 0? mn.aMNFeePerMB: masterNodeCtrl.MasternodeFeePerMBDefault;
-        }
-        nFee /= mapMasternodes.size();
+        CAmount nFee = masterNodeCtrl.GetNetworkFeePerMB();
 
         UniValue mnObj(UniValue::VOBJ);
         mnObj.push_back(Pair("networkfee", nFee));
