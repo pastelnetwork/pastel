@@ -1,6 +1,8 @@
 #CMakeLists.txt
 #cmake-build-debug/
 .idea/
+venv/
+venv27/
 
 compile_commands.json
 

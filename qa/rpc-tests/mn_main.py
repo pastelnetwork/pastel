@@ -39,7 +39,8 @@ class MasterNodeMainTest (MasterNodeCommon):
         self.setup_masternodes_network(private_keys_list, self.number_of_simple_nodes)
 
     def run_test (self):
-        tests = ['cache', 'sync', 'ping', 'restart', 'spent']
+        # tests = ['cache', 'sync', 'ping', 'restart', 'spent', 'fee']
+        tests = ['fee']
 
         print("=== Test MN basics ===")
         self.mining_enough(1, 2)
@@ -56,7 +57,7 @@ class MasterNodeMainTest (MasterNodeCommon):
         # 3. Check all nodes
         # wait_for_it(120, 20, "ENABLED", self.nodes[0:self.total_number_of_nodes], mn_id)
 
-        # tests = ['cache', 'sync', 'ping', 'restart', 'spent']
+        # tests = ['cache', 'sync', 'ping', 'restart', 'spent', "fee"]
         if 'cache' in tests:
             print("=== Test cache save/load ===")
             print("Stopping node 1...")
@@ -78,7 +79,7 @@ class MasterNodeMainTest (MasterNodeCommon):
 
             wait_for_it(20, 10, "ENABLED", self.nodes[0:self.total_number_of_nodes], mn_id)
 
-        # tests = ['cache', 'sync', 'ping', 'restart', 'spent']
+        # tests = ['cache', 'sync', 'ping', 'restart', 'spent', "fee"]
         if 'sync' in tests:
             print("=== Test MN list sync ===")
             print("Test new node sync")
@@ -91,7 +92,7 @@ class MasterNodeMainTest (MasterNodeCommon):
 
             wait_for_it(20, 10, "ENABLED", self.nodes[0:self.total_number_of_nodes], mn_id)
 
-        # tests = ['cache', 'sync', 'ping', 'restart', 'spent']
+        # tests = ['cache', 'sync', 'ping', 'restart', 'spent', "fee"]
         if 'ping' in tests:
             print("=== Test Ping ===")
             print("Stopping node 0 - Masternode...")
@@ -108,7 +109,7 @@ class MasterNodeMainTest (MasterNodeCommon):
             
             wait_for_it(120, 20, "ENABLED", self.nodes[0:self.total_number_of_nodes], mn_id)
         
-        # tests = ['cache', 'sync', 'ping', 'restart', 'spent']
+        # tests = ['cache', 'sync', 'ping', 'restart', 'spent', "fee"]
         if 'restart' in tests:
             print("=== Test 'restart required' ===")
             print("Stopping node 0 - Masternode...")
@@ -133,7 +134,7 @@ class MasterNodeMainTest (MasterNodeCommon):
             # wait_for_it(30, 10, "PRE_ENABLED", self.nodes[0:self.total_number_of_nodes], mn_id, 6)
             wait_for_it(120, 20, "ENABLED", self.nodes[0:self.total_number_of_nodes], mn_id, 3)
 
-        # tests = ['cache', 'sync', 'ping', 'restart', 'spent']
+        # tests = ['cache', 'sync', 'ping', 'restart', 'spent', "fee"]
         if 'spent' in tests:
             print("=== Test MN Spent ===")
 
@@ -172,6 +173,17 @@ class MasterNodeMainTest (MasterNodeCommon):
 
             print(self.nodes[0].masternode("status")["status"])
             assert_equal(self.nodes[0].masternode("status")["status"], "Not capable masternode: Masternode not in masternode list")
+
+        # tests = ['cache', 'sync', 'ping', 'restart', 'spent', "fee"]
+        if 'fee' in tests:
+            print("=== Test MN Fee ===")
+            assert_equal(self.nodes[0].getnetworkfee(), 1)
+            assert_equal(self.nodes[1].getnetworkfee(), 1)
+            assert_equal(self.nodes[2].getnetworkfee(), 1)
+
+            assert_equal(self.nodes[0].getlocalfee(), 1)
+            assert_equal(self.nodes[1].getlocalfee(), 1)
+            assert_equal(self.nodes[2].getlocalfee(), 1)
 
         print("All set...")
 

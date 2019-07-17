@@ -123,6 +123,7 @@ MNODE_CPP = \
   mnode-validation.cpp \
   mnode-payments.cpp \
   mnode-governance.cpp \
+  mnode-messageproc.cpp \
   mnode-notificationinterface.cpp \
   mnode-controller.cpp
 
@@ -137,6 +138,7 @@ MNODE_H = \
   mnode-validation.h \
   mnode-payments.h \
   mnode-governance.h \
+  mnode-messageproc.h \
   mnode-controller.h \
   mnode-notificationinterface.h \
   mnode-sync.h

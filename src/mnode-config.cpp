@@ -19,9 +19,9 @@ using json = nlohmann::json;
             "txid": "",                         //collateral_output_txid
             "outIndex": "",                     //collateral_output_index
 
-            "pyAddress": "10.10.10.10:1111",    //pyMN's ip and port
-            "pyPubKey": "",                     //pyMN's private key
-            "pyCfg": {},                        //extra config for pyMN
+            "extAddress": "10.10.10.10:1111",    //StoVaCore's ip and port
+            "extKey": "",                        //StoVaCore's private key
+            "extCfg": {},                        //StoVaCore's config
         }
     }
 */
@@ -83,9 +83,9 @@ bool CMasternodeConfig::read(std::string& strErr)
                 {"mnPrivKey", ""},
                 {"txid", ""},
                 {"outIndex", ""},
-                {"pyAddress", ""},
-                {"pyPubKey", ""},
-                {"pyCfg", {}}
+                {"extAddress", ""},
+                {"extKey", ""},
+                {"extCfg", {}}
             }}
         };
         pathMasternodeConfigFile += "-sample";
@@ -119,7 +119,7 @@ bool CMasternodeConfig::read(std::string& strErr)
             continue;
         }
 
-        std::string alias, mnAddress, mnPrivKey, txid, outIndex, pyAddress, pyPubKey, pyCfg;
+        std::string alias, mnAddress, mnPrivKey, txid, outIndex, extAddress, extKey, extCfg;
         
         alias = it.key();
 
@@ -137,18 +137,18 @@ bool CMasternodeConfig::read(std::string& strErr)
             return false;
         }
 
-        pyAddress = get_string(it, "pyAddress");
-        if (!pyAddress.empty() && !checkIPAddressPort(pyAddress, alias, false, strErr)) {
-            strErr += " (pyAddress)";
+        extAddress = get_string(it, "extAddress");
+        if (!extAddress.empty() && !checkIPAddressPort(extAddress, alias, false, strErr)) {
+            strErr += " (extAddress)";
             return false;
         }
 
-        pyPubKey = get_string(it, "pyPubKey");
-        pyCfg = get_obj_as_string(it, "pyCfg");
+        extKey = get_string(it, "extKey");
+        extCfg = get_obj_as_string(it, "extCfg");
 
-        if (pyCfg.length() > 1024) pyCfg.erase(1024, std::string::npos);
+        if (extCfg.length() > 1024) extCfg.erase(1024, std::string::npos);
 
-        CMasternodeEntry cme(alias, mnAddress, mnPrivKey, txid, outIndex, pyAddress, pyPubKey, pyCfg);
+        CMasternodeEntry cme(alias, mnAddress, mnPrivKey, txid, outIndex, extAddress, extKey, extCfg);
         entries.push_back(cme);
     }
 

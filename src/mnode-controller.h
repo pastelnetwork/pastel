@@ -18,6 +18,7 @@
 #include "mnode-payments.h"
 #include "mnode-validation.h"
 #include "mnode-governance.h"
+#include "mnode-messageproc.h"
 #include "mnode-notificationinterface.h"
 
 #ifdef ENABLE_WALLET
@@ -48,12 +49,15 @@ public:
     CMasternodeRequestTracker requestTracker;
     // Keep track of what node has/was asked for and when
     CMasternodeGovernance masternodeGovernance;
+    // Keep track of the latest messages
+    CMasternodeMessageProcessor masternodeMessages;
 
     bool fMasterNode;
 
 public:
     int MasternodeProtocolVersion;
     int MasternodeCollateral;
+    CAmount MasternodeFeePerMBDefault;
 
     int MasternodeCheckSeconds, MasternodeMinMNBSeconds, MasternodeMinMNPSeconds, MasternodeExpirationSeconds, MasternodeWatchdogMaxSeconds, MasternodeNewStartRequiredSeconds;
     int MasternodePOSEBanMaxScore;
@@ -74,6 +78,7 @@ public:
     }
 
     bool IsMasterNode() const {return fMasterNode;}
+    bool IsActiveMasterNode() const {return fMasterNode && activeMasternode.nState == CActiveMasternode::ActiveMasternodeState::Started;}
 
 #ifdef ENABLE_WALLET
     bool EnableMasterNode(std::ostringstream& strErrors, boost::thread_group& threadGroup, CWallet* pwalletMain);
@@ -93,7 +98,9 @@ public:
     bool AlreadyHave(const CInv& inv);
     bool ProcessGetData(CNode* pfrom, const CInv& inv);
 
-/***** MasterNode operations *****/
+    CAmount GetNetworkFeePerMB();
+
+    /***** MasterNode operations *****/
     CSemaphore *semMasternodeOutbound;
 
     void ThreadMasterNodeMaintenance();

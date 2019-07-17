@@ -22,21 +22,21 @@ public:
         std::string mnPrivKey;
         std::string txHash;
         std::string outputIndex;
-        std::string pyAddress;
-        std::string pyPubKey;
-        std::string pyCfg;
+        std::string extAddress;
+        std::string extKey;
+        std::string extCfg;
     public:
 
         CMasternodeEntry(std::string alias, std::string mnAddress, std::string mnPrivKey, std::string txHash, std::string outputIndex,
-                         std::string pyAddress, std::string pyPubKey, std::string pyCfg) {
+                         std::string extAddress, std::string extKey, std::string extCfg) {
             this->alias = alias;
             this->mnAddress = mnAddress;
             this->mnPrivKey = mnPrivKey;
             this->txHash = txHash;
             this->outputIndex = outputIndex;
-            this->pyAddress = pyAddress;
-            this->pyPubKey = pyPubKey;
-            this->pyCfg = pyCfg;
+            this->extAddress = extAddress;
+            this->extKey = extKey;
+            this->extCfg = extCfg;
         }
 
         const std::string& getAlias() const {
@@ -59,16 +59,16 @@ public:
             return outputIndex;
         }
 
-        const std::string& getPyIp() const {
-            return pyAddress;
+        const std::string& getExtIp() const {
+            return extAddress;
         }
 
-        const std::string& getPyPubKey() const {
-            return pyPubKey;
+        const std::string& getExtKey() const {
+            return extKey;
         }
 
-        const std::string& getPyCfg() const {
-            return pyCfg;
+        const std::string& getExtCfg() const {
+            return extCfg;
         }
     };
 

@@ -49,9 +49,9 @@ UniValue _format_workers_info(COutPoint (&blockWorkers)[3])
             objItem.push_back(Pair("lastseen",      mnInfo.nTimeLastPing));
             objItem.push_back(Pair("activeseconds", mnInfo.nTimeLastPing - mnInfo.sigTime));
 
-            objItem.push_back(Pair("pyAddress", mnInfo.strPyAddress));
-            objItem.push_back(Pair("pyPubKey", mnInfo.strPyPubKey));
-            objItem.push_back(Pair("pyCfg", mnInfo.strPyCfg));
+            objItem.push_back(Pair("extAddress", mnInfo.strExtraLayerAddress));
+            objItem.push_back(Pair("extKey", mnInfo.strExtraLayerKey));
+            objItem.push_back(Pair("extCfg", mnInfo.strExtraLayerCfg));
 
             workersArray.push_back(objItem);
         }
@@ -192,9 +192,9 @@ UniValue masternodelist(const UniValue& params, bool fHelp)
                 obj.push_back(Pair(strOutpoint, strStatus));
             } else if (strMode == "extra") {
                 UniValue objItem(UniValue::VOBJ);
-                objItem.push_back(Pair("pyAddress", mn.strPyAddress)); 
-                objItem.push_back(Pair("pyPubKey", mn.strPyPubKey)); 
-                objItem.push_back(Pair("pyCfg", mn.strPyCfg)); 
+                objItem.push_back(Pair("extAddress", mn.strExtraLayerAddress));
+                objItem.push_back(Pair("extKey", mn.strExtraLayerKey));
+                objItem.push_back(Pair("extCfg", mn.strExtraLayerCfg));
 
                 obj.push_back(Pair(strOutpoint, objItem));
             }
@@ -223,7 +223,8 @@ UniValue masternode(const UniValue& params, bool fHelp)
 #endif // ENABLE_WALLET
          strCommand != "list" && strCommand != "list-conf" && strCommand != "count" &&
          strCommand != "debug" && strCommand != "current" && strCommand != "winner" && strCommand != "winners" && strCommand != "genkey" &&
-         strCommand != "connect" && strCommand != "status" && strCommand != "workers"))
+         strCommand != "connect" && strCommand != "status" && strCommand != "workers" &&
+         strCommand != "setfee" && strCommand != "getnetworkfee" && strCommand != "getlocalfee"))
             throw std::runtime_error(
                 "masternode \"command\"...\n"
                 "Set of commands to execute masternode related actions\n"
@@ -243,7 +244,10 @@ UniValue masternode(const UniValue& params, bool fHelp)
                 "  list-conf    - Print masternode.conf in JSON format\n"
                 "  winner       - Print info on next masternode winner to vote for\n"
                 "  winners      - Print list of masternode winners\n"
-                "  workers <n>  - Print 3 worker masternodes for the current or n-th block."
+                "  workers <n>  - Print 3 worker masternodes for the current or n-th block.\n"
+                "  setfee <n>   - Set storage fee for MN.\n"
+                "  getnetworkfee - Get Network median storage fee.\n"
+                "  getlocalfee - Get local masternode storage fee."
                 );
 
     if (strCommand == "list")
@@ -358,7 +362,7 @@ UniValue masternode(const UniValue& params, bool fHelp)
 
 
                 bool fResult = CMasternodeBroadcast::Create(mne.getIp(), mne.getPrivKey(), mne.getTxHash(), mne.getOutputIndex(), 
-                                                            mne.getPyIp(), mne.getPyPubKey(), mne.getPyCfg(),
+                                                            mne.getExtIp(), mne.getExtKey(), mne.getExtCfg(),
                                                             strError, mnb);
 
                 statusObj.push_back(Pair("result", fResult ? "successful" : "failed"));
@@ -409,7 +413,7 @@ UniValue masternode(const UniValue& params, bool fHelp)
             if(strCommand == "start-disabled" && fFound && mn.IsEnabled()) continue;
 
             bool fResult = CMasternodeBroadcast::Create(mne.getIp(), mne.getPrivKey(), mne.getTxHash(), mne.getOutputIndex(), 
-                                                        mne.getPyIp(), mne.getPyPubKey(), mne.getPyCfg(),
+                                                        mne.getExtIp(), mne.getExtKey(), mne.getExtCfg(),
                                                         strError, mnb);
 
             UniValue statusObj(UniValue::VOBJ);
@@ -461,9 +465,9 @@ UniValue masternode(const UniValue& params, bool fHelp)
             mnObj.push_back(Pair("privateKey", mne.getPrivKey()));
             mnObj.push_back(Pair("txHash", mne.getTxHash()));
             mnObj.push_back(Pair("outputIndex", mne.getOutputIndex()));
-            mnObj.push_back(Pair("pyAddress", mne.getPyIp()));
-            mnObj.push_back(Pair("pyPubKey", mne.getPyPubKey()));
-            mnObj.push_back(Pair("pyCfg", mne.getPyCfg()));
+            mnObj.push_back(Pair("extAddress", mne.getExtIp()));
+            mnObj.push_back(Pair("extKey", mne.getExtKey()));
+            mnObj.push_back(Pair("extCfg", mne.getExtCfg()));
             mnObj.push_back(Pair("status", strStatus));
             resultObj.push_back(Pair("masternode", mnObj));
         }
@@ -583,7 +587,57 @@ UniValue masternode(const UniValue& params, bool fHelp)
 
         return obj;
     }
+    if (strCommand == "setfee")
+    {
+        if (!masterNodeCtrl.IsActiveMasterNode())
+            throw JSONRPCError(RPC_INTERNAL_ERROR, "This is not a active masternode. Only active MN can set its fee");
 
+        if (params.size() != 2)
+            throw JSONRPCError(RPC_INVALID_PARAMETER, "Correct usage is 'masternode setfee \"new fee\"'");
+
+//        UniValue obj(UniValue::VOBJ);
+//
+//        CAmount nFee = std::stoi(params[1].get_str());
+    }
+    if (strCommand == "getnetworkfee")
+    {
+        CAmount nFee = 0;
+
+        std::map<COutPoint, CMasternode> mapMasternodes = masterNodeCtrl.masternodeManager.GetFullMasternodeMap();
+
+        if (!masterNodeCtrl.IsMasterNode()) {
+            if(!masterNodeCtrl.masternodeSync.IsMasternodeListSynced())
+                throw JSONRPCError(RPC_INTERNAL_ERROR, "Masternode list is still syncing");
+            else
+                throw JSONRPCError(RPC_INTERNAL_ERROR, "Masternode list is empty");
+        }
+
+        for (auto& mnpair : mapMasternodes) {
+            CMasternode mn = mnpair.second;
+            nFee += mn.aMNFeePerMB > 0? mn.aMNFeePerMB: masterNodeCtrl.MasternodeFeePerMBDefault;
+        }
+        nFee /= mapMasternodes.size();
+
+        UniValue mnObj(UniValue::VOBJ);
+        mnObj.push_back(Pair("networkfee", nFee));
+        return mnObj;
+    }
+    if (strCommand == "getlocalfee")
+    {
+        if (!masterNodeCtrl.IsActiveMasterNode()) {
+            throw JSONRPCError(RPC_INTERNAL_ERROR, "This is not a active masternode. Only active MN can set its fee");
+        }
+
+        UniValue mnObj(UniValue::VOBJ);
+
+        CMasternode masternode;
+        if(masterNodeCtrl.masternodeManager.Get(masterNodeCtrl.activeMasternode.outpoint, masternode)) {
+            mnObj.push_back(Pair("networkfee", masternode.aMNFeePerMB));
+            return mnObj;
+        } else {
+            throw JSONRPCError(RPC_INTERNAL_ERROR, "Masternode is not found!");
+        }
+    }
     return NullUniValue;
 }
 
@@ -660,7 +714,7 @@ UniValue masternodebroadcast(const UniValue& params, bool fHelp)
                 CMasternodeBroadcast mnb;
 
                 bool fResult = CMasternodeBroadcast::Create(mne.getIp(), mne.getPrivKey(), mne.getTxHash(), mne.getOutputIndex(), 
-                                                            mne.getPyIp(), mne.getPyPubKey(), mne.getPyCfg(),
+                                                            mne.getExtIp(), mne.getExtKey(), mne.getExtCfg(),
                                                             strError, mnb, true);
 
                 statusObj.push_back(Pair("result", fResult ? "successful" : "failed"));
@@ -710,7 +764,7 @@ UniValue masternodebroadcast(const UniValue& params, bool fHelp)
             CMasternodeBroadcast mnb;
 
             bool fResult = CMasternodeBroadcast::Create(mne.getIp(), mne.getPrivKey(), mne.getTxHash(), mne.getOutputIndex(), 
-                                                        mne.getPyIp(), mne.getPyPubKey(), mne.getPyCfg(),
+                                                        mne.getExtIp(), mne.getExtKey(), mne.getExtCfg(),
                                                         strError, mnb, true);
 
             UniValue statusObj(UniValue::VOBJ);

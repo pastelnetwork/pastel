@@ -32,6 +32,8 @@ void CMasterNodeController::SetParameters()
     
     MasternodeCollateral                = 1000;
 
+    MasternodeFeePerMBDefault           = 1;
+
     MasternodeCheckSeconds              =   5;
     MasternodeMinMNBSeconds             =   5 * 60;
     MasternodeMinMNPSeconds             =  10 * 60;
@@ -227,6 +229,7 @@ bool CMasterNodeController::ProcessMessage(CNode* pfrom, std::string& strCommand
     masternodeManager.ProcessMessage(pfrom, strCommand, vRecv);
     masternodePayments.ProcessMessage(pfrom, strCommand, vRecv);
     masternodeGovernance.ProcessMessage(pfrom, strCommand, vRecv);
+    masternodeMessages.ProcessMessage(pfrom, strCommand, vRecv);
     masternodeSync.ProcessMessage(pfrom, strCommand, vRecv);
 
     return true;
@@ -236,6 +239,9 @@ bool CMasterNodeController::AlreadyHave(const CInv& inv)
 {
     switch (inv.type)
     {
+    case MSG_MASTERNODE_MESSAGE:
+        return masternodeMessages.mapSeenMessages.count(inv.hash);
+
     case MSG_MASTERNODE_GOVERNANCE:
             return masternodeGovernance.mapTickets.count(inv.hash);
 
@@ -270,6 +276,18 @@ bool CMasterNodeController::AlreadyHave(const CInv& inv)
 bool CMasterNodeController::ProcessGetData(CNode* pfrom, const CInv& inv)
 {
     bool pushed = false;
+
+    if (!pushed && inv.type == MSG_MASTERNODE_MESSAGE) {
+        LOCK(cs_mapSeenMessages);
+        auto vi = masternodeMessages.mapSeenMessages.find(inv.hash);
+        if(vi != masternodeMessages.mapSeenMessages.end() && vi->second.IsVerified()) {
+            CDataStream ss(SER_NETWORK, PROTOCOL_VERSION);
+            ss.reserve(1000);
+            ss << masternodeMessages.mapSeenMessages[inv.hash];
+            pfrom->PushMessage(NetMsgType::MASTERNODEMESSAGE, ss);
+            pushed = true;
+        }
+    }
 
     if (!pushed && inv.type == MSG_MASTERNODE_GOVERNANCE) {
         if(masternodeGovernance.mapTickets.count(inv.hash)) {
@@ -369,6 +387,12 @@ boost::filesystem::path CMasterNodeController::GetMasternodeConfigFile()
     if (!pathConfigFile.is_complete()) pathConfigFile = GetDataDir() / pathConfigFile;
     return pathConfigFile;
 }
+
+CAmount CMasterNodeController::GetNetworkFeePerMB()
+{
+    return MasternodeFeePerMBDefault;
+}
+
 
 /*
 Threads

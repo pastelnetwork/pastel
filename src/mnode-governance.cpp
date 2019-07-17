@@ -112,8 +112,7 @@ bool CMasternodeGovernance::AddTicket(std::string address, CAmount totalReward, 
 {
     newTicketId.SetNull();
 
-    if (!masterNodeCtrl.fMasterNode || 
-         masterNodeCtrl.activeMasternode.nState != CActiveMasternode::ActiveMasternodeState::Started){
+    if (!masterNodeCtrl.IsActiveMasterNode()){
         strErrorRet = strprintf("Only Active Master Node can vote");
         LogPrintf("CMasternodeGovernance::AddTicket -- %s\n", strErrorRet);
         return false;
@@ -164,8 +163,7 @@ bool CMasternodeGovernance::AddTicket(std::string address, CAmount totalReward, 
 
 bool CMasternodeGovernance::VoteForTicket(uint256 ticketId, bool vote, std::string& strErrorRet)
 {
-    if (!masterNodeCtrl.fMasterNode || 
-         masterNodeCtrl.activeMasternode.nState != CActiveMasternode::ActiveMasternodeState::Started){
+    if (!masterNodeCtrl.IsActiveMasterNode()){
         strErrorRet = strprintf("Only Active Master Node can vote");
         LogPrintf("CMasternodeGovernance::VoteForTicket -- %s\n", strErrorRet);
         return false;
@@ -373,7 +371,7 @@ void CMasternodeGovernance::ProcessMessage(CNode* pfrom, std::string& strCommand
             }
         }
 
-        masterNodeCtrl.masternodeSync.BumpAssetLastTime("MASTERNODEPAYMENTVOTE");
+        masterNodeCtrl.masternodeSync.BumpAssetLastTime("GOVERNANCEVOTE");
 
         LogPrintf("GOVERNANCE -- Get vote %s from %d\n", vote.ToString(), pfrom->id);
     }

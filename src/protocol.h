@@ -163,8 +163,8 @@ enum {
     MSG_MASTERNODE_ANNOUNCE,
     MSG_MASTERNODE_PING,
     MSG_DSTX,
-    MSG_MASTERNODE_VERIFY
-
+    MSG_MASTERNODE_VERIFY,
+    MSG_MASTERNODE_MESSAGE
 };
 
 namespace NetMsgType {
@@ -181,6 +181,7 @@ extern const char *MNPING;
 extern const char *MNVERIFY;
 extern const char *DSEG;
 extern const char *SYNCSTATUSCOUNT;
+extern const char *MASTERNODEMESSAGE;
 };
 
 #endif // BITCOIN_PROTOCOL_H

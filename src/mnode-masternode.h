@@ -84,12 +84,12 @@ struct masternode_info_t
     masternode_info_t(int activeState, int protoVer, int64_t sTime,
                       COutPoint const& outpoint, CService const& addr,
                       CPubKey const& pkCollAddr, CPubKey const& pkMN,
-                      const std::string& pyAddress, const std::string& pyPubKey, const std::string& pyCfg,
+                      const std::string& extAddress, const std::string& extKey, const std::string& extCfg,
                       int64_t tWatchdogV = 0) :
         nActiveState{activeState}, nProtocolVersion{protoVer}, sigTime{sTime},
         vin{outpoint}, addr{addr},
         pubKeyCollateralAddress{pkCollAddr}, pubKeyMasternode{pkMN},
-        strPyAddress{pyAddress}, strPyPubKey{pyPubKey}, strPyCfg{pyCfg},
+        strExtraLayerAddress{extAddress}, strExtraLayerKey{extKey}, strExtraLayerCfg{extCfg},
         nTimeLastWatchdogVote{tWatchdogV} {}
 
     int nActiveState = 0;
@@ -101,9 +101,9 @@ struct masternode_info_t
     CPubKey pubKeyCollateralAddress{};
     CPubKey pubKeyMasternode{};
 
-    std::string strPyAddress {};
-    std::string strPyPubKey {};
-    std::string strPyCfg {};
+    std::string strExtraLayerAddress {};
+    std::string strExtraLayerKey {};
+    std::string strExtraLayerCfg {};
 
     int64_t nTimeLastWatchdogVote = 0;
 
@@ -114,7 +114,7 @@ struct masternode_info_t
 };
 
 //
-// The Masternode Class. For managing the Darksend process. It contains the input of the 1000DRK, signature to prove
+// The Masternode Class
 // it's the one who own that ip address and code for calculating the payment election.
 //
 class CMasternode : public masternode_info_t
@@ -151,11 +151,13 @@ public:
     int nPoSeBanHeight{};
     bool fUnitTest = false;
 
+    CAmount aMNFeePerMB = 0; // 0 means default (masterNodeCtrl.MasternodeFeePerMBDefault)
+
     CMasternode();
     CMasternode(const CMasternode& other);
     CMasternode(const CMasternodeBroadcast& mnb);
     CMasternode(CService addrNew, COutPoint outpointNew, CPubKey pubKeyCollateralAddressNew, CPubKey pubKeyMasternodeNew, 
-                const std::string& strPyAddress, const std::string& strPyPubKey, const std::string& strPyCfg,
+                const std::string& strExtraLayerAddress, const std::string& strExtraLayerKey, const std::string& strExtraLayerCfg,
                 int nProtocolVersionIn);
 
     ADD_SERIALIZE_METHODS;
@@ -180,9 +182,10 @@ public:
         READWRITE(nPoSeBanScore);
         READWRITE(nPoSeBanHeight);
         READWRITE(fUnitTest);
-        READWRITE(strPyPubKey);
-        READWRITE(strPyAddress);
-        READWRITE(strPyCfg);
+        READWRITE(strExtraLayerKey);
+        READWRITE(strExtraLayerAddress);
+        READWRITE(strExtraLayerCfg);
+        READWRITE(aMNFeePerMB);
     }
 
     // CALCULATE A RANK AGAINST OF GIVEN BLOCK
@@ -266,6 +269,7 @@ public:
         nPoSeBanScore = from.nPoSeBanScore;
         nPoSeBanHeight = from.nPoSeBanHeight;
         fUnitTest = from.fUnitTest;
+        aMNFeePerMB = from.aMNFeePerMB;
         return *this;
     }
 };
@@ -293,10 +297,10 @@ public:
     CMasternodeBroadcast() : CMasternode(), fRecovery(false) {}
     CMasternodeBroadcast(const CMasternode& mn) : CMasternode(mn), fRecovery(false) {}
     CMasternodeBroadcast(CService addrNew, COutPoint outpointNew, CPubKey pubKeyCollateralAddressNew, CPubKey pubKeyMasternodeNew, 
-                            const std::string& strPyAddress, const std::string& strPyPubKey, const std::string& strPyCfg,
+                            const std::string& strExtraLayerAddress, const std::string& strExtraLayerKey, const std::string& strExtraLayerCfg,
                             int nProtocolVersionIn) :
         CMasternode(addrNew, outpointNew, pubKeyCollateralAddressNew, pubKeyMasternodeNew, 
-                    strPyAddress, strPyPubKey, strPyCfg,
+                    strExtraLayerAddress, strExtraLayerKey, strExtraLayerCfg,
                     nProtocolVersionIn), fRecovery(false) {}
 
     ADD_SERIALIZE_METHODS;
@@ -311,9 +315,9 @@ public:
         READWRITE(sigTime);
         READWRITE(nProtocolVersion);
         READWRITE(lastPing);
-        READWRITE(strPyPubKey);
-        READWRITE(strPyAddress);
-        READWRITE(strPyCfg);
+        READWRITE(strExtraLayerKey);
+        READWRITE(strExtraLayerAddress);
+        READWRITE(strExtraLayerCfg);
     }
 
     uint256 GetHash() const
@@ -330,10 +334,10 @@ public:
                         const CService& service, 
                         const CKey& keyCollateralAddressNew, const CPubKey& pubKeyCollateralAddressNew, 
                         const CKey& keyMasternodeNew, const CPubKey& pubKeyMasternodeNew, 
-                        const std::string& strPyAddress, const std::string& strPyPubKey, const std::string& strPyCfg,
+                        const std::string& strExtraLayerAddress, const std::string& strExtraLayerKey, const std::string& strExtraLayerCfg,
                         std::string &strErrorRet, CMasternodeBroadcast &mnbRet);
     static bool Create(std::string strService, std::string strKey, std::string strTxHash, std::string strOutputIndex, 
-        std::string strPyAddress, std::string strPyPubKey, std::string strPyCfg,
+        std::string strExtraLayerAddress, std::string strExtraLayerKey, std::string strExtraLayerCfg,
         std::string& strErrorRet, CMasternodeBroadcast &mnbRet, bool fOffline = false);
 
     bool SimpleCheck(int& nDos);

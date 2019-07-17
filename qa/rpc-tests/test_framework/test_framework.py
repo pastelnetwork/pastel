@@ -192,7 +192,7 @@ class ComparisonTestFramework(BitcoinTestFramework):
                           help="pasteld binary to use for reference nodes (if any)")
 
     def setup_chain(self):
-        print "Initializing test directory "+self.options.tmpdir
+        print("Initializing test directory ", self.options.tmpdir)
         initialize_chain_clean(self.options.tmpdir, self.num_nodes)
 
     def setup_network(self):

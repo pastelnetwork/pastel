@@ -31,6 +31,7 @@ const char *GOVERNANCESYNC="gvget";
 const char *GOVERNANCE="gov";
 const char *GOVERNANCEVOTE="gvt";
 const char *DSTX="dstx";
+const char *MASTERNODEMESSAGE="mnmsg";
 };
 
 static const char* ppszTypeName[] =
@@ -49,6 +50,7 @@ static const char* ppszTypeName[] =
     NetMsgType::MNPING,
     NetMsgType::DSTX,
     NetMsgType::MNVERIFY,
+    NetMsgType::MASTERNODEMESSAGE
 
 };
 
