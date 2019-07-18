@@ -24,7 +24,7 @@ public:
     int64_t sigTime; //message times
     std::vector<unsigned char> vchSig;
 
-    CMasternodeMessage() {}
+    CMasternodeMessage() = default;
 
     CMasternodeMessage(COutPoint outpointMasternodeFrom, COutPoint outpointMasternodeTo, std::string& msg) :
         vinMasternodeFrom(outpointMasternodeFrom),
@@ -71,12 +71,12 @@ public:
 //    std::map<uint256, > mapLatestSenders;
 //    std::map<CNetAddr, int64_t> mapLatestSenders; how many time during last hour(?) or time ago
 
-    CMasternodeMessageProcessor() {}
+    CMasternodeMessageProcessor() = default;
 
     ADD_SERIALIZE_METHODS;
 
     template<typename Stream, typename Operation>
-    inline void SerializationOp(Stream &s, Operation ser_action, int nType, int nVersion) {
+    inline void SerializationOp(Stream& s, Operation ser_action) {
         LOCK2(cs_mapSeenMessages, cs_mapOurMessages);
         READWRITE(mapSeenMessages);
         READWRITE(mapOurMessages);

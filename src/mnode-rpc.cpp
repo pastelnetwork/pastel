@@ -617,7 +617,7 @@ UniValue masternode(const UniValue& params, bool fHelp)
 
         CMasternode masternode;
         if(masterNodeCtrl.masternodeManager.Get(masterNodeCtrl.activeMasternode.outpoint, masternode)) {
-            mnObj.push_back(Pair("networkfee", masternode.aMNFeePerMB));
+            mnObj.push_back(Pair("localfee", masternode.aMNFeePerMB == 0? masterNodeCtrl.MasternodeFeePerMBDefault: masternode.aMNFeePerMB));
             return mnObj;
         } else {
             throw JSONRPCError(RPC_INTERNAL_ERROR, "Masternode is not found!");

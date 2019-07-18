@@ -39,8 +39,7 @@ class MasterNodeMainTest (MasterNodeCommon):
         self.setup_masternodes_network(private_keys_list, self.number_of_simple_nodes)
 
     def run_test (self):
-        # tests = ['cache', 'sync', 'ping', 'restart', 'spent', 'fee']
-        tests = ['fee']
+        tests = ['cache', 'sync', 'ping', 'restart', 'spent', 'fee']
 
         print("=== Test MN basics ===")
         self.mining_enough(1, 2)
@@ -177,13 +176,17 @@ class MasterNodeMainTest (MasterNodeCommon):
         # tests = ['cache', 'sync', 'ping', 'restart', 'spent', "fee"]
         if 'fee' in tests:
             print("=== Test MN Fee ===")
-            assert_equal(self.nodes[0].getnetworkfee(), 1)
-            assert_equal(self.nodes[1].getnetworkfee(), 1)
-            assert_equal(self.nodes[2].getnetworkfee(), 1)
+            nfee_mn0 = self.nodes[0].masternode("getnetworkfee")["networkfee"]
+            nfee_mn1 = self.nodes[1].masternode("getnetworkfee")["networkfee"]
+            nfee_mn2 = self.nodes[2].masternode("getnetworkfee")["networkfee"]
+            assert_equal(nfee_mn0, 1)
+            assert_equal(nfee_mn1, 1)
+            assert_equal(nfee_mn2, 1)
+            print("Network fee is ", nfee_mn0)
 
-            assert_equal(self.nodes[0].getlocalfee(), 1)
-            assert_equal(self.nodes[1].getlocalfee(), 1)
-            assert_equal(self.nodes[2].getlocalfee(), 1)
+            lfee_mn0 = self.nodes[0].masternode("getlocalfee")["localfee"]
+            assert_equal(lfee_mn0, 1)
+            print("Local fee of MN0 is ", lfee_mn0)
 
         print("All set...")
 

@@ -190,6 +190,14 @@ bool CMasterNodeController::EnableMasterNode(std::ostringstream& strErrors, boos
         return false;
     }
 
+    strDBName = "messages.dat";
+    uiInterface.InitMessage(_("Loading messages cache..."));
+    CFlatDB<CMasternodeRequestTracker> flatDB5(strDBName, "magicMessagesCache");
+    if(!flatDB5.Load(requestTracker)) {
+        strErrors << _("Failed to load messages cache from") + "\n" + (pathDB / strDBName).string();
+        return false;
+    }
+
     pacNotificationInterface = new CACNotificationInterface();
     RegisterValidationInterface(pacNotificationInterface);
 
@@ -379,6 +387,8 @@ void CMasterNodeController::ShutdownMasterNode()
     flatDB3.Dump(masternodeGovernance);
     CFlatDB<CMasternodeRequestTracker> flatDB4("netfulfilled.dat", "magicFulfilledCache");
     flatDB4.Dump(requestTracker);
+    CFlatDB<CMasternodeMessageProcessor> flatDB5("messages.dat", "magicMessagesCache");
+    flatDB5.Dump(masternodeMessages);
 }
 
 boost::filesystem::path CMasterNodeController::GetMasternodeConfigFile()
