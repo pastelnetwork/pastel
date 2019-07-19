@@ -32,7 +32,7 @@ void CMasterNodeController::SetParameters()
     
     MasternodeCollateral                = 1000;
 
-    MasternodeFeePerMBDefault           = 1;
+    MasternodeFeePerMBDefault           = 100;
 
     MasternodeCheckSeconds              =   5;
     MasternodeMinMNBSeconds             =   5 * 60;
