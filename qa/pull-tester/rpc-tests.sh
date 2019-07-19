@@ -37,7 +37,7 @@ testScripts=(
     'txn_doublespend.py --mineblock'
     'getchaintips.py'
     'rawtransactions.py'
-    'rest.py'                         #FIXME - rest.py", line 240
+    'rest.py'
     'mempool_spendcoinbase.py'
     'mempool_reorg.py'
     #'mempool_tx_input_limit.py'    # DEPRECATED FROM OVERWINTER!!!! (OVERWINTER in Pastel is from block 1)
