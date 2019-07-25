@@ -532,6 +532,7 @@ bool CMasternodePayments::ProcessBlock(int nBlockHeight)
     // if we have not enough data about masternodes.
     if(!masterNodeCtrl.masternodeSync.IsMasternodeListSynced()) return false;
 
+    //see if we can vote - we must be in the top 10 masternpode list to be allowed to vote
     int nRank;
 
     if (!masterNodeCtrl.masternodeManager.GetMasternodeRank(masterNodeCtrl.activeMasternode.outpoint, nRank, nBlockHeight + masterNodeCtrl.nMasternodePaymentsVotersIndexDelta)) {
@@ -572,8 +573,15 @@ bool CMasternodePayments::ProcessBlock(int nBlockHeight)
     }
 
     outpoint_vector vecWorkers;
-    for (auto mn : CMasternodeMan::rank_pair_vec_t(vMasternodeRanks.begin(), vMasternodeRanks.begin()+masterNodeCtrl.nMasternodeWorkersNumber))
-        vecWorkers.push_back(mn.second.vin.prevout);
+    for (auto mn : vMasternodeRanks){
+        if (mn.second.IsValidForPayment())
+            vecWorkers.push_back(mn.second.vin.prevout);
+        if(vecWorkers.size() == masterNodeCtrl.nMasternodeWorkersNumber)
+            break;
+    }
+
+//    for (auto mn : CMasternodeMan::rank_pair_vec_t(vMasternodeRanks.begin(), vMasternodeRanks.begin()+masterNodeCtrl.nMasternodeWorkersNumber))
+//        vecWorkers.push_back(mn.second.vin.prevout);
 
     CMasternodePaymentVote voteNew(masterNodeCtrl.activeMasternode.outpoint, nBlockHeight, payee, vecWorkers);
 
