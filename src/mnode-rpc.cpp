@@ -23,6 +23,8 @@
 #include "utilstrencodings.h"
 #include "key_io.h"
 
+#include "ed448/pastel_key.h"
+
 #ifdef ENABLE_WALLET
 #include "wallet/wallet.h"
 void EnsureWalletIsUnlocked();
@@ -224,7 +226,7 @@ UniValue masternode(const UniValue& params, bool fHelp)
          strCommand != "list" && strCommand != "list-conf" && strCommand != "count" &&
          strCommand != "debug" && strCommand != "current" && strCommand != "winner" && strCommand != "winners" && strCommand != "genkey" &&
          strCommand != "connect" && strCommand != "status" && strCommand != "workers" &&
-         strCommand != "setfee" && strCommand != "getnetworkfee" && strCommand != "getlocalfee"))
+         strCommand != "setfee" && strCommand != "getnetworkfee" && strCommand != "getlocalfee" && strCommand != "pastelid" ))
             throw std::runtime_error(
                 "masternode \"command\"...\n"
                 "Set of commands to execute masternode related actions\n"
@@ -247,7 +249,8 @@ UniValue masternode(const UniValue& params, bool fHelp)
                 "  workers <n>  - Print 3 worker masternodes for the current or n-th block.\n"
                 "  setfee <n>   - Set storage fee for MN.\n"
                 "  getnetworkfee - Get Network median storage fee.\n"
-                "  getlocalfee - Get local masternode storage fee."
+                "  getlocalfee - Get local masternode storage fee.\n"
+                "  pastelid     - Generate new PastelID"
                 );
 
     if (strCommand == "list")
@@ -622,6 +625,15 @@ UniValue masternode(const UniValue& params, bool fHelp)
         } else {
             throw JSONRPCError(RPC_INTERNAL_ERROR, "Masternode is not found!");
         }
+    }
+    if (strCommand == "pastelid")
+    {
+        UniValue mnObj(UniValue::VOBJ);
+
+        std::string pastelID = CPastelID::CreateNewLocalKey("");
+
+        mnObj.push_back(Pair("pastelid", pastelID));
+        return mnObj;
     }
     return NullUniValue;
 }
@@ -1042,6 +1054,146 @@ UniValue governance(const UniValue& params, bool fHelp)
     return NullUniValue;
 }
 
+UniValue pastelid(const UniValue& params, bool fHelp) {
+    std::string strMode;
+    if (params.size() >= 1)
+        strMode = params[0].get_str();
+
+    if (fHelp || (strMode != "newkey" && strMode != "importkey" && strMode != "list" &&
+                  strMode != "sign" && strMode != "verify" ))
+        throw runtime_error(
+                "pastelid \"command\"...\n"
+                "Set of commands to deal with PatelID and related actions\n"
+                "\tPastelID is the base58-encoded public key of the EdDSA448 key pair. EdDSA448 public key is 57 bytes\n"
+                "\nArguments:\n"
+                "1. \"command\"        (string or set of strings, required) The command to execute\n"
+                "\nAvailable commands:\n"
+                "  newkey \"passphrase\"                       - Generate new PastelID and associated keys (EdDSA448). Return PastelID base58-encoded\n"
+                "                                                  \"passphrase\" will be used to encrypt the key file\n"
+                "  importkey \"key\" <\"passphrase\">          - Import private \"key\" (EdDSA448) as PKCS8 encrypted string in PEM format. Return PastelID base58-encoded\n"
+                "                                                  \"passphrase\" (optional) to decrypt the key for the purpose of validating and returning PastelID\n"
+                "                                                  NOTE: without \"passphrase\" key cannot be validated and if key is bad (not EdDSA448) call to \"sign\" will fail\n"
+                "  list                                        - List all internally stored PastelID and keys.\n"
+                "  sign \"text\" \"PastelID\" \"passphrase\"   - Sign \"text\" with the internally stored private key associated with the PastelID.\n"
+                "  sign-by-key \"text\" \"key\" \"passphrase\" - Sign \"text\" with the private \"key\" (EdDSA448) as PKCS8 encrypted string in PEM format.\n"
+                "  verify \"text\" \"signature\" \"PastelID\"  - Verify \"text\"'s \"signature\" with the PastelID.\n"
+        );
+
+    std::string strCmd, strError;
+    if (strMode == "newkey") {
+        if (params.size() != 2)
+            throw JSONRPCError(RPC_INVALID_PARAMETER, "pastelid newkey \"passphrase\"\n"
+                                                      "Generate new PastelID and associated keys (EdDSA448). Return PastelID base58-encoded.");
+
+        SecureString strKeyPass;
+        strKeyPass.reserve(100);
+        strKeyPass = params[1].get_str().c_str();
+
+        if (strKeyPass.length() < 1)
+            throw runtime_error(
+                    "pastelid newkey \"passphrase\"\n"
+                    "passphrase for new key cannot be empty!");
+
+        UniValue resultObj(UniValue::VOBJ);
+
+        std::string pastelID = CPastelID::CreateNewLocalKey(strKeyPass);
+
+        resultObj.push_back(Pair("pastelid", pastelID));
+
+        return resultObj;
+    }
+    if (strMode == "importkey") {
+        if (params.size() != 2 || params.size() != 3)
+            throw JSONRPCError(RPC_INVALID_PARAMETER, "pastelid importkey \"key\" <\"passphrase\">\n"
+                                                      "Import PKCS8 encrypted private key (EdDSA448) in PEM format. Return PastelID base58-encoded if \"passphrase\" provided.");
+
+        //import
+        //...
+
+        //validate and geenrate pastelid
+        if (params.size() == 3) {
+            SecureString strKeyPass;
+            strKeyPass.reserve(100);
+            strKeyPass = params[2].get_str().c_str();
+
+            if (strKeyPass.length() < 1)
+                throw runtime_error(
+                        "pastelid importkey <\"passphrase\">\n"
+                        "passphrase for imported key cannot be empty!");
+        }
+
+        UniValue resultObj(UniValue::VOBJ);
+
+        return resultObj;
+    }
+    if(strMode == "list")
+    {
+        UniValue resultArray(UniValue::VARR);
+
+        std::vector<std::string> pastelIDs = CPastelID::GetStoredPastelIDs();
+        for (auto & p: pastelIDs){
+            UniValue obj(UniValue::VOBJ);
+            obj.push_back(Pair("PastelID", p));
+            resultArray.push_back(obj);
+        }
+
+        return resultArray;
+    }
+    if (strMode == "sign") {
+        if (params.size() != 4)
+            throw JSONRPCError(RPC_INVALID_PARAMETER, "pastelid sign \"text\" \"PastelID\" \"passphrase\"\n"
+                                                      "Sign \"text\" with the internally stored private key associated with the PastelID.");
+
+        SecureString strKeyPass;
+        strKeyPass.reserve(100);
+        strKeyPass = params[3].get_str().c_str();
+
+        if (strKeyPass.length() < 1)
+            throw runtime_error(
+                    "pastelid importkey <\"passphrase\">\n"
+                    "passphrase for imported key cannot be empty!");
+
+        UniValue resultObj(UniValue::VOBJ);
+
+        std::string sign = CPastelID::Sign(params[1].get_str(), params[2].get_str(), strKeyPass);
+        resultObj.push_back(Pair("signature", sign));
+
+        return resultObj;
+    }
+    if (strMode == "sign") {
+        if (params.size() != 4)
+            throw JSONRPCError(RPC_INVALID_PARAMETER, "pastelid sign-by-key \"text\" \"key\" \"passphrase\"\n"
+                                                      "Sign \"text\" with the private \"key\" (EdDSA448) as PKCS8 encrypted string in PEM format.");
+
+        SecureString strKeyPass;
+        strKeyPass.reserve(100);
+        strKeyPass = params[3].get_str().c_str();
+
+        if (strKeyPass.length() < 1)
+            throw runtime_error(
+                    "pastelid importkey <\"passphrase\">\n"
+                    "passphrase for imported key cannot be empty!");
+
+        UniValue resultObj(UniValue::VOBJ);
+
+        return resultObj;
+    }
+    if (strMode == "verify") {
+        if (params.size() != 4)
+            throw JSONRPCError(RPC_INVALID_PARAMETER, "pastelid verify \"text\" \"signature\" \"PastelID\"\n"
+                                                      "Verify \"text\"'s \"signature\" with the PastelID.");
+
+        UniValue resultObj(UniValue::VOBJ);
+
+        bool res = CPastelID::Verify(params[1].get_str(), params[2].get_str(), params[3].get_str());
+        resultObj.push_back(Pair("verification", res? "OK": "Failed"));
+
+        return resultObj;
+    }
+
+    return NullUniValue;
+}
+
 static const CRPCCommand commands[] =
 { //  category              name                        actor (function)           okSafeMode
     /* Masternode */
@@ -1050,6 +1202,7 @@ static const CRPCCommand commands[] =
     { "mnode",               "masternodebroadcast",    &masternodebroadcast,    true  },
     { "mnode",               "mnsync",                 &mnsync,                 true  },
     { "mnode",               "governance",             &governance,             true  },
+    { "mnode",               "pastelid",               &pastelid,               true  },
 };
 
 void RegisterMasternodeRPCCommands(CRPCTable &tableRPC)
