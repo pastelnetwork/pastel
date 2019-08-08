@@ -12,33 +12,6 @@ namespace ed_crypto {
 
     static constexpr int OK = 1;
 
-    class crypto_exception : public std::exception {
-        std::string message;
-    public:
-        crypto_exception(std::string error, std::string details, std::string func_name) {
-            std::ostringstream str_str;
-            str_str << func_name << " - " << error << ": " << details;
-            //TODO: add openssl errors
-            message = str_str.str();
-        }
-
-        const char *what() const noexcept {
-            //ERR_print_errors_fp (stderr);
-            return message.c_str();
-        }
-    };
-
-    std::string Password_Stretching(const std::string& password)
-    {
-        unsigned char pout[32] = {};
-
-        if (OK != PKCS5_PBKDF2_HMAC(password.c_str(), password.length(), nullptr, 0, 1000, EVP_sha512(), 32, pout))
-            throw (crypto_exception("", std::string(), "PKCS5_PBKDF2_HMAC"));
-
-        std::string out{reinterpret_cast<char*>(pout), 32};
-        return out;
-    }
-
     std::string Base64_Encode(const unsigned char *in, size_t len)
     {
         std::string out;
@@ -118,8 +91,9 @@ namespace ed_crypto {
         {
             auto bio = unique_bio_ptr(BIO_new(method));
 
-            if (OK != writer(bio.get()))
-                return std::string();
+            writer(bio.get());
+//            if (OK != writer(bio.get()))
+//                return std::string();
 
             BUF_MEM* buffer = nullptr;
             BIO_get_mem_ptr(bio.get(), &buffer);
@@ -176,4 +150,36 @@ namespace ed_crypto {
         unique_buffer_ptr buffer_;
         std::size_t len_;
     };
+    class crypto_exception : public std::exception {
+        std::string message;
+    public:
+        crypto_exception(std::string error, std::string details, std::string func_name) {
+            std::ostringstream str_str;
+            str_str << func_name << " - " << error << ": " << details;
+
+            std::string errStr = stream::bioToString(BIO_s_mem(), [this](BIO* bio)
+            {
+                return ERR_print_errors(bio);
+            });
+            str_str << std::endl << "OpenSSL error: " << std::endl << errStr;
+
+            message = str_str.str();
+        }
+
+        const char *what() const noexcept {
+            return message.c_str();
+        }
+    };
+
+    std::string Password_Stretching(const std::string& password)
+    {
+        unsigned char pout[32] = {};
+
+        if (OK != PKCS5_PBKDF2_HMAC(password.c_str(), password.length(), nullptr, 0, 1000, EVP_sha512(), 32, pout))
+            throw (crypto_exception("", std::string(), "PKCS5_PBKDF2_HMAC"));
+
+        std::string out{reinterpret_cast<char*>(pout), 32};
+        return out;
+    }
+
 }

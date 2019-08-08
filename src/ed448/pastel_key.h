@@ -21,7 +21,7 @@ public:
             key.write_private_key_to_PKCS8_file(GetKeyFilePath(pastelID), passPhrase.c_str());
             return pastelID;
         } catch (ed_crypto::crypto_exception& ex) {
-
+            throw runtime_error(ex.what());
         }
         return std::string{};
     }
@@ -33,7 +33,7 @@ public:
             ed_crypto::buffer sigBuf = ed_crypto::crypto_sign::sign(text, key);
             return sigBuf.Base64(); //!!!
         } catch (ed_crypto::crypto_exception& ex) {
-
+            throw runtime_error(ex.what());
         }
         return std::string{};
     }
@@ -45,7 +45,7 @@ public:
             ed_crypto::key_dsa448 key = ed_crypto::key_dsa448::create_from_raw_public(rawPubKey.data(), rawPubKey.size());
             return ed_crypto::crypto_sign::verify_base64(text, signature, key);
         } catch (ed_crypto::crypto_exception& ex) {
-
+            throw runtime_error(ex.what());
         }
         return false;
     }
