@@ -1304,11 +1304,6 @@ UniValue chaindata(const UniValue& params, bool fHelp) {
             LOCK(pwalletMain->cs_wallet);
             pwalletMain->AvailableCoins(vecOutputs, false, NULL, true);
             for (auto out : vecOutputs) {
-
-                const COutPoint &prevout = out.tx->vin[i].prevout;
-                const CCoins* coins = AccessCoins(prevout.hash);
-                if (!coins || !coins->IsAvailable(prevout.n)) {
-
                 if (out.tx->vout[out.i].nValue > outAmount) {
 
                     //If found - populate transaction
