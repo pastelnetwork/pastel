@@ -23,6 +23,10 @@
 #include "utilstrencodings.h"
 #include "key_io.h"
 
+#include "core_io.h"
+#include "deprecation.h"
+#include "script/sign.h"
+
 #include "ed448/pastel_key.h"
 
 #ifdef ENABLE_WALLET
@@ -225,8 +229,7 @@ UniValue masternode(const UniValue& params, bool fHelp)
 #endif // ENABLE_WALLET
          strCommand != "list" && strCommand != "list-conf" && strCommand != "count" &&
          strCommand != "debug" && strCommand != "current" && strCommand != "winner" && strCommand != "winners" && strCommand != "genkey" &&
-         strCommand != "connect" && strCommand != "status" && strCommand != "workers" &&
-         strCommand != "setfee" && strCommand != "getnetworkfee" && strCommand != "getlocalfee" && strCommand != "pastelid" ))
+         strCommand != "connect" && strCommand != "status" && strCommand != "workers" ))
             throw std::runtime_error(
                 "masternode \"command\"...\n"
                 "Set of commands to execute masternode related actions\n"
@@ -247,10 +250,6 @@ UniValue masternode(const UniValue& params, bool fHelp)
                 "  winner       - Print info on next masternode winner to vote for\n"
                 "  winners      - Print list of masternode winners\n"
                 "  workers <n>  - Print 3 worker masternodes for the current or n-th block.\n"
-                "  setfee <n>   - Set storage fee for MN.\n"
-                "  getnetworkfee - Get Network median storage fee.\n"
-                "  getlocalfee - Get local masternode storage fee.\n"
-                "  pastelid     - Generate new PastelID"
                 );
 
     if (strCommand == "list")
@@ -589,51 +588,6 @@ UniValue masternode(const UniValue& params, bool fHelp)
         obj.push_back(Pair(strprintf("%d", nHeight), workersArray));
 
         return obj;
-    }
-    if (strCommand == "setfee")
-    {
-        if (!masterNodeCtrl.IsActiveMasterNode())
-            throw JSONRPCError(RPC_INTERNAL_ERROR, "This is not a active masternode. Only active MN can set its fee");
-
-        if (params.size() != 2)
-            throw JSONRPCError(RPC_INVALID_PARAMETER, "Correct usage is 'masternode setfee \"new fee\"'");
-
-//        UniValue obj(UniValue::VOBJ);
-//
-//        CAmount nFee = std::stoi(params[1].get_str());
-    }
-    if (strCommand == "getnetworkfee")
-    {
-        CAmount nFee = masterNodeCtrl.GetNetworkFeePerMB();
-
-        UniValue mnObj(UniValue::VOBJ);
-        mnObj.push_back(Pair("networkfee", nFee));
-        return mnObj;
-    }
-    if (strCommand == "getlocalfee")
-    {
-        if (!masterNodeCtrl.IsActiveMasterNode()) {
-            throw JSONRPCError(RPC_INTERNAL_ERROR, "This is not a active masternode. Only active MN can set its fee");
-        }
-
-        UniValue mnObj(UniValue::VOBJ);
-
-        CMasternode masternode;
-        if(masterNodeCtrl.masternodeManager.Get(masterNodeCtrl.activeMasternode.outpoint, masternode)) {
-            mnObj.push_back(Pair("localfee", masternode.aMNFeePerMB == 0? masterNodeCtrl.MasternodeFeePerMBDefault: masternode.aMNFeePerMB));
-            return mnObj;
-        } else {
-            throw JSONRPCError(RPC_INTERNAL_ERROR, "Masternode is not found!");
-        }
-    }
-    if (strCommand == "pastelid")
-    {
-        UniValue mnObj(UniValue::VOBJ);
-
-        std::string pastelID = CPastelID::CreateNewLocalKey("");
-
-        mnObj.push_back(Pair("pastelid", pastelID));
-        return mnObj;
     }
     return NullUniValue;
 }
@@ -1193,6 +1147,221 @@ UniValue pastelid(const UniValue& params, bool fHelp) {
 
     return NullUniValue;
 }
+UniValue storagefee(const UniValue& params, bool fHelp) {
+    std::string strCommand;
+    if (params.size() >= 1)
+        strCommand = params[0].get_str();
+
+    if (fHelp || ( strCommand != "setfee" && strCommand != "getnetworkfee" && strCommand != "getlocalfee" ))
+        throw runtime_error(
+                "storagefee \"command\"...\n"
+                "Set of commands to deal with Storage Fee and related actions\n"
+                "\nArguments:\n"
+                "1. \"command\"        (string or set of strings, required) The command to execute\n"
+                "\nAvailable commands:\n"
+                "  setfee <n>   - Set storage fee for MN.\n"
+                "  getnetworkfee - Get Network median storage fee.\n"
+                "  getlocalfee - Get local masternode storage fee.\n"
+        );
+
+    std::string strCmd, strError;
+    if (strCommand == "setfee")
+    {
+        if (!masterNodeCtrl.IsActiveMasterNode())
+            throw JSONRPCError(RPC_INTERNAL_ERROR, "This is not a active masternode. Only active MN can set its fee");
+
+        if (params.size() != 2)
+            throw JSONRPCError(RPC_INVALID_PARAMETER, "Correct usage is 'masternode setfee \"new fee\"'");
+
+//        UniValue obj(UniValue::VOBJ);
+//
+//        CAmount nFee = std::stoi(params[1].get_str());
+    }
+    if (strCommand == "getnetworkfee")
+    {
+        CAmount nFee = masterNodeCtrl.GetNetworkFeePerMB();
+
+        UniValue mnObj(UniValue::VOBJ);
+        mnObj.push_back(Pair("networkfee", nFee));
+        return mnObj;
+    }
+    if (strCommand == "getlocalfee")
+    {
+        if (!masterNodeCtrl.IsActiveMasterNode()) {
+            throw JSONRPCError(RPC_INTERNAL_ERROR, "This is not a active masternode. Only active MN can set its fee");
+        }
+
+        UniValue mnObj(UniValue::VOBJ);
+
+        CMasternode masternode;
+        if(masterNodeCtrl.masternodeManager.Get(masterNodeCtrl.activeMasternode.outpoint, masternode)) {
+            mnObj.push_back(Pair("localfee", masternode.aMNFeePerMB == 0? masterNodeCtrl.MasternodeFeePerMBDefault: masternode.aMNFeePerMB));
+            return mnObj;
+        } else {
+            throw JSONRPCError(RPC_INTERNAL_ERROR, "Masternode is not found!");
+        }
+    }
+    return NullUniValue;
+}
+
+UniValue chaindata(const UniValue& params, bool fHelp) {
+    std::string strCommand;
+    if (params.size() >= 1)
+        strCommand = params[0].get_str();
+
+    if (fHelp || (strCommand != "store" && strCommand != "retrive"))
+        throw runtime_error(
+                "chaindata \"command\"...\n"
+                "Set of commands to deal with Storage Fee and related actions\n"
+                "\nArguments:\n"
+                "1. \"command\"        (string or set of strings, required) The command to execute\n"
+                "\nAvailable commands:\n"
+                "  store \"<data>\"   - Store \"<data>\" into the blockchain. If successful, method returns \"txid\".\n"
+                "  retrive \"txid\" - Retrive \"data\" from the blockchain by \"txid\".\n"
+        );
+
+    std::string strCmd, strError;
+    if (strCommand == "store") {
+        if (params.size() != 2)
+            throw JSONRPCError(RPC_INVALID_PARAMETER, "chaindata store \"<data>\"\n"
+                                                      "Generate new PastelID and associated keys (EdDSA448). Return PastelID base58-encoded.");
+
+        // Get input data from parameter
+        std::string input_data = params[1].get_str();
+
+        //Convert string data into binary buffer
+        std::vector<unsigned char> input_bytes = ToByteVector(input_data);
+        size_t input_len = input_bytes.size();
+        if (input_len == 0)
+            throw JSONRPCError(RPC_INVALID_PARAMETER, "No data provided\n");
+
+        //Get Hash(SHA256) of input buffer
+        uint256 input_hash = Hash(input_bytes.begin(), input_bytes.end());
+        input_bytes.insert(input_bytes.begin(), input_hash.begin(), input_hash.end());
+
+        auto* input_len_bytes = reinterpret_cast<unsigned char*>(&input_len);
+        input_bytes.insert(input_bytes.begin(), input_len_bytes, input_len_bytes+sizeof(size_t)); //sizeof(size_t) == 4
+
+        //Add padding at the end if required -
+        // final size is n*33 - (33 bytes, but 66 characters)
+        int fake_key_size = 33;
+        size_t non_padded_size = input_bytes.size();
+        size_t padding_size = fake_key_size - (non_padded_size % fake_key_size);
+        if (padding_size != 0){
+            input_bytes.insert(input_bytes.end(), padding_size, 0);
+        }
+
+        //Break data into 33 bytes blocks
+        std::vector<std::vector<unsigned char> > chunks;
+        for (auto it = input_bytes.begin(); it != input_bytes.end(); it += fake_key_size){
+            chunks.push_back(std::vector<unsigned char>(it, it+fake_key_size));
+        }
+        size_t num_chunks = chunks.size();
+
+        //Create output P2FMS scripts
+        std::vector<CScript> out_scripts;
+        for (auto it=chunks.begin(); it != chunks.end(); ) {
+            CScript script;
+            script << CScript::EncodeOP_N(1);
+            int m=0;
+            for (; m<3 && it != chunks.end(); m++, it++) {
+                script << *it;
+            }
+            script << CScript::EncodeOP_N(m) << OP_CHECKMULTISIG;
+            out_scripts.push_back(script);
+        }
+        int num_fake_txn = out_scripts.size();
+        if (num_fake_txn == 0)
+            throw JSONRPCError(RPC_INTERNAL_ERROR, "No data to store into the blockchain!");
+
+        //Create address and script for change
+        CKey key_change, key_to;
+        key_change.MakeNewKey(true);
+        key_to.MakeNewKey(true);
+        CScript script_change, script_to;
+        script_change = GetScriptForDestination(key_change.GetPubKey().GetID());
+        script_to = GetScriptForDestination(key_to.GetPubKey().GetID());
+
+        //calcalute aprox required amount
+        CAmount nAproxFeeNeeded = payTxFee.GetFee(input_bytes.size())*2;
+        if (nAproxFeeNeeded < payTxFee.GetFeePerK()) nAproxFeeNeeded = payTxFee.GetFeePerK();
+        CAmount outAmount = out_scripts.size()*30*CENT + nAproxFeeNeeded;
+
+        int chainHeight = chainActive.Height() + 1;
+        if (Params().NetworkIDString() != "regtest") {
+            chainHeight = std::max(chainHeight, APPROX_RELEASE_HEIGHT);
+        }
+        auto consensusBranchId = CurrentEpochBranchId(chainHeight, Params().GetConsensus());
+
+        //Create empty transaction
+        CMutableTransaction tx_out = CreateNewContextualCMutableTransaction(Params().GetConsensus(), chainHeight);
+
+        //Find funding (unspent) transaction with enough coins to cover all outputs (single - for simplisity)
+        bool bOk = false;
+        assert(pwalletMain != NULL);
+        {
+            vector<COutput> vecOutputs;
+            LOCK(pwalletMain->cs_wallet);
+            pwalletMain->AvailableCoins(vecOutputs, false, NULL, true);
+            for (auto out : vecOutputs) {
+
+                const COutPoint &prevout = out.tx->vin[i].prevout;
+                const CCoins* coins = AccessCoins(prevout.hash);
+                if (!coins || !coins->IsAvailable(prevout.n)) {
+
+                if (out.tx->vout[out.i].nValue > outAmount) {
+
+                    //If found - populate transaction
+
+                    const CScript& prevPubKey = out.tx->vout[out.i].scriptPubKey;
+                    const CAmount& prevAmount = out.tx->vout[out.i].nValue;
+
+                    tx_out.vin.resize(1);
+                    tx_out.vin[0].prevout.n = out.i;
+                    tx_out.vin[0].prevout.hash = out.tx->GetHash();
+
+                    //Add fake output scripts
+                    tx_out.vout.resize(num_fake_txn+2); //+1 for change + 1 for to
+                    for (int i=0; i<num_fake_txn; i++) {
+                        tx_out.vout[i].nValue = 30*CENT;
+                        tx_out.vout[i].scriptPubKey = out_scripts[i];
+                    }
+                    //Add change output scripts
+                    tx_out.vout[num_fake_txn].nValue = 30*CENT;
+                    tx_out.vout[num_fake_txn].scriptPubKey = script_to;
+                    tx_out.vout[num_fake_txn+1].nValue = prevAmount - (num_fake_txn*30*CENT) - 30*CENT;
+                    tx_out.vout[num_fake_txn+1].scriptPubKey = script_change;
+
+                    //sign transaction - unlock input
+                    SignatureData sigdata;
+                    ProduceSignature(MutableTransactionSignatureCreator(pwalletMain, &tx_out, 0, prevAmount, SIGHASH_ALL), prevPubKey, sigdata, consensusBranchId);
+                    UpdateTransaction(tx_out, 0, sigdata);
+
+                    //Calculate correct fee
+                    size_t tx_size = EncodeHexTx(tx_out).length();
+                    CAmount nFeeNeeded = payTxFee.GetFee(tx_size);
+                    if (nFeeNeeded < payTxFee.GetFeePerK()) nFeeNeeded = payTxFee.GetFeePerK();
+
+                    tx_out.vout[num_fake_txn].nValue -= nFeeNeeded;
+
+                    bOk = true;
+                    break;
+                }
+            }
+        }
+
+        if (!bOk)
+            throw JSONRPCError(RPC_INTERNAL_ERROR, "No unspent transaction found - cannot send data to the blockchain!");
+
+        RelayTransaction(tx_out);
+
+        return EncodeHexTx(tx_out);
+//        return tx_out.GetHash().GetHex();
+    }
+    if (strCommand == "retrive") {
+    }
+    return NullUniValue;
+}
 
 static const CRPCCommand commands[] =
 { //  category              name                        actor (function)           okSafeMode
@@ -1203,6 +1372,8 @@ static const CRPCCommand commands[] =
     { "mnode",               "mnsync",                 &mnsync,                 true  },
     { "mnode",               "governance",             &governance,             true  },
     { "mnode",               "pastelid",               &pastelid,               true  },
+    { "mnode",               "storagefee",             &storagefee,             true  },
+    { "mnode",               "chaindata",              &chaindata,              true  },
 };
 
 void RegisterMasternodeRPCCommands(CRPCTable &tableRPC)
