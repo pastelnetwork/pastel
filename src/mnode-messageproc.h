@@ -14,9 +14,11 @@ extern CCriticalSection cs_mapSeenMessages;
 extern CCriticalSection cs_mapOurMessages;
 //extern CCriticalSection cs_mapLatestSender;
 
+bool Sign(const std::string& message, std::string& signatureBase64, std::string& error_ret);
+bool Sign(const std::string& message, std::vector<unsigned char>& signature, std::string& error_ret);
+
 class CMasternodeMessage
 {
-
 public:
     CTxIn vinMasternodeFrom;
     CTxIn vinMasternodeTo;

@@ -20,6 +20,7 @@
 #include "mnode-governance.h"
 #include "mnode-messageproc.h"
 #include "mnode-notificationinterface.h"
+#include "mnode-pastel.h"
 
 #ifdef ENABLE_WALLET
 #include "wallet/wallet.h"
@@ -51,6 +52,8 @@ public:
     CMasternodeGovernance masternodeGovernance;
     // Keep track of the latest messages
     CMasternodeMessageProcessor masternodeMessages;
+	// Keep track of the tickets
+	CPastelTicketProcessor masternodeTickets;
 
     bool fMasterNode;
 

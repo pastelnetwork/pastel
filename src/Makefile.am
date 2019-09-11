@@ -27,6 +27,7 @@ BITCOIN_INCLUDES += -I$(srcdir)/secp256k1/include
 BITCOIN_INCLUDES += -I$(srcdir)/snark
 BITCOIN_INCLUDES += -I$(srcdir)/snark/libsnark
 BITCOIN_INCLUDES += -I$(srcdir)/univalue/include
+BITCOIN_INCLUDES += -I$(srcdir)/msgpack
 
 LIBBITCOIN_SERVER=libbitcoin_server.a
 LIBBITCOIN_COMMON=libbitcoin_common.a
@@ -124,6 +125,7 @@ MNODE_CPP = \
   mnode-payments.cpp \
   mnode-governance.cpp \
   mnode-messageproc.cpp \
+  mnode-pastel.cpp \
   mnode-notificationinterface.cpp \
   mnode-controller.cpp
 
@@ -139,6 +141,7 @@ MNODE_H = \
   mnode-payments.h \
   mnode-governance.h \
   mnode-messageproc.h \
+  mnode-pastel.h \
   mnode-controller.h \
   mnode-notificationinterface.h \
   mnode-sync.h

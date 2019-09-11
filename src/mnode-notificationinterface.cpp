@@ -27,11 +27,13 @@ void CACNotificationInterface::NotifyHeaderTip(const CBlockIndex *pindexNew, boo
 void CACNotificationInterface::UpdatedBlockTip(const CBlockIndex *pindexNew, bool fInitialDownload)
 {
     masterNodeCtrl.masternodeSync.UpdatedBlockTip(pindexNew, fInitialDownload);
-
-    if (fInitialDownload)
-        return;
-
-    masterNodeCtrl.masternodeManager.UpdatedBlockTip(pindexNew);
-    masterNodeCtrl.masternodePayments.UpdatedBlockTip(pindexNew);
-    masterNodeCtrl.masternodeGovernance.UpdatedBlockTip(pindexNew);
+	masterNodeCtrl.masternodeTickets.UpdatedBlockTip(pindexNew, fInitialDownload);
+	
+	if (fInitialDownload) {
+		return;
+	}
+	
+	masterNodeCtrl.masternodeManager.UpdatedBlockTip(pindexNew);
+	masterNodeCtrl.masternodePayments.UpdatedBlockTip(pindexNew);
+	masterNodeCtrl.masternodeGovernance.UpdatedBlockTip(pindexNew);
 }

@@ -11,8 +11,8 @@
 namespace ed_crypto {
 
     static constexpr int OK = 1;
-
-    std::string Base64_Encode(const unsigned char *in, size_t len)
+	
+	inline std::string Base64_Encode(const unsigned char *in, size_t len)
     {
         std::string out;
         int val=0, valb=-6;
@@ -30,8 +30,8 @@ namespace ed_crypto {
         while (out.size()%4) out.push_back('=');
         return out;
     }
-
-    std::vector<unsigned char> Base64_Decode(const std::string &in)
+	
+	inline std::vector<unsigned char> Base64_Decode(const std::string &in)
     {
         std::vector<unsigned char> out;
 
@@ -50,16 +50,16 @@ namespace ed_crypto {
         }
         return out;
     }
-
-    std::string Hex_Encode(const unsigned char *in, size_t len)
+	
+	inline std::string Hex_Encode(const unsigned char *in, size_t len)
     {
         std::ostringstream hex_str_str;
         for (int i = 0; i < len; i++)
             hex_str_str << std::setfill('0') << std::setw(2) << std::hex << (int) in[i];
         return hex_str_str.str();
     }
-
-    std::vector<unsigned char> Hex_Decode(const std::string &in)
+	
+	inline std::vector<unsigned char> Hex_Decode(const std::string &in)
     {
         std::vector<unsigned char> out;
         for (int i=0;i<in.length();i+=2)
@@ -170,16 +170,15 @@ namespace ed_crypto {
             return message.c_str();
         }
     };
-
-    std::string Password_Stretching(const std::string& password)
-    {
-        unsigned char pout[32] = {};
-
-        if (OK != PKCS5_PBKDF2_HMAC(password.c_str(), password.length(), nullptr, 0, 1000, EVP_sha512(), 32, pout))
-            throw (crypto_exception("", std::string(), "PKCS5_PBKDF2_HMAC"));
-
-        std::string out{reinterpret_cast<char*>(pout), 32};
-        return out;
-    }
-
+	
+	inline std::string Password_Stretching(const std::string& password)
+	{
+		unsigned char pout[32] = {};
+		
+		if (OK != PKCS5_PBKDF2_HMAC(password.c_str(), password.length(), nullptr, 0, 1000, EVP_sha512(), 32, pout))
+			throw (crypto_exception("", std::string(), "PKCS5_PBKDF2_HMAC"));
+		
+		std::string out{reinterpret_cast<char*>(pout), 32};
+		return out;
+	}
 }

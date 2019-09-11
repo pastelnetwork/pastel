@@ -4,6 +4,10 @@
 
 #include "main.h"
 #include "key_io.h"
+#include "core_io.h"
+#include "deprecation.h"
+#include "script/sign.h"
+#include "init.h"
 
 #include "mnode-controller.h"
 #include "mnode-msgsigner.h"
@@ -12,6 +16,33 @@
 CCriticalSection cs_mapSeenMessages;
 CCriticalSection cs_mapOurMessages;
 //CCriticalSection cs_mapLatestSender;
+
+bool Sign(const std::string& message, std::string& signatureBase64, std::string& error_ret)
+{
+    vector<unsigned char> signature;
+    if (!Sign(message, signature, error_ret)){
+        return false;
+    }
+
+    signatureBase64 = EncodeBase64(std::string(signature.begin(), signature.end()));
+    return true;
+}
+
+bool Sign(const std::string& message, std::vector<unsigned char>& signature, std::string& error_ret)
+{
+    if(!CMessageSigner::SignMessage(message, signature, masterNodeCtrl.activeMasternode.keyMasternode)) {
+        error_ret = "Sign -- SignMessage() failed";
+        return false;
+    }
+
+    std::string strError;
+    if(!CMessageSigner::VerifyMessage(masterNodeCtrl.activeMasternode.pubKeyMasternode, signature, message, strError)) {
+        error_ret = strprintf("Sign -- VerifyMessage() failed, error: %s", strError);
+        return false;
+    }
+
+    return true;
+}
 
 bool CMasternodeMessage::Sign()
 {
@@ -26,13 +57,8 @@ bool CMasternodeMessage::Sign()
 
     LogPrintf("CMasternodeMessage::Sign -- Message to sign: %s (%s)\n", ToString(), strMessage);
 
-    if(!CMessageSigner::SignMessage(strMessage, vchSig, masterNodeCtrl.activeMasternode.keyMasternode)) {
-        LogPrintf("CMasternodeMessage::Sign -- SignMessage() failed\n");
-        return false;
-    }
-
-    if(!CMessageSigner::VerifyMessage(masterNodeCtrl.activeMasternode.pubKeyMasternode, vchSig, strMessage, strError)) {
-        LogPrintf("CMasternodeMessage::Sign -- VerifyMessage() failed, error: %s\n", strError);
+    if (!::Sign(strMessage, vchSig, strError)){
+        LogPrintf("CMasternodeMessage::Sign -- %s\n", strError);
         return false;
     }
 

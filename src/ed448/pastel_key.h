@@ -8,6 +8,7 @@
 #include "key_io.h"
 #include <base58.h>
 #include "support/allocators/secure.h"
+#include <boost/filesystem.hpp>
 
 class CPastelID {
     static constexpr int PubKeySize = 57;
@@ -25,6 +26,18 @@ public:
         }
         return std::string{};
     }
+	
+	static std::vector<unsigned char> SignB(const unsigned char* text, std::size_t length, const std::string& pastelID, const SecureString& passPhrase)
+	{
+		try {
+			ed_crypto::key_dsa448 key = ed_crypto::key_dsa448::read_private_key_from_PKCS8_file(GetKeyFilePath(pastelID), passPhrase.c_str());
+			ed_crypto::buffer sigBuf = ed_crypto::crypto_sign::sign(text, length, key);
+			return sigBuf.data();
+		} catch (ed_crypto::crypto_exception& ex) {
+			throw runtime_error(ex.what());
+		}
+		return std::vector<unsigned char>{};
+	}
 
     static std::string Sign(const std::string& text, const std::string& pastelID, const SecureString& passPhrase)
     {
@@ -62,7 +75,6 @@ public:
         return vec;
     }
 
-private:
     static std::string EncodePastelID(const std::vector<unsigned char>& key)
     {
         std::vector<unsigned char> data {0xA1,0xDE};
@@ -72,7 +84,6 @@ private:
 
         return ret;
     }
-
     static std::vector<unsigned char> DecodePastelID(const std::string& pastelID)
     {
         std::vector<unsigned char> data;
@@ -85,6 +96,8 @@ private:
         }
         return std::vector<unsigned char>{};
     }
+
+private:
 
     static std::string GetKeyFilePath(const std::string& fileName)
     {

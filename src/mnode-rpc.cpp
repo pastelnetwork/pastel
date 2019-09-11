@@ -22,12 +22,11 @@
 #include "rpc/server.h"
 #include "utilstrencodings.h"
 #include "key_io.h"
-
 #include "core_io.h"
-#include "deprecation.h"
-#include "script/sign.h"
 
 #include "ed448/pastel_key.h"
+#include "mnode-messageproc.h"
+#include "mnode-pastel.h"
 
 #ifdef ENABLE_WALLET
 #include "wallet/wallet.h"
@@ -229,7 +228,7 @@ UniValue masternode(const UniValue& params, bool fHelp)
 #endif // ENABLE_WALLET
          strCommand != "list" && strCommand != "list-conf" && strCommand != "count" &&
          strCommand != "debug" && strCommand != "current" && strCommand != "winner" && strCommand != "winners" && strCommand != "genkey" &&
-         strCommand != "connect" && strCommand != "status" && strCommand != "workers" ))
+         strCommand != "connect" && strCommand != "status" && strCommand != "workers" && strCommand != "sign"))
             throw std::runtime_error(
                 "masternode \"command\"...\n"
                 "Set of commands to execute masternode related actions\n"
@@ -250,6 +249,7 @@ UniValue masternode(const UniValue& params, bool fHelp)
                 "  winner       - Print info on next masternode winner to vote for\n"
                 "  winners      - Print list of masternode winners\n"
                 "  workers <n>  - Print 3 worker masternodes for the current or n-th block.\n"
+				"  sign <message> <n> - Sing <message> using masternodes key\n\tif n is presented and not 0 - it will aslo returns the public key\n\tuse \"verifymessage\" with masrternode's public key to verify signature\n"
                 );
 
     if (strCommand == "list")
@@ -588,6 +588,32 @@ UniValue masternode(const UniValue& params, bool fHelp)
         obj.push_back(Pair(strprintf("%d", nHeight), workersArray));
 
         return obj;
+    }
+    if (strCommand == "sign")
+    {
+		if (!masterNodeCtrl.IsMasterNode())
+			throw JSONRPCError(RPC_INTERNAL_ERROR, "This is not a masternode");
+
+        if (params.size() != 2 || params.size() != 3)
+            throw JSONRPCError(RPC_INVALID_PARAMETER, "Correct usage is 'masternode sign \"message-to-sign\" <n>' where n is optional and can be 1");
+
+        std::string message = params[1].get_str();
+
+        std::string error_ret;
+        std::vector<unsigned char> signature;
+        if (!Sign(message, signature, error_ret))
+            throw JSONRPCError(RPC_INVALID_PARAMETER, strprintf("Sign failed - %s", error_ret));
+
+        UniValue obj(UniValue::VOBJ);
+        obj.push_back(Pair("signature", std::string(signature.begin(), signature.end())));
+        if (params.size() == 3){
+			int n = atoi(params[1].get_str());
+			if (n > 0) {
+				std::string strPubKey = EncodeDestination(masterNodeCtrl.activeMasternode.pubKeyMasternode.GetID());
+				obj.push_back(Pair("signature", std::string(signature.begin(), signature.end())));
+			}
+		}
+		return obj;
     }
     return NullUniValue;
 }
@@ -1022,15 +1048,15 @@ UniValue pastelid(const UniValue& params, bool fHelp) {
                 "\nArguments:\n"
                 "1. \"command\"        (string or set of strings, required) The command to execute\n"
                 "\nAvailable commands:\n"
-                "  newkey \"passphrase\"                       - Generate new PastelID and associated keys (EdDSA448). Return PastelID base58-encoded\n"
-                "                                                  \"passphrase\" will be used to encrypt the key file\n"
-                "  importkey \"key\" <\"passphrase\">          - Import private \"key\" (EdDSA448) as PKCS8 encrypted string in PEM format. Return PastelID base58-encoded\n"
-                "                                                  \"passphrase\" (optional) to decrypt the key for the purpose of validating and returning PastelID\n"
-                "                                                  NOTE: without \"passphrase\" key cannot be validated and if key is bad (not EdDSA448) call to \"sign\" will fail\n"
-                "  list                                        - List all internally stored PastelID and keys.\n"
-                "  sign \"text\" \"PastelID\" \"passphrase\"   - Sign \"text\" with the internally stored private key associated with the PastelID.\n"
-                "  sign-by-key \"text\" \"key\" \"passphrase\" - Sign \"text\" with the private \"key\" (EdDSA448) as PKCS8 encrypted string in PEM format.\n"
-                "  verify \"text\" \"signature\" \"PastelID\"  - Verify \"text\"'s \"signature\" with the PastelID.\n"
+				"  newkey \"passphrase\"						- Generate new PastelID and associated keys (EdDSA448). Return PastelID base58-encoded\n"
+				"  													\"passphrase\" will be used to encrypt the key file\n"
+				"  importkey \"key\" <\"passphrase\">			- Import private \"key\" (EdDSA448) as PKCS8 encrypted string in PEM format. Return PastelID base58-encoded\n"
+				"  													\"passphrase\" (optional) to decrypt the key for the purpose of validating and returning PastelID\n"
+				"  													NOTE: without \"passphrase\" key cannot be validated and if key is bad (not EdDSA448) call to \"sign\" will fail\n"
+				"  list											- List all internally stored PastelID and keys.\n"
+				"  sign \"text\" \"PastelID\" \"passphrase\"	- Sign \"text\" with the internally stored private key associated with the PastelID.\n"
+				"  sign-by-key \"text\" \"key\" \"passphrase\"	- Sign \"text\" with the private \"key\" (EdDSA448) as PKCS8 encrypted string in PEM format.\n"
+				"  verify \"text\" \"signature\" \"PastelID\"	- Verify \"text\"'s \"signature\" with the PastelID.\n"
         );
 
     std::string strCmd, strError;
@@ -1209,153 +1235,112 @@ UniValue chaindata(const UniValue& params, bool fHelp) {
     if (params.size() >= 1)
         strCommand = params[0].get_str();
 
-    if (fHelp || (strCommand != "store" && strCommand != "retrive"))
+    if (fHelp || (strCommand != "store" && strCommand != "retrieve"))
         throw runtime_error(
                 "chaindata \"command\"...\n"
                 "Set of commands to deal with Storage Fee and related actions\n"
                 "\nArguments:\n"
                 "1. \"command\"        (string or set of strings, required) The command to execute\n"
                 "\nAvailable commands:\n"
-                "  store \"<data>\"   - Store \"<data>\" into the blockchain. If successful, method returns \"txid\".\n"
-                "  retrive \"txid\" - Retrive \"data\" from the blockchain by \"txid\".\n"
+				"  store \"<data>\"		- Store \"<data>\" into the blockchain. If successful, method returns \"txid\".\n"
+				"  retrieve \"txid\"	- Retrieve \"data\" from the blockchain by \"txid\".\n"
         );
 
     std::string strCmd, strError;
     if (strCommand == "store") {
         if (params.size() != 2)
             throw JSONRPCError(RPC_INVALID_PARAMETER, "chaindata store \"<data>\"\n"
-                                                      "Generate new PastelID and associated keys (EdDSA448). Return PastelID base58-encoded.");
+                                                      "Store \"<data>\" into the blockchain. If successful, method returns \"txid\".");
 
         // Get input data from parameter
         std::string input_data = params[1].get_str();
-
-        //Convert string data into binary buffer
-        std::vector<unsigned char> input_bytes = ToByteVector(input_data);
-        size_t input_len = input_bytes.size();
-        if (input_len == 0)
+        if (input_data.length() == 0)
             throw JSONRPCError(RPC_INVALID_PARAMETER, "No data provided\n");
+		if (input_data.length() > 4096)
+			throw JSONRPCError(RPC_INVALID_PARAMETER, "The data is to big. 4KB is Max\n");
 
-        //Get Hash(SHA256) of input buffer
-        uint256 input_hash = Hash(input_bytes.begin(), input_bytes.end());
-        input_bytes.insert(input_bytes.begin(), input_hash.begin(), input_hash.end());
+        std::string error;
+        CMutableTransaction tx_out;
+        if (!CPastelTicketProcessor::CreateP2FMSTransaction(input_data, tx_out, error))
+            throw JSONRPCError(RPC_INVALID_PARAMETER, strprintf("\"Failed to create P2FMS from data provided - %s", error));
+		
+		if (!CPastelTicketProcessor::StoreP2FMSTransaction(tx_out, error))
+			throw JSONRPCError(RPC_TRANSACTION_ERROR, error);
 
-        auto* input_len_bytes = reinterpret_cast<unsigned char*>(&input_len);
-        input_bytes.insert(input_bytes.begin(), input_len_bytes, input_len_bytes+sizeof(size_t)); //sizeof(size_t) == 4
-
-        //Add padding at the end if required -
-        // final size is n*33 - (33 bytes, but 66 characters)
-        int fake_key_size = 33;
-        size_t non_padded_size = input_bytes.size();
-        size_t padding_size = fake_key_size - (non_padded_size % fake_key_size);
-        if (padding_size != 0){
-            input_bytes.insert(input_bytes.end(), padding_size, 0);
-        }
-
-        //Break data into 33 bytes blocks
-        std::vector<std::vector<unsigned char> > chunks;
-        for (auto it = input_bytes.begin(); it != input_bytes.end(); it += fake_key_size){
-            chunks.push_back(std::vector<unsigned char>(it, it+fake_key_size));
-        }
-        size_t num_chunks = chunks.size();
-
-        //Create output P2FMS scripts
-        std::vector<CScript> out_scripts;
-        for (auto it=chunks.begin(); it != chunks.end(); ) {
-            CScript script;
-            script << CScript::EncodeOP_N(1);
-            int m=0;
-            for (; m<3 && it != chunks.end(); m++, it++) {
-                script << *it;
-            }
-            script << CScript::EncodeOP_N(m) << OP_CHECKMULTISIG;
-            out_scripts.push_back(script);
-        }
-        int num_fake_txn = out_scripts.size();
-        if (num_fake_txn == 0)
-            throw JSONRPCError(RPC_INTERNAL_ERROR, "No data to store into the blockchain!");
-
-        //Create address and script for change
-        CKey key_change, key_to;
-        key_change.MakeNewKey(true);
-        key_to.MakeNewKey(true);
-        CScript script_change, script_to;
-        script_change = GetScriptForDestination(key_change.GetPubKey().GetID());
-        script_to = GetScriptForDestination(key_to.GetPubKey().GetID());
-
-        //calcalute aprox required amount
-        CAmount nAproxFeeNeeded = payTxFee.GetFee(input_bytes.size())*2;
-        if (nAproxFeeNeeded < payTxFee.GetFeePerK()) nAproxFeeNeeded = payTxFee.GetFeePerK();
-        CAmount outAmount = out_scripts.size()*30*CENT + nAproxFeeNeeded;
-
-        int chainHeight = chainActive.Height() + 1;
-        if (Params().NetworkIDString() != "regtest") {
-            chainHeight = std::max(chainHeight, APPROX_RELEASE_HEIGHT);
-        }
-        auto consensusBranchId = CurrentEpochBranchId(chainHeight, Params().GetConsensus());
-
-        //Create empty transaction
-        CMutableTransaction tx_out = CreateNewContextualCMutableTransaction(Params().GetConsensus(), chainHeight);
-
-        //Find funding (unspent) transaction with enough coins to cover all outputs (single - for simplisity)
-        bool bOk = false;
-        assert(pwalletMain != NULL);
-        {
-            vector<COutput> vecOutputs;
-            LOCK(pwalletMain->cs_wallet);
-            pwalletMain->AvailableCoins(vecOutputs, false, NULL, true);
-            for (auto out : vecOutputs) {
-                if (out.tx->vout[out.i].nValue > outAmount) {
-
-                    //If found - populate transaction
-
-                    const CScript& prevPubKey = out.tx->vout[out.i].scriptPubKey;
-                    const CAmount& prevAmount = out.tx->vout[out.i].nValue;
-
-                    tx_out.vin.resize(1);
-                    tx_out.vin[0].prevout.n = out.i;
-                    tx_out.vin[0].prevout.hash = out.tx->GetHash();
-
-                    //Add fake output scripts
-                    tx_out.vout.resize(num_fake_txn+2); //+1 for change + 1 for to
-                    for (int i=0; i<num_fake_txn; i++) {
-                        tx_out.vout[i].nValue = 30*CENT;
-                        tx_out.vout[i].scriptPubKey = out_scripts[i];
-                    }
-                    //Add change output scripts
-                    tx_out.vout[num_fake_txn].nValue = 30*CENT;
-                    tx_out.vout[num_fake_txn].scriptPubKey = script_to;
-                    tx_out.vout[num_fake_txn+1].nValue = prevAmount - (num_fake_txn*30*CENT) - 30*CENT;
-                    tx_out.vout[num_fake_txn+1].scriptPubKey = script_change;
-
-                    //sign transaction - unlock input
-                    SignatureData sigdata;
-                    ProduceSignature(MutableTransactionSignatureCreator(pwalletMain, &tx_out, 0, prevAmount, SIGHASH_ALL), prevPubKey, sigdata, consensusBranchId);
-                    UpdateTransaction(tx_out, 0, sigdata);
-
-                    //Calculate correct fee
-                    size_t tx_size = EncodeHexTx(tx_out).length();
-                    CAmount nFeeNeeded = payTxFee.GetFee(tx_size);
-                    if (nFeeNeeded < payTxFee.GetFeePerK()) nFeeNeeded = payTxFee.GetFeePerK();
-
-                    tx_out.vout[num_fake_txn].nValue -= nFeeNeeded;
-
-                    bOk = true;
-                    break;
-                }
-            }
-        }
-
-        if (!bOk)
-            throw JSONRPCError(RPC_INTERNAL_ERROR, "No unspent transaction found - cannot send data to the blockchain!");
-
-        RelayTransaction(tx_out);
-
-        return EncodeHexTx(tx_out);
-//        return tx_out.GetHash().GetHex();
+        UniValue mnObj(UniValue::VOBJ);
+        mnObj.push_back(Pair("txid", tx_out.GetHash().GetHex()));
+        mnObj.push_back(Pair("rawtx", EncodeHexTx(tx_out)));
+        return mnObj;
     }
-    if (strCommand == "retrive") {
+    if (strCommand == "retrieve") {
+        if (params.size() != 2)
+            throw JSONRPCError(RPC_INVALID_PARAMETER, "chaindata retrive \"txid\"\n"
+                                                      "Retrieve \"data\" from the blockchain by \"txid\".");
+
+        uint256 hash = ParseHashV(params[1], "\"txid\"");
+
+        CTransaction tx;
+        uint256 hashBlock;
+        if (!GetTransaction(hash, tx, hashBlock, true))
+            throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "No information available about transaction");
+
+        std::string error, output_data;
+        if (!CPastelTicketProcessor::ParseP2FMSTransaction(tx, output_data, error))
+            throw JSONRPCError(RPC_INVALID_PARAMETER, strprintf("\"Failed to create P2FMS from data provided - %s", error));
+
+        return output_data;
     }
     return NullUniValue;
+}
+
+UniValue tickets(const UniValue& params, bool fHelp) {
+	std::string strCommand;
+	if (params.size() >= 1)
+		strCommand = params[0].get_str();
+	
+	if (fHelp || (strCommand != "register-mnid" && strCommand != "register-art"))
+		throw runtime_error(
+				"tickets \"command\"...\n"
+				"Set of commands to deal with Pastel tickets and related actions\n"
+				"\nArguments:\n"
+				"1. \"command\"        (string or set of strings, required) The command to execute\n"
+				"\nAvailable commands:\n"
+				"  register-mnid \"pastelid\" <passpharse> - Register identity of the current Masternode into the blockchain. If successful, method returns \"txid\".\n"
+		);
+	
+	std::string strCmd, strError;
+	if (strCommand == "register-mnid") {
+		if (params.size() != 3)
+			throw JSONRPCError(RPC_INVALID_PARAMETER, "tickets register-mnid \"pastelid\" \"<passpharse>\"\n"
+													  "Register identity of the current Masternode into the blockchain. If successful, method returns \"txid\"."
+													  "\nArguments:\n"
+													  "1. \"pastelid\"		(string, required) The PastelID. NOTE: PastelID must be generated and stored inside node. See \"pastelid newkey\".\n"
+													  "2. \"passpharse\"	(string, required) The passphrase to the private key assocaited with PastelID and stored inside node. See \"pastelid newkey\".\n"
+													  "\nRegister masternode ID\n"
+													  + HelpExampleCli("tickets register-mnid", "\"jXaShWhNtatHVPWRNPsvjoVHUYes2kA7T9EJVL9i9EKPdBNo5aTYp19niWemJb2EwgYYR68jymULPtmHdETf8M\"" "\"passphrase\"") +
+													  "\nAs json rpc\n"
+													  + HelpExampleRpc("tickets register-mnid", "\"jXaShWhNtatHVPWRNPsvjoVHUYes2kA7T9EJVL9i9EKPdBNo5aTYp19niWemJb2EwgYYR68jymULPtmHdETf8M\"" "\"passphrase\"")
+													  );
+
+		if (!masterNodeCtrl.IsActiveMasterNode())
+			throw JSONRPCError(RPC_INTERNAL_ERROR, "This is not a active masternode. Only active MN can register its PastelID");
+
+		//TODO: search if the PastelID alreday registered
+		
+		
+		std::string pastelID = params[1].get_str();
+		SecureString strKeyPass;
+		strKeyPass.reserve(100);
+		strKeyPass = params[2].get_str().c_str();
+		
+		CPastelRegisterationTicket regTicket(pastelID, strKeyPass);
+		CPastelTicketProcessor::SendTicket(regTicket);
+		
+		UniValue mnObj(UniValue::VOBJ);
+		mnObj.push_back(Pair("txid", regTicket.TxId()));
+		return mnObj;
+	}
+	return NullUniValue;
 }
 
 static const CRPCCommand commands[] =
@@ -1369,7 +1354,9 @@ static const CRPCCommand commands[] =
     { "mnode",               "pastelid",               &pastelid,               true  },
     { "mnode",               "storagefee",             &storagefee,             true  },
     { "mnode",               "chaindata",              &chaindata,              true  },
+    { "mnode",               "tickets",                &tickets,              true  },
 };
+
 
 void RegisterMasternodeRPCCommands(CRPCTable &tableRPC)
 {
