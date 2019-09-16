@@ -197,6 +197,9 @@ bool CMasterNodeController::EnableMasterNode(std::ostringstream& strErrors, boos
         strErrors << _("Failed to load messages cache from") + "\n" + (pathDB / strDBName).string();
         return false;
     }
+	
+    //enable tickets database
+	masternodeTickets.InitTicketDB();
 
     pacNotificationInterface = new CACNotificationInterface();
     RegisterValidationInterface(pacNotificationInterface);

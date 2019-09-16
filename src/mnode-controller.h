@@ -34,8 +34,7 @@ private:
     void SetParameters();
 
     CACNotificationInterface* pacNotificationInterface;
-
-
+    
 public:
     CMasternodeConfig masternodeConfig;
     // Keep track of the active Masternode
