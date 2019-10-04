@@ -27,8 +27,8 @@ public:
 	
 	TicketID ID() const {return ticketId;}
 	virtual std::string TicketName() const = 0;
-	virtual Key1 Key() const = 0; 		//Key to the object itself
-	virtual Key2 KeyToo() const = 0;	//another key, points to the main key
+	virtual Key1 KeyOne() const = 0; 		//Key to the object itself
+	virtual Key2 KeyTwo() const = 0;		//another key, points to the main key
 	virtual std::string ToJSON() = 0;
 	
 	std::string ticketTnx;
@@ -51,8 +51,8 @@ public:
 	CPastelIDRegTicket(std::string _pastelID, const SecureString& strKeyPass, std::string _address); //For Personal PastelID
 	
 	std::string TicketName() const override {return "pastelid";}
-	std::string Key() const override {return pastelID;}
-	std::string KeyToo() const override {return outpoint.empty()? address: outpoint;}
+	std::string KeyOne() const override {return pastelID;}
+	std::string KeyTwo() const override {return outpoint.empty() ? address : outpoint;}
 	
 	std::string ToJSON() override;
 	std::string PastelIDType() {return outpoint.empty()? "personal": "masternode";}
@@ -77,9 +77,7 @@ private:
 };
 
 /*
- В общем формат JSON’a FinalTicket’a такой:
- все поля с типом bytes  будут завернуты в base64 и переданы как строки.
-
+fileds are base64 as strings
 FinalRegistrationTicket = {
     "ticket": {
         "author": bytes,
@@ -121,7 +119,42 @@ FinalRegistrationTicket = {
 }
  */
 class CArtRegTicket : public CPastelTicket<TicketID::Art, std::string, std::string>
-{};
+{
+public:
+	std::string ticketBlob;
+	std::string keyOne;
+	std::string keyTwo;
+
+public:
+	CArtRegTicket() = default;
+	CArtRegTicket(std::string _ticket, std::string _keyOne, std::string _keyTwo)
+			: ticketBlob(std::move(_ticket)),
+			  keyOne(std::move(_keyOne)),
+			  keyTwo(std::move(_keyTwo))
+	{}
+	
+	std::string TicketName() const override {return "art-reg";}
+	std::string KeyOne() const override {return keyOne;}
+	std::string KeyTwo() const override {return keyTwo;}
+	
+	std::string ToJSON() override;
+	
+	ADD_SERIALIZE_METHODS;
+	
+	template <typename Stream, typename Operation>
+	inline void SerializationOp(Stream& s, Operation ser_action) {
+		READWRITE(ticketBlob);
+		READWRITE(keyOne);
+		READWRITE(keyTwo);
+		READWRITE(ticketTnx);
+		READWRITE(ticketBlock);
+	}
+	
+	MSGPACK_DEFINE(ticketBlob, keyOne, keyTwo)
+
+private:
+	void init(std::string&& _ticket, std::string&& _keyOne, std::string&& _keyTwo) {} //TODO: call from constructor to parse ticket
+};
 
 class CArtConfTicket : public CPastelTicket<TicketID::Confirm, std::string, std::string>
 {};
@@ -168,8 +201,8 @@ public:
 	
 	template<class T>
 	static std::string SendTicket(const T& ticket);
-	template<class T>
-	static T GetTicket(uint256 txid);
+
+	static std::string GetTicket(uint256 txid);
 
 	template<class T>
 	static T ParseTicket(const std::vector<unsigned char>& data, int nOffset = 0);

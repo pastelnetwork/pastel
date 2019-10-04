@@ -1063,6 +1063,9 @@ bool ContextualCheckTransaction(
 
         librustzcash_sapling_verification_ctx_free(ctx);
     }
+    
+    //TODO: Check Pastel Ticket transactions here!!!
+    
     return true;
 }
 

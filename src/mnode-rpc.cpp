@@ -1315,7 +1315,7 @@ UniValue tickets(const UniValue& params, bool fHelp) {
 	if (params.size() >= 1)
 		strCommand = params[0].get_str();
 	
-	if (fHelp || (strCommand != "register" && strCommand != "find" && strCommand != "list"))
+	if (fHelp || (strCommand != "register" && strCommand != "find" && strCommand != "list" && strCommand != "get"))
 		throw runtime_error(
 			"tickets \"command\"...\n"
 			"Set of commands to deal with Pastel tickets and related actions\n"
@@ -1325,6 +1325,7 @@ UniValue tickets(const UniValue& params, bool fHelp) {
 			"  register ... - Register specific Pastel tickets into the blockchain. If successful, returns \"txid\".\n"
 			"  find ... 	- Find specific Pastel tickets in the blockchain.\n"
 			"  list ... 	- List all specific Pastel tickets in the blockchain.\n"
+			"  get ... 		- Get Pastel ticket by txid.\n"
 		);
 	
 	std::string strCmd, strError;
@@ -1351,7 +1352,7 @@ UniValue tickets(const UniValue& params, bool fHelp) {
 				"  art		- Register new art ticket. If successful, returns \"txid\".\n"
 				"  				Ticket contains:\n"
 				"  					<...>\n"
-				"  conf		- Register new art confirmation ticket. If successful, returns \"txid\".\n"
+				"  act		- Send activation for new registred art ticket. If successful, returns \"txid\" of activation ticket.\n"
 				"  				Ticket contains:\n"
 				"  					<...>\n"
 				"  trade	- Register art trade ticket. If successful, returns \"txid\".\n"
@@ -1454,12 +1455,12 @@ UniValue tickets(const UniValue& params, bool fHelp) {
 			
 			std::string address = params[4].get_str();
 			
-			CPastelIDRegTicket regTicket(pastelID, strKeyPass, address);
-			std::string txid = CPastelTicketProcessor::SendTicket(regTicket);
+			CPastelIDRegTicket pastelIDRegTicket(pastelID, strKeyPass, address);
+			std::string txid = CPastelTicketProcessor::SendTicket(pastelIDRegTicket);
 			
 			mnObj.push_back(Pair("txid", txid));
 		}
-		if (strCmd == "art")
+		if (strCmd == "art") {
 			if (params.size() != 5)
 				throw JSONRPCError(RPC_INVALID_PARAMETER,
 								   "tickets register art \"ticket\" \"key1\" \"key2\"\n"
@@ -1471,7 +1472,7 @@ UniValue tickets(const UniValue& params, bool fHelp) {
 								   "Masternode PastelID Ticket:\n"
 								   "{\n"
 								   "	\"ticket\": {\n"
-								   "		\"type\": \"artreg\",\n"
+								   "		\"type\": \"art-reg\",\n"
 								   "		\"ticket\": \"\",\n"
 								   "	},\n"
 								   "	\"key1\": \"\",\n"
@@ -1481,39 +1482,63 @@ UniValue tickets(const UniValue& params, bool fHelp) {
 								   "  }\n"
 								   "\nRegister Art Ticket\n"
 								   + HelpExampleCli("tickets register art",
-													"\"jXaShWhNtatHVPWRNPsvjoVHUYes2kA7T9EJVL9i9EKPdBNo5aTYp19niWemJb2EwgYYR68jymULPtmHdETf8M\"" " \"passphrase\"" " \"tPmjPqWdUXD68JBTWYBTtqeCDwdFwwRjikg\"") +
+													"\"ticket-blob-as-string (will be changed later!)\"" " \"key1\"" " \"key2\"") +
 								   "\nAs json rpc\n"
 								   + HelpExampleRpc("tickets register art",
-													"\"jXaShWhNtatHVPWRNPsvjoVHUYes2kA7T9EJVL9i9EKPdBNo5aTYp19niWemJb2EwgYYR68jymULPtmHdETf8M\"" " \"passphrase\"" " \"tPmjPqWdUXD68JBTWYBTtqeCDwdFwwRjikg\"")
+													"\"ticket-blob-as-string (will be changed later!)\"" " \"key1\"" " \"key2\"")
 				);
-		if (strCmd == "conf") {
-			if (params.size() != 5)
+
+			if (IsInitialBlockDownload())
+				throw JSONRPCError(RPC_INVALID_PARAMETER, "Intial blocks download. Re-try later");
+				
+			std::string ticket = params[2].get_str();
+			std::string keyOne = params[3].get_str();
+			std::string keyTwo = params[4].get_str();
+			
+			CArtRegTicket artRegTicket(ticket, keyOne, keyTwo);
+			std::string txid = CPastelTicketProcessor::SendTicket(artRegTicket);
+			
+			mnObj.push_back(Pair("txid", txid));
+		}
+		if (strCmd == "act") {
+			if (params.size() != 6)
 				throw JSONRPCError(RPC_INVALID_PARAMETER,
-					"tickets register conf \"pastelid\" \"passpharse\" \"address\"\n"
-					"Register confirm new art ticket identity. If successful, method returns \"txid\"."
-					"\nArguments:\n"
-					"1. \"pastelid\"      (string, required) The PastelID. NOTE: PastelID must be generated and stored inside node. See \"pastelid newkey\".\n"
-					"2. \"passpharse\"    (string, required) The passphrase to the private key associated with PastelID and stored inside node. See \"pastelid newkey\".\n"
-					"3. \"address\"       (string, required) The Pastel blockchain address of the sender. (IN the future - this will be used for charging a fee)\n"
-					"Masternode PastelID Ticket:\n"
-					"{\n"
-					"	\"ticket\": {\n"
-					"		\"type\": \"pastelid\",\n"
-					"		\"pastelID\": \"\",\n"
-					"		\"address\": \"\",\n"
-					"		\"timeStamp\": \"\",\n"
-					"		\"signature\": \"\"\n"
-					"	},\n"
-					"	\"height\": \"\",\n"
-					"	\"txid\": \"\"\n"
-					"  }\n"
-					"\nRegister PastelID\n"
-					+ HelpExampleCli("tickets register conf",
-									"\"jXaShWhNtatHVPWRNPsvjoVHUYes2kA7T9EJVL9i9EKPdBNo5aTYp19niWemJb2EwgYYR68jymULPtmHdETf8M\"" " \"passphrase\"" " \"tPmjPqWdUXD68JBTWYBTtqeCDwdFwwRjikg\"") +
-					"\nAs json rpc\n"
-					+ HelpExampleRpc("tickets register conf",
-									"\"jXaShWhNtatHVPWRNPsvjoVHUYes2kA7T9EJVL9i9EKPdBNo5aTYp19niWemJb2EwgYYR68jymULPtmHdETf8M\"" " \"passphrase\"" " \"tPmjPqWdUXD68JBTWYBTtqeCDwdFwwRjikg\"")
+								   "tickets register act \"reg-ticket-tnxid\" \"PastelID\" \"passphrase\" \"address\" \n"
+								   "Register confirm new art ticket identity. If successful, method returns \"txid\"."
+								   "\nArguments:\n"
+								   "1. \"reg-ticket-tnxid\" (string, required) tnxid of the art register ticket to activate.\n"
+								   "2. \"PastelID\"      (string, required) The PastelID. NOTE: PastelID must be generated and stored inside node. See \"pastelid newkey\".\n"
+								   "3. \"passpharse\"    (string, required) The passphrase to the private key associated with PastelID and stored inside node. See \"pastelid newkey\".\n"
+								   "4. \"address\"       (string, required) The Pastel blockchain address of the sender - this will be used to send payments to registering MNs\n"
+								   "Activation Ticket:\n"
+								   "{\n"
+								   "	\"ticket\": {\n"
+								   "		\"type\": \"activation\",\n"
+								   "		\"pastelID\": \"\",\n"
+								   "		\"reg_height\": \"\",\n"
+								   "		\"reg_txid\": \"\",\n"
+								   "		\"signature\": \"\"\n"
+								   "	},\n"
+								   "	\"height\": \"\",\n"
+								   "	\"txid\": \"\"\n"
+								   "  }\n"
+								   "\nRegister PastelID\n"
+								   + HelpExampleCli("tickets register act",
+													"\"705f812fcaa0d042a283a1a3f4da74cd2b381ede1f702d2b01fb8f342fb12f8b\" \"jXaShWhNtatHVPWRNPsvjoVHUYes2kA7T9EJVL9i9EKPdBNo5aTYp19niWemJb2EwgYYR68jymULPtmHdETf8M\"" " \"passphrase\"" " \"tPmjPqWdUXD68JBTWYBTtqeCDwdFwwRjikg\"") +
+								   "\nAs json rpc\n"
+								   + HelpExampleRpc("tickets register conf",
+													"\"705f812fcaa0d042a283a1a3f4da74cd2b381ede1f702d2b01fb8f342fb12f8b\" \"jXaShWhNtatHVPWRNPsvjoVHUYes2kA7T9EJVL9i9EKPdBNo5aTYp19niWemJb2EwgYYR68jymULPtmHdETf8M\"" " \"passphrase\"" " \"tPmjPqWdUXD68JBTWYBTtqeCDwdFwwRjikg\"")
 				);
+
+			uint256 txid = ParseHashV(params[2], "\"txid\"");
+
+			std::string pastelID = params[3].get_str();
+
+			SecureString strKeyPass;
+			strKeyPass.reserve(100);
+			strKeyPass = params[4].get_str().c_str();
+			
+			std::string address = params[5].get_str();
 		}
 		if (strCmd == "trade") {
 			if (params.size() != 5)
@@ -1627,10 +1652,18 @@ UniValue tickets(const UniValue& params, bool fHelp) {
 			}
 		}
 		if (strCmd == "art") {
-			std::string pastelID = params[2].get_str();
-//			CPastelIDRegTicket regTicket(pastelID);
-//			if (masterNodeCtrl.masternodeTickets.FindTicket(regTicket))
-//				return regTicket.ToJSON();
+			std::string key = params[2].get_str();
+			CArtRegTicket regTicket;
+			//First key
+			regTicket.keyOne = key;
+			if (masterNodeCtrl.masternodeTickets.FindTicket(regTicket))
+				return regTicket.ToJSON();
+			else {
+				//if not, try by Second Key
+				regTicket.keyTwo = key;
+				if (masterNodeCtrl.masternodeTickets.FindTicketBySecondaryKey(regTicket))
+					return regTicket.ToJSON();
+			}
 		}
 		if (strCmd == "conf") {
 			std::string pastelID = params[2].get_str();
@@ -1679,25 +1712,21 @@ UniValue tickets(const UniValue& params, bool fHelp) {
 				mnObj.push_back(Pair("", key));
 		}
 		if (strCmd == "art") {
-			UniValue mnObj(UniValue::VOBJ);
 			std::vector<std::string> keys = masterNodeCtrl.masternodeTickets.GetAllKeys(TicketID::Art);
 			for (const auto& key : keys)
 				mnObj.push_back(Pair("", key));
 		}
 		if (strCmd == "conf") {
-			UniValue mnObj(UniValue::VOBJ);
 			std::vector<std::string> keys = masterNodeCtrl.masternodeTickets.GetAllKeys(TicketID::Confirm);
 			for (const auto& key : keys)
 				mnObj.push_back(Pair("", key));
 		}
 		if (strCmd == "trade") {
-			UniValue mnObj(UniValue::VOBJ);
 			std::vector<std::string> keys = masterNodeCtrl.masternodeTickets.GetAllKeys(TicketID::Trade);
 			for (const auto& key : keys)
 				mnObj.push_back(Pair("", key));
 		}
 		if (strCmd == "down") {
-			UniValue mnObj(UniValue::VOBJ);
 			std::vector<std::string> keys = masterNodeCtrl.masternodeTickets.GetAllKeys(TicketID::Down);
 			for (const auto& key : keys)
 				mnObj.push_back(Pair("", key));
@@ -1705,6 +1734,22 @@ UniValue tickets(const UniValue& params, bool fHelp) {
 		return mnObj;
 	}
 	
+	if (strCommand == "get") {
+		if (params.size() != 2)
+			throw JSONRPCError(RPC_INVALID_PARAMETER,
+							   "tickets get \"txid\"\n"
+							   "\nGet Pastel ticket by txid\n"
+							   + HelpExampleCli("tickets get",
+												"bc1c5243284272dbb22c301a549d112e8bc9bc454b5ff50b1e5f7959d6b56726") +
+							   "\nAs json rpc\n"
+							   + HelpExampleRpc("tickets get",
+												"bc1c5243284272dbb22c301a549d112e8bc9bc454b5ff50b1e5f7959d6b56726")
+			);
+		
+		uint256 txid = ParseHashV(params[1], "\"txid\"");
+		return CPastelTicketProcessor::GetTicket(txid);
+	}
+		
 	return NullUniValue;
 }
 
