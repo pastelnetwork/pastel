@@ -13,28 +13,35 @@
 enum class TicketID : uint8_t{
 	PastelID,
 	Art,
-	Confirm,
+	Activate,
 	Trade,
 	Down,
 	
 	COUNT
 };
 
-template<TicketID ticketId, class Key1, class Key2>
-class CPastelTicket {
+class CPastelTicketBase {
 public:
-	CPastelTicket() = default;
+	CPastelTicketBase() = default;
 	
-	TicketID ID() const {return ticketId;}
 	virtual std::string TicketName() const = 0;
-	virtual Key1 KeyOne() const = 0; 		//Key to the object itself
-	virtual Key2 KeyTwo() const = 0;		//another key, points to the main key
 	virtual std::string ToJSON() = 0;
 	
 	std::string ticketTnx;
 	int ticketBlock{};
 };
 
+template<TicketID ticketId, class Key1, class Key2>
+class CPastelTicket : public CPastelTicketBase {
+public:
+	CPastelTicket() = default;
+	
+	TicketID ID() const {return ticketId;}
+	virtual Key1 KeyOne() const = 0; 		//Key to the object itself
+	virtual Key2 KeyTwo() const = 0;		//another key, points to the main key
+};
+
+// PastelID Ticket //////////////////////////////////////////////////////////////////////////////////////////////////////
 class CPastelIDRegTicket : public CPastelTicket<TicketID::PastelID, std::string, std::string>
 {
 public:
@@ -76,6 +83,8 @@ private:
 	void init(std::string&& _pastelID, const SecureString& strKeyPass, std::string&& _address);
 };
 
+
+// Art Registration Ticket //////////////////////////////////////////////////////////////////////////////////////////////
 /*
 fileds are base64 as strings
 FinalRegistrationTicket = {
@@ -156,16 +165,62 @@ private:
 	void init(std::string&& _ticket, std::string&& _keyOne, std::string&& _keyTwo) {} //TODO: call from constructor to parse ticket
 };
 
-class CArtConfTicket : public CPastelTicket<TicketID::Confirm, std::string, std::string>
-{};
+// Art Activation Ticket ////////////////////////////////////////////////////////////////////////////////////////////////
+/*
+	"ticket": {
+		"type": "activation",
+		"pastelID": "",
+		"reg_height": "",
+		"reg_txid": "",
+		"signature": ""
+	},
+ */
+class CArtActivateTicket : public CPastelTicket<TicketID::Activate, int, std::string>
+{
+public:
+	std::string pastelID;
+	int regBlockHeight{};
+	std::string regTicketTnxId;
+	std::vector<unsigned char> signature;
 
+public:
+	CArtActivateTicket() = default;
+	explicit CArtActivateTicket(std::string _pastelID) : pastelID(std::move(_pastelID)) {}
+	CArtActivateTicket(std::string txid, std::string _pastelID, const SecureString& strKeyPass);
+	
+	std::string TicketName() const override {return "activation";}
+	int KeyOne() const override {return regBlockHeight;}
+	std::string  KeyTwo() const override {return regTicketTnxId;}
+	
+	std::string ToJSON() override;
+	
+	ADD_SERIALIZE_METHODS;
+	
+	template <typename Stream, typename Operation>
+	inline void SerializationOp(Stream& s, Operation ser_action) {
+		READWRITE(pastelID);
+		READWRITE(regBlockHeight);
+		READWRITE(regTicketTnxId);
+		READWRITE(signature);
+		READWRITE(ticketTnx);
+		READWRITE(ticketBlock);
+	}
+	
+	MSGPACK_DEFINE(pastelID, regBlockHeight, regTicketTnxId, signature)
+
+private:
+	void init(std::string&& txid, std::string&& _pastelID, const SecureString& strKeyPass);
+};
+
+// Art Trade Ticket /////////////////////////////////////////////////////////////////////////////////////////////////////
 class CArtTradeTicket : public CPastelTicket<TicketID::Trade, std::string, std::string>
 {};
 
+// Take Down Ticket /////////////////////////////////////////////////////////////////////////////////////////////////////
 class CTakeDownTicket : public CPastelTicket<TicketID::Down, std::string, std::string>
 {};
 
-////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Ticket  Processor ////////////////////////////////////////////////////////////////////////////////////////////////////
 class CPastelTicketProcessor {
 	map<TicketID, std::unique_ptr<CDBWrapper> > dbs;
 	
@@ -192,8 +247,8 @@ public:
 	std::vector<std::string> GetAllKeys(TicketID id);
 
 #ifdef ENABLE_WALLET
-	static bool CreateP2FMSTransaction(const std::string& input_data, CMutableTransaction& tx_out, std::string& error_ret);
-	static bool CreateP2FMSTransaction(const std::vector<unsigned char>& input_data, CMutableTransaction& tx_out, std::string& error_ret);
+	static bool CreateP2FMSTransaction(const std::string& input_data, CMutableTransaction& tx_out, CAmount price, std::string& error_ret);
+	static bool CreateP2FMSTransaction(const std::vector<unsigned char>& input_data, CMutableTransaction& tx_out, CAmount price, std::string& error_ret);
 #endif // ENABLE_WALLET
 	static bool ParseP2FMSTransaction(const CMutableTransaction& tx_in, std::vector<unsigned char>& output_data, std::string& error_ret);
 	static bool ParseP2FMSTransaction(const CMutableTransaction& tx_in, std::string& output_data, std::string& error_ret);
@@ -201,11 +256,14 @@ public:
 	
 	template<class T>
 	static std::string SendTicket(const T& ticket);
-
-	static std::string GetTicket(uint256 txid);
+	
+	static CPastelTicketBase* GetTicket(uint256 txid);
+	static std::string GetTicketJSON(uint256 txid);
 
 	template<class T>
 	static T ParseTicket(const std::vector<unsigned char>& data, int nOffset = 0);
+	
+	static CAmount GetTicketPrice(TicketID tid);
 };
 
 #endif //MASTERNODEPASTEL_H

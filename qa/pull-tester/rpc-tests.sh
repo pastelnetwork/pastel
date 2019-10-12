@@ -74,6 +74,7 @@ testScripts=(
     'mn_main.py'
     'mn_payment.py'
     'mn_governance.py'
+    'mn_tickets.py'
 );
 testScriptsExt=(
     'getblocktemplate_longpoll.py'
