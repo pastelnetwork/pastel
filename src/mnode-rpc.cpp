@@ -1096,7 +1096,9 @@ UniValue pastelid(const UniValue& params, bool fHelp) {
 				"pastelid importkey \"key\" <\"passphrase\">\n"
 				"Import PKCS8 encrypted private key (EdDSA448) in PEM format. Return PastelID base58-encoded if \"passphrase\" provided."
 			);
-
+    
+        throw runtime_error("\"pastelid importkey\" NOT IMPLEMENTED!!!");
+    
         //import
         //...
 
@@ -1148,7 +1150,7 @@ UniValue pastelid(const UniValue& params, bool fHelp) {
 
         UniValue resultObj(UniValue::VOBJ);
 
-        std::string sign = CPastelID::Sign(params[1].get_str(), params[2].get_str(), strKeyPass);
+        std::string sign = CPastelID::Sign64(params[1].get_str(), params[2].get_str(), strKeyPass);
         resultObj.push_back(Pair("signature", sign));
 
         return resultObj;
@@ -1183,7 +1185,7 @@ UniValue pastelid(const UniValue& params, bool fHelp) {
 
         UniValue resultObj(UniValue::VOBJ);
 
-        bool res = CPastelID::Verify(params[1].get_str(), params[2].get_str(), params[3].get_str());
+        bool res = CPastelID::Verify64(params[1].get_str(), params[2].get_str(), params[3].get_str());
         resultObj.push_back(Pair("verification", res? "OK": "Failed"));
 
         return resultObj;
@@ -1410,7 +1412,7 @@ UniValue tickets(const UniValue& params, bool fHelp) {
 			strKeyPass.reserve(100);
 			strKeyPass = params[3].get_str().c_str();
 			
-			CPastelIDRegTicket regTicket(pastelID, strKeyPass);
+			CPastelIDRegTicket regTicket = CPastelIDRegTicket::Create(pastelID, strKeyPass, std::string{});
 			std::string txid = CPastelTicketProcessor::SendTicket(regTicket);
 			
 			mnObj.push_back(Pair("txid", txid));
@@ -1455,7 +1457,7 @@ UniValue tickets(const UniValue& params, bool fHelp) {
 			
 			std::string address = params[4].get_str();
 			
-			CPastelIDRegTicket pastelIDRegTicket(pastelID, strKeyPass, address);
+            CPastelIDRegTicket pastelIDRegTicket = CPastelIDRegTicket::Create(pastelID, strKeyPass, address);
 			std::string txid = CPastelTicketProcessor::SendTicket(pastelIDRegTicket);
 			
 			mnObj.push_back(Pair("txid", txid));
@@ -1466,17 +1468,25 @@ UniValue tickets(const UniValue& params, bool fHelp) {
 								   "tickets register art \"ticket\" \"key1\" \"key2\"\n"
 								   "Register new art ticket. If successful, method returns \"txid\"."
 								   "\nArguments:\n"
-								   "1. \"ticket\"	(string, required) The Ticket blob encoded as Base64 to store into the block chain.\n"
-								   "2. \"key1\"		(string, required) The main key to search for the ticket.\n"
-								   "3. \"key2\"		(string, required) The secondary key.\n"
+								   "1. \"ticket\"				(string, required) Base64 encoded original ticket JSON.\n"
+								   "2. \"signatures\"			(string, required) Signatures (base64) and PastelIDs of the author and verifying masternodes (MN2 and MN3) as JSON:\n"
+                                   "								{\"authorsPastelID\": \"authorsSignature\", \"mn2PastelID\":\"mn2Signature\", \"mn3PastelID\":\"mn3Signature\"}"
+                                   "3. \"pastelid\"      		(string, required) The current, registering masternode (MN1) PastelID. NOTE: PastelID must be generated and stored inside node. See \"pastelid newkey\".\n"
+                                   "4. \"passpharse\"    		(string, required) The passphrase to the private key associated with PastelID and stored inside node. See \"pastelid newkey\".\n"
+                                   "5. \"key1\"    				(string, required) The first key to search ticket.\n"
+                                   "6. \"key2\"    				(string, required) The second key to search ticket.\n"
+                                   "6. \"blocknum\"    			(int, required) The block number when the ticket was created by the wallet.\n"
 								   "Masternode PastelID Ticket:\n"
 								   "{\n"
 								   "	\"ticket\": {\n"
 								   "		\"type\": \"art-reg\",\n"
 								   "		\"ticket\": \"\",\n"
+                                   "		\"signatures\": {\n"
+                                   " 			\"authorsPastelID\": \"authorsSignature\",\n"
+                                   "			\"mn2PastelID\":\"mn2Signature\",\n"
+                                   "			\"mn3PastelID\":\"mn3Signature\"\n"
+                                   "		}\n"
 								   "	},\n"
-								   "	\"key1\": \"\",\n"
-								   "	\"key2\": \"\",\n"
 								   "	\"height\": \"\",\n"
 								   "	\"txid\": \"\"\n"
 								   "  }\n"
@@ -1492,10 +1502,19 @@ UniValue tickets(const UniValue& params, bool fHelp) {
 				throw JSONRPCError(RPC_INVALID_PARAMETER, "Intial blocks download. Re-try later");
 				
 			std::string ticket = params[2].get_str();
-			std::string keyOne = params[3].get_str();
-			std::string keyTwo = params[4].get_str();
+			std::string signatures = params[3].get_str();
 			
-			CArtRegTicket artRegTicket(ticket, keyOne, keyTwo);
+			std::string pastelID = params[4].get_str();
+            SecureString strKeyPass;
+            strKeyPass.reserve(100);
+            strKeyPass = params[5].get_str().c_str();
+            
+            std::string key1 = params[6].get_str();
+            std::string key2 = params[7].get_str();
+            
+            int blocknum = atoi(params[8].get_str());
+            
+            CArtRegTicket artRegTicket = CArtRegTicket::Create(ticket, signatures, pastelID, strKeyPass, key1, key2, blocknum);
 			std::string txid = CPastelTicketProcessor::SendTicket(artRegTicket);
 			
 			mnObj.push_back(Pair("txid", txid));
@@ -1630,56 +1649,30 @@ UniValue tickets(const UniValue& params, bool fHelp) {
 			);
    
 		if (strCmd == "id") {
-			std::string key = params[2].get_str();
-			//first try by PastelID
-			CPastelIDRegTicket regTicket(key);
-			if (masterNodeCtrl.masternodeTickets.FindTicket(regTicket))
-				return regTicket.ToJSON();
-			else {
-				//if not, try by outpoint
-				regTicket.outpoint = key;
-				if (masterNodeCtrl.masternodeTickets.FindTicketBySecondaryKey(regTicket))
-					return regTicket.ToJSON();
-				else {
-					//finaly, clear outpoint and try by address
-					regTicket.outpoint.clear();
-					regTicket.address = key;
-					if (masterNodeCtrl.masternodeTickets.FindTicketBySecondaryKey(regTicket))
-						return regTicket.ToJSON();
-				}
-			}
+            CPastelIDRegTicket ticket;
+            CPastelIDRegTicket::FindTicketInDb(params[2].get_str(), ticket);
+			return ticket.ToJSON();
 		}
 		if (strCmd == "art") {
-			std::string key = params[2].get_str();
-			CArtRegTicket regTicket;
-			//First key
-			regTicket.keyOne = key;
-			if (masterNodeCtrl.masternodeTickets.FindTicket(regTicket))
-				return regTicket.ToJSON();
-			else {
-				//if not, try by Second Key
-				regTicket.keyTwo = key;
-				if (masterNodeCtrl.masternodeTickets.FindTicketBySecondaryKey(regTicket))
-					return regTicket.ToJSON();
-			}
+            CArtRegTicket ticket;
+            CArtRegTicket::FindTicketInDb(params[2].get_str(), ticket);
+            return ticket.ToJSON();
 		}
 		if (strCmd == "act") {
-			std::string pastelID = params[2].get_str();
-//			CPastelIDRegTicket regTicket(pastelID);
-//			if (masterNodeCtrl.masternodeTickets.FindTicket(regTicket))
-//				return regTicket.ToJSON();
+			std::string key = params[2].get_str();
+            CArtActivateTicket ticket;
+            CArtActivateTicket::FindTicketInDb(key, ticket);
+            return ticket.ToJSON();
 		}
 		if (strCmd == "trade") {
-			std::string pastelID = params[2].get_str();
-//			CPastelIDRegTicket regTicket(pastelID);
-//			if (masterNodeCtrl.masternodeTickets.FindTicket(regTicket))
-//				return regTicket.ToJSON();
+//            CArtTradeTicket ticket;
+//            CArtTradeTicket::FindTicketInDb(params[2].get_str(), ticket);
+//            return ticket.ToJSON();
 		}
 		if (strCmd == "down") {
-			std::string pastelID = params[2].get_str();
-//			CPastelIDRegTicket regTicket(pastelID);
-//			if (masterNodeCtrl.masternodeTickets.FindTicket(regTicket))
-//				return regTicket.ToJSON();
+//            CTakeDownTicket ticket;
+//            CTakeDownTicket::FindTicketInDb(params[2].get_str(), ticket);
+//            return ticket.ToJSON();
 		}
 		return NullUniValue;
 	}
@@ -1688,9 +1681,11 @@ UniValue tickets(const UniValue& params, bool fHelp) {
         if (params.size() == 2)
             strCmd = params[1].get_str();
         
-        if (fHelp || (strCmd != "id" && strCmd != "art" && strCmd != "act" && strCmd != "trade" && strCmd != "down"))
+        if (fHelp ||
+            (params.size() == 2 || params.size() == 3) ||
+            (strCmd != "id" && strCmd != "art" && strCmd != "act" && strCmd != "trade" && strCmd != "down"))
 			throw JSONRPCError(RPC_INVALID_PARAMETER,
-					"tickets list \"type\"\n"
+					"tickets list \"type\" \"minheight\"\n"
 					"List all tickets of specific type registered in the system"
 					"\nAvailable types:\n"
 					"  id	 - List ALL PastelID (both personal and masternode) registration tickets.\n"
@@ -1698,11 +1693,17 @@ UniValue tickets(const UniValue& params, bool fHelp) {
 					"  act	 - List ALL art activation tickets.\n"
 					"  trade - List ALL art trade tickets.\n"
 					"  down	 - List ALL take down tickets.\n"
+                    "\nArguments:\n"
+                    "1. minheight	 - minimum height for returned tickets (only tickets registered after this height will be returned).\n"
 					"\nExample: List ALL PastelID tickets\n"
 					+ HelpExampleCli("tickets list id", "") +
 					"\nAs json rpc\n"
 					+ HelpExampleRpc("tickets find id", "")
 			);
+
+        int minheight = 0;
+        if (params.size() == 3)
+            minheight = atoi(params[1].get_str());
    
 		std::vector<std::string> keys;
 		if (strCmd == "id")

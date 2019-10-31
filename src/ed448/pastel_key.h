@@ -27,7 +27,7 @@ public:
         return std::string{};
     }
 	
-	static std::vector<unsigned char> SignB(const unsigned char* text, std::size_t length, const std::string& pastelID, const SecureString& passPhrase)
+	static std::vector<unsigned char> Sign(const unsigned char* text, std::size_t length, const std::string& pastelID, const SecureString& passPhrase)
 	{
 		try {
 			ed_crypto::key_dsa448 key = ed_crypto::key_dsa448::read_private_key_from_PKCS8_file(GetKeyFilePath(pastelID), passPhrase.c_str());
@@ -38,8 +38,20 @@ public:
 		}
 		return std::vector<unsigned char>{};
 	}
+    
+    static bool Verify(const unsigned char* message, std::size_t msglen, const unsigned char* signature, std::size_t siglen, const std::string& pastelID)
+    {
+        try {
+            std::vector<unsigned char> rawPubKey = DecodePastelID(pastelID);
+            ed_crypto::key_dsa448 key = ed_crypto::key_dsa448::create_from_raw_public(rawPubKey.data(), rawPubKey.size());
+            return ed_crypto::crypto_sign::verify(message, msglen, signature, siglen, key);
+        } catch (ed_crypto::crypto_exception& ex) {
+            throw runtime_error(ex.what());
+        }
+        return false;
+    }
 
-    static std::string Sign(const std::string& text, const std::string& pastelID, const SecureString& passPhrase)
+    static std::string Sign64(const std::string& text, const std::string& pastelID, const SecureString& passPhrase)
     {
         try {
             ed_crypto::key_dsa448 key = ed_crypto::key_dsa448::read_private_key_from_PKCS8_file(GetKeyFilePath(pastelID), passPhrase.c_str());
@@ -51,7 +63,7 @@ public:
         return std::string{};
     }
 
-    static bool Verify(const std::string& text, const std::string& signature, const std::string& pastelID)
+    static bool Verify64(const std::string& text, const std::string& signature, const std::string& pastelID)
     {
         try {
             std::vector<unsigned char> rawPubKey = DecodePastelID(pastelID);

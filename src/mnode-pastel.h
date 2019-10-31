@@ -26,6 +26,9 @@ public:
 	
 	virtual std::string TicketName() const = 0;
 	virtual std::string ToJSON() = 0;
+	virtual bool IsValid(bool preReg, std::string& errRet) const = 0;   //if preReg = true - validate pre registration conditions
+	                                                                    //      ex.: address has enough coins for registration
+	                                                                    //else - validate ticket in general
 	
 	std::string ticketTnx;
 	int ticketBlock{};
@@ -54,17 +57,19 @@ public:
 public:
 	CPastelIDRegTicket() = default;
 	explicit CPastelIDRegTicket(std::string _pastelID) : pastelID(std::move(_pastelID)) {}
-	CPastelIDRegTicket(std::string _pastelID, const SecureString& strKeyPass); //For Masternode PastelID
-	CPastelIDRegTicket(std::string _pastelID, const SecureString& strKeyPass, std::string _address); //For Personal PastelID
 	
 	std::string TicketName() const override {return "pastelid";}
 	std::string KeyOne() const override {return pastelID;}
 	std::string KeyTwo() const override {return outpoint.empty() ? address : outpoint;}
 	
-	std::string ToJSON() override;
-	std::string PastelIDType() {return outpoint.empty()? "personal": "masternode";}
-	
-	ADD_SERIALIZE_METHODS;
+    std::string ToJSON() override;
+    bool IsValid(bool preReg, std::string& errRet) const override {return true;}
+    //TODO: validate -  1)prereg - address has coins to pay for registration - 10PSL + fee
+    //                  2)signature matches PastelID
+    
+    std::string PastelIDType() {return outpoint.empty()? "personal": "masternode";}
+    
+    ADD_SERIALIZE_METHODS;
 	
 	template <typename Stream, typename Operation>
 	inline void SerializationOp(Stream& s, Operation ser_action) {
@@ -78,36 +83,39 @@ public:
 	}
 	
 	MSGPACK_DEFINE(pastelID, address, outpoint, timestamp, signature)
-	
-private:
-	void init(std::string&& _pastelID, const SecureString& strKeyPass, std::string&& _address);
+    
+    static CPastelIDRegTicket Create(std::string _pastelID, const SecureString& strKeyPass, std::string _address);
+    static bool FindTicketInDb(const std::string& key, CPastelIDRegTicket& ticket);
 };
 
 
 // Art Registration Ticket //////////////////////////////////////////////////////////////////////////////////////////////
 /*
-fileds are base64 as strings
-FinalRegistrationTicket = {
-    "ticket": {
-        "author": bytes,
-        "order_block_txid": string,
-        "blocknum": integer,
-        "imagedata_hash": bytes,
 
-        "artist_name": string,
-        "artist_website": string,
-        "artist_written_statement": string,
-        "artwork_title": string,
-        "artwork_series_name": string,
-        "artwork_creation_video_youtube_url": string,
-        "artwork_keyword_set": string,
-        "total_copies": integer,
+Ticket as base64(RegistrationTicket({some data}))
 
-        "fingerprints": [list of floats],
-        "lubyhashes": [list of floats],
-        "lubyseeds": [list of floats],
-        "thumbnailhash": bytes,
-    },
+fields are base64 as strings
+{
+    "author": bytes,
+    "blocknum": integer,
+    "imagedata_hash": bytes,
+
+    "artist_name": string,
+    "artist_website": string,
+    "artist_written_statement": string,
+    "artwork_title": string,
+    "artwork_series_name": string,
+    "artwork_creation_video_youtube_url": string,
+    "artwork_keyword_set": string,
+    "total_copies": integer,
+
+    "fingerprints": [list of floats],
+    "lubyhashes": [list of floats],
+    "lubyseeds": [list of floats],
+    "thumbnailhash": bytes,
+}
+
+signatures
     "signature_author": {
         "signature": bytes,
         "pubkey": bytes,
@@ -123,46 +131,65 @@ FinalRegistrationTicket = {
     "signature_3": {
         "signature": bytes,
         "pubkey": bytes,
-    },
-    "nonce": string,
+    }
 }
  */
 class CArtRegTicket : public CPastelTicket<TicketID::Art, std::string, std::string>
 {
+    static constexpr short allsigns = 4;
+    static constexpr short artistsign = 0;
+    static constexpr short mainmnsign = 1;
+
 public:
-	std::string ticketBlob;
-	std::string keyOne;
-	std::string keyTwo;
+	std::string ticket;
+    
+    std::string mnPastelIDs[allsigns];
+    std::vector<unsigned char> mnSignatures[allsigns];
+    
+    std::string keyOne;
+    std::string keyTwo;
+    int ticketBlock{}; //blocknum when the ticket was created by the wallet
 
 public:
 	CArtRegTicket() = default;
-	CArtRegTicket(std::string _ticket, std::string _keyOne, std::string _keyTwo)
-			: ticketBlob(std::move(_ticket)),
-			  keyOne(std::move(_keyOne)),
-			  keyTwo(std::move(_keyTwo))
-	{}
-	
-	std::string TicketName() const override {return "art-reg";}
+	explicit CArtRegTicket(std::string _ticket) : ticket(std::move(_ticket)) {}
+    
+    std::string TicketName() const override {return "art-reg";}
 	std::string KeyOne() const override {return keyOne;}
 	std::string KeyTwo() const override {return keyTwo;}
 	
 	std::string ToJSON() override;
-	
-	ADD_SERIALIZE_METHODS;
+    bool IsValid(bool preReg, std::string& errRet) const override;
+    
+    ADD_SERIALIZE_METHODS;
 	
 	template <typename Stream, typename Operation>
 	inline void SerializationOp(Stream& s, Operation ser_action) {
-		READWRITE(ticketBlob);
-		READWRITE(keyOne);
-		READWRITE(keyTwo);
-		READWRITE(ticketTnx);
+		READWRITE(ticket);
+		
+        for (int mn=0; mn<allsigns; mn++) {
+            READWRITE(mnPastelIDs[mn]);
+            READWRITE(mnSignatures[mn]);
+        }
+
+        READWRITE(keyOne);
+        READWRITE(keyTwo);
+        READWRITE(ticketBlock);
+        
+        READWRITE(ticketTnx);
 		READWRITE(ticketBlock);
 	}
 	
-	MSGPACK_DEFINE(ticketBlob, keyOne, keyTwo)
-
-private:
-	void init(std::string&& _ticket, std::string&& _keyOne, std::string&& _keyTwo) {} //TODO: call from constructor to parse ticket
+	MSGPACK_DEFINE(ticket,
+                   mnPastelIDs[0], mnSignatures[0],
+                   mnPastelIDs[1], mnSignatures[1],
+                   mnPastelIDs[2], mnSignatures[2],
+                   mnPastelIDs[3], mnSignatures[3],
+                   keyOne, keyTwo, ticketBlock);
+    
+    static CArtRegTicket Create(std::string _ticket, const std::string& signatures, std::string _pastelID, const SecureString& strKeyPass,
+                                std::string _keyOne, std::string _keyTwo, int _ticketBlock);
+    static bool FindTicketInDb(const std::string& key, CArtRegTicket& ticket);
 };
 
 // Art Activation Ticket ////////////////////////////////////////////////////////////////////////////////////////////////
@@ -193,6 +220,7 @@ public:
 	std::string  KeyTwo() const override {return regTicketTnxId;}
 	
 	std::string ToJSON() override;
+    bool IsValid(bool preReg, std::string& errRet) const override {return true;}
 	
 	ADD_SERIALIZE_METHODS;
 	
@@ -207,6 +235,8 @@ public:
 	}
 	
 	MSGPACK_DEFINE(pastelID, regBlockHeight, regTicketTnxId, signature)
+    
+    static bool FindTicketInDb(const std::string& key, CArtActivateTicket& ticket);
 
 private:
 	void init(std::string&& txid, std::string&& _pastelID, const SecureString& strKeyPass);
@@ -214,11 +244,17 @@ private:
 
 // Art Trade Ticket /////////////////////////////////////////////////////////////////////////////////////////////////////
 class CArtTradeTicket : public CPastelTicket<TicketID::Trade, std::string, std::string>
-{};
+{
+public:
+    static bool FindTicketInDb(const std::string& key, CArtTradeTicket& ticket);
+};
 
 // Take Down Ticket /////////////////////////////////////////////////////////////////////////////////////////////////////
 class CTakeDownTicket : public CPastelTicket<TicketID::Down, std::string, std::string>
-{};
+{
+public:
+    static bool FindTicketInDb(const std::string& key, CTakeDownTicket& ticket);
+};
 
 // Ticket  Processor ////////////////////////////////////////////////////////////////////////////////////////////////////
 class CPastelTicketProcessor {

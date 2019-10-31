@@ -21,6 +21,8 @@
 
 #include <algorithm>
 
+using json = nlohmann::json;
+
 void CPastelTicketProcessor::InitTicketDB()
 {
 	boost::filesystem::path ticketsDir = GetDataDir() / "tickets";
@@ -255,6 +257,11 @@ std::vector<std::string> CPastelTicketProcessor::GetAllKeys(TicketID id)
 template<class T>
 std::string CPastelTicketProcessor::SendTicket(const T& ticket)
 {
+    std::string error;
+    if (!ticket.IsValid(true, error)){
+        throw std::runtime_error(strprintf("Ticket (%s) is invalid - %s", ticket.TicketName(), error));
+    }
+    
 	msgpack::sbuffer buffer;
 	msgpack::pack(buffer, ticket);
 	
@@ -265,7 +272,6 @@ std::string CPastelTicketProcessor::SendTicket(const T& ticket)
 	auto ticketid_byte = reinterpret_cast<unsigned char*>(&tid);
 	data.insert(data.begin(), ticketid_byte, ticketid_byte+sizeof(TicketID)); //sizeof(size_t) == 8
 	
-	std::string error;
 	CMutableTransaction tx;
 	if (!CPastelTicketProcessor::CreateP2FMSTransaction(data, tx, GetTicketPrice(tid), error)){
 		throw std::runtime_error(strprintf("Failed to create P2FMS from data provided - %s", error));
@@ -554,47 +560,43 @@ CAmount CPastelTicketProcessor::GetTicketPrice(TicketID tid)
 }
 
 // CPastelIDRegTicket ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-void CPastelIDRegTicket::init(std::string&& _pastelID, const SecureString& strKeyPass, std::string&& _address)
+/*static*/ CPastelIDRegTicket CPastelIDRegTicket::Create(std::string _pastelID, const SecureString& strKeyPass, std::string _address)
 {
-	pastelID = std::move(_pastelID);
-
-	address = std::move(_address);
-	
-	timestamp = std::time(nullptr);
+    CPastelIDRegTicket ticket(std::move(_pastelID));
+    
+    if (_address.empty()){
+        CMasternode mn;
+        if(!masterNodeCtrl.masternodeManager.Get(masterNodeCtrl.activeMasternode.outpoint, mn)) {
+            throw std::runtime_error("This is not a active masternode. Only active MN can register its PastelID ");
+        }
+    
+        //collateral address
+        CTxDestination dest = mn.pubKeyCollateralAddress.GetID();
+        ticket.address = std::move(EncodeDestination(dest));
+    
+        //outpoint hash
+        ticket.outpoint = std::move(masterNodeCtrl.activeMasternode.outpoint.ToStringShort());
+    } else {
+        ticket.address = std::move(_address);
+    }
+    
+    ticket.timestamp = std::time(nullptr);
 	
 	//signature of ticket hash
 	CHashWriter ss(SER_GETHASH, PROTOCOL_VERSION);
-	ss << pastelID;
-	ss << address;
-	ss << outpoint;
-	ss << timestamp;
+	ss << ticket.pastelID;
+	ss << ticket.address;
+	ss << ticket.outpoint;
+	ss << ticket.timestamp;
 	uint256 hash = ss.GetHash();
-	signature = CPastelID::SignB(hash.begin(), hash.size(), pastelID, strKeyPass);
-}
-CPastelIDRegTicket::CPastelIDRegTicket(std::string _pastelID, const SecureString& strKeyPass)
-{
-	CMasternode mn;
-	if(!masterNodeCtrl.masternodeManager.Get(masterNodeCtrl.activeMasternode.outpoint, mn)) {
-		throw std::runtime_error("This is not a active masternode. Only active MN can register its PastelID ");
-	}
-	
-	//collateral address
-	CTxDestination dest = mn.pubKeyCollateralAddress.GetID();
-
-	//outpoint hash
-	outpoint = masterNodeCtrl.activeMasternode.outpoint.ToStringShort();
-	
-	init(std::move(_pastelID), strKeyPass, EncodeDestination(dest));
-}
-
-CPastelIDRegTicket::CPastelIDRegTicket(std::string _pastelID, const SecureString& strKeyPass, std::string _address)
-{
-	init(std::move(_pastelID), strKeyPass, std::move(_address));
+    ticket.signature = CPastelID::Sign(hash.begin(), hash.size(), ticket.pastelID, strKeyPass);
+    
+    return ticket;
 }
 
 std::string CPastelIDRegTicket::ToJSON()
 {
-	nlohmann::json jsonObj;
+	json jsonObj;
 	jsonObj = {
 		{"txid", ticketTnx},
 		{"height", ticketBlock},
@@ -614,22 +616,165 @@ std::string CPastelIDRegTicket::ToJSON()
 	return jsonObj.dump(4);
 }
 
+/*static*/ bool CPastelIDRegTicket::FindTicketInDb(const std::string& key, CPastelIDRegTicket& ticket)
+{
+    //first try by PastelID
+    ticket.pastelID = key;
+    if (!masterNodeCtrl.masternodeTickets.FindTicket(ticket))
+    {
+        //if not, try by outpoint
+        ticket.outpoint = key;
+        if (!masterNodeCtrl.masternodeTickets.FindTicketBySecondaryKey(ticket)){
+            //finally, clear outpoint and try by address
+            ticket.outpoint.clear();
+            ticket.address = key;
+            if (!masterNodeCtrl.masternodeTickets.FindTicketBySecondaryKey(ticket))
+                return false;
+        }
+    }
+    return true;
+}
+
 // CArtRegTicket ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+/*static*/ CArtRegTicket CArtRegTicket::Create(std::string _ticket, const std::string& signatures, std::string _pastelID, const SecureString& strKeyPass,
+                            std::string _keyOne, std::string _keyTwo, int _ticketBlock)
+{
+    CArtRegTicket ticket(std::move(_ticket));
+    
+    ticket.keyOne = std::move(_keyOne);
+    ticket.keyTwo = std::move(_keyTwo);
+    ticket.ticketBlock = _ticketBlock;
+    
+    ticket.mnPastelIDs[mainmnsign] = std::move(_pastelID);
+    
+    //signature of ticket hash
+    CHashWriter ss(SER_GETHASH, PROTOCOL_VERSION);
+    ss << ticket.ticket;
+    uint256 hash = ss.GetHash();
+    ticket.mnSignatures[mainmnsign] = CPastelID::Sign(hash.begin(), hash.size(), ticket.mnPastelIDs[mainmnsign], strKeyPass);
+
+    //other signatures
+    auto jsonObj = json::parse(signatures);
+    
+    if (jsonObj.size() != 3){
+        throw std::runtime_error("Signatures json is incorrect");
+    }
+    
+    int i = 0;
+    for (auto& el : jsonObj.items()) {
+        
+        if (el.key().empty()) {
+            throw std::runtime_error("Signatures json is incorrect");
+        }
+        
+        std::string pastelID = el.key();
+        std::string signature = el.value();
+        
+        if (i == 0) {
+            ticket.mnPastelIDs[i] = std::move(pastelID);
+            ticket.mnSignatures[i] = ed_crypto::Base64_Decode(signature);
+        } else if (i < 3){ //Main MN shall be at index 1
+            ticket.mnPastelIDs[i+1] = std::move(pastelID);
+            ticket.mnSignatures[i+1] = ed_crypto::Base64_Decode(signature);
+        }
+        i++;
+    }
+    
+    return ticket;
+}
+
+bool CArtRegTicket::IsValid(bool preReg, std::string& errRet) const
+{
+    //1. Artist PastelID is registered (search for PastelID tickets) and is personal PastelID
+    //2. Masternodes PastelIDs are registered (search for PastelID tickets) and are masternode PastelID's (not personal)
+    //3. Masternodes beyond these PastelIDs, were in the top 10 at the block when the registration happened
+    //4. Signatures matches included PastelIDs
+    
+    std::string err;
+    
+    for (int mn=0; mn<allsigns; mn++) {
+        //1, 2
+        CPastelIDRegTicket pastelIDticket;
+        if (!CPastelIDRegTicket::FindTicketInDb(mnPastelIDs[mn], pastelIDticket)){
+            if (mn == artistsign)
+                errRet = strprintf("Artist PastelID is not registered");
+            else
+                errRet = strprintf("MN%d PastelID is not registered", mn);
+            return false;
+        }
+        if (!pastelIDticket.IsValid(false, err)){
+            if (mn == artistsign)
+                errRet = strprintf("Artist PastelID is invalid - %s", err);
+            else
+                errRet = strprintf("MN%d PastelID is invalid - %s", mn, err);
+            return false;
+        }
+        if (mn == artistsign) {
+            if (!pastelIDticket.outpoint.empty()) {
+                errRet = strprintf("Artist PastelID is NOT personal PastelID");
+                return false;
+            }
+        } else {
+            if (pastelIDticket.outpoint.empty()) {
+                errRet = strprintf("MN%d PastelID is NOT mastennode PastelID", mn);
+                return false;
+            }
+            
+            //3
+            /*Get-workers-for-block(ticketBlock)
+            for (auto worker : workers){
+                if pastelIDticket.outpoint not in workers
+                    return false
+            }
+            */
+        }
+    }
+    
+    //4
+    CHashWriter ss(SER_GETHASH, PROTOCOL_VERSION);
+    ss << ticket;
+    uint256 hash = ss.GetHash();
+    
+    for (int mn=0; mn<allsigns; mn++) {
+        if (!CPastelID::Verify(hash.begin(), hash.size(),
+                mnSignatures[mn].data(), mnSignatures[mn].size(), mnPastelIDs[mn])){
+            errRet = strprintf("MN%d signature is invalid", mn);
+            return false;
+        }
+    }
+    
+    return true;
+}
+
 std::string CArtRegTicket::ToJSON()
 {
-	nlohmann::json jsonObj;
+	json jsonObj;
 	jsonObj = {
 			{"txid", ticketTnx},
 			{"height", ticketBlock},
 			{"ticket", {
 				 {"type", TicketName()},
-				 {"ticketBLOB", ticketBlob},
+				 {"ticketBLOB", ticket},
 				 {"key1", keyOne},
 				 {"key2", keyTwo}
 		 }}
 	};
 	
 	return jsonObj.dump(4);
+}
+
+/*static*/ bool CArtRegTicket::FindTicketInDb(const std::string& key, CArtRegTicket& ticket)
+{
+    //First key
+    ticket.keyOne = key;
+    if (!masterNodeCtrl.masternodeTickets.FindTicket(ticket))
+    {
+        //if not, try by Second Key
+        ticket.keyTwo = key;
+        if (!masterNodeCtrl.masternodeTickets.FindTicketBySecondaryKey(ticket))
+            return false;
+    }
+    return true;
 }
 
 // CArtActivateTicket ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -649,12 +794,12 @@ void CArtActivateTicket::init(std::string&& txid, std::string&& _pastelID, const
 	ss << regBlockHeight;
 	ss << regTicketTnxId;
 	uint256 hash = ss.GetHash();
-	signature = CPastelID::SignB(hash.begin(), hash.size(), pastelID, strKeyPass);
+	signature = CPastelID::Sign(hash.begin(), hash.size(), pastelID, strKeyPass);
 }
 
 std::string CArtActivateTicket::ToJSON()
 {
-	nlohmann::json jsonObj;
+	json jsonObj;
 	jsonObj = {
 			{"txid", ticketTnx},
 			{"height", ticketBlock},
@@ -670,7 +815,22 @@ std::string CArtActivateTicket::ToJSON()
 	return jsonObj.dump(4);
 }
 
+/*static*/ bool CArtActivateTicket::FindTicketInDb(const std::string& key, CArtActivateTicket& ticket)
+{
+    return false;
+}
+
 // CArtTradeTicket ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+/*static*/ bool CArtTradeTicket::FindTicketInDb(const std::string& key, CArtTradeTicket& ticket)
+{
+    return false;
+}
 
 // CTakeDownTicket ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+/*static*/ bool CTakeDownTicket::FindTicketInDb(const std::string& key, CTakeDownTicket& ticket)
+{
+    return false;
+}
+

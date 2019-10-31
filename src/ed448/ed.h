@@ -351,23 +351,36 @@ namespace ed_crypto {
         {
             return sign(reinterpret_cast <const unsigned char*>(message.c_str()), message.length(), secret_key);
         }
-
+    
         template<int type>
-        static bool verify(const std::string& message, const unsigned char* signature, std::size_t length, const key<type>& public_key)
+        static bool verify(const unsigned char* message, std::size_t msglen, const unsigned char* signature, std::size_t siglen, const key<type>& public_key)
         {
             unique_md_ctx_ptr ctx(EVP_MD_CTX_create());
             if (!ctx) throw (crypto_exception("MD context is NULL!", std::string(), "EVP_MD_CTX_create"));
-
+    
             EVP_MD_CTX *mdctx = ctx.get();
             EVP_PKEY *pkey = public_key.get();
-
+    
             // Initialise the DigestVerify operation - EdDSA has builtin digest function
             if (OK != EVP_DigestVerifyInit(mdctx, nullptr, nullptr, nullptr, pkey)) {
                 throw (crypto_exception("", std::string(), "EVP_DigestVerifyInit"));
             }
-
+    
             // Verify the signature
-            return (OK == EVP_DigestVerify(mdctx, signature, length, reinterpret_cast <const unsigned char*>(message.c_str()), message.length()));
+            return (OK == EVP_DigestVerify(mdctx, signature, siglen, message, msglen));
+        }
+        
+        template<int type>
+        static bool verify(const std::string& message, const unsigned char* signature, std::size_t siglen, const key<type>& public_key)
+        {
+            return verify(reinterpret_cast <const unsigned char*>(message.c_str()), message.length(), signature, siglen, public_key);
+        }
+    
+        template<int type>
+        static bool verify(const std::string& message, const std::string& signature, const key<type>& public_key)
+        {
+            return verify(reinterpret_cast <const unsigned char*>(message.c_str()), message.length(),
+                          reinterpret_cast <const unsigned char*>(signature.c_str()), signature.length(), public_key);
         }
 
         template<int type>
@@ -382,12 +395,6 @@ namespace ed_crypto {
         {
             std::vector<unsigned char > vec = Hex_Decode(signatureHex);
             return verify(message, vec.data(), vec.size(), public_key);
-        }
-
-        template<int type>
-        static bool verify(const std::string& message, const std::string& signature, const key<type>& public_key)
-        {
-            return verify(message, reinterpret_cast <const unsigned char*>(signature.c_str()), signature.length(), public_key);
         }
     };
 
