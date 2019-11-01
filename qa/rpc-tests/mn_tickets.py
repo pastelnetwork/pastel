@@ -21,7 +21,7 @@ getcontext().prec = 16
 
 # 12 Master Nodes
 private_keys_list = ["91sY9h4AQ62bAhNk1aJ7uJeSnQzSFtz7QmW5imrKmiACm7QJLXe", #0
-                     # "923JtwGJqK6mwmzVkLiG6mbLkhk1ofKE1addiM8CYpCHFdHDNGo", #1
+                     "923JtwGJqK6mwmzVkLiG6mbLkhk1ofKE1addiM8CYpCHFdHDNGo", #1
                      # "91wLgtFJxdSRLJGTtbzns5YQYFtyYLwHhqgj19qnrLCa1j5Hp5Z", #2
                      # "92XctTrjQbRwEAAMNEwKqbiSAJsBNuiR2B8vhkzDX4ZWQXrckZv", #3
                      # "923JCnYet1pNehN6Dy4Ddta1cXnmpSiZSLbtB9sMRM1r85TWym6", #4
@@ -36,12 +36,17 @@ private_keys_list = ["91sY9h4AQ62bAhNk1aJ7uJeSnQzSFtz7QmW5imrKmiACm7QJLXe", #0
 
 class MasterNodeTicketsTest (MasterNodeCommon):
     number_of_master_nodes = len(private_keys_list)
-    number_of_simple_nodes = 2
-    non_mn1 = number_of_master_nodes
-    non_mn2 = number_of_master_nodes+1
+    number_of_simple_nodes = 3
     total_number_of_nodes = number_of_master_nodes+number_of_simple_nodes
-    mining_node_num = number_of_master_nodes
-    hot_node_num = number_of_master_nodes+1
+
+    non_active_mn = number_of_master_nodes-1
+
+    non_mn1 = number_of_master_nodes        #mining node - will have coins
+    non_mn2 = number_of_master_nodes+1      #hot node - will have collateral for all active MN
+    non_mn3 = number_of_master_nodes+2      #will not have coins by default
+
+    mining_node_num = number_of_master_nodes    #same as non_mn1
+    hot_node_num = number_of_master_nodes+1     #same as non_mn2
 
     def setup_chain(self):
         print("Initializing test directory "+self.options.tmpdir)
@@ -53,9 +58,9 @@ class MasterNodeTicketsTest (MasterNodeCommon):
         self.setup_masternodes_network(private_keys_list, self.number_of_simple_nodes)
 
     def run_test (self):
-        # self.mining_enough(self.mining_node_num, self.number_of_master_nodes)
-        # cold_nodes = {k: v for k, v in enumerate(private_keys_list)}
-        # _, _, _ = self.start_mn(self.mining_node_num, self.hot_node_num, cold_nodes, self.total_number_of_nodes)
+        self.mining_enough(self.mining_node_num, self.number_of_master_nodes)
+        cold_nodes = {k: v for k, v in enumerate(private_keys_list[:-1])} #all but last!!!
+        _, _, _ = self.start_mn(self.mining_node_num, self.hot_node_num, cold_nodes, self.total_number_of_nodes)
 
         self.reconnect_nodes(0, self.number_of_master_nodes)
         self.sync_all()
@@ -68,15 +73,23 @@ class MasterNodeTicketsTest (MasterNodeCommon):
         #a. Generate new PastelID and associated keys (EdDSA448). Return PastelID base58-encoded
         #a.a - generate with no errors two keys at MN and non-MN
 
-        pastelid_mn0_1 = self.nodes[0].pastelid("newkey", "passphrase")["pastelid"]
-        assert_true(pastelid_mn0_1, "No Pastelid was created")
-        pastelid_mn0_2 = self.nodes[0].pastelid("newkey", "passphrase")["pastelid"]
-        assert_true(pastelid_mn0_2, "No Pastelid was created")
+        mn0_pastelid1 = self.nodes[0].pastelid("newkey", "passphrase")["pastelid"]
+        assert_true(mn0_pastelid1, "No Pastelid was created")
+        mn0_pastelid2 = self.nodes[0].pastelid("newkey", "passphrase")["pastelid"]
+        assert_true(mn0_pastelid2, "No Pastelid was created")
 
-        pastelid_nonmn1_1 = self.nodes[self.non_mn1].pastelid("newkey", "passphrase")["pastelid"]
-        assert_true(pastelid_nonmn1_1, "No Pastelid was created")
-        pastelid_nonmn1_2 = self.nodes[self.non_mn1].pastelid("newkey", "passphrase")["pastelid"]
-        assert_true(pastelid_nonmn1_2, "No Pastelid was created")
+        #for non active MN
+        non_active_mn_pastelid1 = self.nodes[self.non_active_mn].pastelid("newkey", "passphrase")["pastelid"]
+        assert_true(non_active_mn_pastelid1, "No Pastelid was created")
+
+        nonmn1_pastelid1 = self.nodes[self.non_mn1].pastelid("newkey", "passphrase")["pastelid"]
+        assert_true(nonmn1_pastelid1, "No Pastelid was created")
+        nonmn1_pastelid2 = self.nodes[self.non_mn1].pastelid("newkey", "passphrase")["pastelid"]
+        assert_true(nonmn1_pastelid2, "No Pastelid was created")
+
+        #for node without coins
+        nonmn3_pastelid1 = self.nodes[self.non_mn3].pastelid("newkey", "passphrase")["pastelid"]
+        assert_true(nonmn3_pastelid1, "No Pastelid was created")
 
         #a.b - fail if empty passphrase
         try:
@@ -91,36 +104,34 @@ class MasterNodeTicketsTest (MasterNodeCommon):
         #c. List all internally stored PastelID and keys
         idlist = self.nodes[0].pastelid("list")
         idlist = dict((key+str(i), val) for i,k in enumerate(idlist) for key, val in k.items())
-        print(idlist)
-        assert_true(pastelid_mn0_1 in idlist.values(), "PastelID " + pastelid_mn0_1 + " not in the list")
-        assert_true(pastelid_mn0_2 in idlist.values(), "PastelID " + pastelid_mn0_2 + " not in the list")
+        assert_true(mn0_pastelid1 in idlist.values(), "PastelID " + mn0_pastelid1 + " not in the list")
+        assert_true(mn0_pastelid2 in idlist.values(), "PastelID " + mn0_pastelid2 + " not in the list")
 
         idlist = self.nodes[self.non_mn1].pastelid("list")
         idlist = dict((key+str(i), val) for i,k in enumerate(idlist) for key, val in k.items())
-        print(idlist)
-        assert_true(pastelid_nonmn1_1 in idlist.values(), "PastelID " + pastelid_nonmn1_1 + " not in the list")
-        assert_true(pastelid_nonmn1_2 in idlist.values(), "PastelID " + pastelid_nonmn1_2 + " not in the list")
+        assert_true(nonmn1_pastelid1 in idlist.values(), "PastelID " + nonmn1_pastelid1 + " not in the list")
+        assert_true(nonmn1_pastelid2 in idlist.values(), "PastelID " + nonmn1_pastelid2 + " not in the list")
 
         print("Pastelid test: 2 PastelID's each generate at node0 (MN ) and node" + str(self.non_mn1) + "(non-MN)")
 
         #d. Sign "text" with the internally stored private key associated with the PastelID
         #d.a - sign with no errors using key from 1.a.a
-        signature_mn0_1 = self.nodes[0].pastelid("sign", "1234567890", pastelid_mn0_1, "passphrase")["signature"]
-        assert_true(signature_mn0_1, "No signature was created")
-        assert_equal(len(base64.b64decode(signature_mn0_1)), 114)
+        mn0_signature1 = self.nodes[0].pastelid("sign", "1234567890", mn0_pastelid1, "passphrase")["signature"]
+        assert_true(mn0_signature1, "No signature was created")
+        assert_equal(len(base64.b64decode(mn0_signature1)), 114)
 
         #e. Sign "text" with the private "key" (EdDSA448) as PKCS8 encrypted string in PEM format
         # NOT IMPLEMENTED
 
         #f. Verify "text"'s "signature" with the PastelID
         #f.a - verify with no errors using key from 1.a.a
-        result = self.nodes[0].pastelid("verify", "1234567890", signature_mn0_1, pastelid_mn0_1)["verification"]
+        result = self.nodes[0].pastelid("verify", "1234567890", mn0_signature1, mn0_pastelid1)["verification"]
         assert_equal(result, "OK")
         #f.b - fail to verify with the different key from 1.a.a
-        result = self.nodes[0].pastelid("verify", "1234567890", signature_mn0_1, pastelid_mn0_2)["verification"]
+        result = self.nodes[0].pastelid("verify", "1234567890", mn0_signature1, mn0_pastelid2)["verification"]
         assert_equal(result, "Failed")
         #f.c - fail to verify modified text
-        result = self.nodes[0].pastelid("verify", "1234567890AAA", signature_mn0_1, pastelid_mn0_1)["verification"]
+        result = self.nodes[0].pastelid("verify", "1234567890AAA", mn0_signature1, mn0_pastelid1)["verification"]
         assert_equal(result, "Failed")
 
         print("Pastelid test: Message signed and verified")
@@ -129,21 +140,96 @@ class MasterNodeTicketsTest (MasterNodeCommon):
         #2. tickets tests
         #a. PastelID ticket
         #   a.a register MN PastelID
-        #       a.a.1 fail if not active MN
-        #       a.a.2 fail if active MN, but not enough coins - ~11PSL
-        #       a.a.3 register without errors from active MN with enough coins
-        #       a.a.4 from another node - get ticket transaction and check
-        #           - there are P2MS outputs with non-zerro amounts
+        #       a.a.1 fail if not MN
+        try:
+            self.nodes[self.non_mn1].tickets("register", "mnid", nonmn1_pastelid2, "passphrase")
+        except JSONRPCException,e:
+            errorString = e.error['message']
+        assert_equal("This is not a active masternode" in errorString, True)
+
+        #       a.a.2 fail if not active MN
+        try:
+            self.nodes[self.non_active_mn].tickets("register", "mnid", non_active_mn_pastelid1, "passphrase")
+        except JSONRPCException,e:
+            errorString = e.error['message']
+        assert_equal("This is not a active masternode" in errorString, True)
+
+        #       a.a.3 fail if active MN, but wrong PastelID
+        try:
+            self.nodes[0].tickets("register", "mnid", nonmn1_pastelid2, "passphrase")
+        except JSONRPCException,e:
+            errorString = e.error['message']
+        assert_equal("Cannot open file to read key from" in errorString, True) #TODO: provide better error for unknown PastelID
+
+        #       a.a.4 fail if active MN, but wrong passphrase
+        try:
+            self.nodes[0].tickets("register", "mnid", mn0_pastelid1, "wrong")
+        except JSONRPCException,e:
+            errorString = e.error['message']
+        assert_equal("Cannot read key from string" in errorString, True) #TODO: provide better error for wrong passphrase
+
+        #       a.a.5 fail if active MN, but not enough coins - ~11PSL
+        try:
+            self.nodes[0].tickets("register", "mnid", mn0_pastelid1, "passphrase")
+        except JSONRPCException,e:
+            errorString = e.error['message']
+        assert_equal("No unspent transaction found" in errorString, True)
+
+        #       a.a.6 register without errors from active MN with enough coins
+        mn0_address1 = self.nodes[0].getnewaddress()
+        self.nodes[self.mining_node_num].sendtoaddress(mn0_address1, 100, "", "", False)
+        self.sync_all()
+        self.nodes[self.mining_node_num].generate(1)
+        self.sync_all()
+
+        mn0_ticket1_txid = self.nodes[0].tickets("register", "mnid", mn0_pastelid1, "passphrase")["txid"]
+        assert_true(mn0_ticket1_txid, "No ticket was created")
+        self.sync_all()
+        self.nodes[self.mining_node_num].generate(1)
+        self.sync_all()
+        time.sleep(2)
+
+        #       a.a.7 from another node - get ticket transaction and check
+        #           - there are P2MS outputs with non-zero amounts
         #           - amounts is totaling 10PSL
-        #       a.a.5 fail if already registered
+        mn0_ticket1_tx_hash = self.nodes[self.non_mn3].getrawtransaction(mn0_ticket1_txid)
+        mn0_ticket1_tx = self.nodes[self.non_mn3].decoderawtransaction(mn0_ticket1_tx_hash)
+        amount = 0
+        for v in mn0_ticket1_tx["vout"]:
+            assert_greater_than(v["value"], 0)
+            if v["scriptPubKey"]["type"] == "multisig":
+                amount += v["value"]
+        assert_equal(amount, 10)
+
+        #       a.a.8 fail if already registered
+        try:
+            self.nodes[0].tickets("register", "mnid", mn0_pastelid1, "passphrase")["txid"]
+        except JSONRPCException,e:
+            errorString = e.error['message']
+        assert_equal("This PastelID is already registered in blockchain" in errorString, True)
+
         #   a.b find MN PastelID ticket
         #       a.b.1 by PastelID
+        mn0_ticket1_1 = json.loads(self.nodes[self.non_mn3].tickets("find", "id", mn0_pastelid1))
+        assert_equal(mn0_ticket1_1["ticket"]["pastelID"], mn0_pastelid1)
+        assert_equal(mn0_ticket1_1['ticket']['type'], "pastelid")
+        assert_equal(mn0_ticket1_1['ticket']['id_type'], "masternode")
+
         #       a.b.2 by Collateral output, compare to ticket from a.b.1
-        #       a.b.3 verify ticket:
-        #           - signature matches pastelID
-        #           - correct MN info
+        mn0_outpoint = self.nodes[0].masternode("status")["outpoint"]
+        mn0_ticket1_2 = json.loads(self.nodes[self.non_mn3].tickets("find", "id", mn0_outpoint))
+        assert_equal(mn0_ticket1_1["ticket"]["signature"], mn0_ticket1_2["ticket"]["signature"])
+        assert_equal(mn0_ticket1_1["ticket"]["outpoint"], mn0_outpoint)
+
         #   a.c get the same ticket by txid from a.a.3 and compare with ticket from a.b.1
+        mn0_ticket1_3 = json.loads(self.nodes[self.non_mn3].tickets("get", mn0_ticket1_txid))
+        assert_equal(mn0_ticket1_1["ticket"]["signature"], mn0_ticket1_3["ticket"]["signature"])
         #   a.d list all id tickets, check PastelIDs
+        tickets_list = self.nodes[self.non_mn3].tickets("list", "id")
+        assert_true(mn0_pastelid1 in tickets_list)
+        assert_true(mn0_outpoint in tickets_list)
+
+        print("MN PastelID tickets tested")
 
         #b. personal PastelID ticket
         #   b.a register personal PastelID
@@ -227,17 +313,6 @@ class MasterNodeTicketsTest (MasterNodeCommon):
         #No need
 
 
-        # print("Register PastelIDs for non MN node", self.non_mn2, ". Will fail - no coins")
-        # address2 = self.nodes[self.non_mn2].getnewaddress()
-        # pastelid2 = self.nodes[self.non_mn2].pastelid("newkey", "passphrase")["pastelid"]
-        # assert_true(pastelid2, "No Pastelid was created")
-        #
-        # try:
-        #     self.nodes[self.non_mn2].tickets("register", "id", pastelid2, "passphrase", address2)["txid"]
-        # except JSONRPCException,e:
-        #     errorString = e.error['message']
-        # assert_equal("No unspent transaction found" in errorString, True)
-        # print("Ticket not create - No unspent transaction found")
         #
         # print("Register PastelIDs - non MN node", self.non_mn1)
         # # this is mining node

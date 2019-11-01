@@ -377,9 +377,9 @@ bool CPastelTicketProcessor::CreateP2FMSTransaction(const std::vector<unsigned c
     if (nAproxFeeNeeded < payTxFee.GetFeePerK()) nAproxFeeNeeded = payTxFee.GetFeePerK();
     
     //Amount
-	CAmount perOutputAmount = price*COIN/out_scripts.size();
+	CAmount perOutputAmount = price*COIN/num_fake_txn;
 	//MUST be precise!!!
-	CAmount lost = price*COIN - perOutputAmount*out_scripts.size();
+	CAmount lost = price*COIN - perOutputAmount*num_fake_txn;
 			
     CAmount allSpentAmount = price*COIN + nAproxFeeNeeded;
 

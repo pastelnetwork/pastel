@@ -1650,29 +1650,29 @@ UniValue tickets(const UniValue& params, bool fHelp) {
    
 		if (strCmd == "id") {
             CPastelIDRegTicket ticket;
-            CPastelIDRegTicket::FindTicketInDb(params[2].get_str(), ticket);
-			return ticket.ToJSON();
+            if (CPastelIDRegTicket::FindTicketInDb(params[2].get_str(), ticket))
+			    return ticket.ToJSON();
 		}
 		if (strCmd == "art") {
             CArtRegTicket ticket;
-            CArtRegTicket::FindTicketInDb(params[2].get_str(), ticket);
-            return ticket.ToJSON();
+            if (CArtRegTicket::FindTicketInDb(params[2].get_str(), ticket))
+                return ticket.ToJSON();
 		}
 		if (strCmd == "act") {
 			std::string key = params[2].get_str();
             CArtActivateTicket ticket;
-            CArtActivateTicket::FindTicketInDb(key, ticket);
-            return ticket.ToJSON();
+            if (CArtActivateTicket::FindTicketInDb(key, ticket))
+                return ticket.ToJSON();
 		}
 		if (strCmd == "trade") {
 //            CArtTradeTicket ticket;
-//            CArtTradeTicket::FindTicketInDb(params[2].get_str(), ticket);
-//            return ticket.ToJSON();
+//            if (CArtTradeTicket::FindTicketInDb(params[2].get_str(), ticket))
+//              return ticket.ToJSON();
 		}
 		if (strCmd == "down") {
 //            CTakeDownTicket ticket;
-//            CTakeDownTicket::FindTicketInDb(params[2].get_str(), ticket);
-//            return ticket.ToJSON();
+//            if (CTakeDownTicket::FindTicketInDb(params[2].get_str(), ticket))
+//              return ticket.ToJSON();
 		}
 		return NullUniValue;
 	}
@@ -1682,7 +1682,7 @@ UniValue tickets(const UniValue& params, bool fHelp) {
             strCmd = params[1].get_str();
         
         if (fHelp ||
-            (params.size() == 2 || params.size() == 3) ||
+            (params.size() != 2 && params.size() != 3) ||
             (strCmd != "id" && strCmd != "art" && strCmd != "act" && strCmd != "trade" && strCmd != "down"))
 			throw JSONRPCError(RPC_INVALID_PARAMETER,
 					"tickets list \"type\" \"minheight\"\n"
@@ -1717,10 +1717,10 @@ UniValue tickets(const UniValue& params, bool fHelp) {
 		if (strCmd == "down")
 			keys = masterNodeCtrl.masternodeTickets.GetAllKeys(TicketID::Down);
 		
-		UniValue mnObj(UniValue::VOBJ);
+        UniValue keysArray(UniValue::VARR);
 		for (const auto& key : keys)
-			mnObj.push_back(Pair("", key));
-		return mnObj;
+            keysArray.push_back(key);
+		return keysArray;
 	}
 	
 	if (strCommand == "get") {
