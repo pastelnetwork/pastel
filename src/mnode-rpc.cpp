@@ -1465,37 +1465,37 @@ UniValue tickets(const UniValue& params, bool fHelp) {
 		if (strCmd == "art") {
 			if (fHelp || params.size() != 5)
 				throw JSONRPCError(RPC_INVALID_PARAMETER,
-								   "tickets register art \"ticket\" \"key1\" \"key2\"\n"
-								   "Register new art ticket. If successful, method returns \"txid\"."
-								   "\nArguments:\n"
-								   "1. \"ticket\"				(string, required) Base64 encoded original ticket JSON.\n"
-								   "2. \"signatures\"			(string, required) Signatures (base64) and PastelIDs of the author and verifying masternodes (MN2 and MN3) as JSON:\n"
-                                   "								{\"authorsPastelID\": \"authorsSignature\", \"mn2PastelID\":\"mn2Signature\", \"mn3PastelID\":\"mn3Signature\"}"
-                                   "3. \"pastelid\"      		(string, required) The current, registering masternode (MN1) PastelID. NOTE: PastelID must be generated and stored inside node. See \"pastelid newkey\".\n"
-                                   "4. \"passpharse\"    		(string, required) The passphrase to the private key associated with PastelID and stored inside node. See \"pastelid newkey\".\n"
-                                   "5. \"key1\"    				(string, required) The first key to search ticket.\n"
-                                   "6. \"key2\"    				(string, required) The second key to search ticket.\n"
-                                   "6. \"blocknum\"    			(int, required) The block number when the ticket was created by the wallet.\n"
-								   "Masternode PastelID Ticket:\n"
-								   "{\n"
-								   "	\"ticket\": {\n"
-								   "		\"type\": \"art-reg\",\n"
-								   "		\"ticket\": \"\",\n"
-                                   "		\"signatures\": {\n"
-                                   " 			\"authorsPastelID\": \"authorsSignature\",\n"
-                                   "			\"mn2PastelID\":\"mn2Signature\",\n"
-                                   "			\"mn3PastelID\":\"mn3Signature\"\n"
-                                   "		}\n"
-								   "	},\n"
-								   "	\"height\": \"\",\n"
-								   "	\"txid\": \"\"\n"
-								   "  }\n"
-								   "\nRegister Art Ticket\n"
-								   + HelpExampleCli("tickets register art",
-													"\"ticket-blob-as-string (will be changed later!)\"" " \"key1\"" " \"key2\"") +
-								   "\nAs json rpc\n"
-								   + HelpExampleRpc("tickets register art",
-													"\"ticket-blob-as-string (will be changed later!)\"" " \"key1\"" " \"key2\"")
+                    "tickets register art \"ticket\" \"key1\" \"key2\"\n"
+                    "Register new art ticket. If successful, method returns \"txid\"."
+                    "\nArguments:\n"
+                    "1. \"ticket\"				(string, required) Base64 encoded original ticket JSON.\n"
+                    "2. \"signatures\"			(string, required) Signatures (base64) and PastelIDs of the author and verifying masternodes (MN2 and MN3) as JSON:\n"
+                    "								{\"authorsPastelID\": \"authorsSignature\", \"mn2PastelID\":\"mn2Signature\", \"mn3PastelID\":\"mn3Signature\"}"
+                    "3. \"pastelid\"      		(string, required) The current, registering masternode (MN1) PastelID. NOTE: PastelID must be generated and stored inside node. See \"pastelid newkey\".\n"
+                    "4. \"passpharse\"    		(string, required) The passphrase to the private key associated with PastelID and stored inside node. See \"pastelid newkey\".\n"
+                    "5. \"key1\"    				(string, required) The first key to search ticket.\n"
+                    "6. \"key2\"    				(string, required) The second key to search ticket.\n"
+                    "6. \"blocknum\"    			(int, required) The block number when the ticket was created by the wallet.\n"
+                    "Masternode PastelID Ticket:\n"
+                    "{\n"
+                    "	\"ticket\": {\n"
+                    "		\"type\": \"art-reg\",\n"
+                    "		\"ticket\": \"\",\n"
+                    "		\"signatures\": {\n"
+                    " 			\"authorsPastelID\": \"authorsSignature\",\n"
+                    "			\"mn2PastelID\":\"mn2Signature\",\n"
+                    "			\"mn3PastelID\":\"mn3Signature\"\n"
+                    "		}\n"
+                    "	},\n"
+                    "	\"height\": \"\",\n"
+                    "	\"txid\": \"\"\n"
+                    "  }\n"
+                    "\nRegister Art Ticket\n"
+                    + HelpExampleCli("tickets register art",
+                                     "\"ticket-blob-as-string (will be changed later!)\"" " \"key1\"" " \"key2\"") +
+                    "\nAs json rpc\n"
+                    + HelpExampleRpc("tickets register art",
+                                     "\"ticket-blob-as-string (will be changed later!)\"" " \"key1\"" " \"key2\"")
 				);
 
 			if (fImporting || fReindex)
@@ -1522,30 +1522,30 @@ UniValue tickets(const UniValue& params, bool fHelp) {
 		if (strCmd == "act") {
 			if (fHelp || params.size() != 5)
 				throw JSONRPCError(RPC_INVALID_PARAMETER,
-								   "tickets register act \"reg-ticket-tnxid\" \"PastelID\" \"passphrase\"\n"
-								   "Register confirm new art ticket identity. If successful, method returns \"txid\"."
-								   "\nArguments:\n"
-								   "1. \"reg-ticket-tnxid\" (string, required) tnxid of the art register ticket to activate.\n"
-								   "2. \"PastelID\"      (string, required) The PastelID of artist. NOTE: PastelID must be generated and stored inside node. See \"pastelid newkey\".\n"
-								   "3. \"passphrase\"    (string, required) The passphrase to the private key associated with artist's PastelID and stored inside node. See \"pastelid newkey\".\n"
-								   "Activation Ticket:\n"
-								   "{\n"
-								   "	\"ticket\": {\n"
-								   "		\"type\": \"activation\",\n"
-								   "		\"pastelID\": \"\",\n"
-								   "		\"reg_height\": \"\",\n"
-								   "		\"reg_txid\": \"\",\n"
-								   "		\"signature\": \"\"\n"
-								   "	},\n"
-								   "	\"height\": \"\",\n"
-								   "	\"txid\": \"\"\n"
-								   "  }\n"
-								   "\nRegister PastelID\n"
-								   + HelpExampleCli("tickets register act",
-													"\"705f812fcaa0d042a283a1a3f4da74cd2b381ede1f702d2b01fb8f342fb12f8b\" \"jXaShWhNtatHVPWRNPsvjoVHUYes2kA7T9EJVL9i9EKPdBNo5aTYp19niWemJb2EwgYYR68jymULPtmHdETf8M\"" " \"passphrase\"") +
-								   "\nAs json rpc\n"
-								   + HelpExampleRpc("tickets register conf",
-													"\"705f812fcaa0d042a283a1a3f4da74cd2b381ede1f702d2b01fb8f342fb12f8b\" \"jXaShWhNtatHVPWRNPsvjoVHUYes2kA7T9EJVL9i9EKPdBNo5aTYp19niWemJb2EwgYYR68jymULPtmHdETf8M\"" " \"passphrase\"")
+                    "tickets register act \"reg-ticket-tnxid\" \"PastelID\" \"passphrase\"\n"
+                    "Register confirm new art ticket identity. If successful, method returns \"txid\"."
+                    "\nArguments:\n"
+                    "1. \"reg-ticket-tnxid\" (string, required) tnxid of the art register ticket to activate.\n"
+                    "2. \"PastelID\"      (string, required) The PastelID of artist. NOTE: PastelID must be generated and stored inside node. See \"pastelid newkey\".\n"
+                    "3. \"passphrase\"    (string, required) The passphrase to the private key associated with artist's PastelID and stored inside node. See \"pastelid newkey\".\n"
+                    "Activation Ticket:\n"
+                    "{\n"
+                    "	\"ticket\": {\n"
+                    "		\"type\": \"activation\",\n"
+                    "		\"pastelID\": \"\",\n"
+                    "		\"reg_height\": \"\",\n"
+                    "		\"reg_txid\": \"\",\n"
+                    "		\"signature\": \"\"\n"
+                    "	},\n"
+                    "	\"height\": \"\",\n"
+                    "	\"txid\": \"\"\n"
+                    "  }\n"
+                    "\nRegister PastelID\n"
+                    + HelpExampleCli("tickets register act",
+                                     "\"705f812fcaa0d042a283a1a3f4da74cd2b381ede1f702d2b01fb8f342fb12f8b\" \"jXaShWhNtatHVPWRNPsvjoVHUYes2kA7T9EJVL9i9EKPdBNo5aTYp19niWemJb2EwgYYR68jymULPtmHdETf8M\"" " \"passphrase\"") +
+                    "\nAs json rpc\n"
+                    + HelpExampleRpc("tickets register conf",
+                                    "\"705f812fcaa0d042a283a1a3f4da74cd2b381ede1f702d2b01fb8f342fb12f8b\" \"jXaShWhNtatHVPWRNPsvjoVHUYes2kA7T9EJVL9i9EKPdBNo5aTYp19niWemJb2EwgYYR68jymULPtmHdETf8M\"" " \"passphrase\"")
 				);
 
 			std::string  regTicketTxID = params[2].get_str();
