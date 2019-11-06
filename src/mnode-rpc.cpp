@@ -528,7 +528,7 @@ UniValue masternode(const UniValue& params, bool fHelp)
         std::string strFilter = "";
 
         if (params.size() >= 2) {
-            nLast = atoi(params[1].get_str());
+            nLast = params[1].get_int();
         }
 
         if (params.size() == 3) {
@@ -557,7 +557,7 @@ UniValue masternode(const UniValue& params, bool fHelp)
 
         int nHeight;
         if (params.size() >= 2) {
-            nHeight = atoi(params[1].get_str());
+            nHeight = params[1].get_int();
         } else {
             LOCK(cs_main);
             CBlockIndex* pindex = chainActive.Tip();
@@ -607,7 +607,7 @@ UniValue masternode(const UniValue& params, bool fHelp)
         UniValue obj(UniValue::VOBJ);
         obj.push_back(Pair("signature", std::string(signature.begin(), signature.end())));
         if (params.size() == 3){
-			int n = atoi(params[1].get_str());
+			int n = params[1].get_int();
 			if (n > 0) {
 				std::string strPubKey = EncodeDestination(masterNodeCtrl.activeMasternode.pubKeyMasternode.GetID());
 				obj.push_back(Pair("signature", std::string(signature.begin(), signature.end())));
@@ -953,7 +953,7 @@ UniValue governance(const UniValue& params, bool fHelp)
 					"governance ticket add \"address\" amount \"note\" <yes|no>\n");
 
             std::string address = params[2].get_str();
-            int amount = atoi(params[3].get_str());
+            int amount = params[3].get_int();
             std::string note = params[4].get_str();
             std::string vote = params[5].get_str();
 
@@ -1220,7 +1220,7 @@ UniValue storagefee(const UniValue& params, bool fHelp) {
 
 //        UniValue obj(UniValue::VOBJ);
 //
-//        CAmount nFee = std::stoi(params[1].get_str());
+//        CAmount nFee = params[1].get_int());
     }
     if (strCommand == "getnetworkfee")
     {
@@ -1401,13 +1401,9 @@ UniValue tickets(const UniValue& params, bool fHelp) {
 			
 			if (!masterNodeCtrl.IsActiveMasterNode())
 				throw JSONRPCError(RPC_INTERNAL_ERROR,
-								   "This is not a active masternode. Only active MN can register its PastelID");
+								   "This is not an active masternode. Only active MN can register its PastelID");
 			
 			std::string pastelID = params[2].get_str();
-			if (masterNodeCtrl.masternodeTickets.CheckTicketExist(CPastelIDRegTicket(pastelID)))
-				throw JSONRPCError(RPC_INTERNAL_ERROR,
-								   "This PastelID is already registered in blockchain");
-			
 			SecureString strKeyPass;
 			strKeyPass.reserve(100);
 			strKeyPass = params[3].get_str().c_str();
@@ -1447,10 +1443,6 @@ UniValue tickets(const UniValue& params, bool fHelp) {
 				);
 			
 			std::string pastelID = params[2].get_str();
-			if (masterNodeCtrl.masternodeTickets.CheckTicketExist(CPastelIDRegTicket(pastelID)))
-				throw JSONRPCError(RPC_INTERNAL_ERROR,
-		   "This PastelID is already registered in blockchain");
-			
 			SecureString strKeyPass;
 			strKeyPass.reserve(100);
 			strKeyPass = params[3].get_str().c_str();
@@ -1463,33 +1455,43 @@ UniValue tickets(const UniValue& params, bool fHelp) {
 			mnObj.push_back(Pair("txid", txid));
 		}
 		if (strCmd == "art") {
-			if (fHelp || params.size() != 5)
+			if (fHelp || params.size() != 10)
 				throw JSONRPCError(RPC_INVALID_PARAMETER,
-                    "tickets register art \"ticket\" \"key1\" \"key2\"\n"
+                    "tickets register art \"ticket\" \"{signatures}\" \"pastelid\" \"passphrase\" \"key1\" \"key2\" \"blocknum\" \"fee\"\n"
                     "Register new art ticket. If successful, method returns \"txid\"."
                     "\nArguments:\n"
-                    "1. \"ticket\"				(string, required) Base64 encoded original ticket JSON.\n"
-                    "2. \"signatures\"			(string, required) Signatures (base64) and PastelIDs of the author and verifying masternodes (MN2 and MN3) as JSON:\n"
-                    "								{\"authorsPastelID\": \"authorsSignature\", \"mn2PastelID\":\"mn2Signature\", \"mn3PastelID\":\"mn3Signature\"}"
-                    "3. \"pastelid\"      		(string, required) The current, registering masternode (MN1) PastelID. NOTE: PastelID must be generated and stored inside node. See \"pastelid newkey\".\n"
-                    "4. \"passpharse\"    		(string, required) The passphrase to the private key associated with PastelID and stored inside node. See \"pastelid newkey\".\n"
-                    "5. \"key1\"    				(string, required) The first key to search ticket.\n"
-                    "6. \"key2\"    				(string, required) The second key to search ticket.\n"
-                    "6. \"blocknum\"    			(int, required) The block number when the ticket was created by the wallet.\n"
+                    "1. \"art_ticket\"	(string, required) Base64 encoded original ticket created by the artist.\n"
+                    "2. \"signatures\"	(string, required) Signatures (base64) and PastelIDs of the author and verifying masternodes (MN2 and MN3) as JSON:\n"
+                    "	{\n"
+                    "		\"artist\":{\"authorsPastelID\": \"authorsSignature\"},\n"
+                    "		\"mn2\":{\"mn2PastelID\":\"mn2Signature\"},\n"
+                    "		\"mn2\":{\"mn3PastelID\":\"mn3Signature\"}\n"
+                    "	}\n"
+                    "3. \"pastelid\"	(string, required) The current, registering masternode (MN1) PastelID. NOTE: PastelID must be generated and stored inside node. See \"pastelid newkey\".\n"
+                    "4. \"passpharse\"	(string, required) The passphrase to the private key associated with PastelID and stored inside node. See \"pastelid newkey\".\n"
+                    "5. \"key1\"		(string, required) The first key to search ticket.\n"
+                    "6. \"key2\"		(string, required) The second key to search ticket.\n"
+                    "6. \"art_block\"	(int, required) The block number when the ticket was created by the wallet.\n"
+                    "7. \"fee\"			(int, required) The agreed upon storag fee.\n"
                     "Masternode PastelID Ticket:\n"
                     "{\n"
                     "	\"ticket\": {\n"
                     "		\"type\": \"art-reg\",\n"
-                    "		\"ticket\": \"\",\n"
+                    "		\"art_ticket\": \"<actual ticket created by artist and signed by artist and all 3 MNs>\",\n"
                     "		\"signatures\": {\n"
                     " 			\"authorsPastelID\": \"authorsSignature\",\n"
+                    "			\"mn1PastelID\":\"mn1Signature\",\n"
                     "			\"mn2PastelID\":\"mn2Signature\",\n"
                     "			\"mn3PastelID\":\"mn3Signature\"\n"
-                    "		}\n"
+                    "		},\n"
+                    "		\"key1\": \"<search key 1>\",\n"
+                    "		\"key2\": \"<search key 2>\",\n"
+                    "		\"art_block\": \"<block at what artist created the ticketBLOB>\",\n"
+                    "		\"fee\": \"<agreed upon storage fee>\",\n"
                     "	},\n"
                     "	\"height\": \"\",\n"
                     "	\"txid\": \"\"\n"
-                    "  }\n"
+                    "}\n"
                     "\nRegister Art Ticket\n"
                     + HelpExampleCli("tickets register art",
                                      "\"ticket-blob-as-string (will be changed later!)\"" " \"key1\"" " \"key2\"") +
@@ -1498,13 +1500,18 @@ UniValue tickets(const UniValue& params, bool fHelp) {
                                      "\"ticket-blob-as-string (will be changed later!)\"" " \"key1\"" " \"key2\"")
 				);
 
-			if (fImporting || fReindex)
-				throw JSONRPCError(RPC_INVALID_PARAMETER, "Intial blocks download. Re-try later");
-				
-			std::string ticket = params[2].get_str();
-			std::string signatures = params[3].get_str();
-			
-			std::string pastelID = params[4].get_str();
+            if (!masterNodeCtrl.IsActiveMasterNode())
+                throw JSONRPCError(RPC_INTERNAL_ERROR,
+                                   "This is not an active masternode. Only active MN can register its PastelID");
+            
+            if (fImporting || fReindex)
+				throw JSONRPCError(RPC_INVALID_PARAMETER, "Initial blocks download. Re-try later");
+            
+            
+            std::string ticket = params[2].get_str();
+            std::string signatures = params[3].get_str();
+            std::string pastelID = params[4].get_str();
+            
             SecureString strKeyPass;
             strKeyPass.reserve(100);
             strKeyPass = params[5].get_str().c_str();
@@ -1512,29 +1519,37 @@ UniValue tickets(const UniValue& params, bool fHelp) {
             std::string key1 = params[6].get_str();
             std::string key2 = params[7].get_str();
             
-            int blocknum = atoi(params[8].get_str());
+            int blocknum = params[8].get_int();
+            CAmount nStorageFee = params[9].get_int();
             
-            CArtRegTicket artRegTicket = CArtRegTicket::Create(ticket, signatures, pastelID, strKeyPass, key1, key2, blocknum);
+            CArtRegTicket artRegTicket = CArtRegTicket::Create(ticket, signatures,
+                    pastelID, strKeyPass,
+                    key1, key2,
+                    blocknum, nStorageFee);
 			std::string txid = CPastelTicketProcessor::SendTicket(artRegTicket);
 			
 			mnObj.push_back(Pair("txid", txid));
 		}
 		if (strCmd == "act") {
-			if (fHelp || params.size() != 5)
+			if (fHelp || params.size() != 7)
 				throw JSONRPCError(RPC_INVALID_PARAMETER,
-                    "tickets register act \"reg-ticket-tnxid\" \"PastelID\" \"passphrase\"\n"
+                    "tickets register act \"reg-ticket-tnxid\" \"artist-height\" \"fee\" \"PastelID\" \"passphrase\"\n"
                     "Register confirm new art ticket identity. If successful, method returns \"txid\"."
                     "\nArguments:\n"
-                    "1. \"reg-ticket-tnxid\" (string, required) tnxid of the art register ticket to activate.\n"
-                    "2. \"PastelID\"      (string, required) The PastelID of artist. NOTE: PastelID must be generated and stored inside node. See \"pastelid newkey\".\n"
-                    "3. \"passphrase\"    (string, required) The passphrase to the private key associated with artist's PastelID and stored inside node. See \"pastelid newkey\".\n"
+                    "1. \"reg-ticket-tnxid\"  (string, required) tnxid of the art register ticket to activate.\n"
+                    "2. \"artist-height\" (string, required) Height where the art register ticket was created by the Artist.\n"
+                    "2. fee                   (int, required) The supposed fee that artist agreed to pay for the registration. This shall match the amount in the registration ticket.\n"
+                    "                         The transaction with this ticket will pay 90% of this amount to MNs (10% were burnt prior to registration).\n"
+                    "3. \"PastelID\"          (string, required) The PastelID of artist. NOTE: PastelID must be generated and stored inside node. See \"pastelid newkey\".\n"
+                    "4. \"passphrase\"        (string, required) The passphrase to the private key associated with artist's PastelID and stored inside node. See \"pastelid newkey\".\n"
                     "Activation Ticket:\n"
                     "{\n"
                     "	\"ticket\": {\n"
                     "		\"type\": \"activation\",\n"
                     "		\"pastelID\": \"\",\n"
-                    "		\"reg_height\": \"\",\n"
                     "		\"reg_txid\": \"\",\n"
+                    "		\"artist_height\": \"\",\n"
+                    "		\"reg_fee\": \"\",\n"
                     "		\"signature\": \"\"\n"
                     "	},\n"
                     "	\"height\": \"\",\n"
@@ -1542,20 +1557,22 @@ UniValue tickets(const UniValue& params, bool fHelp) {
                     "  }\n"
                     "\nRegister PastelID\n"
                     + HelpExampleCli("tickets register act",
-                                     "\"705f812fcaa0d042a283a1a3f4da74cd2b381ede1f702d2b01fb8f342fb12f8b\" \"jXaShWhNtatHVPWRNPsvjoVHUYes2kA7T9EJVL9i9EKPdBNo5aTYp19niWemJb2EwgYYR68jymULPtmHdETf8M\"" " \"passphrase\"") +
+                                     "\"705f812fcaa0d042a283a1a3f4da74cd2b381ede1f702d2b01fb8f342fb12f8b\" \"jXaShWhNtatHVPWRNPsvjoVHUYes2kA7T9EJVL9i9EKPdBNo5aTYp19niWemJb2EwgYYR68jymULPtmHdETf8M\"" " \"passphrase\" 9000") +
                     "\nAs json rpc\n"
                     + HelpExampleRpc("tickets register conf",
-                                    "\"705f812fcaa0d042a283a1a3f4da74cd2b381ede1f702d2b01fb8f342fb12f8b\" \"jXaShWhNtatHVPWRNPsvjoVHUYes2kA7T9EJVL9i9EKPdBNo5aTYp19niWemJb2EwgYYR68jymULPtmHdETf8M\"" " \"passphrase\"")
+                                    "\"705f812fcaa0d042a283a1a3f4da74cd2b381ede1f702d2b01fb8f342fb12f8b\" \"jXaShWhNtatHVPWRNPsvjoVHUYes2kA7T9EJVL9i9EKPdBNo5aTYp19niWemJb2EwgYYR68jymULPtmHdETf8M\"" " \"passphrase\" 9000")
 				);
 
 			std::string  regTicketTxID = params[2].get_str();
-			std::string pastelID = params[3].get_str();
+            int height = params[3].get_int();
+            int fee = params[4].get_int();
 
-			SecureString strKeyPass;
-			strKeyPass.reserve(100);
-			strKeyPass = params[4].get_str().c_str();
-			
-            CArtActivateTicket artActTicket(regTicketTxID, pastelID, strKeyPass);
+            std::string pastelID = params[5].get_str();
+            SecureString strKeyPass;
+            strKeyPass.reserve(100);
+            strKeyPass = params[6].get_str().c_str();
+            
+            CArtActivateTicket artActTicket = CArtActivateTicket::Create(regTicketTxID, height, fee, pastelID, strKeyPass);
 			std::string txid = CPastelTicketProcessor::SendTicket(artActTicket);
 			
 			mnObj.push_back(Pair("txid", txid));
@@ -1703,7 +1720,7 @@ UniValue tickets(const UniValue& params, bool fHelp) {
 
         int minheight = 0;
         if (params.size() == 3)
-            minheight = atoi(params[1].get_str());
+            minheight = params[1].get_int();
    
 		std::vector<std::string> keys;
 		if (strCmd == "id")

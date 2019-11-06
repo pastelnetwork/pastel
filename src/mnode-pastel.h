@@ -29,7 +29,9 @@ public:
 	virtual bool IsValid(bool preReg, std::string& errRet) const = 0;   //if preReg = true - validate pre registration conditions
 	                                                                    //      ex.: address has enough coins for registration
 	                                                                    //else - validate ticket in general
-	
+    
+    virtual CAmount GetExtraOutputs(std::vector<CTxOut>& outputs) const {return 0;}
+	   
 	std::string ticketTnx;
 	int ticketBlock{};
 };
@@ -42,6 +44,8 @@ public:
 	TicketID ID() const {return ticketId;}
 	virtual Key1 KeyOne() const = 0; 		//Key to the object itself
 	virtual Key2 KeyTwo() const = 0;		//another key, points to the main key
+	virtual bool HasKeyTwo() const {return true;}		//another key, points to the main key
+	virtual bool HasMultivalueKey() const {return false;}		//another key, points to the main key
 };
 
 // PastelID Ticket //////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -63,9 +67,7 @@ public:
 	std::string KeyTwo() const override {return outpoint.empty() ? address : outpoint;}
 	
     std::string ToJSON() override;
-    bool IsValid(bool preReg, std::string& errRet) const override {return true;}
-    //TODO: validate -  1)prereg - address has coins to pay for registration - 10PSL + fee
-    //                  2)signature matches PastelID
+    bool IsValid(bool preReg, std::string& errRet) const override;
     
     std::string PastelIDType() {return outpoint.empty()? "personal": "masternode";}
     
@@ -136,23 +138,27 @@ signatures
  */
 class CArtRegTicket : public CPastelTicket<TicketID::Art, std::string, std::string>
 {
+public:
     static constexpr short allsigns = 4;
     static constexpr short artistsign = 0;
     static constexpr short mainmnsign = 1;
+    static constexpr short mn2sign = 2;
+    static constexpr short mn3sign = 3;
 
 public:
-	std::string ticket;
+	std::string artTicket;
     
-    std::string mnPastelIDs[allsigns];
-    std::vector<unsigned char> mnSignatures[allsigns];
+    std::string pastelIDs[allsigns];
+    std::vector<unsigned char> ticketSignatures[allsigns];
     
     std::string keyOne;
     std::string keyTwo;
-    int ticketBlock{}; //blocknum when the ticket was created by the wallet
+    int artBlock{}; //blocknum when the ticket was created by the wallet
+    CAmount storageFee{};
 
 public:
 	CArtRegTicket() = default;
-	explicit CArtRegTicket(std::string _ticket) : ticket(std::move(_ticket)) {}
+	explicit CArtRegTicket(std::string _ticket) : artTicket(std::move(_ticket)) {}
     
     std::string TicketName() const override {return "art-reg";}
 	std::string KeyOne() const override {return keyOne;}
@@ -165,31 +171,35 @@ public:
 	
 	template <typename Stream, typename Operation>
 	inline void SerializationOp(Stream& s, Operation ser_action) {
-		READWRITE(ticket);
+		READWRITE(artTicket);
 		
         for (int mn=0; mn<allsigns; mn++) {
-            READWRITE(mnPastelIDs[mn]);
-            READWRITE(mnSignatures[mn]);
+            READWRITE(pastelIDs[mn]);
+            READWRITE(ticketSignatures[mn]);
         }
 
         READWRITE(keyOne);
         READWRITE(keyTwo);
-        READWRITE(ticketBlock);
+        READWRITE(artBlock);
+        READWRITE(storageFee);
         
         READWRITE(ticketTnx);
 		READWRITE(ticketBlock);
 	}
 	
-	MSGPACK_DEFINE(ticket,
-                   mnPastelIDs[0], mnSignatures[0],
-                   mnPastelIDs[1], mnSignatures[1],
-                   mnPastelIDs[2], mnSignatures[2],
-                   mnPastelIDs[3], mnSignatures[3],
-                   keyOne, keyTwo, ticketBlock);
+	MSGPACK_DEFINE(artTicket,
+                   pastelIDs[0], ticketSignatures[0],
+                   pastelIDs[1], ticketSignatures[1],
+                   pastelIDs[2], ticketSignatures[2],
+                   pastelIDs[3], ticketSignatures[3],
+                   keyOne, keyTwo, artBlock, storageFee);
     
-    static CArtRegTicket Create(std::string _ticket, const std::string& signatures, std::string _pastelID, const SecureString& strKeyPass,
-                                std::string _keyOne, std::string _keyTwo, int _ticketBlock);
-    static bool FindTicketInDb(const std::string& key, CArtRegTicket& ticket);
+    static CArtRegTicket Create(std::string _ticket, const std::string& signatures,
+                                std::string _pastelID, const SecureString& strKeyPass,
+                                std::string _keyOne, std::string _keyTwo,
+                                int _ticketBlock, CAmount _storageFee);
+    static bool FindTicketInDb(const std::string& key, CArtRegTicket& _ticket);
+    static bool CheckIfTicketInDb(const std::string& key);
 };
 
 // Art Activation Ticket ////////////////////////////////////////////////////////////////////////////////////////////////
@@ -197,49 +207,54 @@ public:
 	"ticket": {
 		"type": "activation",
 		"pastelID": "",
-		"reg_height": "",
 		"reg_txid": "",
+		"reg_height": "",
+		"reg_fee": "",
 		"signature": ""
 	},
  */
-class CArtActivateTicket : public CPastelTicket<TicketID::Activate, int, std::string>
+class CArtActivateTicket : public CPastelTicket<TicketID::Activate, std::string, int>
 {
+private:
+
 public:
 	std::string pastelID;
-	int regBlockHeight{};
 	std::string regTicketTnxId;
+    int artistHeight{};
+    int regFee{};
 	std::vector<unsigned char> signature;
 
 public:
 	CArtActivateTicket() = default;
 	explicit CArtActivateTicket(std::string _pastelID) : pastelID(std::move(_pastelID)) {}
-	CArtActivateTicket(std::string txid, std::string _pastelID, const SecureString& strKeyPass);
 	
 	std::string TicketName() const override {return "activation";}
-	int KeyOne() const override {return regBlockHeight;}
-	std::string  KeyTwo() const override {return regTicketTnxId;}
+    std::string KeyOne() const override {return regTicketTnxId;}
+    int KeyTwo() const override {return 0;}
+    bool HasKeyTwo() const override {return false;}
 	
 	std::string ToJSON() override;
-    bool IsValid(bool preReg, std::string& errRet) const override {return true;}
+    bool IsValid(bool preReg, std::string& errRet) const override;
 	
 	ADD_SERIALIZE_METHODS;
 	
 	template <typename Stream, typename Operation>
 	inline void SerializationOp(Stream& s, Operation ser_action) {
 		READWRITE(pastelID);
-		READWRITE(regBlockHeight);
 		READWRITE(regTicketTnxId);
-		READWRITE(signature);
+		READWRITE(artistHeight);
+        READWRITE(regFee);
+        READWRITE(signature);
 		READWRITE(ticketTnx);
 		READWRITE(ticketBlock);
 	}
 	
-	MSGPACK_DEFINE(pastelID, regBlockHeight, regTicketTnxId, signature)
+	MSGPACK_DEFINE(pastelID, regTicketTnxId, artistHeight, regFee, signature)
     
+    CAmount GetExtraOutputs(std::vector<CTxOut>& outputs) const override;
+    
+    static CArtActivateTicket Create(std::string txid, int height, int fee, std::string _pastelID, const SecureString& strKeyPass);
     static bool FindTicketInDb(const std::string& key, CArtActivateTicket& ticket);
-
-private:
-	void init(std::string&& txid, std::string&& _pastelID, const SecureString& strKeyPass);
 };
 
 // Art Trade Ticket /////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -285,6 +300,7 @@ public:
 #ifdef ENABLE_WALLET
 	static bool CreateP2FMSTransaction(const std::string& input_data, CMutableTransaction& tx_out, CAmount price, std::string& error_ret);
 	static bool CreateP2FMSTransaction(const std::vector<unsigned char>& input_data, CMutableTransaction& tx_out, CAmount price, std::string& error_ret);
+	static bool CreateP2FMSTransactionWithExtra(const std::vector<unsigned char>& input_data, const std::vector<CTxOut>& extraOutputs, CAmount extraAmount, CMutableTransaction& tx_out, CAmount price, std::string& error_ret);
 #endif // ENABLE_WALLET
 	static bool ParseP2FMSTransaction(const CMutableTransaction& tx_in, std::vector<unsigned char>& output_data, std::string& error_ret);
 	static bool ParseP2FMSTransaction(const CMutableTransaction& tx_in, std::string& output_data, std::string& error_ret);
