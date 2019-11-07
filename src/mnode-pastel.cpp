@@ -137,16 +137,17 @@ bool CPastelTicketProcessor::ParseTicketAndUpdateDB(CMutableTransaction& tx, int
 	return false;
 }
 
-std::string CPastelTicketProcessor::GetTicketJSON(uint256 txid)
+/*static*/ std::string CPastelTicketProcessor::GetTicketJSON(uint256 txid)
 {
-	auto ticket = GetTicket(txid);
+    TicketID ticketId;
+	auto ticket = GetTicket(txid, ticketId);
 	if (ticket != nullptr)
 		return ticket->ToJSON();
 	else
 		return "";
 }
 
-CPastelTicketBase* CPastelTicketProcessor::GetTicket(uint256 txid)
+/*static*/ CPastelTicketBase* CPastelTicketProcessor::GetTicket(uint256 txid, TicketID& ticketId)
 {
 	CTransaction tx;
 	uint256 hashBlock;
@@ -157,9 +158,8 @@ CPastelTicketBase* CPastelTicketProcessor::GetTicket(uint256 txid)
 	
 	std::string error;
 	std::vector<unsigned char> data;
-	TicketID ticket_id;
 	
-	if (!preParseTicket(mtx, data, ticket_id, error))
+	if (!preParseTicket(mtx, data, ticketId, error))
 		throw std::runtime_error(strprintf("Failed to create P2FMS from data provided - %s", error));
 	
 	CPastelTicketBase* ticket = nullptr;
@@ -170,19 +170,19 @@ CPastelTicketBase* CPastelTicketProcessor::GetTicket(uint256 txid)
 		if (mapBlockIndex.count(hashBlock) != 0)
 			height = mapBlockIndex[hashBlock]->nHeight;
 		
-		if (ticket_id == TicketID::PastelID) {
+		if (ticketId == TicketID::PastelID) {
 			ticket = new CPastelIDRegTicket{ParseTicket<CPastelIDRegTicket>(data, sizeof(TicketID))};
 		}
-		if (ticket_id == TicketID::Art) {
+		if (ticketId == TicketID::Art) {
 			ticket = new CArtRegTicket{ParseTicket<CArtRegTicket>(data, sizeof(TicketID))};
 		}
-		if (ticket_id == TicketID::Activate) {
+		if (ticketId == TicketID::Activate) {
             ticket = new CArtActivateTicket{ParseTicket<CArtActivateTicket>(data, sizeof(TicketID))};
 		}
-//		if (ticket_id == TicketID::Trade) {
+//		if (ticketId == TicketID::Trade) {
 //			ticket =
 //		}
-//		if (ticket_id == TicketID::Down) {
+//		if (ticketId == TicketID::Down) {
 //			ticket =
 //		}
 		
@@ -193,7 +193,7 @@ CPastelTicketBase* CPastelTicketProcessor::GetTicket(uint256 txid)
 
 	}catch (...)
 	{
-		LogPrintf("CPastelTicketProcessor::GetTicket -- ERROR: Failed to parse and unpack ticket with ticket_id %d from txid - %s\n", (int)ticket_id, tx.GetHash().GetHex());
+		LogPrintf("CPastelTicketProcessor::GetTicket -- ERROR: Failed to parse and unpack ticket with ticket_id %d from txid - %s\n", (int)ticketId, tx.GetHash().GetHex());
 	}
 	
 	return ticket;
@@ -272,7 +272,7 @@ std::string CPastelTicketProcessor::SendTicket(const T& ticket)
     }
     
     std::vector<CTxOut> extraOutputs;
-    ticket.GetExtraOutputs(extraOutputs);
+    CAmount extraAmount = ticket.GetExtraOutputs(extraOutputs);
     
 	msgpack::sbuffer buffer;
 	msgpack::pack(buffer, ticket);
@@ -285,7 +285,7 @@ std::string CPastelTicketProcessor::SendTicket(const T& ticket)
 	data.insert(data.begin(), ticketid_byte, ticketid_byte+sizeof(TicketID)); //sizeof(size_t) == 8
 	
 	CMutableTransaction tx;
-	if (!CPastelTicketProcessor::CreateP2FMSTransaction(data, tx, GetTicketPrice(tid), error)){
+	if (!CPastelTicketProcessor::CreateP2FMSTransactionWithExtra(data, extraOutputs, extraAmount, tx, GetTicketPrice(tid), error)){
 		throw std::runtime_error(strprintf("Failed to create P2FMS from data provided - %s", error));
 	}
 	
@@ -674,7 +674,7 @@ std::string CPastelIDRegTicket::ToJSON()
     
     ticket.keyOne = std::move(_keyOne);
     ticket.keyTwo = std::move(_keyTwo);
-    ticket.artBlock = _ticketBlock;
+    ticket.artistHeight = _ticketBlock;
     ticket.storageFee = _storageFee;
     
     ticket.pastelIDs[mainmnsign] = std::move(_pastelID);
@@ -775,7 +775,7 @@ bool CArtRegTicket::IsValid(bool preReg, std::string& errRet) const
             }
             
             //3
-            /*Get-workers-for-block(artBlock)
+            /*Get-workers-for-block(artistHeight)
             for (auto worker : workers){
                 if pastelIDticket.outpoint not in workers
                     return false
@@ -809,15 +809,23 @@ std::string CArtRegTicket::ToJSON()
             {"type", TicketName()},
             {"art_ticket", artTicket},
             {"signatures",{
-                {pastelIDs[artistsign], ed_crypto::Base64_Encode(ticketSignatures[artistsign].data(), ticketSignatures[artistsign].size()) },
-                {pastelIDs[mainmnsign], ed_crypto::Base64_Encode(ticketSignatures[mainmnsign].data(), ticketSignatures[mainmnsign].size())},
-                {pastelIDs[mn2sign], ed_crypto::Base64_Encode(ticketSignatures[mn2sign].data(), ticketSignatures[mn2sign].size())},
-                {pastelIDs[mn3sign], ed_crypto::Base64_Encode(ticketSignatures[mn3sign].data(), ticketSignatures[mn3sign].size())},
+                {"artist", {
+                    {pastelIDs[artistsign], ed_crypto::Base64_Encode(ticketSignatures[artistsign].data(), ticketSignatures[artistsign].size())}
+                }},
+                {"mn1", {
+                    {pastelIDs[mainmnsign], ed_crypto::Base64_Encode(ticketSignatures[mainmnsign].data(), ticketSignatures[mainmnsign].size())}
+                }},
+                {"mn2", {
+                    {pastelIDs[mn2sign], ed_crypto::Base64_Encode(ticketSignatures[mn2sign].data(), ticketSignatures[mn2sign].size())}
+                }},
+                {"mn3", {
+                    {pastelIDs[mn3sign], ed_crypto::Base64_Encode(ticketSignatures[mn3sign].data(), ticketSignatures[mn3sign].size())}
+                }},
             }},
             {"key1", keyOne},
             {"key2", keyTwo},
-            {"art_block", artBlock},
-            {"fee", storageFee},
+            {"artist_height", artistHeight},
+            {"storage_fee", storageFee},
         }}
 	};
     
@@ -847,14 +855,14 @@ std::string CArtRegTicket::ToJSON()
     
     ticket.regTicketTnxId = std::move(txid);
     ticket.artistHeight = height;
-    ticket.regFee = fee;
+    ticket.storageFee = fee;
 
 	//signature of ticket hash
 	CHashWriter ss(SER_GETHASH, PROTOCOL_VERSION);
 	ss << ticket.pastelID;
 	ss << ticket.regTicketTnxId;
 	ss << ticket.artistHeight;
-    ss << ticket.regFee;
+    ss << ticket.storageFee;
     uint256 hash = ss.GetHash();
     ticket.signature = CPastelID::Sign(hash.begin(), hash.size(), ticket.pastelID, strKeyPass);
     
@@ -870,7 +878,7 @@ bool CArtActivateTicket::IsValid(bool preReg, std::string& errRet) const
             errRet = strprintf("The art ticket with this txid [%s] is already activated", regTicketTnxId);
             return false;
         }
-        //2. check there are enough coins to pay 90% of regFee
+        //2. check there are enough coins to pay 90% of storageFee
     } else {
         //something important only if ticket is already send
     }
@@ -879,13 +887,14 @@ bool CArtActivateTicket::IsValid(bool preReg, std::string& errRet) const
     //1. check there are ArtReg ticket with txid = regTicketTnxId
     uint256 txid;
     txid.SetHex(regTicketTnxId);
-    auto pastelTicket = CPastelTicketProcessor::GetTicket(txid);
-    if (pastelTicket == nullptr)
+    TicketID ticketId;
+    auto pastelTicket = CPastelTicketProcessor::GetTicket(txid, ticketId);
+    if (pastelTicket == nullptr || ticketId != TicketID::Art)
     {
         errRet = strprintf("The art ticket with this txid [%s] is not in the blockchain", regTicketTnxId);
         return false;
     }
-    auto *artTicket = (CArtRegTicket*)pastelTicket;
+    auto artTicket = (CArtRegTicket*)pastelTicket;
     if (artTicket == nullptr)
     {
         errRet = strprintf("The art ticket with this txid [%s] is not in the blockchain or is invalid", regTicketTnxId);
@@ -903,16 +912,25 @@ bool CArtActivateTicket::IsValid(bool preReg, std::string& errRet) const
     }
 
     //3. check ArtReg ticket is at the assumed height
-    if (artTicket->ticketBlock != artistHeight)
+    if (artTicket->artistHeight != artistHeight)
     {
         errRet = strprintf("The artistHeight [%d] is not matching the ticketBlock [%d] in the Art Reg ticket with this txid [%s]",
                            artistHeight, artTicket->ticketBlock,
                            regTicketTnxId);
         return false;
     }
-
+    
+    //4. check ArtReg ticket fee is same as storageFee
+    if (artTicket->storageFee != storageFee)
+    {
+        errRet = strprintf("The storage fee [%d] is not matching the storage fee [%d] in the Art Reg ticket with this txid [%s]",
+                           storageFee, artTicket->storageFee,
+                           regTicketTnxId);
+        return false;
+    }
+    
     std::string err;
-    //4. check ArtReg ticket is valid
+    //5. check ArtReg ticket is valid
     if (!artTicket->IsValid(false, err))
     {
         errRet = strprintf("The art ticket with this txid [%s] is invalid - %s", regTicketTnxId, err);
@@ -926,18 +944,21 @@ CAmount CArtActivateTicket::GetExtraOutputs(std::vector<CTxOut>& outputs) const
 {
     uint256 txid;
     txid.SetHex(regTicketTnxId);
-    auto pastelTicket = CPastelTicketProcessor::GetTicket(txid);
-    if (pastelTicket == nullptr)
+    TicketID ticketId;
+    auto pastelTicket = CPastelTicketProcessor::GetTicket(txid, ticketId);
+    if (pastelTicket == nullptr || ticketId != TicketID::Art)
         throw std::runtime_error(strprintf("The art ticket with this txid [%s] is not in the blockchain", regTicketTnxId));
     
-    auto *artTicket = (CArtRegTicket*)pastelTicket;
+    auto artTicket = (CArtRegTicket*)pastelTicket;
     if (artTicket == nullptr)
         throw std::runtime_error(strprintf("The art ticket with this txid [%s] is not in the blockchain or is invalid", regTicketTnxId));
     
     CAmount nAllAmount = 0;
-    CAmount nAllMNFee = regFee*COIN*9/10; //90%
+    CAmount nAllMNFee = storageFee * COIN * 9 / 10; //90%
+    CAmount nMainMNFee = nAllMNFee * 3 / 5; //60% of 90%
+    CAmount nOtherMNFee = nAllMNFee / 5;    //20% of 90%
     
-    for (int mn = CArtRegTicket::mainmnsign; mn++; mn<CArtRegTicket::allsigns) {
+    for (int mn = CArtRegTicket::mainmnsign; mn<CArtRegTicket::allsigns; mn++) {
         auto mnPastelID = artTicket->pastelIDs[mn];
         CPastelIDRegTicket mnPastelIDticket;
         if (!CPastelIDRegTicket::FindTicketInDb(mnPastelID, mnPastelIDticket))
@@ -952,7 +973,7 @@ CAmount CArtActivateTicket::GetExtraOutputs(std::vector<CTxOut>& outputs) const
                               mnPastelID, regTicketTnxId));
     
         CScript scriptPubKey = GetScriptForDestination(dest);
-        CAmount nAmount = nAllMNFee / (mn == CArtRegTicket::mainmnsign? 2: 4);
+        CAmount nAmount = (mn == CArtRegTicket::mainmnsign? nMainMNFee: nOtherMNFee);
         nAllAmount += nAmount;
     
         CTxOut out(nAmount, scriptPubKey);
@@ -973,7 +994,7 @@ std::string CArtActivateTicket::ToJSON()
 				{"pastelID", pastelID},
 				{"reg_txid", regTicketTnxId},
 				{"artist_height", artistHeight},
-                {"reg_fee", regFee},
+                {"storage_fee", storageFee},
 				{"signature", ed_crypto::Hex_Encode(signature.data(), signature.size())}
 		 }}
 	};

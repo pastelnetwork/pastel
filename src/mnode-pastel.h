@@ -153,7 +153,7 @@ public:
     
     std::string keyOne;
     std::string keyTwo;
-    int artBlock{}; //blocknum when the ticket was created by the wallet
+    int artistHeight{}; //blocknum when the ticket was created by the wallet
     CAmount storageFee{};
 
 public:
@@ -180,7 +180,7 @@ public:
 
         READWRITE(keyOne);
         READWRITE(keyTwo);
-        READWRITE(artBlock);
+        READWRITE(artistHeight);
         READWRITE(storageFee);
         
         READWRITE(ticketTnx);
@@ -192,7 +192,7 @@ public:
                    pastelIDs[1], ticketSignatures[1],
                    pastelIDs[2], ticketSignatures[2],
                    pastelIDs[3], ticketSignatures[3],
-                   keyOne, keyTwo, artBlock, storageFee);
+                   keyOne, keyTwo, artistHeight, storageFee);
     
     static CArtRegTicket Create(std::string _ticket, const std::string& signatures,
                                 std::string _pastelID, const SecureString& strKeyPass,
@@ -221,14 +221,14 @@ public:
 	std::string pastelID;
 	std::string regTicketTnxId;
     int artistHeight{};
-    int regFee{};
+    int storageFee{};
 	std::vector<unsigned char> signature;
 
 public:
 	CArtActivateTicket() = default;
 	explicit CArtActivateTicket(std::string _pastelID) : pastelID(std::move(_pastelID)) {}
 	
-	std::string TicketName() const override {return "activation";}
+	std::string TicketName() const override {return "art-act";}
     std::string KeyOne() const override {return regTicketTnxId;}
     int KeyTwo() const override {return 0;}
     bool HasKeyTwo() const override {return false;}
@@ -243,13 +243,13 @@ public:
 		READWRITE(pastelID);
 		READWRITE(regTicketTnxId);
 		READWRITE(artistHeight);
-        READWRITE(regFee);
+        READWRITE(storageFee);
         READWRITE(signature);
 		READWRITE(ticketTnx);
 		READWRITE(ticketBlock);
 	}
 	
-	MSGPACK_DEFINE(pastelID, regTicketTnxId, artistHeight, regFee, signature)
+	MSGPACK_DEFINE(pastelID, regTicketTnxId, artistHeight, storageFee, signature)
     
     CAmount GetExtraOutputs(std::vector<CTxOut>& outputs) const override;
     
@@ -309,7 +309,7 @@ public:
 	template<class T>
 	static std::string SendTicket(const T& ticket);
 	
-	static CPastelTicketBase* GetTicket(uint256 txid);
+	static CPastelTicketBase* GetTicket(uint256 txid, TicketID& ticketId);
 	static std::string GetTicketJSON(uint256 txid);
 
 	template<class T>

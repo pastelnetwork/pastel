@@ -38,7 +38,8 @@ following process should be used to merge:
   values:
 
   - Repository: https://github.com/<DevUser>/Pastel
-    - <DevUser> must be in the set of "safe" users as-specified in the CI
+    - <!--suppress HtmlUnknownTag -->
+<DevUser> must be in the set of "safe" users as-specified in the CI
       config.
   - Branch: name of the hotfix PR branch (not the hotfix release branch).
 

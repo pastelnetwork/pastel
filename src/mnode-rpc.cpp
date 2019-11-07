@@ -1393,10 +1393,10 @@ UniValue tickets(const UniValue& params, bool fHelp) {
 					"  }\n"
 					"\nRegister masternode ID\n"
 					+ HelpExampleCli("tickets register mnid",
-								   "\"jXaShWhNtatHVPWRNPsvjoVHUYes2kA7T9EJVL9i9EKPdBNo5aTYp19niWemJb2EwgYYR68jymULPtmHdETf8M\"" "\"passphrase\"") +
+                                      R"("jXaShWhNtatHVPWRNPsvjoVHUYes2kA7T9EJVL9i9EKPdBNo5aTYp19niWemJb2EwgYYR68jymULPtmHdETf8M, "passphrase")") +
 					"\nAs json rpc\n"
-					+ HelpExampleRpc("tickets register mnid",
-								   "\"jXaShWhNtatHVPWRNPsvjoVHUYes2kA7T9EJVL9i9EKPdBNo5aTYp19niWemJb2EwgYYR68jymULPtmHdETf8M\"" "\"passphrase\"")
+					+ HelpExampleRpc("tickets",
+								   R"("register", "mnid", "jXaShWhNtatHVPWRNPsvjoVHUYes2kA7T9EJVL9i9EKPdBNo5aTYp19niWemJb2EwgYYR68jymULPtmHdETf8M", "passphrase")")
 				);
 			
 			if (!masterNodeCtrl.IsActiveMasterNode())
@@ -1436,10 +1436,10 @@ UniValue tickets(const UniValue& params, bool fHelp) {
 					"  }\n"
 					"\nRegister PastelID\n"
 					+ HelpExampleCli("tickets register id",
-									"\"jXaShWhNtatHVPWRNPsvjoVHUYes2kA7T9EJVL9i9EKPdBNo5aTYp19niWemJb2EwgYYR68jymULPtmHdETf8M\"" " \"passphrase\"" " \"tPmjPqWdUXD68JBTWYBTtqeCDwdFwwRjikg\"") +
+									R"("jXaShWhNtatHVPWRNPsvjoVHUYes2kA7T9EJVL9i9EKPdBNo5aTYp19niWemJb2EwgYYR68jymULPtmHdETf8M, "passphrase", tPmjPqWdUXD68JBTWYBTtqeCDwdFwwRjikg)") +
 					"\nAs json rpc\n"
 					+ HelpExampleRpc("tickets register id",
-									"\"jXaShWhNtatHVPWRNPsvjoVHUYes2kA7T9EJVL9i9EKPdBNo5aTYp19niWemJb2EwgYYR68jymULPtmHdETf8M\"" " \"passphrase\"" " \"tPmjPqWdUXD68JBTWYBTtqeCDwdFwwRjikg\"")
+                                     R"("register", "id", "jXaShWhNtatHVPWRNPsvjoVHUYes2kA7T9EJVL9i9EKPdBNo5aTYp19niWemJb2EwgYYR68jymULPtmHdETf8M", "passphrase", "tPmjPqWdUXD68JBTWYBTtqeCDwdFwwRjikg")")
 				);
 			
 			std::string pastelID = params[2].get_str();
@@ -1486,18 +1486,18 @@ UniValue tickets(const UniValue& params, bool fHelp) {
                     "		},\n"
                     "		\"key1\": \"<search key 1>\",\n"
                     "		\"key2\": \"<search key 2>\",\n"
-                    "		\"art_block\": \"<block at what artist created the ticketBLOB>\",\n"
-                    "		\"fee\": \"<agreed upon storage fee>\",\n"
+                    "		\"artist_height\": \"<block at what artist created the ticketBLOB>\",\n"
+                    "		\"storage_fee\": \"<agreed upon storage fee>\",\n"
                     "	},\n"
                     "	\"height\": \"\",\n"
                     "	\"txid\": \"\"\n"
                     "}\n"
                     "\nRegister Art Ticket\n"
                     + HelpExampleCli("tickets register art",
-                                     "\"ticket-blob-as-string (will be changed later!)\"" " \"key1\"" " \"key2\"") +
+                                    R"(""ticket-blob" "{signatures}" jXYqZNPj21RVnwxnEJ654wEdzi7GZTZ5LAdiotBmPrF7pDMkpX1JegDMQZX55WZLkvy9fxNpZcbBJuE8QYUqBF "passphrase", "key1", "key2", 1111, 100)") +
                     "\nAs json rpc\n"
-                    + HelpExampleRpc("tickets register art",
-                                     "\"ticket-blob-as-string (will be changed later!)\"" " \"key1\"" " \"key2\"")
+                    + HelpExampleRpc("tickets",
+                                     R"("register", "art", "ticket" "{signatures}" "jXYqZNPj21RVnwxnEJ654wEdzi7GZTZ5LAdiotBmPrF7pDMkpX1JegDMQZX55WZLkvy9fxNpZcbBJuE8QYUqBF" "passphrase", "key1", "key2", 1111, 100)")
 				);
 
             if (!masterNodeCtrl.IsActiveMasterNode())
@@ -1545,11 +1545,11 @@ UniValue tickets(const UniValue& params, bool fHelp) {
                     "Activation Ticket:\n"
                     "{\n"
                     "	\"ticket\": {\n"
-                    "		\"type\": \"activation\",\n"
+                    "		\"type\": \"art-act\",\n"
                     "		\"pastelID\": \"\",\n"
                     "		\"reg_txid\": \"\",\n"
                     "		\"artist_height\": \"\",\n"
-                    "		\"reg_fee\": \"\",\n"
+                    "		\"storage_fee\": \"\",\n"
                     "		\"signature\": \"\"\n"
                     "	},\n"
                     "	\"height\": \"\",\n"
@@ -1557,10 +1557,10 @@ UniValue tickets(const UniValue& params, bool fHelp) {
                     "  }\n"
                     "\nRegister PastelID\n"
                     + HelpExampleCli("tickets register act",
-                                     "\"705f812fcaa0d042a283a1a3f4da74cd2b381ede1f702d2b01fb8f342fb12f8b\" \"jXaShWhNtatHVPWRNPsvjoVHUYes2kA7T9EJVL9i9EKPdBNo5aTYp19niWemJb2EwgYYR68jymULPtmHdETf8M\"" " \"passphrase\" 9000") +
+                                     R"("907e5e4c6fc4d14660a22afe2bdf6d27a3c8762abf0a89355bb19b7d9e7dc440 213 100 jXYqZNPj21RVnwxnEJ654wEdzi7GZTZ5LAdiotBmPrF7pDMkpX1JegDMQZX55WZLkvy9fxNpZcbBJuE8QYUqBF "passphrase")") +
                     "\nAs json rpc\n"
-                    + HelpExampleRpc("tickets register conf",
-                                    "\"705f812fcaa0d042a283a1a3f4da74cd2b381ede1f702d2b01fb8f342fb12f8b\" \"jXaShWhNtatHVPWRNPsvjoVHUYes2kA7T9EJVL9i9EKPdBNo5aTYp19niWemJb2EwgYYR68jymULPtmHdETf8M\"" " \"passphrase\" 9000")
+                    + HelpExampleRpc("tickets",
+                                     R"("register", "act", "907e5e4c6fc4d14660a22afe2bdf6d27a3c8762abf0a89355bb19b7d9e7dc440", 213, 100, "jXYqZNPj21RVnwxnEJ654wEdzi7GZTZ5LAdiotBmPrF7pDMkpX1JegDMQZX55WZLkvy9fxNpZcbBJuE8QYUqBF", "passphrase")")
 				);
 
 			std::string  regTicketTxID = params[2].get_str();
@@ -1598,10 +1598,10 @@ UniValue tickets(const UniValue& params, bool fHelp) {
 					"  }\n"
 					"\nTrade Ticket\n"
 					+ HelpExampleCli("tickets register trade",
-									"\"jXaShWhNtatHVPWRNPsvjoVHUYes2kA7T9EJVL9i9EKPdBNo5aTYp19niWemJb2EwgYYR68jymULPtmHdETf8M\"" " \"passphrase\"") +
+                                     R"("jXYqZNPj21RVnwxnEJ654wEdzi7GZTZ5LAdiotBmPrF7pDMkpX1JegDMQZX55WZLkvy9fxNpZcbBJuE8QYUqBF "passphrase")") +
 					"\nAs json rpc\n"
-					+ HelpExampleRpc("tickets register trade",
-									"\"jXaShWhNtatHVPWRNPsvjoVHUYes2kA7T9EJVL9i9EKPdBNo5aTYp19niWemJb2EwgYYR68jymULPtmHdETf8M\"" " \"passphrase\"")
+					+ HelpExampleRpc("tickets",
+                                     R"("register", "trade", "jXYqZNPj21RVnwxnEJ654wEdzi7GZTZ5LAdiotBmPrF7pDMkpX1JegDMQZX55WZLkvy9fxNpZcbBJuE8QYUqBF", "passphrase")")
 				);
 		}
 		if (strCmd == "down") {
@@ -1625,10 +1625,10 @@ UniValue tickets(const UniValue& params, bool fHelp) {
 					"  }\n"
 					"\nRegister PastelID\n"
 					+ HelpExampleCli("tickets register down",
-									"\"jXaShWhNtatHVPWRNPsvjoVHUYes2kA7T9EJVL9i9EKPdBNo5aTYp19niWemJb2EwgYYR68jymULPtmHdETf8M\"" " \"passphrase\"") +
+                            R"(jXYqZNPj21RVnwxnEJ654wEdzi7GZTZ5LAdiotBmPrF7pDMkpX1JegDMQZX55WZLkvy9fxNpZcbBJuE8QYUqBF "passphrase")") +
 					"\nAs json rpc\n"
-					+ HelpExampleRpc("tickets register down",
-									"\"jXaShWhNtatHVPWRNPsvjoVHUYes2kA7T9EJVL9i9EKPdBNo5aTYp19niWemJb2EwgYYR68jymULPtmHdETf8M\"" " \"passphrase\"")
+					+ HelpExampleRpc("tickets",
+                                     R"("register", "down", "jXYqZNPj21RVnwxnEJ654wEdzi7GZTZ5LAdiotBmPrF7pDMkpX1JegDMQZX55WZLkvy9fxNpZcbBJuE8QYUqBF", "passphrase")")
 				);
 		}
 		return mnObj;
@@ -1659,10 +1659,10 @@ UniValue tickets(const UniValue& params, bool fHelp) {
 				"1. \"key\"		(string, required) The Key to use for ticket search. See types above..\n"
 				"\nExample: Find id ticket\n"
 				+ HelpExampleCli("tickets find id",
-								 "\"jXaShWhNtatHVPWRNPsvjoVHUYes2kA7T9EJVL9i9EKPdBNo5aTYp19niWemJb2EwgYYR68jymULPtmHdETf8M\"") +
-				"\nAs json rpc\n"
-				+ HelpExampleRpc("tickets find id",
-								 "\"jXaShWhNtatHVPWRNPsvjoVHUYes2kA7T9EJVL9i9EKPdBNo5aTYp19niWemJb2EwgYYR68jymULPtmHdETf8M\"")
+                        "jXYqZNPj21RVnwxnEJ654wEdzi7GZTZ5LAdiotBmPrF7pDMkpX1JegDMQZX55WZLkvy9fxNpZcbBJuE8QYUqBF") +
+                  "\nAs json rpc\n"
+				+ HelpExampleRpc("tickets",
+                                 R"("find", "id", "jXYqZNPj21RVnwxnEJ654wEdzi7GZTZ5LAdiotBmPrF7pDMkpX1JegDMQZX55WZLkvy9fxNpZcbBJuE8QYUqBF")")
 			);
    
 		if (strCmd == "id") {
@@ -1676,9 +1676,8 @@ UniValue tickets(const UniValue& params, bool fHelp) {
                 return ticket.ToJSON();
 		}
 		if (strCmd == "act") {
-			std::string key = params[2].get_str();
             CArtActivateTicket ticket;
-            if (CArtActivateTicket::FindTicketInDb(key, ticket))
+            if (CArtActivateTicket::FindTicketInDb(params[2].get_str(), ticket))
                 return ticket.ToJSON();
 		}
 		if (strCmd == "trade") {
@@ -1715,7 +1714,7 @@ UniValue tickets(const UniValue& params, bool fHelp) {
 					"\nExample: List ALL PastelID tickets\n"
 					+ HelpExampleCli("tickets list id", "") +
 					"\nAs json rpc\n"
-					+ HelpExampleRpc("tickets find id", "")
+					+ HelpExampleRpc("tickets", R"("list", "id")")
 			);
 
         int minheight = 0;
@@ -1749,8 +1748,8 @@ UniValue tickets(const UniValue& params, bool fHelp) {
 							   + HelpExampleCli("tickets get",
 												"bc1c5243284272dbb22c301a549d112e8bc9bc454b5ff50b1e5f7959d6b56726") +
 							   "\nAs json rpc\n"
-							   + HelpExampleRpc("tickets get",
-												"bc1c5243284272dbb22c301a549d112e8bc9bc454b5ff50b1e5f7959d6b56726")
+							   + HelpExampleRpc("tickets",
+												"get bc1c5243284272dbb22c301a549d112e8bc9bc454b5ff50b1e5f7959d6b56726")
 			);
 		
 		uint256 txid = ParseHashV(params[1], "\"txid\"");
