@@ -558,6 +558,16 @@ void static BitcoinMiner()
             //
             unsigned int nTransactionsUpdatedLast = mempool.GetTransactionsUpdated();
             CBlockIndex* pindexPrev = chainActive.Tip();
+    
+            //FORK->!!!
+            if (pindexPrev->nHeight < TOP_FORK_BLOCK) {
+                n = 48;
+                k = 5;
+            } else {
+                n = chainparams.EquihashN();
+                k = chainparams.EquihashK();
+            }
+            //<-FORK!!!
 
 #ifdef ENABLE_WALLET
             unique_ptr<CBlockTemplate> pblocktemplate(CreateNewBlockWithKey(reservekey));

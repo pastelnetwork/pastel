@@ -583,4 +583,10 @@ int GetSpendHeight(const CCoinsViewCache& inputs);
 /** Return a CMutableTransaction with contextual default values based on set of consensus rules at height */
 CMutableTransaction CreateNewContextualCMutableTransaction(const Consensus::Params& consensusParams, int nHeight);
 
+//FORK->!!!
+#define TOP_FORK_MINING_BLOCK 10
+#define TOP_FORK_BLOCK 100
+//<-FORK!!!
+
+
 #endif // BITCOIN_MAIN_H
