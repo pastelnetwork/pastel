@@ -1280,7 +1280,7 @@ UniValue chaindata(const UniValue& params, bool fHelp) {
 
         std::string error;
         CMutableTransaction tx_out;
-        if (!CPastelTicketProcessor::CreateP2FMSTransaction(input_data, tx_out, 0, error))
+        if (!CPastelTicketProcessor::CreateP2FMSTransaction(input_data, tx_out, 1, error))
             throw JSONRPCError(RPC_INVALID_PARAMETER, strprintf("\"Failed to create P2FMS from data provided - %s", error));
 		
 		if (!CPastelTicketProcessor::StoreP2FMSTransaction(tx_out, error))

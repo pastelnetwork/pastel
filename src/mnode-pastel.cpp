@@ -565,8 +565,8 @@ CAmount CPastelTicketProcessor::GetTicketPrice(TicketID tid)
 	switch(tid)
 	{
 		case TicketID::PastelID: 	return 10;
-		case TicketID::Art: 		return 0;
-		case TicketID::Activate: 	return 0;
+		case TicketID::Art: 		return 10;
+		case TicketID::Activate: 	return 10;
 		case TicketID::Trade: 		return 1000;
 		case TicketID::Down: 		return 1000;
 	};
