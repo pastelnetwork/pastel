@@ -30,18 +30,14 @@ private:
     std::vector<uint256> vecVoteHashes;
 
 public:
-    outpoint_vector vecWorkers;
-
     CMasternodePayee() :
         scriptPubKey(),
-        vecVoteHashes(),
-        vecWorkers()
+        vecVoteHashes()
         {}
 
-    CMasternodePayee(CScript payee, uint256 hashIn, outpoint_vector workers) :
+    CMasternodePayee(CScript payee, uint256 hashIn) :
         scriptPubKey(payee),
-        vecVoteHashes(),
-        vecWorkers(workers)
+        vecVoteHashes()
     {
         vecVoteHashes.push_back(hashIn);
     }
@@ -52,7 +48,6 @@ public:
     inline void SerializationOp(Stream& s, Operation ser_action) {
         READWRITE(*(CScriptBase*)(&scriptPubKey));
         READWRITE(vecVoteHashes);
-        READWRITE(vecWorkers);
     }
 
     CScript GetPayee() { return scriptPubKey; }
@@ -91,8 +86,6 @@ public:
     bool GetBestPayee(CScript& payeeRet);
     bool HasPayeeWithVotes(const CScript& payeeIn, int nVotesReq);
 
-    bool GetBestWorkers(outpoint_vector& workers);
-
     bool IsTransactionValid(const CTransaction& txNew);
 
     std::string GetRequiredPaymentsString();
@@ -108,21 +101,17 @@ public:
     CScript payee;
     std::vector<unsigned char> vchSig;
 
-    outpoint_vector vecWorkers;
-
     CMasternodePaymentVote() :
         vinMasternode(),
         nBlockHeight(0),
         payee(),
-        vecWorkers(),
         vchSig()
         {}
 
-    CMasternodePaymentVote(COutPoint outpointMasternode, int nBlockHeight, CScript payee, outpoint_vector workers) :
+    CMasternodePaymentVote(COutPoint outpointMasternode, int nBlockHeight, CScript payee) :
         vinMasternode(outpointMasternode),
         nBlockHeight(nBlockHeight),
         payee(payee),
-        vecWorkers(workers),
         vchSig()
         {}
 
@@ -133,7 +122,6 @@ public:
         READWRITE(vinMasternode);
         READWRITE(nBlockHeight);
         READWRITE(*(CScriptBase*)(&payee));
-        READWRITE(vecWorkers);
         READWRITE(vchSig);
     }
 
@@ -142,8 +130,6 @@ public:
         ss << *(CScriptBase*)(&payee);
         ss << nBlockHeight;
         ss << vinMasternode.prevout;
-        for (auto &worker : vecWorkers)
-            ss << worker;
         return ss.GetHash();
     }
 
@@ -204,8 +190,7 @@ public:
 
     void ProcessMessage(CNode* pfrom, std::string& strCommand, CDataStream& vRecv);
     std::string GetRequiredPaymentsString(int nBlockHeight);
-    bool GetWorkersForBlock(int nBlockHeight, outpoint_vector& workers);
-    void FillMasterNodePayment(CMutableTransaction& txNew, int nBlockHeight, CAmount blockReward, CTxOut& txoutMasternodeRet, outpoint_vector& blockWorkersRet);
+    void FillMasterNodePayment(CMutableTransaction& txNew, int nBlockHeight, CAmount blockReward, CTxOut& txoutMasternodeRet);
     std::string ToString() const;
 
     int GetBlockCount() { return mapMasternodeBlockPayees.size(); }

@@ -67,7 +67,9 @@ private:
     std::map<uint256, std::pair< int64_t, std::set<CNetAddr> > > mMnbRecoveryRequests;
     std::map<uint256, std::vector<CMasternodeBroadcast> > mMnbRecoveryGoodReplies;
     std::list< std::pair<CService, uint256> > listScheduledMnbRequestConnections;
-
+    
+    std::map<int, std::vector<CMasternode>> mapHistoricalTopMNs;
+    
     int64_t nLastWatchdogVoteTime;
 
     friend class CMasternodeSync;
@@ -106,9 +108,12 @@ public:
         READWRITE(mMnbRecoveryRequests);
         READWRITE(mMnbRecoveryGoodReplies);
         READWRITE(nLastWatchdogVoteTime);
-
+        
         READWRITE(mapSeenMasternodeBroadcast);
         READWRITE(mapSeenMasternodePing);
+        
+        READWRITE(mapHistoricalTopMNs);
+        
         if(ser_action.ForRead() && (strVersion != SERIALIZATION_VERSION_STRING)) {
             Clear();
         }
@@ -201,6 +206,9 @@ public:
     void SetMasternodeLastPing(const COutPoint& outpoint, const CMasternodePing& mnp);
 
     void UpdatedBlockTip(const CBlockIndex *pindex);
+    
+    std::vector<CMasternode> GetTopMNsForBlock(int nBlockHeight = -1, bool bCalculateIfNotSeen = false);
+    std::vector<CMasternode> CalculateTopMNsForBlock(int nBlockHeight = -1);
 };
 
 #endif

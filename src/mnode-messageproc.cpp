@@ -215,7 +215,7 @@ void CMasternodeMessageProcessor::CheckAndRemove()
         //     ++it;
         // } else if() {
         //     //remove...
-        //     mapWorkersTriads.erase(it++);
+        //     map<....>.erase(it++);
         // } else {
         //     ++it;
         // }

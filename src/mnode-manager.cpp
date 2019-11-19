@@ -1486,4 +1486,47 @@ void CMasternodeMan::UpdatedBlockTip(const CBlockIndex *pindex)
         // normal wallet does not need to update this every block, doing update on rpc call should be enough
         UpdateLastPaid(pindex);
     }
+    
+    
+    // SELECT AND STORE WORKER MASTERNODEs
+    auto topMNs = CalculateTopMNsForBlock(nCachedBlockHeight);
+    if (topMNs.size() < masterNodeCtrl.nMasternodeWorkersNumberMin) {
+        LogPrintf("CMasternodeMan::UpdatedBlockTip -- ERROR: Failed to find enough workers masternode\n");
+    } else {
+        mapHistoricalTopMNs[nCachedBlockHeight] = topMNs;
+    }
+}
+
+std::vector<CMasternode> CMasternodeMan::CalculateTopMNsForBlock(int nBlockHeight)
+{
+    rank_pair_vec_t vMasternodeRanks;
+    if (!GetMasternodeRanks(vMasternodeRanks, nBlockHeight) ||
+        vMasternodeRanks.size() < masterNodeCtrl.nMasternodeWorkersNumberMin) {
+        LogPrintf("CMasternodeMan::UpdatedBlockTip -- ERROR: Failed to find workers masternode\n");
+        return std::vector<CMasternode>{};
+    }
+    
+    std::vector<CMasternode> topMNs;
+    for (auto mn : vMasternodeRanks){
+        if (mn.second.IsValidForPayment())
+            topMNs.push_back(mn.second);
+        if(topMNs.size() == masterNodeCtrl.nMasternodeWorkersNumber)
+            break;
+    }
+
+    return topMNs;
+}
+
+std::vector<CMasternode> CMasternodeMan::GetTopMNsForBlock(int nBlockHeight, bool bCalculateIfNotSeen)
+{
+    if(nBlockHeight == -1) nBlockHeight = chainActive.Height();
+    
+    auto it = mapHistoricalTopMNs.find(nBlockHeight);
+    if (it != mapHistoricalTopMNs.end()){
+        return it->second;
+    } else if (bCalculateIfNotSeen){
+        return CalculateTopMNsForBlock(nBlockHeight);
+    }
+
+    return std::vector<CMasternode>{};
 }

@@ -133,9 +133,6 @@ public:
         block.hashFinalSaplingRoot   = hashFinalSaplingRoot;
         block.nTime          = nTime;
         block.nBits          = nBits;
-        block.blockWorkers[0]   = blockWorkers[0];
-        block.blockWorkers[1]   = blockWorkers[1];
-        block.blockWorkers[2]   = blockWorkers[2];
         block.nNonce         = nNonce;
         block.nSolution      = nSolution;
         return block;

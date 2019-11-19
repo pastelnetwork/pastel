@@ -493,13 +493,7 @@ UniValue getblocktemplate(const UniValue& params, bool fHelp)
             "      \"payee\" : \"xxxx\",             (string) payee address\n"
             "      \"script\" : \"xxxx\",            (string) payee scriptPubKey\n"
             "      \"amount\": n                     (numeric) required amount to pay\n"
-            "  },\n"
-            "  \"workers\" : [                     (json array) masternode workers that must be included in the next block header, can be empty\n"
-            "      {                                 (json object) collateral transaction representing masternode\n"
-            "        \"hash\" : \"xxxx\",               (string) hash of collateral transaction\n"
-            "        \"n\"    : \"n\"                   (numeric) vout index of collateral transaction\n"
-            "      },\n"
-            "  ]\n"
+            "  }\n"
             "}\n"
 
             "\nExamples:\n"
@@ -771,16 +765,6 @@ UniValue getblocktemplate(const UniValue& params, bool fHelp)
         masternodeObj.push_back(Pair("amount", pblock->txoutGovernance.nValue));
     }
     result.push_back(Pair("governance", governanceObj));
-    //Block Workers
-    UniValue workersArray(UniValue::VARR);
-    for (auto &worker : pblock->blockWorkers) {
-        UniValue objItem(UniValue::VOBJ);
-        objItem.push_back(Pair("data", EncodeHexOutPoint(worker)));
-        objItem.push_back(Pair("hash", worker.hash.ToString().substr(0,64)));
-        objItem.push_back(Pair("n", worker.n == -1? 0: static_cast<uint64_t>(worker.n)));
-        workersArray.push_back(objItem);
-    }
-    result.push_back(Pair("workers", workersArray));
     //<--PASTEL
 
     return result;

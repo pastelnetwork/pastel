@@ -68,7 +68,7 @@ public:
 
     int nMasternodeMinimumConfirmations, nMasternodePaymentsIncreaseBlock, nMasternodePaymentsIncreasePeriod;
     int nMasternodePaymentsVotersIndexDelta, nMasternodePaymentsFeatureWinnerBlockIndexDelta;
-    int nMasternodeWorkersNumber, nMasternodeWorkersIndexDelta;
+    int nMasternodeWorkersNumber, nMasternodeWorkersNumberMin;
     int nMasterNodeMaximumOutboundConnections;
     int nFulfilledRequestExpireTime;
 

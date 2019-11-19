@@ -331,9 +331,6 @@ bool CBlockTreeDB::LoadBlockIndexGuts()
                 pindexNew->hashFinalSaplingRoot   = diskindex.hashFinalSaplingRoot;
                 pindexNew->nTime          = diskindex.nTime;
                 pindexNew->nBits          = diskindex.nBits;
-                pindexNew->blockWorkers[0]   = diskindex.blockWorkers[0];
-                pindexNew->blockWorkers[1]   = diskindex.blockWorkers[1];
-                pindexNew->blockWorkers[2]   = diskindex.blockWorkers[2];
                 pindexNew->nNonce         = diskindex.nNonce;
                 pindexNew->nSolution      = diskindex.nSolution;
                 pindexNew->nStatus        = diskindex.nStatus;

@@ -33,35 +33,32 @@
 void EnsureWalletIsUnlocked();
 #endif // ENABLE_WALLET
 
-UniValue _format_workers_info(COutPoint (&blockWorkers)[3])
+UniValue _format_mns_info(std::vector<CMasternode> topBlockMNs)
 {
-    UniValue workersArray(UniValue::VARR);
+    UniValue mnArray(UniValue::VARR);
 
     int i = 0;
-    for (auto &worker : blockWorkers) {
-        masternode_info_t mnInfo;
-        if (masterNodeCtrl.masternodeManager.GetMasternodeInfo(worker, mnInfo)){
-            UniValue objItem(UniValue::VOBJ);
-            objItem.push_back(Pair("rank", strprintf("%d", ++i)));
+    for (auto &mn : topBlockMNs) {
+        UniValue objItem(UniValue::VOBJ);
+        objItem.push_back(Pair("rank", strprintf("%d", ++i)));
 
-            objItem.push_back(Pair("IP:port",       mnInfo.addr.ToString()));
-            objItem.push_back(Pair("protocol",      (int64_t)mnInfo.nProtocolVersion));
-            objItem.push_back(Pair("outpoint",      mnInfo.vin.prevout.ToStringShort()));
+        objItem.push_back(Pair("IP:port", mn.addr.ToString()));
+        objItem.push_back(Pair("protocol",      (int64_t)mn.nProtocolVersion));
+        objItem.push_back(Pair("outpoint", mn.vin.prevout.ToStringShort()));
 
-            CTxDestination dest = mnInfo.pubKeyCollateralAddress.GetID();
-            std::string address = EncodeDestination(dest);
-            objItem.push_back(Pair("payee",         address));
-            objItem.push_back(Pair("lastseen",      mnInfo.nTimeLastPing));
-            objItem.push_back(Pair("activeseconds", mnInfo.nTimeLastPing - mnInfo.sigTime));
+        CTxDestination dest = mn.pubKeyCollateralAddress.GetID();
+        std::string address = EncodeDestination(dest);
+        objItem.push_back(Pair("payee",         address));
+        objItem.push_back(Pair("lastseen", mn.nTimeLastPing));
+        objItem.push_back(Pair("activeseconds", mn.nTimeLastPing - mn.sigTime));
 
-            objItem.push_back(Pair("extAddress", mnInfo.strExtraLayerAddress));
-            objItem.push_back(Pair("extKey", mnInfo.strExtraLayerKey));
-            objItem.push_back(Pair("extCfg", mnInfo.strExtraLayerCfg));
+        objItem.push_back(Pair("extAddress", mn.strExtraLayerAddress));
+        objItem.push_back(Pair("extKey", mn.strExtraLayerKey));
+        objItem.push_back(Pair("extCfg", mn.strExtraLayerCfg));
 
-            workersArray.push_back(objItem);
-        }
+        mnArray.push_back(objItem);
     }
-    return workersArray;
+    return mnArray;
 }
 
 UniValue masternodelist(const UniValue& params, bool fHelp)
@@ -248,8 +245,11 @@ UniValue masternode(const UniValue& params, bool fHelp)
                 "  list-conf    - Print masternode.conf in JSON format\n"
                 "  winner       - Print info on next masternode winner to vote for\n"
                 "  winners      - Print list of masternode winners\n"
-                "  workers <n>  - Print 3 worker masternodes for the current or n-th block.\n"
-				"  sign <message> <n> - Sing <message> using masternodes key\n\tif n is presented and not 0 - it will aslo returns the public key\n\tuse \"verifymessage\" with masrternode's public key to verify signature\n"
+                "  workers <n> <x>  - Print 10 top masternodes for the current or n-th block.\n"
+                "                        By default, method will only return historical masternodes (when n is specified) if they were seen by the node\n"
+                "                        If x presented and not 0 - method will return MNs 'calculated' based on the current list of MNs and hash of n'th block\n"
+                "                        (this maybe not accurate - MN existed before might not be in the current list)\n"
+				"  sign <message> <x> - Sing <message> using masternodes key\n\tif x is presented and not 0 - it will also returns the public key\n\tuse \"verifymessage\" with masrternode's public key to verify signature\n"
                 );
 
     if (strCommand == "list")
@@ -551,41 +551,35 @@ UniValue masternode(const UniValue& params, bool fHelp)
     if (strCommand == "workers")
     {
         if (params.size() > 3)
-            throw JSONRPCError(RPC_INVALID_PARAMETER, "Correct usage is 'masternode workers' OR 'masternode workers \"block-height\"'");
+            throw JSONRPCError(RPC_INVALID_PARAMETER, "Correct usage is:\n"
+                                                                    "\t'masternode workers'\n\t\tOR\n"
+                                                                    "\t'masternode workers \"block-height\"'\n\t\tOR\n"
+                                                                    "\t'masternode workers \"block-height\" 1'");
 
         UniValue obj(UniValue::VOBJ);
 
         int nHeight;
         if (params.size() >= 2) {
-            nHeight = params[1].get_int();
+            nHeight = std::stoi(params[1].get_str());
         } else {
             LOCK(cs_main);
             CBlockIndex* pindex = chainActive.Tip();
             if(!pindex) return false;
             nHeight = pindex->nHeight;
         }
-
+        
         if (nHeight < 0 || nHeight > chainActive.Height()) {
             throw JSONRPCError(RPC_INVALID_PARAMETER, "Block height out of range");
         }
-
-        std::string strHash = chainActive[nHeight]->GetBlockHash().GetHex();
-        uint256 hash(uint256S(strHash));
-
-        if (mapBlockIndex.count(hash) == 0)
-            throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Block not found");
-
-        CBlock block;
-        CBlockIndex* pblockindex = mapBlockIndex[hash];
-
-        if (fHavePruned && !(pblockindex->nStatus & BLOCK_HAVE_DATA) && pblockindex->nTx > 0)
-            throw JSONRPCError(RPC_INTERNAL_ERROR, "Block not available (pruned data)");
-
-        if(!ReadBlockFromDisk(block, pblockindex))
-            throw JSONRPCError(RPC_INTERNAL_ERROR, "Can't read block from disk");
-
-        UniValue workersArray = _format_workers_info(block.blockWorkers);
-        obj.push_back(Pair(strprintf("%d", nHeight), workersArray));
+    
+        bool bCalculateIfNotSeen = false;
+        if (params.size() == 3)
+            bCalculateIfNotSeen = params[2].get_str() == "1"? true: false;
+    
+        auto topBlockMNs = masterNodeCtrl.masternodeManager.GetTopMNsForBlock(nHeight, bCalculateIfNotSeen);
+        
+        UniValue mnsArray = _format_mns_info(topBlockMNs);
+        obj.push_back(Pair(strprintf("%d", nHeight), mnsArray));
 
         return obj;
     }

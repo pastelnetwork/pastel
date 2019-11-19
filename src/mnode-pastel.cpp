@@ -775,9 +775,9 @@ bool CArtRegTicket::IsValid(bool preReg, std::string& errRet) const
             }
             
             //3
-            /*Get-workers-for-block(artistHeight)
-            for (auto worker : workers){
-                if pastelIDticket.outpoint not in workers
+            /*Get-TopMNs-for-block(artistHeight)
+            for (auto mn : topMNs){
+                if pastelIDticket.outpoint not in TopMNs
                     return false
             }
             */
