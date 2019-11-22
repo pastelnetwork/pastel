@@ -205,6 +205,16 @@ UniValue masternodelist(const UniValue& params, bool fHelp)
     return obj;
 }
 
+int get_number(const UniValue& v)
+{
+    return v.isStr()? std::stoi(v.get_str()): v.get_int();
+}
+
+long long get_long_number(const UniValue& v)
+{
+    return v.isStr()? std::stoll(v.get_str()): (long long)v.get_int();
+}
+
 UniValue masternode(const UniValue& params, bool fHelp)
 {
     std::string strCommand;
@@ -225,7 +235,7 @@ UniValue masternode(const UniValue& params, bool fHelp)
 #endif // ENABLE_WALLET
          strCommand != "list" && strCommand != "list-conf" && strCommand != "count" &&
          strCommand != "debug" && strCommand != "current" && strCommand != "winner" && strCommand != "winners" && strCommand != "genkey" &&
-         strCommand != "connect" && strCommand != "status" && strCommand != "workers" && strCommand != "sign"))
+         strCommand != "connect" && strCommand != "status" && strCommand != "top" && strCommand != "sign"))
             throw std::runtime_error(
                 "masternode \"command\"...\n"
                 "Set of commands to execute masternode related actions\n"
@@ -245,7 +255,7 @@ UniValue masternode(const UniValue& params, bool fHelp)
                 "  list-conf    - Print masternode.conf in JSON format\n"
                 "  winner       - Print info on next masternode winner to vote for\n"
                 "  winners      - Print list of masternode winners\n"
-                "  workers <n> <x>  - Print 10 top masternodes for the current or n-th block.\n"
+                "  top <n> <x>  - Print 10 top masternodes for the current or n-th block.\n"
                 "                        By default, method will only return historical masternodes (when n is specified) if they were seen by the node\n"
                 "                        If x presented and not 0 - method will return MNs 'calculated' based on the current list of MNs and hash of n'th block\n"
                 "                        (this maybe not accurate - MN existed before might not be in the current list)\n"
@@ -528,9 +538,9 @@ UniValue masternode(const UniValue& params, bool fHelp)
         std::string strFilter = "";
 
         if (params.size() >= 2) {
-            nLast = params[1].get_int();
+            nLast = get_number(params[1]);
         }
-
+        
         if (params.size() == 3) {
             strFilter = params[2].get_str();
         }
@@ -548,19 +558,19 @@ UniValue masternode(const UniValue& params, bool fHelp)
 
         return obj;
     }
-    if (strCommand == "workers")
+    if (strCommand == "top")
     {
         if (params.size() > 3)
             throw JSONRPCError(RPC_INVALID_PARAMETER, "Correct usage is:\n"
-                                                                    "\t'masternode workers'\n\t\tOR\n"
-                                                                    "\t'masternode workers \"block-height\"'\n\t\tOR\n"
-                                                                    "\t'masternode workers \"block-height\" 1'");
+                                                                    "\t'masternode top'\n\t\tOR\n"
+                                                                    "\t'masternode top \"block-height\"'\n\t\tOR\n"
+                                                                    "\t'masternode top \"block-height\" 1'");
 
         UniValue obj(UniValue::VOBJ);
 
         int nHeight;
         if (params.size() >= 2) {
-            nHeight = std::stoi(params[1].get_str());
+            nHeight = get_number(params[1]);
         } else {
             LOCK(cs_main);
             CBlockIndex* pindex = chainActive.Tip();
@@ -601,7 +611,7 @@ UniValue masternode(const UniValue& params, bool fHelp)
         UniValue obj(UniValue::VOBJ);
         obj.push_back(Pair("signature", std::string(signature.begin(), signature.end())));
         if (params.size() == 3){
-			int n = params[1].get_int();
+			int n = get_number(params[1]);
 			if (n > 0) {
 				std::string strPubKey = EncodeDestination(masterNodeCtrl.activeMasternode.pubKeyMasternode.GetID());
 				obj.push_back(Pair("signature", std::string(signature.begin(), signature.end())));
@@ -947,7 +957,7 @@ UniValue governance(const UniValue& params, bool fHelp)
 					"governance ticket add \"address\" amount \"note\" <yes|no>\n");
 
             std::string address = params[2].get_str();
-            int amount = params[3].get_int();
+            int amount = get_number(params[3]);
             std::string note = params[4].get_str();
             std::string vote = params[5].get_str();
 
@@ -1214,7 +1224,7 @@ UniValue storagefee(const UniValue& params, bool fHelp) {
 
 //        UniValue obj(UniValue::VOBJ);
 //
-//        CAmount nFee = params[1].get_int());
+//        CAmount nFee = get_long_number(params[1]);
     }
     if (strCommand == "getnetworkfee")
     {
@@ -1513,8 +1523,8 @@ UniValue tickets(const UniValue& params, bool fHelp) {
             std::string key1 = params[6].get_str();
             std::string key2 = params[7].get_str();
             
-            int blocknum = params[8].get_int();
-            CAmount nStorageFee = params[9].get_int();
+            int blocknum = get_number(params[8]);
+            CAmount nStorageFee = get_long_number(params[9]);
             
             CArtRegTicket artRegTicket = CArtRegTicket::Create(ticket, signatures,
                     pastelID, strKeyPass,
@@ -1558,8 +1568,8 @@ UniValue tickets(const UniValue& params, bool fHelp) {
 				);
 
 			std::string  regTicketTxID = params[2].get_str();
-            int height = params[3].get_int();
-            int fee = params[4].get_int();
+            int height = get_number(params[3]);
+            int fee = get_number(params[4]);
 
             std::string pastelID = params[5].get_str();
             SecureString strKeyPass;
@@ -1713,7 +1723,7 @@ UniValue tickets(const UniValue& params, bool fHelp) {
 
         int minheight = 0;
         if (params.size() == 3)
-            minheight = params[1].get_int();
+            minheight = get_number(params[1]);
    
 		std::vector<std::string> keys;
 		if (strCmd == "id")

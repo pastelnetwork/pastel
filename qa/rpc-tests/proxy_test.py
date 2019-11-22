@@ -27,8 +27,8 @@ Test plan:
     - proxy on IPv6
 
 - Create various proxies (as threads)
-- Create bitcoinds that connect to them
-- Manipulate the bitcoinds using addnode (onetry) an observe effects
+- Create pastelds that connect to them
+- Manipulate the pastelds using addnode (onetry) an observe effects
 
 addnode connect to IPv4
 addnode connect to IPv6

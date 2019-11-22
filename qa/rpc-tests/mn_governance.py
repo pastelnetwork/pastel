@@ -109,6 +109,8 @@ class MasterNodeGovernanceTest (MasterNodeCommon):
         assert_equal(res1['result'], 'successful')
         ticket2_id = res1['ticketId']
 
+        self.nodes[self.mining_node_num].generate(5)
+
         print("Waiting 60 seconds")
         time.sleep(60)
 
@@ -119,8 +121,10 @@ class MasterNodeGovernanceTest (MasterNodeCommon):
             print(res1)
             for j in range(0, 2):
                 if res1[j]['id'] == ticket1_id:
+                    print(res1[j]['ticket'])
                     assert_equal("Total votes: 3, Yes votes: 2" in res1[j]['ticket'], True)
                 elif res1[j]['id'] == ticket2_id:
+                    print(res1[j]['ticket'])
                     assert_equal("Total votes: 1, Yes votes: 1" in res1[j]['ticket'], True)
                 else:
                     assert_equal(res1[0]['id'], res1[1]['id'])

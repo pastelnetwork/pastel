@@ -182,7 +182,6 @@ public:
     uint256 hashFinalSaplingRoot;
     unsigned int nTime;
     unsigned int nBits;
-    COutPoint blockWorkers[3];
     uint256 nNonce;
     std::vector<unsigned char> nSolution;
 
@@ -216,9 +215,6 @@ public:
         hashFinalSaplingRoot   = uint256();
         nTime          = 0;
         nBits          = 0;
-        blockWorkers[0].SetNull();
-        blockWorkers[1].SetNull();
-        blockWorkers[2].SetNull();
         nNonce         = uint256();
         nSolution.clear();
     }
@@ -391,9 +387,6 @@ public:
         READWRITE(hashFinalSaplingRoot);
         READWRITE(nTime);
         READWRITE(nBits);
-        READWRITE(blockWorkers[0]);
-        READWRITE(blockWorkers[1]);
-        READWRITE(blockWorkers[2]);
         READWRITE(nNonce);
         READWRITE(nSolution);
 

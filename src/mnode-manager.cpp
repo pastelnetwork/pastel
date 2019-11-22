@@ -1488,10 +1488,10 @@ void CMasternodeMan::UpdatedBlockTip(const CBlockIndex *pindex)
     }
     
     
-    // SELECT AND STORE WORKER MASTERNODEs
+    // SELECT AND STORE TOP MASTERNODEs
     auto topMNs = CalculateTopMNsForBlock(nCachedBlockHeight);
-    if (topMNs.size() < masterNodeCtrl.nMasternodeWorkersNumberMin) {
-        LogPrintf("CMasternodeMan::UpdatedBlockTip -- ERROR: Failed to find enough workers masternode\n");
+    if (topMNs.size() < masterNodeCtrl.nMasternodeTopMNsNumberMin) {
+        LogPrintf("CMasternodeMan::UpdatedBlockTip -- ERROR: Failed to find enough Top MasterNodes\n");
     } else {
         mapHistoricalTopMNs[nCachedBlockHeight] = topMNs;
     }
@@ -1501,8 +1501,8 @@ std::vector<CMasternode> CMasternodeMan::CalculateTopMNsForBlock(int nBlockHeigh
 {
     rank_pair_vec_t vMasternodeRanks;
     if (!GetMasternodeRanks(vMasternodeRanks, nBlockHeight) ||
-        vMasternodeRanks.size() < masterNodeCtrl.nMasternodeWorkersNumberMin) {
-        LogPrintf("CMasternodeMan::UpdatedBlockTip -- ERROR: Failed to find workers masternode\n");
+        vMasternodeRanks.size() < masterNodeCtrl.nMasternodeTopMNsNumberMin) {
+        LogPrintf("CMasternodeMan::UpdatedBlockTip -- ERROR: Failed to find Top MasterNodes\n");
         return std::vector<CMasternode>{};
     }
     
@@ -1510,7 +1510,7 @@ std::vector<CMasternode> CMasternodeMan::CalculateTopMNsForBlock(int nBlockHeigh
     for (auto mn : vMasternodeRanks){
         if (mn.second.IsValidForPayment())
             topMNs.push_back(mn.second);
-        if(topMNs.size() == masterNodeCtrl.nMasternodeWorkersNumber)
+        if(topMNs.size() == masterNodeCtrl.nMasternodeTopMNsNumber)
             break;
     }
 

@@ -47,8 +47,8 @@ void CMasterNodeController::SetParameters()
     nMasternodePaymentsVotersIndexDelta = -101;
     nMasternodePaymentsFeatureWinnerBlockIndexDelta = 10;
     
-    nMasternodeWorkersNumberMin = 3;
-    nMasternodeWorkersNumber = 10;
+    nMasternodeTopMNsNumberMin = 3;
+    nMasternodeTopMNsNumber = 10;
 
     nGovernanceVotingPeriodBlocks = 576; //24 hours, 1 block per 2.5 minutes
 

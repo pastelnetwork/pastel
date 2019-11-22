@@ -19,7 +19,7 @@ Possible options:
 ```
 -h, --help       show this help message and exit
   --nocleanup      Leave pastelds and test.* datadir on exit or error
-  --noshutdown     Don't stop bitcoinds after the test execution
+  --noshutdown     Don't stop pastelds after the test execution
   --srcdir=SRCDIR  Source directory containing pastel/pastel-cli (default:
                    ../../src)
   --tmpdir=TMPDIR  Root directory for datadirs
