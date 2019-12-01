@@ -1772,31 +1772,46 @@ CTxDestination ani2psl(std::string aniAddress)
     
     uint160 hash;
     std::copy(vchRet.begin() + 1, vchRet.end(), hash.begin());
-    if (vchRet.front() == 23) {
+    if (vchRet.front() == 23) { //ANI_PUBKEY_ADDRESS
         return CKeyID(hash);
     }
-    else if (vchRet.front() == 9){
+    else if (vchRet.front() == 9){ //ANI_SCRIPT_ADDRESS
         return CScriptID(hash);
     }
 
     throw JSONRPCError(RPC_INVALID_PARAMETER, "Invalid ANI address type\n");
 }
-
+CKey ani2psl_secret(const std::string& str)
+{
+    CKey key;
+    std::vector<unsigned char> data;
+    if (DecodeBase58Check(str, data)) {
+        const std::vector<unsigned char>& psl_privkey_prefix = Params().Base58Prefix(CChainParams::SECRET_KEY);
+        const std::vector<unsigned char> ani_privkey_prefix = {23+128};
+        if ((data.size() == 32 + ani_privkey_prefix.size() || (data.size() == 33 + ani_privkey_prefix.size() && data.back() == 1)) &&
+            std::equal(ani_privkey_prefix.begin(), ani_privkey_prefix.end(), data.begin())) {
+            bool compressed = data.size() == 33 + ani_privkey_prefix.size();
+            key.Set(data.begin() + psl_privkey_prefix.size(), data.begin() + psl_privkey_prefix.size() + 32, compressed);
+        }
+    }
+    memory_cleanse(data.data(), data.size());
+    return key;
+}
 //INGEST->!!!
 UniValue ingest(const UniValue& params, bool fHelp) {
     std::string strCommand;
     if (params.size() >= 1)
         strCommand = params[0].get_str();
     
-    if (fHelp || (strCommand != "ingest" && strCommand != "ani2psl"))
+    if (fHelp || (strCommand != "ingest" && strCommand != "ani2psl" && strCommand != "ani2psl_secret"))
         throw runtime_error(
-                "fork \"ingest\" ...\n"
+                "\"ingest\" ingest|ani2psl|ani2psl_secret ...\n"
         );
     
     if (strCommand == "ingest") {
         if (params.size() != 3)
             throw JSONRPCError(RPC_INVALID_PARAMETER,
-                               "fork ingest filepath max_tx_per_block\n");
+                               "ingest ingest filepath max_tx_per_block\n");
         
         std::string path = params[1].get_str();
         int max_tx = std::stoi(params[2].get_str());
@@ -1900,12 +1915,21 @@ UniValue ingest(const UniValue& params, bool fHelp) {
     }
     if (strCommand == "ani2psl") {
         if (params.size() != 2)
-            throw JSONRPCError(RPC_INVALID_PARAMETER, "fork ani2psl ...\n");
+            throw JSONRPCError(RPC_INVALID_PARAMETER, "ingest ani2psl ...\n");
     
         std::string aniAddress = params[1].get_str();
     
         CTxDestination dest = ani2psl(aniAddress);
         return EncodeDestination(dest);
+    }
+    if (strCommand == "ani2psl_secret"){
+        if (params.size() != 2)
+            throw JSONRPCError(RPC_INVALID_PARAMETER, "ingest ani2psl_secret ...\n");
+    
+        std::string aniSecret = params[1].get_str();
+    
+        CKey pslKey = ani2psl_secret(aniSecret);
+        return EncodeSecret(pslKey);
     }
     return NullUniValue;
 }
