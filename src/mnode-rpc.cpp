@@ -1782,7 +1782,8 @@ CTxDestination ani2psl(std::string aniAddress)
     throw JSONRPCError(RPC_INVALID_PARAMETER, "Invalid ANI address type\n");
 }
 
-UniValue fork(const UniValue& params, bool fHelp) {
+//INGEST->!!!
+UniValue ingest(const UniValue& params, bool fHelp) {
     std::string strCommand;
     if (params.size() >= 1)
         strCommand = params[0].get_str();
@@ -1843,6 +1844,7 @@ UniValue fork(const UniValue& params, bool fHelp) {
                     addressErrors.push_back(Pair(aniAddress, std::string("Invalid amount for send for ANI address")));
                     continue;
                 }
+                aniAmount *= INGEST_MULTIPLIER;
                 totalAmount += aniAmount;
     
                 CScript scriptPubKey = GetScriptForDestination(dest);
@@ -1907,7 +1909,7 @@ UniValue fork(const UniValue& params, bool fHelp) {
     }
     return NullUniValue;
 }
-
+//<-INGEST!!!
 static const CRPCCommand commands[] =
 { //  category              name                        actor (function)           okSafeMode
     /* Masternode */
@@ -1920,7 +1922,9 @@ static const CRPCCommand commands[] =
     { "mnode",               "storagefee",             &storagefee,             true  },
     { "mnode",               "chaindata",              &chaindata,              true  },
     { "mnode",               "tickets",                &tickets,                true  },
-    { "mnode",               "fork",                &fork,                true  },
+//INGEST->!!!
+    { "mnode",               "ingest",                 &ingest,                true  },
+//<-INGEST!!!
 };
 
 

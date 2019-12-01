@@ -1708,13 +1708,13 @@ bool ReadBlockFromDisk(CBlock& block, const CDiskBlockPos& pos)
         return error("%s: Deserialize or I/O error - %s at %s", __func__, e.what(), pos.ToString());
     }
 
-    //FORK->!!!
-    if (chainActive.Tip() == nullptr || chainActive.Tip()->nHeight <= TOP_FORK_BLOCK)
+    //INGEST->!!!
+    if (chainActive.Tip() == nullptr || chainActive.Tip()->nHeight <= TOP_INGEST_BLOCK)
         return true;
     BlockMap::iterator it = mapBlockIndex.find(block.GetHash());
-    if (it == mapBlockIndex.end() || it->second->nHeight <= TOP_FORK_BLOCK)
+    if (it == mapBlockIndex.end() || it->second->nHeight <= TOP_INGEST_BLOCK)
         return true;
-    //<-FORK!!!
+    //<-INGEST!!!
     
     // Check the header
     if (!(CheckEquihashSolution(&block, Params()) &&
@@ -1736,12 +1736,12 @@ bool ReadBlockFromDisk(CBlock& block, const CBlockIndex* pindex)
 
 CAmount GetBlockSubsidy(int nHeight, const Consensus::Params& consensusParams)
 {
-    //FORK->!!!
-    if (nHeight <= TOP_FORK_MINING_BLOCK)
-        return 1000000000 * COIN;
-    if (nHeight <= TOP_FORK_BLOCK)
-        return 0;
-    //<-FORK!!!
+    //INGEST->!!!
+    if (nHeight == INGEST_MINING_BLOCK)
+        return INGEST_MINING_AMOUNT;
+    if (nHeight <= TOP_INGEST_BLOCK)
+        return INGEST_WAITING_AMOUNT;
+    //<-INGEST!!!
     
     CAmount nSubsidy = REWARD * COIN;
 
@@ -3481,22 +3481,22 @@ bool CheckBlockHeader(const CBlockHeader& block, CValidationState& state, bool f
         return state.DoS(100, error("CheckBlockHeader(): block version too low"),
                          REJECT_INVALID, "version-too-low");
     
-    //FORK->!!!
-    if (chainActive.Tip() != nullptr && chainActive.Tip()->nHeight >= TOP_FORK_BLOCK) { //if current is TOP_FORK_BLOCK, no more skips
+    //INGEST->!!!
+    if (chainActive.Tip() != nullptr && chainActive.Tip()->nHeight >= TOP_INGEST_BLOCK) { //if current is TOP_INGEST_BLOCK, no more skips
 
         BlockMap::iterator it = mapBlockIndex.find(block.GetHash());
-        if (it != mapBlockIndex.end() && it->second->nHeight > TOP_FORK_BLOCK) { //if new block is TOP_FORK_BLOCK+1, no more skips
-    //<-FORK!!!
+        if (it != mapBlockIndex.end() && it->second->nHeight > TOP_INGEST_BLOCK) { //if new block is TOP_INGEST_BLOCK+1, no more skips
+    //<-INGEST!!!
          
             // Check Equihash solution is valid
             if (fCheckPOW && !CheckEquihashSolution(&block, Params()))
                 return state.DoS(100, error("CheckBlockHeader(): Equihash solution invalid"),
                                  REJECT_INVALID, "invalid-solution");
 
-    //FORK->!!!
+    //INGEST->!!!
         }
     }
-    //<-FORK!!!
+    //<-INGEST!!!
     
     // Check proof of work matches claimed amount
     if (fCheckPOW && !CheckProofOfWork(block.GetHash(), block.nBits, Params().GetConsensus()))
