@@ -560,12 +560,14 @@ void static BitcoinMiner()
             CBlockIndex* pindexPrev = chainActive.Tip();
     
             //INGEST->!!!
-            if (pindexPrev->nHeight < TOP_INGEST_BLOCK) {
-                n = 48;
-                k = 5;
-            } else {
-                n = chainparams.EquihashN();
-                k = chainparams.EquihashK();
+            if (!Params().IsRegTest()) {
+                if (pindexPrev->nHeight < TOP_INGEST_BLOCK) {
+                    n = 48;
+                    k = 5;
+                } else {
+                    n = chainparams.EquihashN();
+                    k = chainparams.EquihashK();
+                }
             }
             //<-INGEST!!!
 

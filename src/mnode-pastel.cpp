@@ -615,9 +615,9 @@ bool CPastelIDRegTicket::IsValid(bool preReg, std::string& errRet) const
             errRet = strprintf("This PastelID is already registered in blockchain [%s]", pastelID);
             return false;
         }
-        //TODO: validate that address has coins to pay for registration - 10PSL + fee
+        //TODO: Pastel: validate that address has coins to pay for registration - 10PSL + fee
     } else {
-        //TODO: validate that signature matches PastelID
+        //TODO: Pastel: validate that signature matches PastelID
     }
     
     return true;
@@ -746,41 +746,43 @@ bool CArtRegTicket::IsValid(bool preReg, std::string& errRet) const
     
     std::string err;
     
-    for (int mn=0; mn<allsigns; mn++) {
+    for (int mnIndex=0; mnIndex < allsigns; mnIndex++) {
         //1, 2
-        CPastelIDRegTicket pastelIDticket;
-        if (!CPastelIDRegTicket::FindTicketInDb(pastelIDs[mn], pastelIDticket)){
-            if (mn == artistsign)
-                errRet = strprintf("Artist PastelID is not registered [%s]", pastelIDs[mn]);
+        CPastelIDRegTicket pastelIdRegTicket;
+        if (!CPastelIDRegTicket::FindTicketInDb(pastelIDs[mnIndex], pastelIdRegTicket)){
+            if (mnIndex == artistsign)
+                errRet = strprintf("Artist PastelID is not registered [%s]", pastelIDs[mnIndex]);
             else
-                errRet = strprintf("MN%d PastelID is not registered [%s]", mn, pastelIDs[mn]);
+                errRet = strprintf("MN%d PastelID is not registered [%s]", mnIndex, pastelIDs[mnIndex]);
             return false;
         }
-        if (!pastelIDticket.IsValid(false, err)){
-            if (mn == artistsign)
-                errRet = strprintf("Artist PastelID is invalid [%s] - %s", pastelIDs[mn], err);
+        if (!pastelIdRegTicket.IsValid(false, err)){
+            if (mnIndex == artistsign)
+                errRet = strprintf("Artist PastelID is invalid [%s] - %s", pastelIDs[mnIndex], err);
             else
-                errRet = strprintf("MN%d PastelID is invalid [%s] - %s", mn, pastelIDs[mn], err);
+                errRet = strprintf("MN%d PastelID is invalid [%s] - %s", mnIndex, pastelIDs[mnIndex], err);
             return false;
         }
-        if (mn == artistsign) {
-            if (!pastelIDticket.outpoint.empty()) {
-                errRet = strprintf("Artist PastelID is NOT personal PastelID [%s]", pastelIDs[mn]);
+        if (mnIndex == artistsign) {
+            if (!pastelIdRegTicket.outpoint.empty()) {
+                errRet = strprintf("Artist PastelID is NOT personal PastelID [%s]", pastelIDs[mnIndex]);
                 return false;
             }
         } else {
-            if (pastelIDticket.outpoint.empty()) {
-                errRet = strprintf("MN%d PastelID is NOT masternode PastelID [%s]", mn, pastelIDs[mn]);
+            if (pastelIdRegTicket.outpoint.empty()) {
+                errRet = strprintf("MN%d PastelID is NOT masternode PastelID [%s]", mnIndex, pastelIDs[mnIndex]);
                 return false;
             }
             
             //3
-            /*Get-TopMNs-for-block(artistHeight)
-            for (auto mn : topMNs){
-                if pastelIDticket.outpoint not in TopMNs
-                    return false
+            auto topBlockMNs = masterNodeCtrl.masternodeManager.GetTopMNsForBlock(artistHeight, true);
+            auto found = find_if(topBlockMNs.begin(), topBlockMNs.end(),
+                        [&pastelIdRegTicket](CMasternode const& mn){return mn.vin.prevout.ToStringShort() == pastelIdRegTicket.outpoint;});
+            
+            if (found == topBlockMNs.end()) { //npt found
+                errRet = strprintf("MN%d was NOT in the top masternodes list for block %d", mnIndex, artistHeight);
+                return false;
             }
-            */
         }
     }
     

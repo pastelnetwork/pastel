@@ -1064,7 +1064,8 @@ bool ContextualCheckTransaction(
         librustzcash_sapling_verification_ctx_free(ctx);
     }
     
-    //TODO: Check Pastel Ticket transactions here!!!
+    //TODO: Pastel: Check Pastel Ticket transactions here!!!
+    //CPastelTicketProcessor::ValidateIfTicket(tx);
     
     return true;
 }
@@ -1709,11 +1710,13 @@ bool ReadBlockFromDisk(CBlock& block, const CDiskBlockPos& pos)
     }
 
     //INGEST->!!!
-    if (chainActive.Tip() == nullptr || chainActive.Tip()->nHeight <= TOP_INGEST_BLOCK)
-        return true;
-    BlockMap::iterator it = mapBlockIndex.find(block.GetHash());
-    if (it == mapBlockIndex.end() || it->second->nHeight <= TOP_INGEST_BLOCK)
-        return true;
+    if (!Params().IsRegTest()) {
+        if (chainActive.Tip() == nullptr || chainActive.Tip()->nHeight <= TOP_INGEST_BLOCK)
+            return true;
+        BlockMap::iterator it = mapBlockIndex.find(block.GetHash());
+        if (it == mapBlockIndex.end() || it->second->nHeight <= TOP_INGEST_BLOCK)
+            return true;
+    }
     //<-INGEST!!!
     
     // Check the header
@@ -1737,10 +1740,12 @@ bool ReadBlockFromDisk(CBlock& block, const CBlockIndex* pindex)
 CAmount GetBlockSubsidy(int nHeight, const Consensus::Params& consensusParams)
 {
     //INGEST->!!!
-    if (nHeight == INGEST_MINING_BLOCK)
-        return INGEST_MINING_AMOUNT;
-    if (nHeight <= TOP_INGEST_BLOCK)
-        return INGEST_WAITING_AMOUNT;
+    if (!Params().IsRegTest()) {
+        if (nHeight == INGEST_MINING_BLOCK)
+            return INGEST_MINING_AMOUNT;
+        if (nHeight <= TOP_INGEST_BLOCK)
+            return INGEST_WAITING_AMOUNT;
+    }
     //<-INGEST!!!
     
     CAmount nSubsidy = REWARD * COIN;
@@ -3482,7 +3487,13 @@ bool CheckBlockHeader(const CBlockHeader& block, CValidationState& state, bool f
                          REJECT_INVALID, "version-too-low");
     
     //INGEST->!!!
-    if (chainActive.Tip() != nullptr && chainActive.Tip()->nHeight >= TOP_INGEST_BLOCK) { //if current is TOP_INGEST_BLOCK, no more skips
+    if (Params().IsRegTest()) {
+        // Check Equihash solution is valid
+        if (fCheckPOW && !CheckEquihashSolution(&block, Params()))
+            return state.DoS(100, error("CheckBlockHeader(): Equihash solution invalid"),
+                             REJECT_INVALID, "invalid-solution");
+    }
+    else if (chainActive.Tip() != nullptr && chainActive.Tip()->nHeight >= TOP_INGEST_BLOCK) { //if current is TOP_INGEST_BLOCK, no more skips
 
         BlockMap::iterator it = mapBlockIndex.find(block.GetHash());
         if (it != mapBlockIndex.end() && it->second->nHeight > TOP_INGEST_BLOCK) { //if new block is TOP_INGEST_BLOCK+1, no more skips

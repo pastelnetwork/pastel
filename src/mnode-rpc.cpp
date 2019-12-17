@@ -585,7 +585,7 @@ UniValue masternode(const UniValue& params, bool fHelp)
     
         bool bCalculateIfNotSeen = false;
         if (params.size() == 3)
-            bCalculateIfNotSeen = params[2].get_str() == "1"? true: false;
+            bCalculateIfNotSeen = params[2].get_str() == "1";
     
         auto topBlockMNs = masterNodeCtrl.masternodeManager.GetTopMNsForBlock(nHeight, bCalculateIfNotSeen);
         
