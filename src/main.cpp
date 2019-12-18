@@ -1064,8 +1064,12 @@ bool ContextualCheckTransaction(
         librustzcash_sapling_verification_ctx_free(ctx);
     }
     
-    //TODO: Pastel: Check Pastel Ticket transactions here!!!
-    //CPastelTicketProcessor::ValidateIfTicket(tx);
+    //Check Pastel Ticket transactions
+    if (!CPastelTicketProcessor::ValidateIfTicketTransaction(tx))
+    {
+        return state.DoS(100, error("ValidateIfTicketTransaction(): invalid ticket transaction"),
+                         REJECT_INVALID, "bad-tx-invalid-ticket");
+    }
     
     return true;
 }

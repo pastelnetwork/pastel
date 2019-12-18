@@ -1695,7 +1695,7 @@ UniValue tickets(const UniValue& params, bool fHelp) {
 //            if (CTakeDownTicket::FindTicketInDb(params[2].get_str(), ticket))
 //              return ticket.ToJSON();
 		}
-		return NullUniValue;
+		return "Key is not found";
 	}
 	if (strCommand == "list") {
         

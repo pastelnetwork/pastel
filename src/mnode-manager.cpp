@@ -1502,7 +1502,7 @@ std::vector<CMasternode> CMasternodeMan::CalculateTopMNsForBlock(int nBlockHeigh
     rank_pair_vec_t vMasternodeRanks;
     if (!GetMasternodeRanks(vMasternodeRanks, nBlockHeight) ||
         vMasternodeRanks.size() < masterNodeCtrl.nMasternodeTopMNsNumberMin) {
-        LogPrintf("CMasternodeMan::UpdatedBlockTip -- ERROR: Failed to find Top MasterNodes\n");
+        LogPrintf("CMasternodeMan::CalculateTopMNsForBlock -- ERROR: Failed to find Top MasterNodes\n");
         return std::vector<CMasternode>{};
     }
     

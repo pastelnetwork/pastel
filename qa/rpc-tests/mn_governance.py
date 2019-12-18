@@ -134,7 +134,7 @@ class MasterNodeGovernanceTest (MasterNodeCommon):
         # 12 active MN/s - needs min 10% voted (2) => need 2 yes votes (51% of 3) 
         for ind in range (577):
             self.nodes[self.mining_node_num].generate(1)
-            self.sync_all()
+            # self.sync_all()
             time.sleep(1)
 
         print("Waiting 60 seconds")
@@ -148,7 +148,7 @@ class MasterNodeGovernanceTest (MasterNodeCommon):
         # 12 active MN/s - needs min 10% voted (2) => need 2 yes votes (51% of 3) 
         for ind in range (10):
             self.nodes[self.mining_node_num].generate(1)
-            self.sync_all()
+            # self.sync_all()
             time.sleep(1)
 
         print("Test winner tickets, should be "+ticket1_id)

@@ -197,7 +197,7 @@ public:
     static CArtRegTicket Create(std::string _ticket, const std::string& signatures,
                                 std::string _pastelID, const SecureString& strKeyPass,
                                 std::string _keyOne, std::string _keyTwo,
-                                int _ticketBlock, CAmount _storageFee);
+                                int _artistHeight, CAmount _storageFee);
     static bool FindTicketInDb(const std::string& key, CArtRegTicket& _ticket);
     static bool CheckIfTicketInDb(const std::string& key);
 };
@@ -253,7 +253,7 @@ public:
     
     CAmount GetExtraOutputs(std::vector<CTxOut>& outputs) const override;
     
-    static CArtActivateTicket Create(std::string txid, int height, int fee, std::string _pastelID, const SecureString& strKeyPass);
+    static CArtActivateTicket Create(std::string _regTicketTxId, int _artistHeight, int _storageFee, std::string _pastelID, const SecureString& strKeyPass);
     static bool FindTicketInDb(const std::string& key, CArtActivateTicket& ticket);
 };
 
@@ -312,6 +312,8 @@ public:
 	static CPastelTicketBase* GetTicket(uint256 txid, TicketID& ticketId);
 	static std::string GetTicketJSON(uint256 txid);
 
+	static bool ValidateIfTicketTransaction(const CTransaction& tx);
+	
 	template<class T>
 	static T ParseTicket(const std::vector<unsigned char>& data, int nOffset = 0);
 	

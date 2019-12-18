@@ -80,7 +80,7 @@ bool CPastelTicketProcessor::UpdateDB(T& ticket, std::string txid, int nBlockHei
 	return true;
 }
 
-bool preParseTicket(const CMutableTransaction& tx, std::vector<unsigned char>& data, TicketID& ticket_id, std::string& error)
+bool preParseTicket(const CMutableTransaction& tx, std::vector<unsigned char>& data, TicketID& ticket_id, std::string& error, bool log = true)
 {
 	if (!CPastelTicketProcessor::ParseP2FMSTransaction(tx, data, error)){
 		return false;
@@ -89,7 +89,8 @@ bool preParseTicket(const CMutableTransaction& tx, std::vector<unsigned char>& d
 	auto ticket_id_byte = data;
 	auto ticket_id_ptr = reinterpret_cast<TicketID **>(&ticket_id_byte);
 	if (ticket_id_ptr == nullptr || *ticket_id_ptr == nullptr) {
-		LogPrintf("CPastelTicketProcessor::ParseTicketAndUpdateDB -- ERROR: Failed to parse and unpack ticket - wrong ticket_id (txid - %s)\n", tx.GetHash().GetHex());
+	    if (log)
+            LogPrintf("CPastelTicketProcessor::ParseTicketAndUpdateDB -- ERROR: Failed to parse and unpack ticket - wrong ticket_id (txid - %s)\n", tx.GetHash().GetHex());
 		return false;
 	}
 	
@@ -98,13 +99,62 @@ bool preParseTicket(const CMutableTransaction& tx, std::vector<unsigned char>& d
 	return true;
 }
 
+bool CPastelTicketProcessor::ValidateIfTicketTransaction(const CTransaction& tx)
+{
+    CMutableTransaction mtx(tx);
+    
+    std::string error_ret;
+    std::vector<unsigned char> data;
+    TicketID ticket_id;
+    
+    if (!preParseTicket(tx, data, ticket_id, error_ret, false))
+        return true; // this is not a ticket
+        
+    //this is ticket and it need to be validated
+    bool ok = false;
+    try {
+        if (ticket_id == TicketID::PastelID) {
+            auto ticket = ParseTicket<CPastelIDRegTicket>(data, sizeof(TicketID));
+            ok = ticket.IsValid(false, error_ret);
+        }
+        else if (ticket_id == TicketID::Art) {
+            auto ticket = ParseTicket<CArtRegTicket>(data, sizeof(TicketID));
+            ok = ticket.IsValid(false, error_ret);
+        }
+        else if (ticket_id == TicketID::Activate) {
+            auto ticket = ParseTicket<CArtActivateTicket>(data, sizeof(TicketID));
+            ok = ticket.IsValid(false, error_ret);
+        }
+//		else if (ticket_id == TicketID::Trade) {
+//			auto ticket = ParseTicket<CArtTradeTicket>(data, sizeof(TicketID));
+//          return ticket.IsValid(true, error_ret);
+//		}
+//		else if (ticket_id == TicketID::Down) {
+//			auto ticket = ParseTicket<CTakeDownTicket>(data, sizeof(TicketID));
+//			return ticket.IsValid(true, error_ret);
+//		}
+        else {
+            error_ret = "unknown ticket_id";
+        }
+    }catch (std::runtime_error& ex){
+        error_ret = strprintf("Failed to parse and unpack ticket - %s", ex.what());
+    }catch (...){
+        error_ret = strprintf("Failed to parse and unpack ticket - Unknown exception");
+    }
+
+    if (!ok)
+        LogPrintf("CPastelTicketProcessor::ParseTicketAndUpdateDB -- Invalid ticket [ticket_id=%d, txid=%s]. ERROR: %s\n", (int)ticket_id, tx.GetHash().GetHex(), error_ret);
+    
+    return ok;
+}
+
 bool CPastelTicketProcessor::ParseTicketAndUpdateDB(CMutableTransaction& tx, int nBlockHeight)
 {
-	std::string error;
+	std::string error_ret;
 	std::vector<unsigned char> data;
 	TicketID ticket_id;
 	
-	if (!preParseTicket(tx, data, ticket_id, error))
+	if (!preParseTicket(tx, data, ticket_id, error_ret))
 		return false;
 	
 	try {
@@ -114,26 +164,33 @@ bool CPastelTicketProcessor::ParseTicketAndUpdateDB(CMutableTransaction& tx, int
 			auto ticket = ParseTicket<CPastelIDRegTicket>(data, sizeof(TicketID));
 			return UpdateDB<CPastelIDRegTicket>(ticket, txid, nBlockHeight);
 		}
-		if (ticket_id == TicketID::Art) {
+		else if (ticket_id == TicketID::Art) {
 			auto ticket = ParseTicket<CArtRegTicket>(data, sizeof(TicketID));
 			return UpdateDB<CArtRegTicket>(ticket, txid, nBlockHeight);
 		}
-		if (ticket_id == TicketID::Activate) {
+        else if (ticket_id == TicketID::Activate) {
 			auto ticket = ParseTicket<CArtActivateTicket>(data, sizeof(TicketID));
 			return UpdateDB<CArtActivateTicket>(ticket, txid, nBlockHeight);
 		}
-//		if (ticket_id == TicketID::Trade) {
+//		else if (ticket_id == TicketID::Trade) {
 //			auto ticket = ParseTicket<CArtTradeTicket>(data, sizeof(TicketID));
 //			return UpdateDB<CArtTradeTicket>(ticket, txid, nBlockHeight);
 //		}
-//		if (ticket_id == TicketID::Down) {
+//		else if (ticket_id == TicketID::Down) {
 //			auto ticket = ParseTicket<CTakeDownTicket>(data, sizeof(TicketID));
 //			return UpdateDB<CTakeDownTicket>(ticket, txid, nBlockHeight);
 //		}
-	}catch (...)
-	{
-		LogPrintf("CPastelTicketProcessor::ParseTicketAndUpdateDB -- ERROR: Failed to parse and unpack ticket with ticket_id %d from txid - %s\n", (int)ticket_id, tx.GetHash().GetHex());
-	}
+        else {
+            error_ret = "unknown ticket_id";
+        }
+    }catch (std::runtime_error& ex){
+        error_ret = strprintf("Failed to parse and unpack ticket - %s", ex.what());
+    }catch (...){
+        error_ret = strprintf("Failed to parse and unpack ticket - Unknown exception");
+    }
+	
+    LogPrintf("CPastelTicketProcessor::ParseTicketAndUpdateDB -- Invalid ticket [ticket_id=%d, txid=%s]. ERROR: %s\n", (int)ticket_id, tx.GetHash().GetHex(), error_ret);
+	
 	return false;
 }
 
@@ -156,27 +213,27 @@ bool CPastelTicketProcessor::ParseTicketAndUpdateDB(CMutableTransaction& tx, int
 
 	CMutableTransaction mtx(tx);
 	
-	std::string error;
+	std::string error_ret;
 	std::vector<unsigned char> data;
 	
-	if (!preParseTicket(mtx, data, ticketId, error))
-		throw std::runtime_error(strprintf("Failed to create P2FMS from data provided - %s", error));
+	if (!preParseTicket(mtx, data, ticketId, error_ret))
+		throw std::runtime_error(strprintf("Failed to create P2FMS from data provided - %s", error_ret));
 	
 	CPastelTicketBase* ticket = nullptr;
 	
 	try {
-		std::string str_txid = tx.GetHash().GetHex();
-		int height = -1;
+		std::string ticketBlockTxIdStr = tx.GetHash().GetHex();
+		int ticketBlockHeight = -1;
 		if (mapBlockIndex.count(hashBlock) != 0)
-			height = mapBlockIndex[hashBlock]->nHeight;
+            ticketBlockHeight = mapBlockIndex[hashBlock]->nHeight;
 		
 		if (ticketId == TicketID::PastelID) {
 			ticket = new CPastelIDRegTicket{ParseTicket<CPastelIDRegTicket>(data, sizeof(TicketID))};
 		}
-		if (ticketId == TicketID::Art) {
+		else if (ticketId == TicketID::Art) {
 			ticket = new CArtRegTicket{ParseTicket<CArtRegTicket>(data, sizeof(TicketID))};
 		}
-		if (ticketId == TicketID::Activate) {
+        else if (ticketId == TicketID::Activate) {
             ticket = new CArtActivateTicket{ParseTicket<CArtActivateTicket>(data, sizeof(TicketID))};
 		}
 //		if (ticketId == TicketID::Trade) {
@@ -185,16 +242,22 @@ bool CPastelTicketProcessor::ParseTicketAndUpdateDB(CMutableTransaction& tx, int
 //		if (ticketId == TicketID::Down) {
 //			ticket =
 //		}
+        else {
+            error_ret = "unknown ticket_id";
+        }
 		
 		if (ticket != nullptr) {
-			ticket->ticketTnx = std::move(str_txid);
-			ticket->ticketBlock = height;
+			ticket->ticketTnx = std::move(ticketBlockTxIdStr);
+			ticket->ticketBlock = ticketBlockHeight;
 		}
-
-	}catch (...)
-	{
-		LogPrintf("CPastelTicketProcessor::GetTicket -- ERROR: Failed to parse and unpack ticket with ticket_id %d from txid - %s\n", (int)ticketId, tx.GetHash().GetHex());
-	}
+    }catch (std::runtime_error& ex){
+        error_ret = strprintf("Failed to parse and unpack ticket - %s", ex.what());
+    }catch (...){
+        error_ret = strprintf("Failed to parse and unpack ticket - Unknown exception");
+    }
+    
+    if (ticket == nullptr)
+        LogPrintf("CPastelTicketProcessor::ParseTicketAndUpdateDB -- Invalid ticket [ticket_id=%d, txid=%s]. ERROR: %s\n", (int)ticketId, tx.GetHash().GetHex(), error_ret);
 	
 	return ticket;
 }
@@ -611,15 +674,23 @@ CAmount CPastelTicketProcessor::GetTicketPrice(TicketID tid)
 bool CPastelIDRegTicket::IsValid(bool preReg, std::string& errRet) const
 {
     if (preReg) {
+        //something to check ONLY before ticket made into transaction
+        
         if (masterNodeCtrl.masternodeTickets.CheckTicketExist(*this)) {
             errRet = strprintf("This PastelID is already registered in blockchain [%s]", pastelID);
             return false;
         }
         //TODO: Pastel: validate that address has coins to pay for registration - 10PSL + fee
     } else {
+        //something important only if ticket is already send
+        //...
+
         //TODO: Pastel: validate that signature matches PastelID
     }
     
+    //something to always validate
+    //...
+
     return true;
 }
 
@@ -668,13 +739,13 @@ std::string CPastelIDRegTicket::ToJSON()
 /*static*/ CArtRegTicket CArtRegTicket::Create(std::string _ticket, const std::string& signatures,
         std::string _pastelID, const SecureString& strKeyPass,
         std::string _keyOne, std::string _keyTwo,
-        int _ticketBlock, CAmount _storageFee)
+        int _artistHeight, CAmount _storageFee)
 {
     CArtRegTicket ticket(std::move(_ticket));
     
     ticket.keyOne = std::move(_keyOne);
     ticket.keyTwo = std::move(_keyTwo);
-    ticket.artistHeight = _ticketBlock;
+    ticket.artistHeight = _artistHeight;
     ticket.storageFee = _storageFee;
     
     ticket.pastelIDs[mainmnsign] = std::move(_pastelID);
@@ -775,13 +846,17 @@ bool CArtRegTicket::IsValid(bool preReg, std::string& errRet) const
             }
             
             //3
-            auto topBlockMNs = masterNodeCtrl.masternodeManager.GetTopMNsForBlock(artistHeight, true);
-            auto found = find_if(topBlockMNs.begin(), topBlockMNs.end(),
-                        [&pastelIdRegTicket](CMasternode const& mn){return mn.vin.prevout.ToStringShort() == pastelIdRegTicket.outpoint;});
-            
-            if (found == topBlockMNs.end()) { //npt found
-                errRet = strprintf("MN%d was NOT in the top masternodes list for block %d", mnIndex, artistHeight);
-                return false;
+            if (masterNodeCtrl.masternodeSync.IsSynced()) { //Art ticket needs synced MNs
+                auto topBlockMNs = masterNodeCtrl.masternodeManager.GetTopMNsForBlock(artistHeight, true);
+                auto found = find_if(topBlockMNs.begin(), topBlockMNs.end(),
+                                     [&pastelIdRegTicket](CMasternode const &mn) {
+                                         return mn.vin.prevout.ToStringShort() == pastelIdRegTicket.outpoint;
+                                     });
+    
+                if (found == topBlockMNs.end()) { //npt found
+                    errRet = strprintf("MN%d was NOT in the top masternodes list for block %d", mnIndex, artistHeight);
+                    return false;
+                }
             }
         }
     }
@@ -851,13 +926,13 @@ std::string CArtRegTicket::ToJSON()
 }
 
 // CArtActivateTicket ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-/*static*/ CArtActivateTicket CArtActivateTicket::Create(std::string txid, int height, int fee, std::string _pastelID, const SecureString& strKeyPass)
+/*static*/ CArtActivateTicket CArtActivateTicket::Create(std::string _regTicketTxId, int _artistHeight, int _storageFee, std::string _pastelID, const SecureString& strKeyPass)
 {
     CArtActivateTicket ticket(std::move(_pastelID));
     
-    ticket.regTicketTnxId = std::move(txid);
-    ticket.artistHeight = height;
-    ticket.storageFee = fee;
+    ticket.regTicketTnxId = std::move(_regTicketTxId);
+    ticket.artistHeight = _artistHeight;
+    ticket.storageFee = _storageFee;
 
 	//signature of ticket hash
 	CHashWriter ss(SER_GETHASH, PROTOCOL_VERSION);
@@ -873,6 +948,9 @@ std::string CArtRegTicket::ToJSON()
 
 bool CArtActivateTicket::IsValid(bool preReg, std::string& errRet) const
 {
+    if (!masterNodeCtrl.masternodeSync.IsSynced()) //Activation ticket references other blocks, cannot validate if not fully synced
+        return true;
+    
     if (preReg){
         //something to check ONLY before ticket made into transaction
         //1. check that activation ticket for the regTicketTnxId is not already in the blockchain
@@ -916,8 +994,8 @@ bool CArtActivateTicket::IsValid(bool preReg, std::string& errRet) const
     //3. check ArtReg ticket is at the assumed height
     if (artTicket->artistHeight != artistHeight)
     {
-        errRet = strprintf("The artistHeight [%d] is not matching the ticketBlock [%d] in the Art Reg ticket with this txid [%s]",
-                           artistHeight, artTicket->ticketBlock,
+        errRet = strprintf("The artistHeight [%d] is not matching the artistHeight [%d] in the Art Reg ticket with this txid [%s]",
+                           artistHeight, artTicket->artistHeight,
                            regTicketTnxId);
         return false;
     }
