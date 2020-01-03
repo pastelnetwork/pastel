@@ -8,7 +8,7 @@
 #include "main.h"
 #include "dbwrapper.h"
 
-#include "msgpack/msgpack.hpp"
+#define TICKETS_VERSION 0x01
 
 enum class TicketID : uint8_t{
 	PastelID,
@@ -54,22 +54,25 @@ class CPastelIDRegTicket : public CPastelTicket<TicketID::PastelID, std::string,
 public:
 	std::string pastelID;
 	std::string address;
-	std::string outpoint;
+    COutPoint outpoint{};
 	std::time_t timestamp{};
-	std::vector<unsigned char> signature;
-
+	std::vector<unsigned char> mn_signature;
+	std::vector<unsigned char> pslid_signature;
+    
+    std::string secondKey; //local only
+    
 public:
 	CPastelIDRegTicket() = default;
 	explicit CPastelIDRegTicket(std::string _pastelID) : pastelID(std::move(_pastelID)) {}
 	
 	std::string TicketName() const override {return "pastelid";}
 	std::string KeyOne() const override {return pastelID;}
-	std::string KeyTwo() const override {return outpoint.empty() ? address : outpoint;}
+	std::string KeyTwo() const override {return outpoint.IsNull() ? (secondKey.empty() ? address : secondKey) : outpoint.ToStringShort();}
 	
     std::string ToJSON() override;
     bool IsValid(bool preReg, std::string& errRet) const override;
     
-    std::string PastelIDType() {return outpoint.empty()? "personal": "masternode";}
+    std::string PastelIDType() {return outpoint.IsNull()? "personal": "masternode";}
     
     ADD_SERIALIZE_METHODS;
 	
@@ -79,13 +82,12 @@ public:
 		READWRITE(address);
 		READWRITE(outpoint);
 		READWRITE(timestamp);
-		READWRITE(signature);
+		READWRITE(mn_signature);
+		READWRITE(pslid_signature);
 		READWRITE(ticketTnx);
 		READWRITE(ticketBlock);
 	}
 	
-	MSGPACK_DEFINE(pastelID, address, outpoint, timestamp, signature)
-    
     static CPastelIDRegTicket Create(std::string _pastelID, const SecureString& strKeyPass, std::string _address);
     static bool FindTicketInDb(const std::string& key, CPastelIDRegTicket& ticket);
 };
@@ -182,18 +184,10 @@ public:
         READWRITE(keyTwo);
         READWRITE(artistHeight);
         READWRITE(storageFee);
-        
         READWRITE(ticketTnx);
-		READWRITE(ticketBlock);
+        READWRITE(ticketBlock);
 	}
 	
-	MSGPACK_DEFINE(artTicket,
-                   pastelIDs[0], ticketSignatures[0],
-                   pastelIDs[1], ticketSignatures[1],
-                   pastelIDs[2], ticketSignatures[2],
-                   pastelIDs[3], ticketSignatures[3],
-                   keyOne, keyTwo, artistHeight, storageFee);
-    
     static CArtRegTicket Create(std::string _ticket, const std::string& signatures,
                                 std::string _pastelID, const SecureString& strKeyPass,
                                 std::string _keyOne, std::string _keyTwo,
@@ -249,8 +243,6 @@ public:
 		READWRITE(ticketBlock);
 	}
 	
-	MSGPACK_DEFINE(pastelID, regTicketTnxId, artistHeight, storageFee, signature)
-    
     CAmount GetExtraOutputs(std::vector<CTxOut>& outputs) const override;
     
     static CArtActivateTicket Create(std::string _regTicketTxId, int _artistHeight, int _storageFee, std::string _pastelID, const SecureString& strKeyPass);
@@ -271,6 +263,7 @@ public:
     static bool FindTicketInDb(const std::string& key, CTakeDownTicket& ticket);
 };
 
+#define FAKE_TICKET
 // Ticket  Processor ////////////////////////////////////////////////////////////////////////////////////////////////////
 class CPastelTicketProcessor {
 	map<TicketID, std::unique_ptr<CDBWrapper> > dbs;
@@ -298,26 +291,28 @@ public:
 	std::vector<std::string> GetAllKeys(TicketID id);
 
 #ifdef ENABLE_WALLET
-	static bool CreateP2FMSTransaction(const std::string& input_data, CMutableTransaction& tx_out, CAmount price, std::string& error_ret);
-	static bool CreateP2FMSTransaction(const std::vector<unsigned char>& input_data, CMutableTransaction& tx_out, CAmount price, std::string& error_ret);
-	static bool CreateP2FMSTransactionWithExtra(const std::vector<unsigned char>& input_data, const std::vector<CTxOut>& extraOutputs, CAmount extraAmount, CMutableTransaction& tx_out, CAmount price, std::string& error_ret);
+	static bool CreateP2FMSTransaction(const std::string& input_string, CMutableTransaction& tx_out, CAmount price, std::string& error_ret);
+	static bool CreateP2FMSTransaction(const CDataStream& input_stream, CMutableTransaction& tx_out, CAmount price, std::string& error_ret);
+	static bool CreateP2FMSTransactionWithExtra(const CDataStream& input_data, const std::vector<CTxOut>& extraOutputs, CAmount extraAmount, CMutableTransaction& tx_out, CAmount price, std::string& error_ret);
 #endif // ENABLE_WALLET
-	static bool ParseP2FMSTransaction(const CMutableTransaction& tx_in, std::vector<unsigned char>& output_data, std::string& error_ret);
-	static bool ParseP2FMSTransaction(const CMutableTransaction& tx_in, std::string& output_data, std::string& error_ret);
+	static bool ParseP2FMSTransaction(const CMutableTransaction& tx_in, vector<unsigned char>& output_data, std::string& error_ret);
+	static bool ParseP2FMSTransaction(const CMutableTransaction& tx_in, std::string& output_string, std::string& error_ret);
 	static bool StoreP2FMSTransaction(const CMutableTransaction& tx_out, std::string& error_ret);
 	
 	template<class T>
 	static std::string SendTicket(const T& ticket);
 	
-	static CPastelTicketBase* GetTicket(uint256 txid, TicketID& ticketId);
+	static std::unique_ptr<CPastelTicketBase> GetTicket(uint256 txid, TicketID& ticketId);
 	static std::string GetTicketJSON(uint256 txid);
 
 	static bool ValidateIfTicketTransaction(const CTransaction& tx);
 	
-	template<class T>
-	static T ParseTicket(const std::vector<unsigned char>& data, int nOffset = 0);
-	
 	static CAmount GetTicketPrice(TicketID tid);
+
+#ifdef FAKE_TICKET
+    template<class T>
+    static std::string CreateFakeTransaction(T& ticket, CAmount ticketPrice, const std::vector<std::pair<std::string, CAmount>>& extraPayments, const std::string& strVerb, bool bSend);
+#endif
 };
 
 #endif //MASTERNODEPASTEL_H

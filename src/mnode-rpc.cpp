@@ -1160,7 +1160,7 @@ UniValue pastelid(const UniValue& params, bool fHelp) {
 
         return resultObj;
     }
-    if (strMode == "sign") {
+    if (strMode == "sign-by-key") {
         if (params.size() != 4)
             throw JSONRPCError(RPC_INVALID_PARAMETER,
 				"pastelid sign-by-key \"text\" \"key\" \"passphrase\"\n"
@@ -1317,12 +1317,17 @@ UniValue chaindata(const UniValue& params, bool fHelp) {
     return NullUniValue;
 }
 
+#define FAKE_TICKET
 UniValue tickets(const UniValue& params, bool fHelp) {
 	std::string strCommand;
 	if (params.size() >= 1)
 		strCommand = params[0].get_str();
 	
-	if (fHelp || (strCommand != "register" && strCommand != "find" && strCommand != "list" && strCommand != "get"))
+	if (fHelp || (strCommand != "register" && strCommand != "find" && strCommand != "list" && strCommand != "get"
+#ifdef FAKE_TICKET
+                         && strCommand != "makefaketicket" && strCommand != "sendfaketicket"
+#endif
+	))
 		throw runtime_error(
 			"tickets \"command\"...\n"
 			"Set of commands to deal with Pastel tickets and related actions\n"
@@ -1760,8 +1765,85 @@ UniValue tickets(const UniValue& params, bool fHelp) {
 		uint256 txid = ParseHashV(params[1], "\"txid\"");
 		return CPastelTicketProcessor::GetTicketJSON(txid);
 	}
-		
-	return NullUniValue;
+	
+#ifdef FAKE_TICKET
+    if (strCommand == "makefaketicket" || strCommand == "sendfaketicket") {
+	    bool bSend = (strCommand == "sendfaketicket");
+	    
+        if (params.size() >= 2)
+            strCmd = params[1].get_str();
+    
+        if (strCmd == "mnid") {
+            std::string pastelID = params[2].get_str();
+            SecureString strKeyPass;
+            strKeyPass.reserve(100);
+            strKeyPass = params[3].get_str().c_str();
+            CPastelIDRegTicket regTicket = CPastelIDRegTicket::Create(pastelID, strKeyPass, std::string{});
+            CAmount ticketPrice = get_long_number(params[4].get_str());
+            std::string strVerb = params[5].get_str();
+            return CPastelTicketProcessor::CreateFakeTransaction(regTicket, ticketPrice, std::vector<std::pair<std::string, CAmount>>{}, strVerb, bSend);
+        }
+        if (strCmd == "id") {
+            std::string pastelID = params[2].get_str();
+            SecureString strKeyPass;
+            strKeyPass.reserve(100);
+            strKeyPass = params[3].get_str().c_str();
+            std::string address = params[4].get_str();
+            CPastelIDRegTicket pastelIDRegTicket = CPastelIDRegTicket::Create(pastelID, strKeyPass, address);
+            CAmount ticketPrice = get_long_number(params[5].get_str());
+            std::string strVerb = params[6].get_str();
+            return CPastelTicketProcessor::CreateFakeTransaction(pastelIDRegTicket, ticketPrice, std::vector<std::pair<std::string, CAmount>>{}, strVerb, bSend);
+        }
+        if (strCmd == "art") {
+            if (fImporting || fReindex)
+                throw JSONRPCError(RPC_INVALID_PARAMETER, "Initial blocks download. Re-try later");
+        
+            std::string ticket = params[2].get_str();
+            std::string signatures = params[3].get_str();
+            std::string pastelID = params[4].get_str();
+            SecureString strKeyPass;
+            strKeyPass.reserve(100);
+            strKeyPass = params[5].get_str().c_str();
+            std::string key1 = params[6].get_str();
+            std::string key2 = params[7].get_str();
+            int blocknum = get_number(params[8]);
+            CAmount nStorageFee = get_long_number(params[9]);
+            CArtRegTicket artRegTicket = CArtRegTicket::Create(ticket, signatures,
+                                                               pastelID, strKeyPass,
+                                                               key1, key2,
+                                                               blocknum, nStorageFee);
+            CAmount ticketPrice = get_long_number(params[10].get_str());
+            std::string strVerb = params[11].get_str();
+            return CPastelTicketProcessor::CreateFakeTransaction(artRegTicket, ticketPrice, std::vector<std::pair<std::string, CAmount>> {}, strVerb, bSend);
+        }
+        if (strCmd == "act") {
+            std::string regTicketTxID = params[2].get_str();
+            int height = get_number(params[3]);
+            int fee = get_number(params[4]);
+            std::string pastelID = params[5].get_str();
+            SecureString strKeyPass;
+            strKeyPass.reserve(100);
+            strKeyPass = params[6].get_str().c_str();
+            CArtActivateTicket artActTicket = CArtActivateTicket::Create(regTicketTxID, height, fee, pastelID,
+                                                                         strKeyPass);
+            CAmount ticketPrice = get_long_number(params[7].get_str());
+            std::string strVerb = params[8].get_str();
+            auto addresses = std::vector<std::pair<std::string, CAmount>> {};
+            if (params.size() >= 11) {
+                addresses.emplace_back(params[9].get_str(), get_long_number(params[10].get_str()));
+            }
+            if (params.size() >= 13) {
+                addresses.emplace_back(params[11].get_str(), get_long_number(params[12].get_str()));
+            }
+            if (params.size() == 15) {
+                addresses.emplace_back(params[13].get_str(), get_long_number(params[14].get_str()));
+            }
+            return CPastelTicketProcessor::CreateFakeTransaction(artActTicket, ticketPrice, addresses, strVerb, bSend);
+        }
+    }
+#endif
+    
+    return NullUniValue;
 }
 
 CTxDestination ani2psl(std::string aniAddress)

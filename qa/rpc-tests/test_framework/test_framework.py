@@ -86,15 +86,15 @@ class BitcoinTestFramework(object):
         wait_bitcoinds()
         self.setup_network(True)
 
-    def sync_all(self):
+    def sync_all(self, wait=1, stop_after=-1):
         if self.is_network_split:
             sync_blocks(self.nodes[:2])
             sync_blocks(self.nodes[2:])
             sync_mempools(self.nodes[:2])
             sync_mempools(self.nodes[2:])
         else:
-            sync_blocks(self.nodes)
-            sync_mempools(self.nodes)
+            sync_blocks(self.nodes, wait, stop_after)
+            sync_mempools(self.nodes, wait, stop_after)
 
     def join_network(self):
         """

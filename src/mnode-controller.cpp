@@ -76,7 +76,7 @@ void CMasterNodeController::SetParameters()
         LogPrintf("Regtest Mode: MNP = %d sec; Expiration = %d sec; Restart = %d sec \n", MasternodeMinMNPSeconds, MasternodeExpirationSeconds, MasternodeNewStartRequiredSeconds);
     }
     else{
-        //TODO accert
+        //TODO Pastel: accert
     }
 }
 
