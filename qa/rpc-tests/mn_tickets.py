@@ -634,9 +634,9 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         self.art_ticket1_txid = self.nodes[self.top_mns_index0].tickets("register", "art", "12345", json.dumps(signatures_dict), self.top_mn_pastelid0, "passphrase", "key1", "key2", str(self.artist_ticket_height), str(self.storage_fee))["txid"]
         assert_true(self.art_ticket1_txid, "No ticket was created")
         time.sleep(2)
-        self.sync_all(30,4)
+        self.sync_all(30, 4)
         self.nodes[self.mining_node_num].generate(1)
-        self.sync_all(30,4)
+        self.sync_all(30, 4)
 
         #       c.a.7 check correct amount of change and correct amount spent
         coins_after = self.nodes[self.top_mns_index0].getbalance()
@@ -692,6 +692,10 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         art_tickets_list = self.nodes[self.top_mns_index0].tickets("list", "art")
         assert_true("key1" in art_tickets_list)
         assert_true("key2" in art_tickets_list)
+
+        art_tickets_by_pid = self.nodes[self.top_mns_index0].tickets("find", "art", self.artist_pastelid1)
+        print(self.top_mn_pastelid0)
+        print(art_tickets_by_pid)
 
         print("Art registration tickets tested")
 
@@ -760,9 +764,9 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         #       d.a.8 register without errors, if enough coins for tnx fee
         self.nodes[self.mining_node_num].sendtoaddress(self.nonmn3_address1, 1000, "", "", False)
         time.sleep(2)
-        self.sync_all()
+        self.sync_all(10, 30)
         self.nodes[self.mining_node_num].generate(1)
-        self.sync_all()
+        self.sync_all(10, 30)
 
         #
         mn0_collateral_address = self.nodes[self.top_mns_index0].masternode("status")["payee"]
@@ -781,9 +785,9 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         assert_true(art_ticket1_act_ticket_txid, "No ticket was created")
 
         time.sleep(2)
-        self.sync_all()
+        self.sync_all(10, 30)
         self.nodes[self.mining_node_num].generate(1)
-        self.sync_all()
+        self.sync_all(10, 30)
 
         #       d.a.9 check correct amount of change and correct amount spent and correct amount of fee paid
         main_mn_fee = self.storage_fee90percent*3/5
@@ -857,6 +861,13 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         #   d.d list all art registration tickets, check PastelIDs
         act_tickets_list = self.nodes[0].tickets("list", "act")
         assert_true(self.art_ticket1_txid in act_tickets_list)
+
+        art_tickets_by_pid = self.nodes[self.top_mns_index0].tickets("find", "act", self.artist_pastelid1)
+        print(self.top_mn_pastelid0)
+        print(art_tickets_by_pid)
+        art_tickets_by_height = self.nodes[self.top_mns_index0].tickets("find", "act", str(self.artist_ticket_height))
+        print(self.artist_ticket_height)
+        print(art_tickets_by_height)
 
         print("Art activation tickets tested")
 

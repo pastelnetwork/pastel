@@ -1658,9 +1658,9 @@ UniValue tickets(const UniValue& params, bool fHelp) {
 				"		The \"key\" is PastelID or Collateral tnx outpoint for Masternode\n"
 				"			OR PastelID or Address for Personal PastelID\n"
 				"  art 	 - Find new art registration ticket.\n"
-				"		The \"key\" is ...\n"
+				"		The \"key\" is 'Key1' or 'Key2' OR 'Artist's PastelID' \n"
 				"  act	 - Find art confirmation ticket.\n"
-				"		The \"key\" is ...\n"
+				"		The \"key\" is 'ArtReg ticket txid' OR 'Artist's PastelID' OR 'Artist's Height (block height at what original art registration request was created)' \n"
 				"  trade - Find art trade ticket.\n"
 				"		The \"key\" is ...\n"
 				"  down	 - Find take down ticket.\n"
@@ -1681,14 +1681,39 @@ UniValue tickets(const UniValue& params, bool fHelp) {
 			    return ticket.ToJSON();
 		}
 		if (strCmd == "art") {
+            std::string key = params[2].get_str();
             CArtRegTicket ticket;
-            if (CArtRegTicket::FindTicketInDb(params[2].get_str(), ticket))
+            if (CArtRegTicket::FindTicketInDb(key, ticket))
                 return ticket.ToJSON();
+            else {
+                auto tickets = CArtRegTicket::FindAllTicketByPastelID(key);
+                if (!tickets.empty()) {
+                    UniValue tArray(UniValue::VARR);
+                    for (auto t : tickets) {
+                        tArray.push_back(t.ToJSON());
+                    }
+                    return tArray;
+                }
+            }
 		}
 		if (strCmd == "act") {
+            std::string key = params[2].get_str();
             CArtActivateTicket ticket;
-            if (CArtActivateTicket::FindTicketInDb(params[2].get_str(), ticket))
+            if (CArtActivateTicket::FindTicketInDb(key, ticket))
                 return ticket.ToJSON();
+            else {
+                auto tickets = CArtActivateTicket::FindAllTicketByPastelID(key);
+                if (tickets.empty()) {
+                    tickets = CArtActivateTicket::FindAllTicketByArtistHeight(atoi(key));
+                }
+                if (!tickets.empty()) {
+                    UniValue tArray(UniValue::VARR);
+                    for (auto t : tickets) {
+                        tArray.push_back(t.ToJSON());
+                    }
+                    return tArray;
+                }
+            }
 		}
 		if (strCmd == "trade") {
 //            CArtTradeTicket ticket;

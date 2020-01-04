@@ -65,8 +65,17 @@ void CPastelTicketProcessor::UpdatedBlockTip(const CBlockIndex *pindex, bool fIn
 	}
 }
 
+template<class T, class MVKey>
+void CPastelTicketProcessor::UpdateDB_MVK(const T& ticket, const MVKey& mvKey)
+{
+    std::vector<decltype(ticket.KeyOne())> mainKeys;
+    dbs[ticket.ID()]->Read(mvKey,mainKeys);
+    mainKeys.emplace_back(ticket.KeyOne());
+    dbs[ticket.ID()]->Write(mvKey, mainKeys);
+}
+
 template<class T>
-bool CPastelTicketProcessor::UpdateDB(T& ticket, std::string txid, int nBlockHeight)
+bool CPastelTicketProcessor::UpdateDB(T& ticket, const std::string& txid, int nBlockHeight)
 {
 	if (!txid.empty()) ticket.ticketTnx = std::move(txid);
 	if (nBlockHeight != 0) ticket.ticketBlock = nBlockHeight;
@@ -74,8 +83,12 @@ bool CPastelTicketProcessor::UpdateDB(T& ticket, std::string txid, int nBlockHei
 	if (ticket.HasKeyTwo()) {
         dbs[ticket.ID()]->Write(ticket.KeyTwo(), ticket.KeyOne());
     }
-    if (ticket.HasMultivalueKey()) {
-//        dbs[ticket.ID()]->Write(ticket.KeyTwo(), ticket.KeyOne());
+    
+    if (ticket.HasMVKeyOne()) {
+        UpdateDB_MVK(ticket, ticket.MVKeyOne());
+    }
+    if (ticket.HasMVKeyTwo()) {
+        UpdateDB_MVK(ticket, ticket.MVKeyTwo());
     }
 	//LogPrintf("tickets", "CPastelTicketProcessor::UpdateDB -- Ticket added into DB with key %s (txid - %s)\n", ticket.KeyOne(), ticket.ticketTnx);
 	return true;
@@ -368,6 +381,20 @@ bool CPastelTicketProcessor::FindTicketBySecondaryKey(T& ticket)
 template bool CPastelTicketProcessor::FindTicketBySecondaryKey<CPastelIDRegTicket>(CPastelIDRegTicket&);
 template bool CPastelTicketProcessor::FindTicketBySecondaryKey<CArtRegTicket>(CArtRegTicket&);
 template bool CPastelTicketProcessor::FindTicketBySecondaryKey<CArtActivateTicket>(CArtActivateTicket&);
+
+template<class T, class MVKey>
+std::vector<T> CPastelTicketProcessor::FindTicketsByMVKey(TicketID ticketId, const MVKey& mvKey)
+{
+    std::vector<T> tickets;
+    std::vector<decltype(std::declval<T>().KeyOne())> mainKeys;
+    dbs[ticketId]->Read(mvKey, mainKeys);
+    for (const auto& key : mainKeys){
+        T ticket;
+        if (dbs[ticketId]->Read(key, ticket))
+            tickets.emplace_back(ticket);
+    }
+    return tickets;
+}
 
 std::vector<std::string> CPastelTicketProcessor::GetAllKeys(TicketID id)
 {
@@ -826,6 +853,11 @@ std::string CPastelIDRegTicket::ToJSON()
     return true;
 }
 
+/*static*/ std::vector<CPastelIDRegTicket> FindAllTicketByPastelAddress(const std::string& address)
+{
+    return masterNodeCtrl.masternodeTickets.FindTicketsByMVKey<CPastelIDRegTicket, std::string>(TicketID::PastelID, address);
+}
+
 // CArtRegTicket ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 /*static*/ CArtRegTicket CArtRegTicket::Create(std::string _ticket, const std::string& signatures,
         std::string _pastelID, const SecureString& strKeyPass,
@@ -1031,6 +1063,11 @@ std::string CArtRegTicket::ToJSON()
            masterNodeCtrl.masternodeTickets.CheckTicketExistBySecondaryKey(_ticket);
 }
 
+/*static*/ std::vector<CArtRegTicket> CArtRegTicket::FindAllTicketByPastelID(const std::string& pastelID)
+{
+    return masterNodeCtrl.masternodeTickets.FindTicketsByMVKey<CArtRegTicket, std::string>(TicketID::Art, pastelID);
+}
+
 // CArtActivateTicket ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 /*static*/ CArtActivateTicket CArtActivateTicket::Create(std::string _regTicketTxId, int _artistHeight, int _storageFee, std::string _pastelID, const SecureString& strKeyPass)
 {
@@ -1054,9 +1091,6 @@ std::string CArtRegTicket::ToJSON()
 
 bool CArtActivateTicket::IsValid(bool preReg, std::string& errRet) const
 {
-    if (!masterNodeCtrl.masternodeSync.IsSynced()) //Activation ticket references other blocks, cannot validate if not fully synced
-        return true;
-    
     if (preReg){
         // Something to check ONLY before ticket made into transaction
         //1. check that activation ticket for the regTicketTnxId is not already in the blockchain
@@ -1070,7 +1104,7 @@ bool CArtActivateTicket::IsValid(bool preReg, std::string& errRet) const
         //...
     }
     
-//    if (isInitialDownload) { // Something to validate only if Initial Download
+//    if (masterNodeCtrl.masternodeSync.IsSynced()) { // Something to validate only if Initial Download
 //    } else { // Something to validate only if NOT Initial Download
 //        //1. check if TicketDB has the same outpoint and if yes, reject if it has different signature
 //    }
@@ -1199,6 +1233,15 @@ std::string CArtActivateTicket::ToJSON()
 {
     ticket.regTicketTnxId = key;
     return masterNodeCtrl.masternodeTickets.FindTicket(ticket);
+}
+
+/*static*/ std::vector<CArtActivateTicket> CArtActivateTicket::FindAllTicketByPastelID(const std::string& pastelID)
+{
+    return masterNodeCtrl.masternodeTickets.FindTicketsByMVKey<CArtActivateTicket, std::string>(TicketID::Activate, pastelID);
+}
+/*static*/ std::vector<CArtActivateTicket> CArtActivateTicket::FindAllTicketByArtistHeight(int height)
+{
+    return masterNodeCtrl.masternodeTickets.FindTicketsByMVKey<CArtActivateTicket, int>(TicketID::Activate, height);
 }
 
 // CArtTradeTicket ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

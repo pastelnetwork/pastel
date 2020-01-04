@@ -36,20 +36,26 @@ public:
 	int ticketBlock{};
 };
 
-template<TicketID ticketId, class Key1, class Key2>
+template<TicketID ticketId, class Key1, class Key2, class MVKey1, class MVKey2>
 class CPastelTicket : public CPastelTicketBase {
 public:
 	CPastelTicket() = default;
 	
 	TicketID ID() const {return ticketId;}
-	virtual Key1 KeyOne() const = 0; 		//Key to the object itself
-	virtual Key2 KeyTwo() const = 0;		//another key, points to the main key
-	virtual bool HasKeyTwo() const {return true;}		//another key, points to the main key
-	virtual bool HasMultivalueKey() const {return false;}		//another key, points to the main key
+	virtual Key1 KeyOne() const = 0; 		            //Key to the object itself
+	virtual Key2 KeyTwo() const {return Key2{};}		//another key, points to the main key
+	virtual bool HasKeyTwo() const {return true;}
+    
+    virtual MVKey1 MVKeyOne() const {return MVKey1{};}
+    virtual MVKey2 MVKeyTwo() const {return MVKey2{};}
+	virtual bool HasMVKeyOne() const {return false;}
+	virtual bool HasMVKeyTwo() const {return false;}
 };
 
+typedef char NoKey;
+
 // PastelID Ticket //////////////////////////////////////////////////////////////////////////////////////////////////////
-class CPastelIDRegTicket : public CPastelTicket<TicketID::PastelID, std::string, std::string>
+class CPastelIDRegTicket : public CPastelTicket<TicketID::PastelID, std::string, std::string, std::string, NoKey>
 {
 public:
 	std::string pastelID;
@@ -68,7 +74,7 @@ public:
 	std::string TicketName() const override {return "pastelid";}
 	std::string KeyOne() const override {return pastelID;}
 	std::string KeyTwo() const override {return outpoint.IsNull() ? (secondKey.empty() ? address : secondKey) : outpoint.ToStringShort();}
-	
+    
     std::string ToJSON() override;
     bool IsValid(bool preReg, std::string& errRet) const override;
     
@@ -138,7 +144,7 @@ signatures
     }
 }
  */
-class CArtRegTicket : public CPastelTicket<TicketID::Art, std::string, std::string>
+class CArtRegTicket : public CPastelTicket<TicketID::Art, std::string, std::string, std::string, NoKey>
 {
 public:
     static constexpr short allsigns = 4;
@@ -165,8 +171,10 @@ public:
     std::string TicketName() const override {return "art-reg";}
 	std::string KeyOne() const override {return keyOne;}
 	std::string KeyTwo() const override {return keyTwo;}
-	
-	std::string ToJSON() override;
+    bool HasMVKeyOne() const override {return true;}
+    std::string MVKeyOne() const override {return pastelIDs[artistsign];}
+    
+    std::string ToJSON() override;
     bool IsValid(bool preReg, std::string& errRet) const override;
     
     ADD_SERIALIZE_METHODS;
@@ -194,6 +202,8 @@ public:
                                 int _artistHeight, CAmount _storageFee);
     static bool FindTicketInDb(const std::string& key, CArtRegTicket& _ticket);
     static bool CheckIfTicketInDb(const std::string& key);
+    
+    static std::vector<CArtRegTicket> FindAllTicketByPastelID(const std::string& pastelID);
 };
 
 // Art Activation Ticket ////////////////////////////////////////////////////////////////////////////////////////////////
@@ -207,12 +217,12 @@ public:
 		"signature": ""
 	},
  */
-class CArtActivateTicket : public CPastelTicket<TicketID::Activate, std::string, int>
+class CArtActivateTicket : public CPastelTicket<TicketID::Activate, std::string, NoKey, std::string, int>
 {
 private:
 
 public:
-	std::string pastelID;
+	std::string pastelID;   //pastelID of the artist
 	std::string regTicketTnxId;
     int artistHeight{};
     int storageFee{};
@@ -224,10 +234,13 @@ public:
 	
 	std::string TicketName() const override {return "art-act";}
     std::string KeyOne() const override {return regTicketTnxId;}
-    int KeyTwo() const override {return 0;}
     bool HasKeyTwo() const override {return false;}
-	
-	std::string ToJSON() override;
+    bool HasMVKeyOne() const override {return true;}
+    std::string MVKeyOne() const override {return pastelID;}
+    bool HasMVKeyTwo() const override {return true;}
+    int MVKeyTwo() const override {return artistHeight;}
+    
+    std::string ToJSON() override;
     bool IsValid(bool preReg, std::string& errRet) const override;
 	
 	ADD_SERIALIZE_METHODS;
@@ -247,17 +260,20 @@ public:
     
     static CArtActivateTicket Create(std::string _regTicketTxId, int _artistHeight, int _storageFee, std::string _pastelID, const SecureString& strKeyPass);
     static bool FindTicketInDb(const std::string& key, CArtActivateTicket& ticket);
+
+    static std::vector<CArtActivateTicket> FindAllTicketByPastelID(const std::string& pastelID);
+    static std::vector<CArtActivateTicket> FindAllTicketByArtistHeight(int height);
 };
 
 // Art Trade Ticket /////////////////////////////////////////////////////////////////////////////////////////////////////
-class CArtTradeTicket : public CPastelTicket<TicketID::Trade, std::string, std::string>
+class CArtTradeTicket : public CPastelTicket<TicketID::Trade, NoKey, NoKey, NoKey, NoKey>
 {
 public:
     static bool FindTicketInDb(const std::string& key, CArtTradeTicket& ticket);
 };
 
 // Take Down Ticket /////////////////////////////////////////////////////////////////////////////////////////////////////
-class CTakeDownTicket : public CPastelTicket<TicketID::Down, std::string, std::string>
+class CTakeDownTicket : public CPastelTicket<TicketID::Down, NoKey, NoKey, NoKey, NoKey>
 {
 public:
     static bool FindTicketInDb(const std::string& key, CTakeDownTicket& ticket);
@@ -276,7 +292,9 @@ public:
 	bool ParseTicketAndUpdateDB(CMutableTransaction& tx, int nBlockHeight);
 	
 	template<class T>
-	bool UpdateDB(T& ticket, std::string txid, int nBlockHeight);
+	bool UpdateDB(T& ticket, const std::string& txid, int nBlockHeight);
+    template<class T, class MVKey>
+    void UpdateDB_MVK(const T& ticket, const MVKey& mvKey);
 	
 	template<class T>
 	bool CheckTicketExist(const T& ticket);
@@ -287,6 +305,8 @@ public:
 	bool CheckTicketExistBySecondaryKey(const T& ticket);
 	template<class T>
 	bool FindTicketBySecondaryKey(T& ticket);
+    template<class T, class MVKey>
+    std::vector<T> FindTicketsByMVKey(TicketID ticketId, const MVKey& mvKey);
 	
 	std::vector<std::string> GetAllKeys(TicketID id);
 
