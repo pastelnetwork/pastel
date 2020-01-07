@@ -51,7 +51,6 @@ bool CMasternodeMessage::Sign()
     std::string strError;
     std::string strMessage = vinMasternodeFrom.prevout.ToStringShort() +
                              vinMasternodeTo.prevout.ToStringShort() +
-                             vinMasternodeTo.prevout.ToStringShort() +
                              std::to_string(sigTime) +
                              message;
 
@@ -79,9 +78,7 @@ bool CMasternodeMessage::CheckSignature(const CPubKey& pubKeyMasternode, int &nD
     LogPrintf("CMasternodeMessage::CheckSignature -- Message to check: %s (%s)\n", ToString(), strMessage);
 
     if (!CMessageSigner::VerifyMessage(pubKeyMasternode, vchSig, strMessage, strError)) {
-        // Only ban for future block vote when we are already synced.
-        // Otherwise it could be the case when MN which signed this vote is using another key now
-        // and we have no idea about the old one.
+        // Only ban for invalid signature when we are already synced.
         if(masterNodeCtrl.masternodeSync.IsMasternodeListSynced()) {
             nDos = 20;
         }
@@ -108,27 +105,43 @@ void CMasternodeMessage::Relay()
 std::string CMasternodeMessage::ToString() const
 {
     std::ostringstream info;
-    info << vinMasternodeFrom.prevout.ToStringShort() <<
-         ", " << vinMasternodeTo.prevout.ToStringShort() <<
-         ", " << sigTime <<
-         ", " << message <<
-         ", " << (int)vchSig.size();
+    info << "{" <<
+         "From: \"" << vinMasternodeFrom.prevout.ToStringShort() << "\","
+         "To: \"" << vinMasternodeTo.prevout.ToStringShort() << "\","
+         "Time: \"" << sigTime << "\","
+         "Message: \"" << message << "\","
+         "SigSize: " << (int)vchSig.size() <<
+         "}";
     return info.str();
 }
 
+/*static*/ std::unique_ptr<CMasternodeMessage> CMasternodeMessage::Create(const CPubKey& pubKeyTo, const std::string& msg)
+{
+    if(!masterNodeCtrl.masternodeSync.IsMasternodeListSynced())
+        throw std::runtime_error(strprintf("Masternode list must be synced to create message"));
+    if(!masterNodeCtrl.IsMasterNode())
+        throw std::runtime_error(strprintf("Only Masternode can create message"));
+    
+    masternode_info_t mnInfo;
+    if(!masterNodeCtrl.masternodeManager.GetMasternodeInfo(pubKeyTo, mnInfo)) {
+        throw std::runtime_error(strprintf("Unknown Masternode"));
+    }
+    
+    return std::unique_ptr<CMasternodeMessage>(new CMasternodeMessage(masterNodeCtrl.activeMasternode.outpoint, mnInfo.vin.prevout, msg));
+}
 
-void CMasternodeMessageProcessor::ProcessMessage(CNode* pfrom, std::string& strCommand, CDataStream& vRecv)
+void CMasternodeMessageProcessor::ProcessMessage(CNode* pFrom, std::string& strCommand, CDataStream& vRecv)
 {
     if (strCommand == NetMsgType::MASTERNODEMESSAGE) {
 
         CMasternodeMessage message;
         vRecv >> message;
 
-        LogPrintf("MASTERNODEMESSAGE -- Get message %s from %d\n", message.ToString(), pfrom->id);
+        LogPrintf("MASTERNODEMESSAGE -- Get message %s from %d\n", message.ToString(), pFrom->id);
 
         uint256 messageId = message.GetHash();
 
-        pfrom->setAskFor.erase(messageId);
+        pFrom->setAskFor.erase(messageId);
 
         if(!masterNodeCtrl.masternodeSync.IsMasternodeListSynced()) return;
 
@@ -151,25 +164,25 @@ void CMasternodeMessageProcessor::ProcessMessage(CNode* pfrom, std::string& strC
 
 //        if no vinMasternodeFrom - we only accept messages encrypted with our public key!!!!
 
-        masternode_info_t mnInfo;
+        masternode_info_t mnInfo; //Node that sent the message
         if(!masterNodeCtrl.masternodeManager.GetMasternodeInfo(message.vinMasternodeFrom.prevout, mnInfo)) {
             // mn was not found, so we can't check message, some info is probably missing
             LogPrintf("MASTERNODEMESSAGE -- masternode is missing %s\n", message.vinMasternodeFrom.prevout.ToStringShort());
-            masterNodeCtrl.masternodeManager.AskForMN(pfrom, message.vinMasternodeFrom.prevout);
+            masterNodeCtrl.masternodeManager.AskForMN(pFrom, message.vinMasternodeFrom.prevout);
             return;
         }
 
         int nDos = 0;
-        if(!message.CheckSignature(mnInfo.pubKeyMasternode, nDos)) {
+        if(!message.CheckSignature(mnInfo.pubKeyMasternode, nDos)) { //verify that message is indeed signed by the node that sent it
             if(nDos) {
                 LogPrintf("MASTERNODEMESSAGE -- ERROR: invalid signature\n");
-                Misbehaving(pfrom->GetId(), nDos);
+                Misbehaving(pFrom->GetId(), nDos);
             } else {
                 LogPrintf("MASTERNODEMESSAGE -- WARNING: invalid signature\n");
             }
             // Either our info or vote info could be outdated.
             // In case our info is outdated, ask for an update,
-            masterNodeCtrl.masternodeManager.AskForMN(pfrom, message.vinMasternodeFrom.prevout);
+            masterNodeCtrl.masternodeManager.AskForMN(pFrom, message.vinMasternodeFrom.prevout);
             // but there is nothing we can do if vote info itself is outdated
             // (i.e. it was signed by a mn which changed its key),
             // so just quit here.
@@ -182,19 +195,24 @@ void CMasternodeMessageProcessor::ProcessMessage(CNode* pfrom, std::string& strC
             mapSeenMessages[messageId] = message;
         }
         //Is it message to us?
+        //If 1) we are Masternode and 2) recipient's outpoint is OUR outpoint
+        //... then this is message to us
         bool bOurMessage = false;
-        if(masterNodeCtrl.IsMasterNode() && message.vinMasternodeTo.prevout == masterNodeCtrl.activeMasternode.outpoint && mnInfo.pubKeyMasternode == masterNodeCtrl.activeMasternode.pubKeyMasternode) {
+        if(masterNodeCtrl.IsMasterNode() &&
+           message.vinMasternodeTo.prevout == masterNodeCtrl.activeMasternode.outpoint) {
+            //TODO Pastel: DecryptMessage()
             LOCK(cs_mapOurMessages);
             mapOurMessages[messageId] = message;
             bOurMessage = true;
         }
 
-        message.Relay();
+        if (!bOurMessage)
+            message.Relay();
 
-        //this is only if syncronization of messages is needed
+        //this is only if synchronization of messages is needed
         //masterNodeCtrl.masternodeSync.BumpAssetLastTime("MASTERNODEMESSAGE");
 
-        LogPrintf("MASTERNODEMESSAGE -- %s message %s from %d.\n", bOurMessage? "Got": "Relaid", message.ToString(), pfrom->id);
+        LogPrintf("MASTERNODEMESSAGE -- %s message %s from %d.\n", bOurMessage? "Got": "Relaid", message.ToString(), pFrom->id);
     }
 }
 
@@ -208,7 +226,7 @@ void CMasternodeMessageProcessor::CheckAndRemove()
 
         CMasternodeMessage& item = mnpair.second;
 
-        //remove old (1 day old?) stuff from Seen map - mapSeenMessages
+        //TODO Pastel: remove old (1 day old?) stuff from Seen map - mapSeenMessages
 
         // if () {
         //     //process...
@@ -236,4 +254,21 @@ std::string CMasternodeMessageProcessor::ToString() const
     info << "Seen messages: " << (int)mapSeenMessages.size() <<
             "; Our messages: " << (int)mapOurMessages.size();
     return info.str();
+}
+
+// TODO Pastel: Message (msg) shall be encrypted before sending using recipient's public key
+//so only recipient can see its content. Should this be part of MessageProcessor???
+void CMasternodeMessageProcessor::SendMessage(const CPubKey& pubKeyTo, const std::string& msg)
+{
+    auto message = CMasternodeMessage::Create(pubKeyTo, msg); //need parameter encrypt
+    
+    message->Sign();
+
+    uint256 messageId = message->GetHash();
+    
+    LOCK(cs_mapSeenMessages);
+    if (!mapSeenMessages.count(messageId)) {
+        mapSeenMessages[messageId] = *message;
+        message->Relay();
+    }
 }

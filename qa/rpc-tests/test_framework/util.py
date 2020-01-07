@@ -57,7 +57,7 @@ def sync_blocks(rpc_connections, wait=1, stop_after=-1):
             break
         if stop_after != -1 and count > stop_after:
             break
-        print("count = " + str(count))
+        print("loop = " + str(count))
         time.sleep(wait)
 
 def sync_mempools(rpc_connections, wait=1, stop_after=-1):
@@ -78,7 +78,7 @@ def sync_mempools(rpc_connections, wait=1, stop_after=-1):
             break
         if stop_after != -1 and count > stop_after:
             break
-        print("count = " + str(count))
+        print("loop = " + str(count))
         time.sleep(wait)
 
 bitcoind_processes = {}

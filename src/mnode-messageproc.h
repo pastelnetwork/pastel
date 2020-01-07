@@ -23,12 +23,12 @@ public:
     CTxIn vinMasternodeFrom;
     CTxIn vinMasternodeTo;
     std::string message;
-    int64_t sigTime; //message times
+    int64_t sigTime{}; //message times
     std::vector<unsigned char> vchSig;
 
     CMasternodeMessage() = default;
-
-    CMasternodeMessage(COutPoint outpointMasternodeFrom, COutPoint outpointMasternodeTo, std::string& msg) :
+    
+    CMasternodeMessage(COutPoint outpointMasternodeFrom, COutPoint outpointMasternodeTo, const std::string& msg) :
         vinMasternodeFrom(outpointMasternodeFrom),
         vinMasternodeTo(outpointMasternodeTo),
         sigTime(0),
@@ -62,6 +62,8 @@ public:
     bool CheckSignature(const CPubKey& pubKeyMasternode, int &nDos);
     void Relay();
     std::string ToString() const;
+    
+    static std::unique_ptr<CMasternodeMessage> Create(const CPubKey& pubKeyTo, const std::string& msg);
 };
 
 class CMasternodeMessageProcessor {
@@ -69,7 +71,7 @@ public:
     std::map<uint256, CMasternodeMessage> mapSeenMessages;
     std::map<uint256, CMasternodeMessage> mapOurMessages;
 
-//    TODO - DDoS protection
+    // TODO Pastel - DDoS protection
 //    std::map<uint256, > mapLatestSenders;
 //    std::map<CNetAddr, int64_t> mapLatestSenders; how many time during last hour(?) or time ago
 
@@ -85,12 +87,14 @@ public:
     }
 
 public:
-    void ProcessMessage(CNode *pfrom, std::string &strCommand, CDataStream &vRecv);
+    void ProcessMessage(CNode *pFrom, std::string &strCommand, CDataStream &vRecv);
     void CheckAndRemove();
     void Clear();
     int Size() { return mapSeenMessages.size(); }
     int SizeOur() { return mapOurMessages.size(); }
     std::string ToString() const;
+    
+    void SendMessage(const CPubKey& pubKeyTo, const std::string& msg);
 };
 
 #endif //MASTERNODEMESSAGEPROCESSOR_H

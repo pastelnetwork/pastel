@@ -216,6 +216,16 @@ long long get_long_number(const UniValue& v)
     return v.isStr()? std::stoll(v.get_str()): (long long)v.get_int();
 }
 
+UniValue messageToJson(const CMasternodeMessage& msg)
+{
+    UniValue obj(UniValue::VOBJ);
+    obj.push_back(Pair("From", msg.vinMasternodeFrom.prevout.ToStringShort()));
+    obj.push_back(Pair("To", msg.vinMasternodeTo.prevout.ToStringShort()));
+    obj.push_back(Pair("Timestamp", msg.sigTime));
+    obj.push_back(Pair("Message", msg.message));
+    return obj;
+}
+
 UniValue masternode(const UniValue& params, bool fHelp)
 {
     std::string strCommand;
@@ -236,7 +246,7 @@ UniValue masternode(const UniValue& params, bool fHelp)
 #endif // ENABLE_WALLET
          strCommand != "list" && strCommand != "list-conf" && strCommand != "count" &&
          strCommand != "debug" && strCommand != "current" && strCommand != "winner" && strCommand != "winners" && strCommand != "genkey" &&
-         strCommand != "connect" && strCommand != "status" && strCommand != "top" && strCommand != "sign"))
+         strCommand != "connect" && strCommand != "status" && strCommand != "top" && strCommand != "message"))
             throw std::runtime_error(
                 "masternode \"command\"...\n"
                 "Set of commands to execute masternode related actions\n"
@@ -260,7 +270,7 @@ UniValue masternode(const UniValue& params, bool fHelp)
                 "                        By default, method will only return historical masternodes (when n is specified) if they were seen by the node\n"
                 "                        If x presented and not 0 - method will return MNs 'calculated' based on the current list of MNs and hash of n'th block\n"
                 "                        (this maybe not accurate - MN existed before might not be in the current list)\n"
-				"  sign <message> <x> - Sing <message> using masternodes key\n\tif x is presented and not 0 - it will also returns the public key\n\tuse \"verifymessage\" with masrternode's public key to verify signature\n"
+				"  message <options> - Commands to deal with MN to MN messages - sign, send, print etc\n"
                 );
 
     if (strCommand == "list")
@@ -594,31 +604,74 @@ UniValue masternode(const UniValue& params, bool fHelp)
 
         return obj;
     }
-    if (strCommand == "sign")
+    if (strCommand == "message")
     {
-		if (!masterNodeCtrl.IsMasterNode())
-			throw JSONRPCError(RPC_INTERNAL_ERROR, "This is not a masternode");
-
-        if (params.size() != 2 || params.size() != 3)
-            throw JSONRPCError(RPC_INVALID_PARAMETER, "Correct usage is 'masternode sign \"message-to-sign\" <n>' where n is optional and can be 1");
-
-        std::string message = params[1].get_str();
-
-        std::string error_ret;
-        std::vector<unsigned char> signature;
-        if (!Sign(message, signature, error_ret))
-            throw JSONRPCError(RPC_INVALID_PARAMETER, strprintf("Sign failed - %s", error_ret));
-
-        UniValue obj(UniValue::VOBJ);
-        obj.push_back(Pair("signature", std::string(signature.begin(), signature.end())));
-        if (params.size() == 3){
-			int n = get_number(params[1]);
-			if (n > 0) {
-				std::string strPubKey = EncodeDestination(masterNodeCtrl.activeMasternode.pubKeyMasternode.GetID());
-				obj.push_back(Pair("signature", std::string(signature.begin(), signature.end())));
-			}
-		}
-		return obj;
+        std::string strCmd;
+        
+        if (params.size() >= 2) {
+            strCmd = params[1].get_str();
+        }
+        if (fHelp ||
+            (params.size() < 2 || params.size() > 4) ||
+            (strCmd != "sign" && strCmd != "send" && strCmd != "print" && strCmd != "list"))
+            throw JSONRPCError(RPC_INVALID_PARAMETER, "Correct usage is:\n"
+                                                      "  masternode message send <mnPubKey> <message> - Send <message> to masternode identified by the <mnPubKey>\n"
+                                                      "  masternode message list - List received <messages>\n"
+                                                      "  masternode message print <messageID> - Print received <message> by <messageID>\n"
+                                                      "  masternode message sign <message> <x> - Sign <message> using masternodes key\n"
+                                                      "  \tif x is presented and not 0 - it will also returns the public key\n"
+                                                      "  \tuse \"verifymessage\" with masrternode's public key to verify signature\n");
+    
+        if (!masterNodeCtrl.IsMasterNode())
+			throw JSONRPCError(RPC_INTERNAL_ERROR, "This is not a masternode - only Masternode can send/sign messages");
+    
+        if (strCmd == "send"){
+            std::string strPubKey = params[2].get_str();
+            std::string messageText = params[3].get_str();
+    
+            if (!IsHex(strPubKey))
+                throw JSONRPCError(RPC_INTERNAL_ERROR, "Invalid Masternode Public Key");
+            
+            CPubKey vchPubKey(ParseHex(strPubKey));
+    
+            masterNodeCtrl.masternodeMessages.SendMessage(vchPubKey, messageText);
+            
+        } else if (strCmd == "list"){
+            if (!masterNodeCtrl.IsMasterNode())
+                throw JSONRPCError(RPC_INTERNAL_ERROR, "This is not a masternode - only Masternode can send/receive/sign messages");
+    
+            UniValue arr(UniValue::VARR);
+            for (const auto& msg : masterNodeCtrl.masternodeMessages.mapOurMessages){
+                UniValue obj(UniValue::VOBJ);
+                obj.push_back(Pair(msg.first.ToString(), messageToJson(msg.second)));
+                arr.push_back(obj);
+            }
+            return arr;
+    
+        } else if (strCmd == "print"){
+            if (!masterNodeCtrl.IsMasterNode())
+                throw JSONRPCError(RPC_INTERNAL_ERROR, "This is not a masternode - only Masternode can send/receive/sign messages");
+    
+    
+        } else if (strCmd == "sign") {
+            std::string message = params[2].get_str();
+    
+            std::string error_ret;
+            std::vector<unsigned char> signature;
+            if (!Sign(message, signature, error_ret))
+                throw JSONRPCError(RPC_INVALID_PARAMETER, strprintf("Sign failed - %s", error_ret));
+    
+            UniValue obj(UniValue::VOBJ);
+            obj.push_back(Pair("signature", std::string(signature.begin(), signature.end())));
+            if (params.size() == 3) {
+                int n = get_number(params[3]);
+                if (n > 0) {
+                    std::string strPubKey = EncodeDestination(masterNodeCtrl.activeMasternode.pubKeyMasternode.GetID());
+                    obj.push_back(Pair("pubkey", strPubKey));
+                }
+            }
+            return obj;
+        }
     }
     return NullUniValue;
 }

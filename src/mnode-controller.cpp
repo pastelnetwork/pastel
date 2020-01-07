@@ -192,8 +192,8 @@ bool CMasterNodeController::EnableMasterNode(std::ostringstream& strErrors, boos
 
     strDBName = "messages.dat";
     uiInterface.InitMessage(_("Loading messages cache..."));
-    CFlatDB<CMasternodeRequestTracker> flatDB5(strDBName, "magicMessagesCache");
-    if(!flatDB5.Load(requestTracker)) {
+    CFlatDB<CMasternodeMessageProcessor> flatDB5(strDBName, "magicMessagesCache");
+    if(!flatDB5.Load(masternodeMessages)) {
         strErrors << _("Failed to load messages cache from") + "\n" + (pathDB / strDBName).string();
         return false;
     }
