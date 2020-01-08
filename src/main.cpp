@@ -3820,7 +3820,7 @@ bool ProcessNewBlock(CValidationState &state, CNode* pfrom, CBlock* pblock, bool
     NotifyHeaderTip();
 
     if (!ActivateBestChain(state, pblock))
-        return error("%s: ActivateBestChain failed", __func__);
+        return error("%s: ActivateBestChain failed (from %s)", __func__, pfrom->addrName);
 
     return true;
 }
