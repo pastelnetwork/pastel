@@ -753,7 +753,7 @@ UniValue getblocktemplate(const UniValue& params, bool fHelp)
         masternodeObj.push_back(Pair("script", HexStr(pblock->txoutMasternode.scriptPubKey.begin(), pblock->txoutMasternode.scriptPubKey.end())));
         masternodeObj.push_back(Pair("amount", pblock->txoutMasternode.nValue));
     }
-    result.push_back(Pair("masternode", masternodeObj));
+    result.push_back(Pair("masternodeinfo", masternodeObj));
     //Governance payment
     UniValue governanceObj(UniValue::VOBJ);
     if(pblock->txoutGovernance != CTxOut()) {
@@ -764,7 +764,7 @@ UniValue getblocktemplate(const UniValue& params, bool fHelp)
         masternodeObj.push_back(Pair("script", HexStr(pblock->txoutGovernance.scriptPubKey.begin(), pblock->txoutGovernance.scriptPubKey.end())));
         masternodeObj.push_back(Pair("amount", pblock->txoutGovernance.nValue));
     }
-    result.push_back(Pair("governance", governanceObj));
+    result.push_back(Pair("governanceinfo", governanceObj));
     //<--PASTEL
 
     return result;
