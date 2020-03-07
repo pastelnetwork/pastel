@@ -19,7 +19,7 @@
 //INGEST->!!!
 #ifndef INGEST_MINING_BLOCK
 #define INGEST_MINING_BLOCK 1
-#define TOP_INGEST_BLOCK INGEST_MINING_BLOCK+130
+#define TOP_INGEST_BLOCK INGEST_MINING_BLOCK+200
 #endif
 //<-INGEST!!!
 
@@ -33,8 +33,11 @@ unsigned int GetNextWorkRequired(const CBlockIndex* pindexLast, const CBlockHead
     
     //INGEST->!!!
     if (!Params().IsRegTest()) {
-        if (pindexLast->nHeight < TOP_INGEST_BLOCK) {
+        if (pindexLast->nHeight < TOP_INGEST_BLOCK-99) { //0 to 101
             return UintToArith256(uint256S("0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f")).GetCompact();
+        }
+        if (pindexLast->nHeight < TOP_INGEST_BLOCK) { //102 to 200
+            return UintToArith256(uint256S("07ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff")).GetCompact();
         }
     }
     //<-INGEST!!!
