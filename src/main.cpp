@@ -3507,16 +3507,16 @@ bool CheckBlockHeader(const CBlockHeader& block, CValidationState& state, bool f
             if (fCheckPOW && !CheckEquihashSolution(&block, Params()))
                 return state.DoS(100, error("CheckBlockHeader(): Equihash solution invalid"),
                                  REJECT_INVALID, "invalid-solution");
-
-    //INGEST->!!!
+    
+            // Check proof of work matches claimed amount
+            if (fCheckPOW && !CheckProofOfWork(block.GetHash(), block.nBits, Params().GetConsensus()))
+                return state.DoS(50, error("CheckBlockHeader(): proof of work failed"),
+                                 REJECT_INVALID, "high-hash");
+            //INGEST->!!!
         }
     }
     //<-INGEST!!!
     
-    // Check proof of work matches claimed amount
-    if (fCheckPOW && !CheckProofOfWork(block.GetHash(), block.nBits, Params().GetConsensus()))
-        return state.DoS(50, error("CheckBlockHeader(): proof of work failed"),
-                         REJECT_INVALID, "high-hash");
 
     // Check timestamp
     int64_t blockTime = block.GetBlockTime();

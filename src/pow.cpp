@@ -16,6 +16,13 @@
 
 #include "sodium.h"
 
+//INGEST->!!!
+#ifndef INGEST_MINING_BLOCK
+#define INGEST_MINING_BLOCK 1
+#define TOP_INGEST_BLOCK INGEST_MINING_BLOCK+130
+#endif
+//<-INGEST!!!
+
 unsigned int GetNextWorkRequired(const CBlockIndex* pindexLast, const CBlockHeader *pblock, const Consensus::Params& params)
 {
     unsigned int nProofOfWorkLimit = UintToArith256(params.powLimit).GetCompact();
@@ -23,7 +30,15 @@ unsigned int GetNextWorkRequired(const CBlockIndex* pindexLast, const CBlockHead
     // Genesis block
     if (pindexLast == NULL)
         return nProofOfWorkLimit;
-
+    
+    //INGEST->!!!
+    if (!Params().IsRegTest()) {
+        if (pindexLast->nHeight < TOP_INGEST_BLOCK) {
+            return UintToArith256(uint256S("0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f")).GetCompact();
+        }
+    }
+    //<-INGEST!!!
+    
     {
         // Comparing to pindexLast->nHeight with >= because this function
         // returns the work required for the block after pindexLast.
@@ -125,10 +140,10 @@ bool CheckProofOfWork(uint256 hash, unsigned int nBits, const Consensus::Params&
     arith_uint256 bnTarget;
 
     bnTarget.SetCompact(nBits, &fNegative, &fOverflow);
-
+    
     // Check range
     if (fNegative || bnTarget == 0 || fOverflow || bnTarget > UintToArith256(params.powLimit)){
-        LogPrintf("CheckProofOfWork - fNegative = %s, bnTarget = %s, fOverflow = %s \n", 
+        LogPrintf("CheckProofOfWork - fNegative = %s, fOverflow = %s, bnTarget = %s, powLimit = %s \n",
                 fNegative? "true": "false", 
                 fOverflow? "true": "false", 
                 ArithToUint256(bnTarget).ToString(),
