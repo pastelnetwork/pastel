@@ -588,7 +588,7 @@ CMutableTransaction CreateNewContextualCMutableTransaction(const Consensus::Para
 #define TOP_INGEST_BLOCK INGEST_MINING_BLOCK+200
 #define INGEST_WAITING_AMOUNT 1 * COIN
 #define INGEST_MULTIPLIER 5
-#define INGEST_MINING_AMOUNT (2001592940+12000) * COIN * INGEST_MULTIPLIER //12000 for fees and seed MNs
+#define INGEST_MINING_AMOUNT (2001592940+1000) * COIN * INGEST_MULTIPLIER //1000 for fees
 //<-INGEST!!!
 
 

@@ -28,9 +28,9 @@ void CMasterNodeController::SetParameters()
 {
     //CURRENT VERSION OF MASTERNODE NETWORK - SHOULD BE EQUAL TO PROTOCOL_VERSION
     //this will allow to filter out old MN when ALL NETWORK is updated 
-    MasternodeProtocolVersion           = 170008;
+    MasternodeProtocolVersion           = 170008;cd
     
-    MasternodeCollateral                = 1000;
+    MasternodeCollateral                = 1000000;
 
     MasternodeFeePerMBDefault           = 100;
 
