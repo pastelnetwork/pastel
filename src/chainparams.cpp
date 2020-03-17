@@ -306,8 +306,7 @@ public:
         consensus.nMaxGovernanceAmount = 1000000*COIN;
 
         // The best chain should have at least this much work.
-        // consensus.nMinimumChainWork = uint256S("0x000000000000000000000000000000000000000000000000006f31c0e1f30221");
-        consensus.nMinimumChainWork = uint256S("0x0000000000000000000000000000000000000000000000000000000000000000");
+        consensus.nMinimumChainWork = uint256S("0x000000000000000000000000000000000000000000000000006f31c0e1f30221");
         
         /**
          * The message start string
@@ -333,7 +332,7 @@ public:
 
         vFixedSeeds.clear();
         vSeeds.clear();
-        vSeeds.push_back(CDNSSeedData("pastel.network", "dnsseed.pastel.network"));
+        vSeeds.push_back(CDNSSeedData("pastel.network", "mainnet.pastel.network"));
 
         // guarantees the first 2 characters, when base58 encoded, are "Pt"
         base58Prefixes[PUBKEY_ADDRESS]     = {0x0c,0xe3};
@@ -366,12 +365,14 @@ public:
 
         checkpointData = (CCheckpointData) {
             boost::assign::map_list_of
-            (0, consensus.hashGenesisBlock),
-            genesis.nTime,      // * UNIX timestamp of last checkpoint block
-            0,                  // * total number of transactions between genesis and last checkpoint
-                                //   (the tx=... number in the SetBestChain debug.log lines)
-            500                 // * estimated number of transactions per day after checkpoint
+            (0, consensus.hashGenesisBlock)
+            (1184, uint256S("0x000345793ed6cfb2d5a2271193a5169f1cfd00c131cbf98997b6d37940d0cc78")),
+            1584396040/*genesis.nTime*/,      // * UNIX timestamp of last checkpoint block
+            1205,                  // * total number of transactions between genesis and last checkpoint
+                                //   (the tx=... number in the UpdateTip debug.log lines - "UpdateTip: new best=... tx=...")
+            600                 // * estimated number of transactions per day after checkpoint
                                 //   total number of tx / (checkpoint block height / (24 * 24))
+                                //after first checkpoint math is = 586, but I'm setting 600
         };
     }
 };
@@ -409,8 +410,7 @@ public:
         consensus.nMaxGovernanceAmount = 1000000*COIN;
 
         // The best chain should have at least this much work.
-        // consensus.nMinimumChainWork = uint256S("0x00000000000000000000000000000000000000000000000000000001d0c4d9cd");
-        consensus.nMinimumChainWork = uint256S("0x0000000000000000000000000000000000000000000000000000000000000000");
+        consensus.nMinimumChainWork = uint256S("0x00000000000000000000000000000000000000000000000000000001d0c4d9cd");
 
         /**
          * The message start string

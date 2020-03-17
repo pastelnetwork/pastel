@@ -1747,7 +1747,7 @@ CAmount GetBlockSubsidy(int nHeight, const Consensus::Params& consensusParams)
     if (!Params().IsRegTest()) {
         if (nHeight == INGEST_MINING_BLOCK)
             return INGEST_MINING_AMOUNT;
-        if (nHeight <= TOP_INGEST_BLOCK)
+        if (nHeight < TOP_INGEST_BLOCK)
             return INGEST_WAITING_AMOUNT;
     }
     //<-INGEST!!!

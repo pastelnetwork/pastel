@@ -947,7 +947,7 @@ UniValue getblocksubsidy(const UniValue& params, bool fHelp)
     }
 
     CAmount nMasternodePayment = 0;
-    if (!masterNodeCtrl.masternodePayments.mapMasternodeBlockPayees.empty()){
+    if (masterNodeCtrl.masternodePayments.mapMasternodeBlockPayees.count(nHeight)){
         nMasternodePayment = masterNodeCtrl.masternodePayments.GetMasternodePayment(0, nReward);//same for any height currently
     }
 

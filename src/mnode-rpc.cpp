@@ -1958,141 +1958,141 @@ CKey ani2psl_secret(const std::string& str)
     return key;
 }
 //INGEST->!!!
-UniValue ingest(const UniValue& params, bool fHelp) {
-    std::string strCommand;
-    if (params.size() >= 1)
-        strCommand = params[0].get_str();
-    
-    if (fHelp || (strCommand != "ingest" && strCommand != "ani2psl" && strCommand != "ani2psl_secret"))
-        throw runtime_error(
-                "\"ingest\" ingest|ani2psl|ani2psl_secret ...\n"
-        );
-    
-    if (strCommand == "ingest") {
-        if (params.size() != 3)
-            throw JSONRPCError(RPC_INVALID_PARAMETER,
-                               "ingest ingest filepath max_tx_per_block\n");
-        
-        std::string path = params[1].get_str();
-        int max_tx = std::stoi(params[2].get_str());
-        if (max_tx <= 0 ) max_tx = 1000;
-    
-        EnsureWalletIsUnlocked();
-        
-        UniValue mnObj(UniValue::VOBJ);
-    
-        UniValue addressErrors(UniValue::VOBJ);
-        UniValue tnxErrors(UniValue::VOBJ);
-    
-        auto txCounter = 0;
-        auto lineCounter = 0;
-        
-        std::ifstream infile(path);
-        if (!infile)
-            throw JSONRPCError(RPC_INVALID_PARAMETER,
-                               "Cannot open file!!!\n");
-
-        std::ofstream outfile(path+".output");
-        while (!infile.eof()) {
-            txCounter++;
-            
-            std::vector<CRecipient> vecSend;
-            std::string line;
-            CAmount totalAmount;
-            while (vecSend.size() < max_tx && std::getline(infile, line))
-            {
-                //AW7rZFu6semXGqyUBsaxuXs6LymQh2kwRA,40101110000000
-                //comma must be 35th character!!
-                std::string aniAddress = line.substr(0,34);
-                
-                CTxDestination dest = ani2psl(aniAddress);
-                if (!IsValidDestination(dest)) {
-                    addressErrors.push_back(Pair(aniAddress, std::string("Invalid Pastel address converted from ANI address")));
-                    continue;
-                }
-                
-                //ani has the same as psl total amount (21 000 000 000)
-                //and same number of decimals - 5 (x.00 000)
-                //so no conversion of amount needed
-                CAmount aniAmount = std::stoll(line.substr(35));
-                if (aniAmount <= 0){
-                    addressErrors.push_back(Pair(aniAddress, std::string("Invalid amount for send for ANI address")));
-                    continue;
-                }
-                aniAmount *= INGEST_MULTIPLIER;
-                totalAmount += aniAmount;
-    
-                CScript scriptPubKey = GetScriptForDestination(dest);
-                CRecipient recipient = {scriptPubKey, aniAmount, false};
-                vecSend.push_back(recipient);
-            }
-    
-            auto lines = vecSend.size();
-    
-            if (lines == 0)
-                continue;
-            
-    //        // Check funds
-    //        CAmount nBalance = GetAccountBalance("", 1, ISMINE_SPENDABLE);
-    //        if (totalAmount > nBalance)
-    //        throw JSONRPCError(RPC_WALLET_INSUFFICIENT_FUNDS, "Account has insufficient funds");
-            
-            //// Send
-            CWalletTx wtx;
-            wtx.strFromAccount = "";
-            
-            CReserveKey keyChange(pwalletMain);
-            CAmount nFeeRequired = 0;
-            int nChangePosRet = -1;
-            
-            string strFailReason;
-            
-            if (!pwalletMain->CreateTransaction(vecSend, wtx, keyChange, nFeeRequired, nChangePosRet, strFailReason)){
-                tnxErrors.push_back(Pair(std::to_string(txCounter), std::string{"CreateTransaction failed - "} + strFailReason));
-                lineCounter+=lines;
-                continue;
-            }
-            
-            if (!pwalletMain->CommitTransaction(wtx, keyChange)){
-                tnxErrors.push_back(Pair(std::to_string(txCounter), "CommitTransaction failed"));
-                lineCounter+=lines;
-                continue;
-            }
-            
-            UniValue obj(UniValue::VOBJ);
-            obj.push_back(Pair(wtx.GetHash().GetHex(), lines));
-            mnObj.push_back(Pair(std::to_string(txCounter), obj));
-    
-            outfile << wtx.GetHash().GetHex() << " : " << lineCounter+1 << "-" << lineCounter+lines << " (" << lines << ")\n";
-            outfile.flush();
-            lineCounter+=lines;
-        }
-    
-        mnObj.push_back(Pair("address_errors", addressErrors));
-        mnObj.push_back(Pair("tnx_errors", tnxErrors));
-    
-        return mnObj;
-    }
-    if (strCommand == "ani2psl") {
-        if (params.size() != 2)
-            throw JSONRPCError(RPC_INVALID_PARAMETER, "ingest ani2psl ...\n");
-    
-        std::string aniAddress = params[1].get_str();
-    
-        CTxDestination dest = ani2psl(aniAddress);
-        return EncodeDestination(dest);
-    }
-    if (strCommand == "ani2psl_secret"){
-        if (params.size() != 2)
-            throw JSONRPCError(RPC_INVALID_PARAMETER, "ingest ani2psl_secret ...\n");
-    
-        std::string aniSecret = params[1].get_str();
-    
-        CKey pslKey = ani2psl_secret(aniSecret);
-        return EncodeSecret(pslKey);
-    }
-    return NullUniValue;
-}
+//UniValue ingest(const UniValue& params, bool fHelp) {
+//    std::string strCommand;
+//    if (params.size() >= 1)
+//        strCommand = params[0].get_str();
+//
+//    if (fHelp || (strCommand != "ingest" && strCommand != "ani2psl" && strCommand != "ani2psl_secret"))
+//        throw runtime_error(
+//                "\"ingest\" ingest|ani2psl|ani2psl_secret ...\n"
+//        );
+//
+//    if (strCommand == "ingest") {
+//        if (params.size() != 3)
+//            throw JSONRPCError(RPC_INVALID_PARAMETER,
+//                               "ingest ingest filepath max_tx_per_block\n");
+//
+//        std::string path = params[1].get_str();
+//        int max_tx = std::stoi(params[2].get_str());
+//        if (max_tx <= 0 ) max_tx = 1000;
+//
+//        EnsureWalletIsUnlocked();
+//
+//        UniValue mnObj(UniValue::VOBJ);
+//
+//        UniValue addressErrors(UniValue::VOBJ);
+//        UniValue tnxErrors(UniValue::VOBJ);
+//
+//        auto txCounter = 0;
+//        auto lineCounter = 0;
+//
+//        std::ifstream infile(path);
+//        if (!infile)
+//            throw JSONRPCError(RPC_INVALID_PARAMETER,
+//                               "Cannot open file!!!\n");
+//
+//        std::ofstream outfile(path+".output");
+//        while (!infile.eof()) {
+//            txCounter++;
+//
+//            std::vector<CRecipient> vecSend;
+//            std::string line;
+//            CAmount totalAmount;
+//            while (vecSend.size() < max_tx && std::getline(infile, line))
+//            {
+//                //AW7rZFu6semXGqyUBsaxuXs6LymQh2kwRA,40101110000000
+//                //comma must be 35th character!!
+//                std::string aniAddress = line.substr(0,34);
+//
+//                CTxDestination dest = ani2psl(aniAddress);
+//                if (!IsValidDestination(dest)) {
+//                    addressErrors.push_back(Pair(aniAddress, std::string("Invalid Pastel address converted from ANI address")));
+//                    continue;
+//                }
+//
+//                //ani has the same as psl total amount (21 000 000 000)
+//                //and same number of decimals - 5 (x.00 000)
+//                //so no conversion of amount needed
+//                CAmount aniAmount = std::stoll(line.substr(35));
+//                if (aniAmount <= 0){
+//                    addressErrors.push_back(Pair(aniAddress, std::string("Invalid amount for send for ANI address")));
+//                    continue;
+//                }
+//                aniAmount *= INGEST_MULTIPLIER;
+//                totalAmount += aniAmount;
+//
+//                CScript scriptPubKey = GetScriptForDestination(dest);
+//                CRecipient recipient = {scriptPubKey, aniAmount, false};
+//                vecSend.push_back(recipient);
+//            }
+//
+//            auto lines = vecSend.size();
+//
+//            if (lines == 0)
+//                continue;
+//
+//    //        // Check funds
+//    //        CAmount nBalance = GetAccountBalance("", 1, ISMINE_SPENDABLE);
+//    //        if (totalAmount > nBalance)
+//    //        throw JSONRPCError(RPC_WALLET_INSUFFICIENT_FUNDS, "Account has insufficient funds");
+//
+//            //// Send
+//            CWalletTx wtx;
+//            wtx.strFromAccount = "";
+//
+//            CReserveKey keyChange(pwalletMain);
+//            CAmount nFeeRequired = 0;
+//            int nChangePosRet = -1;
+//
+//            string strFailReason;
+//
+//            if (!pwalletMain->CreateTransaction(vecSend, wtx, keyChange, nFeeRequired, nChangePosRet, strFailReason)){
+//                tnxErrors.push_back(Pair(std::to_string(txCounter), std::string{"CreateTransaction failed - "} + strFailReason));
+//                lineCounter+=lines;
+//                continue;
+//            }
+//
+//            if (!pwalletMain->CommitTransaction(wtx, keyChange)){
+//                tnxErrors.push_back(Pair(std::to_string(txCounter), "CommitTransaction failed"));
+//                lineCounter+=lines;
+//                continue;
+//            }
+//
+//            UniValue obj(UniValue::VOBJ);
+//            obj.push_back(Pair(wtx.GetHash().GetHex(), lines));
+//            mnObj.push_back(Pair(std::to_string(txCounter), obj));
+//
+//            outfile << wtx.GetHash().GetHex() << " : " << lineCounter+1 << "-" << lineCounter+lines << " (" << lines << ")\n";
+//            outfile.flush();
+//            lineCounter+=lines;
+//        }
+//
+//        mnObj.push_back(Pair("address_errors", addressErrors));
+//        mnObj.push_back(Pair("tnx_errors", tnxErrors));
+//
+//        return mnObj;
+//    }
+//    if (strCommand == "ani2psl") {
+//        if (params.size() != 2)
+//            throw JSONRPCError(RPC_INVALID_PARAMETER, "ingest ani2psl ...\n");
+//
+//        std::string aniAddress = params[1].get_str();
+//
+//        CTxDestination dest = ani2psl(aniAddress);
+//        return EncodeDestination(dest);
+//    }
+//    if (strCommand == "ani2psl_secret"){
+//        if (params.size() != 2)
+//            throw JSONRPCError(RPC_INVALID_PARAMETER, "ingest ani2psl_secret ...\n");
+//
+//        std::string aniSecret = params[1].get_str();
+//
+//        CKey pslKey = ani2psl_secret(aniSecret);
+//        return EncodeSecret(pslKey);
+//    }
+//    return NullUniValue;
+//}
 //<-INGEST!!!
 static const CRPCCommand commands[] =
 { //  category              name                        actor (function)           okSafeMode
@@ -2107,7 +2107,7 @@ static const CRPCCommand commands[] =
     { "mnode",               "chaindata",              &chaindata,              true  },
     { "mnode",               "tickets",                &tickets,                true  },
 //INGEST->!!!
-    { "mnode",               "ingest",                 &ingest,                true  },
+//    { "mnode",               "ingest",                 &ingest,                true  },
 //<-INGEST!!!
 };
 
