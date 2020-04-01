@@ -49,6 +49,19 @@ sudo apt-get install python-pip
 sudo pip install pyblake2
 ```
 
+### Build
+
+#### Default build (for Ubuntu on Ubuntu) 
+```shell
+./pcutil/build.sh -j$(nproc)
+```
+
+#### Cross-platforms build on Ubuntu (only Windows is supported yet) 
+```shell
+HOST=x86_64-w64-mingw32 ./pcutil/build.sh -j$(nproc)
+```
+
+
 License
 -------
 
