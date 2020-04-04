@@ -367,12 +367,12 @@ bool CMasternodeBlockPayees::IsTransactionValid(const CTransaction& txNew)
         }
     }
 
-    LogPrintf("CMasternodeBlockPayees::IsTransactionValid -- ERROR: Missing required payment, possible payees: '%s', amount: %f PASTEL\n", strPayeesPossible, (float)nMasternodePayment/COIN);
+    LogPrintf("CMasternodeBlockPayees::IsTransactionValid -- ERROR: Missing required payment, possible payees: '%s', amount: " PRId64 " PASTEL\n", strPayeesPossible, nMasternodePayment);
     BOOST_FOREACH(CTxOut txout, txNew.vout) {
         CTxDestination dest;
         ExtractDestination(txout.scriptPubKey, dest);
         std::string address = EncodeDestination(dest);
-        LogPrintf("\t%s -- %f \n", address, (float)txout.nValue);
+        LogPrintf("\t%s -- " PRId64 " \n", address, txout.nValue);
     
         LogPrintf("\t%s\n", txout.scriptPubKey.ToString());
     }
