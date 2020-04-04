@@ -38,7 +38,7 @@ zlib1g-dev wget curl bsdmainutils automake
 ```shell
 sudo apt-get install mingw-w64
 
-## To display a current selection and make a new selection
+## To display a current selection and make a new selection - !!! POSIX version must be selected !!!
 sudo update-alternatives --config x86_64-w64-mingw32-gcc
 sudo update-alternatives --config x86_64-w64-mingw32-g++
 ```
@@ -47,6 +47,22 @@ sudo update-alternatives --config x86_64-w64-mingw32-g++
 ```shell
 sudo apt-get install python-pip
 sudo pip install pyblake2
+```
+
+### Build
+
+#### Default build (for Ubuntu on Ubuntu) 
+```shell
+./pcutil/build.sh -j$(nproc)
+```
+
+#### Cross-platforms build on Ubuntu (only Windows is supported) 
+```shell
+HOST=x86_64-w64-mingw32 ./pcutil/build.sh -j$(nproc)
+```
+> Windows build must be done on the clean tree:
+```shell
+make clean && make -C src/univalue clean
 ```
 
 License
