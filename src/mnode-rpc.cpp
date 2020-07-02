@@ -264,6 +264,7 @@ UniValue masternode(const UniValue& params, bool fHelp)
                 "  status       - Print masternode status information\n"
                 "  list         - Print list of all known masternodes (see masternodelist for more info)\n"
                 "  list-conf    - Print masternode.conf in JSON format\n"
+                //"  make-conf    - Create masternode configuration in JSON format\n"
                 "  winner       - Print info on next masternode winner to vote for\n"
                 "  winners      - Print list of masternode winners\n"
                 "  top <n> <x>  - Print 10 top masternodes for the current or n-th block.\n"
@@ -495,6 +496,102 @@ UniValue masternode(const UniValue& params, bool fHelp)
             resultObj.push_back(Pair("masternode", mnObj));
         }
 
+        return resultObj;
+    }
+    if (strCommand == "make-conf")
+    {
+        if (params.size() != 5 && params.size() != 7)
+            throw JSONRPCError(RPC_INVALID_PARAMETER,
+                               R"("masternode make-conf "alias" "mnAddress:port" "extAddress:port" "passphrase" "txid" "index"\n"
+                               "Create masternode configuration in JSON format:\n"
+                               "This will 1) generate MasterNode Private Key (mnPrivKey) and 2) generate and register MasterNode PastelID (extKey)\n"
+                               "If collateral txid and index are not provided, it will search for the first available non-locked outpoint with the correct amount (1000000 PSL)\n"
+                               "\nArguments:\n"
+                               "    "alias"             (string) (required) Local alias (name) of Master Node\n"
+                               "    "mnAddress:port"    (string) (required) The address and port of the Master Node's cNode\n"
+                               "    "extAddress:port"   (string) (required) The address and port of the Master Node's Storage Layer\n"
+                               "    "passphrase"        (string) (required) passphrase for new PastelID\n"
+                               "    "txid"              (string) (optional) id of transaction with the collateral amount\n"
+                               "    "index"             (numeric) (optional) index in the transaction with the collateral amount\n"
+                               "\nCreate masternode configuration\n")"
+                               + HelpExampleCli("masternode make-conf",
+                                                R"("myMN" "127.0.0.1:9933" "127.0.0.1:4444" "bc1c5243284272dbb22c301a549d112e8bc9bc454b5ff50b1e5f7959d6b56726" 4)") +
+                               "\nAs json rpc\n"
+                               + HelpExampleRpc("masternode make-conf",
+                                                R"(""myMN" "127.0.0.1:9933" "127.0.0.1:4444" "bc1c5243284272dbb22c301a549d112e8bc9bc454b5ff50b1e5f7959d6b56726" 4")")
+
+            );
+        
+        UniValue resultObj(UniValue::VOBJ);
+    
+        //Alias
+        std::string strAlias = params[1].get_str();
+    
+        //mnAddress:port
+        std::string strMnAddress = params[2].get_str();
+        //TODO : validate correct address format
+    
+        //extAddress:port
+        std::string strExtAddress = params[3].get_str();
+        //TODO : validate correct address format
+    
+        //txid:index
+        std::vector<COutput> vPossibleCoins;
+        pwalletMain->AvailableCoins(vPossibleCoins, true, NULL, false, true, masterNodeCtrl.MasternodeCollateral, true);
+        if (vPossibleCoins.empty()){
+            throw JSONRPCError(RPC_INVALID_PARAMETER, "No spendable collateral transactions exist");
+        }
+
+        std::string strTxid, strIndex;
+        bool bFound = false;
+        if (params.size() != 7) {
+            strTxid = params[5].get_str();
+            strIndex = params[6].get_str();
+            //TODO : validate Outpoint
+            for(COutput& out : vPossibleCoins) {
+                if (out.tx->GetHash().ToString() == strTxid ) {
+                    if (out.i == get_number(params[5])){
+                        bFound = true;
+                        break;
+                    }
+                }
+            }
+        } else {
+            COutput out = vPossibleCoins.front();
+            strTxid = out.tx->GetHash().ToString();
+            strIndex = std::to_string(out.i);
+        }
+        if (!bFound){
+            throw JSONRPCError(RPC_INVALID_PARAMETER, "Collateral transaction doesn't exist or unspendable");
+        }
+    
+        //mnPrivKey
+        CKey secret;
+        secret.MakeNewKey(false);
+        std::string mnPrivKey = EncodeSecret(secret);
+    
+        //PastelID
+        std::string pastelID = std::string{};
+/*      THIS WILL NOT WORK for Hot/Cold case - PastelID hast to be created and registered from the cold MN itself
+        SecureString strKeyPass;
+        strKeyPass.reserve(100);
+        strKeyPass = params[4].get_str().c_str();
+        
+        std::string pastelID = CPastelID::CreateNewLocalKey(strKeyPass);
+        CPastelIDRegTicket regTicket = CPastelIDRegTicket::Create(pastelID, strKeyPass, std::string{});
+        std::string txid = CPastelTicketProcessor::SendTicket(regTicket);
+*/
+    
+        //Create JSON
+        UniValue mnObj(UniValue::VOBJ);
+        mnObj.push_back(Pair("mnAddress", strMnAddress));
+        mnObj.push_back(Pair("extAddress", strExtAddress));
+        mnObj.push_back(Pair("txid", strTxid));
+        mnObj.push_back(Pair("outIndex", strIndex));
+        mnObj.push_back(Pair("mnPrivKey", mnPrivKey));
+        mnObj.push_back(Pair("extKey", pastelID));
+        resultObj.push_back(Pair(strAlias, mnObj));
+    
         return resultObj;
     }
 
@@ -1958,16 +2055,16 @@ CKey ani2psl_secret(const std::string& str)
     return key;
 }
 //INGEST->!!!
-//UniValue ingest(const UniValue& params, bool fHelp) {
-//    std::string strCommand;
-//    if (params.size() >= 1)
-//        strCommand = params[0].get_str();
-//
-//    if (fHelp || (strCommand != "ingest" && strCommand != "ani2psl" && strCommand != "ani2psl_secret"))
-//        throw runtime_error(
-//                "\"ingest\" ingest|ani2psl|ani2psl_secret ...\n"
-//        );
-//
+UniValue ingest(const UniValue& params, bool fHelp) {
+    std::string strCommand;
+    if (params.size() >= 1)
+        strCommand = params[0].get_str();
+
+    if (fHelp || (strCommand != "ingest" && strCommand != "ani2psl" && strCommand != "ani2psl_secret"))
+        throw runtime_error(
+                "\"ingest\" ingest|ani2psl|ani2psl_secret ...\n"
+        );
+
 //    if (strCommand == "ingest") {
 //        if (params.size() != 3)
 //            throw JSONRPCError(RPC_INVALID_PARAMETER,
@@ -2073,26 +2170,26 @@ CKey ani2psl_secret(const std::string& str)
 //
 //        return mnObj;
 //    }
-//    if (strCommand == "ani2psl") {
-//        if (params.size() != 2)
-//            throw JSONRPCError(RPC_INVALID_PARAMETER, "ingest ani2psl ...\n");
-//
-//        std::string aniAddress = params[1].get_str();
-//
-//        CTxDestination dest = ani2psl(aniAddress);
-//        return EncodeDestination(dest);
-//    }
-//    if (strCommand == "ani2psl_secret"){
-//        if (params.size() != 2)
-//            throw JSONRPCError(RPC_INVALID_PARAMETER, "ingest ani2psl_secret ...\n");
-//
-//        std::string aniSecret = params[1].get_str();
-//
-//        CKey pslKey = ani2psl_secret(aniSecret);
-//        return EncodeSecret(pslKey);
-//    }
-//    return NullUniValue;
-//}
+    if (strCommand == "ani2psl") {
+        if (params.size() != 2)
+            throw JSONRPCError(RPC_INVALID_PARAMETER, "ingest ani2psl ...\n");
+
+        std::string aniAddress = params[1].get_str();
+
+        CTxDestination dest = ani2psl(aniAddress);
+        return EncodeDestination(dest);
+    }
+    if (strCommand == "ani2psl_secret"){
+        if (params.size() != 2)
+            throw JSONRPCError(RPC_INVALID_PARAMETER, "ingest ani2psl_secret ...\n");
+
+        std::string aniSecret = params[1].get_str();
+
+        CKey pslKey = ani2psl_secret(aniSecret);
+        return EncodeSecret(pslKey);
+    }
+    return NullUniValue;
+}
 //<-INGEST!!!
 static const CRPCCommand commands[] =
 { //  category              name                        actor (function)           okSafeMode
@@ -2107,7 +2204,7 @@ static const CRPCCommand commands[] =
     { "mnode",               "chaindata",              &chaindata,              true  },
     { "mnode",               "tickets",                &tickets,                true  },
 //INGEST->!!!
-//    { "mnode",               "ingest",                 &ingest,                true  },
+    { "mnode",               "ingest",                 &ingest,                true  },
 //<-INGEST!!!
 };
 

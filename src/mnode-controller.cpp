@@ -92,7 +92,7 @@ bool CMasterNodeController::EnableMasterNode(std::ostringstream& strErrors, boos
     // parse masternode.conf
     std::string strErr;
     if(!masternodeConfig.read(strErr)) {
-        fprintf(stderr,"Error reading masternode configuration file: %s\n", strErr.c_str());
+        strErrors << "Error reading masternode configuration file: " << strErr.c_str();
         return false;
     }
 

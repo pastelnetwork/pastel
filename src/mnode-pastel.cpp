@@ -206,7 +206,7 @@ bool CPastelTicketProcessor::ValidateIfTicketTransaction(const CTransaction& tx)
     }
     
     if (!ok)
-        LogPrintf("CPastelTicketProcessor::ParseTicketAndUpdateDB -- Invalid ticket [ticket_id=%d, txid=%s]. ERROR: %s\n", (int)ticket_id, tx.GetHash().GetHex(), error_ret);
+        LogPrintf("CPastelTicketProcessor::ValidateIfTicketTransaction -- Invalid ticket [ticket_id=%d, txid=%s]. ERROR: %s\n", (int)ticket_id, tx.GetHash().GetHex(), error_ret);
     
     return ok;
 }
