@@ -91,14 +91,14 @@ class MasterNodeGovernanceTest (MasterNodeCommon):
 
         time.sleep(3)
 
-        res1 = self.nodes[self.mining_node_num].governance("ticket", "add", address1, "1000", "test", "no")
+        res1 = self.nodes[self.mining_node_num].governance("ticket", "add", address1, str(self.collateral), "test", "no")
         assert_equal(res1['result'], 'failed')
 
         res1 = self.nodes[self.mining_node_num].governance("ticket", "vote", ticket1_id, "yes")
         assert_equal(res1['result'], 'failed')
 
         address2 = self.nodes[self.mining_node_num].getnewaddress()
-        res1 = self.nodes[self.mining_node_num].governance("ticket", "add", address2, "1000", "test", "yes")
+        res1 = self.nodes[self.mining_node_num].governance("ticket", "add", address2, str(self.collateral), "test", "yes")
         assert_equal(res1['errorMessage'], "Only Active Master Node can vote")
 
         time.sleep(3)

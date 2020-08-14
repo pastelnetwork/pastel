@@ -9,6 +9,7 @@ from test_framework.util import assert_equal, assert_greater_than, initialize_ch
     initialize_datadir, start_nodes, start_node, connect_nodes_bi, \
     bitcoind_processes, wait_and_assert_operationid_status, p2p_port, \
     stop_node
+from test_framework.authproxy import JSONRPCException
 
 import os
 import sys
@@ -21,6 +22,8 @@ from decimal import Decimal, getcontext
 getcontext().prec = 16
 
 class MasterNodeCommon (BitcoinTestFramework):
+    collateral = int(1000)
+
     def setup_masternodes_network(self, private_keys_list, number_of_non_mn_to_start=0, debug_flags="masternode,mnpayments,governance"):
         for index, key in enumerate(private_keys_list):
             print("start MN {0}".format(index))
@@ -35,16 +38,21 @@ class MasterNodeCommon (BitcoinTestFramework):
 
     def mining_enough(self, mining_node_num, nodes_to_start):
         
-        min_blocks_to_mine = nodes_to_start*1000/self._reward
-        blocks_to_mine = max(min_blocks_to_mine, 100)
+        min_blocks_to_mine = nodes_to_start*self.collateral/self._reward
+        blocks_to_mine = int(max(min_blocks_to_mine, 100))
 
-        print("Mining {0} blocks on node {1}...".format(blocks_to_mine, mining_node_num))
-        
-        self.nodes[mining_node_num].generate(blocks_to_mine)
+        print("Mining total of {0} blocks on node {1}...".format(blocks_to_mine, mining_node_num))
+
+        while blocks_to_mine > 0:
+            blocks_to_mine_part = int(min(blocks_to_mine, 100))
+            blocks_to_mine -= blocks_to_mine_part
+            print("Mining {0} blocks on node {1}...".format(blocks_to_mine_part, mining_node_num))
+            self.nodes[mining_node_num].generate(blocks_to_mine_part)
         self.sync_all()
         self.nodes[mining_node_num].generate(100)
         self.sync_all()
 
+        blocks_to_mine = int(max(min_blocks_to_mine, 100))
         assert_equal(self.nodes[mining_node_num].getbalance(), self._reward*blocks_to_mine)
 
     def start_mn(self, mining_node_num, hot_node_num, cold_nodes, num_of_nodes):
@@ -56,14 +64,14 @@ class MasterNodeCommon (BitcoinTestFramework):
         #1
         for ind, num in enumerate(cold_nodes):
             collateral_address = self.nodes[hot_node_num].getnewaddress()
-            print("{0}: Sending 1000 coins to node {1}; collateral address {2} ...".format(ind, hot_node_num, collateral_address))
-            collateral_txid = self.nodes[mining_node_num].sendtoaddress(collateral_address, 1000, "", "", False)
+            print("{0}: Sending {1} coins to node {2}; collateral address {3} ...".format(ind, self.collateral, hot_node_num, collateral_address))
+            collateral_txid = self.nodes[mining_node_num].sendtoaddress(collateral_address, self.collateral, "", "", False)
 
             self.sync_all()
             self.nodes[mining_node_num].generate(1)
             self.sync_all()
             
-            assert_equal(self.nodes[hot_node_num].getbalance(), 1000*(ind+1))
+            assert_equal(self.nodes[hot_node_num].getbalance(), self.collateral*(ind+1))
             
             # print("node {0} collateral outputs".format(hot_node_num))
             # print(self.nodes[hot_node_num].masternode("outputs"))

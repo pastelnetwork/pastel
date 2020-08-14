@@ -72,7 +72,9 @@ void CMasterNodeController::SetParameters()
         MasternodeMinMNPSeconds             =  1 * 60;    
         MasternodeExpirationSeconds         =  3 * 60;
         MasternodeNewStartRequiredSeconds   =  6 * 60;
-
+    
+        MasternodeCollateral                = 1000;
+    
         LogPrintf("Regtest Mode: MNP = %d sec; Expiration = %d sec; Restart = %d sec \n", MasternodeMinMNPSeconds, MasternodeExpirationSeconds, MasternodeNewStartRequiredSeconds);
     }
     else{
@@ -99,7 +101,7 @@ bool CMasterNodeController::EnableMasterNode(std::ostringstream& strErrors, boos
     // NOTE: Masternode should have no wallet
     fMasterNode = GetBoolArg("-masternode", false);
 
-    if((fMasterNode || masternodeConfig.getCount() > 0) && fTxIndex == false) {
+    if((fMasterNode || masternodeConfig.getCount() > 0) && !fTxIndex) {
         strErrors << _("Enabling Masternode support requires turning on transaction indexing.")
                 << _("Please add txindex=1 to your configuration and start with -reindex");
         return false;

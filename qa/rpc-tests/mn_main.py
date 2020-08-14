@@ -152,7 +152,7 @@ class MasterNodeMainTest (MasterNodeCommon):
         if 'spent' in tests:
             print("=== Test MN Spent ===")
 
-            assert_equal(self.nodes[2].getbalance(), 1000)
+            assert_equal(self.nodes[2].getbalance(), self.collateral)
             usp = self.nodes[2].listlockunspent()
             print("{0}-{1}".format(usp[0]['txid'],usp[0]['vout']))
             callateral_outpoint = mn_id.split('-')
@@ -172,7 +172,7 @@ class MasterNodeMainTest (MasterNodeCommon):
 
             balance = self.nodes[2].getbalance()
             print(balance)
-            assert_greater_than(Decimal("1000"), Decimal(balance))
+            assert_greater_than(Decimal(str(self.collateral)), Decimal(balance))
 
             print(self.nodes[0].masternode("status")["status"])
             # wait_for_it(10, 10, "OUTPOINT_SPENT", self.nodes[0:self.total_number_of_nodes], mn_id, 3)

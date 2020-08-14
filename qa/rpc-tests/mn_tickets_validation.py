@@ -70,8 +70,8 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         self.mn0_address1 = self.nodes[0].getnewaddress()
         self.nonmn3_address1 = self.nodes[self.non_mn3].getnewaddress()
 
-        self.nodes[self.mining_node_num].sendtoaddress(self.mn0_address1, 1000, "", "", False)
-        self.nodes[self.mining_node_num].sendtoaddress(self.nonmn3_address1, 1000, "", "", False)
+        self.nodes[self.mining_node_num].sendtoaddress(self.mn0_address1, self.collateral, "", "", False)
+        self.nodes[self.mining_node_num].sendtoaddress(self.nonmn3_address1, self.collateral, "", "", False)
         time.sleep(2)
         self.sync_all()
         self.nodes[self.mining_node_num].generate(1)

@@ -37,11 +37,13 @@ void CPastelTicketProcessor::InitTicketDB()
 	nTotalCache = std::min(nTotalCache, nMaxDbCache << 20); // total cache cannot be greated than nMaxDbcache
 	uint64_t nTicketDBCache = nTotalCache / 8 / uint8_t(TicketID::COUNT);
 	
-	dbs[TicketID::PastelID] = std::unique_ptr<CDBWrapper>(new CDBWrapper(GetDataDir() / "tickets" / "pslids", nTicketDBCache, false, fReindex));
-	dbs[TicketID::Art] 		= std::unique_ptr<CDBWrapper>(new CDBWrapper(GetDataDir() / "tickets" / "artreg", nTicketDBCache, false, fReindex));
+	dbs[TicketID::PastelID]     = std::unique_ptr<CDBWrapper>(new CDBWrapper(GetDataDir() / "tickets" / "pslids", nTicketDBCache, false, fReindex));
+	dbs[TicketID::Art] 		    = std::unique_ptr<CDBWrapper>(new CDBWrapper(GetDataDir() / "tickets" / "artreg", nTicketDBCache, false, fReindex));
 	dbs[TicketID::Activate] 	= std::unique_ptr<CDBWrapper>(new CDBWrapper(GetDataDir() / "tickets" / "artcnf", nTicketDBCache, false, fReindex));
-	dbs[TicketID::Trade] 	= std::unique_ptr<CDBWrapper>(new CDBWrapper(GetDataDir() / "tickets" / "arttrd", nTicketDBCache, false, fReindex));
-	dbs[TicketID::Down] 	= std::unique_ptr<CDBWrapper>(new CDBWrapper(GetDataDir() / "tickets" / "takedn", nTicketDBCache, false, fReindex));
+	dbs[TicketID::Sell] 	    = std::unique_ptr<CDBWrapper>(new CDBWrapper(GetDataDir() / "tickets" / "artsel", nTicketDBCache, false, fReindex));
+	dbs[TicketID::Buy] 	        = std::unique_ptr<CDBWrapper>(new CDBWrapper(GetDataDir() / "tickets" / "artbuy", nTicketDBCache, false, fReindex));
+	dbs[TicketID::Trade] 	    = std::unique_ptr<CDBWrapper>(new CDBWrapper(GetDataDir() / "tickets" / "arttrd", nTicketDBCache, false, fReindex));
+	dbs[TicketID::Down] 	    = std::unique_ptr<CDBWrapper>(new CDBWrapper(GetDataDir() / "tickets" / "takedn", nTicketDBCache, false, fReindex));
 }
 
 void CPastelTicketProcessor::UpdatedBlockTip(const CBlockIndex *pindex, bool fInitialDownload)
@@ -139,11 +141,21 @@ bool CPastelTicketProcessor::ValidateIfTicketTransaction(const CTransaction& tx)
             ok = ticket.IsValid(false, error_ret);
             storageFee = ticket.storageFee;
         }
-//		else if (ticket_id == TicketID::Trade) {
-//            CArtTradeTicket ticket;
-//            data_stream >> ticket;
-//            return ticket.IsValid(true, error_ret);
-//		}
+        else if (ticket_id == TicketID::Sell) {
+            CArtSellTicket ticket;
+            data_stream >> ticket;
+            return ticket.IsValid(true, error_ret);
+        }
+        else if (ticket_id == TicketID::Buy) {
+            CArtBuyTicket ticket;
+            data_stream >> ticket;
+            return ticket.IsValid(true, error_ret);
+        }
+		else if (ticket_id == TicketID::Trade) {
+            CArtTradeTicket ticket;
+            data_stream >> ticket;
+            return ticket.IsValid(true, error_ret);
+		}
 //		else if (ticket_id == TicketID::Down) {
 //            CTakeDownTicket ticket;
 //            data_stream >> ticket;
@@ -235,11 +247,21 @@ bool CPastelTicketProcessor::ParseTicketAndUpdateDB(CMutableTransaction& tx, int
             CArtActivateTicket ticket;
             data_stream >> ticket;
 			return UpdateDB<CArtActivateTicket>(ticket, txid, nBlockHeight);
-//		}
-//		else if (ticket_id == TicketID::Trade) {
-//            CArtTradeTicket ticket;
-//            data_stream >> ticket;
-//            return UpdateDB<CArtTradeTicket>(ticket, txid, nBlockHeight);
+        }
+        else if (ticket_id == TicketID::Sell) {
+            CArtSellTicket ticket;
+            data_stream >> ticket;
+            return UpdateDB<CArtSellTicket>(ticket, txid, nBlockHeight);
+        }
+        else if (ticket_id == TicketID::Buy) {
+            CArtBuyTicket ticket;
+            data_stream >> ticket;
+            return UpdateDB<CArtBuyTicket>(ticket, txid, nBlockHeight);
+		}
+		else if (ticket_id == TicketID::Trade) {
+            CArtTradeTicket ticket;
+            data_stream >> ticket;
+            return UpdateDB<CArtTradeTicket>(ticket, txid, nBlockHeight);
 //		}
 //		else if (ticket_id == TicketID::Down) {
 //            CTakeDownTicket ticket;
@@ -305,10 +327,21 @@ bool CPastelTicketProcessor::ParseTicketAndUpdateDB(CMutableTransaction& tx, int
             auto t = new CArtActivateTicket();
             data_stream >> *t;
             ticket.reset(t);
-//		}
-//		if (ticketId == TicketID::Trade) {
-//			  Trade ticket;
-//            data_stream >> ticket;
+        }
+        if (ticketId == TicketID::Sell) {
+            auto t = new CArtSellTicket();
+            data_stream >> *t;
+            ticket.reset(t);
+        }
+        if (ticketId == TicketID::Buy) {
+            auto t = new CArtBuyTicket();
+            data_stream >> *t;
+            ticket.reset(t);
+		}
+		if (ticketId == TicketID::Trade) {
+            auto t = new CArtTradeTicket();
+            data_stream >> *t;
+            ticket.reset(t);
 //		}
 //		if (ticketId == TicketID::Down) {
 //			  Down ticket;
@@ -343,6 +376,9 @@ bool CPastelTicketProcessor::CheckTicketExist(const T& ticket)
 template bool CPastelTicketProcessor::CheckTicketExist<CPastelIDRegTicket>(const CPastelIDRegTicket&);
 template bool CPastelTicketProcessor::CheckTicketExist<CArtRegTicket>(const CArtRegTicket&);
 template bool CPastelTicketProcessor::CheckTicketExist<CArtActivateTicket>(const CArtActivateTicket&);
+template bool CPastelTicketProcessor::CheckTicketExist<CArtSellTicket>(const CArtSellTicket&);
+template bool CPastelTicketProcessor::CheckTicketExist<CArtBuyTicket>(const CArtBuyTicket&);
+template bool CPastelTicketProcessor::CheckTicketExist<CArtTradeTicket>(const CArtTradeTicket&);
 
 template<class T>
 bool CPastelTicketProcessor::CheckTicketExistBySecondaryKey(const T& ticket)
@@ -357,6 +393,9 @@ bool CPastelTicketProcessor::CheckTicketExistBySecondaryKey(const T& ticket)
 template bool CPastelTicketProcessor::CheckTicketExistBySecondaryKey<CPastelIDRegTicket>(const CPastelIDRegTicket&);
 template bool CPastelTicketProcessor::CheckTicketExistBySecondaryKey<CArtRegTicket>(const CArtRegTicket&);
 template bool CPastelTicketProcessor::CheckTicketExistBySecondaryKey<CArtActivateTicket>(const CArtActivateTicket&);
+template bool CPastelTicketProcessor::CheckTicketExistBySecondaryKey<CArtSellTicket>(const CArtSellTicket&);
+template bool CPastelTicketProcessor::CheckTicketExistBySecondaryKey<CArtBuyTicket>(const CArtBuyTicket&);
+template bool CPastelTicketProcessor::CheckTicketExistBySecondaryKey<CArtTradeTicket>(const CArtTradeTicket&);
 
 template<class T>
 bool CPastelTicketProcessor::FindTicket(T& ticket)
@@ -367,6 +406,9 @@ bool CPastelTicketProcessor::FindTicket(T& ticket)
 template bool CPastelTicketProcessor::FindTicket<CPastelIDRegTicket>(CPastelIDRegTicket&);
 template bool CPastelTicketProcessor::FindTicket<CArtRegTicket>(CArtRegTicket&);
 template bool CPastelTicketProcessor::FindTicket<CArtActivateTicket>(CArtActivateTicket&);
+template bool CPastelTicketProcessor::FindTicket<CArtSellTicket>(CArtSellTicket&);
+template bool CPastelTicketProcessor::FindTicket<CArtBuyTicket>(CArtBuyTicket&);
+template bool CPastelTicketProcessor::FindTicket<CArtTradeTicket>(CArtTradeTicket&);
 
 template<class T>
 bool CPastelTicketProcessor::FindTicketBySecondaryKey(T& ticket)
@@ -381,6 +423,9 @@ bool CPastelTicketProcessor::FindTicketBySecondaryKey(T& ticket)
 template bool CPastelTicketProcessor::FindTicketBySecondaryKey<CPastelIDRegTicket>(CPastelIDRegTicket&);
 template bool CPastelTicketProcessor::FindTicketBySecondaryKey<CArtRegTicket>(CArtRegTicket&);
 template bool CPastelTicketProcessor::FindTicketBySecondaryKey<CArtActivateTicket>(CArtActivateTicket&);
+template bool CPastelTicketProcessor::FindTicketBySecondaryKey<CArtSellTicket>(CArtSellTicket&);
+template bool CPastelTicketProcessor::FindTicketBySecondaryKey<CArtBuyTicket>(CArtBuyTicket&);
+template bool CPastelTicketProcessor::FindTicketBySecondaryKey<CArtTradeTicket>(CArtTradeTicket&);
 
 template<class T, class MVKey>
 std::vector<T> CPastelTicketProcessor::FindTicketsByMVKey(TicketID ticketId, const MVKey& mvKey)
@@ -441,6 +486,9 @@ std::string CPastelTicketProcessor::SendTicket(const T& ticket)
 template std::string CPastelTicketProcessor::SendTicket<CPastelIDRegTicket>(const CPastelIDRegTicket&);
 template std::string CPastelTicketProcessor::SendTicket<CArtRegTicket>(const CArtRegTicket&);
 template std::string CPastelTicketProcessor::SendTicket<CArtActivateTicket>(const CArtActivateTicket&);
+template std::string CPastelTicketProcessor::SendTicket<CArtSellTicket>(const CArtSellTicket&);
+template std::string CPastelTicketProcessor::SendTicket<CArtBuyTicket>(const CArtBuyTicket&);
+template std::string CPastelTicketProcessor::SendTicket<CArtTradeTicket>(const CArtTradeTicket&);
 
 #ifdef ENABLE_WALLET
 bool CPastelTicketProcessor::CreateP2FMSTransaction(const std::string& input_string, CMutableTransaction& tx_out, CAmount price, std::string& error_ret)
@@ -697,6 +745,8 @@ CAmount CPastelTicketProcessor::GetTicketPrice(TicketID tid)
 		case TicketID::PastelID: 	return 10;
 		case TicketID::Art: 		return 10;
 		case TicketID::Activate: 	return 10;
+		case TicketID::Sell: 		return 1000;
+		case TicketID::Buy: 		return 1000;
 		case TicketID::Trade: 		return 1000;
 		case TicketID::Down: 		return 1000;
 	};
@@ -1145,6 +1195,8 @@ bool CArtActivateTicket::IsValid(bool preReg, std::string& errRet) const
                            regTicketTnxId);
         return false;
     }
+    //3.a Verify that whoever created this ticket has private key used to sign the ArtReg ticket (PastelID from this ticket does belong to the artist!!)
+    
 
     //4. check ArtReg ticket is at the assumed height
     if (artTicket->artistHeight != artistHeight)
@@ -1244,11 +1296,189 @@ std::string CArtActivateTicket::ToJSON()
     return masterNodeCtrl.masternodeTickets.FindTicketsByMVKey<CArtActivateTicket, int>(TicketID::Activate, height);
 }
 
+// Art Trade Tickets ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// CArtSellTicket ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+/*static*/ CArtSellTicket CArtSellTicket::Create(std::string _artTnxId, int _askedPrice, int _validAfter, int _validBefore, std::string _pastelID, const SecureString& strKeyPass)
+{
+    CArtSellTicket ticket(std::move(_pastelID));
+    
+    ticket.artTnxId = std::move(_artTnxId);
+    ticket.askedPrice = _askedPrice;
+    ticket.validBefore = _validBefore;
+    ticket.validAfter = _validAfter;
+    
+    std::stringstream ss;
+    ss << ticket.pastelID;
+    ss << ticket.artTnxId;
+    ss << ticket.askedPrice;
+    ss << ticket.validBefore;
+    ss << ticket.validAfter;
+    std::string strTicket = ss.str();
+    ticket.signature = CPastelID::Sign(reinterpret_cast<const unsigned char*>(strTicket.c_str()), strTicket.size(), ticket.pastelID, strKeyPass);
+    
+    return ticket;
+}
+
+bool CArtSellTicket::IsValid(bool preReg, std::string& errRet) const
+{
+    if (preReg){
+        // Something to check ONLY before ticket made into transaction
+        // ...
+        
+        //TODO Pastel: validate that address has coins to pay for registration - 10PSL + fee
+        // ...
+    }
+
+//    if (masterNodeCtrl.masternodeSync.IsSynced()) { // Something to validate only if Initial Download
+//    } else { // Something to validate only if NOT Initial Download
+//        //1. check if TicketDB has the same outpoint and if yes, reject if it has different signature
+//    }
+    
+    // Something to always validate
+    std::string err;
+    
+    //1. Validate ticket pointed by artTnxId
+    
+    return true;
+}
+
+std::string CArtSellTicket::ToJSON()
+{
+    json jsonObj;
+    jsonObj = {
+            {"txid", ticketTnx},
+            {"height", ticketBlock},
+            {"ticket", {
+                             {"type", TicketName()},
+                             {"pastelID", pastelID},
+                             {"art_txid", artTnxId},
+                             {"asked_price", askedPrice},
+                             {"valid_after", validAfter},
+                             {"valid_before", validBefore},
+                             {"signature", ed_crypto::Hex_Encode(signature.data(), signature.size())}
+                     }}
+    };
+    return jsonObj.dump(4);
+}
+
+/*static*/ bool CArtSellTicket::FindTicketInDb(const std::string& key, CArtSellTicket& ticket)
+{
+//    ticket = key;
+    return masterNodeCtrl.masternodeTickets.FindTicket(ticket);
+}
+
+/*static*/ std::vector<CArtSellTicket> CArtSellTicket::FindAllTicketByPastelID(const std::string& pastelID)
+{
+    return masterNodeCtrl.masternodeTickets.FindTicketsByMVKey<CArtSellTicket, std::string>(TicketID::Sell, pastelID);
+}
+
+/*static*/ std::vector<CArtSellTicket> CArtSellTicket::FindAllTicketByArtTnxID(const std::string& artTnxId)
+{
+    return masterNodeCtrl.masternodeTickets.FindTicketsByMVKey<CArtSellTicket, std::string>(TicketID::Sell, artTnxId);
+}
+
+// CArtBuyTicket ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+/*static*/ CArtBuyTicket CArtBuyTicket::Create(std::string _sellTnxId, int _price, std::string _pastelID, const SecureString& strKeyPass)
+{
+    CArtBuyTicket ticket(std::move(_pastelID));
+    
+    ticket.sellTnxId = std::move(_sellTnxId);
+    ticket.price = _price;
+    
+    std::stringstream ss;
+    ss << ticket.pastelID;
+    ss << ticket.sellTnxId;
+    ss << ticket.price;
+    std::string strTicket = ss.str();
+    ticket.signature = CPastelID::Sign(reinterpret_cast<const unsigned char*>(strTicket.c_str()), strTicket.size(), ticket.pastelID, strKeyPass);
+    
+    return ticket;
+}
+
+bool CArtBuyTicket::IsValid(bool preReg, std::string& errRet) const
+{
+    return true;
+}
+
+std::string CArtBuyTicket::ToJSON()
+{
+    json jsonObj;
+    jsonObj = {
+            {"txid", ticketTnx},
+            {"height", ticketBlock},
+            {"ticket", {
+                             {"type", TicketName()},
+                             {"pastelID", pastelID},
+                             {"sell_txid", sellTnxId},
+                             {"price", price},
+                             {"signature", ed_crypto::Hex_Encode(signature.data(), signature.size())}
+                     }}
+    };
+    return jsonObj.dump(4);
+}
+
+/*static*/ bool CArtBuyTicket::FindTicketInDb(const std::string& key, CArtBuyTicket& ticket)
+{
+    ticket.sellTnxId = key;
+    return masterNodeCtrl.masternodeTickets.FindTicket(ticket);
+}
+
+/*static*/ std::vector<CArtBuyTicket> CArtBuyTicket::FindAllTicketByPastelID(const std::string& pastelID)
+{
+    return masterNodeCtrl.masternodeTickets.FindTicketsByMVKey<CArtBuyTicket, std::string>(TicketID::Buy, pastelID);
+}
+
 // CArtTradeTicket ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+/*static*/ CArtTradeTicket CArtTradeTicket::Create(std::string _sellTnxId, std::string _buyTnxId, std::string _pastelID, const SecureString& strKeyPass)
+{
+    CArtTradeTicket ticket(std::move(_pastelID));
+    
+    ticket.sellTnxId = std::move(_sellTnxId);
+    ticket.buyTnxId = std::move(_buyTnxId);
+    
+    std::stringstream ss;
+    ss << ticket.pastelID;
+    ss << ticket.sellTnxId;
+    ss << ticket.buyTnxId;
+    std::string strTicket = ss.str();
+    ticket.signature = CPastelID::Sign(reinterpret_cast<const unsigned char*>(strTicket.c_str()), strTicket.size(), ticket.pastelID, strKeyPass);
+    
+    return ticket;
+}
+
+bool CArtTradeTicket::IsValid(bool preReg, std::string& errRet) const
+{
+    return true;
+}
+
+std::string CArtTradeTicket::ToJSON()
+{
+    json jsonObj;
+    jsonObj = {
+            {"txid", ticketTnx},
+            {"height", ticketBlock},
+            {"ticket", {
+                             {"type", TicketName()},
+                             {"pastelID", pastelID},
+                             {"sell_txid", sellTnxId},
+                             {"buy_txid", buyTnxId},
+                             {"signature", ed_crypto::Hex_Encode(signature.data(), signature.size())}
+                     }}
+    };
+    return jsonObj.dump(4);
+}
 
 /*static*/ bool CArtTradeTicket::FindTicketInDb(const std::string& key, CArtTradeTicket& ticket)
 {
-    return false;
+    ticket.sellTnxId = key;
+    ticket.buyTnxId = key;
+    return masterNodeCtrl.masternodeTickets.FindTicket(ticket) ||
+           masterNodeCtrl.masternodeTickets.FindTicketBySecondaryKey(ticket);
+}
+
+/*static*/ std::vector<CArtTradeTicket> CArtTradeTicket::FindAllTicketByPastelID(const std::string& pastelID)
+{
+    return masterNodeCtrl.masternodeTickets.FindTicketsByMVKey<CArtTradeTicket, std::string>(TicketID::Trade, pastelID);
 }
 
 // CTakeDownTicket ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1324,4 +1554,7 @@ std::string CPastelTicketProcessor::CreateFakeTransaction(T& ticket, CAmount tic
 template std::string CPastelTicketProcessor::CreateFakeTransaction<CPastelIDRegTicket>(CPastelIDRegTicket&,CAmount,const std::vector<std::pair<std::string, CAmount>>&,const std::string&,bool);
 template std::string CPastelTicketProcessor::CreateFakeTransaction<CArtRegTicket>(CArtRegTicket&,CAmount,const std::vector<std::pair<std::string, CAmount>>&,const std::string&,bool);
 template std::string CPastelTicketProcessor::CreateFakeTransaction<CArtActivateTicket>(CArtActivateTicket&,CAmount,const std::vector<std::pair<std::string, CAmount>>&,const std::string&,bool);
+template std::string CPastelTicketProcessor::CreateFakeTransaction<CArtSellTicket>(CArtSellTicket&,CAmount,const std::vector<std::pair<std::string, CAmount>>&,const std::string&,bool);
+template std::string CPastelTicketProcessor::CreateFakeTransaction<CArtBuyTicket>(CArtBuyTicket&,CAmount,const std::vector<std::pair<std::string, CAmount>>&,const std::string&,bool);
+template std::string CPastelTicketProcessor::CreateFakeTransaction<CArtTradeTicket>(CArtTradeTicket&,CAmount,const std::vector<std::pair<std::string, CAmount>>&,const std::string&,bool);
 #endif

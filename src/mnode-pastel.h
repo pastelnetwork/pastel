@@ -14,6 +14,8 @@ enum class TicketID : uint8_t{
 	PastelID,
 	Art,
 	Activate,
+	Sell,
+	Buy,
 	Trade,
 	Down,
 	
@@ -210,10 +212,11 @@ public:
 /*
 	"ticket": {
 		"type": "activation",
-		"pastelID": "",
-		"reg_txid": "",
-		"reg_height": "",
-		"reg_fee": "",
+		"pastelID": "",         //PastelID of the artist
+		"reg_txid": "",         //tnx with registration ticket in it
+		"artist_height": "",    //block at which artist created Art Ticket,
+		                        //is used to check if the MN that created art registration ticket was indeed top MN when artist create ticket
+		"reg_fee": "",          //should match the reg fee from Art Ticket
 		"signature": ""
 	},
  */
@@ -265,11 +268,175 @@ public:
     static std::vector<CArtActivateTicket> FindAllTicketByArtistHeight(int height);
 };
 
-// Art Trade Ticket /////////////////////////////////////////////////////////////////////////////////////////////////////
-class CArtTradeTicket : public CPastelTicket<TicketID::Trade, NoKey, NoKey, NoKey, NoKey>
+// Art Trade Tickets /////////////////////////////////////////////////////////////////////////////////////////////////////
+/*
+	"ticket": {
+		"type": "sell",
+		"pastelID": "",     //PastelID of the art owner - either 1) an original artist; or 2) a previous buyer,
+		                    //should be the same in either 1) art activation ticket or 2) trade ticket
+		"art_txid": "",     //txid with either 1) art activation ticket or 2) trade ticket in it
+		"asked_price": "",
+		"valid_after": "",
+		"valid_before": "",
+		"reserved": "",
+		"signature": ""
+	},
+ */
+
+class CArtSellTicket : public CPastelTicket<TicketID::Sell, std::string, NoKey, std::string, std::string>
 {
 public:
+    std::string pastelID;
+    std::string artTnxId;
+    uint askedPrice{};
+    uint validAfter{};              //as a block height
+    uint validBefore{};             //as a block height
+    std::string reserved;
+    std::vector<unsigned char> signature;
+    
+public:
+    CArtSellTicket() = default;
+    explicit CArtSellTicket(std::string _pastelID) : pastelID(std::move(_pastelID)) {}
+    
+    std::string TicketName() const override {return "sell";}
+    std::string KeyOne() const override {return "";} //???
+    bool HasKeyTwo() const override {return false;}
+    bool HasMVKeyOne() const override {return true;}
+    std::string MVKeyOne() const override {return pastelID;}
+    bool HasMVKeyTwo() const override {return true;}
+    std::string MVKeyTwo() const override {return artTnxId;}
+    
+    std::string ToJSON() override;
+    bool IsValid(bool preReg, std::string& errRet) const override;
+    
+    ADD_SERIALIZE_METHODS;
+    
+    template <typename Stream, typename Operation>
+    inline void SerializationOp(Stream& s, Operation ser_action) {
+        READWRITE(pastelID);
+        READWRITE(artTnxId);
+        READWRITE(askedPrice);
+        READWRITE(validAfter);
+        READWRITE(validBefore);
+        READWRITE(reserved);
+        READWRITE(signature);
+        READWRITE(ticketTnx);
+        READWRITE(ticketBlock);
+    }
+    
+    static CArtSellTicket Create(std::string _artTnxId, int _askedPrice, int _validAfter, int _validBefore, std::string _pastelID, const SecureString& strKeyPass);
+    static bool FindTicketInDb(const std::string& key, CArtSellTicket& ticket);
+    
+    static std::vector<CArtSellTicket> FindAllTicketByPastelID(const std::string& pastelID);
+    static std::vector<CArtSellTicket> FindAllTicketByArtTnxID(const std::string& artTnxId);
+};
+
+/*
+	"ticket": {
+		"type": "buy",
+		"pastelID": "",     //PastelID of the buyer
+		"sell_txid": "",    //txid with sale ticket
+		"price": "",
+		"reserved": "",
+		"signature": ""
+	},
+ */
+class CArtBuyTicket : public CPastelTicket<TicketID::Buy, std::string, NoKey, std::string, NoKey>
+{
+public:
+    std::string pastelID;
+    std::string sellTnxId;
+    uint price{};
+    std::string reserved;
+    std::vector<unsigned char> signature;
+
+public:
+    CArtBuyTicket() = default;
+    explicit CArtBuyTicket(std::string _pastelID) : pastelID(std::move(_pastelID)) {}
+    
+    std::string TicketName() const override {return "buy";}
+    std::string KeyOne() const override {return sellTnxId;}
+    bool HasKeyTwo() const override {return false;}
+    bool HasMVKeyOne() const override {return true;}
+    std::string MVKeyOne() const override {return pastelID;}
+    bool HasMVKeyTwo() const override {return false;}
+    
+    std::string ToJSON() override;
+    bool IsValid(bool preReg, std::string& errRet) const override;
+    
+    ADD_SERIALIZE_METHODS;
+    
+    template <typename Stream, typename Operation>
+    inline void SerializationOp(Stream& s, Operation ser_action) {
+        READWRITE(pastelID);
+        READWRITE(sellTnxId);
+        READWRITE(price);
+        READWRITE(reserved);
+        READWRITE(signature);
+        READWRITE(ticketTnx);
+        READWRITE(ticketBlock);
+    }
+    
+    static CArtBuyTicket Create(std::string _sellTnxId, int _price, std::string _pastelID, const SecureString& strKeyPass);
+    static bool FindTicketInDb(const std::string& key, CArtBuyTicket& ticket);
+    
+    static std::vector<CArtBuyTicket> FindAllTicketByPastelID(const std::string& pastelID);
+};
+
+/*
+	"ticket": {
+		"type": "trade",
+		"pastelID": "",     //PastelID of the buyer
+		"sell_txid": "",    //txid with sale ticket
+		"buy_txid": "",    //txid with sale ticket
+		"price": "",
+		"reserved": "",
+		"signature": ""
+	},
+ */
+class CArtTradeTicket : public CPastelTicket<TicketID::Trade, std::string, std::string, std::string, NoKey>
+{
+public:
+    std::string pastelID;
+    std::string sellTnxId;
+    std::string buyTnxId;
+    uint price{};
+    std::string reserved;
+    std::vector<unsigned char> signature;
+
+public:
+    CArtTradeTicket() = default;
+    explicit CArtTradeTicket(std::string _pastelID) : pastelID(std::move(_pastelID)) {}
+    
+    std::string TicketName() const override {return "trade";}
+    std::string KeyOne() const override {return sellTnxId;}
+    bool HasKeyTwo() const override {return true;}
+    std::string KeyTwo() const override {return buyTnxId;}
+    bool HasMVKeyOne() const override {return true;}
+    std::string MVKeyOne() const override {return pastelID;}
+    bool HasMVKeyTwo() const override {return false;}
+    
+    std::string ToJSON() override;
+    bool IsValid(bool preReg, std::string& errRet) const override;
+    
+    ADD_SERIALIZE_METHODS;
+    
+    template <typename Stream, typename Operation>
+    inline void SerializationOp(Stream& s, Operation ser_action) {
+        READWRITE(pastelID);
+        READWRITE(sellTnxId);
+        READWRITE(buyTnxId);
+        READWRITE(price);
+        READWRITE(reserved);
+        READWRITE(signature);
+        READWRITE(ticketTnx);
+        READWRITE(ticketBlock);
+    }
+    
+    static CArtTradeTicket Create(std::string _sellTnxId, std::string _buyTnxId, std::string _pastelID, const SecureString& strKeyPass);
     static bool FindTicketInDb(const std::string& key, CArtTradeTicket& ticket);
+    
+    static std::vector<CArtTradeTicket> FindAllTicketByPastelID(const std::string& pastelID);
 };
 
 // Take Down Ticket /////////////////////////////////////////////////////////////////////////////////////////////////////

@@ -634,7 +634,14 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         self.art_ticket1_txid = self.nodes[self.top_mns_index0].tickets("register", "art", "12345", json.dumps(signatures_dict), self.top_mn_pastelid0, "passphrase", "key1", "key2", str(self.artist_ticket_height), str(self.storage_fee))["txid"]
         assert_true(self.art_ticket1_txid, "No ticket was created")
         time.sleep(2)
-        self.sync_all(30, 4)
+        self.nodes[self.mining_node_num].generate(1)
+        self.sync_all(10, 3)
+        self.nodes[self.mining_node_num].generate(1)
+        self.sync_all(10, 3)
+        self.nodes[self.mining_node_num].generate(1)
+        self.sync_all(10, 3)
+        self.nodes[self.mining_node_num].generate(1)
+        self.sync_all(10, 3)
         self.nodes[self.mining_node_num].generate(1)
         self.sync_all(30, 4)
 
@@ -762,7 +769,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         assert_equal("No unspent transaction found" in self.errorString, True)
 
         #       d.a.8 register without errors, if enough coins for tnx fee
-        self.nodes[self.mining_node_num].sendtoaddress(self.nonmn3_address1, 1000, "", "", False)
+        self.nodes[self.mining_node_num].sendtoaddress(self.nonmn3_address1, str(self.collateral), "", "", False)
         time.sleep(2)
         self.sync_all(10, 30)
         self.nodes[self.mining_node_num].generate(1)
@@ -784,8 +791,15 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         art_ticket1_act_ticket_txid = self.nodes[self.non_mn3].tickets("register", "act", self.art_ticket1_txid, str(self.artist_ticket_height), str(self.storage_fee), self.artist_pastelid1, "passphrase")["txid"]
         assert_true(art_ticket1_act_ticket_txid, "No ticket was created")
 
-        time.sleep(2)
-        self.sync_all(10, 30)
+        time.sleep(10)
+        self.nodes[self.mining_node_num].generate(1)
+        self.sync_all(10, 3)
+        self.nodes[self.mining_node_num].generate(1)
+        self.sync_all(10, 3)
+        self.nodes[self.mining_node_num].generate(1)
+        self.sync_all(10, 3)
+        self.nodes[self.mining_node_num].generate(1)
+        self.sync_all(10, 3)
         self.nodes[self.mining_node_num].generate(1)
         self.sync_all(10, 30)
 
