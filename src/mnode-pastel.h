@@ -38,6 +38,8 @@ public:
 	int ticketBlock{};
 };
 
+typedef char NoKey;
+
 template<TicketID ticketId, class Key1, class Key2, class MVKey1, class MVKey2>
 class CPastelTicket : public CPastelTicketBase {
 public:
@@ -53,8 +55,6 @@ public:
 	virtual bool HasMVKeyOne() const {return false;}
 	virtual bool HasMVKeyTwo() const {return false;}
 };
-
-typedef char NoKey;
 
 // PastelID Ticket //////////////////////////////////////////////////////////////////////////////////////////////////////
 class CPastelIDRegTicket : public CPastelTicket<TicketID::PastelID, std::string, std::string, std::string, NoKey>
@@ -206,6 +206,8 @@ public:
     static bool CheckIfTicketInDb(const std::string& key);
     
     static std::vector<CArtRegTicket> FindAllTicketByPastelID(const std::string& pastelID);
+    
+    ushort GetCopiesNumber();
 };
 
 // Art Activation Ticket ////////////////////////////////////////////////////////////////////////////////////////////////
@@ -266,6 +268,8 @@ public:
 
     static std::vector<CArtActivateTicket> FindAllTicketByPastelID(const std::string& pastelID);
     static std::vector<CArtActivateTicket> FindAllTicketByArtistHeight(int height);
+    
+    static std::string ToStr(const CArtActivateTicket& ticket);
 };
 
 // Art Trade Tickets /////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -291,15 +295,18 @@ public:
     uint askedPrice{};
     uint validAfter{};              //as a block height
     uint validBefore{};             //as a block height
+    ushort copyNumber{};
     std::string reserved;
     std::vector<unsigned char> signature;
+    
+    std::string key;
     
 public:
     CArtSellTicket() = default;
     explicit CArtSellTicket(std::string _pastelID) : pastelID(std::move(_pastelID)) {}
     
     std::string TicketName() const override {return "sell";}
-    std::string KeyOne() const override {return "";} //???
+    std::string KeyOne() const override {return !key.empty()? key: artTnxId+":"+to_string(copyNumber);} //txid:#
     bool HasKeyTwo() const override {return false;}
     bool HasMVKeyOne() const override {return true;}
     std::string MVKeyOne() const override {return pastelID;}
@@ -318,6 +325,7 @@ public:
         READWRITE(askedPrice);
         READWRITE(validAfter);
         READWRITE(validBefore);
+        READWRITE(copyNumber);
         READWRITE(reserved);
         READWRITE(signature);
         READWRITE(ticketTnx);
@@ -329,6 +337,8 @@ public:
     
     static std::vector<CArtSellTicket> FindAllTicketByPastelID(const std::string& pastelID);
     static std::vector<CArtSellTicket> FindAllTicketByArtTnxID(const std::string& artTnxId);
+    
+    static std::string ToStr(const CArtSellTicket& ticket);
 };
 
 /*
@@ -394,12 +404,13 @@ public:
 		"signature": ""
 	},
  */
-class CArtTradeTicket : public CPastelTicket<TicketID::Trade, std::string, std::string, std::string, NoKey>
+class CArtTradeTicket : public CPastelTicket<TicketID::Trade, std::string, std::string, std::string, std::string>
 {
 public:
     std::string pastelID;
     std::string sellTnxId;
     std::string buyTnxId;
+    std::string artTnxId;
     uint price{};
     std::string reserved;
     std::vector<unsigned char> signature;
@@ -414,7 +425,8 @@ public:
     std::string KeyTwo() const override {return buyTnxId;}
     bool HasMVKeyOne() const override {return true;}
     std::string MVKeyOne() const override {return pastelID;}
-    bool HasMVKeyTwo() const override {return false;}
+    bool HasMVKeyTwo() const override {return true;}
+    std::string MVKeyTwo() const override {return artTnxId;}
     
     std::string ToJSON() override;
     bool IsValid(bool preReg, std::string& errRet) const override;
@@ -426,6 +438,7 @@ public:
         READWRITE(pastelID);
         READWRITE(sellTnxId);
         READWRITE(buyTnxId);
+        READWRITE(artTnxId);
         READWRITE(price);
         READWRITE(reserved);
         READWRITE(signature);
@@ -437,6 +450,9 @@ public:
     static bool FindTicketInDb(const std::string& key, CArtTradeTicket& ticket);
     
     static std::vector<CArtTradeTicket> FindAllTicketByPastelID(const std::string& pastelID);
+    static std::vector<CArtTradeTicket> FindAllTicketByArtTnxID(const std::string& artTnxID);
+    
+    static std::string ToStr(const CArtTradeTicket& ticket);
 };
 
 // Take Down Ticket /////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -474,8 +490,8 @@ public:
 	bool FindTicketBySecondaryKey(T& ticket);
     template<class T, class MVKey>
     std::vector<T> FindTicketsByMVKey(TicketID ticketId, const MVKey& mvKey);
-	
-	std::vector<std::string> GetAllKeys(TicketID id);
+    
+    std::vector<std::string> GetAllKeys(TicketID id);
 
 #ifdef ENABLE_WALLET
 	static bool CreateP2FMSTransaction(const std::string& input_string, CMutableTransaction& tx_out, CAmount price, std::string& error_ret);
