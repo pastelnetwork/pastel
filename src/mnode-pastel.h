@@ -31,6 +31,7 @@ public:
 	virtual bool IsValid(bool preReg, std::string& errRet) const = 0;   //if preReg = true - validate pre registration conditions
 	                                                                    //      ex.: address has enough coins for registration
 	                                                                    //else - validate ticket in general
+    virtual CAmount TicketPrice() const = 0;
     
     virtual CAmount GetExtraOutputs(std::vector<CTxOut>& outputs) const {return 0;}
 	   
@@ -79,6 +80,7 @@ public:
     
     std::string ToJSON() override;
     bool IsValid(bool preReg, std::string& errRet) const override;
+    CAmount TicketPrice() const override {return 10;}
     
     std::string PastelIDType() {return outpoint.IsNull()? "personal": "masternode";}
     
@@ -178,6 +180,7 @@ public:
     
     std::string ToJSON() override;
     bool IsValid(bool preReg, std::string& errRet) const override;
+    CAmount TicketPrice() const override {return 10;}
     
     ADD_SERIALIZE_METHODS;
 	
@@ -247,6 +250,7 @@ public:
     
     std::string ToJSON() override;
     bool IsValid(bool preReg, std::string& errRet) const override;
+    CAmount TicketPrice() const override {return 10;}
 	
 	ADD_SERIALIZE_METHODS;
 	
@@ -275,7 +279,7 @@ public:
 // Art Trade Tickets /////////////////////////////////////////////////////////////////////////////////////////////////////
 /*
 	"ticket": {
-		"type": "sell",
+		"type": "art-sell",
 		"pastelID": "",     //PastelID of the art owner - either 1) an original artist; or 2) a previous buyer,
 		                    //should be the same in either 1) art activation ticket or 2) trade ticket
 		"art_txid": "",     //txid with either 1) art activation ticket or 2) trade ticket in it
@@ -305,7 +309,7 @@ public:
     CArtSellTicket() = default;
     explicit CArtSellTicket(std::string _pastelID) : pastelID(std::move(_pastelID)) {}
     
-    std::string TicketName() const override {return "sell";}
+    std::string TicketName() const override {return "art-sell";}
     std::string KeyOne() const override {return !key.empty()? key: artTnxId+":"+to_string(copyNumber);} //txid:#
     bool HasKeyTwo() const override {return false;}
     bool HasMVKeyOne() const override {return true;}
@@ -315,6 +319,7 @@ public:
     
     std::string ToJSON() override;
     bool IsValid(bool preReg, std::string& errRet) const override;
+    CAmount TicketPrice() const override {return askedPrice/50;}
     
     ADD_SERIALIZE_METHODS;
     
@@ -364,12 +369,13 @@ public:
     CArtBuyTicket() = default;
     explicit CArtBuyTicket(std::string _pastelID) : pastelID(std::move(_pastelID)) {}
     
-    std::string TicketName() const override {return "buy";}
+    std::string TicketName() const override {return "art-buy";}
     std::string KeyOne() const override {return sellTnxId;}
     bool HasKeyTwo() const override {return false;}
     bool HasMVKeyOne() const override {return true;}
     std::string MVKeyOne() const override {return pastelID;}
     bool HasMVKeyTwo() const override {return false;}
+    CAmount TicketPrice() const override {return price/100;}
     
     std::string ToJSON() override;
     bool IsValid(bool preReg, std::string& errRet) const override;
@@ -419,7 +425,7 @@ public:
     CArtTradeTicket() = default;
     explicit CArtTradeTicket(std::string _pastelID) : pastelID(std::move(_pastelID)) {}
     
-    std::string TicketName() const override {return "trade";}
+    std::string TicketName() const override {return "art-trade";}
     std::string KeyOne() const override {return sellTnxId;}
     bool HasKeyTwo() const override {return true;}
     std::string KeyTwo() const override {return buyTnxId;}
@@ -430,6 +436,7 @@ public:
     
     std::string ToJSON() override;
     bool IsValid(bool preReg, std::string& errRet) const override;
+    CAmount TicketPrice() const override {return 10;}
     
     ADD_SERIALIZE_METHODS;
     
@@ -460,6 +467,7 @@ class CTakeDownTicket : public CPastelTicket<TicketID::Down, NoKey, NoKey, NoKey
 {
 public:
     static bool FindTicketInDb(const std::string& key, CTakeDownTicket& ticket);
+    CAmount TicketPrice() const override {return 1000;}
 };
 
 #define FAKE_TICKET
@@ -510,8 +518,6 @@ public:
 
 	static bool ValidateIfTicketTransaction(const CTransaction& tx);
 	
-	static CAmount GetTicketPrice(TicketID tid);
-
 #ifdef FAKE_TICKET
     template<class T>
     static std::string CreateFakeTransaction(T& ticket, CAmount ticketPrice, const std::vector<std::pair<std::string, CAmount>>& extraPayments, const std::string& strVerb, bool bSend);

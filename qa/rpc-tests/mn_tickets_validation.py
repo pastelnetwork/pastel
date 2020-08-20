@@ -81,6 +81,10 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         self.fake_pastelid_tnx_tests()
         self.fake_artreg_tnx_tests()
         self.fake_artact_tnx_tests()
+        self.fake_artsell_tnx_tests1
+        self.fake_artbuy_tnx_tests
+        self.fake_arttrade_tnx_tests
+        self.fake_artsell_tnx_tests2
 
     def fake_pastelid_tnx_tests(self):
         print("== Pastelid ticket transaction validation test ==")
@@ -265,6 +269,37 @@ class MasterNodeTicketsTest(MasterNodeCommon):
 
         print("== Art Registration Activation ticket transaction validation tested ==")
 
+    def fake_artsell_tnx_tests1(self):
+        print("== Art Sell ticket transaction validation test (for activation ticket) ==")
+        # 1. Check there is Activation ticket with this artTnxId
+        # 2. Verify signature is correct
+        # 3. check the referred ticket (Activation or Trade) is valid
+        # 4. check PastelID in this ticket matches PastelID in the referred Activation ticket
+        # 5. Verify the art is not already sold
+        #    Verify the number of existing trade tickets less then number of copies in the registration ticket
+
+        print("== Art Sell ticket transaction validation tested (for activation ticket) ==")
+
+    def fake_artbuy_tnx_tests(self):
+        print("== Art Buy ticket transaction validation test ==")
+
+        print("== Art Buy ticket transaction validation tested ==")
+
+    def fake_arttrade_tnx_tests(self):
+        print("== Art Trade ticket transaction validation test ==")
+
+        print("== Art Trade ticket transaction validation tested ==")
+
+    def fake_artsell_tnx_tests2(self):
+        print("== Art Sell ticket transaction validation test (for trade ticket) ==")
+        # 1. Check there is Trade ticket with this artTnxId
+        # 2. Verify signature is correct
+        # 3. check the referred ticket (Activation or Trade) is valid
+        # 4. check PastelID in this ticket matches PastelID in the referred Trade ticket
+        # 5. Verify the art is not already sold
+        #    Verify there is no already trade ticket referring to that trade ticket
+
+        print("== Art Sell ticket transaction validation tested (for trade ticket) ==")
 
 if __name__ == '__main__':
     MasterNodeTicketsTest().main()

@@ -121,6 +121,7 @@ bool CPastelTicketProcessor::ValidateIfTicketTransaction(const CTransaction& tx)
         return true; // this is not a ticket
     
     CAmount storageFee = 0;
+    CAmount expectedTicketFee = 0;
     
     //this is ticket and it need to be validated
     bool ok = false;
@@ -129,37 +130,44 @@ bool CPastelTicketProcessor::ValidateIfTicketTransaction(const CTransaction& tx)
             CPastelIDRegTicket ticket;
             data_stream >> ticket;
             ok = ticket.IsValid(false, error_ret);
+            expectedTicketFee = ticket.TicketPrice() * COIN;
         }
         else if (ticket_id == TicketID::Art) {
             CArtRegTicket ticket;
             data_stream >> ticket;
             ok = ticket.IsValid(false, error_ret);
+            expectedTicketFee = ticket.TicketPrice() * COIN;
         }
         else if (ticket_id == TicketID::Activate) {
             CArtActivateTicket ticket;
             data_stream >> ticket;
             ok = ticket.IsValid(false, error_ret);
+            expectedTicketFee = ticket.TicketPrice() * COIN;
             storageFee = ticket.storageFee;
         }
         else if (ticket_id == TicketID::Sell) {
             CArtSellTicket ticket;
             data_stream >> ticket;
-            return ticket.IsValid(true, error_ret);
+            ok = ticket.IsValid(true, error_ret);
+            expectedTicketFee = ticket.TicketPrice() * COIN;
         }
         else if (ticket_id == TicketID::Buy) {
             CArtBuyTicket ticket;
             data_stream >> ticket;
-            return ticket.IsValid(true, error_ret);
+            ok = ticket.IsValid(true, error_ret);
+            expectedTicketFee = ticket.TicketPrice() * COIN;
         }
-		else if (ticket_id == TicketID::Trade) {
+        else if (ticket_id == TicketID::Trade) {
             CArtTradeTicket ticket;
             data_stream >> ticket;
-            return ticket.IsValid(true, error_ret);
-		}
+            ok = ticket.IsValid(true, error_ret);
+            expectedTicketFee = ticket.TicketPrice() * COIN;
+        }
 //		else if (ticket_id == TicketID::Down) {
 //            CTakeDownTicket ticket;
 //            data_stream >> ticket;
-//            return ticket.IsValid(true, error_ret);
+//            ok = ticket.IsValid(true, error_ret);
+//            expectedTicketFee = ticket.TicketPrice() * COIN;
 //		}
         else {
             error_ret = "unknown ticket_id";
@@ -175,7 +183,6 @@ bool CPastelTicketProcessor::ValidateIfTicketTransaction(const CTransaction& tx)
         
         int num = tx.vout.size();
         CAmount ticketFee = 0;
-        CAmount expectedTicketFee = GetTicketPrice(ticket_id) * COIN;
     
         CAmount allMNFee = storageFee * COIN * 9 / 10;
         CAmount mn1Fee = allMNFee * 3 / 5;
@@ -183,8 +190,10 @@ bool CPastelTicketProcessor::ValidateIfTicketTransaction(const CTransaction& tx)
     
         for (int i=0; i<num; i++){
             if ((ticket_id == TicketID::PastelID ||
-                 ticket_id == TicketID::Art) &&
-                i==num-1) //in this tickets last output is change
+                 ticket_id == TicketID::Art ||
+                 ticket_id == TicketID::Sell ||
+                 ticket_id == TicketID::Buy) &&
+                i==num-1) //in these tickets last output is change
                 break;
             if (ticket_id == TicketID::Activate) { //in this tickets last 4 outputs is: change, and payments to 3 MNs
                 if (i == num-4)
@@ -474,7 +483,7 @@ std::string CPastelTicketProcessor::SendTicket(const T& ticket)
     data_stream << ticket;
 	
     CMutableTransaction tx;
-	if (!CPastelTicketProcessor::CreateP2FMSTransactionWithExtra(data_stream, extraOutputs, extraAmount, tx, GetTicketPrice(ticket.ID()), error)){
+	if (!CPastelTicketProcessor::CreateP2FMSTransactionWithExtra(data_stream, extraOutputs, extraAmount, tx, ticket.TicketPrice(), error)){
 		throw std::runtime_error(strprintf("Failed to create P2FMS from data provided - %s", error));
 	}
 	
@@ -736,21 +745,6 @@ bool CPastelTicketProcessor::ParseP2FMSTransaction(const CMutableTransaction& tx
 	}
 	
 	return true;
-}
-
-CAmount CPastelTicketProcessor::GetTicketPrice(TicketID tid)
-{
-	switch(tid)
-	{
-		case TicketID::PastelID: 	return 10;
-		case TicketID::Art: 		return 10;
-		case TicketID::Activate: 	return 10;
-		case TicketID::Sell: 		return 1000;
-		case TicketID::Buy: 		return 1000;
-		case TicketID::Trade: 		return 1000;
-		case TicketID::Down: 		return 1000;
-	};
-	return 0;
 }
 
 // CPastelIDRegTicket ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1208,9 +1202,9 @@ bool CArtActivateTicket::IsValid(bool preReg, std::string& errRet) const
     
     //3.a Verify that whoever created this ticket has private key used to sign the ArtReg ticket (PastelID from this ticket does belong to the artist!!)
     std::string strTicket = CArtActivateTicket::ToStr(*this);
-    if (!CPastelID::Verify(reinterpret_cast<const unsigned char *>(artistPastelID.c_str()), artistPastelID.size(),
+    if (!CPastelID::Verify(reinterpret_cast<const unsigned char *>(strTicket.c_str()), strTicket.size(),
                            signature.data(), signature.size(),
-                           pastelID)) {
+                           artistPastelID)) {
         errRet = strprintf("This Activation ticket is not signed by the owner of the Art Ticket!!! Error - %s. PastelID - [%s]", errRet, pastelID);
         return false;
     }
@@ -1374,13 +1368,13 @@ bool CArtSellTicket::IsValid(bool preReg, std::string& errRet) const
     TicketID ticketId;
     //  Get ticket pointed by artTnxId. This is either Activation or Trade ticket
     auto pastelTicket = CPastelTicketProcessor::GetTicket(txid, ticketId);
-    if (pastelTicket == nullptr || ticketId != TicketID::Activate || ticketId != TicketID::Trade) {
+    if (pastelTicket == nullptr || (ticketId != TicketID::Activate && ticketId != TicketID::Trade)) {
         errRet = strprintf("The activation or trade ticket with this txid [%s] referred by this sell ticket is not in the blockchain", artTnxId);
         return false;
     }
     
-    //2. Verify signature - check that it is the correct PastelID and the one that belongs to the owner of the art will be done in
-    // steps 2. and 3.
+    //2. Verify signature
+    // We will check that it is the correct PastelID and the one that belongs to the owner of the art in steps 4. and 5.
     std::string strThisTicket = CArtSellTicket::ToStr(*this);
     if (!CPastelID::Verify(reinterpret_cast<const unsigned char *>(strThisTicket.c_str()), strThisTicket.size(),
                            signature.data(), signature.size(),
@@ -1389,7 +1383,7 @@ bool CArtSellTicket::IsValid(bool preReg, std::string& errRet) const
         return false;
     }
     
-    //2. check the referred ticket (Activation or Trade) is valid
+    //3. check the referred ticket (Activation or Trade) is valid
     // (IsValid of the referred ticket validates signatures as well!)
     if (!pastelTicket->IsValid(false, err))
     {
@@ -1397,12 +1391,12 @@ bool CArtSellTicket::IsValid(bool preReg, std::string& errRet) const
         return false;
     }
     
-    //3. check PastelID in this ticket matches PastelID in the referred ticket (Activation or Trade)
-    //4. Verify the art is not already sold
+    //4. check PastelID in this ticket matches PastelID in the referred ticket (Activation or Trade)
+    //5. Verify the art is not already sold
     auto existingTradeTickets = CArtTradeTicket::FindAllTicketByArtTnxID(artTnxId);
     auto soldCopies = existingTradeTickets.size();
     if (ticketId == TicketID::Activate) {
-        //3.a
+        //4.a
         auto actTicket = dynamic_cast<CArtActivateTicket*>(pastelTicket.get());
         if (actTicket == nullptr) {
             errRet = strprintf("The activation ticket with this txid [%s] referred by this sell ticket is invalid", artTnxId);
@@ -1416,7 +1410,7 @@ bool CArtSellTicket::IsValid(bool preReg, std::string& errRet) const
                                artTnxId);
             return false;
         }
-        //4.a Verify the number of existing trade tickets less then number of copies in the registration ticket
+        //5.a Verify the number of existing trade tickets less then number of copies in the registration ticket
         if (soldCopies > 0) {
             uint256 regTxTd;
             regTxTd.SetHex(actTicket->regTicketTnxId);
@@ -1442,7 +1436,7 @@ bool CArtSellTicket::IsValid(bool preReg, std::string& errRet) const
         }
     }
     else if (ticketId == TicketID::Trade) {
-        //3.b
+        //4.b
         auto tradeTicket = dynamic_cast<CArtTradeTicket*>(pastelTicket.get());
         if (tradeTicket == nullptr) {
             errRet = strprintf("The trade ticket with this txid [%s] referred by this sell ticket is invalid", artTnxId);
@@ -1456,7 +1450,7 @@ bool CArtSellTicket::IsValid(bool preReg, std::string& errRet) const
                                artTnxId);
             return false;
         }
-        //4.b Verify there is no already trade ticket referring to that trade ticket
+        //5.b Verify there is no already trade ticket referring to that trade ticket
         if (soldCopies > 0) {
             errRet = strprintf(
                     "The Art you are trying to sell - from trade ticket [%s] - is already sold - see trade ticket with txid [%s]",
@@ -1478,6 +1472,7 @@ std::string CArtSellTicket::ToJSON()
                              {"type", TicketName()},
                              {"pastelID", pastelID},
                              {"art_txid", artTnxId},
+                             {"copy_number", copyNumber},
                              {"asked_price", askedPrice},
                              {"valid_after", validAfter},
                              {"valid_before", validBefore},
@@ -1625,7 +1620,7 @@ std::string CArtTradeTicket::ToJSON()
 {
     return masterNodeCtrl.masternodeTickets.FindTicketsByMVKey<CArtTradeTicket, std::string>(TicketID::Trade, pastelID);
 }
-/*static*/ std::vector<CArtTradeTicket> FindAllTicketByArtTnxID(const std::string& artTnxID)
+/*static*/ std::vector<CArtTradeTicket> CArtTradeTicket::FindAllTicketByArtTnxID(const std::string& artTnxID)
 {
     return masterNodeCtrl.masternodeTickets.FindTicketsByMVKey<CArtTradeTicket, std::string>(TicketID::Trade, artTnxID);
 }
