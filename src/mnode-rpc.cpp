@@ -2144,6 +2144,24 @@ UniValue tickets(const UniValue& params, bool fHelp) {
             }
             return CPastelTicketProcessor::CreateFakeTransaction(artActTicket, ticketPrice, addresses, strVerb, bSend);
         }
+        if (strCmd == "sell") {
+            std::string artTicketTxID = params[2].get_str();
+            int price = get_number(params[3]);
+    
+            std::string pastelID = params[4].get_str();
+            SecureString strKeyPass;
+            strKeyPass.reserve(100);
+            strKeyPass = params[5].get_str().c_str();
+    
+            int after = get_number(params[6]);
+            int before = get_number(params[7]);
+    
+            CArtSellTicket artSellTicket = CArtSellTicket::Create(artTicketTxID, price, after, before, pastelID, strKeyPass);
+    
+            CAmount ticketPrice = get_long_number(params[8].get_str());
+            std::string strVerb = params[9].get_str();
+            return CPastelTicketProcessor::CreateFakeTransaction(artSellTicket, ticketPrice, std::vector<std::pair<std::string, CAmount>> {}, strVerb, bSend);
+        }
     }
 #endif
     

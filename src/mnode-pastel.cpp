@@ -1664,6 +1664,17 @@ std::string CPastelTicketProcessor::CreateFakeTransaction(T& ticket, CAmount tic
             auto t = (CArtActivateTicket *) &ticket;
             t->signature.clear();
         }
+        if (strVerb == "2") {
+            auto t = (CArtActivateTicket *) &ticket;
+            t->artistHeight = 1;
+        }
+    } else if (ticket.ID() == TicketID::Sell) {
+        if (strVerb == "1") {
+            auto t = (CArtSellTicket *) &ticket;
+            t->signature.clear();
+        }
+    } else if (ticket.ID() == TicketID::Buy) {
+    } else if (ticket.ID() == TicketID::Trade) {
     }
     
     std::vector<CTxOut> extraOutputs;
