@@ -245,6 +245,8 @@ class MasterNodeTicketsTest(MasterNodeCommon):
             }
         )
 
+        self.nodes[self.non_mn1].generate(10)
+
         # makefaketicket art ticket signatures pastelID passphrase key1 key2 artisthieght nStorageFee ticketPrice bChangeSignature
 
         tickets = {
@@ -307,6 +309,8 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         self.sync_all(10,30)
         self.nodes[self.mining_node_num].generate(5)
         self.sync_all(10,30)
+
+        self.nodes[self.non_mn1].generate(10)
 
         mn0_fee = int(self.storage_fee90percent*0.6)
         mn1_fee = int(self.storage_fee90percent*0.2)

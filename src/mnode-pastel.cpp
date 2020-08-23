@@ -1176,6 +1176,16 @@ bool CArtActivateTicket::IsValid(bool preReg, std::string& errRet) const
         errRet = strprintf("The art ticket with this txid [%s] is not in the blockchain", regTicketTnxId);
         return false;
     }
+    
+    //0. Min Confirmations
+    {
+        LOCK(cs_main);
+        if (chainActive.Height() + 1 - pastelTicket->ticketBlock < masterNodeCtrl.MinTicketConfirmations) {
+            errRet = strprintf("Activation ticket can be created only after [%s] confirmations of the Registration ticket", masterNodeCtrl.MinTicketConfirmations);
+            return false;
+        }
+    }
+    
     auto artTicket = dynamic_cast<CArtRegTicket*>(pastelTicket.get());
     if (artTicket == nullptr)
     {
@@ -1352,16 +1362,16 @@ bool CArtSellTicket::IsValid(bool preReg, std::string& errRet) const
         // ...
     }
 
-//    if (masterNodeCtrl.masternodeSync.IsSynced()) {// Something to validate only if Initial Download
+    if (masterNodeCtrl.masternodeSync.IsSynced()) {// Something to validate only if Initial Download
 //          ...
-//    } else { // Something to validate only if NOT Initial Download
+    } else { // Something to validate only if NOT Initial Download
 //        //1. check if TicketDB has the same outpoint and if yes, reject if it has different signature
 //              ...
-//    }
+    }
     
     // Something to always validate
     std::string err;
-
+    
     //1. Check there are either Activation or Trade ticket with this artTnxId
     uint256 txid;
     txid.SetHex(artTnxId);
@@ -1371,6 +1381,15 @@ bool CArtSellTicket::IsValid(bool preReg, std::string& errRet) const
     if (pastelTicket == nullptr || (ticketId != TicketID::Activate && ticketId != TicketID::Trade)) {
         errRet = strprintf("The activation or trade ticket with this txid [%s] referred by this sell ticket is not in the blockchain", artTnxId);
         return false;
+    }
+    
+    //0. Min Confirmations
+    {
+        LOCK(cs_main);
+        if (chainActive.Height() + 1 - pastelTicket->ticketBlock < masterNodeCtrl.MinTicketConfirmations) {
+            errRet = strprintf("Sell ticket can be created only after [%s] confirmations of the Activation or Trade tickets", masterNodeCtrl.MinTicketConfirmations);
+            return false;
+        }
     }
     
     //2. Verify signature

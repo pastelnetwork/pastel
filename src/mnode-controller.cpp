@@ -51,6 +51,8 @@ void CMasterNodeController::SetParameters()
     nMasternodeTopMNsNumber = 10;
 
     nGovernanceVotingPeriodBlocks = 576; //24 hours, 1 block per 2.5 minutes
+    
+    MinTicketConfirmations = 10; //blocks
 
     if (Params().IsMainNet()) {
         nMasternodeMinimumConfirmations = 15;

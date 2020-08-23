@@ -639,6 +639,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         self.art_ticket1_txid = self.nodes[self.top_mns_index0].tickets("register", "art", "12345", json.dumps(signatures_dict), self.top_mn_pastelid0, "passphrase", "key1", "key2", str(self.artist_ticket_height), str(self.storage_fee))["txid"]
         assert_true(self.art_ticket1_txid, "No ticket was created")
         self.__wait_for_ticket_tnx()
+        print(self.nodes[self.top_mns_index0].getblockcount())
 
         #       c.a.7 check correct amount of change and correct amount spent
         coins_after = self.nodes[self.top_mns_index0].getbalance()
@@ -729,6 +730,17 @@ class MasterNodeTicketsTest(MasterNodeCommon):
             self.errorString = e.error['message']
             print(self.errorString)
         assert_equal("The art ticket with this txid ["+self.mn0_ticket1_txid+"] is not in the blockchain" in self.errorString, True)
+
+        #  not enough confirmations
+        print(self.nodes[self.non_mn3].getblockcount())
+        try:
+            self.nodes[self.non_mn3].tickets("register", "act", self.art_ticket1_txid, str(self.artist_ticket_height), str(self.storage_fee), self.artist_pastelid1, "passphrase")
+        except JSONRPCException, e:
+            self.errorString = e.error['message']
+            print(self.errorString)
+        assert_equal("Activation ticket can be created only after" in self.errorString, True)
+        self.nodes[self.non_mn3].generate(10)
+        print(self.nodes[self.non_mn3].getblockcount())
 
         #       d.a.4 fail if artist's PastelID in the activation ticket is not matching artist's PastelID in the registration ticket
         try:
@@ -881,6 +893,17 @@ class MasterNodeTicketsTest(MasterNodeCommon):
             self.errorString = e.error['message']
             print(self.errorString)
         assert_equal("The activation or trade ticket with this txid ["+self.art_ticket1_txid+"] referred by this sell ticket is not in the blockchain" in self.errorString, True)
+
+        #  not enough confirmations
+        print(self.nodes[self.non_mn3].getblockcount())
+        try:
+            self.nodes[self.non_mn3].tickets("register", "sell", self.art_ticket1_act_ticket_txid, str("100000"), self.artist_pastelid1, "passphrase")
+        except JSONRPCException, e:
+            self.errorString = e.error['message']
+            print(self.errorString)
+        assert_equal("Sell ticket can be created only after" in self.errorString, True)
+        self.nodes[self.non_mn3].generate(10)
+        print(self.nodes[self.non_mn3].getblockcount())
 
         # 2. check PastelID in this ticket matches PastelID in the referred Activation ticket
         try:

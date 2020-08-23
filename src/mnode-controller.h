@@ -72,6 +72,8 @@ public:
     int nMasterNodeMaximumOutboundConnections;
     int nFulfilledRequestExpireTime;
 
+    int MinTicketConfirmations;
+
     CMasterNodeController() : 
         pacNotificationInterface(NULL),
         semMasternodeOutbound(NULL),
