@@ -108,25 +108,33 @@ public:
 
 Ticket as base64(RegistrationTicket({some data}))
 
-fields are base64 as strings
+bytes fields are base64 as strings
 {
-    "author": bytes,
-    "blocknum": integer,
-    "imagedata_hash": bytes,
+    "version": integer    // 1
+    "author": bytes,      // PastelID of the author (artist) - this actually will be duplicated in the signatures block
+    "blocknum": integer,  // block when the ticket was created - this is map the ticket to the MN's that should process it
+    "data_hash": bytes,   // hash of the image (or any other asset) this ticket represent
+    "copies": integer,    // number of copies
 
-    "artist_name": string,
-    "artist_website": string,
-    "artist_written_statement": string,
-    "artwork_title": string,
-    "artwork_series_name": string,
-    "artwork_creation_video_youtube_url": string,
-    "artwork_keyword_set": string,
-    "total_copies": integer,
-
-    "fingerprints": [list of floats],
-    "lubyhashes": [list of floats],
-    "lubyseeds": [list of floats],
-    "thumbnailhash": bytes,
+    "app_ticket": bytes,
+        as:
+            base64(
+            {
+                "artist_name": string,
+                "artist_website": string,
+                "artist_written_statement": string,
+                "artwork_title": string,
+                "artwork_series_name": string,
+                "artwork_creation_video_youtube_url": string,
+                "artwork_keyword_set": string,
+                "total_copies": integer,
+            
+                "fingerprints": [list of floats],
+                "lubyhashes": [list of floats],
+                "lubyseeds": [list of floats],
+                "thumbnailhash": bytes,
+            },
+    "reserved": bytes
 }
 
 signatures
@@ -165,8 +173,10 @@ public:
     
     std::string keyOne;
     std::string keyTwo;
-    int artistHeight{}; //blocknum when the ticket was created by the wallet
     CAmount storageFee{};
+
+    int artistHeight{}; //blocknum when the ticket was created by the wallet
+    int totalCopies{}; //blocknum when the ticket was created by the wallet
 
 public:
 	CArtRegTicket() = default;
@@ -196,6 +206,7 @@ public:
         READWRITE(keyOne);
         READWRITE(keyTwo);
         READWRITE(artistHeight);
+        READWRITE(totalCopies);
         READWRITE(storageFee);
         READWRITE(ticketTnx);
         READWRITE(ticketBlock);
@@ -204,13 +215,11 @@ public:
     static CArtRegTicket Create(std::string _ticket, const std::string& signatures,
                                 std::string _pastelID, const SecureString& strKeyPass,
                                 std::string _keyOne, std::string _keyTwo,
-                                int _artistHeight, CAmount _storageFee);
+                                CAmount _storageFee);
     static bool FindTicketInDb(const std::string& key, CArtRegTicket& _ticket);
     static bool CheckIfTicketInDb(const std::string& key);
     
     static std::vector<CArtRegTicket> FindAllTicketByPastelID(const std::string& pastelID);
-    
-    ushort GetCopiesNumber();
 };
 
 // Art Activation Ticket ////////////////////////////////////////////////////////////////////////////////////////////////

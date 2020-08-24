@@ -1641,12 +1641,21 @@ UniValue tickets(const UniValue& params, bool fHelp) {
 			mnObj.push_back(Pair("txid", txid));
 		}
 		if (strCmd == "art") {
-			if (fHelp || params.size() != 10)
+			if (fHelp || params.size() != 9)
 				throw JSONRPCError(RPC_INVALID_PARAMETER,
-                    "tickets register art \"ticket\" \"{signatures}\" \"pastelid\" \"passphrase\" \"key1\" \"key2\" \"blocknum\" \"fee\"\n"
+                    "tickets register art \"ticket\" \"{signatures}\" \"pastelid\" \"passphrase\" \"key1\" \"key2\" \"fee\"\n"
                     "Register new art ticket. If successful, method returns \"txid\"."
                     "\nArguments:\n"
-                    "1. \"art_ticket\"	(string, required) Base64 encoded original ticket created by the artist.\n"
+                    "1. \"ticket\"	(string, required) Base64 encoded ticket created by the artist.\n"
+                    "	{\n"
+                    "		\"version\": 1,\n"
+                    "		\"author\" \"authorsPastelID\",\n"
+                    "		\"blocknum\" <block-number-when-the-ticket-was-created-by-the-artist>,\n"
+                    "		\"data_hash\" \"<base64'ed-hash-of-the-art>\",\n"
+                    "		\"copies\" <number-of-copies-of-art-this-ticket-is-creating>,\n"
+                    "		\"app_ticket\" \"<application-specific-data>\",\n"
+                    "		\"reserved\" \"<empty-string-for-now>\",\n"
+                    "	}\n"
                     "2. \"signatures\"	(string, required) Signatures (base64) and PastelIDs of the author and verifying masternodes (MN2 and MN3) as JSON:\n"
                     "	{\n"
                     "		\"artist\":{\"authorsPastelID\": \"authorsSignature\"},\n"
@@ -1657,13 +1666,12 @@ UniValue tickets(const UniValue& params, bool fHelp) {
                     "4. \"passpharse\"	(string, required) The passphrase to the private key associated with PastelID and stored inside node. See \"pastelid newkey\".\n"
                     "5. \"key1\"		(string, required) The first key to search ticket.\n"
                     "6. \"key2\"		(string, required) The second key to search ticket.\n"
-                    "6. \"art_block\"	(int, required) The block number when the ticket was created by the wallet.\n"
                     "7. \"fee\"			(int, required) The agreed upon storage fee.\n"
                     "Masternode PastelID Ticket:\n"
                     "{\n"
                     "	\"ticket\": {\n"
                     "		\"type\": \"art-reg\",\n"
-                    "		\"art_ticket\": \"<actual ticket created by artist and signed by artist and all 3 MNs>\",\n"
+                    "		\"ticket\": {...},\n"
                     "		\"signatures\": {\n"
                     " 			\"authorsPastelID\": \"authorsSignature\",\n"
                     "			\"mn1PastelID\":\"mn1Signature\",\n"
@@ -1672,7 +1680,6 @@ UniValue tickets(const UniValue& params, bool fHelp) {
                     "		},\n"
                     "		\"key1\": \"<search key 1>\",\n"
                     "		\"key2\": \"<search key 2>\",\n"
-                    "		\"artist_height\": \"<block at what artist created the ticketBLOB>\",\n"
                     "		\"storage_fee\": \"<agreed upon storage fee>\",\n"
                     "	},\n"
                     "	\"height\": \"\",\n"
@@ -1680,10 +1687,10 @@ UniValue tickets(const UniValue& params, bool fHelp) {
                     "}\n"
                     "\nRegister Art Ticket\n"
                     + HelpExampleCli("tickets register art",
-                                    R"(""ticket-blob" "{signatures}" jXYqZNPj21RVnwxnEJ654wEdzi7GZTZ5LAdiotBmPrF7pDMkpX1JegDMQZX55WZLkvy9fxNpZcbBJuE8QYUqBF "passphrase", "key1", "key2", 1111, 100)") +
+                                    R"(""ticket-blob" "{signatures}" jXYqZNPj21RVnwxnEJ654wEdzi7GZTZ5LAdiotBmPrF7pDMkpX1JegDMQZX55WZLkvy9fxNpZcbBJuE8QYUqBF "passphrase", "key1", "key2", 100)") +
                     "\nAs json rpc\n"
                     + HelpExampleRpc("tickets",
-                                     R"("register", "art", "ticket" "{signatures}" "jXYqZNPj21RVnwxnEJ654wEdzi7GZTZ5LAdiotBmPrF7pDMkpX1JegDMQZX55WZLkvy9fxNpZcbBJuE8QYUqBF" "passphrase", "key1", "key2", 1111, 100)")
+                                     R"("register", "art", "ticket" "{signatures}" "jXYqZNPj21RVnwxnEJ654wEdzi7GZTZ5LAdiotBmPrF7pDMkpX1JegDMQZX55WZLkvy9fxNpZcbBJuE8QYUqBF" "passphrase", "key1", "key2", 100)")
 				);
 
             if (!masterNodeCtrl.IsActiveMasterNode())
@@ -1705,13 +1712,13 @@ UniValue tickets(const UniValue& params, bool fHelp) {
             std::string key1 = params[6].get_str();
             std::string key2 = params[7].get_str();
             
-            int blocknum = get_number(params[8]);
-            CAmount nStorageFee = get_long_number(params[9]);
+            CAmount nStorageFee = get_long_number(params[8]);
             
-            CArtRegTicket artRegTicket = CArtRegTicket::Create(ticket, signatures,
+            CArtRegTicket artRegTicket = CArtRegTicket::Create(
+                    ticket, signatures,
                     pastelID, strKeyPass,
                     key1, key2,
-                    blocknum, nStorageFee);
+                    nStorageFee);
 			std::string txid = CPastelTicketProcessor::SendTicket(artRegTicket);
 			
 			mnObj.push_back(Pair("txid", txid));
@@ -2110,12 +2117,11 @@ UniValue tickets(const UniValue& params, bool fHelp) {
             strKeyPass = params[5].get_str().c_str();
             std::string key1 = params[6].get_str();
             std::string key2 = params[7].get_str();
-            int blocknum = get_number(params[8]);
-            CAmount nStorageFee = get_long_number(params[9]);
+            CAmount nStorageFee = get_long_number(params[8]);
             CArtRegTicket artRegTicket = CArtRegTicket::Create(ticket, signatures,
                                                                pastelID, strKeyPass,
                                                                key1, key2,
-                                                               blocknum, nStorageFee);
+                                                               nStorageFee);
             CAmount ticketPrice = get_long_number(params[10].get_str());
             std::string strVerb = params[11].get_str();
             return CPastelTicketProcessor::CreateFakeTransaction(artRegTicket, ticketPrice, std::vector<std::pair<std::string, CAmount>> {}, strVerb, bSend);

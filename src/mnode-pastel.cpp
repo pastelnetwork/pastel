@@ -903,46 +903,41 @@ std::string CPastelIDRegTicket::ToJSON()
 }
 
 // CArtRegTicket ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-/*static*/ CArtRegTicket CArtRegTicket::Create(std::string _ticket, const std::string& signatures,
+/*static*/ CArtRegTicket CArtRegTicket::Create(
+        std::string _ticket, const std::string& signatures,
         std::string _pastelID, const SecureString& strKeyPass,
         std::string _keyOne, std::string _keyTwo,
-        int _artistHeight,
         CAmount _storageFee)
 {
     CArtRegTicket ticket(std::move(_ticket));
     
-    ticket.keyOne = std::move(_keyOne);
-    ticket.keyTwo = std::move(_keyTwo);
-    ticket.artistHeight = _artistHeight;
-    ticket.storageFee = _storageFee;
+    //Art Ticket
+    auto jsonTicketObj = json::parse(ed_crypto::Base64_Decode(ticket.artTicket));
+    if (jsonTicketObj.size() != 7){
+        throw std::runtime_error("Art ticket json is incorrect");
+    }
+    if (jsonTicketObj["version"] != 1) {
+        throw std::runtime_error("Only accept version 1 of Art ticket json");
+    }
+    ticket.artistHeight = jsonTicketObj["blocknum"];
+    ticket.totalCopies = jsonTicketObj["copies"];
     
-    ticket.pastelIDs[mainmnsign] = std::move(_pastelID);
-    
-    //signature of ticket hash
-    ticket.ticketSignatures[mainmnsign] = CPastelID::Sign(reinterpret_cast<const unsigned char*>(ticket.artTicket.c_str()), ticket.artTicket.size(),
-                                                            ticket.pastelIDs[mainmnsign], strKeyPass);
-
-    //other signatures
-    auto jsonObj = json::parse(signatures);
-    
-    if (jsonObj.size() != 3){
+    //Artist's and MN2/3's signatures
+    auto jsonSignaturesObj = json::parse(signatures);
+    if (jsonSignaturesObj.size() != 3){
         throw std::runtime_error("Signatures json is incorrect");
     }
-    
-    for (auto& el : jsonObj.items()) {
-        
+    for (auto& el : jsonSignaturesObj.items()) {
         if (el.key().empty()) {
             throw std::runtime_error("Signatures json is incorrect");
         }
-    
+        
         auto sigItem = el.value();
-
         if (sigItem.empty())
             throw std::runtime_error("Signatures json is incorrect");
-
+        
         std::string pastelID = sigItem.begin().key();
         std::string signature = sigItem.begin().value();
-    
         if (el.key() == "artist"){
             ticket.pastelIDs[artistsign] = std::move(pastelID);
             ticket.ticketSignatures[artistsign] = ed_crypto::Base64_Decode(signature);
@@ -957,6 +952,14 @@ std::string CPastelIDRegTicket::ToJSON()
         }
     }
     
+    ticket.keyOne = std::move(_keyOne);
+    ticket.keyTwo = std::move(_keyTwo);
+    ticket.storageFee = _storageFee;
+    
+    ticket.pastelIDs[mainmnsign] = std::move(_pastelID);
+    //signature of ticket hash
+    ticket.ticketSignatures[mainmnsign] = CPastelID::Sign(reinterpret_cast<const unsigned char*>(ticket.artTicket.c_str()), ticket.artTicket.size(),
+                                                            ticket.pastelIDs[mainmnsign], strKeyPass);
     return ticket;
 }
 
@@ -1085,6 +1088,7 @@ std::string CArtRegTicket::ToJSON()
             {"key1", keyOne},
             {"key2", keyTwo},
             {"artist_height", artistHeight},
+            {"total_copies", totalCopies},
             {"storage_fee", storageFee},
         }}
 	};
@@ -1111,11 +1115,6 @@ std::string CArtRegTicket::ToJSON()
 /*static*/ std::vector<CArtRegTicket> CArtRegTicket::FindAllTicketByPastelID(const std::string& pastelID)
 {
     return masterNodeCtrl.masternodeTickets.FindTicketsByMVKey<CArtRegTicket, std::string>(TicketID::Art, pastelID);
-}
-
-ushort CArtRegTicket::GetCopiesNumber()
-{
-    return 1;
 }
 
 // CArtActivateTicket ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1445,11 +1444,10 @@ bool CArtSellTicket::IsValid(bool preReg, std::string& errRet) const
                 errRet = strprintf("The art registration ticket [%s] referred from activation referred from this sell ticket is invalid", actTicket->regTicketTnxId);
                 return false;
             }
-            auto availableCopies = artTicket->GetCopiesNumber();
-            if (soldCopies >= availableCopies) {
+            if (soldCopies >= artTicket->totalCopies) {
                 errRet = strprintf(
                         "The Art you are trying to sell - from registration ticket [%s] - is already sold - there are already [%d] trade tickets, but only [%d] copies were available",
-                        artTnxId, soldCopies, availableCopies);
+                        artTnxId, soldCopies, artTicket->totalCopies);
                 return false;
             }
         }

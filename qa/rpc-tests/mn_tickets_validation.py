@@ -82,6 +82,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         self.not_top_mn_ticket_signature2 = None
         self.not_top_mns_signatures_dict = None
 
+        self.ticket = None
         self.artist_ticket_height = None
         self.art_ticket1_txid = None
 
@@ -194,14 +195,28 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         self.nodes[self.mining_node_num].generate(5)
         self.sync_all(10,30)
 
-        # create ticket signature
-        ticket_signature_nonmn1 = self.nodes[self.non_mn1].pastelid("sign", "12345", self.nonmn1_pastelid1, "passphrase")["signature"]
-        ticket_signature_artist = self.nodes[self.non_mn3].pastelid("sign", "12345", self.artist_pastelid1, "passphrase")["signature"]
-        for n in range(0, 13):
-            self.mn_ticket_signatures[n] = self.nodes[n].pastelid("sign", "12345", self.mn_pastelids[n], "passphrase")["signature"]
-
+        self.total_copies = 10
+        # Get current top MNs at Node 0
         self.artist_ticket_height = self.nodes[0].getinfo()["blocks"]
         top_masternodes = self.nodes[0].masternode("top")[str(self.artist_ticket_height)]
+
+        json_ticket = {
+            "version": 1,
+            "author": self.artist_pastelid1,
+            "blocknum": self.artist_ticket_height,
+            "data_hash": "ABCDEFG",
+            "copies": self.total_copies,
+            "app_ticket": "HIJKLMNOP",
+            "reserved": ""}
+
+        self.ticket = base64.b64encode(json.dumps(json_ticket))
+        print(self.ticket)
+
+        # create ticket signature
+        ticket_signature_nonmn1 = self.nodes[self.non_mn1].pastelid("sign", self.ticket, self.nonmn1_pastelid1, "passphrase")["signature"]
+        ticket_signature_artist = self.nodes[self.non_mn3].pastelid("sign", self.ticket, self.artist_pastelid1, "passphrase")["signature"]
+        for n in range(0, 13):
+            self.mn_ticket_signatures[n] = self.nodes[n].pastelid("sign", self.ticket, self.mn_pastelids[n], "passphrase")["signature"]
 
         top_mns_indexes = set()
         for mn in top_masternodes:
@@ -252,37 +267,37 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         tickets = {
             #  non MN with real signatures of non top 10 MNs
             "art1-non-mn123": self.nodes[self.non_mn1].tickets("makefaketicket", "art",
-                                                              "12345", json.dumps(self.not_top_mns_signatures_dict), self.nonmn1_pastelid1, "passphrase", "key1", "key2",
+                                                              self.ticket, json.dumps(self.not_top_mns_signatures_dict), self.nonmn1_pastelid1, "passphrase", "key1", "key2",
                                                               str(self.artist_ticket_height), str(self.storage_fee), "10", "0"),
 
             #  non MN with fake signatures of top 10 MNs
             "art2-nonmn1-fake23": self.nodes[self.non_mn1].tickets("makefaketicket", "art",
-                                                                  "12345", json.dumps(self.signatures_dict), self.nonmn1_pastelid1, "passphrase", "key1", "key2",
+                                                                  self.ticket, json.dumps(self.signatures_dict), self.nonmn1_pastelid1, "passphrase", "key1", "key2",
                                                                   str(self.artist_ticket_height), str(self.storage_fee), "10", "1"),  # Verb = 1 - will modify pastlelid signature to make it invalid
 
             #  non top 10 MN with real signatures of non top 10 MNs
             "art3-non-top-mn1-nonmn23": self.nodes[self.not_top_mns_index0].tickets("makefaketicket", "art",
-                                                                               "12345", json.dumps(self.not_top_mns_signatures_dict), self.not_top_mn_pastelid0, "passphrase", "key1", "key2",
+                                                                               self.ticket, json.dumps(self.not_top_mns_signatures_dict), self.not_top_mn_pastelid0, "passphrase", "key1", "key2",
                                                                                str(self.artist_ticket_height), str(self.storage_fee), "10", "0"),
 
             #  non top 10 MN with fake signatures of top 10 MNs
             "art4-non-top-mn1-fake23": self.nodes[self.not_top_mns_index0].tickets("makefaketicket", "art",
-                                                                          "12345", json.dumps(self.signatures_dict), self.not_top_mn_pastelid0, "passphrase", "key1", "key2",
+                                                                          self.ticket, json.dumps(self.signatures_dict), self.not_top_mn_pastelid0, "passphrase", "key1", "key2",
                                                                           str(self.artist_ticket_height), str(self.storage_fee), "10", "1"),  # Verb = 1 - will modify pastlelid signature to make it invalid
 
             #  top 10 MN with real signatures of non top 10 MNs
             "art5-top-mn1-non-top-mn23": self.nodes[self.top_mns_index0].tickets("makefaketicket", "art",
-                                                                                "12345", json.dumps(self.not_top_mns_signatures_dict), self.top_mn_pastelid0, "passphrase", "key1", "key2",
+                                                                                self.ticket, json.dumps(self.not_top_mns_signatures_dict), self.top_mn_pastelid0, "passphrase", "key1", "key2",
                                                                                 str(self.artist_ticket_height), str(self.storage_fee), "10", "0"),
 
             #  top 10 MN with fake signatures of top 10 MNs
             "art6-top-mn1-fake23": self.nodes[self.top_mns_index0].tickets("makefaketicket", "art",
-                                                                          "12345", json.dumps(self.signatures_dict), self.top_mn_pastelid0, "passphrase", "key1", "key2",
+                                                                          self.ticket, json.dumps(self.signatures_dict), self.top_mn_pastelid0, "passphrase", "key1", "key2",
                                                                           str(self.artist_ticket_height), str(self.storage_fee), "10", "1"),  # Verb = 1 - will modify pastlelid signature to make it invalid
 
             #  good signatures of top 10 MNs, bad ticket fee
             "art-top-mn1-bad-fee": self.nodes[self.top_mns_index0].tickets("makefaketicket", "art",
-                                                            "12345", json.dumps(self.signatures_dict), self.top_mn_pastelid0, "passphrase", "key1", "key2",
+                                                            self.ticket, json.dumps(self.signatures_dict), self.top_mn_pastelid0, "passphrase", "key1", "key2",
                                                             str(self.artist_ticket_height), str(self.storage_fee), "1", "0")
         }
 
@@ -300,10 +315,10 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         print("== Art Registration Activation ticket transaction validation test ==")
 
         # valid ticket
-        self.art_ticket1_txid = self.nodes[self.top_mns_index0].tickets("register", "art", "12345", json.dumps(self.signatures_dict),
+        self.art_ticket1_txid = self.nodes[self.top_mns_index0].tickets("register", "art", self.ticket, json.dumps(self.signatures_dict),
                                                                         self.top_mn_pastelid0, "passphrase",
                                                                         "key1", "key2",
-                                                                        str(self.artist_ticket_height), str(self.storage_fee))["txid"]
+                                                                        str(self.storage_fee))["txid"]
         assert_true(self.art_ticket1_txid, "No ticket was created")
 
         self.sync_all(10,30)
