@@ -47,7 +47,7 @@ $0 --help
   Show this help message and exit.
 
 $0 [ --enable-lcov || --disable-tests ] [ --disable-mining ] [ --enable-proton ] [ MAKEARGS... ]
-  Build Zcash and most of its transitive dependencies from
+  Build Pastel and most of its transitive dependencies from
   source. MAKEARGS are applied to both dependencies and Pastel itself.
 
   If --enable-lcov is passed, Pastel is configured to add coverage
@@ -112,4 +112,4 @@ ld -v
 HOST="$HOST" BUILD="$BUILD" NO_PROTON="$PROTON_ARG" "$MAKE" "$@" -C ./depends/ V=1
 ./autogen.sh
 CONFIG_SITE="$PWD/depends/$HOST/share/config.site" ./configure "$DEBUG_ARG" "$HARDENING_ARG" "$LCOV_ARG" "$TEST_ARG" "$MINING_ARG" "$PROTON_ARG" $CONFIGURE_FLAGS CXXFLAGS='-g'
-#"$MAKE" "$@" V=1
+"$MAKE" "$@" V=1

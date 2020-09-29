@@ -745,7 +745,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         except JSONRPCException, e:
             self.errorString = e.error['message']
             print(self.errorString)
-        assert_equal("The art ticket with this txid ["+self.mn0_ticket1_txid+"] is not in the blockchain" in self.errorString, True)
+        assert_equal("The art ticket with this txid ["+self.mn0_ticket1_txid+"] referred by this Activation ticket is not in the blockchain" in self.errorString, True)
 
         #  not enough confirmations
         print(self.nodes[self.non_mn3].getblockcount())
@@ -841,7 +841,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         except JSONRPCException, e:
             self.errorString = e.error['message']
             print(self.errorString)
-        assert_equal("The art ticket with this txid ["+self.art_ticket1_txid+"] is already activated" in self.errorString, True)
+        assert_equal("The Activation ticket with this txid ["+self.art_ticket1_txid+"] is already activated" in self.errorString, True)
 
         #       d.a.11 from another node - get ticket transaction and check
         #           - there are 3 outputs to MN1, MN2 and MN3 with correct amounts (MN1: 60%; MN2, MN3: 20% each, of registration price)
@@ -908,7 +908,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         except JSONRPCException, e:
             self.errorString = e.error['message']
             print(self.errorString)
-        assert_equal("The activation or trade ticket with this txid ["+self.art_ticket1_txid+"] referred by this sell ticket is not in the blockchain" in self.errorString, True)
+        assert_equal("The activation or trade ticket with this txid ["+self.art_ticket1_txid+"] referred by this Sell ticket is not in the blockchain" in self.errorString, True)
 
         #  not enough confirmations
         print(self.nodes[self.non_mn3].getblockcount())

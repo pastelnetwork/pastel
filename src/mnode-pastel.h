@@ -406,6 +406,8 @@ public:
     static bool FindTicketInDb(const std::string& key, CArtBuyTicket& ticket);
     
     static std::vector<CArtBuyTicket> FindAllTicketByPastelID(const std::string& pastelID);
+
+    static std::string ToStr(const CArtBuyTicket& ticket);
 };
 
 /*
@@ -488,11 +490,11 @@ public:
 	CPastelTicketProcessor() = default;
 	
 	void InitTicketDB();
-	void UpdatedBlockTip(const CBlockIndex *pindex, bool fInitialDownload);
+	void UpdatedBlockTip(const CBlockIndex *cBlockIndex, bool fInitialDownload);
 	bool ParseTicketAndUpdateDB(CMutableTransaction& tx, int nBlockHeight);
 	
 	template<class T>
-	bool UpdateDB(T& ticket, const std::string& txid, int nBlockHeight);
+	bool UpdateDB(T& ticket, string &txid, int nBlockHeight);
     template<class T, class MVKey>
     void UpdateDB_MVK(const T& ticket, const MVKey& mvKey);
 	
