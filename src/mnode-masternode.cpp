@@ -110,6 +110,12 @@ bool CMasternode::UpdateFromNewBroadcast(CMasternodeBroadcast& mnb)
 //
 arith_uint256 CMasternode::CalculateScore(const uint256& blockHash)
 {
+    if (nCollateralMinConfBlockHash.IsNull()){
+        LogPrint("masternode", "CMasternode::CalculateScore -- Masternode %s has nCollateralMinConfBlockHash NOT set, will try to set it now\n", vin.prevout.ToStringShort());
+        CollateralStatus collateralStatus = COLLATERAL_OK;
+        VerifyCollateral(collateralStatus);
+    }
+    
     // Deterministically calculate a "score" for a Masternode based on any given (block)hash
     CHashWriter ss(SER_GETHASH, PROTOCOL_VERSION);
     ss << vin.prevout << nCollateralMinConfBlockHash << blockHash;
@@ -377,6 +383,44 @@ void CMasternode::PoSeBan()
     nPoSeBanScore = masterNodeCtrl.MasternodePOSEBanMaxScore;
 }
 
+bool CMasternode::VerifyCollateral(CollateralStatus& collateralStatus)
+{
+    TRY_LOCK(cs_main, lockMain);
+    if (!lockMain) {
+        // not mnb fault, let it to be checked again later
+        LogPrint("masternode", "CMasternode::VerifyCollateral() -- Failed to aquire lock, addr=%s",
+                 addr.ToString());
+        return false;
+    }
+    
+    int nHeight;
+    collateralStatus = CheckCollateral(vin.prevout, nHeight);
+    if (collateralStatus == COLLATERAL_UTXO_NOT_FOUND) {
+        LogPrint("masternode", "CMasternode::VerifyCollateral() -- Failed to find Masternode UTXO, masternode=%s\n",
+                 vin.prevout.ToStringShort());
+        return false;
+    }
+    
+    if (collateralStatus == COLLATERAL_INVALID_AMOUNT) {
+        LogPrint("masternode","CMasternode::VerifyCollateral() -- Masternode UTXO should have %d PASTEL, masternode=%s\n",
+                 masterNodeCtrl.MasternodeCollateral,vin.prevout.ToStringShort());
+        return false;
+    }
+    
+    if (chainActive.Height() - nHeight + 1 < masterNodeCtrl.nMasternodeMinimumConfirmations) {
+        LogPrintf("CMasternode::VerifyCollateral -- Masternode UTXO must have at least %d confirmations, masternode=%s\n",
+                    masterNodeCtrl.nMasternodeMinimumConfirmations, vin.prevout.ToStringShort());
+        // maybe we miss few blocks, let this mnb to be checked again later
+        return false;
+    }
+    // remember the hash of the block where masternode collateral had minimum required confirmations
+    nCollateralMinConfBlockHash = chainActive[nHeight + masterNodeCtrl.nMasternodeMinimumConfirmations-1]->GetBlockHash();
+    LogPrintf("CMasternode::VerifyCollateral -- Masternode UTXO CollateralMinConfBlockHash is [%d], masternode=%s\n",
+            nCollateralMinConfBlockHash.ToString(), vin.prevout.ToStringShort());
+    
+    LogPrint("masternode", "CMasternodeBroadcast::CheckOutpoint -- Masternode UTXO verified\n");
+    return true;
+}
 
 #ifdef ENABLE_WALLET
 bool CMasternodeBroadcast::Create(std::string strService, std::string strKeyMasternode, std::string strTxHash, std::string strOutputIndex, 
@@ -599,41 +643,15 @@ bool CMasternodeBroadcast::CheckOutpoint(int& nDos)
         LogPrintf("CMasternodeBroadcast::CheckOutpoint -- CheckSignature() failed, masternode=%s\n", vin.prevout.ToStringShort());
         return false;
     }
-
-    {
-        TRY_LOCK(cs_main, lockMain);
-        if(!lockMain) {
-            // not mnb fault, let it to be checked again later
-            LogPrint("masternode", "CMasternodeBroadcast::CheckOutpoint -- Failed to aquire lock, addr=%s", addr.ToString());
+    
+    CollateralStatus collateralStatus = COLLATERAL_OK;
+    if (!VerifyCollateral(collateralStatus)) {
+        // if error but collateral itself is OK, let this mnb to be checked again later
+        if (collateralStatus == COLLATERAL_OK)
             masterNodeCtrl.masternodeManager.mapSeenMasternodeBroadcast.erase(GetHash());
-            return false;
-        }
-
-        int nHeight;
-        CollateralStatus err = CheckCollateral(vin.prevout, nHeight);
-        if (err == COLLATERAL_UTXO_NOT_FOUND) {
-            LogPrint("masternode", "CMasternodeBroadcast::CheckOutpoint -- Failed to find Masternode UTXO, masternode=%s\n", vin.prevout.ToStringShort());
-            return false;
-        }
-
-        if (err == COLLATERAL_INVALID_AMOUNT) {
-            LogPrint("masternode", "CMasternodeBroadcast::CheckOutpoint -- Masternode UTXO should have 1000 PASTEL, masternode=%s\n", vin.prevout.ToStringShort());
-            return false;
-        }
-
-        if(chainActive.Height() - nHeight + 1 < masterNodeCtrl.nMasternodeMinimumConfirmations) {
-            LogPrintf("CMasternodeBroadcast::CheckOutpoint -- Masternode UTXO must have at least %d confirmations, masternode=%s\n",
-                    masterNodeCtrl.nMasternodeMinimumConfirmations, vin.prevout.ToStringShort());
-            // maybe we miss few blocks, let this mnb to be checked again later
-            masterNodeCtrl.masternodeManager.mapSeenMasternodeBroadcast.erase(GetHash());
-            return false;
-        }
-        // remember the hash of the block where masternode collateral had minimum required confirmations
-        nCollateralMinConfBlockHash = chainActive[nHeight + masterNodeCtrl.nMasternodeMinimumConfirmations - 1]->GetBlockHash();
+        return false;
     }
-
-    LogPrint("masternode", "CMasternodeBroadcast::CheckOutpoint -- Masternode UTXO verified\n");
-
+    
     // make sure the input that was signed in masternode broadcast message is related to the transaction
     // that spawned the Masternode - this is expensive, so it's only done once per Masternode
     if(!IsInputAssociatedWithPubkey()) {

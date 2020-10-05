@@ -28,7 +28,7 @@ public:
 	
 	virtual std::string TicketName() const = 0;
 	virtual std::string ToJSON() = 0;
-	virtual bool IsValid(bool preReg, std::string& errRet) const = 0;   //if preReg = true - validate pre registration conditions
+	virtual bool IsValid(std::string& errRet, bool preReg = false) const = 0;   //if preReg = true - validate pre registration conditions
 	                                                                    //      ex.: address has enough coins for registration
 	                                                                    //else - validate ticket in general
     virtual CAmount TicketPrice() const = 0;
@@ -79,7 +79,7 @@ public:
 	std::string KeyTwo() const override {return outpoint.IsNull() ? (secondKey.empty() ? address : secondKey) : outpoint.ToStringShort();}
     
     std::string ToJSON() override;
-    bool IsValid(bool preReg, std::string& errRet) const override;
+    bool IsValid(std::string& errRet, bool preReg = false) const override;
     CAmount TicketPrice() const override {return 10;}
     
     std::string PastelIDType() {return outpoint.IsNull()? "personal": "masternode";}
@@ -189,7 +189,7 @@ public:
     std::string MVKeyOne() const override {return pastelIDs[artistsign];}
     
     std::string ToJSON() override;
-    bool IsValid(bool preReg, std::string& errRet) const override;
+    bool IsValid(std::string& errRet, bool preReg = false) const override;
     CAmount TicketPrice() const override {return 10;}
     
     ADD_SERIALIZE_METHODS;
@@ -258,7 +258,7 @@ public:
     int MVKeyTwo() const override {return artistHeight;}
     
     std::string ToJSON() override;
-    bool IsValid(bool preReg, std::string& errRet) const override;
+    bool IsValid(std::string& errRet, bool preReg = false) const override;
     CAmount TicketPrice() const override {return 10;}
 	
 	ADD_SERIALIZE_METHODS;
@@ -327,7 +327,7 @@ public:
     std::string MVKeyTwo() const override {return artTnxId;}
     
     std::string ToJSON() override;
-    bool IsValid(bool preReg, std::string& errRet) const override;
+    bool IsValid(std::string& errRet, bool preReg = false) const override;
     CAmount TicketPrice() const override {return askedPrice/50;}
     
     ADD_SERIALIZE_METHODS;
@@ -387,7 +387,7 @@ public:
     CAmount TicketPrice() const override {return price/100;}
     
     std::string ToJSON() override;
-    bool IsValid(bool preReg, std::string& errRet) const override;
+    bool IsValid(std::string& errRet, bool preReg = false) const override;
     
     ADD_SERIALIZE_METHODS;
     
@@ -404,6 +404,8 @@ public:
     
     static CArtBuyTicket Create(std::string _sellTnxId, int _price, std::string _pastelID, const SecureString& strKeyPass);
     static bool FindTicketInDb(const std::string& key, CArtBuyTicket& ticket);
+
+    static bool CheckBuyTicketExistBySellTicket(const std::string& _sellTnxId);
     
     static std::vector<CArtBuyTicket> FindAllTicketByPastelID(const std::string& pastelID);
 
@@ -446,7 +448,7 @@ public:
     std::string MVKeyTwo() const override {return artTnxId;}
     
     std::string ToJSON() override;
-    bool IsValid(bool preReg, std::string& errRet) const override;
+    bool IsValid(std::string& errRet, bool preReg = false) const override;
     CAmount TicketPrice() const override {return 10;}
     
     ADD_SERIALIZE_METHODS;
