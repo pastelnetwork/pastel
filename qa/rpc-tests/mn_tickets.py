@@ -1013,14 +1013,33 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         print("== Art buy Tickets test ==")
 
         self.nonmn4_address1 = self.nodes[self.non_mn4].getnewaddress()
-        self.nodes[self.mining_node_num].sendtoaddress(self.nonmn4_address1, 100, "", "", False)
+        self.nodes[self.mining_node_num].sendtoaddress(self.nonmn4_address1, 2000, "", "", False)
         time.sleep(2)
         self.sync_all(10, 30)
         self.nodes[self.mining_node_num].generate(1)
         self.sync_all(10, 30)
 
         self.nonmn4_pastelid1 = self.nodes[self.non_mn4].pastelid("newkey", "passphrase")["pastelid"]
-        self.nodes[self.non_mn4].tickets("register", "id", self.nonmn4_pastelid1, "passphrase", self.nonmn4_address1)["txid"]/[]
+        self.nodes[self.non_mn4].tickets("register", "id", self.nonmn4_pastelid1, "passphrase", self.nonmn4_address1)["txid"]
+
+        # fail if not enough funds
+        # price (100K) and tnx fee(1% from price - 1K from 100K) = 101000
+        coins_before = self.nodes[self.non_mn4].getbalance()
+        print(coins_before)
+        try:
+            self.nodes[self.non_mn4].tickets("register", "buy", self.art_ticket1_sell_ticket_txid, str("100000"), self.nonmn4_pastelid1, "passphrase")
+        except JSONRPCException, e:
+            self.errorString = e.error['message']
+            print(self.errorString)
+        assert_equal("Not enough coins to cover price [101000]" in self.errorString, True)
+
+        self.nodes[self.mining_node_num].sendtoaddress(self.nonmn4_address1, 100000, "", "", False)
+        time.sleep(2)
+        self.sync_all()
+        self.nodes[self.mining_node_num].generate(1)
+        self.sync_all()
+        coins_before = self.nodes[self.non_mn4].getbalance()
+        print(coins_before)
 
         # Check there is Sell ticket with this sellTnxId
         try:
@@ -1048,27 +1067,6 @@ class MasterNodeTicketsTest(MasterNodeCommon):
             self.errorString = e.error['message']
             print(self.errorString)
         assert_equal("The offered price [100] is less than asked in the sell ticket [100000]" in self.errorString, True)
-
-        # fail if not enough funds
-        coins_before = self.nodes[self.non_mn4].getbalance()
-        print(coins_before)
-        try:
-            self.nodes[self.non_mn4].tickets("register", "buy", self.art_ticket1_sell_ticket_txid, str("100000"), self.nonmn4_pastelid1, "passphrase")
-        except JSONRPCException, e:
-            self.errorString = e.error['message']
-            print(self.errorString)
-        assert_equal("Not enough coins to cover price [100000]" in self.errorString, True)
-
-        self.nodes[self.mining_node_num].sendtoaddress(self.nonmn4_address1, 100000, "", "", False)
-        time.sleep(2)
-        self.sync_all()
-        self.nodes[self.mining_node_num].generate(1)
-        self.sync_all()
-        coins_before = self.nodes[self.non_mn4].getbalance()
-        print(coins_before)
-
-        # fail if not enough coins to pay tnx fee (1% from price - 1K from 100K)
-        # TODO
 
         # Create buy ticket
         self.art_ticket1_buy_ticket_txid = self.nodes[self.non_mn4].tickets("register", "buy", self.art_ticket1_sell_ticket_txid, str("100000"), self.nonmn4_pastelid1, "passphrase")
