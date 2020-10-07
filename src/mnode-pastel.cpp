@@ -1181,7 +1181,7 @@ bool common_validation(const T& ticket, bool preReg, const std::string& strTnxId
         return false;
     }
     
-    // C.3 check the referred ticket (Activation or Trade) is valid
+    // C.3 check the referred ticket is valid
     // (IsValid of the referred ticket validates signatures as well!)
     std::string err;
     if (!pastelTicket->IsValid(err))
@@ -1625,6 +1625,62 @@ std::string CArtBuyTicket::ToJSON()
 
 bool CArtTradeTicket::IsValid(std::string& errRet, bool preReg) const
 {
+    // 0. Common validations
+    std::unique_ptr<CPastelTicketBase> sellTicket;
+    TicketID sellTicketId;
+    if  (!common_validation(*this, preReg, sellTnxId, sellTicket, sellTicketId,
+                            [](TicketID tid){return (tid != TicketID::Sell);},
+                            "Trade", "sell",
+                            price+TicketPrice(),
+                            errRet))
+        return false;
+    
+    std::unique_ptr<CPastelTicketBase> buyTicket;
+    TicketID buyTicketId;
+    if  (!common_validation(*this, preReg, buyTnxId, buyTicket, buyTicketId,
+                            [](TicketID tid){return (tid != TicketID::Buy);},
+                            "Trade", "buy",
+                            price+TicketPrice(),
+                            errRet))
+        return false;
+    
+    // 1. Verify that there is no another Trade ticket for the same Sell ticket
+    if (CArtTradeTicket::CheckTradeTicketExistBySellTicket(sellTnxId)){
+        errRet = strprintf("There is already exist trade ticket for the sell ticket with this txid [%s]", sellTnxId);
+        return false;
+    }
+    // 1. Verify that there is no another Trade ticket for the same Buy ticket
+    if (CArtTradeTicket::CheckTradeTicketExistByBuyTicket(buyTnxId)){
+        errRet = strprintf("There is already exist trade ticket for the buy ticket with this txid [%s]", buyTnxId);
+        return false;
+    }
+    
+    // 2. Verify that the price is correct
+    auto sellTicketReal = dynamic_cast<CArtSellTicket*>(sellTicket.get());
+    if (sellTicketReal == nullptr) {
+        errRet = strprintf("The sell ticket with this txid [%s] referred by this Trade ticket is invalid", sellTnxId);
+        return false;
+    }
+    if (price < sellTicketReal->askedPrice){
+        errRet = strprintf("The offered price [%d] is less than asked in the sell ticket [%d]", price, sellTicketReal->askedPrice);
+        return false;
+    }
+    
+    // 3. Verify Trade ticket PastelID is the same as in Buy Ticket
+    auto buyTicketReal = dynamic_cast<CArtActivateTicket*>(buyTicket.get());
+    if (buyTicketReal == nullptr) {
+        errRet = strprintf("The buy ticket with this txid [%s] referred by this trade ticket is invalid", buyTnxId);
+        return false;
+    }
+    std::string& buyersPastelID = buyTicketReal->pastelID;
+    if (buyersPastelID != pastelID)
+    {
+        errRet = strprintf("The PastelID [%s] in this Trade ticket is not matching the PastelID [%s] in the Buy ticket with this txid [%s]",
+                           pastelID, buyersPastelID,
+                           buyTnxId);
+        return false;
+    }
+    
     return true;
 }
 
@@ -1639,6 +1695,7 @@ std::string CArtTradeTicket::ToJSON()
                              {"pastelID", pastelID},
                              {"sell_txid", sellTnxId},
                              {"buy_txid", buyTnxId},
+                             {"art_txid", artTnxId},
                              {"signature", ed_crypto::Hex_Encode(signature.data(), signature.size())}
                      }}
     };
@@ -1660,6 +1717,19 @@ std::string CArtTradeTicket::ToJSON()
 /*static*/ std::vector<CArtTradeTicket> CArtTradeTicket::FindAllTicketByArtTnxID(const std::string& artTnxID)
 {
     return masterNodeCtrl.masternodeTickets.FindTicketsByMVKey<CArtTradeTicket, std::string>(TicketID::Trade, artTnxID);
+}
+
+/*static*/ bool CArtTradeTicket::CheckTradeTicketExistBySellTicket(const std::string& _sellTnxId)
+{
+    CArtTradeTicket _ticket;
+    _ticket.sellTnxId = _sellTnxId;
+    return masterNodeCtrl.masternodeTickets.CheckTicketExist(_ticket);
+}
+/*static*/ bool CArtTradeTicket::CheckTradeTicketExistByBuyTicket(const std::string& _buyTnxId)
+{
+    CArtTradeTicket _ticket;
+    _ticket.buyTnxId = _buyTnxId;
+    return masterNodeCtrl.masternodeTickets.CheckTicketExistBySecondaryKey(_ticket);
 }
 
 // CTakeDownTicket ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

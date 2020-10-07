@@ -417,7 +417,8 @@ public:
 		"type": "trade",
 		"pastelID": "",     //PastelID of the buyer
 		"sell_txid": "",    //txid with sale ticket
-		"buy_txid": "",    //txid with sale ticket
+		"buy_txid": "",     //txid with sale ticket
+		"art_txid": "",     //txid with either 1) art activation ticket or 2) trade ticket in it
 		"price": "",
 		"reserved": "",
 		"signature": ""
@@ -471,6 +472,9 @@ public:
     
     static std::vector<CArtTradeTicket> FindAllTicketByPastelID(const std::string& pastelID);
     static std::vector<CArtTradeTicket> FindAllTicketByArtTnxID(const std::string& artTnxID);
+    
+    static bool CheckTradeTicketExistBySellTicket(const std::string& _sellTnxId);
+    static bool CheckTradeTicketExistByBuyTicket(const std::string& _buyTnxId);
     
     static std::string ToStr(const CArtTradeTicket& ticket);
 };
