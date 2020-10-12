@@ -1467,7 +1467,7 @@ bool AcceptToMemoryPool(CTxMemPool& pool, CValidationState &state, const CTransa
 
         // are the actual inputs available?
         if (!view.HaveInputs(tx))
-            return state.Invalid(error("AcceptToMemoryPool: gginputs already spent"),
+            return state.Invalid(error("AcceptToMemoryPool: inputs already spent"),
                                  REJECT_DUPLICATE, "bad-txns-inputs-spent");
 
         // are the joinsplits' and sapling spends' requirements met in tx(valid anchors/nullifiers)?
