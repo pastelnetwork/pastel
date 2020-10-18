@@ -840,13 +840,13 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         assert_equal(mn1_coins_after-mn1_coins_before, other_mn_fee)
         assert_equal(mn2_coins_after-mn2_coins_before, other_mn_fee)
 
-        #       d.a.10 fail if already registered - Registration Ticket is already activated
+        #       d.a.10 fail if already registered
         try:
             self.nodes[self.non_mn3].tickets("register", "act", self.art_ticket1_txid, str(self.artist_ticket_height), str(self.storage_fee), self.artist_pastelid1, "passphrase")
         except JSONRPCException, e:
             self.errorString = e.error['message']
             print(self.errorString)
-        assert_equal("The Activation ticket with this txid ["+self.art_ticket1_txid+"] is already activated" in self.errorString, True)
+        assert_equal("The Activation ticket for the Registration ticket with txid ["+self.art_ticket1_txid+"] is already exist" in self.errorString, True)
 
         #       d.a.11 from another node - get ticket transaction and check
         #           - there are 3 outputs to MN1, MN2 and MN3 with correct amounts (MN1: 60%; MN2, MN3: 20% each, of registration price)
@@ -1034,7 +1034,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
             print(self.errorString)
         assert_equal("Not enough coins to cover price [101000]" in self.errorString, True)
 
-        self.nodes[self.mining_node_num].sendtoaddress(self.nonmn4_address1, 100000, "", "", False)
+        self.nodes[self.mining_node_num].sendtoaddress(self.nonmn4_address1, 100010, "", "", False)
         time.sleep(2)
         self.sync_all()
         self.nodes[self.mining_node_num].generate(1)
@@ -1085,7 +1085,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         except JSONRPCException, e:
             self.errorString = e.error['message']
             print(self.errorString)
-        assert_equal("The Buy ticket with this txid ["+self.art_ticket1_sell_ticket_txid+"] is already activated" in self.errorString, True)
+        assert_equal("Buy ticket ["+self.art_ticket1_buy_ticket_txid+"] is already exist for this sell ticket ["+self.art_ticket1_sell_ticket_txid+"]" in self.errorString, True)
 
         print("Art buy tickets tested")
 
@@ -1112,7 +1112,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
             print(self.errorString)
         assert_equal("Not enough coins to cover price [100010]" in self.errorString, True)
 
-        self.nodes[self.mining_node_num].sendtoaddress(self.nonmn4_address1, 100000, "", "", False)
+        self.nodes[self.mining_node_num].sendtoaddress(self.nonmn4_address1, 101000, "", "", False)
         time.sleep(2)
         self.sync_all()
         self.nodes[self.mining_node_num].generate(1)
@@ -1126,7 +1126,8 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         except JSONRPCException, e:
             self.errorString = e.error['message']
             print(self.errorString)
-        assert_equal("The ticket with this txid ["+self.art_ticket1_act_ticket_txid+"] is not in the blockchain" in self.errorString, True)
+        assert_equal("The ticket with this txid ["+self.art_ticket1_buy_ticket_txid+"] is not in the blockchain" in self.errorString, True)
+        # This error is from CArtTradeTicket::Create where it tries to get Sell ticket to get price and artTxId
 
         # Check there is Buy ticket with this buyTnxId
         try:
@@ -1134,7 +1135,8 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         except JSONRPCException, e:
             self.errorString = e.error['message']
             print(self.errorString)
-        assert_equal("The ticket with this txid ["+self.art_ticket1_act_ticket_txid+"] is not in the blockchain" in self.errorString, True)
+        assert_equal("The buy ticket with this txid ["+self.art_ticket1_sell_ticket_txid+"] referred by this Trade ticket is not in the blockchain" in self.errorString, True)
+        # This error is from CArtTradeTicket::IsValid -> common_validation
 
         # fail if not enough confirmations after buy ticket
         print(self.nodes[self.non_mn4].getblockcount())
@@ -1147,7 +1149,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         self.nodes[self.non_mn4].generate(10)
         print(self.nodes[self.non_mn4].getblockcount())
 
-        artists_coins_before = self.nodes[self.hot_node_num].getreceivedbyaddress(self.nonmn3_address1)
+        artists_coins_before = self.nodes[self.non_mn3].getreceivedbyaddress(self.nonmn3_address1)
 
         # Create trade ticket
         self.art_ticket1_trade_ticket_txid = self.nodes[self.non_mn4].tickets("register", "trade", self.art_ticket1_sell_ticket_txid, self.art_ticket1_buy_ticket_txid, self.nonmn4_pastelid1, "passphrase")["txid"]
@@ -1156,21 +1158,29 @@ class MasterNodeTicketsTest(MasterNodeCommon):
 
         # check correct amount of change and correct amount spent
         coins_after = self.nodes[self.non_mn4].getbalance()
+        print(coins_before)
         print(coins_after)
-        assert_equal(coins_after, coins_before-10)  # ticket cost is 10
+        assert_equal(coins_after, coins_before-10-100000)  # ticket cost is 10, art cost is 100000
 
         # check seller gets correct amount
 
-        artists_coins_after = self.nodes[self.hot_node_num].getreceivedbyaddress(self.nonmn3_address1)
+        artists_coins_after = self.nodes[self.non_mn3].getreceivedbyaddress(self.nonmn3_address1)
+        print(artists_coins_before)
+        print(artists_coins_after)
         assert_equal(artists_coins_after-artists_coins_before, 100000)
 
+        self.nodes[self.mining_node_num].sendtoaddress(self.nonmn4_address1, 100000, "", "", False)
+        time.sleep(2)
+        self.sync_all()
+        self.nodes[self.mining_node_num].generate(1)
+        self.sync_all()
         # fail if there is another trade ticket referring to that sell ticket
         try:
             self.nodes[self.non_mn4].tickets("register", "trade", self.art_ticket1_sell_ticket_txid, self.art_ticket1_buy_ticket_txid, self.nonmn4_pastelid1, "passphrase")
         except JSONRPCException, e:
             self.errorString = e.error['message']
             print(self.errorString)
-        assert_equal("The Sell ticket with this txid ["+self.art_ticket1_sell_ticket_txid+"] is already activated" in self.errorString, True)
+        assert_equal("There is already exist trade ticket for the sell ticket with this txid ["+self.art_ticket1_sell_ticket_txid+"]" in self.errorString, True)
 
         print("Art trade tickets tested")
 

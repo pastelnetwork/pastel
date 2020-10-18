@@ -1500,7 +1500,7 @@ UniValue tickets(const UniValue& params, bool fHelp) {
 	))
 		throw runtime_error(
 			"tickets \"command\"...\n"
-			"Set of commands to deal with Pastel tickets and related actions\n"
+			"Set of commands to deal with Pastel tickets and related actions (v.1)\n"
 			"\nArguments:\n"
 			"1. \"command\"        (string or set of strings, required) The command to execute\n"
 			"\nAvailable commands:\n"

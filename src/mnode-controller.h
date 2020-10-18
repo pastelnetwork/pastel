@@ -73,6 +73,7 @@ public:
     int nFulfilledRequestExpireTime;
 
     int MinTicketConfirmations;
+    int MaxBuyTicketAge;
 
     CMasterNodeController() : 
         pacNotificationInterface(NULL),

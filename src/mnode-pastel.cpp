@@ -121,6 +121,7 @@ bool CPastelTicketProcessor::ValidateIfTicketTransaction(const CTransaction& tx)
         return true; // this is not a ticket
     
     CAmount storageFee = 0;
+    CAmount tradePrice = 0;
     CAmount expectedTicketFee = 0;
     
     //this is ticket and it need to be validated
@@ -162,6 +163,7 @@ bool CPastelTicketProcessor::ValidateIfTicketTransaction(const CTransaction& tx)
             data_stream >> ticket;
             ok = ticket.IsValid(error_ret, false);
             expectedTicketFee = ticket.TicketPrice() * COIN;
+            tradePrice = ticket.price * COIN;
         }
 //		else if (ticket_id == TicketID::Down) {
 //            CTakeDownTicket ticket;
@@ -218,7 +220,17 @@ bool CPastelTicketProcessor::ValidateIfTicketTransaction(const CTransaction& tx)
                 }
             }
             if (ticket_id == TicketID::Trade){ //in this tickets last 2 outputs is: change, and payment to the seller
-            
+                if (i == num-2)
+                    continue;
+                if (i == num-1) {
+                    if (tradePrice != tx.vout[i].nValue)
+                    {
+                        ok = false;
+                        error_ret = strprintf("Wrong payment to the seller: expected - %d, real - %d", tradePrice, tx.vout[i].nValue);
+                        break;
+                    }
+                    continue;
+                }
             }
             ticketFee += tx.vout[i].nValue;
         }
@@ -840,20 +852,33 @@ bool CPastelIDRegTicket::IsValid(std::string& errRet, bool preReg) const
             }
             
             // 2. Check outpoint belongs to active MN
-            CMasternode mnInfo;
-            if (!masterNodeCtrl.masternodeManager.Get(outpoint, mnInfo)){
-                errRet = strprintf("Unknown Masternode - [%s]. PastelID - [%s]", outpoint.ToStringShort(), pastelID);
-                return false;
+            // However! If this is validation of an old ticket, MN can be not active or eve alive anymore
+            //So will skip the MN validation if ticket is fully confirmed (older then MinTicketConfirmations blocks)
+            int currentHeight;
+            {
+                LOCK(cs_main);
+                currentHeight = chainActive.Height();
             }
-            if (!mnInfo.IsEnabled()){
-                errRet = strprintf("Non an active Masternode - [%s]. PastelID - [%s]", outpoint.ToStringShort(), pastelID);
-                return false;
-            }
-            
-            // 3. Validate MN signature using public key of MN identified by outpoint
-            if (!CMessageSigner::VerifyMessage(mnInfo.pubKeyMasternode, mn_signature, ss.str(), errRet)) {
-                errRet = strprintf("Ticket's MN signature is invalid. Error - %s. Outpoint - [%s]; PastelID - [%s]", errRet, outpoint.ToStringShort(), pastelID);
-                return false;
+    
+            if (currentHeight - _ticket.ticketBlock < masterNodeCtrl.MinTicketConfirmations) {
+                CMasternode mnInfo;
+                if (!masterNodeCtrl.masternodeManager.Get(outpoint, mnInfo)) {
+                    errRet = strprintf("Unknown Masternode - [%s]. PastelID - [%s]", outpoint.ToStringShort(),
+                                       pastelID);
+                    return false;
+                }
+                if (!mnInfo.IsEnabled()) {
+                    errRet = strprintf("Non an active Masternode - [%s]. PastelID - [%s]", outpoint.ToStringShort(),
+                                       pastelID);
+                    return false;
+                }
+    
+                // 3. Validate MN signature using public key of MN identified by outpoint
+                if (!CMessageSigner::VerifyMessage(mnInfo.pubKeyMasternode, mn_signature, ss.str(), errRet)) {
+                    errRet = strprintf("Ticket's MN signature is invalid. Error - %s. Outpoint - [%s]; PastelID - [%s]",
+                                       errRet, outpoint.ToStringShort(), pastelID);
+                    return false;
+                }
             }
         }
     }
@@ -1146,13 +1171,7 @@ bool common_validation(const T& ticket, bool preReg, const std::string& strTnxId
 {
     // A. Something to check ONLY before ticket made into transaction
     if (preReg){
-        // A.1 Check if ticket already exist
-        if (masterNodeCtrl.masternodeTickets.CheckTicketExist(ticket)) {
-            errRet = strprintf("The %s ticket with this txid [%s] is already activated. You tickets database is probably out of sync", thisTicket, strTnxId);
-            return false;
-        }
-        
-        // A.2 Validate that address has coins to pay for registration - 10PSL + fee
+        // A. Validate that address has coins to pay for registration - 10PSL + fee
         if (pwalletMain->GetBalance() < ticketPrice*COIN) {
             errRet = strprintf("Not enough coins to cover price [%d]", ticketPrice);
             return false;
@@ -1248,6 +1267,17 @@ bool CArtActivateTicket::IsValid(std::string& errRet, bool preReg) const
                      TicketPrice()+(storageFee * 9 / 10), //fee for ticket + 90% of storage fee
                      errRet))
         return false;
+    
+    // Check the Activation ticket for that Registration ticket is already in the database
+    CArtActivateTicket existingTicket;
+    if (CArtActivateTicket::FindTicketInDb(regTicketTnxId, existingTicket)) {
+        if (preReg ||  // if pre reg - this is probably repeating call, so signatures can be the same
+            existingTicket.signature != signature) { // check if this is not the same ticket!!
+            errRet = strprintf("The Activation ticket for the Registration ticket with txid [%s] is already exist",
+                               regTicketTnxId);
+            return false;
+        }
+    }
     
     auto artTicket = dynamic_cast<CArtRegTicket*>(pastelTicket.get());
     if (artTicket == nullptr)
@@ -1529,10 +1559,38 @@ bool CArtBuyTicket::IsValid(std::string& errRet, bool preReg) const
                             errRet))
         return false;
     
+    int chainHeight = 0;
+    {
+        LOCK(cs_main);
+        chainHeight = chainActive.Height() + 1;
+    }
+    
     // 1. Verify that there is no another buy ticket for the same sell ticket
-    if (CArtBuyTicket::CheckBuyTicketExistBySellTicket(sellTnxId)){
-        errRet = strprintf("There is already exist buy ticket for the sell ticket with this txid [%s]", sellTnxId);
-        return false;
+    // or if there are, it is older then 1h and there is no trade ticket for it
+    //buyTicket->ticketBlock <= height+24 (2.5m per block -> 24blocks/per hour) - MaxBuyTicketAge
+    CArtBuyTicket existingBuyTicket;
+    if (CArtBuyTicket::FindTicketInDb(sellTnxId, existingBuyTicket)) {
+    
+        if (preReg) {// if pre reg - this is probably repeating call, so signatures can be the same
+            errRet = strprintf("Buy ticket [%s] is already exist for this sell ticket [%s]",
+                               existingBuyTicket.ticketTnx, sellTnxId);
+            return false;
+        }
+        if (existingBuyTicket.signature != signature) {
+    
+            //check age
+            if (existingBuyTicket.ticketBlock + masterNodeCtrl.MaxBuyTicketAge <= chainHeight) {
+                errRet = strprintf("Buy ticket [%s] is already exist for this sell ticket [%s]",
+                                   existingBuyTicket.ticketTnx, sellTnxId);
+                return false;
+            }
+    
+            //check trade ticket
+            if (CArtTradeTicket::CheckTradeTicketExistByBuyTicket(existingBuyTicket.ticketTnx)) {
+                errRet = strprintf("The sell ticket you are trying to buy [%s] is already sold", sellTnxId);
+                return false;
+            }
+        }
     }
     
     auto sellTicket = dynamic_cast<CArtSellTicket*>(pastelTicket.get());
@@ -1542,13 +1600,8 @@ bool CArtBuyTicket::IsValid(std::string& errRet, bool preReg) const
     }
 
     // 2. Verify Sell ticket is already or still active
-    int height = 0;
-    if (preReg) {
-        LOCK(cs_main);
-        height = chainActive.Height() + 1;
-    } else {
-        height = ticketBlock;
-    }
+    int height = (preReg || ticketBlock == 0)? chainHeight: ticketBlock;
+    
     if (sellTicket->activeAfter > 0 && sellTicket->activeAfter <= height) {
         errRet = strprintf("Sell ticket [%s] is only active after [%d] block height (Buy ticket block is [%d])", sellTicket->ticketTnx, sellTicket->activeAfter, height);
         return false;
@@ -1654,17 +1707,19 @@ bool CArtTradeTicket::IsValid(std::string& errRet, bool preReg) const
     
     // 1. Verify that there is no another Trade ticket for the same Sell ticket
     if (CArtTradeTicket::CheckTradeTicketExistBySellTicket(sellTnxId)){
+        //TODO: compare signatures to skip if the same ticket
         errRet = strprintf("There is already exist trade ticket for the sell ticket with this txid [%s]", sellTnxId);
         return false;
     }
     // 1. Verify that there is no another Trade ticket for the same Buy ticket
     if (CArtTradeTicket::CheckTradeTicketExistByBuyTicket(buyTnxId)){
+        //TODO: compare signatures to skip if the same ticket
         errRet = strprintf("There is already exist trade ticket for the buy ticket with this txid [%s]", buyTnxId);
         return false;
     }
     
     // 2. Verify Trade ticket PastelID is the same as in Buy Ticket
-    auto buyTicketReal = dynamic_cast<CArtActivateTicket*>(buyTicket.get());
+    auto buyTicketReal = dynamic_cast<CArtBuyTicket*>(buyTicket.get());
     if (buyTicketReal == nullptr) {
         errRet = strprintf("The buy ticket with this txid [%s] referred by this trade ticket is invalid", buyTnxId);
         return false;

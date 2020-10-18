@@ -365,7 +365,7 @@ public:
 		"signature": ""
 	},
  */
-class CArtBuyTicket : public CPastelTicket<TicketID::Buy, std::string, NoKey, std::string, NoKey>
+class CArtBuyTicket : public CPastelTicket<TicketID::Buy, std::string, NoKey, std::string, NoKey /*std::string*/>
 {
 public:
     std::string pastelID;
@@ -379,11 +379,12 @@ public:
     explicit CArtBuyTicket(std::string _pastelID) : pastelID(std::move(_pastelID)) {}
     
     std::string TicketName() const override {return "art-buy";}
-    std::string KeyOne() const override {return sellTnxId;}
+    std::string KeyOne() const override {return sellTnxId;} // this is the latest (active) buy ticket for this sell ticket
     bool HasKeyTwo() const override {return false;}
     bool HasMVKeyOne() const override {return true;}
     std::string MVKeyOne() const override {return pastelID;}
     bool HasMVKeyTwo() const override {return false;}
+//    std::string MVKeyTwo() const override {return sellTnxId;} // these are all buy (1 active and many inactive) tickets for this sell ticket
     CAmount TicketPrice() const override {return price/100;}
     
     std::string ToJSON() override;
