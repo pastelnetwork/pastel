@@ -2028,7 +2028,6 @@ UniValue tickets(const UniValue& params, bool fHelp) {
 					"  sell  - List ALL art sell tickets.\n"
 					"  buy   - List ALL art buy tickets.\n"
 					"  trade - List ALL art trade tickets.\n"
-					"  down	 - List ALL take down tickets.\n"
                     "\nArguments:\n"
                     "1. minheight	 - minimum height for returned tickets (only tickets registered after this height will be returned).\n"
 					"\nExample: List ALL PastelID tickets\n"
@@ -2040,27 +2039,22 @@ UniValue tickets(const UniValue& params, bool fHelp) {
         int minheight = 0;
         if (params.size() == 3)
             minheight = get_number(params[1]);
-   
-		std::vector<std::string> keys;
-		if (strCmd == "id")
-			keys = masterNodeCtrl.masternodeTickets.GetAllKeys(TicketID::PastelID);
-		if (strCmd == "art")
-			keys = masterNodeCtrl.masternodeTickets.GetAllKeys(TicketID::Art);
-		if (strCmd == "act")
-			keys = masterNodeCtrl.masternodeTickets.GetAllKeys(TicketID::Activate);
+        
+        UniValue obj(UniValue::VARR);
+        if (strCmd == "id")
+            obj.read(masterNodeCtrl.masternodeTickets.ListTickets<CPastelIDRegTicket, TicketID::PastelID>());
+        if (strCmd == "art")
+            obj.read(masterNodeCtrl.masternodeTickets.ListTickets<CArtRegTicket, TicketID::Art>());
+        if (strCmd == "act")
+            obj.read(masterNodeCtrl.masternodeTickets.ListTickets<CArtActivateTicket, TicketID::Activate>());
         if (strCmd == "sell")
-            keys = masterNodeCtrl.masternodeTickets.GetAllKeys(TicketID::Sell);
+            obj.read(masterNodeCtrl.masternodeTickets.ListTickets<CArtSellTicket, TicketID::Sell>());
         if (strCmd == "buy")
-            keys = masterNodeCtrl.masternodeTickets.GetAllKeys(TicketID::Buy);
-		if (strCmd == "trade")
-			keys = masterNodeCtrl.masternodeTickets.GetAllKeys(TicketID::Trade);
-		if (strCmd == "down")
-			keys = masterNodeCtrl.masternodeTickets.GetAllKeys(TicketID::Down);
-		
-        UniValue keysArray(UniValue::VARR);
-		for (const auto& key : keys)
-            keysArray.push_back(key);
-		return keysArray;
+            obj.read(masterNodeCtrl.masternodeTickets.ListTickets<CArtBuyTicket, TicketID::Buy>());
+        if (strCmd == "trade")
+            obj.read(masterNodeCtrl.masternodeTickets.ListTickets<CArtTradeTicket, TicketID::Trade>());
+
+        return obj;
 	}
 	
 	if (strCommand == "get") {

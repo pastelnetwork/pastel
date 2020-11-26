@@ -466,6 +466,45 @@ UniValue sendtoaddress(const UniValue& params, bool fHelp)
     return wtx.GetHash().GetHex();
 }
 
+UniValue listaddressamounts(const UniValue& params, bool fHelp)
+{
+    if (!EnsureWalletIsAvailable(fHelp))
+        return NullUniValue;
+    
+    if (fHelp || params.size() > 1)
+        throw runtime_error(
+                "listaddressamounts (includeempty)\n"
+                "\nLists balance on each addresses\n"
+                "\nArguments:\n"
+                "1. includeempty  (numeric, optional, default=false) Whether to include addresses with empty balance.\n"
+                "\nResult:\n"
+                "  \"zcashaddress\",     (string) The Pastel address\n"
+                "  amount,               (numeric) The amount in " + CURRENCY_UNIT + "\n"
+                "\nExamples:\n"
+                + HelpExampleCli("listaddressamounts", "")
+                + HelpExampleCli("listaddressamounts", "true")
+                + HelpExampleRpc("listaddressamounts", "")
+                + HelpExampleRpc("listaddressamounts", "true")
+        );
+    
+    bool fIncludeEmpty = false;
+    if (params.size() == 1)
+        fIncludeEmpty = params[0].get_bool();
+    
+    LOCK2(cs_main, pwalletMain->cs_wallet);
+    
+    UniValue jsonBalances(UniValue::VOBJ);
+    
+    std::map<CTxDestination, CAmount> balances = pwalletMain->GetAddressBalances();
+    for (const auto &balance : balances)
+    {
+        CAmount amount = balance.second;
+        if (!fIncludeEmpty && amount == 0) continue;
+        jsonBalances.push_back(Pair(EncodeDestination(balance.first), ValueFromAmount(amount)));
+    }
+    return jsonBalances;
+}
+
 UniValue listaddressgroupings(const UniValue& params, bool fHelp)
 {
     if (!EnsureWalletIsAvailable(fHelp))
@@ -493,7 +532,7 @@ UniValue listaddressgroupings(const UniValue& params, bool fHelp)
             + HelpExampleCli("listaddressgroupings", "")
             + HelpExampleRpc("listaddressgroupings", "")
         );
-
+    
     LOCK2(cs_main, pwalletMain->cs_wallet);
 
     UniValue jsonGroupings(UniValue::VARR);
@@ -4621,6 +4660,7 @@ static const CRPCCommand commands[] =
     { "wallet",             "keypoolrefill",            &keypoolrefill,            true  },
     { "wallet",             "listaccounts",             &listaccounts,             false },
     { "wallet",             "listaddressgroupings",     &listaddressgroupings,     false },
+    { "wallet",             "listaddressamounts",       &listaddressamounts,       false },
     { "wallet",             "listlockunspent",          &listlockunspent,          false },
     { "wallet",             "listreceivedbyaccount",    &listreceivedbyaccount,    false },
     { "wallet",             "listreceivedbyaddress",    &listreceivedbyaddress,    false },

@@ -449,7 +449,12 @@ bool CMasternodeBroadcast::Create(std::string strService, std::string strKeyMast
 
     if (!GetMasternodeOutpointAndKeys(pwalletMain, outpoint, pubKeyCollateralAddressNew, keyCollateralAddressNew, strTxHash, strOutputIndex))
         return Log(strprintf("Could not allocate outpoint %s:%s for masternode %s", strTxHash, strOutputIndex, strService));
-
+    
+    int outpointConfirmations = GetUTXOConfirmations(outpoint);
+    if (outpointConfirmations < masterNodeCtrl.nMasternodeMinimumConfirmations) {
+        return Log(strprintf("Masternode UTXO must have at least %d confirmations, has only %d", masterNodeCtrl.nMasternodeMinimumConfirmations, outpointConfirmations));
+    }
+    
     CService service;
     if (!Lookup(strService.c_str(), service, 0, false))
         return Log(strprintf("Invalid address %s for masternode.", strService));
