@@ -358,7 +358,7 @@ public:
         READWRITE(ticketBlock);
     }
     
-    static CArtSellTicket Create(std::string _artTnxId, int _askedPrice, int _validAfter, int _validBefore, std::string _pastelID, const SecureString& strKeyPass);
+    static CArtSellTicket Create(std::string _artTnxId, int _askedPrice, int _validAfter, int _validBefore, int _copy_number, std::string _pastelID, const SecureString& strKeyPass);
     static bool FindTicketInDb(const std::string& key, CArtSellTicket& ticket);
     
     static std::vector<CArtSellTicket> FindAllTicketByPastelID(const std::string& pastelID);
@@ -433,7 +433,7 @@ public:
 		"type": "trade",
 		"pastelID": "",     //PastelID of the buyer
 		"sell_txid": "",    //txid with sale ticket
-		"buy_txid": "",     //txid with sale ticket
+		"buy_txid": "",     //txid with buy ticket
 		"art_txid": "",     //txid with either 1) art activation ticket or 2) trade ticket in it
 		"price": "",
 		"reserved": "",
@@ -495,6 +495,8 @@ public:
     
     static bool CheckTradeTicketExistBySellTicket(const std::string& _sellTnxId);
     static bool CheckTradeTicketExistByBuyTicket(const std::string& _buyTnxId);
+    static bool GetTradeTicketBySellTicket(const std::string& _sellTnxId, CArtTradeTicket& ticket);
+    static bool GetTradeTicketByBuyTicket(const std::string& _buyTnxId, CArtTradeTicket& ticket);
     
     static std::string ToStr(const CArtTradeTicket& ticket);
 };
@@ -526,7 +528,7 @@ public:
 
 public:
     CSystemTicket() = default;
-    explicit CSystemTicket(std::string _pastelID) : ticket(std::move(pastelID)) {}
+    explicit CSystemTicket(std::string _pastelID) : ticket(std::move(_pastelID)) {}
     
     std::string TicketName() const override {return "system";}
     std::string KeyOne() const override {return id;}
@@ -567,7 +569,10 @@ public:
 // Ticket  Processor ////////////////////////////////////////////////////////////////////////////////////////////////////
 class CPastelTicketProcessor {
 	map<TicketID, std::unique_ptr<CDBWrapper> > dbs;
-	
+    
+    template<class T, TicketID ticketId, typename F>
+    void listTickets(F f);
+
 public:
 	CPastelTicketProcessor() = default;
 	
@@ -596,6 +601,8 @@ public:
 
     template<class T, TicketID ticketId>
     std::string ListTickets();
+    
+    std::string ListActiveSellTickets();
 
 #ifdef ENABLE_WALLET
 	static bool CreateP2FMSTransaction(const std::string& input_string, CMutableTransaction& tx_out, CAmount price, std::string& error_ret);

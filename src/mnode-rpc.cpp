@@ -7,7 +7,6 @@
 #include <univalue.h>
 
 #include "mnode-controller.h"
-#include "mnode-active.h"
 #include "mnode-sync.h"
 #include "mnode-config.h"
 #include "mnode-manager.h"
@@ -27,14 +26,13 @@
 #include "ed448/pastel_key.h"
 #include "mnode-messageproc.h"
 #include "mnode-pastel.h"
-#include <fstream>
 
 #ifdef ENABLE_WALLET
 #include "wallet/wallet.h"
 void EnsureWalletIsUnlocked();
 #endif // ENABLE_WALLET
 
-UniValue _format_mns_info(std::vector<CMasternode> topBlockMNs)
+UniValue formatMnsInfo(const std::vector<CMasternode>& topBlockMNs)
 {
     UniValue mnArray(UniValue::VARR);
 
@@ -65,9 +63,9 @@ UniValue _format_mns_info(std::vector<CMasternode> topBlockMNs)
 UniValue masternodelist(const UniValue& params, bool fHelp)
 {
     std::string strMode = "status";
-    std::string strFilter = "";
+    std::string strFilter;
 
-    if (params.size() >= 1) strMode = params[0].get_str();
+    if (!params.empty()) strMode = params[0].get_str();
     if (params.size() == 2) strFilter = params[1].get_str();
 
     if (fHelp || (
@@ -106,7 +104,7 @@ UniValue masternodelist(const UniValue& params, bool fHelp)
     }
 
     if (strMode == "full" || strMode == "lastpaidtime" || strMode == "lastpaidblock") {
-        CBlockIndex* pindex = NULL;
+        CBlockIndex* pindex = nullptr;
         {
             LOCK(cs_main);
             pindex = chainActive.Tip();
@@ -118,10 +116,10 @@ UniValue masternodelist(const UniValue& params, bool fHelp)
     if (strMode == "rank") {
         CMasternodeMan::rank_pair_vec_t vMasternodeRanks;
         masterNodeCtrl.masternodeManager.GetMasternodeRanks(vMasternodeRanks);
-        BOOST_FOREACH(PAIRTYPE(int, CMasternode)& s, vMasternodeRanks) {
-            std::string strOutpoint = s.second.vin.prevout.ToStringShort();
-            if (strFilter !="" && strOutpoint.find(strFilter) == std::string::npos) continue;
-            obj.push_back(Pair(strOutpoint, s.first));
+        for (auto& mnpair : vMasternodeRanks) {
+            std::string strOutpoint = mnpair.second.vin.prevout.ToStringShort();
+            if (!strFilter.empty() && strOutpoint.find(strFilter) == std::string::npos) continue;
+            obj.push_back(Pair(strOutpoint, mnpair.first));
         }
     } else {
         std::map<COutPoint, CMasternode> mapMasternodes = masterNodeCtrl.masternodeManager.GetFullMasternodeMap();
@@ -229,7 +227,7 @@ UniValue messageToJson(const CMasternodeMessage& msg)
 UniValue masternode(const UniValue& params, bool fHelp)
 {
     std::string strCommand;
-    if (params.size() >= 1) {
+    if (!params.empty()) {
         strCommand = params[0].get_str();
     }
 
@@ -295,7 +293,7 @@ UniValue masternode(const UniValue& params, bool fHelp)
         if (!Lookup(strAddress.c_str(), addr, 0, false))
             throw JSONRPCError(RPC_INTERNAL_ERROR, strprintf("Incorrect masternode address %s", strAddress));
 
-        CNode *pnode = ConnectNode(CAddress(addr, NODE_NETWORK), NULL);
+        CNode *pnode = ConnectNode(CAddress(addr, NODE_NETWORK), nullptr);
         
         if(!pnode)
             throw JSONRPCError(RPC_INTERNAL_ERROR, strprintf("Couldn't connect to masternode %s", strAddress));
@@ -333,7 +331,7 @@ UniValue masternode(const UniValue& params, bool fHelp)
         int nCount;
         int nHeight;
         masternode_info_t mnInfo;
-        CBlockIndex* pindex = NULL;
+        CBlockIndex* pindex = nullptr;
         {
             LOCK(cs_main);
             pindex = chainActive.Tip();
@@ -377,8 +375,8 @@ UniValue masternode(const UniValue& params, bool fHelp)
 
         UniValue statusObj(UniValue::VOBJ);
         statusObj.push_back(Pair("alias", strAlias));
-
-        BOOST_FOREACH(CMasternodeConfig::CMasternodeEntry mne, masterNodeCtrl.masternodeConfig.getEntries()) {
+    
+        for (const auto& mne : masterNodeCtrl.masternodeConfig.getEntries()) {
             if(mne.getAlias() == strAlias) {
                 fFound = true;
                 std::string strError;
@@ -424,8 +422,8 @@ UniValue masternode(const UniValue& params, bool fHelp)
         int nFailed = 0;
 
         UniValue resultsObj(UniValue::VOBJ);
-
-        BOOST_FOREACH(CMasternodeConfig::CMasternodeEntry mne, masterNodeCtrl.masternodeConfig.getEntries()) {
+    
+        for (const auto& mne : masterNodeCtrl.masternodeConfig.getEntries()) {
             std::string strError;
 
             COutPoint outpoint = COutPoint(uint256S(mne.getTxHash()), uint32_t(atoi(mne.getOutputIndex().c_str())));
@@ -475,8 +473,8 @@ UniValue masternode(const UniValue& params, bool fHelp)
     if (strCommand == "list-conf")
     {
         UniValue resultObj(UniValue::VOBJ);
-
-        BOOST_FOREACH(CMasternodeConfig::CMasternodeEntry mne, masterNodeCtrl.masternodeConfig.getEntries()) {
+    
+        for (const auto& mne : masterNodeCtrl.masternodeConfig.getEntries()) {
             COutPoint outpoint = COutPoint(uint256S(mne.getTxHash()), uint32_t(atoi(mne.getOutputIndex().c_str())));
             CMasternode mn;
             bool fFound = masterNodeCtrl.masternodeManager.Get(outpoint, mn);
@@ -537,7 +535,7 @@ UniValue masternode(const UniValue& params, bool fHelp)
     
         //txid:index
         std::vector<COutput> vPossibleCoins;
-        pwalletMain->AvailableCoins(vPossibleCoins, true, NULL, false, true, masterNodeCtrl.MasternodeCollateral, true);
+        pwalletMain->AvailableCoins(vPossibleCoins, true, nullptr, false, true, masterNodeCtrl.MasternodeCollateral, true);
         if (vPossibleCoins.empty()){
             throw JSONRPCError(RPC_INVALID_PARAMETER, "No spendable collateral transactions exist");
         }
@@ -600,10 +598,10 @@ UniValue masternode(const UniValue& params, bool fHelp)
         // Find possible candidates
         std::vector<COutput> vPossibleCoins;
 
-        pwalletMain->AvailableCoins(vPossibleCoins, true, NULL, false, true, masterNodeCtrl.MasternodeCollateral, true);
+        pwalletMain->AvailableCoins(vPossibleCoins, true, nullptr, false, true, masterNodeCtrl.MasternodeCollateral, true);
 
         UniValue obj(UniValue::VOBJ);
-        BOOST_FOREACH(COutput& out, vPossibleCoins) {
+        for (auto& out : vPossibleCoins) {
             obj.push_back(Pair(out.tx->GetHash().ToString(), strprintf("%d", out.i)));
         }
 
@@ -643,7 +641,7 @@ UniValue masternode(const UniValue& params, bool fHelp)
         }
 
         int nLast = 10;
-        std::string strFilter = "";
+        std::string strFilter;
 
         if (params.size() >= 2) {
             nLast = get_number(params[1]);
@@ -654,13 +652,13 @@ UniValue masternode(const UniValue& params, bool fHelp)
         }
 
         if (params.size() > 3)
-            throw JSONRPCError(RPC_INVALID_PARAMETER, "Correct usage is 'masternode winners ( \"count\" \"filter\" )'");
+            throw JSONRPCError(RPC_INVALID_PARAMETER, R"(Correct usage is 'masternode winners ( "count" "filter" )')");
 
         UniValue obj(UniValue::VOBJ);
 
         for(int i = nHeight - nLast; i < nHeight + 20; i++) {
             std::string strPayment = masterNodeCtrl.masternodePayments.GetRequiredPaymentsString(i);
-            if (strFilter !="" && strPayment.find(strFilter) == std::string::npos) continue;
+            if (!strFilter.empty() && strPayment.find(strFilter) == std::string::npos) continue;
             obj.push_back(Pair(strprintf("%d", i), strPayment));
         }
 
@@ -696,7 +694,7 @@ UniValue masternode(const UniValue& params, bool fHelp)
     
         auto topBlockMNs = masterNodeCtrl.masternodeManager.GetTopMNsForBlock(nHeight, bCalculateIfNotSeen);
         
-        UniValue mnsArray = _format_mns_info(topBlockMNs);
+        UniValue mnsArray = formatMnsInfo(topBlockMNs);
         obj.push_back(Pair(strprintf("%d", nHeight), mnsArray));
 
         return obj;
@@ -773,7 +771,7 @@ UniValue masternode(const UniValue& params, bool fHelp)
     return NullUniValue;
 }
 
-bool DecodeHexVecMnb(std::vector<CMasternodeBroadcast>& vecMnb, std::string strHexMnb) {
+bool DecodeHexVecMnb(std::vector<CMasternodeBroadcast>& vecMnb, const std::string& strHexMnb) {
 
     if (!IsHex(strHexMnb))
         return false;
@@ -793,7 +791,7 @@ bool DecodeHexVecMnb(std::vector<CMasternodeBroadcast>& vecMnb, std::string strH
 UniValue masternodebroadcast(const UniValue& params, bool fHelp)
 {
     std::string strCommand;
-    if (params.size() >= 1)
+    if (!params.empty())
         strCommand = params[0].get_str();
 
     if (fHelp  ||
@@ -838,8 +836,8 @@ UniValue masternodebroadcast(const UniValue& params, bool fHelp)
         std::vector<CMasternodeBroadcast> vecMnb;
 
         statusObj.push_back(Pair("alias", strAlias));
-
-        BOOST_FOREACH(CMasternodeConfig::CMasternodeEntry mne, masterNodeCtrl.masternodeConfig.getEntries()) {
+    
+        for (const auto& mne : masterNodeCtrl.masternodeConfig.getEntries()) {
             if(mne.getAlias() == strAlias) {
                 fFound = true;
                 std::string strError;
@@ -890,8 +888,8 @@ UniValue masternodebroadcast(const UniValue& params, bool fHelp)
 
         UniValue resultsObj(UniValue::VOBJ);
         std::vector<CMasternodeBroadcast> vecMnb;
-
-        BOOST_FOREACH(CMasternodeConfig::CMasternodeEntry mne, masterNodeCtrl.masternodeConfig.getEntries()) {
+    
+        for (const auto& mne : masterNodeCtrl.masternodeConfig.getEntries()) {
             std::string strError;
             CMasternodeBroadcast mnb;
 
@@ -939,8 +937,8 @@ UniValue masternodebroadcast(const UniValue& params, bool fHelp)
         int nFailed = 0;
         int nDos = 0;
         UniValue returnObj(UniValue::VOBJ);
-
-        BOOST_FOREACH(CMasternodeBroadcast& mnb, vecMnb) {
+    
+        for (auto& mnb : vecMnb) {
             UniValue resultObj(UniValue::VOBJ);
 
             if(mnb.CheckSignature(nDos)) {
@@ -999,7 +997,7 @@ UniValue masternodebroadcast(const UniValue& params, bool fHelp)
         UniValue returnObj(UniValue::VOBJ);
 
         // verify all signatures first, bailout if any of them broken
-        BOOST_FOREACH(CMasternodeBroadcast& mnb, vecMnb) {
+        for (auto& mnb : vecMnb) {
             UniValue resultObj(UniValue::VOBJ);
 
             resultObj.push_back(Pair("outpoint", mnb.vin.prevout.ToStringShort()));
@@ -1009,7 +1007,7 @@ UniValue masternodebroadcast(const UniValue& params, bool fHelp)
             bool fResult;
             if (mnb.CheckSignature(nDos)) {
                 if (fSafe) {
-                    fResult = masterNodeCtrl.masternodeManager.CheckMnbAndUpdateMasternodeList(NULL, mnb, nDos);
+                    fResult = masterNodeCtrl.masternodeManager.CheckMnbAndUpdateMasternodeList(nullptr, mnb, nDos);
                 } else {
                     masterNodeCtrl.masternodeManager.UpdateMasternodeList(mnb);
                     mnb.Relay();
@@ -1079,7 +1077,7 @@ UniValue mnsync(const UniValue& params, bool fHelp)
 UniValue governance(const UniValue& params, bool fHelp)
 {
     std::string strMode;
-    if (params.size() >= 1)
+    if (!params.empty())
         strMode = params[0].get_str();
 
        if (fHelp || (strMode != "ticket" && strMode != "list"))
@@ -1168,7 +1166,7 @@ UniValue governance(const UniValue& params, bool fHelp)
         strCmd = params[1].get_str();
         if (strCmd == "tickets")
         {
-            BOOST_FOREACH(PAIRTYPE(const uint256, CGovernanceTicket)& s, masterNodeCtrl.masternodeGovernance.mapTickets) {
+            for (auto& s : masterNodeCtrl.masternodeGovernance.mapTickets) {
                 std::string id = s.first.ToString();
 
                 UniValue obj(UniValue::VOBJ);
@@ -1179,7 +1177,7 @@ UniValue governance(const UniValue& params, bool fHelp)
         }
         if (strCmd == "winners")
         {
-            BOOST_FOREACH(PAIRTYPE(const uint256, CGovernanceTicket)& s, masterNodeCtrl.masternodeGovernance.mapTickets) {
+            for (auto& s : masterNodeCtrl.masternodeGovernance.mapTickets) {
                 if (s.second.nLastPaymentBlockHeight != 0) {
                     std::string id = s.first.ToString();
     
@@ -1198,7 +1196,7 @@ UniValue governance(const UniValue& params, bool fHelp)
 
 UniValue pastelid(const UniValue& params, bool fHelp) {
     std::string strMode;
-    if (params.size() >= 1)
+    if (!params.empty())
         strMode = params[0].get_str();
 
     if (fHelp || (strMode != "newkey" && strMode != "importkey" && strMode != "list" &&
@@ -1350,7 +1348,7 @@ UniValue pastelid(const UniValue& params, bool fHelp) {
 }
 UniValue storagefee(const UniValue& params, bool fHelp) {
     std::string strCommand;
-    if (params.size() >= 1)
+    if (!params.empty())
         strCommand = params[0].get_str();
 
     if (fHelp || ( strCommand != "setfee" && strCommand != "getnetworkfee" && strCommand != "getlocalfee" ))
@@ -1406,7 +1404,7 @@ UniValue storagefee(const UniValue& params, bool fHelp) {
 
 UniValue chaindata(const UniValue& params, bool fHelp) {
     std::string strCommand;
-    if (params.size() >= 1)
+    if (!params.empty())
         strCommand = params[0].get_str();
 
     if (fHelp || (strCommand != "store" && strCommand != "retrieve"))
@@ -1470,8 +1468,11 @@ UniValue chaindata(const UniValue& params, bool fHelp) {
 template<class T, class T2 = const std::string&, typename Lambda = std::function<std::vector<T>(T2)>>
 static UniValue getTickets(const std::string& key, T2 key2 = "", Lambda otherFunc = nullptr) {
     T ticket;
-    if (T::FindTicketInDb(key, ticket))
-        return ticket.ToJSON();
+    if (T::FindTicketInDb(key, ticket)) {
+        UniValue obj(UniValue::VOBJ);
+        obj.read(ticket.ToJSON());
+        return obj;
+    }
     else {
         auto tickets = T::FindAllTicketByPastelID(key);
         if (tickets.empty() && otherFunc != nullptr)
@@ -1479,7 +1480,9 @@ static UniValue getTickets(const std::string& key, T2 key2 = "", Lambda otherFun
         if (!tickets.empty()) {
             UniValue tArray(UniValue::VARR);
             for (auto t : tickets) {
-                tArray.push_back(t.ToJSON());
+                UniValue obj(UniValue::VOBJ);
+                obj.read(t.ToJSON());
+                tArray.push_back(obj);
             }
             return tArray;
         }
@@ -1490,7 +1493,7 @@ static UniValue getTickets(const std::string& key, T2 key2 = "", Lambda otherFun
 #define FAKE_TICKET
 UniValue tickets(const UniValue& params, bool fHelp) {
 	std::string strCommand;
-	if (params.size() >= 1)
+	if (!params.empty())
 		strCommand = params[0].get_str();
 	
 	if (fHelp || (strCommand != "register" && strCommand != "find" && strCommand != "list" && strCommand != "get"
@@ -1771,25 +1774,28 @@ UniValue tickets(const UniValue& params, bool fHelp) {
 			mnObj.push_back(Pair("txid", txid));
 		}
 		if (strCmd == "sell") {
-			if (fHelp || params.size() < 6 || params.size() > 8)
+			if (fHelp || params.size() < 6 || params.size() > 9)
 				throw JSONRPCError(RPC_INVALID_PARAMETER,
 					"tickets register sell \"art_txid\" \"price\" \"PastelID\" \"passphrase\" \"valid_after\" \"valid_before\"\n"
 					"Register art sell ticket. If successful, method returns \"txid\"."
 					"\nArguments:\n"
-                    "1. \"art_txid\"      (string, required) tnx_id of the art to sell, this is either:"
+                    "1. \"art_txid\"      (string, required) tnx_id of the art to sell, this is either:\n"
                     "                           1) art activation ticket, if seller is original artist\n"
                     "                           2) trade ticket, if seller is owner of the bought art\n"
                     "2. price             (int, required) Sale price.\n"
-					"3. \"PastelID\"      (string, required) The PastelID of seller. This MUST be the same PastelID that was used to sign the ticket referred by the art_txid"
+					"3. \"PastelID\"      (string, required) The PastelID of seller. This MUST be the same PastelID that was used to sign the ticket referred by the art_txid\n"
 					"4. \"passphrase\"    (string, required) The passphrase to the private key associated with artist's PastelID and stored inside node\n"
-                    "5. valid_after       (int, optional) (not used yet) The block height after which this sell ticket will become active (use 0 for upon registration).\n"
-                    "6. valid_after       (int, optional) (not used yet) The block height after which this sell ticket is no more valid (use 0 for never).\n"
+                    "5. valid_after       (int, optional) The block height after which this sell ticket will become active (use 0 for upon registration).\n"
+                    "6. valid_after       (int, optional) The block height after which this sell ticket is no more valid (use 0 for never).\n"
+                    "7. copy_number       (int, optional) If presented - will replace the original not yet sold Sell ticket with this copy number.\n"
+                    "                                     If the original has been already sold - operation will fail\n"
 					"Art Trade Ticket:\n"
 					"{\n"
 					"	\"ticket\": {\n"
 					"		\"type\": \"sell\",\n"
                     "		\"pastelID\": \"\",\n"
 					"		\"art_txid\": \"\",\n"
+					"		\"copy_number\": \"\",\n"
 					"		\"asked_price\": \"\",\n"
 					"		\"valid_after\": \"\",\n"
 					"		\"valid_before\": \"\",\n"
@@ -1820,8 +1826,11 @@ UniValue tickets(const UniValue& params, bool fHelp) {
             int before = 0;
             if (params.size() == 8)
                 before = get_number(params[7]);
+            int copyNumber = 0;
+            if (params.size() == 9)
+                copyNumber = get_number(params[8]);
             
-            CArtSellTicket artSellTicket = CArtSellTicket::Create(artTicketTxID, price, after, before, pastelID, strKeyPass);
+            CArtSellTicket artSellTicket = CArtSellTicket::Create(artTicketTxID, price, after, before, copyNumber, pastelID, strKeyPass);
             std::string txid = CPastelTicketProcessor::SendTicket(artSellTicket);
             
             mnObj.push_back(Pair("txid", txid));
@@ -1985,8 +1994,11 @@ UniValue tickets(const UniValue& params, bool fHelp) {
         
 		if (strCmd == "id") {
             CPastelIDRegTicket ticket;
-            if (CPastelIDRegTicket::FindTicketInDb(key,ticket))
-			    return ticket.ToJSON();
+            if (CPastelIDRegTicket::FindTicketInDb(key,ticket)) {
+                UniValue obj(UniValue::VOBJ);
+                obj.read(ticket.ToJSON());
+                return obj;
+            }
 		}
 		if (strCmd == "art") {
             return getTickets<CArtRegTicket>(key);
@@ -2017,9 +2029,9 @@ UniValue tickets(const UniValue& params, bool fHelp) {
         
         if (fHelp ||
             (params.size() != 2 && params.size() != 3) ||
-            (strCmd != "id" && strCmd != "art" && strCmd != "act" && strCmd != "sell" && strCmd != "buy" && strCmd != "trade" && strCmd != "down"))
+            (strCmd != "id" && strCmd != "art" && strCmd != "act" && strCmd != "sell" && strCmd != "buy" && strCmd != "trade" && strCmd != "down" && strCmd != "canbuy"))
 			throw JSONRPCError(RPC_INVALID_PARAMETER,
-					"tickets list \"type\" \"minheight\"\n"
+					"tickets list \"type\" (\"filter\") (\"minheight\")\n"
 					"List all tickets of specific type registered in the system"
 					"\nAvailable types:\n"
 					"  id	 - List ALL PastelID (both personal and masternode) registration tickets.\n"
@@ -2028,6 +2040,7 @@ UniValue tickets(const UniValue& params, bool fHelp) {
 					"  sell  - List ALL art sell tickets.\n"
 					"  buy   - List ALL art buy tickets.\n"
 					"  trade - List ALL art trade tickets.\n"
+					"  canbuy - List ALL art sell tickets available to buy.\n"
                     "\nArguments:\n"
                     "1. minheight	 - minimum height for returned tickets (only tickets registered after this height will be returned).\n"
 					"\nExample: List ALL PastelID tickets\n"
@@ -2053,6 +2066,8 @@ UniValue tickets(const UniValue& params, bool fHelp) {
             obj.read(masterNodeCtrl.masternodeTickets.ListTickets<CArtBuyTicket, TicketID::Buy>());
         if (strCmd == "trade")
             obj.read(masterNodeCtrl.masternodeTickets.ListTickets<CArtTradeTicket, TicketID::Trade>());
+        if (strCmd == "canbuy")
+            obj.read(masterNodeCtrl.masternodeTickets.ListActiveSellTickets());
 
         return obj;
 	}
@@ -2071,7 +2086,9 @@ UniValue tickets(const UniValue& params, bool fHelp) {
 			);
 		
 		uint256 txid = ParseHashV(params[1], "\"txid\"");
-		return CPastelTicketProcessor::GetTicketJSON(txid);
+        UniValue obj(UniValue::VOBJ);
+        obj.read(CPastelTicketProcessor::GetTicketJSON(txid));
+        return obj;
 	}
 	
 #ifdef FAKE_TICKET
@@ -2159,7 +2176,7 @@ UniValue tickets(const UniValue& params, bool fHelp) {
             int after = get_number(params[6]);
             int before = get_number(params[7]);
     
-            CArtSellTicket artSellTicket = CArtSellTicket::Create(artTicketTxID, price, after, before, pastelID, strKeyPass);
+            CArtSellTicket artSellTicket = CArtSellTicket::Create(artTicketTxID, price, after, before, 0, pastelID, strKeyPass);
     
             CAmount ticketPrice = get_long_number(params[8].get_str());
             std::string strVerb = params[9].get_str();
@@ -2171,7 +2188,7 @@ UniValue tickets(const UniValue& params, bool fHelp) {
     return NullUniValue;
 }
 
-CTxDestination ani2psl(std::string aniAddress)
+CTxDestination ani2psl(const std::string& aniAddress)
 {
     std::vector<unsigned char> vchRet;
     if (!DecodeBase58Check(aniAddress, vchRet))
@@ -2361,6 +2378,8 @@ static const CRPCCommand commands[] =
 
 void RegisterMasternodeRPCCommands(CRPCTable &tableRPC)
 {
-    for (unsigned int vcidx = 0; vcidx < ARRAYLEN(commands); vcidx++)
-        tableRPC.appendCommand(commands[vcidx].name, &commands[vcidx]);
+    for (const auto& command : commands)
+        tableRPC.appendCommand(command.name, &command);
+//    for (unsigned int vcidx = 0; vcidx < ARRAYLEN(commands); vcidx++)
+//        tableRPC.appendCommand(commands[vcidx].name, &commands[vcidx]);
 }

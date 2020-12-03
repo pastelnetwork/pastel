@@ -123,7 +123,7 @@ namespace tinyformat {}
 namespace tfm = tinyformat;
 
 // Error handling; calls assert() by default.
-#define TINYFORMAT_ERROR(reasonString) throw std::runtime_error(reasonString)
+#define TINYFORMAT_ERROR(reasonString) throw tinyformat::format_error(reasonString)
 
 // Define for C++11 variadic templates which make the code shorter & more
 // general.  If you don't define this, C++11 support is autodetected below.
@@ -163,6 +163,13 @@ namespace tfm = tinyformat;
 #endif
 
 namespace tinyformat {
+
+class format_error: public std::runtime_error
+{
+public:
+    explicit format_error(const std::string &what): std::runtime_error(what) {
+    }
+};
 
 //------------------------------------------------------------------------------
 namespace detail {
@@ -488,10 +495,10 @@ namespace detail {
 class FormatArg
 {
     public:
-        FormatArg() {}
+        FormatArg() = default;
 
         template<typename T>
-        FormatArg(const T& value)
+        explicit FormatArg(const T& value)
             : m_value(static_cast<const void*>(&value)),
             m_formatImpl(&formatImpl<T>),
             m_toIntImpl(&toIntImpl<T>)
@@ -764,7 +771,6 @@ inline const char* streamStateFromFormat(std::ostream& out, bool& spacePadPositi
     return c+1;
 }
 
-
 //------------------------------------------------------------------------------
 inline void formatImpl(std::ostream& out, const char* fmt,
                        const detail::FormatArg* formatters,
@@ -805,8 +811,8 @@ inline void formatImpl(std::ostream& out, const char* fmt,
             tmpStream.setf(std::ios::showpos);
             arg.format(tmpStream, fmt, fmtEnd, ntrunc);
             std::string result = tmpStream.str(); // allocates... yuck.
-            for(size_t i = 0, iend = result.size(); i < iend; ++i)
-                if(result[i] == '+') result[i] = ' ';
+            for (char& c : result)
+                if(c == '+') c = ' ';
             out << result;
         }
         fmt = fmtEnd;
@@ -891,7 +897,7 @@ class FormatListN : public FormatList
 // Special 0-arg version - MSVC says zero-sized C array in struct is nonstandard
 template<> class FormatListN<0> : public FormatList
 {
-    public: FormatListN() : FormatList(0, 0) {}
+    public: FormatListN() : FormatList(nullptr, 0) {}
 };
 
 } // namespace detail

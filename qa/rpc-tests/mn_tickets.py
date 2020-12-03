@@ -80,6 +80,9 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         self.art_ticket1_sell_ticket_txid = None
         self.art_ticket1_buy_ticket_txid = None
         self.art_ticket1_trade_ticket_txid = None
+        self.trade_ticket1_sell_ticket_txid = None
+        self.trade_ticket1_buy_ticket_txid = None
+        self.trade_ticket1_trade_ticket_txid = None
 
     def setup_chain(self):
         print("Initializing test directory "+self.options.tmpdir)
@@ -278,25 +281,25 @@ class MasterNodeTicketsTest(MasterNodeCommon):
 
         #   a.b find MN PastelID ticket
         #       a.b.1 by PastelID
-        mn0_ticket1_1 = json.loads(self.nodes[self.non_mn3].tickets("find", "id", self.mn0_pastelid1))
+        mn0_ticket1_1 = self.nodes[self.non_mn3].tickets("find", "id", self.mn0_pastelid1)
         assert_equal(mn0_ticket1_1["ticket"]["pastelID"], self.mn0_pastelid1)
         assert_equal(mn0_ticket1_1['ticket']['type'], "pastelid")
         assert_equal(mn0_ticket1_1['ticket']['id_type'], "masternode")
 
         #       a.b.2 by Collateral output, compare to ticket from a.b.1
         mn0_outpoint = self.nodes[0].masternode("status")["outpoint"]
-        mn0_ticket1_2 = json.loads(self.nodes[self.non_mn3].tickets("find", "id", mn0_outpoint))
+        mn0_ticket1_2 = self.nodes[self.non_mn3].tickets("find", "id", mn0_outpoint)
         assert_equal(mn0_ticket1_1["ticket"]["signature"], mn0_ticket1_2["ticket"]["signature"])
         assert_equal(mn0_ticket1_1["ticket"]["outpoint"], mn0_outpoint)
 
         #   a.c get the same ticket by txid from a.a.3 and compare with ticket from a.b.1
-        mn0_ticket1_3 = json.loads(self.nodes[self.non_mn3].tickets("get", self.mn0_ticket1_txid))
+        mn0_ticket1_3 = self.nodes[self.non_mn3].tickets("get", self.mn0_ticket1_txid)
         assert_equal(mn0_ticket1_1["ticket"]["signature"], mn0_ticket1_3["ticket"]["signature"])
 
         #   a.d list all id tickets, check PastelIDs
         tickets_list = self.nodes[self.non_mn3].tickets("list", "id")
-        assert_true(self.mn0_pastelid1 in tickets_list)
-        assert_true(mn0_outpoint in tickets_list)
+        assert_equal(self.mn0_pastelid1, tickets_list[0]["ticket"]["pastelID"])
+        assert_equal(mn0_outpoint, tickets_list[0]["ticket"]["outpoint"])
 
         print("MN PastelID tickets tested")
 
@@ -374,23 +377,30 @@ class MasterNodeTicketsTest(MasterNodeCommon):
 
         #   b.b find personal PastelID
         #       b.b.1 by PastelID
-        nonmn3_ticket1_1 = json.loads(self.nodes[0].tickets("find", "id", self.nonmn3_pastelid1))
+        nonmn3_ticket1_1 = self.nodes[0].tickets("find", "id", self.nonmn3_pastelid1)
         assert_equal(nonmn3_ticket1_1["ticket"]["pastelID"], self.nonmn3_pastelid1)
         assert_equal(nonmn3_ticket1_1['ticket']['type'], "pastelid")
         assert_equal(nonmn3_ticket1_1['ticket']['id_type'], "personal")
 
         #       b.b.2 by Address
-        nonmn3_ticket1_2 = json.loads(self.nodes[0].tickets("find", "id", self.nonmn3_address1))
+        nonmn3_ticket1_2 = self.nodes[0].tickets("find", "id", self.nonmn3_address1)
         assert_equal(nonmn3_ticket1_1["ticket"]["signature"], nonmn3_ticket1_2["ticket"]["signature"])
 
         #   b.c get the ticket by txid from b.a.3 and compare with ticket from b.b.1
-        nonmn3_ticket1_3 = json.loads(self.nodes[self.non_mn3].tickets("get", nonmn3_ticket1_txid))
+        nonmn3_ticket1_3 = self.nodes[self.non_mn3].tickets("get", nonmn3_ticket1_txid)
         assert_equal(nonmn3_ticket1_1["ticket"]["signature"], nonmn3_ticket1_3["ticket"]["signature"])
 
         #   b.d list all id tickets, check PastelIDs
         tickets_list = self.nodes[0].tickets("list", "id")
-        assert_true(self.nonmn3_pastelid1 in tickets_list)
-        assert_true(self.nonmn3_address1 in tickets_list)
+        f1 = False
+        f2 = False
+        for t in tickets_list:
+            if self.nonmn3_pastelid1 == t["ticket"]["pastelID"]:
+                f1 = True
+            if self.nonmn3_address1 == t["ticket"]["address"]:
+                f2 = True
+        assert_true(f1)
+        assert_true(f2)
 
         print("Personal PastelID tickets tested")
 
@@ -685,7 +695,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         # TODO Pastel:
 
         #       c.b.2 by hash (key1 for now)
-        art_ticket1_1 = json.loads(self.nodes[self.non_mn3].tickets("find", "art", "key1"))
+        art_ticket1_1 = self.nodes[self.non_mn3].tickets("find", "art", "key1")
         assert_equal(art_ticket1_1['ticket']['type'], "art-reg")
         assert_equal(art_ticket1_1['ticket']['art_ticket'], ticket)
         assert_equal(art_ticket1_1["ticket"]["key1"], "key1")
@@ -698,7 +708,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         assert_equal(art_ticket1_1["ticket"]["signatures"]["mn3"][self.top_mn_pastelid2], self.top_mn_ticket_signature2)
 
         #       c.b.3 by fingerprints, compare to ticket from c.b.2 (key2 for now)
-        art_ticket1_2 = json.loads(self.nodes[self.non_mn3].tickets("find", "art", "key2"))
+        art_ticket1_2 = self.nodes[self.non_mn3].tickets("find", "art", "key2")
         assert_equal(art_ticket1_2['ticket']['type'], "art-reg")
         assert_equal(art_ticket1_2['ticket']['art_ticket'], ticket)
         assert_equal(art_ticket1_2["ticket"]["key1"], "key1")
@@ -709,13 +719,20 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         assert_equal(art_ticket1_2["ticket"]["signatures"]["artist"][self.artist_pastelid1], art_ticket1_1["ticket"]["signatures"]["artist"][self.artist_pastelid1])
 
         #   c.c get the same ticket by txid from c.a.6 and compare with ticket from c.b.2
-        art_ticket1_3 = json.loads(self.nodes[self.non_mn3].tickets("get", self.art_ticket1_txid))
+        art_ticket1_3 = self.nodes[self.non_mn3].tickets("get", self.art_ticket1_txid)
         assert_equal(art_ticket1_3["ticket"]["signatures"]["artist"][self.artist_pastelid1], art_ticket1_1["ticket"]["signatures"]["artist"][self.artist_pastelid1])
 
         #   c.d list all art registration tickets, check PastelIDs
         art_tickets_list = self.nodes[self.top_mns_index0].tickets("list", "art")
-        assert_true("key1" in art_tickets_list)
-        assert_true("key2" in art_tickets_list)
+        f1 = False
+        f2 = False
+        for t in art_tickets_list:
+            if "key1" == t["ticket"]["key1"]:
+                f1 = True
+            if "key2" == t["ticket"]["key2"]:
+                f2 = True
+        assert_true(f1)
+        assert_true(f2)
 
         art_tickets_by_pid = self.nodes[self.top_mns_index0].tickets("find", "art", self.artist_pastelid1)
         print(self.top_mn_pastelid0)
@@ -877,7 +894,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         #       TODO Pastel: find activation ticket by Registration height - artist_height from registration ticket (this is MultiValue key)
 
         #       d.b.2 by Registration txid - reg_txid from registration ticket, compare to ticket from d.b.2
-        art_ticket1_act_ticket_1 = json.loads(self.nodes[self.non_mn1].tickets("find", "act", self.art_ticket1_txid))
+        art_ticket1_act_ticket_1 = self.nodes[self.non_mn1].tickets("find", "act", self.art_ticket1_txid)
         assert_equal(art_ticket1_act_ticket_1['ticket']['type'], "art-act")
         assert_equal(art_ticket1_act_ticket_1['ticket']['pastelID'], self.artist_pastelid1)
         assert_equal(art_ticket1_act_ticket_1['ticket']['reg_txid'], self.art_ticket1_txid)
@@ -886,12 +903,16 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         assert_equal(art_ticket1_act_ticket_1['txid'], self.art_ticket1_act_ticket_txid)
 
         #   d.c get the same ticket by txid from d.a.8 and compare with ticket from d.b.2
-        art_ticket1_act_ticket_2 = json.loads(self.nodes[self.non_mn1].tickets("get", self.art_ticket1_act_ticket_txid))
+        art_ticket1_act_ticket_2 = self.nodes[self.non_mn1].tickets("get", self.art_ticket1_act_ticket_txid)
         assert_equal(art_ticket1_act_ticket_2["ticket"]["signature"], art_ticket1_act_ticket_1["ticket"]["signature"])
 
         #   d.d list all art registration tickets, check PastelIDs
         act_tickets_list = self.nodes[0].tickets("list", "act")
-        assert_true(self.art_ticket1_txid in act_tickets_list)
+        f1 = False
+        for t in act_tickets_list:
+            if self.art_ticket1_txid == t["ticket"]["reg_txid"]:
+                f1 = True
+        assert_true(f1)
 
         art_tickets_by_pid = self.nodes[self.top_mns_index0].tickets("find", "act", self.artist_pastelid1)
         print(self.top_mn_pastelid0)
@@ -904,7 +925,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
 
     # ===============================================================================================================
     def artsell_ticket_tests1(self):
-        print("== Art sell Tickets test (first run) ==")
+        print("== Art sell Tickets test (selling original Art ticket) ==")
         # tickets register sell art_txid price PastelID passphrase valid_after valid_before
         #
 
@@ -963,7 +984,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
 
         # 6. find Sell ticket
         #   6.1 by art's transaction and index
-        sell_ticket1_1 = json.loads(self.nodes[self.non_mn3].tickets("find", "sell", self.art_ticket1_act_ticket_txid+":1"))
+        sell_ticket1_1 = self.nodes[self.non_mn3].tickets("find", "sell", self.art_ticket1_act_ticket_txid+":1")
         assert_equal(sell_ticket1_1['ticket']['type'], "art-sell")
         assert_equal(sell_ticket1_1['ticket']['art_txid'], self.art_ticket1_act_ticket_txid)
         assert_equal(sell_ticket1_1["ticket"]["asked_price"], 100000)
@@ -971,29 +992,33 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         #   6.2 by artists PastelID (this is MultiValue key)
         sell_tickets_list1 = self.nodes[self.non_mn3].tickets("find", "sell", self.artist_pastelid1)
         for ticket in sell_tickets_list1:
-            sell_ticket1 = json.loads(ticket)
-            print (type(sell_ticket1))
-            assert_equal(sell_ticket1['ticket']['type'], "art-sell")
-            assert_equal(sell_ticket1['ticket']['art_txid'], self.art_ticket1_act_ticket_txid)
-            assert_equal(sell_ticket1["ticket"]["asked_price"], 100000)
+            assert_equal(ticket['ticket']['type'], "art-sell")
+            assert_equal(ticket['ticket']['art_txid'], self.art_ticket1_act_ticket_txid)
+            assert_equal(ticket["ticket"]["asked_price"], 100000)
 
         #   6.3 by art's transaction (this is MultiValue key)
         sell_tickets_list2 = self.nodes[self.non_mn3].tickets("find", "sell", self.art_ticket1_act_ticket_txid)
         for ticket in sell_tickets_list2:
-            sell_ticket2 = json.loads(ticket)
-            print (type(sell_ticket2))
-            assert_equal(sell_ticket2['ticket']['type'], "art-sell")
-            assert_equal(sell_ticket2['ticket']['art_txid'], self.art_ticket1_act_ticket_txid)
-            assert_equal(sell_ticket2["ticket"]["asked_price"], 100000)
+            assert_equal(ticket['ticket']['type'], "art-sell")
+            assert_equal(ticket['ticket']['art_txid'], self.art_ticket1_act_ticket_txid)
+            assert_equal(ticket["ticket"]["asked_price"], 100000)
 
         #   6.4 get the same ticket by txid from c.a.6 and compare with ticket from c.b.2
-        sell_ticket1_2 = json.loads(self.nodes[self.non_mn3].tickets("get", self.art_ticket1_sell_ticket_txid))
+        sell_ticket1_2 = self.nodes[self.non_mn3].tickets("get", self.art_ticket1_sell_ticket_txid)
         assert_equal(sell_ticket1_2["ticket"]["art_txid"], sell_ticket1_1["ticket"]["art_txid"])
         assert_equal(sell_ticket1_2["ticket"]["asked_price"], sell_ticket1_1["ticket"]["asked_price"])
 
         # 7. list all sell tickets
         tickets_list = self.nodes[self.non_mn3].tickets("list", "sell")
-        assert_true(self.art_ticket1_act_ticket_txid+":1" in tickets_list)
+        f1 = False
+        f2 = False
+        for t in tickets_list:
+            if self.art_ticket1_act_ticket_txid == t["ticket"]["art_txid"]:
+                f1 = True
+            if "1" == str(t["ticket"]["copy_number"]):
+                f2 = True
+        assert_true(f1)
+        assert_true(f2)
 
         # 8. from another node - get ticket transaction and check
         #           - there are P2MS outputs with non-zero amounts
@@ -1011,7 +1036,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
 
     # ===============================================================================================================
     def artbuy_ticket_tests(self):
-        print("== Art buy Tickets test ==")
+        print("== Art buy Tickets test (buying original Art ticket) ==")
 
         self.nonmn4_address1 = self.nodes[self.non_mn4].getnewaddress()
         self.nodes[self.mining_node_num].sendtoaddress(self.nonmn4_address1, 2000, "", "", False)
@@ -1091,7 +1116,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
 
     # ===============================================================================================================
     def arttrade_ticket_tests(self):
-        print("== Art trade Tickets test ==")
+        print("== Art trade Tickets test (trading original Art ticket) ==")
 
         #sends some coins back
         mining_node_address1 = self.nodes[self.mining_node_num].getnewaddress()
@@ -1163,7 +1188,6 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         assert_equal(coins_after, coins_before-10-100000)  # ticket cost is 10, art cost is 100000
 
         # check seller gets correct amount
-
         artists_coins_after = self.nodes[self.non_mn3].getreceivedbyaddress(self.nonmn3_address1)
         print(artists_coins_before)
         print(artists_coins_after)
@@ -1186,85 +1210,69 @@ class MasterNodeTicketsTest(MasterNodeCommon):
 
     # ===============================================================================================================
     def artsell_ticket_tests2(self):
-        print("== Art sell Tickets test (second run) ==")
+        print("== Art sell Tickets test (selling, buying and trading Trade ticket) ==")
+
+        # non_mn4 sells the trade ticket;
+        # non_mn1 buys and confirms the trade ticket
+
+        self.nodes[self.mining_node_num].sendtoaddress(self.nonmn3_address1, 50000, "", "", False)
+        self.nodes[self.mining_node_num].sendtoaddress(self.nonmn4_address1, 50000, "", "", False)
+        self.nodes[self.mining_node_num].generate(11)
 
         # 1. check PastelID in this ticket matches PastelID in the referred Trade ticket
-        # try:
-        #     self.nodes[self.non_mn3].tickets("register", "sell", self.art_ticket1_trade_ticket_txid, str("100000"), self.
-        #     , "passphrase")
-        # except JSONRPCException, e:
-        #     self.errorString = e.error['message']
-        #     print(self.errorString)
-        # assert_equal("The PastelID ["+self.nonmn3_pastelid1+"] in this ticket is not matching the Artist's PastelID ["+self.artist_pastelid1+"] in the Art Activation ticket with this txid ["+self.art_ticket1_txid+"]" in self.errorString, True)
+        try:
+            self.nodes[self.non_mn3].tickets("register", "sell", self.art_ticket1_trade_ticket_txid, str("1000"), self.nonmn3_pastelid1, "passphrase")
+        except JSONRPCException, e:
+            self.errorString = e.error['message']
+            print(self.errorString)
+        assert_equal("The PastelID ["+self.nonmn3_pastelid1+"] in this ticket is not matching the PastelID ["+self.nonmn4_pastelid1+"] in the Trade ticket with this txid" in self.errorString, True)
 
-        # 2. Verify the art is not already sold
-        #   2.a Verify the number of existing trade tickets less then number of copies in the registration ticket
-        # try:
-        #     self.nodes[self.non_mn3].tickets("register", "sell", self.art_ticket1_act_ticket_txid, str("100000"), self.artist_pastelid1, "passphrase")
-        # except JSONRPCException, e:
-        #     self.errorString = e.error['message']
-        #     print(self.errorString)
-        # assert_equal("The Art you are trying to sell - from registration ticket ["+self.art_ticket1_act_ticket_txid+"] - is already sold - there are already [1] trade tickets, but only [1] copies were available" in self.errorString, True)
+        buyer_coins_before = self.nodes[self.non_mn3].getbalance()
+        seller_coins_before = self.nodes[self.non_mn4].getbalance()
+        print(buyer_coins_before)
+        print(seller_coins_before)
 
-        # 3. fail if not enough coins to pay tnx fee (2% from price - 2M from 100M)
+        # 2. Create Sell ticket
+        self.trade_ticket1_sell_ticket_txid = self.nodes[self.non_mn4].tickets("register", "sell", self.art_ticket1_trade_ticket_txid, str("1000"), self.nonmn4_pastelid1, "passphrase")["txid"]
+        assert_true(self.trade_ticket1_sell_ticket_txid, "No ticket was created")
+        self.__wait_for_ticket_tnx()
+        print(buyer_coins_before)
+        self.nodes[self.mining_node_num].generate(11)
+        print(buyer_coins_before)
 
-        # 4. Create Sell ticket
+        # 3. Create buy ticket
+        self.trade_ticket1_buy_ticket_txid = self.nodes[self.non_mn3].tickets("register", "buy", self.trade_ticket1_sell_ticket_txid, str("1000"), self.nonmn3_pastelid1, "passphrase")["txid"]
+        assert_true(self.trade_ticket1_buy_ticket_txid, "No ticket was created")
+        self.__wait_for_ticket_tnx()
+        print(buyer_coins_before)
+        self.nodes[self.mining_node_num].generate(11)
+        print(buyer_coins_before)
 
-        # 5. check correct amount of change and correct amount spent
+        # 5. Create trade ticket
+        self.trade_ticket1_trade_ticket_txid = self.nodes[self.non_mn3].tickets("register", "trade", self.trade_ticket1_sell_ticket_txid, self.trade_ticket1_buy_ticket_txid, self.nonmn3_pastelid1, "passphrase")["txid"]
+        assert_true(self.trade_ticket1_trade_ticket_txid, "No ticket was created")
+        self.__wait_for_ticket_tnx()
 
-        #  2.b Verify there is no already trade ticket referring to trade ticket we are trying to sell
+        # check correct amount of change and correct amount spent
+        buyer_coins_after = self.nodes[self.non_mn3].getbalance()
+        print(buyer_coins_before)
+        print(buyer_coins_after)
+        assert_equal(buyer_coins_after, buyer_coins_before-100-10-1000)  # buy ticket cost is 1000/10, trade ticket cost is 10, art cost is 10000
 
-        # 6. find Sell ticket
-        # 6.1 by art's transaction and index
-        # sell_ticket1_1 = json.loads(self.nodes[self.non_mn3].tickets("find", "sell", self.art_ticket1_act_ticket_txid+":1"))
-        # assert_equal(sell_ticket1_1['ticket']['type'], "art-sell")
-        # assert_equal(sell_ticket1_1['ticket']['art_txid'], self.art_ticket1_act_ticket_txid)
-        # assert_equal(sell_ticket1_1["ticket"]["asked_price"], 100000)
+        # check seller gets correct amount
+        seller_coins_after = self.nodes[self.non_mn4].getreceivedbyaddress(self.nonmn4_address1)
+        print(seller_coins_before)
+        print(seller_coins_after)
+        assert_equal(seller_coins_after-seller_coins_before, 1000)
 
-        # 6.2 by artists PastelID (this is MultiValue key)
-        # sell_tickets_list1 = self.nodes[self.non_mn3].tickets("find", "sell", self.artist_pastelid1)
-        # for ticket in sell_tickets_list1:
-        #     sell_ticket1 = json.loads(ticket)
-        #     print (type(sell_ticket1))
-        #     assert_equal(sell_ticket1['ticket']['type'], "art-sell")
-        #     assert_equal(sell_ticket1['ticket']['art_txid'], self.art_ticket1_act_ticket_txid)
-        #     assert_equal(sell_ticket1["ticket"]["asked_price"], 100000)
-
-        # 6.3 by art's transaction (this is MultiValue key)
-        # sell_tickets_list2 = json.loads(self.nodes[self.non_mn3].tickets("find", "sell", self.art_ticket1_act_ticket_txid))
-        # for ticket in sell_tickets_list2:
-        #     sell_ticket2 = json.loads(ticket)
-        #     print (type(sell_ticket2))
-        #     assert_equal(sell_ticket2['ticket']['type'], "art-sell")
-        #     assert_equal(sell_ticket2['ticket']['art_txid'], self.art_ticket1_act_ticket_txid)
-        #     assert_equal(sell_ticket2["ticket"]["asked_price"], 100000)
-
-        # 6.4 get the same ticket by txid from c.a.6 and compare with ticket from c.b.2
-        # sell_ticket1_2 = json.loads(self.nodes[self.non_mn3].tickets("get", self.art_ticket1_sell_ticket_txid))
-        # assert_equal(sell_ticket1_2["ticket"]["art_txid"], sell_ticket1_1["ticket"]["art_txid"])
-        # assert_equal(sell_ticket1_2["ticket"]["asked_price"], sell_ticket1_1["ticket"]["asked_price"])
-
-        # 7. list all sell tickets, check PastelIDs
-        # tickets_list = self.nodes[self.non_mn3].tickets("list", "sell")
-        # assert_true(self.art_ticket1_act_ticket_txid+":1" in tickets_list)
-        # assert_true(self.art_ticket1_trade_ticket_txid+":1" in tickets_list)
-
-        # 8. from another node - get ticket transaction and check
-        #           - there are P2MS outputs with non-zero amounts
-        #           - amounts is totaling price/50 PSL (100000/50=2000)
-        # sell_ticket1_tx_hash = self.nodes[self.non_mn1].getrawtransaction(self.art_ticket1_sell_ticket_txid)
-        # sell_ticket1_tx = self.nodes[self.non_mn1].decoderawtransaction(sell_ticket1_tx_hash)
-        # amount = 0
-        # for v in sell_ticket1_tx["vout"]:
-        #     assert_greater_than(v["value"], 0)
-        #     if v["scriptPubKey"]["type"] == "multisig":
-        #         amount += v["value"]
-        # assert_equal(amount, 2000)
-
-
-### THIS ARE FOR THE FAKE TESTS
-# 1. check Sell ticket signed by the same private key as corresponding Art tickets - Activation or Trade
-# 2. fail if already registered - exactly the same Sell Ticket is already created
+        # 6. Verify we cannot sell already sold trade ticket
+        #  Verify there is no already trade ticket referring to trade ticket we are trying to sell
+        try:
+            self.nodes[self.non_mn4].tickets("register", "sell", self.art_ticket1_trade_ticket_txid, str("1000"), self.nonmn4_pastelid1, "passphrase")
+        except JSONRPCException, e:
+            self.errorString = e.error['message']
+            print(self.errorString)
+        assert_equal("There is already exist trade ticket for the sell ticket with this txid ["+self.art_ticket1_trade_ticket_txid+"]" in self.errorString, True)
 
         print("Art sell tickets tested (second run)")
 
