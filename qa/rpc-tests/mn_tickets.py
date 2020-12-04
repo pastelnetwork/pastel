@@ -792,7 +792,10 @@ class MasterNodeTicketsTest(MasterNodeCommon):
             self.errorString = e.error['message']
             print(self.errorString)
         assert_equal("Activation ticket can be created only after" in self.errorString, True)
-        self.nodes[self.non_mn3].generate(10)
+        time.sleep(2)
+        self.nodes[self.mining_node_num].generate(10)
+        time.sleep(2)
+        self.nodes[self.mining_node_num].generate(10)
         print(self.nodes[self.non_mn3].getblockcount())
 
         #       d.a.4 fail if artist's PastelID in the activation ticket is not matching artist's PastelID in the registration ticket
@@ -961,7 +964,10 @@ class MasterNodeTicketsTest(MasterNodeCommon):
             self.errorString = e.error['message']
             print(self.errorString)
         assert_equal("Sell ticket can be created only after" in self.errorString, True)
-        self.nodes[self.non_mn3].generate(10)
+        time.sleep(2)
+        self.nodes[self.mining_node_num].generate(10)
+        time.sleep(2)
+        self.nodes[self.mining_node_num].generate(10)
         print(self.nodes[self.non_mn3].getblockcount())
 
         # 2. check PastelID in this ticket matches PastelID in the referred Activation ticket
@@ -1083,7 +1089,10 @@ class MasterNodeTicketsTest(MasterNodeCommon):
             self.errorString = e.error['message']
             print(self.errorString)
         assert_equal("Buy ticket can be created only after" in self.errorString, True)
-        self.nodes[self.non_mn4].generate(10)
+        time.sleep(2)
+        self.nodes[self.mining_node_num].generate(10)
+        time.sleep(2)
+        self.nodes[self.mining_node_num].generate(10)
         print(self.nodes[self.non_mn4].getblockcount())
 
         # fail if price does not covers the sell price
@@ -1171,7 +1180,10 @@ class MasterNodeTicketsTest(MasterNodeCommon):
             self.errorString = e.error['message']
             print(self.errorString)
         assert_equal("Trade ticket can be created only after" in self.errorString, True)
-        self.nodes[self.non_mn4].generate(10)
+        time.sleep(2)
+        self.nodes[self.mining_node_num].generate(10)
+        time.sleep(2)
+        self.nodes[self.mining_node_num].generate(10)
         print(self.nodes[self.non_mn4].getblockcount())
 
         artists_coins_before = self.nodes[self.non_mn3].getreceivedbyaddress(self.nonmn3_address1)
@@ -1217,7 +1229,10 @@ class MasterNodeTicketsTest(MasterNodeCommon):
 
         self.nodes[self.mining_node_num].sendtoaddress(self.nonmn3_address1, 50000, "", "", False)
         self.nodes[self.mining_node_num].sendtoaddress(self.nonmn4_address1, 50000, "", "", False)
-        self.nodes[self.mining_node_num].generate(11)
+        time.sleep(2)
+        self.nodes[self.mining_node_num].generate(10)
+        time.sleep(2)
+        self.nodes[self.mining_node_num].generate(10)
 
         # 1. check PastelID in this ticket matches PastelID in the referred Trade ticket
         try:
@@ -1229,41 +1244,50 @@ class MasterNodeTicketsTest(MasterNodeCommon):
 
         buyer_coins_before = self.nodes[self.non_mn3].getbalance()
         seller_coins_before = self.nodes[self.non_mn4].getbalance()
-        print(buyer_coins_before)
-        print(seller_coins_before)
+        print("buyer_coins_before: " + str(buyer_coins_before))
+        print("seller_coins_before: " + str(seller_coins_before))
 
         # 2. Create Sell ticket
         self.trade_ticket1_sell_ticket_txid = self.nodes[self.non_mn4].tickets("register", "sell", self.art_ticket1_trade_ticket_txid, str("1000"), self.nonmn4_pastelid1, "passphrase")["txid"]
         assert_true(self.trade_ticket1_sell_ticket_txid, "No ticket was created")
         self.__wait_for_ticket_tnx()
-        print(buyer_coins_before)
-        self.nodes[self.mining_node_num].generate(11)
-        print(buyer_coins_before)
+        print("buyer's balance 1: " + str(self.nodes[self.non_mn3].getbalance()))
+        print("seller's balance 1: " + str(self.nodes[self.non_mn4].getbalance()))
+        time.sleep(2)
+        self.nodes[self.mining_node_num].generate(10)
+        time.sleep(2)
+        self.nodes[self.mining_node_num].generate(10)
+        print("buyer's balance 2: " + str(self.nodes[self.non_mn3].getbalance()))
+        print("seller's balance 2: " + str(self.nodes[self.non_mn4].getbalance()))
 
         # 3. Create buy ticket
         self.trade_ticket1_buy_ticket_txid = self.nodes[self.non_mn3].tickets("register", "buy", self.trade_ticket1_sell_ticket_txid, str("1000"), self.nonmn3_pastelid1, "passphrase")["txid"]
         assert_true(self.trade_ticket1_buy_ticket_txid, "No ticket was created")
         self.__wait_for_ticket_tnx()
-        print(buyer_coins_before)
-        self.nodes[self.mining_node_num].generate(11)
-        print(buyer_coins_before)
+        print("buyer's balance 3: " + str(self.nodes[self.non_mn3].getbalance()))
+        print("seller's balance 3: " + str(self.nodes[self.non_mn4].getbalance()))
+        time.sleep(2)
+        self.nodes[self.mining_node_num].generate(10)
+        time.sleep(2)
+        self.nodes[self.mining_node_num].generate(10)
+        print("buyer's balance 4: " + str(self.nodes[self.non_mn3].getbalance()))
+        print("seller's balance 4: " + str(self.nodes[self.non_mn4].getbalance()))
 
         # 5. Create trade ticket
         self.trade_ticket1_trade_ticket_txid = self.nodes[self.non_mn3].tickets("register", "trade", self.trade_ticket1_sell_ticket_txid, self.trade_ticket1_buy_ticket_txid, self.nonmn3_pastelid1, "passphrase")["txid"]
         assert_true(self.trade_ticket1_trade_ticket_txid, "No ticket was created")
         self.__wait_for_ticket_tnx()
 
-        # check correct amount of change and correct amount spent
         buyer_coins_after = self.nodes[self.non_mn3].getbalance()
-        print(buyer_coins_before)
-        print(buyer_coins_after)
-        assert_equal(buyer_coins_after, buyer_coins_before-100-10-1000)  # buy ticket cost is 1000/10, trade ticket cost is 10, art cost is 10000
+        seller_coins_after = self.nodes[self.non_mn4].getbalance()
+        print("buyer_coins_after: " + str(buyer_coins_after))
+        print("seller_coins_after: " + str(seller_coins_after))
+
+        # check correct amount of change and correct amount spent
+        assert_equal(buyer_coins_after, buyer_coins_before-10-10-1000)  # buy ticket cost is 10 (1000/100), trade ticket cost is 10, art cost is 1000
 
         # check seller gets correct amount
-        seller_coins_after = self.nodes[self.non_mn4].getreceivedbyaddress(self.nonmn4_address1)
-        print(seller_coins_before)
-        print(seller_coins_after)
-        assert_equal(seller_coins_after-seller_coins_before, 1000)
+        assert_equal(seller_coins_after, seller_coins_before+1000-20)      # sell ticket cost is 20 (1000/50), art cost is 1000
 
         # 6. Verify we cannot sell already sold trade ticket
         #  Verify there is no already trade ticket referring to trade ticket we are trying to sell
@@ -1272,7 +1296,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         except JSONRPCException, e:
             self.errorString = e.error['message']
             print(self.errorString)
-        assert_equal("There is already exist trade ticket for the sell ticket with this txid ["+self.art_ticket1_trade_ticket_txid+"]" in self.errorString, True)
+        assert_equal("The Art you are trying to sell - from trade ticket ["+self.art_ticket1_trade_ticket_txid+"] - is already sold" in self.errorString, True)
 
         print("Art sell tickets tested (second run)")
 

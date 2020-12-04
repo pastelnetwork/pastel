@@ -2021,37 +2021,63 @@ UniValue tickets(const UniValue& params, bool fHelp) {
 //              return ticket.ToJSON();
 		}
 		return "Key is not found";
-	}
-	if (strCommand == "list") {
-        
-        if (params.size() == 2)
+    }
+    if (strCommand == "list") {
+    
+        if (params.size() > 1) {
             strCmd = params[1].get_str();
-        
+        }
+    
         if (fHelp ||
-            (params.size() != 2 && params.size() != 3) ||
-            (strCmd != "id" && strCmd != "art" && strCmd != "act" && strCmd != "sell" && strCmd != "buy" && strCmd != "trade" && strCmd != "down" && strCmd != "canbuy"))
-			throw JSONRPCError(RPC_INVALID_PARAMETER,
-					"tickets list \"type\" (\"filter\") (\"minheight\")\n"
-					"List all tickets of specific type registered in the system"
-					"\nAvailable types:\n"
-					"  id	 - List ALL PastelID (both personal and masternode) registration tickets.\n"
-					"  art 	 - List ALL new art registration tickets.\n"
-					"  act	 - List ALL art activation tickets.\n"
-					"  sell  - List ALL art sell tickets.\n"
-					"  buy   - List ALL art buy tickets.\n"
-					"  trade - List ALL art trade tickets.\n"
-					"  canbuy - List ALL art sell tickets available to buy.\n"
-                    "\nArguments:\n"
-                    "1. minheight	 - minimum height for returned tickets (only tickets registered after this height will be returned).\n"
-					"\nExample: List ALL PastelID tickets\n"
-					+ HelpExampleCli("tickets list id", "") +
-					"\nAs json rpc\n"
-					+ HelpExampleRpc("tickets", R"("list", "id")")
-			);
+            (params.size() != 2 && params.size() != 4) ||
+            (strCmd != "id" && strCmd != "art" && strCmd != "act" && strCmd != "sell" && strCmd != "buy" && strCmd != "trade" && strCmd != "down"))
+            throw JSONRPCError(RPC_INVALID_PARAMETER,
+                               "tickets list \"type\" (\"filter\") (\"minheight\")\n"
+                               "List all tickets of specific type registered in the system"
+                               "\nAvailable types:\n"
+                               "  id	 - List PastelID registration tickets. Without filter parameter lists ALL (both masternode and personal) PastelIDs\n"
+                               "            Filter:\n"
+                               "              a - lists all masternode PastelIDs. Default.\n"
+                               "              m - lists only masternode PastelIDs\n"
+                               "              p - lists only personal PastelIDs\n"
+                               "  art 	 - List ALL new art registration tickets. Without filter parameter lists ALL Art tickets.\n"
+                               "            Filter:\n"
+                               "              a - lists all Art tickets (including non-confirmed). Default.\n"
+                               "              b - lists Art tickets without Act ticket created. Default.\n"
+                               "  act	 - List ALL art activation tickets. Without filter parameter lists ALL Act tickets.\n"
+                               "            Filter:\n"
+                               "              a - lists all Act tickets (including non-confirmed). Default.\n"
+                               "              n - lists never sold Act tickets (without Sell tickets). Default.\n"
+                               "  sell  - List ALL art sell tickets. Without filter parameter lists ALL Sell tickets\n"
+                               "            Filter:\n"
+                               "              a - lists all Sell tickets (including non-confirmed). Default.\n"
+                               "              b - list only Sell tickets that are confirmed, active and open for buying\n"
+                               "              n - list only Sell tickets that are confirmed, but not yet active (current block height is less then valid_after)\n"
+                               "              e - list only Sell tickets that are expired (current block height is more then valid_before)\n"
+                               "  buy   - List ALL art buy tickets. Without filter parameter lists ALL Buy tickets.\n"
+                               "            Filter:\n"
+                               "              a - list all Buy tickets (including non-confirmed). Default.\n"
+                               "              g - list Buy tickets with Trade ticket created\n"
+                               "              e - list Buy tickets that expired (Trade ticket was not created in time - 1h/24blocks)\n"
+                               "  trade - List ALL art trade tickets. Without filter parameter lists ALL Trade tickets.\n"
+                               "            Filter:\n"
+                               "              a - list all Trade tickets (including non-confirmed). Default.\n"
+                               "              n - lists never sold Trade tickets (without Sell tickets). Default.\n"
+                               "\nArguments:\n"
+                               "1. minheight	 - minimum height for returned tickets (only tickets registered after this height will be returned).\n"
+                               "\nExample: List ALL PastelID tickets\n"
+                               + HelpExampleCli("tickets list id", "") +
+                               "\nAs json rpc\n"
+                               + HelpExampleRpc("tickets", R"("list", "id")")
+            );
 
+        std::string filter = "a";
+        if (params.size() > 2)
+            strCmd = params[2].get_str();
+        
         int minheight = 0;
-        if (params.size() == 3)
-            minheight = get_number(params[1]);
+        if (params.size() > 3)
+            minheight = get_number(params[3]);
         
         UniValue obj(UniValue::VARR);
         if (strCmd == "id")
@@ -2061,13 +2087,14 @@ UniValue tickets(const UniValue& params, bool fHelp) {
         if (strCmd == "act")
             obj.read(masterNodeCtrl.masternodeTickets.ListTickets<CArtActivateTicket, TicketID::Activate>());
         if (strCmd == "sell")
-            obj.read(masterNodeCtrl.masternodeTickets.ListTickets<CArtSellTicket, TicketID::Sell>());
+            if (filter == "a")
+                obj.read(masterNodeCtrl.masternodeTickets.ListTickets<CArtSellTicket, TicketID::Sell>());
+            else if  (filter == "b")
+                obj.read(masterNodeCtrl.masternodeTickets.ListFilterSellTickets(0));
         if (strCmd == "buy")
             obj.read(masterNodeCtrl.masternodeTickets.ListTickets<CArtBuyTicket, TicketID::Buy>());
         if (strCmd == "trade")
             obj.read(masterNodeCtrl.masternodeTickets.ListTickets<CArtTradeTicket, TicketID::Trade>());
-        if (strCmd == "canbuy")
-            obj.read(masterNodeCtrl.masternodeTickets.ListActiveSellTickets());
 
         return obj;
 	}

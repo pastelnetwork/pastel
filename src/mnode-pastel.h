@@ -602,7 +602,7 @@ public:
     template<class T, TicketID ticketId>
     std::string ListTickets();
     
-    std::string ListActiveSellTickets();
+    std::string ListFilterSellTickets(short filter = 0); //-1 - not yet active; 1 - expired; 0 - all
 
 #ifdef ENABLE_WALLET
 	static bool CreateP2FMSTransaction(const std::string& input_string, CMutableTransaction& tx_out, CAmount price, std::string& error_ret);

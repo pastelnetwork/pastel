@@ -539,7 +539,7 @@ template std::string CPastelTicketProcessor::ListTickets<CArtBuyTicket, TicketID
 template std::string CPastelTicketProcessor::ListTickets<CArtTradeTicket, TicketID::Trade>();
 template std::string CPastelTicketProcessor::ListTickets<CSystemTicket, TicketID::Sys>();
 
-std::string CPastelTicketProcessor::ListActiveSellTickets()
+std::string CPastelTicketProcessor::ListFilterSellTickets(short filter)
 {
     std::vector<CArtSellTicket> allSellTickets;
     listTickets<CArtSellTicket, TicketID::Sell>(
@@ -555,6 +555,9 @@ std::string CPastelTicketProcessor::ListActiveSellTickets()
     json jArray;
     
     for (auto& t : allSellTickets) {
+        //check if the sell ticket is confirmed
+        if (chainHeight - t.ticketBlock < masterNodeCtrl.MinTicketConfirmations)
+            continue;
         CArtBuyTicket existingBuyTicket;
         if (CArtBuyTicket::FindTicketInDb(t.ticketTnx, existingBuyTicket)) {
             //check where trade ticket exists
@@ -565,12 +568,23 @@ std::string CPastelTicketProcessor::ListActiveSellTickets()
                 continue;
             }
         }
-        //check if the sell ticket is already active
-        if (t.activeAfter > 0 && t.activeAfter <= chainHeight)
-            continue;
-        //check if the sell ticket is still active
-        if (t.activeBefore >= chainHeight)
-            continue;
+        if (filter == 0) {
+            //skip sell ticket that is not yet active
+            if (t.activeAfter > 0 && chainHeight <= t.activeAfter)
+                continue;
+            //skip sell ticket that is already not active
+            if (chainHeight >= t.activeBefore)
+                continue;
+        } else if (filter < 0){
+            //skip sell ticket that is already active
+            if (t.activeAfter > 0 && chainHeight >= t.activeAfter)
+                continue;
+        } else if (filter > 0){
+            //skip sell ticket that is still active
+            if (t.activeBefore > 0 && chainHeight <= t.activeBefore)
+                continue;
+        }
+        
         jArray.push_back(json::parse(t.ToJSON()));
     }
     return jArray.dump();
