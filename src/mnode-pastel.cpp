@@ -132,51 +132,51 @@ bool CPastelTicketProcessor::ValidateIfTicketTransaction(const CTransaction& tx)
         if (ticket_id == TicketID::PastelID) {
             CPastelIDRegTicket ticket;
             data_stream >> ticket;
-            ok = ticket.IsValid(error_ret, false);
+            ok = ticket.IsValid(error_ret, false, 0);
             expectedTicketFee = ticket.TicketPrice() * COIN;
         }
         else if (ticket_id == TicketID::Art) {
             CArtRegTicket ticket;
             data_stream >> ticket;
-            ok = ticket.IsValid(error_ret, false);
+            ok = ticket.IsValid(error_ret, false, 0);
             expectedTicketFee = ticket.TicketPrice() * COIN;
         }
         else if (ticket_id == TicketID::Activate) {
             CArtActivateTicket ticket;
             data_stream >> ticket;
-            ok = ticket.IsValid(error_ret, false);
+            ok = ticket.IsValid(error_ret, false, 0);
             expectedTicketFee = ticket.TicketPrice() * COIN;
             storageFee = ticket.storageFee;
         }
         else if (ticket_id == TicketID::Sell) {
             CArtSellTicket ticket;
             data_stream >> ticket;
-            ok = ticket.IsValid(error_ret, false);
+            ok = ticket.IsValid(error_ret, false, 0);
             expectedTicketFee = ticket.TicketPrice() * COIN;
         }
         else if (ticket_id == TicketID::Buy) {
             CArtBuyTicket ticket;
             data_stream >> ticket;
-            ok = ticket.IsValid(error_ret, false);
+            ok = ticket.IsValid(error_ret, false, 0);
             expectedTicketFee = ticket.TicketPrice() * COIN;
         }
         else if (ticket_id == TicketID::Trade) {
             CArtTradeTicket ticket;
             data_stream >> ticket;
-            ok = ticket.IsValid(error_ret, false);
+            ok = ticket.IsValid(error_ret, false, 0);
             expectedTicketFee = ticket.TicketPrice() * COIN;
             tradePrice = ticket.price * COIN;
         }
 //		else if (ticket_id == TicketID::Down) {
 //            CTakeDownTicket ticket;
 //            data_stream >> ticket;
-//            ok = ticket.IsValid(error_ret, false);
+//            ok = ticket.IsValid(error_ret, false, 0);
 //            expectedTicketFee = ticket.TicketPrice() * COIN;
 //		}
         if (ticket_id == TicketID::Sys) {
             CSystemTicket ticket;
             data_stream >> ticket;
-            ok = ticket.IsValid(error_ret, false);
+            ok = ticket.IsValid(error_ret, false, 0);
             expectedTicketFee = ticket.TicketPrice() * COIN;
         }
         else {
@@ -573,7 +573,7 @@ std::string CPastelTicketProcessor::ListFilterSellTickets(short filter)
             if (t.activeAfter > 0 && chainHeight <= t.activeAfter)
                 continue;
             //skip sell ticket that is already not active
-            if (chainHeight >= t.activeBefore)
+            if (t.activeBefore > 0 && chainHeight >= t.activeBefore)
                 continue;
         } else if (filter < 0){
             //skip sell ticket that is already active
@@ -595,7 +595,7 @@ std::string CPastelTicketProcessor::SendTicket(const T& ticket)
 {
     std::string error;
 
-    if (!ticket.IsValid( error, true)) {
+    if (!ticket.IsValid( error, true, 0)) {
         throw std::runtime_error(strprintf("Ticket (%s) is invalid - %s", ticket.TicketName(), error));
     }
     
@@ -914,7 +914,7 @@ bool CPastelTicketProcessor::ParseP2FMSTransaction(const CMutableTransaction& tx
     return ticket;
 }
 
-bool CPastelIDRegTicket::IsValid(std::string& errRet, bool preReg) const
+bool CPastelIDRegTicket::IsValid(std::string& errRet, bool preReg, int depth) const
 {
     if (preReg) { // Something to check ONLY before ticket made into transaction
         //1. check that activation ticket for the regTicketTnxId is not already in the blockchain
@@ -1101,7 +1101,7 @@ std::string CPastelIDRegTicket::ToJSON()
     return ticket;
 }
 
-bool CArtRegTicket::IsValid(std::string& errRet, bool preReg) const
+bool CArtRegTicket::IsValid(std::string& errRet, bool preReg, int depth) const
 {
     if (preReg){
         // A. Something to check ONLY before ticket made into transaction
@@ -1143,7 +1143,7 @@ bool CArtRegTicket::IsValid(std::string& errRet, bool preReg) const
             return false;
         }
         //2. PastelIDs are valid
-        if (!pastelIdRegTicket.IsValid(err, false)){
+        if (!pastelIdRegTicket.IsValid(err, false, ++depth)){
             if (mnIndex == artistsign)
                 errRet = strprintf("Artist PastelID is invalid [%s] - %s", pastelIDs[mnIndex], err);
             else
@@ -1262,7 +1262,9 @@ template<class T, typename F>
 bool common_validation(const T& ticket, bool preReg, const std::string& strTnxId,
                        std::unique_ptr<CPastelTicketBase>& pastelTicket, TicketID& ticketId,
                        F f,
-                       const std::string& thisTicket, const std::string& prevTicket, uint ticketPrice, std::string& errRet)
+                       const std::string& thisTicket, const std::string& prevTicket, int depth,
+                       uint ticketPrice,
+                       std::string& errRet)
 {
     // A. Something to check ONLY before ticket made into transaction
     if (preReg){
@@ -1317,9 +1319,9 @@ bool common_validation(const T& ticket, bool preReg, const std::string& strTnxId
     // C.3 check the referred ticket is valid
     // (IsValid of the referred ticket validates signatures as well!)
     std::string err;
-    if (!pastelTicket->IsValid(err, false))
+    if (!pastelTicket->IsValid(err, false, ++depth))
     {
-        errRet = strprintf("The %s ticket with this txid [%s] is invalid - %s", thisTicket, strTnxId, err);
+        errRet = strprintf("The %s ticket with this txid [%s] is invalid - %s", prevTicket, strTnxId, err);
         return false;
     }
     
@@ -1351,7 +1353,7 @@ bool common_validation(const T& ticket, bool preReg, const std::string& strTnxId
     return ss.str();
 }
 
-bool CArtActivateTicket::IsValid(std::string& errRet, bool preReg) const
+bool CArtActivateTicket::IsValid(std::string& errRet, bool preReg, int depth) const
 {
     // 0. Common validations
     std::unique_ptr<CPastelTicketBase> pastelTicket;
@@ -1359,6 +1361,7 @@ bool CArtActivateTicket::IsValid(std::string& errRet, bool preReg) const
     if  (!common_validation(*this, preReg, regTicketTnxId, pastelTicket, ticketId,
                      [](TicketID tid){return (tid != TicketID::Art);},
                      "Activation", "art",
+                     depth,
                      TicketPrice()+(storageFee * 9 / 10), //fee for ticket + 90% of storage fee
                      errRet))
         return false;
@@ -1513,7 +1516,7 @@ std::string CArtActivateTicket::ToJSON()
     return ss.str();
 }
 
-bool CArtSellTicket::IsValid(std::string& errRet, bool preReg) const
+bool CArtSellTicket::IsValid(std::string& errRet, bool preReg, int depth) const
 {
     // 0. Common validations
     std::unique_ptr<CPastelTicketBase> pastelTicket;
@@ -1521,6 +1524,7 @@ bool CArtSellTicket::IsValid(std::string& errRet, bool preReg) const
     if  (!common_validation(*this, preReg, artTnxId, pastelTicket, ticketId,
                      [](TicketID tid){return (tid != TicketID::Activate && tid != TicketID::Trade);},
                      "Sell", "activation or trade",
+                     depth,
                      TicketPrice(),
                      errRet))
         return false;
@@ -1549,15 +1553,17 @@ bool CArtSellTicket::IsValid(std::string& errRet, bool preReg) const
         }
         //  Get ticket pointed by artTnxId. Here, this is an Activation ticket
         auto artTicket = CPastelTicketProcessor::GetTicket<CArtRegTicket>(actTicket->regTicketTnxId, TicketID::Art);
-    
-        // 2.a Verify the number of existing trade tickets less then number of copies in the registration ticket
-        if (soldCopies >= artTicket->totalCopies) {
-            errRet = strprintf(
-                    "The Art you are trying to sell - from registration ticket [%s] - is already sold - there are already [%d] trade tickets, but only [%d] copies were available",
-                    artTnxId, soldCopies, artTicket->totalCopies);
-            return false;
-        }
         totalCopies = artTicket->totalCopies;
+    
+        if (preReg || ticketBlock == 0 || depth == 0) {//else if this is already confirmed ticket - skip this check, otherwise it will failed
+            // 2.a Verify the number of existing trade tickets less then number of copies in the registration ticket
+            if (soldCopies >= artTicket->totalCopies) {
+                errRet = strprintf(
+                        "The Art you are trying to sell - from registration ticket [%s] - is already sold - there are already [%d] trade tickets, but only [%d] copies were available",
+                        artTnxId, soldCopies, artTicket->totalCopies);
+                return false;
+            }
+        }
     }
     else if (ticketId == TicketID::Trade) {
         // 1.b
@@ -1575,11 +1581,13 @@ bool CArtSellTicket::IsValid(std::string& errRet, bool preReg) const
             return false;
         }
         // 3.b Verify there is no already trade ticket referring to that trade ticket
-        if (soldCopies > 0) {
-            errRet = strprintf(
-                    "The Art you are trying to sell - from trade ticket [%s] - is already sold - see trade ticket with txid [%s]",
-                    artTnxId, existingTradeTickets[0].ticketTnx);
-            return false;
+        if (preReg || ticketBlock == 0 || depth == 0) {//else if this is already confirmed ticket - skip this check, otherwise it will failed
+            if (soldCopies > 0) {
+                errRet = strprintf(
+                        "The Art you are trying to sell - from trade ticket [%s] - is already sold - see trade ticket with txid [%s]",
+                        artTnxId, existingTradeTickets[0].ticketTnx);
+                return false;
+            }
         }
         totalCopies = 1;
     }
@@ -1591,9 +1599,9 @@ bool CArtSellTicket::IsValid(std::string& errRet, bool preReg) const
         return false;
     }
     
-    //3. Verify the number of Sell tickets for the same art ticket (Act or Trade)
-    //   Verify the number of existing Sell tickets less then number of copies in the registration ticket or the replacement is allowed
-    if (sellTicketsNumber >= totalCopies) {
+    //4. If this is replacement - verify that it is allowed (origianl ticket is not sold)
+    if (copyNumber != 0 &&
+        (preReg || ticketBlock == 0 || depth == 0)) {//else if this is already confirmed ticket - skip this check, otherwise it will failed
         //Only replacement is allowed, if possible
         auto it = find_if(existingSellTickets.begin(), existingSellTickets.end(),
                               [&](const CArtSellTicket& st) {
@@ -1616,7 +1624,7 @@ bool CArtSellTicket::IsValid(std::string& errRet, bool preReg) const
             
             if (it->ticketBlock + 28800 < chainHeight) {//1 block per 2.5; 4 blocks per 10 min; 24 blocks per 1h; 576 blocks per 24 h;
                 errRet = strprintf(
-                        "Cannot only replace Sell ticket after 5 days. txid - [%s] copyNumber [%d].",
+                        "Can only replace Sell ticket after 5 days. txid - [%s] copyNumber [%d].",
                         it->ticketTnx, copyNumber);
             }
         }
@@ -1685,7 +1693,7 @@ std::string CArtSellTicket::ToJSON()
     return ss.str();
 }
 
-bool CArtBuyTicket::IsValid(std::string& errRet, bool preReg) const
+bool CArtBuyTicket::IsValid(std::string& errRet, bool preReg, int depth) const
 {
     // 0. Common validations
     std::unique_ptr<CPastelTicketBase> pastelTicket;
@@ -1693,6 +1701,7 @@ bool CArtBuyTicket::IsValid(std::string& errRet, bool preReg) const
     if  (!common_validation(*this, preReg, sellTnxId, pastelTicket, ticketId,
                             [](TicketID tid){return (tid != TicketID::Sell);},
                             "Buy", "sell",
+                            depth,
                             price+TicketPrice(),
                             errRet))
         return false;
@@ -1710,15 +1719,14 @@ bool CArtBuyTicket::IsValid(std::string& errRet, bool preReg) const
     if (CArtBuyTicket::FindTicketInDb(sellTnxId, existingBuyTicket)) {
     
         if (preReg) {// if pre reg - this is probably repeating call, so signatures can be the same
-            errRet = strprintf("Buy ticket [%s] is already exist for this sell ticket [%s]",
+            errRet = strprintf("Buy ticket [%s] already exists for this sell ticket [%s]",
                                existingBuyTicket.ticketTnx, sellTnxId);
             return false;
         }
         if (existingBuyTicket.signature != signature) {
-    
             //check age
             if (existingBuyTicket.ticketBlock + masterNodeCtrl.MaxBuyTicketAge <= chainHeight) {
-                errRet = strprintf("Buy ticket [%s] is already exist for this sell ticket [%s]",
+                errRet = strprintf("Buy ticket [%s] already exists and is not yet 1h old for this sell ticket [%s]",
                                    existingBuyTicket.ticketTnx, sellTnxId);
                 return false;
             }
@@ -1738,7 +1746,7 @@ bool CArtBuyTicket::IsValid(std::string& errRet, bool preReg) const
     }
 
     // 2. Verify Sell ticket is already or still active
-    int height = (preReg || ticketBlock == 0)? chainHeight: ticketBlock;
+    int height = (preReg || ticketBlock == 0 || depth == 0)? chainHeight: ticketBlock;
     
     if (sellTicket->activeAfter > 0 && sellTicket->activeAfter <= height) {
         errRet = strprintf("Sell ticket [%s] is only active after [%d] block height (Buy ticket block is [%d])", sellTicket->ticketTnx, sellTicket->activeAfter, height);
@@ -1822,7 +1830,7 @@ std::string CArtBuyTicket::ToJSON()
     return ss.str();
 }
 
-bool CArtTradeTicket::IsValid(std::string& errRet, bool preReg) const
+bool CArtTradeTicket::IsValid(std::string& errRet, bool preReg, int depth) const
 {
     // 0. Common validations
     std::unique_ptr<CPastelTicketBase> sellTicket;
@@ -1830,6 +1838,7 @@ bool CArtTradeTicket::IsValid(std::string& errRet, bool preReg) const
     if  (!common_validation(*this, preReg, sellTnxId, sellTicket, sellTicketId,
                             [](TicketID tid){return (tid != TicketID::Sell);},
                             "Trade", "sell",
+                            depth,
                             price+TicketPrice(),
                             errRet))
         return false;
@@ -1839,6 +1848,7 @@ bool CArtTradeTicket::IsValid(std::string& errRet, bool preReg) const
     if  (!common_validation(*this, preReg, buyTnxId, buyTicket, buyTicketId,
                             [](TicketID tid){return (tid != TicketID::Buy);},
                             "Trade", "buy",
+                            depth,
                             price+TicketPrice(),
                             errRet))
         return false;
@@ -1997,7 +2007,7 @@ std::string CArtTradeTicket::ToJSON()
     return ss.str();
 }
 
-bool CSystemTicket::IsValid(std::string& errRet, bool preReg) const
+bool CSystemTicket::IsValid(std::string& errRet, bool preReg, int depth) const
 {
     // Something to check ONLY before ticket made into transaction
     if (preReg){
@@ -2020,7 +2030,7 @@ bool CSystemTicket::IsValid(std::string& errRet, bool preReg) const
         return false;
     }
     std::string err;
-    if (!pastelIdRegTicket.IsValid(err, false)) {
+    if (!pastelIdRegTicket.IsValid(err, false, ++depth)) {
         errRet = strprintf("PastelID is invalid [%s] - %s", pastelID, err);
     }
     

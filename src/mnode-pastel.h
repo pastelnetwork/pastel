@@ -29,9 +29,9 @@ public:
 	
 	virtual std::string TicketName() const = 0;
 	virtual std::string ToJSON() = 0;
-	virtual bool IsValid(std::string& errRet, bool preReg) const = 0;   //if preReg = true - validate pre registration conditions
-	                                                                    //      ex.: address has enough coins for registration
-	                                                                    //else - validate ticket in general
+	virtual bool IsValid(std::string& errRet, bool preReg, int depth) const = 0;    //if preReg = true - validate pre registration conditions
+	                                                                                //      ex.: address has enough coins for registration
+	                                                                                //else - validate ticket in general
     virtual CAmount TicketPrice() const = 0;
     
     virtual CAmount GetExtraOutputs(std::vector<CTxOut>& outputs) const {return 0;}
@@ -84,7 +84,7 @@ public:
     void SetKeyOne(std::string val) override { pastelID = std::move(val); }
     
     std::string ToJSON() override;
-    bool IsValid(std::string& errRet, bool preReg) const override;
+    bool IsValid(std::string& errRet, bool preReg, int depth) const override;
     
     CAmount TicketPrice() const override {return 10;}
     
@@ -197,7 +197,7 @@ public:
     void SetKeyOne(std::string val) override { keyOne = std::move(val); }
     
     std::string ToJSON() override;
-    bool IsValid(std::string& errRet, bool preReg) const override;
+    bool IsValid(std::string& errRet, bool preReg, int depth) const override;
     CAmount TicketPrice() const override {return 10;}
     
     ADD_SERIALIZE_METHODS;
@@ -268,7 +268,7 @@ public:
     void SetKeyOne(std::string val) override { regTicketTnxId = std::move(val); }
     
     std::string ToJSON() override;
-    bool IsValid(std::string& errRet, bool preReg) const override;
+    bool IsValid(std::string& errRet, bool preReg, int depth) const override;
     CAmount TicketPrice() const override {return 10;}
 	
 	ADD_SERIALIZE_METHODS;
@@ -339,7 +339,7 @@ public:
     void SetKeyOne(std::string val) override { key = std::move(val); }
     
     std::string ToJSON() override;
-    bool IsValid(std::string& errRet, bool preReg) const override;
+    bool IsValid(std::string& errRet, bool preReg, int depth) const override;
     CAmount TicketPrice() const override {return askedPrice/50;}
     
     ADD_SERIALIZE_METHODS;
@@ -403,7 +403,7 @@ public:
     CAmount TicketPrice() const override {return price/100;}
     
     std::string ToJSON() override;
-    bool IsValid(std::string& errRet, bool preReg) const override;
+    bool IsValid(std::string& errRet, bool preReg, int depth) const override;
     
     ADD_SERIALIZE_METHODS;
     
@@ -467,7 +467,7 @@ public:
     void SetKeyOne(std::string val) override { sellTnxId = std::move(val); }
     
     std::string ToJSON() override;
-    bool IsValid(std::string& errRet, bool preReg) const override;
+    bool IsValid(std::string& errRet, bool preReg, int depth) const override;
     CAmount TicketPrice() const override {return 10;}
     
     ADD_SERIALIZE_METHODS;
@@ -540,7 +540,7 @@ public:
     void SetKeyOne(std::string val) override { id = std::move(val); }
     
     std::string ToJSON() override;
-    bool IsValid(std::string& errRet, bool preReg) const override;
+    bool IsValid(std::string& errRet, bool preReg, int depth) const override;
     CAmount TicketPrice() const override {return 1000;}
     
     ADD_SERIALIZE_METHODS;

@@ -2029,7 +2029,7 @@ UniValue tickets(const UniValue& params, bool fHelp) {
         }
     
         if (fHelp ||
-            (params.size() != 2 && params.size() != 4) ||
+            (params.size() < 2 || params.size() > 4) ||
             (strCmd != "id" && strCmd != "art" && strCmd != "act" && strCmd != "sell" && strCmd != "buy" && strCmd != "trade" && strCmd != "down"))
             throw JSONRPCError(RPC_INVALID_PARAMETER,
                                "tickets list \"type\" (\"filter\") (\"minheight\")\n"
@@ -2073,7 +2073,7 @@ UniValue tickets(const UniValue& params, bool fHelp) {
 
         std::string filter = "a";
         if (params.size() > 2)
-            strCmd = params[2].get_str();
+            filter = params[2].get_str();
         
         int minheight = 0;
         if (params.size() > 3)
@@ -2086,11 +2086,13 @@ UniValue tickets(const UniValue& params, bool fHelp) {
             obj.read(masterNodeCtrl.masternodeTickets.ListTickets<CArtRegTicket, TicketID::Art>());
         if (strCmd == "act")
             obj.read(masterNodeCtrl.masternodeTickets.ListTickets<CArtActivateTicket, TicketID::Activate>());
-        if (strCmd == "sell")
-            if (filter == "a")
+        if (strCmd == "sell") {
+            if (filter == "a") {
                 obj.read(masterNodeCtrl.masternodeTickets.ListTickets<CArtSellTicket, TicketID::Sell>());
-            else if  (filter == "b")
+            } else if (filter == "b") {
                 obj.read(masterNodeCtrl.masternodeTickets.ListFilterSellTickets(0));
+            }
+        }
         if (strCmd == "buy")
             obj.read(masterNodeCtrl.masternodeTickets.ListTickets<CArtBuyTicket, TicketID::Buy>());
         if (strCmd == "trade")
