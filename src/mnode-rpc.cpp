@@ -1786,7 +1786,7 @@ UniValue tickets(const UniValue& params, bool fHelp) {
 					"3. \"PastelID\"      (string, required) The PastelID of seller. This MUST be the same PastelID that was used to sign the ticket referred by the art_txid\n"
 					"4. \"passphrase\"    (string, required) The passphrase to the private key associated with artist's PastelID and stored inside node\n"
                     "5. valid_after       (int, optional) The block height after which this sell ticket will become active (use 0 for upon registration).\n"
-                    "6. valid_after       (int, optional) The block height after which this sell ticket is no more valid (use 0 for never).\n"
+                    "6. valid_before      (int, optional) The block height after which this sell ticket is no more valid (use 0 for never).\n"
                     "7. copy_number       (int, optional) If presented - will replace the original not yet sold Sell ticket with this copy number.\n"
                     "                                     If the original has been already sold - operation will fail\n"
 					"Art Trade Ticket:\n"
@@ -2037,32 +2037,37 @@ UniValue tickets(const UniValue& params, bool fHelp) {
                                "\nAvailable types:\n"
                                "  id	 - List PastelID registration tickets. Without filter parameter lists ALL (both masternode and personal) PastelIDs\n"
                                "            Filter:\n"
-                               "              a - lists all masternode PastelIDs. Default.\n"
-                               "              m - lists only masternode PastelIDs\n"
-                               "              p - lists only personal PastelIDs\n"
+                               "              all      - lists all masternode PastelIDs. Default.\n"
+                               "              mn       - lists only masternode PastelIDs\n"
+                               "              personal - lists only personal PastelIDs\n"
                                "  art 	 - List ALL new art registration tickets. Without filter parameter lists ALL Art tickets.\n"
                                "            Filter:\n"
-                               "              a - lists all Art tickets (including non-confirmed). Default.\n"
-                               "              b - lists Art tickets without Act ticket created. Default.\n"
+                               "              all      - lists all Art tickets (including non-confirmed). Default.\n"
+                               "              active   - lists only activated Art tickets - with Act ticket.\n"
+                               "              inactive - lists only non-activated Art tickets - without Act ticket created (confirmed).\n"
+                               "              sold     - lists only sold Art tickets - with Trade ticket created for all copies.\n"
                                "  act	 - List ALL art activation tickets. Without filter parameter lists ALL Act tickets.\n"
                                "            Filter:\n"
-                               "              a - lists all Act tickets (including non-confirmed). Default.\n"
-                               "              n - lists never sold Act tickets (without Sell tickets). Default.\n"
+                               "              all       - lists all Act tickets (including non-confirmed). Default.\n"
+                               "              available - lists non sold Act tickets - without Trade tickets for all copies (confirmed).\n"
+                               "              sold      - lists only sold Act tickets - with Trade tickets for all copies.\n"
                                "  sell  - List ALL art sell tickets. Without filter parameter lists ALL Sell tickets\n"
                                "            Filter:\n"
-                               "              a - lists all Sell tickets (including non-confirmed). Default.\n"
-                               "              b - list only Sell tickets that are confirmed, active and open for buying\n"
-                               "              n - list only Sell tickets that are confirmed, but not yet active (current block height is less then valid_after)\n"
-                               "              e - list only Sell tickets that are expired (current block height is more then valid_before)\n"
+                               "              all         - lists all Sell tickets (including non-confirmed). Default.\n"
+                               "              available   - list only Sell tickets that are confirmed, active and open for buying (no active Buy ticket and no Trade ticket)\n"
+                               "              unavailable - list only Sell tickets that are confirmed, but not yet active (current block height is less then valid_after)\n"
+                               "              expired     - list only Sell tickets that are expired (current block height is more then valid_before)\n"
+                               "              sold        - lists only sold Sell tickets - with Trade ticket created.\n"
                                "  buy   - List ALL art buy tickets. Without filter parameter lists ALL Buy tickets.\n"
                                "            Filter:\n"
-                               "              a - list all Buy tickets (including non-confirmed). Default.\n"
-                               "              g - list Buy tickets with Trade ticket created\n"
-                               "              e - list Buy tickets that expired (Trade ticket was not created in time - 1h/24blocks)\n"
+                               "              all     - list all Buy tickets (including non-confirmed). Default.\n"
+                               "              expired - list Buy tickets that expired (Trade ticket was not created in time - 1h/24blocks)\n"
+                               "              sold    - list Buy tickets with Trade ticket created\n"
                                "  trade - List ALL art trade tickets. Without filter parameter lists ALL Trade tickets.\n"
                                "            Filter:\n"
-                               "              a - list all Trade tickets (including non-confirmed). Default.\n"
-                               "              n - lists never sold Trade tickets (without Sell tickets). Default.\n"
+                               "              all       - list all Trade tickets (including non-confirmed). Default.\n"
+                               "              available - lists never sold Trade tickets (without Sell tickets).\n"
+                               "              sold      - lists only sold Trade tickets (with Sell tickets).\n"
                                "\nArguments:\n"
                                "1. minheight	 - minimum height for returned tickets (only tickets registered after this height will be returned).\n"
                                "\nExample: List ALL PastelID tickets\n"
@@ -2071,7 +2076,7 @@ UniValue tickets(const UniValue& params, bool fHelp) {
                                + HelpExampleRpc("tickets", R"("list", "id")")
             );
 
-        std::string filter = "a";
+        std::string filter = "all";
         if (params.size() > 2)
             filter = params[2].get_str();
         
@@ -2081,22 +2086,61 @@ UniValue tickets(const UniValue& params, bool fHelp) {
         
         UniValue obj(UniValue::VARR);
         if (strCmd == "id")
-            obj.read(masterNodeCtrl.masternodeTickets.ListTickets<CPastelIDRegTicket, TicketID::PastelID>());
+            if (filter == "all") {
+                obj.read(masterNodeCtrl.masternodeTickets.ListTickets<CPastelIDRegTicket, TicketID::PastelID>());
+            } else if (filter == "mn") {
+                obj.read(masterNodeCtrl.masternodeTickets.ListFilterPastelIDTickets(1));
+            } else if (filter == "personal") {
+                obj.read(masterNodeCtrl.masternodeTickets.ListFilterPastelIDTickets(2));
+            }
         if (strCmd == "art")
-            obj.read(masterNodeCtrl.masternodeTickets.ListTickets<CArtRegTicket, TicketID::Art>());
+            if (filter == "all") {
+                obj.read(masterNodeCtrl.masternodeTickets.ListTickets<CArtRegTicket, TicketID::Art>());
+            } else if (filter == "active") {
+                obj.read(masterNodeCtrl.masternodeTickets.ListFilterArtTickets(1));
+            } else if (filter == "inactive") {
+                obj.read(masterNodeCtrl.masternodeTickets.ListFilterArtTickets(2));
+            } else if (filter == "sold") {
+                obj.read(masterNodeCtrl.masternodeTickets.ListFilterArtTickets(3));
+            }
         if (strCmd == "act")
-            obj.read(masterNodeCtrl.masternodeTickets.ListTickets<CArtActivateTicket, TicketID::Activate>());
+            if (filter == "all") {
+                obj.read(masterNodeCtrl.masternodeTickets.ListTickets<CArtActivateTicket, TicketID::Activate>());
+            } else if (filter == "available") {
+                obj.read(masterNodeCtrl.masternodeTickets.ListFilterActTickets(1));
+            } else if (filter == "sold") {
+                obj.read(masterNodeCtrl.masternodeTickets.ListFilterActTickets(2));
+            }
         if (strCmd == "sell") {
-            if (filter == "a") {
+            if (filter == "all") {
                 obj.read(masterNodeCtrl.masternodeTickets.ListTickets<CArtSellTicket, TicketID::Sell>());
-            } else if (filter == "b") {
-                obj.read(masterNodeCtrl.masternodeTickets.ListFilterSellTickets(0));
+            } else if (filter == "available") {
+                obj.read(masterNodeCtrl.masternodeTickets.ListFilterSellTickets(1));
+            } else if (filter == "unavailable") {
+                obj.read(masterNodeCtrl.masternodeTickets.ListFilterSellTickets(2));
+            } else if (filter == "expired") {
+                obj.read(masterNodeCtrl.masternodeTickets.ListFilterSellTickets(3));
+            } else if (filter == "sold") {
+                obj.read(masterNodeCtrl.masternodeTickets.ListFilterSellTickets(4));
             }
         }
         if (strCmd == "buy")
-            obj.read(masterNodeCtrl.masternodeTickets.ListTickets<CArtBuyTicket, TicketID::Buy>());
-        if (strCmd == "trade")
-            obj.read(masterNodeCtrl.masternodeTickets.ListTickets<CArtTradeTicket, TicketID::Trade>());
+            if (filter == "all") {
+                obj.read(masterNodeCtrl.masternodeTickets.ListTickets<CArtBuyTicket, TicketID::Buy>());
+            } else if (filter == "expired") {
+                obj.read(masterNodeCtrl.masternodeTickets.ListFilterBuyTickets(1));
+            } else if (filter == "sold") {
+                obj.read(masterNodeCtrl.masternodeTickets.ListFilterBuyTickets(2));
+            }
+        if (strCmd == "trade") {
+            if (filter == "all") {
+                obj.read(masterNodeCtrl.masternodeTickets.ListTickets<CArtTradeTicket, TicketID::Trade>());
+            } else if (filter == "available") {
+                obj.read(masterNodeCtrl.masternodeTickets.ListFilterTradeTickets(1));
+            } else if (filter == "sold") {
+                obj.read(masterNodeCtrl.masternodeTickets.ListFilterTradeTickets(2));
+            }
+        }
 
         return obj;
 	}
