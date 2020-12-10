@@ -1065,7 +1065,7 @@ bool ContextualCheckTransaction(
     }
     
     //Check Pastel Ticket transactions
-    if (!CPastelTicketProcessor::ValidateIfTicketTransaction(tx))
+    if (!CPastelTicketProcessor::ValidateIfTicketTransaction(nHeight, tx))
     {
         return state.DoS(100, error("ValidateIfTicketTransaction(): invalid ticket transaction"),
                          REJECT_INVALID, "bad-tx-invalid-ticket");

@@ -1733,9 +1733,9 @@ UniValue tickets(const UniValue& params, bool fHelp) {
                     "Register confirm new art ticket identity. If successful, method returns \"txid\"."
                     "\nArguments:\n"
                     "1. \"reg-ticket-tnxid\"  (string, required) tnxid of the art register ticket to activate.\n"
-                    "2. \"artist-height\" (string, required) Height where the art register ticket was created by the Artist.\n"
+                    "2. \"artist-height\"     (string, required) Height where the art register ticket was created by the Artist.\n"
                     "3. fee                   (int, required) The supposed fee that artist agreed to pay for the registration. This shall match the amount in the registration ticket.\n"
-                    "                         The transaction with this ticket will pay 90% of this amount to MNs (10% were burnt prior to registration).\n"
+                    "                               The transaction with this ticket will pay 90% of this amount to MNs (10% were burnt prior to registration).\n"
                     "4. \"PastelID\"          (string, required) The PastelID of artist. NOTE: PastelID must be generated and stored inside node. See \"pastelid newkey\".\n"
                     "5. \"passphrase\"        (string, required) The passphrase to the private key associated with artist's PastelID and stored inside node. See \"pastelid newkey\".\n"
                     "Activation Ticket:\n"
@@ -1776,7 +1776,7 @@ UniValue tickets(const UniValue& params, bool fHelp) {
 		if (strCmd == "sell") {
 			if (fHelp || params.size() < 6 || params.size() > 9)
 				throw JSONRPCError(RPC_INVALID_PARAMETER,
-					"tickets register sell \"art_txid\" \"price\" \"PastelID\" \"passphrase\" \"valid_after\" \"valid_before\"\n"
+					"tickets register sell \"art_txid\" \"price\" \"PastelID\" \"passphrase\" [valid_after] [valid_before] [copy_number]\n"
 					"Register art sell ticket. If successful, method returns \"txid\"."
 					"\nArguments:\n"
                     "1. \"art_txid\"      (string, required) tnx_id of the art to sell, this is either:\n"
@@ -1821,10 +1821,10 @@ UniValue tickets(const UniValue& params, bool fHelp) {
             strKeyPass = params[5].get_str().c_str();
             
             int after = 0;
-            if (params.size() == 7)
+            if (params.size() > 6)
                 after = get_number(params[6]);
             int before = 0;
-            if (params.size() == 8)
+            if (params.size() > 7)
                 before = get_number(params[7]);
             int copyNumber = 0;
             if (params.size() == 9)
@@ -1882,12 +1882,12 @@ UniValue tickets(const UniValue& params, bool fHelp) {
             if (fHelp || params.size() != 6)
                 throw JSONRPCError(RPC_INVALID_PARAMETER,
                                    "tickets register trade \"sell_txid\" \"buy_txid\" \"PastelID\" \"passphrase\"\n"
-                                   "Register art trade ticket. And pay price requested in sell ticket and confirmed in buy ticket to the address associated with sellers PastelID"
-                                   "If successful, method returns \"txid\"."
+                                   "Register art trade ticket. And pay price requested in sell ticket and confirmed in buy ticket to the address associated with sellers PastelID\n"
+                                   "If successful, method returns \"txid\".\n"
                                    "\nArguments:\n"
-                                   "1. \"sell_txid\"     (string, required) tnx_id of the sell ticket"
-                                   "2. \"buy_txid\"      (string, required) tnx_id of the buy ticket"
-                                   "3. \"PastelID\"      (string, required) The PastelID of buyer. This MUST be the same PastelID that was used to sign the buy ticket"
+                                   "1. \"sell_txid\"     (string, required) tnx_id of the sell ticket\n"
+                                   "2. \"buy_txid\"      (string, required) tnx_id of the buy ticket\n"
+                                   "3. \"PastelID\"      (string, required) The PastelID of buyer. This MUST be the same PastelID that was used to sign the buy ticket\n"
                                    "4. \"passphrase\"    (string, required) The passphrase to the private key associated with artist's PastelID and stored inside node. See \"pastelid newkey\".\n"
                                    "Art Trade Ticket:\n"
                                    "{\n"

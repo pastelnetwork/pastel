@@ -1383,21 +1383,27 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         self.nodes[self.mining_node_num].sendtoaddress(self.nonmn4_address1, 100000, "", "", False)
         time.sleep(2)
 
+        # now there is 1 Trade ticket and it is non-sold
         new_trade_ticket = self.sell_buy_trade_test("T1", self.non_mn4, self.nonmn4_pastelid1,
                                                     self.non_mn3, self.nonmn3_pastelid1,
                                                     self.art_ticket1_trade_ticket_txid)
+        # now there are 2 Trade ticket and 1 of it's sold
         new_trade_ticket = self.sell_buy_trade_test("T2", self.non_mn3, self.nonmn3_pastelid1,
                                                     self.non_mn4, self.nonmn4_pastelid1,
                                                     new_trade_ticket)
+        # now there are 3 Trade ticket and 2 of it's sold
         new_trade_ticket = self.sell_buy_trade_test("T3", self.non_mn4, self.nonmn4_pastelid1,
                                                     self.non_mn3, self.nonmn3_pastelid1,
                                                     new_trade_ticket)
+        # now there are 4 Trade ticket and 3 of it's sold
         new_trade_ticket = self.sell_buy_trade_test("T4", self.non_mn3, self.nonmn3_pastelid1,
                                                     self.non_mn4, self.nonmn4_pastelid1,
                                                     new_trade_ticket)
+        # now there are 5 Trade ticket and 4 of it's sold
         self.sell_buy_trade_test("T5", self.non_mn4, self.nonmn4_pastelid1,
                                  self.non_mn3, self.nonmn3_pastelid1,
                                  new_trade_ticket)
+        # now there are 6 Trade ticket and 5 of it's sold
 
         original_art_trade_tickets = []
         for i in range(1, 10):
@@ -1406,6 +1412,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
                                                                        self.non_mn4, self.nonmn4_pastelid1,
                                                                        self.art_ticket1_act_ticket_txid, True)
                                               )
+        # now there are 15 Trade ticket and 5 of it's sold
 
         self.sell_buy_trade_test("A10-Fail", self.non_mn3, self.artist_pastelid1,
                                  self.non_mn4, self.nonmn4_pastelid1,
@@ -1562,14 +1569,16 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         assert_equal(len(tickets_list), 2)
         tickets_list = self.nodes[self.non_mn3].tickets("list", "art", "inactive")
         assert_equal(len(tickets_list), 1)
+        tickets_list = self.nodes[self.non_mn3].tickets("list", "art", "sold")
+        assert_equal(len(tickets_list), 1)
 
         tickets_list = self.nodes[self.non_mn3].tickets("list", "act")
         assert_equal(len(tickets_list), 2)
         tickets_list = self.nodes[self.non_mn3].tickets("list", "act", "all")
         assert_equal(len(tickets_list), 2)
-        tickets_list = self.nodes[self.non_mn3].tickets("list", "act", "sold")
-        assert_equal(len(tickets_list), 1)
         tickets_list = self.nodes[self.non_mn3].tickets("list", "act", "available")
+        assert_equal(len(tickets_list), 1)
+        tickets_list = self.nodes[self.non_mn3].tickets("list", "act", "sold")
         assert_equal(len(tickets_list), 1)
 
         cur_block = self.nodes[self.non_mn3].getblockcount()
@@ -1620,19 +1629,19 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         assert_equal(len(tickets_list), 16)
         tickets_list = self.nodes[self.non_mn3].tickets("list", "buy", "all")
         assert_equal(len(tickets_list), 16)
-        tickets_list = self.nodes[self.non_mn3].tickets("list", "buy", "traded")
-        assert_equal(len(tickets_list), 15)
         tickets_list = self.nodes[self.non_mn3].tickets("list", "buy", "expired")
         assert_equal(len(tickets_list), 1)
+        tickets_list = self.nodes[self.non_mn3].tickets("list", "buy", "sold")
+        assert_equal(len(tickets_list), 15)
 
         tickets_list = self.nodes[self.non_mn3].tickets("list", "trade")
         assert_equal(len(tickets_list), 15)
         tickets_list = self.nodes[self.non_mn3].tickets("list", "trade", "all")
         assert_equal(len(tickets_list), 15)
-        tickets_list = self.nodes[self.non_mn3].tickets("list", "trade", "sold")
-        assert_equal(len(tickets_list), 6)
         tickets_list = self.nodes[self.non_mn3].tickets("list", "trade", "available")
-        assert_equal(len(tickets_list), 9)
+        assert_equal(len(tickets_list), 10)
+        tickets_list = self.nodes[self.non_mn3].tickets("list", "trade", "sold")
+        assert_equal(len(tickets_list), 5)
 
         print("Tickets List Filter tested")
 

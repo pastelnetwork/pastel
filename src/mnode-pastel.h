@@ -641,7 +641,7 @@ public:
     static std::unique_ptr<T> GetTicket(const std::string& _txid, TicketID _ticketID);
 	static std::string GetTicketJSON(uint256 txid);
 
-	static bool ValidateIfTicketTransaction(const CTransaction& tx);
+	static bool ValidateIfTicketTransaction(const int nHeight, const CTransaction& tx);
 	
 /*
     std::string TicketNames[] = {
