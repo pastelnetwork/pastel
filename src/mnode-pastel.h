@@ -28,16 +28,18 @@ public:
 	CPastelTicketBase() = default;
 	
 	virtual std::string TicketName() const = 0;
-	virtual std::string ToJSON() = 0;
+	virtual std::string ToJSON() const = 0;
 	virtual bool IsValid(std::string& errRet, bool preReg, int depth) const = 0;    //if preReg = true - validate pre registration conditions
 	                                                                                //      ex.: address has enough coins for registration
 	                                                                                //else - validate ticket in general
     virtual CAmount TicketPrice() const = 0;
+    virtual std::string ToStr() const = 0;
     
     virtual CAmount GetExtraOutputs(std::vector<CTxOut>& outputs) const {return 0;}
 	   
 	std::string ticketTnx;
 	int ticketBlock{};
+    std::time_t timestamp{};
 };
 
 template<TicketID ticketId>
@@ -65,7 +67,6 @@ public:
 	std::string pastelID;
 	std::string address;
     COutPoint outpoint{};
-	std::time_t timestamp{};
 	std::vector<unsigned char> mn_signature;
 	std::vector<unsigned char> pslid_signature;
     
@@ -83,12 +84,13 @@ public:
     bool HasKeyTwo() const override {return true;}
     void SetKeyOne(std::string val) override { pastelID = std::move(val); }
     
-    std::string ToJSON() override;
+    std::string ToJSON() const override;
+    std::string ToStr() const override;
     bool IsValid(std::string& errRet, bool preReg, int depth) const override;
     
     CAmount TicketPrice() const override {return 10;}
     
-    std::string PastelIDType() {return outpoint.IsNull()? "personal": "masternode";}
+    std::string PastelIDType() const {return outpoint.IsNull()? "personal": "masternode";}
     
     ADD_SERIALIZE_METHODS;
 	
@@ -198,7 +200,8 @@ public:
     bool HasMVKeyOne() const override {return true;}
     void SetKeyOne(std::string val) override { keyOne = std::move(val); }
     
-    std::string ToJSON() override;
+    std::string ToJSON() const override;
+    std::string ToStr() const override;
     bool IsValid(std::string& errRet, bool preReg, int depth) const override;
     CAmount TicketPrice() const override {return 10;}
     
@@ -218,6 +221,7 @@ public:
         READWRITE(artistHeight);
         READWRITE(totalCopies);
         READWRITE(storageFee);
+        READWRITE(timestamp);
         READWRITE(ticketTnx);
         READWRITE(ticketBlock);
 	}
@@ -269,7 +273,8 @@ public:
     bool HasMVKeyTwo() const override {return true;}
     void SetKeyOne(std::string val) override { regTicketTnxId = std::move(val); }
     
-    std::string ToJSON() override;
+    std::string ToJSON() const override;
+    std::string ToStr() const override;
     bool IsValid(std::string& errRet, bool preReg, int depth) const override;
     CAmount TicketPrice() const override {return 10;}
 	
@@ -282,6 +287,7 @@ public:
 		READWRITE(artistHeight);
         READWRITE(storageFee);
         READWRITE(signature);
+        READWRITE(timestamp);
 		READWRITE(ticketTnx);
 		READWRITE(ticketBlock);
 	}
@@ -294,8 +300,6 @@ public:
     static std::vector<CArtActivateTicket> FindAllTicketByPastelID(const std::string& pastelID);
     static std::vector<CArtActivateTicket> FindAllTicketByArtistHeight(int height);
     static bool CheckTicketExistByArtTicketID(const std::string& regTicketTnxId);
-    
-    static std::string ToStr(const CArtActivateTicket& ticket);
 };
 
 // Art Trade Tickets /////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -341,7 +345,8 @@ public:
     bool HasMVKeyTwo() const override {return true;}
     void SetKeyOne(std::string val) override { key = std::move(val); }
     
-    std::string ToJSON() override;
+    std::string ToJSON() const override;
+    std::string ToStr() const override;
     bool IsValid(std::string& errRet, bool preReg, int depth) const override;
     CAmount TicketPrice() const override {return askedPrice/50;}
     
@@ -357,6 +362,7 @@ public:
         READWRITE(copyNumber);
         READWRITE(reserved);
         READWRITE(signature);
+        READWRITE(timestamp);
         READWRITE(ticketTnx);
         READWRITE(ticketBlock);
     }
@@ -366,8 +372,6 @@ public:
     
     static std::vector<CArtSellTicket> FindAllTicketByPastelID(const std::string& pastelID);
     static std::vector<CArtSellTicket> FindAllTicketByArtTnxID(const std::string& artTnxId);
-    
-    static std::string ToStr(const CArtSellTicket& ticket);
 };
 
 /*
@@ -406,7 +410,8 @@ public:
 
     CAmount TicketPrice() const override {return price/100;}
     
-    std::string ToJSON() override;
+    std::string ToJSON() const override;
+    std::string ToStr() const override;
     bool IsValid(std::string& errRet, bool preReg, int depth) const override;
     
     ADD_SERIALIZE_METHODS;
@@ -418,6 +423,7 @@ public:
         READWRITE(price);
         READWRITE(reserved);
         READWRITE(signature);
+        READWRITE(timestamp);
         READWRITE(ticketTnx);
         READWRITE(ticketBlock);
     }
@@ -428,8 +434,6 @@ public:
     static bool CheckBuyTicketExistBySellTicket(const std::string& _sellTnxId);
     
     static std::vector<CArtBuyTicket> FindAllTicketByPastelID(const std::string& pastelID);
-
-    static std::string ToStr(const CArtBuyTicket& ticket);
 };
 
 /*
@@ -473,7 +477,8 @@ public:
     
     void SetKeyOne(std::string val) override { sellTnxId = std::move(val); }
     
-    std::string ToJSON() override;
+    std::string ToJSON() const override;
+    std::string ToStr() const override;
     bool IsValid(std::string& errRet, bool preReg, int depth) const override;
     CAmount TicketPrice() const override {return 10;}
     
@@ -488,6 +493,7 @@ public:
         READWRITE(price);
         READWRITE(reserved);
         READWRITE(signature);
+        READWRITE(timestamp);
         READWRITE(ticketTnx);
         READWRITE(ticketBlock);
     }
@@ -504,8 +510,6 @@ public:
     static bool CheckTradeTicketExistByBuyTicket(const std::string& _buyTnxId);
     static bool GetTradeTicketBySellTicket(const std::string& _sellTnxId, CArtTradeTicket& ticket);
     static bool GetTradeTicketByBuyTicket(const std::string& _buyTnxId, CArtTradeTicket& ticket);
-    
-    static std::string ToStr(const CArtTradeTicket& ticket);
 };
 
 // Take Down Ticket /////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -548,7 +552,8 @@ public:
     bool HasMVKeyTwo() const override {return true;}
     void SetKeyOne(std::string val) override { id = std::move(val); }
     
-    std::string ToJSON() override;
+    std::string ToJSON() const override;
+    std::string ToStr() const override;
     bool IsValid(std::string& errRet, bool preReg, int depth) const override;
     CAmount TicketPrice() const override {return 1000;}
     
@@ -561,6 +566,7 @@ public:
         READWRITE(code);
         READWRITE(id);
         READWRITE(signature);
+        READWRITE(timestamp);
         READWRITE(ticketTnx);
         READWRITE(ticketBlock);
     }
@@ -570,8 +576,6 @@ public:
     
     static std::vector<CSystemTicket> FindAllTicketByPastelId(const std::string& _pastelID);
     static std::vector<CSystemTicket> FindAllTicketByCode(const std::string& _code);
-    
-    static std::string ToStr(const CSystemTicket& ticket);
 };
 
 #define FAKE_TICKET

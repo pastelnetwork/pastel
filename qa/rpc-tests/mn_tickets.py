@@ -747,7 +747,8 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         except JSONRPCException, e:
             self.errorString = e.error['message']
             print(self.errorString)
-        assert_equal("The art with this key - [key1] is already registered in blockchain" in self.errorString, True)
+        assert_equal("This Art is already registered in blockchain"
+                     in self.errorString, True)
 
         try:
             self.nodes[self.top_mns_index0].tickets("register", "art",
@@ -757,7 +758,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         except JSONRPCException, e:
             self.errorString = e.error['message']
             print(self.errorString)
-        assert_equal("The art with this secondary key - [key2] is already registered in blockchain"
+        assert_equal("This Art is already registered in blockchain"
                      in self.errorString, True)
 
         #   c.b find registration ticket
