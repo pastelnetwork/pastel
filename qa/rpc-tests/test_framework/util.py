@@ -133,16 +133,15 @@ def initialize_chain(test_dir):
         # Create a 200-block-long chain; each of the 4 nodes
         # gets 25 mature blocks and 25 immature.
         # blocks are created with timestamps 10 minutes apart, starting
-        # at 11 Nov 2019 - 1573776000
-        # block_time = 1573776000
-        # at 11 Nov 2020 - 1605052800
-        block_time = 1605052800
+        # at 25th Dec 2020 - 1608854400
+        block_time = 1608854400
         for i in range(2):
             for peer in range(4):
                 for j in range(25):
                     set_node_times(rpcs, block_time)
                     rpcs[peer].generate(1)
-                    block_time += 10*60
+                    # block_time += 10*60
+                    block_time += 2*60
                 # Must sync before next peer starts generating blocks
                 sync_blocks(rpcs)
 

@@ -18,7 +18,6 @@ enum class TicketID : uint8_t{
 	Buy,
 	Trade,
 	Down,
-	Sys,
 	
 	COUNT
 };
@@ -518,64 +517,6 @@ class CTakeDownTicket : public CPastelTicket<TicketID::Down>
 public:
     static bool FindTicketInDb(const std::string& key, CTakeDownTicket& ticket);
     CAmount TicketPrice() const override {return 1000;}
-};
-
-// System Ticket /////////////////////////////////////////////////////////////////////////////////////////////////////
-/*
-	"ticket": {
-		"type": "sys",
-		"ticket": "",       //PastelID of the buyer
-		"signature": ""
-	},
- */
-class CSystemTicket : public CPastelTicket<TicketID::Sys>
-{
-public:
-    std::string pastelID;
-    std::string ticket;
-    std::string code;
-    std::string id;
-    std::vector<unsigned char> signature;
-
-public:
-    CSystemTicket() = default;
-    
-    explicit CSystemTicket(std::string _pastelID) : ticket(std::move(_pastelID)) {}
-    
-    std::string TicketName() const override {return "system";}
-    
-    std::string KeyOne() const override {return id;}
-    std::string MVKeyOne() const override {return pastelID;}
-    std::string MVKeyTwo() const override {return code;}
-    
-    bool HasMVKeyOne() const override {return true;}
-    bool HasMVKeyTwo() const override {return true;}
-    void SetKeyOne(std::string val) override { id = std::move(val); }
-    
-    std::string ToJSON() const override;
-    std::string ToStr() const override;
-    bool IsValid(std::string& errRet, bool preReg, int depth) const override;
-    CAmount TicketPrice() const override {return 1000;}
-    
-    ADD_SERIALIZE_METHODS;
-    
-    template <typename Stream, typename Operation>
-    inline void SerializationOp(Stream& s, Operation ser_action) {
-        READWRITE(pastelID);
-        READWRITE(ticket);
-        READWRITE(code);
-        READWRITE(id);
-        READWRITE(signature);
-        READWRITE(timestamp);
-        READWRITE(ticketTnx);
-        READWRITE(ticketBlock);
-    }
-    
-    static CSystemTicket Create(std::string _ticket, std::string _code, std::string _id, std::string _pastelID, const SecureString& strKeyPass);
-    static bool FindTicketInDb(const std::string& key, CSystemTicket& ticket);
-    
-    static std::vector<CSystemTicket> FindAllTicketByPastelId(const std::string& _pastelID);
-    static std::vector<CSystemTicket> FindAllTicketByCode(const std::string& _code);
 };
 
 #define FAKE_TICKET
