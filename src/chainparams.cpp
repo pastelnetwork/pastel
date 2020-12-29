@@ -334,7 +334,8 @@ public:
         consensus.nMaxGovernanceAmount = 1000000*COIN;
 
         // The best chain should have at least this much work.
-        consensus.nMinimumChainWork = uint256S("0x000000000000000000000000000000000000000000000000000000000018be32");
+//        consensus.nMinimumChainWork = uint256S("0x000000000000000000000000000000000000000000000000000000000018be32");
+        consensus.nMinimumChainWork = uint256S("0");
         
         /**
          * The message start string
