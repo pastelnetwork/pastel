@@ -361,7 +361,7 @@ public:
 
         vFixedSeeds.clear();
         vSeeds.clear();
-        vSeeds.push_back(CDNSSeedData("pastel.network", "mainnet.pastel.network"));
+        vSeeds.push_back(CDNSSeedData("pastel.network", "dnsseed.pastel.network"));
 
         // guarantees the first 2 characters, when base58 encoded, are "Pt"
         base58Prefixes[PUBKEY_ADDRESS]     = {0x0c,0xe3};

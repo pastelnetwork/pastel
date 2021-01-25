@@ -31,6 +31,15 @@ CAmount CMasternodeGovernance::GetGovernancePayment(CAmount blockValue)
     return ret;
 }
 
+CAmount CMasternodeGovernance::GetCurrentPaymentAmount(int nBlockHeight, CAmount blockReward)
+{
+    CGovernanceTicket ticket;
+    if (!GetCurrentPaymentTicket(nBlockHeight, ticket)){
+        return 0;
+    }
+    return GetGovernancePayment(blockReward);
+}
+
 bool CMasternodeGovernance::GetCurrentPaymentTicket(int nBlockHeight, CGovernanceTicket& ticket)
 {   
     uint256 ticketId;
@@ -560,7 +569,7 @@ std::string CGovernanceTicket::ToString()
             ", Amount to pay: " << nAmountToPay <<
             ", Note: " << strDescription <<
             ", Vote until block: " << nStopVoteBlockHeight <<
-            (VoteOpen()? "(Voting Closed!)": "") <<
+            (!VoteOpen()? "(Voting Closed!)": "") <<
             ", Total votes: " << mapVotes.size() <<
             ", Yes votes: " << nYesVotes;
     if ( nLastPaymentBlockHeight != 0 ){

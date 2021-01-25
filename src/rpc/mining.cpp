@@ -943,7 +943,7 @@ UniValue getblocksubsidy(const UniValue& params, bool fHelp)
 
     CAmount nGovernancePayment = 0;
     if (!masterNodeCtrl.masternodeGovernance.mapTickets.empty()){
-        nGovernancePayment = masterNodeCtrl.masternodeGovernance.GetGovernancePayment(nReward);
+        nGovernancePayment = masterNodeCtrl.masternodeGovernance.GetCurrentPaymentAmount(nHeight, nReward);
     }
 
     CAmount nMasternodePayment = 0;
