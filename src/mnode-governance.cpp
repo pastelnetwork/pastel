@@ -566,7 +566,7 @@ std::string CGovernanceTicket::ToString()
 
     info << "Governance Ticket( Hash: " << GetHash().ToString() <<
             ", Address: " << address <<
-            ", Amount to pay: " << nAmountToPay <<
+            ", Amount to pay: " << nAmountToPay/COIN <<
             ", Note: " << strDescription <<
             ", Vote until block: " << nStopVoteBlockHeight <<
             (!VoteOpen()? "(Voting Closed!)": "") <<
@@ -574,7 +574,7 @@ std::string CGovernanceTicket::ToString()
             ", Yes votes: " << nYesVotes;
     if ( nLastPaymentBlockHeight != 0 ){
         info << ", Winner! Payment blocks " << nFirstPaymentBlockHeight << "-" << nLastPaymentBlockHeight <<
-                ", Amount paid: " << nAmountPaid;
+                ", Amount paid: " << nAmountPaid/COIN;
     }
 
     return info.str();

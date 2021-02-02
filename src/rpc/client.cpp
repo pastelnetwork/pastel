@@ -105,6 +105,7 @@ static const CRPCConvertParam vRPCConvertParams[] =
     { "zcrawjoinsplit", 4 },
     { "zcbenchmark", 1 },
     { "zcbenchmark", 2 },
+    { "getnextblocksubsidy", 0},
     { "getblocksubsidy", 0},
     { "z_listaddresses", 0},
     { "z_listreceivedbyaddress", 1},

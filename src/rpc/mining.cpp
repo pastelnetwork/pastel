@@ -760,9 +760,9 @@ UniValue getblocktemplate(const UniValue& params, bool fHelp)
         CTxDestination dest;
         ExtractDestination(pblock->txoutGovernance.scriptPubKey, dest);
         std::string address = EncodeDestination(dest);
-        masternodeObj.push_back(Pair("payee", address));
-        masternodeObj.push_back(Pair("script", HexStr(pblock->txoutGovernance.scriptPubKey.begin(), pblock->txoutGovernance.scriptPubKey.end())));
-        masternodeObj.push_back(Pair("amount", pblock->txoutGovernance.nValue));
+        governanceObj.push_back(Pair("payee", address));
+        governanceObj.push_back(Pair("script", HexStr(pblock->txoutGovernance.scriptPubKey.begin(), pblock->txoutGovernance.scriptPubKey.end())));
+        governanceObj.push_back(Pair("amount", pblock->txoutGovernance.nValue));
     }
     result.push_back(Pair("governanceinfo", governanceObj));
     //<--PASTEL
@@ -926,8 +926,8 @@ UniValue getblocksubsidy(const UniValue& params, bool fHelp)
             "\nResult:\n"
             "{\n"
             "  \"miner\" : x.xxx           (numeric) The mining reward amount in " + CURRENCY_UNIT + ".\n"
-            "  \"masternode\" : x.xxx           (numeric) The mining reward amount in " + CURRENCY_UNIT + ".\n"
-            "  \"governance\" : x.xxx           (numeric) The mining reward amount in " + CURRENCY_UNIT + ".\n"
+            "  \"masternode\" : x.xxx      (numeric) The masternode reward amount in " + CURRENCY_UNIT + ".\n"
+            "  \"governance\" : x.xxx      (numeric) The governance reward amount in " + CURRENCY_UNIT + ".\n"
             "}\n"
             "\nExamples:\n"
             + HelpExampleCli("getblocksubsidy", "1000")
@@ -958,6 +958,45 @@ UniValue getblocksubsidy(const UniValue& params, bool fHelp)
     return result;
 }
 
+UniValue getnextblocksubsidy(const UniValue& params, bool fHelp)
+{
+    if (fHelp || params.size() > 0)
+        throw runtime_error(
+                "getnextblocksubsidy\n"
+                "\nReturns block subsidy rewards of the next block.\n"
+                "\nResult:\n"
+                "{\n"
+                "  \"miner\" : x.xxx           (numeric) The mining reward amount in " + CURRENCY_UNIT + ".\n"
+                "  \"masternode\" : x.xxx      (numeric) The masternode reward amount in " + CURRENCY_UNIT + ".\n"
+                "  \"governance\" : x.xxx      (numeric) The governance reward amount in " + CURRENCY_UNIT + ".\n"
+                "}\n"
+                "\nExamples:\n"
+                + HelpExampleCli("getblocksubsidy", "")
+                + HelpExampleRpc("getblocksubsidy", "")
+        );
+    
+    LOCK(cs_main);
+    int nHeight = chainActive.Height()+1;
+    
+    CAmount nReward = GetBlockSubsidy(nHeight, Params().GetConsensus());
+    
+    CAmount nGovernancePayment = 0;
+    if (!masterNodeCtrl.masternodeGovernance.mapTickets.empty()){
+        nGovernancePayment = masterNodeCtrl.masternodeGovernance.GetCurrentPaymentAmount(nHeight, nReward);
+    }
+    
+    CAmount nMasternodePayment = 0;
+    if (masterNodeCtrl.masternodePayments.mapMasternodeBlockPayees.count(nHeight)){
+        nMasternodePayment = masterNodeCtrl.masternodePayments.GetMasternodePayment(0, nReward);//same for any height currently
+    }
+    
+    UniValue result(UniValue::VOBJ);
+    result.push_back(Pair("miner", ValueFromAmount(nReward-nGovernancePayment-nMasternodePayment)));
+    result.push_back(Pair("masternode", ValueFromAmount(nMasternodePayment)));
+    result.push_back(Pair("governance", ValueFromAmount(nGovernancePayment)));
+    return result;
+}
+
 static const CRPCCommand commands[] =
 { //  category              name                      actor (function)         okSafeMode
   //  --------------------- ------------------------  -----------------------  ----------
@@ -969,6 +1008,7 @@ static const CRPCCommand commands[] =
     { "mining",             "getblocktemplate",       &getblocktemplate,       true  },
     { "mining",             "submitblock",            &submitblock,            true  },
     { "mining",             "getblocksubsidy",        &getblocksubsidy,        true  },
+    { "mining",             "getnextblocksubsidy",        &getnextblocksubsidy,        true  },
 
 #ifdef ENABLE_MINING
     { "generating",         "getgenerate",            &getgenerate,            true  },
