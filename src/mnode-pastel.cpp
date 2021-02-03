@@ -1247,7 +1247,7 @@ bool CArtRegTicket::IsValid(std::string& errRet, bool preReg, int depth) const
         }
     
         // A.2 validate that address has coins to pay for registration - 10PSL + fee
-        uint fullTicketPrice = TicketPrice()+(storageFee / 10); //10% of storage fee
+        unsigned int fullTicketPrice = TicketPrice()+(storageFee / 10); //10% of storage fee
         if (pwalletMain->GetBalance() < fullTicketPrice*COIN) {
             errRet = strprintf("Not enough coins to cover price [%d]", fullTicketPrice);
             return false;
@@ -1404,7 +1404,7 @@ bool common_validation(const T& ticket, bool preReg, const std::string& strTnxId
                        std::unique_ptr<CPastelTicketBase>& pastelTicket, TicketID& ticketId,
                        F f,
                        const std::string& thisTicket, const std::string& prevTicket, int depth,
-                       uint ticketPrice,
+                       unsigned int ticketPrice,
                        std::string& errRet)
 {
     // A. Something to check ONLY before ticket made into transaction

@@ -321,10 +321,10 @@ class CArtSellTicket : public CPastelTicket<TicketID::Sell>
 public:
     std::string pastelID;
     std::string artTnxId;
-    uint askedPrice{};
-    uint activeAfter{};              //as a block height
-    uint activeBefore{};             //as a block height
-    ushort copyNumber{};
+    unsigned int askedPrice{};
+    unsigned int activeAfter{};              //as a block height
+    unsigned int activeBefore{};             //as a block height
+    unsigned short copyNumber{};
     std::string reserved;
     std::vector<unsigned char> signature;
     
@@ -388,7 +388,7 @@ class CArtBuyTicket : public CPastelTicket<TicketID::Buy>
 public:
     std::string pastelID;
     std::string sellTnxId;
-    uint price{};
+    unsigned int price{};
     std::string reserved;
     std::vector<unsigned char> signature;
     
@@ -454,7 +454,7 @@ public:
     std::string sellTnxId;
     std::string buyTnxId;
     std::string artTnxId;
-    uint price{};
+    unsigned int price{};
     std::string reserved;
     std::vector<unsigned char> signature;
 
