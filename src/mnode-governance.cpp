@@ -131,7 +131,7 @@ bool CMasternodeGovernance::AddTicket(std::string address, CAmount totalReward, 
     const CChainParams& chainparams = Params();
     const Consensus::Params& params = chainparams.GetConsensus();
     if (totalReward > params.nMaxGovernanceAmount) {
-        strErrorRet = strprintf("Ticket reward is too high %d vs limit %d, exceeded governance max value", totalReward, params.nMaxGovernanceAmount);
+        strErrorRet = strprintf("Ticket reward is too high %d vs limit %d, exceeded governance max value", totalReward/COIN, params.nMaxGovernanceAmount/COIN);
         LogPrintf("CMasternodeGovernance::AddTicket -- %s\n", strErrorRet);
         return false;
     }

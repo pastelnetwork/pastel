@@ -331,7 +331,7 @@ public:
         consensus.vUpgrades[Consensus::UPGRADE_OVERWINTER].nActivationHeight = OVERWINTER_STARTING_BLOCK;
         consensus.vUpgrades[Consensus::UPGRADE_SAPLING].nProtocolVersion = 170007;
         consensus.vUpgrades[Consensus::UPGRADE_SAPLING].nActivationHeight = SAPLING_STARTING_BLOCK;
-        consensus.nMaxGovernanceAmount = 1000000*COIN;
+        consensus.nMaxGovernanceAmount = 100000000*COIN;
 
         // The best chain should have at least this much work.
         consensus.nMinimumChainWork = uint256S("000000000000000000000000000000000000000000000000000000000624f116"); //2702
