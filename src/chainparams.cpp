@@ -334,8 +334,7 @@ public:
         consensus.nMaxGovernanceAmount = 1000000*COIN;
 
         // The best chain should have at least this much work.
-//        consensus.nMinimumChainWork = uint256S("0x000000000000000000000000000000000000000000000000000000000018be32");
-        consensus.nMinimumChainWork = uint256S("0");
+        consensus.nMinimumChainWork = uint256S("000000000000000000000000000000000000000000000000000000000624f116"); //2702
         
         /**
          * The message start string
@@ -394,13 +393,14 @@ public:
 
         checkpointData = (CCheckpointData) {
             boost::assign::map_list_of
-            (0, consensus.hashGenesisBlock),
-            genesis.nTime,      // * UNIX timestamp of last checkpoint block
-            0,                  // * total number of transactions between genesis and last checkpoint
+            (0, consensus.hashGenesisBlock)
+            (2700, uint256S("00005558df2a688c6d53c7b78001074515d33cd29589a311f8c6aa4db2df4e44")),
+            1612317919,      // * UNIX timestamp of last checkpoint block
+            3588,                  // * total number of transactions between genesis and last checkpoint
                                 //   (the tx=... number in the UpdateTip debug.log lines - "UpdateTip: new best=... tx=...")
-            600                 // * estimated number of transactions per day after checkpoint
+            800                 // * estimated number of transactions per day after checkpoint
                                 //   total number of tx / (checkpoint block height / (24 * 24))
-                                //after first checkpoint math is = 586, but I'm setting 600
+                                //after first checkpoint math is = 765, but I'm setting 800
         };
     }
 };
