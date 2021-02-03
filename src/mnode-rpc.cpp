@@ -1106,7 +1106,7 @@ UniValue governance(const UniValue& params, bool fHelp)
 					"governance ticket add \"address\" amount \"note\" <yes|no>\n");
 
             std::string address = params[2].get_str();
-            int amount = get_number(params[3]) * COIN;
+            CAmount amount = get_number(params[3]) * COIN;
             std::string note = params[4].get_str();
             std::string vote = params[5].get_str();
 
