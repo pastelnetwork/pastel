@@ -439,7 +439,7 @@ void CMasternodeGovernance::CheckAndRemove()
         if (ticket.IsWinner(nCachedBlockHeight)) {
             //process winners
             if (ticket.nLastPaymentBlockHeight == 0) {
-                ticket.nFirstPaymentBlockHeight = lastScheduledPaymentBlock == 0? nCachedBlockHeight+1: lastScheduledPaymentBlock+1;
+                ticket.nFirstPaymentBlockHeight = max(lastScheduledPaymentBlock, nCachedBlockHeight)+1;
                 ticket.nLastPaymentBlockHeight = CalculateLastPaymentBlock(ticket.nAmountToPay, ticket.nFirstPaymentBlockHeight);
                 lastScheduledPaymentBlock = ticket.nLastPaymentBlockHeight;
                 mapPayments[lastScheduledPaymentBlock] = ticket.ticketId;
