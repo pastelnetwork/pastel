@@ -1,4 +1,4 @@
-Pastel 1.0.1
+Pastel v1.0-rc1
 
 What is Pastel?
 --------------
