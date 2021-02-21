@@ -128,6 +128,11 @@ bytes fields are base64 as strings
         as:
             base64(
             {
+                "author": bytes             //same as above
+                "order_block_txid": bytes   //
+                "blocknum": integer,        //same as above   
+                "imagedata_hash": bytes,    //same as above
+
                 "artist_name": string,
                 "artist_website": string,
                 "artist_written_statement": string,
@@ -135,7 +140,7 @@ bytes fields are base64 as strings
                 "artwork_series_name": string,
                 "artwork_creation_video_youtube_url": string,
                 "artwork_keyword_set": string,
-                "total_copies": integer,
+                "total_copies": integer,    //same as above
             
                 "fingerprints": [list of floats],
                 "lubyhashes": [list of floats],

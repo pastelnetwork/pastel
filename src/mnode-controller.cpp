@@ -30,8 +30,6 @@ void CMasterNodeController::SetParameters()
     //this will allow to filter out old MN when ALL NETWORK is updated 
     MasternodeProtocolVersion           = 170008;
     
-    MasternodeCollateral                = 1000000;
-
     MasternodeFeePerMBDefault           = 100;
 
     MasternodeCheckSeconds              =   5;
@@ -56,12 +54,16 @@ void CMasterNodeController::SetParameters()
     MaxBuyTicketAge = 24; //1 hour, 1 block per 2.5 minutes
     
     if (Params().IsMainNet()) {
+        MasternodeCollateral                = 5000000;
+    
         nMasternodeMinimumConfirmations = 15;
         nMasternodePaymentsIncreaseBlock = 150000;
         nMasternodePaymentsIncreasePeriod = 576*30;
         nFulfilledRequestExpireTime = 60*60; // 60 minutes
     }
     else if (Params().IsTestNet()) {
+        MasternodeCollateral                = 1000000;
+    
         nMasternodeMinimumConfirmations = 1;
         nMasternodePaymentsIncreaseBlock = 4030;
         nMasternodePaymentsIncreasePeriod = 10;

@@ -1087,7 +1087,8 @@ UniValue sendmany(const UniValue& params, bool fHelp)
     // Check funds
     CAmount nBalance = GetAccountBalance(strAccount, nMinDepth, ISMINE_SPENDABLE);
     if (totalAmount > nBalance)
-        throw JSONRPCError(RPC_WALLET_INSUFFICIENT_FUNDS, "Account has insufficient funds");
+        throw JSONRPCError(RPC_WALLET_INSUFFICIENT_FUNDS,
+                           strprintf("\"Account has insufficient funds: needs %s coins; has only %s coins spendable", FormatMoney(totalAmount), FormatMoney(nBalance) ) );
 
     // Send
     CReserveKey keyChange(pwalletMain);
