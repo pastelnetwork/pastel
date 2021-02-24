@@ -521,7 +521,7 @@ bool CGovernanceTicket::AddVote(CGovernanceVote& voteNew, std::string& strErrorR
     }
     if (voteNew.bVote) nYesVotes++;
 
-    LogPrint("governance", "CGovernanceTicket::AddVote -- New vote for ticket = %s - %s vote; total votes(yes votes) - %d(%d)\n", 
+    LogPrintf("CGovernanceTicket::AddVote -- New vote for ticket = %s - %s vote; total votes(yes votes) - %d(%d)\n",
                                             GetHash().ToString(), voteNew.bVote? "Yes": "No", mapVotes.size(), nYesVotes);
     voteNew.Relay();
 
@@ -599,7 +599,7 @@ bool CGovernanceVote::Sign()
     std::string strError;
     std::string strMessage = vinMasternode.prevout.ToStringShort() +
                 ticketId.ToString() +
-                boost::lexical_cast<std::string>(nVoteBlockHeight) +
+//                boost::lexical_cast<std::string>(nVoteBlockHeight) +
                 boost::lexical_cast<std::string>(bVote);
 
     LogPrintf("CGovernanceVote::Sign -- Vote to sign: %s (%s)\n", ToString(), strMessage);
@@ -624,7 +624,7 @@ bool CGovernanceVote::CheckSignature(const CPubKey& pubKeyMasternode, int stopVo
 
     std::string strMessage = vinMasternode.prevout.ToStringShort() +
                 ticketId.ToString() +
-                boost::lexical_cast<std::string>(nVoteBlockHeight) +
+//                boost::lexical_cast<std::string>(nVoteBlockHeight) +
                 boost::lexical_cast<std::string>(bVote);
 
     LogPrintf("CGovernanceVote::CheckSignature -- Vote to check: %s (%s)\n", ToString(), strMessage);
@@ -649,7 +649,7 @@ std::string CGovernanceVote::ToString() const
 
     info << vinMasternode.prevout.ToStringShort() <<
             ", " << ticketId.ToString() <<
-            ", " << nVoteBlockHeight <<
+//            ", " << nVoteBlockHeight <<
             ", " << bVote <<
             ", " << (int)vchSig.size();
 

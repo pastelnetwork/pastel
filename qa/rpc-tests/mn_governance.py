@@ -60,12 +60,12 @@ class MasterNodeGovernanceTest (MasterNodeCommon):
         print("Register first ticket")
         #1. First ticket
         address1 = self.nodes[0].getnewaddress()
-        res1 = self.nodes[0].governance("ticket", "add", address1, "100000000", "test", "yes")
+        res1 = self.nodes[0].governance("ticket", "add", address1, "1000", "test", "yes")
         assert_equal(res1['result'], 'successful')
         ticket1_id = res1['ticketId']
         print(ticket1_id)
 
-        res1 = self.nodes[0].governance("ticket", "add", address1, "100000000", "test", "yes")
+        res1 = self.nodes[0].governance("ticket", "add", address1, "1000", "test", "yes")
         assert_equal(res1['result'], 'failed')
 
         res1 = self.nodes[0].governance("ticket", "vote", ticket1_id, "yes")
@@ -77,12 +77,12 @@ class MasterNodeGovernanceTest (MasterNodeCommon):
         res1 = self.nodes[1].governance("ticket", "vote", ticket1_id, "yes")
         assert_equal(res1['result'], 'successful')
 
-        res1 = self.nodes[1].governance("ticket", "add", address1, "100000000", "test", "no")
+        res1 = self.nodes[1].governance("ticket", "add", address1, "1000", "test", "no")
         assert_equal(res1['result'], 'failed')
 
         time.sleep(3)
 
-        res1 = self.nodes[2].governance("ticket", "add", address1, "100000000", "test", "no")
+        res1 = self.nodes[2].governance("ticket", "add", address1, "1000", "test", "no")
         assert_equal(res1['result'], 'failed')
 
         print("Vote no for first ticket")
@@ -105,7 +105,7 @@ class MasterNodeGovernanceTest (MasterNodeCommon):
 
         print("Register second ticket")
         #2. Second ticket
-        res1 = self.nodes[2].governance("ticket", "add", address2, "200000000", "test", "yes")
+        res1 = self.nodes[2].governance("ticket", "add", address2, "2000", "test", "yes")
         assert_equal(res1['result'], 'successful')
         ticket2_id = res1['ticketId']
 
