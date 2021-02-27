@@ -2,7 +2,7 @@
 # are used to calculate recipe hash (package build id)
 # if FIXED_RECIPE_HASH is not empty - hash for the specific package will always be the same, based on package name 
 # use this for the debug purposes only
-FIXED_RECIPE_HASH?=
+FIXED_RECIPE_HASH?=true
 
 define int_vars
 #Set defaults for vars which may be overridden per-package
@@ -52,7 +52,7 @@ rm -r `basename $($(1)_patch_dir)` .stamp_* .$($(1)_file_name).hash
 endef
 
 define int_get_build_recipe_hash
-$(if $(FIXED_RECIPE_HASH), $(shell echo $(package) > $(BASE_CACHE)/$(package)), )
+$(if $(FIXED_RECIPE_HASH), $(shell mkdir -p $(BASE_CACHE); echo $(package) > $(BASE_CACHE)/$(package)), )
 $(eval $(1)_all_file_checksums:=$(shell $(build_SHA256SUM) $(if $(FIXED_RECIPE_HASH),$(BASE_CACHE)/$(package),$(meta_depends) packages/$(1).mk $(addprefix $(PATCHES_PATH)/$(1)/,$($(1)_patches))) | cut -d" " -f1))
 $(eval $(1)_recipe_hash:=$(shell echo -n "$($(1)_all_file_checksums)" | $(build_SHA256SUM) | cut -d" " -f1))
 endef
@@ -201,7 +201,7 @@ $($(1)_preprocessed): | $($(1)_dependencies) $($(1)_extracted)
 	$(AT)touch $$@
 $($(1)_configured): | $($(1)_preprocessed)
 	$(AT)@echo "Configuring $(1)..."
-	$(AT)echo "Extracting [$($(1)_all_dependencies)]..."
+	$(AT)echo "Extracting dependent packages [$($(1)_all_dependencies)]..."
 	$(AT)rm -rf $(host_prefix); mkdir -p $(host_prefix)/lib; cd $(host_prefix); $(foreach package,$($(1)_all_dependencies), tar xf $($(package)_cached); )
 	$(AT)mkdir -p $$(@D)
 	$(AT)+cd $$(@D); $($(1)_config_env) $(call $(1)_config_cmds, $(1))

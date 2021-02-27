@@ -1,5 +1,6 @@
 .NOTPARALLEL :
 
+SHELL=/bin/bash
 SOURCES_PATH ?= $(BASEDIR)/sources
 BASE_CACHE ?= $(BASEDIR)/built
 SDK_PATH ?= $(BASEDIR)/SDKs
@@ -144,20 +145,20 @@ define check_or_remove_sources
 	echo "... [$$pkg_fetched] - package source hash not found"; \
   fi; \
   $(build_SHA256SUM) -c "$$pkg_fetched" >/dev/null 2>/dev/null || \
-    (\
+    {\
 	bSrcFileMissing=0; \
 	missing_source_files=; \
 	for f in $($(package)_all_sources); do \
 		if test ! -f "$$f"; then \
 			bSrcFileMissing=1; \
-			missing_source_files+="$$f "; \
+			missing_source_files+=$$f ; \
 		fi; \
 	done; \
-	if (( $$bSrcFileMissing == 1 )); then \
+	if [ $$bSrcFileMissing -eq 1 ]; then \
 		echo "... checksum missing or mismatched for [$(package)] package source file(s) [$$missing_source_files]. Forcing re-download..."; \
 		rm -f $($(package)_all_sources) $$pkg_fetched; \
 	fi; \
-    )
+    }
 endef
 
 .PHONY: check-packages check-sources show-build-info

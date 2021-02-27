@@ -8,8 +8,10 @@ default_host_INSTALL_NAME_TOOL = $(host_toolchain)install_name_tool
 default_host_OTOOL = $(host_toolchain)otool
 default_host_NM = $(host_toolchain)nm
 
+ifeq ($(host_os),darwin)
 $(host_os)_native_binutils?=native_clang
 $(host_os)_native_toolchain?=native_clang
+endif
 
 define add_host_tool_func
 $(host_os)_$1?=$$(default_host_$1)

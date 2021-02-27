@@ -4,11 +4,6 @@ $(package)_download_path=$(boost_download_path)
 $(package)_file_name=$(boost_file_name)
 $(package)_sha256_hash=$(boost_sha256_hash)
 $(package)_build_subdir=tools/build/src/engine
-ifneq (,$(findstring clang,$($(package)_cxx)))
-$(package)_toolset_$(host_os)=clang
-else
-$(package)_toolset_$(host_os)=gcc
-endif
 
 define $(package)_fetch_cmds
 $(call fetch_file,$(package),$($(package)_download_path),$($(package)_download_file),$($(package)_file_name),$($(package)_sha256_hash))
