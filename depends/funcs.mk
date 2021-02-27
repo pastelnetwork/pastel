@@ -1,3 +1,9 @@
+# all dependent metadata files in addition to specific %package%.mk 
+# are used to calculate recipe hash (package build id)
+# if FIXED_RECIPE_HASH is not empty - hash for the specific package will always be the same, based on package name 
+# use this for the debug purposes only
+FIXED_RECIPE_HASH?=
+
 define int_vars
 #Set defaults for vars which may be overridden per-package
 $(1)_cc=$($($(1)_type)_CC)
@@ -46,25 +52,27 @@ rm -r `basename $($(1)_patch_dir)` .stamp_* .$($(1)_file_name).hash
 endef
 
 define int_get_build_recipe_hash
-$(eval $(1)_all_file_checksums:=$(shell $(build_SHA256SUM) $(meta_depends) packages/$(1).mk $(addprefix $(PATCHES_PATH)/$(1)/,$($(1)_patches)) | cut -d" " -f1))
+$(if $(FIXED_RECIPE_HASH), $(shell echo $(package) > $(BASE_CACHE)/$(package)), )
+$(eval $(1)_all_file_checksums:=$(shell $(build_SHA256SUM) $(if $(FIXED_RECIPE_HASH),$(BASE_CACHE)/$(package),$(meta_depends) packages/$(1).mk $(addprefix $(PATCHES_PATH)/$(1)/,$($(1)_patches))) | cut -d" " -f1))
 $(eval $(1)_recipe_hash:=$(shell echo -n "$($(1)_all_file_checksums)" | $(build_SHA256SUM) | cut -d" " -f1))
 endef
 
 define int_get_build_id
 $(eval $(1)_dependencies += $($(1)_$(host_arch)_$(host_os)_dependencies) $($(1)_$(host_os)_dependencies))
-$(eval $(1)_all_dependencies:=$(call int_get_all_dependencies,$(1),$($($(1)_type)_native_toolchain) $($(1)_dependencies)))
+$(eval $(1)_all_dependencies:=$(call int_get_all_dependencies,$(1),$($($(1)_type)_native_toolchain) $($($(1)_type)_native_binutils) $($(1)_dependencies)))
 $(foreach dep,$($(1)_all_dependencies),$(eval $(1)_build_id_deps+=$(dep)-$($(dep)_version)-$($(dep)_recipe_hash)))
 $(eval $(1)_build_id_long:=$(1)-$($(1)_version)-$($(1)_recipe_hash)-$(release_type) $($(1)_build_id_deps))
 $(eval $(1)_build_id:=$(shell echo -n "$($(1)_build_id_long)" | $(build_SHA256SUM) | cut -c-$(HASH_LENGTH)))
 final_build_id_long+=$($(package)_build_id_long)
 
 #override platform specific files and hashes
-$(eval $(1)_file_name=$(if $($(1)_file_name_$(host_os)),$($(1)_file_name_$(host_os)),$($(1)_file_name)))
-$(eval $(1)_sha256_hash=$(if $($(1)_sha256_hash_$(host_os)),$($(1)_sha256_hash_$(host_os)),$($(1)_sha256_hash)))
+$(eval $(1)_file_name=$(if $($(1)_exact_file_name),$($(1)_exact_file_name),$(if $($(1)_file_name_$(host_arch)_$(host_os)),$($(1)_file_name_$(host_arch)_$(host_os)),$(if $($(1)_file_name_$(host_os)),$($(1)_file_name_$(host_os)),$($(1)_file_name)))))
+$(eval $(1)_sha256_hash=$(if $($(1)_exact_sha256_hash),$($(1)_exact_sha256_hash),$(if $($(1)_sha256_hash_$(host_arch)_$(host_os)),$($(1)_sha256_hash_$(host_arch)_$(host_os)),$(if $($(1)_sha256_hash_$(host_os)),$($(1)_sha256_hash_$(host_os)),$($(1)_sha256_hash)))))
+$(eval $(1)_download_file=$(if $($(1)_exact_download_file),$($(1)_exact_download_file),$(if $($(1)_download_file_$(host_arch)_$(host_os)),$($(1)_download_file_$(host_arch)_$(host_os)),$(if $($(1)_download_file_$(host_os)),$($(1)_download_file_$(host_os)),$(if $($(1)_download_file),$($(1)_download_file),$($(1)_file_name))))))
+$(eval $(1)_download_path=$(if $($(1)_exact_download_path),$($(1)_exact_download_path),$(if $($(1)_download_path_$(host_arch)_$(host_os)),$($(1)_download_path_$(host_arch)_$(host_os)),$(if $($(1)_download_path_$(host_os)),$($(1)_download_path_$(host_os)),$($(1)_download_path)))))
 
 #compute package-specific paths
 $(1)_build_subdir?=.
-$(1)_download_file?=$($(1)_file_name)
 $(1)_source_dir:=$(SOURCES_PATH)
 $(1)_source:=$$($(1)_source_dir)/$($(1)_file_name)
 $(1)_staging_dir=$(base_staging_dir)/$(host)/$(1)/$($(1)_version)-$($(1)_build_id)
@@ -181,39 +189,40 @@ $($(1)_fetched):
 	$(AT)cd $($(1)_source_dir); $(foreach source,$($(1)_all_sources),$(build_SHA256SUM) $(source) >> $$(@);)
 	$(AT)touch $$@
 $($(1)_extracted): | $($(1)_fetched)
-	$(AT)echo Extracting $(1)...
+	$(AT)echo "Extracting $(1)..."
 	$(AT)mkdir -p $$(@D)
 	$(AT)cd $$(@D); $(call $(1)_extract_cmds,$(1))
 	$(AT)touch $$@
 $($(1)_preprocessed): | $($(1)_dependencies) $($(1)_extracted)
-	$(AT)echo Preprocessing $(1)...
+	$(AT)@echo "Preprocessing $(1)..."
 	$(AT)mkdir -p $$(@D) $($(1)_patch_dir)
 	$(AT)$(foreach patch,$($(1)_patches),cd $(PATCHES_PATH)/$(1); cp $(patch) $($(1)_patch_dir) ;)
 	$(AT)cd $$(@D); $(call $(1)_preprocess_cmds, $(1))
 	$(AT)touch $$@
 $($(1)_configured): | $($(1)_preprocessed)
-	$(AT)echo Configuring $(1)...
+	$(AT)@echo "Configuring $(1)..."
+	$(AT)echo "Extracting [$($(1)_all_dependencies)]..."
 	$(AT)rm -rf $(host_prefix); mkdir -p $(host_prefix)/lib; cd $(host_prefix); $(foreach package,$($(1)_all_dependencies), tar xf $($(package)_cached); )
 	$(AT)mkdir -p $$(@D)
 	$(AT)+cd $$(@D); $($(1)_config_env) $(call $(1)_config_cmds, $(1))
 	$(AT)touch $$@
 $($(1)_built): | $($(1)_configured)
-	$(AT)echo Building $(1)...
+	$(AT)@echo "Building $(1)..."
 	$(AT)mkdir -p $$(@D)
 	$(AT)+cd $$(@D); $($(1)_build_env) $(call $(1)_build_cmds, $(1))
 	$(AT)touch $$@
 $($(1)_staged): | $($(1)_built)
-	$(AT)echo Staging $(1)...
+	$(AT)@echo "Staging $(1)..."
 	$(AT)mkdir -p $($(1)_staging_dir)/$(host_prefix)
 	$(AT)cd $($(1)_build_dir); $($(1)_stage_env) $(call $(1)_stage_cmds, $(1))
 	$(AT)rm -rf $($(1)_extract_dir)
 	$(AT)touch $$@
 $($(1)_postprocessed): | $($(1)_staged)
-	$(AT)echo Postprocessing $(1)...
+	$(AT)@echo "Postprocessing $(1)..".
 	$(AT)cd $($(1)_staging_prefix_dir); $(call $(1)_postprocess_cmds)
 	$(AT)touch $$@
 $($(1)_cached): | $($(1)_dependencies) $($(1)_postprocessed)
-	$(AT)echo Caching $(1)...
+	$(AT)@echo "Caching $(1)..."
 	$(AT)cd $$($(1)_staging_dir)/$(host_prefix); find . | sort | tar --no-recursion -czf $$($(1)_staging_dir)/$$(@F) -T -
 	$(AT)mkdir -p $$(@D)
 	$(AT)rm -rf $$(@D) && mkdir -p $$(@D)
@@ -257,4 +266,4 @@ $(foreach package,$(all_packages),$(eval $(call int_config_attach_build_config,$
 $(foreach package,$(all_packages),$(eval $(call int_add_cmds,$(package))))
 
 #special exception: if a toolchain package exists, all non-native packages depend on it
-$(foreach package,$(packages),$(eval $($(package)_unpacked): |$($($(host_arch)_$(host_os)_native_toolchain)_cached) ))
+$(foreach package,$(packages),$(eval $($(package)_unpacked): |$($($(host_arch)_$(host_os)_native_toolchain)_cached) $($($(host_arch)_$(host_os)_native_binutils)_cached) ))

@@ -2399,7 +2399,7 @@ UniValue ingest(const UniValue& params, bool fHelp) {
             }
 
             UniValue obj(UniValue::VOBJ);
-            obj.push_back(Pair(wtx.GetHash().GetHex(), lines));
+            obj.push_back(Pair(wtx.GetHash().GetHex(), (uint64_t)lines));
             mnObj.push_back(Pair(std::to_string(txCounter), obj));
 
             outfile << wtx.GetHash().GetHex() << " : " << lineCounter+1 << "-" << lineCounter+lines << " (" << lines << ")\n";

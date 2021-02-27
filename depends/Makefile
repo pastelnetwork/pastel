@@ -4,7 +4,7 @@ SOURCES_PATH ?= $(BASEDIR)/sources
 BASE_CACHE ?= $(BASEDIR)/built
 SDK_PATH ?= $(BASEDIR)/SDKs
 NO_WALLET ?=
-PRIORITY_DOWNLOAD_PATH ?= https://z.cash/depends-sources
+PRIORITY_DOWNLOAD_PATH ?= https://download.z.cash/depends-sources
 
 BUILD ?= $(shell ./config.guess)
 HOST ?= $(BUILD)
@@ -64,6 +64,7 @@ AT_$(V):=
 AT_:=@
 AT:=$(AT_$(V))
 
+.PHONY: all install
 all: install
 
 include hosts/$(host_os).mk
@@ -81,19 +82,24 @@ all_packages = $(packages) $(native_packages)
 
 meta_depends = Makefile funcs.mk builders/default.mk hosts/default.mk hosts/$(host_os).mk builders/$(build_os).mk cargo-checksum.sh
 
+$(host_arch)_$(host_os)_native_binutils?=$($(host_os)_native_binutils)
 $(host_arch)_$(host_os)_native_toolchain?=$($(host_os)_native_toolchain)
 
 include funcs.mk
 
+binutils_path=$($($(host_arch)_$(host_os)_native_binutils)_prefixbin)
 toolchain_path=$($($(host_arch)_$(host_os)_native_toolchain)_prefixbin)
 final_build_id_long+=$(shell $(build_SHA256SUM) config.site.in)
 final_build_id+=$(shell echo -n $(final_build_id_long) | $(build_SHA256SUM) | cut -c-$(HASH_LENGTH))
 $(host_prefix)/.stamp_$(final_build_id): $(native_packages) $(packages)
-	$(AT)rm -rf $(@D)
-	$(AT)mkdir -p $(@D)
-	$(AT)echo copying packages: $^
-	$(AT)echo to: $(@D)
-	$(AT)cd $(@D); $(foreach package,$^, tar xf $($(package)_cached); )
+	$(AT)@echo "Final build id: $(final_build_id)"
+	$(AT)if test ! -f "$(host_prefix)/.stamp_skip_extract"; then \
+	  $(AT)rm -rf $(@D); \
+	  $(AT)mkdir -p $(@D); \
+	  $(AT)echo copying packages: $^; \
+	  $(AT)echo to: $(@D); \
+	  $(AT)cd $(@D); $(foreach package,$^, echo "Extracting package $(package) [$($(package)_cached)]..."; tar xf $($(package)_cached); ) \
+	$(AT)fi
 	$(AT)touch $@
 
 $(host_prefix)/share/config.site : config.site.in $(host_prefix)/.stamp_$(final_build_id)
@@ -116,41 +122,67 @@ $(host_prefix)/share/config.site : config.site.in $(host_prefix)/.stamp_$(final_
             $< > $@
 	$(AT)touch $@
 
-
 define check_or_remove_cached
-  mkdir -p $(BASE_CACHE)/$(host)/$(package) && cd $(BASE_CACHE)/$(host)/$(package); \
-  $(build_SHA256SUM) -c $($(package)_cached_checksum) >/dev/null 2>/dev/null || \
-  ( rm -f $($(package)_cached_checksum); \
-    if test -f "$($(package)_cached)"; then echo "Checksum mismatch for $(package). Forcing rebuild.."; rm -f $($(package)_cached_checksum) $($(package)_cached); fi )
+  echo "  >> checking cached package [$(package), hash - $($(package)_build_id)]"; \
+  pkg_cached_dir="$(BASE_CACHE)/$(host)/$(package)"; \
+  mkdir -p "$$pkg_cached_dir" && cd "$$pkg_cached_dir"; \
+  pkg_chksum_file="$($(package)_cached_checksum)"; \
+  pkg_chksum_filename=`basename $$pkg_chksum_file`; \
+  $(build_SHA256SUM) -c "$$pkg_chksum_filename" >/dev/null 2>/dev/null || \
+    (\
+	echo "... checksum mismatch for [$(package)] package. Forcing rebuild..."; \
+	rm -f "$$pkg_chksum_file" "$($(package)_cached)"; \
+    )
 endef
 
 define check_or_remove_sources
-  mkdir -p $($(package)_source_dir); cd $($(package)_source_dir); \
-  $(build_SHA256SUM) -c $($(package)_fetched) >/dev/null 2>/dev/null || \
-    ( if test -f $($(package)_all_sources); then echo "Checksum missing or mismatched for $(package) source. Forcing re-download."; fi; \
-      rm -f $($(package)_all_sources) $($(1)_fetched))
+  echo "  >> checking package source [$(package), hash - $($(package)_build_id)]"; \
+  pkg_srcdir="$($(package)_source_dir)"; \
+  mkdir -p "$$pkg_srcdir" && cd "$$pkg_srcdir"; \
+  pkg_fetched="$($(package)_fetched)"; \
+  if test ! -f "$$pkg_fetched"; then \
+	echo "... [$$pkg_fetched] - package source hash not found"; \
+  fi; \
+  $(build_SHA256SUM) -c "$$pkg_fetched" >/dev/null 2>/dev/null || \
+    (\
+	bSrcFileMissing=0; \
+	missing_source_files=; \
+	for f in $($(package)_all_sources); do \
+		if test ! -f "$$f"; then \
+			bSrcFileMissing=1; \
+			missing_source_files+="$$f "; \
+		fi; \
+	done; \
+	if (( $$bSrcFileMissing == 1 )); then \
+		echo "... checksum missing or mismatched for [$(package)] package source file(s) [$$missing_source_files]. Forcing re-download..."; \
+		rm -f $($(package)_all_sources) $$pkg_fetched; \
+	fi; \
+    )
 endef
 
-check-packages:
-	@$(foreach package,$(all_packages),$(call check_or_remove_cached,$(package));)
-check-sources:
+.PHONY: check-packages check-sources show-build-info
+show-build-info:
+	@echo "Build info: os=[$(full_build_os)/$(build_os)], target os=[$(canonical_host)/$(full_host_os)/$(host_os)]"
+	@echo "Target dir: [$(host_prefix)]"
+
+check-sources: | show-build-info
+	@echo "ALL PACKAGES: [$(all_packages)]"
 	@$(foreach package,$(all_packages),$(call check_or_remove_sources,$(package));)
+
+check-packages: | check-sources
+	@$(foreach package,$(all_packages),$(call check_or_remove_cached,$(package));)
 
 $(host_prefix)/share/config.site: check-packages
 
-check-packages: check-sources
-
 install: check-packages $(host_prefix)/share/config.site
 
-
+.PHONY: download-one download-osx download-linux download-win download
 download-one: check-sources $(all_sources)
 
 download-osx:
-	@$(MAKE) -s HOST=x86_64-apple-darwin11 download-one
+	@$(MAKE) -s HOST=x86_64-apple-darwin14 download-one
 download-linux:
 	@$(MAKE) -s HOST=x86_64-unknown-linux-gnu download-one
 download-win:
 	@$(MAKE) -s HOST=x86_64-w64-mingw32 download-one
 download: download-osx download-linux download-win
-
-.PHONY: install cached download-one download-osx download-linux download-win download check-packages check-sources
