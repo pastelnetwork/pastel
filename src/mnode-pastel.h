@@ -31,7 +31,7 @@ public:
 	virtual bool IsValid(std::string& errRet, bool preReg, int depth) const = 0;    //if preReg = true - validate pre registration conditions
 	                                                                                //      ex.: address has enough coins for registration
 	                                                                                //else - validate ticket in general
-    virtual CAmount TicketPrice() const = 0;
+    virtual CAmount TicketPrice(int nHeight) const = 0;
     virtual std::string ToStr() const = 0;
     
     virtual CAmount GetExtraOutputs(std::vector<CTxOut>& outputs) const {return 0;}
@@ -39,6 +39,7 @@ public:
 	std::string ticketTnx;
 	int ticketBlock{};
     std::time_t timestamp{};
+    short nVersion{};
 };
 
 template<TicketID ticketId>
@@ -47,6 +48,7 @@ public:
 	CPastelTicket() = default;
 	
 	TicketID ID() const {return ticketId;}
+	short GetVersion() const {return nVersion;}
 	virtual bool HasKeyTwo() const {return false;}
 	virtual bool HasMVKeyOne() const {return false;}
 	virtual bool HasMVKeyTwo() const {return false;}
@@ -73,7 +75,7 @@ public:
 
 public:
     CPastelIDRegTicket() = default;
-    explicit CPastelIDRegTicket(std::string _pastelID) : pastelID(std::move(_pastelID)) {}
+    explicit CPastelIDRegTicket(std::string _pastelID) : pastelID(std::move(_pastelID)) {nVersion = 1;}
 
     std::string TicketName() const override {return "pastelid";}
     
@@ -87,7 +89,7 @@ public:
     std::string ToStr() const override;
     bool IsValid(std::string& errRet, bool preReg, int depth) const override;
     
-    CAmount TicketPrice() const override {return 10;}
+    CAmount TicketPrice(int nHeight) const override {return nHeight<=10000? 10: 1000;}
     
     std::string PastelIDType() const {return outpoint.IsNull()? "personal": "masternode";}
     
@@ -193,7 +195,7 @@ public:
     
 public:
     CArtRegTicket() = default;
-    explicit CArtRegTicket(std::string _ticket) : artTicket(std::move(_ticket)) {}
+    explicit CArtRegTicket(std::string _ticket) : artTicket(std::move(_ticket)) {nVersion = 1;}
     std::string TicketName() const override {return "art-reg";}
     
     std::string KeyOne() const override {return keyOne;}
@@ -207,13 +209,14 @@ public:
     std::string ToJSON() const override;
     std::string ToStr() const override;
     bool IsValid(std::string& errRet, bool preReg, int depth) const override;
-    CAmount TicketPrice() const override {return 10;}
+    CAmount TicketPrice(int nHeight) const override {return nHeight<=10000? 10: 1000;}
     
     ADD_SERIALIZE_METHODS;
 	
 	template <typename Stream, typename Operation>
 	inline void SerializationOp(Stream& s, Operation ser_action) {
 		READWRITE(artTicket);
+        READWRITE(nVersion);
 		
         for (int mn=0; mn<allsigns; mn++) {
             READWRITE(pastelIDs[mn]);
@@ -266,7 +269,7 @@ public:
 public:
     CArtActivateTicket() = default;
 
-	explicit CArtActivateTicket(std::string _pastelID) : pastelID(std::move(_pastelID)) {}
+	explicit CArtActivateTicket(std::string _pastelID) : pastelID(std::move(_pastelID)) {nVersion = 1;}
     std::string TicketName() const override {return "art-act";}
     
     std::string KeyOne() const override {return regTicketTnxId;}
@@ -280,13 +283,14 @@ public:
     std::string ToJSON() const override;
     std::string ToStr() const override;
     bool IsValid(std::string& errRet, bool preReg, int depth) const override;
-    CAmount TicketPrice() const override {return 10;}
+    CAmount TicketPrice(int nHeight) const override {return nHeight<=10000? 10: 1000;}
 	
 	ADD_SERIALIZE_METHODS;
 	
 	template <typename Stream, typename Operation>
 	inline void SerializationOp(Stream& s, Operation ser_action) {
 		READWRITE(pastelID);
+        READWRITE(nVersion);
 		READWRITE(regTicketTnxId);
 		READWRITE(artistHeight);
         READWRITE(storageFee);
@@ -338,7 +342,7 @@ public:
 public:
     CArtSellTicket() = default;
     
-    explicit CArtSellTicket(std::string _pastelID) : pastelID(std::move(_pastelID)) {}
+    explicit CArtSellTicket(std::string _pastelID) : pastelID(std::move(_pastelID)) {nVersion = 1;}
     std::string TicketName() const override {return "art-sell";}
     
     std::string KeyOne() const override {return !key.empty()? key: artTnxId+":"+to_string(copyNumber);} //txid:#
@@ -352,13 +356,14 @@ public:
     std::string ToJSON() const override;
     std::string ToStr() const override;
     bool IsValid(std::string& errRet, bool preReg, int depth) const override;
-    CAmount TicketPrice() const override {return askedPrice/50;}
+    CAmount TicketPrice(int nHeight) const override {return askedPrice/50;}
     
     ADD_SERIALIZE_METHODS;
     
     template <typename Stream, typename Operation>
     inline void SerializationOp(Stream& s, Operation ser_action) {
         READWRITE(pastelID);
+        READWRITE(nVersion);
         READWRITE(artTnxId);
         READWRITE(askedPrice);
         READWRITE(activeAfter);
@@ -400,7 +405,7 @@ public:
 public:
     CArtBuyTicket() = default;
     
-    explicit CArtBuyTicket(std::string _pastelID) : pastelID(std::move(_pastelID)) {}
+    explicit CArtBuyTicket(std::string _pastelID) : pastelID(std::move(_pastelID)) {nVersion = 1;}
     
     std::string TicketName() const override {return "art-buy";}
     
@@ -412,7 +417,7 @@ public:
     bool HasMVKeyTwo() const override {return false;}
     void SetKeyOne(std::string val) override { sellTnxId = std::move(val); }
 
-    CAmount TicketPrice() const override {return price/100;}
+    CAmount TicketPrice(int nHeight) const override {return price/100;}
     
     std::string ToJSON() const override;
     std::string ToStr() const override;
@@ -423,6 +428,7 @@ public:
     template <typename Stream, typename Operation>
     inline void SerializationOp(Stream& s, Operation ser_action) {
         READWRITE(pastelID);
+        READWRITE(nVersion);
         READWRITE(sellTnxId);
         READWRITE(price);
         READWRITE(reserved);
@@ -466,7 +472,7 @@ public:
 public:
     CArtTradeTicket() = default;
 
-    explicit CArtTradeTicket(std::string _pastelID) : pastelID(std::move(_pastelID)) {}
+    explicit CArtTradeTicket(std::string _pastelID) : pastelID(std::move(_pastelID)) {nVersion = 1;}
 
     std::string TicketName() const override {return "art-trade";}
     
@@ -484,13 +490,14 @@ public:
     std::string ToJSON() const override;
     std::string ToStr() const override;
     bool IsValid(std::string& errRet, bool preReg, int depth) const override;
-    CAmount TicketPrice() const override {return 10;}
+    CAmount TicketPrice(int nHeight) const override {return nHeight<=10000? 10: 1000;}
     
     ADD_SERIALIZE_METHODS;
     
     template <typename Stream, typename Operation>
     inline void SerializationOp(Stream& s, Operation ser_action) {
         READWRITE(pastelID);
+        READWRITE(nVersion);
         READWRITE(sellTnxId);
         READWRITE(buyTnxId);
         READWRITE(artTnxId);
@@ -521,7 +528,7 @@ class CTakeDownTicket : public CPastelTicket<TicketID::Down>
 {
 public:
     static bool FindTicketInDb(const std::string& key, CTakeDownTicket& ticket);
-    CAmount TicketPrice() const override {return 1000;}
+    CAmount TicketPrice(int nHeight) const override {return nHeight<=10000? 1000: 100000;}
 };
 
 #define FAKE_TICKET

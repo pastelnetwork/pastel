@@ -106,7 +106,8 @@ void FillOtherBlockPayments(CMutableTransaction& txNew, int nBlockHeight, CAmoun
                             CTxOut& txoutMasternodeRet, CTxOut& txoutGovernanceRet)
 {
     // Fill Governance payment
-    masterNodeCtrl.masternodeGovernance.FillGovernancePayment(txNew, nBlockHeight, blockReward, txoutGovernanceRet);
+    //TODO: Fix governance tickets processing
+//    masterNodeCtrl.masternodeGovernance.FillGovernancePayment(txNew, nBlockHeight, blockReward, txoutGovernanceRet);
     
     // FILL BLOCK PAYEE WITH MASTERNODE PAYMENT
     masterNodeCtrl.masternodePayments.FillMasterNodePayment(txNew, nBlockHeight, blockReward, txoutMasternodeRet);

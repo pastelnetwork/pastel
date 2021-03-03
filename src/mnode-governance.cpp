@@ -261,7 +261,10 @@ bool CMasternodeGovernance::ProcessBlock(int nBlockHeight)
 void CMasternodeGovernance::ProcessMessage(CNode* pfrom, std::string& strCommand, CDataStream& vRecv)
 {
     if (strCommand == NetMsgType::GOVERNANCESYNC) { //Governance Payments Request Sync
-
+    
+        //TODO: Fix governance tickets processing
+        return;
+        
         // Ignore such requests until we are fully synced.
         // We could start processing this after masternode list is synced
         // but this is a heavy one so it's better to finish sync first.
@@ -282,7 +285,10 @@ void CMasternodeGovernance::ProcessMessage(CNode* pfrom, std::string& strCommand
         LogPrintf("GOVERNANCESYNC -- Sent Governance payment votes to peer %d\n", pfrom->id);
 
     } else if (strCommand == NetMsgType::GOVERNANCE) { // Masternode Governance ticket
-
+    
+        //TODO: Fix governance tickets processing
+        return;
+        
         CGovernanceTicket ticket;
         vRecv >> ticket;
 
@@ -311,7 +317,10 @@ void CMasternodeGovernance::ProcessMessage(CNode* pfrom, std::string& strCommand
         LogPrintf("GOVERNANCE -- Get ticket %s from %d\n", ticketId.ToString(), pfrom->id);
 
     } else if (strCommand == NetMsgType::GOVERNANCEVOTE) { // Masternode Governance ticket votes
-
+    
+        //TODO: Fix governance tickets processing
+        return;
+        
         CGovernanceVote vote;
         vRecv >> vote;
 
@@ -599,7 +608,7 @@ bool CGovernanceVote::Sign()
     std::string strError;
     std::string strMessage = vinMasternode.prevout.ToStringShort() +
                 ticketId.ToString() +
-//                boost::lexical_cast<std::string>(nVoteBlockHeight) +
+                boost::lexical_cast<std::string>(nVoteBlockHeight) +
                 boost::lexical_cast<std::string>(bVote);
 
     LogPrintf("CGovernanceVote::Sign -- Vote to sign: %s (%s)\n", ToString(), strMessage);
@@ -624,7 +633,7 @@ bool CGovernanceVote::CheckSignature(const CPubKey& pubKeyMasternode, int stopVo
 
     std::string strMessage = vinMasternode.prevout.ToStringShort() +
                 ticketId.ToString() +
-//                boost::lexical_cast<std::string>(nVoteBlockHeight) +
+                boost::lexical_cast<std::string>(nVoteBlockHeight) +
                 boost::lexical_cast<std::string>(bVote);
 
     LogPrintf("CGovernanceVote::CheckSignature -- Vote to check: %s (%s)\n", ToString(), strMessage);
@@ -649,7 +658,7 @@ std::string CGovernanceVote::ToString() const
 
     info << vinMasternode.prevout.ToStringShort() <<
             ", " << ticketId.ToString() <<
-//            ", " << nVoteBlockHeight <<
+            ", " << nVoteBlockHeight <<
             ", " << bVote <<
             ", " << (int)vchSig.size();
 

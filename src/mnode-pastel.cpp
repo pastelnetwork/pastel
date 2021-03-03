@@ -142,14 +142,14 @@ bool CPastelTicketProcessor::ValidateIfTicketTransaction(const int nHeight, cons
             ticket.ticketTnx = std::move(ticketBlockTxIdStr);
             ticket.ticketBlock = nHeight;
             ok = ticket.IsValid(error_ret, false, 0);
-            expectedTicketFee = ticket.TicketPrice() * COIN;
+            expectedTicketFee = ticket.TicketPrice(nHeight) * COIN;
         }
         else if (ticket_id == TicketID::Art) {
             CArtRegTicket ticket;
             data_stream >> ticket;
             ticket.ticketTnx = std::move(ticketBlockTxIdStr);
             ok = ticket.IsValid(error_ret, false, 0);
-            expectedTicketFee = ticket.TicketPrice() * COIN;
+            expectedTicketFee = ticket.TicketPrice(nHeight) * COIN;
         }
         else if (ticket_id == TicketID::Activate) {
             CArtActivateTicket ticket;
@@ -157,7 +157,7 @@ bool CPastelTicketProcessor::ValidateIfTicketTransaction(const int nHeight, cons
             ticket.ticketTnx = std::move(ticketBlockTxIdStr);
             ticket.ticketBlock = nHeight;
             ok = ticket.IsValid(error_ret, false, 0);
-            expectedTicketFee = ticket.TicketPrice() * COIN;
+            expectedTicketFee = ticket.TicketPrice(nHeight) * COIN;
             storageFee = ticket.storageFee;
         }
         else if (ticket_id == TicketID::Sell) {
@@ -166,7 +166,7 @@ bool CPastelTicketProcessor::ValidateIfTicketTransaction(const int nHeight, cons
             ticket.ticketTnx = std::move(ticketBlockTxIdStr);
             ticket.ticketBlock = nHeight;
             ok = ticket.IsValid(error_ret, false, 0);
-            expectedTicketFee = ticket.TicketPrice() * COIN;
+            expectedTicketFee = ticket.TicketPrice(nHeight) * COIN;
         }
         else if (ticket_id == TicketID::Buy) {
             CArtBuyTicket ticket;
@@ -174,7 +174,7 @@ bool CPastelTicketProcessor::ValidateIfTicketTransaction(const int nHeight, cons
             ticket.ticketTnx = std::move(ticketBlockTxIdStr);
             ticket.ticketBlock = nHeight;
             ok = ticket.IsValid(error_ret, false, 0);
-            expectedTicketFee = ticket.TicketPrice() * COIN;
+            expectedTicketFee = ticket.TicketPrice(nHeight) * COIN;
         }
         else if (ticket_id == TicketID::Trade) {
             CArtTradeTicket ticket;
@@ -182,7 +182,7 @@ bool CPastelTicketProcessor::ValidateIfTicketTransaction(const int nHeight, cons
             ticket.ticketTnx = std::move(ticketBlockTxIdStr);
             ticket.ticketBlock = nHeight;
             ok = ticket.IsValid(error_ret, false, 0);
-            expectedTicketFee = ticket.TicketPrice() * COIN;
+            expectedTicketFee = ticket.TicketPrice(nHeight) * COIN;
             tradePrice = ticket.price * COIN;
         }
 //		else if (ticket_id == TicketID::Down) {
@@ -191,7 +191,7 @@ bool CPastelTicketProcessor::ValidateIfTicketTransaction(const int nHeight, cons
 //            ticket.ticketTnx = std::move(ticketBlockTxIdStr);
 //        ticket.ticketBlock = nHeight;
 //            ok = ticket.IsValid(error_ret, false, 0);
-//            expectedTicketFee = ticket.TicketPrice() * COIN;
+//            expectedTicketFee = ticket.TicketPrice(nHeight) * COIN;
 //		}
         else {
             error_ret = "unknown ticket_id";
@@ -713,9 +713,15 @@ std::string CPastelTicketProcessor::SendTicket(const T& ticket)
     CDataStream data_stream(SER_NETWORK, TICKETS_VERSION);
     data_stream << (uint8_t)ticket.ID();
     data_stream << ticket;
-	
+    
+    int chainHeight = 0;
+    {
+        LOCK(cs_main);
+        chainHeight = chainActive.Height() + 1;
+    }
+    
     CMutableTransaction tx;
-	if (!CPastelTicketProcessor::CreateP2FMSTransactionWithExtra(data_stream, extraOutputs, extraAmount, tx, ticket.TicketPrice(), error)){
+	if (!CPastelTicketProcessor::CreateP2FMSTransactionWithExtra(data_stream, extraOutputs, extraAmount, tx, ticket.TicketPrice(chainHeight), error)){
 		throw std::runtime_error(strprintf("Failed to create P2FMS from data provided - %s", error));
 	}
 	
@@ -1236,6 +1242,12 @@ std::string CArtRegTicket::ToStr() const
 
 bool CArtRegTicket::IsValid(std::string& errRet, bool preReg, int depth) const
 {
+    int chainHeight = 0;
+    {
+        LOCK(cs_main);
+        chainHeight = chainActive.Height() + 1;
+    }
+
     if (preReg){
         // A. Something to check ONLY before ticket made into transaction.
         // Only done after Create
@@ -1246,8 +1258,8 @@ bool CArtRegTicket::IsValid(std::string& errRet, bool preReg, int depth) const
             return false;
         }
     
-        // A.2 validate that address has coins to pay for registration - 10PSL + fee
-        unsigned int fullTicketPrice = TicketPrice()+(storageFee / 10); //10% of storage fee
+        // A.2 validate that address has coins to pay for registration - 10PSL
+        unsigned int fullTicketPrice = TicketPrice(chainHeight); //10% of storage fee is paid by the 'artist' and this ticket is created by MN
         if (pwalletMain->GetBalance() < fullTicketPrice*COIN) {
             errRet = strprintf("Not enough coins to cover price [%d]", fullTicketPrice);
             return false;
@@ -1507,6 +1519,12 @@ std::string CArtActivateTicket::ToStr() const
 
 bool CArtActivateTicket::IsValid(std::string& errRet, bool preReg, int depth) const
 {
+    int chainHeight = 0;
+    {
+        LOCK(cs_main);
+        chainHeight = chainActive.Height() + 1;
+    }
+    
     // 0. Common validations
     std::unique_ptr<CPastelTicketBase> pastelTicket;
     TicketID ticketId;
@@ -1514,7 +1532,7 @@ bool CArtActivateTicket::IsValid(std::string& errRet, bool preReg, int depth) co
                      [](TicketID tid){return (tid != TicketID::Art);},
                      "Activation", "art",
                      depth,
-                     TicketPrice()+(storageFee * 9 / 10), //fee for ticket + 90% of storage fee
+                     TicketPrice(chainHeight)+(storageFee * 9 / 10), //fee for ticket + 90% of storage fee
                      errRet))
         return false;
     
@@ -1685,6 +1703,12 @@ std::string CArtSellTicket::ToStr() const
 
 bool CArtSellTicket::IsValid(std::string& errRet, bool preReg, int depth) const
 {
+    int chainHeight = 0;
+    {
+        LOCK(cs_main);
+        chainHeight = chainActive.Height() + 1;
+    }
+    
     // 0. Common validations
     std::unique_ptr<CPastelTicketBase> pastelTicket;
     TicketID ticketId;
@@ -1692,7 +1716,7 @@ bool CArtSellTicket::IsValid(std::string& errRet, bool preReg, int depth) const
                      [](TicketID tid){return (tid != TicketID::Activate && tid != TicketID::Trade);},
                      "Sell", "activation or trade",
                      depth,
-                     TicketPrice(),
+                     TicketPrice(chainHeight),
                      errRet))
         return false;
 
@@ -1876,6 +1900,12 @@ std::string CArtBuyTicket::ToStr() const
 
 bool CArtBuyTicket::IsValid(std::string& errRet, bool preReg, int depth) const
 {
+    int chainHeight = 0;
+    {
+        LOCK(cs_main);
+        chainHeight = chainActive.Height() + 1;
+    }
+
     // 0. Common validations
     std::unique_ptr<CPastelTicketBase> pastelTicket;
     TicketID ticketId;
@@ -1883,15 +1913,9 @@ bool CArtBuyTicket::IsValid(std::string& errRet, bool preReg, int depth) const
                             [](TicketID tid){return (tid != TicketID::Sell);},
                             "Buy", "sell",
                             depth,
-                            price+TicketPrice(),
+                            price+TicketPrice(chainHeight),
                             errRet))
         return false;
-    
-    int chainHeight = 0;
-    {
-        LOCK(cs_main);
-        chainHeight = chainActive.Height() + 1;
-    }
     
     // 1. Verify that there is no another buy ticket for the same sell ticket
     // or if there are, it is older then 1h and there is no trade ticket for it
@@ -2023,6 +2047,12 @@ std::string CArtTradeTicket::ToStr() const
 
 bool CArtTradeTicket::IsValid(std::string& errRet, bool preReg, int depth) const
 {
+    int chainHeight = 0;
+    {
+        LOCK(cs_main);
+        chainHeight = chainActive.Height() + 1;
+    }
+    
     // 0. Common validations
     std::unique_ptr<CPastelTicketBase> sellTicket;
     TicketID sellTicketId;
@@ -2030,7 +2060,7 @@ bool CArtTradeTicket::IsValid(std::string& errRet, bool preReg, int depth) const
                             [](TicketID tid){return (tid != TicketID::Sell);},
                             "Trade", "sell",
                             depth,
-                            price+TicketPrice(),
+                            price+TicketPrice(chainHeight),
                             errRet))
         return false;
     
@@ -2040,7 +2070,7 @@ bool CArtTradeTicket::IsValid(std::string& errRet, bool preReg, int depth) const
                             [](TicketID tid){return (tid != TicketID::Buy);},
                             "Trade", "buy",
                             depth,
-                            price+TicketPrice(),
+                            price+TicketPrice(chainHeight),
                             errRet))
         return false;
     

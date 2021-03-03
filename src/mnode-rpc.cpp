@@ -2441,7 +2441,7 @@ static const CRPCCommand commands[] =
     { "mnode",               "masternodelist",         &masternodelist,         true  },
     { "mnode",               "masternodebroadcast",    &masternodebroadcast,    true  },
     { "mnode",               "mnsync",                 &mnsync,                 true  },
-    { "mnode",               "governance",             &governance,             true  },
+//    { "mnode",               "governance",             &governance,             true  },
     { "mnode",               "pastelid",               &pastelid,               true  },
     { "mnode",               "storagefee",             &storagefee,             true  },
     { "mnode",               "chaindata",              &chaindata,              true  },
