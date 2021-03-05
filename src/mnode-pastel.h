@@ -38,7 +38,7 @@ public:
 	   
 	std::string ticketTnx;
 	int ticketBlock{};
-    std::time_t timestamp{};
+    std::int64_t timestamp{};
     short nVersion{};
 };
 
