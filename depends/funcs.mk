@@ -2,7 +2,7 @@
 # are used to calculate recipe hash (package build id)
 # if FIXED_RECIPE_HASH is not empty - hash for the specific package will always be the same, based on package name 
 # use this for the debug purposes only
-FIXED_RECIPE_HASH?=
+FIXED_RECIPE_HASH?=true
 
 define int_vars
 #Set defaults for vars which may be overridden per-package
@@ -75,7 +75,8 @@ $(eval $(1)_download_path=$(if $($(1)_exact_download_path),$($(1)_exact_download
 $(1)_build_subdir?=.
 $(1)_source_dir:=$(SOURCES_PATH)
 $(1)_source:=$$($(1)_source_dir)/$($(1)_file_name)
-$(1)_staging_dir=$(base_staging_dir)/$(host)/$(1)/$($(1)_version)-$($(1)_build_id)
+$(1)_staging_subdir:=$($(1)_version)-$($(1)_build_id)
+$(1)_staging_dir:=$(base_staging_dir)/$(host)/$(1)/$($(1)_version)-$($(1)_build_id)
 $(1)_staging_prefix_dir:=$$($(1)_staging_dir)$($($(1)_type)_prefix)
 $(1)_extract_dir:=$(base_build_dir)/$(host)/$(1)/$($(1)_version)-$($(1)_build_id)
 $(1)_download_dir:=$(base_download_dir)/$(1)-$($(1)_version)
@@ -100,7 +101,7 @@ $(1)_download_path_fixed=$(subst :,\:,$$($(1)_download_path))
 
 #default commands
 $(1)_fetch_cmds ?= $(call fetch_file,$(1),$(subst \:,:,$$($(1)_download_path_fixed)),$$($(1)_download_file),$($(1)_file_name),$($(1)_sha256_hash))
-$(1)_extract_cmds ?= mkdir -p $$($(1)_extract_dir) && echo "$$($(1)_sha256_hash)  $$($(1)_source)" > $$($(1)_extract_dir)/.$$($(1)_file_name).hash &&  $(build_SHA256SUM) -c $$($(1)_extract_dir)/.$$($(1)_file_name).hash && tar --strip-components=1 -xf $$($(1)_source)
+$(1)_extract_cmds ?= mkdir -p "$$($(1)_extract_dir)" && echo "$$($(1)_sha256_hash)  $$($(1)_source)" > "$$($(1)_extract_dir)/.$$($(1)_file_name).hash" && $(build_SHA256SUM) -c "$$($(1)_extract_dir)/.$$($(1)_file_name).hash" && tar --strip-components=1 -xf "$$($(1)_source)"
 $(1)_preprocess_cmds ?=
 $(1)_build_cmds ?=
 $(1)_config_cmds ?=
@@ -213,9 +214,9 @@ $($(1)_built): | $($(1)_configured)
 	$(AT)touch $$@
 $($(1)_staged): | $($(1)_built)
 	$(AT)@echo "Staging $(1)..."
-	$(AT)mkdir -p $($(1)_staging_dir)/$(host_prefix)
-	$(AT)cd $($(1)_build_dir); $($(1)_stage_env) $(call $(1)_stage_cmds, $(1))
-	$(AT)rm -rf $($(1)_extract_dir)
+	$(AT)mkdir -p "$($(1)_staging_dir)/$(host_prefix)"
+	$(AT)cd "$($(1)_build_dir)"; $($(1)_stage_env) $(call $(1)_stage_cmds, $(1))
+	$(AT)rm -rf "$($(1)_extract_dir)"
 	$(AT)touch $$@
 $($(1)_postprocessed): | $($(1)_staged)
 	$(AT)@echo "Postprocessing $(1)..".

@@ -11,6 +11,13 @@ default_host_NM = $(host_toolchain)nm
 ifeq ($(host_os),darwin)
 $(host_os)_native_binutils?=native_clang
 $(host_os)_native_toolchain?=native_clang
+ifneq ($(host_os),$(build_os))
+# override build tools for cross-compiling on darwin
+define add_darwin_host_tool_func
+darwin_$1=$(DARWIN_TOOLCHAIN_PATH)$(default_host_$1)
+endef
+$(foreach tool,AR RANLIB STRIP NM LIBTOOL OTOOL INSTALL_NAME_TOOL,$(eval $(call add_darwin_host_tool_func,$(tool))))
+endif
 endif
 
 define add_host_tool_func
