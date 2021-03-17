@@ -1,1 +1,11 @@
 src/clientversion.cpp export-subst
+*.sh text eol=lf
+*.ac text eol=lf
+*.m4 text eol=lf
+*.mk text eol=lf
+*.am text eol=lf
+*.in text eol=lf
+*.patch text eol=lf
+[cC]onfigure text eol=lf
+[mM]akefile text eol=lf
+config(?:\.layout|\.sub|\.guess) text eol=lf

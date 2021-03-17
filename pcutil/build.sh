@@ -68,7 +68,11 @@ set -x
 
 # If --enable-lcov is the first argument, enable lcov coverage support:
 LCOV_ARG=''
-HARDENING_ARG='--enable-hardening'
+if [[ "$HOST" == *darwin* ]]; then
+	HARDENING_ARG='--disable-hardening'
+else
+	HARDENING_ARG='--enable-hardening'
+fi
 TEST_ARG=''
 if [ "x${1:-}" = 'x--enable-lcov' ]
 then
