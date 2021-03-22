@@ -167,7 +167,7 @@ TEST(WalletTests, SproutNoteDataSerialisation) {
 
 
 TEST(WalletTests, FindUnspentSproutNotes) {
-    SelectParams(CBaseChainParams::TESTNET);
+    SelectParams(CBaseChainParams::Network::TESTNET);
     CWallet wallet;
     auto sk = libzcash::SproutSpendingKey::random();
     wallet.AddSproutSpendingKey(sk);
@@ -356,7 +356,7 @@ TEST(WalletTests, SetSproutNoteAddrsInCWalletTx) {
 }
 
 TEST(WalletTests, SetSaplingNoteAddrsInCWalletTx) {
-    SelectParams(CBaseChainParams::REGTEST);
+    SelectParams(CBaseChainParams::Network::REGTEST);
     UpdateNetworkUpgradeParameters(Consensus::UPGRADE_OVERWINTER, Consensus::NetworkUpgrade::ALWAYS_ACTIVE);
     UpdateNetworkUpgradeParameters(Consensus::UPGRADE_SAPLING, Consensus::NetworkUpgrade::ALWAYS_ACTIVE);
     auto consensusParams = Params().GetConsensus();
@@ -476,7 +476,7 @@ TEST(WalletTests, GetSproutNoteNullifier) {
 }
 
 TEST(WalletTests, FindMySaplingNotes) {
-    SelectParams(CBaseChainParams::REGTEST);
+    SelectParams(CBaseChainParams::Network::REGTEST);
     UpdateNetworkUpgradeParameters(Consensus::UPGRADE_OVERWINTER, Consensus::NetworkUpgrade::ALWAYS_ACTIVE);
     UpdateNetworkUpgradeParameters(Consensus::UPGRADE_SAPLING, Consensus::NetworkUpgrade::ALWAYS_ACTIVE);
     auto consensusParams = Params().GetConsensus();
@@ -610,7 +610,7 @@ TEST(WalletTests, GetConflictedSproutNotes) {
 
 // Generate note A and spend to create note B, from which we spend to create two conflicting transactions
 TEST(WalletTests, GetConflictedSaplingNotes) {
-    SelectParams(CBaseChainParams::REGTEST);
+    SelectParams(CBaseChainParams::Network::REGTEST);
     UpdateNetworkUpgradeParameters(Consensus::UPGRADE_OVERWINTER, Consensus::NetworkUpgrade::ALWAYS_ACTIVE);
     UpdateNetworkUpgradeParameters(Consensus::UPGRADE_SAPLING, Consensus::NetworkUpgrade::ALWAYS_ACTIVE);
     auto consensusParams = Params().GetConsensus();
@@ -773,7 +773,7 @@ TEST(WalletTests, SproutNullifierIsSpent) {
 }
 
 TEST(WalletTests, SaplingNullifierIsSpent) {
-    SelectParams(CBaseChainParams::REGTEST);
+    SelectParams(CBaseChainParams::Network::REGTEST);
     UpdateNetworkUpgradeParameters(Consensus::UPGRADE_OVERWINTER, Consensus::NetworkUpgrade::ALWAYS_ACTIVE);
     UpdateNetworkUpgradeParameters(Consensus::UPGRADE_SAPLING, Consensus::NetworkUpgrade::ALWAYS_ACTIVE);
     auto consensusParams = Params().GetConsensus();
@@ -868,7 +868,7 @@ TEST(WalletTests, NavigateFromSproutNullifierToNote) {
 }
 
 TEST(WalletTests, NavigateFromSaplingNullifierToNote) {
-    SelectParams(CBaseChainParams::REGTEST);
+    SelectParams(CBaseChainParams::Network::REGTEST);
     UpdateNetworkUpgradeParameters(Consensus::UPGRADE_OVERWINTER, Consensus::NetworkUpgrade::ALWAYS_ACTIVE);
     UpdateNetworkUpgradeParameters(Consensus::UPGRADE_SAPLING, Consensus::NetworkUpgrade::ALWAYS_ACTIVE);
     auto consensusParams = Params().GetConsensus();
@@ -1001,7 +1001,7 @@ TEST(WalletTests, SpentSproutNoteIsFromMe) {
 
 // Create note A, spend A to create note B, spend and verify note B is from me.
 TEST(WalletTests, SpentSaplingNoteIsFromMe) {
-    SelectParams(CBaseChainParams::REGTEST);
+    SelectParams(CBaseChainParams::Network::REGTEST);
     UpdateNetworkUpgradeParameters(Consensus::UPGRADE_OVERWINTER, Consensus::NetworkUpgrade::ALWAYS_ACTIVE);
     UpdateNetworkUpgradeParameters(Consensus::UPGRADE_SAPLING, Consensus::NetworkUpgrade::ALWAYS_ACTIVE);
     auto consensusParams = Params().GetConsensus();
@@ -1618,14 +1618,15 @@ TEST(WalletTests, WriteWitnessCache) {
 }
 
 TEST(WalletTests, SetBestChainIgnoresTxsWithoutShieldedData) {
-    SelectParams(CBaseChainParams::REGTEST);
+    SelectParams(CBaseChainParams::Network::REGTEST);
 
+    std::string sKeyError;
     TestWallet wallet;
     MockWalletDB walletdb;
     CBlockLocator loc;
 
     // Set up transparent address
-    CKey tsk = DecodeSecret(tSecretRegtest);
+    const CKey tsk = DecodeSecret(tSecretRegtest, sKeyError);
     wallet.AddKey(tsk);
     auto scriptPubKey = GetScriptForDestination(tsk.GetPubKey().GetID());
 
@@ -1782,7 +1783,7 @@ TEST(WalletTests, UpdatedSproutNoteData) {
 }
 
 TEST(WalletTests, UpdatedSaplingNoteData) {
-    SelectParams(CBaseChainParams::REGTEST);
+    SelectParams(CBaseChainParams::Network::REGTEST);
     UpdateNetworkUpgradeParameters(Consensus::UPGRADE_OVERWINTER, Consensus::NetworkUpgrade::ALWAYS_ACTIVE);
     UpdateNetworkUpgradeParameters(Consensus::UPGRADE_SAPLING, Consensus::NetworkUpgrade::ALWAYS_ACTIVE);
     auto consensusParams = Params().GetConsensus();
@@ -1935,12 +1936,13 @@ TEST(WalletTests, MarkAffectedSproutTransactionsDirty) {
 }
 
 TEST(WalletTests, MarkAffectedSaplingTransactionsDirty) {
-    SelectParams(CBaseChainParams::REGTEST);
+    SelectParams(CBaseChainParams::Network::REGTEST);
     UpdateNetworkUpgradeParameters(Consensus::UPGRADE_OVERWINTER, Consensus::NetworkUpgrade::ALWAYS_ACTIVE);
     UpdateNetworkUpgradeParameters(Consensus::UPGRADE_SAPLING, Consensus::NetworkUpgrade::ALWAYS_ACTIVE);
     auto consensusParams = Params().GetConsensus();
 
     TestWallet wallet;
+    std::string sKeyError;
 
     // Generate Sapling address
     std::vector<unsigned char, secure_allocator<unsigned char>> rawSeed(32);
@@ -1956,7 +1958,7 @@ TEST(WalletTests, MarkAffectedSaplingTransactionsDirty) {
 
     // Set up transparent address
     CBasicKeyStore keystore;
-    CKey tsk = DecodeSecret(tSecretRegtest);
+    const CKey tsk = DecodeSecret(tSecretRegtest, sKeyError);
     keystore.AddKey(tsk);
     auto scriptPubKey = GetScriptForDestination(tsk.GetPubKey().GetID());
 

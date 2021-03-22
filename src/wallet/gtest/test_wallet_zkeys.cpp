@@ -17,7 +17,7 @@
  * LoadSaplingZKeyMetadata()
  */
 TEST(wallet_zkeys_tests, StoreAndLoadSaplingZkeys) {
-    SelectParams(CBaseChainParams::MAIN);
+    SelectParams(CBaseChainParams::Network::MAIN);
 
     CWallet wallet;
 
@@ -111,7 +111,7 @@ TEST(wallet_zkeys_tests, StoreAndLoadSaplingZkeys) {
  * LoadZKeyMetadata()
  */
 TEST(wallet_zkeys_tests, store_and_load_zkeys) {
-    SelectParams(CBaseChainParams::MAIN);
+    SelectParams(CBaseChainParams::Network::MAIN);
 
     CWallet wallet;
 
@@ -168,7 +168,7 @@ TEST(wallet_zkeys_tests, store_and_load_zkeys) {
  * LoadSproutViewingKey()
  */
 TEST(wallet_zkeys_tests, StoreAndLoadViewingKeys) {
-    SelectParams(CBaseChainParams::MAIN);
+    SelectParams(CBaseChainParams::Network::MAIN);
 
     CWallet wallet;
 
@@ -213,7 +213,7 @@ TEST(wallet_zkeys_tests, StoreAndLoadViewingKeys) {
  * WriteZKey()
  */
 TEST(wallet_zkeys_tests, write_zkey_direct_to_db) {
-    SelectParams(CBaseChainParams::TESTNET);
+    SelectParams(CBaseChainParams::Network::TESTNET);
 
     // Get temporary and unique path for file.
     // Note: / operator to append paths
@@ -285,7 +285,7 @@ TEST(wallet_zkeys_tests, write_zkey_direct_to_db) {
  * WriteSproutViewingKey()
  */
 TEST(wallet_zkeys_tests, WriteViewingKeyDirectToDB) {
-    SelectParams(CBaseChainParams::TESTNET);
+    SelectParams(CBaseChainParams::Network::TESTNET);
 
     // Get temporary and unique path for file.
     // Note: / operator to append paths
@@ -330,7 +330,7 @@ TEST(wallet_zkeys_tests, WriteViewingKeyDirectToDB) {
  * This test covers methods on CWalletDB to load/save crypted z keys.
  */
 TEST(wallet_zkeys_tests, write_cryptedzkey_direct_to_db) {
-    SelectParams(CBaseChainParams::TESTNET);
+    SelectParams(CBaseChainParams::Network::TESTNET);
 
     // Get temporary and unique path for file.
     // Note: / operator to append paths
@@ -404,7 +404,7 @@ TEST(wallet_zkeys_tests, write_cryptedzkey_direct_to_db) {
  * This test covers methods on CWalletDB to load/save crypted sapling z keys.
  */
 TEST(wallet_zkeys_tests, WriteCryptedSaplingZkeyDirectToDb) {
-    SelectParams(CBaseChainParams::TESTNET);
+    SelectParams(CBaseChainParams::Network::TESTNET);
 
     // Get temporary and unique path for file.
     // Note: / operator to append paths

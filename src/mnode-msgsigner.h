@@ -16,7 +16,7 @@ class CMessageSigner
 {
 public:
     /// Set the private/public key values, returns true if successful
-    static bool GetKeysFromSecret(const std::string strSecret, CKey& keyRet, CPubKey& pubkeyRet);
+    static bool GetKeysFromSecret(const std::string &strSecret, CKey& keyRet, CPubKey& pubkeyRet);
     /// Sign the message, returns true if successful
     static bool SignMessage(const std::string strMessage, std::vector<unsigned char>& vchSigRet, const CKey key);
     /// Verify the message signature, returns true if succcessful

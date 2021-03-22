@@ -10,7 +10,7 @@
 #include "mnode-governance.h"
 
 TEST(mnode_governance, CalculateLastPaymentBlock) {
-    SelectParams(CBaseChainParams::TESTNET);
+    SelectParams(CBaseChainParams::Network::TESTNET);
 
     CMasternodeGovernance gov;
 
@@ -27,7 +27,7 @@ TEST(mnode_governance, CalculateLastPaymentBlock) {
 }
 
 TEST(mnode_governance, TicketProcessing) {
-    SelectParams(CBaseChainParams::TESTNET);
+    SelectParams(CBaseChainParams::Network::TESTNET);
 
     std::string address("tPVQMdSyVnSYgrww5TTXSJeF75aPQ3bAfdm");
     

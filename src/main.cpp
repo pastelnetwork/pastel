@@ -1023,8 +1023,8 @@ bool ContextualCheckTransaction(
                 spend.anchor.begin(),
                 spend.nullifier.begin(),
                 spend.rk.begin(),
-                spend.zkproof.begin(),
-                spend.spendAuthSig.begin(),
+                spend.zkproof.data(),
+                spend.spendAuthSig.data(),
                 dataToBeSigned.begin()
             ))
             {
@@ -1040,7 +1040,7 @@ bool ContextualCheckTransaction(
                 output.cv.begin(),
                 output.cm.begin(),
                 output.ephemeralKey.begin(),
-                output.zkproof.begin()
+                output.zkproof.data()
             ))
             {
                 librustzcash_sapling_verification_ctx_free(ctx);
@@ -1052,7 +1052,7 @@ bool ContextualCheckTransaction(
         if (!librustzcash_sapling_final_check(
             ctx,
             tx.valueBalance,
-            tx.bindingSig.begin(),
+            tx.bindingSig.data(),
             dataToBeSigned.begin()
         ))
         {

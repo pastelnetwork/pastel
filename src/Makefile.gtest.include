@@ -17,6 +17,7 @@ pastel_gtest_SOURCES += \
 	wallet/gtest/test_wallet_zkeys.cpp
 endif
 pastel_gtest_SOURCES += \
+	gtest/test_block.cpp \
 	gtest/test_tautology.cpp \
 	gtest/test_deprecation.cpp \
 	gtest/test_equihash.cpp \
@@ -45,7 +46,8 @@ pastel_gtest_SOURCES += \
 	gtest/test_pedersen_hash.cpp \
 	gtest/test_checkblock.cpp \
 	gtest/test_zip32.cpp \
-	gtest/test_mnode_governance.cpp
+	gtest/test_mnode_governance.cpp \
+	gtest/test_mnode_rpc.cpp
 if ENABLE_WALLET
 pastel_gtest_SOURCES += \
 	wallet/gtest/test_wallet.cpp

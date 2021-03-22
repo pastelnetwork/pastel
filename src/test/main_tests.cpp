@@ -40,14 +40,14 @@ static void TestBlockSubsidyHalvings(int nSubsidyHalvingInterval)
 
 BOOST_AUTO_TEST_CASE(block_subsidy_test)
 {
-    TestBlockSubsidyHalvings(Params(CBaseChainParams::MAIN).GetConsensus()); // As in main
+    TestBlockSubsidyHalvings(Params(CBaseChainParams::Network::MAIN).GetConsensus()); // As in main
     TestBlockSubsidyHalvings(500000);
     TestBlockSubsidyHalvings(100000);
 }
 
 BOOST_AUTO_TEST_CASE(subsidy_limit_test)
 {
-    const Consensus::Params& consensusParams = Params(CBaseChainParams::MAIN).GetConsensus();
+    const Consensus::Params& consensusParams = Params(CBaseChainParams::Network::MAIN).GetConsensus();
     CAmount nSum = 0;
     //1002 is the first block with real subsidy
     for (int nHeight = 1002, i=1; nHeight < 56000000; nHeight += consensusParams.nSubsidyHalvingInterval, i++) {

@@ -284,13 +284,13 @@ public:
         return *this;
     }
 
-    int getint() const
+    int getint() const noexcept
     {
         if (m_value > std::numeric_limits<int>::max())
             return std::numeric_limits<int>::max();
         else if (m_value < std::numeric_limits<int>::min())
             return std::numeric_limits<int>::min();
-        return m_value;
+        return static_cast<int>(m_value);
     }
 
     std::vector<unsigned char> getvch() const
@@ -362,7 +362,7 @@ protected:
     {
         if (n == -1 || (n >= 1 && n <= 16))
         {
-            push_back(n + (OP_1 - 1));
+            push_back(static_cast<int8_t>(n) + (OP_1 - 1));
         }
         else if (n == 0)
         {
@@ -432,14 +432,17 @@ public:
         {
             insert(end(), OP_PUSHDATA2);
             uint8_t data[2];
-            WriteLE16(data, b.size());
+            WriteLE16(data, static_cast<uint16_t>(b.size()));
             insert(end(), data, data + sizeof(data));
         }
-        else
+        else 
         {
+            // !!! need to check for overflow - only max 32-bit size is supported
+            // vector with size > MAX_UINT32 will be truncated
+            // moreover it truncates size, but writes full data
             insert(end(), OP_PUSHDATA4);
             uint8_t data[4];
-            WriteLE32(data, b.size());
+            WriteLE32(data, static_cast<uint32_t>(b.size()));
             insert(end(), data, data + sizeof(data));
         }
         insert(end(), b.begin(), b.end());

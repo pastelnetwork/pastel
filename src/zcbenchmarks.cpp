@@ -172,8 +172,8 @@ double benchmark_solve_equihash()
     CDataStream ss(SER_NETWORK, PROTOCOL_VERSION);
     ss << I;
 
-    unsigned int n = Params(CBaseChainParams::MAIN).EquihashN();
-    unsigned int k = Params(CBaseChainParams::MAIN).EquihashK();
+    unsigned int n = Params(CBaseChainParams::Network::MAIN).EquihashN();
+    unsigned int k = Params(CBaseChainParams::Network::MAIN).EquihashK();
     crypto_generichash_blake2b_state eh_state;
     EhInitialiseState(n, k, eh_state);
     crypto_generichash_blake2b_update(&eh_state, (unsigned char*)&ss[0], ss.size());
@@ -216,8 +216,8 @@ std::vector<double> benchmark_solve_equihash_threaded(int nThreads)
 
 double benchmark_verify_equihash()
 {
-    CChainParams params = Params(CBaseChainParams::MAIN);
-    CBlock genesis = Params(CBaseChainParams::MAIN).GenesisBlock();
+    CChainParams params = Params(CBaseChainParams::Network::MAIN);
+    CBlock genesis = Params(CBaseChainParams::Network::MAIN).GenesisBlock();
     CBlockHeader genesis_header = genesis.GetBlockHeader();
     struct timeval tv_start;
     timer_start(tv_start);
@@ -399,7 +399,7 @@ public:
 double benchmark_connectblock_slow()
 {
     // Test for issue 2017-05-01.a
-    SelectParams(CBaseChainParams::MAIN);
+    SelectParams(CBaseChainParams::Network::MAIN);
     CBlock block;
     FILE* fp = fopen((GetDataDir() / "benchmark/block-107134.dat").string().c_str(), "rb");
     if (!fp) throw new std::runtime_error("Failed to open block data file");
@@ -557,7 +557,7 @@ double benchmark_create_sapling_output()
         note.r.begin(),
         note.value(),
         odesc.cv.begin(),
-        odesc.zkproof.begin());
+        odesc.zkproof.data());
 
     double t = timer_stop(tv_start);
     librustzcash_sapling_proving_ctx_free(ctx);
@@ -588,8 +588,8 @@ double benchmark_verify_sapling_spend()
                 spend.anchor.begin(),
                 spend.nullifier.begin(),
                 spend.rk.begin(),
-                spend.zkproof.begin(),
-                spend.spendAuthSig.begin(),
+                spend.zkproof.data(),
+                spend.spendAuthSig.data(),
                 dataToBeSigned.begin()
             );
 
@@ -620,7 +620,7 @@ double benchmark_verify_sapling_output()
                 output.cv.begin(),
                 output.cm.begin(),
                 output.ephemeralKey.begin(),
-                output.zkproof.begin()
+                output.zkproof.data()
             );
 
     double t = timer_stop(tv_start);

@@ -6,6 +6,7 @@
 #ifndef BITCOIN_SERIALIZE_H
 #define BITCOIN_SERIALIZE_H
 
+#include "compat.h"
 #include "compat/endian.h"
 
 #include <algorithm>
@@ -469,7 +470,7 @@ public:
     template<typename Stream>
     void Unserialize(Stream& s)
     {
-        size_t size = ReadCompactSize(s);
+        const uint64_t size = ReadCompactSize(s);
         if (size > Limit) {
             throw std::ios_base::failure("String length limit exceeded");
         }
@@ -605,7 +606,7 @@ void Serialize(Stream& os, const std::basic_string<C>& str)
 template<typename Stream, typename C>
 void Unserialize(Stream& is, std::basic_string<C>& str)
 {
-    unsigned int nSize = ReadCompactSize(is);
+    const uint64_t nSize = ReadCompactSize(is);
     str.resize(nSize);
     if (nSize != 0)
         is.read((char*)&str[0], nSize * sizeof(str[0]));
@@ -644,11 +645,11 @@ void Unserialize_impl(Stream& is, prevector<N, T>& v, const unsigned char&)
 {
     // Limit size per read so bogus size value won't cause out of memory
     v.clear();
-    unsigned int nSize = ReadCompactSize(is);
-    unsigned int i = 0;
+    const uint64_t nSize = ReadCompactSize(is);
+    uint64_t i = 0;
     while (i < nSize)
     {
-        unsigned int blk = std::min(nSize - i, (unsigned int)(1 + 4999999 / sizeof(T)));
+        uint64_t blk = std::min<uint64_t>(nSize - i, 1 + 4999999 / sizeof(T));
         v.resize(i + blk);
         is.read((char*)&v[i], blk * sizeof(T));
         i += blk;
@@ -659,9 +660,9 @@ template<typename Stream, unsigned int N, typename T, typename V>
 void Unserialize_impl(Stream& is, prevector<N, T>& v, const V&)
 {
     v.clear();
-    unsigned int nSize = ReadCompactSize(is);
-    unsigned int i = 0;
-    unsigned int nMid = 0;
+    const uint64_t nSize = ReadCompactSize(is);
+    uint64_t i = 0;
+    uint64_t nMid = 0;
     while (nMid < nSize)
     {
         nMid += 5000000 / sizeof(T);
@@ -712,11 +713,11 @@ void Unserialize_impl(Stream& is, std::vector<T, A>& v, const unsigned char&)
 {
     // Limit size per read so bogus size value won't cause out of memory
     v.clear();
-    unsigned int nSize = ReadCompactSize(is);
-    unsigned int i = 0;
+    const uint64_t nSize = ReadCompactSize(is);
+    uint64_t i = 0;
     while (i < nSize)
     {
-        unsigned int blk = std::min(nSize - i, (unsigned int)(1 + 4999999 / sizeof(T)));
+        uint64_t blk = std::min<uint64_t>(nSize - i, 1 + 4999999 / sizeof(T));
         v.resize(i + blk);
         is.read((char*)&v[i], blk * sizeof(T));
         i += blk;
@@ -727,9 +728,9 @@ template<typename Stream, typename T, typename A, typename V>
 void Unserialize_impl(Stream& is, std::vector<T, A>& v, const V&)
 {
     v.clear();
-    unsigned int nSize = ReadCompactSize(is);
-    unsigned int i = 0;
-    unsigned int nMid = 0;
+    const uint64_t nSize = ReadCompactSize(is);
+    uint64_t i = 0;
+    uint64_t nMid = 0;
     while (nMid < nSize)
     {
         nMid += 5000000 / sizeof(T);
@@ -840,9 +841,9 @@ template<typename Stream, typename K, typename T, typename Pred, typename A>
 void Unserialize(Stream& is, std::map<K, T, Pred, A>& m)
 {
     m.clear();
-    unsigned int nSize = ReadCompactSize(is);
+    const uint64_t nSize = ReadCompactSize(is);
     typename std::map<K, T, Pred, A>::iterator mi = m.begin();
-    for (unsigned int i = 0; i < nSize; i++)
+    for (uint64_t i = 0; i < nSize; i++)
     {
         std::pair<K, T> item;
         Unserialize(is, item);
@@ -867,9 +868,9 @@ template<typename Stream, typename K, typename Pred, typename A>
 void Unserialize(Stream& is, std::set<K, Pred, A>& m)
 {
     m.clear();
-    unsigned int nSize = ReadCompactSize(is);
+    const uint64_t nSize = ReadCompactSize(is);
     typename std::set<K, Pred, A>::iterator it = m.begin();
-    for (unsigned int i = 0; i < nSize; i++)
+    for (uint64_t i = 0; i < nSize; i++)
     {
         K key;
         Unserialize(is, key);
@@ -894,9 +895,9 @@ template<typename Stream, typename T, typename A>
 void Unserialize(Stream& is, std::list<T, A>& l)
 {
     l.clear();
-    unsigned int nSize = ReadCompactSize(is);
+    const uint64_t nSize = ReadCompactSize(is);
     typename std::list<T, A>::iterator it = l.begin();
-    for (unsigned int i = 0; i < nSize; i++)
+    for (uint64_t i = 0; i < nSize; i++)
     {
         T item;
         Unserialize(is, item);

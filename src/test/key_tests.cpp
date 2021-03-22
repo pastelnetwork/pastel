@@ -68,15 +68,16 @@ BOOST_AUTO_TEST_CASE(key_test1)
 #ifdef KEY_TESTS_DUMPINFO
     dumpKeyInfo(); return;
 #endif
-    CKey key1  = DecodeSecret(strSecret1);
+    std::string sKeyError;
+    const CKey key1  = DecodeSecret(strSecret1, sKeyError);
     BOOST_CHECK(key1.IsValid() && !key1.IsCompressed());
-    CKey key2  = DecodeSecret(strSecret2);
+    const CKey key2  = DecodeSecret(strSecret2, sKeyError);
     BOOST_CHECK(key2.IsValid() && !key2.IsCompressed());
-    CKey key1C = DecodeSecret(strSecret1C);
+    const CKey key1C = DecodeSecret(strSecret1C, sKeyError);
     BOOST_CHECK(key1C.IsValid() && key1C.IsCompressed());
-    CKey key2C = DecodeSecret(strSecret2C);
+    const CKey key2C = DecodeSecret(strSecret2C, sKeyError);
     BOOST_CHECK(key2C.IsValid() && key2C.IsCompressed());
-    CKey bad_key = DecodeSecret(strAddressBad);
+    const CKey bad_key = DecodeSecret(strAddressBad, sKeyError);
     BOOST_CHECK(!bad_key.IsValid());
 
     CPubKey pubkey1  = key1. GetPubKey();
@@ -225,7 +226,7 @@ BOOST_AUTO_TEST_CASE(zc_address_test)
 
 BOOST_AUTO_TEST_CASE(zs_address_test)
 {
-    SelectParams(CBaseChainParams::REGTEST);
+    SelectParams(CBaseChainParams::Network::REGTEST);
 
     std::vector<unsigned char, secure_allocator<unsigned char>> rawSeed(32);
     HDSeed seed(rawSeed);
@@ -235,7 +236,7 @@ BOOST_AUTO_TEST_CASE(zs_address_test)
         auto sk = m.Derive(i);
         {
             std::string sk_string = EncodeSpendingKey(sk);
-            BOOST_CHECK(sk_string.compare(0, 29, Params().Bech32HRP(CChainParams::SAPLING_EXTENDED_SPEND_KEY)) == 0);
+            BOOST_CHECK(sk_string.compare(0, 29, Params().Bech32HRP(CChainParams::Bech32Type::SAPLING_EXTENDED_SPEND_KEY)) == 0);
 
             auto spendingkey2 = DecodeSpendingKey(sk_string);
             BOOST_CHECK(IsValidSpendingKey(spendingkey2));
@@ -248,7 +249,7 @@ BOOST_AUTO_TEST_CASE(zs_address_test)
             auto addr = sk.DefaultAddress();
 
             std::string addr_string = EncodePaymentAddress(addr);
-            BOOST_CHECK(addr_string.compare(0, 16, Params().Bech32HRP(CChainParams::SAPLING_PAYMENT_ADDRESS)) == 0);
+            BOOST_CHECK(addr_string.compare(0, 16, Params().Bech32HRP(CChainParams::Bech32Type::SAPLING_PAYMENT_ADDRESS)) == 0);
 
             auto paymentaddr2 = DecodePaymentAddress(addr_string);
             BOOST_CHECK(IsValidPaymentAddress(paymentaddr2));

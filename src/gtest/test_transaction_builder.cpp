@@ -15,13 +15,16 @@ static const std::string tSecretRegtest = "cND2ZvtabDbJ1gucx9GWH6XT9kgTAqfb6cotP
 
 TEST(TransactionBuilder, Invoke)
 {
-    SelectParams(CBaseChainParams::REGTEST);
+    SelectParams(CBaseChainParams::Network::REGTEST);
     UpdateNetworkUpgradeParameters(Consensus::UPGRADE_OVERWINTER, Consensus::NetworkUpgrade::ALWAYS_ACTIVE);
     UpdateNetworkUpgradeParameters(Consensus::UPGRADE_SAPLING, Consensus::NetworkUpgrade::ALWAYS_ACTIVE);
     auto consensusParams = Params().GetConsensus();
 
+    std::string sKeyError;
     CBasicKeyStore keystore;
-    CKey tsk = DecodeSecret(tSecretRegtest);
+    const CKey tsk = DecodeSecret(tSecretRegtest, sKeyError);
+    EXPECT_TRUE(tsk.IsValid());
+    EXPECT_TRUE(sKeyError.empty());
     keystore.AddKey(tsk);
     auto scriptPubKey = GetScriptForDestination(tsk.GetPubKey().GetID());
 
@@ -93,7 +96,7 @@ TEST(TransactionBuilder, Invoke)
 
 TEST(TransactionBuilder, ThrowsOnTransparentInputWithoutKeyStore)
 {
-    SelectParams(CBaseChainParams::REGTEST);
+    SelectParams(CBaseChainParams::Network::REGTEST);
     auto consensusParams = Params().GetConsensus();
 
     auto builder = TransactionBuilder(consensusParams, 1);
@@ -102,7 +105,7 @@ TEST(TransactionBuilder, ThrowsOnTransparentInputWithoutKeyStore)
 
 TEST(TransactionBuilder, RejectsInvalidTransparentOutput)
 {
-    SelectParams(CBaseChainParams::REGTEST);
+    SelectParams(CBaseChainParams::Network::REGTEST);
     auto consensusParams = Params().GetConsensus();
 
     // Default CTxDestination type is an invalid address
@@ -113,7 +116,7 @@ TEST(TransactionBuilder, RejectsInvalidTransparentOutput)
 
 TEST(TransactionBuilder, RejectsInvalidTransparentChangeAddress)
 {
-    SelectParams(CBaseChainParams::REGTEST);
+    SelectParams(CBaseChainParams::Network::REGTEST);
     auto consensusParams = Params().GetConsensus();
 
     // Default CTxDestination type is an invalid address
@@ -124,7 +127,7 @@ TEST(TransactionBuilder, RejectsInvalidTransparentChangeAddress)
 
 TEST(TransactionBuilder, FailsWithNegativeChange)
 {
-    SelectParams(CBaseChainParams::REGTEST);
+    SelectParams(CBaseChainParams::Network::REGTEST);
     UpdateNetworkUpgradeParameters(Consensus::UPGRADE_OVERWINTER, Consensus::NetworkUpgrade::ALWAYS_ACTIVE);
     UpdateNetworkUpgradeParameters(Consensus::UPGRADE_SAPLING, Consensus::NetworkUpgrade::ALWAYS_ACTIVE);
     auto consensusParams = Params().GetConsensus();
@@ -136,8 +139,11 @@ TEST(TransactionBuilder, FailsWithNegativeChange)
     auto pk = sk.default_address();
 
     // Set up dummy transparent address
+    std::string sKeyError;
     CBasicKeyStore keystore;
-    CKey tsk = DecodeSecret(tSecretRegtest);
+    const CKey tsk = DecodeSecret(tSecretRegtest, sKeyError);
+    EXPECT_TRUE(tsk.IsValid());
+    EXPECT_TRUE(sKeyError.empty());
     keystore.AddKey(tsk);
     auto tkeyid = tsk.GetPubKey().GetID();
     auto scriptPubKey = GetScriptForDestination(tkeyid);
@@ -179,7 +185,7 @@ TEST(TransactionBuilder, FailsWithNegativeChange)
 
 TEST(TransactionBuilder, ChangeOutput)
 {
-    SelectParams(CBaseChainParams::REGTEST);
+    SelectParams(CBaseChainParams::Network::REGTEST);
     UpdateNetworkUpgradeParameters(Consensus::UPGRADE_OVERWINTER, Consensus::NetworkUpgrade::ALWAYS_ACTIVE);
     UpdateNetworkUpgradeParameters(Consensus::UPGRADE_SAPLING, Consensus::NetworkUpgrade::ALWAYS_ACTIVE);
     auto consensusParams = Params().GetConsensus();
@@ -203,8 +209,11 @@ TEST(TransactionBuilder, ChangeOutput)
     auto zChangeAddr = sk2.default_address();
 
     // Set up dummy transparent address
+    std::string sKeyError;
     CBasicKeyStore keystore;
-    CKey tsk = DecodeSecret(tSecretRegtest);
+    const CKey tsk = DecodeSecret(tSecretRegtest, sKeyError);
+    EXPECT_TRUE(tsk.IsValid());
+    EXPECT_TRUE(sKeyError.empty());
     keystore.AddKey(tsk);
     auto tkeyid = tsk.GetPubKey().GetID();
     auto scriptPubKey = GetScriptForDestination(tkeyid);
@@ -270,7 +279,7 @@ TEST(TransactionBuilder, ChangeOutput)
 
 TEST(TransactionBuilder, SetFee)
 {
-    SelectParams(CBaseChainParams::REGTEST);
+    SelectParams(CBaseChainParams::Network::REGTEST);
     UpdateNetworkUpgradeParameters(Consensus::UPGRADE_OVERWINTER, Consensus::NetworkUpgrade::ALWAYS_ACTIVE);
     UpdateNetworkUpgradeParameters(Consensus::UPGRADE_SAPLING, Consensus::NetworkUpgrade::ALWAYS_ACTIVE);
     auto consensusParams = Params().GetConsensus();
@@ -327,7 +336,7 @@ TEST(TransactionBuilder, SetFee)
 
 TEST(TransactionBuilder, CheckSaplingTxVersion)
 {
-    SelectParams(CBaseChainParams::REGTEST);
+    SelectParams(CBaseChainParams::Network::REGTEST);
     UpdateNetworkUpgradeParameters(Consensus::UPGRADE_OVERWINTER, Consensus::NetworkUpgrade::ALWAYS_ACTIVE);
     auto consensusParams = Params().GetConsensus();
 

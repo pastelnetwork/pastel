@@ -73,16 +73,20 @@ const CBaseChainParams& BaseParams()
 
 void SelectBaseParams(CBaseChainParams::Network network)
 {
-    switch (network) {
-    case CBaseChainParams::MAIN:
+    switch (network)
+    {
+    case CBaseChainParams::Network::MAIN:
         pCurrentBaseParams = &mainParams;
         break;
-    case CBaseChainParams::TESTNET:
+
+    case CBaseChainParams::Network::TESTNET:
         pCurrentBaseParams = &testNetParams;
         break;
-    case CBaseChainParams::REGTEST:
+
+    case CBaseChainParams::Network::REGTEST:
         pCurrentBaseParams = &regTestParams;
         break;
+
     default:
         assert(false && "Unimplemented network");
         return;
@@ -95,18 +99,18 @@ CBaseChainParams::Network NetworkIdFromCommandLine()
     bool fTestNet = GetBoolArg("-testnet", false);
 
     if (fTestNet && fRegTest)
-        return CBaseChainParams::MAX_NETWORK_TYPES;
+        return CBaseChainParams::Network::MAX_NETWORK_TYPES;
     if (fRegTest)
-        return CBaseChainParams::REGTEST;
+        return CBaseChainParams::Network::REGTEST;
     if (fTestNet)
-        return CBaseChainParams::TESTNET;
-    return CBaseChainParams::MAIN;
+        return CBaseChainParams::Network::TESTNET;
+    return CBaseChainParams::Network::MAIN;
 }
 
 bool SelectBaseParamsFromCommandLine()
 {
     CBaseChainParams::Network network = NetworkIdFromCommandLine();
-    if (network == CBaseChainParams::MAX_NETWORK_TYPES)
+    if (network == CBaseChainParams::Network::MAX_NETWORK_TYPES)
         return false;
 
     SelectBaseParams(network);
@@ -115,5 +119,5 @@ bool SelectBaseParamsFromCommandLine()
 
 bool AreBaseParamsConfigured()
 {
-    return pCurrentBaseParams != NULL;
+    return pCurrentBaseParams != nullptr;
 }

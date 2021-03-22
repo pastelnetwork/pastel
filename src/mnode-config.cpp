@@ -37,7 +37,7 @@ bool checkIPAddressPort(std::string& address, std::string alias, bool checkPort,
         return false;
     }
     if (checkPort) {
-        int mainnetDefaultPort = Params(CBaseChainParams::MAIN).GetDefaultPort();
+        int mainnetDefaultPort = Params(CBaseChainParams::Network::MAIN).GetDefaultPort();
         if(Params().IsMainNet()) {
             if(port != mainnetDefaultPort) {
                 strErr = _("Invalid port detected in masternode.conf") + "\n" +

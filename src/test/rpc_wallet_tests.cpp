@@ -296,7 +296,7 @@ BOOST_AUTO_TEST_CASE(rpc_wallet)
 
 BOOST_AUTO_TEST_CASE(rpc_wallet_getbalance)
 {
-    SelectParams(CBaseChainParams::TESTNET);
+    SelectParams(CBaseChainParams::Network::TESTNET);
 
     LOCK(pwalletMain->cs_wallet);
 
@@ -328,7 +328,7 @@ BOOST_AUTO_TEST_CASE(rpc_wallet_getbalance)
  */
 BOOST_AUTO_TEST_CASE(rpc_wallet_z_validateaddress)
 {
-    SelectParams(CBaseChainParams::MAIN);
+    SelectParams(CBaseChainParams::Network::MAIN);
 
     LOCK2(cs_main, pwalletMain->cs_wallet);
 
@@ -898,7 +898,7 @@ BOOST_AUTO_TEST_CASE(rpc_z_getoperations)
 
 BOOST_AUTO_TEST_CASE(rpc_z_sendmany_parameters)
 {
-    SelectParams(CBaseChainParams::TESTNET);
+    SelectParams(CBaseChainParams::Network::TESTNET);
 
     LOCK(pwalletMain->cs_wallet);
 
@@ -1011,7 +1011,7 @@ BOOST_AUTO_TEST_CASE(rpc_z_sendmany_parameters)
 // TODO: test private methods
 BOOST_AUTO_TEST_CASE(rpc_z_sendmany_internals)
 {
-    SelectParams(CBaseChainParams::TESTNET);
+    SelectParams(CBaseChainParams::Network::TESTNET);
 
     LOCK(pwalletMain->cs_wallet);
 
@@ -1247,7 +1247,7 @@ BOOST_AUTO_TEST_CASE(rpc_z_sendmany_internals)
 
 BOOST_AUTO_TEST_CASE(rpc_z_sendmany_taddr_to_sapling)
 {
-    SelectParams(CBaseChainParams::REGTEST);
+    SelectParams(CBaseChainParams::Network::REGTEST);
     UpdateNetworkUpgradeParameters(Consensus::UPGRADE_OVERWINTER, Consensus::NetworkUpgrade::ALWAYS_ACTIVE);
     UpdateNetworkUpgradeParameters(Consensus::UPGRADE_SAPLING, Consensus::NetworkUpgrade::ALWAYS_ACTIVE);
 
@@ -1470,7 +1470,7 @@ BOOST_AUTO_TEST_CASE(rpc_wallet_encrypted_wallet_sapzkeys)
 
 BOOST_AUTO_TEST_CASE(rpc_z_listunspent_parameters)
 {
-    SelectParams(CBaseChainParams::TESTNET);
+    SelectParams(CBaseChainParams::Network::TESTNET);
 
     LOCK(pwalletMain->cs_wallet);
 
@@ -1519,7 +1519,7 @@ BOOST_AUTO_TEST_CASE(rpc_z_listunspent_parameters)
 
 BOOST_AUTO_TEST_CASE(rpc_z_shieldcoinbase_parameters)
 {
-    SelectParams(CBaseChainParams::TESTNET);
+    SelectParams(CBaseChainParams::Network::TESTNET);
 
     LOCK(pwalletMain->cs_wallet);
 
@@ -1598,7 +1598,7 @@ BOOST_AUTO_TEST_CASE(rpc_z_shieldcoinbase_parameters)
 
 BOOST_AUTO_TEST_CASE(rpc_z_shieldcoinbase_internals)
 {
-    SelectParams(CBaseChainParams::TESTNET);
+    SelectParams(CBaseChainParams::Network::TESTNET);
 
     LOCK(pwalletMain->cs_wallet);
 
@@ -1668,7 +1668,7 @@ void CheckRPCThrows(std::string rpcString, std::string expectedErrorMessage) {
 
 BOOST_AUTO_TEST_CASE(rpc_z_mergetoaddress_parameters)
 {
-    SelectParams(CBaseChainParams::TESTNET);
+    SelectParams(CBaseChainParams::Network::TESTNET);
 
     LOCK(pwalletMain->cs_wallet);
 
@@ -1826,7 +1826,7 @@ BOOST_AUTO_TEST_CASE(rpc_z_mergetoaddress_parameters)
 // TODO: test private methods
 BOOST_AUTO_TEST_CASE(rpc_z_mergetoaddress_internals)
 {
-    SelectParams(CBaseChainParams::TESTNET);
+    SelectParams(CBaseChainParams::Network::TESTNET);
 
     LOCK(pwalletMain->cs_wallet);
 

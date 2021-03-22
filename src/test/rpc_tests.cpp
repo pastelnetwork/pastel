@@ -303,7 +303,7 @@ BOOST_AUTO_TEST_CASE(rpc_ban)
 
 BOOST_AUTO_TEST_CASE(rpc_raw_create_overwinter_v3)
 {
-    SelectParams(CBaseChainParams::REGTEST);
+    SelectParams(CBaseChainParams::Network::REGTEST);
     UpdateNetworkUpgradeParameters(Consensus::UPGRADE_OVERWINTER, Consensus::NetworkUpgrade::ALWAYS_ACTIVE);
 
     // Sample regtest address:

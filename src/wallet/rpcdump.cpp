@@ -113,10 +113,12 @@ UniValue importprivkey(const UniValue& params, bool fHelp)
     if (params.size() > 2)
         fRescan = params[2].get_bool();
 
-    CKey key = DecodeSecret(strSecret);
-    if (!key.IsValid()) throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid private key encoding");
+    std::string sKeyError;
+    const CKey key = DecodeSecret(strSecret, sKeyError);
+    if (!key.IsValid())
+        throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, tinyformat::format("Invalid private key, %s", sKeyError.c_str()));
 
-    CPubKey pubkey = key.GetPubKey();
+    const CPubKey pubkey = key.GetPubKey();
     assert(key.VerifyPubKey(pubkey));
     CKeyID vchAddress = pubkey.GetID();
     {
@@ -282,6 +284,7 @@ UniValue importwallet_impl(const UniValue& params, bool fHelp, bool fImportZKeys
     file.seekg(0, file.beg);
 
     pwalletMain->ShowProgress(_("Importing..."), 0); // show progress dialog in GUI
+    std::string sKeyError;
     while (file.good()) {
         pwalletMain->ShowProgress("", std::max(1, std::min(99, (int)(((double)file.tellg() / (double)nFilesize) * 100))));
         std::string line;
@@ -317,10 +320,10 @@ UniValue importwallet_impl(const UniValue& params, bool fHelp, bool fImportZKeys
             }
         }
 
-        CKey key = DecodeSecret(vstr[0]);
+        const CKey key = DecodeSecret(vstr[0], sKeyError);
         if (!key.IsValid())
             continue;
-        CPubKey pubkey = key.GetPubKey();
+        const CPubKey pubkey = key.GetPubKey();
         assert(key.VerifyPubKey(pubkey));
         CKeyID keyid = pubkey.GetID();
         if (pwalletMain->HaveKey(keyid)) {

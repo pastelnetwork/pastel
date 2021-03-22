@@ -155,7 +155,7 @@ void CActiveMasternode::ManageStateInitial()
         return;
     }
 
-    int mainnetDefaultPort = Params(CBaseChainParams::MAIN).GetDefaultPort();
+    int mainnetDefaultPort = Params(CBaseChainParams::Network::MAIN).GetDefaultPort();
     if(Params().IsMainNet()) {
         if(service.GetPort() != mainnetDefaultPort) {
             nState = ActiveMasternodeState::NotCapable;

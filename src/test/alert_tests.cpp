@@ -283,7 +283,7 @@ BOOST_FIXTURE_TEST_SUITE(Alert_tests, ReadAlerts)
 BOOST_AUTO_TEST_CASE(AlertApplies)
 {
     SetMockTime(11);
-    const std::vector<unsigned char>& alertKey = Params(CBaseChainParams::MAIN).AlertKey();
+    const std::vector<unsigned char>& alertKey = Params(CBaseChainParams::Network::MAIN).AlertKey();
 
     BOOST_FOREACH(const CAlert& alert, alerts)
     {
@@ -324,7 +324,7 @@ BOOST_AUTO_TEST_CASE(AlertApplies)
 BOOST_AUTO_TEST_CASE(AlertNotify)
 {
     SetMockTime(11);
-    const std::vector<unsigned char>& alertKey = Params(CBaseChainParams::MAIN).AlertKey();
+    const std::vector<unsigned char>& alertKey = Params(CBaseChainParams::Network::MAIN).AlertKey();
 
     boost::filesystem::path temp = GetTempPath() /
         boost::filesystem::unique_path("alertnotify-%%%%.txt");
@@ -364,7 +364,7 @@ BOOST_AUTO_TEST_CASE(AlertNotify)
 BOOST_AUTO_TEST_CASE(AlertDisablesRPC)
 {
     SetMockTime(11);
-    const std::vector<unsigned char>& alertKey = Params(CBaseChainParams::MAIN).AlertKey();
+    const std::vector<unsigned char>& alertKey = Params(CBaseChainParams::Network::MAIN).AlertKey();
 
     // Command should work before alerts
     BOOST_CHECK_EQUAL(GetWarnings("rpc"), "");
@@ -390,7 +390,7 @@ BOOST_AUTO_TEST_CASE(PartitionAlert)
     // Test PartitionCheck
     CCriticalSection csDummy;
     CBlockIndex indexDummy[400];
-    CChainParams& params = Params(CBaseChainParams::MAIN);
+    CChainParams& params = Params(CBaseChainParams::Network::MAIN);
     int64_t nPowTargetSpacing = params.GetConsensus().nPowTargetSpacing;
 
     // Generate fake blockchain timestamps relative to
