@@ -13,4 +13,4 @@ constexpr auto RPC_KEY_ALIAS					= "alias";
 constexpr auto RPC_RESULT_FAILED				= "failed";
 constexpr auto RPC_RESULT_SUCCESS				= "successful";
 
-inline const bool get_rpc_result(const bool bSucceeded) noexcept { return bSucceeded ? RPC_RESULT_SUCCESS : RPC_RESULT_FAILED; }
+inline const char *get_rpc_result(const bool bSucceeded) noexcept { return bSucceeded ? RPC_RESULT_SUCCESS : RPC_RESULT_FAILED; }
