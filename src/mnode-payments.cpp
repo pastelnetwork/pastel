@@ -2,6 +2,8 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
+#include <unistd.h>
+
 #include "main.h"
 #include "core_io.h"
 #include "key_io.h"

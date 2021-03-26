@@ -397,13 +397,14 @@ static void MutateTxSign(CMutableTransaction& tx, const std::string& strInput)
     UniValue keysObj = registers["privatekeys"];
     fGivenKeys = true;
 
-    for (size_t kidx = 0; kidx < keysObj.size(); kidx++) {
+    std::string sKeyError;
+    for (size_t kidx = 0; kidx < keysObj.size(); kidx++)
+    {
         if (!keysObj[kidx].isStr())
             throw std::runtime_error("privatekey not a std::string");
-        CKey key = DecodeSecret(keysObj[kidx].getValStr());
-        if (!key.IsValid()) {
-            throw std::runtime_error("privatekey not valid");
-        }
+        const CKey key = DecodeSecret(keysObj[kidx].getValStr(), sKeyError);
+        if (!key.IsValid())
+            throw std::runtime_error(tinyformat::format("privatekey not valid, %s", sKeyError.c_str()));
         tempKeystore.AddKey(key);
     }
 

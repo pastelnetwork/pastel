@@ -601,7 +601,7 @@ BOOST_AUTO_TEST_CASE(test_simple_joinsplit_invalidity_driver) {
     }
     {
         // Switch to regtest parameters so we can activate Overwinter
-        SelectParams(CBaseChainParams::REGTEST);
+        SelectParams(CBaseChainParams::Network::REGTEST);
 
         CMutableTransaction mtx;
         mtx.fOverwintered = true;
@@ -621,7 +621,7 @@ BOOST_AUTO_TEST_CASE(test_simple_joinsplit_invalidity_driver) {
         UpdateNetworkUpgradeParameters(Consensus::UPGRADE_SAPLING, Consensus::NetworkUpgrade::NO_ACTIVATION_HEIGHT);
 
         // Switch back to mainnet parameters as originally selected in test fixture
-        SelectParams(CBaseChainParams::MAIN);
+        SelectParams(CBaseChainParams::Network::MAIN);
     }
 }
 

@@ -83,7 +83,7 @@ BasicTestingSetup::BasicTestingSetup()
     SetupNetworking();
     fPrintToDebugLog = false; // don't want to write to debug.log file
     fCheckBlockIndex = true;
-    SelectParams(CBaseChainParams::MAIN);
+    SelectParams(CBaseChainParams::Network::MAIN);
 }
 BasicTestingSetup::~BasicTestingSetup()
 {

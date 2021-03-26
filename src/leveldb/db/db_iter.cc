@@ -13,6 +13,7 @@
 #include "util/logging.h"
 #include "util/mutexlock.h"
 #include "util/random.h"
+#include <unistd.h>
 
 namespace leveldb {
 

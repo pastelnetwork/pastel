@@ -829,14 +829,17 @@ UniValue signrawtransaction(const UniValue& params, bool fHelp)
 
     bool fGivenKeys = false;
     CBasicKeyStore tempKeystore;
-    if (params.size() > 2 && !params[2].isNull()) {
+    if (params.size() > 2 && !params[2].isNull())
+    {
         fGivenKeys = true;
         UniValue keys = params[2].get_array();
-        for (size_t idx = 0; idx < keys.size(); idx++) {
-            UniValue k = keys[idx];
-            CKey key = DecodeSecret(k.get_str());
+        std::string sKeyError;
+        for (size_t idx = 0; idx < keys.size(); idx++)
+        {
+            const UniValue k = keys[idx];
+            const CKey key = DecodeSecret(k.get_str(), sKeyError);
             if (!key.IsValid())
-                throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid private key");
+                throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, tinyformat::format("Invalid private key, %s", sKeyError.c_str()));
             tempKeystore.AddKey(key);
         }
     }

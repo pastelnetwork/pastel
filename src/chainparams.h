@@ -1,15 +1,13 @@
+#pragma once
 // Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2014 The Bitcoin Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
-
-#ifndef BITCOIN_CHAINPARAMS_H
-#define BITCOIN_CHAINPARAMS_H
-
 #include "chainparamsbase.h"
 #include "consensus/params.h"
 #include "primitives/block.h"
 #include "protocol.h"
+#include "enum_util.h"
 
 #include <vector>
 
@@ -42,8 +40,9 @@ struct CCheckpointData {
 class CChainParams
 {
 public:
-    enum Base58Type {
-        PUBKEY_ADDRESS,
+    enum struct Base58Type : uint32_t
+    {
+        PUBKEY_ADDRESS = 0,
         SCRIPT_ADDRESS,
         SECRET_KEY,
         EXT_PUBLIC_KEY,
@@ -56,8 +55,9 @@ public:
         MAX_BASE58_TYPES
     };
 
-    enum Bech32Type {
-        SAPLING_PAYMENT_ADDRESS,
+    enum struct Bech32Type : uint32_t
+    {
+        SAPLING_PAYMENT_ADDRESS = 0,
         SAPLING_FULL_VIEWING_KEY,
         SAPLING_INCOMING_VIEWING_KEY,
         SAPLING_EXTENDED_SPEND_KEY,
@@ -68,38 +68,41 @@ public:
     const Consensus::Params& GetConsensus() const { return consensus; }
     const CMessageHeader::MessageStartChars& MessageStart() const { return pchMessageStart; }
     const std::vector<unsigned char>& AlertKey() const { return vAlertPubKey; }
-    int GetDefaultPort() const { return nDefaultPort; }
+    int GetDefaultPort() const noexcept { return nDefaultPort; }
 
-    const CBlock& GenesisBlock() const { return genesis; }
+    const CBlock& GenesisBlock() const noexcept { return genesis; }
     /** Make miner wait to have peers to avoid wasting work */
-    bool MiningRequiresPeers() const { return fMiningRequiresPeers; }
+    bool MiningRequiresPeers() const noexcept { return fMiningRequiresPeers; }
     /** Default value for -checkmempool and -checkblockindex argument */
-    bool DefaultConsistencyChecks() const { return fDefaultConsistencyChecks; }
+    bool DefaultConsistencyChecks() const noexcept { return fDefaultConsistencyChecks; }
     /** Policy: Filter transactions that do not match well-defined patterns */
-    bool RequireStandard() const { return fRequireStandard; }
-    int64_t PruneAfterHeight() const { return nPruneAfterHeight; }
-    unsigned int EquihashN() const { return nEquihashN; }
-    unsigned int EquihashK() const { return nEquihashK; }
-    std::string CurrencyUnits() const { return strCurrencyUnits; }
-    uint32_t BIP44CoinType() const { return bip44CoinType; }
+    bool RequireStandard() const noexcept { return fRequireStandard; }
+    int64_t PruneAfterHeight() const noexcept { return nPruneAfterHeight; }
+    unsigned int EquihashN() const noexcept { return nEquihashN; }
+    unsigned int EquihashK() const noexcept { return nEquihashK; }
+    std::string CurrencyUnits() const noexcept { return strCurrencyUnits; }
+    uint32_t BIP44CoinType() const noexcept { return bip44CoinType; }
     /** Make miner stop after a block is found. In RPC, don't return until nGenProcLimit blocks are generated */
-    bool MineBlocksOnDemand() const { return fMineBlocksOnDemand; }
+    bool MineBlocksOnDemand() const noexcept { return fMineBlocksOnDemand; }
     /** In the future use NetworkIDString() for RPC fields */
-    bool TestnetToBeDeprecatedFieldRPC() const { return fTestnetToBeDeprecatedFieldRPC; }
+    bool TestnetToBeDeprecatedFieldRPC() const noexcept { return fTestnetToBeDeprecatedFieldRPC; }
     /** Return the BIP70 network string (main, test or regtest) */
-    std::string NetworkIDString() const { return strNetworkID; }    
-    const std::vector<CDNSSeedData>& DNSSeeds() const { return vSeeds; }
-    const std::vector<unsigned char>& Base58Prefix(Base58Type type) const { return base58Prefixes[type]; }
-    const std::string& Bech32HRP(Bech32Type type) const { return bech32HRPs[type]; }
-    const std::vector<SeedSpec6>& FixedSeeds() const { return vFixedSeeds; }
-    const CCheckpointData& Checkpoints() const { return checkpointData; }
+    std::string NetworkIDString() const noexcept { return strNetworkID; }    
+    const std::vector<CDNSSeedData>& DNSSeeds() const noexcept { return vSeeds; }
+    const std::vector<unsigned char>& Base58Prefix(const Base58Type type) const noexcept { return base58Prefixes[to_integral_type(type)]; }
+    const std::string& Bech32HRP(const Bech32Type type) const noexcept { return bech32HRPs[to_integral_type(type)]; }
+    const std::vector<SeedSpec6>& FixedSeeds() const noexcept { return vFixedSeeds; }
+    const CCheckpointData& Checkpoints() const noexcept { return checkpointData; }
 
-    bool IsMainNet() const {return network == CBaseChainParams::MAIN;}
-    bool IsTestNet() const {return network == CBaseChainParams::TESTNET;}
-    bool IsRegTest() const {return network == CBaseChainParams::REGTEST;}
+    bool IsMainNet() const noexcept { return network == CBaseChainParams::Network::MAIN; }
+    bool IsTestNet() const noexcept { return network == CBaseChainParams::Network::TESTNET; }
+    bool IsRegTest() const noexcept { return network == CBaseChainParams::Network::REGTEST; }
 
 protected:
-    CChainParams() {}
+    CChainParams()
+    {
+        memset(&pchMessageStart, 0, sizeof(pchMessageStart));
+    }
 
     Consensus::Params consensus;
     CMessageHeader::MessageStartChars pchMessageStart;
@@ -110,12 +113,12 @@ protected:
     unsigned int nEquihashN = 0;
     unsigned int nEquihashK = 0;
     std::vector<CDNSSeedData> vSeeds;
-    std::vector<unsigned char> base58Prefixes[MAX_BASE58_TYPES];
-    std::string bech32HRPs[MAX_BECH32_TYPES];
+    std::vector<unsigned char> base58Prefixes[to_integral_type(Base58Type::MAX_BASE58_TYPES)];
+    std::string bech32HRPs[to_integral_type(Bech32Type::MAX_BECH32_TYPES)];
     std::string strNetworkID;
-    CBaseChainParams::Network network;
+    CBaseChainParams::Network network = CBaseChainParams::Network::MAIN;
     std::string strCurrencyUnits;
-    uint32_t bip44CoinType;
+    uint32_t bip44CoinType = 0;
     CBlock genesis;
     std::vector<SeedSpec6> vFixedSeeds;
     bool fMiningRequiresPeers = false;
@@ -148,5 +151,3 @@ bool SelectParamsFromCommandLine();
  * Allows modifying the network upgrade regtest parameters.
  */
 void UpdateNetworkUpgradeParameters(Consensus::UpgradeIndex idx, int nActivationHeight);
-
-#endif // BITCOIN_CHAINPARAMS_H

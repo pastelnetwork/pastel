@@ -12,7 +12,7 @@
 extern UniValue blockToJSON(const CBlock& block, const CBlockIndex* blockindex, bool txDetails = false);
 
 TEST(rpc, check_blockToJSON_returns_minified_solution) {
-    SelectParams(CBaseChainParams::TESTNET);
+    SelectParams(CBaseChainParams::Network::TESTNET);
 
     // Testnet block 0030b0d110441f5bdad733adcd68ad308aa96cf43aeb8bdcd57b04fed11cd56e
     // Height 4

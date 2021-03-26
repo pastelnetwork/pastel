@@ -15,6 +15,7 @@
 #include "sync.h"
 #include "utilstrencodings.h"
 #include "utiltime.h"
+#include "clientversion.h"
 
 #include <stdarg.h>
 #include <stdio.h>

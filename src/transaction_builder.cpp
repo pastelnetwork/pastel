@@ -243,7 +243,7 @@ TransactionBuilderResult TransactionBuilder::Build()
                 output.note.r.begin(),
                 output.note.value(),
                 odesc.cv.begin(),
-                odesc.zkproof.begin())) {
+                odesc.zkproof.data())) {
             librustzcash_sapling_proving_ctx_free(ctx);
             return TransactionBuilderResult("Output proof failed");
         }

@@ -115,7 +115,7 @@ public:
         uint256 h_sig = params.h_sig(jsdesc.randomSeed, jsdesc.nullifiers, joinSplitPubKey);
 
         return librustzcash_sprout_verify(
-            proof.begin(),
+            proof.data(),
             jsdesc.anchor.begin(),
             h_sig.begin(),
             jsdesc.macs[0].begin(),

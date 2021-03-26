@@ -115,9 +115,11 @@ bool CMasterNodeController::EnableMasterNode(std::ostringstream& strErrors, boos
     if(fMasterNode) {
         LogPrintf("MASTERNODE:\n");
 
-        std::string strMasterNodePrivKey = GetArg("-masternodeprivkey", "");
-        if(!strMasterNodePrivKey.empty()) {
-            if(!CMessageSigner::GetKeysFromSecret(strMasterNodePrivKey, activeMasternode.keyMasternode, activeMasternode.pubKeyMasternode)) {
+        const std::string strMasterNodePrivKey = GetArg("-masternodeprivkey", "");
+        if(!strMasterNodePrivKey.empty())
+        {
+            if(!CMessageSigner::GetKeysFromSecret(strMasterNodePrivKey, activeMasternode.keyMasternode, activeMasternode.pubKeyMasternode))
+            {
                 strErrors << _("Invalid masternodeprivkey. Please see documentation.");
                 return false;
             }

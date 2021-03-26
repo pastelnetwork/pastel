@@ -23,7 +23,7 @@ public:
 #endif
 
 TEST(Miner, GetMinerScriptPubKey) {
-    SelectParams(CBaseChainParams::MAIN);
+    SelectParams(CBaseChainParams::Network::MAIN);
 
     boost::optional<CScript> scriptPubKey;
 #ifdef ENABLE_WALLET
