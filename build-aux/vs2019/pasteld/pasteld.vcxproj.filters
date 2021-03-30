@@ -1,0 +1,142 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Source Files">
+      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
+      <Extensions>cpp;c;cc;cxx;c++;cppm;ixx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
+    </Filter>
+    <Filter Include="Resource Files">
+      <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
+      <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
+    </Filter>
+    <Filter Include="Source Files\mnode">
+      <UniqueIdentifier>{b0739a92-e074-4ffa-ba9e-f05a2239c034}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\vc_port">
+      <UniqueIdentifier>{4580c955-f71f-4d68-96ae-42c398fc382c}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="..\..\..\src\mnode-active.cpp">
+      <Filter>Source Files\mnode</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\src\mnode-config.cpp">
+      <Filter>Source Files\mnode</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\src\mnode-controller.cpp">
+      <Filter>Source Files\mnode</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\src\mnode-db.cpp">
+      <Filter>Source Files\mnode</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\src\mnode-dbcreate.cpp">
+      <Filter>Source Files\mnode</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\src\mnode-governance.cpp">
+      <Filter>Source Files\mnode</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\src\mnode-manager.cpp">
+      <Filter>Source Files\mnode</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\src\mnode-masternode.cpp">
+      <Filter>Source Files\mnode</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\src\mnode-messageproc.cpp">
+      <Filter>Source Files\mnode</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\src\mnode-msgsigner.cpp">
+      <Filter>Source Files\mnode</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\src\mnode-notificationinterface.cpp">
+      <Filter>Source Files\mnode</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\src\mnode-pastel.cpp">
+      <Filter>Source Files\mnode</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\src\mnode-payments.cpp">
+      <Filter>Source Files\mnode</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\src\mnode-requesttracker.cpp">
+      <Filter>Source Files\mnode</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\src\mnode-rpc.cpp">
+      <Filter>Source Files\mnode</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\src\mnode-sync.cpp">
+      <Filter>Source Files\mnode</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\src\mnode-validation.cpp">
+      <Filter>Source Files\mnode</Filter>
+    </ClCompile>
+    <ClCompile Include="..\port\unistd.cpp">
+      <Filter>Source Files\vc_port</Filter>
+    </ClCompile>
+    <ClCompile Include="..\port\ctz_clz.h">
+      <Filter>Source Files\vc_port</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\src\bitcoind.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\..\..\src\mnode-active.h">
+      <Filter>Source Files\mnode</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\mnode-config.h">
+      <Filter>Source Files\mnode</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\mnode-controller.h">
+      <Filter>Source Files\mnode</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\mnode-db.h">
+      <Filter>Source Files\mnode</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\mnode-governance.h">
+      <Filter>Source Files\mnode</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\mnode-manager.h">
+      <Filter>Source Files\mnode</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\mnode-masternode.h">
+      <Filter>Source Files\mnode</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\mnode-messageproc.h">
+      <Filter>Source Files\mnode</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\mnode-msgsigner.h">
+      <Filter>Source Files\mnode</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\mnode-notificationinterface.h">
+      <Filter>Source Files\mnode</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\mnode-pastel.h">
+      <Filter>Source Files\mnode</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\mnode-payments.h">
+      <Filter>Source Files\mnode</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\mnode-requesttracker.h">
+      <Filter>Source Files\mnode</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\mnode-sync.h">
+      <Filter>Source Files\mnode</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\mnode-validation.h">
+      <Filter>Source Files\mnode</Filter>
+    </ClInclude>
+    <ClInclude Include="..\port\unistd.h">
+      <Filter>Source Files\vc_port</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\version.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\mnode-rpc.h">
+      <Filter>Source Files\mnode</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="..\..\..\src\bitcoind-res.rc">
+      <Filter>Resource Files</Filter>
+    </ResourceCompile>
+  </ItemGroup>
+</Project>

@@ -12,6 +12,7 @@
 #include <cstddef>
 #include <iostream>
 #include <gmp.h>
+#include <gmpxx.h>
 #include "common/serialization.hpp"
 
 namespace libsnark {

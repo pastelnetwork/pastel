@@ -54,7 +54,9 @@ void _basic_serial_radix2_FFT(std::vector<FieldT> &a, const FieldT &omega)
         // w_m is 2^s-th root of unity now
         const FieldT w_m = omega^(n/(2*m));
 
+#ifndef _MSC_VER
         asm volatile ("/* pre-inner */");
+#endif
         for (size_t k = 0; k < n; k += 2*m)
         {
             FieldT w = FieldT::one();
@@ -66,7 +68,9 @@ void _basic_serial_radix2_FFT(std::vector<FieldT> &a, const FieldT &omega)
                 w *= w_m;
             }
         }
+#ifndef _MSC_VER
         asm volatile ("/* post-inner */");
+#endif
         m *= 2;
     }
 }

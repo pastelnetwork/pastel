@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="Current" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup Label="UserMacros">
+    <PSL_ROOT>$(MSBuildThisFileDirectory)..\..\..\</PSL_ROOT>
+    <SRC>$(PSL_ROOT)src\</SRC>
+    <BIN_DIR>$(PSL_ROOT)bin\</BIN_DIR>
+    <VS>vs2019</VS>
+    <VC>16</VC>
+    <RELEASE_OUTDIR>$(BIN_DIR)$(VS)\$(Configuration)_$(PlatformName)\</RELEASE_OUTDIR>
+    <DEPENDS>$(PSL_ROOT)depends\x86_64-pc-windows-msvc\</DEPENDS>
+    <LIBDBGSFX Condition="'$(Configuration)'=='Debug'">d</LIBDBGSFX>
+    <LIBDBGSFX Condition="'$(Configuration)'=='Release'"></LIBDBGSFX>
+  </PropertyGroup>
+  <PropertyGroup>
+    <OutDir>$(RELEASE_OUTDIR)\</OutDir>
+    <IntDir>$(RELEASE_OUTDIR)$(ProjectName)\</IntDir>
+    <ExtensionsToDeleteOnClean>$(ExtensionsToDeleteOnClean)</ExtensionsToDeleteOnClean>
+    <IgnoreImportLibrary>true</IgnoreImportLibrary>
+    <UseNativeEnvironment>true</UseNativeEnvironment>
+    <UseMultiToolTask>true</UseMultiToolTask>
+  </PropertyGroup>
+  <PropertyGroup>
+    <IncludePath>$(IncludePath);$(DEPENDS)include</IncludePath>
+  </PropertyGroup>
+  <ItemDefinitionGroup>
+    <ClCompile>
+      <AdditionalIncludeDirectories>$(SRC);$(DEPENDS)include;$(PSL_ROOT)build-aux\$(VS)\port;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>WIN32;_WIN32_;_WINDOWS;NOMINMAX;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <ExceptionHandling>Async</ExceptionHandling>
+      <WarningLevel>Level3</WarningLevel>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <StringPooling>true</StringPooling>
+  </ClCompile>
+    <Link>
+      <AdditionalDependencies>%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(RELEASE_OUTDIR);$(DEPENDS)lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <ModuleDefinitionFile />
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <GenerateMapFile>true</GenerateMapFile>
+      <MapExports>true</MapExports>
+      <LargeAddressAware>true</LargeAddressAware>
+    </Link>
+    <ResourceCompile>
+      <PreprocessorDefinitions>%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <Culture>0x0409</Culture>
+      <AdditionalIncludeDirectories>%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ResourceCompile>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <BuildMacro Include="PSL_ROOT">
+      <Value>$(PSL_ROOT)</Value>
+    </BuildMacro>
+    <BuildMacro Include="SRC">
+      <Value>$(SRC)</Value>
+    </BuildMacro>
+    <BuildMacro Include="BIN_ROOT">
+      <Value>$(BIN_ROOT)</Value>
+    </BuildMacro>
+    <BuildMacro Include="VS">
+      <Value>$(VS)</Value>
+    </BuildMacro>
+    <BuildMacro Include="VC">
+      <Value>$(VC)</Value>
+    </BuildMacro>
+    <BuildMacro Include="SRC">
+      <Value>$(SRC)</Value>
+    </BuildMacro>
+    <BuildMacro Include="DEPENDS">
+      <Value>$(DEPENDS)</Value>
+    </BuildMacro>
+    <BuildMacro Include="LIBDBGSFX">
+      <Value>$(LIBDBGSFX)</Value>
+    </BuildMacro>
+  </ItemGroup>
+</Project>

@@ -383,7 +383,7 @@ public:
         bech32HRPs[to_integral_type(Bech32Type::SAPLING_INCOMING_VIEWING_KEY)] = "pivks";
         bech32HRPs[to_integral_type(Bech32Type::SAPLING_EXTENDED_SPEND_KEY)] = "p-secret-extended-key-main";
 
-        vFixedSeeds = std::vector<SeedSpec6>(pnSeed6_main, pnSeed6_main + ARRAYLEN(pnSeed6_main));
+ //       vFixedSeeds = std::vector<SeedSpec6>(pnSeed6_main, pnSeed6_main + ARRAYLEN(pnSeed6_main));
 
         fMiningRequiresPeers = true;
         fDefaultConsistencyChecks = false;
@@ -484,7 +484,7 @@ public:
         bech32HRPs[to_integral_type(Bech32Type::SAPLING_INCOMING_VIEWING_KEY)] = "pivktestsapling";
         bech32HRPs[to_integral_type(Bech32Type::SAPLING_EXTENDED_SPEND_KEY)] = "p-secret-extended-key-test";
 
-        vFixedSeeds = std::vector<SeedSpec6>(pnSeed6_test, pnSeed6_test + ARRAYLEN(pnSeed6_test));
+        // vFixedSeeds = std::vector<SeedSpec6>(pnSeed6_test, pnSeed6_test + ARRAYLEN(pnSeed6_test));
 
         fMiningRequiresPeers = true;
         fDefaultConsistencyChecks = false;
