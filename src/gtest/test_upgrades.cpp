@@ -17,7 +17,7 @@ protected:
 };
 
 TEST_F(UpgradesTest, NetworkUpgradeState) {
-    SelectParams(CBaseChainParams::REGTEST);
+    SelectParams(CBaseChainParams::Network::REGTEST);
     const Consensus::Params& params = Params().GetConsensus();
 
     // Consensus::NetworkUpgrade::NO_ACTIVATION_HEIGHT
@@ -55,7 +55,7 @@ TEST_F(UpgradesTest, NetworkUpgradeState) {
 }
 
 TEST_F(UpgradesTest, CurrentEpoch) {
-    SelectParams(CBaseChainParams::REGTEST);
+    SelectParams(CBaseChainParams::Network::REGTEST);
     const Consensus::Params& params = Params().GetConsensus();
     auto nBranchId = NetworkUpgradeInfo[Consensus::UPGRADE_TESTDUMMY].nBranchId;
 
@@ -86,7 +86,7 @@ TEST_F(UpgradesTest, CurrentEpoch) {
 }
 
 TEST_F(UpgradesTest, IsActivationHeight) {
-    SelectParams(CBaseChainParams::REGTEST);
+    SelectParams(CBaseChainParams::Network::REGTEST);
     const Consensus::Params& params = Params().GetConsensus();
 
     // Consensus::NetworkUpgrade::NO_ACTIVATION_HEIGHT
@@ -115,7 +115,7 @@ TEST_F(UpgradesTest, IsActivationHeight) {
 }
 
 TEST_F(UpgradesTest, IsActivationHeightForAnyUpgrade) {
-    SelectParams(CBaseChainParams::REGTEST);
+    SelectParams(CBaseChainParams::Network::REGTEST);
     const Consensus::Params& params = Params().GetConsensus();
 
     // Consensus::NetworkUpgrade::NO_ACTIVATION_HEIGHT
@@ -144,7 +144,7 @@ TEST_F(UpgradesTest, IsActivationHeightForAnyUpgrade) {
 }
 
 TEST_F(UpgradesTest, NextEpoch) {
-    SelectParams(CBaseChainParams::REGTEST);
+    SelectParams(CBaseChainParams::Network::REGTEST);
     const Consensus::Params& params = Params().GetConsensus();
 
     // Consensus::NetworkUpgrade::NO_ACTIVATION_HEIGHT
@@ -173,7 +173,7 @@ TEST_F(UpgradesTest, NextEpoch) {
 }
 
 TEST_F(UpgradesTest, NextActivationHeight) {
-    SelectParams(CBaseChainParams::REGTEST);
+    SelectParams(CBaseChainParams::Network::REGTEST);
     const Consensus::Params& params = Params().GetConsensus();
 
     // Consensus::NetworkUpgrade::NO_ACTIVATION_HEIGHT

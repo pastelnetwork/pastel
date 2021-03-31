@@ -9,7 +9,13 @@
 
 #include <stdio.h>
 #include <math.h>
-#include "sys/time.h"
+#include <unistd.h>
+#ifdef WIN32
+#include <winsock2.h>
+#else
+#include <sys/time.h>
+#endif
+
 
 static double gettimedouble(void) {
     struct timeval tv;

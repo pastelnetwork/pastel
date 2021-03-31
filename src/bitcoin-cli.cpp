@@ -7,6 +7,7 @@
 #include "clientversion.h"
 #include "rpc/client.h"
 #include "rpc/protocol.h"
+#include "rpc/rpc_consts.h"
 #include "util.h"
 #include "utilstrencodings.h"
 
@@ -264,14 +265,17 @@ int CommandLineRPC(int argc, char *argv[])
 {
     std::string strPrint;
     int nRet = 0;
-    try {
+    try
+    {
         // Skip switches
-        while (argc > 1 && IsSwitchChar(argv[1][0])) {
+        while (argc > 1 && IsSwitchChar(argv[1][0]))
+        {
             argc--;
             argv++;
         }
-        std::vector<std::string> args = std::vector<std::string>(&argv[1], &argv[argc]);
-        if (GetBoolArg("-stdin", false)) {
+        auto args = std::vector<std::string>(&argv[1], &argv[argc]);
+        if (GetBoolArg("-stdin", false))
+        {
             // Read one arg per line from stdin and append
             std::string line;
             while (std::getline(std::cin,line))
@@ -279,20 +283,23 @@ int CommandLineRPC(int argc, char *argv[])
         }
         if (args.size() < 1)
             throw std::runtime_error("too few parameters (need at least command)");
-        std::string strMethod = args[0];
+        const std::string strMethod = args[0];
         UniValue params = RPCConvertValues(strMethod, std::vector<std::string>(args.begin()+1, args.end()));
 
         // Execute and handle connection failures with -rpcwait
         const bool fWait = GetBoolArg("-rpcwait", false);
-        do {
-            try {
+        do
+        {
+            try
+            {
                 const UniValue reply = CallRPC(strMethod, params);
 
                 // Parse reply
-                const UniValue& result = find_value(reply, "result");
+                const UniValue& result = find_value(reply, RPC_KEY_RESULT);
                 const UniValue& error  = find_value(reply, "error");
 
-                if (!error.isNull()) {
+                if (!error.isNull())
+                {
                     // Error
                     int code = error["code"].get_int();
                     if (fWait && code == RPC_IN_WARMUP)
@@ -308,7 +315,9 @@ int CommandLineRPC(int argc, char *argv[])
                         if (errMsg.isStr())
                             strPrint += "error message:\n"+errMsg.get_str();
                     }
-                } else {
+                }
+                else
+                {
                     // Result
                     if (result.isNull())
                         strPrint = "";
@@ -320,7 +329,8 @@ int CommandLineRPC(int argc, char *argv[])
                 // Connection succeeded, no need to retry.
                 break;
             }
-            catch (const CConnectionFailed&) {
+            catch (const CConnectionFailed&)
+            {
                 if (fWait)
                     MilliSleep(1000);
                 else
@@ -328,21 +338,23 @@ int CommandLineRPC(int argc, char *argv[])
             }
         } while (fWait);
     }
-    catch (const boost::thread_interrupted&) {
+    catch (const boost::thread_interrupted&)
+    {
         throw;
     }
-    catch (const std::exception& e) {
+    catch (const std::exception& e)
+    {
         strPrint = std::string("error: ") + e.what();
         nRet = EXIT_FAILURE;
     }
-    catch (...) {
-        PrintExceptionContinue(NULL, "CommandLineRPC()");
+    catch (...)
+    {
+        PrintExceptionContinue(nullptr, "CommandLineRPC()");
         throw;
     }
 
-    if (strPrint != "") {
+    if (strPrint != "")
         fprintf((nRet == 0 ? stdout : stderr), "%s\n", strPrint.c_str());
-    }
     return nRet;
 }
 

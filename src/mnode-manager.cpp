@@ -7,6 +7,7 @@
 #include <set>
 #include <vector>
 #include <algorithm>
+#include <random>
 
 #include "mnode-active.h"
 
@@ -555,9 +556,10 @@ masternode_info_t CMasternodeMan::FindRandomNotInVec(const std::vector<COutPoint
         vpMasternodesShuffled.push_back(&mnpair.second);
     }
 
-    InsecureRand insecureRand;
+    std::random_device rd;
+    std::mt19937 g(rd());
     // shuffle pointers
-    std::random_shuffle(vpMasternodesShuffled.begin(), vpMasternodesShuffled.end(), insecureRand);
+    std::shuffle(vpMasternodesShuffled.begin(), vpMasternodesShuffled.end(), g);
     bool fExclude;
 
     // loop through

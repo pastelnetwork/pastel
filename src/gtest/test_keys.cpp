@@ -7,7 +7,7 @@
 
 TEST(Keys, EncodeAndDecodeSapling)
 {
-    SelectParams(CBaseChainParams::MAIN);
+    SelectParams(CBaseChainParams::Network::MAIN);
 
     std::vector<unsigned char, secure_allocator<unsigned char>> rawSeed(32);
     HDSeed seed(rawSeed);
@@ -19,7 +19,7 @@ TEST(Keys, EncodeAndDecodeSapling)
             std::string sk_string = EncodeSpendingKey(sk);
             EXPECT_EQ(
                 sk_string.substr(0, 26),
-                Params().Bech32HRP(CChainParams::SAPLING_EXTENDED_SPEND_KEY));
+                Params().Bech32HRP(CChainParams::Bech32Type::SAPLING_EXTENDED_SPEND_KEY));
 
             auto spendingkey2 = DecodeSpendingKey(sk_string);
             EXPECT_TRUE(IsValidSpendingKey(spendingkey2));
@@ -34,7 +34,7 @@ TEST(Keys, EncodeAndDecodeSapling)
             std::string addr_string = EncodePaymentAddress(addr);
             EXPECT_EQ(
                 addr_string.substr(0, 2),
-                Params().Bech32HRP(CChainParams::SAPLING_PAYMENT_ADDRESS));
+                Params().Bech32HRP(CChainParams::Bech32Type::SAPLING_PAYMENT_ADDRESS));
 
             auto paymentaddr2 = DecodePaymentAddress(addr_string);
             EXPECT_TRUE(IsValidPaymentAddress(paymentaddr2));

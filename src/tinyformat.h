@@ -146,6 +146,9 @@ namespace tfm = tinyformat;
 #   ifdef __GXX_EXPERIMENTAL_CXX0X__
 #       define TINYFORMAT_USE_VARIADIC_TEMPLATES
 #   endif
+#   if defined(_MSC_VER) && _MSC_VER >= 1700
+#       define TINYFORMAT_USE_VARIADIC_TEMPLATES
+#   endif
 #endif
 
 #if defined(__GLIBCXX__) && __GLIBCXX__ < 20080201

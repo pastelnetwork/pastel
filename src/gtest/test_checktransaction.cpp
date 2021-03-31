@@ -136,7 +136,7 @@ TEST(checktransaction_tests, bad_txns_vout_empty) {
 }
 
 TEST(checktransaction_tests, BadTxnsOversize) {
-    SelectParams(CBaseChainParams::REGTEST);
+    SelectParams(CBaseChainParams::Network::REGTEST);
     CMutableTransaction mtx = GetValidTransaction();
 
     mtx.vin[0].scriptSig = CScript();
@@ -197,7 +197,7 @@ TEST(checktransaction_tests, BadTxnsOversize) {
 }
 
 TEST(checktransaction_tests, OversizeSaplingTxns) {
-    SelectParams(CBaseChainParams::REGTEST);
+    SelectParams(CBaseChainParams::Network::REGTEST);
     UpdateNetworkUpgradeParameters(Consensus::UPGRADE_OVERWINTER, Consensus::NetworkUpgrade::ALWAYS_ACTIVE);
     UpdateNetworkUpgradeParameters(Consensus::UPGRADE_SAPLING, Consensus::NetworkUpgrade::ALWAYS_ACTIVE);
 
@@ -499,7 +499,7 @@ TEST(checktransaction_tests, bad_txns_prevout_null) {
 }
 
 TEST(checktransaction_tests, bad_txns_invalid_joinsplit_signature) {
-    SelectParams(CBaseChainParams::REGTEST);
+    SelectParams(CBaseChainParams::Network::REGTEST);
 
     CMutableTransaction mtx = GetValidTransaction();
     mtx.joinSplitSig[0] += 1;
@@ -514,7 +514,7 @@ TEST(checktransaction_tests, bad_txns_invalid_joinsplit_signature) {
 }
 
 TEST(checktransaction_tests, non_canonical_ed25519_signature) {
-    SelectParams(CBaseChainParams::REGTEST);
+    SelectParams(CBaseChainParams::Network::REGTEST);
 
     CMutableTransaction mtx = GetValidTransaction();
 
@@ -788,7 +788,7 @@ TEST(checktransaction_tests, OverwinterVersionNumberLow) {
 
 // Test bad Overwinter version number in ContextualCheckTransaction
 TEST(checktransaction_tests, OverwinterVersionNumberHigh) {
-    SelectParams(CBaseChainParams::REGTEST);
+    SelectParams(CBaseChainParams::Network::REGTEST);
     UpdateNetworkUpgradeParameters(Consensus::UPGRADE_OVERWINTER, Consensus::NetworkUpgrade::ALWAYS_ACTIVE);
 
     CMutableTransaction mtx = GetValidTransaction();
@@ -825,7 +825,7 @@ TEST(checktransaction_tests, OverwinterBadVersionGroupId) {
 
 // This tests an Overwinter transaction checked against Sprout
 TEST(checktransaction_tests, OverwinterNotActive) {
-    SelectParams(CBaseChainParams::TESTNET);
+    SelectParams(CBaseChainParams::Network::TESTNET);
 
     CMutableTransaction mtx = GetValidTransaction();
     mtx.fOverwintered = true;
@@ -844,7 +844,7 @@ TEST(checktransaction_tests, OverwinterNotActive) {
 
 // This tests a transaction without the fOverwintered flag set, against the Overwinter consensus rule set.
 TEST(checktransaction_tests, OverwinterFlagNotSet) {
-    SelectParams(CBaseChainParams::REGTEST);
+    SelectParams(CBaseChainParams::Network::REGTEST);
     UpdateNetworkUpgradeParameters(Consensus::UPGRADE_OVERWINTER, Consensus::NetworkUpgrade::ALWAYS_ACTIVE);
 
     CMutableTransaction mtx = GetValidTransaction();
@@ -887,7 +887,7 @@ TEST(checktransaction_tests, OverwinterInvalidSoftForkVersion) {
 
 // Test CreateNewContextualCMutableTransaction sets default values based on height
 TEST(checktransaction_tests, OverwinteredContextualCreateTx) {
-    SelectParams(CBaseChainParams::REGTEST);
+    SelectParams(CBaseChainParams::Network::REGTEST);
     const Consensus::Params& consensusParams = Params().GetConsensus();
     int activationHeight = 5;
     int saplingActivationHeight = 30;

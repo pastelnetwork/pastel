@@ -1,7 +1,9 @@
 #ifndef BENCHMARKS_H
 #define BENCHMARKS_H
 
+#ifndef _MSC_VER
 #include <sys/time.h>
+#endif
 #include <stdlib.h>
 
 extern double benchmark_sleep();

@@ -82,7 +82,7 @@ TEST(Validation, ContextualCheckInputsPassesWithCoinbase) {
         auto consensusBranchId = NetworkUpgradeInfo[idx].nBranchId;
         CValidationState state;
         PrecomputedTransactionData txdata(tx);
-        EXPECT_TRUE(ContextualCheckInputs(tx, state, view, false, 0, false, txdata, Params(CBaseChainParams::MAIN).GetConsensus(), consensusBranchId));
+        EXPECT_TRUE(ContextualCheckInputs(tx, state, view, false, 0, false, txdata, Params(CBaseChainParams::Network::MAIN).GetConsensus(), consensusBranchId));
     }
 }
 

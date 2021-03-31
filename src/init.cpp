@@ -43,6 +43,7 @@
 #endif
 #include <stdint.h>
 #include <stdio.h>
+#include <unistd.h>
 
 #ifndef WIN32
 #include <signal.h>

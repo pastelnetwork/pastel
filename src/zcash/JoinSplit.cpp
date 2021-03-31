@@ -297,7 +297,7 @@ public:
             std::vector<unsigned char> auth2(ss2.begin(), ss2.end());
 
             librustzcash_sprout_prove(
-                proof.begin(),
+                proof.data(),
 
                 phi.begin(),
                 rt.begin(),

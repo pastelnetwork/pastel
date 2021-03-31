@@ -24,6 +24,7 @@
 #include "zcash/zip32.h"
 
 #include <assert.h>
+#include <random>
 
 #include <boost/algorithm/string/replace.hpp>
 #include <boost/filesystem.hpp>
@@ -2962,7 +2963,9 @@ bool CWallet::SelectCoinsMinConf(const CAmount& nTargetValue, int nConfMine, int
     vector<pair<CAmount, pair<const CWalletTx*,unsigned int> > > vValue;
     CAmount nTotalLower = 0;
 
-    random_shuffle(vCoins.begin(), vCoins.end(), GetRandInt);
+    std::random_device rd;
+    std::mt19937 g(rd());
+    std::shuffle(vCoins.begin(), vCoins.end(), g);
 
     BOOST_FOREACH(const COutput &output, vCoins)
     {

@@ -22,16 +22,28 @@ class CBlockHeader
 {
 public:
     // header
-    static const size_t HEADER_SIZE=4+32+32+32+4+4+32+(32+4)*3; // excluding Equihash solution
-    static const int32_t CURRENT_VERSION=4;
     int32_t nVersion;
-    uint256 hashPrevBlock;
-    uint256 hashMerkleRoot;
+    uint256 hashPrevBlock;                // hash of the previous block
+    uint256 hashMerkleRoot;               // merkle root
     uint256 hashFinalSaplingRoot;
     uint32_t nTime;
     uint32_t nBits;
     uint256 nNonce;
-    std::vector<unsigned char> nSolution;
+    std::vector<unsigned char> nSolution; // Equihash solution
+
+    // excluding Equihash solution
+    static constexpr size_t EMPTY_HEADER_SIZE =
+        sizeof(nVersion) +
+        32 + /* hashPrevBlock */
+        32 + /* hashMerkleRoot */
+        32 + /* hashFinalSaplingRoot */
+        sizeof(nTime) +
+        sizeof(nBits) +
+        32;  /* nNonce */
+    static constexpr size_t HEADER_SIZE = 
+        EMPTY_HEADER_SIZE +
+        (32 + 4) * 3; /* nSolution - can be empty vector */
+    static constexpr int32_t CURRENT_VERSION = 4;
 
     CBlockHeader()
     {

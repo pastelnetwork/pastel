@@ -309,7 +309,7 @@ class CMainParams : public CChainParams {
 public:
     CMainParams() {
         strNetworkID = "main";
-        network = CBaseChainParams::MAIN;
+        network = CBaseChainParams::Network::MAIN;
         strCurrencyUnits = "PSL";
         bip44CoinType = 133; // As registered in https://github.com/patoshilabs/slips/blob/master/slip-0044.md
         consensus.nSubsidyHalvingInterval = 840000;
@@ -363,25 +363,25 @@ public:
         vSeeds.push_back(CDNSSeedData("pastel.network", "dnsseed.pastel.network"));
 
         // guarantees the first 2 characters, when base58 encoded, are "Pt"
-        base58Prefixes[PUBKEY_ADDRESS]     = {0x0c,0xe3};
+        base58Prefixes[to_integral_type(Base58Type::PUBKEY_ADDRESS)] = {0x0c, 0xe3};
         // guarantees the first 2 characters, when base58 encoded, are "pt"
-        base58Prefixes[SCRIPT_ADDRESS]     = {0x1a,0xF6};
+        base58Prefixes[to_integral_type(Base58Type::SCRIPT_ADDRESS)] = {0x1a, 0xF6};
         // the first character, when base58 encoded, is "5" or "K" or "L" (as in Bitcoin)
-        base58Prefixes[SECRET_KEY]         = {0x80};
+        base58Prefixes[to_integral_type(Base58Type::SECRET_KEY)] = {0x80};
         // do not rely on these BIP32 prefixes; they are not specified and may change
-        base58Prefixes[EXT_PUBLIC_KEY]     = {0x04,0x88,0xB2,0x1E};
-        base58Prefixes[EXT_SECRET_KEY]     = {0x04,0x88,0xAD,0xE4};
+        base58Prefixes[to_integral_type(Base58Type::EXT_PUBLIC_KEY)] = {0x04, 0x88, 0xB2, 0x1E};
+        base58Prefixes[to_integral_type(Base58Type::EXT_SECRET_KEY)] = {0x04, 0x88, 0xAD, 0xE4};
         // guarantees the first 2 characters, when base58 encoded, are "Pz"
-        base58Prefixes[ZCPAYMENT_ADDRRESS] = {0x09,0x05};
+        base58Prefixes[to_integral_type(Base58Type::ZCPAYMENT_ADDRRESS)] = {0x09, 0x05};
         // guarantees the first 4 characters, when base58 encoded, are "Px"
-        base58Prefixes[ZCVIEWING_KEY]      = {0x09,0x01};
+        base58Prefixes[to_integral_type(Base58Type::ZCVIEWING_KEY)] = {0x09, 0x01};
         // guarantees the first 2 characters, when base58 encoded, are "Ps"
-        base58Prefixes[ZCSPENDING_KEY]     = {0x9A,0x90};
+        base58Prefixes[to_integral_type(Base58Type::ZCSPENDING_KEY)] = {0x9A, 0x90};
 
-        bech32HRPs[SAPLING_PAYMENT_ADDRESS]      = "ps";
-        bech32HRPs[SAPLING_FULL_VIEWING_KEY]     = "pviews";
-        bech32HRPs[SAPLING_INCOMING_VIEWING_KEY] = "pivks";
-        bech32HRPs[SAPLING_EXTENDED_SPEND_KEY]   = "p-secret-extended-key-main";
+        bech32HRPs[to_integral_type(Bech32Type::SAPLING_PAYMENT_ADDRESS)] = "ps";
+        bech32HRPs[to_integral_type(Bech32Type::SAPLING_FULL_VIEWING_KEY)] = "pviews";
+        bech32HRPs[to_integral_type(Bech32Type::SAPLING_INCOMING_VIEWING_KEY)] = "pivks";
+        bech32HRPs[to_integral_type(Bech32Type::SAPLING_EXTENDED_SPEND_KEY)] = "p-secret-extended-key-main";
 
         vFixedSeeds = std::vector<SeedSpec6>(pnSeed6_main, pnSeed6_main + ARRAYLEN(pnSeed6_main));
 
@@ -391,17 +391,15 @@ public:
         fMineBlocksOnDemand = false;
         fTestnetToBeDeprecatedFieldRPC = false;
 
-        checkpointData = (CCheckpointData) {
-            boost::assign::map_list_of
+        checkpointData.mapCheckpoints = boost::assign::map_list_of
             (0, consensus.hashGenesisBlock)
-            (2700, uint256S("00005558df2a688c6d53c7b78001074515d33cd29589a311f8c6aa4db2df4e44")),
-            1612317919,      // * UNIX timestamp of last checkpoint block
-            3588,                  // * total number of transactions between genesis and last checkpoint
+            (2700, uint256S("00005558df2a688c6d53c7b78001074515d33cd29589a311f8c6aa4db2df4e44"));
+        checkpointData.nTimeLastCheckpoint = 1612317919; // * UNIX timestamp of last checkpoint block
+        checkpointData.nTransactionsLastCheckpoint = 3588; // * total number of transactions between genesis and last checkpoint
                                 //   (the tx=... number in the UpdateTip debug.log lines - "UpdateTip: new best=... tx=...")
-            800                 // * estimated number of transactions per day after checkpoint
+        checkpointData.fTransactionsPerDay = 800; // * estimated number of transactions per day after checkpoint
                                 //   total number of tx / (checkpoint block height / (24 * 24))
                                 //after first checkpoint math is = 765, but I'm setting 800
-        };
     }
 };
 static CMainParams mainParams;
@@ -413,7 +411,7 @@ class CTestNetParams : public CChainParams {
 public:
     CTestNetParams() {
         strNetworkID = "test";
-        network = CBaseChainParams::TESTNET;
+        network = CBaseChainParams::Network::TESTNET;
         strCurrencyUnits = "LSP";
         bip44CoinType = 1;
         consensus.nSubsidyHalvingInterval = 840000;
@@ -466,25 +464,25 @@ public:
         vSeeds.push_back(CDNSSeedData("pastel.network", "dnsseed.testnet.pastel.network"));
 
         // guarantees the first 2 characters, when base58 encoded, are "tP"
-        base58Prefixes[PUBKEY_ADDRESS]     = {0x1C,0xEF};
+        base58Prefixes[to_integral_type(Base58Type::PUBKEY_ADDRESS)] = {0x1C, 0xEF};
         // guarantees the first 2 characters, when base58 encoded, are "tt"
-        base58Prefixes[SCRIPT_ADDRESS]     = {0x1D,0x37};
+        base58Prefixes[to_integral_type(Base58Type::SCRIPT_ADDRESS)] = {0x1D, 0x37};
         // the first character, when base58 encoded, is "9" or "c" (as in Bitcoin)
-        base58Prefixes[SECRET_KEY]         = {0xEF};
+        base58Prefixes[to_integral_type(Base58Type::SECRET_KEY)] = {0xEF};
         // do not rely on these BIP32 prefixes; they are not specified and may change
-        base58Prefixes[EXT_PUBLIC_KEY]     = {0x04,0x35,0x87,0xCF};
-        base58Prefixes[EXT_SECRET_KEY]     = {0x04,0x35,0x83,0x94};
+        base58Prefixes[to_integral_type(Base58Type::EXT_PUBLIC_KEY)] = {0x04, 0x35, 0x87, 0xCF};
+        base58Prefixes[to_integral_type(Base58Type::EXT_SECRET_KEY)] = {0x04, 0x35, 0x83, 0x94};
         // guarantees the first 2 characters, when base58 encoded, are "tZ"
-        base58Prefixes[ZCPAYMENT_ADDRRESS] = {0x14,0x3A};
+        base58Prefixes[to_integral_type(Base58Type::ZCPAYMENT_ADDRRESS)] = {0x14, 0x3A};
         // guarantees the first 4 characters, when base58 encoded, are "tX"
-        base58Prefixes[ZCVIEWING_KEY]      = {0x14,0x37};
+        base58Prefixes[to_integral_type(Base58Type::ZCVIEWING_KEY)] = {0x14, 0x37};
         // guarantees the first 2 characters, when base58 encoded, are "tQ" OR "tS"
-        base58Prefixes[ZCSPENDING_KEY]     = {0x05,0xFE};
+        base58Prefixes[to_integral_type(Base58Type::ZCSPENDING_KEY)] = {0x05, 0xFE};
 
-        bech32HRPs[SAPLING_PAYMENT_ADDRESS]      = "ptestsapling";
-        bech32HRPs[SAPLING_FULL_VIEWING_KEY]     = "pviewtestsapling";
-        bech32HRPs[SAPLING_INCOMING_VIEWING_KEY] = "pivktestsapling";
-        bech32HRPs[SAPLING_EXTENDED_SPEND_KEY]   = "p-secret-extended-key-test";
+        bech32HRPs[to_integral_type(Bech32Type::SAPLING_PAYMENT_ADDRESS)] = "ptestsapling";
+        bech32HRPs[to_integral_type(Bech32Type::SAPLING_FULL_VIEWING_KEY)] = "pviewtestsapling";
+        bech32HRPs[to_integral_type(Bech32Type::SAPLING_INCOMING_VIEWING_KEY)] = "pivktestsapling";
+        bech32HRPs[to_integral_type(Bech32Type::SAPLING_EXTENDED_SPEND_KEY)] = "p-secret-extended-key-test";
 
         vFixedSeeds = std::vector<SeedSpec6>(pnSeed6_test, pnSeed6_test + ARRAYLEN(pnSeed6_test));
 
@@ -495,15 +493,12 @@ public:
         fTestnetToBeDeprecatedFieldRPC = true;
 
 
-        checkpointData = (CCheckpointData) {
-            boost::assign::map_list_of
-            (0, consensus.hashGenesisBlock),
-            genesis.nTime,      // * UNIX timestamp of last checkpoint block
-            0,                  // * total number of transactions between genesis and last checkpoint
+        checkpointData.mapCheckpoints = boost::assign::map_list_of(0, consensus.hashGenesisBlock);
+        checkpointData.nTimeLastCheckpoint = genesis.nTime; // * UNIX timestamp of last checkpoint block
+        checkpointData.nTransactionsLastCheckpoint = 0;     // * total number of transactions between genesis and last checkpoint
                                 //   (the tx=... number in the SetBestChain debug.log lines)
-            250                 // * estimated number of transactions per day after checkpoint
+        checkpointData.fTransactionsPerDay = 250;           // * estimated number of transactions per day after checkpoint
                                 //   total number of tx / (checkpoint block height / (24 * 24))
-        };
     }
 };
 static CTestNetParams testNetParams;
@@ -515,7 +510,7 @@ class CRegTestParams : public CChainParams {
 public:
     CRegTestParams() {
         strNetworkID = "regtest";
-        network = CBaseChainParams::REGTEST;
+        network = CBaseChainParams::Network::REGTEST;
         strCurrencyUnits = "REG";
         bip44CoinType = 1;
         consensus.nSubsidyHalvingInterval = 150;
@@ -568,25 +563,25 @@ public:
 
         // These prefixes are the same as the testnet prefixes
         // guarantees the first 2 characters, when base58 encoded, are "tP"
-        base58Prefixes[PUBKEY_ADDRESS]     = {0x1C,0xEF};
+        base58Prefixes[to_integral_type(Base58Type::PUBKEY_ADDRESS)] = {0x1C, 0xEF};
         // guarantees the first 2 characters, when base58 encoded, are "tt"
-        base58Prefixes[SCRIPT_ADDRESS]     = {0x1D,0x37};
+        base58Prefixes[to_integral_type(Base58Type::SCRIPT_ADDRESS)]     = {0x1D,0x37};
         // the first character, when base58 encoded, is "9" or "c" (as in Bitcoin)
-        base58Prefixes[SECRET_KEY]         = {0xEF};
+        base58Prefixes[to_integral_type(Base58Type::SECRET_KEY)]         = {0xEF};
         // do not rely on these BIP32 prefixes; they are not specified and may change
-        base58Prefixes[EXT_PUBLIC_KEY]     = {0x04,0x35,0x87,0xCF};
-        base58Prefixes[EXT_SECRET_KEY]     = {0x04,0x35,0x83,0x94};
+        base58Prefixes[to_integral_type(Base58Type::EXT_PUBLIC_KEY)]     = {0x04,0x35,0x87,0xCF};
+        base58Prefixes[to_integral_type(Base58Type::EXT_SECRET_KEY)]     = {0x04,0x35,0x83,0x94};
         // guarantees the first 2 characters, when base58 encoded, are "tZ"
-        base58Prefixes[ZCPAYMENT_ADDRRESS] = {0x14,0x3A};
+        base58Prefixes[to_integral_type(Base58Type::ZCPAYMENT_ADDRRESS)] = {0x14,0x3A};
         // guarantees the first 4 characters, when base58 encoded, are "tX"
-        base58Prefixes[ZCVIEWING_KEY]      = {0x14,0x37};
+        base58Prefixes[to_integral_type(Base58Type::ZCVIEWING_KEY)]      = {0x14,0x37};
         // guarantees the first 2 characters, when base58 encoded, are "tQ" OR "tS"
-        base58Prefixes[ZCSPENDING_KEY]     = {0x05,0xFE};
+        base58Prefixes[to_integral_type(Base58Type::ZCSPENDING_KEY)]     = {0x05,0xFE};
 
-        bech32HRPs[SAPLING_PAYMENT_ADDRESS]      = "pzregtestsapling";
-        bech32HRPs[SAPLING_FULL_VIEWING_KEY]     = "pviewregtestsapling";
-        bech32HRPs[SAPLING_INCOMING_VIEWING_KEY] = "pivkregtestsapling";
-        bech32HRPs[SAPLING_EXTENDED_SPEND_KEY]   = "p-secret-extended-key-regtest";
+        bech32HRPs[to_integral_type(Bech32Type::SAPLING_PAYMENT_ADDRESS)] = "pzregtestsapling";
+        bech32HRPs[to_integral_type(Bech32Type::SAPLING_FULL_VIEWING_KEY)]     = "pviewregtestsapling";
+        bech32HRPs[to_integral_type(Bech32Type::SAPLING_INCOMING_VIEWING_KEY)] = "pivkregtestsapling";
+        bech32HRPs[to_integral_type(Bech32Type::SAPLING_EXTENDED_SPEND_KEY)]   = "p-secret-extended-key-regtest";
 
         fMiningRequiresPeers = false;
         fDefaultConsistencyChecks = true;
@@ -594,13 +589,10 @@ public:
         fMineBlocksOnDemand = true;
         fTestnetToBeDeprecatedFieldRPC = false;
 
-        checkpointData = (CCheckpointData){
-            boost::assign::map_list_of
-            (0, consensus.hashGenesisBlock),
-            genesis.nTime,
-            0,
-            0
-        };
+        checkpointData.mapCheckpoints = boost::assign::map_list_of(0, consensus.hashGenesisBlock);
+        checkpointData.nTimeLastCheckpoint = genesis.nTime;
+        checkpointData.nTransactionsLastCheckpoint = 0;
+        checkpointData.fTransactionsPerDay = 0;
     }
 
     void UpdateNetworkUpgradeParameters(Consensus::UpgradeIndex idx, int nActivationHeight)
@@ -619,13 +611,17 @@ const CChainParams &Params() {
 }
 
 CChainParams &Params(CBaseChainParams::Network network) {
-    switch (network) {
-        case CBaseChainParams::MAIN:
+    switch (network)
+    {
+        case CBaseChainParams::Network::MAIN:
             return mainParams;
-        case CBaseChainParams::TESTNET:
+
+        case CBaseChainParams::Network::TESTNET:
             return testNetParams;
-        case CBaseChainParams::REGTEST:
+
+        case CBaseChainParams::Network::REGTEST:
             return regTestParams;
+
         default:
             assert(false && "Unimplemented network");
             return mainParams;
@@ -640,7 +636,7 @@ void SelectParams(CBaseChainParams::Network network) {
 bool SelectParamsFromCommandLine()
 {
     CBaseChainParams::Network network = NetworkIdFromCommandLine();
-    if (network == CBaseChainParams::MAX_NETWORK_TYPES)
+    if (network == CBaseChainParams::Network::MAX_NETWORK_TYPES)
         return false;
 
     SelectParams(network);

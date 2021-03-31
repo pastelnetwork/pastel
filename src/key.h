@@ -30,8 +30,9 @@ public:
     /**
      * secp256k1:
      */
-    static const unsigned int PRIVATE_KEY_SIZE            = 279;
-    static const unsigned int COMPRESSED_PRIVATE_KEY_SIZE = 214;
+    constexpr static unsigned int PRIVATE_KEY_SIZE            = 279;
+    constexpr static unsigned int COMPRESSED_PRIVATE_KEY_SIZE = 214;
+    constexpr static unsigned int KEY_SIZE = 32; // key size in bytes
     /**
      * see www.keylength.com
      * script supports up to 75 for single byte push
@@ -49,20 +50,24 @@ private:
     bool fCompressed;
 
     //! The actual byte data
-    unsigned char vch[32];
+    unsigned char vch[KEY_SIZE];
 
     //! Check whether the 32-byte array pointed to be vch is valid keydata.
     bool static Check(const unsigned char* vch);
 
 public:
     //! Construct an invalid private key.
-    CKey() : fValid(false), fCompressed(false)
+    CKey() : 
+        fValid(false), 
+        fCompressed(false)
     {
         LockObject(vch);
     }
 
     //! Copy constructor. This is necessary because of memlocking.
-    CKey(const CKey& secret) : fValid(secret.fValid), fCompressed(secret.fCompressed)
+    CKey(const CKey& secret) : 
+        fValid(secret.fValid), 
+        fCompressed(secret.fCompressed)
     {
         LockObject(vch);
         memcpy(vch, secret.vch, sizeof(vch));
@@ -82,37 +87,39 @@ public:
 
     //! Initialize using begin and end iterators to byte data.
     template <typename T>
-    void Set(const T pbegin, const T pend, bool fCompressedIn)
+    void Set(const T pbegin, const T pend, const bool fCompressedIn)
     {
-        if (pend - pbegin != 32) {
+        do
+        {
             fValid = false;
-            return;
-        }
-        if (Check(&pbegin[0])) {
-            memcpy(vch, (unsigned char*)&pbegin[0], 32);
+            if (pend - pbegin != KEY_SIZE)
+                break;
+            if (!Check(&pbegin[0]))
+                break;
+            memcpy(vch, (unsigned char*)&pbegin[0], KEY_SIZE);
             fValid = true;
             fCompressed = fCompressedIn;
-        } else {
-            fValid = false;
-        }
+        } while (false);
     }
 
     //! Simple read-only vector-like interface.
-    unsigned int size() const { return (fValid ? 32 : 0); }
-    const unsigned char* begin() const { return vch; }
-    const unsigned char* end() const { return vch + size(); }
+    unsigned int size() const noexcept { return (fValid ? KEY_SIZE : 0); }
+    const unsigned char* begin() const noexcept { return vch; }
+    const unsigned char* end() const noexcept { return vch + size(); }
+    const unsigned char* cbegin() const noexcept { return vch; }
+    const unsigned char* cend() const noexcept { return vch + size(); }
 
     //! Check whether this private key is valid.
-    bool IsValid() const { return fValid; }
+    bool IsValid() const noexcept { return fValid; }
 
     //! Check whether the public key corresponding to this private key is (to be) compressed.
-    bool IsCompressed() const { return fCompressed; }
+    bool IsCompressed() const noexcept { return fCompressed; }
 
     //! Initialize from a CPrivKey (serialized OpenSSL private key data).
-    bool SetPrivKey(const CPrivKey& vchPrivKey, bool fCompressed);
+    bool SetPrivKey(const CPrivKey& vchPrivKey, const bool fCompressed);
 
     //! Generate a new private key using a cryptographic PRNG.
-    void MakeNewKey(bool fCompressed);
+    void MakeNewKey(const bool fCompressed);
 
     /**
      * Convert the private key to a CPrivKey (serialized OpenSSL private key data).
@@ -130,7 +137,7 @@ public:
      * Create a DER-serialized signature.
      * The test_case parameter tweaks the deterministic nonce.
      */
-    bool Sign(const uint256& hash, std::vector<unsigned char>& vchSig, uint32_t test_case = 0) const;
+    bool Sign(const uint256& hash, std::vector<unsigned char>& vchSig, const uint32_t test_case = 0) const;
 
     /**
      * Create a compact signature (65 bytes), which allows reconstructing the used public key.
@@ -142,7 +149,7 @@ public:
     bool SignCompact(const uint256& hash, std::vector<unsigned char>& vchSig) const;
 
     //! Derive BIP32 child key.
-    bool Derive(CKey& keyChild, ChainCode &ccChild, unsigned int nChild, const ChainCode& cc) const;
+    bool Derive(CKey& keyChild, ChainCode &ccChild, const unsigned int nChild, const ChainCode& cc) const;
 
     /**
      * Verify thoroughly whether a private key and a public key match.
@@ -151,10 +158,10 @@ public:
     bool VerifyPubKey(const CPubKey& vchPubKey) const;
 
     //! Load private key and check that public key matches.
-    bool Load(CPrivKey& privkey, CPubKey& vchPubKey, bool fSkipCheck);
+    bool Load(CPrivKey& privkey, CPubKey& vchPubKey, const bool fSkipCheck = false);
 
     //! Check whether an element of a signature (r or s) is valid.
-    static bool CheckSignatureElement(const unsigned char* vch, int len, bool half);
+    static bool CheckSignatureElement(const unsigned char* vch, const int len, const bool half);
 };
 
 struct CExtKey {

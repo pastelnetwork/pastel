@@ -7,7 +7,10 @@
 
 #include <libsnark/common/default_types/r1cs_ppzksnark_pp.hpp>
 #include <libsnark/zk_proof_systems/ppzksnark/r1cs_ppzksnark/r1cs_ppzksnark.hpp>
-
+#include <boost/program_options/options_description.hpp>
+#include <boost/program_options/cmdline.hpp>
+#include <boost/program_options/variables_map.hpp>
+#include <boost/program_options/parsers.hpp>
 #include "librustzcash.h"
 
 struct ECCryptoClosure
@@ -19,10 +22,11 @@ ECCryptoClosure instance_of_eccryptoclosure;
 
 ZCJoinSplit* params;
 
-int main(int argc, char **argv) {
+int main(int argc, char **argv)
+{
   assert(init_and_check_sodium() != -1);
   ECC_Start();
-
+  
   libsnark::default_r1cs_ppzksnark_pp::init_public_params();
   libsnark::inhibit_profiling_info = true;
   libsnark::inhibit_profiling_counters = true;
@@ -53,10 +57,38 @@ int main(int argc, char **argv) {
         "e9b238411bd6c0ec4791e9d04245ec350c9c5744f5610dfcce4365d5ca49dfefd5054e371842b3f88fa1b9d7e8e075249b3ebabd167fa8b0f3161292d36c180a"
     );
 
-  testing::InitGoogleMock(&argc, argv);
-  
-  auto ret = RUN_ALL_TESTS();
+    // supported command-line options
+    constexpr auto CMDLINE_PARAM_HELP = "help";
+    constexpr auto CMDLINE_PARAM_FILTER = "filter";
 
-  ECC_Stop();
-  return ret;
+    // parse command-line options:
+    //   --filter=MyTest* - this can be used to debug specific tests by name
+    //   --filter=*include_tests*:-exclude_tests
+    namespace po = boost::program_options;
+    po::options_description cmdline_options_desc("Pastel Core Google Test command-line options");
+    cmdline_options_desc.add_options()
+        (CMDLINE_PARAM_HELP, "show help message")
+        (CMDLINE_PARAM_FILTER, po::value<std::string>(), "use filter to execute specific Google tests only, supports *, exclusions with -")
+    ;
+    po::variables_map vm;
+    po::store(po::parse_command_line(argc, argv, cmdline_options_desc), vm);
+    po::notify(vm);
+
+    if (vm.count(CMDLINE_PARAM_HELP))
+    {
+        std::cout << cmdline_options_desc << std::endl;
+        return 1;
+    }
+    std::string sGoogleTestFilter;
+    if (vm.count(CMDLINE_PARAM_FILTER))
+        sGoogleTestFilter = vm[CMDLINE_PARAM_FILTER].as<std::string>();
+
+    if (!sGoogleTestFilter.empty())
+        ::testing::GTEST_FLAG(filter) = sGoogleTestFilter.c_str();
+    testing::InitGoogleMock(&argc, argv);
+  
+    auto ret = RUN_ALL_TESTS();
+
+    ECC_Stop();
+    return ret;
 }
