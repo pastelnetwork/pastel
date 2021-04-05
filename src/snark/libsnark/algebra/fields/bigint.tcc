@@ -13,6 +13,10 @@
 #include <climits>
 #include <cstring>
 #include "sodium.h"
+#ifdef _MSC_VER
+#include "ctz_clz.h"
+#endif
+#include "algebra/fields/bigint.hpp"
 
 namespace libsnark {
 

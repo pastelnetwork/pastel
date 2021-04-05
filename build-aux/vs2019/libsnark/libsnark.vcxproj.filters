@@ -1,0 +1,100 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Source Files">
+      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
+      <Extensions>cpp;c;cc;cxx;c++;cppm;ixx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
+    </Filter>
+    <Filter Include="Source Files\algebra">
+      <UniqueIdentifier>{4817697a-473a-4857-b715-15de9c20e5c6}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\common">
+      <UniqueIdentifier>{00a4ad65-064f-40e0-ad88-9e855c3dab90}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\gadgetlib1">
+      <UniqueIdentifier>{3a8b8f13-190d-44a3-bee6-b935e895ab5a}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\port">
+      <UniqueIdentifier>{76b16c45-19a2-427f-8798-f9a866439dfd}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="..\..\..\src\snark\libsnark\algebra\curves\alt_bn128\alt_bn128_g1.cpp">
+      <Filter>Source Files\algebra</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\src\snark\libsnark\algebra\curves\alt_bn128\alt_bn128_g2.cpp">
+      <Filter>Source Files\algebra</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\src\snark\libsnark\algebra\curves\alt_bn128\alt_bn128_init.cpp">
+      <Filter>Source Files\algebra</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\src\snark\libsnark\algebra\curves\alt_bn128\alt_bn128_pairing.cpp">
+      <Filter>Source Files\algebra</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\src\snark\libsnark\algebra\curves\alt_bn128\alt_bn128_pp.cpp">
+      <Filter>Source Files\algebra</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\src\snark\libsnark\common\profiling.cpp">
+      <Filter>Source Files\common</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\src\snark\libsnark\common\utils.cpp">
+      <Filter>Source Files\common</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\src\snark\libsnark\gadgetlib1\constraint_profiling.cpp">
+      <Filter>Source Files\gadgetlib1</Filter>
+    </ClCompile>
+    <ClCompile Include="..\port\unistd.cpp">
+      <Filter>Source Files\port</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\src\snark\libsnark\algebra\fields\field_utils.tcc">
+      <Filter>Source Files\algebra</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\src\snark\libsnark\algebra\fields\bigint.tcc">
+      <Filter>Source Files\algebra</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\src\snark\libsnark\algebra\fields\fp.tcc">
+      <Filter>Source Files\algebra</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\..\..\src\snark\libsnark\algebra\curves\alt_bn128\alt_bn128_g1.hpp">
+      <Filter>Source Files\algebra</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\snark\libsnark\algebra\curves\alt_bn128\alt_bn128_g2.hpp">
+      <Filter>Source Files\algebra</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\snark\libsnark\algebra\curves\alt_bn128\alt_bn128_init.hpp">
+      <Filter>Source Files\algebra</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\snark\libsnark\algebra\curves\alt_bn128\alt_bn128_pairing.hpp">
+      <Filter>Source Files\algebra</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\snark\libsnark\algebra\curves\alt_bn128\alt_bn128_pp.hpp">
+      <Filter>Source Files\algebra</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\snark\libsnark\common\profiling.hpp">
+      <Filter>Source Files\common</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\snark\libsnark\common\utils.hpp">
+      <Filter>Source Files\common</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\snark\libsnark\gadgetlib1\constraint_profiling.hpp">
+      <Filter>Source Files\gadgetlib1</Filter>
+    </ClInclude>
+    <ClInclude Include="..\port\ctz_clz.h">
+      <Filter>Source Files\port</Filter>
+    </ClInclude>
+    <ClInclude Include="..\port\unistd.h">
+      <Filter>Source Files\port</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\snark\libsnark\algebra\fields\bigint.hpp">
+      <Filter>Source Files\algebra</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\snark\libsnark\algebra\fields\field_utils.hpp">
+      <Filter>Source Files\algebra</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\snark\libsnark\algebra\fields\fp.hpp">
+      <Filter>Source Files\algebra</Filter>
+    </ClInclude>
+  </ItemGroup>
+</Project>

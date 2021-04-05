@@ -22,6 +22,7 @@
 #include <ctime>
 #include "common/default_types/ec_pp.hpp"
 #include "common/utils.hpp"
+#include <unistd.h>
 
 #ifndef NO_PROCPS
 #include <proc/readproc.h>

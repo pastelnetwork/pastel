@@ -11,6 +11,7 @@
 #define FIELD_UTILS_TCC_
 
 #include "common/utils.hpp"
+#include "algebra/fields/field_utils.hpp"
 
 namespace libsnark {
 

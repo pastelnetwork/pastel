@@ -14,6 +14,7 @@
 #include <cmath>
 
 #include "algebra/fields/fp_aux.tcc"
+#include "algebra/fields/fp.hpp"
 #include "algebra/fields/field_utils.hpp"
 #include "common/assert_except.hpp"
 

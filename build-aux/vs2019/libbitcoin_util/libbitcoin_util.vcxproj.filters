@@ -1,0 +1,130 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Source Files">
+      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
+      <Extensions>cpp;c;cc;cxx;c++;cppm;ixx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
+    </Filter>
+    <Filter Include="Source Files\support">
+      <UniqueIdentifier>{72779566-0213-4f16-acbd-4c0353e275fb}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\compat">
+      <UniqueIdentifier>{ee05caee-75ff-4cf9-b828-2fd7af5a9707}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\rpc">
+      <UniqueIdentifier>{98e3631e-1a30-483f-86ec-7a1090aea6af}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\support\allocators">
+      <UniqueIdentifier>{3431ebf1-8c05-4f9f-9d31-2634ad60e3d4}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="..\..\..\src\support\pagelocker.cpp">
+      <Filter>Source Files\support</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\src\chainparamsbase.cpp">
+      <Filter>Source Files\support</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\src\clientversion.cpp">
+      <Filter>Source Files\support</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\src\compat\glibcxx_sanity.cpp">
+      <Filter>Source Files\compat</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\src\compat\glibc_compat.cpp">
+      <Filter>Source Files\compat</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\src\compat\glibc_sanity.cpp">
+      <Filter>Source Files\compat</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\src\random.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\src\rpc\client.cpp">
+      <Filter>Source Files\rpc</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\src\sync.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\src\util.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\src\utilmoneystr.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\src\utilstrencodings.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\src\utiltime.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\src\support\cleanse.cpp">
+      <Filter>Source Files\support</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\src\rpc\protocol.cpp">
+      <Filter>Source Files\rpc</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\..\..\src\support\pagelocker.h">
+      <Filter>Source Files\support</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\chainparamsbase.h">
+      <Filter>Source Files\support</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\clientversion.h">
+      <Filter>Source Files\support</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\chainparamsseeds.h">
+      <Filter>Source Files\support</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\compat\byteswap.h">
+      <Filter>Source Files\compat</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\compat\endian.h">
+      <Filter>Source Files\compat</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\compat\sanity.h">
+      <Filter>Source Files\compat</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\random.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\rpc\client.h">
+      <Filter>Source Files\rpc</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\sync.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\util.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\utilmoneystr.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\utilstrencodings.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\utiltime.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\support\cleanse.h">
+      <Filter>Source Files\support</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\support\allocators\secure.h">
+      <Filter>Source Files\support\allocators</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\support\allocators\zeroafterfree.h">
+      <Filter>Source Files\support\allocators</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\support\events.h">
+      <Filter>Source Files\support</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\rpc\protocol.h">
+      <Filter>Source Files\rpc</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\rpc\register.h">
+      <Filter>Source Files\rpc</Filter>
+    </ClInclude>
+  </ItemGroup>
+</Project>

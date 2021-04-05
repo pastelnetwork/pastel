@@ -15,6 +15,7 @@
 #define MULTIEXP_TCC_
 
 #include "algebra/fields/fp_aux.tcc"
+#include "algebra/fields/bigint.hpp"
 
 #include <algorithm>
 #include <cassert>
