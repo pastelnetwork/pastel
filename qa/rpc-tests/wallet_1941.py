@@ -1,16 +1,14 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # Copyright (c) 2016 The Zcash developers
 # Distributed under the MIT software license, see the accompanying
-# file COPYING or http://www.opensource.org/licenses/mit-license.php.
+# file COPYING or https://www.opensource.org/licenses/mit-license.php .
 
 # This is a regression test for #1941.
-
-import sys; assert sys.version_info < (3,), ur"This script does not run under Python 3. Please use Python 2.7.x."
 
 from test_framework.test_framework import BitcoinTestFramework
 from test_framework.util import assert_equal, initialize_chain_clean, \
     initialize_datadir, start_nodes, start_node, connect_nodes_bi, \
-    bitcoind_processes, wait_and_assert_operationid_status
+    pasteld_processes, wait_and_assert_operationid_status
 
 from decimal import Decimal, getcontext
 getcontext().prec = 16
@@ -37,17 +35,18 @@ class Wallet1941RegressionTest (BitcoinTestFramework):
 
     def restart_second_node(self, extra_args=[]):
         self.nodes[1].stop()
-        bitcoind_processes[1].wait()
+        pasteld_processes[1].wait()
         self.nodes[1] = start_node(1, self.options.tmpdir, extra_args=['-debug=zrpc'] + extra_args)
         self.nodes[1].setmocktime(starttime + 9000)
         connect_nodes_bi(self.nodes, 0, 1)
         self.sync_all()
 
     def run_test (self):
-        print "Mining blocks..."
+        print("Mining blocks...")
 
         self.nodes[0].setmocktime(starttime)
         self.nodes[0].generate(101)
+        self.sync_all()
 
         mytaddr = self.nodes[0].getnewaddress()     # where coins were mined
         myzaddr = self.nodes[0].z_getnewaddress('sprout')
@@ -66,6 +65,7 @@ class Wallet1941RegressionTest (BitcoinTestFramework):
         self.nodes[0].generate(1)
         self.nodes[0].setmocktime(starttime + 9000)
         self.nodes[0].generate(1)
+        self.sync_all()
 
         # Confirm the balance on node 0.
         resp = self.nodes[0].z_getbalance(myzaddr)

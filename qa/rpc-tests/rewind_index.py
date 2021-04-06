@@ -1,28 +1,31 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # Copyright (c) 2018 The Zcash developers
 # Distributed under the MIT software license, see the accompanying
-# file COPYING or http://www.opensource.org/licenses/mit-license.php.
-
-import sys; assert sys.version_info < (3,), ur"This script does not run under Python 3. Please use Python 2.7.x."
+# file COPYING or https://www.opensource.org/licenses/mit-license.php .
 
 from test_framework.test_framework import BitcoinTestFramework
 from test_framework.util import assert_equal, initialize_chain_clean, \
-    start_nodes, start_node, connect_nodes_bi, bitcoind_processes
+    start_nodes, start_node, connect_nodes_bi, pasteld_processes
 
 import time
 
 
 class RewindBlockIndexTest (BitcoinTestFramework):
 
+    def __init__(self):
+        super().__init__()
+        self.num_nodes = 3
+        self.setup_clean_chain = True
+
     def setup_chain(self):
         print("Initializing test directory "+self.options.tmpdir)
-        initialize_chain_clean(self.options.tmpdir, 3)
+        initialize_chain_clean(self.options.tmpdir, self.num_nodes)
 
     def setup_network(self, split=False):
         # Node 0 - Overwinter, then Sprout, then Overwinter again
         # Node 1 - Sprout
         # Node 2 - Overwinter
-        self.nodes = start_nodes(3, self.options.tmpdir, extra_args=[['-nuparams=5ba81b19:10'], [], ['-nuparams=5ba81b19:10']])
+        self.nodes = start_nodes(self.num_nodes, self.options.tmpdir, extra_args=[['-nuparams=5ba81b19:10'], [], ['-nuparams=5ba81b19:10']])
         connect_nodes_bi(self.nodes,0,1)
         connect_nodes_bi(self.nodes,1,2)
         connect_nodes_bi(self.nodes,0,2)
@@ -51,7 +54,7 @@ class RewindBlockIndexTest (BitcoinTestFramework):
         # Restart node 0 using Sprout instead of Overwinter
         print("Switching node 0 from Overwinter to Sprout")
         self.nodes[0].stop()
-        bitcoind_processes[0].wait()
+        pasteld_processes[0].wait()
         self.nodes[0] = start_node(0,self.options.tmpdir)
         connect_nodes_bi(self.nodes,0,1)
         connect_nodes_bi(self.nodes,1,2)
@@ -68,7 +71,7 @@ class RewindBlockIndexTest (BitcoinTestFramework):
         # Restart node 0 using Overwinter instead of Sprout
         print("Switching node 0 from Sprout to Overwinter")
         self.nodes[0].stop()
-        bitcoind_processes[0].wait()
+        pasteld_processes[0].wait()
         self.nodes[0] = start_node(0,self.options.tmpdir, extra_args=['-nuparams=5ba81b19:10'])
         connect_nodes_bi(self.nodes,0,1)
         connect_nodes_bi(self.nodes,1,2)

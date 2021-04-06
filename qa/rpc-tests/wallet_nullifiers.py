@@ -1,12 +1,10 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # Copyright (c) 2016 The Zcash developers
 # Distributed under the MIT software license, see the accompanying
-# file COPYING or http://www.opensource.org/licenses/mit-license.php.
-
-import sys; assert sys.version_info < (3,), ur"This script does not run under Python 3. Please use Python 2.7.x."
+# file COPYING or https://www.opensource.org/licenses/mit-license.php .
 
 from test_framework.test_framework import BitcoinTestFramework
-from test_framework.util import assert_equal, assert_true, bitcoind_processes, \
+from test_framework.util import assert_equal, assert_true, pasteld_processes, \
     connect_nodes_bi, start_node, start_nodes, wait_and_assert_operationid_status
 
 import time
@@ -16,8 +14,8 @@ getcontext().prec = 16
 class WalletNullifiersTest (BitcoinTestFramework):
 
     def setup_nodes(self):
-        return start_nodes(4, self.options.tmpdir,
-                           extra_args=[['-experimentalfeatures', '-developerencryptwallet']] * 4)
+        return start_nodes(self.num_nodes, self.options.tmpdir,
+                           extra_args=[['-experimentalfeatures', '-developerencryptwallet']] * self.num_nodes)
 
     def run_test (self):
         # add zaddr to node 0
@@ -27,7 +25,7 @@ class WalletNullifiersTest (BitcoinTestFramework):
         mytaddr = self.nodes[0].getnewaddress()
         recipients = []
         recipients.append({"address":myzaddr0, "amount":self._reward-self._fee}) # utxo amount less fee
-        wait_and_assert_operationid_status(self.nodes[0], self.nodes[0].z_sendmany(mytaddr, recipients), timeout=120)
+        wait_and_assert_operationid_status(self.nodes[0], self.nodes[0].z_sendmany(mytaddr, recipients), timeout=360)
 
         self.sync_all()
         self.nodes[0].generate(1)
@@ -42,7 +40,7 @@ class WalletNullifiersTest (BitcoinTestFramework):
 
         # encrypt node 1 wallet and wait to terminate
         self.nodes[1].encryptwallet("test")
-        bitcoind_processes[1].wait()
+        pasteld_processes[1].wait()
 
         # restart node 1
         self.nodes[1] = start_node(1, self.options.tmpdir)
@@ -54,7 +52,7 @@ class WalletNullifiersTest (BitcoinTestFramework):
         recipients = []
         recipients.append({"address":myzaddr, "amount":7.0})
         
-        wait_and_assert_operationid_status(self.nodes[0], self.nodes[0].z_sendmany(myzaddr0, recipients), timeout=120)
+        wait_and_assert_operationid_status(self.nodes[0], self.nodes[0].z_sendmany(myzaddr0, recipients), timeout=360)
 
         self.sync_all()
         self.nodes[0].generate(1)
@@ -72,7 +70,7 @@ class WalletNullifiersTest (BitcoinTestFramework):
         recipients = []
         recipients.append({"address":myzaddr3, "amount":2.0})
 
-        wait_and_assert_operationid_status(self.nodes[2], self.nodes[2].z_sendmany(myzaddr, recipients), timeout=120)
+        wait_and_assert_operationid_status(self.nodes[2], self.nodes[2].z_sendmany(myzaddr, recipients), timeout=360)
 
         self.sync_all()
         self.nodes[2].generate(1)
@@ -99,7 +97,7 @@ class WalletNullifiersTest (BitcoinTestFramework):
         recipients = []
         recipients.append({"address":mytaddr1, "amount":1.0})
         
-        wait_and_assert_operationid_status(self.nodes[1], self.nodes[1].z_sendmany(myzaddr, recipients), timeout=120)
+        wait_and_assert_operationid_status(self.nodes[1], self.nodes[1].z_sendmany(myzaddr, recipients), timeout=360)
 
         self.sync_all()
         self.nodes[1].generate(1)

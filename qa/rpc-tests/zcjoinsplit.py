@@ -1,10 +1,8 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 #
 # Test joinsplit semantics
 #
-
-import sys; assert sys.version_info < (3,), ur"This script does not run under Python 3. Please use Python 2.7.x."
 
 from test_framework.test_framework import BitcoinTestFramework
 from test_framework.util import assert_equal, start_node, \
@@ -14,14 +12,18 @@ from decimal import Decimal, getcontext
 getcontext().prec = 16
 
 class JoinSplitTest(BitcoinTestFramework):
+
+    def __init__(self):
+        super().__init__()
+        self.num_nodes = 1
+
     def setup_network(self):
-        print("Seting up network "+self.options.tmpdir)
         self.nodes = []
         self.is_network_split = False
         self.nodes.append(start_node(0, self.options.tmpdir))
 
     def run_test(self):
-        print "On REGTEST... \n\treward is {} per block\n\t100 blocks to maturity".format(self._reward)
+        print("On REGTEST... \n\treward is {} per block\n\t100 blocks to maturity".format(self._reward))
         zckeypair = self.nodes[0].zcrawkeygen()
         zcsecretkey = zckeypair["zcsecretkey"]
         zcaddress = zckeypair["zcaddress"]
@@ -38,6 +40,7 @@ class JoinSplitTest(BitcoinTestFramework):
         protect_tx = self.nodes[0].signrawtransaction(joinsplit_result["rawtxn"])
         self.nodes[0].sendrawtransaction(protect_tx["hex"])
         self.nodes[0].generate(1)
+        self.sync_all()
 
         receive_result = self.nodes[0].zcrawreceive(zcsecretkey, joinsplit_result["encryptednote1"])
         assert_equal(receive_result["exists"], True)
@@ -47,6 +50,7 @@ class JoinSplitTest(BitcoinTestFramework):
         addrtest = self.nodes[0].getnewaddress()
         for xx in range(0,10):
             self.nodes[0].generate(1)
+            self.sync_all()
             for x in range(0,50):
                 self.nodes[0].sendtoaddress(addrtest, self._fee);
 
@@ -56,8 +60,9 @@ class JoinSplitTest(BitcoinTestFramework):
 
         self.nodes[0].sendrawtransaction(joinsplit_result["rawtxn"])
         self.nodes[0].generate(1)
+        self.sync_all()
 
-        print "Done!"
+        print("Done!")
         receive_result = self.nodes[0].zcrawreceive(zcsecretkey, joinsplit_result["encryptednote1"])
         assert_equal(receive_result["exists"], True)
 

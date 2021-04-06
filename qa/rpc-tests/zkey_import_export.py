@@ -1,9 +1,7 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # Copyright (c) 2017 The Zcash developers
 # Distributed under the MIT software license, see the accompanying
-# file COPYING or http://www.opensource.org/licenses/mit-license.php.
-
-import sys; assert sys.version_info < (3,), ur"This script does not run under Python 3. Please use Python 2.7.x."
+# file COPYING or https://www.opensource.org/licenses/mit-license.php .
 
 from decimal import Decimal, getcontext
 getcontext().prec = 16
@@ -11,20 +9,26 @@ from test_framework.test_framework import BitcoinTestFramework
 from test_framework.util import assert_equal, assert_greater_than, start_nodes,\
     initialize_chain_clean, connect_nodes_bi, wait_and_assert_operationid_status
 
+from functools import reduce
 import logging
 
-logging.basicConfig(format='%(levelname)s:%(message)s', level=logging.INFO)
+log = logging.getLogger("PastelRPC")
 
 fee = Decimal('0.0001') # constant (but can be changed within reason)
 
 class ZkeyImportExportTest (BitcoinTestFramework):
 
+    def __init__(self):
+        super().__init__()
+        self.setup_clean_chain = True
+        self.num_nodes = 5
+
     def setup_chain(self):
         print("Initializing test directory "+self.options.tmpdir)
-        initialize_chain_clean(self.options.tmpdir, 5)
+        initialize_chain_clean(self.options.tmpdir, self.num_nodes)
 
     def setup_network(self, split=False):
-        self.nodes = start_nodes(5, self.options.tmpdir)
+        self.nodes = start_nodes(self.num_nodes, self.options.tmpdir)
         connect_nodes_bi(self.nodes,0,1)
         connect_nodes_bi(self.nodes,1,2)
         connect_nodes_bi(self.nodes,0,2)
@@ -49,11 +53,7 @@ class ZkeyImportExportTest (BitcoinTestFramework):
         def verify_utxos(node, amts, zaddr):
             amts.sort(reverse=True)
             txs = node.z_listreceivedbyaddress(zaddr)
-
-            def cmp_confirmations_high_to_low(a, b):
-                return cmp(b["amount"], a["amount"])
-
-            txs.sort(cmp_confirmations_high_to_low)
+            txs.sort(key=lambda x: x["amount"], reverse=True)
             print("Sorted txs", txs)
             print("amts", amts)
 
@@ -66,7 +66,7 @@ class ZkeyImportExportTest (BitcoinTestFramework):
                     assert_greater_than(tx["jsindex"], -1)
                     assert_greater_than(tx["jsoutindex"], -1)
             except AssertionError:
-                logging.error(
+                log.error(
                     'Expected amounts: %r; txs: %r',
                     amts, txs)
                 raise
@@ -100,28 +100,28 @@ class ZkeyImportExportTest (BitcoinTestFramework):
         # verify_utxos(charlie, [])
 
         # the amounts of each txn embodied which generates a single UTXO:
-        amounts = map(Decimal, ['23', '37', '1', '5', '10', '19'])
+        amounts = list(map(Decimal, ['23', '37', '1', '5', '10', '19']))
 
         # Internal test consistency assertion:
         assert_greater_than(
-            get_private_balance(alice),
+            Decimal(get_private_balance(alice)),
             reduce(Decimal.__add__, amounts))
 
-        logging.info("Sending pre-export txns...")
+        log.info("Sending pre-export txns...")
         for amount in amounts[0:2]:
             z_send(alice, alice_zaddr, bob_zaddr, amount)
 
-        logging.info("Exporting privkey from bob...")
+        log.info("Exporting privkey from bob...")
         bob_privkey = bob.z_exportkey(bob_zaddr)
 
-        logging.info("Sending post-export txns...")
+        log.info("Sending post-export txns...")
         for amount in amounts[2:4]:
             z_send(alice, alice_zaddr, bob_zaddr, amount)
 
         verify_utxos(bob, amounts[:4], bob_zaddr)
         # verify_utxos(charlie, [])
 
-        logging.info("Importing bob_privkey into charlie...")
+        log.info("Importing bob_privkey into charlie...")
         # z_importkey rescan defaults to "whenkeyisnew", so should rescan here
         charlie.z_importkey(bob_privkey)
         ipk_zaddr = find_imported_key(charlie, bob_zaddr)
@@ -137,7 +137,7 @@ class ZkeyImportExportTest (BitcoinTestFramework):
         # amounts should be unchanged
         verify_utxos(charlie, amounts[:4], ipk_zaddr2)
 
-        logging.info("Sending post-import txns...")
+        log.info("Sending post-import txns...")
         for amount in amounts[4:]:
             z_send(alice, alice_zaddr, bob_zaddr, amount)
 
@@ -146,7 +146,7 @@ class ZkeyImportExportTest (BitcoinTestFramework):
         verify_utxos(charlie, amounts, ipk_zaddr2)
 
         # keep track of the fees incurred by bob (his sends)
-        bob_fee = Decimal(0)
+        bob_fee = Decimal('0')
 
         # Try to reproduce zombie balance reported in #1936
         # At generated zaddr, receive PSL, and send PSL back out. bob -> alice

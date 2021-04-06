@@ -1,11 +1,9 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # Copyright (c) 2016 The Zcash developers
 # Distributed under the MIT software license, see the accompanying
 # file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
 # PASTEL doesnt support protected coinbase, so this test will NOT test for this!!!
-
-import sys; assert sys.version_info < (3,), ur"This script does not run under Python 3. Please use Python 2.7.x."
 
 from test_framework.test_framework import BitcoinTestFramework
 from test_framework.authproxy import JSONRPCException
@@ -32,7 +30,7 @@ def check_value_pool(node, name, total):
 class WalletProtectCoinbaseTest (BitcoinTestFramework):
 
     def setup_chain(self):
-        print("Initializing test directory "+self.options.tmpdir)
+        print(f'Initializing test directory {self.options.tmpdir}')
         initialize_chain_clean(self.options.tmpdir, 4)
 
     def setup_network(self, split=False):
@@ -45,7 +43,7 @@ class WalletProtectCoinbaseTest (BitcoinTestFramework):
         self.sync_all()
 
     def run_test (self):
-        print "Mining blocks..."
+        print("Mining blocks...")
 
         self.nodes[0].generate(4)
 
@@ -72,7 +70,7 @@ class WalletProtectCoinbaseTest (BitcoinTestFramework):
         # # coinbase utxos can only be sent to a zaddr.
         # try:
         #     self.nodes[0].sendtoaddress(self.nodes[2].getnewaddress(), 1)
-        # except JSONRPCException,e:
+        # except JSONRPCException as e:
         #     errorString = e.error['message']
         # assert_equal("Coinbase funds can only be sent to a zaddr" in errorString, True)
 
@@ -85,7 +83,7 @@ class WalletProtectCoinbaseTest (BitcoinTestFramework):
         recipients= [{"address":myzaddr, "amount": Decimal('1')}]
         myopid = self.nodes[3].z_sendmany(mytaddr, recipients)
 
-        wait_and_assert_operationid_status(self.nodes[3], myopid, "failed", "no UTXOs found for taddr from address", self._reward)
+        wait_and_assert_operationid_status(self.nodes[3], myopid, "failed", "Insufficient funds, no UTXOs found for taddr from address.")
 
         ## !!!In PASTEL this will NOT fail, as it allows to send change from coinbase utxo!!! 
         ## !!!Because it is not required to be shielded first!!!
@@ -232,7 +230,7 @@ class WalletProtectCoinbaseTest (BitcoinTestFramework):
         errorString = ""
         try:
             self.nodes[0].sendtoaddress(self.nodes[2].getnewaddress(), 99999)
-        except JSONRPCException,e:
+        except JSONRPCException as e:
             errorString = e.error['message']
         assert_equal("Insufficient funds" in errorString, True)
 
@@ -248,7 +246,7 @@ class WalletProtectCoinbaseTest (BitcoinTestFramework):
         errorString = ""
         try:
             self.nodes[0].sendtoaddress(self.nodes[2].getnewaddress(), 21)
-        except JSONRPCException,e:
+        except JSONRPCException as e:
             assert(False)
             # errorString = e.error['message']
         # assert_equal("Insufficient funds, coinbase funds can only be spent after they have been sent to a zaddr" in errorString, True)
@@ -264,7 +262,7 @@ class WalletProtectCoinbaseTest (BitcoinTestFramework):
         # Note that regtest chainparams does not require standard tx, so setting the amount to be
         # less than the dust threshold, e.g. 0.00001 will not result in mempool rejection.
         start_time = timeit.default_timer()
-        for i in xrange(0,num_t_recipients):
+        for i in range(0,num_t_recipients):
             newtaddr = self.nodes[2].getnewaddress()
             recipients.append({"address":newtaddr, "amount":amount_per_recipient})
         elapsed = timeit.default_timer() - start_time
@@ -302,21 +300,21 @@ class WalletProtectCoinbaseTest (BitcoinTestFramework):
         # Send will fail because fee is negative
         try:
             self.nodes[0].z_sendmany(myzaddr, recipients, 1, -1)
-        except JSONRPCException,e:
+        except JSONRPCException as e:
             errorString = e.error['message']
         assert_equal("Amount out of range" in errorString, True)
 
         # Send will fail because fee is larger than MAX_MONEY
         try:
             self.nodes[0].z_sendmany(myzaddr, recipients, 1, self._maxmoney + self._patoshi)
-        except JSONRPCException,e:
+        except JSONRPCException as e:
             errorString = e.error['message']
         assert_equal("Amount out of range" in errorString, True)
 
         # Send will fail because fee is larger than sum of outputs
         try:
             self.nodes[0].z_sendmany(myzaddr, recipients, 1, (amount_per_recipient * num_t_recipients) + self._patoshi)
-        except JSONRPCException,e:
+        except JSONRPCException as e:
             errorString = e.error['message']
         assert_equal("is greater than the sum of outputs" in errorString, True)
 
@@ -342,11 +340,11 @@ class WalletProtectCoinbaseTest (BitcoinTestFramework):
         send_amount = num_recipients * amount_per_recipient
         custom_fee = Decimal('0.12345')
         zbalance = self.nodes[0].z_getbalance(myzaddr)
-        for i in xrange(0,num_recipients):
+        for i in range(0,num_recipients):
             newzaddr = self.nodes[2].z_getnewaddress('sprout')
             recipients.append({"address":newzaddr, "amount":amount_per_recipient})
         myopid = self.nodes[0].z_sendmany(myzaddr, recipients, minconf, custom_fee)
-        wait_and_assert_operationid_status(self.nodes[0], myopid)
+        wait_and_assert_operationid_status(self.nodes[0], myopid,timeout=480)
         self.sync_all()
         self.nodes[1].generate(1)
         self.sync_all()

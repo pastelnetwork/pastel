@@ -1,13 +1,11 @@
-#!/usr/bin/env python
-# Copyright (c) 2014 The Bitcoin Core developers
+#!/usr/bin/env python3
+# Copyright (c) 2014-2016 The Bitcoin Core developers
 # Distributed under the MIT software license, see the accompanying
-# file COPYING or http://www.opensource.org/licenses/mit-license.php.
+# file COPYING or https://www.opensource.org/licenses/mit-license.php .
 
 #
 # Test merkleblock fetch/validation
 #
-
-import sys; assert sys.version_info < (3,), ur"This script does not run under Python 3. Please use Python 2.7.x."
 
 import string
 from test_framework.test_framework import BitcoinTestFramework
@@ -20,9 +18,14 @@ getcontext().prec = 16
 
 class MerkleBlockTest(BitcoinTestFramework):
 
+    def __init__(self):
+        super().__init__()
+        self.setup_clean_chain = True
+        self.num_nodes = 4
+
     def setup_chain(self):
         print("Initializing test directory "+self.options.tmpdir)
-        initialize_chain_clean(self.options.tmpdir, 4)
+        initialize_chain_clean(self.options.tmpdir, self.num_nodes)
 
     def setup_network(self):
         self.nodes = []
@@ -40,7 +43,7 @@ class MerkleBlockTest(BitcoinTestFramework):
         self.sync_all()
 
     def run_test(self):
-        print "Mining blocks..."
+        print("Mining blocks...")
         self.nodes[0].generate(105)
         self.sync_all()
 
@@ -100,6 +103,11 @@ class MerkleBlockTest(BitcoinTestFramework):
         assert_equal(coinbase_txid, result["tx"][0])  # verbosity 1 only lists txids
         result = self.nodes[0].getblock(blockhash, 0)
         assert(c in string.hexdigits for c in result) # verbosity 0 returns raw hex
+
+        # Test getblock heights 
+        assert_equal(self.nodes[0].getblock("0")["height"], 0)
+        assert_raises(JSONRPCException, self.nodes[0].getblock, ["108"])
+        assert_equal(self.nodes[0].getblock("107")["height"], 107)
 
 if __name__ == '__main__':
     MerkleBlockTest().main()

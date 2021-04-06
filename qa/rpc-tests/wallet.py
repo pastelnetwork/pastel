@@ -1,16 +1,14 @@
-#!/usr/bin/env python
-# Copyright (c) 2014 The Bitcoin Core developers
+#!/usr/bin/env python3
+# Copyright (c) 2014-2016 The Bitcoin Core developers
 # Distributed under the MIT software license, see the accompanying
-# file COPYING or http://www.opensource.org/licenses/mit-license.php.
-
-import sys; assert sys.version_info < (3,), ur"This script does not run under Python 3. Please use Python 2.7.x."
+# file COPYING or https://www.opensource.org/licenses/mit-license.php .
 
 from test_framework.test_framework import BitcoinTestFramework
 from test_framework.authproxy import JSONRPCException
 from test_framework.util import assert_equal, assert_greater_than, \
     initialize_chain_clean, start_nodes, start_node, connect_nodes_bi, \
     stop_nodes, sync_blocks, sync_mempools, wait_and_assert_operationid_status, \
-    wait_bitcoinds
+    wait_pastelds
 
 import time
 from decimal import Decimal, getcontext
@@ -31,8 +29,8 @@ class WalletTest (BitcoinTestFramework):
         self.sync_all()
 
     def run_test (self):
-        print "Mining blocks..."
-        print "On REGTEST... \n\treward is {} per block\n\t100 blocks to maturity".format(self._reward)
+        print("Mining blocks...")
+        print("On REGTEST... \n\treward is {} per block\n\t100 blocks to maturity".format(self._reward))
 
         self.nodes[0].generate(4)
 
@@ -111,10 +109,10 @@ class WalletTest (BitcoinTestFramework):
         signed_tx = self.nodes[2].signrawtransaction(raw_tx)
         try:
             self.nodes[2].sendrawtransaction(signed_tx["hex"])
-        except JSONRPCException,e:
+        except JSONRPCException as e:
             errorString = e.error['message']
         assert("absurdly high fees" in errorString)
-        print errorString
+        print(errorString)
         assert("624900000 > 190000" in errorString)
 
         # create both transactions
@@ -241,7 +239,7 @@ class WalletTest (BitcoinTestFramework):
 
         #do some -walletbroadcast tests
         stop_nodes(self.nodes)
-        wait_bitcoinds()
+        wait_pastelds()
         self.nodes = start_nodes(3, self.options.tmpdir, [["-walletbroadcast=0"],["-walletbroadcast=0"],["-walletbroadcast=0"]])
         connect_nodes_bi(self.nodes,0,1)
         connect_nodes_bi(self.nodes,1,2)
@@ -263,15 +261,15 @@ class WalletTest (BitcoinTestFramework):
         self.nodes[1].generate(1)
         self.sync_all()
         txObjNotBroadcasted = self.nodes[0].gettransaction(txIdNotBroadcasted)
-        assert_equal(self.nodes[2].getbalance(), self._reward-self._fee-self._fee+Decimal('2.000')); #should not be
-        assert_equal(self.nodes[2].getbalance("*"), self._reward-self._fee-self._fee+Decimal('2.000')); #should not be
+        assert_equal(self.nodes[2].getbalance(), self._reward-self._fee-self._fee+Decimal('2.000')) #should not be
+        assert_equal(self.nodes[2].getbalance("*"), self._reward-self._fee-self._fee+Decimal('2.000')) #should not be
 
         #create another tx
         txIdNotBroadcasted  = self.nodes[0].sendtoaddress(self.nodes[2].getnewaddress(), 2)
 
         #restart the nodes with -walletbroadcast=1
         stop_nodes(self.nodes)
-        wait_bitcoinds()
+        wait_pastelds()
         self.nodes = start_nodes(3, self.options.tmpdir)
         connect_nodes_bi(self.nodes,0,1)
         connect_nodes_bi(self.nodes,1,2)
@@ -282,18 +280,18 @@ class WalletTest (BitcoinTestFramework):
         sync_blocks(self.nodes)
 
         #tx should be added to balance because after restarting the nodes tx should be broadcasted
-        assert_equal(self.nodes[2].getbalance(), self._reward-self._fee-self._fee+Decimal('2.000')+Decimal('2.000')); #should not be
-        assert_equal(self.nodes[2].getbalance("*"), self._reward-self._fee-self._fee+Decimal('2.000')+Decimal('2.000')); #should not be
+        assert_equal(self.nodes[2].getbalance(), self._reward-self._fee-self._fee+Decimal('2.000')+Decimal('2.000')) #should not be
+        assert_equal(self.nodes[2].getbalance("*"), self._reward-self._fee-self._fee+Decimal('2.000')+Decimal('2.000')) #should not be
 
         # send from node 0 to node 2 taddr
-        mytaddr = self.nodes[2].getnewaddress();
-        mytxid = self.nodes[0].sendtoaddress(mytaddr, self._reward);
+        mytaddr = self.nodes[2].getnewaddress()
+        mytxid = self.nodes[0].sendtoaddress(mytaddr, self._reward)
         self.sync_all()
         self.nodes[0].generate(1)
         self.sync_all()
 
         mybalance = self.nodes[2].z_getbalance(mytaddr)
-        assert_equal(mybalance, self._reward);
+        assert_equal(mybalance, self._reward)
 
         mytxdetails = self.nodes[2].gettransaction(mytxid)
         myvjoinsplits = mytxdetails["vjoinsplit"]
@@ -306,7 +304,7 @@ class WalletTest (BitcoinTestFramework):
         num_t_recipients = 3000
         amount_per_recipient = self._patoshi
         errorString = ''
-        for i in xrange(0,num_t_recipients):
+        for i in range(0,num_t_recipients):
             newtaddr = self.nodes[2].getnewaddress()
             recipients.append({"address":newtaddr, "amount":amount_per_recipient})
 
@@ -321,7 +319,7 @@ class WalletTest (BitcoinTestFramework):
 
         try:
             self.nodes[0].z_sendmany(myzaddr, recipients)
-        except JSONRPCException,e:
+        except JSONRPCException as e:
             errorString = e.error['message']
         assert("Too many outputs, size of raw transaction" in errorString)
 
@@ -330,10 +328,10 @@ class WalletTest (BitcoinTestFramework):
         num_z_recipients = 50
         amount_per_recipient = self._patoshi
         errorString = ''
-        for i in xrange(0,num_t_recipients):
+        for i in range(0,num_t_recipients):
             newtaddr = self.nodes[2].getnewaddress()
             recipients.append({"address":newtaddr, "amount":amount_per_recipient})
-        for i in xrange(0,num_z_recipients):
+        for i in range(0,num_z_recipients):
             newzaddr = self.nodes[2].z_getnewaddress('sprout')
             recipients.append({"address":newzaddr, "amount":amount_per_recipient})
 
@@ -343,7 +341,7 @@ class WalletTest (BitcoinTestFramework):
 
         try:
             self.nodes[0].z_sendmany(myzaddr, recipients)
-        except JSONRPCException,e:
+        except JSONRPCException as e:
             errorString = e.error['message']
         assert("size of raw transaction would be larger than limit" in errorString)
 
@@ -351,12 +349,12 @@ class WalletTest (BitcoinTestFramework):
         num_z_recipients = 100
         amount_per_recipient = self._patoshi
         errorString = ''
-        for i in xrange(0,num_z_recipients):
+        for i in range(0,num_z_recipients):
             newzaddr = self.nodes[2].z_getnewaddress('sprout')
             recipients.append({"address":newzaddr, "amount":amount_per_recipient})
         try:
             self.nodes[0].z_sendmany(myzaddr, recipients)
-        except JSONRPCException,e:
+        except JSONRPCException as e:
             errorString = e.error['message']
         assert("Invalid parameter, too many zaddr outputs" in errorString)
 
@@ -443,7 +441,7 @@ class WalletTest (BitcoinTestFramework):
         errorString = ""
         try:
             txId  = self.nodes[0].sendtoaddress(self.nodes[2].getnewaddress(), "1f-4")
-        except JSONRPCException,e:
+        except JSONRPCException as e:
             errorString = e.error['message']
 
         assert_equal("Invalid amount" in errorString, True)
@@ -451,7 +449,7 @@ class WalletTest (BitcoinTestFramework):
         errorString = ""
         try:
             self.nodes[0].generate("2") #use a string to as block amount parameter must fail because it's not interpreted as amount
-        except JSONRPCException,e:
+        except JSONRPCException as e:
             errorString = e.error['message']
 
         assert_equal("not an integer" in errorString, True)
@@ -465,9 +463,9 @@ class WalletTest (BitcoinTestFramework):
         try:
             myopid = self.nodes[0].z_sendmany(myzaddr, recipients)
             assert(myopid)
-        except JSONRPCException,e:
+        except JSONRPCException as e:
             errorString = e.error['message']
-            print errorString
+            print(errorString)
             assert(False)
 
         # This fee is larger than the default fee and since amount=0
@@ -479,9 +477,9 @@ class WalletTest (BitcoinTestFramework):
 
         try:
             myopid = self.nodes[0].z_sendmany(myzaddr, recipients, minconf, fee)
-        except JSONRPCException,e:
+        except JSONRPCException as e:
             errorString = e.error['message']
-        print errorString
+        print(errorString)
         assert('Small transaction amount' in errorString)
 
         # This fee is less than default and greater than amount, but still valid
@@ -493,9 +491,9 @@ class WalletTest (BitcoinTestFramework):
         try:
             myopid = self.nodes[0].z_sendmany(myzaddr, recipients, minconf, fee)
             assert(myopid)
-        except JSONRPCException,e:
+        except JSONRPCException as e:
             errorString = e.error['message']
-            print errorString
+            print(errorString)
             assert(False)
 
         # Make sure amount=0, fee=0 transaction are valid to add to mempool
@@ -508,9 +506,9 @@ class WalletTest (BitcoinTestFramework):
         try:
             myopid = self.nodes[0].z_sendmany(myzaddr, recipients, minconf, fee)
             assert(myopid)
-        except JSONRPCException,e:
+        except JSONRPCException as e:
             errorString = e.error['message']
-            print errorString
+            print(errorString)
             assert(False)
 
 

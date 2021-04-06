@@ -1,27 +1,26 @@
-# Copyright (c) 2014 The Bitcoin Core developers
+#!/usr/bin/env python3
+# Copyright (c) 2014-2016 The Bitcoin Core developers
 # Distributed under the MIT software license, see the accompanying
-# file COPYING or http://www.opensource.org/licenses/mit-license.php.
+# file COPYING or https://www.opensource.org/licenses/mit-license.php .
 
 
 #
 # Helpful routines for regression testing
 #
 
-# Add python-bitcoinrpc to module search path:
 import os
 import sys
-
 from binascii import hexlify, unhexlify
 from base64 import b64encode
 from decimal import Decimal, ROUND_DOWN
 import json
+import http.client
 import random
 import shutil
 import subprocess
 import time
 import re
-
-from authproxy import AuthServiceProxy
+from .authproxy import AuthServiceProxy
 
 def p2p_port(n):
     return 11000 + n + os.getpid()%999
@@ -81,13 +80,13 @@ def sync_mempools(rpc_connections, wait=1, stop_after=-1):
         print("loop = " + str(count))
         time.sleep(wait)
 
-bitcoind_processes = {}
+pasteld_processes = {}
 
 def initialize_datadir(dirname, n):
     datadir = os.path.join(dirname, "node"+str(n))
     if not os.path.isdir(datadir):
         os.makedirs(datadir)
-    with open(os.path.join(datadir, "pastel.conf"), 'w') as f:
+    with open(os.path.join(datadir, "pastel.conf"), 'w', encoding='utf8') as f:
         f.write("regtest=1\n")
         f.write("showmetrics=0\n")
         f.write("rpcuser=rt\n")
@@ -105,7 +104,7 @@ def initialize_chain(test_dir):
     """
 
     if not os.path.isdir(os.path.join("cache", "node0")):
-        print "Rebuilding cache..."
+        print("Rebuilding cache...")
         devnull = open("/dev/null", "w+")
         # Create cache directories, run pasteld:
         for i in range(4):
@@ -113,13 +112,13 @@ def initialize_chain(test_dir):
             args = [ os.getenv("PASTELD", "pasteld"), "-keypool=1", "-datadir="+datadir, "-discover=0" ]
             if i > 0:
                 args.append("-connect=127.0.0.1:"+str(p2p_port(0)))
-            bitcoind_processes[i] = subprocess.Popen(args)
+            pasteld_processes[i] = subprocess.Popen(args)
             if os.getenv("PYTHON_DEBUG", ""):
-                print "initialize_chain: pasteld started, calling pastel-cli -rpcwait getblockcount"
+                print("initialize_chain: pasteld started, calling pastel-cli -rpcwait getblockcount")
             subprocess.check_call([ os.getenv("PASTELDCLI", "pastel-cli"), "-datadir="+datadir,
                                     "-rpcwait", "getblockcount"], stdout=devnull)
             if os.getenv("PYTHON_DEBUG", ""):
-                print "initialize_chain: pastel-cli -rpcwait getblockcount completed"
+                print("initialize_chain: pastel-cli -rpcwait getblockcount completed")
         devnull.close()
         rpcs = []
         for i in range(4):
@@ -147,14 +146,14 @@ def initialize_chain(test_dir):
 
         # Shut them down, and clean up cache directories:
         stop_nodes(rpcs)
-        wait_bitcoinds()
+        wait_pastelds()
         for i in range(4):
             os.remove(log_filename("cache", i, "debug.log"))
             os.remove(log_filename("cache", i, "db.log"))
             os.remove(log_filename("cache", i, "peers.dat"))
             os.remove(log_filename("cache", i, "fee_estimates.dat"))
 
-        print "Finished Rebuilding cache..."
+        print("Finished Rebuilding cache...")
 
     for i in range(4):
         from_dir = os.path.join("cache", "node"+str(i))
@@ -200,15 +199,15 @@ def start_node(i, dirname, extra_args=None, rpchost=None, timewait=None, binary=
         binary = os.getenv("PASTELD", "pasteld")
     args = [ binary, "-datadir="+datadir, "-keypool=1", "-discover=0", "-rest" ]
     if extra_args is not None: args.extend(extra_args)
-    bitcoind_processes[i] = subprocess.Popen(args)
+    pasteld_processes[i] = subprocess.Popen(args)
     devnull = open("/dev/null", "w+")
     if os.getenv("PYTHON_DEBUG", ""):
-        print "start_node: pasteld started, calling pastel-cli -rpcwait getblockcount"
+        print("start_node: pasteld started, calling pastel-cli -rpcwait getblockcount")
     subprocess.check_call([ os.getenv("PASTELCLI", "pastel-cli"), "-datadir="+datadir] +
                           _rpchost_to_args(rpchost)  +
                           ["-rpcwait", "getblockcount"], stdout=devnull)
     if os.getenv("PYTHON_DEBUG", ""):
-        print "start_node: calling pastel-cli -rpcwait getblockcount returned"
+        print("start_node: calling pastel-cli -rpcwait getblockcount returned")
     devnull.close()
     url = "http://rt:rt@%s:%d" % (rpchost or '127.0.0.1', rpc_port(i))
     if timewait is not None:
@@ -220,7 +219,7 @@ def start_node(i, dirname, extra_args=None, rpchost=None, timewait=None, binary=
 
 def start_nodes(num_nodes, dirname, extra_args=None, rpchost=None, binary=None):
     """
-    Start multiple bitcoinds, return RPC connections to them
+    Start multiple pastelds, return RPC connections to them
     """
     if extra_args is None: extra_args = [ None for i in range(num_nodes) ]
     if binary is None: binary = [ None for i in range(num_nodes) ]
@@ -230,28 +229,34 @@ def log_filename(dirname, n_node, logname):
     return os.path.join(dirname, "node"+str(n_node), "regtest", logname)
 
 def check_node(i):
-    bitcoind_processes[i].poll()
-    return bitcoind_processes[i].returncode
+    pasteld_processes[i].poll()
+    return pasteld_processes[i].returncode
 
 def stop_node(node, i):
-    node.stop()
-    bitcoind_processes[i].wait()
-    del bitcoind_processes[i]
+    try:
+        node.stop()
+    except http.client.CannotSendRequest as e:
+        print("WARN: Unable to stop node: " + repr(e))
+    pasteld_processes[i].wait()
+    del pasteld_processes[i]
 
 def stop_nodes(nodes):
     for node in nodes:
-        node.stop()
+        try:
+            node.stop()
+        except http.client.CannotSendRequest as e:
+            print("WARN: Unable to stop node: " + repr(e))
     del nodes[:] # Emptying array closes connections as a side effect
 
 def set_node_times(nodes, t):
     for node in nodes:
         node.setmocktime(t)
 
-def wait_bitcoinds():
-    # Wait for all bitcoinds to cleanly exit
-    for pasteld in bitcoind_processes.values():
+def wait_pastelds():
+    # Wait for all pastelds to cleanly exit
+    for pasteld in list(pasteld_processes.values()):
         pasteld.wait()
-    bitcoind_processes.clear()
+    pasteld_processes.clear()
 
 def connect_nodes(from_connection, node_num):
     ip_port = "127.0.0.1:"+str(p2p_port(node_num))
@@ -388,9 +393,20 @@ def assert_greater_than(thing1, thing2):
     if thing1 <= thing2:
         raise AssertionError("%s <= %s"%(str(thing1),str(thing2)))
 
-def assert_raises(exc, fun, *args, **kwds):
+def assert_raises(exc, func, *args, **kwds):
+    assert_raises_message(exc, None, func, *args, **kwds)
+
+def assert_raises_message(ExceptionType, errstr, func, *args, **kwargs):
+    """
+    Asserts that func throws and that the exception contains 'errstr'
+    in its message.
+    """
     try:
-        fun(*args, **kwds)
+        func(*args, **kwargs)
+    except ExceptionType as e:
+        if errstr is not None and errstr not in str(e):
+            raise AssertionError("Invalid exception string: Couldn't find %r in %r" % (
+                errstr, str(e)))
     except exc:
         pass
     except Exception as e:
@@ -401,37 +417,58 @@ def assert_raises(exc, fun, *args, **kwds):
 def fail(message=""):
     raise AssertionError(message)
 
-# Returns txid if operation was a success or None
-def wait_and_assert_operationid_status(node, myopid, in_status='success', in_errormsg=None, timeout=300):
+
+# Returns an async operation result
+def wait_and_assert_operationid_status_result(node, myopid, in_status='success', in_errormsg=None, timeout=300):
     print('waiting for async operation {}'.format(myopid))
     result = None
-    for _ in xrange(1, timeout):
+    for _ in range(1, timeout):
         results = node.z_getoperationresult([myopid])
         if len(results) > 0:
             result = results[0]
             break
         time.sleep(1)
 
-    assert_true(result is not None, "timeout occured")
+    assert_true(result is not None, "timeout occurred")
     status = result['status']
 
-    txid = None
+    debug = os.getenv("PYTHON_DEBUG", "")
+    if debug:
+        print('...returned status: {}'.format(status))
+
     errormsg = None
     if status == "failed":
         errormsg = result['error']['message']
-    elif status == "success":
-        txid = result['result']['txid']
-
-    if os.getenv("PYTHON_DEBUG", ""):
-        print('...returned status: {}'.format(status))
-        if errormsg is not None:
+        if debug:
             print('...returned error: {}'.format(errormsg))
-    
+        assert_equal(in_errormsg, errormsg)
+
     assert_equal(in_status, status, "Operation returned mismatched status. Error Message: {}".format(errormsg))
 
-    if errormsg is not None:
-        assert_true(in_errormsg is not None, "No error retured. Expected: {}".format(errormsg))
-        assert_true(in_errormsg in errormsg, "Error returned: {}. Error expected: {}".format(errormsg, in_errormsg))
-        return result # if there was an error return the result
+    return result
+
+
+# Returns txid if operation was a success or None
+def wait_and_assert_operationid_status(node, myopid, in_status='success', in_errormsg=None, timeout=300):
+    result = wait_and_assert_operationid_status_result(node, myopid, in_status, in_errormsg, timeout)
+    if result['status'] == "success":
+        return result['result']['txid']
     else:
-        return txid # otherwise return the txid
+        return None
+
+
+def check_node_log(self, node_number, line_to_check, stop_node = True):
+    print("Checking node " + str(node_number) + " logs")
+    if stop_node:
+        self.nodes[node_number].stop()
+        pasteld_processes[node_number].wait()
+    logpath = self.options.tmpdir + "/node" + str(node_number) + "/regtest/debug.log"
+    with open(logpath, "r", encoding="utf8") as myfile:
+        logdata = myfile.readlines()
+    for (n, logline) in enumerate(logdata):
+        if line_to_check in logline:
+            return n
+    raise AssertionError(repr(line_to_check) + " not found")
+
+def nuparams(branch_id, height):
+    return '-nuparams=%x:%d' % (branch_id, height)

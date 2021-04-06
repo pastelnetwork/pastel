@@ -11,6 +11,7 @@ export PASTELD=${REAL_PASTELD}
 #Run the tests
 
 testScripts=(
+    'framework.py'
     'paymentdisclosure.py'
     'prioritisetransaction.py'
     'wallet_treestate.py'
@@ -18,18 +19,16 @@ testScripts=(
     'wallet_changeindicator.py'
     'wallet_import_export.py'
     'wallet_protectcoinbase.py'
-    # 'wallet_shieldcoinbase_sprout.py'
     'wallet_shieldcoinbase_sapling.py'
     'wallet_listreceived.py'
     'wallet.py'
     'wallet_overwintertx.py'
-    'wallet_persistence.py'
+    'wallet_persistence.py' #fails
     'wallet_nullifiers.py'
     'wallet_1941.py'
     'wallet_addresses.py'
     'wallet_sapling.py'
     'wallet_listnotes.py'
-    # 'mergetoaddress_sprout.py'
     'mergetoaddress_sapling.py'
     'listtransactions.py'
     'mempool_resurrect_test.py'
@@ -40,7 +39,6 @@ testScripts=(
     'rest.py'
     'mempool_spendcoinbase.py'
     'mempool_reorg.py'
-    #'mempool_tx_input_limit.py'    # DEPRECATED FROM OVERWINTER!!!! (OVERWINTER in Pastel is from block 1)
     'mempool_nu_activation.py'
     'mempool_tx_expiry.py'
     'httpbasics.py'
@@ -58,17 +56,16 @@ testScripts=(
     'blockchain.py'
     'disablewallet.py'
     'zcjoinsplit.py'
-    'zcjoinsplitdoublespend.py'
+    'zcjoinsplitdoublespend.py'  # crashes pasteld
     'zkey_import_export.py' 
     'reorg_limit.py'
     'getblocktemplate.py'
-    # 'bip65-cltv-p2p.py'                 #FIXME
-    # 'bipdersig-p2p.py'                  #FIXME
-    # 'p2p_nu_peer_management.py'         #FIXME
+    'bip65-cltv-p2p.py'
+    'bipdersig-p2p.py'
     'rewind_index.py'
-    # 'p2p_txexpiry_dos.py'               #FIXME
-    # 'p2p_txexpiringsoon.py'             #FIXME
-    # 'p2p_node_bloom.py'                 #FIXME
+    'p2p_txexpiry_dos.py'
+    'p2p_txexpiringsoon.py'
+    'p2p_node_bloom.py'
     'regtest_signrawtransaction.py'
     'finalsaplingroot.py'
     'mn_main.py'

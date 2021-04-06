@@ -1,20 +1,19 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # Copyright (c) 2018 The Zcash developers
 # Distributed under the MIT software license, see the accompanying
-# file COPYING or http://www.opensource.org/licenses/mit-license.php.
-
-import sys; assert sys.version_info < (3,), ur"This script does not run under Python 3. Please use Python 2.7.x."
+# file COPYING or https://www.opensource.org/licenses/mit-license.php .
 
 from test_framework.test_framework import BitcoinTestFramework
 from test_framework.util import assert_equal, initialize_chain_clean, \
     start_nodes, stop_nodes, connect_nodes_bi, \
-    wait_and_assert_operationid_status, wait_bitcoinds
+    wait_and_assert_operationid_status, wait_pastelds, \
+    sync_blocks, sync_mempools
 from decimal import Decimal
 
 class WalletAnchorForkTest (BitcoinTestFramework):
 
     def setup_chain(self):
-        print("Initializing test directory "+self.options.tmpdir)
+        print(f'Initializing test directory {self.options.tmpdir}')
         initialize_chain_clean(self.options.tmpdir, 4)
 
     def setup_network(self, split=False):
@@ -26,8 +25,9 @@ class WalletAnchorForkTest (BitcoinTestFramework):
         self.sync_all()
 
     def run_test (self):
-        print "Mining blocks..."
+        print("Mining blocks...")
         self.nodes[0].generate(4)
+        self.sync_all()
 
         walletinfo = self.nodes[0].getwalletinfo()
         assert_equal(walletinfo['immature_balance'], self._reward*4)
@@ -58,7 +58,7 @@ class WalletAnchorForkTest (BitcoinTestFramework):
 
         # Stop nodes.
         stop_nodes(self.nodes)
-        wait_bitcoinds()
+        wait_pastelds()
 
         # Relaunch nodes and partition network into two:
         # A: node 0
@@ -78,11 +78,17 @@ class WalletAnchorForkTest (BitcoinTestFramework):
 
         # Partition A, node 0 mines a block with the transaction
         self.nodes[0].generate(1)
+        # Same as self.sync_all() but only for node 0
+        sync_blocks(self.nodes[:1])
+        sync_mempools(self.nodes[:1])
 
         # Partition B, node 1 mines the same joinsplit transaction
         txid2 = self.nodes[1].sendrawtransaction(rawhex)
         assert_equal(txid, txid2)
         self.nodes[1].generate(1)
+        # Same as self.sync_all() but only for nodes 1 and 2
+        sync_blocks(self.nodes[1:])
+        sync_mempools(self.nodes[1:])
 
         # Check that Partition B is one block ahead and that they have different tips
         assert_equal(self.nodes[0].getblockcount() + 1, self.nodes[1].getblockcount())
@@ -90,7 +96,7 @@ class WalletAnchorForkTest (BitcoinTestFramework):
 
         # Shut down all nodes so any in-memory state is saved to disk
         stop_nodes(self.nodes)
-        wait_bitcoinds()
+        wait_pastelds()
 
         # Relaunch nodes and reconnect the entire network
         self.nodes = start_nodes(3, self.options.tmpdir, extra_args=[['-debug=zrpc']] * 3 )

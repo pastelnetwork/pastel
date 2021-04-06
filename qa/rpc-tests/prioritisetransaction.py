@@ -1,9 +1,7 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # Copyright (c) 2017 The Zcash developers
 # Distributed under the MIT software license, see the accompanying
-# file COPYING or http://www.opensource.org/licenses/mit-license.php.
-
-import sys; assert sys.version_info < (3,), ur"This script does not run under Python 3. Please use Python 2.7.x."
+# file COPYING or https://www.opensource.org/licenses/mit-license.php .
 
 from test_framework.test_framework import BitcoinTestFramework
 from test_framework.util import assert_equal, initialize_chain_clean, \
@@ -31,7 +29,7 @@ class PrioritiseTransactionTest (BitcoinTestFramework):
     def run_test (self):
         # tx priority is calculated: priority = sum(input_value_in_base_units * input_age)/size_in_bytes
 
-        print "Mining 11kb blocks..."
+        print("Mining 11kb blocks...")
         self.nodes[0].generate(501)
 
         base_fee = self.nodes[0].getnetworkinfo()['relayfee']
@@ -47,7 +45,7 @@ class PrioritiseTransactionTest (BitcoinTestFramework):
         # Older transactions get mined first, so this lower value, newer tx is unlikely to be mined without prioritisation
         priority_tx_0 = self.nodes[0].sendtoaddress(self.nodes[1].getnewaddress(), 0.1)
 
-        print "Waiting 20 sec for mnsync to finish..."
+        print("Waiting 20 secs for mnsync to finish...")
         time.sleep(20)
 
         # Check that priority_tx_0 is not in block_template() prior to prioritisation

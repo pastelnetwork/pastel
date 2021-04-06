@@ -1,28 +1,32 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # Copyright (c) 2017 The Zcash developers
 # Distributed under the MIT software license, see the accompanying
-# file COPYING or http://www.opensource.org/licenses/mit-license.php.
-
-import sys; assert sys.version_info < (3,), ur"This script does not run under Python 3. Please use Python 2.7.x."
+# file COPYING or https://www.opensource.org/licenses/mit-license.php .
 
 from decimal import Decimal, getcontext
 getcontext().prec = 16
+from functools import reduce
 from test_framework.test_framework import BitcoinTestFramework
 from test_framework.util import assert_equal, assert_greater_than, start_nodes, initialize_chain_clean, connect_nodes_bi
 
 import logging
+import sys
 
-logging.basicConfig(format='%(levelname)s:%(message)s', level=logging.INFO)
-
+log = logging.getLogger("PastelRPC")
 
 class KeyImportExportTest (BitcoinTestFramework):
 
+    def __init__(self):
+        super().__init__()
+        self.num_nodes = 4
+        self.setup_clean_chain = True
+
     def setup_chain(self):
         print("Initializing test directory "+self.options.tmpdir)
-        initialize_chain_clean(self.options.tmpdir, 4)
+        initialize_chain_clean(self.options.tmpdir, self.num_nodes)
 
     def setup_network(self, split=False):
-        self.nodes = start_nodes(4, self.options.tmpdir )
+        self.nodes = start_nodes(self.num_nodes, self.options.tmpdir )
         connect_nodes_bi(self.nodes,0,1)
         connect_nodes_bi(self.nodes,1,2)
         connect_nodes_bi(self.nodes,0,2)
@@ -41,16 +45,13 @@ class KeyImportExportTest (BitcoinTestFramework):
 
         def verify_utxos(node, amounts):
             utxos = node.listunspent(1, 10**9, [addr])
-
-            def cmp_confirmations_high_to_low(a, b):
-                return cmp(b["confirmations"], a["confirmations"])
-
-            utxos.sort(cmp_confirmations_high_to_low)
+            utxos.sort(key=lambda x: x["confirmations"])
+            utxos.reverse()
 
             try:
                 assert_equal(amounts, [utxo["amount"] for utxo in utxos])
             except AssertionError:
-                logging.error(
+                log.error(
                     'Expected amounts: %r; utxos: %r',
                     amounts, utxos)
                 raise
@@ -67,28 +68,28 @@ class KeyImportExportTest (BitcoinTestFramework):
         verify_utxos(charlie, [])
 
         # the amounts of each txn embodied which generates a single UTXO:
-        amounts = map(Decimal, ['2.3', '3.7', '0.1', '0.5', '1.0', '0.19'])
+        amounts = list(map(Decimal, ['2.3', '3.7', '0.1', '0.5', '1.0', '0.19']))
 
         # Internal test consistency assertion:
         assert_greater_than(
             alice.getbalance(),
             reduce(Decimal.__add__, amounts))
 
-        logging.info("Sending pre-export txns...")
+        log.info("Sending pre-export txns...")
         for amount in amounts[0:2]:
             alice_to_bob(amount)
 
-        logging.info("Exporting privkey from bob...")
+        log.info("Exporting privkey from bob...")
         privkey = bob.dumpprivkey(addr)
 
-        logging.info("Sending post-export txns...")
+        log.info("Sending post-export txns...")
         for amount in amounts[2:4]:
             alice_to_bob(amount)
 
         verify_utxos(bob, amounts[:4])
         verify_utxos(charlie, [])
 
-        logging.info("Importing privkey into charlie...")
+        log.info("Importing privkey into charlie...")
         ipkaddr = charlie.importprivkey(privkey, '', True)
         assert_equal(addr, ipkaddr)
 
@@ -102,7 +103,7 @@ class KeyImportExportTest (BitcoinTestFramework):
         # amounts should be unchanged
         verify_utxos(charlie, amounts[:4])
 
-        logging.info("Sending post-import txns...")
+        log.info("Sending post-import txns...")
         for amount in amounts[4:]:
             alice_to_bob(amount)
 
