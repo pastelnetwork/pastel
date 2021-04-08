@@ -566,7 +566,7 @@ UniValue getblocktemplate(const UniValue& params, bool fHelp)
     if (strMode != "template")
         throw JSONRPCError(RPC_INVALID_PARAMETER, "Invalid mode");
 
-    if (vNodes.empty())
+    if (!Params().IsRegTest() && vNodes.empty())
         throw JSONRPCError(RPC_CLIENT_NOT_CONNECTED, "Pastel is not connected!");
 
     if (IsInitialBlockDownload())
@@ -574,7 +574,7 @@ UniValue getblocktemplate(const UniValue& params, bool fHelp)
 
 //PASTEL
     CScript payee;
-    if (!masterNodeCtrl.masternodeSync.IsWinnersListSynced()
+    if (!Params().IsRegTest() && !masterNodeCtrl.masternodeSync.IsWinnersListSynced()
         && !masterNodeCtrl.masternodePayments.GetBlockPayee(chainActive.Height() + 1, payee))
             throw JSONRPCError(RPC_CLIENT_IN_INITIAL_DOWNLOAD, "Pastel Core is downloading masternode winners...");
 //PASTEL

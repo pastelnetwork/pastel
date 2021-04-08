@@ -130,7 +130,7 @@ bool IsBlockValid(const CBlock& block, int nBlockHeight, CAmount blockReward, st
     strErrorRet = "";
 
     //1. less then total reward per block
-    if (block.vtx[0].GetValueOut() < blockReward) {
+    if (block.vtx[0].GetValueOut() > blockReward) {
         strErrorRet = strprintf("coinbase pays too much at height %d (actual=%d vs limit=%d), exceeded block reward, budgets are disabled",
                                 nBlockHeight, block.vtx[0].GetValueOut(), blockReward);
         return false;

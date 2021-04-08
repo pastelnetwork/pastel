@@ -17,7 +17,7 @@ CFeeRate::CFeeRate(const CAmount& nFeePaid, size_t nSize)
         nPatoshisPerK = 0;
 }
 
-CAmount CFeeRate::GetFee(size_t nSize) const
+CAmount CFeeRate::GetFee(const size_t nSize) const noexcept
 {
     CAmount nFee = nPatoshisPerK*nSize / 1000;
 

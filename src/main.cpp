@@ -1751,15 +1751,16 @@ CAmount GetBlockSubsidy(int nHeight, const Consensus::Params& consensusParams)
             return INGEST_WAITING_AMOUNT;
     }
     //<-INGEST!!!
-    
+
+    // only  for REGTEST network
     CAmount nSubsidy = REWARD * COIN;
 
-    int halvings = nHeight / consensusParams.nSubsidyHalvingInterval;
+    const int halvings = nHeight / consensusParams.nSubsidyHalvingInterval;
     // Force block reward to zero when right shift is undefined.
     if (halvings >= 64)
         return 0;
 
-    // Subsidy is cut in half every 840,000 blocks which will occur approximately every 4 years.
+    // Subsidy is cut in half every 150 blocks which will occur approximately every 4 years.
     nSubsidy >>= halvings;
     return nSubsidy;
 }
@@ -2586,7 +2587,7 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
     
     if (block.vtx[0].GetValueOut() > blockReward)
         return state.DoS(100,
-                         error("ConnectBlock(): coinbase pays too much (actual=%d vs limit=%d)",
+                         error("ConnectBlock(): coinbase pays too much (actual=" PRId64 " vs limit=" PRId64 ")",
                                block.vtx[0].GetValueOut(), blockReward),
                                REJECT_INVALID, "bad-cb-amount");
 
