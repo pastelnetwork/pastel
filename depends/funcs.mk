@@ -2,7 +2,7 @@
 # are used to calculate recipe hash (package build id)
 # if FIXED_RECIPE_HASH is not empty - hash for the specific package will always be the same, based on package name 
 # use this for the debug purposes only
-FIXED_RECIPE_HASH?=true
+FIXED_RECIPE_HASH?=
 
 define int_vars
 #Set defaults for vars which may be overridden per-package
