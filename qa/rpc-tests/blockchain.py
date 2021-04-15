@@ -1,14 +1,12 @@
-#!/usr/bin/env python
-# Copyright (c) 2014 The Bitcoin Core developers
+#!/usr/bin/env python3
+# Copyright (c) 2014-2016 The Bitcoin Core developers
 # Distributed under the MIT software license, see the accompanying
-# file COPYING or http://www.opensource.org/licenses/mit-license.php.
+# file COPYING or https://www.opensource.org/licenses/mit-license.php .
 
 #
 # Test RPC calls related to blockchain state. Tests correspond to code in
 # rpc/blockchain.cpp.
 #
-
-import sys; assert sys.version_info < (3,), ur"This script does not run under Python 3. Please use Python 2.7.x."
 
 import decimal
 
@@ -28,12 +26,17 @@ class BlockchainTest(BitcoinTestFramework):
 
     """
 
+    def __init__(self):
+        super().__init__()
+        self.setup_clean_chain = False
+        self.num_nodes = 2
+
     def setup_chain(self):
         print("Initializing test directory " + self.options.tmpdir)
         initialize_chain(self.options.tmpdir)
 
     def setup_network(self, split=False):
-        self.nodes = start_nodes(2, self.options.tmpdir)
+        self.nodes = start_nodes(self.num_nodes, self.options.tmpdir)
         connect_nodes_bi(self.nodes, 0, 1)
         self.is_network_split = False
         self.sync_all()

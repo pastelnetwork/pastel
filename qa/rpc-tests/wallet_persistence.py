@@ -1,15 +1,13 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # Copyright (c) 2018 The Zcash developers
 # Distributed under the MIT software license, see the accompanying
-# file COPYING or http://www.opensource.org/licenses/mit-license.php.
-
-import sys; assert sys.version_info < (3,), ur"This script does not run under Python 3. Please use Python 2.7.x."
+# file COPYING or https://www.opensource.org/licenses/mit-license.php .
 
 from test_framework.test_framework import BitcoinTestFramework
 from test_framework.util import (
     assert_equal, assert_true,
     start_nodes, stop_nodes,
-    initialize_chain_clean, connect_nodes_bi, wait_bitcoinds,
+    initialize_chain_clean, connect_nodes_bi, wait_pastelds,
     wait_and_assert_operationid_status
 )
 from decimal import Decimal
@@ -17,17 +15,18 @@ from decimal import Decimal
 class WalletPersistenceTest (BitcoinTestFramework):
 
     def setup_chain(self):
-        print("Initializing test directory " + self.options.tmpdir)
-        initialize_chain_clean(self.options.tmpdir, 3)
+        print(f'Initializing test directory {self.options.tmpdir}')
+        initialize_chain_clean(self.options.tmpdir, self.num_nodes)
 
     def setup_network(self, split=False):
-        self.nodes = start_nodes(3, self.options.tmpdir,
+        self.nodes = start_nodes(self.num_nodes, self.options.tmpdir,
             extra_args=[[
                 '-nuparams=5ba81b19:100', # Overwinter
                 '-nuparams=76b809bb:201', # Sapling
-            ]] * 3)
+            ]] * self.num_nodes)
         connect_nodes_bi(self.nodes,0,1)
         connect_nodes_bi(self.nodes,1,2)
+        connect_nodes_bi(self.nodes,2,3)
         self.is_network_split=False
         self.sync_all()
 
@@ -46,7 +45,7 @@ class WalletPersistenceTest (BitcoinTestFramework):
 
         # Restart the nodes
         stop_nodes(self.nodes)
-        wait_bitcoinds()
+        wait_pastelds()
         self.setup_network()
 
         # Make sure we still have the address after restarting
@@ -73,17 +72,19 @@ class WalletPersistenceTest (BitcoinTestFramework):
 
         # Verify size of shielded pools
         pools = self.nodes[0].getblockchaininfo()['valuePools']
-        assert_equal(pools[0]['chainValue'], Decimal('0'))  # Sprout
+        if pools[0]['monitored']:
+            assert_equal(pools[0]['chainValue'], Decimal('0'))  # Sprout
         assert_equal(pools[1]['chainValue'], Decimal('20')) # Sapling
 
         # Restart the nodes
         stop_nodes(self.nodes)
-        wait_bitcoinds()
+        wait_pastelds()
         self.setup_network()
 
         # Verify size of shielded pools
         pools = self.nodes[0].getblockchaininfo()['valuePools']
-        assert_equal(pools[0]['chainValue'], Decimal('0'))  # Sprout
+        if pools[0]['monitored']:
+            assert_equal(pools[0]['chainValue'], Decimal('0'))  # Sprout
         assert_equal(pools[1]['chainValue'], Decimal('20')) # Sapling
 
         # Node 0 sends some shielded funds to Node 1
@@ -103,7 +104,7 @@ class WalletPersistenceTest (BitcoinTestFramework):
 
         # Restart the nodes
         stop_nodes(self.nodes)
-        wait_bitcoinds()
+        wait_pastelds()
         self.setup_network()
 
         # Verify balances
@@ -117,7 +118,7 @@ class WalletPersistenceTest (BitcoinTestFramework):
 
         # Restart the nodes
         stop_nodes(self.nodes)
-        wait_bitcoinds()
+        wait_pastelds()
         self.setup_network()
 
         # Verify nullifiers persisted correctly by checking balance

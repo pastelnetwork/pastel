@@ -1,13 +1,12 @@
-#!/usr/bin/env python2
-# Copyright (c) 2018 The Pastel developers
+#!/usr/bin/env python3
+# Copyright (c) 2018-2021 The Pastel Core developers
 # Distributed under the MIT software license, see the accompanying
 # file COPYING or http://www.opensource.org/licenses/mit-license.php.
-from __future__ import print_function
 
 from test_framework.test_framework import BitcoinTestFramework
 from test_framework.util import assert_equal, assert_greater_than, initialize_chain_clean, \
     initialize_datadir, start_nodes, start_node, connect_nodes_bi, \
-    bitcoind_processes, wait_and_assert_operationid_status, p2p_port, \
+    pasteld_processes, wait_and_assert_operationid_status, p2p_port, \
     stop_node
 from mn_common import MasterNodeCommon
 

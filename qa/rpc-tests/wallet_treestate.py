@@ -1,9 +1,7 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # Copyright (c) 2016 The Zcash developers
 # Distributed under the MIT software license, see the accompanying
-# file COPYING or http://www.opensource.org/licenses/mit-license.php.
-
-import sys; assert sys.version_info < (3,), ur"This script does not run under Python 3. Please use Python 2.7.x."
+# file COPYING or https://www.opensource.org/licenses/mit-license.php .
 
 from test_framework.test_framework import BitcoinTestFramework
 from test_framework.util import assert_equal, initialize_chain_clean, \
@@ -16,7 +14,7 @@ getcontext().prec = 16
 class WalletTreeStateTest (BitcoinTestFramework):
 
     def setup_chain(self):
-        print("Initializing test directory "+self.options.tmpdir)
+        print(f'Initializing test directory {self.options.tmpdir}')
         initialize_chain_clean(self.options.tmpdir, 4)
 
     def setup_network(self, split=False):
@@ -28,7 +26,7 @@ class WalletTreeStateTest (BitcoinTestFramework):
         self.sync_all()
 
     def run_test (self):
-        print "Mining blocks..."
+        print("Mining blocks...")
 
         self.nodes[0].generate(100)
         self.sync_all()
@@ -79,7 +77,7 @@ class WalletTreeStateTest (BitcoinTestFramework):
         myopid = self.nodes[0].z_sendmany(myzaddr, recipients)
 
         # Wait for Tx 2 to begin executing...
-        for x in xrange(1, 60):
+        for x in range(1, 60):
             results = self.nodes[0].z_getoperationstatus([myopid])
             status = results[0]["status"]
             if status == "executing":

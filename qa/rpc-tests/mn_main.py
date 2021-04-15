@@ -1,13 +1,12 @@
-#!/usr/bin/env python2
-# Copyright (c) 2018 The Pastel developers
+#!/usr/bin/env python3
+# Copyright (c) 2018-2021 The Pastel Core developers
 # Distributed under the MIT software license, see the accompanying
 # file COPYING or http://www.opensource.org/licenses/mit-license.php.
-from __future__ import print_function
 
 from test_framework.test_framework import BitcoinTestFramework
 from test_framework.util import assert_equal, assert_greater_than, initialize_chain_clean, \
     initialize_datadir, start_nodes, start_node, connect_nodes_bi, \
-    bitcoind_processes, wait_and_assert_operationid_status, p2p_port, \
+    pasteld_processes, wait_and_assert_operationid_status, p2p_port, \
     stop_node
 
 from mn_common import MasterNodeCommon, wait_for_it
@@ -80,6 +79,7 @@ class MasterNodeMainTest (MasterNodeCommon):
             self.nodes.append(start_node(1, self.options.tmpdir, ["-debug=masternode"]))
             connect_nodes_bi(self.nodes,1,0)
             connect_nodes_bi(self.nodes,1,2)
+            self.sync_all()
 
             wait_for_it(10, 10, "ENABLED", self.nodes[0:self.total_number_of_nodes], mn_id)
 
@@ -90,6 +90,7 @@ class MasterNodeMainTest (MasterNodeCommon):
             self.nodes.append(start_node(0, self.options.tmpdir, ["-debug=masternode", "-masternode", "-txindex=1", "-reindex", "-masternodeprivkey=91sY9h4AQ62bAhNk1aJ7uJeSnQzSFtz7QmW5imrKmiACm7QJLXe"]))
             connect_nodes_bi(self.nodes,0,1)
             connect_nodes_bi(self.nodes,0,2)
+            self.sync_all()
 
             wait_for_it(20, 10, "ENABLED", self.nodes[0:self.total_number_of_nodes], mn_id)
 
@@ -103,6 +104,7 @@ class MasterNodeMainTest (MasterNodeCommon):
             connect_nodes_bi(self.nodes,3,1)
             connect_nodes_bi(self.nodes,3,2)
             self.total_number_of_nodes = 4
+            self.sync_all()
 
             wait_for_it(20, 10, "ENABLED", self.nodes[0:self.total_number_of_nodes], mn_id)
 
@@ -120,6 +122,7 @@ class MasterNodeMainTest (MasterNodeCommon):
             connect_nodes_bi(self.nodes,0,2)
             if self.total_number_of_nodes > 3:
                 connect_nodes_bi(self.nodes,0,3)
+            self.sync_all()
             
             wait_for_it(120, 20, "ENABLED", self.nodes[0:self.total_number_of_nodes], mn_id)
         
@@ -138,6 +141,7 @@ class MasterNodeMainTest (MasterNodeCommon):
             connect_nodes_bi(self.nodes,0,2)
             if self.total_number_of_nodes > 3:
                 connect_nodes_bi(self.nodes,0,3)
+            self.sync_all()
 
             print("Enabling node 0 as MN again (start-alias from node 2)...")
             res = self.nodes[2].masternode("start-alias", mn_alias)
@@ -146,7 +150,7 @@ class MasterNodeMainTest (MasterNodeCommon):
             assert_equal(res["result"], "successful")
 
             # wait_for_it(30, 10, "PRE_ENABLED", self.nodes[0:self.total_number_of_nodes], mn_id, 6)
-            wait_for_it(120, 20, "ENABLED", self.nodes[0:self.total_number_of_nodes], mn_id, 3)
+            wait_for_it(120, 20, "ENABLED", self.nodes[0:self.total_number_of_nodes], mn_id, 5)
 
         # tests = ['cache', 'sync', 'ping', 'restart', 'spent', "fee"]
         if 'spent' in tests:

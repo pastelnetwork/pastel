@@ -1,9 +1,8 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # Copyright (c) 2014 The Bitcoin Core developers
 # Distributed under the MIT software license, see the accompanying
 # file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-import sys; assert sys.version_info < (3,), ur"This script does not run under Python 3. Please use Python 2.7.x."
 import time
 
 from test_framework.test_framework import BitcoinTestFramework
@@ -55,7 +54,7 @@ class GetBlockTemplateLPTest(BitcoinTestFramework):
     '''
 
     def run_test(self):
-        print "Warning: this test will take about 120 seconds in the best case. Be patient."
+        print("Warning: this test will take about 120 seconds in the best case. Be patient.")
         self.nodes[0].generate(10)
         time.sleep(60)
         templat = self.nodes[0].getblocktemplate()

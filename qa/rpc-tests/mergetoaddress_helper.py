@@ -1,6 +1,7 @@
+#!/usr/bin/env python3
 # Copyright (c) 2018 The Zcash developers
 # Distributed under the MIT software license, see the accompanying
-# file COPYING or http://www.opensource.org/licenses/mit-license.php.
+# file COPYING or https://www.opensource.org/licenses/mit-license.php .
 
 #
 # Common code for testing z_mergetoaddress before and after sapling activation
@@ -17,11 +18,12 @@ from decimal import Decimal
 def assert_mergetoaddress_exception(expected_error_msg, merge_to_address_lambda):
     try:
         merge_to_address_lambda()
-        fail("Expected exception: %s" % expected_error_msg)
     except JSONRPCException as e:
         assert_equal(expected_error_msg, e.error['message'])
     except Exception as e:
         fail("Expected JSONRPCException. Found %s" % repr(e))
+    else:
+        fail("Expected exception: %s" % expected_error_msg)
 
 
 class MergeToAddressHelper:
@@ -55,12 +57,13 @@ class MergeToAddressHelper:
         test.sync_all()
 
     def run_test(self, test):
-        print "Mining blocks..."
+        print("Mining blocks...")
 
         test.nodes[0].generate(1)
         do_not_shield_taddr = test.nodes[0].getnewaddress()
 
         test.nodes[0].generate(4)
+        test.sync_all()
         walletinfo = test.nodes[0].getwalletinfo()
         assert_equal(walletinfo['immature_balance'], test._reward*5)
         assert_equal(walletinfo['balance'], 0)
@@ -275,6 +278,8 @@ class MergeToAddressHelper:
             test.nodes[1].generate(1)
         test.sync_all()
 
+        # Verify maximum number of UTXOs which node 2 can shield is not limited
+        # when the limit parameter is set to 0.
         expected_to_merge = 20
         expected_remaining = 0
 
@@ -310,8 +315,9 @@ class MergeToAddressHelper:
         # Remaining notes are only counted if we are trying to merge any notes
         assert_equal(result["remainingNotes"], Decimal('0'))
         wait_and_assert_operationid_status(test.nodes[0], result['opid'])
-        sync_blocks(test.nodes)
-        sync_mempools(test.nodes)
+        # Don't sync node 2 which rejects the tx due to its mempooltxinputlimit
+        sync_blocks(test.nodes[:2])
+        sync_mempools(test.nodes[:2])
         test.nodes[1].generate(1)
         test.sync_all()
 
@@ -349,7 +355,6 @@ class MergeToAddressHelper:
         assert_equal(result["mergingNotes"], Decimal('2'))
         assert_equal(result["remainingNotes"], num_notes - 4)
         wait_and_assert_operationid_status(test.nodes[0], result['opid'])
-        sync_blocks(test.nodes)
-        sync_mempools(test.nodes)
+        test.sync_all()
         test.nodes[1].generate(1)
         test.sync_all()

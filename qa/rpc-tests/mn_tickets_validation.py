@@ -1,16 +1,13 @@
-#!/usr/bin/env python2
-# Copyright (c) 2018-19 The Pastel developers
+#!/usr/bin/env python3
+# Copyright (c) 2018-2021 The Pastel Core developers
 # Distributed under the MIT software license, see the accompanying
 # file COPYING or http://www.opensource.org/licenses/mit-license.php.
-from __future__ import print_function
-
 from test_framework.util import assert_equal, assert_greater_than, \
-    assert_true, initialize_chain_clean
+    assert_true, initialize_chain_clean, str_to_b64str
 from mn_common import MasterNodeCommon
 from test_framework.authproxy import JSONRPCException
 import json
 import time
-import base64
 
 from decimal import getcontext
 getcontext().prec = 16
@@ -155,7 +152,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         for n, t in tickets.items():
             try:
                 self.nodes[0].sendrawtransaction(t)
-            except JSONRPCException, e:
+            except JSONRPCException as e:
                 self.errorString = e.error['message']
                 print(n + ": " + self.errorString)
             assert_equal("bad-tx-invalid-ticket" in self.errorString, True)
@@ -209,7 +206,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
             "app_ticket": "HIJKLMNOP",
             "reserved": ""}
 
-        self.ticket = base64.b64encode(json.dumps(json_ticket))
+        self.ticket = str_to_b64str(json.dumps(json_ticket))
         print(self.ticket)
 
         # create ticket signature
@@ -304,7 +301,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         for n, t in tickets.items():
             try:
                 self.nodes[0].sendrawtransaction(t)
-            except JSONRPCException, e:
+            except JSONRPCException as e:
                 self.errorString = e.error['message']
                 print(n + ": " + self.errorString)
             assert_equal("bad-tx-invalid-ticket" in self.errorString, True)
@@ -392,7 +389,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         for n, t in tickets.items():
             try:
                 self.nodes[0].sendrawtransaction(t)
-            except JSONRPCException, e:
+            except JSONRPCException as e:
                 self.errorString = e.error['message']
                 print(n + ": " + self.errorString)
             assert_equal("bad-tx-invalid-ticket" in self.errorString, True)
@@ -425,7 +422,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         for n, t in tickets.items():
             try:
                 self.nodes[0].sendrawtransaction(t)
-            except JSONRPCException, e:
+            except JSONRPCException as e:
                 self.errorString = e.error['message']
                 print(n + ": " + self.errorString)
             assert_equal("bad-tx-invalid-ticket" in self.errorString, True)

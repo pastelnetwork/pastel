@@ -1,23 +1,32 @@
-#!/usr/bin/env python2
-# Copyright (c) 2014 The Bitcoin Core developers
+#!/usr/bin/env python3
+# Copyright (c) 2014-2016 The Bitcoin Core developers
 # Distributed under the MIT software license, see the accompanying
-# file COPYING or http://www.opensource.org/licenses/mit-license.php.
+# file COPYING or https://www.opensource.org/licenses/mit-license.php .
 
 # Base class for RPC testing
 
-# Add python-bitcoinrpc to module search path:
+import logging
+import optparse
 import os
 import sys
-
 import shutil
 import tempfile
 import traceback
 
-from authproxy import JSONRPCException
-from util import assert_equal, check_json_precision, \
-    initialize_chain, initialize_chain_clean, \
-    start_nodes, connect_nodes_bi, stop_nodes, \
-    sync_blocks, sync_mempools, wait_bitcoinds
+from .authproxy import JSONRPCException
+from .util import (
+    initialize_chain,
+    start_nodes,
+    connect_nodes_bi,
+    sync_blocks,
+    sync_mempools,
+    stop_nodes,
+    wait_pastelds,
+    assert_equal,
+    check_json_precision,
+    initialize_chain_clean,
+)
+
 
 from decimal import Decimal, getcontext, ROUND_DOWN
 getcontext().prec = 16
@@ -42,7 +51,11 @@ class BitcoinTestFramework(object):
     _10000patoshi    = Decimal('0.1')
     _1ani           = Decimal('1.0')
     
-    # These may be over-ridden by subclasses:
+    def __init__(self):
+        self.num_nodes = 4
+        self.setup_clean_chain = False
+        self.nodes = None
+
     def run_test(self):
         for node in self.nodes:
             assert_equal(node.getblockcount(), 200)
@@ -52,11 +65,11 @@ class BitcoinTestFramework(object):
         pass
 
     def setup_chain(self):
-        print("Initializing test directory "+self.options.tmpdir)
+        print(f'Initializing test directory {self.options.tmpdir}')
         initialize_chain(self.options.tmpdir)
 
     def setup_nodes(self):
-        return start_nodes(4, self.options.tmpdir)
+        return start_nodes(self.num_nodes, self.options.tmpdir)
 
     def setup_network(self, split = False):
         self.nodes = self.setup_nodes()
@@ -83,7 +96,7 @@ class BitcoinTestFramework(object):
         """
         assert not self.is_network_split
         stop_nodes(self.nodes)
-        wait_bitcoinds()
+        wait_pastelds()
         self.setup_network(True)
 
     def sync_all(self, wait=1, stop_after=-1):
@@ -102,11 +115,10 @@ class BitcoinTestFramework(object):
         """
         assert self.is_network_split
         stop_nodes(self.nodes)
-        wait_bitcoinds()
+        wait_pastelds()
         self.setup_network(False)
 
     def main(self):
-        import optparse
 
         parser = optparse.OptionParser(usage="%prog [options]")
         parser.add_option("--nocleanup", dest="nocleanup", default=False, action="store_true",
@@ -123,8 +135,7 @@ class BitcoinTestFramework(object):
         (self.options, self.args) = parser.parse_args()
 
         if self.options.trace_rpc:
-            import logging
-            logging.basicConfig(level=logging.DEBUG)
+            logging.basicConfig(level=logging.DEBUG, datefmt='%H:%M:%S', format='%(asctime)s.%(msecs)03d [%(name)s:%(levelname)s] %(message)s')
 
         os.environ['PATH'] = self.options.srcdir+":"+os.environ['PATH']
 
@@ -135,27 +146,28 @@ class BitcoinTestFramework(object):
             if not os.path.isdir(self.options.tmpdir):
                 os.makedirs(self.options.tmpdir)
             self.setup_chain()
-
             self.setup_network()
-
             self.run_test()
-
             success = True
-
         except JSONRPCException as e:
             print("JSONRPC error: "+e.error['message'])
             traceback.print_tb(sys.exc_info()[2])
         except AssertionError as e:
-            print("Assertion failed: "+e.message)
+            print("Assertion failed: " + str(e))
+            traceback.print_tb(sys.exc_info()[2])
+        except KeyError as e:
+            print("key not found: "+ str(e))
             traceback.print_tb(sys.exc_info()[2])
         except Exception as e:
             print("Unexpected exception caught during testing: "+str(e))
             traceback.print_tb(sys.exc_info()[2])
+        except KeyboardInterrupt as e:
+            print("Exiting after " + repr(e))
 
         if not self.options.noshutdown:
             print("Stopping nodes")
             stop_nodes(self.nodes)
-            wait_bitcoinds()
+            wait_pastelds()
         else:
             print("Note: pastelds were not stopped and may still be running")
 
@@ -164,10 +176,10 @@ class BitcoinTestFramework(object):
             shutil.rmtree(self.options.tmpdir)
 
         if success:
-            print("Tests successful")
+            print("<<< TEST SUCCEDED >>>")
             sys.exit(0)
         else:
-            print("Failed")
+            print("<<< !!! TEST FAILED !!! >>>")
             sys.exit(1)
 
 
@@ -181,7 +193,9 @@ class ComparisonTestFramework(BitcoinTestFramework):
 
     # Can override the num_nodes variable to indicate how many nodes to run.
     def __init__(self):
+        super().__init__()
         self.num_nodes = 2
+        self.setup_clean_chain = True
 
     def add_options(self, parser):
         parser.add_option("--testbinary", dest="testbinary",
@@ -192,11 +206,11 @@ class ComparisonTestFramework(BitcoinTestFramework):
                           help="pasteld binary to use for reference nodes (if any)")
 
     def setup_chain(self):
-        print("Initializing test directory ", self.options.tmpdir)
+        print(f'Initializing test directory {self.options.tmpdir}')
         initialize_chain_clean(self.options.tmpdir, self.num_nodes)
 
     def setup_network(self):
         self.nodes = start_nodes(self.num_nodes, self.options.tmpdir,
-                                    extra_args=[['-debug', '-whitelist=127.0.0.1']] * self.num_nodes,
-                                    binary=[self.options.testbinary] +
-                                           [self.options.refbinary]*(self.num_nodes-1))
+            extra_args=[['-debug', '-whitelist=127.0.0.1']] * self.num_nodes,
+            binary=[self.options.testbinary] +
+            [self.options.refbinary]*(self.num_nodes-1))

@@ -1,13 +1,16 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # Copyright (c) 2018 The Zcash developers
 # Distributed under the MIT software license, see the accompanying
-# file COPYING or http://www.opensource.org/licenses/mit-license.php.
-
-import sys; assert sys.version_info < (3,), ur"This script does not run under Python 3. Please use Python 2.7.x."
+# file COPYING or https://www.opensource.org/licenses/mit-license.php .
 
 from test_framework.test_framework import BitcoinTestFramework
-from test_framework.util import assert_equal, initialize_chain_clean, \
-    start_node, connect_nodes, wait_and_assert_operationid_status
+from test_framework.util import (
+    assert_equal,
+    initialize_chain_clean,
+    start_node,
+    connect_nodes,
+    wait_and_assert_operationid_status,
+)
 from test_framework.authproxy import JSONRPCException
 
 from decimal import Decimal
@@ -16,6 +19,11 @@ from decimal import Decimal
 class MempoolUpgradeActivationTest(BitcoinTestFramework):
 
     alert_filename = None  # Set by setup_network
+
+    def __init__(self):
+        super().__init__()
+        self.num_nodes = 2
+        self.setup_clean_chain = True
 
     def setup_network(self):
         args = ["-checkmempool", "-debug=mempool", "-blockmaxsize=4000",
@@ -30,8 +38,8 @@ class MempoolUpgradeActivationTest(BitcoinTestFramework):
         self.sync_all
 
     def setup_chain(self):
-        print "Initializing test directory "+self.options.tmpdir
-        initialize_chain_clean(self.options.tmpdir, 2)
+        print(f'Initializing test directory {self.options.tmpdir}')
+        initialize_chain_clean(self.options.tmpdir, self.num_nodes)
 
     def run_test(self):
         self.nodes[1].generate(100)
@@ -47,7 +55,7 @@ class MempoolUpgradeActivationTest(BitcoinTestFramework):
         node0_zaddr = self.nodes[0].z_getnewaddress('sprout')
         recipients = [{'address': node0_zaddr, 'amount': self._reward}]
         myopid = self.nodes[1].z_sendmany(node1_taddr, recipients, 1, Decimal('0'))
-        print wait_and_assert_operationid_status(self.nodes[1], myopid)
+        print(wait_and_assert_operationid_status(self.nodes[1], myopid))
         self.sync_all()
 
         # Mempool checks for activation of upgrade Y at height H on base X
@@ -94,7 +102,7 @@ class MempoolUpgradeActivationTest(BitcoinTestFramework):
             # Block H - 1 should contain a subset of the original mempool
             # (with all other transactions having been dropped)
             block_txids = self.nodes[0].getblock(self.nodes[0].getbestblockhash())['tx']
-            if chaintip_branchid is "00000000":
+            if chaintip_branchid == "00000000":
                 assert(len(block_txids) < len(x_txids))
                 for txid in block_txids[1:]: # Exclude coinbase
                     assert(txid in x_txids)

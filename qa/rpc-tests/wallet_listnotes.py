@@ -1,12 +1,14 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # Copyright (c) 2018 The Zcash developers
 # Distributed under the MIT software license, see the accompanying
-# file COPYING or http://www.opensource.org/licenses/mit-license.php.
-
-import sys; assert sys.version_info < (3,), ur"This script does not run under Python 3. Please use Python 2.7.x."
+# file COPYING or https://www.opensource.org/licenses/mit-license.php .
 
 from test_framework.test_framework import BitcoinTestFramework
-from test_framework.util import assert_equal, start_nodes, wait_and_assert_operationid_status
+from test_framework.util import (
+    assert_equal,
+    start_nodes,
+    wait_and_assert_operationid_status,
+)
 
 from decimal import Decimal
 
@@ -14,10 +16,10 @@ from decimal import Decimal
 class WalletListNotes(BitcoinTestFramework):
 
     def setup_nodes(self):
-        return start_nodes(4, self.options.tmpdir, [[
+        return start_nodes(self.num_nodes, self.options.tmpdir, [[
             '-nuparams=5ba81b19:202', # Overwinter
             '-nuparams=76b809bb:214', # Sapling
-        ]] * 4)
+        ]] * self.num_nodes)
 
     def run_test(self):
         # Current height = 200 -> Sprout

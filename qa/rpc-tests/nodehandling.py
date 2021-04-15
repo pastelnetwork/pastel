@@ -1,25 +1,25 @@
-#!/usr/bin/env python
-# Copyright (c) 2014 The Bitcoin Core developers
+#!/usr/bin/env python3
+# Copyright (c) 2014-2016 The Bitcoin Core developers
 # Distributed under the MIT software license, see the accompanying
-# file COPYING or http://www.opensource.org/licenses/mit-license.php.
+# file COPYING or https://www.opensource.org/licenses/mit-license.php .
 
 #
 # Test node handling
 #
 
-import sys; assert sys.version_info < (3,), ur"This script does not run under Python 3. Please use Python 2.7.x."
-
 from test_framework.test_framework import BitcoinTestFramework
 from test_framework.util import assert_equal, connect_nodes_bi, p2p_port
 
 import time
-
-try:
-    import urllib.parse as urlparse
-except ImportError:
-    import urlparse
+import urllib.parse
 
 class NodeHandlingTest (BitcoinTestFramework):
+
+    def __init__(self):
+        super().__init__()
+        self.num_nodes = 4
+        self.setup_clean_chain = False
+
     def run_test(self):
         ###########################
         # setban/listbanned tests #
@@ -47,11 +47,11 @@ class NodeHandlingTest (BitcoinTestFramework):
         assert_equal(len(self.nodes[2].listbanned()), 0)
         self.nodes[2].clearbanned()
         assert_equal(len(self.nodes[2].listbanned()), 0)
-        
+
         ###########################
         # RPC disconnectnode test #
         ###########################
-        url = urlparse.urlparse(self.nodes[1].url)
+        url = urllib.parse.urlparse(self.nodes[1].url)
         self.nodes[0].disconnectnode(url.hostname+":"+str(p2p_port(1)))
         time.sleep(2) #disconnecting a node needs a little bit of time
         for node in self.nodes[0].getpeerinfo():

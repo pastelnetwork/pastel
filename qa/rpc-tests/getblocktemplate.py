@@ -1,9 +1,7 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # Copyright (c) 2016 The Zcash developers
 # Distributed under the MIT software license, see the accompanying
-# file COPYING or http://www.opensource.org/licenses/mit-license.php.
-
-import sys; assert sys.version_info < (3,), ur"This script does not run under Python 3. Please use Python 2.7.x."
+# file COPYING or https://www.opensource.org/licenses/mit-license.php .
 
 from test_framework.test_framework import BitcoinTestFramework
 from test_framework.util import assert_equal, connect_nodes_bi, \
@@ -16,12 +14,17 @@ class GetBlockTemplateTest(BitcoinTestFramework):
     Test getblocktemplate.
     '''
 
+    def __init__(self):
+        super().__init__()
+        self.num_nodes = 2
+        self.setup_clean_chain = True
+
     def setup_chain(self):
         print("Initializing test directory "+self.options.tmpdir)
-        initialize_chain_clean(self.options.tmpdir, 4)
+        initialize_chain_clean(self.options.tmpdir, self.num_nodes)
 
     def setup_network(self, split=False):
-        self.nodes = start_nodes(2, self.options.tmpdir)
+        self.nodes = start_nodes(self.num_nodes, self.options.tmpdir)
         connect_nodes_bi(self.nodes,0,1)
         self.is_network_split=False
         self.sync_all()
@@ -31,7 +34,7 @@ class GetBlockTemplateTest(BitcoinTestFramework):
         node.generate(1) # Mine a block to leave initial block download
         self.sync_all()
 
-        print "Waiting 60 sec for mnsync to finish..."
+        print("Waiting 60 sec for mnsync to finish...")
         time.sleep(60)
 
         # Test 1: Default to coinbasetxn
