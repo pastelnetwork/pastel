@@ -1,13 +1,9 @@
+#pragma once
 // Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2018 The Bitcoin Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
-
-#ifndef BITCOIN_SUPPORT_ALLOCATORS_ZEROAFTERFREE_H
-#define BITCOIN_SUPPORT_ALLOCATORS_ZEROAFTERFREE_H
-
 #include "support/cleanse.h"
-
 #include <memory>
 #include <vector>
 
@@ -23,11 +19,13 @@ struct zero_after_free_allocator : public std::allocator<T> {
     using const_pointer = typename std::allocator_traits<allocator_type>::const_pointer;
 
     zero_after_free_allocator() noexcept {}
-    zero_after_free_allocator(const zero_after_free_allocator& a) noexcept : allocator_type(a) {}
+    zero_after_free_allocator(const zero_after_free_allocator& a) noexcept : 
+        allocator_type(a)
+    {}
     template <typename U>
-    zero_after_free_allocator(const zero_after_free_allocator<U>& a) noexcept : allocator_type(a)
-    {
-    }
+    zero_after_free_allocator(const zero_after_free_allocator<U>& a) noexcept : 
+        allocator_type(a)
+    {}
     ~zero_after_free_allocator() noexcept {}
     template <typename _Other>
     struct rebind {
@@ -44,5 +42,3 @@ struct zero_after_free_allocator : public std::allocator<T> {
 
 // Byte-vector that clears its contents before deletion.
 typedef std::vector<char, zero_after_free_allocator<char> > CSerializeData;
-
-#endif // BITCOIN_SUPPORT_ALLOCATORS_ZEROAFTERFREE_H

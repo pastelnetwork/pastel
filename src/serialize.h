@@ -1,10 +1,8 @@
+#pragma once
 // Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2014 The Bitcoin Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
-
-#ifndef BITCOIN_SERIALIZE_H
-#define BITCOIN_SERIALIZE_H
 
 #include "compat.h"
 #include "compat/endian.h"
@@ -255,17 +253,17 @@ void WriteCompactSize(Stream& os, uint64_t nSize)
 {
     if (nSize < 253)
     {
-        ser_writedata8(os, nSize);
+        ser_writedata8(os, static_cast<uint8_t>(nSize));
     }
     else if (nSize <= 0xFFFFu)
     {
         ser_writedata8(os, 253);
-        ser_writedata16(os, nSize);
+        ser_writedata16(os, static_cast<uint16_t>(nSize));
     }
     else if (nSize <= 0xFFFFFFFFu)
     {
         ser_writedata8(os, 254);
-        ser_writedata32(os, nSize);
+        ser_writedata32(os, static_cast<uint32_t>(nSize));
     }
     else
     {
@@ -649,9 +647,9 @@ void Unserialize_impl(Stream& is, prevector<N, T>& v, const unsigned char&)
     uint64_t i = 0;
     while (i < nSize)
     {
-        uint64_t blk = std::min<uint64_t>(nSize - i, 1 + 4999999 / sizeof(T));
+        const uint64_t blk = std::min<uint64_t>(nSize - i, 1 + 4999999 / sizeof(T));
         v.resize(i + blk);
-        is.read((char*)&v[i], blk * sizeof(T));
+        is.read((char*)&v[static_cast<typename prevector<N, T>::size_type>(i)], blk * sizeof(T));
         i += blk;
     }
 }
@@ -1091,4 +1089,3 @@ size_t GetSerializeSize(const S& s, const T& t)
     return (CSizeComputer(s.GetType(), s.GetVersion()) << t).size();
 }
 
-#endif // BITCOIN_SERIALIZE_H

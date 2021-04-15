@@ -4,14 +4,10 @@
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
 #include "wallet_ismine.h"
-
 #include "key.h"
 #include "keystore.h"
 #include "script/script.h"
 #include "script/standard.h"
-
-#include <boost/foreach.hpp>
-
 using namespace std;
 
 typedef vector<unsigned char> valtype;
@@ -19,9 +15,9 @@ typedef vector<unsigned char> valtype;
 unsigned int HaveKeys(const vector<valtype>& pubkeys, const CKeyStore& keystore)
 {
     unsigned int nResult = 0;
-    BOOST_FOREACH(const valtype& pubkey, pubkeys)
+    for(const auto& pubkey : pubkeys)
     {
-        CKeyID keyID = CPubKey(pubkey).GetID();
+        const auto keyID = CPubKey(pubkey).GetID();
         if (keystore.HaveKey(keyID))
             ++nResult;
     }
@@ -30,7 +26,7 @@ unsigned int HaveKeys(const vector<valtype>& pubkeys, const CKeyStore& keystore)
 
 isminetype IsMine(const CKeyStore &keystore, const CTxDestination& dest)
 {
-    CScript script = GetScriptForDestination(dest);
+    const CScript script = GetScriptForDestination(dest);
     return IsMine(keystore, script);
 }
 
@@ -89,4 +85,25 @@ isminetype IsMine(const CKeyStore &keystore, const CScript& scriptPubKey)
     if (keystore.HaveWatchOnly(scriptPubKey))
         return ISMINE_WATCH_ONLY;
     return ISMINE_NO;
+}
+
+/**
+ * Converts string to isminetype.
+ * 
+ * \param szStr - case-insensitive isminetype filter (no, all, watchOnly, spendableOnly)
+ * \param DefaultIsMineType - default isminetype (if s is empty or not valid)
+ * \return 
+ */
+isminetype StrToIsMineType(const string &s, const isminetype DefaultIsMineType) noexcept
+{
+    isminetype isMine = DefaultIsMineType;
+    if (s.compare(ISMINE_FILTERSTR_SPENDABLE_ONLY) == 0)
+        isMine = ISMINE_SPENDABLE;
+    else if (s.compare(ISMINE_FILTERSTR_WATCH_ONLY) == 0)
+        isMine = ISMINE_WATCH_ONLY;
+    else if (s.compare(ISMINE_FILTERSTR_ALL) == 0)
+        isMine = ISMINE_ALL;
+    else if (s.compare(ISMINE_FILTERSTR_NO) == 0)
+        isMine = ISMINE_NO;
+    return isMine;
 }

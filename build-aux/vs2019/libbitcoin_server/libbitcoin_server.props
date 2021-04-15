@@ -2,11 +2,12 @@
 <Project DefaultTargets="Build" ToolsVersion="Current" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ImportGroup Label="PropertySheets">
     <Import Project="../settings/common.props" />
+    <Import Project="../settings/pastel_common.props" />
   </ImportGroup>
   <ItemDefinitionGroup>
     <ClCompile>
       <AdditionalIncludeDirectories>$(SRC)secp256k1\include;$(SRC)univalue\include;$(SRC)leveldb\include;$(SRC)leveldb\helpers\memenv;$(SRC)snark;$(SRC)snark\libsnark;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>_CONSOLE;ENABLE_WALLET;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalOptions>/bigobj %(AdditionalOptions)</AdditionalOptions>
       <SDLCheck>false</SDLCheck>
       <ConformanceMode>true</ConformanceMode>

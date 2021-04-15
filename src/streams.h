@@ -1,10 +1,8 @@
+#pragma once
 // Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2013 The Bitcoin Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
-
-#ifndef BITCOIN_STREAMS_H
-#define BITCOIN_STREAMS_H
 
 #include "support/allocators/zeroafterfree.h"
 #include "serialize.h"
@@ -80,7 +78,7 @@ class CBaseDataStream
 protected:
     typedef SerializeType vector_type;
     vector_type vch;
-    unsigned int nReadPos;
+    size_t nReadPos;
 
     int nType;
     int nVersion;
@@ -273,22 +271,20 @@ public:
     void SetVersion(int n)       { nVersion = n; }
     int GetVersion() const       { return nVersion; }
 
-    void read(char* pch, size_t nSize)
+    void read(char* pch, const size_t nSize)
     {
-        if (nSize == 0) return;
+        if (nSize == 0) 
+            return;
 
-        if (pch == nullptr) {
+        if (pch == nullptr)
             throw std::ios_base::failure("CBaseDataStream::read(): cannot read from null pointer");
-        }
 
         // Read from the beginning of the buffer
-        unsigned int nReadPosNext = nReadPos + nSize;
+        size_t nReadPosNext = nReadPos + nSize;
         if (nReadPosNext >= vch.size())
         {
             if (nReadPosNext > vch.size())
-            {
                 throw std::ios_base::failure("CBaseDataStream::read(): end of data");
-            }
             memcpy(pch, &vch[nReadPos], nSize);
             nReadPos = 0;
             vch.clear();
@@ -304,7 +300,7 @@ public:
         if (nSize < 0) {
             throw std::ios_base::failure("CDataStream::ignore(): nSize negative");
         }
-        unsigned int nReadPosNext = nReadPos + nSize;
+        size_t nReadPosNext = nReadPos + nSize;
         if (nReadPosNext >= vch.size())
         {
             if (nReadPosNext > vch.size())
@@ -508,8 +504,8 @@ class CBufferedFile
 {
 private:
     // Disallow copies
-    CBufferedFile(const CBufferedFile&);
-    CBufferedFile& operator=(const CBufferedFile&);
+    CBufferedFile(const CBufferedFile&) = delete;
+    CBufferedFile& operator=(const CBufferedFile&) = delete;
 
     const int nType;
     const int nVersion;
@@ -523,21 +519,20 @@ private:
 
 protected:
     // read data from the source to fill the buffer
-    bool Fill() {
-        unsigned int pos = nSrcPos % vchBuf.size();
-        unsigned int readNow = vchBuf.size() - pos;
-        unsigned int nAvail = vchBuf.size() - (nSrcPos - nReadPos) - nRewind;
-        if (nAvail < readNow)
-            readNow = nAvail;
+    bool Fill()
+    {
+        const uint64_t nPos = nSrcPos % vchBuf.size();
+        uint64_t readNow = vchBuf.size() - nPos;
+        const uint64_t nAvailable = vchBuf.size() - (nSrcPos - nReadPos) - nRewind;
+        if (nAvailable < readNow)
+            readNow = nAvailable;
         if (readNow == 0)
             return false;
-        size_t read = fread((void*)&vchBuf[pos], 1, readNow, src);
-        if (read == 0) {
+        const size_t read = fread((void*)&vchBuf[nPos], 1, readNow, src);
+        if (read == 0)
             throw std::ios_base::failure(feof(src) ? "CBufferedFile::Fill: end of file" : "CBufferedFile::Fill: fread failed");
-        } else {
-            nSrcPos += read;
-            return true;
-        }
+        nSrcPos += read;
+        return true;
     }
 
 public:
@@ -569,21 +564,22 @@ public:
     }
 
     // read a number of bytes
-    void read(char *pch, size_t nSize) {
-        if (nSize == 0) return;
+    void read(char *pch, size_t nSize)
+    {
+        if (nSize == 0)
+            return;
 
-        if (pch == nullptr) {
+        if (pch == nullptr)
             throw std::ios_base::failure("CBufferedFile::read(): cannot read from null pointer");
-        }
-
         if (nSize + nReadPos > nReadLimit)
             throw std::ios_base::failure("Read attempted past buffer limit");
         if (nSize + nRewind > vchBuf.size())
             throw std::ios_base::failure("Read larger than buffer size");
-        while (nSize > 0) {
+        while (nSize > 0)
+        {
             if (nReadPos == nSrcPos)
                 Fill();
-            unsigned int pos = nReadPos % vchBuf.size();
+            const uint64_t pos = nReadPos % vchBuf.size();
             size_t nNow = nSize;
             if (nNow + pos > vchBuf.size())
                 nNow = vchBuf.size() - pos;
@@ -615,8 +611,9 @@ public:
         }
     }
 
-    bool Seek(uint64_t nPos) {
-        long nLongPos = nPos;
+    bool Seek(const uint64_t nPos)
+    {
+        long nLongPos = static_cast<long>(nPos);
         if (nPos != (uint64_t)nLongPos)
             return false;
         if (fseek(src, nLongPos, SEEK_SET))
@@ -655,4 +652,3 @@ public:
     }
 };
 
-#endif // BITCOIN_STREAMS_H

@@ -10,7 +10,7 @@
 #include "policy/fees.h"
 
 #include <assert.h>
-
+#include <unordered_map>
 /**
  * calculate number of bytes for the bitmask, and its number of non-zero bytes
  * each bit in the bitmask represents the availability of one output, but the
@@ -564,7 +564,7 @@ CAmount CCoinsViewCache::GetValueIn(const CTransaction& tx) const
 
 bool CCoinsViewCache::HaveShieldedRequirements(const CTransaction& tx) const
 {
-    boost::unordered_map<uint256, SproutMerkleTree, CCoinsKeyHasher> intermediates;
+    std::unordered_map<uint256, SproutMerkleTree, CCoinsKeyHasher> intermediates;
 
     BOOST_FOREACH(const JSDescription &joinsplit, tx.vjoinsplit)
     {
