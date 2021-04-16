@@ -1,10 +1,8 @@
+#pragma once
 // Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2014 The Bitcoin Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
-
-#ifndef BITCOIN_MAIN_H
-#define BITCOIN_MAIN_H
 
 #if defined(HAVE_CONFIG_H)
 #include "config/bitcoin-config.h"
@@ -30,13 +28,12 @@
 #include <algorithm>
 #include <exception>
 #include <map>
+#include <unordered_map>
 #include <set>
 #include <stdint.h>
 #include <string>
 #include <utility>
 #include <vector>
-
-#include <boost/unordered_map.hpp>
 
 class CBlockIndex;
 class CBlockTreeDB;
@@ -119,7 +116,7 @@ extern unsigned int expiryDelta;
 extern CScript COINBASE_FLAGS;
 extern CCriticalSection cs_main;
 extern CTxMemPool mempool;
-typedef boost::unordered_map<uint256, CBlockIndex*, BlockHasher> BlockMap;
+typedef std::unordered_map<uint256, CBlockIndex*, BlockHasher> BlockMap;
 extern BlockMap mapBlockIndex;
 extern uint64_t nLastBlockTx;
 extern uint64_t nLastBlockSize;
@@ -598,5 +595,3 @@ CMutableTransaction CreateNewContextualCMutableTransaction(const Consensus::Para
  */
 //<-INGEST!!!
 
-
-#endif // BITCOIN_MAIN_H

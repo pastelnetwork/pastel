@@ -1,22 +1,17 @@
+#pragma once
 // Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2014 The Bitcoin Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
-
-#ifndef BITCOIN_COINS_H
-#define BITCOIN_COINS_H
-
 #include "compressor.h"
 #include "core_memusage.h"
 #include "memusage.h"
 #include "serialize.h"
 #include "uint256.h"
-
 #include <assert.h>
 #include <stdint.h>
-
+#include <unordered_map>
 #include <boost/foreach.hpp>
-#include <boost/unordered_map.hpp>
 #include "zcash/IncrementalMerkleTree.hpp"
 
 /** 
@@ -317,10 +312,10 @@ enum ShieldedType
     SAPLING,
 };
 
-typedef boost::unordered_map<uint256, CCoinsCacheEntry, CCoinsKeyHasher> CCoinsMap;
-typedef boost::unordered_map<uint256, CAnchorsSproutCacheEntry, CCoinsKeyHasher> CAnchorsSproutMap;
-typedef boost::unordered_map<uint256, CAnchorsSaplingCacheEntry, CCoinsKeyHasher> CAnchorsSaplingMap;
-typedef boost::unordered_map<uint256, CNullifiersCacheEntry, CCoinsKeyHasher> CNullifiersMap;
+typedef std::unordered_map<uint256, CCoinsCacheEntry, CCoinsKeyHasher> CCoinsMap;
+typedef std::unordered_map<uint256, CAnchorsSproutCacheEntry, CCoinsKeyHasher> CAnchorsSproutMap;
+typedef std::unordered_map<uint256, CAnchorsSaplingCacheEntry, CCoinsKeyHasher> CAnchorsSaplingMap;
+typedef std::unordered_map<uint256, CNullifiersCacheEntry, CCoinsKeyHasher> CNullifiersMap;
 
 struct CCoinsStats
 {
@@ -584,4 +579,3 @@ private:
     );
 };
 
-#endif // BITCOIN_COINS_H

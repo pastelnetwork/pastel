@@ -680,8 +680,10 @@ bool InitSanityCheck(void)
         InitError("Elliptic curve cryptography sanity check failure. Aborting.");
         return false;
     }
+#ifdef __GLIBC__
     if (!glibc_sanity_test() || !glibcxx_sanity_test())
         return false;
+#endif
 
     return true;
 }

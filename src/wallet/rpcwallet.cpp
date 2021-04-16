@@ -471,36 +471,50 @@ UniValue listaddressamounts(const UniValue& params, bool fHelp)
     if (!EnsureWalletIsAvailable(fHelp))
         return NullUniValue;
     
-    if (fHelp || params.size() > 1)
+    if (fHelp || params.size() > 2)
         throw runtime_error(
-                "listaddressamounts (includeempty)\n"
-                "\nLists balance on each addresses\n"
-                "\nArguments:\n"
-                "1. includeempty  (numeric, optional, default=false) Whether to include addresses with empty balance.\n"
-                "\nResult:\n"
-                "  \"zcashaddress\",     (string) The Pastel address\n"
-                "  amount,               (numeric) The amount in " + CURRENCY_UNIT + "\n"
-                "\nExamples:\n"
-                + HelpExampleCli("listaddressamounts", "")
-                + HelpExampleCli("listaddressamounts", "true")
-                + HelpExampleRpc("listaddressamounts", "")
-                + HelpExampleRpc("listaddressamounts", "true")
-        );
+R"(listaddressamounts (includeEmpty ismineFilter)
+
+Lists balance on each address
+
+Arguments:
+1. includeEmpty   (numeric, optional, default=false) Whether to include addresses with empty balance.
+2. ismineFilter   (string, optional, default=all) Whether to include "all", "watchOnly" or "spendableOnly" addresses.
+
+Result:
+  "zcashaddress", (string)  The Pastel address
+   amount,        (numeric) The amount in )" + CURRENCY_UNIT + R"(
+
+Examples:
+)"
+    + HelpExampleCli("listaddressamounts", "")
+    + HelpExampleCli("listaddressamounts", "true spendableOnly")
+    + HelpExampleRpc("listaddressamounts", "")
+    + HelpExampleRpc("listaddressamounts", "true spendableOnly")
+);
     
-    bool fIncludeEmpty = false;
-    if (params.size() == 1)
-        fIncludeEmpty = params[0].get_bool();
+    bool bIncludeEmpty = false;
+    if (params.size() >= 1)
+        bIncludeEmpty = params[0].get_bool();
+    isminetype isMineFilter = ISMINE_ALL;
+    if (params.size() >= 2)
+    {
+        const string& s = params[1].get_str();
+        isMineFilter = StrToIsMineType(s, ISMINE_NO);
+        if (isMineFilter == ISMINE_NO)
+            throw JSONRPCError(RPC_INVALID_PARAMETER, tfm::format("Invalid ismineFilter parameter [%s]. Supported values are '%s','%s','%s'", s, 
+                    ISMINE_FILTERSTR_SPENDABLE_ONLY, ISMINE_FILTERSTR_WATCH_ONLY, ISMINE_FILTERSTR_ALL));
+    }
     
     LOCK2(cs_main, pwalletMain->cs_wallet);
     
     UniValue jsonBalances(UniValue::VOBJ);
-    
-    std::map<CTxDestination, CAmount> balances = pwalletMain->GetAddressBalances();
-    for (const auto &balance : balances)
+    const auto balances = pwalletMain->GetAddressBalances(isMineFilter);
+    for (const auto &[txDestination, amount] : balances)
     {
-        CAmount amount = balance.second;
-        if (!fIncludeEmpty && amount == 0) continue;
-        jsonBalances.push_back(Pair(EncodeDestination(balance.first), ValueFromAmount(amount)));
+        if (!bIncludeEmpty && amount == 0)
+            continue;
+        jsonBalances.pushKV(EncodeDestination(txDestination), ValueFromAmount(amount));
     }
     return jsonBalances;
 }
@@ -536,7 +550,7 @@ UniValue listaddressgroupings(const UniValue& params, bool fHelp)
     LOCK2(cs_main, pwalletMain->cs_wallet);
 
     UniValue jsonGroupings(UniValue::VARR);
-    std::map<CTxDestination, CAmount> balances = pwalletMain->GetAddressBalances();
+    std::map<CTxDestination, CAmount> balances = pwalletMain->GetAddressBalances(ISMINE_ALL);
     for (const std::set<CTxDestination>& grouping : pwalletMain->GetAddressGroupings()) {
         UniValue jsonGrouping(UniValue::VARR);
         for (const CTxDestination& address : grouping)

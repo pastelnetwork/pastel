@@ -15,7 +15,7 @@
 #include "util.h"
 #include "utilmoneystr.h"
 #include "version.h"
-
+#include <unordered_map>
 using namespace std;
 
 CTxMemPoolEntry::CTxMemPoolEntry():
@@ -405,7 +405,7 @@ void CTxMemPool::check(const CCoinsViewCache *pcoins) const
             i++;
         }
 
-        boost::unordered_map<uint256, SproutMerkleTree, CCoinsKeyHasher> intermediates;
+        unordered_map<uint256, SproutMerkleTree, CCoinsKeyHasher> intermediates;
 
         BOOST_FOREACH(const JSDescription &joinsplit, tx.vjoinsplit) {
             BOOST_FOREACH(const uint256 &nf, joinsplit.nullifiers) {
