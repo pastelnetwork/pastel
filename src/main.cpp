@@ -34,6 +34,7 @@
 #include <algorithm>
 #include <atomic>
 #include <sstream>
+#include <unistd.h>
 
 #include <boost/algorithm/string/replace.hpp>
 #include <boost/filesystem.hpp>

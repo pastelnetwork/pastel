@@ -439,6 +439,20 @@ bool enableVTMode()
 }
 #endif
 
+void SendVTSequence(const char *szVTcmd)
+{
+    if (!szVTcmd)
+        return;
+    std::string s;
+#ifdef WIN32
+    s = "\x1b[";
+#else
+    s = "\e[";
+#endif
+    s += szVTcmd;
+    std::cout << s;
+}
+
 void ThreadShowMetricsScreen()
 {
     // Make this thread recognisable as the metrics screen thread
@@ -455,7 +469,7 @@ void ThreadShowMetricsScreen()
 #endif
 
         // Clear screen
-        std::cout << "\e[2J";
+        SendVTSequence("2J");
 
         // Print art
         // std::cout << METRICS_ART << std::endl;
@@ -491,10 +505,9 @@ void ThreadShowMetricsScreen()
 #endif
         }
 
-        if (isScreen) {
-            // Erase below current position
-            std::cout << "\e[J";
-        }
+        // Erase below current position
+        if (isScreen)
+            SendVTSequence("J");
 
         // Miner status
 #ifdef ENABLE_MINING
@@ -531,9 +544,8 @@ void ThreadShowMetricsScreen()
             MilliSleep(200);
         }
 
-        if (isScreen) {
-            // Return to the top of the updating section
-            std::cout << "\e[" << lines << "A";
-        }
+        // Return to the top of the updating section
+        if (isScreen)
+            SendVTSequence(tfm::format("%dA", lines).c_str());
     }
 }

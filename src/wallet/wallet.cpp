@@ -838,19 +838,16 @@ void CWallet::SyncMetaData(pair<typename TxSpendMap<T>::iterator, typename TxSpe
 }
 
 /**
- * Outpoint is spent if any non-conflicted transaction
- * spends it:
+ * Outpoint is spent if any non-conflicted transaction spends it.
  */
-bool CWallet::IsSpent(const uint256& hash, unsigned int n) const
+bool CWallet::IsSpent(const uint256& hash, const unsigned int n) const
 {
     const COutPoint outpoint(hash, n);
-    pair<TxSpends::const_iterator, TxSpends::const_iterator> range;
-    range = mapTxSpends.equal_range(outpoint);
-
-    for (TxSpends::const_iterator it = range.first; it != range.second; ++it)
+    auto range = mapTxSpends.equal_range(outpoint);
+    for (auto &it = range.first; it != range.second; ++it)
     {
         const uint256& wtxid = it->second;
-        std::map<uint256, CWalletTx>::const_iterator mit = mapWallet.find(wtxid);
+        auto mit = mapWallet.find(wtxid);
         if (mit != mapWallet.end() && mit->second.GetDepthInMainChain() >= 0)
             return true; // Spent
     }
@@ -3792,43 +3789,39 @@ int64_t CWallet::GetOldestKeyPoolTime()
     return keypool.nTime;
 }
 
-std::map<CTxDestination, CAmount> CWallet::GetAddressBalances()
+std::map<CTxDestination, CAmount> CWallet::GetAddressBalances(const isminefilter& isMineFilter)
 {
     map<CTxDestination, CAmount> balances;
-
     {
         LOCK(cs_wallet);
-        BOOST_FOREACH(PAIRTYPE(uint256, CWalletTx) walletEntry, mapWallet)
+        for (const auto &[hash, coin] : mapWallet)
         {
-            CWalletTx *pcoin = &walletEntry.second;
-
-            if (!CheckFinalTx(*pcoin) || !pcoin->IsTrusted())
+            if (!CheckFinalTx(coin) || !coin.IsTrusted())
+                continue;
+            if (coin.IsCoinBase() && coin.GetBlocksToMaturity() > 0)
+                continue;
+            const int nDepth = coin.GetDepthInMainChain();
+            if (nDepth < (coin.IsFromMe(ISMINE_ALL) ? 0 : 1))
                 continue;
 
-            if (pcoin->IsCoinBase() && pcoin->GetBlocksToMaturity() > 0)
-                continue;
-
-            int nDepth = pcoin->GetDepthInMainChain();
-            if (nDepth < (pcoin->IsFromMe(ISMINE_ALL) ? 0 : 1))
-                continue;
-
-            for (unsigned int i = 0; i < pcoin->vout.size(); i++)
+            for (unsigned int i = 0; i < coin.vout.size(); ++i)
             {
+                const auto& txOut = coin.vout[i];
                 CTxDestination addr;
-                if (!IsMine(pcoin->vout[i]))
+                const auto nIsMine = IsMine(txOut);
+                // filter by ismine (spendableOnly, watchOnly or both)
+                if ((nIsMine == ISMINE_NO) || (nIsMine & isMineFilter) != nIsMine)
                     continue;
-                if(!ExtractDestination(pcoin->vout[i].scriptPubKey, addr))
+                if (!ExtractDestination(txOut.scriptPubKey, addr))
                     continue;
 
-                CAmount n = IsSpent(walletEntry.first, i) ? 0 : pcoin->vout[i].nValue;
-
+                const CAmount n = IsSpent(hash, i) ? 0 : txOut.nValue;
                 if (!balances.count(addr))
                     balances[addr] = 0;
                 balances[addr] += n;
             }
         }
     }
-
     return balances;
 }
 

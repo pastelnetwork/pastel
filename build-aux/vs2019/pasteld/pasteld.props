@@ -2,12 +2,13 @@
 <Project DefaultTargets="Build" ToolsVersion="Current" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ImportGroup Label="PropertySheets">
     <Import Project="../settings/common.props" />
+    <Import Project="../settings/pastel_common.props" />
     <Import Project="../settings/boost.props" />
   </ImportGroup>
   <ItemDefinitionGroup>
     <ClCompile>
       <AdditionalIncludeDirectories>$(SRC)univalue\include;$(SRC)leveldb\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>__GMP_LIBGMP_DLL;ENABLE_WALLET;ENABLE_ZMQ;ZMQ_STATIC;BINARY_OUTPUT;BOOST_SPIRIT_THREADSAFE;MONTGOMERY_OUTPUT;_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>__GMP_LIBGMP_DLL;ENABLE_ZMQ;ZMQ_STATIC;BINARY_OUTPUT;_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalOptions>/bigobj %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
     <Link>

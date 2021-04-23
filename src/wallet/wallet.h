@@ -1,11 +1,8 @@
+#pragma once
 // Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2014 The Bitcoin Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
-
-#ifndef BITCOIN_WALLET_WALLET_H
-#define BITCOIN_WALLET_WALLET_H
-
 #include "amount.h"
 #include "coins.h"
 #include "key.h"
@@ -969,7 +966,7 @@ public:
     void AvailableCoins(std::vector<COutput>& vCoins, bool fOnlyConfirmed=true, const CCoinControl *coinControl = NULL, bool fIncludeZeroValue=false, bool fIncludeCoinBase=true, int exactCoins = 0, bool fIncludeLocked=false) const;
     bool SelectCoinsMinConf(const CAmount& nTargetValue, int nConfMine, int nConfTheirs, std::vector<COutput> vCoins, std::set<std::pair<const CWalletTx*,unsigned int> >& setCoinsRet, CAmount& nValueRet) const;
 
-    bool IsSpent(const uint256& hash, unsigned int n) const;
+    bool IsSpent(const uint256& hash, const unsigned int n) const;
     bool IsSproutSpent(const uint256& nullifier) const;
     bool IsSaplingSpent(const uint256& nullifier) const;
 
@@ -1144,7 +1141,7 @@ public:
     void GetAllReserveKeys(std::set<CKeyID>& setAddress) const;
 
     std::set< std::set<CTxDestination> > GetAddressGroupings();
-    std::map<CTxDestination, CAmount> GetAddressBalances();
+    std::map<CTxDestination, CAmount> GetAddressBalances(const isminefilter &isMineFilter);
 
     std::set<CTxDestination> GetAccountAddresses(const std::string& strAccount) const;
 
@@ -1427,6 +1424,3 @@ public:
     SpendingKeyAddResult operator()(const libzcash::SaplingExtendedSpendingKey &sk) const;
     SpendingKeyAddResult operator()(const libzcash::InvalidEncoding& no) const;    
 };
-
-
-#endif // BITCOIN_WALLET_WALLET_H
