@@ -1,10 +1,8 @@
+#pragma once
 // Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2014 The Bitcoin Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
-
-#ifndef BITCOIN_SCRIPT_SCRIPT_H
-#define BITCOIN_SCRIPT_SCRIPT_H
 
 #include "crypto/common.h"
 #include "prevector.h"
@@ -421,12 +419,12 @@ public:
     {
         if (b.size() < OP_PUSHDATA1)
         {
-            insert(end(), (unsigned char)b.size());
+            insert(end(), static_cast<unsigned char>(b.size()));
         }
         else if (b.size() <= 0xff)
         {
             insert(end(), OP_PUSHDATA1);
-            insert(end(), (unsigned char)b.size());
+            insert(end(), static_cast<unsigned char>(b.size()));
         }
         else if (b.size() <= 0xffff)
         {
@@ -592,4 +590,3 @@ public:
     }
 };
 
-#endif // BITCOIN_SCRIPT_SCRIPT_H

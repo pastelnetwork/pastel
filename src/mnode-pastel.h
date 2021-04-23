@@ -1,12 +1,10 @@
-// Copyright (c) 2019 The PASTEL-Coin developers
+#pragma once
+// Copyright (c) 2019-2021 The Pastel Core developers
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
-
-#ifndef MASTERNODEPASTEL_H
-#define MASTERNODEPASTEL_H
-
 #include "main.h"
 #include "dbwrapper.h"
+#include <unordered_map>
 
 #define TICKETS_VERSION 0x01
 
@@ -534,13 +532,13 @@ public:
 #define FAKE_TICKET
 // Ticket  Processor ////////////////////////////////////////////////////////////////////////////////////////////////////
 class CPastelTicketProcessor {
-	map<TicketID, std::unique_ptr<CDBWrapper> > dbs;
+	std::unordered_map<TicketID, std::unique_ptr<CDBWrapper> > dbs;
     
     template<class T, TicketID ticketId, typename F>
-    void listTickets(F f);
+    void listTickets(F f) const;
     
     template<class T, TicketID ticketId, typename F>
-    std::string filterTickets(F f);
+    std::string filterTickets(F f) const;
 
 public:
 	CPastelTicketProcessor() = default;
@@ -560,7 +558,7 @@ public:
 	template<class T>
 	bool CheckTicketExist(const T& ticket);
 	template<class T>
-	bool FindTicket(T& ticket);
+	bool FindTicket(T& ticket) const;
 
 	template<class T>
 	bool CheckTicketExistBySecondaryKey(const T& ticket);
@@ -569,17 +567,18 @@ public:
     template<class T>
     std::vector<T> FindTicketsByMVKey(TicketID ticketId, const std::string& mvKey);
     
-    std::vector<std::string> GetAllKeys(TicketID id);
+    std::vector<std::string> GetAllKeys(const TicketID id) const;
 
     template<class T, TicketID ticketId>
-    std::string ListTickets();
+    std::string ListTickets() const;
     
-    std::string ListFilterPastelIDTickets(short filter = 0);    // 1 - mn;        2 - personal
-    std::string ListFilterArtTickets(short filter = 0);         // 1 - active;    2 - inactive;     3 - sold
-    std::string ListFilterActTickets(short filter = 0);         // 1 - available; 2 - sold
-    std::string ListFilterSellTickets(short filter = 0);        // 1 - available; 2 - unavailable;  3 - expired; 4 - sold
-    std::string ListFilterBuyTickets(short filter = 0);         // 1 - traded;    2 - expired
-    std::string ListFilterTradeTickets(short filter = 0);       // 1 - available; 2 - sold
+    std::string ListFilterPastelIDTickets(const short filter = 0,    // 1 - mn;        2 - personal;     3 - mine
+        const std::vector<std::string> *pvPastelIDs = nullptr) const; 
+    std::string ListFilterArtTickets(const short filter = 0) const;  // 1 - active;    2 - inactive;     3 - sold
+    std::string ListFilterActTickets(const short filter = 0) const;  // 1 - available; 2 - sold
+    std::string ListFilterSellTickets(const short filter = 0) const; // 1 - available; 2 - unavailable;  3 - expired; 4 - sold
+    std::string ListFilterBuyTickets(const short filter = 0) const;  // 1 - traded;    2 - expired
+    std::string ListFilterTradeTickets(const short filter = 0) const;// 1 - available; 2 - sold
 
 #ifdef ENABLE_WALLET
 	static bool CreateP2FMSTransaction(const std::string& input_string, CMutableTransaction& tx_out, CAmount price, std::string& error_ret);
@@ -616,5 +615,3 @@ public:
     static std::string CreateFakeTransaction(T& ticket, CAmount ticketPrice, const std::vector<std::pair<std::string, CAmount>>& extraPayments, const std::string& strVerb, bool bSend);
 #endif
 };
-
-#endif //MASTERNODEPASTEL_H
