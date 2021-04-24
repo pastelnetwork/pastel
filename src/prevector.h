@@ -233,7 +233,7 @@ public:
 
     template<typename InputIterator>
     prevector(InputIterator first, InputIterator last) : _size(0) {
-        size_type n = last - first;
+        size_type n = static_cast<size_type>(std::distance(first, last));
         change_capacity(n);
         while (first != last) {
             _size++;

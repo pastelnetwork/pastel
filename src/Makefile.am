@@ -218,6 +218,8 @@ BITCOIN_CORE_H = \
   rpc/protocol.h \
   rpc/server.h \
   rpc/register.h \
+  rpc/rpc_consts.h \
+  rpc/rpc_parser.h \
   scheduler.h \
   script/interpreter.h \
   script/script.h \

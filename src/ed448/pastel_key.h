@@ -1,4 +1,4 @@
-// Copyright (c) 2018 The PASTEL-Coin developers
+// Copyright (c) 2018-2021 The PASTEL-Coin developers
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -81,9 +81,8 @@ public:
         pathPastelKeys = GetDataDir() / pathPastelKeys;
 
         std::vector<std::string> vec;
-        for(auto & p : boost::filesystem::directory_iterator( pathPastelKeys )){
+        for (const auto & p : boost::filesystem::directory_iterator( pathPastelKeys ))
             vec.push_back(p.path().filename().string());
-        }
         return vec;
     }
 
