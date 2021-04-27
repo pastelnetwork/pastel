@@ -56,11 +56,26 @@ sudo pip install pyblake2
 ./pcutil/build.sh -j$(nproc)
 ```
 
-#### Cross-platforms build on Ubuntu (only Windows is supported) 
+> For build without build-in CPU miner use
+```shell
+./pcutil/build.sh -j$(nproc) --disable-mining
+```
+
+#### Cross-platforms builds on Ubuntu
+##### For Windows
 ```shell
 HOST=x86_64-w64-mingw32 ./pcutil/build.sh -j$(nproc)
 ```
 > Windows build must be done on the clean tree:
+```shell
+make clean && make -C src/univalue clean
+```
+
+##### For Mac OSX
+```shell
+HOST=x86_64-apple-darwin ./pcutil/build.sh -j$(nproc)
+```
+> Apple build must be done on the clean tree:
 ```shell
 make clean && make -C src/univalue clean
 ```
