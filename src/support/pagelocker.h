@@ -1,10 +1,8 @@
+#pragma once
 // Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2013 The Bitcoin Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
-
-#ifndef BITCOIN_SUPPORT_PAGELOCKER_H
-#define BITCOIN_SUPPORT_PAGELOCKER_H
 
 #include "support/cleanse.h"
 
@@ -173,5 +171,3 @@ void UnlockObject(const T& t)
     memory_cleanse((void*)(&t), sizeof(T));
     LockedPageManager::Instance().UnlockRange((void*)(&t), sizeof(T));
 }
-
-#endif // BITCOIN_SUPPORT_PAGELOCKER_H

@@ -56,7 +56,7 @@ int find_output(UniValue obj, int n) {
 }
 
 AsyncRPCOperation_sendmany::AsyncRPCOperation_sendmany(
-        boost::optional<TransactionBuilder> builder,
+        std::optional<TransactionBuilder> builder,
         CMutableTransaction contextualTx,
         std::string fromAddress,
         std::vector<SendManyRecipient> tOutputs,
@@ -83,7 +83,7 @@ AsyncRPCOperation_sendmany::AsyncRPCOperation_sendmany(
     isUsingBuilder_ = false;
     if (builder) {
         isUsingBuilder_ = true;
-        builder_ = builder.get();
+        builder_ = builder.value();
     }
 
     fromtaddr_ = DecodeDestination(fromAddress);
@@ -100,7 +100,7 @@ AsyncRPCOperation_sendmany::AsyncRPCOperation_sendmany(
 
             isfromzaddr_ = true;
             frompaymentaddress_ = address;
-            spendingkey_ = boost::apply_visitor(GetSpendingKeyForPaymentAddress(pwalletMain), address).get();
+            spendingkey_ = boost::apply_visitor(GetSpendingKeyForPaymentAddress(pwalletMain), address).value();
         } else {
             throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid from address");
         }
@@ -419,7 +419,7 @@ bool AsyncRPCOperation_sendmany::main_impl() {
 
         // Fetch Sapling anchor and witnesses
         uint256 anchor;
-        std::vector<boost::optional<SaplingWitness>> witnesses;
+        std::vector<std::optional<SaplingWitness>> witnesses;
         {
             LOCK2(cs_main, pwalletMain->cs_wallet);
             pwalletMain->GetSaplingNoteWitnesses(ops, witnesses, anchor);
@@ -430,7 +430,7 @@ bool AsyncRPCOperation_sendmany::main_impl() {
             if (!witnesses[i]) {
                 throw JSONRPCError(RPC_WALLET_ERROR, "Missing witness for Sapling note");
             }
-            builder_.AddSaplingSpend(expsk, notes[i], anchor, witnesses[i].get());
+            builder_.AddSaplingSpend(expsk, notes[i], anchor, witnesses[i].value());
         }
 
         // Add Sapling outputs
@@ -561,7 +561,7 @@ bool AsyncRPCOperation_sendmany::main_impl() {
             JSOutPoint jso = std::get<0>(t);
             std::vector<JSOutPoint> vOutPoints = { jso };
             uint256 inputAnchor;
-            std::vector<boost::optional<SproutWitness>> vInputWitnesses;
+            std::vector<std::optional<SproutWitness>> vInputWitnesses;
             pwalletMain->GetSproutNoteWitnesses(vOutPoints, vInputWitnesses, inputAnchor);
             jsopWitnessAnchorMap[ jso.ToString() ] = WitnessAnchorData{ vInputWitnesses[0], inputAnchor };
         }
@@ -655,7 +655,7 @@ bool AsyncRPCOperation_sendmany::main_impl() {
 
         CAmount jsInputValue = 0;
         uint256 jsAnchor;
-        std::vector<boost::optional<SproutWitness>> witnesses;
+        std::vector<std::optional<SproutWitness>> witnesses;
 
         JSDescription prevJoinSplit;
 
@@ -686,7 +686,7 @@ bool AsyncRPCOperation_sendmany::main_impl() {
             }
 
             assert(changeOutputIndex != -1);
-            boost::optional<SproutWitness> changeWitness;
+            std::optional<SproutWitness> changeWitness;
             int n = 0;
             for (const uint256& commitment : prevJoinSplit.commitments) {
                 tree.append(commitment);
@@ -694,7 +694,7 @@ bool AsyncRPCOperation_sendmany::main_impl() {
                 if (!changeWitness && changeOutputIndex == n++) {
                     changeWitness = tree.witness();
                 } else if (changeWitness) {
-                    changeWitness.get().append(commitment);
+                    changeWitness.value().append(commitment);
                 }
             }
             if (changeWitness) {
@@ -735,7 +735,7 @@ bool AsyncRPCOperation_sendmany::main_impl() {
         //
         std::vector<SproutNote> vInputNotes;
         std::vector<JSOutPoint> vOutPoints;
-        std::vector<boost::optional<SproutWitness>> vInputWitnesses;
+        std::vector<std::optional<SproutWitness>> vInputWitnesses;
         uint256 inputAnchor;
         int numInputsNeeded = (jsChange>0) ? 1 : 0;
         while (numInputsNeeded++ < ZC_NUM_JS_INPUTS && zInputsDeque.size() > 0) {
@@ -974,7 +974,8 @@ bool AsyncRPCOperation_sendmany::find_utxos(bool fAcceptCoinbase=false) {
 
     pwalletMain->AvailableCoins(vecOutputs, false, NULL, true, fAcceptCoinbase);
 
-    BOOST_FOREACH(const COutput& out, vecOutputs) {
+    for (const auto& out : vecOutputs)
+    {
         if (!out.fSpendable) {
             continue;
         }
@@ -1073,7 +1074,7 @@ bool AsyncRPCOperation_sendmany::find_unspent_notes() {
 }
 
 UniValue AsyncRPCOperation_sendmany::perform_joinsplit(AsyncJoinSplitInfo & info) {
-    std::vector<boost::optional < SproutWitness>> witnesses;
+    std::vector<std::optional < SproutWitness>> witnesses;
     uint256 anchor;
     {
         LOCK(cs_main);
@@ -1084,7 +1085,7 @@ UniValue AsyncRPCOperation_sendmany::perform_joinsplit(AsyncJoinSplitInfo & info
 
 
 UniValue AsyncRPCOperation_sendmany::perform_joinsplit(AsyncJoinSplitInfo & info, std::vector<JSOutPoint> & outPoints) {
-    std::vector<boost::optional < SproutWitness>> witnesses;
+    std::vector<std::optional < SproutWitness>> witnesses;
     uint256 anchor;
     {
         LOCK(cs_main);
@@ -1095,7 +1096,7 @@ UniValue AsyncRPCOperation_sendmany::perform_joinsplit(AsyncJoinSplitInfo & info
 
 UniValue AsyncRPCOperation_sendmany::perform_joinsplit(
         AsyncJoinSplitInfo & info,
-        std::vector<boost::optional < SproutWitness>> witnesses,
+        std::vector<std::optional < SproutWitness>> witnesses,
         uint256 anchor)
 {
     if (anchor.IsNull()) {

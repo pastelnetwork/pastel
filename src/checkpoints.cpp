@@ -3,14 +3,10 @@
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
 #include "checkpoints.h"
-
 #include "chainparams.h"
 #include "main.h"
 #include "uint256.h"
-
 #include <stdint.h>
-
-#include <boost/foreach.hpp>
 
 namespace Checkpoints {
 
@@ -67,15 +63,18 @@ namespace Checkpoints {
     CBlockIndex* GetLastCheckpoint(const CCheckpointData& data)
     {
         const MapCheckpoints& checkpoints = data.mapCheckpoints;
-
-        BOOST_REVERSE_FOREACH(const MapCheckpoints::value_type& i, checkpoints)
+        CBlockIndex* pBlock = nullptr;
+        for (auto i = checkpoints.crbegin(); i != checkpoints.crend(); ++i)
         {
-            const uint256& hash = i.second;
-            BlockMap::const_iterator t = mapBlockIndex.find(hash);
+            const auto& hash = i->second;
+            auto t = mapBlockIndex.find(hash);
             if (t != mapBlockIndex.end())
-                return t->second;
+            {
+                pBlock = t->second;
+                break;
+            }
         }
-        return NULL;
+        return pBlock;
     }
 
 } // namespace Checkpoints

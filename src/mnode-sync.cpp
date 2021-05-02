@@ -205,7 +205,7 @@ void CMasternodeSync::ProcessTick()
 
     std::vector<CNode*> vNodesCopy = CNodeHelper::CopyNodeVector();
 
-    BOOST_FOREACH(CNode* pnode, vNodesCopy)
+    for (auto pnode : vNodesCopy)
     {
         // Don't try to sync any data from outbound "masternode" connections -
         // they are temporary and should be considered unreliable for a sync process.

@@ -1,11 +1,10 @@
 #include <gtest/gtest.h>
 #include "uint256.h"
-
 #include "zcash/util.h"
 
-#include <boost/foreach.hpp>
+#include <optional>
+
 #include <boost/format.hpp>
-#include <boost/optional.hpp>
 
 #include <libsnark/common/default_types/r1cs_ppzksnark_pp.hpp>
 #include <libsnark/zk_proof_systems/ppzksnark/r1cs_ppzksnark/r1cs_ppzksnark.hpp>

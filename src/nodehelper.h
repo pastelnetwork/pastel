@@ -91,9 +91,11 @@ public:
 /***** Push message helpers *****/
     static void RelayInv(CInv &inv, const int minProtoVersion = MIN_PEER_PROTO_VERSION) {
         LOCK(cs_vNodes);
-        BOOST_FOREACH(CNode* pnode, vNodes)
-            if(pnode->nVersion >= minProtoVersion)
+        for (auto pnode : vNodes)
+        {
+            if (pnode->nVersion >= minProtoVersion)
                 pnode->PushInventory(inv);
+        }
     }
 
 /*****  *****/

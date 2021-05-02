@@ -95,7 +95,7 @@ public:
 
     void ShutdownMasterNode();
 
-    boost::filesystem::path GetMasternodeConfigFile();
+    fs::path GetMasternodeConfigFile();
 
     bool IsSynced() {return masternodeSync.IsSynced();}
 

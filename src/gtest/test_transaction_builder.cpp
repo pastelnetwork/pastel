@@ -60,9 +60,9 @@ TEST(TransactionBuilder, Invoke)
     auto maybe_pt = libzcash::SaplingNotePlaintext::decrypt(
         tx1.vShieldedOutput[0].encCiphertext, ivk, tx1.vShieldedOutput[0].ephemeralKey, tx1.vShieldedOutput[0].cm);
     ASSERT_EQ(static_cast<bool>(maybe_pt), true);
-    auto maybe_note = maybe_pt.get().note(ivk);
+    auto maybe_note = maybe_pt.value().note(ivk);
     ASSERT_EQ(static_cast<bool>(maybe_note), true);
-    auto note = maybe_note.get();
+    auto note = maybe_note.value();
     SaplingMerkleTree tree;
     tree.append(tx1.vShieldedOutput[0].cm);
     auto anchor = tree.root();

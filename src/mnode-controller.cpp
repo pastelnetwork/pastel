@@ -143,7 +143,8 @@ bool CMasterNodeController::EnableMasterNode(std::ostringstream& strErrors, boos
         LogPrintf("Locking Masternodes:\n");
         uint256 mnTxHash;
         int outputIndex;
-        BOOST_FOREACH(CMasternodeConfig::CMasternodeEntry mne, masternodeConfig.getEntries()) {
+        for (const auto & mne : masternodeConfig.getEntries())
+        {
             mnTxHash.SetHex(mne.getTxHash());
             outputIndex = boost::lexical_cast<unsigned int>(mne.getOutputIndex());
             COutPoint outpoint = COutPoint(mnTxHash, outputIndex);
@@ -160,7 +161,7 @@ bool CMasterNodeController::EnableMasterNode(std::ostringstream& strErrors, boos
 
     // LOAD SERIALIZED DAT FILES INTO DATA CACHES FOR INTERNAL USE
 
-    boost::filesystem::path pathDB = GetDataDir();
+    fs::path pathDB = GetDataDir();
     std::string strDBName;
 
     strDBName = "mncache.dat";
@@ -345,9 +346,11 @@ bool CMasterNodeController::ProcessGetData(CNode* pfrom, const CInv& inv)
         BlockMap::iterator mi = mapBlockIndex.find(inv.hash);
         LOCK(cs_mapMasternodeBlockPayees);
         if (mi != mapBlockIndex.end() && masternodePayments.mapMasternodeBlockPayees.count(mi->second->nHeight)) {
-            BOOST_FOREACH(CMasternodePayee& payee, masternodePayments.mapMasternodeBlockPayees[mi->second->nHeight].vecPayees) {
-                std::vector<uint256> vecVoteHashes = payee.GetVoteHashes();
-                BOOST_FOREACH(uint256& hash, vecVoteHashes) {
+            for (auto & payee : masternodePayments.mapMasternodeBlockPayees[mi->second->nHeight].vecPayees)
+            {
+                auto vecVoteHashes = payee.GetVoteHashes();
+                for (auto& hash : vecVoteHashes)
+                {
                     if(masternodePayments.HasVerifiedPaymentVote(hash)) {
                         CDataStream ss(SER_NETWORK, PROTOCOL_VERSION);
                         ss.reserve(1000);
@@ -403,10 +406,11 @@ void CMasterNodeController::ShutdownMasterNode()
     flatDB5.Dump(masternodeMessages);
 }
 
-boost::filesystem::path CMasterNodeController::GetMasternodeConfigFile()
+fs::path CMasterNodeController::GetMasternodeConfigFile()
 {
-    boost::filesystem::path pathConfigFile(GetArg("-mnconf", "masternode.conf"));
-    if (!pathConfigFile.is_complete()) pathConfigFile = GetDataDir() / pathConfigFile;
+    fs::path pathConfigFile(GetArg("-mnconf", "masternode.conf"));
+    if (!pathConfigFile.is_absolute()) 
+        pathConfigFile = GetDataDir() / pathConfigFile;
     return pathConfigFile;
 }
 

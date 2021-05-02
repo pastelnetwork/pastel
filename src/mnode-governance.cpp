@@ -228,7 +228,8 @@ bool CMasternodeGovernance::IsTransactionValid(const CTransaction& txNew, int nH
     CAmount tnxPayment;
     CAmount nGovernancePayment = GetGovernancePayment(txNew.GetValueOut());
     CScript scriptPubKey = ticket.scriptPubKey;
-    BOOST_FOREACH(CTxOut txout, txNew.vout) {
+    for (const auto & txout : txNew.vout)
+    {
         if (scriptPubKey == txout.scriptPubKey) {
             tnxPayment = txout.nValue;
             if (nGovernancePayment == txout.nValue) {

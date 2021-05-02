@@ -50,7 +50,8 @@ int64_t static DecodeDumpTime(const std::string &str) {
 
 std::string static EncodeDumpString(const std::string &str) {
     std::stringstream ret;
-    BOOST_FOREACH(unsigned char c, str) {
+    for (const auto &c : str)
+    {
         if (c <= 32 || c >= 128 || c == '%') {
             ret << '%' << HexStr(&c, &c + 1);
         } else {
@@ -302,8 +303,8 @@ UniValue importwallet_impl(const UniValue& params, bool fHelp, bool fImportZKeys
             auto spendingkey = DecodeSpendingKey(vstr[0]);
             int64_t nTime = DecodeDumpTime(vstr[1]);
             // Only include hdKeypath and seedFpStr if we have both
-            boost::optional<std::string> hdKeypath = (vstr.size() > 3) ? boost::optional<std::string>(vstr[2]) : boost::none;
-            boost::optional<std::string> seedFpStr = (vstr.size() > 3) ? boost::optional<std::string>(vstr[3]) : boost::none;
+            std::optional<std::string> hdKeypath = (vstr.size() > 3) ? std::optional<std::string>(vstr[2]) : std::nullopt;
+            std::optional<std::string> seedFpStr = (vstr.size() > 3) ? std::optional<std::string>(vstr[3]) : std::nullopt;
             if (IsValidSpendingKey(spendingkey)) {
                 auto addResult = boost::apply_visitor(
                     AddSpendingKeyToWallet(pwalletMain, Params().GetConsensus(), nTime, hdKeypath, seedFpStr, true), spendingkey);
@@ -465,7 +466,7 @@ UniValue dumpwallet_impl(const UniValue& params, bool fHelp, bool fDumpZKeys)
 
     EnsureWalletIsUnlocked();
 
-    boost::filesystem::path exportdir;
+    fs::path exportdir;
     try {
         exportdir = GetExportDir();
     } catch (const std::runtime_error& e) {
@@ -479,9 +480,9 @@ UniValue dumpwallet_impl(const UniValue& params, bool fHelp, bool fDumpZKeys)
     if (clean.compare(unclean) != 0) {
         throw JSONRPCError(RPC_WALLET_ERROR, strprintf("Filename is invalid as only alphanumeric characters are allowed.  Try '%s' instead.", clean));
     }
-    boost::filesystem::path exportfilepath = exportdir / clean;
+    fs::path exportfilepath = exportdir / clean;
 
-    if (boost::filesystem::exists(exportfilepath)) {
+    if (fs::exists(exportfilepath)) {
         throw JSONRPCError(RPC_INVALID_PARAMETER, "Cannot overwrite existing file " + exportfilepath.string());
     }
 
@@ -798,7 +799,7 @@ UniValue z_exportkey(const UniValue& params, bool fHelp)
     if (!sk) {
         throw JSONRPCError(RPC_WALLET_ERROR, "Wallet does not hold private zkey for this zaddr");
     }
-    return EncodeSpendingKey(sk.get());
+    return EncodeSpendingKey(sk.value());
 }
 
 UniValue z_exportviewingkey(const UniValue& params, bool fHelp)

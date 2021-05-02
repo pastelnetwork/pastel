@@ -51,9 +51,8 @@ void ScriptPubKeyToJSON(const CScript& scriptPubKey, UniValue& out, bool fInclud
     out.push_back(Pair("type", GetTxnOutputType(type)));
 
     UniValue a(UniValue::VARR);
-    for (const CTxDestination& addr : addresses) {
+    for (const auto& addr : addresses)
         a.push_back(EncodeDestination(addr));
-    }
     out.push_back(Pair("addresses", a));
 }
 
@@ -72,17 +71,15 @@ UniValue TxJoinSplitToJSON(const CTransaction& tx) {
 
         {
             UniValue nullifiers(UniValue::VARR);
-            BOOST_FOREACH(const uint256 nf, jsdescription.nullifiers) {
+            for (const auto &nf : jsdescription.nullifiers)
                 nullifiers.push_back(nf.GetHex());
-            }
             joinsplit.push_back(Pair("nullifiers", nullifiers));
         }
 
         {
             UniValue commitments(UniValue::VARR);
-            BOOST_FOREACH(const uint256 commitment, jsdescription.commitments) {
+            for (const auto & commitment : jsdescription.commitments)
                 commitments.push_back(commitment.GetHex());
-            }
             joinsplit.push_back(Pair("commitments", commitments));
         }
 
@@ -91,9 +88,8 @@ UniValue TxJoinSplitToJSON(const CTransaction& tx) {
 
         {
             UniValue macs(UniValue::VARR);
-            BOOST_FOREACH(const uint256 mac, jsdescription.macs) {
+            for (const auto &mac : jsdescription.macs)
                 macs.push_back(mac.GetHex());
-            }
             joinsplit.push_back(Pair("macs", macs));
         }
 
@@ -158,7 +154,8 @@ void TxToJSON(const CTransaction& tx, const uint256 hashBlock, UniValue& entry)
         entry.push_back(Pair("expiryheight", (int64_t)tx.nExpiryHeight));
     }
     UniValue vin(UniValue::VARR);
-    BOOST_FOREACH(const CTxIn& txin, tx.vin) {
+    for (const auto& txin : tx.vin)
+    {
         UniValue in(UniValue::VOBJ);
         if (tx.IsCoinBase())
             in.push_back(Pair("coinbase", HexStr(txin.scriptSig.begin(), txin.scriptSig.end())));
@@ -404,9 +401,11 @@ UniValue gettxoutproof(const UniValue& params, bool fHelp)
         throw JSONRPCError(RPC_INTERNAL_ERROR, "Can't read block from disk");
 
     unsigned int ntxFound = 0;
-    BOOST_FOREACH(const CTransaction&tx, block.vtx)
+    for (const auto&tx : block.vtx)
+    {
         if (setTxids.count(tx.GetHash()))
             ntxFound++;
+    }
     if (ntxFound != setTxids.size())
         throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "(Not all) transactions not found in specified block");
 
@@ -445,7 +444,7 @@ UniValue verifytxoutproof(const UniValue& params, bool fHelp)
     if (!mapBlockIndex.count(merkleBlock.header.GetHash()) || !chainActive.Contains(mapBlockIndex[merkleBlock.header.GetHash()]))
         throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Block not found in chain");
 
-    BOOST_FOREACH(const uint256& hash, vMatch)
+    for (const auto& hash : vMatch)
         res.push_back(hash.GetHex());
     return res;
 }
@@ -818,7 +817,8 @@ UniValue signrawtransaction(const UniValue& params, bool fHelp)
         CCoinsViewMemPool viewMempool(&viewChain, mempool);
         view.SetBackend(viewMempool); // temporarily switch cache backend to db+mempool view
 
-        BOOST_FOREACH(const CTxIn& txin, mergedTx.vin) {
+        for (const auto& txin : mergedTx.vin)
+        {
             const uint256& prevHash = txin.prevout.hash;
             CCoins coins;
             view.AccessCoins(prevHash); // this is certainly allowed to fail
@@ -849,9 +849,11 @@ UniValue signrawtransaction(const UniValue& params, bool fHelp)
 #endif
 
     // Add previous txouts given in the RPC call:
-    if (params.size() > 1 && !params[1].isNull()) {
+    if (params.size() > 1 && !params[1].isNull())
+    {
         UniValue prevTxs = params[1].get_array();
-        for (size_t idx = 0; idx < prevTxs.size(); idx++) {
+        for (size_t idx = 0; idx < prevTxs.size(); idx++)
+        {
             const UniValue& p = prevTxs[idx];
             if (!p.isObject())
                 throw JSONRPCError(RPC_DESERIALIZATION_ERROR, "expected object with {\"txid'\",\"vout\",\"scriptPubKey\"}");
@@ -949,7 +951,8 @@ UniValue signrawtransaction(const UniValue& params, bool fHelp)
     // transaction to avoid rehashing.
     const CTransaction txConst(mergedTx);
     // Sign what we can:
-    for (unsigned int i = 0; i < mergedTx.vin.size(); i++) {
+    for (unsigned int i = 0; i < mergedTx.vin.size(); i++)
+    {
         CTxIn& txin = mergedTx.vin[i];
         const CCoins* coins = view.AccessCoins(txin.prevout.hash);
         if (coins == NULL || !coins->IsAvailable(txin.prevout.n)) {
@@ -965,26 +968,22 @@ UniValue signrawtransaction(const UniValue& params, bool fHelp)
             ProduceSignature(MutableTransactionSignatureCreator(&keystore, &mergedTx, i, amount, nHashType), prevPubKey, sigdata, consensusBranchId);
 
         // ... and merge in other signatures:
-        BOOST_FOREACH(const CMutableTransaction& txv, txVariants) {
+        for (const auto& txv : txVariants)
             sigdata = CombineSignatures(prevPubKey, TransactionSignatureChecker(&txConst, i, amount), sigdata, DataFromTransaction(txv, i), consensusBranchId);
-        }
 
         UpdateTransaction(mergedTx, i, sigdata);
 
         ScriptError serror = SCRIPT_ERR_OK;
-        if (!VerifyScript(txin.scriptSig, prevPubKey, STANDARD_SCRIPT_VERIFY_FLAGS, TransactionSignatureChecker(&txConst, i, amount), consensusBranchId, &serror)) {
+        if (!VerifyScript(txin.scriptSig, prevPubKey, STANDARD_SCRIPT_VERIFY_FLAGS, TransactionSignatureChecker(&txConst, i, amount), consensusBranchId, &serror))
             TxInErrorToJSON(txin, vErrors, ScriptErrorString(serror));
-        }
     }
     bool fComplete = vErrors.empty();
 
     UniValue result(UniValue::VOBJ);
     result.push_back(Pair("hex", EncodeHexTx(mergedTx)));
     result.push_back(Pair("complete", fComplete));
-    if (!vErrors.empty()) {
+    if (!vErrors.empty())
         result.push_back(Pair("errors", vErrors));
-    }
-
     return result;
 }
 
