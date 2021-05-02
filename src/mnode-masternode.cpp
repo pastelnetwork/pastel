@@ -272,9 +272,13 @@ bool CMasternode::IsInputAssociatedWithPubkey()
 
     CTransaction tx;
     uint256 hash;
-    if(GetTransaction(vin.prevout.hash, tx, hash, true)) {
-        BOOST_FOREACH(CTxOut out, tx.vout)
-            if(out.nValue == masterNodeCtrl.MasternodeCollateral*COIN && out.scriptPubKey == payee) return true;
+    if (GetTransaction(vin.prevout.hash, tx, hash, true))
+    {
+        for (const auto & out : tx.vout)
+        {
+            if (out.nValue == masterNodeCtrl.MasternodeCollateral * COIN && out.scriptPubKey == payee)
+                return true;
+        }
     }
 
     return false;
@@ -348,13 +352,15 @@ void CMasternode::UpdateLastPaid(const CBlockIndex *pindex, int nMaxBlocksToScan
 
             CAmount nMasternodePayment = masterNodeCtrl.masternodePayments.GetMasternodePayment(BlockReading->nHeight, block.vtx[0].GetValueOut());
 
-            BOOST_FOREACH(CTxOut txout, block.vtx[0].vout)
+            for (const auto & txout : block.vtx[0].vout)
+            {
                 if(mnpayee == txout.scriptPubKey && nMasternodePayment == txout.nValue) {
                     nBlockLastPaid = BlockReading->nHeight;
                     nTimeLastPaid = BlockReading->nTime;
                     LogPrint("masternode", "CMasternode::UpdateLastPaidBlock -- searching for block with payment to %s -- found new %d\n", vin.prevout.ToStringShort(), nBlockLastPaid);
                     return;
                 }
+            }
         }
 
         if (BlockReading->pprev == NULL) { assert(BlockReading); break; }

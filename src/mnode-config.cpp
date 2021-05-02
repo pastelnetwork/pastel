@@ -1,6 +1,3 @@
-#include <boost/filesystem.hpp>
-#include <boost/filesystem/fstream.hpp>
-
 #include "mnode-config.h"
 #include "mnode-controller.h"
 
@@ -70,8 +67,8 @@ std::string get_obj_as_string(json::iterator& it, std::string name)
 
 bool CMasternodeConfig::read(std::string& strErr)
 {
-    boost::filesystem::path pathMasternodeConfigFile = masterNodeCtrl.GetMasternodeConfigFile();
-    boost::filesystem::ifstream streamConfig(pathMasternodeConfigFile);
+    fs::path pathMasternodeConfigFile = masterNodeCtrl.GetMasternodeConfigFile();
+    fs::ifstream streamConfig(pathMasternodeConfigFile);
 
     nlohmann::json jsonObj;
 

@@ -26,8 +26,6 @@
 #include <arpa/inet.h>
 #endif
 
-#include <boost/filesystem/path.hpp>
-#include <boost/foreach.hpp>
 #include <boost/signals2/signal.hpp>
 
 class CAddrMan;
@@ -365,7 +363,7 @@ public:
     unsigned int GetTotalRecvSize()
     {
         unsigned int total = 0;
-        BOOST_FOREACH(const CNetMessage &msg, vRecvMsg)
+        for (const auto &msg : vRecvMsg)
             total += msg.vRecv.size() + 24;
         return total;
     }
@@ -377,7 +375,7 @@ public:
     void SetRecvVersion(int nVersionIn)
     {
         nRecvVersion = nVersionIn;
-        BOOST_FOREACH(CNetMessage &msg, vRecvMsg)
+        for(auto &msg : vRecvMsg)
             msg.SetVersion(nVersionIn);
     }
 
@@ -651,7 +649,8 @@ void RelayTransaction(const CTransaction& tx, const CDataStream& ss);
 class CAddrDB
 {
 private:
-    boost::filesystem::path pathAddr;
+    fs::path pathAddr;
+
 public:
     CAddrDB();
     bool Write(const CAddrMan& addr);

@@ -12,8 +12,7 @@
 #include <mutex>
 #include <future>
 #include <memory>
-
-#include <boost/optional.hpp>
+#include <optional>
 
 #include <leveldb/db.h>
 
@@ -31,7 +30,7 @@ public:
     static std::shared_ptr<PaymentDisclosureDB> sharedInstance();
 
     PaymentDisclosureDB();
-    PaymentDisclosureDB(const boost::filesystem::path& dbPath);
+    PaymentDisclosureDB(const fs::path& dbPath);
     ~PaymentDisclosureDB();
 
     bool Put(const PaymentDisclosureKey& key, const PaymentDisclosureInfo& info);

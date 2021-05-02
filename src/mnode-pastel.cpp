@@ -26,9 +26,9 @@ using json = nlohmann::json;
 
 void CPastelTicketProcessor::InitTicketDB()
 {
-	boost::filesystem::path ticketsDir = GetDataDir() / "tickets";
-	if (!boost::filesystem::exists(ticketsDir)) {
-		boost::filesystem::create_directories(ticketsDir);
+    fs::path ticketsDir = GetDataDir() / "tickets";
+    if (!fs::exists(ticketsDir)) {
+        fs::create_directories(ticketsDir);
 	}
 	
 	uint64_t nTotalCache = (GetArg("-dbcache", 450) << 20);
