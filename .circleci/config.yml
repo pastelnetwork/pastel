@@ -4,9 +4,10 @@ jobs:
   build:
     docker:
       - image: akobrin/pastel:0.0.1
+    working_directory: /pastel
     steps:
       - checkout
       - run:
           name: Building Pastel Core
           command: |
-            ./pcutil/build.sh -j16
+            ./pcutil/build.sh -j8
