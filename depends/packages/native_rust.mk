@@ -41,9 +41,9 @@ define $(package)_extract_cmds
   echo "$($(package)_sha256_hash_$(build_os))  $($(package)_source_dir)/$($(package)_file_name_$(build_os))" >> $($(package)_extract_dir)/.$($(package)_file_name).hash && \
   $(build_SHA256SUM) -c $($(package)_extract_dir)/.$($(package)_file_name).hash && \
   mkdir $(canonical_host) && \
-  tar --strip-components=1 -xf $($(package)_source) -C $(canonical_host) && \
+  tar --no-same-owner --strip-components=1 -xf $($(package)_source) -C $(canonical_host) && \
   mkdir buildos && \
-  tar --strip-components=1 -xf $($(package)_source_dir)/$($(package)_file_name_$(build_os)) -C buildos
+  tar --no-same-owner --strip-components=1 -xf $($(package)_source_dir)/$($(package)_file_name_$(build_os)) -C buildos
 endef
 
 define $(package)_stage_cmds
