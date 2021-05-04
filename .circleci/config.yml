@@ -9,4 +9,4 @@ jobs:
       - run:
           name: Building Pastel Core
           command: |
-            ./pcutil/build.sh -j20
+            ./pcutil/build.sh -j16
