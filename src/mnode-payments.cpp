@@ -284,7 +284,8 @@ void CMasternodeBlockPayees::AddPayee(const CMasternodePaymentVote& vote)
 {
     LOCK(cs_vecPayees);
 
-    BOOST_FOREACH(CMasternodePayee& payee, vecPayees) {
+    for (auto& payee : vecPayees)
+    {
         if (payee.GetPayee() == vote.payee) {
             payee.AddVoteHash(vote.GetHash());
             return;
@@ -304,7 +305,8 @@ bool CMasternodeBlockPayees::GetBestPayee(CScript& payeeRet)
     }
 
     int nVotes = -1;
-    BOOST_FOREACH(CMasternodePayee& payee, vecPayees) {
+    for (auto& payee : vecPayees)
+    {
         if (payee.GetVoteCount() > nVotes) {
             payeeRet = payee.GetPayee();
             nVotes = payee.GetVoteCount();
@@ -318,7 +320,8 @@ bool CMasternodeBlockPayees::HasPayeeWithVotes(const CScript& payeeIn, int nVote
 {
     LOCK(cs_vecPayees);
 
-    BOOST_FOREACH(CMasternodePayee& payee, vecPayees) {
+    for (auto &payee : vecPayees)
+    {
         if (payee.GetVoteCount() >= nVotesReq && payee.GetPayee() == payeeIn) {
             return true;
         }
@@ -339,7 +342,8 @@ bool CMasternodeBlockPayees::IsTransactionValid(const CTransaction& txNew)
 
     //require at least MNPAYMENTS_SIGNATURES_REQUIRED signatures
 
-    BOOST_FOREACH(CMasternodePayee& payee, vecPayees) {
+    for (const auto & payee : vecPayees)
+    {
         if (payee.GetVoteCount() >= nMaxSignatures) {
             nMaxSignatures = payee.GetVoteCount();
         }
@@ -348,9 +352,11 @@ bool CMasternodeBlockPayees::IsTransactionValid(const CTransaction& txNew)
     // if we don't have at least MNPAYMENTS_SIGNATURES_REQUIRED signatures on a payee, approve whichever is the longest chain
     if(nMaxSignatures < MNPAYMENTS_SIGNATURES_REQUIRED) return true;
 
-    BOOST_FOREACH(CMasternodePayee& payee, vecPayees) {
+    for (auto& payee : vecPayees)
+    {
         if (payee.GetVoteCount() >= MNPAYMENTS_SIGNATURES_REQUIRED) {
-            BOOST_FOREACH(CTxOut txout, txNew.vout) {
+            for (const auto &txout : txNew.vout)
+            {
                 if (payee.GetPayee() == txout.scriptPubKey && nMasternodePayment == txout.nValue) {
                     LogPrint("mnpayments", "CMasternodeBlockPayees::IsTransactionValid -- Found required payment\n");
                     return true;
@@ -370,7 +376,8 @@ bool CMasternodeBlockPayees::IsTransactionValid(const CTransaction& txNew)
     }
 
     LogPrintf("CMasternodeBlockPayees::IsTransactionValid -- ERROR: Missing required payment, possible payees: '%s', amount: %" PRId64 " PASTEL\n", strPayeesPossible, nMasternodePayment);
-    BOOST_FOREACH(CTxOut txout, txNew.vout) {
+    for (const auto & txout : txNew.vout)
+    {
         CTxDestination dest;
         ExtractDestination(txout.scriptPubKey, dest);
         std::string address = EncodeDestination(dest);
@@ -388,7 +395,7 @@ std::string CMasternodeBlockPayees::GetRequiredPaymentsString()
 
     std::string strRequiredPayments = "Unknown";
 
-    BOOST_FOREACH(CMasternodePayee& payee, vecPayees)
+    for (auto& payee :vecPayees)
     {
         CTxDestination dest;
         ExtractDestination(payee.GetPayee(), dest);
@@ -673,10 +680,13 @@ void CMasternodePayments::Sync(CNode* pnode)
 
     for(int h = nCachedBlockHeight; h < nCachedBlockHeight + 20; h++) {
         if(mapMasternodeBlockPayees.count(h)) {
-            BOOST_FOREACH(CMasternodePayee& payee, mapMasternodeBlockPayees[h].vecPayees) {
-                std::vector<uint256> vecVoteHashes = payee.GetVoteHashes();
-                BOOST_FOREACH(uint256& hash, vecVoteHashes) {
-                    if(!HasVerifiedPaymentVote(hash)) continue;
+            for (auto & payee : mapMasternodeBlockPayees[h].vecPayees)
+            {
+                auto vecVoteHashes = payee.GetVoteHashes();
+                for (auto& hash : vecVoteHashes)
+                {
+                    if(!HasVerifiedPaymentVote(hash))
+                        continue;
                     pnode->PushInventory(CInv(MSG_MASTERNODE_PAYMENT_VOTE, hash));
                     nInvCount++;
                 }
@@ -720,7 +730,8 @@ void CMasternodePayments::RequestLowDataPaymentBlocks(CNode* pnode)
     while(it != mapMasternodeBlockPayees.end()) {
         int nTotalVotes = 0;
         bool fFound = false;
-        BOOST_FOREACH(CMasternodePayee& payee, it->second.vecPayees) {
+        for (const auto& payee : it->second.vecPayees)
+        {
             if(payee.GetVoteCount() >= MNPAYMENTS_SIGNATURES_REQUIRED) {
                 fFound = true;
                 break;
@@ -737,7 +748,7 @@ void CMasternodePayments::RequestLowDataPaymentBlocks(CNode* pnode)
         // DEBUG
         #if 0
             // Let's see why this failed
-            BOOST_FOREACH(CMasternodePayee& payee, it->second.vecPayees) {
+            for (const auto& payee : it->second.vecPayees) {
                 CTxDestination dest;
                 ExtractDestination(payee.GetPayee(), dest);
                 std::string address = EncodeDestination(dest);

@@ -1,11 +1,7 @@
+#pragma once
 // Copyright (c) 2014-2017 The Dash Core developers
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
-
-#ifndef MASTERNODE_DB_H
-#define MASTERNODE_DB_H
-
-#include <boost/filesystem.hpp>
 
 #include "clientversion.h"
 
@@ -29,7 +25,7 @@ private:
         IncorrectFormat
     };
 
-    boost::filesystem::path pathDB;
+    fs::path pathDB;
     std::string strFilename;
     std::string strMagicMessage;
 
@@ -83,7 +79,7 @@ private:
         }
 
         // use file size to size memory buffer
-        int fileSize = boost::filesystem::file_size(pathDB);
+        int fileSize = fs::file_size(pathDB);
         int dataSize = fileSize - sizeof(uint256);
         // Don't try to resize to a negative number if file is small
         if (dataSize < 0)
@@ -222,4 +218,3 @@ public:
 };
 
 
-#endif

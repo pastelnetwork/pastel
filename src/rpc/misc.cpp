@@ -476,9 +476,8 @@ UniValue setmocktime(const UniValue& params, bool fHelp)
     SetMockTime(params[0].get_int64());
 
     uint64_t t = GetTime();
-    BOOST_FOREACH(CNode* pnode, vNodes) {
+    for (auto pnode : vNodes)
         pnode->nLastSend = pnode->nLastRecv = t;
-    }
 
     return NullUniValue;
 }

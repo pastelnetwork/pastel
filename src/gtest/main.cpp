@@ -30,16 +30,16 @@ int main(int argc, char **argv)
   libsnark::default_r1cs_ppzksnark_pp::init_public_params();
   libsnark::inhibit_profiling_info = true;
   libsnark::inhibit_profiling_counters = true;
-  boost::filesystem::path pk_path = ZC_GetParamsDir() / "sprout-proving.key";
-  boost::filesystem::path vk_path = ZC_GetParamsDir() / "sprout-verifying.key";
+  fs::path pk_path = ZC_GetParamsDir() / "sprout-proving.key";
+  fs::path vk_path = ZC_GetParamsDir() / "sprout-verifying.key";
   params = ZCJoinSplit::Prepared(vk_path.string(), pk_path.string());
 
-  boost::filesystem::path sapling_spend = ZC_GetParamsDir() / "sapling-spend.params";
-  boost::filesystem::path sapling_output = ZC_GetParamsDir() / "sapling-output.params";
-  boost::filesystem::path sprout_groth16 = ZC_GetParamsDir() / "sprout-groth16.params";
+  fs::path sapling_spend = ZC_GetParamsDir() / "sapling-spend.params";
+  fs::path sapling_output = ZC_GetParamsDir() / "sapling-output.params";
+  fs::path sprout_groth16 = ZC_GetParamsDir() / "sprout-groth16.params";
 
     static_assert(
-        sizeof(boost::filesystem::path::value_type) == sizeof(codeunit),
+        sizeof(fs::path::value_type) == sizeof(codeunit),
         "librustzcash not configured correctly");
     auto sapling_spend_str = sapling_spend.native();
     auto sapling_output_str = sapling_output.native();

@@ -1,10 +1,7 @@
+#pragma once
 // Copyright (c) 2018 airk42
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
-
-
-#ifndef MASTERNODEPAYMENTS_H
-#define MASTERNODEPAYMENTS_H
 
 #include "vector"
 #include "map"
@@ -52,9 +49,9 @@ public:
 
     CScript GetPayee() { return scriptPubKey; }
 
-    void AddVoteHash(uint256 hashIn) { vecVoteHashes.push_back(hashIn); }
+    void AddVoteHash(const uint256 hashIn) { vecVoteHashes.push_back(hashIn); }
     std::vector<uint256> GetVoteHashes() { return vecVoteHashes; }
-    int GetVoteCount() { return vecVoteHashes.size(); }
+    int GetVoteCount() const noexcept { return vecVoteHashes.size(); }
 
 };
 
@@ -204,4 +201,3 @@ public:
     CAmount GetMasternodePayment(int nHeight, CAmount blockValue);
 };
 
-#endif

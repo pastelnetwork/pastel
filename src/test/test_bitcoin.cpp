@@ -22,7 +22,6 @@
 #include "wallet/wallet.h"
 #endif
 
-#include <boost/filesystem.hpp>
 #include <boost/test/unit_test.hpp>
 #include <boost/thread.hpp>
 
@@ -42,16 +41,16 @@ extern void noui_connect();
 
 JoinSplitTestingSetup::JoinSplitTestingSetup()
 {
-    boost::filesystem::path pk_path = ZC_GetParamsDir() / "sprout-proving.key";
-    boost::filesystem::path vk_path = ZC_GetParamsDir() / "sprout-verifying.key";
+    fs::path pk_path = ZC_GetParamsDir() / "sprout-proving.key";
+    fs::path vk_path = ZC_GetParamsDir() / "sprout-verifying.key";
     pzcashParams = ZCJoinSplit::Prepared(vk_path.string(), pk_path.string());
 
-    boost::filesystem::path sapling_spend = ZC_GetParamsDir() / "sapling-spend.params";
-    boost::filesystem::path sapling_output = ZC_GetParamsDir() / "sapling-output.params";
-    boost::filesystem::path sprout_groth16 = ZC_GetParamsDir() / "sprout-groth16.params";
+    fs::path sapling_spend = ZC_GetParamsDir() / "sapling-spend.params";
+    fs::path sapling_output = ZC_GetParamsDir() / "sapling-output.params";
+    fs::path sprout_groth16 = ZC_GetParamsDir() / "sprout-groth16.params";
 
     static_assert(
-        sizeof(boost::filesystem::path::value_type) == sizeof(codeunit),
+        sizeof(fs::path::value_type) == sizeof(codeunit),
         "librustzcash not configured correctly");
     auto sapling_spend_str = sapling_spend.native();
     auto sapling_output_str = sapling_output.native();
@@ -101,11 +100,11 @@ TestingSetup::TestingSetup()
 #endif
 
         // Save current path, in case a test changes it
-        orig_current_path = boost::filesystem::current_path();
+        orig_current_path = fs::current_path();
 
         ClearDatadirCache();
         pathTemp = GetTempPath() / strprintf("test_bitcoin_%lu_%i", (unsigned long)GetTime(), (int)(GetRand(100000)));
-        boost::filesystem::create_directories(pathTemp);
+        fs::create_directories(pathTemp);
         mapArgs["-datadir"] = pathTemp.string();
         pblocktree = new CBlockTreeDB(1 << 20, true);
         pcoinsdbview = new CCoinsViewDB(1 << 23, true);
@@ -143,9 +142,8 @@ TestingSetup::~TestingSetup()
 #endif
 
         // Restore the previous current path so temporary directory can be deleted
-        boost::filesystem::current_path(orig_current_path);
-
-        boost::filesystem::remove_all(pathTemp);
+        fs::current_path(orig_current_path);
+        fs::remove_all(pathTemp);
 }
 
 

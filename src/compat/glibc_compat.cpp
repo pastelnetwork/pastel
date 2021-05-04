@@ -12,6 +12,7 @@
 #include <sys/select.h>
 #endif
 
+#ifdef __GLIBC__
 // Prior to GLIBC_2.14, memcpy was aliased to memmove.
 extern "C" void* memmove(void* a, const void* b, size_t c);
 extern "C" void* memcpy(void* a, const void* b, size_t c)
@@ -19,7 +20,6 @@ extern "C" void* memcpy(void* a, const void* b, size_t c)
     return memmove(a, b, c);
 }
 
-#ifdef __GLIBC__
 extern "C" void __chk_fail(void) __attribute__((__noreturn__));
 extern "C" FDELT_TYPE __fdelt_warn(FDELT_TYPE a)
 {
