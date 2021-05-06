@@ -31,7 +31,6 @@
 #include <boost/algorithm/string.hpp>
 #include <boost/test/unit_test.hpp>
 #include <boost/format.hpp>
-#include <boost/filesystem.hpp>
 
 #include <univalue.h>
 
@@ -406,9 +405,9 @@ BOOST_AUTO_TEST_CASE(rpc_wallet_z_exportwallet)
     BOOST_CHECK(addrs.size()==1);
 
     // Set up paths
-    boost::filesystem::path tmppath = boost::filesystem::temp_directory_path();
-    boost::filesystem::path tmpfilename = boost::filesystem::unique_path("%%%%%%%%");
-    boost::filesystem::path exportfilepath = tmppath / tmpfilename;
+    fs::path tmppath = boost::filesystem::temp_directory_path();
+    fs::path tmpfilename = boost::filesystem::unique_path("%%%%%%%%");
+    fs::path exportfilepath = tmppath / tmpfilename;
 
     // export will fail since exportdir is not set
     BOOST_CHECK_THROW(CallRPC(string("z_exportwallet ") + tmpfilename.string()), runtime_error);
@@ -492,8 +491,8 @@ BOOST_AUTO_TEST_CASE(rpc_wallet_z_importwallet)
     std::string testWalletDump = (formatobject % testKey % testAddr).str();
 
     // write test data to file
-    boost::filesystem::path temp = boost::filesystem::temp_directory_path() /
-            boost::filesystem::unique_path();
+    fs::path temp = boost::filesystem::temp_directory_path() /
+            fs::unique_path();
     const std::string path = temp.string();
     std::ofstream file(path);
     file << testWalletDump;
@@ -965,26 +964,26 @@ BOOST_AUTO_TEST_CASE(rpc_z_sendmany_parameters)
 
     // Test constructor of AsyncRPCOperation_sendmany
     try {
-        std::shared_ptr<AsyncRPCOperation> operation(new AsyncRPCOperation_sendmany(boost::none, mtx, "",{}, {}, -1));
+        std::shared_ptr<AsyncRPCOperation> operation(new AsyncRPCOperation_sendmany(std::nullopt, mtx, "",{}, {}, -1));
     } catch (const UniValue& objError) {
         BOOST_CHECK( find_error(objError, "Minconf cannot be negative"));
     }
 
     try {
-        std::shared_ptr<AsyncRPCOperation> operation(new AsyncRPCOperation_sendmany(boost::none, mtx, "",{}, {}, 1));
+        std::shared_ptr<AsyncRPCOperation> operation(new AsyncRPCOperation_sendmany(std::nullopt, mtx, "",{}, {}, 1));
     } catch (const UniValue& objError) {
         BOOST_CHECK( find_error(objError, "From address parameter missing"));
     }
 
     try {
-        std::shared_ptr<AsyncRPCOperation> operation( new AsyncRPCOperation_sendmany(boost::none, mtx, "tPmCf9DhN5jv5CgrxDMHRz6wsEjWwM6qJnZ", {}, {}, 1) );
+        std::shared_ptr<AsyncRPCOperation> operation( new AsyncRPCOperation_sendmany(std::nullopt, mtx, "tPmCf9DhN5jv5CgrxDMHRz6wsEjWwM6qJnZ", {}, {}, 1) );
     } catch (const UniValue& objError) {
         BOOST_CHECK( find_error(objError, "No recipients"));
     }
 
     try {
         std::vector<SendManyRecipient> recipients = { SendManyRecipient("dummy",1.0, "") };
-        std::shared_ptr<AsyncRPCOperation> operation( new AsyncRPCOperation_sendmany(boost::none, mtx, "INVALID", recipients, {}, 1) );
+        std::shared_ptr<AsyncRPCOperation> operation( new AsyncRPCOperation_sendmany(std::nullopt, mtx, "INVALID", recipients, {}, 1) );
     } catch (const UniValue& objError) {
         BOOST_CHECK( find_error(objError, "Invalid from address"));
     }
@@ -992,7 +991,7 @@ BOOST_AUTO_TEST_CASE(rpc_z_sendmany_parameters)
     // Testnet payment addresses begin with 'tZ'.  This test detects an incorrect prefix.
     try {
         std::vector<SendManyRecipient> recipients = { SendManyRecipient("dummy",1.0, "") };
-        std::shared_ptr<AsyncRPCOperation> operation( new AsyncRPCOperation_sendmany(boost::none, mtx, "tTWgZLnrRJ13fF6YDJmnL32QZqJJD8UfMBcjGhECgF8GTT54SrAkHyvUW5AgbqTF2v4WLRq7Nchrymbr3eyWY2RNoGJjmNL", recipients, {}, 1) );
+        std::shared_ptr<AsyncRPCOperation> operation( new AsyncRPCOperation_sendmany(std::nullopt, mtx, "tTWgZLnrRJ13fF6YDJmnL32QZqJJD8UfMBcjGhECgF8GTT54SrAkHyvUW5AgbqTF2v4WLRq7Nchrymbr3eyWY2RNoGJjmNL", recipients, {}, 1) );
     } catch (const UniValue& objError) {
         BOOST_CHECK( find_error(objError, "Invalid from address"));
     }
@@ -1001,7 +1000,7 @@ BOOST_AUTO_TEST_CASE(rpc_z_sendmany_parameters)
     // invokes a method on pwalletMain, which is undefined in the google test environment.
     try {
         std::vector<SendManyRecipient> recipients = { SendManyRecipient("dummy",1.0, "") };
-        std::shared_ptr<AsyncRPCOperation> operation( new AsyncRPCOperation_sendmany(boost::none, mtx, "tZWgZLnrRJ13fF6YDJmnL32QZqJJD8UfMBcjGhECgF8GTT54SrAkHyvUW5AgbqTF2v4WLRq7Nchrymbr3eyWY2RNoGJjmNL", recipients, {}, 1) );
+        std::shared_ptr<AsyncRPCOperation> operation( new AsyncRPCOperation_sendmany(std::nullopt, mtx, "tZWgZLnrRJ13fF6YDJmnL32QZqJJD8UfMBcjGhECgF8GTT54SrAkHyvUW5AgbqTF2v4WLRq7Nchrymbr3eyWY2RNoGJjmNL", recipients, {}, 1) );
     } catch (const UniValue& objError) {
         BOOST_CHECK( find_error(objError, "no spending key found for zaddr"));
     }
@@ -1034,7 +1033,7 @@ BOOST_AUTO_TEST_CASE(rpc_z_sendmany_internals)
     // there are no utxos to spend
     {
         std::vector<SendManyRecipient> recipients = { SendManyRecipient(zaddr1,100.0, "DEADBEEF") };
-        std::shared_ptr<AsyncRPCOperation> operation( new AsyncRPCOperation_sendmany(boost::none, mtx, taddr1, {}, recipients, 1) );
+        std::shared_ptr<AsyncRPCOperation> operation( new AsyncRPCOperation_sendmany(std::nullopt, mtx, taddr1, {}, recipients, 1) );
         operation->main();
         BOOST_CHECK(operation->isFailed());
         std::string msg = operation->getErrorMessage();
@@ -1045,7 +1044,7 @@ BOOST_AUTO_TEST_CASE(rpc_z_sendmany_internals)
     {
         try {
             std::vector<SendManyRecipient> recipients = {SendManyRecipient(taddr1, 100.0, "DEADBEEF")};
-            std::shared_ptr<AsyncRPCOperation> operation(new AsyncRPCOperation_sendmany(boost::none, mtx, zaddr1, recipients, {}, 0));
+            std::shared_ptr<AsyncRPCOperation> operation(new AsyncRPCOperation_sendmany(std::nullopt, mtx, zaddr1, recipients, {}, 0));
             BOOST_CHECK(false); // Fail test if an exception is not thrown
         } catch (const UniValue& objError) {
             BOOST_CHECK(find_error(objError, "Minconf cannot be zero when sending from zaddr"));
@@ -1056,7 +1055,7 @@ BOOST_AUTO_TEST_CASE(rpc_z_sendmany_internals)
     // there are no unspent notes to spend
     {
         std::vector<SendManyRecipient> recipients = { SendManyRecipient(taddr1,100.0, "DEADBEEF") };
-        std::shared_ptr<AsyncRPCOperation> operation( new AsyncRPCOperation_sendmany(boost::none, mtx, zaddr1, recipients, {}, 1) );
+        std::shared_ptr<AsyncRPCOperation> operation( new AsyncRPCOperation_sendmany(std::nullopt, mtx, zaddr1, recipients, {}, 1) );
         operation->main();
         BOOST_CHECK(operation->isFailed());
         std::string msg = operation->getErrorMessage();
@@ -1066,7 +1065,7 @@ BOOST_AUTO_TEST_CASE(rpc_z_sendmany_internals)
     // get_memo_from_hex_string())
     {
         std::vector<SendManyRecipient> recipients = { SendManyRecipient(zaddr1,100.0, "DEADBEEF") };
-        std::shared_ptr<AsyncRPCOperation> operation( new AsyncRPCOperation_sendmany(boost::none, mtx, zaddr1, recipients, {}, 1) );
+        std::shared_ptr<AsyncRPCOperation> operation( new AsyncRPCOperation_sendmany(std::nullopt, mtx, zaddr1, recipients, {}, 1) );
         std::shared_ptr<AsyncRPCOperation_sendmany> ptr = std::dynamic_pointer_cast<AsyncRPCOperation_sendmany> (operation);
         TEST_FRIEND_AsyncRPCOperation_sendmany proxy(ptr);
 
@@ -1117,7 +1116,7 @@ BOOST_AUTO_TEST_CASE(rpc_z_sendmany_internals)
     // add_taddr_change_output_to_tx() will append a vout to a raw transaction
     {
         std::vector<SendManyRecipient> recipients = { SendManyRecipient(zaddr1,100.0, "DEADBEEF") };
-        std::shared_ptr<AsyncRPCOperation> operation( new AsyncRPCOperation_sendmany(boost::none, mtx, zaddr1, recipients, {}, 1) );
+        std::shared_ptr<AsyncRPCOperation> operation( new AsyncRPCOperation_sendmany(std::nullopt, mtx, zaddr1, recipients, {}, 1) );
         std::shared_ptr<AsyncRPCOperation_sendmany> ptr = std::dynamic_pointer_cast<AsyncRPCOperation_sendmany> (operation);
         TEST_FRIEND_AsyncRPCOperation_sendmany proxy(ptr);
 
@@ -1146,7 +1145,7 @@ BOOST_AUTO_TEST_CASE(rpc_z_sendmany_internals)
             SendManyRecipient("tPhxitAoytRWebVC2kFnv8XYfdsKdBuqSkG",CAmount(4.56), ""),
             SendManyRecipient("tPViri8Zo9JTsE4gh9pU9EbtPGnm1L66y1g",CAmount(7.89), ""),
         };
-        std::shared_ptr<AsyncRPCOperation> operation( new AsyncRPCOperation_sendmany(boost::none, mtx, zaddr1, recipients, {}, 1) );
+        std::shared_ptr<AsyncRPCOperation> operation( new AsyncRPCOperation_sendmany(std::nullopt, mtx, zaddr1, recipients, {}, 1) );
         std::shared_ptr<AsyncRPCOperation_sendmany> ptr = std::dynamic_pointer_cast<AsyncRPCOperation_sendmany> (operation);
         TEST_FRIEND_AsyncRPCOperation_sendmany proxy(ptr);
 
@@ -1169,7 +1168,7 @@ BOOST_AUTO_TEST_CASE(rpc_z_sendmany_internals)
         // we have the spending key for the dummy recipient zaddr1
         std::vector<SendManyRecipient> recipients = { SendManyRecipient(zaddr1, 0.0005, "ABCD") };
 
-        std::shared_ptr<AsyncRPCOperation> operation( new AsyncRPCOperation_sendmany(boost::none, mtx, zaddr1, {}, recipients, 1) );
+        std::shared_ptr<AsyncRPCOperation> operation( new AsyncRPCOperation_sendmany(std::nullopt, mtx, zaddr1, {}, recipients, 1) );
         std::shared_ptr<AsyncRPCOperation_sendmany> ptr = std::dynamic_pointer_cast<AsyncRPCOperation_sendmany> (operation);
         TEST_FRIEND_AsyncRPCOperation_sendmany proxy(ptr);
 
@@ -1194,7 +1193,7 @@ BOOST_AUTO_TEST_CASE(rpc_z_sendmany_internals)
         // Dummy input so the operation object can be instantiated.
         std::vector<SendManyRecipient> recipients = { SendManyRecipient(zaddr1, 0.0005, "ABCD") };
 
-        std::shared_ptr<AsyncRPCOperation> operation( new AsyncRPCOperation_sendmany(boost::none, mtx, zaddr1, {}, recipients, 1) );
+        std::shared_ptr<AsyncRPCOperation> operation( new AsyncRPCOperation_sendmany(std::nullopt, mtx, zaddr1, {}, recipients, 1) );
         std::shared_ptr<AsyncRPCOperation_sendmany> ptr = std::dynamic_pointer_cast<AsyncRPCOperation_sendmany> (operation);
         TEST_FRIEND_AsyncRPCOperation_sendmany proxy(ptr);
 
@@ -1202,7 +1201,7 @@ BOOST_AUTO_TEST_CASE(rpc_z_sendmany_internals)
         static_cast<AsyncRPCOperation_sendmany *>(operation.get())->testmode = true;
 
         AsyncJoinSplitInfo info;
-        std::vector<boost::optional < SproutWitness>> witnesses;
+        std::vector<std::optional < SproutWitness>> witnesses;
         uint256 anchor;
         try {
             proxy.perform_joinsplit(info, witnesses, anchor);
@@ -1379,7 +1378,7 @@ BOOST_AUTO_TEST_CASE(rpc_wallet_encrypted_wallet_zkeys)
     strWalletPass.reserve(100);
     strWalletPass = "hello";
 
-    boost::filesystem::current_path(GetArg("-datadir","/tmp/thisshouldnothappen"));
+    fs::current_path(GetArg("-datadir","/tmp/thisshouldnothappen"));
     BOOST_CHECK(pwalletMain->EncryptWallet(strWalletPass));
 
     // Verify we can still list the keys imported
@@ -1440,7 +1439,7 @@ BOOST_AUTO_TEST_CASE(rpc_wallet_encrypted_wallet_sapzkeys)
     strWalletPass.reserve(100);
     strWalletPass = "hello";
 
-    boost::filesystem::current_path(GetArg("-datadir","/tmp/thisshouldnothappen"));
+    fs::current_path(GetArg("-datadir","/tmp/thisshouldnothappen"));
     BOOST_CHECK(pwalletMain->EncryptWallet(strWalletPass));
 
     // Verify we can still list the keys imported
@@ -1765,14 +1764,14 @@ BOOST_AUTO_TEST_CASE(rpc_z_mergetoaddress_parameters)
         "mainnet memo");
 
     try {
-        std::shared_ptr<AsyncRPCOperation> operation(new AsyncRPCOperation_mergetoaddress(boost::none,  mtx, {}, {}, {}, testnetzaddr, -1 ));
+        std::shared_ptr<AsyncRPCOperation> operation(new AsyncRPCOperation_mergetoaddress(std::nullopt,  mtx, {}, {}, {}, testnetzaddr, -1 ));
         BOOST_FAIL("Should have caused an error");
     } catch (const UniValue& objError) {
         BOOST_CHECK( find_error(objError, "Fee is out of range"));
     }
 
     try {
-        std::shared_ptr<AsyncRPCOperation> operation(new AsyncRPCOperation_mergetoaddress(boost::none, mtx, {}, {}, {}, testnetzaddr, 1));
+        std::shared_ptr<AsyncRPCOperation> operation(new AsyncRPCOperation_mergetoaddress(std::nullopt, mtx, {}, {}, {}, testnetzaddr, 1));
         BOOST_FAIL("Should have caused an error");
     } catch (const UniValue& objError) {
         BOOST_CHECK( find_error(objError, "No inputs"));
@@ -1782,7 +1781,7 @@ BOOST_AUTO_TEST_CASE(rpc_z_mergetoaddress_parameters)
 
     try {
         MergeToAddressRecipient badaddr("", "memo");
-        std::shared_ptr<AsyncRPCOperation> operation(new AsyncRPCOperation_mergetoaddress(boost::none, mtx, inputs, {}, {}, badaddr, 1));
+        std::shared_ptr<AsyncRPCOperation> operation(new AsyncRPCOperation_mergetoaddress(std::nullopt, mtx, inputs, {}, {}, badaddr, 1));
         BOOST_FAIL("Should have caused an error");
     } catch (const UniValue& objError) {
         BOOST_CHECK( find_error(objError, "Recipient parameter missing"));
@@ -1795,7 +1794,7 @@ BOOST_AUTO_TEST_CASE(rpc_z_mergetoaddress_parameters)
 
     // Sprout and Sapling inputs -> throw
     try {
-        auto operation = new AsyncRPCOperation_mergetoaddress(boost::none, mtx, inputs, sproutNoteInputs, saplingNoteInputs, testnetzaddr, 1);
+        auto operation = new AsyncRPCOperation_mergetoaddress(std::nullopt, mtx, inputs, sproutNoteInputs, saplingNoteInputs, testnetzaddr, 1);
         BOOST_FAIL("Should have caused an error");
     } catch (const UniValue& objError) {
         BOOST_CHECK(find_error(objError, "Cannot send from both Sprout and Sapling addresses using z_mergetoaddress"));
@@ -1811,7 +1810,7 @@ BOOST_AUTO_TEST_CASE(rpc_z_mergetoaddress_parameters)
     // Testnet payment addresses begin with 'tZ'.  This test detects an incorrect prefix.
     try {
         std::vector<MergeToAddressInputUTXO> inputs = { MergeToAddressInputUTXO{ COutPoint{uint256(), 0}, 0, CScript()} };
-        std::shared_ptr<AsyncRPCOperation> operation( new AsyncRPCOperation_mergetoaddress(boost::none, mtx, inputs, {}, {}, mainnetzaddr, 1) );
+        std::shared_ptr<AsyncRPCOperation> operation( new AsyncRPCOperation_mergetoaddress(std::nullopt, mtx, inputs, {}, {}, mainnetzaddr, 1) );
         BOOST_FAIL("Should have caused an error");
     } catch (const UniValue& objError) {
         BOOST_CHECK( find_error(objError, "Invalid recipient address"));
@@ -1844,7 +1843,7 @@ BOOST_AUTO_TEST_CASE(rpc_z_mergetoaddress_internals)
     // Insufficient funds
     {
         std::vector<MergeToAddressInputUTXO> inputs = { MergeToAddressInputUTXO{COutPoint{uint256(),0},0, CScript()} };
-        std::shared_ptr<AsyncRPCOperation> operation( new AsyncRPCOperation_mergetoaddress(boost::none, mtx, inputs, {}, {}, zaddr1) );
+        std::shared_ptr<AsyncRPCOperation> operation( new AsyncRPCOperation_mergetoaddress(std::nullopt, mtx, inputs, {}, {}, zaddr1) );
         operation->main();
         BOOST_CHECK(operation->isFailed());
         std::string msg = operation->getErrorMessage();
@@ -1854,7 +1853,7 @@ BOOST_AUTO_TEST_CASE(rpc_z_mergetoaddress_internals)
     // get_memo_from_hex_string())
     {
         std::vector<MergeToAddressInputUTXO> inputs = { MergeToAddressInputUTXO{COutPoint{uint256(),0},100000, CScript()} };
-        std::shared_ptr<AsyncRPCOperation> operation( new AsyncRPCOperation_mergetoaddress(boost::none, mtx, inputs, {}, {}, zaddr1) );
+        std::shared_ptr<AsyncRPCOperation> operation( new AsyncRPCOperation_mergetoaddress(std::nullopt, mtx, inputs, {}, {}, zaddr1) );
         std::shared_ptr<AsyncRPCOperation_mergetoaddress> ptr = std::dynamic_pointer_cast<AsyncRPCOperation_mergetoaddress> (operation);
         TEST_FRIEND_AsyncRPCOperation_mergetoaddress proxy(ptr);
 
@@ -1908,7 +1907,7 @@ BOOST_AUTO_TEST_CASE(rpc_z_mergetoaddress_internals)
     {
         // Dummy input so the operation object can be instantiated.
         std::vector<MergeToAddressInputUTXO> inputs = { MergeToAddressInputUTXO{COutPoint{uint256(),0},100000, CScript()} };
-        std::shared_ptr<AsyncRPCOperation> operation( new AsyncRPCOperation_mergetoaddress(boost::none, mtx, inputs, {}, {}, zaddr1) );
+        std::shared_ptr<AsyncRPCOperation> operation( new AsyncRPCOperation_mergetoaddress(std::nullopt, mtx, inputs, {}, {}, zaddr1) );
         std::shared_ptr<AsyncRPCOperation_mergetoaddress> ptr = std::dynamic_pointer_cast<AsyncRPCOperation_mergetoaddress> (operation);
         TEST_FRIEND_AsyncRPCOperation_mergetoaddress proxy(ptr);
 
@@ -1916,7 +1915,7 @@ BOOST_AUTO_TEST_CASE(rpc_z_mergetoaddress_internals)
         static_cast<AsyncRPCOperation_sendmany *>(operation.get())->testmode = true;
 
         MergeToAddressJSInfo info;
-        std::vector<boost::optional < SproutWitness>> witnesses;
+        std::vector<std::optional < SproutWitness>> witnesses;
         uint256 anchor;
         try {
             proxy.perform_joinsplit(info, witnesses, anchor);
@@ -1969,7 +1968,7 @@ BOOST_AUTO_TEST_CASE(rpc_z_mergetoaddress_internals)
 
         // we have the spending key for the dummy recipient zaddr1
         std::vector<MergeToAddressInputUTXO> inputs = { MergeToAddressInputUTXO{COutPoint{uint256(),0},100000, CScript()} };
-        std::shared_ptr<AsyncRPCOperation> operation( new AsyncRPCOperation_mergetoaddress(boost::none, mtx, inputs, {}, {}, zaddr1) );
+        std::shared_ptr<AsyncRPCOperation> operation( new AsyncRPCOperation_mergetoaddress(std::nullopt, mtx, inputs, {}, {}, zaddr1) );
         std::shared_ptr<AsyncRPCOperation_mergetoaddress> ptr = std::dynamic_pointer_cast<AsyncRPCOperation_mergetoaddress> (operation);
         TEST_FRIEND_AsyncRPCOperation_mergetoaddress proxy(ptr);
 

@@ -126,5 +126,8 @@
     <ClInclude Include="..\..\..\src\rpc\register.h">
       <Filter>Source Files\rpc</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\..\src\fs.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

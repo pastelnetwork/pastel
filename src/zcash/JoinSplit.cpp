@@ -5,11 +5,10 @@
 #include "zcash/util.h"
 
 #include <memory>
-
-#include <boost/foreach.hpp>
-#include <boost/format.hpp>
-#include <boost/optional.hpp>
+#include <optional>
 #include <fstream>
+
+#include <boost/format.hpp>
 #include <libsnark/common/default_types/r1cs_ppzksnark_pp.hpp>
 #include <libsnark/zk_proof_systems/ppzksnark/r1cs_ppzksnark/r1cs_ppzksnark.hpp>
 #include <libsnark/gadgetlib1/gadgets/hashes/sha256/sha256_gadget.hpp>

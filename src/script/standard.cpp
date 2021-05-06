@@ -4,15 +4,11 @@
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
 #include "script/standard.h"
-
+#include "script/script.h"
 #include <base58.h>
 #include "pubkey.h"
-#include "script/script.h"
 #include "util.h"
 #include "utilstrencodings.h"
-
-#include <boost/foreach.hpp>
-
 using namespace std;
 
 typedef vector<unsigned char> valtype;
@@ -71,9 +67,8 @@ bool Solver(const CScript& scriptPubKey, txnouttype& typeRet, vector<vector<unsi
 
     // Scan templates
     const CScript& script1 = scriptPubKey;
-    BOOST_FOREACH(const PAIRTYPE(txnouttype, CScript)& tplate, mTemplates)
+    for(const auto &[txOut, script2] : mTemplates)
     {
-        const CScript& script2 = tplate.second;
         vSolutionsRet.clear();
 
         opcodetype opcode1, opcode2;
@@ -87,7 +82,7 @@ bool Solver(const CScript& scriptPubKey, txnouttype& typeRet, vector<vector<unsi
             if (pc1 == script1.end() && pc2 == script2.end())
             {
                 // Found a match
-                typeRet = tplate.first;
+                typeRet = txOut;
                 if (typeRet == TX_MULTISIG)
                 {
                     // Additional checks for TX_MULTISIG:
@@ -312,7 +307,7 @@ CScript GetScriptForMultisig(int nRequired, const std::vector<CPubKey>& keys)
     CScript script;
 
     script << CScript::EncodeOP_N(nRequired);
-    BOOST_FOREACH(const CPubKey& key, keys)
+    for (const auto& key : keys)
         script << ToByteVector(key);
     script << CScript::EncodeOP_N(keys.size()) << OP_CHECKMULTISIG;
     return script;

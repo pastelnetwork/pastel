@@ -8,7 +8,7 @@
 
 #include "primitives/block.h"
 
-#include <boost/optional.hpp>
+#include <optional>
 #include <stdint.h>
 
 class CBlockIndex;
@@ -29,10 +29,10 @@ struct CBlockTemplate
 /** Generate a new block, without valid proof-of-work */
 CBlockTemplate* CreateNewBlock(const CScript& scriptPubKeyIn);
 #ifdef ENABLE_WALLET
-boost::optional<CScript> GetMinerScriptPubKey(CReserveKey& reservekey);
+std::optional<CScript> GetMinerScriptPubKey(CReserveKey& reservekey);
 CBlockTemplate* CreateNewBlockWithKey(CReserveKey& reservekey);
 #else
-boost::optional<CScript> GetMinerScriptPubKey();
+std::optional<CScript> GetMinerScriptPubKey();
 CBlockTemplate* CreateNewBlockWithKey();
 #endif
 

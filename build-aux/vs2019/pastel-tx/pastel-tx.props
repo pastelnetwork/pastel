@@ -10,7 +10,7 @@
       <PreprocessorDefinitions>SODIUM_STATIC;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
     <Link>
-      <AdditionalDependencies>libsodium.lib;libcrypto.lib;libevent.lib;libsecp256k1.lib;libunivalue.lib;libbitcoin_util.lib;libzcash.lib;libsnark.lib;libbitcoin_common.lib;libbitcoin_crypto.lib;libbitcoin_util.lib;libzcash.lib;rustzcash.lib;libgmp.lib;libgmpxx.lib;ws2_32.lib;userenv.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>libsodium$(LIBDBGSFX).lib;libcrypto.lib;libevent.lib;libsecp256k1.lib;libunivalue.lib;libbitcoin_util.lib;libzcash.lib;libsnark.lib;libbitcoin_common.lib;libbitcoin_crypto.lib;libbitcoin_util.lib;libzcash.lib;rustzcash.lib;libgmp.lib;libgmpxx.lib;ws2_32.lib;userenv.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalLibraryDirectories>%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
     <ResourceCompile>

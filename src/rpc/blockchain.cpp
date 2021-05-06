@@ -80,8 +80,8 @@ double GetNetworkDifficulty(const CBlockIndex* blockindex)
 
 static UniValue ValuePoolDesc(
     const std::string &name,
-    const boost::optional<CAmount> chainValue,
-    const boost::optional<CAmount> valueDelta)
+    const std::optional<CAmount> chainValue,
+    const std::optional<CAmount> valueDelta)
 {
     UniValue rv(UniValue::VOBJ);
     rv.push_back(Pair("id", name));
@@ -140,7 +140,7 @@ UniValue blockToJSON(const CBlock& block, const CBlockIndex* blockindex, bool tx
     result.push_back(Pair("merkleroot", block.hashMerkleRoot.GetHex()));
     result.push_back(Pair("finalsaplingroot", block.hashFinalSaplingRoot.GetHex()));
     UniValue txs(UniValue::VARR);
-    BOOST_FOREACH(const CTransaction&tx, block.vtx)
+    for (const auto &tx : block.vtx)
     {
         if(txDetails)
         {
@@ -230,7 +230,7 @@ UniValue mempoolToJSON(bool fVerbose = false)
     {
         LOCK(mempool.cs);
         UniValue o(UniValue::VOBJ);
-        BOOST_FOREACH(const CTxMemPoolEntry& e, mempool.mapTx)
+        for (const auto& e : mempool.mapTx)
         {
             const uint256& hash = e.GetTx().GetHash();
             UniValue info(UniValue::VOBJ);
@@ -242,17 +242,15 @@ UniValue mempoolToJSON(bool fVerbose = false)
             info.push_back(Pair("currentpriority", e.GetPriority(chainActive.Height())));
             const CTransaction& tx = e.GetTx();
             set<string> setDepends;
-            BOOST_FOREACH(const CTxIn& txin, tx.vin)
+            for (const auto &txin : tx.vin)
             {
                 if (mempool.exists(txin.prevout.hash))
                     setDepends.insert(txin.prevout.hash.ToString());
             }
 
             UniValue depends(UniValue::VARR);
-            BOOST_FOREACH(const string& dep, setDepends)
-            {
+            for (const auto& dep : setDepends)
                 depends.push_back(dep);
-            }
 
             info.push_back(Pair("depends", depends));
             o.push_back(Pair(hash.ToString(), info));
@@ -265,7 +263,7 @@ UniValue mempoolToJSON(bool fVerbose = false)
         mempool.queryHashes(vtxid);
 
         UniValue a(UniValue::VARR);
-        BOOST_FOREACH(const uint256& hash, vtxid)
+        for (const auto& hash : vtxid)
             a.push_back(hash.ToString());
 
         return a;
@@ -781,8 +779,8 @@ UniValue getblockchaininfo(const UniValue& params, bool fHelp)
 
     CBlockIndex* tip = chainActive.Tip();
     UniValue valuePools(UniValue::VARR);
-    valuePools.push_back(ValuePoolDesc("sprout", tip->nChainSproutValue, boost::none));
-    valuePools.push_back(ValuePoolDesc("sapling", tip->nChainSaplingValue, boost::none));
+    valuePools.push_back(ValuePoolDesc("sprout", tip->nChainSproutValue, std::nullopt));
+    valuePools.push_back(ValuePoolDesc("sapling", tip->nChainSaplingValue, std::nullopt));
     obj.push_back(Pair("valuePools",            valuePools));
 
     const Consensus::Params& consensusParams = Params().GetConsensus();
@@ -868,11 +866,11 @@ UniValue getchaintips(const UniValue& params, bool fHelp)
        known blocks, and successively remove blocks that appear as pprev
        of another block.  */
     std::set<const CBlockIndex*, CompareBlocksByHeight> setTips;
-    BOOST_FOREACH(const PAIRTYPE(const uint256, CBlockIndex*)& item, mapBlockIndex)
-        setTips.insert(item.second);
-    BOOST_FOREACH(const PAIRTYPE(const uint256, CBlockIndex*)& item, mapBlockIndex)
+    for (const auto &[hash, blockIndex] : mapBlockIndex)
+        setTips.insert(blockIndex);
+    for (const auto& [hash, blockIndex] : mapBlockIndex)
     {
-        const CBlockIndex* pprev = item.second->pprev;
+        const CBlockIndex* pprev = blockIndex->pprev;
         if (pprev)
             setTips.erase(pprev);
     }
@@ -882,7 +880,7 @@ UniValue getchaintips(const UniValue& params, bool fHelp)
 
     /* Construct the output array.  */
     UniValue res(UniValue::VARR);
-    BOOST_FOREACH(const CBlockIndex* block, setTips)
+    for (const auto block : setTips)
     {
         UniValue obj(UniValue::VOBJ);
         obj.push_back(Pair("height", block->nHeight));

@@ -65,7 +65,7 @@ bool GetMasternodeOutpointAndKeys(CWallet* pWalletMain, COutPoint& outpointRet, 
     uint256 txHash = uint256S(strTxHash);
     int nOutputIndex = atoi(strOutputIndex.c_str());
 
-    BOOST_FOREACH(COutput& out, vPossibleCoins)
+    for (const auto& out : vPossibleCoins)
         if(out.tx->GetHash() == txHash && out.i == nOutputIndex) // found it!
             return GetOutpointAndKeysFromOutput(pWalletMain, out, outpointRet, pubKeyRet, keyRet);
 

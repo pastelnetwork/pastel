@@ -92,9 +92,9 @@ AC_ARG_ENABLE([wallet],
 
 AC_ARG_ENABLE([mining],
   [AS_HELP_STRING([--enable-mining],
-  [enable mining (default is yes)])],
+  [enable mining (default is no)])],
   [enable_mining=$enableval],
-  [enable_mining=yes])
+  [enable_mining=no])
 
 AC_ARG_ENABLE([proton],
   [AS_HELP_STRING([--disable-proton],
