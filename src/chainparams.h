@@ -1,4 +1,4 @@
-#pragma once
+    #pragma once
 // Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2014 The Bitcoin Core developers
 // Distributed under the MIT software license, see the accompanying
@@ -8,6 +8,7 @@
 #include "primitives/block.h"
 #include "protocol.h"
 #include "enum_util.h"
+#include "key_constants.h"
 
 #include <vector>
 
@@ -30,6 +31,23 @@ struct CCheckpointData {
     double fTransactionsPerDay;
 };
 
+class CBaseKeyConstants : public KeyConstants
+{
+public:
+    const std::vector<unsigned char>& Base58Prefix(const Base58Type type) const noexcept override
+    {
+        return m_base58Prefixes[to_integral_type(type)];
+    }
+    const std::string& Bech32HRP(const Bech32Type type) const noexcept override
+    {
+        return m_bech32HRPs[to_integral_type(type)];
+    }
+
+protected:
+    std::vector<unsigned char> m_base58Prefixes[to_integral_type(Base58Type::MAX_BASE58_TYPES)];
+    std::string m_bech32HRPs[to_integral_type(Bech32Type::MAX_BECH32_TYPES)];
+};
+
 /**
  * CChainParams defines various tweakable parameters of a given instance of the
  * Bitcoin system. There are three: the main network on which people trade goods
@@ -37,34 +55,9 @@ struct CCheckpointData {
  * a regression test mode which is intended for private networks only. It has
  * minimal difficulty to ensure that blocks can be found instantly.
  */
-class CChainParams
+class CChainParams : public CBaseKeyConstants
 {
 public:
-    enum struct Base58Type : uint32_t
-    {
-        PUBKEY_ADDRESS = 0,
-        SCRIPT_ADDRESS,
-        SECRET_KEY,
-        EXT_PUBLIC_KEY,
-        EXT_SECRET_KEY,
-
-        ZCPAYMENT_ADDRRESS,
-        ZCSPENDING_KEY,
-        ZCVIEWING_KEY,
-
-        MAX_BASE58_TYPES
-    };
-
-    enum struct Bech32Type : uint32_t
-    {
-        SAPLING_PAYMENT_ADDRESS = 0,
-        SAPLING_FULL_VIEWING_KEY,
-        SAPLING_INCOMING_VIEWING_KEY,
-        SAPLING_EXTENDED_SPEND_KEY,
-
-        MAX_BECH32_TYPES
-    };
-
     const Consensus::Params& GetConsensus() const { return consensus; }
     const CMessageHeader::MessageStartChars& MessageStart() const { return pchMessageStart; }
     const std::vector<unsigned char>& AlertKey() const { return vAlertPubKey; }
@@ -89,8 +82,6 @@ public:
     /** Return the BIP70 network string (main, test or regtest) */
     std::string NetworkIDString() const noexcept { return strNetworkID; }    
     const std::vector<CDNSSeedData>& DNSSeeds() const noexcept { return vSeeds; }
-    const std::vector<unsigned char>& Base58Prefix(const Base58Type type) const noexcept { return base58Prefixes[to_integral_type(type)]; }
-    const std::string& Bech32HRP(const Bech32Type type) const noexcept { return bech32HRPs[to_integral_type(type)]; }
     const std::vector<SeedSpec6>& FixedSeeds() const noexcept { return vFixedSeeds; }
     const CCheckpointData& Checkpoints() const noexcept { return checkpointData; }
 
@@ -113,8 +104,6 @@ protected:
     unsigned int nEquihashN = 0;
     unsigned int nEquihashK = 0;
     std::vector<CDNSSeedData> vSeeds;
-    std::vector<unsigned char> base58Prefixes[to_integral_type(Base58Type::MAX_BASE58_TYPES)];
-    std::string bech32HRPs[to_integral_type(Bech32Type::MAX_BECH32_TYPES)];
     std::string strNetworkID;
     CBaseChainParams::Network network = CBaseChainParams::Network::MAIN;
     std::string strCurrencyUnits;

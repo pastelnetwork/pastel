@@ -88,9 +88,10 @@ void CMasternodeGovernance::FillGovernancePayment(CMutableTransaction& txNew, in
     txoutGovernanceRet = CTxOut(governancePayment, scriptPubKey);
     txNew.vout.push_back(txoutGovernanceRet);
 
+    KeyIO keyIO(Params());
     CTxDestination dest;
     ExtractDestination(scriptPubKey, dest);
-    std::string address = EncodeDestination(dest);
+    std::string address = keyIO.EncodeDestination(dest);
 
     LogPrintf("CMasternodeGovernance::FillGovernancePayment -- Governance payment %lld to %s\n", governancePayment, address);
 }
@@ -136,7 +137,8 @@ bool CMasternodeGovernance::AddTicket(std::string address, CAmount totalReward, 
         return false;
     }
 
-    CTxDestination destination = DecodeDestination(address);
+    KeyIO keyIO(chainparams);
+    CTxDestination destination = keyIO.DecodeDestination(address);
     if (!IsValidDestination(destination)){
         strErrorRet = strprintf("Invalid address - %s", address);
         LogPrintf("CMasternodeGovernance::AddTicket -- %s\n", strErrorRet);
@@ -242,9 +244,10 @@ bool CMasternodeGovernance::IsTransactionValid(const CTransaction& txNew, int nH
         }
     }
 
+    KeyIO keyIO(Params());
     CTxDestination dest;
     ExtractDestination(scriptPubKey, dest);
-    std::string address = EncodeDestination(dest);
+    std::string address = keyIO.EncodeDestination(dest);
 
     LogPrintf("CMasternodeBlockPayees::IsTransactionValid -- ERROR: %s required governance payment, possible payees: '%s', actual amount: %f PASTEL. Should be %f PASTEL\n", 
             (tnxPayment == 0)? "Missing": "Invalid",
@@ -570,9 +573,10 @@ std::string CGovernanceTicket::ToString()
 {
     std::ostringstream info;
 
+    KeyIO keyIO(Params());
     CTxDestination dest;
     ExtractDestination(scriptPubKey, dest);
-    std::string address = EncodeDestination(dest);
+    std::string address = keyIO.EncodeDestination(dest);
 
     info << "Governance Ticket( Hash: " << GetHash().ToString() <<
             ", Address: " << address <<

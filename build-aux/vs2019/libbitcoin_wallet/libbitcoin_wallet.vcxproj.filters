@@ -10,9 +10,6 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="..\..\..\src\utiltest.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\..\src\zcbenchmarks.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -49,11 +46,14 @@
     <ClCompile Include="..\..\..\src\wallet\wallet_ismine.cpp">
       <Filter>Source Files\wallet</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\..\src\wallet\paymentdisclosure.cpp">
+      <Filter>Source Files\wallet</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\src\wallet\paymentdisclosuredb.cpp">
+      <Filter>Source Files\wallet</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\..\..\src\utiltest.h">
-      <Filter>Source Files</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\..\src\zcbenchmarks.h">
       <Filter>Source Files</Filter>
     </ClInclude>
@@ -82,6 +82,12 @@
       <Filter>Source Files\wallet</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\src\wallet\wallet_ismine.h">
+      <Filter>Source Files\wallet</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\wallet\paymentdisclosure.h">
+      <Filter>Source Files\wallet</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\wallet\paymentdisclosuredb.h">
       <Filter>Source Files\wallet</Filter>
     </ClInclude>
   </ItemGroup>

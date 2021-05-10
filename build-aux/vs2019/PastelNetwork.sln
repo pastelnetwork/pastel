@@ -37,6 +37,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "pastel-tx", "pastel-tx\past
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "pastel_gtest", "pastel_gtest\pastel_gtest.vcxproj", "{5C3D86D4-AA1C-478E-86C7-E7E7592D98CB}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "bitcoin_test", "bitcoin_test\bitcoin_test.vcxproj", "{B6111CBF-094A-465C-B5AB-497037D34760}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
@@ -165,6 +167,14 @@ Global
 		{5C3D86D4-AA1C-478E-86C7-E7E7592D98CB}.Release|x64.Build.0 = Release|x64
 		{5C3D86D4-AA1C-478E-86C7-E7E7592D98CB}.Release|x86.ActiveCfg = Release|Win32
 		{5C3D86D4-AA1C-478E-86C7-E7E7592D98CB}.Release|x86.Build.0 = Release|Win32
+		{B6111CBF-094A-465C-B5AB-497037D34760}.Debug|x64.ActiveCfg = Debug|x64
+		{B6111CBF-094A-465C-B5AB-497037D34760}.Debug|x64.Build.0 = Debug|x64
+		{B6111CBF-094A-465C-B5AB-497037D34760}.Debug|x86.ActiveCfg = Debug|Win32
+		{B6111CBF-094A-465C-B5AB-497037D34760}.Debug|x86.Build.0 = Debug|Win32
+		{B6111CBF-094A-465C-B5AB-497037D34760}.Release|x64.ActiveCfg = Release|x64
+		{B6111CBF-094A-465C-B5AB-497037D34760}.Release|x64.Build.0 = Release|x64
+		{B6111CBF-094A-465C-B5AB-497037D34760}.Release|x86.ActiveCfg = Release|Win32
+		{B6111CBF-094A-465C-B5AB-497037D34760}.Release|x86.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -182,6 +192,7 @@ Global
 		{9821BD40-96AB-4389-B6F3-CD76675AE0BF} = {7574C61B-265D-46EB-BA34-FFA4EC69C87B}
 		{C90D48F7-0DCF-43FC-8194-1011BD10B1F4} = {7574C61B-265D-46EB-BA34-FFA4EC69C87B}
 		{5C3D86D4-AA1C-478E-86C7-E7E7592D98CB} = {9CAA62D7-913A-411B-B232-26EAA150B540}
+		{B6111CBF-094A-465C-B5AB-497037D34760} = {9CAA62D7-913A-411B-B232-26EAA150B540}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {DA395368-D974-433A-A789-455C901C9835}

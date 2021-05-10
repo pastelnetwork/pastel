@@ -153,7 +153,7 @@ void static RandomTransaction(CMutableTransaction &tx, bool fSingle, uint32_t co
             sdesc.anchor = GetRandHash();
             sdesc.nullifier = GetRandHash();
             sdesc.rk = GetRandHash();
-            randombytes_buf(sdesc.zkproof.begin(), sdesc.zkproof.size());
+            randombytes_buf(sdesc.zkproof.data(), sdesc.zkproof.size());
             tx.vShieldedSpend.push_back(sdesc);
         }
         for (int out = 0; out < shielded_outs; out++) {
@@ -161,9 +161,9 @@ void static RandomTransaction(CMutableTransaction &tx, bool fSingle, uint32_t co
             odesc.cv = GetRandHash();
             odesc.cm = GetRandHash();
             odesc.ephemeralKey = GetRandHash();
-            randombytes_buf(odesc.encCiphertext.begin(), odesc.encCiphertext.size());
-            randombytes_buf(odesc.outCiphertext.begin(), odesc.outCiphertext.size());
-            randombytes_buf(odesc.zkproof.begin(), odesc.zkproof.size());
+            randombytes_buf(odesc.encCiphertext.data(), odesc.encCiphertext.size());
+            randombytes_buf(odesc.outCiphertext.data(), odesc.outCiphertext.size());
+            randombytes_buf(odesc.zkproof.data(), odesc.zkproof.size());
             tx.vShieldedOutput.push_back(odesc);
         }
     }
@@ -181,11 +181,11 @@ void static RandomTransaction(CMutableTransaction &tx, bool fSingle, uint32_t co
             jsdesc.nullifiers[1] = GetRandHash();
             jsdesc.ephemeralKey = GetRandHash();
             jsdesc.randomSeed = GetRandHash();
-            randombytes_buf(jsdesc.ciphertexts[0].begin(), jsdesc.ciphertexts[0].size());
-            randombytes_buf(jsdesc.ciphertexts[1].begin(), jsdesc.ciphertexts[1].size());
+            randombytes_buf(jsdesc.ciphertexts[0].data(), jsdesc.ciphertexts[0].size());
+            randombytes_buf(jsdesc.ciphertexts[1].data(), jsdesc.ciphertexts[1].size());
             if (tx.fOverwintered && tx.nVersion >= SAPLING_TX_VERSION) {
                 libzcash::GrothProof zkproof;
-                randombytes_buf(zkproof.begin(), zkproof.size());
+                randombytes_buf(zkproof.data(), zkproof.size());
                 jsdesc.proof = zkproof;
             } else {
                 jsdesc.proof = libzcash::PHGRProof::random_invalid();

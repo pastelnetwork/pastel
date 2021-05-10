@@ -15,10 +15,10 @@
  * client versioning and copyright year
  */
 
-//! These need to be macros, as clientversion.cpp's and bitcoin*-res.rc's voodoo requires it
+//! These need to be macros, as clientversion.cpp's and pastel*-res.rc's voodoo requires it
 #define CLIENT_VERSION_MAJOR 1
 #define CLIENT_VERSION_MINOR 1
-#define CLIENT_VERSION_REVISION 1
+#define CLIENT_VERSION_REVISION 2
 #define CLIENT_VERSION_BUILD 1
 
 //! Set to true for release, false for prerelease or test build

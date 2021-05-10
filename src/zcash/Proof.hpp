@@ -1,8 +1,8 @@
-#ifndef ZC_PROOF_H_
-#define ZC_PROOF_H_
-
+#pragma once
 #include "serialize.h"
 #include "uint256.h"
+
+#include <variant>
 
 namespace libzcash {
 
@@ -272,6 +272,13 @@ public:
     );
 };
 
+static constexpr size_t GROTH_PROOF_SIZE = (
+    48 + // pi_A
+    96 + // pi_B
+    48); // pi_C
+
+typedef std::array<unsigned char, GROTH_PROOF_SIZE> GrothProof;
+typedef std::variant<PHGRProof, GrothProof> SproutProof;
+
 }
 
-#endif // ZC_PROOF_H_

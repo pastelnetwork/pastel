@@ -1,7 +1,7 @@
 // Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2014 The Bitcoin Core developers
 // Distributed under the MIT software license, see the accompanying
-// file COPYING or http://www.opensource.org/licenses/mit-license.php.
+// file COPYING or https://www.opensource.org/licenses/mit-license.php .
 
 #include "primitives/transaction.h"
 
@@ -136,7 +136,7 @@ bool JSDescription::Verify(
     const uint256& joinSplitPubKey
 ) const {
     auto pv = SproutProofVerifier(params, verifier, joinSplitPubKey, *this);
-    return boost::apply_visitor(pv, proof);
+    return std::visit(pv, proof);
 }
 
 uint256 JSDescription::h_sig(ZCJoinSplit& params, const uint256& joinSplitPubKey) const

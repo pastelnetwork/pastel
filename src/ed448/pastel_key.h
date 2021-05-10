@@ -77,11 +77,11 @@ public:
 
     static std::vector<std::string> GetStoredPastelIDs()
     {
-        boost::filesystem::path pathPastelKeys(GetArg("-pastelkeysdir", "pastelkeys"));
+        fs::path pathPastelKeys(GetArg("-pastelkeysdir", "pastelkeys"));
         pathPastelKeys = GetDataDir() / pathPastelKeys;
 
         std::vector<std::string> vec;
-        for (const auto & p : boost::filesystem::directory_iterator( pathPastelKeys ))
+        for (const auto & p : fs::directory_iterator( pathPastelKeys ))
             vec.push_back(p.path().filename().string());
         return vec;
     }
@@ -112,15 +112,15 @@ private:
 
     static std::string GetKeyFilePath(const std::string& fileName)
     {
-        boost::filesystem::path pathPastelKeys(GetArg("-pastelkeysdir", "pastelkeys"));
+        fs::path pathPastelKeys(GetArg("-pastelkeysdir", "pastelkeys"));
         pathPastelKeys = GetDataDir() / pathPastelKeys;
 
-        if (!boost::filesystem::exists(pathPastelKeys) ||
-            !boost::filesystem::is_directory(pathPastelKeys)) {
-            boost::filesystem::create_directories(pathPastelKeys);
+        if (!fs::exists(pathPastelKeys) ||
+            !fs::is_directory(pathPastelKeys)) {
+            fs::create_directories(pathPastelKeys);
         }
 
-        boost::filesystem::path pathPastelKeyFile = pathPastelKeys / fileName;
+       fs::path pathPastelKeyFile = pathPastelKeys / fileName;
         return pathPastelKeyFile.string();
     }
 };

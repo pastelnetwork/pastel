@@ -1,3 +1,4 @@
+#pragma once
 // Copyright (c) 2016 The Zcash developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -17,3 +18,5 @@ libzcash::SproutNote GetNote(ZCJoinSplit& params,
 CWalletTx GetValidSpend(ZCJoinSplit& params,
                         const libzcash::SproutSpendingKey& sk,
                         const libzcash::SproutNote& note, CAmount value);
+
+libzcash::SaplingExtendedSpendingKey GetTestMasterSaplingSpendingKey();

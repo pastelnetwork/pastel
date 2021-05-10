@@ -47,11 +47,12 @@ TEST(CheckBlock, BlockSproutRejectsBadVersion) {
     mtx.vout.resize(1);
     mtx.vout[0].scriptPubKey = CScript() << OP_TRUE;
     mtx.vout[0].nValue = 0;
+    KeyIO keyIO(Params());
     mtx.vout.push_back(CTxOut(
         GetBlockSubsidy(1, Params().GetConsensus())/5,
-        GetScriptForDestination(DecodeDestination("t2NGQjYMQhFndDHguvUw4wZdNdsssA6K7x2"))));
+        GetScriptForDestination(keyIO.DecodeDestination("t2NGQjYMQhFndDHguvUw4wZdNdsssA6K7x2"))));
     mtx.fOverwintered = false;
-    mtx.nVersion = -1;  
+    mtx.nVersion = -1;
     mtx.nVersionGroupId = 0;
 
     CTransaction tx {mtx};
@@ -70,11 +71,12 @@ TEST(CheckBlock, BlockSproutRejectsBadVersion) {
 
 class ContextualCheckBlockTest : public ::testing::Test {
 protected:
-    virtual void SetUp() {
+    void SetUp() override
+    {
         SelectParams(CBaseChainParams::Network::MAIN);
     }
 
-    virtual void TearDown() {
+    void TearDown() override {
         // Revert to test default. No-op on mainnet params.
         UpdateNetworkUpgradeParameters(Consensus::UPGRADE_SAPLING, Consensus::NetworkUpgrade::NO_ACTIVATION_HEIGHT);
         UpdateNetworkUpgradeParameters(Consensus::UPGRADE_OVERWINTER, Consensus::NetworkUpgrade::NO_ACTIVATION_HEIGHT);
@@ -96,10 +98,11 @@ protected:
         mtx.vout[0].scriptPubKey = CScript() << OP_TRUE;
         mtx.vout[0].nValue = 0;
 
+        KeyIO keyIO(Params());
         // Give it a Founder's Reward vout for height 1.
         mtx.vout.push_back(CTxOut(
                     GetBlockSubsidy(1, Params().GetConsensus())/5,
-                    GetScriptForDestination(DecodeDestination("t2NGQjYMQhFndDHguvUw4wZdNdsssA6K7x2"))));
+                    GetScriptForDestination(keyIO.DecodeDestination("t2NGQjYMQhFndDHguvUw4wZdNdsssA6K7x2"))));
 
         return mtx;
     }
@@ -155,10 +158,12 @@ TEST_F(ContextualCheckBlockTest, BadCoinbaseHeight) {
     MockCValidationState state;
     EXPECT_TRUE(ContextualCheckBlock(block, state, NULL));
 
+    KeyIO keyIO(Params());
+
     // Give the transaction a Founder's Reward vout
     mtx.vout.push_back(CTxOut(
                 GetBlockSubsidy(1, Params().GetConsensus())/5,
-                GetScriptForDestination(DecodeDestination("t2NGQjYMQhFndDHguvUw4wZdNdsssA6K7x2"))));
+                GetScriptForDestination(keyIO.DecodeDestination("t2NGQjYMQhFndDHguvUw4wZdNdsssA6K7x2"))));
 
     // Treating block as non-genesis should fail
     CTransaction tx2 {mtx};

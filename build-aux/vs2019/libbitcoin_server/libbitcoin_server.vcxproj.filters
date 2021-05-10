@@ -11,6 +11,9 @@
     <Filter Include="Source Files\rpc">
       <UniqueIdentifier>{01f2b7b7-7fda-4b71-a414-df897fb38f98}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Source Files\cyclicbarrier">
+      <UniqueIdentifier>{2b02cfae-4307-40dd-99b6-d06e6d2cb7c0}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\..\src\sendalert.cpp">
@@ -70,12 +73,6 @@
     <ClCompile Include="..\..\..\src\noui.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\src\paymentdisclosure.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\..\src\paymentdisclosuredb.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\..\src\policy\fees.cpp">
       <Filter>Source Files\policy</Filter>
     </ClCompile>
@@ -117,6 +114,9 @@
     </ClCompile>
     <ClCompile Include="..\..\..\src\validationinterface.cpp">
       <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\port\cyclicbarrier\cyclicbarrier.cpp">
+      <Filter>Source Files\cyclicbarrier</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -172,12 +172,6 @@
       <Filter>Source Files</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\src\noui.h">
-      <Filter>Source Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\..\src\paymentdisclosure.h">
-      <Filter>Source Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\..\src\paymentdisclosuredb.h">
       <Filter>Source Files</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\src\policy\fees.h">
@@ -257,6 +251,9 @@
     </ClInclude>
     <ClInclude Include="..\..\..\src\rpc\rpc_consts.h">
       <Filter>Source Files\rpc</Filter>
+    </ClInclude>
+    <ClInclude Include="..\port\cyclicbarrier\cyclicbarrier.hpp">
+      <Filter>Source Files\cyclicbarrier</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

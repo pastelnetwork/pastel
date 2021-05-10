@@ -90,7 +90,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="..\..\..\src\bitcoind.cpp" />
+    <ClCompile Include="..\..\..\src\pasteld.cpp" />
     <ClCompile Include="..\..\..\src\mnode-active.cpp" />
     <ClCompile Include="..\..\..\src\mnode-config.cpp" />
     <ClCompile Include="..\..\..\src\mnode-controller.cpp" />
@@ -132,9 +132,6 @@
     <ClInclude Include="..\port\unistd.h" />
   </ItemGroup>
   <ItemGroup>
-    <ResourceCompile Include="..\..\..\src\bitcoind-res.rc" />
-  </ItemGroup>
-  <ItemGroup>
     <ProjectReference Include="..\libbitcoin_common\libbitcoin_common.vcxproj">
       <Project>{a10f1e67-5db1-4669-9fe8-074c1e5c3e2c}</Project>
     </ProjectReference>
@@ -168,6 +165,9 @@
     <ProjectReference Include="..\libzcash\libzcash.vcxproj">
       <Project>{23d47df6-6e52-41a0-9ec9-b29d622fa1ce}</Project>
     </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="..\..\..\src\pasteld-res.rc" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

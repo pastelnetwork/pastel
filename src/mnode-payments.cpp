@@ -30,6 +30,7 @@ void CMasternodePayments::FillMasterNodePayment(CMutableTransaction& txNew, int 
     // make sure it's not filled yet
     txoutMasternodeRet = CTxOut();
 
+    KeyIO keyIO(Params());
     CScript scriptPubKey;
 
     if(!GetBlockPayee(nBlockHeight, scriptPubKey)) {
@@ -56,7 +57,7 @@ void CMasternodePayments::FillMasterNodePayment(CMutableTransaction& txNew, int 
 
     CTxDestination dest;
     ExtractDestination(scriptPubKey, dest);
-    std::string address = EncodeDestination(dest);
+    std::string address = keyIO.EncodeDestination(dest);
 
     LogPrintf("CMasternodePayments::FillMasterNodePayment -- Masternode payment %lld to %s\n", masternodePayment, address);
 }
@@ -94,6 +95,7 @@ bool CMasternodePayments::CanVote(COutPoint outMasternode, int nBlockHeight)
 
 void CMasternodePayments::ProcessMessage(CNode* pfrom, std::string& strCommand, CDataStream& vRecv)
 {
+    KeyIO keyIO(Params());
     if (strCommand == NetMsgType::MASTERNODEPAYMENTSYNC) { //Masternode Payments Request Sync
 
         // Ignore such requests until we are fully synced.
@@ -188,7 +190,7 @@ void CMasternodePayments::ProcessMessage(CNode* pfrom, std::string& strCommand, 
 
         CTxDestination dest;
         ExtractDestination(vote.payee, dest);
-        std::string address = EncodeDestination(dest);
+        std::string address = keyIO.EncodeDestination(dest);
 
         LogPrint("mnpayments", "MASTERNODEPAYMENTVOTE -- vote: address=%s, nBlockHeight=%d, nHeight=%d, prevout=%s, hash=%s new\n",
                     address, vote.nBlockHeight, nCachedBlockHeight, vote.vinMasternode.prevout.ToStringShort(), nHash.ToString());
@@ -352,6 +354,7 @@ bool CMasternodeBlockPayees::IsTransactionValid(const CTransaction& txNew)
     // if we don't have at least MNPAYMENTS_SIGNATURES_REQUIRED signatures on a payee, approve whichever is the longest chain
     if(nMaxSignatures < MNPAYMENTS_SIGNATURES_REQUIRED) return true;
 
+    KeyIO keyIO(Params());
     for (auto& payee : vecPayees)
     {
         if (payee.GetVoteCount() >= MNPAYMENTS_SIGNATURES_REQUIRED) {
@@ -365,7 +368,7 @@ bool CMasternodeBlockPayees::IsTransactionValid(const CTransaction& txNew)
 
             CTxDestination dest;
             ExtractDestination(payee.GetPayee(), dest);
-            std::string address = EncodeDestination(dest);
+            std::string address = keyIO.EncodeDestination(dest);
 
             if(strPayeesPossible == "") {
                 strPayeesPossible = address;
@@ -380,7 +383,7 @@ bool CMasternodeBlockPayees::IsTransactionValid(const CTransaction& txNew)
     {
         CTxDestination dest;
         ExtractDestination(txout.scriptPubKey, dest);
-        std::string address = EncodeDestination(dest);
+        std::string address = keyIO.EncodeDestination(dest);
         LogPrintf("\t%s -- %" PRId64 " \n", address, txout.nValue);
     
         LogPrintf("\t%s\n", txout.scriptPubKey.ToString());
@@ -395,11 +398,12 @@ std::string CMasternodeBlockPayees::GetRequiredPaymentsString()
 
     std::string strRequiredPayments = "Unknown";
 
-    for (auto& payee :vecPayees)
+    KeyIO keyIO(Params());
+    for (auto& payee : vecPayees)
     {
         CTxDestination dest;
         ExtractDestination(payee.GetPayee(), dest);
-        std::string address = EncodeDestination(dest);
+        std::string address = keyIO.EncodeDestination(dest);
     
         if (strRequiredPayments != "Unknown") {
             strRequiredPayments += ", " + address + ":" + boost::lexical_cast<std::string>(payee.GetVoteCount());
@@ -538,9 +542,10 @@ bool CMasternodePayments::ProcessBlock(int nBlockHeight)
 
     CMasternodePaymentVote voteNew(masterNodeCtrl.activeMasternode.outpoint, nBlockHeight, payee);
 
+    KeyIO keyIO(Params());
     CTxDestination dest;
     ExtractDestination(payee, dest);
-    std::string address = EncodeDestination(dest);
+    std::string address = keyIO.EncodeDestination(dest);
 
     LogPrintf("CMasternodePayments::ProcessBlock -- vote: payee=%s, nBlockHeight=%d\n", address, nBlockHeight);
 
@@ -606,9 +611,10 @@ void CMasternodePayments::CheckPreviousBlockVotes(int nPrevBlockHeight)
             continue;
         }
 
+        KeyIO keyIO(Params());
         CTxDestination dest;
         ExtractDestination(payee, dest);
-        std::string address = EncodeDestination(dest);
+        std::string address = keyIO.EncodeDestination(dest);
 
         debugStr += strprintf("CMasternodePayments::CheckPreviousBlockVotes --   %s - voted for %s\n",
                               mn.second.vin.prevout.ToStringShort(), address);

@@ -105,8 +105,6 @@
     <ClCompile Include="..\..\..\src\miner.cpp" />
     <ClCompile Include="..\..\..\src\net.cpp" />
     <ClCompile Include="..\..\..\src\noui.cpp" />
-    <ClCompile Include="..\..\..\src\paymentdisclosure.cpp" />
-    <ClCompile Include="..\..\..\src\paymentdisclosuredb.cpp" />
     <ClCompile Include="..\..\..\src\policy\fees.cpp" />
     <ClCompile Include="..\..\..\src\pow.cpp" />
     <ClCompile Include="..\..\..\src\rest.cpp" />
@@ -127,6 +125,7 @@
     <ClCompile Include="..\..\..\src\txdb.cpp" />
     <ClCompile Include="..\..\..\src\txmempool.cpp" />
     <ClCompile Include="..\..\..\src\validationinterface.cpp" />
+    <ClCompile Include="..\port\cyclicbarrier\cyclicbarrier.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\..\src\addrman.h" />
@@ -156,8 +155,6 @@
     <ClInclude Include="..\..\..\src\net.h" />
     <ClInclude Include="..\..\..\src\nodehelper.h" />
     <ClInclude Include="..\..\..\src\noui.h" />
-    <ClInclude Include="..\..\..\src\paymentdisclosure.h" />
-    <ClInclude Include="..\..\..\src\paymentdisclosuredb.h" />
     <ClInclude Include="..\..\..\src\policy\fees.h" />
     <ClInclude Include="..\..\..\src\pow.h" />
     <ClInclude Include="..\..\..\src\prevector.h" />
@@ -175,6 +172,7 @@
     <ClInclude Include="..\..\..\src\ui_interface.h" />
     <ClInclude Include="..\..\..\src\undo.h" />
     <ClInclude Include="..\..\..\src\validationinterface.h" />
+    <ClInclude Include="..\port\cyclicbarrier\cyclicbarrier.hpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

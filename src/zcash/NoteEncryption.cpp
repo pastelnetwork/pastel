@@ -159,10 +159,8 @@ std::optional<SaplingEncPlaintext> AttemptSaplingEncDecryption(
 )
 {
     uint256 dhsecret;
-
-    if (!librustzcash_sapling_ka_agree(epk.begin(), ivk.begin(), dhsecret.begin())) {
+    if (!librustzcash_sapling_ka_agree(epk.begin(), ivk.begin(), dhsecret.begin()))
         return std::nullopt;
-    }
 
     // Construct the symmetric key
     unsigned char K[NOTEENCRYPTION_CIPHER_KEYSIZE];
@@ -170,7 +168,6 @@ std::optional<SaplingEncPlaintext> AttemptSaplingEncDecryption(
 
     // The nonce is zero because we never reuse keys
     unsigned char cipher_nonce[crypto_aead_chacha20poly1305_IETF_NPUBBYTES] = {};
-
     SaplingEncPlaintext plaintext;
 
     if (crypto_aead_chacha20poly1305_ietf_decrypt(

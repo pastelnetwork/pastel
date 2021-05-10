@@ -88,6 +88,9 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="..\..\..\src\zcash\Address.cpp" />
+    <ClCompile Include="..\..\..\src\zcash\address\sapling.cpp" />
+    <ClCompile Include="..\..\..\src\zcash\address\sprout.cpp" />
+    <ClCompile Include="..\..\..\src\zcash\address\zip32.cpp" />
     <ClCompile Include="..\..\..\src\zcash\IncrementalMerkleTree.cpp" />
     <ClCompile Include="..\..\..\src\zcash\JoinSplit.cpp" />
     <ClCompile Include="..\..\..\src\zcash\Note.cpp" />
@@ -100,10 +103,12 @@
       <ObjectFileName Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">$(IntDir)\zcash_util.obj</ObjectFileName>
       <ObjectFileName Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(IntDir)\zcash_util.obj</ObjectFileName>
     </ClCompile>
-    <ClCompile Include="..\..\..\src\zcash\zip32.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\..\src\zcash\Address.hpp" />
+    <ClInclude Include="..\..\..\src\zcash\address\sapling.hpp" />
+    <ClInclude Include="..\..\..\src\zcash\address\sprout.hpp" />
+    <ClInclude Include="..\..\..\src\zcash\address\zip32.h" />
     <ClInclude Include="..\..\..\src\zcash\IncrementalMerkleTree.hpp" />
     <ClInclude Include="..\..\..\src\zcash\JoinSplit.hpp" />
     <ClInclude Include="..\..\..\src\zcash\Note.hpp" />
@@ -112,7 +117,6 @@
     <ClInclude Include="..\..\..\src\zcash\Proof.hpp" />
     <ClInclude Include="..\..\..\src\zcash\util.h" />
     <ClInclude Include="..\..\..\src\zcash\Zcash.h" />
-    <ClInclude Include="..\..\..\src\zcash\zip32.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

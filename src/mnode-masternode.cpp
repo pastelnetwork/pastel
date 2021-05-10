@@ -487,10 +487,12 @@ bool CMasternodeBroadcast::Create(const COutPoint& outpoint,
                                     std::string &strErrorRet, CMasternodeBroadcast &mnbRet)
 {
     // wait for reindex and/or import to finish
-    if (fImporting || fReindex) return false;
+    if (fImporting || fReindex)
+        return false;
 
+    KeyIO keyIO(Params());
     CTxDestination dest = pubKeyCollateralAddressNew.GetID();
-    std::string address = EncodeDestination(dest);
+    std::string address = keyIO.EncodeDestination(dest);
 
     LogPrint("masternode", "CMasternodeBroadcast::Create -- pubKeyCollateralAddressNew = %s, pubKeyMasternodeNew.GetID() = %s\n",
              address,
@@ -727,8 +729,9 @@ bool CMasternodeBroadcast::CheckSignature(int& nDos)
                     pubKeyCollateralAddress.GetID().ToString() + pubKeyMasternode.GetID().ToString() +
                     boost::lexical_cast<std::string>(nProtocolVersion);
 
+    KeyIO keyIO(Params());
     CTxDestination dest = pubKeyCollateralAddress.GetID();
-    std::string address = EncodeDestination(dest);
+    std::string address = keyIO.EncodeDestination(dest);
 
     LogPrint("masternode", "CMasternodeBroadcast::CheckSignature -- strMessage: %s  pubKeyCollateralAddress address: %s  sig: %s\n", 
                 strMessage, 

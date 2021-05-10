@@ -25,7 +25,7 @@
 #include <vector>
 #include <optional>
 
-#include <boost/signals2/signal.hpp>
+#include <boost/signals2.hpp>
 #include <boost/thread/exceptions.hpp>
 
 static const bool DEFAULT_LOGTIMEMICROS = false;

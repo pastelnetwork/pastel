@@ -16,12 +16,18 @@
     <ClCompile Include="..\..\..\src\univalue\lib\univalue_write.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\..\src\univalue\lib\univalue_get.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\..\src\univalue\lib\univalue_escapes.h">
       <Filter>Source Files</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\src\univalue\lib\univalue_utffilter.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\univalue\include\univalue.h">
       <Filter>Source Files</Filter>
     </ClInclude>
   </ItemGroup>
