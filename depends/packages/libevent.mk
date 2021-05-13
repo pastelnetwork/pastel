@@ -24,7 +24,7 @@ define $(package)_build_cmds
 endef
 
 define $(package)_stage_cmds
-  $(MAKE) -j`nproc` DESTDIR=$($(package)_staging_dir) install
+  $(MAKE) -j$(JOBCOUNT) DESTDIR=$($(package)_staging_dir) install
 endef
 
 define $(package)_postprocess_cmds

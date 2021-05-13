@@ -1,8 +1,8 @@
 package=boost
-$(package)_version=1_75_0
-$(package)_download_path=https://sourceforge.net/projects/boost/files/boost/$(subst _,.,$($(package)_version))
+$(package)_version=1_76_0
+$(package)_download_path=https://boostorg.jfrog.io/artifactory/main/release/$(subst _,.,$($(package)_version))/source
 $(package)_file_name=boost_$($(package)_version).tar.gz
-$(package)_sha256_hash=aeb26f80e80945e82ee93e5939baebdca47b9dee80a07d3144be1e1a6a66dd6a
+$(package)_sha256_hash=7bd7ddceec1a1dfdcbdb3e609b60d01739c38390a5f956385a12f3122049f0ca
 $(package)_dependencies=native_b2
 $(package)_patches=
 
@@ -35,9 +35,9 @@ define $(package)_config_cmds
 endef
 
 define $(package)_build_cmds
-  b2 -d2 -j`nproc` -d1 --prefix=$($(package)_staging_prefix_dir) $($(package)_config_opts) toolset=$($(package)_toolset_$(host_os)) stage
+  b2 -d2 -j$(JOBCOUNT) -d1 --prefix=$($(package)_staging_prefix_dir) $($(package)_config_opts) toolset=$($(package)_toolset_$(host_os)) stage
 endef
 
 define $(package)_stage_cmds
-  b2 -d0 -j`nproc` --prefix=$($(package)_staging_prefix_dir) $($(package)_config_opts) toolset=$($(package)_toolset_$(host_os)) install
+  b2 -d0 -j$(JOBCOUNT) --prefix=$($(package)_staging_prefix_dir) $($(package)_config_opts) toolset=$($(package)_toolset_$(host_os)) install
 endef
