@@ -120,8 +120,8 @@ function get_time()
 #    $2: time_start
 function difftime()
 {
-	local secs=$((${1%.*} - ${2%.*}))
-	local nsecs=$((${1#*.} - ${2#*.}))
+	local secs=$(($((10#${1%.*})) - $((10#${2%.*}))))
+	local nsecs=$(($((10#${1#*.})) - $((10#${nsecs_t2%%0}))))
 	if (( $nsecs < 0 )); then
 	    secs=$(($secs - 1))
 	    nsecs=$((999999999 + $nsecs))
