@@ -6,8 +6,10 @@
 
 #include "wallet/wallet.h"
 
+#include "asyncrpcqueue.h"
 #include "checkpoints.h"
 #include "coincontrol.h"
+#include "core_io.h"
 #include "consensus/upgrades.h"
 #include "consensus/validation.h"
 #include "consensus/consensus.h"
@@ -17,6 +19,7 @@
 #include "main.h"
 #include "net.h"
 #include "rpc/protocol.h"
+#include "rpc/server.h"
 #include "script/script.h"
 #include "script/sign.h"
 #include "timedata.h"
@@ -25,8 +28,10 @@
 #include "crypter.h"
 #include "zcash/Address.hpp"
 
+#include <algorithm>
 #include <assert.h>
 #include <random>
+#include <variant>
 
 #include <boost/algorithm/string/replace.hpp>
 #include <boost/thread.hpp>
@@ -519,7 +524,11 @@ bool CWallet::Unlock(const SecureString& strWalletPassphrase)
             if (!crypter.Decrypt(pMasterKey.second.vchCryptedKey, vMasterKey))
                 continue; // try another master key
             if (CCryptoKeyStore::Unlock(vMasterKey))
+            { // Now that the wallet is decrypted, ensure we have an HD seed.
+                if (!this->HaveHDSeed())
+                    this->GenerateNewSeed();
                 return true;
+            }
         }
     }
     return false;
@@ -2369,7 +2378,7 @@ int CWalletTx::GetRequestCount() const
             // Generated block
             if (!hashBlock.IsNull())
             {
-                map<uint256, int>::const_iterator mi = pwallet->mapRequestCount.find(hashBlock);
+                auto mi = pwallet->mapRequestCount.find(hashBlock);
                 if (mi != pwallet->mapRequestCount.end())
                     nRequests = (*mi).second;
             }
@@ -2377,7 +2386,7 @@ int CWalletTx::GetRequestCount() const
         else
         {
             // Did anyone request this transaction?
-            map<uint256, int>::const_iterator mi = pwallet->mapRequestCount.find(GetHash());
+            auto mi = pwallet->mapRequestCount.find(GetHash());
             if (mi != pwallet->mapRequestCount.end())
             {
                 nRequests = (*mi).second;
@@ -2385,9 +2394,9 @@ int CWalletTx::GetRequestCount() const
                 // How about the block it's in?
                 if (nRequests == 0 && !hashBlock.IsNull())
                 {
-                    map<uint256, int>::const_iterator mi = pwallet->mapRequestCount.find(hashBlock);
-                    if (mi != pwallet->mapRequestCount.end())
-                        nRequests = (*mi).second;
+                    auto _mi = pwallet->mapRequestCount.find(hashBlock);
+                    if (_mi != pwallet->mapRequestCount.end())
+                        nRequests = (*_mi).second;
                     else
                         nRequests = 1; // If it's in someone else's block it must have got out
                 }

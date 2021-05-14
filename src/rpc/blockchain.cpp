@@ -88,11 +88,11 @@ static UniValue ValuePoolDesc(
     rv.pushKV("monitored", (bool)chainValue);
     if (chainValue) {
         rv.pushKV("chainValue", ValueFromAmount(*chainValue));
-        rv.pushKV("chainValueZat", *chainValue);
+        rv.pushKV("chainValuePsl", *chainValue);
     }
     if (valueDelta) {
         rv.pushKV("valueDelta", ValueFromAmount(*valueDelta));
-        rv.pushKV("valueDeltaZat", *valueDelta);
+        rv.pushKV("valueDeltaPsl", *valueDelta);
     }
     return rv;
 }
@@ -716,50 +716,52 @@ UniValue getblockchaininfo(const UniValue& params, bool fHelp)
 {
     if (fHelp || params.size() != 0)
         throw runtime_error(
-            "getblockchaininfo\n"
-            "Returns an object containing various state info regarding block chain processing.\n"
-            "\nNote that when the chain tip is at the last block before a network upgrade activation,\n"
-            "consensus.chaintip != consensus.nextblock.\n"
-            "\nResult:\n"
-            "{\n"
-            "  \"chain\": \"xxxx\",        (string) current network name as defined in BIP70 (main, test, regtest)\n"
-            "  \"blocks\": xxxxxx,         (numeric) the current number of blocks processed in the server\n"
-            "  \"headers\": xxxxxx,        (numeric) the current number of headers we have validated\n"
-            "  \"bestblockhash\": \"...\", (string) the hash of the currently best block\n"
-            "  \"difficulty\": xxxxxx,     (numeric) the current difficulty\n"
-            "  \"verificationprogress\": xxxx, (numeric) estimate of verification progress [0..1]\n"
-            "  \"chainwork\": \"xxxx\"     (string) total amount of work in active chain, in hexadecimal\n"
-            "  \"commitments\": xxxxxx,    (numeric) the current number of note commitments in the commitment tree\n"
-            "  \"softforks\": [            (array) status of softforks in progress\n"
-            "     {\n"
-            "        \"id\": \"xxxx\",        (string) name of softfork\n"
-            "        \"version\": xx,         (numeric) block version\n"
-            "        \"enforce\": {           (object) progress toward enforcing the softfork rules for new-version blocks\n"
-            "           \"status\": xx,       (boolean) true if threshold reached\n"
-            "           \"found\": xx,        (numeric) number of blocks with the new version found\n"
-            "           \"required\": xx,     (numeric) number of blocks required to trigger\n"
-            "           \"window\": xx,       (numeric) maximum size of examined window of recent blocks\n"
-            "        },\n"
-            "        \"reject\": { ... }      (object) progress toward rejecting pre-softfork blocks (same fields as \"enforce\")\n"
-            "     }, ...\n"
-            "  ],\n"
-            "  \"upgrades\": {                (object) status of network upgrades\n"
-            "     \"xxxx\" : {                (string) branch ID of the upgrade\n"
-            "        \"name\": \"xxxx\",        (string) name of upgrade\n"
-            "        \"activationheight\": xxxxxx,  (numeric) block height of activation\n"
-            "        \"status\": \"xxxx\",      (string) status of upgrade\n"
-            "        \"info\": \"xxxx\",        (string) additional information about upgrade\n"
-            "     }, ...\n"
-            "  },\n"
-            "  \"consensus\": {               (object) branch IDs of the current and upcoming consensus rules\n"
-            "     \"chaintip\": \"xxxxxxxx\",   (string) branch ID used to validate the current chain tip\n"
-            "     \"nextblock\": \"xxxxxxxx\"   (string) branch ID that the next block will be validated under\n"
-            "  }\n"
-            "}\n"
-            "\nExamples:\n"
-            + HelpExampleCli("getblockchaininfo", "")
-            + HelpExampleRpc("getblockchaininfo", "")
-        );
+R"(getblockchaininfo
+Returns an object containing various state info regarding block chain processing.
+ 
+Note that when the chain tip is at the last block before a network upgrade activation,
+consensus.chaintip != consensus.nextblock.
+
+Result:
+{
+  "chain": "xxxx",        (string) current network name as defined in BIP70 (main, test, regtest)
+  "blocks": xxxxxx,       (numeric) the current number of blocks processed in the server
+  "headers": xxxxxx,      (numeric) the current number of headers we have validated
+  "bestblockhash": "...", (string) the hash of the currently best block
+  "difficulty": xxxxxx,   (numeric) the current difficulty
+  "verificationprogress": xxxx, (numeric) estimate of verification progress [0..1]
+  "chainwork": "xxxx"     (string) total amount of work in active chain, in hexadecimal
+  "commitments": xxxxxx,  (numeric) the current number of note commitments in the commitment tree
+  "softforks": [          (array) status of softforks in progress
+     {
+        "id": "xxxx",         (string) name of softfork
+        "version": xx,        (numeric) block version
+        "enforce": {          (object) progress toward enforcing the softfork rules for new-version blocks
+           "status": xx,       (boolean) true if threshold reached
+           "found": xx,        (numeric) number of blocks with the new version found
+           "required": xx,     (numeric) number of blocks required to trigger
+           "window": xx,       (numeric) maximum size of examined window of recent blocks
+        },
+        "reject": { ... }      (object) progress toward rejecting pre-softfork blocks (same fields as \"enforce\")
+     }, ...
+  ],
+  "upgrades": {                (object) status of network upgrades
+     "xxxx" : {                (string) branch ID of the upgrade
+        "name": "xxxx",        (string) name of upgrade
+        "activationheight": xxxxxx,  (numeric) block height of activation
+        "status": "xxxx",      (string) status of upgrade
+        "info": "xxxx",        (string) additional information about upgrade
+     }, ...
+  },
+  "consensus": {               (object) branch IDs of the current and upcoming consensus rules
+     "chaintip": "xxxxxxxx",   (string) branch ID used to validate the current chain tip
+     "nextblock": "xxxxxxxx"   (string) branch ID that the next block will be validated under
+  }
+}
+
+Examples:
+)" + HelpExampleCli("getblockchaininfo", "")
+   + HelpExampleRpc("getblockchaininfo", ""));
 
     LOCK(cs_main);
 

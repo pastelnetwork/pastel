@@ -893,7 +893,7 @@ static bool IsKeyType(string strType)
             strType == "hdseed" || strType == "chdseed" ||
             strType == "zkey" || strType == "czkey" ||
             strType == "sapzkey" || strType == "csapzkey" ||
-            strType == "vkey" ||
+            strType == "vkey" || strType == "sapextfvk" ||
             strType == "mkey" || strType == "ckey");
 }
 

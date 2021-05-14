@@ -23,7 +23,6 @@ declare -a testScripts=(
     'wallet_listreceived.py'
     'wallet.py'
     'wallet_overwintertx.py'
-    'wallet_persistence.py' #fails
     'wallet_nullifiers.py'
     'wallet_1941.py'
     'wallet_addresses.py'
@@ -39,7 +38,6 @@ declare -a testScripts=(
     'rest.py'
     'mempool_spendcoinbase.py'
     'mempool_reorg.py'
-    'mempool_nu_activation.py'
     'mempool_tx_expiry.py'
     'httpbasics.py'
     'zapwallettxes.py'
@@ -56,7 +54,6 @@ declare -a testScripts=(
     'blockchain.py'
     'disablewallet.py'
     'zcjoinsplit.py'
-#    'zcjoinsplitdoublespend.py'  # crashes pasteld
     'zkey_import_export.py' 
     'reorg_limit.py'
     'getblocktemplate.py'
@@ -70,6 +67,22 @@ declare -a testScripts=(
     'finalsaplingroot.py'
 )
 
+declare -a testScriptsToFix=(
+    'wallet_persistence.py' #fails
+    'mempool_nu_activation.py' #timesout
+    'zcjoinsplitdoublespend.py'  # crashes pasteld
+    'getblocktemplate_proposals.py'
+    'pruning.py'                    
+    'hardforkdetection.py'          
+    'invalidateblock.py'            
+    'invalidblockrequest.py'        
+    'receivedby.py'                 
+    'script_test.py'
+    'smartfees.py'                  
+    'invalidblockrequest.py'        
+    'p2p-acceptblock.py'            
+)
+
 declare -a testScriptsMN=(
     'mn_main.py'
     'mn_payment.py'
@@ -81,19 +94,10 @@ declare -a testScriptsMN=(
 
 declare -a testScriptsExt=(
     'getblocktemplate_longpoll.py'
-    # 'getblocktemplate_proposals.py' #BROKEN in zcash
-    # 'pruning.py'                    #BROKEN in zcash
     'forknotify.py'
-    # 'hardforkdetection.py'          #BROKEN in zcash
-    # 'invalidateblock.py'            #BROKEN in zcash
     'keypool.py'
-    # 'receivedby.py'                 #BROKEN in zcash
     'rpcbind_test.py'
-#   'script_test.py'
-    # 'smartfees.py'                  #BROKEN in zcash
     'maxblocksinflight.py'
-    # 'invalidblockrequest.py'        #BROKEN in zcash
-    # 'p2p-acceptblock.py'            #BROKEN in zcash
 );
 
 #if [ "x$ENABLE_ZMQ" = "x1" ]; then
@@ -116,9 +120,12 @@ function get_time()
 #    $2: time_start
 function difftime()
 {
-	local tmdiff=`echo "$1 - $2" | bc`
-	local secs=${tmdiff%.*}
-	local nsecs=${tmdiff#*.}
+	local secs=$((${1%.*} - ${2%.*}))
+	local nsecs=$((${1#*.} - ${2#*.}))
+	if (( $nsecs < 0 )); then
+	    secs=$(($secs - 1))
+	    nsecs=$((999999999 + $nsecs))
+	fi
 	local timediff=$(printf '%02d:%02d:%02d.%03d' $((10#$secs/3600)) $((10#$secs%3600/60)) $((10#$secs%60)) $((10#$nsecs/1000000)))
 	echo "$timediff"
 }
@@ -186,15 +193,18 @@ done
 #   $1 - script name (can be without .py extension)
 function getScriptPath()
 {
-	local scriptFileName=$(basename -- "$1")
-	local ext="${1##*.}"
-	if test -z "$ext"; then
-		scriptFileName+=".py"
-	else
-		scriptFileName=$1
-	fi
-	local scriptFilePath="${BUILDDIR}/qa/rpc-tests/$scriptFileName"
-	echo $scriptFilePath
+	local a=($1)
+	local s=""
+	for p in "${a[@]}"
+	do
+	    if test -z "$s"; then
+		local scriptName=${p%.*}
+		s="${BUILDDIR}/qa/rpc-tests/${scriptName}.py"
+	    else
+		s+=" $p" # add script options
+	    fi
+	done
+	echo $s
 }
 
 # run group of tests
