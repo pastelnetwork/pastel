@@ -209,16 +209,15 @@ function getScriptPath()
 
 # run group of tests
 # parameters:
-#   $1 - array of test script names
-#   $2 - name of the specific test script to run (optional)
+#   $1 - name of the array with test script names
 function runTestGroup()
 {
     local testGroupName=$1[@]
-    eval scriptArray=(${!testGroupName})
+    eval scriptArray=( '"${!testGroupName}"' )
     len=${#scriptArray[@]}
     echo "Executing $len test scripts, group [$1]"
     for ScriptName in "${scriptArray[@]}"; do
-      scriptFileName=$(getScriptPath $ScriptName)
+      scriptFileName=$(getScriptPath "$ScriptName")
       runTestScript "$ScriptName" "$scriptFileName" --srcdir "${BUILDDIR}/src"
     done   
 }
