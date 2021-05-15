@@ -81,6 +81,8 @@ declare -a testScriptsToFix=(
     'smartfees.py'                  
     'invalidblockrequest.py'        
     'p2p-acceptblock.py'            
+    'keypool.py'
+    'rpcbind_test.py'
 )
 
 declare -a testScriptsMN=(
@@ -95,8 +97,6 @@ declare -a testScriptsMN=(
 declare -a testScriptsExt=(
     'getblocktemplate_longpoll.py'
     'forknotify.py'
-    'keypool.py'
-    'rpcbind_test.py'
     'maxblocksinflight.py'
 );
 
