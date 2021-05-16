@@ -10,6 +10,6 @@ RUN apt update \
   && update-alternatives --set x86_64-w64-mingw32-gcc /usr/bin/x86_64-w64-mingw32-gcc-posix \
   && update-alternatives --set x86_64-w64-mingw32-g++ /usr/bin/x86_64-w64-mingw32-g++-posix \
   && ln -fs /usr/bin/x86_64-linux-gnu-gcc-10 /usr/bin/x86_64-linux-gnu-gcc \
-  && ln -fs /usr/bin/gcc /usr/bin/cc && pip3 install pyblake2
+  && ln -fs /usr/bin/gcc /usr/bin/cc && pip3 install pyblake2 simplejson
 
 WORKDIR /pastel

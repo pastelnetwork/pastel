@@ -26,7 +26,7 @@ define $(package)_config_cmds
 endef
 
 define $(package)_build_cmds
-  $(MAKE) -j`nproc` libdb_cxx-6.2.a libdb-6.2.a
+  $(MAKE) -j$(JOBCOUNT) libdb_cxx-6.2.a libdb-6.2.a
 endef
 
 define $(package)_stage_cmds

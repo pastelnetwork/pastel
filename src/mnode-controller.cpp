@@ -124,8 +124,9 @@ bool CMasterNodeController::EnableMasterNode(std::ostringstream& strErrors, boos
                 return false;
             }
 
+            KeyIO keyIO(Params());
             CTxDestination dest = activeMasternode.pubKeyMasternode.GetID();
-            std::string address = EncodeDestination(dest);
+            std::string address = keyIO.EncodeDestination(dest);
 
             LogPrintf("  pubKeyMasternode: %s\n", address);
         } else {

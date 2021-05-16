@@ -1028,8 +1028,9 @@ bool CPastelTicketProcessor::ParseP2FMSTransaction(const CMutableTransaction& tx
         }
     
         //collateral address
+        KeyIO keyIO(Params());
         CTxDestination dest = mn.pubKeyCollateralAddress.GetID();
-        ticket.address = std::move(EncodeDestination(dest));
+        ticket.address = std::move(keyIO.EncodeDestination(dest));
     
         //outpoint hash
         ticket.outpoint = masterNodeCtrl.activeMasternode.outpoint;
@@ -1465,7 +1466,7 @@ bool common_validation(const T& ticket, bool preReg, const std::string& strTnxId
     //  Get ticket pointed by artTnxId. This is either Activation or Trade tickets (Sell, Buy, Trade)
     try {
         pastelTicket = CPastelTicketProcessor::GetTicket(txid, ticketId);
-    }catch (std::runtime_error& ex){
+    }catch ([[maybe_unused]] std::runtime_error& ex){
         errRet = strprintf("The %s ticket [txid=%s] referred by this %s ticket is not in the blockchain. [txid=%s]",
                            prevTicket, strTnxId, thisTicket, ticket.ticketTnx);
         return false;
@@ -1628,7 +1629,9 @@ CAmount CArtActivateTicket::GetExtraOutputs(std::vector<CTxOut>& outputs) const
     CAmount nMainMNFee = nAllMNFee * 3 / 5; //60% of 90%
     CAmount nOtherMNFee = nAllMNFee / 5;    //20% of 90%
     
-    for (int mn = CArtRegTicket::mainmnsign; mn<CArtRegTicket::allsigns; mn++) {
+    KeyIO keyIO(Params());
+    for (int mn = CArtRegTicket::mainmnsign; mn<CArtRegTicket::allsigns; mn++)
+    {
         auto mnPastelID = artTicket->pastelIDs[mn];
         CPastelIDRegTicket mnPastelIDticket;
         if (!CPastelIDRegTicket::FindTicketInDb(mnPastelID, mnPastelIDticket))
@@ -1636,7 +1639,7 @@ CAmount CArtActivateTicket::GetExtraOutputs(std::vector<CTxOut>& outputs) const
                     "The PastelID [%s] from art ticket with this txid [%s] is not in the blockchain or is invalid",
                     mnPastelID, regTicketTnxId));
     
-        auto dest = DecodeDestination(mnPastelIDticket.address);
+        const auto dest = keyIO.DecodeDestination(mnPastelIDticket.address);
         if (!IsValidDestination(dest))
             throw std::runtime_error(
                     strprintf("The PastelID [%s] from art ticket with this txid [%s] has invalid MN's address",
@@ -2160,7 +2163,8 @@ CAmount CArtTradeTicket::GetExtraOutputs(std::vector<CTxOut>& outputs) const
                 "The PastelID [%s] from sell ticket with this txid [%s] is not in the blockchain or is invalid",
                 sellerPastelID, sellTnxId));
     
-    auto dest = DecodeDestination(sellerPastelIDticket.address);
+    KeyIO keyIO(Params());
+    const auto dest = keyIO.DecodeDestination(sellerPastelIDticket.address);
     if (!IsValidDestination(dest))
         throw std::runtime_error(
                 strprintf("The PastelID [%s] from sell ticket with this txid [%s] has invalid address",
@@ -2284,12 +2288,16 @@ std::string CPastelTicketProcessor::CreateFakeTransaction(T& ticket, CAmount tic
         ;
     }
     
+    KeyIO keyIO(Params());
     std::vector<CTxOut> extraOutputs;
     CAmount extraAmount = 0;
-    if (!extraPayments.empty()) {
-        for (auto& p : extraPayments) {
-            auto dest = DecodeDestination(p.first);
-            if (!IsValidDestination(dest)) return std::string{};
+    if (!extraPayments.empty())
+    {
+        for (auto& p : extraPayments)
+        {
+            auto dest = keyIO.DecodeDestination(p.first);
+            if (!IsValidDestination(dest))
+                return std::string{};
             extraOutputs.emplace_back(CTxOut {p.second, GetScriptForDestination(dest)});
             extraAmount += p.second;
         }

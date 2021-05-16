@@ -840,6 +840,7 @@ bool AppInit2(boost::thread_group& threadGroup, CScheduler& scheduler)
 
     // ********************************************************* Step 2: parameter interactions
     const CChainParams& chainparams = Params();
+    KeyIO keyIO(chainparams);
 
     // Set this early so that experimental features are correctly enabled/disabled
     fExperimentalMode = GetBoolArg("-experimentalfeatures", false);
@@ -1097,9 +1098,11 @@ bool AppInit2(boost::thread_group& threadGroup, CScheduler& scheduler)
     nMaxTipAge = GetArg("-maxtipage", DEFAULT_MAX_TIP_AGE);
 
 #ifdef ENABLE_MINING
-    if (mapArgs.count("-mineraddress")) {
-        CTxDestination addr = DecodeDestination(mapArgs["-mineraddress"]);
-        if (!IsValidDestination(addr)) {
+    if (mapArgs.count("-mineraddress"))
+    {
+        const auto addr = keyIO.DecodeDestination(mapArgs["-mineraddress"]);
+        if (!IsValidDestination(addr))
+	{
             return InitError(strprintf(
                 _("Invalid address for -mineraddress=<addr>: '%s' (must be a transparent address)"),
                 mapArgs["-mineraddress"]));
@@ -1707,7 +1710,7 @@ bool AppInit2(boost::thread_group& threadGroup, CScheduler& scheduler)
             pwalletMain->ScanForWalletTransactions(pindexRescan, true);
             LogPrintf(" rescan      %15dms\n", GetTimeMillis() - nStart);
             pwalletMain->SetBestChain(chainActive.GetLocator());
-            nWalletDBUpdated++;
+            CWalletDB::IncrementUpdateCounter();
 
             // Restore wallet transaction metadata after -zapwallettxes=1
             if (GetBoolArg("-zapwallettxes", false) && GetArg("-zapwallettxes", "1") != "2")
@@ -1753,10 +1756,11 @@ bool AppInit2(boost::thread_group& threadGroup, CScheduler& scheduler)
     if (mapArgs.count("-mineraddress")) {
  #ifdef ENABLE_WALLET
         bool minerAddressInLocalWallet = false;
-        if (pwalletMain) {
+        if (pwalletMain)
+	{
             // Address has alreday been validated
-            CTxDestination addr = DecodeDestination(mapArgs["-mineraddress"]);
-            CKeyID keyID = boost::get<CKeyID>(addr);
+            const auto addr = keyIO.DecodeDestination(mapArgs["-mineraddress"]);
+            CKeyID keyID = std::get<CKeyID>(addr);
             minerAddressInLocalWallet = pwalletMain->HaveKey(keyID);
         }
         if (GetBoolArg("-minetolocalwallet", true) && !minerAddressInLocalWallet) {

@@ -31,7 +31,8 @@ TEST(mnode_governance, TicketProcessing) {
 
     std::string address("tPVQMdSyVnSYgrww5TTXSJeF75aPQ3bAfdm");
     
-    CTxDestination destination = DecodeDestination(address);
+    KeyIO keyIO(Params());
+    CTxDestination destination = keyIO.DecodeDestination(address);
     assert(IsValidDestination(destination));
     CScript scriptPubKey = GetScriptForDestination(destination);
 

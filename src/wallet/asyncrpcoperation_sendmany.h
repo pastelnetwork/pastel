@@ -1,9 +1,7 @@
+#pragma once
 // Copyright (c) 2016 The Zcash developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
-
-#ifndef ASYNCRPCOPERATION_SENDMANY_H
-#define ASYNCRPCOPERATION_SENDMANY_H
 
 #include "asyncrpcoperation.h"
 #include "amount.h"
@@ -15,6 +13,7 @@
 #include "paymentdisclosure.h"
 
 #include <array>
+#include <optional>
 #include <unordered_map>
 #include <tuple>
 
@@ -138,27 +137,27 @@ private:
 class TEST_FRIEND_AsyncRPCOperation_sendmany {
 public:
     std::shared_ptr<AsyncRPCOperation_sendmany> delegate;
-    
+
     TEST_FRIEND_AsyncRPCOperation_sendmany(std::shared_ptr<AsyncRPCOperation_sendmany> ptr) : delegate(ptr) {}
-    
+
     CTransaction getTx() {
         return delegate->tx_;
     }
-    
+
     void setTx(CTransaction tx) {
         delegate->tx_ = tx;
     }
-    
+
     // Delegated methods
-    
+
     void add_taddr_change_output_to_tx(CAmount amount) {
         delegate->add_taddr_change_output_to_tx(amount);
     }
-    
+
     void add_taddr_outputs_to_tx() {
         delegate->add_taddr_outputs_to_tx();
     }
-    
+
     bool find_unspent_notes() {
         return delegate->find_unspent_notes();
     }
@@ -170,7 +169,7 @@ public:
     std::array<unsigned char, ZC_MEMO_SIZE> get_memo_from_hex_string(std::string s) {
         return delegate->get_memo_from_hex_string(s);
     }
-    
+
     bool main_impl() {
         return delegate->main_impl();
     }
@@ -199,7 +198,4 @@ public:
         delegate->state_.store(state);
     }
 };
-
-
-#endif /* ASYNCRPCOPERATION_SENDMANY_H */
 

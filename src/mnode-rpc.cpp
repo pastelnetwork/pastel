@@ -39,23 +39,24 @@ UniValue formatMnsInfo(const std::vector<CMasternode>& topBlockMNs)
     UniValue mnArray(UniValue::VARR);
 
     int i = 0;
+    KeyIO keyIO(Params());
     for (auto &mn : topBlockMNs) {
         UniValue objItem(UniValue::VOBJ);
-        objItem.push_back(Pair("rank", strprintf("%d", ++i)));
+        objItem.pushKV("rank", strprintf("%d", ++i));
 
-        objItem.push_back(Pair("IP:port", mn.addr.ToString()));
-        objItem.push_back(Pair("protocol",      (int64_t)mn.nProtocolVersion));
-        objItem.push_back(Pair("outpoint", mn.vin.prevout.ToStringShort()));
+        objItem.pushKV("IP:port", mn.addr.ToString());
+        objItem.pushKV("protocol",      (int64_t)mn.nProtocolVersion);
+        objItem.pushKV("outpoint", mn.vin.prevout.ToStringShort());
 
         CTxDestination dest = mn.pubKeyCollateralAddress.GetID();
-        std::string address = EncodeDestination(dest);
-        objItem.push_back(Pair("payee",         address));
-        objItem.push_back(Pair("lastseen", mn.nTimeLastPing));
-        objItem.push_back(Pair("activeseconds", mn.nTimeLastPing - mn.sigTime));
+        std::string address = keyIO.EncodeDestination(dest);
+        objItem.pushKV("payee",         address);
+        objItem.pushKV("lastseen", mn.nTimeLastPing);
+        objItem.pushKV("activeseconds", mn.nTimeLastPing - mn.sigTime);
 
-        objItem.push_back(Pair("extAddress", mn.strExtraLayerAddress));
-        objItem.push_back(Pair("extKey", mn.strExtraLayerKey));
-        objItem.push_back(Pair("extCfg", mn.strExtraLayerCfg));
+        objItem.pushKV("extAddress", mn.strExtraLayerAddress);
+        objItem.pushKV("extKey", mn.strExtraLayerKey);
+        objItem.pushKV("extCfg", mn.strExtraLayerCfg);
 
         mnArray.push_back(objItem);
     }
@@ -114,6 +115,7 @@ UniValue masternodelist(const UniValue& params, bool fHelp)
         masterNodeCtrl.masternodeManager.UpdateLastPaid(pindex);
     }
 
+    KeyIO keyIO(Params());
     UniValue obj(UniValue::VOBJ);
     if (strMode == "rank") {
         CMasternodeMan::rank_pair_vec_t vMasternodeRanks;
@@ -121,7 +123,7 @@ UniValue masternodelist(const UniValue& params, bool fHelp)
         for (auto& mnpair : vMasternodeRanks) {
             std::string strOutpoint = mnpair.second.vin.prevout.ToStringShort();
             if (!strFilter.empty() && strOutpoint.find(strFilter) == std::string::npos) continue;
-            obj.push_back(Pair(strOutpoint, mnpair.first));
+            obj.pushKV(strOutpoint, mnpair.first);
         }
     } else {
         std::map<COutPoint, CMasternode> mapMasternodes = masterNodeCtrl.masternodeManager.GetFullMasternodeMap();
@@ -129,16 +131,16 @@ UniValue masternodelist(const UniValue& params, bool fHelp)
             CMasternode mn = mnpair.second;
             std::string strOutpoint = mnpair.first.ToStringShort();
             CTxDestination dest = mn.pubKeyCollateralAddress.GetID();
-            std::string address = EncodeDestination(dest);
+            std::string address = keyIO.EncodeDestination(dest);
 
             if (strMode == "activeseconds") {
                 if (strFilter !="" && strOutpoint.find(strFilter) == std::string::npos) continue;
-                obj.push_back(Pair(strOutpoint, (int64_t)(mn.lastPing.sigTime - mn.sigTime)));
+                obj.pushKV(strOutpoint, (int64_t)(mn.lastPing.sigTime - mn.sigTime));
             } else if (strMode == "addr") {
                 std::string strAddress = mn.addr.ToString();
                 if (strFilter !="" && strAddress.find(strFilter) == std::string::npos &&
                     strOutpoint.find(strFilter) == std::string::npos) continue;
-                obj.push_back(Pair(strOutpoint, strAddress));
+                obj.pushKV(strOutpoint, strAddress);
             } else if (strMode == "full") {
                 std::ostringstream streamFull;
 
@@ -154,7 +156,7 @@ UniValue masternodelist(const UniValue& params, bool fHelp)
                 std::string strFull = streamFull.str();
                 if (strFilter !="" && strFull.find(strFilter) == std::string::npos &&
                     strOutpoint.find(strFilter) == std::string::npos) continue;
-                obj.push_back(Pair(strOutpoint, strFull));
+                obj.pushKV(strOutpoint, strFull);
             } else if (strMode == "info") {
                 std::ostringstream streamInfo;
                 streamInfo << std::setw(18) <<
@@ -167,39 +169,39 @@ UniValue masternodelist(const UniValue& params, bool fHelp)
                 std::string strInfo = streamInfo.str();
                 if (strFilter !="" && strInfo.find(strFilter) == std::string::npos &&
                     strOutpoint.find(strFilter) == std::string::npos) continue;
-                obj.push_back(Pair(strOutpoint, strInfo));
+                obj.pushKV(strOutpoint, strInfo);
             } else if (strMode == "lastpaidblock") {
                 if (strFilter !="" && strOutpoint.find(strFilter) == std::string::npos) continue;
-                obj.push_back(Pair(strOutpoint, mn.GetLastPaidBlock()));
+                obj.pushKV(strOutpoint, mn.GetLastPaidBlock());
             } else if (strMode == "lastpaidtime") {
                 if (strFilter !="" && strOutpoint.find(strFilter) == std::string::npos) continue;
-                obj.push_back(Pair(strOutpoint, mn.GetLastPaidTime()));
+                obj.pushKV(strOutpoint, mn.GetLastPaidTime());
             } else if (strMode == "lastseen") {
                 if (strFilter !="" && strOutpoint.find(strFilter) == std::string::npos) continue;
-                obj.push_back(Pair(strOutpoint, (int64_t)mn.lastPing.sigTime));
+                obj.pushKV(strOutpoint, (int64_t)mn.lastPing.sigTime);
             } else if (strMode == "payee") {
                 if (strFilter !="" && address.find(strFilter) == std::string::npos &&
                     strOutpoint.find(strFilter) == std::string::npos) continue;
-                obj.push_back(Pair(strOutpoint, address));
+                obj.pushKV(strOutpoint, address);
             } else if (strMode == "protocol") {
                 if (strFilter !="" && strFilter != strprintf("%d", mn.nProtocolVersion) &&
                     strOutpoint.find(strFilter) == std::string::npos) continue;
-                obj.push_back(Pair(strOutpoint, (int64_t)mn.nProtocolVersion));
+                obj.pushKV(strOutpoint, (int64_t)mn.nProtocolVersion);
             } else if (strMode == "pubkey") {
                 if (strFilter !="" && strOutpoint.find(strFilter) == std::string::npos) continue;
-                obj.push_back(Pair(strOutpoint, HexStr(mn.pubKeyMasternode)));
+                obj.pushKV(strOutpoint, HexStr(mn.pubKeyMasternode));
             } else if (strMode == "status") {
                 std::string strStatus = mn.GetStatus();
                 if (strFilter !="" && strStatus.find(strFilter) == std::string::npos &&
                     strOutpoint.find(strFilter) == std::string::npos) continue;
-                obj.push_back(Pair(strOutpoint, strStatus));
+                obj.pushKV(strOutpoint, strStatus);
             } else if (strMode == "extra") {
                 UniValue objItem(UniValue::VOBJ);
-                objItem.push_back(Pair("extAddress", mn.strExtraLayerAddress));
-                objItem.push_back(Pair("extKey", mn.strExtraLayerKey));
-                objItem.push_back(Pair("extCfg", mn.strExtraLayerCfg));
+                objItem.pushKV("extAddress", mn.strExtraLayerAddress);
+                objItem.pushKV("extKey", mn.strExtraLayerKey);
+                objItem.pushKV("extCfg", mn.strExtraLayerCfg);
 
-                obj.push_back(Pair(strOutpoint, objItem));
+                obj.pushKV(strOutpoint, objItem);
             }
         }
     }
@@ -219,10 +221,10 @@ long long get_long_number(const UniValue& v)
 UniValue messageToJson(const CMasternodeMessage& msg)
 {
     UniValue obj(UniValue::VOBJ);
-    obj.push_back(Pair("From", msg.vinMasternodeFrom.prevout.ToStringShort()));
-    obj.push_back(Pair("To", msg.vinMasternodeTo.prevout.ToStringShort()));
-    obj.push_back(Pair("Timestamp", msg.sigTime));
-    obj.push_back(Pair("Message", msg.message));
+    obj.pushKV("From", msg.vinMasternodeFrom.prevout.ToStringShort());
+    obj.pushKV("To", msg.vinMasternodeTo.prevout.ToStringShort());
+    obj.pushKV("Timestamp", msg.sigTime);
+    obj.pushKV("Message", msg.message);
     return obj;
 }
 
@@ -274,6 +276,7 @@ UniValue masternode(const UniValue& params, bool fHelp)
 				"  message <options> - Commands to deal with MN to MN messages - sign, send, print etc\n"
                 );
 
+    KeyIO keyIO(Params());
     if (strCommand == "list")
     {
         UniValue newParams(UniValue::VARR);
@@ -346,17 +349,17 @@ UniValue masternode(const UniValue& params, bool fHelp)
 
         UniValue obj(UniValue::VOBJ);
 
-        obj.push_back(Pair("height",        nHeight));
-        obj.push_back(Pair("IP:port",       mnInfo.addr.ToString()));
-        obj.push_back(Pair("protocol",      (int64_t)mnInfo.nProtocolVersion));
-        obj.push_back(Pair("outpoint",      mnInfo.vin.prevout.ToStringShort()));
+        obj.pushKV("height",        nHeight);
+        obj.pushKV("IP:port",       mnInfo.addr.ToString());
+        obj.pushKV("protocol",      (int64_t)mnInfo.nProtocolVersion);
+        obj.pushKV("outpoint",      mnInfo.vin.prevout.ToStringShort());
 
         CTxDestination dest = mnInfo.pubKeyCollateralAddress.GetID();
-        std::string address = EncodeDestination(dest);
-        obj.push_back(Pair("payee",         address));
+        std::string address = keyIO.EncodeDestination(dest);
+        obj.pushKV("payee",         address);
 
-        obj.push_back(Pair("lastseen",      mnInfo.nTimeLastPing));
-        obj.push_back(Pair("activeseconds", mnInfo.nTimeLastPing - mnInfo.sigTime));
+        obj.pushKV("lastseen",      mnInfo.nTimeLastPing);
+        obj.pushKV("activeseconds", mnInfo.nTimeLastPing - mnInfo.sigTime);
         return obj;
     }
 
@@ -376,7 +379,7 @@ UniValue masternode(const UniValue& params, bool fHelp)
         bool fFound = false;
 
         UniValue statusObj(UniValue::VOBJ);
-        statusObj.push_back(Pair(RPC_KEY_ALIAS, strAlias));
+        statusObj.pushKV(RPC_KEY_ALIAS, strAlias);
     
         for (const auto& mne : masterNodeCtrl.masternodeConfig.getEntries()) {
             if(mne.getAlias() == strAlias) {
@@ -389,20 +392,20 @@ UniValue masternode(const UniValue& params, bool fHelp)
                                                             mne.getExtIp(), mne.getExtKey(), mne.getExtCfg(),
                                                             strError, mnb);
 
-                statusObj.push_back(Pair(RPC_KEY_RESULT, get_rpc_result(fResult)));
+                statusObj.pushKV(RPC_KEY_RESULT, get_rpc_result(fResult));
                 if(fResult) {
                     masterNodeCtrl.masternodeManager.UpdateMasternodeList(mnb);
                     mnb.Relay();
                 } else {
-                    statusObj.push_back(Pair(RPC_KEY_ERROR_MESSAGE, strError));
+                    statusObj.pushKV(RPC_KEY_ERROR_MESSAGE, strError);
                 }
                 break;
             }
         }
 
         if(!fFound) {
-            statusObj.push_back(Pair(RPC_KEY_RESULT, RPC_RESULT_FAILED));
-            statusObj.push_back(Pair(RPC_KEY_ERROR_MESSAGE, "Could not find alias in config. Verify with list-conf."));
+            statusObj.pushKV(RPC_KEY_RESULT, RPC_RESULT_FAILED);
+            statusObj.pushKV(RPC_KEY_ERROR_MESSAGE, "Could not find alias in config. Verify with list-conf.");
         }
 
         return statusObj;
@@ -441,8 +444,8 @@ UniValue masternode(const UniValue& params, bool fHelp)
                                                         strError, mnb);
 
             UniValue statusObj(UniValue::VOBJ);
-            statusObj.push_back(Pair(RPC_KEY_ALIAS, mne.getAlias()));
-            statusObj.push_back(Pair(RPC_KEY_RESULT, get_rpc_result(fResult)));
+            statusObj.pushKV(RPC_KEY_ALIAS, mne.getAlias());
+            statusObj.pushKV(RPC_KEY_RESULT, get_rpc_result(fResult));
 
             if (fResult) {
                 nSuccessful++;
@@ -450,15 +453,15 @@ UniValue masternode(const UniValue& params, bool fHelp)
                 mnb.Relay();
             } else {
                 nFailed++;
-                statusObj.push_back(Pair(RPC_KEY_ERROR_MESSAGE, strError));
+                statusObj.pushKV(RPC_KEY_ERROR_MESSAGE, strError);
             }
 
-            resultsObj.push_back(Pair(RPC_KEY_STATUS, statusObj));
+            resultsObj.pushKV(RPC_KEY_STATUS, statusObj);
         }
 
         UniValue returnObj(UniValue::VOBJ);
-        returnObj.push_back(Pair("overall", strprintf("Successfully started %d masternodes, failed to start %d, total %d", nSuccessful, nFailed, nSuccessful + nFailed)));
-        returnObj.push_back(Pair("detail", resultsObj));
+        returnObj.pushKV("overall", strprintf("Successfully started %d masternodes, failed to start %d, total %d", nSuccessful, nFailed, nSuccessful + nFailed));
+        returnObj.pushKV("detail", resultsObj);
 
         return returnObj;
     }
@@ -470,10 +473,10 @@ UniValue masternode(const UniValue& params, bool fHelp)
         CKey secret;
         secret.MakeNewKey(false);
         if (secret.IsValid())
-            return EncodeSecret(secret);
+            return keyIO.EncodeSecret(secret);
         UniValue statusObj(UniValue::VOBJ);
-        statusObj.push_back(Pair(RPC_KEY_RESULT, RPC_RESULT_FAILED));
-        statusObj.push_back(Pair(RPC_KEY_ERROR_MESSAGE, "Failed to generate private key"));
+        statusObj.pushKV(RPC_KEY_RESULT, RPC_RESULT_FAILED);
+        statusObj.pushKV(RPC_KEY_ERROR_MESSAGE, "Failed to generate private key");
         return statusObj;
     }
 
@@ -489,16 +492,16 @@ UniValue masternode(const UniValue& params, bool fHelp)
             std::string strStatus = fFound ? mn.GetStatus() : "MISSING";
 
             UniValue mnObj(UniValue::VOBJ);
-            mnObj.push_back(Pair(RPC_KEY_ALIAS, mne.getAlias()));
-            mnObj.push_back(Pair("address", mne.getIp()));
-            mnObj.push_back(Pair("privateKey", mne.getPrivKey()));
-            mnObj.push_back(Pair("txHash", mne.getTxHash()));
-            mnObj.push_back(Pair("outputIndex", mne.getOutputIndex()));
-            mnObj.push_back(Pair("extAddress", mne.getExtIp()));
-            mnObj.push_back(Pair("extKey", mne.getExtKey()));
-            mnObj.push_back(Pair("extCfg", mne.getExtCfg()));
-            mnObj.push_back(Pair(RPC_KEY_STATUS, strStatus));
-            resultObj.push_back(Pair("masternode", mnObj));
+            mnObj.pushKV(RPC_KEY_ALIAS, mne.getAlias());
+            mnObj.pushKV("address", mne.getIp());
+            mnObj.pushKV("privateKey", mne.getPrivKey());
+            mnObj.pushKV("txHash", mne.getTxHash());
+            mnObj.pushKV("outputIndex", mne.getOutputIndex());
+            mnObj.pushKV("extAddress", mne.getExtIp());
+            mnObj.pushKV("extKey", mne.getExtKey());
+            mnObj.pushKV("extCfg", mne.getExtCfg());
+            mnObj.pushKV(RPC_KEY_STATUS, strStatus);
+            resultObj.pushKV("masternode", mnObj);
         }
 
         return resultObj;
@@ -575,7 +578,7 @@ UniValue masternode(const UniValue& params, bool fHelp)
         secret.MakeNewKey(false);
         if (!secret.IsValid()) // should not happen as MakeNewKey always sets valid flag
             throw JSONRPCError(RPC_MISC_ERROR, "Failed to generate private key");
-        std::string mnPrivKey = EncodeSecret(secret);
+        std::string mnPrivKey = keyIO.EncodeSecret(secret);
     
         //PastelID
         std::string pastelID = std::string{};
@@ -591,13 +594,13 @@ UniValue masternode(const UniValue& params, bool fHelp)
     
         //Create JSON
         UniValue mnObj(UniValue::VOBJ);
-        mnObj.push_back(Pair("mnAddress", strMnAddress));
-        mnObj.push_back(Pair("extAddress", strExtAddress));
-        mnObj.push_back(Pair("txid", strTxid));
-        mnObj.push_back(Pair("outIndex", strIndex));
-        mnObj.push_back(Pair("mnPrivKey", mnPrivKey));
-        mnObj.push_back(Pair("extKey", pastelID));
-        resultObj.push_back(Pair(strAlias, mnObj));
+        mnObj.pushKV("mnAddress", strMnAddress);
+        mnObj.pushKV("extAddress", strExtAddress);
+        mnObj.pushKV(RPC_KEY_TXID, strTxid);
+        mnObj.pushKV("outIndex", strIndex);
+        mnObj.pushKV("mnPrivKey", mnPrivKey);
+        mnObj.pushKV("extKey", pastelID);
+        resultObj.pushKV(strAlias, mnObj);
     
         return resultObj;
     }
@@ -611,7 +614,7 @@ UniValue masternode(const UniValue& params, bool fHelp)
 
         UniValue obj(UniValue::VOBJ);
         for (auto& out : vPossibleCoins) {
-            obj.push_back(Pair(out.tx->GetHash().ToString(), strprintf("%d", out.i)));
+            obj.pushKV(out.tx->GetHash().ToString(), strprintf("%d", out.i));
         }
 
         return obj;
@@ -625,17 +628,17 @@ UniValue masternode(const UniValue& params, bool fHelp)
 
         UniValue mnObj(UniValue::VOBJ);
 
-        mnObj.push_back(Pair("outpoint", masterNodeCtrl.activeMasternode.outpoint.ToStringShort()));
-        mnObj.push_back(Pair("service", masterNodeCtrl.activeMasternode.service.ToString()));
+        mnObj.pushKV("outpoint", masterNodeCtrl.activeMasternode.outpoint.ToStringShort());
+        mnObj.pushKV("service", masterNodeCtrl.activeMasternode.service.ToString());
 
         CMasternode mn;
         if(masterNodeCtrl.masternodeManager.Get(masterNodeCtrl.activeMasternode.outpoint, mn)) {
             CTxDestination dest = mn.pubKeyCollateralAddress.GetID();
-            std::string address = EncodeDestination(dest);
-            mnObj.push_back(Pair("payee", address));
+            std::string address = keyIO.EncodeDestination(dest);
+            mnObj.pushKV("payee", address);
         }
 
-        mnObj.push_back(Pair(RPC_KEY_STATUS, masterNodeCtrl.activeMasternode.GetStatus()));
+        mnObj.pushKV(RPC_KEY_STATUS, masterNodeCtrl.activeMasternode.GetStatus());
         return mnObj;
     }
 
@@ -668,7 +671,7 @@ UniValue masternode(const UniValue& params, bool fHelp)
         for(int i = nHeight - nLast; i < nHeight + 20; i++) {
             std::string strPayment = masterNodeCtrl.masternodePayments.GetRequiredPaymentsString(i);
             if (!strFilter.empty() && strPayment.find(strFilter) == std::string::npos) continue;
-            obj.push_back(Pair(strprintf("%d", i), strPayment));
+            obj.pushKV(strprintf("%d", i), strPayment);
         }
 
         return obj;
@@ -704,7 +707,7 @@ UniValue masternode(const UniValue& params, bool fHelp)
         auto topBlockMNs = masterNodeCtrl.masternodeManager.GetTopMNsForBlock(nHeight, bCalculateIfNotSeen);
         
         UniValue mnsArray = formatMnsInfo(topBlockMNs);
-        obj.push_back(Pair(strprintf("%d", nHeight), mnsArray));
+        obj.pushKV(strprintf("%d", nHeight), mnsArray);
 
         return obj;
     }
@@ -747,7 +750,7 @@ UniValue masternode(const UniValue& params, bool fHelp)
             UniValue arr(UniValue::VARR);
             for (const auto& msg : masterNodeCtrl.masternodeMessages.mapOurMessages){
                 UniValue obj(UniValue::VOBJ);
-                obj.push_back(Pair(msg.first.ToString(), messageToJson(msg.second)));
+                obj.pushKV(msg.first.ToString(), messageToJson(msg.second));
                 arr.push_back(obj);
             }
             return arr;
@@ -766,12 +769,12 @@ UniValue masternode(const UniValue& params, bool fHelp)
                 throw JSONRPCError(RPC_INVALID_PARAMETER, strprintf("Sign failed - %s", error_ret));
     
             UniValue obj(UniValue::VOBJ);
-            obj.push_back(Pair("signature", std::string(signature.begin(), signature.end())));
+            obj.pushKV("signature", std::string(signature.begin(), signature.end()));
             if (params.size() == 3) {
                 int n = get_number(params[3]);
                 if (n > 0) {
-                    std::string strPubKey = EncodeDestination(masterNodeCtrl.activeMasternode.pubKeyMasternode.GetID());
-                    obj.push_back(Pair("pubkey", strPubKey));
+                    std::string strPubKey = keyIO.EncodeDestination(masterNodeCtrl.activeMasternode.pubKeyMasternode.GetID());
+                    obj.pushKV("pubkey", strPubKey);
                 }
             }
             return obj;
@@ -823,6 +826,7 @@ UniValue masternodebroadcast(const UniValue& params, bool fHelp)
                 "  relay         - Relay masternode broadcast message to the network\n"
                 );
 
+    KeyIO keyIO(Params());
 #ifdef ENABLE_WALLET
     if (strCommand == "create-alias")
     {
@@ -844,7 +848,7 @@ UniValue masternodebroadcast(const UniValue& params, bool fHelp)
         UniValue statusObj(UniValue::VOBJ);
         std::vector<CMasternodeBroadcast> vecMnb;
 
-        statusObj.push_back(Pair(RPC_KEY_ALIAS, strAlias));
+        statusObj.pushKV(RPC_KEY_ALIAS, strAlias);
     
         for (const auto& mne : masterNodeCtrl.masternodeConfig.getEntries()) {
             if(mne.getAlias() == strAlias) {
@@ -856,22 +860,22 @@ UniValue masternodebroadcast(const UniValue& params, bool fHelp)
                                                             mne.getExtIp(), mne.getExtKey(), mne.getExtCfg(),
                                                             strError, mnb, true);
 
-                statusObj.push_back(Pair(RPC_KEY_RESULT, get_rpc_result(fResult)));
+                statusObj.pushKV(RPC_KEY_RESULT, get_rpc_result(fResult));
                 if(fResult) {
                     vecMnb.push_back(mnb);
                     CDataStream ssVecMnb(SER_NETWORK, PROTOCOL_VERSION);
                     ssVecMnb << vecMnb;
-                    statusObj.push_back(Pair("hex", HexStr(ssVecMnb.begin(), ssVecMnb.end())));
+                    statusObj.pushKV("hex", HexStr(ssVecMnb.begin(), ssVecMnb.end()));
                 } else {
-                    statusObj.push_back(Pair(RPC_KEY_ERROR_MESSAGE, strError));
+                    statusObj.pushKV(RPC_KEY_ERROR_MESSAGE, strError);
                 }
                 break;
             }
         }
 
         if(!fFound) {
-            statusObj.push_back(Pair(RPC_KEY_RESULT, "not found"));
-            statusObj.push_back(Pair(RPC_KEY_ERROR_MESSAGE, "Could not find alias in config. Verify with list-conf."));
+            statusObj.pushKV(RPC_KEY_RESULT, "not found");
+            statusObj.pushKV(RPC_KEY_ERROR_MESSAGE, "Could not find alias in config. Verify with list-conf.");
         }
 
         return statusObj;
@@ -907,26 +911,26 @@ UniValue masternodebroadcast(const UniValue& params, bool fHelp)
                                                         strError, mnb, true);
 
             UniValue statusObj(UniValue::VOBJ);
-            statusObj.push_back(Pair(RPC_KEY_ALIAS, mne.getAlias()));
-            statusObj.push_back(Pair(RPC_KEY_RESULT, get_rpc_result(fResult)));
+            statusObj.pushKV(RPC_KEY_ALIAS, mne.getAlias());
+            statusObj.pushKV(RPC_KEY_RESULT, get_rpc_result(fResult));
 
             if(fResult) {
                 nSuccessful++;
                 vecMnb.push_back(mnb);
             } else {
                 nFailed++;
-                statusObj.push_back(Pair(RPC_KEY_ERROR_MESSAGE, strError));
+                statusObj.pushKV(RPC_KEY_ERROR_MESSAGE, strError);
             }
 
-            resultsObj.push_back(Pair(RPC_KEY_STATUS, statusObj));
+            resultsObj.pushKV(RPC_KEY_STATUS, statusObj);
         }
 
         CDataStream ssVecMnb(SER_NETWORK, PROTOCOL_VERSION);
         ssVecMnb << vecMnb;
         UniValue returnObj(UniValue::VOBJ);
-        returnObj.push_back(Pair("overall", strprintf("Successfully created broadcast messages for %d masternodes, failed to create %d, total %d", nSuccessful, nFailed, nSuccessful + nFailed)));
-        returnObj.push_back(Pair("detail", resultsObj));
-        returnObj.push_back(Pair("hex", HexStr(ssVecMnb.begin(), ssVecMnb.end())));
+        returnObj.pushKV("overall", strprintf("Successfully created broadcast messages for %d masternodes, failed to create %d, total %d", nSuccessful, nFailed, nSuccessful + nFailed));
+        returnObj.pushKV("detail", resultsObj);
+        returnObj.pushKV("hex", HexStr(ssVecMnb.begin(), ssVecMnb.end()));
 
         return returnObj;
     }
@@ -952,37 +956,37 @@ UniValue masternodebroadcast(const UniValue& params, bool fHelp)
 
             if(mnb.CheckSignature(nDos)) {
                 nSuccessful++;
-                resultObj.push_back(Pair("outpoint", mnb.vin.prevout.ToStringShort()));
-                resultObj.push_back(Pair("addr", mnb.addr.ToString()));
+                resultObj.pushKV("outpoint", mnb.vin.prevout.ToStringShort());
+                resultObj.pushKV("addr", mnb.addr.ToString());
 
                 CTxDestination dest1 = mnb.pubKeyCollateralAddress.GetID();
-                std::string address1 = EncodeDestination(dest1);
-                resultObj.push_back(Pair("pubKeyCollateralAddress", address1));
+                std::string address1 = keyIO.EncodeDestination(dest1);
+                resultObj.pushKV("pubKeyCollateralAddress", address1);
 
                 CTxDestination dest2 = mnb.pubKeyMasternode.GetID();
-                std::string address2 = EncodeDestination(dest2);
-                resultObj.push_back(Pair("pubKeyMasternode", address2));
+                std::string address2 = keyIO.EncodeDestination(dest2);
+                resultObj.pushKV("pubKeyMasternode", address2);
 
-                resultObj.push_back(Pair("vchSig", EncodeBase64(&mnb.vchSig[0], mnb.vchSig.size())));
-                resultObj.push_back(Pair("sigTime", mnb.sigTime));
-                resultObj.push_back(Pair("protocolVersion", mnb.nProtocolVersion));
+                resultObj.pushKV("vchSig", EncodeBase64(&mnb.vchSig[0], mnb.vchSig.size()));
+                resultObj.pushKV("sigTime", mnb.sigTime);
+                resultObj.pushKV("protocolVersion", mnb.nProtocolVersion);
 
                 UniValue lastPingObj(UniValue::VOBJ);
-                lastPingObj.push_back(Pair("outpoint", mnb.lastPing.vin.prevout.ToStringShort()));
-                lastPingObj.push_back(Pair("blockHash", mnb.lastPing.blockHash.ToString()));
-                lastPingObj.push_back(Pair("sigTime", mnb.lastPing.sigTime));
-                lastPingObj.push_back(Pair("vchSig", EncodeBase64(&mnb.lastPing.vchSig[0], mnb.lastPing.vchSig.size())));
+                lastPingObj.pushKV("outpoint", mnb.lastPing.vin.prevout.ToStringShort());
+                lastPingObj.pushKV("blockHash", mnb.lastPing.blockHash.ToString());
+                lastPingObj.pushKV("sigTime", mnb.lastPing.sigTime);
+                lastPingObj.pushKV("vchSig", EncodeBase64(&mnb.lastPing.vchSig[0], mnb.lastPing.vchSig.size()));
 
-                resultObj.push_back(Pair("lastPing", lastPingObj));
+                resultObj.pushKV("lastPing", lastPingObj);
             } else {
                 nFailed++;
-                resultObj.push_back(Pair(RPC_KEY_ERROR_MESSAGE, "Masternode broadcast signature verification failed"));
+                resultObj.pushKV(RPC_KEY_ERROR_MESSAGE, "Masternode broadcast signature verification failed");
             }
 
-            returnObj.push_back(Pair(mnb.GetHash().ToString(), resultObj));
+            returnObj.pushKV(mnb.GetHash().ToString(), resultObj);
         }
 
-        returnObj.push_back(Pair("overall", strprintf("Successfully decoded broadcast messages for %d masternodes, failed to decode %d, total %d", nSuccessful, nFailed, nSuccessful + nFailed)));
+        returnObj.pushKV("overall", strprintf("Successfully decoded broadcast messages for %d masternodes, failed to decode %d, total %d", nSuccessful, nFailed, nSuccessful + nFailed));
 
         return returnObj;
     }
@@ -1009,8 +1013,8 @@ UniValue masternodebroadcast(const UniValue& params, bool fHelp)
         for (auto& mnb : vecMnb) {
             UniValue resultObj(UniValue::VOBJ);
 
-            resultObj.push_back(Pair("outpoint", mnb.vin.prevout.ToStringShort()));
-            resultObj.push_back(Pair("addr", mnb.addr.ToString()));
+            resultObj.pushKV("outpoint", mnb.vin.prevout.ToStringShort());
+            resultObj.pushKV("addr", mnb.addr.ToString());
 
             int nDos = 0;
             bool fResult;
@@ -1026,16 +1030,16 @@ UniValue masternodebroadcast(const UniValue& params, bool fHelp)
 
             if(fResult) {
                 nSuccessful++;
-                resultObj.push_back(Pair(mnb.GetHash().ToString(), "successful"));
+                resultObj.pushKV(mnb.GetHash().ToString(), RPC_RESULT_SUCCESS);
             } else {
                 nFailed++;
-                resultObj.push_back(Pair(RPC_KEY_ERROR_MESSAGE, "Masternode broadcast signature verification failed"));
+                resultObj.pushKV(RPC_KEY_ERROR_MESSAGE, "Masternode broadcast signature verification failed");
             }
 
-            returnObj.push_back(Pair(mnb.GetHash().ToString(), resultObj));
+            returnObj.pushKV(mnb.GetHash().ToString(), resultObj);
         }
 
-        returnObj.push_back(Pair("overall", strprintf("Successfully relayed broadcast messages for %d masternodes, failed to relay %d, total %d", nSuccessful, nFailed, nSuccessful + nFailed)));
+        returnObj.pushKV("overall", strprintf("Successfully relayed broadcast messages for %d masternodes, failed to relay %d, total %d", nSuccessful, nFailed, nSuccessful + nFailed));
 
         return returnObj;
     }
@@ -1056,15 +1060,15 @@ UniValue mnsync(const UniValue& params, bool fHelp)
 
     if(strMode == "status") {
         UniValue objStatus(UniValue::VOBJ);
-        objStatus.push_back(Pair("AssetID", masterNodeCtrl.masternodeSync.GetAssetID()));
-        objStatus.push_back(Pair("AssetName", masterNodeCtrl.masternodeSync.GetSyncStatusShort()));
-        objStatus.push_back(Pair("AssetStartTime", masterNodeCtrl.masternodeSync.GetAssetStartTime()));
-        objStatus.push_back(Pair("Attempt", masterNodeCtrl.masternodeSync.GetAttempt()));
-        objStatus.push_back(Pair("IsBlockchainSynced", masterNodeCtrl.masternodeSync.IsBlockchainSynced()));
-        objStatus.push_back(Pair("IsMasternodeListSynced", masterNodeCtrl.masternodeSync.IsMasternodeListSynced()));
-        objStatus.push_back(Pair("IsWinnersListSynced", masterNodeCtrl.masternodeSync.IsWinnersListSynced()));
-        objStatus.push_back(Pair("IsSynced", masterNodeCtrl.masternodeSync.IsSynced()));
-        objStatus.push_back(Pair("IsFailed", masterNodeCtrl.masternodeSync.IsFailed()));
+        objStatus.pushKV("AssetID", masterNodeCtrl.masternodeSync.GetAssetID());
+        objStatus.pushKV("AssetName", masterNodeCtrl.masternodeSync.GetSyncStatusShort());
+        objStatus.pushKV("AssetStartTime", masterNodeCtrl.masternodeSync.GetAssetStartTime());
+        objStatus.pushKV("Attempt", masterNodeCtrl.masternodeSync.GetAttempt());
+        objStatus.pushKV("IsBlockchainSynced", masterNodeCtrl.masternodeSync.IsBlockchainSynced());
+        objStatus.pushKV("IsMasternodeListSynced", masterNodeCtrl.masternodeSync.IsMasternodeListSynced());
+        objStatus.pushKV("IsWinnersListSynced", masterNodeCtrl.masternodeSync.IsWinnersListSynced());
+        objStatus.pushKV("IsSynced", masterNodeCtrl.masternodeSync.IsSynced());
+        objStatus.pushKV("IsFailed", masterNodeCtrl.masternodeSync.IsFailed());
         return objStatus;
     }
 
@@ -1125,11 +1129,11 @@ UniValue governance(const UniValue& params, bool fHelp)
 
             uint256 newTicketId;
             if (!masterNodeCtrl.masternodeGovernance.AddTicket(address, amount, note, (vote == "yes"), newTicketId, strError)) {
-                resultObj.push_back(Pair(RPC_KEY_RESULT, RPC_RESULT_FAILED));
-                resultObj.push_back(Pair(RPC_KEY_ERROR_MESSAGE, strError));
+                resultObj.pushKV(RPC_KEY_RESULT, RPC_RESULT_FAILED);
+                resultObj.pushKV(RPC_KEY_ERROR_MESSAGE, strError);
             } else {
-                resultObj.push_back(Pair(RPC_KEY_RESULT, "successful"));
-                resultObj.push_back(Pair("ticketId", newTicketId.ToString()));
+                resultObj.pushKV(RPC_KEY_RESULT, RPC_RESULT_SUCCESS);
+                resultObj.pushKV("ticketId", newTicketId.ToString());
             }
             return resultObj;
         }
@@ -1153,10 +1157,10 @@ UniValue governance(const UniValue& params, bool fHelp)
             uint256 ticketId = uint256S(ticketIdstr);
 
             if (!masterNodeCtrl.masternodeGovernance.VoteForTicket(ticketId, (vote == "yes"), strError)) {
-                resultObj.push_back(Pair(RPC_KEY_RESULT, RPC_RESULT_FAILED));
-                resultObj.push_back(Pair(RPC_KEY_ERROR_MESSAGE, strError));
+                resultObj.pushKV(RPC_KEY_RESULT, RPC_RESULT_FAILED);
+                resultObj.pushKV(RPC_KEY_ERROR_MESSAGE, strError);
             } else {
-                resultObj.push_back(Pair(RPC_KEY_RESULT, "successful"));
+                resultObj.pushKV(RPC_KEY_RESULT, RPC_RESULT_SUCCESS);
             }
             return resultObj;
         }
@@ -1179,8 +1183,8 @@ UniValue governance(const UniValue& params, bool fHelp)
                 std::string id = s.first.ToString();
 
                 UniValue obj(UniValue::VOBJ);
-                obj.push_back(Pair("id", id));
-                obj.push_back(Pair("ticket", s.second.ToString()));
+                obj.pushKV("id", id);
+                obj.pushKV("ticket", s.second.ToString());
                 resultArray.push_back(obj);
             }
         }
@@ -1191,8 +1195,8 @@ UniValue governance(const UniValue& params, bool fHelp)
                     std::string id = s.first.ToString();
     
                     UniValue obj(UniValue::VOBJ);
-                    obj.push_back(Pair("id", id));
-                    obj.push_back(Pair("ticket", s.second.ToString()));
+                    obj.pushKV("id", id);
+                    obj.pushKV("ticket", s.second.ToString());
                     resultArray.push_back(obj);
                 }
             }
@@ -1248,7 +1252,7 @@ UniValue pastelid(const UniValue& params, bool fHelp) {
 
         std::string pastelID = CPastelID::CreateNewLocalKey(strKeyPass);
 
-        resultObj.push_back(Pair("pastelid", pastelID));
+        resultObj.pushKV("pastelid", pastelID);
 
         return resultObj;
     }
@@ -1284,11 +1288,11 @@ UniValue pastelid(const UniValue& params, bool fHelp) {
     {
         UniValue resultArray(UniValue::VARR);
 
-        auto pastelIDs = CPastelID::GetStoredPastelIDs();
+        const auto pastelIDs = CPastelID::GetStoredPastelIDs();
         for (const auto & p: pastelIDs)
         {
             UniValue obj(UniValue::VOBJ);
-            obj.push_back(Pair("PastelID", p));
+            obj.pushKV("PastelID", p);
             resultArray.push_back(obj);
         }
 
@@ -1314,7 +1318,7 @@ UniValue pastelid(const UniValue& params, bool fHelp) {
         UniValue resultObj(UniValue::VOBJ);
 
         std::string sign = CPastelID::Sign64(params[1].get_str(), params[2].get_str(), strKeyPass);
-        resultObj.push_back(Pair("signature", sign));
+        resultObj.pushKV("signature", sign);
 
         return resultObj;
     }
@@ -1349,7 +1353,7 @@ UniValue pastelid(const UniValue& params, bool fHelp) {
         UniValue resultObj(UniValue::VOBJ);
 
         bool res = CPastelID::Verify64(params[1].get_str(), params[2].get_str(), params[3].get_str());
-        resultObj.push_back(Pair("verification", res? "OK": "Failed"));
+        resultObj.pushKV("verification", res? "OK": "Failed");
 
         return resultObj;
     }
@@ -1390,7 +1394,7 @@ UniValue storagefee(const UniValue& params, bool fHelp) {
         CAmount nFee = masterNodeCtrl.GetNetworkFeePerMB();
 
         UniValue mnObj(UniValue::VOBJ);
-        mnObj.push_back(Pair("networkfee", nFee));
+        mnObj.pushKV("networkfee", nFee);
         return mnObj;
     }
     if (strCommand == "getlocalfee")
@@ -1403,7 +1407,7 @@ UniValue storagefee(const UniValue& params, bool fHelp) {
 
         CMasternode masternode;
         if(masterNodeCtrl.masternodeManager.Get(masterNodeCtrl.activeMasternode.outpoint, masternode)) {
-            mnObj.push_back(Pair("localfee", masternode.aMNFeePerMB == 0? masterNodeCtrl.MasternodeFeePerMBDefault: masternode.aMNFeePerMB));
+            mnObj.pushKV("localfee", masternode.aMNFeePerMB == 0? masterNodeCtrl.MasternodeFeePerMBDefault: masternode.aMNFeePerMB);
             return mnObj;
         } else {
             throw JSONRPCError(RPC_INTERNAL_ERROR, "Masternode is not found!");
@@ -1449,8 +1453,8 @@ Available commands:
 			throw JSONRPCError(RPC_TRANSACTION_ERROR, error);
 
         UniValue mnObj(UniValue::VOBJ);
-        mnObj.push_back(Pair("txid", tx_out.GetHash().GetHex()));
-        mnObj.push_back(Pair("rawtx", EncodeHexTx(tx_out)));
+        mnObj.pushKV(RPC_KEY_TXID, tx_out.GetHash().GetHex());
+        mnObj.pushKV("rawtx", EncodeHexTx(tx_out));
         return mnObj;
     }
     if (CHAINDATA.IsCmd(RPC_CMD_CHAINDATA::retrieve)) {
@@ -1611,7 +1615,7 @@ Register masternode ID
 			CPastelIDRegTicket regTicket = CPastelIDRegTicket::Create(pastelID, strKeyPass, std::string{});
 			std::string txid = CPastelTicketProcessor::SendTicket(regTicket);
 			
-			mnObj.push_back(Pair("txid", txid));
+			mnObj.pushKV(RPC_KEY_TXID, txid);
 		}
         if (REGISTER.IsCmd(RPC_CMD_REGISTER::id)) {
 			if (fHelp || params.size() != 5)
@@ -1653,7 +1657,7 @@ As json rpc
             CPastelIDRegTicket pastelIDRegTicket = CPastelIDRegTicket::Create(pastelID, strKeyPass, address);
 			std::string txid = CPastelTicketProcessor::SendTicket(pastelIDRegTicket);
 			
-			mnObj.push_back(Pair("txid", txid));
+			mnObj.pushKV(RPC_KEY_TXID, txid);
 		}
         if (REGISTER.IsCmd(RPC_CMD_REGISTER::art)) {
 			if (fHelp || params.size() != 9)
@@ -1737,7 +1741,7 @@ As json rpc
                     nStorageFee);
 			std::string txid = CPastelTicketProcessor::SendTicket(artRegTicket);
 			
-			mnObj.push_back(Pair("txid", txid));
+			mnObj.pushKV(RPC_KEY_TXID, txid);
 		}
         if (REGISTER.IsCmd(RPC_CMD_REGISTER::act)) {
 			if (fHelp || params.size() != 7)
@@ -1785,7 +1789,7 @@ As json rpc
             CArtActivateTicket artActTicket = CArtActivateTicket::Create(regTicketTxID, height, fee, pastelID, strKeyPass);
 			std::string txid = CPastelTicketProcessor::SendTicket(artActTicket);
 			
-			mnObj.push_back(Pair("txid", txid));
+			mnObj.pushKV(RPC_KEY_TXID, txid);
 		}
         if (REGISTER.IsCmd(RPC_CMD_REGISTER::sell)) {
 			if (fHelp || params.size() < 6 || params.size() > 9)
@@ -1848,7 +1852,7 @@ As json rpc
             CArtSellTicket artSellTicket = CArtSellTicket::Create(artTicketTxID, price, after, before, copyNumber, pastelID, strKeyPass);
             std::string txid = CPastelTicketProcessor::SendTicket(artSellTicket);
             
-            mnObj.push_back(Pair("txid", txid));
+            mnObj.pushKV(RPC_KEY_TXID, txid);
 		}
         if (REGISTER.IsCmd(RPC_CMD_REGISTER::buy)) {
             if (fHelp || params.size() != 6)
@@ -1891,7 +1895,7 @@ As json rpc
             CArtBuyTicket artBuyTicket = CArtBuyTicket::Create(sellTicketTxID, price, pastelID, strKeyPass);
             std::string txid = CPastelTicketProcessor::SendTicket(artBuyTicket);
             
-            mnObj.push_back(Pair("txid", txid));
+            mnObj.pushKV(RPC_KEY_TXID, txid);
         }
         if (REGISTER.IsCmd(RPC_CMD_REGISTER::trade)) {
             if (fHelp || params.size() != 6)
@@ -1937,7 +1941,7 @@ As json rpc
             CArtTradeTicket artTradeTicket = CArtTradeTicket::Create(sellTicketTxID, buyTicketTxID, pastelID, strKeyPass);
             std::string txid = CPastelTicketProcessor::SendTicket(artTradeTicket);
             
-            mnObj.push_back(Pair("txid", txid));
+            mnObj.pushKV(RPC_KEY_TXID, txid);
         }
         if (REGISTER.IsCmd(RPC_CMD_REGISTER::down)) {
 			if (fHelp || params.size() != 5)
@@ -2323,7 +2327,8 @@ CTxDestination ani2psl(const std::string& aniAddress)
  */
 CKey ani2psl_secret(const std::string& str, std::string &sKeyError)
 {
-    return DecodeSecret(str, sKeyError);
+    KeyIO keyIO(Params());
+    return keyIO.DecodeSecret(str, sKeyError);
 }
 
 //INGEST->!!!
@@ -2339,6 +2344,7 @@ UniValue ingest(const UniValue& params, bool fHelp)
                 "\"ingest\" ingest|ani2psl|ani2psl_secret ...\n"
         );
 
+    KeyIO keyIO(Params());
 #ifdef INGEST
     if (strCommand == "ingest") {
         if (params.size() != 3)
@@ -2379,7 +2385,7 @@ UniValue ingest(const UniValue& params, bool fHelp)
 
                 CTxDestination dest = ani2psl(aniAddress);
                 if (!IsValidDestination(dest)) {
-                    addressErrors.push_back(Pair(aniAddress, std::string("Invalid Pastel address converted from ANI address")));
+                    addressErrors.pushKV(aniAddress, std::string("Invalid Pastel address converted from ANI address"));
                     continue;
                 }
 
@@ -2388,7 +2394,7 @@ UniValue ingest(const UniValue& params, bool fHelp)
                 //so no conversion of amount needed
                 CAmount aniAmount = std::stoll(line.substr(35));
                 if (aniAmount <= 0){
-                    addressErrors.push_back(Pair(aniAddress, std::string("Invalid amount for send for ANI address")));
+                    addressErrors.pushKV(aniAddress, std::string("Invalid amount for send for ANI address"));
                     continue;
                 }
                 aniAmount *= INGEST_MULTIPLIER;
@@ -2420,28 +2426,28 @@ UniValue ingest(const UniValue& params, bool fHelp)
             string strFailReason;
 
             if (!pwalletMain->CreateTransaction(vecSend, wtx, keyChange, nFeeRequired, nChangePosRet, strFailReason)){
-                tnxErrors.push_back(Pair(std::to_string(txCounter), std::string{"CreateTransaction failed - "} + strFailReason));
+                tnxErrors.pushKV(std::to_string(txCounter), std::string{"CreateTransaction failed - "} + strFailReason);
                 lineCounter+=lines;
                 continue;
             }
 
             if (!pwalletMain->CommitTransaction(wtx, keyChange)){
-                tnxErrors.push_back(Pair(std::to_string(txCounter), "CommitTransaction failed"));
+                tnxErrors.pushKV(std::to_string(txCounter), "CommitTransaction failed");
                 lineCounter+=lines;
                 continue;
             }
 
             UniValue obj(UniValue::VOBJ);
-            obj.push_back(Pair(wtx.GetHash().GetHex(), (uint64_t)lines));
-            mnObj.push_back(Pair(std::to_string(txCounter), obj));
+            obj.pushKV(wtx.GetHash().GetHex(), (uint64_t)lines);
+            mnObj.pushKV(std::to_string(txCounter), obj);
 
             outfile << wtx.GetHash().GetHex() << " : " << lineCounter+1 << "-" << lineCounter+lines << " (" << lines << ")\n";
             outfile.flush();
             lineCounter+=lines;
         }
 
-        mnObj.push_back(Pair("address_errors", addressErrors));
-        mnObj.push_back(Pair("tnx_errors", tnxErrors));
+        mnObj.pushKV("address_errors", addressErrors);
+        mnObj.pushKV("tnx_errors", tnxErrors);
 
         return mnObj;
     }
@@ -2454,7 +2460,7 @@ UniValue ingest(const UniValue& params, bool fHelp)
         const std::string aniAddress = params[1].get_str();
 
         const CTxDestination dest = ani2psl(aniAddress);
-        return EncodeDestination(dest);
+        return keyIO.EncodeDestination(dest);
     }
 
     // ingest ani private key (32-byte)
@@ -2468,7 +2474,7 @@ UniValue ingest(const UniValue& params, bool fHelp)
         const CKey pslKey = ani2psl_secret(aniSecret, sKeyError);
         if (!pslKey.IsValid())
             throw JSONRPCError(RPC_INVALID_PARAMETER, tinyformat::format("Invalid private key, %s", sKeyError.c_str()));
-        return EncodeSecret(pslKey);
+        return keyIO.EncodeSecret(pslKey);
     }
     return NullUniValue;
 }

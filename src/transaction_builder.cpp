@@ -1,6 +1,6 @@
 // Copyright (c) 2018 The Zcash developers
 // Distributed under the MIT software license, see the accompanying
-// file COPYING or http://www.opensource.org/licenses/mit-license.php.
+// file COPYING or https://www.opensource.org/licenses/mit-license.php .
 
 #include "transaction_builder.h"
 
@@ -8,9 +8,8 @@
 #include "pubkey.h"
 #include "rpc/protocol.h"
 #include "script/sign.h"
-#include <key_io.h>
+#include "key_io.h"
 
-#include <boost/variant.hpp>
 #include <librustzcash.h>
 
 SpendDescriptionInfo::SpendDescriptionInfo(
@@ -97,7 +96,7 @@ void TransactionBuilder::AddTransparentInput(COutPoint utxo, CScript scriptPubKe
     tIns.emplace_back(scriptPubKey, value);
 }
 
-void TransactionBuilder::AddTransparentOutput(CTxDestination& to, CAmount value)
+void TransactionBuilder::AddTransparentOutput(const CTxDestination& to, CAmount value)
 {
     if (!IsValidDestination(to)) {
         throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid output address, not a valid taddr.");

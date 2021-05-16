@@ -1,7 +1,8 @@
 // Copyright (c) 2010 Satoshi Nakamoto
 // Copyright (c) 2009-2014 The Bitcoin Core developers
+// Copyright (c) 2018-2021 Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
-// file COPYING or http://www.opensource.org/licenses/mit-license.php.
+// file COPYING or https://www.opensource.org/licenses/mit-license.php .
 
 #include "amount.h"
 #include "consensus/upgrades.h"
@@ -21,8 +22,8 @@
 #include "primitives/transaction.h"
 #include "zcbenchmarks.h"
 #include "script/interpreter.h"
-#include "zcash/zip32.h"
-
+#include "zcash/Address.hpp"
+#include "utfcpp/utf8.h"
 #include "utiltime.h"
 #include "asyncrpcoperation.h"
 #include "asyncrpcqueue.h"
@@ -39,6 +40,8 @@
 #include <univalue.h>
 
 #include <numeric>
+#include <optional>
+#include <variant>
 
 using namespace std;
 
@@ -83,28 +86,28 @@ void EnsureWalletIsUnlocked()
 void WalletTxToJSON(const CWalletTx& wtx, UniValue& entry)
 {
     int confirms = wtx.GetDepthInMainChain();
-    entry.push_back(Pair("confirmations", confirms));
+    entry.pushKV("confirmations", confirms);
     if (wtx.IsCoinBase())
-        entry.push_back(Pair("generated", true));
+        entry.pushKV("generated", true);
     if (confirms > 0)
     {
-        entry.push_back(Pair("blockhash", wtx.hashBlock.GetHex()));
-        entry.push_back(Pair("blockindex", wtx.nIndex));
-        entry.push_back(Pair("blocktime", mapBlockIndex[wtx.hashBlock]->GetBlockTime()));
-        entry.push_back(Pair("expiryheight", (int64_t)wtx.nExpiryHeight));
+        entry.pushKV("blockhash", wtx.hashBlock.GetHex());
+        entry.pushKV("blockindex", wtx.nIndex);
+        entry.pushKV("blocktime", mapBlockIndex[wtx.hashBlock]->GetBlockTime());
+        entry.pushKV("expiryheight", (int64_t)wtx.nExpiryHeight);
     }
     uint256 hash = wtx.GetHash();
-    entry.push_back(Pair("txid", hash.GetHex()));
+    entry.pushKV("txid", hash.GetHex());
     UniValue conflicts(UniValue::VARR);
     for (const auto& conflict : wtx.GetConflicts())
         conflicts.push_back(conflict.GetHex());
-    entry.push_back(Pair("walletconflicts", conflicts));
-    entry.push_back(Pair("time", wtx.GetTxTime()));
-    entry.push_back(Pair("timereceived", (int64_t)wtx.nTimeReceived));
+    entry.pushKV("walletconflicts", conflicts);
+    entry.pushKV("time", wtx.GetTxTime());
+    entry.pushKV("timereceived", (int64_t)wtx.nTimeReceived);
     for (const auto &[key, value] : wtx.mapValue)
-        entry.push_back(Pair(key, value));
+        entry.pushKV(key, value);
 
-    entry.push_back(Pair("vjoinsplit", TxJoinSplitToJSON(wtx)));
+    entry.pushKV("vjoinsplit", TxJoinSplitToJSON(wtx));
 }
 
 string AccountFromValue(const UniValue& value)
@@ -151,7 +154,8 @@ UniValue getnewaddress(const UniValue& params, bool fHelp)
 
     pwalletMain->SetAddressBook(keyID, strAccount, "receive");
 
-    return EncodeDestination(keyID);
+    KeyIO keyIO(Params());
+    return keyIO.EncodeDestination(keyID);
 }
 
 
@@ -221,7 +225,8 @@ UniValue getaccountaddress(const UniValue& params, bool fHelp)
 
     UniValue ret(UniValue::VSTR);
 
-    ret = EncodeDestination(GetAccountAddress(strAccount));
+    KeyIO keyIO(Params());
+    ret = keyIO.EncodeDestination(GetAccountAddress(strAccount));
     return ret;
 }
 
@@ -257,7 +262,8 @@ UniValue getrawchangeaddress(const UniValue& params, bool fHelp)
 
     CKeyID keyID = vchPubKey.GetID();
 
-    return EncodeDestination(keyID);
+    KeyIO keyIO(Params());
+    return keyIO.EncodeDestination(keyID);
 }
 
 
@@ -280,10 +286,10 @@ UniValue setaccount(const UniValue& params, bool fHelp)
 
     LOCK2(cs_main, pwalletMain->cs_wallet);
 
-    CTxDestination dest = DecodeDestination(params[0].get_str());
-    if (!IsValidDestination(dest)) {
+    KeyIO keyIO(Params());
+    CTxDestination dest = keyIO.DecodeDestination(params[0].get_str());
+    if (!IsValidDestination(dest))
         throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid Pastel address");
-    }
 
     string strAccount;
     if (params.size() > 1)
@@ -327,10 +333,10 @@ UniValue getaccount(const UniValue& params, bool fHelp)
 
     LOCK2(cs_main, pwalletMain->cs_wallet);
 
-    CTxDestination dest = DecodeDestination(params[0].get_str());
-    if (!IsValidDestination(dest)) {
+    KeyIO keyIO(Params());
+    CTxDestination dest = keyIO.DecodeDestination(params[0].get_str());
+    if (!IsValidDestination(dest))
         throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid Pastel address");
-    }
 
     std::string strAccount;
     std::map<CTxDestination, CAddressBookData>::iterator mi = pwalletMain->mapAddressBook.find(dest);
@@ -366,13 +372,14 @@ UniValue getaddressesbyaccount(const UniValue& params, bool fHelp)
 
     string strAccount = AccountFromValue(params[0]);
 
+    KeyIO keyIO(Params());
     // Find all addresses that have the given account
     UniValue ret(UniValue::VARR);
     for (const std::pair<CTxDestination, CAddressBookData>& item : pwalletMain->mapAddressBook) {
         const CTxDestination& dest = item.first;
         const std::string& strName = item.second.name;
         if (strName == strAccount) {
-            ret.push_back(EncodeDestination(dest));
+            ret.push_back(keyIO.EncodeDestination(dest));
         }
     }
     return ret;
@@ -440,10 +447,10 @@ UniValue sendtoaddress(const UniValue& params, bool fHelp)
 
     LOCK2(cs_main, pwalletMain->cs_wallet);
 
-    CTxDestination dest = DecodeDestination(params[0].get_str());
-    if (!IsValidDestination(dest)) {
+    KeyIO keyIO(Params());
+    CTxDestination dest = keyIO.DecodeDestination(params[0].get_str());
+    if (!IsValidDestination(dest))
         throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid Pastel address");
-    }
 
     // Amount
     CAmount nAmount = AmountFromValue(params[1]);
@@ -511,12 +518,13 @@ Examples:
     LOCK2(cs_main, pwalletMain->cs_wallet);
     
     UniValue jsonBalances(UniValue::VOBJ);
+    KeyIO keyIO(Params());
     const auto balances = pwalletMain->GetAddressBalances(isMineFilter);
     for (const auto &[txDestination, amount] : balances)
     {
         if (!bIncludeEmpty && amount == 0)
             continue;
-        jsonBalances.pushKV(EncodeDestination(txDestination), ValueFromAmount(amount));
+        jsonBalances.pushKV(keyIO.EncodeDestination(txDestination), ValueFromAmount(amount));
     }
     return jsonBalances;
 }
@@ -548,9 +556,10 @@ UniValue listaddressgroupings(const UniValue& params, bool fHelp)
             + HelpExampleCli("listaddressgroupings", "")
             + HelpExampleRpc("listaddressgroupings", "")
         );
-    
+
     LOCK2(cs_main, pwalletMain->cs_wallet);
 
+    KeyIO keyIO(Params());
     UniValue jsonGroupings(UniValue::VARR);
     std::map<CTxDestination, CAmount> balances = pwalletMain->GetAddressBalances(ISMINE_ALL);
     for (const std::set<CTxDestination>& grouping : pwalletMain->GetAddressGroupings()) {
@@ -558,7 +567,7 @@ UniValue listaddressgroupings(const UniValue& params, bool fHelp)
         for (const CTxDestination& address : grouping)
         {
             UniValue addressInfo(UniValue::VARR);
-            addressInfo.push_back(EncodeDestination(address));
+            addressInfo.push_back(keyIO.EncodeDestination(address));
             addressInfo.push_back(ValueFromAmount(balances[address]));
             {
                 if (pwalletMain->mapAddressBook.find(address) != pwalletMain->mapAddressBook.end()) {
@@ -605,12 +614,13 @@ UniValue signmessage(const UniValue& params, bool fHelp)
     string strAddress = params[0].get_str();
     string strMessage = params[1].get_str();
 
-    CTxDestination dest = DecodeDestination(strAddress);
+    KeyIO keyIO(Params());
+    CTxDestination dest = keyIO.DecodeDestination(strAddress);
     if (!IsValidDestination(dest)) {
         throw JSONRPCError(RPC_TYPE_ERROR, "Invalid address");
     }
 
-    const CKeyID *keyID = boost::get<CKeyID>(&dest);
+    const CKeyID *keyID = std::get_if<CKeyID>(&dest);
     if (!keyID) {
         throw JSONRPCError(RPC_TYPE_ERROR, "Address does not refer to key");
     }
@@ -658,8 +668,9 @@ UniValue getreceivedbyaddress(const UniValue& params, bool fHelp)
 
     LOCK2(cs_main, pwalletMain->cs_wallet);
 
+    KeyIO keyIO(Params());
     // Bitcoin address
-    CTxDestination dest = DecodeDestination(params[0].get_str());
+    CTxDestination dest = keyIO.DecodeDestination(params[0].get_str());
     if (!IsValidDestination(dest)) {
         throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid Pastel address");
     }
@@ -689,7 +700,7 @@ UniValue getreceivedbyaddress(const UniValue& params, bool fHelp)
         }
     }
 
-    return  ValueFromAmount(nAmount);
+    return ValueFromAmount(nAmount);
 }
 
 
@@ -977,8 +988,9 @@ UniValue sendfrom(const UniValue& params, bool fHelp)
 
     LOCK2(cs_main, pwalletMain->cs_wallet);
 
+    KeyIO keyIO(Params());
     std::string strAccount = AccountFromValue(params[0]);
-    CTxDestination dest = DecodeDestination(params[1].get_str());
+    CTxDestination dest = keyIO.DecodeDestination(params[1].get_str());
     if (!IsValidDestination(dest)) {
         throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid Pastel address");
     }
@@ -1070,10 +1082,11 @@ UniValue sendmany(const UniValue& params, bool fHelp)
     std::set<CTxDestination> destinations;
     std::vector<CRecipient> vecSend;
 
+    KeyIO keyIO(Params());
     CAmount totalAmount = 0;
     std::vector<std::string> keys = sendTo.getKeys();
     for (const std::string& name_ : keys) {
-        CTxDestination dest = DecodeDestination(name_);
+        CTxDestination dest = keyIO.DecodeDestination(name_);
         if (!IsValidDestination(dest)) {
             throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, std::string("Invalid Pastel address: ") + name_);
         }
@@ -1170,7 +1183,8 @@ UniValue addmultisigaddress(const UniValue& params, bool fHelp)
     pwalletMain->AddCScript(inner);
 
     pwalletMain->SetAddressBook(innerID, strAccount, "send");
-    return EncodeDestination(innerID);
+    KeyIO keyIO(Params());
+    return keyIO.EncodeDestination(innerID);
 }
 
 
@@ -1236,6 +1250,8 @@ UniValue ListReceived(const UniValue& params, bool fByAccounts)
         }
     }
 
+    KeyIO keyIO(Params());
+
     // Reply
     UniValue ret(UniValue::VARR);
     std::map<std::string, tallyitem> mapAccountTally;
@@ -1267,18 +1283,18 @@ UniValue ListReceived(const UniValue& params, bool fByAccounts)
         {
             UniValue obj(UniValue::VOBJ);
             if(fIsWatchonly)
-                obj.push_back(Pair("involvesWatchonly", true));
-            obj.push_back(Pair("address",       EncodeDestination(dest)));
-            obj.push_back(Pair("account",       strAccount));
-            obj.push_back(Pair("amount",        ValueFromAmount(nAmount)));
-            obj.push_back(Pair("confirmations", (nConf == std::numeric_limits<int>::max() ? 0 : nConf)));
+                obj.pushKV("involvesWatchonly", true);
+            obj.pushKV("address",       keyIO.EncodeDestination(dest));
+            obj.pushKV("account",       strAccount);
+            obj.pushKV("amount",        ValueFromAmount(nAmount));
+            obj.pushKV("confirmations", (nConf == std::numeric_limits<int>::max() ? 0 : nConf));
             UniValue transactions(UniValue::VARR);
             if (it != mapTally.end())
             {
                 for (const auto& item : (*it).second.txids)
                     transactions.push_back(item.GetHex());
             }
-            obj.push_back(Pair("txids", transactions));
+            obj.pushKV("txids", transactions);
             ret.push_back(obj);
         }
     }
@@ -1291,10 +1307,10 @@ UniValue ListReceived(const UniValue& params, bool fByAccounts)
             int nConf = (*it).second.nConf;
             UniValue obj(UniValue::VOBJ);
             if((*it).second.fIsWatchonly)
-                obj.push_back(Pair("involvesWatchonly", true));
-            obj.push_back(Pair("account",       (*it).first));
-            obj.push_back(Pair("amount",        ValueFromAmount(nAmount)));
-            obj.push_back(Pair("confirmations", (nConf == std::numeric_limits<int>::max() ? 0 : nConf)));
+                obj.pushKV("involvesWatchonly", true);
+            obj.pushKV("account",       (*it).first);
+            obj.pushKV("amount",        ValueFromAmount(nAmount));
+            obj.pushKV("confirmations", (nConf == std::numeric_limits<int>::max() ? 0 : nConf));
             ret.push_back(obj);
         }
     }
@@ -1378,7 +1394,8 @@ UniValue listreceivedbyaccount(const UniValue& params, bool fHelp)
 static void MaybePushAddress(UniValue & entry, const CTxDestination &dest)
 {
     if (IsValidDestination(dest)) {
-        entry.push_back(Pair("address", EncodeDestination(dest)));
+        KeyIO keyIO(Params());
+        entry.pushKV("address", keyIO.EncodeDestination(dest));
     }
 }
 
@@ -1401,16 +1418,16 @@ void ListTransactions(const CWalletTx& wtx, const string& strAccount, int nMinDe
         {
             UniValue entry(UniValue::VOBJ);
             if(involvesWatchonly || (::IsMine(*pwalletMain, s.destination) & ISMINE_WATCH_ONLY))
-                entry.push_back(Pair("involvesWatchonly", true));
-            entry.push_back(Pair("account", strSentAccount));
+                entry.pushKV("involvesWatchonly", true);
+            entry.pushKV("account", strSentAccount);
             MaybePushAddress(entry, s.destination);
-            entry.push_back(Pair("category", "send"));
-            entry.push_back(Pair("amount", ValueFromAmount(-s.amount)));
-            entry.push_back(Pair("vout", s.vout));
-            entry.push_back(Pair("fee", ValueFromAmount(-nFee)));
+            entry.pushKV("category", "send");
+            entry.pushKV("amount", ValueFromAmount(-s.amount));
+            entry.pushKV("vout", s.vout);
+            entry.pushKV("fee", ValueFromAmount(-nFee));
             if (fLong)
                 WalletTxToJSON(wtx, entry);
-            entry.push_back(Pair("size", static_cast<uint64_t>(GetSerializeSize(static_cast<CTransaction>(wtx), SER_NETWORK, PROTOCOL_VERSION))));
+            entry.pushKV("size", static_cast<uint64_t>(GetSerializeSize(static_cast<CTransaction>(wtx), SER_NETWORK, PROTOCOL_VERSION)));
             ret.push_back(entry);
         }
     }
@@ -1427,27 +1444,27 @@ void ListTransactions(const CWalletTx& wtx, const string& strAccount, int nMinDe
             {
                 UniValue entry(UniValue::VOBJ);
                 if(involvesWatchonly || (::IsMine(*pwalletMain, r.destination) & ISMINE_WATCH_ONLY))
-                    entry.push_back(Pair("involvesWatchonly", true));
-                entry.push_back(Pair("account", account));
+                    entry.pushKV("involvesWatchonly", true);
+                entry.pushKV("account", account);
                 MaybePushAddress(entry, r.destination);
                 if (wtx.IsCoinBase())
                 {
                     if (wtx.GetDepthInMainChain() < 1)
-                        entry.push_back(Pair("category", "orphan"));
+                        entry.pushKV("category", "orphan");
                     else if (wtx.GetBlocksToMaturity() > 0)
-                        entry.push_back(Pair("category", "immature"));
+                        entry.pushKV("category", "immature");
                     else
-                        entry.push_back(Pair("category", "generate"));
+                        entry.pushKV("category", "generate");
                 }
                 else
                 {
-                    entry.push_back(Pair("category", "receive"));
+                    entry.pushKV("category", "receive");
                 }
-                entry.push_back(Pair("amount", ValueFromAmount(r.amount)));
-                entry.push_back(Pair("vout", r.vout));
+                entry.pushKV("amount", ValueFromAmount(r.amount));
+                entry.pushKV("vout", r.vout);
                 if (fLong)
                     WalletTxToJSON(wtx, entry);
-                entry.push_back(Pair("size", static_cast<uint64_t>(GetSerializeSize(static_cast<CTransaction>(wtx), SER_NETWORK, PROTOCOL_VERSION))));
+                entry.pushKV("size", static_cast<uint64_t>(GetSerializeSize(static_cast<CTransaction>(wtx), SER_NETWORK, PROTOCOL_VERSION)));
                 ret.push_back(entry);
             }
         }
@@ -1461,12 +1478,12 @@ void AcentryToJSON(const CAccountingEntry& acentry, const string& strAccount, Un
     if (fAllAccounts || acentry.strAccount == strAccount)
     {
         UniValue entry(UniValue::VOBJ);
-        entry.push_back(Pair("account", acentry.strAccount));
-        entry.push_back(Pair("category", "move"));
-        entry.push_back(Pair("time", acentry.nTime));
-        entry.push_back(Pair("amount", ValueFromAmount(acentry.nCreditDebit)));
-        entry.push_back(Pair("otheraccount", acentry.strOtherAccount));
-        entry.push_back(Pair("comment", acentry.strComment));
+        entry.pushKV("account", acentry.strAccount);
+        entry.pushKV("category", "move");
+        entry.pushKV("time", acentry.nTime);
+        entry.pushKV("amount", ValueFromAmount(acentry.nCreditDebit));
+        entry.pushKV("otheraccount", acentry.strOtherAccount);
+        entry.pushKV("comment", acentry.strComment);
         ret.push_back(entry);
     }
 }
@@ -1553,20 +1570,24 @@ UniValue listtransactions(const UniValue& params, bool fHelp)
     UniValue ret(UniValue::VARR);
 
     std::list<CAccountingEntry> acentries;
-    CWallet::TxItems txOrdered = pwalletMain->OrderedTxItems(acentries, strAccount);
-
-    // iterate backwards until we have nCount items to return:
-    for (CWallet::TxItems::reverse_iterator it = txOrdered.rbegin(); it != txOrdered.rend(); ++it)
     {
-        CWalletTx *const pwtx = (*it).second.first;
-        if (pwtx != 0)
-            ListTransactions(*pwtx, strAccount, 0, true, ret, filter);
-        CAccountingEntry *const pacentry = (*it).second.second;
-        if (pacentry != 0)
-            AcentryToJSON(*pacentry, strAccount, ret);
+        LOCK2(cs_main, pwalletMain->cs_wallet);
+        CWallet::TxItems txOrdered = pwalletMain->OrderedTxItems(acentries, strAccount);
 
-        if ((int)ret.size() >= (nCount+nFrom)) break;
+        // iterate backwards until we have nCount items to return:
+        for (CWallet::TxItems::reverse_iterator it = txOrdered.rbegin(); it != txOrdered.rend(); ++it)
+        {
+            CWalletTx *const pwtx = (*it).second.first;
+            if (pwtx != 0)
+                ListTransactions(*pwtx, strAccount, 0, true, ret, filter);
+            CAccountingEntry *const pacentry = (*it).second.second;
+            if (pacentry != 0)
+                AcentryToJSON(*pacentry, strAccount, ret);
+
+            if ((int)ret.size() >= (nCount+nFrom)) break;
+        }
     }
+
     // ret is newest to oldest
 
     if (nFrom > (int)ret.size())
@@ -1671,7 +1692,7 @@ UniValue listaccounts(const UniValue& params, bool fHelp)
 
     UniValue ret(UniValue::VOBJ);
     for (const auto &[hash, amount] : mapAccountBalances)
-        ret.push_back(Pair(hash, ValueFromAmount(amount)));
+        ret.pushKV(hash, ValueFromAmount(amount));
     return ret;
 }
 
@@ -1760,8 +1781,8 @@ UniValue listsinceblock(const UniValue& params, bool fHelp)
     uint256 lastblock = pblockLast ? pblockLast->GetBlockHash() : uint256();
 
     UniValue ret(UniValue::VOBJ);
-    ret.push_back(Pair("transactions", transactions));
-    ret.push_back(Pair("lastblock", lastblock.GetHex()));
+    ret.pushKV("transactions", transactions);
+    ret.pushKV("lastblock", lastblock.GetHex());
 
     return ret;
 }
@@ -1838,18 +1859,18 @@ UniValue gettransaction(const UniValue& params, bool fHelp)
     CAmount nNet = nCredit - nDebit;
     CAmount nFee = (wtx.IsFromMe(filter) ? wtx.GetValueOut() - nDebit : 0);
 
-    entry.push_back(Pair("amount", ValueFromAmount(nNet - nFee)));
+    entry.pushKV("amount", ValueFromAmount(nNet - nFee));
     if (wtx.IsFromMe(filter))
-        entry.push_back(Pair("fee", ValueFromAmount(nFee)));
+        entry.pushKV("fee", ValueFromAmount(nFee));
 
     WalletTxToJSON(wtx, entry);
 
     UniValue details(UniValue::VARR);
     ListTransactions(wtx, "*", 0, false, details, filter);
-    entry.push_back(Pair("details", details));
+    entry.pushKV("details", details);
 
     string strHex = EncodeHexTx(static_cast<CTransaction>(wtx));
-    entry.push_back(Pair("hex", strHex));
+    entry.pushKV("hex", strHex);
 
     return entry;
 }
@@ -2284,8 +2305,8 @@ UniValue listlockunspent(const UniValue& params, bool fHelp)
     {
         UniValue o(UniValue::VOBJ);
 
-        o.push_back(Pair("txid", outpt.hash.GetHex()));
-        o.push_back(Pair("vout", (int)outpt.n));
+        o.pushKV("txid", outpt.hash.GetHex());
+        o.pushKV("vout", (int)outpt.n);
         ret.push_back(o);
     }
 
@@ -2349,19 +2370,19 @@ UniValue getwalletinfo(const UniValue& params, bool fHelp)
     LOCK2(cs_main, pwalletMain->cs_wallet);
 
     UniValue obj(UniValue::VOBJ);
-    obj.push_back(Pair("walletversion", pwalletMain->GetVersion()));
-    obj.push_back(Pair("balance",       ValueFromAmount(pwalletMain->GetBalance())));
-    obj.push_back(Pair("unconfirmed_balance", ValueFromAmount(pwalletMain->GetUnconfirmedBalance())));
-    obj.push_back(Pair("immature_balance",    ValueFromAmount(pwalletMain->GetImmatureBalance())));
-    obj.push_back(Pair("txcount",       (int)pwalletMain->mapWallet.size()));
-    obj.push_back(Pair("keypoololdest", pwalletMain->GetOldestKeyPoolTime()));
-    obj.push_back(Pair("keypoolsize",   (int)pwalletMain->GetKeyPoolSize()));
+    obj.pushKV("walletversion", pwalletMain->GetVersion());
+    obj.pushKV("balance",       ValueFromAmount(pwalletMain->GetBalance()));
+    obj.pushKV("unconfirmed_balance", ValueFromAmount(pwalletMain->GetUnconfirmedBalance()));
+    obj.pushKV("immature_balance",    ValueFromAmount(pwalletMain->GetImmatureBalance()));
+    obj.pushKV("txcount",       (int)pwalletMain->mapWallet.size());
+    obj.pushKV("keypoololdest", pwalletMain->GetOldestKeyPoolTime());
+    obj.pushKV("keypoolsize",   (int)pwalletMain->GetKeyPoolSize());
     if (pwalletMain->IsCrypted())
-        obj.push_back(Pair("unlocked_until", nWalletUnlockTime));
-    obj.push_back(Pair("paytxfee",      ValueFromAmount(payTxFee.GetFeePerK())));
+        obj.pushKV("unlocked_until", nWalletUnlockTime);
+    obj.pushKV("paytxfee",      ValueFromAmount(payTxFee.GetFeePerK()));
     uint256 seedFp = pwalletMain->GetHDChain().seedFp;
     if (!seedFp.IsNull())
-         obj.push_back(Pair("seedfp", seedFp.GetHex()));
+         obj.pushKV("seedfp", seedFp.GetHex());
     return obj;
 }
 
@@ -2442,12 +2463,13 @@ UniValue listunspent(const UniValue& params, bool fHelp)
     if (params.size() > 1)
         nMaxDepth = params[1].get_int();
 
+    KeyIO keyIO(Params());
     std::set<CTxDestination> destinations;
     if (params.size() > 2) {
         UniValue inputs = params[2].get_array();
         for (size_t idx = 0; idx < inputs.size(); idx++) {
             const UniValue& input = inputs[idx];
-            CTxDestination dest = DecodeDestination(input.get_str());
+            CTxDestination dest = keyIO.DecodeDestination(input.get_str());
             if (!IsValidDestination(dest)) {
                 throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, std::string("Invalid Pastel address: ") + input.get_str());
             }
@@ -2475,28 +2497,28 @@ UniValue listunspent(const UniValue& params, bool fHelp)
             continue;
 
         UniValue entry(UniValue::VOBJ);
-        entry.push_back(Pair("txid", out.tx->GetHash().GetHex()));
-        entry.push_back(Pair("vout", out.i));
-        entry.push_back(Pair("generated", out.tx->IsCoinBase()));
+        entry.pushKV("txid", out.tx->GetHash().GetHex());
+        entry.pushKV("vout", out.i);
+        entry.pushKV("generated", out.tx->IsCoinBase());
 
         if (fValidAddress) {
-            entry.push_back(Pair("address", EncodeDestination(address)));
+            entry.pushKV("address", keyIO.EncodeDestination(address));
 
             if (pwalletMain->mapAddressBook.count(address))
-                entry.push_back(Pair("account", pwalletMain->mapAddressBook[address].name));
+                entry.pushKV("account", pwalletMain->mapAddressBook[address].name);
 
             if (scriptPubKey.IsPayToScriptHash()) {
-                const CScriptID& hash = boost::get<CScriptID>(address);
+                const CScriptID& hash = std::get<CScriptID>(address);
                 CScript redeemScript;
                 if (pwalletMain->GetCScript(hash, redeemScript))
-                    entry.push_back(Pair("redeemScript", HexStr(redeemScript.begin(), redeemScript.end())));
+                    entry.pushKV("redeemScript", HexStr(redeemScript.begin(), redeemScript.end()));
             }
         }
 
-        entry.push_back(Pair("scriptPubKey", HexStr(scriptPubKey.begin(), scriptPubKey.end())));
-        entry.push_back(Pair("amount", ValueFromAmount(out.tx->vout[out.i].nValue)));
-        entry.push_back(Pair("confirmations", out.nDepth));
-        entry.push_back(Pair("spendable", out.fSpendable));
+        entry.pushKV("scriptPubKey", HexStr(scriptPubKey.begin(), scriptPubKey.end()));
+        entry.pushKV("amount", ValueFromAmount(out.tx->vout[out.i].nValue));
+        entry.pushKV("confirmations", out.nDepth);
+        entry.pushKV("spendable", out.fSpendable);
         results.push_back(entry);
     }
 
@@ -2577,6 +2599,7 @@ UniValue z_listunspent(const UniValue& params, bool fHelp)
 
     LOCK2(cs_main, pwalletMain->cs_wallet);
 
+    KeyIO keyIO(Params());
     // User has supplied zaddrs to filter on
     if (params.size() > 3) {
         UniValue addresses = params[3].get_array();
@@ -2592,11 +2615,11 @@ UniValue z_listunspent(const UniValue& params, bool fHelp)
                 throw JSONRPCError(RPC_INVALID_PARAMETER, "Invalid parameter, expected string");
             }
             string address = o.get_str();
-            auto zaddr = DecodePaymentAddress(address);
+            auto zaddr = keyIO.DecodePaymentAddress(address);
             if (!IsValidPaymentAddress(zaddr)) {
                 throw JSONRPCError(RPC_INVALID_PARAMETER, string("Invalid parameter, address is not a valid zaddr: ") + address);
             }
-            auto hasSpendingKey = boost::apply_visitor(HaveSpendingKeyForPaymentAddress(pwalletMain), zaddr);
+            auto hasSpendingKey = std::visit(HaveSpendingKeyForPaymentAddress(pwalletMain), zaddr);
             if (!fIncludeWatchonly && !hasSpendingKey) {
                 throw JSONRPCError(RPC_INVALID_PARAMETER, string("Invalid parameter, spending key for address does not belong to wallet: ") + address);
             }
@@ -2612,11 +2635,11 @@ UniValue z_listunspent(const UniValue& params, bool fHelp)
         // User did not provide zaddrs, so use default i.e. all addresses
         std::set<libzcash::SproutPaymentAddress> sproutzaddrs = {};
         pwalletMain->GetSproutPaymentAddresses(sproutzaddrs);
-        
+
         // Sapling support
         std::set<libzcash::SaplingPaymentAddress> saplingzaddrs = {};
         pwalletMain->GetSaplingPaymentAddresses(saplingzaddrs);
-        
+
         zaddrs.insert(sproutzaddrs.begin(), sproutzaddrs.end());
         zaddrs.insert(saplingzaddrs.begin(), saplingzaddrs.end());
     }
@@ -2628,41 +2651,37 @@ UniValue z_listunspent(const UniValue& params, bool fHelp)
         std::vector<SaplingNoteEntry> saplingEntries;
         pwalletMain->GetFilteredNotes(sproutEntries, saplingEntries, zaddrs, nMinDepth, nMaxDepth, true, !fIncludeWatchonly, false);
         std::set<std::pair<PaymentAddress, uint256>> nullifierSet = pwalletMain->GetNullifiersForAddresses(zaddrs);
-        
+
         for (auto & entry : sproutEntries) {
             UniValue obj(UniValue::VOBJ);
-            obj.push_back(Pair("txid", entry.jsop.hash.ToString()));
-            obj.push_back(Pair("jsindex", (int)entry.jsop.js ));
-            obj.push_back(Pair("jsoutindex", (int)entry.jsop.n));
-            obj.push_back(Pair("confirmations", entry.confirmations));
-            bool hasSproutSpendingKey = pwalletMain->HaveSproutSpendingKey(boost::get<libzcash::SproutPaymentAddress>(entry.address));
-            obj.push_back(Pair("spendable", hasSproutSpendingKey));
-            obj.push_back(Pair("address", EncodePaymentAddress(entry.address)));
-            obj.push_back(Pair("amount", ValueFromAmount(CAmount(entry.plaintext.value()))));
+            obj.pushKV("txid", entry.jsop.hash.ToString());
+            obj.pushKV("jsindex", (int)entry.jsop.js );
+            obj.pushKV("jsoutindex", (int)entry.jsop.n);
+            obj.pushKV("confirmations", entry.confirmations);
+            bool hasSproutSpendingKey = HaveSpendingKeyForPaymentAddress(pwalletMain)(entry.address);
+            obj.pushKV("spendable", hasSproutSpendingKey);
+            obj.pushKV("address", keyIO.EncodePaymentAddress(entry.address));
+            obj.pushKV("amount", ValueFromAmount(CAmount(entry.plaintext.value())));
             std::string data(entry.plaintext.memo().begin(), entry.plaintext.memo().end());
-            obj.push_back(Pair("memo", HexStr(data)));
+            obj.pushKV("memo", HexStr(data));
             if (hasSproutSpendingKey) {
-                obj.push_back(Pair("change", pwalletMain->IsNoteSproutChange(nullifierSet, entry.address, entry.jsop)));
+                obj.pushKV("change", pwalletMain->IsNoteSproutChange(nullifierSet, entry.address, entry.jsop));
             }
             results.push_back(obj);
         }
-        
+
         for (auto & entry : saplingEntries) {
             UniValue obj(UniValue::VOBJ);
-            obj.push_back(Pair("txid", entry.op.hash.ToString()));
-            obj.push_back(Pair("outindex", (int)entry.op.n));
-            obj.push_back(Pair("confirmations", entry.confirmations));
-            libzcash::SaplingIncomingViewingKey ivk;
-            libzcash::SaplingFullViewingKey fvk;
-            pwalletMain->GetSaplingIncomingViewingKey(boost::get<libzcash::SaplingPaymentAddress>(entry.address), ivk);
-            pwalletMain->GetSaplingFullViewingKey(ivk, fvk);
-            bool hasSaplingSpendingKey = pwalletMain->HaveSaplingSpendingKey(fvk);
-            obj.push_back(Pair("spendable", hasSaplingSpendingKey));
-            obj.push_back(Pair("address", EncodePaymentAddress(entry.address)));
-            obj.push_back(Pair("amount", ValueFromAmount(CAmount(entry.note.value())))); // note.value() is equivalent to plaintext.value()
-            obj.push_back(Pair("memo", HexStr(entry.memo)));
+            obj.pushKV("txid", entry.op.hash.ToString());
+            obj.pushKV("outindex", (int)entry.op.n);
+            obj.pushKV("confirmations", entry.confirmations);
+            bool hasSaplingSpendingKey = HaveSpendingKeyForPaymentAddress(pwalletMain)(entry.address);
+            obj.pushKV("spendable", hasSaplingSpendingKey);
+            obj.pushKV("address", keyIO.EncodePaymentAddress(entry.address));
+            obj.pushKV("amount", ValueFromAmount(CAmount(entry.note.value()))); // note.value() is equivalent to plaintext.value()
+            obj.pushKV("memo", HexStr(entry.memo));
             if (hasSaplingSpendingKey) {
-                obj.push_back(Pair("change", pwalletMain->IsNoteSaplingChange(nullifierSet, entry.address, entry.op)));
+                obj.pushKV("change", pwalletMain->IsNoteSaplingChange(nullifierSet, entry.address, entry.op));
             }
             results.push_back(obj);
         }
@@ -2719,9 +2738,9 @@ UniValue fundrawtransaction(const UniValue& params, bool fHelp)
         throw JSONRPCError(RPC_INTERNAL_ERROR, strFailReason);
 
     UniValue result(UniValue::VOBJ);
-    result.push_back(Pair("hex", EncodeHexTx(tx)));
-    result.push_back(Pair("changepos", nChangePos));
-    result.push_back(Pair("fee", ValueFromAmount(nFee)));
+    result.pushKV("hex", EncodeHexTx(tx));
+    result.pushKV("changepos", nChangePos);
+    result.pushKV("fee", ValueFromAmount(nFee));
 
     return result;
 }
@@ -2874,7 +2893,7 @@ UniValue zc_benchmark(const UniValue& params, bool fHelp)
     UniValue results(UniValue::VARR);
     for (auto time : sample_times) {
         UniValue result(UniValue::VOBJ);
-        result.push_back(Pair("runningtime", time));
+        result.pushKV("runningtime", time);
         results.push_back(result);
     }
 
@@ -2906,14 +2925,15 @@ UniValue zc_raw_receive(const UniValue& params, bool fHelp)
 
     LOCK(cs_main);
 
-    auto spendingkey = DecodeSpendingKey(params[0].get_str());
+    KeyIO keyIO(Params());
+    auto spendingkey = keyIO.DecodeSpendingKey(params[0].get_str());
     if (!IsValidSpendingKey(spendingkey)) {
         throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid spending key");
     }
-    if (boost::get<libzcash::SproutSpendingKey>(&spendingkey) == nullptr) {
+    if (std::get_if<libzcash::SproutSpendingKey>(&spendingkey) == nullptr) {
         throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Only works with Sprout spending keys");
     }
-    SproutSpendingKey k = boost::get<libzcash::SproutSpendingKey>(spendingkey);
+    SproutSpendingKey k = std::get<libzcash::SproutSpendingKey>(spendingkey);
 
     uint256 epk;
     unsigned char nonce;
@@ -2960,9 +2980,9 @@ UniValue zc_raw_receive(const UniValue& params, bool fHelp)
     ss << npt;
 
     UniValue result(UniValue::VOBJ);
-    result.push_back(Pair("amount", ValueFromAmount(decrypted_note.value())));
-    result.push_back(Pair("note", HexStr(ss.begin(), ss.end())));
-    result.push_back(Pair("exists", (bool) witnesses[0]));
+    result.pushKV("amount", ValueFromAmount(decrypted_note.value()));
+    result.pushKV("note", HexStr(ss.begin(), ss.end()));
+    result.pushKV("exists", (bool) witnesses[0]);
     return result;
 }
 
@@ -3022,15 +3042,16 @@ UniValue zc_raw_joinsplit(const UniValue& params, bool fHelp)
     std::vector<SproutSpendingKey> keys;
     std::vector<uint256> commitments;
 
+    KeyIO keyIO(Params());
     for (const string& name_ : inputs.getKeys()) {
-        auto spendingkey = DecodeSpendingKey(inputs[name_].get_str());
+        auto spendingkey = keyIO.DecodeSpendingKey(inputs[name_].get_str());
         if (!IsValidSpendingKey(spendingkey)) {
             throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid spending key");
         }
-        if (boost::get<libzcash::SproutSpendingKey>(&spendingkey) == nullptr) {
+        if (std::get_if<libzcash::SproutSpendingKey>(&spendingkey) == nullptr) {
             throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Only works with Sprout spending keys");
         }
-        SproutSpendingKey k = boost::get<libzcash::SproutSpendingKey>(spendingkey);
+        SproutSpendingKey k = std::get<libzcash::SproutSpendingKey>(spendingkey);
 
         keys.push_back(k);
 
@@ -3071,16 +3092,16 @@ UniValue zc_raw_joinsplit(const UniValue& params, bool fHelp)
     }
 
     for (const string& name_ : outputs.getKeys()) {
-        auto addrTo = DecodePaymentAddress(name_);
+        auto addrTo = keyIO.DecodePaymentAddress(name_);
         if (!IsValidPaymentAddress(addrTo)) {
             throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid recipient address.");
         }
-        if (boost::get<libzcash::SproutPaymentAddress>(&addrTo) == nullptr) {
+        if (std::get_if<libzcash::SproutPaymentAddress>(&addrTo) == nullptr) {
             throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Only works with Sprout payment addresses");
         }
         CAmount nAmount = AmountFromValue(outputs[name_]);
 
-        vjsout.push_back(JSOutput(boost::get<libzcash::SproutPaymentAddress>(addrTo), nAmount));
+        vjsout.push_back(JSOutput(std::get<libzcash::SproutPaymentAddress>(addrTo), nAmount));
     }
 
     while (vjsout.size() < ZC_NUM_JS_OUTPUTS) {
@@ -3161,9 +3182,9 @@ UniValue zc_raw_joinsplit(const UniValue& params, bool fHelp)
     }
 
     UniValue result(UniValue::VOBJ);
-    result.push_back(Pair("encryptednote1", encryptedNote1));
-    result.push_back(Pair("encryptednote2", encryptedNote2));
-    result.push_back(Pair("rawtxn", HexStr(ss.begin(), ss.end())));
+    result.pushKV("encryptednote1", encryptedNote1);
+    result.pushKV("encryptednote2", encryptedNote2);
+    result.pushKV("rawtxn", HexStr(ss.begin(), ss.end()));
     return result;
 }
 
@@ -3191,10 +3212,11 @@ UniValue zc_raw_keygen(const UniValue& params, bool fHelp)
     auto addr = k.address();
     auto viewing_key = k.viewing_key();
 
+    KeyIO keyIO(Params());
     UniValue result(UniValue::VOBJ);
-    result.push_back(Pair("zcaddress", EncodePaymentAddress(addr)));
-    result.push_back(Pair("zcsecretkey", EncodeSpendingKey(k)));
-    result.push_back(Pair("zcviewingkey", EncodeViewingKey(viewing_key)));
+    result.pushKV("zcaddress", keyIO.EncodePaymentAddress(addr));
+    result.pushKV("zcsecretkey", keyIO.EncodeSpendingKey(k));
+    result.pushKV("zcviewingkey", keyIO.EncodeViewingKey(viewing_key));
     return result;
 }
 
@@ -3231,10 +3253,11 @@ UniValue z_getnewaddress(const UniValue& params, bool fHelp)
         addrType = params[0].get_str();
     }
 
+    KeyIO keyIO(Params());
     if (addrType == ADDR_TYPE_SPROUT) {
-        return EncodePaymentAddress(pwalletMain->GenerateNewSproutZKey());
+        return keyIO.EncodePaymentAddress(pwalletMain->GenerateNewSproutZKey());
     } else if (addrType == ADDR_TYPE_SAPLING) {
-        return EncodePaymentAddress(pwalletMain->GenerateNewSaplingZKey());
+        return keyIO.EncodePaymentAddress(pwalletMain->GenerateNewSaplingZKey());
     } else {
         throw JSONRPCError(RPC_INVALID_PARAMETER, "Invalid address type");
     }
@@ -3269,28 +3292,23 @@ UniValue z_listaddresses(const UniValue& params, bool fHelp)
         fIncludeWatchonly = params[0].get_bool();
     }
 
+    KeyIO keyIO(Params());
     UniValue ret(UniValue::VARR);
     {
         std::set<libzcash::SproutPaymentAddress> addresses;
         pwalletMain->GetSproutPaymentAddresses(addresses);
         for (auto addr : addresses) {
-            if (fIncludeWatchonly || pwalletMain->HaveSproutSpendingKey(addr)) {
-                ret.push_back(EncodePaymentAddress(addr));
+            if (fIncludeWatchonly || HaveSpendingKeyForPaymentAddress(pwalletMain)(addr)) {
+                ret.push_back(keyIO.EncodePaymentAddress(addr));
             }
         }
     }
     {
         std::set<libzcash::SaplingPaymentAddress> addresses;
         pwalletMain->GetSaplingPaymentAddresses(addresses);
-        libzcash::SaplingIncomingViewingKey ivk;
-        libzcash::SaplingFullViewingKey fvk;
         for (auto addr : addresses) {
-            if (fIncludeWatchonly || (
-                pwalletMain->GetSaplingIncomingViewingKey(addr, ivk) &&
-                pwalletMain->GetSaplingFullViewingKey(ivk, fvk) &&
-                pwalletMain->HaveSaplingSpendingKey(fvk)
-            )) {
-                ret.push_back(EncodePaymentAddress(addr));
+            if (fIncludeWatchonly || HaveSpendingKeyForPaymentAddress(pwalletMain)(addr)) {
+                ret.push_back(keyIO.EncodePaymentAddress(addr));
             }
         }
     }
@@ -3302,8 +3320,9 @@ CAmount getBalanceTaddr(std::string transparentAddress, int minDepth=1, bool ign
     vector<COutput> vecOutputs;
     CAmount balance = 0;
 
+    KeyIO keyIO(Params());
     if (transparentAddress.length() > 0) {
-        CTxDestination taddr = DecodeDestination(transparentAddress);
+        CTxDestination taddr = keyIO.DecodeDestination(transparentAddress);
         if (!IsValidDestination(taddr)) {
             throw std::runtime_error("invalid transparent address");
         }
@@ -3356,6 +3375,26 @@ CAmount getBalanceZaddr(std::string address, int minDepth = 1, bool ignoreUnspen
     return balance;
 }
 
+// block info structure
+struct txblock
+{
+    int height = 0;
+    int index = -1;
+    int64_t time = 0;
+
+    txblock(const uint256 &hash)
+    {
+        if (pwalletMain->mapWallet.count(hash))
+        {
+            const auto& wtx = pwalletMain->mapWallet[hash];
+            if (!wtx.hashBlock.IsNull())
+                height = mapBlockIndex[wtx.hashBlock]->nHeight;
+            index = wtx.nIndex;
+            time = wtx.GetTxTime();
+        }
+    }
+};
+
 
 UniValue z_listreceivedbyaddress(const UniValue& params, bool fHelp)
 {
@@ -3364,48 +3403,52 @@ UniValue z_listreceivedbyaddress(const UniValue& params, bool fHelp)
 
     if (fHelp || params.size()==0 || params.size() >2)
         throw runtime_error(
-            "z_listreceivedbyaddress \"address\" ( minconf )\n"
-            "\nReturn a list of amounts received by a zaddr belonging to the node's wallet.\n"
-            "\nArguments:\n"
-            "1. \"address\"      (string) The private address.\n"
-            "2. minconf          (numeric, optional, default=1) Only include transactions confirmed at least this many times.\n"
-            "\nResult:\n"
-            "{\n"
-            "  \"txid\": \"txid\",           (string) the transaction id\n"
-            "  \"amount\": xxxxx,         (numeric) the amount of value in the note\n"
-            "  \"memo\": xxxxx,           (string) hexadecimal string representation of memo field\n"
-            "  \"jsindex\" (sprout) : n,     (numeric) the joinsplit index\n"
-            "  \"jsoutindex\" (sprout) : n,     (numeric) the output index of the joinsplit\n"
-            "  \"outindex\" (sapling) : n,     (numeric) the output index\n"
-            "  \"change\": true|false,    (boolean) true if the address that received the note is also one of the sending addresses\n"
-            "}\n"
-            "\nExamples:\n"
-            + HelpExampleCli("z_listreceivedbyaddress", "\"Pzb8Ya6owSbT1EWKistVWFAEVXerZLi5nfuar8DqRZ2tkwHgvTP6GT8H6EaFf6wCnY7zwtbtnc7EcTGTfg9GdmNnV2xuYS3\"")
-            + HelpExampleRpc("z_listreceivedbyaddress", "\"Pzb8Ya6owSbT1EWKistVWFAEVXerZLi5nfuar8DqRZ2tkwHgvTP6GT8H6EaFf6wCnY7zwtbtnc7EcTGTfg9GdmNnV2xuYS3\"")
-        );
+R"(z_listreceivedbyaddress "address" ( minconf )
+Return a list of amounts received by a zaddr belonging to the node's wallet.
+
+Arguments:
+1. "address"      (string) The private address.
+2. minconf        (numeric, optional, default=1) Only include transactions confirmed at least this many times.
+
+Result:
+{
+  "txid": txid",             (string) the transaction id.
+  "amount": xxxxx,           (numeric) the amount of value in the note.
+  "amountPsl" : xxxx         (numeric) the amount in )" + CURRENCY_UNIT + R"(.
+  "memo": xxxxx,             (string) hexadecimal string representation of memo field.
+  "confirmations" : n,       (numeric) the number of confirmations.
+  "blockheight": n,          (numeric) The block height containing the transaction.
+  "blockindex": n,           (numeric) The block index containing the transaction.
+  "blocktime": xxx,          (numeric) The transaction time in seconds since epoch (midnight Jan 1 1970 GMT).
+  "jsindex" (sprout) : n,    (numeric) the joinsplit index.
+  "jsoutindex" (sprout) : n, (numeric) the output index of the joinsplit.
+  "outindex" (sapling) : n,  (numeric) the output index.
+  "change": true|false,      (boolean) true if the address that received the note is also one of the sending addresses.
+}
+
+Examples:
+)" + HelpExampleCli("z_listreceivedbyaddress", "\"Pzb8Ya6owSbT1EWKistVWFAEVXerZLi5nfuar8DqRZ2tkwHgvTP6GT8H6EaFf6wCnY7zwtbtnc7EcTGTfg9GdmNnV2xuYS3\"")
+   + HelpExampleRpc("z_listreceivedbyaddress", "\"Pzb8Ya6owSbT1EWKistVWFAEVXerZLi5nfuar8DqRZ2tkwHgvTP6GT8H6EaFf6wCnY7zwtbtnc7EcTGTfg9GdmNnV2xuYS3\""));
 
     LOCK2(cs_main, pwalletMain->cs_wallet);
 
     int nMinDepth = 1;
-    if (params.size() > 1) {
+    if (params.size() > 1)
         nMinDepth = params[1].get_int();
-    }
-    if (nMinDepth < 0) {
+    if (nMinDepth < 0)
         throw JSONRPCError(RPC_INVALID_PARAMETER, "Minimum number of confirmations cannot be less than 0");
-    }
 
     // Check that the from address is valid.
     auto fromaddress = params[0].get_str();
 
-    auto zaddr = DecodePaymentAddress(fromaddress);
-    if (!IsValidPaymentAddress(zaddr)) {
+    KeyIO keyIO(Params());
+    auto zaddr = keyIO.DecodePaymentAddress(fromaddress);
+    if (!IsValidPaymentAddress(zaddr))
         throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid zaddr.");
-    }
 
     // Visitor to support Sprout and Sapling addrs
-    if (!boost::apply_visitor(PaymentAddressBelongsToWallet(pwalletMain), zaddr)) {
+    if (!std::visit(PaymentAddressBelongsToWallet(pwalletMain), zaddr))
         throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "From address does not belong to this node, zaddr spending key or viewing key not found.");
-    }
 
     UniValue result(UniValue::VARR);
     std::vector<CSproutNotePlaintextEntry> sproutEntries;
@@ -3413,34 +3456,51 @@ UniValue z_listreceivedbyaddress(const UniValue& params, bool fHelp)
     pwalletMain->GetFilteredNotes(sproutEntries, saplingEntries, fromaddress, nMinDepth, false, false);
 
     std::set<std::pair<PaymentAddress, uint256>> nullifierSet;
-    auto hasSpendingKey = boost::apply_visitor(HaveSpendingKeyForPaymentAddress(pwalletMain), zaddr);
+    auto hasSpendingKey = std::visit(HaveSpendingKeyForPaymentAddress(pwalletMain), zaddr);
     if (hasSpendingKey) {
         nullifierSet = pwalletMain->GetNullifiersForAddresses({zaddr});
     }
 
-    if (boost::get<libzcash::SproutPaymentAddress>(&zaddr) != nullptr) {
-        for (CSproutNotePlaintextEntry & entry : sproutEntries) {
+    if (std::get_if<libzcash::SproutPaymentAddress>(&zaddr) != nullptr)
+    {
+        for (auto & entry : sproutEntries)
+        {
             UniValue obj(UniValue::VOBJ);
-            obj.push_back(Pair("txid", entry.jsop.hash.ToString()));
-            obj.push_back(Pair("amount", ValueFromAmount(CAmount(entry.plaintext.value()))));
+            obj.pushKV("txid", entry.jsop.hash.ToString());
+            obj.pushKV("amount", ValueFromAmount(CAmount(entry.plaintext.value())));
+            obj.pushKV("amountPsl", CAmount(entry.plaintext.value()));
             std::string data(entry.plaintext.memo().begin(), entry.plaintext.memo().end());
-            obj.push_back(Pair("memo", HexStr(data)));
-            obj.push_back(Pair("jsindex", entry.jsop.js));
-            obj.push_back(Pair("jsoutindex", entry.jsop.n));
-            if (hasSpendingKey) {
-                obj.push_back(Pair("change", pwalletMain->IsNoteSproutChange(nullifierSet, entry.address, entry.jsop)));
-            }
+            obj.pushKV("memo", HexStr(data));
+            obj.pushKV("jsindex", entry.jsop.js);
+            obj.pushKV("jsoutindex", entry.jsop.n);
+            obj.pushKV("confirmations", entry.confirmations);
+
+            txblock BlockData(entry.jsop.hash);
+            obj.pushKV("blockheight", BlockData.height);
+            obj.pushKV("blockindex", BlockData.index);
+            obj.pushKV("blocktime", BlockData.time);
+
+            if (hasSpendingKey)
+                obj.pushKV("change", pwalletMain->IsNoteSproutChange(nullifierSet, entry.address, entry.jsop));
             result.push_back(obj);
         }
-    } else if (boost::get<libzcash::SaplingPaymentAddress>(&zaddr) != nullptr) {
+    } else if (std::get_if<libzcash::SaplingPaymentAddress>(&zaddr) != nullptr) {
         for (SaplingNoteEntry & entry : saplingEntries) {
             UniValue obj(UniValue::VOBJ);
-            obj.push_back(Pair("txid", entry.op.hash.ToString()));
-            obj.push_back(Pair("amount", ValueFromAmount(CAmount(entry.note.value()))));
-            obj.push_back(Pair("memo", HexStr(entry.memo)));
-            obj.push_back(Pair("outindex", (int)entry.op.n));
+            obj.pushKV("txid", entry.op.hash.ToString());
+            obj.pushKV("amount", ValueFromAmount(CAmount(entry.note.value())));
+            obj.pushKV("amountPsl", CAmount(entry.note.value()));
+            obj.pushKV("memo", HexStr(entry.memo));
+            obj.pushKV("outindex", (int)entry.op.n);
+            obj.pushKV("confirmations", entry.confirmations);
+
+            txblock BlockData(entry.op.hash);
+            obj.pushKV("blockheight", BlockData.height);
+            obj.pushKV("blockindex", BlockData.index);
+            obj.pushKV("blocktime", BlockData.time);
+
             if (hasSpendingKey) {
-              obj.push_back(Pair("change", pwalletMain->IsNoteSaplingChange(nullifierSet, entry.address, entry.op)));
+              obj.pushKV("change", pwalletMain->IsNoteSaplingChange(nullifierSet, entry.address, entry.op));
             }
             result.push_back(obj);
         }
@@ -3483,17 +3543,18 @@ UniValue z_getbalance(const UniValue& params, bool fHelp)
         throw JSONRPCError(RPC_INVALID_PARAMETER, "Minimum number of confirmations cannot be less than 0");
     }
 
+    KeyIO keyIO(Params());
     // Check that the from address is valid.
     auto fromaddress = params[0].get_str();
     bool fromTaddr = false;
-    CTxDestination taddr = DecodeDestination(fromaddress);
+    CTxDestination taddr = keyIO.DecodeDestination(fromaddress);
     fromTaddr = IsValidDestination(taddr);
     if (!fromTaddr) {
-        auto res = DecodePaymentAddress(fromaddress);
+        auto res = keyIO.DecodePaymentAddress(fromaddress);
         if (!IsValidPaymentAddress(res)) {
             throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid from address, should be a taddr or zaddr.");
         }
-        if (!boost::apply_visitor(PaymentAddressBelongsToWallet(pwalletMain), res)) {
+        if (!std::visit(PaymentAddressBelongsToWallet(pwalletMain), res)) {
              throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "From address does not belong to this node, spending key or viewing key not found.");
         }
     }
@@ -3562,10 +3623,245 @@ UniValue z_gettotalbalance(const UniValue& params, bool fHelp)
     CAmount nPrivateBalance = getBalanceZaddr("", nMinDepth, !fIncludeWatchonly);
     CAmount nTotalBalance = nBalance + nPrivateBalance;
     UniValue result(UniValue::VOBJ);
-    result.push_back(Pair("transparent", FormatMoney(nBalance)));
-    result.push_back(Pair("private", FormatMoney(nPrivateBalance)));
-    result.push_back(Pair("total", FormatMoney(nTotalBalance)));
+    result.pushKV("transparent", FormatMoney(nBalance));
+    result.pushKV("private", FormatMoney(nPrivateBalance));
+    result.pushKV("total", FormatMoney(nTotalBalance));
     return result;
+}
+
+UniValue z_viewtransaction(const UniValue& params, bool fHelp)
+{
+    if (!EnsureWalletIsAvailable(fHelp))
+        return NullUniValue;
+
+    if (fHelp || params.size() != 1)
+        throw runtime_error(
+R"(z_viewtransaction "txid"
+Get detailed shielded information about in-wallet transaction <txid>
+
+Arguments:
+1. "txid"    (string, required) The transaction id
+
+Result:
+{
+  "txid" : "transactionid",   (string) The transaction id
+  "spends" : [
+    {
+      "type" : "sprout|sapling",      (string) The type of address
+      "js" : n,                       (numeric, sprout) the index of the JSDescription within vJoinSplit
+      "jsSpend" : n,                  (numeric, sprout) the index of the spend within the JSDescription
+      "spend" : n,                    (numeric, sapling) the index of the spend within vShieldedSpend
+      "txidPrev" : "transactionid",   (string) The id for the transaction this note was created in
+      "jsPrev" : n,                   (numeric, sprout) the index of the JSDescription within vJoinSplit
+      "jsOutputPrev" : n,             (numeric, sprout) the index of the output within the JSDescription
+      "outputPrev" : n,               (numeric, sapling) the index of the output within the vShieldedOutput
+      "address" : "zcashaddress",     (string) The Zcash address involved in the transaction
+      "value" : x.xxx                 (numeric) The amount in )" + CURRENCY_UNIT + R"(
+      "valuePsl" : xxxx               (numeric) The amount in patoshis
+    }
+    ,...
+  ],
+  "outputs" : [
+    {
+      "type" : "sprout|sapling",      (string) The type of address
+      "js" : n,                       (numeric, sprout) the index of the JSDescription within vJoinSplit
+      "jsOutput" : n,                 (numeric, sprout) the index of the output within the JSDescription
+      "output" : n,                   (numeric, sapling) the index of the output within the vShieldedOutput
+      "address" : "zcashaddress",     (string) The Zcash address involved in the transaction
+      "outgoing" : true|false         (boolean, sapling) True if the output is not for an address in the wallet
+      "value" : x.xxx                 (numeric) The amount in )" + CURRENCY_UNIT + R"(
+      "valuePsl" : xxxx               (numeric) The amount in patoshis
+      "memo" : "hexmemo",             (string) Hexademical string representation of the memo field
+      "memoStr" : "memo",             (string) Only returned if memo contains valid UTF-8 text.
+    }
+    ,...
+  ],
+}
+ 
+Examples:
+)" + HelpExampleCli("z_viewtransaction", "\"1075db55d416d3ca199f55b6084e2115b9345e16c5cf302fc80e9d5fbf5d48d\"")
+   + HelpExampleRpc("z_viewtransaction", "\"1075db55d416d3ca199f55b6084e2115b9345e16c5cf302fc80e9d5fbf5d48d\""));
+
+    LOCK2(cs_main, pwalletMain->cs_wallet);
+
+    uint256 hash;
+    hash.SetHex(params[0].get_str());
+
+    UniValue entry(UniValue::VOBJ);
+    if (!pwalletMain->mapWallet.count(hash))
+        throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid or non-wallet transaction id");
+    const CWalletTx& wtx = pwalletMain->mapWallet[hash];
+
+    entry.pushKV("txid", hash.GetHex());
+
+    UniValue spends(UniValue::VARR);
+    UniValue outputs(UniValue::VARR);
+
+    const auto addMemo = [](UniValue &entry, std::array<unsigned char, ZC_MEMO_SIZE> &memo)
+    {
+        entry.pushKV("memo", HexStr(memo));
+
+        // If the leading byte is 0xF4 or lower, the memo field should be interpreted as a
+        // UTF-8-encoded text string.
+        if (memo[0] <= 0xf4)
+        {
+            // Trim off trailing zeroes
+            const auto end = std::find_if(
+                memo.rbegin(),
+                memo.rend(),
+                [](unsigned char v) { return v != 0; });
+            std::string memoStr(memo.begin(), end.base());
+            if (utf8::is_valid(memoStr)) {
+                entry.pushKV("memoStr", memoStr);
+            }
+        }
+    };
+
+    KeyIO keyIO(Params());
+    // Sprout spends
+    for (size_t i = 0; i < wtx.vjoinsplit.size(); ++i) {
+        for (size_t j = 0; j < wtx.vjoinsplit[i].nullifiers.size(); ++j) {
+            auto nullifier = wtx.vjoinsplit[i].nullifiers[j];
+
+            // Fetch the note that is being spent, if ours
+            auto res = pwalletMain->mapSproutNullifiersToNotes.find(nullifier);
+            if (res == pwalletMain->mapSproutNullifiersToNotes.end()) {
+                continue;
+            }
+            auto jsop = res->second;
+            auto wtxPrev = pwalletMain->mapWallet.at(jsop.hash);
+
+            auto decrypted = wtxPrev.DecryptSproutNote(jsop);
+            auto notePt = decrypted.first;
+            auto pa = decrypted.second;
+
+            UniValue entry(UniValue::VOBJ);
+            entry.pushKV("type", ADDR_TYPE_SPROUT);
+            entry.pushKV("js", (int)i);
+            entry.pushKV("jsSpend", (int)j);
+            entry.pushKV("txidPrev", jsop.hash.GetHex());
+            entry.pushKV("jsPrev", (int)jsop.js);
+            entry.pushKV("jsOutputPrev", (int)jsop.n);
+            entry.pushKV("address", keyIO.EncodePaymentAddress(pa));
+            entry.pushKV("value", ValueFromAmount(notePt.value()));
+            entry.pushKV("valuePsl", notePt.value());
+            spends.push_back(entry);
+        }
+    }
+
+    // Sprout outputs
+    for (auto & pair : wtx.mapSproutNoteData)
+    {
+        JSOutPoint jsop = pair.first;
+
+        auto decrypted = wtx.DecryptSproutNote(jsop);
+        auto notePt = decrypted.first;
+        auto pa = decrypted.second;
+        auto memo = notePt.memo();
+
+        UniValue entry(UniValue::VOBJ);
+        entry.pushKV("type", ADDR_TYPE_SPROUT);
+        entry.pushKV("js", (int)jsop.js);
+        entry.pushKV("jsOutput", (int)jsop.n);
+        entry.pushKV("address", keyIO.EncodePaymentAddress(pa));
+        entry.pushKV("value", ValueFromAmount(notePt.value()));
+        entry.pushKV("valuePsl", notePt.value());
+        addMemo(entry, memo);
+        outputs.push_back(entry);
+    }
+
+    // Collect OutgoingViewingKeys for recovering output information
+    std::set<uint256> ovks;
+    {
+        // Generate the common ovk for recovering t->z outputs.
+        HDSeed seed = pwalletMain->GetHDSeedForRPC();
+        ovks.insert(ovkForShieldingFromTaddr(seed));
+    }
+
+    // Sapling spends
+    for (size_t i = 0; i < wtx.vShieldedSpend.size(); ++i) {
+        auto spend = wtx.vShieldedSpend[i];
+
+        // Fetch the note that is being spent
+        auto res = pwalletMain->mapSaplingNullifiersToNotes.find(spend.nullifier);
+        if (res == pwalletMain->mapSaplingNullifiersToNotes.end()) {
+            continue;
+        }
+        auto op = res->second;
+        auto wtxPrev = pwalletMain->mapWallet.at(op.hash);
+
+        // We don't need to check the leadbyte here: if wtx exists in
+        // the wallet, it must have been successfully decrypted. This
+        // means the plaintext leadbyte was valid at the block height
+        // where the note was received.
+        // https://zips.z.cash/zip-0212#changes-to-the-process-of-receiving-sapling-notes
+        auto decrypted = wtxPrev.DecryptSaplingNoteWithoutLeadByteCheck(op).value();
+        auto notePt = decrypted.first;
+        auto pa = decrypted.second;
+
+        // Store the OutgoingViewingKey for recovering outputs
+        libzcash::SaplingExtendedFullViewingKey extfvk;
+        assert(pwalletMain->GetSaplingFullViewingKey(wtxPrev.mapSaplingNoteData.at(op).ivk, extfvk));
+        ovks.insert(extfvk.fvk.ovk);
+
+        UniValue entry(UniValue::VOBJ);
+        entry.pushKV("type", ADDR_TYPE_SAPLING);
+        entry.pushKV("spend", (int)i);
+        entry.pushKV("txidPrev", op.hash.GetHex());
+        entry.pushKV("outputPrev", (int)op.n);
+        entry.pushKV("address", keyIO.EncodePaymentAddress(pa));
+        entry.pushKV("value", ValueFromAmount(notePt.value()));
+        entry.pushKV("valuePsl", notePt.value());
+        spends.push_back(entry);
+    }
+
+    // Sapling outputs
+    for (uint32_t i = 0; i < wtx.vShieldedOutput.size(); ++i) {
+        auto op = SaplingOutPoint(hash, i);
+
+        SaplingNotePlaintext notePt;
+        SaplingPaymentAddress pa;
+        bool isOutgoing;
+
+        // We don't need to check the leadbyte here: if wtx exists in
+        // the wallet, it must have been successfully decrypted. This
+        // means the plaintext leadbyte was valid at the block height
+        // where the note was received.
+        // https://zips.z.cash/zip-0212#changes-to-the-process-of-receiving-sapling-notes
+        auto decrypted = wtx.DecryptSaplingNoteWithoutLeadByteCheck(op);
+        if (decrypted) {
+            notePt = decrypted->first;
+            pa = decrypted->second;
+            isOutgoing = false;
+        } else {
+            // Try recovering the output
+            auto recovered = wtx.RecoverSaplingNoteWithoutLeadByteCheck(op, ovks);
+            if (recovered) {
+                notePt = recovered->first;
+                pa = recovered->second;
+                isOutgoing = true;
+            } else {
+                // Unreadable
+                continue;
+            }
+        }
+        auto memo = notePt.memo();
+
+        UniValue entry(UniValue::VOBJ);
+        entry.pushKV("type", ADDR_TYPE_SAPLING);
+        entry.pushKV("output", (int)op.n);
+        entry.pushKV("outgoing", isOutgoing);
+        entry.pushKV("address", keyIO.EncodePaymentAddress(pa));
+        entry.pushKV("value", ValueFromAmount(notePt.value()));
+        entry.pushKV("valuePsl", notePt.value());
+        addMemo(entry, memo);
+        outputs.push_back(entry);
+    }
+
+    entry.pushKV("spends", spends);
+    entry.pushKV("outputs", outputs);
+
+    return entry;
 }
 
 UniValue z_getoperationresult(const UniValue& params, bool fHelp)
@@ -3721,22 +4017,23 @@ UniValue z_sendmany(const UniValue& params, bool fHelp)
     auto fromaddress = params[0].get_str();
     bool fromTaddr = false;
     bool fromSapling = false;
-    CTxDestination taddr = DecodeDestination(fromaddress);
+    KeyIO keyIO(Params());
+    CTxDestination taddr = keyIO.DecodeDestination(fromaddress);
     fromTaddr = IsValidDestination(taddr);
     if (!fromTaddr) {
-        auto res = DecodePaymentAddress(fromaddress);
+        auto res = keyIO.DecodePaymentAddress(fromaddress);
         if (!IsValidPaymentAddress(res)) {
             // invalid
             throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid from address, should be a taddr or zaddr.");
         }
 
         // Check that we have the spending key
-        if (!boost::apply_visitor(HaveSpendingKeyForPaymentAddress(pwalletMain), res)) {
+        if (!std::visit(HaveSpendingKeyForPaymentAddress(pwalletMain), res)) {
              throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "From address does not belong to this node, zaddr spending key not found.");
         }
 
         // Remember whether this is a Sprout or Sapling address
-        fromSapling = boost::get<libzcash::SaplingPaymentAddress>(&res) != nullptr;
+        fromSapling = std::get_if<libzcash::SaplingPaymentAddress>(&res) != nullptr;
     }
     // This logic will need to be updated if we add a new shielded pool
     bool fromSprout = !(fromTaddr || fromSapling);
@@ -3773,13 +4070,13 @@ UniValue z_sendmany(const UniValue& params, bool fHelp)
 
         string address = find_value(o, "address").get_str();
         bool isZaddr = false;
-        CTxDestination taddr = DecodeDestination(address);
+        CTxDestination taddr = keyIO.DecodeDestination(address);
         if (!IsValidDestination(taddr)) {
-            auto res = DecodePaymentAddress(address);
+            auto res = keyIO.DecodePaymentAddress(address);
             if (IsValidPaymentAddress(res)) {
                 isZaddr = true;
 
-                bool toSapling = boost::get<libzcash::SaplingPaymentAddress>(&res) != nullptr;
+                bool toSapling = std::get_if<libzcash::SaplingPaymentAddress>(&res) != nullptr;
                 bool toSprout = !toSapling;
                 noSproutAddrs = noSproutAddrs && toSapling;
 
@@ -3871,8 +4168,8 @@ UniValue z_sendmany(const UniValue& params, bool fHelp)
     size_t txsize = 0;
     for (int i = 0; i < zaddrRecipients.size(); i++) {
         auto address = std::get<0>(zaddrRecipients[i]);
-        auto res = DecodePaymentAddress(address);
-        bool toSapling = boost::get<libzcash::SaplingPaymentAddress>(&res) != nullptr;
+        auto res = keyIO.DecodePaymentAddress(address);
+        bool toSapling = std::get_if<libzcash::SaplingPaymentAddress>(&res) != nullptr;
         if (toSapling) {
             mtx.vShieldedOutput.push_back(OutputDescription());
         } else {
@@ -3931,10 +4228,10 @@ UniValue z_sendmany(const UniValue& params, bool fHelp)
 
     // Use input parameters as the optional context info to be returned by z_getoperationstatus and z_getoperationresult.
     UniValue o(UniValue::VOBJ);
-    o.push_back(Pair("fromaddress", params[0]));
-    o.push_back(Pair("amounts", params[1]));
-    o.push_back(Pair("minconf", nMinDepth));
-    o.push_back(Pair("fee", std::stod(FormatMoney(nFee))));
+    o.pushKV("fromaddress", params[0]);
+    o.pushKV("amounts", params[1]);
+    o.pushKV("minconf", nMinDepth);
+    o.pushKV("fee", std::stod(FormatMoney(nFee)));
     UniValue contextInfo = o;
 
     // Builder (used if Sapling addresses are involved)
@@ -4015,9 +4312,10 @@ UniValue z_shieldcoinbase(const UniValue& params, bool fHelp)
     // Validate the from address
     auto fromaddress = params[0].get_str();
     bool isFromWildcard = fromaddress == "*";
+    KeyIO keyIO(Params());
     CTxDestination taddr;
     if (!isFromWildcard) {
-        taddr = DecodeDestination(fromaddress);
+        taddr = keyIO.DecodeDestination(fromaddress);
         if (!IsValidDestination(taddr)) {
             throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid from address, should be a taddr or \"*\".");
         }
@@ -4025,7 +4323,7 @@ UniValue z_shieldcoinbase(const UniValue& params, bool fHelp)
 
     // Validate the destination address
     auto destaddress = params[1].get_str();
-    if (!IsValidPaymentAddressString(destaddress)) {
+    if (!keyIO.IsValidPaymentAddressString(destaddress)) {
         throw JSONRPCError(RPC_INVALID_PARAMETER, string("Invalid parameter, unknown address format: ") + destaddress );
     }
 
@@ -4056,9 +4354,9 @@ UniValue z_shieldcoinbase(const UniValue& params, bool fHelp)
 
     // If Sapling is not active, do not allow sending to a Sapling address.
     if (!NetworkUpgradeActive(nextBlockHeight, Params().GetConsensus(), Consensus::UPGRADE_SAPLING)) {
-        auto res = DecodePaymentAddress(destaddress);
+        auto res = keyIO.DecodePaymentAddress(destaddress);
         if (IsValidPaymentAddress(res)) {
-            bool toSapling = boost::get<libzcash::SaplingPaymentAddress>(&res) != nullptr;
+            bool toSapling = std::get_if<libzcash::SaplingPaymentAddress>(&res) != nullptr;
             if (toSapling) {
                 throw JSONRPCError(RPC_INVALID_PARAMETER, "Invalid parameter, Sapling has not activated");
             }
@@ -4110,7 +4408,7 @@ UniValue z_shieldcoinbase(const UniValue& params, bool fHelp)
         CAmount nValue = out.tx->vout[out.i].nValue;
 
         if (!maxedOutFlag) {
-            size_t increase = (boost::get<CScriptID>(&address) != nullptr) ? CTXIN_SPEND_P2SH_SIZE : CTXIN_SPEND_DUST_SIZE;
+            size_t increase = (std::get_if<CScriptID>(&address) != nullptr) ? CTXIN_SPEND_P2SH_SIZE : CTXIN_SPEND_DUST_SIZE;
             if (estimatedTxSize + increase >= max_tx_size ||
                 (nMempoolLimit > 0 && utxoCounter > nMempoolLimit))
             {
@@ -4148,9 +4446,9 @@ UniValue z_shieldcoinbase(const UniValue& params, bool fHelp)
 
     // Keep record of parameters in context object
     UniValue contextInfo(UniValue::VOBJ);
-    contextInfo.push_back(Pair("fromaddress", params[0]));
-    contextInfo.push_back(Pair("toaddress", params[1]));
-    contextInfo.push_back(Pair("fee", ValueFromAmount(nFee)));
+    contextInfo.pushKV("fromaddress", params[0]);
+    contextInfo.pushKV("toaddress", params[1]);
+    contextInfo.pushKV("fee", ValueFromAmount(nFee));
 
     // Builder (used if Sapling addresses are involved)
     TransactionBuilder builder = TransactionBuilder(
@@ -4172,11 +4470,11 @@ UniValue z_shieldcoinbase(const UniValue& params, bool fHelp)
 
     // Return continuation information
     UniValue o(UniValue::VOBJ);
-    o.push_back(Pair("remainingUTXOs", static_cast<uint64_t>(utxoCounter - numUtxos)));
-    o.push_back(Pair("remainingValue", ValueFromAmount(remainingValue)));
-    o.push_back(Pair("shieldingUTXOs", static_cast<uint64_t>(numUtxos)));
-    o.push_back(Pair("shieldingValue", ValueFromAmount(shieldedValue)));
-    o.push_back(Pair("opid", operationId));
+    o.pushKV("remainingUTXOs", static_cast<uint64_t>(utxoCounter - numUtxos));
+    o.pushKV("remainingValue", ValueFromAmount(remainingValue));
+    o.pushKV("shieldingUTXOs", static_cast<uint64_t>(numUtxos));
+    o.pushKV("shieldingValue", ValueFromAmount(shieldedValue));
+    o.pushKV("opid", operationId);
     return o;
 }
 
@@ -4270,6 +4568,7 @@ UniValue z_mergetoaddress(const UniValue& params, bool fHelp)
     // Keep track of addresses to spot duplicates
     std::set<std::string> setAddress;
 
+    KeyIO keyIO(Params());
     // Sources
     for (const UniValue& o : addresses.getValues()) {
         if (!o.isStr())
@@ -4284,11 +4583,11 @@ UniValue z_mergetoaddress(const UniValue& params, bool fHelp)
         } else if (address == "ANY_SAPLING") {
             useAnySapling = true;
         } else {
-            CTxDestination taddr = DecodeDestination(address);
+            CTxDestination taddr = keyIO.DecodeDestination(address);
             if (IsValidDestination(taddr)) {
                 taddrs.insert(taddr);
             } else {
-                auto zaddr = DecodePaymentAddress(address);
+                auto zaddr = keyIO.DecodePaymentAddress(address);
                 if (IsValidPaymentAddress(zaddr)) {
                     zaddrs.insert(zaddr);
                 } else {
@@ -4317,11 +4616,11 @@ UniValue z_mergetoaddress(const UniValue& params, bool fHelp)
     auto destaddress = params[1].get_str();
     bool isToSproutZaddr = false;
     bool isToSaplingZaddr = false;
-    CTxDestination taddr = DecodeDestination(destaddress);
+    CTxDestination taddr = keyIO.DecodeDestination(destaddress);
     if (!IsValidDestination(taddr)) {
-        auto decodeAddr = DecodePaymentAddress(destaddress);
+        auto decodeAddr = keyIO.DecodePaymentAddress(destaddress);
         if (IsValidPaymentAddress(decodeAddr)) {
-            if (boost::get<libzcash::SaplingPaymentAddress>(&decodeAddr) != nullptr) {
+            if (std::get_if<libzcash::SaplingPaymentAddress>(&decodeAddr) != nullptr) {
                 isToSaplingZaddr = true;
                 // If Sapling is not active, do not allow sending to a sapling addresses.
                 if (!saplingActive) {
@@ -4426,7 +4725,7 @@ UniValue z_mergetoaddress(const UniValue& params, bool fHelp)
             CAmount nValue = out.tx->vout[out.i].nValue;
 
             if (!maxedOutUTXOsFlag) {
-                size_t increase = (boost::get<CScriptID>(&address) != nullptr) ? CTXIN_SPEND_P2SH_SIZE : CTXIN_SPEND_DUST_SIZE;
+                size_t increase = (std::get_if<CScriptID>(&address) != nullptr) ? CTXIN_SPEND_P2SH_SIZE : CTXIN_SPEND_DUST_SIZE;
                 if (estimatedTxSize + increase >= max_tx_size ||
                     (nUTXOLimit > 0 && utxoCounter > nUTXOLimit))
                 {
@@ -4469,7 +4768,8 @@ UniValue z_mergetoaddress(const UniValue& params, bool fHelp)
         }
 
         // Find unspent notes and update estimated size
-        for (const CSproutNotePlaintextEntry& entry : sproutEntries) {
+        for (const auto& entry : sproutEntries)
+	{
             noteCounter++;
             CAmount nValue = entry.plaintext.value();
 
@@ -4552,9 +4852,9 @@ UniValue z_mergetoaddress(const UniValue& params, bool fHelp)
 
     // Keep record of parameters in context object
     UniValue contextInfo(UniValue::VOBJ);
-    contextInfo.push_back(Pair("fromaddresses", params[0]));
-    contextInfo.push_back(Pair("toaddress", params[1]));
-    contextInfo.push_back(Pair("fee", ValueFromAmount(nFee)));
+    contextInfo.pushKV("fromaddresses", params[0]);
+    contextInfo.pushKV("toaddress", params[1]);
+    contextInfo.pushKV("fee", ValueFromAmount(nFee));
 
     // Contextual transaction we will build on
     CMutableTransaction contextualTx = CreateNewContextualCMutableTransaction(
@@ -4579,15 +4879,15 @@ UniValue z_mergetoaddress(const UniValue& params, bool fHelp)
 
     // Return continuation information
     UniValue o(UniValue::VOBJ);
-    o.push_back(Pair("remainingUTXOs", static_cast<uint64_t>(utxoCounter - numUtxos)));
-    o.push_back(Pair("remainingTransparentValue", ValueFromAmount(remainingUTXOValue)));
-    o.push_back(Pair("remainingNotes", static_cast<uint64_t>(noteCounter - numNotes)));
-    o.push_back(Pair("remainingShieldedValue", ValueFromAmount(remainingNoteValue)));
-    o.push_back(Pair("mergingUTXOs", static_cast<uint64_t>(numUtxos)));
-    o.push_back(Pair("mergingTransparentValue", ValueFromAmount(mergedUTXOValue)));
-    o.push_back(Pair("mergingNotes", static_cast<uint64_t>(numNotes)));
-    o.push_back(Pair("mergingShieldedValue", ValueFromAmount(mergedNoteValue)));
-    o.push_back(Pair("opid", operationId));
+    o.pushKV("remainingUTXOs", static_cast<uint64_t>(utxoCounter - numUtxos));
+    o.pushKV("remainingTransparentValue", ValueFromAmount(remainingUTXOValue));
+    o.pushKV("remainingNotes", static_cast<uint64_t>(noteCounter - numNotes));
+    o.pushKV("remainingShieldedValue", ValueFromAmount(remainingNoteValue));
+    o.pushKV("mergingUTXOs", static_cast<uint64_t>(numUtxos));
+    o.pushKV("mergingTransparentValue", ValueFromAmount(mergedUTXOValue));
+    o.pushKV("mergingNotes", static_cast<uint64_t>(numNotes));
+    o.pushKV("mergingShieldedValue", ValueFromAmount(mergedNoteValue));
+    o.pushKV("opid", operationId);
     return o;
 }
 
@@ -4635,6 +4935,53 @@ UniValue z_listoperationids(const UniValue& params, bool fHelp)
             continue;
         ret.push_back(id);
     }
+
+    return ret;
+}
+
+
+UniValue z_getnotescount(const UniValue& params, bool fHelp)
+{
+    if (!EnsureWalletIsAvailable(fHelp))
+        return NullUniValue;
+
+    if (fHelp || params.size() > 1)
+        throw runtime_error(
+R"(z_getnotescount
+Arguments:
+1. minconf      (numeric, optional, default=1) Only include notes in transactions confirmed at least this many times.
+
+Returns the number of sprout and sapling notes available in the wallet.
+
+Result:
+{
+  "sprout"      (numeric) the number of sprout notes in the wallet
+  "sapling"     (numeric) the number of sapling notes in the wallet
+}
+
+Examples:
+)" + HelpExampleCli("z_getnotescount", "0")
+   + HelpExampleRpc("z_getnotescount", "0"));
+
+    LOCK2(cs_main, pwalletMain->cs_wallet);
+
+    int nMinDepth = 1;
+    if (params.size() > 0)
+        nMinDepth = params[0].get_int();
+
+    int sprout = 0;
+    int sapling = 0;
+    for (const auto& wtx : pwalletMain->mapWallet)
+    {
+        if (wtx.second.GetDepthInMainChain() >= nMinDepth)
+        {
+            sprout += wtx.second.mapSproutNoteData.size();
+            sapling += wtx.second.mapSaplingNoteData.size();
+        }
+    }
+    UniValue ret(UniValue::VOBJ);
+    ret.pushKV("sprout", sprout);
+    ret.pushKV("sapling", sapling);
 
     return ret;
 }
@@ -4722,6 +5069,8 @@ static const CRPCCommand commands[] =
     { "wallet",             "z_importviewingkey",       &z_importviewingkey,       true  },
     { "wallet",             "z_exportwallet",           &z_exportwallet,           true  },
     { "wallet",             "z_importwallet",           &z_importwallet,           true  },
+    { "wallet",             "z_viewtransaction",        &z_viewtransaction,        false },
+    { "wallet",             "z_getnotescount",          &z_getnotescount,          false },
     // TODO: rearrange into another category
     { "disclosure",         "z_getpaymentdisclosure",   &z_getpaymentdisclosure,   true  },
     { "disclosure",         "z_validatepaymentdisclosure", &z_validatepaymentdisclosure, true }

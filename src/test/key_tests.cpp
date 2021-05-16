@@ -1,6 +1,6 @@
 // Copyright (c) 2012-2013 The Bitcoin Core developers
 // Distributed under the MIT software license, see the accompanying
-// file COPYING or http://www.opensource.org/licenses/mit-license.php.
+// file COPYING or https://www.opensource.org/licenses/mit-license.php .
 
 #include "key.h"
 
@@ -10,11 +10,13 @@
 #include "uint256.h"
 #include "util.h"
 #include "utilstrencodings.h"
+#include "utiltest.h"
 #include "test/test_bitcoin.h"
 
 #include "zcash/Address.hpp"
 
 #include <string>
+#include <variant>
 #include <vector>
 
 #include <boost/test/unit_test.hpp>
@@ -68,16 +70,17 @@ BOOST_AUTO_TEST_CASE(key_test1)
 #ifdef KEY_TESTS_DUMPINFO
     dumpKeyInfo(); return;
 #endif
+    KeyIO keyIO(Params());
     std::string sKeyError;
-    const CKey key1  = DecodeSecret(strSecret1, sKeyError);
+    const CKey key1  = keyIO.DecodeSecret(strSecret1, sKeyError);
     BOOST_CHECK(key1.IsValid() && !key1.IsCompressed());
-    const CKey key2  = DecodeSecret(strSecret2, sKeyError);
+    const CKey key2  = keyIO.DecodeSecret(strSecret2, sKeyError);
     BOOST_CHECK(key2.IsValid() && !key2.IsCompressed());
-    const CKey key1C = DecodeSecret(strSecret1C, sKeyError);
+    const CKey key1C = keyIO.DecodeSecret(strSecret1C, sKeyError);
     BOOST_CHECK(key1C.IsValid() && key1C.IsCompressed());
-    const CKey key2C = DecodeSecret(strSecret2C, sKeyError);
+    const CKey key2C = keyIO.DecodeSecret(strSecret2C, sKeyError);
     BOOST_CHECK(key2C.IsValid() && key2C.IsCompressed());
-    const CKey bad_key = DecodeSecret(strAddressBad, sKeyError);
+    const CKey bad_key = keyIO.DecodeSecret(strAddressBad, sKeyError);
     BOOST_CHECK(!bad_key.IsValid());
 
     CPubKey pubkey1  = key1. GetPubKey();
@@ -105,10 +108,10 @@ BOOST_AUTO_TEST_CASE(key_test1)
     BOOST_CHECK(!key2C.VerifyPubKey(pubkey2));
     BOOST_CHECK(key2C.VerifyPubKey(pubkey2C));
 
-    BOOST_CHECK(DecodeDestination(addr1)  == CTxDestination(pubkey1.GetID()));
-    BOOST_CHECK(DecodeDestination(addr2)  == CTxDestination(pubkey2.GetID()));
-    BOOST_CHECK(DecodeDestination(addr1C) == CTxDestination(pubkey1C.GetID()));
-    BOOST_CHECK(DecodeDestination(addr2C) == CTxDestination(pubkey2C.GetID()));
+    BOOST_CHECK(keyIO.DecodeDestination(addr1)  == CTxDestination(pubkey1.GetID()));
+    BOOST_CHECK(keyIO.DecodeDestination(addr2)  == CTxDestination(pubkey2.GetID()));
+    BOOST_CHECK(keyIO.DecodeDestination(addr1C) == CTxDestination(pubkey1C.GetID()));
+    BOOST_CHECK(keyIO.DecodeDestination(addr2C) == CTxDestination(pubkey2C.GetID()));
 
     for (int n=0; n<16; n++)
     {
@@ -191,33 +194,34 @@ BOOST_AUTO_TEST_CASE(key_test1)
 
 BOOST_AUTO_TEST_CASE(zc_address_test)
 {
+    KeyIO keyIO(Params());
     for (size_t i = 0; i < 1000; i++) {
         auto sk = SproutSpendingKey::random();
         {
-            string sk_string = EncodeSpendingKey(sk);
+            string sk_string = keyIO.EncodeSpendingKey(sk);
 
             BOOST_CHECK(sk_string[0] == 'P');
             BOOST_CHECK(sk_string[1] == 's');
 
-            auto spendingkey2 = DecodeSpendingKey(sk_string);
+            auto spendingkey2 = keyIO.DecodeSpendingKey(sk_string);
             BOOST_CHECK(IsValidSpendingKey(spendingkey2));
-            BOOST_ASSERT(boost::get<SproutSpendingKey>(&spendingkey2) != nullptr);
-            auto sk2 = boost::get<SproutSpendingKey>(spendingkey2);
+            BOOST_ASSERT(std::get_if<SproutSpendingKey>(&spendingkey2) != nullptr);
+            auto sk2 = std::get<SproutSpendingKey>(spendingkey2);
             BOOST_CHECK(sk.inner() == sk2.inner());
         }
         {
             auto addr = sk.address();
 
-            std::string addr_string = EncodePaymentAddress(addr);
+            std::string addr_string = keyIO.EncodePaymentAddress(addr);
 
             BOOST_CHECK(addr_string[0] == 'P');
             BOOST_CHECK(addr_string[1] == 'z');
 
-            auto paymentaddr2 = DecodePaymentAddress(addr_string);
+            auto paymentaddr2 = keyIO.DecodePaymentAddress(addr_string);
             BOOST_ASSERT(IsValidPaymentAddress(paymentaddr2));
 
-            BOOST_ASSERT(boost::get<SproutPaymentAddress>(&paymentaddr2) != nullptr);
-            auto addr2 = boost::get<SproutPaymentAddress>(paymentaddr2);
+            BOOST_ASSERT(std::get_if<SproutPaymentAddress>(&paymentaddr2) != nullptr);
+            auto addr2 = std::get<SproutPaymentAddress>(paymentaddr2);
             BOOST_CHECK(addr.a_pk == addr2.a_pk);
             BOOST_CHECK(addr.pk_enc == addr2.pk_enc);
         }
@@ -229,33 +233,34 @@ BOOST_AUTO_TEST_CASE(zs_address_test)
     SelectParams(CBaseChainParams::Network::REGTEST);
 
     std::vector<unsigned char, secure_allocator<unsigned char>> rawSeed(32);
-    HDSeed seed(rawSeed);
-    auto m = libzcash::SaplingExtendedSpendingKey::Master(seed);
+    const auto msk = GetTestMasterSaplingSpendingKey();
 
-    for (uint32_t i = 0; i < 1000; i++) {
-        auto sk = m.Derive(i);
+    KeyIO keyIO(Params());
+    for (uint32_t i = 0; i < 1000; i++)
+    {
+        auto sk = msk.Derive(i);
         {
-            std::string sk_string = EncodeSpendingKey(sk);
+            std::string sk_string = keyIO.EncodeSpendingKey(sk);
             BOOST_CHECK(sk_string.compare(0, 29, Params().Bech32HRP(CChainParams::Bech32Type::SAPLING_EXTENDED_SPEND_KEY)) == 0);
 
-            auto spendingkey2 = DecodeSpendingKey(sk_string);
+            auto spendingkey2 = keyIO.DecodeSpendingKey(sk_string);
             BOOST_CHECK(IsValidSpendingKey(spendingkey2));
 
-            BOOST_ASSERT(boost::get<SaplingExtendedSpendingKey>(&spendingkey2) != nullptr);
-            auto sk2 = boost::get<SaplingExtendedSpendingKey>(spendingkey2);
+            BOOST_ASSERT(std::get_if<SaplingExtendedSpendingKey>(&spendingkey2) != nullptr);
+            auto sk2 = std::get<SaplingExtendedSpendingKey>(spendingkey2);
             BOOST_CHECK(sk == sk2);
         }
         {
             auto addr = sk.DefaultAddress();
 
-            std::string addr_string = EncodePaymentAddress(addr);
+            std::string addr_string = keyIO.EncodePaymentAddress(addr);
             BOOST_CHECK(addr_string.compare(0, 16, Params().Bech32HRP(CChainParams::Bech32Type::SAPLING_PAYMENT_ADDRESS)) == 0);
 
-            auto paymentaddr2 = DecodePaymentAddress(addr_string);
+            auto paymentaddr2 = keyIO.DecodePaymentAddress(addr_string);
             BOOST_CHECK(IsValidPaymentAddress(paymentaddr2));
 
-            BOOST_ASSERT(boost::get<SaplingPaymentAddress>(&paymentaddr2) != nullptr);
-            auto addr2 = boost::get<SaplingPaymentAddress>(paymentaddr2);
+            BOOST_ASSERT(std::get_if<SaplingPaymentAddress>(&paymentaddr2) != nullptr);
+            auto addr2 = std::get<SaplingPaymentAddress>(paymentaddr2);
             BOOST_CHECK(addr == addr2);
         }
     }

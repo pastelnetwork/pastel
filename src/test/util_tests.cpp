@@ -14,6 +14,7 @@
 
 #include <stdint.h>
 #include <vector>
+#include <unistd.h>
 
 #include <boost/test/unit_test.hpp>
 

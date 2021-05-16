@@ -92,11 +92,11 @@ bin_PROGRAMS =
 noinst_PROGRAMS =
 TESTS =
 
-if BUILD_BITCOIND
+if BUILD_PASTELD
   bin_PROGRAMS += pasteld
 endif
 
-if BUILD_BITCOIN_UTILS
+if BUILD_PASTEL_UTILS
   bin_PROGRAMS += pastel-cli pastel-tx
 endif
 
@@ -104,13 +104,15 @@ LIBZCASH_H = \
   zcash/IncrementalMerkleTree.hpp \
   zcash/NoteEncryption.hpp \
   zcash/Address.hpp \
+  zcash/address/sapling.hpp \
+  zcash/address/sprout.hpp \
+  zcash/address/zip32.h \
   zcash/JoinSplit.hpp \
   zcash/Note.hpp \
   zcash/prf.h \
   zcash/Proof.hpp \
   zcash/util.h \
-  zcash/Zcash.h \
-  zcash/zip32.h
+  zcash/Zcash.h
 
 MNODE_CPP = \
   mnode-config.cpp \
@@ -184,11 +186,13 @@ BITCOIN_CORE_H = \
   core_io.h \
   core_memusage.h \
   deprecation.h \
+  fs.h \
   hash.h \
   httprpc.h \
   httpserver.h \
   init.h \
   key.h \
+  key_constants.h \
   key_io.h \
   keystore.h \
   dbwrapper.h \
@@ -203,8 +207,6 @@ BITCOIN_CORE_H = \
   nodehelper.h \
   netbase.h \
   noui.h \
-  paymentdisclosure.h \
-  paymentdisclosuredb.h \
   policy/fees.h \
   pow.h \
   prevector.h \
@@ -249,6 +251,7 @@ BITCOIN_CORE_H = \
   util.h \
   utilmoneystr.h \
   utilstrencodings.h \
+  utiltest.h \
   utiltime.h \
   validationinterface.h \
   version.h \
@@ -257,6 +260,8 @@ BITCOIN_CORE_H = \
   wallet/asyncrpcoperation_shieldcoinbase.h \
   wallet/crypter.h \
   wallet/db.h \
+  wallet/paymentdisclosure.h \
+  wallet/paymentdisclosuredb.h \
   wallet/rpcwallet.h \
   wallet/wallet.h \
   wallet/wallet_ismine.h \
@@ -297,8 +302,6 @@ libbitcoin_server_a_SOURCES = \
   miner.cpp \
   net.cpp \
   noui.cpp \
-  paymentdisclosure.cpp \
-  paymentdisclosuredb.cpp \
   policy/fees.cpp \
   pow.cpp \
   rest.cpp \
@@ -341,8 +344,6 @@ endif
 libbitcoin_wallet_a_CPPFLAGS = $(AM_CPPFLAGS) $(BITCOIN_INCLUDES)
 libbitcoin_wallet_a_CXXFLAGS = $(AM_CXXFLAGS) $(PIE_FLAGS)
 libbitcoin_wallet_a_SOURCES = \
-  utiltest.cpp \
-  utiltest.h \
   zcbenchmarks.cpp \
   zcbenchmarks.h \
   wallet/asyncrpcoperation_mergetoaddress.cpp \
@@ -350,8 +351,8 @@ libbitcoin_wallet_a_SOURCES = \
   wallet/asyncrpcoperation_shieldcoinbase.cpp \
   wallet/crypter.cpp \
   wallet/db.cpp \
-  paymentdisclosure.cpp \
-  paymentdisclosuredb.cpp \
+  wallet/paymentdisclosure.cpp \
+  wallet/paymentdisclosuredb.cpp \
   wallet/rpcdisclosure.cpp \
   wallet/rpcdump.cpp \
   wallet/rpcwallet.cpp \
@@ -424,6 +425,7 @@ libbitcoin_common_a_SOURCES = \
   script/sign.cpp \
   script/standard.cpp \
   transaction_builder.cpp \
+  utiltest.cpp \
   $(BITCOIN_CORE_H) \
   $(LIBZCASH_H)
 
@@ -466,14 +468,14 @@ libbitcoin_cli_a_SOURCES = \
 nodist_libbitcoin_util_a_SOURCES = $(srcdir)/obj/build.h
 #
 
-# bitcoind binary #
-pasteld_SOURCES = bitcoind.cpp
+# pasteld binary #
+pasteld_SOURCES = pasteld.cpp
 pasteld_CPPFLAGS = $(AM_CPPFLAGS) $(BITCOIN_INCLUDES)
 pasteld_CXXFLAGS = $(AM_CXXFLAGS) $(PIE_FLAGS)
 pasteld_LDFLAGS = $(RELDFLAGS) $(AM_LDFLAGS) $(LIBTOOL_APP_LDFLAGS)
 
 if TARGET_WINDOWS
-pasteld_SOURCES += bitcoind-res.rc
+pasteld_SOURCES += pasteld-res.rc
 endif
 
 pasteld_LDADD = \
@@ -556,12 +558,14 @@ libzcash_a_SOURCES = \
   zcash/IncrementalMerkleTree.cpp \
   zcash/NoteEncryption.cpp \
   zcash/Address.cpp \
+  zcash/address/sapling.cpp \
+  zcash/address/sprout.cpp \
+  zcash/address/zip32.cpp \
   zcash/JoinSplit.cpp \
   zcash/Proof.cpp \
   zcash/Note.cpp \
   zcash/prf.cpp \
   zcash/util.cpp \
-  zcash/zip32.cpp \
   zcash/circuit/commitment.tcc \
   zcash/circuit/gadget.tcc \
   zcash/circuit/merkle.tcc \

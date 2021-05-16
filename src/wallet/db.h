@@ -18,8 +18,6 @@
 
 #include <db_cxx.h>
 
-extern unsigned int nWalletDBUpdated;
-
 class CDBEnv
 {
 private:
@@ -229,12 +227,12 @@ protected:
         Dbt datKey;
         if (fFlags == DB_SET || fFlags == DB_SET_RANGE || fFlags == DB_GET_BOTH || fFlags == DB_GET_BOTH_RANGE) {
             datKey.set_data(&ssKey[0]);
-            datKey.set_size(ssKey.size());
+            datKey.set_size(static_cast<u_int32_t>(ssKey.size()));
         }
         Dbt datValue;
         if (fFlags == DB_GET_BOTH || fFlags == DB_GET_BOTH_RANGE) {
             datValue.set_data(&ssValue[0]);
-            datValue.set_size(ssValue.size());
+            datValue.set_size(static_cast<u_int32_t>(ssValue.size()));
         }
         datKey.set_flags(DB_DBT_MALLOC);
         datValue.set_flags(DB_DBT_MALLOC);

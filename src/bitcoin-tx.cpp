@@ -1,6 +1,6 @@
 // Copyright (c) 2009-2014 The Bitcoin Core developers
 // Distributed under the MIT software license, see the accompanying
-// file COPYING or http://www.opensource.org/licenses/mit-license.php.
+// file COPYING or https://www.opensource.org/licenses/mit-license.php .
 
 #include "clientversion.h"
 #include "coins.h"
@@ -238,9 +238,11 @@ static void MutateTxAddOutAddr(CMutableTransaction& tx, const std::string& strIn
     if (!ParseMoney(strValue, value))
         throw std::runtime_error("invalid TX output value");
 
+    KeyIO keyIO(Params());
+
     // extract and validate ADDRESS
     std::string strAddr = strInput.substr(pos + 1, std::string::npos);
-    CTxDestination destination = DecodeDestination(strAddr);
+    CTxDestination destination = keyIO.DecodeDestination(strAddr);
     if (!IsValidDestination(destination)) {
         throw std::runtime_error("invalid TX output address");
     }
@@ -397,14 +399,15 @@ static void MutateTxSign(CMutableTransaction& tx, const std::string& strInput)
     UniValue keysObj = registers["privatekeys"];
     fGivenKeys = true;
 
+    KeyIO keyIO(Params());
     std::string sKeyError;
     for (size_t kidx = 0; kidx < keysObj.size(); kidx++)
     {
         if (!keysObj[kidx].isStr())
             throw std::runtime_error("privatekey not a std::string");
-        const CKey key = DecodeSecret(keysObj[kidx].getValStr(), sKeyError);
+        const CKey key = keyIO.DecodeSecret(keysObj[kidx].getValStr(), sKeyError);
         if (!key.IsValid())
-            throw std::runtime_error(tinyformat::format("privatekey not valid, %s", sKeyError.c_str()));
+            throw std::runtime_error(tfm::format("privatekey not valid, %s", sKeyError.c_str()));
         tempKeystore.AddKey(key);
     }
 

@@ -1,17 +1,14 @@
+#pragma once
 // Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2013 The Bitcoin Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
-
-#ifndef BITCOIN_WALLET_WALLETDB_H
-#define BITCOIN_WALLET_WALLETDB_H
 
 #include "amount.h"
 #include "wallet/db.h"
 #include "key.h"
 #include "keystore.h"
 #include "zcash/Address.hpp"
-#include "zcash/zip32.h"
 
 #include <list>
 #include <stdint.h>
@@ -199,7 +196,11 @@ public:
 
     bool WriteSproutViewingKey(const libzcash::SproutViewingKey &vk);
     bool EraseSproutViewingKey(const libzcash::SproutViewingKey &vk);
+    bool WriteSaplingExtendedFullViewingKey(const libzcash::SaplingExtendedFullViewingKey &extfvk);
+    bool EraseSaplingExtendedFullViewingKey(const libzcash::SaplingExtendedFullViewingKey &extfvk);
 
+    static void IncrementUpdateCounter();
+    static unsigned int GetUpdateCounter();
 private:
     CWalletDB(const CWalletDB&);
     void operator=(const CWalletDB&);
@@ -210,4 +211,3 @@ private:
 bool BackupWallet(const CWallet& wallet, const std::string& strDest);
 void ThreadFlushWalletDB(const std::string& strFile);
 
-#endif // BITCOIN_WALLET_WALLETDB_H

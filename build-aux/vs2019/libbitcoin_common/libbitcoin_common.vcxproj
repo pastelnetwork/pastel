@@ -115,6 +115,7 @@
     <ClCompile Include="..\..\..\src\script\standard.cpp" />
     <ClCompile Include="..\..\..\src\transaction_builder.cpp" />
     <ClCompile Include="..\..\..\src\uint256.cpp" />
+    <ClCompile Include="..\..\..\src\utiltest.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\..\src\amount.h" />
@@ -131,6 +132,7 @@
     <ClInclude Include="..\..\..\src\hash.h" />
     <ClInclude Include="..\..\..\src\key.h" />
     <ClInclude Include="..\..\..\src\keystore.h" />
+    <ClInclude Include="..\..\..\src\key_constants.h" />
     <ClInclude Include="..\..\..\src\key_io.h" />
     <ClInclude Include="..\..\..\src\netbase.h" />
     <ClInclude Include="..\..\..\src\primitives\block.h" />
@@ -147,6 +149,7 @@
     <ClInclude Include="..\..\..\src\transaction_builder.h" />
     <ClInclude Include="..\..\..\src\uint252.h" />
     <ClInclude Include="..\..\..\src\uint256.h" />
+    <ClInclude Include="..\..\..\src\utiltest.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
