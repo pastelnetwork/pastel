@@ -8,6 +8,17 @@ else
     PARAMS_DIR="$HOME/.pastel-params"
 fi
 
+
+# Dropbox's intermediary urls / file
+INTERMEDIARY_SPROUT_PKEY_NAME="AADS9rNrpIDC46yIjVPum9H4a"
+INTERMEDIARY_SPROUT_VKEY_NAME="AAAcxhvJymMm3RVuv8I8XZ8oa"
+INTERMEDIARY_SAPLING_SPROUT_GROTH16_NAME="AABSvmY9SQWwyYXGK2DB8f4xa"
+INTERMEDIARY_SAPLING_OUTPUT_NAME="AABuQfzAMAiwlzzQyeEP4Sw0a"
+INTERMEDIARY_SAPLING_SPEND_NAME="AACRCfGwkDcwdbhDXzl0XFeka"
+NEW_SPROUT_URL="https://www.dropbox.com/sh/gsfmcb4b0wd38vf"
+POSTFIX="dl=0"
+
+
 SPROUT_PKEY_NAME='sprout-proving.key'
 SPROUT_VKEY_NAME='sprout-verifying.key'
 SAPLING_SPEND_NAME='sapling-spend.params'
@@ -35,10 +46,11 @@ function fetch_wget {
 
     local filename="$1"
     local dlname="$2"
+    local intermediary="$3"
 
     cat <<EOF
 
-Retrieving (wget): $SPROUT_URL/$filename
+Retrieving (wget): $NEW_SPROUT_URL/$filename
 EOF
 
     wget \
@@ -46,7 +58,7 @@ EOF
         --output-document="$dlname" \
         --continue \
         --retry-connrefused --waitretry=3 --timeout=30 \
-        "$SPROUT_URL/$filename"
+        "$NEW_SPROUT_URL/$intermediary/${filename}?$POSTFIX"
 }
 
 function fetch_ipfs {
@@ -72,16 +84,17 @@ function fetch_curl {
 
     local filename="$1"
     local dlname="$2"
+    local intermediary="$3"
 
     cat <<EOF
 
-Retrieving (curl): $SPROUT_URL/$filename
+Retrieving (curl): $NEW_SPROUT_URL/$filename
 EOF
 
     curl \
         --output "$dlname" \
         -# -L -C - \
-        "$SPROUT_URL/$filename"
+        "$NEW_SPROUT_URL/$intermediary/${filename}?$POSTFIX"
 
 }
 
@@ -104,11 +117,12 @@ function fetch_params {
     local output="$2"
     local dlname="${output}.dl"
     local expectedhash="$3"
+    local expected_intermediary="$4"
 
     if ! [ -f "$output" ]
     then
         for method in wget ipfs curl failure; do
-            if "fetch_$method" "$filename" "$dlname"; then
+            if "fetch_$method" "$filename" "$dlname" "$expected_intermediary"; then
                 echo "Download successful!"
                 break
             fi
@@ -197,13 +211,13 @@ EOF
     cd "$PARAMS_DIR"
 
     # Sprout parameters:
-    fetch_params "$SPROUT_PKEY_NAME" "$PARAMS_DIR/$SPROUT_PKEY_NAME" "8bc20a7f013b2b58970cddd2e7ea028975c88ae7ceb9259a5344a16bc2c0eef7"
-    fetch_params "$SPROUT_VKEY_NAME" "$PARAMS_DIR/$SPROUT_VKEY_NAME" "4bd498dae0aacfd8e98dc306338d017d9c08dd0918ead18172bd0aec2fc5df82"
+    fetch_params "$SPROUT_PKEY_NAME" "$PARAMS_DIR/$SPROUT_PKEY_NAME" "8bc20a7f013b2b58970cddd2e7ea028975c88ae7ceb9259a5344a16bc2c0eef7" "$INTERMEDIARY_SPROUT_PKEY_NAME"
+    fetch_params "$SPROUT_VKEY_NAME" "$PARAMS_DIR/$SPROUT_VKEY_NAME" "4bd498dae0aacfd8e98dc306338d017d9c08dd0918ead18172bd0aec2fc5df82" "$INTERMEDIARY_SPROUT_VKEY_NAME"
 
     # Sapling parameters:
-    fetch_params "$SAPLING_SPEND_NAME" "$PARAMS_DIR/$SAPLING_SPEND_NAME" "8e48ffd23abb3a5fd9c5589204f32d9c31285a04b78096ba40a79b75677efc13"
-    fetch_params "$SAPLING_OUTPUT_NAME" "$PARAMS_DIR/$SAPLING_OUTPUT_NAME" "2f0ebbcbb9bb0bcffe95a397e7eba89c29eb4dde6191c339db88570e3f3fb0e4"
-    fetch_params "$SAPLING_SPROUT_GROTH16_NAME" "$PARAMS_DIR/$SAPLING_SPROUT_GROTH16_NAME" "b685d700c60328498fbde589c8c7c484c722b788b265b72af448a5bf0ee55b50"
+    fetch_params "$SAPLING_SPEND_NAME" "$PARAMS_DIR/$SAPLING_SPEND_NAME" "8e48ffd23abb3a5fd9c5589204f32d9c31285a04b78096ba40a79b75677efc13" "$INTERMEDIARY_SAPLING_SPEND_NAME"
+    fetch_params "$SAPLING_OUTPUT_NAME" "$PARAMS_DIR/$SAPLING_OUTPUT_NAME" "2f0ebbcbb9bb0bcffe95a397e7eba89c29eb4dde6191c339db88570e3f3fb0e4" "$INTERMEDIARY_SAPLING_OUTPUT_NAME"
+    fetch_params "$SAPLING_SPROUT_GROTH16_NAME" "$PARAMS_DIR/$SAPLING_SPROUT_GROTH16_NAME" "b685d700c60328498fbde589c8c7c484c722b788b265b72af448a5bf0ee55b50" "$INTERMEDIARY_SAPLING_SPROUT_GROTH16_NAME"
 }
 
 main
