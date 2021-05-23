@@ -338,7 +338,7 @@ public:
                         const CKey& keyMasternodeNew, const CPubKey& pubKeyMasternodeNew, 
                         const std::string& strExtraLayerAddress, const std::string& strExtraLayerKey, const std::string& strExtraLayerCfg,
                         std::string &strErrorRet, CMasternodeBroadcast &mnbRet);
-    static bool Create(std::string strService, std::string strKey, std::string strTxHash, std::string strOutputIndex, 
+    static bool Create(std::string strService, std::string strKey, std::string strTxHash, unsigned int strOutputIndex, 
         std::string strExtraLayerAddress, std::string strExtraLayerKey, std::string strExtraLayerCfg,
         std::string& strErrorRet, CMasternodeBroadcast &mnbRet, bool fOffline = false);
 

@@ -58,6 +58,13 @@ std::string get_string(json::iterator& it, std::string name)
         return it->at(name);
     return "";
 }
+
+unsigned int get_uint(json::iterator& it, std::string name)
+{
+    if (it->count(name) && !it->at(name).is_null() && it->at(name).is_number_unsigned())
+        return it->at(name);
+    return -1;
+}
 std::string get_obj_as_string(json::iterator& it, std::string name)
 {
     if (it->count(name) && !it->at(name).is_null() && it->at(name).is_object())
@@ -79,7 +86,7 @@ bool CMasternodeConfig::read(std::string& strErr)
                 {"mnAddress", ""},
                 {"mnPrivKey", ""},
                 {"txid", ""},
-                {"outIndex", ""},
+                {"outIndex", 0},
                 {"extAddress", ""},
                 {"extKey", ""},
                 {"extCfg", {}}
@@ -116,16 +123,17 @@ bool CMasternodeConfig::read(std::string& strErr)
             continue;
         }
 
-        std::string alias, mnAddress, mnPrivKey, txid, outIndex, extAddress, extKey, extCfg;
+        std::string alias, mnAddress, mnPrivKey, txid, extAddress, extKey, extCfg;
+        unsigned int outIndex;
         
         alias = it.key();
 
         mnAddress = get_string(it, "mnAddress");
         mnPrivKey = get_string(it, "mnPrivKey");
         txid = get_string(it, "txid");
-        outIndex = get_string(it, "outIndex");
+        outIndex =  get_uint(it, "outIndex"); 
 
-        if (mnAddress.empty() || mnPrivKey.empty() || txid.empty() || outIndex.empty()) {
+        if (mnAddress.empty() || mnPrivKey.empty() || txid.empty() || outIndex == -1) {
             continue;
         }
 

@@ -23,6 +23,7 @@
 #include "rpc/rpc_parser.h"
 #include "utilstrencodings.h"
 #include "core_io.h"
+#include "stdint.h"
 
 #include "ed448/pastel_key.h"
 #include "mnode-messageproc.h"
@@ -431,7 +432,7 @@ UniValue masternode(const UniValue& params, bool fHelp)
         for (const auto& mne : masterNodeCtrl.masternodeConfig.getEntries()) {
             std::string strError;
 
-            COutPoint outpoint = COutPoint(uint256S(mne.getTxHash()), uint32_t(atoi(mne.getOutputIndex().c_str())));
+            COutPoint outpoint = COutPoint(uint256S(mne.getTxHash()), mne.getOutputIndex());
             CMasternode mn;
             bool fFound = masterNodeCtrl.masternodeManager.Get(outpoint, mn);
             CMasternodeBroadcast mnb;
@@ -485,7 +486,7 @@ UniValue masternode(const UniValue& params, bool fHelp)
         UniValue resultObj(UniValue::VOBJ);
     
         for (const auto& mne : masterNodeCtrl.masternodeConfig.getEntries()) {
-            COutPoint outpoint = COutPoint(uint256S(mne.getTxHash()), uint32_t(atoi(mne.getOutputIndex().c_str())));
+            COutPoint outpoint = COutPoint(uint256S(mne.getTxHash()),mne.getOutputIndex());
             CMasternode mn;
             bool fFound = masterNodeCtrl.masternodeManager.Get(outpoint, mn);
 
@@ -496,7 +497,7 @@ UniValue masternode(const UniValue& params, bool fHelp)
             mnObj.pushKV("address", mne.getIp());
             mnObj.pushKV("privateKey", mne.getPrivKey());
             mnObj.pushKV("txHash", mne.getTxHash());
-            mnObj.pushKV("outputIndex", mne.getOutputIndex());
+            mnObj.pushKV("outputIndex", (uint64_t)mne.getOutputIndex());
             mnObj.pushKV("extAddress", mne.getExtIp());
             mnObj.pushKV("extKey", mne.getExtKey());
             mnObj.pushKV("extCfg", mne.getExtCfg());

@@ -429,7 +429,7 @@ bool CMasternode::VerifyCollateral(CollateralStatus& collateralStatus)
 }
 
 #ifdef ENABLE_WALLET
-bool CMasternodeBroadcast::Create(std::string strService, std::string strKeyMasternode, std::string strTxHash, std::string strOutputIndex, 
+bool CMasternodeBroadcast::Create(std::string strService, std::string strKeyMasternode, std::string strTxHash, unsigned int nOutputIndex, 
                                     std::string strExtraLayerAddress, std::string strExtraLayerKey, std::string strExtraLayerCfg,
                                     std::string& strErrorRet, CMasternodeBroadcast &mnbRet, bool fOffline)
 {
@@ -453,8 +453,8 @@ bool CMasternodeBroadcast::Create(std::string strService, std::string strKeyMast
     if (!CMessageSigner::GetKeysFromSecret(strKeyMasternode, keyMasternodeNew, pubKeyMasternodeNew))
         return Log(strprintf("Invalid masternode key %s", strKeyMasternode));
 
-    if (!GetMasternodeOutpointAndKeys(pwalletMain, outpoint, pubKeyCollateralAddressNew, keyCollateralAddressNew, strTxHash, strOutputIndex))
-        return Log(strprintf("Could not allocate outpoint %s:%s for masternode %s", strTxHash, strOutputIndex, strService));
+    if (!GetMasternodeOutpointAndKeys(pwalletMain, outpoint, pubKeyCollateralAddressNew, keyCollateralAddressNew, strTxHash, nOutputIndex))
+        return Log(strprintf("Could not allocate outpoint %s:%s for masternode %s", strTxHash, nOutputIndex, strService));
     
     int outpointConfirmations = GetUTXOConfirmations(outpoint);
     if (outpointConfirmations < masterNodeCtrl.nMasternodeMinimumConfirmations) {

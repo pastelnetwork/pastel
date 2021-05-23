@@ -45,7 +45,7 @@ int GetUTXOConfirmations(const COutPoint& outpoint)
 }
 
 #ifdef ENABLE_WALLET
-bool GetMasternodeOutpointAndKeys(CWallet* pWalletMain, COutPoint& outpointRet, CPubKey& pubKeyRet, CKey& keyRet, std::string strTxHash, std::string strOutputIndex)
+bool GetMasternodeOutpointAndKeys(CWallet* pWalletMain, COutPoint& outpointRet, CPubKey& pubKeyRet, CKey& keyRet, std::string strTxHash, unsigned int nOutputIndex)
 {
     // wait for reindex and/or import to finish
     if (fImporting || fReindex || pWalletMain == NULL) return false;
@@ -63,7 +63,6 @@ bool GetMasternodeOutpointAndKeys(CWallet* pWalletMain, COutPoint& outpointRet, 
 
     // Find specific vin
     uint256 txHash = uint256S(strTxHash);
-    int nOutputIndex = atoi(strOutputIndex.c_str());
 
     for (const auto& out : vPossibleCoins)
         if(out.tx->GetHash() == txHash && out.i == nOutputIndex) // found it!

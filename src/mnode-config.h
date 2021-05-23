@@ -21,13 +21,13 @@ public:
         std::string mnAddress;
         std::string mnPrivKey;
         std::string txHash;
-        std::string outputIndex;
+        unsigned int outputIndex;
         std::string extAddress;
         std::string extKey;
         std::string extCfg;
     public:
 
-        CMasternodeEntry(std::string alias, std::string mnAddress, std::string mnPrivKey, std::string txHash, std::string outputIndex,
+        CMasternodeEntry(std::string alias, std::string mnAddress, std::string mnPrivKey, std::string txHash, unsigned int outputIndex,
                          std::string extAddress, std::string extKey, std::string extCfg) {
             this->alias = alias;
             this->mnAddress = mnAddress;
@@ -55,7 +55,7 @@ public:
             return txHash;
         }
 
-        const std::string& getOutputIndex() const {
+        const unsigned int getOutputIndex() const {
             return outputIndex;
         }
 
