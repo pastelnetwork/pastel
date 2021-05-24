@@ -12,8 +12,8 @@ RUN apt update \
   && ln -fs /usr/bin/x86_64-linux-gnu-gcc-10 /usr/bin/x86_64-linux-gnu-gcc \
   && ln -fs /usr/bin/gcc /usr/bin/cc && pip3 install pyblake2 simplejson
 
-RUN wget -q -O - https://files.viva64.com/etc/pubkey.txt | apt-key add -
-RUN wget -O /etc/apt/sources.list.d/viva64.list https://files.viva64.com/etc/viva64.list
-RUN apt update && apt install -y --no-install-recommends pvs-studio
+RUN wget -q -O - https://files.viva64.com/etc/pubkey.txt | apt-key add - \
+   && wget -O /etc/apt/sources.list.d/viva64.list https://files.viva64.com/etc/viva64.list \
+   && apt update && apt install -y --no-install-recommends pvs-studio
 
 WORKDIR /pastel

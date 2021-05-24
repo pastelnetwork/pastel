@@ -8,14 +8,14 @@ jobs:
   build_and_test:
     executor: pastel-builder
     working_directory: /pastel
-    resource_class: medium
+    resource_class: xlarge
     steps:
       - checkout
       - run:
           name: Building Pastel Core
           no_output_timeout: 30m
           command: |
-            ./build.sh -j2
+            ./build.sh -j16
       - run:
           name: Static code analysis
           working_directory: /pastel
