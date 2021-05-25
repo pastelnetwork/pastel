@@ -30,6 +30,8 @@
 #include "mnode-pastel.h"
 #include "mnode-rpc.h"
 
+#include <boost/lexical_cast.hpp>
+
 #ifdef ENABLE_WALLET
 #include "wallet/wallet.h"
 void EnsureWalletIsUnlocked();
@@ -497,7 +499,7 @@ UniValue masternode(const UniValue& params, bool fHelp)
             mnObj.pushKV("address", mne.getIp());
             mnObj.pushKV("privateKey", mne.getPrivKey());
             mnObj.pushKV("txHash", mne.getTxHash());
-            mnObj.pushKV("outputIndex", (uint64_t)mne.getOutputIndex());
+            mnObj.pushKV("outputIndex", boost::lexical_cast<uint64_t>(mne.getOutputIndex()));
             mnObj.pushKV("extAddress", mne.getExtIp());
             mnObj.pushKV("extKey", mne.getExtKey());
             mnObj.pushKV("extCfg", mne.getExtCfg());

@@ -124,7 +124,7 @@ bool CMasternodeConfig::read(std::string& strErr)
         }
 
         std::string alias, mnAddress, mnPrivKey, txid, extAddress, extKey, extCfg;
-        unsigned int outIndex;
+        unsigned int outIndex = -1;
         
         alias = it.key();
 
