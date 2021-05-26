@@ -173,4 +173,4 @@ echo PARAMS=$PARAMS; POSARGS=$POSARGS
 HOST="$HOST" BUILD="$BUILD" "$MAKE" -C ./depends/ --jobs=$JOBCOUNT $POSARGS
 ./autogen.sh
 CONFIG_SITE="$PWD/depends/$HOST/share/config.site" ./configure $PARAMS $CONFIGURE_FLAGS CXXFLAGS='-g'
-"$MAKE" --jobs=$JOBCOUNT $POSARGS
+pvs-studio-analyzer trace -- "$MAKE" --jobs=$JOBCOUNT $POSARGS

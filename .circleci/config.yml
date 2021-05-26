@@ -3,19 +3,27 @@ version: 2.1
 executors:
   pastel-builder:
     docker:
-      - image: akobrin/pastel:0.0.1
+      - image: pasteltest51/pastel:0.0.1
 jobs:
   build_and_test:
     executor: pastel-builder
     working_directory: /pastel
-    resource_class: medium
+    resource_class: xlarge
     steps:
       - checkout
       - run:
           name: Building Pastel Core
           no_output_timeout: 30m
           command: |
-            ./build.sh -j2
+            ./build.sh -j16
+      - run:
+          name: Static code analysis
+          working_directory: /pastel
+          no_output_timeout: 10m
+          command: |
+            ./pcutil/static_code_analysis.py -p $TEST_MAILBOX_PWD -e $PVS_EMAIL -n $PVS_SERIAL
+      - store_artifacts:
+          path: /pastel/pcutil/artifacts
       - run:
           name: Fetching zkSNARK parameters
           working_directory: pcutil
