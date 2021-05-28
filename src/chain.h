@@ -1,6 +1,7 @@
 #pragma once
 // Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2014 The Bitcoin Core developers
+// Copyright (c) 2018-2021 Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -171,10 +172,18 @@ public:
     //! Will be std::nullopt if nChainTx is zero.
     std::optional<CAmount> nChainSaplingValue;
 
+    //! Root of the Sapling commitment tree as of the end of this block.
+    //!
+    //! - For blocks prior to (not including) the Heartwood activation block, this is
+    //!   always equal to hashLightClientRoot.
+    //! - For blocks including and after the Heartwood activation block, this is only set
+    //!   once a block has been connected to the main chain, and will be null otherwise.
+    uint256 hashFinalSaplingRoot;
+
     //! block header
     int nVersion;
     uint256 hashMerkleRoot;
-    uint256 hashFinalSaplingRoot;
+
     unsigned int nTime;
     unsigned int nBits;
     uint256 nNonce;
@@ -471,7 +480,7 @@ public:
 
     /** Return the maximal height in the chain. Is equal to chain.Tip() ? chain.Tip()->nHeight : -1. */
     int Height() const {
-        return vChain.size() - 1;
+        return int(vChain.size()) - 1;
     }
 
     /** Set/initialize a chain with a given tip. */

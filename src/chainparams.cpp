@@ -36,6 +36,8 @@ Genesis block for RegTest found
 
 #include <assert.h>
 #include <vector>
+#include <optional>
+#include <variant>
 
 #include <boost/assign/list_of.hpp>
 
@@ -363,25 +365,26 @@ public:
         vSeeds.push_back(CDNSSeedData("pastel.network", "dnsseed.pastel.network"));
 
         // guarantees the first 2 characters, when base58 encoded, are "Pt"
-        base58Prefixes[to_integral_type(Base58Type::PUBKEY_ADDRESS)] = {0x0c, 0xe3};
+        m_base58Prefixes[to_integral_type(Base58Type::PUBKEY_ADDRESS)] = {0x0c, 0xe3};
         // guarantees the first 2 characters, when base58 encoded, are "pt"
-        base58Prefixes[to_integral_type(Base58Type::SCRIPT_ADDRESS)] = {0x1a, 0xF6};
+        m_base58Prefixes[to_integral_type(Base58Type::SCRIPT_ADDRESS)] = {0x1a, 0xF6};
         // the first character, when base58 encoded, is "5" or "K" or "L" (as in Bitcoin)
-        base58Prefixes[to_integral_type(Base58Type::SECRET_KEY)] = {0x80};
+        m_base58Prefixes[to_integral_type(Base58Type::SECRET_KEY)] = {0x80};
         // do not rely on these BIP32 prefixes; they are not specified and may change
-        base58Prefixes[to_integral_type(Base58Type::EXT_PUBLIC_KEY)] = {0x04, 0x88, 0xB2, 0x1E};
-        base58Prefixes[to_integral_type(Base58Type::EXT_SECRET_KEY)] = {0x04, 0x88, 0xAD, 0xE4};
+        m_base58Prefixes[to_integral_type(Base58Type::EXT_PUBLIC_KEY)] = {0x04, 0x88, 0xB2, 0x1E};
+        m_base58Prefixes[to_integral_type(Base58Type::EXT_SECRET_KEY)] = {0x04, 0x88, 0xAD, 0xE4};
         // guarantees the first 2 characters, when base58 encoded, are "Pz"
-        base58Prefixes[to_integral_type(Base58Type::ZCPAYMENT_ADDRRESS)] = {0x09, 0x05};
+        m_base58Prefixes[to_integral_type(Base58Type::ZCPAYMENT_ADDRESS)] = {0x09, 0x05};
         // guarantees the first 4 characters, when base58 encoded, are "Px"
-        base58Prefixes[to_integral_type(Base58Type::ZCVIEWING_KEY)] = {0x09, 0x01};
+        m_base58Prefixes[to_integral_type(Base58Type::ZCVIEWING_KEY)] = {0x09, 0x01};
         // guarantees the first 2 characters, when base58 encoded, are "Ps"
-        base58Prefixes[to_integral_type(Base58Type::ZCSPENDING_KEY)] = {0x9A, 0x90};
+        m_base58Prefixes[to_integral_type(Base58Type::ZCSPENDING_KEY)] = {0x9A, 0x90};
 
-        bech32HRPs[to_integral_type(Bech32Type::SAPLING_PAYMENT_ADDRESS)] = "ps";
-        bech32HRPs[to_integral_type(Bech32Type::SAPLING_FULL_VIEWING_KEY)] = "pviews";
-        bech32HRPs[to_integral_type(Bech32Type::SAPLING_INCOMING_VIEWING_KEY)] = "pivks";
-        bech32HRPs[to_integral_type(Bech32Type::SAPLING_EXTENDED_SPEND_KEY)] = "p-secret-extended-key-main";
+        m_bech32HRPs[to_integral_type(Bech32Type::SAPLING_PAYMENT_ADDRESS)] = "ps";
+        m_bech32HRPs[to_integral_type(Bech32Type::SAPLING_FULL_VIEWING_KEY)] = "pviews";
+        m_bech32HRPs[to_integral_type(Bech32Type::SAPLING_INCOMING_VIEWING_KEY)] = "pivks";
+        m_bech32HRPs[to_integral_type(Bech32Type::SAPLING_EXTENDED_SPEND_KEY)] = "p-secret-extended-key-main";
+        m_bech32HRPs[to_integral_type(Bech32Type::SAPLING_EXTENDED_FVK)] = "pxviews";
 
  //       vFixedSeeds = std::vector<SeedSpec6>(pnSeed6_main, pnSeed6_main + ARRAYLEN(pnSeed6_main));
 
@@ -464,25 +467,26 @@ public:
         vSeeds.push_back(CDNSSeedData("pastel.network", "dnsseed.testnet.pastel.network"));
 
         // guarantees the first 2 characters, when base58 encoded, are "tP"
-        base58Prefixes[to_integral_type(Base58Type::PUBKEY_ADDRESS)] = {0x1C, 0xEF};
+        m_base58Prefixes[to_integral_type(Base58Type::PUBKEY_ADDRESS)] = {0x1C, 0xEF};
         // guarantees the first 2 characters, when base58 encoded, are "tt"
-        base58Prefixes[to_integral_type(Base58Type::SCRIPT_ADDRESS)] = {0x1D, 0x37};
+        m_base58Prefixes[to_integral_type(Base58Type::SCRIPT_ADDRESS)] = {0x1D, 0x37};
         // the first character, when base58 encoded, is "9" or "c" (as in Bitcoin)
-        base58Prefixes[to_integral_type(Base58Type::SECRET_KEY)] = {0xEF};
+        m_base58Prefixes[to_integral_type(Base58Type::SECRET_KEY)] = {0xEF};
         // do not rely on these BIP32 prefixes; they are not specified and may change
-        base58Prefixes[to_integral_type(Base58Type::EXT_PUBLIC_KEY)] = {0x04, 0x35, 0x87, 0xCF};
-        base58Prefixes[to_integral_type(Base58Type::EXT_SECRET_KEY)] = {0x04, 0x35, 0x83, 0x94};
+        m_base58Prefixes[to_integral_type(Base58Type::EXT_PUBLIC_KEY)] = {0x04, 0x35, 0x87, 0xCF};
+        m_base58Prefixes[to_integral_type(Base58Type::EXT_SECRET_KEY)] = {0x04, 0x35, 0x83, 0x94};
         // guarantees the first 2 characters, when base58 encoded, are "tZ"
-        base58Prefixes[to_integral_type(Base58Type::ZCPAYMENT_ADDRRESS)] = {0x14, 0x3A};
+        m_base58Prefixes[to_integral_type(Base58Type::ZCPAYMENT_ADDRESS)] = {0x14, 0x3A};
         // guarantees the first 4 characters, when base58 encoded, are "tX"
-        base58Prefixes[to_integral_type(Base58Type::ZCVIEWING_KEY)] = {0x14, 0x37};
+        m_base58Prefixes[to_integral_type(Base58Type::ZCVIEWING_KEY)] = {0x14, 0x37};
         // guarantees the first 2 characters, when base58 encoded, are "tQ" OR "tS"
-        base58Prefixes[to_integral_type(Base58Type::ZCSPENDING_KEY)] = {0x05, 0xFE};
+        m_base58Prefixes[to_integral_type(Base58Type::ZCSPENDING_KEY)] = {0x05, 0xFE};
 
-        bech32HRPs[to_integral_type(Bech32Type::SAPLING_PAYMENT_ADDRESS)] = "ptestsapling";
-        bech32HRPs[to_integral_type(Bech32Type::SAPLING_FULL_VIEWING_KEY)] = "pviewtestsapling";
-        bech32HRPs[to_integral_type(Bech32Type::SAPLING_INCOMING_VIEWING_KEY)] = "pivktestsapling";
-        bech32HRPs[to_integral_type(Bech32Type::SAPLING_EXTENDED_SPEND_KEY)] = "p-secret-extended-key-test";
+        m_bech32HRPs[to_integral_type(Bech32Type::SAPLING_PAYMENT_ADDRESS)] = "ptestsapling";
+        m_bech32HRPs[to_integral_type(Bech32Type::SAPLING_FULL_VIEWING_KEY)] = "pviewtestsapling";
+        m_bech32HRPs[to_integral_type(Bech32Type::SAPLING_INCOMING_VIEWING_KEY)] = "pivktestsapling";
+        m_bech32HRPs[to_integral_type(Bech32Type::SAPLING_EXTENDED_SPEND_KEY)] = "p-secret-extended-key-test";
+        m_bech32HRPs[to_integral_type(Bech32Type::SAPLING_EXTENDED_FVK)] = "pxviewtestsapling";
 
         // vFixedSeeds = std::vector<SeedSpec6>(pnSeed6_test, pnSeed6_test + ARRAYLEN(pnSeed6_test));
 
@@ -563,25 +567,26 @@ public:
 
         // These prefixes are the same as the testnet prefixes
         // guarantees the first 2 characters, when base58 encoded, are "tP"
-        base58Prefixes[to_integral_type(Base58Type::PUBKEY_ADDRESS)] = {0x1C, 0xEF};
+        m_base58Prefixes[to_integral_type(Base58Type::PUBKEY_ADDRESS)] = {0x1C, 0xEF};
         // guarantees the first 2 characters, when base58 encoded, are "tt"
-        base58Prefixes[to_integral_type(Base58Type::SCRIPT_ADDRESS)]     = {0x1D,0x37};
+        m_base58Prefixes[to_integral_type(Base58Type::SCRIPT_ADDRESS)] = {0x1D, 0x37};
         // the first character, when base58 encoded, is "9" or "c" (as in Bitcoin)
-        base58Prefixes[to_integral_type(Base58Type::SECRET_KEY)]         = {0xEF};
+        m_base58Prefixes[to_integral_type(Base58Type::SECRET_KEY)] = {0xEF};
         // do not rely on these BIP32 prefixes; they are not specified and may change
-        base58Prefixes[to_integral_type(Base58Type::EXT_PUBLIC_KEY)]     = {0x04,0x35,0x87,0xCF};
-        base58Prefixes[to_integral_type(Base58Type::EXT_SECRET_KEY)]     = {0x04,0x35,0x83,0x94};
+        m_base58Prefixes[to_integral_type(Base58Type::EXT_PUBLIC_KEY)] = {0x04, 0x35, 0x87, 0xCF};
+        m_base58Prefixes[to_integral_type(Base58Type::EXT_SECRET_KEY)] = {0x04, 0x35, 0x83, 0x94};
         // guarantees the first 2 characters, when base58 encoded, are "tZ"
-        base58Prefixes[to_integral_type(Base58Type::ZCPAYMENT_ADDRRESS)] = {0x14,0x3A};
+        m_base58Prefixes[to_integral_type(Base58Type::ZCPAYMENT_ADDRESS)] = {0x14, 0x3A};
         // guarantees the first 4 characters, when base58 encoded, are "tX"
-        base58Prefixes[to_integral_type(Base58Type::ZCVIEWING_KEY)]      = {0x14,0x37};
+        m_base58Prefixes[to_integral_type(Base58Type::ZCVIEWING_KEY)] = {0x14, 0x37};
         // guarantees the first 2 characters, when base58 encoded, are "tQ" OR "tS"
-        base58Prefixes[to_integral_type(Base58Type::ZCSPENDING_KEY)]     = {0x05,0xFE};
+        m_base58Prefixes[to_integral_type(Base58Type::ZCSPENDING_KEY)] = {0x05, 0xFE};
 
-        bech32HRPs[to_integral_type(Bech32Type::SAPLING_PAYMENT_ADDRESS)] = "pzregtestsapling";
-        bech32HRPs[to_integral_type(Bech32Type::SAPLING_FULL_VIEWING_KEY)]     = "pviewregtestsapling";
-        bech32HRPs[to_integral_type(Bech32Type::SAPLING_INCOMING_VIEWING_KEY)] = "pivkregtestsapling";
-        bech32HRPs[to_integral_type(Bech32Type::SAPLING_EXTENDED_SPEND_KEY)]   = "p-secret-extended-key-regtest";
+        m_bech32HRPs[to_integral_type(Bech32Type::SAPLING_PAYMENT_ADDRESS)] = "pzregtestsapling";
+        m_bech32HRPs[to_integral_type(Bech32Type::SAPLING_FULL_VIEWING_KEY)] = "pviewregtestsapling";
+        m_bech32HRPs[to_integral_type(Bech32Type::SAPLING_INCOMING_VIEWING_KEY)] = "pivkregtestsapling";
+        m_bech32HRPs[to_integral_type(Bech32Type::SAPLING_EXTENDED_SPEND_KEY)] = "p-secret-extended-key-regtest";
+        m_bech32HRPs[to_integral_type(Bech32Type::SAPLING_EXTENDED_FVK)] = "pxviewregtestsapling";
 
         fMiningRequiresPeers = false;
         fDefaultConsistencyChecks = true;

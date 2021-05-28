@@ -4,6 +4,8 @@
 # use this for the debug purposes only
 FIXED_RECIPE_HASH?=
 
+JOBCOUNT?=$(shell nproc)
+
 define int_vars
 #Set defaults for vars which may be overridden per-package
 $(1)_cc=$($($(1)_type)_CC)

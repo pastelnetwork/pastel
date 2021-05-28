@@ -1,6 +1,6 @@
 // Copyright (c) 2013 The Bitcoin Core developers
 // Distributed under the MIT software license, see the accompanying
-// file COPYING or http://www.opensource.org/licenses/mit-license.php.
+// file COPYING or https://www.opensource.org/licenses/mit-license.php .
 
 #include <boost/test/unit_test.hpp>
 
@@ -84,6 +84,7 @@ void RunTest(const TestVector &test) {
     CExtPubKey pubkey;
     key.SetMaster(&seed[0], seed.size());
     pubkey = key.Neuter();
+    KeyIO keyIO(Params());
     for (const auto &derive : test.vDerive)
     {
         unsigned char data[74];
@@ -91,12 +92,12 @@ void RunTest(const TestVector &test) {
         pubkey.Encode(data);
 
         // Test private key
-        BOOST_CHECK(EncodeExtKey(key) == derive.prv);
-        BOOST_CHECK(DecodeExtKey(derive.prv) == key); //ensure a base58 decoded key also matches
+        BOOST_CHECK(keyIO.EncodeExtKey(key) == derive.prv);
+        BOOST_CHECK(keyIO.DecodeExtKey(derive.prv) == key); //ensure a base58 decoded key also matches
 
         // Test public key
-        BOOST_CHECK(EncodeExtPubKey(pubkey) == derive.pub);
-        BOOST_CHECK(DecodeExtPubKey(derive.pub) == pubkey); //ensure a base58 decoded pubkey also matches
+        BOOST_CHECK(keyIO.EncodeExtPubKey(pubkey) == derive.pub);
+        BOOST_CHECK(keyIO.DecodeExtPubKey(derive.pub) == pubkey); //ensure a base58 decoded pubkey also matches
 
         // Derive new keys
         CExtKey keyNew;

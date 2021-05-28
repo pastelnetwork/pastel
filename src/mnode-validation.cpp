@@ -86,7 +86,7 @@ bool GetOutpointAndKeysFromOutput(CWallet* pWalletMain, const COutput& out, COut
     CTxDestination dest;
     ExtractDestination(pubScript, dest);
 
-    const CKeyID *keyID = boost::get<CKeyID>(&dest);
+    const CKeyID *keyID = std::get_if<CKeyID>(&dest);
     if (!keyID) {
         LogPrintf("GetOutpointAndKeysFromOutput -- Address does not refer to a key\n");
         return false;

@@ -104,7 +104,7 @@ public:
     // Assumes that the value correctly corresponds to the provided UTXO.
     void AddTransparentInput(COutPoint utxo, CScript scriptPubKey, CAmount value);
 
-    void AddTransparentOutput(CTxDestination& to, CAmount value);
+    void AddTransparentOutput(const CTxDestination& to, CAmount value);
 
     void SendChangeTo(libzcash::SaplingPaymentAddress changeAddr, uint256 ovk);
 

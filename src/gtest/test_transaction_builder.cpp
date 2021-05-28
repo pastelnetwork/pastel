@@ -22,7 +22,8 @@ TEST(TransactionBuilder, Invoke)
 
     std::string sKeyError;
     CBasicKeyStore keystore;
-    const CKey tsk = DecodeSecret(tSecretRegtest, sKeyError);
+    KeyIO keyIO(Params());
+    const CKey tsk = keyIO.DecodeSecret(tSecretRegtest, sKeyError);
     EXPECT_TRUE(tsk.IsValid());
     EXPECT_TRUE(sKeyError.empty());
     keystore.AddKey(tsk);
@@ -141,7 +142,8 @@ TEST(TransactionBuilder, FailsWithNegativeChange)
     // Set up dummy transparent address
     std::string sKeyError;
     CBasicKeyStore keystore;
-    const CKey tsk = DecodeSecret(tSecretRegtest, sKeyError);
+    KeyIO keyIO(Params());
+    const CKey tsk = keyIO.DecodeSecret(tSecretRegtest, sKeyError);
     EXPECT_TRUE(tsk.IsValid());
     EXPECT_TRUE(sKeyError.empty());
     keystore.AddKey(tsk);
@@ -211,7 +213,8 @@ TEST(TransactionBuilder, ChangeOutput)
     // Set up dummy transparent address
     std::string sKeyError;
     CBasicKeyStore keystore;
-    const CKey tsk = DecodeSecret(tSecretRegtest, sKeyError);
+    KeyIO keyIO(Params());
+    const CKey tsk = keyIO.DecodeSecret(tSecretRegtest, sKeyError);
     EXPECT_TRUE(tsk.IsValid());
     EXPECT_TRUE(sKeyError.empty());
     keystore.AddKey(tsk);

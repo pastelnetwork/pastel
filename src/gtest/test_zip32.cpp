@@ -1,7 +1,7 @@
 #include <gtest/gtest.h>
 #include <gmock/gmock.h>
 
-#include <zcash/zip32.h>
+#include "zcash/Address.hpp"
 
 // From https://github.com/zcash-hackworks/zcash-test-vectors/blob/master/sapling_zip32.py
 // Sapling consistently uses little-endian encoding, but uint256S takes its input in
@@ -12,30 +12,30 @@ TEST(ZIP32, TestVectors) {
         17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31};
     HDSeed seed(rawSeed);
 
-    auto m = libzcash::SaplingExtendedSpendingKey::Master(seed);
-    EXPECT_EQ(m.depth, 0);
-    EXPECT_EQ(m.parentFVKTag, 0);
-    EXPECT_EQ(m.childIndex, 0);
+    auto msk = libzcash::SaplingExtendedSpendingKey::Master(seed);
+    EXPECT_EQ(msk.depth, 0);
+    EXPECT_EQ(msk.parentFVKTag, 0);
+    EXPECT_EQ(msk.childIndex, 0);
     EXPECT_EQ(
-        m.chaincode,
+        msk.chaincode,
         uint256S("8e661820750d557e8b34733ebf7ecdfdf31c6d27724fb47aa372bf034b7c94d0"));
     EXPECT_EQ(
-        m.expsk.ask,
+        msk.expsk.ask,
         uint256S("06257454c907f6510ba1c1830ebf60657760a8869ee968a2b93260d3930cc0b6"));
     EXPECT_EQ(
-        m.expsk.nsk,
+        msk.expsk.nsk,
         uint256S("06ea21888a749fd38eb443d20a030abd2e6e997f5db4f984bd1f2f3be8ed0482"));
     EXPECT_EQ(
-        m.expsk.ovk,
+        msk.expsk.ovk,
         uint256S("21fb4adfa42183848306ffb27719f27d76cf9bb81d023c93d4b9230389845839"));
     EXPECT_EQ(
-        m.dk,
+        msk.dk,
         uint256S("72a196f93e8abc0935280ea2a96fa57d6024c9913e0f9fb3af96775bb77cc177"));
     EXPECT_THAT(
-        m.ToXFVK().DefaultAddress().d,
+        msk.ToXFVK().DefaultAddress().d,
         testing::ElementsAreArray({ 0xd8, 0x62, 0x1b, 0x98, 0x1c, 0xf3, 0x00, 0xe9, 0xd4, 0xcc, 0x89 }));
 
-    auto m_1 = m.Derive(1);
+    auto m_1 = msk.Derive(1);
     EXPECT_EQ(m_1.depth, 1);
     EXPECT_EQ(m_1.parentFVKTag, 0x3a71c214);
     EXPECT_EQ(m_1.childIndex, 1);

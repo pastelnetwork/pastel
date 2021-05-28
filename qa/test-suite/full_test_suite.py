@@ -140,7 +140,9 @@ STAGES = [
     'secp256k1',
     'libsnark',
     'univalue',
-    'rpc',
+    'rpc-common',
+    'rpc-ext',
+    'rpc-mn'
 ]
 
 STAGE_COMMANDS = {
@@ -152,7 +154,9 @@ STAGE_COMMANDS = {
     'secp256k1': ['make', '-C', repofile('src/secp256k1'), 'check'],
     'libsnark': ['make', '-C', repofile('src'), 'libsnark-tests'],
     'univalue': ['make', '-C', repofile('src/univalue'), 'check'],
-    'rpc': [repofile('qa/pull-tester/rpc-tests.sh')],
+    'rpc-common': [repofile('qa/pull-tester/rpc-tests.sh'), '--group=testScripts'],
+    'rpc-ext': [repofile('qa/pull-tester/rpc-tests.sh'), '--group=testScriptsExt'],
+    'rpc-mn': [repofile('qa/pull-tester/rpc-tests.sh'), '--group=testScriptsMN'],
 }
 
 

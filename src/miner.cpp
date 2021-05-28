@@ -1,7 +1,7 @@
 // Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2014 The Bitcoin Core developers
 // Distributed under the MIT software license, see the accompanying
-// file COPYING or http://www.opensource.org/licenses/mit-license.php.
+// file COPYING or https://www.opensource.org/licenses/mit-license.php.
 
 #include "miner.h"
 #ifdef ENABLE_MINING
@@ -115,7 +115,7 @@ CBlockTemplate* CreateNewBlock(const CScript& scriptPubKeyIn)
     // Create new block
     std::unique_ptr<CBlockTemplate> pblocktemplate(new CBlockTemplate());
     if(!pblocktemplate.get())
-        return NULL;
+        return nullptr;
     CBlock *pblock = &pblocktemplate->block; // pointer for convenience
 
     // -regtest only: allow overriding block.nVersion with
@@ -178,7 +178,7 @@ CBlockTemplate* CreateNewBlock(const CScript& scriptPubKeyIn)
             if (tx.IsCoinBase() || !IsFinalTx(tx, nHeight, nLockTimeCutoff) || IsExpiredTx(tx, nHeight))
                 continue;
 
-            COrphan* porphan = NULL;
+            COrphan* porphan = nullptr;
             double dPriority = 0;
             CAmount nTotalIn = 0;
             bool fMissingInputs = false;
@@ -396,10 +396,11 @@ std::optional<CScript> GetMinerScriptPubKey(CReserveKey& reservekey)
 std::optional<CScript> GetMinerScriptPubKey()
 #endif
 {
+    KeyIO keyIO(Params());
     CKeyID keyID;
-    CTxDestination addr = DecodeDestination(GetArg("-mineraddress", ""));
+    CTxDestination addr = keyIO.DecodeDestination(GetArg("-mineraddress", ""));
     if (IsValidDestination(addr)) {
-        keyID = boost::get<CKeyID>(addr);
+        keyID = std::get<CKeyID>(addr);
     } else {
 #ifdef ENABLE_WALLET
         CPubKey pubkey;
@@ -426,9 +427,8 @@ CBlockTemplate* CreateNewBlockWithKey()
     std::optional<CScript> scriptPubKey = GetMinerScriptPubKey();
 #endif
 
-    if (!scriptPubKey) {
-        return NULL;
-    }
+    if (!scriptPubKey)
+        return nullptr;
     return CreateNewBlock(*scriptPubKey);
 }
 
@@ -489,7 +489,7 @@ static bool ProcessBlockFound(CBlock* pblock)
 
     // Process this block the same as if we had received it from another node
     CValidationState state;
-    if (!ProcessNewBlock(state, NULL, pblock, true, NULL))
+    if (!ProcessNewBlock(state, nullptr, pblock, true, nullptr))
         return error("PastelMiner: ProcessNewBlock, block not accepted");
 
     TrackMinedBlock(pblock->GetHash());
@@ -762,17 +762,17 @@ void GenerateBitcoins(bool fGenerate, CWallet* pwallet, int nThreads)
 void GenerateBitcoins(bool fGenerate, int nThreads)
 #endif
 {
-    static boost::thread_group* minerThreads = NULL;
+    static boost::thread_group* minerThreads = nullptr;
 
     if (nThreads < 0)
         nThreads = GetNumCores();
 
-    if (minerThreads != NULL)
+    if (minerThreads != nullptr)
     {
         minerThreads->interrupt_all();
         minerThreads->join_all();
         delete minerThreads;
-        minerThreads = NULL;
+        minerThreads = nullptr;
     }
 
     if (nThreads == 0 || !fGenerate)

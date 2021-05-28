@@ -100,6 +100,9 @@
     <ClCompile Include="..\..\..\src\uint256.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\..\src\utiltest.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\..\src\amount.h">
@@ -190,6 +193,12 @@
       <Filter>Source Files</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\src\uint256.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\key_constants.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\utiltest.h">
       <Filter>Source Files</Filter>
     </ClInclude>
   </ItemGroup>

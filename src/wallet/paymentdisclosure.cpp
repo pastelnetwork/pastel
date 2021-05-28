@@ -1,15 +1,15 @@
 // Copyright (c) 2017 The Zcash developers
 // Distributed under the MIT software license, see the accompanying
-// file COPYING or http://www.opensource.org/licenses/mit-license.php.
+// file COPYING or https://www.opensource.org/licenses/mit-license.php.
 
-#include "paymentdisclosure.h"
-
+#include "wallet/paymentdisclosure.h"
 #include "key_io.h"
 #include "util.h"
 
 std::string PaymentDisclosureInfo::ToString() const {
+    KeyIO keyIO(Params());
     return strprintf("PaymentDisclosureInfo(version=%d, esk=%s, joinSplitPrivKey=<omitted>, address=%s)",
-        version, esk.ToString(), EncodePaymentAddress(zaddr));
+        version, esk.ToString(), keyIO.EncodePaymentAddress(zaddr));
 }
 
 std::string PaymentDisclosure::ToString() const {
@@ -18,8 +18,9 @@ std::string PaymentDisclosure::ToString() const {
 }
 
 std::string PaymentDisclosurePayload::ToString() const {
+    KeyIO keyIO(Params());
     return strprintf("PaymentDisclosurePayload(version=%d, esk=%s, txid=%s, js=%d, n=%d, address=%s, message=%s)",
-        version, esk.ToString(), txid.ToString(), js, n, EncodePaymentAddress(zaddr), message);
+        version, esk.ToString(), txid.ToString(), js, n, keyIO.EncodePaymentAddress(zaddr), message);
 }
 
 PaymentDisclosure::PaymentDisclosure(const uint256 &joinSplitPubKey, const PaymentDisclosureKey &key, const PaymentDisclosureInfo &info, const std::string &message)

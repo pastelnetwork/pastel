@@ -3338,14 +3338,16 @@ bool ReceivedBlockTransactions(const CBlock &block, CValidationState& state, CBl
     pindexNew->nChainTx = 0;
     CAmount sproutValue = 0;
     CAmount saplingValue = 0;
-    for (auto tx : block.vtx) {
+    for (const auto &tx : block.vtx)
+    {
         // Negative valueBalance "takes" money from the transparent value pool
         // and adds it to the Sapling value pool. Positive valueBalance "gives"
         // money to the transparent value pool, removing from the Sapling value
         // pool. So we invert the sign here.
         saplingValue += -tx.valueBalance;
 
-        for (auto js : tx.vjoinsplit) {
+        for (const auto &js : tx.vjoinsplit)
+        {
             sproutValue += js.vpub_old;
             sproutValue -= js.vpub_new;
         }
@@ -3361,28 +3363,31 @@ bool ReceivedBlockTransactions(const CBlock &block, CValidationState& state, CBl
     pindexNew->RaiseValidity(BLOCK_VALID_TRANSACTIONS);
     setDirtyBlockIndex.insert(pindexNew);
 
-    if (pindexNew->pprev == NULL || pindexNew->pprev->nChainTx) {
+    if (!pindexNew->pprev || pindexNew->pprev->nChainTx)
+    {
         // If pindexNew is the genesis block or all parents are BLOCK_VALID_TRANSACTIONS.
         deque<CBlockIndex*> queue;
         queue.push_back(pindexNew);
 
         // Recursively process any descendant blocks that now may be eligible to be connected.
-        while (!queue.empty()) {
-            CBlockIndex *pindex = queue.front();
+        while (!queue.empty())
+        {
+            auto pindex = queue.front();
             queue.pop_front();
             pindex->nChainTx = (pindex->pprev ? pindex->pprev->nChainTx : 0) + pindex->nTx;
-            if (pindex->pprev) {
-                if (pindex->pprev->nChainSproutValue && pindex->nSproutValue) {
+            if (pindex->pprev)
+            {
+                if (pindex->pprev->nChainSproutValue && pindex->nSproutValue)
                     pindex->nChainSproutValue = *pindex->pprev->nChainSproutValue + *pindex->nSproutValue;
-                } else {
+                else
                     pindex->nChainSproutValue = std::nullopt;
-                }
-                if (pindex->pprev->nChainSaplingValue) {
+                if (pindex->pprev->nChainSaplingValue)
                     pindex->nChainSaplingValue = *pindex->pprev->nChainSaplingValue + pindex->nSaplingValue;
-                } else {
+                else
                     pindex->nChainSaplingValue = std::nullopt;
-                }
-            } else {
+            }
+            else
+            {
                 pindex->nChainSproutValue = pindex->nSproutValue;
                 pindex->nChainSaplingValue = pindex->nSaplingValue;
             }
@@ -3390,21 +3395,22 @@ bool ReceivedBlockTransactions(const CBlock &block, CValidationState& state, CBl
                 LOCK(cs_nBlockSequenceId);
                 pindex->nSequenceId = nBlockSequenceId++;
             }
-            if (chainActive.Tip() == NULL || !setBlockIndexCandidates.value_comp()(pindex, chainActive.Tip())) {
+            if (!chainActive.Tip() || !setBlockIndexCandidates.value_comp()(pindex, chainActive.Tip()))
                 setBlockIndexCandidates.insert(pindex);
-            }
-            std::pair<std::multimap<CBlockIndex*, CBlockIndex*>::iterator, std::multimap<CBlockIndex*, CBlockIndex*>::iterator> range = mapBlocksUnlinked.equal_range(pindex);
-            while (range.first != range.second) {
-                std::multimap<CBlockIndex*, CBlockIndex*>::iterator it = range.first;
+            auto range = mapBlocksUnlinked.equal_range(pindex);
+            while (range.first != range.second)
+            {
+                auto it = range.first;
                 queue.push_back(it->second);
                 range.first++;
                 mapBlocksUnlinked.erase(it);
             }
         }
-    } else {
-        if (pindexNew->pprev && pindexNew->pprev->IsValid(BLOCK_VALID_TREE)) {
+    }
+    else
+    {
+        if (pindexNew->pprev && pindexNew->pprev->IsValid(BLOCK_VALID_TREE))
             mapBlocksUnlinked.insert(std::make_pair(pindexNew->pprev, pindexNew));
-        }
     }
 
     return true;
@@ -3729,6 +3735,14 @@ bool AcceptBlockHeader(const CBlockHeader& block, CValidationState& state, CBloc
     return true;
 }
 
+/**
+ * Store block on disk.
+ * If dbp is non-NULL, the file is known to already reside on disk.
+ *
+ * JoinSplit proofs are not verified here; the only caller of AcceptBlock
+ * (ProcessNewBlock) later invokes ActivateBestChain, which ultimately calls
+ * ConnectBlock in a manner that can verify the proofs
+ */
 bool AcceptBlock(CBlock& block, CValidationState& state, CBlockIndex** ppindex, bool fRequested, CDiskBlockPos* dbp)
 {
     const CChainParams& chainparams = Params();
@@ -3841,6 +3855,10 @@ bool ProcessNewBlock(CValidationState &state, CNode* pfrom, CBlock* pblock, bool
     return true;
 }
 
+/**
+ * This is only invoked by the miner.
+ * The block's proof-of-work is assumed invalid and not checked.
+ */
 bool TestBlockValidity(CValidationState &state, const CBlock& block, CBlockIndex * const pindexPrev, bool fCheckPOW, bool fCheckMerkleRoot)
 {
     AssertLockHeld(cs_main);
@@ -3897,7 +3915,7 @@ void PruneOneBlockFile(const int fileNumber)
             // to be downloaded again in order to consider its chain, at which
             // point it would be considered as a candidate for
             // mapBlocksUnlinked or setBlockIndexCandidates.
-            std::pair<std::multimap<CBlockIndex*, CBlockIndex*>::iterator, std::multimap<CBlockIndex*, CBlockIndex*>::iterator> range = mapBlocksUnlinked.equal_range(pindex->pprev);
+            auto range = mapBlocksUnlinked.equal_range(pindex->pprev);
             while (range.first != range.second) {
                 std::multimap<CBlockIndex *, CBlockIndex *>::iterator it = range.first;
                 range.first++;
@@ -4050,34 +4068,39 @@ bool static LoadBlockIndexDB()
     vector<pair<int, CBlockIndex*> > vSortedByHeight;
     vSortedByHeight.reserve(mapBlockIndex.size());
     for (const auto &[hash, pIndex] : mapBlockIndex)
-        vSortedByHeight.push_back(make_pair(pIndex->nHeight, pIndex));
+        vSortedByHeight.emplace_back(pIndex->nHeight, pIndex);
     sort(vSortedByHeight.begin(), vSortedByHeight.end());
     for (const auto &[nHeight, pindex] : vSortedByHeight)
     {
         pindex->nChainWork = (pindex->pprev ? pindex->pprev->nChainWork : 0) + GetBlockProof(*pindex);
         // We can link the chain of blocks for which we've received transactions at some point.
         // Pruned nodes may have deleted the block.
-        if (pindex->nTx > 0) {
-            if (pindex->pprev) {
-                if (pindex->pprev->nChainTx) {
+        if (pindex->nTx > 0)
+        {
+            if (pindex->pprev)
+            {
+                if (pindex->pprev->nChainTx)
+                {
                     pindex->nChainTx = pindex->pprev->nChainTx + pindex->nTx;
-                    if (pindex->pprev->nChainSproutValue && pindex->nSproutValue) {
+                    if (pindex->pprev->nChainSproutValue && pindex->nSproutValue)
                         pindex->nChainSproutValue = *pindex->pprev->nChainSproutValue + *pindex->nSproutValue;
-                    } else {
+                    else
                         pindex->nChainSproutValue = std::nullopt;
-                    }
-                    if (pindex->pprev->nChainSaplingValue) {
+                    if (pindex->pprev->nChainSaplingValue)
                         pindex->nChainSaplingValue = *pindex->pprev->nChainSaplingValue + pindex->nSaplingValue;
-                    } else {
+                    else
                         pindex->nChainSaplingValue = std::nullopt;
-                    }
-                } else {
+                }
+                else
+                {
                     pindex->nChainTx = 0;
                     pindex->nChainSproutValue = std::nullopt;
                     pindex->nChainSaplingValue = std::nullopt;
                     mapBlocksUnlinked.insert(std::make_pair(pindex->pprev, pindex));
                 }
-            } else {
+            }
+            else
+            {
                 pindex->nChainTx = pindex->nTx;
                 pindex->nChainSproutValue = pindex->nSproutValue;
                 pindex->nChainSaplingValue = pindex->nSaplingValue;
@@ -4089,20 +4112,20 @@ bool static LoadBlockIndexDB()
         // Genesis block has a branch ID of zero by definition, but has no
         // validity status because it is side-loaded into a fresh chain.
         // Activation blocks will have branch IDs set (read from disk).
-        if (pindex->pprev) {
-            if (pindex->IsValid(BLOCK_VALID_CONSENSUS) && !pindex->nCachedBranchId) {
+        if (pindex->pprev)
+        {
+            if (pindex->IsValid(BLOCK_VALID_CONSENSUS) && !pindex->nCachedBranchId)
                 pindex->nCachedBranchId = pindex->pprev->nCachedBranchId;
-            }
-        } else {
-            pindex->nCachedBranchId = SPROUT_BRANCH_ID;
         }
-        if (pindex->IsValid(BLOCK_VALID_TRANSACTIONS) && (pindex->nChainTx || pindex->pprev == NULL))
+        else
+            pindex->nCachedBranchId = SPROUT_BRANCH_ID;
+        if (pindex->IsValid(BLOCK_VALID_TRANSACTIONS) && (pindex->nChainTx || !pindex->pprev))
             setBlockIndexCandidates.insert(pindex);
         if (pindex->nStatus & BLOCK_FAILED_MASK && (!pindexBestInvalid || pindex->nChainWork > pindexBestInvalid->nChainWork))
             pindexBestInvalid = pindex;
         if (pindex->pprev)
             pindex->BuildSkip();
-        if (pindex->IsValid(BLOCK_VALID_TREE) && (pindexBestHeader == NULL || CBlockIndexWorkComparator()(pindexBestHeader, pindex)))
+        if (pindex->IsValid(BLOCK_VALID_TREE) && (!pindexBestHeader || CBlockIndexWorkComparator()(pindexBestHeader, pindex)))
             pindexBestHeader = pindex;
     }
 
@@ -4110,34 +4133,31 @@ bool static LoadBlockIndexDB()
     pblocktree->ReadLastBlockFile(nLastBlockFile);
     vinfoBlockFile.resize(nLastBlockFile + 1);
     LogPrintf("%s: last block file = %i\n", __func__, nLastBlockFile);
-    for (int nFile = 0; nFile <= nLastBlockFile; nFile++) {
+    for (int nFile = 0; nFile <= nLastBlockFile; nFile++)
         pblocktree->ReadBlockFileInfo(nFile, vinfoBlockFile[nFile]);
-    }
     LogPrintf("%s: last block file info: %s\n", __func__, vinfoBlockFile[nLastBlockFile].ToString());
-    for (int nFile = nLastBlockFile + 1; true; nFile++) {
+    for (int nFile = nLastBlockFile + 1; true; nFile++)
+    {
         CBlockFileInfo info;
-        if (pblocktree->ReadBlockFileInfo(nFile, info)) {
+        if (pblocktree->ReadBlockFileInfo(nFile, info))
             vinfoBlockFile.push_back(info);
-        } else {
+        else
             break;
-        }
     }
 
     // Check presence of blk files
     LogPrintf("Checking all blk files are present...\n");
-    set<int> setBlkDataFiles;
+    unordered_set<int> setBlkDataFiles;
     for (const auto &[hash, pindex] : mapBlockIndex)
     {
-        if (pindex->nStatus & BLOCK_HAVE_DATA) {
+        if (pindex->nStatus & BLOCK_HAVE_DATA)
             setBlkDataFiles.insert(pindex->nFile);
-        }
     }
-    for (std::set<int>::iterator it = setBlkDataFiles.begin(); it != setBlkDataFiles.end(); it++)
+    for (const auto &nBlockFileNo : setBlkDataFiles)
     {
-        CDiskBlockPos pos(*it, 0);
-        if (CAutoFile(OpenBlockFile(pos, true), SER_DISK, CLIENT_VERSION).IsNull()) {
+        CDiskBlockPos pos(nBlockFileNo, 0);
+        if (CAutoFile(OpenBlockFile(pos, true), SER_DISK, CLIENT_VERSION).IsNull())
             return false;
-        }
     }
 
     // Check whether we have ever pruned block & undo files
@@ -4162,9 +4182,8 @@ bool static LoadBlockIndexDB()
         //   not its children.
         // - This will miss chain tips; we handle the best tip below, and other
         //   tips will be handled by ConnectTip during a re-org.
-        if (pindex->pprev) {
+        if (pindex->pprev)
             pindex->pprev->hashFinalSproutRoot = pindex->hashSproutAnchor;
-        }
     }
 
     // Load pointer to end of best chain
@@ -4183,7 +4202,6 @@ bool static LoadBlockIndexDB()
         Checkpoints::GuessVerificationProgress(chainparams.Checkpoints(), chainActive.Tip()));
 
     EnforceNodeDeprecation(chainActive.Height(), true);
-
     return true;
 }
 

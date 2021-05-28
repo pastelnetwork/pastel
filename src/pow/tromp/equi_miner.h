@@ -21,8 +21,12 @@
 #include "pow/tromp/equi.h"
 #include <stdio.h>
 #include <stdlib.h>
-#include <pthread.h>
 #include <assert.h>
+#ifdef _MSC_VER
+#include "cyclicbarrier/cyclicbarrier.hpp"
+#else
+#include <pthread.h>
+#endif
 
 typedef uint16_t u16;
 typedef uint64_t u64;
@@ -213,12 +217,24 @@ struct equi {
   u32 xfull;
   u32 hfull;
   u32 bfull;
+#ifdef _MSC_VER
+  cbar::cyclicbarrier *m_pBarrier;
+#else
   pthread_barrier_t barry;
-  equi(const u32 n_threads) {
+#endif
+
+  equi(const u32 n_threads)
+  {
     assert(sizeof(hashunit) == 4);
     nthreads = n_threads;
-    const int err = pthread_barrier_init(&barry, NULL, nthreads);
+#ifdef _MSC_VER
+    m_pBarrier = new cbar::cyclicbarrier(nthreads);
+    if (!m_pBarrier)
+        throw "Failed to create cyclicbarrier";
+#else
+    const int err = pthread_barrier_init(&barry, nullptr, nthreads);
     assert(!err);
+#endif
     hta.alloctrees();
     nslots = (bsizes *)hta.alloc(2 * NBUCKETS, sizeof(au32));
     sols   =  (proof *)hta.alloc(MAXSOLS, sizeof(proof));
@@ -594,7 +610,50 @@ nc++,       candidate(tree(bucketid, s0, s1));
   }
 };
 
-typedef struct {
+#ifdef _MSC_VER
+typedef struct
+{
+    u32 id;
+    equi* eq;
+} thread_ctx;
+
+void* worker(void* vp)
+{
+    thread_ctx* tp = (thread_ctx*)vp;
+    equi* eq = tp->eq;
+
+    if (tp->id == 0)
+        eq->m_pBarrier->await();
+    eq->digit0(tp->id);
+    eq->m_pBarrier->await();
+    if (tp->id == 0)
+    {
+        eq->xfull = eq->bfull = eq->hfull = 0;
+        eq->showbsizes(0);
+    }
+    eq->m_pBarrier->await();
+    for (u32 r = 1; r < WK; r++)
+    {
+        if (tp->id == 0)
+            eq->m_pBarrier->await();
+        r & 1 ? eq->digitodd(r, tp->id) : eq->digiteven(r, tp->id);
+        eq->m_pBarrier->await();
+        if (tp->id == 0)
+        {
+            eq->xfull = eq->bfull = eq->hfull = 0;
+            eq->showbsizes(r);
+        }
+        eq->m_pBarrier->await();
+    }
+    if (tp->id == 0)
+        eq->digitK(tp->id);
+    eq->m_pBarrier->await();
+    return 0;
+}
+
+#else
+typedef struct
+{
   u32 id;
   pthread_t thread;
   equi *eq;
@@ -604,41 +663,43 @@ void barrier(pthread_barrier_t *barry) {
   const int rc = pthread_barrier_wait(barry);
   if (rc != 0 && rc != PTHREAD_BARRIER_SERIAL_THREAD) {
 //    printf("Could not wait on barrier\n");
-    pthread_exit(NULL);
+    pthread_exit(nullptr);
   }
 }
 
-void *worker(void *vp) {
-  thread_ctx *tp = (thread_ctx *)vp;
-  equi *eq = tp->eq;
+void* worker(void* vp)
+{
+    thread_ctx* tp = (thread_ctx*)vp;
+    equi* eq = tp->eq;
 
-  if (tp->id == 0)
-//    printf("Digit 0\n");
-  barrier(&eq->barry);
-  eq->digit0(tp->id);
-  barrier(&eq->barry);
-  if (tp->id == 0) {
-    eq->xfull = eq->bfull = eq->hfull = 0;
-    eq->showbsizes(0);
-  }
-  barrier(&eq->barry);
-  for (u32 r = 1; r < WK; r++) {
     if (tp->id == 0)
-//      printf("Digit %d", r);
-    barrier(&eq->barry);
-    r&1 ? eq->digitodd(r, tp->id) : eq->digiteven(r, tp->id);
+        //    printf("Digit 0\n");
+        barrier(&eq->barry);
+    eq->digit0(tp->id);
     barrier(&eq->barry);
     if (tp->id == 0) {
-//      printf(" x%d b%d h%d\n", eq->xfull, eq->bfull, eq->hfull);
-      eq->xfull = eq->bfull = eq->hfull = 0;
-      eq->showbsizes(r);
+        eq->xfull = eq->bfull = eq->hfull = 0;
+        eq->showbsizes(0);
     }
     barrier(&eq->barry);
-  }
-  if (tp->id == 0)
-//    printf("Digit %d\n", WK);
-  eq->digitK(tp->id);
-  barrier(&eq->barry);
-  pthread_exit(NULL);
-  return 0;
+    for (u32 r = 1; r < WK; r++) {
+        if (tp->id == 0)
+            //      printf("Digit %d", r);
+            barrier(&eq->barry);
+        r & 1 ? eq->digitodd(r, tp->id) : eq->digiteven(r, tp->id);
+        barrier(&eq->barry);
+        if (tp->id == 0) {
+            //      printf(" x%d b%d h%d\n", eq->xfull, eq->bfull, eq->hfull);
+            eq->xfull = eq->bfull = eq->hfull = 0;
+            eq->showbsizes(r);
+        }
+        barrier(&eq->barry);
+    }
+    if (tp->id == 0)
+        //    printf("Digit %d\n", WK);
+        eq->digitK(tp->id);
+    barrier(&eq->barry);
+    pthread_exit(nullptr);
+    return 0;
 }
+#endif // _MSC_VER

@@ -103,19 +103,28 @@ def initialize_chain(test_dir):
     pasteld and pastel-cli must be in search path.
     """
 
+    if os.name == "nt":
+        isWindows = True
+        PastelDaemon = "pasteld.exe"
+        PastelClient = "pastel-cli.exe"
+    else:
+        isWindows = False
+        PastelDaemon = "pasteld"
+        PastelClient = "pastel-cli"
     if not os.path.isdir(os.path.join("cache", "node0")):
         print("Rebuilding cache...")
-        devnull = open("/dev/null", "w+")
+        if not isWindows:
+            devnull = open("/dev/null", "w+")
         # Create cache directories, run pasteld:
         for i in range(4):
             datadir=initialize_datadir("cache", i)
-            args = [ os.getenv("PASTELD", "pasteld"), "-keypool=1", "-datadir="+datadir, "-discover=0" ]
+            args = [ os.getenv("PASTELD", PastelDaemon), "-keypool=1", "-datadir="+datadir, "-discover=0" ]
             if i > 0:
                 args.append("-connect=127.0.0.1:"+str(p2p_port(0)))
             pasteld_processes[i] = subprocess.Popen(args)
             if os.getenv("PYTHON_DEBUG", ""):
                 print("initialize_chain: pasteld started, calling pastel-cli -rpcwait getblockcount")
-            subprocess.check_call([ os.getenv("PASTELDCLI", "pastel-cli"), "-datadir="+datadir,
+            subprocess.check_call([ os.getenv("PASTELDCLI", PastelClient), "-datadir="+datadir,
                                     "-rpcwait", "getblockcount"], stdout=devnull)
             if os.getenv("PYTHON_DEBUG", ""):
                 print("initialize_chain: pastel-cli -rpcwait getblockcount completed")

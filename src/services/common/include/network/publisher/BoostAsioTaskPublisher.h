@@ -4,7 +4,7 @@
 #include <istream>
 #include <boost/enable_shared_from_this.hpp>
 #include <boost/shared_ptr.hpp>
-#include <boost/bind.hpp>
+#include <boost/bind/bind.hpp>
 #include <boost/asio/io_service.hpp>
 #include <boost/asio/ip/tcp.hpp>
 #include <boost/asio/ip/tcp.hpp>

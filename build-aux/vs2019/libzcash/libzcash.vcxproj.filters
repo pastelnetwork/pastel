@@ -5,16 +5,15 @@
       <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
       <Extensions>cpp;c;cc;cxx;c++;cppm;ixx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
     </Filter>
-    <Filter Include="Header Files">
-      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
-      <Extensions>h;hh;hpp;hxx;h++;hm;inl;inc;ipp;xsd</Extensions>
-    </Filter>
     <Filter Include="Resource Files">
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
     </Filter>
     <Filter Include="Source Files\zcash">
       <UniqueIdentifier>{86fa6410-e2c0-4316-9601-02dd45ef1348}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\zcash\address">
+      <UniqueIdentifier>{06ab9bd0-4019-4430-a644-633b125655fd}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -42,8 +41,14 @@
     <ClCompile Include="..\..\..\src\zcash\util.cpp">
       <Filter>Source Files\zcash</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\src\zcash\zip32.cpp">
-      <Filter>Source Files\zcash</Filter>
+    <ClCompile Include="..\..\..\src\zcash\address\sapling.cpp">
+      <Filter>Source Files\zcash\address</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\src\zcash\address\sprout.cpp">
+      <Filter>Source Files\zcash\address</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\src\zcash\address\zip32.cpp">
+      <Filter>Source Files\zcash\address</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -74,8 +79,14 @@
     <ClInclude Include="..\..\..\src\zcash\Zcash.h">
       <Filter>Source Files\zcash</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\..\src\zcash\zip32.h">
-      <Filter>Source Files\zcash</Filter>
+    <ClInclude Include="..\..\..\src\zcash\address\sapling.hpp">
+      <Filter>Source Files\zcash\address</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\zcash\address\sprout.hpp">
+      <Filter>Source Files\zcash\address</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\zcash\address\zip32.h">
+      <Filter>Source Files\zcash\address</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

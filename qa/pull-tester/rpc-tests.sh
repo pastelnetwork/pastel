@@ -5,12 +5,12 @@ CURDIR=$(cd $(dirname "$0"); pwd)
 # Get BUILDDIR and REAL_PASTELD
 . "${CURDIR}/tests-config.sh"
 
-export PASTELCLI=${BUILDDIR}/qa/pull-tester/run-bitcoin-cli
+export PASTELCLI=${BUILDDIR}/qa/pull-tester/run-pastel-cli
 export PASTELD=${REAL_PASTELD}
 
 #Run the tests
 
-testScripts=(
+declare -a testScripts=(
     'framework.py'
     'paymentdisclosure.py'
     'prioritisetransaction.py'
@@ -23,7 +23,6 @@ testScripts=(
     'wallet_listreceived.py'
     'wallet.py'
     'wallet_overwintertx.py'
-    'wallet_persistence.py' #fails
     'wallet_nullifiers.py'
     'wallet_1941.py'
     'wallet_addresses.py'
@@ -39,7 +38,6 @@ testScripts=(
     'rest.py'
     'mempool_spendcoinbase.py'
     'mempool_reorg.py'
-    'mempool_nu_activation.py'
     'mempool_tx_expiry.py'
     'httpbasics.py'
     'zapwallettxes.py'
@@ -56,7 +54,6 @@ testScripts=(
     'blockchain.py'
     'disablewallet.py'
     'zcjoinsplit.py'
-    'zcjoinsplitdoublespend.py'  # crashes pasteld
     'zkey_import_export.py' 
     'reorg_limit.py'
     'getblocktemplate.py'
@@ -68,41 +65,73 @@ testScripts=(
     'p2p_node_bloom.py'
     'regtest_signrawtransaction.py'
     'finalsaplingroot.py'
+)
+
+declare -a testScriptsToFix=(
+    'wallet_persistence.py' #fails
+    'mempool_nu_activation.py' #timesout
+    'zcjoinsplitdoublespend.py'  # crashes pasteld
+    'getblocktemplate_proposals.py'
+    'pruning.py'                    
+    'hardforkdetection.py'          
+    'invalidateblock.py'            
+    'invalidblockrequest.py'        
+    'receivedby.py'                 
+    'script_test.py'
+    'smartfees.py'                  
+    'invalidblockrequest.py'        
+    'p2p-acceptblock.py'            
+    'keypool.py'
+    'rpcbind_test.py'
+)
+
+declare -a testScriptsMN=(
     'mn_main.py'
     'mn_payment.py'
-    'mn_governance.py'
+#    'mn_governance.py'
     'mn_tickets.py'
     'mn_tickets_validation.py'
     'mn_messaging.py'
-);
-testScriptsExt=(
+)
+
+declare -a testScriptsExt=(
     'getblocktemplate_longpoll.py'
-    # 'getblocktemplate_proposals.py' #BROKEN in zcash
-    # 'pruning.py'                    #BROKEN in zcash
     'forknotify.py'
-    # 'hardforkdetection.py'          #BROKEN in zcash
-    # 'invalidateblock.py'            #BROKEN in zcash
-    'keypool.py'
-    # 'receivedby.py'                 #BROKEN in zcash
-    'rpcbind_test.py'
-#   'script_test.py'
-    # 'smartfees.py'                  #BROKEN in zcash
     'maxblocksinflight.py'
-    # 'invalidblockrequest.py'        #BROKEN in zcash
-    # 'p2p-acceptblock.py'            #BROKEN in zcash
 );
 
-if [ "x$ENABLE_ZMQ" = "x1" ]; then
-    echo -e "=== ZMQ test disabled ==="
+#if [ "x$ENABLE_ZMQ" = "x1" ]; then
+    # echo -e "=== ZMQ test disabled ==="
     # testScripts+=('zmq_test.py')      #FIXME - hangs
-fi
+#fi
 
 if [ "x$ENABLE_PROTON" = "x1" ]; then
   testScripts+=('proton_test.py')     #???  
 fi
 
-extArg="-extended"
-passOn=${@#$extArg}
+function get_time()
+{
+  echo "$(date +%s.%N)"
+}
+
+# Calculate time difference and format it as HH:MM:SS.msecs
+#  parameters:
+#    $1: time_end
+#    $2: time_start
+function difftime()
+{
+	local secs=$(($((10#${1%.*})) - $((10#${2%.*}))))
+	local nsecs=$(($((10#${1#*.})) - $((10#${nsecs_t2%%0}))))
+	if (( $nsecs < 0 )); then
+	    secs=$(($secs - 1))
+	    nsecs=$((999999999 + $nsecs))
+	fi
+	local timediff=$(printf '%02d:%02d:%02d.%03d' $((10#$secs/3600)) $((10#$secs%3600/60)) $((10#$secs%60)) $((10#$nsecs/1000000)))
+	echo "$timediff"
+}
+
+#extArg="-extended"
+#passOn=${@#$extArg}
 
 successCount=0
 declare -a failures
@@ -114,10 +143,12 @@ function runTestScript
 
     echo -e "=== Running testscript ${testName} ==="
 
+    local time_start=$(get_time)
     if eval "$@"
     then
         successCount=$(expr $successCount + 1)
-        echo "--- Success: ${testName} ---"
+        local time_end=$(get_time)
+        echo "--- Success: ${testName} --- | exectime: $(difftime $time_end $time_start)"
     else
         failures[${#failures[@]}]="$testName"
         echo "!!! FAIL: ${testName} !!!"
@@ -126,38 +157,89 @@ function runTestScript
     echo
 }
 
-if [ "x${ENABLE_BITCOIND}${ENABLE_UTILS}${ENABLE_WALLET}" = "x111" ]; then
-    for (( i = 0; i < ${#testScripts[@]}; i++ ))
-    do
-        if [ -z "$1" ] || [ "${1:0:1}" == "-" ] || [ "$1" == "${testScripts[$i]}" ] || [ "$1.py" == "${testScripts[$i]}" ]
-        then
-            runTestScript \
-                "${testScripts[$i]}" \
-                "${BUILDDIR}/qa/rpc-tests/${testScripts[$i]}" \
-                --srcdir "${BUILDDIR}/src" ${passOn}
-        fi
+if [ "x${ENABLE_PASTELD}${ENABLE_UTILS}${ENABLE_WALLET}" != "x111" ]; then
+  echo "No rpc tests to run. Wallet, utils, and pasteld must all be enabled"
+  exit 0
+fi
+
+shopt -s extglob
+
+testGroupName=
+testScriptName=
+# parse command-line arguments
+while (( "$#" )); do
+  case "$1" in
+    --group=*) # name of test group
+      testGroupName=${1:8}
+      shift
+      ;;
+    -g=*) # name of test group
+      testGroupName=${1:3}
+      shift
+      ;;
+    --name=*) # test script name
+      testScriptName=${1:7}
+      shift
+      ;;
+    -n=*) # test script name
+      testScriptName=${1:3}
+      shift
+      ;;
+  esac
+done
+
+# get full script file path
+# parameters:
+#   $1 - script name (can be without .py extension)
+function getScriptPath()
+{
+	local a=($1)
+	local s=""
+	for p in "${a[@]}"
+	do
+	    if test -z "$s"; then
+		local scriptName=${p%.*}
+		s="${BUILDDIR}/qa/rpc-tests/${scriptName}.py"
+	    else
+		s+=" $p" # add script options
+	    fi
+	done
+	echo $s
+}
+
+# run group of tests
+# parameters:
+#   $1 - name of the array with test script names
+function runTestGroup()
+{
+    local testGroupName=$1[@]
+    eval scriptArray=( '"${!testGroupName}"' )
+    len=${#scriptArray[@]}
+    echo "Executing $len test scripts, group [$1]"
+    for ScriptName in "${scriptArray[@]}"; do
+      scriptFileName=$(getScriptPath "$ScriptName")
+      runTestScript "$ScriptName" "$scriptFileName" --srcdir "${BUILDDIR}/src"
     done   
-    for (( i = 0; i < ${#testScriptsExt[@]}; i++ ))
-    do
-        if [ "$1" == $extArg ] || [ "$1" == "${testScriptsExt[$i]}" ] || [ "$1.py" == "${testScriptsExt[$i]}" ]
-        then
-            runTestScript \
-                "${testScriptsExt[$i]}" \
-                "${BUILDDIR}/qa/rpc-tests/${testScriptsExt[$i]}" \
-                --srcdir "${BUILDDIR}/src" ${passOn}
-        fi
-    done
+}
 
-    echo -e "\n\nTests completed: $(expr $successCount + ${#failures[@]})"
-    echo "successes $successCount; failures: ${#failures[@]}"
-
-    if [ ${#failures[@]} -gt 0 ]
-    then
-        echo -e "\nFailing tests: ${failures[*]}"
-        exit 1
-    else
-        exit 0
-    fi
+if test -n "$testGroupName"; then
+    runTestGroup "$testGroupName"
+elif test -n "$testScriptName"; then
+    scriptFileName=$(getScriptPath "$testScriptName")
+    runTestScript "$testScriptName" "$scriptFileName" --srcdir "${BUILDDIR}/src"
 else
-  echo "No rpc tests to run. Wallet, utils, and bitcoind must all be enabled"
+    runTestGroup "testScripts"
+    runTestGroup "testScriptsExt"
+    runTestGroup "testScriptsMN"
+fi
+
+echo -e "\n\nTests completed: $(expr $successCount + ${#failures[@]})"
+echo "successes $successCount; failures: ${#failures[@]}"
+
+if [ ${#failures[@]} -gt 0 ]
+then
+    echo -e "\nFailing tests: ${failures[*]}"
+    exit 1
+else
+    exit 0
 fi

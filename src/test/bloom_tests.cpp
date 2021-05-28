@@ -1,6 +1,6 @@
 // Copyright (c) 2012-2013 The Bitcoin Core developers
 // Distributed under the MIT software license, see the accompanying
-// file COPYING or http://www.opensource.org/licenses/mit-license.php.
+// file COPYING or https://www.opensource.org/licenses/mit-license.php .
 
 #include "bloom.h"
 
@@ -85,9 +85,10 @@ BOOST_AUTO_TEST_CASE(bloom_create_insert_serialize_with_tweak)
 
 BOOST_AUTO_TEST_CASE(bloom_create_insert_key)
 {
+    KeyIO keyIO(Params());
     std::string strSecret = std::string("5Kg1gnAjaLfKiwhhPpGS3QfRg2m6awQvaj98JCZBZQ5SuS2F15C");
     std::string sKeyError;
-    const CKey key = DecodeSecret(strSecret, sKeyError);
+    const CKey key = keyIO.DecodeSecret(strSecret, sKeyError);
     CPubKey pubkey = key.GetPubKey();
     vector<unsigned char> vchPubKey(pubkey.begin(), pubkey.end());
 

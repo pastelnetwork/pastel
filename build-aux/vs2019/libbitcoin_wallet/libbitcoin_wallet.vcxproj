@@ -87,12 +87,13 @@
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="..\..\..\src\utiltest.cpp" />
     <ClCompile Include="..\..\..\src\wallet\asyncrpcoperation_mergetoaddress.cpp" />
     <ClCompile Include="..\..\..\src\wallet\asyncrpcoperation_sendmany.cpp" />
     <ClCompile Include="..\..\..\src\wallet\asyncrpcoperation_shieldcoinbase.cpp" />
     <ClCompile Include="..\..\..\src\wallet\crypter.cpp" />
     <ClCompile Include="..\..\..\src\wallet\db.cpp" />
+    <ClCompile Include="..\..\..\src\wallet\paymentdisclosure.cpp" />
+    <ClCompile Include="..\..\..\src\wallet\paymentdisclosuredb.cpp" />
     <ClCompile Include="..\..\..\src\wallet\rpcdisclosure.cpp" />
     <ClCompile Include="..\..\..\src\wallet\rpcdump.cpp" />
     <ClCompile Include="..\..\..\src\wallet\rpcwallet.cpp" />
@@ -102,12 +103,13 @@
     <ClCompile Include="..\..\..\src\zcbenchmarks.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\..\..\src\utiltest.h" />
     <ClInclude Include="..\..\..\src\wallet\asyncrpcoperation_mergetoaddress.h" />
     <ClInclude Include="..\..\..\src\wallet\asyncrpcoperation_sendmany.h" />
     <ClInclude Include="..\..\..\src\wallet\asyncrpcoperation_shieldcoinbase.h" />
     <ClInclude Include="..\..\..\src\wallet\crypter.h" />
     <ClInclude Include="..\..\..\src\wallet\db.h" />
+    <ClInclude Include="..\..\..\src\wallet\paymentdisclosure.h" />
+    <ClInclude Include="..\..\..\src\wallet\paymentdisclosuredb.h" />
     <ClInclude Include="..\..\..\src\wallet\rpcwallet.h" />
     <ClInclude Include="..\..\..\src\wallet\wallet.h" />
     <ClInclude Include="..\..\..\src\wallet\walletdb.h" />
