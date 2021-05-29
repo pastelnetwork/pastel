@@ -17,10 +17,8 @@ using json = nlohmann::json;
 #include <string>
 
 using boost::asio::ip::address;
-using boost::asio::ip::make_address;
 using boost::asio::ip::make_address_v4;
 using boost::asio::ip::make_address_v6;
-using boost::system::error_code;
 
 /*
     {
@@ -79,12 +77,7 @@ std::string get_obj_as_string(json::iterator& it, std::string name)
     return "";
 }
 
-bool inRange(int low, int high, int x)
-{
-    return ((x-high)*(x-low) <= 0);
-}
-
-bool parse_int(const std::string& str, int base, uint32_t& n) {
+bool parseInt(const std::string& str, int base, uint32_t& n) {
     try {
         size_t pos = 0;
         unsigned long u = stoul(str, &pos, base);
@@ -97,25 +90,24 @@ bool parse_int(const std::string& str, int base, uint32_t& n) {
     }
 }
 
-void parse_ip_address_and_port(const std::string& input, address& addr, uint32_t& port) {
+bool parseIpAddressAndPort(const std::string& input, address& addr, uint32_t& port, std::string& strErr) {
     size_t pos = input.rfind(':');
-    if (pos != std::string::npos && pos > 1 && pos + 1 < input.length()&& parse_int(input.substr(pos + 1), 10, port) && port > 0) {
+    if (pos != std::string::npos && pos > 1 && pos + 1 < input.length()&& parseInt(input.substr(pos + 1), 10, port) && port > 0) {
         if (input[0] == '[' && input[pos - 1] == ']') {
             // square brackets so can only be an IPv6 address
             addr = make_address_v6(input.substr(1, pos - 2));
-            return;
+            return true;
         } else {
             try {
                 // IPv4 address + port?
                 addr = make_address_v4(input.substr(0, pos));
-                return;
+                return true;
             } catch (const std::exception& ex) {
-                // nope, might be an IPv6 address
+                strErr += strprintf("\nError: %s\n",ex.what());
             }
         }
     }
-    port = 0;
-    addr = make_address(input);
+    return false;
 }
 
 bool validateOutIndex(const std::string & sOutIndex)
@@ -125,11 +117,8 @@ bool validateOutIndex(const std::string & sOutIndex)
 
 bool validateIPandPort(const std::string & sNetworkAddress,std::string& strErr)
 {
-    int port = 0;
-    std::string hostname = "";
     address addr;
     uint32_t pr;
-    boost::system::error_code ec;
 
     // validate is IP:PORT is with correct symbols
     if(!regex_match(sNetworkAddress,regex("^[0-9]{1,3}.[0-9]{1,3}.[0-9]{1,3}.[0-9]{1,3}:[0-9]{4,5}$")))
@@ -138,12 +127,17 @@ bool validateIPandPort(const std::string & sNetworkAddress,std::string& strErr)
         return false;    
     }
 
-    parse_ip_address_and_port(sNetworkAddress, addr, pr);
+    // validate if IP:PORT is corrent network address
+    if(!parseIpAddressAndPort(sNetworkAddress, addr, pr, strErr))
+    {
+        strErr += strprintf("\n Not correct IP and Port %s ( example : 46.133.137.158:9933 ) \n",sNetworkAddress);
+        return false;         
+    }
 
     //validate if port in allowed range
     if(!regex_match(std::to_string(pr),regex("^((6553[0-5])|(655[0-2][0-9]{1})|(65[0-4][0-9]{2})|(6[0-4][0-9]{3})|([1-5][0-9]{4})|([1-9][0-9]{3}))$")))
     {
-        strErr += strprintf("Not correct value for port %s (  value rang is: 1000-65535 example : 46.133.137.158:9933 )\n", pr);
+        strErr += strprintf("\n Not correct value for port %s (  value rang is: 1000-65535 example : 46.133.137.158:9933 )\n", pr);
         return false;
     }
 
@@ -221,30 +215,22 @@ bool CMasternodeConfig::read(std::string& strErr)
             return false;
         }
 
-        strErr += strprintf("step1 - %s\n", mnAddress);
-
         if(!validateIPandPort(mnAddress,strErr))
         {
-            strErr += " (mnAddress) should be correct IP address";
+            strErr += "\n (mnAddress) should be correct IP address \n";
             return false;
         }
 
-        strErr += strprintf("step2 - %s\n", extAddress);
-
-
         if(!validateIPandPort(extAddress,strErr))
         {
-            strErr += " (extAddress) should be correct IP address";
+            strErr += "\n (extAddress) should be correct IP address\n";
             return false;
         } 
 
-        strErr += strprintf("step3 - %d\n", outIndex);
-
-
         if(!validateOutIndex(outIndex))
         {
-            strErr += " (outIndex) should be decimal in range 0-1000000";
-            return false;
+            outIndex = "0";
+            std::cout << ("\n warning: (outIndex) should be decimal in range 0-1000000. Default value: 0 is assigned \n") << std::endl;
         }
 
         extKey = get_string(it, "extKey");
