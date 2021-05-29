@@ -8,6 +8,22 @@
 #include "json/json.hpp"
 using json = nlohmann::json;
 
+#include <regex>
+#include <boost/asio/ip/address.hpp>
+#include <cstdint>
+#include <iostream>
+#include <iomanip>
+#include <limits>
+#include <string>
+
+using boost::asio::ip::address;
+using boost::asio::ip::make_address;
+using boost::asio::ip::make_address_v4;
+using boost::asio::ip::make_address_v6;
+using boost::system::error_code;
+
+const int PORT_FROM = 1000;
+const int PORT_TO = 65535;
 /*
     {
         "mn1": {                                //alias
@@ -63,6 +79,91 @@ std::string get_obj_as_string(json::iterator& it, std::string name)
     if (it->count(name) && !it->at(name).is_null() && it->at(name).is_object())
         return it->at(name).dump();
     return "";
+}
+
+bool inRange(int low, int high, int x)
+{
+    return ((x-high)*(x-low) <= 0);
+}
+
+bool parse_int(const std::string& str, int base, uint32_t& n) {
+    try {
+        size_t pos = 0;
+        unsigned long u = stoul(str, &pos, base);
+        if (pos != str.length() || u > std::numeric_limits<uint>::max())
+            return false;
+        n = static_cast<uint>(u);
+        return true;
+    } catch (const std::exception& ex) {
+        return false;
+    }
+}
+
+void parse_ip_address_and_port(const std::string& input, address& addr, uint32_t& port,std::string& strErr) {
+    size_t pos = input.rfind(':');
+    if (pos != std::string::npos && pos > 1 && pos + 1 < input.length()&& parse_int(input.substr(pos + 1), 10, port) && port > 0) {
+        if (input[0] == '[' && input[pos - 1] == ']') {
+            // square brackets so can only be an IPv6 address
+            addr = make_address_v6(input.substr(1, pos - 2));
+            return;
+        } else {
+            try {
+                // IPv4 address + port?
+                addr = make_address_v4(input.substr(0, pos));
+                return;
+            } catch (const std::exception& ex) {
+                // nope, might be an IPv6 address
+                strErr +=strprintf("Not correct address %s \n", ex);
+            }
+        }
+    }
+    port = 0;
+    addr = make_address(input);
+}
+
+bool validateOutIndex(const std::string & sOutIndex)
+{
+    return regex_match( sOutIndex,regex("^((1000000)|0|[1-9]{1,6})$"));
+}
+
+bool validateIPandPort(const std::string & sNetworkAddress,std::string& strErr)
+{
+    int port = 0;
+    std::string hostname = "";
+    address addr;
+    uint32_t pr;
+    boost::system::error_code ec;
+
+    // validate is IP:PORT is with correct symbols
+    const std::regex ipport_regex("[0-9]{3}.[0-9]{3}.[0-9]{3}.[0-9]{3}:[0-9]{5}");
+
+    if(!std::regex_match(sNetworkAddress,ipport_regex))
+    {
+        strErr += strprintf("Not correct format for address %s \n");
+        return false;    
+    }
+
+    // validate is IP:PORT is correct address
+    address::from_string(sNetworkAddress,ec);
+    if(ec)
+    {
+        strErr += strprintf("Not correct address %s \n Error: %s\n", sNetworkAddress, ec.message());
+        return false;    
+    }
+
+    parse_ip_address_and_port(sNetworkAddress, addr, pr, strErr);
+
+    strErr += strprintf("IP  - %s\n", addr.to_string());
+    strErr += strprintf("port  - %d\n", pr);
+
+    //validate if port in allowed range
+    if(inRange(PORT_FROM,PORT_TO,pr))
+    {
+        strErr += strprintf("Port error - %d\n", pr);
+        return false;
+    }
+
+    return true;
 }
 
 bool CMasternodeConfig::read(std::string& strErr)
@@ -124,19 +225,43 @@ bool CMasternodeConfig::read(std::string& strErr)
         mnPrivKey = get_string(it, "mnPrivKey");
         txid = get_string(it, "txid");
         outIndex = get_string(it, "outIndex");
+        extAddress = get_string(it, "extAddress");
 
-        if (mnAddress.empty() || mnPrivKey.empty() || txid.empty() || outIndex.empty()) {
+
+        if (mnPrivKey.empty() || txid.empty() || outIndex.empty() ) {
             continue;
         }
 
-        if (!checkIPAddressPort(mnAddress, alias, true, strErr)) {
-            strErr += " (mnAddress)";
+        strErr += strprintf("step0 \n");
+
+        if (mnAddress.empty() || extAddress.empty()) {
+            strErr += " (mnAddress) and (extAddress) should be correct IP address";
             return false;
         }
 
-        extAddress = get_string(it, "extAddress");
-        if (!extAddress.empty() && !checkIPAddressPort(extAddress, alias, false, strErr)) {
-            strErr += " (extAddress)";
+        strErr += strprintf("step1 - %s\n", mnAddress);
+
+        if(!validateIPandPort(mnAddress,strErr))
+        {
+            strErr += " (mnAddress) should be correct IP address";
+            return false;
+        }
+
+        strErr += strprintf("step2 - %s\n", extAddress);
+
+
+        if(!validateIPandPort(extAddress,strErr))
+        {
+            strErr += " (extAddress) should be correct IP address";
+            return false;
+        } 
+
+        strErr += strprintf("step3 - %d\n", outIndex);
+
+
+        if(!validateOutIndex(outIndex))
+        {
+            strErr += " (outIndex) should be decimal in range 0-1000000";
             return false;
         }
 
