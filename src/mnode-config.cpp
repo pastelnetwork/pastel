@@ -22,8 +22,6 @@ using boost::asio::ip::make_address_v4;
 using boost::asio::ip::make_address_v6;
 using boost::system::error_code;
 
-const int PORT_FROM = 1000;
-const int PORT_TO = 65535;
 /*
     {
         "mn1": {                                //alias
@@ -99,7 +97,7 @@ bool parse_int(const std::string& str, int base, uint32_t& n) {
     }
 }
 
-void parse_ip_address_and_port(const std::string& input, address& addr, uint32_t& port,std::string& strErr) {
+void parse_ip_address_and_port(const std::string& input, address& addr, uint32_t& port) {
     size_t pos = input.rfind(':');
     if (pos != std::string::npos && pos > 1 && pos + 1 < input.length()&& parse_int(input.substr(pos + 1), 10, port) && port > 0) {
         if (input[0] == '[' && input[pos - 1] == ']') {
@@ -113,7 +111,6 @@ void parse_ip_address_and_port(const std::string& input, address& addr, uint32_t
                 return;
             } catch (const std::exception& ex) {
                 // nope, might be an IPv6 address
-                strErr +=strprintf("Not correct address %s \n", ex);
             }
         }
     }
@@ -135,31 +132,18 @@ bool validateIPandPort(const std::string & sNetworkAddress,std::string& strErr)
     boost::system::error_code ec;
 
     // validate is IP:PORT is with correct symbols
-    const std::regex ipport_regex("[0-9]{3}.[0-9]{3}.[0-9]{3}.[0-9]{3}:[0-9]{5}");
-
-    if(!std::regex_match(sNetworkAddress,ipport_regex))
+    if(!regex_match(sNetworkAddress,regex("^[0-9]{1,3}.[0-9]{1,3}.[0-9]{1,3}.[0-9]{1,3}:[0-9]{4,5}$")))
     {
-        strErr += strprintf("Not correct format for address %s \n");
+        strErr += strprintf("\n Not correct format for address %s ( example : 46.133.137.158:9933 ) \n",sNetworkAddress);
         return false;    
     }
 
-    // validate is IP:PORT is correct address
-    address::from_string(sNetworkAddress,ec);
-    if(ec)
-    {
-        strErr += strprintf("Not correct address %s \n Error: %s\n", sNetworkAddress, ec.message());
-        return false;    
-    }
-
-    parse_ip_address_and_port(sNetworkAddress, addr, pr, strErr);
-
-    strErr += strprintf("IP  - %s\n", addr.to_string());
-    strErr += strprintf("port  - %d\n", pr);
+    parse_ip_address_and_port(sNetworkAddress, addr, pr);
 
     //validate if port in allowed range
-    if(inRange(PORT_FROM,PORT_TO,pr))
+    if(!regex_match(std::to_string(pr),regex("^((6553[0-5])|(655[0-2][0-9]{1})|(65[0-4][0-9]{2})|(6[0-4][0-9]{3})|([1-5][0-9]{4})|([1-9][0-9]{3}))$")))
     {
-        strErr += strprintf("Port error - %d\n", pr);
+        strErr += strprintf("Not correct value for port %s (  value rang is: 1000-65535 example : 46.133.137.158:9933 )\n", pr);
         return false;
     }
 
@@ -227,15 +211,13 @@ bool CMasternodeConfig::read(std::string& strErr)
         outIndex = get_string(it, "outIndex");
         extAddress = get_string(it, "extAddress");
 
-
-        if (mnPrivKey.empty() || txid.empty() || outIndex.empty() ) {
+        if (mnPrivKey.empty() || txid.empty() || outIndex.empty()) {
             continue;
         }
 
-        strErr += strprintf("step0 \n");
-
-        if (mnAddress.empty() || extAddress.empty()) {
-            strErr += " (mnAddress) and (extAddress) should be correct IP address";
+        if (mnAddress.empty() || extAddress.empty())
+        {
+            strErr += "\n (mnAddress) and (extAddress) can't be empty and should be correct IP address ( example : 46.133.137.158:9933 ) \n";
             return false;
         }
 
