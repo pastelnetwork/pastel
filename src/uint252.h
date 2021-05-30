@@ -1,6 +1,4 @@
-#ifndef UINT252_H
-#define UINT252_H
-
+#pragma once
 #include <vector>
 #include "uint256.h"
 #include "serialize.h"
@@ -14,8 +12,9 @@ private:
 public:
     ADD_SERIALIZE_METHODS;
 
-    template <typename Stream, typename Operation>
-    inline void SerializationOp(Stream& s, Operation ser_action) {
+    template <typename Stream>
+    inline void SerializationOp(Stream& s, const SERIALIZE_ACTION ser_action)
+    {
         READWRITE(contents);
 
         if ((*contents.begin()) & 0xF0) {
@@ -47,4 +46,3 @@ public:
     friend inline bool operator==(const uint252& a, const uint252& b) { return a.contents == b.contents; }
 };
 
-#endif

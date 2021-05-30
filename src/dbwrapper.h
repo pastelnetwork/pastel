@@ -107,19 +107,21 @@ public:
 
     void Next();
 
-    template<typename K> bool GetKey(K& key) {
+    template<typename K> bool GetKey(K& key)
+    {
         leveldb::Slice slKey = piter->key();
         try {
             CDataStream ssKey(slKey.data(), slKey.data() + slKey.size(), SER_DISK, CLIENT_VERSION);
             ssKey >> key;
-        } catch(std::exception &e) {
+        } catch(std::exception &) {
             return false;
         }
         return true;
     }
 
-    unsigned int GetKeySize() {
-        return piter->key().size();
+    unsigned int GetKeySize()
+    {
+        return static_cast<unsigned int>(piter->key().size());
     }
 
     template<typename V> bool GetValue(V& value) {
@@ -133,8 +135,9 @@ public:
         return true;
     }
 
-    unsigned int GetValueSize() {
-        return piter->value().size();
+    unsigned int GetValueSize()
+    {
+        return static_cast<unsigned int>(piter->value().size());
     }
 
 };
@@ -183,16 +186,20 @@ public:
 
         std::string strValue;
         leveldb::Status status = pdb->Get(readoptions, slKey, &strValue);
-        if (!status.ok()) {
+        if (!status.ok())
+        {
             if (status.IsNotFound())
                 return false;
             LogPrintf("LevelDB read failure: %s\n", status.ToString());
             dbwrapper_private::HandleError(status);
         }
-        try {
+        try
+        {
             CDataStream ssValue(strValue.data(), strValue.data() + strValue.size(), SER_DISK, CLIENT_VERSION);
             ssValue >> value;
-        } catch (const std::exception&) {
+        }
+        catch (const std::exception&)
+        {
             return false;
         }
         return true;

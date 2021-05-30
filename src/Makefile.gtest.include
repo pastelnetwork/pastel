@@ -47,7 +47,9 @@ pastel_gtest_SOURCES += \
 	gtest/test_checkblock.cpp \
 	gtest/test_zip32.cpp \
 	gtest/test_mnode_governance.cpp \
-	gtest/test_mnode_rpc.cpp
+	gtest/test_mnode_rpc.cpp\
+	gtest/test_mnode_pastel.cpp
+
 if ENABLE_WALLET
 pastel_gtest_SOURCES += \
 	wallet/gtest/test_wallet.cpp

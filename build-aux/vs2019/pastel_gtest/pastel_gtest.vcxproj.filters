@@ -115,52 +115,58 @@
     <ClCompile Include="..\..\..\src\gtest\utils.cpp">
       <Filter>UnitTest Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\src\mnode-controller.cpp">
-      <Filter>Source Files\mnode</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\..\src\mnode-payments.cpp">
-      <Filter>Source Files\mnode</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\..\src\mnode-notificationinterface.cpp">
-      <Filter>Source Files\mnode</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\..\src\mnode-governance.cpp">
-      <Filter>Source Files\mnode</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\..\src\mnode-manager.cpp">
-      <Filter>Source Files\mnode</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\..\src\mnode-messageproc.cpp">
-      <Filter>Source Files\mnode</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\..\src\mnode-rpc.cpp">
-      <Filter>Source Files\mnode</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\..\src\mnode-sync.cpp">
-      <Filter>Source Files\mnode</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\..\src\mnode-masternode.cpp">
-      <Filter>Source Files\mnode</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\..\src\mnode-msgsigner.cpp">
-      <Filter>Source Files\mnode</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\..\src\mnode-validation.cpp">
-      <Filter>Source Files\mnode</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\..\src\mnode-requesttracker.cpp">
-      <Filter>Source Files\mnode</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\..\src\mnode-pastel.cpp">
-      <Filter>Source Files\mnode</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\..\src\mnode-active.cpp">
-      <Filter>Source Files\mnode</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\..\src\mnode-config.cpp">
-      <Filter>Source Files\mnode</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\..\src\gtest\test_mnode_rpc.cpp">
+      <Filter>UnitTest Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\src\mnode\mnode-active.cpp">
+      <Filter>Source Files\mnode</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\src\mnode\mnode-config.cpp">
+      <Filter>Source Files\mnode</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\src\mnode\mnode-controller.cpp">
+      <Filter>Source Files\mnode</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\src\mnode\mnode-governance.cpp">
+      <Filter>Source Files\mnode</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\src\mnode\mnode-manager.cpp">
+      <Filter>Source Files\mnode</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\src\mnode\mnode-masternode.cpp">
+      <Filter>Source Files\mnode</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\src\mnode\mnode-messageproc.cpp">
+      <Filter>Source Files\mnode</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\src\mnode\mnode-msgsigner.cpp">
+      <Filter>Source Files\mnode</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\src\mnode\mnode-notificationinterface.cpp">
+      <Filter>Source Files\mnode</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\src\mnode\mnode-pastel.cpp">
+      <Filter>Source Files\mnode</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\src\mnode\mnode-payments.cpp">
+      <Filter>Source Files\mnode</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\src\mnode\mnode-requesttracker.cpp">
+      <Filter>Source Files\mnode</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\src\mnode\mnode-rpc.cpp">
+      <Filter>Source Files\mnode</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\src\mnode\mnode-sync.cpp">
+      <Filter>Source Files\mnode</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\src\mnode\mnode-validation.cpp">
+      <Filter>Source Files\mnode</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\src\mnode\ticket-processor.cpp">
+      <Filter>Source Files\mnode</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\src\gtest\test_mnode_pastel.cpp">
       <Filter>UnitTest Files</Filter>
     </ClCompile>
   </ItemGroup>
@@ -168,46 +174,58 @@
     <ClInclude Include="..\..\..\src\gtest\json_test_vectors.h">
       <Filter>UnitTest Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\..\src\mnode-controller.h">
+    <ClInclude Include="..\..\..\src\mnode\mnode-active.h">
       <Filter>Source Files\mnode</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\..\src\mnode-payments.h">
+    <ClInclude Include="..\..\..\src\mnode\mnode-config.h">
       <Filter>Source Files\mnode</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\..\src\mnode-notificationinterface.h">
+    <ClInclude Include="..\..\..\src\mnode\mnode-controller.h">
       <Filter>Source Files\mnode</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\..\src\mnode-governance.h">
+    <ClInclude Include="..\..\..\src\mnode\mnode-governance.h">
       <Filter>Source Files\mnode</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\..\src\mnode-manager.h">
+    <ClInclude Include="..\..\..\src\mnode\mnode-manager.h">
       <Filter>Source Files\mnode</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\..\src\mnode-messageproc.h">
+    <ClInclude Include="..\..\..\src\mnode\mnode-masternode.h">
       <Filter>Source Files\mnode</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\..\src\mnode-sync.h">
+    <ClInclude Include="..\..\..\src\mnode\mnode-messageproc.h">
       <Filter>Source Files\mnode</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\..\src\mnode-masternode.h">
+    <ClInclude Include="..\..\..\src\mnode\mnode-msgsigner.h">
       <Filter>Source Files\mnode</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\..\src\mnode-msgsigner.h">
+    <ClInclude Include="..\..\..\src\mnode\mnode-notificationinterface.h">
       <Filter>Source Files\mnode</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\..\src\mnode-validation.h">
+    <ClInclude Include="..\..\..\src\mnode\mnode-pastel.h">
       <Filter>Source Files\mnode</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\..\src\mnode-requesttracker.h">
+    <ClInclude Include="..\..\..\src\mnode\mnode-payments.h">
       <Filter>Source Files\mnode</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\..\src\mnode-pastel.h">
+    <ClInclude Include="..\..\..\src\mnode\mnode-requesttracker.h">
       <Filter>Source Files\mnode</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\..\src\mnode-active.h">
+    <ClInclude Include="..\..\..\src\mnode\mnode-sync.h">
       <Filter>Source Files\mnode</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\..\src\mnode-config.h">
+    <ClInclude Include="..\..\..\src\mnode\mnode-validation.h">
+      <Filter>Source Files\mnode</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\mnode\ticket-processor.h">
+      <Filter>Source Files\mnode</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\mnode\ticket.h">
+      <Filter>Source Files\mnode</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\gtest\mock_mnode_ticket.h">
+      <Filter>UnitTest Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\mnode\mnode-consts.h">
       <Filter>Source Files\mnode</Filter>
     </ClInclude>
   </ItemGroup>

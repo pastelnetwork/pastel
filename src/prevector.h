@@ -433,7 +433,7 @@ public:
         clear();
         if (!is_direct()) {
             free(_union.indirect);
-            _union.indirect = NULL;
+            _union.indirect = nullptr;
         }
     }
 

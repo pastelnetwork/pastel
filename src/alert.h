@@ -1,11 +1,8 @@
+#pragma once
 // Copyright (c) 2010 Satoshi Nakamoto
 // Copyright (c) 2009-2013 The Bitcoin Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
-
-#ifndef BITCOIN_ALERT_H
-#define BITCOIN_ALERT_H
-
 #include "serialize.h"
 #include "sync.h"
 
@@ -48,8 +45,9 @@ public:
 
     ADD_SERIALIZE_METHODS;
 
-    template <typename Stream, typename Operation>
-    inline void SerializationOp(Stream& s, Operation ser_action) {
+    template <typename Stream>
+    inline void SerializationOp(Stream& s, const SERIALIZE_ACTION ser_action)
+    {
         READWRITE(this->nVersion);
         READWRITE(nRelayUntil);
         READWRITE(nExpiration);
@@ -85,8 +83,9 @@ public:
 
     ADD_SERIALIZE_METHODS;
 
-    template <typename Stream, typename Operation>
-    inline void SerializationOp(Stream& s, Operation ser_action) {
+    template <typename Stream>
+    inline void SerializationOp(Stream& s, const SERIALIZE_ACTION ser_action)
+    {
         READWRITE(vchMsg);
         READWRITE(vchSig);
     }
@@ -109,4 +108,3 @@ public:
     static CAlert getAlertByHash(const uint256 &hash);
 };
 
-#endif // BITCOIN_ALERT_H

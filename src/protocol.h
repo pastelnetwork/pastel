@@ -1,3 +1,4 @@
+#pragma once
 // Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2013 The Bitcoin Core developers
 // Distributed under the MIT software license, see the accompanying
@@ -6,9 +7,6 @@
 #ifndef __cplusplus
 #error This header can only be compiled as C++.
 #endif
-
-#ifndef BITCOIN_PROTOCOL_H
-#define BITCOIN_PROTOCOL_H
 
 #include "netbase.h"
 #include "serialize.h"
@@ -39,8 +37,8 @@ public:
 
     ADD_SERIALIZE_METHODS;
 
-    template <typename Stream, typename Operation>
-    inline void SerializationOp(Stream& s, Operation ser_action)
+    template <typename Stream>
+    inline void SerializationOp(Stream& s, const SERIALIZE_ACTION ser_action)
     {
         READWRITE(FLATDATA(pchMessageStart));
         READWRITE(FLATDATA(pchCommand));
@@ -96,10 +94,10 @@ public:
 
     ADD_SERIALIZE_METHODS;
 
-    template <typename Stream, typename Operation>
-    inline void SerializationOp(Stream& s, Operation ser_action)
+    template <typename Stream>
+    inline void SerializationOp(Stream& s, const SERIALIZE_ACTION ser_action)
     {
-        if (ser_action.ForRead())
+        if (ser_action == SERIALIZE_ACTION::Read)
             Init();
         int nVersion = s.GetVersion();
         if (s.GetType() & SER_DISK)
@@ -129,8 +127,8 @@ public:
 
     ADD_SERIALIZE_METHODS;
 
-    template <typename Stream, typename Operation>
-    inline void SerializationOp(Stream& s, Operation ser_action)
+    template <typename Stream>
+    inline void SerializationOp(Stream& s, const SERIALIZE_ACTION ser_action)
     {
         READWRITE(type);
         READWRITE(hash);
@@ -184,4 +182,3 @@ extern const char *SYNCSTATUSCOUNT;
 extern const char *MASTERNODEMESSAGE;
 };
 
-#endif // BITCOIN_PROTOCOL_H

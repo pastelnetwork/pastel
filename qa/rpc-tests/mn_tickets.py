@@ -101,7 +101,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         self.trade_ticket_price = 10
 
     def setup_chain(self):
-        print("Initializing test directory "+self.options.tmpdir)
+        print(f"Initializing test directory {self.options.tmpdir}")
         initialize_chain_clean(self.options.tmpdir, self.total_number_of_nodes)
 
     def setup_network(self, split=False):
@@ -300,7 +300,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
 
         #       a.a.7 check correct amount of change
         coins_after = self.nodes[0].getbalance()
-        print("id ticket price - {}".format(self.id_ticket_price))
+        print(f"id ticket price - {self.id_ticket_price}")
         assert_equal(coins_after, coins_before - self.id_ticket_price)  # no fee yet
 
         #       a.a.8 from another node - get ticket transaction and check
@@ -489,7 +489,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
             "app_ticket": app_ticket,
             "reserved": ""}
         self.ticket = str_to_b64str(json.dumps(json_ticket))
-        print("ticket - {}".format(self.ticket))
+        print(f"ticket - {self.ticket}")
 
         # create ticket signature
         self.ticket_signature_artist = \
@@ -497,8 +497,8 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         for n in range(0, 12):
             mn_ticket_signatures[n] = self.nodes[n].pastelid("sign",
                                                              self.ticket, self.mn_pastelids[n], "passphrase")["signature"]
-        print("ticket_signature_artist - {}".format(self.ticket_signature_artist))
-        print("mn_ticket_signatures - {}".format(mn_ticket_signatures))
+        print(f"ticket_signature_artist - {self.ticket_signature_artist}")
+        print(f"mn_ticket_signatures - {mn_ticket_signatures}")
 
         top_mns_indexes = set()
         for mn in top_masternodes:
@@ -785,7 +785,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         #       c.a.7 check correct amount of change and correct amount spent
         coins_after = self.nodes[self.top_mns_index0].getbalance()
         # print(coins_after)
-        print("art registration ticket price - {}".format(self.art_ticket_price))
+        print(f"art registration ticket price - {self.art_ticket_price}")
         assert_equal(coins_after, coins_before-self.art_ticket_price)  # no fee yet, but ticket cost art ticket price
 
         #       c.a.8 fail if already registered
@@ -1418,7 +1418,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         coins_after = math.floor(self.nodes[self.non_mn4].getbalance())
         print(coins_before)
         print(coins_after)
-        print("trade ticket price - {}".format(self.trade_ticket_price))
+        print(f"trade ticket price - {self.trade_ticket_price}")
         assert_equal(coins_after, coins_before-self.trade_ticket_price-100000)  # ticket cost is trade ticket price, art cost is 100000
 
         # check seller gets correct amount
@@ -1479,7 +1479,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
 
         original_art_trade_tickets = []
         for i in range(1, 10):
-            original_art_trade_tickets.append(self.sell_buy_trade_test("A{}".format(i),
+            original_art_trade_tickets.append(self.sell_buy_trade_test(f"A{i}",
                                                                        self.non_mn3, self.artist_pastelid1,
                                                                        self.non_mn4, self.nonmn4_pastelid1,
                                                                        self.art_ticket1_act_ticket_txid, True)
@@ -1493,13 +1493,13 @@ class MasterNodeTicketsTest(MasterNodeCommon):
     # ===============================================================================================================
     def sell_buy_trade_test(self, test_num, seller_node, seller_pastelid,
                             buyer_node, buyer_pastelid, art_to_sell_txid, skip_last_fail_test=False, will_fail=False):
-        print("===== Test {} : {} sells and {} buys =====".format(test_num, seller_node, buyer_node))
+        print(f"===== Test {test_num} : {seller_node} sells and {buyer_node} buys =====")
         self.print_heights()
 
         self.slow_mine(2, 10, 2, 0.5)
 
         if will_fail:
-            print("===== Test {} should fail =====".format(test_num))
+            print(f"===== Test {test_num} should fail =====")
             try:
                 self.nodes[seller_node].tickets("register", "sell", art_to_sell_txid, str("1000"),
                                                 seller_pastelid, "passphrase")
@@ -1522,7 +1522,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         sell_ticket_txid = self.nodes[seller_node].tickets("register", "sell", art_to_sell_txid, str("1000"),
                                                            seller_pastelid, "passphrase")["txid"]
         assert_true(sell_ticket_txid, "No ticket was created")
-        print("sell_ticket_txid: {}".format(sell_ticket_txid))
+        print(f"sell_ticket_txid: {sell_ticket_txid}")
 
         self.__wait_for_ticket_tnx()
         print("buyer's balance 1: " + str(self.nodes[buyer_node].getbalance()))
@@ -1538,7 +1538,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         buy_ticket_txid = self.nodes[buyer_node].tickets("register", "buy", sell_ticket_txid, str("1000"),
                                                          buyer_pastelid, "passphrase")["txid"]
         assert_true(buy_ticket_txid, "No ticket was created")
-        print("buy_ticket_txid: {}".format(buy_ticket_txid))
+        print(f"buy_ticket_txid: {buy_ticket_txid}")
 
         self.__wait_for_ticket_tnx()
         print("buyer's balance 3: " + str(self.nodes[buyer_node].getbalance()))
@@ -1555,7 +1555,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
                                                            sell_ticket_txid, buy_ticket_txid,
                                                            buyer_pastelid, "passphrase")["txid"]
         assert_true(trade_ticket_txid, "No ticket was created")
-        print("trade_ticket_txid: {}".format(trade_ticket_txid))
+        print(f"trade_ticket_txid: {trade_ticket_txid}")
 
         self.__wait_for_ticket_tnx()
 
@@ -1565,7 +1565,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         print("seller_coins_after: " + str(seller_coins_after))
 
         # check correct amount of change and correct amount spent
-        print("trade ticket price - {}".format(self.trade_ticket_price))
+        print(f"trade ticket price - {self.trade_ticket_price}")
         assert_equal(buyer_coins_after, buyer_coins_before-10-self.trade_ticket_price-1000)
         # buy ticket cost is 10 (1000/100), trade ticket cost is self.trade_ticket_price, art cost is 1000
 
@@ -1694,7 +1694,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         buy_ticket_txid = self.nodes[self.non_mn4].tickets("register", "buy", sell_ticket2_txid, str("1000"),
                                                            self.nonmn4_pastelid1, "passphrase")["txid"]
         assert_true(buy_ticket_txid, "No ticket was created")
-        print("buy_ticket_txid: {}".format(buy_ticket_txid))
+        print(f"buy_ticket_txid: {buy_ticket_txid}")
         self.__wait_for_ticket_tnx()  # +15 block
         self.slow_mine(2, 10, 2, 0.5)  # +25
 

@@ -99,7 +99,7 @@ bool AppInit(int argc, char* argv[])
         try
         {
             ReadConfigFile(mapArgs, mapMultiArgs);
-        } catch (const missing_pastel_conf& e) {
+        } catch (const missing_pastel_conf& ) {
             fprintf(stderr,
                 (_("Before starting pasteld, you need to create a configuration file:\n"
                    "%s\n"

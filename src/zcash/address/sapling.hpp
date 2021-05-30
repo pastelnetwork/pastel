@@ -29,8 +29,9 @@ public:
 
     ADD_SERIALIZE_METHODS;
 
-    template <typename Stream, typename Operation>
-    inline void SerializationOp(Stream& s, Operation ser_action) {
+    template <typename Stream>
+    inline void SerializationOp(Stream& s, const SERIALIZE_ACTION ser_action)
+    {
         READWRITE(d);
         READWRITE(pk_d);
     }
@@ -67,8 +68,9 @@ public:
 
     ADD_SERIALIZE_METHODS;
 
-    template <typename Stream, typename Operation>
-    inline void SerializationOp(Stream& s, Operation ser_action) {
+    template <typename Stream>
+    inline void SerializationOp(Stream& s, const SERIALIZE_ACTION ser_action)
+    {
         READWRITE(ak);
         READWRITE(nk);
         READWRITE(ovk);
@@ -102,8 +104,9 @@ public:
 
     ADD_SERIALIZE_METHODS;
 
-    template <typename Stream, typename Operation>
-    inline void SerializationOp(Stream& s, Operation ser_action) {
+    template <typename Stream>
+    inline void SerializationOp(Stream& s, const SERIALIZE_ACTION ser_action)
+    {
         READWRITE(ask);
         READWRITE(nsk);
         READWRITE(ovk);

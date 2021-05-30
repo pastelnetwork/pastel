@@ -16,6 +16,10 @@
 #include <string>
 #include <vector>
 
+#ifdef _MSC_VER
+#pragma warning(push)
+#pragma warning(disable: 4267)
+#endif
 static const unsigned int MAX_SCRIPT_ELEMENT_SIZE = 520; // bytes
 
 // Maximum script length in bytes
@@ -590,3 +594,6 @@ public:
     }
 };
 
+#ifdef _MSC_VER
+#pragma warning(pop)
+#endif

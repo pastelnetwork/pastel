@@ -76,9 +76,12 @@ template <typename... Args>
 static inline void LogPrintf(const char* fmt, const Args&... args)
 {
     std::string log_msg;
-    try {
+    try
+    {
         log_msg = tfm::format(fmt, args...);
-    } catch (tinyformat::format_error &e) {
+    }
+    catch (const tfm::format_error &e)
+    {
         /* Original format string will have newline so don't add one here */
         log_msg = "Error \"" + std::string(e.what()) + "\" while formatting log message: " + fmt;
     }
