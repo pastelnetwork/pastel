@@ -3,7 +3,7 @@ version: 2.1
 executors:
   pastel-builder:
     docker:
-      - image: pasteltest51/pastel:0.0.1
+      - image: akobrin/pastel:0.0.1
 jobs:
   build_and_test:
     executor: pastel-builder

@@ -1,8 +1,10 @@
 FROM ubuntu:20.04
 
-RUN apt update \
+ENV TZ=America/New_York
+RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone \
+  && apt update \
   && apt install -y --no-install-recommends \
-     pkg-config make automake libtool patch \
+     pkg-config tzdata make automake cmake libtool patch \
      bsdmainutils curl wget unzip xz-utils zlib1g-dev git openssh-client \
      g++-10-multilib mingw-w64 python3-dev python3-pip gnupg2\
   && update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-10 100 --slave \
