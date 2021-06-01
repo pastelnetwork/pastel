@@ -133,4 +133,5 @@ bool ExtractDestinations(const CScript& scriptPubKey, txnouttype& typeRet, std::
 CScript GetScriptForDestination(const CTxDestination& dest);
 CScript GetScriptForMultisig(int nRequired, const std::vector<CPubKey>& keys);
 
-
+// insightexplorer
+CTxDestination DestFromAddressHash(int scriptType, uint160& addressHash);

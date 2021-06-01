@@ -7,6 +7,7 @@
 
 #include "key_io.h"
 #include "netbase.h"
+#include "main.h"
 #include "utilstrencodings.h"
 
 #include "test/test_bitcoin.h"
@@ -356,6 +357,27 @@ void CheckRPCThrows(std::string rpcString, std::string expectedErrorMessage) {
     } catch(const std::exception& e) {
         BOOST_FAIL(std::string("Unexpected exception: ") + typeid(e).name() + ", message=\"" + e.what() + "\"");
     }
+}
+
+// Test parameter processing (not functionality)
+BOOST_AUTO_TEST_CASE(rpc_insightexplorer)
+{
+    CheckRPCThrows("getblockdeltas \"a\"",
+        "Error: getblockdeltas is disabled. "
+        "Run './pastel-cli help getblockdeltas' for instructions on how to enable this feature.");
+
+    fExperimentalMode = true;
+    fInsightExplorer = true;
+
+    // must be a legal mainnet address
+    const string addr = "t1T3G72ToPuCDTiCEytrU1VUBRHsNupEBut";
+
+    CheckRPCThrows("getblockdeltas \"00040fe8ec8471911baa1db1266ea15dd06b4a8a5c453883c000b031973dce08\"",
+        "Block not found");
+
+    // revert
+    fExperimentalMode = false;
+    fInsightExplorer = false;
 }
 
 BOOST_AUTO_TEST_SUITE_END()

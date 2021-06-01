@@ -20,6 +20,7 @@
 #include "script/script.h"
 #include "script/sigcache.h"
 #include "script/standard.h"
+#include "spentindex.h"
 #include "sync.h"
 #include "tinyformat.h"
 #include "txmempool.h"
@@ -111,6 +112,19 @@ struct BlockHasher
 {
     size_t operator()(const uint256& hash) const { return hash.GetCheapHash(); }
 };
+
+// START insightexplorer
+extern bool fInsightExplorer;
+
+// The following flags enable specific indices (DB tables), but are not exposed as
+// separate command-line options; instead they are enabled by experimental feature "-insightexplorer"
+// and are always equal to the overall controlling flag, fInsightExplorer.
+
+// Maintain a full address index, used to query for the balance, txids and unspent outputs for addresses
+extern bool fAddressIndex;
+
+// Maintain a full spent index, used to query the spending txid and input index for an outpoint
+extern bool fSpentIndex;
 
 extern unsigned int expiryDelta;
 extern CScript COINBASE_FLAGS;
@@ -437,6 +451,7 @@ public:
     ScriptError GetScriptError() const { return error; }
 };
 
+bool GetSpentIndex(CSpentIndexKey &key, CSpentIndexValue &value);
 
 /** Functions for disk access for blocks */
 bool WriteBlockToDisk(CBlock& block, CDiskBlockPos& pos, const CMessageHeader::MessageStartChars& messageStart);
