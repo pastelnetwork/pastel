@@ -65,7 +65,7 @@ public:
         m_Cmd(RPC_CMD_ENUM::unknown),
         m_nCmdIndex(nCmdIndex)
     {
-        string error;
+        std::string error;
         if (!ParseCmdList(error, szCmdList))
             throw JSONRPCError(RPC_MISC_ERROR, "Failed to parse rpc command list. " + error);
         ParseParams();

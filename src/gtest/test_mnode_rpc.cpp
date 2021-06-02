@@ -1,7 +1,9 @@
-#include "mnode-rpc.h"
 #include "base58.h"
 #include <gtest/gtest.h>
+
 #include <tuple>
+
+#include "mnode/mnode-rpc.h"
 
 using namespace testing;
 using namespace std;
@@ -42,7 +44,7 @@ TEST_P(PTest_ani2psl_secret, test)
 
 constexpr auto TestValidKey = "private key is base58 encoded___";
 
-INSTANTIATE_TEST_CASE_P(mnode_rpc_ani2psl, PTest_ani2psl_secret,
+INSTANTIATE_TEST_SUITE_P(mnode_rpc_ani2psl, PTest_ani2psl_secret,
 	Values(
 		// key not base58 encoded
 		make_tuple([]() -> string { return "test";}, 

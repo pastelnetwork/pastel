@@ -631,7 +631,7 @@ UniValue signmessage(const UniValue& params, bool fHelp)
     }
 
     CHashWriter ss(SER_GETHASH, 0);
-    ss << strMessageMagic;
+    ss << STR_MSG_MAGIC;
     ss << strMessage;
 
     vector<unsigned char> vchSig;
@@ -1939,11 +1939,12 @@ UniValue keypoolrefill(const UniValue& params, bool fHelp)
     LOCK2(cs_main, pwalletMain->cs_wallet);
 
     // 0 is interpreted by TopUpKeyPool() as the default keypool size given by -keypool
-    unsigned int kpSize = 0;
-    if (params.size() > 0) {
+    size_t kpSize = 0;
+    if (params.size() > 0)
+    {
         if (params[0].get_int() < 0)
             throw JSONRPCError(RPC_INVALID_PARAMETER, "Invalid parameter, expected valid size.");
-        kpSize = (unsigned int)params[0].get_int();
+        kpSize = static_cast<size_t>(params[0].get_int64());
     }
 
     EnsureWalletIsUnlocked();
@@ -2374,9 +2375,9 @@ UniValue getwalletinfo(const UniValue& params, bool fHelp)
     obj.pushKV("balance",       ValueFromAmount(pwalletMain->GetBalance()));
     obj.pushKV("unconfirmed_balance", ValueFromAmount(pwalletMain->GetUnconfirmedBalance()));
     obj.pushKV("immature_balance",    ValueFromAmount(pwalletMain->GetImmatureBalance()));
-    obj.pushKV("txcount",       (int)pwalletMain->mapWallet.size());
+    obj.pushKV("txcount",       static_cast<int64_t>(pwalletMain->mapWallet.size()));
     obj.pushKV("keypoololdest", pwalletMain->GetOldestKeyPoolTime());
-    obj.pushKV("keypoolsize",   (int)pwalletMain->GetKeyPoolSize());
+    obj.pushKV("keypoolsize",   static_cast<int64_t>(pwalletMain->GetKeyPoolSize()));
     if (pwalletMain->IsCrypted())
         obj.pushKV("unlocked_until", nWalletUnlockTime);
     obj.pushKV("paytxfee",      ValueFromAmount(payTxFee.GetFeePerK()));

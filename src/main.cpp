@@ -42,8 +42,8 @@
 #include <boost/static_assert.hpp>
 
 //MasterNode
-#include "mnode-controller.h"
-#include "mnode-validation.h"
+#include "mnode/mnode-controller.h"
+#include "mnode/mnode-validation.h"
 
 
 using namespace std;
@@ -53,6 +53,8 @@ using namespace std;
 #endif
 
 #include "librustzcash.h"
+
+std::string STR_MSG_MAGIC("Zcash Signed Message:\n");
 
 /**
  * Global state
@@ -108,8 +110,6 @@ static void CheckBlockIndex();
 
 /** Constant stuff for coinbase transactions we create: */
 CScript COINBASE_FLAGS;
-
-const string strMessageMagic = "Zcash Signed Message:\n";
 
 // Internal stuff
 namespace {

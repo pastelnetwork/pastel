@@ -43,24 +43,24 @@ extern bool fSendFreeTransactions;
 extern bool fPayAtLeastCustomFee;
 
 //! -paytxfee default
-static const CAmount DEFAULT_TRANSACTION_FEE = 0;
+static constexpr CAmount DEFAULT_TRANSACTION_FEE = 0;
 //! -paytxfee will warn if called with a higher fee than this amount (in patoshis) per KB
-static const CAmount nHighTransactionFeeWarning = 0.01 * COIN;
+static constexpr CAmount nHighTransactionFeeWarning = static_cast<CAmount>(0.01 * COIN);
 //! -maxtxfee default
-static const CAmount DEFAULT_TRANSACTION_MAXFEE = 0.1 * COIN;
+static constexpr CAmount DEFAULT_TRANSACTION_MAXFEE = static_cast<CAmount>(0.1 * COIN);
 //! -txconfirmtarget default
-static const unsigned int DEFAULT_TX_CONFIRM_TARGET = 2;
+static constexpr unsigned int DEFAULT_TX_CONFIRM_TARGET = 2;
 //! -maxtxfee will warn if called with a higher fee than this amount (in patoshis)
-static const CAmount nHighTransactionMaxFeeWarning = 100 * nHighTransactionFeeWarning;
+static constexpr CAmount nHighTransactionMaxFeeWarning = 100 * nHighTransactionFeeWarning;
 //! Largest (in bytes) free transaction we're willing to create
-static const unsigned int MAX_FREE_TRANSACTION_CREATE_SIZE = 1000;
+static constexpr unsigned int MAX_FREE_TRANSACTION_CREATE_SIZE = 1000;
 //! Size of witness cache
 //  Should be large enough that we can expect not to reorg beyond our cache
 //  unless there is some exceptional network disruption.
-static const unsigned int WITNESS_CACHE_SIZE = MAX_REORG_LENGTH + 1;
+static constexpr unsigned int WITNESS_CACHE_SIZE = MAX_REORG_LENGTH + 1;
 
 //! Size of HD seed in bytes
-static const size_t HD_WALLET_SEED_LENGTH = 32;
+static constexpr size_t HD_WALLET_SEED_LENGTH = 32;
 
 class CBlockIndex;
 class CCoinControl;
@@ -94,8 +94,9 @@ public:
 
     ADD_SERIALIZE_METHODS;
 
-    template <typename Stream, typename Operation>
-    inline void SerializationOp(Stream& s, Operation ser_action) {
+    template <typename Stream>
+    inline void SerializationOp(Stream& s, const SERIALIZE_ACTION ser_action)
+    {
         int nVersion = s.GetVersion();
         if (!(s.GetType() & SER_GETHASH))
             READWRITE(nVersion);
@@ -171,8 +172,9 @@ public:
 
     ADD_SERIALIZE_METHODS;
 
-    template <typename Stream, typename Operation>
-    inline void SerializationOp(Stream& s, Operation ser_action) {
+    template <typename Stream>
+    inline void SerializationOp(Stream& s, const SERIALIZE_ACTION ser_action)
+    {
         READWRITE(hash);
         READWRITE(js);
         READWRITE(n);
@@ -242,8 +244,9 @@ public:
 
     ADD_SERIALIZE_METHODS;
 
-    template <typename Stream, typename Operation>
-    inline void SerializationOp(Stream& s, Operation ser_action) {
+    template <typename Stream>
+    inline void SerializationOp(Stream& s, const SERIALIZE_ACTION ser_action)
+    {
         READWRITE(address);
         READWRITE(nullifier);
         READWRITE(witnesses);
@@ -282,8 +285,9 @@ public:
 
     ADD_SERIALIZE_METHODS;
 
-    template <typename Stream, typename Operation>
-    inline void SerializationOp(Stream& s, Operation ser_action) {
+    template <typename Stream>
+    inline void SerializationOp(Stream& s, const SERIALIZE_ACTION ser_action)
+    {
         int nVersion = s.GetVersion();
         if (!(s.GetType() & SER_GETHASH)) {
             READWRITE(nVersion);
@@ -359,8 +363,9 @@ public:
 
     ADD_SERIALIZE_METHODS;
 
-    template <typename Stream, typename Operation>
-    inline void SerializationOp(Stream& s, Operation ser_action) {
+    template <typename Stream>
+    inline void SerializationOp(Stream& s, const SERIALIZE_ACTION ser_action)
+    {
         READWRITE(*(CTransaction*)this);
         READWRITE(hashBlock);
         READWRITE(vMerkleBranch);
@@ -479,13 +484,15 @@ public:
 
     ADD_SERIALIZE_METHODS;
 
-    template <typename Stream, typename Operation>
-    inline void SerializationOp(Stream& s, Operation ser_action) {
-        if (ser_action.ForRead())
-            Init(NULL);
+    template <typename Stream>
+    inline void SerializationOp(Stream& s, const SERIALIZE_ACTION ser_action)
+    {
+        const bool bRead = ser_action == SERIALIZE_ACTION::Read;
+        if (bRead)
+            Init(nullptr);
         char fSpent = false;
 
-        if (!ser_action.ForRead())
+        if (!bRead)
         {
             mapValue["fromaccount"] = strFromAccount;
 
@@ -510,7 +517,7 @@ public:
             READWRITE(mapSaplingNoteData);
         }
 
-        if (ser_action.ForRead())
+        if (bRead)
         {
             strFromAccount = mapValue["fromaccount"];
 
@@ -633,8 +640,8 @@ public:
 
     ADD_SERIALIZE_METHODS;
 
-    template <typename Stream, typename Operation>
-    inline void SerializationOp(Stream& s, Operation ser_action) {
+    template <typename Stream>
+    inline void SerializationOp(Stream& s, const SERIALIZE_ACTION ser_action) {
         int nVersion = s.GetVersion();
         if (!(s.GetType() & SER_GETHASH))
             READWRITE(nVersion);
@@ -679,8 +686,9 @@ public:
 
     ADD_SERIALIZE_METHODS;
 
-    template <typename Stream, typename Operation>
-    inline void SerializationOp(Stream& s, Operation ser_action) {
+    template <typename Stream>
+    inline void SerializationOp(Stream& s, const SERIALIZE_ACTION ser_action)
+    {
         int nVersion = s.GetVersion();
         if (!(s.GetType() & SER_GETHASH))
             READWRITE(nVersion);
@@ -689,7 +697,7 @@ public:
         READWRITE(nTime);
         READWRITE(LIMITED_STRING(strOtherAccount, 65536));
 
-        if (!ser_action.ForRead())
+        if (ser_action == SERIALIZE_ACTION::Write)
         {
             WriteOrderPos(nOrderPos, mapValue);
 
@@ -706,7 +714,7 @@ public:
         READWRITE(LIMITED_STRING(strComment, 65536));
 
         size_t nSepPos = strComment.find("\0", 0, 1);
-        if (ser_action.ForRead())
+        if (ser_action == SERIALIZE_ACTION::Read)
         {
             mapValue.clear();
             if (std::string::npos != nSepPos)
@@ -1259,7 +1267,7 @@ public:
         }
     }
 
-    unsigned int GetKeyPoolSize()
+    size_t GetKeyPoolSize() const noexcept
     {
         AssertLockHeld(cs_wallet); // setKeyPool
         return setKeyPool.size();
@@ -1402,8 +1410,9 @@ public:
 
     ADD_SERIALIZE_METHODS;
 
-    template <typename Stream, typename Operation>
-    inline void SerializationOp(Stream& s, Operation ser_action) {
+    template <typename Stream>
+    inline void SerializationOp(Stream& s, const SERIALIZE_ACTION ser_action)
+    {
         int nVersion = s.GetVersion();
         if (!(s.GetType() & SER_GETHASH))
             READWRITE(nVersion);

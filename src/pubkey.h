@@ -1,12 +1,9 @@
+#pragma once
 // Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2014 The Bitcoin Core developers
 // Copyright (c) 2017 The Zcash developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
-
-#ifndef BITCOIN_PUBKEY_H
-#define BITCOIN_PUBKEY_H
-
 #include "hash.h"
 #include "serialize.h"
 #include "uint256.h"
@@ -133,10 +130,11 @@ public:
     template <typename Stream>
     void Unserialize(Stream& s)
     {
-        unsigned int len = ::ReadCompactSize(s);
-        if (len <= PUBLIC_KEY_SIZE) {
+        size_t len = ::ReadCompactSize(s);
+        if (len <= PUBLIC_KEY_SIZE)
             s.read((char*)vch, len);
-        } else {
+        else
+        {
             // invalid pubkey, skip available data
             char dummy;
             while (len--)
@@ -251,4 +249,3 @@ public:
     ~ECCVerifyHandle();
 };
 
-#endif // BITCOIN_PUBKEY_H

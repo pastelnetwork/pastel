@@ -26,12 +26,12 @@
 #include "wallet/wallet.h"
 #endif
 
+#include "mnode/mnode-controller.h"
+
 #include <stdint.h>
 
 #include <boost/assign/list_of.hpp>
-
 #include <univalue.h>
-#include <mnode-controller.h>
 
 using namespace std;
 

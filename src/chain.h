@@ -22,8 +22,9 @@ struct CDiskBlockPos
 
     ADD_SERIALIZE_METHODS;
 
-    template <typename Stream, typename Operation>
-    inline void SerializationOp(Stream& s, Operation ser_action) {
+    template <typename Stream>
+    inline void SerializationOp(Stream& s, const SERIALIZE_ACTION ser_action)
+    {
         READWRITE(VARINT(nFile));
         READWRITE(VARINT(nPos));
     }
@@ -355,8 +356,9 @@ public:
 
     ADD_SERIALIZE_METHODS;
 
-    template <typename Stream, typename Operation>
-    inline void SerializationOp(Stream& s, Operation ser_action) {
+    template <typename Stream>
+    inline void SerializationOp(Stream& s, const SERIALIZE_ACTION ser_action)
+    {
         int nVersion = s.GetVersion();
         if (!(s.GetType() & SER_GETHASH))
             READWRITE(VARINT(nVersion));
@@ -371,7 +373,8 @@ public:
         if (nStatus & BLOCK_HAVE_UNDO)
             READWRITE(VARINT(nUndoPos));
         if (nStatus & BLOCK_ACTIVATES_UPGRADE) {
-            if (ser_action.ForRead()) {
+            if (ser_action == SERIALIZE_ACTION::Read)
+            {
                 uint32_t branchId;
                 READWRITE(branchId);
                 nCachedBranchId = branchId;

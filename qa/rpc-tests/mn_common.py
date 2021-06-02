@@ -26,11 +26,11 @@ class MasterNodeCommon (BitcoinTestFramework):
     def setup_masternodes_network(self, private_keys_list, number_of_non_mn_to_start=0, debug_flags="masternode,mnpayments,governance"):
         for index, key in enumerate(private_keys_list):
             print(f"start MN {index}")
-            self.nodes.append(start_node(index, self.options.tmpdir, ["-debug={0}".format(debug_flags), "-masternode", "-txindex=1", "-reindex", "-masternodeprivkey={0}".format(key)]))
+            self.nodes.append(start_node(index, self.options.tmpdir, [f"-debug={debug_flags}", "-masternode", "-txindex=1", "-reindex", f"-masternodeprivkey={key}"]))
         
         for index2 in range (index+1, index+number_of_non_mn_to_start+1):
             print(f"start non-MN {index2}")
-            self.nodes.append(start_node(index2, self.options.tmpdir, ["-debug={0}".format(debug_flags)]))
+            self.nodes.append(start_node(index2, self.options.tmpdir, [f"-debug={debug_flags}"]))
 
         for pair in itertools.combinations(range(index2+1), 2):
             connect_nodes_bi(self.nodes, pair[0], pair[1])

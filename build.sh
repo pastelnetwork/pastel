@@ -169,6 +169,24 @@ eval "$MAKE" --version
 as --version
 ld -v
 
+if ! command -v pvs-studio-analyzer &> /dev/null
+then
+	echo "PVS Studio is not installed"
+	if command -v apt &> /dev/null
+	then
+		echo "Installing PVS Studio"
+		tmpInstallDir="$BUILDDIR/build-aux/tmp"
+		mkdir -p "$tmpInstallDir"
+		cd "$tmpInstallDir"
+		wget -q -O - https://files.viva64.com/etc/pubkey.txt | sudo apt-key add -
+		sudo wget -O /etc/apt/sources.list.d/viva64.list https://files.viva64.com/etc/viva64.list
+   		sudo apt update
+		sudo apt install -y --no-install-recommends pvs-studio
+		cd "$BUILDDIR"
+		rm -rf "$tmpInstallDir"
+	fi
+fi
+
 echo PARAMS=$PARAMS; POSARGS=$POSARGS
 HOST="$HOST" BUILD="$BUILD" "$MAKE" -C ./depends/ --jobs=$JOBCOUNT $POSARGS
 ./autogen.sh
