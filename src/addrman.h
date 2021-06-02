@@ -1,10 +1,7 @@
+#pragma once
 // Copyright (c) 2012 Pieter Wuille
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
-
-#ifndef BITCOIN_ADDRMAN_H
-#define BITCOIN_ADDRMAN_H
-
 #include "netbase.h"
 #include "protocol.h"
 #include "random.h"
@@ -53,8 +50,8 @@ public:
 
     ADD_SERIALIZE_METHODS;
 
-    template <typename Stream, typename Operation>
-    inline void SerializationOp(Stream& s, Operation ser_action) {
+    template <typename Stream>
+    inline void SerializationOp(Stream& s, const SERIALIZE_ACTION ser_action) {
         READWRITE(*(CAddress*)this);
         READWRITE(source);
         READWRITE(nLastSuccess);
@@ -577,4 +574,3 @@ public:
 
 };
 
-#endif // BITCOIN_ADDRMAN_H

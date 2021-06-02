@@ -114,39 +114,44 @@ LIBZCASH_H = \
   zcash/util.h \
   zcash/Zcash.h
 
-MNODE_CPP = \
-  mnode-config.cpp \
-  mnode-active.cpp \
-  mnode-manager.cpp \
-  mnode-masternode.cpp \
-  mnode-msgsigner.cpp \
-  mnode-requesttracker.cpp \
-  mnode-sync.cpp \
-  mnode-rpc.cpp \
-  mnode-validation.cpp \
-  mnode-payments.cpp \
-  mnode-governance.cpp \
-  mnode-messageproc.cpp \
-  mnode-pastel.cpp \
-  mnode-notificationinterface.cpp \
-  mnode-controller.cpp
+MNODE_CPP =\
+  mnode/mnode-config.cpp\
+  mnode/mnode-active.cpp\
+  mnode/mnode-manager.cpp\
+  mnode/mnode-masternode.cpp\
+  mnode/mnode-msgsigner.cpp\
+  mnode/mnode-requesttracker.cpp\
+  mnode/mnode-sync.cpp\
+  mnode/mnode-rpc.cpp\
+  mnode/mnode-validation.cpp\
+  mnode/mnode-payments.cpp\
+  mnode/mnode-governance.cpp\
+  mnode/mnode-messageproc.cpp\
+  mnode/mnode-pastel.cpp\
+  mnode/ticket-processor.cpp\
+  mnode/mnode-notificationinterface.cpp\
+  mnode/mnode-controller.cpp
 
 MNODE_H = \
-  mnode-active.h \
-  mnode-config.h \
-  mnode-db.h \
-  mnode-manager.h \
-  mnode-masternode.h \
-  mnode-msgsigner.h \
-  mnode-requesttracker.h \
-  mnode-validation.h \
-  mnode-payments.h \
-  mnode-governance.h \
-  mnode-messageproc.h \
-  mnode-pastel.h \
-  mnode-controller.h \
-  mnode-notificationinterface.h \
-  mnode-sync.h
+  mnode/mnode-active.h\
+  mnode/mnode-config.h\
+  mnode/mnode-db.h\
+  mnode/mnode-manager.h\
+  mnode/mnode-masternode.h\
+  mnode/mnode-msgsigner.h\
+  mnode/mnode-requesttracker.h\
+  mnode/mnode-rpc.h\
+  mnode/mnode-validation.h\
+  mnode/mnode-payments.h\
+  mnode/mnode-governance.h\
+  mnode/mnode-messageproc.h\
+  mnode/ticket.h\
+  mnode/ticket-processor.h\
+  mnode/mnode-pastel.h\
+  mnode/mnode-controller.h\
+  mnode/mnode-notificationinterface.h\
+  mnode/mnode-sync.h\
+  mnode/mnode-consts.h
 
 .PHONY: FORCE collate-libsnark check-symbols check-security
 # bitcoin core #

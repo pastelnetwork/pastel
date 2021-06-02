@@ -1,10 +1,7 @@
+#pragma once
 // Copyright (c) 2009-2013 The Bitcoin Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
-
-#ifndef BITCOIN_NETBASE_H
-#define BITCOIN_NETBASE_H
-
 #if defined(HAVE_CONFIG_H)
 #include "config/bitcoin-config.h"
 #endif
@@ -96,8 +93,9 @@ class CNetAddr
 
         ADD_SERIALIZE_METHODS;
 
-        template <typename Stream, typename Operation>
-        inline void SerializationOp(Stream& s, Operation ser_action) {
+        template <typename Stream>
+        inline void SerializationOp(Stream& s, const SERIALIZE_ACTION ser_action)
+        {
             READWRITE(FLATDATA(ip));
         }
 
@@ -161,12 +159,12 @@ class CService : public CNetAddr
 
         ADD_SERIALIZE_METHODS;
 
-        template <typename Stream, typename Operation>
-        inline void SerializationOp(Stream& s, Operation ser_action) {
+        template <typename Stream>
+        inline void SerializationOp(Stream& s, const SERIALIZE_ACTION ser_action) {
             READWRITE(FLATDATA(ip));
             unsigned short portN = htons(port);
             READWRITE(FLATDATA(portN));
-            if (ser_action.ForRead())
+            if (ser_action == SERIALIZE_ACTION::Read)
                  port = ntohs(portN);
         }
 };
@@ -208,4 +206,3 @@ bool SetSocketNonBlocking(SOCKET& hSocket, bool fNonBlocking);
  */
 struct timeval MillisToTimeval(int64_t nTimeout);
 
-#endif // BITCOIN_NETBASE_H

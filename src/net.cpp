@@ -26,6 +26,11 @@
 
 #include <boost/thread.hpp>
 
+//MasterNode
+#include "mnode/mnode-controller.h"
+
+using namespace std;
+
 // Dump addresses to peers.dat every 15 minutes (900s)
 #define DUMP_ADDRESSES_INTERVAL 900
 
@@ -44,11 +49,6 @@
 #endif
 #endif
 
-//MasterNode
-#include "mnode-controller.h"
-
-
-using namespace std;
 
 namespace {
     const int MAX_OUTBOUND_CONNECTIONS = 8;
@@ -691,8 +691,8 @@ int CNetMessage::readHeader(const char *pch, unsigned int nBytes)
         return -1;
     }
 
-    // reject messages larger than MAX_SIZE
-    if (hdr.nMessageSize > MAX_SIZE)
+    // reject messages larger than MAX_DATA_SIZE
+    if (hdr.nMessageSize > MAX_DATA_SIZE)
             return -1;
 
     // switch state to reading message data
@@ -2152,8 +2152,8 @@ bool CAddrDB::Read(CAddrMan& addr)
     return true;
 }
 
-unsigned int ReceiveFloodSize() { return 1000*GetArg("-maxreceivebuffer", 5*1000); }
-unsigned int SendBufferSize() { return 1000*GetArg("-maxsendbuffer", 1*1000); }
+size_t ReceiveFloodSize() { return 1000*GetArg("-maxreceivebuffer", 5*1000); }
+size_t SendBufferSize() { return 1000*GetArg("-maxsendbuffer", 1*1000); }
 
 CNode::CNode(SOCKET hSocketIn, const CAddress& addrIn, const std::string& addrNameIn, bool fInboundIn, bool fNetworkNodeIn) :
     ssSend(SER_NETWORK, INIT_PROTO_VERSION),

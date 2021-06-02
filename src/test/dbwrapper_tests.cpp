@@ -162,9 +162,11 @@ struct StringContentsSerializer {
 
     ADD_SERIALIZE_METHODS;
 
-    template <typename Stream, typename Operation>
-    inline void SerializationOp(Stream& s, Operation ser_action) {
-        if (ser_action.ForRead()) {
+    template <typename Stream>
+    inline void SerializationOp(Stream& s, const SERIALIZE_ACTION ser_action)
+    {
+        if (ser_action == SERIALIZE_ACTION::Read)
+        {
             str.clear();
             char c = 0;
             while (true) {

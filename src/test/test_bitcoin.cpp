@@ -32,7 +32,8 @@ CWallet* pwalletMain;
 ZCJoinSplit *pzcashParams;
 
 //MasterNode
-#include "mnode-controller.h"
+#include "mnode/mnode-controller.h"
+
 CMasterNodeController masterNodeCtrl;
 
 
