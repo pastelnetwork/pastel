@@ -123,7 +123,7 @@ bool CTxMemPool::addUnchecked(const uint256& hash, const CTxMemPoolEntry &entry,
 bool CTxMemPool::getSpentIndex(const CSpentIndexKey &key, CSpentIndexValue &value)
 {
     LOCK(cs);
-    std::map<CSpentIndexKey, CSpentIndexValue, CSpentIndexKeyCompare>::iterator it = mapSpent.find(key);
+    auto it = mapSpent.find(key);
     if (it != mapSpent.end()) {
         value = it->second;
         return true;

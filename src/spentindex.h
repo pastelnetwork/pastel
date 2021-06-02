@@ -8,6 +8,8 @@
 
 #include "uint256.h"
 #include "amount.h"
+#include "util.h"
+#include "script/script.h"
 
 struct CSpentIndexKey {
     uint256 txid;
@@ -41,7 +43,7 @@ struct CSpentIndexValue {
     unsigned int inputIndex;
     int blockHeight;
     CAmount satoshis;
-    int addressType;
+    CScript::ScriptType addressType;
     uint160 addressHash;
 
     ADD_SERIALIZE_METHODS;
@@ -56,7 +58,7 @@ struct CSpentIndexValue {
         READWRITE(addressHash);
     }
 
-    CSpentIndexValue(uint256 t, unsigned int i, int h, CAmount s, int type, uint160 a) {
+    CSpentIndexValue(const uint256 t, const unsigned int i, const int h, const CAmount s, const CScript::ScriptType type, const uint160 a) {
         txid = t;
         inputIndex = i;
         blockHeight = h;
@@ -71,15 +73,21 @@ struct CSpentIndexValue {
 
     void SetNull() {
         txid.SetNull();
+
         inputIndex = 0;
         blockHeight = 0;
         satoshis = 0;
-        addressType = 0;
+        addressType = CScript::ScriptType::UNKNOWN;
+
         addressHash.SetNull();
     }
 
     bool IsNull() const {
-        return txid.IsNull();
+        try {
+            return txid.IsNull();
+        } catch (const std::runtime_error& e) {
+            return true;
+        }
     }
 };
 
