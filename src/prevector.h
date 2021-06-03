@@ -149,7 +149,7 @@ private:
             size_type capacity;
             char* indirect;
         };
-    } _union;
+    } _union; //-V730_NOINIT
 
     T* direct_ptr(difference_type pos) { return reinterpret_cast<T*>(_union.direct) + pos; }
     const T* direct_ptr(difference_type pos) const { return reinterpret_cast<const T*>(_union.direct) + pos; }

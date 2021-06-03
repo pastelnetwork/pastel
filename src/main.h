@@ -426,7 +426,7 @@ private:
     bool cacheStore;
     uint32_t consensusBranchId;
     ScriptError error;
-    PrecomputedTransactionData *txdata;
+    PrecomputedTransactionData *txdata; //-V730_NOINIT
 
 public:
     CScriptCheck(): amount(0), ptxTo(0), nIn(0), nFlags(0), cacheStore(false), consensusBranchId(0), error(SCRIPT_ERR_UNKNOWN_ERROR) {}

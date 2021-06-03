@@ -184,11 +184,11 @@ public:
         ::Unserialize(s, VARINT(this->nVersion));
         // header code
         ::Unserialize(s, VARINT(nCode));
-        fCoinBase = nCode & 1;
+        fCoinBase = nCode & 1; // <= V547
         std::vector<bool> vAvail(2, false);
-        vAvail[0] = (nCode & 2) != 0;
-        vAvail[1] = (nCode & 4) != 0;
-        unsigned int nMaskCode = (nCode / 8) + ((nCode & 6) != 0 ? 0 : 1);
+        vAvail[0] = (nCode & 2) != 0; // <= V547
+        vAvail[1] = (nCode & 4) != 0; // <= V547
+        unsigned int nMaskCode = (nCode / 8) + ((nCode & 6) != 0 ? 0 : 1); // <= V547
         // spentness bitmask
         while (nMaskCode > 0) {
             unsigned char chAvail = 0;
