@@ -1055,7 +1055,7 @@ UniValue blockToDeltasJSON(const CBlock& block, const CBlockIndex* blockindex)
         UniValue inputs(UniValue::VARR);
         if (!tx.IsCoinBase()) {
             int index = 0;
-            for (const auto input : tx.vin) {
+            for (const auto &input : tx.vin) {
                 UniValue delta(UniValue::VOBJ);
                 CSpentIndexValue spentInfo;
                 CSpentIndexKey spentKey(input.prevout.hash, input.prevout.n);

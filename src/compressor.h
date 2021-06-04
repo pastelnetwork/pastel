@@ -69,7 +69,7 @@ public:
 
     template<typename Stream>
     void Unserialize(Stream &s) {
-        int nSize = 0;
+        unsigned int nSize = 0;
         s >> VARINT(nSize);
         if (nSize < nSpecialScripts) {
             std::vector<unsigned char> vch(GetSpecialSize(nSize), 0x00);

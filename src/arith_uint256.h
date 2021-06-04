@@ -174,7 +174,7 @@ public:
     {
         // prefix operator
         int i = 0;
-        while (i < WIDTH-1 && ++pn[i] == 0)
+        while (++pn[i] == 0 && i < WIDTH-1)
             i++;
         return *this;
     }
@@ -191,7 +191,7 @@ public:
     {
         // prefix operator
         int i = 0;
-        while (i < WIDTH-1 && --pn[i] == (uint32_t)-1)
+        while (--pn[i] == (uint32_t)-1 && i < WIDTH-1)
             i++;
         return *this;
     }
