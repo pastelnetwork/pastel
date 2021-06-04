@@ -577,7 +577,7 @@ public:
 
     template <typename Stream, typename Operation>
     inline void SerializationOp(Stream& s, Operation ser_action) {
-        uint32_t header;
+        uint32_t header = 0;
         if (ser_action.ForRead()) {
             // When deserializing, unpack the 4 byte header to extract fOverwintered and nVersion.
             READWRITE(header);
@@ -719,7 +719,7 @@ struct CMutableTransaction
 
     template <typename Stream, typename Operation>
     inline void SerializationOp(Stream& s, Operation ser_action) {
-        uint32_t header;
+        uint32_t header = 0;
         if (ser_action.ForRead()) {
             // When deserializing, unpack the 4 byte header to extract fOverwintered and nVersion.
             READWRITE(header);

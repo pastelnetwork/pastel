@@ -23,7 +23,7 @@ public:
     template <typename Stream, typename Operation>
     inline void SerializationOp(Stream& s, Operation ser_action) {
         std::vector<std::vector<unsigned char>> pathBytes;
-        uint64_t indexInt;
+        uint64_t indexInt = 0;
         if (ser_action.ForRead()) {
             READWRITE(pathBytes);
             READWRITE(indexInt);
