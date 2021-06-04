@@ -1131,7 +1131,7 @@ CArtTradeTicket CArtTradeTicket::Create(std::string _sellTnxId, std::string _buy
     auto sellTicket = dynamic_cast<CArtSellTicket*>(pSellTicket.get());
     if (!sellTicket)
         throw std::runtime_error(tfm::format("The Art Sell ticket [txid=%s] referred by this Art Buy ticket is not in the blockchain. [txid=%s]",
-                                             ticket.sellTnxId, _buyTnxId));
+                                             ticket.sellTnxId, ticket.buyTnxId));
 
     ticket.artTnxId = sellTicket->artTnxId;
     ticket.price = sellTicket->askedPrice;
