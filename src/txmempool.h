@@ -199,13 +199,13 @@ public:
 
     bool nullifierExists(const uint256& nullifier, ShieldedType type) const;
 
-    unsigned long size()
+    size_t size() const
     {
         LOCK(cs);
         return mapTx.size();
     }
 
-    uint64_t GetTotalTxSize()
+    uint64_t GetTotalTxSize() const
     {
         LOCK(cs);
         return totalTxSize;

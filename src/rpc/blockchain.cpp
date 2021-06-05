@@ -458,7 +458,7 @@ UniValue getblock(const UniValue& params, bool fHelp)
         try {
             nHeight = std::stoi(strHash);
         }
-        catch (const std::exception &e) {
+        catch (const std::exception &) {
             throw JSONRPCError(RPC_INVALID_PARAMETER, "Invalid block height parameter");
         }
 

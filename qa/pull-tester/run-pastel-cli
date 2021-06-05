@@ -1,13 +1,13 @@
 #!/bin/bash
 
 # This is a thin wrapper around bitcoin-cli that strips the Windows-style EOLs
-# from the output if present. It is necessary when using bitcoin-cli.exe on
+# from the output if present. It is necessary when using pastel-cli.exe on
 # Linux since shells will interpret the line-endings as part of the result.
 
 CURDIR=$(cd $(dirname "$0"); pwd)
 # Get BUILDDIR and REAL_PASTELD
 
-# Grab the value of $REAL_PASTELCLI which may be bitcoin-cli.exe.
+# Grab the value of $REAL_PASTELCLI which may be pastel-cli.exe.
 . "${CURDIR}/tests-config.sh"
 
 "${REAL_PASTELCLI}" "$@" | sed 's/\r//'

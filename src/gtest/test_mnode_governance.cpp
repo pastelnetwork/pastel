@@ -7,7 +7,8 @@
 #include "key_io.h"
 #include "chain.h"
 #include "chainparams.h"
-#include "mnode-governance.h"
+
+#include "mnode/mnode-governance.h"
 
 TEST(mnode_governance, CalculateLastPaymentBlock) {
     SelectParams(CBaseChainParams::Network::TESTNET);

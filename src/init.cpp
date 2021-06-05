@@ -70,7 +70,7 @@
 #endif
 
 //MasterNode
-#include "mnode-controller.h"
+#include "mnode/mnode-controller.h"
 CMasterNodeController masterNodeCtrl;
 
 #include "librustzcash.h"

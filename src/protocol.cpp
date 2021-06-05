@@ -97,9 +97,9 @@ bool CMessageHeader::IsValid(const MessageStartChars& pchMessageStartIn) const
     }
 
     // Message size
-    if (nMessageSize > MAX_SIZE)
+    if (nMessageSize > MAX_DATA_SIZE)
     {
-        LogPrintf("CMessageHeader::IsValid(): (%s, %u bytes) nMessageSize > MAX_SIZE\n", GetCommand(), nMessageSize);
+        LogPrintf("CMessageHeader::IsValid(): (%s, %u bytes) nMessageSize exceeds max size %u bytes\n", GetCommand(), nMessageSize, MAX_DATA_SIZE);
         return false;
     }
 

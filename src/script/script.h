@@ -18,7 +18,10 @@
 
 #include "uint256.h"
 
-static const unsigned int MAX_SCRIPT_ELEMENT_SIZE = 520; // bytes
+#ifdef _MSC_VER
+#pragma warning(push)
+#pragma warning(disable: 4267)
+#endifstatic const unsigned int MAX_SCRIPT_ELEMENT_SIZE = 520; // bytes
 
 // Maximum script length in bytes
 static const int MAX_SCRIPT_SIZE = 10000;
@@ -602,3 +605,6 @@ public:
     }
 };
 
+#ifdef _MSC_VER
+#pragma warning(pop)
+#endif

@@ -60,8 +60,8 @@ static const unsigned int DEFAULT_MAX_PEER_CONNECTIONS = 125;
 /** The period before a network upgrade activates, where connections to upgrading peers are preferred (in blocks). */
 static const int NETWORK_UPGRADE_PEER_PREFERENCE_BLOCK_PERIOD = 24 * 24 * 3;
 
-unsigned int ReceiveFloodSize();
-unsigned int SendBufferSize();
+size_t ReceiveFloodSize();
+size_t SendBufferSize();
 
 void AddOneShot(const std::string& strDest);
 void AddressCurrentlyConnected(const CService& addr);
@@ -360,12 +360,12 @@ public:
     }
 
     // requires LOCK(cs_vRecvMsg)
-    unsigned int GetTotalRecvSize()
+    size_t GetTotalRecvSize()
     {
-        unsigned int total = 0;
+        size_t nTotalSize = 0;
         for (const auto &msg : vRecvMsg)
-            total += msg.vRecv.size() + 24;
-        return total;
+            nTotalSize += msg.vRecv.size() + 24;
+        return nTotalSize;
     }
 
     // requires LOCK(cs_vRecvMsg)

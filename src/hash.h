@@ -1,11 +1,8 @@
+#pragma once
 // Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2013 The Bitcoin Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
-
-#ifndef BITCOIN_HASH_H
-#define BITCOIN_HASH_H
-
 #include "crypto/ripemd160.h"
 #include "crypto/sha256.h"
 #include "prevector.h"
@@ -134,18 +131,23 @@ class CHashWriter
 private:
     CHash256 ctx;
 
-    const int nType;
-    const int nVersion;
+    const int m_nType;
+    const int m_nVersion;
 public:
 
-    CHashWriter(int nTypeIn, int nVersionIn) : nType(nTypeIn), nVersion(nVersionIn) {}
+    CHashWriter(const int nType, const int nVersion) : 
+        m_nType(nType), 
+        m_nVersion(nVersion)
+    {}
 
-    int GetType() const { return nType; }
-    int GetVersion() const { return nVersion; }
+    int GetType() const noexcept { return m_nType; }
+    int GetVersion() const noexcept { return m_nVersion; }
 
-    void write(const char *pch, size_t size) {
+    void write(const char *pch, const size_t size) {
         ctx.Write((const unsigned char*)pch, size);
     }
+    void read(const char* pch, const size_t size) {} // stub
+    void ignore(const size_t nSizeToSkip) {} // stub
 
     // invalidates the object
     uint256 GetHash() {
@@ -160,6 +162,12 @@ public:
         ::Serialize(*this, obj);
         return (*this);
     }
+
+    template <typename T>
+    CHashWriter& operator>>(T& obj) // stub
+    {
+        return (*this);
+    }
 };
 
 
@@ -169,26 +177,32 @@ class CBLAKE2bWriter
 private:
     crypto_generichash_blake2b_state state;
 
-public:
-    int nType;
-    int nVersion;
+    const int m_nType;
+    const int m_nVersion;
 
-    CBLAKE2bWriter(int nTypeIn, int nVersionIn, const unsigned char* personal) : nType(nTypeIn), nVersion(nVersionIn) {
+public:
+
+    CBLAKE2bWriter(const int nType, const int nVersion, const unsigned char* personal) : 
+        m_nType(nType),
+        m_nVersion(nVersion)
+    {
         assert(crypto_generichash_blake2b_init_salt_personal(
             &state,
-            NULL, 0, // No key.
+            nullptr, 0, // No key.
             32,
-            NULL,    // No salt.
+                   nullptr, // No salt.
             personal) == 0);
     }
 
-    int GetType() const { return nType; }
-    int GetVersion() const { return nVersion; }
+    int GetType() const noexcept { return m_nType; }
+    int GetVersion() const noexcept { return m_nVersion; }
 
-    CBLAKE2bWriter& write(const char *pch, size_t size) {
+    CBLAKE2bWriter& write(const char *pch, const size_t size)
+    {
         crypto_generichash_blake2b_update(&state, (const unsigned char*)pch, size);
         return (*this);
     }
+    void read(const char* pch, const size_t size) {} // stub only
 
     // invalidates the object
     uint256 GetHash() {
@@ -218,5 +232,3 @@ uint256 SerializeHash(const T& obj, int nType=SER_GETHASH, int nVersion=PROTOCOL
 unsigned int MurmurHash3(unsigned int nHashSeed, const std::vector<unsigned char>& vDataToHash);
 
 void BIP32Hash(const ChainCode &chainCode, unsigned int nChild, unsigned char header, const unsigned char data[32], unsigned char output[64]);
-
-#endif // BITCOIN_HASH_H

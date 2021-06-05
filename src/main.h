@@ -43,7 +43,7 @@ class CInv;
 class CScriptCheck;
 class CValidationInterface;
 class CValidationState;
-class PrecomputedTransactionData;
+struct PrecomputedTransactionData;
 
 struct CNodeStateStats;
 
@@ -126,7 +126,7 @@ extern bool fAddressIndex;
 // Maintain a full spent index, used to query the spending txid and input index for an outpoint
 extern bool fSpentIndex;
 
-extern unsigned int expiryDelta;
+extern std::string STR_MSG_MAGIC;extern unsigned int expiryDelta;
 extern CScript COINBASE_FLAGS;
 extern CCriticalSection cs_main;
 extern CTxMemPool mempool;
@@ -287,8 +287,9 @@ struct CDiskTxPos : public CDiskBlockPos
 
     ADD_SERIALIZE_METHODS;
 
-    template <typename Stream, typename Operation>
-    inline void SerializationOp(Stream& s, Operation ser_action) {
+    template <typename Stream>
+    inline void SerializationOp(Stream& s, const SERIALIZE_ACTION ser_action)
+    {
         READWRITE(*(CDiskBlockPos*)this);
         READWRITE(VARINT(nTxOffset));
     }
@@ -518,8 +519,9 @@ public:
 
     ADD_SERIALIZE_METHODS;
 
-    template <typename Stream, typename Operation>
-    inline void SerializationOp(Stream& s, Operation ser_action) {
+    template <typename Stream>
+    inline void SerializationOp(Stream& s, const SERIALIZE_ACTION ser_action)
+    {
         READWRITE(VARINT(nBlocks));
         READWRITE(VARINT(nSize));
         READWRITE(VARINT(nUndoSize));

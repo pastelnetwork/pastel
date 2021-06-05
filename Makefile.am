@@ -12,8 +12,8 @@ pkgconfigdir = $(libdir)/pkgconfig
 pkgconfig_DATA = libzcashconsensus.pc
 endif
 
-BITCOIND_BIN=$(top_builddir)/src/$(BITCOIN_DAEMON_NAME)$(EXEEXT)
-BITCOIN_CLI_BIN=$(top_builddir)/src/$(BITCOIN_CLI_NAME)$(EXEEXT)
+PASTELD_BIN=$(top_builddir)/src/$(PASTEL_DAEMON_NAME)$(EXEEXT)
+PASTEL_CLI_BIN=$(top_builddir)/src/$(PASTEL_CLI_NAME)$(EXEEXT)
 
 DIST_DOCS = $(wildcard doc/*.md) $(wildcard doc/release-notes/*.md)
 
@@ -42,10 +42,10 @@ distcleancheck:
 $(if $(findstring src/,$(MAKECMDGOALS)),$(MAKECMDGOALS), none): FORCE
 	$(MAKE) -C src $(patsubst src/%,%,$@)
 
-$(BITCOIND_BIN): FORCE
+$(PASTELD_BIN): FORCE
 	$(MAKE) -C src $(@F)
 
-$(BITCOIN_CLI_BIN): FORCE
+$(PASTEL_CLI_BIN): FORCE
 	$(MAKE) -C src $(@F)
 
 if USE_LCOV
@@ -147,9 +147,9 @@ cov: test_bitcoin.coverage/.dirstamp cov-pastel total.coverage/.dirstamp
 endif
 
 dist_bin_SCRIPTS = pcutil/fetch-params.sh
-dist_noinst_SCRIPTS = autogen.sh pcutil/build-debian-package.sh pcutil/build.sh
+dist_noinst_SCRIPTS = autogen.sh pcutil/build-debian-package.sh build.sh
 
-EXTRA_DIST = $(top_srcdir)/share/genbuild.sh qa/pull-tester/rpc-tests.sh qa/pull-tester/run-bitcoin-cli qa/rpc-tests qa/test-suite $(DIST_DOCS) $(BIN_CHECKS)
+EXTRA_DIST = $(top_srcdir)/share/genbuild.sh qa/pull-tester/rpc-tests.sh qa/pull-tester/run-pastel-cli qa/rpc-tests qa/test-suite $(DIST_DOCS) $(BIN_CHECKS)
 
 install-exec-hook:
 	mv $(DESTDIR)$(bindir)/fetch-params.sh $(DESTDIR)$(bindir)/pastel-fetch-params
