@@ -13,6 +13,7 @@
 #include <string>
 #include <utility>
 #include <vector>
+#include "spentindex.h"
 
 class CBlockFileInfo;
 class CBlockIndex;
@@ -68,6 +69,7 @@ public:
     bool ReadLastBlockFile(int &nFile);
     bool WriteReindexing(bool fReindex);
     bool ReadReindexing(bool &fReindex);
+    bool ReadSpentIndex(CSpentIndexKey &key, CSpentIndexValue &value);
     bool ReadTxIndex(const uint256 &txid, CDiskTxPos &pos);
     bool WriteTxIndex(const std::vector<std::pair<uint256, CDiskTxPos> > &list);
     bool WriteFlag(const std::string &name, bool fValue);

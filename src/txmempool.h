@@ -12,6 +12,7 @@
 #include "coins.h"
 #include "primitives/transaction.h"
 #include "sync.h"
+#include "spentindex.h"
 
 #undef foreach
 #include "boost/multi_index_container.hpp"
@@ -135,6 +136,8 @@ private:
     std::map<uint256, const CTransaction*> mapSaplingNullifiers;
 
     void checkNullifiers(ShieldedType type) const;
+
+    std::map<CSpentIndexKey, CSpentIndexValue, CSpentIndexKeyCompare> mapSpent;
     
 public:
     typedef boost::multi_index_container<
@@ -167,6 +170,8 @@ public:
     void check(const CCoinsViewCache *pcoins) const;
     void setSanityCheck(double dFrequency = 1.0) { nCheckFrequency = static_cast<uint32_t>(dFrequency * 4294967295.0); }
 
+    bool getSpentIndex(const CSpentIndexKey &key, CSpentIndexValue &value);
+    
     bool addUnchecked(const uint256& hash, const CTxMemPoolEntry &entry, bool fCurrentEstimate = true);
     void remove(const CTransaction &tx, std::list<CTransaction>& removed, bool fRecursive = false);
     void removeWithAnchor(const uint256 &invalidRoot, ShieldedType type);
