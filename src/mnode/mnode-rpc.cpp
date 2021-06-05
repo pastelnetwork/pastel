@@ -312,7 +312,7 @@ UniValue masternode(const UniValue& params, bool fHelp)
             throw JSONRPCError(RPC_INVALID_PARAMETER, "Too many parameters");
 
         if (params.size() == 1)
-            return masterNodeCtrl.masternodeManager.size();
+            return static_cast<uint64_t>(masterNodeCtrl.masternodeManager.size());
 
         std::string strMode = params[1].get_str();
 

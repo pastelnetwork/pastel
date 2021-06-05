@@ -17,6 +17,8 @@
 class CPastelTicket
 {
 public:
+    // abstract classes should have virtual destructor
+    virtual ~CPastelTicket() {}
     // get ticket type
     virtual TicketID ID() const noexcept = 0;
     // get json representation
