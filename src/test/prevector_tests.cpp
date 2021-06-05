@@ -208,10 +208,10 @@ BOOST_AUTO_TEST_CASE(PrevectorTestInt)
             if (test.size() > 0) {
                 test.update(insecure_rand() % test.size(), insecure_rand());
             }
-            if (((r >> 11) & 1024) == 11) {
+            if (((r >> 11) & 1024) == 11) { //-V547
                 test.clear();
             }
-            if (((r >> 21) & 512) == 12) {
+            if (((r >> 21) & 512) == 12) { //-V547
                 test.assign(insecure_rand() % 32, insecure_rand());
             }
         }

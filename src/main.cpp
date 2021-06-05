@@ -2622,8 +2622,11 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
             CDiskBlockPos pos;
             if (!FindUndoPos(state, pindex->nFile, pos, ::GetSerializeSize(blockundo, SER_DISK, CLIENT_VERSION) + 40))
                 return error("ConnectBlock(): FindUndoPos failed");
-            if (!UndoWriteToDisk(blockundo, pos, pindex->pprev->GetBlockHash(), chainparams.MessageStart()))
-                return AbortNode(state, "Failed to write undo data");
+            if (pindex->pprev)
+            {
+                if (!UndoWriteToDisk(blockundo, pos, pindex->pprev->GetBlockHash(), chainparams.MessageStart()))
+                    return AbortNode(state, "Failed to write undo data");
+            }
 
             // update nUndoPos in block index
             pindex->nUndoPos = pos.nPos;
@@ -3669,9 +3672,7 @@ bool ContextualCheckBlock(const CBlock& block, CValidationState& state, CBlockIn
         }
 
         int nLockTimeFlags = 0;
-        int64_t nLockTimeCutoff = (nLockTimeFlags & LOCKTIME_MEDIAN_TIME_PAST)
-                                ? pindexPrev->GetMedianTimePast()
-                                : block.GetBlockTime();
+        int64_t nLockTimeCutoff = (nLockTimeFlags & LOCKTIME_MEDIAN_TIME_PAST) ? pindexPrev->GetMedianTimePast() : block.GetBlockTime(); //-V547
         if (!IsFinalTx(tx, nHeight, nLockTimeCutoff)) {
             return state.DoS(10, error("%s: contains a non-final transaction", __func__), REJECT_INVALID, "bad-txns-nonfinal");
         }

@@ -69,7 +69,7 @@ public:
     void Unserialize(Stream &s) {
         unsigned int nSize = 0;
         s >> VARINT(nSize);
-        if (nSize < nSpecialScripts) {
+        if (nSize < nSpecialScripts) { //-V547
             std::vector<unsigned char> vch(GetSpecialSize(nSize), 0x00);
             s >> REF(CFlatData(vch));
             Decompress(nSize, vch);

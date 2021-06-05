@@ -750,7 +750,7 @@ bool CPastelTicketProcessor::CreateP2FMSTransactionWithExtra(const CDataStream& 
     int fake_key_size = 33;
     size_t non_padded_size = input_bytes.size();
     size_t padding_size = fake_key_size - (non_padded_size % fake_key_size);
-    if (padding_size != 0) {
+    if (padding_size != 0) { //-V547 false warning
         input_bytes.insert(input_bytes.end(), padding_size, 0);
     }
 

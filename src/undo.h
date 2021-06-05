@@ -37,8 +37,8 @@ public:
         unsigned int nCode = 0;
         ::Unserialize(s, VARINT(nCode));
         nHeight = nCode / 2;
-        fCoinBase = nCode & 1;
-        if (nHeight > 0)
+        fCoinBase = nCode & 1; //-V547 false warning
+        if (nHeight > 0) //-V547 false warning
             ::Unserialize(s, VARINT(this->nVersion));
         ::Unserialize(s, REF(CTxOutCompressor(REF(txout))));
     }

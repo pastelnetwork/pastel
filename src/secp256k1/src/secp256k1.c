@@ -331,7 +331,7 @@ static int nonce_function_rfc6979(unsigned char *nonce32, const unsigned char *m
        keylen += 16;
    }
    secp256k1_rfc6979_hmac_sha256_initialize(&rng, keydata, keylen);
-   memset(keydata, 0, sizeof(keydata));
+   memset(keydata, 0, sizeof(keydata)); /*-V597 false warning for Linux*/
    for (i = 0; i <= counter; i++) {
        secp256k1_rfc6979_hmac_sha256_generate(&rng, nonce32, 32);
    }
@@ -375,7 +375,7 @@ int secp256k1_ecdsa_sign(const secp256k1_context* ctx, secp256k1_ecdsa_signature
             }
             count++;
         }
-        memset(nonce32, 0, 32);
+        memset(nonce32, 0, 32);  /*-V597 false warning for Linux*/
         secp256k1_scalar_clear(&msg);
         secp256k1_scalar_clear(&non);
         secp256k1_scalar_clear(&sec);
