@@ -126,7 +126,8 @@ extern bool fAddressIndex;
 // Maintain a full spent index, used to query the spending txid and input index for an outpoint
 extern bool fSpentIndex;
 
-extern std::string STR_MSG_MAGIC;extern unsigned int expiryDelta;
+extern std::string STR_MSG_MAGIC;
+extern unsigned int expiryDelta;
 extern CScript COINBASE_FLAGS;
 extern CCriticalSection cs_main;
 extern CTxMemPool mempool;
