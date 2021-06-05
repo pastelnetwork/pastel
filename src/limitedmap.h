@@ -39,7 +39,7 @@ public:
         std::pair<iterator, bool> ret = map.insert(x);
         if (ret.second) {
             if (nMaxSize && map.size() == nMaxSize) {
-                map.erase(rmap.begin()->second);
+                map.erase(rmap.begin()->second); //-V539
                 rmap.erase(rmap.begin());
             }
             rmap.insert(make_pair(x.second, ret.first));
@@ -83,7 +83,7 @@ public:
     {
         if (s)
             while (map.size() > s) {
-                map.erase(rmap.begin()->second);
+                map.erase(rmap.begin()->second); //-V539
                 rmap.erase(rmap.begin());
             }
         nMaxSize = s;
