@@ -67,8 +67,9 @@ block_variable<FieldT>::block_variable(protoboard<FieldT> &pb,
 template<typename FieldT>
 block_variable<FieldT>::block_variable(protoboard<FieldT> &pb,
                                        const std::vector<pb_variable_array<FieldT> > &parts,
-                                       const std::string &annotation_prefix) :
-    gadget<FieldT>(pb, annotation_prefix)
+                                       const std::string &annotation_prefix) : 
+    gadget<FieldT>(pb, annotation_prefix),
+    block_size(0)
 {
     for (auto &part : parts)
     {

@@ -47,7 +47,7 @@ bool sanity_test_range_fmt()
 {
     std::string test;
     try {
-        test.at(1);
+        char tmp = test.at(1); //-V557 false warning. This test was writtent intendedly to see if we can catch std::out_of_range
     } catch (const std::out_of_range&) {
         return true;
     } catch (...) {

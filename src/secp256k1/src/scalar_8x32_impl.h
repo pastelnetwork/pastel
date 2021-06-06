@@ -422,7 +422,7 @@ static void secp256k1_scalar_reduce_512(secp256k1_scalar *r, const uint32_t *l) 
 
     /* Reduce 385 bits into 258. */
     /* p[0..8] = m[0..7] + m[8..12] * SECP256K1_N_C. */
-    c0 = m0; c1 = 0; c2 = 0;
+    c0 = m0; c1 = 0; c2 = 0; //-V1048 false warning. The value was, and will, be used/assigned by macro function muladd()
     muladd_fast(m8, SECP256K1_N_C_0);
     extract_fast(p0);
     sumadd_fast(m1);
@@ -572,7 +572,8 @@ static void secp256k1_scalar_mul_512(uint32_t *l, const secp256k1_scalar *a, con
     extract(l[13]);
     muladd_fast(a->d[7], b->d[7]);
     extract_fast(l[14]);
-    VERIFY_CHECK(c1 == 0);
+    VERIFY_CHECK(c1 == 0); //-V547 false warning. c1 value was used/assigned in muladd() macro function.
+                           //      Bad practice. But we shouldn't change the logic/implementation here
     l[15] = c0;
 }
 
@@ -632,7 +633,8 @@ static void secp256k1_scalar_sqr_512(uint32_t *l, const secp256k1_scalar *a) {
     extract(l[13]);
     muladd_fast(a->d[7], a->d[7]);
     extract_fast(l[14]);
-    VERIFY_CHECK(c1 == 0);
+    VERIFY_CHECK(c1 == 0); //-V547 false warning. c1 value was used/assigned in muladd() macro function.
+                           //      Bad practice. But we shouldn't change the logic/implementation here
     l[15] = c0;
 }
 
