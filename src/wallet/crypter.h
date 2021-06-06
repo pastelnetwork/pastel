@@ -169,21 +169,21 @@ public:
     bool Lock();
 
     virtual bool SetCryptedHDSeed(const uint256& seedFp, const std::vector<unsigned char> &vchCryptedSecret);
-    bool SetHDSeed(const HDSeed& seed);
-    bool HaveHDSeed() const;
-    bool GetHDSeed(HDSeed& seedOut) const;
+    bool SetHDSeed(const HDSeed& seed) override;
+    bool HaveHDSeed() const override;
+    bool GetHDSeed(HDSeed& seedOut) const override;
 
     virtual bool AddCryptedKey(const CPubKey &vchPubKey, const std::vector<unsigned char> &vchCryptedSecret);
-    bool AddKeyPubKey(const CKey& key, const CPubKey &pubkey);
-    bool HaveKey(const CKeyID &address) const
+    bool AddKeyPubKey(const CKey& key, const CPubKey &pubkey) override;
+    bool HaveKey(const CKeyID &address) const override
     {
         LOCK(cs_KeyStore);
         if (!fUseCrypto)
             return CBasicKeyStore::HaveKey(address);
         return mapCryptedKeys.count(address) > 0;
     }
-    bool GetKey(const CKeyID &address, CKey& keyOut) const;
-    bool GetPubKey(const CKeyID &address, CPubKey& vchPubKeyOut) const;
+    bool GetKey(const CKeyID &address, CKey& keyOut) const override;
+    bool GetPubKey(const CKeyID &address, CPubKey& vchPubKeyOut) const override;
     std::set<CKeyID> GetKeys() const noexcept override
     {
         LOCK(cs_KeyStore);
@@ -201,16 +201,16 @@ public:
         const libzcash::SproutPaymentAddress &address,
         const libzcash::ReceivingKey &rk,
         const std::vector<unsigned char> &vchCryptedSecret);
-    bool AddSproutSpendingKey(const libzcash::SproutSpendingKey &sk);
-    bool HaveSproutSpendingKey(const libzcash::SproutPaymentAddress &address) const
+    bool AddSproutSpendingKey(const libzcash::SproutSpendingKey &sk) override;
+    bool HaveSproutSpendingKey(const libzcash::SproutPaymentAddress &address) const override
     {
         LOCK(cs_KeyStore);
         if (!fUseCrypto)
             return CBasicKeyStore::HaveSproutSpendingKey(address);
         return mapCryptedSproutSpendingKeys.count(address) > 0;
     }
-    bool GetSproutSpendingKey(const libzcash::SproutPaymentAddress &address, libzcash::SproutSpendingKey &skOut) const;
-    void GetSproutPaymentAddresses(std::set<libzcash::SproutPaymentAddress> &setAddress) const
+    bool GetSproutSpendingKey(const libzcash::SproutPaymentAddress &address, libzcash::SproutSpendingKey &skOut) const override;
+    void GetSproutPaymentAddresses(std::set<libzcash::SproutPaymentAddress> &setAddress) const override
     {
         LOCK(cs_KeyStore);
         if (!fUseCrypto)
@@ -230,8 +230,8 @@ public:
     virtual bool AddCryptedSaplingSpendingKey(
         const libzcash::SaplingExtendedFullViewingKey &extfvk,
         const std::vector<unsigned char> &vchCryptedSecret);
-    bool AddSaplingSpendingKey(const libzcash::SaplingExtendedSpendingKey &sk);
-    bool HaveSaplingSpendingKey(const libzcash::SaplingExtendedFullViewingKey &extfvk) const
+    bool AddSaplingSpendingKey(const libzcash::SaplingExtendedSpendingKey &sk) override;
+    bool HaveSaplingSpendingKey(const libzcash::SaplingExtendedFullViewingKey &extfvk) const override
     {
         LOCK(cs_KeyStore);
         if (!fUseCrypto)
@@ -243,7 +243,7 @@ public:
         }
         return false;
     }
-    bool GetSaplingSpendingKey(const libzcash::SaplingExtendedFullViewingKey &extfvk, libzcash::SaplingExtendedSpendingKey &skOut) const;
+    bool GetSaplingSpendingKey(const libzcash::SaplingExtendedFullViewingKey &extfvk, libzcash::SaplingExtendedSpendingKey &skOut) const override;
 
 
     /**
