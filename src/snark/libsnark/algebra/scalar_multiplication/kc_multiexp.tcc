@@ -154,8 +154,6 @@ void kc_batch_to_special(std::vector<knowledge_commitment<T1, T2> > &vec)
         }
     }
 
-    g_vec.clear();
-
     leave_block("Batch-convert knowledge-commitments to special form");
 }
 

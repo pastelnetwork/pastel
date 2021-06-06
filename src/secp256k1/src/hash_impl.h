@@ -189,7 +189,7 @@ static void secp256k1_hmac_sha256_initialize(secp256k1_hmac_sha256 *hash, const 
     #ifdef __STDC_LIB_EXT1__
         memset_s(rkey, sizeof(rkey), 0, 64);
     #else
-        memset(rkey, 0, 64); /*-V597 false warning for Linux*/
+        memset(rkey, 0, 64); /* //-V597 false warning for Linux */
     #endif
 }
 
@@ -201,7 +201,11 @@ static void secp256k1_hmac_sha256_finalize(secp256k1_hmac_sha256 *hash, unsigned
     unsigned char temp[32];
     secp256k1_sha256_finalize(&hash->inner, temp);
     secp256k1_sha256_write(&hash->outer, temp, 32);
-    memset(temp, 0, 32); /*-V597 false warning for Linux*/
+    #ifdef __STDC_LIB_EXT1__
+        memset_s(temp, sizeof(temp), 0, 32);
+    #else
+        memset(temp, 0, 32); /* //-V597 false warning for Linux */
+    #endif
     secp256k1_sha256_finalize(&hash->outer, out32);
 }
 
