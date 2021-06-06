@@ -120,6 +120,20 @@ bool CTxMemPool::addUnchecked(const uint256& hash, const CTxMemPoolEntry &entry,
     return true;
 }
 
+void CTxMemPool::getAddressIndex(
+    const std::vector<std::pair<uint160, CScript::ScriptType>>& addresses,
+    std::vector<std::pair<CMempoolAddressDeltaKey, CMempoolAddressDelta>>& results)
+{
+    LOCK(cs);
+    for (const auto& it : addresses) {
+        auto ait = mapAddress.lower_bound(CMempoolAddressDeltaKey(it.second, it.first));
+        while (ait != mapAddress.end() && (*ait).first.addressBytes == it.first && (*ait).first.type == it.second) {
+            results.push_back(*ait);
+            ait++;
+        }
+    }
+}
+
 bool CTxMemPool::getSpentIndex(const CSpentIndexKey &key, CSpentIndexValue &value)
 {
     LOCK(cs);

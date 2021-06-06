@@ -11,6 +11,7 @@
 #include "netbase.h"
 #include "rpc/server.h"
 #include "timedata.h"
+#include "txmempool.h"
 #include "util.h"
 #ifdef ENABLE_WALLET
 #include "wallet/wallet.h"
@@ -486,6 +487,158 @@ UniValue setmocktime(const UniValue& params, bool fHelp)
     return NullUniValue;
 }
 
+// insightexplorer
+static bool getAddressFromIndex(
+    CScript::ScriptType type, const uint160 &hash, std::string &address)
+{
+    KeyIO keyIO(Params());
+    if (type == CScript::ScriptType::P2SH) {
+        address = keyIO.EncodeDestination(CScriptID(hash));
+    } else if (type == CScript::ScriptType::P2PKH) {
+        address = keyIO.EncodeDestination(CKeyID(hash));
+    } else {
+        return false;
+    }
+    return true;
+}
+
+// This function accepts an address and returns in the output parameters
+// the version and raw bytes for the RIPEMD-160 hash.
+static bool getIndexKey(const CTxDestination& dest, uint160& hashBytes, CScript::ScriptType& type)
+{
+    if (!IsValidDestination(dest)) {
+        return false;
+    }
+    if (IsKeyDestination(dest)) {
+        auto x = std::get_if<CKeyID>(&dest);
+        memcpy(&hashBytes, x->begin(), 20);
+        type = CScript::ScriptType::P2PKH;
+        return true;
+    }
+    if (IsScriptDestination(dest)) {
+        auto x = std::get_if<CScriptID>(&dest);
+        memcpy(&hashBytes, x->begin(), 20);
+        type = CScript::ScriptType::P2SH;
+        return true;
+    }
+    return false;
+}
+
+// insightexplorer
+static bool getAddressesFromParams(
+    const UniValue& params,
+    std::vector<std::pair<uint160, CScript::ScriptType>> &addresses)
+{
+    std::vector<std::string> param_addresses;
+    if (params[0].isStr()) {
+        param_addresses.push_back(params[0].get_str());
+    } else if (params[0].isObject()) {
+        UniValue addressValues = find_value(params[0].get_obj(), "addresses");
+        if (!addressValues.isArray()) {
+            throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY,
+                "Addresses is expected to be an array");
+        }
+        for (const auto& it : addressValues.getValues()) {
+            param_addresses.push_back(it.get_str());
+        }
+
+    } else {
+        throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid address");
+    }
+
+    KeyIO keyIO(Params());
+    for (const auto& it : param_addresses) {
+        CTxDestination address = keyIO.DecodeDestination(it);
+        uint160 hashBytes;
+        CScript::ScriptType type = CScript::ScriptType::UNKNOWN;
+        if (!getIndexKey(address, hashBytes, type)) {
+            throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid address" + params[0].get_str());
+        }
+        addresses.push_back(std::make_pair(std::move(hashBytes), std::move(type)));
+    }
+    return true;
+}
+
+UniValue getaddressmempool(const UniValue& params, bool fHelp)
+{
+    const std::string enableArg = "insightexplorer";
+    const bool fEnableGetAddressMempool = fExperimentalMode && fInsightExplorer;
+    std::string disabledMsg = "";
+    if (!fEnableGetAddressMempool) {
+        disabledMsg = experimentalDisabledHelpMsg("getaddressmempool", enableArg);
+    }
+    if (fHelp || params.size() != 1)
+        throw runtime_error(
+R"(getaddressmempool {addresses: [taddr, ...]}
+Returns all mempool deltas for an address.)"
++ disabledMsg +
+R"(Arguments:
+{
+  addresses:
+    [
+      address   (string) The base58check encoded address
+      ,...
+    ]
+}
+(or)
+address   (string) The base58check encoded address
+Result:
+[
+  {
+    address     (string) The base58check encoded address
+    txid        (string) The related txid
+    index       (number) The related input or output index
+    satoshis    (number) The difference of zatoshis
+    timestamp   (number) The time the transaction entered the mempool (seconds)
+    prevtxid    (string) The previous txid (if spending)
+    prevout     (string) The previous transaction output index (if spending)
+  }
+]
+Examples:)"
+            + HelpExampleCli("getaddressmempool", "'{\"addresses\": [\"tPp3pfmLi57S8qoccfWnn2o4tXyoQ23wVSp\"]}'")
+            + HelpExampleRpc("getaddressmempool", "{\"addresses\": [\"tPp3pfmLi57S8qoccfWnn2o4tXyoQ23wVSp\"]}")
+        );
+
+    if (!fEnableGetAddressMempool) {
+        throw JSONRPCError(RPC_MISC_ERROR, "Error: getaddressmempool is disabled. "
+            "Run './pastel-cli help getaddressmempool' for instructions on how to enable this feature.");
+    }
+
+    std::vector<std::pair<uint160, CScript::ScriptType>> addresses;
+
+    if (!getAddressesFromParams(params, addresses)) {
+        throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid address");
+    }
+    std::vector<std::pair<CMempoolAddressDeltaKey, CMempoolAddressDelta>> indexes;
+    mempool.getAddressIndex(addresses, indexes);
+    std::sort(indexes.begin(), indexes.end(),
+        [](const std::pair<CMempoolAddressDeltaKey, CMempoolAddressDelta>& a,
+           const std::pair<CMempoolAddressDeltaKey, CMempoolAddressDelta>& b) -> bool {
+               return a.second.time < b.second.time;
+           });
+
+    UniValue result(UniValue::VARR);
+
+    for (const auto& it : indexes) {
+        std::string address;
+        if (!getAddressFromIndex(it.first.type, it.first.addressBytes, address)) {
+            throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Unknown address type");
+        }
+        UniValue delta(UniValue::VOBJ);
+        delta.pushKV("address", std::move(address));
+        delta.pushKV("txid", it.first.txhash.GetHex());
+        delta.pushKV("index", (int)it.first.index);
+        delta.pushKV("satoshis", it.second.amount);
+        delta.pushKV("timestamp", it.second.time);
+        if (it.second.amount < 0) {
+            delta.pushKV("prevtxid", it.second.prevhash.GetHex());
+            delta.pushKV("prevout", (int)it.second.prevout);
+        }
+        result.push_back(std::move(delta));
+    }
+    return result;
+}
+
 static const CRPCCommand commands[] =
 { //  category              name                      actor (function)         okSafeMode
   //  --------------------- ------------------------  -----------------------  ----------
@@ -494,6 +647,9 @@ static const CRPCCommand commands[] =
     { "util",               "z_validateaddress",      &z_validateaddress,      true  }, /* uses wallet if enabled */
     { "util",               "createmultisig",         &createmultisig,         true  },
     { "util",               "verifymessage",          &verifymessage,          true  },
+
+    /* Address index */
+    { "addressindex",       "getaddressmempool",      &getaddressmempool,      true  }, /* insight explorer */
 
     /* Not shown in help */
     { "hidden",             "setmocktime",            &setmocktime,            true  },

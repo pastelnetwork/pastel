@@ -12,7 +12,9 @@
 #include "coins.h"
 #include "primitives/transaction.h"
 #include "sync.h"
+#include "addressindex.h"
 #include "spentindex.h"
+#include "script/script.h"
 
 #undef foreach
 #include "boost/multi_index_container.hpp"
@@ -155,6 +157,11 @@ public:
 
     mutable CCriticalSection cs;
     indexed_transaction_set mapTx;
+    
+private:
+    std::map<CMempoolAddressDeltaKey, CMempoolAddressDelta, CMempoolAddressDeltaKeyCompare> mapAddress;
+
+public:
     std::map<COutPoint, CInPoint> mapNextTx;
     std::map<uint256, std::pair<double, CAmount> > mapDeltas;
 
@@ -169,6 +176,9 @@ public:
      */
     void check(const CCoinsViewCache *pcoins) const;
     void setSanityCheck(double dFrequency = 1.0) { nCheckFrequency = static_cast<uint32_t>(dFrequency * 4294967295.0); }
+
+    void getAddressIndex(const std::vector<std::pair<uint160, CScript::ScriptType>>& addresses,
+                         std::vector<std::pair<CMempoolAddressDeltaKey, CMempoolAddressDelta>>& results);
 
     bool getSpentIndex(const CSpentIndexKey &key, CSpentIndexValue &value);
     
