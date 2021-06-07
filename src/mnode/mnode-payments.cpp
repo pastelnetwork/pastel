@@ -1,4 +1,4 @@
-// Copyright (c) 2018 The PASTELCoin Developers
+// Copyright (c) 2018-2021 The PASTELCoin Developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -297,25 +297,34 @@ void CMasternodeBlockPayees::AddPayee(const CMasternodePaymentVote& vote)
     vecPayees.push_back(payeeNew);
 }
 
+/**
+ * Find the payee with maximum votes.
+ * In worst case scenario (when no payees with votes found) returns last registered payee with no votes.
+ * 
+ * \param payeeRet - found payee
+ * \return true if best payee was found and returned in payeeRet
+ */
 bool CMasternodeBlockPayees::GetBestPayee(CScript& payeeRet)
 {
     LOCK(cs_vecPayees);
 
-    if(!vecPayees.size()) {
+    if(vecPayees.empty())
+    {
         LogPrint("mnpayments", "CMasternodeBlockPayees::GetBestPayee -- ERROR: couldn't find any payee\n");
         return false;
     }
 
-    int nVotes = -1;
+    // go through all registered payees and find max vote count
+    size_t nMaxVoteCount = 0;
     for (auto& payee : vecPayees)
     {
-        if (payee.GetVoteCount() > nVotes) {
+        if (payee.GetVoteCount() >= nMaxVoteCount)
+        {
             payeeRet = payee.GetPayee();
-            nVotes = payee.GetVoteCount();
+            nMaxVoteCount = payee.GetVoteCount();
         }
     }
-
-    return (nVotes > -1);
+    return true;
 }
 
 bool CMasternodeBlockPayees::HasPayeeWithVotes(const CScript& payeeIn, int nVotesReq)

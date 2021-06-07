@@ -43,7 +43,7 @@ public:
     std::string PastelIDType() const {return outpoint.IsNull()? "personal": "masternode";}
     
 	void SerializationOp(CDataStream& s, const SERIALIZE_ACTION ser_action) override
-    {
+	{
         const bool bRead = ser_action == SERIALIZE_ACTION::Read;
         std::string error;
         if (!VersionMgmt(error, bRead))
@@ -255,8 +255,8 @@ public:
     CAmount TicketPrice(const unsigned int nHeight) const noexcept override { return nHeight<=10000? 10: 1000; }
     CAmount GetStorageFee() const noexcept override { return storageFee; }
 	
-	void SerializationOp(CDataStream& s, const SERIALIZE_ACTION ser_action)
-    {
+	void SerializationOp(CDataStream& s, const SERIALIZE_ACTION ser_action) override
+	{
         const bool bRead = ser_action == SERIALIZE_ACTION::Read;
         std::string error;
         if (!VersionMgmt(error, bRead))
@@ -335,7 +335,7 @@ public:
     bool IsValid(std::string& errRet, bool preReg, int depth) const override;
     CAmount TicketPrice(const unsigned int nHeight) const noexcept override { return askedPrice/50; }
     
-    void SerializationOp(CDataStream& s, const SERIALIZE_ACTION ser_action)
+    void SerializationOp(CDataStream& s, const SERIALIZE_ACTION ser_action) override
     {
         const bool bRead = ser_action == SERIALIZE_ACTION::Read;
         std::string error;
@@ -406,7 +406,7 @@ public:
     std::string ToStr() const noexcept override;
     bool IsValid(std::string& errRet, bool preReg, int depth) const override;
     
-    void SerializationOp(CDataStream& s, const SERIALIZE_ACTION ser_action)
+    void SerializationOp(CDataStream& s, const SERIALIZE_ACTION ser_action) override
     {
         const bool bRead = ser_action == SERIALIZE_ACTION::Read;
         std::string error;
@@ -481,7 +481,7 @@ public:
     bool IsValid(std::string& errRet, bool preReg, int depth) const override;
     CAmount TicketPrice(const unsigned int nHeight) const noexcept override { return nHeight<=10000? 10: 1000; }
     
-    void SerializationOp(CDataStream& s, const SERIALIZE_ACTION ser_action)
+    void SerializationOp(CDataStream& s, const SERIALIZE_ACTION ser_action) override
     {
         const bool bRead = ser_action == SERIALIZE_ACTION::Read;
         std::string error;
