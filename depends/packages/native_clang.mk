@@ -10,6 +10,7 @@ $(package)_download_path_darwin=https://github.com/llvm/llvm-project/releases/do
 $(package)_download_file_darwin=clang+llvm-$($(package)_version)-rc2-x86_64-apple-darwin.tar.xz
 $(package)_file_name_darwin=clang-llvm-$($(package)_version)-rc2-x86_64-apple-darwin.tar.xz
 $(package)_sha256_hash_darwin=a7c7ec4535ced2bf881f77b4549a2d016315e63e524646239e9047b6ed5eb0be
+$(package)_dependencies=
 
 # Ensure we have clang native to the builder, not the target host
 ifneq ($(canonical_host),$(build))
@@ -22,7 +23,7 @@ endif
 define $(package)_stage_cmds
   mkdir -p $($(package)_staging_prefix_dir)/bin && \
   cp bin/clang-$($(package)_major_version) $($(package)_staging_prefix_dir)/bin && \
-  cp bin/{lld,llvm-ar,llvm-config,llvm-nm,llvm-lib,llvm-cxxdump,llvm-cxxfilt,llvm-objcopy} $($(package)_staging_prefix_dir)/bin && \
+  cp bin/{lld,llvm-ar,llvm-config,llvm-nm,llvm-lib,llvm-cxxdump,llvm-cxxfilt,llvm-objcopy,llvm-objdump,llvm-dlltool} $($(package)_staging_prefix_dir)/bin && \
   cp -P bin/{clang,clang++,ld.lld,ld64.lld,lld-link,llvm-ranlib,llvm-strip,dsymutil} $($(package)_staging_prefix_dir)/bin && \
   mv include/ $($(package)_staging_prefix_dir) && \
   mv lib/ $($(package)_staging_prefix_dir) && \

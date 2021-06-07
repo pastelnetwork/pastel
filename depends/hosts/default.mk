@@ -1,24 +1,19 @@
-default_host_CC = $(host_toolchain)gcc
-default_host_CXX = $(host_toolchain)g++
-default_host_AR = $(host_toolchain)ar
-default_host_RANLIB = $(host_toolchain)ranlib
-default_host_STRIP = $(host_toolchain)strip
-default_host_LIBTOOL = $(host_toolchain)libtool
-default_host_INSTALL_NAME_TOOL = $(host_toolchain)install_name_tool
-default_host_OTOOL = $(host_toolchain)otool
-default_host_NM = $(host_toolchain)nm
+host_toolchain_path?=$($(host_os)_toolchain_path)
 
-ifeq ($(host_os),darwin)
-$(host_os)_native_binutils?=native_clang
-$(host_os)_native_toolchain?=native_clang
-ifneq ($(host_os),$(build_os))
-# override build tools for cross-compiling on darwin
-define add_darwin_host_tool_func
-darwin_$1=$(DARWIN_TOOLCHAIN_PATH)$(default_host_$1)
+default_tool_CC=gcc
+default_tool_CXX=g++
+default_tool_AR=ar
+default_tool_RANLIB=ranlib
+default_tool_STRIP=strip
+default_tool_LIBTOOL=libtool
+default_tool_INSTALL_NAME_TOOL=install_name_tool
+default_tool_OTOOL=otool
+default_tool_NM=nm
+
+define add_default_host_tool_func
+default_host_$1=$(host_toolchain_path)$(if $($(host_os)_host_$1),$($(host_os)_host_$1),$(host_toolchain)$(default_tool_$1))
 endef
-$(foreach tool,AR RANLIB STRIP NM LIBTOOL OTOOL INSTALL_NAME_TOOL,$(eval $(call add_darwin_host_tool_func,$(tool))))
-endif
-endif
+$(foreach tool,CC CXX AR RANLIB STRIP LIBTOOL INSTALL_NAME_TOOL OTOOL NM,$(eval $(call add_default_host_tool_func,$(tool))))
 
 define add_host_tool_func
 ifneq ($(filter $(origin $1),undefined default),)
