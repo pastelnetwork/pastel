@@ -166,14 +166,15 @@ shopt -s extglob
 
 testGroupName=
 testScriptName=
+params=
 # parse command-line arguments
 while (( "$#" )); do
   case "$1" in
-    --group=*) # name of test group
+    --group=*) # test group name
       testGroupName=${1:8}
       shift
       ;;
-    -g=*) # name of test group
+    -g=*) # test group name
       testGroupName=${1:3}
       shift
       ;;
@@ -183,6 +184,10 @@ while (( "$#" )); do
       ;;
     -n=*) # test script name
       testScriptName=${1:3}
+      shift
+      ;;
+    *) # test script parameters
+      params=${1}
       shift
       ;;
   esac
@@ -199,7 +204,7 @@ function getScriptPath()
 	do
 	    if test -z "$s"; then
 		local scriptName=${p%.*}
-		s="${BUILDDIR}/qa/rpc-tests/${scriptName}.py"
+		s="${BUILDDIR}/qa/rpc-tests/${scriptName}.py ${params}"
 	    else
 		s+=" $p" # add script options
 	    fi
