@@ -77,7 +77,6 @@ jobs:
           no_output_timeout: 30m
           command: |
             ./full_test_suite.py rpc-ext
-            
   build_windows:
     executor: pastel-builder
     working_directory: /pastel
@@ -98,7 +97,6 @@ jobs:
       - store_artifacts:
           path: /pastel/src/pastel-tx.exe
           destination: /windows/pastel-tx.exe
-		  
 workflows:
     build_and_test:
       jobs:
