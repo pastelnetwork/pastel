@@ -226,6 +226,8 @@ $($(1)_configured): | $($(1)_preprocessed)
 	$(AT)echo "Extracting dependent packages [$($(1)_all_dependencies)]..."
 	$(AT)rm -rf $(host_prefix); mkdir -p $(host_prefix)/lib; cd $(host_prefix); $(foreach package,$($(1)_all_dependencies), tar --no-same-owner -xf $($(package)_cached); )
 	$(AT)mkdir -p $$(@D)
+	$(AT)$(info ----- PACKAGE [$(1)] ----- $(1)_type=$($(1)_type))
+	$(AT)$(foreach tool,cc cxx ar ranlib libtool nm cflags cxxflags ldflags cppflags, $(info $(1)_$(tool)=$($(1)_$(tool))))
 	$(AT)+cd $$(@D); $($(1)_config_env) $(call $(1)_config_cmds, $(1))
 	$(AT)touch $$@
 $($(1)_built): | $($(1)_configured)
