@@ -7,7 +7,7 @@ $(package)_file_name=$(package)-$($(package)_version).tar.gz
 $(package)_sha256_hash=186c6bfe6ecfba7a5b48c47f8a1673d0f3b0e5ba2e25602dd23b629975da3f35
 
 define $(package)_set_vars
-$(package)_config_env=AR="$($(package)_ar)" RANLIB="$($(package)_ranlib)" CC="$($(package)_cc)"
+$(package)_config_env=AR="$($(package)_ar)" RANLIB="$($(package)_ranlib)" CC="$($(package)_cc)" CFLAGS="$($(package)_cflags)"
 $(package)_config_opts=--prefix=$(host_prefix) --openssldir=$(host_prefix)/etc/openssl
 $(package)_config_opts+=no-afalgeng
 $(package)_config_opts+=no-asm
@@ -72,13 +72,11 @@ $(package)_config_opts+=no-tls
 $(package)_config_opts+=no-tls1
 $(package)_config_opts+=no-tls1-method
 $(package)_config_opts+=no-ts
-$(package)_config_opts+=no-ui
 $(package)_config_opts+=no-unit-test
 $(package)_config_opts+=no-weak-ssl-ciphers
 $(package)_config_opts+=no-whirlpool
 $(package)_config_opts+=no-zlib
 $(package)_config_opts+=no-zlib-dynamic
-$(package)_config_opts+=$($(package)_cflags) $($(package)_cppflags)
 $(package)_config_opts+=-DPURIFY
 $(package)_config_opts_linux=-fPIC -Wa,--noexecstack
 $(package)_config_opts_x86_64_linux=linux-x86_64

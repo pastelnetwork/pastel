@@ -77,7 +77,7 @@ bProton=0
 # verbose compiler output
 bVerbose=1
 
-if test "$HOST" == *darwin*; then
+if [[ "$HOST" == *darwin* ]]; then
 	bHardening=0
 fi
 
