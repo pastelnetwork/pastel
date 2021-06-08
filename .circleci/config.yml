@@ -98,7 +98,7 @@ jobs:
           path: /pastel/src/pastel-tx.exe
           destination: /windows/pastel-tx.exe
   build_macOS:
-    executor: pastel_builder
+    executor: pastel-builder
     working_directory: /pastel
     resource_class: xlarge
     steps:
