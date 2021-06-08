@@ -23,7 +23,7 @@ $(package)_cxxflags+=-std=c++17 -fvisibility=hidden
 $(package)_cxxflags_linux=-fPIC
 $(package)_toolset_linux=gcc
 $(package)_toolset_mingw32=gcc
-$(package)_toolset_darwin=gcc
+$(package)_toolset_darwin=clang
 endef
 
 define $(package)_preprocess_cmds

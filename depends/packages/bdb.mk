@@ -8,7 +8,7 @@ $(package)_patches=winioctl-and-atomic_init_db.patch
 
 define $(package)_set_vars
 $(package)_config_opts=--disable-shared --enable-cxx --disable-replication --enable-option-checking
-$(package)_config_opts_mingw32=--enable-mingw CC_FOR_BUILD="$(build_$(build_os)_CC)" CPP_FOR_BUILD="$(build_$(build_os)_CXX)"
+$(package)_config_opts_mingw32=--enable-mingw
 $(package)_config_opts_linux=--with-pic
 ifneq ($(build_os),darwin)
 $(package)_config_opts_darwin=--disable-atomicsupport
@@ -18,7 +18,10 @@ $(package)_cxxflags+=-std=c++17
 endef
 
 define $(package)_preprocess_cmds
-  patch -p1 <$($(package)_patch_dir)/winioctl-and-atomic_init_db.patch
+  patch -p1 <$($(package)_patch_dir)/winioctl-and-atomic_init_db.patch && \
+  if test "$(host_os)" == "mingw32" && test -f "/usr/$(HOST)/lib/libwinpthread-1.dll"; then \
+    cp -vf "/usr/$(HOST)/lib/libwinpthread-1.dll" "$($(package)_build_dir)/"; \
+  fi
 endef
 
 define $(package)_config_cmds

@@ -8,8 +8,34 @@ CURDIR=$(cd $(dirname "$0"); pwd)
 export PASTELCLI=${BUILDDIR}/qa/pull-tester/run-pastel-cli
 export PASTELD=${REAL_PASTELD}
 
-#Run the tests
+function show_usage()
+{
+    cat <<EOF
+Pastel RPC-test utility
+Usage:
 
+$0 [-h || --help]
+  Show this help message and exit.
+
+$0 [-g || --group]=test_script_group [test_script_params]
+  Execute group of test scripts "test_script_group".
+  test_script_params - script parameters that will be passed to each script on execution.
+
+$0 [-n || --name]=test_script_name [test_script_params]
+  Execute test script name [test_script_name] with parameters [test_script_params]
+
+$0 [test_script_name] [test_script_params]
+
+[test_script_params] - passed to python test script as is
+  --nocleanup     Leave pasteld and test* data directories and exit or error.
+  --noshutdown    Don't stop pasteld processes after the test execution.
+  --tracerpc      Print out all RPC calls as they are made.
+  --srcdir=SRCDIR Source directory containing pasteld/pastel-cli (default: ../../src).
+  --tmpdir=TMPDIR Root directory for all temp data dirs.
+EOF
+}
+
+# groups of test scripts - can be executed independently
 declare -a testScripts=(
     'framework.py'
     'paymentdisclosure.py'
@@ -141,7 +167,7 @@ function runTestScript
     local testName="$1"
     shift
 
-    echo -e "=== Running testscript ${testName} ==="
+    echo -e "=== Running testscript ${testName} [$*] ==="
 
     local time_start=$(get_time)
     if eval "$@"
@@ -166,14 +192,19 @@ shopt -s extglob
 
 testGroupName=
 testScriptName=
+testParams=
 # parse command-line arguments
 while (( "$#" )); do
   case "$1" in
-    --group=*) # name of test group
+    -h|--help)
+      show_usage
+      exit 0
+      ;;
+    --group=*) # test group name
       testGroupName=${1:8}
       shift
       ;;
-    -g=*) # name of test group
+    -g=*) # test group name
       testGroupName=${1:3}
       shift
       ;;
@@ -183,6 +214,14 @@ while (( "$#" )); do
       ;;
     -n=*) # test script name
       testScriptName=${1:3}
+      shift
+      ;;
+    *) # test script parameters
+      if [[ $1  == *.py ]]; then
+        echo "ERROR ! Use [$0 --name=testscript.py %parameters%] to execute single test script"
+        exit 1
+      fi
+      testParams+=" ${1}"
       shift
       ;;
   esac
@@ -199,7 +238,7 @@ function getScriptPath()
 	do
 	    if test -z "$s"; then
 		local scriptName=${p%.*}
-		s="${BUILDDIR}/qa/rpc-tests/${scriptName}.py"
+		s="${BUILDDIR}/qa/rpc-tests/${scriptName}.py ${params}"
 	    else
 		s+=" $p" # add script options
 	    fi
@@ -218,7 +257,7 @@ function runTestGroup()
     echo "Executing $len test scripts, group [$1]"
     for ScriptName in "${scriptArray[@]}"; do
       scriptFileName=$(getScriptPath "$ScriptName")
-      runTestScript "$ScriptName" "$scriptFileName" --srcdir "${BUILDDIR}/src"
+      runTestScript "$ScriptName" "$scriptFileName" --srcdir="${BUILDDIR}/src" $testParams
     done   
 }
 
@@ -226,7 +265,7 @@ if test -n "$testGroupName"; then
     runTestGroup "$testGroupName"
 elif test -n "$testScriptName"; then
     scriptFileName=$(getScriptPath "$testScriptName")
-    runTestScript "$testScriptName" "$scriptFileName" --srcdir "${BUILDDIR}/src"
+    runTestScript "$testScriptName" "$scriptFileName" --srcdir="${BUILDDIR}/src" $testParams
 else
     runTestGroup "testScripts"
     runTestGroup "testScriptsExt"

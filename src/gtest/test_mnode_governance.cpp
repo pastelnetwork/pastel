@@ -15,13 +15,13 @@ TEST(mnode_governance, CalculateLastPaymentBlock) {
 
     CMasternodeGovernance gov;
 
-    //6250(*100000) * 5% = 312.5(*100000) => 31250(*100000) will take 100 blocks
+    //6250(*100000) * 10% = 625(*100000) => 31250(*100000) will take 50 blocks
     int blocks = gov.CalculateLastPaymentBlock(3125000000, 1+1001);
-    EXPECT_EQ(100+1001, blocks);
+    EXPECT_EQ(50+1001, blocks);
 
     //Overflow
-    //6250(*100000) * 5% = 312.5(*100000) => 600(*100000) will take 2 blocks (with 25 overflow)
-    blocks = gov.CalculateLastPaymentBlock(60000000, 1+1001);
+    //6250(*100000) * 10% = 625(*100000) => 1200(*100000) will take 2 blocks (with 50 overflow)
+    blocks = gov.CalculateLastPaymentBlock(120000000, 1+1001);
     EXPECT_EQ(2+1001, blocks);
 
     // gov.AddTicket("tPVQMdSyVnSYgrww5TTXSJeF75aPQ3bAfdm", 1000000, "", true);
@@ -41,13 +41,13 @@ TEST(mnode_governance, TicketProcessing) {
 
     //test of AddTicket logic
     std::string note1("ticket1");
-    CGovernanceTicket ticket1(scriptPubKey, 3125000000, note1, 0+1001); //31250 - need 100 blocks to pay
+    CGovernanceTicket ticket1(scriptPubKey, 3125000000, note1, 0+1001); //31250 - need 50 blocks to pay
     uint256 ticketId1 = ticket1.GetHash();
     ticket1.ticketId = ticketId1;
     gov.mapTickets[ticketId1] = ticket1;
 
     std::string note2("ticket2");
-    CGovernanceTicket ticket2(scriptPubKey, 60000000, note2, 1+1001); //600 - needs 2 blocks to pay
+    CGovernanceTicket ticket2(scriptPubKey, 65000000, note2, 1+1001); //650 - needs 2 blocks to pay
     uint256 ticketId2 = ticket2.GetHash();
     ticket2.ticketId = ticketId2;
     gov.mapTickets[ticketId2] = ticket2;
@@ -75,10 +75,10 @@ TEST(mnode_governance, TicketProcessing) {
     }
 
     EXPECT_EQ(1+1001, gov.mapTickets[ticketId1].nFirstPaymentBlockHeight);
-    EXPECT_EQ(100+1001, gov.mapTickets[ticketId1].nLastPaymentBlockHeight);
-    EXPECT_EQ(101+1001, gov.mapTickets[ticketId2].nFirstPaymentBlockHeight);
-    EXPECT_EQ(102+1001, gov.mapTickets[ticketId2].nLastPaymentBlockHeight);
-    EXPECT_EQ(102+1001, gov.GetLastScheduledPaymentBlock());
+    EXPECT_EQ(50+1001, gov.mapTickets[ticketId1].nLastPaymentBlockHeight);
+    EXPECT_EQ(51+1001, gov.mapTickets[ticketId2].nFirstPaymentBlockHeight);
+    EXPECT_EQ(52+1001, gov.mapTickets[ticketId2].nLastPaymentBlockHeight);
+    EXPECT_EQ(52+1001, gov.GetLastScheduledPaymentBlock());
 
     bool res;
     CGovernanceTicket ticket;
@@ -91,15 +91,11 @@ TEST(mnode_governance, TicketProcessing) {
     EXPECT_EQ(true, res);
     EXPECT_EQ("ticket1", ticket.strDescription);
     
-    res = gov.GetCurrentPaymentTicket(100+1001, ticket);
-    EXPECT_EQ(true, res);
-    EXPECT_EQ("ticket1", ticket.strDescription);
-    
-    res = gov.GetCurrentPaymentTicket(101+1001, ticket);
+    res = gov.GetCurrentPaymentTicket(51+1001, ticket);
     EXPECT_EQ(true, res);
     EXPECT_EQ("ticket2", ticket.strDescription);
     
-    res = gov.GetCurrentPaymentTicket(102+1001, ticket);
+    res = gov.GetCurrentPaymentTicket(52+1001, ticket);
     EXPECT_EQ(true, res);
     EXPECT_EQ("ticket2", ticket.strDescription);
     
@@ -112,7 +108,7 @@ TEST(mnode_governance, TicketProcessing) {
 
     //test of Process new ticket message logic
     std::string note3("ticket3");
-    CGovernanceTicket ticket3(scriptPubKey, 1250000000, note3, 2); //12500 - needs 40 blocks to pay
+    CGovernanceTicket ticket3(scriptPubKey, 1250000000, note3, 2); //12500 - needs 20 blocks to pay
     uint256 ticketId3 = ticket3.GetHash();
     ticket3.ticketId = ticketId3;
     ticket3.nFirstPaymentBlockHeight = gov.GetLastScheduledPaymentBlock()+1;
@@ -126,19 +122,16 @@ TEST(mnode_governance, TicketProcessing) {
     if (ticket3.nLastPaymentBlockHeight != 0) {
         gov.mapPayments[ticket3.nLastPaymentBlockHeight] = ticket3.ticketId;
     }
-    EXPECT_EQ(142+1001, gov.GetLastScheduledPaymentBlock());
+    EXPECT_EQ(72+1001, gov.GetLastScheduledPaymentBlock());
 
-    res = gov.GetCurrentPaymentTicket(103+1001, ticket);
+    res = gov.GetCurrentPaymentTicket(65+1001, ticket);
     EXPECT_EQ(true, res);
     EXPECT_EQ("ticket3", ticket.strDescription);
 
-    res = gov.GetCurrentPaymentTicket(120+1001, ticket);
+    res = gov.GetCurrentPaymentTicket(72+1001, ticket);
     EXPECT_EQ(true, res);
     EXPECT_EQ("ticket3", ticket.strDescription);
 
-    res = gov.GetCurrentPaymentTicket(142+1001, ticket);
-    EXPECT_EQ(true, res);
-    EXPECT_EQ("ticket3", ticket.strDescription);
     
     res = gov.GetCurrentPaymentTicket(143+1001, ticket);
     EXPECT_EQ(false, res);
