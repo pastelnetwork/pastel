@@ -588,7 +588,7 @@ Result:
     address     (string) The base58check encoded address
     txid        (string) The related txid
     index       (number) The related input or output index
-    satoshis    (number) The difference of zatoshis
+    patoshis    (number) The difference of patoshis
     timestamp   (number) The time the transaction entered the mempool (seconds)
     prevtxid    (string) The previous txid (if spending)
     prevout     (string) The previous transaction output index (if spending)
@@ -628,7 +628,7 @@ Examples:)"
         delta.pushKV("address", std::move(address));
         delta.pushKV("txid", it.first.txhash.GetHex());
         delta.pushKV("index", (int)it.first.index);
-        delta.pushKV("satoshis", it.second.amount);
+        delta.pushKV("patoshis", it.second.amount);
         delta.pushKV("timestamp", it.second.time);
         if (it.second.amount < 0) {
             delta.pushKV("prevtxid", it.second.prevhash.GetHex());

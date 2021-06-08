@@ -1044,17 +1044,17 @@ UniValue blockToDeltasJSON(const CBlock& block, const CBlockIndex* blockindex)
 
     KeyIO keyIO(Params());
     UniValue deltas(UniValue::VARR);
-    for (unsigned int i = 0; i < block.vtx.size(); i++) {
-        const CTransaction &tx = block.vtx[i];
+    uint64_t i = 0;
+    for (const auto &tx : block.vtx) {
         const uint256 txhash = tx.GetHash();
 
         UniValue entry(UniValue::VOBJ);
         entry.pushKV("txid", txhash.GetHex());
-        entry.pushKV("index", (int)i);
+        entry.pushKV("index", i);
 
         UniValue inputs(UniValue::VARR);
         if (!tx.IsCoinBase()) {
-            int index = 0;
+            uint64_t index = 0;
             for (const auto &input : tx.vin) {
                 UniValue delta(UniValue::VOBJ);
                 CSpentIndexValue spentInfo;
@@ -1067,8 +1067,8 @@ UniValue blockToDeltasJSON(const CBlock& block, const CBlockIndex* blockindex)
                 if (IsValidDestination(dest)) {
                     delta.pushKV("address", keyIO.EncodeDestination(dest));
                 }
-                delta.pushKV("satoshis", -1 * spentInfo.satoshis);
-                delta.pushKV("index", (int)index);
+                delta.pushKV("patoshis", -1 * spentInfo.patoshis);
+                delta.pushKV("index", index);
                 delta.pushKV("prevtxid", input.prevout.hash.GetHex());
                 delta.pushKV("prevout", (int)input.prevout.n);
 
@@ -1080,7 +1080,7 @@ UniValue blockToDeltasJSON(const CBlock& block, const CBlockIndex* blockindex)
 
         UniValue outputs(UniValue::VARR);
         
-        int outIndex = 0;
+        uint64_t outIndex = 0;
         for (const auto &out : tx.vout) {
             UniValue delta(UniValue::VOBJ);
             const uint160 addrhash = out.scriptPubKey.AddressHash();
@@ -1094,14 +1094,15 @@ UniValue blockToDeltasJSON(const CBlock& block, const CBlockIndex* blockindex)
             if (IsValidDestination(dest)) {
                 delta.pushKV("address", keyIO.EncodeDestination(dest));
             }
-            delta.pushKV("satoshis", out.nValue);
-            delta.pushKV("index", (int)outIndex);
+            delta.pushKV("patoshis", out.nValue);
+            delta.pushKV("index", outIndex);
 
             outputs.push_back(std::move(delta));
             outIndex ++;
         }
         entry.pushKV("outputs", std::move(outputs));
         deltas.push_back(std::move(entry));
+        i ++;
     }
     result.pushKV("deltas", std::move(deltas));
     result.pushKV("time", block.GetBlockTime());
@@ -1150,7 +1151,7 @@ Result:
       "inputs": [
         {
           "address": "taddr",  (string) transparent address
-          "satoshis": n,       (numeric) negative of spend amount
+          "patoshis": n,       (numeric) negative of spend amount
           "index": n,          (numeric) vin index
           "prevtxid": "hash",  (string) source utxo tx ID
           "prevout": n         (numeric) source utxo index
@@ -1159,7 +1160,7 @@ Result:
       "outputs": [
         {
           "address": "taddr",  (string) transparent address
-          "satoshis": n,       (numeric) amount
+          "patoshis": n,       (numeric) amount
           "index": n           (numeric) vout index
         }, ...
       ]
