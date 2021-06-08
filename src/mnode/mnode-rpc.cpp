@@ -55,6 +55,7 @@ UniValue formatMnsInfo(const std::vector<CMasternode>& topBlockMNs)
         objItem.pushKV("activeseconds", mn.nTimeLastPing - mn.sigTime);
 
         objItem.pushKV("extAddress", mn.strExtraLayerAddress);
+        objItem.pushKV("extP2P", mn.strExtraLayerP2P);
         objItem.pushKV("extKey", mn.strExtraLayerKey);
         objItem.pushKV("extCfg", mn.strExtraLayerCfg);
 
@@ -198,6 +199,7 @@ UniValue masternodelist(const UniValue& params, bool fHelp)
             } else if (strMode == "extra") {
                 UniValue objItem(UniValue::VOBJ);
                 objItem.pushKV("extAddress", mn.strExtraLayerAddress);
+                objItem.pushKV("extP2P", mn.strExtraLayerP2P);
                 objItem.pushKV("extKey", mn.strExtraLayerKey);
                 objItem.pushKV("extCfg", mn.strExtraLayerCfg);
 
@@ -389,7 +391,7 @@ UniValue masternode(const UniValue& params, bool fHelp)
 
 
                 bool fResult = CMasternodeBroadcast::Create(mne.getIp(), mne.getPrivKey(), mne.getTxHash(), mne.getOutputIndex(), 
-                                                            mne.getExtIp(), mne.getExtKey(), mne.getExtCfg(),
+                                                            mne.getExtIp(), mne.getExtP2P(), mne.getExtKey(), mne.getExtCfg(),
                                                             strError, mnb);
 
                 statusObj.pushKV(RPC_KEY_RESULT, get_rpc_result(fResult));
@@ -440,7 +442,7 @@ UniValue masternode(const UniValue& params, bool fHelp)
             if(strCommand == "start-disabled" && fFound && mn.IsEnabled()) continue;
 
             bool fResult = CMasternodeBroadcast::Create(mne.getIp(), mne.getPrivKey(), mne.getTxHash(), mne.getOutputIndex(), 
-                                                        mne.getExtIp(), mne.getExtKey(), mne.getExtCfg(),
+                                                        mne.getExtIp(), mne.getExtP2P(), mne.getExtKey(), mne.getExtCfg(),
                                                         strError, mnb);
 
             UniValue statusObj(UniValue::VOBJ);
@@ -498,6 +500,7 @@ UniValue masternode(const UniValue& params, bool fHelp)
             mnObj.pushKV("txHash", mne.getTxHash());
             mnObj.pushKV("outputIndex", mne.getOutputIndex());
             mnObj.pushKV("extAddress", mne.getExtIp());
+            mnObj.pushKV("extP2P", mne.getExtP2P());
             mnObj.pushKV("extKey", mne.getExtKey());
             mnObj.pushKV("extCfg", mne.getExtCfg());
             mnObj.pushKV(RPC_KEY_STATUS, strStatus);
@@ -508,9 +511,9 @@ UniValue masternode(const UniValue& params, bool fHelp)
     }
     if (strCommand == "make-conf")
     {
-        if (params.size() != 5 && params.size() != 7)
+        if (params.size() != 6 && params.size() != 8)
             throw JSONRPCError(RPC_INVALID_PARAMETER,
-                               R"("masternode make-conf "alias" "mnAddress:port" "extAddress:port" "passphrase" "txid" "index"\n"
+                               R"("masternode make-conf "alias" "mnAddress:port" "extAddress:port" "extP2P:port" "passphrase" "txid" "index"\n"
                                "Create masternode configuration in JSON format:\n"
                                "This will 1) generate MasterNode Private Key (mnPrivKey) and 2) generate and register MasterNode PastelID (extKey)\n"
                                "If collateral txid and index are not provided, it will search for the first available non-locked outpoint with the correct amount (1000000 PSL)\n"
@@ -518,15 +521,16 @@ UniValue masternode(const UniValue& params, bool fHelp)
                                "    "alias"             (string) (required) Local alias (name) of Master Node\n"
                                "    "mnAddress:port"    (string) (required) The address and port of the Master Node's cNode\n"
                                "    "extAddress:port"   (string) (required) The address and port of the Master Node's Storage Layer\n"
+                               "    "extP2P:port"       (string) (required) The address and port of the Master Node's Kademlia point\n"
                                "    "passphrase"        (string) (required) passphrase for new PastelID\n"
                                "    "txid"              (string) (optional) id of transaction with the collateral amount\n"
                                "    "index"             (numeric) (optional) index in the transaction with the collateral amount\n"
                                "\nCreate masternode configuration\n")"
                                + HelpExampleCli("masternode make-conf",
-                                                R"("myMN" "127.0.0.1:9933" "127.0.0.1:4444" "bc1c5243284272dbb22c301a549d112e8bc9bc454b5ff50b1e5f7959d6b56726" 4)") +
+                                                R"("myMN" "127.0.0.1:9933" "127.0.0.1:4444" "127.0.0.1:5545" "bc1c5243284272dbb22c301a549d112e8bc9bc454b5ff50b1e5f7959d6b56726" 4)") +
                                "\nAs json rpc\n"
                                + HelpExampleRpc("masternode make-conf",
-                                                R"(""myMN" "127.0.0.1:9933" "127.0.0.1:4444" "bc1c5243284272dbb22c301a549d112e8bc9bc454b5ff50b1e5f7959d6b56726" 4")")
+                                                R"(""myMN" "127.0.0.1:9933" "127.0.0.1:4444" "127.0.0.1:5545" "bc1c5243284272dbb22c301a549d112e8bc9bc454b5ff50b1e5f7959d6b56726" 4")")
 
             );
         
@@ -541,6 +545,10 @@ UniValue masternode(const UniValue& params, bool fHelp)
     
         //extAddress:port
         std::string strExtAddress = params[3].get_str();
+        //TODO : validate correct address format
+
+        //extP2P:port
+        std::string strExtP2P = params[4].get_str();
         //TODO : validate correct address format
     
         //txid:index
@@ -596,6 +604,7 @@ UniValue masternode(const UniValue& params, bool fHelp)
         UniValue mnObj(UniValue::VOBJ);
         mnObj.pushKV("mnAddress", strMnAddress);
         mnObj.pushKV("extAddress", strExtAddress);
+        mnObj.pushKV("extP2P", strExtP2P);
         mnObj.pushKV(RPC_KEY_TXID, strTxid);
         mnObj.pushKV("outIndex", strIndex);
         mnObj.pushKV("mnPrivKey", mnPrivKey);
@@ -857,7 +866,7 @@ UniValue masternodebroadcast(const UniValue& params, bool fHelp)
                 CMasternodeBroadcast mnb;
 
                 bool fResult = CMasternodeBroadcast::Create(mne.getIp(), mne.getPrivKey(), mne.getTxHash(), mne.getOutputIndex(), 
-                                                            mne.getExtIp(), mne.getExtKey(), mne.getExtCfg(),
+                                                            mne.getExtIp(), mne.getExtP2P(), mne.getExtKey(), mne.getExtCfg(),
                                                             strError, mnb, true);
 
                 statusObj.pushKV(RPC_KEY_RESULT, get_rpc_result(fResult));
@@ -907,7 +916,7 @@ UniValue masternodebroadcast(const UniValue& params, bool fHelp)
             CMasternodeBroadcast mnb;
 
             bool fResult = CMasternodeBroadcast::Create(mne.getIp(), mne.getPrivKey(), mne.getTxHash(), mne.getOutputIndex(), 
-                                                        mne.getExtIp(), mne.getExtKey(), mne.getExtCfg(),
+                                                        mne.getExtIp(), mne.getExtP2P(), mne.getExtKey(), mne.getExtCfg(),
                                                         strError, mnb, true);
 
             UniValue statusObj(UniValue::VOBJ);

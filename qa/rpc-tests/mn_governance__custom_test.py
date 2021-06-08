@@ -19,7 +19,7 @@ from decimal import Decimal, getcontext
 getcontext().prec = 16
 
 
-TEST_CASE_EXEC_NR = 40104682; # Default: 1st subtask of 38980425
+TEST_CASE_EXEC_NR = 40300409; # Default: 1st subtask of 38980425
 
 # 12 Master Nodes
 private_keys_list = ["91sY9h4AQ62bAhNk1aJ7uJeSnQzSFtz7QmW5imrKmiACm7QJLXe", #0 
@@ -66,8 +66,21 @@ class MasterNodeGovernanceTest (MasterNodeCommon):
 
         print("Run freedcamp ID specific test")
         
-        if(TEST_CASE_EXEC_NR == 40104682):
-            self.test_40104682()
+        if(TEST_CASE_EXEC_NR == 40300409):
+            self.test_40300409()
+
+    def test_40300409(self):
+        print("Wait a min!")
+        time.sleep(60)
+        mns = self.nodes[0].masternodelist("extra")
+        for out in mns:
+            print(mns[out])
+
+        print("Wait a min!")
+        time.sleep(60)
+        mns = self.nodes[self.hot_node_num].masternodelist("extra")
+        for out in mns:
+            print(mns[out])
 
     def test_40104615 (self):
         print("Register first ticket")

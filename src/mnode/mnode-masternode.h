@@ -82,12 +82,13 @@ struct masternode_info_t
     masternode_info_t(int activeState, int protoVer, int64_t sTime,
                       COutPoint const& outpoint, CService const& addr,
                       CPubKey const& pkCollAddr, CPubKey const& pkMN,
-                      const std::string& extAddress, const std::string& extKey, const std::string& extCfg,
+                      const std::string& extAddress, const std::string& extP2P,
+                      const std::string& extKey, const std::string& extCfg,
                       int64_t tWatchdogV = 0) :
         nActiveState{activeState}, nProtocolVersion{protoVer}, sigTime{sTime},
         vin{outpoint}, addr{addr},
         pubKeyCollateralAddress{pkCollAddr}, pubKeyMasternode{pkMN},
-        strExtraLayerAddress{extAddress}, strExtraLayerKey{extKey}, strExtraLayerCfg{extCfg},
+        strExtraLayerAddress{extAddress}, strExtraLayerP2P{extP2P}, strExtraLayerKey{extKey}, strExtraLayerCfg{extCfg},
         nTimeLastWatchdogVote{tWatchdogV} {}
 
     int nActiveState = 0;
@@ -102,6 +103,7 @@ struct masternode_info_t
     std::string strExtraLayerAddress;
     std::string strExtraLayerKey;
     std::string strExtraLayerCfg;
+    std::string strExtraLayerP2P;
 
     int64_t nTimeLastWatchdogVote = 0;
 
@@ -155,7 +157,7 @@ public:
     CMasternode(const CMasternode& other);
     CMasternode(const CMasternodeBroadcast& mnb);
     CMasternode(CService addrNew, COutPoint outpointNew, CPubKey pubKeyCollateralAddressNew, CPubKey pubKeyMasternodeNew, 
-                const std::string& strExtraLayerAddress, const std::string& strExtraLayerKey, const std::string& strExtraLayerCfg,
+                const std::string& strExtraLayerAddress, const std::string& strExtraLayerP2P, const std::string& strExtraLayerKey, const std::string& strExtraLayerCfg,
                 int nProtocolVersionIn);
 
     ADD_SERIALIZE_METHODS;
@@ -183,6 +185,7 @@ public:
         READWRITE(fUnitTest);
         READWRITE(strExtraLayerKey);
         READWRITE(strExtraLayerAddress);
+        READWRITE(strExtraLayerP2P);
         READWRITE(strExtraLayerCfg);
         READWRITE(aMNFeePerMB);
     }
@@ -298,10 +301,10 @@ public:
     CMasternodeBroadcast() : CMasternode(), fRecovery(false) {}
     CMasternodeBroadcast(const CMasternode& mn) : CMasternode(mn), fRecovery(false) {}
     CMasternodeBroadcast(CService addrNew, COutPoint outpointNew, CPubKey pubKeyCollateralAddressNew, CPubKey pubKeyMasternodeNew, 
-                            const std::string& strExtraLayerAddress, const std::string& strExtraLayerKey, const std::string& strExtraLayerCfg,
+                            const std::string& strExtraLayerAddress, const std::string& strExtraLayerP2P, const std::string& strExtraLayerKey, const std::string& strExtraLayerCfg,
                             int nProtocolVersionIn) :
         CMasternode(addrNew, outpointNew, pubKeyCollateralAddressNew, pubKeyMasternodeNew, 
-                    strExtraLayerAddress, strExtraLayerKey, strExtraLayerCfg,
+                    strExtraLayerAddress, strExtraLayerP2P, strExtraLayerKey, strExtraLayerCfg,
                     nProtocolVersionIn), fRecovery(false) {}
 
     ADD_SERIALIZE_METHODS;
@@ -319,6 +322,7 @@ public:
         READWRITE(lastPing);
         READWRITE(strExtraLayerKey);
         READWRITE(strExtraLayerAddress);
+        READWRITE(strExtraLayerP2P);
         READWRITE(strExtraLayerCfg);
     }
 
@@ -336,10 +340,11 @@ public:
                         const CService& service, 
                         const CKey& keyCollateralAddressNew, const CPubKey& pubKeyCollateralAddressNew, 
                         const CKey& keyMasternodeNew, const CPubKey& pubKeyMasternodeNew, 
-                        const std::string& strExtraLayerAddress, const std::string& strExtraLayerKey, const std::string& strExtraLayerCfg,
+                        const std::string& strExtraLayerAddress, const std::string& strExtraLayerP2P, 
+                        const std::string& strExtraLayerKey, const std::string& strExtraLayerCfg,
                         std::string &strErrorRet, CMasternodeBroadcast &mnbRet);
     static bool Create(std::string strService, std::string strKey, std::string strTxHash, std::string strOutputIndex, 
-        std::string strExtraLayerAddress, std::string strExtraLayerKey, std::string strExtraLayerCfg,
+        std::string strExtraLayerAddress, std::string strExtraLayerP2P, std::string strExtraLayerKey, std::string strExtraLayerCfg,
         std::string& strErrorRet, CMasternodeBroadcast &mnbRet, bool fOffline = false);
 
     bool SimpleCheck(int& nDos);

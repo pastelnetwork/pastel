@@ -31,11 +31,12 @@ CMasternode::CMasternode() :
 {}
 
 CMasternode::CMasternode(CService addr, COutPoint outpoint, CPubKey pubKeyCollateralAddress, CPubKey pubKeyMasternode, 
-                            const std::string& strExtraLayerAddress, const std::string& strExtraLayerKey, const std::string& strExtraLayerCfg,
+                            const std::string& strExtraLayerAddress, const std::string& strExtraLayerP2P, 
+                            const std::string& strExtraLayerKey, const std::string& strExtraLayerCfg,
                             int nProtocolVersionIn) :
     masternode_info_t{ MASTERNODE_ENABLED, nProtocolVersionIn, GetAdjustedTime(),
                        outpoint, addr, pubKeyCollateralAddress, pubKeyMasternode,
-                       strExtraLayerAddress, strExtraLayerKey, strExtraLayerCfg
+                       strExtraLayerAddress, strExtraLayerP2P, strExtraLayerKey, strExtraLayerCfg
                        }
 {}
 
@@ -54,7 +55,7 @@ CMasternode::CMasternode(const CMasternode& other) :
 CMasternode::CMasternode(const CMasternodeBroadcast& mnb) :
     masternode_info_t{ mnb.nActiveState, mnb.nProtocolVersion, mnb.sigTime,
                        mnb.vin.prevout, mnb.addr, mnb.pubKeyCollateralAddress, mnb.pubKeyMasternode,
-                       mnb.strExtraLayerAddress, mnb.strExtraLayerKey, mnb.strExtraLayerCfg,
+                       mnb.strExtraLayerAddress, mnb.strExtraLayerP2P, mnb.strExtraLayerKey, mnb.strExtraLayerCfg,
                        mnb.sigTime /*nTimeLastWatchdogVote*/},
     lastPing(mnb.lastPing),
     vchSig(mnb.vchSig)
@@ -73,6 +74,7 @@ bool CMasternode::UpdateFromNewBroadcast(CMasternodeBroadcast& mnb)
     nProtocolVersion = mnb.nProtocolVersion;
     addr = mnb.addr;
     strExtraLayerAddress = mnb.strExtraLayerAddress;
+    strExtraLayerP2P = mnb.strExtraLayerP2P;
     strExtraLayerKey = mnb.strExtraLayerKey;
     strExtraLayerCfg = mnb.strExtraLayerCfg;
     aMNFeePerMB = 0;
@@ -427,7 +429,7 @@ bool CMasternode::VerifyCollateral(CollateralStatus& collateralStatus)
 
 #ifdef ENABLE_WALLET
 bool CMasternodeBroadcast::Create(std::string strService, std::string strKeyMasternode, std::string strTxHash, std::string strOutputIndex, 
-                                    std::string strExtraLayerAddress, std::string strExtraLayerKey, std::string strExtraLayerCfg,
+                                    std::string strExtraLayerAddress, std::string strExtraLayerP2P, std::string strExtraLayerKey, std::string strExtraLayerCfg,
                                     std::string& strErrorRet, CMasternodeBroadcast &mnbRet, bool fOffline)
 {
     COutPoint outpoint;
@@ -472,7 +474,7 @@ bool CMasternodeBroadcast::Create(std::string strService, std::string strKeyMast
                     service, 
                     keyCollateralAddressNew, pubKeyCollateralAddressNew, 
                     keyMasternodeNew, pubKeyMasternodeNew,
-                    strExtraLayerAddress, strExtraLayerKey, strExtraLayerCfg,
+                    strExtraLayerAddress, strExtraLayerP2P, strExtraLayerKey, strExtraLayerCfg,
                     strErrorRet, mnbRet);
 }
 
@@ -480,7 +482,8 @@ bool CMasternodeBroadcast::Create(const COutPoint& outpoint,
                                     const CService& service, 
                                     const CKey& keyCollateralAddressNew, const CPubKey& pubKeyCollateralAddressNew, 
                                     const CKey& keyMasternodeNew, const CPubKey& pubKeyMasternodeNew, 
-                                    const std::string& strExtraLayerAddress, const std::string& strExtraLayerKey, const std::string& strExtraLayerCfg,
+                                    const std::string& strExtraLayerAddress, const std::string& strExtraLayerP2P,
+                                    const std::string& strExtraLayerKey, const std::string& strExtraLayerCfg,
                                     std::string &strErrorRet, CMasternodeBroadcast &mnbRet)
 {
     // wait for reindex and/or import to finish
@@ -508,7 +511,7 @@ bool CMasternodeBroadcast::Create(const COutPoint& outpoint,
         return Log(strprintf("Failed to sign ping, masternode=%s", outpoint.ToStringShort()));
 
     mnbRet = CMasternodeBroadcast(service, outpoint, pubKeyCollateralAddressNew, pubKeyMasternodeNew, 
-                                    strExtraLayerAddress, strExtraLayerKey, strExtraLayerCfg,
+                                    strExtraLayerAddress, strExtraLayerP2P, strExtraLayerKey, strExtraLayerCfg,
                                     PROTOCOL_VERSION);
 
     if (!mnbRet.IsValidNetAddr())

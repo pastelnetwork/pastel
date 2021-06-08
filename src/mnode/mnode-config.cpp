@@ -23,6 +23,33 @@ using json = nlohmann::json;
     }
 */
 
+bool isOutIdxValid(std::string& outIdx, std::string alias, std::string& strErr)
+{
+    bool retVal = false;
+    char* p = nullptr;
+    long converted = strtol(outIdx.c_str(), &p, 10);
+
+    if(*p != '\0')
+    {
+        strErr = _("Failed to parse outIndex string") + "\n" +
+                strprintf(_("Alias: %s"), alias);
+        return false;
+    }
+    else {
+
+        if (0 <= converted && converted <= 1000000)
+        {
+            return true;
+        }
+
+        strErr = _("Failed to parse outIndex string. Value shall be between 0 and 1000000") + "\n" +
+                strprintf(_("Alias: %s"), alias);
+        return false;
+    }
+
+    return retVal;
+}
+
 bool checkIPAddressPort(std::string& address, std::string alias, bool checkPort, std::string& strErr)
 {
     int port = 0;
@@ -81,6 +108,7 @@ bool CMasternodeConfig::read(std::string& strErr)
                 {"txid", ""},
                 {"outIndex", ""},
                 {"extAddress", ""},
+                {"extP2P", ""},
                 {"extKey", ""},
                 {"extCfg", {}}
             }}
@@ -116,7 +144,7 @@ bool CMasternodeConfig::read(std::string& strErr)
             continue;
         }
 
-        std::string alias, mnAddress, mnPrivKey, txid, outIndex, extAddress, extKey, extCfg;
+        std::string alias, mnAddress, mnPrivKey, txid, outIndex, extAddress, extKey, extCfg, extP2P;
         
         alias = it.key();
 
@@ -127,6 +155,12 @@ bool CMasternodeConfig::read(std::string& strErr)
 
         if (mnAddress.empty() || mnPrivKey.empty() || txid.empty() || outIndex.empty()) {
             continue;
+        }
+
+        if (!isOutIdxValid(outIndex, alias, strErr))
+        {
+            strErr += " (outIndex)";
+            return false;
         }
 
         if (!checkIPAddressPort(mnAddress, alias, true, strErr)) {
@@ -140,12 +174,18 @@ bool CMasternodeConfig::read(std::string& strErr)
             return false;
         }
 
+        extP2P = get_string(it, "extP2P");
+        if (!extP2P.empty() && !checkIPAddressPort(extP2P, alias, false, strErr)) {
+            strErr += " (extP2P)";
+            return false;
+        }
+
         extKey = get_string(it, "extKey");
         extCfg = get_obj_as_string(it, "extCfg");
 
         if (extCfg.length() > 1024) extCfg.erase(1024, std::string::npos);
 
-        CMasternodeEntry cme(alias, mnAddress, mnPrivKey, txid, outIndex, extAddress, extKey, extCfg);
+        CMasternodeEntry cme(alias, mnAddress, mnPrivKey, txid, outIndex, extAddress, extP2P, extKey, extCfg);
         entries.push_back(cme);
     }
 
