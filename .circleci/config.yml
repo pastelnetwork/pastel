@@ -12,7 +12,7 @@ jobs:
     steps:
       - checkout
       - run:
-          name: Building Pastel Core
+          name: Building Pastel Core (Linux version)
           no_output_timeout: 30m
           command: |
             ./build.sh -j16
@@ -84,7 +84,7 @@ jobs:
     steps:
       - checkout
       - run:
-          name: Building Pastel Core
+          name: Building Pastel Core (Windows version)
           no_output_timeout: 30m
           command: |
             HOST=x86_64-w64-mingw32 ./build.sh -j16
@@ -97,8 +97,30 @@ jobs:
       - store_artifacts:
           path: /pastel/src/pastel-tx.exe
           destination: /windows/pastel-tx.exe
+  build_macOS:
+    executor: pastel_builder
+    working_directory: /pastel
+    resource_class: xlarge
+    steps:
+      - checkout
+      - run:
+          name: Building Pastel Core (macOS version)
+          no_output_timeout: 30m
+          command: |
+            HOST=x86_64-apple-darwin14 ./build.sh -j16
+      - store_artifacts:
+          path: /pastel/src/pasteld
+          destination: /macOS/pasteld
+      - store_artifacts:
+          path: /pastel/src/pastel-cli
+          destination: /macOS/pastel-cli
+      - store_artifacts:
+          path: /pastel/src/pastel-tx.exe
+          destination: /macOS/pastel-tx
+
 workflows:
     build_and_test:
       jobs:
         - build_and_test_linux
         - build_windows
+        - build_macOS
