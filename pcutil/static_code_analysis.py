@@ -32,6 +32,7 @@ def main(pwd, from_mail , to_mail, pvs_mail, pvs_lic_nr, nJobCount):
         if not os.path.isfile(pvsLicenseFile):
             print(f"PVS License file [{pvsLicenseFile}] does not exist, trying to generate it using supplied command-line parameters")
             if pvs_mail is None:
+                raise ValueError('E-mail of the PVS Studio license is not defined. Please use -e parameter')
             if pvs_lic_nr is None:
                 raise ValueError('PVS Studio license number is not defined. Please use -n parameter')
             subprocess.run(["mkdir", "-p", "~/.config/PVS-Studio"])
