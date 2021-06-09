@@ -94,7 +94,7 @@ def main(pwd, from_mail , to_mail, pvs_mail, pvs_lic_nr, nJobCount):
 
             part = None
             files = []
-            files.append(filename)
+            files.append(sOutputLogFile)
 
             for f in files or []:
                 with open(f, "rb") as fil:
