@@ -65,10 +65,10 @@ def main(pwd, from_mail , to_mail, pvs_mail, pvs_lic_nr, nJobCount):
         outHtmlPath = os.path.join(os.getcwd(), "fullhtml")
         if os.path.exists(outHtmlPath) and os.path.isdir(outHtmlPath):
             shutil.rmtree(outHtmlPath)
-        subprocess.run(["plog-converter","-a", "GA:1,2" ,"-t", "fullhtml", "-o", "./", sOutputLogFile])
+        subprocess.run(["plog-converter","-a", "GA:1,2" ,"-t", "fullhtml", sOutputLogFile, "-o", "./"], check=True)
         print(f'HTML report is generated in {os.path.join(os.getcwd(), "fullhtml")}')
 
-        print(f'Compressing output directory ./fullhtml to {zipped_name}')
+        print(f'Compressing output directory {outHtmlPath} to {zipped_name}')
         subprocess.run(["tar","-zcf", zipped_name, "fullhtml"])
 
         #Copy to artifacts folder
@@ -106,6 +106,7 @@ def main(pwd, from_mail , to_mail, pvs_mail, pvs_lic_nr, nJobCount):
                 part['Content-Disposition'] = 'attachment; filename="%s"' % os.path.basename(f)
                 msg.attach(part)
 
+            print(f'Sending code analysis results to e-mail: {to_mail}')
             server = smtplib.SMTP(DEFAULT_SMTP_SERVER, DEFAULT_SMTP_PORT)
             server.starttls()
             server.login(msg['From'], password)
