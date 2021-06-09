@@ -45,6 +45,8 @@ src/config/bitcoin-config.h
 src/config/bitcoin-config.h.in
 src/config/stamp-h1
 share/setup.nsi
+strace_out
+fullhtml/
 
 cache/
 venv-mnf/
