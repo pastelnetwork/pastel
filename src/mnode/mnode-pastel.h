@@ -14,6 +14,7 @@ public:
 	std::string pastelID;
 	std::string address;
     COutPoint outpoint{};
+    std::string pq_key;
 	std::vector<unsigned char> mn_signature;
 	std::vector<unsigned char> pslid_signature;
     
@@ -59,10 +60,14 @@ public:
 		READWRITE(m_nBlock);
         // v1
         const bool bVersion = (GetVersion() >= 1) && (!bRead || !s.eof());
-        if (bVersion)
+        if (bVersion) {
+            //if (v1 or higher) and ( (writing to stream) or (reading but not end of the stream yet))
             READWRITE(m_nVersion);
-        else if (bRead)
+            READWRITE(pq_key);
+        } else if (bRead) {
             m_nVersion = 0;
+            pq_key = "";
+        }
     }
 	
     static CPastelIDRegTicket Create(std::string _pastelID, const SecureString& strKeyPass, std::string _address);
@@ -76,37 +81,41 @@ public:
 Ticket as base64(RegistrationTicket({some data}))
 
 bytes fields are base64 as strings
-{
-    "version": integer    // 1
-    "author": bytes,      // PastelID of the author (artist) - this actually will be duplicated in the signatures block
-    "blocknum": integer,  // block when the ticket was created - this is map the ticket to the MN's that should process it
-    "data_hash": bytes,   // hash of the image (or any other asset) this ticket represent
-    "copies": integer,    // number of copies
 
-    "app_ticket": bytes,
-        as:
-            base64(
-            {
-                "author": bytes             //same as above
-                "order_block_txid": bytes   //
-                "blocknum": integer,        //same as above   
-                "imagedata_hash": bytes,    //same as above
+  "version": integer          // 1
+  "author": bytes,            // PastelID of the author (artist)
+  "blocknum": integer,        // block number when the ticket was created - this is to map the ticket to the MNs that should process it
+  "block_hash": bytes         // hash of the top block when the ticket was created - this is to map the ticket to the MNs that should process it
+  "copies": integer,          // number of copies
+  "royalty": float,           // (not yet supported by cNode) how much artist should get on all future resales
+  "green": string,            // address for Green NFT payment (not yet supported by cNode)
 
-                "artist_name": string,
-                "artist_website": string,
-                "artist_written_statement": string,
-                "artwork_title": string,
-                "artwork_series_name": string,
-                "artwork_creation_video_youtube_url": string,
-                "artwork_keyword_set": string,
-                "total_copies": integer,    //same as above
-            
-                "fingerprints": [list of floats],
-                "lubyhashes": [list of floats],
-                "lubyseeds": [list of floats],
-                "thumbnailhash": bytes,
-            },
-    "reserved": bytes
+  "app_ticket": bytes,        // cNode DOES NOT parse this part!!!!
+  as base64(
+  {
+    "artist_name": string,
+    "artwork_title": string,
+    "artwork_series_name": string,
+    "artwork_keyword_set": string,
+    "artist_website": string,
+    "artist_written_statement": string,
+    "artwork_creation_video_youtube_url": string,
+
+    "thumbnail_hash": bytes,    //hash of the thumbnail !!!!SHA3-256!!!!
+		"data_hash": bytes,         // hash of the image (or any other asset) that this ticket represents !!!!SHA3-256!!!!
+
+    "fingerprints_hash": bytes, 			//hash of the fingerprint !!!!SHA3-256!!!!
+    "fingerprints": bytes,      			//compressed fingerprint
+    "fingerprints_signature": bytes,  //signature on raw image fingerprint
+
+    "rq_ids": [list of strings],//raptorq symbol identifiers -  !!!!SHA3-256 of symbol block!!!!
+    "rq_coti": integer64,       //raptorq CommonOTI
+    "rq_ssoti": integer64,      //raptorq SchemeSpecificOTI
+
+    "rareness_score": integer,  // 0 to 1000
+    "nsfw_score": integer,      // 0 to 1000 0 to 1000
+    "seen_score": integer,			//
+	},
 }
 
 signatures
@@ -150,6 +159,9 @@ public:
     int artistHeight{}; //blocknum when the ticket was created by the wallet
     int totalCopies{}; //blocknum when the ticket was created by the wallet
     
+    ushort nRoyalty{};
+    std::string strGreenAddress;
+    
 public:
     CArtRegTicket() = default;
     explicit CArtRegTicket(std::string _ticket) :
@@ -170,7 +182,7 @@ public:
     std::string ToJSON() const noexcept override;
     std::string ToStr() const noexcept override;
     bool IsValid(std::string& errRet, bool preReg, int depth) const override;
-    CAmount TicketPrice(const unsigned int nHeight) const noexcept override { return nHeight<=10000? 10: 1000; }
+    CAmount TicketPrice(const unsigned int nHeight) const noexcept override { return 10; }
     
 	void SerializationOp(CDataStream& s, const SERIALIZE_ACTION ser_action) override
     {
@@ -252,7 +264,7 @@ public:
     std::string ToJSON() const noexcept override;
     std::string ToStr() const noexcept override;
     bool IsValid(std::string& errRet, bool preReg, int depth) const override;
-    CAmount TicketPrice(const unsigned int nHeight) const noexcept override { return nHeight<=10000? 10: 1000; }
+    CAmount TicketPrice(const unsigned int nHeight) const noexcept override { return 10; }
     CAmount GetStorageFee() const noexcept override { return storageFee; }
 	
 	void SerializationOp(CDataStream& s, const SERIALIZE_ACTION ser_action) override
@@ -479,7 +491,7 @@ public:
     std::string ToJSON() const noexcept override;
     std::string ToStr() const noexcept override;
     bool IsValid(std::string& errRet, bool preReg, int depth) const override;
-    CAmount TicketPrice(const unsigned int nHeight) const noexcept override { return nHeight<=10000? 10: 1000; }
+    CAmount TicketPrice(const unsigned int nHeight) const noexcept override { return 10; }
     
     void SerializationOp(CDataStream& s, const SERIALIZE_ACTION ser_action) override
     {
@@ -513,6 +525,8 @@ public:
     static bool CheckTradeTicketExistByBuyTicket(const std::string& _buyTnxId);
     static bool GetTradeTicketBySellTicket(const std::string& _sellTnxId, CArtTradeTicket& ticket);
     static bool GetTradeTicketByBuyTicket(const std::string& _buyTnxId, CArtTradeTicket& ticket);
+    
+    std::unique_ptr<CPastelTicket> FindArtRegTicket() const;
 };
 
 // Take Down Ticket /////////////////////////////////////////////////////////////////////////////////////////////////////

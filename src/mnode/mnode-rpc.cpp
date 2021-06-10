@@ -1506,7 +1506,7 @@ static UniValue getTickets(const std::string& key, T2 key2 = "", Lambda otherFun
 #define FAKE_TICKET
 UniValue tickets(const UniValue& params, bool fHelp) {
 #ifdef FAKE_TICKET
-    RPC_CMD_PARSER(TICKETS, params, Register, find, list, get, makefaketicket, sendfaketicket);
+    RPC_CMD_PARSER(TICKETS, params, Register, find, list, get, makefaketicket, sendfaketicket, tools);
 #else
     RPC_CMD_PARSER(TICKETS, params, Register, find, list, get);
 #endif	
@@ -2195,7 +2195,39 @@ As json rpc
         obj.read(CPastelTicketProcessor::GetTicketJSON(txid));
         return obj;
 	}
-	
+    
+    if (TICKETS.IsCmd(RPC_CMD_TICKETS::tools)) {
+        
+        RPC_CMD_PARSER2(LIST, params, printtradingchain);
+        
+        UniValue obj(UniValue::VARR);
+        switch (LIST.cmd()) {
+            
+            case RPC_CMD_LIST::printtradingchain:
+    
+                std::string txid;
+                if (params.size() > 2) {
+                    txid = params[2].get_str();
+    
+                    UniValue resultArray(UniValue::VARR);
+                    
+                    std::vector< std::unique_ptr<CPastelTicket> > chain;
+                    std::string errRet;
+                    if (CPastelTicketProcessor::WalkBackTradingChain(txid, chain, false, errRet))
+                    {
+                        for (auto& t : chain){
+                            if (t) {
+                                UniValue obj(UniValue::VOBJ);
+                                obj.read(t->ToJSON());
+                                resultArray.push_back(obj);
+                            }
+                        }
+                    }
+                    return resultArray;
+                }
+        }
+    }
+    
 #ifdef FAKE_TICKET
     if (TICKETS.IsCmd(RPC_CMD_TICKETS::makefaketicket) || TICKETS.IsCmd(RPC_CMD_TICKETS::sendfaketicket)) {
             const bool bSend = TICKETS.IsCmd(RPC_CMD_TICKETS::sendfaketicket);
