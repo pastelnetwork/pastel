@@ -1508,7 +1508,7 @@ UniValue tickets(const UniValue& params, bool fHelp) {
 #ifdef FAKE_TICKET
     RPC_CMD_PARSER(TICKETS, params, Register, find, list, get, makefaketicket, sendfaketicket, tools);
 #else
-    RPC_CMD_PARSER(TICKETS, params, Register, find, list, get);
+    RPC_CMD_PARSER(TICKETS, params, Register, find, list, get, tools);
 #endif	
 	if (fHelp || !TICKETS.IsCmdSupported())
 		throw runtime_error(
@@ -2198,33 +2198,49 @@ As json rpc
     
     if (TICKETS.IsCmd(RPC_CMD_TICKETS::tools)) {
         
-        RPC_CMD_PARSER2(LIST, params, printtradingchain);
+        RPC_CMD_PARSER2(LIST, params, printtradingchain, getregbytrade);
         
         UniValue obj(UniValue::VARR);
         switch (LIST.cmd()) {
             
-            case RPC_CMD_LIST::printtradingchain:
-    
+            case RPC_CMD_LIST::printtradingchain: {
                 std::string txid;
                 if (params.size() > 2) {
                     txid = params[2].get_str();
-    
+        
                     UniValue resultArray(UniValue::VARR);
-                    
-                    std::vector< std::unique_ptr<CPastelTicket> > chain;
+        
+                    std::vector<std::unique_ptr<CPastelTicket> > chain;
                     std::string errRet;
-                    if (CPastelTicketProcessor::WalkBackTradingChain(txid, chain, false, errRet))
-                    {
-                        for (auto& t : chain){
+                    if (CPastelTicketProcessor::WalkBackTradingChain(txid, chain, false, errRet)) {
+                        for (auto &t : chain) {
                             if (t) {
                                 UniValue obj(UniValue::VOBJ);
                                 obj.read(t->ToJSON());
-                                resultArray.push_back(obj);
+                                resultArray.push_back(std::move(obj));
                             }
                         }
                     }
                     return resultArray;
                 }
+            }
+            case RPC_CMD_LIST::getregbytrade: {
+                std::string txid;
+                if (params.size() > 2) {
+                    txid = params[2].get_str();
+    
+                    UniValue obj(UniValue::VOBJ);
+    
+                    std::vector<std::unique_ptr<CPastelTicket> > chain;
+                    std::string errRet;
+                    if (CPastelTicketProcessor::WalkBackTradingChain(txid, chain, true, errRet)) {
+                        if (!chain.empty()) {
+                            obj.read(chain.front()->ToJSON());
+                        }
+                    }
+                    return obj;
+                }
+            }
         }
     }
     

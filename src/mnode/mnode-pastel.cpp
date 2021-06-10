@@ -433,7 +433,7 @@ bool CArtRegTicket::IsValid(std::string& errRet, bool preReg, int depth) const
     
     if (nRoyalty > 20)
     {
-        errRet = strprintf("Royalty can't be %d per cent, Max is 20 per cent", nRoyalty);
+        errRet = strprintf("Royalty can't be %hu per cent, Max is 20 per cent", nRoyalty);
         return false;
     }
     if (!strGreenAddress.empty()) {
@@ -1269,19 +1269,6 @@ bool CArtTradeTicket::IsValid(std::string& errRet, bool preReg, int depth) const
     return true;
 }
 
-bool addOutput(const std::string& strAddress, CAmount nAmount, std::vector<CTxOut>& outputs)
-{
-    KeyIO keyIO(Params());
-    const auto dest = keyIO.DecodeDestination(strAddress);
-    if (!IsValidDestination(dest))
-        return false;
-    
-    CScript scriptPubKey = GetScriptForDestination(dest);
-    CTxOut out(nAmount, scriptPubKey);
-    outputs.push_back(out);
-    return true;
-}
-
 CAmount CArtTradeTicket::GetExtraOutputs(std::vector<CTxOut>& outputs) const
 {
     auto pArtSellTicket = CPastelTicketProcessor::GetTicket(sellTnxId, TicketID::Sell);
@@ -1332,19 +1319,32 @@ CAmount CArtTradeTicket::GetExtraOutputs(std::vector<CTxOut>& outputs) const
         nPriceAmount -= nGreenNFTAmount;
     }
     
-    if (!addOutput(sellerPastelIDticket.address, nPriceAmount, outputs)) {
+    KeyIO keyIO(Params());
+    const auto addOutput = [&](const std::string& strAddress, const CAmount nAmount) -> bool
+    {
+        const auto dest = keyIO.DecodeDestination(strAddress);
+        if (!IsValidDestination(dest))
+            return false;
+        
+        CScript scriptPubKey = GetScriptForDestination(dest);
+        CTxOut out(nAmount, scriptPubKey);
+        outputs.push_back(out);
+        return true;
+    };
+    
+    if (!addOutput(sellerPastelIDticket.address, nPriceAmount)) {
         throw std::runtime_error(
                 strprintf("The PastelID [%s] from sell ticket with this txid [%s] has invalid address",
                           sellerPastelID, sellTnxId));
     }
     
-    if (!strRoyaltyAddress.empty() && !addOutput(sellerPastelIDticket.address, nRoyaltyAmount, outputs)) {
+    if (!strRoyaltyAddress.empty() && !addOutput(sellerPastelIDticket.address, nRoyaltyAmount)) {
         throw std::runtime_error(
                 strprintf("The PastelID [%s] from sell ticket with this txid [%s] has invalid address",
                           sellerPastelID, sellTnxId));
     }
     
-    if (!artRegTicket->strGreenAddress.empty() && !addOutput(artRegTicket->strGreenAddress, nGreenNFTAmount, outputs)) {
+    if (!artRegTicket->strGreenAddress.empty() && !addOutput(artRegTicket->strGreenAddress, nGreenNFTAmount)) {
         throw std::runtime_error(
                 strprintf("The PastelID [%s] from sell ticket with this txid [%s] has invalid address",
                           sellerPastelID, sellTnxId));

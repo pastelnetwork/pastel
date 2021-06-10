@@ -159,7 +159,7 @@ public:
     int artistHeight{}; //blocknum when the ticket was created by the wallet
     int totalCopies{}; //blocknum when the ticket was created by the wallet
     
-    ushort nRoyalty{};
+    uint16_t nRoyalty{};
     std::string strGreenAddress;
     
 public:
