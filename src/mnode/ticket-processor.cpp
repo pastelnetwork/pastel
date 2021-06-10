@@ -720,9 +720,10 @@ std::string CPastelTicketProcessor::ListFilterTradeTickets(const short filter) c
                                pastelTicket->GetTxId(), sTxId);
             return false;
         }
-        return WalkBackTradingChain(shortPath? tradeTicket->artTnxId: tradeTicket->buyTnxId, chain, shortPath, errRet);
+        if (!WalkBackTradingChain(shortPath? tradeTicket->artTnxId: tradeTicket->buyTnxId, chain, shortPath, errRet))
+            return false;
     }
-    if (pastelTicket->ID() == TicketID::Buy)
+    else if (pastelTicket->ID() == TicketID::Buy)
     {
         auto tradeTicket = dynamic_cast<CArtBuyTicket*>(pastelTicket.get());
         if (!tradeTicket)
@@ -731,9 +732,10 @@ std::string CPastelTicketProcessor::ListFilterTradeTickets(const short filter) c
                                pastelTicket->GetTxId(), sTxId);
             return false;
         }
-        return WalkBackTradingChain(tradeTicket->sellTnxId, chain, shortPath, errRet);
+        if (!WalkBackTradingChain(tradeTicket->sellTnxId, chain, shortPath, errRet))
+            return false;
     }
-    if (pastelTicket->ID() == TicketID::Sell)
+    else if (pastelTicket->ID() == TicketID::Sell)
     {
         auto tradeTicket = dynamic_cast<CArtSellTicket*>(pastelTicket.get());
         if (!tradeTicket)
@@ -742,7 +744,8 @@ std::string CPastelTicketProcessor::ListFilterTradeTickets(const short filter) c
                                pastelTicket->GetTxId(), sTxId);
             return false;
         }
-        return WalkBackTradingChain(tradeTicket->artTnxId, chain, shortPath, errRet);
+        if (!WalkBackTradingChain(tradeTicket->artTnxId, chain, shortPath, errRet))
+            return false;
     }
     else if (pastelTicket->ID() == TicketID::Activate)
     {
@@ -753,7 +756,8 @@ std::string CPastelTicketProcessor::ListFilterTradeTickets(const short filter) c
                                pastelTicket->GetTxId(), sTxId);
             return false;
         }
-        return WalkBackTradingChain(actTicket->regTicketTnxId, chain, shortPath, errRet);
+        if (!WalkBackTradingChain(actTicket->regTicketTnxId, chain, shortPath, errRet))
+            return false;
     }
     else if (pastelTicket->ID() == TicketID::Art)
     {
