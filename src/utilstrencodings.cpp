@@ -4,6 +4,7 @@
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
 #include "utilstrencodings.h"
+#include "ascii85.h"
 
 #include "tinyformat.h"
 
@@ -12,6 +13,7 @@
 #include <errno.h>
 #include <iomanip>
 #include <limits>
+#include "util.h"
 
 using namespace std;
 
@@ -121,6 +123,75 @@ vector<unsigned char> ParseHex(const char* psz)
 vector<unsigned char> ParseHex(const string& str)
 {
     return ParseHex(str.c_str());
+}
+
+string EncodeAscii85(const char* istr, size_t len)
+{
+    
+    string retVal; //Default is empty-string
+    if (NULL != istr)
+    {
+        size_t isz = strlen(istr);
+        int32_t olen = ascii85_get_max_encoded_length(isz);
+        
+        if (olen < 0)
+        {
+            return retVal; //Encode size error
+        }
+        else
+        {
+            uint8_t obuf[olen];
+            olen = encode_ascii85((uint8_t *)istr, isz, obuf, olen);
+            if(0 < olen)
+            {
+                std::ostringstream ss;
+                std::copy(obuf, obuf+olen, std::ostream_iterator<uint8_t>(ss, ""));
+                retVal = ss.str();
+            }
+        }
+    }
+    return retVal;
+}
+
+string EncodeAscii85(const string& str)
+{
+    return EncodeAscii85((const char*)str.c_str(), str.size());
+}
+
+vector<unsigned char> DecodeAscii85(const char* ostr, bool* pfInvalid)
+{
+    vector<unsigned char> retVal;
+
+    if (NULL != ostr)
+    {
+        size_t osz = strlen(ostr);
+        int32_t olen = ascii85_get_max_decoded_length(osz);
+        if (olen < 0)
+        {
+            *pfInvalid = true;//Decode size error
+            return retVal;
+        }
+        else
+        {
+            uint8_t dbuf[olen];
+            int32_t ilen = decode_ascii85((uint8_t *)ostr, osz, dbuf, olen);
+
+            if (ilen < 0)
+            {
+                *pfInvalid = true;//Decode error
+                return retVal;
+            }
+            retVal = std::vector<unsigned char>(dbuf, dbuf + ilen);     
+        }
+    }
+
+    return retVal;
+}
+
+string DecodeAscii85(const string& str)
+{
+    vector<unsigned char> vchRet = DecodeAscii85(str.c_str());
+    return (vchRet.size() == 0) ? string() : string((const char*)&vchRet[0], vchRet.size());
 }
 
 string EncodeBase64(const unsigned char* pch, size_t len)
