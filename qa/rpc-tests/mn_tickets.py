@@ -100,6 +100,8 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         self.act_ticket_price = 10
         self.trade_ticket_price = 10
 
+        self.test_high_heights = False
+
     def setup_chain(self):
         print(f"Initializing test directory {self.options.tmpdir}")
         initialize_chain_clean(self.options.tmpdir, self.total_number_of_nodes)
@@ -128,36 +130,34 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         self.sell_buy_trade_tests()
         self.takedown_ticket_tests()
         self.storage_fee_tests()
-        self.tickets_list_filter_tests()
+        self.tickets_list_filter_tests(0)
 
-        self.id_ticket_price = 1000
-        self.art_ticket_price = 1000
-        self.act_ticket_price = 1000
-        self.trade_ticket_price = 1000
+        if self.test_high_heights:
+            self.id_ticket_price = 1000
 
-        print(f"id ticket price - {self.id_ticket_price}")
-        print(f"art ticket price - {self.art_ticket_price}")
-        print(f"activation ticket price - {self.act_ticket_price}")
-        print(f"trade ticket price - {self.trade_ticket_price}")
+            print(f"id ticket price - {self.id_ticket_price}")
+            print(f"art ticket price - {self.art_ticket_price}")
+            print(f"activation ticket price - {self.act_ticket_price}")
+            print(f"trade ticket price - {self.trade_ticket_price}")
 
-        print("mining {} blocks".format(10000))
-        for i in range(100):
-            self.slow_mine(10, 10, 2, 0.01)
-            print(f"mined {100*i} blocks")
-            self.reconnect_nodes(0, self.number_of_master_nodes)
-            self.sync_all()
+            print("mining {} blocks".format(10000))
+            for i in range(100):
+                self.slow_mine(10, 10, 2, 0.01)
+                print(f"mined {100*i} blocks")
+                self.reconnect_nodes(0, self.number_of_master_nodes)
+                self.sync_all()
 
-        self.pastelid_tests()
-        self.personal_pastelid_ticket_tests(True)
-        self.artreg_ticket_tests(True, "key10001", "key20001")
-        self.artact_ticket_tests(True)
-        self.artsell_ticket_tests1(True)
-        self.artbuy_ticket_tests(True)
-        self.arttrade_ticket_tests(True)
-        self.sell_buy_trade_tests()
-        self.takedown_ticket_tests()
-        self.storage_fee_tests()
-        self.tickets_list_filter_tests()
+            self.pastelid_tests()
+            self.personal_pastelid_ticket_tests(True)
+            self.artreg_ticket_tests(True, "key10001", "key20001")
+            self.artact_ticket_tests(True)
+            self.artsell_ticket_tests1(True)
+            self.artbuy_ticket_tests(True)
+            self.arttrade_ticket_tests(True)
+            self.sell_buy_trade_tests()
+            self.takedown_ticket_tests()
+            self.storage_fee_tests()
+            self.tickets_list_filter_tests(1)
 
 
 # ===============================================================================================================
@@ -480,14 +480,27 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         top_masternodes = self.nodes[0].masternode("top")[str(self.artist_ticket_height)]
         print(f"top_masternodes - {top_masternodes}")
 
+        # Current art_ticket - 8 Items!!!!
+        # {
+        #   "version": integer          // 1
+        #   "author": bytes,            // PastelID of the author (artist)
+        #   "blocknum": integer,        // block number when the ticket was created - this is to map the ticket to the MNs that should process it
+        #   "block_hash": bytes         // hash of the top block when the ticket was created - this is to map the ticket to the MNs that should process it
+        #   "copies": integer,          // number of copies
+        #   "royalty": float,           // (not yet supported by cNode) how much artist should get on all future resales
+        #   "green": string,            // address for Green NFT payment (not yet supported by cNode)
+        #   "app_ticket": ...
+        # }
         json_ticket = {
             "version": 1,
             "author": artist_pastelid,
             "blocknum": self.artist_ticket_height,
-            "data_hash": data_hash,
+            "block_hash": data_hash,
             "copies": total_copies,
-            "app_ticket": app_ticket,
-            "reserved": ""}
+            "royalty": 0,
+            "green": "",
+            "app_ticket": app_ticket
+        }
         self.ticket = str_to_b64str(json.dumps(json_ticket))
         print(f"ticket - {self.ticket}")
 
@@ -1590,17 +1603,17 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         return trade_ticket_txid
 
     # ===============================================================================================================
-    def tickets_list_filter_tests(self):
+    def tickets_list_filter_tests(self, loop_number):
         print("== Tickets List Filter test ==")
 
         tickets_list = self.nodes[self.non_mn3].tickets("list", "id")
-        assert_equal(len(tickets_list), 15)
+        assert_equal(len(tickets_list), 15 + loop_number*2)
         tickets_list = self.nodes[self.non_mn3].tickets("list", "id", "all")
-        assert_equal(len(tickets_list), 15)
+        assert_equal(len(tickets_list), 15 + loop_number*2)
         tickets_list = self.nodes[self.non_mn3].tickets("list", "id", "mn")
         assert_equal(len(tickets_list), 12)
         tickets_list = self.nodes[self.non_mn3].tickets("list", "id", "personal")
-        assert_equal(len(tickets_list), 3)
+        assert_equal(len(tickets_list), 3 + loop_number*2)
 
         self.create_art_ticket_and_signatures(self.artist_pastelid1, self.non_mn3,
                                               "HashOfTicket2", "Ticket2", 5,
@@ -1608,7 +1621,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         art_ticket2_txid = self.nodes[self.top_mns_index0].tickets("register", "art",
                                                                    self.ticket, json.dumps(self.signatures_dict),
                                                                    self.top_mn_pastelid0, "passphrase",
-                                                                   "key3", "key4", str(self.storage_fee))["txid"]
+                                                                   "key3"+str(loop_number), "key4"+str(loop_number), str(self.storage_fee))["txid"]
         assert_true(art_ticket2_txid, "No ticket was created")
         self.__wait_for_ticket_tnx()
 
@@ -1628,31 +1641,31 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         art_ticket3_txid = self.nodes[self.top_mns_index0].tickets("register", "art",
                                                                    self.ticket, json.dumps(self.signatures_dict),
                                                                    self.top_mn_pastelid0, "passphrase",
-                                                                   "key5", "key6", str(self.storage_fee))["txid"]
+                                                                   "key5"+str(loop_number), "key6"+str(loop_number), str(self.storage_fee))["txid"]
         assert_true(art_ticket3_txid, "No ticket was created")
         self.__wait_for_ticket_tnx()
 
         self.slow_mine(2, 10, 2, 0.5)
 
         tickets_list = self.nodes[self.non_mn3].tickets("list", "art")
-        assert_equal(len(tickets_list), 3)
+        assert_equal(len(tickets_list), 3*(loop_number+1))
         tickets_list = self.nodes[self.non_mn3].tickets("list", "art", "all")
-        assert_equal(len(tickets_list), 3)
+        assert_equal(len(tickets_list), 3*(loop_number+1))
         tickets_list = self.nodes[self.non_mn3].tickets("list", "art", "active")
-        assert_equal(len(tickets_list), 2)
+        assert_equal(len(tickets_list), 2*(loop_number+1))
         tickets_list = self.nodes[self.non_mn3].tickets("list", "art", "inactive")
-        assert_equal(len(tickets_list), 1)
+        assert_equal(len(tickets_list), 1*(loop_number+1))
         tickets_list = self.nodes[self.non_mn3].tickets("list", "art", "sold")
-        assert_equal(len(tickets_list), 1)
+        assert_equal(len(tickets_list), 1*(loop_number+1))
 
         tickets_list = self.nodes[self.non_mn3].tickets("list", "act")
-        assert_equal(len(tickets_list), 2)
+        assert_equal(len(tickets_list), 2*(loop_number+1))
         tickets_list = self.nodes[self.non_mn3].tickets("list", "act", "all")
-        assert_equal(len(tickets_list), 2)
+        assert_equal(len(tickets_list), 2*(loop_number+1))
         tickets_list = self.nodes[self.non_mn3].tickets("list", "act", "available")
-        assert_equal(len(tickets_list), 1)
+        assert_equal(len(tickets_list), 1*(loop_number+1))
         tickets_list = self.nodes[self.non_mn3].tickets("list", "act", "sold")
-        assert_equal(len(tickets_list), 1)
+        assert_equal(len(tickets_list), 1*(loop_number+1))
 
         cur_block = self.nodes[self.non_mn3].getblockcount()
         sell_ticket1_txid = self.nodes[self.non_mn3].tickets("register", "sell", art_ticket2_act_ticket_txid,
@@ -1681,15 +1694,15 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         print(sell_ticket3_txid)
 
         tickets_list = self.nodes[self.non_mn3].tickets("list", "sell")
-        assert_equal(len(tickets_list), 18)
+        assert_equal(len(tickets_list), 18*(loop_number+1))
         tickets_list = self.nodes[self.non_mn3].tickets("list", "sell", "all")
-        assert_equal(len(tickets_list), 18)
+        assert_equal(len(tickets_list), 18*(loop_number+1))
         tickets_list = self.nodes[self.non_mn3].tickets("list", "sell", "available")
         assert_equal(len(tickets_list), 1)
         tickets_list = self.nodes[self.non_mn3].tickets("list", "sell", "unavailable")
         assert_equal(len(tickets_list), 1)
         tickets_list = self.nodes[self.non_mn3].tickets("list", "sell", "expired")
-        assert_equal(len(tickets_list), 1)
+        assert_equal(len(tickets_list), 1 + (loop_number*2))
 
         buy_ticket_txid = self.nodes[self.non_mn4].tickets("register", "buy", sell_ticket2_txid, str("1000"),
                                                            self.nonmn4_pastelid1, "passphrase")["txid"]
@@ -1699,22 +1712,22 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         self.slow_mine(2, 10, 2, 0.5)  # +25
 
         tickets_list = self.nodes[self.non_mn3].tickets("list", "buy")
-        assert_equal(len(tickets_list), 16)
+        assert_equal(len(tickets_list), 16*(loop_number+1))
         tickets_list = self.nodes[self.non_mn3].tickets("list", "buy", "all")
-        assert_equal(len(tickets_list), 16)
+        assert_equal(len(tickets_list), 16*(loop_number+1))
         tickets_list = self.nodes[self.non_mn3].tickets("list", "buy", "expired")
-        assert_equal(len(tickets_list), 1)
+        assert_equal(len(tickets_list), 1*(loop_number+1))
         tickets_list = self.nodes[self.non_mn3].tickets("list", "buy", "sold")
-        assert_equal(len(tickets_list), 15)
+        assert_equal(len(tickets_list), 15*(loop_number+1))
 
         tickets_list = self.nodes[self.non_mn3].tickets("list", "trade")
-        assert_equal(len(tickets_list), 15)
+        assert_equal(len(tickets_list), 15*(loop_number+1))
         tickets_list = self.nodes[self.non_mn3].tickets("list", "trade", "all")
-        assert_equal(len(tickets_list), 15)
+        assert_equal(len(tickets_list), 15*(loop_number+1))
         tickets_list = self.nodes[self.non_mn3].tickets("list", "trade", "available")
-        assert_equal(len(tickets_list), 10)
+        assert_equal(len(tickets_list), 10*(loop_number+1))
         tickets_list = self.nodes[self.non_mn3].tickets("list", "trade", "sold")
-        assert_equal(len(tickets_list), 5)
+        assert_equal(len(tickets_list), 5*(loop_number+1))
 
         print("Tickets List Filter tested")
 

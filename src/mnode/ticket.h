@@ -55,9 +55,7 @@ public:
             m_nVersion = nTicketVersion; // make sure we have up-to-date current ticket version
         else
         { // serialization mode
-            if (m_nVersion < nTicketVersion)
-                m_nVersion = nTicketVersion;      // we're writing always current version
-            else if (m_nVersion > nTicketVersion) // we don't support this ticket version yet
+            if (m_nVersion > nTicketVersion) // we don't support this ticket version yet
             {
                 error = tfm::format("Can't serialize '%s' ticket, newer ticket version v%hi found, supported ticket v%hi. Please update pasteld version",
                                     GetTicketName(), m_nVersion, GetVersion());
