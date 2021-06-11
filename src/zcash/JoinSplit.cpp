@@ -75,10 +75,7 @@ public:
     r1cs_ppzksnark_processed_verification_key<ppzksnark_ppT> vk_precomp;
     std::string pkPath;
 
-    JoinSplitCircuit(const std::string vkPath, const std::string pkPath) : pkPath(pkPath) {
-        loadFromFile(vkPath, vk);
-        vk_precomp = r1cs_ppzksnark_verifier_process_vk(vk);
-    }
+    JoinSplitCircuit() {}
     ~JoinSplitCircuit() {}
 
     static void generate(const std::string r1csPath,
@@ -361,19 +358,7 @@ public:
         // to swap, but it takes so little time to perform this
         // estimate that it doesn't matter if we check every time.
         pb.constraint_system.swap_AB_if_beneficial();
-
-        std::ifstream fh(pkPath, std::ios::binary);
-
-        if(!fh.is_open()) {
-            throw std::runtime_error(strprintf("could not load param file at %s", pkPath));
-        }
-
-        return PHGRProof(r1cs_ppzksnark_prover_streaming<ppzksnark_ppT>(
-            fh,
-            primary_input,
-            aux_input,
-            pb.constraint_system
-        ));
+        return PHGRProof();
     }
 };
 
@@ -387,11 +372,9 @@ void JoinSplit<NumInputs, NumOutputs>::Generate(const std::string r1csPath,
 }
 
 template<size_t NumInputs, size_t NumOutputs>
-JoinSplit<NumInputs, NumOutputs>* JoinSplit<NumInputs, NumOutputs>::Prepared(const std::string vkPath,
-                                                                             const std::string pkPath)
+JoinSplit<NumInputs, NumOutputs>* JoinSplit<NumInputs, NumOutputs>::Prepared()
 {
-    initialize_curve_params();
-    return new JoinSplitCircuit<NumInputs, NumOutputs>(vkPath, pkPath);
+    return new JoinSplitCircuit<NumInputs, NumOutputs>();
 }
 
 template<size_t NumInputs, size_t NumOutputs>

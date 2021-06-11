@@ -42,9 +42,7 @@ extern void noui_connect();
 
 JoinSplitTestingSetup::JoinSplitTestingSetup()
 {
-    fs::path pk_path = ZC_GetParamsDir() / "sprout-proving.key";
-    fs::path vk_path = ZC_GetParamsDir() / "sprout-verifying.key";
-    pzcashParams = ZCJoinSplit::Prepared(vk_path.string(), pk_path.string());
+    pzcashParams = ZCJoinSplit::Prepared();
 
     fs::path sapling_spend = ZC_GetParamsDir() / "sapling-spend.params";
     fs::path sapling_output = ZC_GetParamsDir() / "sapling-output.params";

@@ -697,15 +697,11 @@ static void ZC_LoadParams(
     struct timeval tv_start, tv_end;
     float elapsed;
 
-    fs::path pk_path = ZC_GetParamsDir() / "sprout-proving.key";
-    fs::path vk_path = ZC_GetParamsDir() / "sprout-verifying.key";
     fs::path sapling_spend = ZC_GetParamsDir() / "sapling-spend.params";
     fs::path sapling_output = ZC_GetParamsDir() / "sapling-output.params";
     fs::path sprout_groth16 = ZC_GetParamsDir() / "sprout-groth16.params";
 
     if (!(
-        fs::exists(pk_path) &&
-        fs::exists(vk_path) &&
         fs::exists(sapling_spend) &&
         fs::exists(sapling_output) &&
         fs::exists(sprout_groth16)
@@ -719,11 +715,9 @@ static void ZC_LoadParams(
         StartShutdown();
         return;
     }
-
-    LogPrintf("Loading verifying key from %s\n", vk_path.string().c_str());
     gettimeofday(&tv_start, 0);
 
-    pzcashParams = ZCJoinSplit::Prepared(vk_path.string(), pk_path.string());
+    pzcashParams = ZCJoinSplit::Prepared();
 
     gettimeofday(&tv_end, 0);
     elapsed = float(tv_end.tv_sec-tv_start.tv_sec) + (tv_end.tv_usec-tv_start.tv_usec)/float(1000000);

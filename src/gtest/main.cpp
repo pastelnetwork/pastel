@@ -30,9 +30,7 @@ int main(int argc, char **argv)
   libsnark::default_r1cs_ppzksnark_pp::init_public_params();
   libsnark::inhibit_profiling_info = true;
   libsnark::inhibit_profiling_counters = true;
-  fs::path pk_path = ZC_GetParamsDir() / "sprout-proving.key";
-  fs::path vk_path = ZC_GetParamsDir() / "sprout-verifying.key";
-  params = ZCJoinSplit::Prepared(vk_path.string(), pk_path.string());
+  params = ZCJoinSplit::Prepared();
 
   fs::path sapling_spend = ZC_GetParamsDir() / "sapling-spend.params";
   fs::path sapling_output = ZC_GetParamsDir() / "sapling-output.params";
