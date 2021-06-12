@@ -93,7 +93,7 @@ int32_t encode_ascii85 (const uint8_t *inp, int32_t in_length, uint8_t *outp, in
     if (out_length < 0)
     {
         // At this point altough ascii85_get_max_encoded_length() already returned an error.
-        LogPrintf("ERROR(encode:ascii85) Lenght smaller then zero %d", out_length);
+        LogPrintf("ERROR(encode:ascii85) Length smaller then zero %d", out_length);
         out_length = -1;
         return out_length;
     }

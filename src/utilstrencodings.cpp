@@ -125,73 +125,77 @@ vector<unsigned char> ParseHex(const string& str)
     return ParseHex(str.c_str());
 }
 
-string EncodeAscii85(const char* istr, size_t len)
+string EncodeAscii85(const char* istr, size_t len) noexcept
 {
     
     string retVal; //Default is empty-string
-    if (NULL != istr)
+
+    do
     {
-        size_t isz = strlen(istr);
-        int32_t olen = ascii85_get_max_encoded_length(isz);
+        if (!istr)
+            break;
         
+        const size_t isz = strlen(istr);
+        int32_t olen = static_cast<int32_t>(ascii85_get_max_encoded_length(isz));
+
         if (olen < 0)
+            break;
+        
+        uint8_t obuf[olen];
+        olen = encode_ascii85(reinterpret_cast<const uint8_t *>(istr), isz, obuf, olen);
+        if(0 < olen)
         {
-            return retVal; //Encode size error
+            std::ostringstream ss;
+            std::copy(obuf, obuf+olen, std::ostream_iterator<uint8_t>(ss, ""));
+            retVal = ss.str();
         }
-        else
-        {
-            uint8_t obuf[olen];
-            olen = encode_ascii85((uint8_t *)istr, isz, obuf, olen);
-            if(0 < olen)
-            {
-                std::ostringstream ss;
-                std::copy(obuf, obuf+olen, std::ostream_iterator<uint8_t>(ss, ""));
-                retVal = ss.str();
-            }
-        }
-    }
+    } while (false);
     return retVal;
 }
 
-string EncodeAscii85(const string& str)
+string EncodeAscii85(const string& str) noexcept
 {
     return EncodeAscii85((const char*)str.c_str(), str.size());
 }
 
-vector<unsigned char> DecodeAscii85(const char* ostr, bool* pfInvalid)
+vector<unsigned char> DecodeAscii85(const char* ostr, bool* pfInvalid) noexcept
 {
     vector<unsigned char> retVal;
 
-    if (NULL != ostr)
+    do
     {
-        size_t osz = strlen(ostr);
-        int32_t olen = ascii85_get_max_decoded_length(osz);
+        if (!ostr)
+            break;
+        
+        const size_t osz = strlen(ostr);
+        int32_t olen = static_cast<int32_t>(ascii85_get_max_decoded_length(osz));
+
         if (olen < 0)
         {
             *pfInvalid = true;//Decode size error
-            return retVal;
+            break;
         }
-        else
-        {
-            uint8_t dbuf[olen];
-            int32_t ilen = decode_ascii85((uint8_t *)ostr, osz, dbuf, olen);
+        
+        uint8_t dbuf[olen];
+        int32_t ilen = decode_ascii85(reinterpret_cast<const uint8_t *>(ostr), osz, dbuf, olen);
 
-            if (ilen < 0)
-            {
-                *pfInvalid = true;//Decode error
-                return retVal;
-            }
-            retVal = std::vector<unsigned char>(dbuf, dbuf + ilen);     
+        if (ilen < 0)
+        {
+            *pfInvalid = true;//Decode error
+            break;
         }
-    }
+        retVal.assign(dbuf, dbuf + ilen);  
+
+    } while (false);
 
     return retVal;
 }
 
-string DecodeAscii85(const string& str)
+string DecodeAscii85(const string& str) noexcept
 {
     vector<unsigned char> vchRet = DecodeAscii85(str.c_str());
-    return (vchRet.size() == 0) ? string() : string((const char*)&vchRet[0], vchRet.size());
+    static constexpr int zero_size = 0;
+    return (vchRet.size() == zero_size) ? string() : string((const char*)&vchRet[0], vchRet.size());
 }
 
 string EncodeBase64(const unsigned char* pch, size_t len)
