@@ -4,7 +4,7 @@
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include "primitives/transaction.h"
 #include "serialize.h"
-
+#include <stdexcept>
 class CDataStream;
 
 const int kDefaultZSTDCompressLevel = 19;
@@ -14,34 +14,39 @@ class CDataCompressor
 private:
     CDataStream &data;
 protected:
-    bool Compress(std::vector<unsigned char> &out) const;
-    bool Decompress(const std::vector<unsigned char> &out);
+    int Compress(std::vector<unsigned char> &out) const;
+    int Decompress(const std::vector<unsigned char> &out);
+    static const char* getErrorStr(int errCode);
 
 public:
     CDataCompressor(CDataStream &dataIn) : data(dataIn) { }
 
     template<typename Stream>
-    bool Serialize(Stream &s) const {
+    void Serialize(Stream &s) const {
         std::vector<unsigned char> compr;
         uint8_t dumpbyte = 0; // for reserve now - is 0 now, TODO: support compression type
-        if (Compress(compr)) {
+        int ret;
+
+        ret = Compress(compr);
+        if (ret >= 0) {
             s << dumpbyte;
             s << VARINT(compr.size());
             s << CFlatData(compr);
-            return true;
+            return;
         }
-       
-       return false;
+
+        throw std::runtime_error(strprintf("compress error:  %s", getErrorStr(ret)));
     }
 
     template<typename Stream>
-    bool Unserialize(Stream &s) {
+    void Unserialize(Stream &s) {
         unsigned int nSize = 0;
+        int ret;
         uint8_t dumpbyte; // for reserve now - is 0 now, TODO: support compression type
 
         s >> dumpbyte;
         if (dumpbyte != 0) {
-            return false;
+            return;
         }
     
         // TODO: validate size with max allowed size
@@ -52,7 +57,10 @@ public:
         s >> REF(CFlatData(vch));
 
         // Decompress
-        return Decompress(vch);
+        ret = Decompress(vch);
+        if (ret < 0) {
+            throw std::runtime_error(strprintf("decompress error: %s", getErrorStr(ret)));
+        }
     }
 };
 

@@ -5,8 +5,9 @@
 #include "datacompressor.h"
 #include <string>
 #include "zstd.h"
+#include "zstd_errors.h"
 
-bool CDataCompressor::Compress(std::vector<unsigned char> &out) const
+int CDataCompressor::Compress(std::vector<unsigned char> &out) const
 {
     // Determine bound of compress size
     const size_t est_compress_size = ZSTD_compressBound(data.size());
@@ -23,16 +24,16 @@ bool CDataCompressor::Compress(std::vector<unsigned char> &out) const
 
     // TODO : get error message
     if (ZSTD_isError(compress_size)) {
-        return false;
+        return compress_size;
     }
 
     out.resize(compress_size);
     out.shrink_to_fit();
 
-    return true;
+    return compress_size;
 }
 
-bool CDataCompressor::Decompress(const std::vector<unsigned char> &in)
+int CDataCompressor::Decompress(const std::vector<unsigned char> &in)
 {
     // Determine bound of decmpress size
     const size_t est_decomp_size = ZSTD_getDecompressedSize((void*)in.data(), in.size());
@@ -48,9 +49,14 @@ bool CDataCompressor::Decompress(const std::vector<unsigned char> &in)
 
     // TODO : get error message
     if (ZSTD_isError(decomp_size)) {
-        return false;
+        return decomp_size;
     }
 
     data.resize(decomp_size);
-    return true;
+    return decomp_size;
+}
+
+const char* CDataCompressor::getErrorStr(int errCode)
+{
+    return ZSTD_getErrorName(errCode);
 }
