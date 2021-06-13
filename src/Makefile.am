@@ -275,6 +275,7 @@ BITCOIN_CORE_H = \
   zmq/zmqconfig.h\
   zmq/zmqnotificationinterface.h \
   zmq/zmqpublishnotifier.h \
+  datacompressor.h \
   $(MNODE_H)
 
 obj/build.h: FORCE
@@ -431,6 +432,7 @@ libbitcoin_common_a_SOURCES = \
   script/standard.cpp \
   transaction_builder.cpp \
   utiltest.cpp \
+  datacompressor.cpp \
   $(BITCOIN_CORE_H) \
   $(LIBZCASH_H)
 
