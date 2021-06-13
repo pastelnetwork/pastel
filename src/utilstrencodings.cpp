@@ -155,7 +155,7 @@ string EncodeAscii85(const char* istr, size_t len) noexcept
 
 string EncodeAscii85(const string& str) noexcept
 {
-    return EncodeAscii85((const char*)str.c_str(), str.size());
+    return EncodeAscii85(str.c_str(), str.size());
 }
 
 vector<unsigned char> DecodeAscii85(const char* ostr, bool* pfInvalid) noexcept
@@ -172,7 +172,8 @@ vector<unsigned char> DecodeAscii85(const char* ostr, bool* pfInvalid) noexcept
 
         if (olen < 0)
         {
-            *pfInvalid = true;//Decode size error
+            if(pfInvalid)
+                *pfInvalid = true;//Decode size error
             break;
         }
         
@@ -181,7 +182,8 @@ vector<unsigned char> DecodeAscii85(const char* ostr, bool* pfInvalid) noexcept
 
         if (ilen < 0)
         {
-            *pfInvalid = true;//Decode error
+            if (pfInvalid)
+                *pfInvalid = true;//Decode error
             break;
         }
         retVal.assign(dbuf, dbuf + ilen);  
