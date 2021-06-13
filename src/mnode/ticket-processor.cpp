@@ -72,6 +72,10 @@ unique_ptr<CPastelTicket> CPastelTicketProcessor::CreateTicket(const TicketID ti
     case TicketID::Down:
         ticket = make_unique<CTakeDownTicket>();
         break;
+
+    case TicketID::Username:
+        ticket = make_unique<CChangeUsernameTicket>();
+        break;
     }
     return ticket;
 }
@@ -229,7 +233,8 @@ bool CPastelTicketProcessor::ValidateIfTicketTransaction(const int nHeight, cons
             if ((ticket_id == TicketID::PastelID ||
                  ticket_id == TicketID::Art ||
                  ticket_id == TicketID::Sell ||
-                 ticket_id == TicketID::Buy) &&
+                 ticket_id == TicketID::Buy ||
+                 ticket_id == TicketID::Username ) &&
                 i == num - 1) // in these tickets last output is change
                 break;
             // in this tickets last 4 outputs is: change, and payments to 3 MNs
@@ -515,6 +520,7 @@ template std::string CPastelTicketProcessor::ListTickets<CArtActivateTicket>() c
 template std::string CPastelTicketProcessor::ListTickets<CArtSellTicket>() const;
 template std::string CPastelTicketProcessor::ListTickets<CArtBuyTicket>() const;
 template std::string CPastelTicketProcessor::ListTickets<CArtTradeTicket>() const;
+template std::string CPastelTicketProcessor::ListTickets<CChangeUsernameTicket>() const;
 
 template <class _TicketType, typename F>
 std::string CPastelTicketProcessor::filterTickets(F f) const

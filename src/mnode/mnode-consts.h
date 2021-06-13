@@ -7,13 +7,14 @@
 #include "enum_util.h"
 
 // ticket names
-constexpr auto TICKET_NAME_ID_REG		= "pastelid";  // id registration ticket
-constexpr auto TICKET_NAME_ART_REG		= "art-reg";   // art registration ticket
-constexpr auto TICKET_NAME_ART_ACT		= "art-act";   // art activation ticket
-constexpr auto TICKET_NAME_ART_SELL		= "art-sell";  // art sell ticket
-constexpr auto TICKET_NAME_ART_BUY		= "art-buy";   // art buy ticket
-constexpr auto TICKET_NAME_ART_TRADE	= "art-trade"; // art trade ticket
-constexpr auto TICKET_NAME_TAKE_DOWN    = "take-down";
+constexpr auto TICKET_NAME_ID_REG		      = "pastelid";  // id registration ticket
+constexpr auto TICKET_NAME_ART_REG		      = "art-reg";   // art registration ticket
+constexpr auto TICKET_NAME_ART_ACT		      = "art-act";   // art activation ticket
+constexpr auto TICKET_NAME_ART_SELL		      = "art-sell";  // art sell ticket
+constexpr auto TICKET_NAME_ART_BUY		      = "art-buy";   // art buy ticket
+constexpr auto TICKET_NAME_ART_TRADE	      = "art-trade"; // art trade ticket
+constexpr auto TICKET_NAME_TAKE_DOWN          = "take-down";
+constexpr auto TICKET_NAME_USERNAME_CHANGE    = "username-change"; // username change request
 
 /**
  * Ticket Type IDs.
@@ -26,6 +27,7 @@ enum class TicketID : uint8_t {
     Buy,          // Art buy ticket
     Trade,        // Art trade ticket
     Down,
+    Username,
 
     COUNT         // number of ticket types
 };
@@ -54,6 +56,7 @@ static constexpr std::array<TicketInfo, to_integral_type<TicketID>(TicketID::COU
         { TicketID::Buy,      "Art Buy",                TICKET_NAME_ART_BUY,    0,      "artbuy" },
         { TicketID::Trade,    "Art Trade",              TICKET_NAME_ART_TRADE,  0,      "arttrd" },
         { TicketID::Down,     "Take Down",              TICKET_NAME_TAKE_DOWN,  0,      "takedn" },
+        { TicketID::Username, "Username Change",        TICKET_NAME_USERNAME_CHANGE, 0, "usrnme" },
     }};
 
 inline std::string GetTicketDescription(const TicketID id) noexcept
