@@ -625,7 +625,7 @@ public:
 		"type": "username",
 		"pastelID": "",    //PastelID of the username
 		"username": "",    //new valid username
-		"username_fee": "",         // fee to change username
+		"fee": "",         // fee to change username
 		"signature": ""
 	},
  */

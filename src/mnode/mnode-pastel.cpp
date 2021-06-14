@@ -1586,7 +1586,6 @@ CChangeUsernameTicket CChangeUsernameTicket::Create(std::string _pastelID, std::
     // Check if PastelID already have a username on the blockchain. 
     if (!masterNodeCtrl.masternodeTickets.FindTicketBySecondaryKey(_ticket)) {
         // IF PastelID has no Username yet, the fee is 100 PSL
-        //finally, clear outpoint and try by address
         ticket.fee = 100;
     } else {
         // IF PastelID changed Username before, fee should 5000
@@ -1649,7 +1648,7 @@ bool CChangeUsernameTicket::IsValid(std::string& errRet, bool preReg, int depth)
     }
 
     // B Verify signature
-    // We will check that it is the correct PastelID and the one that belongs to the owner of the art in the following steps
+    // We will check that it is the correct PastelID
     std::string strThisTicket = ToStr();
     if (!CPastelID::Verify(reinterpret_cast<const unsigned char *>(strThisTicket.c_str()), strThisTicket.size(),
                            signature.data(), signature.size(),
