@@ -489,6 +489,7 @@ pasteld_LDADD = \
   $(LIBBITCOIN_SERVER) \
   $(LIBBITCOIN_WALLET) \
   $(LIBBITCOIN_COMMON) \
+  $(ZSTD_LIBS) \
   $(LIBUNIVALUE) \
   $(LIBBITCOIN_UTIL) \
   $(LIBBITCOIN_ZMQ) \
@@ -550,6 +551,7 @@ endif
 pastel_tx_LDADD = \
   $(LIBUNIVALUE) \
   $(LIBBITCOIN_COMMON) \
+  $(ZSTD_LIBS) \
   $(LIBBITCOIN_UTIL) \
   $(LIBSECP256K1) \
   $(LIBZCASH) \
@@ -622,6 +624,7 @@ CLEANFILES = leveldb/libleveldb.a leveldb/libmemenv.a *.gcda *.gcno */*.gcno wal
 DISTCLEANFILES = obj/build.h
 
 EXTRA_DIST = leveldb snark
+
 
 clean-local:
 	-$(MAKE) -C leveldb clean

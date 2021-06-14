@@ -12,6 +12,7 @@
 #include "mnode/mnode-pastel.h"
 #include "mnode/mnode-controller.h"
 #include "mnode/ticket-processor.h"
+#include "datacompressor.h"
 
 #include "json/json.hpp"
 
@@ -132,7 +133,7 @@ bool CPastelTicketProcessor::UpdateDB(CPastelTicket &ticket, string& txid, const
     return true;
 }
 
-bool preParseTicket(const CMutableTransaction& tx, CDataStream& data_stream, TicketID& ticket_id, std::string& error, bool log = true)
+bool preParseTicket(const CMutableTransaction& tx, CDataStream& data_stream, TicketID& ticket_id, std::string& error, bool& compressed, bool log = true)
 {
     vector<unsigned char> output_data;
     if (!CPastelTicketProcessor::ParseP2FMSTransaction(tx, output_data, error))
@@ -140,8 +141,20 @@ bool preParseTicket(const CMutableTransaction& tx, CDataStream& data_stream, Tic
     data_stream.write(reinterpret_cast<char*>(output_data.data()), output_data.size());
     uint8_t u;
     data_stream >> u;
-    ticket_id = static_cast<TicketID>(u);
+    compressed = (u & kTicketCompressEnableMask) > 0;
+    ticket_id = static_cast<TicketID>(u & kTicketCompressDisableMask);
     return true;
+}
+
+void parsingTicketData(CDataStream& data_stream, CPastelTicket &ticket, const bool compressed) {
+    if (!compressed) {
+        data_stream >> ticket;
+    } else {
+        CDataStream decrompress_stream(SER_NETWORK, DATASTREAM_VERSION);
+        CDataCompressor compressor(decrompress_stream);
+        data_stream >> compressor;
+        decrompress_stream >> ticket;
+    }
 }
 
 // Called from ContextualCheckTransaction, which called from:
@@ -152,10 +165,11 @@ bool CPastelTicketProcessor::ValidateIfTicketTransaction(const int nHeight, cons
     CMutableTransaction mtx(tx);
 
     std::string error_ret;
+    bool compressed;
     CDataStream data_stream(SER_NETWORK, DATASTREAM_VERSION);
     TicketID ticket_id;
 
-    if (!preParseTicket(tx, data_stream, ticket_id, error_ret, false))
+    if (!preParseTicket(tx, data_stream, ticket_id, error_ret, compressed, false))
         return true; // this is not a ticket
 
     CAmount storageFee = 0;
@@ -176,7 +190,7 @@ bool CPastelTicketProcessor::ValidateIfTicketTransaction(const int nHeight, cons
             error_ret = "unknown ticket_id";
         else
         {
-            data_stream >> *ticket;
+            parsingTicketData(data_stream, *ticket, compressed);
             ticket->SetTxId(std::move(ticketBlockTxIdStr));
             ticket->SetBlock(nHeight);
             bOk = ticket->IsValid(error_ret, false, 0);
@@ -276,10 +290,11 @@ bool CPastelTicketProcessor::ValidateIfTicketTransaction(const int nHeight, cons
 bool CPastelTicketProcessor::ParseTicketAndUpdateDB(CMutableTransaction& tx, const unsigned int nBlockHeight)
 {
     std::string error_ret;
+    bool compressed;
     CDataStream data_stream(SER_NETWORK, DATASTREAM_VERSION);
     TicketID ticket_id;
 
-    if (!preParseTicket(tx, data_stream, ticket_id, error_ret))
+    if (!preParseTicket(tx, data_stream, ticket_id, error_ret, compressed))
         return false;
 
     try {
@@ -293,7 +308,7 @@ bool CPastelTicketProcessor::ParseTicketAndUpdateDB(CMutableTransaction& tx, con
             error_ret = "unknown ticket_id";
         else
         {
-            data_stream >> *ticket;
+            parsingTicketData(data_stream, *ticket, compressed);
             return UpdateDB(*ticket, txid, nBlockHeight);
         }
     }
@@ -331,9 +346,10 @@ std::unique_ptr<CPastelTicket> CPastelTicketProcessor::GetTicket(const uint256 &
 
     TicketID ticket_id;
     std::string error_ret;
+    bool compressed;
     CDataStream data_stream(SER_NETWORK, DATASTREAM_VERSION);
 
-    if (!preParseTicket(mtx, data_stream, ticket_id, error_ret))
+    if (!preParseTicket(mtx, data_stream, ticket_id, error_ret, compressed))
         throw std::runtime_error(strprintf("Failed to create P2FMS from data provided - %s", error_ret));
 
     std::unique_ptr<CPastelTicket> ticket;
@@ -347,7 +363,7 @@ std::unique_ptr<CPastelTicket> CPastelTicketProcessor::GetTicket(const uint256 &
         ticket = CreateTicket(ticket_id);
         if (ticket)
         {
-            data_stream >> *ticket;
+            parsingTicketData(data_stream, *ticket, compressed);
             ticket->SetTxId(std::move(ticketBlockTxIdStr));
             ticket->SetBlock(ticketBlockHeight);
         }
@@ -685,9 +701,13 @@ std::string CPastelTicketProcessor::SendTicket(const CPastelTicket& ticket)
     std::vector<CTxOut> extraOutputs;
     const CAmount extraAmount = ticket.GetExtraOutputs(extraOutputs);
 
+    CDataStream ticket_stream(SER_NETWORK, DATASTREAM_VERSION);
+    ticket_stream << ticket;
+    CDataCompressor compressor(ticket_stream);
+
     CDataStream data_stream(SER_NETWORK, DATASTREAM_VERSION);
-    data_stream << (uint8_t)ticket.ID();
-    data_stream << ticket;
+    data_stream << ((uint8_t)ticket.ID() | kTicketCompressEnableMask);
+    data_stream << compressor;
 
     unsigned int chainHeight = 0;
     {
@@ -1012,9 +1032,13 @@ std::string CPastelTicketProcessor::CreateFakeTransaction(CPastelTicket& ticket,
         }
     }
 
+    CDataStream ticket_stream(SER_NETWORK, DATASTREAM_VERSION);
+    ticket_stream << ticket;
+    CDataCompressor compressor(ticket_stream);
+
     CDataStream data_stream(SER_NETWORK, DATASTREAM_VERSION);
-    data_stream << to_integral_type<TicketID>(ticket.ID());
-    data_stream << ticket;
+    data_stream << (to_integral_type<TicketID>(ticket.ID()) | kTicketCompressEnableMask);
+    data_stream << compressor;
 
     CMutableTransaction tx;
     if (!CreateP2FMSTransactionWithExtra(data_stream, extraOutputs, extraAmount, tx, ticketPrice, error))

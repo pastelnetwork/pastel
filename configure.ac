@@ -655,6 +655,9 @@ if test x$use_tests = xyes; then
   fi
 fi
 
+AC_CHECK_HEADER([zstd.h],, AC_MSG_ERROR(libzstd headers missing),)
+AC_CHECK_LIB([zstd],[main],ZSTD_LIBS=-lzstd,AC_MSG_ERROR(libzstd missing))
+
 if test x$use_boost = xyes; then
 BOOST_LIBS="$BOOST_LDFLAGS $BOOST_SYSTEM_LIB $BOOST_FILESYSTEM_LIB $BOOST_PROGRAM_OPTIONS_LIB $BOOST_THREAD_LIB $BOOST_CHRONO_LIB"
 fi
@@ -901,6 +904,7 @@ AC_SUBST(GMPXX_LIBS)
 AC_SUBST(LIBSNARK_DEPINST)
 AC_SUBST(LIBZCASH_LIBS)
 AC_SUBST(PROTON_LIBS)
+AC_SUBST(ZSTD_LIBS)
 AC_CONFIG_FILES([Makefile src/Makefile doc/man/Makefile src/test/buildenv.py])
 AC_CONFIG_FILES([qa/pull-tester/run-pasteld-for-test.sh],[chmod +x qa/pull-tester/run-pasteld-for-test.sh])
 AC_CONFIG_FILES([qa/pull-tester/tests-config.sh],[chmod +x qa/pull-tester/tests-config.sh])
