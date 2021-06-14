@@ -87,6 +87,7 @@ declare -a testScriptsToFix=(
 
 declare -a testScriptsMN=(
     'mn_main.py'
+    'mn_bugs.py'
     'mn_payment.py'
 #    'mn_governance.py'
     'mn_tickets.py'
