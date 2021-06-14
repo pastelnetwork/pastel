@@ -69,6 +69,10 @@ unique_ptr<CPastelTicket> CPastelTicketProcessor::CreateTicket(const TicketID ti
         ticket = make_unique<CArtTradeTicket>();
         break;
 
+    case TicketID::Royalty:
+        ticket = make_unique<CArtRoyaltyTicket>();
+        break;
+
     case TicketID::Down:
         ticket = make_unique<CTakeDownTicket>();
         break;
@@ -160,7 +164,13 @@ bool CPastelTicketProcessor::ValidateIfTicketTransaction(const int nHeight, cons
 
     CAmount storageFee = 0;
     CAmount tradePrice = 0;
+    CAmount royaltyFee = 0;
+    CAmount greenFee = 0;
     CAmount expectedTicketFee = 0;
+
+    // use if low fee that will be rownded to 0. can be like?
+    bool hasRoyaltyFee{false};
+    bool hasGreenFee{false};
 
     // this is a ticket and it needs to be validated
     bool bOk = false;
@@ -186,21 +196,25 @@ bool CPastelTicketProcessor::ValidateIfTicketTransaction(const int nHeight, cons
                 auto trade_ticket = dynamic_cast<CArtTradeTicket *>(ticket.get());
                 if (!trade_ticket)
                     throw std::runtime_error("Invalid Art Trade ticket");
-                tradePrice = trade_ticket->price * COIN;
 
                 auto artTicket = trade_ticket->FindArtRegTicket();
+                if (!artTicket)
+                  throw std::runtime_error("Art Reg ticket not found");
+
                 auto artRegTicket = dynamic_cast<CArtRegTicket*>(artTicket.get());
-                if (artRegTicket)
-                {
-                    if (artRegTicket->nRoyalty > 0)
-                    {
-                        tradePrice += tradePrice*artRegTicket->nRoyalty/100;
-                    }
-                    if (!artRegTicket->strGreenAddress.empty())
-                    {
-                        tradePrice += tradePrice*2/100;
-                    }
+                if (!artRegTicket)
+                  throw std::runtime_error("Invalid Art Reg ticket");
+
+                tradePrice = trade_ticket->price * COIN;
+                if (artRegTicket->nRoyalty > 0) {
+                  hasRoyaltyFee = true;
+                  royaltyFee = tradePrice * artRegTicket->nRoyalty / 100;
                 }
+                if (!artRegTicket->strGreenAddress.empty()) {
+                  hasGreenFee = true;
+                  greenFee = tradePrice * 2 / 100;
+                }
+                tradePrice -= (royaltyFee + greenFee);
             }
         }
     }
@@ -261,19 +275,34 @@ bool CPastelTicketProcessor::ValidateIfTicketTransaction(const int nHeight, cons
             //in this tickets last 2 outputs is: change, and payment to the seller
             if (ticket_id == TicketID::Trade)
             {
-                if (i == num - 2)
-                    continue;
-                if (i == num - 1)
-                {
-                    if (tradePrice != tx.vout[i].nValue)
-                    {
-                        bOk = false;
-                        error_ret = strprintf("Wrong payment to the seller: expected - %d, real - %d", tradePrice, tx.vout[i].nValue);
-                        break;
-                    }
-                    continue;
+                if (i == (hasRoyaltyFee && hasGreenFee ? num - 4 :
+                          hasRoyaltyFee || hasGreenFee ? num - 3 : num - 2)) {
+                  continue;
+                } else if (i == (hasRoyaltyFee && hasGreenFee ? num - 3 :
+                                 hasRoyaltyFee || hasGreenFee ? num - 2 : num - 1)) {
+                  if (tradePrice != tx.vout[i].nValue) {
+                    bOk = false;
+                    error_ret = strprintf("Wrong payment to the seller: expected - %d, real - %d", tradePrice, tx.vout[i].nValue);
+                    break;
+                  }
+                  continue;
+                } else if (hasRoyaltyFee && i == (hasGreenFee ? num - 2 : num - 1)) {
+                  if (royaltyFee != tx.vout[i].nValue) {
+                    bOk = false;
+                    error_ret = strprintf("Wrong payment to the royalty owner: expected - %d, real - %d", royaltyFee, tx.vout[i].nValue);
+                    break;
+                  }
+                  continue;
+                } else if (hasGreenFee && i == num - 1) {
+                  if (greenFee != tx.vout[i].nValue) {
+                    bOk = false;
+                    error_ret = strprintf("Wrong payment to the green NFT: expected - %d, real - %d", greenFee, tx.vout[i].nValue);
+                    break;
+                  }
+                  continue;
                 }
             }
+
             ticketFee += tx.vout[i].nValue;
         }
 
@@ -462,6 +491,7 @@ template std::vector<CArtActivateTicket> CPastelTicketProcessor::FindTicketsByMV
 template std::vector<CArtSellTicket> CPastelTicketProcessor::FindTicketsByMVKey<CArtSellTicket>(const std::string&);
 template std::vector<CArtBuyTicket> CPastelTicketProcessor::FindTicketsByMVKey<CArtBuyTicket>(const std::string&);
 template std::vector<CArtTradeTicket> CPastelTicketProcessor::FindTicketsByMVKey<CArtTradeTicket>(const std::string&);
+template std::vector<CArtRoyaltyTicket> CPastelTicketProcessor::FindTicketsByMVKey<CArtRoyaltyTicket>(const std::string&);
 
 std::vector<std::string> CPastelTicketProcessor::GetAllKeys(const TicketID id) const
 {
@@ -515,6 +545,7 @@ template std::string CPastelTicketProcessor::ListTickets<CArtActivateTicket>() c
 template std::string CPastelTicketProcessor::ListTickets<CArtSellTicket>() const;
 template std::string CPastelTicketProcessor::ListTickets<CArtBuyTicket>() const;
 template std::string CPastelTicketProcessor::ListTickets<CArtTradeTicket>() const;
+template std::string CPastelTicketProcessor::ListTickets<CArtRoyaltyTicket>() const;
 
 template <class _TicketType, typename F>
 std::string CPastelTicketProcessor::filterTickets(F f) const

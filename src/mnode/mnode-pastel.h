@@ -529,6 +529,72 @@ public:
     std::unique_ptr<CPastelTicket> FindArtRegTicket() const;
 };
 
+/*
+  "ticket": {
+    "type": "royalty",
+    "version": "",
+    "pastelID": "",     //pastelID of the old (current at moment of creation) royalty recipient
+    "new_pastelID": "", //pastelID of the new royalty recipient
+    "art_txid": "",     //txid of the art for royalty payments
+    "signature": ""
+  }
+*/
+
+class CArtRoyaltyTicket : public CPastelTicket {
+public:
+  std::string pastelID;    //pastelID of the old (current at moment of creation) royalty recipient
+  std::string newPastelID; //pastelID of the new royalty recipient
+  std::string artTnxId;    //txid of the art for royalty payments
+  std::vector<unsigned char> signature;
+
+public:
+  CArtRoyaltyTicket() = default;
+
+  explicit CArtRoyaltyTicket(std::string _pastelID, std::string _newPastelID)
+      : pastelID(std::move(_pastelID)), newPastelID(std::move(_newPastelID)) {
+  }
+
+  TicketID ID() const noexcept final { return TicketID::Royalty; }
+  static TicketID GetID() { return TicketID::Royalty; }
+
+  std::string KeyOne() const noexcept final { return {signature.cbegin(), signature.cend()}; }
+  std::string MVKeyOne() const noexcept final { return pastelID; }
+  std::string MVKeyTwo() const noexcept final { return artTnxId; }
+
+  bool HasMVKeyOne() const noexcept final { return true; }
+  bool HasMVKeyTwo() const noexcept final { return true; }
+  void SetKeyOne(std::string val) final { signature.assign(val.begin(), val.end()); }
+
+  std::string ToJSON() const noexcept final;
+  std::string ToStr() const noexcept final;
+  bool IsValid(std::string& errRet, bool preReg, int depth) const final;
+  CAmount TicketPrice(const unsigned int nHeight) const noexcept final { return 10; }
+
+  void SerializationOp(CDataStream& s, const SERIALIZE_ACTION ser_action) final {
+    const bool bRead{ser_action == SERIALIZE_ACTION::Read};
+    std::string error;
+    if (!VersionMgmt(error, bRead))
+      throw std::runtime_error(error);
+    READWRITE(pastelID);
+    READWRITE(newPastelID);
+    READWRITE(m_nVersion);
+    // v0
+    READWRITE(artTnxId);
+    READWRITE(signature);
+    READWRITE(m_nTimestamp);
+    READWRITE(m_txid);
+    READWRITE(m_nBlock);
+  }
+
+  static CArtRoyaltyTicket Create(std::string _pastelID, std::string _newPastelID,
+                                  std::string _artTnxId, const SecureString& strKeyPass);
+  static bool FindTicketInDb(const std::string& key, CArtRoyaltyTicket& ticket);
+  static std::string FindAddressByArtTnxId(const std::string& artTnxId);
+
+  static std::vector<CArtRoyaltyTicket> FindAllTicketByPastelID(const std::string& pastelID);
+  static std::vector<CArtRoyaltyTicket> FindAllTicketByArtTnxId(const std::string& artTnxId);
+};
+
 // Take Down Ticket /////////////////////////////////////////////////////////////////////////////////////////////////////
 class CTakeDownTicket : public CPastelTicket
 {
@@ -547,4 +613,3 @@ public:
 
     void SerializationOp(CDataStream& s, const SERIALIZE_ACTION ser_action) override {}
 };
-

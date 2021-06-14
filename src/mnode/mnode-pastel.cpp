@@ -340,10 +340,10 @@ bool CArtRegTicket::IsValid(std::string& errRet, bool preReg, int depth) const
                            _ticket.GetBlock(), _ticket.m_txid, m_nBlock, m_txid);
         return false;
     }
-    
+
     // B. Something to always validate
     std::string err;
-    
+
     std::map<std::string, int> pidCountMap{};
     std::map<COutPoint, int> outCountMap{};
     
@@ -1297,28 +1297,27 @@ CAmount CArtTradeTicket::GetExtraOutputs(std::vector<CTxOut>& outputs) const
     }
     
     std::string strRoyaltyAddress;
-    if (artRegTicket->nRoyalty > 0)
-    {
-        nRoyaltyAmount = nPriceAmount*artRegTicket->nRoyalty/100;
-        nPriceAmount -= nRoyaltyAmount;
-        
-        //HERE -> Search if there is RoyaltyChange ticket
-    
+    if (artRegTicket->nRoyalty > 0) {
+      nRoyaltyAmount = nPriceAmount * artRegTicket->nRoyalty / 100;
+
+      strRoyaltyAddress = CArtRoyaltyTicket::FindAddressByArtTnxId(artRegTicket->GetTxId());
+      if (strRoyaltyAddress.empty()) {
         CPastelIDRegTicket artistPastelIDticket;
         if (!CPastelIDRegTicket::FindTicketInDb(artRegTicket->pastelIDs[CArtRegTicket::artistsign], artistPastelIDticket))
-            throw std::runtime_error(strprintf(
-                    "The Artist PastelID [%s] from Art Registration ticket with this txid [%s] is not in the blockchain or is invalid",
-                    artRegTicket->pastelIDs[CArtRegTicket::artistsign], artRegTicket->GetTxId()));
+          throw std::runtime_error(strprintf(
+                  "The Artist PastelID [%s] from Art Registration ticket with this txid [%s] is not in the blockchain or is invalid",
+                  artRegTicket->pastelIDs[CArtRegTicket::artistsign], artRegTicket->GetTxId()));
         
         strRoyaltyAddress = artistPastelIDticket.address;
+      }
     }
     
-    if (!artRegTicket->strGreenAddress.empty())
-    {
-        nGreenNFTAmount = nPriceAmount*2/100;
-        nPriceAmount -= nGreenNFTAmount;
+    if (!artRegTicket->strGreenAddress.empty()) {
+      nGreenNFTAmount = nPriceAmount * 2 / 100;
     }
-    
+
+    nPriceAmount -= (nRoyaltyAmount + nGreenNFTAmount);
+
     KeyIO keyIO(Params());
     const auto addOutput = [&](const std::string& strAddress, const CAmount nAmount) -> bool
     {
@@ -1434,6 +1433,168 @@ std::unique_ptr<CPastelTicket> CArtTradeTicket::FindArtRegTicket() const
     }
     
     return std::move(chain.front());
+}
+
+// CArtRoyaltyTicket ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+CArtRoyaltyTicket CArtRoyaltyTicket::Create(
+    std::string _pastelID, std::string _newPastelID,
+    std::string _artTnxId, const SecureString& strKeyPass) {
+  CArtRoyaltyTicket ticket(std::move(_pastelID), std::move(_newPastelID));
+
+  ticket.artTnxId = std::move(_artTnxId);
+
+  ticket.GenerateTimestamp();
+
+  std::string strTicket = ticket.ToStr();
+  ticket.signature = CPastelID::Sign(reinterpret_cast<const unsigned char*>(strTicket.c_str()), strTicket.size(), ticket.pastelID, strKeyPass);
+
+  return ticket;
+}
+
+std::string CArtRoyaltyTicket::ToStr() const noexcept {
+  std::stringstream ss;
+  ss << pastelID;
+  ss << newPastelID;
+  ss << artTnxId;
+  ss << m_nTimestamp;
+  return ss.str();
+}
+
+bool CArtRoyaltyTicket::IsValid(std::string& errRet, bool preReg, int depth) const {
+  unsigned int chainHeight = 0; {
+    LOCK(cs_main);
+    chainHeight = static_cast<unsigned int>(chainActive.Height()) + 1;
+  }
+
+  // 0. Common validations
+  std::unique_ptr<CPastelTicket> pastelTicket;
+  if (!common_validation(*this, preReg, artTnxId, pastelTicket,
+      [](const TicketID tid) { return (tid != TicketID::Art); },
+      "Royalty", "art", depth, TicketPrice(chainHeight), errRet)) {
+    return false;
+  }
+
+  // Check the Royalty change ticket for that Art is already in the database
+  // (ticket transaction replay attack protection)
+  CArtRoyaltyTicket _ticket;
+  if (FindTicketInDb(KeyOne(), _ticket) &&
+     (preReg ||  // if pre reg - this is probably repeating call, so signatures can be the same
+      _ticket.signature != signature || !_ticket.IsBlock(m_nBlock) || _ticket.m_txid != m_txid)) {
+    errRet = strprintf("Change Royalty ticket is already registered in blockchain [pastelID = %s; new_pastelID = %s]"
+                       "[this ticket block = %d txid = %s; found ticket block = %d txid = %s] with art txid [%s]",
+                       pastelID, newPastelID, m_nBlock, m_txid, _ticket.GetBlock(), _ticket.m_txid, artTnxId);
+    return false;
+  }
+
+  if (newPastelID.empty()) {
+    errRet = strprintf("Change Royalty ticket new_pastelID is empty");
+    return false;
+  }
+
+  CPastelIDRegTicket newPastelIDticket;
+  if (!CPastelIDRegTicket::FindTicketInDb(newPastelID, newPastelIDticket)) {
+    throw std::runtime_error(strprintf(
+      "The new_pastelID [%s] for Change Royalty ticket with art txid [%s] is not in the blockchain or is invalid",
+      newPastelID, artTnxId));
+  }
+
+  int index{0}, found{-1};
+  unsigned int highBlock{0};
+  const auto tickets = CArtRoyaltyTicket::FindAllTicketByArtTnxId(artTnxId);
+  for (const auto& royaltyTicket: tickets) {
+    if (royaltyTicket.signature == signature) {
+      continue;
+    }
+    if (royaltyTicket.m_nBlock <= 0) {
+      errRet = strprintf("Old Change Royalty ticket is registered in blockchain [pastelID = %s; new_pastelID = %s]"
+                         "with [ticket block = %d txid = %s] is invalid",
+                         royaltyTicket.pastelID, royaltyTicket.newPastelID,
+                         royaltyTicket.GetBlock(), royaltyTicket.m_txid);
+    }
+    if (royaltyTicket.m_nBlock > highBlock) {
+      highBlock = royaltyTicket.m_nBlock;
+      found = index;
+    }
+    ++index;
+  }
+  if (found >= 0) {
+    // 1. check PastelID in Royalty ticket matches PastelID from this ticket
+    if (tickets.at(found).newPastelID != pastelID) {
+      errRet = strprintf("The PastelID [%s] is not matching the PastelID [%s] in Change Royalty ticket with art txid [%s]",
+                         pastelID, tickets.at(found).newPastelID, artTnxId);
+      return false;
+    }
+  } else {
+    auto artTicket = dynamic_cast<const CArtRegTicket*>(pastelTicket.get());
+    if (!artTicket) {
+      errRet = strprintf("The art ticket with this txid [%s] is not in the blockchain or is invalid", artTnxId);
+      return false;
+    }
+
+    // 1. check Artist PastelID in ArtReg ticket matches PastelID from this ticket
+    const std::string& artistPastelID = artTicket->pastelIDs[CArtRegTicket::artistsign];
+    if (artistPastelID != pastelID) {
+      errRet = strprintf("The PastelID [%s] is not matching the Artist's PastelID [%s] in the Art Reg ticket with this txid [%s]",
+                         pastelID, artistPastelID, artTnxId);
+      return false;
+    }
+  }
+
+  return true;
+}
+
+std::string CArtRoyaltyTicket::ToJSON() const noexcept {
+  const json jsonObj {
+    {"txid", m_txid},
+    {"height", m_nBlock},
+    {"ticket", {
+      {"type", GetTicketName()},
+      {"version", GetStoredVersion()},
+      {"pastelID", pastelID},
+      {"new_pastelID", newPastelID},
+      {"art_txid", artTnxId},
+      {"signature", ed_crypto::Hex_Encode(signature.data(), signature.size())}
+    }}
+  };
+  return jsonObj.dump(4);
+}
+
+bool CArtRoyaltyTicket::FindTicketInDb(const std::string& key, CArtRoyaltyTicket& ticket) {
+  ticket.signature = {key.cbegin(), key.cend()};
+  return masterNodeCtrl.masternodeTickets.FindTicket(ticket);
+}
+
+std::string CArtRoyaltyTicket::FindAddressByArtTnxId(const std::string& artTnxId) {
+  std::string address;
+
+  int index{0}, found{-1};
+  unsigned int highBlock{0};
+  const auto tickets = FindAllTicketByArtTnxId(artTnxId);
+  for (const auto& ticket: tickets) {
+    if (ticket.m_nBlock > highBlock) {
+      highBlock = ticket.m_nBlock;
+      found = index;
+    }
+    ++index;
+  }
+  if (found >= 0) {
+    CPastelIDRegTicket newPastelIDticket;
+    if (!CPastelIDRegTicket::FindTicketInDb(tickets.at(found).newPastelID, newPastelIDticket)) {
+      throw std::runtime_error(strprintf(
+            "The new_pastelID [%s] for Change Royalty ticket with art txid [%s] is not in the blockchain or is invalid",
+            tickets.at(found).newPastelID, artTnxId));
+    }
+    address = newPastelIDticket.address;
+  }
+  return address;
+}
+
+std::vector<CArtRoyaltyTicket> CArtRoyaltyTicket::FindAllTicketByPastelID(const std::string& pastelID) {
+  return masterNodeCtrl.masternodeTickets.FindTicketsByMVKey<CArtRoyaltyTicket>(pastelID);
+}
+
+std::vector<CArtRoyaltyTicket> CArtRoyaltyTicket::FindAllTicketByArtTnxId(const std::string& artTnxId) {
+  return masterNodeCtrl.masternodeTickets.FindTicketsByMVKey<CArtRoyaltyTicket>(artTnxId);
 }
 
 // CTakeDownTicket ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
