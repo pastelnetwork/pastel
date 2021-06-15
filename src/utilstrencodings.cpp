@@ -145,9 +145,7 @@ string EncodeAscii85(const char* istr, size_t len) noexcept
         olen = encode_ascii85(reinterpret_cast<const uint8_t *>(istr), isz, obuf, olen);
         if(0 < olen)
         {
-            std::ostringstream ss;
-            std::copy(obuf, obuf+olen, std::ostream_iterator<uint8_t>(ss, ""));
-            retVal = ss.str();
+            retVal.assign(obuf, obuf + olen);
         }
     } while (false);
     return retVal;
@@ -196,8 +194,7 @@ vector<unsigned char> DecodeAscii85(const char* ostr, bool* pfInvalid) noexcept
 string DecodeAscii85(const string& str) noexcept
 {
     vector<unsigned char> vchRet = DecodeAscii85(str.c_str());
-    static constexpr int zero_size = 0;
-    return (vchRet.size() == zero_size) ? string() : string((const char*)&vchRet[0], vchRet.size());
+    return (vchRet.empty()) ? string() : string((const char*)&vchRet[0], vchRet.size());
 }
 
 string EncodeBase64(const unsigned char* pch, size_t len)
