@@ -1365,7 +1365,7 @@ UniValue storagefee(const UniValue& params, bool fHelp) {
     if (!params.empty())
         strCommand = params[0].get_str();
 
-    if (fHelp || ( strCommand != "setfee" && strCommand != "getnetworkfee" && strCommand != "getlocalfee" ))
+    if (fHelp || ( strCommand != "setfee" && strCommand != "getnetworkfee" && strCommand != "getartticketfee" && strCommand != "getlocalfee"))
         throw runtime_error(
 			"storagefee \"command\"...\n"
 			"Set of commands to deal with Storage Fee and related actions\n"
@@ -1374,6 +1374,7 @@ UniValue storagefee(const UniValue& params, bool fHelp) {
 			"\nAvailable commands:\n"
 			"  setfee <n>		- Set storage fee for MN.\n"
 			"  getnetworkfee	- Get Network median storage fee.\n"
+			"  getartticketfee	- Get Network median art ticket fee.\n"
 			"  getlocalfee		- Get local masternode storage fee.\n"
         );
 
@@ -1395,6 +1396,14 @@ UniValue storagefee(const UniValue& params, bool fHelp) {
 
         UniValue mnObj(UniValue::VOBJ);
         mnObj.pushKV("networkfee", nFee);
+        return mnObj;
+    }
+    if (strCommand == "getartticketfee")
+    {
+        CAmount nFee = masterNodeCtrl.GetArtTicketFeePerKB();
+
+        UniValue mnObj(UniValue::VOBJ);
+        mnObj.pushKV("artticketfee", nFee);
         return mnObj;
     }
     if (strCommand == "getlocalfee")
