@@ -243,7 +243,8 @@ bool CPastelTicketProcessor::ValidateIfTicketTransaction(const int nHeight, cons
             if ((ticket_id == TicketID::PastelID ||
                  ticket_id == TicketID::Art ||
                  ticket_id == TicketID::Sell ||
-                 ticket_id == TicketID::Buy) &&
+                 ticket_id == TicketID::Buy ||
+                 ticket_id == TicketID::Royalty) &&
                 i == num - 1) // in these tickets last output is change
                 break;
             // in this tickets last 4 outputs is: change, and payments to 3 MNs
