@@ -1654,7 +1654,7 @@ bool CChangeUsernameTicket::IsValid(std::string& errRet, bool preReg, int depth)
                            signature.data(), signature.size(),
                            pastelID))
     {
-        errRet = strprintf("%s ticket's signature is invalid. PastelID - [%s]", "Username", pastelID);
+        errRet = strprintf("%s ticket's signature is invalid. PastelID - [%s]", GetTicketDescription(TicketID::Username), pastelID);
         return false;
     }
     
@@ -1664,7 +1664,7 @@ bool CChangeUsernameTicket::IsValid(std::string& errRet, bool preReg, int depth)
         (!existingTicket.IsBlock(m_nBlock) || existingTicket.m_txid != m_txid))
     {
         errRet = strprintf("This Username Change Request is already registered in blockchain [Username = %s]"
-                           "[this ticket block = %d txid = %s; found ticket block  = %d txid = %s]",
+                           "[this ticket block = %u txid = %s; found ticket block  = %u txid = %s]",
                            username, existingTicket.GetBlock(), existingTicket.m_txid, m_nBlock, m_txid);
         return false;
     }
@@ -1675,15 +1675,15 @@ bool CChangeUsernameTicket::IsValid(std::string& errRet, bool preReg, int depth)
     if (masterNodeCtrl.masternodeTickets.FindTicketBySecondaryKey(_ticket)) {
         if (m_nBlock - _ticket.m_nBlock <= 24 * 24) {
             // D.2 IF PastelID has changed Username in last 24 hours (~24*24 blocks), do not allow them to change
-            errRet = strprintf("%s ticket is invalid. Already changed in last 24 hours. PastelID - [%s]", "Username", pastelID);
+            errRet = strprintf("%s ticket is invalid. Already changed in last 24 hours. PastelID - [%s]", GetTicketDescription(TicketID::Username), pastelID);
             return false;
         }
     }
 
     // E. Check if address has coins to pay for Username Change Ticket
-    auto fullTicketPrice = TicketPrice(chainHeight);
+    const auto fullTicketPrice = TicketPrice(chainHeight);
     if (pwalletMain->GetBalance() < fullTicketPrice * COIN) {
-        errRet = strprintf("Not enough coins to cover price [%d]", fullTicketPrice);
+        errRet = strprintf("Not enough coins to cover price [%" PRId64 "]", fullTicketPrice);
         return false;
     }
 

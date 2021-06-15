@@ -28,7 +28,7 @@ enum class TicketID : uint8_t {
     Buy,          // Art buy ticket
     Trade,        // Art trade ticket
     Down,
-    Royalty,      // Art royalty ticket
+    Royalty,
     Username,
 
     COUNT         // number of ticket types
