@@ -317,7 +317,7 @@ bool CArtRegTicket::IsValid(bool preReg, int depth) const
         }
     
         // A.2 validate that address has coins to pay for registration - 10PSL
-        auto fullTicketPrice = TicketPrice(chainHeight); //10% of storage fee is paid by the 'artist' and this ticket is created by MN
+        const auto fullTicketPrice = TicketPrice(chainHeight); //10% of storage fee is paid by the 'artist' and this ticket is created by MN
         if (pwalletMain->GetBalance() < fullTicketPrice*COIN)
         {
           throw std::runtime_error(strprintf("Not enough coins to cover price [%d]", fullTicketPrice));
@@ -542,7 +542,8 @@ bool common_validation(const T& ticket, bool preReg, const std::string& strTnxId
         // A. Validate that address has coins to pay for registration - 10PSL + fee
         if (pwalletMain->GetBalance() < ticketPrice*COIN)
         {
-          throw std::runtime_error(strprintf("Not enough coins to cover price [%d]", ticketPrice));
+            errRet = strprintf("Not enough coins to cover price [%" PRId64 "]", ticketPrice);
+            return false;
         }
     }
     
