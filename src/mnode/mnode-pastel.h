@@ -37,7 +37,7 @@ public:
     
     std::string ToJSON() const noexcept override;
     std::string ToStr() const noexcept override;
-    bool IsValid(std::string& errRet, bool preReg, int depth) const override;
+    bool IsValid(bool preReg, int depth) const override;
     
     CAmount TicketPrice(const unsigned int nHeight) const noexcept override { return nHeight<=10000? 10: 1000; }
     
@@ -181,7 +181,7 @@ public:
     
     std::string ToJSON() const noexcept override;
     std::string ToStr() const noexcept override;
-    bool IsValid(std::string& errRet, bool preReg, int depth) const override;
+    bool IsValid(bool preReg, int depth) const override;
     CAmount TicketPrice(const unsigned int nHeight) const noexcept override { return 10; }
     
 	void SerializationOp(CDataStream& s, const SERIALIZE_ACTION ser_action) override
@@ -209,7 +209,10 @@ public:
         READWRITE(m_txid);
         READWRITE(m_nBlock);
 	}
-	
+
+    std::string GetRoyaltyPayeePastelID();
+    std::string GetRoyaltyPayeeAddress();
+
     static CArtRegTicket Create(std::string _ticket, const std::string& signatures,
                                 std::string _pastelID, const SecureString& strKeyPass,
                                 std::string _keyOne, std::string _keyTwo,
@@ -263,7 +266,7 @@ public:
     
     std::string ToJSON() const noexcept override;
     std::string ToStr() const noexcept override;
-    bool IsValid(std::string& errRet, bool preReg, int depth) const override;
+    bool IsValid(bool preReg, int depth) const override;
     CAmount TicketPrice(const unsigned int nHeight) const noexcept override { return 10; }
     CAmount GetStorageFee() const noexcept override { return storageFee; }
 	
@@ -344,7 +347,7 @@ public:
     
     std::string ToJSON() const noexcept override;
     std::string ToStr() const noexcept override;
-    bool IsValid(std::string& errRet, bool preReg, int depth) const override;
+    bool IsValid(bool preReg, int depth) const override;
     CAmount TicketPrice(const unsigned int nHeight) const noexcept override { return askedPrice/50; }
     
     void SerializationOp(CDataStream& s, const SERIALIZE_ACTION ser_action) override
@@ -416,7 +419,7 @@ public:
     
     std::string ToJSON() const noexcept override;
     std::string ToStr() const noexcept override;
-    bool IsValid(std::string& errRet, bool preReg, int depth) const override;
+    bool IsValid(bool preReg, int depth) const override;
     
     void SerializationOp(CDataStream& s, const SERIALIZE_ACTION ser_action) override
     {
@@ -490,7 +493,7 @@ public:
     
     std::string ToJSON() const noexcept override;
     std::string ToStr() const noexcept override;
-    bool IsValid(std::string& errRet, bool preReg, int depth) const override;
+    bool IsValid(bool preReg, int depth) const override;
     CAmount TicketPrice(const unsigned int nHeight) const noexcept override { return 10; }
     
     void SerializationOp(CDataStream& s, const SERIALIZE_ACTION ser_action) override
@@ -567,7 +570,7 @@ public:
 
   std::string ToJSON() const noexcept final;
   std::string ToStr() const noexcept final;
-  bool IsValid(std::string& errRet, bool preReg, int depth) const final;
+  bool IsValid(bool preReg, int depth) const final;
   CAmount TicketPrice(const unsigned int nHeight) const noexcept final { return 10; }
 
   void SerializationOp(CDataStream& s, const SERIALIZE_ACTION ser_action) final {
@@ -589,7 +592,6 @@ public:
   static CArtRoyaltyTicket Create(std::string _pastelID, std::string _newPastelID,
                                   std::string _artTnxId, const SecureString& strKeyPass);
   static bool FindTicketInDb(const std::string& key, CArtRoyaltyTicket& ticket);
-  static std::string FindAddressByArtTnxId(const std::string& artTnxId);
 
   static std::vector<CArtRoyaltyTicket> FindAllTicketByPastelID(const std::string& pastelID);
   static std::vector<CArtRoyaltyTicket> FindAllTicketByArtTnxId(const std::string& artTnxId);
@@ -607,7 +609,7 @@ public:
 
     std::string ToJSON() const noexcept override { return "{}"; }
     std::string ToStr() const noexcept override { return ""; }
-    bool IsValid(std::string& errRet, bool preReg, int depth) const override { return false; }
+    bool IsValid(bool preReg, int depth) const override { return false; }
     std::string KeyOne() const noexcept override { return ""; }
     void SetKeyOne(std::string val) override {}
 

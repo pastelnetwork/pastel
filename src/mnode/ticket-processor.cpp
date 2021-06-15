@@ -189,7 +189,7 @@ bool CPastelTicketProcessor::ValidateIfTicketTransaction(const int nHeight, cons
             data_stream >> *ticket;
             ticket->SetTxId(std::move(ticketBlockTxIdStr));
             ticket->SetBlock(nHeight);
-            bOk = ticket->IsValid(error_ret, false, 0);
+            bOk = ticket->IsValid(false, 0);
             expectedTicketFee = ticket->TicketPrice(nHeight) * COIN;
             storageFee = ticket->GetStorageFee();
             if (ticket_id == TicketID::Trade) {
@@ -212,7 +212,7 @@ bool CPastelTicketProcessor::ValidateIfTicketTransaction(const int nHeight, cons
                 }
                 if (!artRegTicket->strGreenAddress.empty()) {
                   hasGreenFee = true;
-                  greenFee = tradePrice * 2 / 100;
+                  greenFee = tradePrice * GREEN_NFT_FEE_PERCENT / 100;
                 }
                 tradePrice -= (royaltyFee + greenFee);
             }
@@ -249,27 +249,22 @@ bool CPastelTicketProcessor::ValidateIfTicketTransaction(const int nHeight, cons
             // in this tickets last 4 outputs is: change, and payments to 3 MNs
             if (ticket_id == TicketID::Activate)
             { 
-                if (i == num - 4)
-                    continue;
-                if (i == num - 3)
-                {
-                    if (mn1Fee != tx.vout[i].nValue)
-                    {
-                        bOk = false;
-                        error_ret = strprintf("Wrong main MN fee: expected - %d, real - %d", mn1Fee, tx.vout[i].nValue);
-                        break;
-                    }
-                    continue;
-                }
-                if (i >= num - 2)
-                {
-                    if (mn23Fee != tx.vout[i].nValue)
-                    {
-                        bOk = false;
-                        error_ret = strprintf("Wrong MN%d fee: expected - %d, real - %d", i - num - 4, mn23Fee, tx.vout[i].nValue);
-                        break;
-                    }
-                    continue;
+                if (i == num - 4) {
+                  continue;
+                } else if (i == num - 3) {
+                  if (mn1Fee != tx.vout[i].nValue) {
+                    bOk = false;
+                    error_ret = strprintf("Wrong main MN fee: expected - %" PRId64 ", real - %" PRId64, mn1Fee, tx.vout[i].nValue);
+                    break;
+                  }
+                  continue;
+                } else if (i >= num - 2) {
+                  if (mn23Fee != tx.vout[i].nValue) {
+                    bOk = false;
+                    error_ret = strprintf("Wrong MN%d fee: expected - %" PRId64 ", real - %" PRId64, i - num - 4, mn23Fee, tx.vout[i].nValue);
+                    break;
+                  }
+                  continue;
                 }
             }
             //in this tickets last 2 outputs is: change, and payment to the seller
@@ -282,21 +277,21 @@ bool CPastelTicketProcessor::ValidateIfTicketTransaction(const int nHeight, cons
                                  hasRoyaltyFee || hasGreenFee ? num - 2 : num - 1)) {
                   if (tradePrice != tx.vout[i].nValue) {
                     bOk = false;
-                    error_ret = strprintf("Wrong payment to the seller: expected - %d, real - %d", tradePrice, tx.vout[i].nValue);
+                    error_ret = strprintf("Wrong payment to the seller: expected - %" PRId64 ", real - %" PRId64, tradePrice, tx.vout[i].nValue);
                     break;
                   }
                   continue;
                 } else if (hasRoyaltyFee && i == (hasGreenFee ? num - 2 : num - 1)) {
                   if (royaltyFee != tx.vout[i].nValue) {
                     bOk = false;
-                    error_ret = strprintf("Wrong payment to the royalty owner: expected - %d, real - %d", royaltyFee, tx.vout[i].nValue);
+                    error_ret = strprintf("Wrong payment to the royalty owner: expected - %" PRId64 ", real - %" PRId64, royaltyFee, tx.vout[i].nValue);
                     break;
                   }
                   continue;
                 } else if (hasGreenFee && i == num - 1) {
                   if (greenFee != tx.vout[i].nValue) {
                     bOk = false;
-                    error_ret = strprintf("Wrong payment to the green NFT: expected - %d, real - %d", greenFee, tx.vout[i].nValue);
+                    error_ret = strprintf("Wrong payment to the green NFT: expected - %" PRId64 ", real - %" PRId64, greenFee, tx.vout[i].nValue);
                     break;
                   }
                   continue;
@@ -306,10 +301,9 @@ bool CPastelTicketProcessor::ValidateIfTicketTransaction(const int nHeight, cons
             ticketFee += tx.vout[i].nValue;
         }
 
-        if (expectedTicketFee != ticketFee)
-        {
-            bOk = false;
-            error_ret = strprintf("Wrong ticket fee: expected - %d, real - %d", expectedTicketFee, ticketFee);
+        if (expectedTicketFee != ticketFee) {
+          bOk = false;
+          error_ret = strprintf("Wrong ticket fee: expected - %" PRId64 ", real - %" PRId64, expectedTicketFee, ticketFee);
         }
     }
 
@@ -808,8 +802,15 @@ std::string CPastelTicketProcessor::SendTicket(const CPastelTicket& ticket)
 {
     std::string error;
 
-    if (!ticket.IsValid(error, true, 0))
-        throw std::runtime_error(strprintf("Ticket (%s) is invalid - %s", ticket.GetTicketName(), error));
+    try {
+      ticket.IsValid(true, 0);
+    }
+    catch (const std::exception& ex) {
+      throw std::runtime_error(strprintf("Ticket (%s) is invalid - %s", ticket.GetTicketName(), ex.what()));
+    }
+    catch (...) {
+      throw std::runtime_error(strprintf("Ticket (%s) is invalid - Unknown exception", ticket.GetTicketName()));
+    }
 
     std::vector<CTxOut> extraOutputs;
     const CAmount extraAmount = ticket.GetExtraOutputs(extraOutputs);

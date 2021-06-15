@@ -6,6 +6,8 @@
 
 #include "enum_util.h"
 
+constexpr uint16_t GREEN_NFT_FEE_PERCENT = 2;
+
 // ticket names
 constexpr auto TICKET_NAME_ID_REG       = "pastelid";  // id registration ticket
 constexpr auto TICKET_NAME_ART_REG      = "art-reg";   // art registration ticket
@@ -13,8 +15,8 @@ constexpr auto TICKET_NAME_ART_ACT      = "art-act";   // art activation ticket
 constexpr auto TICKET_NAME_ART_SELL     = "art-sell";  // art sell ticket
 constexpr auto TICKET_NAME_ART_BUY      = "art-buy";   // art buy ticket
 constexpr auto TICKET_NAME_ART_TRADE    = "art-trade"; // art trade ticket
-constexpr auto TICKET_NAME_ART_ROYALTY  = "art-royalty"; // art royalty ticket
 constexpr auto TICKET_NAME_TAKE_DOWN    = "take-down";
+constexpr auto TICKET_NAME_ART_ROYALTY  = "art-royalty"; // art royalty ticket
 
 /**
  * Ticket Type IDs.
@@ -26,8 +28,8 @@ enum class TicketID : uint8_t {
     Sell,         // Art sell ticket
     Buy,          // Art buy ticket
     Trade,        // Art trade ticket
-    Royalty,      // Art royalty ticket
     Down,
+    Royalty,      // Art royalty ticket
 
     COUNT         // number of ticket types
 };
@@ -55,8 +57,8 @@ static constexpr std::array<TicketInfo, to_integral_type<TicketID>(TicketID::COU
         { TicketID::Sell,     "Art Sell",               TICKET_NAME_ART_SELL,    0,     "artsel" },
         { TicketID::Buy,      "Art Buy",                TICKET_NAME_ART_BUY,     0,     "artbuy" },
         { TicketID::Trade,    "Art Trade",              TICKET_NAME_ART_TRADE,   0,     "arttrd" },
-        { TicketID::Royalty,  "Art Royalty",            TICKET_NAME_ART_ROYALTY, 0,     "artrty" },
         { TicketID::Down,     "Take Down",              TICKET_NAME_TAKE_DOWN,   0,     "takedn" },
+        { TicketID::Royalty,  "Art Royalty",            TICKET_NAME_ART_ROYALTY, 0,     "artrty" },
     }};
 
 inline std::string GetTicketDescription(const TicketID id) noexcept
