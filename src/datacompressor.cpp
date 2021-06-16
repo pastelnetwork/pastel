@@ -44,7 +44,7 @@ int CDataCompressor::Decompress(const std::vector<unsigned char> &in)
         (void*)&data[0],
         est_decomp_size,
         (void*) in.data(),
-        data.size()
+        in.size()
     );
 
     // TODO : get error message
