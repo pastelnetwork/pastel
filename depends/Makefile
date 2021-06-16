@@ -55,6 +55,10 @@ ifeq ($(host_os),)
 host_os=$(full_host_os)
 endif
 
+ifeq ($(build_os),$(host_os))
+host_toolchain:=
+endif
+
 $(host_arch)_$(host_os)_prefix=$(BASEDIR)/$(host)
 $(host_arch)_$(host_os)_host=$(host)
 host_prefix=$($(host_arch)_$(host_os)_prefix)

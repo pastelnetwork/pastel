@@ -5,17 +5,26 @@ executors:
     docker:
       - image: akobrin/pastel:0.0.1
 jobs:
-  build_and_test:
+  build_and_test_linux:
     executor: pastel-builder
     working_directory: /pastel
     resource_class: xlarge
     steps:
       - checkout
       - run:
-          name: Building Pastel Core
+          name: Building Pastel Core (Linux version)
           no_output_timeout: 30m
           command: |
             ./build.sh -j16
+      - store_artifacts:
+          path: /pastel/src/pasteld
+          destination: /linux/pasteld
+      - store_artifacts:
+          path: /pastel/src/pastel-cli
+          destination: /linux/pastel-cli
+      - store_artifacts:
+          path: /pastel/src/pastel-tx
+          destination: /linux/pastel-tx
       - run:
           name: Static code analysis
           working_directory: /pastel
@@ -68,7 +77,50 @@ jobs:
           no_output_timeout: 30m
           command: |
             ./full_test_suite.py rpc-ext
+  build_windows:
+    executor: pastel-builder
+    working_directory: /pastel
+    resource_class: xlarge
+    steps:
+      - checkout
+      - run:
+          name: Building Pastel Core (Windows version)
+          no_output_timeout: 30m
+          command: |
+            HOST=x86_64-w64-mingw32 ./build.sh -j16
+      - store_artifacts:
+          path: /pastel/src/pasteld.exe
+          destination: /windows/pasteld.exe
+      - store_artifacts:
+          path: /pastel/src/pastel-cli.exe
+          destination: /windows/pastel-cli.exe
+      - store_artifacts:
+          path: /pastel/src/pastel-tx.exe
+          destination: /windows/pastel-tx.exe
+  build_macOS:
+    executor: pastel-builder
+    working_directory: /pastel
+    resource_class: xlarge
+    steps:
+      - checkout
+      - run:
+          name: Building Pastel Core (macOS version)
+          no_output_timeout: 30m
+          command: |
+            HOST=x86_64-apple-darwin14 ./build.sh -j16
+      - store_artifacts:
+          path: /pastel/src/pasteld
+          destination: /macOS/pasteld
+      - store_artifacts:
+          path: /pastel/src/pastel-cli
+          destination: /macOS/pastel-cli
+      - store_artifacts:
+          path: /pastel/src/pastel-tx.exe
+          destination: /macOS/pastel-tx
+
 workflows:
     build_and_test:
       jobs:
-        - build_and_test
+        - build_and_test_linux
+        - build_windows
+        - build_macOS

@@ -312,7 +312,7 @@ UniValue masternode(const UniValue& params, bool fHelp)
             throw JSONRPCError(RPC_INVALID_PARAMETER, "Too many parameters");
 
         if (params.size() == 1)
-            return masterNodeCtrl.masternodeManager.size();
+            return static_cast<uint64_t>(masterNodeCtrl.masternodeManager.size());
 
         std::string strMode = params[1].get_str();
 
@@ -1506,9 +1506,9 @@ static UniValue getTickets(const std::string& key, T2 key2 = "", Lambda otherFun
 #define FAKE_TICKET
 UniValue tickets(const UniValue& params, bool fHelp) {
 #ifdef FAKE_TICKET
-    RPC_CMD_PARSER(TICKETS, params, Register, find, list, get, makefaketicket, sendfaketicket);
+    RPC_CMD_PARSER(TICKETS, params, Register, find, list, get, makefaketicket, sendfaketicket, tools);
 #else
-    RPC_CMD_PARSER(TICKETS, params, Register, find, list, get);
+    RPC_CMD_PARSER(TICKETS, params, Register, find, list, get, tools);
 #endif	
 	if (fHelp || !TICKETS.IsCmdSupported())
 		throw runtime_error(
@@ -2195,7 +2195,55 @@ As json rpc
         obj.read(CPastelTicketProcessor::GetTicketJSON(txid));
         return obj;
 	}
-	
+    
+    if (TICKETS.IsCmd(RPC_CMD_TICKETS::tools)) {
+        
+        RPC_CMD_PARSER2(LIST, params, printtradingchain, getregbytrade);
+        
+        UniValue obj(UniValue::VARR);
+        switch (LIST.cmd()) {
+            
+            case RPC_CMD_LIST::printtradingchain: {
+                std::string txid;
+                if (params.size() > 2) {
+                    txid = params[2].get_str();
+        
+                    UniValue resultArray(UniValue::VARR);
+        
+                    std::vector<std::unique_ptr<CPastelTicket> > chain;
+                    std::string errRet;
+                    if (CPastelTicketProcessor::WalkBackTradingChain(txid, chain, false, errRet)) {
+                        for (auto &t : chain) {
+                            if (t) {
+                                UniValue obj(UniValue::VOBJ);
+                                obj.read(t->ToJSON());
+                                resultArray.push_back(std::move(obj));
+                            }
+                        }
+                    }
+                    return resultArray;
+                }
+            }
+            case RPC_CMD_LIST::getregbytrade: {
+                std::string txid;
+                if (params.size() > 2) {
+                    txid = params[2].get_str();
+    
+                    UniValue obj(UniValue::VOBJ);
+    
+                    std::vector<std::unique_ptr<CPastelTicket> > chain;
+                    std::string errRet;
+                    if (CPastelTicketProcessor::WalkBackTradingChain(txid, chain, true, errRet)) {
+                        if (!chain.empty()) {
+                            obj.read(chain.front()->ToJSON());
+                        }
+                    }
+                    return obj;
+                }
+            }
+        }
+    }
+    
 #ifdef FAKE_TICKET
     if (TICKETS.IsCmd(RPC_CMD_TICKETS::makefaketicket) || TICKETS.IsCmd(RPC_CMD_TICKETS::sendfaketicket)) {
             const bool bSend = TICKETS.IsCmd(RPC_CMD_TICKETS::sendfaketicket);
@@ -2482,7 +2530,7 @@ static const CRPCCommand commands[] =
     { "mnode",               "masternodelist",         &masternodelist,         true  },
     { "mnode",               "masternodebroadcast",    &masternodebroadcast,    true  },
     { "mnode",               "mnsync",                 &mnsync,                 true  },
-//    { "mnode",               "governance",             &governance,             true  },
+    { "mnode",               "governance",             &governance,             true  },
     { "mnode",               "pastelid",               &pastelid,               true  },
     { "mnode",               "storagefee",             &storagefee,             true  },
     { "mnode",               "chaindata",              &chaindata,              true  },

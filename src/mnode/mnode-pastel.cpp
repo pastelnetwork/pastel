@@ -176,7 +176,9 @@ std::string CPastelIDRegTicket::ToJSON() const noexcept
         {"height", m_nBlock},
         {"ticket", {
 			{"type", GetTicketName()},
+			{"version", GetStoredVersion()},
 			{"pastelID", pastelID},
+			{"pq_key", pq_key},
 			{"address", address},
 			{"timeStamp", std::to_string(m_nTimestamp)},
 			{"signature", ed_crypto::Hex_Encode(pslid_signature.data(), pslid_signature.size())},
@@ -215,6 +217,19 @@ std::vector<CPastelIDRegTicket> CPastelIDRegTicket::FindAllTicketByPastelAddress
 }
 
 // CArtRegTicket ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+/* Current art_ticket - 8 Items!!!!
+ {
+  "version": integer          // 1
+  "author": bytes,            // PastelID of the author (artist)
+  "blocknum": integer,        // block number when the ticket was created - this is to map the ticket to the MNs that should process it
+  "block_hash": bytes         // hash of the top block when the ticket was created - this is to map the ticket to the MNs that should process it
+  "copies": integer,          // number of copies
+  "royalty": float,           // (not yet supported by cNode) how much artist should get on all future resales
+  "green": string,            // address for Green NFT payment (not yet supported by cNode)
+
+  "app_ticket": ...
+  }
+ */
 CArtRegTicket CArtRegTicket::Create(
         std::string _ticket, const std::string& signatures,
         std::string _pastelID, const SecureString& strKeyPass,
@@ -225,7 +240,7 @@ CArtRegTicket CArtRegTicket::Create(
     
     //Art Ticket
     auto jsonTicketObj = json::parse(ed_crypto::Base64_Decode(ticket.artTicket));
-    if (jsonTicketObj.size() != 7){
+    if (jsonTicketObj.size() != 8){
         throw std::runtime_error("Art ticket json is incorrect");
     }
     if (jsonTicketObj["version"] != 1) {
@@ -233,6 +248,8 @@ CArtRegTicket CArtRegTicket::Create(
     }
     ticket.artistHeight = jsonTicketObj["blocknum"];
     ticket.totalCopies = jsonTicketObj["copies"];
+    ticket.nRoyalty = jsonTicketObj["royalty"];
+    ticket.strGreenAddress = jsonTicketObj["green"];
     
     //Artist's and MN2/3's signatures
     auto jsonSignaturesObj = json::parse(signatures);
@@ -413,6 +430,21 @@ bool CArtRegTicket::IsValid(std::string& errRet, bool preReg, int depth) const
             return false;
         }
     }
+    
+    if (nRoyalty > 20)
+    {
+        errRet = strprintf("Royalty can't be %hu per cent, Max is 20 per cent", nRoyalty);
+        return false;
+    }
+    if (!strGreenAddress.empty()) {
+        KeyIO keyIO(Params());
+        const auto dest = keyIO.DecodeDestination(strGreenAddress);
+        if (!IsValidDestination(dest)) {
+            errRet = strprintf("The Green NFT address [%s] is invalid",
+                               strGreenAddress);
+            return false;
+        }
+    }
     return true;
 }
 
@@ -425,6 +457,7 @@ std::string CArtRegTicket::ToJSON() const noexcept
         {"ticket", {
             {"type", GetTicketName()},
             {"art_ticket", artTicket},
+            {"version", GetStoredVersion()},
             {"signatures",{
                 {"artist", {
                     {pastelIDs[artistsign], ed_crypto::Base64_Encode(ticketSignatures[artistsign].data(), ticketSignatures[artistsign].size())}
@@ -444,6 +477,8 @@ std::string CArtRegTicket::ToJSON() const noexcept
             {"artist_height", artistHeight},
             {"total_copies", totalCopies},
             {"storage_fee", storageFee},
+            {"royalty", nRoyalty},
+            {"is_green", strGreenAddress},
         }}
 	};
     
@@ -709,6 +744,7 @@ std::string CArtActivateTicket::ToJSON() const noexcept
 			{"height", m_nBlock},
 			{"ticket", {
 				{"type", GetTicketName()},
+				{"version", GetStoredVersion()},
 				{"pastelID", pastelID},
 				{"reg_txid", regTicketTnxId},
 				{"artist_height", artistHeight},
@@ -940,15 +976,16 @@ std::string CArtSellTicket::ToJSON() const noexcept
             {"txid", m_txid},
             {"height", m_nBlock},
             {"ticket", {
-                             {"type", GetTicketName()},
-                             {"pastelID", pastelID},
-                             {"art_txid", artTnxId},
-                             {"copy_number", copyNumber},
-                             {"asked_price", askedPrice},
-                             {"valid_after", activeAfter},
-                             {"valid_before", activeBefore},
-                             {"signature", ed_crypto::Hex_Encode(signature.data(), signature.size())}
-                     }}
+                {"type", GetTicketName()},
+                {"version", GetStoredVersion()},
+                {"pastelID", pastelID},
+                {"art_txid", artTnxId},
+                {"copy_number", copyNumber},
+                {"asked_price", askedPrice},
+                {"valid_after", activeAfter},
+                {"valid_before", activeBefore},
+                {"signature", ed_crypto::Hex_Encode(signature.data(), signature.size())}
+            }}
     };
     return jsonObj.dump(4);
 }
@@ -1091,12 +1128,13 @@ std::string CArtBuyTicket::ToJSON() const noexcept
             {"txid", m_txid},
             {"height", m_nBlock},
             {"ticket", {
-                             {"type", GetTicketName()},
-                             {"pastelID", pastelID},
-                             {"sell_txid", sellTnxId},
-                             {"price", price},
-                             {"signature", ed_crypto::Hex_Encode(signature.data(), signature.size())}
-                     }}
+                {"type", GetTicketName()},
+                {"version", GetStoredVersion()},
+                {"pastelID", pastelID},
+                {"sell_txid", sellTnxId},
+                {"price", price},
+                {"signature", ed_crypto::Hex_Encode(signature.data(), signature.size())}
+            }}
     };
     return jsonObj.dump(4);
 }
@@ -1238,8 +1276,6 @@ CAmount CArtTradeTicket::GetExtraOutputs(std::vector<CTxOut>& outputs) const
     if (!artSellTicket)
         throw std::runtime_error(strprintf("The Art Sell ticket with this txid [%s] is not in the blockchain", sellTnxId));
 
-    CAmount nPriceAmount = artSellTicket->askedPrice * COIN;
-    
     auto sellerPastelID = artSellTicket->pastelID;
     CPastelIDRegTicket sellerPastelIDticket;
     if (!CPastelIDRegTicket::FindTicketInDb(sellerPastelID, sellerPastelIDticket))
@@ -1247,17 +1283,72 @@ CAmount CArtTradeTicket::GetExtraOutputs(std::vector<CTxOut>& outputs) const
                 "The PastelID [%s] from sell ticket with this txid [%s] is not in the blockchain or is invalid",
                 sellerPastelID, sellTnxId));
     
+    CAmount nPriceAmount = artSellTicket->askedPrice * COIN;
+    CAmount nRoyaltyAmount = 0;
+    CAmount nGreenNFTAmount = 0;
+    
+    auto artTicket = FindArtRegTicket();
+    auto artRegTicket = dynamic_cast<CArtRegTicket*>(artTicket.get());
+    if (!artRegTicket)
+    {
+        throw std::runtime_error(strprintf(
+                "Can't find Art Registration ticket for this Trade ticket [txid=%s]",
+                GetTxId()));
+    }
+    
+    std::string strRoyaltyAddress;
+    if (artRegTicket->nRoyalty > 0)
+    {
+        nRoyaltyAmount = nPriceAmount*artRegTicket->nRoyalty/100;
+        nPriceAmount -= nRoyaltyAmount;
+        
+        //HERE -> Search if there is RoyaltyChange ticket
+    
+        CPastelIDRegTicket artistPastelIDticket;
+        if (!CPastelIDRegTicket::FindTicketInDb(artRegTicket->pastelIDs[CArtRegTicket::artistsign], artistPastelIDticket))
+            throw std::runtime_error(strprintf(
+                    "The Artist PastelID [%s] from Art Registration ticket with this txid [%s] is not in the blockchain or is invalid",
+                    artRegTicket->pastelIDs[CArtRegTicket::artistsign], artRegTicket->GetTxId()));
+        
+        strRoyaltyAddress = artistPastelIDticket.address;
+    }
+    
+    if (!artRegTicket->strGreenAddress.empty())
+    {
+        nGreenNFTAmount = nPriceAmount*2/100;
+        nPriceAmount -= nGreenNFTAmount;
+    }
+    
     KeyIO keyIO(Params());
-    const auto dest = keyIO.DecodeDestination(sellerPastelIDticket.address);
-    if (!IsValidDestination(dest))
+    const auto addOutput = [&](const std::string& strAddress, const CAmount nAmount) -> bool
+    {
+        const auto dest = keyIO.DecodeDestination(strAddress);
+        if (!IsValidDestination(dest))
+            return false;
+        
+        CScript scriptPubKey = GetScriptForDestination(dest);
+        CTxOut out(nAmount, scriptPubKey);
+        outputs.push_back(out);
+        return true;
+    };
+    
+    if (!addOutput(sellerPastelIDticket.address, nPriceAmount)) {
         throw std::runtime_error(
                 strprintf("The PastelID [%s] from sell ticket with this txid [%s] has invalid address",
                           sellerPastelID, sellTnxId));
+    }
     
-    CScript scriptPubKey = GetScriptForDestination(dest);
+    if (!strRoyaltyAddress.empty() && !addOutput(sellerPastelIDticket.address, nRoyaltyAmount)) {
+        throw std::runtime_error(
+                strprintf("The PastelID [%s] from sell ticket with this txid [%s] has invalid address",
+                          sellerPastelID, sellTnxId));
+    }
     
-    CTxOut out(nPriceAmount, scriptPubKey);
-    outputs.push_back(out);
+    if (!artRegTicket->strGreenAddress.empty() && !addOutput(artRegTicket->strGreenAddress, nGreenNFTAmount)) {
+        throw std::runtime_error(
+                strprintf("The PastelID [%s] from sell ticket with this txid [%s] has invalid address",
+                          sellerPastelID, sellTnxId));
+    }
     
     return nPriceAmount;
 }
@@ -1269,13 +1360,14 @@ std::string CArtTradeTicket::ToJSON() const noexcept
             {"txid", m_txid},
             {"height", m_nBlock},
             {"ticket", {
-                             {"type", GetTicketName()},
-                             {"pastelID", pastelID},
-                             {"sell_txid", sellTnxId},
-                             {"buy_txid", buyTnxId},
-                             {"art_txid", artTnxId},
-                             {"signature", ed_crypto::Hex_Encode(signature.data(), signature.size())}
-                     }}
+                {"type", GetTicketName()},
+                {"version", GetStoredVersion()},
+                {"pastelID", pastelID},
+                {"sell_txid", sellTnxId},
+                {"buy_txid", buyTnxId},
+                {"art_txid", artTnxId},
+                {"signature", ed_crypto::Hex_Encode(signature.data(), signature.size())}
+            }}
     };
     return jsonObj.dump(4);
 }
@@ -1322,6 +1414,26 @@ bool CArtTradeTicket::GetTradeTicketByBuyTicket(const std::string& _buyTnxId, CA
 {
     ticket.buyTnxId = _buyTnxId;
     return masterNodeCtrl.masternodeTickets.FindTicket(ticket);
+}
+
+std::unique_ptr<CPastelTicket> CArtTradeTicket::FindArtRegTicket() const
+{
+    std::vector< std::unique_ptr<CPastelTicket> > chain;
+    std::string errRet;
+    if (!CPastelTicketProcessor::WalkBackTradingChain(artTnxId, chain, true, errRet))
+    {
+        throw std::runtime_error(errRet);
+    }
+    
+    auto artRegTicket = dynamic_cast<CArtRegTicket*>(chain.front().get());
+    if (!artRegTicket)
+    {
+        throw std::runtime_error(
+                strprintf("This is not an Art Registration ticket [txid=%s]",
+                          chain.front()->GetTxId()));
+    }
+    
+    return std::move(chain.front());
 }
 
 // CTakeDownTicket ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

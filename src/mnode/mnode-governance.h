@@ -53,8 +53,8 @@ public:
         CHashWriter ss(SER_GETHASH, PROTOCOL_VERSION);
         ss << vinMasternode.prevout;
         ss << ticketId;
-        ss << nVoteBlockHeight;
-        ss << bVote;
+        //ss << nVoteBlockHeight; -> removed from Sign()
+        //ss << bVote; -> removed from Sign()
         return ss.GetHash();
     }
 
@@ -137,7 +137,7 @@ public:
     bool VoteOpen();
     bool AddVote(CGovernanceVote& voteNew, std::string& strErrorRet);
     bool IsWinner(int height);
-    bool IsPayed() {return nAmountPaid >= nAmountToPay;}
+    bool IsPaid() {return nAmountPaid >= nAmountToPay;}
 
     uint256 GetHash() const;
 
