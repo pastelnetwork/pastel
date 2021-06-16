@@ -196,8 +196,26 @@ bool CPastelTicketProcessor::ValidateIfTicketTransaction(const int nHeight, cons
             bOk = ticket->IsValid(error_ret, false, 0);
             expectedTicketFee = ticket->TicketPrice(nHeight) * COIN;
             storageFee = ticket->GetStorageFee();
-            if (ticket_id == TicketID::Trade)
-                tradePrice = dynamic_cast<CArtTradeTicket*>(ticket.get())->price * COIN;
+            if (ticket_id == TicketID::Trade) {
+                auto trade_ticket = dynamic_cast<CArtTradeTicket *>(ticket.get());
+                if (!trade_ticket)
+                    throw std::runtime_error("Invalid Art Trade ticket");
+                tradePrice = trade_ticket->price * COIN;
+
+                auto artTicket = trade_ticket->FindArtRegTicket();
+                auto artRegTicket = dynamic_cast<CArtRegTicket*>(artTicket.get());
+                if (artRegTicket)
+                {
+                    if (artRegTicket->nRoyalty > 0)
+                    {
+                        tradePrice += tradePrice*artRegTicket->nRoyalty/100;
+                    }
+                    if (!artRegTicket->strGreenAddress.empty())
+                    {
+                        tradePrice += tradePrice*2/100;
+                    }
+                }
+            }
         }
     }
     catch (const std::exception& ex)
@@ -256,7 +274,7 @@ bool CPastelTicketProcessor::ValidateIfTicketTransaction(const int nHeight, cons
             }
             //in this tickets last 2 outputs is: change, and payment to the seller
             if (ticket_id == TicketID::Trade)
-            { 
+            {
                 if (i == num - 2)
                     continue;
                 if (i == num - 1)
@@ -689,6 +707,86 @@ std::string CPastelTicketProcessor::ListFilterTradeTickets(const short filter) c
                 return false; //don't skip sold
             return true;
         });
+}
+
+/*static*/ bool CPastelTicketProcessor::WalkBackTradingChain(
+        const std::string& sTxId,
+        std::vector< std::unique_ptr<CPastelTicket> >& chain,
+        bool shortPath,
+        std::string& errRet) noexcept
+{
+    std::unique_ptr<CPastelTicket> pastelTicket;
+    
+    uint256 txid;
+    txid.SetHex(sTxId);
+    //  Get ticket pointed by artTnxId. This is either Activation or Trade tickets (Sell, Buy, Trade)
+    try
+    {
+        pastelTicket = CPastelTicketProcessor::GetTicket(txid);
+    }
+    catch ([[maybe_unused]] std::runtime_error& ex)
+    {
+        errRet = strprintf("Ticket [txid=%s] is not in the blockchain.", sTxId);
+        return false;
+    }
+    
+    bool bOk = false;
+    do {
+        if (pastelTicket->ID() == TicketID::Trade) {
+            auto tradeTicket = dynamic_cast<CArtTradeTicket *>(pastelTicket.get());
+            if (!tradeTicket) {
+                errRet = strprintf("The Trade ticket [txid=%s] referred by this ticket [txid=%s] is invalid",
+                                   pastelTicket->GetTxId(), sTxId);
+                break;
+            }
+            if (!WalkBackTradingChain(shortPath ? tradeTicket->artTnxId : tradeTicket->buyTnxId, chain, shortPath,
+                                      errRet))
+                break;
+        } else if (pastelTicket->ID() == TicketID::Buy) {
+            auto tradeTicket = dynamic_cast<CArtBuyTicket *>(pastelTicket.get());
+            if (!tradeTicket) {
+                errRet = strprintf("The Buy ticket [txid=%s] referred by this ticket [txid=%s] is invalid",
+                                   pastelTicket->GetTxId(), sTxId);
+                break;
+            }
+            if (!WalkBackTradingChain(tradeTicket->sellTnxId, chain, shortPath, errRet))
+                break;
+        } else if (pastelTicket->ID() == TicketID::Sell) {
+            auto tradeTicket = dynamic_cast<CArtSellTicket *>(pastelTicket.get());
+            if (!tradeTicket) {
+                errRet = strprintf("The Sell ticket [txid=%s] referred by this ticket [txid=%s] is invalid",
+                                   pastelTicket->GetTxId(), sTxId);
+                break;
+            }
+            if (!WalkBackTradingChain(tradeTicket->artTnxId, chain, shortPath, errRet))
+                break;
+        } else if (pastelTicket->ID() == TicketID::Activate) {
+            auto actTicket = dynamic_cast<CArtActivateTicket *>(pastelTicket.get());
+            if (!actTicket) {
+                errRet = strprintf("The Activation ticket [txid=%s] referred by ticket [txid=%s] ticket is invalid",
+                                   pastelTicket->GetTxId(), sTxId);
+                break;
+            }
+            if (!WalkBackTradingChain(actTicket->regTicketTnxId, chain, shortPath, errRet))
+                break;
+        } else if (pastelTicket->ID() == TicketID::Art) {
+            auto tradeTicket = dynamic_cast<CArtRegTicket *>(pastelTicket.get());
+            if (!tradeTicket) {
+                errRet = strprintf("The Art Registration ticket [txid=%s] referred by ticket [txid=%s] is invalid",
+                                   pastelTicket->GetTxId(), sTxId);
+                break;
+            }
+        } else {
+            errRet = strprintf("The Art ticket [txid=%s] referred by ticket [txid=%s] has wrong type - %s]",
+                               pastelTicket->GetTxId(), sTxId, pastelTicket->GetTicketName());
+            break;
+        }
+        chain.emplace_back(std::move(pastelTicket));
+        bOk = true;
+    }
+    while(false);
+    
+    return bOk;
 }
 
 std::string CPastelTicketProcessor::SendTicket(const CPastelTicket& ticket)
