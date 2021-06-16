@@ -11,7 +11,7 @@ define $(package)_preprocess_cmds
 endef
 
 define $(package)_config_cmds
-  cd build/cmake/build ; $($(package)_cmake) .. -DZSTD_BUILD_PROGRAMS=OFF -DSYSINSTALL_BINDINGS=ON -DCMAKE_INSTALL_PREFIX=$($(package)_staging_prefix_dir) -DCMAKE_POSITION_INDEPENDENT_CODE=ON
+  cd build/cmake/build ; $($(package)_cmake) .. -DZSTD_BUILD_PROGRAMS=OFF -DSYSINSTALL_BINDINGS=ON -DCMAKE_INSTALL_PREFIX=$($(package)_staging_prefix_dir) -DCMAKE_POSITION_INDEPENDENT_CODE=ON -DZSTD_BUILD_SHARED=OFF
 endef
 
 define $(package)_build_cmds
