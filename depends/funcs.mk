@@ -186,7 +186,7 @@ $(1)_cmake=env CC="$$($(1)_cc)" \
                CFLAGS="$$($(1)_cppflags) $$($(1)_cflags)" \
                CXX="$$($(1)_cxx)" \
                CXXFLAGS="$$($(1)_cppflags) $$($(1)_cxxflags)" \
-             cmake -DCMAKE_AR="$$($(1)_ar)" -DCMAKE_RANLIB="$$($(1)_ranlib)" -DCMAKE_INSTALL_PREFIX:PATH="$$($($(1)_type)_prefix)"
+             cmake -DCMAKE_AR="$$($(1)_ar)" -DCMAKE_RANLIB="$$($(1)_ranlib)"
 ifeq ($($(1)_type),build)
 $(1)_cmake += -DCMAKE_INSTALL_RPATH:PATH="$$($($(1)_type)_prefix)/lib"
 else

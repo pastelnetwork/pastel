@@ -489,7 +489,6 @@ pasteld_LDADD = \
   $(LIBBITCOIN_SERVER) \
   $(LIBBITCOIN_WALLET) \
   $(LIBBITCOIN_COMMON) \
-  $(ZSTD_LIBS) \
   $(LIBUNIVALUE) \
   $(LIBBITCOIN_UTIL) \
   $(LIBBITCOIN_ZMQ) \
@@ -499,7 +498,8 @@ pasteld_LDADD = \
   $(LIBSNARK) \
   $(LIBLEVELDB) \
   $(LIBMEMENV) \
-  $(LIBSECP256K1)
+  $(LIBSECP256K1) \
+  $(ZSTD_LIBS)
 
 pasteld_LDADD += \
   $(BOOST_LIBS) \
@@ -551,13 +551,13 @@ endif
 pastel_tx_LDADD = \
   $(LIBUNIVALUE) \
   $(LIBBITCOIN_COMMON) \
-  $(ZSTD_LIBS) \
   $(LIBBITCOIN_UTIL) \
   $(LIBSECP256K1) \
   $(LIBZCASH) \
   $(LIBSNARK) \
   $(LIBBITCOIN_CRYPTO) \
-  $(LIBZCASH_LIBS)
+  $(LIBZCASH_LIBS) \
+  $(ZSTD_LIBS)
 
 pastel_tx_LDADD += $(BOOST_LIBS) $(CRYPTO_LIBS)
 #
