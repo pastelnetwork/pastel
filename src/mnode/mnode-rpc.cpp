@@ -2207,7 +2207,7 @@ As json rpc
     
     if (TICKETS.IsCmd(RPC_CMD_TICKETS::tools)) {
         
-        RPC_CMD_PARSER2(LIST, params, printtradingchain, getregbytrade);
+        RPC_CMD_PARSER2(LIST, params, printtradingchain, getregbytrade, gettotalstoragefee);
         
         UniValue obj(UniValue::VARR);
         switch (LIST.cmd()) {
@@ -2249,6 +2249,97 @@ As json rpc
                     }
                     return obj;
                 }
+            }
+            case RPC_CMD_LIST::gettotalstoragefee: {
+                if (fHelp || params.size() != 10)
+                    throw JSONRPCError(RPC_INVALID_PARAMETER,
+                                       R"(tickets tools gettotalstoragefee "ticket" "{signatures}" "pastelid" "passphrase" "key1" "key2" "fee" "imagesize"
+Get full storage fee for the Art registration. If successful, method returns total amount of fee.
+
+Arguments:
+1. "ticket"	(string, required) Base64 encoded ticket created by the artist.
+	{
+		"version": 1,
+		"author" "authorsPastelID",
+		"blocknum" <block-number-when-the-ticket-was-created-by-the-artist>,
+		"data_hash" "<base64'ed-hash-of-the-art>",
+		"copies" <number-of-copies-of-art-this-ticket-is-creating>,
+		"app_ticket" "<application-specific-data>",
+		"reserved" "<empty-string-for-now>",
+	}
+2. "signatures"	(string, required) Signatures (base64) and PastelIDs of the author and verifying masternodes (MN2 and MN3) as JSON:
+	{
+		"artist":{"authorsPastelID": "authorsSignature"},
+		"mn2":{"mn2PastelID":"mn2Signature"},
+		"mn2":{"mn3PastelID":"mn3Signature"}
+	}
+3. "pastelid"   (string, required) The current, registering masternode (MN1) PastelID. NOTE: PastelID must be generated and stored inside node. See "pastelid newkey".
+4. "passpharse" (string, required) The passphrase to the private key associated with PastelID and stored inside node. See "pastelid newkey".
+5. "key1"       (string, required) The first key to search ticket.
+6. "key2"       (string, required) The second key to search ticket.
+7. "fee"        (int, required) The agreed upon storage fee.
+8. "imagesize"  (int) size of image in MB
+Masternode PastelID Ticket:
+{
+	"ticket": {
+		"type": "art-reg",
+		"ticket": {...},
+		"signatures": {
+ 			"authorsPastelID": "authorsSignature",
+			"mn1PastelID":"mn1Signature",
+			"mn2PastelID":"mn2Signature",
+			"mn3PastelID":"mn3Signature"
+		},
+		"key1": "<search key 1>",
+		"key2": "<search key 2>",
+		"storage_fee": "<agreed upon storage fee>",
+	},
+	"height": "",
+	"txid": ""
+}
+
+Register Art Ticket
+)" + HelpExampleCli("tickets tools gettotalstoragefee", R"(""ticket-blob" "{signatures}" jXYqZNPj21RVnwxnEJ654wEdzi7GZTZ5LAdiotBmPrF7pDMkpX1JegDMQZX55WZLkvy9fxNpZcbBJuE8QYUqBF "passphrase", "key1", "key2", 100, 3)") +
+                                           R"(
+As json rpc
+)" + HelpExampleRpc("tickets", R"("tools", "gettotalstoragefee", "ticket" "{signatures}" "jXYqZNPj21RVnwxnEJ654wEdzi7GZTZ5LAdiotBmPrF7pDMkpX1JegDMQZX55WZLkvy9fxNpZcbBJuE8QYUqBF" "passphrase", "key1", "key2", 100, 3)"));
+
+                if (!masterNodeCtrl.IsActiveMasterNode())
+                    throw JSONRPCError(RPC_INTERNAL_ERROR,
+                                       "This is not an active masternode. Only active MN can register its PastelID");
+
+                if (fImporting || fReindex)
+                    throw JSONRPCError(RPC_INVALID_PARAMETER, "Initial blocks download. Re-try later");
+
+
+                std::string ticket = params[2].get_str();
+                std::string signatures = params[3].get_str();
+                std::string pastelID = params[4].get_str();
+
+                SecureString strKeyPass;
+                strKeyPass.reserve(100);
+                strKeyPass = params[5].get_str().c_str();
+
+                std::string key1 = params[6].get_str();
+                std::string key2 = params[7].get_str();
+
+                CAmount nStorageFee = get_long_number(params[8]);
+                CAmount imageSize = get_long_number(params[9]);
+
+                CArtRegTicket artRegTicket = CArtRegTicket::Create(
+                    ticket, signatures,
+                    pastelID, strKeyPass,
+                    key1, key2,
+                    nStorageFee);
+                CDataStream data_stream(SER_NETWORK, DATASTREAM_VERSION);
+                data_stream << (uint8_t)artRegTicket.ID();
+                data_stream << artRegTicket;
+                std::vector<unsigned char> input_bytes{data_stream.begin(), data_stream.end()};
+                CAmount totalFee = imageSize*masterNodeCtrl.GetNetworkFeePerMB() + input_bytes.size()*masterNodeCtrl.GetArtTicketFeePerKB()/1024;
+
+                UniValue mnObj(UniValue::VOBJ);
+                mnObj.pushKV("totalstoragefee", totalFee);
+                return mnObj;
             }
         }
     }
