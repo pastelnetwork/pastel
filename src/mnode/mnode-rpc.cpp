@@ -2278,7 +2278,7 @@ Arguments:
 5. "key1"       (string, required) The first key to search ticket.
 6. "key2"       (string, required) The second key to search ticket.
 7. "fee"        (int, required) The agreed upon storage fee.
-8. "imagesize"  (int) size of image in MB
+8. "imagesize"  (int, required) size of image in MB
 Masternode PastelID Ticket:
 {
 	"ticket": {
@@ -2303,10 +2303,6 @@ Register Art Ticket
                                            R"(
 As json rpc
 )" + HelpExampleRpc("tickets", R"("tools", "gettotalstoragefee", "ticket" "{signatures}" "jXYqZNPj21RVnwxnEJ654wEdzi7GZTZ5LAdiotBmPrF7pDMkpX1JegDMQZX55WZLkvy9fxNpZcbBJuE8QYUqBF" "passphrase", "key1", "key2", 100, 3)"));
-
-                if (!masterNodeCtrl.IsActiveMasterNode())
-                    throw JSONRPCError(RPC_INTERNAL_ERROR,
-                                       "This is not an active masternode. Only active MN can register its PastelID");
 
                 if (fImporting || fReindex)
                     throw JSONRPCError(RPC_INVALID_PARAMETER, "Initial blocks download. Re-try later");
