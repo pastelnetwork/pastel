@@ -521,7 +521,7 @@ bool common_validation(const T& ticket, bool preReg, const std::string& strTnxId
         // A. Validate that address has coins to pay for registration - 10PSL + fee
         if (pwalletMain->GetBalance() < ticketPrice*COIN)
         {
-            errRet = strprintf("Not enough coins to cover price [%" PRId64 "]", ticketPrice);
+            errRet = strprintf("Not enough coins to cover price [%d]", fullTicketPrice);
             return false;
         }
     }
@@ -1504,6 +1504,7 @@ std::string CChangeUsernameTicket::ToStr() const noexcept
     return ss.str();
 }
 
+// FIXME: Remove erret parameters
 bool CChangeUsernameTicket::IsValid(std::string& errRet, bool preReg, int depth) const
 {
     unsigned int chainHeight = 0;
@@ -1514,8 +1515,7 @@ bool CChangeUsernameTicket::IsValid(std::string& errRet, bool preReg, int depth)
 
     // A. Check if the username is already registered on the blockchain.
     if (masterNodeCtrl.masternodeTickets.CheckTicketExist(*this)) {
-        errRet = strprintf("This Username is already registered in blockchain [Username = %s]", username);
-        return false;
+        throw std::runtime_error(strprintf("This Username is already registered in blockchain [Username = %s]", username));
     }
 
     // B Verify signature
@@ -1525,8 +1525,7 @@ bool CChangeUsernameTicket::IsValid(std::string& errRet, bool preReg, int depth)
                            signature.data(), signature.size(),
                            pastelID))
     {
-        errRet = strprintf("%s ticket's signature is invalid. PastelID - [%s]", GetTicketDescription(TicketID::Username), pastelID);
-        return false;
+        throw std::runtime_error(strprintf("%s ticket's signature is invalid. PastelID - [%s]", GetTicketDescription(TicketID::Username), pastelID));
     }
     
     // C (ticket transaction replay attack protection)
@@ -1534,28 +1533,40 @@ bool CChangeUsernameTicket::IsValid(std::string& errRet, bool preReg, int depth)
     if ((FindTicketInDb(username, existingTicket)) &&
         (!existingTicket.IsBlock(m_nBlock) || existingTicket.m_txid != m_txid))
     {
-        errRet = strprintf("This Username Change Request is already registered in blockchain [Username = %s]"
+        throw std::runtime_error(strprintf("This Username Change Request is already registered in blockchain [Username = %s]"
                            "[this ticket block = %u txid = %s; found ticket block  = %u txid = %s]",
-                           username, existingTicket.GetBlock(), existingTicket.m_txid, m_nBlock, m_txid);
-        return false;
+                           username, existingTicket.GetBlock(), existingTicket.m_txid, m_nBlock, m_txid));
     }
 
     // D. Check if this PastelID hasn't changed Username in last 24 hours.
     CChangeUsernameTicket _ticket;
     _ticket.pastelID = pastelID;
     if (masterNodeCtrl.masternodeTickets.FindTicketBySecondaryKey(_ticket)) {
-        if (m_nBlock - _ticket.m_nBlock <= 24 * 24) {
+        const unsigned int height = (preReg || IsBlock(0)) ? chainHeight : m_nBlock;
+        if (height - _ticket.m_nBlock <= 24 * 24) {
             // D.2 IF PastelID has changed Username in last 24 hours (~24*24 blocks), do not allow them to change
-            errRet = strprintf("%s ticket is invalid. Already changed in last 24 hours. PastelID - [%s]", GetTicketDescription(TicketID::Username), pastelID);
-            return false;
+            throw std::runtime_error(strprintf("%s ticket is invalid. Already changed in last 24 hours. PastelID - [%s]", GetTicketDescription(TicketID::Username), pastelID));
         }
     }
 
     // E. Check if address has coins to pay for Username Change Ticket
-    const auto fullTicketPrice = TicketPrice(chainHeight);
-    if (pwalletMain->GetBalance() < fullTicketPrice * COIN) {
-        errRet = strprintf("Not enough coins to cover price [%" PRId64 "]", fullTicketPrice);
-        return false;
+    if (preReg) 
+    {
+        if (!masterNodeCtrl.masternodeTickets.FindTicketBySecondaryKey(_ticket)) {
+            if (fee == 5000) {
+                throw std::runtime_error(strprintf("%s ticket's fee is invalid. PastelID - [%s], invalid fee - [%d]", GetTicketDescription(TicketID::Username), pastelID, fee));
+            }
+        } else {
+            if (fee == 100) {
+                throw std::runtime_error(strprintf("%s ticket's fee is invalid. PastelID - [%s], invalid fee - [%d]", GetTicketDescription(TicketID::Username), pastelID, fee));
+            }
+        }
+        const auto fullTicketPrice = TicketPrice(chainHeight);
+        
+        if (pwalletMain->GetBalance() < fullTicketPrice * COIN) 
+        {
+            throw std::runtime_error(strprintf("Not enough coins to cover price [%" PRId64 "]", fullTicketPrice));
+        }
     }
 
     return true;
