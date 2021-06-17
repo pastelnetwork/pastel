@@ -497,7 +497,7 @@ std::string CArtRegTicket::GetRoyaltyPayeePastelID() {
 }
 
 std::string CArtRegTicket::GetRoyaltyPayeeAddress() {
-  const std::string pastelID = GetRoyaltyPayeeAddress();
+  const std::string pastelID = GetRoyaltyPayeePastelID();
   if (!pastelID.empty()) {
     CPastelIDRegTicket ticket;
     if (CPastelIDRegTicket::FindTicketInDb(pastelID, ticket)) {
@@ -962,7 +962,7 @@ bool CArtSellTicket::IsValid(bool preReg, int depth) const
                 nChainHeight = static_cast<unsigned int>(chainActive.Height()) + 1;
             }
     
-            if (it->GetBlock() + 28800 < nChainHeight)
+            if (it->GetBlock() + 2880 < nChainHeight)
             {  //1 block per 2.5; 4 blocks per 10 min; 24 blocks per 1h; 576 blocks per 24 h;
               throw std::runtime_error(strprintf(
                 "Can only replace Sell ticket after 5 days. txid - [%s] copyNumber [%d].", it->m_txid, copyNumber));

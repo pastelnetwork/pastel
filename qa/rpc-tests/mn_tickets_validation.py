@@ -203,8 +203,9 @@ class MasterNodeTicketsTest(MasterNodeCommon):
             "blocknum": self.artist_ticket_height,
             "data_hash": "ABCDEFG",
             "copies": self.total_copies,
-            "app_ticket": "HIJKLMNOP",
-            "reserved": ""}
+            "royalty": 10,
+            "green": "",
+            "app_ticket": "HIJKLMNOP"}
 
         self.ticket = str_to_b64str(json.dumps(json_ticket))
         print(self.ticket)

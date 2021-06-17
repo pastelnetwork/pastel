@@ -58,7 +58,7 @@ static constexpr std::array<TicketInfo, to_integral_type<TicketID>(TicketID::COU
         { TicketID::Buy,      "Art Buy",                TICKET_NAME_ART_BUY,     0,     "artbuy" },
         { TicketID::Trade,    "Art Trade",              TICKET_NAME_ART_TRADE,   0,     "arttrd" },
         { TicketID::Down,     "Take Down",              TICKET_NAME_TAKE_DOWN,   0,     "takedn" },
-        { TicketID::Royalty,  "Art Royalty",            TICKET_NAME_ART_ROYALTY, 0,     "artrty" },
+        { TicketID::Royalty,  "Art Royalty",            TICKET_NAME_ART_ROYALTY, 1,     "artrty" },
     }};
 
 inline std::string GetTicketDescription(const TicketID id) noexcept

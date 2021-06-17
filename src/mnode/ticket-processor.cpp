@@ -168,7 +168,7 @@ bool CPastelTicketProcessor::ValidateIfTicketTransaction(const int nHeight, cons
     CAmount greenFee = 0;
     CAmount expectedTicketFee = 0;
 
-    // use if low fee that will be rownded to 0. can be like?
+    // use if low fee that will be rounded to 0. can be like?
     bool hasRoyaltyFee{false};
     bool hasGreenFee{false};
 
