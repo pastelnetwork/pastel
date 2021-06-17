@@ -542,7 +542,7 @@ bool common_validation(const T& ticket, bool preReg, const std::string& strTnxId
         // A. Validate that address has coins to pay for registration - 10PSL + fee
         if (pwalletMain->GetBalance() < ticketPrice*COIN)
         {
-            errRet = strprintf("Not enough coins to cover price [%d]", fullTicketPrice);
+            errRet = strprintf("Not enough coins to cover price [%d]", ticketPrice);
             return false;
         }
     }
