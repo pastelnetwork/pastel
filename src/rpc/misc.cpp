@@ -486,10 +486,53 @@ UniValue setmocktime(const UniValue& params, bool fHelp)
     return NullUniValue;
 }
 
+static UniValue RPCLockedMemoryInfo()
+{
+    LockedPool::Stats stats = LockedPoolManager::Instance().stats();
+    UniValue obj(UniValue::VOBJ);
+    obj.pushKV("used", uint64_t(stats.used));
+    obj.pushKV("free", uint64_t(stats.free));
+    obj.pushKV("total", uint64_t(stats.total));
+    obj.pushKV("locked", uint64_t(stats.locked));
+    obj.pushKV("chunks_used", uint64_t(stats.chunks_used));
+    obj.pushKV("chunks_free", uint64_t(stats.chunks_free));
+    return obj;
+}
+
+UniValue getmemoryinfo(const UniValue& params, bool fHelp)
+{
+    /* Please, avoid using the word "pool" here in the RPC interface or help,
+     * as users will undoubtedly confuse it with the other "memory pool"
+     */
+    if (fHelp || params.size() != 0)
+        throw runtime_error(
+            "getmemoryinfo\n"
+            "Returns an object containing information about memory usage.\n"
+            "\nResult:\n"
+            "{\n"
+            "  \"locked\": {               (json object) Information about locked memory manager\n"
+            "    \"used\": xxxxx,          (numeric) Number of bytes used\n"
+            "    \"free\": xxxxx,          (numeric) Number of bytes available in current arenas\n"
+            "    \"total\": xxxxxxx,       (numeric) Total number of bytes managed\n"
+            "    \"locked\": xxxxxx,       (numeric) Amount of bytes that succeeded locking. If this number is smaller than total, locking pages failed at some point and key data could be swapped to disk.\n"
+            "    \"chunks_used\": xxxxx,   (numeric) Number allocated chunks\n"
+            "    \"chunks_free\": xxxxx,   (numeric) Number unused chunks\n"
+            "  }\n"
+            "}\n"
+            "\nExamples:\n"
+            + HelpExampleCli("getmemoryinfo", "")
+            + HelpExampleRpc("getmemoryinfo", "")
+        );
+    UniValue obj(UniValue::VOBJ);
+    obj.pushKV("locked", RPCLockedMemoryInfo());
+    return obj;
+}
+
 static const CRPCCommand commands[] =
 { //  category              name                      actor (function)         okSafeMode
   //  --------------------- ------------------------  -----------------------  ----------
     { "control",            "getinfo",                &getinfo,                true  }, /* uses wallet if enabled */
+    { "control",            "getmemoryinfo",          &getmemoryinfo,          true  },
     { "util",               "validateaddress",        &validateaddress,        true  }, /* uses wallet if enabled */
     { "util",               "z_validateaddress",      &z_validateaddress,      true  }, /* uses wallet if enabled */
     { "util",               "createmultisig",         &createmultisig,         true  },
