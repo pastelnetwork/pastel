@@ -2279,26 +2279,8 @@ Arguments:
 6. "key2"       (string, required) The second key to search ticket.
 7. "fee"        (int, required) The agreed upon storage fee.
 8. "imagesize"  (int, required) size of image in MB
-Masternode PastelID Ticket:
-{
-	"ticket": {
-		"type": "art-reg",
-		"ticket": {...},
-		"signatures": {
- 			"authorsPastelID": "authorsSignature",
-			"mn1PastelID":"mn1Signature",
-			"mn2PastelID":"mn2Signature",
-			"mn3PastelID":"mn3Signature"
-		},
-		"key1": "<search key 1>",
-		"key2": "<search key 2>",
-		"storage_fee": "<agreed upon storage fee>",
-	},
-	"height": "",
-	"txid": ""
-}
 
-Register Art Ticket
+Get Total Storage Fee Ticket
 )" + HelpExampleCli("tickets tools gettotalstoragefee", R"(""ticket-blob" "{signatures}" jXYqZNPj21RVnwxnEJ654wEdzi7GZTZ5LAdiotBmPrF7pDMkpX1JegDMQZX55WZLkvy9fxNpZcbBJuE8QYUqBF "passphrase", "key1", "key2", 100, 3)") +
                                            R"(
 As json rpc
@@ -2331,7 +2313,7 @@ As json rpc
                 data_stream << (uint8_t)artRegTicket.ID();
                 data_stream << artRegTicket;
                 std::vector<unsigned char> input_bytes{data_stream.begin(), data_stream.end()};
-                CAmount totalFee = imageSize*masterNodeCtrl.GetNetworkFeePerMB() + input_bytes.size()*masterNodeCtrl.GetArtTicketFeePerKB()/1024;
+                CAmount totalFee = imageSize*masterNodeCtrl.GetNetworkFeePerMB() + ceil(input_bytes.size()*masterNodeCtrl.GetArtTicketFeePerKB()/1024);
 
                 UniValue mnObj(UniValue::VOBJ);
                 mnObj.pushKV("totalstoragefee", totalFee);
