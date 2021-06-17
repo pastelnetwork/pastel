@@ -4,7 +4,8 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#include "support/pagelocker.h"
+#include "support/lockedpool.h"
+#include "support/cleanse.h"
 #include <string>
 
 #ifdef _MSC_VER
@@ -41,20 +42,18 @@ struct secure_allocator : public std::allocator<T> {
 
     T* allocate(std::size_t n, const void* hint = 0)
     {
-        T* p = std::allocator<T>::allocate(n, hint);
-        if (p)
-            LockedPageManager::Instance().LockRange(p, sizeof(T) * n);
-        return p;
+        T* allocation = static_cast<T*>(LockedPoolManager::Instance().alloc(sizeof(T) * n));
+        if (!allocation) {
+            throw std::bad_alloc();
+        }
+        return allocation;
     }
 
-    void deallocate(T* p, std::size_t n)
+    void deallocate(T* p, std::size_t n) noexcept
     {
-        if (p)
-        {
-            memory_cleanse(p, sizeof(T) * n);
-            LockedPageManager::Instance().UnlockRange(p, sizeof(T) * n);
-        }
-        std::allocator<T>::deallocate(p, n);
+        assert(p != nullptr);
+        memory_cleanse(p, sizeof(T) * n);
+        LockedPoolManager::Instance().free(p);
     }
 };
 

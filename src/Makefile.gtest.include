@@ -19,6 +19,7 @@ endif
 pastel_gtest_SOURCES += \
 	gtest/test_block.cpp \
 	gtest/test_tautology.cpp \
+	gtest/test_allocator.cpp \
 	gtest/test_deprecation.cpp \
 	gtest/test_equihash.cpp \
 	gtest/test_httprpc.cpp \
