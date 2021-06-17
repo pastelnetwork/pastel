@@ -663,6 +663,7 @@ public:
     std::string ToJSON() const noexcept override;
     std::string ToStr() const noexcept override;
 
+    // FIXME: Remove erret parameters
     bool IsValid(std::string& errRet, bool preReg, int depth) const override;
 
     void SerializationOp(CDataStream& s, const SERIALIZE_ACTION ser_action) override
