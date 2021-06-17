@@ -391,13 +391,6 @@ BOOST_AUTO_TEST_CASE(test_basic_joinsplit_verification)
         BOOST_CHECK_THROW(JSDescription(false, *pzcashParams, joinSplitPubKey, rt, inputs, outputs, 10, 0), std::invalid_argument);
         BOOST_CHECK_THROW(JSDescription(false, *pzcashParams, joinSplitPubKey, rt, inputs, outputs, 0, 10), std::invalid_argument);
     }
-
-    {
-        // Ensure that it won't verify if the root is changed.
-        auto test = JSDescription(false, *pzcashParams, joinSplitPubKey, rt, inputs, outputs, 0, 0);
-        test.anchor = GetRandHash();
-        BOOST_CHECK(!test.Verify(*pzcashParams, verifier, joinSplitPubKey));
-    }
 }
 
 void test_simple_sapling_invalidity(uint32_t consensusBranchId, CMutableTransaction tx)
