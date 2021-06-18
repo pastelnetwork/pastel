@@ -7,7 +7,7 @@
 #include <stdexcept>
 class CDataStream;
 
-const int kDefaultZSTDCompressLevel = 19;
+const int kDefaultZSTDCompressLevel = 22;
 
 class CDataCompressor
 {
@@ -46,7 +46,7 @@ public:
 
         s >> dumpbyte;
         if (dumpbyte != 0) {
-            return;
+            throw std::runtime_error("decompress error: invalid data type");;
         }
     
         // TODO: validate size with max allowed size

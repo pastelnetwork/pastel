@@ -804,7 +804,7 @@ std::string CPastelTicketProcessor::SendTicket(const CPastelTicket& ticket)
     CDataCompressor compressor(ticket_stream);
 
     CDataStream data_stream(SER_NETWORK, DATASTREAM_VERSION);
-    data_stream << ((uint8_t)ticket.ID() | kTicketCompressEnableMask);
+    data_stream << (uint8_t)((uint8_t)ticket.ID() | kTicketCompressEnableMask);
     data_stream << compressor;
 
     unsigned int chainHeight = 0;
@@ -1135,7 +1135,7 @@ std::string CPastelTicketProcessor::CreateFakeTransaction(CPastelTicket& ticket,
     CDataCompressor compressor(ticket_stream);
 
     CDataStream data_stream(SER_NETWORK, DATASTREAM_VERSION);
-    data_stream << (to_integral_type<TicketID>(ticket.ID()) | kTicketCompressEnableMask);
+    data_stream << (uint8_t)(to_integral_type<TicketID>(ticket.ID()) | kTicketCompressEnableMask);
     data_stream << compressor;
 
     CMutableTransaction tx;
