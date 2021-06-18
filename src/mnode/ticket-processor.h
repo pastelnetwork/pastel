@@ -13,8 +13,8 @@
 #include "mnode/ticket.h"
 
 constexpr int DATASTREAM_VERSION = 1;
-constexpr unsigned char kTicketCompressEnableMask  = 0x80;
-constexpr unsigned char kTicketCompressDisableMask = 0x7f;
+constexpr unsigned char TICKET_COMPRESS_ENABLE_MASK  = (1<<7); // using bit 7 to mark a ticket is compressed
+constexpr unsigned char TICKET_COMPRESS_DISABLE_MASK = (~TICKET_COMPRESS_ENABLE_MASK);
 
 #define FAKE_TICKET
 // Ticket  Processor ////////////////////////////////////////////////////////////////////////////////////////////////////

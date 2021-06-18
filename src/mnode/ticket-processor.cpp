@@ -141,8 +141,8 @@ bool preParseTicket(const CMutableTransaction& tx, CDataStream& data_stream, Tic
     data_stream.write(reinterpret_cast<char*>(output_data.data()), output_data.size());
     uint8_t u;
     data_stream >> u;
-    compressed = (u & kTicketCompressEnableMask) > 0;
-    ticket_id = static_cast<TicketID>(u & kTicketCompressDisableMask);
+    compressed = (u & TICKET_COMPRESS_ENABLE_MASK) > 0;
+    ticket_id = static_cast<TicketID>(u & TICKET_COMPRESS_DISABLE_MASK);
     return true;
 }
 
@@ -150,10 +150,10 @@ void parsingTicketData(CDataStream& data_stream, CPastelTicket &ticket, const bo
     if (!compressed) {
         data_stream >> ticket;
     } else {
-        CDataStream decrompress_stream(SER_NETWORK, DATASTREAM_VERSION);
-        CDataCompressor compressor(decrompress_stream);
+        CDataStream decompress_stream(SER_NETWORK, DATASTREAM_VERSION);
+        CDataCompressor compressor(decompress_stream);
         data_stream >> compressor;
-        decrompress_stream >> ticket;
+        decompress_stream >> ticket;
     }
 }
 
@@ -165,7 +165,7 @@ bool CPastelTicketProcessor::ValidateIfTicketTransaction(const int nHeight, cons
     CMutableTransaction mtx(tx);
 
     std::string error_ret;
-    bool compressed;
+    bool compressed = false;
     CDataStream data_stream(SER_NETWORK, DATASTREAM_VERSION);
     TicketID ticket_id;
 
@@ -308,7 +308,7 @@ bool CPastelTicketProcessor::ValidateIfTicketTransaction(const int nHeight, cons
 bool CPastelTicketProcessor::ParseTicketAndUpdateDB(CMutableTransaction& tx, const unsigned int nBlockHeight)
 {
     std::string error_ret;
-    bool compressed;
+    bool compressed = false;
     CDataStream data_stream(SER_NETWORK, DATASTREAM_VERSION);
     TicketID ticket_id;
 
@@ -364,7 +364,7 @@ std::unique_ptr<CPastelTicket> CPastelTicketProcessor::GetTicket(const uint256 &
 
     TicketID ticket_id;
     std::string error_ret;
-    bool compressed;
+    bool compressed = false;
     CDataStream data_stream(SER_NETWORK, DATASTREAM_VERSION);
 
     if (!preParseTicket(mtx, data_stream, ticket_id, error_ret, compressed))
@@ -804,7 +804,7 @@ std::string CPastelTicketProcessor::SendTicket(const CPastelTicket& ticket)
     CDataCompressor compressor(ticket_stream);
 
     CDataStream data_stream(SER_NETWORK, DATASTREAM_VERSION);
-    data_stream << (uint8_t)((uint8_t)ticket.ID() | kTicketCompressEnableMask);
+    data_stream << (uint8_t)((uint8_t)ticket.ID() | TICKET_COMPRESS_ENABLE_MASK);
     data_stream << compressor;
 
     unsigned int chainHeight = 0;
@@ -1135,7 +1135,7 @@ std::string CPastelTicketProcessor::CreateFakeTransaction(CPastelTicket& ticket,
     CDataCompressor compressor(ticket_stream);
 
     CDataStream data_stream(SER_NETWORK, DATASTREAM_VERSION);
-    data_stream << (uint8_t)(to_integral_type<TicketID>(ticket.ID()) | kTicketCompressEnableMask);
+    data_stream << (uint8_t)(to_integral_type<TicketID>(ticket.ID()) | TICKET_COMPRESS_ENABLE_MASK);
     data_stream << compressor;
 
     CMutableTransaction tx;
