@@ -58,7 +58,9 @@ public:
     int MasternodeProtocolVersion;
     int MasternodeCollateral;
     CAmount MasternodeFeePerMBDefault;
-
+    
+    CAmount MasternodeUsernameFirstChangeFree;
+    CAmount MasternodeUsernameChangeAgainFree;
     int MasternodeCheckSeconds, MasternodeMinMNBSeconds, MasternodeMinMNPSeconds, MasternodeExpirationSeconds, MasternodeWatchdogMaxSeconds, MasternodeNewStartRequiredSeconds;
     int MasternodePOSEBanMaxScore;
 
