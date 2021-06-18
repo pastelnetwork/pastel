@@ -634,7 +634,7 @@ class CChangeUsernameTicket : public CPastelTicket
 public:
     std::string pastelID;
     std::string username;
-    int fee{100};
+    CAmount fee{100};
     std::vector<unsigned char> signature;
 
 public:

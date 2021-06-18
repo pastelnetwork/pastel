@@ -1587,10 +1587,10 @@ CChangeUsernameTicket CChangeUsernameTicket::Create(std::string _pastelID, std::
     // Check if PastelID already have a username on the blockchain. 
     if (!masterNodeCtrl.masternodeTickets.FindTicketBySecondaryKey(_ticket)) {
         // IF PastelID has no Username yet, the fee is 100 PSL
-        ticket.fee = 100;
+        ticket.fee = masterNodeCtrl.MasternodeUsernameFirstChangeFree;
     } else {
         // IF PastelID changed Username before, fee should 5000
-        ticket.fee = 5000;
+        ticket.fee = masterNodeCtrl.MasternodeUsernameChangeAgainFree;
     }
 
     ticket.GenerateTimestamp();
@@ -1643,9 +1643,19 @@ bool CChangeUsernameTicket::IsValid(std::string& errRet, bool preReg, int depth)
         chainHeight = static_cast<unsigned int>(chainActive.Height()) + 1;
     }
 
-    // A. Check if the username is already registered on the blockchain.
-    if (masterNodeCtrl.masternodeTickets.CheckTicketExist(*this)) {
-        throw std::runtime_error(strprintf("This Username is already registered in blockchain [Username = %s]", username));
+    // A. Something to check ONLY before ticket made into transaction
+    if (preReg) 
+    { 
+        // A1. Check if the username is already registered on the blockchain.
+        if (masterNodeCtrl.masternodeTickets.CheckTicketExist(*this)) {
+            throw std::runtime_error(strprintf("This Username is already registered in blockchain [Username = %s]", username));
+        }
+        // A2. Check if address has coins to pay for Username Change Ticket
+        const auto fullTicketPrice = TicketPrice(chainHeight);
+
+        if (pwalletMain->GetBalance() < fullTicketPrice * COIN) {
+            throw std::runtime_error(strprintf("Not enough coins to cover price [%" PRId64 "]", fullTicketPrice));
+        }
     }
 
     // B Verify signature
@@ -1679,23 +1689,16 @@ bool CChangeUsernameTicket::IsValid(std::string& errRet, bool preReg, int depth)
         }
     }
 
-    // E. Check if address has coins to pay for Username Change Ticket
-    if (preReg) 
-    {
-        if (!masterNodeCtrl.masternodeTickets.FindTicketBySecondaryKey(_ticket)) {
-            if (fee == 5000) {
-                throw std::runtime_error(strprintf("%s ticket's fee is invalid. PastelID - [%s], invalid fee - [%d]", GetTicketDescription(TicketID::Username), pastelID, fee));
-            }
-        } else {
-            if (fee == 100) {
-                throw std::runtime_error(strprintf("%s ticket's fee is invalid. PastelID - [%s], invalid fee - [%d]", GetTicketDescription(TicketID::Username), pastelID, fee));
-            }
+    // E. Check if ticket fee is valid
+    if (!masterNodeCtrl.masternodeTickets.FindTicketBySecondaryKey(_ticket)) {
+        if (fee != masterNodeCtrl.MasternodeUsernameFirstChangeFree) {
+            throw std::runtime_error(strprintf("%s ticket's fee is invalid. PastelID - [%s], invalid fee - [%" PRId64 "], expected fee - [%" PRId64 "]",
+                                               GetTicketDescription(TicketID::Username), pastelID, fee, masterNodeCtrl.MasternodeUsernameFirstChangeFree));
         }
-        const auto fullTicketPrice = TicketPrice(chainHeight);
-        
-        if (pwalletMain->GetBalance() < fullTicketPrice * COIN) 
-        {
-            throw std::runtime_error(strprintf("Not enough coins to cover price [%" PRId64 "]", fullTicketPrice));
+    } else {
+        if (fee != masterNodeCtrl.MasternodeUsernameChangeAgainFree) {
+            throw std::runtime_error(strprintf("%s ticket's fee is invalid. PastelID - [%s], invalid fee - [%" PRId64 "], expected fee - [%" PRId64 "]",
+                                               GetTicketDescription(TicketID::Username), pastelID, fee, masterNodeCtrl.MasternodeUsernameChangeAgainFree));
         }
     }
 

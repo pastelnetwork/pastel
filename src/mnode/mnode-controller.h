@@ -60,6 +60,9 @@ public:
     CAmount MasternodeFeePerMBDefault;
     CAmount ArtTicketFeePerKBDefault;
 
+    
+    CAmount MasternodeUsernameFirstChangeFree;
+    CAmount MasternodeUsernameChangeAgainFree;
     int MasternodeCheckSeconds, MasternodeMinMNBSeconds, MasternodeMinMNPSeconds, MasternodeExpirationSeconds, MasternodeWatchdogMaxSeconds, MasternodeNewStartRequiredSeconds;
     int MasternodePOSEBanMaxScore;
 
