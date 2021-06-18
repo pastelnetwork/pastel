@@ -212,7 +212,7 @@ bool CPastelTicketProcessor::ValidateIfTicketTransaction(const int nHeight, cons
                 }
                 if (!artRegTicket->strGreenAddress.empty()) {
                   hasGreenFee = true;
-                  greenFee = tradePrice * GREEN_NFT_FEE_PERCENT / 100;
+                  greenFee = tradePrice * artRegTicket->GreenPercent(nHeight) / 100;
                 }
                 tradePrice -= (royaltyFee + greenFee);
             }

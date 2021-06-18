@@ -472,7 +472,7 @@ std::string CArtRegTicket::ToJSON() const noexcept
             {"total_copies", totalCopies},
             {"storage_fee", storageFee},
             {"royalty", nRoyalty},
-            {"is_green", strGreenAddress},
+            {"green", strGreenAddress},
         }}
 	};
     
@@ -1302,7 +1302,11 @@ CAmount CArtTradeTicket::GetExtraOutputs(std::vector<CTxOut>& outputs) const
     }
     
     if (!artRegTicket->strGreenAddress.empty()) {
-      nGreenNFTAmount = nPriceAmount * GREEN_NFT_FEE_PERCENT / 100;
+      unsigned int chainHeight = 0; {
+        LOCK(cs_main);
+        chainHeight = static_cast<unsigned int>(chainActive.Height()) + 1;
+      }
+      nGreenNFTAmount = nPriceAmount * artRegTicket->GreenPercent(chainHeight) / 100;
     }
 
     nPriceAmount -= (nRoyaltyAmount + nGreenNFTAmount);
@@ -1338,7 +1342,7 @@ CAmount CArtTradeTicket::GetExtraOutputs(std::vector<CTxOut>& outputs) const
                           sellerPastelID, sellTnxId));
     }
     
-    return nPriceAmount;
+    return nPriceAmount + nRoyaltyAmount + nGreenNFTAmount;
 }
 
 std::string CArtTradeTicket::ToJSON() const noexcept

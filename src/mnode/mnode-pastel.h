@@ -183,7 +183,8 @@ public:
     std::string ToStr() const noexcept override;
     bool IsValid(bool preReg, int depth) const override;
     CAmount TicketPrice(const unsigned int nHeight) const noexcept override { return 10; }
-    
+    CAmount GreenPercent(const unsigned int nHeight) const noexcept { return 2; }
+
 	void SerializationOp(CDataStream& s, const SERIALIZE_ACTION ser_action) override
     {
         const bool bRead = ser_action == SERIALIZE_ACTION::Read;
@@ -204,6 +205,8 @@ public:
         READWRITE(keyTwo);
         READWRITE(artistHeight);
         READWRITE(totalCopies);
+        READWRITE(nRoyalty);
+        READWRITE(strGreenAddress);
         READWRITE(storageFee);
         READWRITE(m_nTimestamp);
         READWRITE(m_txid);

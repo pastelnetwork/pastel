@@ -6,8 +6,6 @@
 
 #include "enum_util.h"
 
-constexpr uint16_t GREEN_NFT_FEE_PERCENT = 2;
-
 // ticket names
 constexpr auto TICKET_NAME_ID_REG       = "pastelid";  // id registration ticket
 constexpr auto TICKET_NAME_ART_REG      = "art-reg";   // art registration ticket

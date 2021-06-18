@@ -100,6 +100,9 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         self.act_ticket_price = 10
         self.trade_ticket_price = 10
 
+        self.royalty = 5
+        self.green_address = ""
+
         self.test_high_heights = False
 
     def setup_chain(self):
@@ -487,7 +490,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         #   "blocknum": integer,        // block number when the ticket was created - this is to map the ticket to the MNs that should process it
         #   "block_hash": bytes         // hash of the top block when the ticket was created - this is to map the ticket to the MNs that should process it
         #   "copies": integer,          // number of copies
-        #   "royalty": float,           // (not yet supported by cNode) how much artist should get on all future resales
+        #   "royalty": short,           // (not yet supported by cNode) how much artist should get on all future resales
         #   "green": string,            // address for Green NFT payment (not yet supported by cNode)
         #   "app_ticket": ...
         # }
@@ -497,8 +500,8 @@ class MasterNodeTicketsTest(MasterNodeCommon):
             "blocknum": self.artist_ticket_height,
             "block_hash": data_hash,
             "copies": total_copies,
-            "royalty": 0,
-            "green": "",
+            "royalty": self.royalty,
+            "green": self.green_address,
             "app_ticket": app_ticket
         }
         self.ticket = str_to_b64str(json.dumps(json_ticket))
@@ -837,6 +840,8 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         assert_equal(art_ticket1_1["ticket"]["artist_height"], self.artist_ticket_height)
         assert_equal(art_ticket1_1["ticket"]["total_copies"], self.total_copies)
         assert_equal(art_ticket1_1["ticket"]["storage_fee"], self.storage_fee)
+        assert_equal(art_ticket1_1["ticket"]["royalty"], self.royalty)
+        assert_equal(art_ticket1_1["ticket"]["green"], self.green_address)
         assert_equal(art_ticket1_1["ticket"]["signatures"]["artist"][self.artist_pastelid1],
                      self.ticket_signature_artist)
         assert_equal(art_ticket1_1["ticket"]["signatures"]["mn2"][self.top_mn_pastelid1], self.top_mn_ticket_signature1)
@@ -851,6 +856,8 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         assert_equal(art_ticket1_2["ticket"]["artist_height"], self.artist_ticket_height)
         assert_equal(art_ticket1_2["ticket"]["total_copies"], self.total_copies)
         assert_equal(art_ticket1_2["ticket"]["storage_fee"], self.storage_fee)
+        assert_equal(art_ticket1_2["ticket"]["royalty"], self.royalty)
+        assert_equal(art_ticket1_2["ticket"]["green"], self.green_address)
         assert_equal(art_ticket1_2["ticket"]["signatures"]["artist"][self.artist_pastelid1],
                      art_ticket1_1["ticket"]["signatures"]["artist"][self.artist_pastelid1])
 
@@ -1041,8 +1048,8 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         #           - there are 3 outputs to MN1, MN2 and MN3 with correct amounts
         #               (MN1: 60%; MN2, MN3: 20% each, of registration price)
         #           - amounts is totaling 10PSL
-        art_ticket1_act_ticket_hash = self.nodes[self.non_mn3].getrawtransaction(self.art_ticket1_act_ticket_txid)
-        art_ticket1_act_ticket_tx = self.nodes[self.non_mn3].decoderawtransaction(art_ticket1_act_ticket_hash)
+        art_ticket1_act_ticket_hash = self.nodes[0].getrawtransaction(self.art_ticket1_act_ticket_txid)
+        art_ticket1_act_ticket_tx = self.nodes[0].decoderawtransaction(art_ticket1_act_ticket_hash)
         amount = 0
         fee_amount = 0
 

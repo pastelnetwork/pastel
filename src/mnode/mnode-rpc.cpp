@@ -1667,15 +1667,16 @@ Register new art ticket. If successful, method returns "txid".
 
 Arguments:
 1. "ticket"	(string, required) Base64 encoded ticket created by the artist.
-	{
-		"version": 1,
-		"author" "authorsPastelID",
-		"blocknum" <block-number-when-the-ticket-was-created-by-the-artist>,
-		"data_hash" "<base64'ed-hash-of-the-art>",
-		"copies" <number-of-copies-of-art-this-ticket-is-creating>,
-		"app_ticket" "<application-specific-data>",
-		"reserved" "<empty-string-for-now>",
-	}
+    {
+        "version":    1,
+        "author":     "<authors-PastelID>",
+        "blocknum":   <block-number-when-the-ticket-was-created-by-the-artist>,
+        "data_hash":  "<base64'ed-hash-of-the-art>",
+        "copies":     <number-of-copies-of-art-this-ticket-is-creating>,
+        "royalty":    <how-much-artist-should-get-on-all-future-resales>,
+        "green":      "<address-for-Green-NFT-payment>",
+        "app_ticket": "<application-specific-data>",
+    }
 2. "signatures"	(string, required) Signatures (base64) and PastelIDs of the author and verifying masternodes (MN2 and MN3) as JSON:
 	{
 		"artist":{"authorsPastelID": "authorsSignature"},
