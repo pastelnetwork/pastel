@@ -11,6 +11,9 @@
     <Filter Include="Source Files\mnode">
       <UniqueIdentifier>{4dada9fa-9be0-45d9-bf9d-0dd83d6ea7a5}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Source Files\port">
+      <UniqueIdentifier>{ea70fe2d-3e50-4baa-baad-b6a5bff2417f}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\..\src\gtest\json_test_vectors.cpp">
@@ -169,6 +172,12 @@
     <ClCompile Include="..\..\..\src\gtest\test_mnode_pastel.cpp">
       <Filter>UnitTest Files</Filter>
     </ClCompile>
+    <ClCompile Include="..\port\uint128.cpp">
+      <Filter>Source Files\port</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\src\gtest\test_legroast.cpp">
+      <Filter>UnitTest Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\..\src\gtest\json_test_vectors.h">
@@ -227,6 +236,12 @@
     </ClInclude>
     <ClInclude Include="..\..\..\src\mnode\mnode-consts.h">
       <Filter>Source Files\mnode</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\legroast\legroast.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\port\uint128.h">
+      <Filter>Source Files\port</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>
