@@ -34,7 +34,7 @@ private_keys_list = ["91sY9h4AQ62bAhNk1aJ7uJeSnQzSFtz7QmW5imrKmiACm7QJLXe",  # 0
 
 class MasterNodeTicketsTest(MasterNodeCommon):
     number_of_master_nodes = len(private_keys_list)
-    number_of_simple_nodes = 4
+    number_of_simple_nodes = 6
     total_number_of_nodes = number_of_master_nodes+number_of_simple_nodes
 
     non_active_mn = number_of_master_nodes-1
@@ -43,6 +43,8 @@ class MasterNodeTicketsTest(MasterNodeCommon):
     non_mn2 = number_of_master_nodes+1      # hot node - will have collateral for all active MN #14
     non_mn3 = number_of_master_nodes+2      # will not have coins by default #15
     non_mn4 = number_of_master_nodes+3      # will not have coins by default #16
+    non_mn5 = number_of_master_nodes+4      # will not have coins by default #17, for royalty
+    non_mn6 = number_of_master_nodes+5      # will not have coins by default #18, for green
 
     mining_node_num = number_of_master_nodes    # same as non_mn1
     hot_node_num = number_of_master_nodes+1     # same as non_mn2
@@ -69,10 +71,14 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         self.nonmn1_pastelid2 = None
         self.nonmn3_pastelid1 = None
         self.nonmn4_pastelid1 = None
+        self.nonmn5_royalty_pastelid1 = None
+        self.nonmn6_green_pastelid1 = None
 
         self.mn0_ticket1_txid = None
         self.nonmn3_address1 = None
         self.nonmn4_address1 = None
+        self.nonmn5_royalty_address1 = None
+        self.nonmn6_green_address1 = None
         self.artist_pastelid1 = None
         self.artist_ticket_height = None
         self.total_copies = None
@@ -100,8 +106,8 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         self.act_ticket_price = 10
         self.trade_ticket_price = 10
 
-        self.royalty = 5
-        self.green_address = ""
+        self.royalty = 0
+        self.is_green = True
 
         self.test_high_heights = False
 
@@ -125,6 +131,11 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         self.pastelid_tests()
         self.mn_pastelid_ticket_tests(False)
         self.personal_pastelid_ticket_tests(False)
+        self.personal_royalty_initialize_tests()
+        if self.is_green:
+            self.personal_green_initialize_tests()
+        else:
+            self.nonmn6_green_address1 = ""
         self.artreg_ticket_tests(False, "key1", "key2")
         self.artact_ticket_tests(False)
         self.artsell_ticket_tests1(False)
@@ -359,7 +370,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
 
         print("MN PastelID tickets tested")
 
-        # ===============================================================================================================
+    # ===============================================================================================================
     def personal_pastelid_ticket_tests(self, skip_low_coins_tests):
         print("== Personal PastelID Tickets test ==")
         # b. personal PastelID ticket
@@ -471,6 +482,66 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         print("Personal PastelID tickets tested")
 
     # ===============================================================================================================
+    def personal_royalty_initialize_tests(self):
+        # personal royalty PastelID ticket
+        self.nonmn5_royalty_pastelid1 = self.nodes[self.non_mn5].pastelid("newkey", "passphrase")["pastelid"]
+        assert_true(self.nonmn5_royalty_pastelid1, "No Pastelid was created")
+        self.nonmn5_royalty_address1 = self.nodes[self.non_mn5].getnewaddress()
+
+        # register without errors from non MN with enough coins
+        self.nodes[self.mining_node_num].sendtoaddress(self.nonmn5_royalty_address1, 100, "", "", False)
+        time.sleep(2)
+        self.sync_all()
+        self.nodes[self.mining_node_num].generate(1)
+        self.sync_all()
+
+        coins_before = self.nodes[self.non_mn5].getbalance()
+        nonmn5_ticket1_txid = self.nodes[self.non_mn5].tickets("register", "id", self.nonmn5_royalty_pastelid1,
+                                                               "passphrase", self.nonmn5_royalty_address1)["txid"]
+        assert_true(nonmn5_ticket1_txid, "No ticket was created")
+        time.sleep(2)
+        self.sync_all()
+        self.nodes[self.mining_node_num].generate(1)
+        self.sync_all()
+
+        # check correct amount of change
+        coins_after = self.nodes[self.non_mn5].getbalance()
+        print(f"id ticket price - {self.id_ticket_price}")
+        assert_equal(coins_after, coins_before - self.id_ticket_price)  # no fee yet
+
+        print("Personal royalty initialize tested")
+
+    # ===============================================================================================================
+    def personal_green_initialize_tests(self):
+        # personal green PastelID ticket
+        self.nonmn6_green_pastelid1 = self.nodes[self.non_mn6].pastelid("newkey", "passphrase")["pastelid"]
+        assert_true(self.nonmn6_green_pastelid1, "No Pastelid was created")
+        self.nonmn6_green_address1 = self.nodes[self.non_mn6].getnewaddress()
+
+        # register without errors from non MN with enough coins
+        self.nodes[self.mining_node_num].sendtoaddress(self.nonmn6_green_address1, 100, "", "", False)
+        time.sleep(2)
+        self.sync_all()
+        self.nodes[self.mining_node_num].generate(1)
+        self.sync_all()
+
+        coins_before = self.nodes[self.non_mn6].getbalance()
+        nonmn6_ticket1_txid = self.nodes[self.non_mn6].tickets("register", "id", self.nonmn6_green_pastelid1,
+                                                               "passphrase", self.nonmn6_green_address1)["txid"]
+        assert_true(nonmn6_ticket1_txid, "No ticket was created")
+        time.sleep(2)
+        self.sync_all()
+        self.nodes[self.mining_node_num].generate(1)
+        self.sync_all()
+
+        # check correct amount of change
+        coins_after = self.nodes[self.non_mn6].getbalance()
+        print(f"id ticket price - {self.id_ticket_price}")
+        assert_equal(coins_after, coins_before - self.id_ticket_price)  # no fee yet
+
+        print("Personal green initialize tested")
+
+    # ===============================================================================================================
     def create_art_ticket_and_signatures(self, artist_pastelid, artist_node_num,
                                          app_ticket, data_hash, total_copies,
                                          make_bad_signatures_dicts):
@@ -501,7 +572,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
             "block_hash": data_hash,
             "copies": total_copies,
             "royalty": self.royalty,
-            "green": self.green_address,
+            "green": self.nonmn6_green_address1,
             "app_ticket": app_ticket
         }
         self.ticket = str_to_b64str(json.dumps(json_ticket))
@@ -841,7 +912,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         assert_equal(art_ticket1_1["ticket"]["total_copies"], self.total_copies)
         assert_equal(art_ticket1_1["ticket"]["storage_fee"], self.storage_fee)
         assert_equal(art_ticket1_1["ticket"]["royalty"], self.royalty)
-        assert_equal(art_ticket1_1["ticket"]["green"], self.green_address)
+        assert_equal(art_ticket1_1["ticket"]["green"], self.nonmn6_green_address1)
         assert_equal(art_ticket1_1["ticket"]["signatures"]["artist"][self.artist_pastelid1],
                      self.ticket_signature_artist)
         assert_equal(art_ticket1_1["ticket"]["signatures"]["mn2"][self.top_mn_pastelid1], self.top_mn_ticket_signature1)
@@ -857,7 +928,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         assert_equal(art_ticket1_2["ticket"]["total_copies"], self.total_copies)
         assert_equal(art_ticket1_2["ticket"]["storage_fee"], self.storage_fee)
         assert_equal(art_ticket1_2["ticket"]["royalty"], self.royalty)
-        assert_equal(art_ticket1_2["ticket"]["green"], self.green_address)
+        assert_equal(art_ticket1_2["ticket"]["green"], self.nonmn6_green_address1)
         assert_equal(art_ticket1_2["ticket"]["signatures"]["artist"][self.artist_pastelid1],
                      art_ticket1_1["ticket"]["signatures"]["artist"][self.artist_pastelid1])
 
@@ -1443,18 +1514,32 @@ class MasterNodeTicketsTest(MasterNodeCommon):
 
         # check seller gets correct amount
         artists_coins_after = math.floor(self.nodes[self.non_mn3].getreceivedbyaddress(sellers_address))
+        artists_coins_expected_to_receive = 100000
+        if self.is_green:
+            artists_coins_expected_to_receive -= 100000 * 2 / 100
         print(artists_coins_before)
         print(artists_coins_after)
-        assert_equal(artists_coins_after-artists_coins_before, 100000)
+        assert_equal(artists_coins_after - artists_coins_before, artists_coins_expected_to_receive)
 
         # from another node - get ticket transaction and check
         #   - there are 3 posiible outputs to seller, royalty and green adresses
         art_ticket1_trade_ticket_hash = self.nodes[0].getrawtransaction(self.art_ticket1_trade_ticket_txid)
         art_ticket1_trade_ticket_tx = self.nodes[0].decoderawtransaction(art_ticket1_trade_ticket_hash)
+        expected_seller_amount = 100000
         seller_amount = 0
+        expected_royalty_fee = 0
         royalty_fee = 0
+        expected_green_fee = 0
         green_fee = 0
         multi_fee = 0
+
+        if self.royalty > 0:
+            expected_royalty_fee = 100000 * self.royalty / 100
+            expected_seller_amount -= expected_royalty_fee
+
+        if self.is_green:
+            expected_green_fee = 100000 * 2 / 100
+            expected_seller_amount -= expected_green_fee
 
         for v in art_ticket1_trade_ticket_tx["vout"]:
             if v["scriptPubKey"]["type"] == "multisig":
@@ -1462,15 +1547,21 @@ class MasterNodeTicketsTest(MasterNodeCommon):
             if v["scriptPubKey"]["type"] == "pubkeyhash":
                 amount = v["value"]
                 print(f"trade transiction pubkeyhash vout - {amount}")
-                if v["scriptPubKey"]["addresses"][0] == sellers_address \
-                        and amount == 100000 * (100 - self.royalty) / 100:
-                    seller_amount += amount
+                if v["scriptPubKey"]["addresses"][0] == sellers_address and amount == expected_seller_amount:
+                    seller_amount = amount
                     print(f"trade transaction to seller's address - {amount}")
-                if v["scriptPubKey"]["addresses"][0] == sellers_address and amount == 100000 * self.royalty / 100:
-                    royalty_fee += amount
+                if v["scriptPubKey"]["addresses"][0] == sellers_address and amount == expected_royalty_fee:
+                    royalty_fee = amount
                     print(f"trade transaction to royalty's address - {amount}")
+                if v["scriptPubKey"]["addresses"][0] == self.nonmn6_green_address1 and self.is_green:
+                    green_fee = amount
+                    print(f"trade transaction to green's address - {amount}")
         print(f"trade transiction multisig fee_amount - {multi_fee}")
+        assert_equal(seller_amount, expected_seller_amount)
+        assert_equal(royalty_fee, expected_royalty_fee)
+        assert_equal(green_fee, expected_green_fee)
         assert_equal(seller_amount + royalty_fee + green_fee, 100000)
+        assert_equal(multi_fee, self.id_ticket_price)
 
         self.nodes[self.mining_node_num].sendtoaddress(self.nonmn4_address1, 100000, "", "", False)
         time.sleep(2)
