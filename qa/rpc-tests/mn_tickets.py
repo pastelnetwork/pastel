@@ -1447,6 +1447,31 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         print(artists_coins_after)
         assert_equal(artists_coins_after-artists_coins_before, 100000)
 
+        # from another node - get ticket transaction and check
+        #   - there are 3 posiible outputs to seller, royalty and green adresses
+        art_ticket1_trade_ticket_hash = self.nodes[0].getrawtransaction(self.art_ticket1_trade_ticket_txid)
+        art_ticket1_trade_ticket_tx = self.nodes[0].decoderawtransaction(art_ticket1_trade_ticket_hash)
+        seller_amount = 0
+        royalty_fee = 0
+        green_fee = 0
+        multi_fee = 0
+
+        for v in art_ticket1_trade_ticket_tx["vout"]:
+            if v["scriptPubKey"]["type"] == "multisig":
+                multi_fee += v["value"]
+            if v["scriptPubKey"]["type"] == "pubkeyhash":
+                amount = v["value"]
+                print(f"trade transiction pubkeyhash vout - {amount}")
+                if v["scriptPubKey"]["addresses"][0] == sellers_address \
+                        and amount == 100000 * (100 - self.royalty) / 100:
+                    seller_amount += amount
+                    print(f"trade transaction to seller's address - {amount}")
+                if v["scriptPubKey"]["addresses"][0] == sellers_address and amount == 100000 * self.royalty / 100:
+                    royalty_fee += amount
+                    print(f"trade transaction to royalty's address - {amount}")
+        print(f"trade transiction multisig fee_amount - {multi_fee}")
+        assert_equal(seller_amount + royalty_fee + green_fee, 100000)
+
         self.nodes[self.mining_node_num].sendtoaddress(self.nonmn4_address1, 100000, "", "", False)
         time.sleep(2)
         self.sync_all()
