@@ -156,6 +156,14 @@ AC_ARG_ENABLE([zmq],
   [use_zmq=$enableval],
   [use_zmq=yes])
 
+
+# Enable ticket compresion
+AC_ARG_ENABLE([compress],
+  [AS_HELP_STRING([--enable-compress],
+  [enable ticket compress (default is no)])],
+  [enable_compress=$enableval],
+  [enable_compress=no])
+
 AC_ARG_WITH([protoc-bindir],[AS_HELP_STRING([--with-protoc-bindir=BIN_DIR],[specify protoc bin path])], [protoc_bin_path=$withval], [])
 
 AC_ARG_ENABLE(man,
@@ -853,11 +861,16 @@ if test x$build_pastel_utils$build_bitcoin_libs$build_pasteld$use_tests = xnonon
   AC_MSG_ERROR([No targets! Please specify at least one of: --with-utils --with-libs --with-daemon or --enable-tests])
 fi
 
+if test x$enable_compress = xyes; then
+    AC_DEFINE(ENABLE_TICKET_COMPRESS, 1, [Define to 1 to enable ticket compression])
+fi
+
 AM_CONDITIONAL([TARGET_DARWIN], [test x$TARGET_OS = xdarwin])
 AM_CONDITIONAL([BUILD_DARWIN], [test x$BUILD_OS = xdarwin])
 AM_CONDITIONAL([TARGET_WINDOWS], [test x$TARGET_OS = xwindows])
 AM_CONDITIONAL([ENABLE_WALLET],[test x$enable_wallet = xyes])
 AM_CONDITIONAL([ENABLE_MINING],[test x$enable_mining = xyes])
+AM_CONDITIONAL([ENABLE_TICKET_COMPRESS],[test x$enable_compress = xyes])
 AM_CONDITIONAL([ENABLE_TESTS],[test x$BUILD_TEST = xyes])
 AM_CONDITIONAL([USE_LCOV],[test x$use_lcov = xyes])
 AM_CONDITIONAL([GLIBC_BACK_COMPAT],[test x$use_glibc_compat = xyes])
@@ -950,12 +963,13 @@ esac
 
 echo 
 echo "Options used to compile and link:"
-echo "  with wallet   = $enable_wallet"
-echo "  with proton   = $use_proton"
-echo "  with zmq      = $use_zmq"
-echo "  with test     = $use_tests"
-echo "  debug enabled = $enable_debug"
-echo "  werror        = $enable_werror"
+echo "  with wallet          = $enable_wallet"
+echo "  with proton          = $use_proton"
+echo "  with zmq             = $use_zmq"
+echo "  with ticket compress = $enable_compress"
+echo "  with test            = $use_tests"
+echo "  debug enabled        = $enable_debug"
+echo "  werror               = $enable_werror"
 echo 
 echo "  target os     = $TARGET_OS"
 echo "  build os      = $BUILD_OS"

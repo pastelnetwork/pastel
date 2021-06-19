@@ -25,7 +25,7 @@ Usage:
 $0 --help
   Show this help message and exit.
 
-$0 [ --enable-lcov || --disable-tests ] [ --disable-mining ] [ --enable-proton ] [ MAKEARGS... ]
+$0 [ --enable-lcov || --disable-tests ] [ --disable-mining ] [ --enable-proton ] [ --enable-compress ] [ MAKEARGS... ]
   Build Pastel and most of its transitive dependencies from
   source. MAKEARGS are applied to both dependencies and Pastel itself.
 
@@ -38,6 +38,9 @@ $0 [ --enable-lcov || --disable-tests ] [ --disable-mining ] [ --enable-proton ]
 
   If --enable-proton is passed, Pastel is configured to build the Apache Qpid Proton
   library required for AMQP support. This library is not built by default.
+
+  if --enable-compress is passed, Pastel is configured to compress ticket data by
+  zstandard library. This is not enabled by default.
 EOF
 }
 
@@ -77,6 +80,9 @@ bProton=0
 # verbose compiler output
 bVerbose=1
 
+# disable ticket compression by default
+bCompress=0
+
 if [[ "$HOST" == *darwin* ]]; then
 	bHardening=0
 fi
@@ -104,6 +110,11 @@ while (( "$#" )); do
       ;;
     --enable-proton)
       bProton=1
+      PARAMS+=" $1"
+      shift
+      ;;
+    --enable-compress)
+      bCompress=1
       PARAMS+=" $1"
       shift
       ;;
@@ -159,6 +170,9 @@ fi
 if (( $bProton == 0 )); then
   PARAMS+=" --enable-proton=no"
   POSARGS+=" NO_PROTON=1"
+fi
+if (( $bCompress == 1 )); then
+  PARAMS+=" --enable-compress=yes"
 fi
 POSARGS+=" V=$bVerbose"
 

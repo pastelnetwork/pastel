@@ -12,7 +12,10 @@
 #include "mnode/mnode-pastel.h"
 #include "mnode/mnode-controller.h"
 #include "mnode/ticket-processor.h"
+
+#ifdef ENABLE_TICKET_COMPRESS
 #include "datacompressor.h"
+#endif
 
 #include "json/json.hpp"
 
@@ -141,12 +144,18 @@ bool preParseTicket(const CMutableTransaction& tx, CDataStream& data_stream, Tic
     data_stream.write(reinterpret_cast<char*>(output_data.data()), output_data.size());
     uint8_t u;
     data_stream >> u;
+#ifdef ENABLE_TICKET_COMPRESS
     compressed = (u & TICKET_COMPRESS_ENABLE_MASK) > 0;
     ticket_id = static_cast<TicketID>(u & TICKET_COMPRESS_DISABLE_MASK);
+#else
+    compressed = false;
+    ticket_id = static_cast<TicketID>(u);
+#endif
     return true;
 }
 
 void parsingTicketData(CDataStream& data_stream, CPastelTicket &ticket, const bool compressed) {
+#ifdef ENABLE_TICKET_COMPRESS
     if (!compressed) {
         data_stream >> ticket;
     } else {
@@ -155,6 +164,9 @@ void parsingTicketData(CDataStream& data_stream, CPastelTicket &ticket, const bo
         data_stream >> compressor;
         decompress_stream >> ticket;
     }
+#else
+    data_stream >> ticket;
+#endif
 }
 
 // Called from ContextualCheckTransaction, which called from:
@@ -799,6 +811,7 @@ std::string CPastelTicketProcessor::SendTicket(const CPastelTicket& ticket)
     std::vector<CTxOut> extraOutputs;
     const CAmount extraAmount = ticket.GetExtraOutputs(extraOutputs);
 
+#ifdef ENABLE_TICKET_COMPRESS
     CDataStream ticket_stream(SER_NETWORK, DATASTREAM_VERSION);
     ticket_stream << ticket;
     CDataCompressor compressor(ticket_stream);
@@ -806,7 +819,11 @@ std::string CPastelTicketProcessor::SendTicket(const CPastelTicket& ticket)
     CDataStream data_stream(SER_NETWORK, DATASTREAM_VERSION);
     data_stream << (uint8_t)((uint8_t)ticket.ID() | TICKET_COMPRESS_ENABLE_MASK);
     data_stream << compressor;
-
+#else
+    CDataStream data_stream(SER_NETWORK, DATASTREAM_VERSION);
+    data_stream << (uint8_t)ticket.ID();
+    data_stream << ticket;
+#endif
     unsigned int chainHeight = 0;
     {
         LOCK(cs_main);
@@ -1130,6 +1147,7 @@ std::string CPastelTicketProcessor::CreateFakeTransaction(CPastelTicket& ticket,
         }
     }
 
+#ifdef ENABLE_TICKET_COMPRESS
     CDataStream ticket_stream(SER_NETWORK, DATASTREAM_VERSION);
     ticket_stream << ticket;
     CDataCompressor compressor(ticket_stream);
@@ -1137,6 +1155,11 @@ std::string CPastelTicketProcessor::CreateFakeTransaction(CPastelTicket& ticket,
     CDataStream data_stream(SER_NETWORK, DATASTREAM_VERSION);
     data_stream << (uint8_t)(to_integral_type<TicketID>(ticket.ID()) | TICKET_COMPRESS_ENABLE_MASK);
     data_stream << compressor;
+#else
+    CDataStream data_stream(SER_NETWORK, DATASTREAM_VERSION);
+    data_stream << (uint8_t)(to_integral_type<TicketID>(ticket.ID()));
+    data_stream << ticket;
+#endif
 
     CMutableTransaction tx;
     if (!CreateP2FMSTransactionWithExtra(data_stream, extraOutputs, extraAmount, tx, ticketPrice, error))

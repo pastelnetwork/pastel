@@ -498,8 +498,11 @@ pasteld_LDADD = \
   $(LIBSNARK) \
   $(LIBLEVELDB) \
   $(LIBMEMENV) \
-  $(LIBSECP256K1) \
-  $(ZSTD_LIBS)
+  $(LIBSECP256K1)
+
+if ENABLE_TICKET_COMPRESS
+  pasteld_LDADD += $(ZSTD_LIBS)
+endif
 
 pasteld_LDADD += \
   $(BOOST_LIBS) \
@@ -556,8 +559,11 @@ pastel_tx_LDADD = \
   $(LIBZCASH) \
   $(LIBSNARK) \
   $(LIBBITCOIN_CRYPTO) \
-  $(LIBZCASH_LIBS) \
-  $(ZSTD_LIBS)
+  $(LIBZCASH_LIBS)
+
+if ENABLE_TICKET_COMPRESS
+  pastel_tx_LDADD += $(ZSTD_LIBS)
+endif
 
 pastel_tx_LDADD += $(BOOST_LIBS) $(CRYPTO_LIBS)
 #
