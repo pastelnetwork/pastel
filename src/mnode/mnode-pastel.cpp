@@ -1581,11 +1581,10 @@ CChangeUsernameTicket CChangeUsernameTicket::Create(std::string _pastelID, std::
     CChangeUsernameTicket ticket(std::move(_pastelID));
     
     ticket.username = std::move(username);
+    ticket.pastelID = _pastelID;
 
-    CChangeUsernameTicket _ticket;
-    _ticket.pastelID = _pastelID;
     // Check if PastelID already have a username on the blockchain. 
-    if (!masterNodeCtrl.masternodeTickets.FindTicketBySecondaryKey(_ticket)) {
+    if (masterNodeCtrl.masternodeTickets.FindTicketsByMVKey<CChangeUsernameTicket>(ticket.pastelID).size() == 0) {
         // IF PastelID has no Username yet, the fee is 100 PSL
         ticket.fee = masterNodeCtrl.MasternodeUsernameFirstChangeFree;
     } else {
@@ -1597,8 +1596,13 @@ CChangeUsernameTicket CChangeUsernameTicket::Create(std::string _pastelID, std::
     
     std::string strTicket = ticket.ToStr();
     ticket.signature = CPastelID::Sign(reinterpret_cast<const unsigned char*>(strTicket.c_str()), strTicket.size(), ticket.pastelID, strKeyPass);
-    
+
     return ticket;
+}
+
+std::vector<CChangeUsernameTicket> CChangeUsernameTicket::FindAllTicketByPastelID(const std::string& pastelID) 
+{
+    return masterNodeCtrl.masternodeTickets.FindTicketsByMVKey<CChangeUsernameTicket>(pastelID);
 }
 
 bool CChangeUsernameTicket::FindTicketInDb(const std::string& key, CChangeUsernameTicket& ticket)
@@ -1606,7 +1610,6 @@ bool CChangeUsernameTicket::FindTicketInDb(const std::string& key, CChangeUserna
     ticket.username = key;
     return masterNodeCtrl.masternodeTickets.FindTicket(ticket);
 }
-
 
 std::string CChangeUsernameTicket::ToJSON() const noexcept
 {
@@ -1658,6 +1661,11 @@ bool CChangeUsernameTicket::IsValid(std::string& errRet, bool preReg, int depth)
         }
     }
 
+    // Check if username is a bad username. For now check if it is empty only.
+    if (username.empty()) {
+        throw std::runtime_error(strprintf("%s ticket's username is invalid. PastelID - [%s], username - [%s]", GetTicketDescription(TicketID::Username), pastelID, username));
+    }
+
     // B Verify signature
     // We will check that it is the correct PastelID
     std::string strThisTicket = ToStr();
@@ -1701,6 +1709,6 @@ bool CChangeUsernameTicket::IsValid(std::string& errRet, bool preReg, int depth)
                                                GetTicketDescription(TicketID::Username), pastelID, fee, masterNodeCtrl.MasternodeUsernameChangeAgainFree));
         }
     }
-
+    
     return true;
 }

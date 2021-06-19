@@ -1537,7 +1537,7 @@ Available commands:
 	std::string strCmd, strError;
 	if (TICKETS.IsCmd(RPC_CMD_TICKETS::Register)) {
         
-        RPC_CMD_PARSER2(REGISTER, params, mnid, id, art, act, sell, buy, trade, down);
+        RPC_CMD_PARSER2(REGISTER, params, mnid, id, art, act, sell, buy, trade, down, username);
         
         if (fHelp || !REGISTER.IsCmdSupported())
 			throw JSONRPCError(RPC_INVALID_PARAMETER,
@@ -1954,9 +1954,9 @@ As json rpc
             mnObj.pushKV(RPC_KEY_TXID, txid);
         }
         if (REGISTER.IsCmd(RPC_CMD_REGISTER::down)) {
-			if (fHelp || params.size() != 5)
-				throw JSONRPCError(RPC_INVALID_PARAMETER,
-R"(tickets register down "txid" "pastelid" "passpharse"
+            if (fHelp || params.size() != 5)
+                throw JSONRPCError(RPC_INVALID_PARAMETER,
+R"(tickets register username "txid" "pastelid" "passpharse"
 Register take down request ticket. If successful, method returns "txid"
 
 Arguments:
@@ -1981,12 +1981,51 @@ As json rpc
 )" + HelpExampleRpc("tickets",
                     R"("register", "down", "jXYqZNPj21RVnwxnEJ654wEdzi7GZTZ5LAdiotBmPrF7pDMkpX1JegDMQZX55WZLkvy9fxNpZcbBJuE8QYUqBF", "passphrase")"));
 		}
+        if (REGISTER.IsCmd(RPC_CMD_REGISTER::username)) {
+			if (fHelp || params.size() != 5)
+				throw JSONRPCError(RPC_INVALID_PARAMETER,
+R"(tickets register down "PastelId" "username" "passpharse"
+Register Username Change Request ticket. If successful, method returns "txid"
+
+Arguments:
+x. "PastelId"      (string, required) The PastelID. NOTE: PastelID must be generated and stored inside node. See "pastelid newkey".
+x. "username"      (string, required) The username that will be map with above PastelID
+y. "passpharse"    (string, required) The passphrase to the private key associated with PastelID and stored inside node. See "pastelid newkey".
+Take Down Ticket:
+{
+    "ticket": {
+		"type": "username",
+		"pastelID": "",    //PastelID of the username
+		"username": "",    //new valid username
+		"fee": "",         // fee to change username
+		"signature": ""
+	},
+	"height": "",
+	"txid": ""
+  }
+
+Register PastelID
+)" + HelpExampleCli("tickets register username", R"(jXYqZNPj21RVnwxnEJ654wEdzi7GZTZ5LAdiotBmPrF7pDMkpX1JegDMQZX55WZLkvy9fxNpZcbBJuE8QYUqBF "bsmith84" "passphrase")") +
+                                                   R"(
+As json rpc
+)" + HelpExampleRpc("tickets",
+                    R"("register", "username", "jXYqZNPj21RVnwxnEJ654wEdzi7GZTZ5LAdiotBmPrF7pDMkpX1JegDMQZX55WZLkvy9fxNpZcbBJuE8QYUqBF", "bsmith84", "passphrase")"));
+            std::string pastelID = params[2].get_str();
+            std::string username = params[3].get_str();
+            SecureString strKeyPass;
+            strKeyPass.reserve(100);
+            // strKeyPass = params[4].get_str().c_str();
+            strKeyPass = "passphrase";
+            CChangeUsernameTicket changeUsernameTicket = CChangeUsernameTicket::Create(pastelID, username, strKeyPass);
+            std::string txid = CPastelTicketProcessor::SendTicket(changeUsernameTicket);
+            mnObj.pushKV(RPC_KEY_TXID, txid);
+		}
 		return mnObj;
 	}
 	
 	if (TICKETS.IsCmd(RPC_CMD_TICKETS::find)) {
         
-        RPC_CMD_PARSER2(FIND, params, id, art, act, sell, buy, trade, down);
+        RPC_CMD_PARSER2(FIND, params, id, art, act, sell, buy, trade, down, username);
             
         if (fHelp || !FIND.IsCmdSupported())
 			throw JSONRPCError(RPC_INVALID_PARAMETER,
@@ -2049,6 +2088,9 @@ As json rpc
 
         case RPC_CMD_FIND::trade:
             return getTickets<CArtTradeTicket>(key);
+
+        case RPC_CMD_FIND::username:
+            return getTickets<CChangeUsernameTicket>(key);
 
         case RPC_CMD_FIND::down: {
             //            CTakeDownTicket ticket;
