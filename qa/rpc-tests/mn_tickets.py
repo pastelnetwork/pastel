@@ -1743,8 +1743,26 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         # 4. storagefee tests
         # a. Get Network median storage fee
         #   a.1 from non-MN without errors
+        non_mn1_total_storage_fee1 = self.nodes[self.non_mn4].tickets("tools", "gettotalstoragefee",
+                                                                   self.ticket, json.dumps(self.signatures_dict),
+                                                                   self.nonmn4_pastelid1, "passphrase",
+                                                                   "key5", "key6", str(self.storage_fee), 5)["totalstoragefee"]
         #   a.2 from MN without errors
+        mn0_total_storage_fee1 = self.nodes[self.top_mns_index0].tickets("tools", "gettotalstoragefee",
+                                                                   self.ticket, json.dumps(self.signatures_dict),
+                                                                   self.top_mn_pastelid0, "passphrase",
+                                                                   "key5", "key6", str(self.storage_fee), 5)["totalstoragefee"]
+        mn0_total_storage_fee2 = self.nodes[self.top_mns_index0].tickets("tools", "gettotalstoragefee",
+                                                                   self.ticket, json.dumps(self.signatures_dict),
+                                                                   self.top_mn_pastelid0, "passphrase",
+                                                                   "key5", "key6", str(self.storage_fee), 4)["totalstoragefee"]
+
         #   a.3 compare a.1 and a.2
+        print(non_mn1_total_storage_fee1)
+        print(mn0_total_storage_fee1)
+        print(mn0_total_storage_fee2)
+        assert_equal(int(non_mn1_total_storage_fee1), int(mn0_total_storage_fee1))
+        assert_greater_than(int(non_mn1_total_storage_fee1), int(mn0_total_storage_fee2))
 
         # b. Get local masternode storage fee
         #   b.1 fail from non-MN

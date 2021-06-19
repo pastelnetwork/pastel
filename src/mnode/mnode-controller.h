@@ -58,6 +58,7 @@ public:
     int MasternodeProtocolVersion;
     int MasternodeCollateral;
     CAmount MasternodeFeePerMBDefault;
+    CAmount ArtTicketFeePerKBDefault;
 
     int MasternodeCheckSeconds, MasternodeMinMNBSeconds, MasternodeMinMNPSeconds, MasternodeExpirationSeconds, MasternodeWatchdogMaxSeconds, MasternodeNewStartRequiredSeconds;
     int MasternodePOSEBanMaxScore;
@@ -102,6 +103,7 @@ public:
     bool ProcessGetData(CNode* pfrom, const CInv& inv);
 
     CAmount GetNetworkFeePerMB();
+    CAmount GetArtTicketFeePerKB();
 
     /***** MasterNode operations *****/
     CSemaphore *semMasternodeOutbound;
