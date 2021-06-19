@@ -2015,7 +2015,7 @@ As json rpc
             SecureString strKeyPass;
             strKeyPass.reserve(100);
             // strKeyPass = params[4].get_str().c_str();
-            strKeyPass = "passphrase";
+            strKeyPass = params[4].get_str().c_str();
             CChangeUsernameTicket changeUsernameTicket = CChangeUsernameTicket::Create(pastelID, username, strKeyPass);
             std::string txid = CPastelTicketProcessor::SendTicket(changeUsernameTicket);
             mnObj.pushKV(RPC_KEY_TXID, txid);
