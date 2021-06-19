@@ -467,6 +467,7 @@ template std::vector<CArtActivateTicket> CPastelTicketProcessor::FindTicketsByMV
 template std::vector<CArtSellTicket> CPastelTicketProcessor::FindTicketsByMVKey<CArtSellTicket>(const std::string&);
 template std::vector<CArtBuyTicket> CPastelTicketProcessor::FindTicketsByMVKey<CArtBuyTicket>(const std::string&);
 template std::vector<CArtTradeTicket> CPastelTicketProcessor::FindTicketsByMVKey<CArtTradeTicket>(const std::string&);
+template std::vector<CChangeUsernameTicket> CPastelTicketProcessor::FindTicketsByMVKey<CChangeUsernameTicket>(const std::string&);
 
 std::vector<std::string> CPastelTicketProcessor::GetAllKeys(const TicketID id) const
 {

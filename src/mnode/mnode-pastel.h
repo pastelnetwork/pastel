@@ -573,15 +573,17 @@ public:
         pastelID(std::move(_pastelID))
     {}
     std::string KeyOne() const noexcept override { return username; }
-    std::string KeyTwo() const noexcept override { return pastelID; }
+    std::string MVKeyOne() const noexcept override { return pastelID; }
 
-    bool HasKeyTwo() const noexcept override { return true; }
-    bool HasMVKeyOne() const noexcept override { return false; }
+    bool HasKeyTwo() const noexcept override { return false; }
+    bool HasMVKeyOne() const noexcept override { return true; }
     bool HasMVKeyTwo() const noexcept override { return false; }
 
     void SetKeyOne(std::string val) override { pastelID = std::move(val); }
 
     static CChangeUsernameTicket Create(std::string _pastelID, std::string username, const SecureString& strKeyPass);
+    
+    static std::vector<CChangeUsernameTicket> FindAllTicketByPastelID(const std::string& pastelID);
     static bool FindTicketInDb(const std::string& key, CChangeUsernameTicket& ticket);
 
     CAmount TicketPrice(const unsigned int nHeight) const noexcept override { return fee; }
