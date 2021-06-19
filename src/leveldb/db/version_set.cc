@@ -157,7 +157,8 @@ class Version::LevelFileNumIterator : public Iterator {
                        const std::vector<FileMetaData*>* flist)
       : icmp_(icmp),
         flist_(flist),
-        index_(flist->size()) {        // Marks as invalid
+        index_(flist->size()),
+        value_buf_() {        // Marks as invalid
   }
   virtual bool Valid() const {
     return index_ < flist_->size();
@@ -504,7 +505,7 @@ int Version::PickLevelForMemTableOutput(
       if (OverlapInLevel(level + 1, &smallest_user_key, &largest_user_key)) {
         break;
       }
-      if (level + 2 < config::kNumLevels) {
+      if (level + 2 < config::kNumLevels) { //-V547 the warning is correct. But we shouldn't change the implementation here
         // Check that file does not overlap too many grandparent bytes.
         GetOverlappingInputs(level + 2, &start, &limit, &overlaps);
         const int64_t sum = TotalFileSize(overlaps);

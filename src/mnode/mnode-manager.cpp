@@ -59,6 +59,7 @@ struct CompareByAddr
 
 CMasternodeMan::CMasternodeMan()
 : cs(),
+  nCachedBlockHeight(0),
   mapMasternodes(),
   mAskedUsForMasternodeList(),
   mWeAskedForMasternodeList(),

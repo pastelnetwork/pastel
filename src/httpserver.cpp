@@ -607,7 +607,7 @@ void HTTPRequest::WriteReply(int nStatus, const std::string& strReply)
     ev->trigger(0);
     replySent = true;
     req = 0; // transferred back to main thread
-}
+} //-V773 : ev will be release by the callback function httpevent_callback_fn later, so this PVS warning is a false warning
 
 CService HTTPRequest::GetPeer()
 {

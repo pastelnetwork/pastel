@@ -523,7 +523,7 @@ class PosixEnv : public Env {
   MmapLimiter mmap_limit_;
 };
 
-PosixEnv::PosixEnv() : started_bgthread_(false) {
+PosixEnv::PosixEnv() : started_bgthread_(false) { //-V730
   PthreadCall("mutex_init", pthread_mutex_init(&mu_, NULL));
   PthreadCall("cvar_init", pthread_cond_init(&bgsignal_, NULL));
 }

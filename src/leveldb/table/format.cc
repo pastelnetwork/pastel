@@ -106,8 +106,9 @@ Status ReadBlock(RandomAccessFile* file,
         // while the file is open.
         delete[] buf;
         result->data = Slice(data, n);
-        result->heap_allocated = false;
-        result->cachable = false;  // Do not double-cache
+        result->heap_allocated = false; // -V1048 warning is correct. But should keep the implementation for easier read & maintenence
+        // Do not double-cache  
+        result->cachable = false;  // -V1048 warning is correct. But should keep the implementation for easier read & maintenence
       } else {
         result->data = Slice(buf, n);
         result->heap_allocated = true;

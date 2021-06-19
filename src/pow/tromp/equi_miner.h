@@ -223,7 +223,7 @@ struct equi {
   pthread_barrier_t barry;
 #endif
 
-  equi(const u32 n_threads)
+  equi(const u32 n_threads): blake_ctx(), nsols(0), xfull(0), hfull(0), bfull(0)
   {
     assert(sizeof(hashunit) == 4);
     nthreads = n_threads;
