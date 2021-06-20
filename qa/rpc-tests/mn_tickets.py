@@ -141,6 +141,10 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         self.artsell_ticket_tests1(False)
         self.artbuy_ticket_tests(False)
         self.arttrade_ticket_tests(False)
+
+        self.is_green = False
+        self.nonmn6_green_address1 = ""
+
         self.sell_buy_trade_tests()
         self.takedown_ticket_tests()
         self.storage_fee_tests()
