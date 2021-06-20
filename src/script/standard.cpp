@@ -326,12 +326,12 @@ bool IsScriptDestination(const CTxDestination& dest) {
 }
 
 // insightexplorer
-CTxDestination DestFromAddressHash(int scriptType, uint160& addressHash)
+CTxDestination DestFromAddressHash(CScript::ScriptType scriptType, uint160& addressHash)
 {
     switch (scriptType) {
-    case CScript::P2PKH:
+    case CScript::ScriptType::P2PKH:
         return CTxDestination(CKeyID(addressHash));
-    case CScript::P2SH:
+    case CScript::ScriptType::P2SH:
         return CTxDestination(CScriptID(addressHash));
     default:
         // This probably won't ever happen, because it would mean that

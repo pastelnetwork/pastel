@@ -1044,18 +1044,18 @@ UniValue blockToDeltasJSON(const CBlock& block, const CBlockIndex* blockindex)
 
     KeyIO keyIO(Params());
     UniValue deltas(UniValue::VARR);
-    for (unsigned int i = 0; i < block.vtx.size(); i++) {
-        const CTransaction &tx = block.vtx[i];
+    uint64_t i = 0;
+    for (const auto &tx : block.vtx) {
         const uint256 txhash = tx.GetHash();
 
         UniValue entry(UniValue::VOBJ);
         entry.pushKV("txid", txhash.GetHex());
-        entry.pushKV("index", (int)i);
+        entry.pushKV("index", i);
 
         UniValue inputs(UniValue::VARR);
         if (!tx.IsCoinBase()) {
-            for (size_t j = 0; j < tx.vin.size(); j++) {
-                const CTxIn input = tx.vin[j];
+            uint64_t index = 0;
+            for (const auto &input : tx.vin) {
                 UniValue delta(UniValue::VOBJ);
                 CSpentIndexValue spentInfo;
                 CSpentIndexKey spentKey(input.prevout.hash, input.prevout.n);
@@ -1067,19 +1067,21 @@ UniValue blockToDeltasJSON(const CBlock& block, const CBlockIndex* blockindex)
                 if (IsValidDestination(dest)) {
                     delta.pushKV("address", keyIO.EncodeDestination(dest));
                 }
-                delta.pushKV("satoshis", -1 * spentInfo.satoshis);
-                delta.pushKV("index", (int)j);
+                delta.pushKV("patoshis", -1 * spentInfo.patoshis);
+                delta.pushKV("index", index);
                 delta.pushKV("prevtxid", input.prevout.hash.GetHex());
                 delta.pushKV("prevout", (int)input.prevout.n);
 
-                inputs.push_back(delta);
+                inputs.push_back(std::move(delta));
+                index ++;
             }
         }
-        entry.pushKV("inputs", inputs);
+        entry.pushKV("inputs", std::move(inputs));
 
         UniValue outputs(UniValue::VARR);
-        for (unsigned int k = 0; k < tx.vout.size(); k++) {
-            const CTxOut &out = tx.vout[k];
+        
+        uint64_t outIndex = 0;
+        for (const auto &out : tx.vout) {
             UniValue delta(UniValue::VOBJ);
             const uint160 addrhash = out.scriptPubKey.AddressHash();
             CTxDestination dest;
@@ -1092,15 +1094,17 @@ UniValue blockToDeltasJSON(const CBlock& block, const CBlockIndex* blockindex)
             if (IsValidDestination(dest)) {
                 delta.pushKV("address", keyIO.EncodeDestination(dest));
             }
-            delta.pushKV("satoshis", out.nValue);
-            delta.pushKV("index", (int)k);
+            delta.pushKV("patoshis", out.nValue);
+            delta.pushKV("index", outIndex);
 
-            outputs.push_back(delta);
+            outputs.push_back(std::move(delta));
+            outIndex ++;
         }
-        entry.pushKV("outputs", outputs);
-        deltas.push_back(entry);
+        entry.pushKV("outputs", std::move(outputs));
+        deltas.push_back(std::move(entry));
+        i ++;
     }
-    result.pushKV("deltas", deltas);
+    result.pushKV("deltas", std::move(deltas));
     result.pushKV("time", block.GetBlockTime());
     result.pushKV("mediantime", (int64_t)blockindex->GetMedianTimePast());
     result.pushKV("nonce", block.nNonce.GetHex());
@@ -1119,59 +1123,59 @@ UniValue blockToDeltasJSON(const CBlock& block, const CBlockIndex* blockindex)
 // insightexplorer
 UniValue getblockdeltas(const UniValue& params, bool fHelp)
 {
-    std::string enableArg = "insightexplorer";
-    bool enabled = fExperimentalMode && fInsightExplorer;
+    const std::string enableArg = "insightexplorer";
+    const bool enabled = fExperimentalMode && fInsightExplorer;
     std::string disabledMsg = "";
     if (!enabled) {
         disabledMsg = experimentalDisabledHelpMsg("getblockdeltas", enableArg);
     }
     if (fHelp || params.size() != 1)
         throw runtime_error(
-            "getblockdeltas \"blockhash\"\n"
-            "\nReturns the txid and index where an output is spent.\n"
+R"(getblockdeltas blockhash
+Returns the txid and index where an output is spent.)"
             + disabledMsg +
-            "\nArguments:\n"
-            "1. \"hash\"          (string, required) The block hash\n"
-            "\nResult:\n"
-            "{\n"
-            "  \"hash\": \"hash\",              (string) block ID\n"
-            "  \"confirmations\": n,          (numeric) number of confirmations\n"
-            "  \"size\": n,                   (numeric) block size in bytes\n"
-            "  \"height\": n,                 (numeric) block height\n"
-            "  \"version\": n,                (numeric) block version (e.g. 4)\n"
-            "  \"merkleroot\": \"hash\",        (string) block Merkle root\n"
-            "  \"deltas\": [\n"
-            "    {\n"
-            "      \"txid\": \"hash\",          (string) transaction ID\n"
-            "      \"index\": n,              (numeric) tx index in block\n"
-            "      \"inputs\": [\n"
-            "        {\n"
-            "          \"address\": \"taddr\",  (string) transparent address\n"
-            "          \"satoshis\": n,       (numeric) negative of spend amount\n"
-            "          \"index\": n,          (numeric) vin index\n"
-            "          \"prevtxid\": \"hash\",  (string) source utxo tx ID\n"
-            "          \"prevout\": n         (numeric) source utxo index\n"
-            "        }, ...\n"
-            "      ],\n"
-            "      \"outputs\": [\n"
-            "        {\n"
-            "          \"address\": \"taddr\",  (string) transparent address\n"
-            "          \"satoshis\": n,       (numeric) amount\n"
-            "          \"index\": n           (numeric) vout index\n"
-            "        }, ...\n"
-            "      ]\n"
-            "    }, ...\n"
-            "  ],\n"
-            "  \"time\": n,\n"
-            "  \"mediantime\": n,\n"
-            "  \"nonce\": \"hexstring\",\n"
-            "  \"bits\": \"hexstring\",\n"
-            "  \"difficulty\": ,\n"
-            "  \"chainwork\": \"hexstring\",\n"
-            "  \"previousblockhash\": \"hash\",\n"
-            "  \"nextblockhash\": \"hash\"\n"
-            "}\n"
-            "\nExamples:\n"
+R"(Arguments:
+1. "hash"          (string, required) The block hash
+Result:
+{
+  "hash": "hash",              (string) block ID
+  "confirmations": n,          (numeric) number of confirmations
+  "size": n,                   (numeric) block size in bytes
+  "height": n,                 (numeric) block height
+  "version": n,                (numeric) block version (e.g. 4)
+  "merkleroot": "hash",        (string) block Merkle root
+  "deltas": [
+    {
+      "txid": "hash",          (string) transaction ID
+      "index": n,              (numeric) tx index in block
+      "inputs": [
+        {
+          "address": "taddr",  (string) transparent address
+          "patoshis": n,       (numeric) negative of spend amount
+          "index": n,          (numeric) vin index
+          "prevtxid": "hash",  (string) source utxo tx ID
+          "prevout": n         (numeric) source utxo index
+        }, ...
+      ],
+      "outputs": [
+        {
+          "address": "taddr",  (string) transparent address
+          "patoshis": n,       (numeric) amount
+          "index": n           (numeric) vout index
+        }, ...
+      ]
+    }, ...
+  ],
+  "time": n,                   (numeric) The block version
+  "mediantime": n,             (numeric) The most recent blocks' ave time
+  "nonce": "hexstring",        (hex string) The nonce
+  "bits": "hexstring",         (hex string) The bits
+  "difficulty": ,              (numeric) the current difficulty
+  "chainwork": "hexstring",    (hex string) total amount of work in active chain
+  "previousblockhash": "hash", (hex string) The hash of the previous block
+  "nextblockhash": "hash"      (hex string) The hash of the next block
+}
+Examples:)"
             + HelpExampleCli("getblockdeltas", "00227e566682aebd6a7a5b772c96d7a999cadaebeaf1ce96f4191a3aad58b00b")
             + HelpExampleRpc("getblockdeltas", "\"00227e566682aebd6a7a5b772c96d7a999cadaebeaf1ce96f4191a3aad58b00b\"")
         );
@@ -1198,7 +1202,6 @@ UniValue getblockdeltas(const UniValue& params, bool fHelp)
 
     return blockToDeltasJSON(block, pblockindex);
 }
-
 static const CRPCCommand commands[] =
 { //  category              name                      actor (function)         okSafeMode
   //  --------------------- ------------------------  -----------------------  ----------

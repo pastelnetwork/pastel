@@ -6,6 +6,7 @@
 
 #include "compat.h"
 #include "compat/endian.h"
+#include "script/script.h"
 
 #include <algorithm>
 #include <array>
@@ -222,7 +223,8 @@ template<typename Stream> inline void Serialize(Stream& s, bool a)    { char f=a
 template<typename Stream> inline void Unserialize(Stream& s, bool& a) { char f=ser_readdata8(s); a=f; }
 
 
-
+template<typename Stream> inline void Serialize(Stream& s, CScript::ScriptType a ) { ser_writedata32(s, (int32_t)a); }
+template<typename Stream> inline void Unserialize(Stream& s, CScript::ScriptType a ) { a = (CScript::ScriptType)ser_readdata32(s); }
 
 
 

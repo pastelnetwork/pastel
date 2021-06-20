@@ -573,7 +573,7 @@ public:
     unsigned int GetSigOpCount(const CScript& scriptSig) const;
 
     // insightexplorer, there may be more script types in the future
-    enum ScriptType : int {
+    enum class ScriptType : int {
         UNKNOWN = 0,
         P2PKH = 1,
         P2SH = 2,
