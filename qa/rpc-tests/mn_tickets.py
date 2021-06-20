@@ -1710,7 +1710,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         # check seller gets correct amount
         green_fee = 0
         if is_green:
-            green_fee = 1000 * 2 / 100
+            green_fee = 20
         assert_equal(seller_coins_after, seller_coins_before+1000-20-green_fee)
         # sell ticket cost is 20 (1000/50), art cost is 1000
 
@@ -1735,13 +1735,13 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         print("== Tickets List Filter test ==")
 
         tickets_list = self.nodes[self.non_mn3].tickets("list", "id")
-        assert_equal(len(tickets_list), 15 + loop_number*2)
+        assert_equal(len(tickets_list), 17 + loop_number*2)
         tickets_list = self.nodes[self.non_mn3].tickets("list", "id", "all")
-        assert_equal(len(tickets_list), 15 + loop_number*2)
+        assert_equal(len(tickets_list), 17 + loop_number*2)
         tickets_list = self.nodes[self.non_mn3].tickets("list", "id", "mn")
         assert_equal(len(tickets_list), 12)
         tickets_list = self.nodes[self.non_mn3].tickets("list", "id", "personal")
-        assert_equal(len(tickets_list), 3 + loop_number*2)
+        assert_equal(len(tickets_list), 5 + loop_number*2)
 
         self.create_art_ticket_and_signatures(self.artist_pastelid1, self.non_mn3,
                                               "HashOfTicket2", "Ticket2", 5,
