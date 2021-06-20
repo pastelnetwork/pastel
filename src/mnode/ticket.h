@@ -24,9 +24,9 @@ public:
     // get json representation
     virtual std::string ToJSON() const noexcept = 0;
     virtual std::string ToStr() const noexcept = 0;
-    virtual bool IsValid(std::string& errRet, bool preReg, int depth) const = 0; //if preReg = true - validate pre registration conditions
-                                                                                 //      ex.: address has enough coins for registration
-                                                                                 //else - validate ticket in general
+    virtual bool IsValid(bool preReg, int depth) const = 0; //if preReg = true - validate pre registration conditions
+                                                            //  ex.: address has enough coins for registration
+                                                            //else - validate ticket in general
     // stored ticket version
     short GetStoredVersion() const noexcept { return m_nVersion; }
     const std::string GetTxId() const noexcept { return m_txid; }
