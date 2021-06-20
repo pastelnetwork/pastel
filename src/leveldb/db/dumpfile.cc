@@ -183,7 +183,8 @@ Status DumpTable(Env* env, const std::string& fname, WritableFile* dst) {
       r += " : ";
       if (key.type == kTypeDeletion) {
         r += "del";
-      } else if (key.type == kTypeValue) {
+      } else if (key.type == kTypeValue) { //-V547 false warning. This is not always true
+                                           //      because 'else' might happened if the cast to enum ParseInternalKey() is invalid
         r += "val";
       } else {
         AppendNumberTo(&r, key.type);

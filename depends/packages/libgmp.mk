@@ -9,7 +9,7 @@ $(package)_cxx_flags_ldflags="-static-libgcc -static-libstdc++"
 
 define $(package)_set_vars
 $(package)_config_opts=--enable-cxx --disable-shared
-$(package)_config_opts_mingw32=CC_FOR_BUILD="$(build_$(build_os)_CC)" CPP_FOR_BUILD="$(build_$(build_os)_CXX)"
+$(package)_config_opts_mingw32=CC_FOR_BUILD="$(build_$(build_os)_CC)" CPP_FOR_BUILD="$(build_$(build_os)_CXX) -E"
 endef
 
 define $(package)_config_cmds

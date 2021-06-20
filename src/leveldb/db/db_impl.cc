@@ -45,7 +45,7 @@ struct DBImpl::Writer {
   bool done;
   port::CondVar cv;
 
-  explicit Writer(port::Mutex* mu) : cv(mu) { }
+  explicit Writer(port::Mutex* mu) : batch(nullptr), sync(false), done(false), cv(mu) { }
 };
 
 struct DBImpl::CompactionState {
@@ -75,9 +75,11 @@ struct DBImpl::CompactionState {
 
   explicit CompactionState(Compaction* c)
       : compaction(c),
+        smallest_snapshot(),
         outfile(NULL),
         builder(NULL),
-        total_bytes(0) {
+        total_bytes(0)
+  {
   }
 };
 
@@ -244,7 +246,8 @@ void DBImpl::DeleteObsoleteFiles() {
           keep = (number >= versions_->ManifestFileNumber());
           break;
         case kTableFile:
-          keep = (live.find(number) != live.end());
+          keep = (live.find(number) != live.end()); //-V1037 Two or more case-branches perform the same actions.
+                                                    // But we should keep it because it is easier to read and maintain
           break;
         case kTempFile:
           // Any temp files that are currently being written to must
@@ -575,7 +578,8 @@ void DBImpl::TEST_CompactRange(int level, const Slice* begin,const Slice* end) {
   MutexLock l(&mutex_);
   while (!manual.done && !shutting_down_.Acquire_Load() && bg_error_.ok()) {
     if (manual_compaction_ == NULL) {  // Idle
-      manual_compaction_ = &manual;
+      manual_compaction_ = &manual; //-V506 false warning. The check below 'if (manual_compaction_ == &manual)'
+                                    // secured the case that manual goes out of scope before used
       MaybeScheduleCompaction();
     } else {  // Running either my compaction or another compaction.
       bg_cv_.Wait();

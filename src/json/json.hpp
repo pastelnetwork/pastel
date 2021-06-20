@@ -16838,7 +16838,7 @@ class serializer
 
         std::size_t index = 256u + static_cast<size_t>(state) * 16u + static_cast<size_t>(type);
         JSON_ASSERT(index < 400);
-        state = utf8d[index];
+        state = utf8d[index]; //-V557 The assert check for out of range already
         return state;
     }
 

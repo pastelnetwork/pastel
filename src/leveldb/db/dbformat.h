@@ -72,7 +72,7 @@ struct ParsedInternalKey {
   SequenceNumber sequence;
   ValueType type;
 
-  ParsedInternalKey() { }  // Intentionally left uninitialized (for speed)
+  ParsedInternalKey() { }  // -V730 Intentionally left uninitialized (for speed)
   ParsedInternalKey(const Slice& u, const SequenceNumber& seq, ValueType t)
       : user_key(u), sequence(seq), type(t) { }
   std::string DebugString() const;

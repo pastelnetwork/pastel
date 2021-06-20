@@ -20,7 +20,7 @@ using namespace std;
 
 CTxMemPoolEntry::CTxMemPoolEntry():
     nFee(0), nTxSize(0), nModSize(0), nUsageSize(0), nTime(0), dPriority(0.0),
-    hadNoDependencies(false), spendsCoinbase(false)
+    hadNoDependencies(false), spendsCoinbase(false), nBranchId(0)
 {
     nHeight = MEMPOOL_HEIGHT;
 }
@@ -54,12 +54,17 @@ CTxMemPoolEntry::GetPriority(unsigned int currentHeight) const
 }
 
 CTxMemPool::CTxMemPool(const CFeeRate& _minRelayFee) :
-    nTransactionsUpdated(0)
+    nCheckFrequency(0), 
+    nTransactionsUpdated(0), 
+    minerPolicyEstimator(nullptr),
+    totalTxSize(0),
+    cachedInnerUsage(0),
+    mapSproutNullifiers(),
+    mapSaplingNullifiers()
 {
     // Sanity checks off by default for performance, because otherwise
     // accepting transactions becomes O(N^2) where N is the number
     // of transactions in the pool
-    nCheckFrequency = 0;
 
     minerPolicyEstimator = new CBlockPolicyEstimator(_minRelayFee);
 }

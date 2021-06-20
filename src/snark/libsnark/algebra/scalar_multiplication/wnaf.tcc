@@ -28,10 +28,10 @@ std::vector<int64_t> find_wnaf(const size_t window_size, const bigint<n> &scalar
         int64_t u;
         if ((c.data[0] & 1) == 1)
         {
-            u = c.data[0] % (1u << (window_size+1));
+            u = c.data[0] % ((uint64_t)1 << (window_size+1));
             if (u > (1 << window_size))
             {
-                u = u - (1 << (window_size+1));
+                u = u - ((uint64_t)1 << (window_size+1));
             }
 
             if (u > 0)

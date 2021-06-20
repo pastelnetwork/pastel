@@ -80,7 +80,15 @@ public:
     static std::string GetTicketJSON(const uint256 &txid);
 
     static bool ValidateIfTicketTransaction(const int nHeight, const CTransaction& tx);
-
+    
+    static bool WalkBackTradingChain(
+            const std::string& sTxId,                               // txid of the starting ticket
+            std::vector< std::unique_ptr<CPastelTicket> >& chain,   // vector with the tickets in chain
+            bool shortPath,                                         // follow short or long path
+                                                                    //      Trade, Act, Reg in short walk
+                                                                    //      Trade, Buy, Sell, Act or Reg in long walk
+            std::string& errRet) noexcept;
+    
 #ifdef FAKE_TICKET
     static std::string CreateFakeTransaction(CPastelTicket& ticket, CAmount ticketPrice, const std::vector<std::pair<std::string, CAmount>>& extraPayments, const std::string& strVerb, bool bSend);
 #endif

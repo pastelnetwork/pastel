@@ -168,10 +168,12 @@ class LRUCache {
 };
 
 LRUCache::LRUCache()
-    : usage_(0) {
-  // Make empty circular linked list
-  lru_.next = &lru_;
-  lru_.prev = &lru_;
+    : capacity_(0),
+      usage_(0)
+{
+    // Make empty circular linked list
+    lru_.next = &lru_;
+    lru_.prev = &lru_;
 }
 
 LRUCache::~LRUCache() {
@@ -229,20 +231,22 @@ Cache::Handle* LRUCache::Insert(
 
   LRUHandle* e = reinterpret_cast<LRUHandle*>(
       malloc(sizeof(LRUHandle)-1 + key.size()));
-  e->value = value;
-  e->deleter = deleter;
-  e->charge = charge;
-  e->key_length = key.size();
-  e->hash = hash;
-  e->refs = 2;  // One from LRUCache, one for the returned handle
-  memcpy(e->key_data, key.data(), key.size());
-  LRU_Append(e);
-  usage_ += charge;
+  if (e) {
+    e->value = value;
+    e->deleter = deleter;
+    e->charge = charge;
+    e->key_length = key.size();
+    e->hash = hash;
+    e->refs = 2;  // One from LRUCache, one for the returned handle
+    memcpy(e->key_data, key.data(), key.size());
+    LRU_Append(e);
+    usage_ += charge;
 
-  LRUHandle* old = table_.Insert(e);
-  if (old != NULL) {
-    LRU_Remove(old);
-    Unref(old);
+    LRUHandle* old = table_.Insert(e);
+    if (old != NULL) {
+      LRU_Remove(old);
+      Unref(old);
+    }
   }
 
   while (usage_ > capacity_ && lru_.next != &lru_) {

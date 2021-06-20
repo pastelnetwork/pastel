@@ -3,7 +3,7 @@ SUBDIRS = src
 if ENABLE_MAN
 SUBDIRS += doc/man
 endif
-.PHONY: deploy FORCE
+.PHONY: deploy analyze FORCE
 
 GZIP_ENV="-9n"
 
@@ -153,6 +153,9 @@ EXTRA_DIST = $(top_srcdir)/share/genbuild.sh qa/pull-tester/rpc-tests.sh qa/pull
 
 install-exec-hook:
 	mv $(DESTDIR)$(bindir)/fetch-params.sh $(DESTDIR)$(bindir)/pastel-fetch-params
+
+analyze:
+	./pcutil/static_code_analysis.py
 
 .INTERMEDIATE: $(COVERAGE_INFO)
 

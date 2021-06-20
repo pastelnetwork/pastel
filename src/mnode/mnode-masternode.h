@@ -150,6 +150,7 @@ public:
     bool fUnitTest = false;
 
     CAmount aMNFeePerMB = 0; // 0 means default (masterNodeCtrl.MasternodeFeePerMBDefault)
+    CAmount aArtTicketFeePerKB = 0; // 0 means default (masterNodeCtrl.ArtTicketFeePerKBDefault)
 
     CMasternode();
     CMasternode(const CMasternode& other);
@@ -185,6 +186,7 @@ public:
         READWRITE(strExtraLayerAddress);
         READWRITE(strExtraLayerCfg);
         READWRITE(aMNFeePerMB);
+        READWRITE(aArtTicketFeePerKB);
     }
 
     // CALCULATE A RANK AGAINST OF GIVEN BLOCK
@@ -271,6 +273,7 @@ public:
         nPoSeBanHeight = from.nPoSeBanHeight;
         fUnitTest = from.fUnitTest;
         aMNFeePerMB = from.aMNFeePerMB;
+        aArtTicketFeePerKB = from.aArtTicketFeePerKB;
         return *this;
     }
 };

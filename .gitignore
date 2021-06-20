@@ -45,6 +45,8 @@ src/config/bitcoin-config.h
 src/config/bitcoin-config.h.in
 src/config/stamp-h1
 share/setup.nsi
+strace_out
+fullhtml/
 
 cache/
 venv-mnf/
@@ -105,7 +107,7 @@ coverage_percent.txt
 linux-coverage-build
 linux-build
 win32-build
-qa/pull-tester/run-bitcoind-for-test.sh
+qa/pull-tester/run-pasteld-for-test.sh
 qa/pull-tester/tests-config.sh
 qa/pull-tester/cache/*
 qa/pull-tester/test.*/*

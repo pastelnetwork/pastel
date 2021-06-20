@@ -67,21 +67,23 @@ static void secp256k1_ecmult_odd_multiples_table(int n, secp256k1_gej *prej, sec
     d_ge.infinity = 0;
 
     secp256k1_ge_set_gej_zinv(&a_ge, a, &d.z);
-    prej[0].x = a_ge.x;
-    prej[0].y = a_ge.y;
-    prej[0].z = a->z;
-    prej[0].infinity = 0;
+    if (prej && zr) {
+        prej[0].x = a_ge.x;
+        prej[0].y = a_ge.y;
+        prej[0].z = a->z;
+        prej[0].infinity = 0;
 
-    zr[0] = d.z;
-    for (i = 1; i < n; i++) {
-        secp256k1_gej_add_ge_var(&prej[i], &prej[i-1], &d_ge, &zr[i]);
-    }
+        zr[0] = d.z;
+        for (i = 1; i < n; i++) {
+            secp256k1_gej_add_ge_var(&prej[i], &prej[i - 1], &d_ge, &zr[i]);
+        }
 
-    /*
+        /*
      * Each point in 'prej' has a z coordinate too small by a factor of 'd.z'. Only
      * the final point's z coordinate is actually used though, so just update that.
      */
-    secp256k1_fe_mul(&prej[n-1].z, &prej[n-1].z, &d.z);
+        secp256k1_fe_mul(&prej[n - 1].z, &prej[n - 1].z, &d.z);
+    }
 }
 
 /** Fill a table 'pre' with precomputed odd multiples of a.
@@ -120,8 +122,10 @@ static void secp256k1_ecmult_odd_multiples_table_storage_var(int n, secp256k1_ge
     /* Convert them in batch to affine coordinates. */
     secp256k1_ge_set_table_gej_var(prea, prej, zr, n);
     /* Convert them to compact storage form. */
-    for (i = 0; i < n; i++) {
-        secp256k1_ge_to_storage(&pre[i], &prea[i]);
+    if (prea) {
+        for (i = 0; i < n; i++) {
+            secp256k1_ge_to_storage(&pre[i], &prea[i]);
+        }
     }
 
     free(prea);
@@ -174,7 +178,9 @@ static void secp256k1_ecmult_context_build(secp256k1_ecmult_context *ctx, const 
     ctx->pre_g = (secp256k1_ge_storage (*)[])checked_malloc(cb, sizeof((*ctx->pre_g)[0]) * ECMULT_TABLE_SIZE(WINDOW_G));
 
     /* precompute the tables with odd multiples */
-    secp256k1_ecmult_odd_multiples_table_storage_var(ECMULT_TABLE_SIZE(WINDOW_G), *ctx->pre_g, &gj, cb);
+    if (ctx->pre_g) {
+        secp256k1_ecmult_odd_multiples_table_storage_var(ECMULT_TABLE_SIZE(WINDOW_G), *ctx->pre_g, &gj, cb);
+    }
 
 #ifdef USE_ENDOMORPHISM
     {
@@ -200,7 +206,9 @@ static void secp256k1_ecmult_context_clone(secp256k1_ecmult_context *dst,
     } else {
         size_t size = sizeof((*dst->pre_g)[0]) * ECMULT_TABLE_SIZE(WINDOW_G);
         dst->pre_g = (secp256k1_ge_storage (*)[])checked_malloc(cb, size);
-        memcpy(dst->pre_g, src->pre_g, size);
+        if (dst->pre_g) {
+            memcpy(dst->pre_g, src->pre_g, size);
+        }
     }
 #ifdef USE_ENDOMORPHISM
     if (src->pre_g_128 == NULL) {

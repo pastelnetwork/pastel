@@ -312,7 +312,7 @@ UniValue masternode(const UniValue& params, bool fHelp)
             throw JSONRPCError(RPC_INVALID_PARAMETER, "Too many parameters");
 
         if (params.size() == 1)
-            return masterNodeCtrl.masternodeManager.size();
+            return static_cast<uint64_t>(masterNodeCtrl.masternodeManager.size());
 
         std::string strMode = params[1].get_str();
 
@@ -1365,7 +1365,7 @@ UniValue storagefee(const UniValue& params, bool fHelp) {
     if (!params.empty())
         strCommand = params[0].get_str();
 
-    if (fHelp || ( strCommand != "setfee" && strCommand != "getnetworkfee" && strCommand != "getlocalfee" ))
+    if (fHelp || ( strCommand != "setfee" && strCommand != "getnetworkfee" && strCommand != "getartticketfee" && strCommand != "getlocalfee"))
         throw runtime_error(
 			"storagefee \"command\"...\n"
 			"Set of commands to deal with Storage Fee and related actions\n"
@@ -1374,6 +1374,7 @@ UniValue storagefee(const UniValue& params, bool fHelp) {
 			"\nAvailable commands:\n"
 			"  setfee <n>		- Set storage fee for MN.\n"
 			"  getnetworkfee	- Get Network median storage fee.\n"
+			"  getartticketfee	- Get Network median art ticket fee.\n"
 			"  getlocalfee		- Get local masternode storage fee.\n"
         );
 
@@ -1395,6 +1396,14 @@ UniValue storagefee(const UniValue& params, bool fHelp) {
 
         UniValue mnObj(UniValue::VOBJ);
         mnObj.pushKV("networkfee", nFee);
+        return mnObj;
+    }
+    if (strCommand == "getartticketfee")
+    {
+        CAmount nFee = masterNodeCtrl.GetArtTicketFeePerKB();
+
+        UniValue mnObj(UniValue::VOBJ);
+        mnObj.pushKV("artticketfee", nFee);
         return mnObj;
     }
     if (strCommand == "getlocalfee")
@@ -1506,9 +1515,9 @@ static UniValue getTickets(const std::string& key, T2 key2 = "", Lambda otherFun
 #define FAKE_TICKET
 UniValue tickets(const UniValue& params, bool fHelp) {
 #ifdef FAKE_TICKET
-    RPC_CMD_PARSER(TICKETS, params, Register, find, list, get, makefaketicket, sendfaketicket);
+    RPC_CMD_PARSER(TICKETS, params, Register, find, list, get, makefaketicket, sendfaketicket, tools);
 #else
-    RPC_CMD_PARSER(TICKETS, params, Register, find, list, get);
+    RPC_CMD_PARSER(TICKETS, params, Register, find, list, get, tools);
 #endif	
 	if (fHelp || !TICKETS.IsCmdSupported())
 		throw runtime_error(
@@ -2195,7 +2204,124 @@ As json rpc
         obj.read(CPastelTicketProcessor::GetTicketJSON(txid));
         return obj;
 	}
-	
+    
+    if (TICKETS.IsCmd(RPC_CMD_TICKETS::tools)) {
+        
+        RPC_CMD_PARSER2(LIST, params, printtradingchain, getregbytrade, gettotalstoragefee);
+        
+        UniValue obj(UniValue::VARR);
+        switch (LIST.cmd()) {
+            
+            case RPC_CMD_LIST::printtradingchain: {
+                std::string txid;
+                if (params.size() > 2) {
+                    txid = params[2].get_str();
+        
+                    UniValue resultArray(UniValue::VARR);
+        
+                    std::vector<std::unique_ptr<CPastelTicket> > chain;
+                    std::string errRet;
+                    if (CPastelTicketProcessor::WalkBackTradingChain(txid, chain, false, errRet)) {
+                        for (auto &t : chain) {
+                            if (t) {
+                                UniValue obj(UniValue::VOBJ);
+                                obj.read(t->ToJSON());
+                                resultArray.push_back(std::move(obj));
+                            }
+                        }
+                    }
+                    return resultArray;
+                }
+            }
+            case RPC_CMD_LIST::getregbytrade: {
+                std::string txid;
+                if (params.size() > 2) {
+                    txid = params[2].get_str();
+    
+                    UniValue obj(UniValue::VOBJ);
+    
+                    std::vector<std::unique_ptr<CPastelTicket> > chain;
+                    std::string errRet;
+                    if (CPastelTicketProcessor::WalkBackTradingChain(txid, chain, true, errRet)) {
+                        if (!chain.empty()) {
+                            obj.read(chain.front()->ToJSON());
+                        }
+                    }
+                    return obj;
+                }
+            }
+            case RPC_CMD_LIST::gettotalstoragefee: {
+                if (fHelp || params.size() != 10)
+                    throw JSONRPCError(RPC_INVALID_PARAMETER,
+                                       R"(tickets tools gettotalstoragefee "ticket" "{signatures}" "pastelid" "passphrase" "key1" "key2" "fee" "imagesize"
+Get full storage fee for the Art registration. If successful, method returns total amount of fee.
+
+Arguments:
+1. "ticket"	(string, required) Base64 encoded ticket created by the artist.
+	{
+		"version": 1,
+		"author" "authorsPastelID",
+		"blocknum" <block-number-when-the-ticket-was-created-by-the-artist>,
+		"data_hash" "<base64'ed-hash-of-the-art>",
+		"copies" <number-of-copies-of-art-this-ticket-is-creating>,
+		"app_ticket" "<application-specific-data>",
+		"reserved" "<empty-string-for-now>",
+	}
+2. "signatures"	(string, required) Signatures (base64) and PastelIDs of the author and verifying masternodes (MN2 and MN3) as JSON:
+	{
+		"artist":{"authorsPastelID": "authorsSignature"},
+		"mn2":{"mn2PastelID":"mn2Signature"},
+		"mn2":{"mn3PastelID":"mn3Signature"}
+	}
+3. "pastelid"   (string, required) The current, registering masternode (MN1) PastelID. NOTE: PastelID must be generated and stored inside node. See "pastelid newkey".
+4. "passpharse" (string, required) The passphrase to the private key associated with PastelID and stored inside node. See "pastelid newkey".
+5. "key1"       (string, required) The first key to search ticket.
+6. "key2"       (string, required) The second key to search ticket.
+7. "fee"        (int, required) The agreed upon storage fee.
+8. "imagesize"  (int, required) size of image in MB
+
+Get Total Storage Fee Ticket
+)" + HelpExampleCli("tickets tools gettotalstoragefee", R"(""ticket-blob" "{signatures}" jXYqZNPj21RVnwxnEJ654wEdzi7GZTZ5LAdiotBmPrF7pDMkpX1JegDMQZX55WZLkvy9fxNpZcbBJuE8QYUqBF "passphrase", "key1", "key2", 100, 3)") +
+                                           R"(
+As json rpc
+)" + HelpExampleRpc("tickets", R"("tools", "gettotalstoragefee", "ticket" "{signatures}" "jXYqZNPj21RVnwxnEJ654wEdzi7GZTZ5LAdiotBmPrF7pDMkpX1JegDMQZX55WZLkvy9fxNpZcbBJuE8QYUqBF" "passphrase", "key1", "key2", 100, 3)"));
+
+                if (fImporting || fReindex)
+                    throw JSONRPCError(RPC_INVALID_PARAMETER, "Initial blocks download. Re-try later");
+
+
+                std::string ticket = params[2].get_str();
+                std::string signatures = params[3].get_str();
+                std::string pastelID = params[4].get_str();
+
+                SecureString strKeyPass;
+                strKeyPass.reserve(100);
+                strKeyPass = params[5].get_str().c_str();
+
+                std::string key1 = params[6].get_str();
+                std::string key2 = params[7].get_str();
+
+                CAmount nStorageFee = get_long_number(params[8]);
+                CAmount imageSize = get_long_number(params[9]);
+
+                CArtRegTicket artRegTicket = CArtRegTicket::Create(
+                    ticket, signatures,
+                    pastelID, strKeyPass,
+                    key1, key2,
+                    nStorageFee);
+                CDataStream data_stream(SER_NETWORK, DATASTREAM_VERSION);
+                data_stream << (uint8_t)artRegTicket.ID();
+                data_stream << artRegTicket;
+                std::vector<unsigned char> input_bytes{data_stream.begin(), data_stream.end()};
+                CAmount totalFee = imageSize*masterNodeCtrl.GetNetworkFeePerMB() + ceil(input_bytes.size()*masterNodeCtrl.GetArtTicketFeePerKB()/1024);
+
+                UniValue mnObj(UniValue::VOBJ);
+                mnObj.pushKV("totalstoragefee", totalFee);
+                return mnObj;
+            }
+        }
+    }
+    
 #ifdef FAKE_TICKET
     if (TICKETS.IsCmd(RPC_CMD_TICKETS::makefaketicket) || TICKETS.IsCmd(RPC_CMD_TICKETS::sendfaketicket)) {
             const bool bSend = TICKETS.IsCmd(RPC_CMD_TICKETS::sendfaketicket);
@@ -2482,7 +2608,7 @@ static const CRPCCommand commands[] =
     { "mnode",               "masternodelist",         &masternodelist,         true  },
     { "mnode",               "masternodebroadcast",    &masternodebroadcast,    true  },
     { "mnode",               "mnsync",                 &mnsync,                 true  },
-//    { "mnode",               "governance",             &governance,             true  },
+    { "mnode",               "governance",             &governance,             true  },
     { "mnode",               "pastelid",               &pastelid,               true  },
     { "mnode",               "storagefee",             &storagefee,             true  },
     { "mnode",               "chaindata",              &chaindata,              true  },

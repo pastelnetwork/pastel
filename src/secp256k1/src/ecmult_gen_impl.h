@@ -80,8 +80,10 @@ static void secp256k1_ecmult_gen_context_build(secp256k1_ecmult_gen_context *ctx
         secp256k1_ge_set_all_gej_var(prec, precj, 1024, cb);
     }
     for (j = 0; j < 64; j++) {
-        for (i = 0; i < 16; i++) {
-            secp256k1_ge_to_storage(&(*ctx->prec)[j][i], &prec[j*16 + i]);
+        if (ctx->prec) {
+            for (i = 0; i < 16; i++) {
+                secp256k1_ge_to_storage(&(*ctx->prec)[j][i], &prec[j * 16 + i]);
+            }
         }
     }
 #else
@@ -102,7 +104,9 @@ static void secp256k1_ecmult_gen_context_clone(secp256k1_ecmult_gen_context *dst
     } else {
 #ifndef USE_ECMULT_STATIC_PRECOMPUTATION
         dst->prec = (secp256k1_ge_storage (*)[64][16])checked_malloc(cb, sizeof(*dst->prec));
-        memcpy(dst->prec, src->prec, sizeof(*dst->prec));
+        if (dst->prec) {
+            memcpy(dst->prec, src->prec, sizeof(*dst->prec));
+        }
 #else
         (void)cb;
         dst->prec = src->prec;

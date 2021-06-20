@@ -27,7 +27,7 @@ CAmount CMasternodeGovernance::GetGovernancePaymentForHeight(int nHeight)
 
 CAmount CMasternodeGovernance::GetGovernancePayment(CAmount blockValue)
 {
-    CAmount ret = blockValue/20; // Always at 5% per CB
+    CAmount ret = blockValue/10; // Always at 5% per CB -> Freedcamp task:38980425 change from 5 % to 10%.
     return ret;
 }
 
@@ -111,8 +111,11 @@ CAmount CMasternodeGovernance::IncrementTicketPaidAmount(CAmount payment, CGover
         LOCK(cs_mapTickets);
         auto ti1 = mapTickets.find(ticket.ticketId);
         if (ti1 != mapTickets.end()) {
-            ti1->second.nAmountPaid += payment;
-            aAmountPaid = ti1->second.nAmountPaid;
+            if(!ti1->second.IsPaid())
+            {
+                ti1->second.nAmountPaid += payment;
+                aAmountPaid = ti1->second.nAmountPaid;
+            }
         }
     }
     return aAmountPaid;
@@ -267,7 +270,7 @@ void CMasternodeGovernance::ProcessMessage(CNode* pfrom, std::string& strCommand
     if (strCommand == NetMsgType::GOVERNANCESYNC) { //Governance Payments Request Sync
     
         //TODO: Fix governance tickets processing
-        return;
+        //return; SHOULD BE FIXED BY NOW
         
         // Ignore such requests until we are fully synced.
         // We could start processing this after masternode list is synced
@@ -291,7 +294,7 @@ void CMasternodeGovernance::ProcessMessage(CNode* pfrom, std::string& strCommand
     } else if (strCommand == NetMsgType::GOVERNANCE) { // Masternode Governance ticket
     
         //TODO: Fix governance tickets processing
-        return;
+        //return; -> SHOULD BE FIXED BY NOW
         
         CGovernanceTicket ticket;
         vRecv >> ticket;
@@ -323,7 +326,7 @@ void CMasternodeGovernance::ProcessMessage(CNode* pfrom, std::string& strCommand
     } else if (strCommand == NetMsgType::GOVERNANCEVOTE) { // Masternode Governance ticket votes
     
         //TODO: Fix governance tickets processing
-        return;
+        //return; -> SHOULD BE FIXED BY NOW
         
         CGovernanceVote vote;
         vRecv >> vote;
@@ -452,7 +455,7 @@ void CMasternodeGovernance::CheckAndRemove()
         if (ticket.IsWinner(nCachedBlockHeight)) {
             //process winners
             if (ticket.nLastPaymentBlockHeight == 0) {
-                ticket.nFirstPaymentBlockHeight = max(lastScheduledPaymentBlock, nCachedBlockHeight)+1;
+                ticket.nFirstPaymentBlockHeight = max(lastScheduledPaymentBlock, ticket.nStopVoteBlockHeight)+10;
                 ticket.nLastPaymentBlockHeight = CalculateLastPaymentBlock(ticket.nAmountToPay, ticket.nFirstPaymentBlockHeight);
                 lastScheduledPaymentBlock = ticket.nLastPaymentBlockHeight;
                 mapPayments[lastScheduledPaymentBlock] = ticket.ticketId;
@@ -477,7 +480,7 @@ void CMasternodeGovernance::CheckAndRemove()
         //TODO: prune paid winners
         while(it != mapTickets.end()) {
             CGovernanceTicket& ticket = (*it).second;
-            if (ticket.IsPayed()){
+            if (ticket.IsPaid()){
                 mapPayments.erase(ticket.nLastPaymentBlockHeight);
                 mapTickets.erase(it++);
             }
@@ -612,9 +615,7 @@ bool CGovernanceVote::Sign()
 {
     std::string strError;
     std::string strMessage = vinMasternode.prevout.ToStringShort() +
-                ticketId.ToString() +
-                boost::lexical_cast<std::string>(nVoteBlockHeight) +
-                boost::lexical_cast<std::string>(bVote);
+                ticketId.ToString();
 
     LogPrintf("CGovernanceVote::Sign -- Vote to sign: %s (%s)\n", ToString(), strMessage);
 
@@ -637,9 +638,7 @@ bool CGovernanceVote::CheckSignature(const CPubKey& pubKeyMasternode, int stopVo
     nDos = 0;
 
     std::string strMessage = vinMasternode.prevout.ToStringShort() +
-                ticketId.ToString() +
-                boost::lexical_cast<std::string>(nVoteBlockHeight) +
-                boost::lexical_cast<std::string>(bVote);
+                ticketId.ToString();
 
     LogPrintf("CGovernanceVote::CheckSignature -- Vote to check: %s (%s)\n", ToString(), strMessage);
 

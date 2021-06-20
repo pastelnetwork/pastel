@@ -1843,14 +1843,14 @@ BOOST_AUTO_TEST_CASE(rpc_z_mergetoaddress_parameters)
 
     // Sprout and Sapling inputs -> throw
     try {
-        auto operation = new AsyncRPCOperation_mergetoaddress(std::nullopt, mtx, inputs, sproutNoteInputs, saplingNoteInputs, testnetzaddr, 1);
+        std::shared_ptr<AsyncRPCOperation>  operation(new AsyncRPCOperation_mergetoaddress(std::nullopt, mtx, inputs, sproutNoteInputs, saplingNoteInputs, testnetzaddr, 1));
         BOOST_FAIL("Should have caused an error");
     } catch (const UniValue& objError) {
         BOOST_CHECK(find_error(objError, "Cannot send from both Sprout and Sapling addresses using z_mergetoaddress"));
     }
     // Sprout inputs and TransactionBuilder -> throw
     try {
-        auto operation = new AsyncRPCOperation_mergetoaddress(TransactionBuilder(), mtx, inputs, sproutNoteInputs, {}, testnetzaddr, 1);
+        std::shared_ptr<AsyncRPCOperation> operation(new AsyncRPCOperation_mergetoaddress(TransactionBuilder(), mtx, inputs, sproutNoteInputs, {}, testnetzaddr, 1));
         BOOST_FAIL("Should have caused an error");
     } catch (const UniValue& objError) {
         BOOST_CHECK(find_error(objError, "Sprout notes are not supported by the TransactionBuilder"));

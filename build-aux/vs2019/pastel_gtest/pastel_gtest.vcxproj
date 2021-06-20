@@ -111,6 +111,7 @@
     <ClCompile Include="..\..\..\src\gtest\test_joinsplit.cpp" />
     <ClCompile Include="..\..\..\src\gtest\test_keys.cpp" />
     <ClCompile Include="..\..\..\src\gtest\test_keystore.cpp" />
+    <ClCompile Include="..\..\..\src\gtest\test_legroast.cpp" />
     <ClCompile Include="..\..\..\src\gtest\test_libzcash_utils.cpp" />
     <ClCompile Include="..\..\..\src\gtest\test_mempool.cpp" />
     <ClCompile Include="..\..\..\src\gtest\test_merkletree.cpp" />
@@ -151,10 +152,12 @@
     <ClCompile Include="..\..\..\src\mnode\mnode-sync.cpp" />
     <ClCompile Include="..\..\..\src\mnode\ticket-processor.cpp" />
     <ClCompile Include="..\..\..\src\mnode\mnode-validation.cpp" />
+    <ClCompile Include="..\port\uint128.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\..\src\gtest\json_test_vectors.h" />
     <ClInclude Include="..\..\..\src\gtest\mock_mnode_ticket.h" />
+    <ClInclude Include="..\..\..\src\legroast\legroast.h" />
     <ClInclude Include="..\..\..\src\mnode\mnode-active.h" />
     <ClInclude Include="..\..\..\src\mnode\mnode-config.h" />
     <ClInclude Include="..\..\..\src\mnode\mnode-consts.h" />
@@ -172,6 +175,7 @@
     <ClInclude Include="..\..\..\src\mnode\ticket-processor.h" />
     <ClInclude Include="..\..\..\src\mnode\mnode-validation.h" />
     <ClInclude Include="..\..\..\src\mnode\ticket.h" />
+    <ClInclude Include="..\port\uint128.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
