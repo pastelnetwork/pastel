@@ -542,8 +542,7 @@ bool common_validation(const T& ticket, bool preReg, const std::string& strTnxId
         // A. Validate that address has coins to pay for registration - 10PSL + fee
         if (pwalletMain->GetBalance() < ticketPrice*COIN)
         {
-            errRet = strprintf("Not enough coins to cover price [%d]", ticketPrice);
-            return false;
+            throw std::runtime_error(strprintf("Not enough coins to cover price [%d]", ticketPrice));
         }
     }
     
@@ -1638,7 +1637,7 @@ std::string CChangeUsernameTicket::ToStr() const noexcept
 }
 
 // FIXME: Remove erret parameters
-bool CChangeUsernameTicket::IsValid(std::string& errRet, bool preReg, int depth) const
+bool CChangeUsernameTicket::IsValid(bool preReg, int depth) const
 {
     unsigned int chainHeight = 0;
     {
