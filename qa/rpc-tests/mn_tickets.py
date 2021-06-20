@@ -141,10 +141,6 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         self.artsell_ticket_tests1(False)
         self.artbuy_ticket_tests(False)
         self.arttrade_ticket_tests(False)
-
-        self.is_green = False
-        self.nonmn6_green_address1 = ""
-
         self.sell_buy_trade_tests()
         self.takedown_ticket_tests()
         self.storage_fee_tests()
@@ -1598,23 +1594,23 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         # now there is 1 Trade ticket and it is non-sold
         new_trade_ticket = self.sell_buy_trade_test("T1", self.non_mn4, self.nonmn4_pastelid1,
                                                     self.non_mn3, self.nonmn3_pastelid1,
-                                                    self.art_ticket1_trade_ticket_txid)
+                                                    self.art_ticket1_trade_ticket_txid, self.is_green)
         # now there are 2 Trade ticket and 1 of it's sold
         new_trade_ticket = self.sell_buy_trade_test("T2", self.non_mn3, self.nonmn3_pastelid1,
                                                     self.non_mn4, self.nonmn4_pastelid1,
-                                                    new_trade_ticket)
+                                                    new_trade_ticket, self.is_green)
         # now there are 3 Trade ticket and 2 of it's sold
         new_trade_ticket = self.sell_buy_trade_test("T3", self.non_mn4, self.nonmn4_pastelid1,
                                                     self.non_mn3, self.nonmn3_pastelid1,
-                                                    new_trade_ticket)
+                                                    new_trade_ticket, self.is_green)
         # now there are 4 Trade ticket and 3 of it's sold
         new_trade_ticket = self.sell_buy_trade_test("T4", self.non_mn3, self.nonmn3_pastelid1,
                                                     self.non_mn4, self.nonmn4_pastelid1,
-                                                    new_trade_ticket)
+                                                    new_trade_ticket, self.is_green)
         # now there are 5 Trade ticket and 4 of it's sold
         self.sell_buy_trade_test("T5", self.non_mn4, self.nonmn4_pastelid1,
                                  self.non_mn3, self.nonmn3_pastelid1,
-                                 new_trade_ticket)
+                                 new_trade_ticket, self.is_green)
         # now there are 6 Trade ticket and 5 of it's sold
 
         original_art_trade_tickets = []
@@ -1622,17 +1618,19 @@ class MasterNodeTicketsTest(MasterNodeCommon):
             original_art_trade_tickets.append(self.sell_buy_trade_test(f"A{i}",
                                                                        self.non_mn3, self.artist_pastelid1,
                                                                        self.non_mn4, self.nonmn4_pastelid1,
-                                                                       self.art_ticket1_act_ticket_txid, True)
+                                                                       self.art_ticket1_act_ticket_txid,
+                                                                       self.is_green, True)
                                               )
         # now there are 15 Trade ticket and 5 of it's sold
 
         self.sell_buy_trade_test("A10-Fail", self.non_mn3, self.artist_pastelid1,
                                  self.non_mn4, self.nonmn4_pastelid1,
-                                 self.art_ticket1_act_ticket_txid, True, True)
+                                 self.art_ticket1_act_ticket_txid, self.is_green, True, True)
 
     # ===============================================================================================================
     def sell_buy_trade_test(self, test_num, seller_node, seller_pastelid,
-                            buyer_node, buyer_pastelid, art_to_sell_txid, skip_last_fail_test=False, will_fail=False):
+                            buyer_node, buyer_pastelid, art_to_sell_txid,
+                            is_green, skip_last_fail_test=False, will_fail=False):
         print(f"===== Test {test_num} : {seller_node} sells and {buyer_node} buys =====")
         self.print_heights()
 
@@ -1710,7 +1708,10 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         # buy ticket cost is 10 (1000/100), trade ticket cost is self.trade_ticket_price, art cost is 1000
 
         # check seller gets correct amount
-        assert_equal(seller_coins_after, seller_coins_before+1000-20)
+        green_fee = 0
+        if is_green:
+            green_fee = 1000 * 2 / 100
+        assert_equal(seller_coins_after, seller_coins_before+1000-20-green_fee)
         # sell ticket cost is 20 (1000/50), art cost is 1000
 
         if not skip_last_fail_test:
