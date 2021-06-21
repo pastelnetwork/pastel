@@ -592,8 +592,8 @@ public:
     READWRITE(m_nBlock);
   }
 
-  static CArtRoyaltyTicket Create(std::string _pastelID, std::string _newPastelID,
-                                  std::string _artTnxId, const SecureString& strKeyPass);
+  static CArtRoyaltyTicket Create(std::string _artTnxId, std::string _newPastelID,
+                                  std::string _pastelID, const SecureString& strKeyPass);
   static bool FindTicketInDb(const std::string& key, CArtRoyaltyTicket& ticket);
 
   static std::vector<CArtRoyaltyTicket> FindAllTicketByPastelID(const std::string& pastelID);

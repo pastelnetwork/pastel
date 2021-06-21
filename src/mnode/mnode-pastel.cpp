@@ -1429,8 +1429,8 @@ std::unique_ptr<CPastelTicket> CArtTradeTicket::FindArtRegTicket() const
 
 // CArtRoyaltyTicket ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 CArtRoyaltyTicket CArtRoyaltyTicket::Create(
-    std::string _pastelID, std::string _newPastelID,
-    std::string _artTnxId, const SecureString& strKeyPass) {
+    std::string _artTnxId, std::string _newPastelID,
+    std::string _pastelID, const SecureString& strKeyPass) {
   CArtRoyaltyTicket ticket(std::move(_pastelID), std::move(_newPastelID));
 
   ticket.artTnxId = std::move(_artTnxId);
