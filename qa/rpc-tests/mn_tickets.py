@@ -106,7 +106,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         self.act_ticket_price = 10
         self.trade_ticket_price = 10
 
-        self.royalty = 0
+        self.royalty = 7
         self.is_green = True
 
         self.test_high_heights = False
@@ -131,7 +131,8 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         self.pastelid_tests()
         self.mn_pastelid_ticket_tests(False)
         self.personal_pastelid_ticket_tests(False)
-        self.personal_royalty_initialize_tests()
+        if self.royalty > 0:
+            self.personal_royalty_initialize_tests()
         if self.is_green:
             self.personal_green_initialize_tests()
         else:
@@ -561,8 +562,8 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         #   "blocknum": integer,        // block number when the ticket was created - this is to map the ticket to the MNs that should process it
         #   "block_hash": bytes         // hash of the top block when the ticket was created - this is to map the ticket to the MNs that should process it
         #   "copies": integer,          // number of copies
-        #   "royalty": short,           // (not yet supported by cNode) how much artist should get on all future resales
-        #   "green": string,            // address for Green NFT payment (not yet supported by cNode)
+        #   "royalty": short,           // how much artist should get on all future resales (not yet supported by cNode)
+        #   "green_address": string,    // address for Green NFT payment (not yet supported by cNode)
         #   "app_ticket": ...
         # }
         json_ticket = {
@@ -572,7 +573,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
             "block_hash": data_hash,
             "copies": total_copies,
             "royalty": self.royalty,
-            "green": self.nonmn6_green_address1,
+            "green_address": self.nonmn6_green_address1,
             "app_ticket": app_ticket
         }
         self.ticket = str_to_b64str(json.dumps(json_ticket))
@@ -912,7 +913,12 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         assert_equal(art_ticket1_1["ticket"]["total_copies"], self.total_copies)
         assert_equal(art_ticket1_1["ticket"]["storage_fee"], self.storage_fee)
         assert_equal(art_ticket1_1["ticket"]["royalty"], self.royalty)
-        assert_equal(art_ticket1_1["ticket"]["green"], self.nonmn6_green_address1)
+        if self.royalty > 0:
+            assert(len(art_ticket1_1["ticket"]["royalty_address"]) > 0)
+        else:
+            assert(len(art_ticket1_1["ticket"]["royalty_address"]) == 0)
+        assert_equal(art_ticket1_1["ticket"]["green"], 2)
+        assert_equal(art_ticket1_1["ticket"]["green_address"], self.nonmn6_green_address1)
         assert_equal(art_ticket1_1["ticket"]["signatures"]["artist"][self.artist_pastelid1],
                      self.ticket_signature_artist)
         assert_equal(art_ticket1_1["ticket"]["signatures"]["mn2"][self.top_mn_pastelid1], self.top_mn_ticket_signature1)
@@ -928,7 +934,12 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         assert_equal(art_ticket1_2["ticket"]["total_copies"], self.total_copies)
         assert_equal(art_ticket1_2["ticket"]["storage_fee"], self.storage_fee)
         assert_equal(art_ticket1_2["ticket"]["royalty"], self.royalty)
-        assert_equal(art_ticket1_2["ticket"]["green"], self.nonmn6_green_address1)
+        if self.royalty > 0:
+            assert(len(art_ticket1_2["ticket"]["royalty_address"]) > 0)
+        else:
+            assert(len(art_ticket1_2["ticket"]["royalty_address"]) == 0)
+        assert_equal(art_ticket1_2["ticket"]["green"], 2)
+        assert_equal(art_ticket1_2["ticket"]["green_address"], self.nonmn6_green_address1)
         assert_equal(art_ticket1_2["ticket"]["signatures"]["artist"][self.artist_pastelid1],
                      art_ticket1_1["ticket"]["signatures"]["artist"][self.artist_pastelid1])
 
@@ -1734,14 +1745,20 @@ class MasterNodeTicketsTest(MasterNodeCommon):
     def tickets_list_filter_tests(self, loop_number):
         print("== Tickets List Filter test ==")
 
+        number_personal_nodes = 3
+        if self.royalty > 0:
+            number_personal_nodes += 1
+        if self.is_green:
+            number_personal_nodes += 1
+
         tickets_list = self.nodes[self.non_mn3].tickets("list", "id")
-        assert_equal(len(tickets_list), 17 + loop_number*2)
+        assert_equal(len(tickets_list), 12 + number_personal_nodes + loop_number * 2)
         tickets_list = self.nodes[self.non_mn3].tickets("list", "id", "all")
-        assert_equal(len(tickets_list), 17 + loop_number*2)
+        assert_equal(len(tickets_list), 12 + number_personal_nodes + loop_number * 2)
         tickets_list = self.nodes[self.non_mn3].tickets("list", "id", "mn")
         assert_equal(len(tickets_list), 12)
         tickets_list = self.nodes[self.non_mn3].tickets("list", "id", "personal")
-        assert_equal(len(tickets_list), 5 + loop_number*2)
+        assert_equal(len(tickets_list), number_personal_nodes + loop_number * 2)
 
         self.create_art_ticket_and_signatures(self.artist_pastelid1, self.non_mn3,
                                               "HashOfTicket2", "Ticket2", 5,

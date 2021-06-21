@@ -1677,51 +1677,58 @@ Register new art ticket. If successful, method returns "txid".
 Arguments:
 1. "ticket"	(string, required) Base64 encoded ticket created by the artist.
     {
-        "version":    1,
-        "author":     "<authors-PastelID>",
-        "blocknum":   <block-number-when-the-ticket-was-created-by-the-artist>,
-        "data_hash":  "<base64'ed-hash-of-the-art>",
-        "copies":     <number-of-copies-of-art-this-ticket-is-creating>,
-        "royalty":    <how-much-artist-should-get-on-all-future-resales>,
-        "green":      "<address-for-Green-NFT-payment>",
-        "app_ticket": "<application-specific-data>",
+        "version":       1,
+        "author":        "<authors-PastelID>",
+        "blocknum":      <block-number-when-the-ticket-was-created-by-the-artist>,
+        "data_hash":     "<base64'ed-hash-of-the-art>",
+        "copies":        <number-of-copies-of-art-this-ticket-is-creating>,
+        "royalty":       <how-much-artist-should-get-on-all-future-resales>,
+        "green_address": "<address-for-Green-NFT-payment>",
+        "app_ticket":    "<application-specific-data>",
     }
 2. "signatures"	(string, required) Signatures (base64) and PastelIDs of the author and verifying masternodes (MN2 and MN3) as JSON:
-	{
-		"artist":{"authorsPastelID": "authorsSignature"},
-		"mn2":{"mn2PastelID":"mn2Signature"},
-		"mn2":{"mn3PastelID":"mn3Signature"}
-	}
+    {
+        "artist": { "authorsPastelID": "authorsSignature" },
+        "mn2":    { "mn2PastelID":     "mn2Signature"     },
+        "mn2":    { "mn3PastelID":     "mn3Signature"     }
+    }
 3. "pastelid"   (string, required) The current, registering masternode (MN1) PastelID. NOTE: PastelID must be generated and stored inside node. See "pastelid newkey".
 4. "passpharse" (string, required) The passphrase to the private key associated with PastelID and stored inside node. See "pastelid newkey".
 5. "key1"       (string, required) The first key to search ticket.
 6. "key2"       (string, required) The second key to search ticket.
 7. "fee"        (int, required) The agreed upon storage fee.
-Masternode PastelID Ticket:
+Art Reg Ticket:
 {
-	"ticket": {
-		"type": "art-reg",
-		"ticket": {...},
-		"signatures": {
- 			"authorsPastelID": "authorsSignature",
-			"mn1PastelID":"mn1Signature",
-			"mn2PastelID":"mn2Signature",
-			"mn3PastelID":"mn3Signature"
-		},
-		"key1": "<search key 1>",
-		"key2": "<search key 2>",
-		"storage_fee": "<agreed upon storage fee>",
-	},
-	"height": "",
-	"txid": ""
+    "txid":   <"ticket transaction id">
+    "height": <ticket block>,
+    "ticket": {
+        "type":            "art-reg",
+        "art_ticket":      {...},
+        "version":         <version>
+        "signatures": {
+            "authorsPastelID": <"authorsSignature">,
+            "mn1PastelID":     <"mn1Signature">,
+            "mn2PastelID":     <"mn2Signature">,
+            "mn3PastelID":     <"mn3Signature">
+        },
+        "key1":            "<search key 1>",
+        "key2":            "<search key 2>",
+        "artist_height":   <artist height>,
+        "total_copies":    <total copies>,
+        "royalty":         <royalty fee>,
+        "royalty_address": <"address for royalty payment">,
+        "green":           <green fee>,
+        "green_address":   <"address for Green NFT payment">,
+        "storage_fee":     <agreed upon storage fee>,
+    }
 }
 
 Register Art Ticket
 )" + HelpExampleCli("tickets register art",
-                R"(""ticket-blob" "{signatures}" jXYqZNPj21RVnwxnEJ654wEdzi7GZTZ5LAdiotBmPrF7pDMkpX1JegDMQZX55WZLkvy9fxNpZcbBJuE8QYUqBF "passphrase", "key1", "key2", 100)") + R"(
+    R"(""ticket-blob" "{signatures}" jXYqZNPj21RVnwxnEJ654wEdzi7GZTZ5LAdiotBmPrF7pDMkpX1JegDMQZX55WZLkvy9fxNpZcbBJuE8QYUqBF "passphrase", "key1", "key2", 100)") + R"(
 As json rpc
 )" + HelpExampleRpc("tickets",
-                    R"("register", "art", "ticket" "{signatures}" "jXYqZNPj21RVnwxnEJ654wEdzi7GZTZ5LAdiotBmPrF7pDMkpX1JegDMQZX55WZLkvy9fxNpZcbBJuE8QYUqBF" "passphrase", "key1", "key2", 100)"));
+    R"("register", "art", "ticket" "{signatures}" "jXYqZNPj21RVnwxnEJ654wEdzi7GZTZ5LAdiotBmPrF7pDMkpX1JegDMQZX55WZLkvy9fxNpZcbBJuE8QYUqBF" "passphrase", "key1", "key2", 100)"));
 
             if (!masterNodeCtrl.IsActiveMasterNode())
                 throw JSONRPCError(RPC_INTERNAL_ERROR,
