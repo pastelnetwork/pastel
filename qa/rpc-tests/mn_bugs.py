@@ -14,12 +14,14 @@ import argparse
 import os
 import sys
 import time
+import json
+import random
 
 from decimal import Decimal, getcontext
 getcontext().prec = 16
 
 
-TEST_CASE_EXEC_NR = 40104682; # Default: 1st subtask of 38980425
+TEST_CASE_EXEC_NR = 40300409; # ExtP2P address-change tests
 
 # 12 Master Nodes
 private_keys_list = ["91sY9h4AQ62bAhNk1aJ7uJeSnQzSFtz7QmW5imrKmiACm7QJLXe", #0 
@@ -66,8 +68,83 @@ class MasterNodeGovernanceTest (MasterNodeCommon):
 
         print("Run freedcamp ID specific test")
         
-        if(TEST_CASE_EXEC_NR == 40104682):
-            self.test_40104682()
+        if(TEST_CASE_EXEC_NR == 40300409):
+            self.test_40300409()
+    
+    def modify_masternode_conf_extP2P(self, name, n, dirname, mn_ext_add_to_modified_p2p):
+        datadir = os.path.join(dirname, "node"+str(n))
+        regtestdir = os.path.join(datadir, "regtest")
+        
+        cfg_file = os.path.join(regtestdir, "masternode.conf")
+        
+        config = {}
+        if os.path.isfile(cfg_file):
+            with open(cfg_file) as json_file:  
+                config = json.load(json_file)
+
+        new_address = "127.0.0.1:" + str(random.randint(25001, 28000)) # not to be the same interval as 'original'
+        print("Modifying to: {}".format(new_address))
+        config[name]["extP2P"] = new_address
+        mn_ext_add_to_modified_p2p[config[name]["extAddress"]] = new_address
+        
+        with open(cfg_file, 'w') as f:
+            json.dump(config, f, indent=4)
+        return datadir
+
+    def test_40300409(self):
+        # Sample aliases to be tested
+        mn_aliases_to_be_modified = ["mn0", "mn6"]
+        mn_hot_node = "mn13"
+
+        # Storing external IP to the corresponding 
+        # mn for easier identification at assertation
+        mn_ext_add_to_modified_p2p = {} 
+
+        print("Wait a min!")
+        time.sleep(60)
+        mns = self.nodes[0].masternodelist("extra")
+        # Modifying masternode #1 mn0
+        self.modify_masternode_conf_extP2P(mn_aliases_to_be_modified[0],self.hot_node_num, self.options.tmpdir, mn_ext_add_to_modified_p2p )
+      
+        time.sleep(60)
+        print("Enabling MN {}...".format(mn_aliases_to_be_modified[0]))
+        time.sleep(1)
+
+        # Modifying masternode #2 mn6
+        self.modify_masternode_conf_extP2P(mn_aliases_to_be_modified[1],self.hot_node_num, self.options.tmpdir, mn_ext_add_to_modified_p2p)
+        time.sleep(1)
+        
+        print("Stoping and re-enabling MN hot node {}...".format(mn_hot_node))
+        #Stopping hot_node
+        stop_node(self.nodes[self.hot_node_num], self.hot_node_num)
+
+        print(f"Starting node {self.hot_node_num}...")
+        self.nodes[self.hot_node_num]=start_node(self.hot_node_num, self.options.tmpdir, ["-debug=masternode", "-txindex=1", "-reindex"], timewait=900)
+        for i in range(len(self.nodes)):
+            if i != self.hot_node_num:
+                connect_nodes_bi(self.nodes, self.hot_node_num, i)
+
+        time.sleep(90)
+        print(f"Checking sync status of node {self.hot_node_num}...")
+        assert_equal(self.nodes[self.hot_node_num].mnsync("status")["IsSynced"], True)
+        assert_equal(self.nodes[self.hot_node_num].mnsync("status")["IsFailed"], False)
+
+        for mn_alias in mn_aliases_to_be_modified:
+            print(f"Enabling MN {mn_alias}...")
+            res = self.nodes[self.hot_node_num].masternode("start-alias", mn_alias)
+            print(res)        
+            assert_equal(res["alias"], mn_alias)
+            assert_equal(res["result"], "successful")
+            time.sleep(1)
+
+        print("Waiting 90 seconds...")
+        time.sleep(90)
+        print("Hopefully we have be then new P2PAddresses")
+        mns = self.nodes[self.hot_node_num].masternodelist("extra")
+        for out in mns:
+            if (mns[out]["extAddress"] in mn_ext_add_to_modified_p2p):
+                assert_equal(mns[out]["extP2P"], mn_ext_add_to_modified_p2p[mns[out]["extAddress"]])
+
 
     def test_40104615 (self):
         print("Register first ticket")
@@ -531,8 +608,4 @@ class MasterNodeGovernanceTest (MasterNodeCommon):
             time.sleep(wait_between_bursts)
 
 if __name__ == '__main__':
-    #parser = argparse.ArgumentParser()
-    #parser.add_argument('freedcamp', help='Freedcamp ID to test against')
-    #args = parser.parse_args()
-    #TEST_CASE_EXEC_NR = args.freedcamp
     MasterNodeGovernanceTest ().main ()

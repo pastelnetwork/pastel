@@ -151,6 +151,7 @@ def create_masternode_conf(name, n, dirname, txid, vin, private_key, mn_port):
     config[name]["txid"] = str(txid)
     config[name]["outIndex"] = str(vin)
     config[name]["extAddress"] = "127.0.0.1:" + str(random.randint(2000, 5000))
+    config[name]["extP2P"] = "127.0.0.1:" + str(random.randint(22000, 25000))
     config[name]["extKey"] = ''.join(random.sample(private_key,len(private_key)))
     config[name]["extCfg"] = {}
     config[name]["extCfg"]["param1"] = str(random.randint(0, 9))
