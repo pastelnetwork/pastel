@@ -544,7 +544,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
 
     # ===============================================================================================================
     def create_art_ticket_and_signatures(self, artist_pastelid, artist_node_num,
-                                         app_ticket, data_hash, total_copies,
+                                         app_ticket, data_hash, total_copies, royalty,
                                          make_bad_signatures_dicts):
         mn_ticket_signatures = {}
 
@@ -572,7 +572,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
             "blocknum": self.artist_ticket_height,
             "block_hash": data_hash,
             "copies": total_copies,
-            "royalty": self.royalty,
+            "royalty": royalty,
             "green_address": self.nonmn6_green_address1,
             "app_ticket": app_ticket
         }
@@ -690,7 +690,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
 
         self.total_copies = 10
         self.create_art_ticket_and_signatures(self.artist_pastelid1, self.non_mn3,
-                                              "HIJKLMNOP", "ABCDEFG", self.total_copies,
+                                              "HIJKLMNOP", "ABCDEFG", self.total_copies, self.royalty,
                                               True)
 
         #   c.a register art registration ticket
@@ -857,6 +857,25 @@ class MasterNodeTicketsTest(MasterNodeCommon):
             self.errorString = e.error['message']
             print(self.errorString)
         assert_equal("MNs PastelIDs can not be the same" in self.errorString, True)
+
+        # check royalty max value 20
+        self.create_art_ticket_and_signatures(self.artist_pastelid1, self.non_mn3,
+                                              "HIJKLMNOP", "ABCDEFG", self.total_copies, 25,
+                                              True)
+        try:
+            self.nodes[self.top_mns_index0].tickets("register", "art",
+                                                    self.ticket, json.dumps(self.signatures_dict),
+                                                    self.top_mn_pastelid0, "passphrase",
+                                                    key1, key2, str(self.storage_fee))
+        except JSONRPCException as e:
+            self.errorString = e.error['message']
+            print(self.errorString)
+        assert_equal("Royalty can't be 25 per cent, Max is 20 per cent" in self.errorString, True)
+
+        self.create_art_ticket_and_signatures(self.artist_pastelid1, self.non_mn3,
+                                              "HIJKLMNOP", "ABCDEFG", self.total_copies, self.royalty,
+                                              True)
+
 
         #       c.a.6 register without errors, if enough coins for tnx fee
         coins_before = self.nodes[self.top_mns_index0].getbalance()
@@ -1761,7 +1780,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         assert_equal(len(tickets_list), number_personal_nodes + loop_number * 2)
 
         self.create_art_ticket_and_signatures(self.artist_pastelid1, self.non_mn3,
-                                              "HashOfTicket2", "Ticket2", 5,
+                                              "HashOfTicket2", "Ticket2", 5, self.royalty,
                                               False)
         art_ticket2_txid = self.nodes[self.top_mns_index0].tickets("register", "art",
                                                                    self.ticket, json.dumps(self.signatures_dict),
@@ -1781,7 +1800,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         self.__wait_for_ticket_tnx()
 
         self.create_art_ticket_and_signatures(self.artist_pastelid1, self.non_mn3,
-                                              "HashOfTicket3", "Ticket3", 1,
+                                              "HashOfTicket3", "Ticket3", 1, self.royalty,
                                               False)
         art_ticket3_txid = self.nodes[self.top_mns_index0].tickets("register", "art",
                                                                    self.ticket, json.dumps(self.signatures_dict),
