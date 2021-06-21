@@ -165,6 +165,7 @@ BITCOIN_CORE_H = \
   amqp/amqppublishnotifier.h \
   amqp/amqpsender.h \
   arith_uint256.h \
+  ascii85.h \
   asyncrpcoperation.h \
   asyncrpcqueue.h \
   base58.h \
@@ -453,6 +454,7 @@ libbitcoin_util_a_SOURCES = \
   uint256.cpp \
   util.cpp \
   utilmoneystr.cpp \
+  ascii85.cpp \
   utilstrencodings.cpp \
   utiltime.cpp \
   $(BITCOIN_CORE_H) \
@@ -599,6 +601,7 @@ libzcashconsensus_la_SOURCES = \
   script/interpreter.cpp \
   script/script.cpp \
   uint256.cpp \
+  ascii85.cpp \
   utilstrencodings.cpp
 
 if GLIBC_BACK_COMPAT
