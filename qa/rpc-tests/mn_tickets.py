@@ -874,6 +874,22 @@ class MasterNodeTicketsTest(MasterNodeCommon):
             print(self.errorString)
         assert_equal("Royalty can't be 25 per cent, Max is 20 per cent" in self.errorString, True)
 
+        # check royalty negative value -5
+        self.create_art_ticket_and_signatures(self.artist_pastelid1, self.non_mn3,
+                                              "HIJKLMNOP", "ABCDEFG", self.total_copies,
+                                              -5, self.nonmn6_green_address1,
+                                              True)
+        try:
+            self.nodes[self.top_mns_index0].tickets("register", "art",
+                                                    self.ticket, json.dumps(self.signatures_dict),
+                                                    self.top_mn_pastelid0, "passphrase",
+                                                    key1, key2, str(self.storage_fee))
+        except JSONRPCException as e:
+            self.errorString = e.error['message']
+            print(self.errorString)
+        # uint16_t -> 2 ^ 16 -> 65536 - 5 = 65531
+        assert_equal("Royalty can't be 65531 per cent, Max is 20 per cent" in self.errorString, True)
+
         # check "wrong_green_address"
         self.create_art_ticket_and_signatures(self.artist_pastelid1, self.non_mn3,
                                               "HIJKLMNOP", "ABCDEFG", self.total_copies,
