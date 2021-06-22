@@ -544,7 +544,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
 
     # ===============================================================================================================
     def create_art_ticket_and_signatures(self, artist_pastelid, artist_node_num,
-                                         app_ticket, data_hash, total_copies, royalty,
+                                         app_ticket, data_hash, total_copies, royalty, green_address,
                                          make_bad_signatures_dicts):
         mn_ticket_signatures = {}
 
@@ -573,7 +573,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
             "block_hash": data_hash,
             "copies": total_copies,
             "royalty": royalty,
-            "green_address": self.nonmn6_green_address1,
+            "green_address": green_address,
             "app_ticket": app_ticket
         }
         self.ticket = str_to_b64str(json.dumps(json_ticket))
@@ -690,7 +690,8 @@ class MasterNodeTicketsTest(MasterNodeCommon):
 
         self.total_copies = 10
         self.create_art_ticket_and_signatures(self.artist_pastelid1, self.non_mn3,
-                                              "HIJKLMNOP", "ABCDEFG", self.total_copies, self.royalty,
+                                              "HIJKLMNOP", "ABCDEFG", self.total_copies,
+                                              self.royalty, self.nonmn6_green_address1,
                                               True)
 
         #   c.a register art registration ticket
@@ -860,7 +861,8 @@ class MasterNodeTicketsTest(MasterNodeCommon):
 
         # check royalty max value 20
         self.create_art_ticket_and_signatures(self.artist_pastelid1, self.non_mn3,
-                                              "HIJKLMNOP", "ABCDEFG", self.total_copies, 25,
+                                              "HIJKLMNOP", "ABCDEFG", self.total_copies,
+                                              25, self.nonmn6_green_address1,
                                               True)
         try:
             self.nodes[self.top_mns_index0].tickets("register", "art",
@@ -872,12 +874,27 @@ class MasterNodeTicketsTest(MasterNodeCommon):
             print(self.errorString)
         assert_equal("Royalty can't be 25 per cent, Max is 20 per cent" in self.errorString, True)
 
+        # check "wrong_green_address"
         self.create_art_ticket_and_signatures(self.artist_pastelid1, self.non_mn3,
-                                              "HIJKLMNOP", "ABCDEFG", self.total_copies, self.royalty,
+                                              "HIJKLMNOP", "ABCDEFG", self.total_copies,
+                                              20, "wrong_green_address",
+                                              True)
+        try:
+            self.nodes[self.top_mns_index0].tickets("register", "art",
+                                                    self.ticket, json.dumps(self.signatures_dict),
+                                                    self.top_mn_pastelid0, "passphrase",
+                                                    key1, key2, str(self.storage_fee))
+        except JSONRPCException as e:
+            self.errorString = e.error['message']
+            print(self.errorString)
+        assert_equal("The Green NFT address [wrong_green_address] is invalid" in self.errorString, True)
+
+        # c.a.6 register without errors, if enough coins for tnx fee
+        self.create_art_ticket_and_signatures(self.artist_pastelid1, self.non_mn3,
+                                              "HIJKLMNOP", "ABCDEFG", self.total_copies,
+                                              self.royalty, self.nonmn6_green_address1,
                                               True)
 
-
-        #       c.a.6 register without errors, if enough coins for tnx fee
         coins_before = self.nodes[self.top_mns_index0].getbalance()
         # print(coins_before)
 
@@ -1780,7 +1797,8 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         assert_equal(len(tickets_list), number_personal_nodes + loop_number * 2)
 
         self.create_art_ticket_and_signatures(self.artist_pastelid1, self.non_mn3,
-                                              "HashOfTicket2", "Ticket2", 5, self.royalty,
+                                              "HashOfTicket2", "Ticket2", 5,
+                                              self.royalty, self.nonmn6_green_address1,
                                               False)
         art_ticket2_txid = self.nodes[self.top_mns_index0].tickets("register", "art",
                                                                    self.ticket, json.dumps(self.signatures_dict),
@@ -1800,7 +1818,8 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         self.__wait_for_ticket_tnx()
 
         self.create_art_ticket_and_signatures(self.artist_pastelid1, self.non_mn3,
-                                              "HashOfTicket3", "Ticket3", 1, self.royalty,
+                                              "HashOfTicket3", "Ticket3", 1,
+                                              self.royalty, self.nonmn6_green_address1,
                                               False)
         art_ticket3_txid = self.nodes[self.top_mns_index0].tickets("register", "art",
                                                                    self.ticket, json.dumps(self.signatures_dict),
