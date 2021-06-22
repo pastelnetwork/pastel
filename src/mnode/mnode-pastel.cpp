@@ -1329,7 +1329,7 @@ CAmount CArtTradeTicket::GetExtraOutputs(std::vector<CTxOut>& outputs) const
                           sellerPastelID, sellTnxId));
     }
     
-    if (!strRoyaltyAddress.empty() && !addOutput(sellerPastelIDticket.address, nRoyaltyAmount)) {
+    if (!strRoyaltyAddress.empty() && !addOutput(strRoyaltyAddress, nRoyaltyAmount)) {
         throw std::runtime_error(
                 strprintf("The PastelID [%s] from sell ticket with this txid [%s] has invalid address",
                           sellerPastelID, sellTnxId));
