@@ -1458,12 +1458,31 @@ bool CArtRoyaltyTicket::IsValid(bool preReg, int depth) const {
     chainHeight = static_cast<unsigned int>(chainActive.Height()) + 1;
   }
 
+  if (newPastelID.empty()) {
+    throw std::runtime_error("The Change Royalty ticket new_pastelID is empty");
+  }
+
+  if (pastelID == newPastelID) {
+    throw std::runtime_error("The Change Royalty ticket new_pastelID is equal to current pastelID");
+  }
+
   // 0. Common validations
   std::unique_ptr<CPastelTicket> pastelTicket;
   if (!common_validation(*this, preReg, artTnxId, pastelTicket,
       [](const TicketID tid) { return (tid != TicketID::Art); },
       "Royalty", "art", depth, TicketPrice(chainHeight))) {
     throw std::runtime_error(strprintf("The Change Royalty ticket with art txid [%s] is not validated", artTnxId));
+  }
+
+  auto artTicket = dynamic_cast<const CArtRegTicket*>(pastelTicket.get());
+  if (!artTicket) {
+    throw std::runtime_error(strprintf(
+      "The art Reg ticket with txid [%s] is not in the blockchain or is invalid", artTnxId));
+  }
+
+  if (artTicket->nRoyalty == 0) {
+    throw std::runtime_error(strprintf(
+      "The art Reg ticket with txid [%s] has no royalty", artTnxId));
   }
 
   // Check the Royalty change ticket for that Art is already in the database
@@ -1476,10 +1495,6 @@ bool CArtRoyaltyTicket::IsValid(bool preReg, int depth) const {
       "The Change Royalty ticket is already registered in blockchain [pastelID = %s; new_pastelID = %s]"
       "[this ticket block = %u txid = %s; found ticket block = %u txid = %s] with art txid [%s]",
       pastelID, newPastelID, m_nBlock, m_txid, _ticket.GetBlock(), _ticket.m_txid, artTnxId));
-  }
-
-  if (newPastelID.empty()) {
-    throw std::runtime_error("The Change Royalty ticket new_pastelID is empty");
   }
 
   CPastelIDRegTicket newPastelIDticket;
@@ -1517,12 +1532,6 @@ bool CArtRoyaltyTicket::IsValid(bool preReg, int depth) const {
         pastelID, tickets.at(foundIndex).newPastelID, artTnxId));
     }
   } else {
-    auto artTicket = dynamic_cast<const CArtRegTicket*>(pastelTicket.get());
-    if (!artTicket) {
-      throw std::runtime_error(strprintf(
-        "The art Reg ticket with this txid [%s] is not in the blockchain or is invalid", artTnxId));
-    }
-
     // 1. check Artist PastelID in ArtReg ticket matches PastelID from this ticket
     const std::string& artistPastelID = artTicket->pastelIDs[CArtRegTicket::artistsign];
     if (artistPastelID != pastelID) {
