@@ -1110,6 +1110,34 @@ class MasterNodeTicketsTest(MasterNodeCommon):
             assert_equal(new_pastelid1, self.nonmn6_royalty_pastelid1)
             assert_equal(new_address1, self.nonmn6_royalty_address1)
 
+            # fail if is not matching current PastelID of the royalty payee
+            non_registered_pastelid1 = self.nodes[self.non_mn5].pastelid("newkey", "passphrase")["pastelid"]
+            try:
+                self.nodes[nonmn_id].tickets("register", "royalty",
+                                             self.art_ticket1_txid, new_pastelid1, non_registered_pastelid1, "passphrase")
+            except JSONRPCException as e:
+                self.errorString = e.error['message']
+                print(self.errorString)
+            assert_equal("The PastelID [" + non_registered_pastelid1 + "] is not matching the PastelID [" +
+                         self.nonmn5_royalty_pastelid1 + "] in the Change Royalty ticket with art txid [" +
+                         self.art_ticket1_txid + "]" in self.errorString, True)
+
+        try:
+            self.nodes[nonmn_id].tickets("register", "royalty",
+                                         self.art_ticket1_txid, "", old_pastelid1, "passphrase")
+        except JSONRPCException as e:
+            self.errorString = e.error['message']
+            print(self.errorString)
+        assert_equal("The Change Royalty ticket new_pastelID is empty" in self.errorString, True)
+
+        try:
+            self.nodes[nonmn_id].tickets("register", "royalty",
+                                         self.art_ticket1_txid, old_pastelid1, old_pastelid1, "passphrase")
+        except JSONRPCException as e:
+            self.errorString = e.error['message']
+            print(self.errorString)
+        assert_equal("The Change Royalty ticket new_pastelID is equal to current pastelID" in self.errorString, True)
+
         art_royalty_txid = self.nodes[nonmn_id].tickets("register", "royalty",
                                                         self.art_ticket1_txid, new_pastelid1,
                                                         old_pastelid1, "passphrase")["txid"]
