@@ -109,8 +109,9 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         self.act_ticket_price = 10
         self.trade_ticket_price = 10
 
-        self.royalty = 7
+        self.royalty = 0
         self.royalty_tickets_tests = 2
+        self.royalty_null_tests = False
         self.royalty_address = None
         self.is_green = True
 
@@ -153,6 +154,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
                                              self.nonmn6_royalty_pastelid1, self.nonmn6_royalty_address1, 2)
         else:
             self.royalty_tickets_tests = 0
+            self.royalty_null_tests = True
             self.artroyalty_null_ticket_tests()
 
         self.artact_ticket_tests(False)
@@ -1035,6 +1037,19 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         print("== Art royalty null tickets test ==")
 
         assert_equal(self.royalty, 0)
+
+        # not enough confirmations
+        print(self.nodes[self.non_mn3].getblockcount())
+        try:
+            self.nodes[self.non_mn3].tickets("register", "royalty",
+                                             self.art_ticket1_txid, "new_pastelid1", self.artist_pastelid1, "passphrase")
+        except JSONRPCException as e:
+            self.errorString = e.error['message']
+            print(self.errorString)
+        assert_equal("Royalty ticket can be created only after" in self.errorString, True)
+        self.__wait_for_gen10_blocks()
+        print(self.nodes[self.non_mn3].getblockcount())
+
         try:
             self.nodes[self.non_mn3].tickets("register", "royalty",
                                              self.art_ticket1_txid, "new_pastelid1", self.artist_pastelid1, "passphrase")
@@ -1212,7 +1227,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         assert_equal("The art ticket with this txid ["+self.mn0_ticket1_txid +
                      "] referred by this Activation ticket is not in the blockchain" in self.errorString, True)
 
-        if not self.royalty_tickets_tests:
+        if not self.royalty_tickets_tests and not self.royalty_null_tests:
             # not enough confirmations
             print(self.nodes[self.non_mn3].getblockcount())
             try:
