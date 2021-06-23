@@ -2011,7 +2011,7 @@ Royalty Ticket)"
             CArtRoyaltyTicket::Create(artTnxId, newPastelID, pastelID, strKeyPass);
           std::string txid = CPastelTicketProcessor::SendTicket(artRoyaltyTicket);
 
-          mnObj.pushKV(RPC_KEY_TXID, txid);
+          mnObj.pushKV(RPC_KEY_TXID, std::move(txid));
         }
         if (REGISTER.IsCmd(RPC_CMD_REGISTER::down)) {
 			if (fHelp || params.size() != 5)
