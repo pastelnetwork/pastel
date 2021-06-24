@@ -8,7 +8,7 @@ jobs:
   build_and_test_linux:
     executor: pastel-builder
     working_directory: /pastel
-    resource_class: xlarge
+    resource_class: medium+
     steps:
       - checkout
       - run:
@@ -80,14 +80,14 @@ jobs:
   build_windows:
     executor: pastel-builder
     working_directory: /pastel
-    resource_class: xlarge
+    resource_class: medium+
     steps:
       - checkout
       - run:
           name: Building Pastel Core (Windows version)
           no_output_timeout: 30m
           command: |
-            HOST=x86_64-w64-mingw32 ./build.sh -j16
+            HOST=x86_64-w64-mingw32 ./build.sh -j2
       - store_artifacts:
           path: /pastel/src/pasteld.exe
           destination: /windows/pasteld.exe
@@ -100,7 +100,7 @@ jobs:
   build_macOS:
     executor: pastel-builder
     working_directory: /pastel
-    resource_class: xlarge
+    resource_class: medium+
     steps:
       - checkout
       - run:
