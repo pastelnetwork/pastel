@@ -1087,6 +1087,80 @@ bool CPastelTicketProcessor::ParseP2FMSTransaction(const CMutableTransaction& tx
     return true;
 }
 
+std::vector<std::string> CPastelTicketProcessor::ValidateOwnership(const std::string &_txid, const std::string &_pastelID)
+{
+    //0th: art
+    //1th: trade
+    std::vector<string> sRetVal = {"", ""};
+
+    //Check if ticket is found by txid
+    auto ticket = CPastelTicketProcessor::GetTicket(_txid, TicketID::Art);
+    auto artTicket = dynamic_cast<CArtRegTicket*>(ticket.get());
+    if (!artTicket)
+    {
+        return sRetVal;
+    }
+    else{
+
+        // Check if author and _pastelID are equal
+        if(artTicket->pastelIDs[0].compare(_pastelID) == 0)
+        {
+            sRetVal[0] = _txid;
+        }
+        else
+        {
+            // List all available trade tickets
+            std::vector<CArtTradeTicket> allTickets;
+            listTickets<CArtTradeTicket>([&](const CArtTradeTicket& t)
+            {
+                allTickets.push_back(t);
+            });
+
+            unsigned int chainHeight = 0;
+            {
+                LOCK(cs_main);
+                chainHeight = static_cast<unsigned int>(chainActive.Height()) + 1;
+            }
+            std::vector<CArtTradeTicket> filteredTickets;
+            for (const auto& t : allTickets)
+            {
+                //check if the sell ticket is confirmed
+                if (chainHeight - t.GetBlock() < masterNodeCtrl.MinTicketConfirmations)
+                    continue;
+                //find Trade tickets listing this Trade ticket txid as art ticket
+                auto tradeTickets = CArtTradeTicket::FindAllTicketByArtTnxID(t.GetTxId());
+                if (tradeTickets.empty() && t.pastelID.compare(_pastelID) == 0)
+                {
+                    filteredTickets.push_back(t);
+                }
+            }
+
+            // Iterate through trade tickets and find corresponding art registration
+            for (const auto& t : filteredTickets)
+            {
+                auto artTicket_to_be_searched = t.FindArtRegTicket();
+                auto artRegTicket = dynamic_cast<CArtRegTicket*>(artTicket_to_be_searched.get());
+                if (!artRegTicket)
+                {
+                    throw std::runtime_error(strprintf(
+                            "Can't find Art Registration ticket for this Trade ticket [txid=%s]",
+                            t.GetTxId()));
+                }
+
+                if(artRegTicket->GetTxId().compare(_txid) == 0 )
+                {
+                    //Found
+                    sRetVal[0] = _txid;
+                    sRetVal[1] = t.GetTxId();
+                    break;
+                }
+            }
+        }
+	}
+
+    return sRetVal;
+}
+
 #ifdef FAKE_TICKET
 std::string CPastelTicketProcessor::CreateFakeTransaction(CPastelTicket& ticket, CAmount ticketPrice, const std::vector<std::pair<std::string, CAmount>>& extraPayments, const std::string& strVerb, bool bSend)
 {

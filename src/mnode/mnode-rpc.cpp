@@ -2216,9 +2216,8 @@ As json rpc
 	}
     
     if (TICKETS.IsCmd(RPC_CMD_TICKETS::tools)) {
-        
-        RPC_CMD_PARSER2(LIST, params, printtradingchain, getregbytrade, gettotalstoragefee);
-        
+        RPC_CMD_PARSER2(LIST, params, printtradingchain, getregbytrade, gettotalstoragefee, validateownership);
+
         UniValue obj(UniValue::VARR);
         switch (LIST.cmd()) {
             
@@ -2328,6 +2327,77 @@ As json rpc
                 UniValue mnObj(UniValue::VOBJ);
                 mnObj.pushKV("totalstoragefee", totalFee);
                 return mnObj;
+            }
+            case RPC_CMD_LIST::validateownership: {
+
+                if (params.size() > 4)
+                {
+
+                    //result object
+                    UniValue retVal(UniValue::VOBJ);
+                    //txid
+                    std::string txid = params[2].get_str();
+                    //pastelid
+                    std::string pastelid = params[3].get_str();
+
+                    //Check if pastelid is found within the stored ones
+                    const auto pastelIDs = CPastelID::GetStoredPastelIDs();
+                    bool bIdFound = false;
+
+                    for (const auto & p: pastelIDs)
+                    {
+                        if(p.compare(pastelid) == 0)
+                        {
+                            bIdFound = true;
+                            break;
+                        }
+                    }
+
+                    if(bIdFound)
+                    {
+                        //passphrase
+                        SecureString strKeyPass;
+                        strKeyPass.reserve(100);
+                        strKeyPass = params[4].get_str().c_str();
+                        if (strKeyPass.length() > 0)
+                        {
+                            try {
+                                //Get pastelkeyfile
+                                fs::path pathPastelKeys(GetArg("-pastelkeysdir", "pastelkeys"));
+                                pathPastelKeys = GetDataDir() / pathPastelKeys;
+
+                                if (!fs::exists(pathPastelKeys) ||
+                                    !fs::is_directory(pathPastelKeys)) {
+                                    fs::create_directories(pathPastelKeys);
+                                }
+
+                                fs::path pathPastelKeyFile = pathPastelKeys / pastelid;
+
+                                ed_crypto::key_dsa448 key = ed_crypto::key_dsa448::read_private_key_from_PKCS8_file(pathPastelKeyFile.string(), strKeyPass.c_str());
+                            } catch (ed_crypto::crypto_exception& ex) {
+                                throw JSONRPCError(RPC_WALLET_PASSPHRASE_INCORRECT, "Error: The entered passphrase is incorrect!");
+                            }
+
+                            std::vector<std::string> result = masterNodeCtrl.masternodeTickets.ValidateOwnership(txid, pastelid);
+                            std::string art_txid = result[0];
+                            std::string trade_txid = result[1];
+
+                            retVal.pushKV("art", art_txid);
+                            retVal.pushKV("trade", trade_txid);
+
+                        }
+                    }
+                    else
+                    {
+                        throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY,
+                     "Error: Corresponding PastelID not found!");
+                    }
+                    return retVal;
+                }
+                else
+                {
+                    throw JSONRPCError(RPC_INVALID_PARAMETER, "Invalid number of arguments!");
+                }
             }
         }
     }

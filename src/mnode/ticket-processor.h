@@ -89,6 +89,8 @@ public:
                                                                     //      Trade, Buy, Sell, Act or Reg in long walk
             std::string& errRet) noexcept;
     
+    std::vector<std::string> ValidateOwnership(const std::string &_txid, const std::string &_pastelID);
+
 #ifdef FAKE_TICKET
     static std::string CreateFakeTransaction(CPastelTicket& ticket, CAmount ticketPrice, const std::vector<std::pair<std::string, CAmount>>& extraPayments, const std::string& strVerb, bool bSend);
 #endif

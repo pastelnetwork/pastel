@@ -100,6 +100,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         self.trade_ticket1_sell_ticket_txid = None
         self.trade_ticket1_buy_ticket_txid = None
         self.trade_ticket1_trade_ticket_txid = None
+        self.txid_for_validate_ownership  = None
 
         self.id_ticket_price = 10
         self.art_ticket_price = 10
@@ -145,6 +146,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         self.takedown_ticket_tests()
         self.storage_fee_tests()
         self.tickets_list_filter_tests(0)
+        self.list_and_validate_ticket_ownerships()
 
         if self.test_high_heights:
             self.id_ticket_price = 1000
@@ -172,6 +174,46 @@ class MasterNodeTicketsTest(MasterNodeCommon):
             self.takedown_ticket_tests()
             self.storage_fee_tests()
             self.tickets_list_filter_tests(1)
+
+# ===============================================================================================================
+    def list_and_validate_ticket_ownerships(self):
+        tickets_list = self.nodes[self.non_mn4].tickets("list", "art", "all")
+        # Test not available pastelID
+        try:
+            self.nodes[self.non_mn4].tickets("tools", "validateownership", self.art_ticket1_txid, "NOT_A_VALID_PASTELID", "passphrase")
+        except JSONRPCException as e:
+            self.errorString = e.error['message']
+            print(self.errorString)
+        assert_equal("Error: Corresponding PastelID not found!"
+                     in self.errorString, True)
+
+        # Test incorrect passphrase
+        try:
+            self.nodes[self.non_mn3].tickets("tools", "validateownership", self.art_ticket1_txid, self.artist_pastelid1, "not_valid_passphrase")
+        except JSONRPCException as e:
+            self.errorString = e.error['message']
+            print(self.errorString)
+        assert_equal("Error: The entered passphrase is incorrect!"
+                     in self.errorString, True)
+
+        # Test txID is not on blockchain
+        try:
+            self.nodes[self.non_mn4].tickets("tools", "validateownership", self.art_ticket1_buy_ticket_txid, self.nonmn4_pastelid1, "passphrase")
+        except JSONRPCException as e:
+            self.errorString = e.error['message']
+            print(self.errorString)
+        assert_equal("The ticket with this txid ["+self.art_ticket1_buy_ticket_txid+"] is not in the blockchain"
+                     in self.errorString, True)
+
+        # Test 'if' clause of validate ownership
+        res1 = self.nodes[self.non_mn3].tickets("tools", "validateownership", self.art_ticket1_txid, self.artist_pastelid1, "passphrase")
+        assert_equal(res1['art'], self.art_ticket1_txid)
+        assert_equal(res1['trade'], "")
+
+        # Test 'else' clause of validate ownership
+        res1 = self.nodes[self.non_mn4].tickets("tools", "validateownership", self.art_ticket1_txid, self.nonmn4_pastelid1, "passphrase")
+        assert_equal(res1['art'], self.art_ticket1_txid)
+        assert_equal(res1['trade'], self.txid_for_validate_ownership)
 
 
 # ===============================================================================================================
@@ -1694,6 +1736,15 @@ class MasterNodeTicketsTest(MasterNodeCommon):
                                                            buyer_pastelid, "passphrase")["txid"]
         assert_true(trade_ticket_txid, "No ticket was created")
         print(f"trade_ticket_txid: {trade_ticket_txid}")
+        # Choosen trade ticket for validating ownership 
+        # 1. We need a list ( at least with 1 element)
+        # of non-sold trade ticket
+        #
+        # 2. Filter that tickets by pastelID and get the
+        # underlying ArtReg ticket found by txid from the
+        # request
+        if test_num == 'A7':
+            self.txid_for_validate_ownership = trade_ticket_txid
 
         self.__wait_for_ticket_tnx()
 
