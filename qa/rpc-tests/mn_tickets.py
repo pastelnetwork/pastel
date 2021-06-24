@@ -109,7 +109,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         self.act_ticket_price = 10
         self.trade_ticket_price = 10
 
-        self.royalty = 0
+        self.royalty = 7
         self.royalty_tickets_tests = 2
         self.royalty_null_tests = False
         self.royalty_address = None
@@ -1153,6 +1153,8 @@ class MasterNodeTicketsTest(MasterNodeCommon):
             print(self.errorString)
         assert_equal("The Change Royalty ticket new_pastelID is equal to current pastelID" in self.errorString, True)
 
+        coins_before = self.nodes[nonmn_id].getbalance()
+
         art_royalty_txid = self.nodes[nonmn_id].tickets("register", "royalty",
                                                         self.art_ticket1_txid, new_pastelid1,
                                                         old_pastelid1, "passphrase")["txid"]
@@ -1169,6 +1171,46 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         assert_equal("The PastelID [" + old_pastelid1 + "] is not matching the PastelID [" +
                      new_pastelid1 + "] in the Change Royalty ticket with art txid [" +
                      self.art_ticket1_txid + "]" in self.errorString, True)
+
+        coins_after = self.nodes[nonmn_id].getbalance()
+        print(f"coins before - {coins_before}")
+        print(f"coins after - {coins_after}")
+        assert_equal(coins_before - coins_after, 10)
+
+        # from another node - get ticket transaction and check
+        #   - amounts is totaling 10PSL
+        art_ticket1_royalty_ticket_hash = self.nodes[0].getrawtransaction(art_royalty_txid)
+        art_ticket1_royalty_ticket_tx = self.nodes[0].decoderawtransaction(art_ticket1_royalty_ticket_hash)
+        fee_amount = 0
+
+        for v in art_ticket1_royalty_ticket_tx["vout"]:
+            if v["scriptPubKey"]["type"] == "multisig":
+                fee_amount += v["value"]
+        assert_equal(fee_amount, 10)
+
+        # find ticket by pastelID
+        art_ticket1_royalty_ticket_1 = self.nodes[self.non_mn1].tickets("find", "royalty", old_pastelid1)
+        assert_equal(art_ticket1_royalty_ticket_1[0]["ticket"]['type'], "art-royalty")
+        assert_equal(art_ticket1_royalty_ticket_1[0]["ticket"]['pastelID'], old_pastelid1)
+        assert_equal(art_ticket1_royalty_ticket_1[0]["ticket"]['new_pastelID'], new_pastelid1)
+        assert_equal(art_ticket1_royalty_ticket_1[0]["ticket"]['art_txid'], self.art_ticket1_txid)
+        assert_equal(art_ticket1_royalty_ticket_1[0]['txid'], art_royalty_txid)
+
+        # get the same ticket by txid and compare with ticket found by pastelID
+        art_ticket1_royalty_ticket_2 = self.nodes[self.non_mn1].tickets("get", art_royalty_txid)
+        assert_equal(art_ticket1_royalty_ticket_2["ticket"]["signature"],
+                     art_ticket1_royalty_ticket_1[0]["ticket"]["signature"])
+
+        # list all art royalty tickets, check PastelIDs
+        royalty_tickets_list = self.nodes[0].tickets("list", "royalty")
+        f1 = False
+        f2 = False
+        for t in royalty_tickets_list:
+            if art_royalty_txid == t["txid"]:
+                f1 = True
+                f2 = (self.art_ticket1_txid == t["ticket"]["art_txid"])
+        assert_true(f1)
+        assert_true(f2)
 
         self.royalty_address = new_address1
 
