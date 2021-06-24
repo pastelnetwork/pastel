@@ -15,7 +15,7 @@ jobs:
           name: Building Pastel Core (Linux version)
           no_output_timeout: 30m
           command: |
-            ./build.sh -j16
+            ./build.sh -j2
       - store_artifacts:
           path: /pastel/src/pasteld
           destination: /linux/pasteld
@@ -107,7 +107,7 @@ jobs:
           name: Building Pastel Core (macOS version)
           no_output_timeout: 30m
           command: |
-            HOST=x86_64-apple-darwin14 ./build.sh -j16
+            HOST=x86_64-apple-darwin14 ./build.sh -j2
       - store_artifacts:
           path: /pastel/src/pasteld
           destination: /macOS/pasteld
