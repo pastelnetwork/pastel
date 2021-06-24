@@ -1575,19 +1575,19 @@ bool CTakeDownTicket::FindTicketInDb(const std::string& key, CTakeDownTicket& ti
 
 // CChangeUsernameTicket ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-CChangeUsernameTicket CChangeUsernameTicket::Create(std::string _pastelID, std::string username, const SecureString& strKeyPass)
+CChangeUsernameTicket CChangeUsernameTicket::Create(std::string _pastelID, std::string _username, const SecureString& strKeyPass)
 {
     CChangeUsernameTicket ticket(std::move(_pastelID));
 
-    ticket.username = std::move(username);
+    ticket.username = _username;
 
     // Check if PastelID already have a username on the blockchain. 
     if (!masterNodeCtrl.masternodeTickets.FindTicketBySecondaryKey(ticket)) {
         // IF PastelID has no Username yet, the fee is 100 PSL
-        ticket.fee = masterNodeCtrl.MasternodeUsernameFirstChangeFree;
+        ticket.fee = masterNodeCtrl.MasternodeUsernameFirstChangeFee;
     } else {
         // IF PastelID changed Username before, fee should be 5000
-        ticket.fee = masterNodeCtrl.MasternodeUsernameChangeAgainFree;
+        ticket.fee = masterNodeCtrl.MasternodeUsernameChangeAgainFee;
     }
 
     ticket.GenerateTimestamp();
@@ -1641,7 +1641,7 @@ bool CChangeUsernameTicket::IsValid(bool preReg, int depth) const
 
     // A. Something to check ONLY before ticket made into transaction
     if (preReg) 
-    { 
+    {
         // A1. Check if the username is already registered on the blockchain.
         if (masterNodeCtrl.masternodeTickets.CheckTicketExist(*this)) {
             throw std::runtime_error(strprintf("This Username is already registered in blockchain [Username = %s]", username));
@@ -1692,14 +1692,14 @@ bool CChangeUsernameTicket::IsValid(bool preReg, int depth) const
 
     // E. Check if ticket fee is valid
     if (!masterNodeCtrl.masternodeTickets.FindTicketBySecondaryKey(_ticket)) {
-        if (fee != masterNodeCtrl.MasternodeUsernameFirstChangeFree) {
+        if (fee != masterNodeCtrl.MasternodeUsernameFirstChangeFee) {
             throw std::runtime_error(strprintf("%s ticket's fee is invalid. PastelID - [%s], invalid fee - [%" PRId64 "], expected fee - [%" PRId64 "]",
-                                               GetTicketDescription(TicketID::Username), pastelID, fee, masterNodeCtrl.MasternodeUsernameFirstChangeFree));
+                                               GetTicketDescription(TicketID::Username), pastelID, fee, masterNodeCtrl.MasternodeUsernameFirstChangeFee));
         }
     } else {
-        if (fee != masterNodeCtrl.MasternodeUsernameChangeAgainFree) {
+        if (fee != masterNodeCtrl.MasternodeUsernameChangeAgainFee) {
             throw std::runtime_error(strprintf("%s ticket's fee is invalid. PastelID - [%s], invalid fee - [%" PRId64 "], expected fee - [%" PRId64 "]",
-                                               GetTicketDescription(TicketID::Username), pastelID, fee, masterNodeCtrl.MasternodeUsernameChangeAgainFree));
+                                               GetTicketDescription(TicketID::Username), pastelID, fee, masterNodeCtrl.MasternodeUsernameChangeAgainFee));
         }
     }
     

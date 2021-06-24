@@ -33,8 +33,8 @@ void CMasterNodeController::SetParameters()
     MasternodeFeePerMBDefault           = 50;
     ArtTicketFeePerKBDefault           = 3;
 
-    MasternodeUsernameFirstChangeFree   = 100;
-    MasternodeUsernameChangeAgainFree   = 5000;
+    MasternodeUsernameFirstChangeFee   = 100;
+    MasternodeUsernameChangeAgainFee   = 5000;
     MasternodeCheckSeconds              =   5;
     MasternodeMinMNBSeconds             =   5 * 60;
     MasternodeMinMNPSeconds             =  10 * 60;

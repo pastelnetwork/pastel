@@ -143,6 +143,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         self.arttrade_ticket_tests(False)
         self.sell_buy_trade_tests()
         self.takedown_ticket_tests()
+        self.username_ticket_tests()
         self.storage_fee_tests()
         self.tickets_list_filter_tests(0)
 
@@ -170,6 +171,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
             self.arttrade_ticket_tests(True)
             self.sell_buy_trade_tests()
             self.takedown_ticket_tests()
+            self.username_ticket_tests()
             self.storage_fee_tests()
             self.tickets_list_filter_tests(1)
 
@@ -1838,7 +1840,6 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         print(f"buy_ticket_txid: {buy_ticket_txid}")
         self.__wait_for_ticket_tnx()  # +15 block
         self.slow_mine(2, 10, 2, 0.5)  # +25
-
         tickets_list = self.nodes[self.non_mn3].tickets("list", "buy")
         assert_equal(len(tickets_list), 16*(loop_number+1))
         tickets_list = self.nodes[self.non_mn3].tickets("list", "buy", "all")
@@ -1864,6 +1865,56 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         print("== Take down Tickets test ==")
         # ...
         print("Take down tickets tested")
+
+    # ===============================================================================================================
+    def username_ticket_tests(self):
+        print("== Username Tickets test ==")
+        # Register first time
+
+        try:
+            tickets_username_txid1 = self.nodes[self.non_mn3].tickets("register", "username",
+                                                        self.artist_pastelid1, "bsmith84", "passphrase")
+            self.__wait_for_ticket_tnx()
+            mn0_ticket_username_1 = self.nodes[self.non_mn3].tickets("get", tickets_username_txid1["txid"])
+            print(mn0_ticket_username_1)
+
+            self.__wait_for_ticket_tnx()
+            assert_equal(mn0_ticket_username_1["ticket"]["pastelID"], self.artist_pastelid1)
+            assert_equal(mn0_ticket_username_1["ticket"]["username"], "bsmith84")
+            assert_equal(mn0_ticket_username_1["ticket"]["fee"], 100)
+        except JSONRPCException as e:
+            self.errorString = e.error['message']
+            print(self.errorString)
+
+        # Register second time with same name. Expect to get Exception that the ticket is invalid because the username is registered
+        try:
+            tickets_username_txid2 = self.nodes[self.non_mn3].tickets("register", "username",
+                                                        self.artist_pastelid1, "bsmith84", "passphrase")
+            print(tickets_username_txid2)
+            self.__wait_for_ticket_tnx()
+
+        except JSONRPCException as e:
+            self.errorString = e.error['message']
+        assert_equal(self.errorString , "Ticket (username-change) is invalid - This Username is already registered in blockchain [Username = bsmith84]")
+
+        # Change previous name to new name.
+        try:
+            tickets_username_txid4 = self.nodes[self.non_mn3].tickets("register", "username",
+                                                    self.artist_pastelid1, "Banksy", "passphrase")
+            print(tickets_username_txid4)
+            self.__wait_for_ticket_tnx()
+            mn0_ticket_username_2 = self.nodes[self.non_mn3].tickets("get", tickets_username_txid4["txid"])
+            print(mn0_ticket_username_2)
+            self.__wait_for_ticket_tnx()
+
+            assert_equal(mn0_ticket_username_2["ticket"]["pastelID"], self.artist_pastelid1)
+            assert_equal(mn0_ticket_username_2["ticket"]["username"], "Banksy")
+            assert_equal(mn0_ticket_username_2["ticket"]["fee"], 5000)
+        except JSONRPCException as e:
+            self.errorString = e.error['message']
+            print(self.errorString)
+
+        print("Username tickets tested")
 
     # ===============================================================================================================
     def storage_fee_tests(self):
