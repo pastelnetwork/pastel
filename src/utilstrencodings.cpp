@@ -133,17 +133,17 @@ string EncodeAscii85(const char* istr, size_t len) noexcept
         if (!istr)
             break;
         
-        const size_t isz = strlen(istr);
-        int32_t olen = ascii85_get_max_encoded_length(isz);
-        if (olen <= 0)
+        const size_t nInputSize = strlen(istr);
+        int32_t nMaxLength = ascii85_get_max_encoded_length(nInputSize);
+        if (nMaxLength <= 0)
             break;
         
         vector<uint8_t> vOut;
-        vOut.resize(olen);
+        vOut.resize(nMaxLength);
 
-        olen = encode_ascii85(reinterpret_cast<const uint8_t*>(istr), isz, vOut.data(), olen);
-        if(olen > 0)
-            sRetVal.assign(vOut.cbegin(), vOut.cend());
+        int32_t nEncodedLength = encode_ascii85(reinterpret_cast<const uint8_t*>(istr), nInputSize, vOut.data(), nMaxLength);
+        if (nEncodedLength > 0)
+            sRetVal.assign(vOut.cbegin(), vOut.cbegin() + nEncodedLength);
     } while (false);
     return sRetVal;
 }
@@ -162,23 +162,23 @@ vector<unsigned char> DecodeAscii85(const char* ostr, bool* pfInvalid) noexcept
             break;
         
         const size_t nInputSize = strlen(ostr);
-        int32_t olen = ascii85_get_max_decoded_length(nInputSize);
-        if (olen < 0)
+        int32_t nMaxLength = ascii85_get_max_decoded_length(nInputSize);
+        if (nMaxLength < 0)
         {
             if(pfInvalid)
                 *pfInvalid = true;//Decode size error
             break;
         }
         
-        vOut.resize(olen);
-        int32_t ilen = decode_ascii85(reinterpret_cast<const uint8_t*>(ostr), nInputSize, vOut.data(), olen);
-        if (ilen < 0)
+        vOut.resize(nMaxLength);
+        int32_t nDecodedLength = decode_ascii85(reinterpret_cast<const uint8_t*>(ostr), nInputSize, vOut.data(), nMaxLength);
+        if (nDecodedLength < 0)
         {
             if (pfInvalid)
                 *pfInvalid = true;//Decode error
             break;
         }
-
+        vOut.resize(static_cast<size_t>(nDecodedLength));
     } while (false);
     return vOut;
 }
