@@ -4,6 +4,7 @@
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
 #include "utilstrencodings.h"
+#include "ascii85.h"
 
 #include "tinyformat.h"
 
@@ -12,6 +13,7 @@
 #include <errno.h>
 #include <iomanip>
 #include <limits>
+#include "util.h"
 
 using namespace std;
 
@@ -121,6 +123,78 @@ vector<unsigned char> ParseHex(const char* psz)
 vector<unsigned char> ParseHex(const string& str)
 {
     return ParseHex(str.c_str());
+}
+
+string EncodeAscii85(const char* istr, size_t len) noexcept
+{
+    
+    string retVal; //Default is empty-string
+
+    do
+    {
+        if (!istr)
+            break;
+        
+        const size_t isz = strlen(istr);
+        int32_t olen = static_cast<int32_t>(ascii85_get_max_encoded_length(isz));
+
+        if (olen < 0)
+            break;
+        
+        uint8_t obuf[olen];
+        olen = encode_ascii85(reinterpret_cast<const uint8_t *>(istr), isz, obuf, olen);
+        if(0 < olen)
+        {
+            retVal.assign(obuf, obuf + olen);
+        }
+    } while (false);
+    return retVal;
+}
+
+string EncodeAscii85(const string& str) noexcept
+{
+    return EncodeAscii85(str.c_str(), str.size());
+}
+
+vector<unsigned char> DecodeAscii85(const char* ostr, bool* pfInvalid) noexcept
+{
+    vector<unsigned char> retVal;
+
+    do
+    {
+        if (!ostr)
+            break;
+        
+        const size_t osz = strlen(ostr);
+        int32_t olen = static_cast<int32_t>(ascii85_get_max_decoded_length(osz));
+
+        if (olen < 0)
+        {
+            if(pfInvalid)
+                *pfInvalid = true;//Decode size error
+            break;
+        }
+        
+        uint8_t dbuf[olen];
+        int32_t ilen = decode_ascii85(reinterpret_cast<const uint8_t *>(ostr), osz, dbuf, olen);
+
+        if (ilen < 0)
+        {
+            if (pfInvalid)
+                *pfInvalid = true;//Decode error
+            break;
+        }
+        retVal.assign(dbuf, dbuf + ilen);  
+
+    } while (false);
+
+    return retVal;
+}
+
+string DecodeAscii85(const string& str) noexcept
+{
+    vector<unsigned char> vchRet = DecodeAscii85(str.c_str());
+    return (vchRet.empty()) ? string() : string((const char*)&vchRet[0], vchRet.size());
 }
 
 string EncodeBase64(const unsigned char* pch, size_t len)
@@ -265,7 +339,7 @@ static bool ParsePrechecks(const std::string& str)
 {
     if (str.empty()) // No empty string allowed
         return false;
-    if (str.size() >= 1 && (isspace(str[0]) || isspace(str[str.size()-1]))) // No padding allowed
+    if (isspace(str[0]) || isspace(str[str.size()-1])) // No padding allowed
         return false;
     if (str.size() != strlen(str.c_str())) // No embedded NUL characters allowed
         return false;

@@ -7,13 +7,14 @@
 #include "enum_util.h"
 
 // ticket names
-constexpr auto TICKET_NAME_ID_REG		= "pastelid";  // id registration ticket
-constexpr auto TICKET_NAME_ART_REG		= "art-reg";   // art registration ticket
-constexpr auto TICKET_NAME_ART_ACT		= "art-act";   // art activation ticket
-constexpr auto TICKET_NAME_ART_SELL		= "art-sell";  // art sell ticket
-constexpr auto TICKET_NAME_ART_BUY		= "art-buy";   // art buy ticket
-constexpr auto TICKET_NAME_ART_TRADE	= "art-trade"; // art trade ticket
+constexpr auto TICKET_NAME_ID_REG       = "pastelid";  // id registration ticket
+constexpr auto TICKET_NAME_ART_REG      = "art-reg";   // art registration ticket
+constexpr auto TICKET_NAME_ART_ACT      = "art-act";   // art activation ticket
+constexpr auto TICKET_NAME_ART_SELL     = "art-sell";  // art sell ticket
+constexpr auto TICKET_NAME_ART_BUY      = "art-buy";   // art buy ticket
+constexpr auto TICKET_NAME_ART_TRADE    = "art-trade"; // art trade ticket
 constexpr auto TICKET_NAME_TAKE_DOWN    = "take-down";
+constexpr auto TICKET_NAME_ART_ROYALTY  = "art-royalty"; // art royalty ticket
 
 /**
  * Ticket Type IDs.
@@ -26,6 +27,7 @@ enum class TicketID : uint8_t {
     Buy,          // Art buy ticket
     Trade,        // Art trade ticket
     Down,
+    Royalty,      // Art royalty ticket
 
     COUNT         // number of ticket types
 };
@@ -47,13 +49,14 @@ using TicketInfo = struct
  */
 static constexpr std::array<TicketInfo, to_integral_type<TicketID>(TicketID::COUNT)> TICKET_INFO =
     {{  //     ticket id     |   ticket description   |   ticket name       | version  | DB subfolder
-        { TicketID::PastelID, "Pastel ID Registration", TICKET_NAME_ID_REG,     1,      "pslids"},
-        { TicketID::Art,      "Art Registration",       TICKET_NAME_ART_REG,    0,      "argreg" },
-        { TicketID::Activate, "Art Activation",         TICKET_NAME_ART_ACT,    0,      "artcnf" },
-        { TicketID::Sell,     "Art Sell",               TICKET_NAME_ART_SELL,   0,      "artsel" },
-        { TicketID::Buy,      "Art Buy",                TICKET_NAME_ART_BUY,    0,      "artbuy" },
-        { TicketID::Trade,    "Art Trade",              TICKET_NAME_ART_TRADE,  0,      "arttrd" },
-        { TicketID::Down,     "Take Down",              TICKET_NAME_TAKE_DOWN,  0,      "takedn" },
+        { TicketID::PastelID, "Pastel ID Registration", TICKET_NAME_ID_REG,      1,     "pslids"},
+        { TicketID::Art,      "Art Registration",       TICKET_NAME_ART_REG,     0,     "argreg" },
+        { TicketID::Activate, "Art Activation",         TICKET_NAME_ART_ACT,     0,     "artcnf" },
+        { TicketID::Sell,     "Art Sell",               TICKET_NAME_ART_SELL,    0,     "artsel" },
+        { TicketID::Buy,      "Art Buy",                TICKET_NAME_ART_BUY,     0,     "artbuy" },
+        { TicketID::Trade,    "Art Trade",              TICKET_NAME_ART_TRADE,   0,     "arttrd" },
+        { TicketID::Down,     "Take Down",              TICKET_NAME_TAKE_DOWN,   0,     "takedn" },
+        { TicketID::Royalty,  "Art Royalty",            TICKET_NAME_ART_ROYALTY, 1,     "artrty" },
     }};
 
 inline std::string GetTicketDescription(const TicketID id) noexcept

@@ -11,7 +11,7 @@ namespace leveldb {
 
 class Histogram {
  public:
-  Histogram() { }
+  Histogram(): min_(0), max_(0), num_(0), sum_(0), sum_squares_(0), buckets_() { }
   ~Histogram() { }
 
   void Clear();

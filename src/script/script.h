@@ -16,6 +16,8 @@
 #include <string>
 #include <vector>
 
+#include "uint256.h"
+
 #ifdef _MSC_VER
 #pragma warning(push)
 #pragma warning(disable: 4267)
@@ -570,7 +572,17 @@ public:
      */
     unsigned int GetSigOpCount(const CScript& scriptSig) const;
 
+    // insightexplorer, there may be more script types in the future
+    enum class ScriptType : int {
+        UNKNOWN = 0,
+        P2PKH = 1,
+        P2SH = 2,
+    };
+
+    bool IsPayToPublicKeyHash() const;
     bool IsPayToScriptHash() const;
+
+    uint160 AddressHash() const;
 
     /** Called by IsStandardTx and P2SH/BIP62 VerifyScript (which makes it consensus-critical). */
     bool IsPushOnly() const;

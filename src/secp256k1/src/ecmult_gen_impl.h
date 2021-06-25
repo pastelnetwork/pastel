@@ -80,8 +80,10 @@ static void secp256k1_ecmult_gen_context_build(secp256k1_ecmult_gen_context *ctx
         secp256k1_ge_set_all_gej_var(prec, precj, 1024, cb);
     }
     for (j = 0; j < 64; j++) {
-        for (i = 0; i < 16; i++) {
-            secp256k1_ge_to_storage(&(*ctx->prec)[j][i], &prec[j*16 + i]);
+        if (ctx->prec) {
+            for (i = 0; i < 16; i++) {
+                secp256k1_ge_to_storage(&(*ctx->prec)[j][i], &prec[j * 16 + i]);
+            }
         }
     }
 #else
@@ -102,7 +104,9 @@ static void secp256k1_ecmult_gen_context_clone(secp256k1_ecmult_gen_context *dst
     } else {
 #ifndef USE_ECMULT_STATIC_PRECOMPUTATION
         dst->prec = (secp256k1_ge_storage (*)[64][16])checked_malloc(cb, sizeof(*dst->prec));
-        memcpy(dst->prec, src->prec, sizeof(*dst->prec));
+        if (dst->prec) {
+            memcpy(dst->prec, src->prec, sizeof(*dst->prec));
+        }
 #else
         (void)cb;
         dst->prec = src->prec;
@@ -181,7 +185,13 @@ static void secp256k1_ecmult_gen_blind(secp256k1_ecmult_gen_context *ctx, const 
         memcpy(keydata + 32, seed32, 32);
     }
     secp256k1_rfc6979_hmac_sha256_initialize(&rng, keydata, seed32 ? 64 : 32);
-    memset(keydata, 0, sizeof(keydata));
+    
+    #ifdef __STDC_LIB_EXT1__
+        memset_s(keydata, sizeof(keydata), 0, sizeof(keydata));
+    #else
+        memset(keydata, 0, sizeof(keydata)); /* //-V597 false warning for Linux */
+    #endif
+
     /* Retry for out of range results to achieve uniformity. */
     do {
         secp256k1_rfc6979_hmac_sha256_generate(&rng, nonce32, 32);
@@ -198,7 +208,13 @@ static void secp256k1_ecmult_gen_blind(secp256k1_ecmult_gen_context *ctx, const 
         retry |= secp256k1_scalar_is_zero(&b);
     } while (retry); /* This branch true is cryptographically unreachable. Requires sha256_hmac output > order. */
     secp256k1_rfc6979_hmac_sha256_finalize(&rng);
-    memset(nonce32, 0, 32);
+
+    #ifdef __STDC_LIB_EXT1__
+        memset_s(nonce32, sizeof(nonce32), 0, 32);
+    #else
+        memset(nonce32, 0, 32); /* //-V597 false warning for Linux */
+    #endif
+
     secp256k1_ecmult_gen(ctx, &gb, &b);
     secp256k1_scalar_negate(&b, &b);
     ctx->blind = b;

@@ -32,7 +32,8 @@
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <StringPooling>true</StringPooling>
       <LanguageStandard>stdcpp17</LanguageStandard>
-  </ClCompile>
+      <LanguageStandard_C>stdc17</LanguageStandard_C>
+    </ClCompile>
     <Link>
       <AdditionalDependencies>%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalLibraryDirectories>$(RELEASE_OUTDIR);$(DEPENDS)lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>

@@ -55,6 +55,7 @@ UniValue formatMnsInfo(const std::vector<CMasternode>& topBlockMNs)
         objItem.pushKV("activeseconds", mn.nTimeLastPing - mn.sigTime);
 
         objItem.pushKV("extAddress", mn.strExtraLayerAddress);
+        objItem.pushKV("extP2P", mn.strExtraLayerP2P);
         objItem.pushKV("extKey", mn.strExtraLayerKey);
         objItem.pushKV("extCfg", mn.strExtraLayerCfg);
 
@@ -198,6 +199,7 @@ UniValue masternodelist(const UniValue& params, bool fHelp)
             } else if (strMode == "extra") {
                 UniValue objItem(UniValue::VOBJ);
                 objItem.pushKV("extAddress", mn.strExtraLayerAddress);
+                objItem.pushKV("extP2P", mn.strExtraLayerP2P);
                 objItem.pushKV("extKey", mn.strExtraLayerKey);
                 objItem.pushKV("extCfg", mn.strExtraLayerCfg);
 
@@ -389,7 +391,7 @@ UniValue masternode(const UniValue& params, bool fHelp)
 
 
                 bool fResult = CMasternodeBroadcast::Create(mne.getIp(), mne.getPrivKey(), mne.getTxHash(), mne.getOutputIndex(), 
-                                                            mne.getExtIp(), mne.getExtKey(), mne.getExtCfg(),
+                                                            mne.getExtIp(), mne.getExtP2P(), mne.getExtKey(), mne.getExtCfg(),
                                                             strError, mnb);
 
                 statusObj.pushKV(RPC_KEY_RESULT, get_rpc_result(fResult));
@@ -440,7 +442,7 @@ UniValue masternode(const UniValue& params, bool fHelp)
             if(strCommand == "start-disabled" && fFound && mn.IsEnabled()) continue;
 
             bool fResult = CMasternodeBroadcast::Create(mne.getIp(), mne.getPrivKey(), mne.getTxHash(), mne.getOutputIndex(), 
-                                                        mne.getExtIp(), mne.getExtKey(), mne.getExtCfg(),
+                                                        mne.getExtIp(), mne.getExtP2P(), mne.getExtKey(), mne.getExtCfg(),
                                                         strError, mnb);
 
             UniValue statusObj(UniValue::VOBJ);
@@ -498,6 +500,7 @@ UniValue masternode(const UniValue& params, bool fHelp)
             mnObj.pushKV("txHash", mne.getTxHash());
             mnObj.pushKV("outputIndex", mne.getOutputIndex());
             mnObj.pushKV("extAddress", mne.getExtIp());
+            mnObj.pushKV("extP2P", mne.getExtP2P());
             mnObj.pushKV("extKey", mne.getExtKey());
             mnObj.pushKV("extCfg", mne.getExtCfg());
             mnObj.pushKV(RPC_KEY_STATUS, strStatus);
@@ -508,9 +511,9 @@ UniValue masternode(const UniValue& params, bool fHelp)
     }
     if (strCommand == "make-conf")
     {
-        if (params.size() != 5 && params.size() != 7)
+        if (params.size() != 6 && params.size() != 8)
             throw JSONRPCError(RPC_INVALID_PARAMETER,
-                               R"("masternode make-conf "alias" "mnAddress:port" "extAddress:port" "passphrase" "txid" "index"\n"
+                               R"("masternode make-conf "alias" "mnAddress:port" "extAddress:port" "extP2P:port" "passphrase" "txid" "index"\n"
                                "Create masternode configuration in JSON format:\n"
                                "This will 1) generate MasterNode Private Key (mnPrivKey) and 2) generate and register MasterNode PastelID (extKey)\n"
                                "If collateral txid and index are not provided, it will search for the first available non-locked outpoint with the correct amount (1000000 PSL)\n"
@@ -518,15 +521,16 @@ UniValue masternode(const UniValue& params, bool fHelp)
                                "    "alias"             (string) (required) Local alias (name) of Master Node\n"
                                "    "mnAddress:port"    (string) (required) The address and port of the Master Node's cNode\n"
                                "    "extAddress:port"   (string) (required) The address and port of the Master Node's Storage Layer\n"
+                               "    "extP2P:port"       (string) (required) The address and port of the Master Node's Kademlia point\n"
                                "    "passphrase"        (string) (required) passphrase for new PastelID\n"
                                "    "txid"              (string) (optional) id of transaction with the collateral amount\n"
                                "    "index"             (numeric) (optional) index in the transaction with the collateral amount\n"
                                "\nCreate masternode configuration\n")"
                                + HelpExampleCli("masternode make-conf",
-                                                R"("myMN" "127.0.0.1:9933" "127.0.0.1:4444" "bc1c5243284272dbb22c301a549d112e8bc9bc454b5ff50b1e5f7959d6b56726" 4)") +
+                                                R"("myMN" "127.0.0.1:9933" "127.0.0.1:4444" "127.0.0.1:5545" "bc1c5243284272dbb22c301a549d112e8bc9bc454b5ff50b1e5f7959d6b56726" 4)") +
                                "\nAs json rpc\n"
                                + HelpExampleRpc("masternode make-conf",
-                                                R"(""myMN" "127.0.0.1:9933" "127.0.0.1:4444" "bc1c5243284272dbb22c301a549d112e8bc9bc454b5ff50b1e5f7959d6b56726" 4")")
+                                                R"(""myMN" "127.0.0.1:9933" "127.0.0.1:4444" "127.0.0.1:5545" "bc1c5243284272dbb22c301a549d112e8bc9bc454b5ff50b1e5f7959d6b56726" 4")")
 
             );
         
@@ -541,6 +545,10 @@ UniValue masternode(const UniValue& params, bool fHelp)
     
         //extAddress:port
         std::string strExtAddress = params[3].get_str();
+        //TODO : validate correct address format
+
+        //extP2P:port
+        std::string strExtP2P = params[4].get_str();
         //TODO : validate correct address format
     
         //txid:index
@@ -596,6 +604,7 @@ UniValue masternode(const UniValue& params, bool fHelp)
         UniValue mnObj(UniValue::VOBJ);
         mnObj.pushKV("mnAddress", strMnAddress);
         mnObj.pushKV("extAddress", strExtAddress);
+        mnObj.pushKV("extP2P", strExtP2P);
         mnObj.pushKV(RPC_KEY_TXID, strTxid);
         mnObj.pushKV("outIndex", strIndex);
         mnObj.pushKV("mnPrivKey", mnPrivKey);
@@ -857,7 +866,7 @@ UniValue masternodebroadcast(const UniValue& params, bool fHelp)
                 CMasternodeBroadcast mnb;
 
                 bool fResult = CMasternodeBroadcast::Create(mne.getIp(), mne.getPrivKey(), mne.getTxHash(), mne.getOutputIndex(), 
-                                                            mne.getExtIp(), mne.getExtKey(), mne.getExtCfg(),
+                                                            mne.getExtIp(), mne.getExtP2P(), mne.getExtKey(), mne.getExtCfg(),
                                                             strError, mnb, true);
 
                 statusObj.pushKV(RPC_KEY_RESULT, get_rpc_result(fResult));
@@ -907,7 +916,7 @@ UniValue masternodebroadcast(const UniValue& params, bool fHelp)
             CMasternodeBroadcast mnb;
 
             bool fResult = CMasternodeBroadcast::Create(mne.getIp(), mne.getPrivKey(), mne.getTxHash(), mne.getOutputIndex(), 
-                                                        mne.getExtIp(), mne.getExtKey(), mne.getExtCfg(),
+                                                        mne.getExtIp(), mne.getExtP2P(), mne.getExtKey(), mne.getExtCfg(),
                                                         strError, mnb, true);
 
             UniValue statusObj(UniValue::VOBJ);
@@ -1365,7 +1374,7 @@ UniValue storagefee(const UniValue& params, bool fHelp) {
     if (!params.empty())
         strCommand = params[0].get_str();
 
-    if (fHelp || ( strCommand != "setfee" && strCommand != "getnetworkfee" && strCommand != "getlocalfee" ))
+    if (fHelp || ( strCommand != "setfee" && strCommand != "getnetworkfee" && strCommand != "getartticketfee" && strCommand != "getlocalfee"))
         throw runtime_error(
 			"storagefee \"command\"...\n"
 			"Set of commands to deal with Storage Fee and related actions\n"
@@ -1374,6 +1383,7 @@ UniValue storagefee(const UniValue& params, bool fHelp) {
 			"\nAvailable commands:\n"
 			"  setfee <n>		- Set storage fee for MN.\n"
 			"  getnetworkfee	- Get Network median storage fee.\n"
+			"  getartticketfee	- Get Network median art ticket fee.\n"
 			"  getlocalfee		- Get local masternode storage fee.\n"
         );
 
@@ -1395,6 +1405,14 @@ UniValue storagefee(const UniValue& params, bool fHelp) {
 
         UniValue mnObj(UniValue::VOBJ);
         mnObj.pushKV("networkfee", nFee);
+        return mnObj;
+    }
+    if (strCommand == "getartticketfee")
+    {
+        CAmount nFee = masterNodeCtrl.GetArtTicketFeePerKB();
+
+        UniValue mnObj(UniValue::VOBJ);
+        mnObj.pushKV("artticketfee", nFee);
         return mnObj;
     }
     if (strCommand == "getlocalfee")
@@ -1667,15 +1685,16 @@ Register new art ticket. If successful, method returns "txid".
 
 Arguments:
 1. "ticket"	(string, required) Base64 encoded ticket created by the artist.
-	{
-		"version": 1,
-		"author" "authorsPastelID",
-		"blocknum" <block-number-when-the-ticket-was-created-by-the-artist>,
-		"data_hash" "<base64'ed-hash-of-the-art>",
-		"copies" <number-of-copies-of-art-this-ticket-is-creating>,
-		"app_ticket" "<application-specific-data>",
-		"reserved" "<empty-string-for-now>",
-	}
+    {
+        "version":    1,
+        "author":     "<authors-PastelID>",
+        "blocknum":   <block-number-when-the-ticket-was-created-by-the-artist>,
+        "data_hash":  "<base64'ed-hash-of-the-art>",
+        "copies":     <number-of-copies-of-art-this-ticket-is-creating>,
+        "royalty":    <how-much-artist-should-get-on-all-future-resales>,
+        "green":      "<address-for-Green-NFT-payment>",
+        "app_ticket": "<application-specific-data>",
+    }
 2. "signatures"	(string, required) Signatures (base64) and PastelIDs of the author and verifying masternodes (MN2 and MN3) as JSON:
 	{
 		"artist":{"authorsPastelID": "authorsSignature"},
@@ -2198,7 +2217,7 @@ As json rpc
     
     if (TICKETS.IsCmd(RPC_CMD_TICKETS::tools)) {
         
-        RPC_CMD_PARSER2(LIST, params, printtradingchain, getregbytrade);
+        RPC_CMD_PARSER2(LIST, params, printtradingchain, getregbytrade, gettotalstoragefee);
         
         UniValue obj(UniValue::VARR);
         switch (LIST.cmd()) {
@@ -2240,6 +2259,75 @@ As json rpc
                     }
                     return obj;
                 }
+            }
+            case RPC_CMD_LIST::gettotalstoragefee: {
+                if (fHelp || params.size() != 10)
+                    throw JSONRPCError(RPC_INVALID_PARAMETER,
+                                       R"(tickets tools gettotalstoragefee "ticket" "{signatures}" "pastelid" "passphrase" "key1" "key2" "fee" "imagesize"
+Get full storage fee for the Art registration. If successful, method returns total amount of fee.
+
+Arguments:
+1. "ticket"	(string, required) Base64 encoded ticket created by the artist.
+	{
+		"version": 1,
+		"author" "authorsPastelID",
+		"blocknum" <block-number-when-the-ticket-was-created-by-the-artist>,
+		"data_hash" "<base64'ed-hash-of-the-art>",
+		"copies" <number-of-copies-of-art-this-ticket-is-creating>,
+		"app_ticket" "<application-specific-data>",
+		"reserved" "<empty-string-for-now>",
+	}
+2. "signatures"	(string, required) Signatures (base64) and PastelIDs of the author and verifying masternodes (MN2 and MN3) as JSON:
+	{
+		"artist":{"authorsPastelID": "authorsSignature"},
+		"mn2":{"mn2PastelID":"mn2Signature"},
+		"mn2":{"mn3PastelID":"mn3Signature"}
+	}
+3. "pastelid"   (string, required) The current, registering masternode (MN1) PastelID. NOTE: PastelID must be generated and stored inside node. See "pastelid newkey".
+4. "passpharse" (string, required) The passphrase to the private key associated with PastelID and stored inside node. See "pastelid newkey".
+5. "key1"       (string, required) The first key to search ticket.
+6. "key2"       (string, required) The second key to search ticket.
+7. "fee"        (int, required) The agreed upon storage fee.
+8. "imagesize"  (int, required) size of image in MB
+
+Get Total Storage Fee Ticket
+)" + HelpExampleCli("tickets tools gettotalstoragefee", R"(""ticket-blob" "{signatures}" jXYqZNPj21RVnwxnEJ654wEdzi7GZTZ5LAdiotBmPrF7pDMkpX1JegDMQZX55WZLkvy9fxNpZcbBJuE8QYUqBF "passphrase", "key1", "key2", 100, 3)") +
+                                           R"(
+As json rpc
+)" + HelpExampleRpc("tickets", R"("tools", "gettotalstoragefee", "ticket" "{signatures}" "jXYqZNPj21RVnwxnEJ654wEdzi7GZTZ5LAdiotBmPrF7pDMkpX1JegDMQZX55WZLkvy9fxNpZcbBJuE8QYUqBF" "passphrase", "key1", "key2", 100, 3)"));
+
+                if (fImporting || fReindex)
+                    throw JSONRPCError(RPC_INVALID_PARAMETER, "Initial blocks download. Re-try later");
+
+
+                std::string ticket = params[2].get_str();
+                std::string signatures = params[3].get_str();
+                std::string pastelID = params[4].get_str();
+
+                SecureString strKeyPass;
+                strKeyPass.reserve(100);
+                strKeyPass = params[5].get_str().c_str();
+
+                std::string key1 = params[6].get_str();
+                std::string key2 = params[7].get_str();
+
+                CAmount nStorageFee = get_long_number(params[8]);
+                CAmount imageSize = get_long_number(params[9]);
+
+                CArtRegTicket artRegTicket = CArtRegTicket::Create(
+                    ticket, signatures,
+                    pastelID, strKeyPass,
+                    key1, key2,
+                    nStorageFee);
+                CDataStream data_stream(SER_NETWORK, DATASTREAM_VERSION);
+                data_stream << (uint8_t)artRegTicket.ID();
+                data_stream << artRegTicket;
+                std::vector<unsigned char> input_bytes{data_stream.begin(), data_stream.end()};
+                CAmount totalFee = imageSize*masterNodeCtrl.GetNetworkFeePerMB() + ceil(input_bytes.size()*masterNodeCtrl.GetArtTicketFeePerKB()/1024);
+
+                UniValue mnObj(UniValue::VOBJ);
+                mnObj.pushKV("totalstoragefee", totalFee);
+                return mnObj;
             }
         }
     }

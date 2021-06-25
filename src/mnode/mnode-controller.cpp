@@ -30,7 +30,8 @@ void CMasterNodeController::SetParameters()
     //this will allow to filter out old MN when ALL NETWORK is updated 
     MasternodeProtocolVersion           = 170008;
     
-    MasternodeFeePerMBDefault           = 100;
+    MasternodeFeePerMBDefault           = 50;
+    ArtTicketFeePerKBDefault           = 3;
 
     MasternodeCheckSeconds              =   5;
     MasternodeMinMNBSeconds             =   5 * 60;
@@ -431,6 +432,24 @@ CAmount CMasterNodeController::GetNetworkFeePerMB()
 
     return MasternodeFeePerMBDefault;
 }
+
+CAmount CMasterNodeController::GetArtTicketFeePerKB()
+{
+
+    if (fMasterNode) {
+        CAmount nFee = 0;
+        std::map<COutPoint, CMasternode> mapMasternodes = masternodeManager.GetFullMasternodeMap();
+        for (auto& mnpair : mapMasternodes) {
+            CMasternode mn = mnpair.second;
+            nFee += mn.aArtTicketFeePerKB > 0? mn.aArtTicketFeePerKB: masterNodeCtrl.ArtTicketFeePerKBDefault;
+        }
+        nFee /= mapMasternodes.size();
+        return nFee;
+    }
+
+    return ArtTicketFeePerKBDefault;
+}
+
 
 
 /*

@@ -12,6 +12,9 @@
 #include "coins.h"
 #include "primitives/transaction.h"
 #include "sync.h"
+#include "addressindex.h"
+#include "spentindex.h"
+#include "script/script.h"
 
 #undef foreach
 #include "boost/multi_index_container.hpp"
@@ -135,6 +138,8 @@ private:
     std::map<uint256, const CTransaction*> mapSaplingNullifiers;
 
     void checkNullifiers(ShieldedType type) const;
+
+    std::map<CSpentIndexKey, CSpentIndexValue, CSpentIndexKeyCompare> mapSpent;
     
 public:
     typedef boost::multi_index_container<
@@ -152,6 +157,11 @@ public:
 
     mutable CCriticalSection cs;
     indexed_transaction_set mapTx;
+    
+private:
+    std::map<CMempoolAddressDeltaKey, CMempoolAddressDelta, CMempoolAddressDeltaKeyCompare> mapAddress;
+
+public:
     std::map<COutPoint, CInPoint> mapNextTx;
     std::map<uint256, std::pair<double, CAmount> > mapDeltas;
 
@@ -167,7 +177,12 @@ public:
     void check(const CCoinsViewCache *pcoins) const;
     void setSanityCheck(double dFrequency = 1.0) { nCheckFrequency = static_cast<uint32_t>(dFrequency * 4294967295.0); }
 
-    bool addUnchecked(const uint256& hash, const CTxMemPoolEntry &entry, bool fCurrentEstimate = true);
+	void getAddressIndex(const std::vector<std::pair<uint160, CScript::ScriptType>>& addresses,
+                         std::vector<std::pair<CMempoolAddressDeltaKey, CMempoolAddressDelta>>& results);
+
+    bool getSpentIndex(const CSpentIndexKey &key, CSpentIndexValue &value);
+
+	bool addUnchecked(const uint256& hash, const CTxMemPoolEntry &entry, bool fCurrentEstimate = true);
     void remove(const CTransaction &tx, std::list<CTransaction>& removed, bool fRecursive = false);
     void removeWithAnchor(const uint256 &invalidRoot, ShieldedType type);
     void removeForReorg(const CCoinsViewCache *pcoins, unsigned int nMemPoolHeight, int flags);

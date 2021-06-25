@@ -57,24 +57,26 @@ struct secp256k1_context_struct {
 
 secp256k1_context* secp256k1_context_create(unsigned int flags) {
     secp256k1_context* ret = (secp256k1_context*)checked_malloc(&default_error_callback, sizeof(secp256k1_context));
-    ret->illegal_callback = default_illegal_callback;
-    ret->error_callback = default_error_callback;
+    if (ret) {
+        ret->illegal_callback = default_illegal_callback;
+        ret->error_callback = default_error_callback;
 
-    if (EXPECT((flags & SECP256K1_FLAGS_TYPE_MASK) != SECP256K1_FLAGS_TYPE_CONTEXT, 0)) {
-            secp256k1_callback_call(&ret->illegal_callback,
-                                    "Invalid flags");
-            free(ret);
-            return NULL;
-    }
+        if (EXPECT((flags & SECP256K1_FLAGS_TYPE_MASK) != SECP256K1_FLAGS_TYPE_CONTEXT, 0)) {
+                secp256k1_callback_call(&ret->illegal_callback,
+                                        "Invalid flags");
+                free(ret);
+                return NULL;
+        }
 
-    secp256k1_ecmult_context_init(&ret->ecmult_ctx);
-    secp256k1_ecmult_gen_context_init(&ret->ecmult_gen_ctx);
+        secp256k1_ecmult_context_init(&ret->ecmult_ctx);
+        secp256k1_ecmult_gen_context_init(&ret->ecmult_gen_ctx);
 
-    if (flags & SECP256K1_FLAGS_BIT_CONTEXT_SIGN) {
-        secp256k1_ecmult_gen_context_build(&ret->ecmult_gen_ctx, &ret->error_callback);
-    }
-    if (flags & SECP256K1_FLAGS_BIT_CONTEXT_VERIFY) {
-        secp256k1_ecmult_context_build(&ret->ecmult_ctx, &ret->error_callback);
+        if (flags & SECP256K1_FLAGS_BIT_CONTEXT_SIGN) {
+            secp256k1_ecmult_gen_context_build(&ret->ecmult_gen_ctx, &ret->error_callback);
+        }
+        if (flags & SECP256K1_FLAGS_BIT_CONTEXT_VERIFY) {
+            secp256k1_ecmult_context_build(&ret->ecmult_ctx, &ret->error_callback);
+        }
     }
 
     return ret;
@@ -82,10 +84,12 @@ secp256k1_context* secp256k1_context_create(unsigned int flags) {
 
 secp256k1_context* secp256k1_context_clone(const secp256k1_context* ctx) {
     secp256k1_context* ret = (secp256k1_context*)checked_malloc(&ctx->error_callback, sizeof(secp256k1_context));
-    ret->illegal_callback = ctx->illegal_callback;
-    ret->error_callback = ctx->error_callback;
-    secp256k1_ecmult_context_clone(&ret->ecmult_ctx, &ctx->ecmult_ctx, &ctx->error_callback);
-    secp256k1_ecmult_gen_context_clone(&ret->ecmult_gen_ctx, &ctx->ecmult_gen_ctx, &ctx->error_callback);
+    if (ret) {
+        ret->illegal_callback = ctx->illegal_callback;
+        ret->error_callback = ctx->error_callback;
+        secp256k1_ecmult_context_clone(&ret->ecmult_ctx, &ctx->ecmult_ctx, &ctx->error_callback);
+        secp256k1_ecmult_gen_context_clone(&ret->ecmult_gen_ctx, &ctx->ecmult_gen_ctx, &ctx->error_callback);
+    }
     return ret;
 }
 
@@ -331,7 +335,13 @@ static int nonce_function_rfc6979(unsigned char *nonce32, const unsigned char *m
        keylen += 16;
    }
    secp256k1_rfc6979_hmac_sha256_initialize(&rng, keydata, keylen);
-   memset(keydata, 0, sizeof(keydata));
+
+    #ifdef __STDC_LIB_EXT1__
+        memset_s(keydata, sizeof(keydata), 0, sizeof(keydata));
+    #else
+        memset(keydata, 0, sizeof(keydata)); /* //-V597 false warning for Linux */
+    #endif
+
    for (i = 0; i <= counter; i++) {
        secp256k1_rfc6979_hmac_sha256_generate(&rng, nonce32, 32);
    }
@@ -375,7 +385,13 @@ int secp256k1_ecdsa_sign(const secp256k1_context* ctx, secp256k1_ecdsa_signature
             }
             count++;
         }
-        memset(nonce32, 0, 32);
+
+        #ifdef __STDC_LIB_EXT1__
+            memset_s(nonce32, sizeof(nonce32), 0, 32);
+        #else
+            memset(nonce32, 0, 32); /* //-V597 false warning for Linux */
+        #endif
+
         secp256k1_scalar_clear(&msg);
         secp256k1_scalar_clear(&non);
         secp256k1_scalar_clear(&sec);

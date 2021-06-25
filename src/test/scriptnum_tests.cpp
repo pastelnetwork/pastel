@@ -112,19 +112,19 @@ static void CheckCompare(const int64_t& num1, const int64_t& num2)
     const CScriptNum scriptnum1(num1);
     const CScriptNum scriptnum2(num2);
 
-    BOOST_CHECK((bignum1 == bignum1) == (scriptnum1 == scriptnum1));
-    BOOST_CHECK((bignum1 != bignum1) ==  (scriptnum1 != scriptnum1));
-    BOOST_CHECK((bignum1 < bignum1) ==  (scriptnum1 < scriptnum1));
-    BOOST_CHECK((bignum1 > bignum1) ==  (scriptnum1 > scriptnum1));
-    BOOST_CHECK((bignum1 >= bignum1) ==  (scriptnum1 >= scriptnum1));
-    BOOST_CHECK((bignum1 <= bignum1) ==  (scriptnum1 <= scriptnum1));
+    BOOST_CHECK((bignum1 == bignum1) == (scriptnum1 == scriptnum1)); //-V501
+    BOOST_CHECK((bignum1 != bignum1) ==  (scriptnum1 != scriptnum1)); //-V501
+    BOOST_CHECK((bignum1 < bignum1) ==  (scriptnum1 < scriptnum1)); //-V501
+    BOOST_CHECK((bignum1 > bignum1) ==  (scriptnum1 > scriptnum1)); //-V501
+    BOOST_CHECK((bignum1 >= bignum1) ==  (scriptnum1 >= scriptnum1)); //-V501
+    BOOST_CHECK((bignum1 <= bignum1) ==  (scriptnum1 <= scriptnum1)); //-V501
 
-    BOOST_CHECK((bignum1 == bignum1) == (scriptnum1 == num1));
-    BOOST_CHECK((bignum1 != bignum1) ==  (scriptnum1 != num1));
-    BOOST_CHECK((bignum1 < bignum1) ==  (scriptnum1 < num1));
-    BOOST_CHECK((bignum1 > bignum1) ==  (scriptnum1 > num1));
-    BOOST_CHECK((bignum1 >= bignum1) ==  (scriptnum1 >= num1));
-    BOOST_CHECK((bignum1 <= bignum1) ==  (scriptnum1 <= num1));
+    BOOST_CHECK((bignum1 == bignum1) == (scriptnum1 == num1)); //-V501
+    BOOST_CHECK((bignum1 != bignum1) ==  (scriptnum1 != num1)); //-V501
+    BOOST_CHECK((bignum1 < bignum1) ==  (scriptnum1 < num1)); //-V501
+    BOOST_CHECK((bignum1 > bignum1) ==  (scriptnum1 > num1)); //-V501
+    BOOST_CHECK((bignum1 >= bignum1) ==  (scriptnum1 >= num1)); //-V501
+    BOOST_CHECK((bignum1 <= bignum1) ==  (scriptnum1 <= num1)); //-V501
 
     BOOST_CHECK((bignum1 == bignum2) ==  (scriptnum1 == scriptnum2));
     BOOST_CHECK((bignum1 != bignum2) ==  (scriptnum1 != scriptnum2));

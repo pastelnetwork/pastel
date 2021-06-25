@@ -269,6 +269,6 @@ public:
     {
         nRz = 36969 * (nRz & 65535) + (nRz >> 16);
         nRw = 18000 * (nRw & 65535) + (nRw >> 16);
-        return ((nRw << 16) + nRz) % nMax;
+        return (static_cast<int64_t>(nRw << 16) + nRz) % nMax;
     }
 };

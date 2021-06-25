@@ -739,7 +739,7 @@ UniValue getblocktemplate(const UniValue& params, bool fHelp)
     result.pushKV("sizelimit", (int64_t)MAX_BLOCK_SIZE);
     result.pushKV("curtime", pblock->GetBlockTime());
     result.pushKV("bits", strprintf("%08x", pblock->nBits));
-    result.pushKV("height", (int64_t)(pindexPrev->nHeight+1));
+    result.pushKV("height", (int64_t)(pindexPrev->nHeight) + 1);
 
     //PASTEL-->
     //MN payment

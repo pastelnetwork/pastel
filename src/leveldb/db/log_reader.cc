@@ -107,7 +107,7 @@ bool Reader::ReadRecord(Slice* record, std::string* scratch) {
         }
         prospective_record_offset = physical_record_offset;
         scratch->assign(fragment.data(), fragment.size());
-        in_fragmented_record = true;
+        in_fragmented_record = true; // -V519 this is set intendedly for the case in_fragmented_record == false
         break;
 
       case kMiddleType:

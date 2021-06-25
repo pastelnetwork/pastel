@@ -37,7 +37,7 @@ public:
     
     std::string ToJSON() const noexcept override;
     std::string ToStr() const noexcept override;
-    bool IsValid(std::string& errRet, bool preReg, int depth) const override;
+    bool IsValid(bool preReg, int depth) const override;
     
     CAmount TicketPrice(const unsigned int nHeight) const noexcept override { return nHeight<=10000? 10: 1000; }
     
@@ -181,9 +181,10 @@ public:
     
     std::string ToJSON() const noexcept override;
     std::string ToStr() const noexcept override;
-    bool IsValid(std::string& errRet, bool preReg, int depth) const override;
+    bool IsValid(bool preReg, int depth) const override;
     CAmount TicketPrice(const unsigned int nHeight) const noexcept override { return 10; }
-    
+    CAmount GreenPercent(const unsigned int nHeight) const noexcept { return 2; }
+
 	void SerializationOp(CDataStream& s, const SERIALIZE_ACTION ser_action) override
     {
         const bool bRead = ser_action == SERIALIZE_ACTION::Read;
@@ -204,12 +205,17 @@ public:
         READWRITE(keyTwo);
         READWRITE(artistHeight);
         READWRITE(totalCopies);
+        READWRITE(nRoyalty);
+        READWRITE(strGreenAddress);
         READWRITE(storageFee);
         READWRITE(m_nTimestamp);
         READWRITE(m_txid);
         READWRITE(m_nBlock);
 	}
-	
+
+    std::string GetRoyaltyPayeePastelID();
+    std::string GetRoyaltyPayeeAddress();
+
     static CArtRegTicket Create(std::string _ticket, const std::string& signatures,
                                 std::string _pastelID, const SecureString& strKeyPass,
                                 std::string _keyOne, std::string _keyTwo,
@@ -263,7 +269,7 @@ public:
     
     std::string ToJSON() const noexcept override;
     std::string ToStr() const noexcept override;
-    bool IsValid(std::string& errRet, bool preReg, int depth) const override;
+    bool IsValid(bool preReg, int depth) const override;
     CAmount TicketPrice(const unsigned int nHeight) const noexcept override { return 10; }
     CAmount GetStorageFee() const noexcept override { return storageFee; }
 	
@@ -344,7 +350,7 @@ public:
     
     std::string ToJSON() const noexcept override;
     std::string ToStr() const noexcept override;
-    bool IsValid(std::string& errRet, bool preReg, int depth) const override;
+    bool IsValid(bool preReg, int depth) const override;
     CAmount TicketPrice(const unsigned int nHeight) const noexcept override { return askedPrice/50; }
     
     void SerializationOp(CDataStream& s, const SERIALIZE_ACTION ser_action) override
@@ -416,7 +422,7 @@ public:
     
     std::string ToJSON() const noexcept override;
     std::string ToStr() const noexcept override;
-    bool IsValid(std::string& errRet, bool preReg, int depth) const override;
+    bool IsValid(bool preReg, int depth) const override;
     
     void SerializationOp(CDataStream& s, const SERIALIZE_ACTION ser_action) override
     {
@@ -490,7 +496,7 @@ public:
     
     std::string ToJSON() const noexcept override;
     std::string ToStr() const noexcept override;
-    bool IsValid(std::string& errRet, bool preReg, int depth) const override;
+    bool IsValid(bool preReg, int depth) const override;
     CAmount TicketPrice(const unsigned int nHeight) const noexcept override { return 10; }
     
     void SerializationOp(CDataStream& s, const SERIALIZE_ACTION ser_action) override
@@ -529,6 +535,71 @@ public:
     std::unique_ptr<CPastelTicket> FindArtRegTicket() const;
 };
 
+/*
+  "ticket": {
+    "type": "royalty",
+    "version": "",
+    "pastelID": "",     //pastelID of the old (current at moment of creation) royalty recipient
+    "new_pastelID": "", //pastelID of the new royalty recipient
+    "art_txid": "",     //txid of the art for royalty payments
+    "signature": ""
+  }
+*/
+
+class CArtRoyaltyTicket : public CPastelTicket {
+public:
+  std::string pastelID;    //pastelID of the old (current at moment of creation) royalty recipient
+  std::string newPastelID; //pastelID of the new royalty recipient
+  std::string artTnxId;    //txid of the art for royalty payments
+  std::vector<unsigned char> signature;
+
+public:
+  CArtRoyaltyTicket() = default;
+
+  explicit CArtRoyaltyTicket(std::string _pastelID, std::string _newPastelID)
+      : pastelID(std::move(_pastelID)), newPastelID(std::move(_newPastelID)) {
+  }
+
+  TicketID ID() const noexcept final { return TicketID::Royalty; }
+  static TicketID GetID() { return TicketID::Royalty; }
+
+  std::string KeyOne() const noexcept final { return {signature.cbegin(), signature.cend()}; }
+  std::string MVKeyOne() const noexcept final { return pastelID; }
+  std::string MVKeyTwo() const noexcept final { return artTnxId; }
+
+  bool HasMVKeyOne() const noexcept final { return true; }
+  bool HasMVKeyTwo() const noexcept final { return true; }
+  void SetKeyOne(std::string val) final { signature.assign(val.begin(), val.end()); }
+
+  std::string ToJSON() const noexcept final;
+  std::string ToStr() const noexcept final;
+  bool IsValid(bool preReg, int depth) const final;
+  CAmount TicketPrice(const unsigned int nHeight) const noexcept final { return 10; }
+
+  void SerializationOp(CDataStream& s, const SERIALIZE_ACTION ser_action) final {
+    const bool bRead{ser_action == SERIALIZE_ACTION::Read};
+    std::string error;
+    if (!VersionMgmt(error, bRead))
+      throw std::runtime_error(error);
+    READWRITE(pastelID);
+    READWRITE(newPastelID);
+    READWRITE(m_nVersion);
+    // v0
+    READWRITE(artTnxId);
+    READWRITE(signature);
+    READWRITE(m_nTimestamp);
+    READWRITE(m_txid);
+    READWRITE(m_nBlock);
+  }
+
+  static CArtRoyaltyTicket Create(std::string _pastelID, std::string _newPastelID,
+                                  std::string _artTnxId, const SecureString& strKeyPass);
+  static bool FindTicketInDb(const std::string& key, CArtRoyaltyTicket& ticket);
+
+  static std::vector<CArtRoyaltyTicket> FindAllTicketByPastelID(const std::string& pastelID);
+  static std::vector<CArtRoyaltyTicket> FindAllTicketByArtTnxId(const std::string& artTnxId);
+};
+
 // Take Down Ticket /////////////////////////////////////////////////////////////////////////////////////////////////////
 class CTakeDownTicket : public CPastelTicket
 {
@@ -541,10 +612,9 @@ public:
 
     std::string ToJSON() const noexcept override { return "{}"; }
     std::string ToStr() const noexcept override { return ""; }
-    bool IsValid(std::string& errRet, bool preReg, int depth) const override { return false; }
+    bool IsValid(bool preReg, int depth) const override { return false; }
     std::string KeyOne() const noexcept override { return ""; }
     void SetKeyOne(std::string val) override {}
 
     void SerializationOp(CDataStream& s, const SERIALIZE_ACTION ser_action) override {}
 };
-

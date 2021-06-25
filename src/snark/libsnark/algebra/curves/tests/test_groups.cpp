@@ -86,7 +86,7 @@ void test_group()
     EXPECT_EQ(one.add(two), three);
     EXPECT_EQ(two.add(one), three);
     EXPECT_EQ(a + b, b + a);
-    EXPECT_EQ(a - a, zero);
+    EXPECT_EQ(a - a, zero); //-V501
     EXPECT_EQ(a - b, a + (-b));
     EXPECT_EQ(a - b, (-b) + a);
 

@@ -154,7 +154,13 @@ int secp256k1_ecdsa_sign_recoverable(const secp256k1_context* ctx, secp256k1_ecd
             }
             count++;
         }
-        memset(nonce32, 0, 32);
+
+        #ifdef __STDC_LIB_EXT1__
+            memset_s(nonce32, sizeof(nonce32), 0, 32);
+        #else
+            memset(nonce32, 0, 32); /* //-V597 false warning for Linux */
+        #endif
+
         secp256k1_scalar_clear(&msg);
         secp256k1_scalar_clear(&non);
         secp256k1_scalar_clear(&sec);

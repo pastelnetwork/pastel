@@ -55,13 +55,13 @@ class MasterNodeMainTest (MasterNodeCommon):
             nfee_mn0 = self.nodes[0].storagefee("getnetworkfee")["networkfee"]
             nfee_mn1 = self.nodes[1].storagefee("getnetworkfee")["networkfee"]
             nfee_mn2 = self.nodes[2].storagefee("getnetworkfee")["networkfee"]
-            assert_equal(nfee_mn0, 100)
-            assert_equal(nfee_mn1, 100)
-            assert_equal(nfee_mn2, 100)
+            assert_equal(nfee_mn0, 50)
+            assert_equal(nfee_mn1, 50)
+            assert_equal(nfee_mn2, 50)
             print("Network fee is ", nfee_mn0)
 
             lfee_mn0 = self.nodes[0].storagefee("getlocalfee")["localfee"]
-            assert_equal(lfee_mn0, 100)
+            assert_equal(lfee_mn0, 50)
             print("Local fee of MN0 is ", lfee_mn0)
 
         #print("Test sync after crash")

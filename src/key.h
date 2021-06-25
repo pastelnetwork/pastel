@@ -48,7 +48,7 @@ private:
     bool fCompressed;
 
     //! The actual byte data
-    unsigned char vch[KEY_SIZE];
+    std::vector<unsigned char, secure_allocator<unsigned char> > keydata;
 
     //! Check whether the 32-byte array pointed to be vch is valid keydata.
     bool static Check(const unsigned char* vch);
@@ -59,28 +59,19 @@ public:
         fValid(false), 
         fCompressed(false)
     {
-        LockObject(vch);
-    }
-
-    //! Copy constructor. This is necessary because of memlocking.
-    CKey(const CKey& secret) : 
-        fValid(secret.fValid), 
-        fCompressed(secret.fCompressed)
-    {
-        LockObject(vch);
-        memcpy(vch, secret.vch, sizeof(vch));
+        // Important: vch must be 32 bytes in length to not break serialization
+        keydata.resize(KEY_SIZE);
     }
 
     //! Destructor (again necessary because of memlocking).
     ~CKey()
     {
-        UnlockObject(vch);
     }
 
     friend bool operator==(const CKey& a, const CKey& b)
     {
         return a.fCompressed == b.fCompressed && a.size() == b.size() &&
-               memcmp(&a.vch[0], &b.vch[0], a.size()) == 0;
+               memcmp(a.keydata.data(), b.keydata.data(), a.size()) == 0;
     }
 
     //! Initialize using begin and end iterators to byte data.
@@ -94,7 +85,7 @@ public:
                 break;
             if (!Check(&pbegin[0]))
                 break;
-            memcpy(vch, (unsigned char*)&pbegin[0], KEY_SIZE);
+            memcpy(keydata.data(), (unsigned char*)&pbegin[0], keydata.size());
             fValid = true;
             fCompressed = fCompressedIn;
         } while (false);
@@ -102,10 +93,10 @@ public:
 
     //! Simple read-only vector-like interface.
     unsigned int size() const noexcept { return (fValid ? KEY_SIZE : 0); }
-    const unsigned char* begin() const noexcept { return vch; }
-    const unsigned char* end() const noexcept { return vch + size(); }
-    const unsigned char* cbegin() const noexcept { return vch; }
-    const unsigned char* cend() const noexcept { return vch + size(); }
+    const unsigned char* begin() const noexcept { return keydata.data(); }
+    const unsigned char* end() const noexcept { return keydata.data() + size(); }
+    const unsigned char* cbegin() const noexcept { return keydata.data(); }
+    const unsigned char* cend() const noexcept { return keydata.data() + size(); }
 
     //! Check whether this private key is valid.
     bool IsValid() const noexcept { return fValid; }

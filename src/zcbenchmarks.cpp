@@ -38,7 +38,7 @@ void pre_wallet_load()
 {
     LogPrintf("%s: In progress...\n", __func__);
     if (ShutdownRequested())
-        throw new std::runtime_error("The node is shutting down");
+        throw std::runtime_error("The node is shutting down");
 
     if (pwalletMain)
         pwalletMain->Flush(false);
@@ -401,7 +401,7 @@ double benchmark_connectblock_slow()
     SelectParams(CBaseChainParams::Network::MAIN);
     CBlock block;
     FILE* fp = fopen((GetDataDir() / "benchmark/block-107134.dat").string().c_str(), "rb");
-    if (!fp) throw new std::runtime_error("Failed to open block data file");
+    if (!fp) throw std::runtime_error("Failed to open block data file");
     CAutoFile blkFile(fp, SER_DISK, CLIENT_VERSION);
     blkFile >> block;
     blkFile.fclose();

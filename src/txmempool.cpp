@@ -20,7 +20,7 @@ using namespace std;
 
 CTxMemPoolEntry::CTxMemPoolEntry():
     nFee(0), nTxSize(0), nModSize(0), nUsageSize(0), nTime(0), dPriority(0.0),
-    hadNoDependencies(false), spendsCoinbase(false)
+    hadNoDependencies(false), spendsCoinbase(false), nBranchId(0)
 {
     nHeight = MEMPOOL_HEIGHT;
 }
@@ -54,12 +54,17 @@ CTxMemPoolEntry::GetPriority(unsigned int currentHeight) const
 }
 
 CTxMemPool::CTxMemPool(const CFeeRate& _minRelayFee) :
-    nTransactionsUpdated(0)
+    nCheckFrequency(0), 
+    nTransactionsUpdated(0), 
+    minerPolicyEstimator(nullptr),
+    totalTxSize(0),
+    cachedInnerUsage(0),
+    mapSproutNullifiers(),
+    mapSaplingNullifiers()
 {
     // Sanity checks off by default for performance, because otherwise
     // accepting transactions becomes O(N^2) where N is the number
     // of transactions in the pool
-    nCheckFrequency = 0;
 
     minerPolicyEstimator = new CBlockPolicyEstimator(_minRelayFee);
 }
@@ -120,6 +125,30 @@ bool CTxMemPool::addUnchecked(const uint256& hash, const CTxMemPoolEntry &entry,
     return true;
 }
 
+void CTxMemPool::getAddressIndex(
+    const std::vector<std::pair<uint160, CScript::ScriptType>>& addresses,
+    std::vector<std::pair<CMempoolAddressDeltaKey, CMempoolAddressDelta>>& results)
+{
+    LOCK(cs);
+    for (const auto& it : addresses) {
+        auto ait = mapAddress.lower_bound(CMempoolAddressDeltaKey(it.second, it.first));
+        while (ait != mapAddress.end() && (*ait).first.addressBytes == it.first && (*ait).first.type == it.second) {
+            results.push_back(*ait);
+            ait++;
+        }
+    }
+}
+
+bool CTxMemPool::getSpentIndex(const CSpentIndexKey &key, CSpentIndexValue &value)
+{
+    LOCK(cs);
+    auto it = mapSpent.find(key);
+    if (it != mapSpent.end()) {
+        value = it->second;
+        return true;
+    }
+    return false;
+}
 
 void CTxMemPool::remove(const CTransaction &origTx, std::list<CTransaction>& removed, bool fRecursive)
 {

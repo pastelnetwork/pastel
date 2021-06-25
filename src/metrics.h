@@ -80,7 +80,7 @@ void ThreadShowMetricsScreen();
  * Zcash: img2txt -W 40 -H 20 -f utf8 -d none -g 0.7 Z-yellow.orange-logo.png
  * Heart: img2txt -W 40 -H 20 -f utf8 -d none 2000px-Heart_corazón.svg.png
  */
-const std::string METRICS_ART =
+inline const std::string METRICS_ART =
 "              [0;34;40m            [0m                                                      \n"
 "          [0;34;40m                    [0m                                                  \n"
 "       [0;34;40m      [0;31;40m:8[0;33;5;40;100m8[0;1;30;90;43mSX@888@@X[0;31;5;40;100m8[0;31;40m:[0;34;40m      [0m              [0;31;5;41;101m8;     %[0;1;31;91;41mX[0m        [0;1;31;91;41mX[0;31;5;41;101m%     ;8[0m       \n"

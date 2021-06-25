@@ -396,8 +396,8 @@ bool CDB::Rewrite(const string& strFile, const char* pszSkip)
                         bitdb.CloseDb(strFile);
                         if (pdbCopy->close(0))
                             fSuccess = false;
-                        delete pdbCopy;
                     }
+                    delete pdbCopy;
                 }
                 if (fSuccess) {
                     Db dbA(bitdb.dbenv, 0);

@@ -39,7 +39,7 @@ private:
         // serialize, checksum data up to that point, then append checksum
         CDataStream ssObj(SER_DISK, CLIENT_VERSION);
         ssObj << strMagicMessage; // specific magic message for this type of object
-        ssObj << FLATDATA(Params().MessageStart()); // network specific magic number
+        ssObj << FLATDATA(Params().MessageStart()); //-V568 network specific magic number
         ssObj << objToSave;
         uint256 hash = Hash(ssObj.begin(), ssObj.end());
         ssObj << hash;

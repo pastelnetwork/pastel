@@ -133,7 +133,7 @@ static void secp256k1_ge_set_all_gej_var(secp256k1_ge *r, const secp256k1_gej *a
     size_t count = 0;
     az = (secp256k1_fe *)checked_malloc(cb, sizeof(secp256k1_fe) * len);
     for (i = 0; i < len; i++) {
-        if (!a[i].infinity) {
+        if (!a[i].infinity && az) {
             az[count++] = a[i].z;
         }
     }
@@ -145,7 +145,7 @@ static void secp256k1_ge_set_all_gej_var(secp256k1_ge *r, const secp256k1_gej *a
     count = 0;
     for (i = 0; i < len; i++) {
         r[i].infinity = a[i].infinity;
-        if (!a[i].infinity) {
+        if (!a[i].infinity  && azi) {
             secp256k1_ge_set_gej_zinv(&r[i], &a[i], &azi[count++]);
         }
     }
