@@ -14,6 +14,12 @@
     <Filter Include="Source Files\cyclicbarrier">
       <UniqueIdentifier>{2b02cfae-4307-40dd-99b6-d06e6d2cb7c0}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Source Files\mnode">
+      <UniqueIdentifier>{c070f378-ba31-4af2-a349-882efd2f5eb5}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\pastelid">
+      <UniqueIdentifier>{d3b7a4eb-1936-4883-9f18-ef2b1fdd6b74}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\..\src\sendalert.cpp">
@@ -117,6 +123,63 @@
     </ClCompile>
     <ClCompile Include="..\port\cyclicbarrier\cyclicbarrier.cpp">
       <Filter>Source Files\cyclicbarrier</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\src\mnode\ticket-processor.cpp">
+      <Filter>Source Files\mnode</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\src\mnode\mnode-active.cpp">
+      <Filter>Source Files\mnode</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\src\mnode\mnode-config.cpp">
+      <Filter>Source Files\mnode</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\src\mnode\mnode-controller.cpp">
+      <Filter>Source Files\mnode</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\src\mnode\mnode-db.cpp">
+      <Filter>Source Files\mnode</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\src\mnode\mnode-dbcreate.cpp">
+      <Filter>Source Files\mnode</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\src\mnode\mnode-governance.cpp">
+      <Filter>Source Files\mnode</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\src\mnode\mnode-manager.cpp">
+      <Filter>Source Files\mnode</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\src\mnode\mnode-masternode.cpp">
+      <Filter>Source Files\mnode</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\src\mnode\mnode-messageproc.cpp">
+      <Filter>Source Files\mnode</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\src\mnode\mnode-msgsigner.cpp">
+      <Filter>Source Files\mnode</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\src\mnode\mnode-notificationinterface.cpp">
+      <Filter>Source Files\mnode</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\src\mnode\mnode-pastel.cpp">
+      <Filter>Source Files\mnode</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\src\mnode\mnode-payments.cpp">
+      <Filter>Source Files\mnode</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\src\mnode\mnode-requesttracker.cpp">
+      <Filter>Source Files\mnode</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\src\mnode\mnode-rpc.cpp">
+      <Filter>Source Files\mnode</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\src\mnode\mnode-sync.cpp">
+      <Filter>Source Files\mnode</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\src\mnode\mnode-validation.cpp">
+      <Filter>Source Files\mnode</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\src\pastelid\secure_container.cpp">
+      <Filter>Source Files\pastelid</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -254,6 +317,75 @@
     </ClInclude>
     <ClInclude Include="..\port\cyclicbarrier\cyclicbarrier.hpp">
       <Filter>Source Files\cyclicbarrier</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\mnode\mnode-active.h">
+      <Filter>Source Files\mnode</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\mnode\mnode-config.h">
+      <Filter>Source Files\mnode</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\mnode\mnode-consts.h">
+      <Filter>Source Files\mnode</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\mnode\mnode-controller.h">
+      <Filter>Source Files\mnode</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\mnode\mnode-db.h">
+      <Filter>Source Files\mnode</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\mnode\mnode-governance.h">
+      <Filter>Source Files\mnode</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\mnode\mnode-manager.h">
+      <Filter>Source Files\mnode</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\mnode\mnode-masternode.h">
+      <Filter>Source Files\mnode</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\mnode\mnode-messageproc.h">
+      <Filter>Source Files\mnode</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\mnode\mnode-msgsigner.h">
+      <Filter>Source Files\mnode</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\mnode\mnode-notificationinterface.h">
+      <Filter>Source Files\mnode</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\mnode\mnode-pastel.h">
+      <Filter>Source Files\mnode</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\mnode\mnode-payments.h">
+      <Filter>Source Files\mnode</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\mnode\mnode-requesttracker.h">
+      <Filter>Source Files\mnode</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\mnode\mnode-rpc.h">
+      <Filter>Source Files\mnode</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\mnode\mnode-sync.h">
+      <Filter>Source Files\mnode</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\mnode\ticket-processor.h">
+      <Filter>Source Files\mnode</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\mnode\mnode-validation.h">
+      <Filter>Source Files\mnode</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\mnode\ticket.h">
+      <Filter>Source Files\mnode</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\pastelid\common.h">
+      <Filter>Source Files\pastelid</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\pastelid\ed.h">
+      <Filter>Source Files\pastelid</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\pastelid\pastel_key.h">
+      <Filter>Source Files\pastelid</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\pastelid\secure_container.h">
+      <Filter>Source Files\pastelid</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>
