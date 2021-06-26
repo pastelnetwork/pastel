@@ -30,7 +30,7 @@ class WalletSaplingTest(BitcoinTestFramework):
         # Activate Overwinter
         self.nodes[2].generate(1)
         self.sync_all()
-
+        
         # Verify RPCs disallow Sapling value transfer if Sapling is not active
         tmp_taddr = self.nodes[3].getnewaddress()
         tmp_zaddr = self.nodes[3].z_getnewaddress('sapling')
@@ -200,6 +200,66 @@ class WalletSaplingTest(BitcoinTestFramework):
             raise AssertionError("Should have thrown an exception")
         except JSONRPCException as e:
             assert_equal("Cannot send to both Sprout and Sapling addresses using z_sendmany", e.error['message'])
+        
+        
+        # Check z_sendmanywithchangetosender
+        # send from node 0 taddr to node 2 single taddr
+        senderaddr = self.nodes[0].getnewaddress()
+        senderaddr = self.nodes[0].getnewaddress()
+        self.nodes[0].generate(10)
+        self.sync_all()
+        
+        senderExpectedBalance = Decimal('100.0')
+        mytxid = self.nodes[0].sendtoaddress(senderaddr, senderExpectedBalance)
+        self.sync_all()
+        self.nodes[0].generate(1)
+        self.sync_all()
+        assert_equal(self.nodes[0].z_getbalance(senderaddr), senderExpectedBalance)
+
+        receiveraddr = self.nodes[2].getnewaddress()
+        receiveraddr = self.nodes[2].getnewaddress()
+        fee         = Decimal('0.01')
+        minconf     = 1
+        receiverExpectedBalance = Decimal('5.0')
+        recipients  = [ {"address": receiveraddr, "amount": receiverExpectedBalance} ]
+
+        myopid = self.nodes[0].z_sendmanywithchangetosender(senderaddr, recipients, minconf, fee)
+        assert(myopid)
+        self.sync_all()
+        self.nodes[0].generate(1)
+        self.sync_all()
+        assert_equal(self.nodes[2].z_getbalance(receiveraddr), receiverExpectedBalance)
+        calculatedSenderBalance = senderExpectedBalance - receiverExpectedBalance - fee
+        assert_equal(self.nodes[0].z_getbalance(senderaddr), calculatedSenderBalance)
+
+        # send from node 0 taddr to node 2 multiple taddr
+        receiveraddr = self.nodes[2].getnewaddress()
+        receiveraddr2 = self.nodes[2].getnewaddress()
+        recipients  = [ {"address": receiveraddr, "amount": receiverExpectedBalance},
+                        {"address": receiveraddr2, "amount": receiverExpectedBalance}  ]
+
+        myopid = self.nodes[0].z_sendmanywithchangetosender(senderaddr, recipients, minconf, fee)
+        mytxid = wait_and_assert_operationid_status(self.nodes[0], myopid)
+        self.sync_all()
+        self.nodes[0].generate(1)
+        self.sync_all()
+        calculatedSenderBalance = calculatedSenderBalance - fee - receiverExpectedBalance * 2
+        assert_equal(self.nodes[0].z_getbalance(senderaddr), calculatedSenderBalance)
+        assert_equal(self.nodes[2].z_getbalance(receiveraddr), receiverExpectedBalance)
+        assert_equal(self.nodes[2].z_getbalance(receiveraddr2), receiverExpectedBalance)
+        
+        # send from node 2 zaddr to node 3 zaddr
+        saplingreceiver = self.nodes[3].z_getnewaddress('sapling')
+        saplingAddrBalance = self.nodes[2].z_getbalance(saplingAddr0)
+        recipients  = [ {"address": saplingreceiver, "amount": receiverExpectedBalance}]
+        myopid = self.nodes[2].z_sendmanywithchangetosender(saplingAddr0, recipients, minconf, fee)
+        mytxid = wait_and_assert_operationid_status(self.nodes[2], myopid)
+        self.sync_all()
+        self.nodes[2].generate(1)
+        self.sync_all()
+        calculatedSenderBalance = saplingAddrBalance - fee - receiverExpectedBalance
+        assert_equal(self.nodes[2].z_getbalance(saplingAddr0), calculatedSenderBalance)
+        assert_equal(self.nodes[3].z_getbalance(saplingreceiver), receiverExpectedBalance)
 
 if __name__ == '__main__':
     WalletSaplingTest().main()
