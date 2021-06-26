@@ -11,6 +11,12 @@ from test_framework.authproxy import JSONRPCException
 import json
 import time
 import base64
+import random, string
+import sys
+import hashlib
+  
+if sys.version_info < (3, 6):
+    import sha3
 
 from decimal import Decimal, getcontext
 getcontext().prec = 16
@@ -512,6 +518,77 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         print("Personal royalty initialize tested")
 
     # ===============================================================================================================
+    def generate_art_ticket_details(self):
+        # Art_ticket structure 
+        # {
+        # "artist_name": string,
+        # "artwork_title": string,
+        # "artwork_series_name": string,
+        # "artwork_keyword_set": string,
+        # "artist_website": string,
+        # "artist_written_statement": string,
+        # "artwork_creation_video_youtube_url": string,
+        # "thumbnail_hash": bytes,    //hash of the thumbnail !!!!SHA3-256!!!!
+        #     "data_hash": bytes,         // hash of the image (or any other asset) that this ticket represents !!!!SHA3-256!!!!
+        # "fingerprints_hash": bytes,       //hash of the fingerprint !!!!SHA3-256!!!!
+        # "fingerprints": bytes,            //compressed fingerprint
+        # "fingerprints_signature": bytes,  //signature on raw image fingerprint
+        # "rq_ids": [list of strings],//raptorq symbol identifiers -  !!!!SHA3-256 of symbol block!!!!
+        # "rq_coti": integer64,       //raptorq CommonOTI
+        # "rq_ssoti": integer64,      //raptorq SchemeSpecificOTI
+        # "rareness_score": integer,  // 0 to 1000
+        # "nsfw_score": integer,      // 0 to 1000
+        # "seen_score": integer,      // 0 to 1000
+        # }
+        # Data for art-ticket generation
+        artist_first_names=('John','Andy','Joe', 'Jennifer', 'August', 'Dave', 'Blanca', 'Diana', 'Tia', 'Michael')
+        artist_last_names=('Johnson','Smith','Williams', 'Ecclestone', 'Schumacher', 'Faye', 'Counts', 'Wesley')
+        letters = string.ascii_letters
+
+        # initialize hash base strings or lists
+        thumbnail_to_be_hashed = ''.join(random.choice(letters) for i in range(10))
+        data_to_be_hashed = ''.join(random.choice(letters) for i in range(10))
+        fingerprints_to_be_hashed = ''.join(random.choice(letters) for i in range(10))
+        rq_ids_to_be_hashed = ""
+        for _ in range (5):
+            rq_ids_to_be_hashed += (''.join(random.choice(letters) for i in range(10)))
+        
+        # encode the string
+        encoded_thumbnail = thumbnail_to_be_hashed.encode()
+        encoded_data = data_to_be_hashed.encode()
+        encoded_fingerprint = fingerprints_to_be_hashed.encode()
+        encoded_rq_ids = rq_ids_to_be_hashed.encode()
+        
+        # create sha3-256 hash objects
+        obj_sha3_256_thumbnail = hashlib.sha3_256(encoded_thumbnail)
+        obj_sha3_256_data = hashlib.sha3_256(encoded_data)
+        obj_sha3_256_fingerprint = hashlib.sha3_256(encoded_fingerprint)
+        obj_sha3_256_rq_ids = hashlib.sha3_256(encoded_rq_ids)
+
+        art_ticket_json = {
+            "artist_name": "".join(random.choice(artist_first_names)+" "+random.choice(artist_last_names)),
+            "artwork_title": ''.join(random.choice(letters) for i in range(10)),
+            "artwork_series_name": ''.join(random.choice(letters) for i in range(10)),
+            "artwork_keyword_set": ''.join(random.choice(letters) for i in range(10)),
+            "artist_website": ''.join(random.choice(letters) for i in range(10)),
+            "artist_written_statement": ''.join(random.choice(letters) for i in range(10)),
+            "artwork_creation_video_youtube_url": ''.join(random.choice(letters) for i in range(10)),
+            "thumbnail_hash": obj_sha3_256_thumbnail.hexdigest(),    #hash of the thumbnail !!!!SHA3-256!!!!
+            "data_hash": obj_sha3_256_data.hexdigest(),         #hash of the image (or any other asset) that this ticket represents !!!!SHA3-256!!!!
+            "fingerprints_hash": obj_sha3_256_fingerprint.hexdigest(),       #hash of the fingerprint !!!!SHA3-256!!!!
+            "fingerprints": fingerprints_to_be_hashed,            #compressed fingerprint
+            "fingerprints_signature": ''.join(random.choice(letters) for i in range(20)), #signature on raw image fingerprint
+            "rq_ids": obj_sha3_256_rq_ids.hexdigest(), #[list of strings],//raptorq symbol identifiers -  !!!!SHA3-256 of symbol block!!!!
+            "rq_coti": str(random.randint(0, sys.maxsize)),       #raptorq CommonOTI
+            "rq_ssoti": str(random.randint(0, sys.maxsize)),       #raptorq SchemeSpecificOTI
+            "rareness_score": str(random.randint(0, 1000)),   # 0 to 1000
+            "nsfw_score": str(random.randint(0, 1000)),   # 0 to 1000
+            "seen_score": str(random.randint(0, 1000)),   # 0 to 1000
+        }
+
+        return art_ticket_json
+
+     # ===============================================================================================================
     def personal_green_initialize_tests(self):
         # personal green PastelID ticket
         self.nonmn6_green_pastelid1 = self.nodes[self.non_mn6].pastelid("newkey", "passphrase")["pastelid"]
@@ -541,9 +618,9 @@ class MasterNodeTicketsTest(MasterNodeCommon):
 
         print("Personal green initialize tested")
 
-    # ===============================================================================================================
+     # ===============================================================================================================
     def create_art_ticket_and_signatures(self, artist_pastelid, artist_node_num,
-                                         app_ticket, data_hash, total_copies,
+                                         total_copies,
                                          make_bad_signatures_dicts):
         mn_ticket_signatures = {}
 
@@ -565,11 +642,21 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         #   "green": string,            // address for Green NFT payment (not yet supported by cNode)
         #   "app_ticket": ...
         # }
+
+
+        res1 = self.nodes[artist_node_num].getblock(str(self.artist_ticket_height))
+        
+        block_hash = res1["hash"]
+
+        app_ticket_json = self.generate_art_ticket_details()
+
+        app_ticket = str_to_b64str(json.dumps(app_ticket_json))
+
         json_ticket = {
             "version": 1,
             "author": artist_pastelid,
             "blocknum": self.artist_ticket_height,
-            "block_hash": data_hash,
+            "block_hash": block_hash,
             "copies": total_copies,
             "royalty": self.royalty,
             "green": self.nonmn6_green_address1,
@@ -689,7 +776,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
 
         self.total_copies = 10
         self.create_art_ticket_and_signatures(self.artist_pastelid1, self.non_mn3,
-                                              "HIJKLMNOP", "ABCDEFG", self.total_copies,
+                                              self.total_copies,
                                               True)
 
         #   c.a register art registration ticket
@@ -1744,7 +1831,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         assert_equal(len(tickets_list), 5 + loop_number*2)
 
         self.create_art_ticket_and_signatures(self.artist_pastelid1, self.non_mn3,
-                                              "HashOfTicket2", "Ticket2", 5,
+                                               5,
                                               False)
         art_ticket2_txid = self.nodes[self.top_mns_index0].tickets("register", "art",
                                                                    self.ticket, json.dumps(self.signatures_dict),
@@ -1764,7 +1851,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         self.__wait_for_ticket_tnx()
 
         self.create_art_ticket_and_signatures(self.artist_pastelid1, self.non_mn3,
-                                              "HashOfTicket3", "Ticket3", 1,
+                                              1,
                                               False)
         art_ticket3_txid = self.nodes[self.top_mns_index0].tickets("register", "art",
                                                                    self.ticket, json.dumps(self.signatures_dict),
