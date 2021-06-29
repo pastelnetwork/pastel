@@ -750,7 +750,7 @@ UniValue masternode(const UniValue& params, bool fHelp)
             
             CPubKey vchPubKey(ParseHex(strPubKey));
     
-            masterNodeCtrl.masternodeMessages.SendMessage(vchPubKey, messageText);
+            masterNodeCtrl.masternodeMessages.SendMessage(vchPubKey, CMasternodeMessageType::PLAINTEXT, messageText);
             
         } else if (strCmd == "list"){
             if (!masterNodeCtrl.IsMasterNode())
@@ -1392,12 +1392,30 @@ UniValue storagefee(const UniValue& params, bool fHelp) {
         if (!masterNodeCtrl.IsActiveMasterNode())
             throw JSONRPCError(RPC_INTERNAL_ERROR, "This is not a active masternode. Only active MN can set its fee");
 
-        if (params.size() != 2)
-            throw JSONRPCError(RPC_INVALID_PARAMETER, "Correct usage is 'masternode setfee \"new fee\"'");
+        if (params.size() == 1) {
+            // If no additional parameter added. 
+            // TODO: Finish this after we baseline how to calculate this. 
+        } else if (params.size() == 2) {
+            // If additional parameter added, it means 
+            CAmount newFee = get_long_number(params[1]);
 
-//        UniValue obj(UniValue::VOBJ);
-//
-//        CAmount nFee = get_long_number(params[1]);
+            CMasternode masternode;
+            if (masterNodeCtrl.masternodeManager.Get(masterNodeCtrl.activeMasternode.outpoint, masternode)) {
+                // Update masternode localfee
+                masterNodeCtrl.masternodeManager.SetMasternodeFee(masterNodeCtrl.activeMasternode.outpoint, newFee);
+
+                // Send message to inform other masternodes
+                masterNodeCtrl.masternodeMessages.BroadcastNewFee(newFee);
+                
+            } else {
+                throw JSONRPCError(RPC_INTERNAL_ERROR, "Masternode is not found!");
+            }
+
+        } else {
+            throw JSONRPCError(RPC_INVALID_PARAMETER, "Correct usage is 'masternode setfee \"new fee\"'");
+        }
+        return true;
+
     }
     if (strCommand == "getnetworkfee")
     {

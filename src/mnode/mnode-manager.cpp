@@ -1487,6 +1487,16 @@ void CMasternodeMan::SetMasternodeLastPing(const COutPoint& outpoint, const CMas
     }
 }
 
+void CMasternodeMan::SetMasternodeFee(const COutPoint& outpoint, CAmount newFee)
+{
+    LOCK(cs);
+    CMasternode* pmn = Find(outpoint);
+    if(!pmn) {
+        return;
+    }
+    pmn->aMNFeePerMB = newFee;
+}
+
 void CMasternodeMan::UpdatedBlockTip(const CBlockIndex *pindex)
 {
     nCachedBlockHeight = pindex->nHeight;

@@ -13,21 +13,30 @@ extern CCriticalSection cs_mapOurMessages;
 bool Sign(const std::string& message, std::string& signatureBase64, std::string& error_ret);
 bool Sign(const std::string& message, std::vector<unsigned char>& signature, std::string& error_ret);
 
+// Type to distinguish the way we build/parse messages.
+enum CMasternodeMessageType
+{
+    PLAINTEXT,
+    SETFEE
+};
+
 class CMasternodeMessage
 {
 public:
     CTxIn vinMasternodeFrom;
     CTxIn vinMasternodeTo;
+    int messageType;
     std::string message;
     int64_t sigTime{}; //message times
     std::vector<unsigned char> vchSig;
 
     CMasternodeMessage() = default;
     
-    CMasternodeMessage(COutPoint outpointMasternodeFrom, COutPoint outpointMasternodeTo, const std::string& msg) :
+    CMasternodeMessage(COutPoint outpointMasternodeFrom, COutPoint outpointMasternodeTo, CMasternodeMessageType msgType, const std::string& msg) :
         vinMasternodeFrom(outpointMasternodeFrom),
         vinMasternodeTo(outpointMasternodeTo),
         sigTime(0),
+        messageType(static_cast<int>(msgType)),
         message(msg)
     {}
 
@@ -38,6 +47,7 @@ public:
     {
         READWRITE(vinMasternodeFrom);
         READWRITE(vinMasternodeTo);
+        READWRITE(messageType);
         READWRITE(message);
         READWRITE(sigTime);
         READWRITE(vchSig);
@@ -60,7 +70,7 @@ public:
     void Relay();
     std::string ToString() const;
     
-    static std::unique_ptr<CMasternodeMessage> Create(const CPubKey& pubKeyTo, const std::string& msg);
+    static std::unique_ptr<CMasternodeMessage> Create(const CPubKey& pubKeyTo, CMasternodeMessageType msgType, const std::string& msg);
 };
 
 class CMasternodeMessageProcessor {
@@ -85,6 +95,7 @@ public:
     }
 
 public:
+    void BroadcastNewFee(CAmount newFee);
     void ProcessMessage(CNode *pFrom, std::string &strCommand, CDataStream &vRecv);
     void CheckAndRemove();
     void Clear();
@@ -92,5 +103,5 @@ public:
     size_t SizeOur() const noexcept { return mapOurMessages.size(); }
     std::string ToString() const;
     
-    void SendMessage(const CPubKey& pubKeyTo, const std::string& msg);
+    void SendMessage(const CPubKey& pubKeyTo, CMasternodeMessageType msgType, const std::string& msg);
 };

@@ -203,6 +203,8 @@ public:
     bool IsMasternodePingedWithin(const COutPoint& outpoint, int nSeconds, int64_t nTimeToCheckAt = -1);
     void SetMasternodeLastPing(const COutPoint& outpoint, const CMasternodePing& mnp);
 
+    void SetMasternodeFee(const COutPoint& outpoint, CAmount newFee);
+
     void UpdatedBlockTip(const CBlockIndex *pindex);
     
     std::vector<CMasternode> GetTopMNsForBlock(int nBlockHeight = -1, bool bCalculateIfNotSeen = false);
