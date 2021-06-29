@@ -600,6 +600,225 @@ public:
   static std::vector<CArtRoyaltyTicket> FindAllTicketByArtTnxId(const std::string& artTnxId);
 };
 
+// NFT Gift Tickets /////////////////////////////////////////////////////////////////////////////////////////////////////
+
+/*
+  "ticket": {
+    "type": "gift",
+    "version": "",
+    "pastelID": "",             // PastelID of the NFT owner either
+                                //   1) an original artist; or 2) a previous buyer; or 3) previous owner of gift
+                                // should be the same in either
+                                //   1) NFT activation ticket; or 2) trade ticket; or 3) give ticket
+    "gift_pastelID": "",        // PastelID of the gift recipient
+    "nft_txid": "",             // txid with either
+                                //   1) NFT activation ticket; or 2) trade ticket in it; or 3) give ticket in it
+    "copy_number": "",
+    "valid_after": "",
+    "valid_before": "",
+    "signature": ""
+  }
+*/
+
+class CNFTGiftTicket : public CPastelTicket {
+public:
+  std::string pastelID;         // pastelID of the NFT owner either
+                                //   1) an original artist; or 2) a previous buyer; or 3) previous owner of gift
+  std::string giftPastelID;     // pastelID of the gift recipient
+  std::string nftTnxId;         // txid with either
+                                //   1) NFT activation ticket; or 2) trade ticket in it; or 3) give ticket in it
+  unsigned int activeAfter{};   // as a block height
+  unsigned int activeBefore{};  // as a block height
+  unsigned short copyNumber{};
+  std::vector<unsigned char> signature;
+
+public:
+  CNFTGiftTicket() = default;
+
+  explicit CNFTGiftTicket(std::string _pastelID, std::string _giftPastelID)
+      : pastelID(std::move(_pastelID)), giftPastelID(std::move(_giftPastelID)) {
+  }
+
+  TicketID ID() const noexcept final { return TicketID::Gift; }
+  static TicketID GetID() { return TicketID::Gift; }
+
+  std::string KeyOne() const noexcept final { return {signature.cbegin(), signature.cend()}; }
+  std::string MVKeyOne() const noexcept final { return pastelID; }
+  std::string MVKeyTwo() const noexcept final { return nftTnxId; }
+
+  bool HasMVKeyOne() const noexcept final { return true; }
+  bool HasMVKeyTwo() const noexcept final { return true; }
+  void SetKeyOne(std::string val) final { signature.assign(val.begin(), val.end()); }
+
+  std::string ToJSON() const noexcept final;
+  std::string ToStr() const noexcept final;
+  bool IsValid(bool preReg, int depth) const final;
+  CAmount TicketPrice(const unsigned int nHeight) const noexcept final { return 10; }
+
+  void SerializationOp(CDataStream& s, const SERIALIZE_ACTION ser_action) final {
+    const bool bRead{ser_action == SERIALIZE_ACTION::Read};
+    std::string error;
+    if (!VersionMgmt(error, bRead))
+      throw std::runtime_error(error);
+    READWRITE(pastelID);
+    READWRITE(giftPastelID);
+    READWRITE(m_nVersion);
+    // v1
+    READWRITE(nftTnxId);
+    READWRITE(activeAfter);
+    READWRITE(activeBefore);
+    READWRITE(copyNumber);
+    READWRITE(signature);
+    READWRITE(m_nTimestamp);
+    READWRITE(m_txid);
+    READWRITE(m_nBlock);
+  }
+
+  static CNFTGiftTicket Create(std::string _nftTnxId, std::string _giftPastelID,
+                               int _validAfter, int _validBefore, int _copy_number,
+                               std::string _pastelID, const SecureString& strKeyPass);
+  static bool FindTicketInDb(const std::string& key, CNFTGiftTicket& ticket);
+
+  static std::vector<CNFTGiftTicket> FindAllTicketByPastelID(const std::string& pastelID);
+  static std::vector<CNFTGiftTicket> FindAllTicketByNFTTnxID(const std::string& nftTnxId);
+};
+
+/*
+  "ticket": {
+    "type": "gift-accept",
+    "version": "",
+    "pastelID": "",     // pastelID of the gift recipient
+    "gift_txid": "",    // txid with gift ticket
+    "signature": ""
+  }
+*/
+
+class CNFTGiftAcceptTicket : public CPastelTicket {
+public:
+  std::string pastelID;
+  std::string giftTnxId;
+  std::vector<unsigned char> signature;
+
+public:
+  CNFTGiftAcceptTicket() = default;
+
+  explicit CNFTGiftAcceptTicket(std::string _pastelID)
+      : pastelID(std::move(_pastelID)) {
+  }
+
+  TicketID ID() const noexcept final { return TicketID::GiftAccept; }
+  static TicketID GetID() { return TicketID::GiftAccept; }
+
+  std::string KeyOne() const noexcept final { return giftTnxId; }
+  std::string MVKeyOne() const noexcept final { return pastelID; }
+
+  bool HasMVKeyOne() const noexcept final { return true; }
+  void SetKeyOne(std::string val) final { giftTnxId = std::move(val); }
+
+  std::string ToJSON() const noexcept final;
+  std::string ToStr() const noexcept final;
+  bool IsValid(bool preReg, int depth) const final;
+  CAmount TicketPrice(const unsigned int nHeight) const noexcept final { return 10; }
+
+  void SerializationOp(CDataStream& s, const SERIALIZE_ACTION ser_action) final {
+    const bool bRead{ser_action == SERIALIZE_ACTION::Read};
+    std::string error;
+    if (!VersionMgmt(error, bRead))
+      throw std::runtime_error(error);
+    READWRITE(pastelID);
+    READWRITE(m_nVersion);
+    // v1
+    READWRITE(giftTnxId);
+    READWRITE(signature);
+    READWRITE(m_nTimestamp);
+    READWRITE(m_txid);
+    READWRITE(m_nBlock);
+  }
+
+  static CNFTGiftAcceptTicket Create(std::string _giftTnxId, std::string _pastelID, const SecureString& strKeyPass);
+  static bool FindTicketInDb(const std::string& key, CNFTGiftAcceptTicket& ticket);
+
+  static std::vector<CNFTGiftAcceptTicket> FindAllTicketByPastelID(const std::string& pastelID);
+};
+
+/*
+  "ticket": {
+    "type": "give",
+    "version": "",
+    "pastelID": "",     // pastelID of the gift recipient
+    "gift_txid": "",    // txid with gift ticket
+    "accept_txid": "",  // txid with accept ticket
+    "nft_txid": "",     // txid with either
+                        //   1) art activation ticket; or 2) trade ticket in it; or 3) give ticket in it
+    "signature": ""
+  }
+*/
+
+class CNFTGiveTicket : public CPastelTicket {
+public:
+  std::string pastelID;
+  std::string giftTnxId;
+  std::string acceptTnxId;
+  std::string nftTnxId;
+  unsigned short copyNumber{};
+  std::vector<unsigned char> signature;
+
+public:
+  CNFTGiveTicket() = default;
+
+  explicit CNFTGiveTicket(std::string _pastelID)
+      : pastelID(std::move(_pastelID)) {
+  }
+
+  TicketID ID() const noexcept final { return TicketID::Give; }
+  static TicketID GetID() { return TicketID::Give; }
+
+  std::string KeyOne() const noexcept final { return giftTnxId; }
+  std::string KeyTwo() const noexcept final { return acceptTnxId; }
+  std::string MVKeyOne() const noexcept final { return pastelID; }
+  std::string MVKeyTwo() const noexcept final { return nftTnxId; }
+
+  bool HasKeyTwo() const noexcept final { return true; }
+  bool HasMVKeyOne() const noexcept final { return true; }
+  bool HasMVKeyTwo() const noexcept final { return true; }
+  void SetKeyOne(std::string val) final { giftTnxId = std::move(val); }
+
+  std::string ToJSON() const noexcept final;
+  std::string ToStr() const noexcept final;
+  bool IsValid(bool preReg, int depth) const final;
+  CAmount TicketPrice(const unsigned int nHeight) const noexcept final { return 10; }
+
+  void SerializationOp(CDataStream& s, const SERIALIZE_ACTION ser_action) final {
+    const bool bRead{ser_action == SERIALIZE_ACTION::Read};
+    std::string error;
+    if (!VersionMgmt(error, bRead))
+      throw std::runtime_error(error);
+    READWRITE(pastelID);
+    READWRITE(m_nVersion);
+    // v1
+    READWRITE(giftTnxId);
+    READWRITE(acceptTnxId);
+    READWRITE(nftTnxId);
+    READWRITE(copyNumber);
+    READWRITE(signature);
+    READWRITE(m_nTimestamp);
+    READWRITE(m_txid);
+    READWRITE(m_nBlock);
+  }
+
+  static CNFTGiveTicket Create(std::string _giftTnxId, std::string _acceptTnxId,
+                               std::string _pastelID, const SecureString& strKeyPass);
+  static bool FindTicketInDb(const std::string& key, CNFTGiveTicket& ticket);
+
+  static std::vector<CNFTGiveTicket> FindAllTicketByPastelID(const std::string& pastelID);
+  static std::vector<CNFTGiveTicket> FindAllTicketByNFTTnxID(const std::string& nftTnxID);
+
+  static bool CheckGiveTicketExistByGiftTicket(const std::string& giftTnxId);
+  static bool CheckGiveTicketExistByAcceptTicket(const std::string& acceptTnxId);
+  static bool GetGiveTicketByGiftTicket(const std::string& giftTnxId, CNFTGiveTicket& ticket);
+  static bool GetGiveTicketByAcceptTicket(const std::string& acceptTnxId, CNFTGiveTicket& ticket);
+};
+
 // Take Down Ticket /////////////////////////////////////////////////////////////////////////////////////////////////////
 class CTakeDownTicket : public CPastelTicket
 {

@@ -73,6 +73,7 @@ public:
 
     unsigned int MinTicketConfirmations;
     unsigned int MaxBuyTicketAge;
+    unsigned int MaxGiftAcceptTicketAge;
 
     CMasterNodeController() : 
         pacNotificationInterface(nullptr),

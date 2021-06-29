@@ -1565,6 +1565,551 @@ std::vector<CArtRoyaltyTicket> CArtRoyaltyTicket::FindAllTicketByArtTnxId(const 
   return masterNodeCtrl.masternodeTickets.FindTicketsByMVKey<CArtRoyaltyTicket>(artTnxId);
 }
 
+// NFT Gift Tickets ////////////////////////////////////////////////////////////////////////////////////////////////////
+
+// CNFTGiftTicket //////////////////////////////////////////////////////////////////////////////////////////////////////
+CNFTGiftTicket CNFTGiftTicket::Create(
+    std::string _nftTnxId, std::string _giftPastelID,
+    int _validAfter, int _validBefore, int _copy_number,
+    std::string _pastelID, const SecureString& strKeyPass) {
+  CNFTGiftTicket ticket(std::move(_pastelID), std::move(_giftPastelID));
+
+  ticket.nftTnxId = std::move(_nftTnxId);
+  ticket.activeBefore = _validBefore;
+  ticket.activeAfter = _validAfter;
+  ticket.copyNumber = _copy_number;
+
+  ticket.GenerateTimestamp();
+
+  const std::string strTicket = ticket.ToStr();
+  ticket.signature = CPastelID::Sign(
+    reinterpret_cast<const unsigned char*>(strTicket.c_str()), strTicket.size(), ticket.pastelID, strKeyPass
+  );
+
+  return ticket;
+}
+
+std::string CNFTGiftTicket::ToStr() const noexcept {
+  std::stringstream ss;
+  ss << pastelID;
+  ss << giftPastelID;
+  ss << nftTnxId;
+  ss << activeBefore;
+  ss << activeAfter;
+  ss << copyNumber;
+  ss << m_nTimestamp;
+  return ss.str();
+}
+
+bool CNFTGiftTicket::IsValid(bool preReg, int depth) const {
+  unsigned int chainHeight = 0; {
+    LOCK(cs_main);
+    chainHeight = static_cast<unsigned int>(chainActive.Height()) + 1;
+  }
+
+  // Common validations
+  std::unique_ptr<CPastelTicket> pastelTicket;
+  if (!common_validation(*this, preReg, nftTnxId, pastelTicket,
+      [](const TicketID tid) { return (tid != TicketID::Activate && tid != TicketID::Trade && tid != TicketID::Give); },
+      "Gift", "activation or trade or give", depth, TicketPrice(chainHeight))) {
+    throw std::runtime_error(strprintf("The Gift ticket with NFT txid [%s] is not validated", nftTnxId));
+  }
+
+  if (giftPastelID.empty()) {
+    throw std::runtime_error("The Gift ticket gift_pastelID is empty");
+  }
+
+  if (pastelID == giftPastelID) {
+    throw std::runtime_error("The Gift ticket pastelID is equal to gift_pastelID");
+  }
+
+  CPastelIDRegTicket giftPastelIDticket;
+  if (!CPastelIDRegTicket::FindTicketInDb(giftPastelID, giftPastelIDticket)) {
+    throw std::runtime_error(strprintf(
+      "The gift_pastelID [%s] for Gift ticket with NFT txid [%s] is not in the blockchain or is invalid",
+      giftPastelID, nftTnxId));
+  }
+
+  bool ticketFound{false};
+  CNFTGiftTicket existingTicket;
+  if (CNFTGiftTicket::FindTicketInDb(KeyOne(), existingTicket)) {
+    if (existingTicket.signature == signature &&
+        existingTicket.IsBlock(m_nBlock) &&
+        existingTicket.m_txid == m_txid) // if this ticket is already in the DB
+      ticketFound = true;
+  }
+
+  // Check PastelID in this ticket matches PastelID in the referred ticket (Activation or Trade or Give)
+  // Verify the NFT is not already sold or gifted
+  auto existingGiftTickets = CNFTGiftTicket::FindAllTicketByNFTTnxID(nftTnxId);
+  auto existingTradeTickets = CArtTradeTicket::FindAllTicketByArtTnxID(nftTnxId);
+  auto existingGiveTickets = CNFTGiveTicket::FindAllTicketByNFTTnxID(nftTnxId);
+  auto soldCopies = existingTradeTickets.size();
+  auto giftedCopies = 0;
+  for (const auto& t: existingGiveTickets) {
+    giftedCopies += t.copyNumber;
+  }
+
+  auto availableCopies = 0;
+  if (pastelTicket->ID() == TicketID::Activate) {
+    auto actTicket = dynamic_cast<const CArtActivateTicket*>(pastelTicket.get());
+    if (!actTicket) {
+      throw std::runtime_error(strprintf(
+        "The activation ticket with this txid [%s] referred by this gift ticket is invalid", nftTnxId));
+    }
+
+    const std::string& artistPastelID = actTicket->pastelID;
+    if (artistPastelID != pastelID) {
+      throw std::runtime_error(strprintf(
+        "The PastelID [%s] in this ticket is not matching the Artist's PastelID [%s] in the Activation ticket with txid [%s]",
+        pastelID, artistPastelID, nftTnxId));
+    }
+
+    // Get NFT registration ticket
+    auto pArtTicket = CPastelTicketProcessor::GetTicket(actTicket->regTicketTnxId, TicketID::Art);
+    auto artTicket = dynamic_cast<const CArtRegTicket*>(pArtTicket.get());
+    if (!artTicket) {
+      throw std::runtime_error(strprintf(
+        "The NFT Registration ticket with txid [%s] referred by NFT Activation ticket is invalid",
+        actTicket->regTicketTnxId));
+    }
+
+    if (preReg || !ticketFound) {
+      // else if this is already confirmed ticket - skip this check, otherwise it will failed
+      // Verify the number of existing trade & gifted tickets less then number of copies in the registration ticket
+      if (soldCopies + giftedCopies >= artTicket->totalCopies) {
+        throw std::runtime_error(strprintf(
+          "The NFT you are trying to gift with txid [%s] - is already sold or gifted - "
+          "there are already [%zu] trade tickets and [%zu] gifted tickets, but only [%zu] copies were available",
+          nftTnxId, soldCopies, giftedCopies, artTicket->totalCopies));
+      }
+    }
+
+    availableCopies = artTicket->totalCopies - (soldCopies + giftedCopies);
+  } else if (pastelTicket->ID() == TicketID::Trade) {
+    auto tradeTicket = dynamic_cast<const CArtTradeTicket*>(pastelTicket.get());
+    if (!tradeTicket) {
+      throw std::runtime_error(strprintf(
+        "The trade ticket with txid [%s] referred by this gift ticket is invalid", nftTnxId));
+    }
+
+    const std::string& ownersPastelID = tradeTicket->pastelID;
+    if (ownersPastelID != pastelID) {
+      throw std::runtime_error(strprintf(
+        "The PastelID [%s] in this ticket is not matching the PastelID [%s] in the Trade ticket with txid [%s]",
+        pastelID, ownersPastelID, nftTnxId));
+    }
+
+    // Verify there is no already sold or gifted ticket referring to that trade ticket
+    if (preReg || !ticketFound) {
+      // else if this is already confirmed ticket - skip this check, otherwise it will failed
+      if (soldCopies > 0) {
+        throw std::runtime_error(strprintf(
+          "The NFT you are trying to gift with txid [%s] - is already sold with txid [%s]",
+          nftTnxId, existingTradeTickets[0].GetTxId()));
+      }
+      if (giftedCopies > 0) {
+        throw std::runtime_error(strprintf(
+          "The NFT you are trying to gift with txid [%s] - is already gifted with txid [%s]",
+          nftTnxId, existingGiveTickets[0].GetTxId()));
+      }
+    }
+
+    availableCopies = 1;
+  } else if (pastelTicket->ID() == TicketID::Give) {
+    auto giveTicket = dynamic_cast<const CNFTGiveTicket*>(pastelTicket.get());
+    if (!giveTicket) {
+      throw std::runtime_error(strprintf(
+        "The give ticket with txid [%s] referred by this gift ticket is invalid", nftTnxId));
+    }
+
+    const std::string& ownersPastelID = giveTicket->pastelID;
+    if (ownersPastelID != pastelID) {
+      throw std::runtime_error(strprintf(
+        "The PastelID [%s] in this ticket is not matching the PastelID [%s] in the Give ticket with txid [%s]",
+        pastelID, ownersPastelID, nftTnxId));
+    }
+
+    // Verify there is no already gifted ticket referring to that gift ticket
+    if (preReg || !ticketFound) {
+      // Verify the number of existing trade & gifted tickets less then number of copies in the previously gifted ticket
+      if (soldCopies + giftedCopies >= giveTicket->copyNumber) {
+        throw std::runtime_error(strprintf(
+          "The NFT you are trying to gift with txid [%s] - is already sold or gifted - "
+          "there are already [%zu] trade tickets and [%zu] gifted tickets, but only [%zu] gifted copies were available",
+          nftTnxId, soldCopies, giftedCopies, giveTicket->copyNumber));
+      }
+    }
+
+    availableCopies = giveTicket->copyNumber - (soldCopies + giftedCopies);
+  }
+
+  if (copyNumber > availableCopies || copyNumber <= 0) {
+    throw std::runtime_error(strprintf(
+      "Invalid Gift ticket - copy number [%d] cannot exceed the total number of available copies [%d] or be <= 0",
+      copyNumber, availableCopies));
+  }
+
+  // If this is replacement - verify that it is allowed (original ticket is not gifted)
+  // (ticket transaction replay attack protection)
+  // If found similar ticket, replacement is possible if allowed
+  auto it = find_if(existingGiftTickets.begin(), existingGiftTickets.end(), [&](const CNFTGiftTicket& st) {
+    return st.copyNumber == copyNumber && st.giftPastelID == giftPastelID &&
+           !st.IsBlock(m_nBlock) && st.m_txid != m_txid;
+  });
+  if (it != existingGiftTickets.end()) {
+    if (CNFTGiveTicket::CheckGiveTicketExistByGiftTicket(it->m_txid)) {
+      throw std::runtime_error(strprintf(
+        "Cannot replace Gift ticket - it has been already sold. txid - [%s] copyNumber [%d].", it->m_txid, copyNumber));
+    }
+
+    if (masterNodeCtrl.masternodeSync.IsSynced()) {
+      // Validate only if both blockchain and MNs are synced
+      unsigned int nChainHeight{0}; {
+        LOCK(cs_main);
+        nChainHeight = static_cast<unsigned int>(chainActive.Height()) + 1;
+      }
+      if (it->GetBlock() + 2880 < nChainHeight) {
+        // 1 block per 2.5; 4 blocks per 10 min; 24 blocks per 1h; 576 blocks per 24 h;
+        throw std::runtime_error(strprintf(
+          "Can only replace Gift ticket after 5 days. txid - [%s] copyNumber [%d].", it->m_txid, copyNumber));
+      }
+    }
+  }
+
+  return true;
+}
+
+std::string CNFTGiftTicket::ToJSON() const noexcept {
+  const json jsonObj {
+    {"txid",   m_txid},
+    {"height", m_nBlock},
+    {"ticket", {
+      {"type",          GetTicketName()},
+      {"version",       GetStoredVersion()},
+      {"pastelID",      pastelID},
+      {"gift_pastelID", giftPastelID},
+      {"nft_txid",      nftTnxId},
+      {"copy_number",   copyNumber},
+      {"valid_after",   activeAfter},
+      {"valid_before",  activeBefore},
+      {"signature",     ed_crypto::Hex_Encode(signature.data(), signature.size())}
+    }}
+  };
+  return jsonObj.dump(4);
+}
+
+bool CNFTGiftTicket::FindTicketInDb(const std::string& key, CNFTGiftTicket& ticket) {
+  ticket.signature = {key.cbegin(), key.cend()};
+  return masterNodeCtrl.masternodeTickets.FindTicket(ticket);
+}
+
+std::vector<CNFTGiftTicket> CNFTGiftTicket::FindAllTicketByPastelID(const std::string& pastelID) {
+  return masterNodeCtrl.masternodeTickets.FindTicketsByMVKey<CNFTGiftTicket>(pastelID);
+}
+
+std::vector<CNFTGiftTicket> CNFTGiftTicket::FindAllTicketByNFTTnxID(const std::string& nftTnxId) {
+  return masterNodeCtrl.masternodeTickets.FindTicketsByMVKey<CNFTGiftTicket>(nftTnxId);
+}
+
+// CNFTGiftAcceptTicket ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+CNFTGiftAcceptTicket CNFTGiftAcceptTicket::Create(
+    std::string _giftTnxId, std::string _pastelID, const SecureString& strKeyPass) {
+  CNFTGiftAcceptTicket ticket(std::move(_pastelID));
+
+  ticket.giftTnxId = std::move(_giftTnxId);
+
+  ticket.GenerateTimestamp();
+
+  const string strTicket = ticket.ToStr();
+  ticket.signature = CPastelID::Sign(
+    reinterpret_cast<const unsigned char*>(strTicket.c_str()), strTicket.size(), ticket.pastelID, strKeyPass
+  );
+
+  return ticket;
+}
+
+std::string CNFTGiftAcceptTicket::ToStr() const noexcept {
+  std::stringstream ss;
+  ss << pastelID;
+  ss << giftTnxId;
+  ss << m_nTimestamp;
+  return ss.str();
+}
+
+bool CNFTGiftAcceptTicket::IsValid(bool preReg, int depth) const {
+  unsigned int chainHeight = 0; {
+    LOCK(cs_main);
+    chainHeight = static_cast<unsigned int>(chainActive.Height()) + 1;
+  }
+
+  // Common validations
+  std::unique_ptr<CPastelTicket> pastelTicket;
+  if (!common_validation(*this, preReg, giftTnxId, pastelTicket,
+      [](const TicketID tid) { return (tid != TicketID::Gift); },
+      "GiftAccept", "gift", depth, TicketPrice(chainHeight))) {
+    throw std::runtime_error(strprintf("The GiftAccept ticket with Gift txid [%s] is not validated", giftTnxId));
+  }
+
+  // Verify that there is no another gift-accept ticket for the same gift ticket
+  // or if there are, it is older then 1h and there is no give ticket for it
+  // acceptTicket->ticketBlock <= height+24 (2.5m per block -> 24blocks/per hour) - MaxGiftAcceptTicketAge
+  CNFTGiftAcceptTicket existingAcceptTicket;
+  if (CNFTGiftAcceptTicket::FindTicketInDb(giftTnxId, existingAcceptTicket)) {
+    if (preReg) {
+      // if pre reg - this is probably repeating call, so signatures can be the same
+      throw std::runtime_error(strprintf(
+        "GiftAccept ticket [%s] already exists for this gift ticket [%s]", existingAcceptTicket.m_txid, giftTnxId));
+    }
+
+    // (ticket transaction replay attack protection)
+    // though the similar transaction will be allowed if existing GiftAccept ticket has expired
+    if (existingAcceptTicket.signature != signature ||
+        existingAcceptTicket.m_txid != m_txid ||
+       !existingAcceptTicket.IsBlock(m_nBlock)) {
+      // check age
+      if (existingAcceptTicket.m_nBlock + masterNodeCtrl.MaxGiftAcceptTicketAge <= chainHeight) {
+        throw std::runtime_error(strprintf(
+          "GiftAccept ticket [%s] already exists and is not yet 1h old for gift ticket [%s]"
+          "[this ticket block = %u txid = %s; found ticket block = %u txid = %s]",
+          existingAcceptTicket.m_txid, giftTnxId, m_nBlock, m_txid, existingAcceptTicket.m_nBlock, existingAcceptTicket.m_txid));
+      }
+
+      // check give ticket
+      if (CNFTGiveTicket::CheckGiveTicketExistByAcceptTicket(existingAcceptTicket.m_txid)) {
+        throw std::runtime_error(strprintf(
+          "The gift ticket you are trying to accept [%s] is already gifted", giftTnxId));
+      }
+    }
+  }
+
+  auto giftTicket = dynamic_cast<const CNFTGiftTicket*>(pastelTicket.get());
+  if (!giftTicket) {
+    throw std::runtime_error(strprintf(
+      "The gift ticket with txid [%s] referred by this gift-accept ticket is invalid", giftTnxId));
+  }
+
+  // Verify the pastelID of this ticket is the same to giftPastelID in the Gift ticket
+  const std::string& giftPastelID = giftTicket->giftPastelID;
+  if (giftPastelID != pastelID) {
+    throw std::runtime_error(strprintf(
+      "The PastelID [%s] in this GiftAccept ticket is not matching the giftPastelID [%s] in the gift ticket with txid [%s]",
+      pastelID, giftPastelID, giftTnxId));
+  }
+
+  // Verify Gift ticket is already or still active
+  const unsigned int height = (preReg || IsBlock(0)) ? chainHeight : m_nBlock;
+  if (height < giftTicket->activeAfter) {
+    throw std::runtime_error(strprintf(
+      "Gift ticket [%s] is only active after [%d] block height (GiftAccept ticket block is [%d])",
+      giftTnxId, giftTicket->activeAfter, height));
+  }
+  if (giftTicket->activeBefore > 0 && giftTicket->activeBefore < height) {
+    throw std::runtime_error(strprintf(
+      "Gift ticket [%s] is only active before [%d] block height (GiftAccept ticket block is [%d])",
+      giftTnxId, giftTicket->activeBefore, height));
+  }
+
+  return true;
+}
+
+std::string CNFTGiftAcceptTicket::ToJSON() const noexcept {
+  const json jsonObj {
+    {"txid",   m_txid},
+    {"height", m_nBlock},
+    {"ticket", {
+      {"type",      GetTicketName()},
+      {"version",   GetStoredVersion()},
+      {"pastelID",  pastelID},
+      {"gift_txid", giftTnxId},
+      {"signature", ed_crypto::Hex_Encode(signature.data(), signature.size())}
+    }}
+  };
+  return jsonObj.dump(4);
+}
+
+bool CNFTGiftAcceptTicket::FindTicketInDb(const std::string& key, CNFTGiftAcceptTicket& ticket) {
+  ticket.giftTnxId = key;
+  return masterNodeCtrl.masternodeTickets.FindTicket(ticket);
+}
+
+std::vector<CNFTGiftAcceptTicket> CNFTGiftAcceptTicket::FindAllTicketByPastelID(const std::string& pastelID) {
+  return masterNodeCtrl.masternodeTickets.FindTicketsByMVKey<CNFTGiftAcceptTicket>(pastelID);
+}
+
+// CNFTGiveTicket //////////////////////////////////////////////////////////////////////////////////////////////////////
+
+CNFTGiveTicket CNFTGiveTicket::Create(
+    std::string _giftTnxId, std::string _acceptTnxId,
+    std::string _pastelID, const SecureString& strKeyPass) {
+  CNFTGiveTicket ticket(std::move(_pastelID));
+
+  ticket.giftTnxId = std::move(_giftTnxId);
+  ticket.acceptTnxId = std::move(_acceptTnxId);
+
+  auto pGiftTicket = CPastelTicketProcessor::GetTicket(ticket.giftTnxId, TicketID::Gift);
+  auto giftTicket = dynamic_cast<const CNFTGiftTicket*>(pGiftTicket.get());
+  if (!giftTicket) {
+    throw std::runtime_error(tfm::format(
+       "The NFT Gift ticket with txid [%s] referred by GiftAccept ticket with txid [%s] is not in the blockchain",
+       ticket.giftTnxId, ticket.acceptTnxId));
+  }
+
+  ticket.nftTnxId = giftTicket->nftTnxId;
+  ticket.copyNumber = giftTicket->copyNumber;
+
+  ticket.GenerateTimestamp();
+
+  const std::string strTicket = ticket.ToStr();
+  ticket.signature = CPastelID::Sign(
+    reinterpret_cast<const unsigned char*>(strTicket.c_str()), strTicket.size(), ticket.pastelID, strKeyPass
+  );
+
+  return ticket;
+}
+
+std::string CNFTGiveTicket::ToStr() const noexcept {
+  std::stringstream ss;
+  ss << pastelID;
+  ss << giftTnxId;
+  ss << acceptTnxId;
+  ss << nftTnxId;
+  ss << copyNumber;
+  ss << m_nTimestamp;
+  return ss.str();
+}
+
+bool CNFTGiveTicket::IsValid(bool preReg, int depth) const {
+  unsigned int chainHeight = 0; {
+    LOCK(cs_main);
+    chainHeight = static_cast<unsigned int>(chainActive.Height()) + 1;
+  }
+
+  // Common validations
+  std::unique_ptr<CPastelTicket> giftTicket;
+  if (!common_validation(*this, preReg, giftTnxId, giftTicket,
+      [](const TicketID tid) { return (tid != TicketID::Gift); },
+      "Give", "gift", depth, TicketPrice(chainHeight))) {
+    throw std::runtime_error(strprintf("The Give ticket with gift txid [%s] is not validated", giftTnxId));
+  }
+
+  std::unique_ptr<CPastelTicket> acceptTicket;
+  if (!common_validation(*this, preReg, acceptTnxId, acceptTicket,
+      [](const TicketID tid) { return (tid != TicketID::GiftAccept); },
+      "Give", "gift-accept", depth, TicketPrice(chainHeight))) {
+    throw std::runtime_error(strprintf("The Give ticket with gift-accept txid [%s] is not validated", acceptTnxId));
+  }
+
+  // Verify that there is no another Give ticket for the same Gift ticket
+  CNFTGiveTicket giveTicket;
+  if (CNFTGiveTicket::GetGiveTicketByGiftTicket(giftTnxId, giveTicket)) {
+    // (ticket transaction replay attack protection)
+    if (signature != giveTicket.signature || m_txid != giveTicket.m_txid || !giveTicket.IsBlock(m_nBlock)) {
+      throw std::runtime_error(strprintf(
+        "There is already exist give ticket for the gift ticket with txid [%s]. Signature - our=%s; their=%s"
+        "[this ticket block = %u txid = %s; found ticket block = %u txid = %s]",
+         giftTnxId,
+         ed_crypto::Hex_Encode(signature.data(), signature.size()),
+         ed_crypto::Hex_Encode(giveTicket.signature.data(), giveTicket.signature.size()),
+         m_nBlock, m_txid, giveTicket.GetBlock(), giveTicket.m_txid));
+    }
+  }
+
+  // Verify that there is no another Give ticket for the same GiftAccept ticket
+  giveTicket.giftTnxId.clear();
+  if (CNFTGiveTicket::GetGiveTicketByAcceptTicket(acceptTnxId, giveTicket)) {
+    // Compare signatures to skip if the same ticket
+    if (signature != giveTicket.signature || m_txid != giveTicket.m_txid || !giveTicket.IsBlock(m_nBlock)) {
+      throw std::runtime_error(strprintf(
+        "There is already exist give ticket for the gift-accept ticket with txid [%s]", acceptTnxId));
+    }
+  }
+
+  // Verify Give ticket's PastelID is the same as giftPastelID in the Gift ticket
+  auto giftTicketReal = dynamic_cast<const CNFTGiftTicket*>(giftTicket.get());
+  if (!giftTicketReal) {
+    throw std::runtime_error(strprintf(
+      "The gift ticket with txid [%s] referred by this give ticket is invalid", giftTnxId));
+  }
+  const std::string& giftPastelID = giftTicketReal->giftPastelID;
+  if (giftPastelID != pastelID) {
+    throw std::runtime_error(strprintf(
+      "The PastelID [%s] in this give ticket is not matching the giftPastelID [%s] in the gift ticket with txid [%s]",
+      pastelID, giftPastelID, giftTnxId));
+  }
+
+  // Verify Give ticket's PastelID is the same as in GiftAccept ticket
+  auto acceptTicketReal = dynamic_cast<const CNFTGiftAcceptTicket*>(acceptTicket.get());
+  if (!acceptTicketReal) {
+    throw std::runtime_error(strprintf(
+      "The gift-accept ticket with txid [%s] referred by this give ticket is invalid", acceptTnxId));
+  }
+  const std::string& acceptPastelID = acceptTicketReal->pastelID;
+  if (acceptPastelID != pastelID) {
+    throw std::runtime_error(strprintf(
+      "The PastelID [%s] in this give ticket is not matching the PastelID [%s] in the gift-accept ticket with txid [%s]",
+      pastelID, acceptPastelID, acceptTnxId));
+  }
+
+  return true;
+}
+
+std::string CNFTGiveTicket::ToJSON() const noexcept {
+  const json jsonObj {
+    {"txid",   m_txid},
+    {"height", m_nBlock},
+    {"ticket", {
+      {"type",        GetTicketName()},
+      {"version",     GetStoredVersion()},
+      {"pastelID",    pastelID},
+      {"gift_txid",   giftTnxId},
+      {"accept_txid", acceptTnxId},
+      {"nft_txid",    nftTnxId},
+      {"copy_number", copyNumber},
+      {"signature",   ed_crypto::Hex_Encode(signature.data(), signature.size())}
+    }}
+  };
+  return jsonObj.dump(4);
+}
+
+bool CNFTGiveTicket::FindTicketInDb(const std::string& key, CNFTGiveTicket& ticket) {
+  ticket.giftTnxId = key;
+  ticket.acceptTnxId = key;
+  return masterNodeCtrl.masternodeTickets.FindTicket(ticket) ||
+         masterNodeCtrl.masternodeTickets.FindTicketBySecondaryKey(ticket);
+}
+
+std::vector<CNFTGiveTicket> CNFTGiveTicket::FindAllTicketByPastelID(const std::string& pastelID) {
+  return masterNodeCtrl.masternodeTickets.FindTicketsByMVKey<CNFTGiveTicket>(pastelID);
+}
+
+std::vector<CNFTGiveTicket> CNFTGiveTicket::FindAllTicketByNFTTnxID(const std::string& nftTnxID) {
+  return masterNodeCtrl.masternodeTickets.FindTicketsByMVKey<CNFTGiveTicket>(nftTnxID);
+}
+
+bool CNFTGiveTicket::CheckGiveTicketExistByGiftTicket(const std::string& giftTnxId) {
+  CNFTGiveTicket ticket;
+  ticket.giftTnxId = giftTnxId;
+  return masterNodeCtrl.masternodeTickets.CheckTicketExist(ticket);
+}
+
+bool CNFTGiveTicket::CheckGiveTicketExistByAcceptTicket(const std::string& acceptTnxId) {
+  CNFTGiveTicket ticket;
+  ticket.acceptTnxId = acceptTnxId;
+  return masterNodeCtrl.masternodeTickets.CheckTicketExistBySecondaryKey(ticket);
+}
+
+bool CNFTGiveTicket::GetGiveTicketByGiftTicket(const std::string& giftTnxId, CNFTGiveTicket& ticket) {
+  ticket.giftTnxId = giftTnxId;
+  return masterNodeCtrl.masternodeTickets.FindTicket(ticket);
+}
+
+bool CNFTGiveTicket::GetGiveTicketByAcceptTicket(const std::string& acceptTnxId, CNFTGiveTicket& ticket) {
+  ticket.acceptTnxId = acceptTnxId;
+  return masterNodeCtrl.masternodeTickets.FindTicket(ticket);
+}
+
 // CTakeDownTicket ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 bool CTakeDownTicket::FindTicketInDb(const std::string& key, CTakeDownTicket& ticket)
