@@ -8,6 +8,7 @@
 #include "base58.h"
 #include "ui_interface.h"
 #include "key_io.h"
+#include "rpc/server.h"
 
 #include "mnode/mnode-controller.h"
 #include "mnode/mnode-sync.h"
@@ -19,7 +20,6 @@
 
 constexpr const CNodeHelper::CFullyConnectedOnly CNodeHelper::FullyConnectedOnly;
 constexpr const CNodeHelper::CAllNodes CNodeHelper::AllNodes;
-
 /*
 MasterNode specific logic and initializations
 */
@@ -31,7 +31,13 @@ void CMasterNodeController::SetParameters()
     MasternodeProtocolVersion           = 170008;
     
     MasternodeFeePerMBDefault           = 50;
-    ArtTicketFeePerKBDefault           = 3;
+    ArtTicketFeePerKBDefault            = 3;
+
+    ChainDeflationRateDefault           = 1;
+
+    ChainBaselineDifficultyLowerIndex   = 100000;
+    ChainBaselineDifficultyUpperIndex   = 150000;
+    ChainTrailingAverageDifficultyRange = 10000;
 
     MasternodeCheckSeconds              =   5;
     MasternodeMinMNBSeconds             =   5 * 60;
@@ -420,14 +426,21 @@ CAmount CMasterNodeController::GetNetworkFeePerMB()
 {
 
     if (fMasterNode) {
-        CAmount nFee = 0;
         std::map<COutPoint, CMasternode> mapMasternodes = masternodeManager.GetFullMasternodeMap();
-        for (auto& mnpair : mapMasternodes) {
-            CMasternode mn = mnpair.second;
-            nFee += mn.aMNFeePerMB > 0? mn.aMNFeePerMB: masterNodeCtrl.MasternodeFeePerMBDefault;
+        if (mapMasternodes.size())
+        {
+            CAmount *feeArray = new CAmount[mapMasternodes.size()];
+            int cnt = 0;
+            for (auto& mnpair : mapMasternodes) {
+                CMasternode mn = mnpair.second;
+                feeArray[cnt] = mn.aMNFeePerMB > 0? mn.aMNFeePerMB: masterNodeCtrl.MasternodeFeePerMBDefault;
+                cnt++;
+            }
+            // Use trimmean to calculate the value with fixed 25% percentage
+            double retVal = TRIMMEAN(feeArray, mapMasternodes.size(), 0.25);
+            delete[] feeArray;
+            return ceil(retVal);
         }
-        nFee /= mapMasternodes.size();
-        return nFee;
     }
 
     return MasternodeFeePerMBDefault;
@@ -450,7 +463,33 @@ CAmount CMasterNodeController::GetArtTicketFeePerKB()
     return ArtTicketFeePerKBDefault;
 }
 
+double CMasterNodeController::GetChainDeflationRate() {
+    if (chainActive.Height() <= ChainBaselineDifficultyUpperIndex + ChainTrailingAverageDifficultyRange) {
+        return ChainDeflationRateDefault;
+    } else {
+        // Get baseline average difficulty
+        double totalBaselineDifficulty = 0.0;
+        for (CAmount i = ChainBaselineDifficultyLowerIndex; i < ChainBaselineDifficultyUpperIndex; i++) {
+            CBlockIndex* index = chainActive[i];
+            totalBaselineDifficulty += GetDifficulty(index);
+        }
+        double averageBaselineDifficulty = totalBaselineDifficulty/(ChainBaselineDifficultyUpperIndex - ChainBaselineDifficultyLowerIndex);
+        // Get trailing average difficulty
+        CAmount endTrailingIndex = ChainBaselineDifficultyUpperIndex + ChainTrailingAverageDifficultyRange*((chainActive.Height() - ChainBaselineDifficultyUpperIndex)/ChainTrailingAverageDifficultyRange );
+        CAmount startTrailingIndex = endTrailingIndex - ChainTrailingAverageDifficultyRange;
+        
+        
+        double totalTrailingDifficulty = 0.0;
+        for (CAmount i = startTrailingIndex; i < endTrailingIndex; i++) {
+            CBlockIndex* index = chainActive[i];
+            totalTrailingDifficulty += GetDifficulty(index);
+        }
+        double averageTrailingDifficulty = totalTrailingDifficulty/ChainTrailingAverageDifficultyRange;
 
+        return averageTrailingDifficulty/averageBaselineDifficulty;
+
+    }
+}
 
 /*
 Threads
@@ -539,4 +578,204 @@ void CMasterNodeController::ThreadMasterNodeMaintenance()
             }
         }
     }
+}
+
+
+///////////////////////////////////////////////////////////////////////////
+// TRIMMEAN Helper Functions
+///////////////////////////////////////////////////////////////////////////
+
+/* Partitioning algorithm for QuickSort and QuickSelect */
+static CAmount partition(CAmount array[], CAmount low, CAmount high) {
+
+    // Pick the first element to be the pivot.
+    CAmount pivotIndex = low;
+    CAmount pivot = array[low];
+    
+    do {
+        
+        while (low <= high && array[low] <= pivot)
+            low++;
+        
+        while (array[high] > pivot)
+            high--;
+        
+        if (low < high) {
+            
+            CAmount temp = array[low];
+            array[low] = array[high];
+            array[high] = temp;
+            
+        }
+        
+    } while (low < high);
+    
+    CAmount temp = array[pivotIndex];
+    array[pivotIndex] = array[high];
+    array[high] = temp;
+    
+    pivotIndex = high;
+    return pivotIndex;
+    
+}
+
+/* QuickSort algorithm */
+static void quickSort(CAmount array[], CAmount first, CAmount last) {
+    
+    if (last - first >= 1) {
+        
+        CAmount pivotIndex = partition(array, first, last);
+        
+        quickSort(array, first, pivotIndex-1);
+        quickSort(array, pivotIndex+1, last);
+
+    }
+    
+}
+
+/* QuickSelect algorithm */
+static CAmount quickSelect(CAmount array[], CAmount first, CAmount last, CAmount k) {
+    
+    if (last - first >= 1) {
+        
+        CAmount pivotIndex = partition(array, first, last);
+        
+        if (pivotIndex == k)
+            return array[pivotIndex];
+        
+        else if (k < pivotIndex)
+            return quickSelect(array, first, pivotIndex-1, k);
+        
+        else
+            return quickSelect(array, pivotIndex+1, last, k);
+        
+    }
+    
+    return array[first];
+    
+}
+
+/* Calculate mean given starting and ending array index */
+inline
+static double mean(CAmount array[], CAmount low, CAmount high) {
+    
+    int acc = 0;
+    
+    for (CAmount i = low; i <= high; i++)
+        acc += array[i];
+    
+    return acc / (double)(high - low + 1);
+    
+}
+
+///////////////////////////////////////////////////////////////////////////
+// TRIMMEAN Implementation
+///////////////////////////////////////////////////////////////////////////
+
+// Given an array of integers, exclude "percent" percent of data points from the top and bottom tails
+// of a data set. Calculate and return the mean of the remaining data.
+//
+// inputArray: data set; array of integers to examine
+// n: size of data set
+// percent: fractional number of data points to exclude, where 0 <= percent < 1
+// errorno (optional): pointer to ErrorNumber enumerated type for additional error information
+//
+// If any errors are encountered, return NaN. If the errorno argument is defined, additional information
+// about the offending error will be provided in the form of an error code.
+double TRIMMEAN(CAmount inputArray[], CAmount n, double percent, TrimmeanErrorNumber* errorno)
+{
+    /* Error Handling */
+
+    double NaN = 0 * (1e308 * 1e308);
+    bool enoIsDefined = errorno != nullptr;
+
+    if (n <= 0) {
+        // size (n) out of range.
+        if (enoIsDefined)
+            *errorno = TrimmeanErrorNumber::EBADN;
+
+        return NaN;
+    }
+
+    if (percent < 0 || percent >= 1) {
+        // Percent out of range.
+        if (enoIsDefined)
+            *errorno = TrimmeanErrorNumber::EBADPCNT;
+
+        return NaN;
+    }
+
+    if (inputArray == nullptr) {
+        // inputArray is null.
+        if (enoIsDefined)
+            *errorno = TrimmeanErrorNumber::EBADARR;
+
+        return NaN;
+    }
+
+    /* fastTRIMMEAN */
+
+    // Calculate the number of elements to exclude and round down to the nearest even number.
+    CAmount elementsToExclude = n * percent;
+    if (elementsToExclude % 2 != 0)
+        elementsToExclude--;
+
+    // Calculate number of elements trimmed from top/bottom.
+    CAmount half = elementsToExclude / 2;
+
+    // Use QuickSelect algorithm to find the lowest and highest values we include in our trimmed sum.
+    CAmount lowBound = quickSelect(inputArray, 0, n - 1, half);
+    CAmount highBound = quickSelect(inputArray, 0, n - 1, n - half - 1);
+
+    // Compute weights. If there is only one occurrence of lowBound and highBound in the data set,
+    // a == b == c == d == weight1 == weight2 == 1.
+    double a, b = 0, c, d = 0, dm = 0, bm = 0;
+    double weight1, weight2;
+
+    CAmount curr;
+    for (CAmount i = 0; i < n; i++) {
+        curr = inputArray[i];
+        if (curr < lowBound)
+            bm++;
+        else if (curr == lowBound)
+            b++;
+
+        if (curr < highBound)
+            dm++;
+        else if (curr == highBound)
+            d++;
+    }
+
+    a = b + bm - half;
+    c = n - half - dm;
+
+    weight1 = a / b;
+    weight2 = c / d;
+
+    // Compute a trimmed sum.
+    double trimmedSum = 0;
+
+    for (CAmount i = 0; i < n; i++) {
+        // Calculate all possible values and and use conditional moves to optimize branch prediction.
+        CAmount curr = inputArray[i];
+        double weighted1 = weight1 * curr;
+        double weighted2 = weight2 * curr;
+
+        double toAdd = 0;
+
+        if (curr == lowBound)
+            toAdd = weighted1;
+        else if (curr == highBound)
+            toAdd = weighted2;
+        else if (lowBound < curr && curr < highBound)
+            toAdd = curr;
+
+        // if (curr < lowBound || curr > highBound), exclude the element from our trimmed sum; just
+        // continue without performing any operations on trimmedSum.
+
+        trimmedSum += toAdd;
+    }
+
+    // Return trimmed sum / number of elements in our trimmed sum.
+    return trimmedSum / (n - 2 * half);
 }

@@ -140,11 +140,11 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         self.artact_ticket_tests(False)
         self.artsell_ticket_tests1(False)
         self.artbuy_ticket_tests(False)
-        # self.arttrade_ticket_tests(False)
-        # self.sell_buy_trade_tests()
+        self.arttrade_ticket_tests(False)
+        self.sell_buy_trade_tests()
         self.takedown_ticket_tests()
         self.storage_fee_tests()
-        # self.tickets_list_filter_tests(0)
+        self.tickets_list_filter_tests(0)
 
         if self.test_high_heights:
             self.id_ticket_price = 1000
@@ -167,11 +167,11 @@ class MasterNodeTicketsTest(MasterNodeCommon):
             self.artact_ticket_tests(True)
             self.artsell_ticket_tests1(True)
             self.artbuy_ticket_tests(True)
-            # self.arttrade_ticket_tests(True)
-            # self.sell_buy_trade_tests()
+            self.arttrade_ticket_tests(True)
+            self.sell_buy_trade_tests()
             self.takedown_ticket_tests()
             self.storage_fee_tests()
-            # self.tickets_list_filter_tests(1)
+            self.tickets_list_filter_tests(1)
 
 
 # ===============================================================================================================
@@ -1902,7 +1902,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         #   c.2 on MN without errors
         #   c.3 get local MN storage fee and compare it with c.2
 
-        # Test if stefee works properly
+        # Test if storagefee works properly
         nfee_mn0 = self.nodes[0].storagefee("getnetworkfee")["networkfee"]
         nfee_mn1 = self.nodes[1].storagefee("getnetworkfee")["networkfee"]
         nfee_mn2 = self.nodes[2].storagefee("getnetworkfee")["networkfee"]
@@ -1914,7 +1914,10 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         lfee_mn0 = self.nodes[0].storagefee("getlocalfee")["localfee"]
         assert_equal(lfee_mn0, 50)
         print("Local fee of MN0 is ", lfee_mn0)
+
+        # Check if the TRIM MEAN do not care the 25%
         self.nodes[0].storagefee("setfee", "1000")
+        self.nodes[2].storagefee("setfee", "0")
         self.sync_all()
 
         time.sleep(30)
@@ -1924,7 +1927,25 @@ class MasterNodeTicketsTest(MasterNodeCommon):
 
         nfee_mn4 = self.nodes[2].storagefee("getnetworkfee")["networkfee"]
         print("Network fee after setfee is ", nfee_mn4)
-        assert_greater_than(lfee_mn0, 50)
+        #assert_greater_than(nfee_mn4, 50)
+
+        # Check if the TRIM MEAN do care the middle 50%
+        self.nodes[3].storagefee("setfee", "1000")
+        self.nodes[4].storagefee("setfee", "1000")
+        self.nodes[5].storagefee("setfee", "1000")
+        self.nodes[6].storagefee("setfee", "1000")
+        self.nodes[7].storagefee("setfee", "1000")
+        self.nodes[8].storagefee("setfee", "1000")
+        self.sync_all()
+
+        time.sleep(30)
+        lfee_mn0 = self.nodes[0].storagefee("getlocalfee")["localfee"]
+        print("Local fee of MN0 after setfee is ", lfee_mn0)
+        assert_equal(lfee_mn0, 1000)
+
+        nfee_mn4 = self.nodes[2].storagefee("getnetworkfee")["networkfee"]
+        print("Network fee after setfee is ", nfee_mn4)
+        #assert_greater_than(nfee_mn4, 50)
 
         print("Storage fee tested")
 

@@ -14,7 +14,7 @@ bool Sign(const std::string& message, std::string& signatureBase64, std::string&
 bool Sign(const std::string& message, std::vector<unsigned char>& signature, std::string& error_ret);
 
 // Type to distinguish the way we build/parse messages.
-enum CMasternodeMessageType
+enum class CMasternodeMessageType
 {
     PLAINTEXT,
     SETFEE
