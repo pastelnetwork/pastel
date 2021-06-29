@@ -1381,7 +1381,8 @@ UniValue storagefee(const UniValue& params, bool fHelp) {
 			"\nArguments:\n"
 			"1. \"command\"        (string or set of strings, required) The command to execute\n"
 			"\nAvailable commands:\n"
-			"  setfee <n>		- Set storage fee for MN.\n"
+			"  setfee [<n>]		- Set storage fee for MN.\n"
+			"                     If n is not specified, levels bound fee to PSL deflation will be used"
 			"  getnetworkfee	- Get Network median storage fee.\n"
 			"  getartticketfee	- Get Network median art ticket fee.\n"
 			"  getlocalfee		- Get local masternode storage fee.\n"
@@ -1392,16 +1393,12 @@ UniValue storagefee(const UniValue& params, bool fHelp) {
         if (!masterNodeCtrl.IsActiveMasterNode())
             throw JSONRPCError(RPC_INTERNAL_ERROR, "This is not a active masternode. Only active MN can set its fee");
 
-        if (params.size() != 2) {
-            throw JSONRPCError(RPC_INVALID_PARAMETER, "Correct usage is 'masternode setfee \"new fee\"'");
-        } else {
-            // If additional parameter added, it means
-            CAmount newFee = get_long_number(params[1]);
+        if (params.size() == 1) {
+            // If no additional parameter (fee) added, that means we use fee levels bound to PSL deflation
+            CAmount levelsBoundFee = masterNodeCtrl.GetNetworkFeePerMB() / masterNodeCtrl.GetChainDeflationRate();
 
             CMasternode masternode;
             if (masterNodeCtrl.masternodeManager.Get(masterNodeCtrl.activeMasternode.outpoint, masternode)) {
-
-                CAmount levelsBoundFee = newFee / masterNodeCtrl.GetChainDeflationRate();
 
                 // Update masternode localfee
                 masterNodeCtrl.masternodeManager.SetMasternodeFee(masterNodeCtrl.activeMasternode.outpoint, levelsBoundFee);
@@ -1412,6 +1409,25 @@ UniValue storagefee(const UniValue& params, bool fHelp) {
             } else {
                 throw JSONRPCError(RPC_INTERNAL_ERROR, "Masternode is not found!");
             }
+
+        } else if (params.size() == 2) {
+            // If additional parameter added, it means
+            CAmount newFee = get_long_number(params[1]);
+
+            CMasternode masternode;
+            if (masterNodeCtrl.masternodeManager.Get(masterNodeCtrl.activeMasternode.outpoint, masternode)) {
+
+                // Update masternode localfee
+                masterNodeCtrl.masternodeManager.SetMasternodeFee(masterNodeCtrl.activeMasternode.outpoint, newFee);
+
+                // Send message to inform other masternodes
+                masterNodeCtrl.masternodeMessages.BroadcastNewFee(newFee);
+
+            } else {
+                throw JSONRPCError(RPC_INTERNAL_ERROR, "Masternode is not found!");
+            }
+        } else {
+            throw JSONRPCError(RPC_INVALID_PARAMETER, "Correct usage is 'master node' or 'masternode setfee \"new fee\"'");
         }
         return true;
 
