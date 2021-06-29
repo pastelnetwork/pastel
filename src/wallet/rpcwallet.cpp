@@ -4187,10 +4187,6 @@ UniValue z_sendmanyimpl(const UniValue& params, bool fHelp, const std::string& f
         txsize += CTXIN_SPEND_DUST_SIZE;
         txsize += CTXOUT_REGULAR_SIZE;      // There will probably be taddr change
     }
-    txsize += CTXOUT_REGULAR_SIZE * taddrRecipients.size();
-    if (txsize > max_tx_size) {
-        throw JSONRPCError(RPC_INVALID_PARAMETER, strprintf("Too many outputs, size of raw transaction would be larger than limit of %d bytes", max_tx_size ));
-    }
 
     // Minimum confirmations
     int nMinDepth = 1;
@@ -4249,6 +4245,7 @@ UniValue z_sendmanyimpl(const UniValue& params, bool fHelp, const std::string& f
         contextualTx.nVersion = 2; // Tx format should support vjoinsplits 
     }
 
+    // push sender address to the recipients to return change back to  the sender 
     if(returnChangeToSenderAddr) {
         int nMinDepth = 1;
         if (fromTaddr) {
@@ -4260,6 +4257,10 @@ UniValue z_sendmanyimpl(const UniValue& params, bool fHelp, const std::string& f
             CAmount nAmount = nBalance - nTotalOut - nFee;
             zaddrRecipients.push_back( SendManyRecipient(fromaddress, nAmount, "") );
         }
+    }
+    txsize += CTXOUT_REGULAR_SIZE * taddrRecipients.size();
+    if (txsize > max_tx_size) {
+        throw JSONRPCError(RPC_INVALID_PARAMETER, strprintf("Too many outputs, size of raw transaction would be larger than limit of %d bytes", max_tx_size ));
     }
     // Create operation and add to global queue
     std::shared_ptr<AsyncRPCQueue> q = getAsyncRPCQueue();
