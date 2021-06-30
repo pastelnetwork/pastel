@@ -327,8 +327,8 @@ public:
     unsigned short copyNumber{};
     std::string reserved;
     std::vector<unsigned char> signature;
-    
-    std::string key;
+
+    std::string keyTwo;
 
 public:
     CArtSellTicket() = default;
@@ -340,13 +340,15 @@ public:
     TicketID ID() const noexcept override { return TicketID::Sell; }
     static TicketID GetID() { return TicketID::Sell; }
 
-    std::string KeyOne() const noexcept override { return !key.empty() ? key : artTnxId + ":" + std::to_string(copyNumber); } //txid:#
+    std::string KeyOne() const noexcept final { return {signature.cbegin(), signature.cend()}; }
+    std::string KeyTwo() const noexcept final { return !keyTwo.empty() ? keyTwo : artTnxId + ":" + std::to_string(copyNumber); }
     std::string MVKeyOne() const noexcept override { return pastelID; }
     std::string MVKeyTwo() const noexcept override { return artTnxId; }
-    
+
+    bool HasKeyTwo() const noexcept final { return true; }
     bool HasMVKeyOne() const noexcept override { return true; }
     bool HasMVKeyTwo() const noexcept override { return true; }
-    void SetKeyOne(std::string val) override { key = std::move(val); }
+    void SetKeyOne(std::string val) final { signature.assign(val.begin(), val.end()); }
     
     std::string ToJSON() const noexcept override;
     std::string ToStr() const noexcept override;

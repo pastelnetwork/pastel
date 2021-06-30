@@ -882,8 +882,8 @@ CArtSellTicket CArtSellTicket::Create(
   // NOTE: Sell ticket for Trade ticket will always has copyNumber = 1
   ticket.copyNumber = _copy_number > 0 ?
     _copy_number : static_cast<decltype(ticket.copyNumber)>(CArtSellTicket::FindAllTicketByArtTnxID(ticket.artTnxId).size()) + 1;
-  ticket.key = ticket.artTnxId + ":" + to_string(ticket.copyNumber);
-    
+  ticket.keyTwo = ticket.artTnxId + ":" + std::to_string(ticket.copyNumber);
+
   const std::string strTicket = ticket.ToStr();
   ticket.signature = CPastelID::Sign(
     reinterpret_cast<const unsigned char*>(strTicket.c_str()), strTicket.size(), ticket.pastelID, strKeyPass
@@ -919,14 +919,20 @@ bool CArtSellTicket::IsValid(bool preReg, int depth) const {
   }
 
   bool ticketFound{false};
-  CArtSellTicket existingTicket;
-  if (CArtSellTicket::FindTicketInDb(KeyOne(), existingTicket)) {
-    if (existingTicket.signature == signature &&
-        existingTicket.IsBlock(m_nBlock) &&
-        existingTicket.m_txid == m_txid) // if this ticket is already in the DB
-      ticketFound = true;
+  // Check the Sell ticket is already in the database
+  // (ticket transaction replay attack protection)
+  CArtSellTicket _ticket;
+  if (FindTicketInDb(KeyOne(), _ticket)) {
+    if (preReg ||  // if pre reg - this is probably repeating call, so signatures can be the same
+        _ticket.signature != signature || !_ticket.IsBlock(m_nBlock) || _ticket.m_txid != m_txid) {
+      throw std::runtime_error(strprintf(
+        "The Sell ticket is already registered in blockchain [pastelID = %s]"
+        "[this ticket block = %u txid = %s; found ticket block = %u txid = %s] with NFT txid [%s]",
+        pastelID, m_nBlock, m_txid, _ticket.GetBlock(), _ticket.m_txid, artTnxId));
+    }
+    ticketFound = true;
   }
-    
+
   // Check PastelID in this ticket matches PastelID in the referred ticket (Activation or Trade or Give)
   // Verify the NFT is not already sold or gifted
   auto existingSellTickets = CArtSellTicket::FindAllTicketByArtTnxID(artTnxId);
@@ -1093,20 +1099,19 @@ std::string CArtSellTicket::ToJSON() const noexcept {
   return jsonObj.dump(4);
 }
 
-bool CArtSellTicket::FindTicketInDb(const std::string& key, CArtSellTicket& ticket)
-{
-    ticket.key = key;
-    return masterNodeCtrl.masternodeTickets.FindTicket(ticket);
+bool CArtSellTicket::FindTicketInDb(const std::string& key, CArtSellTicket& ticket) {
+  ticket.signature = {key.cbegin(), key.cend()};
+  ticket.keyTwo = key;
+  return masterNodeCtrl.masternodeTickets.FindTicket(ticket) ||
+         masterNodeCtrl.masternodeTickets.FindTicketBySecondaryKey(ticket);
 }
 
-std::vector<CArtSellTicket> CArtSellTicket::FindAllTicketByPastelID(const std::string& pastelID)
-{
-    return masterNodeCtrl.masternodeTickets.FindTicketsByMVKey<CArtSellTicket>(pastelID);
+std::vector<CArtSellTicket> CArtSellTicket::FindAllTicketByPastelID(const std::string& pastelID) {
+  return masterNodeCtrl.masternodeTickets.FindTicketsByMVKey<CArtSellTicket>(pastelID);
 }
 
-std::vector<CArtSellTicket> CArtSellTicket::FindAllTicketByArtTnxID(const std::string& artTnxId)
-{
-    return masterNodeCtrl.masternodeTickets.FindTicketsByMVKey<CArtSellTicket>(artTnxId);
+std::vector<CArtSellTicket> CArtSellTicket::FindAllTicketByArtTnxID(const std::string& artTnxId) {
+  return masterNodeCtrl.masternodeTickets.FindTicketsByMVKey<CArtSellTicket>(artTnxId);
 }
 
 // CArtBuyTicket ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
