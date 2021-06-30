@@ -437,9 +437,9 @@ CAmount CMasterNodeController::GetNetworkFeePerMB()
                 cnt++;
             }
             // Use trimmean to calculate the value with fixed 25% percentage
-            double retVal = TRIMMEAN(feeArray, mapMasternodes.size(), 0.25);
+            int retVal = ceil(TRIMMEAN(feeArray, mapMasternodes.size(), 0.25));
             delete[] feeArray;
-            return ceil(retVal);
+            return retVal;
         }
     }
 
@@ -713,69 +713,26 @@ double TRIMMEAN(CAmount inputArray[], CAmount n, double percent, TrimmeanErrorNu
         return NaN;
     }
 
-    /* fastTRIMMEAN */
+    /* TRIMMEAN */
+
+    // Copy inputArray into a local array which we will sort: we don't want to modify the original
+    // input array.
+    CAmount array[n];
+    for (int i = 0; i < n; i++)
+        array[i] = inputArray[i];
+
+    // Use QuickSort algorithm to sort the array.
+    quickSort(array, 0, n - 1);
 
     // Calculate the number of elements to exclude and round down to the nearest even number.
     CAmount elementsToExclude = n * percent;
     if (elementsToExclude % 2 != 0)
         elementsToExclude--;
 
-    // Calculate number of elements trimmed from top/bottom.
-    CAmount half = elementsToExclude / 2;
+    // Using our sorted array, exclude the lowest and highest (elementsToExclude / 2) elements and
+    // return the trimmed average.
+    CAmount low = elementsToExclude / 2;
+    CAmount high = n - (elementsToExclude / 2) - 1;
 
-    // Use QuickSelect algorithm to find the lowest and highest values we include in our trimmed sum.
-    CAmount lowBound = quickSelect(inputArray, 0, n - 1, half);
-    CAmount highBound = quickSelect(inputArray, 0, n - 1, n - half - 1);
-
-    // Compute weights. If there is only one occurrence of lowBound and highBound in the data set,
-    // a == b == c == d == weight1 == weight2 == 1.
-    double a, b = 0, c, d = 0, dm = 0, bm = 0;
-    double weight1, weight2;
-
-    CAmount curr;
-    for (CAmount i = 0; i < n; i++) {
-        curr = inputArray[i];
-        if (curr < lowBound)
-            bm++;
-        else if (curr == lowBound)
-            b++;
-
-        if (curr < highBound)
-            dm++;
-        else if (curr == highBound)
-            d++;
-    }
-
-    a = b + bm - half;
-    c = n - half - dm;
-
-    weight1 = a / b;
-    weight2 = c / d;
-
-    // Compute a trimmed sum.
-    double trimmedSum = 0;
-
-    for (CAmount i = 0; i < n; i++) {
-        // Calculate all possible values and and use conditional moves to optimize branch prediction.
-        CAmount curr = inputArray[i];
-        double weighted1 = weight1 * curr;
-        double weighted2 = weight2 * curr;
-
-        double toAdd = 0;
-
-        if (curr == lowBound)
-            toAdd = weighted1;
-        else if (curr == highBound)
-            toAdd = weighted2;
-        else if (lowBound < curr && curr < highBound)
-            toAdd = curr;
-
-        // if (curr < lowBound || curr > highBound), exclude the element from our trimmed sum; just
-        // continue without performing any operations on trimmedSum.
-
-        trimmedSum += toAdd;
-    }
-
-    // Return trimmed sum / number of elements in our trimmed sum.
-    return trimmedSum / (n - 2 * half);
+    return mean(array, low, high);
 }

@@ -1885,7 +1885,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
                                                                    self.top_mn_pastelid0, "passphrase",
                                                                    "key5", "key6", str(self.storage_fee), 4)["totalstoragefee"]
 
-        #   a.3 compare a.1 and a.2
+        # #   a.3 compare a.1 and a.2
         print(non_mn1_total_storage_fee1)
         print(mn0_total_storage_fee1)
         print(mn0_total_storage_fee2)
@@ -1915,7 +1915,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         assert_equal(lfee_mn0, 50)
         print("Local fee of MN0 is ", lfee_mn0)
 
-        # Check if the TRIM MEAN do not care the 25%
+        # Check if the TRIM MEAN do NOT care the 25%
         self.nodes[0].storagefee("setfee", "1000")
         self.nodes[2].storagefee("setfee", "0")
         self.sync_all()
@@ -1927,7 +1927,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
 
         nfee_mn4 = self.nodes[2].storagefee("getnetworkfee")["networkfee"]
         print("Network fee after setfee is ", nfee_mn4)
-        #assert_greater_than(nfee_mn4, 50)
+        assert_equal(nfee_mn4, 50)
 
         # Check if the TRIM MEAN do care the middle 50%
         self.nodes[3].storagefee("setfee", "1000")
@@ -1945,7 +1945,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
 
         nfee_mn4 = self.nodes[2].storagefee("getnetworkfee")["networkfee"]
         print("Network fee after setfee is ", nfee_mn4)
-        #assert_greater_than(nfee_mn4, 50)
+        assert_greater_than(nfee_mn4, 50)
 
         print("Storage fee tested")
 
