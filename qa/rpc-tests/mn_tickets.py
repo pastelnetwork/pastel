@@ -1209,7 +1209,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         except JSONRPCException as e:
             self.errorString = e.error['message']
             print(self.errorString)
-        assert_equal("The activation or trade ticket with this txid ["+self.art_ticket1_txid +
+        assert_equal("The activation or trade or give ticket with this txid ["+self.art_ticket1_txid +
                      "] referred by this Sell ticket is not in the blockchain" in self.errorString, True)
 
         #  not enough confirmations
