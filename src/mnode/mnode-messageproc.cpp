@@ -217,7 +217,7 @@ void CMasternodeMessageProcessor::ProcessMessage(CNode* pFrom, std::string& strC
                 CMasternode masternode;
                 if (masterNodeCtrl.masternodeManager.Get(masterNodeCtrl.activeMasternode.outpoint, masternode)) {
                     // Update masternode fee
-                    masterNodeCtrl.masternodeManager.SetMasternodeFee(message.vinMasternodeTo.prevout, std::atol(message.message.c_str()));
+                    masterNodeCtrl.masternodeManager.SetMasternodeFee(message.vinMasternodeFrom.prevout, std::atol(message.message.c_str()));
                 } else {
                     throw std::runtime_error(strprintf("Unknown Masternode"));
                 }

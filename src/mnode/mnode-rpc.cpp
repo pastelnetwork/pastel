@@ -1411,7 +1411,7 @@ UniValue storagefee(const UniValue& params, bool fHelp) {
             }
 
         } else if (params.size() == 2) {
-            // If additional parameter added, it means
+            // If additional parameter added, it means the new fee that we need to update.
             CAmount newFee = get_long_number(params[1]);
 
             CMasternode masternode;
@@ -1427,7 +1427,7 @@ UniValue storagefee(const UniValue& params, bool fHelp) {
                 throw JSONRPCError(RPC_INTERNAL_ERROR, "Masternode is not found!");
             }
         } else {
-            throw JSONRPCError(RPC_INVALID_PARAMETER, "Correct usage is 'master node' or 'masternode setfee \"new fee\"'");
+            throw JSONRPCError(RPC_INVALID_PARAMETER, "Correct usage is 'masternode setfee' or 'masternode setfee \"newfee\"'");
         }
         return true;
 
