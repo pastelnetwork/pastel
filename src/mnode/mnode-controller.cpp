@@ -717,7 +717,7 @@ double TRIMMEAN(CAmount inputArray[], CAmount n, double percent, TrimmeanErrorNu
 
     // Copy inputArray into a local array which we will sort: we don't want to modify the original
     // input array.
-    CAmount array[n];
+    CAmount* array = new CAmount[n];
     for (int i = 0; i < n; i++)
         array[i] = inputArray[i];
 
@@ -734,5 +734,8 @@ double TRIMMEAN(CAmount inputArray[], CAmount n, double percent, TrimmeanErrorNu
     CAmount low = elementsToExclude / 2;
     CAmount high = n - (elementsToExclude / 2) - 1;
 
-    return mean(array, low, high);
+    double retVal = mean(array, low, high);
+    delete[] array;
+
+    return retVal;
 }
