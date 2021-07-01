@@ -615,7 +615,7 @@ public:
     "gift_pastelID": "",        // PastelID of the gift recipient
     "nft_txid": "",             // txid with either
                                 //   1) NFT activation ticket; or 2) trade ticket in it; or 3) give ticket in it
-    "copy_number": "",
+    "gift_copies": "",          // number of copies to gift
     "valid_after": "",
     "valid_before": "",
     "signature": ""
@@ -631,7 +631,7 @@ public:
                                 //   1) NFT activation ticket; or 2) trade ticket in it; or 3) give ticket in it
   unsigned int activeAfter{};   // as a block height
   unsigned int activeBefore{};  // as a block height
-  unsigned short copyNumber{};
+  unsigned short giftCopies{};  // number of copies to gift
   std::vector<unsigned char> signature;
 
 public:
@@ -669,7 +669,7 @@ public:
     READWRITE(nftTnxId);
     READWRITE(activeAfter);
     READWRITE(activeBefore);
-    READWRITE(copyNumber);
+    READWRITE(giftCopies);
     READWRITE(signature);
     READWRITE(m_nTimestamp);
     READWRITE(m_txid);
@@ -677,7 +677,7 @@ public:
   }
 
   static CNFTGiftTicket Create(std::string _nftTnxId, std::string _giftPastelID,
-                               int _validAfter, int _validBefore, int _copy_number,
+                               int _validAfter, int _validBefore, int _giftCopies,
                                std::string _pastelID, const SecureString& strKeyPass);
   static bool FindTicketInDb(const std::string& key, CNFTGiftTicket& ticket);
 
@@ -752,6 +752,7 @@ public:
     "accept_txid": "",  // txid with accept ticket
     "nft_txid": "",     // txid with either
                         //   1) art activation ticket; or 2) trade ticket in it; or 3) give ticket in it
+    "gift_copies"       // number of gifted copies
     "signature": ""
   }
 */
@@ -762,7 +763,7 @@ public:
   std::string giftTnxId;
   std::string acceptTnxId;
   std::string nftTnxId;
-  unsigned short copyNumber{};
+  unsigned short giftCopies{};
   std::vector<unsigned char> signature;
 
 public:
@@ -801,7 +802,7 @@ public:
     READWRITE(giftTnxId);
     READWRITE(acceptTnxId);
     READWRITE(nftTnxId);
-    READWRITE(copyNumber);
+    READWRITE(giftCopies);
     READWRITE(signature);
     READWRITE(m_nTimestamp);
     READWRITE(m_txid);
