@@ -31,7 +31,7 @@ namespace legroast
  * Signature algorithm (Legendre or Power).
  * Signature size, memory requirements for signing/verification, performance
  */
-enum struct algorithm : uint32_t
+enum class algorithm : uint32_t
 {
     Legendre_Fast = 0,
     Legendre_Middle,
