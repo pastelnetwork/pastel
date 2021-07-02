@@ -2114,6 +2114,8 @@ Available types:
               all       - list all Trade tickets (including non-confirmed). Default.
               available - lists never sold Trade tickets (without Sell tickets).
               sold      - lists only sold Trade tickets (with Sell tickets).
+            Optional parameters:
+              <pastelID> - apply filter on trade ticket that belong to the correspond pastelID only
 
 Arguments:
 1. minheight	 - minimum height for returned tickets (only tickets registered after this height will be returned).
@@ -2190,12 +2192,25 @@ As json rpc
             break;
 
         case RPC_CMD_LIST::trade:
+            std::string pastelID;
+            if (params.size() > 3) {
+                if (params[3].get_str().find_first_not_of("0123456789") == std::string::npos) {
+                    // This mean min_height is input.
+                    minheight = get_number(params[3]);
+                } else {
+                    pastelID = params[3].get_str();
+                }
+            }
+            if (params.size() > 4) {
+                pastelID = params[3].get_str();
+                minheight = get_number(params[4]);
+            }
             if (filter == "all")
-                obj.read(masterNodeCtrl.masternodeTickets.ListTickets<CArtTradeTicket>());
+                obj.read(masterNodeCtrl.masternodeTickets.ListFilterTradeTickets(0, pastelID));
             else if (filter == "available")
-                obj.read(masterNodeCtrl.masternodeTickets.ListFilterTradeTickets(1));
+                obj.read(masterNodeCtrl.masternodeTickets.ListFilterTradeTickets(1, pastelID));
             else if (filter == "sold")
-                obj.read(masterNodeCtrl.masternodeTickets.ListFilterTradeTickets(2));
+                obj.read(masterNodeCtrl.masternodeTickets.ListFilterTradeTickets(2, pastelID));
             break;
         }
 

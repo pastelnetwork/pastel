@@ -703,14 +703,18 @@ std::string CPastelTicketProcessor::ListFilterBuyTickets(const short filter) con
         });
 }
 // 1 - available;      2 - sold
-std::string CPastelTicketProcessor::ListFilterTradeTickets(const short filter) const
+std::string CPastelTicketProcessor::ListFilterTradeTickets(const short filter, const std::string pastelID) const
 {
+    bool filterByPastelID = pastelID.empty() ? false : true;
     return filterTickets<CArtTradeTicket>(
         [&](const CArtTradeTicket& t, const unsigned int chainHeight) -> bool
         {
             //find Trade tickets listing this Trade ticket txid as art ticket
             auto tradeTickets = CArtTradeTicket::FindAllTicketByArtTnxID(t.GetTxId());
-
+            if (!pastelID.empty() && t.pastelID != pastelID)
+                return true; // ignore tickets that do not belong to this pastelID
+            if (filter == 0)
+                return false; // get all
             if (tradeTickets.empty()) {
                 if (filter == 1)
                     return false; //don't skip available
