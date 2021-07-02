@@ -1868,7 +1868,8 @@ As json rpc
             if (params.size() == 9)
                 copyNumber = get_number(params[8]);
             
-            CArtSellTicket artSellTicket = CArtSellTicket::Create(artTicketTxID, price, after, before, copyNumber, pastelID, strKeyPass);
+            CArtSellTicket artSellTicket = CArtSellTicket::Create(
+              artTicketTxID, price, after, before, copyNumber, "", pastelID, strKeyPass);
             std::string txid = CPastelTicketProcessor::SendTicket(artSellTicket);
             
             mnObj.pushKV(RPC_KEY_TXID, txid);
@@ -2415,7 +2416,8 @@ As json rpc
             int after = get_number(params[6]);
             int before = get_number(params[7]);
     
-            CArtSellTicket artSellTicket = CArtSellTicket::Create(artTicketTxID, price, after, before, 0, pastelID, strKeyPass);
+            CArtSellTicket artSellTicket = CArtSellTicket::Create(
+              artTicketTxID, price, after, before, 0, "", pastelID, strKeyPass);
     
             CAmount ticketPrice = get_long_number(params[8].get_str());
             std::string strVerb = params[9].get_str();

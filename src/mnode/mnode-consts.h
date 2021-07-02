@@ -7,17 +7,14 @@
 #include "enum_util.h"
 
 // ticket names
-constexpr auto TICKET_NAME_ID_REG          = "pastelid";         // id registration ticket
-constexpr auto TICKET_NAME_ART_REG         = "art-reg";          // art registration ticket
-constexpr auto TICKET_NAME_ART_ACT         = "art-act";          // art activation ticket
-constexpr auto TICKET_NAME_ART_SELL        = "art-sell";         // art sell ticket
-constexpr auto TICKET_NAME_ART_BUY         = "art-buy";          // art buy ticket
-constexpr auto TICKET_NAME_ART_TRADE       = "art-trade";        // art trade ticket
-constexpr auto TICKET_NAME_TAKE_DOWN       = "take-down";
-constexpr auto TICKET_NAME_ART_ROYALTY     = "art-royalty";      // art royalty ticket
-constexpr auto TICKET_NAME_NFT_GIFT        = "nft-gift";         // nft gift ticket
-constexpr auto TICKET_NAME_NFT_GIFT_ACCEPT = "nft-gift-accept";  // nft gift accept ticket
-constexpr auto TICKET_NAME_NFT_GIVE        = "nft-give";         // nft give ticket
+constexpr auto TICKET_NAME_ID_REG       = "pastelid";         // id registration ticket
+constexpr auto TICKET_NAME_ART_REG      = "art-reg";          // art registration ticket
+constexpr auto TICKET_NAME_ART_ACT      = "art-act";          // art activation ticket
+constexpr auto TICKET_NAME_ART_SELL     = "art-sell";         // art sell ticket
+constexpr auto TICKET_NAME_ART_BUY      = "art-buy";          // art buy ticket
+constexpr auto TICKET_NAME_ART_TRADE    = "art-trade";        // art trade ticket
+constexpr auto TICKET_NAME_TAKE_DOWN    = "take-down";
+constexpr auto TICKET_NAME_ART_ROYALTY  = "art-royalty";      // art royalty ticket
 
 /**
  * Ticket Type IDs.
@@ -31,9 +28,6 @@ enum class TicketID : uint8_t {
     Trade,        // Art trade ticket
     Down,
     Royalty,      // Art royalty ticket
-    Gift,         // NFT gift ticket
-    GiftAccept,   // NFT gift accept ticket
-    Give,         // NFT give ticket
 
     COUNT         // number of ticket types
 };
@@ -62,10 +56,7 @@ static constexpr std::array<TicketInfo, to_integral_type<TicketID>(TicketID::COU
   { TicketID::Buy,        "Art Buy",                TICKET_NAME_ART_BUY,         0,     "artbuy" },
   { TicketID::Trade,      "Art Trade",              TICKET_NAME_ART_TRADE,       0,     "arttrd" },
   { TicketID::Down,       "Take Down",              TICKET_NAME_TAKE_DOWN,       0,     "takedn" },
-  { TicketID::Royalty,    "Art Royalty",            TICKET_NAME_ART_ROYALTY,     1,     "artrty" },
-  { TicketID::Gift,       "NFT Gift",               TICKET_NAME_NFT_GIFT,        1,     "nftgft" },
-  { TicketID::GiftAccept, "NFT Gift Accept",        TICKET_NAME_NFT_GIFT_ACCEPT, 1,     "nftgfa" },
-  { TicketID::Give,       "NFT Give",               TICKET_NAME_NFT_GIVE,        1,     "nftgiv" }
+  { TicketID::Royalty,    "Art Royalty",            TICKET_NAME_ART_ROYALTY,     1,     "artrty" }
 }};
 
 inline std::string GetTicketDescription(const TicketID id) noexcept

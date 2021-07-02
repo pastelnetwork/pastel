@@ -1645,7 +1645,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
                 self.errorString = e.error['message']
                 print(self.errorString)
             assert_equal("The Art you are trying to sell - from registration ticket ["+art_to_sell_txid +
-                         "] - is already sold - there are already [10] sold and [0] gifted copies, "
+                         "] - is already sold - there are already [10] sold copies, "
                          "but only [10] copies were available"
                          in self.errorString, True)
             return

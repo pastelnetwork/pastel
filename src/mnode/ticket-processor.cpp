@@ -73,18 +73,6 @@ unique_ptr<CPastelTicket> CPastelTicketProcessor::CreateTicket(const TicketID ti
         ticket = make_unique<CArtRoyaltyTicket>();
         break;
 
-    case TicketID::Gift:
-        ticket = make_unique<CNFTGiftTicket>();
-        break;
-
-    case TicketID::GiftAccept:
-        ticket = make_unique<CNFTGiftAcceptTicket>();
-        break;
-
-    case TicketID::Give:
-        ticket = make_unique<CNFTGiveTicket>();
-        break;
-
     case TicketID::Down:
         ticket = make_unique<CTakeDownTicket>();
         break;
@@ -181,6 +169,7 @@ bool CPastelTicketProcessor::ValidateIfTicketTransaction(const int nHeight, cons
     CAmount expectedTicketFee = 0;
 
     // use if low fee that will be rounded to 0. can be like?
+    bool hasNoPrice{false};
     bool hasRoyaltyFee{false};
     bool hasGreenFee{false};
 
@@ -205,15 +194,16 @@ bool CPastelTicketProcessor::ValidateIfTicketTransaction(const int nHeight, cons
             expectedTicketFee = ticket->TicketPrice(nHeight) * COIN;
             storageFee = ticket->GetStorageFee();
             if (ticket_id == TicketID::Trade) {
-                auto trade_ticket = dynamic_cast<CArtTradeTicket *>(ticket.get());
-                if (!trade_ticket)
-                    throw std::runtime_error("Invalid Art Trade ticket");
+              auto trade_ticket = dynamic_cast<const CArtTradeTicket*>(ticket.get());
+              if (!trade_ticket)
+                throw std::runtime_error("Invalid Art Trade ticket");
 
+              if (trade_ticket->price > 0) {
                 auto artTicket = trade_ticket->FindArtRegTicket();
                 if (!artTicket)
                   throw std::runtime_error("Art Reg ticket not found");
 
-                auto artRegTicket = dynamic_cast<CArtRegTicket*>(artTicket.get());
+                auto artRegTicket = dynamic_cast<const CArtRegTicket*>(artTicket.get());
                 if (!artRegTicket)
                   throw std::runtime_error("Invalid Art Reg ticket");
 
@@ -227,6 +217,9 @@ bool CPastelTicketProcessor::ValidateIfTicketTransaction(const int nHeight, cons
                   greenFee = tradePrice * artRegTicket->GreenPercent(nHeight) / 100;
                 }
                 tradePrice -= (royaltyFee + greenFee);
+              } else {
+                hasNoPrice = true;
+              }
             }
         }
     }
@@ -257,9 +250,7 @@ bool CPastelTicketProcessor::ValidateIfTicketTransaction(const int nHeight, cons
                  ticket_id == TicketID::Sell ||
                  ticket_id == TicketID::Buy ||
                  ticket_id == TicketID::Royalty ||
-                 ticket_id == TicketID::Gift ||
-                 ticket_id == TicketID::GiftAccept ||
-                 ticket_id == TicketID::Give) &&
+                 hasNoPrice) &&
                 i == num - 1) // in these tickets last output is change
                 break;
             // in this tickets last 4 outputs is: change, and payments to 3 MNs
@@ -502,9 +493,6 @@ template std::vector<CArtSellTicket> CPastelTicketProcessor::FindTicketsByMVKey<
 template std::vector<CArtBuyTicket> CPastelTicketProcessor::FindTicketsByMVKey<CArtBuyTicket>(const std::string&);
 template std::vector<CArtTradeTicket> CPastelTicketProcessor::FindTicketsByMVKey<CArtTradeTicket>(const std::string&);
 template std::vector<CArtRoyaltyTicket> CPastelTicketProcessor::FindTicketsByMVKey<CArtRoyaltyTicket>(const std::string&);
-template std::vector<CNFTGiftTicket> CPastelTicketProcessor::FindTicketsByMVKey<CNFTGiftTicket>(const std::string&);
-template std::vector<CNFTGiftAcceptTicket> CPastelTicketProcessor::FindTicketsByMVKey<CNFTGiftAcceptTicket>(const std::string&);
-template std::vector<CNFTGiveTicket> CPastelTicketProcessor::FindTicketsByMVKey<CNFTGiveTicket>(const std::string&);
 
 std::vector<std::string> CPastelTicketProcessor::GetAllKeys(const TicketID id) const
 {
