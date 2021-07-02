@@ -1867,7 +1867,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         tickets_list = self.nodes[self.non_mn3].tickets("list", "trade", "available", self.nonmn3_pastelid1)
         print(tickets_list)
         assert_equal(len(tickets_list), 1*(loop_number+1))
-        tickets_list = self.nodes[self.non_mn3].tickets("list", "trade", "sold", self.nonmn4_pastelid1)
+        tickets_list = self.nodes[self.non_mn3].tickets("list", "trade", "sold", self.nonmn3_pastelid1)
         print(tickets_list)
         assert_equal(len(tickets_list), 2*(loop_number+1))
 
