@@ -2126,11 +2126,11 @@ As json rpc
 )" + HelpExampleRpc("tickets", R"("list", "id")"));
 
         std::string filter = "all";
-        if (params.size() > 2)
+        if (params.size() > 2 && LIST.cmd() != RPC_CMD_LIST::trade) // RPC_CMD_LIST::trade has its own parsing logic
             filter = params[2].get_str();
         
         int minheight = 0;
-        if (params.size() > 3)
+        if (params.size() > 3 && LIST.cmd() != RPC_CMD_LIST::trade) // RPC_CMD_LIST::trade has its own parsing logic
             minheight = get_number(params[3]);
         
         UniValue obj(UniValue::VARR);
@@ -2193,17 +2193,24 @@ As json rpc
 
         case RPC_CMD_LIST::trade:
             std::string pastelID;
-            if (params.size() > 3) {
-                if (params[3].get_str().find_first_not_of("0123456789") == std::string::npos) {
-                    // This mean min_height is input.
-                    minheight = get_number(params[3]);
-                } else {
-                    pastelID = params[3].get_str();
+
+            if (params.size() > 2 && params[2].get_str() != "all" && params[2].get_str() != "available" && params[2].get_str() != "sold") {
+                pastelID = params[2].get_str();
+            } else if (params.size() > 2) {
+                filter = params[2].get_str();
+                if (params.size() > 3) {
+                    if (params[3].get_str().find_first_not_of("0123456789") == std::string::npos) {
+                        // This means min_height is input.
+                        minheight = get_number(params[3]);
+                    } else {
+                        // This means pastelID is input
+                        pastelID = params[3].get_str();
+                    }
                 }
-            }
-            if (params.size() > 4) {
-                pastelID = params[3].get_str();
-                minheight = get_number(params[4]);
+                if (params.size() > 4) {
+                    pastelID = params[3].get_str();
+                    minheight = get_number(params[4]);
+                }
             }
             if (filter == "all")
                 obj.read(masterNodeCtrl.masternodeTickets.ListFilterTradeTickets(0, pastelID));
