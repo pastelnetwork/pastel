@@ -908,7 +908,7 @@ bool CArtSellTicket::IsValid(bool preReg, int depth) const {
   std::unique_ptr<CPastelTicket> pastelTicket;
   if (!common_validation(*this, preReg, artTnxId, pastelTicket,
       [](const TicketID tid) { return tid != TicketID::Activate && tid != TicketID::Trade; },
-      "Sell", "activation or trade or give", depth, TicketPrice(chainHeight))) {
+      "Sell", "activation or trade", depth, TicketPrice(chainHeight))) {
     throw std::runtime_error(strprintf("The Sell ticket with this txid [%s] is not validated", artTnxId));
   }
 
