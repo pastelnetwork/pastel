@@ -131,6 +131,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         self.pastelid_tests()
         self.mn_pastelid_ticket_tests(False)
         self.personal_pastelid_ticket_tests(False)
+        self.personal_buy_initialize_tests()
         self.personal_royalty_initialize_tests()
         if self.is_green:
             self.personal_green_initialize_tests()
@@ -480,6 +481,19 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         assert_true(f2)
 
         print("Personal PastelID tickets tested")
+
+    # ===============================================================================================================
+    def personal_buy_initialize_tests(self):
+        self.nonmn4_address1 = self.nodes[self.non_mn4].getnewaddress()
+        self.nodes[self.mining_node_num].sendtoaddress(self.nonmn4_address1, 2000, "", "", False)
+        time.sleep(2)
+        self.sync_all(10, 30)
+        self.nodes[self.mining_node_num].generate(1)
+        self.sync_all(10, 30)
+
+        self.nonmn4_pastelid1 = self.nodes[self.non_mn4].pastelid("newkey", "passphrase")["pastelid"]
+        assert_true(self.nonmn4_pastelid1, "No Pastelid was created")
+        self.nodes[self.non_mn4].tickets("register", "id", self.nonmn4_pastelid1, "passphrase", self.nonmn4_address1)
 
     # ===============================================================================================================
     def personal_royalty_initialize_tests(self):
@@ -1241,12 +1255,24 @@ class MasterNodeTicketsTest(MasterNodeCommon):
                      self.artist_pastelid1+"] in the Art Activation ticket with this txid [" +
                      self.art_ticket1_act_ticket_txid+"]" in self.errorString, True)
 
+        # 3. check fail recipient's PastelID
+        try:
+            self.nodes[self.non_mn3].tickets("register", "sell",
+                                             self.art_ticket1_act_ticket_txid, str("100000"),
+                                             self.artist_pastelid1, "passphrase", self.nonmn1_pastelid2)
+        except JSONRPCException as e:
+            self.errorString = e.error['message']
+            print(self.errorString)
+        assert_equal("The recepient's pastelID [" + self.nonmn1_pastelid2 + "] for Sell ticket "
+                     "with NFT txid [" + self.art_ticket1_act_ticket_txid + "] is not in the blockchain "
+                     "or is invalid" in self.errorString, True)
+
         # 4. Create Sell ticket
         self.art_ticket1_sell_ticket_txid = \
             self.nodes[self.non_mn3].tickets("register", "sell",
                                              self.art_ticket1_act_ticket_txid,
                                              str("100000"),
-                                             self.artist_pastelid1, "passphrase")["txid"]
+                                             self.artist_pastelid1, "passphrase", self.nonmn4_pastelid1)["txid"]
         assert_true(self.art_ticket1_sell_ticket_txid, "No ticket was created")
         self.__wait_for_ticket_tnx()
 
@@ -1261,13 +1287,17 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         assert_equal(sell_ticket1_1['ticket']['type'], "art-sell")
         assert_equal(sell_ticket1_1['ticket']['art_txid'], self.art_ticket1_act_ticket_txid)
         assert_equal(sell_ticket1_1["ticket"]["asked_price"], 100000)
+        assert_equal(sell_ticket1_1["ticket"]["pastelID"], self.artist_pastelid1)
+        assert_equal(sell_ticket1_1["ticket"]["recipientPastelID"], self.nonmn4_pastelid1)
 
         #   6.2 by artists PastelID (this is MultiValue key)
         sell_tickets_list1 = self.nodes[self.non_mn3].tickets("find", "sell", self.artist_pastelid1)
         found_ticket = False
         for ticket in sell_tickets_list1:
             if ticket['ticket']['art_txid'] == self.art_ticket1_act_ticket_txid \
-                    and ticket["ticket"]["asked_price"] == 100000:
+                    and ticket["ticket"]["asked_price"] == 100000 \
+                    and ticket["ticket"]["pastelID"] == self.artist_pastelid1 \
+                    and ticket["ticket"]["recipientPastelID"] == self.nonmn4_pastelid1:
                 found_ticket = True
             assert_equal(ticket['ticket']['type'], "art-sell")
         assert_true(found_ticket)
@@ -1277,7 +1307,9 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         found_ticket = False
         for ticket in sell_tickets_list2:
             if ticket['ticket']['art_txid'] == self.art_ticket1_act_ticket_txid \
-                    and ticket["ticket"]["asked_price"] == 100000:
+                    and ticket["ticket"]["asked_price"] == 100000 \
+                    and ticket["ticket"]["pastelID"] == self.artist_pastelid1 \
+                    and ticket["ticket"]["recipientPastelID"] == self.nonmn4_pastelid1:
                 found_ticket = True
             assert_equal(ticket['ticket']['type'], "art-sell")
         assert_true(found_ticket)
@@ -1286,6 +1318,8 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         sell_ticket1_2 = self.nodes[self.non_mn3].tickets("get", self.art_ticket1_sell_ticket_txid)
         assert_equal(sell_ticket1_2["ticket"]["art_txid"], sell_ticket1_1["ticket"]["art_txid"])
         assert_equal(sell_ticket1_2["ticket"]["asked_price"], sell_ticket1_1["ticket"]["asked_price"])
+        assert_equal(sell_ticket1_2["ticket"]["pastelID"], sell_ticket1_1["ticket"]["pastelID"])
+        assert_equal(sell_ticket1_2["ticket"]["recipientPastelID"], sell_ticket1_1["ticket"]["recipientPastelID"])
 
         # 7. list all sell tickets
         tickets_list = self.nodes[self.non_mn3].tickets("list", "sell")
@@ -1316,16 +1350,6 @@ class MasterNodeTicketsTest(MasterNodeCommon):
     # ===============================================================================================================
     def artbuy_ticket_tests(self, skip_low_coins_tests):
         print("== Art buy Tickets test (buying original Art ticket) ==")
-
-        self.nonmn4_address1 = self.nodes[self.non_mn4].getnewaddress()
-        self.nodes[self.mining_node_num].sendtoaddress(self.nonmn4_address1, 2000, "", "", False)
-        time.sleep(2)
-        self.sync_all(10, 30)
-        self.nodes[self.mining_node_num].generate(1)
-        self.sync_all(10, 30)
-
-        self.nonmn4_pastelid1 = self.nodes[self.non_mn4].pastelid("newkey", "passphrase")["pastelid"]
-        self.nodes[self.non_mn4].tickets("register", "id", self.nonmn4_pastelid1, "passphrase", self.nonmn4_address1)
 
         # fail if not enough funds
         # price (100K) and tnx fee(1% from price - 1K from 100K) = 101000
@@ -1798,7 +1822,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         cur_block = self.nodes[self.non_mn3].getblockcount()
         sell_ticket1_txid = self.nodes[self.non_mn3].tickets("register", "sell", art_ticket2_act_ticket_txid,
                                                              str("1000"),
-                                                             self.artist_pastelid1, "passphrase",
+                                                             self.artist_pastelid1, "passphrase", "",
                                                              cur_block+15, cur_block+20)["txid"]
         assert_true(sell_ticket1_txid, "No ticket was created")
         self.__wait_for_ticket_tnx()  # cur+5 block
@@ -1806,7 +1830,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
 
         sell_ticket2_txid = self.nodes[self.non_mn3].tickets("register", "sell", art_ticket2_act_ticket_txid,
                                                              str("1000"),
-                                                             self.artist_pastelid1, "passphrase",
+                                                             self.artist_pastelid1, "passphrase", "",
                                                              cur_block+20, cur_block+30)["txid"]
         assert_true(sell_ticket2_txid, "No ticket was created")
         self.__wait_for_ticket_tnx()  # cur+10 block
@@ -1814,7 +1838,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
 
         sell_ticket3_txid = self.nodes[self.non_mn3].tickets("register", "sell", art_ticket2_act_ticket_txid,
                                                              str("1000"),
-                                                             self.artist_pastelid1, "passphrase",
+                                                             self.artist_pastelid1, "passphrase", "",
                                                              cur_block+30, cur_block+40)["txid"]
         assert_true(sell_ticket3_txid, "No ticket was created")
         self.__wait_for_ticket_tnx()  # cur+15 block

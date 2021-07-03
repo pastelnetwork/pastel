@@ -1813,34 +1813,37 @@ As json rpc
         if (REGISTER.IsCmd(RPC_CMD_REGISTER::sell)) {
 			if (fHelp || params.size() < 6 || params.size() > 9)
 				throw JSONRPCError(RPC_INVALID_PARAMETER,
-R"(tickets register sell "art_txid" "price" "PastelID" "passphrase" [valid_after] [valid_before] [copy_number]
+R"(tickets register sell "art_txid" "price" "PastelID" "passphrase" ["recipientPastelID"] [valid_after] [valid_before] [copy_number]
 Register art sell ticket. If successful, method returns "txid".
 
 Arguments:
-1. "art_txid"      (string, required) tnx_id of the art to sell, this is either:
+1. "art_txid"          (string, required) tnx_id of the art to sell, this is either:
                            1) art activation ticket, if seller is original artist
                            2) trade ticket, if seller is owner of the bought art
-2. price           (int, required) Sale price.
-3. "PastelID"      (string, required) The PastelID of seller. This MUST be the same PastelID that was used to sign the ticket referred by the art_txid.
-4. "passphrase"    (string, required) The passphrase to the private key associated with artist's PastelID and stored inside node.
-5. valid_after       (int, optional) The block height after which this sell ticket will become active (use 0 for upon registration).
-6. valid_before      (int, optional) The block height after which this sell ticket is no more valid (use 0 for never).
-7. copy_number       (int, optional) If presented - will replace the original not yet sold Sell ticket with this copy number.
-                                     If the original has been already sold - operation will fail.
-Art Trade Ticket:
-{
-	"ticket": {
-		"type": "sell",
-		"pastelID": "",
-		"art_txid": "",
-		"copy_number": "",
-		"asked_price": "",
-		"valid_after": "",
-		"valid_before": "",\n"
-		"signature": ""
-	},
-	"height": "",
-	"txid": ""
+2. price               (int, required)    Sale price.
+3. "PastelID"          (string, required) The PastelID of seller. This MUST be the same PastelID that was used to sign the ticket referred by the art_txid.
+4. "passphrase"        (string, required) The passphrase to the private key associated with artist's PastelID and stored inside node.
+5. "recipientPastelID" (string, optional) If presented - The PastelID of recipient (use empty "" to skip this option).
+                                          Use it to gift ticket to the recipientPastelID.
+6. valid_after         (int, optional)    The block height after which this sell ticket will become active (use 0 for upon registration).
+7. valid_before        (int, optional)    The block height after which this sell ticket is no more valid (use 0 for never).
+8. copy_number         (int, optional)    If presented - will replace the original not yet sold Sell ticket with this copy number.
+                                          If the original has been already sold - operation will fail.
+NFT Sell Ticket:
+  {
+    "height": "",
+    "txid": "",
+    "ticket": {
+      "type": "sell",
+      "pastelID": "",
+      "recipientPastelID": "",
+      "art_txid": "",
+      "copy_number": "",
+      "asked_price": "",
+      "valid_after": "",
+      "valid_before": "",
+      "signature": ""
+    }
   }
 
 Trade Ticket
@@ -1857,19 +1860,22 @@ As json rpc
             SecureString strKeyPass;
             strKeyPass.reserve(100);
             strKeyPass = params[5].get_str().c_str();
+            std::string recipientPastelID;
+            if (params.size() > 6)
+              recipientPastelID = params[6].get_str();
             
             int after = 0;
-            if (params.size() > 6)
-                after = get_number(params[6]);
-            int before = 0;
             if (params.size() > 7)
-                before = get_number(params[7]);
+              after = get_number(params[7]);
+            int before = 0;
+            if (params.size() > 8)
+              before = get_number(params[8]);
             int copyNumber = 0;
-            if (params.size() == 9)
-                copyNumber = get_number(params[8]);
+            if (params.size() == 10)
+              copyNumber = get_number(params[9]);
             
             CArtSellTicket artSellTicket = CArtSellTicket::Create(
-              artTicketTxID, price, after, before, copyNumber, "", pastelID, strKeyPass);
+              artTicketTxID, price, after, before, copyNumber, recipientPastelID, pastelID, strKeyPass);
             std::string txid = CPastelTicketProcessor::SendTicket(artSellTicket);
             
             mnObj.pushKV(RPC_KEY_TXID, txid);
