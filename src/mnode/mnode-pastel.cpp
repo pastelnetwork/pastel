@@ -919,6 +919,8 @@ bool CArtSellTicket::IsValid(bool preReg, int depth) const {
         "The recepient's pastelID [%s] for Sell ticket with NFT txid [%s] is not in the blockchain or is invalid",
         recipientPastelID, artTnxId));
     }
+  } else if (!askedPrice) {
+    throw std::runtime_error(strprintf("The asked price for Sell ticket with NFT txid [%s] should be not 0", artTnxId));
   }
 
   bool ticketFound{false};
@@ -939,7 +941,7 @@ bool CArtSellTicket::IsValid(bool preReg, int depth) const {
   // Check PastelID in this ticket matches PastelID in the referred ticket (Activation or Trade)
   auto totalCopies{0};
   // Verify the NFT is not already sold or gifted
-  auto verifyAvailableCopies = [this](const std::string& strTicket, unsigned short totalCopies) {
+  const auto verifyAvailableCopies = [this](const std::string& strTicket, unsigned short totalCopies) {
     const auto existingTradeTickets = CArtTradeTicket::FindAllTicketByArtTnxID(artTnxId);
     auto soldCopies = existingTradeTickets.size();
 
@@ -1329,10 +1331,14 @@ bool CArtTradeTicket::IsValid(bool preReg, int depth) const
         "The sell ticket with txid [%s] referred by this trade ticket is invalid", sellTnxId));
     }
     const std::string& recipientPastelID = sellTicketReal->recipientPastelID;
-    if (!recipientPastelID.empty() && recipientPastelID != pastelID) {
-      throw std::runtime_error(strprintf(
-        "The PastelID [%s] in this Trade ticket is not matching the recipientPastelID [%s] in the Sell ticket with txid [%s]",
-        pastelID, recipientPastelID, sellTnxId));
+    if (!recipientPastelID.empty()) {
+      if (recipientPastelID != pastelID) {
+        throw std::runtime_error(strprintf(
+          "The PastelID [%s] in this Trade ticket is not matching the recipientPastelID [%s] in the Sell ticket with txid [%s]",
+          pastelID, recipientPastelID, sellTnxId));
+      }
+    } else if (!sellTicketReal->askedPrice) {
+      throw std::runtime_error(strprintf("The Art Sell ticket with txid [%s] asked price should be not 0", sellTnxId));
     }
 
     // 2. Verify Trade ticket PastelID is the same as in Buy Ticket
@@ -1363,13 +1369,9 @@ CAmount CArtTradeTicket::GetExtraOutputs(std::vector<CTxOut>& outputs) const {
     throw std::runtime_error(strprintf("The Art Sell ticket with this txid [%s] is not in the blockchain", sellTnxId));
   }
 
-  auto artSellTicket = dynamic_cast<CArtSellTicket*>(pArtSellTicket.get());
+  auto artSellTicket = dynamic_cast<const CArtSellTicket*>(pArtSellTicket.get());
   if (!artSellTicket) {
     throw std::runtime_error(strprintf("The Art Sell ticket with this txid [%s] is not in the blockchain", sellTnxId));
-  }
-
-  if (!artSellTicket->askedPrice) {
-    return 0;
   }
 
     auto sellerPastelID = artSellTicket->pastelID;
@@ -1378,7 +1380,14 @@ CAmount CArtTradeTicket::GetExtraOutputs(std::vector<CTxOut>& outputs) const {
         throw std::runtime_error(strprintf(
                 "The PastelID [%s] from sell ticket with this txid [%s] is not in the blockchain or is invalid",
                 sellerPastelID, sellTnxId));
-    
+
+  if (!artSellTicket->askedPrice) {
+    if (artSellTicket->recipientPastelID.empty()) {
+      throw std::runtime_error(strprintf("The Art Sell ticket with txid [%s] asked price should be not 0", sellTnxId));
+    }
+    return 0;
+  }
+
     CAmount nPriceAmount = artSellTicket->askedPrice * COIN;
     CAmount nRoyaltyAmount = 0;
     CAmount nGreenNFTAmount = 0;

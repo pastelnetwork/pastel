@@ -313,7 +313,6 @@ public:
     "asked_price": "",
     "valid_after": "",
     "valid_before": "",
-    "reserved": "",
     "signature": ""
   }
 */
@@ -321,12 +320,12 @@ public:
 class CArtSellTicket : public CPastelTicket {
 public:
   std::string pastelID;
+  std::string recipientPastelID;
   std::string artTnxId;
   unsigned int askedPrice{};
   unsigned int activeAfter{};              // as a block height
   unsigned int activeBefore{};             // as a block height
   unsigned short copyNumber{};
-  std::string recipientPastelID;
   std::vector<unsigned char> signature;
 
   std::string keyTwo;
@@ -386,15 +385,16 @@ public:
 };
 
 /*
-	"ticket": {
-		"type": "buy",
-		"pastelID": "",     //PastelID of the buyer
-		"sell_txid": "",    //txid with sale ticket
-		"price": "",
-		"reserved": "",
-		"signature": ""
-	},
- */
+  "ticket": {
+    "type": "buy",
+    "pastelID": "",     // PastelID of the buyer
+    "sell_txid": "",    // txid with sale ticket
+    "price": "",
+    "reserved": "",
+    "signature": ""
+  }
+*/
+
 class CArtBuyTicket : public CPastelTicket
 {
 public:
@@ -416,10 +416,8 @@ public:
 
     std::string KeyOne() const noexcept override { return sellTnxId; } // this is the latest (active) buy ticket for this sell ticket
     std::string MVKeyOne() const noexcept override { return pastelID; }
-    //    std::string MVKeyTwo() const override {return sellTnxId;} // these are all buy (1 active and many inactive) tickets for this sell ticket
-    
+
     bool HasMVKeyOne() const noexcept override { return true; }
-    bool HasMVKeyTwo() const noexcept override { return false; }
     void SetKeyOne(std::string val) override { sellTnxId = std::move(val); }
 
     CAmount TicketPrice(const unsigned int nHeight) const noexcept override { return price/100; }

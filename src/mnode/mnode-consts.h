@@ -7,14 +7,14 @@
 #include "enum_util.h"
 
 // ticket names
-constexpr auto TICKET_NAME_ID_REG       = "pastelid";         // id registration ticket
-constexpr auto TICKET_NAME_ART_REG      = "art-reg";          // art registration ticket
-constexpr auto TICKET_NAME_ART_ACT      = "art-act";          // art activation ticket
-constexpr auto TICKET_NAME_ART_SELL     = "art-sell";         // art sell ticket
-constexpr auto TICKET_NAME_ART_BUY      = "art-buy";          // art buy ticket
-constexpr auto TICKET_NAME_ART_TRADE    = "art-trade";        // art trade ticket
+constexpr auto TICKET_NAME_ID_REG       = "pastelid";    // id registration ticket
+constexpr auto TICKET_NAME_ART_REG      = "art-reg";     // art registration ticket
+constexpr auto TICKET_NAME_ART_ACT      = "art-act";     // art activation ticket
+constexpr auto TICKET_NAME_ART_SELL     = "art-sell";    // art sell ticket
+constexpr auto TICKET_NAME_ART_BUY      = "art-buy";     // art buy ticket
+constexpr auto TICKET_NAME_ART_TRADE    = "art-trade";   // art trade ticket
 constexpr auto TICKET_NAME_TAKE_DOWN    = "take-down";
-constexpr auto TICKET_NAME_ART_ROYALTY  = "art-royalty";      // art royalty ticket
+constexpr auto TICKET_NAME_ART_ROYALTY  = "art-royalty"; // art royalty ticket
 
 /**
  * Ticket Type IDs.
