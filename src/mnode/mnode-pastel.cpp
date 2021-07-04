@@ -1655,8 +1655,9 @@ bool CChangeUsernameTicket::IsValid(bool preReg, int depth) const
     }
 
     // Check if username is a bad username. For now check if it is empty only.
-    if (username.empty()) {
-        throw std::runtime_error(strprintf("%s ticket's username is invalid. PastelID - [%s], username - [%s]", GetTicketDescription(TicketID::Username), pastelID, username));
+    std::string badUsernameError;
+    if (isUsernameBad(username, badUsernameError)) {
+        throw std::runtime_error(strprintf(badUsernameError.c_str()));
     }
 
     // B Verify signature
@@ -1704,4 +1705,41 @@ bool CChangeUsernameTicket::IsValid(bool preReg, int depth) const
     }
     
     return true;
+}
+
+bool CChangeUsernameTicket::isUsernameBad(const std::string& username, std::string& error)
+{
+    std::string upper = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+    std::string lower = "abcdefghijklmnopqrstuvwxyz";
+    std::string digits = "0123456789";
+
+    // Check if has only <4, or has more than 12 characters
+    if ((username.size() < 4) || (username.size() > 12)) {
+        error = "Invalid size of username, the size should have at least 4 characters, and at most 12 characters";
+        return true;
+    }
+
+    // Check if doesn't start with letters.
+    if ( (upper.find(username.front()) == std::string::npos) && (lower.find(username.front()) == std::string::npos ) ) {
+        error = "Invalid username, should start with a letter A-Z or a-z only";
+        return true;
+    }
+    // Check if contains characters that is different than upper and lowercase Latin characters and numbers
+    if (!std::all_of(username.begin(), username.end(), [&](unsigned char c) 
+        { 
+          return (upper.find(c) != std::string::npos || lower.find(c) != std::string::npos || digits.find(c) != std::string::npos); 
+        }
+      )) {
+        error = "Invalid username, should contains letters A-Z a-z, or digits 0-9 only";
+        return true;
+    }
+    // Check if contains bad words (swear, racist,...)
+    for (const auto& elem : UsernameBadWords::Singleton().wordSet) {
+      if (username.find(elem) != std::string::npos) {
+          error = "Invalid username, should NOT contains swear, racist... words";
+          return true;
+      }
+    }
+
+    return false;
 }

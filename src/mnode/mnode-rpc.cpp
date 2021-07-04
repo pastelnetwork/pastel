@@ -2257,7 +2257,7 @@ As json rpc
     
     if (TICKETS.IsCmd(RPC_CMD_TICKETS::tools)) {
         
-        RPC_CMD_PARSER2(LIST, params, printtradingchain, getregbytrade, gettotalstoragefee);
+        RPC_CMD_PARSER2(LIST, params, printtradingchain, getregbytrade, gettotalstoragefee, validateusername);
         
         UniValue obj(UniValue::VARR);
         switch (LIST.cmd()) {
@@ -2368,6 +2368,27 @@ As json rpc
                 UniValue mnObj(UniValue::VOBJ);
                 mnObj.pushKV("totalstoragefee", totalFee);
                 return mnObj;
+            }
+            case RPC_CMD_LIST::validateusername: {
+                std::string username;
+                if (params.size() > 2) {
+                    username = params[2].get_str();
+
+                    UniValue obj(UniValue::VOBJ);
+                    std::string usernameValidationError;
+                    bool isBad = CChangeUsernameTicket::isUsernameBad(username, usernameValidationError);
+                    if (!isBad) {
+                        CChangeUsernameTicket existingTicket;
+                        if (CChangeUsernameTicket::FindTicketInDb(username, existingTicket)) {
+                            isBad = true;
+                            usernameValidationError = "Username is not valid, it is already registered";
+                        }
+                    }
+                    obj.pushKV("isBad", isBad);
+                    obj.pushKV("validationError", usernameValidationError);
+
+                    return obj;
+                }
             }
         }
     }

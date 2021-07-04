@@ -1897,6 +1897,38 @@ class MasterNodeTicketsTest(MasterNodeCommon):
             self.errorString = e.error['message']
         assert_equal(self.errorString , "Ticket (username-change) is invalid - This Username is already registered in blockchain [Username = bsmith84]")
 
+        # length not valid
+        non_mn1_bad_username_length = self.nodes[self.non_mn4].tickets("tools", "validateusername", "abc")
+        print(non_mn1_bad_username_length)
+        assert_equal(non_mn1_bad_username_length["isBad"], True)
+        assert_equal(non_mn1_bad_username_length["validationError"], "Invalid size of username, the size should have at least 4 characters, and at most 12 characters")
+        # not start with a letter A-Z a-z
+        non_mn1_bad_username_start = self.nodes[self.non_mn4].tickets("tools", "validateusername", "1a4bc")
+        print(non_mn1_bad_username_start)
+        assert_equal(non_mn1_bad_username_start["isBad"], True)
+        assert_equal(non_mn1_bad_username_start["validationError"], "Invalid username, should start with a letter A-Z or a-z only")
+        # contains characters that is different than A-Z a-z 0-9
+        non_mn1_bad_username_character = self.nodes[self.non_mn4].tickets("tools", "validateusername", "a#bcsa")
+        print(non_mn1_bad_username_character)
+        assert_equal(non_mn1_bad_username_character["isBad"], True)
+        assert_equal(non_mn1_bad_username_character["validationError"], "Invalid username, should contains letters A-Z a-z, or digits 0-9 only")
+        # contains bad word
+        non_mn1_bad_username_bad = self.nodes[self.non_mn4].tickets("tools", "validateusername", "abdagoc")
+        print(non_mn1_bad_username_bad)
+        assert_equal(non_mn1_bad_username_bad["isBad"], True)
+        assert_equal(non_mn1_bad_username_bad["validationError"], "Invalid username, should NOT contains swear, racist... words")
+        # username is registered
+        non_mn1_bad_username_registered = self.nodes[self.non_mn4].tickets("tools", "validateusername", "bsmith84")
+        print(non_mn1_bad_username_registered)
+        assert_equal(non_mn1_bad_username_registered["isBad"], True)
+        assert_equal(non_mn1_bad_username_registered["validationError"], "Username is not valid, it is already registered")
+
+        # good username
+        non_mn1_bad_username_good = self.nodes[self.non_mn4].tickets("tools", "validateusername", "goodname")
+        print(non_mn1_bad_username_good)
+        assert_equal(non_mn1_bad_username_good["isBad"], False)
+        assert_equal(non_mn1_bad_username_good["validationError"], "")
+
         # Change previous name to new name.
         try:
             tickets_username_txid4 = self.nodes[self.non_mn3].tickets("register", "username",
