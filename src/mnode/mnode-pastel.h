@@ -469,6 +469,9 @@ public:
     std::string sellTnxId;
     std::string buyTnxId;
     std::string artTnxId;
+    std::string nftRegTnxId;
+    std::string nftCopySerialNr;
+
     unsigned int price{};
     std::string reserved;
     std::vector<unsigned char> signature;
@@ -487,10 +490,12 @@ public:
     std::string KeyTwo() const noexcept override { return buyTnxId; }
     std::string MVKeyOne() const noexcept override { return pastelID; }
     std::string MVKeyTwo() const noexcept override { return artTnxId; }
+    std::string MVKeyThree() const noexcept override { return nftRegTnxId; }
     
     bool HasKeyTwo() const noexcept override { return true; }
     bool HasMVKeyOne() const noexcept override { return true; }
     bool HasMVKeyTwo() const noexcept override { return true; }
+    bool HasMVKeyThree() const noexcept override { return true; }
     
     void SetKeyOne(std::string val) override { sellTnxId = std::move(val); }
     
@@ -517,6 +522,8 @@ public:
         READWRITE(m_nTimestamp);
         READWRITE(m_txid);
         READWRITE(m_nBlock);
+        READWRITE(nftRegTnxId);
+        READWRITE(nftCopySerialNr);
     }
 
     CAmount GetExtraOutputs(std::vector<CTxOut>& outputs) const override;
@@ -526,13 +533,22 @@ public:
     
     static std::vector<CArtTradeTicket> FindAllTicketByPastelID(const std::string& pastelID);
     static std::vector<CArtTradeTicket> FindAllTicketByArtTnxID(const std::string& artTnxID);
+    static std::vector<CArtTradeTicket> FindAllTicketByRegTnxID(const std::string& nftRegTnxId);
     
     static bool CheckTradeTicketExistBySellTicket(const std::string& _sellTnxId);
     static bool CheckTradeTicketExistByBuyTicket(const std::string& _buyTnxId);
     static bool GetTradeTicketBySellTicket(const std::string& _sellTnxId, CArtTradeTicket& ticket);
     static bool GetTradeTicketByBuyTicket(const std::string& _buyTnxId, CArtTradeTicket& ticket);
+    static std::map<std::string, std::string> GetPastelIdAndTxIdWithTopHeightPerCopy(const std::vector<CArtTradeTicket> & allTickets);
     
     std::unique_ptr<CPastelTicket> FindArtRegTicket() const;
+
+    void SetArtRegTicketTxid(const std::string& sNftRegTxid);
+    std::string GetArtRegTicketTxid() const;
+    void SetCopySerialNr(const std::string& nftCopySerialNr);
+    std::string GetCopySerialNr() const;
+    
+    static std::vector<std::string> GetArtRegTxIDAndSerialIfResoldNft(const std::string& _txid);
 };
 
 /*

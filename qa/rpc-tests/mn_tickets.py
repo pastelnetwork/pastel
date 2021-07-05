@@ -4,7 +4,7 @@
 # file COPYING or http://www.opensource.org/licenses/mit-license.php.
 import math
 
-from test_framework.util import assert_equal, assert_greater_than, \
+from test_framework.util import assert_equal, assert_equals, assert_greater_than, \
     assert_true, initialize_chain_clean, str_to_b64str
 from mn_common import MasterNodeCommon
 from test_framework.authproxy import JSONRPCException
@@ -100,6 +100,8 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         self.trade_ticket1_sell_ticket_txid = None
         self.trade_ticket1_buy_ticket_txid = None
         self.trade_ticket1_trade_ticket_txid = None
+        self.nested_ownership_trade_txid  = None
+        self.single_sell_trade_txids = []
 
         self.id_ticket_price = 10
         self.art_ticket_price = 10
@@ -145,6 +147,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         self.takedown_ticket_tests()
         self.storage_fee_tests()
         self.tickets_list_filter_tests(0)
+        self.list_and_validate_ticket_ownerships()
 
         if self.test_high_heights:
             self.id_ticket_price = 1000
@@ -173,6 +176,50 @@ class MasterNodeTicketsTest(MasterNodeCommon):
             self.storage_fee_tests()
             self.tickets_list_filter_tests(1)
 
+# ===============================================================================================================
+    def list_and_validate_ticket_ownerships(self):
+        print("== Ownership validation tests ==")
+        tickets_list = self.nodes[self.non_mn4].tickets("list", "art", "all")
+
+        # Test not available pastelID
+        try:
+            self.nodes[self.non_mn4].tickets("tools", "validateownership", self.art_ticket1_txid, "NOT_A_VALID_PASTELID", "passphrase")
+        except JSONRPCException as e:
+            self.errorString = e.error['message']
+            print(self.errorString)
+        assert_equal("Error: Corresponding PastelID not found!"
+                     in self.errorString, True)
+
+        # Test incorrect passphrase
+        try:
+            self.nodes[self.non_mn3].tickets("tools", "validateownership", self.art_ticket1_txid, self.artist_pastelid1, "not_valid_passphrase")
+        except JSONRPCException as e:
+            self.errorString = e.error['message']
+            print(self.errorString)
+        assert_equal("Error: The entered passphrase is incorrect!"
+                     in self.errorString, True)
+
+        # Check if author
+        res1 = self.nodes[self.non_mn3].tickets("tools", "validateownership", self.art_ticket1_txid, self.artist_pastelid1, "passphrase")
+        assert_equal( self.art_ticket1_txid, res1['art'] )
+        assert_equal( "", res1['trade'] )
+
+        # Test 'single sale' (without re-selling)
+        res1 = self.nodes[self.non_mn4].tickets("tools", "validateownership", self.art_ticket1_txid, self.nonmn4_pastelid1, "passphrase")
+        assert_equal( self.art_ticket1_txid, res1['art'] )
+        assert_equals( self.single_sell_trade_txids, res1['trade'] )
+
+        # Test ownership with or re-sold art
+        res1 = self.nodes[self.non_mn3].tickets("tools", "validateownership", self.art_ticket1_txid, self.nonmn3_pastelid1, "passphrase")
+        assert_equal( self.art_ticket1_txid, res1['art'] )
+        assert_equal( self.nested_ownership_trade_txid, res1['trade'] )
+
+        # Test no ownership
+        res1 = self.nodes[self.non_mn1].tickets("tools", "validateownership", self.art_ticket1_txid, self.nonmn1_pastelid2, "passphrase")
+        assert_equal( "", res1['art'] )
+        assert_equal( "", res1['trade'] )
+
+        print("== Ownership validation tested ==")
 
 # ===============================================================================================================
     def pastelid_tests(self):
@@ -1694,6 +1741,26 @@ class MasterNodeTicketsTest(MasterNodeCommon):
                                                            buyer_pastelid, "passphrase")["txid"]
         assert_true(trade_ticket_txid, "No ticket was created")
         print(f"trade_ticket_txid: {trade_ticket_txid}")
+        # Choosen trade ticket for validating ownership 
+        # 1. We need a list ( at least with 1 element)
+        # of non-sold trade ticket
+        #
+        # 2. Filter that tickets by pastelID and get the
+        # underlying ArtReg ticket found by txid from the
+        # request
+        if (
+            test_num == 'A1' or test_num == 'A2' or
+        test_num == 'A3' or test_num == 'A4' or
+        test_num == 'A5' or test_num == 'A6' or
+        test_num == 'A7' or test_num == 'A8' or
+        test_num == 'A9'
+        ):
+            # This pastelID (and generated trades) holds the ownership of copies (2-10)
+            self.single_sell_trade_txids.append(trade_ticket_txid) # ->2-es copy serialt adja el neki : nonmn4_pastelid1
+
+        if test_num == 'T5':
+            # This pastelID (and generated trade) holds the ownership of copy 1 sold multiple times (nested)
+            self.nested_ownership_trade_txid = trade_ticket_txid
 
         self.__wait_for_ticket_tnx()
 
