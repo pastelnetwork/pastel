@@ -275,8 +275,7 @@ bool CPastelTicketProcessor::ValidateIfTicketTransaction(const int nHeight, cons
                 }
             }
             //in this tickets last 2 outputs is: change, and payment to the seller
-            if (ticket_id == TicketID::Trade)
-            {
+            if (ticket_id == TicketID::Trade && !hasNoPrice) {
                 if (i == (hasRoyaltyFee && hasGreenFee ? num - 4 :
                           hasRoyaltyFee || hasGreenFee ? num - 3 : num - 2)) {
                   continue;
