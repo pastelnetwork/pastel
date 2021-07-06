@@ -420,7 +420,9 @@ public:
     bool HasMVKeyOne() const noexcept override { return true; }
     void SetKeyOne(std::string val) override { sellTnxId = std::move(val); }
 
-    CAmount TicketPrice(const unsigned int nHeight) const noexcept override { return price/100; }
+    CAmount TicketPrice(const unsigned int nHeight) const noexcept override {
+      return std::max(10u, price / 100);
+    }
     
     std::string ToJSON() const noexcept override;
     std::string ToStr() const noexcept override;
