@@ -1565,7 +1565,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
             artists_coins_expected_to_receive -= self.art_copy_price * 2 / 100
         print(artists_coins_before)
         print(artists_coins_after)
-        assert_equal(artists_coins_after - artists_coins_before, artists_coins_expected_to_receive)
+        assert_equal(artists_coins_after - artists_coins_before, math.floor(artists_coins_expected_to_receive))
 
         # from another node - get ticket transaction and check
         #   - there are 3 posiible outputs to seller, royalty and green adresses
@@ -1593,20 +1593,20 @@ class MasterNodeTicketsTest(MasterNodeCommon):
             if v["scriptPubKey"]["type"] == "pubkeyhash":
                 amount = v["value"]
                 print(f"trade transiction pubkeyhash vout - {amount}")
-                if v["scriptPubKey"]["addresses"][0] == sellers_address and amount == expected_seller_amount:
+                if v["scriptPubKey"]["addresses"][0] == sellers_address and math.isclose(amount, expected_seller_amount):
                     seller_amount = amount
                     print(f"trade transaction to seller's address - {amount}")
-                if v["scriptPubKey"]["addresses"][0] == sellers_address and amount == expected_royalty_fee:
+                if v["scriptPubKey"]["addresses"][0] == sellers_address and math.isclose(amount, expected_royalty_fee):
                     royalty_fee = amount
                     print(f"trade transaction to royalty's address - {amount}")
                 if v["scriptPubKey"]["addresses"][0] == self.nonmn6_green_address1 and self.is_green:
                     green_fee = amount
                     print(f"trade transaction to green's address - {amount}")
         print(f"trade transiction multisig fee_amount - {multi_fee}")
-        assert_equal(seller_amount, expected_seller_amount)
-        assert_equal(royalty_fee, expected_royalty_fee)
-        assert_equal(green_fee, expected_green_fee)
-        assert_equal(seller_amount + royalty_fee + green_fee, self.art_copy_price)
+        assert(math.isclose(seller_amount, expected_seller_amount))
+        assert(math.isclose(royalty_fee, expected_royalty_fee))
+        assert(math.isclose(green_fee, expected_green_fee))
+        assert(math.isclose(seller_amount + royalty_fee + green_fee, self.art_copy_price))
         assert_equal(multi_fee, self.id_ticket_price)
 
         self.nodes[self.mining_node_num].sendtoaddress(self.nonmn4_address1, cover_price, "", "", False)
