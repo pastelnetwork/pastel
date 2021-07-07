@@ -67,7 +67,7 @@ AsyncRPCOperation_sendmany::AsyncRPCOperation_sendmany(
         CAmount fee,
         UniValue contextInfo,
         bool returnChangeToSenderAddr) :
-        tx_(contextualTx), fromaddress_(fromAddress), t_outputs_(tOutputs), z_outputs_(zOutputs), mindepth_(minDepth), returnChangeToSenderAddr_(returnChangeToSenderAddr),fee_(fee), contextinfo_(contextInfo)
+        tx_(contextualTx), fromaddress_(fromAddress), t_outputs_(tOutputs), z_outputs_(zOutputs), mindepth_(minDepth), fee_(fee), contextinfo_(contextInfo), returnChangeToSenderAddr_(returnChangeToSenderAddr)
 {
     assert(fee_ >= 0);
 
