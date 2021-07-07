@@ -108,9 +108,9 @@ bool CMasternodeConfig::read(std::string& strErr)
                 {"txid", ""},
                 {"outIndex", ""},
                 {"extAddress", ""},
-                {"extP2P", ""},
                 {"extKey", ""},
-                {"extCfg", {}}
+                {"extCfg", {}},
+                {"extP2P", ""}
             }}
         };
         pathMasternodeConfigFile += "-sample";
