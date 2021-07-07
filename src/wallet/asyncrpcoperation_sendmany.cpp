@@ -1312,7 +1312,7 @@ void AsyncRPCOperation_sendmany::add_taddr_change_output_to_tx(CAmount amount) {
         if (!ret) {
             throw JSONRPCError(RPC_WALLET_KEYPOOL_RAN_OUT, "Could not generate a taddr to use as a change address"); // should never fail, as we just unlocked
         }
-        CScript scriptPubKey = GetScriptForDestination(vchPubKey.GetID());
+        scriptPubKey = GetScriptForDestination(vchPubKey.GetID());
     } else {
         // We send the change back to the sender
         if (isfromtaddr_) {
