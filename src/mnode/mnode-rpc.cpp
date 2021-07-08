@@ -1811,7 +1811,7 @@ As json rpc
 			mnObj.pushKV(RPC_KEY_TXID, txid);
 		}
         if (REGISTER.IsCmd(RPC_CMD_REGISTER::sell)) {
-			if (fHelp || params.size() < 6 || params.size() > 9)
+			if (fHelp || params.size() < 6 || params.size() > 10)
 				throw JSONRPCError(RPC_INVALID_PARAMETER,
 R"(tickets register sell "art_txid" "price" "PastelID" "passphrase" ["recipientPastelID"] [valid_after] [valid_before] [copy_number]
 Register art sell ticket. If successful, method returns "txid".

@@ -72,7 +72,6 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         self.nonmn6_address1 = None
         self.artist_pastelid1 = None
         self.artist_ticket_height = None
-        self.total_copies = None
         self.ticket_signature_artist = None
         self.top_mns_index0 = None
         self.top_mns_index1 = None
@@ -81,6 +80,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         self.top_mn_pastelid1 = None
         self.top_mn_pastelid2 = None
 
+        self.total_copies = 1
         self.art_copy_price = 1000
         self.id_ticket_price = 10
         self.art_ticket_price = 10
@@ -104,19 +104,111 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         self.reconnect_nodes(0, self.number_of_master_nodes)
         self.sync_all()
 
+        sell_ticket2_txid = None
+
         self.initialize()
+
         art_ticket_txid = self.register_nft_reg_ticket("key1", "key2")
         self.__wait_for_confirmation(self.non_mn3)
+
         act_ticket_txid = self.register_nft_act_ticket(art_ticket_txid)
         self.__wait_for_confirmation(self.non_mn3)
+
         sell_ticket1_txid = self.register_nft_sell_ticket(act_ticket_txid)
+        sell_ticket_txid = sell_ticket1_txid
+        print(f"sell ticket 1 txid {sell_ticket1_txid}")
+
+        if (self.total_copies == 1):
+            self.__wait_for_confirmation(self.non_mn3)
+            # fail if not enough copies to sell
+            try:
+                self.register_nft_sell_ticket(act_ticket_txid)
+            except JSONRPCException as e:
+                self.errorString = e.error['message']
+                print(self.errorString)
+            assert_equal("Invalid Sell ticket - copy number [2] cannot exceed the total number "
+                         "of available copies [1] or be 0" in self.errorString, True)
+
+            # fail as the replace copy can be created after 5 days
+            try:
+                self.register_nft_sell_ticket(act_ticket_txid, 1)
+            except JSONRPCException as e:
+                self.errorString = e.error['message']
+                print(self.errorString)
+            assert_equal("Can only replace Sell ticket after 5 days. txid - [" + sell_ticket1_txid + "] "
+                         "copyNumber [1]" in self.errorString, True)
+
+            for ind in range (30):
+                print(f"chunk - {ind}")
+                self.nodes[self.mining_node_num].generate(10)
+                time.sleep(2)
+
+            print("Waiting 180 seconds")
+            time.sleep(180)
+
+            self.__wait_for_sync_all()
+
+            sell_ticket2_txid = self.register_nft_sell_ticket(act_ticket_txid, 1)
+            sell_ticket_txid = sell_ticket2_txid
+            print(f"sell ticket 2 txid {sell_ticket2_txid}")
+
+        if sell_ticket2_txid:
+            # fail if old sell ticket has been replaced
+            try:
+                self.register_nft_buy_ticket(
+                    self.non_mn4, self.nonmn4_pastelid1, self.nonmn4_address1, sell_ticket1_txid
+                )
+            except JSONRPCException as e:
+                self.errorString = e.error['message']
+                print(self.errorString)
+            assert_equal("This Sell ticket has been replaced with another ticket. "
+                         "txid - [" + sell_ticket2_txid + "] copyNumber [1]" in self.errorString, True)
+
         buy_ticket1_txid = self.register_nft_buy_ticket(
-            self.non_mn4, self.nonmn4_pastelid1, self.nonmn4_address1, sell_ticket1_txid
+            self.non_mn4, self.nonmn4_pastelid1, self.nonmn4_address1, sell_ticket_txid
         )
+        # fail if there is another buy ticket referring to that sell ticket
+        try:
+            self.register_nft_buy_ticket(
+                self.non_mn4, self.nonmn4_pastelid1, self.nonmn4_address1, sell_ticket_txid
+            )
+        except JSONRPCException as e:
+            self.errorString = e.error['message']
+            print(self.errorString)
+        assert_equal("Buy ticket [" + buy_ticket1_txid + "] already exists for this sell ticket [" +
+                     sell_ticket_txid + "]" in self.errorString, True)
+
+        # self.__wait_for_confirmation(self.non_mn4)
+        # buy_ticket2_txid = self.register_nft_buy_ticket(
+        #     self.non_mn4, self.nonmn4_pastelid1, self.nonmn4_address1, sell_ticket_txid
+        # )
+
         trade_ticket1_txid = self.register_nft_trade_ticket(
             self.non_mn3, self.non_mn4, self.nonmn4_pastelid1, self.nonmn4_address1,
-            sell_ticket1_txid, buy_ticket1_txid
+            sell_ticket_txid, buy_ticket1_txid
         )
+        # fail if there is another trade ticket referring to that sell ticket
+        try:
+            self.register_nft_trade_ticket(
+                self.non_mn3, self.non_mn4, self.nonmn4_pastelid1, self.nonmn4_address1,
+                sell_ticket_txid, buy_ticket1_txid
+            )
+        except JSONRPCException as e:
+            self.errorString = e.error['message']
+            print(self.errorString)
+        assert_equal("There is already exist trade ticket for the sell ticket with this txid [" +
+                     sell_ticket_txid + "]" in self.errorString, True)
+
+        if self.total_copies == 1:
+            try:
+                self.register_nft_sell_ticket(act_ticket_txid, 1)
+            except JSONRPCException as e:
+                self.errorString = e.error['message']
+                print(self.errorString)
+            assert_equal("The Art you are trying to sell - from registration ticket [" +
+                         act_ticket_txid + "] - is already sold - there are already [1] sold copies, "
+                         "but only [1] copies were available" in self.errorString, True)
+
 
     # ===============================================================================================================
     def initialize(self):
@@ -227,7 +319,6 @@ class MasterNodeTicketsTest(MasterNodeCommon):
     def register_nft_reg_ticket(self, key1, key2):
         print("== Create the NFT registration ticket ==")
 
-        self.total_copies = 10
         self.create_nft_ticket_and_signatures(self.artist_pastelid1, self.non_mn3,
                                               "HIJKLMNOP", "ABCDEFG", self.total_copies)
         art_ticket_txid = \
@@ -255,12 +346,12 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         return act_ticket_txid
 
     # ===============================================================================================================
-    def register_nft_sell_ticket(self, act_ticket_txid):
+    def register_nft_sell_ticket(self, act_ticket_txid, copyNumber = 0):
         print("== Create the NFT sell ticket ==")
 
         sell_ticket_txid = \
             self.nodes[self.non_mn3].tickets("register", "sell", act_ticket_txid, str(self.art_copy_price),
-                                             self.artist_pastelid1, "passphrase")["txid"]
+                                             self.artist_pastelid1, "passphrase", "", 0, 0, copyNumber)["txid"]
         assert_true(sell_ticket_txid, "No ticket was created")
         self.__wait_for_ticket_tnx()
 
@@ -281,12 +372,6 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         assert_true(buy_ticket_txid, "No ticket was created")
         self.__wait_for_ticket_tnx()
 
-        # sends coins back, keep 1 PSL to cover transaction fee
-        coins_after = self.nodes[self.non_mn4].getbalance()
-        mining_node_address1 = self.nodes[self.mining_node_num].getnewaddress()
-        self.nodes[self.non_mn4].sendtoaddress(mining_node_address1, coins_after - 1, "", "", False)
-        self.__wait_for_sync_all10()
-
         return buy_ticket_txid
 
     # ===============================================================================================================
@@ -295,6 +380,10 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         print("== Create the NFT trade ticket ==")
 
         cover_price = self.art_copy_price + 10
+
+        # sends coins back, keep 1 PSL to cover transaction fee
+        self.__send_coins_back(self.non_mn4)
+        self.__wait_for_sync_all10()
 
         coins_before = self.nodes[buyer_node].getbalance()
         print(coins_before)
@@ -356,6 +445,12 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         assert_equal(multi_fee, self.id_ticket_price)
 
         return trade_ticket_txid
+
+    def __send_coins_back(self, node):
+        coins_after = self.nodes[node].getbalance()
+        if coins_after > 1:
+            mining_node_address1 = self.nodes[self.mining_node_num].getnewaddress()
+            self.nodes[node].sendtoaddress(mining_node_address1, coins_after - 1, "", "", False)
 
     def __wait_for_ticket_tnx(self):
         time.sleep(10)

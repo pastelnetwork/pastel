@@ -1012,10 +1012,21 @@ bool CArtSellTicket::IsValid(bool preReg, int depth) const {
       "Invalid Sell ticket - copy number [%d] cannot exceed the total number of available copies [%d] or be 0",
       copyNumber, totalCopies));
   }
-    
+
+  // find if it is the old ticket
+  const auto existingSellTickets = CArtSellTicket::FindAllTicketByArtTnxID(artTnxId);
+  if (m_nBlock > 0) {
+    auto it = find_if(existingSellTickets.cbegin(), existingSellTickets.cend(), [&](const CArtSellTicket& st) {
+      return st.copyNumber == copyNumber && st.m_nBlock > m_nBlock && st.m_txid != m_txid;
+    });
+    if (it != existingSellTickets.cend()) {
+      throw std::runtime_error(strprintf(
+        "This Sell ticket has been replaced with another ticket. txid - [%s] copyNumber [%d].", it->m_txid, copyNumber));
+    }
+  }
+
   // If this is replacement - verify that it is allowed (original ticket is not sold)
   // If found similar ticket, replacement is possible if allowed
-  const auto existingSellTickets = CArtSellTicket::FindAllTicketByArtTnxID(artTnxId);
   auto it = find_if(existingSellTickets.cbegin(), existingSellTickets.cend(), [&](const CArtSellTicket& st) {
     return st.copyNumber == copyNumber && !st.IsBlock(m_nBlock) && st.m_txid != m_txid;
   });
