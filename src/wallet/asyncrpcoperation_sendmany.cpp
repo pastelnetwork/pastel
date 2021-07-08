@@ -65,9 +65,8 @@ AsyncRPCOperation_sendmany::AsyncRPCOperation_sendmany(
         std::vector<SendManyRecipient> zOutputs,
         int minDepth,
         CAmount fee,
-        UniValue contextInfo,
-        bool returnChangeToSenderAddr) :
-        tx_(contextualTx), fromaddress_(fromAddress), t_outputs_(tOutputs), z_outputs_(zOutputs), mindepth_(minDepth), fee_(fee), contextinfo_(contextInfo), returnChangeToSenderAddr_(returnChangeToSenderAddr)
+        UniValue contextInfo) :
+        tx_(contextualTx), fromaddress_(fromAddress), t_outputs_(tOutputs), z_outputs_(zOutputs), mindepth_(minDepth), fee_(fee), contextinfo_(contextInfo)
 {
     assert(fee_ >= 0);
 
@@ -395,27 +394,17 @@ bool AsyncRPCOperation_sendmany::main_impl() {
             LOCK2(cs_main, pwalletMain->cs_wallet);
 
             EnsureWalletIsUnlocked();
-
-            CTxDestination changeAddr;
-            if (!returnChangeToSenderAddr_) {
-                // We generate a new address to send to
-                CReserveKey keyChange(pwalletMain);
-                CPubKey vchPubKey;
-                bool ret = keyChange.GetReservedKey(vchPubKey);
-                if (!ret) {
-                    throw JSONRPCError(RPC_WALLET_KEYPOOL_RAN_OUT, "Could not generate a taddr to use as a change address"); // should never fail, as we just unlocked
-                }
-                changeAddr = vchPubKey.GetID();
-            } else {
-                // We send the change back to the sender
-                if (isfromtaddr_) {
-                    changeAddr = fromtaddr_;
-                } else {
-                    // This should never happen, because this API is called from t_addr case only
-                    throw JSONRPCError(RPC_WALLET_ERROR, "Could not detect type if type of address is t address or z address");
-                }
+            CReserveKey keyChange(pwalletMain);
+            CPubKey vchPubKey;
+            bool ret = keyChange.GetReservedKey(vchPubKey);
+            if (!ret) {
+                // should never fail, as we just unlocked
+                throw JSONRPCError(
+                    RPC_WALLET_KEYPOOL_RAN_OUT,
+                    "Could not generate a taddr to use as a change address");
             }
 
+            CTxDestination changeAddr = vchPubKey.GetID();
             builder_.SendChangeTo(changeAddr);
         }
 
@@ -1302,27 +1291,13 @@ void AsyncRPCOperation_sendmany::add_taddr_change_output_to_tx(CAmount amount) {
     LOCK2(cs_main, pwalletMain->cs_wallet);
 
     EnsureWalletIsUnlocked();
-    CScript scriptPubKey;
-
-    if (!returnChangeToSenderAddr_) {
-        // We generate a new address to send to
-        CReserveKey keyChange(pwalletMain);
-        CPubKey vchPubKey;
-        bool ret = keyChange.GetReservedKey(vchPubKey);
-        if (!ret) {
-            throw JSONRPCError(RPC_WALLET_KEYPOOL_RAN_OUT, "Could not generate a taddr to use as a change address"); // should never fail, as we just unlocked
-        }
-        scriptPubKey = GetScriptForDestination(vchPubKey.GetID());
-    } else {
-        // We send the change back to the sender
-        if (isfromtaddr_) {
-            scriptPubKey = GetScriptForDestination(fromtaddr_);
-        } else {
-            // This should never happen, because this API is called from t_addr case only
-            throw JSONRPCError(RPC_WALLET_ERROR, "Could not detect type if type of address is t address or z address"); 
-        }
+    CReserveKey keyChange(pwalletMain);
+    CPubKey vchPubKey;
+    bool ret = keyChange.GetReservedKey(vchPubKey);
+    if (!ret) {
+        throw JSONRPCError(RPC_WALLET_KEYPOOL_RAN_OUT, "Could not generate a taddr to use as a change address"); // should never fail, as we just unlocked
     }
-
+    CScript scriptPubKey = GetScriptForDestination(vchPubKey.GetID());
     CTxOut out(amount, scriptPubKey);
 
     CMutableTransaction rawTx(tx_);
