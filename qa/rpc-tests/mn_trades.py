@@ -303,10 +303,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         coins_after = self.nodes[self.non_mn4].getbalance()
         mining_node_address1 = self.nodes[self.mining_node_num].getnewaddress()
         self.nodes[self.non_mn4].sendtoaddress(mining_node_address1, coins_after - 1, "", "", False)
-        time.sleep(2)
-        self.sync_all(10, 30)
-        self.nodes[self.mining_node_num].generate(1)
-        self.sync_all(10, 30)
+        self.__wait_for_sync_all10()
 
         print("The NFT buy ticket has been created")
 
@@ -419,17 +416,6 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         time.sleep(2)
         self.nodes[self.mining_node_num].generate(10)
         print(f"block count - {self.nodes[node].getblockcount()}")
-
-    def print_heights(self):
-        for x in range(17):
-            print(f"Node{x} height is {self.nodes[x].getblockcount()}")
-
-    def slow_mine(self, number_of_bursts, num_in_each_burst, wait_between_bursts, wait_inside_burst):
-        for x in range(number_of_bursts):
-            for y in range(num_in_each_burst):
-                self.nodes[self.mining_node_num].generate(1)
-                time.sleep(wait_inside_burst)
-            time.sleep(wait_between_bursts)
 
 if __name__ == '__main__':
     MasterNodeTicketsTest().main()
