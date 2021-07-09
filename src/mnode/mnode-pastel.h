@@ -305,6 +305,7 @@ public:
 /*
   "ticket": {
     "type": "art-sell",
+    "version": "",
     "pastelID": "",          // PastelID of the art owner - either 1) an original artist; or 2) a previous buyer,
                              // should be the same in either 1) art activation ticket or 2) trade ticket
     "recipientPastelID": "", // PastelID of the recipient
@@ -387,6 +388,7 @@ public:
 /*
   "ticket": {
     "type": "buy",
+    "version": "",
     "pastelID": "",     // PastelID of the buyer
     "sell_txid": "",    // txid with sale ticket
     "price": "",
@@ -395,77 +397,77 @@ public:
   }
 */
 
-class CArtBuyTicket : public CPastelTicket
-{
+class CArtBuyTicket : public CPastelTicket {
 public:
-    std::string pastelID;
-    std::string sellTnxId;
-    unsigned int price{};
-    std::string reserved;
-    std::vector<unsigned char> signature;
+  std::string pastelID;
+  std::string sellTnxId;
+  unsigned int price{};
+  std::string reserved;
+  std::vector<unsigned char> signature;
     
 public:
-    CArtBuyTicket() = default;
+  CArtBuyTicket() = default;
     
-    explicit CArtBuyTicket(std::string _pastelID) : 
-        pastelID(std::move(_pastelID))
-    {}
-    
-    TicketID ID() const noexcept override { return TicketID::Buy; }
-    static TicketID GetID() { return TicketID::Buy; }
+  explicit CArtBuyTicket(std::string _pastelID)
+      : pastelID(std::move(_pastelID)) {
+  }
 
-    std::string KeyOne() const noexcept override { return sellTnxId; } // this is the latest (active) buy ticket for this sell ticket
-    std::string MVKeyOne() const noexcept override { return pastelID; }
+  TicketID ID() const noexcept final { return TicketID::Buy; }
+  static TicketID GetID() { return TicketID::Buy; }
 
-    bool HasMVKeyOne() const noexcept override { return true; }
-    void SetKeyOne(std::string val) override { sellTnxId = std::move(val); }
+  std::string KeyOne() const noexcept final { return {signature.cbegin(), signature.cend()}; }
+  std::string MVKeyOne() const noexcept final { return pastelID; }
+  std::string MVKeyTwo() const noexcept final { return sellTnxId; }
 
-    CAmount TicketPrice(const unsigned int nHeight) const noexcept override {
-      return std::max(10u, price / 100);
-    }
-    
-    std::string ToJSON() const noexcept override;
-    std::string ToStr() const noexcept override;
-    bool IsValid(bool preReg, int depth) const override;
-    
-    void SerializationOp(CDataStream& s, const SERIALIZE_ACTION ser_action) override
-    {
-        const bool bRead = ser_action == SERIALIZE_ACTION::Read;
-        std::string error;
-        if (!VersionMgmt(error, bRead))
-            throw std::runtime_error(error);
-        READWRITE(pastelID);
-        READWRITE(m_nVersion);
-        // v0
-        READWRITE(sellTnxId);
-        READWRITE(price);
-        READWRITE(reserved);
-        READWRITE(signature);
-        READWRITE(m_nTimestamp);
-        READWRITE(m_txid);
-        READWRITE(m_nBlock);
-    }
-    
-    static CArtBuyTicket Create(std::string _sellTnxId, int _price, std::string _pastelID, const SecureString& strKeyPass);
-    static bool FindTicketInDb(const std::string& key, CArtBuyTicket& ticket);
+  bool HasMVKeyOne() const noexcept final { return true; }
+  bool HasMVKeyTwo() const noexcept final { return true; }
+  void SetKeyOne(std::string val) final { signature.assign(val.begin(), val.end()); }
 
-    static bool CheckBuyTicketExistBySellTicket(const std::string& _sellTnxId);
+  CAmount TicketPrice(const unsigned int nHeight) const noexcept final { return std::max(10u, price / 100); }
+
+  std::string ToJSON() const noexcept final;
+  std::string ToStr() const noexcept final;
+  bool IsValid(bool preReg, int depth) const final;
     
-    static std::vector<CArtBuyTicket> FindAllTicketByPastelID(const std::string& pastelID);
+  void SerializationOp(CDataStream& s, const SERIALIZE_ACTION ser_action) final {
+    const bool bRead{ser_action == SERIALIZE_ACTION::Read};
+    std::string error;
+    if (!VersionMgmt(error, bRead))
+      throw std::runtime_error(error);
+    READWRITE(pastelID);
+    READWRITE(m_nVersion);
+    // v0
+    READWRITE(sellTnxId);
+    READWRITE(price);
+    READWRITE(reserved);
+    READWRITE(signature);
+    READWRITE(m_nTimestamp);
+    READWRITE(m_txid);
+    READWRITE(m_nBlock);
+  }
+    
+  static CArtBuyTicket Create(std::string _sellTnxId, int _price,
+                              std::string _pastelID, const SecureString& strKeyPass);
+  static bool FindTicketInDb(const std::string& key, CArtBuyTicket& ticket);
+
+  static std::vector<CArtBuyTicket> FindAllTicketByPastelID(const std::string& pastelID);
+  static std::vector<CArtBuyTicket> FindAllTicketBySellTnxID(const std::string& sellTnxId);
 };
 
 /*
-	"ticket": {
-		"type": "trade",
-		"pastelID": "",     //PastelID of the buyer
-		"sell_txid": "",    //txid with sale ticket
-		"buy_txid": "",     //txid with buy ticket
-		"art_txid": "",     //txid with either 1) art activation ticket or 2) trade ticket in it
-		"price": "",
-		"reserved": "",
-		"signature": ""
-	},
- */
+  "ticket": {
+    "type": "trade",
+    "version": "",
+    "pastelID": "",     // PastelID of the buyer
+    "sell_txid": "",    // txid with sale ticket
+    "buy_txid": "",     // txid with buy ticket
+    "art_txid": "",     // txid with either 1) art activation ticket or 2) trade ticket in it
+    "price": "",
+    "reserved": "",
+    "signature": ""
+  }
+*/
+
 class CArtTradeTicket : public CPastelTicket
 {
 public:
