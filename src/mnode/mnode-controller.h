@@ -30,7 +30,7 @@ class CMasterNodeController
 {
 private:
     void SetParameters();
-
+    double getNetworkDifficulty(const CBlockIndex* blockindex, bool networkDifficulty);
     CACNotificationInterface* pacNotificationInterface;
     
 public:

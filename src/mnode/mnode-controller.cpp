@@ -8,7 +8,6 @@
 #include "base58.h"
 #include "ui_interface.h"
 #include "key_io.h"
-#include "rpc/server.h"
 
 #include "mnode/mnode-controller.h"
 #include "mnode/mnode-sync.h"
@@ -92,6 +91,49 @@ void CMasterNodeController::SetParameters()
     else{
         //TODO Pastel: accert
     }
+}
+
+// Get network difficulty
+double CMasterNodeController::getNetworkDifficulty(const CBlockIndex* blockindex, bool networkDifficulty)
+{
+    // Floating point number that is a multiple of the minimum difficulty,
+    // minimum difficulty = 1.0.
+    if (blockindex == NULL)
+    {
+        if (chainActive.Tip() == NULL)
+            return 1.0;
+        else
+            blockindex = chainActive.Tip();
+    }
+
+    uint32_t bits;
+    if (networkDifficulty) {
+        bits = GetNextWorkRequired(blockindex, nullptr, Params().GetConsensus());
+    } else {
+        bits = blockindex->nBits;
+    }
+
+    uint32_t powLimit =
+        UintToArith256(Params().GetConsensus().powLimit).GetCompact();
+    int nShift = (bits >> 24) & 0xff;
+    int nShiftAmount = (powLimit >> 24) & 0xff;
+
+    double dDiff =
+        (double)(powLimit & 0x00ffffff) /
+        (double)(bits & 0x00ffffff);
+
+    while (nShift < nShiftAmount)
+    {
+        dDiff *= 256.0;
+        nShift++;
+    }
+    while (nShift > nShiftAmount)
+    {
+        dDiff /= 256.0;
+        nShift--;
+    }
+
+    return dDiff;
 }
 
 
@@ -471,7 +513,7 @@ double CMasterNodeController::GetChainDeflationRate() {
         double totalBaselineDifficulty = 0.0;
         for (CAmount i = ChainBaselineDifficultyLowerIndex; i < ChainBaselineDifficultyUpperIndex; i++) {
             CBlockIndex* index = chainActive[i];
-            totalBaselineDifficulty += GetDifficulty(index);
+            totalBaselineDifficulty += getNetworkDifficulty(index, true);
         }
         double averageBaselineDifficulty = totalBaselineDifficulty/(ChainBaselineDifficultyUpperIndex - ChainBaselineDifficultyLowerIndex);
         // Get trailing average difficulty
@@ -482,7 +524,7 @@ double CMasterNodeController::GetChainDeflationRate() {
         double totalTrailingDifficulty = 0.0;
         for (CAmount i = startTrailingIndex; i < endTrailingIndex; i++) {
             CBlockIndex* index = chainActive[i];
-            totalTrailingDifficulty += GetDifficulty(index);
+            totalTrailingDifficulty += getNetworkDifficulty(index, true);
         }
         double averageTrailingDifficulty = totalTrailingDifficulty/ChainTrailingAverageDifficultyRange;
 
@@ -599,13 +641,11 @@ static CAmount partition(CAmount array[], CAmount low, CAmount high) {
         
         while (array[high] > pivot)
             high--;
-        
         if (low < high) {
-            
             CAmount temp = array[low];
             array[low] = array[high];
             array[high] = temp;
-            
+
         }
         
     } while (low < high);
