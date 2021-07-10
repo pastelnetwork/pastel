@@ -138,60 +138,111 @@ class MasterNodeTicketsTest(MasterNodeCommon):
             assert_equal("Can only replace Sell ticket after 5 days. txid - [" + sell_ticket1_txid + "] "
                          "copyNumber [1]" in self.errorString, True)
 
-            for ind in range (30):
-                print(f"chunk - {ind}")
+            print("Generate 3000 blocks that is > 5 days. 1 chunk is 10 blocks")
+            for ind in range (300):
+                print(f"chunk - {ind + 1}")
                 self.nodes[self.mining_node_num].generate(10)
                 time.sleep(2)
 
             print("Waiting 180 seconds")
             time.sleep(180)
-
             self.__wait_for_sync_all()
 
             sell_ticket2_txid = self.register_nft_sell_ticket(act_ticket_txid, 1)
             sell_ticket_txid = sell_ticket2_txid
             print(f"sell ticket 2 txid {sell_ticket2_txid}")
 
+        self.__send_coins_to_buy(self.non_mn4, self.nonmn4_address1, 5)
+
         if sell_ticket2_txid:
             # fail if old sell ticket has been replaced
             try:
-                self.register_nft_buy_ticket(
-                    self.non_mn4, self.nonmn4_pastelid1, self.nonmn4_address1, sell_ticket1_txid
-                )
+                self.register_nft_buy_ticket(self.non_mn4, self.nonmn4_pastelid1, sell_ticket1_txid)
             except JSONRPCException as e:
                 self.errorString = e.error['message']
                 print(self.errorString)
             assert_equal("This Sell ticket has been replaced with another ticket. "
                          "txid - [" + sell_ticket2_txid + "] copyNumber [1]" in self.errorString, True)
 
-        buy_ticket1_txid = self.register_nft_buy_ticket(
-            self.non_mn4, self.nonmn4_pastelid1, self.nonmn4_address1, sell_ticket_txid
-        )
-        # fail if there is another buy ticket referring to that sell ticket
+        buy_ticket1_txid = self.register_nft_buy_ticket(self.non_mn4, self.nonmn4_pastelid1, sell_ticket_txid)
+        buy_ticket_txid = buy_ticket1_txid
+
+        # fail if there is another buy ticket1 created < 1 hour ago
         try:
-            self.register_nft_buy_ticket(
-                self.non_mn4, self.nonmn4_pastelid1, self.nonmn4_address1, sell_ticket_txid
-            )
+            self.register_nft_buy_ticket(self.non_mn4, self.nonmn4_pastelid1, sell_ticket_txid)
         except JSONRPCException as e:
             self.errorString = e.error['message']
             print(self.errorString)
-        assert_equal("Buy ticket [" + buy_ticket1_txid + "] already exists for this sell ticket [" +
-                     sell_ticket_txid + "]" in self.errorString, True)
+        assert_equal("Buy ticket [" + buy_ticket1_txid + "] already exists and is not yet 1h old "
+                     "for this sell ticket [" + sell_ticket_txid + "]" in self.errorString, True)
 
-        # self.__wait_for_confirmation(self.non_mn4)
-        # buy_ticket2_txid = self.register_nft_buy_ticket(
-        #     self.non_mn4, self.nonmn4_pastelid1, self.nonmn4_address1, sell_ticket_txid
-        # )
+        print("Generate 30 blocks that is > 1 hour. 1 chunk is 10 blocks")
+        for ind in range (3):
+            print(f"chunk - {ind + 1}")
+            self.nodes[self.mining_node_num].generate(10)
+            time.sleep(2)
 
-        trade_ticket1_txid = self.register_nft_trade_ticket(
-            self.non_mn3, self.non_mn4, self.nonmn4_pastelid1, self.nonmn4_address1,
-            sell_ticket_txid, buy_ticket1_txid
-        )
-        # fail if there is another trade ticket referring to that sell ticket
+        print("Waiting 180 seconds")
+        time.sleep(180)
+        self.__wait_for_sync_all()
+
+        buy_ticket2_txid = self.register_nft_buy_ticket(self.non_mn4, self.nonmn4_pastelid1, sell_ticket_txid)
+        buy_ticket_txid = buy_ticket2_txid
+
+        # fail if there is another buy ticket2 created < 1 hour ago
+        try:
+            self.register_nft_buy_ticket(self.non_mn4, self.nonmn4_pastelid1, sell_ticket_txid)
+        except JSONRPCException as e:
+            self.errorString = e.error['message']
+            print(self.errorString)
+        assert_equal("Buy ticket [" + buy_ticket2_txid + "] already exists and is not yet 1h old "
+                     "for this sell ticket [" + sell_ticket_txid + "]" in self.errorString, True)
+
+        print("Generate 30 blocks that is > 1 hour. 1 chunk is 10 blocks")
+        for ind in range (3):
+            print(f"chunk - {ind + 1}")
+            self.nodes[self.mining_node_num].generate(10)
+            time.sleep(2)
+
+        print("Waiting 180 seconds")
+        time.sleep(180)
+        self.__wait_for_sync_all()
+
+        buy_ticket3_txid = self.register_nft_buy_ticket(self.non_mn4, self.nonmn4_pastelid1, sell_ticket_txid)
+        buy_ticket_txid = buy_ticket3_txid
+
+        # fail if old buy ticket1 has been replaced
         try:
             self.register_nft_trade_ticket(
                 self.non_mn3, self.non_mn4, self.nonmn4_pastelid1, self.nonmn4_address1,
                 sell_ticket_txid, buy_ticket1_txid
+            )
+        except JSONRPCException as e:
+            self.errorString = e.error['message']
+            print(self.errorString)
+        assert_equal("This Buy ticket has been replaced with another ticket. " in self.errorString, True)
+
+        # fail if old buy ticket2 has been replaced
+        try:
+            self.register_nft_trade_ticket(
+                self.non_mn3, self.non_mn4, self.nonmn4_pastelid1, self.nonmn4_address1,
+                sell_ticket_txid, buy_ticket2_txid
+            )
+        except JSONRPCException as e:
+            self.errorString = e.error['message']
+            print(self.errorString)
+        assert_equal("This Buy ticket has been replaced with another ticket. " in self.errorString, True)
+
+        trade_ticket1_txid = self.register_nft_trade_ticket(
+            self.non_mn3, self.non_mn4, self.nonmn4_pastelid1, self.nonmn4_address1,
+            sell_ticket_txid, buy_ticket_txid
+        )
+
+        # fail if there is another trade ticket referring to that sell ticket
+        try:
+            self.register_nft_trade_ticket(
+                self.non_mn3, self.non_mn4, self.nonmn4_pastelid1, self.nonmn4_address1,
+                sell_ticket_txid, buy_ticket_txid
             )
         except JSONRPCException as e:
             self.errorString = e.error['message']
@@ -358,13 +409,14 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         return sell_ticket_txid
 
     # ===============================================================================================================
-    def register_nft_buy_ticket(self, buyer_node, buyer_pastelid1, buyer_address1, sell_ticket_txid):
+    def __send_coins_to_buy(self, node, address, num):
+        cover_price = self.art_copy_price + max(10, int(self.art_copy_price / 100)) + 5
+
+        self.nodes[self.mining_node_num].sendtoaddress(address, num * cover_price, "", "", False)
+        self.__wait_for_confirmation(node)
+
+    def register_nft_buy_ticket(self, buyer_node, buyer_pastelid1, sell_ticket_txid):
         print("== Create the NFT buy ticket ==")
-
-        cover_price = self.art_copy_price + max(10, int(self.art_copy_price / 100))
-
-        self.nodes[self.mining_node_num].sendtoaddress(buyer_address1, cover_price + 5, "", "", False)
-        self.__wait_for_confirmation(buyer_node)
 
         buy_ticket_txid = \
             self.nodes[buyer_node].tickets("register", "buy", sell_ticket_txid, str(self.art_copy_price),
