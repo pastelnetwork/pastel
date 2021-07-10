@@ -80,7 +80,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         self.top_mn_pastelid1 = None
         self.top_mn_pastelid2 = None
 
-        self.total_copies = 1
+        self.total_copies = 2
         self.art_copy_price = 1000
         self.id_ticket_price = 10
         self.art_ticket_price = 10
@@ -117,9 +117,9 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         sell_ticket1_txid = self.register_nft_sell_ticket(act_ticket_txid)
         sell_ticket_txid = sell_ticket1_txid
         print(f"sell ticket 1 txid {sell_ticket1_txid}")
+        self.__wait_for_confirmation(self.non_mn3)
 
         if (self.total_copies == 1):
-            self.__wait_for_confirmation(self.non_mn3)
             # fail if not enough copies to sell
             try:
                 self.register_nft_sell_ticket(act_ticket_txid)
@@ -129,28 +129,42 @@ class MasterNodeTicketsTest(MasterNodeCommon):
             assert_equal("Invalid Sell ticket - copy number [2] cannot exceed the total number "
                          "of available copies [1] or be 0" in self.errorString, True)
 
-            # fail as the replace copy can be created after 5 days
-            try:
-                self.register_nft_sell_ticket(act_ticket_txid, 1)
-            except JSONRPCException as e:
-                self.errorString = e.error['message']
-                print(self.errorString)
-            assert_equal("Can only replace Sell ticket after 5 days. txid - [" + sell_ticket1_txid + "] "
-                         "copyNumber [1]" in self.errorString, True)
+        # fail as the replace copy can be created after 5 days
+        try:
+            self.register_nft_sell_ticket(act_ticket_txid, 1)
+        except JSONRPCException as e:
+            self.errorString = e.error['message']
+            print(self.errorString)
+        assert_equal("Can only replace Sell ticket after 5 days. txid - [" + sell_ticket1_txid + "] "
+                     "copyNumber [1]" in self.errorString, True)
 
-            print("Generate 3000 blocks that is > 5 days. 1 chunk is 10 blocks")
-            for ind in range (300):
-                print(f"chunk - {ind + 1}")
-                self.nodes[self.mining_node_num].generate(10)
-                time.sleep(2)
+        print("Generate 3000 blocks that is > 5 days. 1 chunk is 10 blocks")
+        for ind in range (300):
+            print(f"chunk - {ind + 1}")
+            self.nodes[self.mining_node_num].generate(10)
+            time.sleep(2)
 
-            print("Waiting 180 seconds")
-            time.sleep(180)
-            self.__wait_for_sync_all()
+        print("Waiting 180 seconds")
+        time.sleep(180)
+        self.__wait_for_sync_all()
 
-            sell_ticket2_txid = self.register_nft_sell_ticket(act_ticket_txid, 1)
-            sell_ticket_txid = sell_ticket2_txid
-            print(f"sell ticket 2 txid {sell_ticket2_txid}")
+        sell_ticket2_txid = self.register_nft_sell_ticket(act_ticket_txid, 1)
+        sell_ticket_txid = sell_ticket2_txid
+        print(f"sell ticket 2 txid {sell_ticket2_txid}")
+
+        sell_ticket3_txid = None
+        if (self.total_copies > 1):
+            sell_ticket3_txid = self.register_nft_sell_ticket(act_ticket_txid)
+            print(f"sell ticket 3 txid {sell_ticket3_txid}")
+
+            sell_ticket1_1 = self.nodes[self.non_mn3].tickets("find", "sell", act_ticket_txid+":2")
+            assert_equal(sell_ticket1_1['ticket']['type'], "art-sell")
+            assert_equal(sell_ticket1_1['ticket']['art_txid'], act_ticket_txid)
+            assert_equal(sell_ticket1_1["ticket"]["copy_number"], 2)
+
+            sell_ticket1_2 = self.nodes[self.non_mn3].tickets("get", sell_ticket3_txid)
+            assert_equal(sell_ticket1_2["ticket"]["art_txid"], sell_ticket1_1["ticket"]["art_txid"])
+            assert_equal(sell_ticket1_2["ticket"]["copy_number"], sell_ticket1_1["ticket"]["copy_number"])
 
         self.__send_coins_to_buy(self.non_mn4, self.nonmn4_address1, 5)
 
@@ -259,6 +273,32 @@ class MasterNodeTicketsTest(MasterNodeCommon):
             assert_equal("The Art you are trying to sell - from registration ticket [" +
                          act_ticket_txid + "] - is already sold - there are already [1] sold copies, "
                          "but only [1] copies were available" in self.errorString, True)
+        elif self.total_copies == 2:
+            # fail if not enough copies to sell
+            try:
+                self.register_nft_sell_ticket(act_ticket_txid)
+            except JSONRPCException as e:
+                self.errorString = e.error['message']
+                print(self.errorString)
+            assert_equal("Invalid Sell ticket - copy number [3] cannot exceed the total number "
+                         "of available copies [2] or be 0" in self.errorString, True)
+
+            try:
+                self.register_nft_sell_ticket(act_ticket_txid, 1)
+            except JSONRPCException as e:
+                self.errorString = e.error['message']
+                print(self.errorString)
+            assert_equal("Cannot replace Sell ticket - it has been already sold. " +
+                         "txid - [" + sell_ticket_txid + "] copyNumber [1]" in self.errorString, True)
+
+            # fail as the replace copy can be created after 5 days
+            try:
+                self.register_nft_sell_ticket(act_ticket_txid, 2)
+            except JSONRPCException as e:
+                self.errorString = e.error['message']
+                print(self.errorString)
+            assert_equal("Can only replace Sell ticket after 5 days. txid - [" + sell_ticket3_txid + "] "
+                         "copyNumber [2]" in self.errorString, True)
 
 
     # ===============================================================================================================
