@@ -534,8 +534,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         # "fingerprints": bytes,            //compressed fingerprint
         # "fingerprints_signature": bytes,  //signature on raw image fingerprint
         # "rq_ids": [list of strings],//raptorq symbol identifiers -  !!!!SHA3-256 of symbol block!!!!
-        # "rq_coti": integer64,       //raptorq CommonOTI
-        # "rq_ssoti": integer64,      //raptorq SchemeSpecificOTI
+        # "rq_oti": [array of 12 bytes],    //raptorq CommonOTI and SchemeSpecificOTI
         # "rareness_score": integer,  // 0 to 1000
         # "nsfw_score": integer,      // 0 to 1000
         # "seen_score": integer,      // 0 to 1000
@@ -549,6 +548,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         thumbnail_to_be_hashed = ''.join(random.choice(letters) for i in range(10))
         data_to_be_hashed = ''.join(random.choice(letters) for i in range(10))
         fingerprints_to_be_hashed = ''.join(random.choice(letters) for i in range(10))
+        rq_oti = ''.join(random.choice(letters) for i in range(12))
         rq_ids_to_be_hashed = ""
         for _ in range (5):
             rq_ids_to_be_hashed += (''.join(random.choice(letters) for i in range(10)))
@@ -579,8 +579,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
             "fingerprints": fingerprints_to_be_hashed,            #compressed fingerprint
             "fingerprints_signature": ''.join(random.choice(letters) for i in range(20)), #signature on raw image fingerprint
             "rq_ids": obj_sha3_256_rq_ids.hexdigest(), #[list of strings],//raptorq symbol identifiers -  !!!!SHA3-256 of symbol block!!!!
-            "rq_coti": str(random.randint(0, sys.maxsize)),       #raptorq CommonOTI
-            "rq_ssoti": str(random.randint(0, sys.maxsize)),       #raptorq SchemeSpecificOTI
+            "rq_oti": rq_oti,    #raptorq CommonOTI and SchemeSpecificOTI
             "rareness_score": str(random.randint(0, 1000)),   # 0 to 1000
             "nsfw_score": str(random.randint(0, 1000)),   # 0 to 1000
             "seen_score": str(random.randint(0, 1000)),   # 0 to 1000
