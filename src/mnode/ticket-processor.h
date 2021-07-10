@@ -25,7 +25,7 @@ class CPastelTicketProcessor
     void listTickets(F f) const;
 
     template <class _TicketType, typename F>
-    std::string filterTickets(F f) const;
+    std::string filterTickets(F f, bool checkConfirmation = true) const;
 
 public:
     CPastelTicketProcessor() = default;
@@ -60,9 +60,9 @@ public:
                                           const std::vector<std::string>* pvPastelIDs = nullptr) const;
     std::string ListFilterArtTickets(const short filter = 0) const;   // 1 - active;    2 - inactive;     3 - sold
     std::string ListFilterActTickets(const short filter = 0) const;   // 1 - available; 2 - sold
-    std::string ListFilterSellTickets(const short filter = 0) const;  // 1 - available; 2 - unavailable;  3 - expired; 4 - sold
-    std::string ListFilterBuyTickets(const short filter = 0) const;   // 1 - traded;    2 - expired
-    std::string ListFilterTradeTickets(const short filter = 0, const std::string pastelID = "") const; // 0 - all, 1 - available; 2 - sold
+    std::string ListFilterSellTickets(const short filter = 0, const std::string& pastelID = "") const;  // 0 - all, 1 - available; 2 - unavailable;  3 - expired; 4 - sold
+    std::string ListFilterBuyTickets(const short filter = 0, const std::string& pastelID = "") const;   // 0 - all, 1 - traded;    2 - expired
+    std::string ListFilterTradeTickets(const short filter = 0, const std::string& pastelID = "") const; // 0 - all, 1 - available; 2 - sold
 
 #ifdef ENABLE_WALLET
     static bool CreateP2FMSTransaction(const std::string& input_string, CMutableTransaction& tx_out, CAmount price, std::string& error_ret);
