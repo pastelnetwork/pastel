@@ -14,6 +14,7 @@
 #include "mnode/ticket-processor.h"
 
 #include "json/json.hpp"
+#include <inttypes.h>
 
 using json = nlohmann::json;
 using namespace std;

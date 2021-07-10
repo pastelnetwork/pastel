@@ -6,9 +6,9 @@
 
 #include "ed.h"
 #include "key_io.h"
-#include <base58.h>
+#include "base58.h"
 #include "support/allocators/secure.h"
-#include <boost/filesystem.hpp>
+#include "fs.h"
 
 class CPastelID {
     static constexpr int PubKeySize = 57;

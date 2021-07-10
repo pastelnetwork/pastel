@@ -27,7 +27,9 @@
 #define CLOCK_THREAD_CPUTIME_ID     3
 #endif
 
-#define isatty _isatty
+#define isatty						_isatty
+#define unlink						_unlink
+#define tempnam						_tempnam
 
 typedef SSIZE_T ssize_t;
 
