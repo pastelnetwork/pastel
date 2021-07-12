@@ -72,13 +72,6 @@ typedef struct _LegRoastParams
     const uint32_t nResiduosity_Symbols_Per_Round;
     const uint32_t nPartyDepth;
 
-    _LegRoastParams(const algorithm alg, const uint32_t nRounds, const uint32_t nSymPerRound, const usint32_t nPartyDepth) :
-        alg(alg), 
-        nRounds(nRounds),
-        nResiduosity_Symbols_Per_Round(nSymPerRound),
-        nPartyDepth(nPartyDepth)
-    {}
-    
     const uint32_t RESSYM_PER_ROUND = nRounds * nResiduosity_Symbols_Per_Round;
     const uint32_t PARTIES = 1 << nPartyDepth;
     const uint32_t SHARES_PER_PARTY = SHARES_R + nResiduosity_Symbols_Per_Round;
