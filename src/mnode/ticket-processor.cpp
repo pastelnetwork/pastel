@@ -714,6 +714,8 @@ std::string CPastelTicketProcessor::ListFilterBuyTickets(const short filter, con
         {
             if (!pastelID.empty() && t.pastelID != pastelID)
                 return true; // ignore tickets that do not belong to this pastelID
+            if (filter == 0)
+                return false; // get all belong to this pastel ID
             if (CArtTradeTicket::CheckTradeTicketExistByBuyTicket(t.GetTxId())) {
                 if (filter == 2)
                     return false; //don't skip traded
@@ -740,6 +742,8 @@ std::string CPastelTicketProcessor::ListFilterTradeTickets(const short filter, c
             auto tradeTickets = CArtTradeTicket::FindAllTicketByArtTnxID(t.GetTxId());
             if (!pastelID.empty() && t.pastelID != pastelID)
                 return true; // ignore tickets that do not belong to this pastelID
+            if (filter == 0)
+                return false; // get all belong to this pastel ID
             if (tradeTickets.empty()) {
                 if (filter == 1)
                     return false; //don't skip available
