@@ -4,6 +4,7 @@
 #include <iostream>
 #include <fstream>
 #include <memory>
+#include <math.h>
 
 #include <openssl/ec.h>
 #include <openssl/evp.h>
@@ -11,7 +12,9 @@
 #include <openssl/err.h>
 #include <openssl/crypto.h>
 
-#include "common.h"
+#include "vector_types.h"
+#include "pastelid/common.h"
+#include "pastelid/secure_container.h"
 
 //EdDSA uses small public keys ED25519 - 32 bytes; ED448 - 57 bytes
 // and signatures ED25519 - 64 bytes; Ed448 - 114 bytes
@@ -20,11 +23,11 @@
 // for private keys: 3047020100300506032b6571043b0439
 // for public keys:  3043300506032b6571033a00
 
-
 namespace ed_crypto {
 
     template<int type>
-    class key {
+    class key
+    {
 
         struct KeyCtxDeleterFunctor {
             void operator()(EVP_PKEY_CTX *ctx) {
@@ -48,29 +51,29 @@ namespace ed_crypto {
     public:
         using unique_key_ptr = std::unique_ptr<EVP_PKEY, KeyDeleterFunctor>;
 
-        key(unique_key_ptr key) : key_(std::move(key)) {}
+        key(unique_key_ptr key) : 
+            key_(std::move(key))
+        {}
 
-        EVP_PKEY* get() const {return key_.get();}
+        EVP_PKEY* get() const noexcept { return key_.get(); }
 
-        static key generate_key() {
-
+        static key generate_key()
+        {
             unique_key_ctx_ptr ctx(EVP_PKEY_CTX_new_id(type, nullptr));
-            if (!ctx) {
-                throw (crypto_exception("Key context is NULL!", std::string(), "EVP_PKEY_CTX_new_id"));
-            }
+            if (!ctx)
+                throw crypto_exception("Key context is NULL!", std::string(), "EVP_PKEY_CTX_new_id");
 
             EVP_PKEY_CTX *pctx = ctx.get();
 
-            if (OK != EVP_PKEY_keygen_init(pctx)) {
-                throw (crypto_exception("", std::string(), "EVP_PKEY_keygen_init"));
-            }
+            if (OK != EVP_PKEY_keygen_init(pctx))
+                throw crypto_exception("", std::string(), "EVP_PKEY_keygen_init");
 
             EVP_PKEY *pkey = nullptr;
             if (OK != EVP_PKEY_keygen(pctx, &pkey))
-                throw (crypto_exception("", std::string(), "EVP_PKEY_keygen"));
+                throw crypto_exception("", std::string(), "EVP_PKEY_keygen");
 
-            if (nullptr == pkey)
-                throw (crypto_exception("Key is NULL!", std::string(), "EVP_PKEY_keygen"));
+            if (!pkey)
+                throw crypto_exception("Key is NULL!", std::string(), "EVP_PKEY_keygen");
 
             unique_key_ptr uniqueKeyPtr(pkey);
             key key(std::move(uniqueKeyPtr));
@@ -84,7 +87,7 @@ namespace ed_crypto {
             auto pPassPhrase = passPhrase.empty()? nullptr: const_cast<char*>(passPhrase.c_str());
             unique_key_ptr uniqueKeyPtr(PEM_read_bio_PrivateKey(bio.get(), nullptr, nullptr, pPassPhrase));
             if (!uniqueKeyPtr)
-                throw (crypto_exception("Cannot read key from string", std::string(), "PEM_read_bio_PrivateKey"));
+                throw crypto_exception("Cannot read key from string", std::string(), "PEM_read_bio_PrivateKey");
 
             key key(std::move(uniqueKeyPtr));
             return key;
@@ -96,7 +99,17 @@ namespace ed_crypto {
 
             unique_key_ptr uniqueKeyPtr(PEM_read_bio_PUBKEY(bio.get(), nullptr, nullptr, nullptr));
             if (!uniqueKeyPtr)
-                throw (crypto_exception("Cannot read public key from string", std::string(), "PEM_read_bio_PUBKEY"));
+                throw crypto_exception("Cannot read public key from string", std::string(), "PEM_read_bio_PUBKEY");
+
+            key key(std::move(uniqueKeyPtr));
+            return key;
+        }
+
+        static key create_from_raw_private(const unsigned char* rawprivkey, size_t keylen)
+        {
+            unique_key_ptr uniqueKeyPtr(EVP_PKEY_new_raw_private_key(type, nullptr, rawprivkey, keylen));
+            if (!uniqueKeyPtr)
+                throw crypto_exception("Cannot read private key from string", std::string(), "EVP_PKEY_new_raw_private_key");
 
             key key(std::move(uniqueKeyPtr));
             return key;
@@ -106,7 +119,7 @@ namespace ed_crypto {
         {
             unique_key_ptr uniqueKeyPtr(EVP_PKEY_new_raw_public_key(type, nullptr, rawkey, keylen));
             if (!uniqueKeyPtr)
-                throw (crypto_exception("Cannot read public key from string", std::string(), "EVP_PKEY_new_raw_public_key"));
+                throw crypto_exception("Cannot read public key from string", std::string(), "EVP_PKEY_new_raw_public_key");
 
             key key(std::move(uniqueKeyPtr));
             return key;
@@ -114,13 +127,13 @@ namespace ed_crypto {
 
         static key create_from_raw_public_hex(const std::string& rawPublicKey)
         {
-            std::vector<unsigned char > vec = Hex_Decode(rawPublicKey);
+            v_uint8 vec = Hex_Decode(rawPublicKey);
             return create_from_raw_public(vec.data(), vec.size());
         }
 
         static key create_from_raw_public_base64(const std::string& rawPublicKey)
         {
-            std::vector<unsigned char > vec = Base64_Decode(rawPublicKey);
+            v_uint8 vec = Base64_Decode(rawPublicKey);
             return create_from_raw_public(vec.data(), vec.size());
         }
 
@@ -128,7 +141,7 @@ namespace ed_crypto {
         {
             std::ifstream file(fileName);
             if (!file)
-                throw (crypto_exception("Cannot open file to read key from", fileName, "fopen"));
+                throw crypto_exception("Cannot open file to read key from", fileName, "fopen");
 
             std::stringstream buffer;
             buffer << file.rdbuf();
@@ -151,43 +164,24 @@ namespace ed_crypto {
             });
         }
 
-        std::string private_key_in_PKCS8(std::string passPhrase) const
-        {
-            return stream::bioToString(BIO_s_mem(), [this, &passPhrase](BIO* bio)
-            {
-                auto ptr = const_cast<char*>(passPhrase.c_str());
-                return PEM_write_bio_PKCS8PrivateKey(bio, key_.get(), EVP_aes_256_cbc(), nullptr, 0, nullptr, ptr);
-            });
-        }
-
-        void write_private_key_to_PKCS8_file(std::string fileName, std::string passPhrase)
-        {
-            std::ofstream file(fileName);
-            if (!file)
-                throw (crypto_exception("Cannot open file to write the key", fileName, "fopen"));
-
-            file << private_key_in_PKCS8(passPhrase);
-        }
-
         buffer public_key_raw() const
         {
             std::size_t raw_key_len = 0;
             // Get length of the raw key
             if (OK != EVP_PKEY_get_raw_public_key(key_.get(), nullptr, &raw_key_len)) {
-                throw (crypto_exception("Cannot get length of raw public key", std::string(), "EVP_PKEY_get_raw_public_key"));
+                throw crypto_exception("Cannot get length of raw public key", std::string(), "EVP_PKEY_get_raw_public_key");
             }
-            if (0 == raw_key_len) {
-                throw (crypto_exception("Returned length is 0!", std::string(), "EVP_PKEY_get_raw_public_key"));
-            }
+            if (0 == raw_key_len)
+                throw crypto_exception("Returned length is 0!", std::string(), "EVP_PKEY_get_raw_public_key");
 
             // Allocate memory for the key based on size in raw_key_len
-            auto prawkey = (unsigned char *) OPENSSL_malloc(raw_key_len);
-            if (nullptr == prawkey)
-                throw (crypto_exception("Returned buffer is NULL!", std::string(), "public_key_raw/OPENSSL_malloc"));
+            auto prawkey = static_cast<unsigned char *>(OPENSSL_malloc(raw_key_len));
+            if (!prawkey)
+                throw crypto_exception("Returned buffer is NULL!", std::string(), "public_key_raw/OPENSSL_malloc");
 
             // Obtain the raw key
             if (OK != EVP_PKEY_get_raw_public_key(key_.get(), prawkey, &raw_key_len))
-                throw (crypto_exception("Cannot get raw public key", std::string(), "EVP_PKEY_get_raw_public_key"));
+                throw crypto_exception("Cannot get raw public key", std::string(), "EVP_PKEY_get_raw_public_key");
 
             buffer rawkey(prawkey, raw_key_len);
             return rawkey;
@@ -335,14 +329,14 @@ namespace ed_crypto {
         template<int type>
         static buffer sign_base64(const std::string& messageBase64, const key<type>& secret_key)
         {
-            std::vector<unsigned char > vec = Base64_Decode(messageBase64);
+            v_uint8 vec = Base64_Decode(messageBase64);
             return sign(vec.data(), vec.size(), secret_key);
         }
 
         template<int type>
         static buffer sign_hex(const std::string& messageHex, const key<type>& secret_key)
         {
-            std::vector<unsigned char > vec = Hex_Decode(messageHex);
+            v_uint8 vec = Hex_Decode(messageHex);
             return sign(vec.data(), vec.size(), secret_key);
         }
 
@@ -386,14 +380,14 @@ namespace ed_crypto {
         template<int type>
         static bool verify_base64(const std::string& message, const std::string& signatureBase64, const key<type>& public_key)
         {
-            std::vector<unsigned char > vec = Base64_Decode(signatureBase64);
+            v_uint8 vec = Base64_Decode(signatureBase64);
             return verify(message, vec.data(), vec.size(), public_key);
         }
 
         template<int type>
         static bool verify_hex(const std::string& message, const std::string& signatureHex, const key<type>& public_key)
         {
-            std::vector<unsigned char > vec = Hex_Decode(signatureHex);
+            v_uint8 vec = Hex_Decode(signatureHex);
             return verify(message, vec.data(), vec.size(), public_key);
         }
     };

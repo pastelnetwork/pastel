@@ -20,6 +20,9 @@
     <Filter Include="Source Files\pastelid">
       <UniqueIdentifier>{d3b7a4eb-1936-4883-9f18-ef2b1fdd6b74}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Source Files\port">
+      <UniqueIdentifier>{29dfb7cd-f7a1-44e1-842f-6df4157cfca8}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\..\src\sendalert.cpp">
@@ -179,6 +182,12 @@
       <Filter>Source Files\mnode</Filter>
     </ClCompile>
     <ClCompile Include="..\..\..\src\pastelid\secure_container.cpp">
+      <Filter>Source Files\pastelid</Filter>
+    </ClCompile>
+    <ClCompile Include="..\port\uint128.cpp">
+      <Filter>Source Files\port</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\src\pastelid\pastel_key.cpp">
       <Filter>Source Files\pastelid</Filter>
     </ClCompile>
   </ItemGroup>
@@ -386,6 +395,15 @@
     </ClInclude>
     <ClInclude Include="..\..\..\src\pastelid\secure_container.h">
       <Filter>Source Files\pastelid</Filter>
+    </ClInclude>
+    <ClInclude Include="..\port\uint128.h">
+      <Filter>Source Files\port</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\vector_types.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\legroast.h">
+      <Filter>Source Files</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

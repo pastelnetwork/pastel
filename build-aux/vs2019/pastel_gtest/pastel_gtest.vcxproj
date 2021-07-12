@@ -121,6 +121,7 @@
     <ClCompile Include="..\..\..\src\gtest\test_mnode_rpc.cpp" />
     <ClCompile Include="..\..\..\src\gtest\test_mnode_pastel.cpp" />
     <ClCompile Include="..\..\..\src\gtest\test_noteencryption.cpp" />
+    <ClCompile Include="..\..\..\src\gtest\test_pastelid.cpp" />
     <ClCompile Include="..\..\..\src\gtest\test_paymentdisclosure.cpp" />
     <ClCompile Include="..\..\..\src\gtest\test_pedersen_hash.cpp" />
     <ClCompile Include="..\..\..\src\gtest\test_pow.cpp" />
@@ -129,6 +130,7 @@
     <ClCompile Include="..\..\..\src\gtest\test_rpc.cpp" />
     <ClCompile Include="..\..\..\src\gtest\test_sapling_note.cpp" />
     <ClCompile Include="..\..\..\src\gtest\test_secure_container.cpp" />
+    <ClCompile Include="..\..\..\src\gtest\test_str_encodings.cpp" />
     <ClCompile Include="..\..\..\src\gtest\test_tautology.cpp" />
     <ClCompile Include="..\..\..\src\gtest\test_transaction.cpp" />
     <ClCompile Include="..\..\..\src\gtest\test_transaction_builder.cpp" />
@@ -142,7 +144,6 @@
   <ItemGroup>
     <ClInclude Include="..\..\..\src\gtest\json_test_vectors.h" />
     <ClInclude Include="..\..\..\src\gtest\mock_mnode_ticket.h" />
-    <ClInclude Include="..\..\..\src\legroast\legroast.h" />
     <ClInclude Include="..\port\uint128.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

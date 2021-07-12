@@ -1,11 +1,8 @@
+#pragma once
 // Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2014 The Bitcoin Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
-
-#ifndef BITCOIN_UINT256_H
-#define BITCOIN_UINT256_H
-
 #include <assert.h>
 #include <cstring>
 #include <stdexcept>
@@ -18,9 +15,12 @@ template<unsigned int BITS>
 class base_blob
 {
 protected:
-    enum { WIDTH=BITS/8 };
+    enum { WIDTH = BITS / 8 };
     alignas(uint32_t) uint8_t data[WIDTH];
+
 public:
+    inline static constexpr size_t SIZE = WIDTH;
+
     base_blob()
     {
         memset(data, 0, sizeof(data));
@@ -128,7 +128,7 @@ public:
     uint64_t GetCheapHash() const
     {
         uint64_t result;
-        memcpy((void*)&result, (void*)data, 8);
+        memcpy((void*)&result, (void*)data, sizeof(uint64_t));
         return result;
     }
 
@@ -158,5 +158,3 @@ inline uint256 uint256S(const std::string& str)
     rv.SetHex(str);
     return rv;
 }
-
-#endif // BITCOIN_UINT256_H

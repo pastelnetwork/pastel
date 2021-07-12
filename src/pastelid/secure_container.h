@@ -4,38 +4,59 @@
 
 #include "enum_util.h"
 #include "support/allocators/secure.h"
+#include "vector_types.h"
 
-#include <string>
-#include <vector>
+#include <fstream>
 
 #include "json/json.hpp"
 #include "sodium.h"
 
-using bytes = std::vector<std::byte>;
+namespace secure_container
+{
 
 constexpr uint16_t SECURE_CONTAINER_VERSION = 1;
 constexpr auto SECURE_CONTAINER_ENCRYPTION = "xchacha20-poly1305";
+// Pastel secure container prefix - used to detect new container
+constexpr auto SECURE_CONTAINER_PREFIX = "PastelSecureContainer";
 
 enum class SECURE_ITEM_TYPE : uint8_t
 {
     not_defined = 0,
     pkey_ed448 = 1,    // private key ed448
-    pkey_legroast = 2, // private key
+    pkey_legroast = 2, // LegRoast private key
     wallet = 3,        // wallet.dat
-    COUNT // +1
+    COUNT              // +1
 };
 
-static constexpr const char * SECURE_ITEM_TYPE_NAMES[] = 
+static constexpr const char* SECURE_ITEM_TYPE_NAMES[] =
 {
     "not defined",
-    "pkey_ed448", 
-    "pkey_legroast", 
+    "pkey_ed448",
+    "pkey_legroast",
     "wallet"
 };
 
-inline const char* GetSecureItemTypeName(const SECURE_ITEM_TYPE type) 
+enum class PUBLIC_ITEM_TYPE : uint8_t
+{
+    not_defined = 0,
+    pubkey_legroast = 1, // LegRoast public key
+    COUNT                
+};
+
+static constexpr const char* PUBLIC_ITEM_TYPE_NAMES[] =
+{
+    "not defined",
+    "pubkey_legroast"
+};
+
+inline const char* GetSecureItemTypeName(const SECURE_ITEM_TYPE type)
 {
     return SECURE_ITEM_TYPE_NAMES[to_integral_type<SECURE_ITEM_TYPE>(type)];
+}
+
+inline const char* GetPublicItemTypeName(const PUBLIC_ITEM_TYPE type)
+{
+    return PUBLIC_ITEM_TYPE_NAMES[to_integral_type<PUBLIC_ITEM_TYPE>(type)];
 }
 
 /**
@@ -44,15 +65,36 @@ inline const char* GetSecureItemTypeName(const SECURE_ITEM_TYPE type)
  * \param sType
  * \return 
  */
-inline SECURE_ITEM_TYPE GetSecureItemTypeByName(const std::string &sType)
+inline SECURE_ITEM_TYPE GetSecureItemTypeByName(const std::string& sType)
 {
     SECURE_ITEM_TYPE ItemType = SECURE_ITEM_TYPE::not_defined;
-    for (auto i = to_integral_type<SECURE_ITEM_TYPE>(SECURE_ITEM_TYPE::not_defined); i < 
-            to_integral_type<SECURE_ITEM_TYPE>(SECURE_ITEM_TYPE::COUNT); ++i)
+    for (auto i = to_integral_type<SECURE_ITEM_TYPE>(SECURE_ITEM_TYPE::not_defined); 
+            i < to_integral_type<SECURE_ITEM_TYPE>(SECURE_ITEM_TYPE::COUNT); ++i)
     {
         if (sType.compare(SECURE_ITEM_TYPE_NAMES[i]) == 0)
         {
             ItemType = static_cast<SECURE_ITEM_TYPE>(i);
+            break;
+        }
+    }
+    return ItemType;
+}
+
+/**
+ * Get PUBLIC_ITEM_TYPE by name.
+ * 
+ * \param sType
+ * \return 
+ */
+inline PUBLIC_ITEM_TYPE GetPublicItemTypeByName(const std::string& sType)
+{
+    PUBLIC_ITEM_TYPE ItemType = PUBLIC_ITEM_TYPE::not_defined;
+    for (auto i = to_integral_type<PUBLIC_ITEM_TYPE>(PUBLIC_ITEM_TYPE::not_defined);
+         i < to_integral_type<PUBLIC_ITEM_TYPE>(PUBLIC_ITEM_TYPE::COUNT); ++i)
+    {
+        if (sType.compare(PUBLIC_ITEM_TYPE_NAMES[i]) == 0)
+        {
+            ItemType = static_cast<PUBLIC_ITEM_TYPE>(i);
             break;
         }
     }
@@ -64,69 +106,122 @@ class ISecureDataHandler
 public:
     virtual ~ISecureDataHandler() {}
 
-    virtual void Set(const nlohmann::json::binary_t& data) = 0;
-    virtual bool Get(nlohmann::json::binary_t& data) const noexcept = 0;
-    virtual void Cleanup() = 0;
+    virtual bool GetSecureData(nlohmann::json::binary_t& data) const noexcept = 0;
+    virtual void CleanupSecureData() = 0;
 };
 
 class CSecureContainer
 {
 public:
-   using secure_item_t = struct _secure_item_t
-   {
-       _secure_item_t() : 
+    using secure_item_t = struct _secure_item_t
+    {
+        _secure_item_t() : 
             type(SECURE_ITEM_TYPE::not_defined),
             pHandler(nullptr)
-       {}
-       _secure_item_t(const SECURE_ITEM_TYPE atype, const nlohmann::json::binary_t& adata, ISecureDataHandler* pDataHandler) : 
+        {}
+        _secure_item_t(const SECURE_ITEM_TYPE atype, const nlohmann::json::binary_t& adata, ISecureDataHandler* pDataHandler) : 
             type(atype),
             data(adata),
             pHandler(pDataHandler)
-       {}
+        {}
 
-       SECURE_ITEM_TYPE type;
-       nlohmann::json::binary_t nonce; // public nonce used to encrypt the data
-       nlohmann::json::binary_t data;  // secure item data
-       ISecureDataHandler* pHandler;
-   };
+        void cleanup()
+        {
+            type = SECURE_ITEM_TYPE::not_defined;
+            memory_cleanse(nonce.data(), nonce.size());
+            memory_cleanse(data.data(), data.size());
+            pHandler = nullptr;
+        }
 
-   CSecureContainer() : 
-       m_nVersion(SECURE_CONTAINER_VERSION),
+        SECURE_ITEM_TYPE type;
+        nlohmann::json::binary_t nonce; // public nonce used to encrypt the data
+        nlohmann::json::binary_t data;  // secure item data
+        ISecureDataHandler* pHandler;
+    };
+
+    using public_item_t = struct _public_item_t
+    {
+        _public_item_t() : 
+            type(PUBLIC_ITEM_TYPE::not_defined)
+        {}
+        _public_item_t(const PUBLIC_ITEM_TYPE atype, nlohmann::json::binary_t&& adata) : 
+            type(atype),
+            data(std::move(adata))
+        {}
+
+        PUBLIC_ITEM_TYPE type;
+        nlohmann::json::binary_t data; // public item data
+    };
+
+    CSecureContainer() : 
+        m_nVersion(SECURE_CONTAINER_VERSION),
         m_nTimestamp(-1)
-   {}
+    {}
 
-   // clear the container
-   void clear() noexcept;
-   // add secure item to the container
-   void add_item(const SECURE_ITEM_TYPE type, const nlohmann::json::binary_t& data, ISecureDataHandler* pHandler = nullptr) noexcept;
-   // encrypt and write container to file as a msgpack
-   bool write_to_file(const std::string &sFilePath, SecureString &&sPassphrase);
-   // read from file secure container data encoded as a msgpack and decrypt
-   bool read_from_file(const std::string& sFilePath, SecureString&& sPassphrase);
-
-   nlohmann::json::binary_t extract_data(const SECURE_ITEM_TYPE type);
+    // clear the container
+    void clear() noexcept;
+    // add secure item to the container (data in a string)
+    void add_secure_item_string(const SECURE_ITEM_TYPE type, const std::string& sData) noexcept;
+    // add secure item to the container (data in a byte vector)
+    void add_secure_item_vector(const SECURE_ITEM_TYPE type, const v_uint8& vData) noexcept;
+    void add_secure_item_vector(const SECURE_ITEM_TYPE type, v_uint8&& vData) noexcept;
+    // add secure item to the container(handler interface to get data)
+    void add_secure_item_handler(const SECURE_ITEM_TYPE type, ISecureDataHandler* pHandler) noexcept;
+    // add public item to the container
+    void add_public_item(const PUBLIC_ITEM_TYPE type, const std::string& sData) noexcept;
+    // encrypt and write container to file as a msgpack
+    bool write_to_file(const std::string& sFilePath, const SecureString& sPassphrase);
+    // read from secure container file encrypted secure data as a msgpack and decrypt
+    bool read_from_file(const std::string& sFilePath, const SecureString& sPassphrase);
+    // read from secure container file public data as a msgpack
+    bool read_public_from_file(const std::string& sFilePath);
+    // Get public data (byte vector) from the container by type
+    bool get_public_data_vector(const PUBLIC_ITEM_TYPE type, v_uint8& data) const noexcept;
+    bool get_public_data(const PUBLIC_ITEM_TYPE type, std::string &sData) const noexcept;
+    // Extract secure data from the container by type (returns byte vector)
+    v_uint8 extract_secure_data(const SECURE_ITEM_TYPE type);
+    // Extract secure data from the container by type (returns string)
+    std::string extract_secure_data_string(const SECURE_ITEM_TYPE type);
 
 private:
     static constexpr size_t PWKEY_BUFSUZE = crypto_box_SEEDBYTES;
 
     // header
-    uint16_t m_nVersion;  // container version
-    int64_t m_nTimestamp; // time stamp
+    uint16_t m_nVersion;                // container version
+    int64_t m_nTimestamp;               // time stamp
     std::string m_sEncryptionAlgorithm; // encryption algorithm
 
+    // vector of public items
+    std::vector<public_item_t> m_vPublicItems;
     // vector of secure items
-    std::vector<secure_item_t> m_vItems;
+    std::vector<secure_item_t> m_vSecureItems;
 
-    auto find_item(const SECURE_ITEM_TYPE type) noexcept;
+    auto find_secure_item(const SECURE_ITEM_TYPE type) noexcept;
+    auto find_public_item(const PUBLIC_ITEM_TYPE type) const noexcept;
+    bool read_public_items_ex(std::ifstream& fs, uint64_t& nDataSize);
 };
 
 /*
 * json structure for secure container (stored as msgpack):
+msgpack_public_items_size(datatype: uint64_t in network byte order) public_items_hash (256-bit)
+{
+    "version":1,
+    "public_items": [
+        {
+            "type":"item_type_name",
+            "data": binary_t
+        },
+        {
+            "type":"item_type_name",
+            "data": binary_t
+        }
+    ]
+}
 {
     "version":1,
     "timestamp": int64_t,
-    "encryption": "",
-    "items": [
+    "encryption": "xchacha20-poly1305",
+    "secure_items": [
         {
             "type":"secure_item_type_name",
             "nonce": binary_t,
@@ -140,6 +235,8 @@ private:
     ]
 }
 */
+
+} // namespace secure_container
 
 class CSodiumAutoBuf
 {
