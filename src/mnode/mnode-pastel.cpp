@@ -1137,7 +1137,7 @@ bool CArtBuyTicket::IsValid(bool preReg, int depth) const
         "Buy", "sell", depth, price + TicketPrice(chainHeight))) {
       throw std::runtime_error(strprintf("The Buy ticket with Sell txid [%s] is not validated", sellTnxId));
     }
-
+    
     // 1. Verify that there is no another buy ticket for the same sell ticket
     // or if there are, it is older then 1h and there is no trade ticket for it
     //buyTicket->ticketBlock <= height+24 (2.5m per block -> 24blocks/per hour) - MaxBuyTicketAge
@@ -1404,12 +1404,12 @@ CAmount CArtTradeTicket::GetExtraOutputs(std::vector<CTxOut>& outputs) const
                 "The PastelID [%s] from sell ticket with this txid [%s] is not in the blockchain or is invalid",
                 sellerPastelID, sellTnxId));
 
-  if (!artSellTicket->askedPrice) {
-    if (artSellTicket->recipientPastelID.empty()) {
-      throw std::runtime_error(strprintf("The Art Sell ticket with txid [%s] asked price should be not 0", sellTnxId));
+    if (!artSellTicket->askedPrice) {
+      if (artSellTicket->recipientPastelID.empty()) {
+        throw std::runtime_error(strprintf("The Art Sell ticket with txid [%s] asked price should be not 0", sellTnxId));
+      }
+      return 0;
     }
-    return 0;
-  }
 
     CAmount nPriceAmount = artSellTicket->askedPrice * COIN;
     CAmount nRoyaltyAmount = 0;
