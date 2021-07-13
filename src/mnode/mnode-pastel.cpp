@@ -610,70 +610,68 @@ bool common_validation(const T& ticket, bool preReg, const std::string& strTnxId
     return true;
 }
 
-bool trade_copy_validation(const std::string& nftTnxId, const std::vector<unsigned char>& signature) {
-  if (masterNodeCtrl.masternodeSync.IsSynced()) {
-    unsigned short totalCopies{0};
-
-    uint256 txid;
-    txid.SetHex(nftTnxId);
-    auto nftTicket = CPastelTicketProcessor::GetTicket(txid);
-    if (!nftTicket) {
-      throw std::runtime_error(strprintf(
-        "The NFT ticket with txid [%s] referred by this trade ticket is not in the blockchain", nftTnxId));
-    }
-    if (nftTicket->ID() == TicketID::Activate) {
-      auto actTicket = dynamic_cast<const CArtActivateTicket*>(nftTicket.get());
-      if (!actTicket) {
-        throw std::runtime_error(strprintf(
-          "The activation ticket with txid [%s] referred by this trade ticket is invalid", nftTnxId));
-      }
-
-      auto pArtTicket = CPastelTicketProcessor::GetTicket(actTicket->regTicketTnxId, TicketID::Art);
-      if (!pArtTicket) {
-        throw std::runtime_error(strprintf(
-          "The registration ticket with txid [%s] referred by activation ticket is invalid",
-          actTicket->regTicketTnxId));
-      }
-
-      auto artTicket = dynamic_cast<const CArtRegTicket*>(pArtTicket.get());
-      if (!artTicket) {
-        throw std::runtime_error(strprintf(
-          "The registration ticket with txid [%s] referred by activation ticket is invalid",
-          actTicket->regTicketTnxId));
-      }
-
-      totalCopies = artTicket->totalCopies;
-    } else if (nftTicket->ID() == TicketID::Trade) {
-      auto tradeTicket = dynamic_cast<const CArtTradeTicket*>(nftTicket.get());
-      if (!tradeTicket) {
-        throw std::runtime_error(strprintf(
-          "The trade ticket with txid [%s] referred by this trade ticket is invalid", nftTnxId));
-      }
-
-      totalCopies = 1;
-    } else {
-      throw std::runtime_error(strprintf(
-        "Unknown ticket with txid [%s] referred by this trade ticket is invalid", nftTnxId));
-    }
-
-    auto soldCopies{0};
-    const auto existingTradeTickets = CArtTradeTicket::FindAllTicketByArtTnxID(nftTnxId);
-    for (const auto& t: existingTradeTickets) {
-      if (t.signature != signature) {
-        ++soldCopies;
-      }
-    }
-
-    if (soldCopies >= totalCopies) {
-      throw std::runtime_error(strprintf(
-        "Invalid trade ticket - cannot exceed the total number of available copies [%d] with sold [%d] copies",
-        totalCopies, soldCopies));
-    }
-  } else {
+void trade_copy_validation(const std::string& nftTnxId, const std::vector<unsigned char>& signature) {
+  if (!masterNodeCtrl.masternodeSync.IsSynced()) {
     throw std::runtime_error("Can not validate trade ticket as master node is not synced");
   }
 
-  return true;
+  unsigned short totalCopies{0};
+
+  uint256 txid;
+  txid.SetHex(nftTnxId);
+  auto nftTicket = CPastelTicketProcessor::GetTicket(txid);
+  if (!nftTicket) {
+    throw std::runtime_error(strprintf(
+      "The NFT ticket with txid [%s] referred by this trade ticket is not in the blockchain", nftTnxId));
+  }
+  if (nftTicket->ID() == TicketID::Activate) {
+    auto actTicket = dynamic_cast<const CArtActivateTicket*>(nftTicket.get());
+    if (!actTicket) {
+      throw std::runtime_error(strprintf(
+        "The activation ticket with txid [%s] referred by this trade ticket is invalid", nftTnxId));
+    }
+
+    auto pArtTicket = CPastelTicketProcessor::GetTicket(actTicket->regTicketTnxId, TicketID::Art);
+    if (!pArtTicket) {
+      throw std::runtime_error(strprintf(
+        "The registration ticket with txid [%s] referred by activation ticket is invalid",
+        actTicket->regTicketTnxId));
+    }
+
+    auto artTicket = dynamic_cast<const CArtRegTicket*>(pArtTicket.get());
+    if (!artTicket) {
+      throw std::runtime_error(strprintf(
+        "The registration ticket with txid [%s] referred by activation ticket is invalid",
+        actTicket->regTicketTnxId));
+    }
+
+    totalCopies = artTicket->totalCopies;
+  } else if (nftTicket->ID() == TicketID::Trade) {
+    auto tradeTicket = dynamic_cast<const CArtTradeTicket*>(nftTicket.get());
+    if (!tradeTicket) {
+      throw std::runtime_error(strprintf(
+        "The trade ticket with txid [%s] referred by this trade ticket is invalid", nftTnxId));
+    }
+
+    totalCopies = 1;
+  } else {
+    throw std::runtime_error(strprintf(
+      "Unknown ticket with txid [%s] referred by this trade ticket is invalid", nftTnxId));
+  }
+
+  auto soldCopies{0};
+  const auto existingTradeTickets = CArtTradeTicket::FindAllTicketByArtTnxID(nftTnxId);
+  for (const auto& t: existingTradeTickets) {
+    if (t.signature != signature) {
+      ++soldCopies;
+    }
+  }
+
+  if (soldCopies >= totalCopies) {
+    throw std::runtime_error(strprintf(
+      "Invalid trade ticket - cannot exceed the total number of available copies [%d] with sold [%d] copies",
+      totalCopies, soldCopies));
+  }
 }
 
 // CArtActivateTicket ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1007,19 +1005,22 @@ bool CArtSellTicket::IsValid(bool preReg, int depth) const
 
         totalCopies = 1;
 
+        // 3.b Verify there is no already trade ticket referring to that trade ticket
         if (preReg || !ticketFound)
         { //else if this is already confirmed ticket - skip this check, otherwise it will failed
           verifyAvailableCopies("trade", totalCopies);
         }
     }
 
-    if (copyNumber > totalCopies || copyNumber == 0) {
+    if (copyNumber > totalCopies || copyNumber == 0)
+    {
       throw std::runtime_error(strprintf(
         "Invalid Sell ticket - copy number [%d] cannot exceed the total number of available copies [%d] or be 0",
         copyNumber, totalCopies));
     }
 
-    // If this is replacement - verify that it is allowed (original ticket is not sold)
+    //4. If this is replacement - verify that it is allowed (original ticket is not sold)
+    // (ticket transaction replay attack protection)
     // If found similar ticket, replacement is possible if allowed
     // Can be a few Sell tickets
     const auto existingSellTickets = CArtSellTicket::FindAllTicketByArtTnxID(artTnxId);
@@ -1386,9 +1387,7 @@ bool CArtTradeTicket::IsValid(bool preReg, int depth) const
         pastelID, buyersPastelID, buyTnxId));
     }
 
-  if (!trade_copy_validation(artTnxId, signature)) {
-    throw std::runtime_error("Invalid Trade ticket - all available copies were sold or gifted");
-  }
+    trade_copy_validation(artTnxId, signature);
 
     return true;
 }
