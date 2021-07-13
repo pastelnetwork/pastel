@@ -862,390 +862,400 @@ std::vector<CArtActivateTicket> CArtActivateTicket::FindAllTicketByArtistHeight(
 // CArtSellTicket //////////////////////////////////////////////////////////////////////////////////////////////////////
 CArtSellTicket CArtSellTicket::Create(
     std::string _artTnxId, int _askedPrice, int _validAfter, int _validBefore, int _copyNumber,
-    std::string _recipientPastelID, std::string _pastelID, const SecureString& strKeyPass) {
-  CArtSellTicket ticket(std::move(_pastelID), std::move(_recipientPastelID));
+    std::string _recipientPastelID, std::string _pastelID, const SecureString& strKeyPass)
+{
+    CArtSellTicket ticket(std::move(_pastelID), std::move(_recipientPastelID));
     
-  ticket.artTnxId = std::move(_artTnxId);
-  ticket.askedPrice = _askedPrice;
-  ticket.activeBefore = _validBefore;
-  ticket.activeAfter = _validAfter;
+    ticket.artTnxId = std::move(_artTnxId);
+    ticket.askedPrice = _askedPrice;
+    ticket.activeBefore = _validBefore;
+    ticket.activeAfter = _validAfter;
     
-  ticket.GenerateTimestamp();
+    ticket.GenerateTimestamp();
     
-  // NOTE: Sell ticket for Trade ticket will always has copyNumber = 1
-  ticket.copyNumber = _copyNumber > 0 ?
-    _copyNumber : static_cast<decltype(ticket.copyNumber)>(CArtSellTicket::FindAllTicketByArtTnxID(ticket.artTnxId).size()) + 1;
-  ticket.keyTwo = ticket.artTnxId + ":" + std::to_string(ticket.copyNumber);
+    //NOTE: Sell ticket for Trade ticket will always has copyNumber = 1
+    ticket.copyNumber = _copyNumber > 0 ?
+        _copyNumber : static_cast<decltype(ticket.copyNumber)>(CArtSellTicket::FindAllTicketByArtTnxID(ticket.artTnxId).size()) + 1;
+    ticket.keyOne = ticket.artTnxId + ":" + std::to_string(ticket.copyNumber);
 
-  const std::string strTicket = ticket.ToStr();
-  ticket.signature = CPastelID::Sign(
-    reinterpret_cast<const unsigned char*>(strTicket.c_str()), strTicket.size(), ticket.pastelID, strKeyPass
-  );
+    const std::string strTicket = ticket.ToStr();
+    ticket.signature = CPastelID::Sign(reinterpret_cast<const unsigned char*>(strTicket.c_str()), strTicket.size(), ticket.pastelID, strKeyPass);
 
-  return ticket;
+    return ticket;
 }
 
-std::string CArtSellTicket::ToStr() const noexcept {
-  std::stringstream ss;
-  ss << pastelID;
-  ss << recipientPastelID;
-  ss << artTnxId;
-  ss << askedPrice;
-  ss << copyNumber;
-  ss << activeBefore;
-  ss << activeAfter;
-  ss << m_nTimestamp;
-  return ss.str();
+std::string CArtSellTicket::ToStr() const noexcept
+{
+    std::stringstream ss;
+    ss << pastelID;
+    ss << recipientPastelID;
+    ss << artTnxId;
+    ss << askedPrice;
+    ss << copyNumber;
+    ss << activeBefore;
+    ss << activeAfter;
+    ss << m_nTimestamp;
+    return ss.str();
 }
 
-bool CArtSellTicket::IsValid(bool preReg, int depth) const {
-  unsigned int chainHeight = 0; {
-    LOCK(cs_main);
-    chainHeight = static_cast<unsigned int>(chainActive.Height()) + 1;
-  }
-    
-  // Common validations
-  std::unique_ptr<CPastelTicket> pastelTicket;
-  if (!common_validation(*this, preReg, artTnxId, pastelTicket,
-      [](const TicketID tid) { return tid != TicketID::Activate && tid != TicketID::Trade; },
-      "Sell", "activation or trade", depth, TicketPrice(chainHeight))) {
-    throw std::runtime_error(strprintf("The Sell ticket with this txid [%s] is not validated", artTnxId));
-  }
-
-  if (!recipientPastelID.empty()) {
-    CPastelIDRegTicket recipientPastelIDticket;
-    if (!CPastelIDRegTicket::FindTicketInDb(recipientPastelID, recipientPastelIDticket)) {
-      throw std::runtime_error(strprintf(
-        "The recepient's pastelID [%s] for Sell ticket with NFT txid [%s] is not in the blockchain or is invalid",
-        recipientPastelID, artTnxId));
-    }
-  } else if (!askedPrice) {
-    throw std::runtime_error(strprintf("The asked price for Sell ticket with NFT txid [%s] should be not 0", artTnxId));
-  }
-
-  bool ticketFound{false};
-  // Check the Sell ticket is already in the database
-  // (ticket transaction replay attack protection)
-  CArtSellTicket _ticket;
-  if (FindTicketInDb(KeyOne(), _ticket)) {
-    if (preReg ||  // if pre reg - this is probably repeating call, so signatures can be the same
-        _ticket.signature != signature || !_ticket.IsBlock(m_nBlock) || _ticket.m_txid != m_txid) {
-      throw std::runtime_error(strprintf(
-        "The Sell ticket is already registered in blockchain [pastelID = %s]"
-        "[this ticket block = %u txid = %s; found ticket block = %u txid = %s] with NFT txid [%s]",
-        pastelID, m_nBlock, m_txid, _ticket.GetBlock(), _ticket.m_txid, artTnxId));
-    }
-    ticketFound = true;
-  }
-
-  // Check PastelID in this ticket matches PastelID in the referred ticket (Activation or Trade)
-  auto totalCopies{0};
-  // Verify the NFT is not already sold or gifted
-  const auto verifyAvailableCopies = [this](const std::string& strTicket, unsigned short totalCopies) {
-    const auto existingTradeTickets = CArtTradeTicket::FindAllTicketByArtTnxID(artTnxId);
-    auto soldCopies = existingTradeTickets.size();
-
-    if (soldCopies >= totalCopies) {
-      throw std::runtime_error(strprintf(
-        "The Art you are trying to sell - from %s ticket [%s] - is already sold - "
-        "there are already [%zu] sold copies, but only [%zu] copies were available",
-        strTicket, artTnxId, soldCopies, totalCopies));
-    }
-  };
-  if (pastelTicket->ID() == TicketID::Activate) {
-    auto actTicket = dynamic_cast<const CArtActivateTicket*>(pastelTicket.get());
-    if (!actTicket) {
-      throw std::runtime_error(strprintf(
-        "The activation ticket with this txid [%s] referred by this sell ticket is invalid", artTnxId));
-    }
-
-    const std::string& artistPastelID = actTicket->pastelID;
-    if (artistPastelID != pastelID) {
-      throw std::runtime_error(strprintf(
-        "The PastelID [%s] in this ticket is not matching the Artist's PastelID [%s] "
-        "in the Art Activation ticket with this txid [%s]", pastelID, artistPastelID, artTnxId));
-    }
-
-    // Get Registration ticket
-    auto pArtTicket = CPastelTicketProcessor::GetTicket(actTicket->regTicketTnxId, TicketID::Art);
-    if (!pArtTicket) {
-      throw std::runtime_error(strprintf(
-        "The Art Registration ticket with this txid [%s] referred by this Art Activation ticket is invalid",
-        actTicket->regTicketTnxId));
-    }
-
-    auto artTicket = dynamic_cast<const CArtRegTicket*>(pArtTicket.get());
-    if (!artTicket) {
-      throw std::runtime_error(strprintf(
-        "The Art Registration ticket with this txid [%s] referred by this Art Activation ticket is invalid",
-        actTicket->regTicketTnxId));
-    }
-
-    totalCopies = artTicket->totalCopies;
-    if (preReg || !ticketFound) {
-      // else if this is already confirmed ticket - skip this check, otherwise it will failed
-      verifyAvailableCopies("registration", totalCopies);
-    }
-  } else if (pastelTicket->ID() == TicketID::Trade) {
-    auto tradeTicket = dynamic_cast<const CArtTradeTicket*>(pastelTicket.get());
-    if (!tradeTicket) {
-      throw std::runtime_error(strprintf(
-        "The trade ticket with this txid [%s] referred by this sell ticket is invalid", artTnxId));
-    }
-
-    const std::string& ownersPastelID = tradeTicket->pastelID;
-    if (ownersPastelID != pastelID) {
-      throw std::runtime_error(strprintf(
-        "The PastelID [%s] in this ticket is not matching the PastelID [%s] in the Trade ticket with this txid [%s]",
-        pastelID, ownersPastelID, artTnxId));
-    }
-
-    totalCopies = 1;
-    if (preReg || !ticketFound) {
-      // else if this is already confirmed ticket - skip this check, otherwise it will failed
-      verifyAvailableCopies("trade", totalCopies);
-    }
-  }
-
-  if (copyNumber > totalCopies || copyNumber == 0) {
-    throw std::runtime_error(strprintf(
-      "Invalid Sell ticket - copy number [%d] cannot exceed the total number of available copies [%d] or be 0",
-      copyNumber, totalCopies));
-  }
-
-  // If this is replacement - verify that it is allowed (original ticket is not sold)
-  // If found similar ticket, replacement is possible if allowed
-  // Can be a few Sell tickets
-  const auto existingSellTickets = CArtSellTicket::FindAllTicketByArtTnxID(artTnxId);
-  for (const auto& t: existingSellTickets) {
-    if (t.signature == signature || t.copyNumber != copyNumber) {
-      continue;
-    }
-
-    // find if it is the old ticket
-    if (m_nBlock > 0 && t.m_nBlock > m_nBlock) {
-      throw std::runtime_error(strprintf(
-        "This Sell ticket has been replaced with another ticket. "
-        "txid - [%s] copyNumber [%d].", t.m_txid, copyNumber));
-    }
-
-    if (masterNodeCtrl.masternodeSync.IsSynced()) {
-      // Validate only if both blockchain and MNs are synced
-      {
+bool CArtSellTicket::IsValid(bool preReg, int depth) const
+{
+    unsigned int chainHeight = 0;
+    {
         LOCK(cs_main);
         chainHeight = static_cast<unsigned int>(chainActive.Height()) + 1;
-      }
-      if (t.m_nBlock + 2880 > chainHeight) {
-        // 1 block per 2.5; 4 blocks per 10 min; 24 blocks per 1h; 576 blocks per 24 h;
+    }
+    
+    // Common validations
+    std::unique_ptr<CPastelTicket> pastelTicket;
+    if (!common_validation(*this, preReg, artTnxId, pastelTicket,
+        [](const TicketID tid) { return tid != TicketID::Activate && tid != TicketID::Trade; },
+        "Sell", "activation or trade", depth, TicketPrice(chainHeight))) {
+      throw std::runtime_error(strprintf("The Sell ticket with this txid [%s] is not validated", artTnxId));
+    }
+
+    if (!recipientPastelID.empty()) {
+      CPastelIDRegTicket recipientPastelIDticket;
+      if (!CPastelIDRegTicket::FindTicketInDb(recipientPastelID, recipientPastelIDticket)) {
         throw std::runtime_error(strprintf(
-          "Can only replace Sell ticket after 5 days. txid - [%s] copyNumber [%d].", t.m_txid, copyNumber));
+          "The recepient's pastelID [%s] for Sell ticket with NFT txid [%s] is not in the blockchain or is invalid",
+          recipientPastelID, artTnxId));
       }
-    } else {
-      throw std::runtime_error(strprintf(
-        "Can not replace the Sell ticket as master node not is not synced. "
-        "txid - [%s] copyNumber [%d].", t.m_txid, copyNumber));
+    } else if (!askedPrice) {
+      throw std::runtime_error(strprintf("The asked price for Sell ticket with NFT txid [%s] should be not 0", artTnxId));
     }
 
-    if (CArtTradeTicket::CheckTradeTicketExistBySellTicket(t.m_txid)) {
-      throw std::runtime_error(strprintf(
-        "Cannot replace Sell ticket - it has been already sold. "
-        "txid - [%s] copyNumber [%d].", t.m_txid, copyNumber));
+    bool ticketFound = false;
+    // Check the Sell ticket is already in the database
+    CArtSellTicket _ticket;
+    if (FindTicketInDb(KeyOne(), _ticket)) {
+        if (_ticket.signature == signature &&
+            _ticket.IsBlock(m_nBlock) &&
+            _ticket.m_txid == m_txid) // if this ticket is already in the DB
+            ticketFound = true;
     }
-  }
 
-  return true;
+    // Check PastelID in this ticket matches PastelID in the referred ticket (Activation or Trade)
+    auto totalCopies{0};
+    // Verify the NFT is not already sold or gifted
+    const auto verifyAvailableCopies = [this](const std::string& strTicket, unsigned short totalCopies) {
+      const auto existingTradeTickets = CArtTradeTicket::FindAllTicketByArtTnxID(artTnxId);
+      auto soldCopies = existingTradeTickets.size();
+
+      if (soldCopies >= totalCopies) {
+        throw std::runtime_error(strprintf(
+          "The Art you are trying to sell - from %s ticket [%s] - is already sold - "
+          "there are already [%zu] sold copies, but only [%zu] copies were available",
+          strTicket, artTnxId, soldCopies, totalCopies));
+      }
+    };
+    if (pastelTicket->ID() == TicketID::Activate) {
+        auto actTicket = dynamic_cast<const CArtActivateTicket*>(pastelTicket.get());
+        if (!actTicket)
+        {
+          throw std::runtime_error(strprintf(
+          "The activation ticket with this txid [%s] referred by this sell ticket is invalid", artTnxId));
+        }
+
+        const std::string& artistPastelID = actTicket->pastelID;
+        if (artistPastelID != pastelID) {
+          throw std::runtime_error(strprintf(
+            "The PastelID [%s] in this ticket is not matching the Artist's PastelID [%s] "
+            "in the Art Activation ticket with this txid [%s]", pastelID, artistPastelID, artTnxId));
+        }
+
+        // Get Registration ticket
+        auto pArtTicket = CPastelTicketProcessor::GetTicket(actTicket->regTicketTnxId, TicketID::Art);
+        if (!pArtTicket) {
+          throw std::runtime_error(strprintf(
+            "The Art Registration ticket with this txid [%s] referred by this Art Activation ticket is invalid",
+            actTicket->regTicketTnxId));
+        }
+
+        auto artTicket = dynamic_cast<const CArtRegTicket*>(pArtTicket.get());
+        if (!artTicket) {
+          throw std::runtime_error(strprintf(
+            "The Art Registration ticket with this txid [%s] referred by this Art Activation ticket is invalid",
+            actTicket->regTicketTnxId));
+        }
+
+        totalCopies = artTicket->totalCopies;
+        if (preReg || !ticketFound) {
+          // else if this is already confirmed ticket - skip this check, otherwise it will failed
+          verifyAvailableCopies("registration", totalCopies);
+        }
+    }
+    else if (pastelTicket->ID() == TicketID::Trade)
+    {
+        auto tradeTicket = dynamic_cast<const CArtTradeTicket*>(pastelTicket.get());
+        if (!tradeTicket) {
+          throw std::runtime_error(strprintf(
+          "The trade ticket with this txid [%s] referred by this sell ticket is invalid", artTnxId));
+        }
+
+        const std::string& ownersPastelID = tradeTicket->pastelID;
+        if (ownersPastelID != pastelID) {
+          throw std::runtime_error(strprintf(
+            "The PastelID [%s] in this ticket is not matching the PastelID [%s] in the Trade ticket with this txid [%s]",
+            pastelID, ownersPastelID, artTnxId));
+        }
+
+        totalCopies = 1;
+        if (preReg || !ticketFound) {
+          // else if this is already confirmed ticket - skip this check, otherwise it will failed
+          verifyAvailableCopies("trade", totalCopies);
+        }
+    }
+
+    if (copyNumber > totalCopies || copyNumber == 0) {
+      throw std::runtime_error(strprintf(
+        "Invalid Sell ticket - copy number [%d] cannot exceed the total number of available copies [%d] or be 0",
+        copyNumber, totalCopies));
+    }
+
+    // If this is replacement - verify that it is allowed (original ticket is not sold)
+    // If found similar ticket, replacement is possible if allowed
+    // Can be a few Sell tickets
+    const auto existingSellTickets = CArtSellTicket::FindAllTicketByArtTnxID(artTnxId);
+    for (const auto& t: existingSellTickets) {
+      if (t.signature == signature || t.copyNumber != copyNumber) {
+        continue;
+      }
+
+      if (CArtTradeTicket::CheckTradeTicketExistBySellTicket(t.m_txid)) {
+        throw std::runtime_error(strprintf(
+          "Cannot replace Sell ticket - it has been already sold. "
+          "txid - [%s] copyNumber [%d].", t.m_txid, copyNumber));
+      }
+
+      // find if it is the old ticket
+      if (m_nBlock > 0 && t.m_nBlock > m_nBlock) {
+        throw std::runtime_error(strprintf(
+          "This Sell ticket has been replaced with another ticket. "
+          "txid - [%s] copyNumber [%d].", t.m_txid, copyNumber));
+      }
+
+      if (masterNodeCtrl.masternodeSync.IsSynced()) {
+        // Validate only if both blockchain and MNs are synced
+        {
+          LOCK(cs_main);
+          chainHeight = static_cast<unsigned int>(chainActive.Height()) + 1;
+        }
+        if (t.m_nBlock + 2880 > chainHeight) {
+          // 1 block per 2.5; 4 blocks per 10 min; 24 blocks per 1h; 576 blocks per 24 h;
+          throw std::runtime_error(strprintf(
+            "Can only replace Sell ticket after 5 days. txid - [%s] copyNumber [%d].", t.m_txid, copyNumber));
+        }
+      } else {
+        throw std::runtime_error(strprintf(
+          "Can not replace the Sell ticket as master node not is not synced. "
+          "txid - [%s] copyNumber [%d].", t.m_txid, copyNumber));
+      }
+    }
+
+    return true;
 }
 
-std::string CArtSellTicket::ToJSON() const noexcept {
-  const json jsonObj {
-    {"txid",   m_txid},
-    {"height", m_nBlock},
-    {"ticket", {
-      {"type",         GetTicketName()},
-      {"version",      GetStoredVersion()},
-      {"pastelID",     pastelID},
-      {"recipientPastelID", recipientPastelID},
-      {"art_txid",     artTnxId},
-      {"copy_number",  copyNumber},
-      {"asked_price",  askedPrice},
-      {"valid_after",  activeAfter},
-      {"valid_before", activeBefore},
-      {"signature",    ed_crypto::Hex_Encode(signature.data(), signature.size())}
-    }}
-  };
-  return jsonObj.dump(4);
+std::string CArtSellTicket::ToJSON() const noexcept
+{
+    const json jsonObj {
+        {"txid",   m_txid},
+        {"height", m_nBlock},
+        {"ticket", {
+            {"type",         GetTicketName()},
+            {"version",      GetStoredVersion()},
+            {"pastelID",     pastelID},
+            {"recipientPastelID", recipientPastelID},
+            {"art_txid",     artTnxId},
+            {"copy_number",  copyNumber},
+            {"asked_price",  askedPrice},
+            {"valid_after",  activeAfter},
+            {"valid_before", activeBefore},
+            {"signature",    ed_crypto::Hex_Encode(signature.data(), signature.size())}
+        }}
+    };
+    return jsonObj.dump(4);
 }
 
-bool CArtSellTicket::FindTicketInDb(const std::string& key, CArtSellTicket& ticket) {
-  ticket.signature = {key.cbegin(), key.cend()};
-  ticket.keyTwo = key;
-  return masterNodeCtrl.masternodeTickets.FindTicket(ticket) ||
-         masterNodeCtrl.masternodeTickets.FindTicketBySecondaryKey(ticket);
+bool CArtSellTicket::FindTicketInDb(const std::string& key, CArtSellTicket& ticket)
+{
+    ticket.keyOne = key;
+    return masterNodeCtrl.masternodeTickets.FindTicket(ticket);
 }
 
-std::vector<CArtSellTicket> CArtSellTicket::FindAllTicketByPastelID(const std::string& pastelID) {
-  return masterNodeCtrl.masternodeTickets.FindTicketsByMVKey<CArtSellTicket>(pastelID);
+std::vector<CArtSellTicket> CArtSellTicket::FindAllTicketByPastelID(const std::string& pastelID)
+{
+    return masterNodeCtrl.masternodeTickets.FindTicketsByMVKey<CArtSellTicket>(pastelID);
 }
 
-std::vector<CArtSellTicket> CArtSellTicket::FindAllTicketByArtTnxID(const std::string& artTnxId) {
-  return masterNodeCtrl.masternodeTickets.FindTicketsByMVKey<CArtSellTicket>(artTnxId);
+std::vector<CArtSellTicket> CArtSellTicket::FindAllTicketByArtTnxID(const std::string& artTnxId)
+{
+    return masterNodeCtrl.masternodeTickets.FindTicketsByMVKey<CArtSellTicket>(artTnxId);
 }
 
 // CArtBuyTicket ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-CArtBuyTicket CArtBuyTicket::Create(std::string _sellTnxId, int _price,
-                                    std::string _pastelID, const SecureString& strKeyPass) {
-  CArtBuyTicket ticket(std::move(_pastelID));
+CArtBuyTicket CArtBuyTicket::Create(std::string _sellTnxId, int _price, std::string _pastelID, const SecureString& strKeyPass)
+{
+    CArtBuyTicket ticket(std::move(_pastelID));
     
-  ticket.sellTnxId = std::move(_sellTnxId);
-  ticket.price = _price;
+    ticket.sellTnxId = std::move(_sellTnxId);
+    ticket.price = _price;
     
-  ticket.GenerateTimestamp();
+    ticket.GenerateTimestamp();
     
-  const string strTicket = ticket.ToStr();
-  ticket.signature = CPastelID::Sign(
-    reinterpret_cast<const unsigned char*>(strTicket.c_str()), strTicket.size(), ticket.pastelID, strKeyPass
-  );
+    const string strTicket = ticket.ToStr();
+    ticket.signature = CPastelID::Sign(reinterpret_cast<const unsigned char*>(strTicket.c_str()), strTicket.size(), ticket.pastelID, strKeyPass);
     
-  return ticket;
+    return ticket;
 }
 
-std::string CArtBuyTicket::ToStr() const noexcept {
-  std::stringstream ss;
-  ss << pastelID;
-  ss << sellTnxId;
-  ss << price;
-  ss << m_nTimestamp;
-  return ss.str();
+std::string CArtBuyTicket::ToStr() const noexcept
+{
+    std::stringstream ss;
+    ss << pastelID;
+    ss << sellTnxId;
+    ss << price;
+    ss << m_nTimestamp;
+    return ss.str();
 }
 
-bool CArtBuyTicket::IsValid(bool preReg, int depth) const {
-  unsigned int chainHeight = 0; {
-    LOCK(cs_main);
-    chainHeight = static_cast<unsigned int>(chainActive.Height()) + 1;
-  }
-
-  // Common validations
-  std::unique_ptr<CPastelTicket> pastelTicket;
-  if (!common_validation(*this, preReg, sellTnxId, pastelTicket,
-      [](const TicketID tid) { return (tid != TicketID::Sell); },
-      "Buy", "sell", depth, price + TicketPrice(chainHeight))) {
-    throw std::runtime_error(strprintf("The Buy ticket with Sell txid [%s] is not validated", sellTnxId));
-  }
-
-  // Check the Buy ticket is already in the database
-  // (ticket transaction replay attack protection)
-  CArtBuyTicket _ticket;
-  if (FindTicketInDb(KeyOne(), _ticket)) {
-    if (preReg || // if pre reg - this is probably repeating call, so signatures can be the same
-        _ticket.signature != signature || !_ticket.IsBlock(m_nBlock) || _ticket.m_txid != m_txid) {
-      throw std::runtime_error(strprintf(
-        "The Buy ticket is already registered in blockchain [pastelID = %s]"
-        "[this ticket block = %u txid = %s; found ticket block = %u txid = %s] with sell txid [%s]",
-        pastelID, m_nBlock, m_txid, _ticket.GetBlock(), _ticket.m_txid, sellTnxId));
-    }
-  }
-
-  auto sellTicket = dynamic_cast<const CArtSellTicket*>(pastelTicket.get());
-  if (!sellTicket) {
-    throw std::runtime_error(strprintf(
-      "The sell ticket with this txid [%s] referred by this buy ticket is invalid", sellTnxId));
-  }
-
-  // Verify the pastelID of this ticket is the same to recipientPastelID in the Sell ticket
-  const std::string& recipientPastelID = sellTicket->recipientPastelID;
-  if (!recipientPastelID.empty() && recipientPastelID != pastelID) {
-    throw std::runtime_error(strprintf(
-      "The PastelID [%s] in this Buy ticket is not matching the recipientPastelID [%s] in the sell ticket with txid [%s]",
-      pastelID, recipientPastelID, sellTnxId));
-  }
-
-  // Verify Sell ticket is already or still active
-  const unsigned int height = (preReg || IsBlock(0)) ? chainHeight : m_nBlock;
-  if (height < sellTicket->activeAfter) {
-    throw std::runtime_error(strprintf(
-      "Sell ticket [%s] is only active after [%d] block height (Buy ticket block is [%d])",
-      sellTicket->GetTxId(), sellTicket->activeAfter, height));
-  }
-  if (sellTicket->activeBefore > 0 && height > sellTicket->activeBefore) {
-    throw std::runtime_error(strprintf(
-      "Sell ticket [%s] is only active before [%d] block height (Buy ticket block is [%d])",
-      sellTicket->GetTxId(), sellTicket->activeBefore, height));
-  }
-
-  // Verify that the price is correct
-  if (price < sellTicket->askedPrice) {
-    throw std::runtime_error(strprintf(
-      "The offered price [%d] is less than asked in the sell ticket [%d]", price, sellTicket->askedPrice));
-  }
-
-  // Verify that there is no another buy ticket for the same sell ticket
-  // or if there are, it is older then 1h and there is no trade ticket for it
-  // Can be a few old buy tickets
-  const auto existingBuyTickets = CArtBuyTicket::FindAllTicketBySellTnxID(sellTnxId);
-  for (const auto& t: existingBuyTickets) {
-    if (t.signature == signature) {
-      continue;
-    }
-
-    // find if it is the old ticket
-    if (m_nBlock > 0 && t.m_nBlock > m_nBlock) {
-      throw std::runtime_error(strprintf(
-        "This Buy ticket has been replaced with another ticket. txid - [%s].", t.m_txid));
-    }
-
-    if (masterNodeCtrl.masternodeSync.IsSynced()) {
-      // Validate only if both blockchain and MNs are synced
-      {
+bool CArtBuyTicket::IsValid(bool preReg, int depth) const
+{
+    unsigned int chainHeight = 0;
+    {
         LOCK(cs_main);
         chainHeight = static_cast<unsigned int>(chainActive.Height()) + 1;
-      }
-      if (t.m_nBlock + masterNodeCtrl.MaxBuyTicketAge > chainHeight) {
+    }
+
+    // Common validations
+    std::unique_ptr<CPastelTicket> pastelTicket;
+    if (!common_validation(*this, preReg, sellTnxId, pastelTicket,
+        [](const TicketID tid) { return (tid != TicketID::Sell); },
+        "Buy", "sell", depth, price + TicketPrice(chainHeight))) {
+      throw std::runtime_error(strprintf("The Buy ticket with Sell txid [%s] is not validated", sellTnxId));
+    }
+
+    // Check the Buy ticket is already in the database
+    // (ticket transaction replay attack protection)
+    CArtBuyTicket _ticket;
+    if (FindTicketInDb(KeyOne(), _ticket)) {
+      if (preReg || // if pre reg - this is probably repeating call, so signatures can be the same
+          _ticket.signature != signature || !_ticket.IsBlock(m_nBlock) || _ticket.m_txid != m_txid) {
         throw std::runtime_error(strprintf(
-          "Buy ticket [%s] already exists and is not yet 1h old for this sell ticket [%s]"
-          "[this ticket block = %u txid = %s; found ticket block = %u txid = %s]",
-          t.m_txid, sellTnxId, m_nBlock, m_txid, t.m_nBlock, t.m_txid));
+          "The Buy ticket is already registered in blockchain [pastelID = %s]"
+          "[this ticket block = %u txid = %s; found ticket block = %u txid = %s] with sell txid [%s]",
+          pastelID, m_nBlock, m_txid, _ticket.GetBlock(), _ticket.m_txid, sellTnxId));
       }
-    } else {
-      throw std::runtime_error(strprintf(
-        "Can not replace the Buy ticket as master node not is not synced. txid - [%s].", t.m_txid));
     }
-    
-    if (CArtTradeTicket::CheckTradeTicketExistByBuyTicket(t.m_txid)) {
+
+    auto sellTicket = dynamic_cast<const CArtSellTicket*>(pastelTicket.get());
+    if (!sellTicket) {
       throw std::runtime_error(strprintf(
-        "The sell ticket you are trying to buy [%s] is already sold", sellTnxId));
+        "The sell ticket with this txid [%s] referred by this buy ticket is invalid", sellTnxId));
     }
-  }
 
-  return true;
+    // Verify the pastelID of this ticket is the same to recipientPastelID in the Sell ticket
+    const std::string& recipientPastelID = sellTicket->recipientPastelID;
+    if (!recipientPastelID.empty() && recipientPastelID != pastelID) {
+      throw std::runtime_error(strprintf(
+        "The PastelID [%s] in this Buy ticket is not matching the recipientPastelID [%s] in the sell ticket with txid [%s]",
+        pastelID, recipientPastelID, sellTnxId));
+    }
+
+    // Verify Sell ticket is already or still active
+    const unsigned int height = (preReg || IsBlock(0)) ? chainHeight : m_nBlock;
+    if (height < sellTicket->activeAfter)
+    {
+      throw std::runtime_error(strprintf(
+        "Sell ticket [%s] is only active after [%d] block height (Buy ticket block is [%d])",
+        sellTicket->GetTxId(), sellTicket->activeAfter, height));
+    }
+    if (sellTicket->activeBefore > 0 && height > sellTicket->activeBefore)
+    {
+      throw std::runtime_error(strprintf(
+        "Sell ticket [%s] is only active before [%d] block height (Buy ticket block is [%d])",
+        sellTicket->GetTxId(), sellTicket->activeBefore, height));
+    }
+
+    // Verify that the price is correct
+    if (price < sellTicket->askedPrice)
+    {
+      throw std::runtime_error(strprintf(
+        "The offered price [%d] is less than asked in the sell ticket [%d]", price, sellTicket->askedPrice));
+    }
+
+    // Verify that there is no another buy ticket for the same sell ticket
+    // or if there are, it is older then 1h and there is no trade ticket for it
+    // Can be a few old buy tickets
+    const auto existingBuyTickets = CArtBuyTicket::FindAllTicketBySellTnxID(sellTnxId);
+    for (const auto& t: existingBuyTickets) {
+      if (t.signature == signature) {
+        continue;
+      }
+
+      if (CArtTradeTicket::CheckTradeTicketExistByBuyTicket(t.m_txid)) {
+        throw std::runtime_error(strprintf(
+          "The sell ticket you are trying to buy [%s] is already sold", sellTnxId));
+      }
+
+      // find if it is the old ticket
+      if (m_nBlock > 0 && t.m_nBlock > m_nBlock) {
+        throw std::runtime_error(strprintf(
+          "This Buy ticket has been replaced with another ticket. txid - [%s].", t.m_txid));
+      }
+
+      if (masterNodeCtrl.masternodeSync.IsSynced()) {
+        // Validate only if both blockchain and MNs are synced
+        {
+          LOCK(cs_main);
+          chainHeight = static_cast<unsigned int>(chainActive.Height()) + 1;
+        }
+        if (t.m_nBlock + masterNodeCtrl.MaxBuyTicketAge > chainHeight) {
+          throw std::runtime_error(strprintf(
+            "Buy ticket [%s] already exists and is not yet 1h old for this sell ticket [%s]"
+            "[this ticket block = %u txid = %s; found ticket block = %u txid = %s]",
+            t.m_txid, sellTnxId, m_nBlock, m_txid, t.m_nBlock, t.m_txid));
+        }
+      } else {
+        throw std::runtime_error(strprintf(
+          "Can not replace the Buy ticket as master node not is not synced. txid - [%s].", t.m_txid));
+      }
+    }
+
+    return true;
 }
 
-std::string CArtBuyTicket::ToJSON() const noexcept {
-  const json jsonObj {
-    {"txid",   m_txid},
-    {"height", m_nBlock},
-    {"ticket", {
-      {"type",      GetTicketName()},
-      {"version",   GetStoredVersion()},
-      {"pastelID",  pastelID},
-      {"sell_txid", sellTnxId},
-      {"price",     price},
-      {"signature", ed_crypto::Hex_Encode(signature.data(), signature.size())}
-    }}
-  };
-  return jsonObj.dump(4);
+std::string CArtBuyTicket::ToJSON() const noexcept
+{
+    const json jsonObj {
+        {"txid",   m_txid},
+        {"height", m_nBlock},
+        {"ticket", {
+            {"type",      GetTicketName()},
+            {"version",   GetStoredVersion()},
+            {"pastelID",  pastelID},
+            {"sell_txid", sellTnxId},
+            {"price",     price},
+            {"signature", ed_crypto::Hex_Encode(signature.data(), signature.size())}
+        }}
+    };
+    return jsonObj.dump(4);
 }
 
-bool CArtBuyTicket::FindTicketInDb(const std::string& key, CArtBuyTicket& ticket) {
-  ticket.signature = {key.cbegin(), key.cend()};
-  return masterNodeCtrl.masternodeTickets.FindTicket(ticket);
+bool CArtBuyTicket::FindTicketInDb(const std::string& key, CArtBuyTicket& ticket)
+{
+    ticket.signature = {key.cbegin(), key.cend()};
+    return masterNodeCtrl.masternodeTickets.FindTicket(ticket);
 }
 
-std::vector<CArtBuyTicket> CArtBuyTicket::FindAllTicketByPastelID(const std::string& pastelID) {
-  return masterNodeCtrl.masternodeTickets.FindTicketsByMVKey<CArtBuyTicket>(pastelID);
+std::vector<CArtBuyTicket> CArtBuyTicket::FindAllTicketByPastelID(const std::string& pastelID)
+{
+    return masterNodeCtrl.masternodeTickets.FindTicketsByMVKey<CArtBuyTicket>(pastelID);
 }
 
-std::vector<CArtBuyTicket> CArtBuyTicket::FindAllTicketBySellTnxID(const std::string& sellTnxId) {
-  return masterNodeCtrl.masternodeTickets.FindTicketsByMVKey<CArtBuyTicket>(sellTnxId);
+std::vector<CArtBuyTicket> CArtBuyTicket::FindAllTicketBySellTnxID(const std::string& sellTnxId)
+{
+    return masterNodeCtrl.masternodeTickets.FindTicketsByMVKey<CArtBuyTicket>(sellTnxId);
 }
 
 // CArtTradeTicket ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
