@@ -1039,21 +1039,20 @@ bool CArtSellTicket::IsValid(bool preReg, int depth) const
           "txid - [%s] copyNumber [%d].", t.m_txid, copyNumber));
       }
 
-      if (masterNodeCtrl.masternodeSync.IsSynced()) {
-        // Validate only if both blockchain and MNs are synced
-        {
-          LOCK(cs_main);
-          chainHeight = static_cast<unsigned int>(chainActive.Height()) + 1;
-        }
-        if (t.m_nBlock + 2880 > chainHeight) {
-          // 1 block per 2.5; 4 blocks per 10 min; 24 blocks per 1h; 576 blocks per 24 h;
-          throw std::runtime_error(strprintf(
-            "Can only replace Sell ticket after 5 days. txid - [%s] copyNumber [%d].", t.m_txid, copyNumber));
-        }
-      } else {
+      // Validate only if both blockchain and MNs are synced
+      if (!masterNodeCtrl.masternodeSync.IsSynced()) {
         throw std::runtime_error(strprintf(
           "Can not replace the Sell ticket as master node not is not synced. "
           "txid - [%s] copyNumber [%d].", t.m_txid, copyNumber));
+      }
+      {
+        LOCK(cs_main);
+        chainHeight = static_cast<unsigned int>(chainActive.Height()) + 1;
+      }
+      if (t.m_nBlock + 2880 > chainHeight) {
+        // 1 block per 2.5; 4 blocks per 10 min; 24 blocks per 1h; 576 blocks per 24 h;
+        throw std::runtime_error(strprintf(
+          "Can only replace Sell ticket after 5 days. txid - [%s] copyNumber [%d].", t.m_txid, copyNumber));
       }
     }
     
@@ -1217,7 +1216,7 @@ bool CArtBuyTicket::IsValid(bool preReg, int depth) const
       throw std::runtime_error(strprintf(
         "The offered price [%d] is less than asked in the sell ticket [%d]", price, sellTicket->askedPrice));
     }
-
+    
     return true;
 }
 
