@@ -873,13 +873,13 @@ CArtSellTicket CArtSellTicket::Create(
     ticket.GenerateTimestamp();
     
     //NOTE: Sell ticket for Trade ticket will always has copyNumber = 1
-    ticket.copyNumber = _copy_number > 0 ?
+    ticket.copyNumber = _copy_number > 0 ? 
         _copy_number : static_cast<decltype(ticket.copyNumber)>(CArtSellTicket::FindAllTicketByArtTnxID(ticket.artTnxId).size()) + 1;
-    ticket.key = ticket.artTnxId + ":" + std::to_string(ticket.copyNumber);
-
+    ticket.key = ticket.artTnxId + ":" + to_string(ticket.copyNumber);
+    
     std::string strTicket = ticket.ToStr();
     ticket.signature = CPastelID::Sign(reinterpret_cast<const unsigned char*>(strTicket.c_str()), strTicket.size(), ticket.pastelID, strKeyPass);
-
+    
     return ticket;
 }
 
@@ -905,7 +905,7 @@ bool CArtSellTicket::IsValid(bool preReg, int depth) const
         chainHeight = static_cast<unsigned int>(chainActive.Height()) + 1;
     }
     
-    // Common validations
+    // 0. Common validations
     std::unique_ptr<CPastelTicket> pastelTicket;
     if (!common_validation(*this, preReg, artTnxId, pastelTicket,
         [](const TicketID tid) { return (tid != TicketID::Activate && tid != TicketID::Trade); },
@@ -926,7 +926,8 @@ bool CArtSellTicket::IsValid(bool preReg, int depth) const
 
     bool ticketFound = false;
     CArtSellTicket existingTicket;
-    if (FindTicketInDb(KeyOne(), existingTicket)) {
+    if (CArtSellTicket::FindTicketInDb(KeyOne(), existingTicket))
+    {
         if (existingTicket.signature == signature &&
             existingTicket.IsBlock(m_nBlock) &&
             existingTicket.m_txid == m_txid) // if this ticket is already in the DB
@@ -947,20 +948,20 @@ bool CArtSellTicket::IsValid(bool preReg, int depth) const
           strTicket, artTnxId, soldCopies, totalCopies));
       }
     };
-    if (pastelTicket->ID() == TicketID::Activate) {
+    if (pastelTicket->ID() == TicketID::Activate)
+    {
         auto actTicket = dynamic_cast<const CArtActivateTicket*>(pastelTicket.get());
         if (!actTicket)
         {
           throw std::runtime_error(strprintf(
-          "The activation ticket with this txid [%s] referred by this sell ticket is invalid", artTnxId));
+            "The activation ticket with this txid [%s] referred by this sell ticket is invalid", artTnxId));
         }
-
         const std::string& artistPastelID = actTicket->pastelID;
         if (artistPastelID != pastelID)
         {
           throw std::runtime_error(strprintf(
-            "The PastelID [%s] in this ticket is not matching the Artist's PastelID [%s] "
-            "in the Art Activation ticket with this txid [%s]", pastelID, artistPastelID, artTnxId));
+            "The PastelID [%s] in this ticket is not matching the Artist's PastelID [%s] in the Art Activation ticket with this txid [%s]",
+            pastelID, artistPastelID, artTnxId));
         }
 
         // Get Registration ticket
@@ -983,8 +984,7 @@ bool CArtSellTicket::IsValid(bool preReg, int depth) const
         totalCopies = artTicket->totalCopies;
 
         if (preReg || !ticketFound)
-        {
-          // else if this is already confirmed ticket - skip this check, otherwise it will failed
+        { //else if this is already confirmed ticket - skip this check, otherwise it will failed
           verifyAvailableCopies("registration", totalCopies);
         }
     }
@@ -1008,8 +1008,7 @@ bool CArtSellTicket::IsValid(bool preReg, int depth) const
         totalCopies = 1;
 
         if (preReg || !ticketFound)
-        {
-          // else if this is already confirmed ticket - skip this check, otherwise it will failed
+        { //else if this is already confirmed ticket - skip this check, otherwise it will failed
           verifyAvailableCopies("trade", totalCopies);
         }
     }
@@ -1066,20 +1065,20 @@ bool CArtSellTicket::IsValid(bool preReg, int depth) const
 std::string CArtSellTicket::ToJSON() const noexcept
 {
     const json jsonObj {
-        {"txid",   m_txid},
-        {"height", m_nBlock},
-        {"ticket", {
-            {"type",         GetTicketName()},
-            {"version",      GetStoredVersion()},
-            {"pastelID",     pastelID},
-            {"recipientPastelID", recipientPastelID},
-            {"art_txid",     artTnxId},
-            {"copy_number",  copyNumber},
-            {"asked_price",  askedPrice},
-            {"valid_after",  activeAfter},
-            {"valid_before", activeBefore},
-            {"signature",    ed_crypto::Hex_Encode(signature.data(), signature.size())}
-        }}
+            {"txid", m_txid},
+            {"height", m_nBlock},
+            {"ticket", {
+                {"type", GetTicketName()},
+                {"version", GetStoredVersion()},
+                {"pastelID", pastelID},
+                {"recipientPastelID", recipientPastelID},
+                {"art_txid", artTnxId},
+                {"copy_number", copyNumber},
+                {"asked_price", askedPrice},
+                {"valid_after", activeAfter},
+                {"valid_before", activeBefore},
+                {"signature", ed_crypto::Hex_Encode(signature.data(), signature.size())}
+            }}
     };
     return jsonObj.dump(4);
 }
@@ -1110,7 +1109,7 @@ CArtBuyTicket CArtBuyTicket::Create(std::string _sellTnxId, int _price, std::str
     
     ticket.GenerateTimestamp();
     
-    const string strTicket = ticket.ToStr();
+    string strTicket = ticket.ToStr();
     ticket.signature = CPastelID::Sign(reinterpret_cast<const unsigned char*>(strTicket.c_str()), strTicket.size(), ticket.pastelID, strKeyPass);
     
     return ticket;
@@ -1134,7 +1133,7 @@ bool CArtBuyTicket::IsValid(bool preReg, int depth) const
         chainHeight = static_cast<unsigned int>(chainActive.Height()) + 1;
     }
 
-    // Common validations
+    // 0. Common validations
     std::unique_ptr<CPastelTicket> pastelTicket;
     if (!common_validation(*this, preReg, sellTnxId, pastelTicket,
         [](const TicketID tid) { return (tid != TicketID::Sell); },
@@ -1156,7 +1155,8 @@ bool CArtBuyTicket::IsValid(bool preReg, int depth) const
     }
 
     auto sellTicket = dynamic_cast<const CArtSellTicket*>(pastelTicket.get());
-    if (!sellTicket) {
+    if (!sellTicket)
+    {
       throw std::runtime_error(strprintf(
         "The sell ticket with this txid [%s] referred by this buy ticket is invalid", sellTnxId));
     }
@@ -1235,16 +1235,16 @@ bool CArtBuyTicket::IsValid(bool preReg, int depth) const
 std::string CArtBuyTicket::ToJSON() const noexcept
 {
     const json jsonObj {
-        {"txid",   m_txid},
-        {"height", m_nBlock},
-        {"ticket", {
-            {"type",      GetTicketName()},
-            {"version",   GetStoredVersion()},
-            {"pastelID",  pastelID},
-            {"sell_txid", sellTnxId},
-            {"price",     price},
-            {"signature", ed_crypto::Hex_Encode(signature.data(), signature.size())}
-        }}
+            {"txid", m_txid},
+            {"height", m_nBlock},
+            {"ticket", {
+                {"type", GetTicketName()},
+                {"version", GetStoredVersion()},
+                {"pastelID", pastelID},
+                {"sell_txid", sellTnxId},
+                {"price", price},
+                {"signature", ed_crypto::Hex_Encode(signature.data(), signature.size())}
+            }}
     };
     return jsonObj.dump(4);
 }
