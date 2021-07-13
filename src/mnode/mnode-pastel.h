@@ -449,6 +449,8 @@ public:
     static CArtBuyTicket Create(std::string _sellTnxId, int _price, std::string _pastelID, const SecureString& strKeyPass);
     static bool FindTicketInDb(const std::string& key, CArtBuyTicket& ticket);
 
+    static bool CheckBuyTicketExistBySellTicket(const std::string& _sellTnxId);
+
     static std::vector<CArtBuyTicket> FindAllTicketByPastelID(const std::string& pastelID);
     static std::vector<CArtBuyTicket> FindAllTicketBySellTnxID(const std::string& sellTnxId);
 };

@@ -1007,18 +1007,18 @@ bool CArtSellTicket::IsValid(bool preReg, int depth) const
 
         // 3.b Verify there is no already trade ticket referring to that trade ticket
         if (preReg || !ticketFound)
-        { //else if this is already confirmed ticket - skip this check, otherwise it will failed
+        {  //else if this is already confirmed ticket - skip this check, otherwise it will failed
           verifyAvailableCopies("trade", totalCopies);
         }
     }
-
+    
     if (copyNumber > totalCopies || copyNumber == 0)
     {
       throw std::runtime_error(strprintf(
         "Invalid Sell ticket - copy number [%d] cannot exceed the total number of available copies [%d] or be 0",
         copyNumber, totalCopies));
     }
-
+    
     //4. If this is replacement - verify that it is allowed (original ticket is not sold)
     // (ticket transaction replay attack protection)
     // If found similar ticket, replacement is possible if allowed
@@ -1059,7 +1059,7 @@ bool CArtSellTicket::IsValid(bool preReg, int depth) const
           "txid - [%s] copyNumber [%d].", t.m_txid, copyNumber));
       }
     }
-
+    
     return true;
 }
 
@@ -1154,7 +1154,7 @@ bool CArtBuyTicket::IsValid(bool preReg, int depth) const
           pastelID, m_nBlock, m_txid, _ticket.GetBlock(), _ticket.m_txid, sellTnxId));
       }
     }
-
+    
     auto sellTicket = dynamic_cast<const CArtSellTicket*>(pastelTicket.get());
     if (!sellTicket)
     {
@@ -1170,7 +1170,7 @@ bool CArtBuyTicket::IsValid(bool preReg, int depth) const
         pastelID, recipientPastelID, sellTnxId));
     }
 
-    // Verify Sell ticket is already or still active
+    // 2. Verify Sell ticket is already or still active
     const unsigned int height = (preReg || IsBlock(0)) ? chainHeight : m_nBlock;
     if (height < sellTicket->activeAfter)
     {
@@ -1185,7 +1185,7 @@ bool CArtBuyTicket::IsValid(bool preReg, int depth) const
         sellTicket->GetTxId(), sellTicket->activeBefore, height));
     }
 
-    // Verify that the price is correct
+    // 3. Verify that the price is correct
     if (price < sellTicket->askedPrice)
     {
       throw std::runtime_error(strprintf(
@@ -1254,6 +1254,13 @@ bool CArtBuyTicket::FindTicketInDb(const std::string& key, CArtBuyTicket& ticket
 {
     ticket.signature = {key.cbegin(), key.cend()};
     return masterNodeCtrl.masternodeTickets.FindTicket(ticket);
+}
+
+bool CArtBuyTicket::CheckBuyTicketExistBySellTicket(const std::string& _sellTnxId)
+{
+    CArtBuyTicket _ticket;
+    _ticket.sellTnxId = _sellTnxId;
+    return masterNodeCtrl.masternodeTickets.CheckTicketExist(_ticket);
 }
 
 std::vector<CArtBuyTicket> CArtBuyTicket::FindAllTicketByPastelID(const std::string& pastelID)
