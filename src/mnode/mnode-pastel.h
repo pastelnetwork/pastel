@@ -330,7 +330,7 @@ public:
     unsigned short copyNumber{};
     std::vector<unsigned char> signature;
 
-    std::string keyOne;
+    std::string key;
 
 public:
     CArtSellTicket() = default;
@@ -342,13 +342,13 @@ public:
     TicketID ID() const noexcept override { return TicketID::Sell; }
     static TicketID GetID() { return TicketID::Sell; }
 
-    std::string KeyOne() const noexcept override { return !keyOne.empty() ? keyOne : artTnxId + ":" + std::to_string(copyNumber); }
+    std::string KeyOne() const noexcept override { return !key.empty() ? key : artTnxId + ":" + std::to_string(copyNumber); }
     std::string MVKeyOne() const noexcept override { return pastelID; }
     std::string MVKeyTwo() const noexcept override { return artTnxId; }
 
     bool HasMVKeyOne() const noexcept override { return true; }
     bool HasMVKeyTwo() const noexcept override { return true; }
-    void SetKeyOne(std::string val) override { keyOne = std::move(val); }
+    void SetKeyOne(std::string val) override { key = std::move(val); }
     
     std::string ToJSON() const noexcept override;
     std::string ToStr() const noexcept override;
@@ -376,7 +376,7 @@ public:
     }
     
     static CArtSellTicket Create(
-        std::string _artTnxId, int _askedPrice, int _validAfter, int _validBefore, int _copyNumber,
+        std::string _artTnxId, int _askedPrice, int _validAfter, int _validBefore, int _copy_number,
         std::string recipientPastelID, std::string _pastelID, const SecureString& strKeyPass);
     static bool FindTicketInDb(const std::string& key, CArtSellTicket& ticket);
     
