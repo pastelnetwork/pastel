@@ -101,6 +101,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         self.trade_ticket1_buy_ticket_txid = None
         self.trade_ticket1_trade_ticket_txid = None
 
+        self.art_copy_price = 100000
         self.id_ticket_price = 10
         self.art_ticket_price = 10
         self.act_ticket_price = 10
@@ -108,7 +109,6 @@ class MasterNodeTicketsTest(MasterNodeCommon):
 
         self.royalty = 0
         self.is_green = True
-        self.art_copy_price = 100000
 
         self.test_high_heights = False
 
@@ -1451,8 +1451,8 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         except JSONRPCException as e:
             self.errorString = e.error['message']
             print(self.errorString)
-        assert_equal("Buy ticket ["+self.art_ticket1_buy_ticket_txid+"] already exists for this sell ticket [" +
-                     self.art_ticket1_sell_ticket_txid+"]" in self.errorString, True)
+        assert_equal("Buy ticket [" + self.art_ticket1_buy_ticket_txid + "] already exists and is not yet 1h old "
+                     "for this sell ticket [" + self.art_ticket1_sell_ticket_txid + "]" in self.errorString, True)
 
         # sends coins back, keep 1 PSL to cover transaction fee
         mining_node_address1 = self.nodes[self.mining_node_num].getnewaddress()
@@ -1489,7 +1489,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         self.sync_all()
         self.nodes[self.mining_node_num].generate(1)
         self.sync_all()
-        coins_before = math.floor(self.nodes[self.non_mn4].getbalance())
+        coins_before = self.nodes[self.non_mn4].getbalance()
         print(coins_before)
 
         # Check there is Sell ticket with this sellTnxId
@@ -1535,7 +1535,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         print(sellers_pastel_id)
         sellers_address = self.nodes[self.non_mn3].tickets("find", "id", sellers_pastel_id)["ticket"]["address"]
         print(sellers_address)
-        artists_coins_before = math.floor(self.nodes[self.non_mn3].getreceivedbyaddress(sellers_address))
+        artists_coins_before = self.nodes[self.non_mn3].getreceivedbyaddress(sellers_address)
 
         # consolidate funds into single address
         balance = self.nodes[self.non_mn4].getbalance()
@@ -1551,21 +1551,21 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         self.__wait_for_ticket_tnx()
 
         # check correct amount of change and correct amount spent
-        coins_after = math.floor(self.nodes[self.non_mn4].getbalance())
+        coins_after = self.nodes[self.non_mn4].getbalance()
         print(coins_before)
         print(coins_after)
         print(f"trade ticket price - {self.trade_ticket_price}")
         # ticket cost is trade ticket price, art cost is art_copy_price
-        assert_equal(coins_after, coins_before - self.trade_ticket_price - self.art_copy_price)
+        assert_true(math.isclose(coins_after, coins_before - self.trade_ticket_price - self.art_copy_price, rel_tol=0.01))
 
         # check seller gets correct amount
-        artists_coins_after = math.floor(self.nodes[self.non_mn3].getreceivedbyaddress(sellers_address))
+        artists_coins_after = self.nodes[self.non_mn3].getreceivedbyaddress(sellers_address)
         artists_coins_expected_to_receive = self.art_copy_price
         if self.is_green:
             artists_coins_expected_to_receive -= self.art_copy_price * 2 / 100
         print(artists_coins_before)
         print(artists_coins_after)
-        assert_equal(artists_coins_after - artists_coins_before, math.floor(artists_coins_expected_to_receive))
+        assert_true(math.isclose(artists_coins_after - artists_coins_before, artists_coins_expected_to_receive, rel_tol=0.01))
 
         # from another node - get ticket transaction and check
         #   - there are 3 posiible outputs to seller, royalty and green adresses
@@ -1603,10 +1603,10 @@ class MasterNodeTicketsTest(MasterNodeCommon):
                     green_fee = amount
                     print(f"trade transaction to green's address - {amount}")
         print(f"trade transiction multisig fee_amount - {multi_fee}")
-        assert(math.isclose(seller_amount, expected_seller_amount))
-        assert(math.isclose(royalty_fee, expected_royalty_fee))
-        assert(math.isclose(green_fee, expected_green_fee))
-        assert(math.isclose(seller_amount + royalty_fee + green_fee, self.art_copy_price))
+        assert_true(math.isclose(seller_amount, expected_seller_amount))
+        assert_true(math.isclose(royalty_fee, expected_royalty_fee))
+        assert_true(math.isclose(green_fee, expected_green_fee))
+        assert_true(math.isclose(seller_amount + royalty_fee + green_fee, self.art_copy_price))
         assert_equal(multi_fee, self.id_ticket_price)
 
         self.nodes[self.mining_node_num].sendtoaddress(self.nonmn4_address1, cover_price, "", "", False)
