@@ -1022,7 +1022,7 @@ bool CArtSellTicket::IsValid(bool preReg, int depth) const
     // Can be a few Sell tickets
     const auto existingSellTickets = CArtSellTicket::FindAllTicketByArtTnxID(artTnxId);
     for (const auto& t: existingSellTickets) {
-      if (t.signature == signature || t.copyNumber != copyNumber) {
+      if (t.IsBlock(m_nBlock) || t.m_txid == m_txid || t.copyNumber != copyNumber) {
         continue;
       }
 
