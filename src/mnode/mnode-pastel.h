@@ -303,21 +303,20 @@ public:
 
 // Art Trade Tickets /////////////////////////////////////////////////////////////////////////////////////////////////////
 /*
-  "ticket": {
-    "type": "art-sell",
-    "version": "",
-    "pastelID": "",          // PastelID of the art owner - either 1) an original artist; or 2) a previous buyer,
-                             // should be the same in either 1) art activation ticket or 2) trade ticket
-    "recipientPastelID": "", // PastelID of the recipient
-                             // should be the same in either 1) art activation ticket or 2) trade ticket
-    "art_txid": "",          // txid with either 1) art activation ticket or 2) trade ticket in it
-    "asked_price": "",
-    "valid_after": "",
-    "valid_before": "",
-    "signature": ""
-  }
-*/
-
+	"ticket": {
+		"type": "art-sell",
+		"pastelID": "",          //PastelID of the art owner - either 1) an original artist; or 2) a previous buyer,
+		                         //should be the same in either 1) art activation ticket or 2) trade ticket
+        "recipientPastelID": "", //PastelID of the recipient
+                                 //should be the same in either 1) art activation ticket or 2) trade ticket
+		"art_txid": "",          //txid with either 1) art activation ticket or 2) trade ticket in it
+		"asked_price": "",
+		"valid_after": "",
+		"valid_before": "",
+		"reserved": "",
+		"signature": ""
+	},
+ */
 class CArtSellTicket : public CPastelTicket
 {
 public:
@@ -386,17 +385,16 @@ public:
 };
 
 /*
-  "ticket": {
-    "type": "buy",
-    "version": "",
-    "pastelID": "",     // PastelID of the buyer
-    "sell_txid": "",    // txid with sale ticket
-    "price": "",
-    "reserved": "",
-    "signature": ""
-  }
-*/
-
+	"ticket": {
+		"type": "buy",
+        "version": "",
+		"pastelID": "",     //PastelID of the buyer
+		"sell_txid": "",    //txid with sale ticket
+		"price": "",
+		"reserved": "",
+		"signature": ""
+	},
+ */
 class CArtBuyTicket : public CPastelTicket
 {
 public:
@@ -418,10 +416,10 @@ public:
 
     std::string KeyOne() const noexcept override { return sellTnxId; } // this is the latest (active) buy ticket for this sell ticket
     std::string MVKeyOne() const noexcept override { return pastelID; }
-    //std::string MVKeyTwo() const noexcept override { return sellTnxId; } // these are all buy (1 active and many inactive) tickets for this sell ticket
+    //    std::string MVKeyTwo() const override { return sellTnxId; } // these are all buy (1 active and many inactive) tickets for this sell ticket
     
     bool HasMVKeyOne() const noexcept override { return true; }
-    //bool HasMVKeyTwo() const noexcept override { return true; }
+    bool HasMVKeyTwo() const noexcept override { return false; }
     void SetKeyOne(std::string val) override { sellTnxId = std::move(val); }
 
     CAmount TicketPrice(const unsigned int nHeight) const noexcept override { return std::max(10u, price / 100); }
@@ -457,19 +455,18 @@ public:
 };
 
 /*
-  "ticket": {
-    "type": "trade",
-    "version": "",
-    "pastelID": "",     // PastelID of the buyer
-    "sell_txid": "",    // txid with sale ticket
-    "buy_txid": "",     // txid with buy ticket
-    "art_txid": "",     // txid with either 1) art activation ticket or 2) trade ticket in it
-    "price": "",
-    "reserved": "",
-    "signature": ""
-  }
-*/
-
+	"ticket": {
+		"type": "trade",
+        "version": "",
+		"pastelID": "",     //PastelID of the buyer
+		"sell_txid": "",    //txid with sale ticket
+		"buy_txid": "",     //txid with buy ticket
+		"art_txid": "",     //txid with either 1) art activation ticket or 2) trade ticket in it
+		"price": "",
+		"reserved": "",
+		"signature": ""
+	},
+ */
 class CArtTradeTicket : public CPastelTicket
 {
 public:
