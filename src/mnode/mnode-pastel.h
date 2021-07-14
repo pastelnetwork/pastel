@@ -305,10 +305,11 @@ public:
 /*
 	"ticket": {
 		"type": "art-sell",
+		"version": "",
 		"pastelID": "",          //PastelID of the art owner - either 1) an original artist; or 2) a previous buyer,
 		                         //should be the same in either 1) art activation ticket or 2) trade ticket
-        "recipientPastelID": "", //PastelID of the recipient
-                                 //should be the same in either 1) art activation ticket or 2) trade ticket
+		"recipientPastelID": "", //PastelID of the recipient
+		                         //should be the same in either 1) art activation ticket or 2) trade ticket
 		"art_txid": "",          //txid with either 1) art activation ticket or 2) trade ticket in it
 		"asked_price": "",
 		"valid_after": "",
@@ -387,7 +388,7 @@ public:
 /*
 	"ticket": {
 		"type": "buy",
-        "version": "",
+		"version": "",
 		"pastelID": "",     //PastelID of the buyer
 		"sell_txid": "",    //txid with sale ticket
 		"price": "",
@@ -416,7 +417,7 @@ public:
 
     std::string KeyOne() const noexcept override { return sellTnxId; } // this is the latest (active) buy ticket for this sell ticket
     std::string MVKeyOne() const noexcept override { return pastelID; }
-    //    std::string MVKeyTwo() const override { return sellTnxId; } // these are all buy (1 active and many inactive) tickets for this sell ticket
+    //    std::string MVKeyTwo() const override {return sellTnxId;} // these are all buy (1 active and many inactive) tickets for this sell ticket
     
     bool HasMVKeyOne() const noexcept override { return true; }
     bool HasMVKeyTwo() const noexcept override { return false; }
@@ -457,7 +458,7 @@ public:
 /*
 	"ticket": {
 		"type": "trade",
-        "version": "",
+		"version": "",
 		"pastelID": "",     //PastelID of the buyer
 		"sell_txid": "",    //txid with sale ticket
 		"buy_txid": "",     //txid with buy ticket
