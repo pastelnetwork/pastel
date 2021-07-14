@@ -2017,7 +2017,7 @@ As json rpc
             strKeyPass = params[4].get_str().c_str();
             CChangeUsernameTicket changeUsernameTicket = CChangeUsernameTicket::Create(pastelID, username, strKeyPass);
             std::string txid = CPastelTicketProcessor::SendTicket(changeUsernameTicket);
-            mnObj.pushKV(RPC_KEY_TXID, txid);
+            mnObj.pushKV(RPC_KEY_TXID, std::move(txid));
 		}
 		return mnObj;
 	}

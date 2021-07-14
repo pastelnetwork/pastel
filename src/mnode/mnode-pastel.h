@@ -641,9 +641,13 @@ public:
 public:
     CChangeUsernameTicket() = default;
 
-	explicit CChangeUsernameTicket(std::string _pastelID) :
-        pastelID(std::move(_pastelID))
+    explicit CChangeUsernameTicket(std::string _pastelID, std::string _username) :
+        pastelID(std::move(_pastelID)), username(std::move(_username))
     {}
+
+    TicketID ID() const noexcept override { return TicketID::Username; }
+    static TicketID GetID() { return TicketID::Username; }
+
     std::string KeyOne() const noexcept override { return username; }
     std::string KeyTwo() const noexcept override { return pastelID; }
 
@@ -653,18 +657,9 @@ public:
 
     void SetKeyOne(std::string val) override { username = std::move(val); }
 
-    static CChangeUsernameTicket Create(std::string _pastelID, std::string _username, const SecureString& strKeyPass);
-    
-    static bool FindTicketInDb(const std::string& key, CChangeUsernameTicket& ticket);
-    
-    CAmount TicketPrice(const unsigned int nHeight) const noexcept override { return fee; }
-
-    TicketID ID() const noexcept override { return TicketID::Username; }
-    static TicketID GetID() { return TicketID::Username; }
-
     std::string ToJSON() const noexcept override;
     std::string ToStr() const noexcept override;
-
+    CAmount TicketPrice(const unsigned int nHeight) const noexcept override { return fee; }
     bool IsValid(bool preReg, int depth) const override;
 
     void SerializationOp(CDataStream& s, const SERIALIZE_ACTION ser_action) override
@@ -683,6 +678,9 @@ public:
         READWRITE(m_txid);
         READWRITE(m_nBlock);
     }
+
+    static CChangeUsernameTicket Create(std::string _pastelID, std::string _username, const SecureString& strKeyPass);    
+    static bool FindTicketInDb(const std::string& key, CChangeUsernameTicket& ticket);
 
     /** Some general checks to see if the username is bad. Below cases will be considered as bad Username
     *     - Contains characters that is different than upper and lowercase Latin characters and numbers
