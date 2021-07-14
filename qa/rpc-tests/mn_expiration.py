@@ -234,7 +234,8 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         except JSONRPCException as e:
             self.errorString = e.error['message']
             print(self.errorString)
-        assert_equal("This Buy ticket has been replaced with another ticket. " in self.errorString, True)
+        assert_equal("This Buy ticket has been replaced with another ticket. "
+                     "txid - [" + buy_ticket_txid + "]" in self.errorString, True)
 
         # fail if old buy ticket2 has been replaced
         try:
@@ -245,7 +246,8 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         except JSONRPCException as e:
             self.errorString = e.error['message']
             print(self.errorString)
-        assert_equal("This Buy ticket has been replaced with another ticket. " in self.errorString, True)
+        assert_equal("This Buy ticket has been replaced with another ticket. "
+                     "txid - [" + buy_ticket_txid + "]" in self.errorString, True)
 
         trade_ticket1_txid = self.register_nft_trade_ticket(
             self.non_mn3, self.non_mn4, self.nonmn4_pastelid1, self.nonmn4_address1,

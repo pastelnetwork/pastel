@@ -1144,40 +1144,40 @@ bool CArtBuyTicket::IsValid(bool preReg, int depth) const
     CArtBuyTicket existingBuyTicket;
     if (CArtBuyTicket::FindTicketInDb(sellTnxId, existingBuyTicket))
     {
-      // Can be a few old buy tickets
-      const auto existingBuyTickets = CArtBuyTicket::FindAllTicketBySellTnxID(sellTnxId);
-      for (const auto& t: existingBuyTickets) {
-        if (t.signature == signature) {
-          continue;
-        }
-
-        if (CArtTradeTicket::CheckTradeTicketExistByBuyTicket(t.m_txid)) {
-          throw std::runtime_error(strprintf(
-            "The sell ticket you are trying to buy [%s] is already sold", sellTnxId));
-        }
-
-        // find if it is the old ticket
-        if (m_nBlock > 0 && t.m_nBlock > m_nBlock) {
-          throw std::runtime_error(strprintf(
-            "This Buy ticket has been replaced with another ticket. txid - [%s].", t.m_txid));
-        }
-
-        // Validate only if both blockchain and MNs are synced
-        if (!masterNodeCtrl.masternodeSync.IsSynced()) {
-          throw std::runtime_error(strprintf(
-            "Can not replace the Buy ticket as master node not is not synced. txid - [%s].", t.m_txid));
-        }
+        //if (preReg)
+        //{  // if pre reg - this is probably repeating call, so signatures can be the same
+        //  throw std::runtime_error(strprintf(
+        //    "Buy ticket [%s] already exists for this sell ticket [%s]", existingBuyTicket.m_txid, sellTnxId));
+        //}
+    
+        // (ticket transaction replay attack protection)
+        // though the similar transaction will be allowed if existing Buy ticket has expired
+        if (existingBuyTicket.signature != signature ||
+            !existingBuyTicket.IsBlock(m_nBlock) ||
+            existingBuyTicket.m_txid != m_txid)
         {
-          LOCK(cs_main);
-          chainHeight = static_cast<unsigned int>(chainActive.Height()) + 1;
+            //check trade ticket
+            if (CArtTradeTicket::CheckTradeTicketExistByBuyTicket(existingBuyTicket.m_txid))
+            {
+              throw std::runtime_error(strprintf(
+                "The sell ticket you are trying to buy [%s] is already sold", sellTnxId));
+            }
+
+            // find if it is the old ticket
+            if (m_nBlock > 0 && existingBuyTicket.m_nBlock > m_nBlock) {
+              throw std::runtime_error(strprintf(
+                "This Buy ticket has been replaced with another ticket. txid - [%s].", existingBuyTicket.m_txid));
+            }
+            
+            //check age
+            if (existingBuyTicket.m_nBlock + masterNodeCtrl.MaxBuyTicketAge > chainHeight)
+            {
+              throw std::runtime_error(strprintf(
+                "Buy ticket [%s] already exists and is not yet 1h old for this sell ticket [%s]"
+                "[this ticket block = %u txid = %s; found ticket block = %u txid = %s]",
+                existingBuyTicket.m_txid, sellTnxId, m_nBlock, m_txid, existingBuyTicket.m_nBlock, existingBuyTicket.m_txid));
+            }
         }
-        if (t.m_nBlock + masterNodeCtrl.MaxBuyTicketAge > chainHeight) {
-          throw std::runtime_error(strprintf(
-            "Buy ticket [%s] already exists and is not yet 1h old for this sell ticket [%s]"
-            "[this ticket block = %u txid = %s; found ticket block = %u txid = %s]",
-            t.m_txid, sellTnxId, m_nBlock, m_txid, t.m_nBlock, t.m_txid));
-        }
-      }
     }
     
     auto sellTicket = dynamic_cast<const CArtSellTicket*>(pastelTicket.get());
@@ -1253,11 +1253,6 @@ bool CArtBuyTicket::CheckBuyTicketExistBySellTicket(const std::string& _sellTnxI
 std::vector<CArtBuyTicket> CArtBuyTicket::FindAllTicketByPastelID(const std::string& pastelID)
 {
     return masterNodeCtrl.masternodeTickets.FindTicketsByMVKey<CArtBuyTicket>(pastelID);
-}
-
-std::vector<CArtBuyTicket> CArtBuyTicket::FindAllTicketBySellTnxID(const std::string& sellTnxId)
-{
-    return masterNodeCtrl.masternodeTickets.FindTicketsByMVKey<CArtBuyTicket>(sellTnxId);
 }
 
 // CArtTradeTicket ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

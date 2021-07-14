@@ -418,10 +418,10 @@ public:
 
     std::string KeyOne() const noexcept override { return sellTnxId; } // this is the latest (active) buy ticket for this sell ticket
     std::string MVKeyOne() const noexcept override { return pastelID; }
-    std::string MVKeyTwo() const noexcept override { return sellTnxId; }
+    //std::string MVKeyTwo() const noexcept override { return sellTnxId; } // these are all buy (1 active and many inactive) tickets for this sell ticket
     
     bool HasMVKeyOne() const noexcept override { return true; }
-    bool HasMVKeyTwo() const noexcept override { return true; }
+    //bool HasMVKeyTwo() const noexcept override { return true; }
     void SetKeyOne(std::string val) override { sellTnxId = std::move(val); }
 
     CAmount TicketPrice(const unsigned int nHeight) const noexcept override { return std::max(10u, price / 100); }
@@ -454,7 +454,6 @@ public:
     static bool CheckBuyTicketExistBySellTicket(const std::string& _sellTnxId);
     
     static std::vector<CArtBuyTicket> FindAllTicketByPastelID(const std::string& pastelID);
-    static std::vector<CArtBuyTicket> FindAllTicketBySellTnxID(const std::string& sellTnxId);
 };
 
 /*
