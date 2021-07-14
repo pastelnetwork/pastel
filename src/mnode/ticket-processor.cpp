@@ -648,12 +648,9 @@ std::string CPastelTicketProcessor::ListFilterActTickets(const short filter) con
 // 0 - all, 1 - available; 2 - unavailable; 3 - expired; 4 - sold
 std::string CPastelTicketProcessor::ListFilterSellTickets(const short filter, const std::string& pastelID) const
 {
-    bool checkConfirmation = true;
-    if (filter == 0) {
-        if (pastelID.empty())
+    const bool checkConfirmation{filter > 0};
+    if (filter == 0 && pastelID.empty()) {
             return ListTickets<CArtSellTicket>(); // get all
-        else
-            checkConfirmation = false; // Get all for the pastelID, do not check confirmation
     }
     return filterTickets<CArtSellTicket>(
         [&](const CArtSellTicket& t, const unsigned int chainHeight) -> bool
@@ -702,12 +699,9 @@ std::string CPastelTicketProcessor::ListFilterSellTickets(const short filter, co
 // 0 - all, 1 - expired;    2 - sold
 std::string CPastelTicketProcessor::ListFilterBuyTickets(const short filter, const std::string& pastelID) const
 {
-    bool checkConfirmation = true;
-    if (filter == 0) {
-        if (pastelID.empty())
+    const bool checkConfirmation{filter > 0};
+    if (filter == 0 && pastelID.empty()) {
             return ListTickets<CArtBuyTicket>(); // get all
-        else
-            checkConfirmation = false; // Get all for the pastelID, do not check confirmation
     }
     return filterTickets<CArtBuyTicket>(
         [&](const CArtBuyTicket& t, const unsigned int chainHeight) -> bool
@@ -728,12 +722,9 @@ std::string CPastelTicketProcessor::ListFilterBuyTickets(const short filter, con
 // 0 - all, 1 - available;      2 - sold
 std::string CPastelTicketProcessor::ListFilterTradeTickets(const short filter, const std::string& pastelID) const
 {
-    bool checkConfirmation = true;
-    if (filter == 0) {
-        if (pastelID.empty())
+    const bool checkConfirmation{filter > 0};
+    if (filter == 0 && pastelID.empty()) {
             return ListTickets<CArtTradeTicket>(); // get all
-        else
-            checkConfirmation = false; // Get all for the pastelID, do not check confirmation
     }
     return filterTickets<CArtTradeTicket>(
         [&](const CArtTradeTicket& t, const unsigned int chainHeight) -> bool
