@@ -144,8 +144,8 @@ class MasterNodeTicketsTest(MasterNodeCommon):
             self.nodes[self.mining_node_num].generate(10)
             time.sleep(2)
 
-        print("Waiting 180 seconds")
-        time.sleep(180)
+        print("Waiting 300 seconds")
+        time.sleep(300)
         self.__wait_for_sync_all()
 
         sell_ticket2_txid = self.register_nft_sell_ticket(act_ticket_txid, 1)
@@ -444,7 +444,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
 
         sell_ticket_txid = \
             self.nodes[self.non_mn3].tickets("register", "sell", act_ticket_txid, str(self.art_copy_price),
-                                             self.artist_pastelid1, "passphrase", "", 0, 0, copyNumber)["txid"]
+                                             self.artist_pastelid1, "passphrase", 0, 0, copyNumber)["txid"]
         assert_true(sell_ticket_txid, "No ticket was created")
         self.__wait_for_ticket_tnx()
 
