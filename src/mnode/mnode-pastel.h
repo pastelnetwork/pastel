@@ -351,7 +351,7 @@ public:
     std::string ToJSON() const noexcept override;
     std::string ToStr() const noexcept override;
     bool IsValid(bool preReg, int depth) const override;
-    CAmount TicketPrice(const unsigned int nHeight) const noexcept override { return askedPrice/50; }
+    CAmount TicketPrice(const unsigned int nHeight) const noexcept override { return std::max(10u, askedPrice / 50); }
     
     void SerializationOp(CDataStream& s, const SERIALIZE_ACTION ser_action) override
     {
@@ -418,7 +418,7 @@ public:
     bool HasMVKeyTwo() const noexcept override { return false; }
     void SetKeyOne(std::string val) override { sellTnxId = std::move(val); }
 
-    CAmount TicketPrice(const unsigned int nHeight) const noexcept override { return price/100; }
+    CAmount TicketPrice(const unsigned int nHeight) const noexcept override { return std::max(10u, price / 100); }
     
     std::string ToJSON() const noexcept override;
     std::string ToStr() const noexcept override;
