@@ -30,7 +30,7 @@ class CMasterNodeController
 {
 private:
     void SetParameters();
-    double getNetworkDifficulty(const CBlockIndex* blockindex, bool networkDifficulty);
+    double getNetworkDifficulty(const CBlockIndex* blockindex, bool networkDifficulty) const;
     CACNotificationInterface* pacNotificationInterface;
     
 public:
@@ -110,7 +110,7 @@ public:
     CAmount GetNetworkFeePerMB();
     CAmount GetArtTicketFeePerKB();
 
-    double GetChainDeflationRate();
+    double GetChainDeflationRate() const;
 
     /***** MasterNode operations *****/
     CSemaphore *semMasternodeOutbound;

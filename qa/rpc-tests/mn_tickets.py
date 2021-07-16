@@ -1885,7 +1885,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
                                                                    self.top_mn_pastelid0, "passphrase",
                                                                    "key5", "key6", str(self.storage_fee), 4)["totalstoragefee"]
 
-        # #   a.3 compare a.1 and a.2
+        #   a.3 compare a.1 and a.2
         print(non_mn1_total_storage_fee1)
         print(mn0_total_storage_fee1)
         print(mn0_total_storage_fee2)

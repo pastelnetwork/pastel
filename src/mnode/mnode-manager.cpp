@@ -1491,10 +1491,9 @@ void CMasternodeMan::SetMasternodeFee(const COutPoint& outpoint, CAmount newFee)
 {
     LOCK(cs);
     CMasternode* pmn = Find(outpoint);
-    if(!pmn) {
-        return;
+    if (pmn) {
+        pmn->aMNFeePerMB = newFee;
     }
-    pmn->aMNFeePerMB = newFee;
 }
 
 void CMasternodeMan::UpdatedBlockTip(const CBlockIndex *pindex)

@@ -133,8 +133,7 @@ std::string CMasternodeMessage::ToString() const
 void CMasternodeMessageProcessor::BroadcastNewFee(CAmount newFee)
 {
     std::map<COutPoint, CMasternode> mapMasternodes = masterNodeCtrl.masternodeManager.GetFullMasternodeMap();
-    for (auto& mnpair : mapMasternodes) {
-        CMasternode mn = mnpair.second;
+    for (const auto& [op, mn] : mapMasternodes) {
         masterNodeCtrl.masternodeMessages.SendMessage(mn.pubKeyMasternode, CMasternodeMessageType::SETFEE, std::to_string(newFee));
     }
 }
@@ -219,7 +218,7 @@ void CMasternodeMessageProcessor::ProcessMessage(CNode* pFrom, std::string& strC
                     // Update masternode fee
                     masterNodeCtrl.masternodeManager.SetMasternodeFee(message.vinMasternodeFrom.prevout, std::atol(message.message.c_str()));
                 } else {
-                    throw std::runtime_error(strprintf("Unknown Masternode"));
+                    throw std::runtime_error("Unknown Masternode");
                 }
             }
         }

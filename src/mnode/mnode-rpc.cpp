@@ -1381,11 +1381,11 @@ UniValue storagefee(const UniValue& params, bool fHelp) {
 			"\nArguments:\n"
 			"1. \"command\"        (string or set of strings, required) The command to execute\n"
 			"\nAvailable commands:\n"
-			"  setfee [<n>]		- Set storage fee for MN.\n"
+			"  setfee [<n>]     - Set storage fee for MN.\n"
 			"                     If n is not specified, levels bound fee to PSL deflation will be used"
-			"  getnetworkfee	- Get Network median storage fee.\n"
-			"  getartticketfee	- Get Network median art ticket fee.\n"
-			"  getlocalfee		- Get local masternode storage fee.\n"
+			"  getnetworkfee    - Get Network median storage fee.\n"
+			"  getartticketfee  - Get Network median art ticket fee.\n"
+			"  getlocalfee      - Get local masternode storage fee.\n"
         );
 
     if (strCommand == "setfee")

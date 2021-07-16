@@ -16,7 +16,7 @@ bool Sign(const std::string& message, std::vector<unsigned char>& signature, std
 // Type to distinguish the way we build/parse messages.
 enum class CMasternodeMessageType
 {
-    PLAINTEXT,
+    PLAINTEXT = 0,
     SETFEE
 };
 
@@ -47,10 +47,10 @@ public:
     {
         READWRITE(vinMasternodeFrom);
         READWRITE(vinMasternodeTo);
-        READWRITE(messageType);
         READWRITE(message);
         READWRITE(sigTime);
         READWRITE(vchSig);
+        READWRITE(messageType);
     }
 
     uint256 GetHash() const

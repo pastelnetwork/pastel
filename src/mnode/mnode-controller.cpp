@@ -93,8 +93,8 @@ void CMasterNodeController::SetParameters()
     }
 }
 
-// Get network difficulty
-double CMasterNodeController::getNetworkDifficulty(const CBlockIndex* blockindex, bool networkDifficulty)
+// Get network difficulty. This implementation is copied from blockchain.cpp
+double CMasterNodeController::getNetworkDifficulty(const CBlockIndex* blockindex, bool networkDifficulty) const
 {
     // Floating point number that is a multiple of the minimum difficulty,
     // minimum difficulty = 1.0.
@@ -466,26 +466,28 @@ fs::path CMasterNodeController::GetMasternodeConfigFile()
 
 CAmount CMasterNodeController::GetNetworkFeePerMB()
 {
+    CAmount nFee = masterNodeCtrl.MasternodeFeePerMBDefault;
 
     if (fMasterNode) {
         std::map<COutPoint, CMasternode> mapMasternodes = masternodeManager.GetFullMasternodeMap();
-        if (mapMasternodes.size())
-        {
-            CAmount *feeArray = new CAmount[mapMasternodes.size()];
-            int cnt = 0;
-            for (auto& mnpair : mapMasternodes) {
-                CMasternode mn = mnpair.second;
-                feeArray[cnt] = mn.aMNFeePerMB > 0? mn.aMNFeePerMB: masterNodeCtrl.MasternodeFeePerMBDefault;
-                cnt++;
+        if (mapMasternodes.size()) {
+            CAmount* feeArray = new CAmount[mapMasternodes.size()];
+            if (feeArray) {
+                int cnt = 0;
+                for (auto const& [op, mn] : mapMasternodes) {
+                    feeArray[cnt] = mn.aMNFeePerMB > 0 ? mn.aMNFeePerMB : masterNodeCtrl.MasternodeFeePerMBDefault;
+                    cnt++;
+                }
+                // Use trimmean to calculate the value with fixed 25% percentage
+                nFee = ceil(TRIMMEAN(feeArray, mapMasternodes.size(), 0.25));
+                delete[] feeArray;
+            } else {
+                LogPrint("masternode", "Could't allocate memory for input of TRIMMEAN");
             }
-            // Use trimmean to calculate the value with fixed 25% percentage
-            int retVal = ceil(TRIMMEAN(feeArray, mapMasternodes.size(), 0.25));
-            delete[] feeArray;
-            return retVal;
         }
     }
 
-    return MasternodeFeePerMBDefault;
+    return nFee;
 }
 
 CAmount CMasterNodeController::GetArtTicketFeePerKB()
@@ -505,7 +507,7 @@ CAmount CMasterNodeController::GetArtTicketFeePerKB()
     return ArtTicketFeePerKBDefault;
 }
 
-double CMasterNodeController::GetChainDeflationRate() {
+double CMasterNodeController::GetChainDeflationRate() const {
     if (chainActive.Height() <= ChainBaselineDifficultyUpperIndex + ChainTrailingAverageDifficultyRange) {
         return ChainDeflationRateDefault;
     } else {
@@ -704,7 +706,7 @@ static double mean(CAmount array[], CAmount low, CAmount high) {
     for (CAmount i = low; i <= high; i++)
         acc += array[i];
     
-    return acc / (double)(high - low + 1);
+    return acc / static_cast<double>(high - low + 1);
     
 }
 
