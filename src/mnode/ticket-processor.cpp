@@ -1107,16 +1107,14 @@ std::vector<std::string> CPastelTicketProcessor::ValidateOwnership(const std::st
         {
             return sRetVal;
         }
-        else{
-            
-            // Check if author and _pastelID are equal
-            if(artTicket->pastelIDs[0].compare(_pastelID) == 0 && CArtActivateTicket::CheckTicketExistByArtTicketID(artTicket->GetTxId()))
-            {
-                sRetVal[0] = _txid;
-                return sRetVal;
-            }
-            
+
+        // Check if author and _pastelID are equal
+        if(artTicket->pastelIDs[0].compare(_pastelID) == 0 && CArtActivateTicket::CheckTicketExistByArtTicketID(artTicket->GetTxId()))
+        {
+            sRetVal[0] = _txid;
+            return sRetVal;
         }
+
     }
     catch(const std::runtime_error& e)
     {
