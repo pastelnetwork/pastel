@@ -1133,7 +1133,7 @@ std::vector<std::string> CPastelTicketProcessor::ValidateOwnership(const std::st
         //std::sort(tradeTickets.begin(), tradeTickets.end(), [](CArtTradeTicket & one, CArtTradeTicket & two){return one.GetBlock() < two.GetBlock();});
         std::map<std::string, std::string> ownersPastelIds_with_TnxIds = CArtTradeTicket::GetPastelIdAndTxIdWithTopHeightPerCopy(tradeTickets);
 
-        for (auto winners: ownersPastelIds_with_TnxIds) 
+        for (const auto& winners: ownersPastelIds_with_TnxIds)
         {
             if(winners.first == _pastelID)
             {

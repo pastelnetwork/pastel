@@ -2335,7 +2335,7 @@ As json rpc
             }
             case RPC_CMD_LIST::validateownership: {
 
-                if (params.size() > 4)
+                if (params.size() == 5)
                 {
 
                     //result object
@@ -2358,33 +2358,30 @@ As json rpc
                         }
                     }
 
-                    if(bIdFound)
-                    {
-                        //passphrase
-                        SecureString strKeyPass;
-                        strKeyPass.reserve(100);
-                        strKeyPass = params[4].get_str().c_str();
-                        if (strKeyPass.length() > 0)
-                        {
-                            try {
-                                //If passphrase is not valid exception is thrown
-                                ed_crypto::isValidPassphrase(pastelid,strKeyPass);
-                            } catch (ed_crypto::crypto_exception& ex) {
-                                throw JSONRPCError(RPC_WALLET_PASSPHRASE_INCORRECT, "Error: The entered passphrase is incorrect!");
-                            }
-
-                            std::vector<std::string> result = masterNodeCtrl.masternodeTickets.ValidateOwnership(txid, pastelid);
-                            std::string art_txid = result[0];
-                            std::string trade_txid = result[1];
-
-                            retVal.pushKV("art", art_txid);
-                            retVal.pushKV("trade", trade_txid);
-                        }
-                    }
-                    else
+                    if(!bIdFound)
                     {
                         throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY,
                      "Error: Corresponding PastelID not found!");
+                    }
+                    //passphrase
+                    SecureString strKeyPass;
+                    strKeyPass.reserve(100);
+                    strKeyPass = params[4].get_str().c_str();
+                    if (strKeyPass.length() > 0)
+                    {
+                        try {
+                            //If passphrase is not valid exception is thrown
+                            ed_crypto::isValidPassphrase(pastelid,strKeyPass);
+                        } catch (ed_crypto::crypto_exception& ex) {
+                            throw JSONRPCError(RPC_WALLET_PASSPHRASE_INCORRECT, "Error: The entered passphrase is incorrect!");
+                        }
+
+                        std::vector<std::string> result = masterNodeCtrl.masternodeTickets.ValidateOwnership(txid, pastelid);
+                        std::string art_txid = std::move(result[0]);
+                        std::string trade_txid = std::move(result[1]);
+
+                        retVal.pushKV("art", art_txid);
+                        retVal.pushKV("trade", trade_txid);
                     }
                     return retVal;
                 }

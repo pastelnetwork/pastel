@@ -399,7 +399,7 @@ def assert_equals(expected, actual, message=""):
     if find_item != True:
         if message:
                 message = "; %s" % message
-                raise AssertionError("Non of the (list) expected values are equal(left == right)%s\n  left: <%s>\n right: <%s>" % (message, str(expected), str(actual)))
+        raise AssertionError("Non of the (list) expected values are equal(left == right)%s\n  left: <%s>\n right: <%s>" % (message, str(expected), str(actual)))
 
 def assert_true(condition, message = ""):
     if not condition:

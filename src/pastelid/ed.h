@@ -417,23 +417,22 @@ namespace ed_crypto {
     using key_hd25519 = key<EVP_PKEY_X25519>;
 
     static bool isValidPassphrase(std::string pastelid, SecureString strKeyPass)
-        {
-            try {
-                //Get pastelkeyfile
-                fs::path pathPastelKeys(GetArg("-pastelkeysdir", "pastelkeys"));
-                pathPastelKeys = GetDataDir() / pathPastelKeys;
+    {
+        try {
+            //Get pastelkeyfile
+            fs::path pathPastelKeys(GetArg("-pastelkeysdir", "pastelkeys"));
+            pathPastelKeys = GetDataDir() / pathPastelKeys;
 
-                if (!fs::exists(pathPastelKeys) ||
-                    !fs::is_directory(pathPastelKeys)) {
-                    fs::create_directories(pathPastelKeys);
-                }
-
-                fs::path pathPastelKeyFile = pathPastelKeys / pastelid;
-
-                ed_crypto::key_dsa448 key = ed_crypto::key_dsa448::read_private_key_from_PKCS8_file(pathPastelKeyFile.string(), strKeyPass.c_str());
-            } catch (ed_crypto::crypto_exception& ex) {
-                throw ex;
+            if (!fs::exists(pathPastelKeys)){
+                return false;
             }
-            return true;
+
+            fs::path pathPastelKeyFile = pathPastelKeys / pastelid;
+
+            ed_crypto::key_dsa448 key = ed_crypto::key_dsa448::read_private_key_from_PKCS8_file(pathPastelKeyFile.string(), strKeyPass.c_str());
+        } catch (ed_crypto::crypto_exception& ex) {
+            throw ex;
         }
+        return true;
+    }
 }

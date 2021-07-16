@@ -544,9 +544,9 @@ public:
     std::unique_ptr<CPastelTicket> FindArtRegTicket() const;
 
     void SetArtRegTicketTxid(const std::string& sNftRegTxid);
-    std::string GetArtRegTicketTxid() const;
+    const std::string GetArtRegTicketTxid() const;
     void SetCopySerialNr(const std::string& nftCopySerialNr);
-    std::string GetCopySerialNr() const;
+    const std::string& GetCopySerialNr() const;
     
     static std::vector<std::string> GetArtRegTxIDAndSerialIfResoldNft(const std::string& _txid);
 };
