@@ -205,11 +205,10 @@ class WalletSaplingTest(BitcoinTestFramework):
         # Check z_sendmanywithchangetosender
         # send from node 0 taddr to node 2 single taddr
         senderaddr = self.nodes[0].getnewaddress()
-        senderaddr_oldbalance = self.nodes[2].z_getbalance(senderaddr)
         self.nodes[0].generate(10)
 
-        senderExpectedBalance = senderaddr_oldbalance + Decimal('100.0')
-        mytxid = self.nodes[0].sendtoaddress(senderaddr, senderExpectedBalance)
+        mytxid = self.nodes[0].sendtoaddress(senderaddr, Decimal('100.0'))
+        senderExpectedBalance = Decimal('100.0')
         self.sync_all()
         self.nodes[0].generate(1)
         self.sync_all()
