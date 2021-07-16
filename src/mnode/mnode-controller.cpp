@@ -474,7 +474,7 @@ CAmount CMasterNodeController::GetNetworkFeePerMB()
             CAmount* feeArray = new CAmount[mapMasternodes.size()];
             if (feeArray) {
                 int cnt = 0;
-                for (auto const& [op, mn] : mapMasternodes) {
+                for (const auto& [op, mn] : mapMasternodes) {
                     feeArray[cnt] = mn.aMNFeePerMB > 0 ? mn.aMNFeePerMB : masterNodeCtrl.MasternodeFeePerMBDefault;
                     cnt++;
                 }
