@@ -3,6 +3,7 @@
 # Distributed under the MIT software license, see the accompanying
 # file COPYING or https://www.opensource.org/licenses/mit-license.php .
 
+from time import sleep
 from test_framework.test_framework import BitcoinTestFramework
 from test_framework.authproxy import JSONRPCException
 from test_framework.util import (
@@ -204,10 +205,10 @@ class WalletSaplingTest(BitcoinTestFramework):
         # Check z_sendmanywithchangetosender
         # send from node 0 taddr to node 2 single taddr
         senderaddr = self.nodes[0].getnewaddress()
+        senderaddr_oldbalance = self.nodes[2].z_getbalance(senderaddr)
         self.nodes[0].generate(10)
-        self.sync_all()
 
-        senderExpectedBalance = Decimal('100.0')
+        senderExpectedBalance = senderaddr_oldbalance + Decimal('100.0')
         mytxid = self.nodes[0].sendtoaddress(senderaddr, senderExpectedBalance)
         self.sync_all()
         self.nodes[0].generate(1)
@@ -215,10 +216,12 @@ class WalletSaplingTest(BitcoinTestFramework):
         assert_equal(self.nodes[0].z_getbalance(senderaddr), senderExpectedBalance)
 
         receiveraddr = self.nodes[2].getnewaddress()
+        receiveraddr_oldbalance = self.nodes[2].z_getbalance(receiveraddr)
         fee         = Decimal('0.01')
+        self.sync_all()
         minconf     = 1
-        receiverExpectedBalance = Decimal('5.0')
-        recipients  = [ {"address": receiveraddr, "amount": receiverExpectedBalance} ]
+        receiverExpectedBalance = receiveraddr_oldbalance + Decimal('5.0')
+        recipients  = [ {"address": receiveraddr, "amount": Decimal('5.0')} ]
 
         myopid = self.nodes[0].z_sendmanywithchangetosender(senderaddr, recipients, minconf, fee)
         assert(myopid)
@@ -226,14 +229,20 @@ class WalletSaplingTest(BitcoinTestFramework):
         self.nodes[0].generate(1)
         self.sync_all()
         assert_equal(self.nodes[2].z_getbalance(receiveraddr), receiverExpectedBalance)
-        calculatedSenderBalance = senderExpectedBalance - receiverExpectedBalance - fee
+        calculatedSenderBalance = senderExpectedBalance - Decimal('5.0') - fee
         assert_equal(self.nodes[0].z_getbalance(senderaddr), calculatedSenderBalance)
 
         # send from node 0 taddr to node 2 multiple taddr
         receiveraddr = self.nodes[2].getnewaddress()
+        receiveraddr_oldbalance = self.nodes[2].z_getbalance(receiveraddr)
         receiveraddr2 = self.nodes[2].getnewaddress()
-        recipients  = [ {"address": receiveraddr, "amount": receiverExpectedBalance},
-                        {"address": receiveraddr2, "amount": receiverExpectedBalance}  ]
+        receiveraddr2_oldbalance = self.nodes[2].z_getbalance(receiveraddr)
+
+        receiverExpectedBalance = receiveraddr_oldbalance + Decimal('5.0')
+        receiver2ExpectedBalance = receiveraddr2_oldbalance + Decimal('5.0')
+
+        recipients  = [ {"address": receiveraddr, "amount": Decimal('5.0')},
+                        {"address": receiveraddr2, "amount": Decimal('5.0')}  ]
 
         myopid = self.nodes[0].z_sendmanywithchangetosender(senderaddr, recipients, minconf, fee)
         mytxid = wait_and_assert_operationid_status(self.nodes[0], myopid)
@@ -243,7 +252,7 @@ class WalletSaplingTest(BitcoinTestFramework):
         calculatedSenderBalance = calculatedSenderBalance - fee - receiverExpectedBalance * 2
         assert_equal(self.nodes[0].z_getbalance(senderaddr), calculatedSenderBalance)
         assert_equal(self.nodes[2].z_getbalance(receiveraddr), receiverExpectedBalance)
-        assert_equal(self.nodes[2].z_getbalance(receiveraddr2), receiverExpectedBalance)
+        assert_equal(self.nodes[2].z_getbalance(receiveraddr2), receiver2ExpectedBalance)
 
         # send from node 2 zaddr to node 3 zaddr
         saplingreceiver = self.nodes[3].z_getnewaddress('sapling')
