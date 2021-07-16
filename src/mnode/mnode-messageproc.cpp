@@ -212,7 +212,7 @@ void CMasternodeMessageProcessor::ProcessMessage(CNode* pFrom, std::string& strC
             mapOurMessages[messageId] = message;
             bOurMessage = true;
             // Update new fee of the sender masternode
-            if (message.messageType == static_cast<int>(CMasternodeMessageType::SETFEE)) {
+            if (message.messageType == static_cast<uint8_t>(CMasternodeMessageType::SETFEE)) {
                 CMasternode masternode;
                 if (masterNodeCtrl.masternodeManager.Get(masterNodeCtrl.activeMasternode.outpoint, masternode)) {
                     // Update masternode fee

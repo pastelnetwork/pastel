@@ -14,7 +14,7 @@ bool Sign(const std::string& message, std::string& signatureBase64, std::string&
 bool Sign(const std::string& message, std::vector<unsigned char>& signature, std::string& error_ret);
 
 // Type to distinguish the way we build/parse messages.
-enum class CMasternodeMessageType
+enum class CMasternodeMessageType: uint8_t
 {
     PLAINTEXT = 0,
     SETFEE
@@ -25,7 +25,7 @@ class CMasternodeMessage
 public:
     CTxIn vinMasternodeFrom;
     CTxIn vinMasternodeTo;
-    int messageType;
+    uint8_t messageType;
     std::string message;
     int64_t sigTime{}; //message times
     std::vector<unsigned char> vchSig;
@@ -36,7 +36,7 @@ public:
         vinMasternodeFrom(outpointMasternodeFrom),
         vinMasternodeTo(outpointMasternodeTo),
         sigTime(0),
-        messageType(static_cast<int>(msgType)),
+        messageType(static_cast<uint8_t>(msgType)),
         message(msg)
     {}
 
