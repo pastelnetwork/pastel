@@ -1217,16 +1217,11 @@ std::vector<std::string> CArtTradeTicket::GetArtRegTxIDAndSerialIfResoldNft(cons
       if(pNestedTicket != nullptr)
       {
         auto tradeTicket = dynamic_cast<const CArtTradeTicket*>(pNestedTicket.get());
-        if (!tradeTicket)
+        if (tradeTicket)
         {
-          return vRetVal;
+          vRetVal[0] = tradeTicket->GetArtRegTicketTxid();
+          vRetVal[1] = tradeTicket->GetCopySerialNr();
         }
-        vRetVal[0] = tradeTicket->GetArtRegTicketTxid();
-        vRetVal[1] = tradeTicket->GetCopySerialNr();
-      }
-      else
-      {
-        return vRetVal;
       }
     }
     catch(const runtime_error& error)
