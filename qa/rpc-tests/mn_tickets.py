@@ -37,7 +37,6 @@ private_keys_list = ["91sY9h4AQ62bAhNk1aJ7uJeSnQzSFtz7QmW5imrKmiACm7QJLXe",  # 0
                      "92pfBHQaf5K2XBnFjhLaALjhCqV8Age3qUgJ8j8oDB5eESFErsM"   # 12
                      ]
 
-
 class MasterNodeTicketsTest(MasterNodeCommon):
     number_of_master_nodes = len(private_keys_list)
     number_of_simple_nodes = 6
@@ -516,8 +515,13 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         assert_equal(coins_after, coins_before - self.id_ticket_price)  # no fee yet
 
         print("Personal royalty initialize tested")
+    # ===============================================================================================================
+
+    def get_rand_testdata(self, scope, len):
+        return ''.join(random.choice(scope) for i in range(len))
 
     # ===============================================================================================================
+
     def generate_art_ticket_details(self):
         # Art_ticket structure 
         # {
@@ -529,7 +533,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         # "artist_written_statement": string,
         # "artwork_creation_video_youtube_url": string,
         # "thumbnail_hash": bytes,    //hash of the thumbnail !!!!SHA3-256!!!!
-        #     "data_hash": bytes,         // hash of the image (or any other asset) that this ticket represents !!!!SHA3-256!!!!
+        # "data_hash": bytes,         // hash of the image (or any other asset) that this ticket represents !!!!SHA3-256!!!!
         # "fingerprints_hash": bytes,       //hash of the fingerprint !!!!SHA3-256!!!!
         # "fingerprints": bytes,            //compressed fingerprint
         # "fingerprints_signature": bytes,  //signature on raw image fingerprint
@@ -545,13 +549,13 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         letters = string.ascii_letters
 
         # initialize hash base strings or lists
-        thumbnail_to_be_hashed = ''.join(random.choice(letters) for i in range(10))
-        data_to_be_hashed = ''.join(random.choice(letters) for i in range(10))
-        fingerprints_to_be_hashed = ''.join(random.choice(letters) for i in range(10))
-        rq_oti = ''.join(random.choice(letters) for i in range(12))
+        thumbnail_to_be_hashed = self.get_rand_testdata(letters, 10)#''.join(random.choice(letters) for i in range(10))
+        data_to_be_hashed = self.get_rand_testdata(letters, 10)#''.join(random.choice(letters) for i in range(10))
+        fingerprints_to_be_hashed = self.get_rand_testdata(letters, 10)#''.join(random.choice(letters) for i in range(10))
+        rq_oti = self.get_rand_testdata(letters, 12)#''.join(random.choice(letters) for i in range(12))
         rq_ids_to_be_hashed = ""
         for _ in range (5):
-            rq_ids_to_be_hashed += (''.join(random.choice(letters) for i in range(10)))
+            rq_ids_to_be_hashed += (self.get_rand_testdata(letters, 10))
         
         # encode the string
         encoded_thumbnail = thumbnail_to_be_hashed.encode()
@@ -567,17 +571,17 @@ class MasterNodeTicketsTest(MasterNodeCommon):
 
         art_ticket_json = {
             "artist_name": "".join(random.choice(artist_first_names)+" "+random.choice(artist_last_names)),
-            "artwork_title": ''.join(random.choice(letters) for i in range(10)),
-            "artwork_series_name": ''.join(random.choice(letters) for i in range(10)),
-            "artwork_keyword_set": ''.join(random.choice(letters) for i in range(10)),
-            "artist_website": ''.join(random.choice(letters) for i in range(10)),
-            "artist_written_statement": ''.join(random.choice(letters) for i in range(10)),
-            "artwork_creation_video_youtube_url": ''.join(random.choice(letters) for i in range(10)),
+            "artwork_title": self.get_rand_testdata(letters, 10),
+            "artwork_series_name": self.get_rand_testdata(letters, 10),
+            "artwork_keyword_set": self.get_rand_testdata(letters, 10),
+            "artist_website": self.get_rand_testdata(letters, 10),
+            "artist_written_statement": self.get_rand_testdata(letters, 10),
+            "artwork_creation_video_youtube_url": self.get_rand_testdata(letters, 10),
             "thumbnail_hash": obj_sha3_256_thumbnail.hexdigest(),    #hash of the thumbnail !!!!SHA3-256!!!!
             "data_hash": obj_sha3_256_data.hexdigest(),         #hash of the image (or any other asset) that this ticket represents !!!!SHA3-256!!!!
             "fingerprints_hash": obj_sha3_256_fingerprint.hexdigest(),       #hash of the fingerprint !!!!SHA3-256!!!!
             "fingerprints": fingerprints_to_be_hashed,            #compressed fingerprint
-            "fingerprints_signature": ''.join(random.choice(letters) for i in range(20)), #signature on raw image fingerprint
+            "fingerprints_signature": self.get_rand_testdata(letters, 20), #signature on raw image fingerprint
             "rq_ids": obj_sha3_256_rq_ids.hexdigest(), #[list of strings],//raptorq symbol identifiers -  !!!!SHA3-256 of symbol block!!!!
             "rq_oti": rq_oti,    #raptorq CommonOTI and SchemeSpecificOTI
             "rareness_score": str(random.randint(0, 1000)),   # 0 to 1000
