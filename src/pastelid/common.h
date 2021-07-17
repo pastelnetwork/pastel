@@ -14,7 +14,7 @@ namespace ed_crypto {
     static constexpr int OK = 1;
     static constexpr auto BASE64 = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 
-	inline std::string Base64_Encode(const unsigned char *in, const size_t len) noexcept
+    inline std::string Base64_Encode(const unsigned char *in, const size_t len) noexcept
     {
         std::string out;
         out.reserve(static_cast<size_t>(ceil(len / 3) * 4));
@@ -37,7 +37,7 @@ namespace ed_crypto {
         return out;
     }
 	
-	inline v_uint8 Base64_Decode(const std::string &in) noexcept
+    inline v_uint8 Base64_Decode(const std::string &in) noexcept
     {
         v_uint8 out;
         out.reserve((in.size() / 4) * 3);
@@ -62,7 +62,7 @@ namespace ed_crypto {
         return out;
     }
 	
-	inline std::string Hex_Encode(const unsigned char *in, const size_t len)
+    inline std::string Hex_Encode(const unsigned char *in, const size_t len)
     {
         std::ostringstream hex_str_str;
         for (size_t i = 0; i < len; i++)
@@ -70,7 +70,7 @@ namespace ed_crypto {
         return hex_str_str.str();
     }
 	
-	inline v_uint8 Hex_Decode(const std::string &in)
+    inline v_uint8 Hex_Decode(const std::string &in)
     {
         v_uint8 out;
         for (size_t i = 0; i < in.length(); i+=2)
@@ -182,7 +182,7 @@ namespace ed_crypto {
             message = str_str.str();
         }
 
-        const char *what() const noexcept
+        const char *what() const noexcept override
         {
             return message.c_str();
         }

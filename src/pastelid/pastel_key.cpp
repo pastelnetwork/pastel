@@ -252,7 +252,7 @@ pastelid_store_t CPastelID::GetStoredPastelIDs(const bool bPastelIdOnly)
             if (cont.read_public_from_file(p.path().string()))
                 cont.get_public_data(PUBLIC_ITEM_TYPE::pubkey_legroast, sLegRoastKey);
         }
-        resultMap.emplace(std::move(sPastelID), sLegRoastKey);
+        resultMap.emplace(std::move(sPastelID), std::move(sLegRoastKey));
     }
     return resultMap;
 }

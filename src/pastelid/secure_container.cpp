@@ -69,108 +69,103 @@ void CSecureContainer::add_public_item(const PUBLIC_ITEM_TYPE type, const std::s
 bool CSecureContainer::write_to_file(const string& sFilePath, const SecureString& sPassphrase)
 {
     using json = nlohmann::ordered_json;
-    bool bRet = false;
-    do
+    m_nTimestamp = time(nullptr);
+    json jItems;
+    // generate json for the public items
+    json jPublic =
     {
-        m_nTimestamp = time(nullptr);
-        json jItems;
-        // generate json for the public items
-        json jPublic =
-        {
-                {"version", SECURE_CONTAINER_VERSION }
-        };
-        size_t nJsonPublicSize = 20; // used to estimate size of the json with public items
-        
-        for (auto& item: m_vPublicItems)
-        {
-            const auto szTypeName = GetPublicItemTypeName(item.type);
-            jItems.push_back({
-                    {"type", szTypeName},
-                    {"data", item.data}
-                });
-            nJsonPublicSize += 25 + strlen(szTypeName) + item.data.size();
-        }
-        jPublic.emplace("public_items", move(jItems));
-        jItems.clear();
-
-        // generate a json header for the secure items
-        json jSecure =
-        {
-                {"version", SECURE_CONTAINER_VERSION},
-                {"timestamp", m_nTimestamp},
-                {"encryption", SECURE_CONTAINER_ENCRYPTION}
-        };
-        size_t nJsonSecureSize = 200; // used to estimate size of the json with secure items
-        CSodiumAutoBuf pw;
-        // allocate secure memory for the key, buffer is reused for all secure items
-        if (!pw.allocate(PWKEY_BUFSUZE))
-            throw runtime_error(strprintf("Failed to allocate memory (%zu bytes)", PWKEY_BUFSUZE));
-        // encryption buffer is reused for all messages
-        json::binary_t encrypted_data;
-        for (auto& item : m_vSecureItems)
-        {
-            // generate nonce
-            item.nonce.resize(crypto_aead_xchacha20poly1305_ietf_NPUBBYTES);
-            randombytes_buf(item.nonce.data(), item.nonce.size());
-            // derive key from the passphrase
-            if (crypto_pwhash(pw.p, crypto_box_SEEDBYTES,
-                sPassphrase.c_str(), sPassphrase.length(), item.nonce.data(),
-                crypto_pwhash_OPSLIMIT_INTERACTIVE, crypto_pwhash_MEMLIMIT_INTERACTIVE, crypto_pwhash_ALG_DEFAULT) != 0)
-            {
-                throw runtime_error(strprintf("Failed to generate encryption key for '%s'", GetSecureItemTypeName(item.type)));
-            }
-            // if data handler is defined -> use it to get secure data
-            if (item.pHandler)
-            {
-                if (!item.pHandler->GetSecureData(item.data))
-                    throw runtime_error(strprintf("Failed to get '%s' data", GetSecureItemTypeName(item.type)));
-                // possibility for caller to cleanup data
-                item.pHandler->CleanupSecureData();
-            }
-            // encrypt data using XChaCha20-Poly1305 construction
-            unsigned long long nEncSize = 0;
-            encrypted_data.resize(item.data.size() + crypto_aead_xchacha20poly1305_ietf_ABYTES);
-            if (crypto_aead_xchacha20poly1305_ietf_encrypt(encrypted_data.data(), &nEncSize,
-                                                           item.data.data(), item.data.size(), nullptr, 0, nullptr, item.nonce.data(), pw.p) != 0)
-                throw runtime_error(strprintf("Failed to encrypt '%s' data", GetSecureItemTypeName(item.type)));
-            const auto szTypeName = GetSecureItemTypeName(item.type);
-            jItems.push_back({
+            {"version", SECURE_CONTAINER_VERSION }
+    };
+    size_t nJsonPublicSize = 20; // used to estimate size of the json with public items
+    
+    for (auto& item: m_vPublicItems)
+    {
+        const auto szTypeName = GetPublicItemTypeName(item.type);
+        jItems.push_back({
                 {"type", szTypeName},
-                {"nonce", move(item.nonce)},
-                {"data", move(encrypted_data)}
+                {"data", item.data}
             });
-            nJsonSecureSize += 50 + strlen(szTypeName) + item.nonce.size() + encrypted_data.size();
+        nJsonPublicSize += 25 + strlen(szTypeName) + item.data.size();
+    }
+    jPublic.emplace("public_items", move(jItems));
+    jItems.clear();
+
+    // generate a json header for the secure items
+    json jSecure =
+    {
+            {"version", SECURE_CONTAINER_VERSION},
+            {"timestamp", m_nTimestamp},
+            {"encryption", SECURE_CONTAINER_ENCRYPTION}
+    };
+    size_t nJsonSecureSize = 200; // used to estimate size of the json with secure items
+    CSodiumAutoBuf pw;
+    // allocate secure memory for the key, buffer is reused for all secure items
+    if (!pw.allocate(PWKEY_BUFSUZE))
+        throw runtime_error(strprintf("Failed to allocate memory (%zu bytes)", PWKEY_BUFSUZE));
+    // encryption buffer is reused for all messages
+    json::binary_t encrypted_data;
+    for (auto& item : m_vSecureItems)
+    {
+        // generate nonce
+        item.nonce.resize(crypto_aead_xchacha20poly1305_ietf_NPUBBYTES);
+        randombytes_buf(item.nonce.data(), item.nonce.size());
+        // derive key from the passphrase
+        if (crypto_pwhash(pw.p, crypto_box_SEEDBYTES,
+            sPassphrase.c_str(), sPassphrase.length(), item.nonce.data(),
+            crypto_pwhash_OPSLIMIT_INTERACTIVE, crypto_pwhash_MEMLIMIT_INTERACTIVE, crypto_pwhash_ALG_DEFAULT) != 0)
+        {
+            throw runtime_error(strprintf("Failed to generate encryption key for '%s'", GetSecureItemTypeName(item.type)));
         }
-        jSecure.emplace("secure_items", move(jItems));
+        // if data handler is defined -> use it to get secure data
+        if (item.pHandler)
+        {
+            if (!item.pHandler->GetSecureData(item.data))
+                throw runtime_error(strprintf("Failed to get '%s' data", GetSecureItemTypeName(item.type)));
+            // possibility for caller to cleanup data
+            item.pHandler->CleanupSecureData();
+        }
+        // encrypt data using XChaCha20-Poly1305 construction
+        unsigned long long nEncSize = 0;
+        encrypted_data.resize(item.data.size() + crypto_aead_xchacha20poly1305_ietf_ABYTES);
+        if (crypto_aead_xchacha20poly1305_ietf_encrypt(encrypted_data.data(), &nEncSize,
+                                                       item.data.data(), item.data.size(), nullptr, 0, nullptr, item.nonce.data(), pw.p) != 0)
+            throw runtime_error(strprintf("Failed to encrypt '%s' data", GetSecureItemTypeName(item.type)));
+        const auto szTypeName = GetSecureItemTypeName(item.type);
+        jItems.push_back({
+            {"type", szTypeName},
+            {"nonce", move(item.nonce)},
+            {"data", move(encrypted_data)}
+        });
+        nJsonSecureSize += 50 + strlen(szTypeName) + item.nonce.size() + encrypted_data.size();
+    }
+    jSecure.emplace("secure_items", move(jItems));
 
-        // serialize as a msgpack to file
-        ofstream fs(sFilePath, ios::out | ios::binary);
-        if (!fs)
-            throw runtime_error(strprintf("Cannot open file [%s] to write the secure container", sFilePath.c_str()));
-        fs.write(SECURE_CONTAINER_PREFIX, std::char_traits<char>::length(SECURE_CONTAINER_PREFIX));
-        v_uint8 vOut;
-        const auto nMsgPackReserve = std::max(nJsonPublicSize, nJsonSecureSize);
-        vOut.reserve(nMsgPackReserve);
-        // write json for public items to the file serialized into msgpack format
-        json::to_msgpack(jPublic, vOut);
-        jPublic.clear();
-        // write msgpack size in network byte order (big endian)
-        const uint64_t nMsgPackSize = htobe64(vOut.size());
-        fs.write(reinterpret_cast<const char*>(&nMsgPackSize), sizeof(nMsgPackSize));
-        // calculate and write hash of the msgpack
-        const auto hash = Hash(vOut.cbegin(), vOut.cend());
-        hash.Serialize(fs);
-        // write public items in msgpack format
-        fs.write(reinterpret_cast<const char*>(vOut.data()), vOut.size());
-        vOut.clear();
+    // serialize as a msgpack to file
+    ofstream fs(sFilePath, ios::out | ios::binary);
+    if (!fs)
+        throw runtime_error(strprintf("Cannot open file [%s] to write the secure container", sFilePath.c_str()));
+    fs.write(SECURE_CONTAINER_PREFIX, std::char_traits<char>::length(SECURE_CONTAINER_PREFIX));
+    v_uint8 vOut;
+    const auto nMsgPackReserve = std::max(nJsonPublicSize, nJsonSecureSize);
+    vOut.reserve(nMsgPackReserve);
+    // write json for public items to the file serialized into msgpack format
+    json::to_msgpack(jPublic, vOut);
+    jPublic.clear();
+    // write msgpack size in network byte order (big endian)
+    const uint64_t nMsgPackSize = htobe64(vOut.size());
+    fs.write(reinterpret_cast<const char*>(&nMsgPackSize), sizeof(nMsgPackSize));
+    // calculate and write hash of the msgpack
+    const auto hash = Hash(vOut.cbegin(), vOut.cend());
+    hash.Serialize(fs);
+    // write public items in msgpack format
+    fs.write(reinterpret_cast<const char*>(vOut.data()), vOut.size());
+    vOut.clear();
 
-        // write json for secure items to the file serialized into msgpack format
-        json::to_msgpack(jSecure, vOut);
-        jSecure.clear();
-        fs.write(reinterpret_cast<const char*>(vOut.data()), vOut.size());
-        bRet = true;
-    } while (false);
-    return bRet;
+    // write json for secure items to the file serialized into msgpack format
+    json::to_msgpack(jSecure, vOut);
+    jSecure.clear();
+    fs.write(reinterpret_cast<const char*>(vOut.data()), vOut.size());
+    return true;
 }
 
 /**
@@ -209,12 +204,12 @@ bool CSecureContainer::read_public_items_ex(ifstream& fs, uint64_t& nDataSize)
         if (nFileSize < 0)
             break;
         nDataSize = static_cast<uint64_t>(nFileSize);
-        fs.seekg(0);
         // read prefix from the file and compare with SECURE_CONTAINER_PREFIX
         constexpr auto nPrefixLength = std::char_traits<char>::length(SECURE_CONTAINER_PREFIX);
         if (nDataSize < nPrefixLength)
             break;
         char szPrefix[nPrefixLength + 1];
+        fs.seekg(0);
         fs.read(szPrefix, nPrefixLength);
         if (fs.gcount() != nPrefixLength)
             break;
