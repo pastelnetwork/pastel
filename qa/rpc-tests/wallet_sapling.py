@@ -248,7 +248,7 @@ class WalletSaplingTest(BitcoinTestFramework):
         self.sync_all()
         self.nodes[0].generate(1)
         self.sync_all()
-        calculatedSenderBalance = calculatedSenderBalance - fee - receiverExpectedBalance * 2
+        calculatedSenderBalance = calculatedSenderBalance - fee - Decimal('5.0')*2
         assert_equal(self.nodes[0].z_getbalance(senderaddr), calculatedSenderBalance)
         assert_equal(self.nodes[2].z_getbalance(receiveraddr), receiverExpectedBalance)
         assert_equal(self.nodes[2].z_getbalance(receiveraddr2), receiver2ExpectedBalance)
