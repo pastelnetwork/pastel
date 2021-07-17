@@ -47,7 +47,7 @@ namespace ed_crypto {
             T[BASE64[i]] = i;
 
         int val=0, valb=-8;
-        for (unsigned char c : in)
+        for (const unsigned char c : in)
         {
             if (T[c] == -1)
                 break;
@@ -55,7 +55,7 @@ namespace ed_crypto {
             valb += 6;
             if (valb >= 0)
             {
-                out.push_back( (unsigned char)((val >> valb) & 0xFF));
+                out.push_back( static_cast<unsigned char>((val >> valb) & 0xFF));
                 valb-=8;
             }
         }

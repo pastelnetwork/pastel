@@ -78,7 +78,7 @@ bool CSecureContainer::write_to_file(const string& sFilePath, const SecureString
     };
     size_t nJsonPublicSize = 20; // used to estimate size of the json with public items
     
-    for (auto& item: m_vPublicItems)
+    for (const auto& item: m_vPublicItems)
     {
         const auto szTypeName = GetPublicItemTypeName(item.type);
         jItems.push_back({
@@ -264,17 +264,27 @@ bool CSecureContainer::read_public_items_ex(ifstream& fs, uint64_t& nDataSize)
 /**
  * Read from secure container file public data as a msgpack.
  * 
+ * \param error - error message
  * \param sFilePath - container file path
  * \return true if public items were successfully read from the container 
  */
-bool CSecureContainer::read_public_from_file(const std::string& sFilePath)
+bool CSecureContainer::read_public_from_file(string &error, const string& sFilePath)
 {
     clear();
 
-    ifstream fs(sFilePath, ios::in | ios::ate | ios::binary);
-    fs.exceptions(std::ifstream::failbit | std::ifstream::badbit);
-    uint64_t nDataSize = 0;
-    return read_public_items_ex(fs, nDataSize);
+    bool bRet = false;
+    try
+    {
+    	ifstream fs(sFilePath, ios::in | ios::ate | ios::binary);
+	    fs.exceptions(std::ifstream::failbit | std::ifstream::badbit);
+	    uint64_t nDataSize = 0;
+    	bRet = read_public_items_ex(fs, nDataSize);
+    }
+    catch (const system_error &ex)
+    {
+        error = strprintf("Failed to read public items from secure container [%s]. %s", sFilePath, ex.code().message());
+    }
+    return bRet;
 }
 
 /**

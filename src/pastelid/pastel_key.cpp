@@ -164,6 +164,7 @@ bool CPastelID::Verify(const std::string& sText, const std::string& sSignature, 
     using namespace legroast;
     using namespace secure_container;
     bool bRet = false;
+    std::string error;
     try
     {
         switch (alg)
@@ -186,8 +187,8 @@ bool CPastelID::Verify(const std::string& sText, const std::string& sSignature, 
                 CSecureContainer cont;
                 const auto sFilePath = GetKeyFilePath(sPastelID);
                 // read public items from the secure container file
-                if (!cont.read_public_from_file(sFilePath))
-                    throw std::runtime_error("Cannot verify signature with LegRoast algorithm. LegRoast public key is not generated");
+                if (!cont.read_public_from_file(error, sFilePath))
+                    throw std::runtime_error(strprintf("Cannot verify signature with LegRoast algorithm. LegRoast public key is not generated. %s", error));
                 std::string sLegRoastPubKey;
                 v_uint8 vLRPubKey;
                 // retrieve encoded LegRoast public key
@@ -232,6 +233,7 @@ bool CPastelID::Verify(const std::string& sText, const std::string& sSignature, 
 pastelid_store_t CPastelID::GetStoredPastelIDs(const bool bPastelIdOnly)
 {
     using namespace secure_container;
+    std::string error;
     fs::path pathPastelKeys(GetArg("-pastelkeysdir", "pastelkeys"));
     pathPastelKeys = GetDataDir() / pathPastelKeys;
 
@@ -248,8 +250,9 @@ pastelid_store_t CPastelID::GetStoredPastelIDs(const bool bPastelIdOnly)
         if (!bPastelIdOnly)
         {
             // read public items from secure container
+            // ignore error here -> will return empty LegRoast public key
             CSecureContainer cont;
-            if (cont.read_public_from_file(p.path().string()))
+            if (cont.read_public_from_file(error, p.path().string()))
                 cont.get_public_data(PUBLIC_ITEM_TYPE::pubkey_legroast, sLegRoastKey);
         }
         resultMap.emplace(std::move(sPastelID), std::move(sLegRoastKey));

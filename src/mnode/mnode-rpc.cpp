@@ -590,13 +590,13 @@ UniValue masternode(const UniValue& params, bool fHelp)
         std::string mnPrivKey = keyIO.EncodeSecret(secret);
     
         //PastelID
-        std::string pastelID = std::string{};
+        std::string pastelID;
 /*      THIS WILL NOT WORK for Hot/Cold case - PastelID has to be created and registered from the cold MN itself
         SecureString strKeyPass;
         strKeyPass.reserve(100);
         strKeyPass = params[4].get_str().c_str();
         
-        std::string pastelID = CPastelID::CreateNewLocalKey(std::move(strKeyPass));
+        std::string pastelID = CPastelID::CreateNewLocalKey(strKeyPass);
         CPastelIDRegTicket regTicket = CPastelIDRegTicket::Create(pastelID, strKeyPass, std::string{});
         std::string txid = CPastelTicketProcessor::SendTicket(regTicket);
 */
@@ -1327,7 +1327,7 @@ passphrase for imported key cannot be empty!)");
         if (params.size() < 4)
             throw JSONRPCError(RPC_INVALID_PARAMETER,
 R"(pastelid sign "text" "PastelID" "passphrase" ("algorithm")
-Sign "text" with the internally stored private key associated with the PastelID.)");
+Sign "text" with the internally stored private key associated with the PastelID (algorithm: ed448 [default] or legroast).)");
 
         SecureString strKeyPass;
         strKeyPass.reserve(100);
@@ -1335,7 +1335,7 @@ Sign "text" with the internally stored private key associated with the PastelID.
 
         if (strKeyPass.empty())
             throw runtime_error(
-R"(pastelid sign "text" "PastelID" <"passphrase">
+R"(pastelid sign "text" "PastelID" <"passphrase"> ("algorithm")
 passphrase for the private key cannot be empty!)");
 
         string sAlgorithm;

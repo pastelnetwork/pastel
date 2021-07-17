@@ -174,7 +174,7 @@ public:
     // read from secure container file encrypted secure data as a msgpack and decrypt
     bool read_from_file(const std::string& sFilePath, const SecureString& sPassphrase);
     // read from secure container file public data as a msgpack
-    bool read_public_from_file(const std::string& sFilePath);
+    bool read_public_from_file(std::string &error, const std::string& sFilePath);
     // Get public data (byte vector) from the container by type
     bool get_public_data_vector(const PUBLIC_ITEM_TYPE type, v_uint8& data) const noexcept;
     bool get_public_data(const PUBLIC_ITEM_TYPE type, std::string &sData) const noexcept;
