@@ -235,7 +235,7 @@ class WalletSaplingTest(BitcoinTestFramework):
         receiveraddr = self.nodes[2].getnewaddress()
         receiveraddr_oldbalance = self.nodes[2].z_getbalance(receiveraddr)
         receiveraddr2 = self.nodes[2].getnewaddress()
-        receiveraddr2_oldbalance = self.nodes[2].z_getbalance(receiveraddr)
+        receiveraddr2_oldbalance = self.nodes[2].z_getbalance(receiveraddr2)
 
         receiverExpectedBalance = receiveraddr_oldbalance + Decimal('5.0')
         receiver2ExpectedBalance = receiveraddr2_oldbalance + Decimal('5.0')
