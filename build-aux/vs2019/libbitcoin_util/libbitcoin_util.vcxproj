@@ -87,6 +87,7 @@
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="..\..\..\src\ascii85.cpp" />
     <ClCompile Include="..\..\..\src\chainparamsbase.cpp" />
     <ClCompile Include="..\..\..\src\clientversion.cpp" />
     <ClCompile Include="..\..\..\src\compat\glibcxx_sanity.cpp" />
@@ -101,7 +102,7 @@
       <ObjectFileName Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(IntDir)rpc_protocol.obj</ObjectFileName>
     </ClCompile>
     <ClCompile Include="..\..\..\src\support\cleanse.cpp" />
-    <ClCompile Include="..\..\..\src\support\pagelocker.cpp" />
+    <ClCompile Include="..\..\..\src\support\lockedpool.cpp" />
     <ClCompile Include="..\..\..\src\sync.cpp" />
     <ClCompile Include="..\..\..\src\util.cpp" />
     <ClCompile Include="..\..\..\src\utilmoneystr.cpp" />
@@ -109,6 +110,7 @@
     <ClCompile Include="..\..\..\src\utiltime.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\..\..\src\ascii85.h" />
     <ClInclude Include="..\..\..\src\chainparamsbase.h" />
     <ClInclude Include="..\..\..\src\chainparamsseeds.h" />
     <ClInclude Include="..\..\..\src\clientversion.h" />
@@ -124,7 +126,7 @@
     <ClInclude Include="..\..\..\src\support\allocators\zeroafterfree.h" />
     <ClInclude Include="..\..\..\src\support\cleanse.h" />
     <ClInclude Include="..\..\..\src\support\events.h" />
-    <ClInclude Include="..\..\..\src\support\pagelocker.h" />
+    <ClInclude Include="..\..\..\src\support\lockedpool.h" />
     <ClInclude Include="..\..\..\src\sync.h" />
     <ClInclude Include="..\..\..\src\util.h" />
     <ClInclude Include="..\..\..\src\utilmoneystr.h" />

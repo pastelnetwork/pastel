@@ -15,7 +15,7 @@
 #include "mnode/mnode-msgsigner.h"
 #include "mnode/ticket-processor.h"
 
-#include "ed448/pastel_key.h"
+#include "pastelid/pastel_key.h"
 #include "json/json.hpp"
 
 #include <algorithm>
