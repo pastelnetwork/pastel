@@ -8,7 +8,7 @@
 #include "dbwrapper.h"
 #include "chain.h"
 #include "primitives/transaction.h"
-
+#include "pastelid/pastel_key.h"
 #include "mnode/mnode-consts.h"
 #include "mnode/ticket.h"
 
@@ -57,7 +57,7 @@ public:
     std::string ListTickets() const;
 
     std::string ListFilterPastelIDTickets(const short filter = 0, // 1 - mn;        2 - personal;     3 - mine
-                                          const std::vector<std::string>* pvPastelIDs = nullptr) const;
+                                          const pastelid_store_t* pmapIDs = nullptr) const;
     std::string ListFilterArtTickets(const short filter = 0) const;   // 1 - active;    2 - inactive;     3 - sold
     std::string ListFilterActTickets(const short filter = 0) const;   // 1 - available; 2 - sold
     std::string ListFilterSellTickets(const short filter = 0, const std::string& pastelID = "") const;  // 0 - all, 1 - available; 2 - unavailable;  3 - expired; 4 - sold

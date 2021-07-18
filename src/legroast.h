@@ -3,6 +3,9 @@
  * \brief  Post-Quantum signatures based on the Legendre PRF
  * Based on LegRoast implementation https://github.com/WardBeullens/LegRoast
  * by Ward Beullens
+ *
+ * Copyright (c) 2021 The Pastel Core developers
+ * 
  * \date   June 2021
  *********************************************************************/
 #pragma once
@@ -12,10 +15,12 @@
 #include <array>
 #include <openssl/rand.h>
 #include <openssl/evp.h>
+
 #ifdef _MSC_VER
 #include "uint128.h"
 #endif // _MSC_VER
 #include "tinyformat.h"
+#include "vector_types.h"
 
 #ifndef _MSC_VER
 typedef unsigned __int128 uint128_t;
@@ -206,6 +211,9 @@ public:
     }
     inline static constexpr LegRoastParams Params() { return GetLegRoastParams(alg); }
 
+    /**
+    * Generate private/public key pair.
+    */
     void keygen()
     {
         RAND_bytes(m_sk, SEED_BYTES);
@@ -234,23 +242,46 @@ public:
             }
         }
     }
-    
+
     /**
-     * Set public key (generated previosly when the message was signed) to verify signature.
+     * Set LegRoast private secret key.
+     * 
+     * \param error - returns error message
+     * \param sk - secret key array
+     * \param nSkSize - private secret key size (should match selected algorithm)
+     * \return true - if secret key was set successfully
+     */
+    bool set_private_key(std::string& error, const unsigned char* sk, const size_t nSkSize)
+    {
+        bool bRet = false;
+        do {
+            if (nSkSize != SK_BYTES)
+            {
+                error = strprintf("Failed to set LegRoast private key. Key size is invalid [%zu] != [%zu]", nSkSize, SK_BYTES);
+                break;
+            }
+            memcpy(m_sk, sk, SK_BYTES);
+            bRet = true;
+        } while (false);
+        return bRet;
+    }
+
+    /**
+     * Set LegRoast public key to verify signature.
      * 
      * \param error - returns error message
      * \param pk - public key array
      * \param nPkSize - public key size (should match selected algorithm)
      * \return true - if public key was set successfully
      */
-    bool set_public_key(std::string& error, const unsigned char* pk, const uint32_t nPkSize)
+    bool set_public_key(std::string& error, const unsigned char* pk, const size_t nPkSize)
     {
 	    bool bRet = false;
 	    do
 	    {
 		    if (nPkSize != PK_BYTES)
 		    {
-			    error = strprintf("Failed to set public key. Key size is invalid [%u] != [%u]", nPkSize, PK_BYTES);
+			    error = strprintf("Failed to set LegRoast public key. Key size is invalid [%zu] != [%zu]", nPkSize, PK_BYTES);
 			    break;
 		    }
 		    memcpy(m_pk, pk, PK_BYTES);
@@ -267,7 +298,7 @@ public:
      * \param nSigSize - signature array size (should match selected algorithm)
      * \return true - if signature was successfully set
      */
-    bool set_signature(std::string &error, const unsigned char *sig, const uint32_t nSigSize)
+    bool set_signature(std::string &error, const unsigned char *sig, const size_t nSigSize)
     {
         bool bRet = false;
         do
@@ -277,20 +308,26 @@ public:
                 error = "Invalid signature parameter";
                 break;
             }
-            if (nSigSize != Params().SIG_BYTES)
+            constexpr size_t nSigBytesSize = Params().SIG_BYTES;
+            if (nSigSize != nSigBytesSize)
             {
-                error = strprintf("Failed to set signature. Size is invalid [%u] != [%u]", nSigSize, Params().SIG_BYTES);
+                error = strprintf("Failed to set signature. Size is invalid [%zu] != [%zu]", nSigSize, nSigBytesSize);
                 break;
             }
             if (!allocate_signature())
             {
-                error = strprintf("Failed to allocate memory [%u bytes] for the signature", Params().SIG_BYTES);
+                error = strprintf("Failed to allocate memory [%zu bytes] for the signature", nSigBytesSize);
                 break;
             }
             memcpy(m_pSignature, sig, nSigSize);
             bRet = true;
         } while (false);
         return bRet;
+    }
+
+    bool set_signature(std::string& error, const v_uint8 &v)
+    {
+        return set_signature(error, v.data(), v.size());
     }
 
     /**
@@ -302,8 +339,21 @@ public:
     {
         std::string sPublicKey;
         sPublicKey.reserve(PK_BYTES);
-        sPublicKey.assign(m_pk, m_pk + PK_BYTES);
-	return sPublicKey;
+        sPublicKey.assign(reinterpret_cast<const char *>(m_pk), PK_BYTES);
+	    return sPublicKey;
+    }
+
+    /**
+     * Get private key generated with keygen().
+     * 
+     * \return private key data
+     */
+    v_uint8 get_private_key() const noexcept
+    {
+        v_uint8 vKey;
+        vKey.reserve(SK_BYTES);
+        vKey.assign(m_sk, m_sk + SK_BYTES);
+        return vKey;
     }
 
     /**
@@ -317,7 +367,7 @@ public:
         if (m_pSignature)
         {
             sSignature.reserve(Params().SIG_BYTES);
-            sSignature.assign(m_pSignature, m_pSignature + Params().SIG_BYTES);
+            sSignature.assign(reinterpret_cast<const char *>(m_pSignature), Params().SIG_BYTES);
         }
         return sSignature;
     }

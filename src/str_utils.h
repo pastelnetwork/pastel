@@ -3,6 +3,9 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
+#include <string>
+#include <algorithm>
+
 /**
  * trim string in-place from start (left trim).
  *
@@ -50,4 +53,14 @@ static inline void lowercase(std::string &s)
 static inline void uppercase(std::string& s)
 {
     std::transform(s.cbegin(), s.cend(), s.begin(), [](const auto ch) { return std::toupper(ch); });
+}
+
+static inline void replaceAll(std::string &s, const std::string& sFrom, const std::string &sTo)
+{
+    size_t nPos = 0;
+    while ((nPos = s.find(sFrom, nPos)) != std::string::npos)
+    {
+        s.replace(nPos, sFrom.length(), sTo);
+        nPos += sTo.length();
+    }
 }
