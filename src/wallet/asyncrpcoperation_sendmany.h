@@ -60,7 +60,7 @@ public:
         int minDepth,
         CAmount fee = ASYNC_RPC_OPERATION_DEFAULT_MINERS_FEE,
         UniValue contextInfo = NullUniValue,
-        bool returnChangeToSenderAddr_ = false);
+        const bool returnChangeToSenderAddr_ = false);
     virtual ~AsyncRPCOperation_sendmany();
     
     // We don't want to be copied or moved around

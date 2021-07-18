@@ -66,7 +66,7 @@ AsyncRPCOperation_sendmany::AsyncRPCOperation_sendmany(
         int minDepth,
         CAmount fee,
         UniValue contextInfo,
-        bool returnChangeToSenderAddr) :
+        const bool returnChangeToSenderAddr) :
         tx_(contextualTx), fromaddress_(fromAddress), t_outputs_(tOutputs), z_outputs_(zOutputs), mindepth_(minDepth), fee_(fee), contextinfo_(contextInfo), returnChangeToSenderAddr_(returnChangeToSenderAddr)
 {
     assert(fee_ >= 0);
