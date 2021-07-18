@@ -544,7 +544,7 @@ template std::string CPastelTicketProcessor::ListTickets<CArtTradeTicket>() cons
 template std::string CPastelTicketProcessor::ListTickets<CArtRoyaltyTicket>() const;
 
 template <class _TicketType, typename F>
-std::string CPastelTicketProcessor::filterTickets(F f, bool checkConfirmation) const
+std::string CPastelTicketProcessor::filterTickets(F f, const bool checkConfirmation) const
 {
     std::vector<_TicketType> allTickets;
     listTickets<_TicketType>([&](const _TicketType& ticket)

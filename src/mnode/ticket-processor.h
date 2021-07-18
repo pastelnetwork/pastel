@@ -25,7 +25,7 @@ class CPastelTicketProcessor
     void listTickets(F f) const;
 
     template <class _TicketType, typename F>
-    std::string filterTickets(F f, bool checkConfirmation = true) const;
+    std::string filterTickets(F f, const bool checkConfirmation = true) const;
 
 public:
     CPastelTicketProcessor() = default;
