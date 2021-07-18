@@ -1857,6 +1857,37 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         tickets_list = self.nodes[self.non_mn3].tickets("list", "trade", "sold")
         assert_equal(len(tickets_list), 5*(loop_number+1))
 
+        print ("Test listing buy/sell/trade tickets by Pastel ID")
+
+        tickets_list = self.nodes[self.non_mn3].tickets("list", "sell", self.artist_pastelid1)
+        assert_equal(len(tickets_list), 2*(loop_number+1))
+        tickets_list = self.nodes[self.non_mn3].tickets("list", "sell", "all", self.artist_pastelid1)
+        assert_equal(len(tickets_list), 2*(loop_number+1))
+        tickets_list = self.nodes[self.non_mn3].tickets("list", "sell", "available", self.artist_pastelid1)
+        assert_equal(tickets_list is None, True)
+        tickets_list = self.nodes[self.non_mn3].tickets("list", "sell", "unavailable", self.artist_pastelid1)
+        assert_equal(tickets_list is None, True)
+        tickets_list = self.nodes[self.non_mn3].tickets("list", "sell", "expired", self.artist_pastelid1)
+        assert_equal(len(tickets_list), 2 + (loop_number*2))
+
+        tickets_list = self.nodes[self.non_mn3].tickets("list", "buy", self.nonmn4_pastelid1)
+        assert_equal(len(tickets_list), 13*(loop_number+1))
+        tickets_list = self.nodes[self.non_mn3].tickets("list", "buy", "all", self.nonmn4_pastelid1)
+        assert_equal(len(tickets_list), 13*(loop_number+1))
+        tickets_list = self.nodes[self.non_mn3].tickets("list", "buy", "expired", self.nonmn4_pastelid1)
+        assert_equal(len(tickets_list), 1*(loop_number+1))
+        tickets_list = self.nodes[self.non_mn3].tickets("list", "buy", "sold", self.nonmn4_pastelid1)
+        assert_equal(len(tickets_list), 12*(loop_number+1))
+
+        tickets_list = self.nodes[self.non_mn3].tickets("list", "trade", self.nonmn3_pastelid1)
+        assert_equal(len(tickets_list), 3*(loop_number+1))
+        tickets_list = self.nodes[self.non_mn3].tickets("list", "trade", "all", self.nonmn3_pastelid1)
+        assert_equal(len(tickets_list), 3*(loop_number+1))
+        tickets_list = self.nodes[self.non_mn3].tickets("list", "trade", "available", self.nonmn3_pastelid1)
+        assert_equal(len(tickets_list), 1*(loop_number+1))
+        tickets_list = self.nodes[self.non_mn3].tickets("list", "trade", "sold", self.nonmn3_pastelid1)
+        assert_equal(len(tickets_list), 2*(loop_number+1))
+
         print("Tickets List Filter tested")
 
     # ===============================================================================================================

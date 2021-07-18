@@ -2114,6 +2114,8 @@ Available types:
               all       - list all Trade tickets (including non-confirmed). Default.
               available - lists never sold Trade tickets (without Sell tickets).
               sold      - lists only sold Trade tickets (with Sell tickets).
+            Optional parameters:
+              <pastelID> - apply filter on trade ticket that belong to the correspond pastelID only
 
 Arguments:
 1. minheight	 - minimum height for returned tickets (only tickets registered after this height will be returned).
@@ -2124,11 +2126,17 @@ As json rpc
 )" + HelpExampleRpc("tickets", R"("list", "id")"));
 
         std::string filter = "all";
-        if (params.size() > 2)
+        if (params.size() > 2
+            && LIST.cmd() != RPC_CMD_LIST::trade // RPC_CMD_LIST::trade has its own parsing logic
+            && LIST.cmd() != RPC_CMD_LIST::buy   // RPC_CMD_LIST::buy has its own parsing logic
+            && LIST.cmd() != RPC_CMD_LIST::sell) // RPC_CMD_LIST::sell has its own parsing logic
             filter = params[2].get_str();
-        
+
         int minheight = 0;
-        if (params.size() > 3)
+        if (params.size() > 3
+            && LIST.cmd() != RPC_CMD_LIST::trade // RPC_CMD_LIST::trade has its own parsing logic
+            && LIST.cmd() != RPC_CMD_LIST::buy   // RPC_CMD_LIST::buy has its own parsing logic
+            && LIST.cmd() != RPC_CMD_LIST::sell) // RPC_CMD_LIST::sell has its own parsing logic
             minheight = get_number(params[3]);
         
         UniValue obj(UniValue::VARR);
@@ -2168,35 +2176,118 @@ As json rpc
             break;
 
         case RPC_CMD_LIST::sell:
+        {
+            std::string pastelID;
+
+            if (params.size() > 2 && params[2].get_str() != "all" && params[2].get_str() != "available" && params[2].get_str() != "unavailable"
+                                && params[2].get_str() != "expired" && params[2].get_str() != "sold") {
+                if (params[2].get_str().find_first_not_of("0123456789") == std::string::npos) {
+                    // This means min_height is input.
+                    minheight = get_number(params[2]);
+                } else {
+                    // This means pastelID is input
+                    pastelID = params[2].get_str();
+                }
+            } else if (params.size() > 2) {
+                filter = params[2].get_str();
+                if (params.size() > 3) {
+                    if (params[3].get_str().find_first_not_of("0123456789") == std::string::npos) {
+                        // This means min_height is input.
+                        minheight = get_number(params[3]);
+                    } else {
+                        // This means pastelID is input
+                        pastelID = params[3].get_str();
+                    }
+                }
+                if (params.size() > 4) {
+                    pastelID = params[3].get_str();
+                    minheight = get_number(params[4]);
+                }
+            }
             if (filter == "all")
-                obj.read(masterNodeCtrl.masternodeTickets.ListTickets<CArtSellTicket>());
+                obj.read(masterNodeCtrl.masternodeTickets.ListFilterSellTickets(0, pastelID));
             else if (filter == "available")
-                obj.read(masterNodeCtrl.masternodeTickets.ListFilterSellTickets(1));
+                obj.read(masterNodeCtrl.masternodeTickets.ListFilterSellTickets(1, pastelID));
             else if (filter == "unavailable")
-                obj.read(masterNodeCtrl.masternodeTickets.ListFilterSellTickets(2));
+                obj.read(masterNodeCtrl.masternodeTickets.ListFilterSellTickets(2, pastelID));
             else if (filter == "expired")
-                obj.read(masterNodeCtrl.masternodeTickets.ListFilterSellTickets(3));
+                obj.read(masterNodeCtrl.masternodeTickets.ListFilterSellTickets(3, pastelID));
             else if (filter == "sold")
-                obj.read(masterNodeCtrl.masternodeTickets.ListFilterSellTickets(4));
+                obj.read(masterNodeCtrl.masternodeTickets.ListFilterSellTickets(4, pastelID));
             break;
-
+        }
         case RPC_CMD_LIST::buy:
-            if (filter == "all")
-                obj.read(masterNodeCtrl.masternodeTickets.ListTickets<CArtBuyTicket>());
-            else if (filter == "expired")
-                obj.read(masterNodeCtrl.masternodeTickets.ListFilterBuyTickets(1));
-            else if (filter == "sold")
-                obj.read(masterNodeCtrl.masternodeTickets.ListFilterBuyTickets(2));
-            break;
+        {
+            std::string pastelID;
 
-        case RPC_CMD_LIST::trade:
+            if (params.size() > 2 && params[2].get_str() != "all" && params[2].get_str() != "expired" && params[2].get_str() != "sold") {
+                if (params[2].get_str().find_first_not_of("0123456789") == std::string::npos) {
+                    // This means min_height is input.
+                    minheight = get_number(params[2]);
+                } else {
+                    // This means pastelID is input
+                    pastelID = params[2].get_str();
+                }
+            } else if (params.size() > 2) {
+                filter = params[2].get_str();
+                if (params.size() > 3) {
+                    if (params[3].get_str().find_first_not_of("0123456789") == std::string::npos) {
+                        // This means min_height is input.
+                        minheight = get_number(params[3]);
+                    } else {
+                        // This means pastelID is input
+                        pastelID = params[3].get_str();
+                    }
+                }
+                if (params.size() > 4) {
+                    pastelID = params[3].get_str();
+                    minheight = get_number(params[4]);
+                }
+            }
             if (filter == "all")
-                obj.read(masterNodeCtrl.masternodeTickets.ListTickets<CArtTradeTicket>());
-            else if (filter == "available")
-                obj.read(masterNodeCtrl.masternodeTickets.ListFilterTradeTickets(1));
+                obj.read(masterNodeCtrl.masternodeTickets.ListFilterBuyTickets(0, pastelID));
+            else if (filter == "expired")
+                obj.read(masterNodeCtrl.masternodeTickets.ListFilterBuyTickets(1, pastelID));
             else if (filter == "sold")
-                obj.read(masterNodeCtrl.masternodeTickets.ListFilterTradeTickets(2));
+                obj.read(masterNodeCtrl.masternodeTickets.ListFilterBuyTickets(2, pastelID));
             break;
+        }
+        case RPC_CMD_LIST::trade:
+        {
+            std::string pastelID;
+
+            if (params.size() > 2 && params[2].get_str() != "all" && params[2].get_str() != "available" && params[2].get_str() != "sold") {
+                if (params[2].get_str().find_first_not_of("0123456789") == std::string::npos) {
+                    // This means min_height is input.
+                    minheight = get_number(params[2]);
+                } else {
+                    // This means pastelID is input
+                    pastelID = params[2].get_str();
+                }
+            } else if (params.size() > 2) {
+                filter = params[2].get_str();
+                if (params.size() > 3) {
+                    if (params[3].get_str().find_first_not_of("0123456789") == std::string::npos) {
+                        // This means min_height is input.
+                        minheight = get_number(params[3]);
+                    } else {
+                        // This means pastelID is input
+                        pastelID = params[3].get_str();
+                    }
+                }
+                if (params.size() > 4) {
+                    pastelID = params[3].get_str();
+                    minheight = get_number(params[4]);
+                }
+            }
+            if (filter == "all")
+                obj.read(masterNodeCtrl.masternodeTickets.ListFilterTradeTickets(0, pastelID));
+            else if (filter == "available")
+                obj.read(masterNodeCtrl.masternodeTickets.ListFilterTradeTickets(1, pastelID));
+            else if (filter == "sold")
+                obj.read(masterNodeCtrl.masternodeTickets.ListFilterTradeTickets(2, pastelID));
+            break;
+        }
         }
 
         return obj;
