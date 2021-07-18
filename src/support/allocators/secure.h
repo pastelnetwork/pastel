@@ -7,6 +7,7 @@
 #include "support/lockedpool.h"
 #include "support/cleanse.h"
 #include <string>
+#include <assert.h>
 
 #ifdef _MSC_VER
 #pragma warning(push)

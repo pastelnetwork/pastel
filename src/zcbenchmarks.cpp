@@ -142,7 +142,6 @@ std::vector<double> benchmark_create_joinsplit_threaded(int nThreads)
         tasks.emplace_back(task.get_future());
         threads.emplace_back(std::move(task));
     }
-    std::future_status status;
     for (auto it = tasks.begin(); it != tasks.end(); it++) {
         it->wait();
         ret.push_back(it->get());
@@ -201,7 +200,6 @@ std::vector<double> benchmark_solve_equihash_threaded(int nThreads)
         tasks.emplace_back(task.get_future());
         threads.emplace_back(std::move(task));
     }
-    std::future_status status;
     for (auto it = tasks.begin(); it != tasks.end(); it++) {
         it->wait();
         ret.push_back(it->get());

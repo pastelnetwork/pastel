@@ -24,18 +24,20 @@ public:
         std::string txHash;
         std::string outputIndex;
         std::string extAddress;
+        std::string extP2P;
         std::string extKey;
         std::string extCfg;
     public:
 
         CMasternodeEntry(std::string alias, std::string mnAddress, std::string mnPrivKey, std::string txHash, std::string outputIndex,
-                         std::string extAddress, std::string extKey, std::string extCfg) {
+                         std::string extAddress, std::string extP2P, std::string extKey, std::string extCfg) {
             this->alias = alias;
             this->mnAddress = mnAddress;
             this->mnPrivKey = mnPrivKey;
             this->txHash = txHash;
             this->outputIndex = outputIndex;
             this->extAddress = extAddress;
+            this->extP2P = extP2P;
             this->extKey = extKey;
             this->extCfg = extCfg;
         }
@@ -62,6 +64,10 @@ public:
 
         const std::string& getExtIp() const {
             return extAddress;
+        }
+
+        const std::string& getExtP2P() const {
+            return extP2P;
         }
 
         const std::string& getExtKey() const {

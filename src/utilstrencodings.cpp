@@ -4,6 +4,7 @@
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
 #include "utilstrencodings.h"
+#include "ascii85.h"
 
 #include "tinyformat.h"
 
@@ -12,6 +13,7 @@
 #include <errno.h>
 #include <iomanip>
 #include <limits>
+#include "util.h"
 
 using namespace std;
 
@@ -64,7 +66,7 @@ uint32_t ParseHexToUInt32(const std::string& str) {
     return value;
 }
 
-const signed char p_util_hexdigit[256] =
+static constexpr signed char p_util_hexdigit[] =
 { -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,
   -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,
   -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,
@@ -123,6 +125,70 @@ vector<unsigned char> ParseHex(const string& str)
     return ParseHex(str.c_str());
 }
 
+string EncodeAscii85(const char* istr, size_t len) noexcept
+{
+    string sRetVal; //Default is empty-string
+    do
+    {
+        if (!istr)
+            break;
+        
+        const size_t nInputSize = strlen(istr);
+        int32_t nMaxLength = ascii85_get_max_encoded_length(nInputSize);
+        if (nMaxLength <= 0)
+            break;
+        
+        vector<uint8_t> vOut;
+        vOut.resize(nMaxLength);
+
+        int32_t nEncodedLength = encode_ascii85(reinterpret_cast<const uint8_t*>(istr), nInputSize, vOut.data(), nMaxLength);
+        if (nEncodedLength > 0)
+            sRetVal.assign(vOut.cbegin(), vOut.cbegin() + nEncodedLength);
+    } while (false);
+    return sRetVal;
+}
+
+string EncodeAscii85(const string& str) noexcept
+{
+    return EncodeAscii85(str.c_str(), str.size());
+}
+
+vector<unsigned char> DecodeAscii85(const char* ostr, bool* pfInvalid) noexcept
+{
+    vector<unsigned char> vOut;
+    do
+    {
+        if (!ostr)
+            break;
+        
+        const size_t nInputSize = strlen(ostr);
+        int32_t nMaxLength = ascii85_get_max_decoded_length(nInputSize);
+        if (nMaxLength < 0)
+        {
+            if(pfInvalid)
+                *pfInvalid = true;//Decode size error
+            break;
+        }
+        
+        vOut.resize(nMaxLength);
+        int32_t nDecodedLength = decode_ascii85(reinterpret_cast<const uint8_t*>(ostr), nInputSize, vOut.data(), nMaxLength);
+        if (nDecodedLength < 0)
+        {
+            if (pfInvalid)
+                *pfInvalid = true;//Decode error
+            break;
+        }
+        vOut.resize(static_cast<size_t>(nDecodedLength));
+    } while (false);
+    return vOut;
+}
+
+string DecodeAscii85(const string& str) noexcept
+{
+    vector<unsigned char> vchRet = DecodeAscii85(str.c_str());
+    return (vchRet.empty()) ? string() : string((const char*)&vchRet[0], vchRet.size());
+}
+
 string EncodeBase64(const unsigned char* pch, size_t len)
 {
     static const char *pbase64 = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
@@ -141,7 +207,7 @@ string EncodeBase64(const string& str)
 
 vector<unsigned char> DecodeBase64(const char* p, bool* pfInvalid)
 {
-    static const int decode64_table[256] =
+    static constexpr int decode64_table[] =
     {
         -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
         -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
@@ -210,7 +276,7 @@ string EncodeBase32(const string& str)
 
 vector<unsigned char> DecodeBase32(const char* p, bool* pfInvalid)
 {
-    static const int decode32_table[256] =
+    static constexpr int decode32_table[] =
     {
         -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
         -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
