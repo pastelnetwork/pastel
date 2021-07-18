@@ -610,12 +610,17 @@ bool common_validation(const T& ticket, bool preReg, const std::string& strTnxId
     return true;
 }
 
+/**
+ * Checks either still exist available copies to sell or generates exception otherwise
+ * @param nftTnxId is the NFT txid with either 1) art activation ticket or 2) trade ticket in it
+ * @param signature is the signature of current CArtTradeTicket that is checked
+ */
 void trade_copy_validation(const std::string& nftTnxId, const std::vector<unsigned char>& signature) {
   if (!masterNodeCtrl.masternodeSync.IsSynced()) {
     throw std::runtime_error("Can not validate trade ticket as master node is not synced");
   }
 
-  unsigned short totalCopies{0};
+  size_t totalCopies{0};
 
   uint256 txid;
   txid.SetHex(nftTnxId);
@@ -659,7 +664,7 @@ void trade_copy_validation(const std::string& nftTnxId, const std::vector<unsign
       "Unknown ticket with txid [%s] referred by this trade ticket is invalid", nftTnxId));
   }
 
-  auto soldCopies{0};
+  size_t soldCopies{0};
   const auto existingTradeTickets = CArtTradeTicket::FindAllTicketByArtTnxID(nftTnxId);
   for (const auto& t: existingTradeTickets) {
     if (t.signature != signature) {
@@ -669,7 +674,7 @@ void trade_copy_validation(const std::string& nftTnxId, const std::vector<unsign
 
   if (soldCopies >= totalCopies) {
     throw std::runtime_error(strprintf(
-      "Invalid trade ticket - cannot exceed the total number of available copies [%d] with sold [%d] copies",
+      "Invalid trade ticket - cannot exceed the total number of available copies [%zu] with sold [%zu] copies",
       totalCopies, soldCopies));
   }
 }
@@ -923,11 +928,11 @@ bool CArtSellTicket::IsValid(bool preReg, int depth) const
     }
 
     // Check PastelID in this ticket matches PastelID in the referred ticket (Activation or Trade)
-    auto totalCopies{0};
+    size_t totalCopies{0};
     // Verify the NFT is not already sold or gifted
-    const auto verifyAvailableCopies = [this](const std::string& strTicket, unsigned short totalCopies) {
+    const auto verifyAvailableCopies = [this](const std::string& strTicket, const size_t totalCopies) {
       const auto existingTradeTickets = CArtTradeTicket::FindAllTicketByArtTnxID(artTnxId);
-      auto soldCopies = existingTradeTickets.size();
+      size_t soldCopies = existingTradeTickets.size();
 
       if (soldCopies >= totalCopies) {
         throw std::runtime_error(strprintf(
