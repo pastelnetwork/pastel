@@ -1453,7 +1453,8 @@ std::map<std::string, std::string> CArtTradeTicket::GetPastelIdAndTxIdWithTopHei
   std::map<std::string, std::string> ownerPastelIDs_and_txids;
 
   //Copy number and winning index (within the vector)
-  std::map<std::string, int> copyOwner_Idxs;
+  //std::map<std::string, int> copyOwner_Idxs;
+  std::map<std::string, std::pair<unsigned int, int>> copyOwner_Idxs;
   int winning_idx = 0;
 
   for (const auto & element : filteredTickets) {
@@ -1462,14 +1463,14 @@ std::map<std::string, std::string> CArtTradeTicket::GetPastelIdAndTxIdWithTopHei
     if(copyOwner_Idxs.find(serial) != copyOwner_Idxs.end())
     {
       //We do have it in our copyOwner_Idxs
-      if(element.GetBlock() >= copyOwner_Idxs[serial])
+      if(element.GetBlock() >= copyOwner_Idxs[serial].first)
       {
-        copyOwner_Idxs[serial] = winning_idx;
+        copyOwner_Idxs[serial] = std::make_pair(element.GetBlock(), winning_idx);
       }
     }
     else
     {
-      copyOwner_Idxs.insert({ serial,winning_idx });
+      copyOwner_Idxs.insert({ serial, std::make_pair(element.GetBlock(), winning_idx) });
     }
     winning_idx++;
   }
@@ -1478,7 +1479,7 @@ std::map<std::string, std::string> CArtTradeTicket::GetPastelIdAndTxIdWithTopHei
   //we need to extract owners pastelId and TxnIds
   for (const auto& winners: copyOwner_Idxs)
   {
-    ownerPastelIDs_and_txids.insert({ filteredTickets[winners.second].pastelID, filteredTickets[winners.second].GetTxId() });
+    ownerPastelIDs_and_txids.insert({ filteredTickets[winners.second.second].pastelID, filteredTickets[winners.second.second].GetTxId() });
   }
 
   return ownerPastelIDs_and_txids;
