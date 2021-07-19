@@ -551,7 +551,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
     # ===============================================================================================================
     def personal_nonmn7_green_initialize_tests(self):
         # personal green PastelID ticket
-        self.nonmn7_green_pastelid1 = self.nodes[self.non_mn7].pastelid("newkey", "passphrase")["pastelid"]
+        self.nonmn7_green_pastelid1 = self.create_pastelid(self.non_mn7)
         assert_true(self.nonmn7_green_pastelid1, "No Pastelid was created")
         self.nonmn7_green_address1 = self.nodes[self.non_mn7].getnewaddress()
 
@@ -561,7 +561,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
 
         coins_before = self.nodes[self.non_mn7].getbalance()
         nonmn7_ticket1_txid = self.nodes[self.non_mn7].tickets("register", "id", self.nonmn7_green_pastelid1,
-                                                               "passphrase", self.nonmn7_green_address1)["txid"]
+                                                               self.passphrase, self.nonmn7_green_address1)["txid"]
         assert_true(nonmn7_ticket1_txid, "No ticket was created")
         self.__wait_for_sync_all(1)
 
@@ -891,7 +891,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         try:
             self.nodes[self.top_mns_index0].tickets("register", "art",
                                                     self.ticket, json.dumps(self.signatures_dict),
-                                                    self.top_mn_pastelid0, "passphrase",
+                                                    self.top_mn_pastelid0, self.passphrase,
                                                     key1, key2, str(self.storage_fee))
         except JSONRPCException as e:
             self.errorString = e.error['message']
@@ -906,7 +906,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         try:
             self.nodes[self.top_mns_index0].tickets("register", "art",
                                                     self.ticket, json.dumps(self.signatures_dict),
-                                                    self.top_mn_pastelid0, "passphrase",
+                                                    self.top_mn_pastelid0, self.passphrase,
                                                     key1, key2, str(self.storage_fee))
         except JSONRPCException as e:
             self.errorString = e.error['message']
@@ -922,7 +922,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         try:
             self.nodes[self.top_mns_index0].tickets("register", "art",
                                                     self.ticket, json.dumps(self.signatures_dict),
-                                                    self.top_mn_pastelid0, "passphrase",
+                                                    self.top_mn_pastelid0, self.passphrase,
                                                     key1, key2, str(self.storage_fee))
         except JSONRPCException as e:
             self.errorString = e.error['message']
@@ -1054,7 +1054,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         print(self.nodes[self.non_mn3].getblockcount())
         try:
             self.nodes[self.non_mn3].tickets("register", "royalty",
-                                             self.art_ticket1_txid, "new_pastelid1", self.artist_pastelid1, "passphrase")
+                                             self.art_ticket1_txid, "new_pastelid1", self.artist_pastelid1, self.passphrase)
         except JSONRPCException as e:
             self.errorString = e.error['message']
             print(self.errorString)
@@ -1064,7 +1064,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
 
         try:
             self.nodes[self.non_mn3].tickets("register", "royalty",
-                                             self.art_ticket1_txid, "new_pastelid1", self.artist_pastelid1, "passphrase")
+                                             self.art_ticket1_txid, "new_pastelid1", self.artist_pastelid1, self.passphrase)
         except JSONRPCException as e:
             self.errorString = e.error['message']
             print(self.errorString)
@@ -1079,11 +1079,11 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         # fail if wrong PastelID
         try:
             self.nodes[nonmn_id].tickets("register", "royalty",
-                                         self.art_ticket1_txid, new_pastelid1, self.top_mn_pastelid1, "passphrase")
+                                         self.art_ticket1_txid, new_pastelid1, self.top_mn_pastelid1, self.passphrase)
         except JSONRPCException as e:
             self.errorString = e.error['message']
             print(self.errorString)
-        assert_equal("Cannot open file to read key from" in self.errorString, True)
+        assert_equal(ERR_READ_PASTELID_FILE in self.errorString, True)
 
         # fail if wrong passphrase
         try:
@@ -1092,12 +1092,12 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         except JSONRPCException as e:
             self.errorString = e.error['message']
             print(self.errorString)
-        assert_equal("Cannot read key from string" in self.errorString, True)
+        assert_equal(ERR_READ_PASTELID_FILE in self.errorString, True)
 
         # fail if there is not ArtTicket with this txid
         try:
             self.nodes[nonmn_id].tickets("register", "royalty",
-                                         self.mn0_ticket1_txid, new_pastelid1, old_pastelid1, "passphrase")
+                                         self.mn0_ticket1_txid, new_pastelid1, old_pastelid1, self.passphrase)
         except JSONRPCException as e:
             self.errorString = e.error['message']
             print(self.errorString)
@@ -1115,7 +1115,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
             print(self.nodes[nonmn_id].getblockcount())
             try:
                 self.nodes[nonmn_id].tickets("register", "royalty",
-                                             self.art_ticket1_txid, new_pastelid1, self.artist_pastelid1, "passphrase")
+                                             self.art_ticket1_txid, new_pastelid1, self.artist_pastelid1, self.passphrase)
             except JSONRPCException as e:
                 self.errorString = e.error['message']
                 print(self.errorString)
@@ -1126,7 +1126,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
             # fail if artist's PastelID is not matching artist's PastelID in the registration ticket
             try:
                 self.nodes[nonmn_id].tickets("register", "royalty",
-                                             self.art_ticket1_txid, new_pastelid1, self.nonmn3_pastelid1, "passphrase")
+                                             self.art_ticket1_txid, new_pastelid1, self.nonmn3_pastelid1, self.passphrase)
             except JSONRPCException as e:
                 self.errorString = e.error['message']
                 print(self.errorString)
@@ -1138,10 +1138,10 @@ class MasterNodeTicketsTest(MasterNodeCommon):
             assert_equal(new_address1, self.nonmn6_royalty_address1)
 
             # fail if is not matching current PastelID of the royalty payee
-            non_registered_pastelid1 = self.nodes[self.non_mn5].pastelid("newkey", "passphrase")["pastelid"]
+            non_registered_pastelid1 = self.create_pastelid(self.non_mn5)
             try:
                 self.nodes[nonmn_id].tickets("register", "royalty",
-                                             self.art_ticket1_txid, new_pastelid1, non_registered_pastelid1, "passphrase")
+                                             self.art_ticket1_txid, new_pastelid1, non_registered_pastelid1, self.passphrase)
             except JSONRPCException as e:
                 self.errorString = e.error['message']
                 print(self.errorString)
@@ -1151,7 +1151,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
 
         try:
             self.nodes[nonmn_id].tickets("register", "royalty",
-                                         self.art_ticket1_txid, "", old_pastelid1, "passphrase")
+                                         self.art_ticket1_txid, "", old_pastelid1, self.passphrase)
         except JSONRPCException as e:
             self.errorString = e.error['message']
             print(self.errorString)
@@ -1159,7 +1159,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
 
         try:
             self.nodes[nonmn_id].tickets("register", "royalty",
-                                         self.art_ticket1_txid, old_pastelid1, old_pastelid1, "passphrase")
+                                         self.art_ticket1_txid, old_pastelid1, old_pastelid1, self.passphrase)
         except JSONRPCException as e:
             self.errorString = e.error['message']
             print(self.errorString)
@@ -1169,14 +1169,14 @@ class MasterNodeTicketsTest(MasterNodeCommon):
 
         art_royalty_txid = self.nodes[nonmn_id].tickets("register", "royalty",
                                                         self.art_ticket1_txid, new_pastelid1,
-                                                        old_pastelid1, "passphrase")["txid"]
+                                                        old_pastelid1, self.passphrase)["txid"]
         assert_true(art_royalty_txid, "No ticket was created")
         self.__wait_for_ticket_tnx()
 
         # fail if already registered
         try:
             self.nodes[nonmn_id].tickets("register", "royalty",
-                                         self.art_ticket1_txid, new_pastelid1, old_pastelid1, "passphrase")
+                                         self.art_ticket1_txid, new_pastelid1, old_pastelid1, self.passphrase)
         except JSONRPCException as e:
             self.errorString = e.error['message']
             print(self.errorString)
