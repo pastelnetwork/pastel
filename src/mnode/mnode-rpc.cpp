@@ -19,7 +19,7 @@
 #include "utilstrencodings.h"
 #include "core_io.h"
 
-#include "ed448/pastel_key.h"
+#include "pastelid/pastel_key.h"
 
 #include "mnode/mnode-controller.h"
 #include "mnode/mnode-sync.h"
@@ -40,7 +40,8 @@ UniValue formatMnsInfo(const std::vector<CMasternode>& topBlockMNs)
 
     int i = 0;
     KeyIO keyIO(Params());
-    for (auto &mn : topBlockMNs) {
+    for (const auto &mn : topBlockMNs)
+    {
         UniValue objItem(UniValue::VOBJ);
         objItem.pushKV("rank", strprintf("%d", ++i));
 
@@ -55,10 +56,11 @@ UniValue formatMnsInfo(const std::vector<CMasternode>& topBlockMNs)
         objItem.pushKV("activeseconds", mn.nTimeLastPing - mn.sigTime);
 
         objItem.pushKV("extAddress", mn.strExtraLayerAddress);
+        objItem.pushKV("extP2P", mn.strExtraLayerP2P);
         objItem.pushKV("extKey", mn.strExtraLayerKey);
         objItem.pushKV("extCfg", mn.strExtraLayerCfg);
 
-        mnArray.push_back(objItem);
+        mnArray.push_back(std::move(objItem));
     }
     return mnArray;
 }
@@ -198,6 +200,7 @@ UniValue masternodelist(const UniValue& params, bool fHelp)
             } else if (strMode == "extra") {
                 UniValue objItem(UniValue::VOBJ);
                 objItem.pushKV("extAddress", mn.strExtraLayerAddress);
+                objItem.pushKV("extP2P", mn.strExtraLayerP2P);
                 objItem.pushKV("extKey", mn.strExtraLayerKey);
                 objItem.pushKV("extCfg", mn.strExtraLayerCfg);
 
@@ -389,7 +392,7 @@ UniValue masternode(const UniValue& params, bool fHelp)
 
 
                 bool fResult = CMasternodeBroadcast::Create(mne.getIp(), mne.getPrivKey(), mne.getTxHash(), mne.getOutputIndex(), 
-                                                            mne.getExtIp(), mne.getExtKey(), mne.getExtCfg(),
+                                                            mne.getExtIp(), mne.getExtP2P(), mne.getExtKey(), mne.getExtCfg(),
                                                             strError, mnb);
 
                 statusObj.pushKV(RPC_KEY_RESULT, get_rpc_result(fResult));
@@ -440,7 +443,7 @@ UniValue masternode(const UniValue& params, bool fHelp)
             if(strCommand == "start-disabled" && fFound && mn.IsEnabled()) continue;
 
             bool fResult = CMasternodeBroadcast::Create(mne.getIp(), mne.getPrivKey(), mne.getTxHash(), mne.getOutputIndex(), 
-                                                        mne.getExtIp(), mne.getExtKey(), mne.getExtCfg(),
+                                                        mne.getExtIp(), mne.getExtP2P(), mne.getExtKey(), mne.getExtCfg(),
                                                         strError, mnb);
 
             UniValue statusObj(UniValue::VOBJ);
@@ -498,6 +501,7 @@ UniValue masternode(const UniValue& params, bool fHelp)
             mnObj.pushKV("txHash", mne.getTxHash());
             mnObj.pushKV("outputIndex", mne.getOutputIndex());
             mnObj.pushKV("extAddress", mne.getExtIp());
+            mnObj.pushKV("extP2P", mne.getExtP2P());
             mnObj.pushKV("extKey", mne.getExtKey());
             mnObj.pushKV("extCfg", mne.getExtCfg());
             mnObj.pushKV(RPC_KEY_STATUS, strStatus);
@@ -508,9 +512,9 @@ UniValue masternode(const UniValue& params, bool fHelp)
     }
     if (strCommand == "make-conf")
     {
-        if (params.size() != 5 && params.size() != 7)
+        if (params.size() != 6 && params.size() != 8)
             throw JSONRPCError(RPC_INVALID_PARAMETER,
-                               R"("masternode make-conf "alias" "mnAddress:port" "extAddress:port" "passphrase" "txid" "index"\n"
+                               R"("masternode make-conf "alias" "mnAddress:port" "extAddress:port" "extP2P:port" "passphrase" "txid" "index"\n"
                                "Create masternode configuration in JSON format:\n"
                                "This will 1) generate MasterNode Private Key (mnPrivKey) and 2) generate and register MasterNode PastelID (extKey)\n"
                                "If collateral txid and index are not provided, it will search for the first available non-locked outpoint with the correct amount (1000000 PSL)\n"
@@ -518,15 +522,16 @@ UniValue masternode(const UniValue& params, bool fHelp)
                                "    "alias"             (string) (required) Local alias (name) of Master Node\n"
                                "    "mnAddress:port"    (string) (required) The address and port of the Master Node's cNode\n"
                                "    "extAddress:port"   (string) (required) The address and port of the Master Node's Storage Layer\n"
+                               "    "extP2P:port"       (string) (required) The address and port of the Master Node's Kademlia point\n"
                                "    "passphrase"        (string) (required) passphrase for new PastelID\n"
                                "    "txid"              (string) (optional) id of transaction with the collateral amount\n"
                                "    "index"             (numeric) (optional) index in the transaction with the collateral amount\n"
                                "\nCreate masternode configuration\n")"
                                + HelpExampleCli("masternode make-conf",
-                                                R"("myMN" "127.0.0.1:9933" "127.0.0.1:4444" "bc1c5243284272dbb22c301a549d112e8bc9bc454b5ff50b1e5f7959d6b56726" 4)") +
+                                                R"("myMN" "127.0.0.1:9933" "127.0.0.1:4444" "127.0.0.1:5545" "bc1c5243284272dbb22c301a549d112e8bc9bc454b5ff50b1e5f7959d6b56726" 4)") +
                                "\nAs json rpc\n"
                                + HelpExampleRpc("masternode make-conf",
-                                                R"(""myMN" "127.0.0.1:9933" "127.0.0.1:4444" "bc1c5243284272dbb22c301a549d112e8bc9bc454b5ff50b1e5f7959d6b56726" 4")")
+                                                R"(""myMN" "127.0.0.1:9933" "127.0.0.1:4444" "127.0.0.1:5545" "bc1c5243284272dbb22c301a549d112e8bc9bc454b5ff50b1e5f7959d6b56726" 4")")
 
             );
         
@@ -541,6 +546,10 @@ UniValue masternode(const UniValue& params, bool fHelp)
     
         //extAddress:port
         std::string strExtAddress = params[3].get_str();
+        //TODO : validate correct address format
+
+        //extP2P:port
+        std::string strExtP2P = params[4].get_str();
         //TODO : validate correct address format
     
         //txid:index
@@ -581,7 +590,7 @@ UniValue masternode(const UniValue& params, bool fHelp)
         std::string mnPrivKey = keyIO.EncodeSecret(secret);
     
         //PastelID
-        std::string pastelID = std::string{};
+        std::string pastelID;
 /*      THIS WILL NOT WORK for Hot/Cold case - PastelID has to be created and registered from the cold MN itself
         SecureString strKeyPass;
         strKeyPass.reserve(100);
@@ -596,6 +605,7 @@ UniValue masternode(const UniValue& params, bool fHelp)
         UniValue mnObj(UniValue::VOBJ);
         mnObj.pushKV("mnAddress", strMnAddress);
         mnObj.pushKV("extAddress", strExtAddress);
+        mnObj.pushKV("extP2P", strExtP2P);
         mnObj.pushKV(RPC_KEY_TXID, strTxid);
         mnObj.pushKV("outIndex", strIndex);
         mnObj.pushKV("mnPrivKey", mnPrivKey);
@@ -857,7 +867,7 @@ UniValue masternodebroadcast(const UniValue& params, bool fHelp)
                 CMasternodeBroadcast mnb;
 
                 bool fResult = CMasternodeBroadcast::Create(mne.getIp(), mne.getPrivKey(), mne.getTxHash(), mne.getOutputIndex(), 
-                                                            mne.getExtIp(), mne.getExtKey(), mne.getExtCfg(),
+                                                            mne.getExtIp(), mne.getExtP2P(), mne.getExtKey(), mne.getExtCfg(),
                                                             strError, mnb, true);
 
                 statusObj.pushKV(RPC_KEY_RESULT, get_rpc_result(fResult));
@@ -907,7 +917,7 @@ UniValue masternodebroadcast(const UniValue& params, bool fHelp)
             CMasternodeBroadcast mnb;
 
             bool fResult = CMasternodeBroadcast::Create(mne.getIp(), mne.getPrivKey(), mne.getTxHash(), mne.getOutputIndex(), 
-                                                        mne.getExtIp(), mne.getExtKey(), mne.getExtCfg(),
+                                                        mne.getExtIp(), mne.getExtP2P(), mne.getExtKey(), mne.getExtCfg(),
                                                         strError, mnb, true);
 
             UniValue statusObj(UniValue::VOBJ);
@@ -1207,178 +1217,207 @@ UniValue governance(const UniValue& params, bool fHelp)
     return NullUniValue;
 }
 
-UniValue pastelid(const UniValue& params, bool fHelp) {
-    std::string strMode;
-    if (!params.empty())
-        strMode = params[0].get_str();
+/**
+ * pastelid RPC command.
+ * 
+ * \param params - RPC command parameters
+ * \param fHelp - true to show pastelid usage
+ * \return univalue result object
+ */
+UniValue pastelid(const UniValue& params, bool fHelp)
+{
+    RPC_CMD_PARSER(PASTELID, params, newkey, importkey, list, sign, sign__by__key, verify);
 
-    if (fHelp || (strMode != "newkey" && strMode != "importkey" && strMode != "list" &&
-                  strMode != "sign" && strMode != "verify" ))
+    if (fHelp || !PASTELID.IsCmdSupported())
         throw runtime_error(
-			"pastelid \"command\"...\n"
-			"Set of commands to deal with PatelID and related actions\n"
-			"\tPastelID is the base58-encoded public key of the EdDSA448 key pair. EdDSA448 public key is 57 bytes\n"
-			"\nArguments:\n"
-			"1. \"command\"        (string or set of strings, required) The command to execute\n"
-			"\nAvailable commands:\n"
-			"  newkey \"passphrase\"						- Generate new PastelID and associated keys (EdDSA448). Return PastelID base58-encoded\n"
-			"  													\"passphrase\" will be used to encrypt the key file\n"
-			"  importkey \"key\" <\"passphrase\">			- Import private \"key\" (EdDSA448) as PKCS8 encrypted string in PEM format. Return PastelID base58-encoded\n"
-			"  													\"passphrase\" (optional) to decrypt the key for the purpose of validating and returning PastelID\n"
-			"  													NOTE: without \"passphrase\" key cannot be validated and if key is bad (not EdDSA448) call to \"sign\" will fail\n"
-			"  list											- List all internally stored PastelID and keys.\n"
-			"  sign \"text\" \"PastelID\" \"passphrase\"	- Sign \"text\" with the internally stored private key associated with the PastelID.\n"
-			"  sign-by-key \"text\" \"key\" \"passphrase\"	- Sign \"text\" with the private \"key\" (EdDSA448) as PKCS8 encrypted string in PEM format.\n"
-			"  verify \"text\" \"signature\" \"PastelID\"	- Verify \"text\"'s \"signature\" with the PastelID.\n"
-        );
+R"(pastelid "command"...
+Set of commands to deal with PastelID and related actions
+PastelID is the base58-encoded public key of the EdDSA448 key pair. EdDSA448 public key is 57 bytes
 
-    if (strMode == "newkey") {
+Arguments:
+1. "command"        (string or set of strings, required) The command to execute
+
+Available commands:
+  newkey "passphrase"                                - Generate new PastelID, associated keys (EdDSA448) and LegRoast signing keys.
+                                                       Return PastelID and LegRoast signing public key base58-encoded.
+                                                       "passphrase" will be used to encrypt the key file.
+  importkey "key" <"passphrase">                     - Import private "key" (EdDSA448) as PKCS8 encrypted string in PEM format. Return PastelID base58-encoded
+                                                       "passphrase" (optional) to decrypt the key for the purpose of validating and returning PastelID.
+  											           NOTE: without "passphrase" key cannot be validated and if key is bad (not EdDSA448) call to "sign" will fail
+  list                                               - List all internally stored PastelIDs and associated keys. 
+  sign "text" "PastelID" "passphrase" ("algorithm")  - Sign "text" with the internally stored private key associated with the PastelID (algorithm: ed448 or legroast).
+  sign-by-key "text" "key" "passphrase"              - Sign "text" with the private "key" (EdDSA448) as PKCS8 encrypted string in PEM format.
+  verify "text" "signature" "PastelID" ("algorithm") - Verify "text"'s "signature" with the private key associated with the PastelID (algorithm: ed448 or legroast).
+)");
+
+    if (PASTELID.IsCmd(RPC_CMD_PASTELID::newkey))
+    {
         if (params.size() != 2)
             throw JSONRPCError(RPC_INVALID_PARAMETER,
-				"pastelid newkey \"passphrase\"\n"
-				"Generate new PastelID and associated keys (EdDSA448). Return PastelID base58-encoded."
-			);
+R"(pastelid newkey "passphrase"
+Generate new PastelID, associated keys (EdDSA448) and LegRoast signing keys.
+Return PastelID base58-encoded.)");
 
         SecureString strKeyPass;
         strKeyPass.reserve(100);
         strKeyPass = params[1].get_str().c_str();
 
-        if (strKeyPass.length() < 1)
+        if (strKeyPass.empty())
             throw runtime_error(
-				"pastelid newkey \"passphrase\"\n"
-				"passphrase for new key cannot be empty!");
+R"(pastelid newkey "passphrase"
+passphrase for new key cannot be empty!)");
 
         UniValue resultObj(UniValue::VOBJ);
-
-        std::string pastelID = CPastelID::CreateNewLocalKey(strKeyPass);
-
-        resultObj.pushKV("pastelid", pastelID);
-
+        auto keyMap = CPastelID::CreateNewPastelKeys(std::move(strKeyPass));
+        if (keyMap.empty())
+            throw runtime_error("Failed to generate new PastelID and associated keys");
+        resultObj.pushKV("pastelid", std::move(keyMap.begin()->first));
+        resultObj.pushKV(RPC_KEY_LEGROAST, std::move(keyMap.begin()->second));
         return resultObj;
     }
-    if (strMode == "importkey") {
+    if (PASTELID.IsCmd(RPC_CMD_PASTELID::importkey))
+    {
         if (params.size() < 2 || params.size() > 3)
             throw JSONRPCError(RPC_INVALID_PARAMETER,
-				"pastelid importkey \"key\" <\"passphrase\">\n"
-				"Import PKCS8 encrypted private key (EdDSA448) in PEM format. Return PastelID base58-encoded if \"passphrase\" provided."
-			);
+R"(pastelid importkey "key" <"passphrase">
+Import PKCS8 encrypted private key (EdDSA448) in PEM format. Return PastelID base58-encoded if "passphrase" provided.)");
     
         throw runtime_error("\"pastelid importkey\" NOT IMPLEMENTED!!!");
     
         //import
         //...
 
-        //validate and geenrate pastelid
-        if (params.size() == 3) {
+        //validate and generate pastelid
+        if (params.size() == 3)
+        {
             SecureString strKeyPass;
             strKeyPass.reserve(100);
             strKeyPass = params[2].get_str().c_str();
 
-            if (strKeyPass.length() < 1)
+            if (strKeyPass.empty())
                 throw runtime_error(
-					"pastelid importkey <\"passphrase\">\n"
-					"passphrase for imported key cannot be empty!");
+R"(pastelid importkey <"passphrase">
+passphrase for imported key cannot be empty!)");
         }
 
         UniValue resultObj(UniValue::VOBJ);
-
         return resultObj;
     }
-    if(strMode == "list")
+
+    // list all locally stored PastelIDs and associated public keys
+    if (PASTELID.IsCmd(RPC_CMD_PASTELID::list))
     {
         UniValue resultArray(UniValue::VARR);
 
-        const auto pastelIDs = CPastelID::GetStoredPastelIDs();
-        for (const auto & p: pastelIDs)
+        auto mapIDs = CPastelID::GetStoredPastelIDs(false);
+        for (auto& [sPastelID, sLegRoastPubKey] : mapIDs)
         {
             UniValue obj(UniValue::VOBJ);
-            obj.pushKV("PastelID", p);
-            resultArray.push_back(obj);
+            obj.pushKV("PastelID", std::move(sPastelID));
+            obj.pushKV(RPC_KEY_LEGROAST, std::move(sLegRoastPubKey));
+            resultArray.push_back(std::move(obj));
         }
 
         return resultArray;
     }
-    if (strMode == "sign") {
-        if (params.size() != 4)
+
+    // sign text with the internally stored private key associated with the PastelID (ed448 or legroast).
+    if (PASTELID.IsCmd(RPC_CMD_PASTELID::sign))
+    {
+        if (params.size() < 4)
             throw JSONRPCError(RPC_INVALID_PARAMETER,
-				"pastelid sign \"text\" \"PastelID\" \"passphrase\"\n"
-				"Sign \"text\" with the internally stored private key associated with the PastelID."
-			);
+R"(pastelid sign "text" "PastelID" "passphrase" ("algorithm")
+Sign "text" with the internally stored private key associated with the PastelID (algorithm: ed448 [default] or legroast).)");
 
         SecureString strKeyPass;
         strKeyPass.reserve(100);
         strKeyPass = params[3].get_str().c_str();
 
-        if (strKeyPass.length() < 1)
+        if (strKeyPass.empty())
             throw runtime_error(
-				"pastelid importkey <\"passphrase\">\n"
-				"passphrase for imported key cannot be empty!"
-			);
+R"(pastelid sign "text" "PastelID" <"passphrase"> ("algorithm")
+passphrase for the private key cannot be empty!)");
+
+        string sAlgorithm;
+        if (params.size() >= 5)
+            sAlgorithm = params[4].get_str();
+        CPastelID::SIGN_ALGORITHM alg = CPastelID::GetAlgorithmByName(sAlgorithm);
+        if (alg == CPastelID::SIGN_ALGORITHM::not_defined)
+            throw std::runtime_error(strprintf("Signing algorithm '%s' is not supported", sAlgorithm));
 
         UniValue resultObj(UniValue::VOBJ);
 
-        std::string sign = CPastelID::Sign64(params[1].get_str(), params[2].get_str(), strKeyPass);
-        resultObj.pushKV("signature", sign);
+        std::string sSignature = CPastelID::Sign(params[1].get_str(), params[2].get_str(), strKeyPass, alg, true);
+        resultObj.pushKV("signature", std::move(sSignature));
 
         return resultObj;
     }
-    if (strMode == "sign-by-key") {
+
+    if (PASTELID.IsCmd(RPC_CMD_PASTELID::sign__by__key)) // sign-by-key
+    {
         if (params.size() != 4)
             throw JSONRPCError(RPC_INVALID_PARAMETER,
-				"pastelid sign-by-key \"text\" \"key\" \"passphrase\"\n"
-				"Sign \"text\" with the private \"key\" (EdDSA448) as PKCS8 encrypted string in PEM format."
-			);
+ R"(pastelid sign_by_key "text" "key" "passphrase"
+Sign "text" with the private "key" (EdDSA448) as PKCS8 encrypted string in PEM format.)");
 
         SecureString strKeyPass;
         strKeyPass.reserve(100);
         strKeyPass = params[3].get_str().c_str();
 
-        if (strKeyPass.length() < 1)
+        if (strKeyPass.empty())
             throw runtime_error(
-				"pastelid importkey <\"passphrase\">\n"
-				"passphrase for imported key cannot be empty!"
-			);
+R"(pastelid sign_by_key "text" "key" <"passphrase">
+passphrase for the private key cannot be empty!)");
 
         UniValue resultObj(UniValue::VOBJ);
-
         return resultObj;
     }
-    if (strMode == "verify") {
-        if (params.size() != 4)
+
+    // verify "text"'s "signature" with the public key associated with the PastelID (algorithm: ed448 or legroast)
+    if (PASTELID.IsCmd(RPC_CMD_PASTELID::verify))
+    {
+        if (params.size() < 4)
             throw JSONRPCError(RPC_INVALID_PARAMETER,
-				"pastelid verify \"text\" \"signature\" \"PastelID\"\n"
-				"Verify \"text\"'s \"signature\" with the PastelID."
-			);
+R"(pastelid verify "text" "signature" "PastelID" ("algorithm")
+Verify "text"'s "signature" with with the private key associated with the PastelID (algorithm: ed448 or legroast).)");
+
+        string sAlgorithm;
+        if (params.size() >= 5)
+            sAlgorithm = params[4].get_str();
+        CPastelID::SIGN_ALGORITHM alg = CPastelID::GetAlgorithmByName(sAlgorithm);
+        if (alg == CPastelID::SIGN_ALGORITHM::not_defined)
+            throw std::runtime_error(strprintf("Signing algorithm '%s' is not supported", sAlgorithm));
 
         UniValue resultObj(UniValue::VOBJ);
 
-        bool res = CPastelID::Verify64(params[1].get_str(), params[2].get_str(), params[3].get_str());
-        resultObj.pushKV("verification", res? "OK": "Failed");
+        const bool bRes = CPastelID::Verify(params[1].get_str(), params[2].get_str(), params[3].get_str(), alg, true);
+        resultObj.pushKV("verification", bRes ? "OK" : "Failed");
 
         return resultObj;
     }
-
     return NullUniValue;
 }
-UniValue storagefee(const UniValue& params, bool fHelp) {
-    std::string strCommand;
-    if (!params.empty())
-        strCommand = params[0].get_str();
 
-    if (fHelp || ( strCommand != "setfee" && strCommand != "getnetworkfee" && strCommand != "getartticketfee" && strCommand != "getlocalfee"))
+UniValue storagefee(const UniValue& params, bool fHelp)
+{
+    RPC_CMD_PARSER(STORAGE_FEE, params, setfee, getnetworkfee, getartticketfee, getlocalfee);
+
+    if (fHelp || !STORAGE_FEE.IsCmdSupported())
         throw runtime_error(
-			"storagefee \"command\"...\n"
-			"Set of commands to deal with Storage Fee and related actions\n"
-			"\nArguments:\n"
-			"1. \"command\"        (string or set of strings, required) The command to execute\n"
-			"\nAvailable commands:\n"
-			"  setfee <n>		- Set storage fee for MN.\n"
-			"  getnetworkfee	- Get Network median storage fee.\n"
-			"  getartticketfee	- Get Network median art ticket fee.\n"
-			"  getlocalfee		- Get local masternode storage fee.\n"
-        );
+R"(storagefee "command"...
+Set of commands to deal with Storage Fee and related actions
 
-    if (strCommand == "setfee")
+Arguments:
+1. "command"        (string or set of strings, required) The command to execute
+
+Available commands:
+  setfee <n>		- Set storage fee for MN.
+  getnetworkfee	- Get Network median storage fee.
+  getartticketfee	- Get Network median art ticket fee.
+  getlocalfee		- Get local masternode storage fee.
+)");
+
+    if (STORAGE_FEE.IsCmd(RPC_CMD_STORAGE_FEE::setfee))
     {
         if (!masterNodeCtrl.IsActiveMasterNode())
             throw JSONRPCError(RPC_INTERNAL_ERROR, "This is not a active masternode. Only active MN can set its fee");
@@ -1390,7 +1429,7 @@ UniValue storagefee(const UniValue& params, bool fHelp) {
 //
 //        CAmount nFee = get_long_number(params[1]);
     }
-    if (strCommand == "getnetworkfee")
+    if (STORAGE_FEE.IsCmd(RPC_CMD_STORAGE_FEE::getnetworkfee))
     {
         CAmount nFee = masterNodeCtrl.GetNetworkFeePerMB();
 
@@ -1398,7 +1437,7 @@ UniValue storagefee(const UniValue& params, bool fHelp) {
         mnObj.pushKV("networkfee", nFee);
         return mnObj;
     }
-    if (strCommand == "getartticketfee")
+    if (STORAGE_FEE.IsCmd(RPC_CMD_STORAGE_FEE::getartticketfee))
     {
         CAmount nFee = masterNodeCtrl.GetArtTicketFeePerKB();
 
@@ -1406,7 +1445,7 @@ UniValue storagefee(const UniValue& params, bool fHelp) {
         mnObj.pushKV("artticketfee", nFee);
         return mnObj;
     }
-    if (strCommand == "getlocalfee")
+    if (STORAGE_FEE.IsCmd(RPC_CMD_STORAGE_FEE::getlocalfee))
     {
         if (!masterNodeCtrl.IsActiveMasterNode()) {
             throw JSONRPCError(RPC_INTERNAL_ERROR, "This is not a active masternode. Only active MN can set its fee");
@@ -2166,6 +2205,8 @@ Available types:
               all       - list all Trade tickets (including non-confirmed). Default.
               available - lists never sold Trade tickets (without Sell tickets).
               sold      - lists only sold Trade tickets (with Sell tickets).
+            Optional parameters:
+              <pastelID> - apply filter on trade ticket that belong to the correspond pastelID only
   royalty - List ALL art royalty tickets. Without filter parameter lists ALL royalty tickets.
             Filter:
               all       - list all Royalty tickets. Default.
@@ -2179,11 +2220,17 @@ As json rpc
 )" + HelpExampleRpc("tickets", R"("list", "id")"));
 
         std::string filter = "all";
-        if (params.size() > 2)
+        if (params.size() > 2
+            && LIST.cmd() != RPC_CMD_LIST::trade // RPC_CMD_LIST::trade has its own parsing logic
+            && LIST.cmd() != RPC_CMD_LIST::buy   // RPC_CMD_LIST::buy has its own parsing logic
+            && LIST.cmd() != RPC_CMD_LIST::sell) // RPC_CMD_LIST::sell has its own parsing logic
             filter = params[2].get_str();
-        
+
         int minheight = 0;
-        if (params.size() > 3)
+        if (params.size() > 3
+            && LIST.cmd() != RPC_CMD_LIST::trade // RPC_CMD_LIST::trade has its own parsing logic
+            && LIST.cmd() != RPC_CMD_LIST::buy   // RPC_CMD_LIST::buy has its own parsing logic
+            && LIST.cmd() != RPC_CMD_LIST::sell) // RPC_CMD_LIST::sell has its own parsing logic
             minheight = get_number(params[3]);
         
         UniValue obj(UniValue::VARR);
@@ -2197,8 +2244,8 @@ As json rpc
             else if (filter == "personal")
                 obj.read(masterNodeCtrl.masternodeTickets.ListFilterPastelIDTickets(2));
             else if (filter == "mine") {
-                const auto vPastelIDs = CPastelID::GetStoredPastelIDs();
-                obj.read(masterNodeCtrl.masternodeTickets.ListFilterPastelIDTickets(3, &vPastelIDs));
+                const auto mapIDs = CPastelID::GetStoredPastelIDs(true);
+                obj.read(masterNodeCtrl.masternodeTickets.ListFilterPastelIDTickets(3, &mapIDs));
             }
             break;
 
@@ -2223,40 +2270,124 @@ As json rpc
             break;
 
         case RPC_CMD_LIST::sell:
+        {
+            std::string pastelID;
+
+            if (params.size() > 2 && params[2].get_str() != "all" && params[2].get_str() != "available" && params[2].get_str() != "unavailable"
+                                && params[2].get_str() != "expired" && params[2].get_str() != "sold") {
+                if (params[2].get_str().find_first_not_of("0123456789") == std::string::npos) {
+                    // This means min_height is input.
+                    minheight = get_number(params[2]);
+                } else {
+                    // This means pastelID is input
+                    pastelID = params[2].get_str();
+                }
+            } else if (params.size() > 2) {
+                filter = params[2].get_str();
+                if (params.size() > 3) {
+                    if (params[3].get_str().find_first_not_of("0123456789") == std::string::npos) {
+                        // This means min_height is input.
+                        minheight = get_number(params[3]);
+                    } else {
+                        // This means pastelID is input
+                        pastelID = params[3].get_str();
+                    }
+                }
+                if (params.size() > 4) {
+                    pastelID = params[3].get_str();
+                    minheight = get_number(params[4]);
+                }
+            }
             if (filter == "all")
-                obj.read(masterNodeCtrl.masternodeTickets.ListTickets<CArtSellTicket>());
+                obj.read(masterNodeCtrl.masternodeTickets.ListFilterSellTickets(0, pastelID));
             else if (filter == "available")
-                obj.read(masterNodeCtrl.masternodeTickets.ListFilterSellTickets(1));
+                obj.read(masterNodeCtrl.masternodeTickets.ListFilterSellTickets(1, pastelID));
             else if (filter == "unavailable")
-                obj.read(masterNodeCtrl.masternodeTickets.ListFilterSellTickets(2));
+                obj.read(masterNodeCtrl.masternodeTickets.ListFilterSellTickets(2, pastelID));
             else if (filter == "expired")
-                obj.read(masterNodeCtrl.masternodeTickets.ListFilterSellTickets(3));
+                obj.read(masterNodeCtrl.masternodeTickets.ListFilterSellTickets(3, pastelID));
             else if (filter == "sold")
-                obj.read(masterNodeCtrl.masternodeTickets.ListFilterSellTickets(4));
+                obj.read(masterNodeCtrl.masternodeTickets.ListFilterSellTickets(4, pastelID));
             break;
-
+        }
         case RPC_CMD_LIST::buy:
-            if (filter == "all")
-                obj.read(masterNodeCtrl.masternodeTickets.ListTickets<CArtBuyTicket>());
-            else if (filter == "expired")
-                obj.read(masterNodeCtrl.masternodeTickets.ListFilterBuyTickets(1));
-            else if (filter == "sold")
-                obj.read(masterNodeCtrl.masternodeTickets.ListFilterBuyTickets(2));
-            break;
+        {
+            std::string pastelID;
 
+            if (params.size() > 2 && params[2].get_str() != "all" && params[2].get_str() != "expired" && params[2].get_str() != "sold") {
+                if (params[2].get_str().find_first_not_of("0123456789") == std::string::npos) {
+                    // This means min_height is input.
+                    minheight = get_number(params[2]);
+                } else {
+                    // This means pastelID is input
+                    pastelID = params[2].get_str();
+                }
+            } else if (params.size() > 2) {
+                filter = params[2].get_str();
+                if (params.size() > 3) {
+                    if (params[3].get_str().find_first_not_of("0123456789") == std::string::npos) {
+                        // This means min_height is input.
+                        minheight = get_number(params[3]);
+                    } else {
+                        // This means pastelID is input
+                        pastelID = params[3].get_str();
+                    }
+                }
+                if (params.size() > 4) {
+                    pastelID = params[3].get_str();
+                    minheight = get_number(params[4]);
+                }
+            }
+            if (filter == "all")
+                obj.read(masterNodeCtrl.masternodeTickets.ListFilterBuyTickets(0, pastelID));
+            else if (filter == "expired")
+                obj.read(masterNodeCtrl.masternodeTickets.ListFilterBuyTickets(1, pastelID));
+            else if (filter == "sold")
+                obj.read(masterNodeCtrl.masternodeTickets.ListFilterBuyTickets(2, pastelID));
+            break;
+        }
+        case RPC_CMD_LIST::trade:
+        {
+            std::string pastelID;
+
+            if (params.size() > 2 && params[2].get_str() != "all" && params[2].get_str() != "available" && params[2].get_str() != "sold") {
+                if (params[2].get_str().find_first_not_of("0123456789") == std::string::npos) {
+                    // This means min_height is input.
+                    minheight = get_number(params[2]);
+                } else {
+                    // This means pastelID is input
+                    pastelID = params[2].get_str();
+                }
+            } else if (params.size() > 2) {
+                filter = params[2].get_str();
+                if (params.size() > 3) {
+                    if (params[3].get_str().find_first_not_of("0123456789") == std::string::npos) {
+                        // This means min_height is input.
+                        minheight = get_number(params[3]);
+                    } else {
+                        // This means pastelID is input
+                        pastelID = params[3].get_str();
+                    }
+                }
+                if (params.size() > 4) {
+                    pastelID = params[3].get_str();
+                    minheight = get_number(params[4]);
+                }
+            }
+            if (filter == "all")
+                obj.read(masterNodeCtrl.masternodeTickets.ListFilterTradeTickets(0, pastelID));
+            else if (filter == "available")
+                obj.read(masterNodeCtrl.masternodeTickets.ListFilterTradeTickets(1, pastelID));
+            else if (filter == "sold")
+                obj.read(masterNodeCtrl.masternodeTickets.ListFilterTradeTickets(2, pastelID));
+            break;
+        }
         case RPC_CMD_LIST::royalty:
+        {
           if (filter == "all")
             obj.read(masterNodeCtrl.masternodeTickets.ListTickets<CArtRoyaltyTicket>());
           break;
-
-        case RPC_CMD_LIST::trade:
-            if (filter == "all")
-                obj.read(masterNodeCtrl.masternodeTickets.ListTickets<CArtTradeTicket>());
-            else if (filter == "available")
-                obj.read(masterNodeCtrl.masternodeTickets.ListFilterTradeTickets(1));
-            else if (filter == "sold")
-                obj.read(masterNodeCtrl.masternodeTickets.ListFilterTradeTickets(2));
-            break;
+        }
         }
 
         return obj;
@@ -2397,8 +2528,9 @@ As json rpc
     }
     
 #ifdef FAKE_TICKET
-    if (TICKETS.IsCmd(RPC_CMD_TICKETS::makefaketicket) || TICKETS.IsCmd(RPC_CMD_TICKETS::sendfaketicket)) {
-            const bool bSend = TICKETS.IsCmd(RPC_CMD_TICKETS::sendfaketicket);
+    if (TICKETS.IsCmd(RPC_CMD_TICKETS::makefaketicket) || TICKETS.IsCmd(RPC_CMD_TICKETS::sendfaketicket))
+    {
+        const bool bSend = TICKETS.IsCmd(RPC_CMD_TICKETS::sendfaketicket);
 	    
         RPC_CMD_PARSER2(FAKETICKET, params, mnid, id, art, act, sell);
         if (FAKETICKET.IsCmd(RPC_CMD_FAKETICKET::mnid)) {

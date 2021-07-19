@@ -1,17 +1,17 @@
 #include "base58.h"
-#include <gtest/gtest.h>
-
-#include <tuple>
-
 #include "mnode/mnode-rpc.h"
+#include "utilstrencodings.h"
+#include "vector_types.h"
+
+#include "gtest/gtest.h"
+#include <tuple>
 
 using namespace testing;
 using namespace std;
 
 string Base58Encode_TestKey(const string& s)
 {
-    vector<unsigned char> vch(s.cbegin(), s.cend());
-    return EncodeBase58Check(vch);
+    return EncodeBase58Check(string_to_vector(s));
 }
 
 class PTest_ani2psl_secret : public TestWithParam<tuple<

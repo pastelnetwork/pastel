@@ -15,7 +15,8 @@
 #include "mnode/mnode-msgsigner.h"
 #include "mnode/ticket-processor.h"
 
-#include "ed448/pastel_key.h"
+#include "pastelid/pastel_key.h"
+#include "pastelid/ed.h"
 #include "json/json.hpp"
 
 #include <algorithm>
@@ -55,10 +56,10 @@ CPastelIDRegTicket CPastelIDRegTicket::Create(std::string _pastelID, const Secur
     {
         if(!CMessageSigner::SignMessage(ss.str(), ticket.mn_signature, masterNodeCtrl.activeMasternode.keyMasternode))
             throw std::runtime_error("MN Sign of the ticket has failed");
-        ss << std::string{ ticket.mn_signature.cbegin(), ticket.mn_signature.cend() };
+        ss << vector_to_string(ticket.mn_signature);
     }
-    std::string fullTicket = ss.str();
-    ticket.pslid_signature = CPastelID::Sign(reinterpret_cast<const unsigned char*>(fullTicket.c_str()), fullTicket.size(), ticket.pastelID, strKeyPass);
+    const std::string fullTicket = ss.str();
+    string_to_vector(CPastelID::Sign(fullTicket, ticket.pastelID, strKeyPass), ticket.pslid_signature);
     
     return ticket;
 }
@@ -71,7 +72,7 @@ std::string CPastelIDRegTicket::ToStr() const noexcept
     ss << outpoint.ToStringShort();
     ss << m_nTimestamp;
     if (address.empty())
-        ss << std::string{ mn_signature.cbegin(), mn_signature.cend() };
+        ss << vector_to_string(mn_signature);
     return ss.str();
 }
 
@@ -151,14 +152,11 @@ bool CPastelIDRegTicket::IsValid(bool preReg, int depth) const
     
     // Something to always validate
     // 1. Ticket signature is valid
-    ss << std::string{ mn_signature.cbegin(), mn_signature.cend() };
+    ss << vector_to_string(mn_signature);
     std::string fullTicket = ss.str();
-    if (!CPastelID::Verify(reinterpret_cast<const unsigned char *>(fullTicket.c_str()), fullTicket.size(),
-                           pslid_signature.data(), pslid_signature.size(),
-                           pastelID)) {
+    if (!CPastelID::Verify(fullTicket, vector_to_string(pslid_signature), pastelID))
       throw std::runtime_error(strprintf("Ticket's PastelID signature is invalid. PastelID - [%s]", pastelID));
-    }
-        
+     
     // 2. Ticket pay correct registration fee - in validated in ValidateIfTicketTransaction
 
     return true;
@@ -285,8 +283,7 @@ CArtRegTicket CArtRegTicket::Create(
     
     ticket.pastelIDs[mainmnsign] = std::move(_pastelID);
     //signature of ticket hash
-    ticket.ticketSignatures[mainmnsign] = CPastelID::Sign(reinterpret_cast<const unsigned char*>(ticket.artTicket.c_str()), ticket.artTicket.size(),
-                                                            ticket.pastelIDs[mainmnsign], strKeyPass);
+    string_to_vector(CPastelID::Sign(ticket.artTicket, ticket.pastelIDs[mainmnsign], strKeyPass), ticket.ticketSignatures[mainmnsign]);
     return ticket;
 }
 
@@ -415,15 +412,11 @@ bool CArtRegTicket::IsValid(bool preReg, int depth) const
     //5. Signatures matches included PastelIDs (signature verification is slower - hence separate loop)
     for (int mnIndex=0; mnIndex < allsigns; mnIndex++)
     {
-        if (!CPastelID::Verify(reinterpret_cast<const unsigned char *>(artTicket.c_str()), artTicket.size(),
-                               ticketSignatures[mnIndex].data(), ticketSignatures[mnIndex].size(),
-                               pastelIDs[mnIndex]))
+        if (!CPastelID::Verify(artTicket, vector_to_string(ticketSignatures[mnIndex]), pastelIDs[mnIndex]))
         {
-            if (mnIndex == artistsign) {
+            if (mnIndex == artistsign)
               throw std::runtime_error("Artist signature is invalid");
-            } else {
-              throw std::runtime_error(strprintf("MN%d signature is invalid", mnIndex));
-            }
+            throw std::runtime_error(strprintf("MN%d signature is invalid", mnIndex));
         }
     }
     
@@ -590,9 +583,7 @@ bool common_validation(const T& ticket, bool preReg, const std::string& strTnxId
     // C.3 Verify signature
     // We will check that it is the correct PastelID and the one that belongs to the owner of the art in the following steps
     std::string strThisTicket = ticket.ToStr();
-    if (!CPastelID::Verify(reinterpret_cast<const unsigned char *>(strThisTicket.c_str()), strThisTicket.size(),
-                           ticket.signature.data(), ticket.signature.size(),
-                           ticket.pastelID))
+    if (!CPastelID::Verify(strThisTicket, vector_to_string(ticket.signature), ticket.pastelID))
     {
       throw std::runtime_error(strprintf("%s ticket's signature is invalid. PastelID - [%s]", thisTicket, ticket.pastelID));
     }
@@ -622,7 +613,7 @@ CArtActivateTicket CArtActivateTicket::Create(std::string _regTicketTxId, int _a
     ticket.GenerateTimestamp();
     
     std::string strTicket = ticket.ToStr();
-    ticket.signature = CPastelID::Sign(reinterpret_cast<const unsigned char*>(strTicket.c_str()), strTicket.size(), ticket.pastelID, strKeyPass);
+    string_to_vector(CPastelID::Sign(strTicket, ticket.pastelID, strKeyPass), ticket.signature);
     
     return ticket;
 }
@@ -810,7 +801,7 @@ CArtSellTicket CArtSellTicket::Create(std::string _artTnxId, int _askedPrice, in
     ticket.key = ticket.artTnxId + ":" + to_string(ticket.copyNumber);
     
     std::string strTicket = ticket.ToStr();
-    ticket.signature = CPastelID::Sign(reinterpret_cast<const unsigned char*>(strTicket.c_str()), strTicket.size(), ticket.pastelID, strKeyPass);
+    string_to_vector(CPastelID::Sign(strTicket, ticket.pastelID, strKeyPass), ticket.signature);
     
     return ticket;
 }
@@ -1020,7 +1011,7 @@ CArtBuyTicket CArtBuyTicket::Create(std::string _sellTnxId, int _price, std::str
     ticket.GenerateTimestamp();
     
     string strTicket = ticket.ToStr();
-    ticket.signature = CPastelID::Sign(reinterpret_cast<const unsigned char*>(strTicket.c_str()), strTicket.size(), ticket.pastelID, strKeyPass);
+    string_to_vector(CPastelID::Sign(strTicket, ticket.pastelID, strKeyPass), ticket.signature);
     
     return ticket;
 }
@@ -1175,7 +1166,7 @@ CArtTradeTicket CArtTradeTicket::Create(std::string _sellTnxId, std::string _buy
     ticket.GenerateTimestamp();
     
     std::string strTicket = ticket.ToStr();
-    ticket.signature = CPastelID::Sign(reinterpret_cast<const unsigned char*>(strTicket.c_str()), strTicket.size(), ticket.pastelID, strKeyPass);
+    string_to_vector(CPastelID::Sign(strTicket, ticket.pastelID, strKeyPass), ticket.signature);
     
     return ticket;
 }
@@ -1438,7 +1429,7 @@ CArtRoyaltyTicket CArtRoyaltyTicket::Create(
   ticket.GenerateTimestamp();
 
   std::string strTicket = ticket.ToStr();
-  ticket.signature = CPastelID::Sign(reinterpret_cast<const unsigned char*>(strTicket.c_str()), strTicket.size(), ticket.pastelID, strKeyPass);
+  string_to_vector(CPastelID::Sign(strTicket, ticket.pastelID, strKeyPass), ticket.signature);
 
   return ticket;
 }

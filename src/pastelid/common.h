@@ -7,62 +7,73 @@
 #include <openssl/pem.h>
 #include <openssl/err.h>
 #include <openssl/crypto.h>
+#include "vector_types.h"
 
 namespace ed_crypto {
 
     static constexpr int OK = 1;
-	
-	inline std::string Base64_Encode(const unsigned char *in, size_t len)
+    static constexpr auto BASE64 = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+
+    inline std::string Base64_Encode(const unsigned char *in, const size_t len) noexcept
     {
         std::string out;
+        out.reserve(static_cast<size_t>(ceil(len / 3) * 4));
         int val=0, valb=-6;
 
-        std::ostringstream hex_str_str;
-        for (int i = 0; i < len; i++){
-            val = (val<<8) + in[i];
+        for (size_t i = 0; i < len; i++)
+        {
+            val = (val << 8) + in[i];
             valb += 8;
-            while (valb>=0) {
-                out.push_back("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"[(val>>valb)&0x3F]);
-                valb-=6;
+            while (valb >= 0)
+            {
+                out.push_back(BASE64[(val >> valb) & 0x3F]);
+                valb -= 6;
             }
         }
-        if (valb>-6) out.push_back("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"[((val<<8)>>(valb+8))&0x3F]);
-        while (out.size()%4) out.push_back('=');
+        if (valb>-6) 
+            out.push_back(BASE64[((val << 8) >> (valb + 8)) & 0x3F]);
+        while (out.size() % 4)
+            out.push_back('=');
         return out;
     }
 	
-	inline std::vector<unsigned char> Base64_Decode(const std::string &in)
+    inline v_uint8 Base64_Decode(const std::string &in) noexcept
     {
-        std::vector<unsigned char> out;
+        v_uint8 out;
+        out.reserve((in.size() / 4) * 3);
 
         std::vector<int> T(256,-1);
-        for (int i=0; i<64; i++) T["ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"[i]] = i;
+        for (int i=0; i<64; i++)
+            T[BASE64[i]] = i;
 
         int val=0, valb=-8;
-        for (unsigned char c : in) {
-            if (T[c] == -1) break;
-            val = (val<<6) + T[c];
+        for (const unsigned char c : in)
+        {
+            if (T[c] == -1)
+                break;
+            val = (val << 6) + T[c];
             valb += 6;
-            if (valb>=0) {
-                out.push_back( (unsigned char)((val>>valb)&0xFF));
+            if (valb >= 0)
+            {
+                out.push_back( static_cast<unsigned char>((val >> valb) & 0xFF));
                 valb-=8;
             }
         }
         return out;
     }
 	
-	inline std::string Hex_Encode(const unsigned char *in, size_t len)
+    inline std::string Hex_Encode(const unsigned char *in, const size_t len)
     {
         std::ostringstream hex_str_str;
-        for (int i = 0; i < len; i++)
+        for (size_t i = 0; i < len; i++)
             hex_str_str << std::setfill('0') << std::setw(2) << std::hex << (int) in[i];
         return hex_str_str.str();
     }
 	
-	inline std::vector<unsigned char> Hex_Decode(const std::string &in)
+    inline v_uint8 Hex_Decode(const std::string &in)
     {
-        std::vector<unsigned char> out;
-        for (int i=0;i<in.length();i+=2)
+        v_uint8 out;
+        for (size_t i = 0; i < in.length(); i+=2)
         {
             unsigned int c;
             std::stringstream ss;
@@ -117,43 +128,48 @@ namespace ed_crypto {
         using unique_buffer_ptr = std::unique_ptr<unsigned char, BufferDeleterFunctor>;
 
     public:
+        buffer(unsigned char *pbuf, const std::size_t len) : 
+            m_buf(pbuf), 
+            m_nLength(len)
+        {}
 
-        buffer(unsigned char *pbuf, std::size_t len) : buffer_(pbuf), len_(len) {}
-
-        std::string str()
+        std::string str() const noexcept
         {
-            std::string s( reinterpret_cast<char const*>(buffer_.get()), len_ );
+            std::string s(reinterpret_cast<char const*>(m_buf.get()), m_nLength);
             return s;
         }
 
-        std::vector<unsigned char> data()
+        v_uint8 data() const noexcept
         {
-            const unsigned char *buffer = buffer_.get();
-            std::vector<unsigned char> out{buffer, buffer + len_};
+            const auto pBuf = m_buf.get();
+            v_uint8 out{pBuf, pBuf + m_nLength};
             return out;
         }
 
-        std::string Base64()
+        std::string Base64() noexcept
         {
-            return Base64_Encode(buffer_.get(), len_);
+            return Base64_Encode(m_buf.get(), m_nLength);
         }
 
-        std::string Hex()
+        std::string Hex() noexcept
         {
-            return Hex_Encode(buffer_.get(), len_);
+            return Hex_Encode(m_buf.get(), m_nLength);
         }
 
-        std::size_t len() const { return len_;}
-        unsigned char* get() const { return buffer_.get();}
+        std::size_t len() const noexcept { return m_nLength; }
+        unsigned char* get() const noexcept { return m_buf.get(); }
 
     private:
-        unique_buffer_ptr buffer_;
-        std::size_t len_;
+        unique_buffer_ptr m_buf;
+        std::size_t m_nLength;
     };
-    class crypto_exception : public std::exception {
+
+    class crypto_exception : public std::exception
+    {
         std::string message;
     public:
-        crypto_exception(std::string error, std::string details, std::string func_name) {
+        crypto_exception(const std::string &error, const std::string &details, const std::string &func_name)
+        {
             std::ostringstream str_str;
             str_str << func_name << " - " << error << ": " << details;
 
@@ -166,7 +182,8 @@ namespace ed_crypto {
             message = str_str.str();
         }
 
-        const char *what() const noexcept {
+        const char *what() const noexcept override
+        {
             return message.c_str();
         }
     };
@@ -175,8 +192,8 @@ namespace ed_crypto {
 	{
 		unsigned char pout[32] = {};
 		
-		if (OK != PKCS5_PBKDF2_HMAC(password.c_str(), password.length(), nullptr, 0, 1000, EVP_sha512(), 32, pout))
-			throw (crypto_exception("", std::string(), "PKCS5_PBKDF2_HMAC"));
+		if (OK != PKCS5_PBKDF2_HMAC(password.c_str(), static_cast<int>(password.length()), nullptr, 0, 1000, EVP_sha512(), 32, pout))
+			throw crypto_exception("", std::string(), "PKCS5_PBKDF2_HMAC");
 		
 		std::string out{reinterpret_cast<char*>(pout), 32};
 		return out;
