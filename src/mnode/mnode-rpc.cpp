@@ -1576,7 +1576,7 @@ Available commands:
 	std::string strCmd, strError;
 	if (TICKETS.IsCmd(RPC_CMD_TICKETS::Register)) {
         
-        RPC_CMD_PARSER2(REGISTER, params, mnid, id, art, act, sell, buy, trade, down);
+        RPC_CMD_PARSER2(REGISTER, params, mnid, id, art, act, sell, buy, trade, down, royalty);
         
         if (fHelp || !REGISTER.IsCmdSupported())
 			throw JSONRPCError(RPC_INVALID_PARAMETER,
@@ -1584,35 +1584,38 @@ R"(tickets register "type" ...
 Set of commands to register different types of Pastel tickets
 
 Available types:
-  mnid  - Register Masternode PastelID. If successful, returns "txid".
+  mnid    - Register Masternode PastelID. If successful, returns "txid".
             Ticket contains:
                 Masternode Collateral Address
                 Masternode Collateral outpoint (transaction id and index)
                 PastelID
                 Timestamp
                 Signature (above fields signed by PastelID)
-  id    - Register personal PastelID. If successful, returns "txid".
+  id      - Register personal PastelID. If successful, returns "txid".
             Ticket contains:
                 Provided Address
                 PastelID
                 Timestamp
                 Signature (above fields signed by PastelID)
-  art   - Register new art ticket. If successful, returns "txid".
+  art     - Register new art ticket. If successful, returns "txid".
             Ticket contains:
                 <...>
-  act   - Send activation for new registered art ticket. If successful, returns "txid" of activation ticket.
+  act     - Send activation for new registered art ticket. If successful, returns "txid" of activation ticket.
             Ticket contains:
                 <...>
-  sell  - Register art sell ticket. If successful, returns "txid".
+  sell    - Register art sell ticket. If successful, returns "txid".
             Ticket contains:
                 <...>
-  buy   - Register art buy ticket. If successful, returns "txid".
+  buy     - Register art buy ticket. If successful, returns "txid".
             Ticket contains:
                 <...>
-  trade - Register art trade ticket. If successful, returns "txid".
+  trade   - Register art trade ticket. If successful, returns "txid".
             Ticket contains:
                 <...>
-  down  - Register take down ticket. If successful, returns "txid".
+  down    - Register take down ticket. If successful, returns "txid".
+            Ticket contains:
+                <...>
+  royalty - Register art royalty ticket. If successful, returns "txid".
             Ticket contains:
                 <...>
 )");
@@ -1716,55 +1719,62 @@ Register new art ticket. If successful, method returns "txid".
 Arguments:
 1. "ticket"	(string, required) Base64 encoded ticket created by the artist.
     {
-        "version":    1,
-        "author":     "<authors-PastelID>",
-        "blocknum":   <block-number-when-the-ticket-was-created-by-the-artist>,
-        "data_hash":  "<base64'ed-hash-of-the-art>",
-        "copies":     <number-of-copies-of-art-this-ticket-is-creating>,
-        "royalty":    <how-much-artist-should-get-on-all-future-resales>,
-        "green":      "<address-for-Green-NFT-payment>",
-        "app_ticket": "<application-specific-data>",
+        "version":       1,
+        "author":        "<authors-PastelID>",
+        "blocknum":      <block-number-when-the-ticket-was-created-by-the-artist>,
+        "data_hash":     "<base64'ed-hash-of-the-art>",
+        "copies":        <number-of-copies-of-art-this-ticket-is-creating>,
+        "royalty":       <how-much-artist-should-get-on-all-future-resales>,
+        "green_address": "<address-for-Green-NFT-payment>",
+        "app_ticket":    "<application-specific-data>",
     }
 2. "signatures"	(string, required) Signatures (base64) and PastelIDs of the author and verifying masternodes (MN2 and MN3) as JSON:
-	{
-		"artist":{"authorsPastelID": "authorsSignature"},
-		"mn2":{"mn2PastelID":"mn2Signature"},
-		"mn2":{"mn3PastelID":"mn3Signature"}
-	}
+    {
+        "artist": { "authorsPastelID": "authorsSignature" },
+        "mn2":    { "mn2PastelID":     "mn2Signature"     },
+        "mn2":    { "mn3PastelID":     "mn3Signature"     }
+    }
 3. "pastelid"   (string, required) The current, registering masternode (MN1) PastelID. NOTE: PastelID must be generated and stored inside node. See "pastelid newkey".
 4. "passpharse" (string, required) The passphrase to the private key associated with PastelID and stored inside node. See "pastelid newkey".
 5. "key1"       (string, required) The first key to search ticket.
 6. "key2"       (string, required) The second key to search ticket.
 7. "fee"        (int, required) The agreed upon storage fee.
-Masternode PastelID Ticket:
+Art Reg Ticket:
 {
-	"ticket": {
-		"type": "art-reg",
-		"ticket": {...},
-		"signatures": {
- 			"authorsPastelID": "authorsSignature",
-			"mn1PastelID":"mn1Signature",
-			"mn2PastelID":"mn2Signature",
-			"mn3PastelID":"mn3Signature"
-		},
-		"key1": "<search key 1>",
-		"key2": "<search key 2>",
-		"storage_fee": "<agreed upon storage fee>",
-	},
-	"height": "",
-	"txid": ""
+    "txid":   <"ticket transaction id">
+    "height": <ticket block>,
+    "ticket": {
+        "type":            "art-reg",
+        "art_ticket":      {...},
+        "version":         <version>
+        "signatures": {
+            "authorsPastelID": <"authorsSignature">,
+            "mn1PastelID":     <"mn1Signature">,
+            "mn2PastelID":     <"mn2Signature">,
+            "mn3PastelID":     <"mn3Signature">
+        },
+        "key1":            "<search key 1>",
+        "key2":            "<search key 2>",
+        "artist_height":   <artist height>,
+        "total_copies":    <total copies>,
+        "royalty":         <royalty fee>,
+        "royalty_address": <"address for royalty payment">,
+        "green":           <green fee>,
+        "green_address":   <"address for Green NFT payment">,
+        "storage_fee":     <agreed upon storage fee>,
+    }
 }
 
 Register Art Ticket
 )" + HelpExampleCli("tickets register art",
-                R"(""ticket-blob" "{signatures}" jXYqZNPj21RVnwxnEJ654wEdzi7GZTZ5LAdiotBmPrF7pDMkpX1JegDMQZX55WZLkvy9fxNpZcbBJuE8QYUqBF "passphrase", "key1", "key2", 100)") + R"(
+    R"(""ticket-blob" "{signatures}" jXYqZNPj21RVnwxnEJ654wEdzi7GZTZ5LAdiotBmPrF7pDMkpX1JegDMQZX55WZLkvy9fxNpZcbBJuE8QYUqBF "passphrase", "key1", "key2", 100)") + R"(
 As json rpc
 )" + HelpExampleRpc("tickets",
-                    R"("register", "art", "ticket" "{signatures}" "jXYqZNPj21RVnwxnEJ654wEdzi7GZTZ5LAdiotBmPrF7pDMkpX1JegDMQZX55WZLkvy9fxNpZcbBJuE8QYUqBF" "passphrase", "key1", "key2", 100)"));
+    R"("register", "art", "ticket" "{signatures}" "jXYqZNPj21RVnwxnEJ654wEdzi7GZTZ5LAdiotBmPrF7pDMkpX1JegDMQZX55WZLkvy9fxNpZcbBJuE8QYUqBF" "passphrase", "key1", "key2", 100)"));
 
             if (!masterNodeCtrl.IsActiveMasterNode())
                 throw JSONRPCError(RPC_INTERNAL_ERROR,
-                     "This is not an active masternode. Only active MN can register its PastelID");
+                     "This is not an active masternode. Only active MN can register art ticket");
             
             if (fImporting || fReindex)
 				throw JSONRPCError(RPC_INVALID_PARAMETER, "Initial blocks download. Re-try later");
@@ -1992,6 +2002,56 @@ As json rpc
             
             mnObj.pushKV(RPC_KEY_TXID, txid);
         }
+        if (REGISTER.IsCmd(RPC_CMD_REGISTER::royalty)) {
+          if (fHelp || params.size() != 6)
+            throw JSONRPCError(RPC_INVALID_PARAMETER,
+R"(tickets register royalty "art-tnxid" "new-pastelid" "old-pastelid" "passphrase"
+Register new change payee of the art royalty ticket. If successful, method returns "txid".
+
+Arguments:
+1. "art-tnxid"    (string, required) The tnxid of the art register ticket
+2. "new-pastelid" (string, required) The pastelID of the new royalty recipient
+3. "old-pastelid" (string, required) The pastelID of the current royalty recipient
+4. "passpharse"   (string, required) The passphrase to the private key associated with 'old-pastelid' and stored inside node. See "pastelid newkey".
+Art Royalty ticket:
+{
+    "txid":   <"ticket transaction id">
+    "height": <ticket block>,
+    "ticket": {
+        "type":         "art-royalty",
+        "version":      <version>
+        "pastelID":     <"the pastelID of the current royalty recipient">,
+        "new_pastelID": <"the pastelID of the new royalty recipient">,
+        "art_txid":     <"the tnxid of the art register ticket">,
+        "signature":    <"">,
+    }
+}
+
+Royalty Ticket)"
++ HelpExampleCli("tickets register royalty",
+  R"("907e5e4c6fc4d14660a22afe2bdf6d27a3c8762abf0a89355bb19b7d9e7dc440", "hjGBJHujvvlnBKg8h1kFgjnjfTF76HV7w9fD85VdmBbndm3sfmFdKjfFskht59v53b0h65cGVJVdSHVYT47vjj", "jXYqZNPj21RVnwxnEJ654wEdzi7GZTZ5LAdiotBmPrF7pDMkpX1JegDMQZX55WZLkvy9fxNpZcbBJuE8QYUqBF", "passphrase")") +
+"\nAs json rpc\n"
++ HelpExampleRpc("tickets",
+  R"("register", "royalty", "907e5e4c6fc4d14660a22afe2bdf6d27a3c8762abf0a89355bb19b7d9e7dc440", "hjGBJHujvvlnBKg8h1kFgjnjfTF76HV7w9fD85VdmBbndm3sfmFdKjfFskht59v53b0h65cGVJVdSHVYT47vjj", "jXYqZNPj21RVnwxnEJ654wEdzi7GZTZ5LAdiotBmPrF7pDMkpX1JegDMQZX55WZLkvy9fxNpZcbBJuE8QYUqBF", "passphrase")"));
+
+          // should only active MN register royalty ticket?
+          //if (!masterNodeCtrl.IsActiveMasterNode())
+          //  throw JSONRPCError(RPC_INTERNAL_ERROR, "This is not an active masternode. Only active MN can register royalty ticket");
+
+          std::string artTnxId = params[2].get_str();
+          std::string newPastelID = params[3].get_str();
+          std::string pastelID = params[4].get_str();
+
+          SecureString strKeyPass;
+          strKeyPass.reserve(100);
+          strKeyPass = params[5].get_str().c_str();
+
+          CArtRoyaltyTicket artRoyaltyTicket =
+            CArtRoyaltyTicket::Create(artTnxId, newPastelID, pastelID, strKeyPass);
+          std::string txid = CPastelTicketProcessor::SendTicket(artRoyaltyTicket);
+
+          mnObj.pushKV(RPC_KEY_TXID, std::move(txid));
+        }
         if (REGISTER.IsCmd(RPC_CMD_REGISTER::down)) {
 			if (fHelp || params.size() != 5)
 				throw JSONRPCError(RPC_INVALID_PARAMETER,
@@ -2025,7 +2085,7 @@ As json rpc
 	
 	if (TICKETS.IsCmd(RPC_CMD_TICKETS::find)) {
         
-        RPC_CMD_PARSER2(FIND, params, id, art, act, sell, buy, trade, down);
+        RPC_CMD_PARSER2(FIND, params, id, art, act, sell, buy, trade, down, royalty);
             
         if (fHelp || !FIND.IsCmdSupported())
 			throw JSONRPCError(RPC_INVALID_PARAMETER,
@@ -2033,21 +2093,23 @@ R"(tickets find "type" "key""
 Set of commands to find different types of Pastel tickets
 
 Available types:
-  id    - Find PastelID (both personal and masternode) registration ticket.
+  id      - Find PastelID (both personal and masternode) registration ticket.
             The "key" is PastelID or Collateral tnx outpoint for Masternode
             OR PastelID or Address for Personal PastelID
-  art   - Find new art registration ticket.
+  art     - Find new art registration ticket.
             The "key" is 'Key1' or 'Key2' OR 'Artist's PastelID'
-  act   - Find art confirmation ticket.
+  act     - Find art confirmation ticket.
             The "key" is 'ArtReg ticket txid' OR 'Artist's PastelID' OR 'Artist's Height (block height at what original art registration request was created)'
-  sell  - Find art sell ticket.
+  sell    - Find art sell ticket.
             The "key" is either Activation OR Trade txid PLUS number of copy - "txid:number"
             ex.: 907e5e4c6fc4d14660a22afe2bdf6d27a3c8762abf0a89355bb19b7d9e7dc440:1
-  buy   - Find art buy ticket.
+  buy     - Find art buy ticket.
             The "key" is ...
-  trade - Find art trade ticket.
+  trade   - Find art trade ticket.
             The "key" is ...
-  down  - Find take down ticket.
+  down    - Find take down ticket.
+            The "key" is ...
+  royalty - Find art royalty ticket.
             The "key" is ...
 
 Arguments:
@@ -2089,6 +2151,9 @@ As json rpc
         case RPC_CMD_FIND::trade:
             return getTickets<CArtTradeTicket>(key);
 
+        case RPC_CMD_FIND::royalty:
+          return getTickets<CArtRoyaltyTicket>(key);
+
         case RPC_CMD_FIND::down: {
             //            CTakeDownTicket ticket;
             //            if (CTakeDownTicket::FindTicketInDb(params[2].get_str(), ticket))
@@ -2099,49 +2164,52 @@ As json rpc
     }
     if (TICKETS.IsCmd(RPC_CMD_TICKETS::list)) {
     
-        RPC_CMD_PARSER2(LIST, params, id, art, act, sell, buy, trade, down);
+        RPC_CMD_PARSER2(LIST, params, id, art, act, sell, buy, trade, down, royalty);
         if (fHelp || (params.size() < 2 || params.size() > 4) || !LIST.IsCmdSupported())
             throw JSONRPCError(RPC_INVALID_PARAMETER,
 R"(tickets list "type" ("filter") ("minheight")
 List all tickets of the specific type registered in the system
 
 Available types:
-  id     - List PastelID registration tickets. Without filter parameter lists ALL (both masternode and personal) PastelIDs.
+  id      - List PastelID registration tickets. Without filter parameter lists ALL (both masternode and personal) PastelIDs.
             Filter:
               all      - lists all masternode PastelIDs. Default.
               mn       - lists only masternode PastelIDs.
               personal - lists only personal PastelIDs.
               mine     - lists only registered PastelIDs available on the local node.
-  art    - List ALL new art registration tickets. Without filter parameter lists ALL Art tickets.
+  art     - List ALL new art registration tickets. Without filter parameter lists ALL Art tickets.
             Filter:
               all      - lists all Art tickets (including non-confirmed). Default.
               active   - lists only activated Art tickets - with Act ticket.
               inactive - lists only non-activated Art tickets - without Act ticket created (confirmed).
               sold     - lists only sold Art tickets - with Trade ticket created for all copies.
-  act    - List ALL art activation tickets. Without filter parameter lists ALL Act tickets.
+  act     - List ALL art activation tickets. Without filter parameter lists ALL Act tickets.
             Filter:
               all       - lists all Act tickets (including non-confirmed). Default.
               available - lists non sold Act tickets - without Trade tickets for all copies (confirmed).
               sold      - lists only sold Act tickets - with Trade tickets for all copies.
-  sell  - List ALL art sell tickets. Without filter parameter lists ALL Sell tickets.
+  sell    - List ALL art sell tickets. Without filter parameter lists ALL Sell tickets.
             Filter:
               all         - lists all Sell tickets (including non-confirmed). Default.
               available   - list only Sell tickets that are confirmed, active and open for buying (no active Buy ticket and no Trade ticket).
               unavailable - list only Sell tickets that are confirmed, but not yet active (current block height is less then valid_after).
               expired     - list only Sell tickets that are expired (current block height is more then valid_before).
               sold        - lists only sold Sell tickets - with Trade ticket created.
-  buy   - List ALL art buy tickets. Without filter parameter lists ALL Buy tickets.
+  buy     - List ALL art buy tickets. Without filter parameter lists ALL Buy tickets.
             Filter:
               all     - list all Buy tickets (including non-confirmed). Default.
               expired - list Buy tickets that expired (Trade ticket was not created in time - 1h/24blocks)
               sold    - list Buy tickets with Trade ticket created
-  trade - List ALL art trade tickets. Without filter parameter lists ALL Trade tickets.
+  trade   - List ALL art trade tickets. Without filter parameter lists ALL Trade tickets.
             Filter:
               all       - list all Trade tickets (including non-confirmed). Default.
               available - lists never sold Trade tickets (without Sell tickets).
               sold      - lists only sold Trade tickets (with Sell tickets).
             Optional parameters:
               <pastelID> - apply filter on trade ticket that belong to the correspond pastelID only
+  royalty - List ALL art royalty tickets. Without filter parameter lists ALL royalty tickets.
+            Filter:
+              all       - list all Royalty tickets. Default.
 
 Arguments:
 1. minheight	 - minimum height for returned tickets (only tickets registered after this height will be returned).
@@ -2313,6 +2381,12 @@ As json rpc
             else if (filter == "sold")
                 obj.read(masterNodeCtrl.masternodeTickets.ListFilterTradeTickets(2, pastelID));
             break;
+        }
+        case RPC_CMD_LIST::royalty:
+        {
+          if (filter == "all")
+            obj.read(masterNodeCtrl.masternodeTickets.ListTickets<CArtRoyaltyTicket>());
+          break;
         }
         }
 

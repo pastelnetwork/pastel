@@ -201,7 +201,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
             "data_hash": "ABCDEFG",
             "copies": self.total_copies,
             "royalty": 10,
-            "green": "",
+            "green_address": "",
             "app_ticket": "HIJKLMNOP"}
 
         self.ticket = str_to_b64str(json.dumps(json_ticket))
