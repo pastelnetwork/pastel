@@ -88,7 +88,7 @@ bytes fields are base64 as strings
   "block_hash": bytes         // hash of the top block when the ticket was created - this is to map the ticket to the MNs that should process it
   "copies": integer,          // number of copies
   "royalty": float,           // (not yet supported by cNode) how much artist should get on all future resales
-  "green": string,            // address for Green NFT payment (not yet supported by cNode)
+  "green_address": string,    // address for Green NFT payment (not yet supported by cNode)
 
   "app_ticket": bytes,        // cNode DOES NOT parse this part!!!!
   as base64(
@@ -213,8 +213,8 @@ public:
         READWRITE(m_nBlock);
 	}
 
-    std::string GetRoyaltyPayeePastelID();
-    std::string GetRoyaltyPayeeAddress();
+    std::string GetRoyaltyPayeePastelID() const;
+    std::string GetRoyaltyPayeeAddress() const;
 
     static CArtRegTicket Create(std::string _ticket, const std::string& signatures,
                                 std::string _pastelID, const SecureString& strKeyPass,
@@ -592,8 +592,8 @@ public:
     READWRITE(m_nBlock);
   }
 
-  static CArtRoyaltyTicket Create(std::string _pastelID, std::string _newPastelID,
-                                  std::string _artTnxId, const SecureString& strKeyPass);
+  static CArtRoyaltyTicket Create(std::string _artTnxId, std::string _newPastelID,
+                                  std::string _pastelID, const SecureString& strKeyPass);
   static bool FindTicketInDb(const std::string& key, CArtRoyaltyTicket& ticket);
 
   static std::vector<CArtRoyaltyTicket> FindAllTicketByPastelID(const std::string& pastelID);
