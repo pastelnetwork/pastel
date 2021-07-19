@@ -1,7 +1,7 @@
 #include "streams.h"
+#include "chainparams.h"
 #include "mock_mnode_ticket.h"
 #include "mnode/ticket-processor.h"
-#include "pastelid/pastel_key.h"
 
 #include <gtest/gtest.h>
 
@@ -10,6 +10,8 @@ using namespace std;
 
 constexpr auto TEST_TICKET_TXID = "123456789";
 constexpr auto TEST_TICKET_ADDRESS = "address";
+constexpr auto TEST_PASTEL_ID = "TestPastelID";
+
 constexpr uint32_t TEST_TICKET_BLOCK = 100;
 
 class TestPastelIDRegTicket : 
@@ -43,9 +45,9 @@ public:
 
     static void SetupTestSuite()
     {
-        SecureString sPassPhrase("passphrase");
-        m_sPastelID = CPastelID::CreateNewLocalKey(sPassPhrase);
         SelectParams(CBaseChainParams::Network::REGTEST);
+        SecureString sPassPhrase("passphrase");
+        m_sPastelID = TEST_PASTEL_ID;
     }
     static void TestDownTestSuite()
     {
