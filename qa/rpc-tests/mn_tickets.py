@@ -666,7 +666,6 @@ class MasterNodeTicketsTest(MasterNodeCommon):
 
      # ===============================================================================================================
     def create_art_ticket_and_signatures(self, artist_pastelid, artist_node_num,
-                                         total_copies,
                                          app_ticket, data_hash, total_copies, royalty, green_address,
                                          make_bad_signatures_dicts):
         mn_ticket_signatures = {}
@@ -817,7 +816,6 @@ class MasterNodeTicketsTest(MasterNodeCommon):
 
         self.total_copies = 10
         self.create_art_ticket_and_signatures(self.artist_pastelid1, self.non_mn3,
-                                              self.total_copies,
                                               "HIJKLMNOP", "ABCDEFG", self.total_copies,
                                               self.royalty, self.nonmn7_green_address1,
                                               True)
@@ -2086,7 +2084,6 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         assert_equal(len(tickets_list), number_personal_nodes + loop_number * 2)
 
         self.create_art_ticket_and_signatures(self.artist_pastelid1, self.non_mn3,
-                                               5,
                                               "HashOfTicket2", "Ticket2", 5,
                                               self.royalty, self.nonmn7_green_address1,
                                               False)
@@ -2108,7 +2105,6 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         self.__wait_for_ticket_tnx()
 
         self.create_art_ticket_and_signatures(self.artist_pastelid1, self.non_mn3,
-                                              1,
                                               "HashOfTicket3", "Ticket3", 1,
                                               self.royalty, self.nonmn7_green_address1,
                                               False)
