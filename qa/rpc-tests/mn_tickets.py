@@ -1256,7 +1256,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         try:
             self.nodes[self.non_mn3].tickets("register", "sell",
                                              self.art_ticket1_act_ticket_txid, str(0),
-                                             self.artist_pastelid1, "passphrase")
+                                             self.artist_pastelid1, self.passphrase)
         except JSONRPCException as e:
             self.errorString = e.error['message']
             print(self.errorString)
