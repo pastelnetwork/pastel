@@ -83,7 +83,7 @@ struct CSpentIndexValue {
     bool IsNull() const {
         try {
             return txid.IsNull();
-        } catch (const std::runtime_error& e) {
+        } catch ([[maybe_unused]] const std::runtime_error& e) {
             return true;
         }
     }

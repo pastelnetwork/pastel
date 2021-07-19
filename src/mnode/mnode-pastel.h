@@ -2,7 +2,7 @@
 // Copyright (c) 2018-2021 The Pastel Core developers
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
-#include <string>
+#include "vector_types.h"
 
 #include "mnode/mnode-consts.h"
 #include "mnode/ticket.h"
@@ -15,8 +15,8 @@ public:
 	std::string address;
     COutPoint outpoint{};
     std::string pq_key;
-	std::vector<unsigned char> mn_signature;
-	std::vector<unsigned char> pslid_signature;
+	v_uint8 mn_signature;
+	v_uint8 pslid_signature;
     
     std::string secondKey; //local only
 
