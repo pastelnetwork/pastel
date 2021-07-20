@@ -45,12 +45,16 @@ public:
     template <typename Stream>
     inline void SerializationOp(Stream& s, const SERIALIZE_ACTION ser_action)
     {
+        const bool bRead = ser_action == SERIALIZE_ACTION::Read;
         READWRITE(vinMasternodeFrom);
         READWRITE(vinMasternodeTo);
         READWRITE(message);
         READWRITE(sigTime);
         READWRITE(vchSig);
-        READWRITE(messageType);
+        if (!bRead || !s.eof()) // if we're writing to stream or reading and not at the end of the stream
+            READWRITE(messageType);
+        else // set here default messageType
+            messageType = static_cast<uint8_t>(CMasternodeMessageType::PLAINTEXT);
     }
 
     uint256 GetHash() const
