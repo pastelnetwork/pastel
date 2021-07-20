@@ -130,6 +130,12 @@
     <ClCompile Include="..\..\..\src\gtest\test_secure_container.cpp">
       <Filter>UnitTest Files</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\..\src\gtest\test_str_encodings.cpp">
+      <Filter>UnitTest Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\src\gtest\test_pastelid.cpp">
+      <Filter>UnitTest Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\..\src\gtest\json_test_vectors.h">
@@ -137,9 +143,6 @@
     </ClInclude>
     <ClInclude Include="..\..\..\src\gtest\mock_mnode_ticket.h">
       <Filter>UnitTest Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\..\src\legroast\legroast.h">
-      <Filter>Source Files</Filter>
     </ClInclude>
     <ClInclude Include="..\port\uint128.h">
       <Filter>Source Files\port</Filter>

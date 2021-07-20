@@ -486,6 +486,21 @@ std::vector<_TicketType> CPastelTicketProcessor::FindTicketsByMVKey(const std::s
     }
     return tickets;
 }
+
+
+
+std::string CPastelTicketProcessor::getValueBySecondaryKey(const CPastelTicket& ticket) const
+{
+    std::string retVal;
+    if (ticket.HasKeyTwo()) {
+        std::string sMainKey;
+        const auto sRealKeyTwo = RealKeyTwo(ticket.KeyTwo());
+        if (dbs.at(ticket.ID())->Read(sRealKeyTwo, sMainKey))
+            retVal = sMainKey;
+    }
+    return retVal;
+}
+
 template std::vector<CPastelIDRegTicket> CPastelTicketProcessor::FindTicketsByMVKey<CPastelIDRegTicket>(const std::string&);
 template std::vector<CArtRegTicket> CPastelTicketProcessor::FindTicketsByMVKey<CArtRegTicket>(const std::string&);
 template std::vector<CArtActivateTicket> CPastelTicketProcessor::FindTicketsByMVKey<CArtActivateTicket>(const std::string&);
@@ -581,10 +596,10 @@ std::string CPastelTicketProcessor::filterTickets(F f, const bool checkConfirmat
  * For filter=3 include only tickets for locally stored PastelIDs in pvPastelIDs.
  *
  * \param filter - 1 - mn; 2 - personal; 3 - mine
- * \param pvPastelIDs - vector of locally stored PastelIDs
+ * \param pmapIDs - map of locally stored PastelIDs -> LegRoast public key
  * \return
  */
-std::string CPastelTicketProcessor::ListFilterPastelIDTickets(const short filter, const std::vector<std::string>* pvPastelIDs) const
+std::string CPastelTicketProcessor::ListFilterPastelIDTickets(const short filter, const pastelid_store_t* pmapIDs) const
 {
     return filterTickets<CPastelIDRegTicket>(
         [&](const CPastelIDRegTicket& t, const unsigned int chainHeight) -> bool {
@@ -593,7 +608,7 @@ std::string CPastelTicketProcessor::ListFilterPastelIDTickets(const short filter
                 (filter == 2 &&
                  t.outpoint.IsNull()) || // don't skip personal
                 (filter == 3 &&          // don't skip locally stored tickets
-                 pvPastelIDs && find(pvPastelIDs->cbegin(), pvPastelIDs->cend(), t.pastelID) != pvPastelIDs->cend()))
+                 pmapIDs && pmapIDs->find(t.pastelID) != pmapIDs->cend()))
                 return false;
             return true;
         });

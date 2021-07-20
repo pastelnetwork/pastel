@@ -1,3 +1,4 @@
+#pragma once
 // Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2014 The Bitcoin Core developers
 // Distributed under the MIT software license, see the accompanying
@@ -6,12 +7,8 @@
 /**
  * Utilities for converting data from/to strings.
  */
-#ifndef BITCOIN_UTILSTRENCODINGS_H
-#define BITCOIN_UTILSTRENCODINGS_H
-
 #include <stdint.h>
-#include <string>
-#include <vector>
+#include "vector_types.h"
 
 #define BEGIN(a)            ((char*)&(a))
 #define END(a)              ((char*)&((&(a))[1]))
@@ -40,19 +37,19 @@ std::string SanitizeFilename(const std::string& str);
 std::string SanitizeString(const std::string& str, int rule = SAFE_CHARS_DEFAULT);
 std::string HexInt(uint32_t val);
 uint32_t ParseHexToUInt32(const std::string& str);
-std::vector<unsigned char> ParseHex(const char* psz);
-std::vector<unsigned char> ParseHex(const std::string& str);
+v_uint8 ParseHex(const char* psz);
+v_uint8 ParseHex(const std::string& str);
 signed char HexDigit(char c);
 bool IsHex(const std::string& str);
-std::vector<unsigned char> DecodeAscii85(const char* p, bool* pfInvalid = nullptr) noexcept;
+v_uint8 DecodeAscii85(const char* p, bool* pfInvalid = nullptr) noexcept;
 std::string DecodeAscii85(const std::string& str) noexcept;
 std::string EncodeAscii85(const unsigned char* pch, size_t len) noexcept;
 std::string EncodeAscii85(const std::string& str) noexcept;
-std::vector<unsigned char> DecodeBase64(const char* p, bool* pfInvalid = nullptr);
+v_uint8 DecodeBase64(const char* p, bool* pfInvalid = nullptr);
 std::string DecodeBase64(const std::string& str);
 std::string EncodeBase64(const unsigned char* pch, size_t len);
 std::string EncodeBase64(const std::string& str);
-std::vector<unsigned char> DecodeBase32(const char* p, bool* pfInvalid = nullptr);
+v_uint8 DecodeBase32(const char* p, bool* pfInvalid = nullptr);
 std::string DecodeBase32(const std::string& str);
 std::string EncodeBase32(const unsigned char* pch, size_t len);
 std::string EncodeBase32(const std::string& str);
@@ -148,26 +145,29 @@ bool ParseFixedPoint(const std::string &val, int decimals, int64_t *amount_out);
  * ffffff -> 1f1f1f1f1e
  */
 template<int frombits, int tobits, bool pad, typename O, typename I>
-bool ConvertBits(const O& outfn, I it, I end) {
+bool ConvertBits(const O& outfn, I it, I end)
+{
     size_t acc = 0;
     size_t bits = 0;
     constexpr size_t maxv = (1 << tobits) - 1;
     constexpr size_t max_acc = (1 << (frombits + tobits - 1)) - 1;
-    while (it != end) {
+    while (it != end)
+    {
         acc = ((acc << frombits) | *it) & max_acc;
         bits += frombits;
-        while (bits >= tobits) {
+        while (bits >= tobits)
+        {
             bits -= tobits;
             outfn((acc >> bits) & maxv);
         }
         ++it;
     }
-    if (pad) {
-        if (bits) outfn((acc << (tobits - bits)) & maxv);
-    } else if (bits >= frombits || ((acc << (tobits - bits)) & maxv)) {
-        return false;
+    if (pad)
+    {
+        if (bits)
+            outfn((acc << (tobits - bits)) & maxv);
     }
+    else if (bits >= frombits || ((acc << (tobits - bits)) & maxv))
+        return false;
     return true;
 }
-
-#endif // BITCOIN_UTILSTRENCODINGS_H

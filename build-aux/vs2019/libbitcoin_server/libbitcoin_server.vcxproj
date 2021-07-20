@@ -123,6 +123,7 @@
     <ClCompile Include="..\..\..\src\mnode\ticket-processor.cpp" />
     <ClCompile Include="..\..\..\src\net.cpp" />
     <ClCompile Include="..\..\..\src\noui.cpp" />
+    <ClCompile Include="..\..\..\src\pastelid\pastel_key.cpp" />
     <ClCompile Include="..\..\..\src\pastelid\secure_container.cpp" />
     <ClCompile Include="..\..\..\src\policy\fees.cpp" />
     <ClCompile Include="..\..\..\src\pow.cpp" />
@@ -145,6 +146,7 @@
     <ClCompile Include="..\..\..\src\txmempool.cpp" />
     <ClCompile Include="..\..\..\src\validationinterface.cpp" />
     <ClCompile Include="..\port\cyclicbarrier\cyclicbarrier.cpp" />
+    <ClCompile Include="..\port\uint128.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\..\src\addrman.h" />
@@ -164,6 +166,7 @@
     <ClInclude Include="..\..\..\src\httprpc.h" />
     <ClInclude Include="..\..\..\src\httpserver.h" />
     <ClInclude Include="..\..\..\src\init.h" />
+    <ClInclude Include="..\..\..\src\legroast.h" />
     <ClInclude Include="..\..\..\src\limitedmap.h" />
     <ClInclude Include="..\..\..\src\main.h" />
     <ClInclude Include="..\..\..\src\memusage.h" />
@@ -215,7 +218,9 @@
     <ClInclude Include="..\..\..\src\ui_interface.h" />
     <ClInclude Include="..\..\..\src\undo.h" />
     <ClInclude Include="..\..\..\src\validationinterface.h" />
+    <ClInclude Include="..\..\..\src\vector_types.h" />
     <ClInclude Include="..\port\cyclicbarrier\cyclicbarrier.hpp" />
+    <ClInclude Include="..\port\uint128.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
