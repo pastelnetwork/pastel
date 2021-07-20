@@ -13,6 +13,7 @@
 #include "mnode/mnode-controller.h"
 #include "mnode/mnode-pastel.h"
 #include "mnode/mnode-msgsigner.h"
+#include "mnode/mnode-badwords.h"
 #include "mnode/ticket-processor.h"
 
 #include "pastelid/pastel_key.h"

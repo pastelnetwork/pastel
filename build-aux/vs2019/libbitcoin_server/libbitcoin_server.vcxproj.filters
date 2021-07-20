@@ -321,6 +321,9 @@
     <ClInclude Include="..\..\..\src\mnode\mnode-active.h">
       <Filter>Source Files\mnode</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\..\src\mnode\mnode-badwords.h">
+      <Filter>Source Files\mnode</Filter>
+    </ClInclude>
     <ClInclude Include="..\..\..\src\mnode\mnode-config.h">
       <Filter>Source Files\mnode</Filter>
     </ClInclude>

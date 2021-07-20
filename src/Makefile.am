@@ -151,7 +151,8 @@ MNODE_H = \
   mnode/mnode-controller.h\
   mnode/mnode-notificationinterface.h\
   mnode/mnode-sync.h\
-  mnode/mnode-consts.h
+  mnode/mnode-consts.h\
+  mnode/mnode-badwords.h
 
 PASTELID_CPP =\
   pastelid/secure_container.cpp
