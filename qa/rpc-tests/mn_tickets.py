@@ -11,6 +11,12 @@ from test_framework.authproxy import JSONRPCException
 import json
 import time
 import base64
+import random, string
+import sys
+import hashlib
+  
+if sys.version_info < (3, 6):
+    import sha3
 
 from decimal import Decimal, getcontext
 getcontext().prec = 16
@@ -30,6 +36,7 @@ private_keys_list = ["91sY9h4AQ62bAhNk1aJ7uJeSnQzSFtz7QmW5imrKmiACm7QJLXe",  # 0
                      "92sYv5JQHzn3UDU6sYe5kWdoSWEc6B98nyY5JN7FnTTreP8UNrq",  # 11
                      "92pfBHQaf5K2XBnFjhLaALjhCqV8Age3qUgJ8j8oDB5eESFErsM"   # 12
                      ]
+
 
 # error strings
 ERR_READ_PASTELID_FILE = "Failed to read Pastel secure container file";
@@ -522,6 +529,90 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         print(f"id ticket price - {self.id_ticket_price}")
         assert_equal(coins_after, coins_before - self.id_ticket_price)  # no fee yet
 
+
+        print("Personal royalty initialize tested")
+    # ===============================================================================================================
+
+    def get_rand_testdata(self, scope, len):
+        return ''.join(random.choice(scope) for i in range(len))
+
+    # ===============================================================================================================
+
+    def generate_art_ticket_details(self):
+        # Art_ticket structure 
+        # {
+        # "artist_name": string,
+        # "artwork_title": string,
+        # "artwork_series_name": string,
+        # "artwork_keyword_set": string,
+        # "artist_website": string,
+        # "artist_written_statement": string,
+        # "artwork_creation_video_youtube_url": string,
+        # "thumbnail_hash": bytes,    //hash of the thumbnail !!!!SHA3-256!!!!
+        # "data_hash": bytes,         // hash of the image (or any other asset) that this ticket represents !!!!SHA3-256!!!!
+        # "fingerprints_hash": bytes,       //hash of the fingerprint !!!!SHA3-256!!!!
+        # "fingerprints": bytes,            //compressed fingerprint
+        # "fingerprints_signature": bytes,  //signature on raw image fingerprint
+        # "rq_ids": [list of strings],//raptorq symbol identifiers -  !!!!SHA3-256 of symbol block!!!!
+        # "rq_oti": [array of 12 bytes],    //raptorq CommonOTI and SchemeSpecificOTI
+        # "rareness_score": integer,  // 0 to 1000
+        # "nsfw_score": integer,      // 0 to 1000
+        # "seen_score": integer,      // 0 to 1000
+        # }
+        # Data for art-ticket generation
+        artist_first_names=('John','Andy','Joe', 'Jennifer', 'August', 'Dave', 'Blanca', 'Diana', 'Tia', 'Michael')
+        artist_last_names=('Johnson','Smith','Williams', 'Ecclestone', 'Schumacher', 'Faye', 'Counts', 'Wesley')
+        letters = string.ascii_letters
+
+        # initialize hash base strings or lists
+        thumbnail_to_be_hashed = self.get_rand_testdata(letters, 10)#''.join(random.choice(letters) for i in range(10))
+        data_to_be_hashed = self.get_rand_testdata(letters, 10)#''.join(random.choice(letters) for i in range(10))
+        fingerprints_to_be_hashed = self.get_rand_testdata(letters, 10)#''.join(random.choice(letters) for i in range(10))
+        rq_oti = self.get_rand_testdata(letters, 12)#''.join(random.choice(letters) for i in range(12))
+        rq_ids_to_be_hashed = ""
+        for _ in range (5):
+            rq_ids_to_be_hashed += (self.get_rand_testdata(letters, 10))
+        
+        # encode the string
+        encoded_thumbnail = thumbnail_to_be_hashed.encode()
+        encoded_data = data_to_be_hashed.encode()
+        encoded_fingerprint = fingerprints_to_be_hashed.encode()
+        encoded_rq_ids = rq_ids_to_be_hashed.encode()
+        
+        # create sha3-256 hash objects
+        obj_sha3_256_thumbnail = hashlib.sha3_256(encoded_thumbnail)
+        obj_sha3_256_data = hashlib.sha3_256(encoded_data)
+        obj_sha3_256_fingerprint = hashlib.sha3_256(encoded_fingerprint)
+        obj_sha3_256_rq_ids = hashlib.sha3_256(encoded_rq_ids)
+
+        art_ticket_json = {
+            "artist_name": "".join(random.choice(artist_first_names)+" "+random.choice(artist_last_names)),
+            "artwork_title": self.get_rand_testdata(letters, 10),
+            "artwork_series_name": self.get_rand_testdata(letters, 10),
+            "artwork_keyword_set": self.get_rand_testdata(letters, 10),
+            "artist_website": self.get_rand_testdata(letters, 10),
+            "artist_written_statement": self.get_rand_testdata(letters, 10),
+            "artwork_creation_video_youtube_url": self.get_rand_testdata(letters, 10),
+            "thumbnail_hash": obj_sha3_256_thumbnail.hexdigest(),    #hash of the thumbnail !!!!SHA3-256!!!!
+            "data_hash": obj_sha3_256_data.hexdigest(),         #hash of the image (or any other asset) that this ticket represents !!!!SHA3-256!!!!
+            "fingerprints_hash": obj_sha3_256_fingerprint.hexdigest(),       #hash of the fingerprint !!!!SHA3-256!!!!
+            "fingerprints": fingerprints_to_be_hashed,            #compressed fingerprint
+            "fingerprints_signature": self.get_rand_testdata(letters, 20), #signature on raw image fingerprint
+            "rq_ids": obj_sha3_256_rq_ids.hexdigest(), #[list of strings],//raptorq symbol identifiers -  !!!!SHA3-256 of symbol block!!!!
+            "rq_oti": rq_oti,    #raptorq CommonOTI and SchemeSpecificOTI
+            "rareness_score": str(random.randint(0, 1000)),   # 0 to 1000
+            "nsfw_score": str(random.randint(0, 1000)),   # 0 to 1000
+            "seen_score": str(random.randint(0, 1000)),   # 0 to 1000
+        }
+
+        return art_ticket_json
+
+     # ===============================================================================================================
+    def personal_green_initialize_tests(self):
+        # personal green PastelID ticket
+        self.nonmn6_green_pastelid1 = self.create_pastelid(self.non_mn6)
+        self.nonmn6_green_address1 = self.nodes[self.non_mn6].getnewaddress()
+
         print("Personal non_mn5 royalty initialize tested")
 
     # ===============================================================================================================
@@ -530,6 +621,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         self.nonmn6_royalty_pastelid1 = self.create_pastelid(self.non_mn6)
         assert_true(self.nonmn6_royalty_pastelid1, "No Pastelid was created")
         self.nonmn6_royalty_address1 = self.nodes[self.non_mn6].getnewaddress()
+
 
         # register without errors from non MN with enough coins
         self.nodes[self.mining_node_num].sendtoaddress(self.nonmn6_royalty_address1, 100, "", "", False)
@@ -572,7 +664,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
 
         print("Personal green initialize tested")
 
-    # ===============================================================================================================
+     # ===============================================================================================================
     def create_art_ticket_and_signatures(self, artist_pastelid, artist_node_num,
                                          app_ticket, data_hash, total_copies, royalty, green_address,
                                          make_bad_signatures_dicts):
@@ -596,11 +688,21 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         #   "green_address": string,    // address for Green NFT payment (not yet supported by cNode)
         #   "app_ticket": ...
         # }
+
+
+        res1 = self.nodes[artist_node_num].getblock(str(self.artist_ticket_height))
+        
+        block_hash = res1["hash"]
+
+        app_ticket_json = self.generate_art_ticket_details()
+
+        app_ticket = str_to_b64str(json.dumps(app_ticket_json))
+
         json_ticket = {
             "version": 1,
             "author": artist_pastelid,
             "blocknum": self.artist_ticket_height,
-            "block_hash": data_hash,
+            "block_hash": block_hash,
             "copies": total_copies,
             "royalty": royalty,
             "green_address": green_address,
