@@ -2,7 +2,7 @@
 // Copyright (c) 2018-2021 The Pastel Core developers
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
-#include <string>
+#include "vector_types.h"
 
 #include "mnode/mnode-consts.h"
 #include "mnode/ticket.h"
@@ -15,8 +15,8 @@ public:
 	std::string address;
     COutPoint outpoint{};
     std::string pq_key;
-	std::vector<unsigned char> mn_signature;
-	std::vector<unsigned char> pslid_signature;
+	v_uint8 mn_signature;
+	v_uint8 pslid_signature;
     
     std::string secondKey; //local only
 
@@ -88,7 +88,7 @@ bytes fields are base64 as strings
   "block_hash": bytes         // hash of the top block when the ticket was created - this is to map the ticket to the MNs that should process it
   "copies": integer,          // number of copies
   "royalty": float,           // (not yet supported by cNode) how much artist should get on all future resales
-  "green": string,            // address for Green NFT payment (not yet supported by cNode)
+  "green_address": string,    // address for Green NFT payment (not yet supported by cNode)
 
   "app_ticket": bytes,        // cNode DOES NOT parse this part!!!!
   as base64(
@@ -213,8 +213,8 @@ public:
         READWRITE(m_nBlock);
 	}
 
-    std::string GetRoyaltyPayeePastelID();
-    std::string GetRoyaltyPayeeAddress();
+    std::string GetRoyaltyPayeePastelID() const;
+    std::string GetRoyaltyPayeeAddress() const;
 
     static CArtRegTicket Create(std::string _ticket, const std::string& signatures,
                                 std::string _pastelID, const SecureString& strKeyPass,
@@ -608,8 +608,8 @@ public:
     READWRITE(m_nBlock);
   }
 
-  static CArtRoyaltyTicket Create(std::string _pastelID, std::string _newPastelID,
-                                  std::string _artTnxId, const SecureString& strKeyPass);
+  static CArtRoyaltyTicket Create(std::string _artTnxId, std::string _newPastelID,
+                                  std::string _pastelID, const SecureString& strKeyPass);
   static bool FindTicketInDb(const std::string& key, CArtRoyaltyTicket& ticket);
 
   static std::vector<CArtRoyaltyTicket> FindAllTicketByPastelID(const std::string& pastelID);

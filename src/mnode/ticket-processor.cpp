@@ -549,7 +549,7 @@ template std::string CPastelTicketProcessor::ListTickets<CArtTradeTicket>() cons
 template std::string CPastelTicketProcessor::ListTickets<CArtRoyaltyTicket>() const;
 
 template <class _TicketType, typename F>
-std::string CPastelTicketProcessor::filterTickets(F f) const
+std::string CPastelTicketProcessor::filterTickets(F f, const bool checkConfirmation) const
 {
     std::vector<_TicketType> allTickets;
     listTickets<_TicketType>([&](const _TicketType& ticket)
@@ -567,7 +567,7 @@ std::string CPastelTicketProcessor::filterTickets(F f) const
     for (const auto& t : allTickets)
     {
         //check if the sell ticket is confirmed
-        if (chainHeight - t.GetBlock() < masterNodeCtrl.MinTicketConfirmations)
+        if ((chainHeight - t.GetBlock() < masterNodeCtrl.MinTicketConfirmations) && checkConfirmation)
             continue;
         if (f(t, chainHeight))
             continue;
@@ -581,10 +581,10 @@ std::string CPastelTicketProcessor::filterTickets(F f) const
  * For filter=3 include only tickets for locally stored PastelIDs in pvPastelIDs.
  *
  * \param filter - 1 - mn; 2 - personal; 3 - mine
- * \param pvPastelIDs - vector of locally stored PastelIDs
+ * \param pmapIDs - map of locally stored PastelIDs -> LegRoast public key
  * \return
  */
-std::string CPastelTicketProcessor::ListFilterPastelIDTickets(const short filter, const std::vector<std::string>* pvPastelIDs) const
+std::string CPastelTicketProcessor::ListFilterPastelIDTickets(const short filter, const pastelid_store_t* pmapIDs) const
 {
     return filterTickets<CPastelIDRegTicket>(
         [&](const CPastelIDRegTicket& t, const unsigned int chainHeight) -> bool {
@@ -593,7 +593,7 @@ std::string CPastelTicketProcessor::ListFilterPastelIDTickets(const short filter
                 (filter == 2 &&
                  t.outpoint.IsNull()) || // don't skip personal
                 (filter == 3 &&          // don't skip locally stored tickets
-                 pvPastelIDs && find(pvPastelIDs->cbegin(), pvPastelIDs->cend(), t.pastelID) != pvPastelIDs->cend()))
+                 pmapIDs && pmapIDs->find(t.pastelID) != pmapIDs->cend()))
                 return false;
             return true;
         });
@@ -650,12 +650,20 @@ std::string CPastelTicketProcessor::ListFilterActTickets(const short filter) con
             return true;
         });
 }
-// 1 - available; 2 - unavailable; 3 - expired; 4 - sold
-std::string CPastelTicketProcessor::ListFilterSellTickets(const short filter) const
+// 0 - all, 1 - available; 2 - unavailable; 3 - expired; 4 - sold
+std::string CPastelTicketProcessor::ListFilterSellTickets(const short filter, const std::string& pastelID) const
 {
+    const bool checkConfirmation{filter > 0};
+    if (filter == 0 && pastelID.empty()) {
+            return ListTickets<CArtSellTicket>(); // get all
+    }
     return filterTickets<CArtSellTicket>(
         [&](const CArtSellTicket& t, const unsigned int chainHeight) -> bool
         {
+            if (!pastelID.empty() && t.pastelID != pastelID)
+            {
+                return true; // ignore tickets that do not belong to this pastelID
+            }
             CArtBuyTicket existingBuyTicket;
             //find buy ticket for this sell ticket, if any
             if (CArtBuyTicket::FindTicketInDb(t.GetTxId(), existingBuyTicket))
@@ -690,39 +698,55 @@ std::string CPastelTicketProcessor::ListFilterSellTickets(const short filter) co
                     return true;
             }
             return false;
-        });
+        }, checkConfirmation);
 }
 
-// 1 - expired;    2 - sold
-std::string CPastelTicketProcessor::ListFilterBuyTickets(const short filter) const
+// 0 - all, 1 - expired;    2 - sold
+std::string CPastelTicketProcessor::ListFilterBuyTickets(const short filter, const std::string& pastelID) const
 {
+    const bool checkConfirmation{filter > 0};
+    if (filter == 0 && pastelID.empty()) {
+            return ListTickets<CArtBuyTicket>(); // get all
+    }
     return filterTickets<CArtBuyTicket>(
         [&](const CArtBuyTicket& t, const unsigned int chainHeight) -> bool
         {
+            if (!pastelID.empty() && t.pastelID != pastelID)
+                return true; // ignore tickets that do not belong to this pastelID
+            if (filter == 0)
+                return false; // get all belong to this pastel ID
             if (CArtTradeTicket::CheckTradeTicketExistByBuyTicket(t.GetTxId())) {
                 if (filter == 2)
                     return false; //don't skip traded
             } else if (filter == 1 && t.GetBlock() + masterNodeCtrl.MaxBuyTicketAge < chainHeight)
                 return false; //don't skip non sold, and expired
             return true;
-        });
+        }, checkConfirmation);
 }
-// 1 - available;      2 - sold
-std::string CPastelTicketProcessor::ListFilterTradeTickets(const short filter) const
+
+// 0 - all, 1 - available;      2 - sold
+std::string CPastelTicketProcessor::ListFilterTradeTickets(const short filter, const std::string& pastelID) const
 {
+    const bool checkConfirmation{filter > 0};
+    if (filter == 0 && pastelID.empty()) {
+            return ListTickets<CArtTradeTicket>(); // get all
+    }
     return filterTickets<CArtTradeTicket>(
         [&](const CArtTradeTicket& t, const unsigned int chainHeight) -> bool
         {
             //find Trade tickets listing this Trade ticket txid as art ticket
             auto tradeTickets = CArtTradeTicket::FindAllTicketByArtTnxID(t.GetTxId());
-
+            if (!pastelID.empty() && t.pastelID != pastelID)
+                return true; // ignore tickets that do not belong to this pastelID
+            if (filter == 0)
+                return false; // get all belong to this pastel ID
             if (tradeTickets.empty()) {
                 if (filter == 1)
                     return false; //don't skip available
             } else if (filter == 2)
                 return false; //don't skip sold
             return true;
-        });
+        }, checkConfirmation);
 }
 
 /*static*/ bool CPastelTicketProcessor::WalkBackTradingChain(

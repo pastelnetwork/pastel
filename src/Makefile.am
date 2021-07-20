@@ -154,7 +154,8 @@ MNODE_H = \
   mnode/mnode-consts.h
 
 PASTELID_CPP =\
-  pastelid/secure_container.cpp
+  pastelid/secure_container.cpp\
+  pastelid/pastel_key.cpp
 
 PASTELID_H =\
   pastelid/secure_container.h\
@@ -266,6 +267,7 @@ BITCOIN_CORE_H = \
   undo.h \
   util.h \
   str_utils.h \
+  vector_types.h \
   utilmoneystr.h \
   utilstrencodings.h \
   utiltest.h \

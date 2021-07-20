@@ -58,6 +58,8 @@ protected:
             }
             trim(sToken);
             lowercase(sToken);
+            // replace double underscore with single hyphen
+            replaceAll(sToken, "__", "-");
             m_CmdMap.emplace(sToken, static_cast<RPC_CMD_ENUM>(nCmdNo));
         }
         if (nCmdNo + 1 != nMaxCmdNo)
@@ -90,14 +92,17 @@ protected:
 
 // parse first command in params
 // examples:
-//     RPC_CMD_PARSER(TICKETS,params, register, find, list, get)
+//     RPC_CMD_PARSER(TICKETS, params, register, find, list, get)
+// special syntax for commands that containe hyphen (-):
+//      find-all -> find__all
+// double underscore is replaced by single hyphen in the command name
 #define RPC_CMD_PARSER(command,params,...) \
     enum class RPC_CMD_##command : uint32_t{unknown = 0, __VA_ARGS__, max_command_count}; \
     RPCCommandParser<RPC_CMD_##command> command(params, 0, #__VA_ARGS__);
 
 // parse second command in params
 // examples:
-//     RPC_CMD_PARSER2(LIST,params, id, art, act, sell, buy, trade, down)
+//     RPC_CMD_PARSER2(LIST, params, id, art, act, sell, buy, trade, down)
 #define RPC_CMD_PARSER2(command,params,...) \
     enum class RPC_CMD_##command : uint32_t \
     { unknown = 0, __VA_ARGS__, max_command_count }; \

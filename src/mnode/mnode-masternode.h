@@ -186,10 +186,19 @@ public:
         READWRITE(fUnitTest);
         READWRITE(strExtraLayerKey);
         READWRITE(strExtraLayerAddress);
-        READWRITE(strExtraLayerP2P);
         READWRITE(strExtraLayerCfg);
         READWRITE(aMNFeePerMB);
         READWRITE(aArtTicketFeePerKB);
+        
+        //For backward compatibility
+        try
+        {
+            READWRITE(strExtraLayerP2P);
+        }
+        catch (const std::ios_base::failure& e)
+        {
+            LogPrintf("CMasternode: missing extP2P!");
+        }
     }
 
     // CALCULATE A RANK AGAINST OF GIVEN BLOCK
@@ -325,8 +334,17 @@ public:
         READWRITE(lastPing);
         READWRITE(strExtraLayerKey);
         READWRITE(strExtraLayerAddress);
-        READWRITE(strExtraLayerP2P);
         READWRITE(strExtraLayerCfg);
+
+        //For backward compatibility
+        try
+        {
+            READWRITE(strExtraLayerP2P);
+        }
+        catch (const std::ios_base::failure& e)
+        {
+            LogPrintf("CMasternodeBroadcast: missing extP2P!");
+        }
     }
 
     uint256 GetHash() const
