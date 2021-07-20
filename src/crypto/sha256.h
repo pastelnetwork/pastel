@@ -1,10 +1,7 @@
+#pragma once
 // Copyright (c) 2014 The Bitcoin Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
-
-#ifndef BITCOIN_CRYPTO_SHA256_H
-#define BITCOIN_CRYPTO_SHA256_H
-
 #include <stdint.h>
 #include <stdlib.h>
 
@@ -12,7 +9,7 @@
 class CSHA256
 {
 public:
-    static const size_t OUTPUT_SIZE = 32;
+    static constexpr size_t OUTPUT_SIZE = 32;
 
     CSHA256();
     CSHA256& Write(const unsigned char* data, size_t len);
@@ -28,5 +25,3 @@ private:
     size_t bytes;
     void FinalizeNoPadding(unsigned char hash[OUTPUT_SIZE], bool enforce_compression);
 };
-
-#endif // BITCOIN_CRYPTO_SHA256_H

@@ -9,7 +9,7 @@ from test_framework.util import assert_equal, assert_greater_than, initialize_ch
     pasteld_processes, wait_and_assert_operationid_status, p2p_port, \
     stop_node
 
-from mn_common import MasterNodeCommon, wait_for_it
+from mn_common import MasterNodeCommon
 
 import os
 import sys
@@ -68,7 +68,7 @@ class MasterNodeMainTest (MasterNodeCommon):
         # 1. kill (not gracefully) node0 (masternode)
         # 2. start node0 again 
         # 3. Check all nodes
-        # wait_for_it(120, 20, "ENABLED", self.nodes[0:self.total_number_of_nodes], mn_id)
+        # self.wait_for_mn_state(120, 20, "ENABLED", self.nodes[0:self.total_number_of_nodes], mn_id)
 
         # tests = ['cache', 'sync', 'ping', 'restart', 'spent', "fee"]
         if 'cache' in tests:
@@ -81,7 +81,7 @@ class MasterNodeMainTest (MasterNodeCommon):
             connect_nodes_bi(self.nodes,1,2)
             self.sync_all()
 
-            wait_for_it(10, 10, "ENABLED", self.nodes[0:self.total_number_of_nodes], mn_id)
+            self.wait_for_mn_state(10, 10, "ENABLED", self.nodes[0:self.total_number_of_nodes], mn_id)
 
             #Test disk cache 2
             print("Stopping node 0 - Masternode...")
@@ -92,7 +92,7 @@ class MasterNodeMainTest (MasterNodeCommon):
             connect_nodes_bi(self.nodes,0,2)
             self.sync_all()
 
-            wait_for_it(20, 10, "ENABLED", self.nodes[0:self.total_number_of_nodes], mn_id)
+            self.wait_for_mn_state(20, 10, "ENABLED", self.nodes[0:self.total_number_of_nodes], mn_id)
 
         # tests = ['cache', 'sync', 'ping', 'restart', 'spent', "fee"]
         if 'sync' in tests:
@@ -106,7 +106,7 @@ class MasterNodeMainTest (MasterNodeCommon):
             self.total_number_of_nodes = 4
             self.sync_all()
 
-            wait_for_it(20, 10, "ENABLED", self.nodes[0:self.total_number_of_nodes], mn_id)
+            self.wait_for_mn_state(20, 10, "ENABLED", self.nodes[0:self.total_number_of_nodes], mn_id)
 
         # tests = ['cache', 'sync', 'ping', 'restart', 'spent', "fee"]
         if 'ping' in tests:
@@ -114,7 +114,7 @@ class MasterNodeMainTest (MasterNodeCommon):
             print("Stopping node 0 - Masternode...")
             stop_node(self.nodes[0],0)
 
-            wait_for_it(150, 50, "EXPIRED", self.nodes[1:self.total_number_of_nodes], mn_id)
+            self.wait_for_mn_state(150, 50, "EXPIRED", self.nodes[1:self.total_number_of_nodes], mn_id)
 
             print("Starting node 0 as Masternode again...")
             self.nodes.append(start_node(0, self.options.tmpdir, ["-debug=masternode", "-masternode", "-txindex=1", "-reindex", "-masternodeprivkey=91sY9h4AQ62bAhNk1aJ7uJeSnQzSFtz7QmW5imrKmiACm7QJLXe"]))
@@ -124,7 +124,7 @@ class MasterNodeMainTest (MasterNodeCommon):
                 connect_nodes_bi(self.nodes,0,3)
             self.sync_all()
             
-            wait_for_it(120, 20, "ENABLED", self.nodes[0:self.total_number_of_nodes], mn_id)
+            self.wait_for_mn_state(120, 20, "ENABLED", self.nodes[0:self.total_number_of_nodes], mn_id)
         
         # tests = ['cache', 'sync', 'ping', 'restart', 'spent', "fee"]
         if 'restart' in tests:
@@ -132,8 +132,8 @@ class MasterNodeMainTest (MasterNodeCommon):
             print("Stopping node 0 - Masternode...")
             stop_node(self.nodes[0],0)
 
-            wait_for_it(150, 50, "EXPIRED", self.nodes[1:self.total_number_of_nodes], mn_id)
-            wait_for_it(360, 30, "NEW_START_REQUIRED", self.nodes[1:self.total_number_of_nodes], mn_id)
+            self.wait_for_mn_state(150, 50, "EXPIRED", self.nodes[1:self.total_number_of_nodes], mn_id)
+            self.wait_for_mn_state(360, 30, "NEW_START_REQUIRED", self.nodes[1:self.total_number_of_nodes], mn_id)
 
             print("Starting node 0 as Masternode again...")
             self.nodes.append(start_node(0, self.options.tmpdir, ["-debug=masternode", "-masternode", "-txindex=1", "-reindex", "-masternodeprivkey=91sY9h4AQ62bAhNk1aJ7uJeSnQzSFtz7QmW5imrKmiACm7QJLXe"]))
@@ -149,8 +149,8 @@ class MasterNodeMainTest (MasterNodeCommon):
             assert_equal(res["alias"], mn_alias)
             assert_equal(res["result"], "successful")
 
-            # wait_for_it(30, 10, "PRE_ENABLED", self.nodes[0:self.total_number_of_nodes], mn_id, 6)
-            wait_for_it(120, 20, "ENABLED", self.nodes[0:self.total_number_of_nodes], mn_id, 5)
+            # self.wait_for_mn_state(30, 10, "PRE_ENABLED", self.nodes[0:self.total_number_of_nodes], mn_id, 6)
+            self.wait_for_mn_state(120, 20, "ENABLED", self.nodes[0:self.total_number_of_nodes], mn_id, 5)
 
         # tests = ['cache', 'sync', 'ping', 'restart', 'spent', "fee"]
         if 'spent' in tests:
@@ -179,7 +179,7 @@ class MasterNodeMainTest (MasterNodeCommon):
             assert_greater_than(Decimal(str(self.collateral)), Decimal(balance))
 
             print(self.nodes[0].masternode("status")["status"])
-            # wait_for_it(10, 10, "OUTPOINT_SPENT", self.nodes[0:self.total_number_of_nodes], mn_id, 3)
+            # self.wait_for_mn_state(10, 10, "OUTPOINT_SPENT", self.nodes[0:self.total_number_of_nodes], mn_id, 3)
 
             for _ in range(10):
                 result = self.nodes[0].masternode("status")["status"]

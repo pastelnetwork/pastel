@@ -1,126 +1,57 @@
+#pragma once
 // Copyright (c) 2018-2021 The PASTEL-Coin developers
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#pragma once
-
-#include "ed.h"
-#include "key_io.h"
-#include "base58.h"
+#include "vector_types.h"
 #include "support/allocators/secure.h"
-#include "fs.h"
+#include "legroast.h"
 
-class CPastelID {
-    static constexpr int PubKeySize = 57;
+#include <unordered_map>
+
+// storage type for pastel ids and associated keys
+using pastelid_store_t = std::unordered_map<std::string, std::string>;
+
+constexpr auto SIGN_ALG_ED448 = "ed448";
+constexpr auto SIGN_ALG_LEGROAST = "legroast";
+
+class CPastelID
+{
+    static constexpr size_t  PASTELID_PUBKEY_SIZE = 57;
+    static constexpr uint8_t PASTELID_PREFIX[] = {0xA1, 0xDE};
+
+    static constexpr size_t  LEGROAST_PUBKEY_SIZE = legroast::PK_BYTES;
+    static constexpr uint8_t LEGROAST_PREFIX[] = {0x51, 0xDE};
 
 public:
-    static std::string CreateNewLocalKey(const SecureString& passPhrase)
+    enum class SIGN_ALGORITHM : int
     {
-        try {
-            ed_crypto::key_dsa448 key = ed_crypto::key_dsa448::generate_key();
-            std::string pastelID = EncodePastelID(key.public_key_raw().data());
-            key.write_private_key_to_PKCS8_file(GetKeyFilePath(pastelID), passPhrase.c_str());
-            return pastelID;
-        } catch (ed_crypto::crypto_exception& ex) {
-            throw std::runtime_error(ex.what());
-        }
-        return std::string{};
-    }
-	
-	static std::vector<unsigned char> Sign(const unsigned char* text, std::size_t length, const std::string& pastelID, const SecureString& passPhrase)
-	{
-		try {
-			ed_crypto::key_dsa448 key = ed_crypto::key_dsa448::read_private_key_from_PKCS8_file(GetKeyFilePath(pastelID), passPhrase.c_str());
-			ed_crypto::buffer sigBuf = ed_crypto::crypto_sign::sign(text, length, key);
-			return sigBuf.data();
-		} catch (ed_crypto::crypto_exception& ex) {
-            throw std::runtime_error(ex.what());
-		}
-		return std::vector<unsigned char>{};
-	}
-    
-    static bool Verify(const unsigned char* message, std::size_t msglen, const unsigned char* signature, std::size_t siglen, const std::string& pastelID)
-    {
-        try {
-            std::vector<unsigned char> rawPubKey = DecodePastelID(pastelID);
-            ed_crypto::key_dsa448 key = ed_crypto::key_dsa448::create_from_raw_public(rawPubKey.data(), rawPubKey.size());
-            return ed_crypto::crypto_sign::verify(message, msglen, signature, siglen, key);
-        } catch (ed_crypto::crypto_exception& ex) {
-            throw std::runtime_error(ex.what());
-        }
-        return false;
-    }
+        not_defined = 0,
+        ed448 = 1,
+        legroast = 2
+    };
 
-    static std::string Sign64(const std::string& text, const std::string& pastelID, const SecureString& passPhrase)
-    {
-        try {
-            ed_crypto::key_dsa448 key = ed_crypto::key_dsa448::read_private_key_from_PKCS8_file(GetKeyFilePath(pastelID), passPhrase.c_str());
-            ed_crypto::buffer sigBuf = ed_crypto::crypto_sign::sign(text, key);
-            return sigBuf.Base64(); //!!!
-        } catch (ed_crypto::crypto_exception& ex) {
-            throw std::runtime_error(ex.what());
-        }
-        return std::string{};
-    }
+    // Generate new PastelID(EdDSA448) and LegRoast public / private key pairs.
+    static pastelid_store_t CreateNewPastelKeys(SecureString&& passPhrase);
+    // Get signing algorithm enum by name.
+    static SIGN_ALGORITHM GetAlgorithmByName(const std::string& s);
+    // Sign text with the private key associated with PastelID.
+    static std::string Sign(const std::string& sText, const std::string& sPastelID, const SecureString& sPassPhrase, 
+        const SIGN_ALGORITHM alg = SIGN_ALGORITHM::ed448, const bool fBase64 = false);
+    // Verify signature with the public key associated with PastelID.
+    static bool Verify(const std::string& sText, const std::string& sSignature, const std::string& sPastelID, 
+        const SIGN_ALGORITHM alg = SIGN_ALGORITHM::ed448, const bool fBase64 = false);
+    // Get PastelIDs stored locally in pastelkeys (pastelkeysdir option).
+    static pastelid_store_t GetStoredPastelIDs(const bool bPastelIdOnly = true);
 
-    static bool Verify64(const std::string& text, const std::string& signature, const std::string& pastelID)
-    {
-        try {
-            std::vector<unsigned char> rawPubKey = DecodePastelID(pastelID);
-            ed_crypto::key_dsa448 key = ed_crypto::key_dsa448::create_from_raw_public(rawPubKey.data(), rawPubKey.size());
-            return ed_crypto::crypto_sign::verify_base64(text, signature, key);
-        } catch (ed_crypto::crypto_exception& ex) {
-            throw std::runtime_error(ex.what());
-        }
-        return false;
-    }
+protected:
+    // encode/decode PastelID
+    static std::string EncodePastelID(const v_uint8& key);
+    static bool DecodePastelID(const std::string& sPastelID, v_uint8& vData);
+    // encode/decode LegRoast public key
+    static std::string EncodeLegRoastPubKey(const std::string& sPubKey);
+    static bool DecodeLegRoastPubKey(const std::string& sLRKey, v_uint8& vData);
 
-    static std::vector<std::string> GetStoredPastelIDs()
-    {
-        fs::path pathPastelKeys(GetArg("-pastelkeysdir", "pastelkeys"));
-        pathPastelKeys = GetDataDir() / pathPastelKeys;
-
-        std::vector<std::string> vec;
-        for (const auto & p : fs::directory_iterator( pathPastelKeys ))
-            vec.push_back(p.path().filename().string());
-        return vec;
-    }
-
-    static std::string EncodePastelID(const std::vector<unsigned char>& key)
-    {
-        std::vector<unsigned char> data {0xA1,0xDE};
-        data.insert(data.end(), key.begin(), key.end());
-        std::string ret = EncodeBase58Check(data);
-        memory_cleanse(data.data(), data.size());
-
-        return ret;
-    }
-    static std::vector<unsigned char> DecodePastelID(const std::string& pastelID)
-    {
-        std::vector<unsigned char> data;
-        if (DecodeBase58Check(pastelID, data)) {
-            const std::vector<unsigned char>& prefix {0xA1,0xDE};
-            if (data.size() == CPastelID::PubKeySize + prefix.size() && std::equal(prefix.begin(), prefix.end(), data.begin())) {
-                std::vector<unsigned char> out{data.begin() + prefix.size(), data.end()};
-                return out;
-            }
-        }
-        return std::vector<unsigned char>{};
-    }
-
-private:
-
-    static std::string GetKeyFilePath(const std::string& fileName)
-    {
-        fs::path pathPastelKeys(GetArg("-pastelkeysdir", "pastelkeys"));
-        pathPastelKeys = GetDataDir() / pathPastelKeys;
-
-        if (!fs::exists(pathPastelKeys) ||
-            !fs::is_directory(pathPastelKeys)) {
-            fs::create_directories(pathPastelKeys);
-        }
-
-       fs::path pathPastelKeyFile = pathPastelKeys / fileName;
-        return pathPastelKeyFile.string();
-    }
+ private:
+    static std::string GetKeyFilePath(const std::string& fileName);
 };

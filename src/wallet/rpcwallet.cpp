@@ -3981,14 +3981,16 @@ UniValue z_getoperationstatus_IMPL(const UniValue& params, bool fRemoveFinishedO
 #define CTXIN_SPEND_DUST_SIZE   148
 #define CTXOUT_REGULAR_SIZE     34
 
-UniValue z_sendmany(const UniValue& params, bool fHelp)
+UniValue z_sendmanyimpl(const UniValue& params, bool fHelp, bool returnChangeToSenderAddr)
 {
     if (!EnsureWalletIsAvailable(fHelp))
         return NullUniValue;
 
+    std::string functionName = returnChangeToSenderAddr ? "z_sendmanywithchangetosender": "z_sendmany";
+
     if (fHelp || params.size() < 2 || params.size() > 4)
         throw runtime_error(
-            "z_sendmany \"fromaddress\" [{\"address\":... ,\"amount\":...},...] ( minconf ) ( fee )\n"
+            functionName + " \"fromaddress\" [{\"address\":... ,\"amount\":...},...] ( minconf ) ( fee )\n"
             "\nSend multiple times. Amounts are decimal numbers with at most 8 digits of precision."
             "\nChange generated from a taddr flows to a new taddr address, while change generated from a zaddr returns to itself."
             "\nWhen sending coinbase UTXOs to a zaddr, change is not allowed. The entire value of the UTXO(s) must be consumed."
@@ -4008,8 +4010,8 @@ UniValue z_sendmany(const UniValue& params, bool fHelp)
             "\nResult:\n"
             "\"operationid\"          (string) An operationid to pass to z_getoperationstatus to get the result of the operation.\n"
             "\nExamples:\n"
-            + HelpExampleCli("z_sendmany", "\"PtczsZ91Bt3oDPDQotzUsrx1wjmsFVgf28n\" '[{\"address\": \"PzSSk8QJFqjo133DoFZvn9wwcCxt5RYeeLFJZRgws6xgJ3LroqRgXKNkhkG3ENmC8oe82UTr3PHcQB9mw7DSLXhyP6atQQ5\" ,\"amount\": 5.0}]'")
-            + HelpExampleRpc("z_sendmany", "\"PtczsZ91Bt3oDPDQotzUsrx1wjmsFVgf28n\", [{\"address\": \"PzSSk8QJFqjo133DoFZvn9wwcCxt5RYeeLFJZRgws6xgJ3LroqRgXKNkhkG3ENmC8oe82UTr3PHcQB9mw7DSLXhyP6atQQ5\" ,\"amount\": 5.0}]")
+            + HelpExampleCli(functionName, "\"PtczsZ91Bt3oDPDQotzUsrx1wjmsFVgf28n\" '[{\"address\": \"PzSSk8QJFqjo133DoFZvn9wwcCxt5RYeeLFJZRgws6xgJ3LroqRgXKNkhkG3ENmC8oe82UTr3PHcQB9mw7DSLXhyP6atQQ5\" ,\"amount\": 5.0}]'")
+            + HelpExampleRpc(functionName, "\"PtczsZ91Bt3oDPDQotzUsrx1wjmsFVgf28n\", [{\"address\": \"PzSSk8QJFqjo133DoFZvn9wwcCxt5RYeeLFJZRgws6xgJ3LroqRgXKNkhkG3ENmC8oe82UTr3PHcQB9mw7DSLXhyP6atQQ5\" ,\"amount\": 5.0}]")
         );
 
     LOCK2(cs_main, pwalletMain->cs_wallet);
@@ -4251,12 +4253,21 @@ UniValue z_sendmany(const UniValue& params, bool fHelp)
 
     // Create operation and add to global queue
     std::shared_ptr<AsyncRPCQueue> q = getAsyncRPCQueue();
-    std::shared_ptr<AsyncRPCOperation> operation( new AsyncRPCOperation_sendmany(builder, contextualTx, fromaddress, taddrRecipients, zaddrRecipients, nMinDepth, nFee, contextInfo) );
+    auto operation = std::make_shared<AsyncRPCOperation_sendmany>(builder, contextualTx, fromaddress, taddrRecipients, zaddrRecipients, nMinDepth, nFee, contextInfo, returnChangeToSenderAddr);
     q->addOperation(operation);
     AsyncRPCOperationId operationId = operation->getId();
     return operationId;
 }
 
+UniValue z_sendmanywithchangetosender(const UniValue& params, bool fHelp)
+{
+    return z_sendmanyimpl(params, fHelp, true);
+}
+
+UniValue z_sendmany(const UniValue& params, bool fHelp)
+{
+    return z_sendmanyimpl(params, fHelp, false);
+}
 
 /**
 When estimating the number of coinbase utxos we can shield in a single transaction:
@@ -5058,6 +5069,7 @@ static const CRPCCommand commands[] =
     { "wallet",             "z_gettotalbalance",        &z_gettotalbalance,        false },
     { "wallet",             "z_mergetoaddress",         &z_mergetoaddress,         false },
     { "wallet",             "z_sendmany",               &z_sendmany,               false },
+    { "wallet",             "z_sendmanywithchangetosender",  &z_sendmanywithchangetosender,   false },
     { "wallet",             "z_shieldcoinbase",         &z_shieldcoinbase,         false },
     { "wallet",             "z_getoperationstatus",     &z_getoperationstatus,     true  },
     { "wallet",             "z_getoperationresult",     &z_getoperationresult,     true  },

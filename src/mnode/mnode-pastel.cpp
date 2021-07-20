@@ -16,6 +16,7 @@
 #include "mnode/ticket-processor.h"
 
 #include "pastelid/pastel_key.h"
+#include "pastelid/ed.h"
 #include "json/json.hpp"
 
 #include <algorithm>
@@ -55,10 +56,10 @@ CPastelIDRegTicket CPastelIDRegTicket::Create(std::string _pastelID, const Secur
     {
         if(!CMessageSigner::SignMessage(ss.str(), ticket.mn_signature, masterNodeCtrl.activeMasternode.keyMasternode))
             throw std::runtime_error("MN Sign of the ticket has failed");
-        ss << std::string{ ticket.mn_signature.cbegin(), ticket.mn_signature.cend() };
+        ss << vector_to_string(ticket.mn_signature);
     }
-    std::string fullTicket = ss.str();
-    ticket.pslid_signature = CPastelID::Sign(reinterpret_cast<const unsigned char*>(fullTicket.c_str()), fullTicket.size(), ticket.pastelID, strKeyPass);
+    const std::string fullTicket = ss.str();
+    string_to_vector(CPastelID::Sign(fullTicket, ticket.pastelID, strKeyPass), ticket.pslid_signature);
     
     return ticket;
 }
@@ -71,7 +72,7 @@ std::string CPastelIDRegTicket::ToStr() const noexcept
     ss << outpoint.ToStringShort();
     ss << m_nTimestamp;
     if (address.empty())
-        ss << std::string{ mn_signature.cbegin(), mn_signature.cend() };
+        ss << vector_to_string(mn_signature);
     return ss.str();
 }
 
@@ -151,14 +152,11 @@ bool CPastelIDRegTicket::IsValid(bool preReg, int depth) const
     
     // Something to always validate
     // 1. Ticket signature is valid
-    ss << std::string{ mn_signature.cbegin(), mn_signature.cend() };
+    ss << vector_to_string(mn_signature);
     std::string fullTicket = ss.str();
-    if (!CPastelID::Verify(reinterpret_cast<const unsigned char *>(fullTicket.c_str()), fullTicket.size(),
-                           pslid_signature.data(), pslid_signature.size(),
-                           pastelID)) {
+    if (!CPastelID::Verify(fullTicket, vector_to_string(pslid_signature), pastelID))
       throw std::runtime_error(strprintf("Ticket's PastelID signature is invalid. PastelID - [%s]", pastelID));
-    }
-        
+     
     // 2. Ticket pay correct registration fee - in validated in ValidateIfTicketTransaction
 
     return true;
@@ -214,18 +212,17 @@ std::vector<CPastelIDRegTicket> CPastelIDRegTicket::FindAllTicketByPastelAddress
 
 // CArtRegTicket ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 /* Current art_ticket - 8 Items!!!!
- {
+{
   "version": integer          // 1
   "author": bytes,            // PastelID of the author (artist)
   "blocknum": integer,        // block number when the ticket was created - this is to map the ticket to the MNs that should process it
   "block_hash": bytes         // hash of the top block when the ticket was created - this is to map the ticket to the MNs that should process it
   "copies": integer,          // number of copies
-  "royalty": float,           // (not yet supported by cNode) how much artist should get on all future resales
-  "green": string,            // address for Green NFT payment (not yet supported by cNode)
-
+  "royalty": short,           // how much artist should get on all future resales (not yet supported by cNode)
+  "green_address": string,    // address for Green NFT payment (not yet supported by cNode)
   "app_ticket": ...
-  }
- */
+}
+*/
 CArtRegTicket CArtRegTicket::Create(
         std::string _ticket, const std::string& signatures,
         std::string _pastelID, const SecureString& strKeyPass,
@@ -245,7 +242,7 @@ CArtRegTicket CArtRegTicket::Create(
     ticket.artistHeight = jsonTicketObj["blocknum"];
     ticket.totalCopies = jsonTicketObj["copies"];
     ticket.nRoyalty = jsonTicketObj["royalty"];
-    ticket.strGreenAddress = jsonTicketObj["green"];
+    ticket.strGreenAddress = jsonTicketObj["green_address"];
     
     //Artist's and MN2/3's signatures
     auto jsonSignaturesObj = json::parse(signatures);
@@ -286,8 +283,7 @@ CArtRegTicket CArtRegTicket::Create(
     
     ticket.pastelIDs[mainmnsign] = std::move(_pastelID);
     //signature of ticket hash
-    ticket.ticketSignatures[mainmnsign] = CPastelID::Sign(reinterpret_cast<const unsigned char*>(ticket.artTicket.c_str()), ticket.artTicket.size(),
-                                                            ticket.pastelIDs[mainmnsign], strKeyPass);
+    string_to_vector(CPastelID::Sign(ticket.artTicket, ticket.pastelIDs[mainmnsign], strKeyPass), ticket.ticketSignatures[mainmnsign]);
     return ticket;
 }
 
@@ -416,15 +412,11 @@ bool CArtRegTicket::IsValid(bool preReg, int depth) const
     //5. Signatures matches included PastelIDs (signature verification is slower - hence separate loop)
     for (int mnIndex=0; mnIndex < allsigns; mnIndex++)
     {
-        if (!CPastelID::Verify(reinterpret_cast<const unsigned char *>(artTicket.c_str()), artTicket.size(),
-                               ticketSignatures[mnIndex].data(), ticketSignatures[mnIndex].size(),
-                               pastelIDs[mnIndex]))
+        if (!CPastelID::Verify(artTicket, vector_to_string(ticketSignatures[mnIndex]), pastelIDs[mnIndex]))
         {
-            if (mnIndex == artistsign) {
+            if (mnIndex == artistsign)
               throw std::runtime_error("Artist signature is invalid");
-            } else {
-              throw std::runtime_error(strprintf("MN%d signature is invalid", mnIndex));
-            }
+            throw std::runtime_error(strprintf("MN%d signature is invalid", mnIndex));
         }
     }
     
@@ -442,44 +434,44 @@ bool CArtRegTicket::IsValid(bool preReg, int depth) const
     return true;
 }
 
-std::string CArtRegTicket::ToJSON() const noexcept
-{
-	json jsonObj;
-	jsonObj = {
-        {"txid", m_txid},
-        {"height", m_nBlock},
-        {"ticket", {
-            {"type", GetTicketName()},
-            {"art_ticket", artTicket},
-            {"version", GetStoredVersion()},
-            {"signatures",{
-                {"artist", {
-                    {pastelIDs[artistsign], ed_crypto::Base64_Encode(ticketSignatures[artistsign].data(), ticketSignatures[artistsign].size())}
-                }},
-                {"mn1", {
-                    {pastelIDs[mainmnsign], ed_crypto::Base64_Encode(ticketSignatures[mainmnsign].data(), ticketSignatures[mainmnsign].size())}
-                }},
-                {"mn2", {
-                    {pastelIDs[mn2sign], ed_crypto::Base64_Encode(ticketSignatures[mn2sign].data(), ticketSignatures[mn2sign].size())}
-                }},
-                {"mn3", {
-                    {pastelIDs[mn3sign], ed_crypto::Base64_Encode(ticketSignatures[mn3sign].data(), ticketSignatures[mn3sign].size())}
-                }},
-            }},
-            {"key1", keyOne},
-            {"key2", keyTwo},
-            {"artist_height", artistHeight},
-            {"total_copies", totalCopies},
-            {"storage_fee", storageFee},
-            {"royalty", nRoyalty},
-            {"green", strGreenAddress},
-        }}
-	};
+std::string CArtRegTicket::ToJSON() const noexcept {
+  const json jsonObj {
+    {"txid", m_txid},
+    {"height", m_nBlock},
+    {"ticket", {
+      {"type", GetTicketName()},
+      {"art_ticket", artTicket},
+      {"version", GetStoredVersion()},
+      {"signatures", {
+        {"artist", {
+          {pastelIDs[artistsign], ed_crypto::Base64_Encode(ticketSignatures[artistsign].data(), ticketSignatures[artistsign].size())}
+        }},
+        {"mn1", {
+          {pastelIDs[mainmnsign], ed_crypto::Base64_Encode(ticketSignatures[mainmnsign].data(), ticketSignatures[mainmnsign].size())}
+        }},
+        {"mn2", {
+          {pastelIDs[mn2sign], ed_crypto::Base64_Encode(ticketSignatures[mn2sign].data(), ticketSignatures[mn2sign].size())}
+        }},
+        {"mn3", {
+          {pastelIDs[mn3sign], ed_crypto::Base64_Encode(ticketSignatures[mn3sign].data(), ticketSignatures[mn3sign].size())}
+        }},
+      }},
+      {"key1", keyOne},
+      {"key2", keyTwo},
+      {"artist_height", artistHeight},
+      {"total_copies", totalCopies},
+      {"royalty", nRoyalty},
+      {"royalty_address", GetRoyaltyPayeeAddress()},
+      {"green", GreenPercent(0)},
+      {"green_address", strGreenAddress},
+      {"storage_fee", storageFee},
+    }}
+  };
     
-    return jsonObj.dump(4);
+  return jsonObj.dump(4);
 }
 
-std::string CArtRegTicket::GetRoyaltyPayeePastelID() {
+std::string CArtRegTicket::GetRoyaltyPayeePastelID() const {
   if (!nRoyalty) { return {}; }
 
   int index{0};
@@ -496,7 +488,7 @@ std::string CArtRegTicket::GetRoyaltyPayeePastelID() {
   return foundIndex >= 0 ? tickets.at(foundIndex).newPastelID : pastelIDs[CArtRegTicket::artistsign];
 }
 
-std::string CArtRegTicket::GetRoyaltyPayeeAddress() {
+std::string CArtRegTicket::GetRoyaltyPayeeAddress() const {
   const std::string pastelID = GetRoyaltyPayeePastelID();
   if (!pastelID.empty()) {
     CPastelIDRegTicket ticket;
@@ -591,9 +583,7 @@ bool common_validation(const T& ticket, bool preReg, const std::string& strTnxId
     // C.3 Verify signature
     // We will check that it is the correct PastelID and the one that belongs to the owner of the art in the following steps
     std::string strThisTicket = ticket.ToStr();
-    if (!CPastelID::Verify(reinterpret_cast<const unsigned char *>(strThisTicket.c_str()), strThisTicket.size(),
-                           ticket.signature.data(), ticket.signature.size(),
-                           ticket.pastelID))
+    if (!CPastelID::Verify(strThisTicket, vector_to_string(ticket.signature), ticket.pastelID))
     {
       throw std::runtime_error(strprintf("%s ticket's signature is invalid. PastelID - [%s]", thisTicket, ticket.pastelID));
     }
@@ -623,7 +613,7 @@ CArtActivateTicket CArtActivateTicket::Create(std::string _regTicketTxId, int _a
     ticket.GenerateTimestamp();
     
     std::string strTicket = ticket.ToStr();
-    ticket.signature = CPastelID::Sign(reinterpret_cast<const unsigned char*>(strTicket.c_str()), strTicket.size(), ticket.pastelID, strKeyPass);
+    string_to_vector(CPastelID::Sign(strTicket, ticket.pastelID, strKeyPass), ticket.signature);
     
     return ticket;
 }
@@ -811,7 +801,7 @@ CArtSellTicket CArtSellTicket::Create(std::string _artTnxId, int _askedPrice, in
     ticket.key = ticket.artTnxId + ":" + to_string(ticket.copyNumber);
     
     std::string strTicket = ticket.ToStr();
-    ticket.signature = CPastelID::Sign(reinterpret_cast<const unsigned char*>(strTicket.c_str()), strTicket.size(), ticket.pastelID, strKeyPass);
+    string_to_vector(CPastelID::Sign(strTicket, ticket.pastelID, strKeyPass), ticket.signature);
     
     return ticket;
 }
@@ -1021,7 +1011,7 @@ CArtBuyTicket CArtBuyTicket::Create(std::string _sellTnxId, int _price, std::str
     ticket.GenerateTimestamp();
     
     string strTicket = ticket.ToStr();
-    ticket.signature = CPastelID::Sign(reinterpret_cast<const unsigned char*>(strTicket.c_str()), strTicket.size(), ticket.pastelID, strKeyPass);
+    string_to_vector(CPastelID::Sign(strTicket, ticket.pastelID, strKeyPass), ticket.signature);
     
     return ticket;
 }
@@ -1176,7 +1166,7 @@ CArtTradeTicket CArtTradeTicket::Create(std::string _sellTnxId, std::string _buy
     ticket.GenerateTimestamp();
     
     std::string strTicket = ticket.ToStr();
-    ticket.signature = CPastelID::Sign(reinterpret_cast<const unsigned char*>(strTicket.c_str()), strTicket.size(), ticket.pastelID, strKeyPass);
+    string_to_vector(CPastelID::Sign(strTicket, ticket.pastelID, strKeyPass), ticket.signature);
     
     return ticket;
 }
@@ -1330,7 +1320,7 @@ CAmount CArtTradeTicket::GetExtraOutputs(std::vector<CTxOut>& outputs) const
                           sellerPastelID, sellTnxId));
     }
     
-    if (!strRoyaltyAddress.empty() && !addOutput(sellerPastelIDticket.address, nRoyaltyAmount)) {
+    if (!strRoyaltyAddress.empty() && !addOutput(strRoyaltyAddress, nRoyaltyAmount)) {
         throw std::runtime_error(
                 strprintf("The PastelID [%s] from sell ticket with this txid [%s] has invalid address",
                           sellerPastelID, sellTnxId));
@@ -1430,8 +1420,8 @@ std::unique_ptr<CPastelTicket> CArtTradeTicket::FindArtRegTicket() const
 
 // CArtRoyaltyTicket ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 CArtRoyaltyTicket CArtRoyaltyTicket::Create(
-    std::string _pastelID, std::string _newPastelID,
-    std::string _artTnxId, const SecureString& strKeyPass) {
+    std::string _artTnxId, std::string _newPastelID,
+    std::string _pastelID, const SecureString& strKeyPass) {
   CArtRoyaltyTicket ticket(std::move(_pastelID), std::move(_newPastelID));
 
   ticket.artTnxId = std::move(_artTnxId);
@@ -1439,7 +1429,7 @@ CArtRoyaltyTicket CArtRoyaltyTicket::Create(
   ticket.GenerateTimestamp();
 
   std::string strTicket = ticket.ToStr();
-  ticket.signature = CPastelID::Sign(reinterpret_cast<const unsigned char*>(strTicket.c_str()), strTicket.size(), ticket.pastelID, strKeyPass);
+  string_to_vector(CPastelID::Sign(strTicket, ticket.pastelID, strKeyPass), ticket.signature);
 
   return ticket;
 }
@@ -1459,12 +1449,31 @@ bool CArtRoyaltyTicket::IsValid(bool preReg, int depth) const {
     chainHeight = static_cast<unsigned int>(chainActive.Height()) + 1;
   }
 
+  if (newPastelID.empty()) {
+    throw std::runtime_error("The Change Royalty ticket new_pastelID is empty");
+  }
+
+  if (pastelID == newPastelID) {
+    throw std::runtime_error("The Change Royalty ticket new_pastelID is equal to current pastelID");
+  }
+
   // 0. Common validations
   std::unique_ptr<CPastelTicket> pastelTicket;
   if (!common_validation(*this, preReg, artTnxId, pastelTicket,
       [](const TicketID tid) { return (tid != TicketID::Art); },
       "Royalty", "art", depth, TicketPrice(chainHeight))) {
     throw std::runtime_error(strprintf("The Change Royalty ticket with art txid [%s] is not validated", artTnxId));
+  }
+
+  auto artTicket = dynamic_cast<const CArtRegTicket*>(pastelTicket.get());
+  if (!artTicket) {
+    throw std::runtime_error(strprintf(
+      "The art Reg ticket with txid [%s] is not in the blockchain or is invalid", artTnxId));
+  }
+
+  if (artTicket->nRoyalty == 0) {
+    throw std::runtime_error(strprintf(
+      "The art Reg ticket with txid [%s] has no royalty", artTnxId));
   }
 
   // Check the Royalty change ticket for that Art is already in the database
@@ -1477,10 +1486,6 @@ bool CArtRoyaltyTicket::IsValid(bool preReg, int depth) const {
       "The Change Royalty ticket is already registered in blockchain [pastelID = %s; new_pastelID = %s]"
       "[this ticket block = %u txid = %s; found ticket block = %u txid = %s] with art txid [%s]",
       pastelID, newPastelID, m_nBlock, m_txid, _ticket.GetBlock(), _ticket.m_txid, artTnxId));
-  }
-
-  if (newPastelID.empty()) {
-    throw std::runtime_error("The Change Royalty ticket new_pastelID is empty");
   }
 
   CPastelIDRegTicket newPastelIDticket;
@@ -1518,12 +1523,6 @@ bool CArtRoyaltyTicket::IsValid(bool preReg, int depth) const {
         pastelID, tickets.at(foundIndex).newPastelID, artTnxId));
     }
   } else {
-    auto artTicket = dynamic_cast<const CArtRegTicket*>(pastelTicket.get());
-    if (!artTicket) {
-      throw std::runtime_error(strprintf(
-        "The art Reg ticket with this txid [%s] is not in the blockchain or is invalid", artTnxId));
-    }
-
     // 1. check Artist PastelID in ArtReg ticket matches PastelID from this ticket
     const std::string& artistPastelID = artTicket->pastelIDs[CArtRegTicket::artistsign];
     if (artistPastelID != pastelID) {
