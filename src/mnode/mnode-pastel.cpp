@@ -1707,10 +1707,6 @@ bool CChangeUsernameTicket::FindTicketInDb(const std::string& key, CChangeUserna
 
 bool CChangeUsernameTicket::isUsernameBad(const std::string& username, std::string& error)
 {
-    std::string upper = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-    std::string lower = "abcdefghijklmnopqrstuvwxyz";
-    std::string digits = "0123456789";
-
     // Check if has only <4, or has more than 12 characters
     if ((username.size() < 4) || (username.size() > 12)) {
         error = "Invalid size of username, the size should have at least 4 characters, and at most 12 characters";
@@ -1718,14 +1714,14 @@ bool CChangeUsernameTicket::isUsernameBad(const std::string& username, std::stri
     }
 
     // Check if doesn't start with letters.
-    if ( (upper.find(username.front()) == std::string::npos) && (lower.find(username.front()) == std::string::npos ) ) {
+    if ( !isalphaex(username.front()) ) {
         error = "Invalid username, should start with a letter A-Z or a-z only";
         return true;
     }
     // Check if contains characters that is different than upper and lowercase Latin characters and numbers
     if (!std::all_of(username.begin(), username.end(), [&](unsigned char c) 
         { 
-          return (upper.find(c) != std::string::npos || lower.find(c) != std::string::npos || digits.find(c) != std::string::npos); 
+          return (isalphaex(c) || isdigitex(c)); 
         }
       )) {
         error = "Invalid username, should contains letters A-Z a-z, or digits 0-9 only";
