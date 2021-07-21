@@ -30,7 +30,7 @@ class CMasterNodeController
 {
 private:
     void SetParameters();
-
+    double getNetworkDifficulty(const CBlockIndex* blockindex, bool networkDifficulty) const;
     CACNotificationInterface* pacNotificationInterface;
     
 public:
@@ -59,6 +59,11 @@ public:
     int MasternodeCollateral;
     CAmount MasternodeFeePerMBDefault;
     CAmount ArtTicketFeePerKBDefault;
+
+    double ChainDeflationRateDefault;
+    CAmount ChainBaselineDifficultyLowerIndex;
+    CAmount ChainBaselineDifficultyUpperIndex;
+    CAmount ChainTrailingAverageDifficultyRange;
 
     int MasternodeCheckSeconds, MasternodeMinMNBSeconds, MasternodeMinMNPSeconds, MasternodeExpirationSeconds, MasternodeWatchdogMaxSeconds, MasternodeNewStartRequiredSeconds;
     int MasternodePOSEBanMaxScore;
@@ -105,6 +110,8 @@ public:
     CAmount GetNetworkFeePerMB();
     CAmount GetArtTicketFeePerKB();
 
+    double GetChainDeflationRate() const;
+
     /***** MasterNode operations *****/
     CSemaphore *semMasternodeOutbound;
 
@@ -113,3 +120,12 @@ public:
 };
 
 extern CMasterNodeController masterNodeCtrl;
+
+enum class TrimmeanErrorNumber {
+    
+    EBADN,
+    EBADPCNT,
+    EBADARR
+    
+};
+double TRIMMEAN(CAmount inputArray[], CAmount n, double percent, TrimmeanErrorNumber *errorno = nullptr);

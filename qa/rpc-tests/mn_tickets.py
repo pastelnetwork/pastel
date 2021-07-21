@@ -2285,6 +2285,52 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         #   c.1 fail on non-MN
         #   c.2 on MN without errors
         #   c.3 get local MN storage fee and compare it with c.2
+
+        # Test if storagefee works properly
+        nfee_mn0 = self.nodes[0].storagefee("getnetworkfee")["networkfee"]
+        nfee_mn1 = self.nodes[1].storagefee("getnetworkfee")["networkfee"]
+        nfee_mn2 = self.nodes[2].storagefee("getnetworkfee")["networkfee"]
+        assert_equal(nfee_mn0, 50)
+        assert_equal(nfee_mn1, 50)
+        assert_equal(nfee_mn2, 50)
+        print("Network fee is ", nfee_mn0)
+
+        lfee_mn0 = self.nodes[0].storagefee("getlocalfee")["localfee"]
+        assert_equal(lfee_mn0, 50)
+        print("Local fee of MN0 is ", lfee_mn0)
+
+        # Check if the TRIM MEAN do NOT care the 25%
+        self.nodes[0].storagefee("setfee", "1000")
+        self.nodes[2].storagefee("setfee", "0")
+        self.sync_all()
+
+        time.sleep(30)
+        lfee_mn0 = self.nodes[0].storagefee("getlocalfee")["localfee"]
+        print("Local fee of MN0 after setfee is ", lfee_mn0)
+        assert_equal(lfee_mn0, 1000)
+
+        nfee_mn4 = self.nodes[2].storagefee("getnetworkfee")["networkfee"]
+        print("Network fee after setfee is ", nfee_mn4)
+        assert_equal(nfee_mn4, 50)
+
+        # Check if the TRIM MEAN do care the middle 50%
+        self.nodes[3].storagefee("setfee", "1000")
+        self.nodes[4].storagefee("setfee", "1000")
+        self.nodes[5].storagefee("setfee", "1000")
+        self.nodes[6].storagefee("setfee", "1000")
+        self.nodes[7].storagefee("setfee", "1000")
+        self.nodes[8].storagefee("setfee", "1000")
+        self.sync_all()
+
+        time.sleep(30)
+        lfee_mn0 = self.nodes[0].storagefee("getlocalfee")["localfee"]
+        print("Local fee of MN0 after setfee is ", lfee_mn0)
+        assert_equal(lfee_mn0, 1000)
+
+        nfee_mn4 = self.nodes[2].storagefee("getnetworkfee")["networkfee"]
+        print("Network fee after setfee is ", nfee_mn4)
+        assert_greater_than(nfee_mn4, 50)
+
         print("Storage fee tested")
 
     def __wait_for_gen10_blocks(self):

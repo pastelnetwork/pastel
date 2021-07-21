@@ -115,7 +115,7 @@ std::string CMasternodeMessage::ToString() const
     return info.str();
 }
 
-/*static*/ std::unique_ptr<CMasternodeMessage> CMasternodeMessage::Create(const CPubKey& pubKeyTo, const std::string& msg)
+/*static*/ std::unique_ptr<CMasternodeMessage> CMasternodeMessage::Create(const CPubKey& pubKeyTo, CMasternodeMessageType msgType, const std::string& msg)
 {
     if(!masterNodeCtrl.masternodeSync.IsMasternodeListSynced())
         throw std::runtime_error(strprintf("Masternode list must be synced to create message"));
@@ -127,7 +127,15 @@ std::string CMasternodeMessage::ToString() const
         throw std::runtime_error(strprintf("Unknown Masternode"));
     }
     
-    return std::unique_ptr<CMasternodeMessage>(new CMasternodeMessage(masterNodeCtrl.activeMasternode.outpoint, mnInfo.vin.prevout, msg));
+    return std::make_unique<CMasternodeMessage>(masterNodeCtrl.activeMasternode.outpoint, mnInfo.vin.prevout, msgType, msg);
+}
+
+void CMasternodeMessageProcessor::BroadcastNewFee(const CAmount newFee)
+{
+    const auto mapMasternodes = masterNodeCtrl.masternodeManager.GetFullMasternodeMap();
+    for (const auto& [op, mn] : mapMasternodes) {
+        masterNodeCtrl.masternodeMessages.SendMessage(mn.pubKeyMasternode, CMasternodeMessageType::SETFEE, std::to_string(newFee));
+    }
 }
 
 void CMasternodeMessageProcessor::ProcessMessage(CNode* pFrom, std::string& strCommand, CDataStream& vRecv)
@@ -136,7 +144,6 @@ void CMasternodeMessageProcessor::ProcessMessage(CNode* pFrom, std::string& strC
 
         CMasternodeMessage message;
         vRecv >> message;
-
         LogPrintf("MASTERNODEMESSAGE -- Get message %s from %d\n", message.ToString(), pFrom->id);
 
         uint256 messageId = message.GetHash();
@@ -204,6 +211,16 @@ void CMasternodeMessageProcessor::ProcessMessage(CNode* pFrom, std::string& strC
             LOCK(cs_mapOurMessages);
             mapOurMessages[messageId] = message;
             bOurMessage = true;
+            // Update new fee of the sender masternode
+            if (message.messageType == to_integral_type(CMasternodeMessageType::SETFEE)) {
+                CMasternode masternode;
+                if (masterNodeCtrl.masternodeManager.Get(masterNodeCtrl.activeMasternode.outpoint, masternode)) {
+                    // Update masternode fee
+                    masterNodeCtrl.masternodeManager.SetMasternodeFee(message.vinMasternodeFrom.prevout, std::atol(message.message.c_str()));
+                } else {
+                    throw std::runtime_error("Unknown Masternode");
+                }
+            }
         }
 
         if (!bOurMessage)
@@ -258,9 +275,9 @@ std::string CMasternodeMessageProcessor::ToString() const
 
 // TODO Pastel: Message (msg) shall be encrypted before sending using recipient's public key
 //so only recipient can see its content. Should this be part of MessageProcessor???
-void CMasternodeMessageProcessor::SendMessage(const CPubKey& pubKeyTo, const std::string& msg)
+void CMasternodeMessageProcessor::SendMessage(const CPubKey& pubKeyTo, const CMasternodeMessageType msgType, const std::string& msg)
 {
-    auto message = CMasternodeMessage::Create(pubKeyTo, msg); //need parameter encrypt
+    auto message = CMasternodeMessage::Create(pubKeyTo, msgType, msg); //need parameter encrypt
     
     message->Sign();
 

@@ -4,6 +4,7 @@
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
 #include "main.h"
+#include "enum_util.h"
 #include <map>
 
 extern CCriticalSection cs_mapSeenMessages;
@@ -13,21 +14,30 @@ extern CCriticalSection cs_mapOurMessages;
 bool Sign(const std::string& message, std::string& signatureBase64, std::string& error_ret);
 bool Sign(const std::string& message, std::vector<unsigned char>& signature, std::string& error_ret);
 
+// Type to distinguish the way we build/parse messages.
+enum class CMasternodeMessageType: uint8_t
+{
+    PLAINTEXT = 0,
+    SETFEE
+};
+
 class CMasternodeMessage
 {
 public:
     CTxIn vinMasternodeFrom;
     CTxIn vinMasternodeTo;
+    uint8_t messageType;
     std::string message;
     int64_t sigTime{}; //message times
     std::vector<unsigned char> vchSig;
 
     CMasternodeMessage() = default;
     
-    CMasternodeMessage(COutPoint outpointMasternodeFrom, COutPoint outpointMasternodeTo, const std::string& msg) :
+    CMasternodeMessage(COutPoint outpointMasternodeFrom, COutPoint outpointMasternodeTo, const CMasternodeMessageType msgType, const std::string& msg) :
         vinMasternodeFrom(outpointMasternodeFrom),
         vinMasternodeTo(outpointMasternodeTo),
         sigTime(0),
+        messageType(to_integral_type(msgType)),
         message(msg)
     {}
 
@@ -36,11 +46,16 @@ public:
     template <typename Stream>
     inline void SerializationOp(Stream& s, const SERIALIZE_ACTION ser_action)
     {
+        const bool bRead = ser_action == SERIALIZE_ACTION::Read;
         READWRITE(vinMasternodeFrom);
         READWRITE(vinMasternodeTo);
         READWRITE(message);
         READWRITE(sigTime);
         READWRITE(vchSig);
+        if (!bRead || !s.eof()) // if we're writing to stream or reading and not at the end of the stream
+            READWRITE(messageType);
+        else // set here default messageType
+            messageType = to_integral_type(CMasternodeMessageType::PLAINTEXT);
     }
 
     uint256 GetHash() const
@@ -60,7 +75,7 @@ public:
     void Relay();
     std::string ToString() const;
     
-    static std::unique_ptr<CMasternodeMessage> Create(const CPubKey& pubKeyTo, const std::string& msg);
+    static std::unique_ptr<CMasternodeMessage> Create(const CPubKey& pubKeyTo, CMasternodeMessageType msgType, const std::string& msg);
 };
 
 class CMasternodeMessageProcessor {
@@ -85,6 +100,7 @@ public:
     }
 
 public:
+    void BroadcastNewFee(const CAmount newFee);
     void ProcessMessage(CNode *pFrom, std::string &strCommand, CDataStream &vRecv);
     void CheckAndRemove();
     void Clear();
@@ -92,5 +108,5 @@ public:
     size_t SizeOur() const noexcept { return mapOurMessages.size(); }
     std::string ToString() const;
     
-    void SendMessage(const CPubKey& pubKeyTo, const std::string& msg);
+    void SendMessage(const CPubKey& pubKeyTo, const CMasternodeMessageType msgType, const std::string& msg);
 };
