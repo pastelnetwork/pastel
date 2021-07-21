@@ -4,6 +4,7 @@
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
 #include "main.h"
+#include "enum_util.h"
 #include <map>
 
 extern CCriticalSection cs_mapSeenMessages;
@@ -32,11 +33,11 @@ public:
 
     CMasternodeMessage() = default;
     
-    CMasternodeMessage(COutPoint outpointMasternodeFrom, COutPoint outpointMasternodeTo, CMasternodeMessageType msgType, const std::string& msg) :
+    CMasternodeMessage(COutPoint outpointMasternodeFrom, COutPoint outpointMasternodeTo, const CMasternodeMessageType msgType, const std::string& msg) :
         vinMasternodeFrom(outpointMasternodeFrom),
         vinMasternodeTo(outpointMasternodeTo),
         sigTime(0),
-        messageType(static_cast<uint8_t>(msgType)),
+        messageType(to_integral_type(msgType)),
         message(msg)
     {}
 
@@ -54,7 +55,7 @@ public:
         if (!bRead || !s.eof()) // if we're writing to stream or reading and not at the end of the stream
             READWRITE(messageType);
         else // set here default messageType
-            messageType = static_cast<uint8_t>(CMasternodeMessageType::PLAINTEXT);
+            messageType = to_integral_type(CMasternodeMessageType::PLAINTEXT);
     }
 
     uint256 GetHash() const
@@ -99,7 +100,7 @@ public:
     }
 
 public:
-    void BroadcastNewFee(CAmount newFee);
+    void BroadcastNewFee(const CAmount newFee);
     void ProcessMessage(CNode *pFrom, std::string &strCommand, CDataStream &vRecv);
     void CheckAndRemove();
     void Clear();
@@ -107,5 +108,5 @@ public:
     size_t SizeOur() const noexcept { return mapOurMessages.size(); }
     std::string ToString() const;
     
-    void SendMessage(const CPubKey& pubKeyTo, CMasternodeMessageType msgType, const std::string& msg);
+    void SendMessage(const CPubKey& pubKeyTo, const CMasternodeMessageType msgType, const std::string& msg);
 };
