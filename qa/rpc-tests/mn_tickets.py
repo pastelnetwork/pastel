@@ -43,7 +43,7 @@ ERR_READ_PASTELID_FILE = "Failed to read Pastel secure container file";
 
 class MasterNodeTicketsTest(MasterNodeCommon):
     number_of_master_nodes = len(private_keys_list)
-    number_of_simple_nodes = 7
+    number_of_simple_nodes = 8
     total_number_of_nodes = number_of_master_nodes+number_of_simple_nodes
 
     non_active_mn = number_of_master_nodes-1
@@ -55,6 +55,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
     non_mn5 = number_of_master_nodes+4      # will not have coins by default #17, for royalty first change
     non_mn6 = number_of_master_nodes+5      # will not have coins by default #18, for royalty second change
     non_mn7 = number_of_master_nodes+6      # will not have coins by default #19, for green
+    non_mn8 = number_of_master_nodes+7      # will not have coins by default #20, for Username test
 
     mining_node_num = number_of_master_nodes    # same as non_mn1
     hot_node_num = number_of_master_nodes+1     # same as non_mn2
@@ -173,9 +174,9 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         self.arttrade_ticket_tests(False)
         self.sell_buy_trade_tests()
         self.takedown_ticket_tests()
-        self.username_ticket_tests()
         self.storage_fee_tests()
         self.tickets_list_filter_tests(0)
+        self.username_ticket_tests()
 
         if self.test_high_heights:
             self.id_ticket_price = 1000
@@ -201,9 +202,9 @@ class MasterNodeTicketsTest(MasterNodeCommon):
             self.arttrade_ticket_tests(True)
             self.sell_buy_trade_tests()
             self.takedown_ticket_tests()
-            self.username_ticket_tests()
             self.storage_fee_tests()
             self.tickets_list_filter_tests(1)
+            self.username_ticket_tests()
 
     # ===============================================================================================================
     def pastelid_tests(self):
@@ -2249,6 +2250,10 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         self.__wait_for_sync_all10()
         self.nonmn4_pastelid2 = self.create_pastelid(self.non_mn4)
 
+        self.nonmn8_address1 = self.nodes[self.non_mn8].getnewaddress()
+        self.__wait_for_sync_all10()
+        self.nonmn8_pastelid1 = self.create_pastelid(self.non_mn8)
+
         # Register first time by PastelID of non-masternode 3
         tickets_username_txid1 = self.nodes[self.non_mn3].tickets("register", "username", "bsmith84",
                                                     self.artist_pastelid1, "passphrase")
@@ -2274,19 +2279,26 @@ class MasterNodeTicketsTest(MasterNodeCommon):
 
         # Register by a new pastelID. Expect to get Exception that the ticket is invalid because there are Not enough 100 PSL to cover price 100
         try:
-            self.artist_pastelid2 = self.create_pastelid(self.non_mn5)
-            tickets_username_txid1 = self.nodes[self.non_mn5].tickets("register", "username", "anicename",
-                                                        self.artist_pastelid2, "passphrase")
+            self.nodes[self.non_mn8].tickets("register", "username", "anicename5",
+                                                        self.nonmn8_pastelid1, "passphrase")
             self.__wait_for_ticket_tnx()
         except JSONRPCException as e:
             self.errorString = e.error['message']
             print(self.errorString)
         assert_equal(self.errorString, "Ticket (username-change) is invalid - Not enough coins to cover price [100]")
 
-        # Expect to get Exception that the ticket is invalid because this PastelID do not have enough 5000PSL to pay the fee
+        self.nodes[self.mining_node_num].sendtoaddress(self.nonmn8_address1, 200, "", "", False)
+        self.__wait_for_sync_all10()
+
+        # This should be success
+        self.nodes[self.non_mn8].tickets("register", "username", "anicename5",
+                                                        self.nonmn8_pastelid1, "passphrase")
+        self.__wait_for_ticket_tnx()
+
+        # Expect to get Exception that the ticket is invalid because this PastelID do not have enough 5000PSL to pay the rechange fee
         try:
-            self.nodes[self.non_mn3].tickets("register", "username", "Banksy",
-                                                    self.artist_pastelid1, "passphrase")
+            self.nodes[self.non_mn8].tickets("register", "username", "Banksy",
+                                                    self.nonmn8_pastelid1, "passphrase")
             self.__wait_for_ticket_tnx()
         except JSONRPCException as e:
             self.errorString = e.error['message']
@@ -2309,32 +2321,38 @@ class MasterNodeTicketsTest(MasterNodeCommon):
 
         # Wait till next 24 hours. Below test cases is commented because it took lots of time to complete.
         # To test this functionality on local machine, we should lower the waiting from 24 * 24 blocks to smaller value, ex: 15 blocks only.
-        # self.sync_all()
-        # self.nodes[self.mining_node_num].generate(576) # 24 * 24 = 576.
+        self.sync_all()
+        print("Mining 577 blocks")
+        for ind in range (577):
+            self.nodes[self.mining_node_num].generate(1)
+            time.sleep(1)
 
-        # # Expect that nonmn3 can change username to "Banksky" after 24 hours, fee should be 5000
-        # tickets_username_txid1 = self.nodes[self.non_mn3].tickets("register", "username", "Banksy",
-        #                                             self.artist_pastelid1, "passphrase")
-        # self.__wait_for_ticket_tnx()
-        # nonmn3_ticket_username_1 = self.nodes[self.non_mn4].tickets("get", tickets_username_txid1["txid"])
-        # print(nonmn3_ticket_username_1)
+        print("Waiting 60 seconds")
+        time.sleep(60)
 
-        # self.__wait_for_ticket_tnx()
-        # assert_equal(nonmn3_ticket_username_1["ticket"]["pastelID"], self.artist_pastelid1)
-        # assert_equal(nonmn3_ticket_username_1["ticket"]["username"], "Banksy")
-        # assert_equal(nonmn3_ticket_username_1["ticket"]["fee"], 5000)
+        # Expect that nonmn3 can change username to "Banksky" after 24 hours, fee should be 5000
+        tickets_username_txid1 = self.nodes[self.non_mn3].tickets("register", "username", "Banksy",
+                                                    self.artist_pastelid1, "passphrase")
+        self.__wait_for_ticket_tnx()
+        nonmn3_ticket_username_1 = self.nodes[self.non_mn4].tickets("get", tickets_username_txid1["txid"])
+        print(nonmn3_ticket_username_1)
 
-        # # Expect that nonmn4 can register new Username "bsmith84", because the username "bsmith84" no longer belong to self.artist_pastelid1
-        # tickets_username_2 = self.nodes[self.non_mn4].tickets("register", "username", "bsmith84",
-        #                                             self.nonmn4_pastelid2, "passphrase")
-        # self.__wait_for_ticket_tnx()
-        # nonmn4_ticket_username_1 = self.nodes[self.non_mn4].tickets("get", tickets_username_2["txid"])
-        # print(nonmn4_ticket_username_1)
+        self.__wait_for_ticket_tnx()
+        assert_equal(nonmn3_ticket_username_1["ticket"]["pastelID"], self.artist_pastelid1)
+        assert_equal(nonmn3_ticket_username_1["ticket"]["username"], "Banksy")
+        assert_equal(nonmn3_ticket_username_1["ticket"]["fee"], 5000)
 
-        # self.__wait_for_ticket_tnx()
-        # assert_equal(nonmn4_ticket_username_1["ticket"]["pastelID"], self.nonmn4_pastelid2)
-        # assert_equal(nonmn4_ticket_username_1["ticket"]["username"], "bsmith84")
-        # assert_equal(nonmn4_ticket_username_1["ticket"]["fee"], 100)
+        # Expect that nonmn4 can register new Username "bsmith84", because the username "bsmith84" no longer belong to self.artist_pastelid1
+        tickets_username_2 = self.nodes[self.non_mn4].tickets("register", "username", "bsmith84",
+                                                    self.nonmn4_pastelid2, "passphrase")
+        self.__wait_for_ticket_tnx()
+        nonmn4_ticket_username_1 = self.nodes[self.non_mn4].tickets("get", tickets_username_2["txid"])
+        print(nonmn4_ticket_username_1)
+
+        self.__wait_for_ticket_tnx()
+        assert_equal(nonmn4_ticket_username_1["ticket"]["pastelID"], self.nonmn4_pastelid2)
+        assert_equal(nonmn4_ticket_username_1["ticket"]["username"], "bsmith84")
+        assert_equal(nonmn4_ticket_username_1["ticket"]["fee"], 100)
 
         # Register by a new pastelID with invalid name. Expect to get Exception that the usernamename is invalid
         try:
