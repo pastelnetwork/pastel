@@ -1605,6 +1605,17 @@ class MasterNodeTicketsTest(MasterNodeCommon):
                      self.artist_pastelid1+"] in the Art Activation ticket with this txid [" +
                      self.art_ticket1_act_ticket_txid+"]" in self.errorString, True)
 
+        # 3. Fail if asked price is 0
+        try:
+            self.nodes[self.non_mn3].tickets("register", "sell",
+                                             self.art_ticket1_act_ticket_txid, str(0),
+                                             self.artist_pastelid1, self.passphrase)
+        except JSONRPCException as e:
+            self.errorString = e.error['message']
+            print(self.errorString)
+        assert_equal("The asked price for Sell ticket with NFT txid [" + self.art_ticket1_act_ticket_txid + "] "
+                     "should be not 0" in self.errorString, True)
+
         # 4. Create Sell ticket
         self.art_ticket1_sell_ticket_txid = \
             self.nodes[self.non_mn3].tickets("register", "sell",
@@ -1762,8 +1773,8 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         except JSONRPCException as e:
             self.errorString = e.error['message']
             print(self.errorString)
-        assert_equal("Buy ticket ["+self.art_ticket1_buy_ticket_txid+"] already exists for this sell ticket [" +
-                     self.art_ticket1_sell_ticket_txid+"]" in self.errorString, True)
+        assert_equal("Buy ticket [" + self.art_ticket1_buy_ticket_txid + "] already exists and is not yet 1h old "
+                     "for this sell ticket [" + self.art_ticket1_sell_ticket_txid + "]" in self.errorString, True)
 
         print("Art buy tickets tested")
 
@@ -1983,7 +1994,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
                 self.errorString = e.error['message']
                 print(self.errorString)
             assert_equal("The Art you are trying to sell - from registration ticket ["+art_to_sell_txid +
-                         "] - is already sold - there are already [10] trade tickets, "
+                         "] - is already sold - there are already [10] sold copies, "
                          "but only [10] copies were available"
                          in self.errorString, True)
             return
