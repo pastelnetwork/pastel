@@ -38,6 +38,8 @@ void CMasterNodeController::SetParameters()
     ChainBaselineDifficultyUpperIndex   = 150000;
     ChainTrailingAverageDifficultyRange = 10000;
 
+    MasternodeUsernameFirstChangeFee   = 100;
+    MasternodeUsernameChangeAgainFee   = 5000;
     MasternodeCheckSeconds              =   5;
     MasternodeMinMNBSeconds             =   5 * 60;
     MasternodeMinMNPSeconds             =  10 * 60;

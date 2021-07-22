@@ -618,3 +618,76 @@ public:
 
     void SerializationOp(CDataStream& s, const SERIALIZE_ACTION ser_action) override {}
 };
+
+// Username Change Ticket /////////////////////////////////////////////////////////////////////////////////////////////////////
+/*
+	"ticket": {
+		"type": "username",
+		"pastelID": "",    //PastelID of the username
+		"username": "",    //new valid username
+		"fee": "",         // fee to change username
+		"signature": ""
+	},
+ */
+class CChangeUsernameTicket : public CPastelTicket
+{
+public:
+    std::string pastelID;
+    std::string username;
+    CAmount fee{100};
+    v_uint8 signature;
+
+public:
+    CChangeUsernameTicket() = default;
+
+    explicit CChangeUsernameTicket(std::string _pastelID, std::string _username) :
+        pastelID(std::move(_pastelID)), username(std::move(_username))
+    {}
+
+    TicketID ID() const noexcept override { return TicketID::Username; }
+    static TicketID GetID() { return TicketID::Username; }
+
+    std::string KeyOne() const noexcept override { return username; }
+    std::string KeyTwo() const noexcept override { return pastelID; }
+
+    bool HasKeyTwo() const noexcept override { return true; }
+    bool HasMVKeyOne() const noexcept override { return false; }
+    bool HasMVKeyTwo() const noexcept override { return false; }
+
+    void SetKeyOne(std::string val) override { username = std::move(val); }
+
+    std::string ToJSON() const noexcept override;
+    std::string ToStr() const noexcept override;
+    CAmount TicketPrice(const unsigned int nHeight) const noexcept override { return fee; }
+    bool IsValid(bool preReg, int depth) const override;
+
+    void SerializationOp(CDataStream& s, const SERIALIZE_ACTION ser_action) override
+    {
+        const bool bRead = ser_action == SERIALIZE_ACTION::Read;
+        std::string error;
+        if (!VersionMgmt(error, bRead))
+            throw std::runtime_error(error);
+        READWRITE(pastelID);
+        READWRITE(m_nVersion);
+        // v0
+        READWRITE(username);
+        READWRITE(fee);
+        READWRITE(signature);
+        READWRITE(m_nTimestamp);
+        READWRITE(m_txid);
+        READWRITE(m_nBlock);
+    }
+
+    static CChangeUsernameTicket Create(std::string _pastelID, std::string _username, const SecureString& strKeyPass);    
+    static bool FindTicketInDb(const std::string& key, CChangeUsernameTicket& ticket);
+
+    /** Some general checks to see if the username is bad. Below cases will be considered as bad Username
+    *     - Contains characters that is different than upper and lowercase Latin characters and numbers
+    *     - Has only <4, or has more than 12 characters
+    *     - Doesn't start with letters.
+    *     - Username registered on the blockchain.
+    *     - Contains bad words (swear, racist,...)
+    * return: true if bad, false if good to use
+    */
+    static bool isUsernameBad(const std::string& username, std::string& error);
+};

@@ -60,6 +60,9 @@ public:
     CAmount MasternodeFeePerMBDefault;
     CAmount ArtTicketFeePerKBDefault;
 
+    CAmount MasternodeUsernameFirstChangeFee;
+    CAmount MasternodeUsernameChangeAgainFee;
+
     double ChainDeflationRateDefault;
     CAmount ChainBaselineDifficultyLowerIndex;
     CAmount ChainBaselineDifficultyUpperIndex;

@@ -64,3 +64,12 @@ static inline void replaceAll(std::string &s, const std::string& sFrom, const st
         nPos += sTo.length();
     }
 }
+
+static inline bool isalphaex(const char c) noexcept
+{
+    return ((c >= 'A') && (c <= 'Z')) || ((c >= 'a') && (c <= 'z'));
+}
+static inline bool isdigitex(const char c) noexcept
+{
+    return (c >= '0') && (c <= '9');
+}

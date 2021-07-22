@@ -1606,9 +1606,8 @@ Available commands:
 )");
 	
 	std::string strCmd, strError;
-	if (TICKETS.IsCmd(RPC_CMD_TICKETS::Register)) {
-        
-        RPC_CMD_PARSER2(REGISTER, params, mnid, id, art, act, sell, buy, trade, down, royalty);
+	if (TICKETS.IsCmd(RPC_CMD_TICKETS::Register)) {        
+        RPC_CMD_PARSER2(REGISTER, params, mnid, id, art, act, sell, buy, trade, down, royalty, username);
         
         if (fHelp || !REGISTER.IsCmdSupported())
 			throw JSONRPCError(RPC_INVALID_PARAMETER,
@@ -2112,12 +2111,50 @@ As json rpc
 )" + HelpExampleRpc("tickets",
                     R"("register", "down", "jXYqZNPj21RVnwxnEJ654wEdzi7GZTZ5LAdiotBmPrF7pDMkpX1JegDMQZX55WZLkvy9fxNpZcbBJuE8QYUqBF", "passphrase")"));
 		}
+        if (REGISTER.IsCmd(RPC_CMD_REGISTER::username)) {
+			if (fHelp || params.size() != 5)
+				throw JSONRPCError(RPC_INVALID_PARAMETER,
+R"(tickets register username "PastelId" "username" "passpharse"
+Register Username Change Request ticket. If successful, method returns "txid"
+
+Arguments:
+x. "PastelId"      (string, required) The PastelID. NOTE: PastelID must be generated and stored inside node. See "pastelid newkey".
+x. "username"      (string, required) The username that will be map with above PastelID
+y. "passpharse"    (string, required) The passphrase to the private key associated with PastelID and stored inside node. See "pastelid newkey".
+Username Change Request Ticket:
+{
+    "ticket": {
+		"type": "username",
+		"pastelID": "",    //PastelID of the username
+		"username": "",    //new valid username
+		"fee": "",         // fee to change username
+		"signature": ""
+	},
+	"height": "",
+	"txid": ""
+  }
+
+Register PastelID
+)" + HelpExampleCli("tickets register username", R"(jXYqZNPj21RVnwxnEJ654wEdzi7GZTZ5LAdiotBmPrF7pDMkpX1JegDMQZX55WZLkvy9fxNpZcbBJuE8QYUqBF "bsmith84" "passphrase")") +
+                                                   R"(
+As json rpc
+)" + HelpExampleRpc("tickets",
+                    R"("register", "username", "jXYqZNPj21RVnwxnEJ654wEdzi7GZTZ5LAdiotBmPrF7pDMkpX1JegDMQZX55WZLkvy9fxNpZcbBJuE8QYUqBF", "bsmith84", "passphrase")"));
+            std::string username = params[2].get_str();
+            std::string pastelID = params[3].get_str();
+            SecureString strKeyPass;
+            strKeyPass.reserve(100);
+            strKeyPass = params[4].get_str().c_str();
+            CChangeUsernameTicket changeUsernameTicket = CChangeUsernameTicket::Create(pastelID, username, strKeyPass);
+            std::string txid = CPastelTicketProcessor::SendTicket(changeUsernameTicket);
+            mnObj.pushKV(RPC_KEY_TXID, std::move(txid));
+		}
 		return mnObj;
 	}
 	
 	if (TICKETS.IsCmd(RPC_CMD_TICKETS::find)) {
         
-        RPC_CMD_PARSER2(FIND, params, id, art, act, sell, buy, trade, down, royalty);
+        RPC_CMD_PARSER2(FIND, params, id, art, act, sell, buy, trade, down, royalty, username);
             
         if (fHelp || !FIND.IsCmdSupported())
 			throw JSONRPCError(RPC_INVALID_PARAMETER,
@@ -2143,6 +2180,8 @@ Available types:
             The "key" is ...
   royalty - Find art royalty ticket.
             The "key" is ...
+  username  - Find username change ticket.
+            The "key" is 'username'
 
 Arguments:
 1. "key"    (string, required) The Key to use for ticket search. See types above...
@@ -2156,7 +2195,6 @@ As json rpc
         std::string key;
         if (params.size() > 2)
             key = params[2].get_str();
-        
         switch (FIND.cmd())
         {
         case RPC_CMD_FIND::id: {
@@ -2190,6 +2228,15 @@ As json rpc
             //            CTakeDownTicket ticket;
             //            if (CTakeDownTicket::FindTicketInDb(params[2].get_str(), ticket))
             //              return ticket.ToJSON();
+        } break;
+
+        case RPC_CMD_FIND::username: {
+            CChangeUsernameTicket ticket;
+            if (CChangeUsernameTicket::FindTicketInDb(key, ticket)) {
+                UniValue obj(UniValue::VOBJ);
+                obj.read(ticket.ToJSON());
+                return obj;
+            }
         } break;
         }
 		return "Key is not found";
@@ -2444,7 +2491,7 @@ As json rpc
     
     if (TICKETS.IsCmd(RPC_CMD_TICKETS::tools)) {
         
-        RPC_CMD_PARSER2(LIST, params, printtradingchain, getregbytrade, gettotalstoragefee);
+        RPC_CMD_PARSER2(LIST, params, printtradingchain, getregbytrade, gettotalstoragefee, validateusername);
         
         UniValue obj(UniValue::VARR);
         switch (LIST.cmd()) {
@@ -2555,6 +2602,27 @@ As json rpc
                 UniValue mnObj(UniValue::VOBJ);
                 mnObj.pushKV("totalstoragefee", totalFee);
                 return mnObj;
+            }
+            case RPC_CMD_LIST::validateusername: {
+                std::string username;
+                if (params.size() > 2) {
+                    username = params[2].get_str();
+
+                    UniValue obj(UniValue::VOBJ);
+                    std::string usernameValidationError;
+                    bool isBad = CChangeUsernameTicket::isUsernameBad(username, usernameValidationError);
+                    if (!isBad) {
+                        CChangeUsernameTicket existingTicket;
+                        if (CChangeUsernameTicket::FindTicketInDb(username, existingTicket)) {
+                            isBad = true;
+                            usernameValidationError = "Username is not valid, it is already registered";
+                        }
+                    }
+                    obj.pushKV("isBad", isBad);
+                    obj.pushKV("validationError", std::move(usernameValidationError));
+
+                    return obj;
+                }
             }
         }
     }

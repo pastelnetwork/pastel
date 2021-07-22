@@ -174,6 +174,7 @@
     <ClInclude Include="..\..\..\src\metrics.h" />
     <ClInclude Include="..\..\..\src\miner.h" />
     <ClInclude Include="..\..\..\src\mnode\mnode-active.h" />
+    <ClInclude Include="..\..\..\src\mnode\mnode-badwords.h" />
     <ClInclude Include="..\..\..\src\mnode\mnode-config.h" />
     <ClInclude Include="..\..\..\src\mnode\mnode-consts.h" />
     <ClInclude Include="..\..\..\src\mnode\mnode-controller.h" />

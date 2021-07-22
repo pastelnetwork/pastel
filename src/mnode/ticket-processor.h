@@ -48,10 +48,13 @@ public:
 
     bool CheckTicketExistBySecondaryKey(const CPastelTicket& ticket);
     bool FindTicketBySecondaryKey(CPastelTicket& ticket);
+
     template <class _TicketType>
     std::vector<_TicketType> FindTicketsByMVKey(const std::string& mvKey);
 
     std::vector<std::string> GetAllKeys(const TicketID id) const;
+
+    std::string getValueBySecondaryKey(const CPastelTicket& ticket) const;
 
     template <class _TicketType>
     std::string ListTickets() const;

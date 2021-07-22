@@ -77,6 +77,10 @@ unique_ptr<CPastelTicket> CPastelTicketProcessor::CreateTicket(const TicketID ti
     case TicketID::Down:
         ticket = make_unique<CTakeDownTicket>();
         break;
+
+    case TicketID::Username:
+        ticket = make_unique<CChangeUsernameTicket>();
+        break;
     }
     return ticket;
 }
@@ -245,7 +249,8 @@ bool CPastelTicketProcessor::ValidateIfTicketTransaction(const int nHeight, cons
                  ticket_id == TicketID::Art ||
                  ticket_id == TicketID::Sell ||
                  ticket_id == TicketID::Buy ||
-                 ticket_id == TicketID::Royalty) &&
+                 ticket_id == TicketID::Royalty ||
+                 ticket_id == TicketID::Username ) &&
                 i == num - 1) // in these tickets last output is change
                 break;
             // in this tickets last 4 outputs is: change, and payments to 3 MNs
@@ -481,6 +486,21 @@ std::vector<_TicketType> CPastelTicketProcessor::FindTicketsByMVKey(const std::s
     }
     return tickets;
 }
+
+
+
+std::string CPastelTicketProcessor::getValueBySecondaryKey(const CPastelTicket& ticket) const
+{
+    std::string retVal;
+    if (ticket.HasKeyTwo()) {
+        std::string sMainKey;
+        const auto sRealKeyTwo = RealKeyTwo(ticket.KeyTwo());
+        if (dbs.at(ticket.ID())->Read(sRealKeyTwo, sMainKey))
+            retVal = sMainKey;
+    }
+    return retVal;
+}
+
 template std::vector<CPastelIDRegTicket> CPastelTicketProcessor::FindTicketsByMVKey<CPastelIDRegTicket>(const std::string&);
 template std::vector<CArtRegTicket> CPastelTicketProcessor::FindTicketsByMVKey<CArtRegTicket>(const std::string&);
 template std::vector<CArtActivateTicket> CPastelTicketProcessor::FindTicketsByMVKey<CArtActivateTicket>(const std::string&);
