@@ -1253,10 +1253,63 @@ CArtTradeTicket CArtTradeTicket::Create(std::string _sellTnxId, std::string _buy
 
     ticket.GenerateTimestamp();
     
+    // In case it is nested it means that we have the artTnxId of the sell ticket
+    // available within the trade tickets.
+    // [0]: original registration ticket's txid
+    // [1]: copy number for a given art
+    std::vector<std::string> artRegTicket_TxId_Serial = CArtTradeTicket::GetArtRegTxIDAndSerialIfResoldNft(sellTicket->artTnxId);
+    if(artRegTicket_TxId_Serial[0].compare("") == 0)
+    {  
+      auto artTicket = ticket.FindArtRegTicket();
+      if (!artTicket)
+      {
+        throw std::runtime_error("Art Reg ticket not found");
+      }
+
+      //Original TxId
+      ticket.SetArtRegTicketTxid(artTicket->GetTxId());
+      //Copy nr.
+      ticket.SetCopySerialNr(std::to_string(sellTicket->copyNumber));
+    }
+    else
+    {
+      //This is the re-sold case
+      ticket.SetArtRegTicketTxid(artRegTicket_TxId_Serial[0]);
+      ticket.SetCopySerialNr(artRegTicket_TxId_Serial[1]);
+    }
     std::string strTicket = ticket.ToStr();
     string_to_vector(CPastelID::Sign(strTicket, ticket.pastelID, strKeyPass), ticket.signature);
     
     return ticket;
+}
+
+std::vector<std::string> CArtTradeTicket::GetArtRegTxIDAndSerialIfResoldNft(const std::string& _txid)
+{
+
+    std::vector<std::string> vRetVal = {"",""};
+
+    try
+    {
+      //Possible conversion to trade ticket - if any
+      auto pNestedTicket = CPastelTicketProcessor::GetTicket(_txid, TicketID::Trade);
+      if(pNestedTicket != nullptr)
+      {
+        auto tradeTicket = dynamic_cast<const CArtTradeTicket*>(pNestedTicket.get());
+        if (tradeTicket)
+        {
+          vRetVal[0] = tradeTicket->GetArtRegTicketTxid();
+          vRetVal[1] = tradeTicket->GetCopySerialNr();
+        }
+      }
+    }
+    catch(const runtime_error& error)
+    {
+      //Intentionally not throw exception!
+      LogPrintf("DebugPrint: NFT with this txid is not resold: %s", _txid);
+    }
+    
+    return vRetVal;
+    
 }
 
 std::string CArtTradeTicket::ToStr() const noexcept
@@ -1267,6 +1320,8 @@ std::string CArtTradeTicket::ToStr() const noexcept
     ss << buyTnxId;
     ss << artTnxId;
     ss << m_nTimestamp;
+    ss << nftRegTnxId;
+    ss << nftCopySerialNr;
     return ss.str();
 }
 
@@ -1456,6 +1511,8 @@ std::string CArtTradeTicket::ToJSON() const noexcept
                 {"sell_txid", sellTnxId},
                 {"buy_txid", buyTnxId},
                 {"art_txid", artTnxId},
+                {"registration_txid",nftRegTnxId},
+                {"copy_serial_nr", nftCopySerialNr},
                 {"signature", ed_crypto::Hex_Encode(signature.data(), signature.size())}
             }}
     };
@@ -1478,6 +1535,51 @@ std::vector<CArtTradeTicket> CArtTradeTicket::FindAllTicketByPastelID(const std:
 std::vector<CArtTradeTicket> CArtTradeTicket::FindAllTicketByArtTnxID(const std::string& artTnxID)
 {
     return masterNodeCtrl.masternodeTickets.FindTicketsByMVKey<CArtTradeTicket>(artTnxID);
+}
+
+std::vector<CArtTradeTicket> CArtTradeTicket::FindAllTicketByRegTnxID(const std::string& nftRegTnxId)
+{
+    return masterNodeCtrl.masternodeTickets.FindTicketsByMVKey<CArtTradeTicket>(nftRegTnxId);
+}
+
+std::map<std::string, std::string> CArtTradeTicket::GetPastelIdAndTxIdWithTopHeightPerCopy(const std::vector<CArtTradeTicket> & filteredTickets)
+{
+  //The list is already sorted by height (from beginning to end)
+
+  //This will hold all the owner / copies serial number where serial number is the key 
+  std::map<std::string, std::string> ownerPastelIDs_and_txids;
+
+  //Copy number and winning index (within the vector)
+  //std::map<std::string, int> copyOwner_Idxs;
+  std::map<std::string, std::pair<unsigned int, int>> copyOwner_Idxs;
+  int winning_idx = 0;
+
+  for (const auto & element : filteredTickets) {
+
+    const std::string& serial = element.GetCopySerialNr();
+    if(copyOwner_Idxs.find(serial) != copyOwner_Idxs.end())
+    {
+      //We do have it in our copyOwner_Idxs
+      if(element.GetBlock() >= copyOwner_Idxs[serial].first)
+      {
+        copyOwner_Idxs[serial] = std::make_pair(element.GetBlock(), winning_idx);
+      }
+    }
+    else
+    {
+      copyOwner_Idxs.insert({ serial, std::make_pair(element.GetBlock(), winning_idx) });
+    }
+    winning_idx++;
+  }
+
+  // Now we do have the winning IDXs
+  // we need to extract owners pastelId and TxnIds
+  for (const auto& winners: copyOwner_Idxs)
+  {
+    ownerPastelIDs_and_txids.insert({ filteredTickets[winners.second.second].pastelID, filteredTickets[winners.second.second].GetTxId() });
+  }
+
+  return ownerPastelIDs_and_txids;
 }
 
 bool CArtTradeTicket::CheckTradeTicketExistBySellTicket(const std::string& _sellTnxId)
@@ -1524,6 +1626,26 @@ std::unique_ptr<CPastelTicket> CArtTradeTicket::FindArtRegTicket() const
     }
     
     return std::move(chain.front());
+}
+
+void CArtTradeTicket::SetArtRegTicketTxid(const std::string& _NftRegTxid)
+{
+   nftRegTnxId =_NftRegTxid;
+}
+
+const std::string CArtTradeTicket::GetArtRegTicketTxid() const
+{
+  return nftRegTnxId;
+}
+
+void CArtTradeTicket::SetCopySerialNr(const std::string& _nftCopySerialNr)
+{
+  nftCopySerialNr = std::move(_nftCopySerialNr);
+}
+
+const std::string& CArtTradeTicket::GetCopySerialNr() const
+{
+  return nftCopySerialNr;
 }
 
 // CArtRoyaltyTicket ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

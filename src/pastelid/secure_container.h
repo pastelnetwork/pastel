@@ -173,6 +173,8 @@ public:
     bool write_to_file(const std::string& sFilePath, const SecureString& sPassphrase);
     // read from secure container file encrypted secure data as a msgpack and decrypt
     bool read_from_file(const std::string& sFilePath, const SecureString& sPassphrase);
+    // validate passphrase from secure container
+    bool is_valid_passphrase(const std::string& sFilePath, const SecureString& sPassphrase);
     // read from secure container file public data as a msgpack
     bool read_public_from_file(std::string &error, const std::string& sFilePath);
     // Get public data (byte vector) from the container by type

@@ -137,6 +137,11 @@ bool CPastelTicketProcessor::UpdateDB(CPastelTicket &ticket, string& txid, const
         UpdateDB_MVK(ticket, ticket.MVKeyOne());
     if (ticket.HasMVKeyTwo())
         UpdateDB_MVK(ticket, ticket.MVKeyTwo());
+    if (ticket.HasMVKeyThree())
+    {
+        UpdateDB_MVK(ticket, ticket.MVKeyThree());
+    }
+        
     //LogPrintf("tickets", "CPastelTicketProcessor::UpdateDB -- Ticket added into DB with key %s (txid - %s)\n", ticket.KeyOne(), ticket.ticketTnx);
     return true;
 }
@@ -1130,6 +1135,58 @@ bool CPastelTicketProcessor::ParseP2FMSTransaction(const CMutableTransaction& tx
     }
 
     return true;
+}
+
+std::vector<std::string> CPastelTicketProcessor::ValidateOwnership(const std::string &_txid, const std::string &_pastelID)
+{
+    //0th: art
+    //1th: trade
+    std::vector<string> sRetVal = {"", ""};
+
+    //Check if ticket is found by txid
+    try{
+        auto ticket = CPastelTicketProcessor::GetTicket(_txid, TicketID::Art);
+        auto artTicket = dynamic_cast<CArtRegTicket*>(ticket.get());
+        if (!artTicket)
+        {
+            return sRetVal;
+        }
+
+        // Check if author and _pastelID are equal
+        if(artTicket->pastelIDs[0].compare(_pastelID) == 0 && CArtActivateTicket::CheckTicketExistByArtTicketID(artTicket->GetTxId()))
+        {
+            sRetVal[0] = _txid;
+            return sRetVal;
+        }
+
+    }
+    catch(const std::runtime_error& e)
+    {
+        LogPrintf("Was not able to process ValidateOWnership request due to: %s\n", e.what()); 
+    }
+
+    //If we are here it means it is a nested trade ticket 
+    //List trade tickets by reg txID and rearrange them by blockheight
+    std::vector<CArtTradeTicket> tradeTickets = CArtTradeTicket::FindAllTicketByRegTnxID(_txid);
+    
+    // Go through each if not empty and rearrange them by block-height
+    if(!tradeTickets.empty())
+    {
+        //std::sort(tradeTickets.begin(), tradeTickets.end(), [](CArtTradeTicket & one, CArtTradeTicket & two){return one.GetBlock() < two.GetBlock();});
+        std::map<std::string, std::string> ownersPastelIds_with_TnxIds = CArtTradeTicket::GetPastelIdAndTxIdWithTopHeightPerCopy(tradeTickets);
+
+        for (const auto& winners: ownersPastelIds_with_TnxIds)
+        {
+            if(winners.first == _pastelID)
+            {
+                sRetVal[0] = _txid;
+                sRetVal[1] = winners.second;
+                break;
+            }
+        }
+    }
+
+    return sRetVal;
 }
 
 #ifdef FAKE_TICKET

@@ -260,6 +260,40 @@ pastelid_store_t CPastelID::GetStoredPastelIDs(const bool bPastelIdOnly)
     return resultMap;
 }
 
+bool CPastelID::isValidPassphrase(const std::string& pastelid, const SecureString& strKeyPass) noexcept
+{
+    bool bRet = false;
+    try {
+        //Get pastelkeyfile
+        fs::path pathPastelKeys(GetArg("-pastelkeysdir", "pastelkeys"));
+        pathPastelKeys = GetDataDir() / pathPastelKeys;
+        fs::path pathPastelKeyFile = pathPastelKeys / pastelid;
+
+        if (!fs::exists(pathPastelKeyFile)){
+            return false;
+        }
+        secure_container::CSecureContainer cont;
+        legroast::CLegRoast<legroast::algorithm::Legendre_Middle> LegRoastKey;
+        std::string sED448pkey;
+        // first try to read file as a secure container
+        // returns false if file content does not start with secure container prefix
+        if (cont.is_valid_passphrase(pathPastelKeyFile.string(), strKeyPass))
+        {
+            bRet = true;
+        }
+        else{
+            //If old pkcs8 format is the format try to read that way
+            auto key = ed_crypto::key_dsa448::read_private_key_from_PKCS8_file(pathPastelKeyFile.string(), strKeyPass.c_str());
+            sED448pkey = key.private_key_raw().str();
+            bRet = true;
+        }
+
+    } catch (const std::exception &ex) {
+        LogPrintf("Failed to validate passphrase due to: %s", ex.what());
+    }
+    return bRet;
+}
+
 std::string CPastelID::EncodePastelID(const v_uint8& key)
 {
     v_uint8 vData;
