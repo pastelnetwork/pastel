@@ -43,6 +43,8 @@ public:
         const SIGN_ALGORITHM alg = SIGN_ALGORITHM::ed448, const bool fBase64 = false);
     // Get PastelIDs stored locally in pastelkeys (pastelkeysdir option).
     static pastelid_store_t GetStoredPastelIDs(const bool bPastelIdOnly = true);
+    // Validate passphrase via secure container or pkcs8 format
+    static bool isValidPassphrase(const std::string& pastelid,const SecureString& strKeyPass) noexcept;
 
 protected:
     // encode/decode PastelID

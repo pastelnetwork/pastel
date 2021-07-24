@@ -88,11 +88,13 @@ public:
     virtual bool HasKeyTwo() const noexcept { return false; }
     virtual bool HasMVKeyOne() const noexcept { return false; }
     virtual bool HasMVKeyTwo() const noexcept { return false; }
+    virtual bool HasMVKeyThree() const noexcept { return false; }
 
     virtual std::string KeyOne() const noexcept = 0; //Key to the object itself
     virtual std::string KeyTwo() const noexcept { return ""; }
     virtual std::string MVKeyOne() const noexcept { return ""; }
     virtual std::string MVKeyTwo() const noexcept { return ""; }
+    virtual std::string MVKeyThree() const noexcept { return ""; }
 
     virtual void SetKeyOne(std::string val) = 0;
 

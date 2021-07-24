@@ -2491,7 +2491,7 @@ As json rpc
     
     if (TICKETS.IsCmd(RPC_CMD_TICKETS::tools)) {
         
-        RPC_CMD_PARSER2(LIST, params, printtradingchain, getregbytrade, gettotalstoragefee, validateusername);
+        RPC_CMD_PARSER2(LIST, params, printtradingchain, getregbytrade, gettotalstoragefee, validateusername, validateownership);
         
         UniValue obj(UniValue::VARR);
         switch (LIST.cmd()) {
@@ -2622,6 +2622,74 @@ As json rpc
                     obj.pushKV("validationError", std::move(usernameValidationError));
 
                     return obj;
+                }
+            }
+			case RPC_CMD_LIST::validateownership: {
+
+                if (params.size() == 5)
+                {
+
+                    //result object
+                    UniValue retVal(UniValue::VOBJ);
+                    //txid
+                    std::string txid = params[2].get_str();
+                    //pastelid
+                    std::string pastelid = params[3].get_str();
+
+                    //Check if pastelid is found within the stored ones
+                    const auto pastelIDs = CPastelID::GetStoredPastelIDs();
+                    bool bIdFound = false;
+                    pastelid_store_t resultMap;
+
+                    for (const auto & p: pastelIDs)
+                    {
+                        if(p.first.compare(pastelid) == 0)
+                        {
+                            bIdFound = true;
+                            break;
+                        }
+                    }
+
+                    if(!bIdFound)
+                    {
+                        throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY,
+                     "Error: Corresponding PastelID not found!");
+                    }
+                    //passphrase
+                    SecureString strKeyPass;
+                    strKeyPass.reserve(100);
+                    strKeyPass = params[4].get_str().c_str();
+                    if (strKeyPass.length() > 0)
+                    {
+                        //If passphrase is not valid exception is thrown
+                        if(!CPastelID::isValidPassphrase(pastelid,strKeyPass))
+                            throw JSONRPCError(RPC_WALLET_PASSPHRASE_INCORRECT, "Error: Failed to validate passphrase!");
+
+                        std::vector<std::string> result = masterNodeCtrl.masternodeTickets.ValidateOwnership(txid, pastelid);
+                        std::string art_txid = std::move(result[0]);
+                        std::string trade_txid = std::move(result[1]);
+
+                        retVal.pushKV("art", art_txid);
+                        retVal.pushKV("trade", trade_txid);
+                    }
+                    return retVal;
+                }
+                else
+                {
+                    throw JSONRPCError(RPC_INVALID_PARAMETER,
+                                       R"(tickets tools validateownership "txid" "pastelid" "passphrase"
+Get ownership validation by pastelid. If unsuccessful, method return art:"",trade:"". Every other case successful.
+
+Arguments:
+1. "txid"       (string, required) txid of the original nft registration 
+2. "pastelid"   (string, required) Registered pastelid which (according to the request) shall be the owner or the author of the registered NFT (of argument 1's txid)
+3. "passpharse" (string, required) The passphrase to the private key associated with PastelID and stored inside node. See "pastelid newkey".
+
+Validate ownership
+)" + HelpExampleCli("tickets tools validateownership", R"(""e4ee20e436d33f59cc313647bacff0c5b0df5b7b1c1fa13189ea7bc8b9df15a4" jXYqZNPj21RVnwxnEJ654wEdzi7GZTZ5LAdiotBmPrF7pDMkpX1JegDMQZX55WZLkvy9fxNpZcbBJuE8QYUqBF "passphrase")") +
+                                           R"(
+As json rpc
+)" + HelpExampleRpc("tickets", R"("tools", "validateownership", "e4ee20e436d33f59cc313647bacff0c5b0df5b7b1c1fa13189ea7bc8b9df15a4" "jXYqZNPj21RVnwxnEJ654wEdzi7GZTZ5LAdiotBmPrF7pDMkpX1JegDMQZX55WZLkvy9fxNpZcbBJuE8QYUqBF" "passphrase")"));
                 }
             }
         }
