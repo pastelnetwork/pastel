@@ -1348,6 +1348,8 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         print(f"coins after - {coins_after}")
         assert_equal(coins_before - coins_after, 10)
 
+        self.__wait_for_sync_all(1)
+
         # from another node - get ticket transaction and check
         #   - amounts is totaling 10PSL
         art_ticket1_royalty_ticket_hash = self.nodes[0].getrawtransaction(art_royalty_txid)
@@ -1868,9 +1870,9 @@ class MasterNodeTicketsTest(MasterNodeCommon):
 
         # fail if not enough funds: price + trade ticket fee 10 PSL
         if not skip_low_coins_tests:
-            coins_before = self.nodes[self.non_mn4].getbalance()
-            print(coins_before)
-            assert_true(coins_before > 0 and coins_before < 1)
+            buyers_coins_before = self.nodes[self.non_mn4].getbalance()
+            print(f"buyers coins before not enough - {buyers_coins_before}")
+            assert_true(buyers_coins_before > 0 and buyers_coins_before < 1)
             try:
                 self.nodes[self.non_mn4].tickets("register", "trade",
                                                  self.art_ticket1_sell_ticket_txid, self.art_ticket1_buy_ticket_txid,
@@ -1882,8 +1884,8 @@ class MasterNodeTicketsTest(MasterNodeCommon):
 
         self.nodes[self.mining_node_num].sendtoaddress(self.nonmn4_address1, cover_price, "", "", False)
         self.__wait_for_sync_all(1)
-        coins_before = self.nodes[self.non_mn4].getbalance()
-        print(coins_before)
+        buyers_coins_before = self.nodes[self.non_mn4].getbalance()
+        print(f"buyers coins before enough - {buyers_coins_before}")
 
         # Check there is Sell ticket with this sellTnxId
         try:
@@ -1941,12 +1943,12 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         self.__wait_for_ticket_tnx()
 
         # check correct amount of change and correct amount spent
-        coins_after = self.nodes[self.non_mn4].getbalance()
-        print(coins_before)
-        print(coins_after)
+        buyers_coins_after = self.nodes[self.non_mn4].getbalance()
+        print(f"buyers coins before - {buyers_coins_before}")
+        print(f"buyers coins after - {buyers_coins_after}")
         print(f"trade ticket price - {self.trade_ticket_price}")
         # ticket cost is trade ticket price, art cost is art_copy_price
-        assert_true(math.isclose(coins_after, coins_before - self.trade_ticket_price - self.art_copy_price, rel_tol=0.01))
+        assert_true(math.isclose(buyers_coins_after, buyers_coins_before - self.trade_ticket_price - self.art_copy_price, rel_tol=0.01))
 
         # check seller gets correct amount
         sellers_coins_after = self.nodes[self.non_mn3].getreceivedbyaddress(sellers_address)
@@ -1959,8 +1961,8 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         if self.is_green:
             green_coins_expected_fee = self.art_copy_price * 2 / 100
             sellers_coins_expected_to_receive -= green_coins_expected_fee
-        print(sellers_coins_before)
-        print(sellers_coins_after)
+        print(f"sellers coins before - {sellers_coins_before}")
+        print(f"sellers coins after - {sellers_coins_after}")
         assert_true(math.isclose(sellers_coins_after - sellers_coins_before, sellers_coins_expected_to_receive, rel_tol=0.01))
 
         # from another node - get ticket transaction and check
@@ -1984,7 +1986,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
                 if v["scriptPubKey"]["addresses"][0] == self.royalty_address and math.isclose(amount, royalty_coins_expected_fee):
                     royalty_coins = amount
                     print(f"trade transaction to royalty's address - {amount}")
-                if v["scriptPubKey"]["addresses"][0] == self.nonmn7_green_address1 and self.is_green:
+                if v["scriptPubKey"]["addresses"][0] == self.nonmn7_green_address1 and math.isclose(amount, royalty_coins_expected_fee):
                     green_coins = amount
                     print(f"trade transaction to green's address - {amount}")
         print(f"trade transiction multisig coins - {multi_coins}")
