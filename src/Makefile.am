@@ -151,7 +151,18 @@ MNODE_H = \
   mnode/mnode-controller.h\
   mnode/mnode-notificationinterface.h\
   mnode/mnode-sync.h\
-  mnode/mnode-consts.h
+  mnode/mnode-consts.h\
+  mnode/mnode-badwords.h
+
+PASTELID_CPP =\
+  pastelid/secure_container.cpp\
+  pastelid/pastel_key.cpp
+
+PASTELID_H =\
+  pastelid/secure_container.h\
+  pastelid/pastel_key.h\
+  pastelid/common.h\
+  pastelid/ed.h
 
 .PHONY: FORCE collate-libsnark check-symbols check-security
 # bitcoin core #
@@ -202,6 +213,7 @@ BITCOIN_CORE_H = \
   key_io.h \
   keystore.h \
   dbwrapper.h \
+  legroast.h \
   limitedmap.h \
   main.h \
   memusage.h \
@@ -255,6 +267,8 @@ BITCOIN_CORE_H = \
   uint252.h \
   undo.h \
   util.h \
+  str_utils.h \
+  vector_types.h \
   utilmoneystr.h \
   utilstrencodings.h \
   utiltest.h \
@@ -276,7 +290,8 @@ BITCOIN_CORE_H = \
   zmq/zmqconfig.h\
   zmq/zmqnotificationinterface.h \
   zmq/zmqpublishnotifier.h \
-  $(MNODE_H)
+  $(MNODE_H) \
+  $(PASTELID_H)
 
 obj/build.h: FORCE
 	@$(MKDIR_P) $(builddir)/obj
@@ -324,6 +339,7 @@ libbitcoin_server_a_SOURCES = \
   txmempool.cpp \
   validationinterface.cpp \
   $(MNODE_CPP) \
+  $(PASTELID_CPP) \
   $(BITCOIN_CORE_H) \
   $(LIBZCASH_H)
 

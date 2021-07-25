@@ -8,7 +8,7 @@
 #include "dbwrapper.h"
 #include "chain.h"
 #include "primitives/transaction.h"
-
+#include "pastelid/pastel_key.h"
 #include "mnode/mnode-consts.h"
 #include "mnode/ticket.h"
 
@@ -25,7 +25,7 @@ class CPastelTicketProcessor
     void listTickets(F f) const;
 
     template <class _TicketType, typename F>
-    std::string filterTickets(F f) const;
+    std::string filterTickets(F f, const bool checkConfirmation = true) const;
 
 public:
     CPastelTicketProcessor() = default;
@@ -48,21 +48,24 @@ public:
 
     bool CheckTicketExistBySecondaryKey(const CPastelTicket& ticket);
     bool FindTicketBySecondaryKey(CPastelTicket& ticket);
+
     template <class _TicketType>
     std::vector<_TicketType> FindTicketsByMVKey(const std::string& mvKey);
 
     std::vector<std::string> GetAllKeys(const TicketID id) const;
 
+    std::string getValueBySecondaryKey(const CPastelTicket& ticket) const;
+
     template <class _TicketType>
     std::string ListTickets() const;
 
     std::string ListFilterPastelIDTickets(const short filter = 0, // 1 - mn;        2 - personal;     3 - mine
-                                          const std::vector<std::string>* pvPastelIDs = nullptr) const;
+                                          const pastelid_store_t* pmapIDs = nullptr) const;
     std::string ListFilterArtTickets(const short filter = 0) const;   // 1 - active;    2 - inactive;     3 - sold
     std::string ListFilterActTickets(const short filter = 0) const;   // 1 - available; 2 - sold
-    std::string ListFilterSellTickets(const short filter = 0) const;  // 1 - available; 2 - unavailable;  3 - expired; 4 - sold
-    std::string ListFilterBuyTickets(const short filter = 0) const;   // 1 - traded;    2 - expired
-    std::string ListFilterTradeTickets(const short filter = 0) const; // 1 - available; 2 - sold
+    std::string ListFilterSellTickets(const short filter = 0, const std::string& pastelID = "") const;  // 0 - all, 1 - available; 2 - unavailable;  3 - expired; 4 - sold
+    std::string ListFilterBuyTickets(const short filter = 0, const std::string& pastelID = "") const;   // 0 - all, 1 - traded;    2 - expired
+    std::string ListFilterTradeTickets(const short filter = 0, const std::string& pastelID = "") const; // 0 - all, 1 - available; 2 - sold
 
 #ifdef ENABLE_WALLET
     static bool CreateP2FMSTransaction(const std::string& input_string, CMutableTransaction& tx_out, CAmount price, std::string& error_ret);
@@ -89,6 +92,8 @@ public:
                                                                     //      Trade, Buy, Sell, Act or Reg in long walk
             std::string& errRet) noexcept;
     
+    std::vector<std::string> ValidateOwnership(const std::string &_txid, const std::string &_pastelID);
+
 #ifdef FAKE_TICKET
     static std::string CreateFakeTransaction(CPastelTicket& ticket, CAmount ticketPrice, const std::vector<std::pair<std::string, CAmount>>& extraPayments, const std::string& strVerb, bool bSend);
 #endif

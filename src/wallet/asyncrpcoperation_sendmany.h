@@ -59,7 +59,8 @@ public:
         std::vector<SendManyRecipient> zOutputs,
         int minDepth,
         CAmount fee = ASYNC_RPC_OPERATION_DEFAULT_MINERS_FEE,
-        UniValue contextInfo = NullUniValue);
+        UniValue contextInfo = NullUniValue,
+        const bool returnChangeToSenderAddr_ = false);
     virtual ~AsyncRPCOperation_sendmany();
     
     // We don't want to be copied or moved around
@@ -88,6 +89,7 @@ private:
     std::string fromaddress_;
     bool isfromtaddr_;
     bool isfromzaddr_;
+    bool returnChangeToSenderAddr_;
     CTxDestination fromtaddr_;
     PaymentAddress frompaymentaddress_;
     SpendingKey spendingkey_;

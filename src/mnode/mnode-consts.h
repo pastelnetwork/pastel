@@ -15,6 +15,7 @@ constexpr auto TICKET_NAME_ART_BUY      = "art-buy";   // art buy ticket
 constexpr auto TICKET_NAME_ART_TRADE    = "art-trade"; // art trade ticket
 constexpr auto TICKET_NAME_TAKE_DOWN    = "take-down";
 constexpr auto TICKET_NAME_ART_ROYALTY  = "art-royalty"; // art royalty ticket
+constexpr auto TICKET_NAME_USERNAME_CHANGE    = "username-change";
 
 /**
  * Ticket Type IDs.
@@ -28,6 +29,7 @@ enum class TicketID : uint8_t {
     Trade,        // Art trade ticket
     Down,
     Royalty,      // Art royalty ticket
+    Username,     // Username Change Request ticket
 
     COUNT         // number of ticket types
 };
@@ -57,6 +59,7 @@ static constexpr std::array<TicketInfo, to_integral_type<TicketID>(TicketID::COU
         { TicketID::Trade,    "Art Trade",              TICKET_NAME_ART_TRADE,   0,     "arttrd" },
         { TicketID::Down,     "Take Down",              TICKET_NAME_TAKE_DOWN,   0,     "takedn" },
         { TicketID::Royalty,  "Art Royalty",            TICKET_NAME_ART_ROYALTY, 1,     "artrty" },
+        { TicketID::Username, "Username Change",        TICKET_NAME_USERNAME_CHANGE, 1, "usrnme" },
     }};
 
 inline std::string GetTicketDescription(const TicketID id) noexcept

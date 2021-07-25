@@ -144,8 +144,8 @@ class MasterNodeTicketsTest(MasterNodeCommon):
             self.nodes[self.mining_node_num].generate(10)
             time.sleep(2)
 
-        print("Waiting 180 seconds")
-        time.sleep(180)
+        print("Waiting 300 seconds")
+        time.sleep(300)
         self.__wait_for_sync_all()
 
         sell_ticket2_txid = self.register_nft_sell_ticket(act_ticket_txid, 1)
@@ -310,34 +310,34 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         self.nodes[self.mining_node_num].generate(10)
 
         # generate pastelIDs & send coins
-        self.artist_pastelid1 = self.nodes[self.non_mn3].pastelid("newkey", "passphrase")["pastelid"]
-        self.nonmn3_pastelid1 = self.nodes[self.non_mn3].pastelid("newkey", "passphrase")["pastelid"]
+        self.artist_pastelid1 = self.create_pastelid(self.non_mn3)
+        self.nonmn3_pastelid1 = self.create_pastelid(self.non_mn3)
         self.nonmn3_address1 = self.nodes[self.non_mn3].getnewaddress()
         self.nodes[self.mining_node_num].sendtoaddress(self.nonmn3_address1, 1000, "", "", False)
 
-        self.nonmn4_pastelid1 = self.nodes[self.non_mn4].pastelid("newkey", "passphrase")["pastelid"]
+        self.nonmn4_pastelid1 = self.create_pastelid(self.non_mn4)
         self.nonmn4_address1 = self.nodes[self.non_mn4].getnewaddress()
         self.nodes[self.mining_node_num].sendtoaddress(self.nonmn4_address1, 100, "", "", False)
 
-        self.nonmn5_pastelid1 = self.nodes[self.non_mn5].pastelid("newkey", "passphrase")["pastelid"]
+        self.nonmn5_pastelid1 = self.create_pastelid(self.non_mn5)
         self.nonmn5_address1 = self.nodes[self.non_mn5].getnewaddress()
         self.nodes[self.mining_node_num].sendtoaddress(self.nonmn5_address1, 100, "", "", False)
 
         for n in range(0, 12):
             self.mn_addresses[n] = self.nodes[n].getnewaddress()
             self.nodes[self.mining_node_num].sendtoaddress(self.mn_addresses[n], 100, "", "", False)
-            self.mn_pastelids[n] = self.nodes[n].pastelid("newkey", "passphrase")["pastelid"]
+            self.mn_pastelids[n] = self.create_pastelid(n)
             self.mn_outpoints[self.nodes[n].masternode("status")["outpoint"]] = n
 
         self.__wait_for_sync_all()
 
         # register pastelIDs
-        self.nodes[self.non_mn3].tickets("register", "id", self.artist_pastelid1, "passphrase", self.nonmn3_address1)
-        self.nodes[self.non_mn3].tickets("register", "id", self.nonmn3_pastelid1, "passphrase", self.nonmn3_address1)
-        self.nodes[self.non_mn4].tickets("register", "id", self.nonmn4_pastelid1, "passphrase", self.nonmn4_address1)
-        self.nodes[self.non_mn5].tickets("register", "id", self.nonmn5_pastelid1, "passphrase", self.nonmn5_address1)
+        self.nodes[self.non_mn3].tickets("register", "id", self.artist_pastelid1, self.passphrase, self.nonmn3_address1)
+        self.nodes[self.non_mn3].tickets("register", "id", self.nonmn3_pastelid1, self.passphrase, self.nonmn3_address1)
+        self.nodes[self.non_mn4].tickets("register", "id", self.nonmn4_pastelid1, self.passphrase, self.nonmn4_address1)
+        self.nodes[self.non_mn5].tickets("register", "id", self.nonmn5_pastelid1, self.passphrase, self.nonmn5_address1)
         for n in range(0, 12):
-            self.nodes[n].tickets("register", "mnid", self.mn_pastelids[n], "passphrase")
+            self.nodes[n].tickets("register", "mnid", self.mn_pastelids[n], self.passphrase)
 
         self.__wait_for_sync_all(5)
 
@@ -379,10 +379,10 @@ class MasterNodeTicketsTest(MasterNodeCommon):
 
         # create ticket signature
         self.ticket_signature_artist = \
-            self.nodes[artist_node_num].pastelid("sign", self.ticket, artist_pastelid, "passphrase")["signature"]
+            self.nodes[artist_node_num].pastelid("sign", self.ticket, artist_pastelid, self.passphrase)["signature"]
         for n in range(0, 12):
             mn_ticket_signatures[n] = \
-                self.nodes[n].pastelid("sign", self.ticket, self.mn_pastelids[n], "passphrase")["signature"]
+                self.nodes[n].pastelid("sign", self.ticket, self.mn_pastelids[n], self.passphrase)["signature"]
         print(f"ticket_signature_artist - {self.ticket_signature_artist}")
         print(f"mn_ticket_signatures - {mn_ticket_signatures}")
 
@@ -417,7 +417,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         art_ticket_txid = \
             self.nodes[self.top_mns_index0].tickets("register", "art",
                                                     self.ticket, json.dumps(self.signatures_dict),
-                                                    self.top_mn_pastelid0, "passphrase",
+                                                    self.top_mn_pastelid0, self.passphrase,
                                                     key1, key2, str(self.storage_fee))["txid"]
         assert_true(art_ticket_txid, "No ticket was created")
         self.__wait_for_ticket_tnx()
@@ -432,7 +432,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         act_ticket_txid = \
             self.nodes[self.non_mn3].tickets("register", "act", art_ticket_txid,
                                              str(self.artist_ticket_height), str(self.storage_fee),
-                                             self.artist_pastelid1, "passphrase")["txid"]
+                                             self.artist_pastelid1, self.passphrase)["txid"]
         assert_true(act_ticket_txid, "No ticket was created")
         self.__wait_for_ticket_tnx()
 
@@ -444,7 +444,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
 
         sell_ticket_txid = \
             self.nodes[self.non_mn3].tickets("register", "sell", act_ticket_txid, str(self.art_copy_price),
-                                             self.artist_pastelid1, "passphrase", "", 0, 0, copyNumber)["txid"]
+                                             self.artist_pastelid1, self.passphrase, "", 0, 0, copyNumber)["txid"]
         assert_true(sell_ticket_txid, "No ticket was created")
         self.__wait_for_ticket_tnx()
 
@@ -462,7 +462,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
 
         buy_ticket_txid = \
             self.nodes[buyer_node].tickets("register", "buy", sell_ticket_txid, str(self.art_copy_price),
-                                           buyer_pastelid1, "passphrase")["txid"]
+                                           buyer_pastelid1, self.passphrase)["txid"]
         assert_true(buy_ticket_txid, "No ticket was created")
         self.__wait_for_ticket_tnx()
 
@@ -501,7 +501,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
 
         trade_ticket_txid = \
             self.nodes[buyer_node].tickets("register", "trade", sell_ticket_txid, buy_ticket_txid,
-                                           buyer_pastelid1, "passphrase")["txid"]
+                                           buyer_pastelid1, self.passphrase)["txid"]
         assert_true(trade_ticket_txid, "No ticket was created")
         self.__wait_for_ticket_tnx()
 

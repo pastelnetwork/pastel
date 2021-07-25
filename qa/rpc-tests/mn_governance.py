@@ -110,8 +110,9 @@ class MasterNodeGovernanceTest (MasterNodeCommon):
 
         self.nodes[self.mining_node_num].generate(5)
 
-        print("Waiting 60 seconds")
-        time.sleep(60)
+        print("Waiting 120 seconds")
+        time.sleep(120)
+        self.sync_all()
 
         print("Test tickets votes")
         #3. Preliminary test, should be 2 tickets: 1st ticket - 3 votes, 2 yes; 2nd ticket - 1 vote, 1 yes

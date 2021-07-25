@@ -14,6 +14,7 @@
 #include "mnode/ticket-processor.h"
 
 #include "json/json.hpp"
+#include <inttypes.h>
 
 using json = nlohmann::json;
 using namespace std;
@@ -76,6 +77,10 @@ unique_ptr<CPastelTicket> CPastelTicketProcessor::CreateTicket(const TicketID ti
     case TicketID::Down:
         ticket = make_unique<CTakeDownTicket>();
         break;
+
+    case TicketID::Username:
+        ticket = make_unique<CChangeUsernameTicket>();
+        break;
     }
     return ticket;
 }
@@ -132,6 +137,11 @@ bool CPastelTicketProcessor::UpdateDB(CPastelTicket &ticket, string& txid, const
         UpdateDB_MVK(ticket, ticket.MVKeyOne());
     if (ticket.HasMVKeyTwo())
         UpdateDB_MVK(ticket, ticket.MVKeyTwo());
+    if (ticket.HasMVKeyThree())
+    {
+        UpdateDB_MVK(ticket, ticket.MVKeyThree());
+    }
+        
     //LogPrintf("tickets", "CPastelTicketProcessor::UpdateDB -- Ticket added into DB with key %s (txid - %s)\n", ticket.KeyOne(), ticket.ticketTnx);
     return true;
 }
@@ -250,6 +260,7 @@ bool CPastelTicketProcessor::ValidateIfTicketTransaction(const int nHeight, cons
                  ticket_id == TicketID::Sell ||
                  ticket_id == TicketID::Buy ||
                  ticket_id == TicketID::Royalty ||
+                 ticket_id == TicketID::Username ||
                  hasNoPrice) &&
                 i == num - 1) // in these tickets last output is change
                 break;
@@ -485,6 +496,21 @@ std::vector<_TicketType> CPastelTicketProcessor::FindTicketsByMVKey(const std::s
     }
     return tickets;
 }
+
+
+
+std::string CPastelTicketProcessor::getValueBySecondaryKey(const CPastelTicket& ticket) const
+{
+    std::string retVal;
+    if (ticket.HasKeyTwo()) {
+        std::string sMainKey;
+        const auto sRealKeyTwo = RealKeyTwo(ticket.KeyTwo());
+        if (dbs.at(ticket.ID())->Read(sRealKeyTwo, sMainKey))
+            retVal = sMainKey;
+    }
+    return retVal;
+}
+
 template std::vector<CPastelIDRegTicket> CPastelTicketProcessor::FindTicketsByMVKey<CPastelIDRegTicket>(const std::string&);
 template std::vector<CArtRegTicket> CPastelTicketProcessor::FindTicketsByMVKey<CArtRegTicket>(const std::string&);
 template std::vector<CArtActivateTicket> CPastelTicketProcessor::FindTicketsByMVKey<CArtActivateTicket>(const std::string&);
@@ -548,7 +574,7 @@ template std::string CPastelTicketProcessor::ListTickets<CArtTradeTicket>() cons
 template std::string CPastelTicketProcessor::ListTickets<CArtRoyaltyTicket>() const;
 
 template <class _TicketType, typename F>
-std::string CPastelTicketProcessor::filterTickets(F f) const
+std::string CPastelTicketProcessor::filterTickets(F f, const bool checkConfirmation) const
 {
     std::vector<_TicketType> allTickets;
     listTickets<_TicketType>([&](const _TicketType& ticket)
@@ -566,7 +592,7 @@ std::string CPastelTicketProcessor::filterTickets(F f) const
     for (const auto& t : allTickets)
     {
         //check if the sell ticket is confirmed
-        if (chainHeight - t.GetBlock() < masterNodeCtrl.MinTicketConfirmations)
+        if ((chainHeight - t.GetBlock() < masterNodeCtrl.MinTicketConfirmations) && checkConfirmation)
             continue;
         if (f(t, chainHeight))
             continue;
@@ -580,10 +606,10 @@ std::string CPastelTicketProcessor::filterTickets(F f) const
  * For filter=3 include only tickets for locally stored PastelIDs in pvPastelIDs.
  *
  * \param filter - 1 - mn; 2 - personal; 3 - mine
- * \param pvPastelIDs - vector of locally stored PastelIDs
+ * \param pmapIDs - map of locally stored PastelIDs -> LegRoast public key
  * \return
  */
-std::string CPastelTicketProcessor::ListFilterPastelIDTickets(const short filter, const std::vector<std::string>* pvPastelIDs) const
+std::string CPastelTicketProcessor::ListFilterPastelIDTickets(const short filter, const pastelid_store_t* pmapIDs) const
 {
     return filterTickets<CPastelIDRegTicket>(
         [&](const CPastelIDRegTicket& t, const unsigned int chainHeight) -> bool {
@@ -592,7 +618,7 @@ std::string CPastelTicketProcessor::ListFilterPastelIDTickets(const short filter
                 (filter == 2 &&
                  t.outpoint.IsNull()) || // don't skip personal
                 (filter == 3 &&          // don't skip locally stored tickets
-                 pvPastelIDs && find(pvPastelIDs->cbegin(), pvPastelIDs->cend(), t.pastelID) != pvPastelIDs->cend()))
+                 pmapIDs && pmapIDs->find(t.pastelID) != pmapIDs->cend()))
                 return false;
             return true;
         });
@@ -649,12 +675,20 @@ std::string CPastelTicketProcessor::ListFilterActTickets(const short filter) con
             return true;
         });
 }
-// 1 - available; 2 - unavailable; 3 - expired; 4 - sold
-std::string CPastelTicketProcessor::ListFilterSellTickets(const short filter) const
+// 0 - all, 1 - available; 2 - unavailable; 3 - expired; 4 - sold
+std::string CPastelTicketProcessor::ListFilterSellTickets(const short filter, const std::string& pastelID) const
 {
+    const bool checkConfirmation{filter > 0};
+    if (filter == 0 && pastelID.empty()) {
+            return ListTickets<CArtSellTicket>(); // get all
+    }
     return filterTickets<CArtSellTicket>(
         [&](const CArtSellTicket& t, const unsigned int chainHeight) -> bool
         {
+            if (!pastelID.empty() && t.pastelID != pastelID)
+            {
+                return true; // ignore tickets that do not belong to this pastelID
+            }
             CArtBuyTicket existingBuyTicket;
             //find buy ticket for this sell ticket, if any
             if (CArtBuyTicket::FindTicketInDb(t.GetTxId(), existingBuyTicket))
@@ -689,39 +723,55 @@ std::string CPastelTicketProcessor::ListFilterSellTickets(const short filter) co
                     return true;
             }
             return false;
-        });
+        }, checkConfirmation);
 }
 
-// 1 - expired;    2 - sold
-std::string CPastelTicketProcessor::ListFilterBuyTickets(const short filter) const
+// 0 - all, 1 - expired;    2 - sold
+std::string CPastelTicketProcessor::ListFilterBuyTickets(const short filter, const std::string& pastelID) const
 {
+    const bool checkConfirmation{filter > 0};
+    if (filter == 0 && pastelID.empty()) {
+            return ListTickets<CArtBuyTicket>(); // get all
+    }
     return filterTickets<CArtBuyTicket>(
         [&](const CArtBuyTicket& t, const unsigned int chainHeight) -> bool
         {
+            if (!pastelID.empty() && t.pastelID != pastelID)
+                return true; // ignore tickets that do not belong to this pastelID
+            if (filter == 0)
+                return false; // get all belong to this pastel ID
             if (CArtTradeTicket::CheckTradeTicketExistByBuyTicket(t.GetTxId())) {
                 if (filter == 2)
                     return false; //don't skip traded
             } else if (filter == 1 && t.GetBlock() + masterNodeCtrl.MaxBuyTicketAge < chainHeight)
                 return false; //don't skip non sold, and expired
             return true;
-        });
+        }, checkConfirmation);
 }
-// 1 - available;      2 - sold
-std::string CPastelTicketProcessor::ListFilterTradeTickets(const short filter) const
+
+// 0 - all, 1 - available;      2 - sold
+std::string CPastelTicketProcessor::ListFilterTradeTickets(const short filter, const std::string& pastelID) const
 {
+    const bool checkConfirmation{filter > 0};
+    if (filter == 0 && pastelID.empty()) {
+            return ListTickets<CArtTradeTicket>(); // get all
+    }
     return filterTickets<CArtTradeTicket>(
         [&](const CArtTradeTicket& t, const unsigned int chainHeight) -> bool
         {
             //find Trade tickets listing this Trade ticket txid as art ticket
             auto tradeTickets = CArtTradeTicket::FindAllTicketByArtTnxID(t.GetTxId());
-
+            if (!pastelID.empty() && t.pastelID != pastelID)
+                return true; // ignore tickets that do not belong to this pastelID
+            if (filter == 0)
+                return false; // get all belong to this pastel ID
             if (tradeTickets.empty()) {
                 if (filter == 1)
                     return false; //don't skip available
             } else if (filter == 2)
                 return false; //don't skip sold
             return true;
-        });
+        }, checkConfirmation);
 }
 
 /*static*/ bool CPastelTicketProcessor::WalkBackTradingChain(
@@ -1090,6 +1140,58 @@ bool CPastelTicketProcessor::ParseP2FMSTransaction(const CMutableTransaction& tx
     }
 
     return true;
+}
+
+std::vector<std::string> CPastelTicketProcessor::ValidateOwnership(const std::string &_txid, const std::string &_pastelID)
+{
+    //0th: art
+    //1th: trade
+    std::vector<string> sRetVal = {"", ""};
+
+    //Check if ticket is found by txid
+    try{
+        auto ticket = CPastelTicketProcessor::GetTicket(_txid, TicketID::Art);
+        auto artTicket = dynamic_cast<CArtRegTicket*>(ticket.get());
+        if (!artTicket)
+        {
+            return sRetVal;
+        }
+
+        // Check if author and _pastelID are equal
+        if(artTicket->pastelIDs[0].compare(_pastelID) == 0 && CArtActivateTicket::CheckTicketExistByArtTicketID(artTicket->GetTxId()))
+        {
+            sRetVal[0] = _txid;
+            return sRetVal;
+        }
+
+    }
+    catch(const std::runtime_error& e)
+    {
+        LogPrintf("Was not able to process ValidateOWnership request due to: %s\n", e.what()); 
+    }
+
+    //If we are here it means it is a nested trade ticket 
+    //List trade tickets by reg txID and rearrange them by blockheight
+    std::vector<CArtTradeTicket> tradeTickets = CArtTradeTicket::FindAllTicketByRegTnxID(_txid);
+    
+    // Go through each if not empty and rearrange them by block-height
+    if(!tradeTickets.empty())
+    {
+        //std::sort(tradeTickets.begin(), tradeTickets.end(), [](CArtTradeTicket & one, CArtTradeTicket & two){return one.GetBlock() < two.GetBlock();});
+        std::map<std::string, std::string> ownersPastelIds_with_TnxIds = CArtTradeTicket::GetPastelIdAndTxIdWithTopHeightPerCopy(tradeTickets);
+
+        for (const auto& winners: ownersPastelIds_with_TnxIds)
+        {
+            if(winners.first == _pastelID)
+            {
+                sRetVal[0] = _txid;
+                sRetVal[1] = winners.second;
+                break;
+            }
+        }
+    }
+
+    return sRetVal;
 }
 
 #ifdef FAKE_TICKET

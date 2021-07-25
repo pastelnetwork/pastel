@@ -19,7 +19,7 @@
 #include "utilstrencodings.h"
 #include "core_io.h"
 
-#include "ed448/pastel_key.h"
+#include "pastelid/pastel_key.h"
 
 #include "mnode/mnode-controller.h"
 #include "mnode/mnode-sync.h"
@@ -40,7 +40,8 @@ UniValue formatMnsInfo(const std::vector<CMasternode>& topBlockMNs)
 
     int i = 0;
     KeyIO keyIO(Params());
-    for (auto &mn : topBlockMNs) {
+    for (const auto &mn : topBlockMNs)
+    {
         UniValue objItem(UniValue::VOBJ);
         objItem.pushKV("rank", strprintf("%d", ++i));
 
@@ -59,7 +60,7 @@ UniValue formatMnsInfo(const std::vector<CMasternode>& topBlockMNs)
         objItem.pushKV("extKey", mn.strExtraLayerKey);
         objItem.pushKV("extCfg", mn.strExtraLayerCfg);
 
-        mnArray.push_back(objItem);
+        mnArray.push_back(std::move(objItem));
     }
     return mnArray;
 }
@@ -589,7 +590,7 @@ UniValue masternode(const UniValue& params, bool fHelp)
         std::string mnPrivKey = keyIO.EncodeSecret(secret);
     
         //PastelID
-        std::string pastelID = std::string{};
+        std::string pastelID;
 /*      THIS WILL NOT WORK for Hot/Cold case - PastelID has to be created and registered from the cold MN itself
         SecureString strKeyPass;
         strKeyPass.reserve(100);
@@ -750,7 +751,7 @@ UniValue masternode(const UniValue& params, bool fHelp)
             
             CPubKey vchPubKey(ParseHex(strPubKey));
     
-            masterNodeCtrl.masternodeMessages.SendMessage(vchPubKey, messageText);
+            masterNodeCtrl.masternodeMessages.SendMessage(vchPubKey, CMasternodeMessageType::PLAINTEXT, messageText);
             
         } else if (strCmd == "list"){
             if (!masterNodeCtrl.IsMasterNode())
@@ -1216,190 +1217,251 @@ UniValue governance(const UniValue& params, bool fHelp)
     return NullUniValue;
 }
 
-UniValue pastelid(const UniValue& params, bool fHelp) {
-    std::string strMode;
-    if (!params.empty())
-        strMode = params[0].get_str();
+/**
+ * pastelid RPC command.
+ * 
+ * \param params - RPC command parameters
+ * \param fHelp - true to show pastelid usage
+ * \return univalue result object
+ */
+UniValue pastelid(const UniValue& params, bool fHelp)
+{
+    RPC_CMD_PARSER(PASTELID, params, newkey, importkey, list, sign, sign__by__key, verify);
 
-    if (fHelp || (strMode != "newkey" && strMode != "importkey" && strMode != "list" &&
-                  strMode != "sign" && strMode != "verify" ))
+    if (fHelp || !PASTELID.IsCmdSupported())
         throw runtime_error(
-			"pastelid \"command\"...\n"
-			"Set of commands to deal with PatelID and related actions\n"
-			"\tPastelID is the base58-encoded public key of the EdDSA448 key pair. EdDSA448 public key is 57 bytes\n"
-			"\nArguments:\n"
-			"1. \"command\"        (string or set of strings, required) The command to execute\n"
-			"\nAvailable commands:\n"
-			"  newkey \"passphrase\"						- Generate new PastelID and associated keys (EdDSA448). Return PastelID base58-encoded\n"
-			"  													\"passphrase\" will be used to encrypt the key file\n"
-			"  importkey \"key\" <\"passphrase\">			- Import private \"key\" (EdDSA448) as PKCS8 encrypted string in PEM format. Return PastelID base58-encoded\n"
-			"  													\"passphrase\" (optional) to decrypt the key for the purpose of validating and returning PastelID\n"
-			"  													NOTE: without \"passphrase\" key cannot be validated and if key is bad (not EdDSA448) call to \"sign\" will fail\n"
-			"  list											- List all internally stored PastelID and keys.\n"
-			"  sign \"text\" \"PastelID\" \"passphrase\"	- Sign \"text\" with the internally stored private key associated with the PastelID.\n"
-			"  sign-by-key \"text\" \"key\" \"passphrase\"	- Sign \"text\" with the private \"key\" (EdDSA448) as PKCS8 encrypted string in PEM format.\n"
-			"  verify \"text\" \"signature\" \"PastelID\"	- Verify \"text\"'s \"signature\" with the PastelID.\n"
-        );
+R"(pastelid "command"...
+Set of commands to deal with PastelID and related actions
+PastelID is the base58-encoded public key of the EdDSA448 key pair. EdDSA448 public key is 57 bytes
 
-    if (strMode == "newkey") {
+Arguments:
+1. "command"        (string or set of strings, required) The command to execute
+
+Available commands:
+  newkey "passphrase"                                - Generate new PastelID, associated keys (EdDSA448) and LegRoast signing keys.
+                                                       Return PastelID and LegRoast signing public key base58-encoded.
+                                                       "passphrase" will be used to encrypt the key file.
+  importkey "key" <"passphrase">                     - Import private "key" (EdDSA448) as PKCS8 encrypted string in PEM format. Return PastelID base58-encoded
+                                                       "passphrase" (optional) to decrypt the key for the purpose of validating and returning PastelID.
+  											           NOTE: without "passphrase" key cannot be validated and if key is bad (not EdDSA448) call to "sign" will fail
+  list                                               - List all internally stored PastelIDs and associated keys. 
+  sign "text" "PastelID" "passphrase" ("algorithm")  - Sign "text" with the internally stored private key associated with the PastelID (algorithm: ed448 or legroast).
+  sign-by-key "text" "key" "passphrase"              - Sign "text" with the private "key" (EdDSA448) as PKCS8 encrypted string in PEM format.
+  verify "text" "signature" "PastelID" ("algorithm") - Verify "text"'s "signature" with the private key associated with the PastelID (algorithm: ed448 or legroast).
+)");
+
+    if (PASTELID.IsCmd(RPC_CMD_PASTELID::newkey))
+    {
         if (params.size() != 2)
             throw JSONRPCError(RPC_INVALID_PARAMETER,
-				"pastelid newkey \"passphrase\"\n"
-				"Generate new PastelID and associated keys (EdDSA448). Return PastelID base58-encoded."
-			);
+R"(pastelid newkey "passphrase"
+Generate new PastelID, associated keys (EdDSA448) and LegRoast signing keys.
+Return PastelID base58-encoded.)");
 
         SecureString strKeyPass;
         strKeyPass.reserve(100);
         strKeyPass = params[1].get_str().c_str();
 
-        if (strKeyPass.length() < 1)
+        if (strKeyPass.empty())
             throw runtime_error(
-				"pastelid newkey \"passphrase\"\n"
-				"passphrase for new key cannot be empty!");
+R"(pastelid newkey "passphrase"
+passphrase for new key cannot be empty!)");
 
         UniValue resultObj(UniValue::VOBJ);
-
-        std::string pastelID = CPastelID::CreateNewLocalKey(strKeyPass);
-
-        resultObj.pushKV("pastelid", pastelID);
-
+        auto keyMap = CPastelID::CreateNewPastelKeys(std::move(strKeyPass));
+        if (keyMap.empty())
+            throw runtime_error("Failed to generate new PastelID and associated keys");
+        resultObj.pushKV("pastelid", std::move(keyMap.begin()->first));
+        resultObj.pushKV(RPC_KEY_LEGROAST, std::move(keyMap.begin()->second));
         return resultObj;
     }
-    if (strMode == "importkey") {
+    if (PASTELID.IsCmd(RPC_CMD_PASTELID::importkey))
+    {
         if (params.size() < 2 || params.size() > 3)
             throw JSONRPCError(RPC_INVALID_PARAMETER,
-				"pastelid importkey \"key\" <\"passphrase\">\n"
-				"Import PKCS8 encrypted private key (EdDSA448) in PEM format. Return PastelID base58-encoded if \"passphrase\" provided."
-			);
+R"(pastelid importkey "key" <"passphrase">
+Import PKCS8 encrypted private key (EdDSA448) in PEM format. Return PastelID base58-encoded if "passphrase" provided.)");
     
         throw runtime_error("\"pastelid importkey\" NOT IMPLEMENTED!!!");
     
         //import
         //...
 
-        //validate and geenrate pastelid
-        if (params.size() == 3) {
+        //validate and generate pastelid
+        if (params.size() == 3)
+        {
             SecureString strKeyPass;
             strKeyPass.reserve(100);
             strKeyPass = params[2].get_str().c_str();
 
-            if (strKeyPass.length() < 1)
+            if (strKeyPass.empty())
                 throw runtime_error(
-					"pastelid importkey <\"passphrase\">\n"
-					"passphrase for imported key cannot be empty!");
+R"(pastelid importkey <"passphrase">
+passphrase for imported key cannot be empty!)");
         }
 
         UniValue resultObj(UniValue::VOBJ);
-
         return resultObj;
     }
-    if(strMode == "list")
+
+    // list all locally stored PastelIDs and associated public keys
+    if (PASTELID.IsCmd(RPC_CMD_PASTELID::list))
     {
         UniValue resultArray(UniValue::VARR);
 
-        const auto pastelIDs = CPastelID::GetStoredPastelIDs();
-        for (const auto & p: pastelIDs)
+        auto mapIDs = CPastelID::GetStoredPastelIDs(false);
+        for (auto& [sPastelID, sLegRoastPubKey] : mapIDs)
         {
             UniValue obj(UniValue::VOBJ);
-            obj.pushKV("PastelID", p);
-            resultArray.push_back(obj);
+            obj.pushKV("PastelID", std::move(sPastelID));
+            obj.pushKV(RPC_KEY_LEGROAST, std::move(sLegRoastPubKey));
+            resultArray.push_back(std::move(obj));
         }
 
         return resultArray;
     }
-    if (strMode == "sign") {
-        if (params.size() != 4)
+
+    // sign text with the internally stored private key associated with the PastelID (ed448 or legroast).
+    if (PASTELID.IsCmd(RPC_CMD_PASTELID::sign))
+    {
+        if (params.size() < 4)
             throw JSONRPCError(RPC_INVALID_PARAMETER,
-				"pastelid sign \"text\" \"PastelID\" \"passphrase\"\n"
-				"Sign \"text\" with the internally stored private key associated with the PastelID."
-			);
+R"(pastelid sign "text" "PastelID" "passphrase" ("algorithm")
+Sign "text" with the internally stored private key associated with the PastelID (algorithm: ed448 [default] or legroast).)");
 
         SecureString strKeyPass;
         strKeyPass.reserve(100);
         strKeyPass = params[3].get_str().c_str();
 
-        if (strKeyPass.length() < 1)
+        if (strKeyPass.empty())
             throw runtime_error(
-				"pastelid importkey <\"passphrase\">\n"
-				"passphrase for imported key cannot be empty!"
-			);
+R"(pastelid sign "text" "PastelID" <"passphrase"> ("algorithm")
+passphrase for the private key cannot be empty!)");
+
+        string sAlgorithm;
+        if (params.size() >= 5)
+            sAlgorithm = params[4].get_str();
+        CPastelID::SIGN_ALGORITHM alg = CPastelID::GetAlgorithmByName(sAlgorithm);
+        if (alg == CPastelID::SIGN_ALGORITHM::not_defined)
+            throw std::runtime_error(strprintf("Signing algorithm '%s' is not supported", sAlgorithm));
 
         UniValue resultObj(UniValue::VOBJ);
 
-        std::string sign = CPastelID::Sign64(params[1].get_str(), params[2].get_str(), strKeyPass);
-        resultObj.pushKV("signature", sign);
+        std::string sSignature = CPastelID::Sign(params[1].get_str(), params[2].get_str(), strKeyPass, alg, true);
+        resultObj.pushKV("signature", std::move(sSignature));
 
         return resultObj;
     }
-    if (strMode == "sign-by-key") {
+
+    if (PASTELID.IsCmd(RPC_CMD_PASTELID::sign__by__key)) // sign-by-key
+    {
         if (params.size() != 4)
             throw JSONRPCError(RPC_INVALID_PARAMETER,
-				"pastelid sign-by-key \"text\" \"key\" \"passphrase\"\n"
-				"Sign \"text\" with the private \"key\" (EdDSA448) as PKCS8 encrypted string in PEM format."
-			);
+ R"(pastelid sign_by_key "text" "key" "passphrase"
+Sign "text" with the private "key" (EdDSA448) as PKCS8 encrypted string in PEM format.)");
 
         SecureString strKeyPass;
         strKeyPass.reserve(100);
         strKeyPass = params[3].get_str().c_str();
 
-        if (strKeyPass.length() < 1)
+        if (strKeyPass.empty())
             throw runtime_error(
-				"pastelid importkey <\"passphrase\">\n"
-				"passphrase for imported key cannot be empty!"
-			);
+R"(pastelid sign_by_key "text" "key" <"passphrase">
+passphrase for the private key cannot be empty!)");
 
         UniValue resultObj(UniValue::VOBJ);
-
         return resultObj;
     }
-    if (strMode == "verify") {
-        if (params.size() != 4)
+
+    // verify "text"'s "signature" with the public key associated with the PastelID (algorithm: ed448 or legroast)
+    if (PASTELID.IsCmd(RPC_CMD_PASTELID::verify))
+    {
+        if (params.size() < 4)
             throw JSONRPCError(RPC_INVALID_PARAMETER,
-				"pastelid verify \"text\" \"signature\" \"PastelID\"\n"
-				"Verify \"text\"'s \"signature\" with the PastelID."
-			);
+R"(pastelid verify "text" "signature" "PastelID" ("algorithm")
+Verify "text"'s "signature" with with the private key associated with the PastelID (algorithm: ed448 or legroast).)");
+
+        string sAlgorithm;
+        if (params.size() >= 5)
+            sAlgorithm = params[4].get_str();
+        CPastelID::SIGN_ALGORITHM alg = CPastelID::GetAlgorithmByName(sAlgorithm);
+        if (alg == CPastelID::SIGN_ALGORITHM::not_defined)
+            throw std::runtime_error(strprintf("Signing algorithm '%s' is not supported", sAlgorithm));
 
         UniValue resultObj(UniValue::VOBJ);
 
-        bool res = CPastelID::Verify64(params[1].get_str(), params[2].get_str(), params[3].get_str());
-        resultObj.pushKV("verification", res? "OK": "Failed");
+        const bool bRes = CPastelID::Verify(params[1].get_str(), params[2].get_str(), params[3].get_str(), alg, true);
+        resultObj.pushKV("verification", bRes ? "OK" : "Failed");
 
         return resultObj;
     }
-
     return NullUniValue;
 }
-UniValue storagefee(const UniValue& params, bool fHelp) {
-    std::string strCommand;
-    if (!params.empty())
-        strCommand = params[0].get_str();
 
-    if (fHelp || ( strCommand != "setfee" && strCommand != "getnetworkfee" && strCommand != "getartticketfee" && strCommand != "getlocalfee"))
+UniValue storagefee(const UniValue& params, bool fHelp)
+{
+    RPC_CMD_PARSER(STORAGE_FEE, params, setfee, getnetworkfee, getartticketfee, getlocalfee);
+
+    if (fHelp || !STORAGE_FEE.IsCmdSupported())
         throw runtime_error(
-			"storagefee \"command\"...\n"
-			"Set of commands to deal with Storage Fee and related actions\n"
-			"\nArguments:\n"
-			"1. \"command\"        (string or set of strings, required) The command to execute\n"
-			"\nAvailable commands:\n"
-			"  setfee <n>		- Set storage fee for MN.\n"
-			"  getnetworkfee	- Get Network median storage fee.\n"
-			"  getartticketfee	- Get Network median art ticket fee.\n"
-			"  getlocalfee		- Get local masternode storage fee.\n"
-        );
+R"(storagefee "command"...
+Set of commands to deal with Storage Fee and related actions
 
-    if (strCommand == "setfee")
+Arguments:
+1. "command"        (string or set of strings, required) The command to execute
+
+Available commands:
+  setfee <n>		- Set storage fee for MN.
+  getnetworkfee	- Get Network median storage fee.
+  getartticketfee	- Get Network median art ticket fee.
+  getlocalfee		- Get local masternode storage fee.
+)");
+
+    if (STORAGE_FEE.IsCmd(RPC_CMD_STORAGE_FEE::setfee))
     {
         if (!masterNodeCtrl.IsActiveMasterNode())
             throw JSONRPCError(RPC_INTERNAL_ERROR, "This is not a active masternode. Only active MN can set its fee");
 
-        if (params.size() != 2)
-            throw JSONRPCError(RPC_INVALID_PARAMETER, "Correct usage is 'masternode setfee \"new fee\"'");
+        if (params.size() == 1) {
+            // If no additional parameter (fee) added, that means we use fee levels bound to PSL deflation
+            CAmount levelsBoundFee = masterNodeCtrl.GetNetworkFeePerMB() / masterNodeCtrl.GetChainDeflationRate();
 
-//        UniValue obj(UniValue::VOBJ);
-//
-//        CAmount nFee = get_long_number(params[1]);
+            CMasternode masternode;
+            if (masterNodeCtrl.masternodeManager.Get(masterNodeCtrl.activeMasternode.outpoint, masternode)) {
+
+                // Update masternode localfee
+                masterNodeCtrl.masternodeManager.SetMasternodeFee(masterNodeCtrl.activeMasternode.outpoint, levelsBoundFee);
+
+                // Send message to inform other masternodes
+                masterNodeCtrl.masternodeMessages.BroadcastNewFee(levelsBoundFee);
+
+            } else {
+                throw JSONRPCError(RPC_INTERNAL_ERROR, "Masternode is not found!");
+            }
+
+        } else if (params.size() == 2) {
+            // If additional parameter added, it means the new fee that we need to update.
+            CAmount newFee = get_long_number(params[1]);
+
+            CMasternode masternode;
+            if (masterNodeCtrl.masternodeManager.Get(masterNodeCtrl.activeMasternode.outpoint, masternode)) {
+
+                // Update masternode localfee
+                masterNodeCtrl.masternodeManager.SetMasternodeFee(masterNodeCtrl.activeMasternode.outpoint, newFee);
+
+                // Send message to inform other masternodes
+                masterNodeCtrl.masternodeMessages.BroadcastNewFee(newFee);
+
+            } else {
+                throw JSONRPCError(RPC_INTERNAL_ERROR, "Masternode is not found!");
+            }
+        } else {
+            throw JSONRPCError(RPC_INVALID_PARAMETER, "Correct usage is 'masternode setfee' or 'masternode setfee \"newfee\"'");
+        }
+        return true;
+
     }
-    if (strCommand == "getnetworkfee")
+    if (STORAGE_FEE.IsCmd(RPC_CMD_STORAGE_FEE::getnetworkfee))
     {
         CAmount nFee = masterNodeCtrl.GetNetworkFeePerMB();
 
@@ -1407,7 +1469,7 @@ UniValue storagefee(const UniValue& params, bool fHelp) {
         mnObj.pushKV("networkfee", nFee);
         return mnObj;
     }
-    if (strCommand == "getartticketfee")
+    if (STORAGE_FEE.IsCmd(RPC_CMD_STORAGE_FEE::getartticketfee))
     {
         CAmount nFee = masterNodeCtrl.GetArtTicketFeePerKB();
 
@@ -1415,7 +1477,7 @@ UniValue storagefee(const UniValue& params, bool fHelp) {
         mnObj.pushKV("artticketfee", nFee);
         return mnObj;
     }
-    if (strCommand == "getlocalfee")
+    if (STORAGE_FEE.IsCmd(RPC_CMD_STORAGE_FEE::getlocalfee))
     {
         if (!masterNodeCtrl.IsActiveMasterNode()) {
             throw JSONRPCError(RPC_INTERNAL_ERROR, "This is not a active masternode. Only active MN can set its fee");
@@ -1544,9 +1606,8 @@ Available commands:
 )");
 	
 	std::string strCmd, strError;
-	if (TICKETS.IsCmd(RPC_CMD_TICKETS::Register)) {
-        
-        RPC_CMD_PARSER2(REGISTER, params, mnid, id, art, act, sell, buy, trade, down);
+	if (TICKETS.IsCmd(RPC_CMD_TICKETS::Register)) {        
+        RPC_CMD_PARSER2(REGISTER, params, mnid, id, art, act, sell, buy, trade, down, royalty, username);
         
         if (fHelp || !REGISTER.IsCmdSupported())
 			throw JSONRPCError(RPC_INVALID_PARAMETER,
@@ -1554,35 +1615,38 @@ R"(tickets register "type" ...
 Set of commands to register different types of Pastel tickets
 
 Available types:
-  mnid  - Register Masternode PastelID. If successful, returns "txid".
+  mnid    - Register Masternode PastelID. If successful, returns "txid".
             Ticket contains:
                 Masternode Collateral Address
                 Masternode Collateral outpoint (transaction id and index)
                 PastelID
                 Timestamp
                 Signature (above fields signed by PastelID)
-  id    - Register personal PastelID. If successful, returns "txid".
+  id      - Register personal PastelID. If successful, returns "txid".
             Ticket contains:
                 Provided Address
                 PastelID
                 Timestamp
                 Signature (above fields signed by PastelID)
-  art   - Register new art ticket. If successful, returns "txid".
+  art     - Register new art ticket. If successful, returns "txid".
             Ticket contains:
                 <...>
-  act   - Send activation for new registered art ticket. If successful, returns "txid" of activation ticket.
+  act     - Send activation for new registered art ticket. If successful, returns "txid" of activation ticket.
             Ticket contains:
                 <...>
-  sell  - Register art sell ticket. If successful, returns "txid".
+  sell    - Register art sell ticket. If successful, returns "txid".
             Ticket contains:
                 <...>
-  buy   - Register art buy ticket. If successful, returns "txid".
+  buy     - Register art buy ticket. If successful, returns "txid".
             Ticket contains:
                 <...>
-  trade - Register art trade ticket. If successful, returns "txid".
+  trade   - Register art trade ticket. If successful, returns "txid".
             Ticket contains:
                 <...>
-  down  - Register take down ticket. If successful, returns "txid".
+  down    - Register take down ticket. If successful, returns "txid".
+            Ticket contains:
+                <...>
+  royalty - Register art royalty ticket. If successful, returns "txid".
             Ticket contains:
                 <...>
 )");
@@ -1686,55 +1750,62 @@ Register new art ticket. If successful, method returns "txid".
 Arguments:
 1. "ticket"	(string, required) Base64 encoded ticket created by the artist.
     {
-        "version":    1,
-        "author":     "<authors-PastelID>",
-        "blocknum":   <block-number-when-the-ticket-was-created-by-the-artist>,
-        "data_hash":  "<base64'ed-hash-of-the-art>",
-        "copies":     <number-of-copies-of-art-this-ticket-is-creating>,
-        "royalty":    <how-much-artist-should-get-on-all-future-resales>,
-        "green":      "<address-for-Green-NFT-payment>",
-        "app_ticket": "<application-specific-data>",
+        "version":       1,
+        "author":        "<authors-PastelID>",
+        "blocknum":      <block-number-when-the-ticket-was-created-by-the-artist>,
+        "data_hash":     "<base64'ed-hash-of-the-art>",
+        "copies":        <number-of-copies-of-art-this-ticket-is-creating>,
+        "royalty":       <how-much-artist-should-get-on-all-future-resales>,
+        "green_address": "<address-for-Green-NFT-payment>",
+        "app_ticket":    "<application-specific-data>",
     }
 2. "signatures"	(string, required) Signatures (base64) and PastelIDs of the author and verifying masternodes (MN2 and MN3) as JSON:
-	{
-		"artist":{"authorsPastelID": "authorsSignature"},
-		"mn2":{"mn2PastelID":"mn2Signature"},
-		"mn2":{"mn3PastelID":"mn3Signature"}
-	}
+    {
+        "artist": { "authorsPastelID": "authorsSignature" },
+        "mn2":    { "mn2PastelID":     "mn2Signature"     },
+        "mn2":    { "mn3PastelID":     "mn3Signature"     }
+    }
 3. "pastelid"   (string, required) The current, registering masternode (MN1) PastelID. NOTE: PastelID must be generated and stored inside node. See "pastelid newkey".
 4. "passpharse" (string, required) The passphrase to the private key associated with PastelID and stored inside node. See "pastelid newkey".
 5. "key1"       (string, required) The first key to search ticket.
 6. "key2"       (string, required) The second key to search ticket.
 7. "fee"        (int, required) The agreed upon storage fee.
-Masternode PastelID Ticket:
+Art Reg Ticket:
 {
-	"ticket": {
-		"type": "art-reg",
-		"ticket": {...},
-		"signatures": {
- 			"authorsPastelID": "authorsSignature",
-			"mn1PastelID":"mn1Signature",
-			"mn2PastelID":"mn2Signature",
-			"mn3PastelID":"mn3Signature"
-		},
-		"key1": "<search key 1>",
-		"key2": "<search key 2>",
-		"storage_fee": "<agreed upon storage fee>",
-	},
-	"height": "",
-	"txid": ""
+    "txid":   <"ticket transaction id">
+    "height": <ticket block>,
+    "ticket": {
+        "type":            "art-reg",
+        "art_ticket":      {...},
+        "version":         <version>
+        "signatures": {
+            "authorsPastelID": <"authorsSignature">,
+            "mn1PastelID":     <"mn1Signature">,
+            "mn2PastelID":     <"mn2Signature">,
+            "mn3PastelID":     <"mn3Signature">
+        },
+        "key1":            "<search key 1>",
+        "key2":            "<search key 2>",
+        "artist_height":   <artist height>,
+        "total_copies":    <total copies>,
+        "royalty":         <royalty fee>,
+        "royalty_address": <"address for royalty payment">,
+        "green":           <green fee>,
+        "green_address":   <"address for Green NFT payment">,
+        "storage_fee":     <agreed upon storage fee>,
+    }
 }
 
 Register Art Ticket
 )" + HelpExampleCli("tickets register art",
-                R"(""ticket-blob" "{signatures}" jXYqZNPj21RVnwxnEJ654wEdzi7GZTZ5LAdiotBmPrF7pDMkpX1JegDMQZX55WZLkvy9fxNpZcbBJuE8QYUqBF "passphrase", "key1", "key2", 100)") + R"(
+    R"(""ticket-blob" "{signatures}" jXYqZNPj21RVnwxnEJ654wEdzi7GZTZ5LAdiotBmPrF7pDMkpX1JegDMQZX55WZLkvy9fxNpZcbBJuE8QYUqBF "passphrase", "key1", "key2", 100)") + R"(
 As json rpc
 )" + HelpExampleRpc("tickets",
-                    R"("register", "art", "ticket" "{signatures}" "jXYqZNPj21RVnwxnEJ654wEdzi7GZTZ5LAdiotBmPrF7pDMkpX1JegDMQZX55WZLkvy9fxNpZcbBJuE8QYUqBF" "passphrase", "key1", "key2", 100)"));
+    R"("register", "art", "ticket" "{signatures}" "jXYqZNPj21RVnwxnEJ654wEdzi7GZTZ5LAdiotBmPrF7pDMkpX1JegDMQZX55WZLkvy9fxNpZcbBJuE8QYUqBF" "passphrase", "key1", "key2", 100)"));
 
             if (!masterNodeCtrl.IsActiveMasterNode())
                 throw JSONRPCError(RPC_INTERNAL_ERROR,
-                     "This is not an active masternode. Only active MN can register its PastelID");
+                     "This is not an active masternode. Only active MN can register art ticket");
             
             if (fImporting || fReindex)
 				throw JSONRPCError(RPC_INVALID_PARAMETER, "Initial blocks download. Re-try later");
@@ -1969,6 +2040,56 @@ As json rpc
             
             mnObj.pushKV(RPC_KEY_TXID, txid);
         }
+        if (REGISTER.IsCmd(RPC_CMD_REGISTER::royalty)) {
+          if (fHelp || params.size() != 6)
+            throw JSONRPCError(RPC_INVALID_PARAMETER,
+R"(tickets register royalty "art-tnxid" "new-pastelid" "old-pastelid" "passphrase"
+Register new change payee of the art royalty ticket. If successful, method returns "txid".
+
+Arguments:
+1. "art-tnxid"    (string, required) The tnxid of the art register ticket
+2. "new-pastelid" (string, required) The pastelID of the new royalty recipient
+3. "old-pastelid" (string, required) The pastelID of the current royalty recipient
+4. "passpharse"   (string, required) The passphrase to the private key associated with 'old-pastelid' and stored inside node. See "pastelid newkey".
+Art Royalty ticket:
+{
+    "txid":   <"ticket transaction id">
+    "height": <ticket block>,
+    "ticket": {
+        "type":         "art-royalty",
+        "version":      <version>
+        "pastelID":     <"the pastelID of the current royalty recipient">,
+        "new_pastelID": <"the pastelID of the new royalty recipient">,
+        "art_txid":     <"the tnxid of the art register ticket">,
+        "signature":    <"">,
+    }
+}
+
+Royalty Ticket)"
++ HelpExampleCli("tickets register royalty",
+  R"("907e5e4c6fc4d14660a22afe2bdf6d27a3c8762abf0a89355bb19b7d9e7dc440", "hjGBJHujvvlnBKg8h1kFgjnjfTF76HV7w9fD85VdmBbndm3sfmFdKjfFskht59v53b0h65cGVJVdSHVYT47vjj", "jXYqZNPj21RVnwxnEJ654wEdzi7GZTZ5LAdiotBmPrF7pDMkpX1JegDMQZX55WZLkvy9fxNpZcbBJuE8QYUqBF", "passphrase")") +
+"\nAs json rpc\n"
++ HelpExampleRpc("tickets",
+  R"("register", "royalty", "907e5e4c6fc4d14660a22afe2bdf6d27a3c8762abf0a89355bb19b7d9e7dc440", "hjGBJHujvvlnBKg8h1kFgjnjfTF76HV7w9fD85VdmBbndm3sfmFdKjfFskht59v53b0h65cGVJVdSHVYT47vjj", "jXYqZNPj21RVnwxnEJ654wEdzi7GZTZ5LAdiotBmPrF7pDMkpX1JegDMQZX55WZLkvy9fxNpZcbBJuE8QYUqBF", "passphrase")"));
+
+          // should only active MN register royalty ticket?
+          //if (!masterNodeCtrl.IsActiveMasterNode())
+          //  throw JSONRPCError(RPC_INTERNAL_ERROR, "This is not an active masternode. Only active MN can register royalty ticket");
+
+          std::string artTnxId = params[2].get_str();
+          std::string newPastelID = params[3].get_str();
+          std::string pastelID = params[4].get_str();
+
+          SecureString strKeyPass;
+          strKeyPass.reserve(100);
+          strKeyPass = params[5].get_str().c_str();
+
+          CArtRoyaltyTicket artRoyaltyTicket =
+            CArtRoyaltyTicket::Create(artTnxId, newPastelID, pastelID, strKeyPass);
+          std::string txid = CPastelTicketProcessor::SendTicket(artRoyaltyTicket);
+
+          mnObj.pushKV(RPC_KEY_TXID, std::move(txid));
+        }
         if (REGISTER.IsCmd(RPC_CMD_REGISTER::down)) {
 			if (fHelp || params.size() != 5)
 				throw JSONRPCError(RPC_INVALID_PARAMETER,
@@ -1997,12 +2118,50 @@ As json rpc
 )" + HelpExampleRpc("tickets",
                     R"("register", "down", "jXYqZNPj21RVnwxnEJ654wEdzi7GZTZ5LAdiotBmPrF7pDMkpX1JegDMQZX55WZLkvy9fxNpZcbBJuE8QYUqBF", "passphrase")"));
 		}
+        if (REGISTER.IsCmd(RPC_CMD_REGISTER::username)) {
+			if (fHelp || params.size() != 5)
+				throw JSONRPCError(RPC_INVALID_PARAMETER,
+R"(tickets register username "PastelId" "username" "passpharse"
+Register Username Change Request ticket. If successful, method returns "txid"
+
+Arguments:
+x. "PastelId"      (string, required) The PastelID. NOTE: PastelID must be generated and stored inside node. See "pastelid newkey".
+x. "username"      (string, required) The username that will be map with above PastelID
+y. "passpharse"    (string, required) The passphrase to the private key associated with PastelID and stored inside node. See "pastelid newkey".
+Username Change Request Ticket:
+{
+    "ticket": {
+		"type": "username",
+		"pastelID": "",    //PastelID of the username
+		"username": "",    //new valid username
+		"fee": "",         // fee to change username
+		"signature": ""
+	},
+	"height": "",
+	"txid": ""
+  }
+
+Register PastelID
+)" + HelpExampleCli("tickets register username", R"(jXYqZNPj21RVnwxnEJ654wEdzi7GZTZ5LAdiotBmPrF7pDMkpX1JegDMQZX55WZLkvy9fxNpZcbBJuE8QYUqBF "bsmith84" "passphrase")") +
+                                                   R"(
+As json rpc
+)" + HelpExampleRpc("tickets",
+                    R"("register", "username", "jXYqZNPj21RVnwxnEJ654wEdzi7GZTZ5LAdiotBmPrF7pDMkpX1JegDMQZX55WZLkvy9fxNpZcbBJuE8QYUqBF", "bsmith84", "passphrase")"));
+            std::string username = params[2].get_str();
+            std::string pastelID = params[3].get_str();
+            SecureString strKeyPass;
+            strKeyPass.reserve(100);
+            strKeyPass = params[4].get_str().c_str();
+            CChangeUsernameTicket changeUsernameTicket = CChangeUsernameTicket::Create(pastelID, username, strKeyPass);
+            std::string txid = CPastelTicketProcessor::SendTicket(changeUsernameTicket);
+            mnObj.pushKV(RPC_KEY_TXID, std::move(txid));
+		}
 		return mnObj;
 	}
 	
 	if (TICKETS.IsCmd(RPC_CMD_TICKETS::find)) {
         
-        RPC_CMD_PARSER2(FIND, params, id, art, act, sell, buy, trade, down);
+        RPC_CMD_PARSER2(FIND, params, id, art, act, sell, buy, trade, down, royalty, username);
             
         if (fHelp || !FIND.IsCmdSupported())
 			throw JSONRPCError(RPC_INVALID_PARAMETER,
@@ -2010,22 +2169,26 @@ R"(tickets find "type" "key""
 Set of commands to find different types of Pastel tickets
 
 Available types:
-  id    - Find PastelID (both personal and masternode) registration ticket.
+  id      - Find PastelID (both personal and masternode) registration ticket.
             The "key" is PastelID or Collateral tnx outpoint for Masternode
             OR PastelID or Address for Personal PastelID
-  art   - Find new art registration ticket.
+  art     - Find new art registration ticket.
             The "key" is 'Key1' or 'Key2' OR 'Artist's PastelID'
-  act   - Find art confirmation ticket.
+  act     - Find art confirmation ticket.
             The "key" is 'ArtReg ticket txid' OR 'Artist's PastelID' OR 'Artist's Height (block height at what original art registration request was created)'
-  sell  - Find art sell ticket.
+  sell    - Find art sell ticket.
             The "key" is either Activation OR Trade txid PLUS number of copy - "txid:number"
             ex.: 907e5e4c6fc4d14660a22afe2bdf6d27a3c8762abf0a89355bb19b7d9e7dc440:1
-  buy   - Find art buy ticket.
+  buy     - Find art buy ticket.
             The "key" is ...
-  trade - Find art trade ticket.
+  trade   - Find art trade ticket.
             The "key" is ...
-  down  - Find take down ticket.
+  down    - Find take down ticket.
             The "key" is ...
+  royalty - Find art royalty ticket.
+            The "key" is ...
+  username  - Find username change ticket.
+            The "key" is 'username'
 
 Arguments:
 1. "key"    (string, required) The Key to use for ticket search. See types above...
@@ -2039,7 +2202,6 @@ As json rpc
         std::string key;
         if (params.size() > 2)
             key = params[2].get_str();
-        
         switch (FIND.cmd())
         {
         case RPC_CMD_FIND::id: {
@@ -2066,57 +2228,74 @@ As json rpc
         case RPC_CMD_FIND::trade:
             return getTickets<CArtTradeTicket>(key);
 
+        case RPC_CMD_FIND::royalty:
+          return getTickets<CArtRoyaltyTicket>(key);
+
         case RPC_CMD_FIND::down: {
             //            CTakeDownTicket ticket;
             //            if (CTakeDownTicket::FindTicketInDb(params[2].get_str(), ticket))
             //              return ticket.ToJSON();
+        } break;
+
+        case RPC_CMD_FIND::username: {
+            CChangeUsernameTicket ticket;
+            if (CChangeUsernameTicket::FindTicketInDb(key, ticket)) {
+                UniValue obj(UniValue::VOBJ);
+                obj.read(ticket.ToJSON());
+                return obj;
+            }
         } break;
         }
 		return "Key is not found";
     }
     if (TICKETS.IsCmd(RPC_CMD_TICKETS::list)) {
     
-        RPC_CMD_PARSER2(LIST, params, id, art, act, sell, buy, trade, down);
+        RPC_CMD_PARSER2(LIST, params, id, art, act, sell, buy, trade, down, royalty);
         if (fHelp || (params.size() < 2 || params.size() > 4) || !LIST.IsCmdSupported())
             throw JSONRPCError(RPC_INVALID_PARAMETER,
 R"(tickets list "type" ("filter") ("minheight")
 List all tickets of the specific type registered in the system
 
 Available types:
-  id     - List PastelID registration tickets. Without filter parameter lists ALL (both masternode and personal) PastelIDs.
+  id      - List PastelID registration tickets. Without filter parameter lists ALL (both masternode and personal) PastelIDs.
             Filter:
               all      - lists all masternode PastelIDs. Default.
               mn       - lists only masternode PastelIDs.
               personal - lists only personal PastelIDs.
               mine     - lists only registered PastelIDs available on the local node.
-  art    - List ALL new art registration tickets. Without filter parameter lists ALL Art tickets.
+  art     - List ALL new art registration tickets. Without filter parameter lists ALL Art tickets.
             Filter:
               all      - lists all Art tickets (including non-confirmed). Default.
               active   - lists only activated Art tickets - with Act ticket.
               inactive - lists only non-activated Art tickets - without Act ticket created (confirmed).
               sold     - lists only sold Art tickets - with Trade ticket created for all copies.
-  act    - List ALL art activation tickets. Without filter parameter lists ALL Act tickets.
+  act     - List ALL art activation tickets. Without filter parameter lists ALL Act tickets.
             Filter:
               all       - lists all Act tickets (including non-confirmed). Default.
               available - lists non sold Act tickets - without Trade tickets for all copies (confirmed).
               sold      - lists only sold Act tickets - with Trade tickets for all copies.
-  sell  - List ALL art sell tickets. Without filter parameter lists ALL Sell tickets.
+  sell    - List ALL art sell tickets. Without filter parameter lists ALL Sell tickets.
             Filter:
               all         - lists all Sell tickets (including non-confirmed). Default.
               available   - list only Sell tickets that are confirmed, active and open for buying (no active Buy ticket and no Trade ticket).
               unavailable - list only Sell tickets that are confirmed, but not yet active (current block height is less then valid_after).
               expired     - list only Sell tickets that are expired (current block height is more then valid_before).
               sold        - lists only sold Sell tickets - with Trade ticket created.
-  buy   - List ALL art buy tickets. Without filter parameter lists ALL Buy tickets.
+  buy     - List ALL art buy tickets. Without filter parameter lists ALL Buy tickets.
             Filter:
               all     - list all Buy tickets (including non-confirmed). Default.
               expired - list Buy tickets that expired (Trade ticket was not created in time - 1h/24blocks)
               sold    - list Buy tickets with Trade ticket created
-  trade - List ALL art trade tickets. Without filter parameter lists ALL Trade tickets.
+  trade   - List ALL art trade tickets. Without filter parameter lists ALL Trade tickets.
             Filter:
               all       - list all Trade tickets (including non-confirmed). Default.
               available - lists never sold Trade tickets (without Sell tickets).
               sold      - lists only sold Trade tickets (with Sell tickets).
+            Optional parameters:
+              <pastelID> - apply filter on trade ticket that belong to the correspond pastelID only
+  royalty - List ALL art royalty tickets. Without filter parameter lists ALL royalty tickets.
+            Filter:
+              all       - list all Royalty tickets. Default.
 
 Arguments:
 1. minheight	 - minimum height for returned tickets (only tickets registered after this height will be returned).
@@ -2127,11 +2306,17 @@ As json rpc
 )" + HelpExampleRpc("tickets", R"("list", "id")"));
 
         std::string filter = "all";
-        if (params.size() > 2)
+        if (params.size() > 2
+            && LIST.cmd() != RPC_CMD_LIST::trade // RPC_CMD_LIST::trade has its own parsing logic
+            && LIST.cmd() != RPC_CMD_LIST::buy   // RPC_CMD_LIST::buy has its own parsing logic
+            && LIST.cmd() != RPC_CMD_LIST::sell) // RPC_CMD_LIST::sell has its own parsing logic
             filter = params[2].get_str();
-        
+
         int minheight = 0;
-        if (params.size() > 3)
+        if (params.size() > 3
+            && LIST.cmd() != RPC_CMD_LIST::trade // RPC_CMD_LIST::trade has its own parsing logic
+            && LIST.cmd() != RPC_CMD_LIST::buy   // RPC_CMD_LIST::buy has its own parsing logic
+            && LIST.cmd() != RPC_CMD_LIST::sell) // RPC_CMD_LIST::sell has its own parsing logic
             minheight = get_number(params[3]);
         
         UniValue obj(UniValue::VARR);
@@ -2145,8 +2330,8 @@ As json rpc
             else if (filter == "personal")
                 obj.read(masterNodeCtrl.masternodeTickets.ListFilterPastelIDTickets(2));
             else if (filter == "mine") {
-                const auto vPastelIDs = CPastelID::GetStoredPastelIDs();
-                obj.read(masterNodeCtrl.masternodeTickets.ListFilterPastelIDTickets(3, &vPastelIDs));
+                const auto mapIDs = CPastelID::GetStoredPastelIDs(true);
+                obj.read(masterNodeCtrl.masternodeTickets.ListFilterPastelIDTickets(3, &mapIDs));
             }
             break;
 
@@ -2171,35 +2356,124 @@ As json rpc
             break;
 
         case RPC_CMD_LIST::sell:
+        {
+            std::string pastelID;
+
+            if (params.size() > 2 && params[2].get_str() != "all" && params[2].get_str() != "available" && params[2].get_str() != "unavailable"
+                                && params[2].get_str() != "expired" && params[2].get_str() != "sold") {
+                if (params[2].get_str().find_first_not_of("0123456789") == std::string::npos) {
+                    // This means min_height is input.
+                    minheight = get_number(params[2]);
+                } else {
+                    // This means pastelID is input
+                    pastelID = params[2].get_str();
+                }
+            } else if (params.size() > 2) {
+                filter = params[2].get_str();
+                if (params.size() > 3) {
+                    if (params[3].get_str().find_first_not_of("0123456789") == std::string::npos) {
+                        // This means min_height is input.
+                        minheight = get_number(params[3]);
+                    } else {
+                        // This means pastelID is input
+                        pastelID = params[3].get_str();
+                    }
+                }
+                if (params.size() > 4) {
+                    pastelID = params[3].get_str();
+                    minheight = get_number(params[4]);
+                }
+            }
             if (filter == "all")
-                obj.read(masterNodeCtrl.masternodeTickets.ListTickets<CArtSellTicket>());
+                obj.read(masterNodeCtrl.masternodeTickets.ListFilterSellTickets(0, pastelID));
             else if (filter == "available")
-                obj.read(masterNodeCtrl.masternodeTickets.ListFilterSellTickets(1));
+                obj.read(masterNodeCtrl.masternodeTickets.ListFilterSellTickets(1, pastelID));
             else if (filter == "unavailable")
-                obj.read(masterNodeCtrl.masternodeTickets.ListFilterSellTickets(2));
+                obj.read(masterNodeCtrl.masternodeTickets.ListFilterSellTickets(2, pastelID));
             else if (filter == "expired")
-                obj.read(masterNodeCtrl.masternodeTickets.ListFilterSellTickets(3));
+                obj.read(masterNodeCtrl.masternodeTickets.ListFilterSellTickets(3, pastelID));
             else if (filter == "sold")
-                obj.read(masterNodeCtrl.masternodeTickets.ListFilterSellTickets(4));
+                obj.read(masterNodeCtrl.masternodeTickets.ListFilterSellTickets(4, pastelID));
             break;
-
+        }
         case RPC_CMD_LIST::buy:
-            if (filter == "all")
-                obj.read(masterNodeCtrl.masternodeTickets.ListTickets<CArtBuyTicket>());
-            else if (filter == "expired")
-                obj.read(masterNodeCtrl.masternodeTickets.ListFilterBuyTickets(1));
-            else if (filter == "sold")
-                obj.read(masterNodeCtrl.masternodeTickets.ListFilterBuyTickets(2));
-            break;
+        {
+            std::string pastelID;
 
-        case RPC_CMD_LIST::trade:
+            if (params.size() > 2 && params[2].get_str() != "all" && params[2].get_str() != "expired" && params[2].get_str() != "sold") {
+                if (params[2].get_str().find_first_not_of("0123456789") == std::string::npos) {
+                    // This means min_height is input.
+                    minheight = get_number(params[2]);
+                } else {
+                    // This means pastelID is input
+                    pastelID = params[2].get_str();
+                }
+            } else if (params.size() > 2) {
+                filter = params[2].get_str();
+                if (params.size() > 3) {
+                    if (params[3].get_str().find_first_not_of("0123456789") == std::string::npos) {
+                        // This means min_height is input.
+                        minheight = get_number(params[3]);
+                    } else {
+                        // This means pastelID is input
+                        pastelID = params[3].get_str();
+                    }
+                }
+                if (params.size() > 4) {
+                    pastelID = params[3].get_str();
+                    minheight = get_number(params[4]);
+                }
+            }
             if (filter == "all")
-                obj.read(masterNodeCtrl.masternodeTickets.ListTickets<CArtTradeTicket>());
-            else if (filter == "available")
-                obj.read(masterNodeCtrl.masternodeTickets.ListFilterTradeTickets(1));
+                obj.read(masterNodeCtrl.masternodeTickets.ListFilterBuyTickets(0, pastelID));
+            else if (filter == "expired")
+                obj.read(masterNodeCtrl.masternodeTickets.ListFilterBuyTickets(1, pastelID));
             else if (filter == "sold")
-                obj.read(masterNodeCtrl.masternodeTickets.ListFilterTradeTickets(2));
+                obj.read(masterNodeCtrl.masternodeTickets.ListFilterBuyTickets(2, pastelID));
             break;
+        }
+        case RPC_CMD_LIST::trade:
+        {
+            std::string pastelID;
+
+            if (params.size() > 2 && params[2].get_str() != "all" && params[2].get_str() != "available" && params[2].get_str() != "sold") {
+                if (params[2].get_str().find_first_not_of("0123456789") == std::string::npos) {
+                    // This means min_height is input.
+                    minheight = get_number(params[2]);
+                } else {
+                    // This means pastelID is input
+                    pastelID = params[2].get_str();
+                }
+            } else if (params.size() > 2) {
+                filter = params[2].get_str();
+                if (params.size() > 3) {
+                    if (params[3].get_str().find_first_not_of("0123456789") == std::string::npos) {
+                        // This means min_height is input.
+                        minheight = get_number(params[3]);
+                    } else {
+                        // This means pastelID is input
+                        pastelID = params[3].get_str();
+                    }
+                }
+                if (params.size() > 4) {
+                    pastelID = params[3].get_str();
+                    minheight = get_number(params[4]);
+                }
+            }
+            if (filter == "all")
+                obj.read(masterNodeCtrl.masternodeTickets.ListFilterTradeTickets(0, pastelID));
+            else if (filter == "available")
+                obj.read(masterNodeCtrl.masternodeTickets.ListFilterTradeTickets(1, pastelID));
+            else if (filter == "sold")
+                obj.read(masterNodeCtrl.masternodeTickets.ListFilterTradeTickets(2, pastelID));
+            break;
+        }
+        case RPC_CMD_LIST::royalty:
+        {
+          if (filter == "all")
+            obj.read(masterNodeCtrl.masternodeTickets.ListTickets<CArtRoyaltyTicket>());
+          break;
+        }
         }
 
         return obj;
@@ -2224,7 +2498,7 @@ As json rpc
     
     if (TICKETS.IsCmd(RPC_CMD_TICKETS::tools)) {
         
-        RPC_CMD_PARSER2(LIST, params, printtradingchain, getregbytrade, gettotalstoragefee);
+        RPC_CMD_PARSER2(LIST, params, printtradingchain, getregbytrade, gettotalstoragefee, validateusername, validateownership);
         
         UniValue obj(UniValue::VARR);
         switch (LIST.cmd()) {
@@ -2336,12 +2610,102 @@ As json rpc
                 mnObj.pushKV("totalstoragefee", totalFee);
                 return mnObj;
             }
+            case RPC_CMD_LIST::validateusername: {
+                std::string username;
+                if (params.size() > 2) {
+                    username = params[2].get_str();
+
+                    UniValue obj(UniValue::VOBJ);
+                    std::string usernameValidationError;
+                    bool isBad = CChangeUsernameTicket::isUsernameBad(username, usernameValidationError);
+                    if (!isBad) {
+                        CChangeUsernameTicket existingTicket;
+                        if (CChangeUsernameTicket::FindTicketInDb(username, existingTicket)) {
+                            isBad = true;
+                            usernameValidationError = "Username is not valid, it is already registered";
+                        }
+                    }
+                    obj.pushKV("isBad", isBad);
+                    obj.pushKV("validationError", std::move(usernameValidationError));
+
+                    return obj;
+                }
+            }
+			case RPC_CMD_LIST::validateownership: {
+
+                if (params.size() == 5)
+                {
+
+                    //result object
+                    UniValue retVal(UniValue::VOBJ);
+                    //txid
+                    std::string txid = params[2].get_str();
+                    //pastelid
+                    std::string pastelid = params[3].get_str();
+
+                    //Check if pastelid is found within the stored ones
+                    const auto pastelIDs = CPastelID::GetStoredPastelIDs();
+                    bool bIdFound = false;
+                    pastelid_store_t resultMap;
+
+                    for (const auto & p: pastelIDs)
+                    {
+                        if(p.first.compare(pastelid) == 0)
+                        {
+                            bIdFound = true;
+                            break;
+                        }
+                    }
+
+                    if(!bIdFound)
+                    {
+                        throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY,
+                     "Error: Corresponding PastelID not found!");
+                    }
+                    //passphrase
+                    SecureString strKeyPass;
+                    strKeyPass.reserve(100);
+                    strKeyPass = params[4].get_str().c_str();
+                    if (strKeyPass.length() > 0)
+                    {
+                        //If passphrase is not valid exception is thrown
+                        if(!CPastelID::isValidPassphrase(pastelid,strKeyPass))
+                            throw JSONRPCError(RPC_WALLET_PASSPHRASE_INCORRECT, "Error: Failed to validate passphrase!");
+
+                        std::vector<std::string> result = masterNodeCtrl.masternodeTickets.ValidateOwnership(txid, pastelid);
+                        std::string art_txid = std::move(result[0]);
+                        std::string trade_txid = std::move(result[1]);
+
+                        retVal.pushKV("art", art_txid);
+                        retVal.pushKV("trade", trade_txid);
+                    }
+                    return retVal;
+                }
+                else
+                {
+                    throw JSONRPCError(RPC_INVALID_PARAMETER,
+                                       R"(tickets tools validateownership "txid" "pastelid" "passphrase"
+Get ownership validation by pastelid. If unsuccessful, method return art:"",trade:"". Every other case successful.
+
+Arguments:
+1. "txid"       (string, required) txid of the original nft registration 
+2. "pastelid"   (string, required) Registered pastelid which (according to the request) shall be the owner or the author of the registered NFT (of argument 1's txid)
+3. "passpharse" (string, required) The passphrase to the private key associated with PastelID and stored inside node. See "pastelid newkey".
+
+Validate ownership
+)" + HelpExampleCli("tickets tools validateownership", R"(""e4ee20e436d33f59cc313647bacff0c5b0df5b7b1c1fa13189ea7bc8b9df15a4" jXYqZNPj21RVnwxnEJ654wEdzi7GZTZ5LAdiotBmPrF7pDMkpX1JegDMQZX55WZLkvy9fxNpZcbBJuE8QYUqBF "passphrase")") +
+                                           R"(
+As json rpc
+)" + HelpExampleRpc("tickets", R"("tools", "validateownership", "e4ee20e436d33f59cc313647bacff0c5b0df5b7b1c1fa13189ea7bc8b9df15a4" "jXYqZNPj21RVnwxnEJ654wEdzi7GZTZ5LAdiotBmPrF7pDMkpX1JegDMQZX55WZLkvy9fxNpZcbBJuE8QYUqBF" "passphrase")"));
+                }
+            }
         }
     }
     
 #ifdef FAKE_TICKET
-    if (TICKETS.IsCmd(RPC_CMD_TICKETS::makefaketicket) || TICKETS.IsCmd(RPC_CMD_TICKETS::sendfaketicket)) {
-            const bool bSend = TICKETS.IsCmd(RPC_CMD_TICKETS::sendfaketicket);
+    if (TICKETS.IsCmd(RPC_CMD_TICKETS::makefaketicket) || TICKETS.IsCmd(RPC_CMD_TICKETS::sendfaketicket))
+    {
+        const bool bSend = TICKETS.IsCmd(RPC_CMD_TICKETS::sendfaketicket);
 	    
         RPC_CMD_PARSER2(FAKETICKET, params, mnid, id, art, act, sell);
         if (FAKETICKET.IsCmd(RPC_CMD_FAKETICKET::mnid)) {

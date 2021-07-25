@@ -2,7 +2,7 @@
 // Copyright (c) 2018-2021 The Pastel Core developers
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
-#include <string>
+#include "vector_types.h"
 
 #include "mnode/mnode-consts.h"
 #include "mnode/ticket.h"
@@ -15,8 +15,8 @@ public:
 	std::string address;
     COutPoint outpoint{};
     std::string pq_key;
-	std::vector<unsigned char> mn_signature;
-	std::vector<unsigned char> pslid_signature;
+	v_uint8 mn_signature;
+	v_uint8 pslid_signature;
     
     std::string secondKey; //local only
 
@@ -88,7 +88,7 @@ bytes fields are base64 as strings
   "block_hash": bytes         // hash of the top block when the ticket was created - this is to map the ticket to the MNs that should process it
   "copies": integer,          // number of copies
   "royalty": float,           // (not yet supported by cNode) how much artist should get on all future resales
-  "green": string,            // address for Green NFT payment (not yet supported by cNode)
+  "green_address": string,    // address for Green NFT payment (not yet supported by cNode)
 
   "app_ticket": bytes,        // cNode DOES NOT parse this part!!!!
   as base64(
@@ -213,8 +213,8 @@ public:
         READWRITE(m_nBlock);
 	}
 
-    std::string GetRoyaltyPayeePastelID();
-    std::string GetRoyaltyPayeeAddress();
+    std::string GetRoyaltyPayeePastelID() const;
+    std::string GetRoyaltyPayeeAddress() const;
 
     static CArtRegTicket Create(std::string _ticket, const std::string& signatures,
                                 std::string _pastelID, const SecureString& strKeyPass,
@@ -475,6 +475,9 @@ public:
     std::string sellTnxId;
     std::string buyTnxId;
     std::string artTnxId;
+    std::string nftRegTnxId;
+    std::string nftCopySerialNr;
+
     unsigned int price{};
     std::string reserved;
     std::vector<unsigned char> signature;
@@ -493,10 +496,12 @@ public:
     std::string KeyTwo() const noexcept override { return buyTnxId; }
     std::string MVKeyOne() const noexcept override { return pastelID; }
     std::string MVKeyTwo() const noexcept override { return artTnxId; }
+    std::string MVKeyThree() const noexcept override { return nftRegTnxId; }
     
     bool HasKeyTwo() const noexcept override { return true; }
     bool HasMVKeyOne() const noexcept override { return true; }
     bool HasMVKeyTwo() const noexcept override { return true; }
+    bool HasMVKeyThree() const noexcept override { return true; }
     
     void SetKeyOne(std::string val) override { sellTnxId = std::move(val); }
     
@@ -523,6 +528,8 @@ public:
         READWRITE(m_nTimestamp);
         READWRITE(m_txid);
         READWRITE(m_nBlock);
+        READWRITE(nftRegTnxId);
+        READWRITE(nftCopySerialNr);
     }
 
     CAmount GetExtraOutputs(std::vector<CTxOut>& outputs) const override;
@@ -532,13 +539,22 @@ public:
     
     static std::vector<CArtTradeTicket> FindAllTicketByPastelID(const std::string& pastelID);
     static std::vector<CArtTradeTicket> FindAllTicketByArtTnxID(const std::string& artTnxID);
+    static std::vector<CArtTradeTicket> FindAllTicketByRegTnxID(const std::string& nftRegTnxId);
     
     static bool CheckTradeTicketExistBySellTicket(const std::string& _sellTnxId);
     static bool CheckTradeTicketExistByBuyTicket(const std::string& _buyTnxId);
     static bool GetTradeTicketBySellTicket(const std::string& _sellTnxId, CArtTradeTicket& ticket);
     static bool GetTradeTicketByBuyTicket(const std::string& _buyTnxId, CArtTradeTicket& ticket);
+    static std::map<std::string, std::string> GetPastelIdAndTxIdWithTopHeightPerCopy(const std::vector<CArtTradeTicket> & allTickets);
     
     std::unique_ptr<CPastelTicket> FindArtRegTicket() const;
+
+    void SetArtRegTicketTxid(const std::string& sNftRegTxid);
+    const std::string GetArtRegTicketTxid() const;
+    void SetCopySerialNr(const std::string& nftCopySerialNr);
+    const std::string& GetCopySerialNr() const;
+    
+    static std::vector<std::string> GetArtRegTxIDAndSerialIfResoldNft(const std::string& _txid);
 };
 
 /*
@@ -598,8 +614,8 @@ public:
     READWRITE(m_nBlock);
   }
 
-  static CArtRoyaltyTicket Create(std::string _pastelID, std::string _newPastelID,
-                                  std::string _artTnxId, const SecureString& strKeyPass);
+  static CArtRoyaltyTicket Create(std::string _artTnxId, std::string _newPastelID,
+                                  std::string _pastelID, const SecureString& strKeyPass);
   static bool FindTicketInDb(const std::string& key, CArtRoyaltyTicket& ticket);
 
   static std::vector<CArtRoyaltyTicket> FindAllTicketByPastelID(const std::string& pastelID);
@@ -623,4 +639,77 @@ public:
     void SetKeyOne(std::string val) override {}
 
     void SerializationOp(CDataStream& s, const SERIALIZE_ACTION ser_action) override {}
+};
+
+// Username Change Ticket /////////////////////////////////////////////////////////////////////////////////////////////////////
+/*
+	"ticket": {
+		"type": "username",
+		"pastelID": "",    //PastelID of the username
+		"username": "",    //new valid username
+		"fee": "",         // fee to change username
+		"signature": ""
+	},
+ */
+class CChangeUsernameTicket : public CPastelTicket
+{
+public:
+    std::string pastelID;
+    std::string username;
+    CAmount fee{100};
+    v_uint8 signature;
+
+public:
+    CChangeUsernameTicket() = default;
+
+    explicit CChangeUsernameTicket(std::string _pastelID, std::string _username) :
+        pastelID(std::move(_pastelID)), username(std::move(_username))
+    {}
+
+    TicketID ID() const noexcept override { return TicketID::Username; }
+    static TicketID GetID() { return TicketID::Username; }
+
+    std::string KeyOne() const noexcept override { return username; }
+    std::string KeyTwo() const noexcept override { return pastelID; }
+
+    bool HasKeyTwo() const noexcept override { return true; }
+    bool HasMVKeyOne() const noexcept override { return false; }
+    bool HasMVKeyTwo() const noexcept override { return false; }
+
+    void SetKeyOne(std::string val) override { username = std::move(val); }
+
+    std::string ToJSON() const noexcept override;
+    std::string ToStr() const noexcept override;
+    CAmount TicketPrice(const unsigned int nHeight) const noexcept override { return fee; }
+    bool IsValid(bool preReg, int depth) const override;
+
+    void SerializationOp(CDataStream& s, const SERIALIZE_ACTION ser_action) override
+    {
+        const bool bRead = ser_action == SERIALIZE_ACTION::Read;
+        std::string error;
+        if (!VersionMgmt(error, bRead))
+            throw std::runtime_error(error);
+        READWRITE(pastelID);
+        READWRITE(m_nVersion);
+        // v0
+        READWRITE(username);
+        READWRITE(fee);
+        READWRITE(signature);
+        READWRITE(m_nTimestamp);
+        READWRITE(m_txid);
+        READWRITE(m_nBlock);
+    }
+
+    static CChangeUsernameTicket Create(std::string _pastelID, std::string _username, const SecureString& strKeyPass);    
+    static bool FindTicketInDb(const std::string& key, CChangeUsernameTicket& ticket);
+
+    /** Some general checks to see if the username is bad. Below cases will be considered as bad Username
+    *     - Contains characters that is different than upper and lowercase Latin characters and numbers
+    *     - Has only <4, or has more than 12 characters
+    *     - Doesn't start with letters.
+    *     - Username registered on the blockchain.
+    *     - Contains bad words (swear, racist,...)
+    * return: true if bad, false if good to use
+    */
+    static bool isUsernameBad(const std::string& username, std::string& error);
 };

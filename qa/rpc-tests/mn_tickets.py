@@ -4,13 +4,19 @@
 # file COPYING or http://www.opensource.org/licenses/mit-license.php.
 import math
 
-from test_framework.util import assert_equal, assert_greater_than, \
+from test_framework.util import assert_equal, assert_equals, assert_greater_than, \
     assert_true, initialize_chain_clean, str_to_b64str
 from mn_common import MasterNodeCommon
 from test_framework.authproxy import JSONRPCException
 import json
 import time
 import base64
+import random, string
+import sys
+import hashlib
+  
+if sys.version_info < (3, 6):
+    import sha3
 
 from decimal import Decimal, getcontext
 getcontext().prec = 16
@@ -32,9 +38,12 @@ private_keys_list = ["91sY9h4AQ62bAhNk1aJ7uJeSnQzSFtz7QmW5imrKmiACm7QJLXe",  # 0
                      ]
 
 
+# error strings
+ERR_READ_PASTELID_FILE = "Failed to read Pastel secure container file";
+
 class MasterNodeTicketsTest(MasterNodeCommon):
     number_of_master_nodes = len(private_keys_list)
-    number_of_simple_nodes = 6
+    number_of_simple_nodes = 8
     total_number_of_nodes = number_of_master_nodes+number_of_simple_nodes
 
     non_active_mn = number_of_master_nodes-1
@@ -43,8 +52,10 @@ class MasterNodeTicketsTest(MasterNodeCommon):
     non_mn2 = number_of_master_nodes+1      # hot node - will have collateral for all active MN #14
     non_mn3 = number_of_master_nodes+2      # will not have coins by default #15
     non_mn4 = number_of_master_nodes+3      # will not have coins by default #16
-    non_mn5 = number_of_master_nodes+4      # will not have coins by default #17, for royalty
-    non_mn6 = number_of_master_nodes+5      # will not have coins by default #18, for green
+    non_mn5 = number_of_master_nodes+4      # will not have coins by default #17, for royalty first change
+    non_mn6 = number_of_master_nodes+5      # will not have coins by default #18, for royalty second change
+    non_mn7 = number_of_master_nodes+6      # will not have coins by default #19, for green
+    non_mn8 = number_of_master_nodes+7      # will not have coins by default #20, for Username test
 
     mining_node_num = number_of_master_nodes    # same as non_mn1
     hot_node_num = number_of_master_nodes+1     # same as non_mn2
@@ -65,6 +76,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         self.not_top_mns_signatures_dict = None
 
         self.mn0_pastelid1 = None
+        self.mn0_id1_lrkey = None
         self.mn0_pastelid2 = None
         self.non_active_mn_pastelid1 = None
 
@@ -72,13 +84,15 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         self.nonmn3_pastelid1 = None
         self.nonmn4_pastelid1 = None
         self.nonmn5_royalty_pastelid1 = None
-        self.nonmn6_green_pastelid1 = None
+        self.nonmn6_royalty_pastelid1 = None
+        self.nonmn7_green_pastelid1 = None
 
         self.mn0_ticket1_txid = None
         self.nonmn3_address1 = None
         self.nonmn4_address1 = None
         self.nonmn5_royalty_address1 = None
-        self.nonmn6_green_address1 = None
+        self.nonmn6_royalty_address1 = None
+        self.nonmn7_green_address1 = None
         self.artist_pastelid1 = None
         self.artist_ticket_height = None
         self.total_copies = None
@@ -100,6 +114,8 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         self.trade_ticket1_sell_ticket_txid = None
         self.trade_ticket1_buy_ticket_txid = None
         self.trade_ticket1_trade_ticket_txid = None
+        self.nested_ownership_trade_txid  = None
+        self.single_sell_trade_txids = []
 
         self.art_copy_price = 100000
         self.id_ticket_price = 10
@@ -107,7 +123,10 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         self.act_ticket_price = 10
         self.trade_ticket_price = 10
 
-        self.royalty = 0
+        self.royalty = 7
+        self.royalty_tickets_tests = 2
+        self.royalty_null_tests = False
+        self.royalty_address = None
         self.is_green = True
 
         self.test_high_heights = False
@@ -133,12 +152,26 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         self.mn_pastelid_ticket_tests(False)
         self.personal_pastelid_ticket_tests(False)
         self.personal_buy_initialize_tests()
-        self.personal_royalty_initialize_tests()
         if self.is_green:
-            self.personal_green_initialize_tests()
+            self.personal_nonmn7_green_initialize_tests()
         else:
-            self.nonmn6_green_address1 = ""
+            self.nonmn7_green_address1 = ""
         self.artreg_ticket_tests(False, "key1", "key2")
+
+        if self.royalty > 0:
+            if self.royalty_tickets_tests > 0:
+                self.personal_nonmn5_royalty_initialize_tests()
+                self.artroyalty_ticket_tests(self.non_mn3, self.artist_pastelid1,
+                                             self.nonmn5_royalty_pastelid1, self.nonmn5_royalty_address1, 1)
+            if self.royalty_tickets_tests > 1:
+                self.personal_nonmn6_royalty_initialize_tests()
+                self.artroyalty_ticket_tests(self.non_mn5, self.nonmn5_royalty_pastelid1,
+                                             self.nonmn6_royalty_pastelid1, self.nonmn6_royalty_address1, 2)
+        else:
+            self.royalty_tickets_tests = 0
+            self.royalty_null_tests = True
+            self.artroyalty_null_ticket_tests()
+
         self.artact_ticket_tests(False)
         self.artsell_ticket_tests1(False)
         self.artbuy_ticket_tests(False)
@@ -147,6 +180,8 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         self.takedown_ticket_tests()
         self.storage_fee_tests()
         self.tickets_list_filter_tests(0)
+        self.list_and_validate_ticket_ownerships()
+        self.username_ticket_tests()
 
         if self.test_high_heights:
             self.id_ticket_price = 1000
@@ -174,32 +209,68 @@ class MasterNodeTicketsTest(MasterNodeCommon):
             self.takedown_ticket_tests()
             self.storage_fee_tests()
             self.tickets_list_filter_tests(1)
-
+            self.username_ticket_tests()
 
 # ===============================================================================================================
-    def pastelid_tests(self):
-        print("== Pastelid test ==")
-        # 1. pastelid tests
-        # a. Generate new PastelID and associated keys (EdDSA448). Return PastelID base58-encoded
-        # a.a - generate with no errors two keys at MN and non-MN
+    def list_and_validate_ticket_ownerships(self):
+        print("== Ownership validation tests ==")
+        tickets_list = self.nodes[self.non_mn4].tickets("list", "art", "all")
 
-        self.mn0_pastelid1 = self.nodes[0].pastelid("newkey", "passphrase")["pastelid"]
-        assert_true(self.mn0_pastelid1, "No Pastelid was created")
-        self.mn0_pastelid2 = self.nodes[0].pastelid("newkey", "passphrase")["pastelid"]
-        assert_true(self.mn0_pastelid2, "No Pastelid was created")
+        # Test not available pastelID
+        try:
+            self.nodes[self.non_mn4].tickets("tools", "validateownership", self.art_ticket1_txid, "NOT_A_VALID_PASTELID", "passphrase")
+        except JSONRPCException as e:
+            self.errorString = e.error['message']
+            print(self.errorString)
+        assert_equal("Error: Corresponding PastelID not found!"
+                     in self.errorString, True)
+
+        # Test incorrect passphrase
+        try:
+            self.nodes[self.non_mn3].tickets("tools", "validateownership", self.art_ticket1_txid, self.artist_pastelid1, "not_valid_passphrase")
+        except JSONRPCException as e:
+            self.errorString = e.error['message']
+            print(self.errorString)
+        assert_equal("Error: Failed to validate passphrase!"
+                     in self.errorString, True)
+
+        # Check if author
+        res1 = self.nodes[self.non_mn3].tickets("tools", "validateownership", self.art_ticket1_txid, self.artist_pastelid1, "passphrase")
+        assert_equal( self.art_ticket1_txid, res1['art'] )
+        assert_equal( "", res1['trade'] )
+
+        # Test 'single sale' (without re-selling)
+        res1 = self.nodes[self.non_mn4].tickets("tools", "validateownership", self.art_ticket1_txid, self.nonmn4_pastelid1, "passphrase")
+        assert_equal( self.art_ticket1_txid, res1['art'] )
+        assert_equals( self.single_sell_trade_txids, res1['trade'] )
+
+        # Test ownership with or re-sold art
+        res1 = self.nodes[self.non_mn3].tickets("tools", "validateownership", self.art_ticket1_txid, self.nonmn3_pastelid1, "passphrase")
+        assert_equal( self.art_ticket1_txid, res1['art'] )
+        assert_equal( self.nested_ownership_trade_txid, res1['trade'] )
+
+        # Test no ownership
+        res1 = self.nodes[self.non_mn1].tickets("tools", "validateownership", self.art_ticket1_txid, self.nonmn1_pastelid2, "passphrase")
+        assert_equal( "", res1['art'] )
+        assert_equal( "", res1['trade'] )
+
+        print("== Ownership validation tested ==")
+    # ===============================================================================================================
+    def pastelid_tests(self):
+        print("== Pastelid tests ==")
+        # 1. pastelid tests
+        # a. Generate new PastelID and associated keys (EdDSA448). Return PastelID and LegRoast pubkey base58-encoded
+        # a.a - generate with no errors two keys at MN and non-MN
+        self.mn0_pastelid1 = self.create_pastelid(0, self.mn0_id1_lrkey)
+        self.mn0_pastelid2 = self.create_pastelid(0)
 
         # for non active MN
-        self.non_active_mn_pastelid1 = self.nodes[self.non_active_mn].pastelid("newkey", "passphrase")["pastelid"]
-        assert_true(self.non_active_mn_pastelid1, "No Pastelid was created")
-
-        nonmn1_pastelid1 = self.nodes[self.non_mn1].pastelid("newkey", "passphrase")["pastelid"]
-        assert_true(nonmn1_pastelid1, "No Pastelid was created")
-        self.nonmn1_pastelid2 = self.nodes[self.non_mn1].pastelid("newkey", "passphrase")["pastelid"]
-        assert_true(self.nonmn1_pastelid2, "No Pastelid was created")
+        self.non_active_mn_pastelid1 = self.create_pastelid(self.non_active_mn)
+        nonmn1_pastelid1 = self.create_pastelid(self.non_mn1)
+        self.nonmn1_pastelid2 = self.create_pastelid(self.non_mn1)
 
         # for node without coins
-        self.nonmn3_pastelid1 = self.nodes[self.non_mn3].pastelid("newkey", "passphrase")["pastelid"]
-        assert_true(self.nonmn3_pastelid1, "No Pastelid was created")
+        self.nonmn3_pastelid1 = self.create_pastelid(self.non_mn3)
 
         # a.b - fail if empty passphrase
         try:
@@ -215,34 +286,52 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         # c. List all internally stored PastelID and keys
         id_list = self.nodes[0].pastelid("list")
         id_list = dict((key+str(i), val) for i, k in enumerate(id_list) for key, val in k.items())
-        assert_true(self.mn0_pastelid1 in id_list.values(), "PastelID " + self.mn0_pastelid1 + " not in the list")
-        assert_true(self.mn0_pastelid2 in id_list.values(), "PastelID " + self.mn0_pastelid2 + " not in the list")
+        assert_true(self.mn0_pastelid1 in id_list.values(), f"PastelID {self.mn0_pastelid1} not in the list")
+        assert_true(self.mn0_pastelid2 in id_list.values(), f"PastelID {self.mn0_pastelid2} not in the list")
 
         id_list = self.nodes[self.non_mn1].pastelid("list")
         id_list = dict((key+str(i), val) for i, k in enumerate(id_list) for key, val in k.items())
-        assert_true(nonmn1_pastelid1 in id_list.values(), "PastelID " + nonmn1_pastelid1 + " not in the list")
-        assert_true(self.nonmn1_pastelid2 in id_list.values(), "PastelID " + self.nonmn1_pastelid2 + " not in the list")
+        assert_true(nonmn1_pastelid1 in id_list.values(), f"PastelID {nonmn1_pastelid1} not in the list")
+        assert_true(self.nonmn1_pastelid2 in id_list.values(), f"PastelID {self.nonmn1_pastelid2} not in the list")
 
-        print(f"Pastelid test: 2 PastelID's each generate at node0 (MN ) and node {self.non_mn1} (non-MN)")
+        print(f"Pastelid test: 2 PastelID's each generate at node0 (MN) and node {self.non_mn1} (non-MN)")
 
         # d. Sign "text" with the internally stored private key associated with the PastelID
-        # d.a - sign with no errors using key from 1.a.a
-        mn0_signature1 = self.nodes[0].pastelid("sign", "1234567890", self.mn0_pastelid1, "passphrase")["signature"]
-        assert_true(mn0_signature1, "No signature was created")
+        # d.a - sign with no errors using key from 1.a.a, default algorithm - EdDSA448
+        text_to_sign = "1234567890"
+        mn0_signature1 = self.nodes[0].pastelid("sign", text_to_sign, self.mn0_pastelid1, self.passphrase)["signature"]
+        assert_true(mn0_signature1, "No ed448 signature was created")
         assert_equal(len(base64.b64decode(mn0_signature1)), 114)
+        
+        # d.b - sign with no errors using encoded legroast public key from 1.a.a
+        # returns base64 encoded signature
+        mn0_lr_signature1 = self.nodes[0].pastelid("sign", text_to_sign, self.mn0_pastelid1, self.passphrase, "legroast")["signature"]
+        assert_true(mn0_lr_signature1, "No LegRoast signature was created")
 
         # e. Sign "text" with the private "key" (EdDSA448) as PKCS8 encrypted string in PEM format
         # NOT IMPLEMENTED
 
         # f. Verify "text"'s "signature" with the PastelID
-        # f.a - verify with no errors using key from 1.a.a
-        result = self.nodes[0].pastelid("verify", "1234567890", mn0_signature1, self.mn0_pastelid1)["verification"]
+        # f.a - verify ed448 signature with no errors using key from 1.a.a
+        result = self.nodes[0].pastelid("verify", text_to_sign, mn0_signature1, self.mn0_pastelid1)["verification"]
         assert_equal(result, "OK")
-        # f.b - fail to verify with the different key from 1.a.a
-        result = self.nodes[0].pastelid("verify", "1234567890", mn0_signature1, self.mn0_pastelid2)["verification"]
+        # f.a.a - verify with no errors using key from 1.a.a
+        result = self.nodes[0].pastelid("verify", text_to_sign, mn0_lr_signature1, self.mn0_pastelid1, "legroast")["verification"]
+        assert_equal(result, "OK")
+
+        # f.b - fail to verify ed448 signature with the different key from 1.a.a
+        result = self.nodes[0].pastelid("verify", text_to_sign, mn0_signature1, self.mn0_pastelid2)["verification"]
         assert_equal(result, "Failed")
-        # f.c - fail to verify modified text
+        # f.c - fail to verify ed448 signature with the different key from 1.a.a
+        result = self.nodes[0].pastelid("verify", text_to_sign, mn0_lr_signature1, self.mn0_pastelid2, "legroast")["verification"]
+        assert_equal(result, "Failed")
+
+        # f.d - fail to verify modified text (ed448 signature)
         result = self.nodes[0].pastelid("verify", "1234567890AAA", mn0_signature1, self.mn0_pastelid1)["verification"]
+        assert_equal(result, "Failed")
+
+        # f.e - fail to verify modified text (legroast signature)
+        result = self.nodes[0].pastelid("verify", "1234567890AAA", mn0_lr_signature1, self.mn0_pastelid1, "legroast")["verification"]
         assert_equal(result, "Failed")
 
         print("Pastelid test: Message signed and verified")
@@ -255,7 +344,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         #   a.a register MN PastelID
         #       a.a.1 fail if not MN
         try:
-            self.nodes[self.non_mn1].tickets("register", "mnid", self.nonmn1_pastelid2, "passphrase")
+            self.nodes[self.non_mn1].tickets("register", "mnid", self.nonmn1_pastelid2, self.passphrase)
         except JSONRPCException as e:
             self.errorString = e.error['message']
             print(self.errorString)
@@ -263,7 +352,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
 
         #       a.a.2 fail if not active MN
         try:
-            self.nodes[self.non_active_mn].tickets("register", "mnid", self.non_active_mn_pastelid1, "passphrase")
+            self.nodes[self.non_active_mn].tickets("register", "mnid", self.non_active_mn_pastelid1, self.passphrase)
         except JSONRPCException as e:
             self.errorString = e.error['message']
             print(self.errorString)
@@ -271,11 +360,11 @@ class MasterNodeTicketsTest(MasterNodeCommon):
 
         #       a.a.3 fail if active MN, but wrong PastelID
         try:
-            self.nodes[0].tickets("register", "mnid", self.nonmn1_pastelid2, "passphrase")
+            self.nodes[0].tickets("register", "mnid", self.nonmn1_pastelid2, self.passphrase)
         except JSONRPCException as e:
             self.errorString = e.error['message']
             print(self.errorString)
-        assert_equal("Cannot open file to read key from" in self.errorString, True)
+        assert_equal(ERR_READ_PASTELID_FILE in self.errorString, True)
         # TODO: provide better error for unknown PastelID
 
         #       a.a.4 fail if active MN, but wrong passphrase
@@ -284,13 +373,13 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         except JSONRPCException as e:
             self.errorString = e.error['message']
             print(self.errorString)
-        assert_equal("Cannot read key from string" in self.errorString, True)
+        assert_equal(ERR_READ_PASTELID_FILE in self.errorString, True)
         # TODO: provide better error for wrong passphrase
 
         #       a.a.5 fail if active MN, but not enough coins - ~11PSL
         if not skip_low_coins_tests:
             try:
-                self.nodes[0].tickets("register", "mnid", self.mn0_pastelid1, "passphrase")
+                self.nodes[0].tickets("register", "mnid", self.mn0_pastelid1, self.passphrase)
             except JSONRPCException as e:
                 self.errorString = e.error['message']
                 print(self.errorString)
@@ -299,20 +388,14 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         #       a.a.6 register without errors from active MN with enough coins
         mn0_address1 = self.nodes[0].getnewaddress()
         self.nodes[self.mining_node_num].sendtoaddress(mn0_address1, 100, "", "", False)
-        time.sleep(2)
-        self.sync_all()
-        self.nodes[self.mining_node_num].generate(1)
-        self.sync_all()
+        self.__wait_for_sync_all(1)
 
         coins_before = self.nodes[0].getbalance()
         # print(coins_before)
 
-        self.mn0_ticket1_txid = self.nodes[0].tickets("register", "mnid", self.mn0_pastelid1, "passphrase")["txid"]
+        self.mn0_ticket1_txid = self.nodes[0].tickets("register", "mnid", self.mn0_pastelid1, self.passphrase)["txid"]
         assert_true(self.mn0_ticket1_txid, "No ticket was created")
-        time.sleep(2)
-        self.sync_all()
-        self.nodes[self.mining_node_num].generate(1)
-        self.sync_all()
+        self.__wait_for_sync_all(1)
 
         #       a.a.7 check correct amount of change
         coins_after = self.nodes[0].getbalance()
@@ -334,7 +417,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
 
         #       a.a.9.1 fail if PastelID is already registered
         try:
-            self.nodes[0].tickets("register", "mnid", self.mn0_pastelid1, "passphrase")["txid"]
+            self.nodes[0].tickets("register", "mnid", self.mn0_pastelid1, self.passphrase)["txid"]
         except JSONRPCException as e:
             self.errorString = e.error['message']
             print(self.errorString)
@@ -342,7 +425,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
 
         #       a.a.9.2 fail if outpoint is already registered
         try:
-            self.nodes[0].tickets("register", "mnid", self.mn0_pastelid2, "passphrase")["txid"]
+            self.nodes[0].tickets("register", "mnid", self.mn0_pastelid2, self.passphrase)["txid"]
         except JSONRPCException as e:
             self.errorString = e.error['message']
             print(self.errorString)
@@ -381,12 +464,12 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         #   b.a register personal PastelID
         #       b.a.1 fail if wrong PastelID
         try:
-            self.nodes[self.non_mn3].tickets("register", "id", self.nonmn1_pastelid2, "passphrase",
+            self.nodes[self.non_mn3].tickets("register", "id", self.nonmn1_pastelid2, self.passphrase,
                                              self.nonmn3_address1)
         except JSONRPCException as e:
             self.errorString = e.error['message']
             print(self.errorString)
-        assert_equal("Cannot open file to read key from" in self.errorString, True)
+        assert_equal(ERR_READ_PASTELID_FILE in self.errorString, True)
         # TODO Pastel: provide better error for unknown PastelID
 
         #       b.a.2 fail if wrong passphrase
@@ -395,13 +478,13 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         except JSONRPCException as e:
             self.errorString = e.error['message']
             print(self.errorString)
-        assert_equal("Cannot read key from string" in self.errorString, True)
+        assert_equal(ERR_READ_PASTELID_FILE in self.errorString, True)
         # TODO Pastel: provide better error for wrong passphrase
 
         #       b.a.3 fail if not enough coins - ~11PSL
         if not skip_low_coins_tests:
             try:
-                self.nodes[self.non_mn3].tickets("register", "id", self.nonmn3_pastelid1, "passphrase",
+                self.nodes[self.non_mn3].tickets("register", "id", self.nonmn3_pastelid1, self.passphrase,
                                                  self.nonmn3_address1)
             except JSONRPCException as e:
                 self.errorString = e.error['message']
@@ -410,21 +493,15 @@ class MasterNodeTicketsTest(MasterNodeCommon):
 
         #       b.a.4 register without errors from non MN with enough coins
         self.nodes[self.mining_node_num].sendtoaddress(self.nonmn3_address1, 100, "", "", False)
-        time.sleep(2)
-        self.sync_all()
-        self.nodes[self.mining_node_num].generate(1)
-        self.sync_all()
+        self.__wait_for_sync_all(1)
 
         coins_before = self.nodes[self.non_mn3].getbalance()
         # print(coins_before)
 
-        nonmn3_ticket1_txid = self.nodes[self.non_mn3].tickets("register", "id", self.nonmn3_pastelid1, "passphrase",
+        nonmn3_ticket1_txid = self.nodes[self.non_mn3].tickets("register", "id", self.nonmn3_pastelid1, self.passphrase,
                                                                self.nonmn3_address1)["txid"]
         assert_true(nonmn3_ticket1_txid, "No ticket was created")
-        time.sleep(2)
-        self.sync_all()
-        self.nodes[self.mining_node_num].generate(1)
-        self.sync_all()
+        self.__wait_for_sync_all(1)
 
         #       a.a.5 check correct amount of change
         coins_after = self.nodes[self.non_mn3].getbalance()
@@ -447,7 +524,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
 
         #       b.a.7 fail if already registered
         try:
-            self.nodes[self.non_mn3].tickets("register", "id", self.nonmn3_pastelid1, "passphrase",
+            self.nodes[self.non_mn3].tickets("register", "id", self.nonmn3_pastelid1, self.passphrase,
                                              self.nonmn3_address1)
         except JSONRPCException as e:
             self.errorString = e.error['message']
@@ -493,73 +570,160 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         self.nodes[self.mining_node_num].generate(1)
         self.sync_all(10, 30)
 
-        self.nonmn4_pastelid1 = self.nodes[self.non_mn4].pastelid("newkey", "passphrase")["pastelid"]
+        self.nonmn4_pastelid1 = self.create_pastelid(self.non_mn4)
         assert_true(self.nonmn4_pastelid1, "No Pastelid was created")
-        self.nodes[self.non_mn4].tickets("register", "id", self.nonmn4_pastelid1, "passphrase", self.nonmn4_address1)
+        self.nodes[self.non_mn4].tickets("register", "id", self.nonmn4_pastelid1, self.passphrase, self.nonmn4_address1)
 
     # ===============================================================================================================
-    def personal_royalty_initialize_tests(self):
+    def personal_nonmn5_royalty_initialize_tests(self):
         # personal royalty PastelID ticket
-        self.nonmn5_royalty_pastelid1 = self.nodes[self.non_mn5].pastelid("newkey", "passphrase")["pastelid"]
-        assert_true(self.nonmn5_royalty_pastelid1, "No Pastelid was created")
+        self.nonmn5_royalty_pastelid1 = self.create_pastelid(self.non_mn5)
         self.nonmn5_royalty_address1 = self.nodes[self.non_mn5].getnewaddress()
 
         # register without errors from non MN with enough coins
         self.nodes[self.mining_node_num].sendtoaddress(self.nonmn5_royalty_address1, 100, "", "", False)
-        time.sleep(2)
-        self.sync_all()
-        self.nodes[self.mining_node_num].generate(1)
-        self.sync_all()
+        self.__wait_for_sync_all(1)
 
         coins_before = self.nodes[self.non_mn5].getbalance()
         nonmn5_ticket1_txid = self.nodes[self.non_mn5].tickets("register", "id", self.nonmn5_royalty_pastelid1,
-                                                               "passphrase", self.nonmn5_royalty_address1)["txid"]
+                                                               self.passphrase, self.nonmn5_royalty_address1)["txid"]
         assert_true(nonmn5_ticket1_txid, "No ticket was created")
-        time.sleep(2)
-        self.sync_all()
-        self.nodes[self.mining_node_num].generate(1)
-        self.sync_all()
+        self.__wait_for_sync_all(1)
 
         # check correct amount of change
         coins_after = self.nodes[self.non_mn5].getbalance()
         print(f"id ticket price - {self.id_ticket_price}")
         assert_equal(coins_after, coins_before - self.id_ticket_price)  # no fee yet
 
-        print("Personal royalty initialize tested")
+        print("Personal non_mn5 royalty initialize tested")
 
     # ===============================================================================================================
-    def personal_green_initialize_tests(self):
-        # personal green PastelID ticket
-        self.nonmn6_green_pastelid1 = self.nodes[self.non_mn6].pastelid("newkey", "passphrase")["pastelid"]
-        assert_true(self.nonmn6_green_pastelid1, "No Pastelid was created")
-        self.nonmn6_green_address1 = self.nodes[self.non_mn6].getnewaddress()
+    def personal_nonmn6_royalty_initialize_tests(self):
+        # personal royalty PastelID ticket
+        self.nonmn6_royalty_pastelid1 = self.create_pastelid(self.non_mn6)
+        assert_true(self.nonmn6_royalty_pastelid1, "No Pastelid was created")
+        self.nonmn6_royalty_address1 = self.nodes[self.non_mn6].getnewaddress()
 
         # register without errors from non MN with enough coins
-        self.nodes[self.mining_node_num].sendtoaddress(self.nonmn6_green_address1, 100, "", "", False)
-        time.sleep(2)
-        self.sync_all()
-        self.nodes[self.mining_node_num].generate(1)
-        self.sync_all()
+        self.nodes[self.mining_node_num].sendtoaddress(self.nonmn6_royalty_address1, 100, "", "", False)
+        self.__wait_for_sync_all(1)
 
         coins_before = self.nodes[self.non_mn6].getbalance()
-        nonmn6_ticket1_txid = self.nodes[self.non_mn6].tickets("register", "id", self.nonmn6_green_pastelid1,
-                                                               "passphrase", self.nonmn6_green_address1)["txid"]
+        nonmn6_ticket1_txid = self.nodes[self.non_mn6].tickets("register", "id", self.nonmn6_royalty_pastelid1,
+                                                               self.passphrase, self.nonmn6_royalty_address1)["txid"]
         assert_true(nonmn6_ticket1_txid, "No ticket was created")
-        time.sleep(2)
-        self.sync_all()
-        self.nodes[self.mining_node_num].generate(1)
-        self.sync_all()
+        self.__wait_for_sync_all(1)
 
         # check correct amount of change
         coins_after = self.nodes[self.non_mn6].getbalance()
         print(f"id ticket price - {self.id_ticket_price}")
         assert_equal(coins_after, coins_before - self.id_ticket_price)  # no fee yet
 
+        print("Personal non_mn6 royalty initialize tested")
+
+    # ===============================================================================================================
+    def personal_nonmn7_green_initialize_tests(self):
+        # personal green PastelID ticket
+        self.nonmn7_green_pastelid1 = self.create_pastelid(self.non_mn7)
+        assert_true(self.nonmn7_green_pastelid1, "No Pastelid was created")
+        self.nonmn7_green_address1 = self.nodes[self.non_mn7].getnewaddress()
+
+        # register without errors from non MN with enough coins
+        self.nodes[self.mining_node_num].sendtoaddress(self.nonmn7_green_address1, 100, "", "", False)
+        self.__wait_for_sync_all(1)
+
+        coins_before = self.nodes[self.non_mn7].getbalance()
+        nonmn7_ticket1_txid = self.nodes[self.non_mn7].tickets("register", "id", self.nonmn7_green_pastelid1,
+                                                               self.passphrase, self.nonmn7_green_address1)["txid"]
+        assert_true(nonmn7_ticket1_txid, "No ticket was created")
+        self.__wait_for_sync_all(1)
+
+        # check correct amount of change
+        coins_after = self.nodes[self.non_mn7].getbalance()
+        print(f"id ticket price - {self.id_ticket_price}")
+        assert_equal(coins_after, coins_before - self.id_ticket_price)  # no fee yet
+
         print("Personal green initialize tested")
 
     # ===============================================================================================================
+
+    def get_rand_testdata(self, scope, len):
+        return ''.join(random.choice(scope) for i in range(len))
+
+    # ===============================================================================================================
+
+    def generate_art_ticket_details(self):
+        # Art_ticket structure 
+        # {
+        # "artist_name": string,
+        # "artwork_title": string,
+        # "artwork_series_name": string,
+        # "artwork_keyword_set": string,
+        # "artist_website": string,
+        # "artist_written_statement": string,
+        # "artwork_creation_video_youtube_url": string,
+        # "thumbnail_hash": bytes,    //hash of the thumbnail !!!!SHA3-256!!!!
+        # "data_hash": bytes,         // hash of the image (or any other asset) that this ticket represents !!!!SHA3-256!!!!
+        # "fingerprints_hash": bytes,       //hash of the fingerprint !!!!SHA3-256!!!!
+        # "fingerprints": bytes,            //compressed fingerprint
+        # "fingerprints_signature": bytes,  //signature on raw image fingerprint
+        # "rq_ids": [list of strings],//raptorq symbol identifiers -  !!!!SHA3-256 of symbol block!!!!
+        # "rq_oti": [array of 12 bytes],    //raptorq CommonOTI and SchemeSpecificOTI
+        # "rareness_score": integer,  // 0 to 1000
+        # "nsfw_score": integer,      // 0 to 1000
+        # "seen_score": integer,      // 0 to 1000
+        # }
+        # Data for art-ticket generation
+        artist_first_names=('John','Andy','Joe', 'Jennifer', 'August', 'Dave', 'Blanca', 'Diana', 'Tia', 'Michael')
+        artist_last_names=('Johnson','Smith','Williams', 'Ecclestone', 'Schumacher', 'Faye', 'Counts', 'Wesley')
+        letters = string.ascii_letters
+
+        # initialize hash base strings or lists
+        thumbnail_to_be_hashed = self.get_rand_testdata(letters, 10)#''.join(random.choice(letters) for i in range(10))
+        data_to_be_hashed = self.get_rand_testdata(letters, 10)#''.join(random.choice(letters) for i in range(10))
+        fingerprints_to_be_hashed = self.get_rand_testdata(letters, 10)#''.join(random.choice(letters) for i in range(10))
+        rq_oti = self.get_rand_testdata(letters, 12)#''.join(random.choice(letters) for i in range(12))
+        rq_ids_to_be_hashed = ""
+        for _ in range (5):
+            rq_ids_to_be_hashed += (self.get_rand_testdata(letters, 10))
+        
+        # encode the string
+        encoded_thumbnail = thumbnail_to_be_hashed.encode()
+        encoded_data = data_to_be_hashed.encode()
+        encoded_fingerprint = fingerprints_to_be_hashed.encode()
+        encoded_rq_ids = rq_ids_to_be_hashed.encode()
+        
+        # create sha3-256 hash objects
+        obj_sha3_256_thumbnail = hashlib.sha3_256(encoded_thumbnail)
+        obj_sha3_256_data = hashlib.sha3_256(encoded_data)
+        obj_sha3_256_fingerprint = hashlib.sha3_256(encoded_fingerprint)
+        obj_sha3_256_rq_ids = hashlib.sha3_256(encoded_rq_ids)
+
+        art_ticket_json = {
+            "artist_name": "".join(random.choice(artist_first_names)+" "+random.choice(artist_last_names)),
+            "artwork_title": self.get_rand_testdata(letters, 10),
+            "artwork_series_name": self.get_rand_testdata(letters, 10),
+            "artwork_keyword_set": self.get_rand_testdata(letters, 10),
+            "artist_website": self.get_rand_testdata(letters, 10),
+            "artist_written_statement": self.get_rand_testdata(letters, 10),
+            "artwork_creation_video_youtube_url": self.get_rand_testdata(letters, 10),
+            "thumbnail_hash": obj_sha3_256_thumbnail.hexdigest(),    #hash of the thumbnail !!!!SHA3-256!!!!
+            "data_hash": obj_sha3_256_data.hexdigest(),         #hash of the image (or any other asset) that this ticket represents !!!!SHA3-256!!!!
+            "fingerprints_hash": obj_sha3_256_fingerprint.hexdigest(),       #hash of the fingerprint !!!!SHA3-256!!!!
+            "fingerprints": fingerprints_to_be_hashed,            #compressed fingerprint
+            "fingerprints_signature": self.get_rand_testdata(letters, 20), #signature on raw image fingerprint
+            "rq_ids": obj_sha3_256_rq_ids.hexdigest(), #[list of strings],//raptorq symbol identifiers -  !!!!SHA3-256 of symbol block!!!!
+            "rq_oti": rq_oti,    #raptorq CommonOTI and SchemeSpecificOTI
+            "rareness_score": str(random.randint(0, 1000)),   # 0 to 1000
+            "nsfw_score": str(random.randint(0, 1000)),   # 0 to 1000
+            "seen_score": str(random.randint(0, 1000)),   # 0 to 1000
+        }
+
+        return art_ticket_json
+
+     # ===============================================================================================================
     def create_art_ticket_and_signatures(self, artist_pastelid, artist_node_num,
-                                         app_ticket, data_hash, total_copies,
+                                         app_ticket, data_hash, total_copies, royalty, green_address,
                                          make_bad_signatures_dicts):
         mn_ticket_signatures = {}
 
@@ -577,18 +741,28 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         #   "blocknum": integer,        // block number when the ticket was created - this is to map the ticket to the MNs that should process it
         #   "block_hash": bytes         // hash of the top block when the ticket was created - this is to map the ticket to the MNs that should process it
         #   "copies": integer,          // number of copies
-        #   "royalty": short,           // (not yet supported by cNode) how much artist should get on all future resales
-        #   "green": string,            // address for Green NFT payment (not yet supported by cNode)
+        #   "royalty": short,           // how much artist should get on all future resales (not yet supported by cNode)
+        #   "green_address": string,    // address for Green NFT payment (not yet supported by cNode)
         #   "app_ticket": ...
         # }
+
+
+        res1 = self.nodes[artist_node_num].getblock(str(self.artist_ticket_height))
+        
+        block_hash = res1["hash"]
+
+        app_ticket_json = self.generate_art_ticket_details()
+
+        app_ticket = str_to_b64str(json.dumps(app_ticket_json))
+
         json_ticket = {
             "version": 1,
             "author": artist_pastelid,
             "blocknum": self.artist_ticket_height,
-            "block_hash": data_hash,
+            "block_hash": block_hash,
             "copies": total_copies,
-            "royalty": self.royalty,
-            "green": self.nonmn6_green_address1,
+            "royalty": royalty,
+            "green_address": green_address,
             "app_ticket": app_ticket
         }
         self.ticket = str_to_b64str(json.dumps(json_ticket))
@@ -596,10 +770,10 @@ class MasterNodeTicketsTest(MasterNodeCommon):
 
         # create ticket signature
         self.ticket_signature_artist = \
-            self.nodes[artist_node_num].pastelid("sign", self.ticket, artist_pastelid, "passphrase")["signature"]
+            self.nodes[artist_node_num].pastelid("sign", self.ticket, artist_pastelid, self.passphrase)["signature"]
         for n in range(0, 12):
             mn_ticket_signatures[n] = self.nodes[n].pastelid("sign",
-                                                             self.ticket, self.mn_pastelids[n], "passphrase")["signature"]
+                                                             self.ticket, self.mn_pastelids[n], self.passphrase)["signature"]
         print(f"ticket_signature_artist - {self.ticket_signature_artist}")
         print(f"mn_ticket_signatures - {mn_ticket_signatures}")
 
@@ -666,53 +840,48 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         self.nodes[self.mining_node_num].generate(10)
 
         # generate pastelIDs
-        non_registered_personal_pastelid1 = self.nodes[self.non_mn3].pastelid("newkey", "passphrase")["pastelid"]
-        non_registered_mn_pastelid1 = self.nodes[2].pastelid("newkey", "passphrase")["pastelid"]
+        non_registered_personal_pastelid1 = self.create_pastelid(self.non_mn3)
+        non_registered_mn_pastelid1 = self.create_pastelid(2)
         if not skip_mn_pastelid_registration:
-            self.artist_pastelid1 = self.nodes[self.non_mn3].pastelid("newkey", "passphrase")["pastelid"]
+            self.artist_pastelid1 = self.create_pastelid(self.non_mn3)
             for n in range(0, 12):
                 self.mn_addresses[n] = self.nodes[n].getnewaddress()
                 self.nodes[self.mining_node_num].sendtoaddress(self.mn_addresses[n], 100, "", "", False)
                 if n == 0:
                     self.mn_pastelids[n] = self.mn0_pastelid1  # mn0 has its PastelID registered already
                 else:
-                    self.mn_pastelids[n] = self.nodes[n].pastelid("newkey", "passphrase")["pastelid"]
+                    self.mn_pastelids[n] = self.create_pastelid(n)
                 self.mn_outpoints[self.nodes[n].masternode("status")["outpoint"]] = n
 
             print(f"mn_addresses - {self.mn_addresses}")
             print(f"mn_pastelids - {self.mn_pastelids}")
             print(f"mn_outpoints - {self.mn_outpoints}")
 
-            time.sleep(2)
-            self.sync_all()
-            self.nodes[self.mining_node_num].generate(1)
-            self.sync_all()
+            self.__wait_for_sync_all(1)
 
             # register pastelIDs
-            self.nodes[self.non_mn3].tickets("register", "id", self.artist_pastelid1, "passphrase", self.nonmn3_address1)
+            self.nodes[self.non_mn3].tickets("register", "id", self.artist_pastelid1, self.passphrase, self.nonmn3_address1)
             for n in range(1, 12):  # mn0 has its PastelID registered already
-                self.nodes[n].tickets("register", "mnid", self.mn_pastelids[n], "passphrase")
+                self.nodes[n].tickets("register", "mnid", self.mn_pastelids[n], self.passphrase)
 
         else:
             for n in range(0, 12):
                 self.mn_addresses[n] = self.nodes[n].getnewaddress()
                 self.nodes[self.mining_node_num].sendtoaddress(self.mn_addresses[n], 10000, "", "", False)
 
-        time.sleep(2)
-        self.sync_all()
-        self.nodes[self.mining_node_num].generate(5)
-        self.sync_all()
+        self.__wait_for_sync_all(5)
 
         self.total_copies = 10
         self.create_art_ticket_and_signatures(self.artist_pastelid1, self.non_mn3,
                                               "HIJKLMNOP", "ABCDEFG", self.total_copies,
+                                              self.royalty, self.nonmn7_green_address1,
                                               True)
 
         #   c.a register art registration ticket
         #       c.a.1 fail if not MN
         try:
             self.nodes[self.non_mn1].tickets("register", "art", self.ticket, json.dumps(self.signatures_dict),
-                                             self.nonmn1_pastelid2, "passphrase", key1, key2, str(self.storage_fee))
+                                             self.nonmn1_pastelid2, self.passphrase, key1, key2, str(self.storage_fee))
         except JSONRPCException as e:
             self.errorString = e.error['message']
             print(self.errorString)
@@ -721,7 +890,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         #       c.a.2 fail if not active MN
         try:
             self.nodes[self.non_active_mn].tickets("register", "art", self.ticket, json.dumps(self.signatures_dict),
-                                                   self.non_active_mn_pastelid1, "passphrase", key1, key2,
+                                                   self.non_active_mn_pastelid1, self.passphrase, key1, key2,
                                                    str(self.storage_fee))
         except JSONRPCException as e:
             self.errorString = e.error['message']
@@ -732,12 +901,12 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         try:
             self.nodes[self.top_mns_index0].tickets("register", "art",
                                                     self.ticket, json.dumps(self.signatures_dict),
-                                                    self.nonmn1_pastelid2, "passphrase",
+                                                    self.nonmn1_pastelid2, self.passphrase,
                                                     key1, key2, str(self.storage_fee))
         except JSONRPCException as e:
             self.errorString = e.error['message']
             print(self.errorString)
-        assert_equal("Cannot open file to read key from" in self.errorString, True)
+        assert_equal(ERR_READ_PASTELID_FILE in self.errorString, True)
         # TODO: provide better error for unknown PastelID
 
         #       c.a.4 fail if active MN, but wrong passphrase
@@ -749,7 +918,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         except JSONRPCException as e:
             self.errorString = e.error['message']
             print(self.errorString)
-        assert_equal("Cannot read key from string" in self.errorString, True)
+        assert_equal(ERR_READ_PASTELID_FILE in self.errorString, True)
         # TODO: provide better error for wrong passphrase
 
         #       c.a.5 fail if artist's signature is not matching
@@ -757,7 +926,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         try:
             self.nodes[self.top_mns_index0].tickets("register", "art",
                                                     self.ticket, json.dumps(self.signatures_dict),
-                                                    self.top_mn_pastelid0, "passphrase",
+                                                    self.top_mn_pastelid0, self.passphrase,
                                                     key1, key2, str(self.storage_fee))
         except JSONRPCException as e:
             self.errorString = e.error['message']
@@ -770,7 +939,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         try:
             self.nodes[self.top_mns_index0].tickets("register", "art",
                                                     self.ticket, json.dumps(self.signatures_dict),
-                                                    self.top_mn_pastelid0, "passphrase",
+                                                    self.top_mn_pastelid0, self.passphrase,
                                                     key1, key2, str(self.storage_fee))
         except JSONRPCException as e:
             self.errorString = e.error['message']
@@ -782,7 +951,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         try:
             self.nodes[self.top_mns_index0].tickets("register", "art",
                                                     self.ticket, json.dumps(self.signatures_dict),
-                                                    self.top_mn_pastelid0, "passphrase",
+                                                    self.top_mn_pastelid0, self.passphrase,
                                                     key1, key2, str(self.storage_fee))
         except JSONRPCException as e:
             self.errorString = e.error['message']
@@ -796,7 +965,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         try:
             self.nodes[self.top_mns_index0].tickets("register", "art",
                                                     self.ticket, json.dumps(self.signatures_dict),
-                                                    self.top_mn_pastelid0, "passphrase",
+                                                    self.top_mn_pastelid0, self.passphrase,
                                                     key1, key2, str(self.storage_fee))
         except JSONRPCException as e:
             self.errorString = e.error['message']
@@ -812,7 +981,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         try:
             self.nodes[self.top_mns_index0].tickets("register", "art",
                                                     self.ticket, json.dumps(self.signatures_dict),
-                                                    self.top_mn_pastelid0, "passphrase",
+                                                    self.top_mn_pastelid0, self.passphrase,
                                                     key1, key2, str(self.storage_fee))
         except JSONRPCException as e:
             self.errorString = e.error['message']
@@ -827,7 +996,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         try:
             self.nodes[self.top_mns_index0].tickets("register", "art",
                                                     self.ticket, json.dumps(self.signatures_dict),
-                                                    self.top_mn_pastelid0, "passphrase",
+                                                    self.top_mn_pastelid0, self.passphrase,
                                                     key1, key2, str(self.storage_fee))
         except JSONRPCException as e:
             self.errorString = e.error['message']
@@ -842,7 +1011,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         try:
             self.nodes[self.top_mns_index0].tickets("register", "art",
                                                     self.ticket, json.dumps(self.signatures_dict),
-                                                    self.top_mn_pastelid0, "passphrase",
+                                                    self.top_mn_pastelid0, self.passphrase,
                                                     key1, key2, str(self.storage_fee))
         except JSONRPCException as e:
             self.errorString = e.error['message']
@@ -855,7 +1024,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         try:
             self.nodes[self.top_mns_index0].tickets("register", "art",
                                                     self.ticket, json.dumps(self.not_top_mns_signatures_dict),
-                                                    self.top_mn_pastelid0, "passphrase",
+                                                    self.top_mn_pastelid0, self.passphrase,
                                                     key1, key2, str(self.storage_fee))
         except JSONRPCException as e:
             self.errorString = e.error['message']
@@ -866,20 +1035,71 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         try:
             self.nodes[self.top_mns_index0].tickets("register", "art",
                                                     self.ticket, json.dumps(self.same_mns_signatures_dict),
-                                                    self.top_mn_pastelid0, "passphrase",
+                                                    self.top_mn_pastelid0, self.passphrase,
                                                     key1, key2, str(self.storage_fee))
         except JSONRPCException as e:
             self.errorString = e.error['message']
             print(self.errorString)
         assert_equal("MNs PastelIDs can not be the same" in self.errorString, True)
 
-        #       c.a.6 register without errors, if enough coins for tnx fee
+        # check royalty max value 20
+        self.create_art_ticket_and_signatures(self.artist_pastelid1, self.non_mn3,
+                                              "HIJKLMNOP", "ABCDEFG", self.total_copies,
+                                              25, self.nonmn7_green_address1,
+                                              True)
+        try:
+            self.nodes[self.top_mns_index0].tickets("register", "art",
+                                                    self.ticket, json.dumps(self.signatures_dict),
+                                                    self.top_mn_pastelid0, self.passphrase,
+                                                    key1, key2, str(self.storage_fee))
+        except JSONRPCException as e:
+            self.errorString = e.error['message']
+            print(self.errorString)
+        assert_equal("Royalty can't be 25 per cent, Max is 20 per cent" in self.errorString, True)
+
+        # check royalty negative value -5
+        self.create_art_ticket_and_signatures(self.artist_pastelid1, self.non_mn3,
+                                              "HIJKLMNOP", "ABCDEFG", self.total_copies,
+                                              -5, self.nonmn7_green_address1,
+                                              True)
+        try:
+            self.nodes[self.top_mns_index0].tickets("register", "art",
+                                                    self.ticket, json.dumps(self.signatures_dict),
+                                                    self.top_mn_pastelid0, self.passphrase,
+                                                    key1, key2, str(self.storage_fee))
+        except JSONRPCException as e:
+            self.errorString = e.error['message']
+            print(self.errorString)
+        # uint16_t -> 2 ^ 16 -> 65536 - 5 = 65531
+        assert_equal("Royalty can't be 65531 per cent, Max is 20 per cent" in self.errorString, True)
+
+        # check "wrong_green_address"
+        self.create_art_ticket_and_signatures(self.artist_pastelid1, self.non_mn3,
+                                              "HIJKLMNOP", "ABCDEFG", self.total_copies,
+                                              20, "wrong_green_address",
+                                              True)
+        try:
+            self.nodes[self.top_mns_index0].tickets("register", "art",
+                                                    self.ticket, json.dumps(self.signatures_dict),
+                                                    self.top_mn_pastelid0, self.passphrase,
+                                                    key1, key2, str(self.storage_fee))
+        except JSONRPCException as e:
+            self.errorString = e.error['message']
+            print(self.errorString)
+        assert_equal("The Green NFT address [wrong_green_address] is invalid" in self.errorString, True)
+
+        # c.a.6 register without errors, if enough coins for tnx fee
+        self.create_art_ticket_and_signatures(self.artist_pastelid1, self.non_mn3,
+                                              "HIJKLMNOP", "ABCDEFG", self.total_copies,
+                                              self.royalty, self.nonmn7_green_address1,
+                                              True)
+
         coins_before = self.nodes[self.top_mns_index0].getbalance()
         # print(coins_before)
 
         self.art_ticket1_txid = self.nodes[self.top_mns_index0].tickets("register", "art",
                                                                         self.ticket, json.dumps(self.signatures_dict),
-                                                                        self.top_mn_pastelid0, "passphrase",
+                                                                        self.top_mn_pastelid0, self.passphrase,
                                                                         key1, key2, str(self.storage_fee))["txid"]
         assert_true(self.art_ticket1_txid, "No ticket was created")
         self.__wait_for_ticket_tnx()
@@ -895,7 +1115,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         try:
             self.nodes[self.top_mns_index0].tickets("register", "art",
                                                     self.ticket, json.dumps(self.signatures_dict),
-                                                    self.top_mn_pastelid0, "passphrase",
+                                                    self.top_mn_pastelid0, self.passphrase,
                                                     key1, "newkey", str(self.storage_fee))
         except JSONRPCException as e:
             self.errorString = e.error['message']
@@ -906,7 +1126,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         try:
             self.nodes[self.top_mns_index0].tickets("register", "art",
                                                     self.ticket, json.dumps(self.signatures_dict),
-                                                    self.top_mn_pastelid0, "passphrase",
+                                                    self.top_mn_pastelid0, self.passphrase,
                                                     "newkey", key2, str(self.storage_fee))
         except JSONRPCException as e:
             self.errorString = e.error['message']
@@ -928,7 +1148,12 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         assert_equal(art_ticket1_1["ticket"]["total_copies"], self.total_copies)
         assert_equal(art_ticket1_1["ticket"]["storage_fee"], self.storage_fee)
         assert_equal(art_ticket1_1["ticket"]["royalty"], self.royalty)
-        assert_equal(art_ticket1_1["ticket"]["green"], self.nonmn6_green_address1)
+        if self.royalty > 0:
+            assert_equal(art_ticket1_1["ticket"]["royalty_address"], self.nonmn3_address1)
+        else:
+            assert(len(art_ticket1_1["ticket"]["royalty_address"]) == 0)
+        assert_equal(art_ticket1_1["ticket"]["green"], 2)
+        assert_equal(art_ticket1_1["ticket"]["green_address"], self.nonmn7_green_address1)
         assert_equal(art_ticket1_1["ticket"]["signatures"]["artist"][self.artist_pastelid1],
                      self.ticket_signature_artist)
         assert_equal(art_ticket1_1["ticket"]["signatures"]["mn2"][self.top_mn_pastelid1], self.top_mn_ticket_signature1)
@@ -944,7 +1169,12 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         assert_equal(art_ticket1_2["ticket"]["total_copies"], self.total_copies)
         assert_equal(art_ticket1_2["ticket"]["storage_fee"], self.storage_fee)
         assert_equal(art_ticket1_2["ticket"]["royalty"], self.royalty)
-        assert_equal(art_ticket1_2["ticket"]["green"], self.nonmn6_green_address1)
+        if self.royalty > 0:
+            assert_equal(art_ticket1_2["ticket"]["royalty_address"], self.nonmn3_address1)
+        else:
+            assert(len(art_ticket1_2["ticket"]["royalty_address"]) == 0)
+        assert_equal(art_ticket1_2["ticket"]["green"], 2)
+        assert_equal(art_ticket1_2["ticket"]["green_address"], self.nonmn7_green_address1)
         assert_equal(art_ticket1_2["ticket"]["signatures"]["artist"][self.artist_pastelid1],
                      art_ticket1_1["ticket"]["signatures"]["artist"][self.artist_pastelid1])
 
@@ -969,7 +1199,193 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         print(self.top_mn_pastelid0)
         print(art_tickets_by_pid)
 
+        self.royalty_address = self.nonmn3_address1
+
         print("Art registration tickets tested")
+
+    # ===============================================================================================================
+    def artroyalty_null_ticket_tests(self):
+        print("== Art royalty null tickets test ==")
+
+        assert_equal(self.royalty, 0)
+
+        # not enough confirmations
+        print(self.nodes[self.non_mn3].getblockcount())
+        try:
+            self.nodes[self.non_mn3].tickets("register", "royalty",
+                                             self.art_ticket1_txid, "new_pastelid1", self.artist_pastelid1, self.passphrase)
+        except JSONRPCException as e:
+            self.errorString = e.error['message']
+            print(self.errorString)
+        assert_equal("Royalty ticket can be created only after" in self.errorString, True)
+        self.__wait_for_gen10_blocks()
+        print(self.nodes[self.non_mn3].getblockcount())
+
+        try:
+            self.nodes[self.non_mn3].tickets("register", "royalty",
+                                             self.art_ticket1_txid, "new_pastelid1", self.artist_pastelid1, self.passphrase)
+        except JSONRPCException as e:
+            self.errorString = e.error['message']
+            print(self.errorString)
+        assert_equal("The art Reg ticket with txid [" + self.art_ticket1_txid + "] has no royalty" in self.errorString, True)
+
+        print("Art royalty null tickets tested")
+
+    # ===============================================================================================================
+    def artroyalty_ticket_tests(self, nonmn_id, old_pastelid1, new_pastelid1, new_address1, num):
+        print(f"== Art royalty tickets test {num} ==")
+
+        # fail if wrong PastelID
+        try:
+            self.nodes[nonmn_id].tickets("register", "royalty",
+                                         self.art_ticket1_txid, new_pastelid1, self.top_mn_pastelid1, self.passphrase)
+        except JSONRPCException as e:
+            self.errorString = e.error['message']
+            print(self.errorString)
+        assert_equal(ERR_READ_PASTELID_FILE in self.errorString, True)
+
+        # fail if wrong passphrase
+        try:
+            self.nodes[nonmn_id].tickets("register", "royalty",
+                                         self.art_ticket1_txid, new_pastelid1, old_pastelid1, "wrong")
+        except JSONRPCException as e:
+            self.errorString = e.error['message']
+            print(self.errorString)
+        assert_equal(ERR_READ_PASTELID_FILE in self.errorString, True)
+
+        # fail if there is not ArtTicket with this txid
+        try:
+            self.nodes[nonmn_id].tickets("register", "royalty",
+                                         self.mn0_ticket1_txid, new_pastelid1, old_pastelid1, self.passphrase)
+        except JSONRPCException as e:
+            self.errorString = e.error['message']
+            print(self.errorString)
+        assert_equal("The art ticket with this txid ["+self.mn0_ticket1_txid +
+                     "] referred by this Royalty ticket is not in the blockchain" in self.errorString, True)
+
+        assert(num == 1 or num == 2)
+        if num == 1:
+            assert_equal(nonmn_id, self.non_mn3)
+            assert_equal(old_pastelid1, self.artist_pastelid1)
+            assert_equal(new_pastelid1, self.nonmn5_royalty_pastelid1)
+            assert_equal(new_address1, self.nonmn5_royalty_address1)
+
+            # not enough confirmations
+            print(self.nodes[nonmn_id].getblockcount())
+            try:
+                self.nodes[nonmn_id].tickets("register", "royalty",
+                                             self.art_ticket1_txid, new_pastelid1, self.artist_pastelid1, self.passphrase)
+            except JSONRPCException as e:
+                self.errorString = e.error['message']
+                print(self.errorString)
+            assert_equal("Royalty ticket can be created only after" in self.errorString, True)
+            self.__wait_for_gen10_blocks()
+            print(self.nodes[nonmn_id].getblockcount())
+
+            # fail if artist's PastelID is not matching artist's PastelID in the registration ticket
+            try:
+                self.nodes[nonmn_id].tickets("register", "royalty",
+                                             self.art_ticket1_txid, new_pastelid1, self.nonmn3_pastelid1, self.passphrase)
+            except JSONRPCException as e:
+                self.errorString = e.error['message']
+                print(self.errorString)
+            assert_equal("is not matching the Artist's PastelID" in self.errorString, True)
+        else:
+            assert_equal(nonmn_id, self.non_mn5)
+            assert_equal(old_pastelid1, self.nonmn5_royalty_pastelid1)
+            assert_equal(new_pastelid1, self.nonmn6_royalty_pastelid1)
+            assert_equal(new_address1, self.nonmn6_royalty_address1)
+
+            # fail if is not matching current PastelID of the royalty payee
+            non_registered_pastelid1 = self.create_pastelid(self.non_mn5)
+            try:
+                self.nodes[nonmn_id].tickets("register", "royalty",
+                                             self.art_ticket1_txid, new_pastelid1, non_registered_pastelid1, self.passphrase)
+            except JSONRPCException as e:
+                self.errorString = e.error['message']
+                print(self.errorString)
+            assert_equal("The PastelID [" + non_registered_pastelid1 + "] is not matching the PastelID [" +
+                         self.nonmn5_royalty_pastelid1 + "] in the Change Royalty ticket with art txid [" +
+                         self.art_ticket1_txid + "]" in self.errorString, True)
+
+        try:
+            self.nodes[nonmn_id].tickets("register", "royalty",
+                                         self.art_ticket1_txid, "", old_pastelid1, self.passphrase)
+        except JSONRPCException as e:
+            self.errorString = e.error['message']
+            print(self.errorString)
+        assert_equal("The Change Royalty ticket new_pastelID is empty" in self.errorString, True)
+
+        try:
+            self.nodes[nonmn_id].tickets("register", "royalty",
+                                         self.art_ticket1_txid, old_pastelid1, old_pastelid1, self.passphrase)
+        except JSONRPCException as e:
+            self.errorString = e.error['message']
+            print(self.errorString)
+        assert_equal("The Change Royalty ticket new_pastelID is equal to current pastelID" in self.errorString, True)
+
+        coins_before = self.nodes[nonmn_id].getbalance()
+
+        art_royalty_txid = self.nodes[nonmn_id].tickets("register", "royalty",
+                                                        self.art_ticket1_txid, new_pastelid1,
+                                                        old_pastelid1, self.passphrase)["txid"]
+        assert_true(art_royalty_txid, "No ticket was created")
+        self.__wait_for_ticket_tnx()
+
+        # fail if already registered
+        try:
+            self.nodes[nonmn_id].tickets("register", "royalty",
+                                         self.art_ticket1_txid, new_pastelid1, old_pastelid1, self.passphrase)
+        except JSONRPCException as e:
+            self.errorString = e.error['message']
+            print(self.errorString)
+        assert_equal("The PastelID [" + old_pastelid1 + "] is not matching the PastelID [" +
+                     new_pastelid1 + "] in the Change Royalty ticket with art txid [" +
+                     self.art_ticket1_txid + "]" in self.errorString, True)
+
+        coins_after = self.nodes[nonmn_id].getbalance()
+        print(f"coins before - {coins_before}")
+        print(f"coins after - {coins_after}")
+        assert_equal(coins_before - coins_after, 10)
+
+        # from another node - get ticket transaction and check
+        #   - amounts is totaling 10PSL
+        art_ticket1_royalty_ticket_hash = self.nodes[0].getrawtransaction(art_royalty_txid)
+        art_ticket1_royalty_ticket_tx = self.nodes[0].decoderawtransaction(art_ticket1_royalty_ticket_hash)
+        fee_amount = 0
+
+        for v in art_ticket1_royalty_ticket_tx["vout"]:
+            if v["scriptPubKey"]["type"] == "multisig":
+                fee_amount += v["value"]
+        assert_equal(fee_amount, 10)
+
+        # find ticket by pastelID
+        art_ticket1_royalty_ticket_1 = self.nodes[self.non_mn1].tickets("find", "royalty", old_pastelid1)
+        assert_equal(art_ticket1_royalty_ticket_1[0]["ticket"]['type'], "art-royalty")
+        assert_equal(art_ticket1_royalty_ticket_1[0]["ticket"]['pastelID'], old_pastelid1)
+        assert_equal(art_ticket1_royalty_ticket_1[0]["ticket"]['new_pastelID'], new_pastelid1)
+        assert_equal(art_ticket1_royalty_ticket_1[0]["ticket"]['art_txid'], self.art_ticket1_txid)
+        assert_equal(art_ticket1_royalty_ticket_1[0]['txid'], art_royalty_txid)
+
+        # get the same ticket by txid and compare with ticket found by pastelID
+        art_ticket1_royalty_ticket_2 = self.nodes[self.non_mn1].tickets("get", art_royalty_txid)
+        assert_equal(art_ticket1_royalty_ticket_2["ticket"]["signature"],
+                     art_ticket1_royalty_ticket_1[0]["ticket"]["signature"])
+
+        # list all art royalty tickets, check PastelIDs
+        royalty_tickets_list = self.nodes[0].tickets("list", "royalty")
+        f1 = False
+        f2 = False
+        for t in royalty_tickets_list:
+            if art_royalty_txid == t["txid"]:
+                f1 = True
+                f2 = (self.art_ticket1_txid == t["ticket"]["art_txid"])
+        assert_true(f1)
+        assert_true(f2)
+
+        self.royalty_address = new_address1
+
+        print(f"Art royalty tickets {num} tested")
 
     # ===============================================================================================================
     def artact_ticket_tests(self, skip_low_coins_tests):
@@ -980,11 +1396,11 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         try:
             self.nodes[self.non_mn3].tickets("register", "act",
                                              self.art_ticket1_txid, str(self.artist_ticket_height),
-                                             str(self.storage_fee), self.top_mn_pastelid1, "passphrase")
+                                             str(self.storage_fee), self.top_mn_pastelid1, self.passphrase)
         except JSONRPCException as e:
             self.errorString = e.error['message']
             print(self.errorString)
-        assert_equal("Cannot open file to read key from" in self.errorString, True)
+        assert_equal(ERR_READ_PASTELID_FILE in self.errorString, True)
         # TODO Pastel: provide better error for unknown PastelID
 
         #       d.a.2 fail if wrong passphrase
@@ -995,7 +1411,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         except JSONRPCException as e:
             self.errorString = e.error['message']
             print(self.errorString)
-        assert_equal("Cannot read key from string" in self.errorString, True)
+        assert_equal(ERR_READ_PASTELID_FILE in self.errorString, True)
         # TODO Pastel: provide better error for wrong passphrase
 
         #       d.a.7 fail if not enough coins to pay 90% of registration price (from artReg ticket) (90) + tnx fee (act ticket price)
@@ -1004,51 +1420,46 @@ class MasterNodeTicketsTest(MasterNodeCommon):
             try:
                 self.nodes[self.non_mn3].tickets("register", "act",
                                                  self.art_ticket1_txid, str(self.artist_ticket_height),
-                                                 str(self.storage_fee), self.artist_pastelid1, "passphrase")
+                                                 str(self.storage_fee), self.artist_pastelid1, self.passphrase)
             except JSONRPCException as e:
                 self.errorString = e.error['message']
                 print(self.errorString)
             assert_equal("Not enough coins to cover price [100]" in self.errorString, True)
 
         self.nodes[self.mining_node_num].sendtoaddress(self.nonmn3_address1, str(self.collateral), "", "", False)
-        time.sleep(2)
-        self.sync_all(10, 30)
-        self.nodes[self.mining_node_num].generate(1)
-        self.sync_all(10, 30)
+        self.__wait_for_sync_all10()
 
         #       d.a.3 fail if there is not ArtTicket with this txid
         try:
             self.nodes[self.non_mn3].tickets("register", "act",
                                              self.mn0_ticket1_txid, str(self.artist_ticket_height),
-                                             str(self.storage_fee), self.artist_pastelid1, "passphrase")
+                                             str(self.storage_fee), self.artist_pastelid1, self.passphrase)
         except JSONRPCException as e:
             self.errorString = e.error['message']
             print(self.errorString)
         assert_equal("The art ticket with this txid ["+self.mn0_ticket1_txid +
                      "] referred by this Activation ticket is not in the blockchain" in self.errorString, True)
 
-        #  not enough confirmations
-        print(self.nodes[self.non_mn3].getblockcount())
-        try:
-            self.nodes[self.non_mn3].tickets("register", "act",
-                                             self.art_ticket1_txid, str(self.artist_ticket_height),
-                                             str(self.storage_fee), self.artist_pastelid1, "passphrase")
-        except JSONRPCException as e:
-            self.errorString = e.error['message']
-            print(self.errorString)
-        assert_equal("Activation ticket can be created only after" in self.errorString, True)
-        time.sleep(2)
-        self.nodes[self.mining_node_num].generate(10)
-        time.sleep(2)
-        self.nodes[self.mining_node_num].generate(10)
-        print(self.nodes[self.non_mn3].getblockcount())
+        if not self.royalty_tickets_tests and not self.royalty_null_tests:
+            # not enough confirmations
+            print(self.nodes[self.non_mn3].getblockcount())
+            try:
+                self.nodes[self.non_mn3].tickets("register", "act",
+                                                 self.art_ticket1_txid, str(self.artist_ticket_height),
+                                                 str(self.storage_fee), self.artist_pastelid1, self.passphrase)
+            except JSONRPCException as e:
+                self.errorString = e.error['message']
+                print(self.errorString)
+            assert_equal("Activation ticket can be created only after" in self.errorString, True)
+            self.__wait_for_gen10_blocks()
+            print(self.nodes[self.non_mn3].getblockcount())
 
         #       d.a.4 fail if artist's PastelID in the activation ticket
         #       is not matching artist's PastelID in the registration ticket
         try:
             self.nodes[self.non_mn3].tickets("register", "act",
                                              self.art_ticket1_txid, str(self.artist_ticket_height),
-                                             str(self.storage_fee), self.nonmn3_pastelid1, "passphrase")
+                                             str(self.storage_fee), self.nonmn3_pastelid1, self.passphrase)
         except JSONRPCException as e:
             self.errorString = e.error['message']
             print(self.errorString)
@@ -1058,7 +1469,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         try:
             self.nodes[self.non_mn3].tickets("register", "act",
                                              self.art_ticket1_txid, "55", str(self.storage_fee),
-                                             self.artist_pastelid1, "passphrase")
+                                             self.artist_pastelid1, self.passphrase)
         except JSONRPCException as e:
             self.errorString = e.error['message']
             print(self.errorString)
@@ -1068,7 +1479,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         try:
             self.nodes[self.non_mn3].tickets("register", "act",
                                              self.art_ticket1_txid, str(self.artist_ticket_height), "55",
-                                             self.artist_pastelid1, "passphrase")
+                                             self.artist_pastelid1, self.passphrase)
         except JSONRPCException as e:
             self.errorString = e.error['message']
             print(self.errorString)
@@ -1092,7 +1503,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
                                                                             self.art_ticket1_txid,
                                                                             str(self.artist_ticket_height),
                                                                             str(self.storage_fee),
-                                                                            self.artist_pastelid1, "passphrase")["txid"]
+                                                                            self.artist_pastelid1, self.passphrase)["txid"]
         assert_true(self.art_ticket1_act_ticket_txid, "No ticket was created")
         self.__wait_for_ticket_tnx()
 
@@ -1124,7 +1535,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
             self.nodes[self.non_mn3].tickets("register", "act",
                                              self.art_ticket1_txid, str(self.artist_ticket_height),
                                              str(self.storage_fee),
-                                             self.artist_pastelid1, "passphrase")
+                                             self.artist_pastelid1, self.passphrase)
         except JSONRPCException as e:
             self.errorString = e.error['message']
             print(self.errorString)
@@ -1203,17 +1614,14 @@ class MasterNodeTicketsTest(MasterNodeCommon):
             try:
                 self.nodes[self.non_mn3].tickets("register", "sell",
                                                  self.art_ticket1_act_ticket_txid, str("100000000"),
-                                                 self.artist_pastelid1, "passphrase")
+                                                 self.artist_pastelid1, self.passphrase)
             except JSONRPCException as e:
                 self.errorString = e.error['message']
                 print(self.errorString)
             assert_equal("Not enough coins to cover price [2000000]" in self.errorString, True)
 
         self.nodes[self.mining_node_num].sendtoaddress(self.nonmn3_address1, 5000, "", "", False)
-        time.sleep(2)
-        self.sync_all()
-        self.nodes[self.mining_node_num].generate(1)
-        self.sync_all()
+        self.__wait_for_sync_all(1)
         coins_before = self.nodes[self.non_mn3].getbalance()
         print(coins_before)
 
@@ -1221,7 +1629,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         try:
             self.nodes[self.non_mn3].tickets("register", "sell",
                                              self.art_ticket1_txid, str(self.art_copy_price),
-                                             self.artist_pastelid1, "passphrase")
+                                             self.artist_pastelid1, self.passphrase)
         except JSONRPCException as e:
             self.errorString = e.error['message']
             print(self.errorString)
@@ -1233,22 +1641,19 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         try:
             self.nodes[self.non_mn3].tickets("register", "sell",
                                              self.art_ticket1_act_ticket_txid, str(self.art_copy_price),
-                                             self.artist_pastelid1, "passphrase")
+                                             self.artist_pastelid1, self.passphrase)
         except JSONRPCException as e:
             self.errorString = e.error['message']
             print(self.errorString)
         assert_equal("Sell ticket can be created only after" in self.errorString, True)
-        time.sleep(2)
-        self.nodes[self.mining_node_num].generate(10)
-        time.sleep(2)
-        self.nodes[self.mining_node_num].generate(10)
+        self.__wait_for_gen10_blocks()
         print(self.nodes[self.non_mn3].getblockcount())
 
         # 2. check PastelID in this ticket matches PastelID in the referred Activation ticket
         try:
             self.nodes[self.non_mn3].tickets("register", "sell",
                                              self.art_ticket1_act_ticket_txid, str(self.art_copy_price),
-                                             self.nonmn3_pastelid1, "passphrase", self.nonmn4_pastelid1)
+                                             self.nonmn3_pastelid1, self.passphrase, self.nonmn4_pastelid1)
         except JSONRPCException as e:
             self.errorString = e.error['message']
             print(self.errorString)
@@ -1261,7 +1666,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         try:
             self.nodes[self.non_mn3].tickets("register", "sell",
                                              self.art_ticket1_act_ticket_txid, str(self.art_copy_price),
-                                             self.artist_pastelid1, "passphrase", self.nonmn1_pastelid2)
+                                             self.artist_pastelid1, self.passphrase, self.nonmn1_pastelid2)
         except JSONRPCException as e:
             self.errorString = e.error['message']
             print(self.errorString)
@@ -1274,7 +1679,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
             try:
                 self.nodes[self.non_mn3].tickets("register", "sell",
                                                  self.art_ticket1_act_ticket_txid, str(self.art_copy_price),
-                                                 self.artist_pastelid1, "passphrase")
+                                                 self.artist_pastelid1, self.passphrase)
             except JSONRPCException as e:
                 self.errorString = e.error['message']
                 print(self.errorString)
@@ -1285,7 +1690,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         self.art_ticket1_sell_ticket_txid = \
             self.nodes[self.non_mn3].tickets("register", "sell",
                                              self.art_ticket1_act_ticket_txid, str(self.art_copy_price),
-                                             self.artist_pastelid1, "passphrase", self.nonmn4_pastelid1)["txid"]
+                                             self.artist_pastelid1, self.passphrase, self.nonmn4_pastelid1)["txid"]
         assert_true(self.art_ticket1_sell_ticket_txid, "No ticket was created")
         self.__wait_for_ticket_tnx()
 
@@ -1375,7 +1780,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
             try:
                 self.nodes[self.non_mn4].tickets("register", "buy",
                                                  self.art_ticket1_sell_ticket_txid, str(self.art_copy_price),
-                                                 self.nonmn4_pastelid1, "passphrase")
+                                                 self.nonmn4_pastelid1, self.passphrase)
             except JSONRPCException as e:
                 self.errorString = e.error['message']
                 print(self.errorString)
@@ -1383,10 +1788,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
 
         # send coins for 2 copies to test fail second buy ticket for the same sell tnxid
         self.nodes[self.mining_node_num].sendtoaddress(self.nonmn4_address1, 2 * cover_price, "", "", False)
-        time.sleep(2)
-        self.sync_all()
-        self.nodes[self.mining_node_num].generate(1)
-        self.sync_all()
+        self.__wait_for_sync_all(1)
         coins_before = self.nodes[self.non_mn4].getbalance()
         print(coins_before)
 
@@ -1394,7 +1796,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         try:
             self.nodes[self.non_mn4].tickets("register", "buy",
                                              self.art_ticket1_act_ticket_txid, str(self.art_copy_price),
-                                             self.nonmn4_pastelid1, "passphrase")
+                                             self.nonmn4_pastelid1, self.passphrase)
         except JSONRPCException as e:
             self.errorString = e.error['message']
             print(self.errorString)
@@ -1406,15 +1808,12 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         try:
             self.nodes[self.non_mn4].tickets("register", "buy",
                                              self.art_ticket1_sell_ticket_txid, str(self.art_copy_price),
-                                             self.nonmn4_pastelid1, "passphrase")
+                                             self.nonmn4_pastelid1, self.passphrase)
         except JSONRPCException as e:
             self.errorString = e.error['message']
             print(self.errorString)
         assert_equal("Buy ticket can be created only after" in self.errorString, True)
-        time.sleep(2)
-        self.nodes[self.mining_node_num].generate(10)
-        time.sleep(2)
-        self.nodes[self.mining_node_num].generate(10)
+        self.__wait_for_gen10_blocks()
         print(self.nodes[self.non_mn4].getblockcount())
 
         # fail if price does not covers the sell price
@@ -1422,7 +1821,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
             try:
                 self.nodes[self.non_mn4].tickets("register", "buy",
                                                  self.art_ticket1_sell_ticket_txid, str(self.art_copy_price - 1),
-                                                 self.nonmn4_pastelid1, "passphrase")
+                                                 self.nonmn4_pastelid1, self.passphrase)
             except JSONRPCException as e:
                 self.errorString = e.error['message']
                 print(self.errorString)
@@ -1433,7 +1832,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         self.art_ticket1_buy_ticket_txid = \
             self.nodes[self.non_mn4].tickets("register", "buy",
                                              self.art_ticket1_sell_ticket_txid, str(self.art_copy_price),
-                                             self.nonmn4_pastelid1, "passphrase")["txid"]
+                                             self.nonmn4_pastelid1, self.passphrase)["txid"]
         assert_true(self.art_ticket1_buy_ticket_txid, "No ticket was created")
         self.__wait_for_ticket_tnx()
 
@@ -1447,7 +1846,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         try:
             self.nodes[self.non_mn4].tickets("register", "buy",
                                              self.art_ticket1_sell_ticket_txid, str(self.art_copy_price),
-                                             self.nonmn4_pastelid1, "passphrase")
+                                             self.nonmn4_pastelid1, self.passphrase)
         except JSONRPCException as e:
             self.errorString = e.error['message']
             print(self.errorString)
@@ -1457,10 +1856,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         # sends coins back, keep 1 PSL to cover transaction fee
         mining_node_address1 = self.nodes[self.mining_node_num].getnewaddress()
         self.nodes[self.non_mn4].sendtoaddress(mining_node_address1, coins_after - 1, "", "", False)
-        time.sleep(2)
-        self.sync_all(10, 30)
-        self.nodes[self.mining_node_num].generate(1)
-        self.sync_all(10, 30)
+        self.__wait_for_sync_all10()
 
         print("Art buy tickets tested")
 
@@ -1478,17 +1874,14 @@ class MasterNodeTicketsTest(MasterNodeCommon):
             try:
                 self.nodes[self.non_mn4].tickets("register", "trade",
                                                  self.art_ticket1_sell_ticket_txid, self.art_ticket1_buy_ticket_txid,
-                                                 self.nonmn4_pastelid1, "passphrase")
+                                                 self.nonmn4_pastelid1, self.passphrase)
             except JSONRPCException as e:
                 self.errorString = e.error['message']
                 print(self.errorString)
             assert_equal("Not enough coins to cover price [" + str(cover_price) + "]" in self.errorString, True)
 
         self.nodes[self.mining_node_num].sendtoaddress(self.nonmn4_address1, cover_price, "", "", False)
-        time.sleep(2)
-        self.sync_all()
-        self.nodes[self.mining_node_num].generate(1)
-        self.sync_all()
+        self.__wait_for_sync_all(1)
         coins_before = self.nodes[self.non_mn4].getbalance()
         print(coins_before)
 
@@ -1496,7 +1889,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         try:
             self.nodes[self.non_mn4].tickets("register", "trade",
                                              self.art_ticket1_buy_ticket_txid, self.art_ticket1_buy_ticket_txid,
-                                             self.nonmn4_pastelid1, "passphrase")
+                                             self.nonmn4_pastelid1, self.passphrase)
         except JSONRPCException as e:
             self.errorString = e.error['message']
             print(self.errorString)
@@ -1508,7 +1901,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         try:
             self.nodes[self.non_mn4].tickets("register", "trade",
                                              self.art_ticket1_sell_ticket_txid, self.art_ticket1_sell_ticket_txid,
-                                             self.nonmn4_pastelid1, "passphrase")
+                                             self.nonmn4_pastelid1, self.passphrase)
         except JSONRPCException as e:
             self.errorString = e.error['message']
             print(self.errorString)
@@ -1520,22 +1913,19 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         try:
             self.nodes[self.non_mn4].tickets("register", "trade",
                                              self.art_ticket1_sell_ticket_txid, self.art_ticket1_buy_ticket_txid,
-                                             self.nonmn4_pastelid1, "passphrase")
+                                             self.nonmn4_pastelid1, self.passphrase)
         except JSONRPCException as e:
             self.errorString = e.error['message']
             print(self.errorString)
         assert_equal("Trade ticket can be created only after" in self.errorString, True)
-        time.sleep(2)
-        self.nodes[self.mining_node_num].generate(10)
-        time.sleep(2)
-        self.nodes[self.mining_node_num].generate(10)
+        self.__wait_for_gen10_blocks()
         print(self.nodes[self.non_mn4].getblockcount())
 
         sellers_pastel_id = self.nodes[self.non_mn3].tickets("get", self.art_ticket1_sell_ticket_txid)["ticket"]["pastelID"]
         print(sellers_pastel_id)
         sellers_address = self.nodes[self.non_mn3].tickets("find", "id", sellers_pastel_id)["ticket"]["address"]
         print(sellers_address)
-        artists_coins_before = self.nodes[self.non_mn3].getreceivedbyaddress(sellers_address)
+        sellers_coins_before = self.nodes[self.non_mn3].getreceivedbyaddress(sellers_address)
 
         # consolidate funds into single address
         balance = self.nodes[self.non_mn4].getbalance()
@@ -1546,7 +1936,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         self.art_ticket1_trade_ticket_txid = \
             self.nodes[self.non_mn4].tickets("register", "trade",
                                              self.art_ticket1_sell_ticket_txid, self.art_ticket1_buy_ticket_txid,
-                                             self.nonmn4_pastelid1, "passphrase")["txid"]
+                                             self.nonmn4_pastelid1, self.passphrase)["txid"]
         assert_true(self.art_ticket1_trade_ticket_txid, "No ticket was created")
         self.__wait_for_ticket_tnx()
 
@@ -1559,66 +1949,58 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         assert_true(math.isclose(coins_after, coins_before - self.trade_ticket_price - self.art_copy_price, rel_tol=0.01))
 
         # check seller gets correct amount
-        artists_coins_after = self.nodes[self.non_mn3].getreceivedbyaddress(sellers_address)
-        artists_coins_expected_to_receive = self.art_copy_price
+        sellers_coins_after = self.nodes[self.non_mn3].getreceivedbyaddress(sellers_address)
+        sellers_coins_expected_to_receive = self.art_copy_price
+        royalty_coins_expected_fee = 0
+        green_coins_expected_fee = 0
+        if self.royalty > 0:
+            royalty_coins_expected_fee = self.art_copy_price * self.royalty / 100
+            sellers_coins_expected_to_receive -= royalty_coins_expected_fee
         if self.is_green:
-            artists_coins_expected_to_receive -= self.art_copy_price * 2 / 100
-        print(artists_coins_before)
-        print(artists_coins_after)
-        assert_true(math.isclose(artists_coins_after - artists_coins_before, artists_coins_expected_to_receive, rel_tol=0.01))
+            green_coins_expected_fee = self.art_copy_price * 2 / 100
+            sellers_coins_expected_to_receive -= green_coins_expected_fee
+        print(sellers_coins_before)
+        print(sellers_coins_after)
+        assert_true(math.isclose(sellers_coins_after - sellers_coins_before, sellers_coins_expected_to_receive, rel_tol=0.01))
 
         # from another node - get ticket transaction and check
         #   - there are 3 posiible outputs to seller, royalty and green adresses
         art_ticket1_trade_ticket_hash = self.nodes[0].getrawtransaction(self.art_ticket1_trade_ticket_txid)
         art_ticket1_trade_ticket_tx = self.nodes[0].decoderawtransaction(art_ticket1_trade_ticket_hash)
-        expected_seller_amount = self.art_copy_price
-        seller_amount = 0
-        expected_royalty_fee = 0
-        royalty_fee = 0
-        expected_green_fee = 0
-        green_fee = 0
-        multi_fee = 0
-
-        if self.royalty > 0:
-            expected_royalty_fee = self.art_copy_price * self.royalty / 100
-            expected_seller_amount -= expected_royalty_fee
-
-        if self.is_green:
-            expected_green_fee = self.art_copy_price * 2 / 100
-            expected_seller_amount -= expected_green_fee
+        sellers_coins = 0
+        royalty_coins = 0
+        green_coins = 0
+        multi_coins = 0
 
         for v in art_ticket1_trade_ticket_tx["vout"]:
             if v["scriptPubKey"]["type"] == "multisig":
-                multi_fee += v["value"]
+                multi_coins += v["value"]
             if v["scriptPubKey"]["type"] == "pubkeyhash":
                 amount = v["value"]
                 print(f"trade transiction pubkeyhash vout - {amount}")
-                if v["scriptPubKey"]["addresses"][0] == sellers_address and math.isclose(amount, expected_seller_amount):
-                    seller_amount = amount
+                if v["scriptPubKey"]["addresses"][0] == sellers_address and math.isclose(amount, sellers_coins_expected_to_receive):
+                    sellers_coins = amount
                     print(f"trade transaction to seller's address - {amount}")
-                if v["scriptPubKey"]["addresses"][0] == sellers_address and math.isclose(amount, expected_royalty_fee):
-                    royalty_fee = amount
+                if v["scriptPubKey"]["addresses"][0] == self.royalty_address and math.isclose(amount, royalty_coins_expected_fee):
+                    royalty_coins = amount
                     print(f"trade transaction to royalty's address - {amount}")
-                if v["scriptPubKey"]["addresses"][0] == self.nonmn6_green_address1 and self.is_green:
-                    green_fee = amount
+                if v["scriptPubKey"]["addresses"][0] == self.nonmn7_green_address1 and self.is_green:
+                    green_coins = amount
                     print(f"trade transaction to green's address - {amount}")
-        print(f"trade transiction multisig fee_amount - {multi_fee}")
-        assert_true(math.isclose(seller_amount, expected_seller_amount))
-        assert_true(math.isclose(royalty_fee, expected_royalty_fee))
-        assert_true(math.isclose(green_fee, expected_green_fee))
-        assert_true(math.isclose(seller_amount + royalty_fee + green_fee, self.art_copy_price))
-        assert_equal(multi_fee, self.id_ticket_price)
+        print(f"trade transiction multisig coins - {multi_coins}")
+        assert_true(math.isclose(sellers_coins, sellers_coins_expected_to_receive))
+        assert_true(math.isclose(royalty_coins, royalty_coins_expected_fee))
+        assert_true(math.isclose(green_coins, green_coins_expected_fee))
+        assert_true(math.isclose(sellers_coins + royalty_coins + green_coins, self.art_copy_price))
+        assert_equal(multi_coins, self.id_ticket_price)
 
         self.nodes[self.mining_node_num].sendtoaddress(self.nonmn4_address1, cover_price, "", "", False)
-        time.sleep(2)
-        self.sync_all()
-        self.nodes[self.mining_node_num].generate(1)
-        self.sync_all()
+        self.__wait_for_sync_all(1)
         # fail if there is another trade ticket referring to that sell ticket
         try:
             self.nodes[self.non_mn4].tickets("register", "trade",
                                              self.art_ticket1_sell_ticket_txid, self.art_ticket1_buy_ticket_txid,
-                                             self.nonmn4_pastelid1, "passphrase")
+                                             self.nonmn4_pastelid1, self.passphrase)
         except JSONRPCException as e:
             self.errorString = e.error['message']
             print(self.errorString)
@@ -1686,7 +2068,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
             print(f"===== Test {test_num} should fail =====")
             try:
                 self.nodes[seller_node].tickets("register", "sell", art_to_sell_txid, str("1000"),
-                                                seller_pastelid, "passphrase")
+                                                seller_pastelid, self.passphrase)
             except JSONRPCException as e:
                 self.errorString = e.error['message']
                 print(self.errorString)
@@ -1704,42 +2086,56 @@ class MasterNodeTicketsTest(MasterNodeCommon):
 
         # 2. Create Sell ticket
         sell_ticket_txid = self.nodes[seller_node].tickets("register", "sell", art_to_sell_txid, str("1000"),
-                                                           seller_pastelid, "passphrase")["txid"]
+                                                           seller_pastelid, self.passphrase)["txid"]
         assert_true(sell_ticket_txid, "No ticket was created")
         print(f"sell_ticket_txid: {sell_ticket_txid}")
 
         self.__wait_for_ticket_tnx()
         print("buyer's balance 1: " + str(self.nodes[buyer_node].getbalance()))
         print("seller's balance 1: " + str(self.nodes[seller_node].getbalance()))
-        time.sleep(2)
-        self.nodes[self.mining_node_num].generate(10)
-        time.sleep(2)
-        self.nodes[self.mining_node_num].generate(10)
+        self.__wait_for_gen10_blocks()
         print("buyer's balance 2: " + str(self.nodes[buyer_node].getbalance()))
         print("seller's balance 2: " + str(self.nodes[seller_node].getbalance()))
 
         # 3. Create buy ticket
         buy_ticket_txid = self.nodes[buyer_node].tickets("register", "buy", sell_ticket_txid, str("1000"),
-                                                         buyer_pastelid, "passphrase")["txid"]
+                                                         buyer_pastelid, self.passphrase)["txid"]
         assert_true(buy_ticket_txid, "No ticket was created")
         print(f"buy_ticket_txid: {buy_ticket_txid}")
 
         self.__wait_for_ticket_tnx()
         print("buyer's balance 3: " + str(self.nodes[buyer_node].getbalance()))
         print("seller's balance 3: " + str(self.nodes[seller_node].getbalance()))
-        time.sleep(2)
-        self.nodes[self.mining_node_num].generate(10)
-        time.sleep(2)
-        self.nodes[self.mining_node_num].generate(10)
+        self.__wait_for_gen10_blocks()
         print("buyer's balance 4: " + str(self.nodes[buyer_node].getbalance()))
         print("seller's balance 4: " + str(self.nodes[seller_node].getbalance()))
 
         # 5. Create trade ticket
         trade_ticket_txid = self.nodes[buyer_node].tickets("register", "trade",
                                                            sell_ticket_txid, buy_ticket_txid,
-                                                           buyer_pastelid, "passphrase")["txid"]
+                                                           buyer_pastelid, self.passphrase)["txid"]
         assert_true(trade_ticket_txid, "No ticket was created")
         print(f"trade_ticket_txid: {trade_ticket_txid}")
+        # Choosen trade ticket for validating ownership 
+        # 1. We need a list ( at least with 1 element)
+        # of non-sold trade ticket
+        #
+        # 2. Filter that tickets by pastelID and get the
+        # underlying ArtReg ticket found by txid from the
+        # request
+        if (
+            test_num == 'A1' or test_num == 'A2' or
+        test_num == 'A3' or test_num == 'A4' or
+        test_num == 'A5' or test_num == 'A6' or
+        test_num == 'A7' or test_num == 'A8' or
+        test_num == 'A9'
+        ):
+            # This pastelID (and generated trades) holds the ownership of copies (2-10)
+            self.single_sell_trade_txids.append(trade_ticket_txid)
+
+        if test_num == 'T5':
+            # This pastelID (and generated trade) holds the ownership of copy 1 sold multiple times (nested)
+            self.nested_ownership_trade_txid = trade_ticket_txid
 
         self.__wait_for_ticket_tnx()
 
@@ -1754,10 +2150,13 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         # buy ticket cost is 10 (1000/100), trade ticket cost is self.trade_ticket_price, art cost is 1000
 
         # check seller gets correct amount
+        royalty_fee = 0
         green_fee = 0
+        if self.royalty > 0:
+            royalty_fee = 70
         if is_green:
             green_fee = 20
-        assert_equal(seller_coins_after, seller_coins_before+1000-20-green_fee)
+        assert_equal(seller_coins_after, seller_coins_before + 1000 - 20 - royalty_fee - green_fee)
         # sell ticket cost is 20 (1000/50), art cost is 1000
 
         if not skip_last_fail_test:
@@ -1765,7 +2164,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
             #  Verify there is no already trade ticket referring to trade ticket we are trying to sell
             try:
                 self.nodes[seller_node].tickets("register", "sell", art_to_sell_txid, str("1000"),
-                                                seller_pastelid, "passphrase")
+                                                seller_pastelid, self.passphrase)
             except JSONRPCException as e:
                 self.errorString = e.error['message']
                 print(self.errorString)
@@ -1780,21 +2179,27 @@ class MasterNodeTicketsTest(MasterNodeCommon):
     def tickets_list_filter_tests(self, loop_number):
         print("== Tickets List Filter test ==")
 
+        number_personal_nodes = 3
+        number_personal_nodes += self.royalty_tickets_tests
+        if self.is_green:
+            number_personal_nodes += 1
+
         tickets_list = self.nodes[self.non_mn3].tickets("list", "id")
-        assert_equal(len(tickets_list), 17 + loop_number*2)
+        assert_equal(len(tickets_list), 12 + number_personal_nodes + loop_number * 2)
         tickets_list = self.nodes[self.non_mn3].tickets("list", "id", "all")
-        assert_equal(len(tickets_list), 17 + loop_number*2)
+        assert_equal(len(tickets_list), 12 + number_personal_nodes + loop_number * 2)
         tickets_list = self.nodes[self.non_mn3].tickets("list", "id", "mn")
         assert_equal(len(tickets_list), 12)
         tickets_list = self.nodes[self.non_mn3].tickets("list", "id", "personal")
-        assert_equal(len(tickets_list), 5 + loop_number*2)
+        assert_equal(len(tickets_list), number_personal_nodes + loop_number * 2)
 
         self.create_art_ticket_and_signatures(self.artist_pastelid1, self.non_mn3,
                                               "HashOfTicket2", "Ticket2", 5,
+                                              self.royalty, self.nonmn7_green_address1,
                                               False)
         art_ticket2_txid = self.nodes[self.top_mns_index0].tickets("register", "art",
                                                                    self.ticket, json.dumps(self.signatures_dict),
-                                                                   self.top_mn_pastelid0, "passphrase",
+                                                                   self.top_mn_pastelid0, self.passphrase,
                                                                    "key3"+str(loop_number), "key4"+str(loop_number), str(self.storage_fee))["txid"]
         assert_true(art_ticket2_txid, "No ticket was created")
         self.__wait_for_ticket_tnx()
@@ -1805,16 +2210,17 @@ class MasterNodeTicketsTest(MasterNodeCommon):
                                                                        art_ticket2_txid,
                                                                        str(self.artist_ticket_height),
                                                                        str(self.storage_fee),
-                                                                       self.artist_pastelid1, "passphrase")["txid"]
+                                                                       self.artist_pastelid1, self.passphrase)["txid"]
         assert_true(art_ticket2_act_ticket_txid, "No ticket was created")
         self.__wait_for_ticket_tnx()
 
         self.create_art_ticket_and_signatures(self.artist_pastelid1, self.non_mn3,
                                               "HashOfTicket3", "Ticket3", 1,
+                                              self.royalty, self.nonmn7_green_address1,
                                               False)
         art_ticket3_txid = self.nodes[self.top_mns_index0].tickets("register", "art",
                                                                    self.ticket, json.dumps(self.signatures_dict),
-                                                                   self.top_mn_pastelid0, "passphrase",
+                                                                   self.top_mn_pastelid0, self.passphrase,
                                                                    "key5"+str(loop_number), "key6"+str(loop_number), str(self.storage_fee))["txid"]
         assert_true(art_ticket3_txid, "No ticket was created")
         self.__wait_for_ticket_tnx()
@@ -1844,7 +2250,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         cur_block = self.nodes[self.non_mn3].getblockcount()
         sell_ticket1_txid = self.nodes[self.non_mn3].tickets("register", "sell", art_ticket2_act_ticket_txid,
                                                              str("1000"),
-                                                             self.artist_pastelid1, "passphrase", "",
+                                                             self.artist_pastelid1, self.passphrase, "",
                                                              cur_block+15, cur_block+20)["txid"]
         assert_true(sell_ticket1_txid, "No ticket was created")
         self.__wait_for_ticket_tnx()  # cur+5 block
@@ -1852,7 +2258,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
 
         sell_ticket2_txid = self.nodes[self.non_mn3].tickets("register", "sell", art_ticket2_act_ticket_txid,
                                                              str("1000"),
-                                                             self.artist_pastelid1, "passphrase", "",
+                                                             self.artist_pastelid1, self.passphrase, "",
                                                              cur_block+20, cur_block+30)["txid"]
         assert_true(sell_ticket2_txid, "No ticket was created")
         self.__wait_for_ticket_tnx()  # cur+10 block
@@ -1860,7 +2266,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
 
         sell_ticket3_txid = self.nodes[self.non_mn3].tickets("register", "sell", art_ticket2_act_ticket_txid,
                                                              str("1000"),
-                                                             self.artist_pastelid1, "passphrase", "",
+                                                             self.artist_pastelid1, self.passphrase, "",
                                                              cur_block+30, cur_block+40)["txid"]
         assert_true(sell_ticket3_txid, "No ticket was created")
         self.__wait_for_ticket_tnx()  # cur+15 block
@@ -1879,12 +2285,11 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         assert_equal(len(tickets_list), 1 + (loop_number*2))
 
         buy_ticket_txid = self.nodes[self.non_mn4].tickets("register", "buy", sell_ticket2_txid, str("1000"),
-                                                           self.nonmn4_pastelid1, "passphrase")["txid"]
+                                                           self.nonmn4_pastelid1, self.passphrase)["txid"]
         assert_true(buy_ticket_txid, "No ticket was created")
         print(f"buy_ticket_txid: {buy_ticket_txid}")
         self.__wait_for_ticket_tnx()  # +15 block
         self.slow_mine(2, 10, 2, 0.5)  # +25
-
         tickets_list = self.nodes[self.non_mn3].tickets("list", "buy")
         assert_equal(len(tickets_list), 16*(loop_number+1))
         tickets_list = self.nodes[self.non_mn3].tickets("list", "buy", "all")
@@ -1903,6 +2308,37 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         tickets_list = self.nodes[self.non_mn3].tickets("list", "trade", "sold")
         assert_equal(len(tickets_list), 5*(loop_number+1))
 
+        print ("Test listing buy/sell/trade tickets by Pastel ID")
+
+        tickets_list = self.nodes[self.non_mn3].tickets("list", "sell", self.artist_pastelid1)
+        assert_equal(len(tickets_list), 2*(loop_number+1))
+        tickets_list = self.nodes[self.non_mn3].tickets("list", "sell", "all", self.artist_pastelid1)
+        assert_equal(len(tickets_list), 2*(loop_number+1))
+        tickets_list = self.nodes[self.non_mn3].tickets("list", "sell", "available", self.artist_pastelid1)
+        assert_equal(tickets_list is None, True)
+        tickets_list = self.nodes[self.non_mn3].tickets("list", "sell", "unavailable", self.artist_pastelid1)
+        assert_equal(tickets_list is None, True)
+        tickets_list = self.nodes[self.non_mn3].tickets("list", "sell", "expired", self.artist_pastelid1)
+        assert_equal(len(tickets_list), 2 + (loop_number*2))
+
+        tickets_list = self.nodes[self.non_mn3].tickets("list", "buy", self.nonmn4_pastelid1)
+        assert_equal(len(tickets_list), 13*(loop_number+1))
+        tickets_list = self.nodes[self.non_mn3].tickets("list", "buy", "all", self.nonmn4_pastelid1)
+        assert_equal(len(tickets_list), 13*(loop_number+1))
+        tickets_list = self.nodes[self.non_mn3].tickets("list", "buy", "expired", self.nonmn4_pastelid1)
+        assert_equal(len(tickets_list), 1*(loop_number+1))
+        tickets_list = self.nodes[self.non_mn3].tickets("list", "buy", "sold", self.nonmn4_pastelid1)
+        assert_equal(len(tickets_list), 12*(loop_number+1))
+
+        tickets_list = self.nodes[self.non_mn3].tickets("list", "trade", self.nonmn3_pastelid1)
+        assert_equal(len(tickets_list), 3*(loop_number+1))
+        tickets_list = self.nodes[self.non_mn3].tickets("list", "trade", "all", self.nonmn3_pastelid1)
+        assert_equal(len(tickets_list), 3*(loop_number+1))
+        tickets_list = self.nodes[self.non_mn3].tickets("list", "trade", "available", self.nonmn3_pastelid1)
+        assert_equal(len(tickets_list), 1*(loop_number+1))
+        tickets_list = self.nodes[self.non_mn3].tickets("list", "trade", "sold", self.nonmn3_pastelid1)
+        assert_equal(len(tickets_list), 2*(loop_number+1))
+
         print("Tickets List Filter tested")
 
     # ===============================================================================================================
@@ -1912,6 +2348,205 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         print("Take down tickets tested")
 
     # ===============================================================================================================
+    def username_ticket_tests(self):
+        print("== Username Tickets test ==")
+
+        # New nonmn4_pastelid2 to test some functionalities
+        self.nonmn4_address2 = self.nodes[self.non_mn4].getnewaddress()
+        self.nodes[self.mining_node_num].sendtoaddress(self.nonmn4_address2, 2000, "", "", False)
+        self.__wait_for_sync_all10()
+        self.nonmn4_pastelid2 = self.create_pastelid(self.non_mn4)
+
+        self.nonmn8_address1 = self.nodes[self.non_mn8].getnewaddress()
+        self.__wait_for_sync_all10()
+        self.nonmn8_pastelid1 = self.create_pastelid(self.non_mn8)
+
+        # Register first time by PastelID of non-masternode 3
+        tickets_username_txid1 = self.nodes[self.non_mn3].tickets("register", "username", "bsmith84",
+                                                    self.artist_pastelid1, "passphrase")
+        self.__wait_for_ticket_tnx()
+        nonmn3_ticket_username_1 = self.nodes[self.non_mn4].tickets("get", tickets_username_txid1["txid"])
+        print(nonmn3_ticket_username_1)
+
+        self.__wait_for_ticket_tnx()
+        assert_equal(nonmn3_ticket_username_1["ticket"]["pastelID"], self.artist_pastelid1)
+        assert_equal(nonmn3_ticket_username_1["ticket"]["username"], "bsmith84")
+        assert_equal(nonmn3_ticket_username_1["ticket"]["fee"], 100)
+
+        # Register second time with same name by non-masternode 4. Expect to get Exception that the ticket is invalid because the username is registered
+        try:
+            self.nodes[self.non_mn4].tickets("register", "username", "bsmith84",
+                                                        self.nonmn4_pastelid2, "passphrase")
+            self.__wait_for_ticket_tnx()
+
+        except JSONRPCException as e:
+            self.errorString = e.error['message']
+            print(self.errorString)
+        assert_equal(self.errorString , "Ticket (username-change) is invalid - This Username is already registered in blockchain [Username = bsmith84]")
+
+        # Register by a new pastelID. Expect to get Exception that the ticket is invalid because there are Not enough 100 PSL to cover price 100
+        try:
+            self.nodes[self.non_mn8].tickets("register", "username", "anicename5",
+                                                        self.nonmn8_pastelid1, "passphrase")
+            self.__wait_for_ticket_tnx()
+        except JSONRPCException as e:
+            self.errorString = e.error['message']
+            print(self.errorString)
+        assert_equal(self.errorString, "Ticket (username-change) is invalid - Not enough coins to cover price [100]")
+
+        self.nodes[self.mining_node_num].sendtoaddress(self.nonmn8_address1, 200, "", "", False)
+        self.__wait_for_sync_all10()
+
+        # This should be success
+        self.nodes[self.non_mn8].tickets("register", "username", "anicename5",
+                                                        self.nonmn8_pastelid1, "passphrase")
+        self.__wait_for_ticket_tnx()
+
+        # Expect to get Exception that the ticket is invalid because this PastelID do not have enough 5000PSL to pay the rechange fee
+        try:
+            self.nodes[self.non_mn8].tickets("register", "username", "Banksy",
+                                                    self.nonmn8_pastelid1, "passphrase")
+            self.__wait_for_ticket_tnx()
+        except JSONRPCException as e:
+            self.errorString = e.error['message']
+            print(self.errorString)
+        assert_equal(self.errorString, "Ticket (username-change) is invalid - Not enough coins to cover price [5000]")
+
+        # Send money to non-masternode3 to cover 5000 price
+        self.nodes[self.mining_node_num].sendtoaddress(self.nonmn3_address1, 5100, "", "", False)
+        self.__wait_for_sync_all10()
+
+        # Expect to get Exception that the ticket is invalid because this PastelID changed Username last 24 hours
+        try:
+            self.nodes[self.non_mn3].tickets("register", "username", "Banksy",
+                                                    self.artist_pastelid1, "passphrase")
+            self.__wait_for_ticket_tnx()
+        except JSONRPCException as e:
+            self.errorString = e.error['message']
+            print(self.errorString)
+        assert_equal("Ticket (username-change) is invalid - Username Change ticket is invalid. Already changed in last 24 hours." in self.errorString, True)
+
+        # Wait till next 24 hours. Below test cases is commented because it took lots of time to complete.
+        # To test this functionality on local machine, we should lower the waiting from 24 * 24 blocks to smaller value, ex: 15 blocks only.
+        self.sync_all()
+        print("Mining 577 blocks")
+        for ind in range (577):
+            self.nodes[self.mining_node_num].generate(1)
+            time.sleep(1)
+
+        print("Waiting 60 seconds")
+        time.sleep(60)
+
+        # Expect that nonmn3 can change username to "Banksky" after 24 hours, fee should be 5000
+        tickets_username_txid1 = self.nodes[self.non_mn3].tickets("register", "username", "Banksy",
+                                                    self.artist_pastelid1, "passphrase")
+        self.__wait_for_ticket_tnx()
+        nonmn3_ticket_username_1 = self.nodes[self.non_mn4].tickets("get", tickets_username_txid1["txid"])
+        print(nonmn3_ticket_username_1)
+
+        self.__wait_for_ticket_tnx()
+        assert_equal(nonmn3_ticket_username_1["ticket"]["pastelID"], self.artist_pastelid1)
+        assert_equal(nonmn3_ticket_username_1["ticket"]["username"], "Banksy")
+        assert_equal(nonmn3_ticket_username_1["ticket"]["fee"], 5000)
+
+        # Expect that nonmn4 can register new Username "bsmith84", because the username "bsmith84" no longer belong to self.artist_pastelid1
+        tickets_username_2 = self.nodes[self.non_mn4].tickets("register", "username", "bsmith84",
+                                                    self.nonmn4_pastelid2, "passphrase")
+        self.__wait_for_ticket_tnx()
+        nonmn4_ticket_username_1 = self.nodes[self.non_mn4].tickets("get", tickets_username_2["txid"])
+        print(nonmn4_ticket_username_1)
+
+        self.__wait_for_ticket_tnx()
+        assert_equal(nonmn4_ticket_username_1["ticket"]["pastelID"], self.nonmn4_pastelid2)
+        assert_equal(nonmn4_ticket_username_1["ticket"]["username"], "bsmith84")
+        assert_equal(nonmn4_ticket_username_1["ticket"]["fee"], 100)
+
+        # Register by a new pastelID with invalid name. Expect to get Exception that the usernamename is invalid
+        try:
+            tickets_username_txid1 = self.nodes[self.non_mn4].tickets("register", "username", "abc",
+                                                        self.nonmn4_pastelid2, "passphrase")
+            self.__wait_for_ticket_tnx()
+        except JSONRPCException as e:
+            self.errorString = e.error['message']
+            print(self.errorString)
+        assert_equal("Ticket (username-change) is invalid - Invalid size of username, the size should have at least 4 characters, and at most 12 characters" in self.errorString, True)
+
+        try:
+            tickets_username_txid1 = self.nodes[self.non_mn4].tickets("register", "username", "1a4bc",
+                                                        self.nonmn4_pastelid2, "passphrase")
+            self.__wait_for_ticket_tnx()
+        except JSONRPCException as e:
+            self.errorString = e.error['message']
+            print(self.errorString)
+        assert_equal("Invalid username, should start with a letter A-Z or a-z only" in self.errorString, True)
+
+        try:
+            tickets_username_txid1 = self.nodes[self.non_mn4].tickets("register", "username", "a#bcsa",
+                                                        self.nonmn4_pastelid2, "passphrase")
+            self.__wait_for_ticket_tnx()
+        except JSONRPCException as e:
+            self.errorString = e.error['message']
+            print(self.errorString)
+        assert_equal("Invalid username, should contains letters A-Z a-z, or digits 0-9 only" in self.errorString, True)
+
+        try:
+            tickets_username_txid1 = self.nodes[self.non_mn4].tickets("register", "username", "abdagoc",
+                                                        self.nonmn4_pastelid2, "passphrase")
+            self.__wait_for_ticket_tnx()
+        except JSONRPCException as e:
+            self.errorString = e.error['message']
+            print(self.errorString)
+        assert_equal("Invalid username, should NOT contains swear, racist... words" in self.errorString, True)
+
+        try:
+            tickets_username_txid1 = self.nodes[self.non_mn4].tickets("register", "username", "abDaGoc",
+                                                        self.nonmn4_pastelid2, "passphrase")
+            self.__wait_for_ticket_tnx()
+        except JSONRPCException as e:
+            self.errorString = e.error['message']
+            print(self.errorString)
+        assert_equal("Invalid username, should NOT contains swear, racist... words" in self.errorString, True)
+
+        # length not valid
+        non_mn1_bad_username_length = self.nodes[self.non_mn4].tickets("tools", "validateusername", "abc")
+        print(non_mn1_bad_username_length)
+        assert_equal(non_mn1_bad_username_length["isBad"], True)
+        assert_equal(non_mn1_bad_username_length["validationError"], "Invalid size of username, the size should have at least 4 characters, and at most 12 characters")
+        # not start with a letter A-Z a-z
+        non_mn1_bad_username_start = self.nodes[self.non_mn4].tickets("tools", "validateusername", "1a4bc")
+        print(non_mn1_bad_username_start)
+        assert_equal(non_mn1_bad_username_start["isBad"], True)
+        assert_equal(non_mn1_bad_username_start["validationError"], "Invalid username, should start with a letter A-Z or a-z only")
+        # contains characters that is different than A-Z a-z 0-9
+        non_mn1_bad_username_character = self.nodes[self.non_mn4].tickets("tools", "validateusername", "a#bcsa")
+        print(non_mn1_bad_username_character)
+        assert_equal(non_mn1_bad_username_character["isBad"], True)
+        assert_equal(non_mn1_bad_username_character["validationError"], "Invalid username, should contains letters A-Z a-z, or digits 0-9 only")
+        # contains bad word
+        non_mn1_bad_username_bad = self.nodes[self.non_mn4].tickets("tools", "validateusername", "abdagoc")
+        print(non_mn1_bad_username_bad)
+        assert_equal(non_mn1_bad_username_bad["isBad"], True)
+        assert_equal(non_mn1_bad_username_bad["validationError"], "Invalid username, should NOT contains swear, racist... words")
+        # contains bad word with some upper case
+        non_mn1_bad_username_bad = self.nodes[self.non_mn4].tickets("tools", "validateusername", "abDaGoc")
+        print(non_mn1_bad_username_bad)
+        assert_equal(non_mn1_bad_username_bad["isBad"], True)
+        assert_equal(non_mn1_bad_username_bad["validationError"], "Invalid username, should NOT contains swear, racist... words")
+        # username is registered
+        non_mn1_bad_username_registered = self.nodes[self.non_mn4].tickets("tools", "validateusername", "bsmith84")
+        print(non_mn1_bad_username_registered)
+        assert_equal(non_mn1_bad_username_registered["isBad"], True)
+        assert_equal(non_mn1_bad_username_registered["validationError"], "Username is not valid, it is already registered")
+
+        # good username
+        non_mn1_bad_username_good = self.nodes[self.non_mn4].tickets("tools", "validateusername", "goodname")
+        print(non_mn1_bad_username_good)
+        assert_equal(non_mn1_bad_username_good["isBad"], False)
+        assert_equal(non_mn1_bad_username_good["validationError"], "")
+
+        print("Username tickets tested")
+
+    # ===============================================================================================================
     def storage_fee_tests(self):
         print("== Storage fee test ==")
         # 4. storagefee tests
@@ -1919,16 +2554,16 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         #   a.1 from non-MN without errors
         non_mn1_total_storage_fee1 = self.nodes[self.non_mn4].tickets("tools", "gettotalstoragefee",
                                                                    self.ticket, json.dumps(self.signatures_dict),
-                                                                   self.nonmn4_pastelid1, "passphrase",
+                                                                   self.nonmn4_pastelid1, self.passphrase,
                                                                    "key5", "key6", str(self.storage_fee), 5)["totalstoragefee"]
         #   a.2 from MN without errors
         mn0_total_storage_fee1 = self.nodes[self.top_mns_index0].tickets("tools", "gettotalstoragefee",
                                                                    self.ticket, json.dumps(self.signatures_dict),
-                                                                   self.top_mn_pastelid0, "passphrase",
+                                                                   self.top_mn_pastelid0, self.passphrase,
                                                                    "key5", "key6", str(self.storage_fee), 5)["totalstoragefee"]
         mn0_total_storage_fee2 = self.nodes[self.top_mns_index0].tickets("tools", "gettotalstoragefee",
                                                                    self.ticket, json.dumps(self.signatures_dict),
-                                                                   self.top_mn_pastelid0, "passphrase",
+                                                                   self.top_mn_pastelid0, self.passphrase,
                                                                    "key5", "key6", str(self.storage_fee), 4)["totalstoragefee"]
 
         #   a.3 compare a.1 and a.2
@@ -1947,7 +2582,71 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         #   c.1 fail on non-MN
         #   c.2 on MN without errors
         #   c.3 get local MN storage fee and compare it with c.2
+
+        # Test if storagefee works properly
+        nfee_mn0 = self.nodes[0].storagefee("getnetworkfee")["networkfee"]
+        nfee_mn1 = self.nodes[1].storagefee("getnetworkfee")["networkfee"]
+        nfee_mn2 = self.nodes[2].storagefee("getnetworkfee")["networkfee"]
+        assert_equal(nfee_mn0, 50)
+        assert_equal(nfee_mn1, 50)
+        assert_equal(nfee_mn2, 50)
+        print("Network fee is ", nfee_mn0)
+
+        lfee_mn0 = self.nodes[0].storagefee("getlocalfee")["localfee"]
+        assert_equal(lfee_mn0, 50)
+        print("Local fee of MN0 is ", lfee_mn0)
+
+        # Check if the TRIM MEAN do NOT care the 25%
+        self.nodes[0].storagefee("setfee", "1000")
+        self.nodes[2].storagefee("setfee", "0")
+        self.sync_all()
+
+        time.sleep(30)
+        lfee_mn0 = self.nodes[0].storagefee("getlocalfee")["localfee"]
+        print("Local fee of MN0 after setfee is ", lfee_mn0)
+        assert_equal(lfee_mn0, 1000)
+
+        nfee_mn4 = self.nodes[2].storagefee("getnetworkfee")["networkfee"]
+        print("Network fee after setfee is ", nfee_mn4)
+        assert_equal(nfee_mn4, 50)
+
+        # Check if the TRIM MEAN do care the middle 50%
+        self.nodes[3].storagefee("setfee", "1000")
+        self.nodes[4].storagefee("setfee", "1000")
+        self.nodes[5].storagefee("setfee", "1000")
+        self.nodes[6].storagefee("setfee", "1000")
+        self.nodes[7].storagefee("setfee", "1000")
+        self.nodes[8].storagefee("setfee", "1000")
+        self.sync_all()
+
+        time.sleep(30)
+        lfee_mn0 = self.nodes[0].storagefee("getlocalfee")["localfee"]
+        print("Local fee of MN0 after setfee is ", lfee_mn0)
+        assert_equal(lfee_mn0, 1000)
+
+        nfee_mn4 = self.nodes[2].storagefee("getnetworkfee")["networkfee"]
+        print("Network fee after setfee is ", nfee_mn4)
+        assert_greater_than(nfee_mn4, 50)
+
         print("Storage fee tested")
+
+    def __wait_for_gen10_blocks(self):
+        time.sleep(2)
+        self.nodes[self.mining_node_num].generate(10)
+        time.sleep(2)
+        self.nodes[self.mining_node_num].generate(10)
+
+    def __wait_for_sync_all(self, v):
+        time.sleep(2)
+        self.sync_all()
+        self.nodes[self.mining_node_num].generate(v)
+        self.sync_all()
+
+    def __wait_for_sync_all10(self):
+        time.sleep(2)
+        self.sync_all(10, 30)
+        self.nodes[self.mining_node_num].generate(1)
+        self.sync_all(10, 30)
 
     def __wait_for_ticket_tnx(self):
         time.sleep(10)

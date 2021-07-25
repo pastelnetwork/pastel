@@ -19,7 +19,6 @@
 
 constexpr const CNodeHelper::CFullyConnectedOnly CNodeHelper::FullyConnectedOnly;
 constexpr const CNodeHelper::CAllNodes CNodeHelper::AllNodes;
-
 /*
 MasterNode specific logic and initializations
 */
@@ -31,8 +30,16 @@ void CMasterNodeController::SetParameters()
     MasternodeProtocolVersion           = 170008;
     
     MasternodeFeePerMBDefault           = 50;
-    ArtTicketFeePerKBDefault           = 3;
+    ArtTicketFeePerKBDefault            = 3;
 
+    ChainDeflationRateDefault           = 1;
+
+    ChainBaselineDifficultyLowerIndex   = 100000;
+    ChainBaselineDifficultyUpperIndex   = 150000;
+    ChainTrailingAverageDifficultyRange = 10000;
+
+    MasternodeUsernameFirstChangeFee   = 100;
+    MasternodeUsernameChangeAgainFee   = 5000;
     MasternodeCheckSeconds              =   5;
     MasternodeMinMNBSeconds             =   5 * 60;
     MasternodeMinMNPSeconds             =  10 * 60;
@@ -86,6 +93,49 @@ void CMasterNodeController::SetParameters()
     else{
         //TODO Pastel: accert
     }
+}
+
+// Get network difficulty. This implementation is copied from blockchain.cpp
+double CMasterNodeController::getNetworkDifficulty(const CBlockIndex* blockindex, bool networkDifficulty) const
+{
+    // Floating point number that is a multiple of the minimum difficulty,
+    // minimum difficulty = 1.0.
+    if (blockindex == NULL)
+    {
+        if (chainActive.Tip() == NULL)
+            return 1.0;
+        else
+            blockindex = chainActive.Tip();
+    }
+
+    uint32_t bits;
+    if (networkDifficulty) {
+        bits = GetNextWorkRequired(blockindex, nullptr, Params().GetConsensus());
+    } else {
+        bits = blockindex->nBits;
+    }
+
+    uint32_t powLimit =
+        UintToArith256(Params().GetConsensus().powLimit).GetCompact();
+    int nShift = (bits >> 24) & 0xff;
+    int nShiftAmount = (powLimit >> 24) & 0xff;
+
+    double dDiff =
+        (double)(powLimit & 0x00ffffff) /
+        (double)(bits & 0x00ffffff);
+
+    while (nShift < nShiftAmount)
+    {
+        dDiff *= 256.0;
+        nShift++;
+    }
+    while (nShift > nShiftAmount)
+    {
+        dDiff /= 256.0;
+        nShift--;
+    }
+
+    return dDiff;
 }
 
 
@@ -418,19 +468,28 @@ fs::path CMasterNodeController::GetMasternodeConfigFile()
 
 CAmount CMasterNodeController::GetNetworkFeePerMB()
 {
+    CAmount nFee = masterNodeCtrl.MasternodeFeePerMBDefault;
 
     if (fMasterNode) {
-        CAmount nFee = 0;
         std::map<COutPoint, CMasternode> mapMasternodes = masternodeManager.GetFullMasternodeMap();
-        for (auto& mnpair : mapMasternodes) {
-            CMasternode mn = mnpair.second;
-            nFee += mn.aMNFeePerMB > 0? mn.aMNFeePerMB: masterNodeCtrl.MasternodeFeePerMBDefault;
+        if (mapMasternodes.size()) {
+            CAmount* feeArray = new CAmount[mapMasternodes.size()];
+            if (feeArray) {
+                int cnt = 0;
+                for (const auto& [op, mn] : mapMasternodes) {
+                    feeArray[cnt] = mn.aMNFeePerMB > 0 ? mn.aMNFeePerMB : masterNodeCtrl.MasternodeFeePerMBDefault;
+                    cnt++;
+                }
+                // Use trimmean to calculate the value with fixed 25% percentage
+                nFee = ceil(TRIMMEAN(feeArray, mapMasternodes.size(), 0.25));
+                delete[] feeArray;
+            } else {
+                LogPrint("masternode", "Could't allocate memory for input of TRIMMEAN");
+            }
         }
-        nFee /= mapMasternodes.size();
-        return nFee;
     }
 
-    return MasternodeFeePerMBDefault;
+    return nFee;
 }
 
 CAmount CMasterNodeController::GetArtTicketFeePerKB()
@@ -450,7 +509,33 @@ CAmount CMasterNodeController::GetArtTicketFeePerKB()
     return ArtTicketFeePerKBDefault;
 }
 
+double CMasterNodeController::GetChainDeflationRate() const {
+    if (chainActive.Height() <= ChainBaselineDifficultyUpperIndex + ChainTrailingAverageDifficultyRange) {
+        return ChainDeflationRateDefault;
+    } else {
+        // Get baseline average difficulty
+        double totalBaselineDifficulty = 0.0;
+        for (CAmount i = ChainBaselineDifficultyLowerIndex; i < ChainBaselineDifficultyUpperIndex; i++) {
+            CBlockIndex* index = chainActive[i];
+            totalBaselineDifficulty += getNetworkDifficulty(index, true);
+        }
+        double averageBaselineDifficulty = totalBaselineDifficulty/(ChainBaselineDifficultyUpperIndex - ChainBaselineDifficultyLowerIndex);
+        // Get trailing average difficulty
+        CAmount endTrailingIndex = ChainBaselineDifficultyUpperIndex + ChainTrailingAverageDifficultyRange*((chainActive.Height() - ChainBaselineDifficultyUpperIndex)/ChainTrailingAverageDifficultyRange );
+        CAmount startTrailingIndex = endTrailingIndex - ChainTrailingAverageDifficultyRange;
+        
+        
+        double totalTrailingDifficulty = 0.0;
+        for (CAmount i = startTrailingIndex; i < endTrailingIndex; i++) {
+            CBlockIndex* index = chainActive[i];
+            totalTrailingDifficulty += getNetworkDifficulty(index, true);
+        }
+        double averageTrailingDifficulty = totalTrailingDifficulty/ChainTrailingAverageDifficultyRange;
 
+        return averageTrailingDifficulty/averageBaselineDifficulty;
+
+    }
+}
 
 /*
 Threads
@@ -539,4 +624,162 @@ void CMasterNodeController::ThreadMasterNodeMaintenance()
             }
         }
     }
+}
+
+
+///////////////////////////////////////////////////////////////////////////
+// TRIMMEAN Helper Functions
+///////////////////////////////////////////////////////////////////////////
+
+/* Partitioning algorithm for QuickSort and QuickSelect */
+static CAmount partition(CAmount array[], CAmount low, CAmount high) {
+
+    // Pick the first element to be the pivot.
+    CAmount pivotIndex = low;
+    CAmount pivot = array[low];
+    
+    do {
+        
+        while (low <= high && array[low] <= pivot)
+            low++;
+        
+        while (array[high] > pivot)
+            high--;
+        if (low < high) {
+            CAmount temp = array[low];
+            array[low] = array[high];
+            array[high] = temp;
+
+        }
+        
+    } while (low < high);
+    
+    CAmount temp = array[pivotIndex];
+    array[pivotIndex] = array[high];
+    array[high] = temp;
+    
+    pivotIndex = high;
+    return pivotIndex;
+    
+}
+
+/* QuickSort algorithm */
+static void quickSort(CAmount array[], CAmount first, CAmount last) {
+    
+    if (last - first >= 1) {
+        
+        CAmount pivotIndex = partition(array, first, last);
+        
+        quickSort(array, first, pivotIndex-1);
+        quickSort(array, pivotIndex+1, last);
+
+    }
+    
+}
+
+/* QuickSelect algorithm */
+static CAmount quickSelect(CAmount array[], CAmount first, CAmount last, CAmount k) {
+    
+    if (last - first >= 1) {
+        
+        CAmount pivotIndex = partition(array, first, last);
+        
+        if (pivotIndex == k)
+            return array[pivotIndex];
+        
+        else if (k < pivotIndex)
+            return quickSelect(array, first, pivotIndex-1, k);
+        
+        else
+            return quickSelect(array, pivotIndex+1, last, k);
+        
+    }
+    
+    return array[first];
+    
+}
+
+/* Calculate mean given starting and ending array index */
+inline
+static double mean(CAmount array[], CAmount low, CAmount high) {
+    
+    int acc = 0;
+    
+    for (CAmount i = low; i <= high; i++)
+        acc += array[i];
+    
+    return acc / static_cast<double>(high - low + 1);
+    
+}
+
+///////////////////////////////////////////////////////////////////////////
+// TRIMMEAN Implementation
+///////////////////////////////////////////////////////////////////////////
+
+// Given an array of integers, exclude "percent" percent of data points from the top and bottom tails
+// of a data set. Calculate and return the mean of the remaining data.
+//
+// inputArray: data set; array of integers to examine
+// n: size of data set
+// percent: fractional number of data points to exclude, where 0 <= percent < 1
+// errorno (optional): pointer to ErrorNumber enumerated type for additional error information
+//
+// If any errors are encountered, return NaN. If the errorno argument is defined, additional information
+// about the offending error will be provided in the form of an error code.
+double TRIMMEAN(CAmount inputArray[], CAmount n, double percent, TrimmeanErrorNumber* errorno)
+{
+    /* Error Handling */
+
+    double NaN = 0 * (1e308 * 1e308);
+    bool enoIsDefined = errorno != nullptr;
+
+    if (n <= 0) {
+        // size (n) out of range.
+        if (enoIsDefined)
+            *errorno = TrimmeanErrorNumber::EBADN;
+
+        return NaN;
+    }
+
+    if (percent < 0 || percent >= 1) {
+        // Percent out of range.
+        if (enoIsDefined)
+            *errorno = TrimmeanErrorNumber::EBADPCNT;
+
+        return NaN;
+    }
+
+    if (inputArray == nullptr) {
+        // inputArray is null.
+        if (enoIsDefined)
+            *errorno = TrimmeanErrorNumber::EBADARR;
+
+        return NaN;
+    }
+
+    /* TRIMMEAN */
+
+    // Copy inputArray into a local array which we will sort: we don't want to modify the original
+    // input array.
+    CAmount* array = new CAmount[n];
+    for (int i = 0; i < n; i++)
+        array[i] = inputArray[i];
+
+    // Use QuickSort algorithm to sort the array.
+    quickSort(array, 0, n - 1);
+
+    // Calculate the number of elements to exclude and round down to the nearest even number.
+    CAmount elementsToExclude = n * percent;
+    if (elementsToExclude % 2 != 0)
+        elementsToExclude--;
+
+    // Using our sorted array, exclude the lowest and highest (elementsToExclude / 2) elements and
+    // return the trimmed average.
+    CAmount low = elementsToExclude / 2;
+    CAmount high = n - (elementsToExclude / 2) - 1;
+
+    double retVal = mean(array, low, high);
+    delete[] array;
+
+    return retVal;
 }
