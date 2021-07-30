@@ -50,7 +50,7 @@ CMasternode::CMasternode(const CMasternode& other) :
     nPoSeBanHeight(other.nPoSeBanHeight),
     fUnitTest(other.fUnitTest),
     aMNFeePerMB(other.aMNFeePerMB),
-    aArtTicketFeePerKB(other.aArtTicketFeePerKB)
+    aNFTTicketFeePerKB(other.aNFTTicketFeePerKB)
 {}
 
 CMasternode::CMasternode(const CMasternodeBroadcast& mnb) :
@@ -79,7 +79,7 @@ bool CMasternode::UpdateFromNewBroadcast(CMasternodeBroadcast& mnb)
     strExtraLayerKey = mnb.strExtraLayerKey;
     strExtraLayerCfg = mnb.strExtraLayerCfg;
     aMNFeePerMB = 0;
-    aArtTicketFeePerKB = 0;
+    aNFTTicketFeePerKB = 0;
     nPoSeBanScore = 0;
     nPoSeBanHeight = 0;
     nTimeLastChecked = 0;
@@ -293,7 +293,7 @@ bool CMasternode::IsValidNetAddr()
 bool CMasternode::IsValidNetAddr(CService addrIn)
 {
     // TODO: regtest is fine with any addresses for now,
-    // should probably be a bit smarter if one day we start to implement tests for this
+    // should probably be a bit smNFTer if one day we start to implement tests for this
     return Params().IsRegTest() ||
             (addrIn.IsIPv4() && IsReachable(addrIn) && addrIn.IsRoutable());
 }

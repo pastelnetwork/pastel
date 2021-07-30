@@ -308,7 +308,7 @@ class WalletTest (BitcoinTestFramework):
             newtaddr = self.nodes[2].getnewaddress()
             recipients.append({"address":newtaddr, "amount":amount_per_recipient})
 
-        # Issue #2759 Workaround START
+        # Issue #2759 Workaround STNFT
         # HTTP connection to node 0 may fall into a state, during the few minutes it takes to process
         # loop above to create new addresses, that when z_sendmany is called with a large amount of
         # rpc data in recipients, the connection fails with a 'broken pipe' error.  Making a RPC call
@@ -335,7 +335,7 @@ class WalletTest (BitcoinTestFramework):
             newzaddr = self.nodes[2].z_getnewaddress('sprout')
             recipients.append({"address":newzaddr, "amount":amount_per_recipient})
 
-        # Issue #2759 Workaround START
+        # Issue #2759 Workaround STNFT
         self.nodes[0].getinfo()
         # Issue #2759 Workaround END
 

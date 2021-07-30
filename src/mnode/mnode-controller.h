@@ -58,7 +58,7 @@ public:
     int MasternodeProtocolVersion;
     int MasternodeCollateral;
     CAmount MasternodeFeePerMBDefault;
-    CAmount ArtTicketFeePerKBDefault;
+    CAmount NFTTicketFeePerKBDefault;
 
     CAmount MasternodeUsernameFirstChangeFee;
     CAmount MasternodeUsernameChangeAgainFee;
@@ -111,7 +111,7 @@ public:
     bool ProcessGetData(CNode* pfrom, const CInv& inv);
 
     CAmount GetNetworkFeePerMB();
-    CAmount GetArtTicketFeePerKB();
+    CAmount GetNFTTicketFeePerKB();
 
     double GetChainDeflationRate() const;
 

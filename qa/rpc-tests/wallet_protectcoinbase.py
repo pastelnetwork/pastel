@@ -268,7 +268,7 @@ class WalletProtectCoinbaseTest (BitcoinTestFramework):
         elapsed = timeit.default_timer() - start_time
         print("...invoked getnewaddress() {} times in {} seconds".format(num_t_recipients, elapsed))
 
-        # Issue #2263 Workaround START
+        # Issue #2263 Workaround STNFT
         # HTTP connection to node 0 may fall into a state, during the few minutes it takes to process
         # loop above to create new addresses, that when z_sendmany is called with a large amount of
         # rpc data in recipients, the connection fails with a 'broken pipe' error.  Making a RPC call
