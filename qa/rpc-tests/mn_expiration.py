@@ -361,7 +361,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         #   "block_hash": bytes         // hash of the top block when the ticket was created - this is to map the ticket to the MNs that should process it
         #   "copies": integer,          // number of copies
         #   "royalty": short,           // (not yet supported by cNode) how much creator should get on all future resales
-        #   "green": string,            // address for Green NFT payment (not yet supported by cNode)
+        #   "green_address": string,            // address for Green NFT payment (not yet supported by cNode)
         #   "app_ticket": ...
         # }
         json_ticket = {
@@ -371,7 +371,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
             "block_hash": data_hash,
             "copies": total_copies,
             "royalty": 0,
-            "green": "",
+            "green_address": "",
             "app_ticket": app_ticket
         }
         self.ticket = str_to_b64str(json.dumps(json_ticket))
@@ -419,7 +419,9 @@ class MasterNodeTicketsTest(MasterNodeCommon):
                                                     self.ticket, json.dumps(self.signatures_dict),
                                                     self.top_mn_pastelid0, self.passphrase,
                                                     key1, key2, str(self.storage_fee))["txid"]
+        print(NFT_ticket_txid)
         assert_true(NFT_ticket_txid, "No ticket was created")
+
         self.__wait_for_ticket_tnx()
         print(self.nodes[self.top_mns_index0].getblockcount())
 
