@@ -144,7 +144,7 @@ Fp6_3over2_model<n,modulus> Fp6_3over2_model<n,modulus>::inverse() const
     const my_Fp2 c0 = t0 - Fp6_3over2_model<n,modulus>::mul_by_non_residue(t5);
     const my_Fp2 c1 = Fp6_3over2_model<n,modulus>::mul_by_non_residue(t2) - t3;
     const my_Fp2 c2 = t1 - t4; // typo in paper referenced above. should be "-" as per Scott, but is "*"
-    const my_Fp2 t6 = (a * c0 + Fp6_3over2_model<n,modulus>::mul_by_non_residue((c * c1 + b * c2))).inverse();
+    const my_Fp2 t6 = (a * c0 + Fp6_3over2_model<n,modulus>::mul_by_non_residue(c * c1 + b * c2)).inverse();
     return Fp6_3over2_model<n,modulus>(t6 * c0, t6 * c1, t6 * c2);
 }
 

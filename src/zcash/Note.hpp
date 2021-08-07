@@ -45,7 +45,7 @@ public:
 
     SaplingNote(diversifier_t d, uint256 pk_d, uint64_t value, uint256 r)
             : BaseNote(value), d(d), pk_d(pk_d), r(r) {}
-    SaplingNote() {};
+    SaplingNote(): d{}, pk_d{}, r{} {};
     SaplingNote(const SaplingPaymentAddress &address, uint64_t value);
     ~SaplingNote() override {}
 
@@ -59,7 +59,7 @@ protected:
     uint64_t value_ = 0;
     std::array<unsigned char, ZC_MEMO_SIZE> memo_;
 public:
-    BaseNotePlaintext() {}
+    BaseNotePlaintext(): value_{}, memo_{} {}
     BaseNotePlaintext(const BaseNote& note, std::array<unsigned char, ZC_MEMO_SIZE> memo)
         : value_(note.value()), memo_(memo) {}
     virtual ~BaseNotePlaintext() {}
@@ -118,7 +118,7 @@ public:
     diversifier_t d;
     uint256 rcm;
 
-    SaplingNotePlaintext() {}
+    SaplingNotePlaintext(): rseed{}, leadingByte{}, d{}, rcm{} {}
     SaplingNotePlaintext(const SaplingNote& note, std::array<unsigned char, ZC_MEMO_SIZE> memo);
     ~SaplingNotePlaintext() override {}
 

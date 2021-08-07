@@ -608,8 +608,6 @@ bool AsyncRPCOperation_sendmany::main_impl() {
         UniValue obj(UniValue::VOBJ);
         while (zOutputsDeque.size() > 0) {
             AsyncJoinSplitInfo info;
-            info.vpub_old = 0;
-            info.vpub_new = 0;
             int n = 0;
             while (n++<ZC_NUM_JS_OUTPUTS && zOutputsDeque.size() > 0) {
                 SendManyRecipient smr = zOutputsDeque.front();
@@ -665,8 +663,6 @@ bool AsyncRPCOperation_sendmany::main_impl() {
 
     while (!vpubNewProcessed) {
         AsyncJoinSplitInfo info;
-        info.vpub_old = 0;
-        info.vpub_new = 0;
 
         CAmount jsInputValue = 0;
         uint256 jsAnchor;
@@ -999,7 +995,7 @@ bool AsyncRPCOperation_sendmany::find_utxos(bool fAcceptCoinbase=false) {
             continue;
         }
 
-        if (destinations.size()) {
+        if (destinations.size()) { //-V547 This is always true, but should be kept to make code wasier to read/maintain
             CTxDestination address;
             if (!ExtractDestination(out.tx->vout[out.i].scriptPubKey, address)) {
                 continue;

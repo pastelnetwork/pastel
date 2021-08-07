@@ -145,7 +145,7 @@ protected:
         if (!pdb)
             return false;
         if (fReadOnly)
-            assert(!"Write called on database in read-only mode");
+            assert(!"Write called on database in read-only mode"); //-V547
 
         // Key
         CDataStream ssKey(SER_DISK, CLIENT_VERSION);
@@ -174,7 +174,7 @@ protected:
         if (!pdb)
             return false;
         if (fReadOnly)
-            assert(!"Erase called on database in read-only mode");
+            assert(!"Erase called on database in read-only mode"); //-V547
 
         // Key
         CDataStream ssKey(SER_DISK, CLIENT_VERSION);

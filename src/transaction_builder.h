@@ -82,7 +82,7 @@ private:
     std::optional<CTxDestination> tChangeAddr;
 
 public:
-    TransactionBuilder() {}
+    TransactionBuilder() : consensusParams{}, nHeight{}, keystore{} {}
     TransactionBuilder(const Consensus::Params& consensusParams, int nHeight, CKeyStore* keyStore = nullptr);
 
     void SetFee(CAmount fee);

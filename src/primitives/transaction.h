@@ -48,7 +48,7 @@ public:
     libzcash::GrothProof zkproof;  //!< A zero-knowledge proof using the spend circuit.
     spend_auth_sig_t spendAuthSig; //!< A signature authorizing this spend.
 
-    SpendDescription() { }
+    SpendDescription() : cv{}, anchor{}, nullifier{}, rk{}, zkproof{}, spendAuthSig{} {}
 
     ADD_SERIALIZE_METHODS;
 
@@ -94,7 +94,7 @@ public:
     libzcash::SaplingOutCiphertext outCiphertext; //!< A ciphertext component for the encrypted output note.
     libzcash::GrothProof zkproof;   //!< A zero-knowledge proof using the output circuit.
 
-    OutputDescription() { }
+    OutputDescription() : cv{}, cm{}, ephemeralKey{}, encCiphertext{}, outCiphertext{}, zkproof{} {}
 
     ADD_SERIALIZE_METHODS;
 
