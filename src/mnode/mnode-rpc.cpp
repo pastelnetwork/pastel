@@ -141,7 +141,7 @@ UniValue masternodelist(const UniValue& params, bool fHelp)
             } else if (strMode == "addr") {
                 std::string strAddress = mn.addr.ToString();
                 if (strFilter !="" && strAddress.find(strFilter) == std::string::npos &&
-                    strOutpoint.find(strFilter) == std::string::npos) continue;
+                    strOutpoint.find(strFilter) == std::string::npos) continue; //-V1051
                 obj.pushKV(strOutpoint, strAddress);
             } else if (strMode == "full") {
                 std::ostringstream streamFull;
@@ -157,7 +157,7 @@ UniValue masternodelist(const UniValue& params, bool fHelp)
                                 mn.addr.ToString();
                 std::string strFull = streamFull.str();
                 if (strFilter !="" && strFull.find(strFilter) == std::string::npos &&
-                    strOutpoint.find(strFilter) == std::string::npos) continue;
+                    strOutpoint.find(strFilter) == std::string::npos) continue; //-V1051
                 obj.pushKV(strOutpoint, strFull);
             } else if (strMode == "info") {
                 std::ostringstream streamInfo;
@@ -170,7 +170,7 @@ UniValue masternodelist(const UniValue& params, bool fHelp)
                                 mn.addr.ToString();
                 std::string strInfo = streamInfo.str();
                 if (strFilter !="" && strInfo.find(strFilter) == std::string::npos &&
-                    strOutpoint.find(strFilter) == std::string::npos) continue;
+                    strOutpoint.find(strFilter) == std::string::npos) continue; //-V1051
                 obj.pushKV(strOutpoint, strInfo);
             } else if (strMode == "lastpaidblock") {
                 if (strFilter !="" && strOutpoint.find(strFilter) == std::string::npos) continue;
@@ -195,7 +195,7 @@ UniValue masternodelist(const UniValue& params, bool fHelp)
             } else if (strMode == "status") {
                 std::string strStatus = mn.GetStatus();
                 if (strFilter !="" && strStatus.find(strFilter) == std::string::npos &&
-                    strOutpoint.find(strFilter) == std::string::npos) continue;
+                    strOutpoint.find(strFilter) == std::string::npos) continue; //-V1051
                 obj.pushKV(strOutpoint, strStatus);
             } else if (strMode == "extra") {
                 UniValue objItem(UniValue::VOBJ);
@@ -728,7 +728,7 @@ UniValue masternode(const UniValue& params, bool fHelp)
         if (params.size() >= 2) {
             strCmd = params[1].get_str();
         }
-        if (fHelp ||
+        if (fHelp || //-V560
             (params.size() < 2 || params.size() > 4) ||
             (strCmd != "sign" && strCmd != "send" && strCmd != "print" && strCmd != "list"))
             throw JSONRPCError(RPC_INVALID_PARAMETER, "Correct usage is:\n"
@@ -1288,7 +1288,7 @@ Import PKCS8 encrypted private key (EdDSA448) in PEM format. Return PastelID bas
         //...
 
         //validate and generate pastelid
-        if (params.size() == 3)
+        if (params.size() == 3) //-V779 not implemented, but should keep here for future implementation's reference
         {
             SecureString strKeyPass;
             strKeyPass.reserve(100);
@@ -1609,7 +1609,7 @@ Available commands:
 	if (TICKETS.IsCmd(RPC_CMD_TICKETS::Register)) {        
         RPC_CMD_PARSER2(REGISTER, params, mnid, id, art, act, sell, buy, trade, down, royalty, username);
         
-        if (fHelp || !REGISTER.IsCmdSupported())
+        if (fHelp || !REGISTER.IsCmdSupported()) //-V560
 			throw JSONRPCError(RPC_INVALID_PARAMETER,
 R"(tickets register "type" ...
 Set of commands to register different types of Pastel tickets
@@ -1700,7 +1700,7 @@ Register masternode ID
 			mnObj.pushKV(RPC_KEY_TXID, txid);
 		}
         if (REGISTER.IsCmd(RPC_CMD_REGISTER::id)) {
-			if (fHelp || params.size() != 5)
+			if (fHelp || params.size() != 5) //-V560
 				throw JSONRPCError(RPC_INVALID_PARAMETER,
 R"(tickets register id "pastelid" "passphrase" "address"
 Register PastelID identity. If successful, method returns "txid".
@@ -1742,7 +1742,7 @@ As json rpc
 			mnObj.pushKV(RPC_KEY_TXID, txid);
 		}
         if (REGISTER.IsCmd(RPC_CMD_REGISTER::art)) {
-			if (fHelp || params.size() != 9)
+			if (fHelp || params.size() != 9) //-V560
 				throw JSONRPCError(RPC_INVALID_PARAMETER,
 R"(tickets register art "ticket" "{signatures}" "pastelid" "passphrase" "key1" "key2" "fee"
 Register new art ticket. If successful, method returns "txid".
@@ -1834,7 +1834,7 @@ As json rpc
 			mnObj.pushKV(RPC_KEY_TXID, txid);
 		}
         if (REGISTER.IsCmd(RPC_CMD_REGISTER::act)) {
-			if (fHelp || params.size() != 7)
+			if (fHelp || params.size() != 7) //-V560
 				throw JSONRPCError(RPC_INVALID_PARAMETER,
 R"(tickets register act "reg-ticket-tnxid" "artist-height" "fee" "PastelID" "passphrase"
 Register confirm new art ticket identity. If successful, method returns "txid".
@@ -1882,7 +1882,7 @@ As json rpc
 			mnObj.pushKV(RPC_KEY_TXID, txid);
 		}
         if (REGISTER.IsCmd(RPC_CMD_REGISTER::sell)) {
-			if (fHelp || params.size() < 6 || params.size() > 9)
+			if (fHelp || params.size() < 6 || params.size() > 9) //-V560
 				throw JSONRPCError(RPC_INVALID_PARAMETER,
 R"(tickets register sell "art_txid" "price" "PastelID" "passphrase" [valid_after] [valid_before] [copy_number]
 Register art sell ticket. If successful, method returns "txid".
@@ -1945,7 +1945,7 @@ As json rpc
             mnObj.pushKV(RPC_KEY_TXID, txid);
 		}
         if (REGISTER.IsCmd(RPC_CMD_REGISTER::buy)) {
-            if (fHelp || params.size() != 6)
+            if (fHelp || params.size() != 6) //-V560
                 throw JSONRPCError(RPC_INVALID_PARAMETER,
 R"(tickets register buy "sell_txid" "price" "PastelID" "passphrase"
 Register art buy ticket. If successful, method returns "txid".
@@ -1988,7 +1988,7 @@ As json rpc
             mnObj.pushKV(RPC_KEY_TXID, txid);
         }
         if (REGISTER.IsCmd(RPC_CMD_REGISTER::trade)) {
-            if (fHelp || params.size() != 6)
+            if (fHelp || params.size() != 6) //-V560
                 throw JSONRPCError(RPC_INVALID_PARAMETER,
 R"(tickets register trade "sell_txid" "buy_txid" "PastelID" "passphrase"
 Register art trade ticket. And pay price requested in sell ticket and confirmed in buy ticket to the address associated with sellers PastelID
@@ -2034,7 +2034,7 @@ As json rpc
             mnObj.pushKV(RPC_KEY_TXID, txid);
         }
         if (REGISTER.IsCmd(RPC_CMD_REGISTER::royalty)) {
-          if (fHelp || params.size() != 6)
+          if (fHelp || params.size() != 6) //-V560
             throw JSONRPCError(RPC_INVALID_PARAMETER,
 R"(tickets register royalty "art-tnxid" "new-pastelid" "old-pastelid" "passphrase"
 Register new change payee of the art royalty ticket. If successful, method returns "txid".
@@ -2084,7 +2084,7 @@ Royalty Ticket)"
           mnObj.pushKV(RPC_KEY_TXID, std::move(txid));
         }
         if (REGISTER.IsCmd(RPC_CMD_REGISTER::down)) {
-			if (fHelp || params.size() != 5)
+			if (fHelp || params.size() != 5) //-V560
 				throw JSONRPCError(RPC_INVALID_PARAMETER,
 R"(tickets register down "txid" "pastelid" "passpharse"
 Register take down request ticket. If successful, method returns "txid"
@@ -2112,7 +2112,7 @@ As json rpc
                     R"("register", "down", "jXYqZNPj21RVnwxnEJ654wEdzi7GZTZ5LAdiotBmPrF7pDMkpX1JegDMQZX55WZLkvy9fxNpZcbBJuE8QYUqBF", "passphrase")"));
 		}
         if (REGISTER.IsCmd(RPC_CMD_REGISTER::username)) {
-			if (fHelp || params.size() != 5)
+			if (fHelp || params.size() != 5) //-V560
 				throw JSONRPCError(RPC_INVALID_PARAMETER,
 R"(tickets register username "PastelId" "username" "passpharse"
 Register Username Change Request ticket. If successful, method returns "txid"
@@ -2156,7 +2156,7 @@ As json rpc
         
         RPC_CMD_PARSER2(FIND, params, id, art, act, sell, buy, trade, down, royalty, username);
             
-        if (fHelp || !FIND.IsCmdSupported())
+        if (fHelp || !FIND.IsCmdSupported()) //-V560
 			throw JSONRPCError(RPC_INVALID_PARAMETER,
 R"(tickets find "type" "key""
 Set of commands to find different types of Pastel tickets
@@ -2244,7 +2244,7 @@ As json rpc
     if (TICKETS.IsCmd(RPC_CMD_TICKETS::list)) {
     
         RPC_CMD_PARSER2(LIST, params, id, art, act, sell, buy, trade, down, royalty);
-        if (fHelp || (params.size() < 2 || params.size() > 4) || !LIST.IsCmdSupported())
+        if (fHelp || (params.size() < 2 || params.size() > 4) || !LIST.IsCmdSupported()) //-V560
             throw JSONRPCError(RPC_INVALID_PARAMETER,
 R"(tickets list "type" ("filter") ("minheight")
 List all tickets of the specific type registered in the system
@@ -2535,7 +2535,7 @@ As json rpc
                 }
             }
             case RPC_CMD_LIST::gettotalstoragefee: {
-                if (fHelp || params.size() != 10)
+                if (fHelp || params.size() != 10) //-V560
                     throw JSONRPCError(RPC_INVALID_PARAMETER,
                                        R"(tickets tools gettotalstoragefee "ticket" "{signatures}" "pastelid" "passphrase" "key1" "key2" "fee" "imagesize"
 Get full storage fee for the Art registration. If successful, method returns total amount of fee.
@@ -2866,7 +2866,7 @@ UniValue ingest(const UniValue& params, bool fHelp)
                                "Cannot open file!!!\n");
 
         std::ofstream outfile(path+".output");
-        while (!infile.eof()) {
+        while (!infile.eof()) { //-V1024
             txCounter++;
 
             std::vector<CRecipient> vecSend;

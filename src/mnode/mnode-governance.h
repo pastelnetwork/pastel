@@ -24,7 +24,7 @@ public:
     int nWaitForTicketRank;
     int nSyncBlockHeight;
 
-    CGovernanceVote() {}
+    CGovernanceVote(): nVoteBlockHeight{}, bVote{}, nWaitForTicketRank{}, nSyncBlockHeight{} {}
 
     CGovernanceVote(COutPoint outpointMasternode, uint256 id, int height, bool vote) :
         vinMasternode(outpointMasternode),
@@ -101,8 +101,9 @@ public:
 
     uint256         ticketId;
 
-    CGovernanceTicket()
-    {}
+    CGovernanceTicket() : nAmountToPay{}, nAmountPaid{}, nStopVoteBlockHeight{}, nYesVotes{}, nFirstPaymentBlockHeight{}, nLastPaymentBlockHeight{}
+    {
+    }
 
     CGovernanceTicket(CScript& address, CAmount amount, std::string& description, int height) :
         scriptPubKey(address), 

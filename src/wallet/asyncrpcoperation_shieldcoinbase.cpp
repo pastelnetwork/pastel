@@ -225,7 +225,6 @@ bool ShieldToAddress::operator()(const libzcash::SproutPaymentAddress &zaddr) co
     // Create joinsplit
     ShieldCoinbaseJSInfo info;
     info.vpub_old = sendAmount;
-    info.vpub_new = 0;
     JSOutput jso = JSOutput(zaddr, sendAmount);
     info.vjsout.push_back(jso);
     UniValue obj = m_op->perform_joinsplit(info);

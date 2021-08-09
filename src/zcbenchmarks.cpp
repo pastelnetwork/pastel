@@ -375,7 +375,7 @@ public:
         return hash;
     }
 
-    uint256 GetBestAnchor() const {
+    uint256 GetBestAnchor() const { //-V378
         return t.root();
     }
 

@@ -1508,7 +1508,7 @@ TEST(WalletTests, ClearNoteWitnessCache) {
     SaplingMerkleTree saplingTree;
     wtx.mapSaplingNoteData[saplingNotes[0]].witnesses.push_front(saplingTree.witness());
     wtx.mapSaplingNoteData[saplingNotes[0]].witnessHeight = 1;
-    wallet.nWitnessCacheSize = 2;
+    wallet.nWitnessCacheSize = 2; //-V519
 
     wallet.AddToWallet(wtx, true, NULL);
 

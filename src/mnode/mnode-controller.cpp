@@ -350,7 +350,7 @@ bool CMasterNodeController::ProcessGetData(CNode* pfrom, const CInv& inv)
 {
     bool pushed = false;
 
-    if (!pushed && inv.type == MSG_MASTERNODE_MESSAGE) {
+    if (inv.type == MSG_MASTERNODE_MESSAGE) {
         LOCK(cs_mapSeenMessages);
         auto vi = masternodeMessages.mapSeenMessages.find(inv.hash);
         if(vi != masternodeMessages.mapSeenMessages.end() && vi->second.IsVerified()) {
@@ -473,8 +473,8 @@ CAmount CMasterNodeController::GetNetworkFeePerMB()
     if (fMasterNode) {
         std::map<COutPoint, CMasternode> mapMasternodes = masternodeManager.GetFullMasternodeMap();
         if (mapMasternodes.size()) {
-            CAmount* feeArray = new CAmount[mapMasternodes.size()];
-            if (feeArray) {
+            try {
+                CAmount* feeArray = new CAmount[mapMasternodes.size()];
                 int cnt = 0;
                 for (const auto& [op, mn] : mapMasternodes) {
                     feeArray[cnt] = mn.aMNFeePerMB > 0 ? mn.aMNFeePerMB : masterNodeCtrl.MasternodeFeePerMBDefault;
@@ -483,7 +483,7 @@ CAmount CMasterNodeController::GetNetworkFeePerMB()
                 // Use trimmean to calculate the value with fixed 25% percentage
                 nFee = ceil(TRIMMEAN(feeArray, mapMasternodes.size(), 0.25));
                 delete[] feeArray;
-            } else {
+            } catch (std::bad_alloc&) {
                 LogPrint("masternode", "Could't allocate memory for input of TRIMMEAN");
             }
         }

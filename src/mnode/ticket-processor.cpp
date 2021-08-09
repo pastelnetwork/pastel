@@ -1106,8 +1106,8 @@ bool CPastelTicketProcessor::ParseP2FMSTransaction(const CMutableTransaction& tx
         return false;
     }
 
-    auto output_len_ptr = reinterpret_cast<size_t**>(&output_data);
-    if (output_len_ptr == nullptr || *output_len_ptr == nullptr) {
+    auto output_len_ptr = reinterpret_cast<size_t**>(&output_data); //-V580
+    if (output_len_ptr == nullptr || *output_len_ptr == nullptr) { //-V560
         error_ret = "No correct data found in transaction - wrong length";
         return false;
     }
