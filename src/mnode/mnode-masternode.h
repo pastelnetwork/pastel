@@ -152,7 +152,7 @@ public:
     bool fUnitTest = false;
 
     CAmount aMNFeePerMB = 0; // 0 means default (masterNodeCtrl.MasternodeFeePerMBDefault)
-    CAmount aArtTicketFeePerKB = 0; // 0 means default (masterNodeCtrl.ArtTicketFeePerKBDefault)
+    CAmount aNFTTicketFeePerKB = 0; // 0 means default (masterNodeCtrl.NFTTicketFeePerKBDefault)
 
     CMasternode();
     CMasternode(const CMasternode& other);
@@ -188,7 +188,7 @@ public:
         READWRITE(strExtraLayerAddress);
         READWRITE(strExtraLayerCfg);
         READWRITE(aMNFeePerMB);
-        READWRITE(aArtTicketFeePerKB);
+        READWRITE(aNFTTicketFeePerKB);
         
         //For backward compatibility
         try
@@ -285,7 +285,7 @@ public:
         nPoSeBanHeight = from.nPoSeBanHeight;
         fUnitTest = from.fUnitTest;
         aMNFeePerMB = from.aMNFeePerMB;
-        aArtTicketFeePerKB = from.aArtTicketFeePerKB;
+        aNFTTicketFeePerKB = from.aNFTTicketFeePerKB;
         return *this;
     }
 };

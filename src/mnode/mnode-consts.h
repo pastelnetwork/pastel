@@ -8,13 +8,13 @@
 
 // ticket names
 constexpr auto TICKET_NAME_ID_REG       = "pastelid";  // id registration ticket
-constexpr auto TICKET_NAME_ART_REG      = "art-reg";   // art registration ticket
-constexpr auto TICKET_NAME_ART_ACT      = "art-act";   // art activation ticket
-constexpr auto TICKET_NAME_ART_SELL     = "art-sell";  // art sell ticket
-constexpr auto TICKET_NAME_ART_BUY      = "art-buy";   // art buy ticket
-constexpr auto TICKET_NAME_ART_TRADE    = "art-trade"; // art trade ticket
+constexpr auto TICKET_NAME_NFT_REG      = "NFT-reg";   // NFT registration ticket
+constexpr auto TICKET_NAME_NFT_ACT      = "NFT-act";   // NFT activation ticket
+constexpr auto TICKET_NAME_NFT_SELL     = "NFT-sell";  // NFT sell ticket
+constexpr auto TICKET_NAME_NFT_BUY      = "NFT-buy";   // NFT buy ticket
+constexpr auto TICKET_NAME_NFT_TRADE    = "NFT-trade"; // NFT trade ticket
 constexpr auto TICKET_NAME_TAKE_DOWN    = "take-down";
-constexpr auto TICKET_NAME_ART_ROYALTY  = "art-royalty"; // art royalty ticket
+constexpr auto TICKET_NAME_NFT_ROYALTY  = "NFT-royalty"; // NFT royalty ticket
 constexpr auto TICKET_NAME_USERNAME_CHANGE    = "username-change";
 
 /**
@@ -22,13 +22,13 @@ constexpr auto TICKET_NAME_USERNAME_CHANGE    = "username-change";
  */
 enum class TicketID : uint8_t {
     PastelID = 0, // Pastel ID registration ticket
-    Art,          // Art registration ticket
-    Activate,     // Art activation ticket
-    Sell,         // Art sell ticket
-    Buy,          // Art buy ticket
-    Trade,        // Art trade ticket
+    NFT,          // NFT registration ticket
+    Activate,     // NFT activation ticket
+    Sell,         // NFT sell ticket
+    Buy,          // NFT buy ticket
+    Trade,        // NFT trade ticket
     Down,
-    Royalty,      // Art royalty ticket
+    Royalty,      // NFT royalty ticket
     Username,     // Username Change Request ticket
 
     COUNT         // number of ticket types
@@ -52,13 +52,13 @@ using TicketInfo = struct
 static constexpr std::array<TicketInfo, to_integral_type<TicketID>(TicketID::COUNT)> TICKET_INFO =
     {{  //     ticket id     |   ticket description   |   ticket name       | version  | DB subfolder
         { TicketID::PastelID, "Pastel ID Registration", TICKET_NAME_ID_REG,      1,     "pslids"},
-        { TicketID::Art,      "Art Registration",       TICKET_NAME_ART_REG,     0,     "argreg" },
-        { TicketID::Activate, "Art Activation",         TICKET_NAME_ART_ACT,     0,     "artcnf" },
-        { TicketID::Sell,     "Art Sell",               TICKET_NAME_ART_SELL,    0,     "artsel" },
-        { TicketID::Buy,      "Art Buy",                TICKET_NAME_ART_BUY,     0,     "artbuy" },
-        { TicketID::Trade,    "Art Trade",              TICKET_NAME_ART_TRADE,   0,     "arttrd" },
+        { TicketID::NFT,      "NFT Registration",       TICKET_NAME_NFT_REG,     0,     "argreg" },
+        { TicketID::Activate, "NFT Activation",         TICKET_NAME_NFT_ACT,     0,     "NFTcnf" },
+        { TicketID::Sell,     "NFT Sell",               TICKET_NAME_NFT_SELL,    0,     "NFTsel" },
+        { TicketID::Buy,      "NFT Buy",                TICKET_NAME_NFT_BUY,     0,     "NFTbuy" },
+        { TicketID::Trade,    "NFT Trade",              TICKET_NAME_NFT_TRADE,   0,     "NFTtrd" },
         { TicketID::Down,     "Take Down",              TICKET_NAME_TAKE_DOWN,   0,     "takedn" },
-        { TicketID::Royalty,  "Art Royalty",            TICKET_NAME_ART_ROYALTY, 1,     "artrty" },
+        { TicketID::Royalty,  "NFT Royalty",            TICKET_NAME_NFT_ROYALTY, 1,     "NFTrty" },
         { TicketID::Username, "Username Change",        TICKET_NAME_USERNAME_CHANGE, 1, "usrnme" },
     }};
 

@@ -30,7 +30,7 @@ void CMasterNodeController::SetParameters()
     MasternodeProtocolVersion           = 170008;
     
     MasternodeFeePerMBDefault           = 50;
-    ArtTicketFeePerKBDefault            = 3;
+    NFTTicketFeePerKBDefault            = 3;
 
     ChainDeflationRateDefault           = 1;
 
@@ -492,7 +492,7 @@ CAmount CMasterNodeController::GetNetworkFeePerMB()
     return nFee;
 }
 
-CAmount CMasterNodeController::GetArtTicketFeePerKB()
+CAmount CMasterNodeController::GetNFTTicketFeePerKB()
 {
 
     if (fMasterNode) {
@@ -500,13 +500,13 @@ CAmount CMasterNodeController::GetArtTicketFeePerKB()
         std::map<COutPoint, CMasternode> mapMasternodes = masternodeManager.GetFullMasternodeMap();
         for (auto& mnpair : mapMasternodes) {
             CMasternode mn = mnpair.second;
-            nFee += mn.aArtTicketFeePerKB > 0? mn.aArtTicketFeePerKB: masterNodeCtrl.ArtTicketFeePerKBDefault;
+            nFee += mn.aNFTTicketFeePerKB > 0? mn.aNFTTicketFeePerKB: masterNodeCtrl.NFTTicketFeePerKBDefault;
         }
         nFee /= mapMasternodes.size();
         return nFee;
     }
 
-    return ArtTicketFeePerKBDefault;
+    return NFTTicketFeePerKBDefault;
 }
 
 double CMasterNodeController::GetChainDeflationRate() const {

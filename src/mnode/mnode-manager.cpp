@@ -204,7 +204,7 @@ void CMasternodeMan::CheckAndRemove(bool bCheckAndRemove)
             }
         }
 
-        // proces replies for MASTERNODE_NEW_START_REQUIRED masternodes
+        // proces replies for MASTERNODE_NEW_STARTED_REQUIRED masternodes
         LogPrint("masternode", "CMasternodeMan::CheckAndRemove -- mMnbRecoveryGoodReplies size=%d\n", (int)mMnbRecoveryGoodReplies.size());
         std::map<uint256, std::vector<CMasternodeBroadcast> >::iterator itMnbReplies = mMnbRecoveryGoodReplies.begin();
         while(itMnbReplies != mMnbRecoveryGoodReplies.end()){
@@ -232,7 +232,7 @@ void CMasternodeMan::CheckAndRemove(bool bCheckAndRemove)
         std::map<uint256, std::pair< int64_t, std::set<CNetAddr> > >::iterator itMnbRequest = mMnbRecoveryRequests.begin();
         while(itMnbRequest != mMnbRecoveryRequests.end()){
             // Allow this mnb to be re-verified again after MNB_RECOVERY_RETRY_SECONDS seconds
-            // if mn is still in MASTERNODE_NEW_START_REQUIRED state.
+            // if mn is still in MASTERNODE_NEW_STARTED_REQUIRED state.
             if(GetTime() - itMnbRequest->second.first > MNB_RECOVERY_RETRY_SECONDS) {
                 mMnbRecoveryRequests.erase(itMnbRequest++);
             } else {

@@ -75,7 +75,7 @@ public:
     static std::vector<CPastelIDRegTicket> FindAllTicketByPastelAddress(const std::string& address);
 };
 
-// Art Registration Ticket //////////////////////////////////////////////////////////////////////////////////////////////
+// NFT Registration Ticket //////////////////////////////////////////////////////////////////////////////////////////////
 /*
 
 Ticket as base64(RegistrationTicket({some data}))
@@ -83,23 +83,23 @@ Ticket as base64(RegistrationTicket({some data}))
 bytes fields are base64 as strings
 
   "version": integer          // 1
-  "author": bytes,            // PastelID of the author (artist)
+  "author": bytes,            // PastelID of the author (creator)
   "blocknum": integer,        // block number when the ticket was created - this is to map the ticket to the MNs that should process it
   "block_hash": bytes         // hash of the top block when the ticket was created - this is to map the ticket to the MNs that should process it
   "copies": integer,          // number of copies
-  "royalty": float,           // (not yet supported by cNode) how much artist should get on all future resales
+  "royalty": float,           // (not yet supported by cNode) how much creator should get on all future resales
   "green_address": string,    // address for Green NFT payment (not yet supported by cNode)
 
   "app_ticket": bytes,        // cNode DOES NOT parse this part!!!!
   as base64(
   {
-    "artist_name": string,
-    "artwork_title": string,
-    "artwork_series_name": string,
-    "artwork_keyword_set": string,
-    "artist_website": string,
-    "artist_written_statement": string,
-    "artwork_creation_video_youtube_url": string,
+    "creator_name": string,
+    "NFTwork_title": string,
+    "NFTwork_series_name": string,
+    "NFTwork_keyword_set": string,
+    "creator_website": string,
+    "creator_written_statement": string,
+    "NFTwork_creation_video_youtube_url": string,
 
     "thumbnail_hash": bytes,    //hash of the thumbnail !!!!SHA3-256!!!!
 		"data_hash": bytes,         // hash of the image (or any other asset) that this ticket represents !!!!SHA3-256!!!!
@@ -137,17 +137,17 @@ signatures
     }
 }
  */
-class CArtRegTicket : public CPastelTicket
+class CNFTRegTicket : public CPastelTicket
 {
 public:
     static constexpr short allsigns = 4;
-    static constexpr short artistsign = 0;
+    static constexpr short creatorsign = 0;
     static constexpr short mainmnsign = 1;
     static constexpr short mn2sign = 2;
     static constexpr short mn3sign = 3;
 
 public:
-	std::string artTicket;
+	std::string NFTTicket;
     
     std::string pastelIDs[allsigns];
     std::vector<unsigned char> ticketSignatures[allsigns];
@@ -156,24 +156,24 @@ public:
     std::string keyTwo;
     CAmount storageFee{};
 
-    int artistHeight{}; //blocknum when the ticket was created by the wallet
+    int creatorHeight{}; //blocknum when the ticket was created by the wallet
     int totalCopies{}; //blocknum when the ticket was created by the wallet
     
     uint16_t nRoyalty{};
     std::string strGreenAddress;
     
 public:
-    CArtRegTicket() = default;
-    explicit CArtRegTicket(std::string _ticket) :
-        artTicket(std::move(_ticket))
+    CNFTRegTicket() = default;
+    explicit CNFTRegTicket(std::string _ticket) :
+        NFTTicket(std::move(_ticket))
     {}
     
-    TicketID ID() const noexcept override { return TicketID::Art; }
-    static TicketID GetID() { return TicketID::Art; }
+    TicketID ID() const noexcept override { return TicketID::NFT; }
+    static TicketID GetID() { return TicketID::NFT; }
 
     std::string KeyOne() const noexcept override { return keyOne; }
     std::string KeyTwo() const noexcept override { return keyTwo; }
-    std::string MVKeyOne() const noexcept override { return pastelIDs[artistsign]; }
+    std::string MVKeyOne() const noexcept override { return pastelIDs[creatorsign]; }
     
     bool HasKeyTwo() const noexcept override { return true; }
     bool HasMVKeyOne() const noexcept override { return true; }
@@ -191,7 +191,7 @@ public:
         std::string error;
         if (!VersionMgmt(error, bRead))
             throw std::runtime_error(error);
-        READWRITE(artTicket);
+        READWRITE(NFTTicket);
         READWRITE(m_nVersion);
 		
         // v0
@@ -203,7 +203,7 @@ public:
 
         READWRITE(keyOne);
         READWRITE(keyTwo);
-        READWRITE(artistHeight);
+        READWRITE(creatorHeight);
         READWRITE(totalCopies);
         READWRITE(nRoyalty);
         READWRITE(strGreenAddress);
@@ -216,43 +216,43 @@ public:
     std::string GetRoyaltyPayeePastelID() const;
     std::string GetRoyaltyPayeeAddress() const;
 
-    static CArtRegTicket Create(std::string _ticket, const std::string& signatures,
+    static CNFTRegTicket Create(std::string _ticket, const std::string& signatures,
                                 std::string _pastelID, const SecureString& strKeyPass,
                                 std::string _keyOne, std::string _keyTwo,
                                 CAmount _storageFee);
-    static bool FindTicketInDb(const std::string& key, CArtRegTicket& _ticket);
+    static bool FindTicketInDb(const std::string& key, CNFTRegTicket& _ticket);
     static bool CheckIfTicketInDb(const std::string& key);
     
-    static std::vector<CArtRegTicket> FindAllTicketByPastelID(const std::string& pastelID);
+    static std::vector<CNFTRegTicket> FindAllTicketByPastelID(const std::string& pastelID);
 };
 
-// Art Activation Ticket ////////////////////////////////////////////////////////////////////////////////////////////////
+// NFT Activation Ticket ////////////////////////////////////////////////////////////////////////////////////////////////
 /*
 	"ticket": {
 		"type": "activation",
-		"pastelID": "",         //PastelID of the artist
+		"pastelID": "",         //PastelID of the creator
 		"reg_txid": "",         //tnx with registration ticket in it
-		"artist_height": "",    //block at which artist created Art Ticket,
-		                        //is used to check if the MN that created art registration ticket was indeed top MN when artist create ticket
-		"reg_fee": "",          //should match the reg fee from Art Ticket
+		"creator_height": "",    //block at which creator created NFT Ticket,
+		                        //is used to check if the MN that created NFT registration ticket was indeed top MN when creator create ticket
+		"reg_fee": "",          //should match the reg fee from NFT Ticket
 		"signature": ""
 	},
  */
-class CArtActivateTicket : public CPastelTicket
+class CNFTActivateTicket : public CPastelTicket
 {
 private:
 
 public:
-	std::string pastelID;   //pastelID of the artist
+	std::string pastelID;   //pastelID of the creator
 	std::string regTicketTnxId;
-    int artistHeight{};
+    int creatorHeight{};
     int storageFee{};
 	std::vector<unsigned char> signature;
 
 public:
-    CArtActivateTicket() = default;
+    CNFTActivateTicket() = default;
 
-	explicit CArtActivateTicket(std::string _pastelID) :
+	explicit CNFTActivateTicket(std::string _pastelID) :
         pastelID(std::move(_pastelID))
     {}
     
@@ -261,7 +261,7 @@ public:
 
     std::string KeyOne() const noexcept override { return regTicketTnxId; }
     std::string MVKeyOne() const noexcept override { return pastelID; }
-    std::string MVKeyTwo() const noexcept override { return std::to_string(artistHeight); }
+    std::string MVKeyTwo() const noexcept override { return std::to_string(creatorHeight); }
 
     bool HasMVKeyOne() const noexcept override { return true; }
     bool HasMVKeyTwo() const noexcept override { return true; }
@@ -283,7 +283,7 @@ public:
         READWRITE(m_nVersion);
         // v0
 		READWRITE(regTicketTnxId);
-		READWRITE(artistHeight);
+		READWRITE(creatorHeight);
         READWRITE(storageFee);
         READWRITE(signature);
         READWRITE(m_nTimestamp);
@@ -293,21 +293,21 @@ public:
 	
     CAmount GetExtraOutputs(std::vector<CTxOut>& outputs) const override;
     
-    static CArtActivateTicket Create(std::string _regTicketTxId, int _artistHeight, int _storageFee, std::string _pastelID, const SecureString& strKeyPass);
-    static bool FindTicketInDb(const std::string& key, CArtActivateTicket& ticket);
+    static CNFTActivateTicket Create(std::string _regTicketTxId, int _creatorHeight, int _storageFee, std::string _pastelID, const SecureString& strKeyPass);
+    static bool FindTicketInDb(const std::string& key, CNFTActivateTicket& ticket);
 
-    static std::vector<CArtActivateTicket> FindAllTicketByPastelID(const std::string& pastelID);
-    static std::vector<CArtActivateTicket> FindAllTicketByArtistHeight(int height);
-    static bool CheckTicketExistByArtTicketID(const std::string& regTicketTnxId);
+    static std::vector<CNFTActivateTicket> FindAllTicketByPastelID(const std::string& pastelID);
+    static std::vector<CNFTActivateTicket> FindAllTicketByCreatorHeight(int height);
+    static bool CheckTicketExistByNFTTicketID(const std::string& regTicketTnxId);
 };
 
-// Art Trade Tickets /////////////////////////////////////////////////////////////////////////////////////////////////////
+// NFT Trade Tickets /////////////////////////////////////////////////////////////////////////////////////////////////////
 /*
 	"ticket": {
-		"type": "art-sell",
-		"pastelID": "",     //PastelID of the art owner - either 1) an original artist; or 2) a previous buyer,
-		                    //should be the same in either 1) art activation ticket or 2) trade ticket
-		"art_txid": "",     //txid with either 1) art activation ticket or 2) trade ticket in it
+		"type": "NFT-sell",
+		"pastelID": "",     //PastelID of the NFT owner - either 1) an original creator; or 2) a previous buyer,
+		                    //should be the same in either 1) NFT activation ticket or 2) trade ticket
+		"NFT_txid": "",     //txid with either 1) NFT activation ticket or 2) trade ticket in it
 		"asked_price": "",
 		"valid_after": "",
 		"valid_before": "",
@@ -316,11 +316,11 @@ public:
 	},
  */
 
-class CArtSellTicket : public CPastelTicket
+class CNFTSellTicket : public CPastelTicket
 {
 public:
     std::string pastelID;
-    std::string artTnxId;
+    std::string NFTTnxId;
     unsigned int askedPrice{};
     unsigned int activeAfter{};              //as a block height
     unsigned int activeBefore{};             //as a block height
@@ -331,18 +331,18 @@ public:
     std::string key;
 
 public:
-    CArtSellTicket() = default;
+    CNFTSellTicket() = default;
     
-    explicit CArtSellTicket(std::string _pastelID) : 
+    explicit CNFTSellTicket(std::string _pastelID) : 
         pastelID(std::move(_pastelID))
     {}
     
     TicketID ID() const noexcept override { return TicketID::Sell; }
     static TicketID GetID() { return TicketID::Sell; }
 
-    std::string KeyOne() const noexcept override { return !key.empty() ? key : artTnxId + ":" + std::to_string(copyNumber); } //txid:#
+    std::string KeyOne() const noexcept override { return !key.empty() ? key : NFTTnxId + ":" + std::to_string(copyNumber); } //txid:#
     std::string MVKeyOne() const noexcept override { return pastelID; }
-    std::string MVKeyTwo() const noexcept override { return artTnxId; }
+    std::string MVKeyTwo() const noexcept override { return NFTTnxId; }
     
     bool HasMVKeyOne() const noexcept override { return true; }
     bool HasMVKeyTwo() const noexcept override { return true; }
@@ -362,7 +362,7 @@ public:
         READWRITE(pastelID);
         READWRITE(m_nVersion);
         // v0
-        READWRITE(artTnxId);
+        READWRITE(NFTTnxId);
         READWRITE(askedPrice);
         READWRITE(activeAfter);
         READWRITE(activeBefore);
@@ -374,11 +374,11 @@ public:
         READWRITE(m_nBlock);
     }
     
-    static CArtSellTicket Create(std::string _artTnxId, int _askedPrice, int _validAfter, int _validBefore, int _copy_number, std::string _pastelID, const SecureString& strKeyPass);
-    static bool FindTicketInDb(const std::string& key, CArtSellTicket& ticket);
+    static CNFTSellTicket Create(std::string _NFTTnxId, int _askedPrice, int _validAfter, int _validBefore, int _copy_number, std::string _pastelID, const SecureString& strKeyPass);
+    static bool FindTicketInDb(const std::string& key, CNFTSellTicket& ticket);
     
-    static std::vector<CArtSellTicket> FindAllTicketByPastelID(const std::string& pastelID);
-    static std::vector<CArtSellTicket> FindAllTicketByArtTnxID(const std::string& artTnxId);
+    static std::vector<CNFTSellTicket> FindAllTicketByPastelID(const std::string& pastelID);
+    static std::vector<CNFTSellTicket> FindAllTicketByNFTTnxID(const std::string& NFTTnxId);
 };
 
 /*
@@ -391,7 +391,7 @@ public:
 		"signature": ""
 	},
  */
-class CArtBuyTicket : public CPastelTicket
+class CNFTBuyTicket : public CPastelTicket
 {
 public:
     std::string pastelID;
@@ -401,9 +401,9 @@ public:
     std::vector<unsigned char> signature;
     
 public:
-    CArtBuyTicket() = default;
+    CNFTBuyTicket() = default;
     
-    explicit CArtBuyTicket(std::string _pastelID) : 
+    explicit CNFTBuyTicket(std::string _pastelID) : 
         pastelID(std::move(_pastelID))
     {}
     
@@ -442,12 +442,12 @@ public:
         READWRITE(m_nBlock);
     }
     
-    static CArtBuyTicket Create(std::string _sellTnxId, int _price, std::string _pastelID, const SecureString& strKeyPass);
-    static bool FindTicketInDb(const std::string& key, CArtBuyTicket& ticket);
+    static CNFTBuyTicket Create(std::string _sellTnxId, int _price, std::string _pastelID, const SecureString& strKeyPass);
+    static bool FindTicketInDb(const std::string& key, CNFTBuyTicket& ticket);
 
     static bool CheckBuyTicketExistBySellTicket(const std::string& _sellTnxId);
     
-    static std::vector<CArtBuyTicket> FindAllTicketByPastelID(const std::string& pastelID);
+    static std::vector<CNFTBuyTicket> FindAllTicketByPastelID(const std::string& pastelID);
 };
 
 /*
@@ -456,19 +456,19 @@ public:
 		"pastelID": "",     //PastelID of the buyer
 		"sell_txid": "",    //txid with sale ticket
 		"buy_txid": "",     //txid with buy ticket
-		"art_txid": "",     //txid with either 1) art activation ticket or 2) trade ticket in it
+		"NFT_txid": "",     //txid with either 1) NFT activation ticket or 2) trade ticket in it
 		"price": "",
 		"reserved": "",
 		"signature": ""
 	},
  */
-class CArtTradeTicket : public CPastelTicket
+class CNFTTradeTicket : public CPastelTicket
 {
 public:
     std::string pastelID;
     std::string sellTnxId;
     std::string buyTnxId;
-    std::string artTnxId;
+    std::string NFTTnxId;
     std::string nftRegTnxId;
     std::string nftCopySerialNr;
 
@@ -477,9 +477,9 @@ public:
     std::vector<unsigned char> signature;
 
 public:
-    CArtTradeTicket() = default;
+    CNFTTradeTicket() = default;
 
-    explicit CArtTradeTicket(std::string _pastelID) : 
+    explicit CNFTTradeTicket(std::string _pastelID) : 
         pastelID(std::move(_pastelID))
     {}
 
@@ -489,7 +489,7 @@ public:
     std::string KeyOne() const noexcept override { return sellTnxId; }
     std::string KeyTwo() const noexcept override { return buyTnxId; }
     std::string MVKeyOne() const noexcept override { return pastelID; }
-    std::string MVKeyTwo() const noexcept override { return artTnxId; }
+    std::string MVKeyTwo() const noexcept override { return NFTTnxId; }
     std::string MVKeyThree() const noexcept override { return nftRegTnxId; }
     
     bool HasKeyTwo() const noexcept override { return true; }
@@ -515,7 +515,7 @@ public:
         // v0
         READWRITE(sellTnxId);
         READWRITE(buyTnxId);
-        READWRITE(artTnxId);
+        READWRITE(NFTTnxId);
         READWRITE(price);
         READWRITE(reserved);
         READWRITE(signature);
@@ -528,27 +528,27 @@ public:
 
     CAmount GetExtraOutputs(std::vector<CTxOut>& outputs) const override;
     
-    static CArtTradeTicket Create(std::string _sellTnxId, std::string _buyTnxId, std::string _pastelID, const SecureString& strKeyPass);
-    static bool FindTicketInDb(const std::string& key, CArtTradeTicket& ticket);
+    static CNFTTradeTicket Create(std::string _sellTnxId, std::string _buyTnxId, std::string _pastelID, const SecureString& strKeyPass);
+    static bool FindTicketInDb(const std::string& key, CNFTTradeTicket& ticket);
     
-    static std::vector<CArtTradeTicket> FindAllTicketByPastelID(const std::string& pastelID);
-    static std::vector<CArtTradeTicket> FindAllTicketByArtTnxID(const std::string& artTnxID);
-    static std::vector<CArtTradeTicket> FindAllTicketByRegTnxID(const std::string& nftRegTnxId);
+    static std::vector<CNFTTradeTicket> FindAllTicketByPastelID(const std::string& pastelID);
+    static std::vector<CNFTTradeTicket> FindAllTicketByNFTTnxID(const std::string& NFTTnxID);
+    static std::vector<CNFTTradeTicket> FindAllTicketByRegTnxID(const std::string& nftRegTnxId);
     
     static bool CheckTradeTicketExistBySellTicket(const std::string& _sellTnxId);
     static bool CheckTradeTicketExistByBuyTicket(const std::string& _buyTnxId);
-    static bool GetTradeTicketBySellTicket(const std::string& _sellTnxId, CArtTradeTicket& ticket);
-    static bool GetTradeTicketByBuyTicket(const std::string& _buyTnxId, CArtTradeTicket& ticket);
-    static std::map<std::string, std::string> GetPastelIdAndTxIdWithTopHeightPerCopy(const std::vector<CArtTradeTicket> & allTickets);
+    static bool GetTradeTicketBySellTicket(const std::string& _sellTnxId, CNFTTradeTicket& ticket);
+    static bool GetTradeTicketByBuyTicket(const std::string& _buyTnxId, CNFTTradeTicket& ticket);
+    static std::map<std::string, std::string> GetPastelIdAndTxIdWithTopHeightPerCopy(const std::vector<CNFTTradeTicket> & allTickets);
     
-    std::unique_ptr<CPastelTicket> FindArtRegTicket() const;
+    std::unique_ptr<CPastelTicket> FindNFTRegTicket() const;
 
-    void SetArtRegTicketTxid(const std::string& sNftRegTxid);
-    const std::string GetArtRegTicketTxid() const;
+    void SetNFTRegTicketTxid(const std::string& sNftRegTxid);
+    const std::string GetNFTRegTicketTxid() const;
     void SetCopySerialNr(const std::string& nftCopySerialNr);
     const std::string& GetCopySerialNr() const;
     
-    static std::vector<std::string> GetArtRegTxIDAndSerialIfResoldNft(const std::string& _txid);
+    static std::vector<std::string> GetNFTRegTxIDAndSerialIfResoldNft(const std::string& _txid);
 };
 
 /*
@@ -557,22 +557,22 @@ public:
     "version": "",
     "pastelID": "",     //pastelID of the old (current at moment of creation) royalty recipient
     "new_pastelID": "", //pastelID of the new royalty recipient
-    "art_txid": "",     //txid of the art for royalty payments
+    "NFT_txid": "",     //txid of the NFT for royalty payments
     "signature": ""
   }
 */
 
-class CArtRoyaltyTicket : public CPastelTicket {
+class CNFTRoyaltyTicket : public CPastelTicket {
 public:
   std::string pastelID;    //pastelID of the old (current at moment of creation) royalty recipient
   std::string newPastelID; //pastelID of the new royalty recipient
-  std::string artTnxId;    //txid of the art for royalty payments
+  std::string NFTTnxId;    //txid of the NFT for royalty payments
   std::vector<unsigned char> signature;
 
 public:
-  CArtRoyaltyTicket() = default;
+  CNFTRoyaltyTicket() = default;
 
-  explicit CArtRoyaltyTicket(std::string _pastelID, std::string _newPastelID)
+  explicit CNFTRoyaltyTicket(std::string _pastelID, std::string _newPastelID)
       : pastelID(std::move(_pastelID)), newPastelID(std::move(_newPastelID)) {
   }
 
@@ -581,7 +581,7 @@ public:
 
   std::string KeyOne() const noexcept final { return {signature.cbegin(), signature.cend()}; }
   std::string MVKeyOne() const noexcept final { return pastelID; }
-  std::string MVKeyTwo() const noexcept final { return artTnxId; }
+  std::string MVKeyTwo() const noexcept final { return NFTTnxId; }
 
   bool HasMVKeyOne() const noexcept final { return true; }
   bool HasMVKeyTwo() const noexcept final { return true; }
@@ -601,19 +601,19 @@ public:
     READWRITE(newPastelID);
     READWRITE(m_nVersion);
     // v0
-    READWRITE(artTnxId);
+    READWRITE(NFTTnxId);
     READWRITE(signature);
     READWRITE(m_nTimestamp);
     READWRITE(m_txid);
     READWRITE(m_nBlock);
   }
 
-  static CArtRoyaltyTicket Create(std::string _artTnxId, std::string _newPastelID,
+  static CNFTRoyaltyTicket Create(std::string _NFTTnxId, std::string _newPastelID,
                                   std::string _pastelID, const SecureString& strKeyPass);
-  static bool FindTicketInDb(const std::string& key, CArtRoyaltyTicket& ticket);
+  static bool FindTicketInDb(const std::string& key, CNFTRoyaltyTicket& ticket);
 
-  static std::vector<CArtRoyaltyTicket> FindAllTicketByPastelID(const std::string& pastelID);
-  static std::vector<CArtRoyaltyTicket> FindAllTicketByArtTnxId(const std::string& artTnxId);
+  static std::vector<CNFTRoyaltyTicket> FindAllTicketByPastelID(const std::string& pastelID);
+  static std::vector<CNFTRoyaltyTicket> FindAllTicketByNFTTnxId(const std::string& NFTTnxId);
 };
 
 // Take Down Ticket /////////////////////////////////////////////////////////////////////////////////////////////////////

@@ -54,7 +54,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         self.mn_ticket_signatures = None
 
         self.nonmn1_pastelid1 = None
-        self.artist_pastelid1 = None
+        self.creator_pastelid1 = None
         self.non_mn1_pastelid_txid = None
 
         self.top_mns_index0 = None
@@ -80,8 +80,8 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         self.not_top_mns_signatures_dict = None
 
         self.ticket = None
-        self.artist_ticket_height = None
-        self.art_ticket1_txid = None
+        self.creator_ticket_height = None
+        self.NFT_ticket1_txid = None
 
 
     def setup_chain(self):
@@ -112,12 +112,12 @@ class MasterNodeTicketsTest(MasterNodeCommon):
 
         #  These tests checks ability of the network to reject illegitimate tickets
         self.fake_pastelid_tnx_tests()
-        self.fake_artreg_tnx_tests()
-        self.fake_artact_tnx_tests()
-        self.fake_artsell_tnx_tests1()
-        self.fake_artbuy_tnx_tests()
-        self.fake_arttrade_tnx_tests()
-        self.fake_artsell_tnx_tests2()
+        self.fake_NFTreg_tnx_tests()
+        self.fake_NFTact_tnx_tests()
+        self.fake_NFTsell_tnx_tests1()
+        self.fake_NFTbuy_tnx_tests()
+        self.fake_NFTtrade_tnx_tests()
+        self.fake_NFTsell_tnx_tests2()
 
     def fake_pastelid_tnx_tests(self):
         print("== Pastelid ticket transaction validation test ==")
@@ -156,8 +156,8 @@ class MasterNodeTicketsTest(MasterNodeCommon):
 
         print("== Pastelid ticket transaction validation tested ==")
 
-    def fake_artreg_tnx_tests(self):
-        print("== Art Registration ticket transaction validation test ==")
+    def fake_NFTreg_tnx_tests(self):
+        print("== NFT Registration ticket transaction validation test ==")
 
         self.mn_addresses = {}
         self.mn_pastelids = {}
@@ -166,7 +166,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
 
         # generate pastelIDs
         self.nonmn1_pastelid1 = self.create_pastelid(self.non_mn1)
-        self.artist_pastelid1 = self.create_pastelid(self.non_mn3)
+        self.creator_pastelid1 = self.create_pastelid(self.non_mn3)
         for n in range(0, 13):
             self.mn_addresses[n] = self.nodes[n].getnewaddress()
             self.nodes[self.mining_node_num].sendtoaddress(self.mn_addresses[n], 100, "", "", False)
@@ -181,7 +181,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         nonmn1_address1 = self.nodes[self.non_mn1].getnewaddress()
         # nonmn3_address1 = self.nodes[self.non_mn3].getnewaddress()
         self.non_mn1_pastelid_txid = self.nodes[self.non_mn1].tickets("register", "id", self.nonmn1_pastelid1, "passphrase", nonmn1_address1)["txid"]
-        self.nodes[self.non_mn3].tickets("register", "id", self.artist_pastelid1, "passphrase", self.nonmn3_address1)
+        self.nodes[self.non_mn3].tickets("register", "id", self.creator_pastelid1, "passphrase", self.nonmn3_address1)
         for n in range(0, 13):
             self.nodes[n].tickets("register", "mnid", self.mn_pastelids[n], "passphrase")
 
@@ -191,13 +191,13 @@ class MasterNodeTicketsTest(MasterNodeCommon):
 
         self.total_copies = 10
         # Get current top MNs at Node 0
-        self.artist_ticket_height = self.nodes[0].getinfo()["blocks"]
-        top_masternodes = self.nodes[0].masternode("top")[str(self.artist_ticket_height)]
+        self.creator_ticket_height = self.nodes[0].getinfo()["blocks"]
+        top_masternodes = self.nodes[0].masternode("top")[str(self.creator_ticket_height)]
 
         json_ticket = {
             "version": 1,
-            "author": self.artist_pastelid1,
-            "blocknum": self.artist_ticket_height,
+            "author": self.creator_pastelid1,
+            "blocknum": self.creator_ticket_height,
             "data_hash": "ABCDEFG",
             "copies": self.total_copies,
             "royalty": 10,
@@ -209,7 +209,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
 
         # create ticket signature
         ticket_signature_nonmn1 = self.nodes[self.non_mn1].pastelid("sign", self.ticket, self.nonmn1_pastelid1, "passphrase")["signature"]
-        ticket_signature_artist = self.nodes[self.non_mn3].pastelid("sign", self.ticket, self.artist_pastelid1, "passphrase")["signature"]
+        ticket_signature_creator = self.nodes[self.non_mn3].pastelid("sign", self.ticket, self.creator_pastelid1, "passphrase")["signature"]
         for n in range(0, 13):
             self.mn_ticket_signatures[n] = self.nodes[n].pastelid("sign", self.ticket, self.mn_pastelids[n], "passphrase")["signature"]
 
@@ -231,7 +231,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
     
         self.signatures_dict = dict(
             {
-                "artist": {self.artist_pastelid1: ticket_signature_artist},
+                "creator": {self.creator_pastelid1: ticket_signature_creator},
                 "mn2": {self.top_mn_pastelid1: self.top_mn_ticket_signature1},
                 "mn3": {self.top_mn_pastelid2: self.top_mn_ticket_signature2},
             }
@@ -249,7 +249,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
 
         self.not_top_mns_signatures_dict = dict(
             {
-                "artist": {self.artist_pastelid1: ticket_signature_artist},
+                "creator": {self.creator_pastelid1: ticket_signature_creator},
                 "mn2": {self.not_top_mn_pastelid1: self.not_top_mn_ticket_signature1},
                 "mn3": {self.not_top_mn_pastelid2: self.not_top_mn_ticket_signature2},
             }
@@ -257,43 +257,43 @@ class MasterNodeTicketsTest(MasterNodeCommon):
 
         self.nodes[self.non_mn1].generate(10)
 
-        # makefaketicket art ticket signatures pastelID passphrase key1 key2 artisthieght nStorageFee ticketPrice bChangeSignature
+        # makefaketicket NFT ticket signatures pastelID passphrase key1 key2 creatorhieght nStorageFee ticketPrice bChangeSignature
 
         tickets = {
             #  non MN with real signatures of non top 10 MNs
-            "art1-non-mn123": self.nodes[self.non_mn1].tickets("makefaketicket", "art",
+            "NFT1-non-mn123": self.nodes[self.non_mn1].tickets("makefaketicket", "NFT",
                                                               self.ticket, json.dumps(self.not_top_mns_signatures_dict), self.nonmn1_pastelid1, "passphrase", "key1", "key2",
-                                                              str(self.artist_ticket_height), str(self.storage_fee), "10", "0"),
+                                                              str(self.creator_ticket_height), str(self.storage_fee), "10", "0"),
 
             #  non MN with fake signatures of top 10 MNs
-            "art2-nonmn1-fake23": self.nodes[self.non_mn1].tickets("makefaketicket", "art",
+            "NFT2-nonmn1-fake23": self.nodes[self.non_mn1].tickets("makefaketicket", "NFT",
                                                                   self.ticket, json.dumps(self.signatures_dict), self.nonmn1_pastelid1, "passphrase", "key1", "key2",
-                                                                  str(self.artist_ticket_height), str(self.storage_fee), "10", "1"),  # Verb = 1 - will modify pastlelid signature to make it invalid
+                                                                  str(self.creator_ticket_height), str(self.storage_fee), "10", "1"),  # Verb = 1 - will modify pastlelid signature to make it invalid
 
             #  non top 10 MN with real signatures of non top 10 MNs
-            "art3-non-top-mn1-nonmn23": self.nodes[self.not_top_mns_index0].tickets("makefaketicket", "art",
+            "NFT3-non-top-mn1-nonmn23": self.nodes[self.not_top_mns_index0].tickets("makefaketicket", "NFT",
                                                                                self.ticket, json.dumps(self.not_top_mns_signatures_dict), self.not_top_mn_pastelid0, "passphrase", "key1", "key2",
-                                                                               str(self.artist_ticket_height), str(self.storage_fee), "10", "0"),
+                                                                               str(self.creator_ticket_height), str(self.storage_fee), "10", "0"),
 
             #  non top 10 MN with fake signatures of top 10 MNs
-            "art4-non-top-mn1-fake23": self.nodes[self.not_top_mns_index0].tickets("makefaketicket", "art",
+            "NFT4-non-top-mn1-fake23": self.nodes[self.not_top_mns_index0].tickets("makefaketicket", "NFT",
                                                                           self.ticket, json.dumps(self.signatures_dict), self.not_top_mn_pastelid0, "passphrase", "key1", "key2",
-                                                                          str(self.artist_ticket_height), str(self.storage_fee), "10", "1"),  # Verb = 1 - will modify pastlelid signature to make it invalid
+                                                                          str(self.creator_ticket_height), str(self.storage_fee), "10", "1"),  # Verb = 1 - will modify pastlelid signature to make it invalid
 
             #  top 10 MN with real signatures of non top 10 MNs
-            "art5-top-mn1-non-top-mn23": self.nodes[self.top_mns_index0].tickets("makefaketicket", "art",
+            "NFT5-top-mn1-non-top-mn23": self.nodes[self.top_mns_index0].tickets("makefaketicket", "NFT",
                                                                                 self.ticket, json.dumps(self.not_top_mns_signatures_dict), self.top_mn_pastelid0, "passphrase", "key1", "key2",
-                                                                                str(self.artist_ticket_height), str(self.storage_fee), "10", "0"),
+                                                                                str(self.creator_ticket_height), str(self.storage_fee), "10", "0"),
 
             #  top 10 MN with fake signatures of top 10 MNs
-            "art6-top-mn1-fake23": self.nodes[self.top_mns_index0].tickets("makefaketicket", "art",
+            "NFT6-top-mn1-fake23": self.nodes[self.top_mns_index0].tickets("makefaketicket", "NFT",
                                                                           self.ticket, json.dumps(self.signatures_dict), self.top_mn_pastelid0, "passphrase", "key1", "key2",
-                                                                          str(self.artist_ticket_height), str(self.storage_fee), "10", "1"),  # Verb = 1 - will modify pastlelid signature to make it invalid
+                                                                          str(self.creator_ticket_height), str(self.storage_fee), "10", "1"),  # Verb = 1 - will modify pastlelid signature to make it invalid
 
             #  good signatures of top 10 MNs, bad ticket fee
-            "art-top-mn1-bad-fee": self.nodes[self.top_mns_index0].tickets("makefaketicket", "art",
+            "NFT-top-mn1-bad-fee": self.nodes[self.top_mns_index0].tickets("makefaketicket", "NFT",
                                                             self.ticket, json.dumps(self.signatures_dict), self.top_mn_pastelid0, "passphrase", "key1", "key2",
-                                                            str(self.artist_ticket_height), str(self.storage_fee), "1", "0")
+                                                            str(self.creator_ticket_height), str(self.storage_fee), "1", "0")
         }
 
         for n, t in tickets.items():
@@ -304,17 +304,17 @@ class MasterNodeTicketsTest(MasterNodeCommon):
                 print(n + ": " + self.errorString)
             assert_equal("bad-tx-invalid-ticket" in self.errorString, True)
 
-        print("== Art Registration ticket transaction validation tested ==")
+        print("== NFT Registration ticket transaction validation tested ==")
 
-    def fake_artact_tnx_tests(self):
-        print("== Art Registration Activation ticket transaction validation test ==")
+    def fake_NFTact_tnx_tests(self):
+        print("== NFT Registration Activation ticket transaction validation test ==")
 
         # valid ticket
-        self.art_ticket1_txid = self.nodes[self.top_mns_index0].tickets("register", "art", self.ticket, json.dumps(self.signatures_dict),
+        self.NFT_ticket1_txid = self.nodes[self.top_mns_index0].tickets("register", "NFT", self.ticket, json.dumps(self.signatures_dict),
                                                                         self.top_mn_pastelid0, "passphrase",
                                                                         "key1", "key2",
                                                                         str(self.storage_fee))["txid"]
-        assert_true(self.art_ticket1_txid, "No ticket was created")
+        assert_true(self.NFT_ticket1_txid, "No ticket was created")
 
         self.sync_all(10,30)
         self.nodes[self.mining_node_num].generate(5)
@@ -330,42 +330,42 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         # makefaketicket act regTicketTxID height fee pastelID KeyPass ticketPrice strVerb addresses1 ammount1 addresses2 ammount2 addresses3 ammount3
         # Correct ticketPrice for Act ticket is 10
         # Verb = 1 - will modify Act ticket's signature to make it invalid
-        # Verb = 2 - will modify Act ticket's artist height
+        # Verb = 2 - will modify Act ticket's creator height
         tickets = {
-            #       3.c.1 reject if there is no ArtTicket at txid referenced by this ticket
-            "act1-no-art-ticket": self.nodes[self.non_mn3].tickets("makefaketicket", "act",
-                                                                  self.non_mn1_pastelid_txid, str(self.artist_ticket_height),
+            #       3.c.1 reject if there is no NFTTicket at txid referenced by this ticket
+            "act1-no-NFT-ticket": self.nodes[self.non_mn3].tickets("makefaketicket", "act",
+                                                                  self.non_mn1_pastelid_txid, str(self.creator_ticket_height),
                                                                   str(self.storage_fee),
-                                                                  self.artist_pastelid1, "passphrase",
+                                                                  self.creator_pastelid1, "passphrase",
                                                                   "10", "0"),
 
-            #       3.c.2 reject if artist's PastelID in the activation ticket is not matching artist's PastelID in the registration ticket
-            # This prevent someone else to create Act Ticket providing artist's PastelID, but wrong signature (only artits has private key to create correct signature)
-            "act2-bad-artist_sign": self.nodes[self.non_mn3].tickets("makefaketicket", "act",
-                                                                  self.art_ticket1_txid, str(self.artist_ticket_height),
+            #       3.c.2 reject if creator's PastelID in the activation ticket is not matching creator's PastelID in the registration ticket
+            # This prevent someone else to create Act Ticket providing creator's PastelID, but wrong signature (only NFTits has private key to create correct signature)
+            "act2-bad-creator_sign": self.nodes[self.non_mn3].tickets("makefaketicket", "act",
+                                                                  self.NFT_ticket1_txid, str(self.creator_ticket_height),
                                                                   str(self.storage_fee),
-                                                                  self.artist_pastelid1, "passphrase",
-                                                                  "10", "1"), # Verb = 1 - will modify Act ticket signature to make it invalid (non matchig artist's PastelID)
+                                                                  self.creator_pastelid1, "passphrase",
+                                                                  "10", "1"), # Verb = 1 - will modify Act ticket signature to make it invalid (non matchig creator's PastelID)
 
-            #       3.c.3 reject if wrong artist ticket height
-            "act3-bad-artist-height": self.nodes[self.non_mn3].tickets("makefaketicket", "act",
-                                                                  self.art_ticket1_txid, str(self.artist_ticket_height),
+            #       3.c.3 reject if wrong creator ticket height
+            "act3-bad-creator-height": self.nodes[self.non_mn3].tickets("makefaketicket", "act",
+                                                                  self.NFT_ticket1_txid, str(self.creator_ticket_height),
                                                                   str(self.storage_fee),
-                                                                  self.artist_pastelid1, "passphrase",
+                                                                  self.creator_pastelid1, "passphrase",
                                                                   "10", "2"),
 
             #       3.c.4 reject if doesn't pay ticket registration fee (10PSL)
             "act4-bad-reg_fee": self.nodes[self.non_mn3].tickets("makefaketicket", "act",
-                                                                      self.art_ticket1_txid, str(self.artist_ticket_height),
+                                                                      self.NFT_ticket1_txid, str(self.creator_ticket_height),
                                                                       str(self.storage_fee),
-                                                                      self.artist_pastelid1, "passphrase",
+                                                                      self.creator_pastelid1, "passphrase",
                                                                       "0", "0"),
 
             #       3.c.5 reject if pay correct storage fee (90% = MN1(60%)+MN2(20%)+MN3(20%)) to wrong MNs
             "act5-bad-mns-addresses": self.nodes[self.non_mn3].tickets("makefaketicket", "act",
-                                                                      self.art_ticket1_txid, str(self.artist_ticket_height),
+                                                                      self.NFT_ticket1_txid, str(self.creator_ticket_height),
                                                                       str(self.storage_fee),
-                                                                      self.artist_pastelid1, "passphrase",
+                                                                      self.creator_pastelid1, "passphrase",
                                                                       "10", "0",
                                                                       self.mn_addresses[self.not_top_mns_index0], str(mn0_fee),
                                                                       self.mn_addresses[self.not_top_mns_index1], str(mn1_fee),
@@ -374,9 +374,9 @@ class MasterNodeTicketsTest(MasterNodeCommon):
 
             #       3.c.6 reject if pay wrong storage fee (90%=MN1(60%)+MN2(20%)+MN3(20%)), but to correct MNs
             "act6-bad-mns-fee": self.nodes[self.non_mn3].tickets("makefaketicket", "act",
-                                                                      self.art_ticket1_txid, str(self.artist_ticket_height),
+                                                                      self.NFT_ticket1_txid, str(self.creator_ticket_height),
                                                                       str(self.storage_fee),
-                                                                      self.artist_pastelid1, "passphrase",
+                                                                      self.creator_pastelid1, "passphrase",
                                                                       "10", "0",
                                                                       self.mn_addresses[self.not_top_mns_index0], str(mn0_fee*10),
                                                                       self.mn_addresses[self.not_top_mns_index1], str(mn1_fee*10),
@@ -392,10 +392,10 @@ class MasterNodeTicketsTest(MasterNodeCommon):
                 print(n + ": " + self.errorString)
             assert_equal("bad-tx-invalid-ticket" in self.errorString, True)
 
-        print("== Art Registration Activation ticket transaction validation tested ==")
+        print("== NFT Registration Activation ticket transaction validation tested ==")
 
-    def fake_artsell_tnx_tests1(self):
-        print("== Art Sell ticket transaction validation test (for activation ticket) ==")
+    def fake_NFTsell_tnx_tests1(self):
+        print("== NFT Sell ticket transaction validation test (for activation ticket) ==")
 
         self.nodes[self.mining_node_num].sendtoaddress(self.nonmn3_address1, 200, "", "", False)
         time.sleep(2)
@@ -403,18 +403,18 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         self.nodes[self.mining_node_num].generate(1)
         self.sync_all(10, 30)
 
-        self.art_ticket1_act_ticket_txid = self.nodes[self.non_mn3].tickets("register", "act", self.art_ticket1_txid, str(self.artist_ticket_height),
+        self.NFT_ticket1_act_ticket_txid = self.nodes[self.non_mn3].tickets("register", "act", self.NFT_ticket1_txid, str(self.creator_ticket_height),
                                                                             str(self.storage_fee),
-                                                                            self.artist_pastelid1, "passphrase")["txid"]
-        assert_true(self.art_ticket1_act_ticket_txid, "No ticket was created")
+                                                                            self.creator_pastelid1, "passphrase")["txid"]
+        assert_true(self.NFT_ticket1_act_ticket_txid, "No ticket was created")
 
         tickets = {
             # 1. check PastelID in this ticket matches PastelID in the referred Activation ticket
-            "sell-bad-arts-sign": self.nodes[self.non_mn3].tickets("makefaketicket", "sell",
-                                                                    self.art_ticket1_act_ticket_txid, "100000",
-                                                                    self.artist_pastelid1, "passphrase",
+            "sell-bad-NFTs-sign": self.nodes[self.non_mn3].tickets("makefaketicket", "sell",
+                                                                    self.NFT_ticket1_act_ticket_txid, "100000",
+                                                                    self.creator_pastelid1, "passphrase",
                                                                     "0", "0",
-                                                                    "10", "1"), # Verb = 1 - will modify Act ticket signature to make it invalid (non matchig artist's PastelID)
+                                                                    "10", "1"), # Verb = 1 - will modify Act ticket signature to make it invalid (non matchig creator's PastelID)
         }
 
         for n, t in tickets.items():
@@ -425,26 +425,26 @@ class MasterNodeTicketsTest(MasterNodeCommon):
                 print(n + ": " + self.errorString)
             assert_equal("bad-tx-invalid-ticket" in self.errorString, True)
 
-        print("== Art Sell ticket transaction validation tested (for activation ticket) ==")
+        print("== NFT Sell ticket transaction validation tested (for activation ticket) ==")
 
-    def fake_artbuy_tnx_tests(self):
-        print("== Art Buy ticket transaction validation test ==")
+    def fake_NFTbuy_tnx_tests(self):
+        print("== NFT Buy ticket transaction validation test ==")
 
-        print("== Art Buy ticket transaction validation tested ==")
+        print("== NFT Buy ticket transaction validation tested ==")
 
-    def fake_arttrade_tnx_tests(self):
-        print("== Art Trade ticket transaction validation test ==")
+    def fake_NFTtrade_tnx_tests(self):
+        print("== NFT Trade ticket transaction validation test ==")
 
-        print("== Art Trade ticket transaction validation tested ==")
+        print("== NFT Trade ticket transaction validation tested ==")
 
-    def fake_artsell_tnx_tests2(self):
-        print("== Art Sell ticket transaction validation test (for trade ticket) ==")
+    def fake_NFTsell_tnx_tests2(self):
+        print("== NFT Sell ticket transaction validation test (for trade ticket) ==")
         # 1. check PastelID in this ticket matches PastelID in the referred Trade ticket
-        # 2. Verify the art is not already sold
+        # 2. Verify the NFT is not already sold
         #    Verify there is no already trade ticket referring to that trade ticket
         #    Verify the number of existing trade tickets less then number of copies in the registration ticket
 
-        print("== Art Sell ticket transaction validation tested (for trade ticket) ==")
+        print("== NFT Sell ticket transaction validation tested (for trade ticket) ==")
 
 if __name__ == '__main__':
     MasterNodeTicketsTest().main()
