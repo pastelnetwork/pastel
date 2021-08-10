@@ -1748,20 +1748,20 @@ R"(tickets register NFT "ticket" "{signatures}" "pastelid" "passphrase" "key1" "
 Register new NFT ticket. If successful, method returns "txid".
 
 Arguments:
-1. "ticket"	(string, required) Base64 encoded ticket created by the NFTist.
+1. "ticket"	(string, required) Base64 encoded ticket created by the creator.
     {
         "version":       1,
         "author":        "<authors-PastelID>",
-        "blocknum":      <block-number-when-the-ticket-was-created-by-the-NFTist>,
+        "blocknum":      <block-number-when-the-ticket-was-created-by-the-creator>,
         "data_hash":     "<base64'ed-hash-of-the-NFT>",
         "copies":        <number-of-copies-of-NFT-this-ticket-is-creating>,
-        "royalty":       <how-much-NFTist-should-get-on-all-future-resales>,
+        "royalty":       <how-much-creator-should-get-on-all-future-resales>,
         "green_address": "<address-for-Green-NFT-payment>",
         "app_ticket":    "<application-specific-data>",
     }
 2. "signatures"	(string, required) Signatures (base64) and PastelIDs of the author and verifying masternodes (MN2 and MN3) as JSON:
     {
-        "NFTist": { "authorsPastelID": "authorsSignature" },
+        "creator": { "authorsPastelID": "authorsSignature" },
         "mn2":    { "mn2PastelID":     "mn2Signature"     },
         "mn2":    { "mn3PastelID":     "mn3Signature"     }
     }
@@ -1786,7 +1786,7 @@ NFT Reg Ticket:
         },
         "key1":            "<search key 1>",
         "key2":            "<search key 2>",
-        "NFTist_height":   <NFTist height>,
+        "creator_height":   <creator height>,
         "total_copies":    <total copies>,
         "royalty":         <royalty fee>,
         "royalty_address": <"address for royalty payment">,
@@ -1836,23 +1836,23 @@ As json rpc
         if (REGISTER.IsCmd(RPC_CMD_REGISTER::act)) {
 			if (fHelp || params.size() != 7)
 				throw JSONRPCError(RPC_INVALID_PARAMETER,
-R"(tickets register act "reg-ticket-tnxid" "NFTist-height" "fee" "PastelID" "passphrase"
+R"(tickets register act "reg-ticket-tnxid" "creator-height" "fee" "PastelID" "passphrase"
 Register confirm new NFT ticket identity. If successful, method returns "txid".
 
 Arguments:
 1. "reg-ticket-tnxid"  (string, required) tnxid of the NFT register ticket to activate.
-2. "NFTist-height"     (string, required) Height where the NFT register ticket was created by the NFTist.
-3. fee                 (int, required) The supposed fee that NFTist agreed to pay for the registration. This shall match the amount in the registration ticket.
+2. "creator-height"     (string, required) Height where the NFT register ticket was created by the creator.
+3. fee                 (int, required) The supposed fee that creator agreed to pay for the registration. This shall match the amount in the registration ticket.
                        The transaction with this ticket will pay 90% of this amount to MNs (10% were burnt prior to registration).
-4. "PastelID"          (string, required) The PastelID of NFTist. NOTE: PastelID must be generated and stored inside node. See "pastelid newkey".
-5. "passphrase"        (string, required) The passphrase to the private key associated with NFTist's PastelID and stored inside node. See "pastelid newkey".
+4. "PastelID"          (string, required) The PastelID of creator. NOTE: PastelID must be generated and stored inside node. See "pastelid newkey".
+5. "passphrase"        (string, required) The passphrase to the private key associated with creator's PastelID and stored inside node. See "pastelid newkey".
 Activation Ticket:
 {
 	"ticket": {
 		"type": "NFT-act",
 		"pastelID": "",
 		"reg_txid": "",
-		"NFTist_height": "",
+		"creator_height": "",
 		"storage_fee": "",
 		"signature": ""
 	},
@@ -1889,11 +1889,11 @@ Register NFT sell ticket. If successful, method returns "txid".
 
 Arguments:
 1. "NFT_txid"      (string, required) tnx_id of the NFT to sell, this is either:
-                           1) NFT activation ticket, if seller is original NFTist
+                           1) NFT activation ticket, if seller is original creator
                            2) trade ticket, if seller is owner of the bought NFT
 2. price           (int, required) Sale price.
 3. "PastelID"      (string, required) The PastelID of seller. This MUST be the same PastelID that was used to sign the ticket referred by the NFT_txid.
-4. "passphrase"    (string, required) The passphrase to the private key associated with NFTist's PastelID and stored inside node.
+4. "passphrase"    (string, required) The passphrase to the private key associated with creator's PastelID and stored inside node.
 5. valid_after       (int, optional) The block height after which this sell ticket will become active (use 0 for upon registration).
 6. valid_before      (int, optional) The block height after which this sell ticket is no more valid (use 0 for never).
 7. copy_number       (int, optional) If presented - will replace the original not yet sold Sell ticket with this copy number.
@@ -1954,7 +1954,7 @@ Arguments:
 1. "sell_txid"     (string, required) tnx_id of the sell ticket to buy.
 2. price           (int, required) Buy price, shall be equal or more then asked price in the sell ticket.
 3. "PastelID"      (string, required) The PastelID of buyer.
-4. "passphrase"    (string, required) The passphrase to the private key associated with NFTist's PastelID and stored inside node.
+4. "passphrase"    (string, required) The passphrase to the private key associated with creator's PastelID and stored inside node.
 NFT Trade Ticket:
 {
 	"ticket": {
@@ -1998,7 +1998,7 @@ Arguments:
 1. "sell_txid"     (string, required) tnx_id of the sell ticket
 2. "buy_txid"      (string, required) tnx_id of the buy ticket
 3. "PastelID"      (string, required) The PastelID of buyer. This MUST be the same PastelID that was used to sign the buy ticket
-4. "passphrase"    (string, required) The passphrase to the private key associated with NFTist's PastelID and stored inside node. See "pastelid newkey".
+4. "passphrase"    (string, required) The passphrase to the private key associated with creator's PastelID and stored inside node. See "pastelid newkey".
 NFT Trade Ticket:
 {
 	"ticket": {
@@ -2166,9 +2166,9 @@ Available types:
             The "key" is PastelID or Collateral tnx outpoint for Masternode
             OR PastelID or Address for Personal PastelID
   NFT     - Find new NFT registration ticket.
-            The "key" is 'Key1' or 'Key2' OR 'NFTist's PastelID'
+            The "key" is 'Key1' or 'Key2' OR 'creator's PastelID'
   act     - Find NFT confirmation ticket.
-            The "key" is 'NFTReg ticket txid' OR 'NFTist's PastelID' OR 'NFTist's Height (block height at what original NFT registration request was created)'
+            The "key" is 'NFTReg ticket txid' OR 'creator's PastelID' OR 'creator's Height (block height at what original NFT registration request was created)'
   sell    - Find NFT sell ticket.
             The "key" is either Activation OR Trade txid PLUS number of copy - "txid:number"
             ex.: 907e5e4c6fc4d14660a22afe2bdf6d27a3c8762abf0a89355bb19b7d9e7dc440:1
@@ -2541,11 +2541,11 @@ As json rpc
 Get full storage fee for the NFT registration. If successful, method returns total amount of fee.
 
 Arguments:
-1. "ticket"	(string, required) Base64 encoded ticket created by the NFTist.
+1. "ticket"	(string, required) Base64 encoded ticket created by the creator.
 	{
 		"version": 1,
 		"author" "authorsPastelID",
-		"blocknum" <block-number-when-the-ticket-was-created-by-the-NFTist>,
+		"blocknum" <block-number-when-the-ticket-was-created-by-the-creator>,
 		"data_hash" "<base64'ed-hash-of-the-NFT>",
 		"copies" <number-of-copies-of-NFT-this-ticket-is-creating>,
 		"app_ticket" "<application-specific-data>",
@@ -2553,7 +2553,7 @@ Arguments:
 	}
 2. "signatures"	(string, required) Signatures (base64) and PastelIDs of the author and verifying masternodes (MN2 and MN3) as JSON:
 	{
-		"NFTist":{"authorsPastelID": "authorsSignature"},
+		"creator":{"authorsPastelID": "authorsSignature"},
 		"mn2":{"mn2PastelID":"mn2Signature"},
 		"mn2":{"mn3PastelID":"mn3Signature"}
 	}
