@@ -61,7 +61,7 @@ public:
 
     std::string ListFilterPastelIDTickets(const short filter = 0, // 1 - mn;        2 - personal;     3 - mine
                                           const pastelid_store_t* pmapIDs = nullptr) const;
-    std::string ListFilterArtTickets(const short filter = 0) const;   // 1 - active;    2 - inactive;     3 - sold
+    std::string ListFilterNFTTickets(const short filter = 0) const;   // 1 - active;    2 - inactive;     3 - sold
     std::string ListFilterActTickets(const short filter = 0) const;   // 1 - available; 2 - sold
     std::string ListFilterSellTickets(const short filter = 0, const std::string& pastelID = "") const;  // 0 - all, 1 - available; 2 - unavailable;  3 - expired; 4 - sold
     std::string ListFilterBuyTickets(const short filter = 0, const std::string& pastelID = "") const;   // 0 - all, 1 - traded;    2 - expired

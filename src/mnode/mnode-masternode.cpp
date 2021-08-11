@@ -50,7 +50,7 @@ CMasternode::CMasternode(const CMasternode& other) :
     nPoSeBanHeight(other.nPoSeBanHeight),
     fUnitTest(other.fUnitTest),
     aMNFeePerMB(other.aMNFeePerMB),
-    aArtTicketFeePerKB(other.aArtTicketFeePerKB)
+    aNFTTicketFeePerKB(other.aNFTTicketFeePerKB)
 {}
 
 CMasternode::CMasternode(const CMasternodeBroadcast& mnb) :
@@ -79,7 +79,7 @@ bool CMasternode::UpdateFromNewBroadcast(CMasternodeBroadcast& mnb)
     strExtraLayerKey = mnb.strExtraLayerKey;
     strExtraLayerCfg = mnb.strExtraLayerCfg;
     aMNFeePerMB = 0;
-    aArtTicketFeePerKB = 0;
+    aNFTTicketFeePerKB = 0;
     nPoSeBanScore = 0;
     nPoSeBanHeight = 0;
     nTimeLastChecked = 0;
