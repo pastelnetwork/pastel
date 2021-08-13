@@ -1974,3 +1974,84 @@ bool CChangeUsernameTicket::isUsernameBad(const std::string& username, std::stri
 
     return false;
 }
+
+// NFT Auction Tickets ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// CNFTSellTicket ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+CNFTAuctionTicket CNFTAuctionTicket::Create(std::string _NFTTnxId, int _askedPrice, int _validAfter, int _validBefore, int _copy_number, int _duration, int _minimumReputationScore, std::string _pastelID, const SecureString& strKeyPass)
+{
+    CNFTAuctionTicket ticket(std::move(_pastelID));
+    
+    ticket.NFTTnxId = std::move(_NFTTnxId);
+    ticket.askedPrice = _askedPrice;
+    ticket.activeBefore = _validBefore;
+    ticket.activeAfter = _validAfter;
+    
+    ticket.GenerateTimestamp();
+    
+    //NOTE: Sell ticket for Trade ticket will always has copyNumber = 1
+    ticket.copyNumber = _copy_number > 0 ? 
+        _copy_number : static_cast<decltype(ticket.copyNumber)>(CNFTAuctionTicket::FindAllTicketByNFTTnxID(ticket.NFTTnxId).size()) + 1;
+    
+    ticket.duration = _duration;
+    ticket.minimumReputationScore = _minimumReputationScore;
+    
+    ticket.key = ticket.NFTTnxId + ":" + to_string(ticket.copyNumber);
+    
+    std::string strTicket = ticket.ToStr();
+    string_to_vector(CPastelID::Sign(strTicket, ticket.pastelID, strKeyPass), ticket.signature);
+    
+    return ticket;
+}
+
+std::string CNFTAuctionTicket::ToStr() const noexcept
+{
+    std::stringstream ss;
+    ss << pastelID;
+    ss << NFTTnxId;
+    ss << askedPrice;
+    ss << copyNumber;
+    ss << duration;
+    ss << minimumReputationScore;
+    ss << activeBefore;
+    ss << activeAfter;
+    ss << m_nTimestamp;
+    return ss.str();
+}
+
+std::string CNFTAuctionTicket::ToJSON() const noexcept
+{
+    const json jsonObj {
+            {"txid", m_txid},
+            {"height", m_nBlock},
+            {"ticket", {
+                {"type", GetTicketName()},
+                {"version", GetStoredVersion()},
+                {"pastelID", pastelID},
+                {"NFT_txid", NFTTnxId},
+                {"copy_number", copyNumber},
+                {"asked_price", askedPrice},
+                {"valid_after", activeAfter},
+                {"valid_before", activeBefore},
+                {"duration", duration},
+                {"minimumReputationScore", minimumReputationScore},
+                {"signature", ed_crypto::Hex_Encode(signature.data(), signature.size())}
+            }}
+    };
+    return jsonObj.dump(4);
+}
+
+bool CNFTAuctionTicket::FindTicketInDb(const std::string& key, CNFTAuctionTicket& ticket)
+{
+    ticket.key = key;
+    return masterNodeCtrl.masternodeTickets.FindTicket(ticket);
+}
+
+std::vector<CNFTAuctionTicket> CNFTAuctionTicket::FindAllTicketByPastelID(const std::string& pastelID)
+{
+    return masterNodeCtrl.masternodeTickets.FindTicketsByMVKey<CNFTAuctionTicket>(pastelID);
+}
+
+std::vector<CNFTAuctionTicket> CNFTAuctionTicket::FindAllTicketByNFTTnxID(const std::string& NFTTnxId)
+{
+    return masterNodeCtrl.masternodeTickets.FindTicketsByMVKey<CNFTAuctionTicket>(NFTTnxId);
+}

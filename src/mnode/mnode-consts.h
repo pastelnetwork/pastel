@@ -16,6 +16,7 @@ constexpr auto TICKET_NAME_NFT_TRADE    = "nft-trade"; // NFT trade ticket
 constexpr auto TICKET_NAME_TAKE_DOWN    = "nft-take-down";
 constexpr auto TICKET_NAME_NFT_ROYALTY  = "nft-royalty"; // NFT royalty ticket
 constexpr auto TICKET_NAME_USERNAME_CHANGE    = "username-change";
+constexpr auto TICKET_NAME_NFT_AUCTION  = "NFT-auction"; // NFT trade ticket
 
 /**
  * Ticket Type IDs.
@@ -30,6 +31,7 @@ enum class TicketID : uint8_t {
     Down,
     Royalty,      // NFT royalty ticket
     Username,     // Username Change Request ticket
+    Auction,      // NFT auction ticket
 
     COUNT         // number of ticket types
 };
@@ -60,6 +62,7 @@ static constexpr std::array<TicketInfo, to_integral_type<TicketID>(TicketID::COU
         { TicketID::Down,     "Take Down",              TICKET_NAME_TAKE_DOWN,   0,     "nfttdn" },
         { TicketID::Royalty,  "NFT Royalty",            TICKET_NAME_NFT_ROYALTY, 1,     "nftrty" },
         { TicketID::Username, "Username Change",        TICKET_NAME_USERNAME_CHANGE, 1, "usrnme" },
+        { TicketID::Auction,  "NFT Trade",              TICKET_NAME_NFT_AUCTION, 0,     "NFTauc" },
     }};
 
 inline std::string GetTicketDescription(const TicketID id) noexcept

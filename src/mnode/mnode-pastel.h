@@ -334,7 +334,9 @@ public:
 
 public:
     CNFTSellTicket() = default;
-    
+
+    virtual ~CNFTSellTicket() {};
+
     explicit CNFTSellTicket(std::string _pastelID) : 
         pastelID(std::move(_pastelID))
     {}
@@ -708,4 +710,71 @@ public:
     * return: true if bad, false if good to use
     */
     static bool isUsernameBad(const std::string& username, std::string& error);
+};
+
+// NFT Auction Tickets /////////////////////////////////////////////////////////////////////////////////////////////////////
+/*
+	"ticket": {
+		"type": "NFT-auction",
+		"pastelID": "",     //PastelID of the NFT owner - either 1) an original creator; or 2) a previous buyer,
+		                    //should be the same in either 1) NFT activation ticket or 2) trade ticket
+		"NFT_txid": "",     //txid with either 1) NFT activation ticket or 2) trade ticket in it
+		"asked_price": "",
+		"valid_after": "",
+		"valid_before": "",
+		"duration": "",
+		"minimumReputationScore": "",
+		"reserved": "",
+		"signature": ""
+	},
+ */
+
+class CNFTAuctionTicket : public CNFTSellTicket
+{
+public:
+
+    int duration;  // in blocks
+    int minimumReputationScore;
+
+public:
+    CNFTAuctionTicket() = default;
+    
+    explicit CNFTAuctionTicket(std::string _pastelID) : 
+        CNFTSellTicket(_pastelID)
+    {}
+    
+    TicketID ID() const noexcept override { return TicketID::Auction; }
+    static TicketID GetID() { return TicketID::Auction; }
+
+    std::string ToJSON() const noexcept override;
+    std::string ToStr() const noexcept override;
+
+    void SerializationOp(CDataStream& s, const SERIALIZE_ACTION ser_action) override
+    {
+        const bool bRead = ser_action == SERIALIZE_ACTION::Read;
+        std::string error;
+        if (!VersionMgmt(error, bRead))
+            throw std::runtime_error(error);
+        READWRITE(pastelID);
+        READWRITE(m_nVersion);
+        // v0
+        READWRITE(NFTTnxId);
+        READWRITE(askedPrice);
+        READWRITE(activeAfter);
+        READWRITE(activeBefore);
+        READWRITE(copyNumber);
+        READWRITE(duration);
+        READWRITE(minimumReputationScore);
+        READWRITE(reserved);
+        READWRITE(signature);
+        READWRITE(m_nTimestamp);
+        READWRITE(m_txid);
+        READWRITE(m_nBlock);
+    }
+
+    static CNFTAuctionTicket Create(std::string _NFTTnxId, int _askedPrice, int _validAfter, int _validBefore, int _copy_number, int _duration, int _minimumReputationScore, std::string _pastelID, const SecureString& strKeyPass);
+    static bool FindTicketInDb(const std::string& key, CNFTAuctionTicket& ticket);
+
+    static std::vector<CNFTAuctionTicket> FindAllTicketByPastelID(const std::string& pastelID);
+    static std::vector<CNFTAuctionTicket> FindAllTicketByNFTTnxID(const std::string& NFTTnxId);
 };
