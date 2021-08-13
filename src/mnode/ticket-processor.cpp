@@ -513,6 +513,7 @@ template std::vector<CNFTSellTicket> CPastelTicketProcessor::FindTicketsByMVKey<
 template std::vector<CNFTBuyTicket> CPastelTicketProcessor::FindTicketsByMVKey<CNFTBuyTicket>(const std::string&);
 template std::vector<CNFTTradeTicket> CPastelTicketProcessor::FindTicketsByMVKey<CNFTTradeTicket>(const std::string&);
 template std::vector<CNFTRoyaltyTicket> CPastelTicketProcessor::FindTicketsByMVKey<CNFTRoyaltyTicket>(const std::string&);
+template std::vector<CNFTAuctionTicket> CPastelTicketProcessor::FindTicketsByMVKey<CNFTAuctionTicket>(const std::string&);
 
 std::vector<std::string> CPastelTicketProcessor::GetAllKeys(const TicketID id) const
 {
