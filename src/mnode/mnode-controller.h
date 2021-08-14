@@ -81,6 +81,8 @@ public:
 
     unsigned int MinTicketConfirmations;
     unsigned int MaxBuyTicketAge;
+    
+    std::string TicketGreenAddress;
 
     CMasterNodeController() : 
         pacNotificationInterface(nullptr),

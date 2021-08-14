@@ -8,13 +8,13 @@
 
 // ticket names
 constexpr auto TICKET_NAME_ID_REG       = "pastelid";  // id registration ticket
-constexpr auto TICKET_NAME_NFT_REG      = "NFT-reg";   // NFT registration ticket
-constexpr auto TICKET_NAME_NFT_ACT      = "NFT-act";   // NFT activation ticket
-constexpr auto TICKET_NAME_NFT_SELL     = "NFT-sell";  // NFT sell ticket
-constexpr auto TICKET_NAME_NFT_BUY      = "NFT-buy";   // NFT buy ticket
-constexpr auto TICKET_NAME_NFT_TRADE    = "NFT-trade"; // NFT trade ticket
-constexpr auto TICKET_NAME_TAKE_DOWN    = "take-down";
-constexpr auto TICKET_NAME_NFT_ROYALTY  = "NFT-royalty"; // NFT royalty ticket
+constexpr auto TICKET_NAME_NFT_REG      = "nft-reg";   // NFT registration ticket
+constexpr auto TICKET_NAME_NFT_ACT      = "nft-act";   // NFT activation ticket
+constexpr auto TICKET_NAME_NFT_SELL     = "nft-sell";  // NFT sell ticket
+constexpr auto TICKET_NAME_NFT_BUY      = "nft-buy";   // NFT buy ticket
+constexpr auto TICKET_NAME_NFT_TRADE    = "nft-trade"; // NFT trade ticket
+constexpr auto TICKET_NAME_TAKE_DOWN    = "nft-take-down";
+constexpr auto TICKET_NAME_NFT_ROYALTY  = "nft-royalty"; // NFT royalty ticket
 constexpr auto TICKET_NAME_USERNAME_CHANGE    = "username-change";
 
 /**
@@ -52,13 +52,13 @@ using TicketInfo = struct
 static constexpr std::array<TicketInfo, to_integral_type<TicketID>(TicketID::COUNT)> TICKET_INFO =
     {{  //     ticket id     |   ticket description   |   ticket name       | version  | DB subfolder
         { TicketID::PastelID, "Pastel ID Registration", TICKET_NAME_ID_REG,      1,     "pslids"},
-        { TicketID::NFT,      "NFT Registration",       TICKET_NAME_NFT_REG,     0,     "argreg" },
-        { TicketID::Activate, "NFT Activation",         TICKET_NAME_NFT_ACT,     0,     "NFTcnf" },
-        { TicketID::Sell,     "NFT Sell",               TICKET_NAME_NFT_SELL,    0,     "NFTsel" },
-        { TicketID::Buy,      "NFT Buy",                TICKET_NAME_NFT_BUY,     0,     "NFTbuy" },
-        { TicketID::Trade,    "NFT Trade",              TICKET_NAME_NFT_TRADE,   0,     "NFTtrd" },
-        { TicketID::Down,     "Take Down",              TICKET_NAME_TAKE_DOWN,   0,     "takedn" },
-        { TicketID::Royalty,  "NFT Royalty",            TICKET_NAME_NFT_ROYALTY, 1,     "NFTrty" },
+        { TicketID::NFT,      "NFT Registration",       TICKET_NAME_NFT_REG,     0,     "nftreg" },
+        { TicketID::Activate, "NFT Activation",         TICKET_NAME_NFT_ACT,     0,     "nftcnf" },
+        { TicketID::Sell,     "NFT Sell",               TICKET_NAME_NFT_SELL,    0,     "nftsel" },
+        { TicketID::Buy,      "NFT Buy",                TICKET_NAME_NFT_BUY,     0,     "nftbuy" },
+        { TicketID::Trade,    "NFT Trade",              TICKET_NAME_NFT_TRADE,   0,     "nfttrd" },
+        { TicketID::Down,     "Take Down",              TICKET_NAME_TAKE_DOWN,   0,     "nfttdn" },
+        { TicketID::Royalty,  "NFT Royalty",            TICKET_NAME_NFT_ROYALTY, 1,     "nftrty" },
         { TicketID::Username, "Username Change",        TICKET_NAME_USERNAME_CHANGE, 1, "usrnme" },
     }};
 

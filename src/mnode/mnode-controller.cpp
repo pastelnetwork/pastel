@@ -68,6 +68,8 @@ void CMasterNodeController::SetParameters()
         nMasternodePaymentsIncreaseBlock = 150000;
         nMasternodePaymentsIncreasePeriod = 576*30;
         nFulfilledRequestExpireTime = 60*60; // 60 minutes
+        
+        TicketGreenAddress = "PtoySpxXAE3V6XR239AqGzCfKNrJcX6n52L";
     }
     else if (Params().IsTestNet()) {
         MasternodeCollateral                = 1000000;
@@ -75,6 +77,8 @@ void CMasterNodeController::SetParameters()
         nMasternodeMinimumConfirmations = 1;
         nMasternodePaymentsIncreaseBlock = 4030;
         nMasternodePaymentsIncreasePeriod = 10;
+        
+        TicketGreenAddress = "tPj5BfCrLfLpuviSJrD3B1yyWp3XkgtFjb6";
     }
     else if (Params().IsRegTest()) {
         nMasternodeMinimumConfirmations = 1;
@@ -87,6 +91,8 @@ void CMasterNodeController::SetParameters()
         MasternodeNewStartRequiredSeconds   =  6 * 60;
     
         MasternodeCollateral                = 1000;
+        
+        TicketGreenAddress = "tPj5BfCrLfLpuviSJrD3B1yyWp3XkgtFjb6";
     
         LogPrintf("Regtest Mode: MNP = %d sec; Expiration = %d sec; Restart = %d sec \n", MasternodeMinMNPSeconds, MasternodeExpirationSeconds, MasternodeNewStartRequiredSeconds);
     }

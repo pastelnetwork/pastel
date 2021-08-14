@@ -215,13 +215,13 @@ std::vector<CPastelIDRegTicket> CPastelIDRegTicket::FindAllTicketByPastelAddress
 // CNFTRegTicket ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 /* Current NFT_ticket - 8 Items!!!!
 {
-  "version": integer          // 1
-  "author": bytes,            // PastelID of the author (creator)
-  "blocknum": integer,        // block number when the ticket was created - this is to map the ticket to the MNs that should process it
-  "block_hash": bytes         // hash of the top block when the ticket was created - this is to map the ticket to the MNs that should process it
-  "copies": integer,          // number of copies
-  "royalty": short,           // how much creator should get on all future resales (not yet supported by cNode)
-  "green_address": string,    // address for Green NFT payment (not yet supported by cNode)
+  "nft_ticket_version": integer     // 1
+  "author": bytes,                  // PastelID of the author (creator)
+  "blocknum": integer,              // block number when the ticket was created - this is to map the ticket to the MNs that should process it
+  "block_hash": bytes               // hash of the top block when the ticket was created - this is to map the ticket to the MNs that should process it
+  "copies": integer,                // number of copies
+  "royalty": short,                 // how much creator should get on all future resales (not yet supported by cNode)
+  "green_address": string,          // address for Green NFT payment (not yet supported by cNode)
   "app_ticket": ...
 }
 */
@@ -238,13 +238,20 @@ CNFTRegTicket CNFTRegTicket::Create(
     if (jsonTicketObj.size() != 8){
         throw std::runtime_error("NFT ticket json is incorrect");
     }
-    if (jsonTicketObj["version"] != 1) {
+    if (jsonTicketObj["nft_ticket_version"] != 1) {
         throw std::runtime_error("Only accept version 1 of NFT ticket json");
     }
     ticket.creatorHeight = jsonTicketObj["blocknum"];
     ticket.totalCopies = jsonTicketObj["copies"];
     ticket.nRoyalty = jsonTicketObj["royalty"];
-    ticket.strGreenAddress = jsonTicketObj["green_address"];
+    bool bHasGreen = jsonTicketObj["green"];
+    if (bHasGreen) {
+        unsigned int chainHeight = 0; {
+            LOCK(cs_main);
+            chainHeight = static_cast<unsigned int>(chainActive.Height()) + 1;
+        }
+        ticket.strGreenAddress = CNFTRegTicket::GreenAddress(chainHeight);
+    }
     
     //creator's and MN2/3's signatures
     auto jsonSignaturesObj = json::parse(signatures);
@@ -422,9 +429,9 @@ bool CNFTRegTicket::IsValid(bool preReg, int depth) const
         }
     }
     
-    if (nRoyalty > 20)
+    if (nRoyalty < 0 || nRoyalty > 0.2)
     {
-      throw std::runtime_error(strprintf("Royalty can't be %hu per cent, Max is 20 per cent", nRoyalty));
+      throw std::runtime_error(strprintf("Royalty can't be %hu per cent, Min is 0 and Max is 20 per cent", nRoyalty*100));
     }
     if (!strGreenAddress.empty()) {
         KeyIO keyIO(Params());
@@ -442,7 +449,7 @@ std::string CNFTRegTicket::ToJSON() const noexcept {
     {"height", m_nBlock},
     {"ticket", {
       {"type", GetTicketName()},
-      {"NFT_ticket", NFTTicket},
+      {"nft_ticket", NFTTicket},
       {"version", GetStoredVersion()},
       {"signatures", {
         {"creator", {
@@ -464,8 +471,8 @@ std::string CNFTRegTicket::ToJSON() const noexcept {
       {"total_copies", totalCopies},
       {"royalty", nRoyalty},
       {"royalty_address", GetRoyaltyPayeeAddress()},
-      {"green", GreenPercent(0)},
-      {"green_address", strGreenAddress},
+      {"green", !strGreenAddress.empty()},
+      //      {"green_address", strGreenAddress},
       {"storage_fee", storageFee},
     }}
   };
@@ -608,9 +615,9 @@ bool common_validation(const T& ticket, bool preReg, const std::string& strTnxId
  * @param signature is the signature of current CNFTTradeTicket that is checked
  */
 void trade_copy_validation(const std::string& nftTnxId, const std::vector<unsigned char>& signature) {
-  if (!masterNodeCtrl.masternodeSync.IsSynced()) {
-    throw std::runtime_error("Can not validate trade ticket as master node is not synced");
-  }
+//  if (!masterNodeCtrl.masternodeSync.IsSynced()) {
+//    throw std::runtime_error("Can not validate trade ticket as master node is not synced");
+//  }
 
   size_t totalCopies{0};
 
@@ -1055,7 +1062,7 @@ std::string CNFTSellTicket::ToJSON() const noexcept
                 {"type", GetTicketName()},
                 {"version", GetStoredVersion()},
                 {"pastelID", pastelID},
-                {"NFT_txid", NFTTnxId},
+                {"nft_txid", NFTTnxId},
                 {"copy_number", copyNumber},
                 {"asked_price", askedPrice},
                 {"valid_after", activeAfter},
@@ -1451,7 +1458,7 @@ CAmount CNFTTradeTicket::GetExtraOutputs(std::vector<CTxOut>& outputs) const
           "The Creator PastelID [%s] from NFT Registration ticket with this txid [%s] is not in the blockchain or is invalid",
           NFTRegTicket->pastelIDs[CNFTRegTicket::creatorsign], NFTRegTicket->GetTxId()));
       }
-      nRoyaltyAmount = nPriceAmount * NFTRegTicket->nRoyalty / 100;
+      nRoyaltyAmount = nPriceAmount * NFTRegTicket->nRoyalty;
     }
     
     if (!NFTRegTicket->strGreenAddress.empty()) {
@@ -1459,7 +1466,7 @@ CAmount CNFTTradeTicket::GetExtraOutputs(std::vector<CTxOut>& outputs) const
         LOCK(cs_main);
         chainHeight = static_cast<unsigned int>(chainActive.Height()) + 1;
       }
-      nGreenNFTAmount = nPriceAmount * NFTRegTicket->GreenPercent(chainHeight) / 100;
+      nGreenNFTAmount = nPriceAmount * CNFTRegTicket::GreenPercent(chainHeight) / 100;
     }
 
     nPriceAmount -= (nRoyaltyAmount + nGreenNFTAmount);
@@ -1510,7 +1517,7 @@ std::string CNFTTradeTicket::ToJSON() const noexcept
                 {"pastelID", pastelID},
                 {"sell_txid", sellTnxId},
                 {"buy_txid", buyTnxId},
-                {"NFT_txid", NFTTnxId},
+                {"nft_txid", NFTTnxId},
                 {"registration_txid",nftRegTnxId},
                 {"copy_serial_nr", nftCopySerialNr},
                 {"signature", ed_crypto::Hex_Encode(signature.data(), signature.size())}
@@ -1774,7 +1781,7 @@ std::string CNFTRoyaltyTicket::ToJSON() const noexcept {
       {"version", GetStoredVersion()},
       {"pastelID", pastelID},
       {"new_pastelID", newPastelID},
-      {"NFT_txid", NFTTnxId},
+      {"nft_txid", NFTTnxId},
       {"signature", ed_crypto::Hex_Encode(signature.data(), signature.size())}
     }}
   };

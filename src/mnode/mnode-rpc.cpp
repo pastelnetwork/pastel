@@ -1744,7 +1744,7 @@ As json rpc
         if (REGISTER.IsCmd(RPC_CMD_REGISTER::NFT)) {
 			if (fHelp || params.size() != 9)
 				throw JSONRPCError(RPC_INVALID_PARAMETER,
-R"(tickets register NFT "ticket" "{signatures}" "pastelid" "passphrase" "key1" "key2" "fee"
+                                   R"(tickets register NFT "ticket" "{signatures}" "pastelid" "passphrase" "key1" "key2" "fee"
 Register new NFT ticket. If successful, method returns "txid".
 
 Arguments:
@@ -1775,7 +1775,7 @@ NFT Reg Ticket:
     "txid":   <"ticket transaction id">
     "height": <ticket block>,
     "ticket": {
-        "type":            "NFT-reg",
+        "type":            "nft-reg",
         "NFT_ticket":      {...},
         "version":         <version>
         "signatures": {
@@ -1836,7 +1836,7 @@ As json rpc
         if (REGISTER.IsCmd(RPC_CMD_REGISTER::act)) {
 			if (fHelp || params.size() != 7)
 				throw JSONRPCError(RPC_INVALID_PARAMETER,
-R"(tickets register act "reg-ticket-tnxid" "creator-height" "fee" "PastelID" "passphrase"
+                                   R"(tickets register act "reg-ticket-tnxid" "creator-height" "fee" "PastelID" "passphrase"
 Register confirm new NFT ticket identity. If successful, method returns "txid".
 
 Arguments:
@@ -1849,7 +1849,7 @@ Arguments:
 Activation Ticket:
 {
 	"ticket": {
-		"type": "NFT-act",
+		"type": "nft-act",
 		"pastelID": "",
 		"reg_txid": "",
 		"creator_height": "",
@@ -2036,11 +2036,11 @@ As json rpc
         if (REGISTER.IsCmd(RPC_CMD_REGISTER::royalty)) {
           if (fHelp || params.size() != 6)
             throw JSONRPCError(RPC_INVALID_PARAMETER,
-R"(tickets register royalty "NFT-tnxid" "new-pastelid" "old-pastelid" "passphrase"
+                               R"(tickets register royalty "nft-tnxid" "new-pastelid" "old-pastelid" "passphrase"
 Register new change payee of the NFT royalty ticket. If successful, method returns "txid".
 
 Arguments:
-1. "NFT-tnxid"    (string, required) The tnxid of the NFT register ticket
+1. "nft-tnxid"    (string, required) The tnxid of the NFT register ticket
 2. "new-pastelid" (string, required) The pastelID of the new royalty recipient
 3. "old-pastelid" (string, required) The pastelID of the current royalty recipient
 4. "passpharse"   (string, required) The passphrase to the private key associated with 'old-pastelid' and stored inside node. See "pastelid newkey".
@@ -2049,7 +2049,7 @@ NFT Royalty ticket:
     "txid":   <"ticket transaction id">
     "height": <ticket block>,
     "ticket": {
-        "type":         "NFT-royalty",
+        "type":         "nft-royalty",
         "version":      <version>
         "pastelID":     <"the pastelID of the current royalty recipient">,
         "new_pastelID": <"the pastelID of the new royalty recipient">,
