@@ -232,23 +232,23 @@ class MasterNodeTicketsTest(MasterNodeCommon):
 
         # Check if author
         res1 = self.nodes[self.non_mn3].tickets("tools", "validateownership", self.nft_ticket1_txid, self.creator_pastelid1, "passphrase")
-        assert_equal( self.nft_ticket1_txid, res1['NFT'] )
-        assert_equal( "", res1['trade'] )
+        assert_equal( self.nft_ticket1_txid, res1['nft'])
+        assert_equal( "", res1['trade'])
 
         # Test 'single sale' (without re-selling)
         res1 = self.nodes[self.non_mn4].tickets("tools", "validateownership", self.nft_ticket1_txid, self.nonmn4_pastelid1, "passphrase")
-        assert_equal( self.nft_ticket1_txid, res1['NFT'] )
-        assert_equals( self.single_sell_trade_txids, res1['trade'] )
+        assert_equal( self.nft_ticket1_txid, res1['nft'])
+        assert_equals( self.single_sell_trade_txids, res1['trade'])
 
         # Test ownership with or re-sold NFT
         res1 = self.nodes[self.non_mn3].tickets("tools", "validateownership", self.nft_ticket1_txid, self.nonmn3_pastelid1, "passphrase")
-        assert_equal( self.nft_ticket1_txid, res1['NFT'] )
-        assert_equal( self.nested_ownership_trade_txid, res1['trade'] )
+        assert_equal( self.nft_ticket1_txid, res1['nft'] )
+        assert_equal( self.nested_ownership_trade_txid, res1['trade'])
 
         # Test no ownership
         res1 = self.nodes[self.non_mn1].tickets("tools", "validateownership", self.nft_ticket1_txid, self.nonmn1_pastelid2, "passphrase")
-        assert_equal( "", res1['NFT'] )
-        assert_equal( "", res1['trade'] )
+        assert_equal( "", res1['nft'])
+        assert_equal( "", res1['trade'])
 
         print("== Ownership validation tested ==")
     # ===============================================================================================================

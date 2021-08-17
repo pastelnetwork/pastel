@@ -309,7 +309,7 @@ public:
 		"type": "nft-sell",
 		"pastelID": "",     //PastelID of the NFT owner - either 1) an original creator; or 2) a previous buyer,
 		                    //should be the same in either 1) NFT activation ticket or 2) trade ticket
-		"NFT_txid": "",     //txid with either 1) NFT activation ticket or 2) trade ticket in it
+		"nft_txid": "",     //txid with either 1) NFT activation ticket or 2) trade ticket in it
 		"asked_price": "",
 		"valid_after": "",
 		"valid_before": "",
@@ -458,7 +458,7 @@ public:
 		"pastelID": "",     //PastelID of the buyer
 		"sell_txid": "",    //txid with sale ticket
 		"buy_txid": "",     //txid with buy ticket
-		"NFT_txid": "",     //txid with either 1) NFT activation ticket or 2) trade ticket in it
+		"nft_txid": "",     //txid with either 1) NFT activation ticket or 2) trade ticket in it
 		"price": "",
 		"reserved": "",
 		"signature": ""
@@ -559,7 +559,7 @@ public:
     "version": "",
     "pastelID": "",     //pastelID of the old (current at moment of creation) royalty recipient
     "new_pastelID": "", //pastelID of the new royalty recipient
-    "NFT_txid": "",     //txid of the NFT for royalty payments
+    "nft_txid": "",     //txid of the NFT for royalty payments
     "signature": ""
   }
 */

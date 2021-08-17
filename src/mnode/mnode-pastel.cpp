@@ -213,7 +213,7 @@ std::vector<CPastelIDRegTicket> CPastelIDRegTicket::FindAllTicketByPastelAddress
 }
 
 // CNFTRegTicket ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-/* Current NFT_ticket - 8 Items!!!!
+/* Current nft_ticket - 8 Items!!!!
 {
   "nft_ticket_version": integer     // 1
   "author": bytes,                  // PastelID of the author (creator)
