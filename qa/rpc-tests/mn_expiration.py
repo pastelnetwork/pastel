@@ -158,12 +158,12 @@ class MasterNodeTicketsTest(MasterNodeCommon):
             print(f"sell ticket 3 txid {sell_ticket3_txid}")
 
             sell_ticket1_1 = self.nodes[self.non_mn3].tickets("find", "sell", act_ticket_txid+":2")
-            assert_equal(sell_ticket1_1['ticket']['type'], "NFT-sell")
-            assert_equal(sell_ticket1_1['ticket']['NFT_txid'], act_ticket_txid)
+            assert_equal(sell_ticket1_1['ticket']['type'], "nft-sell")
+            assert_equal(sell_ticket1_1['ticket']['nft_txid'], act_ticket_txid)
             assert_equal(sell_ticket1_1["ticket"]["copy_number"], 2)
 
             sell_ticket1_2 = self.nodes[self.non_mn3].tickets("get", sell_ticket3_txid)
-            assert_equal(sell_ticket1_2["ticket"]["NFT_txid"], sell_ticket1_1["ticket"]["NFT_txid"])
+            assert_equal(sell_ticket1_2["ticket"]["nft_txid"], sell_ticket1_1["ticket"]["nft_txid"])
             assert_equal(sell_ticket1_2["ticket"]["copy_number"], sell_ticket1_1["ticket"]["copy_number"])
 
         self.__send_coins_to_buy(self.non_mn4, self.nonmn4_address1, 5)

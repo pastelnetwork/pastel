@@ -6,6 +6,7 @@
 
 #include "mnode/mnode-consts.h"
 #include "mnode/ticket.h"
+#include "mnode/mnode-controller.h"
 
 // PastelID Ticket //////////////////////////////////////////////////////////////////////////////////////////////////////
 class CPastelIDRegTicket : public CPastelTicket
@@ -88,7 +89,7 @@ bytes fields are base64 as strings
   "block_hash": bytes         // hash of the top block when the ticket was created - this is to map the ticket to the MNs that should process it
   "copies": integer,          // number of copies
   "royalty": float,           // (not yet supported by cNode) how much creator should get on all future resales
-  "green_address": string,    // address for Green NFT payment (not yet supported by cNode)
+  "green": bool,              // is there Green NFT payment or not
 
   "app_ticket": bytes,        // cNode DOES NOT parse this part!!!!
   as base64(
@@ -102,7 +103,7 @@ bytes fields are base64 as strings
     "NFTwork_creation_video_youtube_url": string,
 
     "thumbnail_hash": bytes,    //hash of the thumbnail !!!!SHA3-256!!!!
-		"data_hash": bytes,         // hash of the image (or any other asset) that this ticket represents !!!!SHA3-256!!!!
+    "data_hash": bytes,         // hash of the image (or any other asset) that this ticket represents !!!!SHA3-256!!!!
 
     "fingerprints_hash": bytes, 			//hash of the fingerprint !!!!SHA3-256!!!!
     "fingerprints": bytes,      			//compressed fingerprint
@@ -159,7 +160,7 @@ public:
     int creatorHeight{}; //blocknum when the ticket was created by the wallet
     int totalCopies{}; //blocknum when the ticket was created by the wallet
     
-    uint16_t nRoyalty{};
+    float nRoyalty{};
     std::string strGreenAddress;
     
 public:
@@ -183,7 +184,8 @@ public:
     std::string ToStr() const noexcept override;
     bool IsValid(bool preReg, int depth) const override;
     CAmount TicketPrice(const unsigned int nHeight) const noexcept override { return 10; }
-    CAmount GreenPercent(const unsigned int nHeight) const noexcept { return 2; }
+    static CAmount GreenPercent(const unsigned int nHeight) { return 2; }
+    static std::string GreenAddress(const unsigned int nHeight) { return masterNodeCtrl.TicketGreenAddress; }
 
 	void SerializationOp(CDataStream& s, const SERIALIZE_ACTION ser_action) override
     {
@@ -304,10 +306,10 @@ public:
 // NFT Trade Tickets /////////////////////////////////////////////////////////////////////////////////////////////////////
 /*
 	"ticket": {
-		"type": "NFT-sell",
+		"type": "nft-sell",
 		"pastelID": "",     //PastelID of the NFT owner - either 1) an original creator; or 2) a previous buyer,
 		                    //should be the same in either 1) NFT activation ticket or 2) trade ticket
-		"NFT_txid": "",     //txid with either 1) NFT activation ticket or 2) trade ticket in it
+		"nft_txid": "",     //txid with either 1) NFT activation ticket or 2) trade ticket in it
 		"asked_price": "",
 		"valid_after": "",
 		"valid_before": "",
@@ -456,7 +458,7 @@ public:
 		"pastelID": "",     //PastelID of the buyer
 		"sell_txid": "",    //txid with sale ticket
 		"buy_txid": "",     //txid with buy ticket
-		"NFT_txid": "",     //txid with either 1) NFT activation ticket or 2) trade ticket in it
+		"nft_txid": "",     //txid with either 1) NFT activation ticket or 2) trade ticket in it
 		"price": "",
 		"reserved": "",
 		"signature": ""
@@ -557,7 +559,7 @@ public:
     "version": "",
     "pastelID": "",     //pastelID of the old (current at moment of creation) royalty recipient
     "new_pastelID": "", //pastelID of the new royalty recipient
-    "NFT_txid": "",     //txid of the NFT for royalty payments
+    "nft_txid": "",     //txid of the NFT for royalty payments
     "signature": ""
   }
 */

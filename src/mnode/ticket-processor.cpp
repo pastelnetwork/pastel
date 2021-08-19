@@ -218,11 +218,11 @@ bool CPastelTicketProcessor::ValidateIfTicketTransaction(const int nHeight, cons
                 tradePrice = trade_ticket->price * COIN;
                 if (NFTRegTicket->nRoyalty > 0) {
                   hasRoyaltyFee = true;
-                  royaltyFee = tradePrice * NFTRegTicket->nRoyalty / 100;
+                  royaltyFee = tradePrice * NFTRegTicket->nRoyalty;
                 }
                 if (!NFTRegTicket->strGreenAddress.empty()) {
                   hasGreenFee = true;
-                  greenFee = tradePrice * NFTRegTicket->GreenPercent(nHeight) / 100;
+                  greenFee = tradePrice * CNFTRegTicket::GreenPercent(nHeight) / 100;
                 }
                 tradePrice -= (royaltyFee + greenFee);
             }

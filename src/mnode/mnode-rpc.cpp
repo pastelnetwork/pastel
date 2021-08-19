@@ -1744,7 +1744,7 @@ As json rpc
         if (REGISTER.IsCmd(RPC_CMD_REGISTER::NFT)) {
 			if (fHelp || params.size() != 9)
 				throw JSONRPCError(RPC_INVALID_PARAMETER,
-R"(tickets register NFT "ticket" "{signatures}" "pastelid" "passphrase" "key1" "key2" "fee"
+                                   R"(tickets register NFT "ticket" "{signatures}" "pastelid" "passphrase" "key1" "key2" "fee"
 Register new NFT ticket. If successful, method returns "txid".
 
 Arguments:
@@ -1753,10 +1753,10 @@ Arguments:
         "version":       1,
         "author":        "<authors-PastelID>",
         "blocknum":      <block-number-when-the-ticket-was-created-by-the-creator>,
-        "data_hash":     "<base64'ed-hash-of-the-NFT>",
-        "copies":        <number-of-copies-of-NFT-this-ticket-is-creating>,
+        "data_hash":     "<base64'ed-hash-of-the-nft>",
+        "copies":        <number-of-copies-of-nft-this-ticket-is-creating>,
         "royalty":       <how-much-creator-should-get-on-all-future-resales>,
-        "green_address": "<address-for-Green-NFT-payment>",
+        "green_address": "<address-for-Green-nft-payment>",
         "app_ticket":    "<application-specific-data>",
     }
 2. "signatures"	(string, required) Signatures (base64) and PastelIDs of the author and verifying masternodes (MN2 and MN3) as JSON:
@@ -1775,8 +1775,8 @@ NFT Reg Ticket:
     "txid":   <"ticket transaction id">
     "height": <ticket block>,
     "ticket": {
-        "type":            "NFT-reg",
-        "NFT_ticket":      {...},
+        "type":            "nft-reg",
+        "nft_ticket":      {...},
         "version":         <version>
         "signatures": {
             "authorsPastelID": <"authorsSignature">,
@@ -1836,11 +1836,11 @@ As json rpc
         if (REGISTER.IsCmd(RPC_CMD_REGISTER::act)) {
 			if (fHelp || params.size() != 7)
 				throw JSONRPCError(RPC_INVALID_PARAMETER,
-R"(tickets register act "reg-ticket-tnxid" "creator-height" "fee" "PastelID" "passphrase"
+                                   R"(tickets register act "reg-ticket-txid" "creator-height" "fee" "PastelID" "passphrase"
 Register confirm new NFT ticket identity. If successful, method returns "txid".
 
 Arguments:
-1. "reg-ticket-tnxid"  (string, required) tnxid of the NFT register ticket to activate.
+1. "reg-ticket-txid"  (string, required) txid of the NFT register ticket to activate.
 2. "creator-height"     (string, required) Height where the NFT register ticket was created by the creator.
 3. fee                 (int, required) The supposed fee that creator agreed to pay for the registration. This shall match the amount in the registration ticket.
                        The transaction with this ticket will pay 90% of this amount to MNs (10% were burnt prior to registration).
@@ -1849,7 +1849,7 @@ Arguments:
 Activation Ticket:
 {
 	"ticket": {
-		"type": "NFT-act",
+		"type": "nft-act",
 		"pastelID": "",
 		"reg_txid": "",
 		"creator_height": "",
@@ -1884,15 +1884,15 @@ As json rpc
         if (REGISTER.IsCmd(RPC_CMD_REGISTER::sell)) {
 			if (fHelp || params.size() < 6 || params.size() > 9)
 				throw JSONRPCError(RPC_INVALID_PARAMETER,
-R"(tickets register sell "NFT_txid" "price" "PastelID" "passphrase" [valid_after] [valid_before] [copy_number]
+R"(tickets register sell "nft_txid" "price" "PastelID" "passphrase" [valid_after] [valid_before] [copy_number]
 Register NFT sell ticket. If successful, method returns "txid".
 
 Arguments:
-1. "NFT_txid"      (string, required) tnx_id of the NFT to sell, this is either:
+1. "nft_txid"      (string, required) tnx_id of the NFT to sell, this is either:
                            1) NFT activation ticket, if seller is original creator
                            2) trade ticket, if seller is owner of the bought NFT
 2. price           (int, required) Sale price.
-3. "PastelID"      (string, required) The PastelID of seller. This MUST be the same PastelID that was used to sign the ticket referred by the NFT_txid.
+3. "PastelID"      (string, required) The PastelID of seller. This MUST be the same PastelID that was used to sign the ticket referred by the nft_txid.
 4. "passphrase"    (string, required) The passphrase to the private key associated with creator's PastelID and stored inside node.
 5. valid_after       (int, optional) The block height after which this sell ticket will become active (use 0 for upon registration).
 6. valid_before      (int, optional) The block height after which this sell ticket is no more valid (use 0 for never).
@@ -1903,7 +1903,7 @@ NFT Trade Ticket:
 	"ticket": {
 		"type": "sell",
 		"pastelID": "",
-		"NFT_txid": "",
+		"nft_txid": "",
 		"copy_number": "",
 		"asked_price": "",
 		"valid_after": "",
@@ -2006,7 +2006,7 @@ NFT Trade Ticket:
 		"pastelID": "",
 		"sell_txid": "",
 		"buy_txid": "",
-        "NFT_txid": "",
+        "nft_txid": "",
         "price": "",
 		"signature": ""
 	},
@@ -2036,11 +2036,11 @@ As json rpc
         if (REGISTER.IsCmd(RPC_CMD_REGISTER::royalty)) {
           if (fHelp || params.size() != 6)
             throw JSONRPCError(RPC_INVALID_PARAMETER,
-R"(tickets register royalty "NFT-tnxid" "new-pastelid" "old-pastelid" "passphrase"
+                               R"(tickets register royalty "nft-txid" "new-pastelid" "old-pastelid" "passphrase"
 Register new change payee of the NFT royalty ticket. If successful, method returns "txid".
 
 Arguments:
-1. "NFT-tnxid"    (string, required) The tnxid of the NFT register ticket
+1. "nft-txid"    (string, required) The txid of the NFT register ticket
 2. "new-pastelid" (string, required) The pastelID of the new royalty recipient
 3. "old-pastelid" (string, required) The pastelID of the current royalty recipient
 4. "passpharse"   (string, required) The passphrase to the private key associated with 'old-pastelid' and stored inside node. See "pastelid newkey".
@@ -2049,11 +2049,11 @@ NFT Royalty ticket:
     "txid":   <"ticket transaction id">
     "height": <ticket block>,
     "ticket": {
-        "type":         "NFT-royalty",
+        "type":         "nft-royalty",
         "version":      <version>
         "pastelID":     <"the pastelID of the current royalty recipient">,
         "new_pastelID": <"the pastelID of the new royalty recipient">,
-        "NFT_txid":     <"the tnxid of the NFT register ticket">,
+        "nft_txid":     <"the txid of the NFT register ticket">,
         "signature":    <"">,
     }
 }
@@ -2546,8 +2546,8 @@ Arguments:
 		"version": 1,
 		"author" "authorsPastelID",
 		"blocknum" <block-number-when-the-ticket-was-created-by-the-creator>,
-		"data_hash" "<base64'ed-hash-of-the-NFT>",
-		"copies" <number-of-copies-of-NFT-this-ticket-is-creating>,
+		"data_hash" "<base64'ed-hash-of-the-nft>",
+		"copies" <number-of-copies-of-nft-this-ticket-is-creating>,
 		"app_ticket" "<application-specific-data>",
 		"reserved" "<empty-string-for-now>",
 	}
@@ -2666,10 +2666,10 @@ As json rpc
                             throw JSONRPCError(RPC_WALLET_PASSPHRASE_INCORRECT, "Error: Failed to validate passphrase!");
 
                         std::vector<std::string> result = masterNodeCtrl.masternodeTickets.ValidateOwnership(txid, pastelid);
-                        std::string NFT_txid = std::move(result[0]);
+                        std::string nft_txid = std::move(result[0]);
                         std::string trade_txid = std::move(result[1]);
 
-                        retVal.pushKV("NFT", NFT_txid);
+                        retVal.pushKV("nft", nft_txid);
                         retVal.pushKV("trade", trade_txid);
                     }
                     return retVal;
