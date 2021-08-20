@@ -123,7 +123,7 @@ private:
         lock.try_lock();
         if (!lock.owns_lock())
             LeaveCritical();
-        return lock.owns_lock();
+        return lock.owns_lock(); //-V1020
     }
 
 public:

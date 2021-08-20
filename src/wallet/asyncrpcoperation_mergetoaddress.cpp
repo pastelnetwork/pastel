@@ -434,7 +434,6 @@ bool AsyncRPCOperation_mergetoaddress::main_impl()
         // Create JoinSplit to target z-addr.
         MergeToAddressJSInfo info;
         info.vpub_old = sendAmount;
-        info.vpub_new = 0;
 
         JSOutput jso = JSOutput(std::get<libzcash::SproutPaymentAddress>(toPaymentAddress_), sendAmount);
         if (hexMemo.size() > 0) {
@@ -515,8 +514,6 @@ bool AsyncRPCOperation_mergetoaddress::main_impl()
 
     while (!vpubNewProcessed) {
         MergeToAddressJSInfo info;
-        info.vpub_old = 0;
-        info.vpub_new = 0;
 
         // Set vpub_old in the first joinsplit
         if (!vpubOldProcessed) {

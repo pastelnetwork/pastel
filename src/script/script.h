@@ -409,7 +409,7 @@ public:
 
     CScript& operator<<(opcodetype opcode)
     {
-        if (opcode < 0 || opcode > 0xff)
+        if (opcode < 0 || opcode > 0xff) //-V560
             throw std::runtime_error("CScript::operator<<(): invalid opcode");
         insert(end(), (unsigned char)opcode);
         return *this;
@@ -457,7 +457,7 @@ public:
     {
         // I'm not sure if this should push the script or concatenate scripts.
         // If there's ever a use for pushing a script onto a script, delete this member fn
-        assert(!"Warning: Pushing a CScript onto a CScript with << is probably not intended, use + to concatenate!");
+        assert(!"Warning: Pushing a CScript onto a CScript with << is probably not intended, use + to concatenate!"); //-V547
         return *this;
     }
 

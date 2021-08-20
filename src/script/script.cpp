@@ -268,7 +268,7 @@ std::string CScript::ToString() const
             str += "[error]";
             return str;
         }
-        if (0 <= opcode && opcode <= OP_PUSHDATA4)
+        if (0 <= opcode && opcode <= OP_PUSHDATA4) //-V1016
             str += ValueString(vch);
         else
             str += GetOpName(opcode);

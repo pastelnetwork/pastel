@@ -422,7 +422,7 @@ static bool rest_getutxos(HTTPRequest* req, const std::string& strURIPart)
     {
 
         //inputs is sent over URI scheme (/rest/getutxos/checkmempool/txid1-n/txid2-n/...)
-        if (uriParts.size() > 0 && uriParts[0] == "checkmempool")
+        if (uriParts[0] == "checkmempool")
             fCheckMemPool = true;
 
         for (size_t i = (fCheckMemPool) ? 1 : 0; i < uriParts.size(); i++)
@@ -450,8 +450,8 @@ static bool rest_getutxos(HTTPRequest* req, const std::string& strURIPart)
         // convert hex to bin, continue then with bin part
         std::vector<unsigned char> strRequestV = ParseHex(strRequestMutable);
         strRequestMutable.assign(strRequestV.begin(), strRequestV.end());
+        break;
     }
-
     case RF_BINARY: {
         try {
             //deserialize only if user sent a request

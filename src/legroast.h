@@ -26,7 +26,7 @@
 typedef unsigned __int128 uint128_t;
 #endif
 
-static constexpr uint128_t m1   {1};
+static constexpr uint128_t m1   {1}; //-V707
 static constexpr uint128_t m127 {(m1 << 127) - 1};
 
 namespace legroast
@@ -67,10 +67,10 @@ constexpr uint32_t MESSAGE3_ALPHA = HASH_BYTES;
 
 typedef struct _LegRoastParams
 {
-    const algorithm alg; // LegRoast algorithm
-    const uint32_t nRounds;
-    const uint32_t nResiduosity_Symbols_Per_Round;
-    const uint32_t nPartyDepth;
+    const algorithm alg {}; // LegRoast algorithm
+    const uint32_t nRounds {};
+    const uint32_t nResiduosity_Symbols_Per_Round {};
+    const uint32_t nPartyDepth {};
 
     const uint32_t RESSYM_PER_ROUND = nRounds * nResiduosity_Symbols_Per_Round;
     const uint32_t PARTIES = 1 << nPartyDepth;

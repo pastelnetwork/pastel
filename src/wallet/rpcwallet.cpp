@@ -141,7 +141,7 @@ UniValue getnewaddress(const UniValue& params, bool fHelp)
     // Parse the account first so we don't generate a key if there's an error
     string strAccount;
     if (params.size() > 0)
-        strAccount = AccountFromValue(params[0]);
+        strAccount = AccountFromValue(params[0]); //-V1048
 
     if (!pwalletMain->IsLocked())
         pwalletMain->TopUpKeyPool();
@@ -293,7 +293,7 @@ UniValue setaccount(const UniValue& params, bool fHelp)
 
     string strAccount;
     if (params.size() > 1)
-        strAccount = AccountFromValue(params[1]);
+        strAccount = AccountFromValue(params[1]); //-V1048
 
     // Only add the account if the address is yours.
     if (IsMine(*pwalletMain, dest)) {
@@ -1175,7 +1175,7 @@ UniValue addmultisigaddress(const UniValue& params, bool fHelp)
 
     string strAccount;
     if (params.size() > 2)
-        strAccount = AccountFromValue(params[2]);
+        strAccount = AccountFromValue(params[2]); //-V1048
 
     // Construct using pay-to-script-hash:
     CScript inner = _createmultisig_redeemScript(params);

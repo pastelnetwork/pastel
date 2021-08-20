@@ -224,7 +224,7 @@ template<typename Stream> inline void Unserialize(Stream& s, bool& a) { char f=s
 
 
 template<typename Stream> inline void Serialize(Stream& s, CScript::ScriptType a ) { ser_writedata32(s, (int32_t)a); }
-template<typename Stream> inline void Unserialize(Stream& s, CScript::ScriptType a ) { a = (CScript::ScriptType)ser_readdata32(s); }
+template<typename Stream> inline void Unserialize(Stream& s, CScript::ScriptType& a ) { a = (CScript::ScriptType)ser_readdata32(s); }
 
 
 

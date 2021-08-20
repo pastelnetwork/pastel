@@ -1421,16 +1421,16 @@ void CWallet::UpdateSaplingNullifierNoteMapWithTx(CWalletTx& wtx) {
                 // otherwise the item would not exist in the first place.
                 assert(false);
             }
-            auto optNote = optPlaintext.value().note(nd.ivk);
+            auto optNote = optPlaintext.value().note(nd.ivk); //-V1007
             if (!optNote) {
                 assert(false);
             }
-            auto optNullifier = optNote.value().nullifier(extfvk.fvk, position);
+            auto optNullifier = optNote.value().nullifier(extfvk.fvk, position); //-V1007
             if (!optNullifier) {
                 // This should not happen.  If it does, maybe the position has been corrupted or miscalculated?
                 assert(false);
             }
-            uint256 nullifier = optNullifier.value();
+            uint256 nullifier = optNullifier.value(); //-V1007
             mapSaplingNullifiersToNotes[nullifier] = op;
             item.second.nullifier = nullifier;
         }
@@ -2247,11 +2247,11 @@ std::optional<std::pair<
         output.ephemeralKey,
         output.cm);
     assert(maybe_pt != std::nullopt);
-    auto notePt = maybe_pt.value();
+    auto notePt = maybe_pt.value();  //-V1007
 
     auto maybe_pa = nd.ivk.address(notePt.d);
     assert(maybe_pa != std::nullopt);
-    auto pa = maybe_pa.value();
+    auto pa = maybe_pa.value(); //-V1007
 
     return std::make_pair(notePt, pa);
 }
@@ -2274,16 +2274,16 @@ std::optional<std::pair<
     assert(optDeserialized != std::nullopt);
 
     auto maybe_pt = SaplingNotePlaintext::plaintext_checks_without_height(
-        *optDeserialized,
+        *optDeserialized, //-V1007
         nd.ivk,
         output.ephemeralKey,
         output.cm);
     assert(maybe_pt != std::nullopt);
-    auto notePt = maybe_pt.value();
+    auto notePt = maybe_pt.value(); //-V1007
 
     auto maybe_pa = nd.ivk.address(notePt.d);
     assert(static_cast<bool>(maybe_pa));
-    auto pa = maybe_pa.value();
+    auto pa = maybe_pa.value(); //-V1007
 
     return std::make_pair(notePt, pa);
 }
@@ -2315,7 +2315,7 @@ std::optional<std::pair<
             outPt->pk_d,
             output.cm);
         assert(static_cast<bool>(maybe_pt));
-        auto notePt = maybe_pt.value();
+        auto notePt = maybe_pt.value(); //-V1007
 
         return std::make_pair(notePt, SaplingPaymentAddress(notePt.d, outPt->pk_d));
     }
@@ -2349,13 +2349,13 @@ std::optional<std::pair<
         assert(optDeserialized != std::nullopt);
 
         auto maybe_pt = SaplingNotePlaintext::plaintext_checks_without_height(
-            *optDeserialized,
+            *optDeserialized, //-V1007
             output.ephemeralKey,
             outPt->esk,
             outPt->pk_d,
             output.cm);
         assert(static_cast<bool>(maybe_pt));
-        auto notePt = maybe_pt.value();
+        auto notePt = maybe_pt.value(); //-V1007
 
         return std::make_pair(notePt, SaplingPaymentAddress(notePt.d, outPt->pk_d));
     }
@@ -2430,7 +2430,7 @@ void CWalletTx::GetAmounts(list<COutputEntry>& listReceived,
     }
 
     // Create output entry for vpub_old/new, if we sent utxos from this transaction
-    if (isFromMyTaddr) {
+    if (isFromMyTaddr) { //-V581
         CAmount myVpubOld = 0;
         CAmount myVpubNew = 0;
         for (const JSDescription& js : vjoinsplit) {
@@ -4676,7 +4676,7 @@ void CWallet::GetFilteredNotes(
                 wtx.vShieldedOutput[op.n].ephemeralKey,
                 wtx.vShieldedOutput[op.n].cm);
             assert(static_cast<bool>(maybe_pt));
-            auto notePt = maybe_pt.value();
+            auto notePt = maybe_pt.value(); //-V1007
 
             auto maybe_pa = nd.ivk.address(notePt.d);
             assert(static_cast<bool>(maybe_pa));

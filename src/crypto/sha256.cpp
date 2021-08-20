@@ -134,7 +134,7 @@ void Transform(uint32_t* s, const unsigned char* chunk)
 
 ////// SHA-256
 
-CSHA256::CSHA256() : bytes(0)
+CSHA256::CSHA256() : bytes(0), buf{}
 {
     sha256::Initialize(s);
 }
@@ -167,7 +167,7 @@ CSHA256& CSHA256::Write(const unsigned char* data, size_t len)
 
 void CSHA256::Finalize(unsigned char hash[OUTPUT_SIZE])
 {
-    static const unsigned char pad[64] = {0x80};
+    static const unsigned char pad[64] = {0x80}; //-V1009
     unsigned char sizedesc[8];
     WriteBE64(sizedesc, bytes << 3);
     Write(pad, 1 + ((119 - (bytes % 64)) % 64));

@@ -28,9 +28,9 @@ BOOST_AUTO_TEST_CASE(util_criticalsection)
 
     do {
         LOCK(cs);
-        break;
+        break; //-V612
 
-        BOOST_ERROR("break was swallowed!");
+        BOOST_ERROR("break was swallowed!"); //-V779
     } while(0);
 
     do {

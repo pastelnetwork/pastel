@@ -127,7 +127,7 @@ void static NegateSignatureS(std::vector<unsigned char>& vchSig) {
         carry = (n < 0);
     }
     assert(carry == 0);
-    if (s.size() > 1 && s[0] == 0 && s[1] < 0x80) {
+    if (s.size() > 1 && s[0] == 0 && s[1] < 0x80) { //-V560
         s.erase(s.begin());
     }
 
@@ -939,7 +939,7 @@ BOOST_DATA_TEST_CASE(script_standard_push, boost::unit_test::data::xrange(static
     }
 
     for (unsigned int i=0; i<=MAX_SCRIPT_ELEMENT_SIZE; i++) {
-        std::vector<unsigned char> data(i, '\111');
+        std::vector<unsigned char> data(i, '\111'); //-V536
         CScript script;
         script << data;
         BOOST_CHECK_MESSAGE(script.IsPushOnly(), "Length " << i << " is not pure push.");

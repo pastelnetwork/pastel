@@ -90,7 +90,7 @@ public:
     bool IsRegTest() const noexcept { return network == CBaseChainParams::Network::REGTEST; }
 
 protected:
-    CChainParams()
+    CChainParams(): consensus{}, checkpointData{}
     {
         memset(&pchMessageStart, 0, sizeof(pchMessageStart));
     }

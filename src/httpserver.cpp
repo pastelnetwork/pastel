@@ -164,7 +164,7 @@ public:
 
 struct HTTPPathHandler
 {
-    HTTPPathHandler() {}
+    HTTPPathHandler(): prefix {}, exactMatch{false}, handler{} {}
     HTTPPathHandler(std::string prefix, bool exactMatch, HTTPRequestHandler handler):
         prefix(prefix), exactMatch(exactMatch), handler(handler)
     {

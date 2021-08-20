@@ -675,7 +675,7 @@ UniValue getblocktemplate(const UniValue& params, bool fHelp)
         uint256 txHash = tx.GetHash();
         setTxIndex[txHash] = i++;
 
-        if (tx.IsCoinBase() && !coinbasetxn)
+        if (tx.IsCoinBase() && !coinbasetxn) //-V560
             continue;
 
         UniValue entry(UniValue::VOBJ);
@@ -723,7 +723,7 @@ UniValue getblocktemplate(const UniValue& params, bool fHelp)
     result.pushKV("previousblockhash", pblock->hashPrevBlock.GetHex());
     result.pushKV("finalsaplingroothash", pblock->hashFinalSaplingRoot.GetHex());
     result.pushKV("transactions", transactions);
-    if (coinbasetxn) {
+    if (coinbasetxn) { //-V547
         assert(txCoinbase.isObject());
         result.pushKV("coinbasetxn", txCoinbase);
     } else {

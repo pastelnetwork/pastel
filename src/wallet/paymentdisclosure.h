@@ -70,11 +70,11 @@ struct PaymentDisclosureInfo {
 
 struct PaymentDisclosurePayload {
     int32_t marker = PAYMENT_DISCLOSURE_PAYLOAD_MAGIC_BYTES;  // to be disjoint from transaction encoding
-    uint8_t version;        // 0 = experimental, 1 = first production version, etc.
+    uint8_t version{};        // 0 = experimental, 1 = first production version, etc.
     uint256 esk;            // zcash/NoteEncryption.cpp
     uint256 txid;           // primitives/transaction.h
-    uint64_t js;            // Index into CTransaction.vjoinsplit
-    uint8_t n;              // Index into JSDescription fields of length ZC_NUM_JS_OUTPUTS
+    uint64_t js{};            // Index into CTransaction.vjoinsplit
+    uint8_t n{};              // Index into JSDescription fields of length ZC_NUM_JS_OUTPUTS
     libzcash::SproutPaymentAddress zaddr; // zcash/Address.hpp
     std::string message;     // parameter to RPC call
 
@@ -117,7 +117,7 @@ struct PaymentDisclosure {
     std::array<unsigned char, 64> payloadSig;
     // We use boost array because serialize doesn't like char buffer, otherwise we could do: unsigned char payloadSig[64];
 
-    PaymentDisclosure() {};
+    PaymentDisclosure() : payload{}, payloadSig{} {};
     PaymentDisclosure(const PaymentDisclosurePayload payload, const std::array<unsigned char, 64> sig) : payload(payload), payloadSig(sig) {};
     PaymentDisclosure(const uint256& joinSplitPubKey, const PaymentDisclosureKey& key, const PaymentDisclosureInfo& info, const std::string& message);
 
