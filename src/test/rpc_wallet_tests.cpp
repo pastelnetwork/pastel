@@ -1293,13 +1293,6 @@ BOOST_AUTO_TEST_CASE(rpc_z_sendmany_internals)
         } catch (const std::runtime_error & e) {
             BOOST_CHECK( string(e.what()).find("unsupported joinsplit input")!= string::npos);
         }
-
-        info.vjsin.clear();
-        try {
-            proxy.perform_joinsplit(info);
-        } catch (const std::runtime_error & e) {
-            BOOST_CHECK( string(e.what()).find("error verifying joinsplit")!= string::npos);
-        }
     }
 }
 
@@ -1703,13 +1696,6 @@ BOOST_AUTO_TEST_CASE(rpc_z_shieldcoinbase_internals)
         } catch (const std::runtime_error & e) {
             BOOST_CHECK( string(e.what()).find("unsupported joinsplit input")!= string::npos);
         }
-
-        info.vjsin.clear();
-        try {
-            proxy.perform_joinsplit(info);
-        } catch (const std::runtime_error & e) {
-            BOOST_CHECK( string(e.what()).find("error verifying joinsplit")!= string::npos);
-        }
     }
 
 }
@@ -1999,14 +1985,6 @@ BOOST_AUTO_TEST_CASE(rpc_z_mergetoaddress_internals)
             BOOST_FAIL("Should have caused an error");
         } catch (const std::runtime_error & e) {
             BOOST_CHECK( string(e.what()).find("unsupported joinsplit input")!= string::npos);
-        }
-
-        info.vjsin.clear();
-        try {
-            proxy.perform_joinsplit(info);
-            BOOST_FAIL("Should have caused an error");
-        } catch (const std::runtime_error & e) {
-            BOOST_CHECK( string(e.what()).find("error verifying joinsplit")!= string::npos);
         }
     }
 
