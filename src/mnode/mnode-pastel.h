@@ -534,8 +534,8 @@ public:
     static bool FindTicketInDb(const std::string& key, CNFTTradeTicket& ticket);
     
     static std::vector<CNFTTradeTicket> FindAllTicketByPastelID(const std::string& pastelID);
-    static std::vector<CNFTTradeTicket> FindAllTicketByNFTTnxID(const std::string& NFTTnxID);
-    static std::vector<CNFTTradeTicket> FindAllTicketByRegTnxID(const std::string& nftRegTxnId);
+    static std::vector<CNFTTradeTicket> FindAllTicketByNFTTxnID(const std::string& NFTTxnID);
+    static std::vector<CNFTTradeTicket> FindAllTicketByRegTxnID(const std::string& nftRegTxnId);
     
     static bool CheckTradeTicketExistBySellTicket(const std::string& _sellTxnId);
     static bool CheckTradeTicketExistByBuyTicket(const std::string& _buyTxnId);

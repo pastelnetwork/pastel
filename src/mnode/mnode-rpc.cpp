@@ -2254,7 +2254,7 @@ As json rpc
             return getTickets<CNFTActivateTicket, int>(key, atoi(key), CNFTActivateTicket::FindAllTicketByCreatorHeight);
 
         case RPC_CMD_FIND::sell:
-            return getTickets<CNFTSellTicket>(key, key, CNFTSellTicket::FindAllTicketByNFTTnxID);
+            return getTickets<CNFTSellTicket>(key, key, CNFTSellTicket::FindAllTicketByNFTTxnID);
 
         case RPC_CMD_FIND::buy:
             return getTickets<CNFTBuyTicket>(key);
