@@ -1661,7 +1661,7 @@ Register identity of the current Masternode into the blockchain. If successful, 
 
 Arguments:
 1. "pastelid"      (string, required) The PastelID. NOTE: PastelID must be generated and stored inside node. See "pastelid newkey".
-2. "passpharse"    (string, required) The passphrase to the private key associated with PastelID and stored inside node. See "pastelid newkey".
+2. "passphrase"    (string, required) The passphrase to the private key associated with PastelID and stored inside node. See "pastelid newkey".
 Masternode PastelID Ticket:
 {
 	"ticket": {
@@ -1707,7 +1707,7 @@ Register PastelID identity. If successful, method returns "txid".
 
 Arguments:
 1. "pastelid"      (string, required) The PastelID. NOTE: PastelID must be generated and stored inside node. See "pastelid newkey".
-2. "passpharse"    (string, required) The passphrase to the private key associated with PastelID and stored inside node. See "pastelid newkey".
+2. "passphrase"    (string, required) The passphrase to the private key associated with PastelID and stored inside node. See "pastelid newkey".
 3. "address"       (string, required) The Pastel blockchain address of the sender. (IN the future - this will be used for charging a fee).
 Masternode PastelID Ticket:
 {
@@ -1766,7 +1766,7 @@ Arguments:
         "mn2":    { "mn3PastelID":     "mn3Signature"     }
     }
 3. "pastelid"   (string, required) The current, registering masternode (MN1) PastelID. NOTE: PastelID must be generated and stored inside node. See "pastelid newkey".
-4. "passpharse" (string, required) The passphrase to the private key associated with PastelID and stored inside node. See "pastelid newkey".
+4. "passphrase" (string, required) The passphrase to the private key associated with PastelID and stored inside node. See "pastelid newkey".
 5. "key1"       (string, required) The first key to search ticket.
 6. "key2"       (string, required) The second key to search ticket.
 7. "fee"        (int, required) The agreed upon storage fee.
@@ -2043,7 +2043,7 @@ Arguments:
 1. "nft-txid"    (string, required) The txid of the NFT register ticket
 2. "new-pastelid" (string, required) The pastelID of the new royalty recipient
 3. "old-pastelid" (string, required) The pastelID of the current royalty recipient
-4. "passpharse"   (string, required) The passphrase to the private key associated with 'old-pastelid' and stored inside node. See "pastelid newkey".
+4. "passphrase"   (string, required) The passphrase to the private key associated with 'old-pastelid' and stored inside node. See "pastelid newkey".
 NFT Royalty ticket:
 {
     "txid":   <"ticket transaction id">
@@ -2086,12 +2086,12 @@ Royalty Ticket)"
         if (REGISTER.IsCmd(RPC_CMD_REGISTER::down)) {
 			if (fHelp || params.size() != 5) //-V560
 				throw JSONRPCError(RPC_INVALID_PARAMETER,
-R"(tickets register down "txid" "pastelid" "passpharse"
+R"(tickets register down "txid" "pastelid" "passphrase"
 Register take down request ticket. If successful, method returns "txid"
 
 Arguments:
 x. "pastelid"      (string, required) The PastelID. NOTE: PastelID must be generated and stored inside node. See "pastelid newkey".
-y. "passpharse"    (string, required) The passphrase to the private key associated with PastelID and stored inside node. See "pastelid newkey".
+y. "passphrase"    (string, required) The passphrase to the private key associated with PastelID and stored inside node. See "pastelid newkey".
 Take Down Ticket:
 {
 	"ticket": {
@@ -2114,13 +2114,13 @@ As json rpc
         if (REGISTER.IsCmd(RPC_CMD_REGISTER::username)) {
 			if (fHelp || params.size() != 5) //-V560
 				throw JSONRPCError(RPC_INVALID_PARAMETER,
-R"(tickets register username "PastelId" "username" "passpharse"
+R"(tickets register username "PastelId" "username" "passphrase"
 Register Username Change Request ticket. If successful, method returns "txid"
 
 Arguments:
 x. "PastelId"      (string, required) The PastelID. NOTE: PastelID must be generated and stored inside node. See "pastelid newkey".
 x. "username"      (string, required) The username that will be map with above PastelID
-y. "passpharse"    (string, required) The passphrase to the private key associated with PastelID and stored inside node. See "pastelid newkey".
+y. "passphrase"    (string, required) The passphrase to the private key associated with PastelID and stored inside node. See "pastelid newkey".
 Username Change Request Ticket:
 {
     "ticket": {
@@ -2558,7 +2558,7 @@ Arguments:
 		"mn2":{"mn3PastelID":"mn3Signature"}
 	}
 3. "pastelid"   (string, required) The current, registering masternode (MN1) PastelID. NOTE: PastelID must be generated and stored inside node. See "pastelid newkey".
-4. "passpharse" (string, required) The passphrase to the private key associated with PastelID and stored inside node. See "pastelid newkey".
+4. "passphrase" (string, required) The passphrase to the private key associated with PastelID and stored inside node. See "pastelid newkey".
 5. "key1"       (string, required) The first key to search ticket.
 6. "key2"       (string, required) The second key to search ticket.
 7. "fee"        (int, required) The agreed upon storage fee.
@@ -2683,7 +2683,7 @@ Get ownership validation by pastelid. If unsuccessful, method return NFT:"",trad
 Arguments:
 1. "txid"       (string, required) txid of the original nft registration 
 2. "pastelid"   (string, required) Registered pastelid which (according to the request) shall be the owner or the author of the registered NFT (of argument 1's txid)
-3. "passpharse" (string, required) The passphrase to the private key associated with PastelID and stored inside node. See "pastelid newkey".
+3. "passphrase" (string, required) The passphrase to the private key associated with PastelID and stored inside node. See "pastelid newkey".
 
 Validate ownership
 )" + HelpExampleCli("tickets tools validateownership", R"(""e4ee20e436d33f59cc313647bacff0c5b0df5b7b1c1fa13189ea7bc8b9df15a4" jXYqZNPj21RVnwxnEJ654wEdzi7GZTZ5LAdiotBmPrF7pDMkpX1JegDMQZX55WZLkvy9fxNpZcbBJuE8QYUqBF "passphrase")") +
