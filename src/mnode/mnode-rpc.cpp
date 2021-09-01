@@ -2149,8 +2149,6 @@ As json rpc
             std::string txid = CPastelTicketProcessor::SendTicket(changeUsernameTicket);
             mnObj.pushKV(RPC_KEY_TXID, std::move(txid));
 		}
-		return mnObj;
-	}
 	
         if (REGISTER.IsCmd(RPC_CMD_REGISTER::ethereumaddress)) {
 			if (fHelp || params.size() != 5) //-V560
