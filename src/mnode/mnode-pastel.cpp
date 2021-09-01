@@ -486,7 +486,7 @@ std::string CNFTRegTicket::GetRoyaltyPayeePastelID() const {
   int index{0};
   int foundIndex{-1};
   unsigned int highBlock{0};
-  const auto tickets = CNFTRoyaltyTicket::FindAllTicketByNFTTnxId(m_txid);
+  const auto tickets = CNFTRoyaltyTicket::FindAllTicketByNFTTxnId(m_txid);
   for (const auto& ticket: tickets) {
     if (ticket.GetBlock() > highBlock) {
       highBlock = ticket.GetBlock();
@@ -531,7 +531,7 @@ std::vector<CNFTRegTicket> CNFTRegTicket::FindAllTicketByPastelID(const std::str
 }
 
 template<class T, typename F>
-bool common_validation(const T& ticket, bool preReg, const std::string& strTnxId,
+bool common_validation(const T& ticket, bool preReg, const std::string& strTxnId,
                        std::unique_ptr<CPastelTicket>& pastelTicket,
                        F f,
                        const std::string& thisTicket, const std::string& prevTicket, int depth,
@@ -551,8 +551,8 @@ bool common_validation(const T& ticket, bool preReg, const std::string& strTnxId
     
     // C.1 Check there are ticket referred from that new ticket with this tnxId
     uint256 txid;
-    txid.SetHex(strTnxId);
-    //  Get ticket pointed by NFTTnxId. This is either Activation or Trade tickets (Sell, Buy, Trade)
+    txid.SetHex(strTxnId);
+    //  Get ticket pointed by NFTTxnId. This is either Activation or Trade tickets (Sell, Buy, Trade)
     try
     {
         pastelTicket = CPastelTicketProcessor::GetTicket(txid);
@@ -561,14 +561,14 @@ bool common_validation(const T& ticket, bool preReg, const std::string& strTnxId
     {
       throw std::runtime_error(strprintf(
         "The %s ticket [txid=%s] referred by this %s ticket is not in the blockchain. [txid=%s]",
-        prevTicket, strTnxId, thisTicket, ticket.GetTxId()));
+        prevTicket, strTxnId, thisTicket, ticket.GetTxId()));
     }
 
     if (!pastelTicket || f(pastelTicket->ID()))
     {
       throw std::runtime_error(strprintf(
         "The %s ticket with this txid [%s] referred by this %s ticket is not in the blockchain",
-        prevTicket, strTnxId, thisTicket));
+        prevTicket, strTxnId, thisTicket));
     }
     
     // B.1 Something to validate only if NOT Initial Download
@@ -603,7 +603,7 @@ bool common_validation(const T& ticket, bool preReg, const std::string& strTnxId
         return true;
     
     if (!pastelTicket->IsValid(false, ++depth)) {
-      throw std::runtime_error(strprintf("The %s ticket with this txid [%s] is invalid", prevTicket, strTnxId));
+      throw std::runtime_error(strprintf("The %s ticket with this txid [%s] is invalid", prevTicket, strTxnId));
     }
     
     return true;
@@ -611,10 +611,10 @@ bool common_validation(const T& ticket, bool preReg, const std::string& strTnxId
 
 /**
  * Checks either still exist available copies to sell or generates exception otherwise
- * @param nftTnxId is the NFT txid with either 1) NFT activation ticket or 2) trade ticket in it
+ * @param NFTTxnId is the NFT txid with either 1) NFT activation ticket or 2) trade ticket in it
  * @param signature is the signature of current CNFTTradeTicket that is checked
  */
-void trade_copy_validation(const std::string& nftTnxId, const std::vector<unsigned char>& signature) {
+void trade_copy_validation(const std::string& NFTTxnId, const std::vector<unsigned char>& signature) {
 //  if (!masterNodeCtrl.masternodeSync.IsSynced()) {
 //    throw std::runtime_error("Can not validate trade ticket as master node is not synced");
 //  }
@@ -622,31 +622,31 @@ void trade_copy_validation(const std::string& nftTnxId, const std::vector<unsign
   size_t totalCopies{0};
 
   uint256 txid;
-  txid.SetHex(nftTnxId);
+  txid.SetHex(NFTTxnId);
   auto nftTicket = CPastelTicketProcessor::GetTicket(txid);
   if (!nftTicket) {
     throw std::runtime_error(strprintf(
-      "The NFT ticket with txid [%s] referred by this trade ticket is not in the blockchain", nftTnxId));
+      "The NFT ticket with txid [%s] referred by this trade ticket is not in the blockchain", NFTTxnId));
   }
   if (nftTicket->ID() == TicketID::Activate) {
     auto actTicket = dynamic_cast<const CNFTActivateTicket*>(nftTicket.get());
     if (!actTicket) {
       throw std::runtime_error(strprintf(
-        "The activation ticket with txid [%s] referred by this trade ticket is invalid", nftTnxId));
+        "The activation ticket with txid [%s] referred by this trade ticket is invalid", NFTTxnId));
     }
 
-    auto pNFTTicket = CPastelTicketProcessor::GetTicket(actTicket->regTicketTnxId, TicketID::NFT);
+    auto pNFTTicket = CPastelTicketProcessor::GetTicket(actTicket->regTicketTxnId, TicketID::NFT);
     if (!pNFTTicket) {
       throw std::runtime_error(strprintf(
         "The registration ticket with txid [%s] referred by activation ticket is invalid",
-        actTicket->regTicketTnxId));
+        actTicket->regTicketTxnId));
     }
 
     auto NFTTicket = dynamic_cast<const CNFTRegTicket*>(pNFTTicket.get());
     if (!NFTTicket) {
       throw std::runtime_error(strprintf(
         "The registration ticket with txid [%s] referred by activation ticket is invalid",
-        actTicket->regTicketTnxId));
+        actTicket->regTicketTxnId));
     }
 
     totalCopies = NFTTicket->totalCopies;
@@ -654,17 +654,17 @@ void trade_copy_validation(const std::string& nftTnxId, const std::vector<unsign
     auto tradeTicket = dynamic_cast<const CNFTTradeTicket*>(nftTicket.get());
     if (!tradeTicket) {
       throw std::runtime_error(strprintf(
-        "The trade ticket with txid [%s] referred by this trade ticket is invalid", nftTnxId));
+        "The trade ticket with txid [%s] referred by this trade ticket is invalid", NFTTxnId));
     }
 
     totalCopies = 1;
   } else {
     throw std::runtime_error(strprintf(
-      "Unknown ticket with txid [%s] referred by this trade ticket is invalid", nftTnxId));
+      "Unknown ticket with txid [%s] referred by this trade ticket is invalid", NFTTxnId));
   }
 
   size_t soldCopies{0};
-  const auto existingTradeTickets = CNFTTradeTicket::FindAllTicketByNFTTnxID(nftTnxId);
+  const auto existingTradeTickets = CNFTTradeTicket::FindAllTicketByNFTTnxID(NFTTxnId);
   for (const auto& t: existingTradeTickets) {
     if (t.signature != signature) {
       ++soldCopies;
@@ -683,7 +683,7 @@ CNFTActivateTicket CNFTActivateTicket::Create(std::string _regTicketTxId, int _c
 {
     CNFTActivateTicket ticket(std::move(_pastelID));
     
-    ticket.regTicketTnxId = std::move(_regTicketTxId);
+    ticket.regTicketTxnId = std::move(_regTicketTxId);
     ticket.creatorHeight = _creatorHeight;
     ticket.storageFee = _storageFee;
     
@@ -699,7 +699,7 @@ std::string CNFTActivateTicket::ToStr() const noexcept
 {
     std::stringstream ss;
     ss << pastelID;
-    ss << regTicketTnxId;
+    ss << regTicketTxnId;
     ss << creatorHeight;
     ss << storageFee;
     ss << m_nTimestamp;
@@ -716,19 +716,19 @@ bool CNFTActivateTicket::IsValid(bool preReg, int depth) const
     
     // 0. Common validations
     std::unique_ptr<CPastelTicket> pastelTicket;
-    if (!common_validation(*this, preReg, regTicketTnxId, pastelTicket,
+    if (!common_validation(*this, preReg, regTicketTxnId, pastelTicket,
         [](const TicketID tid) { return (tid != TicketID::NFT); },
         "Activation", "NFT", depth,
         TicketPrice(chainHeight) + (storageFee * 9 / 10))) { //fee for ticket + 90% of storage fee
       throw std::runtime_error(strprintf(
         "The Activation ticket for the Registration ticket with txid [%s] is not validated [block = %u txid = %s]",
-        regTicketTnxId, m_nBlock, m_txid));
+        regTicketTxnId, m_nBlock, m_txid));
     }
 
     // Check the Activation ticket for that Registration ticket is already in the database
     // (ticket transaction replay attack protection)
     CNFTActivateTicket existingTicket;
-    if (CNFTActivateTicket::FindTicketInDb(regTicketTnxId, existingTicket))
+    if (CNFTActivateTicket::FindTicketInDb(regTicketTxnId, existingTicket))
     {
         if (preReg ||  // if pre reg - this is probably repeating call, so signatures can be the same
             existingTicket.signature != signature ||
@@ -738,7 +738,7 @@ bool CNFTActivateTicket::IsValid(bool preReg, int depth) const
           throw std::runtime_error(strprintf(
             "The Activation ticket for the Registration ticket with txid [%s] is already exist"
             "[this ticket block = %u txid = %s; found ticket block = %u txid = %s]",
-            regTicketTnxId, m_nBlock, m_txid, existingTicket.m_nBlock, existingTicket.m_txid));
+            regTicketTxnId, m_nBlock, m_txid, existingTicket.m_nBlock, existingTicket.m_txid));
         }
     }
     
@@ -746,7 +746,7 @@ bool CNFTActivateTicket::IsValid(bool preReg, int depth) const
     if (!NFTTicket)
     {
       throw std::runtime_error(strprintf(
-        "The NFT ticket with this txid [%s] is not in the blockchain or is invalid", regTicketTnxId));
+        "The NFT ticket with this txid [%s] is not in the blockchain or is invalid", regTicketTxnId));
     }
     
     // 1. check creator PastelID in NFTReg ticket matches PastelID from this ticket
@@ -755,7 +755,7 @@ bool CNFTActivateTicket::IsValid(bool preReg, int depth) const
     {
       throw std::runtime_error(strprintf(
         "The PastelID [%s] is not matching the Creator's PastelID [%s] in the NFT Reg ticket with this txid [%s]",
-        pastelID, creatorPastelID, regTicketTnxId));
+        pastelID, creatorPastelID, regTicketTxnId));
     }
     
     // 2. check NFTReg ticket is at the assumed height
@@ -763,7 +763,7 @@ bool CNFTActivateTicket::IsValid(bool preReg, int depth) const
     {
       throw std::runtime_error(strprintf(
         "The CreatorHeight [%d] is not matching the CreatorHeight [%d] in the NFT Reg ticket with this txid [%s]",
-        creatorHeight, NFTTicket->creatorHeight, regTicketTnxId));
+        creatorHeight, NFTTicket->creatorHeight, regTicketTxnId));
     }
     
     // 3. check NFTReg ticket fee is same as storageFee
@@ -771,7 +771,7 @@ bool CNFTActivateTicket::IsValid(bool preReg, int depth) const
     {
       throw std::runtime_error(strprintf(
         "The storage fee [%d] is not matching the storage fee [%d] in the NFT Reg ticket with this txid [%s]",
-        storageFee, NFTTicket->storageFee, regTicketTnxId));
+        storageFee, NFTTicket->storageFee, regTicketTxnId));
     }
     
     return true;
@@ -779,7 +779,7 @@ bool CNFTActivateTicket::IsValid(bool preReg, int depth) const
 
 CAmount CNFTActivateTicket::GetExtraOutputs(std::vector<CTxOut>& outputs) const
 {
-    auto ticket = CPastelTicketProcessor::GetTicket(regTicketTnxId, TicketID::NFT);
+    auto ticket = CPastelTicketProcessor::GetTicket(regTicketTxnId, TicketID::NFT);
     auto NFTTicket = dynamic_cast<CNFTRegTicket*>(ticket.get());
     if (!NFTTicket)
         return 0;
@@ -797,13 +797,13 @@ CAmount CNFTActivateTicket::GetExtraOutputs(std::vector<CTxOut>& outputs) const
         if (!CPastelIDRegTicket::FindTicketInDb(mnPastelID, mnPastelIDticket))
             throw std::runtime_error(strprintf(
                     "The PastelID [%s] from NFT ticket with this txid [%s] is not in the blockchain or is invalid",
-                    mnPastelID, regTicketTnxId));
+                    mnPastelID, regTicketTxnId));
     
         const auto dest = keyIO.DecodeDestination(mnPastelIDticket.address);
         if (!IsValidDestination(dest))
             throw std::runtime_error(
                     strprintf("The PastelID [%s] from NFT ticket with this txid [%s] has invalid MN's address",
-                              mnPastelID, regTicketTnxId));
+                              mnPastelID, regTicketTxnId));
     
         CScript scriptPubKey = GetScriptForDestination(dest);
         CAmount nAmount = (mn == CNFTRegTicket::mainmnsign? nMainMNFee: nOtherMNFee);
@@ -826,7 +826,7 @@ std::string CNFTActivateTicket::ToJSON() const noexcept
 				{"type", GetTicketName()},
 				{"version", GetStoredVersion()},
 				{"pastelID", pastelID},
-				{"reg_txid", regTicketTnxId},
+				{"reg_txid", regTicketTxnId},
 				{"creator_height", creatorHeight},
                 {"storage_fee", storageFee},
 				{"signature", ed_crypto::Hex_Encode(signature.data(), signature.size())}
@@ -838,14 +838,14 @@ std::string CNFTActivateTicket::ToJSON() const noexcept
 
 bool CNFTActivateTicket::FindTicketInDb(const std::string& key, CNFTActivateTicket& ticket)
 {
-    ticket.regTicketTnxId = key;
+    ticket.regTicketTxnId = key;
     return masterNodeCtrl.masternodeTickets.FindTicket(ticket);
 }
 
-bool CNFTActivateTicket::CheckTicketExistByNFTTicketID(const std::string& regTicketTnxId)
+bool CNFTActivateTicket::CheckTicketExistByNFTTicketID(const std::string& regTicketTxnId)
 {
     CNFTActivateTicket ticket;
-    ticket.regTicketTnxId = regTicketTnxId;
+    ticket.regTicketTxnId = regTicketTxnId;
     return masterNodeCtrl.masternodeTickets.CheckTicketExist(ticket);
 }
 
@@ -861,11 +861,11 @@ std::vector<CNFTActivateTicket> CNFTActivateTicket::FindAllTicketByCreatorHeight
 
 // NFT Trade Tickets ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // CNFTSellTicket ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-CNFTSellTicket CNFTSellTicket::Create(std::string _NFTTnxId, int _askedPrice, int _validAfter, int _validBefore, int _copy_number, std::string _pastelID, const SecureString& strKeyPass)
+CNFTSellTicket CNFTSellTicket::Create(std::string _NFTTxnId, int _askedPrice, int _validAfter, int _validBefore, int _copy_number, std::string _pastelID, const SecureString& strKeyPass)
 {
     CNFTSellTicket ticket(std::move(_pastelID));
     
-    ticket.NFTTnxId = std::move(_NFTTnxId);
+    ticket.NFTTxnId = std::move(_NFTTxnId);
     ticket.askedPrice = _askedPrice;
     ticket.activeBefore = _validBefore;
     ticket.activeAfter = _validAfter;
@@ -874,8 +874,8 @@ CNFTSellTicket CNFTSellTicket::Create(std::string _NFTTnxId, int _askedPrice, in
     
     //NOTE: Sell ticket for Trade ticket will always has copyNumber = 1
     ticket.copyNumber = _copy_number > 0 ? 
-        _copy_number : static_cast<decltype(ticket.copyNumber)>(CNFTSellTicket::FindAllTicketByNFTTnxID(ticket.NFTTnxId).size()) + 1;
-    ticket.key = ticket.NFTTnxId + ":" + to_string(ticket.copyNumber);
+        _copy_number : static_cast<decltype(ticket.copyNumber)>(CNFTSellTicket::FindAllTicketByNFTTnxID(ticket.NFTTxnId).size()) + 1;
+    ticket.key = ticket.NFTTxnId + ":" + to_string(ticket.copyNumber);
     
     std::string strTicket = ticket.ToStr();
     string_to_vector(CPastelID::Sign(strTicket, ticket.pastelID, strKeyPass), ticket.signature);
@@ -887,7 +887,7 @@ std::string CNFTSellTicket::ToStr() const noexcept
 {
     std::stringstream ss;
     ss << pastelID;
-    ss << NFTTnxId;
+    ss << NFTTxnId;
     ss << askedPrice;
     ss << copyNumber;
     ss << activeBefore;
@@ -906,14 +906,14 @@ bool CNFTSellTicket::IsValid(bool preReg, int depth) const
     
     // 0. Common validations
     std::unique_ptr<CPastelTicket> pastelTicket;
-    if (!common_validation(*this, preReg, NFTTnxId, pastelTicket,
+    if (!common_validation(*this, preReg, NFTTxnId, pastelTicket,
         [](const TicketID tid) { return (tid != TicketID::Activate && tid != TicketID::Trade); },
         "Sell", "activation or trade", depth, TicketPrice(chainHeight))) {
-      throw std::runtime_error(strprintf("The Sell ticket with this txid [%s] is not validated", NFTTnxId));
+      throw std::runtime_error(strprintf("The Sell ticket with this txid [%s] is not validated", NFTTxnId));
     }
 
     if (!askedPrice) {
-      throw std::runtime_error(strprintf("The asked price for Sell ticket with NFT txid [%s] should be not 0", NFTTnxId));
+      throw std::runtime_error(strprintf("The asked price for Sell ticket with NFT txid [%s] should be not 0", NFTTxnId));
     }
 
     bool ticketFound = false;
@@ -930,14 +930,14 @@ bool CNFTSellTicket::IsValid(bool preReg, int depth) const
     size_t totalCopies{0};
     // Verify the NFT is not already sold or gifted
     const auto verifyAvailableCopies = [this](const std::string& strTicket, const size_t totalCopies) {
-      const auto existingTradeTickets = CNFTTradeTicket::FindAllTicketByNFTTnxID(NFTTnxId);
+      const auto existingTradeTickets = CNFTTradeTicket::FindAllTicketByNFTTnxID(NFTTxnId);
       size_t soldCopies = existingTradeTickets.size();
 
       if (soldCopies >= totalCopies) {
         throw std::runtime_error(strprintf(
           "The NFT you are trying to sell - from %s ticket [%s] - is already sold - "
           "there are already [%zu] sold copies, but only [%zu] copies were available",
-          strTicket, NFTTnxId, soldCopies, totalCopies));
+          strTicket, NFTTxnId, soldCopies, totalCopies));
       }
     };
     if (pastelTicket->ID() == TicketID::Activate)
@@ -947,29 +947,29 @@ bool CNFTSellTicket::IsValid(bool preReg, int depth) const
         if (!actTicket)
         {
           throw std::runtime_error(strprintf(
-            "The activation ticket with this txid [%s] referred by this sell ticket is invalid", NFTTnxId));
+            "The activation ticket with this txid [%s] referred by this sell ticket is invalid", NFTTxnId));
         }
         const std::string& creatorPastelID = actTicket->pastelID;
         if (creatorPastelID != pastelID)
         {
           throw std::runtime_error(strprintf(
             "The PastelID [%s] in this ticket is not matching the Creator's PastelID [%s] in the NFT Activation ticket with this txid [%s]",
-            pastelID, creatorPastelID, NFTTnxId));
+            pastelID, creatorPastelID, NFTTxnId));
         }
-        //  Get ticket pointed by NFTTnxId. Here, this is an Activation ticket
-        auto pNFTTicket = CPastelTicketProcessor::GetTicket(actTicket->regTicketTnxId, TicketID::NFT);
+        //  Get ticket pointed by NFTTxnId. Here, this is an Activation ticket
+        auto pNFTTicket = CPastelTicketProcessor::GetTicket(actTicket->regTicketTxnId, TicketID::NFT);
         if (!pNFTTicket)
         {
           throw std::runtime_error(strprintf(
             "The NFT Registration ticket with this txid [%s] referred by this NFT Activation ticket is invalid",
-            actTicket->regTicketTnxId));
+            actTicket->regTicketTxnId));
         }
         auto NFTTicket = dynamic_cast<const CNFTRegTicket*>(pNFTTicket.get());
         if (!NFTTicket)
         {
           throw std::runtime_error(strprintf(
             "The NFT Registration ticket with this txid [%s] referred by this NFT Activation ticket is invalid",
-            actTicket->regTicketTnxId));
+            actTicket->regTicketTxnId));
         }
         totalCopies = NFTTicket->totalCopies;
     
@@ -985,14 +985,14 @@ bool CNFTSellTicket::IsValid(bool preReg, int depth) const
         if (!tradeTicket)
         {
           throw std::runtime_error(strprintf(
-            "The trade ticket with this txid [%s] referred by this sell ticket is invalid", NFTTnxId));
+            "The trade ticket with this txid [%s] referred by this sell ticket is invalid", NFTTxnId));
         }
         const std::string& ownersPastelID = tradeTicket->pastelID;
         if (ownersPastelID != pastelID)
         {
           throw std::runtime_error(strprintf(
             "The PastelID [%s] in this ticket is not matching the PastelID [%s] in the Trade ticket with this txid [%s]",
-            pastelID, ownersPastelID, NFTTnxId));
+            pastelID, ownersPastelID, NFTTxnId));
         }
         totalCopies = 1;
 
@@ -1014,7 +1014,7 @@ bool CNFTSellTicket::IsValid(bool preReg, int depth) const
     // (ticket transaction replay attack protection)
     // If found similar ticket, replacement is possible if allowed
     // Can be a few Sell tickets
-    const auto existingSellTickets = CNFTSellTicket::FindAllTicketByNFTTnxID(NFTTnxId);
+    const auto existingSellTickets = CNFTSellTicket::FindAllTicketByNFTTnxID(NFTTxnId);
     for (const auto& t: existingSellTickets) {
       if (t.IsBlock(m_nBlock) || t.m_txid == m_txid || t.copyNumber != copyNumber) {
         continue;
@@ -1062,7 +1062,7 @@ std::string CNFTSellTicket::ToJSON() const noexcept
                 {"type", GetTicketName()},
                 {"version", GetStoredVersion()},
                 {"pastelID", pastelID},
-                {"nft_txid", NFTTnxId},
+                {"nft_txid", NFTTxnId},
                 {"copy_number", copyNumber},
                 {"asked_price", askedPrice},
                 {"valid_after", activeAfter},
@@ -1084,17 +1084,17 @@ std::vector<CNFTSellTicket> CNFTSellTicket::FindAllTicketByPastelID(const std::s
     return masterNodeCtrl.masternodeTickets.FindTicketsByMVKey<CNFTSellTicket>(pastelID);
 }
 
-std::vector<CNFTSellTicket> CNFTSellTicket::FindAllTicketByNFTTnxID(const std::string& NFTTnxId)
+std::vector<CNFTSellTicket> CNFTSellTicket::FindAllTicketByNFTTxnId(const std::string& NFTTxnId)
 {
-    return masterNodeCtrl.masternodeTickets.FindTicketsByMVKey<CNFTSellTicket>(NFTTnxId);
+    return masterNodeCtrl.masternodeTickets.FindTicketsByMVKey<CNFTSellTicket>(NFTTxnId);
 }
 
 // CNFTBuyTicket ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-CNFTBuyTicket CNFTBuyTicket::Create(std::string _sellTnxId, int _price, std::string _pastelID, const SecureString& strKeyPass)
+CNFTBuyTicket CNFTBuyTicket::Create(std::string _sellTxnId, int _price, std::string _pastelID, const SecureString& strKeyPass)
 {
     CNFTBuyTicket ticket(std::move(_pastelID));
     
-    ticket.sellTnxId = std::move(_sellTnxId);
+    ticket.sellTxnId = std::move(_sellTxnId);
     ticket.price = _price;
     
     ticket.GenerateTimestamp();
@@ -1109,7 +1109,7 @@ std::string CNFTBuyTicket::ToStr() const noexcept
 {
     std::stringstream ss;
     ss << pastelID;
-    ss << sellTnxId;
+    ss << sellTxnId;
     ss << price;
     ss << m_nTimestamp;
     return ss.str();
@@ -1125,23 +1125,23 @@ bool CNFTBuyTicket::IsValid(bool preReg, int depth) const
 
     // 0. Common validations
     std::unique_ptr<CPastelTicket> pastelTicket;
-    if (!common_validation(*this, preReg, sellTnxId, pastelTicket,
+    if (!common_validation(*this, preReg, sellTxnId, pastelTicket,
         [](const TicketID tid) { return (tid != TicketID::Sell); },
         "Buy", "sell", depth, price + TicketPrice(chainHeight))) {
-      throw std::runtime_error(strprintf("The Buy ticket with Sell txid [%s] is not validated", sellTnxId));
+      throw std::runtime_error(strprintf("The Buy ticket with Sell txid [%s] is not validated", sellTxnId));
     }
     
     // 1. Verify that there is no another buy ticket for the same sell ticket
     // or if there are, it is older then 1h and there is no trade ticket for it
     //buyTicket->ticketBlock <= height+24 (2.5m per block -> 24blocks/per hour) - MaxBuyTicketAge
     CNFTBuyTicket existingBuyTicket;
-    if (CNFTBuyTicket::FindTicketInDb(sellTnxId, existingBuyTicket))
+    if (CNFTBuyTicket::FindTicketInDb(sellTxnId, existingBuyTicket))
     {
         // fixed: new buy ticket is not created due to the next condition
         //if (preReg)
         //{  // if pre reg - this is probably repeating call, so signatures can be the same
         //  throw std::runtime_error(strprintf(
-        //    "Buy ticket [%s] already exists for this sell ticket [%s]", existingBuyTicket.m_txid, sellTnxId));
+        //    "Buy ticket [%s] already exists for this sell ticket [%s]", existingBuyTicket.m_txid, sellTxnId));
         //}
     
         // (ticket transaction replay attack protection)
@@ -1154,7 +1154,7 @@ bool CNFTBuyTicket::IsValid(bool preReg, int depth) const
             if (CNFTTradeTicket::CheckTradeTicketExistByBuyTicket(existingBuyTicket.m_txid))
             {
               throw std::runtime_error(strprintf(
-                "The sell ticket you are trying to buy [%s] is already sold", sellTnxId));
+                "The sell ticket you are trying to buy [%s] is already sold", sellTxnId));
             }
 
             // find if it is the old ticket
@@ -1169,7 +1169,7 @@ bool CNFTBuyTicket::IsValid(bool preReg, int depth) const
               throw std::runtime_error(strprintf(
                 "Buy ticket [%s] already exists and is not yet 1h old for this sell ticket [%s]"
                 "[this ticket block = %u txid = %s; found ticket block = %u txid = %s]",
-                existingBuyTicket.m_txid, sellTnxId, m_nBlock, m_txid, existingBuyTicket.m_nBlock, existingBuyTicket.m_txid));
+                existingBuyTicket.m_txid, sellTxnId, m_nBlock, m_txid, existingBuyTicket.m_nBlock, existingBuyTicket.m_txid));
             }
         }
     }
@@ -1178,7 +1178,7 @@ bool CNFTBuyTicket::IsValid(bool preReg, int depth) const
     if (!sellTicket)
     {
       throw std::runtime_error(strprintf(
-        "The sell ticket with this txid [%s] referred by this buy ticket is invalid", sellTnxId));
+        "The sell ticket with this txid [%s] referred by this buy ticket is invalid", sellTxnId));
     }
 
     // 2. Verify Sell ticket is already or still active
@@ -1215,7 +1215,7 @@ std::string CNFTBuyTicket::ToJSON() const noexcept
                 {"type", GetTicketName()},
                 {"version", GetStoredVersion()},
                 {"pastelID", pastelID},
-                {"sell_txid", sellTnxId},
+                {"sell_txid", sellTxnId},
                 {"price", price},
                 {"signature", ed_crypto::Hex_Encode(signature.data(), signature.size())}
             }}
@@ -1225,14 +1225,14 @@ std::string CNFTBuyTicket::ToJSON() const noexcept
 
 bool CNFTBuyTicket::FindTicketInDb(const std::string& key, CNFTBuyTicket& ticket)
 {
-    ticket.sellTnxId = key;
+    ticket.sellTxnId = key;
     return masterNodeCtrl.masternodeTickets.FindTicket(ticket);
 }
 
-bool CNFTBuyTicket::CheckBuyTicketExistBySellTicket(const std::string& _sellTnxId)
+bool CNFTBuyTicket::CheckBuyTicketExistBySellTicket(const std::string& _sellTxnId)
 {
     CNFTBuyTicket _ticket;
-    _ticket.sellTnxId = _sellTnxId;
+    _ticket.sellTxnId = _sellTxnId;
     return masterNodeCtrl.masternodeTickets.CheckTicketExist(_ticket);
 }
 
@@ -1242,29 +1242,29 @@ std::vector<CNFTBuyTicket> CNFTBuyTicket::FindAllTicketByPastelID(const std::str
 }
 
 // CNFTTradeTicket ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-CNFTTradeTicket CNFTTradeTicket::Create(std::string _sellTnxId, std::string _buyTnxId, std::string _pastelID, const SecureString& strKeyPass)
+CNFTTradeTicket CNFTTradeTicket::Create(std::string _sellTxnId, std::string _buyTxnId, std::string _pastelID, const SecureString& strKeyPass)
 {
     CNFTTradeTicket ticket(std::move(_pastelID));
     
-    ticket.sellTnxId = std::move(_sellTnxId);
-    ticket.buyTnxId = std::move(_buyTnxId);
+    ticket.sellTxnId = std::move(_sellTxnId);
+    ticket.buyTxnId = std::move(_buyTxnId);
     
-    auto pSellTicket = CPastelTicketProcessor::GetTicket(ticket.sellTnxId, TicketID::Sell);
+    auto pSellTicket = CPastelTicketProcessor::GetTicket(ticket.sellTxnId, TicketID::Sell);
     auto sellTicket = dynamic_cast<CNFTSellTicket*>(pSellTicket.get());
     if (!sellTicket)
         throw std::runtime_error(tfm::format("The NFT Sell ticket [txid=%s] referred by this NFT Buy ticket is not in the blockchain. [txid=%s]",
-                                             ticket.sellTnxId, ticket.buyTnxId));
+                                             ticket.sellTxnId, ticket.buyTxnId));
 
-    ticket.NFTTnxId = sellTicket->NFTTnxId;
+    ticket.NFTTxnId = sellTicket->NFTTxnId;
     ticket.price = sellTicket->askedPrice;
 
     ticket.GenerateTimestamp();
     
-    // In case it is nested it means that we have the NFTTnxId of the sell ticket
+    // In case it is nested it means that we have the NFTTxnId of the sell ticket
     // available within the trade tickets.
     // [0]: original registration ticket's txid
     // [1]: copy number for a given NFT
-    std::vector<std::string> NFTRegTicket_TxId_Serial = CNFTTradeTicket::GetNFTRegTxIDAndSerialIfResoldNft(sellTicket->NFTTnxId);
+    std::vector<std::string> NFTRegTicket_TxId_Serial = CNFTTradeTicket::GetNFTRegTxIDAndSerialIfResoldNft(sellTicket->NFTTxnId);
     if(NFTRegTicket_TxId_Serial[0].compare("") == 0)
     {  
       auto NFTTicket = ticket.FindNFTRegTicket();
@@ -1323,11 +1323,11 @@ std::string CNFTTradeTicket::ToStr() const noexcept
 {
     std::stringstream ss;
     ss << pastelID;
-    ss << sellTnxId;
-    ss << buyTnxId;
-    ss << NFTTnxId;
+    ss << sellTxnId;
+    ss << buyTxnId;
+    ss << NFTTxnId;
     ss << m_nTimestamp;
-    ss << nftRegTnxId;
+    ss << nftRegTxnId;
     ss << nftCopySerialNr;
     return ss.str();
 }
@@ -1342,22 +1342,22 @@ bool CNFTTradeTicket::IsValid(bool preReg, int depth) const
     
     // 0. Common validations
     std::unique_ptr<CPastelTicket> sellTicket;
-    if (!common_validation(*this, preReg, sellTnxId, sellTicket,
+    if (!common_validation(*this, preReg, sellTxnId, sellTicket,
         [](const TicketID tid) { return (tid != TicketID::Sell); },
         "Trade", "sell", depth, price + TicketPrice(chainHeight))) {
-      throw std::runtime_error(strprintf("The Trade ticket with Sell txid [%s] is not validated", sellTnxId));
+      throw std::runtime_error(strprintf("The Trade ticket with Sell txid [%s] is not validated", sellTxnId));
     }
 
     std::unique_ptr<CPastelTicket> buyTicket;
-    if (!common_validation(*this, preReg, buyTnxId, buyTicket,
+    if (!common_validation(*this, preReg, buyTxnId, buyTicket,
         [](const TicketID tid) { return (tid != TicketID::Buy); },
         "Trade", "buy", depth, price + TicketPrice(chainHeight))) {
-      throw std::runtime_error(strprintf("The Trade ticket with Buy txid [%s] is not validated", buyTnxId));
+      throw std::runtime_error(strprintf("The Trade ticket with Buy txid [%s] is not validated", buyTxnId));
     }
 
     // 1. Verify that there is no another Trade ticket for the same Sell ticket
     CNFTTradeTicket _tradeTicket;
-    if (CNFTTradeTicket::GetTradeTicketBySellTicket(sellTnxId, _tradeTicket))
+    if (CNFTTradeTicket::GetTradeTicketBySellTicket(sellTxnId, _tradeTicket))
     {
         // (ticket transaction replay attack protection)
         if (signature != _tradeTicket.signature ||
@@ -1367,21 +1367,21 @@ bool CNFTTradeTicket::IsValid(bool preReg, int depth) const
           throw std::runtime_error(strprintf(
             "There is already exist trade ticket for the sell ticket with this txid [%s]. Signature - our=%s; their=%s"
             "[this ticket block = %u txid = %s; found ticket block = %u txid = %s]",
-            sellTnxId,
+            sellTxnId,
             ed_crypto::Hex_Encode(signature.data(), signature.size()),
             ed_crypto::Hex_Encode(_tradeTicket.signature.data(), _tradeTicket.signature.size()),
             m_nBlock, m_txid, _tradeTicket.GetBlock(), _tradeTicket.m_txid));
         }
     }
     // 1. Verify that there is no another Trade ticket for the same Buy ticket
-    _tradeTicket.sellTnxId = "";
-    if (CNFTTradeTicket::GetTradeTicketByBuyTicket(buyTnxId, _tradeTicket))
+    _tradeTicket.sellTxnId = "";
+    if (CNFTTradeTicket::GetTradeTicketByBuyTicket(buyTxnId, _tradeTicket))
     {
         //Compare signatures to skip if the same ticket
         if (signature != _tradeTicket.signature || m_txid != _tradeTicket.m_txid || !_tradeTicket.IsBlock(m_nBlock))
         {
           throw std::runtime_error(strprintf(
-            "There is already exist trade ticket for the buy ticket with this txid [%s]", buyTnxId));
+            "There is already exist trade ticket for the buy ticket with this txid [%s]", buyTxnId));
         }
     }
 
@@ -1389,10 +1389,10 @@ bool CNFTTradeTicket::IsValid(bool preReg, int depth) const
     auto sellTicketReal = dynamic_cast<const CNFTSellTicket*>(sellTicket.get());
     if (!sellTicketReal) {
       throw std::runtime_error(strprintf(
-        "The sell ticket with txid [%s] referred by this trade ticket is invalid", sellTnxId));
+        "The sell ticket with txid [%s] referred by this trade ticket is invalid", sellTxnId));
     }
     if (!sellTicketReal->askedPrice) {
-      throw std::runtime_error(strprintf("The NFT Sell ticket with txid [%s] asked price should be not 0", sellTnxId));
+      throw std::runtime_error(strprintf("The NFT Sell ticket with txid [%s] asked price should be not 0", sellTxnId));
     }
 
     // 2. Verify Trade ticket PastelID is the same as in Buy Ticket
@@ -1400,41 +1400,41 @@ bool CNFTTradeTicket::IsValid(bool preReg, int depth) const
     if (!buyTicketReal)
     {
       throw std::runtime_error(strprintf(
-        "The buy ticket with this txid [%s] referred by this trade ticket is invalid", buyTnxId));
+        "The buy ticket with this txid [%s] referred by this trade ticket is invalid", buyTxnId));
     }
     std::string& buyersPastelID = buyTicketReal->pastelID;
     if (buyersPastelID != pastelID)
     {
       throw std::runtime_error(strprintf(
         "The PastelID [%s] in this Trade ticket is not matching the PastelID [%s] in the Buy ticket with this txid [%s]",
-        pastelID, buyersPastelID, buyTnxId));
+        pastelID, buyersPastelID, buyTxnId));
     }
 
-    trade_copy_validation(NFTTnxId, signature);
+    trade_copy_validation(NFTTxnId, signature);
 
     return true;
 }
 
 CAmount CNFTTradeTicket::GetExtraOutputs(std::vector<CTxOut>& outputs) const
 {
-    auto pNFTSellTicket = CPastelTicketProcessor::GetTicket(sellTnxId, TicketID::Sell);
+    auto pNFTSellTicket = CPastelTicketProcessor::GetTicket(sellTxnId, TicketID::Sell);
     if (!pNFTSellTicket) {
-      throw std::runtime_error(strprintf("The NFT Sell ticket with this txid [%s] is not in the blockchain", sellTnxId));
+      throw std::runtime_error(strprintf("The NFT Sell ticket with this txid [%s] is not in the blockchain", sellTxnId));
     }
 
     auto NFTSellTicket = dynamic_cast<const CNFTSellTicket*>(pNFTSellTicket.get());
     if (!NFTSellTicket)
-        throw std::runtime_error(strprintf("The NFT Sell ticket with this txid [%s] is not in the blockchain", sellTnxId));
+        throw std::runtime_error(strprintf("The NFT Sell ticket with this txid [%s] is not in the blockchain", sellTxnId));
 
     auto sellerPastelID = NFTSellTicket->pastelID;
     CPastelIDRegTicket sellerPastelIDticket;
     if (!CPastelIDRegTicket::FindTicketInDb(sellerPastelID, sellerPastelIDticket))
         throw std::runtime_error(strprintf(
                 "The PastelID [%s] from sell ticket with this txid [%s] is not in the blockchain or is invalid",
-                sellerPastelID, sellTnxId));
+                sellerPastelID, sellTxnId));
 
     if (!NFTSellTicket->askedPrice) {
-      throw std::runtime_error(strprintf("The NFT Sell ticket with txid [%s] asked price should be not 0", sellTnxId));
+      throw std::runtime_error(strprintf("The NFT Sell ticket with txid [%s] asked price should be not 0", sellTxnId));
     }
 
     CAmount nPriceAmount = NFTSellTicket->askedPrice * COIN;
@@ -1487,19 +1487,19 @@ CAmount CNFTTradeTicket::GetExtraOutputs(std::vector<CTxOut>& outputs) const
     if (!addOutput(sellerPastelIDticket.address, nPriceAmount)) {
         throw std::runtime_error(
                 strprintf("The PastelID [%s] from sell ticket with this txid [%s] has invalid address",
-                          sellerPastelID, sellTnxId));
+                          sellerPastelID, sellTxnId));
     }
     
     if (!strRoyaltyAddress.empty() && !addOutput(strRoyaltyAddress, nRoyaltyAmount)) {
         throw std::runtime_error(
                 strprintf("The PastelID [%s] from sell ticket with this txid [%s] has invalid address",
-                          sellerPastelID, sellTnxId));
+                          sellerPastelID, sellTxnId));
     }
     
     if (!NFTRegTicket->strGreenAddress.empty() && !addOutput(NFTRegTicket->strGreenAddress, nGreenNFTAmount)) {
         throw std::runtime_error(
                 strprintf("The PastelID [%s] from sell ticket with this txid [%s] has invalid address",
-                          sellerPastelID, sellTnxId));
+                          sellerPastelID, sellTxnId));
     }
     
     return nPriceAmount + nRoyaltyAmount + nGreenNFTAmount;
@@ -1515,10 +1515,10 @@ std::string CNFTTradeTicket::ToJSON() const noexcept
                 {"type", GetTicketName()},
                 {"version", GetStoredVersion()},
                 {"pastelID", pastelID},
-                {"sell_txid", sellTnxId},
-                {"buy_txid", buyTnxId},
-                {"nft_txid", NFTTnxId},
-                {"registration_txid",nftRegTnxId},
+                {"sell_txid", sellTxnId},
+                {"buy_txid", buyTxnId},
+                {"nft_txid", NFTTxnId},
+                {"registration_txid",nftRegTxnId},
                 {"copy_serial_nr", nftCopySerialNr},
                 {"signature", ed_crypto::Hex_Encode(signature.data(), signature.size())}
             }}
@@ -1528,8 +1528,8 @@ std::string CNFTTradeTicket::ToJSON() const noexcept
 
 bool CNFTTradeTicket::FindTicketInDb(const std::string& key, CNFTTradeTicket& ticket)
 {
-    ticket.sellTnxId = key;
-    ticket.buyTnxId = key;
+    ticket.sellTxnId = key;
+    ticket.buyTxnId = key;
     return masterNodeCtrl.masternodeTickets.FindTicket(ticket) ||
            masterNodeCtrl.masternodeTickets.FindTicketBySecondaryKey(ticket);
 }
@@ -1544,9 +1544,9 @@ std::vector<CNFTTradeTicket> CNFTTradeTicket::FindAllTicketByNFTTnxID(const std:
     return masterNodeCtrl.masternodeTickets.FindTicketsByMVKey<CNFTTradeTicket>(NFTTnxID);
 }
 
-std::vector<CNFTTradeTicket> CNFTTradeTicket::FindAllTicketByRegTnxID(const std::string& nftRegTnxId)
+std::vector<CNFTTradeTicket> CNFTTradeTicket::FindAllTicketByRegTnxID(const std::string& nftRegTxnId)
 {
-    return masterNodeCtrl.masternodeTickets.FindTicketsByMVKey<CNFTTradeTicket>(nftRegTnxId);
+    return masterNodeCtrl.masternodeTickets.FindTicketsByMVKey<CNFTTradeTicket>(nftRegTxnId);
 }
 
 std::map<std::string, std::string> CNFTTradeTicket::GetPastelIdAndTxIdWithTopHeightPerCopy(const std::vector<CNFTTradeTicket> & filteredTickets)
@@ -1589,29 +1589,29 @@ std::map<std::string, std::string> CNFTTradeTicket::GetPastelIdAndTxIdWithTopHei
   return ownerPastelIDs_and_txids;
 }
 
-bool CNFTTradeTicket::CheckTradeTicketExistBySellTicket(const std::string& _sellTnxId)
+bool CNFTTradeTicket::CheckTradeTicketExistBySellTicket(const std::string& _sellTxnId)
 {
     CNFTTradeTicket _ticket;
-    _ticket.sellTnxId = _sellTnxId;
+    _ticket.sellTxnId = _sellTxnId;
     return masterNodeCtrl.masternodeTickets.CheckTicketExist(_ticket);
 }
 
-bool CNFTTradeTicket::CheckTradeTicketExistByBuyTicket(const std::string& _buyTnxId)
+bool CNFTTradeTicket::CheckTradeTicketExistByBuyTicket(const std::string& _buyTxnId)
 {
     CNFTTradeTicket _ticket;
-    _ticket.buyTnxId = _buyTnxId;
+    _ticket.buyTxnId = _buyTxnId;
     return masterNodeCtrl.masternodeTickets.CheckTicketExistBySecondaryKey(_ticket);
 }
 
-bool CNFTTradeTicket::GetTradeTicketBySellTicket(const std::string& _sellTnxId, CNFTTradeTicket& ticket)
+bool CNFTTradeTicket::GetTradeTicketBySellTicket(const std::string& _sellTxnId, CNFTTradeTicket& ticket)
 {
-    ticket.sellTnxId = _sellTnxId;
+    ticket.sellTxnId = _sellTxnId;
     return masterNodeCtrl.masternodeTickets.FindTicket(ticket);
 }
 
-bool CNFTTradeTicket::GetTradeTicketByBuyTicket(const std::string& _buyTnxId, CNFTTradeTicket& ticket)
+bool CNFTTradeTicket::GetTradeTicketByBuyTicket(const std::string& _buyTxnId, CNFTTradeTicket& ticket)
 {
-    ticket.buyTnxId = _buyTnxId;
+    ticket.buyTxnId = _buyTxnId;
     return masterNodeCtrl.masternodeTickets.FindTicket(ticket);
 }
 
@@ -1619,7 +1619,7 @@ std::unique_ptr<CPastelTicket> CNFTTradeTicket::FindNFTRegTicket() const
 {
     std::vector< std::unique_ptr<CPastelTicket> > chain;
     std::string errRet;
-    if (!CPastelTicketProcessor::WalkBackTradingChain(NFTTnxId, chain, true, errRet))
+    if (!CPastelTicketProcessor::WalkBackTradingChain(NFTTxnId, chain, true, errRet))
     {
         throw std::runtime_error(errRet);
     }
@@ -1637,12 +1637,12 @@ std::unique_ptr<CPastelTicket> CNFTTradeTicket::FindNFTRegTicket() const
 
 void CNFTTradeTicket::SetNFTRegTicketTxid(const std::string& _NftRegTxid)
 {
-   nftRegTnxId =_NftRegTxid;
+   nftRegTxnId =_NftRegTxid;
 }
 
 const std::string CNFTTradeTicket::GetNFTRegTicketTxid() const
 {
-  return nftRegTnxId;
+  return nftRegTxnId;
 }
 
 void CNFTTradeTicket::SetCopySerialNr(const std::string& _nftCopySerialNr)
@@ -1657,11 +1657,11 @@ const std::string& CNFTTradeTicket::GetCopySerialNr() const
 
 // CNFTRoyaltyTicket ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 CNFTRoyaltyTicket CNFTRoyaltyTicket::Create(
-    std::string _NFTTnxId, std::string _newPastelID,
+    std::string _NFTTxnId, std::string _newPastelID,
     std::string _pastelID, const SecureString& strKeyPass) {
   CNFTRoyaltyTicket ticket(std::move(_pastelID), std::move(_newPastelID));
 
-  ticket.NFTTnxId = std::move(_NFTTnxId);
+  ticket.NFTTxnId = std::move(_NFTTxnId);
 
   ticket.GenerateTimestamp();
 
@@ -1675,7 +1675,7 @@ std::string CNFTRoyaltyTicket::ToStr() const noexcept {
   std::stringstream ss;
   ss << pastelID;
   ss << newPastelID;
-  ss << NFTTnxId;
+  ss << NFTTxnId;
   ss << m_nTimestamp;
   return ss.str();
 }
@@ -1696,21 +1696,21 @@ bool CNFTRoyaltyTicket::IsValid(bool preReg, int depth) const {
 
   // 0. Common validations
   std::unique_ptr<CPastelTicket> pastelTicket;
-  if (!common_validation(*this, preReg, NFTTnxId, pastelTicket,
+  if (!common_validation(*this, preReg, NFTTxnId, pastelTicket,
       [](const TicketID tid) { return (tid != TicketID::NFT); },
       "Royalty", "NFT", depth, TicketPrice(chainHeight))) {
-    throw std::runtime_error(strprintf("The Change Royalty ticket with NFT txid [%s] is not validated", NFTTnxId));
+    throw std::runtime_error(strprintf("The Change Royalty ticket with NFT txid [%s] is not validated", NFTTxnId));
   }
 
   auto NFTTicket = dynamic_cast<const CNFTRegTicket*>(pastelTicket.get());
   if (!NFTTicket) {
     throw std::runtime_error(strprintf(
-      "The NFT Reg ticket with txid [%s] is not in the blockchain or is invalid", NFTTnxId));
+      "The NFT Reg ticket with txid [%s] is not in the blockchain or is invalid", NFTTxnId));
   }
 
   if (NFTTicket->nRoyalty == 0) {
     throw std::runtime_error(strprintf(
-      "The NFT Reg ticket with txid [%s] has no royalty", NFTTnxId));
+      "The NFT Reg ticket with txid [%s] has no royalty", NFTTxnId));
   }
 
   // Check the Royalty change ticket for that NFT is already in the database
@@ -1722,20 +1722,20 @@ bool CNFTRoyaltyTicket::IsValid(bool preReg, int depth) const {
     throw std::runtime_error(strprintf(
       "The Change Royalty ticket is already registered in blockchain [pastelID = %s; new_pastelID = %s]"
       "[this ticket block = %u txid = %s; found ticket block = %u txid = %s] with NFT txid [%s]",
-      pastelID, newPastelID, m_nBlock, m_txid, _ticket.GetBlock(), _ticket.m_txid, NFTTnxId));
+      pastelID, newPastelID, m_nBlock, m_txid, _ticket.GetBlock(), _ticket.m_txid, NFTTxnId));
   }
 
   CPastelIDRegTicket newPastelIDticket;
   if (!CPastelIDRegTicket::FindTicketInDb(newPastelID, newPastelIDticket)) {
     throw std::runtime_error(strprintf(
       "The new_pastelID [%s] for Change Royalty ticket with NFT txid [%s] is not in the blockchain or is invalid",
-      newPastelID, NFTTnxId));
+      newPastelID, NFTTxnId));
   }
 
   int index{0};
   int foundIndex{-1};
   unsigned int highBlock{0};
-  const auto tickets = CNFTRoyaltyTicket::FindAllTicketByNFTTnxId(NFTTnxId);
+  const auto tickets = CNFTRoyaltyTicket::FindAllTicketByNFTTxnId(NFTTxnId);
   for (const auto& royaltyTicket: tickets) {
     if (royaltyTicket.signature == signature) {
       continue;
@@ -1757,7 +1757,7 @@ bool CNFTRoyaltyTicket::IsValid(bool preReg, int depth) const {
     if (tickets.at(foundIndex).newPastelID != pastelID) {
       throw std::runtime_error(strprintf(
         "The PastelID [%s] is not matching the PastelID [%s] in the Change Royalty ticket with NFT txid [%s]",
-        pastelID, tickets.at(foundIndex).newPastelID, NFTTnxId));
+        pastelID, tickets.at(foundIndex).newPastelID, NFTTxnId));
     }
   } else {
     // 1. check creator PastelID in NFTReg ticket matches PastelID from this ticket
@@ -1765,7 +1765,7 @@ bool CNFTRoyaltyTicket::IsValid(bool preReg, int depth) const {
     if (creatorPastelID != pastelID) {
       throw std::runtime_error(strprintf(
         "The PastelID [%s] is not matching the Creator's PastelID [%s] in the NFT Reg ticket with this txid [%s]",
-        pastelID, creatorPastelID, NFTTnxId));
+        pastelID, creatorPastelID, NFTTxnId));
     }
   }
 
@@ -1781,7 +1781,7 @@ std::string CNFTRoyaltyTicket::ToJSON() const noexcept {
       {"version", GetStoredVersion()},
       {"pastelID", pastelID},
       {"new_pastelID", newPastelID},
-      {"nft_txid", NFTTnxId},
+      {"nft_txid", NFTTxnId},
       {"signature", ed_crypto::Hex_Encode(signature.data(), signature.size())}
     }}
   };
@@ -1797,8 +1797,8 @@ std::vector<CNFTRoyaltyTicket> CNFTRoyaltyTicket::FindAllTicketByPastelID(const 
   return masterNodeCtrl.masternodeTickets.FindTicketsByMVKey<CNFTRoyaltyTicket>(pastelID);
 }
 
-std::vector<CNFTRoyaltyTicket> CNFTRoyaltyTicket::FindAllTicketByNFTTnxId(const std::string& NFTTnxId) {
-  return masterNodeCtrl.masternodeTickets.FindTicketsByMVKey<CNFTRoyaltyTicket>(NFTTnxId);
+std::vector<CNFTRoyaltyTicket> CNFTRoyaltyTicket::FindAllTicketByNFTTxnId(const std::string& NFTTxnId) {
+  return masterNodeCtrl.masternodeTickets.FindTicketsByMVKey<CNFTRoyaltyTicket>(NFTTxnId);
 }
 
 // CTakeDownTicket ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1970,6 +1970,162 @@ bool CChangeUsernameTicket::isUsernameBad(const std::string& username, std::stri
           error = "Invalid username, should NOT contains swear, racist... words";
           return true;
       }
+    }
+
+    return false;
+}
+
+
+
+// CChangeEthereumAddressTicket ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+std::string CChangeEthereumAddressTicket::ToJSON() const noexcept
+{
+    json jsonObj;
+    jsonObj = {
+        {"txid", m_txid},
+        {"height", m_nBlock},
+        {"ticket", {
+            {"type", GetTicketName()}, 
+            {"pastelID", pastelID},
+            {"ethereumAddress", ethereumAddress}, 
+            {"fee", fee}, 
+            {"signature", ed_crypto::Hex_Encode(signature.data(), signature.size())}}}};
+
+    return jsonObj.dump(4);
+}
+
+std::string CChangeEthereumAddressTicket::ToStr() const noexcept
+{
+    std::stringstream ss;
+    ss << pastelID;
+    ss << ethereumAddress;
+    ss << fee;
+    ss << m_nTimestamp;
+    return ss.str();
+}
+
+bool CChangeEthereumAddressTicket::IsValid(bool preReg, int depth) const
+{
+    unsigned int chainHeight = 0;
+    {
+        LOCK(cs_main);
+        chainHeight = static_cast<unsigned int>(chainActive.Height()) + 1;
+    }
+
+    CChangeEthereumAddressTicket existingTicket;
+    bool ticketExists = FindTicketInDb(ethereumAddress, existingTicket);
+    // A. Something to check ONLY before ticket made into transaction
+    if (preReg) 
+    {
+        
+        // A2. Check if address has coins to pay for Ethereum Address Change Ticket
+        const auto fullTicketPrice = TicketPrice(chainHeight);
+
+        if (pwalletMain->GetBalance() < fullTicketPrice * COIN) {
+            throw std::runtime_error(strprintf("Not enough coins to cover price [%" PRId64 "]", fullTicketPrice));
+        }
+    }
+
+    // Check if Ethereum Address is an invalid address. For now check if it is empty only.
+    std::string invalidEthereumAddressError;
+    if (isEthereumAddressInvalid(ethereumAddress, invalidEthereumAddressError)) {
+        throw std::runtime_error(invalidEthereumAddressError.c_str());
+    }
+
+    // B Verify signature
+    // We will check that it is the correct PastelID
+    std::string strThisTicket = ToStr();
+    if (!CPastelID::Verify(strThisTicket, vector_to_string(signature), pastelID))
+    {
+        throw std::runtime_error(strprintf("%s ticket's signature is invalid. PastelID - [%s]", GetTicketDescription(TicketID::EthereumAddress), pastelID));
+    }
+    // C (ticket transaction replay attack protection)
+    if ((ticketExists) &&
+        (!existingTicket.IsBlock(m_nBlock) || existingTicket.m_txid != m_txid) &&
+        masterNodeCtrl.masternodeTickets.getValueBySecondaryKey(existingTicket) == ethereumAddress)
+    {
+        throw std::runtime_error(strprintf("This Ethereum Address Change Request is already registered in blockchain [Ethereum Address = %s]"
+                           "[this ticket block = %u txid = %s; found ticket block  = %u txid = %s]",
+                           ethereumAddress, existingTicket.GetBlock(), existingTicket.m_txid, m_nBlock, m_txid));
+    }
+
+    // D. Check if this PastelID hasn't changed Ethereum Address in last 24 hours.
+    CChangeEthereumAddressTicket _ticket;
+    _ticket.pastelID = pastelID;
+    bool foundTicketBySecondaryKey = masterNodeCtrl.masternodeTickets.FindTicketBySecondaryKey(_ticket);
+    if (foundTicketBySecondaryKey) {
+        const unsigned int height = (preReg || IsBlock(0)) ? chainHeight : m_nBlock;
+        if (height <= _ticket.m_nBlock + 24 * 24) { // For testing purpose, the value 24 * 24 can be lower to decrease the waiting time
+            // D.2 IF PastelID has changed Ethereum Address in last 24 hours (~24*24 blocks), do not allow them to change
+            throw std::runtime_error(strprintf("%s ticket is invalid. Already changed in last 24 hours. Ethereum Address - [%s]", GetTicketDescription(TicketID::EthereumAddress), pastelID));
+        }
+    }
+
+    // E. Check if ticket fee is valid
+    if (!foundTicketBySecondaryKey) {
+        if (fee != masterNodeCtrl.MasternodeEthereumAddressFirstChangeFee) {
+            throw std::runtime_error(strprintf("%s ticket's fee is invalid. PastelID - [%s], invalid fee - [%" PRId64 "], expected fee - [%" PRId64 "]",
+                                               GetTicketDescription(TicketID::EthereumAddress), pastelID, fee, masterNodeCtrl.MasternodeEthereumAddressFirstChangeFee));
+        }
+    } else {
+        if (fee != masterNodeCtrl.MasternodeEthereumAddressChangeAgainFee) {
+            throw std::runtime_error(strprintf("%s ticket's fee is invalid. PastelID - [%s], invalid fee - [%" PRId64 "], expected fee - [%" PRId64 "]",
+                                               GetTicketDescription(TicketID::EthereumAddress), pastelID, fee, masterNodeCtrl.MasternodeEthereumAddressChangeAgainFee));
+        }
+    }
+    
+    return true;
+}
+
+CChangeEthereumAddressTicket CChangeEthereumAddressTicket::Create(std::string _pastelID, std::string _ethereumAddress, const SecureString& strKeyPass)
+{
+    CChangeEthereumAddressTicket ticket(std::move(_pastelID), std::move(_ethereumAddress));
+
+        // Check if PastelID already have an Ethereum Address on the blockchain. 
+    if (!masterNodeCtrl.masternodeTickets.CheckTicketExistBySecondaryKey(ticket)) {
+        // IF PastelID has no Ethereum Address yet, the fee is 100 PSL
+        ticket.fee = masterNodeCtrl.MasternodeEthereumAddressFirstChangeFee;
+    } else {
+        // IF PastelID changed Ethereum Address before, fee should be 5000
+        ticket.fee = masterNodeCtrl.MasternodeEthereumAddressChangeAgainFee;
+    }
+
+    ticket.GenerateTimestamp();
+
+    std::string strTicket = ticket.ToStr();
+    ticket.signature = string_to_vector(CPastelID::Sign(strTicket, ticket.pastelID, strKeyPass));
+
+    return ticket;
+}
+
+bool CChangeEthereumAddressTicket::FindTicketInDb(const std::string& key, CChangeEthereumAddressTicket& ticket)
+{
+    ticket.ethereumAddress = key;
+    return masterNodeCtrl.masternodeTickets.FindTicket(ticket);
+}
+
+bool CChangeEthereumAddressTicket::isEthereumAddressInvalid(const std::string& ethereumAddress, std::string& error)
+{
+    // Check if address is 40 characters long:
+    if (ethereumAddress.size() != 40) {
+        error = "Invalid length of ethereum address, the length should be exactly 40 characters";
+        return true;
+    }
+
+    // Check if doesn't start with 0x:
+    if ( (ethereumAddress.substring(0, 2)) !=  "0x"  ) {
+        error = "Invalid ethereum address, should start with 0x";
+        return true;
+    }
+
+    // Check if contains characters that is different from valid hex digits:
+    if (!std::all_of(ethereumAddress.begin(), ethereumAddress.end(), [&](unsigned char c) 
+        { 
+          return (isxdigit(c)); 
+        }
+      )) {
+        error = "Invalid Ethereum address, should only contain hex digits";
+        return true;
     }
 
     return false;

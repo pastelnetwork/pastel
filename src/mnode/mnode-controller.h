@@ -63,6 +63,9 @@ public:
     CAmount MasternodeUsernameFirstChangeFee;
     CAmount MasternodeUsernameChangeAgainFee;
 
+    CAmount MasternodeEthereumAddressFirstChangeFee;
+    CAmount MasternodeEthereumAddressChangeAgainFee;
+
     double ChainDeflationRateDefault;
     CAmount ChainBaselineDifficultyLowerIndex;
     CAmount ChainBaselineDifficultyUpperIndex;

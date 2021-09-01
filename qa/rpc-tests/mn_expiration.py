@@ -81,9 +81,9 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         self.top_mn_pastelid2 = None
 
         self.total_copies = 2
-        self.NFT_copy_price = 1000
+        self.nft_copy_price = 1000
         self.id_ticket_price = 10
-        self.NFT_ticket_price = 10
+        self.nft_ticket_price = 10
         self.act_ticket_price = 10
         self.trade_ticket_price = 10
 
@@ -108,10 +108,10 @@ class MasterNodeTicketsTest(MasterNodeCommon):
 
         self.initialize()
 
-        NFT_ticket_txid = self.register_nft_reg_ticket("key1", "key2")
+        nft_ticket_txid = self.register_nft_reg_ticket("key1", "key2")
         self.__wait_for_confirmation(self.non_mn3)
 
-        act_ticket_txid = self.register_nft_act_ticket(NFT_ticket_txid)
+        act_ticket_txid = self.register_nft_act_ticket(nft_ticket_txid)
         self.__wait_for_confirmation(self.non_mn3)
 
         sell_ticket1_txid = self.register_nft_sell_ticket(act_ticket_txid)
@@ -353,7 +353,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         top_masternodes = self.nodes[0].masternode("top")[str(self.creator_ticket_height)]
         print(f"top_masternodes - {top_masternodes}")
 
-        # Current NFT_ticket - 8 Items!!!!
+        # Current nft_ticket - 8 Items!!!!
         # {
         #   "version": integer          // 1
         #   "author": bytes,            // PastelID of the author (creator)
@@ -414,25 +414,25 @@ class MasterNodeTicketsTest(MasterNodeCommon):
 
         self.create_nft_ticket_and_signatures(self.creator_pastelid1, self.non_mn3,
                                               "HIJKLMNOP", "ABCDEFG", self.total_copies)
-        NFT_ticket_txid = \
-            self.nodes[self.top_mns_index0].tickets("register", "NFT",
+        nft_ticket_txid = \
+            self.nodes[self.top_mns_index0].tickets("register", "nft",
                                                     self.ticket, json.dumps(self.signatures_dict),
                                                     self.top_mn_pastelid0, self.passphrase,
                                                     key1, key2, str(self.storage_fee))["txid"]
-        print(NFT_ticket_txid)
-        assert_true(NFT_ticket_txid, "No ticket was created")
+        print(nft_ticket_txid)
+        assert_true(nft_ticket_txid, "No ticket was created")
 
         self.__wait_for_ticket_tnx()
         print(self.nodes[self.top_mns_index0].getblockcount())
 
-        return NFT_ticket_txid
+        return nft_ticket_txid
 
     # ===============================================================================================================
-    def register_nft_act_ticket(self, NFT_ticket_txid):
-        print("== Create the NFT activation ticket ==")
+    def register_nft_act_ticket(self, nft_ticket_txid):
+        print("== Create the nft activation ticket ==")
 
         act_ticket_txid = \
-            self.nodes[self.non_mn3].tickets("register", "act", NFT_ticket_txid,
+            self.nodes[self.non_mn3].tickets("register", "act", nft_ticket_txid,
                                              str(self.creator_ticket_height), str(self.storage_fee),
                                              self.creator_pastelid1, self.passphrase)["txid"]
         assert_true(act_ticket_txid, "No ticket was created")
@@ -442,10 +442,10 @@ class MasterNodeTicketsTest(MasterNodeCommon):
 
     # ===============================================================================================================
     def register_nft_sell_ticket(self, act_ticket_txid, copyNumber = 0):
-        print("== Create the NFT sell ticket ==")
+        print("== Create the nft sell ticket ==")
 
         sell_ticket_txid = \
-            self.nodes[self.non_mn3].tickets("register", "sell", act_ticket_txid, str(self.NFT_copy_price),
+            self.nodes[self.non_mn3].tickets("register", "sell", act_ticket_txid, str(self.nft_copy_price),
                                              self.creator_pastelid1, self.passphrase, 0, 0, copyNumber)["txid"]
         assert_true(sell_ticket_txid, "No ticket was created")
         self.__wait_for_ticket_tnx()
@@ -454,7 +454,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
 
     # ===============================================================================================================
     def __send_coins_to_buy(self, node, address, num):
-        cover_price = self.NFT_copy_price + max(10, int(self.NFT_copy_price / 100)) + 5
+        cover_price = self.nft_copy_price + max(10, int(self.nft_copy_price / 100)) + 5
 
         self.nodes[self.mining_node_num].sendtoaddress(address, num * cover_price, "", "", False)
         self.__wait_for_confirmation(node)
@@ -463,7 +463,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         print("== Create the NFT buy ticket ==")
 
         buy_ticket_txid = \
-            self.nodes[buyer_node].tickets("register", "buy", sell_ticket_txid, str(self.NFT_copy_price),
+            self.nodes[buyer_node].tickets("register", "buy", sell_ticket_txid, str(self.nft_copy_price),
                                            buyer_pastelid1, self.passphrase)["txid"]
         assert_true(buy_ticket_txid, "No ticket was created")
         self.__wait_for_ticket_tnx()
@@ -475,7 +475,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
                                   sell_ticket_txid, buy_ticket_txid):
         print("== Create the NFT trade ticket ==")
 
-        cover_price = self.NFT_copy_price + 10
+        cover_price = self.nft_copy_price + 10
 
         # sends coins back, keep 1 PSL to cover transaction fee
         self.__send_coins_back(self.non_mn4)
@@ -511,14 +511,14 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         coins_after = self.nodes[buyer_node].getbalance()
         print(coins_before)
         print(coins_after)
-        # ticket cost is trade ticket price, NFT cost is NFT_copy_price
-        assert_true(math.isclose(coins_after, coins_before - self.trade_ticket_price - self.NFT_copy_price, rel_tol=0.005))
+        # ticket cost is trade ticket price, NFT cost is nft_copy_price
+        assert_true(math.isclose(coins_after, coins_before - self.trade_ticket_price - self.nft_copy_price, rel_tol=0.005))
 
         # check seller gets correct amount
         creators_coins_after = self.nodes[self.non_mn3].getreceivedbyaddress(sellers_address)
         print(creators_coins_before)
         print(creators_coins_after)
-        assert_true(math.isclose(creators_coins_after - creators_coins_before, self.NFT_copy_price, rel_tol=0.005))
+        assert_true(math.isclose(creators_coins_after - creators_coins_before, self.nft_copy_price, rel_tol=0.005))
 
         # from another node - get ticket transaction and check
         #   - there is 1 posiible output to seller
@@ -537,7 +537,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
                     seller_amount = amount
                     print(f"trade transaction to seller's address - {amount}")
         print(f"trade transiction multisig fee_amount - {multi_fee}")
-        assert_true(math.isclose(seller_amount, self.NFT_copy_price))
+        assert_true(math.isclose(seller_amount, self.nft_copy_price))
         assert_equal(multi_fee, self.id_ticket_price)
 
         return trade_ticket_txid

@@ -152,26 +152,26 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         self.pastelid_tests()
         self.mn_pastelid_ticket_tests(False)
         self.personal_pastelid_ticket_tests(False)
-        self.NFTreg_ticket_tests(False, "key1", "key2")
+        self.nftreg_ticket_tests(False, "key1", "key2")
 
         if self.royalty > 0:
             if self.royalty_tickets_tests > 0:
                 self.personal_nonmn5_royalty_initialize_tests()
-                self.NFTroyalty_ticket_tests(self.non_mn3, self.creator_pastelid1,
+                self.nftroyalty_ticket_tests(self.non_mn3, self.creator_pastelid1,
                                              self.nonmn5_royalty_pastelid1, self.nonmn5_royalty_address1, 1)
             if self.royalty_tickets_tests > 1:
                 self.personal_nonmn6_royalty_initialize_tests()
-                self.NFTroyalty_ticket_tests(self.non_mn5, self.nonmn5_royalty_pastelid1,
+                self.nftroyalty_ticket_tests(self.non_mn5, self.nonmn5_royalty_pastelid1,
                                              self.nonmn6_royalty_pastelid1, self.nonmn6_royalty_address1, 2)
         else:
             self.royalty_tickets_tests = 0
             self.royalty_null_tests = True
-            self.NFTroyalty_null_ticket_tests()
+            self.nftroyalty_null_ticket_tests()
 
-        self.NFTact_ticket_tests(False)
-        self.NFTsell_ticket_tests1(False)
-        self.NFTbuy_ticket_tests(False)
-        self.NFTtrade_ticket_tests(False)
+        self.nftact_ticket_tests(False)
+        self.nftsell_ticket_tests1(False)
+        self.nftbuy_ticket_tests(False)
+        self.nfttrade_ticket_tests(False)
         self.sell_buy_trade_tests()
         self.takedown_ticket_tests()
         self.storage_fee_tests()
@@ -183,7 +183,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
             self.id_ticket_price = 1000
 
             print(f"id ticket price - {self.id_ticket_price}")
-            print(f"NFT ticket price - {self.nft_ticket_price}")
+            print(f"nft ticket price - {self.nft_ticket_price}")
             print(f"activation ticket price - {self.act_ticket_price}")
             print(f"trade ticket price - {self.trade_ticket_price}")
 
@@ -196,11 +196,11 @@ class MasterNodeTicketsTest(MasterNodeCommon):
 
             self.pastelid_tests()
             self.personal_pastelid_ticket_tests(True)
-            self.NFTreg_ticket_tests(True, "key10001", "key20001")
-            self.NFTact_ticket_tests(True)
-            self.NFTsell_ticket_tests1(True)
-            self.NFTbuy_ticket_tests(True)
-            self.NFTtrade_ticket_tests(True)
+            self.nftreg_ticket_tests(True, "key10001", "key20001")
+            self.nftact_ticket_tests(True)
+            self.nftsell_ticket_tests1(True)
+            self.nftbuy_ticket_tests(True)
+            self.nfttrade_ticket_tests(True)
             self.sell_buy_trade_tests()
             self.takedown_ticket_tests()
             self.storage_fee_tests()
@@ -827,7 +827,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
             )
             print(f"not_top_mns_signatures_dict - {self.not_top_mns_signatures_dict!r}")
 
-    def NFTreg_ticket_tests(self, skip_mn_pastelid_registration, key1, key2):
+    def nftreg_ticket_tests(self, skip_mn_pastelid_registration, key1, key2):
         print("== NFT registration Tickets test ==")
         # c. NFT registration ticket
 
@@ -871,7 +871,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
                                               self.royalty, self.is_green,
                                               True)
 
-        #   c.a register NFT registration ticket
+        #   c.a register nft registration ticket
         #       c.a.1 fail if not MN
         try:
             self.nodes[self.non_mn1].tickets("register", "nft", self.ticket, json.dumps(self.signatures_dict),
@@ -1187,7 +1187,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         print("NFT registration tickets tested")
 
     # ===============================================================================================================
-    def NFTroyalty_null_ticket_tests(self):
+    def nftroyalty_null_ticket_tests(self):
         print("== NFT royalty null tickets test ==")
 
         assert_equal(self.royalty, 0)
@@ -1215,7 +1215,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         print("NFT royalty null tickets tested")
 
     # ===============================================================================================================
-    def NFTroyalty_ticket_tests(self, nonmn_id, old_pastelid1, new_pastelid1, new_address1, num):
+    def nftroyalty_ticket_tests(self, nonmn_id, old_pastelid1, new_pastelid1, new_address1, num):
         print(f"== NFT royalty tickets test {num} ==")
 
         # fail if wrong PastelID
@@ -1371,7 +1371,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         print(f"NFT royalty tickets {num} tested")
 
     # ===============================================================================================================
-    def NFTact_ticket_tests(self, skip_low_coins_tests):
+    def nftact_ticket_tests(self, skip_low_coins_tests):
         print("== NFT activation Tickets test ==")
         # d. NFT activation ticket
         #   d.a register NFT activation ticket (self.nft_ticket1_txid; self.storage_fee; self.creator_ticket_height)
@@ -1587,7 +1587,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         print("NFT activation tickets tested")
 
     # ===============================================================================================================
-    def NFTsell_ticket_tests1(self, skip_some_tests):
+    def nftsell_ticket_tests1(self, skip_some_tests):
         print("== NFT sell Tickets test (selling original NFT ticket) ==")
         # tickets register sell nft_txid price PastelID passphrase valid_after valid_before
         #
@@ -1608,7 +1608,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         coins_before = self.nodes[self.non_mn3].getbalance()
         print(coins_before)
 
-        # 2. Check there is Activation ticket with this NFTTnxId
+        # 2. Check there is Activation ticket with this NFTTxnId
         try:
             self.nodes[self.non_mn3].tickets("register", "sell",
                                              self.nft_ticket1_txid, str("100000"),
@@ -1729,7 +1729,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         print("NFT sell tickets tested (first run)")
 
     # ===============================================================================================================
-    def NFTbuy_ticket_tests(self, skip_low_coins_tests):
+    def nftbuy_ticket_tests(self, skip_low_coins_tests):
         print("== NFT buy Tickets test (buying original NFT ticket) ==")
 
         self.nonmn4_address1 = self.nodes[self.non_mn4].getnewaddress()
@@ -1758,7 +1758,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         coins_before = self.nodes[self.non_mn4].getbalance()
         print(coins_before)
 
-        # Check there is Sell ticket with this sellTnxId
+        # Check there is Sell ticket with this sellTxnId
         try:
             self.nodes[self.non_mn4].tickets("register", "buy",
                                              self.nft_ticket1_act_ticket_txid, str("100000"),
@@ -1819,7 +1819,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         print("NFT buy tickets tested")
 
     # ===============================================================================================================
-    def NFTtrade_ticket_tests(self, skip_low_coins_tests):
+    def nfttrade_ticket_tests(self, skip_low_coins_tests):
         print("== NFT trade Tickets test (trading original NFT ticket) ==")
 
         # sends some coins back
@@ -1846,7 +1846,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         coins_before = math.floor(self.nodes[self.non_mn4].getbalance())
         print(coins_before)
 
-        # Check there is Sell ticket with this sellTnxId
+        # Check there is Sell ticket with this sellTxnId
         try:
             self.nodes[self.non_mn4].tickets("register", "trade",
                                              self.nft_ticket1_buy_ticket_txid, self.nft_ticket1_buy_ticket_txid,
@@ -1858,7 +1858,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
                      in self.errorString, True)
         # This error is from CNFTTradeTicket::Create where it tries to get Sell ticket to get price and NFTTxId
 
-        # Check there is Buy ticket with this buyTnxId
+        # Check there is Buy ticket with this buyTxnId
         try:
             self.nodes[self.non_mn4].tickets("register", "trade",
                                              self.nft_ticket1_sell_ticket_txid, self.nft_ticket1_sell_ticket_txid,
@@ -2506,6 +2506,149 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         assert_equal(non_mn1_bad_username_good["validationError"], "")
 
         print("Username tickets tested")
+
+# ===============================================================================================================
+    def ethereum_address_ticket_tests(self):
+        print("== Ethereum Address Tickets test ==")
+
+        # New nonmn4_pastelid2 to test some functionalities
+        self.nonmn4_address2 = self.nodes[self.non_mn4].getnewaddress()
+        self.nodes[self.mining_node_num].sendtoaddress(self.nonmn4_address2, 2000, "", "", False)
+        self.__wait_for_sync_all10()
+        self.nonmn4_pastelid2 = self.create_pastelid(self.non_mn4)
+
+        self.nonmn8_address1 = self.nodes[self.non_mn8].getnewaddress()
+        self.__wait_for_sync_all10()
+        self.nonmn8_pastelid1 = self.create_pastelid(self.non_mn8)
+
+        # Register first time by PastelID of non-masternode 3
+        tickets_ethereumaddress_txid1 = self.nodes[self.non_mn3].tickets("register", "ethereumaddress", "0x863c30dd122a21f815e46ec510777fd3e3398c26",
+                                                    self.creator_pastelid1, "passphrase")
+        self.__wait_for_ticket_tnx()
+        nonmn3_ticket_ethereumaddress_1 = self.nodes[self.non_mn4].tickets("get", tickets_ethereumaddress_txid1["txid"])
+        print(nonmn3_ticket_ethereumaddress_1)
+
+        self.__wait_for_ticket_tnx()
+        assert_equal(nonmn3_ticket_ethereumaddress_1["ticket"]["pastelID"], self.creator_pastelid1)
+        assert_equal(nonmn3_ticket_ethereumaddress_1["ticket"]["ethereumAddress"], "0x863c30dd122a21f815e46ec510777fd3e3398c26")
+        assert_equal(nonmn3_ticket_ethereumaddress_1["ticket"]["fee"], 100)
+
+        # Register by a new pastelID. Expect to get Exception that the ticket is invalid because there are Not enough 100 PSL to cover price 100
+        try:
+            self.nodes[self.non_mn8].tickets("register", "ethereumaddress", "0xf24C621e5108607F4EC60e9C4f91719a76c7B3C9",
+                                                        self.nonmn8_pastelid1, "passphrase")
+            self.__wait_for_ticket_tnx()
+        except JSONRPCException as e:
+            self.errorString = e.error['message']
+            print(self.errorString)
+        assert_equal(self.errorString, "Ticket (ethereum-address-change) is invalid - Not enough coins to cover price [100]")
+
+        self.nodes[self.mining_node_num].sendtoaddress(self.nonmn8_address1, 200, "", "", False)
+        self.__wait_for_sync_all10()
+
+        # This should be success
+        self.nodes[self.non_mn8].tickets("register", "ethereumaddress", "0xf24C621e5108607F4EC60e9C4f91719a76c7B3C9",
+                                                        self.nonmn8_pastelid1, "passphrase")
+        self.__wait_for_ticket_tnx()
+
+        # Expect to get Exception that the ticket is invalid because this PastelID do not have enough 5000PSL to pay the rechange fee
+        try:
+            self.nodes[self.non_mn8].tickets("register", "ethereumaddress", "0x7cB11556A8883f002514B6878575811728f2A158 ",
+                                                    self.nonmn8_pastelid1, "passphrase")
+            self.__wait_for_ticket_tnx()
+        except JSONRPCException as e:
+            self.errorString = e.error['message']
+            print(self.errorString)
+        assert_equal(self.errorString, "Ticket (ethereum-address-change) is invalid - Not enough coins to cover price [5000]")
+
+        # Send money to non-masternode3 to cover 5000 price
+        self.nodes[self.mining_node_num].sendtoaddress(self.nonmn3_address1, 5100, "", "", False)
+        self.__wait_for_sync_all10()
+
+        # Expect to get Exception that the ticket is invalid because this PastelID changed EthereumAddress in last 24 hours
+        try:
+            self.nodes[self.non_mn3].tickets("register", "ethereumaddress", "0xD2cBc412BE9D6c6c3fDBb3c8d6554CC4D5E3A13f ",
+                                                    self.creator_pastelid1, "passphrase")
+            self.__wait_for_ticket_tnx()
+        except JSONRPCException as e:
+            self.errorString = e.error['message']
+            print(self.errorString)
+        assert_equal("Ticket (ethereum-address-change) is invalid - Ethereum Address Change ticket is invalid. Already changed in last 24 hours." in self.errorString, True)
+
+        # Wait till next 24 hours. Below test cases is commented because it took lots of time to complete.
+        # To test this functionality on local machine, we should lower the waiting from 24 * 24 blocks to smaller value, ex: 15 blocks only.
+        self.sync_all()
+        print("Mining 577 blocks")
+        for ind in range (577):
+            self.nodes[self.mining_node_num].generate(1)
+            time.sleep(1)
+
+        print("Waiting 60 seconds")
+        time.sleep(60)
+
+        # Expect that nonmn3 can change username to "Banksky" after 24 hours, fee should be 5000
+        tickets_ethereumaddress_txid1 = self.nodes[self.non_mn3].tickets("register", "ethereumaddress", "0xD2cBc412BE9D6c6c3fDBb3c8d6554CC4D5E3A13f",
+                                                    self.creator_pastelid1, "passphrase")
+        self.__wait_for_ticket_tnx()
+        nonmn3_ticket_ethereumaddress_1 = self.nodes[self.non_mn4].tickets("get", tickets_ethereumaddress_txid1["txid"])
+        print(nonmn3_ticket_ethereumaddress_1)
+
+        self.__wait_for_ticket_tnx()
+        assert_equal(nonmn3_ticket_ethereumaddress_1["ticket"]["pastelID"], self.creator_pastelid1)
+        assert_equal(nonmn3_ticket_ethereumaddress_1["ticket"]["ethereumAddress"], "0xD2cBc412BE9D6c6c3fDBb3c8d6554CC4D5E3A13f")
+        assert_equal(nonmn3_ticket_ethereumaddress_1["ticket"]["fee"], 5000)
+
+        # Register by a new pastelID with invalid Ethereum address. Expect to get Exception that the Ethereum address is invalid
+        try:
+            tickets_ethereumaddress_txid1 = self.nodes[self.non_mn4].tickets("register", "ethereumaddress", "D2cBc412BE9D6c6c3fDBb3c8d6554CC4D5E3A13f",
+                                                        self.nonmn4_pastelid2, "passphrase")
+            self.__wait_for_ticket_tnx()
+        except JSONRPCException as e:
+            self.errorString = e.error['message']
+            print(self.errorString)
+        assert_equal("Ticket (ethereum-address-change) is invalid - Invalid length of ethereum address, the length should be exactly 40 characters" in self.errorString, True)
+
+        try:
+            tickets_ethereumaddress_txid1 = self.nodes[self.non_mn4].tickets("register", "ethereumaddress", "1xD2cBc412BE9D6c6c3fDBb3c8d6554CC4D5E3A13f",
+                                                        self.nonmn4_pastelid2, "passphrase")
+            self.__wait_for_ticket_tnx()
+        except JSONRPCException as e:
+            self.errorString = e.error['message']
+            print(self.errorString)
+        assert_equal("Invalid ethereum address, should start with the characters 0x" in self.errorString, True)
+
+        try:
+            tickets_ethereumaddress_txid1 = self.nodes[self.non_mn4].tickets("register", "ethereumaddress", "0xZ2cBc412BE9D6c6c3fDBb3c8d6554CC4D5E3A13f",
+                                                        self.nonmn4_pastelid2, "passphrase")
+            self.__wait_for_ticket_tnx()
+        except JSONRPCException as e:
+            self.errorString = e.error['message']
+            print(self.errorString)
+        assert_equal("Invalid ethereum address, should contains only hex digits" in self.errorString, True)
+
+        # length not valid
+        non_mn1_bad_ethereumaddress_length = self.nodes[self.non_mn4].tickets("tools", "validateethereumaddress", "0xD2cBc412BE9D6c6c3fDBb3c8d6554CC4D5E")
+        print(non_mn1_bad_ethereumaddress_length)
+        assert_equal(non_mn1_bad_ethereumaddress_length["isInvalid"], True)
+        assert_equal(non_mn1_bad_ethereumaddress_length["validationError"], "Invalid length of ethereum address, the length should be exactly 40 characters")
+        # not start with 0x
+        non_mn1_bad_ethereumaddress_start = self.nodes[self.non_mn4].tickets("tools", "validateethereumaddress", "D2cBc412BE9D6c6c3fDBb3c8d6554CC4D5E")
+        print(non_mn1_bad_ethereumaddress_start)
+        assert_equal(non_mn1_bad_ethereumaddress_start["isInvalid"], True)
+        assert_equal(non_mn1_bad_ethereumaddress_start["validationError"], "Invalid ethereum address, should start with 0x")
+        # contains characters that is different than hex digits
+        non_mn1_bad_ethereumaddress_character = self.nodes[self.non_mn4].tickets("tools", "validateethereumaddress", "0xZ2cBc412BE9D6c6c3fDBb3c8d6554CC4D5E3A13f ")
+        print(non_mn1_bad_ethereumaddress_character)
+        assert_equal(non_mn1_bad_ethereumaddress_character["isInvalid"], True)
+        assert_equal(non_mn1_bad_ethereumaddress_character["validationError"], "Invalid Ethereum address, should only contain hex digits")
+        # good ethereum address
+        non_mn1_ethereum_address_good = self.nodes[self.non_mn4].tickets("tools", "validateethereumaddress", "0xD2cBc412BE9D6c6c3fDBb3c8d6554CC4D5E3A13f")
+        print(non_mn1_ethereum_address_good)
+        assert_equal(non_mn1_ethereum_address_good["isInvalid"], False)
+        assert_equal(non_mn1_ethereum_address_good["validationError"], "")
+
+        print("Ethereum address tickets tested")
+
 
     # ===============================================================================================================
     def storage_fee_tests(self):

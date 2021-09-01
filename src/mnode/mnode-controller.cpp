@@ -40,6 +40,10 @@ void CMasterNodeController::SetParameters()
 
     MasternodeUsernameFirstChangeFee   = 100;
     MasternodeUsernameChangeAgainFee   = 5000;
+
+    MasternodeEthereumAddressFirstChangeFee   = 100;
+    MasternodeEthereumAddressChangeAgainFee   = 5000;
+
     MasternodeCheckSeconds              =   5;
     MasternodeMinMNBSeconds             =   5 * 60;
     MasternodeMinMNPSeconds             =  10 * 60;

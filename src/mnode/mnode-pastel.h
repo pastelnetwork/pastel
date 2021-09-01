@@ -246,7 +246,7 @@ private:
 
 public:
 	std::string pastelID;   //pastelID of the creator
-	std::string regTicketTnxId;
+	std::string regTicketTxnId;
     int creatorHeight{};
     int storageFee{};
 	std::vector<unsigned char> signature;
@@ -261,13 +261,13 @@ public:
     TicketID ID() const noexcept override { return TicketID::Activate; }
     static TicketID GetID() { return TicketID::Activate; }
 
-    std::string KeyOne() const noexcept override { return regTicketTnxId; }
+    std::string KeyOne() const noexcept override { return regTicketTxnId; }
     std::string MVKeyOne() const noexcept override { return pastelID; }
     std::string MVKeyTwo() const noexcept override { return std::to_string(creatorHeight); }
 
     bool HasMVKeyOne() const noexcept override { return true; }
     bool HasMVKeyTwo() const noexcept override { return true; }
-    void SetKeyOne(std::string val) override { regTicketTnxId = std::move(val); }
+    void SetKeyOne(std::string val) override { regTicketTxnId = std::move(val); }
     
     std::string ToJSON() const noexcept override;
     std::string ToStr() const noexcept override;
@@ -284,7 +284,7 @@ public:
         READWRITE(pastelID);
         READWRITE(m_nVersion);
         // v0
-		READWRITE(regTicketTnxId);
+		READWRITE(regTicketTxnId);
 		READWRITE(creatorHeight);
         READWRITE(storageFee);
         READWRITE(signature);
@@ -300,7 +300,7 @@ public:
 
     static std::vector<CNFTActivateTicket> FindAllTicketByPastelID(const std::string& pastelID);
     static std::vector<CNFTActivateTicket> FindAllTicketByCreatorHeight(int height);
-    static bool CheckTicketExistByNFTTicketID(const std::string& regTicketTnxId);
+    static bool CheckTicketExistByNFTTicketID(const std::string& regTicketTxnId);
 };
 
 // NFT Trade Tickets /////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -322,7 +322,7 @@ class CNFTSellTicket : public CPastelTicket
 {
 public:
     std::string pastelID;
-    std::string NFTTnxId;
+    std::string NFTTxnId;
     unsigned int askedPrice{};
     unsigned int activeAfter{};              //as a block height
     unsigned int activeBefore{};             //as a block height
@@ -342,9 +342,9 @@ public:
     TicketID ID() const noexcept override { return TicketID::Sell; }
     static TicketID GetID() { return TicketID::Sell; }
 
-    std::string KeyOne() const noexcept override { return !key.empty() ? key : NFTTnxId + ":" + std::to_string(copyNumber); } //txid:#
+    std::string KeyOne() const noexcept override { return !key.empty() ? key : NFTTxnId + ":" + std::to_string(copyNumber); } //txid:#
     std::string MVKeyOne() const noexcept override { return pastelID; }
-    std::string MVKeyTwo() const noexcept override { return NFTTnxId; }
+    std::string MVKeyTwo() const noexcept override { return NFTTxnId; }
     
     bool HasMVKeyOne() const noexcept override { return true; }
     bool HasMVKeyTwo() const noexcept override { return true; }
@@ -364,7 +364,7 @@ public:
         READWRITE(pastelID);
         READWRITE(m_nVersion);
         // v0
-        READWRITE(NFTTnxId);
+        READWRITE(NFTTxnId);
         READWRITE(askedPrice);
         READWRITE(activeAfter);
         READWRITE(activeBefore);
@@ -376,11 +376,11 @@ public:
         READWRITE(m_nBlock);
     }
     
-    static CNFTSellTicket Create(std::string _NFTTnxId, int _askedPrice, int _validAfter, int _validBefore, int _copy_number, std::string _pastelID, const SecureString& strKeyPass);
+    static CNFTSellTicket Create(std::string _NFTTxnId, int _askedPrice, int _validAfter, int _validBefore, int _copy_number, std::string _pastelID, const SecureString& strKeyPass);
     static bool FindTicketInDb(const std::string& key, CNFTSellTicket& ticket);
     
     static std::vector<CNFTSellTicket> FindAllTicketByPastelID(const std::string& pastelID);
-    static std::vector<CNFTSellTicket> FindAllTicketByNFTTnxID(const std::string& NFTTnxId);
+    static std::vector<CNFTSellTicket> FindAllTicketByNFTTxnId(const std::string& NFTTxnId);
 };
 
 /*
@@ -397,7 +397,7 @@ class CNFTBuyTicket : public CPastelTicket
 {
 public:
     std::string pastelID;
-    std::string sellTnxId;
+    std::string sellTxnId;
     unsigned int price{};
     std::string reserved;
     std::vector<unsigned char> signature;
@@ -412,13 +412,13 @@ public:
     TicketID ID() const noexcept override { return TicketID::Buy; }
     static TicketID GetID() { return TicketID::Buy; }
 
-    std::string KeyOne() const noexcept override { return sellTnxId; } // this is the latest (active) buy ticket for this sell ticket
+    std::string KeyOne() const noexcept override { return sellTxnId; } // this is the latest (active) buy ticket for this sell ticket
     std::string MVKeyOne() const noexcept override { return pastelID; }
-    //    std::string MVKeyTwo() const override {return sellTnxId;} // these are all buy (1 active and many inactive) tickets for this sell ticket
+    //    std::string MVKeyTwo() const override {return sellTxnId;} // these are all buy (1 active and many inactive) tickets for this sell ticket
     
     bool HasMVKeyOne() const noexcept override { return true; }
     bool HasMVKeyTwo() const noexcept override { return false; }
-    void SetKeyOne(std::string val) override { sellTnxId = std::move(val); }
+    void SetKeyOne(std::string val) override { sellTxnId = std::move(val); }
 
     CAmount TicketPrice(const unsigned int nHeight) const noexcept override { return std::max(10u, price / 100); }
     
@@ -435,7 +435,7 @@ public:
         READWRITE(pastelID);
         READWRITE(m_nVersion);
         // v0
-        READWRITE(sellTnxId);
+        READWRITE(sellTxnId);
         READWRITE(price);
         READWRITE(reserved);
         READWRITE(signature);
@@ -444,10 +444,10 @@ public:
         READWRITE(m_nBlock);
     }
     
-    static CNFTBuyTicket Create(std::string _sellTnxId, int _price, std::string _pastelID, const SecureString& strKeyPass);
+    static CNFTBuyTicket Create(std::string _sellTxnId, int _price, std::string _pastelID, const SecureString& strKeyPass);
     static bool FindTicketInDb(const std::string& key, CNFTBuyTicket& ticket);
 
-    static bool CheckBuyTicketExistBySellTicket(const std::string& _sellTnxId);
+    static bool CheckBuyTicketExistBySellTicket(const std::string& _sellTxnId);
     
     static std::vector<CNFTBuyTicket> FindAllTicketByPastelID(const std::string& pastelID);
 };
@@ -468,10 +468,10 @@ class CNFTTradeTicket : public CPastelTicket
 {
 public:
     std::string pastelID;
-    std::string sellTnxId;
-    std::string buyTnxId;
-    std::string NFTTnxId;
-    std::string nftRegTnxId;
+    std::string sellTxnId;
+    std::string buyTxnId;
+    std::string NFTTxnId;
+    std::string nftRegTxnId;
     std::string nftCopySerialNr;
 
     unsigned int price{};
@@ -488,18 +488,18 @@ public:
     TicketID ID() const noexcept override { return TicketID::Trade; }
     static TicketID GetID() { return TicketID::Trade; }
 
-    std::string KeyOne() const noexcept override { return sellTnxId; }
-    std::string KeyTwo() const noexcept override { return buyTnxId; }
+    std::string KeyOne() const noexcept override { return sellTxnId; }
+    std::string KeyTwo() const noexcept override { return buyTxnId; }
     std::string MVKeyOne() const noexcept override { return pastelID; }
-    std::string MVKeyTwo() const noexcept override { return NFTTnxId; }
-    std::string MVKeyThree() const noexcept override { return nftRegTnxId; }
+    std::string MVKeyTwo() const noexcept override { return NFTTxnId; }
+    std::string MVKeyThree() const noexcept override { return nftRegTxnId; }
     
     bool HasKeyTwo() const noexcept override { return true; }
     bool HasMVKeyOne() const noexcept override { return true; }
     bool HasMVKeyTwo() const noexcept override { return true; }
     bool HasMVKeyThree() const noexcept override { return true; }
     
-    void SetKeyOne(std::string val) override { sellTnxId = std::move(val); }
+    void SetKeyOne(std::string val) override { sellTxnId = std::move(val); }
     
     std::string ToJSON() const noexcept override;
     std::string ToStr() const noexcept override;
@@ -515,32 +515,32 @@ public:
         READWRITE(pastelID);
         READWRITE(m_nVersion);
         // v0
-        READWRITE(sellTnxId);
-        READWRITE(buyTnxId);
-        READWRITE(NFTTnxId);
+        READWRITE(sellTxnId);
+        READWRITE(buyTxnId);
+        READWRITE(NFTTxnId);
         READWRITE(price);
         READWRITE(reserved);
         READWRITE(signature);
         READWRITE(m_nTimestamp);
         READWRITE(m_txid);
         READWRITE(m_nBlock);
-        READWRITE(nftRegTnxId);
+        READWRITE(nftRegTxnId);
         READWRITE(nftCopySerialNr);
     }
 
     CAmount GetExtraOutputs(std::vector<CTxOut>& outputs) const override;
     
-    static CNFTTradeTicket Create(std::string _sellTnxId, std::string _buyTnxId, std::string _pastelID, const SecureString& strKeyPass);
+    static CNFTTradeTicket Create(std::string _sellTxnId, std::string _buyTxnId, std::string _pastelID, const SecureString& strKeyPass);
     static bool FindTicketInDb(const std::string& key, CNFTTradeTicket& ticket);
     
     static std::vector<CNFTTradeTicket> FindAllTicketByPastelID(const std::string& pastelID);
     static std::vector<CNFTTradeTicket> FindAllTicketByNFTTnxID(const std::string& NFTTnxID);
-    static std::vector<CNFTTradeTicket> FindAllTicketByRegTnxID(const std::string& nftRegTnxId);
+    static std::vector<CNFTTradeTicket> FindAllTicketByRegTnxID(const std::string& nftRegTxnId);
     
-    static bool CheckTradeTicketExistBySellTicket(const std::string& _sellTnxId);
-    static bool CheckTradeTicketExistByBuyTicket(const std::string& _buyTnxId);
-    static bool GetTradeTicketBySellTicket(const std::string& _sellTnxId, CNFTTradeTicket& ticket);
-    static bool GetTradeTicketByBuyTicket(const std::string& _buyTnxId, CNFTTradeTicket& ticket);
+    static bool CheckTradeTicketExistBySellTicket(const std::string& _sellTxnId);
+    static bool CheckTradeTicketExistByBuyTicket(const std::string& _buyTxnId);
+    static bool GetTradeTicketBySellTicket(const std::string& _sellTxnId, CNFTTradeTicket& ticket);
+    static bool GetTradeTicketByBuyTicket(const std::string& _buyTxnId, CNFTTradeTicket& ticket);
     static std::map<std::string, std::string> GetPastelIdAndTxIdWithTopHeightPerCopy(const std::vector<CNFTTradeTicket> & allTickets);
     
     std::unique_ptr<CPastelTicket> FindNFTRegTicket() const;
@@ -568,7 +568,7 @@ class CNFTRoyaltyTicket : public CPastelTicket {
 public:
   std::string pastelID;    //pastelID of the old (current at moment of creation) royalty recipient
   std::string newPastelID; //pastelID of the new royalty recipient
-  std::string NFTTnxId;    //txid of the NFT for royalty payments
+  std::string NFTTxnId;    //txid of the NFT for royalty payments
   std::vector<unsigned char> signature;
 
 public:
@@ -583,7 +583,7 @@ public:
 
   std::string KeyOne() const noexcept final { return {signature.cbegin(), signature.cend()}; }
   std::string MVKeyOne() const noexcept final { return pastelID; }
-  std::string MVKeyTwo() const noexcept final { return NFTTnxId; }
+  std::string MVKeyTwo() const noexcept final { return NFTTxnId; }
 
   bool HasMVKeyOne() const noexcept final { return true; }
   bool HasMVKeyTwo() const noexcept final { return true; }
@@ -603,19 +603,19 @@ public:
     READWRITE(newPastelID);
     READWRITE(m_nVersion);
     // v0
-    READWRITE(NFTTnxId);
+    READWRITE(NFTTxnId);
     READWRITE(signature);
     READWRITE(m_nTimestamp);
     READWRITE(m_txid);
     READWRITE(m_nBlock);
   }
 
-  static CNFTRoyaltyTicket Create(std::string _NFTTnxId, std::string _newPastelID,
+  static CNFTRoyaltyTicket Create(std::string _NFTTxnId, std::string _newPastelID,
                                   std::string _pastelID, const SecureString& strKeyPass);
   static bool FindTicketInDb(const std::string& key, CNFTRoyaltyTicket& ticket);
 
   static std::vector<CNFTRoyaltyTicket> FindAllTicketByPastelID(const std::string& pastelID);
-  static std::vector<CNFTRoyaltyTicket> FindAllTicketByNFTTnxId(const std::string& NFTTnxId);
+  static std::vector<CNFTRoyaltyTicket> FindAllTicketByNFTTxnId(const std::string& NFTTxnId);
 };
 
 // Take Down Ticket /////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -708,4 +708,76 @@ public:
     * return: true if bad, false if good to use
     */
     static bool isUsernameBad(const std::string& username, std::string& error);
+};
+
+
+// Ethereum Address Change Ticket /////////////////////////////////////////////////////////////////////////////////////////////////////
+/*
+	"ticket": {
+		"type": "ethereumAddress",
+		"pastelID": "",    //PastelID of the ethereum address
+		"ethereumAddress": "",    //new valid ethereum address
+		"fee": "",         // fee to change ethereum address
+		"signature": ""
+	},
+ */
+class CChangeEthereumAddressTicket : public CPastelTicket
+{
+public:
+    std::string pastelID;
+    std::string ethereumAddress;
+    CAmount fee{100};
+    v_uint8 signature;
+
+public:
+    CChangeEthereumAddressTicket() = default;
+
+    explicit CChangeEthereumAddressTicket(std::string _pastelID, std::string _ethereumAddress) :
+        pastelID(std::move(_pastelID)), ethereumAddress(std::move(_ethereumAddress))
+    {}
+
+    TicketID ID() const noexcept override { return TicketID::EthereumAddress; }
+    static TicketID GetID() { return TicketID::EthereumAddress; }
+
+    std::string KeyOne() const noexcept override { return ethereumAddress; }
+    std::string KeyTwo() const noexcept override { return pastelID; }
+
+    bool HasKeyTwo() const noexcept override { return true; }
+    bool HasMVKeyOne() const noexcept override { return false; }
+    bool HasMVKeyTwo() const noexcept override { return false; }
+
+    void SetKeyOne(std::string val) override { ethereumAddress = std::move(val); }
+
+    std::string ToJSON() const noexcept override;
+    std::string ToStr() const noexcept override;
+    CAmount TicketPrice(const unsigned int nHeight) const noexcept override { return fee; }
+    bool IsValid(bool preReg, int depth) const override;
+
+    void SerializationOp(CDataStream& s, const SERIALIZE_ACTION ser_action) override
+    {
+        const bool bRead = ser_action == SERIALIZE_ACTION::Read;
+        std::string error;
+        if (!VersionMgmt(error, bRead))
+            throw std::runtime_error(error);
+        READWRITE(pastelID);
+        READWRITE(m_nVersion);
+        // v0
+        READWRITE(ethereumAddress);
+        READWRITE(fee);
+        READWRITE(signature);
+        READWRITE(m_nTimestamp);
+        READWRITE(m_txid);
+        READWRITE(m_nBlock);
+    }
+
+    static CChangeEthereumAddressTicket Create(std::string _pastelID, std::string _ethereumAddress, const SecureString& strKeyPass);    
+    static bool FindTicketInDb(const std::string& key, CChangeEthereumAddressTicket& ticket);
+
+    /** Some general checks to see if the ethereum address is invalid. Below cases will be considered as an invalid EthereumAddress
+    *     - Contains characters that are different from hex digits
+    *     - Not exactly 40 characters long
+    *     - Doesn't start with 0x.
+    * return: true if bad, false if good to use
+    */
+    static bool isEthereumAddressInvalid(const std::string& ethereumAddress, std::string& error);
 };

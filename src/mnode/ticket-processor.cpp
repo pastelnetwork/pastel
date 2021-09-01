@@ -81,6 +81,10 @@ unique_ptr<CPastelTicket> CPastelTicketProcessor::CreateTicket(const TicketID ti
     case TicketID::Username:
         ticket = make_unique<CChangeUsernameTicket>();
         break;
+
+    case TicketID::EthereumAddress:
+        ticket = make_unique<CChangeEthereumAddressTicket>();
+        break;
     }
     return ticket;
 }
@@ -255,7 +259,8 @@ bool CPastelTicketProcessor::ValidateIfTicketTransaction(const int nHeight, cons
                  ticket_id == TicketID::Sell ||
                  ticket_id == TicketID::Buy ||
                  ticket_id == TicketID::Royalty ||
-                 ticket_id == TicketID::Username ) &&
+                 ticket_id == TicketID::Username ||
+                 ticket_id == TicketID::EthereumAddress ) &&
                 i == num - 1) // in these tickets last output is change
                 break;
             // in this tickets last 4 outputs is: change, and payments to 3 MNs
@@ -513,6 +518,9 @@ template std::vector<CNFTSellTicket> CPastelTicketProcessor::FindTicketsByMVKey<
 template std::vector<CNFTBuyTicket> CPastelTicketProcessor::FindTicketsByMVKey<CNFTBuyTicket>(const std::string&);
 template std::vector<CNFTTradeTicket> CPastelTicketProcessor::FindTicketsByMVKey<CNFTTradeTicket>(const std::string&);
 template std::vector<CNFTRoyaltyTicket> CPastelTicketProcessor::FindTicketsByMVKey<CNFTRoyaltyTicket>(const std::string&);
+template std::vector<CChangeUsernameTicket> CPastelTicketProcessor::FindTicketsByMVKey<CChangeUsernameTicket>(const std::string&);
+template std::vector<CChangeEthereumAddressTicket> CPastelTicketProcessor::FindTicketsByMVKey<CChangeEthereumAddressTicket>(const std::string&);
+
 
 std::vector<std::string> CPastelTicketProcessor::GetAllKeys(const TicketID id) const
 {
@@ -567,6 +575,8 @@ template std::string CPastelTicketProcessor::ListTickets<CNFTSellTicket>() const
 template std::string CPastelTicketProcessor::ListTickets<CNFTBuyTicket>() const;
 template std::string CPastelTicketProcessor::ListTickets<CNFTTradeTicket>() const;
 template std::string CPastelTicketProcessor::ListTickets<CNFTRoyaltyTicket>() const;
+template std::string CPastelTicketProcessor::ListTickets<CChangeUsernameTicket>() const;
+template std::string CPastelTicketProcessor::ListTickets<CChangeEthereumAddressTicket>() const;
 
 template <class _TicketType, typename F>
 std::string CPastelTicketProcessor::filterTickets(F f, const bool checkConfirmation) const
@@ -657,7 +667,7 @@ std::string CPastelTicketProcessor::ListFilterActTickets(const short filter) con
         {
             //find Trade tickets listing this Act ticket txid as NFT ticket
             auto vTradeTickets = CNFTTradeTicket::FindAllTicketByNFTTnxID(t.GetTxId());
-            auto ticket = GetTicket(t.regTicketTnxId, TicketID::NFT);
+            auto ticket = GetTicket(t.regTicketTxnId, TicketID::NFT);
             auto NFTRegTicket = dynamic_cast<CNFTRegTicket*>(ticket.get());
             if (!NFTRegTicket)
                 return true;
@@ -779,7 +789,7 @@ std::string CPastelTicketProcessor::ListFilterTradeTickets(const short filter, c
     
     uint256 txid;
     txid.SetHex(sTxId);
-    //  Get ticket pointed by NFTTnxId. This is either Activation or Trade tickets (Sell, Buy, Trade)
+    //  Get ticket pointed by NFTTxnId. This is either Activation or Trade tickets (Sell, Buy, Trade)
     try
     {
         pastelTicket = CPastelTicketProcessor::GetTicket(txid);
@@ -799,7 +809,7 @@ std::string CPastelTicketProcessor::ListFilterTradeTickets(const short filter, c
                                    pastelTicket->GetTxId(), sTxId);
                 break;
             }
-            if (!WalkBackTradingChain(shortPath ? tradeTicket->NFTTnxId : tradeTicket->buyTnxId, chain, shortPath,
+            if (!WalkBackTradingChain(shortPath ? tradeTicket->NFTTxnId : tradeTicket->buyTxnId, chain, shortPath,
                                       errRet))
                 break;
         } else if (pastelTicket->ID() == TicketID::Buy) {
@@ -809,7 +819,7 @@ std::string CPastelTicketProcessor::ListFilterTradeTickets(const short filter, c
                                    pastelTicket->GetTxId(), sTxId);
                 break;
             }
-            if (!WalkBackTradingChain(tradeTicket->sellTnxId, chain, shortPath, errRet))
+            if (!WalkBackTradingChain(tradeTicket->sellTxnId, chain, shortPath, errRet))
                 break;
         } else if (pastelTicket->ID() == TicketID::Sell) {
             auto tradeTicket = dynamic_cast<CNFTSellTicket *>(pastelTicket.get());
@@ -818,7 +828,7 @@ std::string CPastelTicketProcessor::ListFilterTradeTickets(const short filter, c
                                    pastelTicket->GetTxId(), sTxId);
                 break;
             }
-            if (!WalkBackTradingChain(tradeTicket->NFTTnxId, chain, shortPath, errRet))
+            if (!WalkBackTradingChain(tradeTicket->NFTTxnId, chain, shortPath, errRet))
                 break;
         } else if (pastelTicket->ID() == TicketID::Activate) {
             auto actTicket = dynamic_cast<CNFTActivateTicket *>(pastelTicket.get());
@@ -827,7 +837,7 @@ std::string CPastelTicketProcessor::ListFilterTradeTickets(const short filter, c
                                    pastelTicket->GetTxId(), sTxId);
                 break;
             }
-            if (!WalkBackTradingChain(actTicket->regTicketTnxId, chain, shortPath, errRet))
+            if (!WalkBackTradingChain(actTicket->regTicketTxnId, chain, shortPath, errRet))
                 break;
         } else if (pastelTicket->ID() == TicketID::NFT) {
             auto tradeTicket = dynamic_cast<CNFTRegTicket *>(pastelTicket.get());
@@ -1173,9 +1183,9 @@ std::vector<std::string> CPastelTicketProcessor::ValidateOwnership(const std::st
     if(!tradeTickets.empty())
     {
         //std::sort(tradeTickets.begin(), tradeTickets.end(), [](CNFTTradeTicket & one, CNFTTradeTicket & two){return one.GetBlock() < two.GetBlock();});
-        std::map<std::string, std::string> ownersPastelIds_with_TnxIds = CNFTTradeTicket::GetPastelIdAndTxIdWithTopHeightPerCopy(tradeTickets);
+        std::map<std::string, std::string> ownersPastelIds_with_TxnIds = CNFTTradeTicket::GetPastelIdAndTxIdWithTopHeightPerCopy(tradeTickets);
 
-        for (const auto& winners: ownersPastelIds_with_TnxIds)
+        for (const auto& winners: ownersPastelIds_with_TxnIds)
         {
             if(winners.first == _pastelID)
             {

@@ -1400,7 +1400,7 @@ Verify "text"'s "signature" with with the private key associated with the Pastel
 
 UniValue storagefee(const UniValue& params, bool fHelp)
 {
-    RPC_CMD_PARSER(STORAGE_FEE, params, setfee, getnetworkfee, getNFTticketfee, getlocalfee);
+    RPC_CMD_PARSER(STORAGE_FEE, params, setfee, getnetworkfee, getnftticketfee, getlocalfee);
 
     if (fHelp || !STORAGE_FEE.IsCmdSupported())
         throw runtime_error(
@@ -1413,7 +1413,7 @@ Arguments:
 Available commands:
   setfee <n>		- Set storage fee for MN.
   getnetworkfee	- Get Network median storage fee.
-  getNFTticketfee	- Get Network median NFT ticket fee.
+  getnftticketfee	- Get Network median NFT ticket fee.
   getlocalfee		- Get local masternode storage fee.
 )");
 
@@ -1469,12 +1469,12 @@ Available commands:
         mnObj.pushKV("networkfee", nFee);
         return mnObj;
     }
-    if (STORAGE_FEE.IsCmd(RPC_CMD_STORAGE_FEE::getNFTticketfee))
+    if (STORAGE_FEE.IsCmd(RPC_CMD_STORAGE_FEE::getnftticketfee))
     {
         CAmount nFee = masterNodeCtrl.GetNFTTicketFeePerKB();
 
         UniValue mnObj(UniValue::VOBJ);
-        mnObj.pushKV("NFTticketfee", nFee);
+        mnObj.pushKV("nftticketfee", nFee);
         return mnObj;
     }
     if (STORAGE_FEE.IsCmd(RPC_CMD_STORAGE_FEE::getlocalfee))
@@ -1607,7 +1607,7 @@ Available commands:
 	
 	std::string strCmd, strError;
 	if (TICKETS.IsCmd(RPC_CMD_TICKETS::Register)) {        
-        RPC_CMD_PARSER2(REGISTER, params, mnid, id, NFT, act, sell, buy, trade, down, royalty, username);
+        RPC_CMD_PARSER2(REGISTER, params, mnid, id, nft, act, sell, buy, trade, down, royalty, username, ethereumaddress);
         
         if (fHelp || !REGISTER.IsCmdSupported()) //-V560
 			throw JSONRPCError(RPC_INVALID_PARAMETER,
@@ -1628,7 +1628,7 @@ Available types:
                 PastelID
                 Timestamp
                 Signature (above fields signed by PastelID)
-  NFT     - Register new NFT ticket. If successful, returns "txid".
+  nft     - Register new NFT ticket. If successful, returns "txid".
             Ticket contains:
                 <...>
   act     - Send activation for new registered NFT ticket. If successful, returns "txid" of activation ticket.
@@ -1661,7 +1661,7 @@ Register identity of the current Masternode into the blockchain. If successful, 
 
 Arguments:
 1. "pastelid"      (string, required) The PastelID. NOTE: PastelID must be generated and stored inside node. See "pastelid newkey".
-2. "passpharse"    (string, required) The passphrase to the private key associated with PastelID and stored inside node. See "pastelid newkey".
+2. "passphrase"    (string, required) The passphrase to the private key associated with PastelID and stored inside node. See "pastelid newkey".
 Masternode PastelID Ticket:
 {
 	"ticket": {
@@ -1707,7 +1707,7 @@ Register PastelID identity. If successful, method returns "txid".
 
 Arguments:
 1. "pastelid"      (string, required) The PastelID. NOTE: PastelID must be generated and stored inside node. See "pastelid newkey".
-2. "passpharse"    (string, required) The passphrase to the private key associated with PastelID and stored inside node. See "pastelid newkey".
+2. "passphrase"    (string, required) The passphrase to the private key associated with PastelID and stored inside node. See "pastelid newkey".
 3. "address"       (string, required) The Pastel blockchain address of the sender. (IN the future - this will be used for charging a fee).
 Masternode PastelID Ticket:
 {
@@ -1741,10 +1741,10 @@ As json rpc
 			
 			mnObj.pushKV(RPC_KEY_TXID, txid);
 		}
-        if (REGISTER.IsCmd(RPC_CMD_REGISTER::NFT)) {
+        if (REGISTER.IsCmd(RPC_CMD_REGISTER::nft)) {
 			if (fHelp || params.size() != 9) //-V560
 				throw JSONRPCError(RPC_INVALID_PARAMETER,
-                                   R"(tickets register NFT "ticket" "{signatures}" "pastelid" "passphrase" "key1" "key2" "fee"
+                                   R"(tickets register nft "ticket" "{signatures}" "pastelid" "passphrase" "key1" "key2" "fee"
 Register new NFT ticket. If successful, method returns "txid".
 
 Arguments:
@@ -1766,7 +1766,7 @@ Arguments:
         "mn2":    { "mn3PastelID":     "mn3Signature"     }
     }
 3. "pastelid"   (string, required) The current, registering masternode (MN1) PastelID. NOTE: PastelID must be generated and stored inside node. See "pastelid newkey".
-4. "passpharse" (string, required) The passphrase to the private key associated with PastelID and stored inside node. See "pastelid newkey".
+4. "passphrase" (string, required) The passphrase to the private key associated with PastelID and stored inside node. See "pastelid newkey".
 5. "key1"       (string, required) The first key to search ticket.
 6. "key2"       (string, required) The second key to search ticket.
 7. "fee"        (int, required) The agreed upon storage fee.
@@ -1797,15 +1797,15 @@ NFT Reg Ticket:
 }
 
 Register NFT Ticket
-)" + HelpExampleCli("tickets register NFT",
+)" + HelpExampleCli("tickets register nft",
     R"(""ticket-blob" "{signatures}" jXYqZNPj21RVnwxnEJ654wEdzi7GZTZ5LAdiotBmPrF7pDMkpX1JegDMQZX55WZLkvy9fxNpZcbBJuE8QYUqBF "passphrase", "key1", "key2", 100)") + R"(
 As json rpc
 )" + HelpExampleRpc("tickets",
-    R"("register", "NFT", "ticket" "{signatures}" "jXYqZNPj21RVnwxnEJ654wEdzi7GZTZ5LAdiotBmPrF7pDMkpX1JegDMQZX55WZLkvy9fxNpZcbBJuE8QYUqBF" "passphrase", "key1", "key2", 100)"));
+    R"("register", "nft", "ticket" "{signatures}" "jXYqZNPj21RVnwxnEJ654wEdzi7GZTZ5LAdiotBmPrF7pDMkpX1JegDMQZX55WZLkvy9fxNpZcbBJuE8QYUqBF" "passphrase", "key1", "key2", 100)"));
 
             if (!masterNodeCtrl.IsActiveMasterNode())
                 throw JSONRPCError(RPC_INTERNAL_ERROR,
-                     "This is not an active masternode. Only active MN can register NFT ticket");
+                     "This is not an active masternode. Only an active MN can register an NFT ticket");
             
             if (fImporting || fReindex)
 				throw JSONRPCError(RPC_INVALID_PARAMETER, "Initial blocks download. Re-try later");
@@ -2043,7 +2043,7 @@ Arguments:
 1. "nft-txid"    (string, required) The txid of the NFT register ticket
 2. "new-pastelid" (string, required) The pastelID of the new royalty recipient
 3. "old-pastelid" (string, required) The pastelID of the current royalty recipient
-4. "passpharse"   (string, required) The passphrase to the private key associated with 'old-pastelid' and stored inside node. See "pastelid newkey".
+4. "passphrase"   (string, required) The passphrase to the private key associated with 'old-pastelid' and stored inside node. See "pastelid newkey".
 NFT Royalty ticket:
 {
     "txid":   <"ticket transaction id">
@@ -2069,7 +2069,7 @@ Royalty Ticket)"
           //if (!masterNodeCtrl.IsActiveMasterNode())
           //  throw JSONRPCError(RPC_INTERNAL_ERROR, "This is not an active masternode. Only active MN can register royalty ticket");
 
-          std::string NFTTnxId = params[2].get_str();
+          std::string NFTTxnId = params[2].get_str();
           std::string newPastelID = params[3].get_str();
           std::string pastelID = params[4].get_str();
 
@@ -2078,7 +2078,7 @@ Royalty Ticket)"
           strKeyPass = params[5].get_str().c_str();
 
           CNFTRoyaltyTicket NFTRoyaltyTicket =
-            CNFTRoyaltyTicket::Create(NFTTnxId, newPastelID, pastelID, strKeyPass);
+            CNFTRoyaltyTicket::Create(NFTTxnId, newPastelID, pastelID, strKeyPass);
           std::string txid = CPastelTicketProcessor::SendTicket(NFTRoyaltyTicket);
 
           mnObj.pushKV(RPC_KEY_TXID, std::move(txid));
@@ -2086,12 +2086,12 @@ Royalty Ticket)"
         if (REGISTER.IsCmd(RPC_CMD_REGISTER::down)) {
 			if (fHelp || params.size() != 5) //-V560
 				throw JSONRPCError(RPC_INVALID_PARAMETER,
-R"(tickets register down "txid" "pastelid" "passpharse"
+R"(tickets register down "txid" "pastelid" "passphrase"
 Register take down request ticket. If successful, method returns "txid"
 
 Arguments:
 x. "pastelid"      (string, required) The PastelID. NOTE: PastelID must be generated and stored inside node. See "pastelid newkey".
-y. "passpharse"    (string, required) The passphrase to the private key associated with PastelID and stored inside node. See "pastelid newkey".
+y. "passphrase"    (string, required) The passphrase to the private key associated with PastelID and stored inside node. See "pastelid newkey".
 Take Down Ticket:
 {
 	"ticket": {
@@ -2114,13 +2114,13 @@ As json rpc
         if (REGISTER.IsCmd(RPC_CMD_REGISTER::username)) {
 			if (fHelp || params.size() != 5) //-V560
 				throw JSONRPCError(RPC_INVALID_PARAMETER,
-R"(tickets register username "PastelId" "username" "passpharse"
+R"(tickets register username "PastelId" "username" "passphrase"
 Register Username Change Request ticket. If successful, method returns "txid"
 
 Arguments:
 x. "PastelId"      (string, required) The PastelID. NOTE: PastelID must be generated and stored inside node. See "pastelid newkey".
-x. "username"      (string, required) The username that will be map with above PastelID
-y. "passpharse"    (string, required) The passphrase to the private key associated with PastelID and stored inside node. See "pastelid newkey".
+x. "username"      (string, required) The username that will be mapped with above PastelID
+y. "passphrase"    (string, required) The passphrase to the private key associated with PastelID and stored inside node. See "pastelid newkey".
 Username Change Request Ticket:
 {
     "ticket": {
@@ -2134,7 +2134,7 @@ Username Change Request Ticket:
 	"txid": ""
   }
 
-Register PastelID
+Register Username
 )" + HelpExampleCli("tickets register username", R"(jXYqZNPj21RVnwxnEJ654wEdzi7GZTZ5LAdiotBmPrF7pDMkpX1JegDMQZX55WZLkvy9fxNpZcbBJuE8QYUqBF "bsmith84" "passphrase")") +
                                                    R"(
 As json rpc
@@ -2152,9 +2152,50 @@ As json rpc
 		return mnObj;
 	}
 	
+        if (REGISTER.IsCmd(RPC_CMD_REGISTER::ethereumaddress)) {
+			if (fHelp || params.size() != 5) //-V560
+				throw JSONRPCError(RPC_INVALID_PARAMETER,
+R"(tickets register ethereumaddress "PastelId" "username" "passphrase"
+Register Ethereum Address Change Request ticket. If successful, method returns "txid"
+
+Arguments:
+x. "PastelId"      (string, required) The PastelID. NOTE: PastelID must be generated and stored inside node. See "pastelid newkey".
+x. "ethereumAddress"      (string, required) The ethereum address that will be mapped with above PastelID
+y. "passphrase"    (string, required) The passphrase to the private key associated with PastelID and stored inside node. See "pastelid newkey".
+Ethereum Address Change Request Ticket:
+{
+    "ticket": {
+		"type": "ethereumAddress",
+		"pastelID": "",    //PastelID of the ethereum address
+		"ethereumAddress": "",    //new valid ethereum address
+		"fee": "",         // fee to change ethereum address
+		"signature": ""
+	},
+	"height": "",
+	"txid": ""
+  }
+
+Register Ethereum Address
+)" + HelpExampleCli("tickets register ethereumaddress", R"(jXYqZNPj21RVnwxnEJ654wEdzi7GZTZ5LAdiotBmPrF7pDMkpX1JegDMQZX55WZLkvy9fxNpZcbBJuE8QYUqBF "0x863c30dd122a21f815e46ec510777fd3e3398c26" "passphrase")") +
+                                                   R"(
+As json rpc
+)" + HelpExampleRpc("tickets",
+                    R"("register", "ethereumaddress", "jXYqZNPj21RVnwxnEJ654wEdzi7GZTZ5LAdiotBmPrF7pDMkpX1JegDMQZX55WZLkvy9fxNpZcbBJuE8QYUqBF", "0x863c30dd122a21f815e46ec510777fd3e3398c26", "passphrase")"));
+            std::string ethereumAddress = params[2].get_str();
+            std::string pastelID = params[3].get_str();
+            SecureString strKeyPass;
+            strKeyPass.reserve(100);
+            strKeyPass = params[4].get_str().c_str();
+            CChangeEthereumAddressTicket changeEthereumAddressTicket = CChangeEthereumAddressTicket::Create(pastelID, ethereumAddress, strKeyPass);
+            std::string txid = CPastelTicketProcessor::SendTicket(changeEthereumAddressTicket);
+            mnObj.pushKV(RPC_KEY_TXID, std::move(txid));
+		}
+		return mnObj;
+	}
+
 	if (TICKETS.IsCmd(RPC_CMD_TICKETS::find)) {
         
-        RPC_CMD_PARSER2(FIND, params, id, NFT, act, sell, buy, trade, down, royalty, username);
+        RPC_CMD_PARSER2(FIND, params, id, nft, act, sell, buy, trade, down, royalty, username, ethereumaddress);
             
         if (fHelp || !FIND.IsCmdSupported()) //-V560
 			throw JSONRPCError(RPC_INVALID_PARAMETER,
@@ -2165,7 +2206,7 @@ Available types:
   id      - Find PastelID (both personal and masternode) registration ticket.
             The "key" is PastelID or Collateral tnx outpoint for Masternode
             OR PastelID or Address for Personal PastelID
-  NFT     - Find new NFT registration ticket.
+  nft     - Find new NFT registration ticket.
             The "key" is 'Key1' or 'Key2' OR 'creator's PastelID'
   act     - Find NFT confirmation ticket.
             The "key" is 'NFTReg ticket txid' OR 'creator's PastelID' OR 'creator's Height (block height at what original NFT registration request was created)'
@@ -2182,6 +2223,8 @@ Available types:
             The "key" is ...
   username  - Find username change ticket.
             The "key" is 'username'
+  ethereumaddress  - Find ethereumaddress change ticket.
+            The "key" is 'ethereumaddress'
 
 Arguments:
 1. "key"    (string, required) The Key to use for ticket search. See types above...
@@ -2206,7 +2249,7 @@ As json rpc
             }
         } break;
 
-        case RPC_CMD_FIND::NFT:
+        case RPC_CMD_FIND::nft:
             return getTickets<CNFTRegTicket>(key);
 
         case RPC_CMD_FIND::act:
@@ -2238,12 +2281,22 @@ As json rpc
                 return obj;
             }
         } break;
+
+        case RPC_CMD_FIND::ethereumaddress: {
+            CChangeEthereumAddressTicket ticket;
+            if (CChangeEthereumAddressTicket::FindTicketInDb(key, ticket)) {
+                UniValue obj(UniValue::VOBJ);
+                obj.read(ticket.ToJSON());
+                return obj;
+            }
+        } break;
+
         }
 		return "Key is not found";
     }
     if (TICKETS.IsCmd(RPC_CMD_TICKETS::list)) {
     
-        RPC_CMD_PARSER2(LIST, params, id, NFT, act, sell, buy, trade, down, royalty);
+        RPC_CMD_PARSER2(LIST, params, id, nft, act, sell, buy, trade, down, royalty, username, ethereumaddress);
         if (fHelp || (params.size() < 2 || params.size() > 4) || !LIST.IsCmdSupported()) //-V560
             throw JSONRPCError(RPC_INVALID_PARAMETER,
 R"(tickets list "type" ("filter") ("minheight")
@@ -2256,7 +2309,7 @@ Available types:
               mn       - lists only masternode PastelIDs.
               personal - lists only personal PastelIDs.
               mine     - lists only registered PastelIDs available on the local node.
-  NFT     - List ALL new NFT registration tickets. Without filter parameter lists ALL NFT tickets.
+  nft     - List ALL new NFT registration tickets. Without filter parameter lists ALL NFT tickets.
             Filter:
               all      - lists all NFT tickets (including non-confirmed). Default.
               active   - lists only activated NFT tickets - with Act ticket.
@@ -2289,6 +2342,12 @@ Available types:
   royalty - List ALL NFT royalty tickets. Without filter parameter lists ALL royalty tickets.
             Filter:
               all       - list all Royalty tickets. Default.
+  username - List ALL all username tickets. Without filter parameter lists ALL username tickets.
+            Filter:
+              all       - list all username tickets. Default.
+  ethereumaddress - List ALL ethereum address tickets. Without filter parameter lists ALL ethereum address tickets.
+            Filter:
+              all       - list all ethereum address tickets. Default.
 
 Arguments:
 1. minheight	 - minimum height for returned tickets (only tickets registered after this height will be returned).
@@ -2328,7 +2387,7 @@ As json rpc
             }
             break;
 
-        case RPC_CMD_LIST::NFT:
+        case RPC_CMD_LIST::nft:
             if (filter == "all")
                 obj.read(masterNodeCtrl.masternodeTickets.ListTickets<CNFTRegTicket>());
             else if (filter == "active")
@@ -2468,6 +2527,20 @@ As json rpc
           break;
         }
         }
+        case RPC_CMD_LIST::username:
+        {
+          if (filter == "all")
+            obj.read(masterNodeCtrl.masternodeTickets.ListTickets<CChangeUsernameTicket>());
+          break;
+        }
+        }
+        case RPC_CMD_LIST::ethereumaddress:
+        {
+          if (filter == "all")
+            obj.read(masterNodeCtrl.masternodeTickets.ListTickets<CChangeEthereumAddressTicket>());
+          break;
+        }
+        }
 
         return obj;
 	}
@@ -2491,7 +2564,7 @@ As json rpc
     
     if (TICKETS.IsCmd(RPC_CMD_TICKETS::tools)) {
         
-        RPC_CMD_PARSER2(LIST, params, printtradingchain, getregbytrade, gettotalstoragefee, validateusername, validateownership);
+        RPC_CMD_PARSER2(LIST, params, printtradingchain, getregbytrade, gettotalstoragefee, validateusername, validateethereumaddress, validateownership);
         
         UniValue obj(UniValue::VARR);
         switch (LIST.cmd()) {
@@ -2558,7 +2631,7 @@ Arguments:
 		"mn2":{"mn3PastelID":"mn3Signature"}
 	}
 3. "pastelid"   (string, required) The current, registering masternode (MN1) PastelID. NOTE: PastelID must be generated and stored inside node. See "pastelid newkey".
-4. "passpharse" (string, required) The passphrase to the private key associated with PastelID and stored inside node. See "pastelid newkey".
+4. "passphrase" (string, required) The passphrase to the private key associated with PastelID and stored inside node. See "pastelid newkey".
 5. "key1"       (string, required) The first key to search ticket.
 6. "key2"       (string, required) The second key to search ticket.
 7. "fee"        (int, required) The agreed upon storage fee.
@@ -2624,6 +2697,21 @@ As json rpc
                     return obj;
                 }
             }
+            case RPC_CMD_LIST::validateethereumaddress: {
+                std::string ethereumaddress;
+                if (params.size() > 2) {
+                    ethereumaddress = params[2].get_str();
+
+                    UniValue obj(UniValue::VOBJ);
+                    std::string ethereumAddressValidationError;
+                    bool isInvalid = CChangeEthereuemAddressTicket::isEthereumAddressInvalid(ethereumaddress, ethereumAddressValidationError);
+                    }
+                    obj.pushKV("isBad", isBad);
+                    obj.pushKV("validationError", std::move(ethereumAddressValidationError));
+
+                    return obj;
+                }
+            }
 			case RPC_CMD_LIST::validateownership: {
 
                 if (params.size() == 5)
@@ -2683,7 +2771,7 @@ Get ownership validation by pastelid. If unsuccessful, method return NFT:"",trad
 Arguments:
 1. "txid"       (string, required) txid of the original nft registration 
 2. "pastelid"   (string, required) Registered pastelid which (according to the request) shall be the owner or the author of the registered NFT (of argument 1's txid)
-3. "passpharse" (string, required) The passphrase to the private key associated with PastelID and stored inside node. See "pastelid newkey".
+3. "passphrase" (string, required) The passphrase to the private key associated with PastelID and stored inside node. See "pastelid newkey".
 
 Validate ownership
 )" + HelpExampleCli("tickets tools validateownership", R"(""e4ee20e436d33f59cc313647bacff0c5b0df5b7b1c1fa13189ea7bc8b9df15a4" jXYqZNPj21RVnwxnEJ654wEdzi7GZTZ5LAdiotBmPrF7pDMkpX1JegDMQZX55WZLkvy9fxNpZcbBJuE8QYUqBF "passphrase")") +
@@ -2700,7 +2788,7 @@ As json rpc
     {
         const bool bSend = TICKETS.IsCmd(RPC_CMD_TICKETS::sendfaketicket);
 	    
-        RPC_CMD_PARSER2(FAKETICKET, params, mnid, id, NFT, act, sell);
+        RPC_CMD_PARSER2(FAKETICKET, params, mnid, id, nft, act, sell);
         if (FAKETICKET.IsCmd(RPC_CMD_FAKETICKET::mnid)) {
             std::string pastelID = params[2].get_str();
             SecureString strKeyPass;
@@ -2722,7 +2810,7 @@ As json rpc
             std::string strVerb = params[6].get_str();
             return CPastelTicketProcessor::CreateFakeTransaction(pastelIDRegTicket, ticketPrice, std::vector<std::pair<std::string, CAmount>>{}, strVerb, bSend);
         }
-        if (FAKETICKET.IsCmd(RPC_CMD_FAKETICKET::NFT)) {
+        if (FAKETICKET.IsCmd(RPC_CMD_FAKETICKET::nft)) {
             if (fImporting || fReindex)
                 throw JSONRPCError(RPC_INVALID_PARAMETER, "Initial blocks download. Re-try later");
         
