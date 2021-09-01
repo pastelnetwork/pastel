@@ -2186,8 +2186,8 @@ As json rpc
             SecureString strKeyPass;
             strKeyPass.reserve(100);
             strKeyPass = params[4].get_str().c_str();
-            CChangeEthereumAddressTicket changeEthereumAddressTicket = CChangeEthereumAddressTicket::Create(pastelID, ethereumAddress, strKeyPass);
-            std::string txid = CPastelTicketProcessor::SendTicket(changeEthereumAddressTicket);
+            CChangeEthereumAddressTicket EthereumAddressTicket = CChangeEthereumAddressTicket::Create(pastelID, ethereumAddress, strKeyPass);
+            std::string txid = CPastelTicketProcessor::SendTicket(EthereumAddressTicket);
             mnObj.pushKV(RPC_KEY_TXID, std::move(txid));
 		}
 		return mnObj;
