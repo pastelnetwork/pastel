@@ -2272,15 +2272,6 @@ As json rpc
             //              return ticket.ToJSON();
         } break;
 
-        case RPC_CMD_FIND::username: {
-            CChangeUsernameTicket ticket;
-            if (CChangeUsernameTicket::FindTicketInDb(key, ticket)) {
-                UniValue obj(UniValue::VOBJ);
-                obj.read(ticket.ToJSON());
-                return obj;
-            }
-        } break;
-
         case RPC_CMD_FIND::ethereumaddress: {
             CChangeEthereumAddressTicket ticket;
             if (CChangeEthereumAddressTicket::FindTicketInDb(key, ticket)) {
@@ -2290,6 +2281,14 @@ As json rpc
             }
         } break;
 
+        case RPC_CMD_FIND::username: {
+            CChangeUsernameTicket ticket;
+            if (CChangeUsernameTicket::FindTicketInDb(key, ticket)) {
+                UniValue obj(UniValue::VOBJ);
+                obj.read(ticket.ToJSON());
+                return obj;
+            }
+        } break;
         }
 		return "Key is not found";
     }
@@ -2447,6 +2446,7 @@ As json rpc
                 obj.read(masterNodeCtrl.masternodeTickets.ListFilterSellTickets(4, pastelID));
             break;
         }
+
         case RPC_CMD_LIST::buy:
         {
             std::string pastelID;
@@ -2483,6 +2483,7 @@ As json rpc
                 obj.read(masterNodeCtrl.masternodeTickets.ListFilterBuyTickets(2, pastelID));
             break;
         }
+
         case RPC_CMD_LIST::trade:
         {
             std::string pastelID;
@@ -2519,20 +2520,21 @@ As json rpc
                 obj.read(masterNodeCtrl.masternodeTickets.ListFilterTradeTickets(2, pastelID));
             break;
         }
+
         case RPC_CMD_LIST::royalty:
         {
           if (filter == "all")
             obj.read(masterNodeCtrl.masternodeTickets.ListTickets<CNFTRoyaltyTicket>());
           break;
         }
-        }
+        
         case RPC_CMD_LIST::username:
         {
           if (filter == "all")
             obj.read(masterNodeCtrl.masternodeTickets.ListTickets<CChangeUsernameTicket>());
           break;
         }
-        }
+        
         case RPC_CMD_LIST::ethereumaddress:
         {
           if (filter == "all")
