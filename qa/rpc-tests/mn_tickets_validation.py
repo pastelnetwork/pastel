@@ -195,13 +195,13 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         top_masternodes = self.nodes[0].masternode("top")[str(self.creator_ticket_height)]
 
         json_ticket = {
-            "version": 1,
+            "nft_ticket_version": 1,
             "author": self.creator_pastelid1,
             "blocknum": self.creator_ticket_height,
             "data_hash": "ABCDEFG",
             "copies": self.total_copies,
-            "royalty": 10,
-            "green_address": "",
+            "royalty": 0.1,
+            "green": True,
             "app_ticket": "HIJKLMNOP"}
 
         self.ticket = str_to_b64str(json.dumps(json_ticket))
@@ -257,7 +257,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
 
         self.nodes[self.non_mn1].generate(10)
 
-        # makefaketicket nft ticket signatures pastelID passphrase key1 key2 creatorhieght nStorageFee ticketPrice bChangeSignature
+        # makefaketicket nft ticket signatures pastelID passphrase key1 key2 creatorheight nStorageFee ticketPrice bChangeSignature
 
         tickets = {
             #  non MN with real signatures of non top 10 MNs
@@ -340,7 +340,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
                                                                   "10", "0"),
 
             #       3.c.2 reject if creator's PastelID in the activation ticket is not matching creator's PastelID in the registration ticket
-            # This prevent someone else to create Act Ticket providing creator's PastelID, but wrong signature (only if its has private key to create correct signature)
+            # This prevent someone else to create Act Ticket providing creator's PastelID, but wrong signature (only creator has private key to create correct signature)
             "act2-bad-creator_sign": self.nodes[self.non_mn3].tickets("makefaketicket", "act",
                                                                   self.nft_ticket1_txid, str(self.creator_ticket_height),
                                                                   str(self.storage_fee),

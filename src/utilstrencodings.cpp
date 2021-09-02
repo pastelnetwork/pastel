@@ -8,13 +8,14 @@
 
 #include "tinyformat.h"
 #include "vector_types.h"
+#include "str_utils.h"
+#include "util.h"
 
 #include <cstdlib>
 #include <cstring>
 #include <errno.h>
 #include <iomanip>
 #include <limits>
-#include "util.h"
 
 using namespace std;
 
@@ -136,7 +137,7 @@ string EncodeAscii85(const char* istr, size_t len) noexcept
         if (!istr)
             break;
         
-        const size_t nInputSize = strlen(istr);
+        const int32_t nInputSize = static_cast<int32_t>(strlen(istr));
         int32_t nMaxLength = ascii85_get_max_encoded_length(nInputSize);
         if (nMaxLength <= 0)
             break;
@@ -164,7 +165,7 @@ v_uint8 DecodeAscii85(const char* ostr, bool* pfInvalid) noexcept
         if (!ostr)
             break;
         
-        const size_t nInputSize = strlen(ostr);
+        const int32_t nInputSize = static_cast<int32_t>(strlen(ostr));
         int32_t nMaxLength = ascii85_get_max_decoded_length(nInputSize);
         if (nMaxLength < 0)
         {
@@ -485,88 +486,123 @@ bool ParseFixedPoint(const std::string &val, int decimals, int64_t *amount_out)
     int mantissa_tzeros = 0;
     bool mantissa_sign = false;
     bool exponent_sign = false;
-    int ptr = 0;
-    int end = val.size();
+    size_t ptr = 0;
+    size_t end = val.size();
     int point_ofs = 0;
-
-    if (ptr < end && val[ptr] == '-') {
-        mantissa_sign = true;
-        ++ptr;
-    }
-    if (ptr < end)
+    bool bRet = false;
+    do
     {
-        if (val[ptr] == '0') {
-            /* pass single 0 */
-            ++ptr;
-        } else if (val[ptr] >= '1' && val[ptr] <= '9') {
-            while (ptr < end && val[ptr] >= '0' && val[ptr] <= '9') {
-                if (!ProcessMantissaDigit(val[ptr], mantissa, mantissa_tzeros))
-                    return false; /* overflow */
-                ++ptr;
-            }
-        } else return false; /* missing expected digit */
-    } else return false; /* empty string or loose '-' */
-    if (ptr < end && val[ptr] == '.')
-    {
-        ++ptr;
-        if (ptr < end && val[ptr] >= '0' && val[ptr] <= '9')
+        bool bOverflow = false;
+        if (ptr < end && val[ptr] == '-')
         {
-            while (ptr < end && val[ptr] >= '0' && val[ptr] <= '9') {
-                if (!ProcessMantissaDigit(val[ptr], mantissa, mantissa_tzeros))
-                    return false; /* overflow */
-                ++ptr;
-                ++point_ofs;
-            }
-        } else return false; /* missing expected digit */
-    }
-    if (ptr < end && (val[ptr] == 'e' || val[ptr] == 'E'))
-    {
-        ++ptr;
-        if (ptr < end && val[ptr] == '+')
-            ++ptr;
-        else if (ptr < end && val[ptr] == '-') {
-            exponent_sign = true;
+            mantissa_sign = true;
             ++ptr;
         }
-        if (ptr < end && val[ptr] >= '0' && val[ptr] <= '9') {
-            while (ptr < end && val[ptr] >= '0' && val[ptr] <= '9') {
-                if (exponent > (UPPER_BOUND / 10LL))
-                    return false; /* overflow */
-                exponent = exponent * 10 + val[ptr] - '0';
+        if (ptr < end)
+        {
+            if (val[ptr] == '0')
+                ++ptr; // pass single 0
+            else 
+                if (val[ptr] >= '1' && val[ptr] <= '9')
+                {
+                    while (ptr < end && isdigitex(val[ptr]))
+                    {
+                        if (!ProcessMantissaDigit(val[ptr], mantissa, mantissa_tzeros))
+                        {
+                            bOverflow = true; // overflow
+                            break;
+                        }
+                        ++ptr;
+                    }
+                    if (bOverflow)
+                        break;
+                } else
+                    break; // missing expected digit
+        } else
+            break; // empty string or loose '-'
+        if (ptr < end && val[ptr] == '.')
+        {
+            ++ptr;
+            if (ptr < end && isdigitex(val[ptr]))
+            {
+                while (ptr < end && isdigitex(val[ptr]))
+                {
+                    if (!ProcessMantissaDigit(val[ptr], mantissa, mantissa_tzeros))
+                    {
+                        bOverflow = true; // overflow
+                        break;
+                    }
+                    ++ptr;
+                    ++point_ofs;
+                }
+                if (bOverflow)
+                    break;
+            } else
+                break; // missing expected digit
+        }
+        if (ptr < end && (val[ptr] == 'e' || val[ptr] == 'E'))
+        {
+            ++ptr;
+            if (ptr < end && val[ptr] == '+')
+                ++ptr;
+            else if (ptr < end && val[ptr] == '-') {
+                exponent_sign = true;
                 ++ptr;
             }
-        } else return false; /* missing expected digit */
-    }
-    if (ptr != end)
-        return false; /* trailing garbage */
+            if (ptr < end && isdigitex(val[ptr]))
+            {
+                while (ptr < end && isdigitex(val[ptr]))
+                {
+                    if (exponent > (UPPER_BOUND / 10LL))
+                    {
+                        bOverflow = true; // overflow
+                        break;
+                    }
+                    exponent = exponent * 10 + val[ptr] - '0';
+                    ++ptr;
+                }
+                if (bOverflow)
+                    break;
+            } else
+                break; // missing expected digit
+        }
+        if (ptr != end)
+            break; // trailing garbage
 
-    /* finalize exponent */
-    if (exponent_sign)
-        exponent = -exponent;
-    exponent = exponent - point_ofs + mantissa_tzeros;
+        /* finalize exponent */
+        if (exponent_sign)
+            exponent = -exponent;
+        exponent = exponent - point_ofs + mantissa_tzeros;
 
-    /* finalize mantissa */
-    if (mantissa_sign)
-        mantissa = -mantissa;
+        /* finalize mantissa */
+        if (mantissa_sign)
+            mantissa = -mantissa;
 
-    /* convert to one 64-bit fixed-point value */
-    exponent += decimals;
-    if (exponent < 0)
-        return false; /* cannot represent values smaller than 10^-decimals */
-    if (exponent >= 18)
-        return false; /* cannot represent values larger than or equal to 10^(18-decimals) */
+        /* convert to one 64-bit fixed-point value */
+        exponent += decimals;
+        if (exponent < 0)
+            break; // cannot represent values smaller than 10^-decimals
+        if (exponent >= 18)
+            break; // cannot represent values larger than or equal to 10^(18-decimals)
 
-    for (int i=0; i < exponent; ++i) {
-        if (mantissa > (UPPER_BOUND / 10LL) || mantissa < -(UPPER_BOUND / 10LL))
-            return false; /* overflow */
-        mantissa *= 10;
-    }
-    if (mantissa > UPPER_BOUND || mantissa < -UPPER_BOUND)
-        return false; /* overflow */
+        for (int i = 0; i < exponent; ++i)
+        {
+            if (mantissa > (UPPER_BOUND / 10LL) || mantissa < -(UPPER_BOUND / 10LL))
+            {
+                bOverflow = true; // overflow
+                break;
+            }
+            mantissa *= 10;
+        }
+        if (bOverflow)
+            break;
+        if (mantissa > UPPER_BOUND || mantissa < -UPPER_BOUND)
+            break; // overflow
 
-    if (amount_out)
-        *amount_out = mantissa;
-
-    return true;
+        if (amount_out)
+            *amount_out = mantissa;
+        bRet = true;
+    } while (false);
+    return bRet;
 }
 

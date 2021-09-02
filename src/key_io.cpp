@@ -4,12 +4,12 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 
-#include <key_io.h>
-
-#include <base58.h>
-#include <bech32.h>
-#include <script/script.h>
-#include <utilstrencodings.h>
+#include "key_io.h"
+#include "base58.h"
+#include "bech32.h"
+#include "script/script.h"
+#include "utilstrencodings.h"
+#include "vector_types.h"
 
 #include <assert.h>
 #include <string.h>
@@ -30,14 +30,14 @@ public:
 
     std::string operator()(const CKeyID& id) const
     {
-        std::vector<unsigned char> data = m_KeyConstants.Base58Prefix(KeyConstants::Base58Type::PUBKEY_ADDRESS);
+        v_uint8 data = m_KeyConstants.Base58Prefix(KeyConstants::Base58Type::PUBKEY_ADDRESS);
         data.insert(data.end(), id.begin(), id.end());
         return EncodeBase58Check(data);
     }
 
     std::string operator()(const CScriptID& id) const
     {
-        std::vector<unsigned char> data = m_KeyConstants.Base58Prefix(KeyConstants::Base58Type::SCRIPT_ADDRESS);
+        v_uint8 data = m_KeyConstants.Base58Prefix(KeyConstants::Base58Type::SCRIPT_ADDRESS);
         data.insert(data.end(), id.begin(), id.end());
         return EncodeBase58Check(data);
     }
@@ -69,8 +69,8 @@ public:
         CDataStream ss(SER_NETWORK, PROTOCOL_VERSION);
         ss << zaddr;
         // ConvertBits requires unsigned char, but CDataStream uses char
-        std::vector<unsigned char> seraddr(ss.begin(), ss.end());
-        std::vector<unsigned char> data;
+        v_uint8 seraddr(ss.cbegin(), ss.cend());
+        v_uint8 data;
         // See calculation comment below
         data.reserve((seraddr.size() * 8 + 4) / 5);
         ConvertBits<8, 5, true>([&](unsigned char c) { data.push_back(c); }, seraddr.begin(), seraddr.end());
@@ -106,8 +106,8 @@ public:
         CDataStream ss(SER_NETWORK, PROTOCOL_VERSION);
         ss << extfvk;
         // ConvertBits requires unsigned char, but CDataStream uses char
-        std::vector<unsigned char> serkey(ss.begin(), ss.end());
-        std::vector<unsigned char> data;
+        v_uint8 serkey(ss.cbegin(), ss.cend());
+        v_uint8 data;
         // See calculation comment below
         data.reserve((serkey.size() * 8 + 4) / 5);
         ConvertBits<8, 5, true>([&](unsigned char c) { data.push_back(c); }, serkey.begin(), serkey.end());
@@ -146,8 +146,8 @@ public:
         CDataStream ss(SER_NETWORK, PROTOCOL_VERSION);
         ss << zkey;
         // ConvertBits requires unsigned char, but CDataStream uses char
-        std::vector<unsigned char> serkey(ss.begin(), ss.end());
-        std::vector<unsigned char> data;
+        v_uint8 serkey(ss.cbegin(), ss.cend());
+        v_uint8 data;
         // See calculation comment below
         data.reserve((serkey.size() * 8 + 4) / 5);
         ConvertBits<8, 5, true>([&](unsigned char c) { data.push_back(c); }, serkey.begin(), serkey.end());
@@ -171,21 +171,24 @@ const size_t ConvertedSaplingExtendedSpendingKeySize = (ZIP32_XSK_SIZE * 8 + 4) 
 
 CTxDestination KeyIO::DecodeDestination(const std::string& str)
 {
-    std::vector<unsigned char> data;
+    v_uint8 data;
     uint160 hash;
-    if (DecodeBase58Check(str, data)) {
+    if (DecodeBase58Check(str, data))
+    {
         // base58-encoded Bitcoin addresses.
         // Public-key-hash-addresses have version 0 (or 111 testnet).
         // The data vector contains RIPEMD160(SHA256(pubkey)), where pubkey is the serialized public key.
-        const std::vector<unsigned char>& pubkey_prefix = m_KeyConstants.Base58Prefix(KeyConstants::Base58Type::PUBKEY_ADDRESS);
-        if (data.size() == hash.size() + pubkey_prefix.size() && std::equal(pubkey_prefix.begin(), pubkey_prefix.end(), data.begin())) {
+        const auto& pubkey_prefix = m_KeyConstants.Base58Prefix(KeyConstants::Base58Type::PUBKEY_ADDRESS);
+        if (data.size() == hash.size() + pubkey_prefix.size() && std::equal(pubkey_prefix.begin(), pubkey_prefix.end(), data.begin()))
+        {
             std::copy(data.begin() + pubkey_prefix.size(), data.end(), hash.begin());
             return CKeyID(hash);
         }
         // Script-hash-addresses have version 5 (or 196 testnet).
         // The data vector contains RIPEMD160(SHA256(cscript)), where cscript is the serialized redemption script.
-        const std::vector<unsigned char>& script_prefix = m_KeyConstants.Base58Prefix(KeyConstants::Base58Type::SCRIPT_ADDRESS);
-        if (data.size() == hash.size() + script_prefix.size() && std::equal(script_prefix.begin(), script_prefix.end(), data.begin())) {
+        const auto& script_prefix = m_KeyConstants.Base58Prefix(KeyConstants::Base58Type::SCRIPT_ADDRESS);
+        if (data.size() == hash.size() + script_prefix.size() && std::equal(script_prefix.begin(), script_prefix.end(), data.begin()))
+        {
             std::copy(data.begin() + script_prefix.size(), data.end(), hash.begin());
             return CScriptID(hash);
         }
@@ -202,7 +205,7 @@ CTxDestination KeyIO::DecodeDestination(const std::string& str)
 CKey KeyIO::DecodeSecret(const std::string& str, std::string& error)
 {
     CKey key;
-    std::vector<unsigned char> data;
+    v_uint8 data;
     do
     {
         if (!DecodeBase58Check(str, data))
@@ -211,7 +214,7 @@ CKey KeyIO::DecodeSecret(const std::string& str, std::string& error)
             break;
         }
         // secret key prefix
-        const std::vector<unsigned char>& privkey_prefix = m_KeyConstants.Base58Prefix(KeyConstants::Base58Type::SECRET_KEY);
+        const auto& privkey_prefix = m_KeyConstants.Base58Prefix(KeyConstants::Base58Type::SECRET_KEY);
         // check that:
         //   - key string is exactly 32 bytes or 32 bytes with trailing compression flag
         //   - key string starts with secret key prefix
@@ -249,7 +252,7 @@ CKey KeyIO::DecodeSecret(const std::string& str, std::string& error)
 std::string KeyIO::EncodeSecret(const CKey& key)
 {
     assert(key.IsValid());
-    std::vector<unsigned char> data = m_KeyConstants.Base58Prefix(KeyConstants::Base58Type::SECRET_KEY);
+    v_uint8 data = m_KeyConstants.Base58Prefix(KeyConstants::Base58Type::SECRET_KEY);
     data.insert(data.end(), key.cbegin(), key.cend());
     // add "compressed" flag = 1
     if (key.IsCompressed())
@@ -264,19 +267,19 @@ CExtPubKey KeyIO::DecodeExtPubKey(const std::string& str)
 {
     CExtPubKey key;
     std::vector<unsigned char> data;
-    if (DecodeBase58Check(str, data)) {
-        const std::vector<unsigned char>& prefix = m_KeyConstants.Base58Prefix(KeyConstants::Base58Type::EXT_PUBLIC_KEY);
-        if (data.size() == BIP32_EXTKEY_SIZE + prefix.size() && std::equal(prefix.begin(), prefix.end(), data.begin())) {
+    if (DecodeBase58Check(str, data))
+    {
+        const auto& prefix = m_KeyConstants.Base58Prefix(KeyConstants::Base58Type::EXT_PUBLIC_KEY);
+        if (data.size() == BIP32_EXTKEY_SIZE + prefix.size() && std::equal(prefix.begin(), prefix.end(), data.begin()))
             key.Decode(data.data() + prefix.size());
-        }
     }
     return key;
 }
 
 std::string KeyIO::EncodeExtPubKey(const CExtPubKey& key)
 {
-    std::vector<unsigned char> data = m_KeyConstants.Base58Prefix(KeyConstants::Base58Type::EXT_PUBLIC_KEY);
-    size_t size = data.size();
+    v_uint8 data = m_KeyConstants.Base58Prefix(KeyConstants::Base58Type::EXT_PUBLIC_KEY);
+    const size_t size = data.size();
     data.resize(size + BIP32_EXTKEY_SIZE);
     key.Encode(data.data() + size);
     std::string ret = EncodeBase58Check(data);
@@ -286,20 +289,20 @@ std::string KeyIO::EncodeExtPubKey(const CExtPubKey& key)
 CExtKey KeyIO::DecodeExtKey(const std::string& str)
 {
     CExtKey key;
-    std::vector<unsigned char> data;
-    if (DecodeBase58Check(str, data)) {
-        const std::vector<unsigned char>& prefix = m_KeyConstants.Base58Prefix(KeyConstants::Base58Type::EXT_SECRET_KEY);
-        if (data.size() == BIP32_EXTKEY_SIZE + prefix.size() && std::equal(prefix.begin(), prefix.end(), data.begin())) {
+    v_uint8 data;
+    if (DecodeBase58Check(str, data))
+    {
+        const auto& prefix = m_KeyConstants.Base58Prefix(KeyConstants::Base58Type::EXT_SECRET_KEY);
+        if (data.size() == BIP32_EXTKEY_SIZE + prefix.size() && std::equal(prefix.cbegin(), prefix.cend(), data.cbegin()))
             key.Decode(data.data() + prefix.size());
-        }
     }
     return key;
 }
 
 std::string KeyIO::EncodeExtKey(const CExtKey& key)
 {
-    std::vector<unsigned char> data = m_KeyConstants.Base58Prefix(KeyConstants::Base58Type::EXT_SECRET_KEY);
-    size_t size = data.size();
+    v_uint8 data = m_KeyConstants.Base58Prefix(KeyConstants::Base58Type::EXT_SECRET_KEY);
+    const size_t size = data.size();
     data.resize(size + BIP32_EXTKEY_SIZE);
     key.Encode(data.data() + size);
     std::string ret = EncodeBase58Check(data);

@@ -7,13 +7,12 @@
   <ItemDefinitionGroup>
     <ClCompile>
       <AdditionalIncludeDirectories>$(SRC)univalue\include;$(SRC)leveldb\include;$(SRC)snark;$(SRC)snark\libsnark;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>__GMP_LIBGMP_DLL;ENABLE_WALLET;ENABLE_ZMQ;ZMQ_STATIC;BINARY_OUTPUT;BOOST_SPIRIT_THREADSAFE;MONTGOMERY_OUTPUT;CURVE_ALT_BN128;_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>BOOST_SPIRIT_THREADSAFE;__GMP_LIBGMP_DLL;ENABLE_WALLET;ENABLE_ZMQ;ZMQ_STATIC;BINARY_OUTPUT;MONTGOMERY_OUTPUT;CURVE_ALT_BN128;_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalOptions>/bigobj %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
     <Link>
-      <AdditionalDependencies>libevent.lib;libbitcoin_server.lib;libbitcoin_wallet.lib;libbitcoin_common.lib;libunivalue.lib;libbitcoin_util.lib;libbitcoin_zmq.lib;libbitcoin_crypto.lib;libzcash.lib;libsnark.lib;libsecp256k1.lib;libleveldb.lib;libzmq-v142-mt-sgd-4_3_1.lib;libcrypto.lib;libsodium$(LIBDBGSFX).lib;libdb62$(LIBDBGSFX).lib;rustzcash.lib;libgmp.lib;libgmpxx.lib;shlwapi.lib;ws2_32.lib;userenv.lib;Iphlpapi.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>libevent.lib;libbitcoin_server.lib;libbitcoin_wallet.lib;libbitcoin_common.lib;libunivalue.lib;libbitcoin_util.lib;libbitcoin_crypto.lib;libzcash.lib;libsnark.lib;libsecp256k1.lib;libleveldb.lib;libcrypto.lib;libsodium$(LIBDBGSFX).lib;libdb62$(LIBDBGSFX).lib;rustzcash.lib;libgmp.lib;shlwapi.lib;ws2_32.lib;userenv.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalLibraryDirectories>%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <IgnoreSpecificDefaultLibraries>libcmt$(LIBDBGSFX).lib</IgnoreSpecificDefaultLibraries>
     </Link>
     <ResourceCompile>
       <PreprocessorDefinitions>%(PreprocessorDefinitions)</PreprocessorDefinitions>

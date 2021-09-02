@@ -1,10 +1,7 @@
+#pragma once
 // Copyright (c) 2018 The Zcash developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
-
-#ifndef ZCASH_CONSENSUS_UPGRADES_H
-#define ZCASH_CONSENSUS_UPGRADES_H
-
 #include "consensus/params.h"
 #include <optional>
 
@@ -43,7 +40,7 @@ UpgradeState NetworkUpgradeState(
  * heights).
  */
 bool NetworkUpgradeActive(
-    int nHeight,
+    const int nHeight,
     const Consensus::Params& params,
     Consensus::UpgradeIndex idx);
 
@@ -97,5 +94,3 @@ std::optional<int> NextEpoch(int nHeight, const Consensus::Params& params);
 std::optional<int> NextActivationHeight(
     int nHeight,
     const Consensus::Params& params);
-
-#endif // ZCASH_CONSENSUS_UPGRADES_H

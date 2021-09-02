@@ -4,6 +4,7 @@
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 #include <unordered_map>
 #include <memory>
+#include <tuple>
 
 #include "dbwrapper.h"
 #include "chain.h"
@@ -13,6 +14,9 @@
 #include "mnode/ticket.h"
 
 constexpr int DATASTREAM_VERSION = 1;
+
+// tuple <NFT registration txid, NFT trade txid>
+using reg_trade_txid_t = std::tuple<std::string, std::string>;
 
 #define FAKE_TICKET
 // Ticket  Processor ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -52,7 +56,7 @@ public:
     template <class _TicketType>
     std::vector<_TicketType> FindTicketsByMVKey(const std::string& mvKey);
 
-    std::vector<std::string> GetAllKeys(const TicketID id) const;
+    v_strings GetAllKeys(const TicketID id) const;
 
     std::string getValueBySecondaryKey(const CPastelTicket& ticket) const;
 
@@ -92,7 +96,7 @@ public:
                                                                     //      Trade, Buy, Sell, Act or Reg in long walk
             std::string& errRet) noexcept;
     
-    std::vector<std::string> ValidateOwnership(const std::string &_txid, const std::string &_pastelID);
+    std::optional<reg_trade_txid_t> ValidateOwnership(const std::string& _txid, const std::string& _pastelID);
 
 #ifdef FAKE_TICKET
     static std::string CreateFakeTransaction(CPastelTicket& ticket, CAmount ticketPrice, const std::vector<std::pair<std::string, CAmount>>& extraPayments, const std::string& strVerb, bool bSend);

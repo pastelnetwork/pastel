@@ -12,7 +12,7 @@ const struct NUInfo NetworkUpgradeInfo[Consensus::MAX_NETWORK_UPGRADES] = {
     {
         /*.nBranchId =*/ 0,
         /*.strName =*/ "Sprout",
-        /*.strInfo =*/ "The Zcash network at launch",
+        /*.strInfo =*/ "The Pastel network at launch",
     },
     {
         /*.nBranchId =*/ 0x74736554,
@@ -34,17 +34,18 @@ const struct NUInfo NetworkUpgradeInfo[Consensus::MAX_NETWORK_UPGRADES] = {
 const uint32_t SPROUT_BRANCH_ID = NetworkUpgradeInfo[Consensus::BASE_SPROUT].nBranchId;
 
 UpgradeState NetworkUpgradeState(
-    int nHeight,
+    const int nHeight,
     const Consensus::Params& params,
     Consensus::UpgradeIndex idx)
 {
     assert(nHeight >= 0);
     assert(idx >= Consensus::BASE_SPROUT && idx < Consensus::MAX_NETWORK_UPGRADES);
-    auto nActivationHeight = params.vUpgrades[idx].nActivationHeight;
+    const auto nActivationHeight = params.vUpgrades[idx].nActivationHeight;
 
-    if (nActivationHeight == Consensus::NetworkUpgrade::NO_ACTIVATION_HEIGHT) {
+    if (nActivationHeight == Consensus::NetworkUpgrade::NO_ACTIVATION_HEIGHT)
         return UPGRADE_DISABLED;
-    } else if (nHeight >= nActivationHeight) {
+    if (nHeight >= nActivationHeight)
+    {
         // From ZIP 200:
         //
         // ACTIVATION_HEIGHT
@@ -55,9 +56,8 @@ UpgradeState NetworkUpgradeState(
         //     subject to the pre-upgrade consensus rules, and would be the last common
         //     block in the event of a persistent pre-upgrade branch.
         return UPGRADE_ACTIVE;
-    } else {
+    } else
         return UPGRADE_PENDING;
-    }
 }
 
 bool NetworkUpgradeActive(
@@ -68,11 +68,12 @@ bool NetworkUpgradeActive(
     return NetworkUpgradeState(nHeight, params, idx) == UPGRADE_ACTIVE;
 }
 
-int CurrentEpoch(int nHeight, const Consensus::Params& params) {
-    for (auto idxInt = Consensus::MAX_NETWORK_UPGRADES - 1; idxInt >= Consensus::BASE_SPROUT; idxInt--) {
-        if (NetworkUpgradeActive(nHeight, params, Consensus::UpgradeIndex(idxInt))) {
+int CurrentEpoch(int nHeight, const Consensus::Params& params)
+{
+    for (auto idxInt = Consensus::MAX_NETWORK_UPGRADES - 1; idxInt >= Consensus::BASE_SPROUT; idxInt--)
+    {
+        if (NetworkUpgradeActive(nHeight, params, Consensus::UpgradeIndex(idxInt)))
             return idxInt;
-        }
     }
     // Base case
     return Consensus::BASE_SPROUT;

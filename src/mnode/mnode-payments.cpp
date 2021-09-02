@@ -237,17 +237,18 @@ bool CMasternodePayments::IsScheduled(CMasternode& mn, int nNotBlockHeight)
 {
     LOCK(cs_mapMasternodeBlockPayees);
 
-    if(!masterNodeCtrl.masternodeSync.IsMasternodeListSynced()) return false;
+    if (!masterNodeCtrl.masternodeSync.IsMasternodeListSynced())
+        return false;
 
-    CScript mnpayee;
-    mnpayee = GetScriptForDestination(mn.pubKeyCollateralAddress.GetID());
+    CScript mnpayee = GetScriptForDestination(mn.pubKeyCollateralAddress.GetID());
 
     CScript payee;
-    for(int64_t h = nCachedBlockHeight; h <= nCachedBlockHeight + 8; h++){
-        if(h == nNotBlockHeight) continue;
-        if(mapMasternodeBlockPayees.count(h) && mapMasternodeBlockPayees[h].GetBestPayee(payee) && mnpayee == payee) {
+    for (int h = nCachedBlockHeight; h <= nCachedBlockHeight + 8; h++)
+    {
+        if (h == nNotBlockHeight)
+            continue;
+        if (mapMasternodeBlockPayees.count(h) && mapMasternodeBlockPayees[h].GetBestPayee(payee) && (mnpayee == payee))
             return true;
-        }
     }
 
     return false;
@@ -740,14 +741,16 @@ void CMasternodePayments::RequestLowDataPaymentBlocks(CNode* pnode)
         pindex = pindex->pprev;
     }
 
-    std::map<int, CMasternodeBlockPayees>::iterator it = mapMasternodeBlockPayees.begin();
+    auto it = mapMasternodeBlockPayees.cbegin();
 
-    while(it != mapMasternodeBlockPayees.end()) {
-        int nTotalVotes = 0;
+    while(it != mapMasternodeBlockPayees.cend())
+    {
+        size_t nTotalVotes = 0;
         bool fFound = false;
         for (const auto& payee : it->second.vecPayees)
         {
-            if(payee.GetVoteCount() >= MNPAYMENTS_SIGNATURES_REQUIRED) {
+            if(payee.GetVoteCount() >= MNPAYMENTS_SIGNATURES_REQUIRED)
+            {
                 fFound = true;
                 break;
             }
@@ -755,7 +758,8 @@ void CMasternodePayments::RequestLowDataPaymentBlocks(CNode* pnode)
         }
         // A clear winner (MNPAYMENTS_SIGNATURES_REQUIRED+ votes) was found
         // or no clear winner was found but there are at least avg number of votes
-        if(fFound || nTotalVotes >= (MNPAYMENTS_SIGNATURES_TOTAL + MNPAYMENTS_SIGNATURES_REQUIRED)/2) {
+        if(fFound || nTotalVotes >= (MNPAYMENTS_SIGNATURES_TOTAL + MNPAYMENTS_SIGNATURES_REQUIRED)/2)
+        {
             // so just move to the next block
             ++it;
             continue;

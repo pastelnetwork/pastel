@@ -195,7 +195,7 @@ public:
         {
             READWRITE(strExtraLayerP2P);
         }
-        catch (const std::ios_base::failure& e)
+        catch ([[maybe_unused]] const std::ios_base::failure& e)
         {
             LogPrintf("CMasternode: missing extP2P!");
         }
@@ -341,7 +341,7 @@ public:
         {
             READWRITE(strExtraLayerP2P);
         }
-        catch (const std::ios_base::failure& e)
+        catch ([[maybe_unused]] const std::ios_base::failure& e)
         {
             LogPrintf("CMasternodeBroadcast: missing extP2P!");
         }

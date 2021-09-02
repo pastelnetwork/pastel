@@ -114,7 +114,7 @@ void CPastelTicketProcessor::UpdatedBlockTip(const CBlockIndex* cBlockIndex, boo
 
 void CPastelTicketProcessor::UpdateDB_MVK(const CPastelTicket& ticket, const std::string& mvKey)
 {
-    std::vector<std::string> mainKeys;
+    v_strings mainKeys;
     auto realMVKey = RealMVKey(mvKey);
     dbs.at(ticket.ID())->Read(realMVKey, mainKeys);
     if (std::find(mainKeys.cbegin(), mainKeys.cend(), ticket.KeyOne()) == mainKeys.cend())
@@ -152,7 +152,7 @@ bool CPastelTicketProcessor::UpdateDB(CPastelTicket &ticket, string& txid, const
 
 bool preParseTicket(const CMutableTransaction& tx, CDataStream& data_stream, TicketID& ticket_id, std::string& error, bool log = true)
 {
-    vector<unsigned char> output_data;
+    v_uint8 output_data;
     if (!CPastelTicketProcessor::ParseP2FMSTransaction(tx, output_data, error))
         return false;
     data_stream.write(reinterpret_cast<char*>(output_data.data()), output_data.size());
@@ -206,7 +206,8 @@ bool CPastelTicketProcessor::ValidateIfTicketTransaction(const int nHeight, cons
             bOk = ticket->IsValid(false, 0);
             expectedTicketFee = ticket->TicketPrice(nHeight) * COIN;
             storageFee = ticket->GetStorageFee();
-            if (ticket_id == TicketID::Trade) {
+            if (ticket_id == TicketID::Trade)
+            {
                 auto trade_ticket = dynamic_cast<CNFTTradeTicket *>(ticket.get());
                 if (!trade_ticket)
                     throw std::runtime_error("Invalid NFT Trade ticket");
@@ -220,13 +221,15 @@ bool CPastelTicketProcessor::ValidateIfTicketTransaction(const int nHeight, cons
                   throw std::runtime_error("Invalid NFT Reg ticket");
 
                 tradePrice = trade_ticket->price * COIN;
-                if (NFTRegTicket->nRoyalty > 0) {
-                  hasRoyaltyFee = true;
-                  royaltyFee = tradePrice * NFTRegTicket->nRoyalty;
+                if (NFTRegTicket->nRoyalty > 0)
+                {
+                    hasRoyaltyFee = true;
+                    royaltyFee = static_cast<CAmount>(tradePrice * NFTRegTicket->nRoyalty);
                 }
-                if (!NFTRegTicket->strGreenAddress.empty()) {
-                  hasGreenFee = true;
-                  greenFee = tradePrice * CNFTRegTicket::GreenPercent(nHeight) / 100;
+                if (!NFTRegTicket->strGreenAddress.empty())
+                {
+                    hasGreenFee = true;
+                    greenFee = tradePrice * CNFTRegTicket::GreenPercent(nHeight) / 100;
                 }
                 tradePrice -= (royaltyFee + greenFee);
             }
@@ -485,10 +488,10 @@ template <class _TicketType>
 std::vector<_TicketType> CPastelTicketProcessor::FindTicketsByMVKey(const std::string& mvKey)
 {
     std::vector<_TicketType> tickets;
-    std::vector<std::string> mainKeys;
+    v_strings vMainKeys;
     auto realMVKey = RealMVKey(mvKey);
-    dbs.at(_TicketType::GetID())->Read(realMVKey, mainKeys);
-    for (const auto& key : mainKeys)
+    dbs.at(_TicketType::GetID())->Read(realMVKey, vMainKeys);
+    for (const auto& key : vMainKeys)
     {
         _TicketType ticket;
         if (dbs.at(_TicketType::GetID())->Read(key, ticket))
@@ -511,20 +514,19 @@ std::string CPastelTicketProcessor::getValueBySecondaryKey(const CPastelTicket& 
     return retVal;
 }
 
-template std::vector<CPastelIDRegTicket> CPastelTicketProcessor::FindTicketsByMVKey<CPastelIDRegTicket>(const std::string&);
-template std::vector<CNFTRegTicket> CPastelTicketProcessor::FindTicketsByMVKey<CNFTRegTicket>(const std::string&);
-template std::vector<CNFTActivateTicket> CPastelTicketProcessor::FindTicketsByMVKey<CNFTActivateTicket>(const std::string&);
-template std::vector<CNFTSellTicket> CPastelTicketProcessor::FindTicketsByMVKey<CNFTSellTicket>(const std::string&);
-template std::vector<CNFTBuyTicket> CPastelTicketProcessor::FindTicketsByMVKey<CNFTBuyTicket>(const std::string&);
-template std::vector<CNFTTradeTicket> CPastelTicketProcessor::FindTicketsByMVKey<CNFTTradeTicket>(const std::string&);
-template std::vector<CNFTRoyaltyTicket> CPastelTicketProcessor::FindTicketsByMVKey<CNFTRoyaltyTicket>(const std::string&);
-template std::vector<CChangeUsernameTicket> CPastelTicketProcessor::FindTicketsByMVKey<CChangeUsernameTicket>(const std::string&);
-template std::vector<CChangeEthereumAddressTicket> CPastelTicketProcessor::FindTicketsByMVKey<CChangeEthereumAddressTicket>(const std::string&);
+template PastelIDRegTickets_t CPastelTicketProcessor::FindTicketsByMVKey<CPastelIDRegTicket>(const std::string&);
+template NFTRegTickets_t CPastelTicketProcessor::FindTicketsByMVKey<CNFTRegTicket>(const std::string&);
+template NFTActivateTickets_t CPastelTicketProcessor::FindTicketsByMVKey<CNFTActivateTicket>(const std::string&);
+template NFTSellTickets_t CPastelTicketProcessor::FindTicketsByMVKey<CNFTSellTicket>(const std::string&);
+template NFTBuyTickets_t CPastelTicketProcessor::FindTicketsByMVKey<CNFTBuyTicket>(const std::string&);
+template NFTTradeTickets_t CPastelTicketProcessor::FindTicketsByMVKey<CNFTTradeTicket>(const std::string&);
+template NFTRoyaltyTickets_t CPastelTicketProcessor::FindTicketsByMVKey<CNFTRoyaltyTicket>(const std::string&);
+template ChangeUsernameTickets_t CPastelTicketProcessor::FindTicketsByMVKey<CChangeUsernameTicket>(const std::string&);
+template ChangeEthereumAddressTickets_t CPastelTicketProcessor::FindTicketsByMVKey<CChangeEthereumAddressTicket>(const std::string&);
 
-
-std::vector<std::string> CPastelTicketProcessor::GetAllKeys(const TicketID id) const
+v_strings CPastelTicketProcessor::GetAllKeys(const TicketID id) const
 {
-    std::vector<std::string> vResults;
+    v_strings vResults;
     std::unique_ptr<CDBIterator> pcursor(dbs.at(id)->NewIterator());
     pcursor->SeekToFirst();
     std::string sKey;
@@ -926,7 +928,7 @@ bool CPastelTicketProcessor::CreateP2FMSTransactionWithExtra(const CDataStream& 
         return false;
     }
 
-    std::vector<unsigned char> input_bytes{input_stream.begin(), input_stream.end()};
+    v_uint8 input_bytes{input_stream.cbegin(), input_stream.cend()};
 
     //Get Hash(SHA256) of input buffer and insert it upfront
     uint256 input_hash = Hash(input_bytes.begin(), input_bytes.end());
@@ -945,9 +947,9 @@ bool CPastelTicketProcessor::CreateP2FMSTransactionWithExtra(const CDataStream& 
     input_bytes.insert(input_bytes.end(), padding_size, 0);
 
     //Break data into 33 bytes blocks
-    std::vector<std::vector<unsigned char>> chunks;
-    for (auto it = input_bytes.begin(); it != input_bytes.end(); it += fake_key_size) {
-        chunks.emplace_back(std::vector<unsigned char>(it, it + fake_key_size));
+    std::vector<v_uint8> chunks;
+    for (auto it = input_bytes.cbegin(); it != input_bytes.cend(); it += fake_key_size) {
+        chunks.emplace_back(v_uint8(it, it + fake_key_size));
     }
 
     //Create output P2FMS scripts
@@ -1075,20 +1077,21 @@ bool CPastelTicketProcessor::StoreP2FMSTransaction(const CMutableTransaction& tx
 
 bool CPastelTicketProcessor::ParseP2FMSTransaction(const CMutableTransaction& tx_in, std::string& output_string, std::string& error_ret)
 {
-    vector<unsigned char> output_data;
+    v_uint8 output_data;
     bool bOk = ParseP2FMSTransaction(tx_in, output_data, error_ret);
     if (bOk)
         output_string.assign(output_data.begin(), output_data.end());
     return bOk;
 }
 
-bool CPastelTicketProcessor::ParseP2FMSTransaction(const CMutableTransaction& tx_in, vector<unsigned char>& output_data, std::string& error_ret)
+bool CPastelTicketProcessor::ParseP2FMSTransaction(const CMutableTransaction& tx_in, v_uint8& output_data, std::string& error_ret)
 {
     bool foundMS = false;
 
-    for (const auto& vout : tx_in.vout) {
+    for (const auto& vout : tx_in.vout)
+    {
         txnouttype typeRet;
-        vector<vector<unsigned char>> vSolutions;
+        vector<v_uint8> vSolutions;
 
         if (!Solver(vout.scriptPubKey, typeRet, vSolutions) ||
             typeRet != TX_MULTISIG)
@@ -1124,7 +1127,7 @@ bool CPastelTicketProcessor::ParseP2FMSTransaction(const CMutableTransaction& tx
     auto output_len = **output_len_ptr;
     output_data.erase(output_data.begin(), output_data.begin() + sizeof(size_t));
 
-    std::vector<unsigned char> input_hash_vec(output_data.begin(), output_data.begin() + 32); //hash length == 32
+    v_uint8 input_hash_vec(output_data.begin(), output_data.begin() + 32); //hash length == 32
     output_data.erase(output_data.begin(), output_data.begin() + 32);
 
     if (output_data.size() < output_len) {
@@ -1147,56 +1150,49 @@ bool CPastelTicketProcessor::ParseP2FMSTransaction(const CMutableTransaction& tx
     return true;
 }
 
-std::vector<std::string> CPastelTicketProcessor::ValidateOwnership(const std::string &_txid, const std::string &_pastelID)
+/**
+ * Validate NFT ownership.
+ * 
+ * \param _txid - NFT registration txid
+ * \param _pastelID - Pastel ID of the owner to validate
+ * \return optional tuple <NFT registration txid, NFT trade txid>
+ */
+std::optional<reg_trade_txid_t> CPastelTicketProcessor::ValidateOwnership(const std::string &_txid, const std::string &_pastelID)
 {
-    //0th: NFT
-    //1th: trade
-    std::vector<string> sRetVal = {"", ""};
-
-    //Check if ticket is found by txid
-    try{
+    std::optional<reg_trade_txid_t> retVal;
+    try
+    {
+        // Find ticket by txid
         auto ticket = CPastelTicketProcessor::GetTicket(_txid, TicketID::NFT);
         auto NFTTicket = dynamic_cast<CNFTRegTicket*>(ticket.get());
         if (!NFTTicket)
-        {
-            return sRetVal;
-        }
+            return nullopt;
 
-        // Check if author and _pastelID are equal
-        if(NFTTicket->pastelIDs[0].compare(_pastelID) == 0 && CNFTActivateTicket::CheckTicketExistByNFTTicketID(NFTTicket->GetTxId()))
-        {
-            sRetVal[0] = _txid;
-            return sRetVal;
-        }
+        // Check if creator and _pastelID are equal
+        if((NFTTicket->pastelIDs[0]== _pastelID) && CNFTActivateTicket::CheckTicketExistByNFTTicketID(NFTTicket->GetTxId()))
+            return std::make_tuple(_txid, "");
 
     }
     catch(const std::runtime_error& e)
     {
-        LogPrintf("Was not able to process ValidateOWnership request due to: %s\n", e.what()); 
+        LogPrintf("Was not able to process ValidateOwnership request due to: %s\n", e.what()); 
     }
 
     //If we are here it means it is a nested trade ticket 
     //List trade tickets by reg txID and rearrange them by blockheight
-    std::vector<CNFTTradeTicket> tradeTickets = CNFTTradeTicket::FindAllTicketByRegTnxID(_txid);
+    const auto tradeTickets = CNFTTradeTicket::FindAllTicketByRegTnxID(_txid);
     
     // Go through each if not empty and rearrange them by block-height
     if(!tradeTickets.empty())
     {
         //std::sort(tradeTickets.begin(), tradeTickets.end(), [](CNFTTradeTicket & one, CNFTTradeTicket & two){return one.GetBlock() < two.GetBlock();});
-        std::map<std::string, std::string> ownersPastelIds_with_TxnIds = CNFTTradeTicket::GetPastelIdAndTxIdWithTopHeightPerCopy(tradeTickets);
-
-        for (const auto& winners: ownersPastelIds_with_TxnIds)
-        {
-            if(winners.first == _pastelID)
-            {
-                sRetVal[0] = _txid;
-                sRetVal[1] = winners.second;
-                break;
-            }
-        }
+        const auto ownersPastelIds_with_TnxIds = CNFTTradeTicket::GetPastelIdAndTxIdWithTopHeightPerCopy(tradeTickets);
+        const auto it = ownersPastelIds_with_TnxIds.find(_pastelID);
+        if (it != ownersPastelIds_with_TnxIds.cend())
+            retVal = std::make_tuple(_txid, it->second);
     }
 
-    return sRetVal;
+    return retVal;
 }
 
 #ifdef FAKE_TICKET

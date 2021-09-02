@@ -203,7 +203,7 @@ public:
     bool IsMasternodePingedWithin(const COutPoint& outpoint, int nSeconds, int64_t nTimeToCheckAt = -1);
     void SetMasternodeLastPing(const COutPoint& outpoint, const CMasternodePing& mnp);
 
-    void SetMasternodeFee(const COutPoint& outpoint, CAmount newFee);
+    void SetMasternodeFee(const COutPoint& outpoint, const CAmount newFee);
 
     void UpdatedBlockTip(const CBlockIndex *pindex);
     
