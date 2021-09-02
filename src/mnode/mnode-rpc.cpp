@@ -2699,15 +2699,14 @@ As json rpc
                 }
             }
             case RPC_CMD_LIST::validateethereumaddress: {
-                std::string ethereumaddress;
+                std::string ethereumAddress;
                 if (params.size() > 2) {
-                    ethereumaddress = params[2].get_str();
+                    ethereumAddress = params[2].get_str();
 
                     UniValue obj(UniValue::VOBJ);
                     std::string ethereumAddressValidationError;
-                    bool isInvalid = CChangeEthereuemAddressTicket::isEthereumAddressInvalid(ethereumaddress, ethereumAddressValidationError);
-                    }
-                    obj.pushKV("isBad", isBad);
+                    bool isInvalid = CChangeEthereuemAddressTicket::isEthereumAddressInvalid(ethereumAddress, ethereumAddressValidationError);
+                    obj.pushKV("isInvalid", isInvalid);
                     obj.pushKV("validationError", std::move(ethereumAddressValidationError));
 
                     return obj;
