@@ -2113,7 +2113,7 @@ bool CChangeEthereumAddressTicket::isEthereumAddressInvalid(const std::string& e
     }
 
     // Check if doesn't start with 0x:
-    if ( (ethereumAddress.substring(0, 2)) !=  "0x"  ) {
+    if ( (ethereumAddress.substr(0, 2)) !=  "0x"  ) {
         error = "Invalid ethereum address, should start with 0x";
         return true;
     }
