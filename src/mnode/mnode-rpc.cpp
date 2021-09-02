@@ -34,6 +34,10 @@
 void EnsureWalletIsUnlocked();
 #endif // ENABLE_WALLET
 
+const CAmount kPastelidRegistrationFeeBase = 1000;
+const CAmount kUsernameRegistrationFeeBase = 100;
+const CAmount kUsernameChangeFeeBase = 5000;
+
 UniValue formatMnsInfo(const std::vector<CMasternode>& topBlockMNs)
 {
     UniValue mnArray(UniValue::VARR);
@@ -1494,6 +1498,40 @@ Available commands:
         }
     }
     return NullUniValue;
+}
+
+UniValue getfeeschedule(const UniValue& params, bool fHelp)
+{
+    RPC_CMD_PARSER(STORAGE_FEE, params, setfee, getnetworkfee, getnftticketfee, getlocalfee);
+
+    if (fHelp)
+        throw runtime_error(
+R"(getfeeschedule
+Returns fee deflation rate + related fees
+
+Result:
+{
+    "fee_deflation_rate"          : x.xxx,
+    "pastelid_registration_fee"   : x.xxx,
+    "username_registration_fee"   : x.xxx,
+    "username_change_fee"         : x.xxx,
+},
+)"
++ HelpExampleCli("getfeeschedule", "")
++ HelpExampleRpc("getfeeschedule", ""));
+
+    UniValue ret(UniValue::VOBJ);
+
+    double chainDeflationRate = masterNodeCtrl.GetChainDeflationRate();
+    double pastelidRegistrationFee = kPastelidRegistrationFeeBase * chainDeflationRate;
+    double usernameRegistrationFee = kUsernameRegistrationFeeBase * chainDeflationRate;
+    double usernameChangeFee = kUsernameChangeFeeBase * chainDeflationRate;
+
+    ret.pushKV("fee_deflation_rate", chainDeflationRate);
+    ret.pushKV("pastelid_registration_fee", pastelidRegistrationFee);
+    ret.pushKV("username_registration_fee", usernameRegistrationFee);
+    ret.pushKV("username_change_fee", usernameChangeFee);
+    return ret;
 }
 
 UniValue chaindata(const UniValue& params, bool fHelp) {
@@ -3073,6 +3111,7 @@ static const CRPCCommand commands[] =
     { "mnode",               "governance",             &governance,             true  },
     { "mnode",               "pastelid",               &pastelid,               true  },
     { "mnode",               "storagefee",             &storagefee,             true  },
+    { "mnode",               "getfeeschedule",         &getfeeschedule,         true  },
     { "mnode",               "chaindata",              &chaindata,              true  },
     { "mnode",               "tickets",                &tickets,                true  },
 //INGEST->!!!
