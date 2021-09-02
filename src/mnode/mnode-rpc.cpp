@@ -1921,7 +1921,7 @@ As json rpc
 )" + HelpExampleRpc("tickets",
                     R"("register", "sell", "907e5e4c6fc4d14660a22afe2bdf6d27a3c8762abf0a89355bb19b7d9e7dc440" "100000" "jXYqZNPj21RVnwxnEJ654wEdzi7GZTZ5LAdiotBmPrF7pDMkpX1JegDMQZX55WZLkvy9fxNpZcbBJuE8QYUqBF", "passphrase")"));
             
-            std::string NFTTicketTxID = params[2].get_str();
+            std::string NFTTicketTxnID = params[2].get_str();
             int price = get_number(params[3]);
             
             std::string pastelID = params[4].get_str();
@@ -1939,7 +1939,7 @@ As json rpc
             if (params.size() == 9)
                 copyNumber = get_number(params[8]);
             
-            CNFTSellTicket NFTSellTicket = CNFTSellTicket::Create(NFTTicketTxID, price, after, before, copyNumber, pastelID, strKeyPass);
+            CNFTSellTicket NFTSellTicket = CNFTSellTicket::Create(NFTTicketTxnID, price, after, before, copyNumber, pastelID, strKeyPass);
             std::string txid = CPastelTicketProcessor::SendTicket(NFTSellTicket);
             
             mnObj.pushKV(RPC_KEY_TXID, txid);
@@ -2255,7 +2255,7 @@ As json rpc
             return getTickets<CNFTActivateTicket, int>(key, atoi(key), CNFTActivateTicket::FindAllTicketByCreatorHeight);
 
         case RPC_CMD_FIND::sell:
-            return getTickets<CNFTSellTicket>(key, key, CNFTSellTicket::FindAllTicketByNFTTnxID);
+            return getTickets<CNFTSellTicket>(key, key, CNFTSellTicket::FindAllTicketByNFTTxnID);
 
         case RPC_CMD_FIND::buy:
             return getTickets<CNFTBuyTicket>(key);
@@ -2855,7 +2855,7 @@ As json rpc
             return CPastelTicketProcessor::CreateFakeTransaction(NFTActTicket, ticketPrice, addresses, strVerb, bSend);
         }
         if (FAKETICKET.IsCmd(RPC_CMD_FAKETICKET::sell)) {
-            std::string NFTTicketTxID = params[2].get_str();
+            std::string NFTTicketTxnID = params[2].get_str();
             int price = get_number(params[3]);
     
             std::string pastelID = params[4].get_str();
@@ -2866,7 +2866,7 @@ As json rpc
             int after = get_number(params[6]);
             int before = get_number(params[7]);
     
-            CNFTSellTicket NFTSellTicket = CNFTSellTicket::Create(NFTTicketTxID, price, after, before, 0, pastelID, strKeyPass);
+            CNFTSellTicket NFTSellTicket = CNFTSellTicket::Create(NFTTicketTxnID, price, after, before, 0, pastelID, strKeyPass);
     
             CAmount ticketPrice = get_long_number(params[8].get_str());
             std::string strVerb = params[9].get_str();

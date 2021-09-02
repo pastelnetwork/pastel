@@ -380,7 +380,7 @@ public:
     static bool FindTicketInDb(const std::string& key, CNFTSellTicket& ticket);
     
     static std::vector<CNFTSellTicket> FindAllTicketByPastelID(const std::string& pastelID);
-    static std::vector<CNFTSellTicket> FindAllTicketByNFTTxnId(const std::string& NFTTxnId);
+    static std::vector<CNFTSellTicket> FindAllTicketByNFTTxnID(const std::string& NFTTxnId);
 };
 
 /*
@@ -534,7 +534,7 @@ public:
     static bool FindTicketInDb(const std::string& key, CNFTTradeTicket& ticket);
     
     static std::vector<CNFTTradeTicket> FindAllTicketByPastelID(const std::string& pastelID);
-    static std::vector<CNFTTradeTicket> FindAllTicketByNFTTnxID(const std::string& NFTTnxID);
+    static std::vector<CNFTTradeTicket> FindAllTicketByNFTTxnID(const std::string& NFTTxnId);
     static std::vector<CNFTTradeTicket> FindAllTicketByRegTnxID(const std::string& nftRegTxnId);
     
     static bool CheckTradeTicketExistBySellTicket(const std::string& _sellTxnId);
@@ -615,7 +615,7 @@ public:
   static bool FindTicketInDb(const std::string& key, CNFTRoyaltyTicket& ticket);
 
   static std::vector<CNFTRoyaltyTicket> FindAllTicketByPastelID(const std::string& pastelID);
-  static std::vector<CNFTRoyaltyTicket> FindAllTicketByNFTTxnId(const std::string& NFTTxnId);
+  static std::vector<CNFTRoyaltyTicket> FindAllTicketByNFTTxnID(const std::string& NFTTxnId);
 };
 
 // Take Down Ticket /////////////////////////////////////////////////////////////////////////////////////////////////////

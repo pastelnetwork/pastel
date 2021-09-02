@@ -642,7 +642,7 @@ std::string CPastelTicketProcessor::ListFilterNFTTickets(const short filter) con
                 if (CNFTActivateTicket::FindTicketInDb(t.GetTxId(), actTicket))
                 {
                     //find Trade tickets listing that Act ticket txid as NFT ticket
-                    auto vTradeTickets = CNFTTradeTicket::FindAllTicketByNFTTnxID(actTicket.GetTxId());
+                    auto vTradeTickets = CNFTTradeTicket::FindAllTicketByNFTTxnID(actTicket.GetTxId());
                     if (vTradeTickets.size() >= t.totalCopies)
                         return false; //don't skip sold
                 }
@@ -666,7 +666,7 @@ std::string CPastelTicketProcessor::ListFilterActTickets(const short filter) con
         [&](const CNFTActivateTicket& t, const unsigned int chainHeight) -> bool
         {
             //find Trade tickets listing this Act ticket txid as NFT ticket
-            auto vTradeTickets = CNFTTradeTicket::FindAllTicketByNFTTnxID(t.GetTxId());
+            auto vTradeTickets = CNFTTradeTicket::FindAllTicketByNFTTxnID(t.GetTxId());
             auto ticket = GetTicket(t.regTicketTxnId, TicketID::NFT);
             auto NFTRegTicket = dynamic_cast<CNFTRegTicket*>(ticket.get());
             if (!NFTRegTicket)
@@ -765,7 +765,7 @@ std::string CPastelTicketProcessor::ListFilterTradeTickets(const short filter, c
         [&](const CNFTTradeTicket& t, const unsigned int chainHeight) -> bool
         {
             //find Trade tickets listing this Trade ticket txid as NFT ticket
-            auto tradeTickets = CNFTTradeTicket::FindAllTicketByNFTTnxID(t.GetTxId());
+            auto tradeTickets = CNFTTradeTicket::FindAllTicketByNFTTxnID(t.GetTxId());
             if (!pastelID.empty() && t.pastelID != pastelID)
                 return true; // ignore tickets that do not belong to this pastelID
             if (filter == 0)

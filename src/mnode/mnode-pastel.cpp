@@ -486,7 +486,7 @@ std::string CNFTRegTicket::GetRoyaltyPayeePastelID() const {
   int index{0};
   int foundIndex{-1};
   unsigned int highBlock{0};
-  const auto tickets = CNFTRoyaltyTicket::FindAllTicketByNFTTxnId(m_txid);
+  const auto tickets = CNFTRoyaltyTicket::FindAllTicketByNFTTxnID(m_txid);
   for (const auto& ticket: tickets) {
     if (ticket.GetBlock() > highBlock) {
       highBlock = ticket.GetBlock();
@@ -664,7 +664,7 @@ void trade_copy_validation(const std::string& NFTTxnId, const std::vector<unsign
   }
 
   size_t soldCopies{0};
-  const auto existingTradeTickets = CNFTTradeTicket::FindAllTicketByNFTTnxID(NFTTxnId);
+  const auto existingTradeTickets = CNFTTradeTicket::FindAllTicketByNFTTxnID(NFTTxnId);
   for (const auto& t: existingTradeTickets) {
     if (t.signature != signature) {
       ++soldCopies;
@@ -874,7 +874,7 @@ CNFTSellTicket CNFTSellTicket::Create(std::string _NFTTxnId, int _askedPrice, in
     
     //NOTE: Sell ticket for Trade ticket will always has copyNumber = 1
     ticket.copyNumber = _copy_number > 0 ? 
-        _copy_number : static_cast<decltype(ticket.copyNumber)>(CNFTSellTicket::FindAllTicketByNFTTnxID(ticket.NFTTxnId).size()) + 1;
+        _copy_number : static_cast<decltype(ticket.copyNumber)>(CNFTSellTicket::FindAllTicketByNFTTxnID(ticket.NFTTxnId).size()) + 1;
     ticket.key = ticket.NFTTxnId + ":" + to_string(ticket.copyNumber);
     
     std::string strTicket = ticket.ToStr();
@@ -930,7 +930,7 @@ bool CNFTSellTicket::IsValid(bool preReg, int depth) const
     size_t totalCopies{0};
     // Verify the NFT is not already sold or gifted
     const auto verifyAvailableCopies = [this](const std::string& strTicket, const size_t totalCopies) {
-      const auto existingTradeTickets = CNFTTradeTicket::FindAllTicketByNFTTnxID(NFTTxnId);
+      const auto existingTradeTickets = CNFTTradeTicket::FindAllTicketByNFTTxnID(NFTTxnId);
       size_t soldCopies = existingTradeTickets.size();
 
       if (soldCopies >= totalCopies) {
@@ -1014,7 +1014,7 @@ bool CNFTSellTicket::IsValid(bool preReg, int depth) const
     // (ticket transaction replay attack protection)
     // If found similar ticket, replacement is possible if allowed
     // Can be a few Sell tickets
-    const auto existingSellTickets = CNFTSellTicket::FindAllTicketByNFTTnxID(NFTTxnId);
+    const auto existingSellTickets = CNFTSellTicket::FindAllTicketByNFTTxnID(NFTTxnId);
     for (const auto& t: existingSellTickets) {
       if (t.IsBlock(m_nBlock) || t.m_txid == m_txid || t.copyNumber != copyNumber) {
         continue;
@@ -1084,7 +1084,7 @@ std::vector<CNFTSellTicket> CNFTSellTicket::FindAllTicketByPastelID(const std::s
     return masterNodeCtrl.masternodeTickets.FindTicketsByMVKey<CNFTSellTicket>(pastelID);
 }
 
-std::vector<CNFTSellTicket> CNFTSellTicket::FindAllTicketByNFTTxnId(const std::string& NFTTxnId)
+std::vector<CNFTSellTicket> CNFTSellTicket::FindAllTicketByNFTTxnID(const std::string& NFTTxnId)
 {
     return masterNodeCtrl.masternodeTickets.FindTicketsByMVKey<CNFTSellTicket>(NFTTxnId);
 }
@@ -1539,9 +1539,9 @@ std::vector<CNFTTradeTicket> CNFTTradeTicket::FindAllTicketByPastelID(const std:
     return masterNodeCtrl.masternodeTickets.FindTicketsByMVKey<CNFTTradeTicket>(pastelID);
 }
 
-std::vector<CNFTTradeTicket> CNFTTradeTicket::FindAllTicketByNFTTnxID(const std::string& NFTTnxID)
+std::vector<CNFTTradeTicket> CNFTTradeTicket::FindAllTicketByNFTTxnID(const std::string& NFTTxnId)
 {
-    return masterNodeCtrl.masternodeTickets.FindTicketsByMVKey<CNFTTradeTicket>(NFTTnxID);
+    return masterNodeCtrl.masternodeTickets.FindTicketsByMVKey<CNFTTradeTicket>(NFTTxnId);
 }
 
 std::vector<CNFTTradeTicket> CNFTTradeTicket::FindAllTicketByRegTnxID(const std::string& nftRegTxnId)
@@ -1735,7 +1735,7 @@ bool CNFTRoyaltyTicket::IsValid(bool preReg, int depth) const {
   int index{0};
   int foundIndex{-1};
   unsigned int highBlock{0};
-  const auto tickets = CNFTRoyaltyTicket::FindAllTicketByNFTTxnId(NFTTxnId);
+  const auto tickets = CNFTRoyaltyTicket::FindAllTicketByNFTTxnID(NFTTxnId);
   for (const auto& royaltyTicket: tickets) {
     if (royaltyTicket.signature == signature) {
       continue;
@@ -1797,7 +1797,7 @@ std::vector<CNFTRoyaltyTicket> CNFTRoyaltyTicket::FindAllTicketByPastelID(const 
   return masterNodeCtrl.masternodeTickets.FindTicketsByMVKey<CNFTRoyaltyTicket>(pastelID);
 }
 
-std::vector<CNFTRoyaltyTicket> CNFTRoyaltyTicket::FindAllTicketByNFTTxnId(const std::string& NFTTxnId) {
+std::vector<CNFTRoyaltyTicket> CNFTRoyaltyTicket::FindAllTicketByNFTTxnID(const std::string& NFTTxnId) {
   return masterNodeCtrl.masternodeTickets.FindTicketsByMVKey<CNFTRoyaltyTicket>(NFTTxnId);
 }
 
