@@ -2111,45 +2111,7 @@ As json rpc
 )" + HelpExampleRpc("tickets",
                     R"("register", "down", "jXYqZNPj21RVnwxnEJ654wEdzi7GZTZ5LAdiotBmPrF7pDMkpX1JegDMQZX55WZLkvy9fxNpZcbBJuE8QYUqBF", "passphrase")"));
 		}
-        if (REGISTER.IsCmd(RPC_CMD_REGISTER::username)) {
-			if (fHelp || params.size() != 5) //-V560
-				throw JSONRPCError(RPC_INVALID_PARAMETER,
-R"(tickets register username "PastelId" "username" "passphrase"
-Register Username Change Request ticket. If successful, method returns "txid"
 
-Arguments:
-x. "PastelId"      (string, required) The PastelID. NOTE: PastelID must be generated and stored inside node. See "pastelid newkey".
-x. "username"      (string, required) The username that will be mapped with above PastelID
-y. "passphrase"    (string, required) The passphrase to the private key associated with PastelID and stored inside node. See "pastelid newkey".
-Username Change Request Ticket:
-{
-    "ticket": {
-		"type": "username",
-		"pastelID": "",    //PastelID of the username
-		"username": "",    //new valid username
-		"fee": "",         // fee to change username
-		"signature": ""
-	},
-	"height": "",
-	"txid": ""
-  }
-
-Register Username
-)" + HelpExampleCli("tickets register username", R"(jXYqZNPj21RVnwxnEJ654wEdzi7GZTZ5LAdiotBmPrF7pDMkpX1JegDMQZX55WZLkvy9fxNpZcbBJuE8QYUqBF "bsmith84" "passphrase")") +
-                                                   R"(
-As json rpc
-)" + HelpExampleRpc("tickets",
-                    R"("register", "username", "jXYqZNPj21RVnwxnEJ654wEdzi7GZTZ5LAdiotBmPrF7pDMkpX1JegDMQZX55WZLkvy9fxNpZcbBJuE8QYUqBF", "bsmith84", "passphrase")"));
-            std::string username = params[2].get_str();
-            std::string pastelID = params[3].get_str();
-            SecureString strKeyPass;
-            strKeyPass.reserve(100);
-            strKeyPass = params[4].get_str().c_str();
-            CChangeUsernameTicket changeUsernameTicket = CChangeUsernameTicket::Create(pastelID, username, strKeyPass);
-            std::string txid = CPastelTicketProcessor::SendTicket(changeUsernameTicket);
-            mnObj.pushKV(RPC_KEY_TXID, std::move(txid));
-		}
-	
         if (REGISTER.IsCmd(RPC_CMD_REGISTER::ethereumaddress)) {
 			if (fHelp || params.size() != 5) //-V560
 				throw JSONRPCError(RPC_INVALID_PARAMETER,
@@ -2186,6 +2148,45 @@ As json rpc
             strKeyPass = params[4].get_str().c_str();
             CChangeEthereumAddressTicket EthereumAddressTicket = CChangeEthereumAddressTicket::Create(pastelID, ethereumAddress, strKeyPass);
             std::string txid = CPastelTicketProcessor::SendTicket(EthereumAddressTicket);
+            mnObj.pushKV(RPC_KEY_TXID, std::move(txid));
+		}
+
+        if (REGISTER.IsCmd(RPC_CMD_REGISTER::username)) {
+			if (fHelp || params.size() != 5) //-V560
+				throw JSONRPCError(RPC_INVALID_PARAMETER,
+R"(tickets register username "PastelId" "username" "passphrase"
+Register Username Change Request ticket. If successful, method returns "txid"
+
+Arguments:
+x. "PastelId"      (string, required) The PastelID. NOTE: PastelID must be generated and stored inside node. See "pastelid newkey".
+x. "username"      (string, required) The username that will be mapped with above PastelID
+y. "passphrase"    (string, required) The passphrase to the private key associated with PastelID and stored inside node. See "pastelid newkey".
+Username Change Request Ticket:
+{
+    "ticket": {
+		"type": "username",
+		"pastelID": "",    //PastelID of the username
+		"username": "",    //new valid username
+		"fee": "",         // fee to change username
+		"signature": ""
+	},
+	"height": "",
+	"txid": ""
+  }
+
+Register Username
+)" + HelpExampleCli("tickets register username", R"(jXYqZNPj21RVnwxnEJ654wEdzi7GZTZ5LAdiotBmPrF7pDMkpX1JegDMQZX55WZLkvy9fxNpZcbBJuE8QYUqBF "bsmith84" "passphrase")") +
+                                                   R"(
+As json rpc
+)" + HelpExampleRpc("tickets",
+                    R"("register", "username", "jXYqZNPj21RVnwxnEJ654wEdzi7GZTZ5LAdiotBmPrF7pDMkpX1JegDMQZX55WZLkvy9fxNpZcbBJuE8QYUqBF", "bsmith84", "passphrase")"));
+            std::string username = params[2].get_str();
+            std::string pastelID = params[3].get_str();
+            SecureString strKeyPass;
+            strKeyPass.reserve(100);
+            strKeyPass = params[4].get_str().c_str();
+            CChangeUsernameTicket changeUsernameTicket = CChangeUsernameTicket::Create(pastelID, username, strKeyPass);
+            std::string txid = CPastelTicketProcessor::SendTicket(changeUsernameTicket);
             mnObj.pushKV(RPC_KEY_TXID, std::move(txid));
 		}
 		return mnObj;
@@ -2254,7 +2255,7 @@ As json rpc
             return getTickets<CNFTActivateTicket, int>(key, atoi(key), CNFTActivateTicket::FindAllTicketByCreatorHeight);
 
         case RPC_CMD_FIND::sell:
-            return getTickets<CNFTSellTicket>(key, key, CNFTSellTicket::FindAllTicketByNFTTxnID);
+            return getTickets<CNFTSellTicket>(key, key, CNFTSellTicket::FindAllTicketByNFTTnxID);
 
         case RPC_CMD_FIND::buy:
             return getTickets<CNFTBuyTicket>(key);
