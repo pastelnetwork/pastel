@@ -1507,7 +1507,7 @@ UniValue getfeeschedule(const UniValue& params, bool fHelp)
     if (fHelp)
         throw runtime_error(
 R"(getfeeschedule
-Returns fee deflation rate + related fees
+Returns chain deflation rate + related fees
 
 Result:
 {
