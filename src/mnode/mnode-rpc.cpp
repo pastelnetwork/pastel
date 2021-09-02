@@ -2705,7 +2705,7 @@ As json rpc
 
                     UniValue obj(UniValue::VOBJ);
                     std::string ethereumAddressValidationError;
-                    bool isInvalid = CChangeEthereuemAddressTicket::isEthereumAddressInvalid(ethereumAddress, ethereumAddressValidationError);
+                    bool isInvalid = CChangeEthereumAddressTicket::isEthereumAddressInvalid(ethereumAddress, ethereumAddressValidationError);
                     obj.pushKV("isInvalid", isInvalid);
                     obj.pushKV("validationError", std::move(ethereumAddressValidationError));
 
