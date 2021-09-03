@@ -216,6 +216,7 @@ BITCOIN_CORE_H = \
   legroast.h \
   limitedmap.h \
   main.h \
+  map_types.h \
   memusage.h \
   merkleblock.h \
   metrics.h \

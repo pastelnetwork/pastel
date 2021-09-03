@@ -3,6 +3,7 @@
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
 #include "bech32.h"
+#include "str_utils.h"
 
 namespace
 {
@@ -162,26 +163,30 @@ std::string Encode(const std::string& hrp, const v_uint8& values)
 /** Decode a Bech32 string. */
 std::pair<std::string, v_uint8> Decode(const std::string& str)
 {
-    bool lower = false, upper = false;
-    for (size_t i = 0; i < str.size(); ++i) {
-        unsigned char c = str[i];
-        if (c < 33 || c > 126) return {};
-        if (c >= 'a' && c <= 'z') lower = true;
-        if (c >= 'A' && c <= 'Z') upper = true;
+    bool bLower = false, bUpper = false;
+    for (const auto ch : str)
+    {
+        if (ch < 33 || ch > 126)
+            return {};
+        if (islowerex(ch))
+        {
+            bLower = true;
+            continue;
+        }
+        if (isupperex(ch))
+            bUpper = true;
     }
-    if (lower && upper)
+    if (bLower && bUpper)
         return {};
-    size_t pos = str.rfind('1');
-    if (str.size() > 1023 || pos == str.npos || pos == 0 || pos + 7 > str.size()) {
+    const size_t pos = str.rfind('1');
+    if (str.size() > 1023 || pos == str.npos || pos == 0 || pos + 7 > str.size())
         return {};
-    }
     v_uint8 values(str.size() - 1 - pos);
     for (size_t i = 0; i < str.size() - 1 - pos; ++i) {
         unsigned char c = str[i + pos + 1];
         int8_t rev = (c < 33 || c > 126) ? -1 : CHARSET_REV[c];
-        if (rev == -1) {
+        if (rev == -1)
             return {};
-        }
         values[i] = rev;
     }
     std::string hrp;
@@ -189,7 +194,9 @@ std::pair<std::string, v_uint8> Decode(const std::string& str)
         hrp += LowerCase(str[i]);
     if (!VerifyChecksum(hrp, values))
         return {};
-    return {hrp, v_uint8(values.begin(), values.end() - 6)};
+    if (values.size() >= 6 )
+        values.resize(values.size() - 6);
+    return {hrp, values};
 }
 
 } // namespace bech32

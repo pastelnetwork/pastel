@@ -1487,7 +1487,7 @@ void CMasternodeMan::SetMasternodeLastPing(const COutPoint& outpoint, const CMas
     }
 }
 
-void CMasternodeMan::SetMasternodeFee(const COutPoint& outpoint, CAmount newFee)
+void CMasternodeMan::SetMasternodeFee(const COutPoint& outpoint, const CAmount newFee)
 {
     LOCK(cs);
     CMasternode* pmn = Find(outpoint);

@@ -40,9 +40,10 @@ static inline void trim(std::string& s)
  *
  * \param s
  */
-static inline void lowercase(std::string &s)
+static inline std::string &lowercase(std::string &s)
 {
     std::transform(s.cbegin(), s.cend(), s.begin(), [](const auto ch) { return std::tolower(ch); });
+    return s;
 }
 
 /**
@@ -50,12 +51,20 @@ static inline void lowercase(std::string &s)
  *
  * \param s
  */
-static inline void uppercase(std::string& s)
+static inline std::string & uppercase(std::string& s)
 {
     std::transform(s.cbegin(), s.cend(), s.begin(), [](const auto ch) { return std::toupper(ch); });
+    return s;
 }
 
-static inline void replaceAll(std::string &s, const std::string& sFrom, const std::string &sTo)
+/**
+ * find all occurancies of sFrom and replace with sTo in a string s.
+ *
+ * \param s - string to use for find and replace
+ * \param sFrom - string to search for
+ * \param sTo - string to replace with
+ */
+static inline void replaceAll(std::string& s, const std::string& sFrom, const std::string& sTo)
 {
     size_t nPos = 0;
     while ((nPos = s.find(sFrom, nPos)) != std::string::npos)
@@ -65,11 +74,57 @@ static inline void replaceAll(std::string &s, const std::string& sFrom, const st
     }
 }
 
+/**
+ * Check if character is in lowercase (a..z).
+ *
+ * \param c - character to check
+ * \return true - if c is in lowercase
+ */
+static inline bool islowerex(const char c) noexcept
+{
+	return (c >= 'a' && c <= 'z');
+}
+
+/**
+ * Check if character is in uppercase (A..Z).
+ *
+ * \param c - character to check
+ * \return true - if c is in uppercase
+ */
+static inline bool isupperex(const char c) noexcept
+{
+	return (c >= 'A' && c <= 'Z');
+}
+
+/**
+ * Check if character is alphabetic without using locale
+ *
+ * \param c - character to test
+ * \return true if character is alphabetic (A..Z,a..z)
+ */
 static inline bool isalphaex(const char c) noexcept
 {
     return ((c >= 'A') && (c <= 'Z')) || ((c >= 'a') && (c <= 'z'));
 }
+
+/**
+ * Check if character is decimal digit without using locale
+ *
+ * \param c - character to test
+ * \return true if character is digit (0..9)
+ */
 static inline bool isdigitex(const char c) noexcept
 {
     return (c >= '0') && (c <= '9');
+}
+
+/**
+ * Check if character is alphanumeric without using locale.
+ *
+ * \param c - character to test
+ * \return true if c is in one of these sets (A..Z, a..z, 0..9)
+ */
+static inline bool isalnumex(const char c) noexcept
+{
+    return isalphaex(c) || isdigitex(c);
 }
