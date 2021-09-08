@@ -9,7 +9,7 @@
 
 from test_framework.authproxy import JSONRPCException
 from test_framework.test_framework import BitcoinTestFramework
-from test_framework.util import assert_equal, \
+from test_framework.util import assert_equal, initialize_chain_clean, \
     connect_nodes_bi, sync_blocks, start_nodes, \
     wait_and_assert_operationid_status
 
@@ -22,6 +22,14 @@ TX_EXPIRY_DELTA = 10
 
 class MempoolTxExpiryTest(BitcoinTestFramework):
 
+    def __init__(self):
+        super().__init__()
+        self.setup_clean_chain = True
+
+    def setup_chain(self):
+        print(f"Initializing test directory {self.options.tmpdir}")
+        initialize_chain_clean(self.options.tmpdir, self.num_nodes)
+
     def setup_nodes(self):
         return start_nodes(self.num_nodes, self.options.tmpdir,
             [[
@@ -32,8 +40,8 @@ class MempoolTxExpiryTest(BitcoinTestFramework):
             ]] * self.num_nodes)
 
     # Test before, at, and after expiry block
-    # chain is at block height 199 when run_test executes
     def run_test(self):
+        self.generate_and_sync(199)
         alice = self.nodes[0].getnewaddress()
         z_alice = self.nodes[0].z_getnewaddress('sapling')
         bob = self.nodes[2].getnewaddress()

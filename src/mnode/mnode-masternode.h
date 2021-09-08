@@ -143,13 +143,14 @@ public:
 
 
     CMasternodePing lastPing{};
-    std::vector<unsigned char> vchSig{};
+    v_uint8 vchSig{};
 
     uint256 nCollateralMinConfBlockHash{};
     int nBlockLastPaid{};
     int nPoSeBanScore{};
     int nPoSeBanHeight{};
     bool fUnitTest = false;
+    const CChainParams& m_chainparams;
 
     CAmount aMNFeePerMB = 0; // 0 means default (masterNodeCtrl.MasternodeFeePerMBDefault)
     CAmount aNFTTicketFeePerKB = 0; // 0 means default (masterNodeCtrl.NFTTicketFeePerKBDefault)

@@ -4,7 +4,7 @@
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
 #include "chainparamsbase.h"
-
+#include "port_config.h"
 #include "util.h"
 
 #include <assert.h>
@@ -17,10 +17,9 @@ class CBaseMainParams : public CBaseChainParams
 public:
     CBaseMainParams()
     {
-        nRPCPort = 9932;
+        nRPCPort = MAINNET_DEFAULT_RPC_PORT;
     }
 };
-static CBaseMainParams mainParams;
 
 /**
  * Testnet (v3)
@@ -30,11 +29,10 @@ class CBaseTestNetParams : public CBaseChainParams
 public:
     CBaseTestNetParams()
     {
-        nRPCPort = 19932;
+        nRPCPort = TESTNET_DEFAULT_RPC_PORT;
         strDataDir = "testnet3";
     }
 };
-static CBaseTestNetParams testNetParams;
 
 /*
  * Regression test
@@ -48,7 +46,6 @@ public:
         strDataDir = "regtest";
     }
 };
-static CBaseRegTestParams regTestParams;
 
 /*
  * Unit test
@@ -61,36 +58,50 @@ public:
         strDataDir = "unittest";
     }
 };
-static CBaseUnitTestParams unitTestParams;
 
-static CBaseChainParams* pCurrentBaseParams = 0;
+static std::unique_ptr<CBaseChainParams> globalChainBaseParams;
 
 const CBaseChainParams& BaseParams()
 {
-    assert(pCurrentBaseParams);
-    return *pCurrentBaseParams;
+    assert(globalChainBaseParams);
+    return *globalChainBaseParams;
 }
 
-void SelectBaseParams(CBaseChainParams::Network network)
+/**
+ * Creates and returns a std::unique_ptr<CBaseChainParams>.
+ * 
+ * \param network - blockchain type (MAIN, TESTNET or REGTEST)
+ * \return std::unique_ptr<CBaseChainParams>
+ */
+std::unique_ptr<CBaseChainParams> CreateBaseChainParams(const CBaseChainParams::Network network)
 {
+    std::unique_ptr<CBaseChainParams> BaseChainParams;
     switch (network)
     {
     case CBaseChainParams::Network::MAIN:
-        pCurrentBaseParams = &mainParams;
+        BaseChainParams = std::make_unique<CBaseMainParams>();
         break;
 
     case CBaseChainParams::Network::TESTNET:
-        pCurrentBaseParams = &testNetParams;
+        BaseChainParams = std::make_unique<CBaseTestNetParams>();
         break;
 
     case CBaseChainParams::Network::REGTEST:
-        pCurrentBaseParams = &regTestParams;
+        BaseChainParams = std::make_unique<CBaseRegTestParams>();
         break;
 
     default:
         assert(false && "Unimplemented network");
-        return;
+        BaseChainParams = std::make_unique<CBaseMainParams>();
+        break;
     }
+    return BaseChainParams;
+}
+
+/** Sets the params returned by Params() to those for the given network. */
+void SelectBaseParams(const CBaseChainParams::Network network)
+{
+    globalChainBaseParams = CreateBaseChainParams(network);
 }
 
 CBaseChainParams::Network NetworkIdFromCommandLine()
@@ -119,5 +130,5 @@ bool SelectBaseParamsFromCommandLine()
 
 bool AreBaseParamsConfigured()
 {
-    return pCurrentBaseParams != nullptr;
+    return (bool)globalChainBaseParams;
 }

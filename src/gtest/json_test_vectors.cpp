@@ -1,7 +1,6 @@
 #include "json_test_vectors.h"
 
-UniValue
-read_json(const std::string& jsondata)
+UniValue read_json(const std::string& jsondata)
 {
     UniValue v;
 

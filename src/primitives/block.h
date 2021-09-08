@@ -6,6 +6,7 @@
 #include "primitives/transaction.h"
 #include "serialize.h"
 #include "uint256.h"
+
 #include <sstream>
 
 /** Nodes collect new transactions into a block, hash them into a hash tree,
@@ -20,13 +21,13 @@ class CBlockHeader
 public:
     // header
     int32_t nVersion;
-    uint256 hashPrevBlock;                // hash of the previous block
-    uint256 hashMerkleRoot;               // merkle root
+    uint256 hashPrevBlock;        // hash of the previous block
+    uint256 hashMerkleRoot;       // merkle root
     uint256 hashFinalSaplingRoot;
     uint32_t nTime;
     uint32_t nBits;
     uint256 nNonce;
-    std::vector<unsigned char> nSolution; // Equihash solution
+    v_uint8 nSolution;            // Equihash solution
 
     // excluding Equihash solution
     static constexpr size_t EMPTY_HEADER_SIZE =
@@ -74,17 +75,10 @@ public:
         nSolution.clear();
     }
 
-    bool IsNull() const
-    {
-        return (nBits == 0);
-    }
+    bool IsNull() const noexcept { return (nBits == 0); }
 
-    uint256 GetHash() const;
-
-    int64_t GetBlockTime() const
-    {
-        return (int64_t)nTime;
-    }
+    uint256 GetHash() const noexcept;
+    int64_t GetBlockTime() const noexcept { return (int64_t)nTime; }
 };
 
 
@@ -119,7 +113,7 @@ public:
         READWRITE(vtx);
     }
 
-    void SetNull()
+    void SetNull() noexcept
     {
         CBlockHeader::SetNull();
         vtx.clear();
@@ -128,7 +122,7 @@ public:
         vMerkleTree.clear();
     }
 
-    CBlockHeader GetBlockHeader() const
+    CBlockHeader GetBlockHeader() const noexcept
     {
         CBlockHeader block;
         block.nVersion       = nVersion;
@@ -146,10 +140,10 @@ public:
     // If non-NULL, *mutated is set to whether mutation was detected in the merkle
     // tree (a duplication of transactions in the block leading to an identical
     // merkle root).
-    uint256 BuildMerkleTree(bool* mutated = NULL) const;
+    uint256 BuildMerkleTree(bool* pbMutated = nullptr) const;
 
-    std::vector<uint256> GetMerkleBranch(int nIndex) const;
-    static uint256 CheckMerkleBranch(uint256 hash, const std::vector<uint256>& vMerkleBranch, int nIndex);
+    std::vector<uint256> GetMerkleBranch(const size_t nIndex) const noexcept;
+    static uint256 CheckMerkleBranch(uint256 hash, const std::vector<uint256>& vMerkleBranch, int nIndex) noexcept;
     std::string ToString() const;
 };
 

@@ -22,6 +22,7 @@
 #include "version.h"
 #include "serialize.h"
 #include "streams.h"
+#include "vector_types.h"
 
 #include "zcash/IncrementalMerkleTree.hpp"
 #include "zcash/util.h"
@@ -79,6 +80,7 @@ void test_tree(
     // that the consistency of the tree and the merkle paths can
     // be checked.
     vector<Witness> witnesses;
+    witnesses.reserve(16);
 
     for (size_t i = 0; i < 16; i++) {
         uint256 test_commitment = uint256S(commitment_tests[i].get_str());
@@ -131,10 +133,10 @@ void test_tree(
                     authvars.generate_r1cs_constraints();
                     auth.generate_r1cs_constraints();
 
-                    std::vector<bool> commitment_bv;
+                    v_bools commitment_bv;
                     {
                         uint256 witnessed_commitment = wit.element();
-                        std::vector<unsigned char> commitment_v(witnessed_commitment.begin(), witnessed_commitment.end());
+                        v_uint8 commitment_v(witnessed_commitment.begin(), witnessed_commitment.end());
                         commitment_bv = convertBytesVectorToVector(commitment_v);
                     }
 
@@ -146,10 +148,10 @@ void test_tree(
                     authvars.generate_r1cs_witness(path_index, path.authentication_path);
                     auth.generate_r1cs_witness();
 
-                    std::vector<bool> root_bv;
+                    v_bools root_bv;
                     {
                         uint256 witroot = wit.root();
-                        std::vector<unsigned char> root_v(witroot.begin(), witroot.end());
+                        v_uint8 root_v(witroot.begin(), witroot.end());
                         root_bv = convertBytesVectorToVector(root_v);
                     }
 
@@ -167,8 +169,7 @@ void test_tree(
             // Check witness serialization
             expect_ser_test_vector(witness_ser_tests[witness_ser_i++], wit, tree);
 
-            ASSERT_TRUE(wit.root() == tree.root());
-
+            ASSERT_EQ(wit.root(), tree.root());
             first = false;
         }
     }

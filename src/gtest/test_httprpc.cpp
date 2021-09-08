@@ -1,4 +1,3 @@
-#include <gtest/gtest.h>
 #include <gmock/gmock.h>
 
 #include "httprpc.cpp"
@@ -8,11 +7,11 @@ using ::testing::Return;
 
 class MockHTTPRequest : public HTTPRequest {
 public:
-    MOCK_METHOD0(GetPeer, CService());
-    MOCK_METHOD0(GetRequestMethod, HTTPRequest::RequestMethod());
-    MOCK_METHOD1(GetHeader, std::pair<bool, std::string>(const std::string& hdr));
-    MOCK_METHOD2(WriteHeader, void(const std::string& hdr, const std::string& value));
-    MOCK_METHOD2(WriteReply, void(int nStatus, const std::string& strReply));
+    MOCK_METHOD(CService, GetPeer, (), ());
+    MOCK_METHOD(HTTPRequest::RequestMethod, GetRequestMethod, (), ());
+    MOCK_METHOD((std::pair<bool, std::string>), GetHeader, (const std::string& hdr), ());
+    MOCK_METHOD(void, WriteHeader, (const std::string& hdr, const std::string& value), ());
+    MOCK_METHOD(void, WriteReply, (int nStatus, const std::string& strReply), ());
 
     MockHTTPRequest() : HTTPRequest(nullptr) {}
     void CleanUp() {

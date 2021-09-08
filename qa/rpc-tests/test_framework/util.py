@@ -22,6 +22,10 @@ import time
 import re
 from .authproxy import AuthServiceProxy
 
+SPROUT_BRANCH_ID = 0x00000000
+OVERWINTER_BRANCH_ID = 0x5BA81B19
+SAPLING_BRANCH_ID = 0x76B809BB
+
 def p2p_port(n):
     return 11000 + n + os.getpid()%999
 def rpc_port(n):
@@ -119,6 +123,10 @@ def initialize_chain(test_dir):
         for i in range(4):
             datadir=initialize_datadir("cache", i)
             args = [ os.getenv("PASTELD", PastelDaemon), "-keypool=1", "-datadir="+datadir, "-discover=0" ]
+            args.extend([
+                '-nuparams=5ba81b19:1', # Overwinter
+                '-nuparams=76b809bb:1', # Sapling
+            ])
             if i > 0:
                 args.append("-connect=127.0.0.1:"+str(p2p_port(0)))
             pasteld_processes[i] = subprocess.Popen(args)
@@ -207,6 +215,10 @@ def start_node(i, dirname, extra_args=None, rpchost=None, timewait=None, binary=
     if binary is None:
         binary = os.getenv("PASTELD", "pasteld")
     args = [ binary, "-datadir="+datadir, "-keypool=1", "-discover=0", "-rest" ]
+    args.extend([
+        '-nuparams=5ba81b19:1', # Overwinter
+        '-nuparams=76b809bb:1', # Sapling
+    ])
     if extra_args is not None: args.extend(extra_args)
     pasteld_processes[i] = subprocess.Popen(args)
     devnull = open("/dev/null", "w+")
@@ -439,7 +451,7 @@ def fail(message=""):
 
 # Returns an async operation result
 def wait_and_assert_operationid_status_result(node, myopid, in_status='success', in_errormsg=None, timeout=300):
-    print('waiting for async operation {}'.format(myopid))
+    print(f'waiting for async operation {myopid}')
     result = None
     for _ in range(1, timeout):
         results = node.z_getoperationresult([myopid])
@@ -453,16 +465,16 @@ def wait_and_assert_operationid_status_result(node, myopid, in_status='success',
 
     debug = os.getenv("PYTHON_DEBUG", "")
     if debug:
-        print('...returned status: {}'.format(status))
+        print(f'...returned status: {status}')
 
     errormsg = None
     if status == "failed":
         errormsg = result['error']['message']
         if debug:
-            print('...returned error: {}'.format(errormsg))
+            print(f'...returned error: {errormsg}')
         assert_equal(in_errormsg, errormsg)
 
-    assert_equal(in_status, status, "Operation returned mismatched status. Error Message: {}".format(errormsg))
+    assert_equal(in_status, status, f"Operation returned mismatched status. Error Message: {errormsg}")
 
     return result
 
@@ -475,6 +487,21 @@ def wait_and_assert_operationid_status(node, myopid, in_status='success', in_err
     else:
         return None
 
+# Find a coinbase address on the node, filtering by the number of UTXOs it has.
+# If no filter is provided, returns the coinbase address on the node containing
+# the greatest number of spendable UTXOs.
+# The default cached chain has one address per coinbase output.
+def get_coinbase_address(node, expected_utxos=None):
+    addrs = [utxo['address'] for utxo in node.listunspent() if utxo['generated']]
+    assert(len(set(addrs)) > 0)
+
+    if expected_utxos is None:
+        addrs = [(addrs.count(a), a) for a in set(addrs)]
+        return sorted(addrs, reverse=True)[0][1]
+
+    addrs = [a for a in set(addrs) if addrs.count(a) == expected_utxos]
+    assert(len(addrs) > 0)
+    return addrs[0]
 
 def check_node_log(self, node_number, line_to_check, stop_node = True):
     print("Checking node " + str(node_number) + " logs")

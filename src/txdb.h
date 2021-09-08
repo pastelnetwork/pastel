@@ -1,19 +1,18 @@
+#pragma once
 // Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2014 The Bitcoin Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#ifndef BITCOIN_TXDB_H
-#define BITCOIN_TXDB_H
-
 #include "coins.h"
 #include "dbwrapper.h"
+#include "spentindex.h"
+#include "chainparams.h"
 
 #include <map>
 #include <string>
 #include <utility>
 #include <vector>
-#include "spentindex.h"
 
 class CBlockFileInfo;
 class CBlockIndex;
@@ -74,7 +73,6 @@ public:
     bool WriteTxIndex(const std::vector<std::pair<uint256, CDiskTxPos> > &list);
     bool WriteFlag(const std::string &name, bool fValue);
     bool ReadFlag(const std::string &name, bool &fValue);
-    bool LoadBlockIndexGuts();
+    bool LoadBlockIndexGuts(const CChainParams& chainparams);
 };
 
-#endif // BITCOIN_TXDB_H

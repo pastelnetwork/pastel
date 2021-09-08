@@ -739,14 +739,10 @@ void Serialize(Stream& os, const std::optional<T>& item)
 {
     // If the value is there, put 0x01 and then serialize the value.
     // If it's not, put 0x00.
-    if (item) {
-        unsigned char discriminant = 0x01;
-        Serialize(os, discriminant);
-        Serialize(os, *item);
-    } else {
-        unsigned char discriminant = 0x00;
-        Serialize(os, discriminant);
-    }
+    const bool bHasValue = item.has_value();
+    Serialize(os, static_cast<unsigned char>(bHasValue ? 0x01 : 0x00));
+    if (bHasValue)
+        Serialize(os, item.value());
 }
 
 template<typename Stream, typename T>
@@ -755,15 +751,14 @@ void Unserialize(Stream& is, std::optional<T>& item)
     unsigned char discriminant = 0x00;
     Unserialize(is, discriminant);
 
-    if (discriminant == 0x00) {
+    if (discriminant == 0x00)
         item = std::nullopt;
-    } else if (discriminant == 0x01) {
+    else if (discriminant == 0x01) {
         T object;
         Unserialize(is, object);
         item = object;
-    } else {
+    } else
         throw std::ios_base::failure("non-canonical optional discriminant");
-    }
 }
 
 /**

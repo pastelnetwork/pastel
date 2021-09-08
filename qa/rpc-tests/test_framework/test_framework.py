@@ -118,6 +118,21 @@ class BitcoinTestFramework(object):
         wait_pastelds()
         self.setup_network(False)
 
+    # generate blocks up to new_height on node0, sync all nodes
+    def generate_and_sync(self, new_height, nodeNo = 0):
+        current_height = self.nodes[nodeNo].getblockcount()
+        assert(new_height > current_height)
+        self.nodes[nodeNo].generate(new_height - current_height)
+        self.sync_all()
+        assert_equal(new_height, self.nodes[nodeNo].getblockcount())
+
+    # generate nblocks on node0, sync all nodes
+    def generate_and_sync_inc(self, nblocks = 1, nodeNo = 0):
+        current_height = self.nodes[nodeNo].getblockcount()
+        self.nodes[nodeNo].generate(nblocks)
+        self.sync_all()
+        assert_equal(current_height + nblocks, self.nodes[nodeNo].getblockcount())
+
     def main(self):
 
         parser = optparse.OptionParser(usage="%prog [options]")

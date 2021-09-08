@@ -4,11 +4,8 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 #include <assert.h>
-#include <cstring>
 #include <stdexcept>
-#include <stdint.h>
-#include <string>
-#include <vector>
+#include "vector_types.h"
 
 /** Template base class for fixed-sized opaque blobs. */
 template<unsigned int BITS>
@@ -26,9 +23,9 @@ public:
         memset(data, 0, sizeof(data));
     }
 
-    explicit base_blob(const std::vector<unsigned char>& vch);
+    explicit base_blob(const v_uint8& vch);
 
-    bool IsNull() const
+    bool IsNull() const noexcept
     {
         for (int i = 0; i < WIDTH; i++)
             if (data[i] != 0)
@@ -36,7 +33,7 @@ public:
         return true;
     }
 
-    void SetNull()
+    void SetNull() noexcept
     {
         memset(data, 0, sizeof(data));
     }
@@ -94,7 +91,7 @@ class blob88 : public base_blob<88> {
 public:
     blob88() {}
     blob88(const base_blob<88>& b) : base_blob<88>(b) {}
-    explicit blob88(const std::vector<unsigned char>& vch) : base_blob<88>(vch) {}
+    explicit blob88(const v_uint8& vch) : base_blob<88>(vch) {}
 };
 
 /** 160-bit opaque blob.
@@ -105,7 +102,7 @@ class uint160 : public base_blob<160> {
 public:
     uint160() {}
     uint160(const base_blob<160>& b) : base_blob<160>(b) {}
-    explicit uint160(const std::vector<unsigned char>& vch) : base_blob<160>(vch) {}
+    explicit uint160(const v_uint8& vch) : base_blob<160>(vch) {}
 };
 
 /** 256-bit opaque blob.
@@ -116,8 +113,12 @@ public:
 class uint256 : public base_blob<256> {
 public:
     uint256() {}
-    uint256(const base_blob<256>& b) : base_blob<256>(b) {}
-    explicit uint256(const std::vector<unsigned char>& vch) : base_blob<256>(vch) {}
+    uint256(const base_blob<256>& b) : 
+        base_blob<256>(b)
+    {}
+    explicit uint256(const v_uint8& vch) : 
+        base_blob<256>(vch)
+    {}
 
     /** A cheap hash function that just returns 64 bits from the result, it can be
      * used when the contents are considered uniformly random. It is not appropriate
@@ -125,7 +126,7 @@ public:
      * provide values to trigger worst-case behavior.
      * @note The result of this function is not stable between little and big endian.
      */
-    uint64_t GetCheapHash() const
+    uint64_t GetCheapHash() const noexcept
     {
         uint64_t result;
         memcpy((void*)&result, (void*)data, sizeof(uint64_t));
@@ -135,7 +136,7 @@ public:
     /** A more secure, salted hash function.
      * @note This hash is not stable between little and big endian.
      */
-    uint64_t GetHash(const uint256& salt) const;
+    uint64_t GetHash(const uint256& salt) const noexcept;
 };
 
 /* uint256 from const char *.

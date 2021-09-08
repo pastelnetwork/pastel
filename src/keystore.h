@@ -1,11 +1,8 @@
+#pragma once
 // Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2014 The Bitcoin Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php .
-
-#ifndef BITCOIN_KEYSTORE_H
-#define BITCOIN_KEYSTORE_H
-
 #include "key.h"
 #include "pubkey.h"
 #include "script/script.h"
@@ -52,14 +49,6 @@ public:
     virtual bool HaveWatchOnly(const CScript &dest) const =0;
     virtual bool HaveWatchOnly() const =0;
 
-    //! Add a spending key to the store.
-    virtual bool AddSproutSpendingKey(const libzcash::SproutSpendingKey &sk) =0;
-
-    //! Check whether a spending key corresponding to a given payment address is present in the store.
-    virtual bool HaveSproutSpendingKey(const libzcash::SproutPaymentAddress &address) const =0;
-    virtual bool GetSproutSpendingKey(const libzcash::SproutPaymentAddress &address, libzcash::SproutSpendingKey& skOut) const =0;
-    virtual void GetSproutPaymentAddresses(std::set<libzcash::SproutPaymentAddress> &setAddress) const =0;
-    
     //! Add a Sapling spending key to the store.
     virtual bool AddSaplingSpendingKey(const libzcash::SaplingExtendedSpendingKey &sk) =0;
     
@@ -86,23 +75,12 @@ public:
     virtual bool GetSaplingExtendedSpendingKey(
         const libzcash::SaplingPaymentAddress& addr,
         libzcash::SaplingExtendedSpendingKey& extskOut) const = 0;
-
-    //! Support for Sprout viewing keys
-    virtual bool AddSproutViewingKey(const libzcash::SproutViewingKey &vk) =0;
-    virtual bool RemoveSproutViewingKey(const libzcash::SproutViewingKey &vk) =0;
-    virtual bool HaveSproutViewingKey(const libzcash::SproutPaymentAddress &address) const =0;
-    virtual bool GetSproutViewingKey(
-        const libzcash::SproutPaymentAddress &address,
-        libzcash::SproutViewingKey& vkOut) const =0;
 };
 
 typedef std::map<CKeyID, CKey> KeyMap;
 typedef std::map<CKeyID, CPubKey> WatchKeyMap;
 typedef std::map<CScriptID, CScript > ScriptMap;
 typedef std::set<CScript> WatchOnlySet;
-typedef std::map<libzcash::SproutPaymentAddress, libzcash::SproutSpendingKey> SproutSpendingKeyMap;
-typedef std::map<libzcash::SproutPaymentAddress, libzcash::SproutViewingKey> SproutViewingKeyMap;
-typedef std::map<libzcash::SproutPaymentAddress, ZCNoteDecryption> NoteDecryptorMap;
 
 // Full viewing key has equivalent functionality to a transparent address
 // When encrypting wallet, encrypt SaplingSpendingKeyMap, while leaving SaplingFullViewingKeyMap unencrypted
@@ -120,9 +98,6 @@ protected:
     WatchKeyMap mapWatchKeys;
     ScriptMap mapScripts;
     WatchOnlySet setWatchOnly;
-    SproutSpendingKeyMap mapSproutSpendingKeys;
-    SproutViewingKeyMap mapSproutViewingKeys;
-    NoteDecryptorMap mapNoteDecryptors;
 
     SaplingSpendingKeyMap mapSaplingSpendingKeys;
     SaplingFullViewingKeyMap mapSaplingFullViewingKeys;
@@ -173,62 +148,6 @@ public:
     bool RemoveWatchOnly(const CScript& dest) override;
     bool HaveWatchOnly(const CScript& dest) const override;
     bool HaveWatchOnly() const override;
-
-    bool AddSproutSpendingKey(const libzcash::SproutSpendingKey &sk) override;
-    bool HaveSproutSpendingKey(const libzcash::SproutPaymentAddress &address) const override
-    {
-        bool result;
-        {
-            LOCK(cs_KeyStore);
-            result = (mapSproutSpendingKeys.count(address) > 0);
-        }
-        return result;
-    }
-    bool GetSproutSpendingKey(const libzcash::SproutPaymentAddress &address, libzcash::SproutSpendingKey &skOut) const override
-    {
-        {
-            LOCK(cs_KeyStore);
-            SproutSpendingKeyMap::const_iterator mi = mapSproutSpendingKeys.find(address);
-            if (mi != mapSproutSpendingKeys.end())
-            {
-                skOut = mi->second;
-                return true;
-            }
-        }
-        return false;
-    }
-    bool GetNoteDecryptor(const libzcash::SproutPaymentAddress &address, ZCNoteDecryption &decOut) const
-    {
-        {
-            LOCK(cs_KeyStore);
-            NoteDecryptorMap::const_iterator mi = mapNoteDecryptors.find(address);
-            if (mi != mapNoteDecryptors.end())
-            {
-                decOut = mi->second;
-                return true;
-            }
-        }
-        return false;
-    }
-    void GetSproutPaymentAddresses(std::set<libzcash::SproutPaymentAddress> &setAddress) const override
-    {
-        setAddress.clear();
-        {
-            LOCK(cs_KeyStore);
-            SproutSpendingKeyMap::const_iterator mi = mapSproutSpendingKeys.begin();
-            while (mi != mapSproutSpendingKeys.end())
-            {
-                setAddress.insert((*mi).first);
-                mi++;
-            }
-            SproutViewingKeyMap::const_iterator mvi = mapSproutViewingKeys.begin();
-            while (mvi != mapSproutViewingKeys.end())
-            {
-                setAddress.insert((*mvi).first);
-                mvi++;
-            }
-        }
-    }
 
     //! Sapling 
     bool AddSaplingSpendingKey(const libzcash::SaplingExtendedSpendingKey &sk) override;
@@ -287,20 +206,10 @@ public:
             }
         }
     }
-
-    bool AddSproutViewingKey(const libzcash::SproutViewingKey &vk) override;
-    bool RemoveSproutViewingKey(const libzcash::SproutViewingKey& vk) override;
-    bool HaveSproutViewingKey(const libzcash::SproutPaymentAddress& address) const override;
-    bool GetSproutViewingKey(
-        const libzcash::SproutPaymentAddress &address,
-        libzcash::SproutViewingKey& vkOut) const override;
 };
 
 typedef std::vector<unsigned char, secure_allocator<unsigned char> > CKeyingMaterial;
 typedef std::map<CKeyID, std::pair<CPubKey, std::vector<unsigned char> > > CryptedKeyMap;
-typedef std::map<libzcash::SproutPaymentAddress, std::vector<unsigned char> > CryptedSproutSpendingKeyMap;
 
 //! Sapling 
 typedef std::map<libzcash::SaplingExtendedFullViewingKey, std::vector<unsigned char> > CryptedSaplingSpendingKeyMap;
-
-#endif // BITCOIN_KEYSTORE_H

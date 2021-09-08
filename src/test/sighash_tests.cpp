@@ -77,9 +77,6 @@ uint256 static SignatureHashOld(CScript scriptCode, const CTransaction& txTo, un
         txTmp.vin.resize(1);
     }
 
-    // Blank out the joinsplit signature.
-    memset(&txTmp.joinSplitSig[0], 0, txTmp.joinSplitSig.size());
-
     // Serialize and hash
     CHashWriter ss(SER_GETHASH, 0);
     ss << txTmp << nHashType;
@@ -124,7 +121,6 @@ void static RandomTransaction(CMutableTransaction &tx, bool fSingle, uint32_t co
     tx.vout.clear();
     tx.vShieldedSpend.clear();
     tx.vShieldedOutput.clear();
-    tx.vjoinsplit.clear();
     tx.nLockTime = (insecure_rand() % 2) ? insecure_rand() : 0;
     int ins = (insecure_rand() % 4) + 1;
     int outs = fSingle ? ins : (insecure_rand() % 4) + 1;
@@ -167,170 +163,4 @@ void static RandomTransaction(CMutableTransaction &tx, bool fSingle, uint32_t co
             tx.vShieldedOutput.push_back(odesc);
         }
     }
-    if (tx.nVersion >= 2) {
-        for (int js = 0; js < joinsplits; js++) {
-            JSDescription jsdesc;
-            if (insecure_rand() % 2 == 0) {
-                jsdesc.vpub_old = insecure_rand() % 100000000;
-            } else {
-                jsdesc.vpub_new = insecure_rand() % 100000000;
-            }
-
-            jsdesc.anchor = GetRandHash();
-            jsdesc.nullifiers[0] = GetRandHash();
-            jsdesc.nullifiers[1] = GetRandHash();
-            jsdesc.ephemeralKey = GetRandHash();
-            jsdesc.randomSeed = GetRandHash();
-            randombytes_buf(jsdesc.ciphertexts[0].data(), jsdesc.ciphertexts[0].size());
-            randombytes_buf(jsdesc.ciphertexts[1].data(), jsdesc.ciphertexts[1].size());
-            if (tx.fOverwintered && tx.nVersion >= SAPLING_TX_VERSION) {
-                libzcash::GrothProof zkproof;
-                randombytes_buf(zkproof.data(), zkproof.size());
-                jsdesc.proof = zkproof;
-            } else {
-                jsdesc.proof = libzcash::PHGRProof::random_invalid();
-            }
-            jsdesc.macs[0] = GetRandHash();
-            jsdesc.macs[1] = GetRandHash();
-
-            tx.vjoinsplit.push_back(jsdesc);
-        }
-
-        unsigned char joinSplitPrivKey[crypto_sign_SECRETKEYBYTES];
-        crypto_sign_keypair(tx.joinSplitPubKey.begin(), joinSplitPrivKey);
-
-        // Empty output script.
-        CScript scriptCode;
-        CTransaction signTx(tx);
-        uint256 dataToBeSigned = SignatureHash(scriptCode, signTx, NOT_AN_INPUT, SIGHASH_ALL, 0, consensusBranchId);
-
-        assert(crypto_sign_detached(&tx.joinSplitSig[0], NULL,
-                                    dataToBeSigned.begin(), 32,
-                                    joinSplitPrivKey
-                                    ) == 0);
-    }
 }
-
-BOOST_FIXTURE_TEST_SUITE(sighash_tests, JoinSplitTestingSetup)
-
-BOOST_AUTO_TEST_CASE(sighash_test)
-{
-    uint32_t overwinterBranchId = NetworkUpgradeInfo[Consensus::UPGRADE_OVERWINTER].nBranchId;
-    seed_insecure_rand(false);
-
-    #if defined(PRINT_SIGHASH_JSON)
-    std::cout << "[\n";
-    std::cout << "\t[\"raw_transaction, script, input_index, hashType, branchId, signature_hash (result)\"],\n";
-    #endif
-    int nRandomTests = 50000;
-
-    #if defined(PRINT_SIGHASH_JSON)
-    nRandomTests = 500;
-    #endif
-    for (int i=0; i<nRandomTests; i++) {
-        int nHashType = insecure_rand();
-        uint32_t consensusBranchId = NetworkUpgradeInfo[insecure_rand() % Consensus::MAX_NETWORK_UPGRADES].nBranchId;
-        CMutableTransaction txTo;
-        RandomTransaction(txTo, (nHashType & 0x1f) == SIGHASH_SINGLE, consensusBranchId);
-        CScript scriptCode;
-        RandomScript(scriptCode);
-        int nIn = insecure_rand() % txTo.vin.size();
-
-        uint256 sh, sho;
-        sho = SignatureHashOld(scriptCode, txTo, nIn, nHashType);
-        sh = SignatureHash(scriptCode, txTo, nIn, nHashType, 0, consensusBranchId);
-        #if defined(PRINT_SIGHASH_JSON)
-        CDataStream ss(SER_NETWORK, PROTOCOL_VERSION);
-        ss << txTo;
-
-        std::cout << "\t[\"" ;
-        std::cout << HexStr(ss.begin(), ss.end()) << "\", \"";
-        std::cout << HexStr(scriptCode) << "\", ";
-        std::cout << nIn << ", ";
-        std::cout << nHashType << ", ";
-        std::cout << consensusBranchId << ", \"";
-        std::cout << (txTo.fOverwintered ? sh.GetHex() : sho.GetHex()) << "\"]";
-        if (i+1 != nRandomTests) {
-          std::cout << ",";
-        }
-        std::cout << "\n";
-        #endif
-        if (!txTo.fOverwintered) {
-            BOOST_CHECK(sh == sho);
-        }
-    }
-    #if defined(PRINT_SIGHASH_JSON)
-    std::cout << "]\n";
-    #endif
-}
-
-// Goal: check that SignatureHash generates correct hash
-BOOST_AUTO_TEST_CASE(sighash_from_data)
-{
-    UniValue tests = read_json(std::string(json_tests::sighash, json_tests::sighash + sizeof(json_tests::sighash)));
-
-    for (size_t idx = 0; idx < tests.size(); idx++) {
-        UniValue test = tests[idx];
-        std::string strTest = test.write();
-        if (test.size() < 1) // Allow for extra stuff (useful for comments)
-        {
-            BOOST_ERROR("Bad test: " << strTest);
-            continue;
-        }
-        if (test.size() == 1) continue; // comment
-
-        std::string raw_tx, raw_script, sigHashHex;
-        int nIn, nHashType;
-        uint32_t consensusBranchId;
-        uint256 sh;
-        CTransaction tx;
-        CScript scriptCode = CScript();
-
-        try {
-          // deserialize test data
-          raw_tx = test[0].get_str();
-          raw_script = test[1].get_str();
-          nIn = test[2].get_int();
-          nHashType = test[3].get_int();
-          consensusBranchId = test[4].get_int();
-          sigHashHex = test[5].get_str();
-
-          uint256 sh;
-          CDataStream stream(ParseHex(raw_tx), SER_NETWORK, PROTOCOL_VERSION);
-          stream >> tx;
-
-          CValidationState state;
-          if (tx.fOverwintered) {
-              // Note that OVERWINTER_MIN_CURRENT_VERSION and OVERWINTER_MAX_CURRENT_VERSION
-              // are checked in IsStandardTx(), not in CheckTransactionWithoutProofVerification()
-              if (tx.nVersion < OVERWINTER_MIN_TX_VERSION ||
-                  tx.nExpiryHeight >= TX_EXPIRY_HEIGHT_THRESHOLD)
-              {
-                  // Transaction must be invalid
-                  BOOST_CHECK_MESSAGE(!CheckTransactionWithoutProofVerification(tx, state), strTest);
-                  BOOST_CHECK(!state.IsValid());
-              } else {
-                  BOOST_CHECK_MESSAGE(CheckTransactionWithoutProofVerification(tx, state), strTest);
-                  BOOST_CHECK(state.IsValid());
-              }
-          } else if (tx.nVersion < SPROUT_MIN_TX_VERSION) {
-              // Transaction must be invalid
-              BOOST_CHECK_MESSAGE(!CheckTransactionWithoutProofVerification(tx, state), strTest);
-              BOOST_CHECK(!state.IsValid());
-          } else {
-              BOOST_CHECK_MESSAGE(CheckTransactionWithoutProofVerification(tx, state), strTest);
-              BOOST_CHECK(state.IsValid());
-          }
-
-          std::vector<unsigned char> raw = ParseHex(raw_script);
-          scriptCode.insert(scriptCode.end(), raw.begin(), raw.end());
-        } catch (...) {
-          BOOST_ERROR("Bad test, couldn't deserialize data: " << strTest);
-          continue;
-        }
-
-        sh = SignatureHash(scriptCode, tx, nIn, nHashType, 0, consensusBranchId);
-        BOOST_CHECK_MESSAGE(sh.GetHex() == sigHashHex, strTest);
-    }
-}
-BOOST_AUTO_TEST_SUITE_END()

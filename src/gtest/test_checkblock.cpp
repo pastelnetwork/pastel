@@ -1,29 +1,29 @@
-#include <gtest/gtest.h>
 #include <gmock/gmock.h>
 
 #include "consensus/validation.h"
 #include "main.h"
-#include <key_io.h>
+#include "key_io.h"
 #include "zcash/Proof.hpp"
 
 class MockCValidationState : public CValidationState {
 public:
-    MOCK_METHOD5(DoS, bool(int level, bool ret,
+    MOCK_METHOD(bool, DoS, (int level, bool ret,
              unsigned char chRejectCodeIn, std::string strRejectReasonIn,
-             bool corruptionIn));
-    MOCK_METHOD3(Invalid, bool(bool ret,
-                 unsigned char _chRejectCode, std::string _strRejectReason));
-    MOCK_METHOD1(Error, bool(std::string strRejectReasonIn));
-    MOCK_CONST_METHOD0(IsValid, bool());
-    MOCK_CONST_METHOD0(IsInvalid, bool());
-    MOCK_CONST_METHOD0(IsError, bool());
-    MOCK_CONST_METHOD1(IsInvalid, bool(int &nDoSOut));
-    MOCK_CONST_METHOD0(CorruptionPossible, bool());
-    MOCK_CONST_METHOD0(GetRejectCode, unsigned char());
-    MOCK_CONST_METHOD0(GetRejectReason, std::string());
+             bool corruptionIn), ());
+    MOCK_METHOD(bool, Invalid, (bool ret,
+                 unsigned char _chRejectCode, std::string _strRejectReason), ());
+    MOCK_METHOD(bool, Error, (std::string strRejectReasonIn), ());
+    MOCK_METHOD(bool, IsValid, (), (const));
+    MOCK_METHOD(bool, IsInvalid, (), (const));
+    MOCK_METHOD(bool, IsError, (), (const));
+    MOCK_METHOD(bool, IsInvalid, (int& nDoSOut), (const));
+    MOCK_METHOD(bool, CorruptionPossible, (), (const));
+    MOCK_METHOD(unsigned char, GetRejectCode, (), (const));
+    MOCK_METHOD(std::string, GetRejectReason, (), (const));
 };
 
 TEST(CheckBlock, VersionTooLow) {
+    SelectParams(CBaseChainParams::Network::MAIN);
     auto verifier = libzcash::ProofVerifier::Strict();
 
     CBlock block;
@@ -31,7 +31,7 @@ TEST(CheckBlock, VersionTooLow) {
 
     MockCValidationState state;
     EXPECT_CALL(state, DoS(100, false, REJECT_INVALID, "version-too-low", false)).Times(1);
-    EXPECT_FALSE(CheckBlock(block, state, verifier, false, false));
+    EXPECT_FALSE(CheckBlock(block, state, Params(), verifier, false, false));
 }
 
 
@@ -39,6 +39,7 @@ TEST(CheckBlock, VersionTooLow) {
 // by CheckBlock under Sprout consensus rules.
 TEST(CheckBlock, BlockSproutRejectsBadVersion) {
     SelectParams(CBaseChainParams::Network::MAIN);
+    const auto& chainparams = Params();
 
     CMutableTransaction mtx;
     mtx.vin.resize(1);
@@ -47,9 +48,9 @@ TEST(CheckBlock, BlockSproutRejectsBadVersion) {
     mtx.vout.resize(1);
     mtx.vout[0].scriptPubKey = CScript() << OP_TRUE;
     mtx.vout[0].nValue = 0;
-    KeyIO keyIO(Params());
+    KeyIO keyIO(chainparams);
     mtx.vout.push_back(CTxOut(
-        GetBlockSubsidy(1, Params().GetConsensus())/5,
+        GetBlockSubsidy(1, chainparams.GetConsensus()) / 5,
         GetScriptForDestination(keyIO.DecodeDestination("t2NGQjYMQhFndDHguvUw4wZdNdsssA6K7x2"))));
     mtx.fOverwintered = false;
     mtx.nVersion = -1;
@@ -60,16 +61,17 @@ TEST(CheckBlock, BlockSproutRejectsBadVersion) {
     block.vtx.push_back(tx);
 
     MockCValidationState state;
-    CBlockIndex indexPrev {Params().GenesisBlock()};
+    CBlockIndex indexPrev{chainparams.GenesisBlock()};
 
     auto verifier = libzcash::ProofVerifier::Strict();
 
     EXPECT_CALL(state, DoS(100, false, REJECT_INVALID, "bad-txns-version-too-low", false)).Times(1);
-    EXPECT_FALSE(CheckBlock(block, state, verifier, false, false));
+    EXPECT_FALSE(CheckBlock(block, state, chainparams, verifier, false, false));
 }
 
 
-class ContextualCheckBlockTest : public ::testing::Test {
+class ContextualCheckBlockTest : public ::testing::Test
+{
 protected:
     void SetUp() override
     {
@@ -83,7 +85,8 @@ protected:
     }
 
     // Returns a valid but empty mutable transaction at block height 1.
-    CMutableTransaction GetFirstBlockCoinbaseTx() {
+    CMutableTransaction GetFirstBlockCoinbaseTx()
+    {
         CMutableTransaction mtx;
 
         // No inputs.
@@ -98,11 +101,12 @@ protected:
         mtx.vout[0].scriptPubKey = CScript() << OP_TRUE;
         mtx.vout[0].nValue = 0;
 
-        KeyIO keyIO(Params());
+        const auto& chainparams = Params();
+        KeyIO keyIO(chainparams);
         // Give it a Founder's Reward vout for height 1.
         mtx.vout.push_back(CTxOut(
-                    GetBlockSubsidy(1, Params().GetConsensus())/5,
-                    GetScriptForDestination(keyIO.DecodeDestination("t2NGQjYMQhFndDHguvUw4wZdNdsssA6K7x2"))));
+            GetBlockSubsidy(1, chainparams.GetConsensus()) / 5,
+            GetScriptForDestination(keyIO.DecodeDestination("t2NGQjYMQhFndDHguvUw4wZdNdsssA6K7x2"))));
 
         return mtx;
     }
@@ -111,41 +115,46 @@ protected:
     // ContextualCheckBlock. This is used in accepting (Sprout-Sprout,
     // Overwinter-Overwinter, ...) tests. You should not call it without
     // calling a SCOPED_TRACE macro first to usefully label any failures.
-    void ExpectValidBlockFromTx(const CTransaction& tx) {
+    void ExpectValidBlockFromTx(const CTransaction& tx)
+    {
         // Create a block and add the transaction to it.
         CBlock block;
         block.vtx.push_back(tx);
 
+        const auto& chainparams = Params();
         // Set the previous block index to the genesis block.
-        CBlockIndex indexPrev {Params().GenesisBlock()};
+        CBlockIndex indexPrev{chainparams.GenesisBlock()};
 
         // We now expect this to be a valid block.
         MockCValidationState state;
-        EXPECT_TRUE(ContextualCheckBlock(block, state, &indexPrev));
+        EXPECT_TRUE(ContextualCheckBlock(block, state, chainparams, &indexPrev));
     }
 
     // Expects a height-1 block containing a given transaction to fail
     // ContextualCheckBlock. This is used in rejecting (Sprout-Overwinter,
     // Overwinter-Sprout, ...) tests. You should not call it without
     // calling a SCOPED_TRACE macro first to usefully label any failures.
-    void ExpectInvalidBlockFromTx(const CTransaction& tx, int level, std::string reason) {
+    void ExpectInvalidBlockFromTx(const CTransaction& tx, int level, std::string reason)
+    {
         // Create a block and add the transaction to it.
         CBlock block;
         block.vtx.push_back(tx);
 
+        const auto& chainparams = Params();
         // Set the previous block index to the genesis block.
-        CBlockIndex indexPrev {Params().GenesisBlock()};
+        CBlockIndex indexPrev{chainparams.GenesisBlock()};
 
         // We now expect this to be an invalid block, for the given reason.
         MockCValidationState state;
         EXPECT_CALL(state, DoS(level, false, REJECT_INVALID, reason, false)).Times(1);
-        EXPECT_FALSE(ContextualCheckBlock(block, state, &indexPrev));
+        EXPECT_FALSE(ContextualCheckBlock(block, state, chainparams, &indexPrev));
     }
 
 };
 
 
-TEST_F(ContextualCheckBlockTest, BadCoinbaseHeight) {
+TEST_F(ContextualCheckBlockTest, BadCoinbaseHeight)
+{
     // Put a transaction in a block with no height in scriptSig
     CMutableTransaction mtx = GetFirstBlockCoinbaseTx();
     mtx.vin[0].scriptSig = CScript() << OP_0;
@@ -154,15 +163,17 @@ TEST_F(ContextualCheckBlockTest, BadCoinbaseHeight) {
     CBlock block;
     block.vtx.push_back(mtx);
 
+    const auto& chainparams = Params();
+
     // Treating block as genesis should pass
     MockCValidationState state;
-    EXPECT_TRUE(ContextualCheckBlock(block, state, NULL));
+    EXPECT_TRUE(ContextualCheckBlock(block, state, chainparams, nullptr));
 
-    KeyIO keyIO(Params());
+    KeyIO keyIO(chainparams);
 
     // Give the transaction a Founder's Reward vout
     mtx.vout.push_back(CTxOut(
-                GetBlockSubsidy(1, Params().GetConsensus())/5,
+        GetBlockSubsidy(1, chainparams.GetConsensus()) / 5,
                 GetScriptForDestination(keyIO.DecodeDestination("t2NGQjYMQhFndDHguvUw4wZdNdsssA6K7x2"))));
 
     // Treating block as non-genesis should fail
@@ -172,20 +183,20 @@ TEST_F(ContextualCheckBlockTest, BadCoinbaseHeight) {
     CBlockIndex indexPrev {prev};
     indexPrev.nHeight = 0;
     EXPECT_CALL(state, DoS(100, false, REJECT_INVALID, "bad-cb-height", false)).Times(1);
-    EXPECT_FALSE(ContextualCheckBlock(block, state, &indexPrev));
+    EXPECT_FALSE(ContextualCheckBlock(block, state, chainparams, &indexPrev));
 
     // Setting to an incorrect height should fail
     mtx.vin[0].scriptSig = CScript() << 2 << OP_0;
     CTransaction tx3 {mtx};
     block.vtx[0] = tx3;
     EXPECT_CALL(state, DoS(100, false, REJECT_INVALID, "bad-cb-height", false)).Times(1);
-    EXPECT_FALSE(ContextualCheckBlock(block, state, &indexPrev));
+    EXPECT_FALSE(ContextualCheckBlock(block, state, chainparams, &indexPrev));
 
     // After correcting the scriptSig, should pass
     mtx.vin[0].scriptSig = CScript() << 1 << OP_0;
     CTransaction tx4 {mtx};
     block.vtx[0] = tx4;
-    EXPECT_TRUE(ContextualCheckBlock(block, state, &indexPrev));
+    EXPECT_TRUE(ContextualCheckBlock(block, state, chainparams, &indexPrev));
 }
 
 // TEST PLAN: first, check that each ruleset accepts its own transaction type.
@@ -275,7 +286,8 @@ TEST_F(ContextualCheckBlockTest, BlockSproutRulesRejectOtherTx) {
 
 // Test block evaluated under Overwinter rules cannot contain non-Overwinter
 // transactions.
-TEST_F(ContextualCheckBlockTest, BlockOverwinterRulesRejectOtherTx) {
+TEST_F(ContextualCheckBlockTest, BlockOverwinterRulesRejectOtherTx)
+{
     SelectParams(CBaseChainParams::Network::REGTEST);
     UpdateNetworkUpgradeParameters(Consensus::UPGRADE_OVERWINTER, 1);
 

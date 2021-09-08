@@ -2,7 +2,6 @@
 #include "crypto/common.h"
 #include "key.h"
 #include "pubkey.h"
-#include "zcash/JoinSplit.hpp"
 #include "util.h"
 
 #include <libsnark/common/default_types/r1cs_ppzksnark_pp.hpp>
@@ -20,8 +19,6 @@ struct ECCryptoClosure
 
 ECCryptoClosure instance_of_eccryptoclosure;
 
-ZCJoinSplit* params;
-
 int main(int argc, char **argv)
 {
   assert(init_and_check_sodium() != -1);
@@ -30,7 +27,6 @@ int main(int argc, char **argv)
   libsnark::default_r1cs_ppzksnark_pp::init_public_params();
   libsnark::inhibit_profiling_info = true;
   libsnark::inhibit_profiling_counters = true;
-  params = ZCJoinSplit::Prepared();
 
   fs::path sapling_spend = ZC_GetParamsDir() / "sapling-spend.params";
   fs::path sapling_output = ZC_GetParamsDir() / "sapling-output.params";

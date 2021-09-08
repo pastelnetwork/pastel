@@ -1,16 +1,13 @@
+#pragma once
 // Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2015 The Bitcoin developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
-#ifndef BITCOIN_POLICYESTIMATOR_H
-#define BITCOIN_POLICYESTIMATOR_H
-
 #include "amount.h"
 #include "uint256.h"
+#include "vector_types.h"
 
 #include <map>
-#include <string>
-#include <vector>
 
 class CAutoFile;
 class CFeeRate;
@@ -67,7 +64,7 @@ class CTxMemPoolEntry;
  */
 
 /** Decay of .998 is a half-life of 346 blocks or about 2.4 days */
-static const double DEFAULT_DECAY = .998;
+static constexpr double DEFAULT_DECAY = .998;
 
 /**
  * We will instantiate two instances of this class, one to track transactions
@@ -84,27 +81,27 @@ class TxConfirmStats
 {
 private:
     //Define the buckets we will group transactions into (both fee buckets and priority buckets)
-    std::vector<double> buckets;              // The upper-bound of the range for the bucket (inclusive)
+    v_doubles buckets;              // The upper-bound of the range for the bucket (inclusive)
     std::map<double, unsigned int> bucketMap; // Map of bucket upper-bound to index into all vectors by bucket
 
     // For each bucket X:
     // Count the total # of txs in each bucket
     // Track the historical moving average of this total over blocks
-    std::vector<double> txCtAvg;
+    v_doubles txCtAvg;
     // and calcuate the total for the current block to update the moving average
-    std::vector<int> curBlockTxCt;
+    v_ints curBlockTxCt;
 
     // Count the total # of txs confirmed within Y blocks in each bucket
     // Track the historical moving average of theses totals over blocks
-    std::vector<std::vector<double> > confAvg; // confAvg[Y][X]
+    std::vector<v_doubles> confAvg; // confAvg[Y][X]
     // and calcuate the totals for the current block to update the moving averages
-    std::vector<std::vector<int> > curBlockConf; // curBlockConf[Y][X]
+    std::vector<v_ints> curBlockConf; // curBlockConf[Y][X]
 
     // Sum the total priority/fee of all txs in each bucket
     // Track the historical moving average of this total over blocks
-    std::vector<double> avg;
+    v_doubles avg;
     // and calculate the total for the current block to update the moving average
-    std::vector<double> curBlockVal;
+    v_doubles curBlockVal;
 
     // Combine the conf counts with tx counts to calculate the confirmation % for each Y,X
     // Combine the total value with the tx counts to calculate the avg fee/priority per bucket
@@ -115,9 +112,9 @@ private:
     // Mempool counts of outstanding transactions
     // For each bucket X, track the number of transactions in the mempool
     // that are unconfirmed for each possible confirmation value Y
-    std::vector<std::vector<int> > unconfTxs;  //unconfTxs[Y][X]
+    std::vector<v_ints> unconfTxs;  //unconfTxs[Y][X]
     // transactions still unconfirmed after MAX_CONFIRMS for each bucket
-    std::vector<int> oldUnconfTxs;
+    v_ints oldUnconfTxs;
 
 public:
     /** Find the bucket index of a given value */
@@ -133,7 +130,7 @@ public:
      * @param decay how much to decay the historical moving average per block
      * @param dataTypeString for logging purposes
      */
-    void Initialize(std::vector<double>& defaultBuckets, unsigned int maxConfirms, double decay, std::string dataTypeString);
+    void Initialize(v_doubles& defaultBuckets, unsigned int maxConfirms, double decay, std::string dataTypeString);
 
     /** Clear the state of the curBlock variables to start counting for the new block */
     void ClearCurrent(unsigned int nBlockHeight);
@@ -168,11 +165,11 @@ public:
      *        return the highest fee/pri such that all lower values fail minSuccess
      * @param nBlockHeight the current block height
      */
-    double EstimateMedianVal(int confTarget, double sufficientTxVal,
+    double EstimateMedianVal(const size_t nConfTarget, double sufficientTxVal,
                              double minSuccess, bool requireGreater, unsigned int nBlockHeight);
 
     /** Return the max number of confirms we're tracking */
-    unsigned int GetMaxConfirms() { return confAvg.size(); }
+    size_t GetMaxConfirms() const noexcept { return confAvg.size(); }
 
     /** Write state of estimation data to a file*/
     void Write(CAutoFile& fileout);
@@ -184,37 +181,35 @@ public:
     void Read(CAutoFile& filein);
 };
 
-
-
 /** Track confirm delays up to 25 blocks, can't estimate beyond that */
-static const unsigned int MAX_BLOCK_CONFIRMS = 25;
+static constexpr unsigned int MAX_BLOCK_CONFIRMS = 25;
 
 /** Require greater than 85% of X fee transactions to be confirmed within Y blocks for X to be big enough */
-static const double MIN_SUCCESS_PCT = .85;
-static const double UNLIKELY_PCT = .5;
+static constexpr double MIN_SUCCESS_PCT = .85;
+static constexpr double UNLIKELY_PCT = .5;
 
 /** Require an avg of 1 tx in the combined fee bucket per block to have stat significance */
-static const double SUFFICIENT_FEETXS = 1;
+static constexpr double SUFFICIENT_FEETXS = 1;
 
 /** Require only an avg of 1 tx every 5 blocks in the combined pri bucket (way less pri txs) */
-static const double SUFFICIENT_PRITXS = .2;
+static constexpr double SUFFICIENT_PRITXS = .2;
 
 // Minimum and Maximum values for tracking fees and priorities
-static const double MIN_FEERATE = 10;
-static const double MAX_FEERATE = 1e7;
-static const double INF_FEERATE = MAX_MONEY;
-static const double MIN_PRIORITY = 10;
-static const double MAX_PRIORITY = 1e16;
-static const double INF_PRIORITY = 1e9 * MAX_MONEY;
+static constexpr double MIN_FEERATE = 10;
+static constexpr double MAX_FEERATE = 1e7;
+static constexpr double INF_FEERATE = MAX_MONEY;
+static constexpr double MIN_PRIORITY = 10;
+static constexpr double MAX_PRIORITY = 1e16;
+static constexpr double INF_PRIORITY = 1e9 * MAX_MONEY;
 
 // We have to lump transactions into buckets based on fee or priority, but we want to be able
 // to give accurate estimates over a large range of potential fees and priorities
 // Therefore it makes sense to exponentially space the buckets
 /** Spacing of FeeRate buckets */
-static const double FEE_SPACING = 1.1;
+static constexpr double FEE_SPACING = 1.1;
 
 /** Spacing of Priority buckets */
-static const double PRI_SPACING = 2;
+static constexpr double PRI_SPACING = 2;
 
 /**
  *  We want to be able to estimate fees or priorities that are needed on txs to be included in
@@ -247,7 +242,7 @@ public:
     bool isPriDataPoint(const CFeeRate &fee, double pri);
 
     /** Return a fee estimate */
-    CFeeRate estimateFee(int confTarget);
+    CFeeRate estimateFee(const int confTarget);
 
     /** Return a priority estimate */
     double estimatePriority(int confTarget);
@@ -267,7 +262,11 @@ private:
         TxConfirmStats *stats;
         unsigned int blockHeight;
         unsigned int bucketIndex;
-        TxStatsInfo() : stats(NULL), blockHeight(0), bucketIndex(0) {}
+        TxStatsInfo() : 
+            stats(nullptr), 
+            blockHeight(0), 
+            bucketIndex(0)
+        {}
     };
 
     // map of txids to information about that transaction
@@ -280,4 +279,3 @@ private:
     CFeeRate feeLikely, feeUnlikely;
     double priLikely, priUnlikely;
 };
-#endif /*BITCOIN_POLICYESTIMATOR_H */

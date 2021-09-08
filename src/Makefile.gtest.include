@@ -24,7 +24,6 @@ pastel_gtest_SOURCES +=\
 	gtest/test_deprecation.cpp\
 	gtest/test_equihash.cpp\
 	gtest/test_httprpc.cpp\
-	gtest/test_joinsplit.cpp\
 	gtest/test_keys.cpp\
 	gtest/test_keystore.cpp\
 	gtest/test_legroast.cpp\
@@ -38,7 +37,6 @@ pastel_gtest_SOURCES +=\
 	gtest/test_mnode_pastel.cpp\
 	gtest/test_noteencryption.cpp\
 	gtest/test_pastelid.cpp\
-	gtest/test_paymentdisclosure.cpp\
 	gtest/test_pedersen_hash.cpp\
 	gtest/test_pow.cpp\
 	gtest/test_proofs.cpp\
@@ -48,7 +46,6 @@ pastel_gtest_SOURCES +=\
 	gtest/test_secure_container.cpp\
 	gtest/test_str_encodings.cpp\
 	gtest/test_tautology.cpp\
-	gtest/test_transaction.cpp\
 	gtest/test_transaction_builder.cpp\
 	gtest/test_txid.cpp\
 	gtest/test_upgrades.cpp\

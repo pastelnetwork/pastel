@@ -152,7 +152,7 @@ UniValue blockToJSON(const CBlock& block, const CBlockIndex* blockindex, bool tx
         else
             txs.push_back(tx.GetHash().GetHex());
     }
-    result.pushKV("tx", txs);
+    result.pushKV("tx", std::move(txs));
     result.pushKV("time", block.GetBlockTime());
     result.pushKV("nonce", block.nNonce.GetHex());
     result.pushKV("solution", HexStr(block.nSolution));
@@ -164,7 +164,7 @@ UniValue blockToJSON(const CBlock& block, const CBlockIndex* blockindex, bool tx
     UniValue valuePools(UniValue::VARR);
     valuePools.push_back(ValuePoolDesc("sprout", blockindex->nChainSproutValue, blockindex->nSproutValue));
     valuePools.push_back(ValuePoolDesc("sapling", blockindex->nChainSaplingValue, blockindex->nSaplingValue));
-    result.pushKV("valuePools", valuePools);
+    result.pushKV("valuePools", std::move(valuePools));
 
     if (blockindex->pprev)
         result.pushKV("previousblockhash", blockindex->pprev->GetBlockHash().GetHex());
@@ -492,7 +492,7 @@ UniValue getblock(const UniValue& params, bool fHelp)
     if (fHavePruned && !(pblockindex->nStatus & BLOCK_HAVE_DATA) && pblockindex->nTx > 0)
         throw JSONRPCError(RPC_INTERNAL_ERROR, "Block not available (pruned data)");
 
-    if(!ReadBlockFromDisk(block, pblockindex))
+    if(!ReadBlockFromDisk(block, pblockindex, Params().GetConsensus()))
         throw JSONRPCError(RPC_INTERNAL_ERROR, "Can't read block from disk");
 
     if (verbosity == 0)
@@ -649,7 +649,7 @@ UniValue verifychain(const UniValue& params, bool fHelp)
     if (params.size() > 1)
         nCheckDepth = params[1].get_int();
 
-    return CVerifyDB().VerifyDB(pcoinsTip, nCheckLevel, nCheckDepth);
+    return CVerifyDB().VerifyDB(Params(), pcoinsTip, nCheckLevel, nCheckDepth);
 }
 
 /** Implementation of IsSuperMajority with better feedback */
@@ -810,7 +810,8 @@ Examples:
         while (block && block->pprev && (block->pprev->nStatus & BLOCK_HAVE_DATA))
             block = block->pprev;
 
-        obj.pushKV("pruneheight",        block->nHeight);
+        if (block)
+            obj.pushKV("pruneheight", block->nHeight);
     }
     return obj;
 }
@@ -967,23 +968,21 @@ UniValue invalidateblock(const UniValue& params, bool fHelp)
     std::string strHash = params[0].get_str();
     uint256 hash(uint256S(strHash));
     CValidationState state;
-
+    const auto& chainparams = Params();
     {
         LOCK(cs_main);
         if (mapBlockIndex.count(hash) == 0)
             throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Block not found");
 
         CBlockIndex* pblockindex = mapBlockIndex[hash];
-        InvalidateBlock(state, pblockindex);
+        InvalidateBlock(state, chainparams, pblockindex);
     }
 
-    if (state.IsValid()) {
-        ActivateBestChain(state);
-    }
+    if (state.IsValid())
+        ActivateBestChain(state, chainparams);
 
-    if (!state.IsValid()) {
+    if (!state.IsValid())
         throw JSONRPCError(RPC_DATABASE_ERROR, state.GetRejectReason());
-    }
 
     return NullUniValue;
 }
@@ -1007,6 +1006,7 @@ UniValue reconsiderblock(const UniValue& params, bool fHelp)
     uint256 hash(uint256S(strHash));
     CValidationState state;
 
+    const auto& chainparams = Params();
     {
         LOCK(cs_main);
         if (mapBlockIndex.count(hash) == 0)
@@ -1016,9 +1016,8 @@ UniValue reconsiderblock(const UniValue& params, bool fHelp)
         ReconsiderBlock(state, pblockindex);
     }
 
-    if (state.IsValid()) {
-        ActivateBestChain(state);
-    }
+    if (state.IsValid())
+        ActivateBestChain(state, chainparams);
 
     if (!state.IsValid()) {
         throw JSONRPCError(RPC_DATABASE_ERROR, state.GetRejectReason());
@@ -1197,7 +1196,7 @@ Examples:)"
     if (fHavePruned && !(pblockindex->nStatus & BLOCK_HAVE_DATA) && pblockindex->nTx > 0)
         throw JSONRPCError(RPC_INTERNAL_ERROR, "Block not available (pruned data)");
 
-    if (!ReadBlockFromDisk(block, pblockindex))
+    if (!ReadBlockFromDisk(block, pblockindex, Params().GetConsensus()))
         throw JSONRPCError(RPC_INTERNAL_ERROR, "Can't read block from disk");
 
     return blockToDeltasJSON(block, pblockindex);

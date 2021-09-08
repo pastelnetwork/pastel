@@ -281,7 +281,8 @@ BOOST_FIXTURE_TEST_SUITE(Alert_tests, ReadAlerts)
 BOOST_AUTO_TEST_CASE(AlertApplies)
 {
     SetMockTime(11);
-    const std::vector<unsigned char>& alertKey = Params(CBaseChainParams::Network::MAIN).AlertKey();
+    auto pChainParams = CreateChainParams(CBaseChainParams::Network::MAIN);
+    const auto& alertKey = pChainParams->AlertKey();
 
     for (const auto& alert : alerts)
     {
@@ -322,7 +323,8 @@ BOOST_AUTO_TEST_CASE(AlertApplies)
 BOOST_AUTO_TEST_CASE(AlertNotify)
 {
     SetMockTime(11);
-    const std::vector<unsigned char>& alertKey = Params(CBaseChainParams::Network::MAIN).AlertKey();
+    auto pChainParams = CreateChainParams(CBaseChainParams::Network::MAIN);
+    const auto& alertKey = pChainParams->AlertKey();
 
     fs::path temp = GetTempPath() /
         fs::unique_path("alertnotify-%%%%.txt");
@@ -362,7 +364,8 @@ BOOST_AUTO_TEST_CASE(AlertNotify)
 BOOST_AUTO_TEST_CASE(AlertDisablesRPC)
 {
     SetMockTime(11);
-    const std::vector<unsigned char>& alertKey = Params(CBaseChainParams::Network::MAIN).AlertKey();
+    auto pChainParams = CreateChainParams(CBaseChainParams::Network::MAIN);
+    const auto& alertKey = pChainParams->AlertKey();
 
     // Command should work before alerts
     BOOST_CHECK_EQUAL(GetWarnings("rpc"), "");
@@ -381,15 +384,16 @@ BOOST_AUTO_TEST_CASE(AlertDisablesRPC)
     mapAlerts.clear();
 }
 
-static bool falseFunc() { return false; }
+static bool InitialDownloadCheckFalseFunc(const Consensus::Params &) { return false; }
 
 BOOST_AUTO_TEST_CASE(PartitionAlert)
 {
     // Test PartitionCheck
     CCriticalSection csDummy;
     CBlockIndex indexDummy[400];
-    CChainParams& params = Params(CBaseChainParams::Network::MAIN);
-    int64_t nPowTargetSpacing = params.GetConsensus().nPowTargetSpacing;
+    auto pChainParams = CreateChainParams(CBaseChainParams::Network::MAIN);
+    const auto& consensusParams = pChainParams->GetConsensus();
+    int64_t nPowTargetSpacing = consensusParams.nPowTargetSpacing;
 
     // Generate fake blockchain timestamps relative to
     // an arbitrary time:
@@ -397,8 +401,9 @@ BOOST_AUTO_TEST_CASE(PartitionAlert)
     SetMockTime(now);
     for (int i = 0; i < 400; i++)
     {
-        indexDummy[i].phashBlock = NULL;
-        if (i == 0) indexDummy[i].pprev = NULL;
+        indexDummy[i].phashBlock = nullptr;
+        if (i == 0)
+            indexDummy[i].pprev = nullptr;
         else indexDummy[i].pprev = &indexDummy[i-1];
         indexDummy[i].nHeight = i;
         indexDummy[i].nTime = now - (400-i)*nPowTargetSpacing;
@@ -406,15 +411,16 @@ BOOST_AUTO_TEST_CASE(PartitionAlert)
         // use them
     }
 
+
     // Test 1: chain with blocks every nPowTargetSpacing seconds,
     // as normal, no worries:
-    PartitionCheck(falseFunc, csDummy, &indexDummy[399], nPowTargetSpacing);
+    PartitionCheck(consensusParams, InitialDownloadCheckFalseFunc, csDummy, &indexDummy[399], nPowTargetSpacing);
     BOOST_CHECK(strMiscWarning.empty());
 
     // Test 2: go 3.5 hours without a block, expect a warning:
     now += 3*60*60+30*60;
     SetMockTime(now);
-    PartitionCheck(falseFunc, csDummy, &indexDummy[399], nPowTargetSpacing);
+    PartitionCheck(consensusParams, InitialDownloadCheckFalseFunc, csDummy, &indexDummy[399], nPowTargetSpacing);
     BOOST_CHECK(!strMiscWarning.empty());
     BOOST_TEST_MESSAGE(std::string("Got alert text: ")+strMiscWarning);
     strMiscWarning = "";
@@ -423,7 +429,7 @@ BOOST_AUTO_TEST_CASE(PartitionAlert)
     // code:
     now += 60*10;
     SetMockTime(now);
-    PartitionCheck(falseFunc, csDummy, &indexDummy[399], nPowTargetSpacing);
+    PartitionCheck(consensusParams, InitialDownloadCheckFalseFunc, csDummy, &indexDummy[399], nPowTargetSpacing);
     BOOST_CHECK(strMiscWarning.empty());
 
     // Test 4: get 2.5 times as many blocks as expected:
@@ -432,7 +438,7 @@ BOOST_AUTO_TEST_CASE(PartitionAlert)
     int64_t quickSpacing = nPowTargetSpacing*2/5;
     for (int i = 0; i < 400; i++) // Tweak chain timestamps:
         indexDummy[i].nTime = now - (400-i)*quickSpacing;
-    PartitionCheck(falseFunc, csDummy, &indexDummy[399], nPowTargetSpacing);
+    PartitionCheck(consensusParams, InitialDownloadCheckFalseFunc, csDummy, &indexDummy[399], nPowTargetSpacing);
     BOOST_CHECK(!strMiscWarning.empty());
     BOOST_TEST_MESSAGE(std::string("Got alert text: ")+strMiscWarning);
     strMiscWarning = "";

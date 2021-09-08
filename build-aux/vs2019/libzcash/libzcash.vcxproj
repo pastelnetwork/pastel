@@ -89,10 +89,8 @@
   <ItemGroup>
     <ClCompile Include="..\..\..\src\zcash\Address.cpp" />
     <ClCompile Include="..\..\..\src\zcash\address\sapling.cpp" />
-    <ClCompile Include="..\..\..\src\zcash\address\sprout.cpp" />
     <ClCompile Include="..\..\..\src\zcash\address\zip32.cpp" />
     <ClCompile Include="..\..\..\src\zcash\IncrementalMerkleTree.cpp" />
-    <ClCompile Include="..\..\..\src\zcash\JoinSplit.cpp" />
     <ClCompile Include="..\..\..\src\zcash\Note.cpp" />
     <ClCompile Include="..\..\..\src\zcash\NoteEncryption.cpp" />
     <ClCompile Include="..\..\..\src\zcash\prf.cpp" />
@@ -107,10 +105,8 @@
   <ItemGroup>
     <ClInclude Include="..\..\..\src\zcash\Address.hpp" />
     <ClInclude Include="..\..\..\src\zcash\address\sapling.hpp" />
-    <ClInclude Include="..\..\..\src\zcash\address\sprout.hpp" />
     <ClInclude Include="..\..\..\src\zcash\address\zip32.h" />
     <ClInclude Include="..\..\..\src\zcash\IncrementalMerkleTree.hpp" />
-    <ClInclude Include="..\..\..\src\zcash\JoinSplit.hpp" />
     <ClInclude Include="..\..\..\src\zcash\Note.hpp" />
     <ClInclude Include="..\..\..\src\zcash\NoteEncryption.hpp" />
     <ClInclude Include="..\..\..\src\zcash\prf.h" />
