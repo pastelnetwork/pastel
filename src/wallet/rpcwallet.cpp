@@ -4386,7 +4386,7 @@ Examples:
             nSaplingNoteCount += wtx.second.mapSaplingNoteData.size();
     }
     UniValue ret(UniValue::VOBJ);
-    ret.pushKV("sapling", nSaplingNoteCount);
+    ret.pushKV("sapling", static_cast<int64_t>(nSaplingNoteCount));
 
     return ret;
 }
