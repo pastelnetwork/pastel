@@ -29,7 +29,6 @@
 
 CClientUIInterface uiInterface; // Declared but not defined in ui_interface.h
 CWallet* pwalletMain;
-ZCJoinSplit *pzcashParams;
 
 //MasterNode
 #include "mnode/mnode-controller.h"
@@ -42,8 +41,6 @@ extern void noui_connect();
 
 JoinSplitTestingSetup::JoinSplitTestingSetup()
 {
-    pzcashParams = ZCJoinSplit::Prepared();
-
     fs::path sapling_spend = ZC_GetParamsDir() / "sapling-spend.params";
     fs::path sapling_output = ZC_GetParamsDir() / "sapling-output.params";
     fs::path sprout_groth16 = ZC_GetParamsDir() / "sprout-groth16.params";
@@ -69,9 +66,7 @@ JoinSplitTestingSetup::JoinSplitTestingSetup()
 }
 
 JoinSplitTestingSetup::~JoinSplitTestingSetup()
-{
-    delete pzcashParams;
-}
+{}
 
 BasicTestingSetup::BasicTestingSetup()
 {
@@ -108,7 +103,7 @@ TestingSetup::TestingSetup()
         pblocktree = new CBlockTreeDB(1 << 20, true);
         pcoinsdbview = new CCoinsViewDB(1 << 23, true);
         pcoinsTip = new CCoinsViewCache(pcoinsdbview);
-        InitBlockIndex();
+        InitBlockIndex(Params());
 #ifdef ENABLE_WALLET
         bool fFirstRun;
         pwalletMain = new CWallet("wallet.dat");
@@ -129,7 +124,7 @@ TestingSetup::~TestingSetup()
 #ifdef ENABLE_WALLET
         UnregisterValidationInterface(pwalletMain);
         delete pwalletMain;
-        pwalletMain = NULL;
+        pwalletMain = nullptr;
 #endif
         UnloadBlockIndex();
         delete pcoinsTip;

@@ -12,6 +12,9 @@
 using v_strings = std::vector<std::string>;
 using v_uint8 = std::vector<uint8_t>;
 using v_bytes = std::vector<std::byte>;
+using v_ints = std::vector<int>;
+using v_doubles = std::vector<double>;
+using v_bools = std::vector<bool>;
 
 /**
  * Convert string to byte vector.

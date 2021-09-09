@@ -6,15 +6,16 @@
 #include "serialize.h"
 #include "streams.h"
 #include "support/allocators/secure.h"
+#include "vector_types.h"
 #include "zcash/Address.hpp"
-
-class uint256;
 
 #include <atomic>
 
-const unsigned int WALLET_CRYPTO_KEY_SIZE = 32;
-const unsigned int WALLET_CRYPTO_SALT_SIZE = 8;
-const unsigned int WALLET_CRYPTO_IV_SIZE = 32; // AES IV's are 16bytes, not 32 -> use 16?
+class uint256;
+
+constexpr unsigned int WALLET_CRYPTO_KEY_SIZE = 32;
+constexpr unsigned int WALLET_CRYPTO_SALT_SIZE = 8;
+constexpr unsigned int WALLET_CRYPTO_IV_SIZE = 32; // AES IV's are 16bytes, not 32 -> use 16?
 
 /**
  * Private key encryption is done based on a CMasterKey,
@@ -35,15 +36,15 @@ const unsigned int WALLET_CRYPTO_IV_SIZE = 32; // AES IV's are 16bytes, not 32 -
 class CMasterKey
 {
 public:
-    std::vector<unsigned char> vchCryptedKey;
-    std::vector<unsigned char> vchSalt;
+    v_uint8 vchCryptedKey;
+    v_uint8 vchSalt;
     //! 0 = EVP_sha512()
     //! 1 = scrypt()
     unsigned int nDerivationMethod;
     unsigned int nDeriveIterations;
     //! Use this for more parameters to key derivation,
     //! such as the various parameters to scrypt
-    std::vector<unsigned char> vchOtherDerivationParameters;
+    v_uint8 vchOtherDerivationParameters;
 
     ADD_SERIALIZE_METHODS;
 
@@ -90,10 +91,10 @@ private:
     bool fKeySet;
 
 public:
-    bool SetKeyFromPassphrase(const SecureString &strKeyData, const std::vector<unsigned char>& chSalt, const unsigned int nRounds, const unsigned int nDerivationMethod);
-    bool Encrypt(const CKeyingMaterial& vchPlaintext, std::vector<unsigned char> &vchCiphertext) const;
-    bool Decrypt(const std::vector<unsigned char>& vchCiphertext, CKeyingMaterial& vchPlaintext) const;
-    bool SetKey(const CKeyingMaterial& chNewKey, const std::vector<unsigned char>& chNewIV);
+    bool SetKeyFromPassphrase(const SecureString &strKeyData, const v_uint8& chSalt, const unsigned int nRounds, const unsigned int nDerivationMethod);
+    bool Encrypt(const CKeyingMaterial& vchPlaintext, v_uint8& vchCiphertext) const;
+    bool Decrypt(const v_uint8& vchCiphertext, CKeyingMaterial& vchPlaintext) const;
+    bool SetKey(const CKeyingMaterial& chNewKey, const v_uint8& chNewIV);
 
     void CleanKey()
     {
@@ -121,9 +122,8 @@ public:
 class CCryptoKeyStore : public CBasicKeyStore
 {
 private:
-    std::pair<uint256, std::vector<unsigned char>> cryptedHDSeed;
+    std::pair<uint256, v_uint8> cryptedHDSeed;
     CryptedKeyMap mapCryptedKeys;
-    CryptedSproutSpendingKeyMap mapCryptedSproutSpendingKeys;
     CryptedSaplingSpendingKeyMap mapCryptedSaplingSpendingKeys;
 
     CKeyingMaterial vMasterKey;
@@ -162,12 +162,12 @@ public:
 
     bool Lock();
 
-    virtual bool SetCryptedHDSeed(const uint256& seedFp, const std::vector<unsigned char> &vchCryptedSecret);
+    virtual bool SetCryptedHDSeed(const uint256& seedFp, const v_uint8& vchCryptedSecret);
     bool SetHDSeed(const HDSeed& seed) override;
     bool HaveHDSeed() const override;
     bool GetHDSeed(HDSeed& seedOut) const override;
 
-    virtual bool AddCryptedKey(const CPubKey &vchPubKey, const std::vector<unsigned char> &vchCryptedSecret);
+    virtual bool AddCryptedKey(const CPubKey& vchPubKey, const v_uint8& vchCryptedSecret);
     bool AddKeyPubKey(const CKey& key, const CPubKey &pubkey) override;
     bool HaveKey(const CKeyID &address) const override
     {
@@ -191,35 +191,7 @@ public:
         }
         return set_address;
     }
-    virtual bool AddCryptedSproutSpendingKey(
-        const libzcash::SproutPaymentAddress &address,
-        const libzcash::ReceivingKey &rk,
-        const std::vector<unsigned char> &vchCryptedSecret);
-    bool AddSproutSpendingKey(const libzcash::SproutSpendingKey &sk) override;
-    bool HaveSproutSpendingKey(const libzcash::SproutPaymentAddress &address) const override
-    {
-        LOCK(cs_KeyStore);
-        if (!fUseCrypto)
-            return CBasicKeyStore::HaveSproutSpendingKey(address);
-        return mapCryptedSproutSpendingKeys.count(address) > 0;
-    }
-    bool GetSproutSpendingKey(const libzcash::SproutPaymentAddress &address, libzcash::SproutSpendingKey &skOut) const override;
-    void GetSproutPaymentAddresses(std::set<libzcash::SproutPaymentAddress> &setAddress) const override
-    {
-        LOCK(cs_KeyStore);
-        if (!fUseCrypto)
-        {
-            CBasicKeyStore::GetSproutPaymentAddresses(setAddress);
-            return;
-        }
-        setAddress.clear();
-        CryptedSproutSpendingKeyMap::const_iterator mi = mapCryptedSproutSpendingKeys.begin();
-        while (mi != mapCryptedSproutSpendingKeys.end())
-        {
-            setAddress.insert((*mi).first);
-            mi++;
-        }
-    }
+
     //! Sapling 
     virtual bool AddCryptedSaplingSpendingKey(
         const libzcash::SaplingExtendedFullViewingKey &extfvk,

@@ -30,9 +30,10 @@ Genesis block for RegTest found
 #include "key_io.h"
 #include "main.h"
 #include "crypto/equihash.h"
-
+#include "port_config.h"
 #include "util.h"
 #include "utilstrencodings.h"
+#include "chainparamsseeds.h"
 
 #include <assert.h>
 #include <vector>
@@ -41,18 +42,16 @@ Genesis block for RegTest found
 
 #include <boost/assign/list_of.hpp>
 
-#include "chainparamsseeds.h"
-
 using namespace std;
 
-#define OVERWINTER_STARTING_BLOCK 10
-#define SAPLING_STARTING_BLOCK 20
+constexpr unsigned int OVERWINTER_STARTING_BLOCK = 10;
+constexpr unsigned int SAPLING_STARTING_BLOCK = 20;
 
 static CBlock CreateGenesisBlock(const char* pszTimestamp, 
-                                 const std::vector<unsigned char> &genesisPubKey, 
+                                 const v_uint8 &genesisPubKey, 
                                  uint32_t nTime, 
                                  uint256 nNonce, 
-                                 const std::vector<unsigned char> &nSolution, 
+                                 const v_uint8 &nSolution, 
                                  uint32_t nBits, 
                                  int32_t nVersion = 4, 
                                  const CAmount& genesisReward = 0)
@@ -61,7 +60,7 @@ static CBlock CreateGenesisBlock(const char* pszTimestamp,
     txNew.nVersion = 1;
     txNew.vin.resize(1);
     txNew.vout.resize(1);
-    txNew.vin[0].scriptSig = CScript() << (int)nBits << CScriptNum(4) << vector<unsigned char>((const unsigned char*)pszTimestamp, (const unsigned char*)pszTimestamp + strlen(pszTimestamp));
+    txNew.vin[0].scriptSig = CScript() << (int)nBits << CScriptNum(4) << v_uint8((const unsigned char*)pszTimestamp, (const unsigned char*)pszTimestamp + strlen(pszTimestamp));
     txNew.vout[0].nValue = genesisReward;
     txNew.vout[0].scriptPubKey = CScript() << genesisPubKey << OP_CHECKSIG;
 
@@ -120,9 +119,9 @@ static void __mineGenBlock(std::string network, bool tromp, unsigned int n, unsi
                                             pblock->nNonce.size());
 
         // (x_1, x_2, ...) = A(I, V, n, k)
-        std::function<bool(std::vector<unsigned char>)> validBlock =
+        std::function<bool(v_uint8)> validBlock =
             [&network, &pblock, &hashTarget]
-            (std::vector<unsigned char> soln) {
+            (v_uint8 soln) {
             
             // Write the solution to the hash and compute the result.
             pblock->nSolution = soln;
@@ -162,7 +161,7 @@ static void __mineGenBlock(std::string network, bool tromp, unsigned int n, unsi
                 for (size_t i = 0; i < PROOFSIZE; i++) {
                     index_vector[i] = eq.sols[s][i];
                 }
-                std::vector<unsigned char> sol_char = GetMinimalFromIndices(index_vector, DIGITBITS);
+                v_uint8 sol_char = GetMinimalFromIndices(index_vector, DIGITBITS);
 
                 if (validBlock(sol_char)) {
                     // If we find a POW solution, do not try other solutions
@@ -212,7 +211,7 @@ static void __mineGenBlock(std::string network, bool tromp, unsigned int n, unsi
  */
 
 // ** 2020 December 25th **
-static const std::vector<unsigned char> PastelGenesisPubKey = ParseHex("04b71877e98be12cf80216bdbf54afcac969cdb48e511d19a338ec9bb775e7a840fe64b93d319a6f028e5a9464c6fcf8a7fd2b958559991995c8bed5b5df136d02");
+static const v_uint8 PastelGenesisPubKey = ParseHex("04b71877e98be12cf80216bdbf54afcac969cdb48e511d19a338ec9bb775e7a840fe64b93d319a6f028e5a9464c6fcf8a7fd2b958559991995c8bed5b5df136d02");
 static const char* PastelGenesisTimestamp = "Pascalfa9f9ecb4d2a411ce792e4e64324d91bd26f8376ca83dc914468e6b1c83cdb59";
 static const uint32_t EpocTime = 1608854400;
 
@@ -236,10 +235,10 @@ static CBlock CreateMainnetGenesisBlock()
 
 #ifdef MINE_GENESIS_MAIN
     uint256 nNonce = uint256S("0");
-    std::vector<unsigned char> nSolution = ParseHex("0");
+    v_uint8 nSolution = ParseHex("0");
 #else
     uint256 nNonce = uint256S(MainnetNonce);
-    std::vector<unsigned char> nSolution = ParseHex(MainnetSolution);
+    v_uint8 nSolution = ParseHex(MainnetSolution);
 #endif
 
     CBlock block = CreateGenesisBlock(PastelGenesisTimestamp, PastelGenesisPubKey, EpocTime, nNonce, nSolution, nBits);
@@ -258,10 +257,10 @@ static CBlock CreateTestnetGenesisBlock()
 
 #ifdef MINE_GENESIS_TEST
     uint256 nNonce = uint256S("0");
-    std::vector<unsigned char> nSolution = ParseHex("0");
+    v_uint8 nSolution = ParseHex("0");
 #else
     uint256 nNonce = uint256S(TestnetNonce);
-    std::vector<unsigned char> nSolution = ParseHex(TestnetSolution);
+    v_uint8 nSolution = ParseHex(TestnetSolution);
 #endif
 
     CBlock block = CreateGenesisBlock(PastelGenesisTimestamp, PastelGenesisPubKey, EpocTime, nNonce, nSolution, nBits);
@@ -279,10 +278,10 @@ static CBlock CreateRegtestGenesisBlock()
 
 #ifdef MINE_GENESIS_REGT
     uint256 nNonce = uint256S("0");
-    std::vector<unsigned char> nSolution = ParseHex("0");
+    v_uint8 nSolution = ParseHex("0");
 #else
     uint256 nNonce = uint256S(RegtestNonce);
-    std::vector<unsigned char> nSolution = ParseHex(RegtestSolution);
+    v_uint8 nSolution = ParseHex(RegtestSolution);
 #endif
 
     CBlock block = CreateGenesisBlock(PastelGenesisTimestamp, PastelGenesisPubKey, EpocTime, nNonce, nSolution, nBits);
@@ -323,7 +322,7 @@ public:
         assert(maxUint/UintToArith256(consensus.powLimit) >= consensus.nPowAveragingWindow);
         consensus.nPowMaxAdjustDown = 32; // 32% adjustment down
         consensus.nPowMaxAdjustUp = 16; // 16% adjustment up
-        consensus.nPowTargetSpacing = 2.5 * 60;
+        consensus.nPowTargetSpacing = static_cast<int64_t>(2.5 * 60);
         consensus.nPowAllowMinDifficultyBlocksAfterHeight = std::nullopt;
         consensus.vUpgrades[Consensus::BASE_SPROUT].nProtocolVersion = 170002;
         consensus.vUpgrades[Consensus::BASE_SPROUT].nActivationHeight = Consensus::NetworkUpgrade::ALWAYS_ACTIVE;
@@ -346,12 +345,12 @@ public:
         pchMessageStart[2] = 0xb8;
         pchMessageStart[3] = 0xfc;
         vAlertPubKey = ParseHex("0441f3821b035bc418b8fbe8e912005112826a5c51fdcf5fbac6d7dd2ab545183049e51c3f2ed2a70b1e48a59b4c3367c15d30fbff461afc6b83932fefedfe5d41");
-        nDefaultPort = 9933;
+        nDefaultPort = MAINNET_DEFAULT_PORT;
         nPruneAfterHeight = 100000;
         const size_t N = 200, K = 9;
         BOOST_STATIC_ASSERT(equihash_parameters_acceptable(N, K));
-        nEquihashN = N;
-        nEquihashK = K;
+        consensus.nEquihashN = N;
+        consensus.nEquihashK = K;
 
         genesis = CreateMainnetGenesisBlock();
         consensus.hashGenesisBlock = genesis.GetHash();
@@ -405,7 +404,6 @@ public:
                                 //after first checkpoint math is = 765, but I'm setting 800
     }
 };
-static CMainParams mainParams;
 
 /**
  * Testnet (v3)
@@ -426,7 +424,7 @@ public:
         assert(maxUint/UintToArith256(consensus.powLimit) >= consensus.nPowAveragingWindow);
         consensus.nPowMaxAdjustDown = 32; // 32% adjustment down
         consensus.nPowMaxAdjustUp = 16; // 16% adjustment up
-        consensus.nPowTargetSpacing = 2.5 * 60;
+        consensus.nPowTargetSpacing = static_cast<int64_t>(2.5 * 60);
         consensus.nPowAllowMinDifficultyBlocksAfterHeight = 299187;
         consensus.vUpgrades[Consensus::BASE_SPROUT].nProtocolVersion = 170002;
         consensus.vUpgrades[Consensus::BASE_SPROUT].nActivationHeight = Consensus::NetworkUpgrade::ALWAYS_ACTIVE;
@@ -449,12 +447,12 @@ public:
         pchMessageStart[2] = 0xfe;
         pchMessageStart[3] = 0x64;
         vAlertPubKey = ParseHex("0429aff40718031ed61f0166f3e33b5dfb256c78cdbfa916bf6cc9869a40ce1d66ca35b92fe874bd18b69457ecef27bc3a0f089b737b03fb889dc1420b6a6e70cb");
-        nDefaultPort = 19933;
+        nDefaultPort = TESTNET_DEFAULT_PORT;
         nPruneAfterHeight = 1000;
         const size_t N = 200, K = 9;
         BOOST_STATIC_ASSERT(equihash_parameters_acceptable(N, K));
-        nEquihashN = N;
-        nEquihashK = K;
+        consensus.nEquihashN = N;
+        consensus.nEquihashK = K;
 
         genesis = CreateTestnetGenesisBlock();
         consensus.hashGenesisBlock = genesis.GetHash();
@@ -505,7 +503,6 @@ public:
                                 //   total number of tx / (checkpoint block height / (24 * 24))
     }
 };
-static CTestNetParams testNetParams;
 
 /**
  * Regression test
@@ -526,7 +523,7 @@ public:
         assert(maxUint/UintToArith256(consensus.powLimit) >= consensus.nPowAveragingWindow);
         consensus.nPowMaxAdjustDown = 0; // Turn off adjustment down
         consensus.nPowMaxAdjustUp = 0; // Turn off adjustment up
-        consensus.nPowTargetSpacing = 2.5 * 60;
+        consensus.nPowTargetSpacing = static_cast<int64_t>(2.5 * 60);
         consensus.nPowAllowMinDifficultyBlocksAfterHeight = 0;
         consensus.vUpgrades[Consensus::BASE_SPROUT].nProtocolVersion = 170002;
         consensus.vUpgrades[Consensus::BASE_SPROUT].nActivationHeight = Consensus::NetworkUpgrade::ALWAYS_ACTIVE;
@@ -534,7 +531,7 @@ public:
         consensus.vUpgrades[Consensus::UPGRADE_TESTDUMMY].nActivationHeight = Consensus::NetworkUpgrade::NO_ACTIVATION_HEIGHT;
         consensus.vUpgrades[Consensus::UPGRADE_OVERWINTER].nProtocolVersion = 170003;
         consensus.vUpgrades[Consensus::UPGRADE_OVERWINTER].nActivationHeight = Consensus::NetworkUpgrade::NO_ACTIVATION_HEIGHT;
-        consensus.vUpgrades[Consensus::UPGRADE_SAPLING].nProtocolVersion = 170006;
+        consensus.vUpgrades[Consensus::UPGRADE_SAPLING].nProtocolVersion = 170008;
         consensus.vUpgrades[Consensus::UPGRADE_SAPLING].nActivationHeight = Consensus::NetworkUpgrade::NO_ACTIVATION_HEIGHT;
         consensus.nMaxGovernanceAmount = 1000000*COIN;
 
@@ -549,12 +546,12 @@ public:
         pchMessageStart[2] = 0xfa;
         pchMessageStart[3] = 0x9e;
         vAlertPubKey = ParseHex("04b985ccafe6d17ac5d84cb8c06a69cefad733ee96b4b93bcf5ef0897778c227ee7e74e7680cc219236e4c6a609dbcdeb5bf65cea9c2576c2a0fbef590657c8e7a");
-        nDefaultPort = 18344;
+        nDefaultPort = REGTEST_DEFAULT_PORT;
         nPruneAfterHeight = 1000;
         const size_t N = 48, K = 5;
         BOOST_STATIC_ASSERT(equihash_parameters_acceptable(N, K));
-        nEquihashN = N;
-        nEquihashK = K;
+        consensus.nEquihashN = N;
+        consensus.nEquihashK = K;
         
         genesis = CreateRegtestGenesisBlock();
         consensus.hashGenesisBlock = genesis.GetHash();
@@ -600,42 +597,62 @@ public:
         checkpointData.fTransactionsPerDay = 0;
     }
 
-    void UpdateNetworkUpgradeParameters(Consensus::UpgradeIndex idx, int nActivationHeight)
+    void UpdateNetworkUpgradeParameters(Consensus::UpgradeIndex idx, const int nActivationHeight)
     {
         assert(idx > Consensus::BASE_SPROUT && idx < Consensus::MAX_NETWORK_UPGRADES);
         consensus.vUpgrades[idx].nActivationHeight = nActivationHeight;
     }
 };
-static CRegTestParams regTestParams;
 
-static CChainParams *pCurrentParams = 0;
+// global blockchain parameters
+static std::unique_ptr<const CChainParams> globalChainParams;
 
-const CChainParams &Params() {
-    assert(pCurrentParams);
-    return *pCurrentParams;
+const CChainParams &Params()
+{
+    assert(globalChainParams);
+    return *globalChainParams;
 }
 
-CChainParams &Params(CBaseChainParams::Network network) {
+/**
+ * Create blockchain parameters based on network type.
+ * 
+ * \param network - MAIN, TESTNET or REGTEST
+ * \return unique_ptr with chain parameters
+ */
+std::unique_ptr<const CChainParams> CreateChainParams(const CBaseChainParams::Network network)
+{
+    std::unique_ptr<CChainParams> ChainParams;
     switch (network)
     {
         case CBaseChainParams::Network::MAIN:
-            return mainParams;
+            ChainParams = std::make_unique<CMainParams>();
+            break;
 
         case CBaseChainParams::Network::TESTNET:
-            return testNetParams;
+            ChainParams = std::make_unique<CTestNetParams>();
+            break;
 
         case CBaseChainParams::Network::REGTEST:
-            return regTestParams;
+            ChainParams = std::make_unique<CRegTestParams>();
+            break;
 
         default:
             assert(false && "Unimplemented network");
-            return mainParams;
+            ChainParams = std::make_unique<CMainParams>();
+            break;
     }
+    return std::move(ChainParams);
 }
 
-void SelectParams(CBaseChainParams::Network network) {
+/**
+ * Sets the params returned by Params() to those for the given network.
+ * 
+ * \param network - blockchain network type (MAIN, TESTNET or REGTEST)
+ */
+void SelectParams(const CBaseChainParams::Network network)
+{
     SelectBaseParams(network);
-    pCurrentParams = &Params(network);
+    globalChainParams = CreateChainParams(network);
 }
 
 bool SelectParamsFromCommandLine()
@@ -648,7 +665,12 @@ bool SelectParamsFromCommandLine()
     return true;
 }
 
-void UpdateNetworkUpgradeParameters(Consensus::UpgradeIndex idx, int nActivationHeight)
+void UpdateNetworkUpgradeParameters(Consensus::UpgradeIndex idx, const int nActivationHeight)
 {
-    regTestParams.UpdateNetworkUpgradeParameters(idx, nActivationHeight);
+    if (globalChainParams && globalChainParams->IsRegTest())
+    {
+        auto RegTestParams = const_cast<CRegTestParams*>(dynamic_cast<const CRegTestParams*>(globalChainParams.get()));
+        if (RegTestParams)
+            RegTestParams->UpdateNetworkUpgradeParameters(idx, nActivationHeight);
+    }
 }

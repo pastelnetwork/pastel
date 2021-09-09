@@ -10,10 +10,12 @@
 #include "pow.h"
 #include "tinyformat.h"
 #include "uint256.h"
+#include "vector_types.h"
+
 #include <vector>
 
-static const int SPROUT_VALUE_VERSION = 1001400;
-static const int SAPLING_VALUE_VERSION = 1010100;
+constexpr int SPROUT_VALUE_VERSION = 1001400;
+constexpr int SAPLING_VALUE_VERSION = 1010100;
 
 struct CDiskBlockPos
 {
@@ -188,16 +190,16 @@ public:
     unsigned int nTime;
     unsigned int nBits;
     uint256 nNonce;
-    std::vector<unsigned char> nSolution;
+    v_uint8 nSolution;
 
     //! (memory only) Sequential id assigned to distinguish order in which blocks are received.
     uint32_t nSequenceId;
 
     void SetNull()
     {
-        phashBlock = NULL;
-        pprev = NULL;
-        pskip = NULL;
+        phashBlock = nullptr;
+        pprev = nullptr;
+        pskip = nullptr;
         nHeight = 0;
         nFile = 0;
         nDataPos = 0;
@@ -260,7 +262,7 @@ public:
         return ret;
     }
 
-    CBlockHeader GetBlockHeader() const
+    CBlockHeader GetBlockHeader() const noexcept
     {
         CBlockHeader block;
         block.nVersion       = nVersion;
@@ -275,12 +277,12 @@ public:
         return block;
     }
 
-    uint256 GetBlockHash() const
+    uint256 GetBlockHash() const noexcept
     {
         return *phashBlock;
     }
 
-    int64_t GetBlockTime() const
+    int64_t GetBlockTime() const noexcept
     {
         return (int64_t)nTime;
     }
@@ -359,7 +361,7 @@ public:
     template <typename Stream>
     inline void SerializationOp(Stream& s, const SERIALIZE_ACTION ser_action)
     {
-        int nVersion = s.GetVersion();
+        const int nVersion = s.GetVersion();
         if (!(s.GetType() & SER_GETHASH))
             READWRITE(VARINT(nVersion));
 
@@ -447,12 +449,12 @@ private:
 public:
     /** Returns the index entry for the genesis block of this chain, or NULL if none. */
     CBlockIndex *Genesis() const {
-        return vChain.size() > 0 ? vChain[0] : NULL;
+        return vChain.size() > 0 ? vChain[0] : nullptr;
     }
 
     /** Returns the index entry for the tip of this chain, or NULL if none. */
     CBlockIndex *Tip() const {
-        return vChain.size() > 0 ? vChain[vChain.size() - 1] : NULL;
+        return vChain.size() > 0 ? vChain[vChain.size() - 1] : nullptr;
     }
 
     /** Returns the index entry at a particular height in this chain, or NULL if no such height exists. */
@@ -490,7 +492,7 @@ public:
     void SetTip(CBlockIndex *pindex);
 
     /** Return a CBlockLocator that refers to a block in this chain (by default the tip). */
-    CBlockLocator GetLocator(const CBlockIndex *pindex = NULL) const;
+    CBlockLocator GetLocator(const CBlockIndex *pindex = nullptr) const;
 
     /** Find the last common block between this chain and a block index entry. */
     const CBlockIndex *FindFork(const CBlockIndex *pindex) const;

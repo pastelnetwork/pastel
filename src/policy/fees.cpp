@@ -11,7 +11,7 @@
 #include "txmempool.h"
 #include "util.h"
 
-void TxConfirmStats::Initialize(std::vector<double>& defaultBuckets,
+void TxConfirmStats::Initialize(v_doubles& defaultBuckets,
                                 unsigned int maxConfirms, double _decay, std::string _dataTypeString)
 {
     decay = _decay;
@@ -84,7 +84,7 @@ void TxConfirmStats::UpdateMovingAverages()
 }
 
 // returns -1 on error conditions
-double TxConfirmStats::EstimateMedianVal(int confTarget, double sufficientTxVal,
+double TxConfirmStats::EstimateMedianVal(const size_t nConfTarget, double sufficientTxVal,
                                          double successBreakPoint, bool requireGreater,
                                          unsigned int nBlockHeight)
 {
@@ -118,9 +118,9 @@ double TxConfirmStats::EstimateMedianVal(int confTarget, double sufficientTxVal,
     // Start counting from highest(default) or lowest fee/pri transactions
     for (int bucket = startbucket; bucket >= 0 && bucket <= maxbucketindex; bucket += step) {
         curFarBucket = bucket;
-        nConf += confAvg[confTarget - 1][bucket];
+        nConf += confAvg[nConfTarget - 1][bucket];
         totalNum += txCtAvg[bucket];
-        for (unsigned int confct = confTarget; confct < GetMaxConfirms(); confct++)
+        for (size_t confct = nConfTarget; confct < GetMaxConfirms(); confct++)
             extraNum += unconfTxs[(nBlockHeight - confct)%bins][bucket];
         extraNum += oldUnconfTxs[bucket];
         // If we have enough transaction data points in this range of buckets,
@@ -174,8 +174,8 @@ double TxConfirmStats::EstimateMedianVal(int confTarget, double sufficientTxVal,
         }
     }
 
-    LogPrint("estimatefee", "%3d: For conf success %s %4.2f need %s %s: %12.5g from buckets %8g - %8g  Cur Bucket stats %6.2f%%  %8.1f/(%.1f+%d mempool)\n",
-             confTarget, requireGreater ? ">" : "<", successBreakPoint, dataTypeString,
+    LogPrint("estimatefee", "%3zu: For conf success %s %4.2f need %s %s: %12.5g from buckets %8g - %8g  Cur Bucket stats %6.2f%%  %8.1f/(%.1f+%d mempool)\n",
+             nConfTarget, requireGreater ? ">" : "<", successBreakPoint, dataTypeString,
              requireGreater ? ">" : "<", median, buckets[minBucket], buckets[maxBucket],
              100 * nConf / (totalNum + extraNum), nConf, totalNum, extraNum);
 
@@ -194,10 +194,10 @@ void TxConfirmStats::Write(CAutoFile& fileout)
 void TxConfirmStats::Read(CAutoFile& filein)
 {
     // Read data file into temporary variables and do some very basic sanity checking
-    std::vector<double> fileBuckets;
-    std::vector<double> fileAvg;
-    std::vector<std::vector<double> > fileConfAvg;
-    std::vector<double> fileTxCtAvg;
+    v_doubles fileBuckets;
+    v_doubles fileAvg;
+    std::vector<v_doubles> fileConfAvg;
+    v_doubles fileTxCtAvg;
     double fileDecay;
     size_t maxConfirms;
     size_t numBuckets;
@@ -311,22 +311,23 @@ void CBlockPolicyEstimator::removeTx(uint256 hash)
 CBlockPolicyEstimator::CBlockPolicyEstimator(const CFeeRate& _minRelayFee)
     : nBestSeenHeight(0)
 {
-    minTrackedFee = _minRelayFee < CFeeRate(MIN_FEERATE) ? CFeeRate(MIN_FEERATE) : _minRelayFee;
-    std::vector<double> vfeelist;
+    const auto nMinFeeRate = static_cast<CAmount>(MIN_FEERATE);
+    minTrackedFee = _minRelayFee < CFeeRate(nMinFeeRate) ? CFeeRate(nMinFeeRate) : _minRelayFee;
+    v_doubles vfeelist;
     for (double bucketBoundary = minTrackedFee.GetFeePerK(); bucketBoundary <= MAX_FEERATE; bucketBoundary *= FEE_SPACING) {
         vfeelist.push_back(bucketBoundary);
     }
     feeStats.Initialize(vfeelist, MAX_BLOCK_CONFIRMS, DEFAULT_DECAY, "FeeRate");
 
     minTrackedPriority = AllowFreeThreshold() < MIN_PRIORITY ? MIN_PRIORITY : AllowFreeThreshold();
-    std::vector<double> vprilist;
+    v_doubles vprilist;
     for (double bucketBoundary = minTrackedPriority; bucketBoundary <= MAX_PRIORITY; bucketBoundary *= PRI_SPACING) {
         vprilist.push_back(bucketBoundary);
     }
     priStats.Initialize(vprilist, MAX_BLOCK_CONFIRMS, DEFAULT_DECAY, "Priority");
 
     feeUnlikely = CFeeRate(0);
-    feeLikely = CFeeRate(INF_FEERATE);
+    feeLikely = CFeeRate(static_cast<CAmount>(INF_FEERATE));
     priUnlikely = 0;
     priLikely = INF_PRIORITY;
 }
@@ -468,9 +469,9 @@ void CBlockPolicyEstimator::processBlock(unsigned int nBlockHeight,
 
     double feeLikelyEst = feeStats.EstimateMedianVal(2, SUFFICIENT_FEETXS, MIN_SUCCESS_PCT, true, nBlockHeight);
     if (feeLikelyEst == -1)
-        feeLikely = CFeeRate(INF_FEERATE);
+        feeLikely = CFeeRate(static_cast<CAmount>(INF_FEERATE));
     else
-        feeLikely = CFeeRate(feeLikelyEst);
+        feeLikely = CFeeRate(static_cast<CAmount>(feeLikelyEst));
 
     priUnlikely = priStats.EstimateMedianVal(10, SUFFICIENT_PRITXS, UNLIKELY_PCT, false, nBlockHeight);
     if (priUnlikely == -1)
@@ -480,7 +481,7 @@ void CBlockPolicyEstimator::processBlock(unsigned int nBlockHeight,
     if (feeUnlikelyEst == -1)
         feeUnlikely = CFeeRate(0);
     else
-        feeUnlikely = CFeeRate(feeUnlikelyEst);
+        feeUnlikely = CFeeRate(static_cast<CAmount>(feeUnlikelyEst));
 
     // Clear the current block states
     feeStats.ClearCurrent(nBlockHeight);
@@ -498,18 +499,20 @@ void CBlockPolicyEstimator::processBlock(unsigned int nBlockHeight,
              entries.size(), mapMemPoolTxs.size());
 }
 
-CFeeRate CBlockPolicyEstimator::estimateFee(int confTarget)
+CFeeRate CBlockPolicyEstimator::estimateFee(const int confTarget)
 {
     // Return failure if trying to analyze a target we're not tracking
-    if (confTarget <= 0 || (unsigned int)confTarget > feeStats.GetMaxConfirms())
+    if (confTarget <= 0)
+        return CFeeRate(0);
+    const size_t nConfTarget = static_cast<size_t>(confTarget);
+    if (nConfTarget > feeStats.GetMaxConfirms())
         return CFeeRate(0);
 
-    double median = feeStats.EstimateMedianVal(confTarget, SUFFICIENT_FEETXS, MIN_SUCCESS_PCT, true, nBestSeenHeight);
-
+    const double median = feeStats.EstimateMedianVal(confTarget, SUFFICIENT_FEETXS, MIN_SUCCESS_PCT, true, nBestSeenHeight);
     if (median < 0)
         return CFeeRate(0);
 
-    return CFeeRate(median);
+    return CFeeRate(static_cast<CAmount>(median));
 }
 
 double CBlockPolicyEstimator::estimatePriority(int confTarget)

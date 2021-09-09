@@ -215,19 +215,6 @@ class DescribePaymentAddressVisitor
 public:
     UniValue operator()(const libzcash::InvalidEncoding &zaddr) const { return UniValue(UniValue::VOBJ); }
 
-    UniValue operator()(const libzcash::SproutPaymentAddress &zaddr) const {
-        UniValue obj(UniValue::VOBJ);
-        obj.pushKV("type", "sprout");
-        obj.pushKV("payingkey", zaddr.a_pk.GetHex());
-        obj.pushKV("transmissionkey", zaddr.pk_enc.GetHex());
-#ifdef ENABLE_WALLET
-        if (pwalletMain) {
-            obj.pushKV("ismine", HaveSpendingKeyForPaymentAddress(pwalletMain)(zaddr));
-        }
-#endif
-        return obj;
-    }
-
     UniValue operator()(const libzcash::SaplingPaymentAddress &zaddr) const {
         UniValue obj(UniValue::VOBJ);
         obj.pushKV("type", "sapling");

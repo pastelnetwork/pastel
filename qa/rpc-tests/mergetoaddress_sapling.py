@@ -16,10 +16,7 @@ class MergeToAddressSapling (BitcoinTestFramework):
         self.helper.setup_chain(self)
 
     def setup_network(self, split=False):
-        self.helper.setup_network(self, [
-            '-nuparams=5ba81b19:100',  # Overwinter
-            '-nuparams=76b809bb:100',  # Sapling
-        ])
+        self.helper.setup_network(self)
 
     def run_test(self):
         self.helper.run_test(self)

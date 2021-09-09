@@ -45,25 +45,23 @@ class WalletProtectCoinbaseTest (BitcoinTestFramework):
     def run_test (self):
         print("Mining blocks...")
 
-        self.nodes[0].generate(4)
+        self.generate_and_sync(4)
 
         walletinfo = self.nodes[0].getwalletinfo()
         assert_equal(walletinfo['immature_balance'], self._reward*4)
         assert_equal(walletinfo['balance'], 0)
 
-        self.sync_all()
-        self.nodes[1].generate(101)
-        self.sync_all()
+        self.generate_and_sync_inc(101, 1)
 
         assert_equal(self.nodes[0].getbalance(), self._reward*4)
         assert_equal(self.nodes[1].getbalance(), self._reward)
         assert_equal(self.nodes[2].getbalance(), 0)
         assert_equal(self.nodes[3].getbalance(), 0)
 
-        check_value_pool(self.nodes[0], 'sprout', 0)
-        check_value_pool(self.nodes[1], 'sprout', 0)
-        check_value_pool(self.nodes[2], 'sprout', 0)
-        check_value_pool(self.nodes[3], 'sprout', 0)
+        check_value_pool(self.nodes[0], 'sapling', 0)
+        check_value_pool(self.nodes[1], 'sapling', 0)
+        check_value_pool(self.nodes[2], 'sapling', 0)
+        check_value_pool(self.nodes[3], 'sapling', 0)
 
         errorString = ""
         # # Send will fail because we are enforcing the consensus rule that
@@ -76,7 +74,7 @@ class WalletProtectCoinbaseTest (BitcoinTestFramework):
 
         # Prepare to send taddr->zaddr
         mytaddr = self.nodes[0].getnewaddress()
-        myzaddr = self.nodes[0].z_getnewaddress('sprout')
+        myzaddr = self.nodes[0].z_getnewaddress()
 
         # Node 3 will test that watch only address utxos are not selected
         self.nodes[3].importaddress(mytaddr)
@@ -125,8 +123,7 @@ class WalletProtectCoinbaseTest (BitcoinTestFramework):
         assert_equal(results[0]["confirmations"], 0)
 
         # Mine the tx
-        self.nodes[1].generate(1)
-        self.sync_all()
+        self.generate_and_sync_inc(1, 1)
 
         # Verify that z_listunspent returns one note which has been confirmed
         results = self.nodes[0].z_listunspent()
@@ -173,9 +170,9 @@ class WalletProtectCoinbaseTest (BitcoinTestFramework):
         assert_equal(Decimal(resp["private"]), self._reward*2 - self._fee)
         assert_equal(Decimal(resp["total"]), self._reward*4 - self._fee)
 
-        # The Sprout value pool should reflect the send
-        sproutvalue = shieldvalue
-        check_value_pool(self.nodes[0], 'sprout', sproutvalue)
+        # The Sapling value pool should reflect the send
+        poolvalue = shieldvalue
+        check_value_pool(self.nodes[0], 'sapling', poolvalue)
 
         # A custom fee of 0 is okay.  Here the node will send the note value back to itself.
         recipients = []
@@ -183,15 +180,14 @@ class WalletProtectCoinbaseTest (BitcoinTestFramework):
         myopid = self.nodes[0].z_sendmany(myzaddr, recipients, 1, Decimal('0.0'))
         mytxid = wait_and_assert_operationid_status(self.nodes[0], myopid)
         self.sync_all()
-        self.nodes[1].generate(1)
-        self.sync_all()
+        self.generate_and_sync_inc(1, 1)
         resp = self.nodes[0].z_gettotalbalance()
         assert_equal(Decimal(resp["transparent"]), self._reward*2)
         assert_equal(Decimal(resp["private"]), self._reward*2 - self._fee)
         assert_equal(Decimal(resp["total"]), self._reward*4 - self._fee)
 
-        # The Sprout value pool should be unchanged
-        check_value_pool(self.nodes[0], 'sprout', sproutvalue)
+        # The value pool should be unchanged
+        check_value_pool(self.nodes[0], 'sapling', poolvalue)
 
         # convert note to transparent funds
         unshieldvalue = self._reward
@@ -206,16 +202,15 @@ class WalletProtectCoinbaseTest (BitcoinTestFramework):
         mempool = self.nodes[0].getrawmempool(True)
         assert(Decimal(mempool[mytxid]['startingpriority']) >= Decimal('1000000000000'))
 
-        self.nodes[1].generate(1)
-        self.sync_all()
+        self.generate_and_sync_inc(1, 1)
 
         # check balances
-        sproutvalue -= unshieldvalue + self._fee
+        poolvalue -= unshieldvalue + self._fee
         resp = self.nodes[0].z_gettotalbalance()
         assert_equal(Decimal(resp["transparent"]), self._reward*3)
         assert_equal(Decimal(resp["private"]), self._reward - self._fee*2)
         assert_equal(Decimal(resp["total"]), self._reward*4 - self._fee*2)
-        check_value_pool(self.nodes[0], 'sprout', sproutvalue)
+        check_value_pool(self.nodes[0], 'sapling', poolvalue)
 
         # z_sendmany will return an error if there is transparent change output considered dust.
         # UTXO selection in z_sendmany sorts in ascending order, so smallest utxos are consumed first.
@@ -288,14 +283,13 @@ class WalletProtectCoinbaseTest (BitcoinTestFramework):
             assert(False)
 
         self.sync_all()
-        self.nodes[1].generate(1)
-        self.sync_all()
+        self.generate_and_sync_inc(1, 1)
 
         # check balance
         node2balance = amount_per_recipient * num_t_recipients + 21
-        sproutvalue -= amount_per_recipient * num_t_recipients + self._fee
+        poolvalue -= amount_per_recipient * num_t_recipients + self._fee
         assert_equal(self.nodes[2].getbalance(), node2balance)
-        check_value_pool(self.nodes[0], 'sprout', sproutvalue)
+        check_value_pool(self.nodes[0], 'sapling', poolvalue)
 
         # Send will fail because fee is negative
         try:
@@ -325,8 +319,7 @@ class WalletProtectCoinbaseTest (BitcoinTestFramework):
             assert(False)
 
         self.sync_all()
-        self.nodes[1].generate(1)
-        self.sync_all()
+        self.generate_and_sync_inc(1, 1)
 
         # check balance
         node2balance = node2balance + 9
@@ -341,13 +334,12 @@ class WalletProtectCoinbaseTest (BitcoinTestFramework):
         custom_fee = Decimal('0.12345')
         zbalance = self.nodes[0].z_getbalance(myzaddr)
         for i in range(0,num_recipients):
-            newzaddr = self.nodes[2].z_getnewaddress('sprout')
+            newzaddr = self.nodes[2].z_getnewaddress()
             recipients.append({"address":newzaddr, "amount":amount_per_recipient})
         myopid = self.nodes[0].z_sendmany(myzaddr, recipients, minconf, custom_fee)
         wait_and_assert_operationid_status(self.nodes[0], myopid,timeout=480)
         self.sync_all()
-        self.nodes[1].generate(1)
-        self.sync_all()
+        self.generate_and_sync_inc(1, 1)
 
         # check balances and unspent notes
         resp = self.nodes[2].z_gettotalbalance()
@@ -359,8 +351,8 @@ class WalletProtectCoinbaseTest (BitcoinTestFramework):
 
         resp = self.nodes[0].z_getbalance(myzaddr)
         assert_equal(Decimal(resp), zbalance - custom_fee - send_amount)
-        sproutvalue -= custom_fee
-        check_value_pool(self.nodes[0], 'sprout', sproutvalue)
+        poolvalue -= custom_fee
+        check_value_pool(self.nodes[0], 'sapling', poolvalue)
 
         notes = self.nodes[0].z_listunspent(1, 99999, False, [myzaddr])
         sum_of_notes = sum([note["amount"] for note in notes])

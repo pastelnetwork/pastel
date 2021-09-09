@@ -20,27 +20,14 @@ class ListReceivedTest (BitcoinTestFramework):
         super().__init__()
         self.num_nodes = 4
 
-    def setup_nodes(self):
-        return start_nodes(self.num_nodes, self.options.tmpdir, [[
-            "-nuparams=5ba81b19:201", # Overwinter
-            "-nuparams=76b809bb:214", # Sapling
-        ]] * self.num_nodes)
-
-    def generate_and_sync(self, new_height):
-        current_height = self.nodes[0].getblockcount()
-        assert(new_height > current_height)
-        self.nodes[0].generate(new_height - current_height)
-        self.sync_all()
-        assert_equal(new_height, self.nodes[0].getblockcount())
-
-    def run_test_release(self, release, height):
+    def run_test_release(self, height):
         self.generate_and_sync(height+1)
         taddr = self.nodes[1].getnewaddress()
-        zaddr1 = self.nodes[1].z_getnewaddress(release)
-        zaddrExt = self.nodes[3].z_getnewaddress(release)
+        zaddr1 = self.nodes[1].z_getnewaddress()
+        zaddrExt = self.nodes[3].z_getnewaddress()
 
         self.nodes[0].sendtoaddress(taddr, 4.0)
-        self.generate_and_sync(height+2)
+        self.generate_and_sync_inc(1)
 
         # Send 1 PSL to zaddr1, 2 PSLs to zaddrExt
         opid = self.nodes[1].z_sendmany(taddr, [
@@ -54,17 +41,14 @@ class ListReceivedTest (BitcoinTestFramework):
         pt = self.nodes[1].z_viewtransaction(txid)
         assert_equal(pt['txid'], txid)
         assert_equal(len(pt['spends']), 0)
-        assert_equal(len(pt['outputs']), 1 if release == 'sprout' else 2)
+        assert_equal(len(pt['outputs']), 2)
 
         # Output orders can be randomized, so we check the output
         # positions and contents separately
         outputs = []
 
-        assert_equal(pt['outputs'][0]['type'], release)
-        if release == 'sprout':
-            assert_equal(pt['outputs'][0]['js'], 0)
-            jsOutputPrev = pt['outputs'][0]['jsOutput']
-        elif pt['outputs'][0]['address'] == zaddr1:
+        assert_equal(pt['outputs'][0]['type'], 'sapling')
+        if pt['outputs'][0]['address'] == zaddr1:
             assert_equal(pt['outputs'][0]['outgoing'], False)
             assert_equal(pt['outputs'][0]['memoStr'], my_memo_str)
         else:
@@ -76,19 +60,18 @@ class ListReceivedTest (BitcoinTestFramework):
             'memo': pt['outputs'][0]['memo'],
         })
 
-        if release != 'sprout':
-            assert_equal(pt['outputs'][1]['type'], release)
-            if pt['outputs'][1]['address'] == zaddr1:
-                assert_equal(pt['outputs'][1]['outgoing'], False)
-                assert_equal(pt['outputs'][1]['memoStr'], my_memo_str)
-            else:
-                assert_equal(pt['outputs'][1]['outgoing'], True)
-            outputs.append({
-                'address': pt['outputs'][1]['address'],
-                'value': pt['outputs'][1]['value'],
-                'valuePsl': pt['outputs'][1]['valuePsl'],
-                'memo': pt['outputs'][1]['memo'],
-            })
+        assert_equal(pt['outputs'][1]['type'], 'sapling')
+        if pt['outputs'][1]['address'] == zaddr1:
+            assert_equal(pt['outputs'][1]['outgoing'], False)
+            assert_equal(pt['outputs'][1]['memoStr'], my_memo_str)
+        else:
+            assert_equal(pt['outputs'][1]['outgoing'], True)
+        outputs.append({
+            'address': pt['outputs'][1]['address'],
+            'value': pt['outputs'][1]['value'],
+            'valuePsl': pt['outputs'][1]['valuePsl'],
+            'memo': pt['outputs'][1]['memo'],
+        })
 
         assert({
             'address': zaddr1,
@@ -96,18 +79,17 @@ class ListReceivedTest (BitcoinTestFramework):
             'valuePsl': 100000,
             'memo': my_memo,
         } in outputs)
-        if release != 'sprout':
-            assert({
-                'address': zaddrExt,
-                'value': Decimal('2'),
-                'valuePsl': 200000,
-                'memo': no_memo,
-            } in outputs)
+        assert({
+            'address': zaddrExt,
+            'value': Decimal('2'),
+            'valuePsl': 200000,
+            'memo': no_memo,
+        } in outputs)
 
         r = self.nodes[1].z_listreceivedbyaddress(zaddr1)
         assert_equal(0, len(r), "Should have received no confirmed note")
         c = self.nodes[1].z_getnotescount()
-        assert_equal(0, c[release], "Count of confirmed notes should be 0")
+        assert_equal(0, c['sapling'], "Count of confirmed notes should be 0")
 
         # No confirmation required, one note should be present
         r = self.nodes[1].z_listreceivedbyaddress(zaddr1, 0)
@@ -122,7 +104,7 @@ class ListReceivedTest (BitcoinTestFramework):
         assert_equal(0, r[0]['blockheight'])
 
         c = self.nodes[1].z_getnotescount(0)
-        assert_equal(1, c[release], "Count of unconfirmed notes should be 1")
+        assert_equal(1, c['sapling'], "Count of unconfirmed notes should be 1")
 
         # Confirm transaction (1 ZEC from taddr to zaddr1)
         self.generate_and_sync(height+3)
@@ -139,7 +121,7 @@ class ListReceivedTest (BitcoinTestFramework):
 
         # Generate some change by sending part of zaddr1 to zaddr2
         txidPrev = txid
-        zaddr2 = self.nodes[1].z_getnewaddress(release)
+        zaddr2 = self.nodes[1].z_getnewaddress()
         opid = self.nodes[1].z_sendmany(zaddr1,
             [{'address': zaddr2, 'amount': 0.6}])
         txid = wait_and_assert_operationid_status(self.nodes[1], opid)
@@ -152,16 +134,10 @@ class ListReceivedTest (BitcoinTestFramework):
         assert_equal(len(pt['spends']), 1)
         assert_equal(len(pt['outputs']), 2)
 
-        assert_equal(pt['spends'][0]['type'], release)
+        assert_equal(pt['spends'][0]['type'], 'sapling')
         assert_equal(pt['spends'][0]['txidPrev'], txidPrev)
-        if release == 'sprout':
-            assert_equal(pt['spends'][0]['js'], 0)
-            # jsSpend is randomised during transaction creation
-            assert_equal(pt['spends'][0]['jsPrev'], 0)
-            assert_equal(pt['spends'][0]['jsOutputPrev'], jsOutputPrev)
-        else:
-            assert_equal(pt['spends'][0]['spend'], 0)
-            assert_equal(pt['spends'][0]['outputPrev'], 0)
+        assert_equal(pt['spends'][0]['spend'], 0)
+        assert_equal(pt['spends'][0]['outputPrev'], 0)
         assert_equal(pt['spends'][0]['address'], zaddr1)
         assert_equal(pt['spends'][0]['value'], Decimal('1.0'))
         assert_equal(pt['spends'][0]['valuePsl'], 100000)
@@ -170,10 +146,9 @@ class ListReceivedTest (BitcoinTestFramework):
         # positions and contents separately
         outputs = []
 
-        assert_equal(pt['outputs'][0]['type'], release)
-        if release == 'sapling':
-            assert_equal(pt['outputs'][0]['output'], 0)
-            assert_equal(pt['outputs'][0]['outgoing'], False)
+        assert_equal(pt['outputs'][0]['type'], 'sapling')
+        assert_equal(pt['outputs'][0]['output'], 0)
+        assert_equal(pt['outputs'][0]['outgoing'], False)
         outputs.append({
             'address': pt['outputs'][0]['address'],
             'value': pt['outputs'][0]['value'],
@@ -181,10 +156,9 @@ class ListReceivedTest (BitcoinTestFramework):
             'memo': pt['outputs'][0]['memo'],
         })
 
-        assert_equal(pt['outputs'][1]['type'], release)
-        if release == 'sapling':
-            assert_equal(pt['outputs'][1]['output'], 1)
-            assert_equal(pt['outputs'][1]['outgoing'], False)
+        assert_equal(pt['outputs'][1]['type'], 'sapling')
+        assert_equal(pt['outputs'][1]['output'], 1)
+        assert_equal(pt['outputs'][1]['outgoing'], False)
         outputs.append({
             'address': pt['outputs'][1]['address'],
             'value': pt['outputs'][1]['value'],
@@ -233,11 +207,10 @@ class ListReceivedTest (BitcoinTestFramework):
         assert_equal(no_memo, r[0]['memo'])
 
         c = self.nodes[1].z_getnotescount(0)
-        assert_equal(3, c[release], "Count of unconfirmed notes should be 3(2 in zaddr1 + 1 in zaddr2)")
+        assert_equal(3, c['sapling'], "Count of unconfirmed notes should be 3(2 in zaddr1 + 1 in zaddr2)")
 
     def run_test(self):
-        self.run_test_release('sprout', 200)
-        self.run_test_release('sapling', 214)
+        self.run_test_release(200)
 
 if __name__ == '__main__':
     ListReceivedTest().main()

@@ -585,8 +585,8 @@ class CTransaction(object):
     def __init__(self, tx=None):
         if tx is None:
             self.fOverwintered = True
-            self.nVersion = 3
-            self.nVersionGroupId = OVERWINTER_VERSION_GROUP_ID
+            self.nVersion = 4
+            self.nVersionGroupId = SAPLING_VERSION_GROUP_ID
             self.vin = []
             self.vout = []
             self.nLockTime = 0
@@ -738,7 +738,7 @@ class CBlockHeader(object):
             self.calc_sha256()
 
     def set_null(self):
-        self.nVersion = 3
+        self.nVersion = 4
         self.hashPrevBlock = 0
         self.hashMerkleRoot = 0
         self.hashFinalSaplingRoot = 0

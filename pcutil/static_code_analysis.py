@@ -106,11 +106,15 @@ def main(pwd, from_mail , to_mail, pvs_mail, pvs_lic_nr, nJobCount):
                 part['Content-Disposition'] = 'attachment; filename="%s"' % os.path.basename(f)
                 msg.attach(part)
 
-            print(f'Sending code analysis results to e-mail: {to_mail}')
-            server = smtplib.SMTP(DEFAULT_SMTP_SERVER, DEFAULT_SMTP_PORT)
-            server.starttls()
-            server.login(msg['From'], password)
-            server.sendmail(msg['From'], msg['To'], msg.as_string())
+            try:
+                print(f'Sending code analysis results to e-mail: {to_mail}')
+                server = smtplib.SMTP(DEFAULT_SMTP_SERVER, DEFAULT_SMTP_PORT)
+                server.starttls()
+                server.login(msg['From'], password)
+                server.sendmail(msg['From'], msg['To'], msg.as_string())
+            except Exception as sErr:
+                print(f'Failed to send code analysis results to e-mail. {sErr}')
+
             server.quit()
 
     except Exception as bs:

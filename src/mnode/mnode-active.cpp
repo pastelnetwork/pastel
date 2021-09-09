@@ -4,6 +4,7 @@
 
 #include "util.h"
 #include "protocol.h"
+#include "port_config.h"
 
 #include "mnode/mnode-active.h"
 #include "mnode/mnode-masternode.h"
@@ -129,7 +130,8 @@ void CActiveMasternode::ManageStateInitial()
     }
 
     // First try to find whatever local address is specified by externalip option
-    bool fFoundLocal = Params().IsRegTest() || (GetLocal(service) && CMasternode::IsValidNetAddr(service));
+    const auto& chainparams = Params();
+    bool fFoundLocal = chainparams.IsRegTest() || (GetLocal(service) && CMasternode::IsValidNetAddr(service));
     if(!fFoundLocal) {
         bool empty = true;
         // If we have some peers, let's try to find our local address from one of them
@@ -155,25 +157,25 @@ void CActiveMasternode::ManageStateInitial()
         return;
     }
 
-    int mainnetDefaultPort = Params(CBaseChainParams::Network::MAIN).GetDefaultPort();
-    if(Params().IsMainNet()) {
-        if(service.GetPort() != mainnetDefaultPort) {
+    if (chainparams.IsMainNet()) {
+        if(service.GetPort() != MAINNET_DEFAULT_PORT)
+        {
             nState = ActiveMasternodeState::NotCapable;
-            strNotCapableReason = strprintf("Invalid port: %u - only %d is supported on mainnet.", service.GetPort(), mainnetDefaultPort);
+            strNotCapableReason = strprintf("Invalid port: %hu - only %hu is supported on mainnet.", service.GetPort(), MAINNET_DEFAULT_PORT);
             LogPrintf("CActiveMasternode::ManageStateInitial -- %s: %s\n", GetStateString(), strNotCapableReason);
             return;
         }
-    } else if(service.GetPort() == mainnetDefaultPort) {
+    } else if (service.GetPort() == MAINNET_DEFAULT_PORT) {
         nState = ActiveMasternodeState::NotCapable;
-        strNotCapableReason = strprintf("Invalid port: %u - %d is only supported on mainnet.", service.GetPort(), mainnetDefaultPort);
+        strNotCapableReason = strprintf("Invalid port: %hu - %hu is only supported on mainnet.", service.GetPort(), MAINNET_DEFAULT_PORT);
         LogPrintf("CActiveMasternode::ManageStateInitial -- %s: %s\n", GetStateString(), strNotCapableReason);
         return;
     }
 
-    if (!Params().IsRegTest()) {
+    if (!chainparams.IsRegTest()) {
         LogPrintf("CActiveMasternode::ManageStateInitial -- Checking inbound connection to '%s'\n", service.ToString());
 
-        if(!ConnectNode(CAddress(service, NODE_NETWORK), NULL, true)) {
+        if(!ConnectNode(CAddress(service, NODE_NETWORK), nullptr, true)) {
             nState = ActiveMasternodeState::NotCapable;
             strNotCapableReason = "Could not connect to " + service.ToString();
             LogPrintf("CActiveMasternode::ManageStateInitial -- %s: %s\n", GetStateString(), strNotCapableReason);
