@@ -86,7 +86,8 @@ declare -a testScripts=(
     'p2p_txexpiringsoon.py'
     'p2p_node_bloom.py'
     'regtest_signrawtransaction.py'
-    'finalsaplingroot.py'
+    'finalsaplingroot.py',
+    'secure_container.py'
 )
 
 declare -a testScriptsToFix=(

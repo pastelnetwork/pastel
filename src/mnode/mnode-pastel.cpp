@@ -27,7 +27,7 @@
 using json = nlohmann::json;
 
 // CPastelIDRegTicket ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-CPastelIDRegTicket CPastelIDRegTicket::Create(std::string _pastelID, const SecureString& strKeyPass, std::string _address)
+CPastelIDRegTicket CPastelIDRegTicket::Create(std::string _pastelID, SecureString&& strKeyPass, std::string _address)
 {
     CPastelIDRegTicket ticket(std::move(_pastelID));
     
@@ -62,7 +62,7 @@ CPastelIDRegTicket CPastelIDRegTicket::Create(std::string _pastelID, const Secur
         ss << vector_to_string(ticket.mn_signature);
     }
     const auto fullTicket = ss.str();
-    string_to_vector(CPastelID::Sign(fullTicket, ticket.pastelID, strKeyPass), ticket.pslid_signature);
+    string_to_vector(CPastelID::Sign(fullTicket, ticket.pastelID, std::move(strKeyPass)), ticket.pslid_signature);
     
     return ticket;
 }
@@ -228,7 +228,7 @@ PastelIDRegTickets_t CPastelIDRegTicket::FindAllTicketByPastelAddress(const std:
 */
 CNFTRegTicket CNFTRegTicket::Create(
         std::string _ticket, const std::string& signatures,
-        std::string _pastelID, const SecureString& strKeyPass,
+        std::string _pastelID, SecureString&& strKeyPass,
         std::string _keyOne, std::string _keyTwo,
         CAmount _storageFee)
 {
@@ -294,7 +294,7 @@ CNFTRegTicket CNFTRegTicket::Create(
     
     ticket.pastelIDs[mainmnsign] = std::move(_pastelID);
     //signature of ticket hash
-    string_to_vector(CPastelID::Sign(ticket.NFTTicket, ticket.pastelIDs[mainmnsign], strKeyPass), ticket.ticketSignatures[mainmnsign]);
+    string_to_vector(CPastelID::Sign(ticket.NFTTicket, ticket.pastelIDs[mainmnsign], std::move(strKeyPass)), ticket.ticketSignatures[mainmnsign]);
     return ticket;
 }
 
@@ -683,7 +683,7 @@ void trade_copy_validation(const std::string& nftTxnId, const v_uint8& signature
 }
 
 // CNFTActivateTicket ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-CNFTActivateTicket CNFTActivateTicket::Create(std::string _regTicketTxId, int _creatorHeight, int _storageFee, std::string _pastelID, const SecureString& strKeyPass)
+CNFTActivateTicket CNFTActivateTicket::Create(std::string _regTicketTxId, int _creatorHeight, int _storageFee, std::string _pastelID, SecureString&& strKeyPass)
 {
     CNFTActivateTicket ticket(std::move(_pastelID));
     
@@ -694,7 +694,7 @@ CNFTActivateTicket CNFTActivateTicket::Create(std::string _regTicketTxId, int _c
     ticket.GenerateTimestamp();
     
     const auto strTicket = ticket.ToStr();
-    string_to_vector(CPastelID::Sign(strTicket, ticket.pastelID, strKeyPass), ticket.signature);
+    string_to_vector(CPastelID::Sign(strTicket, ticket.pastelID, std::move(strKeyPass)), ticket.signature);
     
     return ticket;
 }
@@ -865,7 +865,7 @@ NFTActivateTickets_t CNFTActivateTicket::FindAllTicketByCreatorHeight(int height
 
 // NFT Trade Tickets ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // CNFTSellTicket ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-CNFTSellTicket CNFTSellTicket::Create(std::string _NFTTxnId, int _askedPrice, int _validAfter, int _validBefore, int _copy_number, std::string _pastelID, const SecureString& strKeyPass)
+CNFTSellTicket CNFTSellTicket::Create(std::string _NFTTxnId, int _askedPrice, int _validAfter, int _validBefore, int _copy_number, std::string _pastelID, SecureString&& strKeyPass)
 {
     CNFTSellTicket ticket(std::move(_pastelID));
     
@@ -882,7 +882,7 @@ CNFTSellTicket CNFTSellTicket::Create(std::string _NFTTxnId, int _askedPrice, in
     ticket.key = ticket.NFTTxnId + ":" + to_string(ticket.copyNumber);
     
     const auto strTicket = ticket.ToStr();
-    string_to_vector(CPastelID::Sign(strTicket, ticket.pastelID, strKeyPass), ticket.signature);
+    string_to_vector(CPastelID::Sign(strTicket, ticket.pastelID, std::move(strKeyPass)), ticket.signature);
     
     return ticket;
 }
@@ -1095,7 +1095,7 @@ NFTSellTickets_t CNFTSellTicket::FindAllTicketByNFTTxnID(const std::string& NFTT
 }
 
 // CNFTBuyTicket ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-CNFTBuyTicket CNFTBuyTicket::Create(std::string _sellTxnId, int _price, std::string _pastelID, const SecureString& strKeyPass)
+CNFTBuyTicket CNFTBuyTicket::Create(std::string _sellTxnId, int _price, std::string _pastelID, SecureString&& strKeyPass)
 {
     CNFTBuyTicket ticket(std::move(_pastelID));
     
@@ -1105,7 +1105,7 @@ CNFTBuyTicket CNFTBuyTicket::Create(std::string _sellTxnId, int _price, std::str
     ticket.GenerateTimestamp();
     
     const auto strTicket = ticket.ToStr();
-    string_to_vector(CPastelID::Sign(strTicket, ticket.pastelID, strKeyPass), ticket.signature);
+    string_to_vector(CPastelID::Sign(strTicket, ticket.pastelID, std::move(strKeyPass)), ticket.signature);
     
     return ticket;
 }
@@ -1248,7 +1248,7 @@ NFTBuyTickets_t CNFTBuyTicket::FindAllTicketByPastelID(const std::string& pastel
 }
 
 // CNFTTradeTicket ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-CNFTTradeTicket CNFTTradeTicket::Create(std::string _sellTxnId, std::string _buyTxnId, std::string _pastelID, const SecureString& strKeyPass)
+CNFTTradeTicket CNFTTradeTicket::Create(std::string _sellTxnId, std::string _buyTxnId, std::string _pastelID, SecureString&& strKeyPass)
 {
     CNFTTradeTicket ticket(std::move(_pastelID));
     
@@ -1289,7 +1289,7 @@ CNFTTradeTicket CNFTTradeTicket::Create(std::string _sellTxnId, std::string _buy
         ticket.SetCopySerialNr(get<1>(NFTRegTicket_TxId_Serial.value()));
     }
     const auto strTicket = ticket.ToStr();
-    string_to_vector(CPastelID::Sign(strTicket, ticket.pastelID, strKeyPass), ticket.signature);
+    string_to_vector(CPastelID::Sign(strTicket, ticket.pastelID, std::move(strKeyPass)), ticket.signature);
     
     return ticket;
 }
@@ -1653,7 +1653,7 @@ const std::string& CNFTTradeTicket::GetCopySerialNr() const
 // CNFTRoyaltyTicket ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 CNFTRoyaltyTicket CNFTRoyaltyTicket::Create(
     std::string _NFTTxnId, std::string _newPastelID,
-    std::string _pastelID, const SecureString& strKeyPass) {
+    std::string _pastelID, SecureString&& strKeyPass) {
   CNFTRoyaltyTicket ticket(std::move(_pastelID), std::move(_newPastelID));
 
   ticket.NFTTxnId = std::move(_NFTTxnId);
@@ -1661,7 +1661,7 @@ CNFTRoyaltyTicket CNFTRoyaltyTicket::Create(
   ticket.GenerateTimestamp();
 
   const auto strTicket = ticket.ToStr();
-  string_to_vector(CPastelID::Sign(strTicket, ticket.pastelID, strKeyPass), ticket.signature);
+  string_to_vector(CPastelID::Sign(strTicket, ticket.pastelID, std::move(strKeyPass)), ticket.signature);
 
   return ticket;
 }
@@ -1912,7 +1912,7 @@ bool CChangeUsernameTicket::IsValid(bool preReg, int depth) const
     return true;
 }
 
-CChangeUsernameTicket CChangeUsernameTicket::Create(std::string _pastelID, std::string _username, const SecureString& strKeyPass)
+CChangeUsernameTicket CChangeUsernameTicket::Create(std::string _pastelID, std::string _username, SecureString&& strKeyPass)
 {
     CChangeUsernameTicket ticket(std::move(_pastelID), std::move(_username));
 
@@ -1928,7 +1928,7 @@ CChangeUsernameTicket CChangeUsernameTicket::Create(std::string _pastelID, std::
     ticket.GenerateTimestamp();
 
     const auto strTicket = ticket.ToStr();
-    ticket.signature = string_to_vector(CPastelID::Sign(strTicket, ticket.pastelID, strKeyPass));
+    ticket.signature = string_to_vector(CPastelID::Sign(strTicket, ticket.pastelID, std::move(strKeyPass)));
 
     return ticket;
 }
@@ -2075,7 +2075,7 @@ bool CChangeEthereumAddressTicket::IsValid(bool preReg, int depth) const
     return true;
 }
 
-CChangeEthereumAddressTicket CChangeEthereumAddressTicket::Create(std::string _pastelID, std::string _ethereumAddress, const SecureString& strKeyPass)
+CChangeEthereumAddressTicket CChangeEthereumAddressTicket::Create(std::string _pastelID, std::string _ethereumAddress, SecureString&& strKeyPass)
 {
     CChangeEthereumAddressTicket ticket(std::move(_pastelID), std::move(_ethereumAddress));
 
@@ -2091,7 +2091,7 @@ CChangeEthereumAddressTicket CChangeEthereumAddressTicket::Create(std::string _p
     ticket.GenerateTimestamp();
 
     std::string strTicket = ticket.ToStr();
-    ticket.signature = string_to_vector(CPastelID::Sign(strTicket, ticket.pastelID, strKeyPass));
+    ticket.signature = string_to_vector(CPastelID::Sign(strTicket, ticket.pastelID, std::move(strKeyPass)));
 
     return ticket;
 }

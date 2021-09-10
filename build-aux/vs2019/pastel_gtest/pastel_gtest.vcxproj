@@ -133,9 +133,9 @@
     <ClCompile Include="..\..\..\src\gtest\test_transaction_builder.cpp" />
     <ClCompile Include="..\..\..\src\gtest\test_txid.cpp" />
     <ClCompile Include="..\..\..\src\gtest\test_upgrades.cpp" />
+    <ClCompile Include="..\..\..\src\gtest\test_utils.cpp" />
     <ClCompile Include="..\..\..\src\gtest\test_validation.cpp" />
     <ClCompile Include="..\..\..\src\gtest\test_zip32.cpp" />
-    <ClCompile Include="..\..\..\src\gtest\utils.cpp" />
     <ClCompile Include="..\..\..\src\wallet\gtest\test_wallet.cpp" />
     <ClCompile Include="..\..\..\src\wallet\gtest\test_wallet_zkeys.cpp" />
     <ClCompile Include="..\port\uint128.cpp" />
@@ -143,6 +143,7 @@
   <ItemGroup>
     <ClInclude Include="..\..\..\src\gtest\json_test_vectors.h" />
     <ClInclude Include="..\..\..\src\gtest\mock_mnode_ticket.h" />
+    <ClInclude Include="..\..\..\src\gtest\test_utils.h" />
     <ClInclude Include="..\port\uint128.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

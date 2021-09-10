@@ -1,5 +1,6 @@
 #include "pastelid/secure_container.h"
 #include "utilstrencodings.h"
+#include "test_utils.h"
 #include "fs.h"
 #include <unistd.h>
 
@@ -15,6 +16,7 @@ constexpr auto TEST_PKEY1 = "010203040506070809000A0B0C0D0E0F";
 constexpr auto TEST_PKEY2 = "3132333435363738393A3B3C3D3E3F404142434445";
 constexpr auto TEST_PUBKEY1 = "public_key_data";
 constexpr auto TEST_PASSPHRASE = "passphrase to encrypt data";
+constexpr auto TEST_PASSPHRASE_NEW = "new passphrase to encrypt data";
 
 class test_secure_container : 
     public ::testing::Test,
@@ -38,42 +40,93 @@ public:
     }
     void CleanupSecureData() override {}
 
+    void SetUp() override
+    {
+        GenerateSecureContainer();
+    }
+
+    void TearDown() override
+    {
+        if (!m_sFilePath.empty())
+            fs::remove(m_sFilePath);
+    }
+
 protected:
+    CSecureContainer m_cont;
+    string m_sFilePath;
     v_uint8 m_WalletData;
+
+    void Container_AddTestData()
+    {
+        m_cont.clear();
+
+        // public items
+        m_cont.add_public_item(PUBLIC_ITEM_TYPE::pubkey_legroast, TEST_PUBKEY1);
+
+        // secure items
+        auto pkey1 = ParseHex(TEST_PKEY1);
+        m_cont.add_secure_item_vector(SECURE_ITEM_TYPE::pkey_ed448, move(pkey1)); // move pkey1
+
+        const auto pkey2 = ParseHex(TEST_PKEY2);
+        m_cont.add_secure_item_vector(SECURE_ITEM_TYPE::pkey_legroast, pkey2); // copy pkey2
+
+        m_cont.add_secure_item_handler(SECURE_ITEM_TYPE::wallet, this); // handler to get wallet data
+    }
+
+    void GenerateSecureContainer()
+    {
+        Container_AddTestData();
+
+        m_sFilePath = generateTempFileName(".cnt");
+        EXPECT_TRUE(m_cont.write_to_file(m_sFilePath, TEST_PASSPHRASE));
+    }
+
+    void ValidateData()
+    {
+        string sPubKey1;
+        EXPECT_TRUE(m_cont.get_public_data(PUBLIC_ITEM_TYPE::pubkey_legroast, sPubKey1));
+        EXPECT_STREQ(sPubKey1.c_str(), TEST_PUBKEY1);
+
+        auto pkey1_ex = m_cont.extract_secure_data(SECURE_ITEM_TYPE::pkey_ed448);
+        EXPECT_EQ(ParseHex(TEST_PKEY1), pkey1_ex);
+
+        auto pkey2_ex = m_cont.extract_secure_data(SECURE_ITEM_TYPE::pkey_legroast);
+        EXPECT_EQ(ParseHex(TEST_PKEY2), pkey2_ex);
+
+        auto wallet_data = m_cont.extract_secure_data(SECURE_ITEM_TYPE::wallet);
+        EXPECT_EQ(m_WalletData, wallet_data);
+    }
 };
 
 TEST_F(test_secure_container, read_write)
 {
-    CSecureContainer cont;
-    // public items
-    cont.add_public_item(PUBLIC_ITEM_TYPE::pubkey_legroast, TEST_PUBKEY1);
+    EXPECT_TRUE(m_cont.read_from_file(m_sFilePath, TEST_PASSPHRASE));
+    ValidateData();
+}
 
-    // secure items
-    auto pkey1 = ParseHex(TEST_PKEY1);
-    cont.add_secure_item_vector(SECURE_ITEM_TYPE::pkey_ed448, move(pkey1)); // move pkey1
+TEST_F(test_secure_container, change_password)
+{
+    EXPECT_TRUE(m_cont.is_valid_passphrase(m_sFilePath, TEST_PASSPHRASE));
 
-    const auto pkey2 = ParseHex(TEST_PKEY2);
-    cont.add_secure_item_vector(SECURE_ITEM_TYPE::pkey_legroast, pkey2); // copy pkey2
+    // empty new passphrase
+    EXPECT_FALSE(m_cont.change_passphrase(m_sFilePath, TEST_PASSPHRASE, ""));
 
-    cont.add_secure_item_handler(SECURE_ITEM_TYPE::wallet, this); // handler to get wallet data
+    // invalid file name
+    string sInvalidFileName = generateTempFileName(".cnt");
+    EXPECT_THROW(m_cont.change_passphrase(sInvalidFileName, TEST_PASSPHRASE, TEST_PASSPHRASE_NEW), std::runtime_error);
 
-    string sFilePath = tempnam(fs::temp_directory_path().string().c_str(), "cnt");
-    EXPECT_TRUE(cont.write_to_file(sFilePath, TEST_PASSPHRASE));
+    // invalid old passphrase
+    EXPECT_THROW(m_cont.change_passphrase(m_sFilePath, "invalid old passphrase", TEST_PASSPHRASE_NEW), std::runtime_error);
 
-    cont.clear();
-    EXPECT_TRUE(cont.read_from_file(sFilePath, TEST_PASSPHRASE));
+    // changed password
+    EXPECT_TRUE(m_cont.change_passphrase(m_sFilePath, TEST_PASSPHRASE, TEST_PASSPHRASE_NEW));
 
-    string sPubKey1;
-    EXPECT_TRUE(cont.get_public_data(PUBLIC_ITEM_TYPE::pubkey_legroast, sPubKey1));
-    EXPECT_STREQ(sPubKey1.c_str(), TEST_PUBKEY1);
+    // check old passphrase
+    EXPECT_FALSE(m_cont.is_valid_passphrase(m_sFilePath, TEST_PASSPHRASE));
+    EXPECT_THROW(m_cont.read_from_file(m_sFilePath, TEST_PASSPHRASE), std::runtime_error);
 
-    auto pkey1_ex = cont.extract_secure_data(SECURE_ITEM_TYPE::pkey_ed448);
-    EXPECT_EQ(ParseHex(TEST_PKEY1), pkey1_ex);
-
-    auto pkey2_ex = cont.extract_secure_data(SECURE_ITEM_TYPE::pkey_legroast);
-    EXPECT_EQ(pkey2, pkey2_ex);
-
-    auto wallet_data = cont.extract_secure_data(SECURE_ITEM_TYPE::wallet);
-    EXPECT_EQ(m_WalletData, wallet_data);
-    unlink(sFilePath.c_str());
+    // check new passphrase
+    EXPECT_TRUE(m_cont.is_valid_passphrase(m_sFilePath, TEST_PASSPHRASE_NEW));
+    EXPECT_TRUE(m_cont.read_from_file(m_sFilePath, TEST_PASSPHRASE_NEW));
+    ValidateData();
 }

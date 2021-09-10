@@ -6,7 +6,8 @@ noinst_PROGRAMS += pastel-gtest
 # any test that calls SelectParams().
 pastel_gtest_SOURCES = \
 	gtest/main.cpp \
-	gtest/utils.cpp \
+	gtest/test_utils.cpp \
+	gtest/test_utils.h \
 	gtest/test_checktransaction.cpp \
 	gtest/json_test_vectors.cpp \
 	gtest/json_test_vectors.h
