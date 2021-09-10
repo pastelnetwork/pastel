@@ -106,9 +106,6 @@
     <ClCompile Include="..\..\..\src\gtest\test_zip32.cpp">
       <Filter>UnitTest Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\src\gtest\utils.cpp">
-      <Filter>UnitTest Files</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\..\src\gtest\test_mnode_rpc.cpp">
       <Filter>UnitTest Files</Filter>
     </ClCompile>
@@ -136,6 +133,9 @@
     <ClCompile Include="..\..\..\src\wallet\gtest\test_wallet_zkeys.cpp">
       <Filter>UnitTest Files\wallet</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\..\src\gtest\test_utils.cpp">
+      <Filter>UnitTest Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\..\src\gtest\json_test_vectors.h">
@@ -146,6 +146,9 @@
     </ClInclude>
     <ClInclude Include="..\port\uint128.h">
       <Filter>Source Files\port</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\gtest\test_utils.h">
+      <Filter>UnitTest Files</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

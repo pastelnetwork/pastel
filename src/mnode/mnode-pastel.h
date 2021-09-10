@@ -99,7 +99,7 @@ public:
         }
     }
 	
-    static CPastelIDRegTicket Create(std::string _pastelID, const SecureString& strKeyPass, std::string _address);
+    static CPastelIDRegTicket Create(std::string _pastelID, SecureString&& strKeyPass, std::string _address);
     static bool FindTicketInDb(const std::string& key, CPastelIDRegTicket& ticket);
     static PastelIDRegTickets_t FindAllTicketByPastelAddress(const std::string& address);
 };
@@ -247,7 +247,7 @@ public:
     std::string GetRoyaltyPayeeAddress() const;
 
     static CNFTRegTicket Create(std::string _ticket, const std::string& signatures,
-                                std::string _pastelID, const SecureString& strKeyPass,
+                                std::string _pastelID, SecureString&& strKeyPass,
                                 std::string _keyOne, std::string _keyTwo,
                                 CAmount _storageFee);
     static bool FindTicketInDb(const std::string& key, CNFTRegTicket& _ticket);
@@ -323,7 +323,7 @@ public:
 	
     CAmount GetExtraOutputs(std::vector<CTxOut>& outputs) const override;
     
-    static CNFTActivateTicket Create(std::string _regTicketTxId, int _creatorHeight, int _storageFee, std::string _pastelID, const SecureString& strKeyPass);
+    static CNFTActivateTicket Create(std::string _regTicketTxId, int _creatorHeight, int _storageFee, std::string _pastelID, SecureString&& strKeyPass);
     static bool FindTicketInDb(const std::string& key, CNFTActivateTicket& ticket);
 
     static NFTActivateTickets_t FindAllTicketByPastelID(const std::string& pastelID);
@@ -404,7 +404,7 @@ public:
         READWRITE(m_nBlock);
     }
     
-    static CNFTSellTicket Create(std::string _NFTTxnId, int _askedPrice, int _validAfter, int _validBefore, int _copy_number, std::string _pastelID, const SecureString& strKeyPass);
+    static CNFTSellTicket Create(std::string _NFTTxnId, int _askedPrice, int _validAfter, int _validBefore, int _copy_number, std::string _pastelID, SecureString&& strKeyPass);
     static bool FindTicketInDb(const std::string& key, CNFTSellTicket& ticket);
     
     static NFTSellTickets_t FindAllTicketByPastelID(const std::string& pastelID);
@@ -472,7 +472,7 @@ public:
         READWRITE(m_nBlock);
     }
     
-    static CNFTBuyTicket Create(std::string _sellTxnId, int _price, std::string _pastelID, const SecureString& strKeyPass);
+    static CNFTBuyTicket Create(std::string _sellTxnId, int _price, std::string _pastelID, SecureString&& strKeyPass);
     static bool FindTicketInDb(const std::string& key, CNFTBuyTicket& ticket);
 
     static bool CheckBuyTicketExistBySellTicket(const std::string& _sellTxnId);
@@ -560,7 +560,7 @@ public:
 
     CAmount GetExtraOutputs(std::vector<CTxOut>& outputs) const override;
     
-    static CNFTTradeTicket Create(std::string _sellTxnId, std::string _buyTxnId, std::string _pastelID, const SecureString& strKeyPass);
+    static CNFTTradeTicket Create(std::string _sellTxnId, std::string _buyTxnId, std::string _pastelID, SecureString&& strKeyPass);
     static bool FindTicketInDb(const std::string& key, CNFTTradeTicket& ticket);
     
     static NFTTradeTickets_t FindAllTicketByPastelID(const std::string& pastelID);
@@ -641,7 +641,7 @@ public:
   }
 
   static CNFTRoyaltyTicket Create(std::string _NFTTxnId, std::string _newPastelID,
-                                  std::string _pastelID, const SecureString& strKeyPass);
+                                  std::string _pastelID, SecureString&& strKeyPass);
   static bool FindTicketInDb(const std::string& key, CNFTRoyaltyTicket& ticket);
 
   static NFTRoyaltyTickets_t FindAllTicketByPastelID(const std::string& pastelID);
@@ -726,7 +726,7 @@ public:
         READWRITE(m_nBlock);
     }
 
-    static CChangeUsernameTicket Create(std::string _pastelID, std::string _username, const SecureString& strKeyPass);    
+    static CChangeUsernameTicket Create(std::string _pastelID, std::string _username, SecureString&& strKeyPass);    
     static bool FindTicketInDb(const std::string& key, CChangeUsernameTicket& ticket);
 
     /** Some general checks to see if the username is bad. Below cases will be considered as bad Username
@@ -799,7 +799,7 @@ public:
         READWRITE(m_nBlock);
     }
 
-    static CChangeEthereumAddressTicket Create(std::string _pastelID, std::string _ethereumAddress, const SecureString& strKeyPass);    
+    static CChangeEthereumAddressTicket Create(std::string _pastelID, std::string _ethereumAddress, SecureString&& strKeyPass);    
     static bool FindTicketInDb(const std::string& key, CChangeEthereumAddressTicket& ticket);
 
     /** Some general checks to see if the ethereum address is invalid. Below cases will be considered as an invalid EthereumAddress

@@ -13,6 +13,7 @@ import sys
 from binascii import hexlify, unhexlify
 from base64 import b64encode
 from decimal import Decimal, ROUND_DOWN
+from pathlib import Path
 import json
 import http.client
 import random
@@ -20,7 +21,7 @@ import shutil
 import subprocess
 import time
 import re
-from .authproxy import AuthServiceProxy
+from .authproxy import AuthServiceProxy, JSONRPCException
 
 SPROUT_BRANCH_ID = 0x00000000
 OVERWINTER_BRANCH_ID = 0x5BA81B19
@@ -100,29 +101,51 @@ def initialize_datadir(dirname, n):
         f.write("listenonion=0\n")
     return datadir
 
+def find_pasteld_binary():
+    """
+    Find pasteld binary in:
+        - PASTELD environment variable
+        - current working directory
+        - current script directory
+        - ../../../src
+    """
+    isWindows = os.name == "nt"
+    fname = "pasteld.exe" if isWindows else "pasteld"
+    filepath = os.getenv("PASTELD")
+    if filepath:
+        return filepath
+    filepath = Path(os.getcwd()) / fname
+    if filepath.exists():
+        return str(filepath)
+    scriptPath = Path(__file__).parent.absolute()
+    filepath = scriptPath / fname
+    if filepath.exists():
+        return str(filepath)
+    filepath = scriptPath.parents[2] / "src" / fname
+    if filepath.exists():
+        return str(filepath)
+    return fname
+
+
 def initialize_chain(test_dir):
     """
     Create (or copy from cache) a 200-block-long chain and
     4 wallets.
     pasteld and pastel-cli must be in search path.
     """
-
-    if os.name == "nt":
-        isWindows = True
-        PastelDaemon = "pasteld.exe"
+    isWindows = os.name == "nt"    
+    if isWindows:
         PastelClient = "pastel-cli.exe"
     else:
-        isWindows = False
-        PastelDaemon = "pasteld"
         PastelClient = "pastel-cli"
-    if not os.path.isdir(os.path.join("cache", "node0")):
+    if not Path("cache", "node0").exists():
         print("Rebuilding cache...")
         if not isWindows:
             devnull = open("/dev/null", "w+")
         # Create cache directories, run pasteld:
         for i in range(4):
             datadir=initialize_datadir("cache", i)
-            args = [ os.getenv("PASTELD", PastelDaemon), "-keypool=1", "-datadir="+datadir, "-discover=0" ]
+            args = [ find_pasteld_binary(), "-keypool=1", "-datadir="+datadir, "-discover=0" ]
             args.extend([
                 '-nuparams=5ba81b19:1', # Overwinter
                 '-nuparams=76b809bb:1', # Sapling
@@ -211,9 +234,10 @@ def start_node(i, dirname, extra_args=None, rpchost=None, timewait=None, binary=
     """
     Start a pasteld and return RPC connection to it
     """
-    datadir = os.path.join(dirname, "node"+str(i))
-    if binary is None:
-        binary = os.getenv("PASTELD", "pasteld")
+    datadir = str(Path(dirname, "node" +str(i)).absolute())
+    if binary is None:   
+        binary = find_pasteld_binary()
+
     args = [ binary, "-datadir="+datadir, "-keypool=1", "-discover=0", "-rest" ]
     args.extend([
         '-nuparams=5ba81b19:1', # Overwinter
@@ -424,8 +448,8 @@ def assert_greater_than(thing1, thing2):
     if thing1 <= thing2:
         raise AssertionError("%s <= %s"%(str(thing1),str(thing2)))
 
-def assert_raises(exc, func, *args, **kwds):
-    assert_raises_message(exc, None, func, *args, **kwds)
+def assert_raises(exc, func, *args, **kwargs):
+    assert_raises_message(exc, None, func, *args, **kwargs)
 
 def assert_raises_message(ExceptionType, errstr, func, *args, **kwargs):
     """
@@ -436,10 +460,7 @@ def assert_raises_message(ExceptionType, errstr, func, *args, **kwargs):
         func(*args, **kwargs)
     except ExceptionType as e:
         if errstr is not None and errstr not in str(e):
-            raise AssertionError("Invalid exception string: Couldn't find %r in %r" % (
-                errstr, str(e)))
-    except exc:
-        pass
+            raise AssertionError(f"Invalid exception string: Couldn't find {repr(errstr)} in {repr(e)}")
     except Exception as e:
         raise AssertionError("Unexpected exception raised: "+type(e).__name__)
     else:
@@ -448,6 +469,19 @@ def assert_raises_message(ExceptionType, errstr, func, *args, **kwargs):
 def fail(message=""):
     raise AssertionError(message)
 
+def assert_shows_help(func, *args, **kwargs):
+    """
+    Asserts that func returns json with the help message
+    """
+    try:
+        func(*args, **kwargs)
+    except JSONRPCException as e:
+        if e.error['message'] is None:
+            err = e.error['error']
+            if err is None or err['code'] != -8 or err['message'] is None:
+                raise AssertionError(f"help message is missing in {repr(e)}")
+    else:
+        raise AssertionError("No exception raised")
 
 # Returns an async operation result
 def wait_and_assert_operationid_status_result(node, myopid, in_status='success', in_errormsg=None, timeout=300):
