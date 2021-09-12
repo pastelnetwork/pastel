@@ -11,7 +11,7 @@
 #include <string.h>
 
 template <unsigned int BITS>
-base_blob<BITS>::base_blob(const std::vector<unsigned char>& vch)
+base_blob<BITS>::base_blob(const v_uint8& vch)
 {
     assert(vch.size() == sizeof(data));
     memcpy(data, &vch[0], sizeof(data));
@@ -68,14 +68,14 @@ std::string base_blob<BITS>::ToString() const
 }
 
 // Explicit instantiations for base_blob<160>
-template base_blob<160>::base_blob(const std::vector<unsigned char>&);
+template base_blob<160>::base_blob(const v_uint8&);
 template std::string base_blob<160>::GetHex() const;
 template std::string base_blob<160>::ToString() const;
 template void base_blob<160>::SetHex(const char*);
 template void base_blob<160>::SetHex(const std::string&);
 
 // Explicit instantiations for base_blob<256>
-template base_blob<256>::base_blob(const std::vector<unsigned char>&);
+template base_blob<256>::base_blob(const v_uint8&);
 template std::string base_blob<256>::GetHex() const;
 template std::string base_blob<256>::ToString() const;
 template void base_blob<256>::SetHex(const char*);
@@ -123,7 +123,7 @@ static void inline HashFinal(uint32_t& a, uint32_t& b, uint32_t& c)
     c -= ((b << 24) | (b >> 8));
 }
 
-uint64_t uint256::GetHash(const uint256& salt) const
+uint64_t uint256::GetHash(const uint256& salt) const noexcept
 {
     uint32_t a, b, c;
     const uint32_t *pn = (const uint32_t*)data;

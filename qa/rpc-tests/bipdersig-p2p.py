@@ -32,9 +32,7 @@ class BIP66Test(ComparisonTestFramework):
         self.nodes = start_nodes(self.num_nodes, self.options.tmpdir,
                                  extra_args=[[
                                      '-debug', 
-                                     '-whitelist=127.0.0.1',
-                                     '-nuparams=5ba81b19:100', # Overwinter
-                                     '-nuparams=76b809bb:201', # Sapling
+                                     '-whitelist=127.0.0.1'
                                  ]],
                                  binary=[self.options.testbinary])
         self.is_network_split = False

@@ -4,6 +4,7 @@
 #include "netbase.h"
 #include "chainparams.h"
 #include "util.h"
+#include "port_config.h"
 
 #include "json/json.hpp"
 using json = nlohmann::json;
@@ -60,20 +61,22 @@ bool checkIPAddressPort(std::string& address, std::string alias, bool checkPort,
                 strprintf(_("Alias: %s"), alias);
         return false;
     }
-    if (checkPort) {
-        int mainnetDefaultPort = Params(CBaseChainParams::Network::MAIN).GetDefaultPort();
+    if (checkPort)
+    {
         if(Params().IsMainNet()) {
-            if(port != mainnetDefaultPort) {
+            if(port != MAINNET_DEFAULT_PORT)
+            {
                 strErr = _("Invalid port detected in masternode.conf") + "\n" +
                         strprintf(_("Port: %d"), port) + "\n" +
                         strprintf(_("Alias: %s"), alias) + "\n" +
-                        strprintf(_("(must be %d for mainnet)"), mainnetDefaultPort);
+                        strprintf(_("(must be %hu for mainnet)"), MAINNET_DEFAULT_PORT);
                 return false;
             }
-        } else if(port == mainnetDefaultPort) {
+        } else if (port == MAINNET_DEFAULT_PORT)
+        {
             strErr = _("Invalid port detected in masternode.conf") + "\n" +
                     strprintf(_("Alias: %s"), alias) + "\n" +
-                    strprintf(_("(%d could be used only on mainnet)"), mainnetDefaultPort);
+                     strprintf(_("(%hu could be used only on mainnet)"), MAINNET_DEFAULT_PORT);
             return false;
         }
     }

@@ -1,15 +1,11 @@
+#pragma once
 // Copyright (c) 2017 The Zcash developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
-
-#ifndef ASYNCRPCOPERATION_SHIELDCOINBASE_H
-#define ASYNCRPCOPERATION_SHIELDCOINBASE_H
-
 #include "asyncrpcoperation.h"
 #include "amount.h"
 #include "primitives/transaction.h"
 #include "transaction_builder.h"
-#include "zcash/JoinSplit.hpp"
 #include "zcash/Address.hpp"
 #include "wallet.h"
 
@@ -18,27 +14,23 @@
 
 #include <univalue.h>
 
-#include "paymentdisclosure.h"
-
 // Default transaction fee if caller does not specify one.
-#define SHIELD_COINBASE_DEFAULT_MINERS_FEE   10000
+constexpr CAmount SHIELD_COINBASE_DEFAULT_MINERS_FEE = 10000;
 
 using namespace libzcash;
 
-struct ShieldCoinbaseUTXO {
+struct ShieldCoinbaseUTXO
+{
+    ShieldCoinbaseUTXO(const uint256 &txid, const int vout, const CAmount amount) :
+        txid(txid),
+        vout(vout),
+        amount(amount)
+    {}
+
     uint256 txid;
     int vout;
     CScript scriptPubKey;
     CAmount amount;
-};
-
-// Package of info which is passed to perform_joinsplit methods.
-struct ShieldCoinbaseJSInfo
-{
-    std::vector<JSInput> vjsin;
-    std::vector<JSOutput> vjsout;
-    CAmount vpub_old = 0;
-    CAmount vpub_new = 0;
 };
 
 class AsyncRPCOperation_shieldcoinbase : public AsyncRPCOperation {
@@ -75,9 +67,6 @@ private:
     CAmount fee_;
     PaymentAddress tozaddr_;
 
-    uint256 joinSplitPubKey_;
-    unsigned char joinSplitPrivKey_[crypto_sign_SECRETKEYBYTES];
-
     std::vector<ShieldCoinbaseUTXO> inputs_;
 
     TransactionBuilder builder_;
@@ -85,17 +74,11 @@ private:
 
     bool main_impl();
 
-    // JoinSplit without any input notes to spend
-    UniValue perform_joinsplit(ShieldCoinbaseJSInfo &);
-
     void sign_send_raw_transaction(UniValue obj);     // throws exception if there was an error
 
     void lock_utxos();
 
     void unlock_utxos();
-
-    // payment disclosure!
-    std::vector<PaymentDisclosureKeyInfo> paymentDisclosureData_;
 };
 
 class ShieldToAddress : public boost::static_visitor<bool>
@@ -107,7 +90,6 @@ public:
     ShieldToAddress(AsyncRPCOperation_shieldcoinbase *op, CAmount sendAmount) :
         m_op(op), sendAmount(sendAmount) {}
 
-    bool operator()(const libzcash::SproutPaymentAddress &zaddr) const;
     bool operator()(const libzcash::SaplingPaymentAddress &zaddr) const;
     bool operator()(const libzcash::InvalidEncoding& no) const;
 };
@@ -134,11 +116,7 @@ public:
         return delegate->main_impl();
     }
 
-    UniValue perform_joinsplit(ShieldCoinbaseJSInfo &info) {
-        return delegate->perform_joinsplit(info);
-    }
-
-    void sign_send_raw_transaction(UniValue obj) {
+     void sign_send_raw_transaction(UniValue obj) {
         delegate->sign_send_raw_transaction(obj);
     }
 
@@ -146,7 +124,4 @@ public:
         delegate->state_.store(state);
     }
 };
-
-
-#endif /* ASYNCRPCOPERATION_SHIELDCOINBASE_H */
 

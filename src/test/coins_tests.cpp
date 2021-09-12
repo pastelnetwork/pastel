@@ -227,18 +227,12 @@ class TxWithNullifiers
 {
 public:
     CTransaction tx;
-    uint256 sproutNullifier;
     uint256 saplingNullifier;
 
     TxWithNullifiers()
     {
         CMutableTransaction mutableTx;
 
-        sproutNullifier = GetRandHash();
-        JSDescription jsd;
-        jsd.nullifiers[0] = sproutNullifier;
-        mutableTx.vjoinsplit.emplace_back(jsd);
-        
         saplingNullifier = GetRandHash();
         SpendDescription sd;
         sd.nullifier = saplingNullifier;
@@ -250,18 +244,6 @@ public:
 
 }
 
-uint256 appendRandomSproutCommitment(SproutMerkleTree &tree)
-{
-    libzcash::SproutSpendingKey k = libzcash::SproutSpendingKey::random();
-    libzcash::SproutPaymentAddress addr = k.address();
-
-    libzcash::SproutNote note(addr.a_pk, 0, uint256(), uint256());
-
-    auto cm = note.cm();
-    tree.append(cm);
-    return cm;
-}
-
 template<typename Tree> bool GetAnchorAt(const CCoinsViewCacheTest &cache, const uint256 &rt, Tree &tree);
 template<> bool GetAnchorAt(const CCoinsViewCacheTest &cache, const uint256 &rt, SproutMerkleTree &tree) { return cache.GetSproutAnchorAt(rt, tree); }
 template<> bool GetAnchorAt(const CCoinsViewCacheTest &cache, const uint256 &rt, SaplingMerkleTree &tree) { return cache.GetSaplingAnchorAt(rt, tree); }
@@ -270,12 +252,9 @@ BOOST_FIXTURE_TEST_SUITE(coins_tests, BasicTestingSetup)
 
 void checkNullifierCache(const CCoinsViewCacheTest &cache, const TxWithNullifiers &txWithNullifiers, bool shouldBeInCache) {
     // Make sure the nullifiers have not gotten mixed up
-    BOOST_CHECK(!cache.GetNullifier(txWithNullifiers.sproutNullifier, SAPLING));
     BOOST_CHECK(!cache.GetNullifier(txWithNullifiers.saplingNullifier, SPROUT));
     // Check if the nullifiers either are or are not in the cache
-    bool containsSproutNullifier = cache.GetNullifier(txWithNullifiers.sproutNullifier, SPROUT);
     bool containsSaplingNullifier = cache.GetNullifier(txWithNullifiers.saplingNullifier, SAPLING);
-    BOOST_CHECK(containsSproutNullifier == shouldBeInCache);
     BOOST_CHECK(containsSaplingNullifier == shouldBeInCache);
 }
 
@@ -602,84 +581,6 @@ BOOST_AUTO_TEST_CASE(anchors_flush_test)
     }
     BOOST_TEST_CONTEXT("Sapling") {
         anchorsFlushImpl<SaplingMerkleTree>(SAPLING);
-    }
-}
-
-BOOST_AUTO_TEST_CASE(chained_joinsplits)
-{
-    // TODO update this or add a similar test when the SaplingNote class exist
-    CCoinsViewTest base;
-    CCoinsViewCacheTest cache(&base);
-
-    SproutMerkleTree tree;
-
-    JSDescription js1;
-    js1.anchor = tree.root();
-    js1.commitments[0] = appendRandomSproutCommitment(tree);
-    js1.commitments[1] = appendRandomSproutCommitment(tree);
-
-    // Although it's not possible given our assumptions, if
-    // two joinsplits create the same treestate twice, we should
-    // still be able to anchor to it.
-    JSDescription js1b;
-    js1b.anchor = tree.root();
-    js1b.commitments[0] = js1.commitments[0];
-    js1b.commitments[1] = js1.commitments[1];
-
-    JSDescription js2;
-    JSDescription js3;
-
-    js2.anchor = tree.root();
-    js3.anchor = tree.root();
-
-    js2.commitments[0] = appendRandomSproutCommitment(tree);
-    js2.commitments[1] = appendRandomSproutCommitment(tree);
-
-    js3.commitments[0] = appendRandomSproutCommitment(tree);
-    js3.commitments[1] = appendRandomSproutCommitment(tree);
-
-    {
-        CMutableTransaction mtx;
-        mtx.vjoinsplit.push_back(js2);
-
-        BOOST_CHECK(!cache.HaveShieldedRequirements(mtx));
-    }
-
-    {
-        // js2 is trying to anchor to js1 but js1
-        // appears afterwards -- not a permitted ordering
-        CMutableTransaction mtx;
-        mtx.vjoinsplit.push_back(js2);
-        mtx.vjoinsplit.push_back(js1);
-
-        BOOST_CHECK(!cache.HaveShieldedRequirements(mtx));
-    }
-
-    {
-        CMutableTransaction mtx;
-        mtx.vjoinsplit.push_back(js1);
-        mtx.vjoinsplit.push_back(js2);
-
-        BOOST_CHECK(cache.HaveShieldedRequirements(mtx));
-    }
-
-    {
-        CMutableTransaction mtx;
-        mtx.vjoinsplit.push_back(js1);
-        mtx.vjoinsplit.push_back(js2);
-        mtx.vjoinsplit.push_back(js3);
-
-        BOOST_CHECK(cache.HaveShieldedRequirements(mtx));
-    }
-
-    {
-        CMutableTransaction mtx;
-        mtx.vjoinsplit.push_back(js1);
-        mtx.vjoinsplit.push_back(js1b);
-        mtx.vjoinsplit.push_back(js2);
-        mtx.vjoinsplit.push_back(js3);
-
-        BOOST_CHECK(cache.HaveShieldedRequirements(mtx));
     }
 }
 
@@ -1073,7 +974,7 @@ BOOST_AUTO_TEST_CASE(ccoins_serialization)
         CCoins cc4;
         ss4 >> cc4;
         BOOST_CHECK_MESSAGE(false, "We should have thrown");
-    } catch (const std::ios_base::failure& e) {
+    } catch ([[maybe_unused]] const std::ios_base::failure& e) {
     }
 
     // Very large scriptPubKey (3*10^9 bytes) past the end of the stream
@@ -1086,7 +987,7 @@ BOOST_AUTO_TEST_CASE(ccoins_serialization)
         CCoins cc5;
         ss5 >> cc5;
         BOOST_CHECK_MESSAGE(false, "We should have thrown");
-    } catch (const std::ios_base::failure& e) {
+    } catch ([[maybe_unused]] const std::ios_base::failure& e) {
     }
 }
 

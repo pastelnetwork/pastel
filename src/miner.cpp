@@ -109,18 +109,17 @@ void UpdateTime(CBlockHeader* pblock, const Consensus::Params& consensusParams, 
     }
 }
 
-CBlockTemplate* CreateNewBlock(const CScript& scriptPubKeyIn)
+CBlockTemplate* CreateNewBlock(const CChainParams& chainparams, const CScript& scriptPubKeyIn)
 {
-    const CChainParams& chainparams = Params();
     // Create new block
-    std::unique_ptr<CBlockTemplate> pblocktemplate(new CBlockTemplate());
-    if(!pblocktemplate.get())
+    auto pblocktemplate = std::make_unique<CBlockTemplate>();
+    if (!pblocktemplate)
         return nullptr;
-    CBlock *pblock = &pblocktemplate->block; // pointer for convenience
+    auto pblock = &pblocktemplate->block; // pointer for convenience
 
     // -regtest only: allow overriding block.nVersion with
     // -blockversion=N to test forking scenarios
-    if (Params().MineBlocksOnDemand())
+    if (chainparams.MineBlocksOnDemand())
         pblock->nVersion = GetArg("-blockversion", pblock->nVersion);
 
     // Add dummy coinbase tx as first transaction
@@ -166,8 +165,7 @@ CBlockTemplate* CreateNewBlock(const CScript& scriptPubKeyIn)
         // This vector will be sorted into a priority queue:
         vector<TxPriority> vecPriority;
         vecPriority.reserve(mempool.mapTx.size());
-        for (CTxMemPool::indexed_transaction_set::iterator mi = mempool.mapTx.begin();
-             mi != mempool.mapTx.end(); ++mi)
+        for (auto mi = mempool.mapTx.cbegin(); mi != mempool.mapTx.cend(); ++mi)
         {
             const CTransaction& tx = mi->GetTx();
 
@@ -253,6 +251,7 @@ CBlockTemplate* CreateNewBlock(const CScript& scriptPubKeyIn)
         TxPriorityCompare comparer(fSortedByFee);
         std::make_heap(vecPriority.begin(), vecPriority.end(), comparer);
 
+        const auto &consensusParams = chainparams.GetConsensus();
         while (!vecPriority.empty())
         {
             // Take highest priority transaction off the priority queue:
@@ -305,7 +304,7 @@ CBlockTemplate* CreateNewBlock(const CScript& scriptPubKeyIn)
             // create only contains transactions that are valid in new blocks.
             CValidationState state;
             PrecomputedTransactionData txdata(tx);
-            if (!ContextualCheckInputs(tx, state, view, true, MANDATORY_SCRIPT_VERIFY_FLAGS, true, txdata, Params().GetConsensus(), consensusBranchId))
+            if (!ContextualCheckInputs(tx, state, view, true, MANDATORY_SCRIPT_VERIFY_FLAGS, true, txdata, consensusParams, consensusBranchId))
                 continue;
 
             UpdateCoins(tx, view, nHeight);
@@ -377,13 +376,13 @@ CBlockTemplate* CreateNewBlock(const CScript& scriptPubKeyIn)
         // Fill in header
         pblock->hashPrevBlock  = pindexPrev->GetBlockHash();
         pblock->hashFinalSaplingRoot   = sapling_tree.root();
-        UpdateTime(pblock, Params().GetConsensus(), pindexPrev);
-        pblock->nBits          = GetNextWorkRequired(pindexPrev, pblock, Params().GetConsensus());
+        UpdateTime(pblock, consensusParams, pindexPrev);
+        pblock->nBits          = GetNextWorkRequired(pindexPrev, pblock, consensusParams);
         pblock->nSolution.clear();
         pblocktemplate->vTxSigOps[0] = GetLegacySigOpCount(pblock->vtx[0]);
 
         CValidationState state;
-        if (!TestBlockValidity(state, *pblock, pindexPrev, false, false))
+        if (!TestBlockValidity(state, chainparams, *pblock, pindexPrev, false, false))
             throw std::runtime_error("CreateNewBlock(): TestBlockValidity failed");
     }
 
@@ -391,12 +390,12 @@ CBlockTemplate* CreateNewBlock(const CScript& scriptPubKeyIn)
 }
 
 #ifdef ENABLE_WALLET
-std::optional<CScript> GetMinerScriptPubKey(CReserveKey& reservekey)
+std::optional<CScript> GetMinerScriptPubKey(CReserveKey& reservekey, const CChainParams &chainparams)
 #else
-std::optional<CScript> GetMinerScriptPubKey()
+std::optional<CScript> GetMinerScriptPubKey(const CChainParams& chainparams)
 #endif
 {
-    KeyIO keyIO(Params());
+    KeyIO keyIO(chainparams);
     CKeyID keyID;
     CTxDestination addr = keyIO.DecodeDestination(GetArg("-mineraddress", ""));
     if (IsValidDestination(addr)) {
@@ -418,18 +417,18 @@ std::optional<CScript> GetMinerScriptPubKey()
 }
 
 #ifdef ENABLE_WALLET
-CBlockTemplate* CreateNewBlockWithKey(CReserveKey& reservekey)
+CBlockTemplate* CreateNewBlockWithKey(CReserveKey& reservekey, const CChainParams& chainparams)
 {
-    std::optional<CScript> scriptPubKey = GetMinerScriptPubKey(reservekey);
+    std::optional<CScript> scriptPubKey = GetMinerScriptPubKey(reservekey, chainparams);
 #else
-CBlockTemplate* CreateNewBlockWithKey()
+CBlockTemplate* CreateNewBlockWithKey(const CChainParams& chainparams)
 {
-    std::optional<CScript> scriptPubKey = GetMinerScriptPubKey();
+    std::optional<CScript> scriptPubKey = GetMinerScriptPubKey(chainparams);
 #endif
 
     if (!scriptPubKey)
         return nullptr;
-    return CreateNewBlock(*scriptPubKey);
+    return CreateNewBlock(chainparams, *scriptPubKey);
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -459,9 +458,9 @@ void IncrementExtraNonce(CBlock* pblock, CBlockIndex* pindexPrev, unsigned int& 
 }
 
 #ifdef ENABLE_WALLET
-static bool ProcessBlockFound(CBlock* pblock, CWallet& wallet, CReserveKey& reservekey)
+static bool ProcessBlockFound(const CBlock* pblock, const CChainParams& chainparams, CWallet& wallet, CReserveKey& reservekey)
 #else
-static bool ProcessBlockFound(CBlock* pblock)
+static bool ProcessBlockFound(const CBlock* pblock, const CChainParams& chainparams)
 #endif // ENABLE_WALLET
 {
     LogPrintf("%s\n", pblock->ToString());
@@ -489,7 +488,7 @@ static bool ProcessBlockFound(CBlock* pblock)
 
     // Process this block the same as if we had received it from another node
     CValidationState state;
-    if (!ProcessNewBlock(state, nullptr, pblock, true, nullptr))
+    if (!ProcessNewBlock(state, chainparams, nullptr, pblock, true, nullptr))
         return error("PastelMiner: ProcessNewBlock, block not accepted");
 
     TrackMinedBlock(pblock->GetHash());
@@ -506,7 +505,6 @@ void static BitcoinMiner()
     LogPrintf("PastelMiner started\n");
     SetThreadPriority(THREAD_PRIORITY_LOWEST);
     RenameThread("pastel-miner");
-    const CChainParams& chainparams = Params();
 
 #ifdef ENABLE_WALLET
     // Each thread has its own key
@@ -516,8 +514,10 @@ void static BitcoinMiner()
     // Each thread has its own counter
     unsigned int nExtraNonce = 0;
 
-    unsigned int n = chainparams.EquihashN();
-    unsigned int k = chainparams.EquihashK();
+    const auto& chainparams = Params();
+    const auto &consensusParams = chainparams.GetConsensus();
+    unsigned int n = consensusParams.nEquihashN;
+    unsigned int k = consensusParams.nEquihashK;
 
     std::string solver = GetArg("-equihashsolver", "default");
     assert(solver == "tromp" || solver == "default");
@@ -564,16 +564,16 @@ void static BitcoinMiner()
                     n = 48;
                     k = 5;
                 } else {
-                    n = chainparams.EquihashN();
-                    k = chainparams.EquihashK();
+                    n = consensusParams.nEquihashN;
+                    k = consensusParams.nEquihashK;
                 }
             }
             //<-INGEST!!!
 
 #ifdef ENABLE_WALLET
-            unique_ptr<CBlockTemplate> pblocktemplate(CreateNewBlockWithKey(reservekey));
+            unique_ptr<CBlockTemplate> pblocktemplate(CreateNewBlockWithKey(reservekey, chainparams));
 #else
-            unique_ptr<CBlockTemplate> pblocktemplate(CreateNewBlockWithKey());
+            unique_ptr<CBlockTemplate> pblocktemplate(CreateNewBlockWithKey(chainparams));
 #endif
             if (!pblocktemplate.get())
             {
@@ -642,9 +642,9 @@ void static BitcoinMiner()
                     LogPrintf("PastelMiner:\n");
                     LogPrintf("proof-of-work found  \n  hash: %s  \ntarget: %s\n", pblock->GetHash().GetHex(), hashTarget.GetHex());
 #ifdef ENABLE_WALLET
-                    if (ProcessBlockFound(pblock, *pwallet, reservekey))
+                    if (ProcessBlockFound(pblock, chainparams, *pwallet, reservekey))
 #else
-                    if (ProcessBlockFound(pblock))
+                    if (ProcessBlockFound(pblock, chainparams))
 #endif
                     {
                         // Ignore chain updates caused by us
@@ -757,9 +757,9 @@ void static BitcoinMiner()
 }
 
 #ifdef ENABLE_WALLET
-void GenerateBitcoins(bool fGenerate, CWallet* pwallet, int nThreads)
+void GenerateBitcoins(bool fGenerate, CWallet* pwallet, int nThreads, const CChainParams& chainparams)
 #else
-void GenerateBitcoins(bool fGenerate, int nThreads)
+void GenerateBitcoins(bool fGenerate, int nThreads, const CChainParams& chainparams)
 #endif
 {
     static boost::thread_group* minerThreads = nullptr;
@@ -767,7 +767,7 @@ void GenerateBitcoins(bool fGenerate, int nThreads)
     if (nThreads < 0)
         nThreads = GetNumCores();
 
-    if (minerThreads != nullptr)
+    if (minerThreads)
     {
         minerThreads->interrupt_all();
         minerThreads->join_all();
@@ -783,7 +783,7 @@ void GenerateBitcoins(bool fGenerate, int nThreads)
 #ifdef ENABLE_WALLET
         minerThreads->create_thread(boost::bind(&BitcoinMiner, pwallet));
 #else
-        minerThreads->create_thread(&BitcoinMiner);
+        minerThreads->create_thread(boost::bind(&BitcoinMiner));
 #endif
     }
 }

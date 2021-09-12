@@ -1,5 +1,4 @@
 #include <gmock/gmock.h>
-#include <gtest/gtest.h>
 
 #include "chainparams.h"
 #include "key.h"
@@ -18,53 +17,46 @@ class MockReserveKey : public CReserveKey {
 public:
     MockReserveKey() : CReserveKey(nullptr) { }
 
-    MOCK_METHOD1(GetReservedKey, bool(CPubKey &pubkey));
+    MOCK_METHOD(bool, GetReservedKey, (CPubKey &pubkey), ());
 };
 #endif
 
 TEST(Miner, GetMinerScriptPubKey) {
     SelectParams(CBaseChainParams::Network::MAIN);
 
-    std::optional<CScript> scriptPubKey;
+    const auto& chainparams = Params();
+    
 #ifdef ENABLE_WALLET
     MockReserveKey reservekey;
     EXPECT_CALL(reservekey, GetReservedKey(::testing::_))
         .WillRepeatedly(Return(false));
 #endif
 
-    // No miner address set
+    const auto TestGetMinerScriptPubKey = [&]() -> std::optional<CScript>
+    {
 #ifdef ENABLE_WALLET
-    scriptPubKey = GetMinerScriptPubKey(reservekey);
+        return GetMinerScriptPubKey(reservekey, chainparams);
 #else
-    scriptPubKey = GetMinerScriptPubKey();
+        return GetMinerScriptPubKey(chainparams);
 #endif
+    };
+
+    // No miner address set
+    auto scriptPubKey = TestGetMinerScriptPubKey();
     EXPECT_FALSE((bool) scriptPubKey);
 
     mapArgs["-mineraddress"] = "notAnAddress";
-#ifdef ENABLE_WALLET
-    scriptPubKey = GetMinerScriptPubKey(reservekey);
-#else
-    scriptPubKey = GetMinerScriptPubKey();
-#endif
+    scriptPubKey = TestGetMinerScriptPubKey();
     EXPECT_FALSE((bool) scriptPubKey);
 
     // Partial address
     mapArgs["-mineraddress"] = "Ptq6hqeeAXta25PGaKHs1";
-#ifdef ENABLE_WALLET
-    scriptPubKey = GetMinerScriptPubKey(reservekey);
-#else
-    scriptPubKey = GetMinerScriptPubKey();
-#endif
+    scriptPubKey = TestGetMinerScriptPubKey();
     EXPECT_FALSE((bool) scriptPubKey);
 
     // Typo in address
     mapArgs["-mineraddress"] = "Ptq6hqeeAXta25PGaKHs1ymktHbEbBugxeG"; //bB instead of b8
-    
-#ifdef ENABLE_WALLET
-    scriptPubKey = GetMinerScriptPubKey(reservekey);
-#else
-    scriptPubKey = GetMinerScriptPubKey();
-#endif
+    scriptPubKey = TestGetMinerScriptPubKey();
     EXPECT_FALSE((bool) scriptPubKey);
 
     // Set up expected scriptPubKey for Ptq6hqeeAXta25PGaKHs1ymktHbEb8ugxeG
@@ -74,31 +66,19 @@ TEST(Miner, GetMinerScriptPubKey) {
 
     // Valid address
     mapArgs["-mineraddress"] = "Ptq6hqeeAXta25PGaKHs1ymktHbEb8ugxeG";
-#ifdef ENABLE_WALLET
-    scriptPubKey = GetMinerScriptPubKey(reservekey);
-#else
-    scriptPubKey = GetMinerScriptPubKey();
-#endif
+    scriptPubKey = TestGetMinerScriptPubKey();
     EXPECT_TRUE((bool) scriptPubKey);
     EXPECT_EQ(expectedScriptPubKey, *scriptPubKey);
 
     // Valid address with leading whitespace
     mapArgs["-mineraddress"] = "  Ptq6hqeeAXta25PGaKHs1ymktHbEb8ugxeG";
-#ifdef ENABLE_WALLET
-    scriptPubKey = GetMinerScriptPubKey(reservekey);
-#else
-    scriptPubKey = GetMinerScriptPubKey();
-#endif
+    scriptPubKey = TestGetMinerScriptPubKey();
     EXPECT_TRUE((bool) scriptPubKey);
     EXPECT_EQ(expectedScriptPubKey, *scriptPubKey);
 
     // Valid address with trailing whitespace
     mapArgs["-mineraddress"] = "Ptq6hqeeAXta25PGaKHs1ymktHbEb8ugxeG  ";
-#ifdef ENABLE_WALLET
-    scriptPubKey = GetMinerScriptPubKey(reservekey);
-#else
-    scriptPubKey = GetMinerScriptPubKey();
-#endif
-    EXPECT_TRUE((bool) scriptPubKey);
+    scriptPubKey = TestGetMinerScriptPubKey();
+    EXPECT_TRUE((bool)scriptPubKey);
     EXPECT_EQ(expectedScriptPubKey, *scriptPubKey);
 }

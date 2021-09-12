@@ -10,8 +10,8 @@
 typedef int64_t CAmount;
 
 static constexpr CAmount REWARD = 6250;
-
 static constexpr CAmount COIN = 100000;
+
 // The number of coin decimals is used in different places for money formatting:
 // A: %d.%05d
 // B: ParseFixedPoint(..., COIN_DECIMALS, ...)

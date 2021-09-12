@@ -1,10 +1,8 @@
+#pragma once
 // Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2014 The Bitcoin Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
-
-#ifndef BITCOIN_CONSENSUS_PARAMS_H
-#define BITCOIN_CONSENSUS_PARAMS_H
 
 #include "uint256.h"
 #include "key_constants.h"
@@ -73,6 +71,8 @@ struct Params {
     int nMajorityWindow;
     NetworkUpgrade vUpgrades[MAX_NETWORK_UPGRADES];
     /** Proof of work parameters */
+    unsigned int nEquihashN = 0;
+    unsigned int nEquihashK = 0;
     uint256 powLimit;
     std::optional<uint32_t> nPowAllowMinDifficultyBlocksAfterHeight;
     int64_t nPowAveragingWindow;
@@ -86,5 +86,3 @@ struct Params {
     int64_t nMaxGovernanceAmount;
 };
 } // namespace Consensus
-
-#endif // BITCOIN_CONSENSUS_PARAMS_H

@@ -105,9 +105,7 @@ LIBZCASH_H = \
   zcash/NoteEncryption.hpp \
   zcash/Address.hpp \
   zcash/address/sapling.hpp \
-  zcash/address/sprout.hpp \
   zcash/address/zip32.h \
-  zcash/JoinSplit.hpp \
   zcash/Note.hpp \
   zcash/prf.h \
   zcash/Proof.hpp \
@@ -227,6 +225,7 @@ BITCOIN_CORE_H = \
   netbase.h \
   noui.h \
   policy/fees.h \
+  port_config.h \
   pow.h \
   prevector.h \
   primitives/block.h \
@@ -281,8 +280,6 @@ BITCOIN_CORE_H = \
   wallet/asyncrpcoperation_shieldcoinbase.h \
   wallet/crypter.h \
   wallet/db.h \
-  wallet/paymentdisclosure.h \
-  wallet/paymentdisclosuredb.h \
   wallet/rpcwallet.h \
   wallet/wallet.h \
   wallet/wallet_ismine.h \
@@ -374,9 +371,6 @@ libbitcoin_wallet_a_SOURCES = \
   wallet/asyncrpcoperation_shieldcoinbase.cpp \
   wallet/crypter.cpp \
   wallet/db.cpp \
-  wallet/paymentdisclosure.cpp \
-  wallet/paymentdisclosuredb.cpp \
-  wallet/rpcdisclosure.cpp \
   wallet/rpcdump.cpp \
   wallet/rpcwallet.cpp \
   wallet/wallet.cpp \
@@ -583,9 +577,7 @@ libzcash_a_SOURCES = \
   zcash/NoteEncryption.cpp \
   zcash/Address.cpp \
   zcash/address/sapling.cpp \
-  zcash/address/sprout.cpp \
   zcash/address/zip32.cpp \
-  zcash/JoinSplit.cpp \
   zcash/Proof.cpp \
   zcash/Note.cpp \
   zcash/prf.cpp \

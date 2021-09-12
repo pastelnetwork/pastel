@@ -24,6 +24,7 @@ getcontext().prec = 16
 class MasterNodeCommon (BitcoinTestFramework):
     collateral = int(1000)
     passphrase = "passphrase"
+    invalid_passphrase = "invalid passphrase"
 
 
     def setup_masternodes_network(self, private_keys_list, number_of_non_mn_to_start=0, debug_flags="masternode,mnpayments,governance"):

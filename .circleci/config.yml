@@ -30,7 +30,7 @@ jobs:
           working_directory: /pastel
           no_output_timeout: 10m
           command: |
-            ./pcutil/static_code_analysis.py -p $TEST_MAILBOX_PWD -e $PVS_EMAIL -n $PVS_SERIAL
+            ./pcutil/static_code_analysis.py -p $TEST_MAILBOX_PWD -e $PVS_EMAIL -n $PVS_SERIAL -j 3
       - store_artifacts:
           path: /pastel/pcutil/artifacts
       - run:

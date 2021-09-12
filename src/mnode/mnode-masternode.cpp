@@ -9,6 +9,7 @@
 #include "script/standard.h"
 #include "util.h"
 #include "main.h"
+#include "port_config.h"
 
 #include "mnode/mnode-active.h"
 #include "mnode/mnode-masternode.h"
@@ -26,22 +27,26 @@
 
 #include <boost/lexical_cast.hpp>
 
-CMasternode::CMasternode() :
-    masternode_info_t{ MASTERNODE_ENABLED, PROTOCOL_VERSION, GetAdjustedTime()}
+CMasternode::CMasternode() : 
+    masternode_info_t{ MASTERNODE_ENABLED, PROTOCOL_VERSION, GetAdjustedTime()},
+    m_chainparams(Params())
 {}
 
 CMasternode::CMasternode(CService addr, COutPoint outpoint, CPubKey pubKeyCollateralAddress, CPubKey pubKeyMasternode, 
                             const std::string& strExtraLayerAddress, const std::string& strExtraLayerP2P, 
                             const std::string& strExtraLayerKey, const std::string& strExtraLayerCfg,
                             int nProtocolVersionIn) :
+
     masternode_info_t{ MASTERNODE_ENABLED, nProtocolVersionIn, GetAdjustedTime(),
                        outpoint, addr, pubKeyCollateralAddress, pubKeyMasternode,
                        strExtraLayerAddress, strExtraLayerP2P, strExtraLayerKey, strExtraLayerCfg
-                       }
+                       },
+    m_chainparams(Params())
 {}
 
 CMasternode::CMasternode(const CMasternode& other) :
     masternode_info_t{other},
+    m_chainparams(Params()),
     lastPing(other.lastPing),
     vchSig(other.vchSig),
     nCollateralMinConfBlockHash(other.nCollateralMinConfBlockHash),
@@ -58,6 +63,7 @@ CMasternode::CMasternode(const CMasternodeBroadcast& mnb) :
                        mnb.vin.prevout, mnb.addr, mnb.pubKeyCollateralAddress, mnb.pubKeyMasternode,
                        mnb.strExtraLayerAddress, mnb.strExtraLayerP2P, mnb.strExtraLayerKey, mnb.strExtraLayerCfg,
                        mnb.sigTime /*nTimeLastWatchdogVote*/},
+    m_chainparams(Params()),
     lastPing(mnb.lastPing),
     vchSig(mnb.vchSig)
 {}
@@ -273,7 +279,7 @@ bool CMasternode::IsInputAssociatedWithPubkey()
 
     CTransaction tx;
     uint256 hash;
-    if (GetTransaction(vin.prevout.hash, tx, hash, true))
+    if (GetTransaction(vin.prevout.hash, tx, m_chainparams.GetConsensus(), hash, true))
     {
         for (const auto & out : tx.vout)
         {
@@ -343,12 +349,13 @@ void CMasternode::UpdateLastPaid(const CBlockIndex *pindex, int nMaxBlocksToScan
 
     LOCK(cs_mapMasternodeBlockPayees);
 
+    const auto &consensusParams = m_chainparams.GetConsensus();
     for (int i = 0; BlockReading && BlockReading->nHeight > nBlockLastPaid && i < nMaxBlocksToScanBack; i++) {
         if(masterNodeCtrl.masternodePayments.mapMasternodeBlockPayees.count(BlockReading->nHeight) &&
             masterNodeCtrl.masternodePayments.mapMasternodeBlockPayees[BlockReading->nHeight].HasPayeeWithVotes(mnpayee, 2))
         {
             CBlock block;
-            if(!ReadBlockFromDisk(block, BlockReading)) // shouldn't really happen
+            if (!ReadBlockFromDisk(block, BlockReading, consensusParams)) // shouldn't really happen
                 continue;
 
             CAmount nMasternodePayment = masterNodeCtrl.masternodePayments.GetMasternodePayment(BlockReading->nHeight, block.vtx[0].GetValueOut());
@@ -465,12 +472,12 @@ bool CMasternodeBroadcast::Create(std::string strService, std::string strKeyMast
     CService service;
     if (!Lookup(strService.c_str(), service, 0, false))
         return Log(strprintf("Invalid address %s for masternode.", strService));
-    int mainnetDefaultPort = Params(CBaseChainParams::Network::MAIN).GetDefaultPort();
-    if (Params().IsMainNet()) {
-        if (service.GetPort() != mainnetDefaultPort)
-            return Log(strprintf("Invalid port %u for masternode %s, only %d is supported on mainnet.", service.GetPort(), strService, mainnetDefaultPort));
-    } else if (service.GetPort() == mainnetDefaultPort)
-        return Log(strprintf("Invalid port %u for masternode %s, %d is the only supported on mainnet.", service.GetPort(), strService, mainnetDefaultPort));
+    if (Params().IsMainNet())
+    {
+        if (service.GetPort() != MAINNET_DEFAULT_PORT)
+            return Log(strprintf("Invalid port %u for masternode %s, only %hu is supported on mainnet.", service.GetPort(), strService, MAINNET_DEFAULT_PORT));
+    } else if (service.GetPort() == MAINNET_DEFAULT_PORT)
+        return Log(strprintf("Invalid port %u for masternode %s, %hu is the only supported on mainnet.", service.GetPort(), strService, MAINNET_DEFAULT_PORT));
 
     return Create(outpoint, 
                     service, 
@@ -580,10 +587,10 @@ bool CMasternodeBroadcast::SimpleCheck(int& nDos)
         return false;
     }
 
-    int mainnetDefaultPort = Params(CBaseChainParams::Network::MAIN).GetDefaultPort();
     if(Params().IsMainNet()) {
-        if(addr.GetPort() != mainnetDefaultPort) return false;
-    } else if(addr.GetPort() == mainnetDefaultPort) return false;
+        if(addr.GetPort() != MAINNET_DEFAULT_PORT) return false;
+    } else if (addr.GetPort() == MAINNET_DEFAULT_PORT)
+        return false;
 
     return true;
 }
@@ -679,12 +686,13 @@ bool CMasternodeBroadcast::CheckOutpoint(int& nDos)
     // should be at least not earlier than block when 1000 PASTEL tx got nMasternodeMinimumConfirmations
     uint256 hashBlock = uint256();
     CTransaction tx2;
-    GetTransaction(vin.prevout.hash, tx2, hashBlock, true);
+    GetTransaction(vin.prevout.hash, tx2, m_chainparams.GetConsensus(), hashBlock, true);
     {
         LOCK(cs_main);
-        BlockMap::iterator mi = mapBlockIndex.find(hashBlock);
-        if (mi != mapBlockIndex.end() && (*mi).second) {
-            CBlockIndex* pMNIndex = (*mi).second; // block for 1000 PASTEL tx -> 1 confirmation
+        const auto mi = mapBlockIndex.find(hashBlock);
+        if (mi != mapBlockIndex.cend() && mi->second)
+        {
+            CBlockIndex* pMNIndex = mi->second; // block for 1000 PASTEL tx -> 1 confirmation
             CBlockIndex* pConfIndex = chainActive[pMNIndex->nHeight + masterNodeCtrl.nMasternodeMinimumConfirmations - 1]; // block where tx got nMasternodeMinimumConfirmations
             if(pConfIndex->GetBlockTime() > sigTime) {
                 LogPrintf("CMasternodeBroadcast::CheckOutpoint -- Bad sigTime %d (%d conf block is at %d) for Masternode %s %s\n",

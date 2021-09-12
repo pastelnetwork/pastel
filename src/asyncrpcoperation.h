@@ -133,9 +133,9 @@ protected:
         this->error_message_ = errorMessage;
     }
     
-    void set_result(UniValue v) {
+    void set_result(UniValue &&v) {
         std::lock_guard<std::mutex> guard(lock_);
-        this->result_ = v;
+        this->result_ = move(v);
     }
     
 private:

@@ -228,7 +228,7 @@ void OpenDebugLog()
 
 bool LogAcceptCategory(const char* category)
 {
-    if (category != NULL)
+    if (category)
     {
         if (!fDebug)
             return false;
@@ -238,10 +238,10 @@ bool LogAcceptCategory(const char* category)
         // where mapMultiArgs might be deleted before another
         // global destructor calls LogPrint()
         static boost::thread_specific_ptr<set<string> > ptrCategory;
-        if (ptrCategory.get() == NULL)
+        if (!ptrCategory.get())
         {
-            const vector<string>& categories = mapMultiArgs["-debug"];
-            ptrCategory.reset(new set<string>(categories.begin(), categories.end()));
+            const auto& vCategories = mapMultiArgs["-debug"];
+            ptrCategory.reset(new set<string>(vCategories.cbegin(), vCategories.cend()));
             // thread_specific_ptr automatically deletes the set when the thread ends.
         }
         const set<string>& setCategories = *ptrCategory.get();

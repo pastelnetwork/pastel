@@ -47,8 +47,7 @@ class WalletShieldCoinbaseTest (BitcoinTestFramework):
         self.nodes[0].generate(1)
         do_not_shield_taddr = self.nodes[0].getnewaddress()
 
-        self.nodes[0].generate(4)
-        self.sync_all()
+        self.generate_and_sync_inc(4)
         walletinfo = self.nodes[0].getwalletinfo()
         assert_equal(walletinfo['immature_balance'], self._reward*5)
         assert_equal(walletinfo['balance'], 0)
@@ -59,8 +58,7 @@ class WalletShieldCoinbaseTest (BitcoinTestFramework):
         self.nodes[2].getnewaddress()
         self.nodes[2].generate(1)
         self.sync_all()
-        self.nodes[1].generate(101)
-        self.sync_all()
+        self.generate_and_sync_inc(101,1)
         assert_equal(self.nodes[0].getbalance(), self._reward*5)
         assert_equal(self.nodes[1].getbalance(), self._reward*1)
         assert_equal(self.nodes[2].getbalance(), self._reward*3)
@@ -116,8 +114,7 @@ class WalletShieldCoinbaseTest (BitcoinTestFramework):
         result = self.nodes[0].z_shieldcoinbase(mytaddr, myzaddr)
         wait_and_assert_operationid_status(self.nodes[0], result['opid'])
         self.sync_all()
-        self.nodes[1].generate(1)
-        self.sync_all()
+        self.generate_and_sync_inc(1, 1)
 
         # Confirm balances and that do_not_shield_taddr containing funds of 10 was left alone
         assert_equal(self.nodes[0].getbalance(), self._reward)
@@ -130,8 +127,7 @@ class WalletShieldCoinbaseTest (BitcoinTestFramework):
         result = self.nodes[2].z_shieldcoinbase("*", myzaddr, 0)
         wait_and_assert_operationid_status(self.nodes[2], result['opid'])
         self.sync_all()
-        self.nodes[1].generate(1)
-        self.sync_all()
+        self.generate_and_sync_inc(1, 1)
 
         assert_equal(self.nodes[0].getbalance(), self._reward)
         assert_equal(self.nodes[0].z_getbalance(myzaddr), self._reward*7 - self._fee)
@@ -139,12 +135,9 @@ class WalletShieldCoinbaseTest (BitcoinTestFramework):
         assert_equal(self.nodes[2].getbalance(), 0)
 
         # Generate 800 coinbase utxos on node 0, and 20 coinbase utxos on node 2
-        self.nodes[0].generate(800)
-        self.sync_all()
-        self.nodes[2].generate(20)
-        self.sync_all()
-        self.nodes[1].generate(100)
-        self.sync_all()
+        self.generate_and_sync_inc(800, 0)
+        self.generate_and_sync_inc(20, 2)
+        self.generate_and_sync_inc(100, 1)
         mytaddr = self.nodes[0].getnewaddress()
 
         def verify_locking(first, second, limit):
@@ -180,12 +173,10 @@ class WalletShieldCoinbaseTest (BitcoinTestFramework):
         # which mines tx1 and tx2, all nodes will have an empty mempool which can then be synced.
         sync_blocks(self.nodes[:2])
         sync_mempools(self.nodes[:2])
-        self.nodes[1].generate(1)
-        self.sync_all()
+        self.generate_and_sync_inc(1, 1)
 
         # Verify maximum number of utxos which node 0 can shield is set by default limit parameter of 50
-        self.nodes[0].generate(200)
-        self.sync_all()
+        self.generate_and_sync_inc(200)
         mytaddr = self.nodes[0].getnewaddress()
         result = self.nodes[0].z_shieldcoinbase(mytaddr, myzaddr, self._fee)
         assert_equal(result["shieldingUTXOs"], Decimal('50'))
@@ -199,5 +190,4 @@ class WalletShieldCoinbaseTest (BitcoinTestFramework):
         wait_and_assert_operationid_status(self.nodes[0], result['opid'])
         sync_blocks(self.nodes)
         sync_mempools(self.nodes)
-        self.nodes[1].generate(1)
-        self.sync_all()
+        self.generate_and_sync_inc(1, 1)

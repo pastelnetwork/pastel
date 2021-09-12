@@ -8,6 +8,7 @@ from test_framework.test_framework import BitcoinTestFramework
 from test_framework.util import (
     assert_equal,
     connect_nodes_bi,
+    get_coinbase_address,
     initialize_chain_clean,
     start_nodes,
     wait_and_assert_operationid_status,
@@ -28,13 +29,11 @@ class FinalSaplingRootTest(BitcoinTestFramework):
         self.setup_clean_chain = True
 
     def setup_chain(self):
-        print("Initializing test directory "+self.options.tmpdir)
+        print(f"Initializing test directory {self.options.tmpdir}")
         initialize_chain_clean(self.options.tmpdir, self.num_nodes)
 
     def setup_network(self, split=False):
         self.nodes = start_nodes(self.num_nodes, self.options.tmpdir, extra_args=[[
-            '-nuparams=5ba81b19:100', # Overwinter
-            '-nuparams=76b809bb:200', # Sapling
             '-txindex'                # Avoid JSONRPC error: No information available about transaction
             ]] * self.num_nodes)
         connect_nodes_bi(self.nodes,0,1)
@@ -45,7 +44,6 @@ class FinalSaplingRootTest(BitcoinTestFramework):
         self.sync_all()
 
     def run_test(self):
-        # Activate Overwinter and Sapling
         self.nodes[0].generate(200)
         self.sync_all()
 
@@ -71,8 +69,7 @@ class FinalSaplingRootTest(BitcoinTestFramework):
         mytxid = wait_and_assert_operationid_status(self.nodes[0], myopid)
 
         self.sync_all()
-        self.nodes[0].generate(1)
-        self.sync_all()
+        self.generate_and_sync_inc(1)
 
         # Verify the final Sapling root has changed
         blk = self.nodes[0].getblock("201")
@@ -86,8 +83,7 @@ class FinalSaplingRootTest(BitcoinTestFramework):
 
         # Mine an empty block and verify the final Sapling root does not change
         self.sync_all()
-        self.nodes[0].generate(1)
-        self.sync_all()
+        self.generate_and_sync_inc(1)
         assert_equal(root, self.nodes[0].getblock("202")["finalsaplingroot"])
 
         # Mine a block with a transparent tx and verify the final Sapling root does not change
@@ -95,27 +91,13 @@ class FinalSaplingRootTest(BitcoinTestFramework):
         self.nodes[0].sendtoaddress(taddr1, amount1)
 
         self.sync_all()
-        self.nodes[0].generate(1)
-        self.sync_all()
+        self.generate_and_sync_inc(1)
 
         assert_equal(len(self.nodes[0].getblock("203")["tx"]), 2)
         assert_equal(self.nodes[1].z_getbalance(taddr1), amount1)
         assert_equal(root, self.nodes[0].getblock("203")["finalsaplingroot"])
 
-        # Mine a block with a Sprout shielded tx and verify the final Sapling root does not change
-        zaddr1 = self.nodes[1].z_getnewaddress('sprout')
-        recipients = []
-        recipients.append({"address": zaddr1, "amount": self._reward})
-        myopid = self.nodes[0].z_sendmany(taddr0, recipients, 1, 0)
-        wait_and_assert_operationid_status(self.nodes[0], myopid)
-
-        self.sync_all()
-        self.nodes[0].generate(1)
-        self.sync_all()
-
-        assert_equal(len(self.nodes[0].getblock("204")["tx"]), 2)
-        assert_equal(self.nodes[1].z_getbalance(zaddr1), self._reward)
-        assert_equal(root, self.nodes[0].getblock("204")["finalsaplingroot"])
+        self.generate_and_sync_inc(1)
 
         # Mine a block with a Sapling shielded recipient and verify the final Sapling root changes
         saplingAddr1 = self.nodes[1].z_getnewaddress("sapling")
@@ -125,8 +107,7 @@ class FinalSaplingRootTest(BitcoinTestFramework):
         mytxid = wait_and_assert_operationid_status(self.nodes[0], myopid)
 
         self.sync_all()
-        self.nodes[0].generate(1)
-        self.sync_all()
+        self.generate_and_sync_inc(1)
 
         assert_equal(len(self.nodes[0].getblock("205")["tx"]), 2)
         assert_equal(self.nodes[1].z_getbalance(saplingAddr1), amount2)
@@ -144,8 +125,7 @@ class FinalSaplingRootTest(BitcoinTestFramework):
         mytxid = wait_and_assert_operationid_status(self.nodes[1], myopid)
 
         self.sync_all()
-        self.nodes[0].generate(1)
-        self.sync_all()
+        self.generate_and_sync_inc(1)
 
         assert_equal(len(self.nodes[0].getblock("206")["tx"]), 2)
         assert_equal(self.nodes[0].z_getbalance(taddr2), amount2)

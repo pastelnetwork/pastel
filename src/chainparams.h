@@ -9,8 +9,7 @@
 #include "protocol.h"
 #include "enum_util.h"
 #include "key_constants.h"
-
-#include <vector>
+#include "vector_types.h"
 
 struct CDNSSeedData {
     std::string name, host;
@@ -34,7 +33,7 @@ struct CCheckpointData {
 class CBaseKeyConstants : public KeyConstants
 {
 public:
-    const std::vector<unsigned char>& Base58Prefix(const Base58Type type) const noexcept override
+    const v_uint8& Base58Prefix(const Base58Type type) const noexcept override
     {
         return m_base58Prefixes[to_integral_type(type)];
     }
@@ -44,7 +43,7 @@ public:
     }
 
 protected:
-    std::vector<unsigned char> m_base58Prefixes[to_integral_type(Base58Type::MAX_BASE58_TYPES)];
+    v_uint8 m_base58Prefixes[to_integral_type(Base58Type::MAX_BASE58_TYPES)];
     std::string m_bech32HRPs[to_integral_type(Bech32Type::MAX_BECH32_TYPES)];
 };
 
@@ -60,7 +59,7 @@ class CChainParams : public CBaseKeyConstants
 public:
     const Consensus::Params& GetConsensus() const { return consensus; }
     const CMessageHeader::MessageStartChars& MessageStart() const { return pchMessageStart; }
-    const std::vector<unsigned char>& AlertKey() const { return vAlertPubKey; }
+    const v_uint8& AlertKey() const { return vAlertPubKey; }
     int GetDefaultPort() const noexcept { return nDefaultPort; }
 
     const CBlock& GenesisBlock() const noexcept { return genesis; }
@@ -71,8 +70,6 @@ public:
     /** Policy: Filter transactions that do not match well-defined patterns */
     bool RequireStandard() const noexcept { return fRequireStandard; }
     int64_t PruneAfterHeight() const noexcept { return nPruneAfterHeight; }
-    unsigned int EquihashN() const noexcept { return nEquihashN; }
-    unsigned int EquihashK() const noexcept { return nEquihashK; }
     std::string CurrencyUnits() const noexcept { return strCurrencyUnits; }
     uint32_t BIP44CoinType() const noexcept { return bip44CoinType; }
     /** Make miner stop after a block is found. In RPC, don't return until nGenProcLimit blocks are generated */
@@ -98,11 +95,9 @@ protected:
     Consensus::Params consensus;
     CMessageHeader::MessageStartChars pchMessageStart;
     //! Raw pub key bytes for the broadcast alert signing key.
-    std::vector<unsigned char> vAlertPubKey;
+    v_uint8 vAlertPubKey;
     int nDefaultPort = 0;
     uint64_t nPruneAfterHeight = 0;
-    unsigned int nEquihashN = 0;
-    unsigned int nEquihashK = 0;
     std::vector<CDNSSeedData> vSeeds;
     std::string strNetworkID;
     CBaseChainParams::Network network = CBaseChainParams::Network::MAIN;
@@ -124,11 +119,11 @@ protected:
  */
 const CChainParams &Params();
 
-/** Return parameters for the given network. */
-CChainParams &Params(CBaseChainParams::Network network);
+// Create blockchain parameters based on network type.
+std::unique_ptr<const CChainParams> CreateChainParams(const CBaseChainParams::Network network);
 
 /** Sets the params returned by Params() to those for the given network. */
-void SelectParams(CBaseChainParams::Network network);
+void SelectParams(const CBaseChainParams::Network network);
 
 /**
  * Looks for -regtest or -testnet and then calls SelectParams as appropriate.
@@ -139,4 +134,4 @@ bool SelectParamsFromCommandLine();
 /**
  * Allows modifying the network upgrade regtest parameters.
  */
-void UpdateNetworkUpgradeParameters(Consensus::UpgradeIndex idx, int nActivationHeight);
+void UpdateNetworkUpgradeParameters(Consensus::UpgradeIndex idx, const int nActivationHeight);

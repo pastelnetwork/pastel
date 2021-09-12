@@ -108,7 +108,6 @@
     <ClCompile Include="..\..\..\src\gtest\test_deprecation.cpp" />
     <ClCompile Include="..\..\..\src\gtest\test_equihash.cpp" />
     <ClCompile Include="..\..\..\src\gtest\test_httprpc.cpp" />
-    <ClCompile Include="..\..\..\src\gtest\test_joinsplit.cpp" />
     <ClCompile Include="..\..\..\src\gtest\test_keys.cpp" />
     <ClCompile Include="..\..\..\src\gtest\test_keystore.cpp" />
     <ClCompile Include="..\..\..\src\gtest\test_legroast.cpp" />
@@ -122,7 +121,6 @@
     <ClCompile Include="..\..\..\src\gtest\test_mnode_pastel.cpp" />
     <ClCompile Include="..\..\..\src\gtest\test_noteencryption.cpp" />
     <ClCompile Include="..\..\..\src\gtest\test_pastelid.cpp" />
-    <ClCompile Include="..\..\..\src\gtest\test_paymentdisclosure.cpp" />
     <ClCompile Include="..\..\..\src\gtest\test_pedersen_hash.cpp" />
     <ClCompile Include="..\..\..\src\gtest\test_pow.cpp" />
     <ClCompile Include="..\..\..\src\gtest\test_proofs.cpp" />
@@ -132,18 +130,20 @@
     <ClCompile Include="..\..\..\src\gtest\test_secure_container.cpp" />
     <ClCompile Include="..\..\..\src\gtest\test_str_encodings.cpp" />
     <ClCompile Include="..\..\..\src\gtest\test_tautology.cpp" />
-    <ClCompile Include="..\..\..\src\gtest\test_transaction.cpp" />
     <ClCompile Include="..\..\..\src\gtest\test_transaction_builder.cpp" />
     <ClCompile Include="..\..\..\src\gtest\test_txid.cpp" />
     <ClCompile Include="..\..\..\src\gtest\test_upgrades.cpp" />
+    <ClCompile Include="..\..\..\src\gtest\test_utils.cpp" />
     <ClCompile Include="..\..\..\src\gtest\test_validation.cpp" />
     <ClCompile Include="..\..\..\src\gtest\test_zip32.cpp" />
-    <ClCompile Include="..\..\..\src\gtest\utils.cpp" />
+    <ClCompile Include="..\..\..\src\wallet\gtest\test_wallet.cpp" />
+    <ClCompile Include="..\..\..\src\wallet\gtest\test_wallet_zkeys.cpp" />
     <ClCompile Include="..\port\uint128.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\..\src\gtest\json_test_vectors.h" />
     <ClInclude Include="..\..\..\src\gtest\mock_mnode_ticket.h" />
+    <ClInclude Include="..\..\..\src\gtest\test_utils.h" />
     <ClInclude Include="..\port\uint128.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

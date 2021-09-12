@@ -48,13 +48,12 @@ TEST(TransactionBuilder, Invoke)
 
     EXPECT_EQ(tx1.vin.size(), 1);
     EXPECT_EQ(tx1.vout.size(), 0);
-    EXPECT_EQ(tx1.vjoinsplit.size(), 0);
     EXPECT_EQ(tx1.vShieldedSpend.size(), 0);
     EXPECT_EQ(tx1.vShieldedOutput.size(), 1);
     EXPECT_EQ(tx1.valueBalance, -40000);
 
     CValidationState state;
-    EXPECT_TRUE(ContextualCheckTransaction(tx1, state, 2, 0));
+    EXPECT_TRUE(ContextualCheckTransaction(tx1, state, Params(), 2, 0));
     EXPECT_EQ(state.GetRejectReason(), "");
 
     // Prepare to spend the note that was just created
@@ -82,12 +81,11 @@ TEST(TransactionBuilder, Invoke)
 
     EXPECT_EQ(tx2.vin.size(), 0);
     EXPECT_EQ(tx2.vout.size(), 0);
-    EXPECT_EQ(tx2.vjoinsplit.size(), 0);
     EXPECT_EQ(tx2.vShieldedSpend.size(), 1);
     EXPECT_EQ(tx2.vShieldedOutput.size(), 2);
     EXPECT_EQ(tx2.valueBalance, 10000);
 
-    EXPECT_TRUE(ContextualCheckTransaction(tx2, state, 3, 0));
+    EXPECT_TRUE(ContextualCheckTransaction(tx2, state, Params(), 3, 0));
     EXPECT_EQ(state.GetRejectReason(), "");
 
     // Revert to default
@@ -238,7 +236,6 @@ TEST(TransactionBuilder, ChangeOutput)
 
         EXPECT_EQ(tx.vin.size(), 1);
         EXPECT_EQ(tx.vout.size(), 0);
-        EXPECT_EQ(tx.vjoinsplit.size(), 0);
         EXPECT_EQ(tx.vShieldedSpend.size(), 1);
         EXPECT_EQ(tx.vShieldedOutput.size(), 1);
         EXPECT_EQ(tx.valueBalance, -15000);
@@ -253,7 +250,6 @@ TEST(TransactionBuilder, ChangeOutput)
 
         EXPECT_EQ(tx.vin.size(), 1);
         EXPECT_EQ(tx.vout.size(), 0);
-        EXPECT_EQ(tx.vjoinsplit.size(), 0);
         EXPECT_EQ(tx.vShieldedSpend.size(), 0);
         EXPECT_EQ(tx.vShieldedOutput.size(), 1);
         EXPECT_EQ(tx.valueBalance, -15000);
@@ -268,7 +264,6 @@ TEST(TransactionBuilder, ChangeOutput)
 
         EXPECT_EQ(tx.vin.size(), 1);
         EXPECT_EQ(tx.vout.size(), 1);
-        EXPECT_EQ(tx.vjoinsplit.size(), 0);
         EXPECT_EQ(tx.vShieldedSpend.size(), 0);
         EXPECT_EQ(tx.vShieldedOutput.size(), 0);
         EXPECT_EQ(tx.valueBalance, 0);
@@ -310,7 +305,6 @@ TEST(TransactionBuilder, SetFee)
 
         EXPECT_EQ(tx.vin.size(), 0);
         EXPECT_EQ(tx.vout.size(), 0);
-        EXPECT_EQ(tx.vjoinsplit.size(), 0);
         EXPECT_EQ(tx.vShieldedSpend.size(), 1);
         EXPECT_EQ(tx.vShieldedOutput.size(), 2);
         EXPECT_EQ(tx.valueBalance, 10000);
@@ -326,7 +320,6 @@ TEST(TransactionBuilder, SetFee)
 
         EXPECT_EQ(tx.vin.size(), 0);
         EXPECT_EQ(tx.vout.size(), 0);
-        EXPECT_EQ(tx.vjoinsplit.size(), 0);
         EXPECT_EQ(tx.vShieldedSpend.size(), 1);
         EXPECT_EQ(tx.vShieldedOutput.size(), 2);
         EXPECT_EQ(tx.valueBalance, 20000);

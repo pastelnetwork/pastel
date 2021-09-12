@@ -5,7 +5,7 @@
 import math
 
 from test_framework.util import assert_equal, assert_equals, assert_greater_than, \
-    assert_true, initialize_chain_clean, str_to_b64str
+    assert_true, assert_raises, initialize_chain_clean, str_to_b64str
 from mn_common import MasterNodeCommon
 from test_framework.authproxy import JSONRPCException
 import json
@@ -214,7 +214,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
 
         # Test not available pastelID
         try:
-            self.nodes[self.non_mn4].tickets("tools", "validateownership", self.nft_ticket1_txid, "NOT_A_VALID_PASTELID", "passphrase")
+            self.nodes[self.non_mn4].tickets("tools", "validateownership", self.nft_ticket1_txid, "NOT_A_VALID_PASTELID", self.passphrase)
         except JSONRPCException as e:
             self.errorString = e.error['message']
             print(self.errorString)
@@ -223,7 +223,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
 
         # Test incorrect passphrase
         try:
-            self.nodes[self.non_mn3].tickets("tools", "validateownership", self.nft_ticket1_txid, self.creator_pastelid1, "not_valid_passphrase")
+            self.nodes[self.non_mn3].tickets("tools", "validateownership", self.nft_ticket1_txid, self.creator_pastelid1, self.invalid_passphrase)
         except JSONRPCException as e:
             self.errorString = e.error['message']
             print(self.errorString)
@@ -231,29 +231,30 @@ class MasterNodeTicketsTest(MasterNodeCommon):
                      in self.errorString, True)
 
         # Check if author
-        res1 = self.nodes[self.non_mn3].tickets("tools", "validateownership", self.nft_ticket1_txid, self.creator_pastelid1, "passphrase")
+        res1 = self.nodes[self.non_mn3].tickets("tools", "validateownership", self.nft_ticket1_txid, self.creator_pastelid1, self.passphrase)
         assert_equal( self.nft_ticket1_txid, res1['nft'])
         assert_equal( "", res1['trade'])
 
         # Test 'single sale' (without re-selling)
-        res1 = self.nodes[self.non_mn4].tickets("tools", "validateownership", self.nft_ticket1_txid, self.nonmn4_pastelid1, "passphrase")
+        res1 = self.nodes[self.non_mn4].tickets("tools", "validateownership", self.nft_ticket1_txid, self.nonmn4_pastelid1, self.passphrase)
         assert_equal( self.nft_ticket1_txid, res1['nft'])
         assert_equals( self.single_sell_trade_txids, res1['trade'])
 
         # Test ownership with or re-sold NFT
-        res1 = self.nodes[self.non_mn3].tickets("tools", "validateownership", self.nft_ticket1_txid, self.nonmn3_pastelid1, "passphrase")
+        res1 = self.nodes[self.non_mn3].tickets("tools", "validateownership", self.nft_ticket1_txid, self.nonmn3_pastelid1, self.passphrase)
         assert_equal( self.nft_ticket1_txid, res1['nft'] )
         assert_equal( self.nested_ownership_trade_txid, res1['trade'])
 
         # Test no ownership
-        res1 = self.nodes[self.non_mn1].tickets("tools", "validateownership", self.nft_ticket1_txid, self.nonmn1_pastelid2, "passphrase")
+        res1 = self.nodes[self.non_mn1].tickets("tools", "validateownership", self.nft_ticket1_txid, self.nonmn1_pastelid2, self.passphrase)
         assert_equal( "", res1['nft'])
         assert_equal( "", res1['trade'])
 
         print("== Ownership validation tested ==")
+
     # ===============================================================================================================
     def pastelid_tests(self):
-        print("== Pastelid tests ==")
+        print("== Pastel ID tests ==")
         # 1. pastelid tests
         # a. Generate new PastelID and associated keys (EdDSA448). Return PastelID and LegRoast pubkey base58-encoded
         # a.a - generate with no errors two keys at MN and non-MN

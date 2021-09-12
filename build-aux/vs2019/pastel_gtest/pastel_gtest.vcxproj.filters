@@ -11,6 +11,9 @@
     <Filter Include="Source Files\port">
       <UniqueIdentifier>{ea70fe2d-3e50-4baa-baad-b6a5bff2417f}</UniqueIdentifier>
     </Filter>
+    <Filter Include="UnitTest Files\wallet">
+      <UniqueIdentifier>{e951447c-5fa2-4161-8557-6fe95ee014fc}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\..\src\gtest\json_test_vectors.cpp">
@@ -40,9 +43,6 @@
     <ClCompile Include="..\..\..\src\gtest\test_httprpc.cpp">
       <Filter>UnitTest Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\src\gtest\test_joinsplit.cpp">
-      <Filter>UnitTest Files</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\..\src\gtest\test_keys.cpp">
       <Filter>UnitTest Files</Filter>
     </ClCompile>
@@ -70,9 +70,6 @@
     <ClCompile Include="..\..\..\src\gtest\test_noteencryption.cpp">
       <Filter>UnitTest Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\src\gtest\test_paymentdisclosure.cpp">
-      <Filter>UnitTest Files</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\..\src\gtest\test_pedersen_hash.cpp">
       <Filter>UnitTest Files</Filter>
     </ClCompile>
@@ -94,9 +91,6 @@
     <ClCompile Include="..\..\..\src\gtest\test_tautology.cpp">
       <Filter>UnitTest Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\src\gtest\test_transaction.cpp">
-      <Filter>UnitTest Files</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\..\src\gtest\test_transaction_builder.cpp">
       <Filter>UnitTest Files</Filter>
     </ClCompile>
@@ -110,9 +104,6 @@
       <Filter>UnitTest Files</Filter>
     </ClCompile>
     <ClCompile Include="..\..\..\src\gtest\test_zip32.cpp">
-      <Filter>UnitTest Files</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\..\src\gtest\utils.cpp">
       <Filter>UnitTest Files</Filter>
     </ClCompile>
     <ClCompile Include="..\..\..\src\gtest\test_mnode_rpc.cpp">
@@ -136,6 +127,15 @@
     <ClCompile Include="..\..\..\src\gtest\test_pastelid.cpp">
       <Filter>UnitTest Files</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\..\src\wallet\gtest\test_wallet.cpp">
+      <Filter>UnitTest Files\wallet</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\src\wallet\gtest\test_wallet_zkeys.cpp">
+      <Filter>UnitTest Files\wallet</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\src\gtest\test_utils.cpp">
+      <Filter>UnitTest Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\..\src\gtest\json_test_vectors.h">
@@ -146,6 +146,9 @@
     </ClInclude>
     <ClInclude Include="..\port\uint128.h">
       <Filter>Source Files\port</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\gtest\test_utils.h">
+      <Filter>UnitTest Files</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

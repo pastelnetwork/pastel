@@ -99,7 +99,7 @@ void CPastelTicketProcessor::UpdatedBlockTip(const CBlockIndex* cBlockIndex, boo
     }
 
     CBlock block;
-    if (!ReadBlockFromDisk(block, cBlockIndex))
+    if (!ReadBlockFromDisk(block, cBlockIndex, Params().GetConsensus()))
     {
         LogPrintf("CPastelTicket::UpdatedBlockTip -- ERROR: Can't read block from disk\n");
         return;
@@ -385,7 +385,7 @@ std::unique_ptr<CPastelTicket> CPastelTicketProcessor::GetTicket(const uint256 &
 {
     CTransaction tx;
     uint256 hashBlock;
-    if (!GetTransaction(txid, tx, hashBlock, true))
+    if (!GetTransaction(txid, tx, Params().GetConsensus(), hashBlock, true))
         throw std::runtime_error(strprintf("No information available about transaction"));
 
     CMutableTransaction mtx(tx);
@@ -1057,7 +1057,7 @@ bool CPastelTicketProcessor::StoreP2FMSTransaction(const CMutableTransaction& tx
 {
     CValidationState state;
     bool fMissingInputs;
-    if (!AcceptToMemoryPool(mempool, state, tx_out, false, &fMissingInputs, true)) {
+    if (!AcceptToMemoryPool(Params(), mempool, state, tx_out, false, &fMissingInputs, true)) {
         if (state.IsInvalid()) {
             error_ret = strprintf("%i: %s", state.GetRejectCode(), state.GetRejectReason());
             return false;

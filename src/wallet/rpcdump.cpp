@@ -545,19 +545,8 @@ UniValue dumpwallet_impl(const UniValue& params, bool fHelp, bool fDumpZKeys)
     }
     file << "\n";
 
-    if (fDumpZKeys) {
-        std::set<libzcash::SproutPaymentAddress> sproutAddresses;
-        pwalletMain->GetSproutPaymentAddresses(sproutAddresses);
-        file << "\n";
-        file << "# Zkeys\n";
-        file << "\n";
-        for (auto addr : sproutAddresses) {
-            libzcash::SproutSpendingKey key;
-            if (pwalletMain->GetSproutSpendingKey(addr, key)) {
-                std::string strTime = EncodeDumpTime(pwalletMain->mapSproutZKeyMetadata[addr].nCreateTime);
-                file << strprintf("%s %s # zaddr=%s\n", keyIO.EncodeSpendingKey(key), strTime, keyIO.EncodePaymentAddress(addr));
-            }
-        }
+    if (fDumpZKeys)
+    {
         std::set<libzcash::SaplingPaymentAddress> saplingAddresses;
         pwalletMain->GetSaplingPaymentAddresses(saplingAddresses);
         file << "\n";

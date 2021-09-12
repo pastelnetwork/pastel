@@ -46,7 +46,7 @@ TEST_P(PTest_ParseFixedPoint, test)
     const bool bRet = ParseFixedPoint(get<0>(param), 8, &nAmount);
     EXPECT_EQ(bRet, get<2>(param)) << strprintf("ParseFixedPoint Item #%zu (%s)", m_nTestItem, get<0>(param));
     if (bRet)
-        EXPECT_EQ(nAmount, get<1>(param)) << strprintf("ParseFixedPoint Item #%zu ('%s' -> " PRId64 ")", m_nTestItem, get<0>(param), get<1>(param));
+        EXPECT_EQ(nAmount, get<1>(param)) << strprintf("ParseFixedPoint Item #%zu ('%s' -> %" PRId64 ")", m_nTestItem, get<0>(param), get<1>(param));
 }
 
 INSTANTIATE_TEST_SUITE_P(ParseFixedPoint, PTest_ParseFixedPoint, 

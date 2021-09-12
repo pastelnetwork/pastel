@@ -49,6 +49,11 @@ public:
         }
     }
 
+    bool operator==(const MerklePath &rhs) const
+    {
+        return (index == rhs.index) && (authentication_path == rhs.authentication_path);
+    }
+
     MerklePath() { }
 
     MerklePath(std::vector<std::vector<bool>> authentication_path, std::vector<bool> index)

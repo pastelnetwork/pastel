@@ -19,7 +19,7 @@ starttime = 1608854400
 class Wallet1941RegressionTest (BitcoinTestFramework):
 
     def setup_chain(self):
-        print("Initializing test directory "+self.options.tmpdir)
+        print(f"Initializing test directory {self.options.tmpdir}")
         initialize_chain_clean(self.options.tmpdir, 1)
 
     def setup_network(self, split=False):
@@ -45,11 +45,10 @@ class Wallet1941RegressionTest (BitcoinTestFramework):
         print("Mining blocks...")
 
         self.nodes[0].setmocktime(starttime)
-        self.nodes[0].generate(101)
-        self.sync_all()
+        self.generate_and_sync_inc(101)
 
         mytaddr = self.nodes[0].getnewaddress()     # where coins were mined
-        myzaddr = self.nodes[0].z_getnewaddress('sprout')
+        myzaddr = self.nodes[0].z_getnewaddress()
 
         # Send 10 coins to our zaddr.
         recipients = []
@@ -77,9 +76,8 @@ class Wallet1941RegressionTest (BitcoinTestFramework):
         # Start the new wallet
         self.add_second_node()
         self.nodes[1].getnewaddress()
-        self.nodes[1].z_getnewaddress('sprout')
-        self.nodes[1].generate(101)
-        self.sync_all()
+        self.nodes[1].z_getnewaddress()
+        self.generate_and_sync_inc(101, 1)
 
         # Import the key on node 1, only scanning the last few blocks.
         # (uses 'true' to test boolean fallback)
