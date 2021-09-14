@@ -71,7 +71,7 @@ void CPastelTest_Environment::TearDown()
 void CPastelTest_Environment::generate_coins(const size_t N)
 {
     UniValue params(UniValue::VARR);
-    params.push_back(N);
+    params.push_back(UniValue(N));
     generate(params, false);
 }
 
