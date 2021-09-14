@@ -100,7 +100,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="..\..\..\src\gtest\json_test_vectors.cpp" />
-    <ClCompile Include="..\..\..\src\gtest\main.cpp" />
+    <ClCompile Include="..\..\..\src\gtest\pastel_gtest_main.cpp" />
     <ClCompile Include="..\..\..\src\gtest\test_block.cpp" />
     <ClCompile Include="..\..\..\src\gtest\test_checkblock.cpp" />
     <ClCompile Include="..\..\..\src\gtest\test_checktransaction.cpp" />
@@ -130,6 +130,7 @@
     <ClCompile Include="..\..\..\src\gtest\test_secure_container.cpp" />
     <ClCompile Include="..\..\..\src\gtest\test_str_encodings.cpp" />
     <ClCompile Include="..\..\..\src\gtest\test_tautology.cpp" />
+    <ClCompile Include="..\..\..\src\gtest\test_ticket_processor.cpp" />
     <ClCompile Include="..\..\..\src\gtest\test_transaction_builder.cpp" />
     <ClCompile Include="..\..\..\src\gtest\test_txid.cpp" />
     <ClCompile Include="..\..\..\src\gtest\test_upgrades.cpp" />
@@ -143,6 +144,7 @@
   <ItemGroup>
     <ClInclude Include="..\..\..\src\gtest\json_test_vectors.h" />
     <ClInclude Include="..\..\..\src\gtest\mock_mnode_ticket.h" />
+    <ClInclude Include="..\..\..\src\gtest\pastel_gtest_main.h" />
     <ClInclude Include="..\..\..\src\gtest\test_utils.h" />
     <ClInclude Include="..\port\uint128.h" />
   </ItemGroup>

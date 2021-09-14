@@ -19,7 +19,7 @@
     <ClCompile Include="..\..\..\src\gtest\json_test_vectors.cpp">
       <Filter>UnitTest Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\src\gtest\main.cpp">
+    <ClCompile Include="..\..\..\src\gtest\pastel_gtest_main.cpp">
       <Filter>UnitTest Files</Filter>
     </ClCompile>
     <ClCompile Include="..\..\..\src\gtest\test_block.cpp">
@@ -136,6 +136,9 @@
     <ClCompile Include="..\..\..\src\gtest\test_utils.cpp">
       <Filter>UnitTest Files</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\..\src\gtest\test_ticket_processor.cpp">
+      <Filter>UnitTest Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\..\src\gtest\json_test_vectors.h">
@@ -148,6 +151,9 @@
       <Filter>Source Files\port</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\src\gtest\test_utils.h">
+      <Filter>UnitTest Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\gtest\pastel_gtest_main.h">
       <Filter>UnitTest Files</Filter>
     </ClInclude>
   </ItemGroup>

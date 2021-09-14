@@ -1013,7 +1013,7 @@ static const CRPCCommand commands[] =
     { "mining",             "getblocktemplate",       &getblocktemplate,       true  },
     { "mining",             "submitblock",            &submitblock,            true  },
     { "mining",             "getblocksubsidy",        &getblocksubsidy,        true  },
-    { "mining",             "getnextblocksubsidy",        &getnextblocksubsidy,        true  },
+    { "mining",             "getnextblocksubsidy",    &getnextblocksubsidy,    true  },
 
 #ifdef ENABLE_MINING
     { "generating",         "getgenerate",            &getgenerate,            true  },

@@ -76,7 +76,7 @@ public:
     static bool CreateP2FMSTransaction(const CDataStream& input_stream, CMutableTransaction& tx_out, CAmount price, std::string& error_ret);
     static bool CreateP2FMSTransactionWithExtra(const CDataStream& input_data, const std::vector<CTxOut>& extraOutputs, CAmount extraAmount, CMutableTransaction& tx_out, CAmount price, std::string& error_ret);
 #endif // ENABLE_WALLET
-    static bool ParseP2FMSTransaction(const CMutableTransaction& tx_in, std::vector<unsigned char>& output_data, std::string& error_ret);
+    static bool ParseP2FMSTransaction(const CMutableTransaction& tx_in, v_uint8& output_data, std::string& error_ret);
     static bool ParseP2FMSTransaction(const CMutableTransaction& tx_in, std::string& output_string, std::string& error_ret);
     static bool StoreP2FMSTransaction(const CMutableTransaction& tx_out, std::string& error_ret);
 
@@ -97,8 +97,11 @@ public:
             std::string& errRet) noexcept;
     
     std::optional<reg_trade_txid_t> ValidateOwnership(const std::string& _txid, const std::string& _pastelID);
-
 #ifdef FAKE_TICKET
     static std::string CreateFakeTransaction(CPastelTicket& ticket, CAmount ticketPrice, const std::vector<std::pair<std::string, CAmount>>& extraPayments, const std::string& strVerb, bool bSend);
 #endif
+
+protected:
+    // Reads P2FMS (Pay-to-Fake-Multisig) transaction into CDataStream object.
+    static bool preParseTicket(const CMutableTransaction& tx, CDataStream& data_stream, TicketID& ticket_id, std::string& error, const bool bLog = true);
 };

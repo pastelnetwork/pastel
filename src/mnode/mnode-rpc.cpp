@@ -1556,7 +1556,8 @@ Result:
     return ret;
 }
 
-UniValue chaindata(const UniValue& params, bool fHelp) {
+UniValue chaindata(const UniValue& params, bool fHelp)
+{
     RPC_CMD_PARSER(CHAINDATA, params, store, retrieve);
 
     if (fHelp || !CHAINDATA.IsCmdSupported())
@@ -1599,7 +1600,7 @@ Available commands:
     }
     if (CHAINDATA.IsCmd(RPC_CMD_CHAINDATA::retrieve)) {
         if (params.size() != 2)
-            throw JSONRPCError(RPC_INVALID_PARAMETER, "chaindata retrive \"txid\"\n"
+            throw JSONRPCError(RPC_INVALID_PARAMETER, "chaindata retrieve \"txid\"\n"
                                                       "Retrieve \"data\" from the blockchain by \"txid\".");
 
         uint256 hash = ParseHashV(params[1], "\"txid\"");
