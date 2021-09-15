@@ -575,8 +575,8 @@ CBlockIndex* FindForkInGlobalIndex(const CChain& chain, const CBlockLocator& loc
     return chain.Genesis();
 }
 
-CCoinsViewCache *pcoinsTip = NULL;
-CBlockTreeDB *pblocktree = NULL;
+CCoinsViewCache *pcoinsTip = nullptr;
+CBlockTreeDB *pblocktree = nullptr;
 
 //////////////////////////////////////////////////////////////////////////////
 //
@@ -2342,7 +2342,7 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, const CChainPara
     auto verifier = libzcash::ProofVerifier::Strict();
     auto disabledVerifier = libzcash::ProofVerifier::Disabled();
 
-    // Check it again to verify JoinSplit proofs, and in case a previous version let a bad block in
+    // Check it again to verify transactions, and in case a previous version let a bad block in
     if (!CheckBlock(block, state, chainparams, fExpensiveChecks ? verifier : disabledVerifier, !fJustCheck, !fJustCheck))
         return false;
 
@@ -4492,7 +4492,7 @@ bool InitBlockIndex(const CChainParams& chainparams)
     // Only add the genesis block if not reindexing (in which case we reuse the one already on disk)
     if (!fReindex) {
         try {
-            const CBlock &block = Params().GenesisBlock();
+            const CBlock& block = chainparams.GenesisBlock();
             // Start new block file
             const unsigned int nBlockSize = static_cast<unsigned int>(::GetSerializeSize(block, SER_DISK, CLIENT_VERSION));
             CDiskBlockPos blockPos;

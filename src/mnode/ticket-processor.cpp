@@ -150,16 +150,44 @@ bool CPastelTicketProcessor::UpdateDB(CPastelTicket &ticket, string& txid, const
     return true;
 }
 
-bool preParseTicket(const CMutableTransaction& tx, CDataStream& data_stream, TicketID& ticket_id, std::string& error, bool log = true)
+/**
+ * Reads P2FMS (Pay-to-Fake-Multisig) transaction into CDataStream object.
+ * Parses the first byte from the stream - it defines ticket id.
+ * 
+ * \param tx - transaction
+ * \param data_stream - data stream
+ * \param ticket_id - ticket id (first byte in the data stream)
+ * \param error - returns error message if any
+ * \param bLog
+ * \return 
+ */
+bool CPastelTicketProcessor::preParseTicket(const CMutableTransaction& tx, CDataStream& data_stream, TicketID& ticket_id, std::string& error, const bool bLog)
 {
     v_uint8 output_data;
-    if (!CPastelTicketProcessor::ParseP2FMSTransaction(tx, output_data, error))
-        return false;
-    data_stream.write(reinterpret_cast<char*>(output_data.data()), output_data.size());
-    uint8_t u;
-    data_stream >> u;
-    ticket_id = static_cast<TicketID>(u);
-    return true;
+    bool bRet = false;
+    do
+    {
+        if (!ParseP2FMSTransaction(tx, output_data, error))
+            break;
+        if (output_data.empty())
+        {
+            error = "No correct data found in transaction - empty data";
+            break;
+        }
+        data_stream.write(reinterpret_cast<char*>(output_data.data()), output_data.size());
+        uint8_t u;
+        data_stream >> u;
+
+        // validate ticket id
+        if (u >= to_integral_type<TicketID>(TicketID::COUNT))
+        {
+            error = strprintf("Unknown ticket type (%hhu) found in P2FMS transaction", u);
+            break;
+        }
+        ticket_id = static_cast<TicketID>(u);
+        bRet = true;
+    } while (false);
+    return bRet;
 }
 
 // Called from ContextualCheckTransaction, which called from:
@@ -915,42 +943,44 @@ bool CPastelTicketProcessor::CreateP2FMSTransactionWithExtra(const CDataStream& 
 {
     assert(pwalletMain != nullptr);
 
+    constexpr int fake_key_size = 33;
     if (pwalletMain->IsLocked())
     {
         error_ret = "Wallet is locked. Try again later";
         return false;
     }
 
-    size_t input_len = input_stream.size();
-    if (input_len == 0)
+    uint64_t nInputLength = input_stream.size();
+    if (nInputLength == 0)
     {
         error_ret = "Input data is empty";
         return false;
     }
 
-    v_uint8 input_bytes{input_stream.cbegin(), input_stream.cend()};
+    v_uint8 vInput;
+    const size_t nReserve = input_stream.size() + sizeof(uint64_t) + 32;
+    vInput.reserve(nReserve + (nReserve % fake_key_size));
+    vInput.assign(input_stream.cbegin(), input_stream.cend());
 
-    //Get Hash(SHA256) of input buffer and insert it upfront
-    uint256 input_hash = Hash(input_bytes.begin(), input_bytes.end());
-    input_bytes.insert(input_bytes.begin(), input_hash.begin(), input_hash.end());
+    // Get Hash(SHA256) of input buffer and insert it upfront
+    const uint256 input_hash = Hash(vInput.cbegin(), vInput.cend());
+    vInput.insert(vInput.cbegin(), input_hash.begin(), input_hash.end());
 
     //insert size of the original data upfront
-    auto* input_len_bytes = reinterpret_cast<unsigned char*>(&input_len);
-    input_bytes.insert(input_bytes.begin(), input_len_bytes, input_len_bytes + sizeof(size_t)); //sizeof(size_t) == 8
+    auto* input_len_bytes = reinterpret_cast<unsigned char*>(&nInputLength);
+    vInput.insert(vInput.cbegin(), input_len_bytes, input_len_bytes + sizeof(uint64_t)); // sizeof(uint64_t) == 8
 
     //Add padding at the end if required -
     // final size is n*33 - (33 bytes, but 66 characters)
-    int fake_key_size = 33;
-    size_t non_padded_size = input_bytes.size();
-    size_t padding_size = fake_key_size - (non_padded_size % fake_key_size);
+    const size_t non_padded_size = vInput.size();
+    const size_t padding_size = fake_key_size - (non_padded_size % fake_key_size);
     
-    input_bytes.insert(input_bytes.end(), padding_size, 0);
+    vInput.insert(vInput.cend(), padding_size, 0);
 
     //Break data into 33 bytes blocks
     std::vector<v_uint8> chunks;
-    for (auto it = input_bytes.cbegin(); it != input_bytes.cend(); it += fake_key_size) {
+    for (auto it = vInput.cbegin(); it != vInput.cend(); it += fake_key_size)
         chunks.emplace_back(v_uint8(it, it + fake_key_size));
-    }
 
     //Create output P2FMS scripts
     std::vector<CScript> out_scripts;
@@ -973,7 +1003,7 @@ bool CPastelTicketProcessor::CreateP2FMSTransactionWithExtra(const CDataStream& 
     }
 
     //calculate aprox required amount
-    CAmount nAproxFeeNeeded = payTxFee.GetFee(input_bytes.size()) * 2;
+    CAmount nAproxFeeNeeded = payTxFee.GetFee(vInput.size()) * 2;
     if (nAproxFeeNeeded < payTxFee.GetFeePerK())
         nAproxFeeNeeded = payTxFee.GetFeePerK();
 
@@ -998,8 +1028,10 @@ bool CPastelTicketProcessor::CreateP2FMSTransactionWithExtra(const CDataStream& 
         vector<COutput> vecOutputs;
         LOCK2(cs_main, pwalletMain->cs_wallet);
         pwalletMain->AvailableCoins(vecOutputs, false, nullptr, true);
-        for (auto out : vecOutputs) {
-            if (out.tx->vout[out.i].nValue > allSpentAmount) {
+        for (const auto &out : vecOutputs)
+        {
+            if (out.tx->vout[out.i].nValue > allSpentAmount)
+            {
                 //If found - populate transaction
 
                 const CScript& prevPubKey = out.tx->vout[out.i].scriptPubKey;
@@ -1075,79 +1107,105 @@ bool CPastelTicketProcessor::StoreP2FMSTransaction(const CMutableTransaction& tx
     return true;
 }
 
-bool CPastelTicketProcessor::ParseP2FMSTransaction(const CMutableTransaction& tx_in, std::string& output_string, std::string& error_ret)
+/**
+ * Reads P2FMS (Pay-to-Fake-Multisig) transaction into output_string.
+ * 
+ * \param tx_in - transaction
+ * \param output_string - output strinf
+ * \param error - returns an error message if any
+ * \return true if P2FMS was found in the transaction and successfully parsed, validated and copied to the output string
+ */
+bool CPastelTicketProcessor::ParseP2FMSTransaction(const CMutableTransaction& tx_in, std::string& output_string, std::string& error)
 {
     v_uint8 output_data;
-    bool bOk = ParseP2FMSTransaction(tx_in, output_data, error_ret);
+    bool bOk = ParseP2FMSTransaction(tx_in, output_data, error);
     if (bOk)
-        output_string.assign(output_data.begin(), output_data.end());
+        output_string = vector_to_string(output_data);
     return bOk;
 }
 
+/**
+ * Reads P2FMS (Pay-to-Fake-Multisig) transaction into output_data byte vector.
+ * 
+ * \param tx_in - transaction
+ * \param output_data - output byte vector
+ * \param error_ret - returns an error if any
+ * \return true if P2FMS was found in the transaction and successfully parsed, validated and copied to the output data
+ */
 bool CPastelTicketProcessor::ParseP2FMSTransaction(const CMutableTransaction& tx_in, v_uint8& output_data, std::string& error_ret)
 {
-    bool foundMS = false;
+    bool bFoundMS = false;
+    // reuse vector to process tx outputs
+    vector<v_uint8> vSolutions;
 
     for (const auto& vout : tx_in.vout)
     {
-        txnouttype typeRet;
-        vector<v_uint8> vSolutions;
+        txnouttype typeRet; // script type
+        vSolutions.clear();
 
         if (!Solver(vout.scriptPubKey, typeRet, vSolutions) ||
             typeRet != TX_MULTISIG)
             continue;
 
-        foundMS = true;
-        for (size_t i = 1; vSolutions.size() - 1 > i; i++) {
-            output_data.insert(output_data.end(), vSolutions[i].begin(), vSolutions[i].end());
+        bFoundMS = true;
+        size_t nReserve = 0;
+        for (size_t i = 1; vSolutions.size() - 1 > i; i++)
+            nReserve += vSolutions[i].size();
+        output_data.reserve(output_data.size() + nReserve);
+        for (size_t i = 1; vSolutions.size() - 1 > i; i++)
+            output_data.insert(output_data.end(), vSolutions[i].cbegin(), vSolutions[i].cend());
+    }
+
+    bool bRet = false;
+    do
+    {
+        if (!bFoundMS)
+        {
+            error_ret = "No data multisigs found in transaction";
+            break;
         }
-    }
 
-    if (!foundMS) {
-        error_ret = "No data Multisigs found in transaction";
-        return false;
-    }
+        if (output_data.empty())
+        {
+            error_ret = "No data found in transaction";
+            break;
+        }
 
-    if (output_data.empty()) {
-        error_ret = "No data found in transaction";
-        return false;
-    }
+        //size_t size = 8 bytes; hash size = 32 bytes
+        if (output_data.size() < 40)
+        {
+            error_ret = "No correct data found in transaction";
+            break;
+        }
 
-    //size_t size = 8 bytes; hash size = 32 bytes
-    if (output_data.size() < 40) {
-        error_ret = "No correct data found in transaction";
-        return false;
-    }
+        // interpret first 8-bytes as an output size
+        const auto nOutputLength = *reinterpret_cast<const uint64_t*>(output_data.data());
+        output_data.erase(output_data.begin(), output_data.begin() + sizeof(uint64_t));
 
-    auto output_len_ptr = reinterpret_cast<size_t**>(&output_data); //-V580
-    if (output_len_ptr == nullptr || *output_len_ptr == nullptr) { //-V560
-        error_ret = "No correct data found in transaction - wrong length";
-        return false;
-    }
-    auto output_len = **output_len_ptr;
-    output_data.erase(output_data.begin(), output_data.begin() + sizeof(size_t));
+        v_uint8 input_hash_vec(output_data.cbegin(), output_data.cbegin() + 32); //hash length == 32
+        output_data.erase(output_data.cbegin(), output_data.cbegin() + 32);
 
-    v_uint8 input_hash_vec(output_data.begin(), output_data.begin() + 32); //hash length == 32
-    output_data.erase(output_data.begin(), output_data.begin() + 32);
+        if (output_data.size() < nOutputLength)
+        {
+            error_ret = "No correct data found in transaction - length is not matching";
+            break;
+        }
 
-    if (output_data.size() < output_len) {
-        error_ret = "No correct data found in transaction - length is not matching";
-        return false;
-    }
+        if (output_data.size() > nOutputLength)
+            output_data.erase(output_data.cbegin() + nOutputLength, output_data.cend());
 
-    if (output_data.size() > output_len) {
-        output_data.erase(output_data.begin() + output_len, output_data.end());
-    }
+        const uint256 input_hash_stored(input_hash_vec);
+        const uint256 input_hash_real = Hash(output_data.cbegin(), output_data.cend());
 
-    uint256 input_hash_stored(input_hash_vec);
-    uint256 input_hash_real = Hash(output_data.begin(), output_data.end());
+        if (input_hash_stored != input_hash_real)
+        {
+            error_ret = "No correct data found in transaction - hash is not matching";
+            break;
+        }
+        bRet = true;
+    } while (false);
 
-    if (input_hash_stored != input_hash_real) {
-        error_ret = "No correct data found in transaction - hash is not matching";
-        return false;
-    }
-
-    return true;
+    return bRet;
 }
 
 /**
