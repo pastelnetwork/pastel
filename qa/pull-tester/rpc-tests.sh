@@ -113,7 +113,7 @@ declare -a testScriptsMN=(
     'mn_governance.py'
 )
 
-declare -a testScriptMNfast=(
+declare -a testScriptsMNfast=(
     'secure_container.py'
     'mn_ticket_username_change.py'
     'mn_tickets.py'
