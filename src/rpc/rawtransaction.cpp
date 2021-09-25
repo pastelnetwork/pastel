@@ -495,7 +495,7 @@ UniValue createrawtransaction(const UniValue& params, bool fHelp)
         int64_t nLockTime = params[2].get_int64();
         if (nLockTime < 0 || nLockTime > std::numeric_limits<uint32_t>::max())
             throw JSONRPCError(RPC_INVALID_PARAMETER, "Invalid parameter, locktime out of range");
-        rawTx.nLockTime = nLockTime;
+        rawTx.nLockTime = static_cast<uint32_t>(nLockTime);
     }
     
     if (params.size() > 3 && !params[3].isNull()) {
@@ -510,7 +510,7 @@ UniValue createrawtransaction(const UniValue& params, bool fHelp)
                     strprintf("Invalid parameter, expiryheight should be at least %d to avoid transaction expiring soon",
                     nextBlockHeight + TX_EXPIRING_SOON_THRESHOLD));
             }
-            rawTx.nExpiryHeight = nExpiryHeight;
+            rawTx.nExpiryHeight = static_cast<uint32_t>(nExpiryHeight);
         } else {
             throw JSONRPCError(RPC_INVALID_PARAMETER, "Invalid parameter, expiryheight can only be used if Overwinter is active when the transaction is mined");
         }

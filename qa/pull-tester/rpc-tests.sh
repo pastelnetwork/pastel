@@ -86,8 +86,7 @@ declare -a testScripts=(
     'p2p_txexpiringsoon.py'
     'p2p_node_bloom.py'
     'regtest_signrawtransaction.py'
-    'finalsaplingroot.py',
-    'secure_container.py'
+    'finalsaplingroot.py'
 )
 
 declare -a testScriptsToFix=(
@@ -112,6 +111,11 @@ declare -a testScriptsMN=(
     'mn_bugs.py'
     'mn_payment.py'
     'mn_governance.py'
+)
+
+declare -a testScriptMNfast=(
+    'secure_container.py'
+    'mn_ticket_username_change.py'
     'mn_tickets.py'
     'mn_tickets_validation.py'
     'mn_messaging.py'
@@ -266,6 +270,7 @@ elif test -n "$testScriptName"; then
 else
     runTestGroup "testScripts"
     runTestGroup "testScriptsExt"
+    runTestGroup "testScriptsMNfast"
     runTestGroup "testScriptsMN"
 fi
 

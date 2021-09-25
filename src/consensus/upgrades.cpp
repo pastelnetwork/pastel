@@ -34,17 +34,16 @@ const struct NUInfo NetworkUpgradeInfo[Consensus::MAX_NETWORK_UPGRADES] = {
 const uint32_t SPROUT_BRANCH_ID = NetworkUpgradeInfo[Consensus::BASE_SPROUT].nBranchId;
 
 UpgradeState NetworkUpgradeState(
-    const int nHeight,
+    const unsigned int nHeight,
     const Consensus::Params& params,
     Consensus::UpgradeIndex idx)
 {
-    assert(nHeight >= 0);
     assert(idx >= Consensus::BASE_SPROUT && idx < Consensus::MAX_NETWORK_UPGRADES);
     const auto nActivationHeight = params.vUpgrades[idx].nActivationHeight;
 
     if (nActivationHeight == Consensus::NetworkUpgrade::NO_ACTIVATION_HEIGHT)
         return UPGRADE_DISABLED;
-    if (nHeight >= nActivationHeight)
+    if (nHeight >= static_cast<unsigned int>(nActivationHeight))
     {
         // From ZIP 200:
         //
@@ -56,12 +55,12 @@ UpgradeState NetworkUpgradeState(
         //     subject to the pre-upgrade consensus rules, and would be the last common
         //     block in the event of a persistent pre-upgrade branch.
         return UPGRADE_ACTIVE;
-    } else
-        return UPGRADE_PENDING;
+    }
+    return UPGRADE_PENDING;
 }
 
 bool NetworkUpgradeActive(
-    int nHeight,
+    const unsigned int nHeight,
     const Consensus::Params& params,
     Consensus::UpgradeIndex idx)
 {
@@ -126,15 +125,14 @@ bool IsActivationHeightForAnyUpgrade(
 
 std::optional<int> NextEpoch(int nHeight, const Consensus::Params& params)
 {
-    if (nHeight < 0) {
+    if (nHeight < 0)
         return std::nullopt;
-    }
 
     // Sprout is never pending
-    for (auto idx = Consensus::BASE_SPROUT + 1; idx < Consensus::MAX_NETWORK_UPGRADES; idx++) {
-        if (NetworkUpgradeState(nHeight, params, Consensus::UpgradeIndex(idx)) == UPGRADE_PENDING) {
+    for (auto idx = Consensus::BASE_SPROUT + 1; idx < Consensus::MAX_NETWORK_UPGRADES; idx++)
+    {
+        if (NetworkUpgradeState(static_cast<unsigned int>(nHeight), params, Consensus::UpgradeIndex(idx)) == UPGRADE_PENDING)
             return idx;
-        }
     }
 
     return std::nullopt;

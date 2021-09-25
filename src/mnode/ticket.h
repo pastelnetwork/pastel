@@ -1,7 +1,7 @@
 #pragma once
 // Copyright (c) 2018-2021 The Pastel Core developers
 // Distributed under the MIT/X11 software license, see the accompanying
-// file COPYING or http://www.opensource.org/licenses/mit-license.php.
+// file COPYING or https://www.opensource.org/licenses/mit-license.php.
 
 #include <string>
 #include <vector>
@@ -24,7 +24,7 @@ public:
     // get json representation
     virtual std::string ToJSON() const noexcept = 0;
     virtual std::string ToStr() const noexcept = 0;
-    virtual bool IsValid(bool preReg, int depth) const = 0; //if preReg = true - validate pre registration conditions
+    virtual bool IsValid(const bool bPreReg, const int nDepth) const = 0; //if preReg = true - validate pre registration conditions
                                                             //  ex.: address has enough coins for registration
                                                             //else - validate ticket in general
     // stored ticket version
@@ -64,7 +64,15 @@ public:
         }
         return true;
     }
+    virtual void Clear() noexcept
+    {
+        m_txid.clear();
+        m_nBlock = 0;
+        m_nTimestamp = 0;
+        m_nVersion = -1;
+    }
 
+    bool IsTxId(const std::string& txid) noexcept { return m_txid == txid; }
     void SetTxId(std::string&& txid) noexcept { m_txid = std::move(txid); }
     void SetBlock(const int nBlockHeight) noexcept { m_nBlock = nBlockHeight; }
 

@@ -24,17 +24,6 @@ public:
         m_nTestTimestamp(0)
     {}
 
-    void Clear()
-    {
-        pastelID.clear();
-        address.clear();
-        m_txid.clear();
-        m_nBlock = 0;
-        m_nTimestamp = 0;
-        mn_signature.clear();
-        pslid_signature.clear();
-    }
-
     void CheckData()
     {
         EXPECT_STREQ(pastelID.c_str(), m_sPastelID.c_str());

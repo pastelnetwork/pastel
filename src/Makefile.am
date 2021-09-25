@@ -127,6 +127,8 @@ MNODE_CPP =\
   mnode/mnode-messageproc.cpp\
   mnode/mnode-pastel.cpp\
   mnode/ticket-processor.cpp\
+  mnode/ticket-mempool-processor.cpp\
+  mnode/ticket-txmempool.cpp\
   mnode/mnode-notificationinterface.cpp\
   mnode/mnode-controller.cpp
 
@@ -145,6 +147,8 @@ MNODE_H = \
   mnode/mnode-messageproc.h\
   mnode/ticket.h\
   mnode/ticket-processor.h\
+  mnode/ticket-mempool-processor.h\
+  mnode/ticket-txmempool.h\
   mnode/mnode-pastel.h\
   mnode/mnode-controller.h\
   mnode/mnode-notificationinterface.h\
@@ -262,6 +266,7 @@ BITCOIN_CORE_H = \
   transaction_builder.h \
   txdb.h \
   txmempool.h \
+  txmempool_entry.h\
   ui_interface.h \
   uint256.h \
   uint252.h \

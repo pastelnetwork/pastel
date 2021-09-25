@@ -451,6 +451,30 @@ def assert_greater_than(thing1, thing2):
 def assert_raises(exc, func, *args, **kwargs):
     assert_raises_message(exc, None, func, *args, **kwargs)
 
+def assert_raises_rpc(code, errstr, func, *args, **kwargs):
+    """
+    Asserts that func throws and that the exception contains 'errstr' in its message and
+    exception code matches.
+    """
+    try:
+        func(*args, **kwargs)
+    except JSONRPCException as e:
+        if e.error['message'] is None:
+            err = e.error['error']
+            if code and code != err['code']:
+                raise AssertionError(f"Invalid JSONRPCException code {err['code']}, expected {code} in {repr(e)}")
+            if errstr and errstr not in str(e):
+                raise AssertionError(f"Invalid JSONRPCException message: Couldn't find {repr(errstr)} in {repr(e)}")
+    except Exception as e:
+        raise AssertionError("Unexpected exception raised: "+type(e).__name__)
+    else:
+        err_info = " and ".join([ 
+            f"the error code {code}" if code else "", 
+            f"error message containing [{errstr}]" if errstr else ""])
+        if err_info:
+            raise AssertionError(f"No exception raised, but expected with {err_info}")
+        raise AssertionError("No exception raised")
+
 def assert_raises_message(ExceptionType, errstr, func, *args, **kwargs):
     """
     Asserts that func throws and that the exception contains 'errstr'

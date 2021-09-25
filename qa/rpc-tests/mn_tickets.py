@@ -56,7 +56,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
     non_mn5 = number_of_master_nodes+4      # will not have coins by default #17, for royalty first change
     non_mn6 = number_of_master_nodes+5      # will not have coins by default #18, for royalty second change
     non_mn7 = number_of_master_nodes+6      # will not have coins by default #19, for green
-    non_mn8 = number_of_master_nodes+7      # will not have coins by default #20, for Username test
+    non_mn8 = number_of_master_nodes+7      # will not have coins by default #20, for etherium test
 
     mining_node_num = number_of_master_nodes    # same as non_mn1
     hot_node_num = number_of_master_nodes+1     # same as non_mn2
@@ -177,7 +177,6 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         self.storage_fee_tests()
         self.tickets_list_filter_tests(0)
         self.list_and_validate_ticket_ownerships()
-        self.username_ticket_tests()
 
         if self.test_high_heights:
             self.id_ticket_price = 1000
@@ -205,7 +204,6 @@ class MasterNodeTicketsTest(MasterNodeCommon):
             self.takedown_ticket_tests()
             self.storage_fee_tests()
             self.tickets_list_filter_tests(1)
-            self.username_ticket_tests()
 
 # ===============================================================================================================
     def list_and_validate_ticket_ownerships(self):
@@ -223,7 +221,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
 
         # Test incorrect passphrase
         try:
-            self.nodes[self.non_mn3].tickets("tools", "validateownership", self.nft_ticket1_txid, self.creator_pastelid1, self.invalid_passphrase)
+            self.nodes[self.non_mn3].tickets("tools", "validateownership", self.nft_ticket1_txid, self.creator_pastelid1, self.new_passphrase)
         except JSONRPCException as e:
             self.errorString = e.error['message']
             print(self.errorString)
@@ -255,6 +253,8 @@ class MasterNodeTicketsTest(MasterNodeCommon):
     # ===============================================================================================================
     def pastelid_tests(self):
         print("== Pastel ID tests ==")
+	# most of the pastelid tests moved to the separate script secure_container.py
+
         # 1. pastelid tests
         # a. Generate new PastelID and associated keys (EdDSA448). Return PastelID and LegRoast pubkey base58-encoded
         # a.a - generate with no errors two keys at MN and non-MN
@@ -268,70 +268,10 @@ class MasterNodeTicketsTest(MasterNodeCommon):
 
         # for node without coins
         self.nonmn3_pastelid1 = self.create_pastelid(self.non_mn3)
-
-        # a.b - fail if empty passphrase
-        try:
-            self.nodes[self.non_mn1].pastelid("newkey", "")
-        except JSONRPCException as e:
-            self.errorString = e.error['message']
-            print(self.errorString)
-        assert_equal("passphrase for new key cannot be empty" in self.errorString, True)
-
         # b. Import private "key" (EdDSA448) as PKCS8 encrypted string in PEM format. Return PastelID base58-encoded
         # NOT IMPLEMENTED
-
-        # c. List all internally stored PastelID and keys
-        id_list = self.nodes[0].pastelid("list")
-        id_list = dict((key+str(i), val) for i, k in enumerate(id_list) for key, val in k.items())
-        assert_true(self.mn0_pastelid1 in id_list.values(), f"PastelID {self.mn0_pastelid1} not in the list")
-        assert_true(self.mn0_pastelid2 in id_list.values(), f"PastelID {self.mn0_pastelid2} not in the list")
-
-        id_list = self.nodes[self.non_mn1].pastelid("list")
-        id_list = dict((key+str(i), val) for i, k in enumerate(id_list) for key, val in k.items())
-        assert_true(nonmn1_pastelid1 in id_list.values(), f"PastelID {nonmn1_pastelid1} not in the list")
-        assert_true(self.nonmn1_pastelid2 in id_list.values(), f"PastelID {self.nonmn1_pastelid2} not in the list")
-
-        print(f"Pastelid test: 2 PastelID's each generate at node0 (MN) and node {self.non_mn1} (non-MN)")
-
-        # d. Sign "text" with the internally stored private key associated with the PastelID
-        # d.a - sign with no errors using key from 1.a.a, default algorithm - EdDSA448
-        text_to_sign = "1234567890"
-        mn0_signature1 = self.nodes[0].pastelid("sign", text_to_sign, self.mn0_pastelid1, self.passphrase)["signature"]
-        assert_true(mn0_signature1, "No ed448 signature was created")
-        assert_equal(len(base64.b64decode(mn0_signature1)), 114)
-        
-        # d.b - sign with no errors using encoded legroast public key from 1.a.a
-        # returns base64 encoded signature
-        mn0_lr_signature1 = self.nodes[0].pastelid("sign", text_to_sign, self.mn0_pastelid1, self.passphrase, "legroast")["signature"]
-        assert_true(mn0_lr_signature1, "No LegRoast signature was created")
-
-        # e. Sign "text" with the private "key" (EdDSA448) as PKCS8 encrypted string in PEM format
+         # e. Sign "text" with the private "key" (EdDSA448) as PKCS8 encrypted string in PEM format
         # NOT IMPLEMENTED
-
-        # f. Verify "text"'s "signature" with the PastelID
-        # f.a - verify ed448 signature with no errors using key from 1.a.a
-        result = self.nodes[0].pastelid("verify", text_to_sign, mn0_signature1, self.mn0_pastelid1)["verification"]
-        assert_equal(result, "OK")
-        # f.a.a - verify with no errors using key from 1.a.a
-        result = self.nodes[0].pastelid("verify", text_to_sign, mn0_lr_signature1, self.mn0_pastelid1, "legroast")["verification"]
-        assert_equal(result, "OK")
-
-        # f.b - fail to verify ed448 signature with the different key from 1.a.a
-        result = self.nodes[0].pastelid("verify", text_to_sign, mn0_signature1, self.mn0_pastelid2)["verification"]
-        assert_equal(result, "Failed")
-        # f.c - fail to verify ed448 signature with the different key from 1.a.a
-        result = self.nodes[0].pastelid("verify", text_to_sign, mn0_lr_signature1, self.mn0_pastelid2, "legroast")["verification"]
-        assert_equal(result, "Failed")
-
-        # f.d - fail to verify modified text (ed448 signature)
-        result = self.nodes[0].pastelid("verify", "1234567890AAA", mn0_signature1, self.mn0_pastelid1)["verification"]
-        assert_equal(result, "Failed")
-
-        # f.e - fail to verify modified text (legroast signature)
-        result = self.nodes[0].pastelid("verify", "1234567890AAA", mn0_lr_signature1, self.mn0_pastelid1, "legroast")["verification"]
-        assert_equal(result, "Failed")
-
-        print("Pastelid test: Message signed and verified")
 
     # ===============================================================================================================
     def mn_pastelid_ticket_tests(self, skip_low_coins_tests):
@@ -2309,204 +2249,6 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         # ...
         print("Take down tickets tested")
 
-    # ===============================================================================================================
-    def username_ticket_tests(self):
-        print("== Username Tickets test ==")
-
-        # New nonmn4_pastelid2 to test some functionalities
-        self.nonmn4_address2 = self.nodes[self.non_mn4].getnewaddress()
-        self.nodes[self.mining_node_num].sendtoaddress(self.nonmn4_address2, 2000, "", "", False)
-        self.__wait_for_sync_all10()
-        self.nonmn4_pastelid2 = self.create_pastelid(self.non_mn4)
-
-        self.nonmn8_address1 = self.nodes[self.non_mn8].getnewaddress()
-        self.__wait_for_sync_all10()
-        self.nonmn8_pastelid1 = self.create_pastelid(self.non_mn8)
-
-        # Register first time by PastelID of non-masternode 3
-        tickets_username_txid1 = self.nodes[self.non_mn3].tickets("register", "username", "bsmith84",
-                                                    self.creator_pastelid1, "passphrase")
-        self.__wait_for_ticket_tnx()
-        nonmn3_ticket_username_1 = self.nodes[self.non_mn4].tickets("get", tickets_username_txid1["txid"])
-        print(nonmn3_ticket_username_1)
-
-        self.__wait_for_ticket_tnx()
-        assert_equal(nonmn3_ticket_username_1["ticket"]["pastelID"], self.creator_pastelid1)
-        assert_equal(nonmn3_ticket_username_1["ticket"]["username"], "bsmith84")
-        assert_equal(nonmn3_ticket_username_1["ticket"]["fee"], 100)
-
-        # Register second time with same name by non-masternode 4. Expect to get Exception that the ticket is invalid because the username is registered
-        try:
-            self.nodes[self.non_mn4].tickets("register", "username", "bsmith84",
-                                                        self.nonmn4_pastelid2, "passphrase")
-            self.__wait_for_ticket_tnx()
-
-        except JSONRPCException as e:
-            self.errorString = e.error['message']
-            print(self.errorString)
-        assert_equal(self.errorString , "Ticket (username-change) is invalid - This Username is already registered in blockchain [Username = bsmith84]")
-
-        # Register by a new pastelID. Expect to get Exception that the ticket is invalid because there are Not enough 100 PSL to cover price 100
-        try:
-            self.nodes[self.non_mn8].tickets("register", "username", "anicename5",
-                                                        self.nonmn8_pastelid1, "passphrase")
-            self.__wait_for_ticket_tnx()
-        except JSONRPCException as e:
-            self.errorString = e.error['message']
-            print(self.errorString)
-        assert_equal(self.errorString, "Ticket (username-change) is invalid - Not enough coins to cover price [100]")
-
-        self.nodes[self.mining_node_num].sendtoaddress(self.nonmn8_address1, 200, "", "", False)
-        self.__wait_for_sync_all10()
-
-        # This should be success
-        self.nodes[self.non_mn8].tickets("register", "username", "anicename5",
-                                                        self.nonmn8_pastelid1, "passphrase")
-        self.__wait_for_ticket_tnx()
-
-        # Expect to get Exception that the ticket is invalid because this PastelID do not have enough 5000PSL to pay the rechange fee
-        try:
-            self.nodes[self.non_mn8].tickets("register", "username", "Banksy",
-                                                    self.nonmn8_pastelid1, "passphrase")
-            self.__wait_for_ticket_tnx()
-        except JSONRPCException as e:
-            self.errorString = e.error['message']
-            print(self.errorString)
-        assert_equal(self.errorString, "Ticket (username-change) is invalid - Not enough coins to cover price [5000]")
-
-        # Send money to non-masternode3 to cover 5000 price
-        self.nodes[self.mining_node_num].sendtoaddress(self.nonmn3_address1, 5100, "", "", False)
-        self.__wait_for_sync_all10()
-
-        # Expect to get Exception that the ticket is invalid because this PastelID changed Username last 24 hours
-        try:
-            self.nodes[self.non_mn3].tickets("register", "username", "Banksy",
-                                                    self.creator_pastelid1, "passphrase")
-            self.__wait_for_ticket_tnx()
-        except JSONRPCException as e:
-            self.errorString = e.error['message']
-            print(self.errorString)
-        assert_equal("Ticket (username-change) is invalid - Username Change ticket is invalid. Already changed in last 24 hours." in self.errorString, True)
-
-        # Wait till next 24 hours. Below test cases is commented because it took lots of time to complete.
-        # To test this functionality on local machine, we should lower the waiting from 24 * 24 blocks to smaller value, ex: 15 blocks only.
-        self.sync_all()
-        print("Mining 577 blocks")
-        for ind in range (577):
-            self.nodes[self.mining_node_num].generate(1)
-            time.sleep(1)
-
-        print("Waiting 60 seconds")
-        time.sleep(60)
-
-        # Expect that nonmn3 can change username to "Banksky" after 24 hours, fee should be 5000
-        tickets_username_txid1 = self.nodes[self.non_mn3].tickets("register", "username", "Banksy",
-                                                    self.creator_pastelid1, "passphrase")
-        self.__wait_for_ticket_tnx()
-        nonmn3_ticket_username_1 = self.nodes[self.non_mn4].tickets("get", tickets_username_txid1["txid"])
-        print(nonmn3_ticket_username_1)
-
-        self.__wait_for_ticket_tnx()
-        assert_equal(nonmn3_ticket_username_1["ticket"]["pastelID"], self.creator_pastelid1)
-        assert_equal(nonmn3_ticket_username_1["ticket"]["username"], "Banksy")
-        assert_equal(nonmn3_ticket_username_1["ticket"]["fee"], 5000)
-
-        # Expect that nonmn4 can register new Username "bsmith84", because the username "bsmith84" no longer belong to self.creator_pastelid1
-        tickets_username_2 = self.nodes[self.non_mn4].tickets("register", "username", "bsmith84",
-                                                    self.nonmn4_pastelid2, "passphrase")
-        self.__wait_for_ticket_tnx()
-        nonmn4_ticket_username_1 = self.nodes[self.non_mn4].tickets("get", tickets_username_2["txid"])
-        print(nonmn4_ticket_username_1)
-
-        self.__wait_for_ticket_tnx()
-        assert_equal(nonmn4_ticket_username_1["ticket"]["pastelID"], self.nonmn4_pastelid2)
-        assert_equal(nonmn4_ticket_username_1["ticket"]["username"], "bsmith84")
-        assert_equal(nonmn4_ticket_username_1["ticket"]["fee"], 100)
-
-        # Register by a new pastelID with invalid name. Expect to get Exception that the usernamename is invalid
-        try:
-            tickets_username_txid1 = self.nodes[self.non_mn4].tickets("register", "username", "abc",
-                                                        self.nonmn4_pastelid2, "passphrase")
-            self.__wait_for_ticket_tnx()
-        except JSONRPCException as e:
-            self.errorString = e.error['message']
-            print(self.errorString)
-        assert_equal("Ticket (username-change) is invalid - Invalid size of username, the size should have at least 4 characters, and at most 12 characters" in self.errorString, True)
-
-        try:
-            tickets_username_txid1 = self.nodes[self.non_mn4].tickets("register", "username", "1a4bc",
-                                                        self.nonmn4_pastelid2, "passphrase")
-            self.__wait_for_ticket_tnx()
-        except JSONRPCException as e:
-            self.errorString = e.error['message']
-            print(self.errorString)
-        assert_equal("Invalid username, should start with a letter A-Z or a-z only" in self.errorString, True)
-
-        try:
-            tickets_username_txid1 = self.nodes[self.non_mn4].tickets("register", "username", "a#bcsa",
-                                                        self.nonmn4_pastelid2, "passphrase")
-            self.__wait_for_ticket_tnx()
-        except JSONRPCException as e:
-            self.errorString = e.error['message']
-            print(self.errorString)
-        assert_equal("Invalid username, should contains letters A-Z a-z, or digits 0-9 only" in self.errorString, True)
-
-        try:
-            tickets_username_txid1 = self.nodes[self.non_mn4].tickets("register", "username", "abdagoc",
-                                                        self.nonmn4_pastelid2, "passphrase")
-            self.__wait_for_ticket_tnx()
-        except JSONRPCException as e:
-            self.errorString = e.error['message']
-            print(self.errorString)
-        assert_equal("Invalid username, should NOT contains swear, racist... words" in self.errorString, True)
-
-        try:
-            tickets_username_txid1 = self.nodes[self.non_mn4].tickets("register", "username", "abDaGoc",
-                                                        self.nonmn4_pastelid2, "passphrase")
-            self.__wait_for_ticket_tnx()
-        except JSONRPCException as e:
-            self.errorString = e.error['message']
-            print(self.errorString)
-        assert_equal("Invalid username, should NOT contains swear, racist... words" in self.errorString, True)
-
-        # length not valid
-        non_mn1_bad_username_length = self.nodes[self.non_mn4].tickets("tools", "validateusername", "abc")
-        print(non_mn1_bad_username_length)
-        assert_equal(non_mn1_bad_username_length["isBad"], True)
-        assert_equal(non_mn1_bad_username_length["validationError"], "Invalid size of username, the size should have at least 4 characters, and at most 12 characters")
-        # not start with a letter A-Z a-z
-        non_mn1_bad_username_start = self.nodes[self.non_mn4].tickets("tools", "validateusername", "1a4bc")
-        print(non_mn1_bad_username_start)
-        assert_equal(non_mn1_bad_username_start["isBad"], True)
-        assert_equal(non_mn1_bad_username_start["validationError"], "Invalid username, should start with a letter A-Z or a-z only")
-        # contains characters that is different than A-Z a-z 0-9
-        non_mn1_bad_username_character = self.nodes[self.non_mn4].tickets("tools", "validateusername", "a#bcsa")
-        print(non_mn1_bad_username_character)
-        assert_equal(non_mn1_bad_username_character["isBad"], True)
-        assert_equal(non_mn1_bad_username_character["validationError"], "Invalid username, should contains letters A-Z a-z, or digits 0-9 only")
-        # contains bad word
-        non_mn1_bad_username_bad = self.nodes[self.non_mn4].tickets("tools", "validateusername", "abdagoc")
-        print(non_mn1_bad_username_bad)
-        assert_equal(non_mn1_bad_username_bad["isBad"], True)
-        assert_equal(non_mn1_bad_username_bad["validationError"], "Invalid username, should NOT contains swear, racist... words")
-        # contains bad word with some upper case
-        non_mn1_bad_username_bad = self.nodes[self.non_mn4].tickets("tools", "validateusername", "abDaGoc")
-        print(non_mn1_bad_username_bad)
-        assert_equal(non_mn1_bad_username_bad["isBad"], True)
-        assert_equal(non_mn1_bad_username_bad["validationError"], "Invalid username, should NOT contains swear, racist... words")
-        # username is registered
-        non_mn1_bad_username_registered = self.nodes[self.non_mn4].tickets("tools", "validateusername", "bsmith84")
-        print(non_mn1_bad_username_registered)
-        assert_equal(non_mn1_bad_username_registered["isBad"], True)
-        assert_equal(non_mn1_bad_username_registered["validationError"], "Username is not valid, it is already registered")
-
-        # good username
-        non_mn1_bad_username_good = self.nodes[self.non_mn4].tickets("tools", "validateusername", "goodname")
-        print(non_mn1_bad_username_good)
-        assert_equal(non_mn1_bad_username_good["isBad"], False)
-        assert_equal(non_mn1_bad_username_good["validationError"], "")
-
-        print("Username tickets tested")
 
 # ===============================================================================================================
     def ethereum_address_ticket_tests(self):
@@ -2587,7 +2329,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         print("Waiting 60 seconds")
         time.sleep(60)
 
-        # Expect that nonmn3 can change username to "Banksky" after 24 hours, fee should be 5000
+        # Expect that nonmn3 can change ethereumaddress after 24 hours, fee should be 5000
         tickets_ethereumaddress_txid1 = self.nodes[self.non_mn3].tickets("register", "ethereumaddress", "0xD2cBc412BE9D6c6c3fDBb3c8d6554CC4D5E3A13f",
                                                     self.creator_pastelid1, "passphrase")
         self.__wait_for_ticket_tnx()

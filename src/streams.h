@@ -294,7 +294,7 @@ public:
             throw std::ios_base::failure("CBaseDataStream::read(): cannot read from null pointer");
 
         // Read from the beginning of the buffer
-        size_t nReadPosNext = nReadPos + nSize;
+        const size_t nReadPosNext = nReadPos + nSize;
         if (nReadPosNext >= vch.size())
         {
             if (nReadPosNext > vch.size())
@@ -306,6 +306,21 @@ public:
         }
         memcpy(pch, &vch[nReadPos], nSize);
         nReadPos = nReadPosNext;
+    }
+
+    void read_buf(uint8_t* pch, const size_t nSize) const
+    {
+        if (nSize == 0)
+            return;
+
+        if (!pch)
+            throw std::ios_base::failure("CBaseDataStream::read(): cannot read from null pointer");
+
+        // Read from the beginning of the buffer
+        const size_t nReadPosNext = nReadPos + nSize;
+        if (nReadPosNext > vch.size())
+            throw std::ios_base::failure("CBaseDataStream::read(): end of data");
+        memcpy(pch, &vch[nReadPos], nSize);
     }
 
     void ignore(const size_t nSize)

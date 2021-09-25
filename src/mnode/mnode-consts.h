@@ -1,7 +1,7 @@
 #pragma once
 // Copyright (c) 2021 The Pastel Core developers
 // Distributed under the MIT/X11 software license, see the accompanying
-// file COPYING or http://www.opensource.org/licenses/mit-license.php.
+// file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <array>
 
 #include "enum_util.h"

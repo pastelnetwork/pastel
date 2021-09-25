@@ -75,7 +75,6 @@ class MempoolSpendCoinbaseTest(BitcoinTestFramework):
         mempoolinfo = self.nodes[0].getmempoolinfo()
         assert_equal(mempoolinfo['size'], 0)
         assert_equal(mempoolinfo['bytes'], 0)
-        assert_equal(mempoolinfo['usage'], 0)
         assert_equal(set(self.nodes[0].getrawmempool()), set())
 
         # ... and now height 102 can be spent:

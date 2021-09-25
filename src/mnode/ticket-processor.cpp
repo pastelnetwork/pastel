@@ -1,6 +1,6 @@
 // Copyright (c) 2019-2021 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
-// file COPYING or http://www.opensource.org/licenses/mit-license.php.
+// file COPYING or https://www.opensource.org/licenses/mit-license.php.
 
 #include "main.h"
 #include "deprecation.h"
@@ -12,12 +12,26 @@
 #include "mnode/mnode-pastel.h"
 #include "mnode/mnode-controller.h"
 #include "mnode/ticket-processor.h"
+#include "mnode/ticket-txmempool.h"
 
 #include "json/json.hpp"
 #include <inttypes.h>
 
 using json = nlohmann::json;
 using namespace std;
+
+static shared_ptr<ITxMemPoolTracker> TicketTxMemPoolTracker;
+
+/**
+ * Get height of the active blockchain + 1.
+ * 
+ * \return 0 if chain is not initialized or height of the active chain
+ */
+unsigned int GetActiveChainHeight()
+{
+    LOCK(cs_main);
+    return static_cast<unsigned int>(chainActive.Height()) + 1;
+}
 
 void CPastelTicketProcessor::InitTicketDB()
 {
@@ -112,7 +126,7 @@ void CPastelTicketProcessor::UpdatedBlockTip(const CBlockIndex* cBlockIndex, boo
     }
 }
 
-void CPastelTicketProcessor::UpdateDB_MVK(const CPastelTicket& ticket, const std::string& mvKey)
+void CPastelTicketProcessor::UpdateDB_MVK(const CPastelTicket& ticket, const string& mvKey)
 {
     v_strings mainKeys;
     auto realMVKey = RealMVKey(mvKey);
@@ -127,7 +141,7 @@ void CPastelTicketProcessor::UpdateDB_MVK(const CPastelTicket& ticket, const std
 bool CPastelTicketProcessor::UpdateDB(CPastelTicket &ticket, string& txid, const unsigned int nBlockHeight)
 {
     if (!txid.empty())
-        ticket.SetTxId(std::move(txid));
+        ticket.SetTxId(move(txid));
     if (nBlockHeight != 0)
         ticket.SetBlock(nBlockHeight);
     dbs.at(ticket.ID())->Write(ticket.KeyOne(), ticket);
@@ -161,7 +175,7 @@ bool CPastelTicketProcessor::UpdateDB(CPastelTicket &ticket, string& txid, const
  * \param bLog
  * \return 
  */
-bool CPastelTicketProcessor::preParseTicket(const CMutableTransaction& tx, CDataStream& data_stream, TicketID& ticket_id, std::string& error, const bool bLog)
+bool CPastelTicketProcessor::preParseTicket(const CMutableTransaction& tx, CDataStream& data_stream, TicketID& ticket_id, string& error, const bool bLog)
 {
     v_uint8 output_data;
     bool bRet = false;
@@ -191,13 +205,13 @@ bool CPastelTicketProcessor::preParseTicket(const CMutableTransaction& tx, CData
 }
 
 // Called from ContextualCheckTransaction, which called from:
-//      AcceptToMemoryPool (via CheckTransaction) - this is to validate the new transaction
-//      ProcessNewBlock (via AcceptBlock via CheckBlock via CheckTransaction via ContextualCheckBlock) - this is to validate transaction in the blocks (new or not)
+//      AcceptToMemoryPool <- CheckTransaction - this is to validate the new transaction
+//      ProcessNewBlock <- AcceptBlock <- CheckBlock <- CheckTransaction <- ContextualCheckBlock - this is to validate transaction in the blocks (new or not)
 bool CPastelTicketProcessor::ValidateIfTicketTransaction(const int nHeight, const CTransaction& tx)
 {
     CMutableTransaction mtx(tx);
 
-    std::string error_ret;
+    string error_ret;
     CDataStream data_stream(SER_NETWORK, DATASTREAM_VERSION);
     TicketID ticket_id;
 
@@ -218,7 +232,7 @@ bool CPastelTicketProcessor::ValidateIfTicketTransaction(const int nHeight, cons
     bool bOk = false;
     try
     {
-        std::string ticketBlockTxIdStr = tx.GetHash().GetHex();
+        string ticketBlockTxIdStr = tx.GetHash().GetHex();
         LogPrintf("CPastelTicketProcessor::ValidateIfTicketTransaction -- Processing ticket ['%s', txid=%s, nHeight=%d, stream size=%zu]\n", 
            GetTicketDescription(ticket_id),
            ticketBlockTxIdStr, nHeight, data_stream.size());
@@ -229,7 +243,7 @@ bool CPastelTicketProcessor::ValidateIfTicketTransaction(const int nHeight, cons
         else
         {
             data_stream >> *ticket;
-            ticket->SetTxId(std::move(ticketBlockTxIdStr));
+            ticket->SetTxId(move(ticketBlockTxIdStr));
             ticket->SetBlock(nHeight);
             bOk = ticket->IsValid(false, 0);
             expectedTicketFee = ticket->TicketPrice(nHeight) * COIN;
@@ -238,15 +252,15 @@ bool CPastelTicketProcessor::ValidateIfTicketTransaction(const int nHeight, cons
             {
                 auto trade_ticket = dynamic_cast<CNFTTradeTicket *>(ticket.get());
                 if (!trade_ticket)
-                    throw std::runtime_error("Invalid NFT Trade ticket");
+                    throw runtime_error("Invalid NFT Trade ticket");
 
                 auto NFTTicket = trade_ticket->FindNFTRegTicket();
                 if (!NFTTicket)
-                  throw std::runtime_error("NFT Reg ticket not found");
+                  throw runtime_error("NFT Reg ticket not found");
 
                 auto NFTRegTicket = dynamic_cast<CNFTRegTicket*>(NFTTicket.get());
                 if (!NFTRegTicket)
-                  throw std::runtime_error("Invalid NFT Reg ticket");
+                  throw runtime_error("Invalid NFT Reg ticket");
 
                 tradePrice = trade_ticket->price * COIN;
                 if (NFTRegTicket->nRoyalty > 0)
@@ -263,7 +277,7 @@ bool CPastelTicketProcessor::ValidateIfTicketTransaction(const int nHeight, cons
             }
         }
     }
-    catch (const std::exception& ex)
+    catch (const exception& ex)
     {
         error_ret = strprintf("Failed to parse and unpack ticket - %s", ex.what());
     }
@@ -274,7 +288,7 @@ bool CPastelTicketProcessor::ValidateIfTicketTransaction(const int nHeight, cons
 
     if (bOk)
     {
-        //Validate various Fees
+        // Validate various Fees
 
         auto num = tx.vout.size();
         CAmount ticketFee = 0;
@@ -294,64 +308,78 @@ bool CPastelTicketProcessor::ValidateIfTicketTransaction(const int nHeight, cons
                  ticket_id == TicketID::EthereumAddress ) &&
                 i == num - 1) // in these tickets last output is change
                 break;
-            // in this tickets last 4 outputs is: change, and payments to 3 MNs
+            // in these tickets last 4 outputs are: change and payments to 3 MNs
             if (ticket_id == TicketID::Activate)
             { 
-                if (i == num - 4) {
-                  continue;
-                } else if (i == num - 3) {
-                  if (mn1Fee != tx.vout[i].nValue) {
-                    bOk = false;
-                    error_ret = strprintf("Wrong main MN fee: expected - %" PRId64 ", real - %" PRId64, mn1Fee, tx.vout[i].nValue);
-                    break;
-                  }
-                  continue;
-                } else if (i >= num - 2) {
-                  if (mn23Fee != tx.vout[i].nValue) {
-                    bOk = false;
-                    error_ret = strprintf("Wrong MN%d fee: expected - %" PRId64 ", real - %" PRId64, i - num - 4, mn23Fee, tx.vout[i].nValue);
-                    break;
-                  }
+                if (i == num - 4)
+                    continue;
+                if (i == num - 3)
+                {
+                    if (mn1Fee != tx.vout[i].nValue)
+                    {
+                        bOk = false;
+                        error_ret = strprintf("Wrong main MN fee: expected - %" PRId64 ", real - %" PRId64, mn1Fee, tx.vout[i].nValue);
+                        break;
+                    }
+                    continue;
+                }
+                if (i >= num - 2)
+                {
+                    if (mn23Fee != tx.vout[i].nValue)
+                    {
+                        bOk = false;
+                        error_ret = strprintf("Wrong MN%d fee: expected - %" PRId64 ", real - %" PRId64, i - num - 4, mn23Fee, tx.vout[i].nValue);
+                        break;
+                    }
                   continue;
                 }
             }
-            //in this tickets last 2 outputs is: change, and payment to the seller
+            // in this tickets last 2 outputs is: change, and payment to the seller
             if (ticket_id == TicketID::Trade)
             {
                 if (i == (hasRoyaltyFee && hasGreenFee ? num - 4 :
-                          hasRoyaltyFee || hasGreenFee ? num - 3 : num - 2)) {
+                          hasRoyaltyFee || hasGreenFee ? num - 3 : num - 2))
                   continue;
-                } else if (i == (hasRoyaltyFee && hasGreenFee ? num - 3 :
-                                 hasRoyaltyFee || hasGreenFee ? num - 2 : num - 1)) {
-                  if (tradePrice != tx.vout[i].nValue) {
-                    bOk = false;
-                    error_ret = strprintf("Wrong payment to the seller: expected - %" PRId64 ", real - %" PRId64, tradePrice, tx.vout[i].nValue);
-                    break;
-                  }
-                  continue;
-                } else if (hasRoyaltyFee && i == (hasGreenFee ? num - 2 : num - 1)) {
-                  if (royaltyFee != tx.vout[i].nValue) {
-                    bOk = false;
-                    error_ret = strprintf("Wrong payment to the royalty owner: expected - %" PRId64 ", real - %" PRId64, royaltyFee, tx.vout[i].nValue);
-                    break;
-                  }
-                  continue;
-                } else if (hasGreenFee && i == num - 1) {
-                  if (greenFee != tx.vout[i].nValue) {
-                    bOk = false;
-                    error_ret = strprintf("Wrong payment to the green NFT: expected - %" PRId64 ", real - %" PRId64, greenFee, tx.vout[i].nValue);
-                    break;
-                  }
-                  continue;
+                if (i == (hasRoyaltyFee && hasGreenFee ? num - 3 :
+                                 hasRoyaltyFee || hasGreenFee ? num - 2 : num - 1))
+                {
+                    if (tradePrice != tx.vout[i].nValue)
+                    {
+                        bOk = false;
+                        error_ret = strprintf("Wrong payment to the seller: expected - %" PRId64 ", real - %" PRId64, tradePrice, tx.vout[i].nValue);
+                        break;
+                    }
+                    continue;
+                }
+                if (hasRoyaltyFee && i == (hasGreenFee ? num - 2 : num - 1))
+                {
+                    if (royaltyFee != tx.vout[i].nValue)
+                    {
+                        bOk = false;
+                        error_ret = strprintf("Wrong payment to the royalty owner: expected - %" PRId64 ", real - %" PRId64, royaltyFee, tx.vout[i].nValue);
+                        break;
+                    }
+                    continue;
+                }
+                if (hasGreenFee && i == num - 1)
+                {
+                    if (greenFee != tx.vout[i].nValue)
+                    {
+                        bOk = false;
+                        error_ret = strprintf("Wrong payment to the green NFT: expected - %" PRId64 ", real - %" PRId64, greenFee, tx.vout[i].nValue);
+                        break;
+                    }
+                    continue;
                 }
             }
 
             ticketFee += tx.vout[i].nValue;
         }
 
-        if (expectedTicketFee != ticketFee) {
-          bOk = false;
-          error_ret = strprintf("Wrong ticket fee: expected - %" PRId64 ", real - %" PRId64, expectedTicketFee, ticketFee);
+        if (expectedTicketFee != ticketFee)
+        {
+            bOk = false;
+            error_ret = strprintf("Wrong ticket fee: expected - %" PRId64 ", real - %" PRId64, expectedTicketFee, ticketFee);
         }
     }
 
@@ -364,7 +392,7 @@ bool CPastelTicketProcessor::ValidateIfTicketTransaction(const int nHeight, cons
 
 bool CPastelTicketProcessor::ParseTicketAndUpdateDB(CMutableTransaction& tx, const unsigned int nBlockHeight)
 {
-    std::string error_ret;
+    string error_ret;
     CDataStream data_stream(SER_NETWORK, DATASTREAM_VERSION);
     TicketID ticket_id;
 
@@ -372,7 +400,7 @@ bool CPastelTicketProcessor::ParseTicketAndUpdateDB(CMutableTransaction& tx, con
         return false;
 
     try {
-        std::string txid = tx.GetHash().GetHex();
+        string txid = tx.GetHash().GetHex();
 
         LogPrintf("CPastelTicketProcessor::ParseTicketAndUpdateDB (called from UpdatedBlockTip) -- Processing ticket ['%s', txid=%s, nBlockHeight=%u]\n", 
             GetTicketDescription(ticket_id), txid, nBlockHeight);
@@ -386,7 +414,7 @@ bool CPastelTicketProcessor::ParseTicketAndUpdateDB(CMutableTransaction& tx, con
             return UpdateDB(*ticket, txid, nBlockHeight);
         }
     }
-    catch (const std::exception& ex)
+    catch (const exception& ex)
     {
         error_ret = strprintf("Failed to parse and unpack ticket - %s", ex.what());
     }
@@ -401,7 +429,7 @@ bool CPastelTicketProcessor::ParseTicketAndUpdateDB(CMutableTransaction& tx, con
     return false;
 }
 
-std::string CPastelTicketProcessor::GetTicketJSON(const uint256 &txid)
+string CPastelTicketProcessor::GetTicketJSON(const uint256 &txid)
 {
     auto ticket = GetTicket(txid);
     if (ticket)
@@ -409,26 +437,26 @@ std::string CPastelTicketProcessor::GetTicketJSON(const uint256 &txid)
     return "";
 }
 
-std::unique_ptr<CPastelTicket> CPastelTicketProcessor::GetTicket(const uint256 &txid)
+unique_ptr<CPastelTicket> CPastelTicketProcessor::GetTicket(const uint256 &txid)
 {
     CTransaction tx;
     uint256 hashBlock;
     if (!GetTransaction(txid, tx, Params().GetConsensus(), hashBlock, true))
-        throw std::runtime_error(strprintf("No information available about transaction"));
+        throw runtime_error(strprintf("No information available about transaction"));
 
     CMutableTransaction mtx(tx);
 
     TicketID ticket_id;
-    std::string error_ret;
+    string error_ret;
     CDataStream data_stream(SER_NETWORK, DATASTREAM_VERSION);
 
     if (!preParseTicket(mtx, data_stream, ticket_id, error_ret))
-        throw std::runtime_error(strprintf("Failed to create P2FMS from data provided - %s", error_ret));
+        throw runtime_error(strprintf("Failed to parse P2FMS transaction from data provided. %s", error_ret));
 
-    std::unique_ptr<CPastelTicket> ticket;
+    unique_ptr<CPastelTicket> ticket;
     try
     {
-        std::string ticketBlockTxIdStr = tx.GetHash().GetHex();
+        string ticketBlockTxIdStr = tx.GetHash().GetHex();
         int ticketBlockHeight = -1;
         if (mapBlockIndex.count(hashBlock) != 0)
             ticketBlockHeight = mapBlockIndex[hashBlock]->nHeight;
@@ -437,13 +465,13 @@ std::unique_ptr<CPastelTicket> CPastelTicketProcessor::GetTicket(const uint256 &
         if (ticket)
         {
             data_stream >> *ticket;
-            ticket->SetTxId(std::move(ticketBlockTxIdStr));
+            ticket->SetTxId(move(ticketBlockTxIdStr));
             ticket->SetBlock(ticketBlockHeight);
         }
         else
             error_ret = "unknown ticket_id";
     }
-    catch (const std::exception& ex)
+    catch (const exception& ex)
     {
         error_ret = strprintf("Failed to parse and unpack ticket - %s", ex.what());
     }
@@ -459,14 +487,13 @@ std::unique_ptr<CPastelTicket> CPastelTicketProcessor::GetTicket(const uint256 &
     return ticket;
 }
 
-std::unique_ptr<CPastelTicket> CPastelTicketProcessor::GetTicket(const std::string& _txid, const TicketID ticketID)
+unique_ptr<CPastelTicket> CPastelTicketProcessor::GetTicket(const string& _txid, const TicketID ticketID)
 {
     uint256 txid;
     txid.SetHex(_txid);
     auto ticket = GetTicket(txid);
     if (!ticket || ticketID != ticket->ID())
-        throw std::runtime_error(
-            strprintf("The ticket with this txid [%s] is not in the blockchain", _txid));
+        throw runtime_error(strprintf("The ticket with this txid [%s] is not in the blockchain", _txid));
     return ticket;
 }
 
@@ -480,7 +507,7 @@ bool CPastelTicketProcessor::CheckTicketExistBySecondaryKey(const CPastelTicket&
 {
     if (ticket.HasKeyTwo())
     {
-        std::string mainKey;
+        string mainKey;
         const auto sRealKeyTwo = RealKeyTwo(ticket.KeyTwo());
         if (dbs.at(ticket.ID())->Read(sRealKeyTwo, mainKey))
             return dbs.at(ticket.ID())->Exists(mainKey);
@@ -504,7 +531,7 @@ bool CPastelTicketProcessor::FindTicketBySecondaryKey(CPastelTicket& ticket)
 {
     if (ticket.HasKeyTwo())
     {
-        std::string sMainKey;
+        string sMainKey;
         const auto sRealKeyTwo = RealKeyTwo(ticket.KeyTwo());
         if (dbs.at(ticket.ID())->Read(sRealKeyTwo, sMainKey))
             return dbs.at(ticket.ID())->Read(sMainKey, ticket);
@@ -513,9 +540,9 @@ bool CPastelTicketProcessor::FindTicketBySecondaryKey(CPastelTicket& ticket)
 }
 
 template <class _TicketType>
-std::vector<_TicketType> CPastelTicketProcessor::FindTicketsByMVKey(const std::string& mvKey)
+vector<_TicketType> CPastelTicketProcessor::FindTicketsByMVKey(const string& mvKey)
 {
-    std::vector<_TicketType> tickets;
+    vector<_TicketType> tickets;
     v_strings vMainKeys;
     auto realMVKey = RealMVKey(mvKey);
     dbs.at(_TicketType::GetID())->Read(realMVKey, vMainKeys);
@@ -528,13 +555,11 @@ std::vector<_TicketType> CPastelTicketProcessor::FindTicketsByMVKey(const std::s
     return tickets;
 }
 
-
-
-std::string CPastelTicketProcessor::getValueBySecondaryKey(const CPastelTicket& ticket) const
+string CPastelTicketProcessor::getValueBySecondaryKey(const CPastelTicket& ticket) const
 {
-    std::string retVal;
+    string retVal;
     if (ticket.HasKeyTwo()) {
-        std::string sMainKey;
+        string sMainKey;
         const auto sRealKeyTwo = RealKeyTwo(ticket.KeyTwo());
         if (dbs.at(ticket.ID())->Read(sRealKeyTwo, sMainKey))
             retVal = sMainKey;
@@ -542,27 +567,27 @@ std::string CPastelTicketProcessor::getValueBySecondaryKey(const CPastelTicket& 
     return retVal;
 }
 
-template PastelIDRegTickets_t CPastelTicketProcessor::FindTicketsByMVKey<CPastelIDRegTicket>(const std::string&);
-template NFTRegTickets_t CPastelTicketProcessor::FindTicketsByMVKey<CNFTRegTicket>(const std::string&);
-template NFTActivateTickets_t CPastelTicketProcessor::FindTicketsByMVKey<CNFTActivateTicket>(const std::string&);
-template NFTSellTickets_t CPastelTicketProcessor::FindTicketsByMVKey<CNFTSellTicket>(const std::string&);
-template NFTBuyTickets_t CPastelTicketProcessor::FindTicketsByMVKey<CNFTBuyTicket>(const std::string&);
-template NFTTradeTickets_t CPastelTicketProcessor::FindTicketsByMVKey<CNFTTradeTicket>(const std::string&);
-template NFTRoyaltyTickets_t CPastelTicketProcessor::FindTicketsByMVKey<CNFTRoyaltyTicket>(const std::string&);
-template ChangeUsernameTickets_t CPastelTicketProcessor::FindTicketsByMVKey<CChangeUsernameTicket>(const std::string&);
-template ChangeEthereumAddressTickets_t CPastelTicketProcessor::FindTicketsByMVKey<CChangeEthereumAddressTicket>(const std::string&);
+template PastelIDRegTickets_t CPastelTicketProcessor::FindTicketsByMVKey<CPastelIDRegTicket>(const string&);
+template NFTRegTickets_t CPastelTicketProcessor::FindTicketsByMVKey<CNFTRegTicket>(const string&);
+template NFTActivateTickets_t CPastelTicketProcessor::FindTicketsByMVKey<CNFTActivateTicket>(const string&);
+template NFTSellTickets_t CPastelTicketProcessor::FindTicketsByMVKey<CNFTSellTicket>(const string&);
+template NFTBuyTickets_t CPastelTicketProcessor::FindTicketsByMVKey<CNFTBuyTicket>(const string&);
+template NFTTradeTickets_t CPastelTicketProcessor::FindTicketsByMVKey<CNFTTradeTicket>(const string&);
+template NFTRoyaltyTickets_t CPastelTicketProcessor::FindTicketsByMVKey<CNFTRoyaltyTicket>(const string&);
+template ChangeUsernameTickets_t CPastelTicketProcessor::FindTicketsByMVKey<CChangeUsernameTicket>(const string&);
+template ChangeEthereumAddressTickets_t CPastelTicketProcessor::FindTicketsByMVKey<CChangeEthereumAddressTicket>(const string&);
 
 v_strings CPastelTicketProcessor::GetAllKeys(const TicketID id) const
 {
     v_strings vResults;
-    std::unique_ptr<CDBIterator> pcursor(dbs.at(id)->NewIterator());
+    unique_ptr<CDBIterator> pcursor(dbs.at(id)->NewIterator());
     pcursor->SeekToFirst();
-    std::string sKey;
+    string sKey;
     while (pcursor->Valid())
     {
         sKey.clear();
         if (pcursor->GetKey(sKey))
-            vResults.emplace_back(sKey);
+            vResults.emplace_back(move(sKey));
         pcursor->Next();
     }
     return vResults;
@@ -589,7 +614,7 @@ void CPastelTicketProcessor::listTickets(F f) const
 }
 
 template <class _TicketType>
-std::string CPastelTicketProcessor::ListTickets() const
+string CPastelTicketProcessor::ListTickets() const
 {
     json jArray;
     listTickets<_TicketType>([&](const _TicketType& ticket)
@@ -598,30 +623,26 @@ std::string CPastelTicketProcessor::ListTickets() const
         });
     return jArray.dump();
 }
-template std::string CPastelTicketProcessor::ListTickets<CPastelIDRegTicket>() const;
-template std::string CPastelTicketProcessor::ListTickets<CNFTRegTicket>() const;
-template std::string CPastelTicketProcessor::ListTickets<CNFTActivateTicket>() const;
-template std::string CPastelTicketProcessor::ListTickets<CNFTSellTicket>() const;
-template std::string CPastelTicketProcessor::ListTickets<CNFTBuyTicket>() const;
-template std::string CPastelTicketProcessor::ListTickets<CNFTTradeTicket>() const;
-template std::string CPastelTicketProcessor::ListTickets<CNFTRoyaltyTicket>() const;
-template std::string CPastelTicketProcessor::ListTickets<CChangeUsernameTicket>() const;
-template std::string CPastelTicketProcessor::ListTickets<CChangeEthereumAddressTicket>() const;
+template string CPastelTicketProcessor::ListTickets<CPastelIDRegTicket>() const;
+template string CPastelTicketProcessor::ListTickets<CNFTRegTicket>() const;
+template string CPastelTicketProcessor::ListTickets<CNFTActivateTicket>() const;
+template string CPastelTicketProcessor::ListTickets<CNFTSellTicket>() const;
+template string CPastelTicketProcessor::ListTickets<CNFTBuyTicket>() const;
+template string CPastelTicketProcessor::ListTickets<CNFTTradeTicket>() const;
+template string CPastelTicketProcessor::ListTickets<CNFTRoyaltyTicket>() const;
+template string CPastelTicketProcessor::ListTickets<CChangeUsernameTicket>() const;
+template string CPastelTicketProcessor::ListTickets<CChangeEthereumAddressTicket>() const;
 
 template <class _TicketType, typename F>
-std::string CPastelTicketProcessor::filterTickets(F f, const bool checkConfirmation) const
+string CPastelTicketProcessor::filterTickets(F f, const bool checkConfirmation) const
 {
-    std::vector<_TicketType> allTickets;
+    vector<_TicketType> allTickets;
     listTickets<_TicketType>([&](const _TicketType& ticket)
         {
             allTickets.push_back(ticket);
         });
 
-    unsigned int chainHeight = 0;
-    {
-        LOCK(cs_main);
-        chainHeight = static_cast<unsigned int>(chainActive.Height()) + 1;
-    }
+    unsigned int chainHeight = GetActiveChainHeight();
 
     json jArray;
     for (const auto& t : allTickets)
@@ -644,7 +665,7 @@ std::string CPastelTicketProcessor::filterTickets(F f, const bool checkConfirmat
  * \param pmapIDs - map of locally stored PastelIDs -> LegRoast public key
  * \return
  */
-std::string CPastelTicketProcessor::ListFilterPastelIDTickets(const short filter, const pastelid_store_t* pmapIDs) const
+string CPastelTicketProcessor::ListFilterPastelIDTickets(const short filter, const pastelid_store_t* pmapIDs) const
 {
     return filterTickets<CPastelIDRegTicket>(
         [&](const CPastelIDRegTicket& t, const unsigned int chainHeight) -> bool {
@@ -660,7 +681,7 @@ std::string CPastelTicketProcessor::ListFilterPastelIDTickets(const short filter
 }
 
 // 1 - active;    2 - inactive;     3 - sold
-std::string CPastelTicketProcessor::ListFilterNFTTickets(const short filter) const
+string CPastelTicketProcessor::ListFilterNFTTickets(const short filter) const
 {
     return filterTickets<CNFTRegTicket>(
         [&](const CNFTRegTicket& t, const unsigned int chainHeight) -> bool
@@ -690,7 +711,7 @@ std::string CPastelTicketProcessor::ListFilterNFTTickets(const short filter) con
 }
 
 // 1 - available;      2 - sold
-std::string CPastelTicketProcessor::ListFilterActTickets(const short filter) const
+string CPastelTicketProcessor::ListFilterActTickets(const short filter) const
 {
     return filterTickets<CNFTActivateTicket>(
         [&](const CNFTActivateTicket& t, const unsigned int chainHeight) -> bool
@@ -711,7 +732,7 @@ std::string CPastelTicketProcessor::ListFilterActTickets(const short filter) con
         });
 }
 // 0 - all, 1 - available; 2 - unavailable; 3 - expired; 4 - sold
-std::string CPastelTicketProcessor::ListFilterSellTickets(const short filter, const std::string& pastelID) const
+string CPastelTicketProcessor::ListFilterSellTickets(const short filter, const string& pastelID) const
 {
     const bool checkConfirmation{filter > 0};
     if (filter == 0 && pastelID.empty()) {
@@ -762,7 +783,7 @@ std::string CPastelTicketProcessor::ListFilterSellTickets(const short filter, co
 }
 
 // 0 - all, 1 - expired;    2 - sold
-std::string CPastelTicketProcessor::ListFilterBuyTickets(const short filter, const std::string& pastelID) const
+string CPastelTicketProcessor::ListFilterBuyTickets(const short filter, const string& pastelID) const
 {
     const bool checkConfirmation{filter > 0};
     if (filter == 0 && pastelID.empty()) {
@@ -785,7 +806,7 @@ std::string CPastelTicketProcessor::ListFilterBuyTickets(const short filter, con
 }
 
 // 0 - all, 1 - available;      2 - sold
-std::string CPastelTicketProcessor::ListFilterTradeTickets(const short filter, const std::string& pastelID) const
+string CPastelTicketProcessor::ListFilterTradeTickets(const short filter, const string& pastelID) const
 {
     const bool checkConfirmation{filter > 0};
     if (filter == 0 && pastelID.empty()) {
@@ -810,12 +831,12 @@ std::string CPastelTicketProcessor::ListFilterTradeTickets(const short filter, c
 }
 
 /*static*/ bool CPastelTicketProcessor::WalkBackTradingChain(
-        const std::string& sTxId,
-        std::vector< std::unique_ptr<CPastelTicket> >& chain,
+        const string& sTxId,
+        vector<unique_ptr<CPastelTicket>>& chain,
         bool shortPath,
-        std::string& errRet) noexcept
+        string& errRet) noexcept
 {
-    std::unique_ptr<CPastelTicket> pastelTicket;
+    unique_ptr<CPastelTicket> pastelTicket;
     
     uint256 txid;
     txid.SetHex(sTxId);
@@ -824,7 +845,7 @@ std::string CPastelTicketProcessor::ListFilterTradeTickets(const short filter, c
     {
         pastelTicket = CPastelTicketProcessor::GetTicket(txid);
     }
-    catch ([[maybe_unused]] std::runtime_error& ex)
+    catch ([[maybe_unused]] runtime_error& ex)
     {
         errRet = strprintf("Ticket [txid=%s] is not in the blockchain.", sTxId);
         return false;
@@ -881,7 +902,7 @@ std::string CPastelTicketProcessor::ListFilterTradeTickets(const short filter, c
                                pastelTicket->GetTxId(), sTxId, pastelTicket->GetTicketName());
             break;
         }
-        chain.emplace_back(std::move(pastelTicket));
+        chain.emplace_back(move(pastelTicket));
         bOk = true;
     }
     while(false);
@@ -889,44 +910,47 @@ std::string CPastelTicketProcessor::ListFilterTradeTickets(const short filter, c
     return bOk;
 }
 
-std::string CPastelTicketProcessor::SendTicket(const CPastelTicket& ticket)
+/**
+ * Create ticket transaction in the mempool.
+ * 
+ * \param ticket - Pastel ticket
+ * \return - transaction hash in hex format (txid)
+ */
+string CPastelTicketProcessor::SendTicket(const CPastelTicket& ticket)
 {
-    std::string error;
+    string error;
 
-    try {
-      ticket.IsValid(true, 0);
+    try
+    {
+        ticket.IsValid(true, 0);
     }
-    catch (const std::exception& ex) {
-      throw std::runtime_error(strprintf("Ticket (%s) is invalid - %s", ticket.GetTicketName(), ex.what()));
+    catch (const exception& ex) {
+      throw runtime_error(strprintf("Ticket (%s) is invalid - %s", ticket.GetTicketName(), ex.what()));
     }
     catch (...) {
-      throw std::runtime_error(strprintf("Ticket (%s) is invalid - Unknown exception", ticket.GetTicketName()));
+      throw runtime_error(strprintf("Ticket (%s) is invalid - Unknown exception", ticket.GetTicketName()));
     }
 
-    std::vector<CTxOut> extraOutputs;
+    vector<CTxOut> extraOutputs;
     const CAmount extraAmount = ticket.GetExtraOutputs(extraOutputs);
 
     CDataStream data_stream(SER_NETWORK, DATASTREAM_VERSION);
-    data_stream << (uint8_t)ticket.ID();
+    data_stream << to_integral_type<TicketID>(ticket.ID());
     data_stream << ticket;
 
-    unsigned int chainHeight = 0;
-    {
-        LOCK(cs_main);
-        chainHeight = static_cast<unsigned int>(chainActive.Height()) + 1;
-    }
+    unsigned int chainHeight = GetActiveChainHeight();
 
     CMutableTransaction tx;
     if (!CreateP2FMSTransactionWithExtra(data_stream, extraOutputs, extraAmount, tx, ticket.TicketPrice(chainHeight), error))
-        throw std::runtime_error(strprintf("Failed to create P2FMS from data provided - %s", error));
+        throw runtime_error(strprintf("Failed to create P2FMS from data provided - %s", error));
 
     if (!StoreP2FMSTransaction(tx, error))
-        throw std::runtime_error(strprintf("Failed to send P2FMS transaction - %s", error));
+        throw runtime_error(strprintf("Failed to send P2FMS transaction - %s", error));
     return tx.GetHash().GetHex();
 }
 
 #ifdef ENABLE_WALLET
-bool CPastelTicketProcessor::CreateP2FMSTransaction(const std::string& input_string, CMutableTransaction& tx_out, CAmount price, std::string& error_ret)
+bool CPastelTicketProcessor::CreateP2FMSTransaction(const string& input_string, CMutableTransaction& tx_out, CAmount price, string& error_ret)
 {
     //Convert string data into binary buffer
     CDataStream data_stream(SER_NETWORK, DATASTREAM_VERSION);
@@ -934,93 +958,113 @@ bool CPastelTicketProcessor::CreateP2FMSTransaction(const std::string& input_str
     return CreateP2FMSTransaction(data_stream, tx_out, price, error_ret);
 }
 
-bool CPastelTicketProcessor::CreateP2FMSTransaction(const CDataStream& input_stream, CMutableTransaction& tx_out, CAmount price, std::string& error_ret)
+bool CPastelTicketProcessor::CreateP2FMSTransaction(const CDataStream& input_stream, CMutableTransaction& tx_out, CAmount price, string& error_ret)
 {
-    return CreateP2FMSTransactionWithExtra(input_stream, std::vector<CTxOut>{}, 0, tx_out, price, error_ret);
+    return CreateP2FMSTransactionWithExtra(input_stream, vector<CTxOut>{}, 0, tx_out, price, error_ret);
 }
 
-bool CPastelTicketProcessor::CreateP2FMSTransactionWithExtra(const CDataStream& input_stream, const std::vector<CTxOut>& extraOutputs, CAmount extraAmount, CMutableTransaction& tx_out, CAmount price, std::string& error_ret)
+/**
+ * Create scripts for P2FMS (Pay-to-Fake-Multisig) transaction.
+ * 
+ * \param input_stream - input data stream
+ * \param vOutScripts - returns vector of output scripts for P2FMS transaction
+ * \return returns input data size
+ */
+size_t CPastelTicketProcessor::CreateP2FMSScripts(const CDataStream& input_stream, vector<CScript>& vOutScripts)
+{
+    // fake key size - transaction data should be aligned to this size
+    constexpr size_t FAKE_KEY_SIZE = 33;
+    // position of the input stream data in vInputData vector
+    constexpr size_t STREAM_DATA_POS = uint256::SIZE + sizeof(uint64_t);
+
+    // +--------------  vInputData ---------------------------+
+    // |     8 bytes     |    32 bytes     |  nDataStreamSize | 
+    // +-----------------+-----------------+------------------+
+    // | nDataStreamSize | input data hash |    input data    |  
+    // +-----------------+-----------------+------------------+
+    v_uint8 vInputData;
+    const uint64_t nDataStreamSize = input_stream.size();
+    // input data size without padding
+    const size_t nDataSizeNotPadded = STREAM_DATA_POS + nDataStreamSize;
+    const size_t nInputDataSize = nDataSizeNotPadded + (FAKE_KEY_SIZE - (nDataSizeNotPadded % FAKE_KEY_SIZE));
+    vInputData.resize(nInputDataSize, 0);
+    input_stream.read_buf(vInputData.data() + STREAM_DATA_POS, input_stream.size());
+
+    // Calculate sha256 hash of the input data (without padding) and set it at offset 8
+    const uint256 input_hash = Hash(vInputData.cbegin() + STREAM_DATA_POS, vInputData.cbegin() + nDataSizeNotPadded);
+    memcpy(vInputData.data() + sizeof(uint64_t), input_hash.begin(), input_hash.size());
+
+    // set size of the original data upfront
+    auto* input_len_bytes = reinterpret_cast<const unsigned char*>(&nDataStreamSize);
+    memcpy(vInputData.data(), input_len_bytes, sizeof(uint64_t)); // sizeof(uint64_t) == 8
+
+    // Create output P2FMS scripts
+    //    each CScript can hold up to 3 chunks (fake keys)
+    v_uint8 vChunk;
+    vChunk.resize(FAKE_KEY_SIZE);
+    for (size_t nChunkPos = 0; nChunkPos < nInputDataSize;)
+    {
+        CScript script;
+        script << CScript::EncodeOP_N(1);
+        int m = 0;
+        for (; m < 3 && nChunkPos < nInputDataSize; ++m, nChunkPos += FAKE_KEY_SIZE)
+        {
+            memcpy(vChunk.data(), vInputData.data() + nChunkPos, FAKE_KEY_SIZE);
+            script << vChunk;
+        }
+        // add chunks count (up to 3)
+        script << CScript::EncodeOP_N(m) << OP_CHECKMULTISIG;
+        vOutScripts.push_back(script);
+    }
+    return nInputDataSize;
+}
+
+bool CPastelTicketProcessor::CreateP2FMSTransactionWithExtra(const CDataStream& input_stream, const vector<CTxOut>& extraOutputs, 
+    CAmount extraAmount, CMutableTransaction& tx_out, CAmount price, string& error_ret)
 {
     assert(pwalletMain != nullptr);
 
-    constexpr int fake_key_size = 33;
     if (pwalletMain->IsLocked())
     {
         error_ret = "Wallet is locked. Try again later";
         return false;
     }
-
-    uint64_t nInputLength = input_stream.size();
-    if (nInputLength == 0)
+    if (input_stream.empty())
     {
         error_ret = "Input data is empty";
         return false;
     }
 
-    v_uint8 vInput;
-    const size_t nReserve = input_stream.size() + sizeof(uint64_t) + 32;
-    vInput.reserve(nReserve + (nReserve % fake_key_size));
-    vInput.assign(input_stream.cbegin(), input_stream.cend());
-
-    // Get Hash(SHA256) of input buffer and insert it upfront
-    const uint256 input_hash = Hash(vInput.cbegin(), vInput.cend());
-    vInput.insert(vInput.cbegin(), input_hash.begin(), input_hash.end());
-
-    //insert size of the original data upfront
-    auto* input_len_bytes = reinterpret_cast<unsigned char*>(&nInputLength);
-    vInput.insert(vInput.cbegin(), input_len_bytes, input_len_bytes + sizeof(uint64_t)); // sizeof(uint64_t) == 8
-
-    //Add padding at the end if required -
-    // final size is n*33 - (33 bytes, but 66 characters)
-    const size_t non_padded_size = vInput.size();
-    const size_t padding_size = fake_key_size - (non_padded_size % fake_key_size);
-    
-    vInput.insert(vInput.cend(), padding_size, 0);
-
-    //Break data into 33 bytes blocks
-    std::vector<v_uint8> chunks;
-    for (auto it = vInput.cbegin(); it != vInput.cend(); it += fake_key_size)
-        chunks.emplace_back(v_uint8(it, it + fake_key_size));
-
-    //Create output P2FMS scripts
-    std::vector<CScript> out_scripts;
-    for (auto it = chunks.cbegin(); it != chunks.cend();)
-    {
-        CScript script;
-        script << CScript::EncodeOP_N(1);
-        int m = 0;
-        for (; m < 3 && it != chunks.cend(); m++, it++) {
-            script << *it;
-        }
-        script << CScript::EncodeOP_N(m) << OP_CHECKMULTISIG;
-        out_scripts.push_back(script);
-    }
-    auto num_fake_txn = out_scripts.size();
-    if (num_fake_txn == 0)
+    // Create output P2FMS scripts
+    vector<CScript> vOutScripts;
+    const size_t nInputDataSize = CreateP2FMSScripts(input_stream, vOutScripts);
+    if (vOutScripts.empty())
     {
         error_ret = "No fake transactions after parsing input data";
         return false;
     }
 
     //calculate aprox required amount
-    CAmount nAproxFeeNeeded = payTxFee.GetFee(vInput.size()) * 2;
+    CAmount nAproxFeeNeeded = payTxFee.GetFee(nInputDataSize) * 2;
     if (nAproxFeeNeeded < payTxFee.GetFeePerK())
         nAproxFeeNeeded = payTxFee.GetFeePerK();
 
+    const size_t nFakeTxCount = vOutScripts.size();
     //Amount
-    CAmount perOutputAmount = price * COIN / num_fake_txn;
+    CAmount perOutputAmount = price * COIN / nFakeTxCount;
     //MUST be precise!!!
-    CAmount lost = price * COIN - perOutputAmount * num_fake_txn;
+    CAmount lost = price * COIN - perOutputAmount * nFakeTxCount;
 
     CAmount allSpentAmount = price * COIN + nAproxFeeNeeded + extraAmount;
 
     int chainHeight = chainActive.Height() + 1;
-    if (!Params().IsRegTest())
+    const auto& chainParams = Params();
+    if (!chainParams.IsRegTest())
         chainHeight = std::max(chainHeight, APPROX_RELEASE_HEIGHT);
-    auto consensusBranchId = CurrentEpochBranchId(chainHeight, Params().GetConsensus());
+    auto consensusBranchId = CurrentEpochBranchId(chainHeight, chainParams.GetConsensus());
 
     //Create empty transaction
-    tx_out = CreateNewContextualCMutableTransaction(Params().GetConsensus(), chainHeight);
+    tx_out = CreateNewContextualCMutableTransaction(chainParams.GetConsensus(), chainHeight);
 
     //Find funding (unspent) transaction with enough coins to cover all outputs (single - for simplicity)
     bool bOk = false;
@@ -1042,10 +1086,11 @@ bool CPastelTicketProcessor::CreateP2FMSTransactionWithExtra(const CDataStream& 
                 tx_out.vin[0].prevout.hash = out.tx->GetHash();
 
                 //Add fake output scripts
-                tx_out.vout.resize(num_fake_txn + 1); //+1 for change
-                for (int i = 0; i < num_fake_txn; i++) {
+                tx_out.vout.resize(nFakeTxCount + 1); //+1 for change
+                for (int i = 0; i < nFakeTxCount; i++)
+                {
                     tx_out.vout[i].nValue = perOutputAmount;
-                    tx_out.vout[i].scriptPubKey = out_scripts[i];
+                    tx_out.vout[i].scriptPubKey = vOutScripts[i];
                 }
                 //MUST be precise!!!
                 tx_out.vout[0].nValue = perOutputAmount + lost;
@@ -1055,8 +1100,8 @@ bool CPastelTicketProcessor::CreateP2FMSTransactionWithExtra(const CDataStream& 
                         tx_out.vout.emplace_back(extra);
 
                 //Send change output back to input address
-                tx_out.vout[num_fake_txn].nValue = prevAmount - price * COIN - extraAmount;
-                tx_out.vout[num_fake_txn].scriptPubKey = prevPubKey;
+                tx_out.vout[nFakeTxCount].nValue = prevAmount - price * COIN - extraAmount;
+                tx_out.vout[nFakeTxCount].scriptPubKey = prevPubKey;
 
                 //sign transaction - unlock input
                 SignatureData sigdata;
@@ -1070,7 +1115,7 @@ bool CPastelTicketProcessor::CreateP2FMSTransactionWithExtra(const CDataStream& 
                     nFeeNeeded = payTxFee.GetFeePerK();
 
                 //num_fake_txn is index of the change output
-                tx_out.vout[num_fake_txn].nValue -= nFeeNeeded;
+                tx_out.vout[nFakeTxCount].nValue -= nFeeNeeded;
 
                 bOk = true;
                 break;
@@ -1085,26 +1130,40 @@ bool CPastelTicketProcessor::CreateP2FMSTransactionWithExtra(const CDataStream& 
 }
 #endif // ENABLE_WALLET
 
-bool CPastelTicketProcessor::StoreP2FMSTransaction(const CMutableTransaction& tx_out, std::string& error_ret)
+/**
+ * Add P2FMS transaction to the memory pool.
+ * 
+ * \param tx_out - P2FMS transaction
+ * \param error_ret - returns an error message if any
+ * \return true if transaction was successfully added to the transaction memory pool (txmempool)
+ */
+bool CPastelTicketProcessor::StoreP2FMSTransaction(const CMutableTransaction& tx_out, string& error_ret)
 {
+    bool bRet = false;
     CValidationState state;
-    bool fMissingInputs;
-    if (!AcceptToMemoryPool(Params(), mempool, state, tx_out, false, &fMissingInputs, true)) {
-        if (state.IsInvalid()) {
-            error_ret = strprintf("%i: %s", state.GetRejectCode(), state.GetRejectReason());
-            return false;
-        } else {
-            if (fMissingInputs) {
-                error_ret = "Missing inputs";
-                return false;
-            }
-            error_ret = state.GetRejectReason();
-            return false;
+    do
+    {
+        error_ret.clear();
+        bool fMissingInputs = false;
+        if (AcceptToMemoryPool(Params(), mempool, state, tx_out, false, &fMissingInputs, true))
+        {
+            RelayTransaction(tx_out);
+            bRet = true;
+            break;
         }
-    }
-
-    RelayTransaction(tx_out);
-    return true;
+        if (state.IsInvalid())
+        {
+            error_ret = strprintf("%i: %s", state.GetRejectCode(), state.GetRejectReason());
+            break;
+        }
+        if (fMissingInputs)
+        {
+            error_ret = "Missing inputs";
+            break;
+        }
+        error_ret = state.GetRejectReason();
+    } while (false);
+    return bRet;
 }
 
 /**
@@ -1115,7 +1174,7 @@ bool CPastelTicketProcessor::StoreP2FMSTransaction(const CMutableTransaction& tx
  * \param error - returns an error message if any
  * \return true if P2FMS was found in the transaction and successfully parsed, validated and copied to the output string
  */
-bool CPastelTicketProcessor::ParseP2FMSTransaction(const CMutableTransaction& tx_in, std::string& output_string, std::string& error)
+bool CPastelTicketProcessor::ParseP2FMSTransaction(const CMutableTransaction& tx_in, string& output_string, string& error)
 {
     v_uint8 output_data;
     bool bOk = ParseP2FMSTransaction(tx_in, output_data, error);
@@ -1132,7 +1191,7 @@ bool CPastelTicketProcessor::ParseP2FMSTransaction(const CMutableTransaction& tx
  * \param error_ret - returns an error if any
  * \return true if P2FMS was found in the transaction and successfully parsed, validated and copied to the output data
  */
-bool CPastelTicketProcessor::ParseP2FMSTransaction(const CMutableTransaction& tx_in, v_uint8& output_data, std::string& error_ret)
+bool CPastelTicketProcessor::ParseP2FMSTransaction(const CMutableTransaction& tx_in, v_uint8& output_data, string& error_ret)
 {
     bool bFoundMS = false;
     // reuse vector to process tx outputs
@@ -1143,8 +1202,7 @@ bool CPastelTicketProcessor::ParseP2FMSTransaction(const CMutableTransaction& tx
         txnouttype typeRet; // script type
         vSolutions.clear();
 
-        if (!Solver(vout.scriptPubKey, typeRet, vSolutions) ||
-            typeRet != TX_MULTISIG)
+        if (!Solver(vout.scriptPubKey, typeRet, vSolutions) || typeRet != TX_MULTISIG)
             continue;
 
         bFoundMS = true;
@@ -1159,6 +1217,7 @@ bool CPastelTicketProcessor::ParseP2FMSTransaction(const CMutableTransaction& tx
     bool bRet = false;
     do
     {
+        error_ret.clear();
         if (!bFoundMS)
         {
             error_ret = "No data multisigs found in transaction";
@@ -1171,8 +1230,9 @@ bool CPastelTicketProcessor::ParseP2FMSTransaction(const CMutableTransaction& tx
             break;
         }
 
+        constexpr auto DATA_POS = uint256::SIZE + sizeof(uint64_t);
         //size_t size = 8 bytes; hash size = 32 bytes
-        if (output_data.size() < 40)
+        if (output_data.size() < DATA_POS)
         {
             error_ret = "No correct data found in transaction";
             break;
@@ -1180,10 +1240,9 @@ bool CPastelTicketProcessor::ParseP2FMSTransaction(const CMutableTransaction& tx
 
         // interpret first 8-bytes as an output size
         const auto nOutputLength = *reinterpret_cast<const uint64_t*>(output_data.data());
-        output_data.erase(output_data.begin(), output_data.begin() + sizeof(uint64_t));
-
-        v_uint8 input_hash_vec(output_data.cbegin(), output_data.cbegin() + 32); //hash length == 32
-        output_data.erase(output_data.cbegin(), output_data.cbegin() + 32);
+        v_uint8 input_hash_vec(output_data.cbegin() + sizeof(uint64_t), output_data.cbegin() + DATA_POS); //hash length == 32
+        // erase [size(8 bytes) + hash(32-bytes)], leave data only
+        output_data.erase(output_data.cbegin(), output_data.cbegin() + DATA_POS);
 
         if (output_data.size() < nOutputLength)
         {
@@ -1215,9 +1274,9 @@ bool CPastelTicketProcessor::ParseP2FMSTransaction(const CMutableTransaction& tx
  * \param _pastelID - Pastel ID of the owner to validate
  * \return optional tuple <NFT registration txid, NFT trade txid>
  */
-std::optional<reg_trade_txid_t> CPastelTicketProcessor::ValidateOwnership(const std::string &_txid, const std::string &_pastelID)
+optional<reg_trade_txid_t> CPastelTicketProcessor::ValidateOwnership(const string &_txid, const string &_pastelID)
 {
-    std::optional<reg_trade_txid_t> retVal;
+    optional<reg_trade_txid_t> retVal;
     try
     {
         // Find ticket by txid
@@ -1228,10 +1287,10 @@ std::optional<reg_trade_txid_t> CPastelTicketProcessor::ValidateOwnership(const 
 
         // Check if creator and _pastelID are equal
         if((NFTTicket->pastelIDs[0]== _pastelID) && CNFTActivateTicket::CheckTicketExistByNFTTicketID(NFTTicket->GetTxId()))
-            return std::make_tuple(_txid, "");
+            return make_tuple(_txid, "");
 
     }
-    catch(const std::runtime_error& e)
+    catch(const runtime_error& e)
     {
         LogPrintf("Was not able to process ValidateOwnership request due to: %s\n", e.what()); 
     }
@@ -1243,20 +1302,20 @@ std::optional<reg_trade_txid_t> CPastelTicketProcessor::ValidateOwnership(const 
     // Go through each if not empty and rearrange them by block-height
     if(!tradeTickets.empty())
     {
-        //std::sort(tradeTickets.begin(), tradeTickets.end(), [](CNFTTradeTicket & one, CNFTTradeTicket & two){return one.GetBlock() < two.GetBlock();});
+        //sort(tradeTickets.begin(), tradeTickets.end(), [](CNFTTradeTicket & one, CNFTTradeTicket & two){return one.GetBlock() < two.GetBlock();});
         const auto ownersPastelIds_with_TnxIds = CNFTTradeTicket::GetPastelIdAndTxIdWithTopHeightPerCopy(tradeTickets);
         const auto it = ownersPastelIds_with_TnxIds.find(_pastelID);
         if (it != ownersPastelIds_with_TnxIds.cend())
-            retVal = std::make_tuple(_txid, it->second);
+            retVal = make_tuple(_txid, it->second);
     }
 
     return retVal;
 }
 
 #ifdef FAKE_TICKET
-std::string CPastelTicketProcessor::CreateFakeTransaction(CPastelTicket& ticket, CAmount ticketPrice, const std::vector<std::pair<std::string, CAmount>>& extraPayments, const std::string& strVerb, bool bSend)
+string CPastelTicketProcessor::CreateFakeTransaction(CPastelTicket& ticket, CAmount ticketPrice, const vector<pair<string, CAmount>>& extraPayments, const string& strVerb, bool bSend)
 {
-    std::string error;
+    string error;
 
     if (ticket.ID() == TicketID::PastelID) {
         if (strVerb == "1") {
@@ -1296,13 +1355,13 @@ std::string CPastelTicketProcessor::CreateFakeTransaction(CPastelTicket& ticket,
     }
 
     KeyIO keyIO(Params());
-    std::vector<CTxOut> extraOutputs;
+    vector<CTxOut> extraOutputs;
     CAmount extraAmount = 0;
     if (!extraPayments.empty()) {
         for (auto& p : extraPayments) {
             auto dest = keyIO.DecodeDestination(p.first);
             if (!IsValidDestination(dest))
-                return std::string{};
+                return string{};
             extraOutputs.emplace_back(CTxOut{p.second, GetScriptForDestination(dest)});
             extraAmount += p.second;
         }
@@ -1314,14 +1373,21 @@ std::string CPastelTicketProcessor::CreateFakeTransaction(CPastelTicket& ticket,
 
     CMutableTransaction tx;
     if (!CreateP2FMSTransactionWithExtra(data_stream, extraOutputs, extraAmount, tx, ticketPrice, error))
-        throw std::runtime_error(strprintf("Failed to create P2FMS from data provided - %s", error));
+        throw runtime_error(strprintf("Failed to create P2FMS from data provided - %s", error));
 
     if (bSend)
     {
         if (!StoreP2FMSTransaction(tx, error))
-            throw std::runtime_error(strprintf("Failed to send P2FMS transaction - %s", error));
+            throw runtime_error(strprintf("Failed to send P2FMS transaction - %s", error));
         return tx.GetHash().GetHex();
     }
     return EncodeHexTx(tx);
 }
 #endif
+
+shared_ptr<ITxMemPoolTracker> CPastelTicketProcessor::GetTxMemPoolTracker()
+{
+    if (!TicketTxMemPoolTracker)
+        TicketTxMemPoolTracker = make_shared<CTicketTxMemPoolTracker>();
+    return TicketTxMemPoolTracker;
+}

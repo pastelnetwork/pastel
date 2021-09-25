@@ -45,7 +45,7 @@ void PrintSolutions(std::stringstream &strm, std::set<std::vector<uint32_t>> sol
 }
 
 #ifdef ENABLE_MINING
-void TestEquihashSolvers(unsigned int n, unsigned int k, const std::string &I, const arith_uint256 &nonce, const std::set<std::vector<uint32_t>> &solns) {
+void TestEquihashSolvers(unsigned int n, unsigned int k, const std::string &I, const arith_uint256 &nonce, const std::set<v_uints> &solns) {
     size_t cBitLen { n/(k+1) };
     crypto_generichash_blake2b_state state;
     EhInitialiseState(n, k, state);
@@ -56,8 +56,8 @@ void TestEquihashSolvers(unsigned int n, unsigned int k, const std::string &I, c
 
     // First test the basic solver
     std::set<std::vector<uint32_t>> ret;
-    std::function<bool(std::vector<unsigned char>)> validBlock =
-            [&ret, cBitLen](std::vector<unsigned char> soln) {
+    std::function<bool(v_uint8)> validBlock =
+        [&ret, cBitLen](const v_uint8 &soln) {
         ret.insert(GetIndicesFromMinimal(soln, cBitLen));
         return false;
     };
@@ -70,8 +70,8 @@ void TestEquihashSolvers(unsigned int n, unsigned int k, const std::string &I, c
 
     // The optimised solver should have the exact same result
     std::set<std::vector<uint32_t>> retOpt;
-    std::function<bool(std::vector<unsigned char>)> validBlockOpt =
-            [&retOpt, cBitLen](std::vector<unsigned char> soln) {
+    std::function<bool(const v_uint8 &)> validBlockOpt =
+            [&retOpt, cBitLen](const v_uint8 & soln) {
         retOpt.insert(GetIndicesFromMinimal(soln, cBitLen));
         return false;
     };
@@ -85,7 +85,7 @@ void TestEquihashSolvers(unsigned int n, unsigned int k, const std::string &I, c
 }
 #endif
 
-void TestEquihashValidator(unsigned int n, unsigned int k, const std::string &I, const arith_uint256 &nonce, std::vector<uint32_t> soln, bool expected) {
+void TestEquihashValidator(unsigned int n, unsigned int k, const std::string &I, const arith_uint256 &nonce, const v_uints &soln, bool expected) {
     size_t cBitLen { n/(k+1) };
     crypto_generichash_blake2b_state state;
     EhInitialiseState(n, k, state);
