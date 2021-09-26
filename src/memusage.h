@@ -65,6 +65,15 @@ private:
     X x;
 };
 
+struct stl_shared_counter
+{
+    /* Various platforms use different sized counters here.
+     * Conservatively assume that they won't be larger than size_t. */
+    void* class_type;
+    size_t use_count;
+    size_t weak_count;
+};
+
 template<typename X>
 static inline size_t DynamicUsage(const std::vector<X>& v)
 {
@@ -83,16 +92,31 @@ static inline size_t DynamicUsage(const std::set<X>& s)
     return MallocUsage(sizeof(stl_tree_node<X>)) * s.size();
 }
 
-template<typename X, typename Y>
-static inline size_t DynamicUsage(const std::map<X, Y>& m)
+template<typename X, typename Y, typename C>
+static inline size_t DynamicUsage(const std::map<X, Y, C>& m)
 {
     return MallocUsage(sizeof(stl_tree_node<std::pair<const X, Y> >)) * m.size();
 }
 
-// Boost data structures
+template<typename X>
+static inline size_t DynamicUsage(const std::unique_ptr<X>& p)
+{
+    return p ? MallocUsage(sizeof(X)) : 0;
+}
 
 template<typename X>
-struct boost_unordered_node : private X
+static inline size_t DynamicUsage(const std::shared_ptr<X>& p)
+{
+    // A shared_ptr can either use a single continuous memory block for both
+    // the counter and the storage (when using std::make_shared), or separate.
+    // We can't observe the difference, however, so assume the worst.
+    return p ? MallocUsage(sizeof(X)) + MallocUsage(sizeof(stl_shared_counter)) : 0;
+}
+
+// stl data structures
+
+template<typename X>
+struct stl_unordered_node : private X
 {
 private:
     void* ptr;
@@ -101,13 +125,13 @@ private:
 template<typename X, typename Y>
 static inline size_t DynamicUsage(const std::unordered_set<X, Y>& s)
 {
-    return MallocUsage(sizeof(boost_unordered_node<X>)) * s.size() + MallocUsage(sizeof(void*) * s.bucket_count());
+    return MallocUsage(sizeof(stl_unordered_node<X>)) * s.size() + MallocUsage(sizeof(void*) * s.bucket_count());
 }
 
 template<typename X, typename Y, typename Z>
 static inline size_t DynamicUsage(const std::unordered_map<X, Y, Z>& m)
 {
-    return MallocUsage(sizeof(boost_unordered_node<std::pair<const X, Y> >)) * m.size() + MallocUsage(sizeof(void*) * m.bucket_count());
+    return MallocUsage(sizeof(stl_unordered_node<std::pair<const X, Y> >)) * m.size() + MallocUsage(sizeof(void*) * m.bucket_count());
 }
 
 }

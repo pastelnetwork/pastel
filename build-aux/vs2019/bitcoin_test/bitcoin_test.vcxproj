@@ -43,7 +43,6 @@
     <ClCompile Include="..\..\..\src\test\hash_tests.cpp" />
     <ClCompile Include="..\..\..\src\test\key_tests.cpp" />
     <ClCompile Include="..\..\..\src\test\main_tests.cpp" />
-    <ClCompile Include="..\..\..\src\test\mempool_tests.cpp" />
     <ClCompile Include="..\..\..\src\test\miner_tests.cpp" />
     <ClCompile Include="..\..\..\src\test\mruset_tests.cpp" />
     <ClCompile Include="..\..\..\src\test\multisig_tests.cpp" />

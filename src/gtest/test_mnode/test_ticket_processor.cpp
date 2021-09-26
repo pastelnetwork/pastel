@@ -6,7 +6,7 @@
 using namespace std;
 using namespace testing;
 
-class CTestTicketProcessor : 
+class TestTicketProcessor : 
     public CPastelTicketProcessor,
     public Test
 {
@@ -26,7 +26,7 @@ public:
 #ifdef ENABLE_WALLET
 
 // test invalid ticket P2FMS
-TEST_F(CTestTicketProcessor, invalid_ticket_type)
+TEST_F(TestTicketProcessor, invalid_ticket_type)
 {
     CMutableTransaction tx;
     auto ticket = CreateTicket(TicketID::PastelID);

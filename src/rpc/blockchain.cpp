@@ -178,14 +178,18 @@ UniValue getblockcount(const UniValue& params, bool fHelp)
 {
     if (fHelp || params.size() != 0)
         throw runtime_error(
-            "getblockcount\n"
-            "\nReturns the number of blocks in the best valid block chain.\n"
-            "\nResult:\n"
-            "n    (numeric) The current block count\n"
-            "\nExamples:\n"
-            + HelpExampleCli("getblockcount", "")
-            + HelpExampleRpc("getblockcount", "")
-        );
+R"(getblockcount
+
+Returns the number of blocks in the best valid block chain.
+
+Result:
+n    (numeric) The current block count
+
+Examples:
+)"
+    + HelpExampleCli("getblockcount", "")
+    + HelpExampleRpc("getblockcount", "")
+);
 
     LOCK(cs_main);
     return chainActive.Height();
@@ -195,14 +199,18 @@ UniValue getbestblockhash(const UniValue& params, bool fHelp)
 {
     if (fHelp || params.size() != 0)
         throw runtime_error(
-            "getbestblockhash\n"
-            "\nReturns the hash of the best (tip) block in the longest block chain.\n"
-            "\nResult\n"
-            "\"hex\"      (string) the block hash hex encoded\n"
-            "\nExamples\n"
-            + HelpExampleCli("getbestblockhash", "")
-            + HelpExampleRpc("getbestblockhash", "")
-        );
+R"(getbestblockhash
+
+Returns the hash of the best (tip) block in the longest block chain.
+
+Result
+"hex"      (string) the block hash hex encoded
+
+Examples
+)"
++ HelpExampleCli("getbestblockhash", "")
++ HelpExampleRpc("getbestblockhash", "")
+);
 
     LOCK(cs_main);
     return chainActive.Tip()->GetBlockHash().GetHex();
@@ -212,14 +220,18 @@ UniValue getdifficulty(const UniValue& params, bool fHelp)
 {
     if (fHelp || params.size() != 0)
         throw runtime_error(
-            "getdifficulty\n"
-            "\nReturns the proof-of-work difficulty as a multiple of the minimum difficulty.\n"
-            "\nResult:\n"
-            "n.nnn       (numeric) the proof-of-work difficulty as a multiple of the minimum difficulty.\n"
-            "\nExamples:\n"
-            + HelpExampleCli("getdifficulty", "")
-            + HelpExampleRpc("getdifficulty", "")
-        );
+R"(getdifficulty
+
+Returns the proof-of-work difficulty as a multiple of the minimum difficulty.
+
+Result:
+n.nnn       (numeric) the proof-of-work difficulty as a multiple of the minimum difficulty.
+
+Examples:
+)"
++ HelpExampleCli("getdifficulty", "")
++ HelpExampleRpc("getdifficulty", "")
+);
 
     LOCK(cs_main);
     return GetNetworkDifficulty();
@@ -231,11 +243,14 @@ UniValue mempoolToJSON(bool fVerbose = false)
     {
         LOCK(mempool.cs);
         UniValue o(UniValue::VOBJ);
+        o.reserve(mempool.mapTx.size());
+
         for (const auto& e : mempool.mapTx)
         {
             const uint256& hash = e.GetTx().GetHash();
             UniValue info(UniValue::VOBJ);
-            info.pushKV("size", (int)e.GetTxSize());
+            info.reserve(7);
+            info.pushKV("size", static_cast<uint64_t>(e.GetTxSize()));
             info.pushKV("fee", ValueFromAmount(e.GetFee()));
             info.pushKV("time", e.GetTime());
             info.pushKV("height", (int)e.GetHeight());
@@ -245,62 +260,67 @@ UniValue mempoolToJSON(bool fVerbose = false)
             set<string> setDepends;
             for (const auto &txin : tx.vin)
             {
-                if (mempool.exists(txin.prevout.hash))
+                if (mempool.exists_nolock(txin.prevout.hash))
                     setDepends.insert(txin.prevout.hash.ToString());
             }
 
             UniValue depends(UniValue::VARR);
+            depends.reserve(setDepends.size());
             for (const auto& dep : setDepends)
                 depends.push_back(dep);
 
-            info.pushKV("depends", depends);
-            o.pushKV(hash.ToString(), info);
+            info.pushKV("depends", move(depends));
+            o.pushKV(hash.ToString(), move(info));
         }
         return o;
     }
-    else
-    {
-        vector<uint256> vtxid;
-        mempool.queryHashes(vtxid);
+    vector<uint256> vtxid;
+    mempool.queryHashes(vtxid);
 
-        UniValue a(UniValue::VARR);
-        for (const auto& hash : vtxid)
-            a.push_back(hash.ToString());
+    UniValue a(UniValue::VARR);
+    a.reserve(vtxid.size());
+    for (const auto& hash : vtxid)
+        a.push_back(hash.ToString());
 
-        return a;
-    }
+    return a;
 }
 
 UniValue getrawmempool(const UniValue& params, bool fHelp)
 {
     if (fHelp || params.size() > 1)
         throw runtime_error(
-            "getrawmempool ( verbose )\n"
-            "\nReturns all transaction ids in memory pool as a json array of string transaction ids.\n"
-            "\nArguments:\n"
-            "1. verbose           (boolean, optional, default=false) true for a json object, false for array of transaction ids\n"
-            "\nResult: (for verbose = false):\n"
-            "[                     (json array of string)\n"
-            "  \"transactionid\"     (string) The transaction id\n"
-            "  ,...\n"
-            "]\n"
-            "\nResult: (for verbose = true):\n"
-            "{                           (json object)\n"
-            "  \"transactionid\" : {       (json object)\n"
-            "    \"size\" : n,             (numeric) transaction size in bytes\n"
-            "    \"fee\" : n,              (numeric) transaction fee in " + CURRENCY_UNIT + "\n"
-            "    \"time\" : n,             (numeric) local time transaction entered pool in seconds since 1 Jan 1970 GMT\n"
-            "    \"height\" : n,           (numeric) block height when transaction entered pool\n"
-            "    \"startingpriority\" : n, (numeric) priority when transaction entered pool\n"
-            "    \"currentpriority\" : n,  (numeric) transaction priority now\n"
-            "    \"depends\" : [           (array) unconfirmed transactions used as inputs for this transaction\n"
-            "        \"transactionid\",    (string) parent transaction id\n"
-            "       ... ]\n"
-            "  }, ...\n"
-            "}\n"
-            "\nExamples\n"
-            + HelpExampleCli("getrawmempool", "true")
-            + HelpExampleRpc("getrawmempool", "true")
+R"(getrawmempool ( verbose )
+
+Returns all transaction ids in memory pool as a json array of string transaction ids.
+
+Arguments:
+1. verbose           (boolean, optional, default=false) true for a json object, false for array of transaction ids
+
+Result: (for verbose = false):
+[                     (json array of string)
+  "transactionid"     (string) The transaction id
+  ,...
+]
+
+Result: (for verbose = true):
+{                           (json object)
+  "transactionid" : {       (json object)
+    "size" : n,             (numeric) transaction size in bytes
+    "fee" : n,              (numeric) transaction fee in )" + CURRENCY_UNIT + R"(
+    "time" : n,             (numeric) local time transaction entered pool in seconds since 1 Jan 1970 GMT
+    "height" : n,           (numeric) block height when transaction entered pool
+    "startingpriority" : n, (numeric) priority when transaction entered pool
+    "currentpriority" : n,  (numeric) transaction priority now\n"
+    "depends" : [           (array) unconfirmed transactions used as inputs for this transaction
+        "transactionid",    (string) parent transaction id
+       ... ]
+  }, ...
+}
+
+Examples:
+)"
++ HelpExampleCli("getrawmempool", "true")
++ HelpExampleRpc("getrawmempool", "true")
         );
 
     LOCK(cs_main);
@@ -316,16 +336,21 @@ UniValue getblockhash(const UniValue& params, bool fHelp)
 {
     if (fHelp || params.size() != 1)
         throw runtime_error(
-            "getblockhash index\n"
-            "\nReturns hash of block in best-block-chain at index provided.\n"
-            "\nArguments:\n"
-            "1. index         (numeric, required) The block index\n"
-            "\nResult:\n"
-            "\"hash\"         (string) The block hash\n"
-            "\nExamples:\n"
-            + HelpExampleCli("getblockhash", "1000")
-            + HelpExampleRpc("getblockhash", "1000")
-        );
+R"(getblockhash index
+
+Returns hash of block in best-block-chain at index provided.
+
+Arguments:
+1. index         (numeric, required) The block index
+
+Result:
+  "hash"         (string) The block hash
+
+Examples:
+)"
++ HelpExampleCli("getblockhash", "1000")
++ HelpExampleRpc("getblockhash", "1000")
+);
 
     LOCK(cs_main);
 
@@ -341,33 +366,38 @@ UniValue getblockheader(const UniValue& params, bool fHelp)
 {
     if (fHelp || params.size() < 1 || params.size() > 2)
         throw runtime_error(
-            "getblockheader \"hash\" ( verbose )\n"
-            "\nIf verbose is false, returns a string that is serialized, hex-encoded data for blockheader 'hash'.\n"
-            "If verbose is true, returns an Object with information about blockheader <hash>.\n"
-            "\nArguments:\n"
-            "1. \"hash\"          (string, required) The block hash\n"
-            "2. verbose           (boolean, optional, default=true) true for a json object, false for the hex encoded data\n"
-            "\nResult (for verbose = true):\n"
-            "{\n"
-            "  \"hash\" : \"hash\",     (string) the block hash (same as provided)\n"
-            "  \"confirmations\" : n,   (numeric) The number of confirmations, or -1 if the block is not on the main chain\n"
-            "  \"height\" : n,          (numeric) The block height or index\n"
-            "  \"version\" : n,         (numeric) The block version\n"
-            "  \"merkleroot\" : \"xxxx\", (string) The merkle root\n"
-            "  \"finalsaplingroot\" : \"xxxx\", (string) The root of the Sapling commitment tree after applying this block\n"
-            "  \"time\" : ttt,          (numeric) The block time in seconds since epoch (Jan 1 1970 GMT)\n"
-            "  \"nonce\" : n,           (numeric) The nonce\n"
-            "  \"bits\" : \"1d00ffff\", (string) The bits\n"
-            "  \"difficulty\" : x.xxx,  (numeric) The difficulty\n"
-            "  \"previousblockhash\" : \"hash\",  (string) The hash of the previous block\n"
-            "  \"nextblockhash\" : \"hash\"       (string) The hash of the next block\n"
-            "}\n"
-            "\nResult (for verbose=false):\n"
-            "\"data\"             (string) A string that is serialized, hex-encoded data for block 'hash'.\n"
-            "\nExamples:\n"
-            + HelpExampleCli("getblockheader", "\"00000000c937983704a73af28acdec37b049d214adbda81d7e2a3dd146f6ed09\"")
-            + HelpExampleRpc("getblockheader", "\"00000000c937983704a73af28acdec37b049d214adbda81d7e2a3dd146f6ed09\"")
-        );
+R"(getblockheader "hash" ( verbose )
+If verbose is false, returns a string that is serialized, hex-encoded data for blockheader 'hash'.
+If verbose is true, returns an Object with information about blockheader <hash>.
+
+Arguments:
+1. "hash"          (string, required) The block hash
+2. verbose         (boolean, optional, default=true) true for a json object, false for the hex encoded data
+
+Result (for verbose = true):
+{
+  "hash" : "hash",       (string) the block hash (same as provided)
+  "confirmations" : n,   (numeric) The number of confirmations, or -1 if the block is not on the main chain
+  "height" : n,          (numeric) The block height or index
+  "version" : n,         (numeric) The block version
+  "merkleroot" : "xxxx", (string) The merkle root
+  "finalsaplingroot" : "xxxx", (string) The root of the Sapling commitment tree after applying this block
+  "time" : ttt,          (numeric) The block time in seconds since epoch (Jan 1 1970 GMT)
+  "nonce" : n,           (numeric) The nonce
+  "bits" : "1d00ffff",   (string) The bits
+  "difficulty" : x.xxx,  (numeric) The difficulty
+  "previousblockhash" : "hash",  (string) The hash of the previous block
+  "nextblockhash" : "hash"       (string) The hash of the next block
+}
+
+Result (for verbose=false):
+"data"             (string) A string that is serialized, hex-encoded data for block 'hash'.
+
+Examples:
+)"
++ HelpExampleCli("getblockheader", "\"00000000c937983704a73af28acdec37b049d214adbda81d7e2a3dd146f6ed09\"")
++ HelpExampleRpc("getblockheader", "\"00000000c937983704a73af28acdec37b049d214adbda81d7e2a3dd146f6ed09\"")
+);
 
     LOCK(cs_main);
 
@@ -398,49 +428,55 @@ UniValue getblock(const UniValue& params, bool fHelp)
 {
     if (fHelp || params.size() < 1 || params.size() > 2)
         throw runtime_error(
-            "getblock \"hash|height\" ( verbosity )\n"
-            "\nIf verbosity is 0, returns a string that is serialized, hex-encoded data for the block.\n"
-            "If verbosity is 1, returns an Object with information about the block.\n"
-            "If verbosity is 2, returns an Object with information about the block and information about each transaction. \n"
-            "\nArguments:\n"
-            "1. \"hash|height\"          (string, required) The block hash or height\n"
-            "2. verbosity              (numeric, optional, default=1) 0 for hex encoded data, 1 for a json object, and 2 for json object with transaction data\n"
-            "\nResult (for verbosity = 0):\n"
-            "\"data\"             (string) A string that is serialized, hex-encoded data for the block.\n"
-            "\nResult (for verbosity = 1):\n"
-            "{\n"
-            "  \"hash\" : \"hash\",       (string) the block hash (same as provided hash)\n"
-            "  \"confirmations\" : n,   (numeric) The number of confirmations, or -1 if the block is not on the main chain\n"
-            "  \"size\" : n,            (numeric) The block size\n"
-            "  \"height\" : n,          (numeric) The block height or index (same as provided height)\n"
-            "  \"version\" : n,         (numeric) The block version\n"
-            "  \"merkleroot\" : \"xxxx\", (string) The merkle root\n"
-            "  \"finalsaplingroot\" : \"xxxx\", (string) The root of the Sapling commitment tree after applying this block\n"
-            "  \"tx\" : [               (array of string) The transaction ids\n"
-            "     \"transactionid\"     (string) The transaction id\n"
-            "     ,...\n"
-            "  ],\n"
-            "  \"time\" : ttt,          (numeric) The block time in seconds since epoch (Jan 1 1970 GMT)\n"
-            "  \"nonce\" : n,           (numeric) The nonce\n"
-            "  \"bits\" : \"1d00ffff\",   (string) The bits\n"
-            "  \"difficulty\" : x.xxx,  (numeric) The difficulty\n"
-            "  \"previousblockhash\" : \"hash\",  (string) The hash of the previous block\n"
-            "  \"nextblockhash\" : \"hash\"       (string) The hash of the next block\n"
-            "}\n"
-            "\nResult (for verbosity = 2):\n"
-            "{\n"
-            "  ...,                     Same output as verbosity = 1.\n"
-            "  \"tx\" : [               (array of Objects) The transactions in the format of the getrawtransaction RPC. Different from verbosity = 1 \"tx\" result.\n"
-            "         ,...\n"
-            "  ],\n"
-            "  ,...                     Same output as verbosity = 1.\n"
-            "}\n"
-            "\nExamples:\n"
-            + HelpExampleCli("getblock", "\"00000000febc373a1da2bd9f887b105ad79ddc26ac26c2b28652d64e5207c5b5\"")
-            + HelpExampleRpc("getblock", "\"00000000febc373a1da2bd9f887b105ad79ddc26ac26c2b28652d64e5207c5b5\"")
-            + HelpExampleCli("getblock", "12800")
-            + HelpExampleRpc("getblock", "12800")
-        );
+R"(getblock "hash|height" ( verbosity )
+If verbosity is 0, returns a string that is serialized, hex-encoded data for the block.
+If verbosity is 1, returns an Object with information about the block.
+If verbosity is 2, returns an Object with information about the block and information about each transaction.
+
+Arguments:
+1. "hash|height"          (string, required) The block hash or height
+2. verbosity              (numeric, optional, default=1) 0 for hex encoded data, 1 for a json object, and 2 for json object with transaction data
+
+Result (for verbosity = 0):
+"data"                    (string) A string that is serialized, hex-encoded data for the block.
+
+Result (for verbosity = 1):
+{
+  "hash" : "hash",       (string) the block hash (same as provided hash)
+  "confirmations" : n,   (numeric) The number of confirmations, or -1 if the block is not on the main chain
+  "size" : n,            (numeric) The block size
+  "height" : n,          (numeric) The block height or index (same as provided height)
+  "version" : n,         (numeric) The block version
+  "merkleroot" : "xxxx", (string) The merkle root
+  "finalsaplingroot" : "xxxx", (string) The root of the Sapling commitment tree after applying this block
+  "tx" : [               (array of string) The transaction ids
+     "transactionid"     (string) The transaction id
+     ,...
+  ],
+  "time" : ttt,          (numeric) The block time in seconds since epoch (Jan 1 1970 GMT)
+  "nonce" : n,           (numeric) The nonce
+  "bits" : "1d00ffff",   (string) The bits
+  "difficulty" : x.xxx,  (numeric) The difficulty
+  "previousblockhash" : "hash",  (string) The hash of the previous block
+  "nextblockhash" : "hash"       (string) The hash of the next block
+}
+
+Result (for verbosity = 2):
+{
+  ...,                     Same output as verbosity = 1.
+  "tx" : [               (array of Objects) The transactions in the format of the getrawtransaction RPC. Different from verbosity = 1 "tx" result.
+         ,...
+  ],
+  ,...                     Same output as verbosity = 1.
+}
+
+Examples:
+)"
++ HelpExampleCli("getblock", "\"00000000febc373a1da2bd9f887b105ad79ddc26ac26c2b28652d64e5207c5b5\"")
++ HelpExampleRpc("getblock", "\"00000000febc373a1da2bd9f887b105ad79ddc26ac26c2b28652d64e5207c5b5\"")
++ HelpExampleCli("getblock", "12800")
++ HelpExampleRpc("getblock", "12800")
+);
 
     LOCK(cs_main);
 
@@ -510,23 +546,27 @@ UniValue gettxoutsetinfo(const UniValue& params, bool fHelp)
 {
     if (fHelp || params.size() != 0)
         throw runtime_error(
-            "gettxoutsetinfo\n"
-            "\nReturns statistics about the unspent transaction output set.\n"
-            "Note this call may take some time.\n"
-            "\nResult:\n"
-            "{\n"
-            "  \"height\":n,     (numeric) The current block height (index)\n"
-            "  \"bestblock\": \"hex\",   (string) the best block hash hex\n"
-            "  \"transactions\": n,      (numeric) The number of transactions\n"
-            "  \"txouts\": n,            (numeric) The number of output transactions\n"
-            "  \"bytes_serialized\": n,  (numeric) The serialized size\n"
-            "  \"hash_serialized\": \"hash\",   (string) The serialized hash\n"
-            "  \"total_amount\": x.xxx          (numeric) The total amount\n"
-            "}\n"
-            "\nExamples:\n"
-            + HelpExampleCli("gettxoutsetinfo", "")
-            + HelpExampleRpc("gettxoutsetinfo", "")
-        );
+R"(gettxoutsetinfo
+
+Returns statistics about the unspent transaction output set.
+Note this call may take some time.
+
+Result:
+{
+  "height":n,                (numeric) The current block height (index)
+  "bestblock": "hex",        (string) the best block hash hex
+  "transactions": n,         (numeric) The number of transactions
+  "txouts": n,               (numeric) The number of output transactions
+  "bytes_serialized": n,     (numeric) The serialized size
+  "hash_serialized": "hash", (string) The serialized hash
+  "total_amount": x.xxx      (numeric) The total amount
+}
+
+Examples:
+)"
+    + HelpExampleCli("gettxoutsetinfo", "")
+    + HelpExampleRpc("gettxoutsetinfo", "")
+);
 
     UniValue ret(UniValue::VOBJ);
 
@@ -548,39 +588,43 @@ UniValue gettxout(const UniValue& params, bool fHelp)
 {
     if (fHelp || params.size() < 2 || params.size() > 3)
         throw runtime_error(
-            "gettxout \"txid\" n ( includemempool )\n"
-            "\nReturns details about an unspent transaction output.\n"
-            "\nArguments:\n"
-            "1. \"txid\"       (string, required) The transaction id\n"
-            "2. n              (numeric, required) vout value\n"
-            "3. includemempool  (boolean, optional) Whether to include the mempool\n"
-            "\nResult:\n"
-            "{\n"
-            "  \"bestblock\" : \"hash\",    (string) the block hash\n"
-            "  \"confirmations\" : n,       (numeric) The number of confirmations\n"
-            "  \"value\" : x.xxx,           (numeric) The transaction value in " + CURRENCY_UNIT + "\n"
-            "  \"scriptPubKey\" : {         (json object)\n"
-            "     \"asm\" : \"code\",       (string) \n"
-            "     \"hex\" : \"hex\",        (string) \n"
-            "     \"reqSigs\" : n,          (numeric) Number of required signatures\n"
-            "     \"type\" : \"pubkeyhash\", (string) The type, eg pubkeyhash\n"
-            "     \"addresses\" : [          (array of string) array of Pastel addresses\n"
-            "        \"zcashaddress\"        (string) Pastel address\n"
-            "        ,...\n"
-            "     ]\n"
-            "  },\n"
-            "  \"version\" : n,              (numeric) The version\n"
-            "  \"coinbase\" : true|false     (boolean) Coinbase or not\n"
-            "}\n"
+R"(gettxout "txid" n ( includemempool )
 
-            "\nExamples:\n"
-            "\nGet unspent transactions\n"
-            + HelpExampleCli("listunspent", "") +
-            "\nView the details\n"
-            + HelpExampleCli("gettxout", "\"txid\" 1") +
-            "\nAs a json rpc call\n"
-            + HelpExampleRpc("gettxout", "\"txid\", 1")
-        );
+Returns details about an unspent transaction output.
+
+Arguments:
+1. "txid"          (string, required) The transaction id
+2. n               (numeric, required) vout value
+3. includemempool  (boolean, optional) Whether to include the mempool
+
+Result:
+{
+  "bestblock" : "hash",      (string) the block hash
+  "confirmations" : n,       (numeric) The number of confirmations
+  "value" : x.xxx,           (numeric) The transaction value in )" + CURRENCY_UNIT + R"(
+  "scriptPubKey" : {         (json object)
+     "asm" : "code",         (string)
+     "hex" : "hex",          (string)
+     "reqSigs" : n,          (numeric) Number of required signatures
+     "type" : "pubkeyhash",  (string) The type, eg pubkeyhash
+     "addresses" : [         (array of string) array of Pastel addresses
+        "zcashaddress"       (string) Pastel address
+        ,...
+     ]
+  },
+  "version" : n,             (numeric) The version
+  "coinbase" : true|false    (boolean) Coinbase or not
+}
+
+Examples:
+Get unspent transactions
+)"
++ HelpExampleCli("listunspent", "") +
+"\nView the details\n"
++ HelpExampleCli("gettxout", "\"txid\" 1") +
+"\nAs a json rpc call\n"
++ HelpExampleRpc("gettxout", "\"txid\", 1")
+);
 
     LOCK(cs_main);
 
@@ -628,16 +672,20 @@ UniValue verifychain(const UniValue& params, bool fHelp)
 {
     if (fHelp || params.size() > 2)
         throw runtime_error(
-            "verifychain ( checklevel numblocks )\n"
-            "\nVerifies blockchain database.\n"
-            "\nArguments:\n"
-            "1. checklevel   (numeric, optional, 0-4, default=3) How thorough the block verification is.\n"
-            "2. numblocks    (numeric, optional, default=288, 0=all) The number of blocks to check.\n"
-            "\nResult:\n"
-            "true|false       (boolean) Verified or not\n"
-            "\nExamples:\n"
-            + HelpExampleCli("verifychain", "")
-            + HelpExampleRpc("verifychain", "")
+R"(verifychain ( checklevel numblocks )
+Verifies blockchain database.
+
+Arguments:
+1. checklevel   (numeric, optional, 0-4, default=3) How thorough the block verification is.
+2. numblocks    (numeric, optional, default=288, 0=all) The number of blocks to check.
+
+Result:
+ true|false       (boolean) Verified or not
+
+Examples:
+)"
+    + HelpExampleCli("verifychain", "")
+    + HelpExampleRpc("verifychain", "")
         );
 
     LOCK(cs_main);
@@ -935,15 +983,19 @@ UniValue getmempoolinfo(const UniValue& params, bool fHelp)
 {
     if (fHelp || params.size() != 0)
         throw runtime_error(
-            "getmempoolinfo\n"
-            "\nReturns details on the active state of the TX memory pool.\n"
-            "\nResult:\n"
-            "{\n"
-            "  \"size\": xxxxx                (numeric) Current tx count\n"
-            "  \"bytes\": xxxxx               (numeric) Sum of all tx sizes\n"
-            "  \"usage\": xxxxx               (numeric) Total memory usage for the mempool\n"
-            "}\n"
-            "\nExamples:\n"
+R"(getmempoolinfo
+
+Returns details on the active state of the TX memory pool.
+
+Result:
+{
+  "size": xxxxx                (numeric) Current tx count
+  "bytes": xxxxx               (numeric) Sum of all tx sizes
+  "usage": xxxxx               (numeric) Total memory usage for the mempool
+}
+
+Examples:
+)"
             + HelpExampleCli("getmempoolinfo", "")
             + HelpExampleRpc("getmempoolinfo", "")
         );

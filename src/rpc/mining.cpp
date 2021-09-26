@@ -571,7 +571,7 @@ UniValue getblocktemplate(const UniValue& params, bool fHelp)
     if (!chainparams.IsRegTest() && vNodes.empty())
         throw JSONRPCError(RPC_CLIENT_NOT_CONNECTED, "Pastel is not connected!");
 
-    if (IsInitialBlockDownload(chainparams.GetConsensus()))
+    if (fnIsInitialBlockDownload(chainparams.GetConsensus()))
         throw JSONRPCError(RPC_CLIENT_IN_INITIAL_DOWNLOAD, "Pastel is downloading blocks...");
 
 //PASTEL

@@ -1654,40 +1654,35 @@ UniValue tickets_register(const UniValue& params)
 Set of commands to register different types of Pastel tickets
 
 Available types:
-  mnid    - Register Masternode PastelID. If successful, returns "txid".
-            Ticket contains:
-                Masternode Collateral Address
-                Masternode Collateral outpoint (transaction id and index)
-                PastelID
-                Timestamp
-                Signature (above fields signed by PastelID)
-  id      - Register personal PastelID. If successful, returns "txid".
-            Ticket contains:
-                Provided Address
-                PastelID
-                Timestamp
-                Signature (above fields signed by PastelID)
-  nft     - Register new NFT ticket. If successful, returns "txid".
-            Ticket contains:
-                <...>
-  act     - Send activation for new registered NFT ticket. If successful, returns "txid" of activation ticket.
-            Ticket contains:
-                <...>
-  sell    - Register NFT sell ticket. If successful, returns "txid".
-            Ticket contains:
-                <...>
-  buy     - Register NFT buy ticket. If successful, returns "txid".
-            Ticket contains:
-                <...>
-  trade   - Register NFT trade ticket. If successful, returns "txid".
-            Ticket contains:
-                <...>
-  down    - Register take down ticket. If successful, returns "txid".
-            Ticket contains:
-                <...>
-  royalty - Register NFT royalty ticket. If successful, returns "txid".
-            Ticket contains:
-                <...>
+  mnid     - Register Masternode PastelID. If successful, returns "txid".
+             Ticket contains:
+                 Masternode Collateral Address
+                 Masternode Collateral outpoint (transaction id and index)
+                 PastelID
+                 Timestamp
+                 Signature (above fields signed by PastelID)
+  id       - Register personal PastelID. If successful, returns "txid".
+             Ticket contains:
+                 Provided Address
+                 PastelID
+                 Timestamp
+                 Signature (above fields signed by PastelID)
+  nft      - Register new NFT ticket. If successful, returns "txid".
+             Ticket contains: <...>
+  act      - Send activation for new registered NFT ticket. If successful, returns "txid" of activation ticket.
+             Ticket contains: <...>
+  sell     - Register NFT sell ticket. If successful, returns "txid".
+             Ticket contains: <...>
+  buy      - Register NFT buy ticket. If successful, returns "txid".
+             Ticket contains: <...>
+  trade    - Register NFT trade ticket. If successful, returns "txid".
+             Ticket contains: <...>
+  down     - Register take down ticket. If successful, returns "txid".
+             Ticket contains: <...>
+  username - Register Username Change Request ticket. If successful, method returns "txid"
+             Ticket contains: PastelId, username, passphrase
+  royalty  - Register NFT royalty ticket. If successful, returns "txid".
+             Ticket contains: <...>
 )");
     UniValue mnObj(UniValue::VOBJ);
 
@@ -2150,19 +2145,19 @@ As json rpc
     {
 		if (params.size() != 5)
 			throw JSONRPCError(RPC_INVALID_PARAMETER,
-R"(tickets register username "PastelId" "username" "passphrase"
+R"(tickets register username "username" "PastelId" "passphrase"
 Register Username Change Request ticket. If successful, method returns "txid"
 
 Arguments:
 x. "PastelId"      (string, required) The PastelID. NOTE: PastelID must be generated and stored inside node. See "pastelid newkey".
 x. "username"      (string, required) The username that will be mapped with above PastelID
-y. "passphrase"    (string, required) The passphrase to the private key associated with PastelID and stored inside node. See "pastelid newkey".
+y. "passphrase"    (string, required) The passphrase to access the private key associated with PastelID and stored inside node. See "pastelid newkey".
 Username Change Request Ticket:
 {
     "ticket": {
 		"type": "username",
-		"pastelID": "",    //PastelID of the username
-		"username": "",    //new valid username
+		"pastelID": "",    // PastelID of the username
+		"username": "",    // new valid username
 		"fee": "",         // fee to change username
 		"signature": ""
 	},
@@ -2562,21 +2557,21 @@ As json rpc
     case RPC_CMD_LIST::royalty:
     {
         if (filter == "all")
-        obj.read(masterNodeCtrl.masternodeTickets.ListTickets<CNFTRoyaltyTicket>());
+            obj.read(masterNodeCtrl.masternodeTickets.ListTickets<CNFTRoyaltyTicket>());
         break;
     }
         
     case RPC_CMD_LIST::username:
     {
         if (filter == "all")
-        obj.read(masterNodeCtrl.masternodeTickets.ListTickets<CChangeUsernameTicket>());
+            obj.read(masterNodeCtrl.masternodeTickets.ListTickets<CChangeUsernameTicket>());
         break;
     }
         
     case RPC_CMD_LIST::ethereumaddress:
     {
         if (filter == "all")
-        obj.read(masterNodeCtrl.masternodeTickets.ListTickets<CChangeEthereumAddressTicket>());
+            obj.read(masterNodeCtrl.masternodeTickets.ListTickets<CChangeEthereumAddressTicket>());
         break;
     }
     } // switch RPC_CMD_LIST::cmd()

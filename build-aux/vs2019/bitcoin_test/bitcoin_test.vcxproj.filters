@@ -79,9 +79,6 @@
     <ClCompile Include="..\..\..\src\test\main_tests.cpp">
       <Filter>UnitTest Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\src\test\mempool_tests.cpp">
-      <Filter>UnitTest Files</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\..\src\test\miner_tests.cpp">
       <Filter>UnitTest Files</Filter>
     </ClCompile>

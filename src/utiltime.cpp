@@ -17,28 +17,28 @@ using namespace std;
 
 static int64_t nMockTime = 0;  //! For unit testing
 
-int64_t GetTime()
+int64_t GetTime() noexcept
 {
-    if (nMockTime) return nMockTime;
-
-    return time(NULL);
+    if (nMockTime)
+        return nMockTime;
+    return time(nullptr);
 }
 
-void SetMockTime(int64_t nMockTimeIn)
+void SetMockTime(const int64_t nMockTimeIn) noexcept
 {
     nMockTime = nMockTimeIn;
 }
 
-int64_t GetTimeMillis()
+int64_t GetTimeMillis() noexcept
 {
-    return std::chrono::duration_cast<std::chrono::milliseconds>(
-            std::chrono::system_clock::now().time_since_epoch()).count();
+    return chrono::duration_cast<chrono::milliseconds>(
+            chrono::system_clock::now().time_since_epoch()).count();
 }
 
-int64_t GetTimeMicros()
+int64_t GetTimeMicros() noexcept
 {
-    return std::chrono::duration_cast<std::chrono::microseconds>(
-            std::chrono::system_clock::now().time_since_epoch()).count();
+    return chrono::duration_cast<chrono::microseconds>(
+            chrono::system_clock::now().time_since_epoch()).count();
 }
 
 void MilliSleep(int64_t n)
@@ -46,11 +46,11 @@ void MilliSleep(int64_t n)
     boost::this_thread::sleep_for(boost::chrono::milliseconds(n));
 }
 
-std::string DateTimeStrFormat(const char* pszFormat, int64_t nTime)
+string DateTimeStrFormat(const char* pszFormat, int64_t nTime)
 {
-    // std::locale takes ownership of the pointer
-    std::locale loc(std::locale::classic(), new boost::posix_time::time_facet(pszFormat));
-    std::stringstream ss;
+    // locale takes ownership of the pointer
+    locale loc(locale::classic(), new boost::posix_time::time_facet(pszFormat));
+    stringstream ss;
     ss.imbue(loc);
     ss << boost::posix_time::from_time_t(nTime);
     return ss.str();

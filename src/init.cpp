@@ -1456,6 +1456,9 @@ bool AppInit2(boost::thread_group& threadGroup, CScheduler& scheduler)
     LogPrintf("* Using %.1fMiB for chain state database\n", nCoinDBCache * (1.0 / 1024 / 1024));
     LogPrintf("* Using %.1fMiB for in-memory UTXO set\n", nCoinCacheUsage * (1.0 / 1024 / 1024));
 
+    // connect Pastel Ticket txmempool tracker
+    mempool.AddTxMemPoolTracker(CPastelTicketProcessor::GetTxMemPoolTracker());
+
     bool clearWitnessCaches = false;
 
     bool fLoaded = false;
@@ -1830,7 +1833,7 @@ bool AppInit2(boost::thread_group& threadGroup, CScheduler& scheduler)
     // Monitor the chain, and alert if we get blocks much quicker or slower than expected
     const auto& consensusParams = chainparams.GetConsensus();
     int64_t nPowTargetSpacing = consensusParams.nPowTargetSpacing;
-    CScheduler::Function f = boost::bind(&PartitionCheck, consensusParams, & IsInitialBlockDownload,
+    CScheduler::Function f = boost::bind(&PartitionCheck, consensusParams, fnIsInitialBlockDownload,
                                          boost::ref(cs_main), boost::cref(pindexBestHeader), nPowTargetSpacing);
     scheduler.scheduleEvery(f, nPowTargetSpacing);
 

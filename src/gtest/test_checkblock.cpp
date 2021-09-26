@@ -9,17 +9,17 @@ class MockCValidationState : public CValidationState {
 public:
     MOCK_METHOD(bool, DoS, (int level, bool ret,
              unsigned char chRejectCodeIn, std::string strRejectReasonIn,
-             bool corruptionIn), ());
+             bool corruptionIn), (override));
     MOCK_METHOD(bool, Invalid, (bool ret,
-                 unsigned char _chRejectCode, std::string _strRejectReason), ());
-    MOCK_METHOD(bool, Error, (std::string strRejectReasonIn), ());
-    MOCK_METHOD(bool, IsValid, (), (const));
-    MOCK_METHOD(bool, IsInvalid, (), (const));
-    MOCK_METHOD(bool, IsError, (), (const));
-    MOCK_METHOD(bool, IsInvalid, (int& nDoSOut), (const));
-    MOCK_METHOD(bool, CorruptionPossible, (), (const));
-    MOCK_METHOD(unsigned char, GetRejectCode, (), (const));
-    MOCK_METHOD(std::string, GetRejectReason, (), (const));
+                 unsigned char _chRejectCode, std::string _strRejectReason), (override));
+    MOCK_METHOD(bool, Error, (const std::string &strRejectReasonIn), (override));
+    MOCK_METHOD(bool, IsValid, (), (const, override));
+    MOCK_METHOD(bool, IsInvalid, (), (const, override));
+    MOCK_METHOD(bool, IsError, (), (const, override));
+    MOCK_METHOD(bool, IsInvalid, (int& nDoSOut), (const, override));
+    MOCK_METHOD(bool, CorruptionPossible, (), (const, override));
+    MOCK_METHOD(unsigned char, GetRejectCode, (), (const, override));
+    MOCK_METHOD(std::string, GetRejectReason, (), (const, override));
 };
 
 TEST(CheckBlock, VersionTooLow) {
@@ -134,7 +134,7 @@ protected:
     // ContextualCheckBlock. This is used in rejecting (Sprout-Overwinter,
     // Overwinter-Sprout, ...) tests. You should not call it without
     // calling a SCOPED_TRACE macro first to usefully label any failures.
-    void ExpectInvalidBlockFromTx(const CTransaction& tx, int level, std::string reason)
+    void ExpectInvalidBlockFromTx(const CTransaction& tx, int level, const std::string &reason)
     {
         // Create a block and add the transaction to it.
         CBlock block;
@@ -146,7 +146,7 @@ protected:
 
         // We now expect this to be an invalid block, for the given reason.
         MockCValidationState state;
-        EXPECT_CALL(state, DoS(level, false, REJECT_INVALID, reason, false)).Times(1);
+        EXPECT_CALL(state, DoS(level, false, REJECT_INVALID, reason, false));
         EXPECT_FALSE(ContextualCheckBlock(block, state, chainparams, &indexPrev));
     }
 
@@ -259,7 +259,8 @@ TEST_F(ContextualCheckBlockTest, BlockSaplingRulesAcceptSaplingTx) {
 // Test that a block evaluated under Sprout rules cannot contain non-Sprout
 // transactions which require Overwinter to be active.  This test assumes that
 // mainnet Overwinter activation is at least height 2.
-TEST_F(ContextualCheckBlockTest, BlockSproutRulesRejectOtherTx) {
+TEST_F(ContextualCheckBlockTest, BlockSproutRulesRejectOtherTx)
+{
     CMutableTransaction mtx = GetFirstBlockCoinbaseTx();
 
     // Make it an Overwinter transaction

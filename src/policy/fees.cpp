@@ -1,5 +1,6 @@
 // Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2015 The Bitcoin developers
+// Copyright (c) 2018-2021 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -291,9 +292,9 @@ void TxConfirmStats::removeTx(unsigned int entryHeight, unsigned int nBestSeenHe
     }
 }
 
-void CBlockPolicyEstimator::removeTx(uint256 hash)
+void CBlockPolicyEstimator::removeTx(const uint256 &hash)
 {
-    std::map<uint256, TxStatsInfo>::iterator pos = mapMemPoolTxs.find(hash);
+    auto pos = mapMemPoolTxs.find(hash);
     if (pos == mapMemPoolTxs.end()) {
         LogPrint("estimatefee", "Blockpolicy error mempool tx %s not found for removeTx\n",
                  hash.ToString().c_str());
@@ -303,7 +304,7 @@ void CBlockPolicyEstimator::removeTx(uint256 hash)
     unsigned int entryHeight = pos->second.blockHeight;
     unsigned int bucketIndex = pos->second.bucketIndex;
 
-    if (stats != NULL)
+    if (stats)
         stats->removeTx(entryHeight, nBestSeenHeight, bucketIndex);
     mapMemPoolTxs.erase(hash);
 }
@@ -319,7 +320,7 @@ CBlockPolicyEstimator::CBlockPolicyEstimator(const CFeeRate& _minRelayFee)
     }
     feeStats.Initialize(vfeelist, MAX_BLOCK_CONFIRMS, DEFAULT_DECAY, "FeeRate");
 
-    minTrackedPriority = AllowFreeThreshold() < MIN_PRIORITY ? MIN_PRIORITY : AllowFreeThreshold();
+    minTrackedPriority = ALLOW_FREE_THRESHOLD < MIN_PRIORITY ? MIN_PRIORITY : ALLOW_FREE_THRESHOLD;
     v_doubles vprilist;
     for (double bucketBoundary = minTrackedPriority; bucketBoundary <= MAX_PRIORITY; bucketBoundary *= PRI_SPACING) {
         vprilist.push_back(bucketBoundary);
@@ -350,14 +351,15 @@ bool CBlockPolicyEstimator::isPriDataPoint(const CFeeRate &fee, double pri)
     return false;
 }
 
-void CBlockPolicyEstimator::processTransaction(const CTxMemPoolEntry& entry, bool fCurrentEstimate)
+void CBlockPolicyEstimator::processTransaction(const CTxMemPoolEntry& entry, const bool fCurrentEstimate)
 {
-    unsigned int txHeight = entry.GetHeight();
-    uint256 hash = entry.GetTx().GetHash();
-    if (mapMemPoolTxs[hash].stats != NULL) {
+    const unsigned int txHeight = entry.GetHeight();
+    const auto &hash = entry.GetTx().GetHash();
+    if (mapMemPoolTxs[hash].stats)
+    {
         LogPrint("estimatefee", "Blockpolicy error mempool tx %s already being tracked\n",
                  hash.ToString().c_str());
-	return;
+	    return;
     }
 
     if (txHeight < nBestSeenHeight) {

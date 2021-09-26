@@ -120,7 +120,9 @@
     <ClCompile Include="..\..\..\src\mnode\mnode-rpc.cpp" />
     <ClCompile Include="..\..\..\src\mnode\mnode-sync.cpp" />
     <ClCompile Include="..\..\..\src\mnode\mnode-validation.cpp" />
+    <ClCompile Include="..\..\..\src\mnode\ticket-mempool-processor.cpp" />
     <ClCompile Include="..\..\..\src\mnode\ticket-processor.cpp" />
+    <ClCompile Include="..\..\..\src\mnode\ticket-txmempool.cpp" />
     <ClCompile Include="..\..\..\src\net.cpp" />
     <ClCompile Include="..\..\..\src\noui.cpp" />
     <ClCompile Include="..\..\..\src\pastelid\pastel_key.cpp" />
@@ -173,6 +175,8 @@
     <ClInclude Include="..\..\..\src\merkleblock.h" />
     <ClInclude Include="..\..\..\src\metrics.h" />
     <ClInclude Include="..\..\..\src\miner.h" />
+    <ClInclude Include="..\..\..\src\mnode\ticket-mempool-processor.h" />
+    <ClInclude Include="..\..\..\src\mnode\ticket-txmempool.h" />
     <ClInclude Include="..\..\..\src\mnode\mnode-active.h" />
     <ClInclude Include="..\..\..\src\mnode\mnode-badwords.h" />
     <ClInclude Include="..\..\..\src\mnode\mnode-config.h" />
@@ -215,6 +219,7 @@
     <ClInclude Include="..\..\..\src\torcontrol.h" />
     <ClInclude Include="..\..\..\src\txdb.h" />
     <ClInclude Include="..\..\..\src\txmempool.h" />
+    <ClInclude Include="..\..\..\src\txmempool_entry.h" />
     <ClInclude Include="..\..\..\src\ui_interface.h" />
     <ClInclude Include="..\..\..\src\undo.h" />
     <ClInclude Include="..\..\..\src\validationinterface.h" />

@@ -1,17 +1,17 @@
 #pragma once
 // Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2015 The Bitcoin developers
+// Copyright (c) 2018-2021 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 #include "amount.h"
 #include "uint256.h"
 #include "vector_types.h"
-
+#include "txmempool_entry.h"
 #include <map>
 
 class CAutoFile;
 class CFeeRate;
-class CTxMemPoolEntry;
 
 /** \class CBlockPolicyEstimator
  * The BlockPolicyEstimator is used for estimating the fee or priority needed
@@ -216,7 +216,7 @@ static constexpr double PRI_SPACING = 2;
  * a certain number of blocks.  Every time a block is added to the best chain, this class records
  * stats on the transactions included in that block
  */
-class CBlockPolicyEstimator
+class CBlockPolicyEstimator : public ITxMemPoolTracker
 {
 public:
     /** Create new BlockPolicyEstimator and initialize stats tracking classes with default values */
@@ -230,10 +230,10 @@ public:
     void processBlockTx(unsigned int nBlockHeight, const CTxMemPoolEntry& entry);
 
     /** Process a transaction accepted to the mempool*/
-    void processTransaction(const CTxMemPoolEntry& entry, bool fCurrentEstimate);
+    void processTransaction(const CTxMemPoolEntry& entry, const bool fCurrentEstimate) override;
 
     /** Remove a transaction from the mempool tracking stats*/
-    void removeTx(uint256 hash);
+    void removeTx(const uint256 &hash) override;
 
     /** Is this transaction likely included in a block because of its fee?*/
     bool isFeeDataPoint(const CFeeRate &fee, double pri);
@@ -255,7 +255,7 @@ public:
 
 private:
     CFeeRate minTrackedFee; //! Passed to constructor to avoid dependency on main
-    double minTrackedPriority; //! Set to AllowFreeThreshold
+    double minTrackedPriority; //! Set to ALLOW_FREE_THRESHOLD
     unsigned int nBestSeenHeight;
     struct TxStatsInfo
     {

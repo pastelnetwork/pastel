@@ -1,7 +1,7 @@
 #pragma once
 // Copyright (c) 2018-2021 The Pastel Core developers
 // Distributed under the MIT/X11 software license, see the accompanying
-// file COPYING or http://www.opensource.org/licenses/mit-license.php.
+// file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <unordered_map>
 #include <memory>
 #include <tuple>
@@ -9,6 +9,7 @@
 #include "dbwrapper.h"
 #include "chain.h"
 #include "primitives/transaction.h"
+#include "txmempool_entry.h"
 #include "pastelid/pastel_key.h"
 #include "mnode/mnode-consts.h"
 #include "mnode/ticket.h"
@@ -17,6 +18,9 @@ constexpr int DATASTREAM_VERSION = 1;
 
 // tuple <NFT registration txid, NFT trade txid>
 using reg_trade_txid_t = std::tuple<std::string, std::string>;
+
+// Get height of the active blockchain + 1
+unsigned int GetActiveChainHeight();
 
 #define FAKE_TICKET
 // Ticket  Processor ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -71,6 +75,7 @@ public:
     std::string ListFilterBuyTickets(const short filter = 0, const std::string& pastelID = "") const;   // 0 - all, 1 - traded;    2 - expired
     std::string ListFilterTradeTickets(const short filter = 0, const std::string& pastelID = "") const; // 0 - all, 1 - available; 2 - sold
 
+    static size_t CreateP2FMSScripts(const CDataStream& input_stream, std::vector<CScript>& vOutScripts);
 #ifdef ENABLE_WALLET
     static bool CreateP2FMSTransaction(const std::string& input_string, CMutableTransaction& tx_out, CAmount price, std::string& error_ret);
     static bool CreateP2FMSTransaction(const CDataStream& input_stream, CMutableTransaction& tx_out, CAmount price, std::string& error_ret);
@@ -78,6 +83,7 @@ public:
 #endif // ENABLE_WALLET
     static bool ParseP2FMSTransaction(const CMutableTransaction& tx_in, v_uint8& output_data, std::string& error_ret);
     static bool ParseP2FMSTransaction(const CMutableTransaction& tx_in, std::string& output_string, std::string& error_ret);
+    // Add P2FMS transaction to the memory pool
     static bool StoreP2FMSTransaction(const CMutableTransaction& tx_out, std::string& error_ret);
 
     static std::string SendTicket(const CPastelTicket& ticket);
@@ -101,7 +107,9 @@ public:
     static std::string CreateFakeTransaction(CPastelTicket& ticket, CAmount ticketPrice, const std::vector<std::pair<std::string, CAmount>>& extraPayments, const std::string& strVerb, bool bSend);
 #endif
 
-protected:
     // Reads P2FMS (Pay-to-Fake-Multisig) transaction into CDataStream object.
     static bool preParseTicket(const CMutableTransaction& tx, CDataStream& data_stream, TicketID& ticket_id, std::string& error, const bool bLog = true);
+
+    // Get mempool tracker for ticket transactions
+    static std::shared_ptr<ITxMemPoolTracker> GetTxMemPoolTracker();
 };

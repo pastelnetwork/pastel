@@ -97,6 +97,7 @@ TEST(Metrics, GetLocalSolPS)
     EXPECT_EQ(1, GetLocalSolPS());
 
     SetMockTime(0);
+    miningTimer.stop();
 }
 
 TEST(Metrics, EstimateNetHeightInner)

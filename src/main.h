@@ -231,15 +231,19 @@ bool ProcessMessages(const CChainParams& chainparams, CNode* pfrom);
 bool SendMessages(const Consensus::Params& consensusParams, CNode* pto, bool fSendTrickle);
 /** Run an instance of the script checking thread */
 void ThreadScriptCheck();
+
+/** Check whether we are doing an initial block download (synchronizing from disk or network) */
+using funcIsInitialBlockDownload_t = std::function<bool(const Consensus::Params& params)>;
+extern funcIsInitialBlockDownload_t fnIsInitialBlockDownload;
+
 /** Try to detect Partition (network isolation) attacks against us */
 void PartitionCheck(
     const Consensus::Params& consensusParams,
-    bool (*initialDownloadCheck)(const Consensus::Params& consensusParams),
+    funcIsInitialBlockDownload_t initialDownloadCheck,
     CCriticalSection& cs,
     const CBlockIndex* const& bestHeader,
     int64_t nPowTargetSpacing);
-/** Check whether we are doing an initial block download (synchronizing from disk or network) */
-bool IsInitialBlockDownload(const Consensus::Params& params);
+
 /** Format a string that describes several potential problems detected by the core */
 std::string GetWarnings(const std::string& strFor);
 /** Retrieve a transaction (from memory pool, or from disk, if possible) */
@@ -379,7 +383,7 @@ bool ContextualCheckTransaction(
     const CChainParams& chainparams,
     int nHeight,
     int dosLevel,
-    bool (*isInitBlockDownload)(const Consensus::Params&) = IsInitialBlockDownload);
+    funcIsInitialBlockDownload_t isInitBlockDownload = fnIsInitialBlockDownload);
 
 /** Apply the effects of this transaction on the UTXO set represented by view */
 void UpdateCoins(const CTransaction& tx, CCoinsViewCache& inputs, int nHeight);

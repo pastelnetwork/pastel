@@ -9,6 +9,7 @@
 #include "key.h"
 #include "pubkey.h"
 #include "util.h"
+#include "metrics.h"
 #ifdef ENABLE_WALLET
 #include "wallet/wallet.h"
 #endif // ENABLE_WALLET
@@ -31,6 +32,32 @@ extern CWallet* pwalletMain;
 #endif // ENABLE_WALLET
 
 extern UniValue generate(const UniValue& params, bool fHelp);
+
+// Once this function has returned false, it must remain false.
+static std::atomic<bool> latchToFalse{false};
+
+// resettable version of IsInitialBlockDownload
+bool TestIsInitialBlockDownload(const Consensus::Params& consensusParams)
+{
+    // Optimization: pre-test latch before taking the lock.
+    if (latchToFalse.load(std::memory_order_relaxed))
+        return false;
+
+    LOCK(cs_main);
+    if (latchToFalse.load(std::memory_order_relaxed))
+        return false;
+    if (fImporting || fReindex)
+        return true;
+    if (!chainActive.Tip())
+        return true;
+    if (chainActive.Tip()->nChainWork < UintToArith256(consensusParams.nMinimumChainWork))
+        return true;
+    if (chainActive.Tip()->GetBlockTime() < (GetTime() - nMaxTipAge))
+        return true;
+    LogPrintf("Leaving InitialBlockDownload (latching to false)\n");
+    latchToFalse.store(true, std::memory_order_relaxed);
+    return false;
+}
 
 void CPastelTest_Environment::SetUp()
 {
@@ -61,6 +88,8 @@ void CPastelTest_Environment::SetUp()
         reinterpret_cast<const codeunit*>(sprout_groth16_str.c_str()),
         sprout_groth16_str.length(),
         "e9b238411bd6c0ec4791e9d04245ec350c9c5744f5610dfcce4365d5ca49dfefd5054e371842b3f88fa1b9d7e8e075249b3ebabd167fa8b0f3161292d36c180a");
+
+    fnIsInitialBlockDownload = TestIsInitialBlockDownload;
 }
 
 void CPastelTest_Environment::TearDown()
@@ -127,6 +156,9 @@ void CPastelTest_Environment::FinalizeRegTest()
         delete pblocktree;
         pblocktree = nullptr;
     }
+    // reset TestIsInitialBlockDownload
+    latchToFalse.store(false, std::memory_order_relaxed);
+    ClearMetrics();
 }
 
 int main(int argc, char **argv)

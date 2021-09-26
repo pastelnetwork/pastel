@@ -1,87 +1,41 @@
+#pragma once
 // Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2014 The Bitcoin Core developers
+// Copyright (c) 2018-2021 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
-
-#ifndef BITCOIN_TXMEMPOOL_H
-#define BITCOIN_TXMEMPOOL_H
-
 #include <list>
+#include <limits>
+#include <unordered_map>
 
-#include "amount.h"
+#include "vector_types.h"
 #include "coins.h"
-#include "primitives/transaction.h"
 #include "sync.h"
 #include "addressindex.h"
 #include "spentindex.h"
 #include "script/script.h"
+#include "txmempool_entry.h"
+#include "policy/fees.h"
 
-#undef foreach
 #include "boost/multi_index_container.hpp"
 #include "boost/multi_index/ordered_index.hpp"
 
 class CAutoFile;
 
-inline double AllowFreeThreshold()
-{
-    return COIN * 144 / 250;
-}
+static constexpr double ALLOW_FREE_THRESHOLD = COIN * 144 / 250;
 
 inline bool AllowFree(double dPriority)
 {
     // Large (in bytes) low-priority (new, small-coin) transactions
     // need a fee.
-    return dPriority > AllowFreeThreshold();
+    return dPriority > ALLOW_FREE_THRESHOLD;
 }
-
-/** Fake height value used in CCoins to signify they are only in the memory pool (since 0.8) */
-static const unsigned int MEMPOOL_HEIGHT = 0x7FFFFFFF;
-
-/**
- * CTxMemPool stores these:
- */
-class CTxMemPoolEntry
-{
-private:
-    CTransaction tx;
-    CAmount nFee; //! Cached to avoid expensive parent-transaction lookups
-    size_t nTxSize; //! ... and avoid recomputing tx size
-    size_t nModSize; //! ... and modified size for priority
-    size_t nUsageSize; //! ... and total memory usage
-    CFeeRate feeRate; //! ... and fee per kB
-    int64_t nTime; //! Local time when entering the mempool
-    double dPriority; //! Priority when entering the mempool
-    unsigned int nHeight; //! Chain height when entering the mempool
-    bool hadNoDependencies; //! Not dependent on any other txs when it entered the mempool
-    bool spendsCoinbase; //! keep track of transactions that spend a coinbase
-    uint32_t nBranchId; //! Branch ID this transaction is known to commit to, cached for efficiency
-
-public:
-    CTxMemPoolEntry(const CTransaction& _tx, const CAmount& _nFee,
-                    int64_t _nTime, double _dPriority, unsigned int _nHeight,
-                    bool poolHasNoInputsOf, bool spendsCoinbase, uint32_t nBranchId);
-    CTxMemPoolEntry();
-    CTxMemPoolEntry(const CTxMemPoolEntry& other);
-
-    const CTransaction& GetTx() const { return this->tx; }
-    double GetPriority(unsigned int currentHeight) const;
-    CAmount GetFee() const { return nFee; }
-    CFeeRate GetFeeRate() const { return feeRate; }
-    size_t GetTxSize() const { return nTxSize; }
-    int64_t GetTime() const { return nTime; }
-    unsigned int GetHeight() const { return nHeight; }
-    bool WasClearAtEntry() const { return hadNoDependencies; }
-    size_t DynamicMemoryUsage() const { return nUsageSize; }
-
-    bool GetSpendsCoinbase() const { return spendsCoinbase; }
-    uint32_t GetValidatedBranchId() const { return nBranchId; }
-};
 
 // extracts a TxMemPoolEntry's transaction hash
 struct mempoolentry_txid
 {
     typedef uint256 result_type;
-    result_type operator() (const CTxMemPoolEntry &entry) const
+    result_type operator() (const CTxMemPoolEntry &entry) const noexcept
     {
         return entry.GetTx().GetHash();
     }
@@ -90,15 +44,13 @@ struct mempoolentry_txid
 class CompareTxMemPoolEntryByFee
 {
 public:
-    bool operator()(const CTxMemPoolEntry& a, const CTxMemPoolEntry& b)
+    bool operator()(const CTxMemPoolEntry& a, const CTxMemPoolEntry& b) noexcept
     {
         if (a.GetFeeRate() == b.GetFeeRate())
             return a.GetTime() < b.GetTime();
         return a.GetFeeRate() > b.GetFeeRate();
     }
 };
-
-class CBlockPolicyEstimator;
 
 /** An inpoint - a combination of a transaction and an index n into its vin */
 class CInPoint
@@ -107,11 +59,25 @@ public:
     const CTransaction* ptx;
     uint32_t n;
 
-    CInPoint() { SetNull(); }
-    CInPoint(const CTransaction* ptxIn, uint32_t nIn) { ptx = ptxIn; n = nIn; }
-    void SetNull() { ptx = NULL; n = (uint32_t) -1; }
-    bool IsNull() const { return (ptx == NULL && n == (uint32_t) -1); }
-    size_t DynamicMemoryUsage() const { return 0; }
+    CInPoint() noexcept
+    {
+        SetNull();
+    }
+    CInPoint(const CTransaction* ptxIn, uint32_t nIn) noexcept
+    { 
+        ptx = ptxIn; 
+        n = nIn;
+    }
+    void SetNull() noexcept
+    { 
+        ptx = nullptr; 
+        n = std::numeric_limits<uint32_t>::max();
+    }
+    bool IsNull() const noexcept
+    {
+        return (!ptx && n == std::numeric_limits<uint32_t>::max());
+    }
+    size_t DynamicMemoryUsage() const noexcept { return 0; }
 };
 
 /**
@@ -129,16 +95,18 @@ class CTxMemPool
 private:
     uint32_t nCheckFrequency; //! Value n means that n times in 2^32 we check.
     unsigned int nTransactionsUpdated;
-    CBlockPolicyEstimator* minerPolicyEstimator;
+    std::shared_ptr<CBlockPolicyEstimator> minerPolicyEstimator;
 
     uint64_t totalTxSize = 0; //! sum of all mempool tx' byte sizes
     uint64_t cachedInnerUsage; //! sum of dynamic memory usage of all the map elements (NOT the maps themselves)
 
-    std::map<uint256, const CTransaction*> mapSaplingNullifiers;
+    std::unordered_map<uint256, const CTransaction*> mapSaplingNullifiers;
+    std::map<CSpentIndexKey, CSpentIndexValue, CSpentIndexKeyCompare> mapSpent;
+    std::map<CMempoolAddressDeltaKey, CMempoolAddressDelta, CMempoolAddressDeltaKeyCompare> mapAddress;
+    // array of objects to notify for transactions add/remove events
+    std::vector<std::shared_ptr<ITxMemPoolTracker>> m_vTxMemPoolTracker;
 
     void checkNullifiers(ShieldedType type) const;
-
-    std::map<CSpentIndexKey, CSpentIndexValue, CSpentIndexKeyCompare> mapSpent;
     
 public:
     typedef boost::multi_index_container<
@@ -147,25 +115,17 @@ public:
             // sorted by txid
             boost::multi_index::ordered_unique<mempoolentry_txid>,
             // sorted by fee rate
-            boost::multi_index::ordered_non_unique<
-                boost::multi_index::identity<CTxMemPoolEntry>,
-                CompareTxMemPoolEntryByFee
-            >
+            boost::multi_index::ordered_non_unique<boost::multi_index::identity<CTxMemPoolEntry>, CompareTxMemPoolEntryByFee>
         >
     > indexed_transaction_set;
 
     mutable CCriticalSection cs;
     indexed_transaction_set mapTx;
     
-private:
-    std::map<CMempoolAddressDeltaKey, CMempoolAddressDelta, CMempoolAddressDeltaKeyCompare> mapAddress;
-
-public:
     std::map<COutPoint, CInPoint> mapNextTx;
-    std::map<uint256, std::pair<double, CAmount> > mapDeltas;
+    std::unordered_map<uint256, std::pair<double, CAmount> > mapDeltas;
 
     CTxMemPool(const CFeeRate& _minRelayFee);
-    ~CTxMemPool();
 
     /**
      * If sanity-checking is turned on, check makes sure the pool is
@@ -174,7 +134,7 @@ public:
      * check does nothing.
      */
     void check(const CCoinsViewCache *pcoins) const;
-    void setSanityCheck(double dFrequency = 1.0) { nCheckFrequency = static_cast<uint32_t>(dFrequency * 4294967295.0); }
+    void setSanityCheck(const double dFrequency = 1.0) noexcept { nCheckFrequency = static_cast<uint32_t>(dFrequency * 4294967295.0); }
 
 	void getAddressIndex(const std::vector<std::pair<uint160, CScript::ScriptType>>& addresses,
                          std::vector<std::pair<CMempoolAddressDeltaKey, CMempoolAddressDelta>>& results);
@@ -182,7 +142,7 @@ public:
     bool getSpentIndex(const CSpentIndexKey &key, CSpentIndexValue &value);
 
 	bool addUnchecked(const uint256& hash, const CTxMemPoolEntry &entry, bool fCurrentEstimate = true);
-    void remove(const CTransaction &tx, std::list<CTransaction>& removed, bool fRecursive = false);
+    void remove(const CTransaction& tx, const bool fRecursive = true, std::list<CTransaction>* pRemovedTxList = nullptr);
     void removeWithAnchor(const uint256 &invalidRoot, ShieldedType type);
     void removeForReorg(const CCoinsViewCache *pcoins, unsigned int nMemPoolHeight, int flags);
     void removeConflicts(const CTransaction &tx, std::list<CTransaction>& removed);
@@ -207,26 +167,57 @@ public:
     void ClearPrioritisation(const uint256 hash);
 
     bool nullifierExists(const uint256& nullifier, ShieldedType type) const;
-
+    // add object to track all add/remove events for transactions in mempool
+    void AddTxMemPoolTracker(std::shared_ptr<ITxMemPoolTracker> pTracker);
+    /**
+     * Returns transaction count in the mempool (thread-safe).
+     * 
+     * \return 
+     */
     size_t size() const
     {
         LOCK(cs);
         return mapTx.size();
     }
 
+    /**
+     * Returns total size of all transactions in the mempool (thread-safe).
+     * 
+     * \return tx pool size
+     */
     uint64_t GetTotalTxSize() const
     {
         LOCK(cs);
         return totalTxSize;
     }
 
-    bool exists(uint256 hash) const
+    /**
+     * Returns true if transaction with txid exists (not thread-safe - need external cs lock).
+     * 
+     * \param txid - hash of the transaction
+     * \return true if transactions with the specified hash exists in the mempool
+     */
+    bool exists_nolock(const uint256& txid) const
     {
-        LOCK(cs);
-        return (mapTx.count(hash) != 0);
+        return (mapTx.count(txid) != 0);
     }
 
-    bool lookup(uint256 hash, CTransaction& result) const;
+    /**
+     * Returns true if transaction with txid exists (thread-safe).
+     * 
+     * \param txid - hash of the transaction
+     * \return true if transactions with the specified hash exists in the mempool
+     */
+    bool exists(const uint256 &txid) const
+    {
+        LOCK(cs);
+        return exists_nolock(txid);
+    }
+
+    // Lookup for the transaction with the specific hash (txid).
+    virtual bool lookup(const uint256 &txid, CTransaction& tx) const;
+    // Get a list of transactions by txids
+    virtual void batch_lookup(const std::vector<uint256>& vTxid, std::vector<CMutableTransaction>& vTx, v_uints &vBlockHeight) const;
 
     /** Estimate fee rate needed to get into the next nBlocks */
     CFeeRate estimateFee(int nBlocks) const;
@@ -241,9 +232,7 @@ public:
     size_t DynamicMemoryUsage() const;
 
     /** Return nCheckFrequency */
-    uint32_t GetCheckFrequency() const {
-        return nCheckFrequency;
-    }
+    uint32_t GetCheckFrequency() const noexcept { return nCheckFrequency; }
 };
 
 /** 
@@ -261,5 +250,3 @@ public:
     bool GetCoins(const uint256 &txid, CCoins &coins) const;
     bool HaveCoins(const uint256 &txid) const;
 };
-
-#endif // BITCOIN_TXMEMPOOL_H

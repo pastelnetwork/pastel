@@ -6,7 +6,7 @@
   </ImportGroup>
   <ItemDefinitionGroup>
     <ClCompile>
-      <AdditionalIncludeDirectories>$(SRC)univalue\include;$(SRC)leveldb\include;$(SRC)snark;$(SRC)snark\libsnark;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SRC)gtest;$(SRC)univalue\include;$(SRC)leveldb\include;$(SRC)snark;$(SRC)snark\libsnark;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>__GMP_LIBGMP_DLL;ENABLE_WALLET;ENABLE_ZMQ;ZMQ_STATIC;BINARY_OUTPUT;BOOST_SPIRIT_THREADSAFE;MONTGOMERY_OUTPUT;CURVE_ALT_BN128;_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalOptions>/bigobj %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>

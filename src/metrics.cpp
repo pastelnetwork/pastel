@@ -221,7 +221,7 @@ int printStats(bool mining)
     auto localsolps = GetLocalSolPS();
 
     const auto& consensusParams = Params().GetConsensus();
-    if (IsInitialBlockDownload(consensusParams)) {
+    if (fnIsInitialBlockDownload(consensusParams)) {
         int netheight = EstimateNetHeight(height, tipmediantime, Params());
         int downloadPercent = netheight == 0? netheight: height * 100 / netheight;
         std::cout << "     " << _("Downloading blocks") << " | " << height << " / ~" << netheight << " (" << downloadPercent << "%)" << std::endl;
@@ -259,7 +259,7 @@ int printMiningStatus(bool mining)
             }
             if (fvNodesEmpty) {
                 std::cout << _("Mining is paused while waiting for connections.") << std::endl;
-            } else if (IsInitialBlockDownload(consensusParams)) {
+            } else if (fnIsInitialBlockDownload(consensusParams)) {
                 std::cout << _("Mining is paused while downloading blocks.") << std::endl;
             } else {
                 std::cout << _("Mining is paused (a JoinSplit may be in progress).") << std::endl;
@@ -550,4 +550,15 @@ void ThreadShowMetricsScreen()
         if (isScreen)
             SendVTSequence(tfm::format("%dA", lines).c_str());
     }
+}
+
+void ClearMetrics()
+{
+    transactionsValidated.set(0);
+    ehSolverRuns.set(0);
+    solutionTargetChecks.set(0);
+    minedBlocks.set(0);
+    nNodeStartTime = 0;
+    nNextRefresh = 0;
+    loaded = false;
 }

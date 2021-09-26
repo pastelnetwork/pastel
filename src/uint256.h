@@ -5,7 +5,15 @@
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 #include <assert.h>
 #include <stdexcept>
+
 #include "vector_types.h"
+
+template <class T>
+inline void hash_combine(std::size_t& seed, const T& v)
+{
+    std::hash<T> hasher;
+    seed ^= hasher(v) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
+}
 
 /** Template base class for fixed-sized opaque blobs. */
 template<unsigned int BITS>
@@ -18,7 +26,7 @@ protected:
 public:
     inline static constexpr size_t SIZE = WIDTH;
 
-    base_blob()
+    base_blob() noexcept
     {
         memset(data, 0, sizeof(data));
     }
@@ -47,27 +55,27 @@ public:
     void SetHex(const std::string& str);
     std::string ToString() const;
 
-    unsigned char* begin()
+    unsigned char* begin() noexcept
     {
         return &data[0];
     }
 
-    unsigned char* end()
+    unsigned char* end() noexcept
     {
         return &data[WIDTH];
     }
 
-    const unsigned char* begin() const
+    const unsigned char* begin() const noexcept
     {
         return &data[0];
     }
 
-    const unsigned char* end() const
+    const unsigned char* end() const noexcept
     {
         return &data[WIDTH];
     }
 
-    unsigned int size() const
+    unsigned int size() const noexcept
     {
         return sizeof(data);
     }
@@ -158,4 +166,29 @@ inline uint256 uint256S(const std::string& str)
     uint256 rv;
     rv.SetHex(str);
     return rv;
+}
+
+namespace std
+{
+    template <>
+    struct hash<uint256>
+    {
+        std::size_t operator()(const uint256& key) const noexcept
+        {
+            // Start with a hash value of 0
+            size_t seed = 0;
+
+            static const auto N = key.SIZE / sizeof(uint64_t);
+            // Modify 'seed' by XORing and bit-shifting in
+            // one member of after the other
+            auto p = key.begin();
+            for (int i = 0; i < N; ++i)
+            {
+                hash_combine(seed, *reinterpret_cast<const uint64_t*>(p));
+                p += sizeof(uint64_t);
+            }
+            return seed;
+        }
+    };
+
 }
