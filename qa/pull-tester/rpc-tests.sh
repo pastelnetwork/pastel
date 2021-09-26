@@ -108,6 +108,7 @@ declare -a testScriptsToFix=(
 
 declare -a testScriptsMN=(
     'mn_main.py'
+    'mn_tickets.py'
     'mn_bugs.py'
     'mn_payment.py'
     'mn_governance.py'
@@ -116,7 +117,6 @@ declare -a testScriptsMN=(
 declare -a testScriptsMNfast=(
     'secure_container.py'
     'mn_ticket_username_change.py'
-    'mn_tickets.py'
     'mn_tickets_validation.py'
     'mn_messaging.py'
 )
