@@ -140,10 +140,12 @@ bool CMasternodeConfig::read(std::string& strErr)
         strErr = strprintf("Error while processing config file - %s\n", e.what());
         return false;
     }
-
+    
+    std::string strWhat;
     for (json::iterator it = jsonObj.begin(); it != jsonObj.end(); ++it) {
         
         if (it.key().empty() || !it->count("mnAddress") || !it->count("mnPrivKey") || !it->count("txid") || !it->count("outIndex")) {
+            strErr = strprintf("Invalid record - %s", jsonObj.dump());
             continue;
         }
 
@@ -157,6 +159,7 @@ bool CMasternodeConfig::read(std::string& strErr)
         outIndex = get_string(it, "outIndex");
 
         if (mnAddress.empty() || mnPrivKey.empty() || txid.empty() || outIndex.empty()) {
+            strWhat = strprintf("Missing mnAddress=%s OR mnPrivKey=%s OR txid=%s OR outIndex=%s", mnAddress, mnPrivKey, txid, outIndex);
             continue;
         }
 
@@ -193,7 +196,7 @@ bool CMasternodeConfig::read(std::string& strErr)
     }
 
     if (getCount() == 0) {
-        strErr = strprintf("Config file is invalid - no correct records found\n");
+        strErr = strprintf("Config file %s is invalid (%s) - no correct records found - %s\n", pathMasternodeConfigFile.string(), strWhat, jsonObj.dump());
         return false;
     }
 
