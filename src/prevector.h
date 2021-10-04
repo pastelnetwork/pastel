@@ -1,6 +1,4 @@
-#ifndef _BITCOIN_PREVECTOR_H_
-#define _BITCOIN_PREVECTOR_H_
-
+#pragma once
 #include <util.h>
 
 #include <assert.h>
@@ -48,26 +46,26 @@ public:
         typedef T* pointer;
         typedef T& reference;
         typedef std::random_access_iterator_tag iterator_category;
-        iterator(T* ptr_) : ptr(ptr_) {}
-        T& operator*() const { return *ptr; }
-        T* operator->() const { return ptr; }
-        T& operator[](size_type pos) { return ptr[pos]; }
-        const T& operator[](size_type pos) const { return ptr[pos]; }
-        iterator& operator++() { ptr++; return *this; }
-        iterator& operator--() { ptr--; return *this; }
+        iterator(T* ptr_) noexcept : ptr(ptr_) {}
+        T& operator*() const noexcept { return *ptr; }
+        T* operator->() const noexcept { return ptr; }
+        T& operator[](const size_type pos) noexcept { return ptr[pos]; }
+        const T& operator[](const size_type pos) const noexcept { return ptr[pos]; }
+        iterator& operator++() noexcept { ptr++; return *this; }
+        iterator& operator--() noexcept { ptr--; return *this; }
         iterator operator++(int) { iterator copy(*this); ++(*this); return copy; }
         iterator operator--(int) { iterator copy(*this); --(*this); return copy; }
-        difference_type friend operator-(iterator a, iterator b) { return static_cast<difference_type>(&(*a) - &(*b)); }
-        iterator operator+(size_type n) { return iterator(ptr + n); }
-        iterator& operator+=(size_type n) { ptr += n; return *this; }
-        iterator operator-(size_type n) { return iterator(ptr - n); }
-        iterator& operator-=(size_type n) { ptr -= n; return *this; }
-        bool operator==(iterator x) const { return ptr == x.ptr; }
-        bool operator!=(iterator x) const { return ptr != x.ptr; }
-        bool operator>=(iterator x) const { return ptr >= x.ptr; }
-        bool operator<=(iterator x) const { return ptr <= x.ptr; }
-        bool operator>(iterator x) const { return ptr > x.ptr; }
-        bool operator<(iterator x) const { return ptr < x.ptr; }
+        difference_type friend operator-(iterator a, iterator b) noexcept { return static_cast<difference_type>(&(*a) - &(*b)); }
+        iterator operator+(size_type n) noexcept { return iterator(ptr + n); }
+        iterator& operator+=(size_type n) noexcept { ptr += n; return *this; }
+        iterator operator-(size_type n) noexcept { return iterator(ptr - n); }
+        iterator& operator-=(size_type n) noexcept { ptr -= n; return *this; }
+        bool operator==(iterator x) const noexcept { return ptr == x.ptr; }
+        bool operator!=(iterator x) const noexcept { return ptr != x.ptr; }
+        bool operator>=(iterator x) const noexcept { return ptr >= x.ptr; }
+        bool operator<=(iterator x) const noexcept { return ptr <= x.ptr; }
+        bool operator>(iterator x) const noexcept { return ptr > x.ptr; }
+        bool operator<(iterator x) const noexcept { return ptr < x.ptr; }
     };
 
     class reverse_iterator {
@@ -78,17 +76,17 @@ public:
         typedef T* pointer;
         typedef T& reference;
         typedef std::bidirectional_iterator_tag iterator_category;
-        reverse_iterator(T* ptr_) : ptr(ptr_) {}
-        T& operator*() { return *ptr; }
-        const T& operator*() const { return *ptr; }
-        T* operator->() { return ptr; }
-        const T* operator->() const { return ptr; }
-        reverse_iterator& operator--() { ptr++; return *this; }
-        reverse_iterator& operator++() { ptr--; return *this; }
+        reverse_iterator(T* ptr_) noexcept : ptr(ptr_) {}
+        T& operator*() noexcept { return *ptr; }
+        const T& operator*() const noexcept { return *ptr; }
+        T* operator->() noexcept { return ptr; }
+        const T* operator->() const noexcept { return ptr; }
+        reverse_iterator& operator--() noexcept { ptr++; return *this; }
+        reverse_iterator& operator++() noexcept { ptr--; return *this; }
         reverse_iterator operator++(int) { reverse_iterator copy(*this); ++(*this); return copy; }
         reverse_iterator operator--(int) { reverse_iterator copy(*this); --(*this); return copy; }
-        bool operator==(reverse_iterator x) const { return ptr == x.ptr; }
-        bool operator!=(reverse_iterator x) const { return ptr != x.ptr; }
+        bool operator==(reverse_iterator x) const noexcept { return ptr == x.ptr; }
+        bool operator!=(reverse_iterator x) const noexcept { return ptr != x.ptr; }
     };
 
     class const_iterator {
@@ -99,26 +97,26 @@ public:
         typedef const T* pointer;
         typedef const T& reference;
         typedef std::random_access_iterator_tag iterator_category;
-        const_iterator(const T* ptr_) : ptr(ptr_) {}
-        const_iterator(iterator x) : ptr(&(*x)) {}
-        const T& operator*() const { return *ptr; }
-        const T* operator->() const { return ptr; }
-        const T& operator[](size_type pos) const { return ptr[pos]; }
-        const_iterator& operator++() { ptr++; return *this; }
-        const_iterator& operator--() { ptr--; return *this; }
+        const_iterator(const T* ptr_) noexcept : ptr(ptr_) {}
+        const_iterator(iterator x) noexcept : ptr(&(*x)) {}
+        const T& operator*() const noexcept { return *ptr; }
+        const T* operator->() const noexcept { return ptr; }
+        const T& operator[](size_type pos) const noexcept { return ptr[pos]; }
+        const_iterator& operator++() noexcept { ptr++; return *this; }
+        const_iterator& operator--() noexcept { ptr--; return *this; }
         const_iterator operator++(int) { const_iterator copy(*this); ++(*this); return copy; }
         const_iterator operator--(int) { const_iterator copy(*this); --(*this); return copy; }
         difference_type friend operator-(const_iterator a, const_iterator b) { return static_cast<difference_type>(&(*a) - &(*b)); }
-        const_iterator operator+(size_type n) { return const_iterator(ptr + n); }
-        const_iterator& operator+=(size_type n) { ptr += n; return *this; }
-        const_iterator operator-(size_type n) { return const_iterator(ptr - n); }
-        const_iterator& operator-=(size_type n) { ptr -= n; return *this; }
-        bool operator==(const_iterator x) const { return ptr == x.ptr; }
-        bool operator!=(const_iterator x) const { return ptr != x.ptr; }
-        bool operator>=(const_iterator x) const { return ptr >= x.ptr; }
-        bool operator<=(const_iterator x) const { return ptr <= x.ptr; }
-        bool operator>(const_iterator x) const { return ptr > x.ptr; }
-        bool operator<(const_iterator x) const { return ptr < x.ptr; }
+        const_iterator operator+(size_type n) noexcept { return const_iterator(ptr + n); }
+        const_iterator& operator+=(size_type n) noexcept { ptr += n; return *this; }
+        const_iterator operator-(size_type n) noexcept { return const_iterator(ptr - n); }
+        const_iterator& operator-=(size_type n) noexcept { ptr -= n; return *this; }
+        bool operator==(const_iterator x) const noexcept { return ptr == x.ptr; }
+        bool operator!=(const_iterator x) const noexcept { return ptr != x.ptr; }
+        bool operator>=(const_iterator x) const noexcept { return ptr >= x.ptr; }
+        bool operator<=(const_iterator x) const noexcept { return ptr <= x.ptr; }
+        bool operator>(const_iterator x) const noexcept { return ptr > x.ptr; }
+        bool operator<(const_iterator x) const noexcept { return ptr < x.ptr; }
     };
 
     class const_reverse_iterator {
@@ -129,16 +127,16 @@ public:
         typedef const T* pointer;
         typedef const T& reference;
         typedef std::bidirectional_iterator_tag iterator_category;
-        const_reverse_iterator(const T* ptr_) : ptr(ptr_) {}
-        const_reverse_iterator(reverse_iterator x) : ptr(&(*x)) {}
-        const T& operator*() const { return *ptr; }
-        const T* operator->() const { return ptr; }
-        const_reverse_iterator& operator--() { ptr++; return *this; }
-        const_reverse_iterator& operator++() { ptr--; return *this; }
+        const_reverse_iterator(const T* ptr_) noexcept : ptr(ptr_) {}
+        const_reverse_iterator(reverse_iterator x) noexcept : ptr(&(*x)) {}
+        const T& operator*() const noexcept { return *ptr; }
+        const T* operator->() const noexcept { return ptr; }
+        const_reverse_iterator& operator--() noexcept { ptr++; return *this; }
+        const_reverse_iterator& operator++() noexcept { ptr--; return *this; }
         const_reverse_iterator operator++(int) { const_reverse_iterator copy(*this); ++(*this); return copy; }
         const_reverse_iterator operator--(int) { const_reverse_iterator copy(*this); --(*this); return copy; }
-        bool operator==(const_reverse_iterator x) const { return ptr == x.ptr; }
-        bool operator!=(const_reverse_iterator x) const { return ptr != x.ptr; }
+        bool operator==(const_reverse_iterator x) const noexcept { return ptr == x.ptr; }
+        bool operator!=(const_reverse_iterator x) const noexcept { return ptr != x.ptr; }
     };
 
 private:
@@ -151,15 +149,18 @@ private:
         };
     } _union;
 
-    T* direct_ptr(difference_type pos) { return reinterpret_cast<T*>(_union.direct) + pos; }
-    const T* direct_ptr(difference_type pos) const { return reinterpret_cast<const T*>(_union.direct) + pos; }
-    T* indirect_ptr(difference_type pos) { return reinterpret_cast<T*>(_union.indirect) + pos; }
-    const T* indirect_ptr(difference_type pos) const { return reinterpret_cast<const T*>(_union.indirect) + pos; }
-    bool is_direct() const { return _size <= N; }
+    T* direct_ptr(const difference_type pos) noexcept { return reinterpret_cast<T*>(_union.direct) + pos; }
+    const T* direct_ptr(const difference_type pos) const noexcept { return reinterpret_cast<const T*>(_union.direct) + pos; }
+    T* indirect_ptr(const difference_type pos) noexcept { return reinterpret_cast<T*>(_union.indirect) + pos; }
+    const T* indirect_ptr(const difference_type pos) const noexcept { return reinterpret_cast<const T*>(_union.indirect) + pos; }
+    bool is_direct() const noexcept { return _size <= N; }
 
-    void change_capacity(size_type new_capacity) {
-        if (new_capacity <= N) {
-            if (!is_direct()) {
+    void change_capacity(const size_type new_capacity)
+    {
+        if (new_capacity <= N)
+        {
+            if (!is_direct())
+            {
                 T* indirect = indirect_ptr(0);
                 T* src = indirect;
                 T* dst = direct_ptr(0);
@@ -188,11 +189,12 @@ private:
         }
     }
 
-    T* item_ptr(difference_type pos) { return is_direct() ? direct_ptr(pos) : indirect_ptr(pos); }
-    const T* item_ptr(const difference_type pos) const { return is_direct() ? direct_ptr(pos) : indirect_ptr(pos); }
+    T* item_ptr(const difference_type pos) noexcept { return is_direct() ? direct_ptr(pos) : indirect_ptr(pos); }
+    const T* item_ptr(const difference_type pos) const noexcept { return is_direct() ? direct_ptr(pos) : indirect_ptr(pos); }
 
 public:
-    void assign(size_type n, const T& val) {
+    void assign(size_type n, const T& val)
+    {
         clear();
         if (capacity() < n) {
             change_capacity(n);
@@ -217,13 +219,20 @@ public:
         }
     }
 
-    prevector() : _size(0), _union() {}
+    prevector() noexcept : 
+        _size(0), 
+        _union()
+    {}
 
-    explicit prevector(size_type n) : _size(0) {
+    explicit prevector(size_type n) : 
+        _size(0)
+    {
         resize(n);
     }
 
-    explicit prevector(size_type n, const T& val = T()) : _size(0) {
+    explicit prevector(size_type n, const T& val = T()) : 
+        _size(0)
+    {
         change_capacity(n);
         while (size() < n) {
             _size++;
@@ -267,37 +276,43 @@ public:
         return *this;
     }
 
-    size_type size() const {
+    size_type size() const noexcept
+    {
         return is_direct() ? _size : _size - N - 1;
     }
 
-    bool empty() const {
+    bool empty() const noexcept
+    {
         return size() == 0;
     }
 
-    iterator begin() { return iterator(item_ptr(0)); }
-    const_iterator begin() const { return const_iterator(item_ptr(0)); }
-    iterator end() { return iterator(item_ptr(size())); }
-    const_iterator end() const { return const_iterator(item_ptr(size())); }
+    iterator begin() noexcept { return iterator(item_ptr(0)); }
+    const_iterator begin() const noexcept { return const_iterator(item_ptr(0)); }
+    iterator end() noexcept { return iterator(item_ptr(size())); }
+    const_iterator end() const noexcept { return const_iterator(item_ptr(size())); }
 
-    reverse_iterator rbegin() { return reverse_iterator(item_ptr(size() - 1)); }
-    const_reverse_iterator rbegin() const { return const_reverse_iterator(item_ptr(size() - 1)); }
-    reverse_iterator rend() { return reverse_iterator(item_ptr(-1)); }
-    const_reverse_iterator rend() const { return const_reverse_iterator(item_ptr(-1)); }
+    reverse_iterator rbegin() noexcept { return reverse_iterator(item_ptr(size() - 1)); }
+    const_reverse_iterator rbegin() const noexcept { return const_reverse_iterator(item_ptr(size() - 1)); }
+    reverse_iterator rend() noexcept { return reverse_iterator(item_ptr(-1)); }
+    const_reverse_iterator rend() const noexcept { return const_reverse_iterator(item_ptr(-1)); }
 
-    size_t capacity() const {
-        if (is_direct()) {
-            return N;
-        } else {
-            return _union.capacity;
-        }
+    size_t capacity() const noexcept
+    {
+        size_t nCapacity;
+        if (is_direct())
+            nCapacity = N;
+        else
+            nCapacity = _union.capacity;
+        return nCapacity;
     }
 
-    T& operator[](size_type pos) {
+    T& operator[](size_type pos) noexcept
+    {
         return *item_ptr(pos);
     }
 
-    const T& operator[](size_type pos) const {
+    const T& operator[](size_type pos) const noexcept
+    {
         return *item_ptr(pos);
     }
 
@@ -325,7 +340,8 @@ public:
         change_capacity(size());
     }
 
-    void clear() {
+    void clear()
+    {
         resize(0);
     }
 
@@ -399,37 +415,44 @@ public:
         _size++;
     }
 
-    void pop_back() {
+    void pop_back() noexcept
+    {
         _size--;
     }
 
-    T& front() {
+    T& front() noexcept
+    {
         return *item_ptr(0);
     }
 
-    const T& front() const {
+    const T& front() const noexcept
+    {
         return *item_ptr(0);
     }
 
-    T& back() {
+    T& back() noexcept
+    {
         return *item_ptr(size() - 1);
     }
 
-    const T& back() const {
+    const T& back() const noexcept
+    {
         return *item_ptr(size() - 1);
     }
 
-    void swap(prevector<N, T, Size, Diff>& other) {
-        if (_size & other._size & 1) {
+    void swap(prevector<N, T, Size, Diff>& other) noexcept
+    {
+        if (_size & other._size & 1)
+        {
             std::swap(_union.capacity, other._union.capacity);
             std::swap(_union.indirect, other._union.indirect);
-        } else {
+        } else
             std::swap(_union, other._union);
-        }
         std::swap(_size, other._size);
     }
 
-    ~prevector() {
+    virtual ~prevector()
+    {
         clear();
         if (!is_direct()) {
             free(_union.indirect);
@@ -490,5 +513,3 @@ public:
     }
 };
 #pragma pack(pop)
-
-#endif

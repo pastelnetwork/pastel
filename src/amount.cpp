@@ -7,6 +7,7 @@
 #include "tinyformat.h"
 
 const std::string CURRENCY_UNIT = "PSL";
+const std::string MINOR_CURRENCY_UNIT = "patoshis";
 
 CFeeRate::CFeeRate(const CAmount& nFeePaid, size_t nSize)
 {

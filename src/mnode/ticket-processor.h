@@ -8,6 +8,7 @@
 
 #include "dbwrapper.h"
 #include "chain.h"
+#include "str_types.h"
 #include "primitives/transaction.h"
 #include "txmempool_entry.h"
 #include "pastelid/pastel_key.h"
@@ -77,16 +78,20 @@ public:
 
     static size_t CreateP2FMSScripts(const CDataStream& input_stream, std::vector<CScript>& vOutScripts);
 #ifdef ENABLE_WALLET
-    static bool CreateP2FMSTransaction(const std::string& input_string, CMutableTransaction& tx_out, CAmount price, std::string& error_ret);
-    static bool CreateP2FMSTransaction(const CDataStream& input_stream, CMutableTransaction& tx_out, CAmount price, std::string& error_ret);
-    static bool CreateP2FMSTransactionWithExtra(const CDataStream& input_data, const std::vector<CTxOut>& extraOutputs, CAmount extraAmount, CMutableTransaction& tx_out, CAmount price, std::string& error_ret);
+    static bool CreateP2FMSTransaction(const std::string& input_string, CMutableTransaction& tx_out, 
+        const CAmount price, const opt_string_t& sFundingAddress, std::string& error_ret);
+    static bool CreateP2FMSTransaction(const CDataStream& input_stream, CMutableTransaction& tx_out, 
+        const CAmount price, const opt_string_t& sFundingAddress, std::string& error_ret);
+    static bool CreateP2FMSTransactionWithExtra(const CDataStream& input_data, 
+        const std::vector<CTxOut>& extraOutputs, const CAmount extraAmount, CMutableTransaction& tx_out, 
+        const CAmount price, const opt_string_t& sFundingAddress, std::string& error_ret);
 #endif // ENABLE_WALLET
     static bool ParseP2FMSTransaction(const CMutableTransaction& tx_in, v_uint8& output_data, std::string& error_ret);
     static bool ParseP2FMSTransaction(const CMutableTransaction& tx_in, std::string& output_string, std::string& error_ret);
     // Add P2FMS transaction to the memory pool
     static bool StoreP2FMSTransaction(const CMutableTransaction& tx_out, std::string& error_ret);
 
-    static std::string SendTicket(const CPastelTicket& ticket);
+    static std::string SendTicket(const CPastelTicket& ticket, const opt_string_t& sFundingAddress = std::nullopt);
 
     static std::unique_ptr<CPastelTicket> GetTicket(const uint256 &txid);
     static std::unique_ptr<CPastelTicket> GetTicket(const std::string& _txid, const TicketID ticketID);
@@ -95,11 +100,11 @@ public:
     static bool ValidateIfTicketTransaction(const int nHeight, const CTransaction& tx);
     
     static bool WalkBackTradingChain(
-            const std::string& sTxId,                               // txid of the starting ticket
-            std::vector< std::unique_ptr<CPastelTicket> >& chain,   // vector with the tickets in chain
-            bool shortPath,                                         // follow short or long path
-                                                                    //      Trade, Act, Reg in short walk
-                                                                    //      Trade, Buy, Sell, Act or Reg in long walk
+            const std::string& sTxId,   // txid of the starting ticket
+            PastelTickets_t& chain,     // vector with the tickets in chain
+            bool shortPath,             // follow short or long path
+                                        //      Trade, Act, Reg in short walk
+                                        //      Trade, Buy, Sell, Act or Reg in long walk
             std::string& errRet) noexcept;
     
     std::optional<reg_trade_txid_t> ValidateOwnership(const std::string& _txid, const std::string& _pastelID);

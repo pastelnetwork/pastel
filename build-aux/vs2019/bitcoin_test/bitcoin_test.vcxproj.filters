@@ -185,5 +185,6 @@
     <None Include="..\..\..\src\test\README.md">
       <Filter>UnitTest Files</Filter>
     </None>
+    <None Include="..\..\..\src\Makefile.test.include" />
   </ItemGroup>
 </Project>

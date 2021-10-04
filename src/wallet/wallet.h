@@ -14,6 +14,7 @@
 #include "tinyformat.h"
 #include "ui_interface.h"
 #include "util.h"
+#include "map_types.h"
 #include "utilstrencodings.h"
 #include "validationinterface.h"
 #include "wallet/crypter.h"
@@ -126,12 +127,15 @@ struct CRecipient
     CScript scriptPubKey;
     CAmount nAmount;
     bool fSubtractFeeFromAmount;
+
+    CRecipient(const CScript& _scriptPubKey, const CAmount& _nAmount, const bool _fSubtractFeeFromAmount) : 
+        scriptPubKey(_scriptPubKey),
+        nAmount(_nAmount),
+        fSubtractFeeFromAmount(_fSubtractFeeFromAmount)
+    {}
 };
 
-typedef std::map<std::string, std::string> mapValue_t;
-
-
-static void ReadOrderPos(int64_t& nOrderPos, mapValue_t& mapValue)
+static void ReadOrderPos(int64_t& nOrderPos, mu_strings& mapValue)
 {
     if (!mapValue.count("n"))
     {
@@ -142,7 +146,7 @@ static void ReadOrderPos(int64_t& nOrderPos, mapValue_t& mapValue)
 }
 
 
-static void WriteOrderPos(const int64_t& nOrderPos, mapValue_t& mapValue)
+static void WriteOrderPos(const int64_t& nOrderPos, mu_strings& mapValue)
 {
     if (nOrderPos == -1)
         return;
@@ -277,7 +281,7 @@ private:
     const CWallet* pwallet;
 
 public:
-    mapValue_t mapValue;
+    mu_strings mapValue;
     mapSaplingNoteData_t mapSaplingNoteData;
     std::vector<std::pair<std::string, std::string> > vOrderForm;
     unsigned int fTimeReceivedIsTxTime;
@@ -447,21 +451,21 @@ public:
         libzcash::SaplingPaymentAddress>> RecoverSaplingNoteWithoutLeadByteCheck(SaplingOutPoint op, std::set<uint256>& ovks) const;
 
     //! filter decides which addresses will count towards the debit
-    CAmount GetDebit(const isminefilter& filter) const;
-    CAmount GetCredit(const isminefilter& filter) const;
-    CAmount GetImmatureCredit(bool fUseCache=true) const;
-    CAmount GetAvailableCredit(bool fUseCache=true) const;
+    CAmount GetDebit(const isminetype& filter) const;
+    CAmount GetCredit(const isminetype& filter) const;
+    CAmount GetImmatureCredit(const bool fUseCache=true) const;
+    CAmount GetAvailableCredit(const bool fUseCache=true) const;
     CAmount GetImmatureWatchOnlyCredit(const bool& fUseCache=true) const;
     CAmount GetAvailableWatchOnlyCredit(const bool& fUseCache=true) const;
     CAmount GetChange() const;
 
     void GetAmounts(std::list<COutputEntry>& listReceived,
-                    std::list<COutputEntry>& listSent, CAmount& nFee, std::string& strSentAccount, const isminefilter& filter) const;
+                    std::list<COutputEntry>& listSent, CAmount& nFee, std::string& strSentAccount, const isminetype& filter) const;
 
     void GetAccountAmounts(const std::string& strAccount, CAmount& nReceived,
-                           CAmount& nSent, CAmount& nFee, const isminefilter& filter) const;
+                           CAmount& nSent, CAmount& nFee, const isminetype& filter) const;
 
-    bool IsFromMe(const isminefilter& filter) const
+    bool IsFromMe(const isminetype& filter) const
     {
         return (GetDebit(filter) > 0);
     }
@@ -478,9 +482,6 @@ public:
     std::set<uint256> GetConflicts() const;
 };
 
-
-
-
 class COutput
 {
 public:
@@ -491,7 +492,10 @@ public:
 
     COutput(const CWalletTx *txIn, int iIn, int nDepthIn, bool fSpendableIn)
     {
-        tx = txIn; i = iIn; nDepth = nDepthIn; fSpendable = fSpendableIn;
+        tx = txIn;
+        i = iIn;
+        nDepth = nDepthIn;
+        fSpendable = fSpendableIn;
     }
 
     std::string ToString() const;
@@ -539,7 +543,7 @@ public:
     int64_t nTime;
     std::string strOtherAccount;
     std::string strComment;
-    mapValue_t mapValue;
+    mu_strings mapValue;
     int64_t nOrderPos;  //! position in ordered transaction list
     uint64_t nEntryNo;
 
@@ -611,6 +615,8 @@ private:
 };
 
 
+using wallet_txmap_t = std::unordered_map<uint256, CWalletTx>;
+
 /** 
  * A CWallet is an extension of a keystore, which also maintains a set of transactions and balances,
  * and provides the ability to create new transactions.
@@ -663,7 +669,7 @@ public:
      * This will always be greater than or equal to the size of the largest
      * incremental witness cache in any transaction in mapWallet.
      */
-    int64_t nWitnessCacheSize;
+    uint64_t nWitnessCacheSize;
 
     void ClearNoteWitnessCache();
 
@@ -687,13 +693,13 @@ protected:
             return;
         }
         try {
-            for (std::pair<const uint256, CWalletTx>& wtxItem : mapWallet) {
-                auto wtx = wtxItem.second;
+            for (const auto& [txid, wtx] : mapWallet)
+            {
                 // We skip transactions for which mapSaplingNoteData
                 // are empty. This covers transactions that have no Sapling data
                 // (i.e. are purely transparent), as well as shielding and unshielding
                 // transactions in which we only have transparent addresses involved.
-                if (!wtx.mapSaplingNoteData.empty() && !walletdb.WriteTx(wtxItem.first, wtx))
+                if (!wtx.mapSaplingNoteData.empty() && !walletdb.WriteTx(txid, wtx))
                 {
                     LogPrintf("SetBestChain(): Failed to write CWalletTx, aborting atomic write\n");
                     walletdb.TxnAbort();
@@ -838,12 +844,12 @@ public:
      * - Restarting the node with -reindex (which operates on a locked wallet
      *   but with the now-cached nullifiers).
      */
-    std::map<uint256, SaplingOutPoint> mapSaplingNullifiersToNotes;
+    std::unordered_map<uint256, SaplingOutPoint> mapSaplingNullifiersToNotes;
 
-    std::map<uint256, CWalletTx> mapWallet;
+    wallet_txmap_t mapWallet;
 
     int64_t nOrderPosNext;
-    std::map<uint256, int> mapRequestCount;
+    std::unordered_map<uint256, int> mapRequestCount;
 
     std::map<CTxDestination, CAddressBookData> mapAddressBook;
 
@@ -973,7 +979,7 @@ public:
      * Increment the next transaction order id
      * @return next transaction order id
      */
-    int64_t IncOrderPosNext(CWalletDB *pwalletdb = NULL);
+    int64_t IncOrderPosNext(CWalletDB *pwalletdb = nullptr);
 
     typedef std::pair<CWalletTx*, CAccountingEntry*> TxPair;
     typedef std::multimap<int64_t, TxPair > TxItems;
@@ -1016,7 +1022,7 @@ public:
      * selected by SelectCoins(); Also create the change output, when needed
      */
     bool CreateTransaction(const std::vector<CRecipient>& vecSend, CWalletTx& wtxNew, CReserveKey& reservekey, CAmount& nFeeRet, int& nChangePosRet,
-                           std::string& strFailReason, const CCoinControl *coinControl = NULL, bool sign = true);
+                           std::string& strFailReason, const CCoinControl *coinControl = nullptr, bool sign = true);
     bool CommitTransaction(CWalletTx& wtxNew, CReserveKey& reservekey);
 
     static CFeeRate minTxFee;
@@ -1036,7 +1042,7 @@ public:
     void GetAllReserveKeys(std::set<CKeyID>& setAddress) const;
 
     std::set< std::set<CTxDestination> > GetAddressGroupings();
-    std::map<CTxDestination, CAmount> GetAddressBalances(const isminefilter &isMineFilter);
+    std::map<CTxDestination, CAmount> GetAddressBalances(const isminetype &isMineFilter);
 
     std::set<CTxDestination> GetAccountAddresses(const std::string& strAccount) const;
 
@@ -1048,17 +1054,21 @@ public:
          std::vector<std::optional<SaplingWitness>>& witnesses,
          uint256 &final_anchor);
 
-    isminetype IsMine(const CTxIn& txin) const;
-    CAmount GetDebit(const CTxIn& txin, const isminefilter& filter) const;
-    isminetype IsMine(const CTxOut& txout) const;
-    CAmount GetCredit(const CTxOut& txout, const isminefilter& filter) const;
+    isminetype GetIsMine(const CTxIn& txin) const;
+    isminetype GetIsMine(const CTxOut& txout) const;
+    bool IsMine(const CTxIn& txin) const { return GetIsMine(txin) != isminetype::NO; }
+    bool IsMine(const CTxOut& txout) const { return GetIsMine(txout) != isminetype::NO; }
+
+    CAmount GetDebit(const CTxIn& txin, const isminetype& filter) const;
+    CAmount GetCredit(const CTxOut& txout, const isminetype& filter) const;
+
     bool IsChange(const CTxOut& txout) const;
     CAmount GetChange(const CTxOut& txout) const;
     bool IsMine(const CTransaction& tx) const;
     /** should probably be renamed to IsRelevantToMe */
     bool IsFromMe(const CTransaction& tx) const;
-    CAmount GetDebit(const CTransaction& tx, const isminefilter& filter) const;
-    CAmount GetCredit(const CTransaction& tx, const isminefilter& filter) const;
+    CAmount GetDebit(const CTransaction& tx, const isminetype& filter) const;
+    CAmount GetCredit(const CTransaction& tx, const isminetype& filter) const;
     CAmount GetChange(const CTransaction& tx) const;
     void ChainTip(const CBlockIndex *pindex, const CBlock *pblock, SaplingMerkleTree saplingTree, bool added);
     /** Saves witness caches and best block locator to disk. */
@@ -1079,9 +1089,9 @@ public:
     {
         {
             LOCK(cs_wallet);
-            std::map<uint256, int>::iterator mi = mapRequestCount.find(hash);
+            auto mi = mapRequestCount.find(hash);
             if (mi != mapRequestCount.end())
-                (*mi).second++;
+                mi->second++;
         }
     }
 

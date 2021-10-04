@@ -211,7 +211,7 @@ bool CWalletDB::WriteDefaultKey(const CPubKey& vchPubKey)
     return Write(std::string("defaultkey"), vchPubKey);
 }
 
-bool CWalletDB::WriteWitnessCacheSize(int64_t nWitnessCacheSize)
+bool CWalletDB::WriteWitnessCacheSize(const uint64_t nWitnessCacheSize)
 {
     nWalletDBUpdateCounter++;
     return Write(std::string("witnesscachesize"), nWitnessCacheSize);
@@ -323,14 +323,11 @@ DBErrors CWalletDB::ReorderTransactions(CWallet* pwallet)
 
     // First: get all CWalletTx and CAccountingEntry into a sorted-by-time multimap.
     typedef pair<CWalletTx*, CAccountingEntry*> TxPair;
-    typedef multimap<int64_t, TxPair > TxItems;
+    typedef multimap<int64_t, TxPair> TxItems;
     TxItems txByTime;
 
-    for (map<uint256, CWalletTx>::iterator it = pwallet->mapWallet.begin(); it != pwallet->mapWallet.end(); ++it)
-    {
-        CWalletTx* wtx = &((*it).second);
-        txByTime.insert(make_pair(wtx->nTimeReceived, TxPair(wtx, (CAccountingEntry*)0)));
-    }
+    for (auto &[txid, wtx] : pwallet->mapWallet)
+        txByTime.insert(make_pair(wtx.nTimeReceived, TxPair(&wtx, (CAccountingEntry*)0)));
     list<CAccountingEntry> acentries;
     ListAccountCreditDebit("", acentries);
     for (auto& entry : acentries)
@@ -339,10 +336,10 @@ DBErrors CWalletDB::ReorderTransactions(CWallet* pwallet)
     int64_t& nOrderPosNext = pwallet->nOrderPosNext;
     nOrderPosNext = 0;
     std::vector<int64_t> nOrderPosOffsets;
-    for (TxItems::iterator it = txByTime.begin(); it != txByTime.end(); ++it)
+    for (auto &[nTimeReceived, wtxPair] : txByTime)
     {
-        CWalletTx *const pwtx = (*it).second.first;
-        CAccountingEntry *const pacentry = (*it).second.second;
+        auto pwtx = wtxPair.first;
+        auto pacentry = wtxPair.second;
         int64_t& nOrderPos = (pwtx != 0) ? pwtx->nOrderPos : pacentry->nOrderPos;
 
         if (nOrderPos == -1)
@@ -1161,8 +1158,8 @@ bool CWalletDB::Recover(CDBEnv& dbenv, const std::string& filename, bool fOnlyKe
                 continue;
             }
         }
-        Dbt datKey(&row.first[0], row.first.size());
-        Dbt datValue(&row.second[0], row.second.size());
+        Dbt datKey(&row.first[0], static_cast<uint32_t>(row.first.size()));
+        Dbt datValue(&row.second[0], static_cast<uint32_t>(row.second.size()));
         int ret2 = pdbCopy->put(ptxn, &datKey, &datValue, DB_NOOVERWRITE);
         if (ret2 > 0)
             fSuccess = false;

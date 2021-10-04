@@ -83,13 +83,13 @@ public:
 typedef std::variant<CNoDestination, CKeyID, CScriptID> CTxDestination;
 
 /** Check whether a CTxDestination is a CNoDestination. */
-bool IsValidDestination(const CTxDestination& dest);
+bool IsValidDestination(const CTxDestination& dest) noexcept;
 
 /** Check whether a CTxDestination is a CKeyID. */
-bool IsKeyDestination(const CTxDestination& dest);
+bool IsKeyDestination(const CTxDestination& dest) noexcept;
 
 /** Check whether a CTxDestination is a CScriptID. */
-bool IsScriptDestination(const CTxDestination& dest);
+bool IsScriptDestination(const CTxDestination& dest) noexcept;
 
 /** Get the name of a txnouttype as a C string, or nullptr if unknown. */
 const char* GetTxnOutputType(txnouttype t);
@@ -111,8 +111,8 @@ bool IsStandard(const CScript& scriptPubKey, txnouttype& whichType);
 /**
  * Parse a standard scriptPubKey for the destination address. Assigns result to
  * the addressRet parameter and returns true if successful. For multisig
- * scripts, instead use ExtractDestinations. Currently only works for P2PK,
- * P2PKH, and P2SH scripts.
+ * scripts (that can have multiple destination addresses), instead use ExtractDestinations. 
+ * Currently only works for P2PK, P2PKH, and P2SH scripts.
  */
 bool ExtractDestination(const CScript& scriptPubKey, CTxDestination& addressRet);
 

@@ -1,5 +1,5 @@
 #include "base58.h"
-#include "mnode/mnode-rpc.h"
+#include "mnode/rpc/mnode-rpc.h"
 #include "utilstrencodings.h"
 #include "vector_types.h"
 

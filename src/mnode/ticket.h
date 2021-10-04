@@ -118,3 +118,5 @@ protected:
         return m_nTimestamp;
     }
 };
+
+using PastelTickets_t = std::vector<std::unique_ptr<CPastelTicket>>;

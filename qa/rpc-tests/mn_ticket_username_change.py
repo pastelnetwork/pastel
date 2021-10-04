@@ -12,6 +12,7 @@ from test_framework.util import (
     assert_raises_message,
     assert_raises_rpc,
     assert_shows_help,
+    wait_and_assert_operationid_status,
 )
 from pastel_test_framework import PastelTestFramework
 from test_framework.authproxy import JSONRPCException
@@ -102,23 +103,32 @@ class UserNameChangeTest(PastelTestFramework):
         username2 = "Trinity"
         username3 = "Anderson"
         username4 = "AgentSmith"
+        username5 = "Keymaker"
+        username6 = "Frenchman"
 
         self.list_username_tickets(0)
 
         # missing pastel id
-        assert_raises_rpc(rpc.RPC_INVALID_PARAMETER, "JSONRPC error", self.nodes[1].tickets, "register", "username", "neo")
+        assert_raises_rpc(rpc.RPC_INVALID_PARAMETER, "JSONRPC error", 
+            self.nodes[1].tickets, "register", "username", "neo")
         # missing passphrase
-        assert_raises_rpc(rpc.RPC_INVALID_PARAMETER, "JSONRPC error", self.nodes[1].tickets, "register", "username", "neo", self.n1_pastelid1)
+        assert_raises_rpc(rpc.RPC_INVALID_PARAMETER, "JSONRPC error", 
+            self.nodes[1].tickets, "register", "username", "neo", self.n1_pastelid1)
         # too short username < 4 chars
-        assert_raises_rpc(rpc.RPC_MISC_ERROR, "Invalid size of username", self.nodes[1].tickets, "register", "username", "neo", self.n1_pastelid1, self.passphrase)
+        assert_raises_rpc(rpc.RPC_MISC_ERROR, "Invalid size of username", 
+            self.nodes[1].tickets, "register", "username", "neo", self.n1_pastelid1, self.passphrase)
         # too long username > 12 chars
-        assert_raises_rpc(rpc.RPC_MISC_ERROR, "Invalid size of username", self.nodes[1].tickets, "register", "username", "ThomasAnderson", self.n1_pastelid1, self.passphrase)
+        assert_raises_rpc(rpc.RPC_MISC_ERROR, "Invalid size of username", 
+            self.nodes[1].tickets, "register", "username", "ThomasAnderson", self.n1_pastelid1, self.passphrase)
         # invalid start character in username - should start with the letter A-Z,a-z
-        assert_raises_rpc(rpc.RPC_MISC_ERROR, "Invalid username", self.nodes[1].tickets, "register", "username", "1Morpheus", self.n1_pastelid1, self.passphrase)
+        assert_raises_rpc(rpc.RPC_MISC_ERROR, "Invalid username", 
+            self.nodes[1].tickets, "register", "username", "1Morpheus", self.n1_pastelid1, self.passphrase)
         # invalid character in username - should contain only letters [A-Z,a-z] or digits [0-9]
-        assert_raises_rpc(rpc.RPC_MISC_ERROR, "Invalid username", self.nodes[1].tickets, "register", "username", "Agent-Smith", self.n1_pastelid1, self.passphrase)
+        assert_raises_rpc(rpc.RPC_MISC_ERROR, "Invalid username", 
+            self.nodes[1].tickets, "register", "username", "Agent-Smith", self.n1_pastelid1, self.passphrase)
         # bad username
-        assert_raises_rpc(rpc.RPC_MISC_ERROR, "Invalid username", self.nodes[1].tickets, "register", "username", "stupid", self.n1_pastelid1, self.passphrase)
+        assert_raises_rpc(rpc.RPC_MISC_ERROR, "Invalid username", 
+            self.nodes[1].tickets, "register", "username", "stupid", self.n1_pastelid1, self.passphrase)
 
         self.node1_balance = self.nodes[1].getbalance()
         # register first time username 'Morpheus' for n1_pastelid1 - keep it in mempool only
@@ -128,9 +138,11 @@ class UserNameChangeTest(PastelTestFramework):
         assert_true(txid, "No username-change ticket was created")
 
         # try to register the same username - mempool transaction exists with the same username
-        assert_raises_rpc(rpc.RPC_MISC_ERROR, "same username in the memory pool", self.nodes[1].tickets, "register", "username", username1, self.n1_pastelid1, self.passphrase)
+        assert_raises_rpc(rpc.RPC_MISC_ERROR, "same username in the memory pool", 
+            self.nodes[1].tickets, "register", "username", username1, self.n1_pastelid1, self.passphrase)
         # try to register another username with the same pastel id - mempool transaction exists with the same pastel id
-        assert_raises_rpc(rpc.RPC_MISC_ERROR, "same PastelID in the memory pool", self.nodes[1].tickets, "register", "username", username2, self.n1_pastelid1, self.passphrase)
+        assert_raises_rpc(rpc.RPC_MISC_ERROR, "same PastelID in the memory pool", 
+            self.nodes[1].tickets, "register", "username", username2, self.n1_pastelid1, self.passphrase)
         # commit transaction for username1 change
         self.sync_all()
         self.generate_and_sync_inc(1)
@@ -139,21 +151,27 @@ class UserNameChangeTest(PastelTestFramework):
         self.check_balance(self.USERNAME_CHANGE_FEE_FIRST_TIME)
 
         # now let's try to register same username again - username is already registered in the blockchain
-        assert_raises_rpc(rpc.RPC_MISC_ERROR, "is already registered in blockchain", self.nodes[1].tickets, "register", "username", username1, self.n1_pastelid1, self.passphrase)
+        assert_raises_rpc(rpc.RPC_MISC_ERROR, "is already registered in blockchain", 
+            self.nodes[1].tickets, "register", "username", username1, self.n1_pastelid1, self.passphrase)
         # try to register same username with n2_pastelid2 on node2
-        assert_raises_rpc(rpc.RPC_MISC_ERROR, "is already registered in blockchain", self.nodes[2].tickets, "register", "username", username1, self.n2_pastelid, self.passphrase)
+        assert_raises_rpc(rpc.RPC_MISC_ERROR, "is already registered in blockchain", 
+            self.nodes[2].tickets, "register", "username", username1, self.n2_pastelid, self.passphrase)
         # try to register same username with n1_pastelid2 on node1
-        assert_raises_rpc(rpc.RPC_MISC_ERROR, "is already registered in blockchain", self.nodes[1].tickets, "register", "username", username1, self.n1_pastelid2, self.passphrase)
+        assert_raises_rpc(rpc.RPC_MISC_ERROR, "is already registered in blockchain", 
+            self.nodes[1].tickets, "register", "username", username1, self.n1_pastelid2, self.passphrase)
         # using invalid pastelid - node2 using n1_pastelid
-        assert_raises_rpc(rpc.RPC_MISC_ERROR, ERR_READ_PASTELID_FILE, self.nodes[2].tickets, "register", "username", username2, self.n1_pastelid1, self.passphrase)
+        assert_raises_rpc(rpc.RPC_MISC_ERROR, ERR_READ_PASTELID_FILE, 
+            self.nodes[2].tickets, "register", "username", username2, self.n1_pastelid1, self.passphrase)
         # using invalid passphrase 
-        assert_raises_rpc(rpc.RPC_MISC_ERROR, ERR_READ_PASTELID_FILE, self.nodes[1].tickets, "register", "username", username2, self.n1_pastelid1, self.new_passphrase)
+        assert_raises_rpc(rpc.RPC_MISC_ERROR, ERR_READ_PASTELID_FILE, 
+            self.nodes[1].tickets, "register", "username", username2, self.n1_pastelid1, self.new_passphrase)
 
         # second username change too early - less than 10 blocks for regtest
-        assert_raises_rpc(rpc.RPC_MISC_ERROR, "Already changed in last", self.nodes[1].tickets, "register", "username", username2, self.n1_pastelid1, self.passphrase)
+        assert_raises_rpc(rpc.RPC_MISC_ERROR, "Already changed in last", 
+            self.nodes[1].tickets, "register", "username", username2, self.n1_pastelid1, self.passphrase)
         self.generate_and_sync_inc(self.CHANGE_DISABLED_BLOCK_COUNT)
 
-        node1_balance = self.nodes[1].getbalance()
+        self.node1_balance = self.nodes[1].getbalance()
         # register second time username 'Trinity' for n1_pastelid1
         result = self.nodes[1].tickets("register", "username", username2, self.n1_pastelid1, self.passphrase)
         print(result)
@@ -177,7 +195,8 @@ class UserNameChangeTest(PastelTestFramework):
         self.check_balance(self.USERNAME_CHANGE_FEE_FIRST_TIME + self.USERNAME_CHANGE_FEE_SECOND_TIME)
 
         # not enough coins on node3
-        assert_raises_rpc(rpc.RPC_MISC_ERROR, "Not enough coins", self.nodes[3].tickets, "register", "username", username3, self.n3_pastelid, self.passphrase)
+        assert_raises_rpc(rpc.RPC_MISC_ERROR, "Not enough coins", 
+            self.nodes[3].tickets, "register", "username", username3, self.n3_pastelid, self.passphrase)
 
         # send coins to node3, enough to change username one time
         self.nodes[0].sendtoaddress(addr[3], self.USERNAME_CHANGE_FEE_FIRST_TIME + 1)
@@ -192,7 +211,62 @@ class UserNameChangeTest(PastelTestFramework):
         self.list_username_tickets(3)
         self.check_username_change_ticket(txid3, username3, self.n3_pastelid, self.USERNAME_CHANGE_FEE_FIRST_TIME)
         self.generate_and_sync_inc(self.CHANGE_DISABLED_BLOCK_COUNT)
-        assert_raises_rpc(rpc.RPC_MISC_ERROR, "Not enough coins", self.nodes[3].tickets, "register", "username", username4, self.n3_pastelid, self.passphrase)
+        assert_raises_rpc(rpc.RPC_MISC_ERROR, "Not enough coins", 
+            self.nodes[3].tickets, "register", "username", username4, self.n3_pastelid, self.passphrase)
+
+        print(" - UserName registration with address parameter")
+        n1_taddr2 = self.nodes[1].getnewaddress()
+        # amounts to send
+        nT1 = self.USERNAME_CHANGE_FEE_SECOND_TIME*1.5
+        nT2 = self.USERNAME_CHANGE_FEE_SECOND_TIME*2
+        result = self.nodes[0].z_sendmanywithchangetosender(addr[0],
+            [
+                {'address': addr[1], 'amount': nT1 },
+                {'address': n1_taddr2, 'amount': nT2 },
+            ], 0, 0)
+        wait_and_assert_operationid_status(self.nodes[0], result)
+        self.generate_and_sync_inc(1)
+
+        amounts = self.nodes[1].listaddressamounts(False, "all")
+        print(f"node1 addresses:\ncoinbase={coinbase_addr[1]}\ntaddr1={addr[1]}\ntaddr2={n1_taddr2}\nall_amounts:\n{amounts}")
+        assert_equal(nT1, amounts[addr[1]], "node1 taddr1 amount does not match")
+        assert_equal(nT2, amounts[n1_taddr2], "node1 taddr2 amount does not match")
+        # invalid funding address
+        assert_raises_rpc(rpc.RPC_MISC_ERROR, "Not a valid transparent address", 
+            self.nodes[1].tickets, "register", "username", username5, self.n1_pastelid2, self.passphrase, "invalid_address")
+        # cannot use addr[0] on node1 - no utxos
+        assert_raises_rpc(rpc.RPC_MISC_ERROR, "No unspent transaction found for address", 
+            self.nodes[1].tickets, "register", "username", username5, self.n1_pastelid2, self.passphrase, addr[0])
+        # register username 'Keymaker' on node1 from address addr[1]
+        result = self.nodes[1].tickets("register", "username", username5, self.n1_pastelid2, self.passphrase, addr[1])
+        print(result)
+        txid4 = result["txid"]
+        assert_true(txid4, "No username-change ticket was created")
+        self.sync_all()
+        self.generate_and_sync_inc(1)
+        self.list_username_tickets(4)
+        self.check_username_change_ticket(txid4, username5, self.n1_pastelid2, self.USERNAME_CHANGE_FEE_SECOND_TIME)
+        amounts = self.nodes[1].listaddressamounts(False, "all")
+        nT1 -= self.USERNAME_CHANGE_FEE_SECOND_TIME
+        assert_equal(nT1, amounts[addr[1]], "node1 taddr1 amount does not match")
+        self.sync_all()
+        self.generate_and_sync_inc(10) # allow next username change
+        # not enough funds on the address
+        assert_raises_rpc(rpc.RPC_MISC_ERROR, "No unspent transaction found for address", 
+            self.nodes[1].tickets, "register", "username", "Sentinels", self.n1_pastelid2, self.passphrase, addr[0])
+        # use taddr2 address
+        result = self.nodes[1].tickets("register", "username", username6, self.n1_pastelid1, self.passphrase, n1_taddr2)
+        print(result)
+        txid5 = result["txid"]
+        assert_true(txid4, "No username-change ticket was created")
+        self.sync_all()
+        self.generate_and_sync_inc(1)
+        self.list_username_tickets(5)
+        self.check_username_change_ticket(txid5, username6, self.n1_pastelid1, self.USERNAME_CHANGE_FEE_SECOND_TIME)
+        # check taddr2 funds
+        amounts = self.nodes[1].listaddressamounts(False, "all")
+        nT2 -= self.USERNAME_CHANGE_FEE_SECOND_TIME
+        assert_equal(nT2, amounts[n1_taddr2], "node1 taddr2 amount does not match")
 
         print(" - UserName validation")
         # too short

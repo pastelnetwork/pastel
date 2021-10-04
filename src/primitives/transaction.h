@@ -1,8 +1,10 @@
 #pragma once
 // Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2014 The Bitcoin Core developers
+// Copyright (c) 2018-2021 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
-// file COPYING or http://www.opensource.org/licenses/mit-license.php.
+// file COPYING or https://www.opensource.org/licenses/mit-license.php.
+
 #include "amount.h"
 #include "random.h"
 #include "script/script.h"
@@ -184,8 +186,12 @@ public:
     uint256 hash;
     uint32_t n;
 
-    BaseOutPoint() { SetNull(); }
-    BaseOutPoint(uint256 hashIn, uint32_t nIn) { hash = hashIn; n = nIn; }
+    BaseOutPoint() noexcept { SetNull(); }
+    BaseOutPoint(const uint256 &hashIn, const uint32_t nIn) noexcept
+    { 
+        hash = hashIn; 
+        n = nIn;
+    }
 
     ADD_SERIALIZE_METHODS;
 
@@ -196,20 +202,24 @@ public:
         READWRITE(n);
     }
 
-    void SetNull() { hash.SetNull(); n = (uint32_t) -1; }
+    void SetNull() noexcept
+    { 
+        hash.SetNull(); 
+        n = (uint32_t) -1;
+    }
     bool IsNull() const noexcept { return (hash.IsNull() && n == (uint32_t) -1); }
 
-    friend bool operator<(const BaseOutPoint& a, const BaseOutPoint& b)
+    friend bool operator<(const BaseOutPoint& a, const BaseOutPoint& b) noexcept
     {
         return (a.hash < b.hash || (a.hash == b.hash && a.n < b.n));
     }
 
-    friend bool operator==(const BaseOutPoint& a, const BaseOutPoint& b)
+    friend bool operator==(const BaseOutPoint& a, const BaseOutPoint& b) noexcept
     {
         return (a.hash == b.hash && a.n == b.n);
     }
 
-    friend bool operator!=(const BaseOutPoint& a, const BaseOutPoint& b)
+    friend bool operator!=(const BaseOutPoint& a, const BaseOutPoint& b) noexcept
     {
         return !(a == b);
     }
@@ -219,8 +229,13 @@ public:
 class COutPoint : public BaseOutPoint
 {
 public:
-    COutPoint() : BaseOutPoint() {};
-    COutPoint(uint256 hashIn, uint32_t nIn) : BaseOutPoint(hashIn, nIn) {};
+    COutPoint() noexcept : 
+        BaseOutPoint()
+    {}
+    COutPoint(const uint256 &hashIn, const uint32_t nIn) noexcept : 
+        BaseOutPoint(hashIn, nIn)
+    {}
+
     std::string ToString() const;
     std::string ToStringShort() const;
 };
@@ -230,8 +245,13 @@ public:
 class SaplingOutPoint : public BaseOutPoint
 {
 public:
-    SaplingOutPoint() : BaseOutPoint() {};
-    SaplingOutPoint(uint256 hashIn, uint32_t nIn) : BaseOutPoint(hashIn, nIn) {};
+    SaplingOutPoint() noexcept : 
+        BaseOutPoint()
+    {}
+    SaplingOutPoint(const uint256 &hashIn, const uint32_t nIn) noexcept : 
+        BaseOutPoint(hashIn, nIn)
+    {}
+
     std::string ToString() const;
 };
 
@@ -248,13 +268,13 @@ public:
     // It disables the nLockTime feature when set to maxint.
     uint32_t nSequence;
 
-    CTxIn()
+    CTxIn() noexcept
     {
         nSequence = std::numeric_limits<unsigned int>::max();
     }
 
-    explicit CTxIn(COutPoint prevoutIn, CScript scriptSigIn=CScript(), uint32_t nSequenceIn=std::numeric_limits<unsigned int>::max());
-    CTxIn(uint256 hashPrevTx, uint32_t nOut, CScript scriptSigIn=CScript(), uint32_t nSequenceIn=std::numeric_limits<uint32_t>::max());
+    explicit CTxIn(const COutPoint &prevoutIn, CScript scriptSigIn=CScript(), uint32_t nSequenceIn=std::numeric_limits<uint32_t>::max());
+    CTxIn(const uint256 &hashPrevTx, const uint32_t nOut, CScript scriptSigIn=CScript(), uint32_t nSequenceIn=std::numeric_limits<uint32_t>::max());
 
     ADD_SERIALIZE_METHODS;
 
@@ -299,7 +319,7 @@ public:
     CAmount nValue;
     CScript scriptPubKey;
 
-    CTxOut()
+    CTxOut() noexcept
     {
         SetNull();
     }
@@ -315,13 +335,13 @@ public:
         READWRITE(*(CScriptBase*)(&scriptPubKey));
     }
 
-    void SetNull()
+    void SetNull() noexcept
     {
         nValue = -1;
         scriptPubKey.clear();
     }
 
-    bool IsNull() const
+    bool IsNull() const noexcept
     {
         return (nValue == -1);
     }
@@ -580,8 +600,8 @@ struct CMutableTransaction
     std::vector<OutputDescription> vShieldedOutput;
     CTransaction::binding_sig_t bindingSig = {{0}};
 
-    CMutableTransaction();
-    CMutableTransaction(const CTransaction& tx);
+    CMutableTransaction() noexcept;
+    CMutableTransaction(const CTransaction& tx) noexcept;
 
     ADD_SERIALIZE_METHODS;
 

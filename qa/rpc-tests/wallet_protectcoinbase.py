@@ -261,7 +261,7 @@ class WalletProtectCoinbaseTest (BitcoinTestFramework):
             newtaddr = self.nodes[2].getnewaddress()
             recipients.append({"address":newtaddr, "amount":amount_per_recipient})
         elapsed = timeit.default_timer() - start_time
-        print("...invoked getnewaddress() {} times in {} seconds".format(num_t_recipients, elapsed))
+        print(f"...invoked getnewaddress() {num_t_recipients} times in {elapsed} seconds")
 
         # Issue #2263 Workaround START
         # HTTP connection to node 0 may fall into a state, during the few minutes it takes to process

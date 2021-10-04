@@ -140,6 +140,7 @@
     <ClCompile Include="..\..\..\src\gtest\test_validation.cpp" />
     <ClCompile Include="..\..\..\src\gtest\test_zip32.cpp" />
     <ClCompile Include="..\..\..\src\wallet\gtest\test_wallet.cpp" />
+    <ClCompile Include="..\..\..\src\wallet\gtest\test_wallet_ismine.cpp" />
     <ClCompile Include="..\..\..\src\wallet\gtest\test_wallet_zkeys.cpp" />
     <ClCompile Include="..\port\uint128.cpp" />
   </ItemGroup>
@@ -151,6 +152,9 @@
     <ClInclude Include="..\..\..\src\gtest\test_mempool_entryhelper.h" />
     <ClInclude Include="..\..\..\src\gtest\test_utils.h" />
     <ClInclude Include="..\port\uint128.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\..\..\src\Makefile.gtest.include" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

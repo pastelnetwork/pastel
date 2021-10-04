@@ -148,6 +148,9 @@
     <ClCompile Include="..\..\..\src\gtest\test_mnode\test_ticket_mempool_processor.cpp">
       <Filter>UnitTest Files\test_mnode</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\..\src\wallet\gtest\test_wallet_ismine.cpp">
+      <Filter>UnitTest Files\wallet</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\..\src\gtest\json_test_vectors.h">
@@ -171,5 +174,8 @@
     <ClInclude Include="..\..\..\src\gtest\test_mnode\mock_mnode_ticket.h">
       <Filter>UnitTest Files\test_mnode</Filter>
     </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\..\..\src\Makefile.gtest.include" />
   </ItemGroup>
 </Project>
