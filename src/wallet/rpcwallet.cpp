@@ -3757,7 +3757,7 @@ Examples:
 
     // Create operation and add to global queue
     auto q = getAsyncRPCQueue();
-    auto operation = std::make_shared<AsyncRPCOperation_sendmany>(builder, contextualTx, fromaddress, taddrRecipients, zaddrRecipients, nMinDepth, nFee, contextInfo, returnChangeToSenderAddr);
+    auto operation = std::make_shared<AsyncRPCOperation_sendmany>(builder, contextualTx, fromaddress, taddrRecipients, zaddrRecipients, nMinDepth, nFee, contextInfo, bReturnChangeToSenderAddr);
     q->addOperation(operation);
     AsyncRPCOperationId operationId = operation->getId();
     return operationId;

@@ -61,7 +61,7 @@ pastel_gtest_SOURCES +=\
 
 if ENABLE_WALLET
 pastel_gtest_SOURCES += \
-	wallet/gtest/test_wallet.cpp
+	wallet/gtest/test_wallet.cpp\
 	wallet/gtest/test_wallet_ismine.cpp
 endif
 
