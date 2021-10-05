@@ -179,6 +179,11 @@ class MasterNodeTicketsTest(MasterNodeCommon):
 
         # register pastelIDs
         nonmn1_address1 = self.nodes[self.non_mn1].getnewaddress()
+        self.nodes[self.mining_node_num].sendtoaddress(nonmn1_address1, 100)
+        self.sync_all()
+        self.nodes[self.mining_node_num].generate(1)
+        self.sync_all()
+
         # nonmn3_address1 = self.nodes[self.non_mn3].getnewaddress()
         self.non_mn1_pastelid_txid = self.nodes[self.non_mn1].tickets("register", "id", self.nonmn1_pastelid1, "passphrase", nonmn1_address1)["txid"]
         self.nodes[self.non_mn3].tickets("register", "id", self.creator_pastelid1, "passphrase", self.nonmn3_address1)
