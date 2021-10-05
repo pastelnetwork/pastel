@@ -707,6 +707,9 @@ Available types:
         case RPC_CMD_REGISTER::ethereumaddress:
             result = tickets_register_ethereumaddress(params);
             break;
+
+        default:
+            break;
     } // switch (REGISTER.cmd())
     return result;
 }

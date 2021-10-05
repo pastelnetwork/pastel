@@ -1411,6 +1411,9 @@ strprintf(R"(pastelid passwd "PastelID" "old_passphrase" "new_passphrase"
         resultObj.pushKV(RPC_KEY_RESULT, RPC_RESULT_SUCCESS);
         return resultObj;
     } break;
+
+    default:
+        break;
     } // switch PASTELID.cmd()
 
     return NullUniValue;
@@ -1738,6 +1741,9 @@ As json rpc
             return obj;
         }
     } break;
+
+    default:
+        break;
     }
 	return "Key is not found";
 }
@@ -1991,6 +1997,9 @@ As json rpc
             obj.read(masterNodeCtrl.masternodeTickets.ListTickets<CChangeEthereumAddressTicket>());
         break;
     }
+
+    default:
+        break;
     } // switch RPC_CMD_LIST::cmd()
 
     return obj;
@@ -2237,6 +2246,9 @@ As json rpc
         }
         return retVal;
     }
+
+    default:
+        break;
     } // switch (TOOLS.cmd())
     return NullUniValue;
 }
@@ -2329,6 +2341,9 @@ UniValue tickets_fake(const UniValue &params, const bool bSend)
         std::string strVerb = params[9].get_str();
         return CPastelTicketProcessor::CreateFakeTransaction(NFTSellTicket, ticketPrice, std::vector<std::pair<std::string, CAmount>> {}, strVerb, bSend);
     } break;
+
+    default:
+        break;
     } // switch (FAKETICKET.cmd())
     return NullUniValue;
 }
@@ -2381,6 +2396,9 @@ Available commands:
         case RPC_CMD_TICKETS::sendfaketicket:
             return tickets_fake(params, true);
 #endif // FAKE_TICKET
+
+        default:
+            break;
     }
     return NullUniValue;
 }

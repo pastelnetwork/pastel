@@ -1,8 +1,9 @@
 #pragma once
 // Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2014 The Bitcoin Core developers
+// Copyright (c) 2018-2021 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
-// file COPYING or http://www.opensource.org/licenses/mit-license.php.
+// file COPYING or https://www.opensource.org/licenses/mit-license.php.
 
 #include "compat.h"
 #include "compat/endian.h"
@@ -15,6 +16,7 @@
 #include <limits>
 #include <list>
 #include <map>
+#include <unordered_map>
 #include <memory>
 #include <set>
 #include <stdint.h>

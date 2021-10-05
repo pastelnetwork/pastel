@@ -99,6 +99,9 @@ unique_ptr<CPastelTicket> CPastelTicketProcessor::CreateTicket(const TicketID ti
     case TicketID::EthereumAddress:
         ticket = make_unique<CChangeEthereumAddressTicket>();
         break;
+
+    default: // to suppress compiler warning for not handling TicketID::COUNT
+        break;
     }
     return ticket;
 }
