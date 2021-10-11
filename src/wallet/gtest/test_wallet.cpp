@@ -31,7 +31,7 @@ public:
     MOCK_METHOD(bool, TxnAbort, (), ());
 
     MOCK_METHOD(bool, WriteTx, (uint256 hash, const CWalletTx& wtx), ());
-    MOCK_METHOD(bool, WriteWitnessCacheSize, (int64_t nWitnessCacheSize), ());
+    MOCK_METHOD(bool, WriteWitnessCacheSize, (const uint64_t nWitnessCacheSize), ());
     MOCK_METHOD(bool, WriteBestBlock, (const CBlockLocator& loc), ());
 };
 
@@ -864,7 +864,7 @@ TEST(WalletTests, MarkAffectedSaplingTransactionsDirty) {
     wallet.MarkAffectedTransactionsDirty(wtx);
 
     // After getting a cached value, the first tx should be clean
-    wallet.mapWallet[hash].GetDebit(ISMINE_ALL);
+    wallet.mapWallet[hash].GetDebit(isminetype::ALL);
     EXPECT_TRUE(wallet.mapWallet[hash].fDebitCached);
 
     // After adding the note spend, the first tx should be dirty

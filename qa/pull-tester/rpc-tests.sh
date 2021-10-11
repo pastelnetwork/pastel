@@ -109,8 +109,6 @@ declare -a testScriptsToFix=(
 declare -a testScriptsMN=(
     'mn_main.py'
     'mn_tickets.py'
-    'mn_bugs.py'
-    'mn_payment.py'
     'mn_governance.py'
 )
 
@@ -119,6 +117,8 @@ declare -a testScriptsMNfast=(
     'mn_ticket_username_change.py'
     'mn_tickets_validation.py'
     'mn_messaging.py'
+    'mn_payment.py'
+    'mn_bugs.py'
 )
 
 declare -a testScriptsExt=(
@@ -160,6 +160,8 @@ function difftime()
 #extArg="-extended"
 #passOn=${@#$extArg}
 
+groupExecCount=0
+groupTotalCount=0
 successCount=0
 declare -a failures
 
@@ -168,7 +170,12 @@ function runTestScript
     local testName="$1"
     shift
 
-    echo -e "=== Running testscript ${testName} [$*] ==="
+    local progress=""
+    local failedCount=${#failures[@]}
+    if (( $groupTotalCount > 0 )); then
+        progress=" [<< $groupExecCount/$groupTotalCount >>|Succeeded:${successCount}|Failed:${failedCount}]"
+    fi
+    echo -e "=== Running testscript ${testName}${progress} [$*] ==="
 
     local time_start=$(get_time)
     if eval "$@"
@@ -254,10 +261,12 @@ function runTestGroup()
 {
     local testGroupName=$1[@]
     eval scriptArray=( '"${!testGroupName}"' )
-    len=${#scriptArray[@]}
-    echo "Executing $len test scripts, group [$1]"
+    groupExecCount=0
+    groupTotalCount=${#scriptArray[@]}
+    echo "Executing $groupTotalCount test scripts, group [$1]"
     for ScriptName in "${scriptArray[@]}"; do
       scriptFileName=$(getScriptPath "$ScriptName")
+      groupExecCount=$(expr $groupExecCount + 1) 
       runTestScript "$ScriptName" "$scriptFileName" --srcdir="${BUILDDIR}/src" $testParams
     done   
 }

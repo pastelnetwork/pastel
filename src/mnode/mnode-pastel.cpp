@@ -30,11 +30,11 @@ using json = nlohmann::json;
 using namespace std;
 
 // CPastelIDRegTicket ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-CPastelIDRegTicket CPastelIDRegTicket::Create(std::string _pastelID, SecureString&& strKeyPass, std::string _address)
+CPastelIDRegTicket CPastelIDRegTicket::Create(string &&_pastelID, SecureString&& strKeyPass, const string &_address)
 {
-    CPastelIDRegTicket ticket(std::move(_pastelID));
+    CPastelIDRegTicket ticket(move(_pastelID));
     
-    bool isMN = _address.empty();
+    const bool isMN = _address.empty();
     
     if (isMN)
     {
@@ -44,14 +44,14 @@ CPastelIDRegTicket CPastelIDRegTicket::Create(std::string _pastelID, SecureStrin
     
         //collateral address
         KeyIO keyIO(Params());
-        CTxDestination dest = mn.pubKeyCollateralAddress.GetID();
-        ticket.address = std::move(keyIO.EncodeDestination(dest));
+        const CTxDestination dest = mn.pubKeyCollateralAddress.GetID();
+        ticket.address = keyIO.EncodeDestination(dest);
     
         //outpoint hash
         ticket.outpoint = masterNodeCtrl.activeMasternode.outpoint;
     }
     else
-        ticket.address = std::move(_address);
+        ticket.address = _address;
     
     std::stringstream ss;
 	ss << ticket.pastelID;
@@ -163,7 +163,7 @@ bool CPastelIDRegTicket::IsValid(const bool bPreReg, const int nDepth) const
     if (!CPastelID::Verify(fullTicket, vector_to_string(pslid_signature), pastelID))
       throw std::runtime_error(strprintf("Ticket's PastelID signature is invalid. PastelID - [%s]", pastelID));
      
-    // 2. Ticket pay correct registration fee - in validated in ValidateIfTicketTransaction
+    // 2. Ticket pay correct registration fee - is validated in ValidateIfTicketTransaction
 
     return true;
 }
@@ -233,18 +233,19 @@ CNFTRegTicket CNFTRegTicket::Create(
         std::string _ticket, const std::string& signatures,
         std::string _pastelID, SecureString&& strKeyPass,
         std::string _keyOne, std::string _keyTwo,
-        CAmount _storageFee)
+        const CAmount _storageFee)
 {
     CNFTRegTicket ticket(std::move(_ticket));
     
     //NFT Ticket
     auto jsonTicketObj = json::parse(ed_crypto::Base64_Decode(ticket.NFTTicket));
-    if (jsonTicketObj.size() != 8){
+
+    if (jsonTicketObj.size() != 8)
         throw std::runtime_error("NFT ticket json is incorrect");
-    }
-    if (jsonTicketObj["nft_ticket_version"] != 1) {
+
+    if (jsonTicketObj["nft_ticket_version"] != 1)
         throw std::runtime_error("Only accept version 1 of NFT ticket json");
-    }
+
     ticket.creatorHeight = jsonTicketObj["blocknum"];
     ticket.totalCopies = jsonTicketObj["copies"];
     ticket.nRoyalty = jsonTicketObj["royalty"];
@@ -426,9 +427,8 @@ bool CNFTRegTicket::IsValid(const bool bPreReg, const int nDepth) const
     }
     
     if (nRoyalty < 0 || nRoyalty > 0.2)
-    {
-      throw std::runtime_error(strprintf("Royalty can't be %hu per cent, Min is 0 and Max is 20 per cent", nRoyalty*100));
-    }
+        throw std::runtime_error(strprintf("Royalty can't be %hu per cent, Min is 0 and Max is 20 per cent", nRoyalty*100));
+
     if (!strGreenAddress.empty())
     {
         KeyIO keyIO(Params());
@@ -441,69 +441,73 @@ bool CNFTRegTicket::IsValid(const bool bPreReg, const int nDepth) const
 
 std::string CNFTRegTicket::ToJSON() const noexcept
 {
-  const json jsonObj
-  {
-    {"txid", m_txid},
-    {"height", m_nBlock},
-    {"ticket", {
-      {"type", GetTicketName()},
-      {"nft_ticket", NFTTicket},
-      {"version", GetStoredVersion()},
-      {"signatures", {
-        {"creator", {
-          {pastelIDs[creatorsign], ed_crypto::Base64_Encode(ticketSignatures[creatorsign].data(), ticketSignatures[creatorsign].size())}
-        }},
-        {"mn1", {
-          {pastelIDs[mainmnsign], ed_crypto::Base64_Encode(ticketSignatures[mainmnsign].data(), ticketSignatures[mainmnsign].size())}
-        }},
-        {"mn2", {
-          {pastelIDs[mn2sign], ed_crypto::Base64_Encode(ticketSignatures[mn2sign].data(), ticketSignatures[mn2sign].size())}
-        }},
-        {"mn3", {
-          {pastelIDs[mn3sign], ed_crypto::Base64_Encode(ticketSignatures[mn3sign].data(), ticketSignatures[mn3sign].size())}
-        }},
-      }},
-      {"key1", keyOne},
-      {"key2", keyTwo},
-      {"creator_height", creatorHeight},
-      {"total_copies", totalCopies},
-      {"royalty", nRoyalty},
-      {"royalty_address", GetRoyaltyPayeeAddress()},
-      {"green", !strGreenAddress.empty()},
-      //      {"green_address", strGreenAddress},
-      {"storage_fee", storageFee},
-    }}
-  };
+    const json jsonObj
+    {
+        {"txid", m_txid},
+        {"height", m_nBlock},
+        {"ticket", {
+            {"type", GetTicketName()},
+            {"nft_ticket", NFTTicket},
+            {"version", GetStoredVersion()},
+            {"signatures", {
+                {"creator", {
+                  {pastelIDs[creatorsign], ed_crypto::Base64_Encode(ticketSignatures[creatorsign].data(), ticketSignatures[creatorsign].size())}
+                }},
+                {"mn1", {
+                  {pastelIDs[mainmnsign], ed_crypto::Base64_Encode(ticketSignatures[mainmnsign].data(), ticketSignatures[mainmnsign].size())}
+                }},
+                {"mn2", {
+                  {pastelIDs[mn2sign], ed_crypto::Base64_Encode(ticketSignatures[mn2sign].data(), ticketSignatures[mn2sign].size())}
+                }},
+                {"mn3", {
+                  {pastelIDs[mn3sign], ed_crypto::Base64_Encode(ticketSignatures[mn3sign].data(), ticketSignatures[mn3sign].size())}
+                }},
+            }},
+            {"key1", keyOne},
+            {"key2", keyTwo},
+            {"creator_height", creatorHeight},
+            {"total_copies", totalCopies},
+            {"royalty", nRoyalty},
+            {"royalty_address", GetRoyaltyPayeeAddress()},
+            {"green", !strGreenAddress.empty()},
+            {"storage_fee", storageFee},
+        }}
+    };
+      
+    return jsonObj.dump(4);
+}
+
+std::string CNFTRegTicket::GetRoyaltyPayeePastelID() const
+{
+    if (!nRoyalty) 
+        return {};
     
-  return jsonObj.dump(4);
+    int index{0};
+    int foundIndex{-1};
+    unsigned int highBlock{0};
+    const auto tickets = CNFTRoyaltyTicket::FindAllTicketByNFTTxnID(m_txid);
+    for (const auto& ticket: tickets)
+    {
+        if (ticket.GetBlock() > highBlock)
+        {
+          highBlock = ticket.GetBlock();
+          foundIndex = index;
+        }
+        ++index;
+    }
+    return foundIndex >= 0 ? tickets.at(foundIndex).newPastelID : pastelIDs[CNFTRegTicket::creatorsign];
 }
 
-std::string CNFTRegTicket::GetRoyaltyPayeePastelID() const {
-  if (!nRoyalty) { return {}; }
-
-  int index{0};
-  int foundIndex{-1};
-  unsigned int highBlock{0};
-  const auto tickets = CNFTRoyaltyTicket::FindAllTicketByNFTTxnID(m_txid);
-  for (const auto& ticket: tickets) {
-    if (ticket.GetBlock() > highBlock) {
-      highBlock = ticket.GetBlock();
-      foundIndex = index;
+std::string CNFTRegTicket::GetRoyaltyPayeeAddress() const
+{
+    const std::string pastelID = GetRoyaltyPayeePastelID();
+    if (!pastelID.empty())
+    {
+        CPastelIDRegTicket ticket;
+        if (CPastelIDRegTicket::FindTicketInDb(pastelID, ticket))
+          return ticket.address;
     }
-    ++index;
-  }
-  return foundIndex >= 0 ? tickets.at(foundIndex).newPastelID : pastelIDs[CNFTRegTicket::creatorsign];
-}
-
-std::string CNFTRegTicket::GetRoyaltyPayeeAddress() const {
-  const std::string pastelID = GetRoyaltyPayeePastelID();
-  if (!pastelID.empty()) {
-    CPastelIDRegTicket ticket;
-    if (CPastelIDRegTicket::FindTicketInDb(pastelID, ticket)) {
-      return ticket.address;
-    }
-  }
-  return {};
+    return {};
 }
 
 bool CNFTRegTicket::FindTicketInDb(const std::string& key, CNFTRegTicket& _ticket)
@@ -1991,8 +1995,7 @@ bool CChangeUsernameTicket::isUsernameBad(const std::string& username, std::stri
 // CChangeEthereumAddressTicket ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 std::string CChangeEthereumAddressTicket::ToJSON() const noexcept
 {
-    json jsonObj;
-    jsonObj = {
+    const json jsonObj = {
         {"txid", m_txid},
         {"height", m_nBlock},
         {"ticket", {

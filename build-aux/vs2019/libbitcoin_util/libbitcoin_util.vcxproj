@@ -122,6 +122,7 @@
     <ClInclude Include="..\..\..\src\rpc\client.h" />
     <ClInclude Include="..\..\..\src\rpc\protocol.h" />
     <ClInclude Include="..\..\..\src\rpc\register.h" />
+    <ClInclude Include="..\..\..\src\str_utils.h" />
     <ClInclude Include="..\..\..\src\support\allocators\secure.h" />
     <ClInclude Include="..\..\..\src\support\allocators\zeroafterfree.h" />
     <ClInclude Include="..\..\..\src\support\cleanse.h" />

@@ -19,6 +19,8 @@
 
 // Default transaction fee if caller does not specify one.
 constexpr CAmount ASYNC_RPC_OPERATION_DEFAULT_MINERS_FEE = 10000;
+constexpr auto RPC_METHOD_SENDMANY        = "z_sendmany";
+constexpr auto RPC_METHOD_SENDMANY_CHANGE = "z_sendmanywithchangetosender";
 
 using namespace libzcash;
 
@@ -28,7 +30,8 @@ typedef std::tuple<std::string, CAmount, std::string> SendManyRecipient;
 // Input UTXO is a tuple (quadruple) of txid, vout, amount, coinbase)
 typedef std::tuple<uint256, int, CAmount, bool> SendManyInputUTXO;
 
-class AsyncRPCOperation_sendmany : public AsyncRPCOperation {
+class AsyncRPCOperation_sendmany : public AsyncRPCOperation
+{
 public:
     AsyncRPCOperation_sendmany(
         std::optional<TransactionBuilder> builder,
@@ -39,8 +42,8 @@ public:
         int minDepth,
         CAmount fee = ASYNC_RPC_OPERATION_DEFAULT_MINERS_FEE,
         UniValue contextInfo = NullUniValue,
-        const bool returnChangeToSenderAddr_ = false);
-    virtual ~AsyncRPCOperation_sendmany();
+        const bool bReturnChangeToSenderAddr = false);
+    virtual ~AsyncRPCOperation_sendmany() noexcept = default;
     
     // We don't want to be copied or moved around
     AsyncRPCOperation_sendmany(AsyncRPCOperation_sendmany const&) = delete;             // Copy construct
@@ -68,7 +71,7 @@ private:
     std::string fromaddress_;
     bool isfromtaddr_;
     bool isfromzaddr_;
-    bool returnChangeToSenderAddr_;
+    bool m_bReturnChangeToSender;
     CTxDestination fromtaddr_;
     PaymentAddress frompaymentaddress_;
     SpendingKey spendingkey_;
@@ -84,7 +87,7 @@ private:
     void add_taddr_change_output_to_tx(CAmount amount);
     void add_taddr_outputs_to_tx();
     bool find_unspent_notes();
-    bool find_utxos(bool fAcceptCoinbase);
+    bool find_utxos(const bool fAcceptCoinbase = false);
     std::array<unsigned char, ZC_MEMO_SIZE> get_memo_from_hex_string(std::string s);
     bool main_impl();
 

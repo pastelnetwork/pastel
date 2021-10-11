@@ -379,10 +379,18 @@ protected:
     }
 public:
     CScript() { }
-    CScript(const CScript& b) : CScriptBase(b.begin(), b.end()) { }
-    CScript(const_iterator pbegin, const_iterator pend) : CScriptBase(pbegin, pend) { }
-    CScript(v_uint8::const_iterator pbegin, v_uint8::const_iterator pend) : CScriptBase(pbegin, pend) {}
-    CScript(const unsigned char* pbegin, const unsigned char* pend) : CScriptBase(pbegin, pend) { }
+    CScript(const CScript& b) : 
+        CScriptBase(b.begin(), b.end())
+    {}
+    CScript(const_iterator pbegin, const_iterator pend) : 
+        CScriptBase(pbegin, pend)
+    {}
+    CScript(v_uint8::const_iterator pbegin, v_uint8::const_iterator pend) : 
+        CScriptBase(pbegin, pend)
+    {}
+    CScript(const unsigned char* pbegin, const unsigned char* pend) :
+        CScriptBase(pbegin, pend)
+    {}
 
     CScript& operator+=(const CScript& b)
     {
@@ -591,14 +599,14 @@ public:
      * regardless of the initial stack. This allows outputs to be pruned
      * instantly when entering the UTXO set.
      */
-    bool IsUnspendable() const
+    bool IsUnspendable() const noexcept
     {
         return (size() > 0 && *begin() == OP_RETURN) || (size() > MAX_SCRIPT_SIZE);
     }
 
     std::string ToString() const;
 
-    void clear()
+    void clear() noexcept
     {
         // The default std::vector::clear() does not release memory.
         CScriptBase().swap(*this);

@@ -123,11 +123,13 @@ void AsyncRPCOperation_shieldcoinbase::main() {
     }
 
 #ifdef ENABLE_MINING
-  #ifdef ENABLE_WALLET
-    GenerateBitcoins(GetBoolArg("-gen", false), pwalletMain, GetArg("-genproclimit", 1), chainparams);
-  #else
-    GenerateBitcoins(GetBoolArg("-gen", false), GetArg("-genproclimit", 1), chainparams);
-  #endif
+    const int nThreadCount = static_cast<int>(GetArg("-genproclimit", 1));
+    const bool bGenerate = GetBoolArg("-gen", false);
+#ifdef ENABLE_WALLET
+    GenerateBitcoins(bGenerate, pwalletMain, nThreadCount, chainparams);
+#else
+    GenerateBitcoins(bGenerate, nThreadCount, chainparams);
+#endif
 #endif
 
     stop_execution_clock();

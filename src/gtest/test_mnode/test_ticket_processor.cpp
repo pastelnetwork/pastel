@@ -39,7 +39,8 @@ TEST_F(TestTicketProcessor, invalid_ticket_type)
 
     string error;
     const CAmount ticketPrice = 0;
-    ASSERT_TRUE(CreateP2FMSTransaction(data_stream, tx, ticketPrice, error)) << "CreateP2FMSTransaction failed. " << error;
+    string sFundingAddress;
+    ASSERT_TRUE(CreateP2FMSTransaction(data_stream, tx, ticketPrice, sFundingAddress, error)) << "CreateP2FMSTransaction failed. " << error;
 
     error.clear();
     data_stream.clear();

@@ -423,7 +423,7 @@ UniValue getdeprecationinfo(const UniValue& params, bool fHelp)
     obj.pushKV("version", CLIENT_VERSION);
     obj.pushKV("subversion",
         FormatSubVersion(CLIENT_NAME, CLIENT_VERSION, std::vector<string>()));
-    obj.pushKV("deprecationheight", DEPRECATION_HEIGHT);
+    obj.pushKV("deprecationheight", static_cast<uint64_t>(DEPRECATION_HEIGHT));
 
     return obj;
 }

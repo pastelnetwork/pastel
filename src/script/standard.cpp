@@ -311,19 +311,22 @@ CScript GetScriptForMultisig(int nRequired, const std::vector<CPubKey>& keys)
     script << CScript::EncodeOP_N(nRequired);
     for (const auto& key : keys)
         script << ToByteVector(key);
-    script << CScript::EncodeOP_N(keys.size()) << OP_CHECKMULTISIG;
+    script << CScript::EncodeOP_N(static_cast<int>(keys.size())) << OP_CHECKMULTISIG;
     return script;
 }
 
-bool IsValidDestination(const CTxDestination& dest) {
+bool IsValidDestination(const CTxDestination& dest) noexcept
+{
     return !std::holds_alternative<CNoDestination>(dest);
 }
 
-bool IsKeyDestination(const CTxDestination& dest) {
+bool IsKeyDestination(const CTxDestination& dest) noexcept
+{
     return std::holds_alternative<CKeyID>(dest);
 }
 
-bool IsScriptDestination(const CTxDestination& dest) {
+bool IsScriptDestination(const CTxDestination& dest) noexcept
+{
     return std::holds_alternative<CScriptID>(dest);
 }
 

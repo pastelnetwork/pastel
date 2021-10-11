@@ -19,6 +19,7 @@ static constexpr CAmount COIN_DECIMALS = 5;
 static constexpr CAmount CENT = 1000;
 
 extern const std::string CURRENCY_UNIT;
+extern const std::string MINOR_CURRENCY_UNIT;
 
 /** No amount larger than this (in patoshi) is valid.
  *

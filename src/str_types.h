@@ -1,8 +1,9 @@
 #pragma once
-// Copyright (c) 2016 The Bitcoin Core developers
+// Copyright (c) 2021 Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 
-class CRPCTable;
+#include <string>
+#include <optional>
 
-void RegisterWalletRPCCommands(CRPCTable &tableRPC);
+using opt_string_t = std::optional<std::string>;

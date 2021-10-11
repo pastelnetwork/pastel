@@ -1,4 +1,4 @@
-// Copyright (c) 2018 The Pastel developers
+// Copyright (c) 2018-2021 The Pastel developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -53,10 +53,6 @@ AsyncRPCOperation& AsyncRPCOperation::operator=( const AsyncRPCOperation& other 
     this->error_message_ = other.error_message_;
     this->result_ = other.result_;
     return *this;
-}
-
-
-AsyncRPCOperation::~AsyncRPCOperation() {
 }
 
 /**

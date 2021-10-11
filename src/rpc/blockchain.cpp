@@ -686,7 +686,7 @@ Examples:
 )"
     + HelpExampleCli("verifychain", "")
     + HelpExampleRpc("verifychain", "")
-        );
+);
 
     LOCK(cs_main);
 
@@ -810,7 +810,8 @@ Result:
 
 Examples:
 )" + HelpExampleCli("getblockchaininfo", "")
-   + HelpExampleRpc("getblockchaininfo", ""));
+   + HelpExampleRpc("getblockchaininfo", "")
+);
 
     LOCK(cs_main);
 

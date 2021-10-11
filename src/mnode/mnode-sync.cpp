@@ -113,6 +113,8 @@ void CMasternodeSync::SwitchToNextAsset()
             });
             LogPrintf("CMasternodeSync::SwitchToNextAsset -- Sync has finished\n");
             break;
+        default:
+            break;
     }
     nRequestedMasternodeAttempt = 0;
     nTimeAssetSyncStarted = GetTime();

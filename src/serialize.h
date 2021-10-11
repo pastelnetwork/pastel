@@ -1,8 +1,9 @@
 #pragma once
 // Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2014 The Bitcoin Core developers
+// Copyright (c) 2018-2021 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
-// file COPYING or http://www.opensource.org/licenses/mit-license.php.
+// file COPYING or https://www.opensource.org/licenses/mit-license.php.
 
 #include "compat.h"
 #include "compat/endian.h"
@@ -15,6 +16,7 @@
 #include <limits>
 #include <list>
 #include <map>
+#include <unordered_map>
 #include <memory>
 #include <set>
 #include <stdint.h>
@@ -806,8 +808,8 @@ template<typename Stream, typename K, typename T, typename Pred, typename A>
 void Serialize(Stream& os, const std::map<K, T, Pred, A>& m)
 {
     WriteCompactSize(os, m.size());
-    for (typename std::map<K, T, Pred, A>::const_iterator mi = m.begin(); mi != m.end(); ++mi)
-        Serialize(os, (*mi));
+    for (const auto &mapPair : m)
+        Serialize(os, mapPair);
 }
 
 template<typename Stream, typename K, typename T, typename Pred, typename A>
@@ -815,7 +817,7 @@ void Unserialize(Stream& is, std::map<K, T, Pred, A>& m)
 {
     m.clear();
     const uint64_t nSize = ReadCompactSize(is);
-    typename std::map<K, T, Pred, A>::iterator mi = m.begin();
+    auto mi = m.begin();
     for (uint64_t i = 0; i < nSize; i++)
     {
         std::pair<K, T> item;
@@ -824,6 +826,30 @@ void Unserialize(Stream& is, std::map<K, T, Pred, A>& m)
     }
 }
 
+/**
+ * unordered_map
+ */
+template <typename Stream, typename K, typename T, typename Pred, typename A>
+void Serialize(Stream& os, const std::unordered_map<K, T, Pred, A>& m)
+{
+    WriteCompactSize(os, m.size());
+    for (const auto &mapPair : m)
+        Serialize(os, mapPair);
+}
+
+template <typename Stream, typename K, typename T, typename Pred, typename A>
+void Unserialize(Stream& is, std::unordered_map<K, T, Pred, A>& m)
+{
+    m.clear();
+    const uint64_t nSize = ReadCompactSize(is);
+    auto mi = m.begin();
+    for (uint64_t i = 0; i < nSize; i++)
+    {
+        std::pair<K, T> item;
+        Unserialize(is, item);
+        mi = m.insert(mi, item);
+    }
+}
 /**
  * set
  */

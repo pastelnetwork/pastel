@@ -47,8 +47,15 @@ AsyncRPCOperation_sendmany::AsyncRPCOperation_sendmany(
         int minDepth,
         CAmount fee,
         UniValue contextInfo,
-        const bool returnChangeToSenderAddr) :
-        tx_(contextualTx), fromaddress_(fromAddress), t_outputs_(tOutputs), z_outputs_(zOutputs), mindepth_(minDepth), fee_(fee), contextinfo_(contextInfo), returnChangeToSenderAddr_(returnChangeToSenderAddr)
+        const bool bReturnChangeToSenderAddr) :
+    tx_(contextualTx), 
+    fromaddress_(fromAddress), 
+    t_outputs_(tOutputs), 
+    z_outputs_(zOutputs), 
+    mindepth_(minDepth), 
+    fee_(fee), 
+    contextinfo_(contextInfo), 
+    m_bReturnChangeToSender(bReturnChangeToSenderAddr)
 {
     assert(fee_ >= 0);
 
@@ -71,30 +78,27 @@ AsyncRPCOperation_sendmany::AsyncRPCOperation_sendmany(
     }
 
     KeyIO keyIO(Params());
-
     fromtaddr_ = keyIO.DecodeDestination(fromAddress);
     isfromtaddr_ = IsValidDestination(fromtaddr_);
     isfromzaddr_ = false;
 
-    if (!isfromtaddr_) {
+    if (!isfromtaddr_)
+    {
         auto address = keyIO.DecodePaymentAddress(fromAddress);
-        if (IsValidPaymentAddress(address)) {
-            // We don't need to lock on the wallet as spending key related methods are thread-safe
-            if (!std::visit(HaveSpendingKeyForPaymentAddress(pwalletMain), address)) {
-                throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid from address, no spending key found for zaddr");
-            }
-
-            isfromzaddr_ = true;
-            frompaymentaddress_ = address;
-            spendingkey_ = std::visit(GetSpendingKeyForPaymentAddress(pwalletMain), address).value();
-        } else {
+        if (!IsValidPaymentAddress(address))
             throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid from address");
-        }
+
+        // We don't need to lock on the wallet as spending key related methods are thread-safe
+        if (!std::visit(HaveSpendingKeyForPaymentAddress(pwalletMain), address))
+            throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid from address, no spending key found for zaddr");
+
+        isfromzaddr_ = true;
+        frompaymentaddress_ = address;
+        spendingkey_ = std::visit(GetSpendingKeyForPaymentAddress(pwalletMain), address).value();
     }
 
-    if (isfromzaddr_ && minDepth==0) {
+    if (isfromzaddr_ && minDepth==0)
         throw JSONRPCError(RPC_INVALID_PARAMETER, "Minconf cannot be zero when sending from zaddr");
-    }
 
     // Log the context info i.e. the call parameters to z_sendmany
     if (LogAcceptCategory("zrpcunsafe")) {
@@ -105,9 +109,6 @@ AsyncRPCOperation_sendmany::AsyncRPCOperation_sendmany(
 
     // Enable payment disclosure if requested
     paymentDisclosureMode = fExperimentalMode && GetBoolArg("-paymentdisclosure", false);
-}
-
-AsyncRPCOperation_sendmany::~AsyncRPCOperation_sendmany() {
 }
 
 void AsyncRPCOperation_sendmany::main() {
@@ -150,27 +151,23 @@ void AsyncRPCOperation_sendmany::main() {
     }
 
 #ifdef ENABLE_MINING
-  #ifdef ENABLE_WALLET
-    GenerateBitcoins(GetBoolArg("-gen", false), pwalletMain, GetArg("-genproclimit", 1), chainparams);
-  #else
-    GenerateBitcoins(GetBoolArg("-gen", false), GetArg("-genproclimit", 1), chainparams);
-  #endif
+    const int nThreadCount = static_cast<int>(GetArg("-genproclimit", 1));
+    const bool bGenerate = GetBoolArg("-gen", false);
+#ifdef ENABLE_WALLET
+    GenerateBitcoins(bGenerate, pwalletMain, nThreadCount, chainparams);
+#else
+    GenerateBitcoins(bGenerate, nThreadCount, chainparams);
+#endif
 #endif
 
     stop_execution_clock();
-
-    if (success) {
-        set_state(OperationStatus::SUCCESS);
-    } else {
-        set_state(OperationStatus::FAILED);
-    }
+    set_state(success ? OperationStatus::SUCCESS : OperationStatus::FAILED);
 
     std::string s = strprintf("%s: z_sendmany finished (status=%s", getId(), getStateAsString());
-    if (success) {
+    if (success)
         s += strprintf(", txid=%s)\n", tx_.GetHash().ToString());
-    } else {
+    else
         s += strprintf(", error=%s)\n", getErrorMessage());
-    }
     LogPrintf("%s",s);
 }
 
@@ -197,10 +194,8 @@ bool AsyncRPCOperation_sendmany::main_impl() {
                 throw JSONRPCError(RPC_WALLET_INSUFFICIENT_FUNDS, "Insufficient funds, no UTXOs found for taddr from address.");
         } else {
             if (!b)
-            {
                 throw JSONRPCError(RPC_WALLET_INSUFFICIENT_FUNDS, strprintf("Could not find any non-coinbase UTXOs to spend.%s", 
                     isMultipleZaddrOutput ? " Coinbase UTXOs can only be sent to a single zaddr recipient." : ""));
-            }
         }
     }
 
@@ -352,7 +347,8 @@ bool AsyncRPCOperation_sendmany::main_impl() {
             EnsureWalletIsUnlocked();
 
             CTxDestination changeAddr;
-            if (!returnChangeToSenderAddr_) {
+            if (!m_bReturnChangeToSender)
+            {
                 // We generate a new address to send to
                 CReserveKey keyChange(pwalletMain);
                 CPubKey vchPubKey;
@@ -363,12 +359,9 @@ bool AsyncRPCOperation_sendmany::main_impl() {
                 changeAddr = vchPubKey.GetID();
             } else {
                 // We send the change back to the sender
-                if (isfromtaddr_) {
-                    changeAddr = fromtaddr_;
-                } else {
-                    // This should never happen, because this API is called from t_addr case only
+                if (!isfromtaddr_) // // This should never happen, because this API is called from t_addr case only
                     throw JSONRPCError(RPC_WALLET_ERROR, "Could not detect type if type of address is t address or z address");
-                }
+                changeAddr = fromtaddr_;
             }
 
             builder_.SendChangeTo(changeAddr);
@@ -565,45 +558,34 @@ void AsyncRPCOperation_sendmany::sign_send_raw_transaction(UniValue obj)
     tx_ = tx;
 }
 
-
-bool AsyncRPCOperation_sendmany::find_utxos(bool fAcceptCoinbase=false) {
-    std::set<CTxDestination> destinations;
-    destinations.insert(fromtaddr_);
-    vector<COutput> vecOutputs;
-
+bool AsyncRPCOperation_sendmany::find_utxos(const bool fAcceptCoinbase)
+{
     LOCK2(cs_main, pwalletMain->cs_wallet);
 
-    pwalletMain->AvailableCoins(vecOutputs, false, NULL, true, fAcceptCoinbase);
-
+    vector<COutput> vecOutputs;
+    pwalletMain->AvailableCoins(vecOutputs, false, nullptr, true, fAcceptCoinbase);
     for (const auto& out : vecOutputs)
     {
-        if (!out.fSpendable) {
+        if (!out.fSpendable)
             continue;
-        }
 
-        if (out.nDepth < mindepth_) {
+        if (out.nDepth < mindepth_)
             continue;
-        }
 
-        if (destinations.size()) { //-V547 This is always true, but should be kept to make code wasier to read/maintain
-            CTxDestination address;
-            if (!ExtractDestination(out.tx->vout[out.i].scriptPubKey, address)) {
-                continue;
-            }
+        const auto& txOut = out.tx->vout[out.i];
+        CTxDestination address;
+        if (!ExtractDestination(txOut.scriptPubKey, address))
+            continue;
 
-            if (!destinations.count(address)) {
-                continue;
-            }
-        }
+        if (address != fromtaddr_)
+            continue;
 
         // By default we ignore coinbase outputs
-        bool isCoinbase = out.tx->IsCoinBase();
-        if (isCoinbase && fAcceptCoinbase==false) {
+        const bool isCoinbase = out.tx->IsCoinBase();
+        if (isCoinbase && !fAcceptCoinbase)
             continue;
-        }
 
-        CAmount nValue = out.tx->vout[out.i].nValue;
-        SendManyInputUTXO utxo(out.tx->GetHash(), out.i, nValue, isCoinbase);
+        SendManyInputUTXO utxo(out.tx->GetHash(), out.i, txOut.nValue, isCoinbase);
         t_inputs_.push_back(utxo);
     }
 
@@ -681,7 +663,8 @@ void AsyncRPCOperation_sendmany::add_taddr_change_output_to_tx(CAmount amount) {
     EnsureWalletIsUnlocked();
     CScript scriptPubKey;
 
-    if (!returnChangeToSenderAddr_) {
+    if (!m_bReturnChangeToSender)
+    {
         // We generate a new address to send to
         CReserveKey keyChange(pwalletMain);
         CPubKey vchPubKey;
@@ -692,12 +675,9 @@ void AsyncRPCOperation_sendmany::add_taddr_change_output_to_tx(CAmount amount) {
         scriptPubKey = GetScriptForDestination(vchPubKey.GetID());
     } else {
         // We send the change back to the sender
-        if (isfromtaddr_) {
-            scriptPubKey = GetScriptForDestination(fromtaddr_);
-        } else {
-            // This should never happen, because this API is called from t_addr case only
-            throw JSONRPCError(RPC_WALLET_ERROR, "Could not detect type if type of address is t address or z address"); 
-        }
+        if (!isfromtaddr_) // This should never happen, because this API is called from t_addr case only
+            throw JSONRPCError(RPC_WALLET_ERROR, "Could not detect type if type of address is t address or z address");
+        scriptPubKey = GetScriptForDestination(fromtaddr_);
     }
 
     CTxOut out(amount, scriptPubKey);
@@ -738,7 +718,7 @@ UniValue AsyncRPCOperation_sendmany::getStatus() const {
     }
 
     UniValue obj = v.get_obj();
-    obj.pushKV("method", "z_sendmany");
+    obj.pushKV("method", m_bReturnChangeToSender ? RPC_METHOD_SENDMANY_CHANGE : RPC_METHOD_SENDMANY);
     obj.pushKV("params", contextinfo_ );
     return obj;
 }

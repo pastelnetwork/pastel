@@ -52,7 +52,7 @@ bool GetMasternodeOutpointAndKeys(CWallet* pWalletMain, COutPoint& outpointRet, 
 
     // Find possible candidates
     std::vector<COutput> vPossibleCoins;
-    pWalletMain->AvailableCoins(vPossibleCoins, true, NULL, false, true, masterNodeCtrl.MasternodeCollateral, true);
+    pWalletMain->AvailableCoins(vPossibleCoins, true, nullptr, false, true, masterNodeCtrl.MasternodeCollateral, true);
     if(vPossibleCoins.empty()) {
         LogPrintf("GetMasternodeOutpointAndKeys -- Could not locate any valid masternode vin\n");
         return false;

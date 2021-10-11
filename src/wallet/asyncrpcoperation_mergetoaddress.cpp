@@ -145,10 +145,12 @@ void AsyncRPCOperation_mergetoaddress::main()
     }
 
 #ifdef ENABLE_MINING
+    const int nThreadCount = static_cast<int>(GetArg("-genproclimit", 1));
+    const bool bGenerate = GetBoolArg("-gen", false);
 #ifdef ENABLE_WALLET
-    GenerateBitcoins(GetBoolArg("-gen", false), pwalletMain, GetArg("-genproclimit", 1), chainparams);
+    GenerateBitcoins(bGenerate, pwalletMain, nThreadCount, chainparams);
 #else
-    GenerateBitcoins(GetBoolArg("-gen", false), GetArg("-genproclimit", 1), chainparams);
+    GenerateBitcoins(bGenerate, nThreadCount, chainparams);
 #endif
 #endif
 
@@ -451,10 +453,9 @@ std::array<unsigned char, ZC_MEMO_SIZE> AsyncRPCOperation_mergetoaddress::get_me
     }
 
     // copy vector into boost array
-    int lenMemo = rawMemo.size();
-    for (int i = 0; i < ZC_MEMO_SIZE && i < lenMemo; i++) {
+    size_t lenMemo = rawMemo.size();
+    for (int i = 0; i < ZC_MEMO_SIZE && i < lenMemo; i++)
         memo[i] = rawMemo[i];
-    }
     return memo;
 }
 

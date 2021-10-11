@@ -113,6 +113,9 @@ LIBZCASH_H = \
   zcash/Zcash.h
 
 MNODE_CPP =\
+  mnode/rpc/mnode-rpc-utils.cpp\
+  mnode/rpc/tickets-register.cpp\
+  mnode/rpc/mnode-rpc.cpp\
   mnode/mnode-config.cpp\
   mnode/mnode-active.cpp\
   mnode/mnode-manager.cpp\
@@ -120,7 +123,6 @@ MNODE_CPP =\
   mnode/mnode-msgsigner.cpp\
   mnode/mnode-requesttracker.cpp\
   mnode/mnode-sync.cpp\
-  mnode/mnode-rpc.cpp\
   mnode/mnode-validation.cpp\
   mnode/mnode-payments.cpp\
   mnode/mnode-governance.cpp\
@@ -133,6 +135,9 @@ MNODE_CPP =\
   mnode/mnode-controller.cpp
 
 MNODE_H = \
+  mnode/rpc/mnode-rpc-utils.h\
+  mnode/rpc/mnode-register.h\
+  mnode/rpc/mnode-rpc.h\
   mnode/mnode-active.h\
   mnode/mnode-config.h\
   mnode/mnode-db.h\
@@ -140,7 +145,6 @@ MNODE_H = \
   mnode/mnode-masternode.h\
   mnode/mnode-msgsigner.h\
   mnode/mnode-requesttracker.h\
-  mnode/mnode-rpc.h\
   mnode/mnode-validation.h\
   mnode/mnode-payments.h\
   mnode/mnode-governance.h\
@@ -253,6 +257,7 @@ BITCOIN_CORE_H = \
   script/standard.h \
   serialize.h \
   streams.h \
+  str_types.h\
   support/allocators/secure.h \
   support/allocators/zeroafterfree.h \
   support/cleanse.h \

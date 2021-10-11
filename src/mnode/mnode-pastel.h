@@ -25,7 +25,6 @@ class CChangeUsernameTicket;
 class CChangeEthereumAddressTicket;
 
 // ticket vector types
-using PastelTickets_t = std::vector<std::unique_ptr<CPastelTicket>>;
 using PastelIDRegTickets_t = std::vector<CPastelIDRegTicket>;
 using NFTRegTickets_t = std::vector<CNFTRegTicket>;
 using NFTActivateTickets_t = std::vector<CNFTActivateTicket>;
@@ -41,8 +40,8 @@ using ChangeEthereumAddressTickets_t = std::vector<CChangeEthereumAddressTicket>
 class CPastelIDRegTicket : public CPastelTicket
 {
 public:
-	std::string pastelID;
-	std::string address;
+	std::string pastelID;   // Pastel ID - base58 encoded public key (EdDSA448)
+	std::string address;    // funding address associated with Pastel ID
     COutPoint outpoint{};
     std::string pq_key;
 	v_uint8 mn_signature;
@@ -52,7 +51,7 @@ public:
 
 public:
     CPastelIDRegTicket() = default;
-    explicit CPastelIDRegTicket(std::string _pastelID) : 
+    explicit CPastelIDRegTicket(std::string &&_pastelID) : 
         pastelID(std::move(_pastelID))
     {}
 
@@ -111,7 +110,7 @@ public:
         }
     }
 	
-    static CPastelIDRegTicket Create(std::string _pastelID, SecureString&& strKeyPass, std::string _address);
+    static CPastelIDRegTicket Create(std::string&& _pastelID, SecureString&& strKeyPass, const std::string &_address);
     static bool FindTicketInDb(const std::string& key, CPastelIDRegTicket& ticket);
     static PastelIDRegTickets_t FindAllTicketByPastelAddress(const std::string& address);
 };
@@ -279,7 +278,7 @@ public:
     static CNFTRegTicket Create(std::string _ticket, const std::string& signatures,
                                 std::string _pastelID, SecureString&& strKeyPass,
                                 std::string _keyOne, std::string _keyTwo,
-                                CAmount _storageFee);
+                                const CAmount _storageFee);
     static bool FindTicketInDb(const std::string& key, CNFTRegTicket& _ticket);
     static bool CheckIfTicketInDb(const std::string& key);
     

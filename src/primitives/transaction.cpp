@@ -27,14 +27,14 @@ std::string SaplingOutPoint::ToString() const
     return strprintf("SaplingOutPoint(%s, %u)", hash.ToString().substr(0, 10), n);
 }
 
-CTxIn::CTxIn(COutPoint prevoutIn, CScript scriptSigIn, uint32_t nSequenceIn)
+CTxIn::CTxIn(const COutPoint &prevoutIn, CScript scriptSigIn, uint32_t nSequenceIn)
 {
     prevout = prevoutIn;
     scriptSig = scriptSigIn;
     nSequence = nSequenceIn;
 }
 
-CTxIn::CTxIn(uint256 hashPrevTx, uint32_t nOut, CScript scriptSigIn, uint32_t nSequenceIn)
+CTxIn::CTxIn(const uint256 &hashPrevTx, uint32_t nOut, CScript scriptSigIn, uint32_t nSequenceIn)
 {
     prevout = COutPoint(hashPrevTx, nOut);
     scriptSig = scriptSigIn;
@@ -72,7 +72,7 @@ std::string CTxOut::ToString() const
     return strprintf("CTxOut(nValue=%d.%08d, scriptPubKey=%s)", nValue / COIN, nValue % COIN, HexStr(scriptPubKey).substr(0, 30));
 }
 
-CMutableTransaction::CMutableTransaction() : 
+CMutableTransaction::CMutableTransaction() noexcept : 
     nVersion(CTransaction::SPROUT_MIN_CURRENT_VERSION), 
     fOverwintered(false), 
     nVersionGroupId(0), 
@@ -81,7 +81,7 @@ CMutableTransaction::CMutableTransaction() :
     valueBalance(0)
 {}
 
-CMutableTransaction::CMutableTransaction(const CTransaction& tx) : 
+CMutableTransaction::CMutableTransaction(const CTransaction& tx) noexcept: 
     nVersion(tx.nVersion), 
     fOverwintered(tx.fOverwintered), 
     nVersionGroupId(tx.nVersionGroupId), 

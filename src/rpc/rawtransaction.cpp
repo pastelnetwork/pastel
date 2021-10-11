@@ -778,13 +778,13 @@ UniValue signrawtransaction(const UniValue& params, bool fHelp)
         );
 
 #ifdef ENABLE_WALLET
-    LOCK2(cs_main, pwalletMain ? &pwalletMain->cs_wallet : NULL);
+    LOCK2(cs_main, pwalletMain ? &pwalletMain->cs_wallet : nullptr);
 #else
     LOCK(cs_main);
 #endif
     RPCTypeCheck(params, boost::assign::list_of(UniValue::VSTR)(UniValue::VARR)(UniValue::VARR)(UniValue::VSTR)(UniValue::VSTR), true);
 
-    vector<unsigned char> txData(ParseHexV(params[0], "argument 1"));
+    v_uint8 txData(ParseHexV(params[0], "argument 1"));
     CDataStream ssData(txData, SER_NETWORK, PROTOCOL_VERSION);
     vector<CMutableTransaction> txVariants;
     while (!ssData.empty()) {
@@ -929,10 +929,9 @@ UniValue signrawtransaction(const UniValue& params, bool fHelp)
     // Use the approximate release height if it is greater so offline nodes 
     // have a better estimation of the current height and will be more likely to
     // determine the correct consensus branch ID.  Regtest mode ignores release height.
-    int chainHeight = chainActive.Height() + 1;
-    if (Params().NetworkIDString() != "regtest") {
+    unsigned int chainHeight = chainActive.Height() + 1;
+    if (!Params().IsRegTest())
         chainHeight = std::max(chainHeight, APPROX_RELEASE_HEIGHT);
-    }
     // Grab the current consensus branch ID
     auto consensusBranchId = CurrentEpochBranchId(chainHeight, Params().GetConsensus());
 
@@ -954,7 +953,7 @@ UniValue signrawtransaction(const UniValue& params, bool fHelp)
     {
         CTxIn& txin = mergedTx.vin[i];
         const CCoins* coins = view.AccessCoins(txin.prevout.hash);
-        if (coins == NULL || !coins->IsAvailable(txin.prevout.n)) {
+        if (!coins || !coins->IsAvailable(txin.prevout.n)) {
             TxInErrorToJSON(txin, vErrors, "Input not found or already spent");
             continue;
         }
