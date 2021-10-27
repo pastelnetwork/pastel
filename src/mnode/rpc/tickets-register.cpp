@@ -22,6 +22,7 @@ Arguments:
 1. "pastelid"      (string, required) The PastelID. NOTE: PastelID must be generated and stored inside node. See "pastelid newkey".
 2. "passphrase"    (string, required) The passphrase to the private key associated with PastelID and stored inside node. See "pastelid newkey".
 3. "address"       (string, optional) The Pastel blockchain t-address to use for funding the registration.
+
 Masternode PastelID Ticket:
 {
 	"ticket": {
@@ -71,6 +72,7 @@ Arguments:
 1. "pastelid"      (string, required) The PastelID. NOTE: PastelID must be generated and stored inside node. See "pastelid newkey".
 2. "passphrase"    (string, required) The passphrase to the private key associated with PastelID and stored inside node. See "pastelid newkey".
 3. "address"       (string, required) The Pastel blockchain t-address to use for funding the transaction.
+
 Masternode PastelID Ticket:
 {
 	"ticket": {
@@ -118,7 +120,7 @@ Arguments:
         "data_hash":     "<base64'ed-hash-of-the-nft>",
         "copies":        <number-of-copies-of-nft-this-ticket-is-creating>,
         "royalty":       <how-much-creator-should-get-on-all-future-resales>,
-        "green_address": "<address-for-Green-nft-payment>",
+        "green":         boolean
         "app_ticket":    "<application-specific-data>",
     }
 2. "signatures"	(string, required) Signatures (base64) and PastelIDs of the author and verifying masternodes (MN2 and MN3) as JSON:
@@ -133,6 +135,7 @@ Arguments:
 6. "key2"       (string, required) The second key to search ticket.
 7. "fee"        (int, required) The agreed upon storage fee.
 8. "address"    (string, optional) The Pastel blockchain t-address to use for funding the registration.
+
 NFT Reg Ticket:
 {
     "txid":   <"ticket transaction id">
@@ -153,8 +156,7 @@ NFT Reg Ticket:
         "total_copies":    <total copies>,
         "royalty":         <royalty fee>,
         "royalty_address": <"address for royalty payment">,
-        "green":           <green fee>,
-        "green_address":   <"address for Green NFT payment">,
+        "green":           boolean,
         "storage_fee":     <agreed upon storage fee>,
     }
 }
@@ -390,6 +392,7 @@ Arguments:
 3. "PastelID"      (string, required) The PastelID of buyer. This MUST be the same PastelID that was used to sign the buy ticket
 4. "passphrase"    (string, required) The passphrase to the private key associated with creator's PastelID and stored inside node. See "pastelid newkey".
 5. "address"       (string, optional) The Pastel blockchain t-address to use for funding the registration.
+
 NFT Trade Ticket:
 {
 	"ticket": {
@@ -620,12 +623,9 @@ As json rpc:
     return result;
 }
 
-UniValue tickets_register(const UniValue& params)
+void tickets_register_help()
 {
-    RPC_CMD_PARSER2(REGISTER, params, mnid, id, nft, act, sell, buy, trade, down, royalty, username, ethereumaddress);
-
-    if (!REGISTER.IsCmdSupported())
-        throw JSONRPCError(RPC_INVALID_PARAMETER,
+    throw JSONRPCError(RPC_INVALID_PARAMETER,
 R"(tickets register "type" ...
 Set of commands to register different types of Pastel tickets
 
@@ -660,6 +660,16 @@ Available types:
   royalty  - Register NFT royalty ticket. If successful, returns "txid".
              Ticket contains: <...>
 )");
+}
+
+UniValue tickets_register(const UniValue& params)
+{
+    RPC_CMD_PARSER2(REGISTER, params, mnid, id, nft, act, sell, buy, trade, 
+        down, royalty, username, ethereumaddress);
+
+    if (!REGISTER.IsCmdSupported())
+        tickets_register_help();
+    
     UniValue result(UniValue::VOBJ);
 
     switch (REGISTER.cmd())

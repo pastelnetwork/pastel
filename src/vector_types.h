@@ -11,6 +11,7 @@
 
 using v_strings = std::vector<std::string>;
 using v_uint8 = std::vector<uint8_t>;
+using v_uint32 = std::vector<uint32_t>;
 using v_uints = std::vector<unsigned int>;
 using v_bytes = std::vector<std::byte>;
 using v_ints = std::vector<int>;

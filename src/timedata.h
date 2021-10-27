@@ -1,9 +1,8 @@
+#pragma once
 // Copyright (c) 2014 The Bitcoin Core developers
+// Copyright (c) 2021 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
-// file COPYING or http://www.opensource.org/licenses/mit-license.php.
-
-#ifndef BITCOIN_TIMEDATA_H
-#define BITCOIN_TIMEDATA_H
+// file COPYING or https://www.opensource.org/licenses/mit-license.php.
 
 #include <algorithm>
 #include <assert.h>
@@ -22,21 +21,21 @@ class CMedianFilter
 private:
     std::vector<T> vValues;
     std::vector<T> vSorted;
-    unsigned int nSize;
+    size_t nSize;
 
 public:
-    CMedianFilter(unsigned int size, T initial_value) : nSize(size)
+    CMedianFilter(const size_t size, const T initial_value) : 
+        nSize(size)
     {
         vValues.reserve(size);
         vValues.push_back(initial_value);
         vSorted = vValues;
     }
 
-    void input(T value)
+    void input(const T value) noexcept
     {
-        if (vValues.size() == nSize) {
-            vValues.erase(vValues.begin());
-        }
+        if (vValues.size() == nSize)
+            vValues.erase(vValues.cbegin());
         vValues.push_back(value);
 
         vSorted.resize(vValues.size());
@@ -44,25 +43,22 @@ public:
         std::sort(vSorted.begin(), vSorted.end());
     }
 
-    T median() const
+    T median() const noexcept
     {
-        int size = vSorted.size();
-        assert(size > 0);
-        if (size & 1) // Odd number of elements
-        {
-            return vSorted[size / 2];
-        } else // Even number of elements
-        {
-            return (vSorted[size / 2 - 1] + vSorted[size / 2]) / 2;
-        }
+        const size_t nSize = vSorted.size();
+        assert(nSize > 0);
+        if (nSize & 1) // Odd number of elements
+            return vSorted[nSize / 2];
+        // Even number of elements
+        return (vSorted[nSize / 2 - 1] + vSorted[nSize / 2]) / 2;
     }
 
-    int size() const
+    size_t size() const noexcept
     {
         return vValues.size();
     }
 
-    std::vector<T> sorted() const
+    std::vector<T> sorted() const noexcept
     {
         return vSorted;
     }
@@ -73,4 +69,3 @@ int64_t GetTimeOffset();
 int64_t GetAdjustedTime();
 void AddTimeData(const CNetAddr& ip, int64_t nTime);
 
-#endif // BITCOIN_TIMEDATA_H

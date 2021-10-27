@@ -45,6 +45,7 @@ pastel_gtest_SOURCES +=\
 	gtest/test_metrics.cpp\
 	gtest/test_miner.cpp\
 	gtest/test_noteencryption.cpp\
+	gtest/test_numeric_range.cpp\
 	gtest/test_pedersen_hash.cpp\
 	gtest/test_pow.cpp\
 	gtest/test_proofs.cpp\
@@ -52,6 +53,7 @@ pastel_gtest_SOURCES +=\
 	gtest/test_rpc.cpp\
 	gtest/test_sapling_note.cpp\
 	gtest/test_str_encodings.cpp\
+	gtest/test_str_utils.cpp\
 	gtest/test_tautology.cpp\
 	gtest/test_transaction_builder.cpp\
 	gtest/test_txid.cpp\

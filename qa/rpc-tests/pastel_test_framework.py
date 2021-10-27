@@ -4,11 +4,12 @@
 # file COPYING or https://www.opensource.org/licenses/mit-license.php.
 
 from test_framework.test_framework import BitcoinTestFramework
-from test_framework.util import assert_equal, assert_true, \
-    assert_greater_than, initialize_chain_clean, \
-    initialize_datadir, start_nodes, start_node, connect_nodes_bi, \
-    pasteld_processes, wait_and_assert_operationid_status, p2p_port, \
-    stop_node
+from test_framework.util import (
+    assert_true, 
+)
+import hashlib
+import string
+import random
 from test_framework.authproxy import JSONRPCException
 from decimal import Decimal, getcontext
 getcontext().prec = 16
@@ -27,3 +28,12 @@ class PastelTestFramework (BitcoinTestFramework):
             LegRoastKeyVar = keys["legroast"]
             assert_true(LegRoastKeyVar, f"No LegRoast public key was generated on node #{node_no}")
         return NewPastelID
+
+    def get_rand_testdata(self, scope, length):
+        return ''.join(random.choice(scope) for i in range(length))
+
+    def get_random_mock_hash(self):
+        letters = string.ascii_letters
+        value_hashed = self.get_rand_testdata(letters, 10)
+        encoded_value = value_hashed.encode()
+        return hashlib.sha3_256(encoded_value).hexdigest()

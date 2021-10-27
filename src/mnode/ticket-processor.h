@@ -2,13 +2,16 @@
 // Copyright (c) 2018-2021 The Pastel Core developers
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
-#include <unordered_map>
 #include <memory>
 #include <tuple>
+#include <optional>
+#include "json/json.hpp"
 
 #include "dbwrapper.h"
 #include "chain.h"
 #include "str_types.h"
+#include "map_types.h"
+#include "numeric_range.h"
 #include "primitives/transaction.h"
 #include "txmempool_entry.h"
 #include "pastelid/pastel_key.h"
@@ -23,18 +26,56 @@ using reg_trade_txid_t = std::tuple<std::string, std::string>;
 // Get height of the active blockchain + 1
 unsigned int GetActiveChainHeight();
 
+// support fake tickets
 #define FAKE_TICKET
+
+// structure used by 'tickets tools searchthumbids' rpc
+typedef struct _search_thumbids_t
+{
+    // map of fuzzy search criteria -> actual NFT ticket property name
+    inline static mu_strings fuzzyMappings = 
+    {
+        { "creator", "creator_name" },
+        { "nft", "nft_title" },
+        { "series", "nft_series_name" },
+        { "keyword", "nft_keyword_set" },
+        { "descr", "creator_written_statement" }
+    };
+
+    // PastelID of the creator - mandatory
+    std::string sCreatorPastelId;
+    // block range for nft activation ticket search
+    std::optional<numeric_range<uint32_t>> blockRange = std::nullopt;
+    // range for number of created copies
+    std::optional<numeric_range<uint32_t>> copyCount = std::nullopt;
+    // range for rareness score
+    std::optional<numeric_range<uint32_t>> rarenessScore = std::nullopt;
+    // range for nsfw score
+    std::optional<numeric_range<uint32_t>> nsfwScore = std::nullopt;
+    // max number of nft reg tickets to return
+    std::optional<size_t> nMaxResultCount = std::nullopt;
+    // fuzzy search map
+    mu_strings fuzzySearchMap;
+} search_thumbids_t;
+
+// Check if json value passes fuzzy search filter
+bool isValuePassFuzzyFilter(const nlohmann::json& jProp, const std::string& sPropFilterValue) noexcept;
+
 // Ticket  Processor ////////////////////////////////////////////////////////////////////////////////////////////////////
 class CPastelTicketProcessor
 {
     using db_map_t = std::unordered_map<TicketID, std::unique_ptr<CDBWrapper>>;
-    db_map_t dbs;
+    db_map_t dbs; // ticket db storage
 
     template <class _TicketType, typename F>
     void listTickets(F f) const;
 
+    // filter tickets of the specific type using functor f
     template <class _TicketType, typename F>
-    std::string filterTickets(F f, const bool checkConfirmation = true) const;
+    std::string filterTickets(F f, const bool bCheckConfirmation = true) const;
+
+    template <class _TicketType, typename F>
+    void ProcessTicketsByMVKey(const std::string& mvKey, F f) const;
 
 public:
     CPastelTicketProcessor() = default;
@@ -68,6 +109,7 @@ public:
     template <class _TicketType>
     std::string ListTickets() const;
 
+    // list NFT registration tickets using filter
     std::string ListFilterPastelIDTickets(const short filter = 0, // 1 - mn;        2 - personal;     3 - mine
                                           const pastelid_store_t* pmapIDs = nullptr) const;
     std::string ListFilterNFTTickets(const short filter = 0) const;   // 1 - active;    2 - inactive;     3 - sold
@@ -75,6 +117,9 @@ public:
     std::string ListFilterSellTickets(const short filter = 0, const std::string& pastelID = "") const;  // 0 - all, 1 - available; 2 - unavailable;  3 - expired; 4 - sold
     std::string ListFilterBuyTickets(const short filter = 0, const std::string& pastelID = "") const;   // 0 - all, 1 - traded;    2 - expired
     std::string ListFilterTradeTickets(const short filter = 0, const std::string& pastelID = "") const; // 0 - all, 1 - available; 2 - sold
+
+    // search for NFT registration tickets, calls functor for each matching ticket
+    void SearchForNFTs(const search_thumbids_t &p, std::function<size_t(const CPastelTicket *, const nlohmann::json &)> &fnMatchFound) const;
 
     static size_t CreateP2FMSScripts(const CDataStream& input_stream, std::vector<CScript>& vOutScripts);
 #ifdef ENABLE_WALLET

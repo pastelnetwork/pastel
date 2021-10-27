@@ -122,7 +122,7 @@ Ticket as base64(RegistrationTicket({some data}))
 
 bytes fields are base64 as strings
 
-  "version": integer          // 1
+  "nft_ticket_version": integer  // 1
   "author": bytes,            // PastelID of the author (creator)
   "blocknum": integer,        // block number when the ticket was created - this is to map the ticket to the MNs that should process it
   "block_hash": bytes         // hash of the top block when the ticket was created - this is to map the ticket to the MNs that should process it
@@ -134,27 +134,30 @@ bytes fields are base64 as strings
   as base64(
   {
     "creator_name": string,
-    "NFTwork_title": string,
-    "NFTwork_series_name": string,
-    "NFTwork_keyword_set": string,
+    "nft_title": string,
+    "nft_series_name": string,
+    "nft_keyword_set": string,
     "creator_website": string,
     "creator_written_statement": string,
-    "NFTwork_creation_video_youtube_url": string,
+    "nft_creation_video_youtube_url": string,
 
-    "thumbnail_hash": bytes,    //hash of the thumbnail !!!!SHA3-256!!!!
-    "data_hash": bytes,         // hash of the image (or any other asset) that this ticket represents !!!!SHA3-256!!!!
+    "thumbnail_hash": bytes,         // hash of the thumbnail !!!!SHA3-256!!!!
+    "data_hash": bytes,              // hash of the image (or any other asset) that this ticket represents !!!!SHA3-256!!!!
 
-    "fingerprints_hash": bytes, 			//hash of the fingerprint !!!!SHA3-256!!!!
-    "fingerprints": bytes,      			//compressed fingerprint
-    "fingerprints_signature": bytes,  //signature on raw image fingerprint
+    "fingerprints_hash": bytes, 	 // hash of the fingerprint !!!!SHA3-256!!!!
+    "fingerprints": bytes,      	 // compressed fingerprint
+    "fingerprints_signature": bytes, // signature on raw image fingerprint
 
-    "rq_ids": [list of strings],//raptorq symbol identifiers -  !!!!SHA3-256 of symbol block!!!!
-    "rq_coti": integer64,       //raptorq CommonOTI
-    "rq_ssoti": integer64,      //raptorq SchemeSpecificOTI
+    "rq_ids": [list of strings],     // raptorq symbol identifiers -  !!!!SHA3-256 of symbol block!!!!
+    "rq_coti": integer64,            // raptorq CommonOTI
+    "rq_ssoti": integer64,           // raptorq SchemeSpecificOTI
 
-    "rareness_score": integer,  // 0 to 1000
-    "nsfw_score": integer,      // 0 to 1000 0 to 1000
-    "seen_score": integer,			//
+    "dupe_detection_system_version": string,
+    "pastel_rareness_score": float,  // 0 to 1
+
+    "rareness_score": integer,       // 0 to 1000
+    "nsfw_score": integer,           // 0 to 1000 
+    "seen_score": integer,           // 0 to 1000
 	},
 }
 
@@ -175,6 +178,8 @@ signatures
         "signature": bytes,
         "pubkey": bytes,
     }
+
+mvkey #1: creator PastelID
 }
  */
 class CNFTRegTicket : public CPastelTicket
@@ -187,7 +192,7 @@ public:
     static constexpr short mn3sign = 3;
 
 public:
-	std::string NFTTicket;
+	std::string sNFTTicket;
     
     std::string pastelIDs[allsigns];
     v_uint8 ticketSignatures[allsigns];
@@ -205,7 +210,7 @@ public:
 public:
     CNFTRegTicket() = default;
     explicit CNFTRegTicket(std::string _ticket) :
-        NFTTicket(std::move(_ticket))
+        sNFTTicket(std::move(_ticket))
     {}
     
     TicketID ID() const noexcept override { return TicketID::NFT; }
@@ -214,7 +219,7 @@ public:
     void Clear() noexcept override
     {
         CPastelTicket::Clear();
-        NFTTicket.clear();
+        sNFTTicket.clear();
         for (size_t i = 0; i < allsigns; ++i)
         {
             pastelIDs[i].clear();
@@ -250,7 +255,7 @@ public:
         std::string error;
         if (!VersionMgmt(error, bRead))
             throw std::runtime_error(error);
-        READWRITE(NFTTicket);
+        READWRITE(sNFTTicket);
         READWRITE(m_nVersion);
 		
         // v0
@@ -291,19 +296,23 @@ public:
 		"type": "activation",
 		"pastelID": "",         //PastelID of the creator
 		"reg_txid": "",         //tnx with registration ticket in it
-		"creator_height": "",    //block at which creator created NFT Ticket,
+		"creator_height": "",    //block at which creator created NFT Ticket
 		                        //is used to check if the MN that created NFT registration ticket was indeed top MN when creator create ticket
-		"reg_fee": "",          //should match the reg fee from NFT Ticket
+		"reg_fee": "",          //should match the registration fee from NFT Reg Ticket
 		"signature": ""
-	},
+	}
+
+    key   #1: NFT registration ticket txid
+    mvkey #1: Pastel ID
+    mvkey #2: creator height (converted to string)
  */
 class CNFTActivateTicket : public CPastelTicket
 {
 private:
 
 public:
-	std::string pastelID;   //pastelID of the creator
-	std::string regTicketTxnId;
+	std::string pastelID;       //pastelID of the creator
+	std::string regTicketTxnId; // txid of the NFT Reg ticket
     int creatorHeight{};
     int storageFee{};
 	v_uint8 signature;
@@ -381,7 +390,7 @@ public:
 		"valid_before": "",
 		"reserved": "",
 		"signature": ""
-	},
+	}
  */
 
 class CNFTSellTicket : public CPastelTicket

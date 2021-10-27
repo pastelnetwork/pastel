@@ -2,8 +2,12 @@
 # Copyright (c) 2018-2021 The Pastel Core developers
 # Distributed under the MIT software license, see the accompanying
 # file COPYING or http://www.opensource.org/licenses/mit-license.php.
-from test_framework.util import assert_equal, assert_greater_than, \
-    assert_true, initialize_chain_clean, str_to_b64str
+from test_framework.util import (
+    assert_equal, 
+    assert_true, 
+    initialize_chain_clean, 
+    str_to_b64str
+)
 from mn_common import MasterNodeCommon
 from test_framework.authproxy import JSONRPCException
 import json

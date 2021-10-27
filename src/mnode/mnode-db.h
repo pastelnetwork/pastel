@@ -45,7 +45,12 @@ private:
         ssObj << hash;
 
         // open output file, and associate with CAutoFile
-        FILE *file = fopen(pathDB.string().c_str(), "wb");
+        FILE* file = nullptr;
+#if defined(_MSC_VER) && (_MSC_VER >= 1400)
+        const errno_t err = fopen_s(&file, pathDB.string().c_str(), "wb");
+#else
+        file = fopen(pathDB.string().c_str(), "wb");
+#endif
         CAutoFile fileout(file, SER_DISK, CLIENT_VERSION);
         if (fileout.IsNull())
             return error("%s: Failed to open file %s", __func__, pathDB.string());
@@ -71,7 +76,12 @@ private:
 
         int64_t nStart = GetTimeMillis();
         // open input file, and associate with CAutoFile
-        FILE *file = fopen(pathDB.string().c_str(), "rb");
+        FILE* file = nullptr;
+#if defined(_MSC_VER) && (_MSC_VER >= 1400)
+        const errno_t err = fopen_s(&file, pathDB.string().c_str(), "rb");
+#else
+        file = fopen(pathDB.string().c_str(), "rb");
+#endif
         CAutoFile filein(file, SER_DISK, CLIENT_VERSION);
         if (filein.IsNull())
         {
@@ -80,18 +90,15 @@ private:
         }
 
         // use file size to size memory buffer
-        int fileSize = fs::file_size(pathDB);
-        int dataSize = fileSize - sizeof(uint256);
-        // Don't try to resize to a negative number if file is small
-        if (dataSize < 0)
-            dataSize = 0;
-        std::vector<unsigned char> vchData;
-        vchData.resize(dataSize);
+        const auto nFileSize = fs::file_size(pathDB);
+        size_t nDataSize = nFileSize >= sizeof(uint256) ? nFileSize - sizeof(uint256) : 0;
+        v_uint8 vchData;
+        vchData.resize(nDataSize);
         uint256 hashIn;
 
         // read data and checksum from file
         try {
-            filein.read((char *)&vchData[0], dataSize);
+            filein.read((char *)&vchData[0], nDataSize);
             filein >> hashIn;
         }
         catch (const std::exception &e)

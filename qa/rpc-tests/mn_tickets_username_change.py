@@ -1,21 +1,15 @@
 #!/usr/bin/env python3
-# Copyright (c) 2018-2021 The Pastel Core developers
+# Copyright (c) 2021 The Pastel Core developers
 # Distributed under the MIT software license, see the accompanying
 # file COPYING or https://www.opensource.org/licenses/mit-license.php.
 from test_framework.util import (
-    initialize_chain_clean,
     assert_equal,
-    assert_equals,
-    assert_greater_than,
     assert_true,
-    assert_raises,
-    assert_raises_message,
     assert_raises_rpc,
     assert_shows_help,
     wait_and_assert_operationid_status,
 )
 from pastel_test_framework import PastelTestFramework
-from test_framework.authproxy import JSONRPCException
 import test_framework.rpc_consts as rpc
 
 from decimal import Decimal, getcontext
@@ -40,6 +34,9 @@ class UserNameChangeTest(PastelTestFramework):
     node1_balancer = None
 
     def list_username_tickets(self, nExpectedCount):
+        """
+        list and check username ticket count
+        """
         result = self.nodes[0].tickets("list", "username")
         nTicketCount = len(result) if result else 0
         print(f"username-change tickets: {nTicketCount}")
@@ -47,6 +44,9 @@ class UserNameChangeTest(PastelTestFramework):
 
 
     def check_username_change_ticket(self, txid, username, pastelid, fee):
+        """
+        check username ticket data
+        """
         result = self.nodes[0].tickets("get", txid)
         tkt = result["ticket"]
         assert_equal(tkt["type"], "username-change", "invalid ticket type")
