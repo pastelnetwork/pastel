@@ -45,7 +45,7 @@ endif
 if ENABLE_PROTON
 LIBBITCOIN_PROTON=libbitcoin_proton.a
 endif
-if BUILD_BITCOIN_LIBS
+if BUILD_PASTEL_LIBS
 LIBZCASH_CONSENSUS=libzcashconsensus.la
 endif
 if ENABLE_WALLET
@@ -614,7 +614,7 @@ libzcash_a_CXXFLAGS = $(AM_CXXFLAGS) $(PIE_FLAGS)
 libzcash_a_LDFLAGS = $(AM_LDFLAGS)
 
 # zcashconsensus library #
-if BUILD_BITCOIN_LIBS
+if BUILD_PASTEL_LIBS
 include_HEADERS = script/zcashconsensus.h
 libzcashconsensus_la_SOURCES = \
   crypto/equihash.cpp \

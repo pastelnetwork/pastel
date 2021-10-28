@@ -7,7 +7,7 @@ endif
 
 GZIP_ENV="-9n"
 
-if BUILD_BITCOIN_LIBS
+if BUILD_PASTEL_LIBS
 pkgconfigdir = $(libdir)/pkgconfig
 pkgconfig_DATA = libzcashconsensus.pc
 endif
