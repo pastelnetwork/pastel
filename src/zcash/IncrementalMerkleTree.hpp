@@ -1,6 +1,4 @@
-#ifndef ZC_INCREMENTALMERKLETREE_H_
-#define ZC_INCREMENTALMERKLETREE_H_
-
+#pragma once
 #include <array>
 #include <deque>
 #include <optional>
@@ -10,20 +8,21 @@
 
 #include "Zcash.h"
 #include "zcash/util.h"
+#include "vector_types.h"
 
 namespace libzcash {
 
 class MerklePath {
 public:
-    std::vector<std::vector<bool>> authentication_path;
-    std::vector<bool> index;
+    std::vector<v_bools> authentication_path;
+    v_bools index;
 
     ADD_SERIALIZE_METHODS;
 
     template <typename Stream>
     inline void SerializationOp(Stream& s, const SERIALIZE_ACTION ser_action)
     {
-        std::vector<std::vector<unsigned char>> pathBytes;
+        std::vector<v_uint8> pathBytes;
         uint64_t indexInt;
         if (ser_action == SERIALIZE_ACTION::Read)
         {
@@ -40,7 +39,7 @@ public:
             for (size_t i = 0; i < authentication_path.size(); i++) {
                 pathBytes[i].resize((authentication_path[i].size()+7)/8);
                 for (unsigned int p = 0; p < authentication_path[i].size(); p++) {
-                    pathBytes[i][p / 8] |= authentication_path[i][p] << (7-(p % 8));
+                    pathBytes[i][p / 8] |= static_cast<uint8_t>(authentication_path[i][p]) << (7-(p % 8));
                 }
             }
             indexInt = convertVectorToInt(index);
@@ -56,7 +55,7 @@ public:
 
     MerklePath() { }
 
-    MerklePath(std::vector<std::vector<bool>> authentication_path, std::vector<bool> index)
+    MerklePath(std::vector<v_bools> authentication_path, v_bools index)
     : authentication_path(authentication_path), index(index) { }
 };
 
@@ -267,5 +266,3 @@ typedef libzcash::IncrementalMerkleTree<INCREMENTAL_MERKLE_TREE_DEPTH_TESTING, l
 
 typedef libzcash::IncrementalWitness<SAPLING_INCREMENTAL_MERKLE_TREE_DEPTH, libzcash::PedersenHash> SaplingWitness;
 typedef libzcash::IncrementalWitness<INCREMENTAL_MERKLE_TREE_DEPTH_TESTING, libzcash::PedersenHash> SaplingTestingWitness;
-
-#endif /* ZC_INCREMENTALMERKLETREE_H_ */

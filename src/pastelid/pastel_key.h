@@ -5,13 +5,14 @@
 
 #include "vector_types.h"
 #include "support/allocators/secure.h"
+#include "map_types.h"
 #include "legroast.h"
 #include "fs.h"
 
 #include <unordered_map>
 
 // storage type for pastel ids and associated keys
-using pastelid_store_t = std::unordered_map<std::string, std::string>;
+using pastelid_store_t = mu_strings;
 
 constexpr auto SIGN_ALG_ED448 = "ed448";
 constexpr auto SIGN_ALG_LEGROAST = "legroast";

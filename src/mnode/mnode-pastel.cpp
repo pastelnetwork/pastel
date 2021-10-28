@@ -238,7 +238,7 @@ CNFTRegTicket CNFTRegTicket::Create(
     CNFTRegTicket ticket(std::move(_ticket));
     
     //NFT Ticket
-    auto jsonTicketObj = json::parse(ed_crypto::Base64_Decode(ticket.NFTTicket));
+    auto jsonTicketObj = json::parse(ed_crypto::Base64_Decode(ticket.sNFTTicket));
 
     if (jsonTicketObj.size() != 8)
         throw std::runtime_error("NFT ticket json is incorrect");
@@ -292,13 +292,13 @@ CNFTRegTicket CNFTRegTicket::Create(
     
     ticket.pastelIDs[mainmnsign] = std::move(_pastelID);
     //signature of ticket hash
-    string_to_vector(CPastelID::Sign(ticket.NFTTicket, ticket.pastelIDs[mainmnsign], std::move(strKeyPass)), ticket.ticketSignatures[mainmnsign]);
+    string_to_vector(CPastelID::Sign(ticket.sNFTTicket, ticket.pastelIDs[mainmnsign], std::move(strKeyPass)), ticket.ticketSignatures[mainmnsign]);
     return ticket;
 }
 
 std::string CNFTRegTicket::ToStr() const noexcept
 {
-    return NFTTicket;
+    return sNFTTicket;
 }
 
 bool CNFTRegTicket::IsValid(const bool bPreReg, const int nDepth) const
@@ -418,7 +418,7 @@ bool CNFTRegTicket::IsValid(const bool bPreReg, const int nDepth) const
     //5. Signatures matches included PastelIDs (signature verification is slower - hence separate loop)
     for (int mnIndex=0; mnIndex < allsigns; mnIndex++)
     {
-        if (!CPastelID::Verify(NFTTicket, vector_to_string(ticketSignatures[mnIndex]), pastelIDs[mnIndex]))
+        if (!CPastelID::Verify(sNFTTicket, vector_to_string(ticketSignatures[mnIndex]), pastelIDs[mnIndex]))
         {
             if (mnIndex == creatorsign)
               throw std::runtime_error("Creator signature is invalid");
@@ -447,7 +447,7 @@ std::string CNFTRegTicket::ToJSON() const noexcept
         {"height", m_nBlock},
         {"ticket", {
             {"type", GetTicketName()},
-            {"nft_ticket", NFTTicket},
+            {"nft_ticket", sNFTTicket},
             {"version", GetStoredVersion()},
             {"signatures", {
                 {"creator", {

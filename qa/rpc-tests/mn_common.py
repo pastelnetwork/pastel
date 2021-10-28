@@ -4,15 +4,16 @@
 # file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
 from pastel_test_framework import PastelTestFramework
-from test_framework.util import assert_equal, assert_true, \
-    assert_greater_than, initialize_chain_clean, \
-    initialize_datadir, start_nodes, start_node, connect_nodes_bi, \
-    pasteld_processes, wait_and_assert_operationid_status, p2p_port, \
+from test_framework.util import (
+    assert_equal, 
+    start_node, 
+    connect_nodes_bi, 
+    p2p_port,
     stop_node
+)
 from test_framework.authproxy import JSONRPCException
 
 import os
-import sys
 import time
 import itertools
 import json

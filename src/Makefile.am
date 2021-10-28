@@ -113,9 +113,13 @@ LIBZCASH_H = \
   zcash/Zcash.h
 
 MNODE_CPP =\
+  mnode/rpc/masternode.cpp\
   mnode/rpc/mnode-rpc-utils.cpp\
-  mnode/rpc/tickets-register.cpp\
   mnode/rpc/mnode-rpc.cpp\
+  mnode/rpc/tickets-fake.cpp\
+  mnode/rpc/tickets-list.cpp\
+  mnode/rpc/tickets-register.cpp\
+  mnode/rpc/tickets-tools.cpp\
   mnode/mnode-config.cpp\
   mnode/mnode-active.cpp\
   mnode/mnode-manager.cpp\
@@ -135,9 +139,14 @@ MNODE_CPP =\
   mnode/mnode-controller.cpp
 
 MNODE_H = \
+  mnode/rpc/masternode.h\
   mnode/rpc/mnode-rpc-utils.h\
   mnode/rpc/mnode-register.h\
   mnode/rpc/mnode-rpc.h\
+  mnode/rpc/tickets-fake.h\
+  mnode/rpc/tickets-list.h\
+  mnode/rpc/tickets-register.h\
+  mnode/rpc/tickets-tools.h\
   mnode/mnode-active.h\
   mnode/mnode-config.h\
   mnode/mnode-db.h\
@@ -232,6 +241,7 @@ BITCOIN_CORE_H = \
   nodehelper.h \
   netbase.h \
   noui.h \
+  numeric_range.h\
   policy/fees.h \
   port_config.h \
   pow.h \

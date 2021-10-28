@@ -151,6 +151,12 @@
     <ClCompile Include="..\..\..\src\wallet\gtest\test_wallet_ismine.cpp">
       <Filter>UnitTest Files\wallet</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\..\src\gtest\test_numeric_range.cpp">
+      <Filter>UnitTest Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\src\gtest\test_str_utils.cpp">
+      <Filter>UnitTest Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\..\src\gtest\json_test_vectors.h">

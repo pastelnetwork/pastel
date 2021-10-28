@@ -8,7 +8,7 @@
 #include "core_io.h"
 #include "key_io.h"
 #include "init.h"
-
+#include "str_utils.h"
 #include "mnode/mnode-pastel.h"
 #include "mnode/mnode-controller.h"
 #include "mnode/ticket-processor.h"
@@ -53,6 +53,7 @@ void CPastelTicketProcessor::InitTicketDB()
 
 /**
  * Create ticket unique_ptr by type.
+ * 
  * \param ticketId - ticket type
  */
 unique_ptr<CPastelTicket> CPastelTicketProcessor::CreateTicket(const TicketID ticketId)
@@ -542,6 +543,23 @@ bool CPastelTicketProcessor::FindTicketBySecondaryKey(CPastelTicket& ticket)
     return false;
 }
 
+template <class _TicketType, typename F>
+void CPastelTicketProcessor::ProcessTicketsByMVKey(const string& mvKey, F f) const
+{
+    v_strings vMainKeys;
+    const auto realMVKey = RealMVKey(mvKey);
+    dbs.at(_TicketType::GetID())->Read(realMVKey, vMainKeys);
+    for (const auto& key : vMainKeys)
+    {
+        _TicketType ticket;
+        if (dbs.at(_TicketType::GetID())->Read(key, ticket))
+        {
+            if (!f(ticket))
+                break; // stop processing tickets if functor returned false
+        }
+    }
+}
+
 template <class _TicketType>
 vector<_TicketType> CPastelTicketProcessor::FindTicketsByMVKey(const string& mvKey)
 {
@@ -600,6 +618,7 @@ v_strings CPastelTicketProcessor::GetAllKeys(const TicketID id) const
  * Apply functor F for all tickets with type _TicketType.
  * 
  * \param f - functor to apply
+ *      if functor returns false - enumerations will be stopped
  */
 template <class _TicketType, typename F>
 void CPastelTicketProcessor::listTickets(F f) const
@@ -611,8 +630,10 @@ void CPastelTicketProcessor::listTickets(F f) const
             continue;
         _TicketType ticket;
         ticket.SetKeyOne(key);
-        if (FindTicket(ticket))
-            f(ticket);
+        if (!FindTicket(ticket))
+            continue;
+        if (!f(ticket))
+            break;
     }
 }
 
@@ -620,10 +641,11 @@ template <class _TicketType>
 string CPastelTicketProcessor::ListTickets() const
 {
     json jArray;
-    listTickets<_TicketType>([&](const _TicketType& ticket)
-        {
-            jArray.push_back(json::parse(ticket.ToJSON()));
-        });
+    listTickets<_TicketType>([&](const _TicketType& ticket) -> bool
+    {
+        jArray.push_back(json::parse(ticket.ToJSON()));
+        return true;
+    });
     return jArray.dump();
 }
 template string CPastelTicketProcessor::ListTickets<CPastelIDRegTicket>() const;
@@ -637,47 +659,46 @@ template string CPastelTicketProcessor::ListTickets<CChangeUsernameTicket>() con
 template string CPastelTicketProcessor::ListTickets<CChangeEthereumAddressTicket>() const;
 
 template <class _TicketType, typename F>
-string CPastelTicketProcessor::filterTickets(F f, const bool checkConfirmation) const
+string CPastelTicketProcessor::filterTickets(F f, const bool bCheckConfirmation) const
 {
-    vector<_TicketType> allTickets;
-    listTickets<_TicketType>([&](const _TicketType& ticket)
-        {
-            allTickets.push_back(ticket);
-        });
-
-    unsigned int chainHeight = GetActiveChainHeight();
-
     json jArray;
-    for (const auto& t : allTickets)
+    const unsigned int nChainHeight = GetActiveChainHeight();
+    // list tickets with the specific type (_TicketType) and add to json array if functor f applies
+    listTickets<_TicketType>([&](const _TicketType& ticket) -> bool
     {
-        //check if the sell ticket is confirmed
-        if ((chainHeight - t.GetBlock() < masterNodeCtrl.MinTicketConfirmations) && checkConfirmation)
-            continue;
-        if (f(t, chainHeight))
-            continue;
-        jArray.push_back(json::parse(t.ToJSON()));
-    }
+        //check if the ticket is confirmed
+        if (bCheckConfirmation && (nChainHeight - ticket.GetBlock() < masterNodeCtrl.MinTicketConfirmations))
+            return true;
+        // apply functor to the current ticket
+        if (f(ticket, nChainHeight))
+            return true;
+        jArray.push_back(json::parse(ticket.ToJSON()));
+        return true;
+    });
     return jArray.dump();
 }
 
 /**
- * List Pastel registration tickets using filter.
- * For filter=3 include only tickets for locally stored PastelIDs in pvPastelIDs.
+ * List Pastel NFT registration tickets using filter.
  *
- * \param filter - 1 - mn; 2 - personal; 3 - mine
+ * \param filter - ticket filter
+ *      1 - mn, include only masternode PastelIDs
+ *      2 - personal, include only personal PastelIDs
+ *      3 - mine, include only tickets for locally stored PastelIDs in pvPastelIDs 
  * \param pmapIDs - map of locally stored PastelIDs -> LegRoast public key
- * \return
+ * \return json with filtered tickets
  */
 string CPastelTicketProcessor::ListFilterPastelIDTickets(const short filter, const pastelid_store_t* pmapIDs) const
 {
     return filterTickets<CPastelIDRegTicket>(
-        [&](const CPastelIDRegTicket& t, const unsigned int chainHeight) -> bool {
-            if ((filter == 1 &&
-                 !t.outpoint.IsNull()) || // don't skip mn
-                (filter == 2 &&
-                 t.outpoint.IsNull()) || // don't skip personal
-                (filter == 3 &&          // don't skip locally stored tickets
-                 pmapIDs && pmapIDs->find(t.pastelID) != pmapIDs->cend()))
+        [&](const CPastelIDRegTicket& t, const unsigned int chainHeight) -> bool
+        {
+            if ((filter == 1 && // don't skip mn
+                    !t.outpoint.IsNull()) || 
+                (filter == 2 && // don't skip personal
+                    t.outpoint.IsNull()) || 
+                (filter == 3 && // don't skip locally stored tickets
+                    pmapIDs && pmapIDs->find(t.pastelID) != pmapIDs->cend()))
                 return false;
             return true;
         });
@@ -687,7 +708,7 @@ string CPastelTicketProcessor::ListFilterPastelIDTickets(const short filter, con
 string CPastelTicketProcessor::ListFilterNFTTickets(const short filter) const
 {
     return filterTickets<CNFTRegTicket>(
-        [&](const CNFTRegTicket& t, const unsigned int chainHeight) -> bool
+        [&](const CNFTRegTicket& t, const unsigned int nChainHeight) -> bool
         {
             if (filter == 3)
             {
@@ -696,7 +717,7 @@ string CPastelTicketProcessor::ListFilterNFTTickets(const short filter) const
                 if (CNFTActivateTicket::FindTicketInDb(t.GetTxId(), actTicket))
                 {
                     //find Trade tickets listing that Act ticket txid as NFT ticket
-                    auto vTradeTickets = CNFTTradeTicket::FindAllTicketByNFTTxnID(actTicket.GetTxId());
+                    const auto vTradeTickets = CNFTTradeTicket::FindAllTicketByNFTTxnID(actTicket.GetTxId());
                     if (vTradeTickets.size() >= t.totalCopies)
                         return false; //don't skip sold
                 }
@@ -967,6 +988,183 @@ bool CPastelTicketProcessor::CreateP2FMSTransaction(const CDataStream& input_str
     const CAmount price, const opt_string_t& sFundingAddress, string& error_ret)
 {
     return CreateP2FMSTransactionWithExtra(input_stream, vector<CTxOut>{}, 0, tx_out, price, sFundingAddress, error_ret);
+}
+
+/**
+ * Check if json value passes fuzzy search filter.
+ * 
+ * \param jProp - json property value
+ * \param sPropFilterValue - filter value
+ * \return true if value passes the filter
+ */
+bool isValuePassFuzzyFilter(const json &jProp, const string &sPropFilterValue) noexcept
+{
+    bool bPassedFilter = false;
+    string sPropValue;
+    do
+    {
+        if (jProp.is_string())
+        {
+            jProp.get_to(sPropValue);
+            // just make case insensitive substring search
+            if (!str_ifind(sPropValue, sPropFilterValue))
+                break;
+        } else if (jProp.is_boolean())
+        {
+            bool bValue = false;
+            // filter value should be convertable to bool
+            if (!str_tobool(sPropFilterValue, bValue) || 
+                (jProp.get<bool>() != bValue))
+                break;
+        } else if (jProp.is_number())
+        {
+            // number should be convertible to string
+            try
+            {
+                sPropValue = to_string(jProp);
+                if (sPropValue != sPropFilterValue)
+                    break;
+            } catch ([[maybe_unused]] const std::bad_alloc& ex)
+            {
+                break;
+            }
+        } else
+            break;
+        bPassedFilter = true;
+    } while (false);
+    return bPassedFilter;
+}
+
+/**
+ * Search for NFT tickets using multiple criterias (defined in 'tickets tools searchthumbids').
+ * 
+ * \param p - structure with search criterias
+ * \param fnMatchFound - functor to apply when NFT registration ticket found that matches all search criterias
+ */
+void CPastelTicketProcessor::SearchForNFTs(const search_thumbids_t& p, function<size_t(const CPastelTicket*, const json&)> &fnMatchFound) const
+{
+    v_strings vPastelIDs;
+    // Creator PastelID can have special 'mine' value
+    if (str_icmp(p.sCreatorPastelId, "mine"))
+    {
+        const auto mapIDs = CPastelID::GetStoredPastelIDs(true);
+        if (!mapIDs.empty())
+        {
+            vPastelIDs.reserve(mapIDs.size());
+            for (const auto& [sPastelID, sLegRoastPubKey] : mapIDs)
+                vPastelIDs.push_back(sPastelID);
+        }
+    } else
+        vPastelIDs.push_back(p.sCreatorPastelId);
+    size_t nResultCount = 0;
+    string sDataBase64, sData;
+    // process NFT activation tickets by PastelID (mvkey #1)
+    for (const auto &sPastelID : vPastelIDs)
+    {
+        ProcessTicketsByMVKey<CNFTActivateTicket>(sPastelID, [&](const CNFTActivateTicket& actTicket) -> bool
+        {
+            // check if we exceeded max results
+            if (p.nMaxResultCount.has_value() && (nResultCount >= p.nMaxResultCount.value()))
+                return false; // stop enumeration
+
+            do
+            {
+                // filter NFT activation tickets by block height range
+                if (p.blockRange.has_value() && !p.blockRange.value().contains(actTicket.GetBlock()))
+                    break;
+
+                // find NFT registration ticket by txid
+                auto pNftTicketPtr = CPastelTicketProcessor::GetTicket(actTicket.regTicketTxnId, TicketID::NFT);
+                if (!pNftTicketPtr)
+                    break;
+                auto pNftTicket = dynamic_cast<const CNFTRegTicket*>(pNftTicketPtr.get());
+                if (!pNftTicket)
+                    break;
+                // filter by number of copies
+                if (p.copyCount.has_value() && !p.copyCount.value().contains(pNftTicket->totalCopies))
+                    break;
+                // NFT ticket data are base64 encoded
+                bool bInvalid = false;
+                sData = DecodeBase64(pNftTicket->sNFTTicket, &bInvalid);
+                if (bInvalid)
+                {
+                    LogPrintf("ERROR: failed to decode base64 encoded NFT ticket (%s)", actTicket.regTicketTxnId);
+                    break;
+                }
+                json j;
+                try
+                {
+                    // parse NFT ticket json
+                    j = json::parse(sData);
+                } catch (const json::exception& ex)
+                {
+                    LogPrintf("ERROR: failed to parse NFT ticket json (%s). %s", actTicket.regTicketTxnId, SAFE_SZ(ex.what()));
+                    break;
+                }
+                json jApp; // app ticket json
+                if (j.contains("app_ticket"))
+                {
+                    const json &jAppTicketBase64 = j["app_ticket"];
+                    if (jAppTicketBase64.is_string())
+                    {
+                        bInvalid = false;
+                        jAppTicketBase64.get_to(sDataBase64);
+                        sData = DecodeBase64(sDataBase64, &bInvalid);
+                        if (bInvalid)
+                        {
+                            LogPrintf("ERROR: failed to decode base64 encoded NFT app ticket (%s)", actTicket.regTicketTxnId);
+                            break;
+                        }
+                        try
+                        {
+                            // parse app ticket json
+                            jApp = json::parse(sData);
+                        } catch (const json::exception& ex)
+                        {
+                            LogPrintf("ERROR: failed to parse NFT app ticket json (%s). %s", actTicket.regTicketTxnId, SAFE_SZ(ex.what()));
+                            break;
+                        }
+                    }
+                }
+                uint32_t nScore;
+                // filter by rareness score
+                if (p.rarenessScore.has_value() && jApp.contains("rareness_score"))
+                {
+                    jApp["rareness_score"].get_to(nScore);
+                    if (!p.rarenessScore.value().contains(nScore))
+                        break;
+                }
+                // filter by nsfw score
+                if (p.nsfwScore.has_value() && jApp.contains("nsfw_score"))
+                {
+                    jApp["nsfw_score"].get_to(nScore);
+                    if (!p.nsfwScore.value().contains(nScore))
+                        break;
+                }
+                // nft reg app ticket properties (name: value)
+                string sPropName, sPropValue;
+                // fuzzy search (key is lowercased in the fuzzySearchMap)
+                bool bPassedFilter = true;
+                for (const auto &[sSearchProp, sPropFilterValue] : p.fuzzySearchMap)
+                {
+                    // first let's check if we have any fuzzy search mappings (search keyword->nft ticket property name)
+                    const auto itMapping = p.fuzzyMappings.find(sSearchProp);
+                    if (itMapping != p.fuzzyMappings.cend())
+                        sPropName = itMapping->second; // found property name in the map -> use it
+                    else
+                        sPropName = sSearchProp; // try to use search property and nft ticket property name as is
+                    if (!jApp.contains(sPropName))
+                        continue; // just skip unknown properties
+                    bPassedFilter = isValuePassFuzzyFilter(jApp[sPropName], sPropFilterValue);
+                }
+                if (!bPassedFilter)
+                    break;
+                // add NFT reg ticket info to the json array
+                nResultCount = fnMatchFound(pNftTicket, jApp);
+            } while (false);
+            return true;
+        });
+    } // for
 }
 
 /**

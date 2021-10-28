@@ -4,20 +4,20 @@
 # file COPYING or http://www.opensource.org/licenses/mit-license.php.
 import math
 
-from test_framework.util import assert_equal, assert_equals, assert_greater_than, \
-    assert_true, assert_raises, initialize_chain_clean, str_to_b64str
+from test_framework.util import (
+    assert_equal, 
+    assert_equals, 
+    assert_greater_than,
+    assert_true, 
+    initialize_chain_clean,
+    str_to_b64str
+)
 from mn_common import MasterNodeCommon
 from test_framework.authproxy import JSONRPCException
 import json
 import time
-import base64
 import random
 import string
-import hashlib
-
-# import sys
-# if sys.version_info < (3, 6):
-#     import sha3
 
 from decimal import Decimal, getcontext
 getcontext().prec = 16
@@ -522,17 +522,6 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         print("Personal royalty initialize tested")
     # ===============================================================================================================
 
-    def get_rand_testdata(self, scope, length):
-        return ''.join(random.choice(scope) for i in range(length))
-
-    # ===============================================================================================================
-
-    def get_random_mock_hash(self):
-        letters = string.ascii_letters
-        value_hashed = self.get_rand_testdata(letters, 10)
-        encoded_value = value_hashed.encode()
-        return hashlib.sha3_256(encoded_value).hexdigest()
-
     def generate_app_ticket_details(self):
         # app_ticket structure
         # {
@@ -598,6 +587,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
             "nft_creation_video_youtube_url": self.get_rand_testdata(letters, 10),
 
             "preview_hash": self.get_random_mock_hash(),
+            "thumbnail_hash": self.get_random_mock_hash(),
             "thumbnail1_hash": self.get_random_mock_hash(),
             "thumbnail2_hash": self.get_random_mock_hash(),
             "data_hash": self.get_random_mock_hash(),
@@ -611,12 +601,14 @@ class MasterNodeTicketsTest(MasterNodeCommon):
             "dupe_detection_system_version": "1",
             "pastel_rareness_score": round(random.random(), 2),
 
+            "rareness_score": random.randint(0, 1000),
             "internet_rareness_score": round(random.random(), 2),
             "matches_found_on_first_page": random.randint(1, 5),
             "number_of_pages_of_results": random.randint(1, 50),
             "url_of_first_match_in_page": self.get_rand_testdata(letters, 10),
 
             "open_nsfw_score": round(random.random(), 2),
+            "nsfw_score": random.randint(0, 1000),
             "alternate_nsfw_scores": {
                   "drawing": round(random.random(), 2),
                   "hentai": round(random.random(), 2),

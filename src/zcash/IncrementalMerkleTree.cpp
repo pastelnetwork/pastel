@@ -108,20 +108,19 @@ Hash IncrementalMerkleTree<Depth, Hash>::last() const {
 }
 
 template<size_t Depth, typename Hash>
-size_t IncrementalMerkleTree<Depth, Hash>::size() const {
+size_t IncrementalMerkleTree<Depth, Hash>::size() const
+{
     size_t ret = 0;
-    if (left) {
+    if (left)
         ret++;
-    }
-    if (right) {
+    if (right)
         ret++;
-    }
     // Treat occupation of parents array as a binary number
     // (right-shifted by 1)
-    for (size_t i = 0; i < parents.size(); i++) {
-        if (parents[i]) {
-            ret += (1 << (i+1));
-        }
+    for (size_t i = 0; i < parents.size(); i++)
+    {
+        if (parents[i])
+            ret += static_cast<size_t>(1) << (i+1);
     }
     return ret;
 }

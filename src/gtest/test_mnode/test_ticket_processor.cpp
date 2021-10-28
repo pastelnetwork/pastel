@@ -2,9 +2,11 @@
 
 #include "mnode/ticket-processor.h"
 #include "pastel_gtest_main.h"
+#include "json/json.hpp"
 
 using namespace std;
 using namespace testing;
+using json = nlohmann::json;
 
 class TestTicketProcessor : 
     public CPastelTicketProcessor,
@@ -52,3 +54,33 @@ TEST_F(TestTicketProcessor, invalid_ticket_type)
 
 #endif // ENABLE_WALLET
 
+// bool isValuePassFuzzyFilter(const json& jProp, const string& sPropFilterValue) noexcept;
+class PTest_fuzzy_filter : public TestWithParam<
+    tuple<
+        string, // json value
+        string, // property filter value
+        bool>   // expected result (pass filter or not)
+>
+{};
+
+TEST_P(PTest_fuzzy_filter, isValuePassFuzzyFilter)
+{
+    const auto& sValue = get<0>(GetParam());
+    const json j = json::parse(sValue);
+    EXPECT_EQ(isValuePassFuzzyFilter(j, get<1>(GetParam())), get<2>(GetParam()));
+}
+
+INSTANTIATE_TEST_SUITE_P(ticket_processor, PTest_fuzzy_filter, Values(
+    make_tuple(R"("case insensitive string subsearch")", "Sea", true),
+    make_tuple(R"(42)", "42", true),
+    make_tuple(R"(true)", "1", true),
+    make_tuple(R"(false)", "0", true),
+    make_tuple(R"(2.3)", "2.3", true),
+    make_tuple(R"(-5.6)", "-5.6", true),
+    make_tuple(R"("substring not found")", "mystr", false),
+    make_tuple(R"(true)", "no", false),
+    make_tuple(R"(false)", "yes", false),
+    make_tuple(R"(42)", "43", false),
+    make_tuple(R"(-42)", "-43", false),
+    make_tuple(R"(2.3)", "2.4", false)
+));

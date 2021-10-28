@@ -205,6 +205,18 @@
     <ClCompile Include="..\..\..\src\mnode\rpc\mnode-rpc.cpp">
       <Filter>Source Files\mnode\rpc</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\..\src\mnode\rpc\tickets-tools.cpp">
+      <Filter>Source Files\mnode\rpc</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\src\mnode\rpc\tickets-fake.cpp">
+      <Filter>Source Files\mnode\rpc</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\src\mnode\rpc\masternode.cpp">
+      <Filter>Source Files\mnode\rpc</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\src\mnode\rpc\tickets-list.cpp">
+      <Filter>Source Files\mnode\rpc</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\..\src\addrman.h">
@@ -443,6 +455,18 @@
     </ClInclude>
     <ClInclude Include="..\..\..\src\str_types.h">
       <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\mnode\rpc\tickets-tools.h">
+      <Filter>Source Files\mnode\rpc</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\mnode\rpc\tickets-fake.h">
+      <Filter>Source Files\mnode\rpc</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\mnode\rpc\masternode.h">
+      <Filter>Source Files\mnode\rpc</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\mnode\rpc\tickets-list.h">
+      <Filter>Source Files\mnode\rpc</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

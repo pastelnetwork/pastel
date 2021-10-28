@@ -46,7 +46,7 @@ std::string DecodeAscii85(const std::string& str) noexcept;
 std::string EncodeAscii85(const unsigned char* pch, size_t len) noexcept;
 std::string EncodeAscii85(const std::string& str) noexcept;
 v_uint8 DecodeBase64(const char* p, bool* pfInvalid = nullptr);
-std::string DecodeBase64(const std::string& str);
+std::string DecodeBase64(const std::string& str, bool* pfInvalid = nullptr);
 std::string EncodeBase64(const unsigned char* pch, size_t len);
 std::string EncodeBase64(const std::string& str);
 v_uint8 DecodeBase32(const char* p, bool* pfInvalid = nullptr);

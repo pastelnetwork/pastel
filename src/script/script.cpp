@@ -1,5 +1,6 @@
 // Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2014 The Bitcoin Core developers
+// Copyright (c) 2018-2021 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -11,7 +12,7 @@
 using namespace std;
 
 namespace {
-inline std::string ValueString(const std::vector<unsigned char>& vch)
+inline std::string ValueString(const v_uint8& vch)
 {
     if (vch.size() <= 4)
         return strprintf("%d", CScriptNum(vch, false).getint());
@@ -196,7 +197,7 @@ unsigned int CScript::GetSigOpCount(const CScript& scriptSig) const
     // get the last item that the scriptSig
     // pushes onto the stack:
     const_iterator pc = scriptSig.begin();
-    vector<unsigned char> data;
+    v_uint8 data;
     while (pc < scriptSig.end())
     {
         opcodetype opcode;
@@ -257,7 +258,7 @@ std::string CScript::ToString() const
 {
     std::string str;
     opcodetype opcode;
-    std::vector<unsigned char> vch;
+    v_uint8 vch;
     const_iterator pc = begin();
     while (pc < end())
     {
@@ -287,18 +288,19 @@ uint160 CScript::AddressHash() const
         start = 2;
     else {
         // unknown script type; return zeros (this can happen)
-        vector<unsigned char> hashBytes;
+        v_uint8 hashBytes;
         hashBytes.resize(20);
         return uint160(hashBytes);
     }
 
-    if (this->size() < 20 + start) {
+    if (this->size() < static_cast<uint32_t>(20 + start))
+    {
         // unknown script type; return zeros (this can happen)
-        vector<unsigned char> hashBytes;
+        v_uint8 hashBytes;
         hashBytes.resize(20);
         return uint160(hashBytes);
     }
     
-    vector<unsigned char> hashBytes(this->begin()+start, this->begin()+start+20);
+    v_uint8 hashBytes(this->begin() + start, this->begin() + start + 20);
     return uint160(hashBytes);
 }
