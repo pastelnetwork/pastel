@@ -8,6 +8,7 @@ $(package)_sha256_hash=b4870bf121ff7795ba20d20bcdd8627b8e088f2d1dab299a031c1034e
 define $(package)_set_vars
 $(package)_cxxflags+=-std=c++17
 $(package)_cxxflags_linux=-fPIC
+$(package)_cmake_opts_darwin=-DCMAKE_POLICY_DEFAULT_CMP0025=NEW
 endef
 
 define $(package)_preprocess_cmds

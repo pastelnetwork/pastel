@@ -18,7 +18,7 @@ $(1)_libtool=$($($(1)_type)_LIBTOOL)
 $(1)_nm=$($($(1)_type)_NM)
 $(1)_cflags=$($($(1)_type)_CFLAGS) $($($(1)_type)_$(release_type)_CFLAGS)
 $(1)_cxxflags=$($($(1)_type)_CXXFLAGS) $($($(1)_type)_$(release_type)_CXXFLAGS)
-$(1)_ldflags=$($($(1)_type)_LDFLAGS) $($($(1)_type)_$(release_type)_LDFLAGS) -L$($($(1)_type)_prefix)/lib
+$(1)_ldflags=$($($(1)_type)_LDFLAGS) $($($(1)_type)_$(release_type)_LDFLAGS) -L$($($(1)_type)_prefix)/lib64 -L$($($(1)_type)_prefix)/lib
 $(1)_cppflags=$($($(1)_type)_CPPFLAGS) $($($(1)_type)_$(release_type)_CPPFLAGS) -I$($($(1)_type)_prefix)/include
 $(1)_recipe_hash:=
 endef
@@ -30,8 +30,8 @@ endef
 define fetch_file
 (test -f $$($(1)_source_dir)/$(4) || \
   ( mkdir -p $$($(1)_download_dir) && echo Fetching $(1)... && \
-  ( $(build_DOWNLOAD) "$$($(1)_download_dir)/$(4).temp" "$(PRIORITY_DOWNLOAD_PATH)/$(4)" || \
-    $(build_DOWNLOAD) "$$($(1)_download_dir)/$(4).temp" "$(2)/$(3)" ) && \
+  ( $(build_DOWNLOAD) "$$($(1)_download_dir)/$(4).temp" "$(2)/$(3)" || \
+    $(build_DOWNLOAD) "$$($(1)_download_dir)/$(4).temp" "$(PRIORITY_DOWNLOAD_PATH)/$(4)" ) && \
     echo "$(5)  $$($(1)_download_dir)/$(4).temp" > $$($(1)_download_dir)/.$(4).hash && \
     $(build_SHA256SUM) -c $$($(1)_download_dir)/.$(4).hash && \
     mv $$($(1)_download_dir)/$(4).temp $$($(1)_source_dir)/$(4) && \
@@ -148,12 +148,17 @@ $(1)_config_opts+=$$($(1)_config_opts_$(host_arch)) $$($(1)_config_opts_$(host_a
 $(1)_config_opts+=$$($(1)_config_opts_$(host_os)) $$($(1)_config_opts_$(host_os)_$(release_type))
 $(1)_config_opts+=$$($(1)_config_opts_$(host_arch)_$(host_os)) $$($(1)_config_opts_$(host_arch)_$(host_os)_$(release_type))
 
+$(1)_cmake_opts+=$$($(1)_cmake_opts_$(release_type))
+$(1)_cmake_opts+=$$($(1)_cmake_opts_$(host_arch)) $$($(1)_cmake_opts_$(host_arch)_$(release_type))
+$(1)_cmake_opts+=$$($(1)_cmake_opts_$(host_os)) $$($(1)_cmake_opts_$(host_os)_$(release_type))
+$(1)_cmake_opts+=$$($(1)_cmake_opts_$(host_arch)_$(host_os)) $$($(1)_cmake_opts_$(host_arch)_$(host_os)_$(release_type))
+
 $(1)_config_env+=$$($(1)_config_env_$(release_type))
 $(1)_config_env+=$($(1)_config_env_$(host_arch)) $($(1)_config_env_$(host_arch)_$(release_type))
 $(1)_config_env+=$($(1)_config_env_$(host_os)) $($(1)_config_env_$(host_os)_$(release_type))
 $(1)_config_env+=$($(1)_config_env_$(host_arch)_$(host_os)) $($(1)_config_env_$(host_arch)_$(host_os)_$(release_type))
 
-$(1)_config_env+=PKG_CONFIG_LIBDIR=$($($(1)_type)_prefix)/lib/pkgconfig
+$(1)_config_env+=PKG_CONFIG_LIBDIR=$($($(1)_type)_prefix)/lib/pkgconfig:$($($(1)_type)_prefix)/lib64/pkgconfig
 $(1)_config_env+=PKG_CONFIG_PATH=$($($(1)_type)_prefix)/share/pkgconfig
 $(1)_config_env+=PATH="$(build_prefix)/bin:$(if $($(host_os)_config_env_path),$($(host_os)_config_env_path):,)$(PATH)"
 $(1)_build_env+=PATH="$(build_prefix)/bin:$(PATH)"
@@ -186,7 +191,7 @@ $(1)_cmake=env CC="$$($(1)_cc)" \
                CFLAGS="$$($(1)_cppflags) $$($(1)_cflags)" \
                CXX="$$($(1)_cxx)" \
                CXXFLAGS="$$($(1)_cppflags) $$($(1)_cxxflags)" \
-             cmake -DCMAKE_AR="$$($(1)_ar)" -DCMAKE_RANLIB="$$($(1)_ranlib)" -DCMAKE_INSTALL_PREFIX:PATH="$$($($(1)_type)_prefix)"
+             cmake -DCMAKE_AR="$$($(1)_ar)" -DCMAKE_RANLIB="$$($(1)_ranlib)" -DCMAKE_INSTALL_PREFIX:PATH="$$($($(1)_type)_prefix)" $$($(1)_cmake_opts)
 ifeq ($($(1)_type),build)
 $(1)_cmake += -DCMAKE_INSTALL_RPATH:PATH="$$($($(1)_type)_prefix)/lib"
 else

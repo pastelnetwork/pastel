@@ -29,7 +29,7 @@ export PKG_CONFIG_LIBDIR=$depends_prefix/lib/pkgconfig:$depends_prefix/lib64/pkg
 export PKG_CONFIG_PATH=$depends_prefix/share/pkgconfig
 
 CPPFLAGS="-I$depends_prefix/include/ $CPPFLAGS"
-LDFLAGS="-L$depends_prefix/lib $LDFLAGS"
+LDFLAGS="-L$depends_prefix/lib64 -L$depends_prefix/lib $LDFLAGS"
 
 CC="@CC@"
 CXX="@CXX@"
