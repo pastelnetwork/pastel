@@ -6,7 +6,7 @@ $(package)_sha256_hash=59eedfcb46c25214c9bd37ed6078297b4df01d012267fe9e9eee31f61
 
 define $(package)_set_vars
 $(package)_config_env=AR="$($(package)_ar)" RANLIB="$($(package)_ranlib)" CC="$($(package)_cc)" CFLAGS="$($(package)_cflags)"
-$(package)_config_opts=--prefix=$(host_prefix) --openssldir=$(host_prefix)/etc/openssl 
+$(package)_config_opts=--prefix=$(host_prefix) --openssldir=$(host_prefix)/etc/openssl --api=3.0 
 $(package)_config_opts+=no-shared
 $(package)_config_opts+=no-acvp-tests
 $(package)_config_opts+=no-afalgeng
@@ -30,7 +30,6 @@ $(package)_config_opts+=no-ec2m
 $(package)_config_opts+=no-engine
 $(package)_config_opts+=no-err
 $(package)_config_opts+=no-gost
-$(package)_config_opts+=no-heartbeats
 $(package)_config_opts+=no-idea
 $(package)_config_opts+=no-legacy
 $(package)_config_opts+=no-md4
@@ -83,7 +82,7 @@ define $(package)_config_cmds
 endef
 
 define $(package)_build_cmds
-  $(MAKE) -j$(JOBCOUNT) build_libs build_libs_nodep
+  $(MAKE) -j1 build_libs build_libs_nodep
 endef
 
 define $(package)_stage_cmds
