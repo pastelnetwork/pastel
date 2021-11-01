@@ -124,6 +124,7 @@
     <ClCompile Include="..\..\..\src\gtest\test_merkletree.cpp" />
     <ClCompile Include="..\..\..\src\gtest\test_metrics.cpp" />
     <ClCompile Include="..\..\..\src\gtest\test_miner.cpp" />
+    <ClCompile Include="..\..\..\src\gtest\test_netbase.cpp" />
     <ClCompile Include="..\..\..\src\gtest\test_noteencryption.cpp" />
     <ClCompile Include="..\..\..\src\gtest\test_numeric_range.cpp" />
     <ClCompile Include="..\..\..\src\gtest\test_pedersen_hash.cpp" />

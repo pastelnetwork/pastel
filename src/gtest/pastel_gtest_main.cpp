@@ -90,6 +90,8 @@ void CPastelTest_Environment::SetUp()
         "e9b238411bd6c0ec4791e9d04245ec350c9c5744f5610dfcce4365d5ca49dfefd5054e371842b3f88fa1b9d7e8e075249b3ebabd167fa8b0f3161292d36c180a");
 
     fnIsInitialBlockDownload = TestIsInitialBlockDownload;
+
+    SetupNetworking();
 }
 
 void CPastelTest_Environment::TearDown()

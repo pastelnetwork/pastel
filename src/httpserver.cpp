@@ -1,6 +1,7 @@
 // Copyright (c) 2015 The Bitcoin Core developers
+// Copyright (c) 2018-2021 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
-// file COPYING or http://www.opensource.org/licenses/mit-license.php.
+// file COPYING or https://www.opensource.org/licenses/mit-license.php.
 
 #include "httpserver.h"
 
@@ -11,10 +12,12 @@
 #include "rpc/protocol.h" // For HTTP status codes
 #include "sync.h"
 #include "ui_interface.h"
+#include "vector_types.h"
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <inttypes.h>
 
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -38,6 +41,8 @@
 
 #include <boost/algorithm/string/case_conv.hpp> // for to_lower()
 #include <boost/scoped_ptr.hpp>
+
+using namespace std;
 
 /** HTTP request work item */
 class HTTPWorkItem : public HTTPClosure
@@ -318,40 +323,54 @@ static void ThreadHTTP(struct event_base* base, struct evhttp* http)
 }
 
 /** Bind HTTP server to specified addresses */
-static bool HTTPBindAddresses(struct evhttp* http)
+static bool HTTPBindAddresses(std::string &error, struct evhttp* http)
 {
-    int defaultPort = GetArg("-rpcport", BaseParams().RPCPort());
+    const int64_t nPortParam = GetArg("-rpcport", BaseParams().RPCPort());
     std::vector<std::pair<std::string, uint16_t> > endpoints;
 
+    if ((nPortParam > std::numeric_limits<uint16_t>::max()) || (nPortParam < 0))
+    {
+        error = strprintf("'rpcport' parameter value [%" PRId64 "] is out of range (0..%hu)", nPortParam, std::numeric_limits<uint16_t>::max());
+        return false;
+    }
+    const uint16_t defaultPort = static_cast<uint16_t>(nPortParam);
     // Determine what addresses to bind to
-    if (!mapArgs.count("-rpcallowip")) { // Default to loopback if not allowing external IPs
+    if (!mapArgs.count("-rpcallowip")) // Default to loopback if not allowing external IPs
+    { 
         endpoints.push_back(std::make_pair("::1", defaultPort));
         endpoints.push_back(std::make_pair("127.0.0.1", defaultPort));
         if (mapArgs.count("-rpcbind")) {
             LogPrintf("WARNING: option -rpcbind was ignored because -rpcallowip was not specified, refusing to allow everyone to connect\n");
         }
     } else if (mapArgs.count("-rpcbind")) { // Specific bind address
-        const std::vector<std::string>& vbind = mapMultiArgs["-rpcbind"];
-        for (std::vector<std::string>::const_iterator i = vbind.begin(); i != vbind.end(); ++i) {
-            int port = defaultPort;
+        const v_strings& vbind = mapMultiArgs["-rpcbind"];
+        for (const auto &sHostPort : vbind)
+        {
+            uint16_t port = defaultPort;
             std::string host;
-            SplitHostPort(*i, port, host);
-            endpoints.push_back(std::make_pair(host, port));
+            if (!SplitHostPort(error, sHostPort, port, host))
+            {
+                error = strprintf("Invalid format for 'rpcbind' parameter. %s", error);
+                return false;
+            }
+            endpoints.emplace_back(host, port);
         }
-    } else { // No specific bind address specified, bind to any
-        endpoints.push_back(std::make_pair("::", defaultPort));
-        endpoints.push_back(std::make_pair("0.0.0.0", defaultPort));
+    }
+    else // No specific bind address specified, bind to any
+    { 
+        endpoints.emplace_back("::", defaultPort);
+        endpoints.emplace_back("0.0.0.0", defaultPort);
     }
 
     // Bind addresses
-    for (std::vector<std::pair<std::string, uint16_t> >::iterator i = endpoints.begin(); i != endpoints.end(); ++i) {
-        LogPrint("http", "Binding RPC on address %s port %i\n", i->first, i->second);
-        evhttp_bound_socket *bind_handle = evhttp_bind_socket_with_handle(http, i->first.empty() ? NULL : i->first.c_str(), i->second);
-        if (bind_handle) {
+    for (const auto &[address, port] : endpoints)
+    {
+        LogPrint("http", "Binding RPC on address %s port %hu\n", address, port);
+        auto bind_handle = evhttp_bind_socket_with_handle(http, address.empty() ? nullptr : address.c_str(), port);
+        if (bind_handle)
             boundSockets.push_back(bind_handle);
-        } else {
-            LogPrintf("Binding RPC on address %s port %i failed.\n", i->first, i->second);
-        }
+        else
+            LogPrintf("Binding RPC on address %s port %hu failed.\n", address, port);
     }
     return !boundSockets.empty();
 }
@@ -378,8 +397,9 @@ static void libevent_log_cb(int severity, const char *msg)
 
 bool InitHTTPServer()
 {
-    struct evhttp* http = 0;
-    struct event_base* base = 0;
+    string error;
+    struct evhttp* http = nullptr;
+    struct event_base* base = nullptr;
 
     if (!InitHTTPAllowList())
         return false;
@@ -421,12 +441,21 @@ bool InitHTTPServer()
         return false;
     }
 
-    evhttp_set_timeout(http, GetArg("-rpcservertimeout", DEFAULT_HTTP_SERVER_TIMEOUT));
+    const int64_t nRpcServerTimeout = GetArg("-rpcservertimeout", DEFAULT_HTTP_SERVER_TIMEOUT);
+    if (nRpcServerTimeout > numeric_limits<int>::max())
+    {
+        LogPrintf("'rpcservertimeout' parameter value [%" PRId64 "] is out of range (0..%d)", nRpcServerTimeout, numeric_limits<int>::max());
+        evhttp_free(http);
+        event_base_free(base);
+        return false;
+    }
+    evhttp_set_timeout(http, static_cast<int>(nRpcServerTimeout));
     evhttp_set_max_body_size(http, MAX_DATA_SIZE);
-    evhttp_set_gencb(http, http_request_cb, NULL);
+    evhttp_set_gencb(http, http_request_cb, nullptr);
 
-    if (!HTTPBindAddresses(http)) {
-        LogPrintf("Unable to bind any endpoint for RPC server\n");
+    if (!HTTPBindAddresses(error, http))
+    {
+        LogPrintf("Unable to bind any endpoint for RPC server. %s\n", error);
         evhttp_free(http);
         event_base_free(base);
         return false;

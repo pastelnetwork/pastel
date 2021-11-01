@@ -74,7 +74,6 @@ BITCOIN_TESTS =\
   test/miner_tests.cpp \
   test/mruset_tests.cpp \
   test/multisig_tests.cpp \
-  test/netbase_tests.cpp \
   test/pmt_tests.cpp \
   test/policyestimator_tests.cpp \
   test/pow_tests.cpp \

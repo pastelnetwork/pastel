@@ -88,9 +88,6 @@
     <ClCompile Include="..\..\..\src\test\multisig_tests.cpp">
       <Filter>UnitTest Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\src\test\netbase_tests.cpp">
-      <Filter>UnitTest Files</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\..\src\test\pmt_tests.cpp">
       <Filter>UnitTest Files</Filter>
     </ClCompile>

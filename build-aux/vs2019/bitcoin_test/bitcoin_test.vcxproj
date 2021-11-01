@@ -46,7 +46,6 @@
     <ClCompile Include="..\..\..\src\test\miner_tests.cpp" />
     <ClCompile Include="..\..\..\src\test\mruset_tests.cpp" />
     <ClCompile Include="..\..\..\src\test\multisig_tests.cpp" />
-    <ClCompile Include="..\..\..\src\test\netbase_tests.cpp" />
     <ClCompile Include="..\..\..\src\test\pmt_tests.cpp" />
     <ClCompile Include="..\..\..\src\test\policyestimator_tests.cpp" />
     <ClCompile Include="..\..\..\src\test\pow_tests.cpp" />
