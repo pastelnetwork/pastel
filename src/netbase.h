@@ -1,5 +1,6 @@
 #pragma once
 // Copyright (c) 2009-2013 The Bitcoin Core developers
+// Copyright (c) 2018-2021 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 #if defined(HAVE_CONFIG_H)
@@ -183,18 +184,18 @@ public:
 
 enum Network ParseNetwork(std::string net);
 std::string GetNetworkName(enum Network net);
-void SplitHostPort(std::string in, int &portOut, std::string &hostOut);
+bool SplitHostPort(std::string &error, const std::string &in, uint16_t &portOut, std::string &hostOut);
 bool SetProxy(enum Network net, const proxyType &addrProxy);
 bool GetProxy(enum Network net, proxyType &proxyInfoOut);
 bool IsProxy(const CNetAddr &addr);
 bool SetNameProxy(const proxyType &addrProxy);
 bool HaveNameProxy();
 bool LookupHost(const char *pszName, std::vector<CNetAddr>& vIP, unsigned int nMaxSolutions = 0, bool fAllowLookup = true);
-bool Lookup(const char *pszName, CService& addr, int portDefault = 0, bool fAllowLookup = true);
-bool Lookup(const char *pszName, std::vector<CService>& vAddr, int portDefault = 0, bool fAllowLookup = true, unsigned int nMaxSolutions = 0);
-bool LookupNumeric(const char *pszName, CService& addr, int portDefault = 0);
+bool Lookup(const char *pszName, CService& addr, const uint16_t portDefault = 0, bool fAllowLookup = true);
+bool Lookup(const char *pszName, std::vector<CService>& vAddr, const uint16_t portDefault = 0, bool fAllowLookup = true, unsigned int nMaxSolutions = 0);
+bool LookupNumeric(const char *pszName, CService& addr, const uint16_t portDefault = 0);
 bool ConnectSocket(const CService &addr, SOCKET& hSocketRet, int nTimeout, bool *outProxyConnectionFailed = 0);
-bool ConnectSocketByName(CService &addr, SOCKET& hSocketRet, const char *pszDest, int portDefault, int nTimeout, bool *outProxyConnectionFailed = 0);
+bool ConnectSocketByName(CService &addr, SOCKET& hSocketRet, const char *pszDest, uint16_t portDefault, int nTimeout, bool *outProxyConnectionFailed = 0);
 /** Return readable error string for a network error code */
 std::string NetworkErrorString(int err);
 /** Close socket and set hSocket to INVALID_SOCKET */

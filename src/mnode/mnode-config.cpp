@@ -53,12 +53,12 @@ bool isOutIdxValid(std::string& outIdx, std::string alias, std::string& strErr)
 
 bool checkIPAddressPort(std::string& address, std::string alias, bool checkPort, std::string& strErr)
 {
-    int port = 0;
-    std::string hostname = "";
-    SplitHostPort(address, port, hostname);
-    if(port == 0 || hostname == "") {
-        strErr = _("Failed to parse host:port string") + "\n" +
-                strprintf(_("Alias: %s"), alias);
+    uint16_t port = 0;
+    std::string hostname;
+    strErr.clear();
+    if (!SplitHostPort(strErr, address, port, hostname) || port == 0 || hostname.empty())
+    {
+        strErr = strprintf("Failed to parse host:port string [%s]. %s\nAlias: %s", address, strErr, alias);
         return false;
     }
     if (checkPort)
