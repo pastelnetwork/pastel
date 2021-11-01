@@ -226,8 +226,8 @@ AC_ARG_WITH([utils],
 AC_ARG_WITH([libs],
   [AS_HELP_STRING([--with-libs],
   [build libraries (default=no)])],
-  [build_bitcoin_libs=$withval],
-  [build_bitcoin_libs=no])
+  [build_pastel_libs=$withval],
+  [build_pastel_libs=no])
 
 AC_ARG_WITH([daemon],
   [AS_HELP_STRING([--with-daemon],
@@ -607,14 +607,14 @@ fi
 
 if test x$use_boost = xyes; then
 
-dnl Check for boost libs
-dnl We need Boost >= 1.62 to fix a potential security bug (https://github.com/zcash/zcash/issues/1241)
-AX_BOOST_BASE([1.62])
-AX_BOOST_SYSTEM
-AX_BOOST_FILESYSTEM
-AX_BOOST_PROGRAM_OPTIONS
-AX_BOOST_THREAD
-AX_BOOST_CHRONO
+dnl Check for boost libs >= 1.76
+
+BOOST_REQUIRE([1.76])
+BOOST_SYSTEM
+BOOST_FILESYSTEM
+BOOST_PROGRAM_OPTIONS
+BOOST_THREAD
+BOOST_CHRONO
 
 fi
 
@@ -632,12 +632,13 @@ if test x$use_tests = xyes; then
 
   if test x$use_boost = xyes; then
 
-  AX_BOOST_UNIT_TEST_FRAMEWORK
+  BOOST_TEST
+  AC_MSG_NOTICE([Using boost test: [$BOOST_UNIT_TEST_FRAMEWORK_LIBS]])
 
   dnl Determine if -DBOOST_TEST_DYN_LINK is needed
   AC_MSG_CHECKING([for dynamic linked boost test])
   TEMP_LIBS="$LIBS"
-  LIBS="$LIBS $BOOST_LDFLAGS $BOOST_UNIT_TEST_FRAMEWORK_LIB"
+  LIBS="$LIBS $BOOST_UNIT_TEST_FRAMEWORK_LDFLAGS $BOOST_UNIT_TEST_FRAMEWORK_LIBS"
   TEMP_CPPFLAGS="$CPPFLAGS"
   CPPFLAGS="$CPPFLAGS $BOOST_CPPFLAGS"
   AC_LINK_IFELSE([AC_LANG_SOURCE([
@@ -656,7 +657,8 @@ if test x$use_tests = xyes; then
 fi
 
 if test x$use_boost = xyes; then
-BOOST_LIBS="$BOOST_LDFLAGS $BOOST_SYSTEM_LIB $BOOST_FILESYSTEM_LIB $BOOST_PROGRAM_OPTIONS_LIB $BOOST_THREAD_LIB $BOOST_CHRONO_LIB"
+BOOST_LIBS="$BOOST_THREAD_LDFLAGS $BOOST_SYSTEM_LIBS $BOOST_FILESYSTEM_LIBS $BOOST_PROGRAM_OPTIONS_LIBS $BOOST_THREAD_LIBS $BOOST_CHRONO_LIBS"
+AC_MSG_NOTICE([Using boost linker options: [$BOOST_LIBS]])
 fi
 
 if test x$use_pkgconfig = xyes; then
@@ -666,7 +668,7 @@ if test x$use_pkgconfig = xyes; then
     [
       PKG_CHECK_MODULES([SSL], [libssl],, [AC_MSG_ERROR(openssl  not found.)])
       PKG_CHECK_MODULES([CRYPTO], [libcrypto],,[AC_MSG_ERROR(libcrypto  not found.)])
-      if test x$build_pastel_utils$build_pasteld$bitcoin_enable_qt$use_tests != xnononono; then
+      if test x$build_pastel_utils$build_pasteld$use_tests != xnonono; then
         PKG_CHECK_MODULES([EVENT], [libevent],, [AC_MSG_ERROR(libevent not found.)])
         if test x$TARGET_OS != xwindows; then
           PKG_CHECK_MODULES([EVENT_PTHREADS], [libevent_pthreads],, [AC_MSG_ERROR(libevent_pthreads not found.)])
@@ -694,7 +696,7 @@ else
   AC_CHECK_HEADER([openssl/ssl.h],, AC_MSG_ERROR(libssl headers missing),)
   AC_CHECK_LIB([ssl],         [main],SSL_LIBS=-lssl, AC_MSG_ERROR(libssl missing))
 
-  if test x$build_pastel_utils$build_pasteld$bitcoin_enable_qt$use_tests != xnononono; then
+  if test x$build_pastel_utils$build_pasteld$use_tests != xnonono; then
     AC_CHECK_HEADER([event2/event.h],, AC_MSG_ERROR(libevent headers missing),)
     AC_CHECK_LIB([event],[main],EVENT_LIBS=-levent,AC_MSG_ERROR(libevent missing))
     if test x$TARGET_OS != xwindows; then
@@ -766,9 +768,9 @@ AX_CHECK_COMPILE_FLAG([-fwrapv],[CXXFLAGS="$CXXFLAGS -fwrapv"])
 AX_CHECK_COMPILE_FLAG([-fno-strict-aliasing],[CXXFLAGS="$CXXFLAGS -fno-strict-aliasing"])
 AX_CHECK_COMPILE_FLAG([-Wno-builtin-declaration-mismatch],[CXXFLAGS="$CXXFLAGS -Wno-builtin-declaration-mismatch"],,[[$CXXFLAG_WERROR]])
 
-LIBZCASH_LIBS="-lgmp -lgmpxx $BOOST_SYSTEM_LIB -lcrypto -lsodium $RUST_LIBS"
+LIBZCASH_LIBS="-lgmp -lgmpxx $BOOST_SYSTEM_LIBS -lcrypto -lsodium $RUST_LIBS"
 
-AC_MSG_CHECKING([whether to build bitcoind])
+AC_MSG_CHECKING([whether to build pasteld])
 AM_CONDITIONAL([BUILD_PASTELD], [test x$build_pasteld = xyes])
 AC_MSG_RESULT($build_pasteld)
 
@@ -777,13 +779,13 @@ AM_CONDITIONAL([BUILD_PASTEL_UTILS], [test x$build_pastel_utils = xyes])
 AC_MSG_RESULT($build_pastel_utils)
 
 AC_MSG_CHECKING([whether to build libraries])
-AM_CONDITIONAL([BUILD_BITCOIN_LIBS], [test x$build_bitcoin_libs = xyes])
-if test x$build_bitcoin_libs = xyes; then
+AM_CONDITIONAL([BUILD_PASTEL_LIBS], [test x$build_pastel_libs = xyes])
+if test x$build_pastel_libs = xyes; then
   AC_DEFINE(HAVE_CONSENSUS_LIB, 1, [Define this symbol if the consensus lib has been built])
   AC_CONFIG_FILES([libzcashconsensus.pc:libzcashconsensus.pc.in])
 fi
 
-AC_MSG_RESULT($build_bitcoin_libs)
+AC_MSG_RESULT($build_pastel_libs)
 
 AC_LANG_POP
 
@@ -846,7 +848,7 @@ else
   AC_MSG_RESULT([no])
 fi
 
-if test x$build_pastel_utils$build_bitcoin_libs$build_pasteld$use_tests = xnononono; then
+if test x$build_pastel_utils$build_pastel_libs$build_pasteld$use_tests = xnononono; then
   AC_MSG_ERROR([No targets! Please specify at least one of: --with-utils --with-libs --with-daemon or --enable-tests])
 fi
 

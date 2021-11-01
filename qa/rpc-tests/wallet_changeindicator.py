@@ -32,6 +32,7 @@ class WalletChangeIndicatorTest (BitcoinTestFramework):
 
         # Generate some change
         wait_and_assert_operationid_status(self.nodes[1], self.nodes[1].z_sendmany(zaddr1, [{'address': zaddr2, 'amount': 0.6, 'memo': 'c0ffee02'}], 1, 0))
+        self.sync_all()
         self.generate_and_sync_inc(1)
 
         # Check zaddr1 received

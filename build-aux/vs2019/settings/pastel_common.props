@@ -5,7 +5,7 @@
   </PropertyGroup>
   <ItemDefinitionGroup>
     <ClCompile>
-      <PreprocessorDefinitions>ENABLE_WALLET;ENABLE_MINING;EQUIHASH_TROMP_ATOMIC;BOOST_SPIRIT_THREADSAFE;MONTGOMERY_OUTPUT;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>ENABLE_WALLET;ENABLE_MINING;EQUIHASH_TROMP_ATOMIC;MONTGOMERY_OUTPUT;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
   </ItemDefinitionGroup>
 </Project>

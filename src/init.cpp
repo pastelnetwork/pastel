@@ -54,7 +54,7 @@
 #include <boost/function.hpp>
 #include <boost/interprocess/sync/file_lock.hpp>
 #include <boost/thread.hpp>
-#include <openssl/crypto.h>
+#include <openssl/opensslv.h>
 
 #include <libsnark/common/profiling.hpp>
 
@@ -1180,7 +1180,7 @@ bool AppInit2(boost::thread_group& threadGroup, CScheduler& scheduler)
     if (fPrintToDebugLog)
         OpenDebugLog();
 
-    LogPrintf("Using OpenSSL version %s\n", SSLeay_version(SSLEAY_VERSION));
+    LogPrintf("Using OpenSSL version %s\n", OpenSSL_version(OPENSSL_VERSION_STRING));
 #ifdef ENABLE_WALLET
     LogPrintf("Using BerkeleyDB version %s\n", DbEnv::version(0, 0, 0));
 #endif

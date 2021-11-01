@@ -2,8 +2,8 @@
 <Project DefaultTargets="Build" ToolsVersion="Current" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ImportGroup Label="PropertySheets">
     <Import Project="../settings/common.props" />
-    <Import Project="../settings/pastel_common.props" />
     <Import Project="../settings/boost.props" />
+    <Import Project="../settings/pastel_common.props" />
   </ImportGroup>
   <ItemDefinitionGroup>
     <ClCompile>

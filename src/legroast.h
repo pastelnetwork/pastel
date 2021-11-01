@@ -1178,11 +1178,6 @@ private:
         int nEVPCode = 1;
         do
         {
-            if (!m_pMDcontext)
-            {
-                nEVPCode = EVP_F_EVP_OPENINIT;
-                break;
-            }
             nEVPCode = EVP_DigestInit_ex(m_pMDcontext, EVP_shake128(), nullptr);
             if (nEVPCode != 1)
                 break;
