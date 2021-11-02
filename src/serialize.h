@@ -760,7 +760,7 @@ void Unserialize(Stream& is, std::optional<T>& item)
         T object;
         Unserialize(is, object);
         item = object;
-    } else
+    } else {
         throw std::ios_base::failure("non-canonical optional discriminant");
     }
 }
