@@ -1,13 +1,14 @@
 package=googletest
-$(package)_version=1.10.0
+$(package)_version=1.11.0
 $(package)_download_path=https://github.com/google/$(package)/archive/refs/tags
 $(package)_file_name=$(package)-$($(package)_version).tar.gz
 $(package)_download_file=release-$($(package)_version).tar.gz
-$(package)_sha256_hash=9dc9157a9a1551ec7a7e43daea9a694a0bb5fb8bec81235d8a1e6ef64c716dcb
+$(package)_sha256_hash=b4870bf121ff7795ba20d20bcdd8627b8e088f2d1dab299a031c1034eddc93d5
 
 define $(package)_set_vars
 $(package)_cxxflags+=-std=c++17
 $(package)_cxxflags_linux=-fPIC
+$(package)_cmake_opts_darwin=-DCMAKE_POLICY_DEFAULT_CMP0025=NEW
 endef
 
 define $(package)_preprocess_cmds

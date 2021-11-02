@@ -43,11 +43,9 @@
     <ClCompile Include="..\..\..\src\test\hash_tests.cpp" />
     <ClCompile Include="..\..\..\src\test\key_tests.cpp" />
     <ClCompile Include="..\..\..\src\test\main_tests.cpp" />
-    <ClCompile Include="..\..\..\src\test\mempool_tests.cpp" />
     <ClCompile Include="..\..\..\src\test\miner_tests.cpp" />
     <ClCompile Include="..\..\..\src\test\mruset_tests.cpp" />
     <ClCompile Include="..\..\..\src\test\multisig_tests.cpp" />
-    <ClCompile Include="..\..\..\src\test\netbase_tests.cpp" />
     <ClCompile Include="..\..\..\src\test\pmt_tests.cpp" />
     <ClCompile Include="..\..\..\src\test\policyestimator_tests.cpp" />
     <ClCompile Include="..\..\..\src\test\pow_tests.cpp" />
@@ -81,6 +79,7 @@
     <ClInclude Include="..\..\..\src\test\test_bitcoin.h" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="..\..\..\src\Makefile.test.include" />
     <None Include="..\..\..\src\test\README.md" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
@@ -160,8 +159,19 @@
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <Link>
+      <EntryPointSymbol>
+      </EntryPointSymbol>
+      <AdditionalDependencies>ucrtd.lib;vcruntimed.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <SubSystem>Console</SubSystem>
+      <Profile>false</Profile>
+    </Link>
+    <ClCompile />
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <Link>
+      <EntryPointSymbol>main</EntryPointSymbol>
+    </Link>
   </ItemDefinitionGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

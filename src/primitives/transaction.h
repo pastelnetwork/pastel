@@ -1,8 +1,10 @@
 #pragma once
 // Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2014 The Bitcoin Core developers
+// Copyright (c) 2018-2021 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
-// file COPYING or http://www.opensource.org/licenses/mit-license.php.
+// file COPYING or https://www.opensource.org/licenses/mit-license.php.
+
 #include "amount.h"
 #include "random.h"
 #include "script/script.h"
@@ -16,8 +18,8 @@
 
 #include "zcash/NoteEncryption.hpp"
 #include "zcash/Zcash.h"
-#include "zcash/JoinSplit.hpp"
 #include "zcash/Proof.hpp"
+#include "zcash/Note.hpp"
 
 // Overwinter transaction version
 static const int32_t OVERWINTER_TX_VERSION = 3;
@@ -178,148 +180,18 @@ inline void SerReadWriteSproutProof(Stream& s, T& proof, bool useGroth, const SE
     }
 }
 
-class JSDescription
-{
-public:
-    // These values 'enter from' and 'exit to' the value
-    // pool, respectively.
-    CAmount vpub_old;
-    CAmount vpub_new;
-
-    // JoinSplits are always anchored to a root in the note
-    // commitment tree at some point in the blockchain
-    // history or in the history of the current
-    // transaction.
-    uint256 anchor;
-
-    // Nullifiers are used to prevent double-spends. They
-    // are derived from the secrets placed in the note
-    // and the secret spend-authority key known by the
-    // spender.
-    std::array<uint256, ZC_NUM_JS_INPUTS> nullifiers;
-
-    // Note commitments are introduced into the commitment
-    // tree, blinding the public about the values and
-    // destinations involved in the JoinSplit. The presence of
-    // a commitment in the note commitment tree is required
-    // to spend it.
-    std::array<uint256, ZC_NUM_JS_OUTPUTS> commitments;
-
-    // Ephemeral key
-    uint256 ephemeralKey;
-
-    // Ciphertexts
-    // These contain trapdoors, values and other information
-    // that the recipient needs, including a memo field. It
-    // is encrypted using the scheme implemented in crypto/NoteEncryption.cpp
-    std::array<ZCNoteEncryption::Ciphertext, ZC_NUM_JS_OUTPUTS> ciphertexts = {{ {{0}} }};
-
-    // Random seed
-    uint256 randomSeed;
-
-    // MACs
-    // The verification of the JoinSplit requires these MACs
-    // to be provided as an input.
-    std::array<uint256, ZC_NUM_JS_INPUTS> macs;
-
-    // JoinSplit proof
-    // This is a zk-SNARK which ensures that this JoinSplit is valid.
-    libzcash::SproutProof proof;
-
-    JSDescription(): vpub_old(0), vpub_new(0) { }
-
-    JSDescription(
-            bool makeGrothProof,
-            ZCJoinSplit& params,
-            const uint256& joinSplitPubKey,
-            const uint256& rt,
-            const std::array<libzcash::JSInput, ZC_NUM_JS_INPUTS>& inputs,
-            const std::array<libzcash::JSOutput, ZC_NUM_JS_OUTPUTS>& outputs,
-            CAmount vpub_old,
-            CAmount vpub_new,
-            bool computeProof = true, // Set to false in some tests
-            uint256 *esk = nullptr // payment disclosure
-    );
-
-    static JSDescription Randomized(
-            bool makeGrothProof,
-            ZCJoinSplit& params,
-            const uint256& joinSplitPubKey,
-            const uint256& rt,
-            std::array<libzcash::JSInput, ZC_NUM_JS_INPUTS>& inputs,
-            std::array<libzcash::JSOutput, ZC_NUM_JS_OUTPUTS>& outputs,
-            std::array<size_t, ZC_NUM_JS_INPUTS>& inputMap,
-            std::array<size_t, ZC_NUM_JS_OUTPUTS>& outputMap,
-            CAmount vpub_old,
-            CAmount vpub_new,
-            bool computeProof = true, // Set to false in some tests
-            uint256 *esk = nullptr, // payment disclosure
-            std::function<int(int)> gen = GetRandInt
-    );
-
-    // Verifies that the JoinSplit proof is correct.
-    bool Verify(
-        ZCJoinSplit& params,
-        libzcash::ProofVerifier& verifier,
-        const uint256& joinSplitPubKey
-    ) const;
-
-    // Returns the calculated h_sig
-    uint256 h_sig(ZCJoinSplit& params, const uint256& joinSplitPubKey) const;
-
-    ADD_SERIALIZE_METHODS;
-
-    template <typename Stream>
-    inline void SerializationOp(Stream& s, const SERIALIZE_ACTION ser_action)
-    {
-        // nVersion is set by CTransaction and CMutableTransaction to
-        // (tx.fOverwintered << 31) | tx.nVersion
-        bool fOverwintered = s.GetVersion() >> 31;
-        int32_t txVersion = s.GetVersion() & 0x7FFFFFFF;
-        bool useGroth = fOverwintered && txVersion >= SAPLING_TX_VERSION;
-
-        READWRITE(vpub_old);
-        READWRITE(vpub_new);
-        READWRITE(anchor);
-        READWRITE(nullifiers);
-        READWRITE(commitments);
-        READWRITE(ephemeralKey);
-        READWRITE(randomSeed);
-        READWRITE(macs);
-        ::SerReadWriteSproutProof(s, proof, useGroth, ser_action);
-        READWRITE(ciphertexts);
-    }
-
-    friend bool operator==(const JSDescription& a, const JSDescription& b)
-    {
-        return (
-            a.vpub_old == b.vpub_old &&
-            a.vpub_new == b.vpub_new &&
-            a.anchor == b.anchor &&
-            a.nullifiers == b.nullifiers &&
-            a.commitments == b.commitments &&
-            a.ephemeralKey == b.ephemeralKey &&
-            a.ciphertexts == b.ciphertexts &&
-            a.randomSeed == b.randomSeed &&
-            a.macs == b.macs &&
-            a.proof == b.proof
-            );
-    }
-
-    friend bool operator!=(const JSDescription& a, const JSDescription& b)
-    {
-        return !(a == b);
-    }
-};
-
 class BaseOutPoint
 {
 public:
     uint256 hash;
     uint32_t n;
 
-    BaseOutPoint() { SetNull(); }
-    BaseOutPoint(uint256 hashIn, uint32_t nIn) { hash = hashIn; n = nIn; }
+    BaseOutPoint() noexcept { SetNull(); }
+    BaseOutPoint(const uint256 &hashIn, const uint32_t nIn) noexcept
+    { 
+        hash = hashIn; 
+        n = nIn;
+    }
 
     ADD_SERIALIZE_METHODS;
 
@@ -330,20 +202,24 @@ public:
         READWRITE(n);
     }
 
-    void SetNull() { hash.SetNull(); n = (uint32_t) -1; }
-    bool IsNull() const { return (hash.IsNull() && n == (uint32_t) -1); }
+    void SetNull() noexcept
+    { 
+        hash.SetNull(); 
+        n = (uint32_t) -1;
+    }
+    bool IsNull() const noexcept { return (hash.IsNull() && n == (uint32_t) -1); }
 
-    friend bool operator<(const BaseOutPoint& a, const BaseOutPoint& b)
+    friend bool operator<(const BaseOutPoint& a, const BaseOutPoint& b) noexcept
     {
         return (a.hash < b.hash || (a.hash == b.hash && a.n < b.n));
     }
 
-    friend bool operator==(const BaseOutPoint& a, const BaseOutPoint& b)
+    friend bool operator==(const BaseOutPoint& a, const BaseOutPoint& b) noexcept
     {
         return (a.hash == b.hash && a.n == b.n);
     }
 
-    friend bool operator!=(const BaseOutPoint& a, const BaseOutPoint& b)
+    friend bool operator!=(const BaseOutPoint& a, const BaseOutPoint& b) noexcept
     {
         return !(a == b);
     }
@@ -353,8 +229,13 @@ public:
 class COutPoint : public BaseOutPoint
 {
 public:
-    COutPoint() : BaseOutPoint() {};
-    COutPoint(uint256 hashIn, uint32_t nIn) : BaseOutPoint(hashIn, nIn) {};
+    COutPoint() noexcept : 
+        BaseOutPoint()
+    {}
+    COutPoint(const uint256 &hashIn, const uint32_t nIn) noexcept : 
+        BaseOutPoint(hashIn, nIn)
+    {}
+
     std::string ToString() const;
     std::string ToStringShort() const;
 };
@@ -364,8 +245,13 @@ public:
 class SaplingOutPoint : public BaseOutPoint
 {
 public:
-    SaplingOutPoint() : BaseOutPoint() {};
-    SaplingOutPoint(uint256 hashIn, uint32_t nIn) : BaseOutPoint(hashIn, nIn) {};
+    SaplingOutPoint() noexcept : 
+        BaseOutPoint()
+    {}
+    SaplingOutPoint(const uint256 &hashIn, const uint32_t nIn) noexcept : 
+        BaseOutPoint(hashIn, nIn)
+    {}
+
     std::string ToString() const;
 };
 
@@ -382,13 +268,13 @@ public:
     // It disables the nLockTime feature when set to maxint.
     uint32_t nSequence;
 
-    CTxIn()
+    CTxIn() noexcept
     {
         nSequence = std::numeric_limits<unsigned int>::max();
     }
 
-    explicit CTxIn(COutPoint prevoutIn, CScript scriptSigIn=CScript(), uint32_t nSequenceIn=std::numeric_limits<unsigned int>::max());
-    CTxIn(uint256 hashPrevTx, uint32_t nOut, CScript scriptSigIn=CScript(), uint32_t nSequenceIn=std::numeric_limits<uint32_t>::max());
+    explicit CTxIn(const COutPoint &prevoutIn, CScript scriptSigIn=CScript(), uint32_t nSequenceIn=std::numeric_limits<uint32_t>::max());
+    CTxIn(const uint256 &hashPrevTx, const uint32_t nOut, CScript scriptSigIn=CScript(), uint32_t nSequenceIn=std::numeric_limits<uint32_t>::max());
 
     ADD_SERIALIZE_METHODS;
 
@@ -399,7 +285,7 @@ public:
         READWRITE(nSequence);
     }
 
-    bool IsFinal() const
+    bool IsFinal() const noexcept
     {
         return (nSequence == std::numeric_limits<uint32_t>::max());
     }
@@ -433,7 +319,7 @@ public:
     CAmount nValue;
     CScript scriptPubKey;
 
-    CTxOut()
+    CTxOut() noexcept
     {
         SetNull();
     }
@@ -449,13 +335,13 @@ public:
         READWRITE(*(CScriptBase*)(&scriptPubKey));
     }
 
-    void SetNull()
+    void SetNull() noexcept
     {
         nValue = -1;
         scriptPubKey.clear();
     }
 
-    bool IsNull() const
+    bool IsNull() const noexcept
     {
         return (nValue == -1);
     }
@@ -475,7 +361,7 @@ public:
         if (scriptPubKey.IsUnspendable())
             return 0;
 
-        size_t nSize = GetSerializeSize(*this, SER_DISK, 0) + 148u;
+        const size_t nSize = GetSerializeSize(*this, SER_DISK, 0) + 148u;
         return 3*minRelayTxFee.GetFee(nSize);
     }
 
@@ -525,16 +411,15 @@ protected:
     CTransaction(const CMutableTransaction &tx, bool evilDeveloperFlag);
 
 public:
-    typedef std::array<unsigned char, 64> joinsplit_sig_t;
     typedef std::array<unsigned char, 64> binding_sig_t;
 
     // Transactions that include a list of JoinSplits are >= version 2.
-    static const int32_t SPROUT_MIN_CURRENT_VERSION = 1;
-    static const int32_t SPROUT_MAX_CURRENT_VERSION = 2;
-    static const int32_t OVERWINTER_MIN_CURRENT_VERSION = 3;
-    static const int32_t OVERWINTER_MAX_CURRENT_VERSION = 3;
-    static const int32_t SAPLING_MIN_CURRENT_VERSION = 4;
-    static const int32_t SAPLING_MAX_CURRENT_VERSION = 4;
+    static constexpr int32_t SPROUT_MIN_CURRENT_VERSION = 1;
+    static constexpr int32_t SPROUT_MAX_CURRENT_VERSION = 2;
+    static constexpr int32_t OVERWINTER_MIN_CURRENT_VERSION = 3;
+    static constexpr int32_t OVERWINTER_MAX_CURRENT_VERSION = 3;
+    static constexpr int32_t SAPLING_MIN_CURRENT_VERSION = 4;
+    static constexpr int32_t SAPLING_MAX_CURRENT_VERSION = 4;
 
     static_assert(SPROUT_MIN_CURRENT_VERSION >= SPROUT_MIN_TX_VERSION,
                   "standard rule for tx version should be consistent with network rule");
@@ -563,14 +448,13 @@ public:
     const uint32_t nVersionGroupId;
     const std::vector<CTxIn> vin;
     const std::vector<CTxOut> vout;
+    // There are two possible values of nLockTime: 
+    // lock-by-blockheight and lock-by-blocktime, distinguished by whether nLockTime < LOCKTIME_THRESHOLD.
     const uint32_t nLockTime;
     const uint32_t nExpiryHeight;
     const CAmount valueBalance;
     const std::vector<SpendDescription> vShieldedSpend;
     const std::vector<OutputDescription> vShieldedOutput;
-    const std::vector<JSDescription> vjoinsplit;
-    const uint256 joinSplitPubKey;
-    const joinsplit_sig_t joinSplitSig = {{0}};
     const binding_sig_t bindingSig = {{0}};
 
     /** Construct a CTransaction that qualifies as IsNull() */
@@ -629,11 +513,8 @@ public:
         }
         if (nVersion >= 2) {
             auto os = WithVersion(&s, static_cast<int>(header));
-            ::SerReadWrite(os, *const_cast<std::vector<JSDescription>*>(&vjoinsplit), ser_action);
-            if (vjoinsplit.size() > 0) {
-                READWRITE(*const_cast<uint256*>(&joinSplitPubKey));
-                READWRITE(*const_cast<joinsplit_sig_t*>(&joinSplitSig));
-            }
+            std::vector<int> v;
+            ::SerReadWrite(os, v, ser_action);
         }
         if (isSaplingV4 && !(vShieldedSpend.empty() && vShieldedOutput.empty())) {
             READWRITE(*const_cast<binding_sig_t*>(&bindingSig));
@@ -649,9 +530,7 @@ public:
         return vin.empty() && vout.empty();
     }
 
-    const uint256& GetHash() const {
-        return hash;
-    }
+    const uint256& GetHash() const noexcept { return hash; }
 
     uint32_t GetHeader() const {
         // When serializing v1 and v2, the 4 byte header is nVersion
@@ -683,12 +562,12 @@ public:
     CAmount GetShieldedValueIn() const;
 
     // Compute priority, given priority of inputs and (optionally) tx size
-    double ComputePriority(double dPriorityInputs, unsigned int nTxSize=0) const;
+    double ComputePriority(double dPriorityInputs, const size_t nTxSize = 0) const;
 
     // Compute modified tx size for priority calculation (optionally given tx size)
-    unsigned int CalculateModifiedSize(unsigned int nTxSize=0) const;
+    size_t CalculateModifiedSize(const size_t nTxSize = 0) const;
 
-    bool IsCoinBase() const
+    bool IsCoinBase() const noexcept
     {
         return (vin.size() == 1 && vin[0].prevout.IsNull());
     }
@@ -719,13 +598,10 @@ struct CMutableTransaction
     CAmount valueBalance;
     std::vector<SpendDescription> vShieldedSpend;
     std::vector<OutputDescription> vShieldedOutput;
-    std::vector<JSDescription> vjoinsplit;
-    uint256 joinSplitPubKey;
-    CTransaction::joinsplit_sig_t joinSplitSig = {{0}};
     CTransaction::binding_sig_t bindingSig = {{0}};
 
-    CMutableTransaction();
-    CMutableTransaction(const CTransaction& tx);
+    CMutableTransaction() noexcept;
+    CMutableTransaction(const CTransaction& tx) noexcept;
 
     ADD_SERIALIZE_METHODS;
 
@@ -777,11 +653,8 @@ struct CMutableTransaction
         }
         if (nVersion >= 2) {
             auto os = WithVersion(&s, static_cast<int>(header));
-            ::SerReadWrite(os, vjoinsplit, ser_action);
-            if (vjoinsplit.size() > 0) {
-                READWRITE(joinSplitPubKey);
-                READWRITE(joinSplitSig);
-            }
+            std::vector<int> v;
+            ::SerReadWrite(os, v, ser_action);
         }
         if (isSaplingV4 && !(vShieldedSpend.empty() && vShieldedOutput.empty())) {
             READWRITE(bindingSig);

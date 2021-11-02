@@ -11,12 +11,18 @@
     <Filter Include="Source Files\port">
       <UniqueIdentifier>{ea70fe2d-3e50-4baa-baad-b6a5bff2417f}</UniqueIdentifier>
     </Filter>
+    <Filter Include="UnitTest Files\wallet">
+      <UniqueIdentifier>{e951447c-5fa2-4161-8557-6fe95ee014fc}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="UnitTest Files\test_mnode">
+      <UniqueIdentifier>{fdfd6a0a-e206-4d48-8376-3b6f7e81ada6}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\..\src\gtest\json_test_vectors.cpp">
       <Filter>UnitTest Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\src\gtest\main.cpp">
+    <ClCompile Include="..\..\..\src\gtest\pastel_gtest_main.cpp">
       <Filter>UnitTest Files</Filter>
     </ClCompile>
     <ClCompile Include="..\..\..\src\gtest\test_block.cpp">
@@ -40,9 +46,6 @@
     <ClCompile Include="..\..\..\src\gtest\test_httprpc.cpp">
       <Filter>UnitTest Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\src\gtest\test_joinsplit.cpp">
-      <Filter>UnitTest Files</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\..\src\gtest\test_keys.cpp">
       <Filter>UnitTest Files</Filter>
     </ClCompile>
@@ -64,13 +67,7 @@
     <ClCompile Include="..\..\..\src\gtest\test_miner.cpp">
       <Filter>UnitTest Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\src\gtest\test_mnode_governance.cpp">
-      <Filter>UnitTest Files</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\..\src\gtest\test_noteencryption.cpp">
-      <Filter>UnitTest Files</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\..\src\gtest\test_paymentdisclosure.cpp">
       <Filter>UnitTest Files</Filter>
     </ClCompile>
     <ClCompile Include="..\..\..\src\gtest\test_pedersen_hash.cpp">
@@ -94,9 +91,6 @@
     <ClCompile Include="..\..\..\src\gtest\test_tautology.cpp">
       <Filter>UnitTest Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\src\gtest\test_transaction.cpp">
-      <Filter>UnitTest Files</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\..\src\gtest\test_transaction_builder.cpp">
       <Filter>UnitTest Files</Filter>
     </ClCompile>
@@ -112,28 +106,58 @@
     <ClCompile Include="..\..\..\src\gtest\test_zip32.cpp">
       <Filter>UnitTest Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\src\gtest\utils.cpp">
-      <Filter>UnitTest Files</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\..\src\gtest\test_mnode_rpc.cpp">
-      <Filter>UnitTest Files</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\..\src\gtest\test_mnode_pastel.cpp">
-      <Filter>UnitTest Files</Filter>
-    </ClCompile>
     <ClCompile Include="..\port\uint128.cpp">
       <Filter>Source Files\port</Filter>
     </ClCompile>
     <ClCompile Include="..\..\..\src\gtest\test_legroast.cpp">
       <Filter>UnitTest Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\src\gtest\test_secure_container.cpp">
-      <Filter>UnitTest Files</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\..\src\gtest\test_str_encodings.cpp">
       <Filter>UnitTest Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\src\gtest\test_pastelid.cpp">
+    <ClCompile Include="..\..\..\src\wallet\gtest\test_wallet.cpp">
+      <Filter>UnitTest Files\wallet</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\src\wallet\gtest\test_wallet_zkeys.cpp">
+      <Filter>UnitTest Files\wallet</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\src\gtest\test_utils.cpp">
+      <Filter>UnitTest Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\src\gtest\test_mnode\test_governance.cpp">
+      <Filter>UnitTest Files\test_mnode</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\src\gtest\test_mnode\test_pastel.cpp">
+      <Filter>UnitTest Files\test_mnode</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\src\gtest\test_mnode\test_pastelid.cpp">
+      <Filter>UnitTest Files\test_mnode</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\src\gtest\test_mnode\test_mnode_rpc.cpp">
+      <Filter>UnitTest Files\test_mnode</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\src\gtest\test_mnode\test_secure_container.cpp">
+      <Filter>UnitTest Files\test_mnode</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\src\gtest\test_mnode\test_ticket_processor.cpp">
+      <Filter>UnitTest Files\test_mnode</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\src\gtest\test_mnode\test_ticket_mempool.cpp">
+      <Filter>UnitTest Files\test_mnode</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\src\gtest\test_mnode\test_ticket_mempool_processor.cpp">
+      <Filter>UnitTest Files\test_mnode</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\src\wallet\gtest\test_wallet_ismine.cpp">
+      <Filter>UnitTest Files\wallet</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\src\gtest\test_numeric_range.cpp">
+      <Filter>UnitTest Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\src\gtest\test_str_utils.cpp">
+      <Filter>UnitTest Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\src\gtest\test_netbase.cpp">
       <Filter>UnitTest Files</Filter>
     </ClCompile>
   </ItemGroup>
@@ -141,11 +165,26 @@
     <ClInclude Include="..\..\..\src\gtest\json_test_vectors.h">
       <Filter>UnitTest Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\..\src\gtest\mock_mnode_ticket.h">
-      <Filter>UnitTest Files</Filter>
-    </ClInclude>
     <ClInclude Include="..\port\uint128.h">
       <Filter>Source Files\port</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\..\src\gtest\test_utils.h">
+      <Filter>UnitTest Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\gtest\pastel_gtest_main.h">
+      <Filter>UnitTest Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\gtest\test_mempool_entryhelper.h">
+      <Filter>UnitTest Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\gtest\test_mnode\test_ticket_mempool.h">
+      <Filter>UnitTest Files\test_mnode</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\gtest\test_mnode\mock_mnode_ticket.h">
+      <Filter>UnitTest Files\test_mnode</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\..\..\src\Makefile.gtest.include" />
   </ItemGroup>
 </Project>

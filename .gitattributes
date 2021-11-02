@@ -1,11 +1,11 @@
 src/clientversion.cpp export-subst
-*.sh text eol=lf
-*.ac text eol=lf
-*.m4 text eol=lf
-*.mk text eol=lf
-*.am text eol=lf
-*.in text eol=lf
-*.patch text eol=lf
+
+# We'll let Git's auto-detection algorithm infer if a file is text. If it is,
+# enforce LF line endings regardless of OS or git configurations.
+* text=auto eol=lf
+
+*.{sh,ac,m4,mk,am,in,patch} text eol=lf
+*.{png,jpg,jpeg,gif,webp,woff,woff2} binary
 [cC]onfigure text eol=lf
 [mM]akefile text eol=lf
 config(?:\.layout|\.sub|\.guess) text eol=lf

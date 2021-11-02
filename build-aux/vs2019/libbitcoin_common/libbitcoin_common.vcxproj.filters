@@ -201,5 +201,8 @@
     <ClInclude Include="..\..\..\src\utiltest.h">
       <Filter>Source Files</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\..\src\port_config.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

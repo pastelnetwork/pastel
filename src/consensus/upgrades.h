@@ -30,7 +30,7 @@ extern const uint32_t SPROUT_BRANCH_ID;
  * Caller must check that the height is >= 0 (and handle unknown heights).
  */
 UpgradeState NetworkUpgradeState(
-    int nHeight,
+    const unsigned int nHeight,
     const Consensus::Params& params,
     Consensus::UpgradeIndex idx);
 
@@ -40,7 +40,7 @@ UpgradeState NetworkUpgradeState(
  * heights).
  */
 bool NetworkUpgradeActive(
-    const int nHeight,
+    const unsigned int nHeight,
     const Consensus::Params& params,
     Consensus::UpgradeIndex idx);
 

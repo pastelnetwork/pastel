@@ -135,6 +135,7 @@
     <ClInclude Include="..\..\..\src\key_constants.h" />
     <ClInclude Include="..\..\..\src\key_io.h" />
     <ClInclude Include="..\..\..\src\netbase.h" />
+    <ClInclude Include="..\..\..\src\port_config.h" />
     <ClInclude Include="..\..\..\src\primitives\block.h" />
     <ClInclude Include="..\..\..\src\primitives\transaction.h" />
     <ClInclude Include="..\..\..\src\protocol.h" />

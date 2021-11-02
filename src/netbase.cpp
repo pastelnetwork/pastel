@@ -14,6 +14,7 @@
 #include "uint256.h"
 #include "random.h"
 #include "util.h"
+#include "str_utils.h"
 #include "utilstrencodings.h"
 
 #ifdef HAVE_GETADDRINFO_A
@@ -28,9 +29,9 @@
 #endif
 #include <unistd.h>
 
-#include <boost/algorithm/string/case_conv.hpp> // for to_lower()
-#include <boost/algorithm/string/predicate.hpp> // for startswith() and endswith()
 #include <boost/thread.hpp>
+
+using namespace std;
 
 #if !defined(HAVE_MSG_NOSIGNAL) && !defined(MSG_NOSIGNAL)
 #define MSG_NOSIGNAL 0
@@ -48,11 +49,15 @@ static const unsigned char pchIPv4[12] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0xff, 0
 // Need ample time for negotiation for very slow proxies such as Tor (milliseconds)
 static const int SOCKS5_RECV_TIMEOUT = 20 * 1000;
 
-enum Network ParseNetwork(std::string net) {
-    boost::to_lower(net);
-    if (net == "ipv4") return NET_IPV4;
-    if (net == "ipv6") return NET_IPV6;
-    if (net == "tor" || net == "onion")  return NET_TOR;
+enum Network ParseNetwork(std::string net)
+{
+    lowercase(net);
+    if (net == "ipv4")
+        return NET_IPV4;
+    if (net == "ipv6")
+        return NET_IPV6;
+    if (net == "tor" || net == "onion")
+        return NET_TOR;
     return NET_UNROUTABLE;
 }
 
@@ -66,32 +71,56 @@ std::string GetNetworkName(enum Network net) {
     }
 }
 
-void SplitHostPort(std::string in, int &portOut, std::string &hostOut) {
-    size_t colon = in.find_last_of(':');
+/**
+ * Split host:port string into host & port.
+ * 
+ * \param error - parsing error if any
+ * \param in - input string in format: host:port | [host]:port | [host] | host
+ * \param nPortOut - returns port if it is specified in the input
+ * \param sHostOut - returns host
+ * \return true if the input string was successfully parsed
+ */
+bool SplitHostPort(string &error, const string &in, uint16_t &nPortOut, string &sHostOut)
+{
+    string_view s(in.data(), in.size());
+    const size_t nColonPos = s.find_last_of(':');
     // if a : is found, and it either follows a [...], or no other : is in the string, treat it as port separator
-    bool fHaveColon = colon != in.npos;
-    bool fBracketed = fHaveColon && (in[0]=='[' && in[colon-1]==']'); // if there is a colon, and in[0]=='[', colon is not 0, so in[colon-1] is safe
-    bool fMultiColon = fHaveColon && (in.find_last_of(':',colon-1) != in.npos);
-    if (fHaveColon && (colon==0 || fBracketed || !fMultiColon)) {
+    const bool fHaveColon = nColonPos != s.npos;
+    // if there is a colon, and in[0]=='[', colon is not 0, so in[colon-1] is safe
+    const bool fBracketed = fHaveColon && (s.front() == '[' && s[nColonPos - 1] == ']');
+    const bool fMultiColon = fHaveColon && (s.find_last_of(':', nColonPos - 1) != s.npos);
+
+    error.clear();
+    if (fHaveColon && (nColonPos == 0 || fBracketed || !fMultiColon))
+    {
         int32_t n;
-        if (ParseInt32(in.substr(colon + 1), &n) && n > 0 && n < 0x10000) {
-            in = in.substr(0, colon);
-            portOut = n;
+        if (!ParseInt32(in.substr(nColonPos + 1), &n))
+        {
+            error = strprintf("Failed to parse port number in [%s]", in);
+            return false;
         }
+        if (n < 0 || n > numeric_limits<uint16_t>::max())
+        {
+            error = strprintf("Port [%d] in [%s] is out of range (0..%hu)", n, in, numeric_limits<uint16_t>::max());
+            return false;
+        }
+        s = s.substr(0, nColonPos);
+        nPortOut = n;
     }
-    if (in.size()>0 && in[0] == '[' && in[in.size()-1] == ']')
-        hostOut = in.substr(1, in.size()-2);
+    if (!s.empty() && s.front() == '[' && s.back() == ']')
+        sHostOut = s.substr(1, s.size() - 2);
     else
-        hostOut = in;
+        sHostOut = s;
+    return true;
 }
 
-bool static LookupIntern(const char *pszName, std::vector<CNetAddr>& vIP, unsigned int nMaxSolutions, bool fAllowLookup)
+bool static LookupIntern(const char *pszName, vector<CNetAddr>& vIP, unsigned int nMaxSolutions, bool fAllowLookup)
 {
     vIP.clear();
 
     {
         CNetAddr addr;
-        if (addr.SetSpecial(std::string(pszName))) {
+        if (addr.SetSpecial(string(pszName))) {
             vIP.push_back(addr);
             return true;
         }
@@ -130,13 +159,13 @@ bool static LookupIntern(const char *pszName, std::vector<CNetAddr>& vIP, unsign
     aiHint.ai_flags = fAllowLookup ? AI_ADDRCONFIG : AI_NUMERICHOST;
 #endif
 
-    struct addrinfo *aiRes = NULL;
+    struct addrinfo *aiRes = nullptr;
 #ifdef HAVE_GETADDRINFO_A
     struct gaicb gcb, *query = &gcb;
     memset(query, 0, sizeof(struct gaicb));
     gcb.ar_name = pszName;
     gcb.ar_request = &aiHint;
-    int nErr = getaddrinfo_a(GAI_NOWAIT, &query, 1, NULL);
+    int nErr = getaddrinfo_a(GAI_NOWAIT, &query, 1, nullptr);
     if (nErr)
         return false;
 
@@ -154,13 +183,13 @@ bool static LookupIntern(const char *pszName, std::vector<CNetAddr>& vIP, unsign
             aiRes = query->ar_result;
     } while (nErr == EAI_INPROGRESS);
 #else
-    int nErr = getaddrinfo(pszName, NULL, &aiHint, &aiRes);
+    int nErr = getaddrinfo(pszName, nullptr, &aiHint, &aiRes);
 #endif
     if (nErr)
         return false;
 
     struct addrinfo *aiTrav = aiRes;
-    while (aiTrav != NULL && (nMaxSolutions == 0 || vIP.size() < nMaxSolutions))
+    while (aiTrav && (nMaxSolutions == 0 || vIP.size() < nMaxSolutions))
     {
         if (aiTrav->ai_family == AF_INET)
         {
@@ -187,24 +216,22 @@ bool LookupHost(const char *pszName, std::vector<CNetAddr>& vIP, unsigned int nM
     std::string strHost(pszName);
     if (strHost.empty())
         return false;
-    if (boost::algorithm::starts_with(strHost, "[") && boost::algorithm::ends_with(strHost, "]"))
-    {
+    if ((strHost.front() == '[') && (strHost.back() == ']'))
         strHost = strHost.substr(1, strHost.size() - 2);
-    }
 
     return LookupIntern(strHost.c_str(), vIP, nMaxSolutions, fAllowLookup);
 }
 
-bool Lookup(const char *pszName, std::vector<CService>& vAddr, int portDefault, bool fAllowLookup, unsigned int nMaxSolutions)
+bool Lookup(const char *pszName, vector<CService>& vAddr, const uint16_t portDefault, bool fAllowLookup, unsigned int nMaxSolutions)
 {
     if (pszName[0] == 0)
         return false;
-    int port = portDefault;
-    std::string hostname = "";
-    SplitHostPort(std::string(pszName), port, hostname);
+    uint16_t port = portDefault;
+    string hostname, error;
+    SplitHostPort(error, pszName, port, hostname);
 
-    std::vector<CNetAddr> vIP;
-    bool fRet = LookupIntern(hostname.c_str(), vIP, nMaxSolutions, fAllowLookup);
+    vector<CNetAddr> vIP;
+    const bool fRet = LookupIntern(hostname.c_str(), vIP, nMaxSolutions, fAllowLookup);
     if (!fRet)
         return false;
     vAddr.resize(vIP.size());
@@ -213,17 +240,17 @@ bool Lookup(const char *pszName, std::vector<CService>& vAddr, int portDefault, 
     return true;
 }
 
-bool Lookup(const char *pszName, CService& addr, int portDefault, bool fAllowLookup)
+bool Lookup(const char* pszName, CService& addr, const uint16_t portDefault, bool fAllowLookup)
 {
-    std::vector<CService> vService;
-    bool fRet = Lookup(pszName, vService, portDefault, fAllowLookup, 1);
+    vector<CService> vService;
+    const bool fRet = Lookup(pszName, vService, portDefault, fAllowLookup, 1);
     if (!fRet)
         return false;
     addr = vService[0];
     return true;
 }
 
-bool LookupNumeric(const char *pszName, CService& addr, int portDefault)
+bool LookupNumeric(const char *pszName, CService& addr, const uint16_t portDefault)
 {
     return Lookup(pszName, addr, portDefault, false);
 }
@@ -231,7 +258,7 @@ bool LookupNumeric(const char *pszName, CService& addr, int portDefault)
 struct timeval MillisToTimeval(int64_t nTimeout)
 {
     struct timeval timeout;
-    timeout.tv_sec  = nTimeout / 1000;
+    timeout.tv_sec  = static_cast<long>(nTimeout / 1000);
     timeout.tv_usec = (nTimeout % 1000) * 1000;
     return timeout;
 }
@@ -254,8 +281,9 @@ bool static InterruptibleRecv(char* data, size_t len, int timeout, SOCKET& hSock
     // Maximum time to wait in one select call. It will take up until this time (in millis)
     // to break off in case of an interruption.
     const int64_t maxWait = 1000;
-    while (len > 0 && curTime < endTime) {
-        ssize_t ret = recv(hSocket, data, len, 0); // Optimistically try the recv first
+    while (len > 0 && curTime < endTime)
+    {
+        ssize_t ret = recv(hSocket, data, static_cast<int>(len), 0); // Optimistically try the recv first
         if (ret > 0) {
             len -= ret;
             data += ret;
@@ -271,7 +299,7 @@ bool static InterruptibleRecv(char* data, size_t len, int timeout, SOCKET& hSock
                 fd_set fdset;
                 FD_ZERO(&fdset);
                 FD_SET(hSocket, &fdset);
-                int nRet = select(hSocket + 1, &fdset, NULL, NULL, &tval);
+                int nRet = select(static_cast<int>(hSocket + 1), &fdset, nullptr, nullptr, &tval);
                 if (nRet == SOCKET_ERROR) {
                     return false;
                 }
@@ -310,7 +338,7 @@ static bool Socks5(const std::string& strDest, int port, const ProxyCredentials 
         vSocks5Init.push_back(0x01); // # METHODS
         vSocks5Init.push_back(0x00); // X'00' NO AUTHENTICATION REQUIRED
     }
-    ssize_t ret = send(hSocket, (const char*)begin_ptr(vSocks5Init), vSocks5Init.size(), MSG_NOSIGNAL);
+    ssize_t ret = send(hSocket, (const char*)begin_ptr(vSocks5Init), static_cast<int>(vSocks5Init.size()), MSG_NOSIGNAL);
     if (ret != (ssize_t)vSocks5Init.size()) {
         CloseSocket(hSocket);
         return error("Error sending to proxy");
@@ -330,11 +358,13 @@ static bool Socks5(const std::string& strDest, int port, const ProxyCredentials 
         vAuth.push_back(0x01);
         if (auth->username.size() > 255 || auth->password.size() > 255)
             return error("Proxy username or password too long");
-        vAuth.push_back(auth->username.size());
+        // length was checked - so we can safely cast to uint8_t
+        vAuth.push_back(static_cast<uint8_t>(auth->username.size()));
         vAuth.insert(vAuth.end(), auth->username.begin(), auth->username.end());
-        vAuth.push_back(auth->password.size());
+        // length was checked - so we can safely cast to uint8_t
+        vAuth.push_back(static_cast<uint8_t>(auth->password.size()));
         vAuth.insert(vAuth.end(), auth->password.begin(), auth->password.end());
-        ret = send(hSocket, (const char*)begin_ptr(vAuth), vAuth.size(), MSG_NOSIGNAL);
+        ret = send(hSocket, (const char*)begin_ptr(vAuth), static_cast<int>(vAuth.size()), MSG_NOSIGNAL);
         if (ret != (ssize_t)vAuth.size()) {
             CloseSocket(hSocket);
             return error("Error sending authentication to proxy");
@@ -360,11 +390,11 @@ static bool Socks5(const std::string& strDest, int port, const ProxyCredentials 
     vSocks5.push_back(0x01); // CMD CONNECT
     vSocks5.push_back(0x00); // RSV Reserved
     vSocks5.push_back(0x03); // ATYP DOMAINNAME
-    vSocks5.push_back(strDest.size()); // Length<=255 is checked at beginning of function
+    vSocks5.push_back(static_cast<uint8_t>(strDest.size())); // Length<=255 is checked at beginning of function
     vSocks5.insert(vSocks5.end(), strDest.begin(), strDest.end());
     vSocks5.push_back((port >> 8) & 0xFF);
     vSocks5.push_back((port >> 0) & 0xFF);
-    ret = send(hSocket, (const char*)begin_ptr(vSocks5), vSocks5.size(), MSG_NOSIGNAL);
+    ret = send(hSocket, (const char*)begin_ptr(vSocks5), static_cast<int>(vSocks5.size()), MSG_NOSIGNAL);
     if (ret != (ssize_t)vSocks5.size()) {
         CloseSocket(hSocket);
         return error("Error sending to proxy");
@@ -469,7 +499,7 @@ bool static ConnectSocketDirectly(const CService &addrConnect, SOCKET& hSocketRe
             fd_set fdset;
             FD_ZERO(&fdset);
             FD_SET(hSocket, &fdset);
-            int nRet = select(hSocket + 1, NULL, &fdset, NULL, &timeout);
+            int nRet = select(static_cast<int>(hSocket + 1), nullptr, &fdset, nullptr, &timeout);
             if (nRet == 0)
             {
                 LogPrint("net", "connection to %s timeout\n", addrConnect.ToString());
@@ -601,15 +631,15 @@ bool ConnectSocket(const CService &addrDest, SOCKET& hSocketRet, int nTimeout, b
         return ConnectSocketDirectly(addrDest, hSocketRet, nTimeout);
 }
 
-bool ConnectSocketByName(CService &addr, SOCKET& hSocketRet, const char *pszDest, int portDefault, int nTimeout, bool *outProxyConnectionFailed)
+bool ConnectSocketByName(CService &addr, SOCKET& hSocketRet, const char *pszDest, uint16_t portDefault, int nTimeout, bool *outProxyConnectionFailed)
 {
-    std::string strDest;
-    int port = portDefault;
+    string strDest, error;
+    uint16_t port = portDefault;
 
     if (outProxyConnectionFailed)
         *outProxyConnectionFailed = false;
 
-    SplitHostPort(std::string(pszDest), port, strDest);
+    SplitHostPort(error, pszDest, port, strDest);
 
     proxyType nameProxy;
     GetNameProxy(nameProxy);
@@ -879,7 +909,7 @@ std::string CNetAddr::ToStringIP(bool fUseGetnameinfo) const
         socklen_t socklen = sizeof(sockaddr);
         if (serv.GetSockAddr((struct sockaddr*)&sockaddr, &socklen)) {
             char name[1025] = "";
-            if (!getnameinfo((const struct sockaddr*)&sockaddr, socklen, name, sizeof(name), NULL, 0, NI_NUMERICHOST))
+            if (!getnameinfo((const struct sockaddr*)&sockaddr, socklen, name, sizeof(name), nullptr, 0, NI_NUMERICHOST))
                 return std::string(name);
         }
     }
@@ -1010,7 +1040,7 @@ static const int NET_UNKNOWN = NET_MAX + 0;
 static const int NET_TEREDO  = NET_MAX + 1;
 int static GetExtNetwork(const CNetAddr *addr)
 {
-    if (addr == NULL)
+    if (!addr)
         return NET_UNKNOWN;
     if (addr->IsRFC4380())
         return NET_TEREDO;
@@ -1352,8 +1382,8 @@ std::string NetworkErrorString(int err)
     char buf[256];
     buf[0] = 0;
     if(FormatMessageA(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS | FORMAT_MESSAGE_MAX_WIDTH_MASK,
-            NULL, err, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
-            buf, sizeof(buf), NULL))
+            nullptr, err, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
+            buf, sizeof(buf), nullptr))
     {
         return strprintf("%s (%d)", buf, err);
     }

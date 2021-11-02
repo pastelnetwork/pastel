@@ -47,7 +47,7 @@ CScript ParseScript(const std::string& s)
         }
     }
 
-    vector<string> words;
+    v_strings words;
     boost::algorithm::split(words, s, boost::algorithm::is_any_of(" \t\n"), boost::algorithm::token_compress_on);
 
     for (std::vector<std::string>::const_iterator w = words.begin(); w != words.end(); ++w)
@@ -95,7 +95,7 @@ bool DecodeHexTx(CTransaction& tx, const std::string& strHexTx)
     if (!IsHex(strHexTx))
         return false;
 
-    vector<unsigned char> txData(ParseHex(strHexTx));
+    v_uint8 txData(ParseHex(strHexTx));
     CDataStream ssData(txData, SER_NETWORK, PROTOCOL_VERSION);
     try {
         ssData >> tx;
@@ -112,7 +112,7 @@ bool DecodeHexBlk(CBlock& block, const std::string& strHexBlk)
     if (!IsHex(strHexBlk))
         return false;
 
-    std::vector<unsigned char> blockData(ParseHex(strHexBlk));
+    v_uint8 blockData(ParseHex(strHexBlk));
     CDataStream ssBlock(blockData, SER_NETWORK, PROTOCOL_VERSION);
     try {
         ssBlock >> block;

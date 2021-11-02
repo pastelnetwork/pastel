@@ -2,8 +2,12 @@
 # Copyright (c) 2018-2021 The Pastel Core developers
 # Distributed under the MIT software license, see the accompanying
 # file COPYING or http://www.opensource.org/licenses/mit-license.php.
-from test_framework.util import assert_equal, assert_greater_than, \
-    assert_true, initialize_chain_clean, str_to_b64str
+from test_framework.util import (
+    assert_equal, 
+    assert_true, 
+    initialize_chain_clean, 
+    str_to_b64str
+)
 from mn_common import MasterNodeCommon
 from test_framework.authproxy import JSONRPCException
 import json
@@ -179,6 +183,11 @@ class MasterNodeTicketsTest(MasterNodeCommon):
 
         # register pastelIDs
         nonmn1_address1 = self.nodes[self.non_mn1].getnewaddress()
+        self.nodes[self.mining_node_num].sendtoaddress(nonmn1_address1, 100)
+        self.sync_all()
+        self.nodes[self.mining_node_num].generate(1)
+        self.sync_all()
+
         # nonmn3_address1 = self.nodes[self.non_mn3].getnewaddress()
         self.non_mn1_pastelid_txid = self.nodes[self.non_mn1].tickets("register", "id", self.nonmn1_pastelid1, "passphrase", nonmn1_address1)["txid"]
         self.nodes[self.non_mn3].tickets("register", "id", self.creator_pastelid1, "passphrase", self.nonmn3_address1)

@@ -24,15 +24,13 @@
 using namespace std;
 
 // Helpers:
-static std::vector<unsigned char>
-Serialize(const CScript& s)
+static v_uint8 Serialize(const CScript& s)
 {
-    std::vector<unsigned char> sSerialized(s.begin(), s.end());
+    v_uint8 sSerialized(s.begin(), s.end());
     return sSerialized;
 }
 
-static bool
-Verify(const CScript& scriptSig, const CScript& scriptPubKey, bool fStrict, ScriptError& err, uint32_t consensusBranchId)
+static bool Verify(const CScript& scriptSig, const CScript& scriptPubKey, bool fStrict, ScriptError& err, uint32_t consensusBranchId)
 {
     // Create dummy to/from transactions:
     CMutableTransaction txFrom;
@@ -95,7 +93,8 @@ BOOST_DATA_TEST_CASE(sign, boost::unit_test::data::xrange(static_cast<int>(Conse
         txFrom.vout[i+4].scriptPubKey = standardScripts[i];
         txFrom.vout[i+4].nValue = COIN;
     }
-    BOOST_CHECK(IsStandardTx(txFrom, reason));
+    const auto& chainparams = Params();
+    BOOST_CHECK(IsStandardTx(txFrom, reason, chainparams));
 
     CMutableTransaction txTo[8]; // Spending transactions
     for (int i = 0; i < 8; i++)
@@ -198,7 +197,8 @@ BOOST_DATA_TEST_CASE(set, boost::unit_test::data::xrange(static_cast<int>(Consen
         txFrom.vout[i].scriptPubKey = outer[i];
         txFrom.vout[i].nValue = CENT;
     }
-    BOOST_CHECK(IsStandardTx(txFrom, reason));
+    const auto& chainparams = Params();
+    BOOST_CHECK(IsStandardTx(txFrom, reason, chainparams));
 
     CMutableTransaction txTo[4]; // Spending transactions
     for (int i = 0; i < 4; i++)
@@ -216,7 +216,7 @@ BOOST_DATA_TEST_CASE(set, boost::unit_test::data::xrange(static_cast<int>(Consen
     for (int i = 0; i < 4; i++)
     {
         BOOST_CHECK_MESSAGE(SignSignature(keystore, txFrom, txTo[i], 0, SIGHASH_ALL, consensusBranchId), strprintf("SignSignature %d", i));
-        BOOST_CHECK_MESSAGE(IsStandardTx(txTo[i], reason), strprintf("txTo[%d].IsStandard", i));
+        BOOST_CHECK_MESSAGE(IsStandardTx(txTo[i], reason, chainparams), strprintf("txTo[%d].IsStandard", i));
     }
 }
 

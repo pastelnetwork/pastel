@@ -12,7 +12,7 @@
 void CACNotificationInterface::InitializeCurrentBlockTip()
 {
     LOCK(cs_main);
-    UpdatedBlockTip(chainActive.Tip(), IsInitialBlockDownload());
+    UpdatedBlockTip(chainActive.Tip(), fnIsInitialBlockDownload(Params().GetConsensus()));
 }
 
 void CACNotificationInterface::AcceptedBlockHeader(const CBlockIndex *pindexNew)

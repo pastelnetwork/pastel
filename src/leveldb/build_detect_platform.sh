@@ -191,15 +191,15 @@ if [ "$CROSS_COMPILE" = "true" ]; then
 else
     CXXOUTPUT="${TMPDIR}/leveldb_build_detect_platform-cxx.$$"
 
-    # If -std=c++0x works, use <atomic> as fallback for when memory barriers
+    # If -std=c++17 works, use <atomic> as fallback for when memory barriers
     # are not available.
-    $CXX $CXXFLAGS -std=c++0x -x c++ - -o $CXXOUTPUT 2>/dev/null  <<EOF
+    $CXX $CXXFLAGS -std=c++17 -x c++ - -o $CXXOUTPUT 2>/dev/null  <<EOF
       #include <atomic>
       int main() {}
 EOF
     if [ "$?" = 0 ]; then
         COMMON_FLAGS="$COMMON_FLAGS -DLEVELDB_PLATFORM_POSIX -DLEVELDB_ATOMIC_PRESENT"
-        PLATFORM_CXXFLAGS="-std=c++0x"
+        PLATFORM_CXXFLAGS="-std=c++17"
     else
         COMMON_FLAGS="$COMMON_FLAGS -DLEVELDB_PLATFORM_POSIX"
     fi

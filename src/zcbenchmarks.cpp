@@ -42,27 +42,33 @@ void pre_wallet_load()
 
     if (pwalletMain)
         pwalletMain->Flush(false);
+    const auto& chainparams = Params();
 #ifdef ENABLE_MINING
-    GenerateBitcoins(false, NULL, 0);
+    GenerateBitcoins(false, nullptr, 0, chainparams);
 #endif
     UnregisterNodeSignals(GetNodeSignals());
     if (pwalletMain)
         pwalletMain->Flush(true);
 
     UnregisterValidationInterface(pwalletMain);
-    delete pwalletMain;
-    pwalletMain = NULL;
+    if (pwalletMain)
+    {
+        delete pwalletMain;
+        pwalletMain = nullptr;
+    }
     bitdb.Reset();
     RegisterNodeSignals(GetNodeSignals());
     LogPrintf("%s: done\n", __func__);
 }
 
-void post_wallet_load(){
+void post_wallet_load()
+{
     RegisterValidationInterface(pwalletMain);
 #ifdef ENABLE_MINING
     // Generate coins in the background
+    const auto& chainparams = Params();
     if (pwalletMain || !GetArg("-mineraddress", "").empty())
-        GenerateBitcoins(GetBoolArg("-gen", false), pwalletMain, GetArg("-genproclimit", 1));
+        GenerateBitcoins(GetBoolArg("-gen", false), pwalletMain, static_cast<int>(GetArg("-genproclimit", 1)), chainparams);
 #endif    
 }
 
@@ -90,74 +96,6 @@ double benchmark_sleep()
     return timer_stop(tv_start);
 }
 
-double benchmark_parameter_loading()
-{
-    struct timeval tv_start;
-    timer_start(tv_start);
-
-    auto newParams = ZCJoinSplit::Prepared();
-
-    double ret = timer_stop(tv_start);
-
-    delete newParams;
-
-    return ret;
-}
-
-double benchmark_create_joinsplit()
-{
-    uint256 joinSplitPubKey;
-
-    /* Get the anchor of an empty commitment tree. */
-    uint256 anchor = SproutMerkleTree().root();
-
-    struct timeval tv_start;
-    timer_start(tv_start);
-    JSDescription jsdesc(true,
-                         *pzcashParams,
-                         joinSplitPubKey,
-                         anchor,
-                         {JSInput(), JSInput()},
-                         {JSOutput(), JSOutput()},
-                         0,
-                         0);
-    double ret = timer_stop(tv_start);
-
-    auto verifier = libzcash::ProofVerifier::Strict();
-    assert(jsdesc.Verify(*pzcashParams, verifier, joinSplitPubKey));
-    return ret;
-}
-
-std::vector<double> benchmark_create_joinsplit_threaded(int nThreads)
-{
-    std::vector<double> ret;
-    std::vector<std::future<double>> tasks;
-    std::vector<std::thread> threads;
-    for (int i = 0; i < nThreads; i++) {
-        std::packaged_task<double(void)> task(&benchmark_create_joinsplit);
-        tasks.emplace_back(task.get_future());
-        threads.emplace_back(std::move(task));
-    }
-    for (auto it = tasks.begin(); it != tasks.end(); it++) {
-        it->wait();
-        ret.push_back(it->get());
-    }
-    for (auto it = threads.begin(); it != threads.end(); it++) {
-        it->join();
-    }
-    return ret;
-}
-
-double benchmark_verify_joinsplit(const JSDescription &joinsplit)
-{
-    struct timeval tv_start;
-    timer_start(tv_start);
-    uint256 joinSplitPubKey;
-    auto verifier = libzcash::ProofVerifier::Strict();
-    joinsplit.Verify(*pzcashParams, verifier, joinSplitPubKey);
-    return timer_stop(tv_start);
-}
-
 #ifdef ENABLE_MINING
 double benchmark_solve_equihash()
 {
@@ -166,8 +104,11 @@ double benchmark_solve_equihash()
     CDataStream ss(SER_NETWORK, PROTOCOL_VERSION);
     ss << I;
 
-    unsigned int n = Params(CBaseChainParams::Network::MAIN).EquihashN();
-    unsigned int k = Params(CBaseChainParams::Network::MAIN).EquihashK();
+    auto MainChainParams = CreateChainParams(CBaseChainParams::Network::MAIN);
+    const auto& consensusParams = MainChainParams->GetConsensus();
+
+    unsigned int n = consensusParams.nEquihashN;
+    unsigned int k = consensusParams.nEquihashK;
     crypto_generichash_blake2b_state eh_state;
     EhInitialiseState(n, k, eh_state);
     crypto_generichash_blake2b_update(&eh_state, (unsigned char*)&ss[0], ss.size());
@@ -186,9 +127,9 @@ double benchmark_solve_equihash()
     return timer_stop(tv_start);
 }
 
-std::vector<double> benchmark_solve_equihash_threaded(int nThreads)
+v_doubles benchmark_solve_equihash_threaded(int nThreads)
 {
-    std::vector<double> ret;
+    v_doubles ret;
     std::vector<std::future<double>> tasks;
     std::vector<std::thread> threads;
     for (int i = 0; i < nThreads; i++) {
@@ -209,12 +150,12 @@ std::vector<double> benchmark_solve_equihash_threaded(int nThreads)
 
 double benchmark_verify_equihash()
 {
-    CChainParams params = Params(CBaseChainParams::Network::MAIN);
-    CBlock genesis = Params(CBaseChainParams::Network::MAIN).GenesisBlock();
+    auto MainChainParams = CreateChainParams(CBaseChainParams::Network::MAIN);
+    const CBlock genesis = MainChainParams->GenesisBlock();
     CBlockHeader genesis_header = genesis.GetBlockHeader();
     struct timeval tv_start;
     timer_start(tv_start);
-    CheckEquihashSolution(&genesis_header, params);
+    CheckEquihashSolution(&genesis_header, MainChainParams->GetConsensus());
     return timer_stop(tv_start);
 }
 
@@ -273,80 +214,6 @@ double benchmark_large_tx(size_t nInputs)
     return timer_stop(tv_start);
 }
 
-double benchmark_try_decrypt_notes(size_t nAddrs)
-{
-    CWallet wallet;
-    for (int i = 0; i < nAddrs; i++) {
-        auto sk = libzcash::SproutSpendingKey::random();
-        wallet.AddSproutSpendingKey(sk);
-    }
-
-    auto sk = libzcash::SproutSpendingKey::random();
-    auto tx = GetValidReceive(*pzcashParams, sk, 10, true);
-
-    struct timeval tv_start;
-    timer_start(tv_start);
-    auto nd = wallet.FindMySproutNotes(tx);
-    return timer_stop(tv_start);
-}
-
-double benchmark_increment_note_witnesses(size_t nTxs)
-{
-    CWallet wallet;
-    SproutMerkleTree sproutTree;
-    SaplingMerkleTree saplingTree;
-
-    auto sk = libzcash::SproutSpendingKey::random();
-    wallet.AddSproutSpendingKey(sk);
-
-    // First block
-    CBlock block1;
-    for (int i = 0; i < nTxs; i++) {
-        auto wtx = GetValidReceive(*pzcashParams, sk, 10, true);
-        auto note = GetNote(*pzcashParams, sk, wtx, 0, 1);
-        auto nullifier = note.nullifier(sk);
-
-        mapSproutNoteData_t noteData;
-        JSOutPoint jsoutpt {wtx.GetHash(), 0, 1};
-        SproutNoteData nd {sk.address(), nullifier};
-        noteData[jsoutpt] = nd;
-
-        wtx.SetSproutNoteData(noteData);
-        wallet.AddToWallet(wtx, true, NULL);
-        block1.vtx.push_back(wtx);
-    }
-    CBlockIndex index1(block1);
-    index1.nHeight = 1;
-
-    // Increment to get transactions witnessed
-    wallet.ChainTip(&index1, &block1, sproutTree, saplingTree, true);
-
-    // Second block
-    CBlock block2;
-    block2.hashPrevBlock = block1.GetHash();
-    {
-        auto wtx = GetValidReceive(*pzcashParams, sk, 10, true);
-        auto note = GetNote(*pzcashParams, sk, wtx, 0, 1);
-        auto nullifier = note.nullifier(sk);
-
-        mapSproutNoteData_t noteData;
-        JSOutPoint jsoutpt {wtx.GetHash(), 0, 1};
-        SproutNoteData nd {sk.address(), nullifier};
-        noteData[jsoutpt] = nd;
-
-        wtx.SetSproutNoteData(noteData);
-        wallet.AddToWallet(wtx, true, NULL);
-        block2.vtx.push_back(wtx);
-    }
-    CBlockIndex index2(block2);
-    index2.nHeight = 2;
-
-    struct timeval tv_start;
-    timer_start(tv_start);
-    wallet.ChainTip(&index2, &block2, sproutTree, saplingTree, true);
-    return timer_stop(tv_start);
-}
-
 // Fake the input of a given block
 class FakeCoinsViewDB : public CCoinsViewDB {
     uint256 hash;
@@ -395,7 +262,8 @@ double benchmark_connectblock_slow()
     SelectParams(CBaseChainParams::Network::MAIN);
     CBlock block;
     FILE* fp = fopen((GetDataDir() / "benchmark/block-107134.dat").string().c_str(), "rb");
-    if (!fp) throw std::runtime_error("Failed to open block data file");
+    if (!fp)
+        throw std::runtime_error("Failed to open block data file");
     CAutoFile blkFile(fp, SER_DISK, CLIENT_VERSION);
     blkFile >> block;
     blkFile.fclose();
@@ -417,7 +285,7 @@ double benchmark_connectblock_slow()
     CValidationState state;
     struct timeval tv_start;
     timer_start(tv_start);
-    assert(ConnectBlock(block, state, &index, view, true));
+    assert(ConnectBlock(block, state, Params(), &index, view, true));
     auto duration = timer_stop(tv_start);
 
     // Undo alterations to global state
@@ -524,7 +392,7 @@ double benchmark_create_sapling_output()
     auto sk = libzcash::SaplingSpendingKey::random();
     auto address = sk.default_address();
 
-    std::array<unsigned char, ZC_MEMO_SIZE> memo;
+    std::array<unsigned char, ZC_MEMO_SIZE> memo{};
     SaplingNote note(address, GetRand(MAX_MONEY));
 
     libzcash::SaplingNotePlaintext notePlaintext(note, memo);

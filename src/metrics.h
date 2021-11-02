@@ -8,25 +8,22 @@
 #include <mutex>
 #include <string>
 
-struct AtomicCounter {
-    std::atomic<uint64_t> value;
+struct AtomicCounter
+{
+    std::atomic_uint64_t value;
 
-    AtomicCounter() : value {0} { }
+    AtomicCounter() :
+        value {0}
+    {}
 
-    void increment(){
-        ++value;
-    }
-
-    void decrement(){
-        --value;
-    }
-
-    int get() const {
-        return value.load();
-    }
+    void increment() noexcept { ++value; }
+    void decrement() noexcept { --value; }
+    uint64_t get() const noexcept { return value.load(); }
+    void set(const uint64_t nValue) { value.store(nValue); }
 };
 
-class AtomicTimer {
+class AtomicTimer
+{
 private:
     std::mutex mtx;
     uint64_t threads;
@@ -34,7 +31,11 @@ private:
     int64_t total_time;
 
 public:
-    AtomicTimer() : threads(0), start_time(0), total_time(0) {}
+    AtomicTimer() : 
+        threads(0), 
+        start_time(0), 
+        total_time(0)
+    {}
 
     /**
      * Starts timing on first call, and counts the number of calls.
@@ -71,6 +72,7 @@ void TriggerRefresh();
 
 void ConnectMetricsScreen();
 void ThreadShowMetricsScreen();
+void ClearMetrics();
 
 /**
  * Heart image: https://commons.wikimedia.org/wiki/File:Heart_coraz%C3%B3n.svg

@@ -28,12 +28,7 @@ class ZkeyImportExportTest (BitcoinTestFramework):
         initialize_chain_clean(self.options.tmpdir, self.num_nodes)
 
     def setup_network(self, split=False):
-        self.nodes = start_nodes(self.num_nodes, self.options.tmpdir,
-		extra_args=[
-		[
-	                '-nuparams=5ba81b19:1', # Overwinter
-        	        '-nuparams=76b809bb:1', # Sapling
-		]] * self.num_nodes)
+        self.nodes = start_nodes(self.num_nodes, self.options.tmpdir)
         connect_nodes_bi(self.nodes,0,1)
         connect_nodes_bi(self.nodes,1,2)
         connect_nodes_bi(self.nodes,0,2)

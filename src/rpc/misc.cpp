@@ -197,9 +197,9 @@ UniValue validateaddress(const UniValue& params, bool fHelp)
         ret.pushKV("scriptPubKey", HexStr(scriptPubKey.begin(), scriptPubKey.end()));
 
 #ifdef ENABLE_WALLET
-        isminetype mine = pwalletMain ? IsMine(*pwalletMain, dest) : ISMINE_NO;
-        ret.pushKV("ismine", (mine & ISMINE_SPENDABLE) ? true : false);
-        ret.pushKV("iswatchonly", (mine & ISMINE_WATCH_ONLY) ? true: false);
+        isminetype mine = pwalletMain ? GetIsMine(*pwalletMain, dest) : isminetype::NO;
+        ret.pushKV("ismine", IsMineSpendable(mine) ? true : false);
+        ret.pushKV("iswatchonly", IsMineWatchOnly(mine) ? true: false);
         UniValue detail = std::visit(DescribeAddressVisitor(), dest);
         ret.pushKVs(detail);
         if (pwalletMain && pwalletMain->mapAddressBook.count(dest))
@@ -214,19 +214,6 @@ class DescribePaymentAddressVisitor
 {
 public:
     UniValue operator()(const libzcash::InvalidEncoding &zaddr) const { return UniValue(UniValue::VOBJ); }
-
-    UniValue operator()(const libzcash::SproutPaymentAddress &zaddr) const {
-        UniValue obj(UniValue::VOBJ);
-        obj.pushKV("type", "sprout");
-        obj.pushKV("payingkey", zaddr.a_pk.GetHex());
-        obj.pushKV("transmissionkey", zaddr.pk_enc.GetHex());
-#ifdef ENABLE_WALLET
-        if (pwalletMain) {
-            obj.pushKV("ismine", HaveSpendingKeyForPaymentAddress(pwalletMain)(zaddr));
-        }
-#endif
-        return obj;
-    }
 
     UniValue operator()(const libzcash::SaplingPaymentAddress &zaddr) const {
         UniValue obj(UniValue::VOBJ);

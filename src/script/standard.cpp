@@ -34,7 +34,7 @@ const char* GetTxnOutputType(txnouttype t)
 /**
  * Return public keys or hashes from scriptPubKey, for 'standard' transaction types.
  */
-bool Solver(const CScript& scriptPubKey, txnouttype& typeRet, vector<vector<unsigned char> >& vSolutionsRet)
+bool Solver(const CScript& scriptPubKey, txnouttype& typeRet, vector<v_uint8>& vSolutionsRet)
 {
     // Templates
     static multimap<txnouttype, CScript> mTemplates;
@@ -60,23 +60,25 @@ bool Solver(const CScript& scriptPubKey, txnouttype& typeRet, vector<vector<unsi
     if (scriptPubKey.IsPayToScriptHash())
     {
         typeRet = TX_SCRIPTHASH;
-        vector<unsigned char> hashBytes(scriptPubKey.begin()+2, scriptPubKey.begin()+22);
+        v_uint8 hashBytes(scriptPubKey.begin()+2, scriptPubKey.begin()+22);
         vSolutionsRet.push_back(hashBytes);
         return true;
     }
 
+    v_uint8 vch1, vch2;
     // Scan templates
     const CScript& script1 = scriptPubKey;
     for(const auto &[txOut, script2] : mTemplates)
     {
         vSolutionsRet.clear();
+        vch1.clear();
+        vch2.clear();
 
         opcodetype opcode1, opcode2;
-        vector<unsigned char> vch1, vch2;
 
         // Compare
-        CScript::const_iterator pc1 = script1.begin();
-        CScript::const_iterator pc2 = script2.begin();
+        auto pc1 = script1.begin();
+        auto pc2 = script2.begin();
         while (true)
         {
             if (pc1 == script1.end() && pc2 == script2.end())
@@ -309,19 +311,22 @@ CScript GetScriptForMultisig(int nRequired, const std::vector<CPubKey>& keys)
     script << CScript::EncodeOP_N(nRequired);
     for (const auto& key : keys)
         script << ToByteVector(key);
-    script << CScript::EncodeOP_N(keys.size()) << OP_CHECKMULTISIG;
+    script << CScript::EncodeOP_N(static_cast<int>(keys.size())) << OP_CHECKMULTISIG;
     return script;
 }
 
-bool IsValidDestination(const CTxDestination& dest) {
+bool IsValidDestination(const CTxDestination& dest) noexcept
+{
     return !std::holds_alternative<CNoDestination>(dest);
 }
 
-bool IsKeyDestination(const CTxDestination& dest) {
+bool IsKeyDestination(const CTxDestination& dest) noexcept
+{
     return std::holds_alternative<CKeyID>(dest);
 }
 
-bool IsScriptDestination(const CTxDestination& dest) {
+bool IsScriptDestination(const CTxDestination& dest) noexcept
+{
     return std::holds_alternative<CScriptID>(dest);
 }
 

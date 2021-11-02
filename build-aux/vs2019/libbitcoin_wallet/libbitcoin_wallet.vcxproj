@@ -92,9 +92,6 @@
     <ClCompile Include="..\..\..\src\wallet\asyncrpcoperation_shieldcoinbase.cpp" />
     <ClCompile Include="..\..\..\src\wallet\crypter.cpp" />
     <ClCompile Include="..\..\..\src\wallet\db.cpp" />
-    <ClCompile Include="..\..\..\src\wallet\paymentdisclosure.cpp" />
-    <ClCompile Include="..\..\..\src\wallet\paymentdisclosuredb.cpp" />
-    <ClCompile Include="..\..\..\src\wallet\rpcdisclosure.cpp" />
     <ClCompile Include="..\..\..\src\wallet\rpcdump.cpp" />
     <ClCompile Include="..\..\..\src\wallet\rpcwallet.cpp" />
     <ClCompile Include="..\..\..\src\wallet\wallet.cpp" />
@@ -108,8 +105,6 @@
     <ClInclude Include="..\..\..\src\wallet\asyncrpcoperation_shieldcoinbase.h" />
     <ClInclude Include="..\..\..\src\wallet\crypter.h" />
     <ClInclude Include="..\..\..\src\wallet\db.h" />
-    <ClInclude Include="..\..\..\src\wallet\paymentdisclosure.h" />
-    <ClInclude Include="..\..\..\src\wallet\paymentdisclosuredb.h" />
     <ClInclude Include="..\..\..\src\wallet\rpcwallet.h" />
     <ClInclude Include="..\..\..\src\wallet\wallet.h" />
     <ClInclude Include="..\..\..\src\wallet\walletdb.h" />

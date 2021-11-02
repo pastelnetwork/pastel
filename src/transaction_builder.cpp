@@ -136,21 +136,19 @@ TransactionBuilderResult TransactionBuilder::Build()
 
     // Valid change
     CAmount change = mtx.valueBalance - fee;
-    for (auto tIn : tIns) {
+    for (const auto &tIn : tIns)
         change += tIn.value;
-    }
-    for (auto tOut : mtx.vout) {
+    for (const auto &tOut : mtx.vout)
         change -= tOut.nValue;
-    }
-    if (change < 0) {
+    if (change < 0)
         return TransactionBuilderResult("Change cannot be negative");
-    }
 
     //
     // Change output
     //
 
-    if (change > 0) {
+    if (change > 0)
+    {
         // Send change to the specified change address. If no change address
         // was set, send change to the first Sapling address given as input.
         if (zChangeAddr) {
@@ -175,7 +173,8 @@ TransactionBuilderResult TransactionBuilder::Build()
     auto ctx = librustzcash_sapling_proving_ctx_init();
 
     // Create Sapling SpendDescriptions
-    for (auto spend : spends) {
+    for (const auto &spend : spends)
+    {
         auto cm = spend.note.cm();
         auto nf = spend.note.nullifier(
             spend.expsk.full_viewing_key(), spend.witness.position());
@@ -186,7 +185,7 @@ TransactionBuilderResult TransactionBuilder::Build()
 
         CDataStream ss(SER_NETWORK, PROTOCOL_VERSION);
         ss << spend.witness.path();
-        std::vector<unsigned char> witness(ss.begin(), ss.end());
+        v_uint8 witness(ss.cbegin(), ss.cend());
 
         SpendDescription sdesc;
         if (!librustzcash_sapling_spend_proof(
@@ -212,7 +211,8 @@ TransactionBuilderResult TransactionBuilder::Build()
     }
 
     // Create Sapling OutputDescriptions
-    for (auto output : outputs) {
+    for (const auto &output : outputs)
+    {
         auto cm = output.note.cm();
         if (!cm) {
             librustzcash_sapling_proving_ctx_free(ctx);

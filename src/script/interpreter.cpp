@@ -1046,13 +1046,8 @@ public:
             // keeps the JoinSplit cryptographically bound
             // to the transaction.
             //
-            ::Serialize(s, txTo.vjoinsplit);
-            if (txTo.vjoinsplit.size() > 0) {
-                ::Serialize(s, txTo.joinSplitPubKey);
-
-                CTransaction::joinsplit_sig_t nullSig = {};
-                ::Serialize(s, nullSig);
-            }
+            std::vector<int> v;
+            ::Serialize(s, v);
         }
     }
 };
@@ -1094,15 +1089,6 @@ uint256 GetOutputsHash(const CTransaction& txTo) {
     return ss.GetHash();
 }
 
-uint256 GetJoinSplitsHash(const CTransaction& txTo) {
-    CBLAKE2bWriter ss(SER_GETHASH, static_cast<int>(txTo.GetHeader()), ZCASH_JOINSPLITS_HASH_PERSONALIZATION);
-    for (unsigned int n = 0; n < txTo.vjoinsplit.size(); n++) {
-        ss << txTo.vjoinsplit[n];
-    }
-    ss << txTo.joinSplitPubKey;
-    return ss.GetHash();
-}
-
 uint256 GetShieldedSpendsHash(const CTransaction& txTo) {
     CBLAKE2bWriter ss(SER_GETHASH, 0, ZCASH_SHIELDED_SPENDS_HASH_PERSONALIZATION);
     for (unsigned int n = 0; n < txTo.vShieldedSpend.size(); n++) {
@@ -1130,7 +1116,6 @@ PrecomputedTransactionData::PrecomputedTransactionData(const CTransaction& txTo)
     hashPrevouts = GetPrevoutHash(txTo);
     hashSequence = GetSequenceHash(txTo);
     hashOutputs = GetOutputsHash(txTo);
-    hashJoinSplits = GetJoinSplitsHash(txTo);
     hashShieldedSpends = GetShieldedSpendsHash(txTo);
     hashShieldedOutputs = GetShieldedOutputsHash(txTo);
 }
@@ -1186,10 +1171,6 @@ uint256 SignatureHash(
             CBLAKE2bWriter ss(SER_GETHASH, 0, ZCASH_OUTPUTS_HASH_PERSONALIZATION);
             ss << txTo.vout[nIn];
             hashOutputs = ss.GetHash();
-        }
-
-        if (!txTo.vjoinsplit.empty()) {
-            hashJoinSplits = cache ? cache->hashJoinSplits : GetJoinSplitsHash(txTo);
         }
 
         if (!txTo.vShieldedSpend.empty()) {

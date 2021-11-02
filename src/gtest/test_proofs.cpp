@@ -148,7 +148,7 @@ TEST(proofs, sqrt_fq)
             curve_Fq x = acc.sqrt();
             ASSERT_TRUE((x*x) == acc);
             quadratic_residues += 1;
-        } catch (std::runtime_error &e) {
+        } catch ([[maybe_unused]] const std::runtime_error &e) {
             quadratic_nonresidues += 1;
         }
     }
@@ -193,7 +193,7 @@ TEST(proofs, sqrt_fq2)
             curve_Fq2 x = acc.sqrt();
             ASSERT_TRUE((x*x) == acc);
             quadratic_residues += 1;
-        } catch (std::runtime_error &e) {
+        } catch ([[maybe_unused]] const std::runtime_error& e) {
             quadratic_nonresidues += 1;
         }
     }

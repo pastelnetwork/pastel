@@ -13,7 +13,7 @@
     </ClCompile>
     <Link>
       <Profile>true</Profile>
-      <AdditionalDependencies>gmock-md$(LIBDBGSFX).lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>gmock$(LIBDBGSFX).lib;%(AdditionalDependencies)</AdditionalDependencies>
       <SubSystem>Console</SubSystem>
     </Link>
   </ItemDefinitionGroup>

@@ -8,13 +8,13 @@
 #include "wallet/db.h"
 #include "key.h"
 #include "keystore.h"
+#include "vector_types.h"
 #include "zcash/Address.hpp"
 
 #include <list>
 #include <stdint.h>
 #include <string>
 #include <utility>
-#include <vector>
 
 class CAccount;
 class CAccountingEntry;
@@ -133,7 +133,7 @@ public:
     bool EraseTx(uint256 hash);
 
     bool WriteKey(const CPubKey& vchPubKey, const CPrivKey& vchPrivKey, const CKeyMetadata &keyMeta);
-    bool WriteCryptedKey(const CPubKey& vchPubKey, const std::vector<unsigned char>& vchCryptedSecret, const CKeyMetadata &keyMeta);
+    bool WriteCryptedKey(const CPubKey& vchPubKey, const v_uint8& vchCryptedSecret, const CKeyMetadata& keyMeta);
     bool WriteMasterKey(unsigned int nID, const CMasterKey& kMasterKey);
 
     bool WriteCScript(const uint160& hash, const CScript& redeemScript);
@@ -148,7 +148,7 @@ public:
 
     bool WriteDefaultKey(const CPubKey& vchPubKey);
 
-    bool WriteWitnessCacheSize(int64_t nWitnessCacheSize);
+    bool WriteWitnessCacheSize(const uint64_t nWitnessCacheSize);
 
     bool ReadPool(int64_t nPool, CKeyPool& keypool);
     bool WritePool(int64_t nPool, const CKeyPool& keypool);
@@ -176,27 +176,20 @@ public:
     static bool Recover(CDBEnv& dbenv, const std::string& filename);
 
     bool WriteHDSeed(const HDSeed& seed);
-    bool WriteCryptedHDSeed(const uint256& seedFp, const std::vector<unsigned char>& vchCryptedSecret);
+    bool WriteCryptedHDSeed(const uint256& seedFp, const v_uint8& vchCryptedSecret);
     //! write the hdchain model (external chain child index counter)
     bool WriteHDChain(const CHDChain& chain);
 
     /// Write spending key to wallet database, where key is payment address and value is spending key.
-    bool WriteZKey(const libzcash::SproutPaymentAddress& addr, const libzcash::SproutSpendingKey& key, const CKeyMetadata &keyMeta);
     bool WriteSaplingZKey(const libzcash::SaplingIncomingViewingKey &ivk,
                           const libzcash::SaplingExtendedSpendingKey &key,
                           const CKeyMetadata  &keyMeta);
     bool WriteSaplingPaymentAddress(const libzcash::SaplingPaymentAddress &addr,
                                     const libzcash::SaplingIncomingViewingKey &ivk);
-    bool WriteCryptedZKey(const libzcash::SproutPaymentAddress & addr,
-                          const libzcash::ReceivingKey & rk,
-                          const std::vector<unsigned char>& vchCryptedSecret,
-                          const CKeyMetadata &keyMeta);
     bool WriteCryptedSaplingZKey(const libzcash::SaplingExtendedFullViewingKey &extfvk,
-                          const std::vector<unsigned char>& vchCryptedSecret,
+                                 const v_uint8& vchCryptedSecret,
                           const CKeyMetadata &keyMeta);
 
-    bool WriteSproutViewingKey(const libzcash::SproutViewingKey &vk);
-    bool EraseSproutViewingKey(const libzcash::SproutViewingKey &vk);
     bool WriteSaplingExtendedFullViewingKey(const libzcash::SaplingExtendedFullViewingKey &extfvk);
     bool EraseSaplingExtendedFullViewingKey(const libzcash::SaplingExtendedFullViewingKey &extfvk);
 

@@ -211,7 +211,8 @@ bool CMasterNodeController::EnableMasterNode(std::ostringstream& strErrors, boos
             outputIndex = boost::lexical_cast<unsigned int>(mne.getOutputIndex());
             COutPoint outpoint = COutPoint(mnTxHash, outputIndex);
             // don't lock non-spendable outpoint (i.e. it's already spent or it's not from this wallet at all)
-            if(pWalletMain->IsMine(CTxIn(outpoint)) != ISMINE_SPENDABLE) {
+            if (!IsMineSpendable(pWalletMain->GetIsMine(CTxIn(outpoint))))
+            {
                 LogPrintf("  %s %s - IS NOT SPENDABLE, was not locked\n", mne.getTxHash(), mne.getOutputIndex());
                 continue;
             }

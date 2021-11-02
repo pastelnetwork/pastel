@@ -1,8 +1,9 @@
 #pragma once
 // Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2014 The Bitcoin Core developers
+// Copyright (c) 2018-2021 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
-// file COPYING or http://www.opensource.org/licenses/mit-license.php.
+// file COPYING or https://www.opensource.org/licenses/mit-license.php.
 
 #include "compat.h"
 #include "compat/endian.h"
@@ -15,6 +16,7 @@
 #include <limits>
 #include <list>
 #include <map>
+#include <unordered_map>
 #include <memory>
 #include <set>
 #include <stdint.h>
@@ -740,14 +742,10 @@ void Serialize(Stream& os, const std::optional<T>& item)
 {
     // If the value is there, put 0x01 and then serialize the value.
     // If it's not, put 0x00.
-    if (item) {
-        unsigned char discriminant = 0x01;
-        Serialize(os, discriminant);
-        Serialize(os, *item);
-    } else {
-        unsigned char discriminant = 0x00;
-        Serialize(os, discriminant);
-    }
+    const bool bHasValue = item.has_value();
+    Serialize(os, static_cast<unsigned char>(bHasValue ? 0x01 : 0x00));
+    if (bHasValue)
+        Serialize(os, item.value());
 }
 
 template<typename Stream, typename T>
@@ -756,13 +754,13 @@ void Unserialize(Stream& is, std::optional<T>& item)
     unsigned char discriminant = 0x00;
     Unserialize(is, discriminant);
 
-    if (discriminant == 0x00) {
+    if (discriminant == 0x00)
         item = std::nullopt;
-    } else if (discriminant == 0x01) {
+    else if (discriminant == 0x01) {
         T object;
         Unserialize(is, object);
         item = object;
-    } else {
+    } else
         throw std::ios_base::failure("non-canonical optional discriminant");
     }
 }
@@ -812,16 +810,41 @@ template<typename Stream, typename K, typename T, typename Pred, typename A>
 void Serialize(Stream& os, const std::map<K, T, Pred, A>& m)
 {
     WriteCompactSize(os, m.size());
-    for (typename std::map<K, T, Pred, A>::const_iterator mi = m.begin(); mi != m.end(); ++mi)
-        Serialize(os, (*mi));
+    for (const auto &mapPair : m)
+        Serialize(os, mapPair);
 }
 
 template<typename Stream, typename K, typename T, typename Pred, typename A>
 void Unserialize(Stream& is, std::map<K, T, Pred, A>& m)
 {
     m.clear();
-    const uint64_t nSize = ReadCompactSize(is, MAX_CONTAINER_SIZE); // nSize here is number of items in the list, 33,554,432 is too big for that!
-    typename std::map<K, T, Pred, A>::iterator mi = m.begin();
+    const uint64_t nSize = ReadCompactSize(is, MAX_CONTAINER_SIZE);
+    auto mi = m.begin();
+    for (uint64_t i = 0; i < nSize; i++)
+    {
+        std::pair<K, T> item;
+        Unserialize(is, item);
+        mi = m.insert(mi, item);
+    }
+}
+
+/**
+ * unordered_map
+ */
+template <typename Stream, typename K, typename T, typename Pred, typename A>
+void Serialize(Stream& os, const std::unordered_map<K, T, Pred, A>& m)
+{
+    WriteCompactSize(os, m.size());
+    for (const auto &mapPair : m)
+        Serialize(os, mapPair);
+}
+
+template <typename Stream, typename K, typename T, typename Pred, typename A>
+void Unserialize(Stream& is, std::unordered_map<K, T, Pred, A>& m)
+{
+    m.clear();
+    const uint64_t nSize = ReadCompactSize(is);
+    auto mi = m.begin();
     for (uint64_t i = 0; i < nSize; i++)
     {
         std::pair<K, T> item;

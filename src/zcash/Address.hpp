@@ -1,6 +1,5 @@
 #pragma once
 #include "zcash/address/sapling.hpp"
-#include "zcash/address/sprout.hpp"
 #include "zcash/address/zip32.h"
 
 #include <variant>
@@ -13,20 +12,18 @@ public:
     friend bool operator<(const InvalidEncoding &a, const InvalidEncoding &b) { return true; }
 };
 
-typedef std::variant<InvalidEncoding, SproutPaymentAddress, SaplingPaymentAddress> PaymentAddress;
-typedef std::variant<InvalidEncoding, SproutViewingKey, SaplingExtendedFullViewingKey> ViewingKey;
-typedef std::variant<InvalidEncoding, SproutSpendingKey, SaplingExtendedSpendingKey> SpendingKey;
+typedef std::variant<InvalidEncoding, SaplingPaymentAddress> PaymentAddress;
+typedef std::variant<InvalidEncoding, SaplingExtendedFullViewingKey> ViewingKey;
+typedef std::variant<InvalidEncoding, SaplingExtendedSpendingKey> SpendingKey;
 
 class AddressInfoFromSpendingKey {
 public:
-    std::pair<std::string, PaymentAddress> operator()(const SproutSpendingKey&) const;
     std::pair<std::string, PaymentAddress> operator()(const struct SaplingExtendedSpendingKey&) const;
     std::pair<std::string, PaymentAddress> operator()(const InvalidEncoding&) const;
 };
 
 class AddressInfoFromViewingKey {
 public:
-    std::pair<std::string, PaymentAddress> operator()(const SproutViewingKey&) const;
     std::pair<std::string, PaymentAddress> operator()(const struct SaplingExtendedFullViewingKey&) const;
     std::pair<std::string, PaymentAddress> operator()(const InvalidEncoding&) const;
 };

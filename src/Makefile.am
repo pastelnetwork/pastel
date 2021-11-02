@@ -45,7 +45,7 @@ endif
 if ENABLE_PROTON
 LIBBITCOIN_PROTON=libbitcoin_proton.a
 endif
-if BUILD_BITCOIN_LIBS
+if BUILD_PASTEL_LIBS
 LIBZCASH_CONSENSUS=libzcashconsensus.la
 endif
 if ENABLE_WALLET
@@ -105,9 +105,7 @@ LIBZCASH_H = \
   zcash/NoteEncryption.hpp \
   zcash/Address.hpp \
   zcash/address/sapling.hpp \
-  zcash/address/sprout.hpp \
   zcash/address/zip32.h \
-  zcash/JoinSplit.hpp \
   zcash/Note.hpp \
   zcash/prf.h \
   zcash/Proof.hpp \
@@ -115,6 +113,13 @@ LIBZCASH_H = \
   zcash/Zcash.h
 
 MNODE_CPP =\
+  mnode/rpc/masternode.cpp\
+  mnode/rpc/mnode-rpc-utils.cpp\
+  mnode/rpc/mnode-rpc.cpp\
+  mnode/rpc/tickets-fake.cpp\
+  mnode/rpc/tickets-list.cpp\
+  mnode/rpc/tickets-register.cpp\
+  mnode/rpc/tickets-tools.cpp\
   mnode/mnode-config.cpp\
   mnode/mnode-active.cpp\
   mnode/mnode-manager.cpp\
@@ -122,17 +127,26 @@ MNODE_CPP =\
   mnode/mnode-msgsigner.cpp\
   mnode/mnode-requesttracker.cpp\
   mnode/mnode-sync.cpp\
-  mnode/mnode-rpc.cpp\
   mnode/mnode-validation.cpp\
   mnode/mnode-payments.cpp\
   mnode/mnode-governance.cpp\
   mnode/mnode-messageproc.cpp\
   mnode/mnode-pastel.cpp\
   mnode/ticket-processor.cpp\
+  mnode/ticket-mempool-processor.cpp\
+  mnode/ticket-txmempool.cpp\
   mnode/mnode-notificationinterface.cpp\
   mnode/mnode-controller.cpp
 
 MNODE_H = \
+  mnode/rpc/masternode.h\
+  mnode/rpc/mnode-rpc-utils.h\
+  mnode/rpc/mnode-register.h\
+  mnode/rpc/mnode-rpc.h\
+  mnode/rpc/tickets-fake.h\
+  mnode/rpc/tickets-list.h\
+  mnode/rpc/tickets-register.h\
+  mnode/rpc/tickets-tools.h\
   mnode/mnode-active.h\
   mnode/mnode-config.h\
   mnode/mnode-db.h\
@@ -140,13 +154,14 @@ MNODE_H = \
   mnode/mnode-masternode.h\
   mnode/mnode-msgsigner.h\
   mnode/mnode-requesttracker.h\
-  mnode/mnode-rpc.h\
   mnode/mnode-validation.h\
   mnode/mnode-payments.h\
   mnode/mnode-governance.h\
   mnode/mnode-messageproc.h\
   mnode/ticket.h\
   mnode/ticket-processor.h\
+  mnode/ticket-mempool-processor.h\
+  mnode/ticket-txmempool.h\
   mnode/mnode-pastel.h\
   mnode/mnode-controller.h\
   mnode/mnode-notificationinterface.h\
@@ -226,7 +241,9 @@ BITCOIN_CORE_H = \
   nodehelper.h \
   netbase.h \
   noui.h \
+  numeric_range.h\
   policy/fees.h \
+  port_config.h \
   pow.h \
   prevector.h \
   primitives/block.h \
@@ -250,6 +267,7 @@ BITCOIN_CORE_H = \
   script/standard.h \
   serialize.h \
   streams.h \
+  str_types.h\
   support/allocators/secure.h \
   support/allocators/zeroafterfree.h \
   support/cleanse.h \
@@ -263,6 +281,7 @@ BITCOIN_CORE_H = \
   transaction_builder.h \
   txdb.h \
   txmempool.h \
+  txmempool_entry.h\
   ui_interface.h \
   uint256.h \
   uint252.h \
@@ -281,8 +300,6 @@ BITCOIN_CORE_H = \
   wallet/asyncrpcoperation_shieldcoinbase.h \
   wallet/crypter.h \
   wallet/db.h \
-  wallet/paymentdisclosure.h \
-  wallet/paymentdisclosuredb.h \
   wallet/rpcwallet.h \
   wallet/wallet.h \
   wallet/wallet_ismine.h \
@@ -374,9 +391,6 @@ libbitcoin_wallet_a_SOURCES = \
   wallet/asyncrpcoperation_shieldcoinbase.cpp \
   wallet/crypter.cpp \
   wallet/db.cpp \
-  wallet/paymentdisclosure.cpp \
-  wallet/paymentdisclosuredb.cpp \
-  wallet/rpcdisclosure.cpp \
   wallet/rpcdump.cpp \
   wallet/rpcwallet.cpp \
   wallet/wallet.cpp \
@@ -583,9 +597,7 @@ libzcash_a_SOURCES = \
   zcash/NoteEncryption.cpp \
   zcash/Address.cpp \
   zcash/address/sapling.cpp \
-  zcash/address/sprout.cpp \
   zcash/address/zip32.cpp \
-  zcash/JoinSplit.cpp \
   zcash/Proof.cpp \
   zcash/Note.cpp \
   zcash/prf.cpp \
@@ -602,7 +614,7 @@ libzcash_a_CXXFLAGS = $(AM_CXXFLAGS) $(PIE_FLAGS)
 libzcash_a_LDFLAGS = $(AM_LDFLAGS)
 
 # zcashconsensus library #
-if BUILD_BITCOIN_LIBS
+if BUILD_PASTEL_LIBS
 include_HEADERS = script/zcashconsensus.h
 libzcashconsensus_la_SOURCES = \
   crypto/equihash.cpp \

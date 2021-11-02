@@ -79,9 +79,6 @@
     <ClCompile Include="..\..\..\src\test\main_tests.cpp">
       <Filter>UnitTest Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\src\test\mempool_tests.cpp">
-      <Filter>UnitTest Files</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\..\src\test\miner_tests.cpp">
       <Filter>UnitTest Files</Filter>
     </ClCompile>
@@ -89,9 +86,6 @@
       <Filter>UnitTest Files</Filter>
     </ClCompile>
     <ClCompile Include="..\..\..\src\test\multisig_tests.cpp">
-      <Filter>UnitTest Files</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\..\src\test\netbase_tests.cpp">
       <Filter>UnitTest Files</Filter>
     </ClCompile>
     <ClCompile Include="..\..\..\src\test\pmt_tests.cpp">
@@ -188,5 +182,6 @@
     <None Include="..\..\..\src\test\README.md">
       <Filter>UnitTest Files</Filter>
     </None>
+    <None Include="..\..\..\src\Makefile.test.include" />
   </ItemGroup>
 </Project>

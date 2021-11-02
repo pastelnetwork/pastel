@@ -53,7 +53,7 @@ int64_t static DecodeDumpTime(const std::string &str) {
 
 std::string static EncodeDumpString(const std::string &str) {
     std::stringstream ret;
-    for (const auto &c : str)
+    for (const unsigned char &c : str)
     {
         if (c <= 32 || c >= 128 || c == '%') {
             ret << '%' << HexStr(&c, &c + 1);
@@ -199,7 +199,7 @@ UniValue importaddress(const UniValue& params, bool fHelp)
         fRescan = params[2].get_bool();
 
     {
-        if (::IsMine(*pwalletMain, script) == ISMINE_SPENDABLE)
+        if (IsMineSpendable(::GetIsMine(*pwalletMain, script)))
             throw JSONRPCError(RPC_WALLET_ERROR, "The wallet already contains the private key for this address or script");
 
         // add to address book or update label
@@ -545,19 +545,8 @@ UniValue dumpwallet_impl(const UniValue& params, bool fHelp, bool fDumpZKeys)
     }
     file << "\n";
 
-    if (fDumpZKeys) {
-        std::set<libzcash::SproutPaymentAddress> sproutAddresses;
-        pwalletMain->GetSproutPaymentAddresses(sproutAddresses);
-        file << "\n";
-        file << "# Zkeys\n";
-        file << "\n";
-        for (auto addr : sproutAddresses) {
-            libzcash::SproutSpendingKey key;
-            if (pwalletMain->GetSproutSpendingKey(addr, key)) {
-                std::string strTime = EncodeDumpTime(pwalletMain->mapSproutZKeyMetadata[addr].nCreateTime);
-                file << strprintf("%s %s # zaddr=%s\n", keyIO.EncodeSpendingKey(key), strTime, keyIO.EncodePaymentAddress(addr));
-            }
-        }
+    if (fDumpZKeys)
+    {
         std::set<libzcash::SaplingPaymentAddress> saplingAddresses;
         pwalletMain->GetSaplingPaymentAddresses(saplingAddresses);
         file << "\n";

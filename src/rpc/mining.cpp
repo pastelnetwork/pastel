@@ -204,14 +204,16 @@ UniValue generate(const UniValue& params, bool fHelp)
     }
     unsigned int nExtraNonce = 0;
     UniValue blockHashes(UniValue::VARR);
-    unsigned int n = Params().EquihashN();
-    unsigned int k = Params().EquihashK();
+    const auto& chainparams = Params();
+    const auto& consensusParams = chainparams.GetConsensus();
+    unsigned int n = consensusParams.nEquihashN;
+    unsigned int k = consensusParams.nEquihashK;
     while (nHeight < nHeightEnd)
     {
 #ifdef ENABLE_WALLET
-        std::unique_ptr<CBlockTemplate> pblocktemplate(CreateNewBlockWithKey(reservekey));
+        std::unique_ptr<CBlockTemplate> pblocktemplate(CreateNewBlockWithKey(reservekey, chainparams));
 #else
-        std::unique_ptr<CBlockTemplate> pblocktemplate(CreateNewBlockWithKey());
+        std::unique_ptr<CBlockTemplate> pblocktemplate(CreateNewBlockWithKey(chainparams));
 #endif
         if (!pblocktemplate.get())
             throw JSONRPCError(RPC_INTERNAL_ERROR, "Wallet keypool empty");
@@ -246,8 +248,8 @@ UniValue generate(const UniValue& params, bool fHelp)
                                               pblock->nNonce.size());
 
             // (x_1, x_2, ...) = A(I, V, n, k)
-            std::function<bool(std::vector<unsigned char>)> validBlock =
-                    [&pblock](std::vector<unsigned char> soln) {
+            std::function<bool(v_uint8)> validBlock =
+                [&pblock](v_uint8 soln) {
                 pblock->nSolution = soln;
                 solutionTargetChecks.increment();
                 return CheckProofOfWork(pblock->GetHash(), pblock->nBits, Params().GetConsensus());
@@ -260,7 +262,7 @@ UniValue generate(const UniValue& params, bool fHelp)
         }
 endloop:
         CValidationState state;
-        if (!ProcessNewBlock(state, NULL, pblock, true, NULL))
+        if (!ProcessNewBlock(state, chainparams, nullptr, pblock, true, nullptr))
             throw JSONRPCError(RPC_INTERNAL_ERROR, "ProcessNewBlock, block not accepted");
         ++nHeight;
         blockHashes.push_back(pblock->GetHash().GetHex());
@@ -299,7 +301,8 @@ UniValue setgenerate(const UniValue& params, bool fHelp)
         throw JSONRPCError(RPC_METHOD_NOT_FOUND, "pasteld compiled without wallet and -mineraddress not set");
 #endif
     }
-    if (Params().MineBlocksOnDemand())
+    const auto& chainparams = Params();
+    if (chainparams.MineBlocksOnDemand())
         throw JSONRPCError(RPC_METHOD_NOT_FOUND, "Use the generate method instead of setgenerate on this network");
 
     bool fGenerate = true;
@@ -317,9 +320,9 @@ UniValue setgenerate(const UniValue& params, bool fHelp)
     mapArgs["-gen"] = (fGenerate ? "1" : "0");
     mapArgs ["-genproclimit"] = itostr(nGenProcLimit);
 #ifdef ENABLE_WALLET
-    GenerateBitcoins(fGenerate, pwalletMain, nGenProcLimit);
+    GenerateBitcoins(fGenerate, pwalletMain, nGenProcLimit, chainparams);
 #else
-    GenerateBitcoins(fGenerate, nGenProcLimit);
+    GenerateBitcoins(fGenerate, nGenProcLimit, chainparams);
 #endif
 
     return NullUniValue;
@@ -511,6 +514,7 @@ UniValue getblocktemplate(const UniValue& params, bool fHelp)
 #endif
     }
 
+    const auto& chainparams = Params();
     std::string strMode = "template";
     UniValue lpval = NullUniValue;
     // TODO: Re-enable coinbasevalue once a specification has been written
@@ -556,7 +560,7 @@ UniValue getblocktemplate(const UniValue& params, bool fHelp)
                 return "inconclusive-not-best-prevblk";
 
             CValidationState state;
-            TestBlockValidity(state, block, pindexPrev, false, true);
+            TestBlockValidity(state, chainparams, block, pindexPrev, false, true);
             return BIP22ValidationResult(state);
         }
     }
@@ -564,15 +568,15 @@ UniValue getblocktemplate(const UniValue& params, bool fHelp)
     if (strMode != "template")
         throw JSONRPCError(RPC_INVALID_PARAMETER, "Invalid mode");
 
-    if (!Params().IsRegTest() && vNodes.empty())
+    if (!chainparams.IsRegTest() && vNodes.empty())
         throw JSONRPCError(RPC_CLIENT_NOT_CONNECTED, "Pastel is not connected!");
 
-    if (IsInitialBlockDownload())
+    if (fnIsInitialBlockDownload(chainparams.GetConsensus()))
         throw JSONRPCError(RPC_CLIENT_IN_INITIAL_DOWNLOAD, "Pastel is downloading blocks...");
 
 //PASTEL
     CScript payee;
-    if (!Params().IsRegTest() && !masterNodeCtrl.masternodeSync.IsWinnersListSynced()
+    if (!chainparams.IsRegTest() && !masterNodeCtrl.masternodeSync.IsWinnersListSynced()
         && !masterNodeCtrl.masternodePayments.GetBlockPayee(chainActive.Height() + 1, payee))
             throw JSONRPCError(RPC_CLIENT_IN_INITIAL_DOWNLOAD, "Pastel Core is downloading masternode winners...");
 //PASTEL
@@ -648,9 +652,9 @@ UniValue getblocktemplate(const UniValue& params, bool fHelp)
         }
 #ifdef ENABLE_WALLET
         CReserveKey reservekey(pwalletMain);
-        pblocktemplate = CreateNewBlockWithKey(reservekey);
+        pblocktemplate = CreateNewBlockWithKey(reservekey, chainparams);
 #else
-        pblocktemplate = CreateNewBlockWithKey();
+        pblocktemplate = CreateNewBlockWithKey(chainparams);
 #endif
         if (!pblocktemplate)
             throw JSONRPCError(RPC_OUT_OF_MEMORY, "Out of memory");
@@ -823,8 +827,9 @@ UniValue submitblock(const UniValue& params, bool fHelp)
     bool fBlockPresent = false;
     {
         LOCK(cs_main);
-        BlockMap::iterator mi = mapBlockIndex.find(hash);
-        if (mi != mapBlockIndex.end()) {
+        const auto mi = mapBlockIndex.find(hash);
+        if (mi != mapBlockIndex.cend())
+        {
             CBlockIndex *pindex = mi->second;
             if (pindex->IsValid(BLOCK_VALID_SCRIPTS))
                 return "duplicate";
@@ -838,7 +843,7 @@ UniValue submitblock(const UniValue& params, bool fHelp)
     CValidationState state;
     submitblock_StateCatcher sc(block.GetHash());
     RegisterValidationInterface(&sc);
-    bool fAccepted = ProcessNewBlock(state, NULL, &block, true, NULL);
+    bool fAccepted = ProcessNewBlock(state, Params(), nullptr, &block, true, nullptr);
     UnregisterValidationInterface(&sc);
     if (fBlockPresent)
     {
@@ -1008,7 +1013,7 @@ static const CRPCCommand commands[] =
     { "mining",             "getblocktemplate",       &getblocktemplate,       true  },
     { "mining",             "submitblock",            &submitblock,            true  },
     { "mining",             "getblocksubsidy",        &getblocksubsidy,        true  },
-    { "mining",             "getnextblocksubsidy",        &getnextblocksubsidy,        true  },
+    { "mining",             "getnextblocksubsidy",    &getnextblocksubsidy,    true  },
 
 #ifdef ENABLE_MINING
     { "generating",         "getgenerate",            &getgenerate,            true  },

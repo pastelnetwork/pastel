@@ -19,9 +19,6 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="..\..\..\src\chainparamsbase.cpp">
-      <Filter>Source Files\support</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\..\src\clientversion.cpp">
       <Filter>Source Files\support</Filter>
     </ClCompile>
@@ -67,15 +64,12 @@
     <ClCompile Include="..\..\..\src\ascii85.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\..\src\chainparamsbase.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\..\..\src\chainparamsbase.h">
-      <Filter>Source Files\support</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\..\src\clientversion.h">
-      <Filter>Source Files\support</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\..\src\chainparamsseeds.h">
       <Filter>Source Files\support</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\src\compat\byteswap.h">
@@ -133,6 +127,18 @@
       <Filter>Source Files\support</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\src\ascii85.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\chainparamsbase.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\chainparamsseeds.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\str_utils.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\numeric_range.h">
       <Filter>Source Files</Filter>
     </ClInclude>
   </ItemGroup>

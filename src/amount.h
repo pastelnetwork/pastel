@@ -10,8 +10,8 @@
 typedef int64_t CAmount;
 
 static constexpr CAmount REWARD = 6250;
-
 static constexpr CAmount COIN = 100000;
+
 // The number of coin decimals is used in different places for money formatting:
 // A: %d.%05d
 // B: ParseFixedPoint(..., COIN_DECIMALS, ...)
@@ -19,6 +19,7 @@ static constexpr CAmount COIN_DECIMALS = 5;
 static constexpr CAmount CENT = 1000;
 
 extern const std::string CURRENCY_UNIT;
+extern const std::string MINOR_CURRENCY_UNIT;
 
 /** No amount larger than this (in patoshi) is valid.
  *

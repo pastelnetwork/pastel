@@ -173,7 +173,7 @@ struct StringContentsSerializer {
                 try {
                     READWRITE(c);
                     str.push_back(c);
-                } catch (const std::ios_base::failure& e) {
+                } catch ([[maybe_unused]] const std::ios_base::failure& e) {
                     break;
                 }
             }

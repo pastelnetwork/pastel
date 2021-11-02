@@ -140,15 +140,6 @@ bool CBasicKeyStore::HaveWatchOnly() const
     return (!setWatchOnly.empty());
 }
 
-bool CBasicKeyStore::AddSproutSpendingKey(const libzcash::SproutSpendingKey &sk)
-{
-    LOCK(cs_KeyStore);
-    auto address = sk.address();
-    mapSproutSpendingKeys[address] = sk;
-    mapNoteDecryptors.insert(std::make_pair(address, ZCNoteDecryption(sk.receiving_key())));
-    return true;
-}
-
 //! Sapling 
 bool CBasicKeyStore::AddSaplingSpendingKey(
     const libzcash::SaplingExtendedSpendingKey &sk)
@@ -163,15 +154,6 @@ bool CBasicKeyStore::AddSaplingSpendingKey(
 
     mapSaplingSpendingKeys[extfvk] = sk;
 
-    return true;
-}
-
-bool CBasicKeyStore::AddSproutViewingKey(const libzcash::SproutViewingKey &vk)
-{
-    LOCK(cs_KeyStore);
-    auto address = vk.address();
-    mapSproutViewingKeys[address] = vk;
-    mapNoteDecryptors.insert(std::make_pair(address, ZCNoteDecryption(vk.sk_enc)));
     return true;
 }
 
@@ -199,19 +181,6 @@ bool CBasicKeyStore::AddSaplingIncomingViewingKey(
     return true;
 }
 
-bool CBasicKeyStore::RemoveSproutViewingKey(const libzcash::SproutViewingKey &vk)
-{
-    LOCK(cs_KeyStore);
-    mapSproutViewingKeys.erase(vk.address());
-    return true;
-}
-
-bool CBasicKeyStore::HaveSproutViewingKey(const libzcash::SproutPaymentAddress &address) const
-{
-    LOCK(cs_KeyStore);
-    return mapSproutViewingKeys.count(address) > 0;
-}
-
 bool CBasicKeyStore::HaveSaplingFullViewingKey(const libzcash::SaplingIncomingViewingKey &ivk) const
 {
     LOCK(cs_KeyStore);
@@ -222,19 +191,6 @@ bool CBasicKeyStore::HaveSaplingIncomingViewingKey(const libzcash::SaplingPaymen
 {
     LOCK(cs_KeyStore);
     return mapSaplingIncomingViewingKeys.count(addr) > 0;
-}
-
-bool CBasicKeyStore::GetSproutViewingKey(
-    const libzcash::SproutPaymentAddress &address,
-    libzcash::SproutViewingKey &vkOut) const
-{
-    LOCK(cs_KeyStore);
-    SproutViewingKeyMap::const_iterator mi = mapSproutViewingKeys.find(address);
-    if (mi != mapSproutViewingKeys.end()) {
-        vkOut = mi->second;
-        return true;
-    }
-    return false;
 }
 
 bool CBasicKeyStore::GetSaplingFullViewingKey(const libzcash::SaplingIncomingViewingKey &ivk,

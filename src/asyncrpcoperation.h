@@ -1,11 +1,7 @@
-// // Copyright (c) 2018 The Pastel developers
+#pragma once
+// // Copyright (c) 2018-2021 The Pastel developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
-
-
-#ifndef ASYNCRPCOPERATION_H
-#define ASYNCRPCOPERATION_H
-
 #include <string>
 #include <atomic>
 #include <map>
@@ -37,10 +33,11 @@ typedef enum class operationStateEnum {
     SUCCESS
 } OperationStatus;
 
-class AsyncRPCOperation {
+class AsyncRPCOperation
+{
 public:
     AsyncRPCOperation();
-    virtual ~AsyncRPCOperation();
+    virtual ~AsyncRPCOperation() noexcept = default;
 
     // You must implement this method in your subclass.
     virtual void main();
@@ -133,13 +130,12 @@ protected:
         this->error_message_ = errorMessage;
     }
     
-    void set_result(UniValue v) {
+    void set_result(UniValue &&v) {
         std::lock_guard<std::mutex> guard(lock_);
-        this->result_ = v;
+        this->result_ = move(v);
     }
     
 private:
-
     // Derived classes should write their own copy constructor and assignment operators
     AsyncRPCOperation(const AsyncRPCOperation& orig);
     AsyncRPCOperation& operator=( const AsyncRPCOperation& other );
@@ -148,6 +144,3 @@ private:
     AsyncRPCOperationId id_;
     int64_t creation_time_;
 };
-
-#endif /* ASYNCRPCOPERATION_H */
-

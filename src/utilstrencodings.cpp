@@ -230,34 +230,50 @@ v_uint8 DecodeBase64(const char* p, bool* pfInvalid)
     const char* e = p;
     v_uint8 val;
     val.reserve(strlen(p));
-    while (*p != 0) {
-        int x = decode64_table[(unsigned char)*p];
-        if (x == -1) break;
+    while (*p)
+    {
+        const int x = decode64_table[static_cast<unsigned char>(*p)];
+        if (x == -1)
+            break;
         val.push_back(x);
         ++p;
     }
 
     v_uint8 ret;
     ret.reserve((val.size() * 3) / 4);
-    bool valid = ConvertBits<6, 8, false>([&](unsigned char c) { ret.push_back(c); }, val.begin(), val.end());
+    bool bValid = ConvertBits<6, 8, false>([&](unsigned char c)
+        {
+            ret.push_back(c);
+        }, 
+        val.begin(), val.end());
 
     const char* q = p;
-    while (valid && *p != 0) {
-        if (*p != '=') {
-            valid = false;
+    while (bValid && *p)
+    {
+        if (*p != '=')
+        {
+            bValid = false;
             break;
         }
         ++p;
     }
-    valid = valid && (p - e) % 4 == 0 && p - q < 4;
-    if (pfInvalid) *pfInvalid = !valid;
+    bValid &= (p - e) % 4 == 0 && p - q < 4;
+    if (pfInvalid) 
+        *pfInvalid = !bValid;
 
     return ret;
 }
 
-string DecodeBase64(const string& str)
+/**
+ * Decode base64 encoded string.
+ *  
+ * \param str - base64 encoded string
+ * \param pfInvalid - pointer to bool, set to true if there was an error decoding string
+ * \return decoded string, may be partial if there was a failure
+ */
+string DecodeBase64(const string& str, bool* pfInvalid)
 {
-    return vector_to_string(DecodeBase64(str.c_str()));
+    return vector_to_string(DecodeBase64(str.c_str(), pfInvalid));
 }
 
 string EncodeBase32(const unsigned char* pch, size_t len)

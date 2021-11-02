@@ -38,9 +38,7 @@ EOF
 # groups of test scripts - can be executed independently
 declare -a testScripts=(
     'framework.py'
-    'paymentdisclosure.py'
     'prioritisetransaction.py'
-    'wallet_treestate.py'
     'wallet_anchorfork.py'
     'wallet_changeindicator.py'
     'wallet_import_export.py'
@@ -48,7 +46,6 @@ declare -a testScripts=(
     'wallet_shieldcoinbase_sapling.py'
     'wallet_listreceived.py'
     'wallet.py'
-    'wallet_overwintertx.py'
     'wallet_nullifiers.py'
     'wallet_1941.py'
     'wallet_addresses.py'
@@ -79,7 +76,6 @@ declare -a testScripts=(
     'decodescript.py'
     'blockchain.py'
     'disablewallet.py'
-    'zcjoinsplit.py'
     'zkey_import_export.py' 
     'reorg_limit.py'
     'getblocktemplate.py'
@@ -96,7 +92,6 @@ declare -a testScripts=(
 declare -a testScriptsToFix=(
     'wallet_persistence.py' #fails
     'mempool_nu_activation.py' #timesout
-    'zcjoinsplitdoublespend.py'  # crashes pasteld
     'getblocktemplate_proposals.py'
     'pruning.py'                    
     'hardforkdetection.py'          
@@ -113,12 +108,17 @@ declare -a testScriptsToFix=(
 
 declare -a testScriptsMN=(
     'mn_main.py'
-    'mn_bugs.py'
-    'mn_payment.py'
-    'mn_governance.py'
     'mn_tickets.py'
+    'mn_governance.py'
+)
+
+declare -a testScriptsMNfast=(
+    'secure_container.py'
+    'mn_tickets_username_change.py'
     'mn_tickets_validation.py'
     'mn_messaging.py'
+    'mn_payment.py'
+    'mn_bugs.py'
 )
 
 declare -a testScriptsExt=(
@@ -160,6 +160,8 @@ function difftime()
 #extArg="-extended"
 #passOn=${@#$extArg}
 
+groupExecCount=0
+groupTotalCount=0
 successCount=0
 declare -a failures
 
@@ -168,7 +170,12 @@ function runTestScript
     local testName="$1"
     shift
 
-    echo -e "=== Running testscript ${testName} [$*] ==="
+    local progress=""
+    local failedCount=${#failures[@]}
+    if (( $groupTotalCount > 0 )); then
+        progress=" [<< $groupExecCount/$groupTotalCount >>|Succeeded:${successCount}|Failed:${failedCount}]"
+    fi
+    echo -e "=== Running testscript ${testName}${progress} [$*] ==="
 
     local time_start=$(get_time)
     if eval "$@"
@@ -254,10 +261,12 @@ function runTestGroup()
 {
     local testGroupName=$1[@]
     eval scriptArray=( '"${!testGroupName}"' )
-    len=${#scriptArray[@]}
-    echo "Executing $len test scripts, group [$1]"
+    groupExecCount=0
+    groupTotalCount=${#scriptArray[@]}
+    echo "Executing $groupTotalCount test scripts, group [$1]"
     for ScriptName in "${scriptArray[@]}"; do
       scriptFileName=$(getScriptPath "$ScriptName")
+      groupExecCount=$(expr $groupExecCount + 1) 
       runTestScript "$ScriptName" "$scriptFileName" --srcdir="${BUILDDIR}/src" $testParams
     done   
 }
@@ -270,6 +279,7 @@ elif test -n "$testScriptName"; then
 else
     runTestGroup "testScripts"
     runTestGroup "testScriptsExt"
+    runTestGroup "testScriptsMNfast"
     runTestGroup "testScriptsMN"
 fi
 

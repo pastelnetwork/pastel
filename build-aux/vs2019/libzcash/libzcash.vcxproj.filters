@@ -23,9 +23,6 @@
     <ClCompile Include="..\..\..\src\zcash\IncrementalMerkleTree.cpp">
       <Filter>Source Files\zcash</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\src\zcash\JoinSplit.cpp">
-      <Filter>Source Files\zcash</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\..\src\zcash\Note.cpp">
       <Filter>Source Files\zcash</Filter>
     </ClCompile>
@@ -44,9 +41,6 @@
     <ClCompile Include="..\..\..\src\zcash\address\sapling.cpp">
       <Filter>Source Files\zcash\address</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\src\zcash\address\sprout.cpp">
-      <Filter>Source Files\zcash\address</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\..\src\zcash\address\zip32.cpp">
       <Filter>Source Files\zcash\address</Filter>
     </ClCompile>
@@ -56,9 +50,6 @@
       <Filter>Source Files\zcash</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\src\zcash\IncrementalMerkleTree.hpp">
-      <Filter>Source Files\zcash</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\..\src\zcash\JoinSplit.hpp">
       <Filter>Source Files\zcash</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\src\zcash\Note.hpp">
@@ -80,9 +71,6 @@
       <Filter>Source Files\zcash</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\src\zcash\address\sapling.hpp">
-      <Filter>Source Files\zcash\address</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\..\src\zcash\address\sprout.hpp">
       <Filter>Source Files\zcash\address</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\src\zcash\address\zip32.h">

@@ -29,7 +29,7 @@ class MasterNodeMainTest (MasterNodeCommon):
     hot_node_num = 2
 
     def setup_chain(self):
-        print("Initializing test directory "+self.options.tmpdir)
+        print(f"Initializing test directory {self.options.tmpdir}")
         initialize_chain_clean(self.options.tmpdir, self.total_number_of_nodes+1) # three now, 1 later
 
     def setup_network(self, split=False):

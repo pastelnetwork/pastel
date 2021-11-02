@@ -23,6 +23,9 @@
     <Filter Include="Source Files\port">
       <UniqueIdentifier>{29dfb7cd-f7a1-44e1-842f-6df4157cfca8}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Source Files\mnode\rpc">
+      <UniqueIdentifier>{f54c067d-6c57-433a-b991-9e6c8b62739e}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\..\src\sendalert.cpp">
@@ -172,9 +175,6 @@
     <ClCompile Include="..\..\..\src\mnode\mnode-requesttracker.cpp">
       <Filter>Source Files\mnode</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\src\mnode\mnode-rpc.cpp">
-      <Filter>Source Files\mnode</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\..\src\mnode\mnode-sync.cpp">
       <Filter>Source Files\mnode</Filter>
     </ClCompile>
@@ -189,6 +189,33 @@
     </ClCompile>
     <ClCompile Include="..\..\..\src\pastelid\pastel_key.cpp">
       <Filter>Source Files\pastelid</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\src\mnode\ticket-txmempool.cpp">
+      <Filter>Source Files\mnode</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\src\mnode\ticket-mempool-processor.cpp">
+      <Filter>Source Files\mnode</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\src\mnode\rpc\tickets-register.cpp">
+      <Filter>Source Files\mnode\rpc</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\src\mnode\rpc\mnode-rpc-utils.cpp">
+      <Filter>Source Files\mnode\rpc</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\src\mnode\rpc\mnode-rpc.cpp">
+      <Filter>Source Files\mnode\rpc</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\src\mnode\rpc\tickets-tools.cpp">
+      <Filter>Source Files\mnode\rpc</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\src\mnode\rpc\tickets-fake.cpp">
+      <Filter>Source Files\mnode\rpc</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\src\mnode\rpc\masternode.cpp">
+      <Filter>Source Files\mnode\rpc</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\src\mnode\rpc\tickets-list.cpp">
+      <Filter>Source Files\mnode\rpc</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -372,9 +399,6 @@
     <ClInclude Include="..\..\..\src\mnode\mnode-requesttracker.h">
       <Filter>Source Files\mnode</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\..\src\mnode\mnode-rpc.h">
-      <Filter>Source Files\mnode</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\..\src\mnode\mnode-sync.h">
       <Filter>Source Files\mnode</Filter>
     </ClInclude>
@@ -407,6 +431,42 @@
     </ClInclude>
     <ClInclude Include="..\..\..\src\legroast.h">
       <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\mnode\ticket-txmempool.h">
+      <Filter>Source Files\mnode</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\mnode\ticket-mempool-processor.h">
+      <Filter>Source Files\mnode</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\txmempool_entry.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\mnode\rpc\mnode-rpc.h">
+      <Filter>Source Files\mnode\rpc</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\mnode\rpc\mnode-rpc-utils.h">
+      <Filter>Source Files\mnode\rpc</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\mnode\rpc\tickets-register.h">
+      <Filter>Source Files\mnode\rpc</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\map_types.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\str_types.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\mnode\rpc\tickets-tools.h">
+      <Filter>Source Files\mnode\rpc</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\mnode\rpc\tickets-fake.h">
+      <Filter>Source Files\mnode\rpc</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\mnode\rpc\masternode.h">
+      <Filter>Source Files\mnode\rpc</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\mnode\rpc\tickets-list.h">
+      <Filter>Source Files\mnode\rpc</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

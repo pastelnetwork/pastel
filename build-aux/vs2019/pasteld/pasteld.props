@@ -2,8 +2,8 @@
 <Project DefaultTargets="Build" ToolsVersion="Current" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ImportGroup Label="PropertySheets">
     <Import Project="../settings/common.props" />
-    <Import Project="../settings/pastel_common.props" />
     <Import Project="../settings/boost.props" />
+    <Import Project="../settings/pastel_common.props" />
   </ImportGroup>
   <ItemDefinitionGroup>
     <ClCompile>
@@ -12,7 +12,7 @@
       <AdditionalOptions>/bigobj %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
     <Link>
-      <AdditionalDependencies>libevent.lib;libbitcoin_server.lib;libbitcoin_wallet.lib;libbitcoin_common.lib;libunivalue.lib;libbitcoin_util.lib;libbitcoin_zmq.lib;libbitcoin_crypto.lib;libzcash.lib;libsnark.lib;libsecp256k1.lib;libleveldb.lib;libzmq-v142-mt-sgd-4_3_1.lib;libcrypto.lib;libsodium$(LIBDBGSFX).lib;libdb62$(LIBDBGSFX).lib;rustzcash.lib;libgmp.lib;libgmpxx.lib;shlwapi.lib;ws2_32.lib;userenv.lib;Iphlpapi.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>event$(LIBDBGSFX).lib;libbitcoin_server.lib;libbitcoin_wallet.lib;libbitcoin_common.lib;libunivalue.lib;libbitcoin_util.lib;libbitcoin_zmq.lib;libbitcoin_crypto.lib;libzcash.lib;libsnark.lib;libsecp256k1.lib;libleveldb.lib;libzmq-v142-mt-sgd-4_3_1.lib;libcrypto.lib;libsodium$(LIBDBGSFX).lib;libdb62$(LIBDBGSFX).lib;rustzcash.lib;libgmp.lib;libgmpxx.lib;shlwapi.lib;ws2_32.lib;userenv.lib;Iphlpapi.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalLibraryDirectories>%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <IgnoreSpecificDefaultLibraries>libcmt$(LIBDBGSFX).lib</IgnoreSpecificDefaultLibraries>
     </Link>

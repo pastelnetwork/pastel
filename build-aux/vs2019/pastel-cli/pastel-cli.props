@@ -14,7 +14,7 @@
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
-      <AdditionalDependencies>libsodium$(LIBDBGSFX).lib;libcrypto.lib;libevent.lib;libunivalue.lib;libbitcoin_util.lib;libzcash.lib;libsnark.lib;libbitcoin_crypto.lib;ws2_32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>libsodium$(LIBDBGSFX).lib;libcrypto.lib;event$(LIBDBGSFX).lib;libunivalue.lib;libbitcoin_util.lib;libzcash.lib;libsnark.lib;libbitcoin_crypto.lib;ws2_32.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalLibraryDirectories>%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <IgnoreSpecificDefaultLibraries>libcmt$(LIBDBGSFX).lib</IgnoreSpecificDefaultLibraries>
     </Link>

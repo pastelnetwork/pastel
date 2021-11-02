@@ -13,10 +13,9 @@
 #include <stdexcept>
 #include <stdint.h>
 #include <string.h>
-#include <string>
-#include <vector>
 
 #include "uint256.h"
+#include "vector_types.h"
 
 #ifdef _MSC_VER
 #pragma warning(push)
@@ -32,9 +31,9 @@ static const int MAX_SCRIPT_SIZE = 10000;
 static const unsigned int LOCKTIME_THRESHOLD = 500000000; // Tue Nov  5 00:53:20 1985 UTC
 
 template <typename T>
-std::vector<unsigned char> ToByteVector(const T& in)
+v_uint8 ToByteVector(const T& in)
 {
-    return std::vector<unsigned char>(in.begin(), in.end());
+    return v_uint8(in.begin(), in.end());
 }
 
 /** Script opcodes */
@@ -211,7 +210,7 @@ public:
 
     static const size_t nDefaultMaxNumSize = 4;
 
-    explicit CScriptNum(const std::vector<unsigned char>& vch, bool fRequireMinimal,
+    explicit CScriptNum(const v_uint8& vch, bool fRequireMinimal,
                         const size_t nMaxNumSize = nDefaultMaxNumSize)
     {
         if (vch.size() > nMaxNumSize) {
@@ -297,17 +296,17 @@ public:
         return static_cast<int>(m_value);
     }
 
-    std::vector<unsigned char> getvch() const
+    v_uint8 getvch() const
     {
         return serialize(m_value);
     }
 
-    static std::vector<unsigned char> serialize(const int64_t& value)
+    static v_uint8 serialize(const int64_t& value)
     {
         if(value == 0)
-            return std::vector<unsigned char>();
+            return v_uint8();
 
-        std::vector<unsigned char> result;
+        v_uint8 result;
         const bool neg = value < 0;
         uint64_t absvalue = neg ? -value : value;
 
@@ -336,7 +335,7 @@ public:
     }
 
 private:
-    static int64_t set_vch(const std::vector<unsigned char>& vch)
+    static int64_t set_vch(const v_uint8& vch)
     {
       if (vch.empty())
           return 0;
@@ -380,10 +379,18 @@ protected:
     }
 public:
     CScript() { }
-    CScript(const CScript& b) : CScriptBase(b.begin(), b.end()) { }
-    CScript(const_iterator pbegin, const_iterator pend) : CScriptBase(pbegin, pend) { }
-    CScript(std::vector<unsigned char>::const_iterator pbegin, std::vector<unsigned char>::const_iterator pend) : CScriptBase(pbegin, pend) { }
-    CScript(const unsigned char* pbegin, const unsigned char* pend) : CScriptBase(pbegin, pend) { }
+    CScript(const CScript& b) : 
+        CScriptBase(b.begin(), b.end())
+    {}
+    CScript(const_iterator pbegin, const_iterator pend) : 
+        CScriptBase(pbegin, pend)
+    {}
+    CScript(v_uint8::const_iterator pbegin, v_uint8::const_iterator pend) : 
+        CScriptBase(pbegin, pend)
+    {}
+    CScript(const unsigned char* pbegin, const unsigned char* pend) :
+        CScriptBase(pbegin, pend)
+    {}
 
     CScript& operator+=(const CScript& b)
     {
@@ -402,7 +409,7 @@ public:
 
     explicit CScript(opcodetype b)     { operator<<(b); }
     explicit CScript(const CScriptNum& b) { operator<<(b); }
-    explicit CScript(const std::vector<unsigned char>& b) { operator<<(b); }
+    explicit CScript(const v_uint8& b) { operator<<(b); }
 
 
     CScript& operator<<(int64_t b) { return push_int64(b); }
@@ -421,7 +428,7 @@ public:
         return *this;
     }
 
-    CScript& operator<<(const std::vector<unsigned char>& b)
+    CScript& operator<<(const v_uint8& b)
     {
         if (b.size() < OP_PUSHDATA1)
         {
@@ -462,7 +469,7 @@ public:
     }
 
 
-    bool GetOp(iterator& pc, opcodetype& opcodeRet, std::vector<unsigned char>& vchRet)
+    bool GetOp(iterator& pc, opcodetype& opcodeRet, v_uint8& vchRet)
     {
          // Wrapper so it can be called with either iterator or const_iterator
          const_iterator pc2 = pc;
@@ -479,7 +486,7 @@ public:
          return fRet;
     }
 
-    bool GetOp(const_iterator& pc, opcodetype& opcodeRet, std::vector<unsigned char>& vchRet) const
+    bool GetOp(const_iterator& pc, opcodetype& opcodeRet, v_uint8& vchRet) const
     {
         return GetOp2(pc, opcodeRet, &vchRet);
     }
@@ -489,7 +496,7 @@ public:
         return GetOp2(pc, opcodeRet, NULL);
     }
 
-    bool GetOp2(const_iterator& pc, opcodetype& opcodeRet, std::vector<unsigned char>* pvchRet) const
+    bool GetOp2(const_iterator& pc, opcodetype& opcodeRet, v_uint8* pvchRet) const
     {
         opcodeRet = OP_INVALIDOPCODE;
         if (pvchRet)
@@ -592,14 +599,14 @@ public:
      * regardless of the initial stack. This allows outputs to be pruned
      * instantly when entering the UTXO set.
      */
-    bool IsUnspendable() const
+    bool IsUnspendable() const noexcept
     {
         return (size() > 0 && *begin() == OP_RETURN) || (size() > MAX_SCRIPT_SIZE);
     }
 
     std::string ToString() const;
 
-    void clear()
+    void clear() noexcept
     {
         // The default std::vector::clear() does not release memory.
         CScriptBase().swap(*this);

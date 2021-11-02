@@ -11,8 +11,15 @@
 #define BIGINT_HPP_
 #include <cstddef>
 #include <iostream>
+#ifdef _MSC_VER
+#pragma warning(push)
+#pragma warning(disable: 4146)
+#endif
 #include <gmp.h>
 #include <gmpxx.h>
+#ifdef _MSC_VER
+#pragma warning(pop)
+#endif
 #include "common/serialization.hpp"
 
 namespace libsnark {

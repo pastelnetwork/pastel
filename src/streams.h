@@ -57,8 +57,8 @@ public:
         stream->read(pch, nSize);
     }
 
-    int GetVersion() const { return nVersion; }
-    int GetType() const { return nType; }
+    int GetVersion() const noexcept { return nVersion; }
+    int GetType() const noexcept { return nType; }
 };
 
 template<typename S>
@@ -126,7 +126,7 @@ public:
         Init(nType, nVersion);
     }
 
-    CBaseDataStream(const std::vector<unsigned char>& vchIn, const int nType, const int nVersion) : 
+    CBaseDataStream(const v_uint8& vchIn, const int nType, const int nVersion) : 
         vch(vchIn.cbegin(), vchIn.cend())
     {
         Init(nType, nVersion);
@@ -174,13 +174,13 @@ public:
     const_iterator end() const                       { return vch.end(); }
     const_iterator cend() const                      { return vch.cend(); }
     iterator end() { return vch.end(); }
-    size_type size() const                           { return vch.size() - nReadPos; }
-    bool empty() const                               { return vch.size() == nReadPos; }
+    size_type size() const noexcept                  { return vch.size() - nReadPos; }
+    bool empty() const noexcept                      { return vch.size() == nReadPos; }
     void resize(size_type n, value_type c=0)         { vch.resize(n + nReadPos, c); }
     void reserve(size_type n)                        { vch.reserve(n + nReadPos); }
     const_reference operator[](size_type pos) const  { return vch[pos + nReadPos]; }
     reference operator[](size_type pos)              { return vch[pos + nReadPos]; }
-    void clear()                                     { vch.clear(); nReadPos = 0; }
+    void clear() noexcept                            { vch.clear(); nReadPos = 0; }
     iterator insert(iterator it, const char& x=char()) { return vch.insert(it, x); }
     void insert(iterator it, size_type n, const char& x) { vch.insert(it, n, x); }
 
@@ -271,12 +271,19 @@ public:
     //
     bool eof() const noexcept     { return size() == 0; }
     CBaseDataStream* rdbuf()      { return this; }
-    int in_avail() const noexcept { return size(); }
+    size_type in_avail() const noexcept { return size(); }
 
     void SetType(const int nType) noexcept    { m_nType = nType; }
     int GetType() const noexcept          { return m_nType; }
     void SetVersion(const int nVersion) noexcept { m_nVersion = nVersion; }
     int GetVersion() const noexcept       { return m_nVersion; }
+
+    bool operator==(const CBaseDataStream& ds) const
+    {
+        if (vch.size() != ds.vch.size())
+            return false;
+        return memcmp(vch.data(), ds.vch.data(), vch.size()) == 0;
+    }
 
     void read(char* pch, const size_t nSize)
     {
@@ -287,7 +294,7 @@ public:
             throw std::ios_base::failure("CBaseDataStream::read(): cannot read from null pointer");
 
         // Read from the beginning of the buffer
-        size_t nReadPosNext = nReadPos + nSize;
+        const size_t nReadPosNext = nReadPos + nSize;
         if (nReadPosNext >= vch.size())
         {
             if (nReadPosNext > vch.size())
@@ -299,6 +306,21 @@ public:
         }
         memcpy(pch, &vch[nReadPos], nSize);
         nReadPos = nReadPosNext;
+    }
+
+    void read_buf(uint8_t* pch, const size_t nSize) const
+    {
+        if (nSize == 0)
+            return;
+
+        if (!pch)
+            throw std::ios_base::failure("CBaseDataStream::read(): cannot read from null pointer");
+
+        // Read from the beginning of the buffer
+        const size_t nReadPosNext = nReadPos + nSize;
+        if (nReadPosNext > vch.size())
+            throw std::ios_base::failure("CBaseDataStream::read(): end of data");
+        memcpy(pch, &vch[nReadPos], nSize);
     }
 
     void ignore(const size_t nSize)
@@ -377,7 +399,7 @@ public:
         CBaseDataStream(vchIn, nType, nVersion)
     {}
 
-    CDataStream(const std::vector<unsigned char>& vchIn, const int nType, const int nVersion) :
+    CDataStream(const v_uint8& vchIn, const int nType, const int nVersion) :
         CBaseDataStream(vchIn, nType, nVersion)
     {}
 
@@ -402,15 +424,6 @@ public:
         return (*this);
     } };
 
-
-
-
-
-
-
-
-
-
 /** Non-refcounted RAII wrapper for FILE*
  *
  * Will automatically close the file when it goes out of scope if not null.
@@ -421,8 +434,8 @@ class CAutoFile
 {
 private:
     // Disallow copies
-    CAutoFile(const CAutoFile&);
-    CAutoFile& operator=(const CAutoFile&);
+    CAutoFile(const CAutoFile&) = delete;
+    CAutoFile& operator=(const CAutoFile&) = delete;
 
     const int m_nType;
     const int m_nVersion;

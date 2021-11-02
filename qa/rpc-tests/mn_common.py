@@ -3,16 +3,17 @@
 # Distributed under the MIT software license, see the accompanying
 # file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-from test_framework.test_framework import BitcoinTestFramework
-from test_framework.util import assert_equal, assert_true, \
-    assert_greater_than, initialize_chain_clean, \
-    initialize_datadir, start_nodes, start_node, connect_nodes_bi, \
-    pasteld_processes, wait_and_assert_operationid_status, p2p_port, \
+from pastel_test_framework import PastelTestFramework
+from test_framework.util import (
+    assert_equal, 
+    start_node, 
+    connect_nodes_bi, 
+    p2p_port,
     stop_node
+)
 from test_framework.authproxy import JSONRPCException
 
 import os
-import sys
 import time
 import itertools
 import json
@@ -21,10 +22,8 @@ import random
 from decimal import Decimal, getcontext
 getcontext().prec = 16
 
-class MasterNodeCommon (BitcoinTestFramework):
+class MasterNodeCommon (PastelTestFramework):
     collateral = int(1000)
-    passphrase = "passphrase"
-
 
     def setup_masternodes_network(self, private_keys_list, number_of_non_mn_to_start=0, debug_flags="masternode,mnpayments,governance"):
         for index, key in enumerate(private_keys_list):
@@ -185,16 +184,3 @@ class MasterNodeCommon (BitcoinTestFramework):
         with open(cfg_file, 'w') as f:
             json.dump(config, f, indent=4)
         return datadir
-
-
-    # create new PastelID and associated LegRoast keys on node node_no
-    # returns PastelID
-    def create_pastelid(self, node_no, LegRoastKeyVar = None):
-        keys = self.nodes[node_no].pastelid("newkey", self.passphrase)
-        NewPastelID = keys["pastelid"]
-        assert_true(NewPastelID, f"No PastelID was created on node #{node_no}")
-        if LegRoastKeyVar is not None:
-            LegRoastKeyVar = keys["legroast"]
-            assert_true(LegRoastKeyVar, f"No LegRoast public key was generated on node #{node_no}")
-        return NewPastelID
-

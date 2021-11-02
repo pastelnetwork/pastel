@@ -4,36 +4,41 @@
 # file COPYING or https://www.opensource.org/licenses/mit-license.php .
 
 #
-# Test proper expiry for transactions >= version 3
+# Test proper expiry for transactions >= version 4
 #
 
 from test_framework.authproxy import JSONRPCException
 from test_framework.test_framework import BitcoinTestFramework
-from test_framework.util import assert_equal, \
+from test_framework.util import assert_equal, initialize_chain_clean, \
     connect_nodes_bi, sync_blocks, start_nodes, \
     wait_and_assert_operationid_status
 
 from decimal import Decimal, getcontext
 getcontext().prec = 16
 
-SAPLING_ACTIVATION_HEIGHT = 300
 TX_EXPIRING_SOON_THRESHOLD = 3
 TX_EXPIRY_DELTA = 10
 
 class MempoolTxExpiryTest(BitcoinTestFramework):
 
+    def __init__(self):
+        super().__init__()
+        self.setup_clean_chain = True
+
+    def setup_chain(self):
+        print(f"Initializing test directory {self.options.tmpdir}")
+        initialize_chain_clean(self.options.tmpdir, self.num_nodes)
+
     def setup_nodes(self):
         return start_nodes(self.num_nodes, self.options.tmpdir,
             [[
-                "-nuparams=5ba81b19:205", # Overwinter
-                "-nuparams=76b809bb:%d" % SAPLING_ACTIVATION_HEIGHT, # Sapling
                 "-txexpirydelta=%d" % TX_EXPIRY_DELTA,
                 "-debug=mempool"
             ]] * self.num_nodes)
 
     # Test before, at, and after expiry block
-    # chain is at block height 199 when run_test executes
     def run_test(self):
+        self.generate_and_sync(199)
         alice = self.nodes[0].getnewaddress()
         z_alice = self.nodes[0].z_getnewaddress('sapling')
         bob = self.nodes[2].getnewaddress()
@@ -44,22 +49,13 @@ class MempoolTxExpiryTest(BitcoinTestFramework):
         zsendamount = self._reward/10 - self._fee
         final_balance = self._reward - 2*(self._reward/10) - self._fee 
 
-        # When Overwinter not yet activated, no expiryheight in tx
-        tx = self.nodes[0].sendtoaddress(bob, tsendamount_bob)
-        rawtx = self.nodes[0].getrawtransaction(tx, 1)
-        assert_equal(rawtx["overwintered"], False)
-        assert("expiryheight" not in rawtx)
-
-        self.nodes[0].generate(6)
-        self.sync_all()
-
         print("Splitting network...")
         self.split_network()
 
-        # When Overwinter is activated, test dependent txs
+        # Test dependent txs
         firstTx = self.nodes[0].sendtoaddress(alice, tsendamount_alice)
         firstTxInfo = self.nodes[0].getrawtransaction(firstTx, 1)
-        assert_equal(firstTxInfo["version"], 3)
+        assert_equal(firstTxInfo["version"], 4)
         assert_equal(firstTxInfo["overwintered"], True)
         assert("expiryheight" in firstTxInfo)
         print("First tx expiry height:", firstTxInfo['expiryheight'])
@@ -91,12 +87,6 @@ class MempoolTxExpiryTest(BitcoinTestFramework):
         print("Blockheight node 2:", self.nodes[2].getblockchaininfo()['blocks'])
         assert_equal(set(self.nodes[0].getrawmempool()), set())
         assert_equal(set(self.nodes[2].getrawmempool()), set())
-
-        # Activate Sapling
-        n = SAPLING_ACTIVATION_HEIGHT - self.nodes[0].getblockcount()
-        assert(n > 0)
-        self.nodes[0].generate(n)
-        self.sync_all()
 
         ## Shield one of Alice's coinbase funds to her zaddr
         res = self.nodes[0].z_shieldcoinbase("*", z_alice, self._fee, 1)

@@ -192,42 +192,6 @@ BOOST_AUTO_TEST_CASE(key_test1)
     // BOOST_CHECK(detsigc == ParseHex("2052d8a32079c11e79db95af63bb9600c5b04f21a9ca33dc129c2bfa8ac9dc1cd561d8ae5e0f6c1a16bde3719c64c2fd70e404b6428ab9a69566962e8771b5944d"));
 }
 
-BOOST_AUTO_TEST_CASE(zc_address_test)
-{
-    KeyIO keyIO(Params());
-    for (size_t i = 0; i < 1000; i++) {
-        auto sk = SproutSpendingKey::random();
-        {
-            string sk_string = keyIO.EncodeSpendingKey(sk);
-
-            BOOST_CHECK(sk_string[0] == 'P');
-            BOOST_CHECK(sk_string[1] == 's');
-
-            auto spendingkey2 = keyIO.DecodeSpendingKey(sk_string);
-            BOOST_CHECK(IsValidSpendingKey(spendingkey2));
-            BOOST_ASSERT(std::get_if<SproutSpendingKey>(&spendingkey2) != nullptr);
-            auto sk2 = std::get<SproutSpendingKey>(spendingkey2);
-            BOOST_CHECK(sk.inner() == sk2.inner());
-        }
-        {
-            auto addr = sk.address();
-
-            std::string addr_string = keyIO.EncodePaymentAddress(addr);
-
-            BOOST_CHECK(addr_string[0] == 'P');
-            BOOST_CHECK(addr_string[1] == 'z');
-
-            auto paymentaddr2 = keyIO.DecodePaymentAddress(addr_string);
-            BOOST_ASSERT(IsValidPaymentAddress(paymentaddr2));
-
-            BOOST_ASSERT(std::get_if<SproutPaymentAddress>(&paymentaddr2) != nullptr);
-            auto addr2 = std::get<SproutPaymentAddress>(paymentaddr2);
-            BOOST_CHECK(addr.a_pk == addr2.a_pk);
-            BOOST_CHECK(addr.pk_enc == addr2.pk_enc);
-        }
-    }
-}
-
 BOOST_AUTO_TEST_CASE(zs_address_test)
 {
     SelectParams(CBaseChainParams::Network::REGTEST);

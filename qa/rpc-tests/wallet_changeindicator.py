@@ -9,24 +9,18 @@ from test_framework.util import assert_equal, assert_true, assert_false, wait_an
 from decimal import Decimal
 
 class WalletChangeIndicatorTest (BitcoinTestFramework):
-    # Helper Methods
-    def generate_and_sync(self):
-        self.sync_all()
-        self.nodes[0].generate(1)
-        self.sync_all()
-
     # Tests
     def run_test(self):
         taddr = self.nodes[1].getnewaddress()
-        zaddr1 = self.nodes[1].z_getnewaddress('sprout')
-        zaddr2 = self.nodes[1].z_getnewaddress('sprout')
+        zaddr1 = self.nodes[1].z_getnewaddress()
+        zaddr2 = self.nodes[1].z_getnewaddress()
 
         self.nodes[0].sendtoaddress(taddr, Decimal('1.0'))
-        self.generate_and_sync()
+        self.generate_and_sync_inc(1)
 
         # Send 1 ZEC to a zaddr
         wait_and_assert_operationid_status(self.nodes[1], self.nodes[1].z_sendmany(taddr, [{'address': zaddr1, 'amount': 1.0, 'memo': 'c0ffee01'}], 1, 0))
-        self.generate_and_sync()
+        self.generate_and_sync_inc(1)
 
         # Check that we have received 1 note which is not change
         receivedbyaddress = self.nodes[1].z_listreceivedbyaddress(zaddr1, 0)
@@ -38,7 +32,8 @@ class WalletChangeIndicatorTest (BitcoinTestFramework):
 
         # Generate some change
         wait_and_assert_operationid_status(self.nodes[1], self.nodes[1].z_sendmany(zaddr1, [{'address': zaddr2, 'amount': 0.6, 'memo': 'c0ffee02'}], 1, 0))
-        self.generate_and_sync()
+        self.sync_all()
+        self.generate_and_sync_inc(1)
 
         # Check zaddr1 received
         sortedreceived1 = sorted(self.nodes[1].z_listreceivedbyaddress(zaddr1, 0), key = lambda received: received['amount'])
@@ -65,13 +60,16 @@ class WalletChangeIndicatorTest (BitcoinTestFramework):
         self.nodes[0].z_importviewingkey(viewing_key)
         received_node0 = self.nodes[0].z_listreceivedbyaddress(zaddr1, 0)
         assert_equal(2, len(received_node0))
+        # Sapling viewing keys correctly detect spends, so we only see the unspent note
+        # node0 can see only one unspent note (0.4)
         unspent_node0 = self.nodes[0].z_listunspent(1, 9999999, True)
-        assert_equal(2, len(unspent_node0))
+        assert_equal(1, len(unspent_node0))
+        assert_equal(Decimal('0.4'), unspent_node0[0]['amount'])
+
         # node 0 only has a viewing key so does not see the change field
         assert_false('change' in received_node0[0])
         assert_false('change' in received_node0[1])
         assert_false('change' in unspent_node0[0])
-        assert_false('change' in unspent_node0[1])
 
 if __name__ == '__main__':
     WalletChangeIndicatorTest().main()

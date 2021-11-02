@@ -57,13 +57,13 @@ static const unsigned int STANDARD_NOT_MANDATORY_VERIFY_FLAGS = STANDARD_SCRIPT_
 
 enum txnouttype
 {
-    TX_NONSTANDARD,
+    TX_NONSTANDARD = 0,
     // 'standard' transaction types:
     TX_PUBKEY,
     TX_PUBKEYHASH,
     TX_SCRIPTHASH,
     TX_MULTISIG,
-    TX_NULL_DATA,
+    TX_NULL_DATA
 };
 
 class CNoDestination {
@@ -83,21 +83,21 @@ public:
 typedef std::variant<CNoDestination, CKeyID, CScriptID> CTxDestination;
 
 /** Check whether a CTxDestination is a CNoDestination. */
-bool IsValidDestination(const CTxDestination& dest);
+bool IsValidDestination(const CTxDestination& dest) noexcept;
 
 /** Check whether a CTxDestination is a CKeyID. */
-bool IsKeyDestination(const CTxDestination& dest);
+bool IsKeyDestination(const CTxDestination& dest) noexcept;
 
 /** Check whether a CTxDestination is a CScriptID. */
-bool IsScriptDestination(const CTxDestination& dest);
+bool IsScriptDestination(const CTxDestination& dest) noexcept;
 
 /** Get the name of a txnouttype as a C string, or nullptr if unknown. */
 const char* GetTxnOutputType(txnouttype t);
 
 /**
  * Parse a scriptPubKey and identify script type for standard scripts. If
- * successful, returns script type and parsed pubkeys or hashes, depending on
- * the type. For example, for a P2SH script, vSolutionsRet will contain the
+ * successful, returns script type and parsed pubkeys or hashes, depending on 
+ * the type. For example, for a P2SH script, vSolutionsRet will contain the 
  * script hash, for P2PKH it will contain the key hash, etc.
  *
  * @param[in]   scriptPubKey   Script to parse
@@ -105,14 +105,14 @@ const char* GetTxnOutputType(txnouttype t);
  * @param[out]  vSolutionsRet  Vector of parsed pubkeys and hashes
  * @return                     True if script matches standard template
  */
-bool Solver(const CScript& scriptPubKey, txnouttype& typeRet, std::vector<std::vector<unsigned char> >& vSolutionsRet);
-int ScriptSigArgsExpected(txnouttype t, const std::vector<std::vector<unsigned char> >& vSolutions);
+bool Solver(const CScript& scriptPubKey, txnouttype& typeRet, std::vector<v_uint8>& vSolutionsRet);
+int ScriptSigArgsExpected(txnouttype t, const std::vector<v_uint8>& vSolutions);
 bool IsStandard(const CScript& scriptPubKey, txnouttype& whichType);
 /**
  * Parse a standard scriptPubKey for the destination address. Assigns result to
  * the addressRet parameter and returns true if successful. For multisig
- * scripts, instead use ExtractDestinations. Currently only works for P2PK,
- * P2PKH, and P2SH scripts.
+ * scripts (that can have multiple destination addresses), instead use ExtractDestinations. 
+ * Currently only works for P2PK, P2PKH, and P2SH scripts.
  */
 bool ExtractDestination(const CScript& scriptPubKey, CTxDestination& addressRet);
 

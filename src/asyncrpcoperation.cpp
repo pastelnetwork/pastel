@@ -1,4 +1,4 @@
-// Copyright (c) 2018 The Pastel developers
+// Copyright (c) 2018-2021 The Pastel developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -55,10 +55,6 @@ AsyncRPCOperation& AsyncRPCOperation::operator=( const AsyncRPCOperation& other 
     return *this;
 }
 
-
-AsyncRPCOperation::~AsyncRPCOperation() {
-}
-
 /**
  * Override this cancel() method if you can interrupt main() when executing.
  */
@@ -109,7 +105,7 @@ void AsyncRPCOperation::main() {
 
     // Otherwise, if the operation was a success:
     UniValue v(UniValue::VSTR, "We have a result!");
-    set_result(v);
+    set_result(move(v));
     set_state(OperationStatus::SUCCESS);
 }
 

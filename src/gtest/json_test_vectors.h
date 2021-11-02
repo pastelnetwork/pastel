@@ -7,8 +7,7 @@
 
 #include <univalue.h>
 
-UniValue
-read_json(const std::string& jsondata);
+UniValue read_json(const std::string& jsondata);
 
 // #define PRINT_JSON 1
 
@@ -18,16 +17,11 @@ void expect_deser_same(const T& expected)
     CDataStream ss1(SER_NETWORK, PROTOCOL_VERSION);
     ss1 << expected;
 
-    auto serialized_size = ss1.size();
-
+    // ss1 stream data are cleared after deserialization
     T object;
     ss1 >> object;
 
-    CDataStream ss2(SER_NETWORK, PROTOCOL_VERSION);
-    ss2 << object;
-
-    ASSERT_EQ(serialized_size, ss2.size());
-    ASSERT_TRUE(memcmp(&*ss1.begin(), &*ss2.begin(), serialized_size) == 0);
+    ASSERT_EQ(expected, object);
 }
 
 template<typename T, typename U>

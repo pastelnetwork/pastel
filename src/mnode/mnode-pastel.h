@@ -40,8 +40,8 @@ using ChangeEthereumAddressTickets_t = std::vector<CChangeEthereumAddressTicket>
 class CPastelIDRegTicket : public CPastelTicket
 {
 public:
-	std::string pastelID;
-	std::string address;
+	std::string pastelID;   // Pastel ID - base58 encoded public key (EdDSA448)
+	std::string address;    // funding address associated with Pastel ID
     COutPoint outpoint{};
     std::string pq_key;
 	v_uint8 mn_signature;
@@ -51,14 +51,25 @@ public:
 
 public:
     CPastelIDRegTicket() = default;
-    explicit CPastelIDRegTicket(std::string _pastelID) : 
+    explicit CPastelIDRegTicket(std::string &&_pastelID) : 
         pastelID(std::move(_pastelID))
     {}
 
     TicketID ID() const noexcept override { return TicketID::PastelID; }
     static TicketID GetID() { return TicketID::PastelID; }
 
-    std::string KeyOne() const noexcept override {return pastelID;}
+    void Clear() noexcept override
+    {
+        CPastelTicket::Clear();
+        pastelID.clear();
+        address.clear();
+        pq_key.clear();
+        mn_signature.clear();
+        pslid_signature.clear();
+        secondKey.clear();
+    }
+
+    std::string KeyOne() const noexcept override { return pastelID; }
     std::string KeyTwo() const noexcept override { return outpoint.IsNull() ? (secondKey.empty() ? address : secondKey) : outpoint.ToStringShort(); }
     
     bool HasKeyTwo() const noexcept override { return true; }
@@ -66,7 +77,7 @@ public:
     
     std::string ToJSON() const noexcept override;
     std::string ToStr() const noexcept override;
-    bool IsValid(bool preReg, int depth) const override;
+    bool IsValid(const bool bPreReg, const int nDepth) const override;
     
     CAmount TicketPrice(const unsigned int nHeight) const noexcept override { return nHeight<=10000? 10: 1000; }
     
@@ -99,7 +110,7 @@ public:
         }
     }
 	
-    static CPastelIDRegTicket Create(std::string _pastelID, const SecureString& strKeyPass, std::string _address);
+    static CPastelIDRegTicket Create(std::string&& _pastelID, SecureString&& strKeyPass, const std::string &_address);
     static bool FindTicketInDb(const std::string& key, CPastelIDRegTicket& ticket);
     static PastelIDRegTickets_t FindAllTicketByPastelAddress(const std::string& address);
 };
@@ -111,7 +122,7 @@ Ticket as base64(RegistrationTicket({some data}))
 
 bytes fields are base64 as strings
 
-  "version": integer          // 1
+  "nft_ticket_version": integer  // 1
   "author": bytes,            // PastelID of the author (creator)
   "blocknum": integer,        // block number when the ticket was created - this is to map the ticket to the MNs that should process it
   "block_hash": bytes         // hash of the top block when the ticket was created - this is to map the ticket to the MNs that should process it
@@ -123,27 +134,30 @@ bytes fields are base64 as strings
   as base64(
   {
     "creator_name": string,
-    "NFTwork_title": string,
-    "NFTwork_series_name": string,
-    "NFTwork_keyword_set": string,
+    "nft_title": string,
+    "nft_series_name": string,
+    "nft_keyword_set": string,
     "creator_website": string,
     "creator_written_statement": string,
-    "NFTwork_creation_video_youtube_url": string,
+    "nft_creation_video_youtube_url": string,
 
-    "thumbnail_hash": bytes,    //hash of the thumbnail !!!!SHA3-256!!!!
-    "data_hash": bytes,         // hash of the image (or any other asset) that this ticket represents !!!!SHA3-256!!!!
+    "thumbnail_hash": bytes,         // hash of the thumbnail !!!!SHA3-256!!!!
+    "data_hash": bytes,              // hash of the image (or any other asset) that this ticket represents !!!!SHA3-256!!!!
 
-    "fingerprints_hash": bytes, 			//hash of the fingerprint !!!!SHA3-256!!!!
-    "fingerprints": bytes,      			//compressed fingerprint
-    "fingerprints_signature": bytes,  //signature on raw image fingerprint
+    "fingerprints_hash": bytes, 	 // hash of the fingerprint !!!!SHA3-256!!!!
+    "fingerprints": bytes,      	 // compressed fingerprint
+    "fingerprints_signature": bytes, // signature on raw image fingerprint
 
-    "rq_ids": [list of strings],//raptorq symbol identifiers -  !!!!SHA3-256 of symbol block!!!!
-    "rq_coti": integer64,       //raptorq CommonOTI
-    "rq_ssoti": integer64,      //raptorq SchemeSpecificOTI
+    "rq_ids": [list of strings],     // raptorq symbol identifiers -  !!!!SHA3-256 of symbol block!!!!
+    "rq_coti": integer64,            // raptorq CommonOTI
+    "rq_ssoti": integer64,           // raptorq SchemeSpecificOTI
 
-    "rareness_score": integer,  // 0 to 1000
-    "nsfw_score": integer,      // 0 to 1000 0 to 1000
-    "seen_score": integer,			//
+    "dupe_detection_system_version": string,
+    "pastel_rareness_score": float,  // 0 to 1
+
+    "rareness_score": integer,       // 0 to 1000
+    "nsfw_score": integer,           // 0 to 1000 
+    "seen_score": integer,           // 0 to 1000
 	},
 }
 
@@ -164,6 +178,8 @@ signatures
         "signature": bytes,
         "pubkey": bytes,
     }
+
+mvkey #1: creator PastelID
 }
  */
 class CNFTRegTicket : public CPastelTicket
@@ -176,7 +192,7 @@ public:
     static constexpr short mn3sign = 3;
 
 public:
-	std::string NFTTicket;
+	std::string sNFTTicket;
     
     std::string pastelIDs[allsigns];
     v_uint8 ticketSignatures[allsigns];
@@ -194,11 +210,29 @@ public:
 public:
     CNFTRegTicket() = default;
     explicit CNFTRegTicket(std::string _ticket) :
-        NFTTicket(std::move(_ticket))
+        sNFTTicket(std::move(_ticket))
     {}
     
     TicketID ID() const noexcept override { return TicketID::NFT; }
     static TicketID GetID() { return TicketID::NFT; }
+
+    void Clear() noexcept override
+    {
+        CPastelTicket::Clear();
+        sNFTTicket.clear();
+        for (size_t i = 0; i < allsigns; ++i)
+        {
+            pastelIDs[i].clear();
+            ticketSignatures[i].clear();
+        }
+        keyOne.clear();
+        keyTwo.clear();
+        storageFee = 0;
+        creatorHeight = 0;
+        totalCopies = 0;
+        nRoyalty = 0.0f;
+        strGreenAddress.clear();
+    }
 
     std::string KeyOne() const noexcept override { return keyOne; }
     std::string KeyTwo() const noexcept override { return keyTwo; }
@@ -210,7 +244,7 @@ public:
     
     std::string ToJSON() const noexcept override;
     std::string ToStr() const noexcept override;
-    bool IsValid(bool preReg, int depth) const override;
+    bool IsValid(const bool bPreReg, const int nDepth) const override;
     CAmount TicketPrice(const unsigned int nHeight) const noexcept override { return 10; }
     static CAmount GreenPercent(const unsigned int nHeight) { return 2; }
     static std::string GreenAddress(const unsigned int nHeight) { return masterNodeCtrl.TicketGreenAddress; }
@@ -221,7 +255,7 @@ public:
         std::string error;
         if (!VersionMgmt(error, bRead))
             throw std::runtime_error(error);
-        READWRITE(NFTTicket);
+        READWRITE(sNFTTicket);
         READWRITE(m_nVersion);
 		
         // v0
@@ -247,9 +281,9 @@ public:
     std::string GetRoyaltyPayeeAddress() const;
 
     static CNFTRegTicket Create(std::string _ticket, const std::string& signatures,
-                                std::string _pastelID, const SecureString& strKeyPass,
+                                std::string _pastelID, SecureString&& strKeyPass,
                                 std::string _keyOne, std::string _keyTwo,
-                                CAmount _storageFee);
+                                const CAmount _storageFee);
     static bool FindTicketInDb(const std::string& key, CNFTRegTicket& _ticket);
     static bool CheckIfTicketInDb(const std::string& key);
     
@@ -262,19 +296,23 @@ public:
 		"type": "activation",
 		"pastelID": "",         //PastelID of the creator
 		"reg_txid": "",         //tnx with registration ticket in it
-		"creator_height": "",    //block at which creator created NFT Ticket,
+		"creator_height": "",    //block at which creator created NFT Ticket
 		                        //is used to check if the MN that created NFT registration ticket was indeed top MN when creator create ticket
-		"reg_fee": "",          //should match the reg fee from NFT Ticket
+		"reg_fee": "",          //should match the registration fee from NFT Reg Ticket
 		"signature": ""
-	},
+	}
+
+    key   #1: NFT registration ticket txid
+    mvkey #1: Pastel ID
+    mvkey #2: creator height (converted to string)
  */
 class CNFTActivateTicket : public CPastelTicket
 {
 private:
 
 public:
-	std::string pastelID;   //pastelID of the creator
-	std::string regTicketTxnId;
+	std::string pastelID;       //pastelID of the creator
+	std::string regTicketTxnId; // txid of the NFT Reg ticket
     int creatorHeight{};
     int storageFee{};
 	v_uint8 signature;
@@ -289,6 +327,15 @@ public:
     TicketID ID() const noexcept override { return TicketID::Activate; }
     static TicketID GetID() { return TicketID::Activate; }
 
+    void Clear() noexcept override
+    {
+        CPastelTicket::Clear();
+        pastelID.clear();
+        regTicketTxnId.clear();
+        creatorHeight = 0;
+        storageFee = 0;
+        signature.clear();
+    }
     std::string KeyOne() const noexcept override { return regTicketTxnId; }
     std::string MVKeyOne() const noexcept override { return pastelID; }
     std::string MVKeyTwo() const noexcept override { return std::to_string(creatorHeight); }
@@ -299,7 +346,7 @@ public:
     
     std::string ToJSON() const noexcept override;
     std::string ToStr() const noexcept override;
-    bool IsValid(bool preReg, int depth) const override;
+    bool IsValid(const bool bPreReg, const int nDepth) const override;
     CAmount TicketPrice(const unsigned int nHeight) const noexcept override { return 10; }
     CAmount GetStorageFee() const noexcept override { return storageFee; }
 	
@@ -323,7 +370,7 @@ public:
 	
     CAmount GetExtraOutputs(std::vector<CTxOut>& outputs) const override;
     
-    static CNFTActivateTicket Create(std::string _regTicketTxId, int _creatorHeight, int _storageFee, std::string _pastelID, const SecureString& strKeyPass);
+    static CNFTActivateTicket Create(std::string _regTicketTxId, int _creatorHeight, int _storageFee, std::string _pastelID, SecureString&& strKeyPass);
     static bool FindTicketInDb(const std::string& key, CNFTActivateTicket& ticket);
 
     static NFTActivateTickets_t FindAllTicketByPastelID(const std::string& pastelID);
@@ -343,7 +390,7 @@ public:
 		"valid_before": "",
 		"reserved": "",
 		"signature": ""
-	},
+	}
  */
 
 class CNFTSellTicket : public CPastelTicket
@@ -370,6 +417,19 @@ public:
     TicketID ID() const noexcept override { return TicketID::Sell; }
     static TicketID GetID() { return TicketID::Sell; }
 
+    void Clear() noexcept override
+    {
+        CPastelTicket::Clear();
+        pastelID.clear();
+        NFTTxnId.clear();
+        askedPrice = 0;
+        activeAfter = 0;
+        activeBefore = 0;
+        copyNumber = 0;
+        reserved.clear();
+        signature.clear();
+        key.clear();
+    }
     std::string KeyOne() const noexcept override { return !key.empty() ? key : NFTTxnId + ":" + std::to_string(copyNumber); } //txid:#
     std::string MVKeyOne() const noexcept override { return pastelID; }
     std::string MVKeyTwo() const noexcept override { return NFTTxnId; }
@@ -380,7 +440,7 @@ public:
     
     std::string ToJSON() const noexcept override;
     std::string ToStr() const noexcept override;
-    bool IsValid(bool preReg, int depth) const override;
+    bool IsValid(const bool bPreReg, const int nDepth) const override;
     CAmount TicketPrice(const unsigned int nHeight) const noexcept override { return std::max(10u, askedPrice / 50); }
     
     void SerializationOp(CDataStream& s, const SERIALIZE_ACTION ser_action) override
@@ -404,7 +464,7 @@ public:
         READWRITE(m_nBlock);
     }
     
-    static CNFTSellTicket Create(std::string _NFTTxnId, int _askedPrice, int _validAfter, int _validBefore, int _copy_number, std::string _pastelID, const SecureString& strKeyPass);
+    static CNFTSellTicket Create(std::string _NFTTxnId, int _askedPrice, int _validAfter, int _validBefore, int _copy_number, std::string _pastelID, SecureString&& strKeyPass);
     static bool FindTicketInDb(const std::string& key, CNFTSellTicket& ticket);
     
     static NFTSellTickets_t FindAllTicketByPastelID(const std::string& pastelID);
@@ -440,6 +500,15 @@ public:
     TicketID ID() const noexcept override { return TicketID::Buy; }
     static TicketID GetID() { return TicketID::Buy; }
 
+    void Clear() noexcept override
+    {
+        CPastelTicket::Clear();
+        pastelID.clear();
+        sellTxnId.clear();
+        price = 0;
+        reserved.clear();
+        signature.clear();
+    }
     std::string KeyOne() const noexcept override { return sellTxnId; } // this is the latest (active) buy ticket for this sell ticket
     std::string MVKeyOne() const noexcept override { return pastelID; }
     //    std::string MVKeyTwo() const override {return sellTxnId;} // these are all buy (1 active and many inactive) tickets for this sell ticket
@@ -452,7 +521,7 @@ public:
     
     std::string ToJSON() const noexcept override;
     std::string ToStr() const noexcept override;
-    bool IsValid(bool preReg, int depth) const override;
+    bool IsValid(const bool bPreReg, const int nDepth) const override;
     
     void SerializationOp(CDataStream& s, const SERIALIZE_ACTION ser_action) override
     {
@@ -472,7 +541,7 @@ public:
         READWRITE(m_nBlock);
     }
     
-    static CNFTBuyTicket Create(std::string _sellTxnId, int _price, std::string _pastelID, const SecureString& strKeyPass);
+    static CNFTBuyTicket Create(std::string _sellTxnId, int _price, std::string _pastelID, SecureString&& strKeyPass);
     static bool FindTicketInDb(const std::string& key, CNFTBuyTicket& ticket);
 
     static bool CheckBuyTicketExistBySellTicket(const std::string& _sellTxnId);
@@ -518,6 +587,18 @@ public:
     TicketID ID() const noexcept override { return TicketID::Trade; }
     static TicketID GetID() { return TicketID::Trade; }
 
+    void Clear() noexcept override
+    {
+        pastelID.clear();
+        sellTxnId.clear();
+        buyTxnId.clear();
+        NFTTxnId.clear();
+        nftRegTxnId.clear();
+        nftCopySerialNr.clear();
+        price = 0;
+        reserved.clear();
+        signature.clear();
+    }
     std::string KeyOne() const noexcept override { return sellTxnId; }
     std::string KeyTwo() const noexcept override { return buyTxnId; }
     std::string MVKeyOne() const noexcept override { return pastelID; }
@@ -533,7 +614,7 @@ public:
     
     std::string ToJSON() const noexcept override;
     std::string ToStr() const noexcept override;
-    bool IsValid(bool preReg, int depth) const override;
+    bool IsValid(const bool bPreReg, const int nDepth) const override;
     CAmount TicketPrice(const unsigned int nHeight) const noexcept override { return 10; }
     
     void SerializationOp(CDataStream& s, const SERIALIZE_ACTION ser_action) override
@@ -560,7 +641,7 @@ public:
 
     CAmount GetExtraOutputs(std::vector<CTxOut>& outputs) const override;
     
-    static CNFTTradeTicket Create(std::string _sellTxnId, std::string _buyTxnId, std::string _pastelID, const SecureString& strKeyPass);
+    static CNFTTradeTicket Create(std::string _sellTxnId, std::string _buyTxnId, std::string _pastelID, SecureString&& strKeyPass);
     static bool FindTicketInDb(const std::string& key, CNFTTradeTicket& ticket);
     
     static NFTTradeTickets_t FindAllTicketByPastelID(const std::string& pastelID);
@@ -594,7 +675,8 @@ public:
   }
 */
 
-class CNFTRoyaltyTicket : public CPastelTicket {
+class CNFTRoyaltyTicket : public CPastelTicket
+{
 public:
   std::string pastelID;    //pastelID of the old (current at moment of creation) royalty recipient
   std::string newPastelID; //pastelID of the new royalty recipient
@@ -611,6 +693,14 @@ public:
   TicketID ID() const noexcept final { return TicketID::Royalty; }
   static TicketID GetID() { return TicketID::Royalty; }
 
+  void Clear() noexcept override
+  {
+      CPastelTicket::Clear();
+      pastelID.clear();
+      newPastelID.clear();
+      NFTTxnId.clear();
+      signature.clear();
+  }
   std::string KeyOne() const noexcept final { return {signature.cbegin(), signature.cend()}; }
   std::string MVKeyOne() const noexcept final { return pastelID; }
   std::string MVKeyTwo() const noexcept final { return NFTTxnId; }
@@ -621,7 +711,7 @@ public:
 
   std::string ToJSON() const noexcept final;
   std::string ToStr() const noexcept final;
-  bool IsValid(bool preReg, int depth) const final;
+  bool IsValid(const bool bPreReg, const int nDepth) const final;
   CAmount TicketPrice(const unsigned int nHeight) const noexcept final { return 10; }
 
   void SerializationOp(CDataStream& s, const SERIALIZE_ACTION ser_action) final {
@@ -641,7 +731,7 @@ public:
   }
 
   static CNFTRoyaltyTicket Create(std::string _NFTTxnId, std::string _newPastelID,
-                                  std::string _pastelID, const SecureString& strKeyPass);
+                                  std::string _pastelID, SecureString&& strKeyPass);
   static bool FindTicketInDb(const std::string& key, CNFTRoyaltyTicket& ticket);
 
   static NFTRoyaltyTickets_t FindAllTicketByPastelID(const std::string& pastelID);
@@ -660,7 +750,7 @@ public:
 
     std::string ToJSON() const noexcept override { return "{}"; }
     std::string ToStr() const noexcept override { return ""; }
-    bool IsValid(bool preReg, int depth) const override { return false; }
+    bool IsValid(const bool bPreReg, const int nDepth) const override { return false; }
     std::string KeyOne() const noexcept override { return ""; }
     void SetKeyOne(std::string val) override {}
 
@@ -695,6 +785,15 @@ public:
     TicketID ID() const noexcept override { return TicketID::Username; }
     static TicketID GetID() { return TicketID::Username; }
 
+    void Clear() noexcept override
+    {
+        CPastelTicket::Clear();
+        pastelID.clear();
+        username.clear();
+        fee = 100;
+        signature.clear();
+    }
+
     std::string KeyOne() const noexcept override { return username; }
     std::string KeyTwo() const noexcept override { return pastelID; }
 
@@ -707,7 +806,18 @@ public:
     std::string ToJSON() const noexcept override;
     std::string ToStr() const noexcept override;
     CAmount TicketPrice(const unsigned int nHeight) const noexcept override { return fee; }
-    bool IsValid(bool preReg, int depth) const override;
+    bool IsValid(const bool bPreReg, const int nDepth) const override;
+    /**
+     * Disable changing username for this number of blocks since last change.
+     * 
+     * \return number of blocks since the last change when change username ticket is disabled
+     */
+    static unsigned int GetDisablePeriodInBlocks() noexcept
+    {
+        if (Params().IsRegTest())
+            return 10;
+        return 24 * 24;
+    }
 
     void SerializationOp(CDataStream& s, const SERIALIZE_ACTION ser_action) override
     {
@@ -726,7 +836,7 @@ public:
         READWRITE(m_nBlock);
     }
 
-    static CChangeUsernameTicket Create(std::string _pastelID, std::string _username, const SecureString& strKeyPass);    
+    static CChangeUsernameTicket Create(std::string _pastelID, std::string _username, SecureString&& strKeyPass);    
     static bool FindTicketInDb(const std::string& key, CChangeUsernameTicket& ticket);
 
     /** Some general checks to see if the username is bad. Below cases will be considered as bad Username
@@ -768,6 +878,14 @@ public:
     TicketID ID() const noexcept override { return TicketID::EthereumAddress; }
     static TicketID GetID() { return TicketID::EthereumAddress; }
 
+    void Clear() noexcept override
+    {
+        CPastelTicket::Clear();
+        pastelID.clear();
+        ethereumAddress.clear();
+        fee = 100;
+        signature.clear();
+    }
     std::string KeyOne() const noexcept override { return ethereumAddress; }
     std::string KeyTwo() const noexcept override { return pastelID; }
 
@@ -780,7 +898,7 @@ public:
     std::string ToJSON() const noexcept override;
     std::string ToStr() const noexcept override;
     CAmount TicketPrice(const unsigned int nHeight) const noexcept override { return fee; }
-    bool IsValid(bool preReg, int depth) const override;
+    bool IsValid(const bool bPreReg, const int nDepth) const override;
 
     void SerializationOp(CDataStream& s, const SERIALIZE_ACTION ser_action) override
     {
@@ -799,7 +917,7 @@ public:
         READWRITE(m_nBlock);
     }
 
-    static CChangeEthereumAddressTicket Create(std::string _pastelID, std::string _ethereumAddress, const SecureString& strKeyPass);    
+    static CChangeEthereumAddressTicket Create(std::string _pastelID, std::string _ethereumAddress, SecureString&& strKeyPass);    
     static bool FindTicketInDb(const std::string& key, CChangeEthereumAddressTicket& ticket);
 
     /** Some general checks to see if the ethereum address is invalid. Below cases will be considered as an invalid EthereumAddress

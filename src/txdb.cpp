@@ -311,14 +311,15 @@ bool CBlockTreeDB::ReadFlag(const std::string &name, bool &fValue) {
     return true;
 }
 
-bool CBlockTreeDB::LoadBlockIndexGuts()
+bool CBlockTreeDB::LoadBlockIndexGuts(const CChainParams& chainparams)
 {
     boost::scoped_ptr<CDBIterator> pcursor(NewIterator());
 
     pcursor->Seek(make_pair(DB_BLOCK_INDEX, uint256()));
 
     // Load mapBlockIndex
-    while (pcursor->Valid()) {
+    while (pcursor->Valid())
+    {
         boost::this_thread::interruption_point();
         std::pair<char, uint256> key;
         if (pcursor->GetKey(key) && key.first == DB_BLOCK_INDEX) {
@@ -352,11 +353,11 @@ bool CBlockTreeDB::LoadBlockIndexGuts()
                        diskindex.ToString(),  pindexNew->ToString());
     
                 //INGEST->!!!
-                if (Params().IsRegTest() ||
+                if (chainparams.IsRegTest() ||
                     pindexNew->nHeight > TOP_INGEST_BLOCK) {
                 //<-INGEST!!!
     
-                    if (!CheckProofOfWork(pindexNew->GetBlockHash(), pindexNew->nBits, Params().GetConsensus()))
+                    if (!CheckProofOfWork(pindexNew->GetBlockHash(), pindexNew->nBits, chainparams.GetConsensus()))
                         return error("LoadBlockIndex(): CheckProofOfWork failed: %s", pindexNew->ToString());
     
                 //INGEST->!!!

@@ -180,7 +180,7 @@ protected:
         CDataStream ssKey(SER_DISK, CLIENT_VERSION);
         ssKey.reserve(1000);
         ssKey << key;
-        Dbt datKey(&ssKey[0], ssKey.size());
+        Dbt datKey(&ssKey[0], static_cast<uint32_t>(ssKey.size()));
 
         // Erase
         int ret = pdb->del(activeTxn, &datKey, 0);

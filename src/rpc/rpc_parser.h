@@ -1,7 +1,7 @@
 #pragma once
 // Copyright (c) 2021 Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
-// file COPYING or http://www.opensource.org/licenses/mit-license.php.
+// file COPYING or https://www.opensource.org/licenses/mit-license.php.
 
 #include "enum_util.h"
 #include "tinyformat.h"
@@ -28,8 +28,11 @@ public:
         ParseParams();
     }
 
+    // returns rpc command (enumeration type)
     RPC_CMD_ENUM cmd() const noexcept { return m_Cmd; }
+    // returns true if command is supported
     bool IsCmdSupported() const noexcept { return m_Cmd != RPC_CMD_ENUM::unknown; }
+    // returns true if cmd was passed
     bool IsCmd(const RPC_CMD_ENUM& cmd) const noexcept { return m_Cmd == cmd; }
 
 protected:
@@ -90,17 +93,23 @@ protected:
     size_t m_nCmdIndex;
 };
 
-// parse first command in params
+// parse first command in params (UniValue array)
+// 
 // examples:
 //     RPC_CMD_PARSER(TICKETS, params, register, find, list, get)
-// special syntax for commands that containe hyphen (-):
+//     TICKETS - instance of RPCCommandParser object that parses parameters
+//     register, find, ... list of supported commands. 
+//     enumeration with name RPC_CMD_TICKETS is created based on this list
+//     individual commands are accessible like this: RPC_CMD_TICKETS::register
+// 
+// special syntax for commands that contain hyphen (-):
 //      find-all -> find__all
 // double underscore is replaced by single hyphen in the command name
 #define RPC_CMD_PARSER(command,params,...) \
     enum class RPC_CMD_##command : uint32_t{unknown = 0, __VA_ARGS__, max_command_count}; \
     RPCCommandParser<RPC_CMD_##command> command(params, 0, #__VA_ARGS__);
 
-// parse second command in params
+// parse second command in params (UniValue array)
 // examples:
 //     RPC_CMD_PARSER2(LIST, params, id, art, act, sell, buy, trade, down)
 #define RPC_CMD_PARSER2(command,params,...) \

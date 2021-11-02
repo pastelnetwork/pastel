@@ -18,7 +18,7 @@
 
 #include <univalue.h>
 
-#include <boost/bind.hpp>
+#include <boost/bind/bind.hpp>
 #include <boost/iostreams/concepts.hpp>
 #include <boost/iostreams/stream.hpp>
 #include <boost/signals2/signal.hpp>
@@ -57,12 +57,12 @@ void RPCServer::OnStopped(boost::function<void ()> slot)
 
 void RPCServer::OnPreCommand(boost::function<void (const CRPCCommand&)> slot)
 {
-    g_rpcSignals.PreCommand.connect(boost::bind(slot, _1));
+    g_rpcSignals.PreCommand.connect(boost::bind(slot, boost::placeholders::_1));
 }
 
 void RPCServer::OnPostCommand(boost::function<void (const CRPCCommand&)> slot)
 {
-    g_rpcSignals.PostCommand.connect(boost::bind(slot, _1));
+    g_rpcSignals.PostCommand.connect(boost::bind(slot, boost::placeholders::_1));
 }
 
 void RPCTypeCheck(const UniValue& params,
@@ -119,12 +119,11 @@ CAmount AmountFromValue(const UniValue& value)
 
 UniValue ValueFromAmount(const CAmount& amount)
 {
-    bool sign = amount < 0;
-    int64_t n_abs = (sign ? -amount : amount);
-    int64_t quotient = n_abs / COIN;
-    int64_t remainder = n_abs % COIN;
-    return UniValue(UniValue::VNUM,
-            strprintf("%s%d.%05d", sign ? "-" : "", quotient, remainder));
+    const bool bSign = amount < 0;
+    const int64_t n_abs = (bSign ? -amount : amount);
+    const int64_t quotient = n_abs / COIN;
+    const int64_t remainder = n_abs % COIN;
+    return UniValue(UniValue::VNUM, strprintf("%s%d.%05d", bSign ? "-" : "", quotient, remainder));
 }
 
 uint256 ParseHashV(const UniValue& v, string strName)

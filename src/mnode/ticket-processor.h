@@ -1,14 +1,19 @@
 #pragma once
 // Copyright (c) 2018-2021 The Pastel Core developers
 // Distributed under the MIT/X11 software license, see the accompanying
-// file COPYING or http://www.opensource.org/licenses/mit-license.php.
-#include <unordered_map>
+// file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <memory>
 #include <tuple>
+#include <optional>
+#include "json/json.hpp"
 
 #include "dbwrapper.h"
 #include "chain.h"
+#include "str_types.h"
+#include "map_types.h"
+#include "numeric_range.h"
 #include "primitives/transaction.h"
+#include "txmempool_entry.h"
 #include "pastelid/pastel_key.h"
 #include "mnode/mnode-consts.h"
 #include "mnode/ticket.h"
@@ -18,18 +23,59 @@ constexpr int DATASTREAM_VERSION = 1;
 // tuple <NFT registration txid, NFT trade txid>
 using reg_trade_txid_t = std::tuple<std::string, std::string>;
 
+// Get height of the active blockchain + 1
+unsigned int GetActiveChainHeight();
+
+// support fake tickets
 #define FAKE_TICKET
+
+// structure used by 'tickets tools searchthumbids' rpc
+typedef struct _search_thumbids_t
+{
+    // map of fuzzy search criteria -> actual NFT ticket property name
+    inline static mu_strings fuzzyMappings = 
+    {
+        { "creator", "creator_name" },
+        { "nft", "nft_title" },
+        { "series", "nft_series_name" },
+        { "keyword", "nft_keyword_set" },
+        { "descr", "creator_written_statement" }
+    };
+
+    // PastelID of the creator - mandatory
+    std::string sCreatorPastelId;
+    // block range for nft activation ticket search
+    std::optional<numeric_range<uint32_t>> blockRange = std::nullopt;
+    // range for number of created copies
+    std::optional<numeric_range<uint32_t>> copyCount = std::nullopt;
+    // range for rareness score
+    std::optional<numeric_range<uint32_t>> rarenessScore = std::nullopt;
+    // range for nsfw score
+    std::optional<numeric_range<uint32_t>> nsfwScore = std::nullopt;
+    // max number of nft reg tickets to return
+    std::optional<size_t> nMaxResultCount = std::nullopt;
+    // fuzzy search map
+    mu_strings fuzzySearchMap;
+} search_thumbids_t;
+
+// Check if json value passes fuzzy search filter
+bool isValuePassFuzzyFilter(const nlohmann::json& jProp, const std::string& sPropFilterValue) noexcept;
+
 // Ticket  Processor ////////////////////////////////////////////////////////////////////////////////////////////////////
 class CPastelTicketProcessor
 {
     using db_map_t = std::unordered_map<TicketID, std::unique_ptr<CDBWrapper>>;
-    db_map_t dbs;
+    db_map_t dbs; // ticket db storage
 
     template <class _TicketType, typename F>
     void listTickets(F f) const;
 
+    // filter tickets of the specific type using functor f
     template <class _TicketType, typename F>
-    std::string filterTickets(F f, const bool checkConfirmation = true) const;
+    std::string filterTickets(F f, const bool bCheckConfirmation = true) const;
+
+    template <class _TicketType, typename F>
+    void ProcessTicketsByMVKey(const std::string& mvKey, F f) const;
 
 public:
     CPastelTicketProcessor() = default;
@@ -63,6 +109,7 @@ public:
     template <class _TicketType>
     std::string ListTickets() const;
 
+    // list NFT registration tickets using filter
     std::string ListFilterPastelIDTickets(const short filter = 0, // 1 - mn;        2 - personal;     3 - mine
                                           const pastelid_store_t* pmapIDs = nullptr) const;
     std::string ListFilterNFTTickets(const short filter = 0) const;   // 1 - active;    2 - inactive;     3 - sold
@@ -71,16 +118,25 @@ public:
     std::string ListFilterBuyTickets(const short filter = 0, const std::string& pastelID = "") const;   // 0 - all, 1 - traded;    2 - expired
     std::string ListFilterTradeTickets(const short filter = 0, const std::string& pastelID = "") const; // 0 - all, 1 - available; 2 - sold
 
+    // search for NFT registration tickets, calls functor for each matching ticket
+    void SearchForNFTs(const search_thumbids_t &p, std::function<size_t(const CPastelTicket *, const nlohmann::json &)> &fnMatchFound) const;
+
+    static size_t CreateP2FMSScripts(const CDataStream& input_stream, std::vector<CScript>& vOutScripts);
 #ifdef ENABLE_WALLET
-    static bool CreateP2FMSTransaction(const std::string& input_string, CMutableTransaction& tx_out, CAmount price, std::string& error_ret);
-    static bool CreateP2FMSTransaction(const CDataStream& input_stream, CMutableTransaction& tx_out, CAmount price, std::string& error_ret);
-    static bool CreateP2FMSTransactionWithExtra(const CDataStream& input_data, const std::vector<CTxOut>& extraOutputs, CAmount extraAmount, CMutableTransaction& tx_out, CAmount price, std::string& error_ret);
+    static bool CreateP2FMSTransaction(const std::string& input_string, CMutableTransaction& tx_out, 
+        const CAmount price, const opt_string_t& sFundingAddress, std::string& error_ret);
+    static bool CreateP2FMSTransaction(const CDataStream& input_stream, CMutableTransaction& tx_out, 
+        const CAmount price, const opt_string_t& sFundingAddress, std::string& error_ret);
+    static bool CreateP2FMSTransactionWithExtra(const CDataStream& input_data, 
+        const std::vector<CTxOut>& extraOutputs, const CAmount extraAmount, CMutableTransaction& tx_out, 
+        const CAmount price, const opt_string_t& sFundingAddress, std::string& error_ret);
 #endif // ENABLE_WALLET
-    static bool ParseP2FMSTransaction(const CMutableTransaction& tx_in, std::vector<unsigned char>& output_data, std::string& error_ret);
+    static bool ParseP2FMSTransaction(const CMutableTransaction& tx_in, v_uint8& output_data, std::string& error_ret);
     static bool ParseP2FMSTransaction(const CMutableTransaction& tx_in, std::string& output_string, std::string& error_ret);
+    // Add P2FMS transaction to the memory pool
     static bool StoreP2FMSTransaction(const CMutableTransaction& tx_out, std::string& error_ret);
 
-    static std::string SendTicket(const CPastelTicket& ticket);
+    static std::string SendTicket(const CPastelTicket& ticket, const opt_string_t& sFundingAddress = std::nullopt);
 
     static std::unique_ptr<CPastelTicket> GetTicket(const uint256 &txid);
     static std::unique_ptr<CPastelTicket> GetTicket(const std::string& _txid, const TicketID ticketID);
@@ -89,16 +145,21 @@ public:
     static bool ValidateIfTicketTransaction(const int nHeight, const CTransaction& tx);
     
     static bool WalkBackTradingChain(
-            const std::string& sTxId,                               // txid of the starting ticket
-            std::vector< std::unique_ptr<CPastelTicket> >& chain,   // vector with the tickets in chain
-            bool shortPath,                                         // follow short or long path
-                                                                    //      Trade, Act, Reg in short walk
-                                                                    //      Trade, Buy, Sell, Act or Reg in long walk
+            const std::string& sTxId,   // txid of the starting ticket
+            PastelTickets_t& chain,     // vector with the tickets in chain
+            bool shortPath,             // follow short or long path
+                                        //      Trade, Act, Reg in short walk
+                                        //      Trade, Buy, Sell, Act or Reg in long walk
             std::string& errRet) noexcept;
     
     std::optional<reg_trade_txid_t> ValidateOwnership(const std::string& _txid, const std::string& _pastelID);
-
 #ifdef FAKE_TICKET
     static std::string CreateFakeTransaction(CPastelTicket& ticket, CAmount ticketPrice, const std::vector<std::pair<std::string, CAmount>>& extraPayments, const std::string& strVerb, bool bSend);
 #endif
+
+    // Reads P2FMS (Pay-to-Fake-Multisig) transaction into CDataStream object.
+    static bool preParseTicket(const CMutableTransaction& tx, CDataStream& data_stream, TicketID& ticket_id, std::string& error, const bool bLog = true);
+
+    // Get mempool tracker for ticket transactions
+    static std::shared_ptr<ITxMemPoolTracker> GetTxMemPoolTracker();
 };

@@ -102,6 +102,7 @@ test_bitcoin.coverage/
 zcash-gtest.coverage/
 total.coverage/
 coverage_percent.txt
+.opencppcov/
 
 #build tests
 linux-coverage-build

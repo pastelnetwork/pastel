@@ -1,16 +1,18 @@
 #pragma once
-// Copyright (c) 2018-2021 The PASTEL-Coin developers
+// Copyright (c) 2018-2021 The Pastel Core developers
 // Distributed under the MIT/X11 software license, see the accompanying
-// file COPYING or http://www.opensource.org/licenses/mit-license.php.
+// file COPYING or https://www.opensource.org/licenses/mit-license.php.
 
 #include "vector_types.h"
 #include "support/allocators/secure.h"
+#include "map_types.h"
 #include "legroast.h"
+#include "fs.h"
 
 #include <unordered_map>
 
 // storage type for pastel ids and associated keys
-using pastelid_store_t = std::unordered_map<std::string, std::string>;
+using pastelid_store_t = mu_strings;
 
 constexpr auto SIGN_ALG_ED448 = "ed448";
 constexpr auto SIGN_ALG_LEGROAST = "legroast";
@@ -36,7 +38,7 @@ public:
     // Get signing algorithm enum by name.
     static SIGN_ALGORITHM GetAlgorithmByName(const std::string& s);
     // Sign text with the private key associated with PastelID.
-    static std::string Sign(const std::string& sText, const std::string& sPastelID, const SecureString& sPassPhrase, 
+    static std::string Sign(const std::string& sText, const std::string& sPastelID, SecureString&& sPassPhrase, 
         const SIGN_ALGORITHM alg = SIGN_ALGORITHM::ed448, const bool fBase64 = false);
     // Verify signature with the public key associated with PastelID.
     static bool Verify(const std::string& sText, const std::string& sSignature, const std::string& sPastelID, 
@@ -44,7 +46,9 @@ public:
     // Get PastelIDs stored locally in pastelkeys (pastelkeysdir option).
     static pastelid_store_t GetStoredPastelIDs(const bool bPastelIdOnly = true);
     // Validate passphrase via secure container or pkcs8 format
-    static bool isValidPassphrase(const std::string& pastelid,const SecureString& strKeyPass) noexcept;
+    static bool isValidPassphrase(const std::string& sPastelId, const SecureString& strKeyPass) noexcept;
+    // Change passphrase used to encrypt the secure container
+    static bool ChangePassphrase(std::string &error, const std::string& sPastelId, SecureString&& sOldPassphrase, SecureString&& sNewPassphrase);
 
 protected:
     // encode/decode PastelID
@@ -55,5 +59,8 @@ protected:
     static bool DecodeLegRoastPubKey(const std::string& sLRKey, v_uint8& vData);
 
  private:
-    static std::string GetKeyFilePath(const std::string& fileName);
+    // get full path for the secure container based on Pastel ID
+    static fs::path GetSecureContFilePathEx(const std::string& sPastelID, const bool bCreateDirs = false);
+    // get full path for the secure container based on Pastel ID
+    static std::string GetSecureContFilePath(const std::string& sPastelID, const bool bCreateDirs = false);
 };

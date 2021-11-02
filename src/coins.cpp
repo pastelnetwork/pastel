@@ -315,16 +315,11 @@ void CCoinsViewCache::PopAnchor(const uint256 &newrt, ShieldedType type) {
     }
 }
 
-void CCoinsViewCache::SetNullifiers(const CTransaction& tx, bool spent) {
-    for (const JSDescription &joinsplit : tx.vjoinsplit) {
-        for (const uint256 &nullifier : joinsplit.nullifiers) {
-            std::pair<CNullifiersMap::iterator, bool> ret = cacheSproutNullifiers.insert(std::make_pair(nullifier, CNullifiersCacheEntry()));
-            ret.first->second.entered = spent;
-            ret.first->second.flags |= CNullifiersCacheEntry::DIRTY;
-        }
-    }
-    for (const SpendDescription &spendDescription : tx.vShieldedSpend) {
-        std::pair<CNullifiersMap::iterator, bool> ret = cacheSaplingNullifiers.insert(std::make_pair(spendDescription.nullifier, CNullifiersCacheEntry()));
+void CCoinsViewCache::SetNullifiers(const CTransaction& tx, bool spent)
+{
+    for (const auto &spendDescription : tx.vShieldedSpend)
+    {
+        auto ret = cacheSaplingNullifiers.insert(std::make_pair(spendDescription.nullifier, CNullifiersCacheEntry()));
         ret.first->second.entered = spent;
         ret.first->second.flags |= CNullifiersCacheEntry::DIRTY;
     }
@@ -566,32 +561,8 @@ bool CCoinsViewCache::HaveShieldedRequirements(const CTransaction& tx) const
 {
     std::unordered_map<uint256, SproutMerkleTree, CCoinsKeyHasher> intermediates;
 
-    for (const auto &joinsplit : tx.vjoinsplit)
+    for (const auto &spendDescription : tx.vShieldedSpend)
     {
-        for (const auto& nullifier : joinsplit.nullifiers)
-        {
-            if (GetNullifier(nullifier, SPROUT)) {
-                // If the nullifier is set, this transaction
-                // double-spends!
-                return false;
-            }
-        }
-
-        SproutMerkleTree tree;
-        auto it = intermediates.find(joinsplit.anchor);
-        if (it != intermediates.end()) {
-            tree = it->second;
-        } else if (!GetSproutAnchorAt(joinsplit.anchor, tree)) {
-            return false;
-        }
-
-        for (const auto& commitment : joinsplit.commitments)
-            tree.append(commitment);
-
-        intermediates.insert(std::make_pair(tree.root(), tree));
-    }
-
-    for (const SpendDescription &spendDescription : tx.vShieldedSpend) {
         if (GetNullifier(spendDescription.nullifier, SAPLING)) // Prevent double spends
             return false;
 
@@ -628,7 +599,7 @@ double CCoinsViewCache::GetPriority(const CTransaction &tx, int nHeight) const
     // use the maximum priority for all (partially or fully) shielded transactions.
     // (Note that coinbase transactions cannot contain JoinSplits, or Sapling shielded Spends or Outputs.)
 
-    if (tx.vjoinsplit.size() > 0 || tx.vShieldedSpend.size() > 0 || tx.vShieldedOutput.size() > 0) {
+    if (tx.vShieldedSpend.size() > 0 || tx.vShieldedOutput.size() > 0) {
         return MAX_PRIORITY;
     }
 

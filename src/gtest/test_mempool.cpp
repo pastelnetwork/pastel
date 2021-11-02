@@ -1,3 +1,8 @@
+// Copyright (c) 2011-2014 The Bitcoin Core developers
+// Copyright (c) 2018-2021 The Pastel Core developers
+// Distributed under the MIT software license, see the accompanying
+// file COPYING or https://www.opensource.org/licenses/mit-license.php.
+
 #include <gtest/gtest.h>
 #include <gtest/gtest-spi.h>
 
@@ -9,6 +14,10 @@
 #include "txmempool.h"
 #include "policy/fees.h"
 #include "util.h"
+#include "pastel_gtest_main.h"
+#include "test_mempool_entryhelper.h"
+
+using namespace testing;
 
 // Implementation is in test_checktransaction.cpp
 extern CMutableTransaction GetValidTransaction();
@@ -72,36 +81,6 @@ public:
     }
 };
 
-TEST(Mempool, PriorityStatsDoNotCrash) {
-    // Test for security issue 2017-04-11.a
-    // https://z.cash/blog/security-announcement-2017-04-12.html
-
-    // Trigger transaction in block 92046
-    std::string triggerTx = "02000000014a3f8f6fb5dbd3db9a7212ad742e018ac698d46de39ac6c147edeb6bcc392653000000006b483045022100da0514afd80d3bbd0743458efe3b2abd18f727b4268b124c3885094c26ea09cd02207d37d7934ec90618fc5a345cb2a6d1755d8b1a432ea1df517a85e36628449196012103e9b41072e9d2cbe04e6b22a6ac4862ec3f5a76b3823b071ded0dfd5455a0803fffffffff000000000001236e4100000000000000000000000000cf592f6776810cf9fb961d80e683f5529a6b34894b00446c396022512a02dc2e96918294bffdc988a2627d9b12a9f3176b671e286fc62e3c7441cf35ea5e03d561bd5817ca5827cb2761f88dde280a6da5281af2cc69053816f31abd2170722f72c258c7c6b865c97ff8ae53b697f3b77c239a73e1d0296c2c73d21c3b50059d82866cf9f6e2f5dbbf9b4de9caa3cf836080373311978e1f1b1150ce564336ebf0fd502c2e783ff23252fba4efbb110c28c4fbe31efb6a67bc24c0ad8fd8346c5c9ed1791b555b3e43a309aa8d855a294847368ebdf30365d4dfa9b25dd8ed7adf272ecc08f4756fb9d93b8e20d45548dd4aeab6abb76a2081b6e36a9af9d38ebae378df422f40589769c07a3c12e5da253330314cbc4beaa863fac7ab10055d0310089a44c45179a39b2c4e210cec2e053f54983d744abed49f66959f45785ea90325a310fba15f946e245a0e64caec303f2a3e1d457e3e3ca5d892956c1a93b05e0b0373cf862d7bbb5908148b475c03eec96c9b9ecc7d2d78716d2c2e8ccf96175b25738dfb5b0d356a7e30604ee014c6be1db5e43af0fa6ad3f4e917a9f84b4d6f030cad0ffe0738e1effe570b0552b407ca9c26023b74b99f431cc28b79116f717703158404e343b1b47a0556f593441dc64758930f19e84d5ee468fd9a7958c6c63503054f60680f7147e88bf6da65415450230ef7437481023fc5d94872d5aa18bf3b0212b4c0d938e6c84debb8a4e65f99970c59193873a72b2440f19a652073abd960021bfef4e1e52b8f353c6e517bb97053afd4c8035defc27c3fd16faba5bc924a4179f69cfdcdb82253b5f6472a99d4b78ad2c6c18c45ed4dda5bf2adc019c99b55702f4e7b3fcaeb6f3b84ad411d36e901cba9d49ac1d6b916aa88794fb23501aeb0c585cbc2bed952846f41a03bd5c74dfe004e7ac21f7a20d32b009ccf6f70b3e577d25c679421225522b6290d5fa00a5d9a02b97a62aab60e040a03efa946d87c5e65dbf10d66df5b0834c262c31c23f3c2643451e614695003fb3a95bf21444bebb45cdcb8169245e34a76f754c89c3a90f36598a71ef4645eef4c82f1fb322536097fcf0cbe061e80ae887dbb88d8ed910be9ef18b8794930addab1a140b16c4b50f93926b1e5df03ee6e4b5ec6d7f0ed49fbbae50330ae94c5ae9182f4b58870022e423e7d80adccdb90680f7a7fe11a4ed4fe005a0af2d22bf9e7d1bef7caf4f37f5777e4aa6c9b9ea44f5973575c20fb3482fe357c19fc0c20594f492f5694e3e8eb3599e968fd23b5bdd6c4bf5aee1374b38aafe59dd5af83011e642a9427b5ff03e7a4cce92ee201a0fac0acb69d6ad3b7e4c26dfefaa53a737889e759c4b5695c1a7fd5d988e531acf66dae5067f252a25a102d92916b2d84c730645e15a78d3dce1c787634f6f7323cb949a5b6ad004e208cb8c6b734761629c13b9974dc80b082f83357f3bc703d835acbbf72aba225ffe69396c151d2646fac9bd1acc184dd047ebfaadc6b60a9185ce80c7bc8ac5dbb2219cbc0d35af91673b95d28335f0ee2774b8084871d54ca8eab3a285e4b4adf3f34b4263d67474bb5de2e1e37aa7a4ecbd5b49575caaa9e7208c2b9871946b11f2c54cd1ca7660dff44cf206e7da46ab57dd49ec0aa06ded7980f1557cc7c84023690b4df77f26d6b4eff7553b9a8628c28e8e5c38c6170bc61af0969b072586fa740f68ab33c0f62d0507cc8fe41c680b2f077e49cc2691048006311b46cd5ed18e63089f11c115b797ed5fbcd86836a4da2ab90a00745077f2f13bc9e390fc2f92b941d4fb70a3f098548953566141670317fc17e0ba81e98b8a94919992fb008c5480f4018f3a1ea673fe94a6ba3363656a944855d7c799ccb73d95d4ed6ce04c26f79c4cf79f883f0f810519f28eabe8cf6d833f24227f5074763c7b80f1431e5463cc07eff2f1d6cbfaf0411d38e62528a39b093ed7b51fa8c1008e5c1ce4bf39e67b1703554cefef44b71457bfddf43d23a54fa0145fa0e716d02a5304d85345a2b4ebf98c5010d0df468c8cbfc2db22083b0f5a74d4324ee74b46daa5ab70f2575ef5390e6aa2acb8d3b3eb2065e8c06fd6276aca283f5850e7a8b4da37455430df55621e4af59bb355ba2db0ac6cae6ceed2f538ec8c928ee895bd190fd9c1dff4956bad27d567023bc847dd64d83bac399f8d10248a077c9b2f50d5dda4789e09eae4ed8609da085b6370f6529f3c7b8b13442f9a1cc93565734a81c38c6360235ba23ddf87d1b44413c24b363552a322b01d88d1cae6c5ccd88f8cef15776035934fd24adce913282983d9b55181b382ed61242fb4a5e459c3cad8d38626ef8ccdccb9899d5962dec3f3cc2422f109d902e764186cf166ed88c383f428f195dd5fec4f781bcd2308dec66927f41c9e06369c6806ed8ec9a59c096b29b2a74dc85f4f7cd77a23650c0662b5c2602ef5e41cdc13d16074500aac461f823e3bba7178bcffa000db4ffc9b1618395824ffbee1cad1d9c138a20e0b8bbea2d9a07fade932f81c3daf2d64c4991daf4a1b8b531f9b958a252c6c38cd463342aef3e03e3dae3370581d6cddf5af3ef1585780cf83db1909a1daca156018cd2f7483e53a5fccda49640de60b24523617c7ae84ec5fa987ba8a108";
-    CTransaction tx;
-    ASSERT_TRUE(DecodeHexTx(tx, triggerTx));
-    ASSERT_EQ(tx.GetHash().GetHex(), "5295156213414ed77f6e538e7e8ebe14492156906b9fe995b242477818789364");
-
-    // Fake its inputs
-    FakeCoinsViewDB fakeDB;
-    CCoinsViewCache view(&fakeDB);
-
-    CTxMemPool testPool(CFeeRate(0));
-
-    // Values taken from core dump (parameters of entry)
-    CAmount nFees = 0;
-    int64_t nTime = 0x58e5fed9;
-    unsigned int nHeight = 92045;
-    double dPriority = view.GetPriority(tx, nHeight);
-
-    CTxMemPoolEntry entry(tx, nFees, nTime, dPriority, nHeight, true, false, SPROUT_BRANCH_ID);
-
-    // Check it does not crash (ie. the death test fails)
-    EXPECT_NONFATAL_FAILURE(EXPECT_DEATH(testPool.addUnchecked(tx.GetHash(), entry), ""), "");
-
-    EXPECT_EQ(dPriority, MAX_PRIORITY);
-}
-
 // Valid overwinter v3 format tx gets rejected because overwinter hasn't activated yet.
 TEST(Mempool, OverwinterNotActiveYet) {
     SelectParams(CBaseChainParams::Network::REGTEST);
@@ -110,7 +89,6 @@ TEST(Mempool, OverwinterNotActiveYet) {
     CTxMemPool pool(::minRelayTxFee);
     bool missingInputs;
     CMutableTransaction mtx = GetValidTransaction();
-    mtx.vjoinsplit.resize(0); // no joinsplits
     mtx.fOverwintered = true;
     mtx.nVersion = OVERWINTER_TX_VERSION;
     mtx.nVersionGroupId = OVERWINTER_VERSION_GROUP_ID;
@@ -118,13 +96,12 @@ TEST(Mempool, OverwinterNotActiveYet) {
     CValidationState state1;
 
     CTransaction tx1(mtx);
-    EXPECT_FALSE(AcceptToMemoryPool(pool, state1, tx1, false, &missingInputs));
+    EXPECT_FALSE(AcceptToMemoryPool(Params(), pool, state1, tx1, false, &missingInputs));
     EXPECT_EQ(state1.GetRejectReason(), "tx-overwinter-not-active");
 
     // Revert to default
     UpdateNetworkUpgradeParameters(Consensus::UPGRADE_OVERWINTER, Consensus::NetworkUpgrade::NO_ACTIVATION_HEIGHT);
 }
-
 
 // Sprout transaction version 3 when Overwinter is not active:
 // 1. pass CheckTransaction (and CheckTransactionWithoutProofVerification)
@@ -136,13 +113,12 @@ TEST(Mempool, SproutV3TxFailsAsExpected) {
     CTxMemPool pool(::minRelayTxFee);
     bool missingInputs;
     CMutableTransaction mtx = GetValidTransaction();
-    mtx.vjoinsplit.resize(0); // no joinsplits
     mtx.fOverwintered = false;
     mtx.nVersion = 3;
     CValidationState state1;
     CTransaction tx1(mtx);
 
-    EXPECT_FALSE(AcceptToMemoryPool(pool, state1, tx1, false, &missingInputs));
+    EXPECT_FALSE(AcceptToMemoryPool(Params(), pool, state1, tx1, false, &missingInputs));
     EXPECT_EQ(state1.GetRejectReason(), "version");
 }
 
@@ -157,19 +133,17 @@ TEST(Mempool, SproutV3TxWhenOverwinterActive) {
     CTxMemPool pool(::minRelayTxFee);
     bool missingInputs;
     CMutableTransaction mtx = GetValidTransaction();
-    mtx.vjoinsplit.resize(0); // no joinsplits
     mtx.fOverwintered = false;
     mtx.nVersion = 3;
     CValidationState state1;
     CTransaction tx1(mtx);
 
-    EXPECT_FALSE(AcceptToMemoryPool(pool, state1, tx1, false, &missingInputs));
+    EXPECT_FALSE(AcceptToMemoryPool(Params(), pool, state1, tx1, false, &missingInputs));
     EXPECT_EQ(state1.GetRejectReason(), "tx-overwinter-flag-not-set");
 
     // Revert to default
     UpdateNetworkUpgradeParameters(Consensus::UPGRADE_OVERWINTER, Consensus::NetworkUpgrade::NO_ACTIVATION_HEIGHT);
 }
-
 
 // Sprout transaction with negative version, rejected by the mempool in CheckTransaction
 // under Sprout consensus rules, should still be rejected under Overwinter consensus rules.
@@ -181,7 +155,6 @@ TEST(Mempool, SproutNegativeVersionTxWhenOverwinterActive) {
     CTxMemPool pool(::minRelayTxFee);
     bool missingInputs;
     CMutableTransaction mtx = GetValidTransaction();
-    mtx.vjoinsplit.resize(0); // no joinsplits
     mtx.fOverwintered = false;
 
     // A Sprout transaction with version -3 is created using Sprout code (as found in zcashd <= 1.0.14).
@@ -198,7 +171,7 @@ TEST(Mempool, SproutNegativeVersionTxWhenOverwinterActive) {
         EXPECT_EQ(tx1.nVersion, -3);
 
         CValidationState state1;
-        EXPECT_FALSE(AcceptToMemoryPool(pool, state1, tx1, false, &missingInputs));
+        EXPECT_FALSE(AcceptToMemoryPool(Params(), pool, state1, tx1, false, &missingInputs));
         EXPECT_EQ(state1.GetRejectReason(), "bad-txns-version-too-low");
     }
 
@@ -214,14 +187,13 @@ TEST(Mempool, SproutNegativeVersionTxWhenOverwinterActive) {
         EXPECT_EQ(tx1.nVersion, -2147483645);
 
         CValidationState state1;
-        EXPECT_FALSE(AcceptToMemoryPool(pool, state1, tx1, false, &missingInputs));
+        EXPECT_FALSE(AcceptToMemoryPool(Params(), pool, state1, tx1, false, &missingInputs));
         EXPECT_EQ(state1.GetRejectReason(), "bad-txns-version-too-low");
     }
 
     // Revert to default
     UpdateNetworkUpgradeParameters(Consensus::UPGRADE_OVERWINTER, Consensus::NetworkUpgrade::NO_ACTIVATION_HEIGHT);
 }
-
 
 TEST(Mempool, ExpiringSoonTxRejection) {
     SelectParams(CBaseChainParams::Network::REGTEST);
@@ -230,7 +202,6 @@ TEST(Mempool, ExpiringSoonTxRejection) {
     CTxMemPool pool(::minRelayTxFee);
     bool missingInputs;
     CMutableTransaction mtx = GetValidTransaction();
-    mtx.vjoinsplit.resize(0); // no joinsplits
     mtx.fOverwintered = true;
     mtx.nVersion = OVERWINTER_TX_VERSION;
     mtx.nVersionGroupId = OVERWINTER_VERSION_GROUP_ID;
@@ -246,10 +217,238 @@ TEST(Mempool, ExpiringSoonTxRejection) {
         CValidationState state1;
         CTransaction tx1(mtx);
 
-        EXPECT_FALSE(AcceptToMemoryPool(pool, state1, tx1, false, &missingInputs));
+        EXPECT_FALSE(AcceptToMemoryPool(Params(), pool, state1, tx1, false, &missingInputs));
         EXPECT_EQ(state1.GetRejectReason(), "tx-expiring-soon");
     }
 
     // Revert to default
     UpdateNetworkUpgradeParameters(Consensus::UPGRADE_OVERWINTER, Consensus::NetworkUpgrade::NO_ACTIVATION_HEIGHT);
+}
+
+class TestMemPool : public Test
+{
+public:
+    static void SetUpTestSuite()
+    {
+        gl_pPastelTestEnv->InitializeRegTest();
+        gl_pPastelTestEnv->generate_coins(101);
+    }
+
+    static void TearDownTestSuite()
+    {
+        gl_pPastelTestEnv->FinalizeRegTest();
+    }
+};
+
+// Test CTxMemPool::remove functionality
+TEST_F(TestMemPool, Remove)
+{
+    TestMemPoolEntryHelper entry;
+    // Parent transaction with three children,
+    // and three grand-children:
+    CMutableTransaction txParent;
+    txParent.vin.resize(1);
+    txParent.vin[0].scriptSig = CScript() << OP_11;
+    txParent.vout.resize(3);
+    for (int i = 0; i < 3; i++)
+    {
+        txParent.vout[i].scriptPubKey = CScript() << OP_11 << OP_EQUAL;
+        txParent.vout[i].nValue = 33000LL;
+    }
+    CMutableTransaction txChild[3];
+    for (int i = 0; i < 3; i++)
+    {
+        txChild[i].vin.resize(1);
+        txChild[i].vin[0].scriptSig = CScript() << OP_11;
+        txChild[i].vin[0].prevout.hash = txParent.GetHash();
+        txChild[i].vin[0].prevout.n = i;
+        txChild[i].vout.resize(1);
+        txChild[i].vout[0].scriptPubKey = CScript() << OP_11 << OP_EQUAL;
+        txChild[i].vout[0].nValue = 11000LL;
+    }
+    CMutableTransaction txGrandChild[3];
+    for (int i = 0; i < 3; i++)
+    {
+        txGrandChild[i].vin.resize(1);
+        txGrandChild[i].vin[0].scriptSig = CScript() << OP_11;
+        txGrandChild[i].vin[0].prevout.hash = txChild[i].GetHash();
+        txGrandChild[i].vin[0].prevout.n = 0;
+        txGrandChild[i].vout.resize(1);
+        txGrandChild[i].vout[0].scriptPubKey = CScript() << OP_11 << OP_EQUAL;
+        txGrandChild[i].vout[0].nValue = 11000LL;
+    }
+
+    CTxMemPool testPool(CFeeRate(0));
+    std::list<CTransaction> removed;
+
+    // Nothing in pool, remove should do nothing:
+    testPool.remove(txParent, true, &removed);
+    EXPECT_TRUE(removed.empty());
+
+    // Just the parent:
+    testPool.addUnchecked(txParent.GetHash(), entry.FromTx(txParent));
+    testPool.remove(txParent, true, &removed);
+    EXPECT_EQ(removed.size(), 1u);
+    removed.clear();
+
+    // Parent, children, grandchildren:
+    testPool.addUnchecked(txParent.GetHash(), entry.FromTx(txParent));
+    for (int i = 0; i < 3; i++)
+    {
+        testPool.addUnchecked(txChild[i].GetHash(), entry.FromTx(txChild[i]));
+        testPool.addUnchecked(txGrandChild[i].GetHash(), entry.FromTx(txGrandChild[i]));
+    }
+    // Remove Child[0], GrandChild[0] should be removed:
+    testPool.remove(txChild[0], true, &removed);
+    EXPECT_EQ(removed.size(), 2u);
+    removed.clear();
+    // ... make sure grandchild and child are gone:
+    testPool.remove(txGrandChild[0], true, &removed);
+    EXPECT_TRUE(removed.empty());
+    testPool.remove(txChild[0], true, &removed);
+    EXPECT_TRUE(removed.empty());
+    // Remove parent, all children/grandchildren should go:
+    testPool.remove(txParent, true, &removed);
+    EXPECT_EQ(removed.size(), 5u);
+    EXPECT_EQ(testPool.size(), 0u);
+    removed.clear();
+
+    // Add children and grandchildren, but NOT the parent (simulate the parent being in a block)
+    for (int i = 0; i < 3; i++)
+    {
+        testPool.addUnchecked(txChild[i].GetHash(), entry.FromTx(txChild[i]));
+        testPool.addUnchecked(txGrandChild[i].GetHash(), entry.FromTx(txGrandChild[i]));
+    }
+    // Now remove the parent, as might happen if a block-re-org occurs but the parent cannot be
+    // put into the mempool (maybe because it is non-standard):
+    testPool.remove(txParent, true, &removed);
+    EXPECT_EQ(removed.size(), 6u);
+    EXPECT_EQ(testPool.size(), 0u);
+    removed.clear();
+}
+
+TEST_F(TestMemPool, Indexing)
+{
+    CTxMemPool pool(CFeeRate(0));
+    TestMemPoolEntryHelper entry;
+    entry.hadNoDependencies = true;
+
+    /* 3rd highest fee */
+    CMutableTransaction tx1;
+    tx1.vout.resize(1);
+    tx1.vout[0].scriptPubKey = CScript() << OP_11 << OP_EQUAL;
+    tx1.vout[0].nValue = 10 * COIN;
+    pool.addUnchecked(tx1.GetHash(), entry.Fee(10000LL).Priority(10.0).FromTx(tx1));
+
+    /* highest fee */
+    CMutableTransaction tx2;
+    tx2.vout.resize(1);
+    tx2.vout[0].scriptPubKey = CScript() << OP_11 << OP_EQUAL;
+    tx2.vout[0].nValue = 2 * COIN;
+    pool.addUnchecked(tx2.GetHash(), entry.Fee(20000LL).Priority(9.0).FromTx(tx2));
+
+    /* lowest fee */
+    CMutableTransaction tx3;
+    tx3.vout.resize(1);
+    tx3.vout[0].scriptPubKey = CScript() << OP_11 << OP_EQUAL;
+    tx3.vout[0].nValue = 5 * COIN;
+    pool.addUnchecked(tx3.GetHash(), entry.Fee(0LL).Priority(100.0).FromTx(tx3));
+
+    /* 2nd highest fee */
+    CMutableTransaction tx4;
+    tx4.vout.resize(1);
+    tx4.vout[0].scriptPubKey = CScript() << OP_11 << OP_EQUAL;
+    tx4.vout[0].nValue = 6 * COIN;
+    pool.addUnchecked(tx4.GetHash(), entry.Fee(15000LL).Priority(1.0).FromTx(tx4));
+
+    /* equal fee rate to tx1, but newer */
+    CMutableTransaction tx5;
+    tx5.vout.resize(1);
+    tx5.vout[0].scriptPubKey = CScript() << OP_11 << OP_EQUAL;
+    tx5.vout[0].nValue = 11 * COIN;
+    entry.nTime = 1;
+    entry.dPriority = 10.0;
+    pool.addUnchecked(tx5.GetHash(), entry.Fee(10000LL).FromTx(tx5));
+    EXPECT_EQ(pool.size(), 5u);
+
+    // Check the fee-rate index is in order, should be tx2, tx4, tx1, tx5, tx3
+    auto it = pool.mapTx.get<1>().begin();
+    EXPECT_EQ(it++->GetTx().GetHash().ToString(), tx2.GetHash().ToString());
+    EXPECT_EQ(it++->GetTx().GetHash().ToString(), tx4.GetHash().ToString());
+    EXPECT_EQ(it++->GetTx().GetHash().ToString(), tx1.GetHash().ToString());
+    EXPECT_EQ(it++->GetTx().GetHash().ToString(), tx5.GetHash().ToString());
+    EXPECT_EQ(it++->GetTx().GetHash().ToString(), tx3.GetHash().ToString());
+    EXPECT_TRUE(it == pool.mapTx.get<1>().end());
+}
+
+TEST_F(TestMemPool, RemoveWithoutBranchId)
+{
+    CTxMemPool pool(CFeeRate(0));
+    TestMemPoolEntryHelper entry;
+    entry.nFee = 10000LL;
+    entry.hadNoDependencies = true;
+
+    // Add some Sprout transactions
+    for (auto i = 1; i < 11; i++)
+    {
+        CMutableTransaction tx = CMutableTransaction();
+        tx.vout.resize(1);
+        tx.vout[0].scriptPubKey = CScript() << OP_11 << OP_EQUAL;
+        tx.vout[0].nValue = i * COIN;
+        pool.addUnchecked(tx.GetHash(), entry.BranchId(NetworkUpgradeInfo[Consensus::BASE_SPROUT].nBranchId).FromTx(tx));
+    }
+    EXPECT_EQ(pool.size(), 10u);
+
+    // Check the pool only contains Sprout transactions
+    for (auto it = pool.mapTx.begin(); it != pool.mapTx.end(); it++)
+    {
+        EXPECT_EQ(it->GetValidatedBranchId(), NetworkUpgradeInfo[Consensus::BASE_SPROUT].nBranchId);
+    }
+
+    // Add some dummy transactions
+    for (auto i = 1; i < 11; i++)
+    {
+        CMutableTransaction tx = CMutableTransaction();
+        tx.vout.resize(1);
+        tx.vout[0].scriptPubKey = CScript() << OP_11 << OP_EQUAL;
+        tx.vout[0].nValue = i * COIN + 100;
+        pool.addUnchecked(tx.GetHash(), entry.BranchId(NetworkUpgradeInfo[Consensus::UPGRADE_TESTDUMMY].nBranchId).FromTx(tx));
+    }
+    EXPECT_EQ(pool.size(), 20u);
+
+    // Add some Overwinter transactions
+    for (auto i = 1; i < 11; i++)
+    {
+        CMutableTransaction tx = CMutableTransaction();
+        tx.vout.resize(1);
+        tx.vout[0].scriptPubKey = CScript() << OP_11 << OP_EQUAL;
+        tx.vout[0].nValue = i * COIN + 200;
+        pool.addUnchecked(tx.GetHash(), entry.BranchId(NetworkUpgradeInfo[Consensus::UPGRADE_OVERWINTER].nBranchId).FromTx(tx));
+    }
+    EXPECT_EQ(pool.size(), 30u);
+
+    // Remove transactions that are not for Overwinter
+    pool.removeWithoutBranchId(NetworkUpgradeInfo[Consensus::UPGRADE_OVERWINTER].nBranchId);
+    EXPECT_EQ(pool.size(), 10u);
+
+    // Check the pool only contains Overwinter transactions
+    for (auto it = pool.mapTx.begin(); it != pool.mapTx.end(); it++)
+    {
+        EXPECT_EQ(it->GetValidatedBranchId(), NetworkUpgradeInfo[Consensus::UPGRADE_OVERWINTER].nBranchId);
+    }
+
+    // Roll back to Sprout
+    pool.removeWithoutBranchId(NetworkUpgradeInfo[Consensus::BASE_SPROUT].nBranchId);
+    EXPECT_EQ(pool.size(), 0u);
+}
+
+// Test that nCheckFrequency is set correctly when calling setSanityCheck().
+// https://github.com/zcash/zcash/issues/3134
+TEST_F(TestMemPool, SetSanityCheck)
+{
+    CTxMemPool pool(CFeeRate(0));
+    pool.setSanityCheck(1.0);
+    EXPECT_EQ(pool.GetCheckFrequency(), 4294967295);
+    pool.setSanityCheck(0);
+    EXPECT_EQ(pool.GetCheckFrequency(), 0);
 }

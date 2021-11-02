@@ -30,7 +30,7 @@ jobs:
           working_directory: /pastel
           no_output_timeout: 10m
           command: |
-            ./pcutil/static_code_analysis.py -p $TEST_MAILBOX_PWD -e $PVS_EMAIL -n $PVS_SERIAL
+            ./pcutil/static_code_analysis.py -p $TEST_MAILBOX_PWD -e $PVS_EMAIL -n $PVS_SERIAL -j 3
       - store_artifacts:
           path: /pastel/pcutil/artifacts
       - run:
@@ -77,6 +77,12 @@ jobs:
           no_output_timeout: 30m
           command: |
             ./full_test_suite.py rpc-ext
+      - run:
+          name: rpc-mnfast
+          working_directory: qa/test-suite
+          no_output_timeout: 30m
+          command: |
+            ./full_test_suite.py rpc-mnfast
   build_windows:
     executor: pastel-builder
     working_directory: /pastel
