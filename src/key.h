@@ -183,7 +183,7 @@ struct CExtKey {
     template <typename Stream>
     void Unserialize(Stream& s)
     {
-        unsigned int len = ::ReadCompactSize(s); //not using BIP32_EXTKEY_SIZE as max size here -> want to throw my own exception
+        size_t len = ::ReadCompactSize(s); //not using BIP32_EXTKEY_SIZE as max size here -> want to throw my own exception
         if (len != BIP32_EXTKEY_SIZE) {
             throw std::runtime_error("Invalid extended key size\n");
         }

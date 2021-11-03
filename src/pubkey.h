@@ -11,7 +11,7 @@
 #include <stdexcept>
 #include <vector>
 
-const unsigned int BIP32_EXTKEY_SIZE = 74;
+constexpr size_t BIP32_EXTKEY_SIZE = 74;
 
 /** A reference to a CKey: the Hash160 of its serialized public key */
 class CKeyID : public uint160
@@ -229,7 +229,7 @@ struct CExtPubKey {
     template <typename Stream>
     void Unserialize(Stream& s)
     {
-        unsigned int len = ::ReadCompactSize(s); //not using BIP32_EXTKEY_SIZE as max size here -> want to throw my own exception
+        size_t len = ::ReadCompactSize(s); //not using BIP32_EXTKEY_SIZE as max size here -> want to throw my own exception
         if (len != BIP32_EXTKEY_SIZE) {
             throw std::runtime_error("Invalid extended key size\n");
         }

@@ -273,7 +273,7 @@ void WriteCompactSize(Stream& os, const uint64_t nSize)
 }
 
 template<typename Stream>
-uint64_t ReadCompactSize(Stream& is, uint32_t max_size = MAX_DATA_SIZE)
+uint64_t ReadCompactSize(Stream& is, uint64_t max_size = MAX_DATA_SIZE)
 {
     uint8_t chSize = ser_readdata8(is);
     uint64_t nSizeRet = 0;
