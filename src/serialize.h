@@ -28,7 +28,8 @@
 
 #include "prevector.h"
 
-static constexpr uint32_t MAX_DATA_SIZE = 0x02000000;
+static constexpr uint32_t MAX_DATA_SIZE = 0x02000000;       // 33,554,432
+static constexpr uint32_t MAX_CONTAINER_SIZE = 0x10000;     // 65536
 
 /**
  * Dummy data type to identify deserializing constructors.
@@ -272,7 +273,7 @@ void WriteCompactSize(Stream& os, const uint64_t nSize)
 }
 
 template<typename Stream>
-uint64_t ReadCompactSize(Stream& is)
+uint64_t ReadCompactSize(Stream& is, uint64_t max_size = MAX_DATA_SIZE)
 {
     uint8_t chSize = ser_readdata8(is);
     uint64_t nSizeRet = 0;
@@ -298,7 +299,7 @@ uint64_t ReadCompactSize(Stream& is)
         if (nSizeRet < 0x100000000ULL)
             throw std::ios_base::failure("non-canonical ReadCompactSize()");
     }
-    if (nSizeRet > MAX_DATA_SIZE)
+    if (nSizeRet > max_size)
         throw std::ios_base::failure("ReadCompactSize(): size too large");
     return nSizeRet;
 }
@@ -759,8 +760,9 @@ void Unserialize(Stream& is, std::optional<T>& item)
         T object;
         Unserialize(is, object);
         item = object;
-    } else
+    } else {
         throw std::ios_base::failure("non-canonical optional discriminant");
+    }
 }
 
 /**
@@ -816,7 +818,7 @@ template<typename Stream, typename K, typename T, typename Pred, typename A>
 void Unserialize(Stream& is, std::map<K, T, Pred, A>& m)
 {
     m.clear();
-    const uint64_t nSize = ReadCompactSize(is);
+    const uint64_t nSize = ReadCompactSize(is, MAX_CONTAINER_SIZE);
     auto mi = m.begin();
     for (uint64_t i = 0; i < nSize; i++)
     {
@@ -850,6 +852,7 @@ void Unserialize(Stream& is, std::unordered_map<K, T, Pred, A>& m)
         mi = m.insert(mi, item);
     }
 }
+
 /**
  * set
  */
@@ -865,7 +868,7 @@ template<typename Stream, typename K, typename Pred, typename A>
 void Unserialize(Stream& is, std::set<K, Pred, A>& m)
 {
     m.clear();
-    const uint64_t nSize = ReadCompactSize(is);
+    const uint64_t nSize = ReadCompactSize(is, MAX_CONTAINER_SIZE); // nSize here is number of items in the list, 33,554,432 is too big for that!
     typename std::set<K, Pred, A>::iterator it = m.begin();
     for (uint64_t i = 0; i < nSize; i++)
     {
@@ -890,7 +893,7 @@ template<typename Stream, typename T, typename A>
 void Unserialize(Stream& is, std::list<T, A>& l)
 {
     l.clear();
-    const uint64_t nSize = ReadCompactSize(is);
+    const uint64_t nSize = ReadCompactSize(is, MAX_CONTAINER_SIZE); // nSize here is number of items in the list, 33,554,432 is too big for that!
     typename std::list<T, A>::iterator it = l.begin();
     for (uint64_t i = 0; i < nSize; i++)
     {
