@@ -10,6 +10,8 @@
     <DEPENDS>$(PSL_ROOT)depends\x86_64-pc-windows-msvc\</DEPENDS>
     <LIBDBGSFX Condition="'$(Configuration)'=='Debug'">d</LIBDBGSFX>
     <LIBDBGSFX Condition="'$(Configuration)'=='Release'"></LIBDBGSFX>
+    <LIBDBGSFX_GD Condition="'$(Configuration)'=='Debug'">gd</LIBDBGSFX_GD>
+    <LIBDBGSFX_GD Condition="'$(Configuration)'=='Release'"></LIBDBGSFX_GD>
   </PropertyGroup>
   <PropertyGroup>
     <OutDir>$(RELEASE_OUTDIR)\</OutDir>
@@ -73,6 +75,9 @@
     </BuildMacro>
     <BuildMacro Include="LIBDBGSFX">
       <Value>$(LIBDBGSFX)</Value>
+    </BuildMacro>
+    <BuildMacro Include="LIBDBGSFX_GD">
+      <Value>$(LIBDBGSFX_GD)</Value>
     </BuildMacro>
   </ItemGroup>
 </Project>
