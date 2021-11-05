@@ -7,6 +7,7 @@ $(package)_sha256_hash=c593001a89f5a85dd2ddf564805deb860e02471171b3f204944857336
 define $(package)_set_vars
 $(package)_cxxflags+=-std=c++17
 $(package)_cxxflags_linux=-fPIC
+$(package)_cmake_opts_mingw32= -D_WIN32_WINNT=0x0603
 $(package)_cmake_opts+= -DCMAKE_CXX_STANDARD=17
 $(package)_cmake_opts+= -DCMAKE_CXX_STANDARD_REQUIRED=ON
 $(package)_cmake_opts+= -DCMAKE_CXX_EXTENSIONS=OFF
@@ -14,6 +15,7 @@ $(package)_cmake_opts+= -DCMAKE_POSITION_INDEPENDENT_CODE=ON
 $(package)_cmake_opts+= -DENABLE_CURVE=OFF
 $(package)_cmake_opts+= -DWITH_DOC=OFF
 $(package)_cmake_opts+= -DBUILD_SHARED=OFF
+$(package)_cmake_opts+= -DBUILD_TESTS=OFF
 endef
 
 define $(package)_preprocess_cmds

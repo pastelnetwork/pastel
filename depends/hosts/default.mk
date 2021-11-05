@@ -4,13 +4,14 @@ default_tool_CC=gcc
 default_tool_CXX=g++
 default_tool_AR=ar
 default_tool_RANLIB=ranlib
+default_tool_RC_COMPILER=
 default_tool_STRIP=strip
 default_tool_LIBTOOL=libtool
 default_tool_INSTALL_NAME_TOOL=install_name_tool
 default_tool_OTOOL=otool
 default_tool_NM=nm
 
-ALL_HOST_TOOLS=CC CXX AR RANLIB STRIP LIBTOOL INSTALL_NAME_TOOL OTOOL NM
+ALL_HOST_TOOLS=CC CXX AR RANLIB RC_COMPILER STRIP LIBTOOL INSTALL_NAME_TOOL OTOOL NM
 define add_default_host_tool_func
 default_host_$1=$(host_toolchain_path)$(if $($(host_os)_host_$1),$($(host_os)_host_$1),$(host_toolchain)$(default_tool_$1))
 endef
