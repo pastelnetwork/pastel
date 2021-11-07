@@ -1,9 +1,8 @@
+#pragma once
 // Copyright (c) 2015 The Bitcoin Core developers
+// Copyright (c) 2021 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
-
-#ifndef BITCOIN_ZMQ_ZMQPUBLISHNOTIFIER_H
-#define BITCOIN_ZMQ_ZMQPUBLISHNOTIFIER_H
 
 #include "zmqabstractnotifier.h"
 
@@ -57,5 +56,3 @@ class CZMQPublishCheckedBlockNotifier : public CZMQAbstractPublishNotifier
 public:
     bool NotifyBlock(const CBlock &block);
 };
-
-#endif // BITCOIN_ZMQ_ZMQPUBLISHNOTIFIER_H

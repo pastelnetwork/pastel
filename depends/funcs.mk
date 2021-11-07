@@ -15,6 +15,7 @@ $(1)_objcxx=$($($(1)_type)_OBJCXX)
 $(1)_ar=$($($(1)_type)_AR)
 $(1)_ranlib=$($($(1)_type)_RANLIB)
 $(1)_libtool=$($($(1)_type)_LIBTOOL)
+$(1)_rc_compiler=$($($(1)_type)_RC_COMPILER)
 $(1)_nm=$($($(1)_type)_NM)
 $(1)_cflags=$($($(1)_type)_CFLAGS) $($($(1)_type)_$(release_type)_CFLAGS)
 $(1)_cxxflags=$($($(1)_type)_CXXFLAGS) $($($(1)_type)_$(release_type)_CXXFLAGS)
@@ -191,12 +192,20 @@ $(1)_cmake=env CC="$$($(1)_cc)" \
                CFLAGS="$$($(1)_cppflags) $$($(1)_cflags)" \
                CXX="$$($(1)_cxx)" \
                CXXFLAGS="$$($(1)_cppflags) $$($(1)_cxxflags)" \
-             cmake -DCMAKE_AR="$$($(1)_ar)" -DCMAKE_RANLIB="$$($(1)_ranlib)" -DCMAKE_INSTALL_PREFIX:PATH="$$($($(1)_type)_prefix)" $$($(1)_cmake_opts)
+               cmake \
+		  -DCMAKE_AR="$$($(1)_ar)" \
+		  -DCMAKE_RANLIB="$$($(1)_ranlib)" \
+		  -DCMAKE_RC_COMPILER="$$($(1)_rc_compiler)" \
+		  -DCMAKE_INSTALL_PREFIX:PATH="$$($($(1)_type)_prefix)" \
+		  $$($(1)_cmake_opts)
 ifeq ($($(1)_type),build)
 $(1)_cmake += -DCMAKE_INSTALL_RPATH:PATH="$$($($(1)_type)_prefix)/lib"
 else
 ifneq ($(host),$(build))
 $(1)_cmake += -DCMAKE_SYSTEM_NAME=$($(host_os)_cmake_system)
+ifneq ($($(host_os)_cmake_system_version),)
+$(1)_cmake += -DCMAKE_SYSTEM_VERSION=$($(host_os)_cmake_system_version)
+endif
 $(1)_cmake += -DCMAKE_C_COMPILER_TARGET=$(host)
 $(1)_cmake += -DCMAKE_CXX_COMPILER_TARGET=$(host)
 ifneq ($($(host_os)_cmake_root_path),)
@@ -232,7 +241,7 @@ $($(1)_configured): | $($(1)_preprocessed)
 	$(AT)rm -rf $(host_prefix); mkdir -p $(host_prefix)/lib; cd $(host_prefix); $(foreach package,$($(1)_all_dependencies), tar --no-same-owner -xf $($(package)_cached); )
 	$(AT)mkdir -p $$(@D)
 	$(AT)$(info ----- PACKAGE [$(1)] ----- $(1)_type=$($(1)_type))
-	$(AT)$(foreach tool,cc cxx ar ranlib libtool nm cflags cxxflags ldflags cppflags, $(info $(1)_$(tool)=$($(1)_$(tool))))
+	$(AT)$(foreach tool,cc cxx ar ranlib rc_compiler libtool nm cflags cxxflags ldflags cppflags, $(info $(1)_$(tool)=$($(1)_$(tool))))
 	$(AT)+cd $$(@D); $($(1)_config_env) $(call $(1)_config_cmds, $(1))
 	$(AT)touch $$@
 $($(1)_built): | $($(1)_configured)

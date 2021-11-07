@@ -1,4 +1,5 @@
 // Copyright (c) 2015 The Bitcoin Core developers
+// Copyright (c) 2021 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php .
 
@@ -9,11 +10,11 @@
 
 static std::multimap<std::string, CZMQAbstractPublishNotifier*> mapPublishNotifiers;
 
-static const char *MSG_HASHBLOCK = "hashblock";
-static const char *MSG_HASHTX    = "hashtx";
-static const char *MSG_RAWBLOCK  = "rawblock";
-static const char *MSG_RAWTX     = "rawtx";
-static const char *MSG_CHECKEDBLOCK = "checkedblock";
+constexpr auto MSG_HASHBLOCK    = "hashblock";
+constexpr auto MSG_HASHTX       = "hashtx";
+constexpr auto MSG_RAWBLOCK     = "rawblock";
+constexpr auto MSG_RAWTX        = "rawtx";
+constexpr auto MSG_CHECKEDBLOCK = "checkedblock";
 
 // Internal function to send multipart message
 static int zmq_send_multipart(void *sock, const void* data, size_t size, ...)
@@ -98,13 +99,12 @@ void CZMQAbstractPublishNotifier::Shutdown()
 {
     assert(psocket);
 
-    int count = mapPublishNotifiers.count(address);
+    const size_t count = mapPublishNotifiers.count(address);
 
     // remove this notifier from the list of publishers using this address
-    typedef std::multimap<std::string, CZMQAbstractPublishNotifier*>::iterator iterator;
-    std::pair<iterator, iterator> iterpair = mapPublishNotifiers.equal_range(address);
+    auto iterpair = mapPublishNotifiers.equal_range(address);
 
-    for (iterator it = iterpair.first; it != iterpair.second; ++it)
+    for (auto it = iterpair.first; it != iterpair.second; ++it)
     {
         if (it->second==this)
         {
