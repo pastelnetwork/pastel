@@ -577,13 +577,14 @@ bool CCoinsViewCache::HaveShieldedRequirements(const CTransaction& tx) const
 
 bool CCoinsViewCache::HaveInputs(const CTransaction& tx) const
 {
-    if (!tx.IsCoinBase()) {
-        for (unsigned int i = 0; i < tx.vin.size(); i++) {
-            const COutPoint &prevout = tx.vin[i].prevout;
+    if (!tx.IsCoinBase())
+    {
+        for (const auto &txIn : tx.vin)
+        {
+            const COutPoint& prevout = txIn.prevout;
             const CCoins* coins = AccessCoins(prevout.hash);
-            if (!coins || !coins->IsAvailable(prevout.n)) {
+            if (!coins || !coins->IsAvailable(prevout.n))
                 return false;
-            }
         }
     }
     return true;

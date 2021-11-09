@@ -72,10 +72,10 @@ class UserNameChangeTest(PastelTestFramework):
     def run_test(self):
         print("---- UserName-Change Ticket tests STARTED ----")
         print(" - Creating Pastel IDs")
-        self.n1_pastelid1 = self.create_pastelid(1)
-        self.n1_pastelid2 = self.create_pastelid(1)
-        self.n2_pastelid = self.create_pastelid(2)
-        self.n3_pastelid = self.create_pastelid(3)
+        self.n1_pastelid1 = self.create_pastelid(1)[0]
+        self.n1_pastelid2 = self.create_pastelid(1)[0]
+        self.n2_pastelid = self.create_pastelid(2)[0]
+        self.n3_pastelid = self.create_pastelid(3)[0]
         print(
             f"node1: pastelid1={self.n1_pastelid1}\n"
             f"node1: pastelid2={self.n1_pastelid2}\n"

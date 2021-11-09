@@ -126,8 +126,8 @@ class MasterNodeTicketsTest(MasterNodeCommon):
     def fake_pastelid_tnx_tests(self):
         print("== Pastelid ticket transaction validation test ==")
 
-        mn0_pastelid1 = self.create_pastelid(0)
-        nonmn3_pastelid1 = self.create_pastelid(self.non_mn3)
+        mn0_pastelid1 = self.create_pastelid(0)[0]
+        nonmn3_pastelid1 = self.create_pastelid(self.non_mn3)[0]
 
         # makefaketicket mnid pastelID passphrase ticketPrice bChangeSignature
         # makefaketicket id pastelID passphrase address ticketPrice bChangeSignature
@@ -169,12 +169,12 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         self.mn_ticket_signatures = {}
 
         # generate pastelIDs
-        self.nonmn1_pastelid1 = self.create_pastelid(self.non_mn1)
-        self.creator_pastelid1 = self.create_pastelid(self.non_mn3)
+        self.nonmn1_pastelid1 = self.create_pastelid(self.non_mn1)[0]
+        self.creator_pastelid1 = self.create_pastelid(self.non_mn3)[0]
         for n in range(0, 13):
             self.mn_addresses[n] = self.nodes[n].getnewaddress()
             self.nodes[self.mining_node_num].sendtoaddress(self.mn_addresses[n], 100, "", "", False)
-            self.mn_pastelids[n] = self.create_pastelid(n)
+            self.mn_pastelids[n] = self.create_pastelid(n)[0]
             self.mn_outpoints[self.nodes[n].masternode("status")["outpoint"]] = n
 
         self.sync_all(10,30)

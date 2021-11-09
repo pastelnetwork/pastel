@@ -20,14 +20,11 @@ class PastelTestFramework (BitcoinTestFramework):
 
     # create new PastelID and associated LegRoast keys on node node_no
     # returns PastelID
-    def create_pastelid(self, node_no = 0, LegRoastKeyVar = None):
+    def create_pastelid(self, node_no = 0):
         keys = self.nodes[node_no].pastelid("newkey", self.passphrase)
-        NewPastelID = keys["pastelid"]
-        assert_true(NewPastelID, f"No PastelID was created on node #{node_no}")
-        if LegRoastKeyVar:
-            LegRoastKeyVar = keys["legroast"]
-            assert_true(LegRoastKeyVar, f"No LegRoast public key was generated on node #{node_no}")
-        return NewPastelID
+        assert_true(keys["pastelid"], f"No PastelID was created on node #{node_no}")
+        assert_true(keys["legRoastKey"], f"No LegRoast public key was generated on node #{node_no}")
+        return keys["pastelid"], keys["legRoastKey"]
 
     def get_rand_testdata(self, scope, length):
         return ''.join(random.choice(scope) for i in range(length))

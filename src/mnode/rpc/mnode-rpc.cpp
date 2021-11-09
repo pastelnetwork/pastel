@@ -17,6 +17,7 @@
 #include "mnode/rpc/tickets-register.h"
 #include "mnode/rpc/tickets-tools.h"
 #include "mnode/rpc/mnode-rpc-utils.h"
+#include "mnode/rpc/pastelid-rpc.h"
 
 #ifdef ENABLE_WALLET
 #include "wallet/wallet.h"
@@ -34,7 +35,7 @@ bool DecodeHexVecMnb(std::vector<CMasternodeBroadcast>& vecMnb, const std::strin
     if (!IsHex(strHexMnb))
         return false;
 
-    std::vector<unsigned char> mnbData(ParseHex(strHexMnb));
+    v_uint8 mnbData(ParseHex(strHexMnb));
     CDataStream ssData(mnbData, SER_NETWORK, PROTOCOL_VERSION);
     try {
         ssData >> vecMnb;
@@ -450,212 +451,6 @@ UniValue governance(const UniValue& params, bool fHelp)
 
         return resultArray;
     }
-    return NullUniValue;
-}
-
-/**
- * pastelid RPC command.
- * 
- * \param params - RPC command parameters
- * \param fHelp - true to show pastelid usage
- * \return univalue result object
- */
-UniValue pastelid(const UniValue& params, bool fHelp)
-{
-    RPC_CMD_PARSER(PASTELID, params, newkey, importkey, list, sign, sign__by__key, verify, passwd);
-
-    if (fHelp || !PASTELID.IsCmdSupported())
-        throw runtime_error(
-R"(pastelid "command"...
-Set of commands to deal with PastelID and related actions
-PastelID is the base58-encoded public key of the EdDSA448 key pair. EdDSA448 public key is 57 bytes
-
-Arguments:
-1. "command"        (string or set of strings, required) The command to execute
-
-Available commands:
-  newkey "passphrase"                                 - Generate new PastelID, associated keys (EdDSA448) and LegRoast signing keys.
-                                                        Return PastelID and LegRoast signing public key base58-encoded.
-                                                        "passphrase" will be used to encrypt the key file.
-  importkey "key" <"passphrase">                      - Import private "key" (EdDSA448) as PKCS8 encrypted string in PEM format. Return PastelID base58-encoded
-                                                        "passphrase" (optional) to decrypt the key for the purpose of validating and returning PastelID.
-                                                        NOTE: without "passphrase" key cannot be validated and if key is bad (not EdDSA448) call to "sign" will fail
-  list                                                - List all internally stored PastelIDs and associated keys. 
-  sign "text" "PastelID" "passphrase" ("algorithm")   - Sign "text" with the internally stored private key associated with the PastelID (algorithm: ed448 or legroast).
-  sign-by-key "text" "key" "passphrase"               - Sign "text" with the private "key" (EdDSA448) as PKCS8 encrypted string in PEM format.
-  verify "text" "signature" "PastelID" ("algorithm")  - Verify "text"'s "signature" with the private key associated with the PastelID (algorithm: ed448 or legroast).
-  passwd "PastelID" "old_passphrase" "new_passphrase" - Change passphrase used to encrypt the secure container associated with the PastelID.
-)");
-
-    switch (PASTELID.cmd())
-    {
-    case RPC_CMD_PASTELID::newkey:
-    {
-        if (params.size() != 2)
-            throw JSONRPCError(RPC_INVALID_PARAMETER,
-R"(pastelid newkey "passphrase"
-Generate new PastelID, associated keys (EdDSA448) and LegRoast signing keys.
-Return PastelID base58-encoded.)");
-
-        SecureString strKeyPass(params[1].get_str());
-        if (strKeyPass.empty())
-            throw runtime_error(
-R"(pastelid newkey "passphrase"
-passphrase for new key cannot be empty!)");
-
-        UniValue resultObj(UniValue::VOBJ);
-        auto keyMap = CPastelID::CreateNewPastelKeys(std::move(strKeyPass));
-        if (keyMap.empty())
-            throw runtime_error("Failed to generate new PastelID and associated keys");
-        resultObj.pushKV("pastelid", std::move(keyMap.begin()->first));
-        resultObj.pushKV(RPC_KEY_LEGROAST, std::move(keyMap.begin()->second));
-        return resultObj;
-    } break;
-
-    case RPC_CMD_PASTELID::importkey: {
-        if (params.size() < 2 || params.size() > 3)
-            throw JSONRPCError(RPC_INVALID_PARAMETER,
-R"(pastelid importkey "key" <"passphrase">
-Import PKCS8 encrypted private key (EdDSA448) in PEM format. Return PastelID base58-encoded if "passphrase" provided.)");
-
-        throw runtime_error("\"pastelid importkey\" NOT IMPLEMENTED!!!");
-
-        //import
-        //...
-
-        //validate and generate pastelid
-        if (params.size() == 3) //-V779 not implemented, but should keep here for future implementation's reference
-        {
-            SecureString strKeyPass(params[2].get_str());
-            if (strKeyPass.empty())
-                throw runtime_error(
-R"(pastelid importkey <"passphrase">
-passphrase for imported key cannot be empty!)");
-        }
-
-        UniValue resultObj(UniValue::VOBJ);
-        return resultObj;
-    } break;
-
-    // list all locally stored PastelIDs and associated public keys
-    case RPC_CMD_PASTELID::list:
-    {
-        UniValue resultArray(UniValue::VARR);
-
-        auto mapIDs = CPastelID::GetStoredPastelIDs(false);
-        for (auto& [sPastelID, sLegRoastPubKey] : mapIDs) {
-            UniValue obj(UniValue::VOBJ);
-            obj.pushKV("PastelID", std::move(sPastelID));
-            obj.pushKV(RPC_KEY_LEGROAST, std::move(sLegRoastPubKey));
-            resultArray.push_back(std::move(obj));
-        }
-
-        return resultArray;
-    } break;
-
-    // sign text with the internally stored private key associated with the PastelID (ed448 or legroast).
-    case RPC_CMD_PASTELID::sign:
-    {
-        if (params.size() < 4)
-            throw JSONRPCError(RPC_INVALID_PARAMETER,
-R"(pastelid sign "text" "PastelID" "passphrase" ("algorithm")
-Sign "text" with the internally stored private key associated with the PastelID (algorithm: ed448 [default] or legroast).)");
-
-        SecureString strKeyPass(params[3].get_str());
-        if (strKeyPass.empty())
-            throw runtime_error(
-R"(pastelid sign "text" "PastelID" <"passphrase"> ("algorithm")
-passphrase for the private key cannot be empty!)");
-
-        string sAlgorithm;
-        if (params.size() >= 5)
-            sAlgorithm = params[4].get_str();
-        CPastelID::SIGN_ALGORITHM alg = CPastelID::GetAlgorithmByName(sAlgorithm);
-        if (alg == CPastelID::SIGN_ALGORITHM::not_defined)
-            throw std::runtime_error(strprintf("Signing algorithm '%s' is not supported", sAlgorithm));
-
-        UniValue resultObj(UniValue::VOBJ);
-
-        std::string sSignature = CPastelID::Sign(params[1].get_str(), params[2].get_str(), move(strKeyPass), alg, true);
-        resultObj.pushKV("signature", std::move(sSignature));
-
-        return resultObj;
-    } break;
-
-    case RPC_CMD_PASTELID::sign__by__key: // sign-by-key
-    {
-        if (params.size() != 4)
-            throw JSONRPCError(RPC_INVALID_PARAMETER,
-R"(pastelid sign_by_key "text" "key" "passphrase"
-Sign "text" with the private "key" (EdDSA448) as PKCS8 encrypted string in PEM format.)");
-
-        SecureString strKeyPass(params[3].get_str());
-        if (strKeyPass.empty())
-            throw runtime_error(
-R"(pastelid sign_by_key "text" "key" <"passphrase">
-passphrase for the private key cannot be empty!)");
-
-        UniValue resultObj(UniValue::VOBJ);
-        return resultObj;
-    } break;
-
-    // verify "text"'s "signature" with the public key associated with the PastelID (algorithm: ed448 or legroast)
-    case RPC_CMD_PASTELID::verify:
-    {
-        if (params.size() < 4)
-            throw JSONRPCError(RPC_INVALID_PARAMETER,
-R"(pastelid verify "text" "signature" "PastelID" ("algorithm")
-Verify "text"'s "signature" with with the private key associated with the PastelID (algorithm: ed448 or legroast).)");
-
-        string sAlgorithm;
-        if (params.size() >= 5)
-            sAlgorithm = params[4].get_str();
-        CPastelID::SIGN_ALGORITHM alg = CPastelID::GetAlgorithmByName(sAlgorithm);
-        if (alg == CPastelID::SIGN_ALGORITHM::not_defined)
-            throw std::runtime_error(strprintf("Signing algorithm '%s' is not supported", sAlgorithm));
-
-        UniValue resultObj(UniValue::VOBJ);
-
-        const bool bRes = CPastelID::Verify(params[1].get_str(), params[2].get_str(), params[3].get_str(), alg, true);
-        resultObj.pushKV("verification", bRes ? "OK" : "Failed");
-
-        return resultObj;
-    } break;
-
-    case RPC_CMD_PASTELID::passwd:
-    {
-        if (params.size() < 4)
-            throw JSONRPCError(RPC_INVALID_PARAMETER,
-R"(pastelid passwd "PastelID" "old_passphrase" "new_passphrase"
-Change passphrase used to encrypt the secure container associated with the PastelID.)");
-
-        string sPastelID(params[1].get_str());
-        SecureString strOldPass(params[2].get_str());
-        SecureString strNewPass(params[3].get_str());
-
-        const char* szEmptyParam = nullptr;
-        if (sPastelID.empty())
-            szEmptyParam = "PastelID";
-        else if (strOldPass.empty())
-            szEmptyParam = "old_passphrase";
-        else if (strNewPass.empty())
-            szEmptyParam = "new_passphrase";
-        if (szEmptyParam)
-            throw JSONRPCError(RPC_INVALID_PARAMETER,
-strprintf(R"(pastelid passwd "PastelID" "old_passphrase" "new_passphrase"
-'%s' parameter cannot be empty!)", szEmptyParam));
-        string error;
-        if (!CPastelID::ChangePassphrase(error, sPastelID, move(strOldPass), move(strNewPass)))
-            throw runtime_error(error);
-        UniValue resultObj(UniValue::VOBJ);
-        resultObj.pushKV(RPC_KEY_RESULT, RPC_RESULT_SUCCESS);
-        return resultObj;
-    } break;
-
-    default:
-        break;
-    } // switch PASTELID.cmd()
-
     return NullUniValue;
 }
 
@@ -1266,6 +1061,4 @@ void RegisterMasternodeRPCCommands(CRPCTable &tableRPC)
 {
     for (const auto& command : commands)
         tableRPC.appendCommand(command.name, &command);
-//    for (unsigned int vcidx = 0; vcidx < ARRAYLEN(commands); vcidx++)
-//        tableRPC.appendCommand(commands[vcidx].name, &commands[vcidx]);
 }
