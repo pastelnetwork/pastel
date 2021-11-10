@@ -1283,33 +1283,34 @@ bool AcceptToMemoryPool(
     // Node operator can choose to reject tx by number of transparent inputs
     static_assert(std::numeric_limits<size_t>::max() >= std::numeric_limits<int64_t>::max(), "size_t too small");
 
+    const uint256 hash = tx.GetHash();
     auto verifier = libzcash::ProofVerifier::Strict();
     if (!CheckTransaction(tx, state, verifier))
-        return error("AcceptToMemoryPool: CheckTransaction failed");
+        return error("AcceptToMemoryPool [%s]: CheckTransaction failed", hash.ToString());
 
     // DoS level set to 10 to be more forgiving.
     // Check transaction contextually against the set of consensus rules which apply in the next block to be mined.
     if (!ContextualCheckTransaction(tx, state, chainparams, nextBlockHeight, 10)) {
-        return error("AcceptToMemoryPool: ContextualCheckTransaction failed");
+        return error("AcceptToMemoryPool [%s]: ContextualCheckTransaction failed", hash.ToString());
     }
 
     // DoS mitigation: reject transactions expiring soon
     // Note that if a valid transaction belonging to the wallet is in the mempool and the node is shutdown,
     // upon restart, CWalletTx::AcceptToMemoryPool() will be invoked which might result in rejection.
     if (IsExpiringSoonTx(tx, nextBlockHeight)) {
-        return state.DoS(0, error("AcceptToMemoryPool(): transaction is expiring soon"), REJECT_INVALID, "tx-expiring-soon");
+        return state.DoS(0, error("AcceptToMemoryPool [%s]: transaction is expiring soon", hash.ToString()), REJECT_INVALID, "tx-expiring-soon");
     }
 
     // Coinbase is only valid in a block, not as a loose transaction
     if (tx.IsCoinBase())
-        return state.DoS(100, error("AcceptToMemoryPool: coinbase as individual tx"),
+        return state.DoS(100, error("AcceptToMemoryPool [%s]: coinbase as individual tx", hash.ToString()),
                          REJECT_INVALID, "coinbase");
 
     // Rather not work on nonstandard transactions (unless -testnet/-regtest)
     string reason;
     if (chainparams.RequireStandard() && !IsStandardTx(tx, reason, chainparams, nextBlockHeight))
         return state.DoS(0,
-                         error("AcceptToMemoryPool: nonstandard transaction: %s", reason),
+                         error("AcceptToMemoryPool [%s]: nonstandard transaction: %s", hash.ToString(), reason),
                          REJECT_NONSTANDARD, reason);
 
     // Only accept nLockTime-using transactions that can be mined in the next
@@ -1319,7 +1320,6 @@ bool AcceptToMemoryPool(
         return state.DoS(0, false, REJECT_NONSTANDARD, "non-final");
 
     // is it already in the memory pool?
-    uint256 hash = tx.GetHash();
     if (pool.exists(hash))
         return false;
 
@@ -1371,12 +1371,12 @@ bool AcceptToMemoryPool(
 
             // are the actual inputs available?
             if (!view.HaveInputs(tx))
-                return state.Invalid(error("AcceptToMemoryPool: inputs already spent"),
+                return state.Invalid(error("AcceptToMemoryPool [%s]: inputs already spent", hash.ToString()),
                                      REJECT_DUPLICATE, "bad-txns-inputs-spent");
 
             // are the sapling spends requirements met in tx(valid anchors/nullifiers)?
             if (!view.HaveShieldedRequirements(tx))
-                return state.Invalid(error("AcceptToMemoryPool: sapling spends requirements not met"),
+                return state.Invalid(error("AcceptToMemoryPool [%s]: sapling spends requirements not met", hash.ToString()),
                                      REJECT_DUPLICATE, "bad-txns-joinsplit-requirements-not-met");
 
             // Bring the best block into scope
@@ -1390,7 +1390,7 @@ bool AcceptToMemoryPool(
 
         // Check for non-standard pay-to-script-hash in inputs
         if (chainparams.RequireStandard() && !AreInputsStandard(tx, view, consensusBranchId))
-            return error("AcceptToMemoryPool: nonstandard transaction input");
+            return error("AcceptToMemoryPool [%s]: nonstandard transaction input", hash.ToString());
 
         // Check that the transaction doesn't have an excessive number of
         // sigops, making it impossible to mine. Since the coinbase transaction
@@ -1401,7 +1401,7 @@ bool AcceptToMemoryPool(
         nSigOps += GetP2SHSigOpCount(tx, view);
         if (nSigOps > MAX_STANDARD_TX_SIGOPS)
             return state.DoS(0,
-                             error("AcceptToMemoryPool: too many sigops %s, %d > %d",
+                             error("AcceptToMemoryPool [%s]: too many sigops %u > %u",
                                    hash.ToString(), nSigOps, MAX_STANDARD_TX_SIGOPS),
                              REJECT_NONSTANDARD, "bad-txns-too-many-sigops");
 
@@ -1434,7 +1434,7 @@ bool AcceptToMemoryPool(
         // Don't accept it if it can't get into a block
         CAmount txMinFee = GetMinRelayFee(tx, nTxSize, true);
         if (fLimitFree && nFees < txMinFee)
-            return state.DoS(0, error("AcceptToMemoryPool: not enough fees %s, %d < %d",
+            return state.DoS(0, error("AcceptToMemoryPool [%s]: not enough fees %" PRId64 " < %" PRId64,
                                     hash.ToString(), nFees, txMinFee),
                             REJECT_INSUFFICIENTFEE, "insufficient fee");
 
@@ -1461,7 +1461,7 @@ bool AcceptToMemoryPool(
             // -limitfreerelay unit is thousand-bytes-per-minute
             // At default rate it would take over a month to fill 1GB
             if (dFreeCount >= GetArg("-limitfreerelay", 15)*10*1000)
-                return state.DoS(0, error("AcceptToMemoryPool: free transaction rejected by rate limiter"),
+                return state.DoS(0, error("AcceptToMemoryPool [%s]: free transaction rejected by rate limiter", hash.ToString()),
                                  REJECT_INSUFFICIENTFEE, "rate limited free transaction");
             LogPrint("mempool", "Rate limit dFreeCount: %g => %g\n", dFreeCount, dFreeCount+nTxSize);
             dFreeCount += nTxSize;
@@ -1472,7 +1472,7 @@ bool AcceptToMemoryPool(
                                       hash.ToString(),
                                       nFees, ::minRelayTxFee.GetFee(nTxSize) * 10000);
             LogPrint("mempool", errmsg.c_str());
-            return state.Error("AcceptToMemoryPool: " + errmsg);
+            return state.Error(strprintf("AcceptToMemoryPool [%s]: %s", hash.ToString(), errmsg));
         }
 
         // Check against previous transactions
@@ -1480,7 +1480,7 @@ bool AcceptToMemoryPool(
         PrecomputedTransactionData txdata(tx);
         if (!ContextualCheckInputs(tx, state, view, true, STANDARD_SCRIPT_VERIFY_FLAGS, true, txdata, consensusParams, consensusBranchId))
         {
-            return error("AcceptToMemoryPool: ConnectInputs failed %s", hash.ToString());
+            return error("AcceptToMemoryPool [%s]: ConnectInputs failed", hash.ToString());
         }
 
         // Check again against just the consensus-critical mandatory script
@@ -1494,7 +1494,7 @@ bool AcceptToMemoryPool(
         // can be exploited as a DoS attack.
         if (!ContextualCheckInputs(tx, state, view, true, MANDATORY_SCRIPT_VERIFY_FLAGS, true, txdata, consensusParams, consensusBranchId))
         {
-            return error("AcceptToMemoryPool: BUG! PLEASE REPORT THIS! ConnectInputs failed against MANDATORY but not STANDARD flags %s", hash.ToString());
+            return error("AcceptToMemoryPool [%s]: BUG! PLEASE REPORT THIS! ConnectInputs failed against MANDATORY but not STANDARD flags", hash.ToString());
         }
 
         // Store transaction in memory

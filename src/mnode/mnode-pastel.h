@@ -43,7 +43,7 @@ public:
 	std::string pastelID;   // Pastel ID - base58 encoded public key (EdDSA448)
 	std::string address;    // funding address associated with Pastel ID
     COutPoint outpoint{};
-    std::string pq_key;
+    std::string pq_key;     // Legendre Post-Quantum LegRoast public key (base58 encoded with prefix)
 	v_uint8 mn_signature;
 	v_uint8 pslid_signature;
     
@@ -77,11 +77,12 @@ public:
     
     std::string ToJSON() const noexcept override;
     std::string ToStr() const noexcept override;
+    void ToStrStream(std::stringstream& ss, const bool bIncludeMNsignature = true) const noexcept;
     bool IsValid(const bool bPreReg, const int nDepth) const override;
     
     CAmount TicketPrice(const unsigned int nHeight) const noexcept override { return nHeight<=10000? 10: 1000; }
     
-    std::string PastelIDType() const {return outpoint.IsNull()? "personal": "masternode";}
+    std::string PastelIDType() const noexcept {return outpoint.IsNull()? "personal": "masternode";}
     
 	void SerializationOp(CDataStream& s, const SERIALIZE_ACTION ser_action) override
 	{
@@ -100,13 +101,15 @@ public:
 		READWRITE(m_nBlock);
         // v1
         const bool bVersion = (GetVersion() >= 1) && (!bRead || !s.eof());
-        if (bVersion) {
+        if (bVersion)
+        {
             //if (v1 or higher) and ( (writing to stream) or (reading but not end of the stream yet))
             READWRITE(m_nVersion);
             READWRITE(pq_key);
-        } else if (bRead) {
+        }
+        else if (bRead) { // reading v0
             m_nVersion = 0;
-            pq_key = "";
+            pq_key.clear();
         }
     }
 	

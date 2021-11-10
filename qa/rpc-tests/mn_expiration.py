@@ -310,23 +310,23 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         self.nodes[self.mining_node_num].generate(10)
 
         # generate pastelIDs & send coins
-        self.creator_pastelid1 = self.create_pastelid(self.non_mn3)
-        self.nonmn3_pastelid1 = self.create_pastelid(self.non_mn3)
+        self.creator_pastelid1 = self.create_pastelid(self.non_mn3)[0]
+        self.nonmn3_pastelid1 = self.create_pastelid(self.non_mn3)[0]
         self.nonmn3_address1 = self.nodes[self.non_mn3].getnewaddress()
         self.nodes[self.mining_node_num].sendtoaddress(self.nonmn3_address1, 1000, "", "", False)
 
-        self.nonmn4_pastelid1 = self.create_pastelid(self.non_mn4)
+        self.nonmn4_pastelid1 = self.create_pastelid(self.non_mn4)[0]
         self.nonmn4_address1 = self.nodes[self.non_mn4].getnewaddress()
         self.nodes[self.mining_node_num].sendtoaddress(self.nonmn4_address1, 100, "", "", False)
 
-        self.nonmn5_pastelid1 = self.create_pastelid(self.non_mn5)
+        self.nonmn5_pastelid1 = self.create_pastelid(self.non_mn5)[0]
         self.nonmn5_address1 = self.nodes[self.non_mn5].getnewaddress()
         self.nodes[self.mining_node_num].sendtoaddress(self.nonmn5_address1, 100, "", "", False)
 
         for n in range(0, 12):
             self.mn_addresses[n] = self.nodes[n].getnewaddress()
             self.nodes[self.mining_node_num].sendtoaddress(self.mn_addresses[n], 100, "", "", False)
-            self.mn_pastelids[n] = self.create_pastelid(n)
+            self.mn_pastelids[n] = self.create_pastelid(n)[0]
             self.mn_outpoints[self.nodes[n].masternode("status")["outpoint"]] = n
 
         self.__wait_for_sync_all()

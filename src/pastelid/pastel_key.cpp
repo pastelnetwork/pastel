@@ -4,6 +4,7 @@
 #include "base58.h"
 #include "fs.h"
 #include "key_io.h"
+#include "str_utils.h"
 #include "pastelid/pastel_key.h"
 #include "pastelid/ed.h"
 #include "pastelid/secure_container.h"
@@ -67,6 +68,7 @@ CPastelID::SIGN_ALGORITHM CPastelID::GetAlgorithmByName(const string& s)
 
 /**
 * Sign text with the private key associated with PastelID.
+* throws runtime_error exception in case of any read/write operations with secure container
 * 
 * \param sText - text to sign
 * \param sPastelID - locally stored PastelID (base58-encoded with prefix and checksum)
@@ -230,9 +232,10 @@ bool CPastelID::Verify(const string& sText, const string& sSignature, const stri
 * 
 * \param bPastelIdOnly - return PastelIDs only, otherwise returns PastelIDs along with associated keys
 *                        read from the secure container
+* \param psPastelID - optional parameter, can be used as a filter to retrieve only specific PastelID
 * \return map of PastelID -> associated keys (LegRoast signing public key)
 */
-pastelid_store_t CPastelID::GetStoredPastelIDs(const bool bPastelIdOnly)
+pastelid_store_t CPastelID::GetStoredPastelIDs(const bool bPastelIdOnly, string* psPastelID)
 {
     using namespace secure_container;
     string error;
@@ -240,25 +243,30 @@ pastelid_store_t CPastelID::GetStoredPastelIDs(const bool bPastelIdOnly)
     pathPastelKeys = GetDataDir() / pathPastelKeys;
 
     pastelid_store_t resultMap;
-    string sPastelID, sLegRoastKey;
-    v_uint8 vData;
-    for (const auto& p : fs::directory_iterator(pathPastelKeys))
+    if (fs::exists(pathPastelKeys))
     {
-        sPastelID = p.path().filename().string();
-        // check if this file name is in fact encoded Pastel ID
-        // if not - just skip this file
-        if (!DecodePastelID(sPastelID, vData))
-            continue;
-        sLegRoastKey.clear();
-        if (!bPastelIdOnly)
+        string sPastelID, sLegRoastKey;
+        v_uint8 vData;
+        for (const auto& p : fs::directory_iterator(pathPastelKeys))
         {
-            // read public items from secure container
-            // ignore error here -> will return empty LegRoast public key
-            CSecureContainer cont;
-            if (cont.read_public_from_file(error, p.path().string()))
-                cont.get_public_data(PUBLIC_ITEM_TYPE::pubkey_legroast, sLegRoastKey);
+            sPastelID = p.path().filename().string();
+            if (psPastelID && !str_icmp(*psPastelID, sPastelID))
+                continue;
+            // check if this file name is in fact encoded Pastel ID
+            // if not - just skip this file
+            if (!DecodePastelID(sPastelID, vData))
+                continue;
+            sLegRoastKey.clear();
+            if (!bPastelIdOnly)
+            {
+                // read public items from secure container
+                // ignore error here -> will return empty LegRoast public key
+                CSecureContainer cont;
+                if (cont.read_public_from_file(error, p.path().string()))
+                    cont.get_public_data(PUBLIC_ITEM_TYPE::pubkey_legroast, sLegRoastKey);
+            }
+            resultMap.emplace(move(sPastelID), move(sLegRoastKey));
         }
-        resultMap.emplace(move(sPastelID), move(sLegRoastKey));
     }
     return resultMap;
 }

@@ -1,6 +1,6 @@
-// Copyright (c) 2018 The PASTELCoin Developers
+// Copyright (c) 2018-2021 The Pastel Core Developers
 // Distributed under the MIT software license, see the accompanying
-// file COPYING or http://www.opensource.org/licenses/mit-license.php.
+// file COPYING or https://www.opensource.org/licenses/mit-license.php.
 
 #include "main.h"
 #include "key_io.h"
@@ -34,13 +34,20 @@ CPastelIDRegTicket CPastelIDRegTicket::Create(string &&_pastelID, SecureString&&
 {
     CPastelIDRegTicket ticket(move(_pastelID));
     
+    // PastelID must be created via "pastelid newkey" and stored in the local secure container
+    // retrieve all pastelids created locally
+    const auto mapPastelIDs = CPastelID::GetStoredPastelIDs(false, &ticket.pastelID);
+    const auto it = mapPastelIDs.find(ticket.pastelID);
+    if (it == mapPastelIDs.cend())
+        throw runtime_error(strprintf("PastelID [%s] should be generated and stored inside the local node. See \"pastelid newkey\"", ticket.pastelID));
+
     const bool isMN = _address.empty();
     
     if (isMN)
     {
         CMasternode mn;
         if(!masterNodeCtrl.masternodeManager.Get(masterNodeCtrl.activeMasternode.outpoint, mn))
-            throw std::runtime_error("This is not a active masternode. Only active MN can register its PastelID");
+            throw runtime_error("This is not a active masternode. Only active MN can register its PastelID");
     
         //collateral address
         KeyIO keyIO(Params());
@@ -52,33 +59,51 @@ CPastelIDRegTicket CPastelIDRegTicket::Create(string &&_pastelID, SecureString&&
     }
     else
         ticket.address = _address;
+    ticket.pq_key = it->second; // encoded LegRoast public key
+    ticket.GenerateTimestamp();
     
-    std::stringstream ss;
-	ss << ticket.pastelID;
-	ss << ticket.address;
-	ss << ticket.outpoint.ToStringShort();
-    ss << ticket.GenerateTimestamp();
+    stringstream ss;
+    // serialize all ticket fields except mn signature
+    ticket.ToStrStream(ss, false);
     if (isMN)
     {
         if(!CMessageSigner::SignMessage(ss.str(), ticket.mn_signature, masterNodeCtrl.activeMasternode.keyMasternode))
-            throw std::runtime_error("MN Sign of the ticket has failed");
+            throw runtime_error("MN Sign of the ticket has failed");
         ss << vector_to_string(ticket.mn_signature);
     }
-    const auto fullTicket = ss.str();
-    string_to_vector(CPastelID::Sign(fullTicket, ticket.pastelID, std::move(strKeyPass)), ticket.pslid_signature);
+    const auto sFullTicket = ss.str();
+    // sign full ticket using ed448 private key and store it in pslid_signature vector
+    string_to_vector(CPastelID::Sign(sFullTicket, ticket.pastelID, move(strKeyPass), CPastelID::SIGN_ALGORITHM::ed448, false), ticket.pslid_signature);
     
     return ticket;
 }
 
-std::string CPastelIDRegTicket::ToStr() const noexcept
+/**
+ * Serialize all IDreg ticket fields into string.
+ * 
+ * \param ss - stringstream
+ * \param bIncludeMNsignature - serialize MN signature as well
+ */
+void CPastelIDRegTicket::ToStrStream(stringstream& ss, const bool bIncludeMNsignature) const noexcept
 {
-    std::stringstream ss;
-    ss << pastelID;
+    ss << pastelID; // base58-encoded ed448 public key (with prefix)
+    ss << pq_key;   // base58-encoded legroast public key (with prefix)
     ss << address;
     ss << outpoint.ToStringShort();
     ss << m_nTimestamp;
-    if (address.empty())
+    if (bIncludeMNsignature && address.empty())
         ss << vector_to_string(mn_signature);
+}
+
+/**
+ * Create string represenation of the Pastel ID registration ticket.
+ * 
+ * \return string with all IDreg ticket fields
+ */
+std::string CPastelIDRegTicket::ToStr() const noexcept
+{
+    stringstream ss;
+    ToStrStream(ss, true);
     return ss.str();
 }
 
@@ -97,10 +122,7 @@ bool CPastelIDRegTicket::IsValid(const bool bPreReg, const int nDepth) const
     }
     
     std::stringstream ss;
-    ss << pastelID;
-    ss << address;
-    ss << outpoint.ToStringShort();
-    ss << m_nTimestamp;
+    ToStrStream(ss, false);
     
     if (masterNodeCtrl.masternodeSync.IsSynced())
     { // Validate only if both blockchain and MNs are synced
@@ -114,7 +136,7 @@ bool CPastelIDRegTicket::IsValid(const bool bPreReg, const int nDepth) const
             if (masterNodeCtrl.masternodeTickets.FindTicketBySecondaryKey(_ticket)){
                 if (_ticket.mn_signature != mn_signature || !_ticket.IsBlock(m_nBlock) || _ticket.m_txid != m_txid)
                 {
-                  throw std::runtime_error(strprintf(
+                  throw runtime_error(strprintf(
                     "Masternode's outpoint - [%s] is already registered as a ticket. Your PastelID - [%s] "
                     "[this ticket block = %u txid = %s; found ticket block = %u txid = %s]",
                     outpoint.ToStringShort(), pastelID, m_nBlock, m_txid, _ticket.m_nBlock, _ticket.m_txid));
@@ -135,20 +157,20 @@ bool CPastelIDRegTicket::IsValid(const bool bPreReg, const int nDepth) const
                 CMasternode mnInfo;
                 if (!masterNodeCtrl.masternodeManager.Get(outpoint, mnInfo))
                 {
-                  throw std::runtime_error(strprintf(
+                  throw runtime_error(strprintf(
                     "Unknown Masternode - [%s]. PastelID - [%s]", outpoint.ToStringShort(), pastelID));
                 }
                 if (!mnInfo.IsEnabled())
                 {
-                  throw std::runtime_error(strprintf(
+                  throw runtime_error(strprintf(
                     "Non an active Masternode - [%s]. PastelID - [%s]", outpoint.ToStringShort(), pastelID));
                 }
     
                 // 3. Validate MN signature using public key of MN identified by outpoint
-                std::string errRet;
+                string errRet;
                 if (!CMessageSigner::VerifyMessage(mnInfo.pubKeyMasternode, mn_signature, ss.str(), errRet))
                 {
-                  throw std::runtime_error(strprintf(
+                  throw runtime_error(strprintf(
                     "Ticket's MN signature is invalid. Error - %s. Outpoint - [%s]; PastelID - [%s]",
                     errRet, outpoint.ToStringShort(), pastelID));
                 }
@@ -159,16 +181,16 @@ bool CPastelIDRegTicket::IsValid(const bool bPreReg, const int nDepth) const
     // Something to always validate
     // 1. Ticket signature is valid
     ss << vector_to_string(mn_signature);
-    std::string fullTicket = ss.str();
+    const string fullTicket = ss.str();
     if (!CPastelID::Verify(fullTicket, vector_to_string(pslid_signature), pastelID))
-      throw std::runtime_error(strprintf("Ticket's PastelID signature is invalid. PastelID - [%s]", pastelID));
+      throw runtime_error(strprintf("Ticket's PastelID signature is invalid. PastelID - [%s]", pastelID));
      
     // 2. Ticket pay correct registration fee - is validated in ValidateIfTicketTransaction
 
     return true;
 }
 
-std::string CPastelIDRegTicket::ToJSON() const noexcept
+string CPastelIDRegTicket::ToJSON() const noexcept
 {
 	json jsonObj 
     {

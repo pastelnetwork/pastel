@@ -5,10 +5,18 @@
 import math
 import base64
 
-from test_framework.util import assert_equal, assert_equals, assert_greater_than, \
-    assert_true, assert_raises, assert_raises_message, assert_shows_help, start_nodes
+from test_framework.util import (
+    assert_equal, 
+    assert_raises_rpc,
+    assert_true, 
+    assert_raises, 
+    assert_raises_message,
+    assert_shows_help, 
+    start_nodes
+)
 from pastel_test_framework import PastelTestFramework
 from test_framework.authproxy import JSONRPCException
+import test_framework.rpc_consts as rpc
 
 from decimal import Decimal, getcontext
 getcontext().prec = 16
@@ -34,16 +42,12 @@ class SecureContainerTest(PastelTestFramework):
 
         print(" -pastelid newkey")
         assert_shows_help(self.nodes[0].pastelid, "newkey")
-        self.pastelid1 = self.create_pastelid(0, self.id1_lrkey)
-        self.pastelid2 = self.create_pastelid()
+        self.pastelid1, self.id1_lrkey = self.create_pastelid(0)
+        self.pastelid2 = self.create_pastelid()[0]
 
         # fail if empty passphrase
-        try:
-            self.nodes[0].pastelid("newkey", "")
-        except JSONRPCException as e:
-            self.errorString = e.error['message']
-            print(self.errorString)
-        assert_equal("passphrase for new key cannot be empty" in self.errorString, True)
+        assert_raises_rpc(rpc.RPC_MISC_ERROR, "passphrase for new key cannot be empty", 
+            self.nodes[0].pastelid, "newkey", "")
 
         # List all internally stored PastelID and keys
         print(" -pastelid list")
@@ -93,11 +97,14 @@ class SecureContainerTest(PastelTestFramework):
         # missing new passphrase
         assert_raises(JSONRPCException, self.nodes[0].pastelid, "passwd", self.pastelid1, self.passphrase)
         # empty new passphrase
-        assert_raises_message(JSONRPCException, "cannot be empty", self.nodes[0].pastelid, "passwd", self.pastelid1, self.passphrase, "")
+        assert_raises_message(JSONRPCException, "cannot be empty", 
+            self.nodes[0].pastelid, "passwd", self.pastelid1, self.passphrase, "")
         # empty Pastel ID
-        assert_raises_message(JSONRPCException, "cannot be empty", self.nodes[0].pastelid, "passwd", "", self.passphrase, self.new_passphrase)
+        assert_raises_message(JSONRPCException, "cannot be empty", 
+            self.nodes[0].pastelid, "passwd", "", self.passphrase, self.new_passphrase)
         # empty passphrase
-        assert_raises_message(JSONRPCException, "cannot be empty", self.nodes[0].pastelid, "passwd", self.pastelid1, "", self.new_passphrase)
+        assert_raises_message(JSONRPCException, "cannot be empty", 
+            self.nodes[0].pastelid, "passwd", self.pastelid1, "", self.new_passphrase)
         # change passphrase
         result = self.nodes[0].pastelid("passwd", self.pastelid1, self.passphrase, self.new_passphrase)["result"]
         assert_equal(result, "successful")

@@ -9,6 +9,7 @@ constexpr auto RPC_KEY_ERROR_MESSAGE			= "errorMessage";
 constexpr auto RPC_KEY_STATUS					= "status";
 constexpr auto RPC_KEY_ALIAS					= "alias";
 constexpr auto RPC_KEY_TXID					    = "txid";
+constexpr auto RPC_KEY_PASTELID					= "pastelid";
 constexpr auto RPC_KEY_LEGROAST					= "legRoastKey";
 
 // rpc response object key values

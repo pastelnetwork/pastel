@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
 # Copyright (c) 2018-2021 The Pastel Core developers
 # Distributed under the MIT software license, see the accompanying
-# file COPYING or http://www.opensource.org/licenses/mit-license.php.
+# file COPYING or https://www.opensource.org/licenses/mit-license.php.
 import math
 
 from test_framework.util import (
     assert_equal, 
     assert_equals, 
+    assert_raises_rpc,
     assert_greater_than,
     assert_true, 
     initialize_chain_clean,
@@ -18,6 +19,7 @@ import json
 import time
 import random
 import string
+import test_framework.rpc_consts as rpc
 
 from decimal import Decimal, getcontext
 getcontext().prec = 16
@@ -82,8 +84,10 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         self.mn0_pastelid2 = None
         self.non_active_mn_pastelid1 = None
 
+        self.nonmn1_pastelid1 = None
         self.nonmn1_pastelid2 = None
         self.nonmn3_pastelid1 = None
+        self.nonmn3_id1_lrkey = None
         self.nonmn4_pastelid1 = None
         self.nonmn5_royalty_pastelid1 = None
         self.nonmn6_royalty_pastelid1 = None
@@ -258,16 +262,16 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         # 1. pastelid tests
         # a. Generate new PastelID and associated keys (EdDSA448). Return PastelID and LegRoast pubkey base58-encoded
         # a.a - generate with no errors two keys at MN and non-MN
-        self.mn0_pastelid1 = self.create_pastelid(0, self.mn0_id1_lrkey)
-        self.mn0_pastelid2 = self.create_pastelid(0)
+        self.mn0_pastelid1, self.mn0_id1_lrkey = self.create_pastelid(0)
+        self.mn0_pastelid2 = self.create_pastelid(0)[0]
 
         # for non active MN
-        self.non_active_mn_pastelid1 = self.create_pastelid(self.non_active_mn)
-        nonmn1_pastelid1 = self.create_pastelid(self.non_mn1)
-        self.nonmn1_pastelid2 = self.create_pastelid(self.non_mn1)
+        self.non_active_mn_pastelid1 = self.create_pastelid(self.non_active_mn)[0]
+        self.nonmn1_pastelid1 = self.create_pastelid(self.non_mn1)[0]
+        self.nonmn1_pastelid2 = self.create_pastelid(self.non_mn1)[0]
 
         # for node without coins
-        self.nonmn3_pastelid1 = self.create_pastelid(self.non_mn3)
+        self.nonmn3_pastelid1, self.nonmn3_id1_lrkey = self.create_pastelid(self.non_mn3)
         # b. Import private "key" (EdDSA448) as PKCS8 encrypted string in PEM format. Return PastelID base58-encoded
         # NOT IMPLEMENTED
          # e. Sign "text" with the private "key" (EdDSA448) as PKCS8 encrypted string in PEM format
@@ -280,47 +284,28 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         # a. PastelID ticket
         #   a.a register MN PastelID
         #       a.a.1 fail if not MN
-        try:
-            self.nodes[self.non_mn1].tickets("register", "mnid", self.nonmn1_pastelid2, self.passphrase)
-        except JSONRPCException as e:
-            self.errorString = e.error['message']
-            print(self.errorString)
-        assert_equal("This is not an active masternode" in self.errorString, True)
+        assert_raises_rpc(rpc.RPC_MISC_ERROR, "This is not an active masternode",
+            self.nodes[self.non_mn1].tickets, "register", "mnid", self.nonmn1_pastelid2, self.passphrase)
 
         #       a.a.2 fail if not active MN
-        try:
-            self.nodes[self.non_active_mn].tickets("register", "mnid", self.non_active_mn_pastelid1, self.passphrase)
-        except JSONRPCException as e:
-            self.errorString = e.error['message']
-            print(self.errorString)
-        assert_equal("This is not an active masternode" in self.errorString, True)
+        assert_raises_rpc(rpc.RPC_MISC_ERROR, "This is not an active masternode",
+            self.nodes[self.non_active_mn].tickets, "register", "mnid", self.non_active_mn_pastelid1, self.passphrase)
 
         #       a.a.3 fail if active MN, but wrong PastelID
-        try:
-            self.nodes[0].tickets("register", "mnid", self.nonmn1_pastelid2, self.passphrase)
-        except JSONRPCException as e:
-            self.errorString = e.error['message']
-            print(self.errorString)
-        assert_equal(ERR_READ_PASTELID_FILE in self.errorString, True)
+        assert_raises_rpc(rpc.RPC_MISC_ERROR, ERR_READ_PASTELID_FILE,
+            self.nodes[0].tickets, "register", "mnid", self.nonmn1_pastelid2, self.passphrase)
+
         # TODO: provide better error for unknown PastelID
 
         #       a.a.4 fail if active MN, but wrong passphrase
-        try:
-            self.nodes[0].tickets("register", "mnid", self.mn0_pastelid1, "wrong")
-        except JSONRPCException as e:
-            self.errorString = e.error['message']
-            print(self.errorString)
-        assert_equal(ERR_READ_PASTELID_FILE in self.errorString, True)
+        assert_raises_rpc(rpc.RPC_MISC_ERROR, ERR_READ_PASTELID_FILE,
+            self.nodes[0].tickets, "register", "mnid", self.mn0_pastelid1, "wrong")
         # TODO: provide better error for wrong passphrase
 
         #       a.a.5 fail if active MN, but not enough coins - ~11PSL
         if not skip_low_coins_tests:
-            try:
-                self.nodes[0].tickets("register", "mnid", self.mn0_pastelid1, self.passphrase)
-            except JSONRPCException as e:
-                self.errorString = e.error['message']
-                print(self.errorString)
-            assert_equal("No unspent transaction found" in self.errorString, True)
+            assert_raises_rpc(rpc.RPC_MISC_ERROR, "No unspent transaction found",
+                self.nodes[0].tickets, "register", "mnid", self.mn0_pastelid1, self.passphrase)
 
         #       a.a.6 register without errors from active MN with enough coins
         mn0_address1 = self.nodes[0].getnewaddress()
@@ -353,20 +338,12 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         assert_equal(amount, self.id_ticket_price)
 
         #       a.a.9.1 fail if PastelID is already registered
-        try:
-            self.nodes[0].tickets("register", "mnid", self.mn0_pastelid1, self.passphrase)["txid"]
-        except JSONRPCException as e:
-            self.errorString = e.error['message']
-            print(self.errorString)
-        assert_equal("This PastelID is already registered in blockchain" in self.errorString, True)
+        assert_raises_rpc(rpc.RPC_MISC_ERROR, "This PastelID is already registered in blockchain",
+            self.nodes[0].tickets, "register", "mnid", self.mn0_pastelid1, self.passphrase)
 
         #       a.a.9.2 fail if outpoint is already registered
-        try:
-            self.nodes[0].tickets("register", "mnid", self.mn0_pastelid2, self.passphrase)["txid"]
-        except JSONRPCException as e:
-            self.errorString = e.error['message']
-            print(self.errorString)
-        assert_equal("Ticket (pastelid) is invalid - Masternode's outpoint" in self.errorString, True)
+        assert_raises_rpc(rpc.RPC_MISC_ERROR, "Ticket (pastelid) is invalid - Masternode's outpoint",
+            self.nodes[0].tickets, "register", "mnid", self.mn0_pastelid2, self.passphrase)
 
         #   a.b find MN PastelID ticket
         #       a.b.1 by PastelID
@@ -400,33 +377,19 @@ class MasterNodeTicketsTest(MasterNodeCommon):
 
         #   b.a register personal PastelID
         #       b.a.1 fail if wrong PastelID
-        try:
-            self.nodes[self.non_mn3].tickets("register", "id", self.nonmn1_pastelid2, self.passphrase,
-                                             self.nonmn3_address1)
-        except JSONRPCException as e:
-            self.errorString = e.error['message']
-            print(self.errorString)
-        assert_equal(ERR_READ_PASTELID_FILE in self.errorString, True)
+        assert_raises_rpc(rpc.RPC_MISC_ERROR, ERR_READ_PASTELID_FILE,
+            self.nodes[self.non_mn3].tickets, "register", "id", self.nonmn1_pastelid2, self.passphrase, self.nonmn3_address1)
         # TODO Pastel: provide better error for unknown PastelID
 
         #       b.a.2 fail if wrong passphrase
-        try:
-            self.nodes[self.non_mn3].tickets("register", "id", self.nonmn3_pastelid1, "wrong", self.nonmn3_address1)
-        except JSONRPCException as e:
-            self.errorString = e.error['message']
-            print(self.errorString)
-        assert_equal(ERR_READ_PASTELID_FILE in self.errorString, True)
+        assert_raises_rpc(rpc.RPC_MISC_ERROR, ERR_READ_PASTELID_FILE,
+            self.nodes[self.non_mn3].tickets, "register", "id", self.nonmn3_pastelid1, "wrong", self.nonmn3_address1)
         # TODO Pastel: provide better error for wrong passphrase
 
         #       b.a.3 fail if not enough coins - ~11PSL
         if not skip_low_coins_tests:
-            try:
-                self.nodes[self.non_mn3].tickets("register", "id", self.nonmn3_pastelid1, self.passphrase,
-                                                 self.nonmn3_address1)
-            except JSONRPCException as e:
-                self.errorString = e.error['message']
-                print(self.errorString)
-            assert_equal("No unspent transaction found" in self.errorString, True)
+            assert_raises_rpc(rpc.RPC_MISC_ERROR, "No unspent transaction found",
+                self.nodes[self.non_mn3].tickets, "register", "id", self.nonmn3_pastelid1, self.passphrase, self.nonmn3_address1)
 
         #       b.a.4 register without errors from non MN with enough coins
         self.nodes[self.mining_node_num].sendtoaddress(self.nonmn3_address1, 100, "", "", False)
@@ -460,18 +423,14 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         assert_equal(amount, self.id_ticket_price)
 
         #       b.a.7 fail if already registered
-        try:
-            self.nodes[self.non_mn3].tickets("register", "id", self.nonmn3_pastelid1, self.passphrase,
-                                             self.nonmn3_address1)
-        except JSONRPCException as e:
-            self.errorString = e.error['message']
-            print(self.errorString)
-        assert_equal("This PastelID is already registered in blockchain" in self.errorString, True)
+        assert_raises_rpc(rpc.RPC_MISC_ERROR, "This PastelID is already registered in blockchain",
+            self.nodes[self.non_mn3].tickets, "register", "id", self.nonmn3_pastelid1, self.passphrase, self.nonmn3_address1)
 
         #   b.b find personal PastelID
         #       b.b.1 by PastelID
         nonmn3_ticket1_1 = self.nodes[0].tickets("find", "id", self.nonmn3_pastelid1)
         assert_equal(nonmn3_ticket1_1["ticket"]["pastelID"], self.nonmn3_pastelid1)
+        assert_equal(nonmn3_ticket1_1["ticket"]["pq_key"], self.nonmn3_id1_lrkey)
         assert_equal(nonmn3_ticket1_1['ticket']['type'], "pastelid")
         assert_equal(nonmn3_ticket1_1['ticket']['id_type'], "personal")
 
@@ -500,7 +459,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
     # ===============================================================================================================
     def personal_nonmn5_royalty_initialize_tests(self):
         # personal royalty PastelID ticket
-        self.nonmn5_royalty_pastelid1 = self.create_pastelid(self.non_mn5)
+        self.nonmn5_royalty_pastelid1 = self.create_pastelid(self.non_mn5)[0]
         self.nonmn5_royalty_address1 = self.nodes[self.non_mn5].getnewaddress()
 
         # register without errors from non MN with enough coins
@@ -628,8 +587,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
     # ===============================================================================================================
     def personal_nonmn6_royalty_initialize_tests(self):
         # personal royalty PastelID ticket
-        self.nonmn6_royalty_pastelid1 = self.create_pastelid(self.non_mn6)
-        assert_true(self.nonmn6_royalty_pastelid1, "No Pastelid was created")
+        self.nonmn6_royalty_pastelid1 = self.create_pastelid(self.non_mn6)[0]
         self.nonmn6_royalty_address1 = self.nodes[self.non_mn6].getnewaddress()
 
 
@@ -765,19 +723,20 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         # c. NFT registration ticket
 
         self.nodes[self.mining_node_num].generate(10)
+        self.sync_all()
 
         # generate pastelIDs
-        non_registered_personal_pastelid1 = self.create_pastelid(self.non_mn3)
-        non_registered_mn_pastelid1 = self.create_pastelid(2)
+        non_registered_personal_pastelid1 = self.create_pastelid(self.non_mn3)[0]
+        non_registered_mn_pastelid1 = self.create_pastelid(2)[0]
         if not skip_mn_pastelid_registration:
-            self.creator_pastelid1 = self.create_pastelid(self.non_mn3)
+            self.creator_pastelid1 = self.create_pastelid(self.non_mn3)[0]
             for n in range(0, 12):
                 self.mn_addresses[n] = self.nodes[n].getnewaddress()
-                self.nodes[self.mining_node_num].sendtoaddress(self.mn_addresses[n], 100, "", "", False)
+                self.nodes[self.mining_node_num].sendtoaddress(self.mn_addresses[n], 200, "", "", False)
                 if n == 0:
                     self.mn_pastelids[n] = self.mn0_pastelid1  # mn0 has its PastelID registered already
                 else:
-                    self.mn_pastelids[n] = self.create_pastelid(n)
+                    self.mn_pastelids[n] = self.create_pastelid(n)[0]
                 self.mn_outpoints[self.nodes[n].masternode("status")["outpoint"]] = n
 
             print(f"mn_addresses - {self.mn_addresses}")
@@ -796,7 +755,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
                 self.mn_addresses[n] = self.nodes[n].getnewaddress()
                 self.nodes[self.mining_node_num].sendtoaddress(self.mn_addresses[n], 10000, "", "", False)
 
-        self.__wait_for_sync_all(5)
+        self.__wait_for_sync_all(10)
 
         self.total_copies = 10
         self.create_nft_ticket_and_signatures(self.creator_pastelid1, self.non_mn3,
@@ -825,27 +784,17 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         assert_equal("This is not an active masternode" in self.errorString, True)
 
         #       c.a.3 fail if active MN, but wrong PastelID
-        try:
-            self.nodes[self.top_mns_index0].tickets("register", "nft",
-                                                    self.ticket, json.dumps(self.signatures_dict),
-                                                    self.nonmn1_pastelid2, self.passphrase,
-                                                    key1, key2, str(self.storage_fee))
-        except JSONRPCException as e:
-            self.errorString = e.error['message']
-            print(self.errorString)
-        assert_equal(ERR_READ_PASTELID_FILE in self.errorString, True)
+        assert_raises_rpc(rpc.RPC_MISC_ERROR, ERR_READ_PASTELID_FILE,
+            self.nodes[self.top_mns_index0].tickets, "register", "nft",
+            self.ticket, json.dumps(self.signatures_dict), self.nonmn1_pastelid2, self.passphrase,
+            key1, key2, str(self.storage_fee))
         # TODO: provide better error for unknown PastelID
 
         #       c.a.4 fail if active MN, but wrong passphrase
-        try:
-            self.nodes[self.top_mns_index0].tickets("register", "nft",
-                                                    self.ticket, json.dumps(self.signatures_dict),
-                                                    self.top_mn_pastelid0, "wrong",
-                                                    key1, key2, str(self.storage_fee))
-        except JSONRPCException as e:
-            self.errorString = e.error['message']
-            print(self.errorString)
-        assert_equal(ERR_READ_PASTELID_FILE in self.errorString, True)
+        assert_raises_rpc(rpc.RPC_MISC_ERROR, ERR_READ_PASTELID_FILE,
+            self.nodes[self.top_mns_index0].tickets, "register", "nft",
+                self.ticket, json.dumps(self.signatures_dict), self.top_mn_pastelid0, "wrong",
+                key1, key2, str(self.storage_fee))
         # TODO: provide better error for wrong passphrase
 
         #       c.a.5 fail if creator's signature is not matching
@@ -1213,7 +1162,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
             assert_equal(new_address1, self.nonmn6_royalty_address1)
 
             # fail if is not matching current PastelID of the royalty payee
-            non_registered_pastelid1 = self.create_pastelid(self.non_mn5)
+            non_registered_pastelid1 = self.create_pastelid(self.non_mn5)[0]
             try:
                 self.nodes[nonmn_id].tickets("register", "royalty",
                                              self.nft_ticket1_txid, new_pastelid1, non_registered_pastelid1, self.passphrase)
@@ -1669,7 +1618,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         self.nodes[self.mining_node_num].sendtoaddress(self.nonmn4_address1, 2000, "", "", False)
         self.__wait_for_sync_all10()
 
-        self.nonmn4_pastelid1 = self.create_pastelid(self.non_mn4)
+        self.nonmn4_pastelid1 = self.create_pastelid(self.non_mn4)[0]
         self.nodes[self.non_mn4].tickets("register", "id", self.nonmn4_pastelid1, self.passphrase, self.nonmn4_address1)
 
         # fail if not enough funds
@@ -2250,11 +2199,11 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         self.nonmn4_address2 = self.nodes[self.non_mn4].getnewaddress()
         self.nodes[self.mining_node_num].sendtoaddress(self.nonmn4_address2, 2000, "", "", False)
         self.__wait_for_sync_all10()
-        self.nonmn4_pastelid2 = self.create_pastelid(self.non_mn4)
+        self.nonmn4_pastelid2 = self.create_pastelid(self.non_mn4)[0]
 
         self.nonmn8_address1 = self.nodes[self.non_mn8].getnewaddress()
         self.__wait_for_sync_all10()
-        self.nonmn8_pastelid1 = self.create_pastelid(self.non_mn8)
+        self.nonmn8_pastelid1 = self.create_pastelid(self.non_mn8)[0]
 
         # Register first time by PastelID of non-masternode 3
         tickets_ethereumaddress_txid1 = self.nodes[self.non_mn3].tickets("register", "ethereumaddress", "0x863c30dd122a21f815e46ec510777fd3e3398c26",

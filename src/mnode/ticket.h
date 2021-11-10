@@ -31,6 +31,7 @@ public:
     short GetStoredVersion() const noexcept { return m_nVersion; }
     const std::string GetTxId() const noexcept { return m_txid; }
     unsigned int GetBlock() const noexcept { return m_nBlock; }
+    std::int64_t GetTimestamp() const noexcept { return m_nTimestamp; }
     bool IsBlock(const unsigned int nBlock) const noexcept { return m_nBlock == nBlock; }
     auto GetTicketName() const noexcept
     {

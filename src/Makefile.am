@@ -116,6 +116,7 @@ MNODE_CPP =\
   mnode/rpc/masternode.cpp\
   mnode/rpc/mnode-rpc-utils.cpp\
   mnode/rpc/mnode-rpc.cpp\
+  mnode/rpc/pastelid-rpc.cpp\
   mnode/rpc/tickets-fake.cpp\
   mnode/rpc/tickets-list.cpp\
   mnode/rpc/tickets-register.cpp\
@@ -143,6 +144,7 @@ MNODE_H = \
   mnode/rpc/mnode-rpc-utils.h\
   mnode/rpc/mnode-register.h\
   mnode/rpc/mnode-rpc.h\
+  mnode/rpc/pastelid-rpc.h\
   mnode/rpc/tickets-fake.h\
   mnode/rpc/tickets-list.h\
   mnode/rpc/tickets-register.h\
