@@ -9,35 +9,26 @@
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
     </Filter>
-    <Filter Include="Source Files\vc_port">
-      <UniqueIdentifier>{4580c955-f71f-4d68-96ae-42c398fc382c}</UniqueIdentifier>
+    <Filter Include="Source Files\rpc">
+      <UniqueIdentifier>{710aa991-5893-48c2-848b-50cefe439b31}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="..\..\vs\port\unistd.cpp">
-      <Filter>Source Files\vc_port</Filter>
+    <ClCompile Include="..\..\..\src\rpc\client.cpp">
+      <Filter>Source Files\rpc</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\vs\port\ctz_clz.h">
-      <Filter>Source Files\vc_port</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\..\src\pasteld.cpp">
+    <ClCompile Include="..\..\..\src\bitcoin-cli.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\..\vs\port\unistd.h">
-      <Filter>Source Files\vc_port</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\..\src\version.h">
-      <Filter>Source Files</Filter>
+    <ClInclude Include="..\..\..\src\rpc\client.h">
+      <Filter>Source Files\rpc</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <ResourceCompile Include="..\..\..\src\pasteld-res.rc">
+    <ResourceCompile Include="..\..\..\src\bitcoin-cli-res.rc">
       <Filter>Resource Files</Filter>
     </ResourceCompile>
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="..\..\..\src\Makefile.am" />
   </ItemGroup>
 </Project>

@@ -5,6 +5,7 @@
     <SRC>$(PSL_ROOT)src\</SRC>
     <BIN_DIR>$(PSL_ROOT)bin\</BIN_DIR>
     <VS>vs2019</VS>
+    <VSCOMMON>vs</VSCOMMON>
     <VC>16</VC>
     <RELEASE_OUTDIR>$(BIN_DIR)$(VS)\$(Configuration)_$(PlatformName)\</RELEASE_OUTDIR>
     <DEPENDS>$(PSL_ROOT)depends\x86_64-pc-windows-msvc\</DEPENDS>
@@ -26,7 +27,7 @@
   </PropertyGroup>
   <ItemDefinitionGroup>
     <ClCompile>
-      <AdditionalIncludeDirectories>$(SRC);$(DEPENDS)include;$(PSL_ROOT)build-aux\$(VS)\port;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SRC);$(DEPENDS)include;$(PSL_ROOT)build-aux\$(VSCOMMON)\port;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>WIN32;_WIN32_;_WINDOWS;NOMINMAX;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ExceptionHandling>Async</ExceptionHandling>
       <WarningLevel>Level3</WarningLevel>
@@ -63,6 +64,9 @@
     </BuildMacro>
     <BuildMacro Include="VS">
       <Value>$(VS)</Value>
+    </BuildMacro>
+    <BuildMacro Include="VSCOMMON">
+      <Value>$(VSCOMMON)</Value>
     </BuildMacro>
     <BuildMacro Include="VC">
       <Value>$(VC)</Value>

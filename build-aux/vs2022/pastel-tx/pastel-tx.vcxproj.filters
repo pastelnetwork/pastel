@@ -5,39 +5,23 @@
       <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
       <Extensions>cpp;c;cc;cxx;c++;cppm;ixx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
     </Filter>
+    <Filter Include="Header Files">
+      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
+      <Extensions>h;hh;hpp;hxx;h++;hm;inl;inc;ipp;xsd</Extensions>
+    </Filter>
     <Filter Include="Resource Files">
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
     </Filter>
-    <Filter Include="Source Files\vc_port">
-      <UniqueIdentifier>{4580c955-f71f-4d68-96ae-42c398fc382c}</UniqueIdentifier>
-    </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="..\..\vs\port\unistd.cpp">
-      <Filter>Source Files\vc_port</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\vs\port\ctz_clz.h">
-      <Filter>Source Files\vc_port</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\..\src\pasteld.cpp">
+    <ClCompile Include="..\..\..\src\bitcoin-tx.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\..\vs\port\unistd.h">
-      <Filter>Source Files\vc_port</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\..\src\version.h">
-      <Filter>Source Files</Filter>
-    </ClInclude>
-  </ItemGroup>
-  <ItemGroup>
-    <ResourceCompile Include="..\..\..\src\pasteld-res.rc">
+    <ResourceCompile Include="..\..\..\src\bitcoin-tx-res.rc">
       <Filter>Resource Files</Filter>
     </ResourceCompile>
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="..\..\..\src\Makefile.am" />
   </ItemGroup>
 </Project>

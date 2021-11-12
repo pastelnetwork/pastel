@@ -1,0 +1,37 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Source Files">
+      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
+      <Extensions>cpp;c;cc;cxx;c++;cppm;ixx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
+    </Filter>
+    <Filter Include="Source Files\zmq">
+      <UniqueIdentifier>{e485e3aa-938f-418d-9d44-db9be4066ccc}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="..\..\..\src\zmq\zmqabstractnotifier.cpp">
+      <Filter>Source Files\zmq</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\src\zmq\zmqnotificationinterface.cpp">
+      <Filter>Source Files\zmq</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\src\zmq\zmqpublishnotifier.cpp">
+      <Filter>Source Files\zmq</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\..\..\src\zmq\zmqabstractnotifier.h">
+      <Filter>Source Files\zmq</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\zmq\zmqconfig.h">
+      <Filter>Source Files\zmq</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\zmq\zmqnotificationinterface.h">
+      <Filter>Source Files\zmq</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\zmq\zmqpublishnotifier.h">
+      <Filter>Source Files\zmq</Filter>
+    </ClInclude>
+  </ItemGroup>
+</Project>

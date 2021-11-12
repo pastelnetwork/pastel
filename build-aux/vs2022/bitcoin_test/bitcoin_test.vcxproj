@@ -18,37 +18,101 @@
       <Platform>x64</Platform>
     </ProjectConfiguration>
   </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="..\..\..\src\test\accounting_tests.cpp" />
+    <ClCompile Include="..\..\..\src\test\addrman_tests.cpp" />
+    <ClCompile Include="..\..\..\src\test\alert_tests.cpp" />
+    <ClCompile Include="..\..\..\src\test\allocator_tests.cpp" />
+    <ClCompile Include="..\..\..\src\test\arith_uint256_tests.cpp" />
+    <ClCompile Include="..\..\..\src\test\base32_tests.cpp" />
+    <ClCompile Include="..\..\..\src\test\base58_tests.cpp" />
+    <ClCompile Include="..\..\..\src\test\base64_tests.cpp" />
+    <ClCompile Include="..\..\..\src\test\bech32_tests.cpp" />
+    <ClCompile Include="..\..\..\src\test\bip32_tests.cpp" />
+    <ClCompile Include="..\..\..\src\test\bloom_tests.cpp" />
+    <ClCompile Include="..\..\..\src\test\checkblock_tests.cpp" />
+    <ClCompile Include="..\..\..\src\test\Checkpoints_tests.cpp" />
+    <ClCompile Include="..\..\..\src\test\coins_tests.cpp" />
+    <ClCompile Include="..\..\..\src\test\compress_tests.cpp" />
+    <ClCompile Include="..\..\..\src\test\convertbits_tests.cpp" />
+    <ClCompile Include="..\..\..\src\test\crypto_tests.cpp" />
+    <ClCompile Include="..\..\..\src\test\dbwrapper_tests.cpp" />
+    <ClCompile Include="..\..\..\src\test\DoS_tests.cpp" />
+    <ClCompile Include="..\..\..\src\test\equihash_tests.cpp" />
+    <ClCompile Include="..\..\..\src\test\getarg_tests.cpp" />
+    <ClCompile Include="..\..\..\src\test\hash_tests.cpp" />
+    <ClCompile Include="..\..\..\src\test\key_tests.cpp" />
+    <ClCompile Include="..\..\..\src\test\main_tests.cpp" />
+    <ClCompile Include="..\..\..\src\test\miner_tests.cpp" />
+    <ClCompile Include="..\..\..\src\test\mruset_tests.cpp" />
+    <ClCompile Include="..\..\..\src\test\multisig_tests.cpp" />
+    <ClCompile Include="..\..\..\src\test\pmt_tests.cpp" />
+    <ClCompile Include="..\..\..\src\test\policyestimator_tests.cpp" />
+    <ClCompile Include="..\..\..\src\test\pow_tests.cpp" />
+    <ClCompile Include="..\..\..\src\test\prevector_tests.cpp" />
+    <ClCompile Include="..\..\..\src\test\raii_event_tests.cpp" />
+    <ClCompile Include="..\..\..\src\test\reverselock_tests.cpp" />
+    <ClCompile Include="..\..\..\src\test\rpc_tests.cpp" />
+    <ClCompile Include="..\..\..\src\test\rpc_wallet_tests.cpp" />
+    <ClCompile Include="..\..\..\src\test\sanity_tests.cpp" />
+    <ClCompile Include="..\..\..\src\test\scheduler_tests.cpp" />
+    <ClCompile Include="..\..\..\src\test\scriptnum_tests.cpp" />
+    <ClCompile Include="..\..\..\src\test\script_P2SH_tests.cpp" />
+    <ClCompile Include="..\..\..\src\test\script_tests.cpp" />
+    <ClCompile Include="..\..\..\src\test\serialize_tests.cpp" />
+    <ClCompile Include="..\..\..\src\test\sha256compress_tests.cpp" />
+    <ClCompile Include="..\..\..\src\test\sighash_tests.cpp" />
+    <ClCompile Include="..\..\..\src\test\sigopcount_tests.cpp" />
+    <ClCompile Include="..\..\..\src\test\skiplist_tests.cpp" />
+    <ClCompile Include="..\..\..\src\test\test_bitcoin.cpp" />
+    <ClCompile Include="..\..\..\src\test\timedata_tests.cpp" />
+    <ClCompile Include="..\..\..\src\test\torcontrol_tests.cpp" />
+    <ClCompile Include="..\..\..\src\test\transaction_tests.cpp" />
+    <ClCompile Include="..\..\..\src\test\uint256_tests.cpp" />
+    <ClCompile Include="..\..\..\src\test\univalue_tests.cpp" />
+    <ClCompile Include="..\..\..\src\test\util_tests.cpp" />
+    <ClCompile Include="..\..\..\src\wallet\test\wallet_tests.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\..\..\src\test\bignum.h" />
+    <ClInclude Include="..\..\..\src\test\rpc_tests.h" />
+    <ClInclude Include="..\..\..\src\test\test_bitcoin.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\..\..\src\Makefile.test.include" />
+    <None Include="..\..\..\src\test\README.md" />
+  </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>16.0</VCProjectVersion>
     <Keyword>Win32Proj</Keyword>
-    <ProjectGuid>{5c3d86d4-aa1c-478e-86c7-e7e7592d98cb}</ProjectGuid>
-    <RootNamespace>pastelgtest</RootNamespace>
+    <ProjectGuid>{B6111CBF-094A-465C-B5AB-497037D34760}</ProjectGuid>
+    <RootNamespace>bitcoin_test</RootNamespace>
     <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
-    <PlatformToolset>v142</PlatformToolset>
+    <PlatformToolset>v143</PlatformToolset>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
-    <PlatformToolset>v142</PlatformToolset>
+    <PlatformToolset>v143</PlatformToolset>
     <WholeProgramOptimization>true</WholeProgramOptimization>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
-    <PlatformToolset>v142</PlatformToolset>
+    <PlatformToolset>v143</PlatformToolset>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
-    <PlatformToolset>v142</PlatformToolset>
+    <PlatformToolset>v143</PlatformToolset>
     <WholeProgramOptimization>true</WholeProgramOptimization>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
@@ -95,70 +159,20 @@
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <Link>
+      <EntryPointSymbol>
+      </EntryPointSymbol>
+      <AdditionalDependencies>ucrtd.lib;vcruntimed.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <SubSystem>Console</SubSystem>
+      <Profile>false</Profile>
+    </Link>
+    <ClCompile />
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <Link>
+      <EntryPointSymbol>main</EntryPointSymbol>
+    </Link>
   </ItemDefinitionGroup>
-  <ItemGroup>
-    <ClCompile Include="..\..\..\src\gtest\json_test_vectors.cpp" />
-    <ClCompile Include="..\..\..\src\gtest\test_mnode\test_governance.cpp" />
-    <ClCompile Include="..\..\..\src\gtest\test_mnode\test_pastel.cpp" />
-    <ClCompile Include="..\..\..\src\gtest\test_mnode\test_pastelid.cpp" />
-    <ClCompile Include="..\..\..\src\gtest\test_mnode\test_mnode_rpc.cpp" />
-    <ClCompile Include="..\..\..\src\gtest\test_mnode\test_secure_container.cpp" />
-    <ClCompile Include="..\..\..\src\gtest\test_mnode\test_ticket_mempool.cpp" />
-    <ClCompile Include="..\..\..\src\gtest\test_mnode\test_ticket_mempool_processor.cpp" />
-    <ClCompile Include="..\..\..\src\gtest\test_mnode\test_ticket_processor.cpp" />
-    <ClCompile Include="..\..\..\src\gtest\pastel_gtest_main.cpp" />
-    <ClCompile Include="..\..\..\src\gtest\test_block.cpp" />
-    <ClCompile Include="..\..\..\src\gtest\test_checkblock.cpp" />
-    <ClCompile Include="..\..\..\src\gtest\test_checktransaction.cpp" />
-    <ClCompile Include="..\..\..\src\gtest\test_circuit.cpp" />
-    <ClCompile Include="..\..\..\src\gtest\test_deprecation.cpp" />
-    <ClCompile Include="..\..\..\src\gtest\test_equihash.cpp" />
-    <ClCompile Include="..\..\..\src\gtest\test_httprpc.cpp" />
-    <ClCompile Include="..\..\..\src\gtest\test_keys.cpp" />
-    <ClCompile Include="..\..\..\src\gtest\test_keystore.cpp" />
-    <ClCompile Include="..\..\..\src\gtest\test_legroast.cpp" />
-    <ClCompile Include="..\..\..\src\gtest\test_libzcash_utils.cpp" />
-    <ClCompile Include="..\..\..\src\gtest\test_mempool.cpp" />
-    <ClCompile Include="..\..\..\src\gtest\test_merkletree.cpp" />
-    <ClCompile Include="..\..\..\src\gtest\test_metrics.cpp" />
-    <ClCompile Include="..\..\..\src\gtest\test_miner.cpp" />
-    <ClCompile Include="..\..\..\src\gtest\test_netbase.cpp" />
-    <ClCompile Include="..\..\..\src\gtest\test_noteencryption.cpp" />
-    <ClCompile Include="..\..\..\src\gtest\test_numeric_range.cpp" />
-    <ClCompile Include="..\..\..\src\gtest\test_pedersen_hash.cpp" />
-    <ClCompile Include="..\..\..\src\gtest\test_pow.cpp" />
-    <ClCompile Include="..\..\..\src\gtest\test_proofs.cpp" />
-    <ClCompile Include="..\..\..\src\gtest\test_random.cpp" />
-    <ClCompile Include="..\..\..\src\gtest\test_rpc.cpp" />
-    <ClCompile Include="..\..\..\src\gtest\test_sapling_note.cpp" />
-    <ClCompile Include="..\..\..\src\gtest\test_str_encodings.cpp" />
-    <ClCompile Include="..\..\..\src\gtest\test_str_utils.cpp" />
-    <ClCompile Include="..\..\..\src\gtest\test_tautology.cpp" />
-    <ClCompile Include="..\..\..\src\gtest\test_transaction_builder.cpp" />
-    <ClCompile Include="..\..\..\src\gtest\test_txid.cpp" />
-    <ClCompile Include="..\..\..\src\gtest\test_upgrades.cpp" />
-    <ClCompile Include="..\..\..\src\gtest\test_utils.cpp" />
-    <ClCompile Include="..\..\..\src\gtest\test_validation.cpp" />
-    <ClCompile Include="..\..\..\src\gtest\test_zip32.cpp" />
-    <ClCompile Include="..\..\..\src\wallet\gtest\test_wallet.cpp" />
-    <ClCompile Include="..\..\..\src\wallet\gtest\test_wallet_ismine.cpp" />
-    <ClCompile Include="..\..\..\src\wallet\gtest\test_wallet_zkeys.cpp" />
-    <ClCompile Include="..\..\vs\port\uint128.cpp" />
-  </ItemGroup>
-  <ItemGroup>
-    <ClInclude Include="..\..\..\src\gtest\json_test_vectors.h" />
-    <ClInclude Include="..\..\..\src\gtest\test_mnode\test_ticket_mempool.h" />
-    <ClInclude Include="..\..\..\src\gtest\test_mnode\mock_mnode_ticket.h" />
-    <ClInclude Include="..\..\..\src\gtest\pastel_gtest_main.h" />
-    <ClInclude Include="..\..\..\src\gtest\test_mempool_entryhelper.h" />
-    <ClInclude Include="..\..\..\src\gtest\test_utils.h" />
-    <ClInclude Include="..\..\vs\port\uint128.h" />
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="..\..\..\src\Makefile.gtest.include" />
-  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>

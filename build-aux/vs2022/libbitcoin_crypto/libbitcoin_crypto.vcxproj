@@ -21,36 +21,36 @@
   <PropertyGroup Label="Globals">
     <VCProjectVersion>16.0</VCProjectVersion>
     <Keyword>Win32Proj</Keyword>
-    <ProjectGuid>{b09b2af2-36f8-4253-ba7f-ab38adc84da8}</ProjectGuid>
-    <RootNamespace>libsnark</RootNamespace>
+    <ProjectGuid>{589094cd-f9cf-455e-aa75-3191e01f5668}</ProjectGuid>
+    <RootNamespace>libbitcoincrypto</RootNamespace>
     <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
     <ConfigurationType>StaticLibrary</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
-    <PlatformToolset>v142</PlatformToolset>
-    <CharacterSet>MultiByte</CharacterSet>
+    <PlatformToolset>v143</PlatformToolset>
+    <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
     <ConfigurationType>StaticLibrary</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
-    <PlatformToolset>v142</PlatformToolset>
+    <PlatformToolset>v143</PlatformToolset>
     <WholeProgramOptimization>true</WholeProgramOptimization>
-    <CharacterSet>MultiByte</CharacterSet>
+    <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
     <ConfigurationType>StaticLibrary</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
-    <PlatformToolset>v142</PlatformToolset>
-    <CharacterSet>MultiByte</CharacterSet>
+    <PlatformToolset>v143</PlatformToolset>
+    <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
     <ConfigurationType>StaticLibrary</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
-    <PlatformToolset>v142</PlatformToolset>
+    <PlatformToolset>v143</PlatformToolset>
     <WholeProgramOptimization>true</WholeProgramOptimization>
-    <CharacterSet>MultiByte</CharacterSet>
+    <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
   <ImportGroup Label="ExtensionSettings">
@@ -79,49 +79,43 @@
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <Link>
+      <ShowProgress>LinkVerbose</ShowProgress>
+    </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <Link>
+      <ShowProgress>LinkVerbose</ShowProgress>
+    </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="..\..\..\src\snark\libsnark\algebra\curves\alt_bn128\alt_bn128_g1.cpp" />
-    <ClCompile Include="..\..\..\src\snark\libsnark\algebra\curves\alt_bn128\alt_bn128_g2.cpp" />
-    <ClCompile Include="..\..\..\src\snark\libsnark\algebra\curves\alt_bn128\alt_bn128_init.cpp" />
-    <ClCompile Include="..\..\..\src\snark\libsnark\algebra\curves\alt_bn128\alt_bn128_pairing.cpp" />
-    <ClCompile Include="..\..\..\src\snark\libsnark\algebra\curves\alt_bn128\alt_bn128_pp.cpp" />
-    <ClCompile Include="..\..\..\src\snark\libsnark\common\profiling.cpp" />
-    <ClCompile Include="..\..\..\src\snark\libsnark\common\utils.cpp" />
-    <ClCompile Include="..\..\..\src\snark\libsnark\gadgetlib1\constraint_profiling.cpp" />
-    <ClCompile Include="..\..\vs\port\unistd.cpp" />
+    <ClInclude Include="..\..\..\src\crypto\common.h" />
+    <ClInclude Include="..\..\..\src\crypto\equihash.h" />
+    <ClInclude Include="..\..\..\src\crypto\hmac_sha256.h" />
+    <ClInclude Include="..\..\..\src\crypto\hmac_sha512.h" />
+    <ClInclude Include="..\..\..\src\crypto\ripemd160.h" />
+    <ClInclude Include="..\..\..\src\crypto\sha1.h" />
+    <ClInclude Include="..\..\..\src\crypto\sha256.h" />
+    <ClInclude Include="..\..\..\src\crypto\sha512.h" />
+    <ClInclude Include="..\..\..\src\pow\tromp\equi.h" />
+    <ClInclude Include="..\..\..\src\pow\tromp\equi_miner.h" />
+    <ClInclude Include="..\..\..\src\pow\tromp\osx_barrier.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\..\..\src\snark\libsnark\algebra\curves\alt_bn128\alt_bn128_g1.hpp" />
-    <ClInclude Include="..\..\..\src\snark\libsnark\algebra\curves\alt_bn128\alt_bn128_g2.hpp" />
-    <ClInclude Include="..\..\..\src\snark\libsnark\algebra\curves\alt_bn128\alt_bn128_init.hpp" />
-    <ClInclude Include="..\..\..\src\snark\libsnark\algebra\curves\alt_bn128\alt_bn128_pairing.hpp" />
-    <ClInclude Include="..\..\..\src\snark\libsnark\algebra\curves\alt_bn128\alt_bn128_pp.hpp" />
-    <ClInclude Include="..\..\..\src\snark\libsnark\algebra\fields\bigint.hpp" />
-    <ClInclude Include="..\..\..\src\snark\libsnark\algebra\fields\field_utils.hpp" />
-    <ClInclude Include="..\..\..\src\snark\libsnark\algebra\fields\fp.hpp" />
-    <ClInclude Include="..\..\..\src\snark\libsnark\common\profiling.hpp" />
-    <ClInclude Include="..\..\..\src\snark\libsnark\common\utils.hpp" />
-    <ClInclude Include="..\..\..\src\snark\libsnark\gadgetlib1\constraint_profiling.hpp" />
-    <ClInclude Include="..\..\vs\port\ctz_clz.h" />
-    <ClInclude Include="..\..\vs\port\unistd.h" />
+    <ClCompile Include="..\..\..\src\crypto\equihash.cpp" />
+    <ClCompile Include="..\..\..\src\crypto\hmac_sha256.cpp" />
+    <ClCompile Include="..\..\..\src\crypto\hmac_sha512.cpp" />
+    <ClCompile Include="..\..\..\src\crypto\ripemd160.cpp" />
+    <ClCompile Include="..\..\..\src\crypto\sha1.cpp" />
+    <ClCompile Include="..\..\..\src\crypto\sha256.cpp" />
+    <ClCompile Include="..\..\..\src\crypto\sha512.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="..\..\..\src\snark\libsnark\algebra\fields\bigint.tcc">
-      <FileType>Document</FileType>
-    </ClCompile>
-    <ClCompile Include="..\..\..\src\snark\libsnark\algebra\fields\field_utils.tcc">
-      <FileType>Document</FileType>
-    </ClCompile>
-    <ClCompile Include="..\..\..\src\snark\libsnark\algebra\fields\fp.tcc">
-      <FileType>Document</FileType>
-    </ClCompile>
+    <None Include="..\..\..\src\crypto\equihash.tcc" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
