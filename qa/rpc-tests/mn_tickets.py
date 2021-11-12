@@ -41,9 +41,6 @@ private_keys_list = ["91sY9h4AQ62bAhNk1aJ7uJeSnQzSFtz7QmW5imrKmiACm7QJLXe",  # 0
                      ]
 
 
-# error strings
-ERR_READ_PASTELID_FILE = "Failed to read Pastel secure container file"
-
 class MasterNodeTicketsTest(MasterNodeCommon):
     number_of_master_nodes = len(private_keys_list)
     number_of_simple_nodes = 8
@@ -292,13 +289,13 @@ class MasterNodeTicketsTest(MasterNodeCommon):
             self.nodes[self.non_active_mn].tickets, "register", "mnid", self.non_active_mn_pastelid1, self.passphrase)
 
         #       a.a.3 fail if active MN, but wrong PastelID
-        assert_raises_rpc(rpc.RPC_MISC_ERROR, ERR_READ_PASTELID_FILE,
+        assert_raises_rpc(rpc.RPC_MISC_ERROR, self.ERR_READ_PASTELID_FILE,
             self.nodes[0].tickets, "register", "mnid", self.nonmn1_pastelid2, self.passphrase)
 
         # TODO: provide better error for unknown PastelID
 
         #       a.a.4 fail if active MN, but wrong passphrase
-        assert_raises_rpc(rpc.RPC_MISC_ERROR, ERR_READ_PASTELID_FILE,
+        assert_raises_rpc(rpc.RPC_MISC_ERROR, self.ERR_READ_PASTELID_FILE,
             self.nodes[0].tickets, "register", "mnid", self.mn0_pastelid1, "wrong")
         # TODO: provide better error for wrong passphrase
 
@@ -377,12 +374,12 @@ class MasterNodeTicketsTest(MasterNodeCommon):
 
         #   b.a register personal PastelID
         #       b.a.1 fail if wrong PastelID
-        assert_raises_rpc(rpc.RPC_MISC_ERROR, ERR_READ_PASTELID_FILE,
+        assert_raises_rpc(rpc.RPC_MISC_ERROR, self.ERR_READ_PASTELID_FILE,
             self.nodes[self.non_mn3].tickets, "register", "id", self.nonmn1_pastelid2, self.passphrase, self.nonmn3_address1)
         # TODO Pastel: provide better error for unknown PastelID
 
         #       b.a.2 fail if wrong passphrase
-        assert_raises_rpc(rpc.RPC_MISC_ERROR, ERR_READ_PASTELID_FILE,
+        assert_raises_rpc(rpc.RPC_MISC_ERROR, self.ERR_READ_PASTELID_FILE,
             self.nodes[self.non_mn3].tickets, "register", "id", self.nonmn3_pastelid1, "wrong", self.nonmn3_address1)
         # TODO Pastel: provide better error for wrong passphrase
 
@@ -784,14 +781,14 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         assert_equal("This is not an active masternode" in self.errorString, True)
 
         #       c.a.3 fail if active MN, but wrong PastelID
-        assert_raises_rpc(rpc.RPC_MISC_ERROR, ERR_READ_PASTELID_FILE,
+        assert_raises_rpc(rpc.RPC_MISC_ERROR, self.ERR_READ_PASTELID_FILE,
             self.nodes[self.top_mns_index0].tickets, "register", "nft",
             self.ticket, json.dumps(self.signatures_dict), self.nonmn1_pastelid2, self.passphrase,
             key1, key2, str(self.storage_fee))
         # TODO: provide better error for unknown PastelID
 
         #       c.a.4 fail if active MN, but wrong passphrase
-        assert_raises_rpc(rpc.RPC_MISC_ERROR, ERR_READ_PASTELID_FILE,
+        assert_raises_rpc(rpc.RPC_MISC_ERROR, self.ERR_READ_PASTELID_FILE,
             self.nodes[self.top_mns_index0].tickets, "register", "nft",
                 self.ticket, json.dumps(self.signatures_dict), self.top_mn_pastelid0, "wrong",
                 key1, key2, str(self.storage_fee))
@@ -1107,7 +1104,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         except JSONRPCException as e:
             self.errorString = e.error['message']
             print(self.errorString)
-        assert_equal(ERR_READ_PASTELID_FILE in self.errorString, True)
+        assert_equal(self.ERR_READ_PASTELID_FILE in self.errorString, True)
 
         # fail if wrong passphrase
         try:
@@ -1116,7 +1113,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         except JSONRPCException as e:
             self.errorString = e.error['message']
             print(self.errorString)
-        assert_equal(ERR_READ_PASTELID_FILE in self.errorString, True)
+        assert_equal(self.ERR_READ_PASTELID_FILE in self.errorString, True)
 
         # fail if there is not NFTTicket with this txid
         try:
@@ -1265,7 +1262,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         except JSONRPCException as e:
             self.errorString = e.error['message']
             print(self.errorString)
-        assert_equal(ERR_READ_PASTELID_FILE in self.errorString, True)
+        assert_equal(self.ERR_READ_PASTELID_FILE in self.errorString, True)
         # TODO Pastel: provide better error for unknown PastelID
 
         #       d.a.2 fail if wrong passphrase
@@ -1276,7 +1273,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         except JSONRPCException as e:
             self.errorString = e.error['message']
             print(self.errorString)
-        assert_equal(ERR_READ_PASTELID_FILE in self.errorString, True)
+        assert_equal(self.ERR_READ_PASTELID_FILE in self.errorString, True)
         # TODO Pastel: provide better error for wrong passphrase
 
         #       d.a.7 fail if not enough coins to pay 90% of registration price (from NFTReg ticket) (90) + tnx fee (act ticket price)

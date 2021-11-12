@@ -37,6 +37,11 @@ using ChangeUsernameTickets_t = std::vector<CChangeUsernameTicket>;
 using ChangeEthereumAddressTickets_t = std::vector<CChangeEthereumAddressTicket>;
 
 // PastelID Ticket //////////////////////////////////////////////////////////////////////////////////////////////////////
+// 
+// keys:
+//   #1: PastelID
+//   #2: for personal ids: secondKey or funding address
+//       for mastenode ids: outpoint
 class CPastelIDRegTicket : public CPastelTicket
 {
 public:

@@ -8,6 +8,8 @@
 #include "pastelid/pastel_key.h"
 #include "pastelid/ed.h"
 #include "pastelid/secure_container.h"
+#include "mnode/mnode-pastel.h"
+#include "mnode/mnode-controller.h"
 
 using namespace std;
 
@@ -188,16 +190,33 @@ bool CPastelID::Verify(const string& sText, const string& sSignature, const stri
 
             case SIGN_ALGORITHM::legroast:
             {
-                CSecureContainer cont;
-                const auto sFilePath = GetSecureContFilePath(sPastelID);
-                // read public items from the secure container file
-                if (!cont.read_public_from_file(error, sFilePath))
-                    throw runtime_error(strprintf("Cannot verify signature with LegRoast algorithm. LegRoast public key is not generated. %s", error));
+                constexpr auto LRERR_PREFIX = "Cannot verify signature with LegRoast algorithm. ";
                 string sLegRoastPubKey;
                 v_uint8 vLRPubKey;
-                // retrieve encoded LegRoast public key
-                if (!cont.get_public_data(PUBLIC_ITEM_TYPE::pubkey_legroast, sLegRoastPubKey))
-                    throw runtime_error("Cannot verify signature with LegRoast algorithm. LegRoast public key associated with the PastelID was not found");
+                CSecureContainer cont;
+                const auto sFilePath = GetSecureContFilePath(sPastelID);
+                // check if this PastelID is stored locally
+                // if yes - read LegRoast public key from the secure container (no passphrase needed)
+                // if no - lookup ID Registration ticket in the blockchain and get LegRoast pubkey from the ticket
+                if (fs::exists(sFilePath))
+                {
+                    // read public items from the secure container file
+                    if (!cont.read_public_from_file(error, sFilePath))
+                        throw runtime_error(strprintf("%sLegRoast public key was not found in the secure container associated with PastelID [%s]. %s", 
+                            LRERR_PREFIX, sPastelID, error));
+                    // retrieve encoded LegRoast public key
+                    if (!cont.get_public_data(PUBLIC_ITEM_TYPE::pubkey_legroast, sLegRoastPubKey))
+                        throw runtime_error(strprintf("%sLegRoast public key associated with the PastelID [%s] was not found", LRERR_PREFIX, sPastelID));
+                } else {
+                    CPastelIDRegTicket regTicket;
+                    if (!CPastelIDRegTicket::FindTicketInDb(sPastelID, regTicket))
+                        throw runtime_error(strprintf("%sPastelID [%s] is not stored locally and PastelID registration ticket was not found in the blockchain", 
+                            LRERR_PREFIX, sPastelID));
+                    if (regTicket.pq_key.empty())
+                        throw runtime_error(strprintf("%sPastelID [%s] registration ticket [txid=%s] was found in the blockchain, but LegRoast public key is empty", 
+                            LRERR_PREFIX, regTicket.GetTxId()));
+                    sLegRoastPubKey = move(regTicket.pq_key);
+                }
                 // decode base58-encoded LegRoast public key
                 string error;
                 if (DecodeLegRoastPubKey(sLegRoastPubKey, vLRPubKey))

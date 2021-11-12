@@ -18,6 +18,9 @@ class PastelTestFramework (BitcoinTestFramework):
     passphrase = "passphrase"
     new_passphrase = "new passphrase"
 
+    # error strings
+    ERR_READ_PASTELID_FILE = "Failed to read Pastel secure container file"
+
     # create new PastelID and associated LegRoast keys on node node_no
     # returns PastelID
     def create_pastelid(self, node_no = 0):
