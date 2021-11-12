@@ -111,7 +111,7 @@ while (( "$#" )); do
       PARAMS+=" $1"
       shift
       ;;
-    -j+([[:digit:]]) )
+    -j+([[:digit:]]))
       JOBCOUNT=${1:2}
       shift
       ;;
@@ -150,6 +150,8 @@ done
 if (( $JOBCOUNT > $NCPUS )); then
    echo "job count reduced to $NCPUS"
    JOBCOUNT=$NCPUS
+else
+   echo "job count: $JOBCOUNT"
 fi
 if (( $bHardening == 1 )); then
   PARAMS+=" --enable-hardening"
@@ -188,7 +190,7 @@ then
 fi
 
 echo PARAMS=$PARAMS; POSARGS=$POSARGS
-HOST="$HOST" BUILD="$BUILD" "$MAKE" -C ./depends/ --jobs=$JOBCOUNT $POSARGS
+HOST="$HOST" BUILD="$BUILD" JOBCOUNT="$JOBCOUNT" "$MAKE" -C ./depends/ --jobs=$JOBCOUNT $POSARGS
 ./autogen.sh
 CONFIG_SITE="$PWD/depends/$HOST/share/config.site" ./configure $PARAMS $CONFIGURE_FLAGS CXXFLAGS='-g'
 pvs-studio-analyzer trace -- "$MAKE" --jobs=$JOBCOUNT $POSARGS

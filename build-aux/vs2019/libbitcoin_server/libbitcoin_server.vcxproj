@@ -154,8 +154,8 @@
     <ClCompile Include="..\..\..\src\txdb.cpp" />
     <ClCompile Include="..\..\..\src\txmempool.cpp" />
     <ClCompile Include="..\..\..\src\validationinterface.cpp" />
-    <ClCompile Include="..\port\cyclicbarrier\cyclicbarrier.cpp" />
-    <ClCompile Include="..\port\uint128.cpp" />
+    <ClCompile Include="..\..\vs\port\cyclicbarrier\cyclicbarrier.cpp" />
+    <ClCompile Include="..\..\vs\port\uint128.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\..\src\addrman.h" />
@@ -240,8 +240,8 @@
     <ClInclude Include="..\..\..\src\undo.h" />
     <ClInclude Include="..\..\..\src\validationinterface.h" />
     <ClInclude Include="..\..\..\src\vector_types.h" />
-    <ClInclude Include="..\port\cyclicbarrier\cyclicbarrier.hpp" />
-    <ClInclude Include="..\port\uint128.h" />
+    <ClInclude Include="..\..\vs\port\cyclicbarrier\cyclicbarrier.hpp" />
+    <ClInclude Include="..\..\vs\port\uint128.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

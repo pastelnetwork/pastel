@@ -91,12 +91,12 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="..\..\..\src\pasteld.cpp" />
-    <ClCompile Include="..\port\ctz_clz.h" />
-    <ClCompile Include="..\port\unistd.cpp" />
+    <ClCompile Include="..\..\vs\port\ctz_clz.h" />
+    <ClCompile Include="..\..\vs\port\unistd.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\..\src\version.h" />
-    <ClInclude Include="..\port\unistd.h" />
+    <ClInclude Include="..\..\vs\port\unistd.h" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\libbitcoin_common\libbitcoin_common.vcxproj">

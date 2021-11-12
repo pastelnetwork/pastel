@@ -1,0 +1,142 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|Win32">
+      <Configuration>Debug</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|Win32">
+      <Configuration>Release</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Debug|x64">
+      <Configuration>Debug</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|x64">
+      <Configuration>Release</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <VCProjectVersion>16.0</VCProjectVersion>
+    <Keyword>Win32Proj</Keyword>
+    <ProjectGuid>{d8fa80ef-6c79-4fad-b10b-d260ee149eb3}</ProjectGuid>
+    <RootNamespace>libbitcoinutil</RootNamespace>
+    <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
+    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <PlatformToolset>v143</PlatformToolset>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
+    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>v143</PlatformToolset>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
+    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <PlatformToolset>v143</PlatformToolset>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
+    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>v143</PlatformToolset>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings">
+  </ImportGroup>
+  <ImportGroup Label="Shared">
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+    <Import Project="$(ProjectName).props" />
+    <Import Project="../settings/debug.props" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+    <Import Project="$(ProjectName).props" />
+    <Import Project="../settings/release.props" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+    <Import Project="$(ProjectName).props" />
+    <Import Project="../settings/debug.props" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+    <Import Project="$(ProjectName).props" />
+    <Import Project="../settings/release.props" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <ClCompile Include="..\..\..\src\ascii85.cpp" />
+    <ClCompile Include="..\..\..\src\chainparamsbase.cpp" />
+    <ClCompile Include="..\..\..\src\clientversion.cpp" />
+    <ClCompile Include="..\..\..\src\compat\glibcxx_sanity.cpp" />
+    <ClCompile Include="..\..\..\src\compat\glibc_compat.cpp" />
+    <ClCompile Include="..\..\..\src\compat\glibc_sanity.cpp" />
+    <ClCompile Include="..\..\..\src\random.cpp" />
+    <ClCompile Include="..\..\..\src\rpc\client.cpp" />
+    <ClCompile Include="..\..\..\src\rpc\protocol.cpp">
+      <ObjectFileName Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">$(IntDir)rpc_protocol.obj</ObjectFileName>
+      <ObjectFileName Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(IntDir)rpc_protocol.obj</ObjectFileName>
+      <ObjectFileName Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">$(IntDir)rpc_protocol.obj</ObjectFileName>
+      <ObjectFileName Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(IntDir)rpc_protocol.obj</ObjectFileName>
+    </ClCompile>
+    <ClCompile Include="..\..\..\src\support\cleanse.cpp" />
+    <ClCompile Include="..\..\..\src\support\lockedpool.cpp" />
+    <ClCompile Include="..\..\..\src\sync.cpp" />
+    <ClCompile Include="..\..\..\src\util.cpp" />
+    <ClCompile Include="..\..\..\src\utilmoneystr.cpp" />
+    <ClCompile Include="..\..\..\src\utilstrencodings.cpp" />
+    <ClCompile Include="..\..\..\src\utiltime.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\..\..\src\ascii85.h" />
+    <ClInclude Include="..\..\..\src\chainparamsbase.h" />
+    <ClInclude Include="..\..\..\src\chainparamsseeds.h" />
+    <ClInclude Include="..\..\..\src\clientversion.h" />
+    <ClInclude Include="..\..\..\src\compat\byteswap.h" />
+    <ClInclude Include="..\..\..\src\compat\endian.h" />
+    <ClInclude Include="..\..\..\src\compat\sanity.h" />
+    <ClInclude Include="..\..\..\src\fs.h" />
+    <ClInclude Include="..\..\..\src\numeric_range.h" />
+    <ClInclude Include="..\..\..\src\random.h" />
+    <ClInclude Include="..\..\..\src\rpc\client.h" />
+    <ClInclude Include="..\..\..\src\rpc\protocol.h" />
+    <ClInclude Include="..\..\..\src\rpc\register.h" />
+    <ClInclude Include="..\..\..\src\scope_guard.hpp" />
+    <ClInclude Include="..\..\..\src\str_utils.h" />
+    <ClInclude Include="..\..\..\src\support\allocators\secure.h" />
+    <ClInclude Include="..\..\..\src\support\allocators\zeroafterfree.h" />
+    <ClInclude Include="..\..\..\src\support\cleanse.h" />
+    <ClInclude Include="..\..\..\src\support\events.h" />
+    <ClInclude Include="..\..\..\src\support\lockedpool.h" />
+    <ClInclude Include="..\..\..\src\sync.h" />
+    <ClInclude Include="..\..\..\src\util.h" />
+    <ClInclude Include="..\..\..\src\utilmoneystr.h" />
+    <ClInclude Include="..\..\..\src\utilstrencodings.h" />
+    <ClInclude Include="..\..\..\src\utiltime.h" />
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets">
+  </ImportGroup>
+</Project>

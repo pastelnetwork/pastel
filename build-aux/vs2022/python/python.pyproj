@@ -1,0 +1,54 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003" DefaultTargets="Build">
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <SchemaVersion>2.0</SchemaVersion>
+    <ProjectGuid>{dd5b3e60-8f2c-456f-bc2c-39a64d13788f}</ProjectGuid>
+    <ProjectHome>..\</ProjectHome>
+    <StartupFile />
+    <SearchPath />
+    <WorkingDirectory>.</WorkingDirectory>
+    <OutputPath>.</OutputPath>
+    <ProjectTypeGuids>{888888a0-9f3d-457c-b088-3a5042f75d52}</ProjectTypeGuids>
+    <LaunchProvider>Standard Python launcher</LaunchProvider>
+    <InterpreterId>Global|PythonCore|3.9</InterpreterId>
+    <TestFramework>Pytest</TestFramework>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)' == 'Debug'" />
+  <PropertyGroup Condition="'$(Configuration)' == 'Release'" />
+  <PropertyGroup>
+    <VisualStudioVersion Condition=" '$(VisualStudioVersion)' == '' ">10.0</VisualStudioVersion>
+  </PropertyGroup>
+  <ItemGroup>
+    <InterpreterReference Include="Global|PythonCore|3.9" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="..\..\qa\rpc-tests\mn_bugs.py" />
+    <Compile Include="..\..\qa\rpc-tests\mn_common.py" />
+    <Compile Include="..\..\qa\rpc-tests\mn_expiration.py" />
+    <Compile Include="..\..\qa\rpc-tests\mn_governance.py" />
+    <Compile Include="..\..\qa\rpc-tests\mn_main.py" />
+    <Compile Include="..\..\qa\rpc-tests\mn_messaging.py" />
+    <Compile Include="..\..\qa\rpc-tests\mn_payment.py" />
+    <Compile Include="..\..\qa\rpc-tests\mn_tickets.py" />
+    <Compile Include="..\..\qa\rpc-tests\mn_tickets_validation.py" />
+    <Compile Include="..\..\qa\rpc-tests\mn_ticket_username_change.py" />
+    <Compile Include="..\..\qa\rpc-tests\pastel_test_framework.py" />
+    <Compile Include="..\..\qa\rpc-tests\secure_container.py" />
+    <Compile Include="..\..\qa\rpc-tests\test_framework\authproxy.py" />
+    <Compile Include="..\..\qa\rpc-tests\test_framework\bignum.py" />
+    <Compile Include="..\..\qa\rpc-tests\test_framework\blockstore.py" />
+    <Compile Include="..\..\qa\rpc-tests\test_framework\blocktools.py" />
+    <Compile Include="..\..\qa\rpc-tests\test_framework\comptool.py" />
+    <Compile Include="..\..\qa\rpc-tests\test_framework\equihash.py" />
+    <Compile Include="..\..\qa\rpc-tests\test_framework\mininode.py" />
+    <Compile Include="..\..\qa\rpc-tests\test_framework\netutil.py" />
+    <Compile Include="..\..\qa\rpc-tests\test_framework\rpc_consts.py" />
+    <Compile Include="..\..\qa\rpc-tests\test_framework\script.py" />
+    <Compile Include="..\..\qa\rpc-tests\test_framework\socks5.py" />
+    <Compile Include="..\..\qa\rpc-tests\test_framework\test_framework.py" />
+    <Compile Include="..\..\qa\rpc-tests\test_framework\util.py" />
+    <Compile Include="..\..\qa\rpc-tests\test_framework\__init__.py" />
+  </ItemGroup>
+  <Import Project="$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)\Python Tools\Microsoft.PythonTools.targets" />
+</Project>

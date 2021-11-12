@@ -47,6 +47,7 @@ src/config/stamp-h1
 share/setup.nsi
 strace_out
 fullhtml/
+bin/
 
 cache/
 venv-mnf/

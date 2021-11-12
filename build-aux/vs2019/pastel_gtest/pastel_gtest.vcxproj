@@ -145,7 +145,7 @@
     <ClCompile Include="..\..\..\src\wallet\gtest\test_wallet.cpp" />
     <ClCompile Include="..\..\..\src\wallet\gtest\test_wallet_ismine.cpp" />
     <ClCompile Include="..\..\..\src\wallet\gtest\test_wallet_zkeys.cpp" />
-    <ClCompile Include="..\port\uint128.cpp" />
+    <ClCompile Include="..\..\vs\port\uint128.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\..\src\gtest\json_test_vectors.h" />
@@ -154,7 +154,7 @@
     <ClInclude Include="..\..\..\src\gtest\pastel_gtest_main.h" />
     <ClInclude Include="..\..\..\src\gtest\test_mempool_entryhelper.h" />
     <ClInclude Include="..\..\..\src\gtest\test_utils.h" />
-    <ClInclude Include="..\port\uint128.h" />
+    <ClInclude Include="..\..\vs\port\uint128.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="..\..\..\src\Makefile.gtest.include" />

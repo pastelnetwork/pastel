@@ -1,0 +1,165 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|Win32">
+      <Configuration>Debug</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|Win32">
+      <Configuration>Release</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Debug|x64">
+      <Configuration>Debug</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|x64">
+      <Configuration>Release</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <VCProjectVersion>16.0</VCProjectVersion>
+    <Keyword>Win32Proj</Keyword>
+    <ProjectGuid>{5c3d86d4-aa1c-478e-86c7-e7e7592d98cb}</ProjectGuid>
+    <RootNamespace>pastelgtest</RootNamespace>
+    <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <PlatformToolset>v143</PlatformToolset>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>v143</PlatformToolset>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <PlatformToolset>v143</PlatformToolset>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>v143</PlatformToolset>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings">
+  </ImportGroup>
+  <ImportGroup Label="Shared">
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+    <Import Project="$(ProjectName).props" />
+    <Import Project="../settings/debug.props" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+    <Import Project="$(ProjectName).props" />
+    <Import Project="../settings/release.props" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+    <Import Project="$(ProjectName).props" />
+    <Import Project="../settings/debug.props" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+    <Import Project="$(ProjectName).props" />
+    <Import Project="../settings/release.props" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <LinkIncremental>true</LinkIncremental>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <LinkIncremental>false</LinkIncremental>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <LinkIncremental>true</LinkIncremental>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <LinkIncremental>false</LinkIncremental>
+  </PropertyGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <ClCompile Include="..\..\..\src\gtest\json_test_vectors.cpp" />
+    <ClCompile Include="..\..\..\src\gtest\test_mnode\test_governance.cpp" />
+    <ClCompile Include="..\..\..\src\gtest\test_mnode\test_pastel.cpp" />
+    <ClCompile Include="..\..\..\src\gtest\test_mnode\test_pastelid.cpp" />
+    <ClCompile Include="..\..\..\src\gtest\test_mnode\test_mnode_rpc.cpp" />
+    <ClCompile Include="..\..\..\src\gtest\test_mnode\test_secure_container.cpp" />
+    <ClCompile Include="..\..\..\src\gtest\test_mnode\test_ticket_mempool.cpp" />
+    <ClCompile Include="..\..\..\src\gtest\test_mnode\test_ticket_mempool_processor.cpp" />
+    <ClCompile Include="..\..\..\src\gtest\test_mnode\test_ticket_processor.cpp" />
+    <ClCompile Include="..\..\..\src\gtest\pastel_gtest_main.cpp" />
+    <ClCompile Include="..\..\..\src\gtest\test_block.cpp" />
+    <ClCompile Include="..\..\..\src\gtest\test_checkblock.cpp" />
+    <ClCompile Include="..\..\..\src\gtest\test_checktransaction.cpp" />
+    <ClCompile Include="..\..\..\src\gtest\test_circuit.cpp" />
+    <ClCompile Include="..\..\..\src\gtest\test_deprecation.cpp" />
+    <ClCompile Include="..\..\..\src\gtest\test_equihash.cpp" />
+    <ClCompile Include="..\..\..\src\gtest\test_httprpc.cpp" />
+    <ClCompile Include="..\..\..\src\gtest\test_keys.cpp" />
+    <ClCompile Include="..\..\..\src\gtest\test_keystore.cpp" />
+    <ClCompile Include="..\..\..\src\gtest\test_legroast.cpp" />
+    <ClCompile Include="..\..\..\src\gtest\test_libzcash_utils.cpp" />
+    <ClCompile Include="..\..\..\src\gtest\test_mempool.cpp" />
+    <ClCompile Include="..\..\..\src\gtest\test_merkletree.cpp" />
+    <ClCompile Include="..\..\..\src\gtest\test_metrics.cpp" />
+    <ClCompile Include="..\..\..\src\gtest\test_miner.cpp" />
+    <ClCompile Include="..\..\..\src\gtest\test_netbase.cpp" />
+    <ClCompile Include="..\..\..\src\gtest\test_noteencryption.cpp" />
+    <ClCompile Include="..\..\..\src\gtest\test_numeric_range.cpp" />
+    <ClCompile Include="..\..\..\src\gtest\test_pedersen_hash.cpp" />
+    <ClCompile Include="..\..\..\src\gtest\test_pow.cpp" />
+    <ClCompile Include="..\..\..\src\gtest\test_proofs.cpp" />
+    <ClCompile Include="..\..\..\src\gtest\test_random.cpp" />
+    <ClCompile Include="..\..\..\src\gtest\test_rpc.cpp" />
+    <ClCompile Include="..\..\..\src\gtest\test_sapling_note.cpp" />
+    <ClCompile Include="..\..\..\src\gtest\test_str_encodings.cpp" />
+    <ClCompile Include="..\..\..\src\gtest\test_str_utils.cpp" />
+    <ClCompile Include="..\..\..\src\gtest\test_tautology.cpp" />
+    <ClCompile Include="..\..\..\src\gtest\test_transaction_builder.cpp" />
+    <ClCompile Include="..\..\..\src\gtest\test_txid.cpp" />
+    <ClCompile Include="..\..\..\src\gtest\test_upgrades.cpp" />
+    <ClCompile Include="..\..\..\src\gtest\test_utils.cpp" />
+    <ClCompile Include="..\..\..\src\gtest\test_validation.cpp" />
+    <ClCompile Include="..\..\..\src\gtest\test_zip32.cpp" />
+    <ClCompile Include="..\..\..\src\wallet\gtest\test_wallet.cpp" />
+    <ClCompile Include="..\..\..\src\wallet\gtest\test_wallet_ismine.cpp" />
+    <ClCompile Include="..\..\..\src\wallet\gtest\test_wallet_zkeys.cpp" />
+    <ClCompile Include="..\..\vs\port\uint128.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\..\..\src\gtest\json_test_vectors.h" />
+    <ClInclude Include="..\..\..\src\gtest\test_mnode\test_ticket_mempool.h" />
+    <ClInclude Include="..\..\..\src\gtest\test_mnode\mock_mnode_ticket.h" />
+    <ClInclude Include="..\..\..\src\gtest\pastel_gtest_main.h" />
+    <ClInclude Include="..\..\..\src\gtest\test_mempool_entryhelper.h" />
+    <ClInclude Include="..\..\..\src\gtest\test_utils.h" />
+    <ClInclude Include="..\..\vs\port\uint128.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\..\..\src\Makefile.gtest.include" />
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets">
+  </ImportGroup>
+</Project>

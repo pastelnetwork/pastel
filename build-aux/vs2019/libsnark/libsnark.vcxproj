@@ -95,7 +95,7 @@
     <ClCompile Include="..\..\..\src\snark\libsnark\common\profiling.cpp" />
     <ClCompile Include="..\..\..\src\snark\libsnark\common\utils.cpp" />
     <ClCompile Include="..\..\..\src\snark\libsnark\gadgetlib1\constraint_profiling.cpp" />
-    <ClCompile Include="..\port\unistd.cpp" />
+    <ClCompile Include="..\..\vs\port\unistd.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\..\src\snark\libsnark\algebra\curves\alt_bn128\alt_bn128_g1.hpp" />
@@ -109,8 +109,8 @@
     <ClInclude Include="..\..\..\src\snark\libsnark\common\profiling.hpp" />
     <ClInclude Include="..\..\..\src\snark\libsnark\common\utils.hpp" />
     <ClInclude Include="..\..\..\src\snark\libsnark\gadgetlib1\constraint_profiling.hpp" />
-    <ClInclude Include="..\port\ctz_clz.h" />
-    <ClInclude Include="..\port\unistd.h" />
+    <ClInclude Include="..\..\vs\port\ctz_clz.h" />
+    <ClInclude Include="..\..\vs\port\unistd.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\..\src\snark\libsnark\algebra\fields\bigint.tcc">
