@@ -8,6 +8,7 @@ PRIORITY_DOWNLOAD_PATH ?= https://download.z.cash/depends-sources
 
 BUILD ?= $(shell ./config.guess)
 HOST ?= $(BUILD)
+JOBCOUNT ?= $(shell nproc)
 PATCHES_PATH = $(BASEDIR)/patches
 BASEDIR = $(CURDIR)
 HASH_LENGTH:=11
@@ -107,7 +108,7 @@ $(host_prefix)/.stamp_$(final_build_id): $(native_packages) $(packages)
 	$(AT)fi
 	$(AT)touch $@
 
-$(host_prefix)/share/config.site : config.site.in $(host_prefix)/.stamp_$(final_build_id)
+$(host_prefix)/share/config.site : config.site.in $(host_prefix)/.stamp_$(final_build_id) | check-packages
 	$(AT)@mkdir -p $(@D)
 	$(AT)sed -e 's|@HOST@|$(host)|' \
             -e 's|@CC@|$(toolchain_path)$(host_CC)|' \
@@ -169,6 +170,8 @@ endef
 show-build-info:
 	@echo "Build info: os=[$(full_build_os)/$(build_os)], target os=[$(canonical_host)/$(full_host_os)/$(host_os)]"
 	@echo "Target dir: [$(host_prefix)]"
+	@echo "MAKEFLAGS: [$(MAKEFLAGS)]"
+	@echo "Job count: [$(JOBCOUNT)]"
 
 check-sources: | show-build-info
 	@echo "ALL PACKAGES: [$(all_packages)]"
@@ -176,8 +179,6 @@ check-sources: | show-build-info
 
 check-packages: | check-sources
 	@$(foreach package,$(all_packages),$(call check_or_remove_cached,$(package));)
-
-$(host_prefix)/share/config.site: check-packages
 
 install: check-packages $(host_prefix)/share/config.site
 
