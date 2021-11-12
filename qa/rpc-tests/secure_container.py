@@ -35,7 +35,7 @@ class SecureContainerTest(PastelTestFramework):
 
     def setup_network(self):
         self.nodes = start_nodes(self.num_nodes, self.options.tmpdir,
-                                 extra_args=[[ '-debug' ]] * self.num_nodes)
+                                 extra_args=[[]] * self.num_nodes)
         self.is_network_split = False
         connect_nodes_bi(self.nodes,0,1)
 
@@ -123,7 +123,8 @@ class SecureContainerTest(PastelTestFramework):
         # register pastelid3
         txid = self.nodes[1].tickets("register", "id", self.pastelid3, self.passphrase, taddr1)
         assert_true(txid, "pastelid3 registration failed")
-        self.generate_and_sync_inc(2)
+        self.generate_and_sync_inc(1)
+
         # now we should be able to retrieve lr pubkey for pastelid3 on node0
         # but first make sure pastelid3 is not stored locally on node0
         assert_true(self.pastelid3 not in id_list0.values(), f"PastelID3 {self.pastelid3} should not be stored on node0")

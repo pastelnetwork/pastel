@@ -129,6 +129,7 @@ class BitcoinTestFramework(object):
     # generate nblocks on node0, sync all nodes
     def generate_and_sync_inc(self, nblocks = 1, nodeNo = 0):
         current_height = self.nodes[nodeNo].getblockcount()
+        self.sync_all()
         self.nodes[nodeNo].generate(nblocks)
         self.sync_all()
         assert_equal(current_height + nblocks, self.nodes[nodeNo].getblockcount())
