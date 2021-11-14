@@ -1,4 +1,4 @@
-// Copyright (c) 2016-2018 The Zcash developers
+// Copyright (c) 2016-2021 The Pastel developers
 // Original code from: https://gist.github.com/laanwj/0e689cfa37b52bcbbb44
 
 /*

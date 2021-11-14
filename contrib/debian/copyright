@@ -7,7 +7,7 @@ Files: *
 Copyright: 2018, The Pastel developers
  2009-2017, Bitcoin Core developers
 License: Expat
-Comment: The Bitcoin Core developers encompasses the current developers listed on bitcoin.org,
+Comment: The Pastel Core developers encompasses the current developers listed on bitcoin.org,
  as well as the numerous contributors to the project.
  
 
@@ -16,7 +16,7 @@ Copyright: 2013-2016 Frank Denis
 License: ISC
 
 Files: depends/sources/libsnark-*.tar.gz
-Copyright: 2012-2016 SCIPR Lab and contributors; 2016 The Zcash developers
+Copyright: 2012-2016 SCIPR Lab and contributors; 2021 The Pastel developers
 License: Expat
 
 Files: depends/sources/gmp-*.tar.bz2

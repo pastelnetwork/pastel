@@ -1,5 +1,5 @@
 #pragma once
-// Copyright (c) 2012-2014 The Bitcoin Core developers
+// Copyright (c) 2012-2014 The Pastel Core developers
 // Copyright (c) 2018-2021 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.

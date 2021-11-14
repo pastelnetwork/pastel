@@ -1,5 +1,5 @@
-// Copyright (c) 2014-2016 The Bitcoin Core developers
-// Copyright (c) 2016-2018 The Zcash developers
+// Copyright (c) 2014-2016 The Pastel Core developers
+// Copyright (c) 2016-2021 The Pastel developers
 // Copyright (c) 2018-2021 Pastel Core Developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
