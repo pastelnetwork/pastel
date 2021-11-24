@@ -13,7 +13,7 @@ fi
 INTERMEDIARY_SAPLING_SPROUT_GROTH16_NAME="AABSvmY9SQWwyYXGK2DB8f4xa"
 INTERMEDIARY_SAPLING_OUTPUT_NAME="AABuQfzAMAiwlzzQyeEP4Sw0a"
 INTERMEDIARY_SAPLING_SPEND_NAME="AACRCfGwkDcwdbhDXzl0XFeka"
-NEW_SPROUT_URL="https://www.dropbox.com/sh/gsfmcb4b0wd38vf"
+NEW_SPROUT_URL="https://download.pastel.network/#pastel-params/"
 POSTFIX="dl=0"
 
 

@@ -82,7 +82,7 @@ _pastel_cli() {
                 COMPREPLY=( $( compgen -W "add remove" -- "$cur" ) )
                 return 0
                 ;;
-            fundrawtransaction|getblock|getblockheader|getmempoolancestors|getmempooldescendants|getrawtransaction|gettransaction|listaccounts|listreceivedbyaccount|listreceivedbyaddress|sendrawtransaction)
+            fundrawtransaction|getblock|getblockheader|getmempoolancestors|getmempooldescendants|getrawtransaction|gettransaction|listaccounts|listreceivedbyaccount|listreceivedbyaddress|sendrawtransaction|listaddressamounts|masternode|masternodelist|mnsync|pastelid|storagefee|tickets)
                 COMPREPLY=( $( compgen -W "true false" -- "$cur" ) )
                 return 0
                 ;;
@@ -106,7 +106,7 @@ _pastel_cli() {
             COMPREPLY=( $( compgen -W "true false" -- "$cur" ) )
             return 0
             ;;
-        getaccountaddress|getaddressesbyaccount|getbalance|getnewaddress|getreceivedbyaccount|listtransactions|move|sendfrom|sendmany)
+        getaccountaddress|getaddressesbyaccount|getbalance|getnewaddress|getreceivedbyaccount|listtransactions|move|sendfrom|sendmany|z_sendmany|z_sendmanywithchangetosender)
             _pastel_accounts
             return 0
             ;;
