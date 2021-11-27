@@ -584,8 +584,8 @@ bool common_validation(const T& ticket, bool bPreReg, const std::string& strTxnI
     catch ([[maybe_unused]] std::runtime_error& ex)
     {
       throw std::runtime_error(strprintf(
-        "The %s ticket [txid=%s] referred by this %s ticket is not in the blockchain. [txid=%s]",
-        prevTicket, strTxnId, thisTicket, ticket.GetTxId()));
+        "The %s ticket [txid=%s] referred by this %s ticket is not in the blockchain. [txid=%s] (ERROR: %s)",
+        prevTicket, strTxnId, thisTicket, ticket.GetTxId(), ex.what()));
     }
 
     if (!pastelTicket || f(pastelTicket->ID()))

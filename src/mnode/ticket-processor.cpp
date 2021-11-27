@@ -138,7 +138,7 @@ void CPastelTicketProcessor::UpdateDB_MVK(const CPastelTicket& ticket, const str
     if (find(mainKeys.cbegin(), mainKeys.cend(), ticket.KeyOne()) == mainKeys.cend())
     {
         mainKeys.emplace_back(ticket.KeyOne());
-        dbs.at(ticket.ID())->Write(realMVKey, mainKeys);
+        dbs.at(ticket.ID())->Write(realMVKey, mainKeys, true);
     }
 }
 
@@ -148,11 +148,11 @@ bool CPastelTicketProcessor::UpdateDB(CPastelTicket &ticket, string& txid, const
         ticket.SetTxId(move(txid));
     if (nBlockHeight != 0)
         ticket.SetBlock(nBlockHeight);
-    dbs.at(ticket.ID())->Write(ticket.KeyOne(), ticket);
+    dbs.at(ticket.ID())->Write(ticket.KeyOne(), ticket, true);
     if (ticket.HasKeyTwo())
     {
         auto realKeyTwo = RealKeyTwo(ticket.KeyTwo());
-        dbs.at(ticket.ID())->Write(realKeyTwo, ticket.KeyOne());
+        dbs.at(ticket.ID())->Write(realKeyTwo, ticket.KeyOne(), true);
     }
 
     if (ticket.HasMVKeyOne())
