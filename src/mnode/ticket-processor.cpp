@@ -9,7 +9,7 @@
 #include "key_io.h"
 #include "init.h"
 #include "str_utils.h"
-#include "mnode/mnode-pastel.h"
+#include <mnode/tickets/tickets-all.h>
 #include "mnode/mnode-controller.h"
 #include "mnode/ticket-processor.h"
 #include "mnode/ticket-txmempool.h"
@@ -99,6 +99,10 @@ unique_ptr<CPastelTicket> CPastelTicketProcessor::CreateTicket(const TicketID ti
 
     case TicketID::EthereumAddress:
         ticket = make_unique<CChangeEthereumAddressTicket>();
+        break;
+
+    case TicketID::ActionReg:
+        ticket = make_unique<CActionRegTicket>();
         break;
 
     default: // to suppress compiler warning for not handling TicketID::COUNT
@@ -267,16 +271,13 @@ bool CPastelTicketProcessor::ValidateIfTicketTransaction(const int nHeight, cons
                   throw runtime_error("Invalid NFT Reg ticket");
 
                 tradePrice = trade_ticket->price * COIN;
-                if (NFTRegTicket->nRoyalty > 0)
+                if (NFTRegTicket->getRoyalty() > 0)
                 {
                     hasRoyaltyFee = true;
-                    royaltyFee = static_cast<CAmount>(tradePrice * NFTRegTicket->nRoyalty);
+                    royaltyFee = static_cast<CAmount>(tradePrice * NFTRegTicket->getRoyalty());
                 }
-                if (!NFTRegTicket->strGreenAddress.empty())
-                {
-                    hasGreenFee = true;
+                if ((hasGreenFee = NFTRegTicket->hasGreenFee()))
                     greenFee = tradePrice * CNFTRegTicket::GreenPercent(nHeight) / 100;
-                }
                 tradePrice -= (royaltyFee + greenFee);
             }
         }
@@ -308,7 +309,8 @@ bool CPastelTicketProcessor::ValidateIfTicketTransaction(const int nHeight, cons
                  ticket_id == TicketID::Buy ||
                  ticket_id == TicketID::Royalty ||
                  ticket_id == TicketID::Username ||
-                 ticket_id == TicketID::EthereumAddress ) &&
+                 ticket_id == TicketID::EthereumAddress ||
+                 ticket_id == TicketID::ActionReg) &&
                 i == num - 1) // in these tickets last output is change
                 break;
             const auto& txOut = tx.vout[i];
@@ -597,6 +599,7 @@ template NFTTradeTickets_t CPastelTicketProcessor::FindTicketsByMVKey<CNFTTradeT
 template NFTRoyaltyTickets_t CPastelTicketProcessor::FindTicketsByMVKey<CNFTRoyaltyTicket>(const string&);
 template ChangeUsernameTickets_t CPastelTicketProcessor::FindTicketsByMVKey<CChangeUsernameTicket>(const string&);
 template ChangeEthereumAddressTickets_t CPastelTicketProcessor::FindTicketsByMVKey<CChangeEthereumAddressTicket>(const string&);
+template ActionRegTickets_t CPastelTicketProcessor::FindTicketsByMVKey<CActionRegTicket>(const string&);
 
 v_strings CPastelTicketProcessor::GetAllKeys(const TicketID id) const
 {
@@ -657,6 +660,7 @@ template string CPastelTicketProcessor::ListTickets<CNFTTradeTicket>() const;
 template string CPastelTicketProcessor::ListTickets<CNFTRoyaltyTicket>() const;
 template string CPastelTicketProcessor::ListTickets<CChangeUsernameTicket>() const;
 template string CPastelTicketProcessor::ListTickets<CChangeEthereumAddressTicket>() const;
+template string CPastelTicketProcessor::ListTickets<CActionRegTicket>() const;
 
 template <class _TicketType, typename F>
 string CPastelTicketProcessor::filterTickets(F f, const bool bCheckConfirmation) const
@@ -718,7 +722,7 @@ string CPastelTicketProcessor::ListFilterNFTTickets(const short filter) const
                 {
                     //find Trade tickets listing that Act ticket txid as NFT ticket
                     const auto vTradeTickets = CNFTTradeTicket::FindAllTicketByNFTTxnID(actTicket.GetTxId());
-                    if (vTradeTickets.size() >= t.totalCopies)
+                    if (vTradeTickets.size() >= t.getTotalCopies())
                         return false; //don't skip sold
                 }
             }
@@ -746,7 +750,7 @@ string CPastelTicketProcessor::ListFilterActTickets(const short filter) const
             auto NFTRegTicket = dynamic_cast<CNFTRegTicket*>(ticket.get());
             if (!NFTRegTicket)
                 return true;
-            if (vTradeTickets.size() < NFTRegTicket->totalCopies)
+            if (vTradeTickets.size() < NFTRegTicket->getTotalCopies())
             {
                 if (filter == 1)
                     return false; //don't skip available
@@ -1081,11 +1085,11 @@ void CPastelTicketProcessor::SearchForNFTs(const search_thumbids_t& p, function<
                 if (!pNftTicket)
                     break;
                 // filter by number of copies
-                if (p.copyCount.has_value() && !p.copyCount.value().contains(pNftTicket->totalCopies))
+                if (p.copyCount.has_value() && !p.copyCount.value().contains(pNftTicket->getTotalCopies()))
                     break;
                 // NFT ticket data are base64 encoded
                 bool bInvalid = false;
-                sData = DecodeBase64(pNftTicket->sNFTTicket, &bInvalid);
+                sData = DecodeBase64(pNftTicket->ToStr(), &bInvalid);
                 if (bInvalid)
                 {
                     LogPrintf("ERROR: failed to decode base64 encoded NFT ticket (%s)", actTicket.regTicketTxnId);
@@ -1520,7 +1524,7 @@ optional<reg_trade_txid_t> CPastelTicketProcessor::ValidateOwnership(const strin
             return nullopt;
 
         // Check if creator and _pastelID are equal
-        if((NFTTicket->pastelIDs[0]== _pastelID) && CNFTActivateTicket::CheckTicketExistByNFTTicketID(NFTTicket->GetTxId()))
+        if ((NFTTicket->IsCreatorPastelId(_pastelID)) && CNFTActivateTicket::CheckTicketExistByNFTTicketID(NFTTicket->GetTxId()))
             return make_tuple(_txid, "");
 
     }
@@ -1565,8 +1569,8 @@ string CPastelTicketProcessor::CreateFakeTransaction(CPastelTicket& ticket, CAmo
     } else if (ticket.ID() == TicketID::NFT) {
         if (strVerb == "1") {
             auto t = (CNFTRegTicket*)&ticket;
-            t->ticketSignatures[CNFTRegTicket::mn2sign].clear();
-            t->ticketSignatures[CNFTRegTicket::mn3sign].clear();
+            t->clear_signature(CTicketSigning::SIGN_MN2);
+            t->clear_signature(CTicketSigning::SIGN_MN3);
         }
     } else if (ticket.ID() == TicketID::Activate) {
         if (strVerb == "1") {

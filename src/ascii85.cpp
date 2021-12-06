@@ -69,7 +69,7 @@ static inline bool ascii85_char_ok (uint8_t c)
 }
 #endif
 
-static inline bool ascii85_char_ng (uint8_t c)
+static inline bool ascii85_char_ng (uint8_t c) noexcept
 {
     return ((c < 33u) || (c > 117u));
 }

@@ -32,5 +32,5 @@ public:
     }
 };
 
-CMutableTransaction CreateTicketTransaction(const TicketID ticket_id, const function<void(CPastelTicket& tkt)>& fnSetTicketData);
+CMutableTransaction CreateTicketTransaction(const TicketID ticket_id, const std::function<void(CPastelTicket& tkt)>& fnSetTicketData);
 CMutableTransaction CreateTestTransaction();

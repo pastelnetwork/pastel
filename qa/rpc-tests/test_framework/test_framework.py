@@ -118,7 +118,7 @@ class BitcoinTestFramework(object):
         wait_pastelds()
         self.setup_network(False)
 
-    # generate blocks up to new_height on node0, sync all nodes
+    # generate blocks up to new_height on node #nodeNo, sync all nodes
     def generate_and_sync(self, new_height, nodeNo = 0):
         current_height = self.nodes[nodeNo].getblockcount()
         assert(new_height > current_height)
@@ -126,7 +126,7 @@ class BitcoinTestFramework(object):
         self.sync_all()
         assert_equal(new_height, self.nodes[nodeNo].getblockcount())
 
-    # generate nblocks on node0, sync all nodes
+    # generate nblocks on node #nodeNo, sync all nodes
     def generate_and_sync_inc(self, nblocks = 1, nodeNo = 0):
         current_height = self.nodes[nodeNo].getblockcount()
         self.sync_all()

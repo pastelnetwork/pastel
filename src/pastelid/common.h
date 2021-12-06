@@ -1,13 +1,20 @@
 #pragma once
+// Copyright (c) 2018-2021 The Pastel Core developers
+// Distributed under the MIT/X11 software license, see the accompanying
+// file COPYING or https://www.opensource.org/licenses/mit-license.php.
 
 #include <iomanip>
+#include <sstream>
+#include <math.h>
 
 #include <openssl/ec.h>
 #include <openssl/evp.h>
 #include <openssl/pem.h>
 #include <openssl/err.h>
 #include <openssl/crypto.h>
-#include "vector_types.h"
+
+#include <vector_types.h>
+
 
 namespace ed_crypto {
 

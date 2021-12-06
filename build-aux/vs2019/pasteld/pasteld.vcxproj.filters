@@ -39,5 +39,6 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="..\..\..\src\Makefile.am" />
+    <None Include="..\..\..\configure.ac" />
   </ItemGroup>
 </Project>

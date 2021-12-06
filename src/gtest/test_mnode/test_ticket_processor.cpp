@@ -8,6 +8,7 @@ using namespace std;
 using namespace testing;
 using json = nlohmann::json;
 
+#ifdef ENABLE_MINING
 class TestTicketProcessor : 
     public CPastelTicketProcessor,
     public Test
@@ -51,8 +52,8 @@ TEST_F(TestTicketProcessor, invalid_ticket_type)
     EXPECT_FALSE(preParseTicket(tx, data_stream, ticket_id, error));
     EXPECT_TRUE(!error.empty());
 }
-
 #endif // ENABLE_WALLET
+#endif // ENABLE_MINING
 
 // bool isValuePassFuzzyFilter(const json& jProp, const string& sPropFilterValue) noexcept;
 class PTest_fuzzy_filter : public TestWithParam<

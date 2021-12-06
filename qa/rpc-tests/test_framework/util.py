@@ -126,18 +126,37 @@ def find_pasteld_binary():
         return str(filepath)
     return fname
 
+def find_pastelcli_binary():
+    """
+    Find pastel-cli binary in:
+        - PASTELDCLI environment variable
+        - current working directory
+        - current script directory
+        - ../../../src
+    """
+    isWindows = os.name == "nt"
+    fname = "pastel-cli.exe" if isWindows else "pastel-cli"
+    filepath = os.getenv("PASTELDCLI")
+    if filepath:
+        return filepath
+    filepath = Path(os.getcwd()) / fname
+    if filepath.exists():
+        return str(filepath)
+    scriptPath = Path(__file__).parent.absolute()
+    filepath = scriptPath / fname
+    if filepath.exists():
+        return str(filepath)
+    filepath = scriptPath.parents[2] / "src" / fname
+    if filepath.exists():
+        return str(filepath)
+    return fname
+
 
 def initialize_chain(test_dir):
     """
     Create (or copy from cache) a 200-block-long chain and
     4 wallets.
-    pasteld and pastel-cli must be in search path.
     """
-    isWindows = os.name == "nt"    
-    if isWindows:
-        PastelClient = "pastel-cli.exe"
-    else:
-        PastelClient = "pastel-cli"
     if not Path("cache", "node0").exists():
         print("Rebuilding cache...")
         if not isWindows:
@@ -155,7 +174,7 @@ def initialize_chain(test_dir):
             pasteld_processes[i] = subprocess.Popen(args)
             if os.getenv("PYTHON_DEBUG", ""):
                 print("initialize_chain: pasteld started, calling pastel-cli -rpcwait getblockcount")
-            subprocess.check_call([ os.getenv("PASTELDCLI", PastelClient), "-datadir="+datadir,
+            subprocess.check_call([ find_pastelcli_binary(), "-datadir="+datadir,
                                     "-rpcwait", "getblockcount"], stdout=devnull)
             if os.getenv("PYTHON_DEBUG", ""):
                 print("initialize_chain: pastel-cli -rpcwait getblockcount completed")
@@ -248,7 +267,7 @@ def start_node(i, dirname, extra_args=None, rpchost=None, timewait=None, binary=
     devnull = open("/dev/null", "w+")
     if os.getenv("PYTHON_DEBUG", ""):
         print("start_node: pasteld started, calling pastel-cli -rpcwait getblockcount")
-    subprocess.check_call([ os.getenv("PASTELCLI", "pastel-cli"), "-datadir="+datadir] +
+    subprocess.check_call([ find_pastelcli_binary(), "-datadir="+datadir] +
                           _rpchost_to_args(rpchost)  +
                           ["-rpcwait", "getblockcount"], stdout=devnull)
     if os.getenv("PYTHON_DEBUG", ""):
@@ -451,7 +470,7 @@ def assert_greater_than(thing1, thing2):
 def assert_raises(exc, func, *args, **kwargs):
     assert_raises_message(exc, None, func, *args, **kwargs)
 
-def assert_raises_rpc(code, errstr, func, *args, **kwargs):
+def assert_raises_rpc(code, expected_error_substring, func, *args, **kwargs):
     """
     Asserts that func throws and that the exception contains 'errstr' in its message and
     exception code matches.
@@ -463,14 +482,15 @@ def assert_raises_rpc(code, errstr, func, *args, **kwargs):
             err = e.error['error']
             if code and code != err['code']:
                 raise AssertionError(f"Invalid JSONRPCException code {err['code']}, expected {code} in {repr(e)}")
-            if errstr and errstr not in str(e):
-                raise AssertionError(f"Invalid JSONRPCException message: Couldn't find {repr(errstr)} in {repr(e)}")
+            if expected_error_substring and expected_error_substring not in str(e):
+                raise AssertionError(f"Invalid JSONRPCException message: Couldn't find {repr(expected_error_substring)} in {repr(e)}")
+        print(f"RPC Exception received: {e!r}.\nExpected substring: [{expected_error_substring}]");
     except Exception as e:
         raise AssertionError("Unexpected exception raised: "+type(e).__name__)
     else:
         err_info = " and ".join([ 
             f"the error code {code}" if code else "", 
-            f"error message containing [{errstr}]" if errstr else ""])
+            f"error message containing [{expected_error_substring}]" if expected_error_substring else ""])
         if err_info:
             raise AssertionError(f"No exception raised, but expected with {err_info}")
         raise AssertionError("No exception raised")

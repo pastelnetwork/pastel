@@ -31,7 +31,9 @@ CPastelTest_Environment *gl_pPastelTestEnv = nullptr;
 extern CWallet* pwalletMain;
 #endif // ENABLE_WALLET
 
+#ifdef ENABLE_MINING
 extern UniValue generate(const UniValue& params, bool fHelp);
+#endif
 
 // Once this function has returned false, it must remain false.
 static std::atomic<bool> latchToFalse{false};
@@ -101,9 +103,13 @@ void CPastelTest_Environment::TearDown()
 
 void CPastelTest_Environment::generate_coins(const size_t N)
 {
+#ifdef ENABLE_MINING
     UniValue params(UniValue::VARR);
     params.push_back(static_cast<uint64_t>(N));
     generate(params, false);
+#else
+    return;
+#endif
 }
 
 void CPastelTest_Environment::InitializeRegTest()

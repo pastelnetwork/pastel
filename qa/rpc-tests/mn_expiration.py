@@ -342,8 +342,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         self.__wait_for_sync_all(5)
 
     # ===============================================================================================================
-    def create_nft_ticket_and_signatures(self, creator_pastelid, creator_node_num,
-                                         app_ticket, data_hash, total_copies):
+    def create_nft_ticket_and_signatures(self, creator_node_num, app_ticket, data_hash, total_copies):
         mn_ticket_signatures = {}
 
         # Get current height
@@ -366,7 +365,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         # }
         json_ticket = {
             "version": 1,
-            "author": creator_pastelid,
+            "author": self.creator_pastelid1,
             "blocknum": self.creator_ticket_height,
             "block_hash": data_hash,
             "copies": total_copies,
@@ -379,7 +378,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
 
         # create ticket signature
         self.ticket_signature_creator = \
-            self.nodes[creator_node_num].pastelid("sign", self.ticket, creator_pastelid, self.passphrase)["signature"]
+            self.nodes[creator_node_num].pastelid("sign", self.ticket, self.creator_pastelid1, self.passphrase)["signature"]
         for n in range(0, 12):
             mn_ticket_signatures[n] = \
                 self.nodes[n].pastelid("sign", self.ticket, self.mn_pastelids[n], self.passphrase)["signature"]
@@ -412,8 +411,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
     def register_nft_reg_ticket(self, key1, key2):
         print("== Create the NFT registration ticket ==")
 
-        self.create_nft_ticket_and_signatures(self.creator_pastelid1, self.non_mn3,
-                                              "HIJKLMNOP", "ABCDEFG", self.total_copies)
+        self.create_nft_ticket_and_signatures(self.non_mn3, "HIJKLMNOP", "ABCDEFG", self.total_copies)
         nft_ticket_txid = \
             self.nodes[self.top_mns_index0].tickets("register", "nft",
                                                     self.ticket, json.dumps(self.signatures_dict),

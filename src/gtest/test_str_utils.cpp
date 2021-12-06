@@ -183,10 +183,17 @@ class PTest_StrUtils_lowercase : public TestWithParam<tuple<string, string>>
 
 TEST_P(PTest_StrUtils_lowercase, test)
 {
-	string sToTrim = get<0>(GetParam());
-	const string& sExpectedResult = get<1>(GetParam());
-	lowercase(sToTrim);
-	EXPECT_EQ(sToTrim, sExpectedResult);
+    string sToLowercase = get<0>(GetParam());
+    const string& sToLowercaseConst = sToLowercase;
+    const string& sExpectedResult = get<1>(GetParam());
+    // test first const version
+    string sResult = lowercase(sToLowercaseConst);
+    EXPECT_EQ(sResult, sExpectedResult);
+    EXPECT_EQ(sToLowercaseConst, sToLowercase);
+	// test in-place version
+    sResult = lowercase(sToLowercase);
+	EXPECT_EQ(sToLowercase, sExpectedResult);
+    EXPECT_EQ(sResult, sToLowercase);
 }
 
 INSTANTIATE_TEST_SUITE_P(str_utils, PTest_StrUtils_lowercase,
@@ -200,16 +207,49 @@ class PTest_StrUtils_uppercase : public TestWithParam<tuple<string, string>>
 
 TEST_P(PTest_StrUtils_uppercase, test)
 {
-	string sToTrim = get<0>(GetParam());
-	const string& sExpectedResult = get<1>(GetParam());
-	uppercase(sToTrim);
-	EXPECT_EQ(sToTrim, sExpectedResult);
+    string sToUppercase = get<0>(GetParam());
+    const string& sToUppercaseConst = sToUppercase;
+    const string& sExpectedResult = get<1>(GetParam());
+    // test first const version
+    string sResult = uppercase(sToUppercaseConst);
+    EXPECT_EQ(sResult, sExpectedResult);
+    EXPECT_EQ(sToUppercaseConst, sToUppercase);
+    // test in-place version
+    sResult = uppercase(sToUppercase);
+	EXPECT_EQ(sToUppercase, sExpectedResult);
+    EXPECT_EQ(sResult, sToUppercase);
 }
 
 INSTANTIATE_TEST_SUITE_P(str_utils, PTest_StrUtils_uppercase,
 	Values(
 		make_tuple("aBc", "ABC"),
 		make_tuple("tEsT sTrInG", "TEST STRING")
+	));
+
+class PTest_StrUtils_lowerstring_first_capital : public TestWithParam<tuple<string, string>>
+{};
+
+TEST_P(PTest_StrUtils_lowerstring_first_capital, test)
+{
+    string sToConvert = get<0>(GetParam());
+    const string& sToConvertConst = sToConvert;
+    const string& sExpectedResult = get<1>(GetParam());
+    // test first const version
+    string sResult = lowerstring_first_capital(sToConvertConst);
+    EXPECT_EQ(sResult, sExpectedResult);
+    EXPECT_EQ(sToConvertConst, sToConvert);
+    // test in-place version
+    sResult = lowerstring_first_capital(sToConvert);
+    EXPECT_EQ(sToConvert, sExpectedResult);
+    EXPECT_EQ(sResult, sToConvert);
+}
+
+INSTANTIATE_TEST_SUITE_P(str_utils, PTest_StrUtils_lowerstring_first_capital, 
+	Values(
+		make_tuple("tEsT STRING", "Test string"), 
+		make_tuple("s", "S"),
+		make_tuple("T", "T"),
+		make_tuple("Nochange", "Nochange")
 	));
 
 class PTest_StrUtils_replaceAll : public TestWithParam<tuple<string, string, string, string>>
@@ -276,3 +316,47 @@ INSTANTIATE_TEST_SUITE_P(str_utils, PTest_StrUtils_str_ifind,
 		make_tuple("str in thE middle", "The", true),
 		make_tuple("Start with str", "start", true)
 	));
+
+class PTest_StrUtils_str_ends_with : public TestWithParam<tuple<string, string, bool>>
+{};
+
+TEST_P(PTest_StrUtils_str_ends_with, test)
+{
+    const string& s = get<0>(GetParam());
+    const string& suffix = get<1>(GetParam());
+    const bool bExpectedResult = get<2>(GetParam());
+    EXPECT_EQ(str_ends_with(s, suffix.c_str()), bExpectedResult);
+}
+
+INSTANTIATE_TEST_SUITE_P(str_utils, PTest_StrUtils_str_ends_with,
+	Values(
+		make_tuple("Test Ends with", "with", true),
+		make_tuple("test sfx", "Sfx", false), // not case insensitive
+		make_tuple("Str", "S", false),
+		make_tuple("Str", "tr", true)
+	));
+
+// test some special cases for str_ends_with
+TEST(str_utils, str_ends_with)
+{
+    string s;
+    EXPECT_FALSE(str_ends_with(s, "a"));
+    s = "test";
+    EXPECT_FALSE(str_ends_with(s, nullptr));
+    EXPECT_FALSE(str_ends_with(s, ""));
+}
+
+TEST(str_utils, str_append_field)
+{
+    string s;
+    str_append_field(s, nullptr, nullptr);
+    EXPECT_TRUE(s.empty());
+    str_append_field(s, "a", ",");
+    EXPECT_EQ(s, "a");
+    str_append_field(s, "b", nullptr);
+    EXPECT_EQ(s, "ab");
+    str_append_field(s, "c", ",");
+    EXPECT_EQ(s, "ab,c");
+    str_append_field(s, "d", ", ");
+    EXPECT_EQ(s, "ab,c, d");
+}

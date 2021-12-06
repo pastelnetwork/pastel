@@ -3,7 +3,7 @@ SUBDIRS = src
 if ENABLE_MAN
 SUBDIRS += doc/man
 endif
-.PHONY: deploy analyze FORCE
+.PHONY: deploy analyze test FORCE
 
 GZIP_ENV="-9n"
 
@@ -156,6 +156,9 @@ install-exec-hook:
 
 analyze:
 	./pcutil/static_code_analysis.py
+
+test:
+	./qa/test-suite/full_test_suite.py
 
 .INTERMEDIATE: $(COVERAGE_INFO)
 
