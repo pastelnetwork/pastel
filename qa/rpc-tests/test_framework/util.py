@@ -159,6 +159,7 @@ def initialize_chain(test_dir):
     """
     if not Path("cache", "node0").exists():
         print("Rebuilding cache...")
+        isWindows = os.name == "nt"
         if not isWindows:
             devnull = open("/dev/null", "w+")
         # Create cache directories, run pasteld:
