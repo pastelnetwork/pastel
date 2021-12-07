@@ -4,14 +4,14 @@
 
 #include "rpc/rpc_parser.h"
 #include "rpc/server.h"
+#include <mnode/tickets/tickets-all.h>
 #include "mnode/mnode-controller.h"
-#include "mnode/mnode-pastel.h"
 #include "mnode/rpc/mnode-rpc-utils.h"
 #include "mnode/rpc/tickets-list.h"
 
 UniValue tickets_list(const UniValue& params)
 {
-    RPC_CMD_PARSER2(LIST, params, id, nft, act, sell, buy, trade, down, royalty, username, ethereumaddress);
+    RPC_CMD_PARSER2(LIST, params, id, nft, act, sell, buy, trade, down, royalty, username, ethereumaddress, action);
     if ((params.size() < 2 || params.size() > 4) || !LIST.IsCmdSupported())
         throw JSONRPCError(RPC_INVALID_PARAMETER,
 R"(tickets list "type" ("filter") ("minheight")
@@ -63,6 +63,11 @@ Available types:
   ethereumaddress - List ALL ethereum address tickets. Without filter parameter lists ALL ethereum address tickets.
             Filter:
               all       - list all ethereum address tickets. Default.
+  action   - List ALL Action regitration tickets. Without filter parameter lists ALL Action tickets.
+            Filter:
+              all      - lists all Action tickets (including non-confirmed). Default.
+              active   - lists only activated Action tickets - with ActionAct ticket.
+              inactive - lists only non-activated Active tickets - without ActionAct ticket created (confirmed).
 
 Arguments:
 1. minheight	 - minimum height for returned tickets (only tickets registered after this height will be returned).
@@ -249,6 +254,16 @@ As json rpc
             obj.read(masterNodeCtrl.masternodeTickets.ListTickets<CChangeEthereumAddressTicket>());
         break;
     }
+
+    case RPC_CMD_LIST::action:
+        if (filter == "all")
+            obj.read(masterNodeCtrl.masternodeTickets.ListTickets<CActionRegTicket>());
+        /* to be implemented
+        else if (filter == "active")
+            obj.read(masterNodeCtrl.masternodeTickets.ListFilterActionTickets(1));
+        else if (filter == "inactive")
+            obj.read(masterNodeCtrl.masternodeTickets.ListFilterActionTickets(2)); */
+        break;
 
     default:
         break;

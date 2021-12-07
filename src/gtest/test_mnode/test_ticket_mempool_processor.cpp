@@ -1,10 +1,12 @@
 #include "gmock/gmock.h"
 
-#include "txmempool.h"
-#include "mnode/ticket-mempool-processor.h"
+#include <txmempool.h>
+#include <mnode/ticket-mempool-processor.h>
+#include <mnode/tickets/username-change.h>
 #include "test_mnode/test_ticket_mempool.h"
 
 using namespace testing;
+using namespace std;
 
 class MockTxMemPool : public CTxMemPool
 {

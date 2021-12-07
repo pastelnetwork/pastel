@@ -1,7 +1,7 @@
 #pragma once
 
-#include "mnode/mnode-pastel.h"
 #include <gmock/gmock.h>
+#include <mnode/tickets/pastelid-reg.h>
 
 class MockPastelIDRegTicket : public CPastelIDRegTicket
 {

@@ -120,7 +120,21 @@ MNODE_CPP =\
   mnode/rpc/tickets-fake.cpp\
   mnode/rpc/tickets-list.cpp\
   mnode/rpc/tickets-register.cpp\
+  mnode/rpc/tickets-find.cpp\
+  mnode/rpc/tickets-get.cpp\
   mnode/rpc/tickets-tools.cpp\
+  mnode/tickets/pastelid-reg.cpp\
+  mnode/tickets/nft-reg.cpp\
+  mnode/tickets/nft-act.cpp\
+  mnode/tickets/nft-sell.cpp\
+  mnode/tickets/nft-buy.cpp\
+  mnode/tickets/nft-trade.cpp\
+  mnode/tickets/nft-royalty.cpp\
+  mnode/tickets/nft-take-down.cpp\
+  mnode/tickets/username-change.cpp\
+  mnode/tickets/etherium-address-change.cpp\
+  mnode/tickets/action-reg.cpp\
+  mnode/tickets/ticket_signing.cpp\
   mnode/mnode-config.cpp\
   mnode/mnode-active.cpp\
   mnode/mnode-manager.cpp\
@@ -132,7 +146,6 @@ MNODE_CPP =\
   mnode/mnode-payments.cpp\
   mnode/mnode-governance.cpp\
   mnode/mnode-messageproc.cpp\
-  mnode/mnode-pastel.cpp\
   mnode/ticket-processor.cpp\
   mnode/ticket-mempool-processor.cpp\
   mnode/ticket-txmempool.cpp\
@@ -148,7 +161,25 @@ MNODE_H = \
   mnode/rpc/tickets-fake.h\
   mnode/rpc/tickets-list.h\
   mnode/rpc/tickets-register.h\
+  mnode/rpc/tickets-find.h\
+  mnode/rpc/tickets-get.h\
   mnode/rpc/tickets-tools.h\
+  mnode/tickets/ticket.h\
+  mnode/tickets/pastelid-reg.h\
+  mnode/tickets/nft-reg.h\
+  mnode/tickets/nft-act.h\
+  mnode/tickets/nft-sell.h\
+  mnode/tickets/nft-buy.h\
+  mnode/tickets/nft-trade.h\
+  mnode/tickets/nft-take-down.h\
+  mnode/tickets/nft-royalty.h\
+  mnode/tickets/username-change.h\
+  mnode/tickets/etherium-address-change.h\
+  mnode/tickets/action-reg.h\
+  mnode/tickets/ticket_signing.h\
+  mnode/tickets/tickets-all.h\
+  mnode/tickets/ticket-types.h\ 
+  mnode/tickets/ticket-utils.h\ 
   mnode/mnode-active.h\
   mnode/mnode-config.h\
   mnode/mnode-db.h\
@@ -160,11 +191,9 @@ MNODE_H = \
   mnode/mnode-payments.h\
   mnode/mnode-governance.h\
   mnode/mnode-messageproc.h\
-  mnode/ticket.h\
   mnode/ticket-processor.h\
   mnode/ticket-mempool-processor.h\
   mnode/ticket-txmempool.h\
-  mnode/mnode-pastel.h\
   mnode/mnode-controller.h\
   mnode/mnode-notificationinterface.h\
   mnode/mnode-sync.h\

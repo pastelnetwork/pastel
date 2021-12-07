@@ -5,6 +5,7 @@
 
 #include <string>
 #include <algorithm>
+#include <cstring>
 
 /**
  * test if character is white space not using locale.
@@ -104,7 +105,8 @@ static inline void trim(std::string& s)
 /**
  * lowercase string in-place.
  *
- * \param s
+ * \param s - string to lowercase in-place
+ * \return lowercased string (points to s)
  */
 static inline std::string &lowercase(std::string &s)
 {
@@ -113,14 +115,87 @@ static inline std::string &lowercase(std::string &s)
 }
 
 /**
+ * lowercase const string.
+ *
+ * \param s - const string
+ * \return lowercased string
+ */
+static inline std::string lowercase(const std::string &s)
+{
+    std::string sResult;
+    sResult.resize(s.size());
+    std::transform(s.cbegin(), s.cend(), sResult.begin(), [](const auto ch) { return std::tolower(ch); });
+    return sResult;
+}
+
+/**
  * uppercase string in-place.
  *
  * \param s
+ * \return uppercased string (points to s)
  */
 static inline std::string & uppercase(std::string& s)
 {
     std::transform(s.cbegin(), s.cend(), s.begin(), [](const auto ch) { return std::toupper(ch); });
     return s;
+}
+
+/**
+ * uppercase const string.
+ *
+ * \param s - const string
+ * \return uppercased string
+ */
+static inline std::string uppercase(const std::string& s)
+{
+    std::string sResult;
+    sResult.resize(s.size());
+    std::transform(s.cbegin(), s.cend(), sResult.begin(), [](const auto ch) { return std::toupper(ch); });
+    return sResult;
+}
+
+/**
+ * Lowercase string, uppercase first character (STRING -> String).
+ * 
+ * \param s - string to convert in-place
+ * \return converted string
+ */
+static inline std::string & lowerstring_first_capital(std::string &s)
+{
+    bool bFirstChar = true;
+    std::transform(s.cbegin(), s.cend(), s.begin(), [&](const auto ch) 
+        {
+            if (bFirstChar)
+            {
+                bFirstChar = false;
+                return std::toupper(ch);
+            }
+            return std::tolower(ch);
+        });
+    return s;
+}
+
+/**
+ * Lowercase string, uppercase first character (STRING -> String).
+ * 
+ * \param s - string to convert in-place
+ * \return converted string
+ */
+static inline std::string lowerstring_first_capital(const std::string& s)
+{
+    bool bFirstChar = true;
+    std::string sResult;
+    sResult.resize(s.size());
+    std::transform(s.cbegin(), s.cend(), sResult.begin(), [&](const auto ch)
+        {
+            if (bFirstChar)
+            {
+                bFirstChar = false;
+                return std::toupper(ch);
+            }
+            return std::tolower(ch);
+        });
+    return sResult;
 }
 
 /**
@@ -207,4 +282,37 @@ static inline bool str_tobool(const std::string &str, bool &bValue)
         return true;
     }
     return false;
+}
+
+/**
+ * Check if the string s ends with the given suffix.
+ * c++20 standard implements ends_with for std::string.
+ * 
+ * \param s - string to check
+ * \param suffix - a null-terminated string to search for
+ * \return true is string s ends with the provided suffix, false otherwise
+ */
+static bool str_ends_with(const std::string& s, const char* suffix)
+{
+    if (!suffix || !*suffix || s.empty())
+        return false;
+    const size_t nLength = strlen(suffix);
+    if (s.size() < nLength)
+        return false;
+    return s.substr(s.size() - nLength).compare(suffix) == 0;
+}
+
+/**
+ * Append new field to the string with the specified delimiter.
+ * 
+ * \param str - string to append field to
+ * \param szField - a null-terminated field to add
+ * \param szDelimiter - a null-terminated delimiter to add if string is not empty
+ */
+static void str_append_field(std::string& str, const char* szField, const char* szDelimiter)
+{
+    if (!str.empty() && szDelimiter && !str_ends_with(str, szDelimiter))
+        str += szDelimiter;
+    if (szField)
+        str += szField;
 }

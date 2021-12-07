@@ -3,8 +3,8 @@
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 
-#include "mnode/ticket-processor.h"
-#include "mnode/mnode-pastel.h"
+#include <txmempool.h>
+#include <mnode/ticket-processor.h>
 
 class CPastelTicketMemPoolProcessor
 {
@@ -49,7 +49,7 @@ public:
     {
         if (!ticket.HasKeyTwo())
             return false;
-        const string sKeyTwo = ticket.KeyTwo();
+        const std::string sKeyTwo = ticket.KeyTwo();
         bool bRet = false;
         for (const auto& tkt : m_vTicket)
         {

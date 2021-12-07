@@ -1556,18 +1556,25 @@ void ThreadOpenAddedConnections()
         // (keeping in mind that addnode entries can have many IPs if fNameLookup)
         {
             LOCK(cs_vNodes);
-            for (auto pnode : vNodes)
+            for (const auto &pnode : vNodes)
             {
+                bool bEmptyList = false;
                 for (list<vector<CService>>::iterator it = lservAddressesToAdd.begin(); it != lservAddressesToAdd.end(); it++)
                 {
                     for (const auto& addrNode : *(it))
                     {
-                        if (pnode->addr == addrNode) {
+                        if (pnode->addr == addrNode)
+                        {
                             it = lservAddressesToAdd.erase(it);
-                            it--;
+                            if (it == lservAddressesToAdd.end())
+                                bEmptyList = true;
+                            else
+                                it--;
                             break;
                         }
                     }
+                    if (bEmptyList)
+                        break;
                 }
             }
         }

@@ -2,13 +2,13 @@
 // Copyright (c) 2021 The Pastel Core developers
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
-
-#include "txmempool_entry.h"
-#include "mnode/mnode-consts.h"
-
+#include <shared_mutex>
 #include <unordered_map>
 #include <unordered_set>
-#include <shared_mutex>
+
+#include "txmempool_entry.h"
+#include <mnode/tickets/ticket.h>
+#include <mnode/tickets/ticket-types.h>
 
 /**
  * Track P2FMS transactions with Pastel Tickets accepted to the local memory pool.

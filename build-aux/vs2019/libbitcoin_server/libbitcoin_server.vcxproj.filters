@@ -26,6 +26,9 @@
     <Filter Include="Source Files\mnode\rpc">
       <UniqueIdentifier>{f54c067d-6c57-433a-b991-9e6c8b62739e}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Source Files\mnode\tickets">
+      <UniqueIdentifier>{cd3002d9-cffe-4729-9cb0-f8b9eddbad85}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\..\src\sendalert.cpp">
@@ -166,9 +169,6 @@
     <ClCompile Include="..\..\..\src\mnode\mnode-notificationinterface.cpp">
       <Filter>Source Files\mnode</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\src\mnode\mnode-pastel.cpp">
-      <Filter>Source Files\mnode</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\..\src\mnode\mnode-payments.cpp">
       <Filter>Source Files\mnode</Filter>
     </ClCompile>
@@ -218,6 +218,48 @@
       <Filter>Source Files\mnode\rpc</Filter>
     </ClCompile>
     <ClCompile Include="..\..\..\src\mnode\rpc\pastelid-rpc.cpp">
+      <Filter>Source Files\mnode\rpc</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\src\mnode\tickets\pastelid-reg.cpp">
+      <Filter>Source Files\mnode\tickets</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\src\mnode\tickets\nft-act.cpp">
+      <Filter>Source Files\mnode\tickets</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\src\mnode\tickets\nft-buy.cpp">
+      <Filter>Source Files\mnode\tickets</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\src\mnode\tickets\nft-reg.cpp">
+      <Filter>Source Files\mnode\tickets</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\src\mnode\tickets\nft-royalty.cpp">
+      <Filter>Source Files\mnode\tickets</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\src\mnode\tickets\nft-sell.cpp">
+      <Filter>Source Files\mnode\tickets</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\src\mnode\tickets\username-change.cpp">
+      <Filter>Source Files\mnode\tickets</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\src\mnode\tickets\etherium-address-change.cpp">
+      <Filter>Source Files\mnode\tickets</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\src\mnode\tickets\nft-trade.cpp">
+      <Filter>Source Files\mnode\tickets</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\src\mnode\tickets\nft-take-down.cpp">
+      <Filter>Source Files\mnode\tickets</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\src\mnode\tickets\action-reg.cpp">
+      <Filter>Source Files\mnode\tickets</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\src\mnode\tickets\ticket_signing.cpp">
+      <Filter>Source Files\mnode\tickets</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\src\mnode\rpc\tickets-find.cpp">
+      <Filter>Source Files\mnode\rpc</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\src\mnode\rpc\tickets-get.cpp">
       <Filter>Source Files\mnode\rpc</Filter>
     </ClCompile>
   </ItemGroup>
@@ -393,9 +435,6 @@
     <ClInclude Include="..\..\..\src\mnode\mnode-notificationinterface.h">
       <Filter>Source Files\mnode</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\..\src\mnode\mnode-pastel.h">
-      <Filter>Source Files\mnode</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\..\src\mnode\mnode-payments.h">
       <Filter>Source Files\mnode</Filter>
     </ClInclude>
@@ -409,9 +448,6 @@
       <Filter>Source Files\mnode</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\src\mnode\mnode-validation.h">
-      <Filter>Source Files\mnode</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\..\src\mnode\ticket.h">
       <Filter>Source Files\mnode</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\src\pastelid\common.h">
@@ -472,6 +508,58 @@
       <Filter>Source Files\mnode\rpc</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\src\mnode\rpc\pastelid-rpc.h">
+      <Filter>Source Files\mnode\rpc</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\mnode\tickets\pastelid-reg.h">
+      <Filter>Source Files\mnode\tickets</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\mnode\tickets\nft-reg.h">
+      <Filter>Source Files\mnode\tickets</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\mnode\tickets\nft-act.h">
+      <Filter>Source Files\mnode\tickets</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\mnode\tickets\nft-sell.h">
+      <Filter>Source Files\mnode\tickets</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\mnode\tickets\nft-buy.h">
+      <Filter>Source Files\mnode\tickets</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\mnode\tickets\nft-trade.h">
+      <Filter>Source Files\mnode\tickets</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\mnode\tickets\nft-take-down.h">
+      <Filter>Source Files\mnode\tickets</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\mnode\tickets\nft-royalty.h">
+      <Filter>Source Files\mnode\tickets</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\mnode\tickets\username-change.h">
+      <Filter>Source Files\mnode\tickets</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\mnode\tickets\etherium-address-change.h">
+      <Filter>Source Files\mnode\tickets</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\mnode\tickets\ticket-utils.h">
+      <Filter>Source Files\mnode\tickets</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\mnode\tickets\tickets-all.h">
+      <Filter>Source Files\mnode\tickets</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\mnode\tickets\ticket-types.h">
+      <Filter>Source Files\mnode\tickets</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\mnode\tickets\action-reg.h">
+      <Filter>Source Files\mnode\tickets</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\mnode\tickets\ticket_signing.h">
+      <Filter>Source Files\mnode\tickets</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\mnode\ticket.h" />
+    <ClInclude Include="..\..\..\src\mnode\rpc\tickets-get.h">
+      <Filter>Source Files\mnode\rpc</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\mnode\rpc\tickets-find.h">
       <Filter>Source Files\mnode\rpc</Filter>
     </ClInclude>
   </ItemGroup>

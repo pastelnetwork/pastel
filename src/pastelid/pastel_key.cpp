@@ -8,8 +8,8 @@
 #include "pastelid/pastel_key.h"
 #include "pastelid/ed.h"
 #include "pastelid/secure_container.h"
-#include "mnode/mnode-pastel.h"
 #include "mnode/mnode-controller.h"
+#include <mnode/tickets/pastelid-reg.h>
 
 using namespace std;
 

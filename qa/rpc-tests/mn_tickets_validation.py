@@ -89,7 +89,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
 
 
     def setup_chain(self):
-        print("Initializing test directory "+self.options.tmpdir)
+        print(f"Initializing test directory {self.options.tmpdir}")
         initialize_chain_clean(self.options.tmpdir, self.total_number_of_nodes)
 
     def setup_network(self, split=False):
@@ -200,7 +200,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
 
         self.total_copies = 10
         # Get current top MNs at Node 0
-        self.creator_ticket_height = self.nodes[0].getinfo()["blocks"]
+        self.creator_ticket_height = self.nodes[0].getblockcount()
         top_masternodes = self.nodes[0].masternode("top")[str(self.creator_ticket_height)]
 
         json_ticket = {
@@ -240,7 +240,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
     
         self.signatures_dict = dict(
             {
-                "creator": {self.creator_pastelid1: ticket_signature_creator},
+                "principal": {self.creator_pastelid1: ticket_signature_creator},
                 "mn2": {self.top_mn_pastelid1: self.top_mn_ticket_signature1},
                 "mn3": {self.top_mn_pastelid2: self.top_mn_ticket_signature2},
             }
@@ -258,7 +258,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
 
         self.not_top_mns_signatures_dict = dict(
             {
-                "creator": {self.creator_pastelid1: ticket_signature_creator},
+                "principal": {self.creator_pastelid1: ticket_signature_creator},
                 "mn2": {self.not_top_mn_pastelid1: self.not_top_mn_ticket_signature1},
                 "mn3": {self.not_top_mn_pastelid2: self.not_top_mn_ticket_signature2},
             }

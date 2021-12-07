@@ -3,10 +3,12 @@
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include "gtest/gtest.h"
 
+#include <hash.h>
+#include <txmempool.h>
+#include <mnode/ticket-processor.h>
+#include <mnode/tickets/nft-reg.h>
+#include <mnode/tickets/username-change.h>
 #include "test_mempool_entryhelper.h"
-#include "txmempool.h"
-#include "mnode/ticket-processor.h"
-#include "mnode/mnode-pastel.h"
 #include "test_mnode/test_ticket_mempool.h"
 
 using namespace testing;
@@ -118,7 +120,7 @@ TEST_F(TestTicketTxMemPoolTracker, mempool_addremove)
         { 
             auto& nftTticket = dynamic_cast<CNFTRegTicket&>(tkt);
             nftTticket.SetKeyOne("KeyOne");
-            nftTticket.totalCopies = 100;
+            nftTticket.setTotalCopies(100);
         }
     );
     const auto& txid1 = txTicket1.GetHash();

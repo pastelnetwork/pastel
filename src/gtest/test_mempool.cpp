@@ -225,6 +225,7 @@ TEST(Mempool, ExpiringSoonTxRejection) {
     UpdateNetworkUpgradeParameters(Consensus::UPGRADE_OVERWINTER, Consensus::NetworkUpgrade::NO_ACTIVATION_HEIGHT);
 }
 
+#ifdef ENABLE_MINING
 class TestMemPool : public Test
 {
 public:
@@ -452,3 +453,5 @@ TEST_F(TestMemPool, SetSanityCheck)
     pool.setSanityCheck(0);
     EXPECT_EQ(pool.GetCheckFrequency(), 0);
 }
+
+#endif // ENABLE_MINING

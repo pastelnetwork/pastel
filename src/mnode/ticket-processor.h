@@ -16,7 +16,7 @@
 #include "txmempool_entry.h"
 #include "pastelid/pastel_key.h"
 #include "mnode/mnode-consts.h"
-#include "mnode/ticket.h"
+#include "mnode/tickets/ticket.h"
 
 constexpr int DATASTREAM_VERSION = 1;
 

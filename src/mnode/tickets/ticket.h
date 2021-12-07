@@ -8,8 +8,7 @@
 
 #include "amount.h"
 #include "primitives/transaction.h"
-
-#include "mnode/mnode-consts.h"
+#include <mnode/tickets/ticket-types.h>
 
 /**
  * Base class for all Pastel tickets.
@@ -44,6 +43,19 @@ public:
         return TICKET_INFO[to_integral_type<TicketID>(ID())].nVersion;
     }
     /**
+     * Get ticket price.
+     * Returns default fee as defined in <ticket-types.h>.
+     * This can be redefined in a specific ticket class (for example if fee depends on height).
+     * 
+     * \param nHeight - blockchain height
+     * \return ticket price for the specified blockchain height
+     */
+    virtual CAmount TicketPrice(const unsigned int nHeight) const noexcept
+    {
+        return TICKET_INFO[to_integral_type<TicketID>(ID())].defaultFee;
+    }
+
+    /**
      * Ticket version management.
      * 
      * \param bRead - true if unserializing ticket
@@ -77,7 +89,6 @@ public:
     void SetTxId(std::string&& txid) noexcept { m_txid = std::move(txid); }
     void SetBlock(const int nBlockHeight) noexcept { m_nBlock = nBlockHeight; }
 
-    virtual CAmount TicketPrice(const unsigned int nHeight) const noexcept = 0;
     virtual CAmount GetStorageFee() const noexcept { return 0; }
 
     virtual CAmount GetExtraOutputs(std::vector<CTxOut>& outputs) const { return 0; }
@@ -121,3 +132,4 @@ protected:
 };
 
 using PastelTickets_t = std::vector<std::unique_ptr<CPastelTicket>>;
+

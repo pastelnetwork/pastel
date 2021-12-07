@@ -39,7 +39,6 @@ class MasterNodeCommon (PastelTestFramework):
 
 
     def mining_enough(self, mining_node_num, nodes_to_start):
-        
         min_blocks_to_mine = nodes_to_start*self.collateral/self._reward
         blocks_to_mine = int(max(min_blocks_to_mine, 100))
 
@@ -56,7 +55,6 @@ class MasterNodeCommon (PastelTestFramework):
 
         blocks_to_mine = int(max(min_blocks_to_mine, 100))
         assert_equal(self.nodes[mining_node_num].getbalance(), self._reward*blocks_to_mine)
-
 
     def start_mn(self, mining_node_num, hot_node_num, cold_nodes, num_of_nodes):
         

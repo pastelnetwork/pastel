@@ -9,10 +9,12 @@
 #include "rpc/rpc_parser.h"
 #include "rpc/server.h"
 #include "mnode/rpc/mnode-rpc-utils.h"
-#include "mnode/ticket.h"
+#include <mnode/tickets/nft-reg.h>
+#include <mnode/tickets/username-change.h>
+#include <mnode/tickets/etherium-address-change.h>
+#include "mnode/tickets/ticket.h"
 #include "mnode/ticket-processor.h"
 #include "mnode/mnode-controller.h"
-#include "mnode/mnode-pastel.h"
 #include "utilstrencodings.h"
 #include "vector_types.h"
 #include "map_types.h"
@@ -122,12 +124,12 @@ As json rpc
     CAmount imageSize = get_long_number(params[9]);
 
     auto NFTRegTicket = CNFTRegTicket::Create(
-        ticket,
+        move(ticket),
         signatures,
-        pastelID,
+        move(pastelID),
         move(strKeyPass),
-        key1,
-        key2,
+        move(key1),
+        move(key2),
         nStorageFee);
     CDataStream data_stream(SER_NETWORK, DATASTREAM_VERSION);
     data_stream << (uint8_t)NFTRegTicket.ID();
