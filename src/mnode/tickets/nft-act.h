@@ -2,7 +2,7 @@
 // Copyright (c) 2018-2021 The Pastel Core developers
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
-#include <mnode/tickets/ticket.h>
+#include <mnode/tickets/ticket-mn-fees.h>
 
 // forward ticket class declaration
 class CNFTActivateTicket;
@@ -26,9 +26,14 @@ using NFTActivateTickets_t = std::vector<CNFTActivateTicket>;
     mvkey #1: Pastel ID
     mvkey #2: creator height (converted to string)
  */
-class CNFTActivateTicket : public CPastelTicket
+class CNFTActivateTicket : public CPastelTicketMNFee
 {
 public:
+    // MN fees
+    static constexpr uint8_t ALL_MN_FEE = 90;             // in percents
+    static constexpr uint8_t PRINCIPAL_MN_FEE_SHARE = 60; // in percents
+    static constexpr uint8_t OTHER_MN_FEE_SHARE = 20;     // in percents
+
     CNFTActivateTicket() = default;
 
     explicit CNFTActivateTicket(std::string &&sPastelID)  
@@ -92,6 +97,12 @@ public:
         READWRITE(m_nTimestamp);
         READWRITE(m_txid);
         READWRITE(m_nBlock);
+    }
+
+    // get MN fees
+    mn_fees_t getMNFees() const noexcept override
+    {
+        return {ALL_MN_FEE, PRINCIPAL_MN_FEE_SHARE, OTHER_MN_FEE_SHARE};
     }
 
     CAmount GetExtraOutputs(std::vector<CTxOut>& outputs) const override;

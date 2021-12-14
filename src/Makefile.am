@@ -172,6 +172,7 @@ MNODE_H = \
   mnode/rpc/tickets-get.h\
   mnode/rpc/tickets-tools.h\
   mnode/tickets/ticket.h\
+  mnode/tickets/ticket-mn-fees.h\
   mnode/tickets/pastelid-reg.h\
   mnode/tickets/nft-reg.h\
   mnode/tickets/nft-act.h\

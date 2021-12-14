@@ -9,14 +9,16 @@
 
 typedef int64_t CAmount;
 
-static constexpr CAmount REWARD = 6250;
-static constexpr CAmount COIN = 100000;
+// block reward
+static constexpr CAmount REWARD = 6'250;
+// 1 PSL = 100'000 patoshis
+static constexpr CAmount COIN = 100'000;
 
 // The number of coin decimals is used in different places for money formatting:
 // A: %d.%05d
 // B: ParseFixedPoint(..., COIN_DECIMALS, ...)
 static constexpr CAmount COIN_DECIMALS = 5;
-static constexpr CAmount CENT = 1000;
+static constexpr CAmount CENT = 1'000;
 
 extern const std::string CURRENCY_UNIT;
 extern const std::string MINOR_CURRENCY_UNIT;
@@ -30,7 +32,7 @@ extern const std::string MINOR_CURRENCY_UNIT;
  * critical; in unusual circumstances like a(nother) overflow bug that allowed
  * for the creation of coins out of thin air modification could lead to a fork.
  * */
-static constexpr CAmount MAX_MONEY = 21000000000 * COIN;
+static constexpr CAmount MAX_MONEY = 21'000'000'000 * COIN;
 inline bool MoneyRange(const CAmount& nValue) { return (nValue >= 0 && nValue <= MAX_MONEY); }
 
 /** Type-safe wrapper class to for fee rates

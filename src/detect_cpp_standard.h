@@ -11,14 +11,19 @@
 #          define _HAS_CPP14_FEATURES
 #        endif
 #      endif
-#        if _MSC_VER >= 1910 // Visual Studio 2017
-#          ifndef _HAS_CPP17_FEATURES
+#      if _MSC_VER >= 1910 // Visual Studio 2017
+#        ifndef _HAS_CPP17_FEATURES
 #          define _HAS_CPP17_FEATURES
 #        endif
 #      endif
 #      if _MSC_VER >= 1920 // Visual Studio 2019
 #        ifndef _HAS_CPP20_FEATURES
 #          define _HAS_CPP20_FEATURES
+#        endif
+#      endif
+#      if _MSC_VER >= 1930 // Visual Studio 2022
+#        ifndef _HAS_CPP23_FEATURES
+#          define _HAS_CPP22_FEATURES
 #        endif
 #      endif
 #    endif // __cplusplus
@@ -31,11 +36,11 @@
 #     ifndef _FORCED_CPP14_FEATURES
 #       define _FORCED_CPP14_FEATURES
 #     endif
-#     if _MSVC_LANG > 201402L
+#     if _MSVC_LANG > 201402L   // 201703L for c++17
 #       ifndef _FORCED_CPP17_FEATURES
 #         define _FORCED_CPP17_FEATURES
 #       endif
-#       if _MSVC_LANG > 201703L
+#       if _MSVC_LANG > 201703L // 202002L for c++20
 #          ifndef _FORCED_CPP20_FEATURES
 #            define _FORCED_CPP20_FEATURES
 #          endif

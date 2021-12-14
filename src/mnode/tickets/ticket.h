@@ -43,7 +43,7 @@ public:
         return TICKET_INFO[to_integral_type<TicketID>(ID())].nVersion;
     }
     /**
-     * Get ticket price.
+     * Get ticket price in PSL.
      * Returns default fee as defined in <ticket-types.h>.
      * This can be redefined in a specific ticket class (for example if fee depends on height).
      * 

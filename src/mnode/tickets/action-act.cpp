@@ -95,7 +95,7 @@ bool CActionActivateTicket::IsValid(const bool bPreReg, const int nDepth) const
             *this, bPreReg, m_regTicketTxId, pastelTicket,
             [](const TicketID tid) noexcept { return (tid != TicketID::ActionReg); },
             "Activation", "Action-Reg", nDepth,
-            TicketPrice(chainHeight) + (m_storageFee * 9 / 10))) { //fee for ticket + 90% of storage fee
+            TicketPrice(chainHeight) + getAllMNFees())) { // fee for ticket + all MN storage fees (percent from storage fee)
         throw runtime_error(strprintf(
             "The Activation ticket for the Registration ticket with txid [%s] is not validated [block = %u txid = %s]",
             m_regTicketTxId, m_nBlock, m_txid));
@@ -157,9 +157,6 @@ CAmount CActionActivateTicket::GetExtraOutputs(vector<CTxOut>& outputs) const
         return 0;
 
     CAmount nAllAmount = 0;
-    const CAmount nAllMNFee = m_storageFee * COIN * 9 / 10; //90%
-    const CAmount nMainMNFee = nAllMNFee * 3 / 5;           //60% of 90%
-    const CAmount nOtherMNFee = nAllMNFee / 5;              //20% of 90%
 
     KeyIO keyIO(Params());
     for (auto mn = CActionRegTicket::SIGN_MAIN; mn < CActionRegTicket::SIGN_COUNT; ++mn)
@@ -176,7 +173,8 @@ CAmount CActionActivateTicket::GetExtraOutputs(vector<CTxOut>& outputs) const
             throw runtime_error(
                 strprintf("The PastelID [%s] from the Action Reg ticket with this txid [%s] has invalid MN's address", mnPastelID, m_regTicketTxId));
 
-        const CAmount nAmount = (mn == CActionRegTicket::SIGN_MAIN ? nMainMNFee : nOtherMNFee);
+        // caclulate MN fee in patoshis
+        const CAmount nAmount = COIN * (mn == CActionRegTicket::SIGN_MAIN ? getPrincipalMNFee() : getOtherMNFee());
         nAllAmount += nAmount;
 
         outputs.emplace_back(nAmount, GetScriptForDestination(dest));

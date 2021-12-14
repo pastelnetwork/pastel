@@ -243,23 +243,26 @@ bool CPastelTicketProcessor::ValidateIfTicketTransaction(const int nHeight, cons
 
     // this is a ticket and it needs to be validated
     bool bOk = false;
+    unique_ptr<CPastelTicket> ticket;
     try
     {
         string ticketBlockTxIdStr = tx.GetHash().GetHex();
         LogPrintf("CPastelTicketProcessor::ValidateIfTicketTransaction -- Processing ticket ['%s', txid=%s, nHeight=%d, stream size=%zu]\n", 
-           GetTicketDescription(ticket_id),
-           ticketBlockTxIdStr, nHeight, data_stream.size());
+           GetTicketDescription(ticket_id), ticketBlockTxIdStr, nHeight, data_stream.size());
 
-        auto ticket = CreateTicket(ticket_id);
+        ticket = CreateTicket(ticket_id);
         if (!ticket)
-            error_ret = "unknown ticket_id";
+            error_ret = strprintf("unknown ticket_id %hu", to_integral_type<TicketID>(ticket_id));
         else
         {
+            // deserialize ticket data
             data_stream >> *ticket;
             ticket->SetTxId(move(ticketBlockTxIdStr));
             ticket->SetBlock(nHeight);
             bOk = ticket->IsValid(false, 0);
+            // expected ticket fee in patoshis
             expectedTicketFee = ticket->TicketPrice(nHeight) * COIN;
+            // storage fee in PSL
             storageFee = ticket->GetStorageFee();
             if (ticket_id == TicketID::Trade)
             {
@@ -275,6 +278,7 @@ bool CPastelTicketProcessor::ValidateIfTicketTransaction(const int nHeight, cons
                 if (!NFTRegTicket)
                   throw runtime_error("Invalid NFT Reg ticket");
 
+                // trade price in patoshis
                 tradePrice = trade_ticket->price * COIN;
                 if (NFTRegTicket->getRoyalty() > 0)
                 {
@@ -290,10 +294,12 @@ bool CPastelTicketProcessor::ValidateIfTicketTransaction(const int nHeight, cons
     catch (const exception& ex)
     {
         error_ret = strprintf("Failed to parse and unpack ticket - %s", ex.what());
+        bOk = false;
     }
     catch (...)
     {
         error_ret = "Failed to parse and unpack ticket - Unknown exception";
+        bOk = false;
     }
 
     if (bOk)
@@ -301,10 +307,6 @@ bool CPastelTicketProcessor::ValidateIfTicketTransaction(const int nHeight, cons
         // Validate various Fees
         const auto num = tx.vout.size();
         CAmount ticketFee = 0;
-
-        CAmount allMNFee = storageFee * COIN * 9 / 10;
-        CAmount mn1Fee = allMNFee * 3 / 5;
-        CAmount mn23Fee = allMNFee / 5;
 
         for (size_t i = 0; i < num; i++)
         {
@@ -324,22 +326,32 @@ bool CPastelTicketProcessor::ValidateIfTicketTransaction(const int nHeight, cons
             { 
                 if (i == num - 4)
                     continue;
+                auto mnFeeTicket = dynamic_cast<CPastelTicketMNFee*>(ticket.get());
+                if (!mnFeeTicket)
+                {
+                    error_ret = "Internal error - invalid activation ticket";
+                    bOk = false;
+                    break;
+                }
+
                 if (i == num - 3)
                 {
-                    if (mn1Fee != txOut.nValue)
+                    const CAmount mnFee = mnFeeTicket->getPrincipalMNFee() * COIN;
+                    if (mnFee != txOut.nValue)
                     {
                         bOk = false;
-                        error_ret = strprintf("Wrong main MN fee: expected - %" PRId64 ", real - %" PRId64, mn1Fee, txOut.nValue);
+                        error_ret = strprintf("Wrong principal MN fee: expected - %" PRId64 ", real - %" PRId64, mnFee, txOut.nValue);
                         break;
                     }
                     continue;
                 }
                 if (i >= num - 2)
                 {
-                    if (mn23Fee != txOut.nValue)
+                    const CAmount mnFee = mnFeeTicket->getOtherMNFee() * COIN;
+                    if (mnFee != txOut.nValue)
                     {
                         bOk = false;
-                        error_ret = strprintf("Wrong MN%zu fee: expected - %" PRId64 ", real - %" PRId64, i - num - 4, mn23Fee, txOut.nValue);
+                        error_ret = strprintf("Wrong MN%zu fee: expected - %" PRId64 ", real - %" PRId64, i - num - 4, mnFee, txOut.nValue);
                         break;
                     }
                     continue;
@@ -385,9 +397,9 @@ bool CPastelTicketProcessor::ValidateIfTicketTransaction(const int nHeight, cons
             }
 
             ticketFee += txOut.nValue;
-        }
+        } // for tx.vouts
 
-        if (expectedTicketFee != ticketFee)
+        if (bOk && (expectedTicketFee != ticketFee))
         {
             bOk = false;
             error_ret = strprintf("Wrong ticket fee: expected - %" PRId64 ", real - %" PRId64, expectedTicketFee, ticketFee);
@@ -1462,7 +1474,7 @@ bool CPastelTicketProcessor::StoreP2FMSTransaction(const CMutableTransaction& tx
 bool CPastelTicketProcessor::ParseP2FMSTransaction(const CMutableTransaction& tx_in, string& output_string, string& error)
 {
     v_uint8 output_data;
-    bool bOk = ParseP2FMSTransaction(tx_in, output_data, error);
+    const bool bOk = ParseP2FMSTransaction(tx_in, output_data, error);
     if (bOk)
         output_string = vector_to_string(output_data);
     return bOk;

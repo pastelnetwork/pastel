@@ -68,6 +68,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         self.nodes = []
         self.storage_fee = 100
         self.storage_fee90percent = self.storage_fee*9/10
+        self.storage_fee80percent = self.storage_fee*8/10
 
         self.mn_addresses = {}
         self.mn_pastelids = {}
@@ -1535,12 +1536,12 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         self.__wait_for_ticket_tnx()
 
         #       d.a.9 check correct amount of change and correct amount spent and correct amount of fee paid
-        main_mn_fee = self.storage_fee90percent*3/5
-        other_mn_fee = self.storage_fee90percent/5
+        main_mn_fee = self.storage_fee80percent*3/5
+        other_mn_fee = self.storage_fee80percent/5
 
         coins_after = self.nodes[self.non_mn4].getbalance()
         print(f"Action activation ticket price - {self.actionact_ticket_price}")
-        assert_equal(coins_after, coins_before-Decimal(self.storage_fee90percent)-Decimal(self.actionact_ticket_price))  # no fee yet, but ticket cost act ticket price
+        assert_equal(coins_after, coins_before-Decimal(self.storage_fee80percent)-Decimal(self.actionact_ticket_price))  # no fee yet, but ticket cost act ticket price
 
         # MN's collateral addresses belong to hot_node - non_mn2
         mn0_coins_after = self.nodes[self.hot_node_num].getreceivedbyaddress(mn0_collateral_address)
@@ -1581,7 +1582,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
                 if v["scriptPubKey"]["addresses"][0] in [mn1_collateral_address, mn2_collateral_address]:
                     assert_equal(v["value"], other_mn_fee)
                     amount += v["value"]
-        assert_equal(amount, self.storage_fee90percent)
+        assert_equal(amount, self.storage_fee80percent)
         assert_equal(fee_amount, self.actionact_ticket_price)
 
         #   d.b find activation ticket
