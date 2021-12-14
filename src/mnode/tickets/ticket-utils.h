@@ -61,8 +61,8 @@ bool common_validation(const T& ticket, bool bPreReg, const std::string& strTxnI
     // C.3 Verify signature
     // We will check that it is the correct PastelID and the one that belongs to the owner of the NFT in the following steps
     std::string strThisTicket = ticket.ToStr();
-    if (!CPastelID::Verify(strThisTicket, vector_to_string(ticket.signature), ticket.pastelID)) {
-        throw std::runtime_error(strprintf("%s ticket's signature is invalid. PastelID - [%s]", thisTicket, ticket.pastelID));
+    if (!CPastelID::Verify(strThisTicket, ticket.getSignature(), ticket.getPastelID())) {
+        throw std::runtime_error(strprintf("%s ticket's signature is invalid. PastelID - [%s]", thisTicket, ticket.getPastelID()));
     }
 
     // C.3 check the referred ticket is valid

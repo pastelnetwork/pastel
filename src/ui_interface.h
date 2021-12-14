@@ -82,7 +82,7 @@ public:
     boost::signals2::signal<void (const std::string &message)> InitMessage;
 
     /** Number of network connections changed. */
-    boost::signals2::signal<void (int newNumConnections)> NotifyNumConnectionsChanged;
+    boost::signals2::signal<void (const size_t newNumConnections)> NotifyNumConnectionsChanged;
 
     /**
      * New, updated or cancelled alert.

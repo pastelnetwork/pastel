@@ -62,7 +62,7 @@ UniValue tickets_fake(const UniValue& params, const bool bSend)
         int fee = get_number(params[4]);
         string pastelID = params[5].get_str();
         SecureString strKeyPass(params[6].get_str());
-        auto NFTActTicket = CNFTActivateTicket::Create(regTicketTxID, height, fee, pastelID, move(strKeyPass));
+        auto NFTActTicket = CNFTActivateTicket::Create(move(regTicketTxID), height, fee, move(pastelID), move(strKeyPass));
         CAmount ticketPrice = get_long_number(params[7].get_str());
         string strVerb = params[8].get_str();
         auto addresses = vector<pair<string, CAmount>>{};

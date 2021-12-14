@@ -10,16 +10,16 @@
 
 int CAddrInfo::GetTriedBucket(const uint256& nKey) const
 {
-    uint64_t hash1 = (CHashWriter(SER_GETHASH, 0) << nKey << GetKey()).GetHash().GetCheapHash();
-    uint64_t hash2 = (CHashWriter(SER_GETHASH, 0) << nKey << GetGroup() << (hash1 % ADDRMAN_TRIED_BUCKETS_PER_GROUP)).GetHash().GetCheapHash();
+    const uint64_t hash1 = (CHashWriter(SER_GETHASH, 0) << nKey << GetKey()).GetHash().GetCheapHash();
+    const uint64_t hash2 = (CHashWriter(SER_GETHASH, 0) << nKey << GetGroup() << (hash1 % ADDRMAN_TRIED_BUCKETS_PER_GROUP)).GetHash().GetCheapHash();
     return hash2 % ADDRMAN_TRIED_BUCKET_COUNT;
 }
 
 int CAddrInfo::GetNewBucket(const uint256& nKey, const CNetAddr& src) const
 {
-    std::vector<unsigned char> vchSourceGroupKey = src.GetGroup();
-    uint64_t hash1 = (CHashWriter(SER_GETHASH, 0) << nKey << GetGroup() << vchSourceGroupKey).GetHash().GetCheapHash();
-    uint64_t hash2 = (CHashWriter(SER_GETHASH, 0) << nKey << vchSourceGroupKey << (hash1 % ADDRMAN_NEW_BUCKETS_PER_SOURCE_GROUP)).GetHash().GetCheapHash();
+    v_uint8 vchSourceGroupKey = src.GetGroup();
+    const uint64_t hash1 = (CHashWriter(SER_GETHASH, 0) << nKey << GetGroup() << vchSourceGroupKey).GetHash().GetCheapHash();
+    const uint64_t hash2 = (CHashWriter(SER_GETHASH, 0) << nKey << vchSourceGroupKey << (hash1 % ADDRMAN_NEW_BUCKETS_PER_SOURCE_GROUP)).GetHash().GetCheapHash();
     return hash2 % ADDRMAN_NEW_BUCKET_COUNT;
 }
 
@@ -75,28 +75,28 @@ CAddrInfo* CAddrMan::Find(const CNetAddr& addr, int* pnId)
 {
     std::map<CNetAddr, int>::iterator it = mapAddr.find(addr);
     if (it == mapAddr.end())
-        return NULL;
+        return nullptr;
     if (pnId)
         *pnId = (*it).second;
     std::map<int, CAddrInfo>::iterator it2 = mapInfo.find((*it).second);
     if (it2 != mapInfo.end())
         return &(*it2).second;
-    return NULL;
+    return nullptr;
 }
 
 CAddrInfo* CAddrMan::Create(const CAddress& addr, const CNetAddr& addrSource, int* pnId)
 {
-    int nId = nIdCount++;
+    const int nId = nIdCount++;
     mapInfo[nId] = CAddrInfo(addr, addrSource);
     mapAddr[addr] = nId;
-    mapInfo[nId].nRandomPos = vRandom.size();
+    mapInfo[nId].nRandomPos = static_cast<int>(vRandom.size());
     vRandom.push_back(nId);
     if (pnId)
         *pnId = nId;
     return &mapInfo[nId];
 }
 
-void CAddrMan::SwapRandom(unsigned int nRndPos1, unsigned int nRndPos2)
+void CAddrMan::SwapRandom(const size_t nRndPos1, const size_t nRndPos2)
 {
     if (nRndPos1 == nRndPos2)
         return;
@@ -109,8 +109,8 @@ void CAddrMan::SwapRandom(unsigned int nRndPos1, unsigned int nRndPos2)
     assert(mapInfo.count(nId1) == 1);
     assert(mapInfo.count(nId2) == 1);
 
-    mapInfo[nId1].nRandomPos = nRndPos2;
-    mapInfo[nId2].nRandomPos = nRndPos1;
+    mapInfo[nId1].nRandomPos = static_cast<int>(nRndPos2);
+    mapInfo[nId2].nRandomPos = static_cast<int>(nRndPos1);
 
     vRandom[nRndPos1] = nId2;
     vRandom[nRndPos2] = nId1;
@@ -123,7 +123,7 @@ void CAddrMan::Delete(int nId)
     assert(!info.fInTried);
     assert(info.nRefCount == 0);
 
-    SwapRandom(info.nRandomPos, vRandom.size() - 1);
+    SwapRandom(info.nRandomPos, static_cast<unsigned int>(vRandom.size() - 1));
     vRandom.pop_back();
     mapAddr.erase(info);
     mapInfo.erase(nId);
@@ -256,7 +256,7 @@ bool CAddrMan::Add_(const CAddress& addr, const CNetAddr& source, int64_t nTimeP
         bool fCurrentlyOnline = (GetAdjustedTime() - addr.nTime < 24 * 60 * 60);
         int64_t nUpdateInterval = (fCurrentlyOnline ? 60 * 60 : 24 * 60 * 60);
         if (addr.nTime && (!pinfo->nTime || pinfo->nTime < addr.nTime - nUpdateInterval - nTimePenalty))
-            pinfo->nTime = std::max((int64_t)0, addr.nTime - nTimePenalty);
+            pinfo->nTime = static_cast<unsigned int>(std::max<int64_t>(0, static_cast<int64_t>(addr.nTime) - nTimePenalty));
 
         // add services
         pinfo->nServices |= addr.nServices;
@@ -281,7 +281,7 @@ bool CAddrMan::Add_(const CAddress& addr, const CNetAddr& source, int64_t nTimeP
             return false;
     } else {
         pinfo = Create(addr, source, &nId);
-        pinfo->nTime = std::max((int64_t)0, (int64_t)pinfo->nTime - nTimePenalty);
+        pinfo->nTime = static_cast<unsigned int>(std::max<int64_t>(0, static_cast<int64_t>(pinfo->nTime) - nTimePenalty));
         nNew++;
         fNew = true;
     }
@@ -473,16 +473,17 @@ int CAddrMan::Check_()
 
 void CAddrMan::GetAddr_(std::vector<CAddress>& vAddr)
 {
-    unsigned int nNodes = ADDRMAN_GETADDR_MAX_PCT * vRandom.size() / 100;
-    if (nNodes > ADDRMAN_GETADDR_MAX)
-        nNodes = ADDRMAN_GETADDR_MAX;
+    size_t nNodeCount = ADDRMAN_GETADDR_MAX_PCT * vRandom.size() / 100;
+    if (nNodeCount > ADDRMAN_GETADDR_MAX)
+        nNodeCount = ADDRMAN_GETADDR_MAX;
 
     // gather a list of random nodes, skipping those of low quality
-    for (unsigned int n = 0; n < vRandom.size(); n++) {
-        if (vAddr.size() >= nNodes)
+    for (size_t n = 0; n < vRandom.size(); n++)
+    {
+        if (vAddr.size() >= nNodeCount)
             break;
 
-        int nRndPos = RandomInt(vRandom.size() - n) + n;
+        const size_t nRndPos = GetRand(vRandom.size() - n) + n;
         SwapRandom(n, nRndPos);
         assert(mapInfo.count(vRandom[n]) == 1);
 
@@ -509,7 +510,7 @@ void CAddrMan::Connected_(const CService& addr, int64_t nTime)
     // update info
     int64_t nUpdateInterval = 20 * 60;
     if (nTime - info.nTime > nUpdateInterval)
-        info.nTime = nTime;
+        info.nTime = static_cast<unsigned int>(nTime);
 }
 
 int CAddrMan::RandomInt(int nMax){

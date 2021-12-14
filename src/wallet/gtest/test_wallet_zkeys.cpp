@@ -2,9 +2,12 @@
 
 #include "fs.h"
 #include "zcash/Address.hpp"
+#include <chainparams.h>
 #include "wallet/wallet.h"
 #include "wallet/walletdb.h"
 #include "util.h"
+
+using namespace std;
 
 /**
  * This test covers Sapling methods on CWallet
@@ -104,17 +107,37 @@ TEST(wallet_zkeys_tests, StoreAndLoadSaplingZkeys)
     EXPECT_TRUE(wallet.HaveSaplingIncomingViewingKey(dpa2));
 }
 
+class CTestWalletZkeys : public ::testing::Test
+{
+public:
+    void SetUp() override
+    {
+        // Get temporary and unique path for file.
+        // Note: / operator to append paths
+        pathTemp = fs::temp_directory_path() / fs::unique_path();
+        ASSERT_TRUE(fs::create_directories(pathTemp));
+
+        m_sSavedDataDir = mapArgs["-datadir"];
+    }
+
+    void TearDown() override
+    {
+        fs::remove_all(pathTemp);
+
+        mapArgs["-datadir"] = m_sSavedDataDir;
+    }
+
+    fs::path pathTemp;
+    string m_sSavedDataDir;
+};
+
 /**
  * This test covers methods on CWalletDB to load/save crypted sapling z keys.
  */
-TEST(wallet_zkeys_tests, WriteCryptedSaplingZkeyDirectToDb)
+TEST_F(CTestWalletZkeys, WriteCryptedSaplingZkeyDirectToDb)
 {
     SelectParams(CBaseChainParams::Network::TESTNET);
 
-    // Get temporary and unique path for file.
-    // Note: / operator to append paths
-    fs::path pathTemp = fs::temp_directory_path() / fs::unique_path();
-    fs::create_directories(pathTemp);
     mapArgs["-datadir"] = pathTemp.string();
 
     bool fFirstRun;

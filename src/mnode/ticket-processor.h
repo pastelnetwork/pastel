@@ -5,18 +5,19 @@
 #include <memory>
 #include <tuple>
 #include <optional>
-#include "json/json.hpp"
+#include <json/json.hpp>
 
-#include "dbwrapper.h"
-#include "chain.h"
-#include "str_types.h"
-#include "map_types.h"
-#include "numeric_range.h"
-#include "primitives/transaction.h"
-#include "txmempool_entry.h"
-#include "pastelid/pastel_key.h"
-#include "mnode/mnode-consts.h"
-#include "mnode/tickets/ticket.h"
+#include <dbwrapper.h>
+#include <chain.h>
+#include <str_types.h>
+#include <map_types.h>
+#include <numeric_range.h>
+#include <primitives/transaction.h>
+#include <txmempool_entry.h>
+#include <pastelid/pastel_key.h>
+#include <mnode/mnode-consts.h>
+#include <mnode/tickets/ticket-types.h>
+#include <mnode/tickets/ticket.h>
 
 constexpr int DATASTREAM_VERSION = 1;
 
@@ -25,9 +26,6 @@ using reg_trade_txid_t = std::tuple<std::string, std::string>;
 
 // Get height of the active blockchain + 1
 unsigned int GetActiveChainHeight();
-
-// support fake tickets
-#define FAKE_TICKET
 
 // structure used by 'tickets tools searchthumbids' rpc
 typedef struct _search_thumbids_t
@@ -117,6 +115,7 @@ public:
     std::string ListFilterSellTickets(const short filter = 0, const std::string& pastelID = "") const;  // 0 - all, 1 - available; 2 - unavailable;  3 - expired; 4 - sold
     std::string ListFilterBuyTickets(const short filter = 0, const std::string& pastelID = "") const;   // 0 - all, 1 - traded;    2 - expired
     std::string ListFilterTradeTickets(const short filter = 0, const std::string& pastelID = "") const; // 0 - all, 1 - available; 2 - sold
+    std::string ListFilterActionTickets(const short filter = 0) const; // 1 - active;    2 - inactive
 
     // search for NFT registration tickets, calls functor for each matching ticket
     void SearchForNFTs(const search_thumbids_t &p, std::function<size_t(const CPastelTicket *, const nlohmann::json &)> &fnMatchFound) const;
@@ -155,7 +154,7 @@ public:
     std::optional<reg_trade_txid_t> ValidateOwnership(const std::string& _txid, const std::string& _pastelID);
 #ifdef FAKE_TICKET
     static std::string CreateFakeTransaction(CPastelTicket& ticket, CAmount ticketPrice, const std::vector<std::pair<std::string, CAmount>>& extraPayments, const std::string& strVerb, bool bSend);
-#endif
+#endif // FAKE_TICKET
 
     // Reads P2FMS (Pay-to-Fake-Multisig) transaction into CDataStream object.
     static bool preParseTicket(const CMutableTransaction& tx, CDataStream& data_stream, TicketID& ticket_id, std::string& error, const bool bLog = true);

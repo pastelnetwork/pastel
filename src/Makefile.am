@@ -113,10 +113,13 @@ LIBZCASH_H = \
   zcash/Zcash.h
 
 MNODE_CPP =\
+  mnode/rpc/ingest.cpp\
   mnode/rpc/masternode.cpp\
+  mnode/rpc/masternodebroadcast.cpp\
   mnode/rpc/mnode-rpc-utils.cpp\
   mnode/rpc/mnode-rpc.cpp\
   mnode/rpc/pastelid-rpc.cpp\
+  mnode/rpc/tickets-activate.cpp\
   mnode/rpc/tickets-fake.cpp\
   mnode/rpc/tickets-list.cpp\
   mnode/rpc/tickets-register.cpp\
@@ -134,6 +137,7 @@ MNODE_CPP =\
   mnode/tickets/username-change.cpp\
   mnode/tickets/etherium-address-change.cpp\
   mnode/tickets/action-reg.cpp\
+  mnode/tickets/action-act.cpp\
   mnode/tickets/ticket_signing.cpp\
   mnode/mnode-config.cpp\
   mnode/mnode-active.cpp\
@@ -153,11 +157,14 @@ MNODE_CPP =\
   mnode/mnode-controller.cpp
 
 MNODE_H = \
+  mnode/rpc/ingest.h\
   mnode/rpc/masternode.h\
+  mnode/rpc/masternodebroadcast.h\
   mnode/rpc/mnode-rpc-utils.h\
   mnode/rpc/mnode-register.h\
   mnode/rpc/mnode-rpc.h\
   mnode/rpc/pastelid-rpc.h\
+  mnode/rpc/tickets-activate.h\
   mnode/rpc/tickets-fake.h\
   mnode/rpc/tickets-list.h\
   mnode/rpc/tickets-register.h\
@@ -176,10 +183,11 @@ MNODE_H = \
   mnode/tickets/username-change.h\
   mnode/tickets/etherium-address-change.h\
   mnode/tickets/action-reg.h\
+  mnode/tickets/action-act.h\
   mnode/tickets/ticket_signing.h\
   mnode/tickets/tickets-all.h\
-  mnode/tickets/ticket-types.h\ 
-  mnode/tickets/ticket-utils.h\ 
+  mnode/tickets/ticket-types.h\
+  mnode/tickets/ticket-utils.h\
   mnode/mnode-active.h\
   mnode/mnode-config.h\
   mnode/mnode-db.h\

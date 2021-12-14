@@ -24,7 +24,7 @@ public:
     std::string ToStr() const noexcept override { return ""; }
     bool IsValid(const bool bPreReg, const int nDepth) const override { return false; }
     std::string KeyOne() const noexcept override { return ""; }
-    void SetKeyOne(std::string val) override {}
+    void SetKeyOne(std::string &&sValue) override {}
 
     void SerializationOp(CDataStream& s, const SERIALIZE_ACTION ser_action) override {}
 };

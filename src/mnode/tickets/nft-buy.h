@@ -55,13 +55,17 @@ public:
 
     bool HasMVKeyOne() const noexcept override { return true; }
     bool HasMVKeyTwo() const noexcept override { return false; }
-    void SetKeyOne(std::string val) override { sellTxnId = std::move(val); }
+    void SetKeyOne(std::string&& sValue) override { sellTxnId = std::move(sValue); }
 
     CAmount TicketPrice(const unsigned int nHeight) const noexcept override { return std::max(10u, price / 100); }
 
     std::string ToJSON() const noexcept override;
     std::string ToStr() const noexcept override;
     bool IsValid(const bool bPreReg, const int nDepth) const override;
+
+    // getters for ticket fields
+    const std::string& getPastelID() const noexcept { return pastelID; }
+    const std::string getSignature() const noexcept { return vector_to_string(signature); }
 
     void SerializationOp(CDataStream& s, const SERIALIZE_ACTION ser_action) override
     {

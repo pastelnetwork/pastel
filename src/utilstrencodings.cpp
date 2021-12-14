@@ -129,7 +129,7 @@ v_uint8 ParseHex(const string& str)
     return ParseHex(str.c_str());
 }
 
-string EncodeAscii85(const char* istr, size_t len) noexcept
+string EncodeAscii85(const unsigned char* istr, size_t len) noexcept
 {
     string sRetVal; //Default is empty-string
     do
@@ -137,8 +137,8 @@ string EncodeAscii85(const char* istr, size_t len) noexcept
         if (!istr)
             break;
         
-        const int32_t nInputSize = static_cast<int32_t>(strlen(istr));
-        int32_t nMaxLength = ascii85_get_max_encoded_length(nInputSize);
+        const int32_t nInputSize = static_cast<int32_t>(len);
+        const int32_t nMaxLength = ascii85_get_max_encoded_length(nInputSize);
         if (nMaxLength <= 0)
             break;
         
@@ -154,7 +154,7 @@ string EncodeAscii85(const char* istr, size_t len) noexcept
 
 string EncodeAscii85(const string& str) noexcept
 {
-    return EncodeAscii85(str.c_str(), str.size());
+    return EncodeAscii85(reinterpret_cast<const unsigned char *>(str.c_str()), str.size());
 }
 
 v_uint8 DecodeAscii85(const char* ostr, bool* pfInvalid) noexcept
@@ -166,7 +166,7 @@ v_uint8 DecodeAscii85(const char* ostr, bool* pfInvalid) noexcept
             break;
         
         const int32_t nInputSize = static_cast<int32_t>(strlen(ostr));
-        int32_t nMaxLength = ascii85_get_max_decoded_length(nInputSize);
+        const int32_t nMaxLength = ascii85_get_max_decoded_length(nInputSize);
         if (nMaxLength < 0)
         {
             if(pfInvalid)
@@ -198,8 +198,12 @@ string EncodeBase64(const unsigned char* pch, size_t len)
 
     std::string str;
     str.reserve(((len + 2) / 3) * 4);
-    ConvertBits<8, 6, true>([&](int v) { str += PBASE64[v]; }, pch, pch + len);
-    while (str.size() % 4) str += '=';
+    ConvertBits<8, 6, true>([&](int v)
+    {
+        str += PBASE64[v];
+    }, pch, pch + len);
+    while (str.size() % 4)
+        str += '=';
     return str;
 }
 
@@ -282,14 +286,18 @@ string EncodeBase32(const unsigned char* pch, size_t len)
 
     std::string str;
     str.reserve(((len + 4) / 5) * 8);
-    ConvertBits<8, 5, true>([&](int v) { str += PBASE32[v]; }, pch, pch + len);
-    while (str.size() % 8) str += '=';
+    ConvertBits<8, 5, true>([&](int v)
+    {
+        str += PBASE32[v];
+    }, pch, pch + len);
+    while (str.size() % 8)
+        str += '=';
     return str;
 }
 
 string EncodeBase32(const string& str)
 {
-    return EncodeBase32((const unsigned char*)str.c_str(), str.size());
+    return EncodeBase32(reinterpret_cast<const unsigned char*>(str.c_str()), str.size());
 }
 
 v_uint8 DecodeBase32(const char* p, bool* pfInvalid)
@@ -447,20 +455,12 @@ std::string itostr(int n)
 
 int64_t atoi64(const char* psz)
 {
-#ifdef _MSC_VER
-    return _atoi64(psz);
-#else
     return strtoll(psz, nullptr, 10);
-#endif
 }
 
 int64_t atoi64(const std::string& str)
 {
-#ifdef _MSC_VER
-    return _atoi64(str.c_str());
-#else
     return strtoll(str.c_str(), nullptr, 10);
-#endif
 }
 
 int atoi(const std::string& str)

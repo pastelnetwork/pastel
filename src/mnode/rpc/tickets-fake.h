@@ -4,6 +4,8 @@
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 
 #include <univalue.h>
+#include <mnode/tickets/ticket-types.h>
 
-#define FAKE_TICKET
+#ifdef FAKE_TICKET
 UniValue tickets_fake(const UniValue& params, const bool bSend);
+#endif // FAKE_TICKET

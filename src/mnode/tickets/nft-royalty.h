@@ -24,12 +24,6 @@ using NFTRoyaltyTickets_t = std::vector<CNFTRoyaltyTicket>;
 class CNFTRoyaltyTicket : public CPastelTicket
 {
 public:
-    std::string pastelID;    //pastelID of the old (current at moment of creation) royalty recipient
-    std::string newPastelID; //pastelID of the new royalty recipient
-    std::string NFTTxnId;    //txid of the NFT for royalty payments
-    v_uint8 signature;
-
-public:
     CNFTRoyaltyTicket() = default;
 
     explicit CNFTRoyaltyTicket(std::string _pastelID, std::string _newPastelID)
@@ -54,11 +48,16 @@ public:
 
     bool HasMVKeyOne() const noexcept final { return true; }
     bool HasMVKeyTwo() const noexcept final { return true; }
-    void SetKeyOne(std::string val) final { signature.assign(val.begin(), val.end()); }
+    void SetKeyOne(std::string&& sValue) final { signature = string_to_vector(sValue); }
 
     std::string ToJSON() const noexcept final;
     std::string ToStr() const noexcept final;
     bool IsValid(const bool bPreReg, const int nDepth) const final;
+
+    // getters for ticket fields
+    const std::string& getPastelID() const noexcept { return pastelID; }
+    const std::string& getNewPastelID() const noexcept { return newPastelID; }
+    const std::string getSignature() const noexcept { return vector_to_string(signature); }
 
     void SerializationOp(CDataStream& s, const SERIALIZE_ACTION ser_action) final
     {
@@ -82,4 +81,10 @@ public:
 
     static NFTRoyaltyTickets_t FindAllTicketByPastelID(const std::string& pastelID);
     static NFTRoyaltyTickets_t FindAllTicketByNFTTxnID(const std::string& NFTTxnId);
+
+protected:
+    std::string pastelID;    //pastelID of the old (current at moment of creation) royalty recipient
+    std::string newPastelID; //pastelID of the new royalty recipient
+    std::string NFTTxnId;    //txid of the NFT for royalty payments
+    v_uint8 signature;
 };

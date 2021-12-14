@@ -96,7 +96,7 @@ public:
 
     bool HasKeyTwo() const noexcept override { return true; }
     bool HasMVKeyOne() const noexcept override { return true; }
-    void SetKeyOne(std::string val) override { m_keyOne = std::move(val); }
+    void SetKeyOne(std::string &&sValue) override { m_keyOne = std::move(sValue); }
 
     std::string ToJSON() const noexcept override;
     std::string ToStr() const noexcept override { return m_sNFTTicket; }
@@ -128,6 +128,8 @@ public:
         if (!VersionMgmt(error, bRead))
             throw std::runtime_error(error);
         READWRITE(m_sNFTTicket);
+        if (bRead) // parse base64-encoded NFT registration ticket (m_sNFTTicket) after reading from blockchain
+            parse_nft_ticket();
         READWRITE(m_nVersion);
 
         // v0

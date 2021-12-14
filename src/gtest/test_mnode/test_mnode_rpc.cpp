@@ -1,10 +1,16 @@
-#include "base58.h"
-#include "mnode/rpc/mnode-rpc.h"
-#include "utilstrencodings.h"
-#include "vector_types.h"
+// Copyright (c) 2021 The Pastel developers
+// Distributed under the MIT software license, see the accompanying
+// file COPYING or https://www.opensource.org/licenses/mit-license.php.
 
-#include "gtest/gtest.h"
+#include <gtest/gtest.h>
 #include <tuple>
+
+#include <base58.h>
+#include <mnode/rpc/mnode-rpc.h>
+#include <utilstrencodings.h>
+#include <vector_types.h>
+#include <chainparams.h>
+#include <mnode/rpc/ingest.h>
 
 using namespace testing;
 using namespace std;

@@ -35,12 +35,12 @@ static UniValue getTickets(const std::string& key, T2 key2 = "", Lambda otherFun
 UniValue tickets_find(const UniValue& params)
 {
     RPC_CMD_PARSER2(FIND, params, id, nft, act, sell, buy, trade, 
-        down, royalty, username, ethereumaddress, action);
+        down, royalty, username, ethereumaddress, action, action__act);
 
     if (!FIND.IsCmdSupported())
         throw JSONRPCError(RPC_INVALID_PARAMETER,
-                           R"(tickets find "type" "key""
-Set of commands to find different types of Pastel tickets
+R"(tickets find "type" "key""
+Set of commands to find different types of Pastel tickets.
 
 Available types:
   id       - Find PastelID (both personal and masternode) registration ticket.
@@ -67,6 +67,8 @@ Available types:
              The "key" is 'ethereumaddress'
   action   - Find action registration ticket.
              The "key" is 'Key1' or 'Key2' OR 'action caller's PastelID'
+  action-act - Find action activation ticket.
+             The "key" is 'ActionReg ticket txid' OR 'Caller's PastelID' OR 'Called-At Height (block height at what original Action registration ticket was created)'
 
 Arguments:
 1. "key"    (string, required) The Key to use for ticket search. See types above...
@@ -134,6 +136,9 @@ As json rpc
 
     case RPC_CMD_FIND::action: 
         return getTickets<CActionRegTicket>(key);
+
+    case RPC_CMD_FIND::action__act:
+        return getTickets<CActionActivateTicket, int>(key, atoi(key), CActionActivateTicket::FindAllTicketByCalledAtHeight);
 
     default:
         break;

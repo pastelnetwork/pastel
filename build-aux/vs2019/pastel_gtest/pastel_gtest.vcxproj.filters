@@ -17,6 +17,9 @@
     <Filter Include="UnitTest Files\test_mnode">
       <UniqueIdentifier>{fdfd6a0a-e206-4d48-8376-3b6f7e81ada6}</UniqueIdentifier>
     </Filter>
+    <Filter Include="UnitTest Files\data">
+      <UniqueIdentifier>{753414f7-a514-47a8-992f-e91d96e76062}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\..\src\gtest\json_test_vectors.cpp">
@@ -160,6 +163,33 @@
     <ClCompile Include="..\..\..\src\gtest\test_netbase.cpp">
       <Filter>UnitTest Files</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\..\src\gtest\test_addrman.cpp">
+      <Filter>UnitTest Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\src\gtest\test_base32.cpp">
+      <Filter>UnitTest Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\src\gtest\test_base58.cpp">
+      <Filter>UnitTest Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\src\gtest\test_base64.cpp">
+      <Filter>UnitTest Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\src\gtest\test_bech32.cpp">
+      <Filter>UnitTest Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\src\gtest\test_sanity.cpp">
+      <Filter>UnitTest Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\src\gtest\test_checkpoints.cpp">
+      <Filter>UnitTest Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\src\gtest\test_timedata.cpp">
+      <Filter>UnitTest Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\src\gtest\test_hash.cpp">
+      <Filter>UnitTest Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\..\src\gtest\json_test_vectors.h">
@@ -182,6 +212,15 @@
     </ClInclude>
     <ClInclude Include="..\..\..\src\gtest\test_mnode\mock_mnode_ticket.h">
       <Filter>UnitTest Files\test_mnode</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\gtest\data\base58_encode_decode.json.h">
+      <Filter>UnitTest Files\data</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\gtest\data\base58_keys_invalid.json.h">
+      <Filter>UnitTest Files\data</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\gtest\data\base58_keys_valid.json.h">
+      <Filter>UnitTest Files\data</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

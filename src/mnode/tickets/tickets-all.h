@@ -17,3 +17,4 @@
 #include <mnode/tickets/username-change.h>
 #include <mnode/tickets/etherium-address-change.h>
 #include <mnode/tickets/action-reg.h>
+#include <mnode/tickets/action-act.h>
