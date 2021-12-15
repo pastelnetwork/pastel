@@ -397,7 +397,7 @@ bool CSecureContainer::read_from_file(const string& sFilePath, const SecureStrin
     }
     catch (const std::exception &ex)
     {
-        throw runtime_error(strprintf("Failed to read Pastel secure container file [%s]. %s", sFilePath.c_str(), ex.what()));
+        throw runtime_error(strprintf("Passphrase is invalid. Failed to read Pastel secure container file [%s]. %s", sFilePath.c_str(), ex.what()));
     }
     return bRet;
 }
