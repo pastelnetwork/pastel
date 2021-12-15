@@ -84,9 +84,7 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <LinkIncremental>false</LinkIncremental>
   </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <LinkIncremental>true</LinkIncremental>
-  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <LinkIncremental>false</LinkIncremental>
   </PropertyGroup>
@@ -95,11 +93,21 @@
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <Link>
+      <Profile>false</Profile>
+    </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="..\..\..\src\gtest\json_test_vectors.cpp" />
+    <ClCompile Include="..\..\..\src\gtest\test_addrman.cpp" />
+    <ClCompile Include="..\..\..\src\gtest\test_base32.cpp" />
+    <ClCompile Include="..\..\..\src\gtest\test_base58.cpp" />
+    <ClCompile Include="..\..\..\src\gtest\test_base64.cpp" />
+    <ClCompile Include="..\..\..\src\gtest\test_bech32.cpp" />
+    <ClCompile Include="..\..\..\src\gtest\test_checkpoints.cpp" />
+    <ClCompile Include="..\..\..\src\gtest\test_hash.cpp" />
     <ClCompile Include="..\..\..\src\gtest\test_mnode\test_governance.cpp" />
     <ClCompile Include="..\..\..\src\gtest\test_mnode\test_pastel.cpp" />
     <ClCompile Include="..\..\..\src\gtest\test_mnode\test_pastelid.cpp" />
@@ -132,10 +140,12 @@
     <ClCompile Include="..\..\..\src\gtest\test_proofs.cpp" />
     <ClCompile Include="..\..\..\src\gtest\test_random.cpp" />
     <ClCompile Include="..\..\..\src\gtest\test_rpc.cpp" />
+    <ClCompile Include="..\..\..\src\gtest\test_sanity.cpp" />
     <ClCompile Include="..\..\..\src\gtest\test_sapling_note.cpp" />
     <ClCompile Include="..\..\..\src\gtest\test_str_encodings.cpp" />
     <ClCompile Include="..\..\..\src\gtest\test_str_utils.cpp" />
     <ClCompile Include="..\..\..\src\gtest\test_tautology.cpp" />
+    <ClCompile Include="..\..\..\src\gtest\test_timedata.cpp" />
     <ClCompile Include="..\..\..\src\gtest\test_transaction_builder.cpp" />
     <ClCompile Include="..\..\..\src\gtest\test_txid.cpp" />
     <ClCompile Include="..\..\..\src\gtest\test_upgrades.cpp" />
@@ -148,6 +158,9 @@
     <ClCompile Include="..\..\vs\port\uint128.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\..\..\src\gtest\data\base58_encode_decode.json.h" />
+    <ClInclude Include="..\..\..\src\gtest\data\base58_keys_invalid.json.h" />
+    <ClInclude Include="..\..\..\src\gtest\data\base58_keys_valid.json.h" />
     <ClInclude Include="..\..\..\src\gtest\json_test_vectors.h" />
     <ClInclude Include="..\..\..\src\gtest\test_mnode\test_ticket_mempool.h" />
     <ClInclude Include="..\..\..\src\gtest\test_mnode\mock_mnode_ticket.h" />

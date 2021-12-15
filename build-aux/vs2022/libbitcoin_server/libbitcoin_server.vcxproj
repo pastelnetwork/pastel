@@ -117,11 +117,14 @@
     <ClCompile Include="..\..\..\src\mnode\mnode-payments.cpp" />
     <ClCompile Include="..\..\..\src\mnode\mnode-requesttracker.cpp" />
     <ClCompile Include="..\..\..\src\mnode\rpc\masternode.cpp" />
+    <ClCompile Include="..\..\..\src\mnode\rpc\ingest.cpp" />
+    <ClCompile Include="..\..\..\src\mnode\rpc\masternodebroadcast.cpp" />
     <ClCompile Include="..\..\..\src\mnode\rpc\mnode-rpc.cpp" />
     <ClCompile Include="..\..\..\src\mnode\mnode-sync.cpp" />
     <ClCompile Include="..\..\..\src\mnode\mnode-validation.cpp" />
     <ClCompile Include="..\..\..\src\mnode\rpc\mnode-rpc-utils.cpp" />
     <ClCompile Include="..\..\..\src\mnode\rpc\pastelid-rpc.cpp" />
+    <ClCompile Include="..\..\..\src\mnode\rpc\tickets-activate.cpp" />
     <ClCompile Include="..\..\..\src\mnode\rpc\tickets-fake.cpp" />
     <ClCompile Include="..\..\..\src\mnode\rpc\tickets-find.cpp" />
     <ClCompile Include="..\..\..\src\mnode\rpc\tickets-get.cpp" />
@@ -131,6 +134,7 @@
     <ClCompile Include="..\..\..\src\mnode\ticket-mempool-processor.cpp" />
     <ClCompile Include="..\..\..\src\mnode\ticket-processor.cpp" />
     <ClCompile Include="..\..\..\src\mnode\ticket-txmempool.cpp" />
+    <ClCompile Include="..\..\..\src\mnode\tickets\action-act.cpp" />
     <ClCompile Include="..\..\..\src\mnode\tickets\action-reg.cpp" />
     <ClCompile Include="..\..\..\src\mnode\tickets\etherium-address-change.cpp" />
     <ClCompile Include="..\..\..\src\mnode\tickets\nft-act.cpp" />
@@ -196,9 +200,12 @@
     <ClInclude Include="..\..\..\src\merkleblock.h" />
     <ClInclude Include="..\..\..\src\metrics.h" />
     <ClInclude Include="..\..\..\src\miner.h" />
+    <ClInclude Include="..\..\..\src\mnode\rpc\ingest.h" />
     <ClInclude Include="..\..\..\src\mnode\rpc\masternode.h" />
+    <ClInclude Include="..\..\..\src\mnode\rpc\masternodebroadcast.h" />
     <ClInclude Include="..\..\..\src\mnode\rpc\mnode-rpc-utils.h" />
     <ClInclude Include="..\..\..\src\mnode\rpc\pastelid-rpc.h" />
+    <ClInclude Include="..\..\..\src\mnode\rpc\tickets-activate.h" />
     <ClInclude Include="..\..\..\src\mnode\rpc\tickets-fake.h" />
     <ClInclude Include="..\..\..\src\mnode\rpc\tickets-find.h" />
     <ClInclude Include="..\..\..\src\mnode\rpc\tickets-get.h" />
@@ -225,9 +232,10 @@
     <ClInclude Include="..\..\..\src\mnode\mnode-sync.h" />
     <ClInclude Include="..\..\..\src\mnode\mnode-validation.h" />
     <ClInclude Include="..\..\..\src\mnode\ticket-processor.h" />
-    <ClInclude Include="..\..\..\src\mnode\ticket.h" />
+    <ClInclude Include="..\..\..\src\mnode\tickets\action-act.h" />
     <ClInclude Include="..\..\..\src\mnode\tickets\action-reg.h" />
     <ClInclude Include="..\..\..\src\mnode\tickets\etherium-address-change.h" />
+    <ClInclude Include="..\..\..\src\mnode\tickets\ticket-mn-fees.h" />
     <ClInclude Include="..\..\..\src\mnode\tickets\nft-act.h" />
     <ClInclude Include="..\..\..\src\mnode\tickets\nft-buy.h" />
     <ClInclude Include="..\..\..\src\mnode\tickets\nft-reg.h" />
@@ -238,6 +246,7 @@
     <ClInclude Include="..\..\..\src\mnode\tickets\pastelid-reg.h" />
     <ClInclude Include="..\..\..\src\mnode\tickets\ticket-types.h" />
     <ClInclude Include="..\..\..\src\mnode\tickets\ticket-utils.h" />
+    <ClInclude Include="..\..\..\src\mnode\tickets\ticket.h" />
     <ClInclude Include="..\..\..\src\mnode\tickets\tickets-all.h" />
     <ClInclude Include="..\..\..\src\mnode\tickets\ticket_signing.h" />
     <ClInclude Include="..\..\..\src\mnode\tickets\username-change.h" />

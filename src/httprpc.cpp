@@ -26,7 +26,7 @@ public:
         ev(eventBase, false, func)
     {
         struct timeval tv;
-        tv.tv_sec = millis/1000;
+        tv.tv_sec = static_cast<decltype(tv.tv_sec)>(millis / 1000);
         tv.tv_usec = (millis%1000)*1000;
         ev.trigger(&tv);
     }

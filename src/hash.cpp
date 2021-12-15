@@ -13,22 +13,23 @@ inline uint32_t ROTL32(uint32_t x, int8_t r)
     return (x << r) | (x >> (32 - r));
 }
 
-unsigned int MurmurHash3(unsigned int nHashSeed, const std::vector<unsigned char>& vDataToHash)
+unsigned int MurmurHash3(unsigned int nHashSeed, const v_uint8& vDataToHash)
 {
     // The following is MurmurHash3 (x86_32), see http://code.google.com/p/smhasher/source/browse/trunk/MurmurHash3.cpp
     uint32_t h1 = nHashSeed;
-    if (vDataToHash.size() > 0)
+    if (!vDataToHash.empty())
     {
         const uint32_t c1 = 0xcc9e2d51;
         const uint32_t c2 = 0x1b873593;
 
-        const int nblocks = vDataToHash.size() / 4;
+        const int64_t nblocks = vDataToHash.size() / 4;
 
         //----------
         // body
         const uint8_t* blocks = &vDataToHash[0] + nblocks * 4;
 
-        for (int i = -nblocks; i; i++) {
+        for (int64_t i = -nblocks; i; i++)
+        {
             uint32_t k1 = ReadLE32(blocks + i*4);
 
             k1 *= c1;

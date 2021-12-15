@@ -1,3 +1,8 @@
+#pragma once
+
+namespace json_tests
+{
+constexpr auto TEST_BASE58_KEYS_INVALID = R"(
 [
     [
         ""
@@ -150,3 +155,6 @@
         "2A1q1YsMZowabbvta7kTy2Fd6qN4r5ZCeG3qLpvZBMzCixMUdkN2Y4dHB1wPsZAeVXUGD83MfRED"
     ]
 ]
+)";
+
+};

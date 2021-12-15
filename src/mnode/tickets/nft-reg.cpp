@@ -206,7 +206,7 @@ string CNFTRegTicket::GetRoyaltyPayeePastelID() const
         }
         ++index;
     }
-    return foundIndex >= 0 ? tickets.at(foundIndex).newPastelID : m_vPastelID[SIGN_PRINCIPAL];
+    return foundIndex >= 0 ? tickets.at(foundIndex).getNewPastelID() : m_vPastelID[SIGN_PRINCIPAL];
 }
 
 string CNFTRegTicket::GetRoyaltyPayeeAddress() const

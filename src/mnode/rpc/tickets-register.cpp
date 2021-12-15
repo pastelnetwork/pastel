@@ -2,11 +2,12 @@
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 
-#include "rpc/rpc_parser.h"
-#include "rpc/rpc_consts.h"
-#include "rpc/server.h"
-#include "mnode/rpc/mnode-rpc-utils.h"
-#include "mnode/mnode-controller.h"
+#include <rpc/rpc_parser.h>
+#include <rpc/rpc_consts.h>
+#include <rpc/server.h>
+#include <mnode/rpc/mnode-rpc-utils.h>
+#include <mnode/rpc/tickets-activate.h>
+#include <mnode/mnode-controller.h>
 #include <mnode/tickets/tickets-all.h>
 
 using namespace std;
@@ -193,63 +194,6 @@ As json rpc:
         move(nft_ticket), signatures, move(sPastelID), move(strKeyPass),
         move(key1), move(key2), nStorageFee);
     string txid = CPastelTicketProcessor::SendTicket(NFTRegTicket, sFundingAddress);
-
-    UniValue result(UniValue::VOBJ);
-    result.pushKV(RPC_KEY_TXID, move(txid));
-    return result;
-}
-
-UniValue tickets_register_act(const UniValue& params)
-{
-    if (params.size() < 7)
-        throw JSONRPCError(RPC_INVALID_PARAMETER,
-R"(tickets register act "reg-ticket-txid" "creator-height" "fee" "PastelID" "passphrase" ["address"]
-Register confirm new NFT ticket identity. If successful, method returns "txid".
-
-Arguments:
-1. "reg-ticket-txid"  (string, required) txid of the NFT register ticket to activate.
-2. "creator-height"   (string, required) Height where the NFT register ticket was created by the creator.
-3. fee                (int, required) The supposed fee that creator agreed to pay for the registration. 
-                        This shall match the amount in the registration ticket.
-                        The transaction with this ticket will pay 90% of this amount to MNs (10% were burnt prior to registration).
-4. "PastelID"         (string, required) The PastelID of creator. NOTE: PastelID must be generated and stored inside node. See "pastelid newkey".
-5. "passphrase"       (string, required) The passphrase to the private key associated with creator's PastelID and stored inside node. See "pastelid newkey".
-6. "address"          (string, optional) The Pastel blockchain t-address to use for funding the registration.
-
-Activation Ticket:
-{
-	"ticket": {
-		"type": "nft-act",
-		"pastelID": "",
-		"reg_txid": "",
-		"creator_height": "",
-		"storage_fee": "",
-		"signature": ""
-	},
-	"height": "",
-	"txid": ""
-  }
-
-Register PastelID:
-)" + HelpExampleCli("tickets register act", R"("907e5e4c6fc4d14660a22afe2bdf6d27a3c8762abf0a89355bb19b7d9e7dc440 213 100 jXYqZNPj21RVnwxnEJ654wEdzi7GZTZ5LAdiotBmPrF7pDMkpX1JegDMQZX55WZLkvy9fxNpZcbBJuE8QYUqBF "passphrase")") +
-R"(
-As json rpc:
-)" + HelpExampleRpc("tickets", R"("register", "act", "907e5e4c6fc4d14660a22afe2bdf6d27a3c8762abf0a89355bb19b7d9e7dc440", 213, 100, "jXYqZNPj21RVnwxnEJ654wEdzi7GZTZ5LAdiotBmPrF7pDMkpX1JegDMQZX55WZLkvy9fxNpZcbBJuE8QYUqBF", "passphrase")")
-);
-
-    string regTicketTxID = params[2].get_str();
-    int height = get_number(params[3]);
-    int fee = get_number(params[4]);
-
-    string pastelID = params[5].get_str();
-    SecureString strKeyPass(params[6].get_str());
-
-    opt_string_t sFundingAddress;
-    if (params.size() >= 8)
-        sFundingAddress = params[7].get_str();
-
-    const auto NFTActTicket = CNFTActivateTicket::Create(regTicketTxID, height, fee, pastelID, move(strKeyPass));
-    string txid = CPastelTicketProcessor::SendTicket(NFTActTicket, sFundingAddress);
 
     UniValue result(UniValue::VOBJ);
     result.pushKV(RPC_KEY_TXID, move(txid));
@@ -717,47 +661,42 @@ void tickets_register_help()
 {
     throw JSONRPCError(RPC_INVALID_PARAMETER,
 R"(tickets register "type" ...
-Set of commands to register different types of Pastel tickets
+Set of commands to register different types of Pastel tickets.
+If successful, returns "txid" of the registered ticket.
 
 Available types:
-  mnid     - Register Masternode PastelID. If successful, returns "txid".
-             Ticket contains:
-                 Masternode Collateral Address
-                 Masternode Collateral outpoint (transaction id and index)
-                 PastelID
-                 Timestamp
-                 Signature (above fields signed by PastelID)
-  id       - Register personal PastelID. If successful, returns "txid".
-             Ticket contains:
-                 Provided Address
-                 PastelID
-                 Timestamp
-                 Signature (above fields signed by PastelID)
-  nft      - Register new NFT ticket. If successful, returns "txid".
-             Ticket contains: <...>
-  act      - Send activation for new registered NFT ticket. If successful, returns "txid" of activation ticket.
-             Ticket contains: <...>
-  sell     - Register NFT sell ticket. If successful, returns "txid".
-             Ticket contains: <...>
-  buy      - Register NFT buy ticket. If successful, returns "txid".
-             Ticket contains: <...>
-  trade    - Register NFT trade ticket. If successful, returns "txid".
-             Ticket contains: <...>
-  down     - Register take down ticket. If successful, returns "txid".
-             Ticket contains: <...>
-  username - Register Username Change Request ticket. If successful, method returns "txid"
-             Ticket contains: PastelId, username, passphrase
-  royalty  - Register NFT royalty ticket. If successful, returns "txid".
-             Ticket contains: <...>
-  action   - Register new Action ticket. If successful, returns "txid".
-             Ticket contains: <...>
+  mnid       - Register Masternode PastelID. If successful, returns "txid".
+               Ticket contains:
+                   Masternode Collateral Address
+                   Masternode Collateral outpoint (transaction id and index)
+                   PastelID
+                   Timestamp
+                   Signature (above fields signed by PastelID)
+  id         - Register personal PastelID. If successful, returns "txid".
+               Ticket contains:
+                   Provided Address
+                   PastelID
+                   Timestamp
+                   Signature (above fields signed by PastelID)
+  nft        - Register new NFT ticket.
+  act        - Send activation for the new registered NFT ticket.
+               Same as "tickets activate nft...".
+  sell       - Register NFT sell ticket.
+  buy        - Register NFT buy ticket.
+  trade      - Register NFT trade ticket. 
+  down       - Register take down ticket.
+  username   - Register Username Change Request ticket.
+  royalty    - Register NFT royalty ticket.
+  action     - Register new Action ticket.
+  action-act - Send activation for the new registered Action ticket.
+               Same as "tickets activate action...".
 )");
 }
 
 UniValue tickets_register(const UniValue& params)
 {
     RPC_CMD_PARSER2(REGISTER, params, mnid, id, nft, act, sell, buy, trade, 
-        down, royalty, username, ethereumaddress, action);
+        down, royalty, username, ethereumaddress, action, action__act);
 
     if (!REGISTER.IsCmdSupported())
         tickets_register_help();
@@ -779,7 +718,7 @@ UniValue tickets_register(const UniValue& params)
             break;
 
         case RPC_CMD_REGISTER::act:
-            result = tickets_register_act(params);
+            result = tickets_activate_nft(params, true);
             break;
 
         case RPC_CMD_REGISTER::sell:
@@ -812,6 +751,10 @@ UniValue tickets_register(const UniValue& params)
 
         case RPC_CMD_REGISTER::action:
             result = tickets_register_action(params);
+            break;
+
+        case RPC_CMD_REGISTER::action__act:
+            result = tickets_activate_action(params, true);
             break;
 
         default:

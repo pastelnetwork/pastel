@@ -13,22 +13,15 @@
 #include "streams.h"
 #include "uint256.h"
 #include "util.h"
-
+#include "main.h"
 #include "sodium.h"
-
-//INGEST->!!!
-#ifndef INGEST_MINING_BLOCK
-#define INGEST_MINING_BLOCK 1
-#define TOP_INGEST_BLOCK INGEST_MINING_BLOCK+1000
-#endif
-//<-INGEST!!!
 
 unsigned int GetNextWorkRequired(const CBlockIndex* pindexLast, const CBlockHeader *pblock, const Consensus::Params& params)
 {
     unsigned int nProofOfWorkLimit = UintToArith256(params.powLimit).GetCompact();
 
     // Genesis block
-    if (pindexLast == NULL)
+    if (!pindexLast)
         return nProofOfWorkLimit;
     
     //INGEST->!!!
@@ -45,7 +38,7 @@ unsigned int GetNextWorkRequired(const CBlockIndex* pindexLast, const CBlockHead
     {
         // Comparing to pindexLast->nHeight with >= because this function
         // returns the work required for the block after pindexLast.
-        if (params.nPowAllowMinDifficultyBlocksAfterHeight != std::nullopt &&
+        if (params.nPowAllowMinDifficultyBlocksAfterHeight.has_value() &&
             pindexLast->nHeight >= params.nPowAllowMinDifficultyBlocksAfterHeight.value())
         {
             // Special difficulty rule for testnet:
@@ -59,7 +52,8 @@ unsigned int GetNextWorkRequired(const CBlockIndex* pindexLast, const CBlockHead
     // Find the first block in the averaging interval
     const CBlockIndex* pindexFirst = pindexLast;
     arith_uint256 bnTot {0};
-    for (int i = 0; pindexFirst && i < params.nPowAveragingWindow; i++) {
+    for (int64_t i = 0; pindexFirst && i < params.nPowAveragingWindow; ++i)
+    {
         arith_uint256 bnTmp;
         bnTmp.SetCompact(pindexFirst->nBits);
         bnTot += bnTmp;
@@ -67,7 +61,7 @@ unsigned int GetNextWorkRequired(const CBlockIndex* pindexLast, const CBlockHead
     }
 
     // Check we have enough blocks
-    if (pindexFirst == NULL)
+    if (!pindexFirst)
         return nProofOfWorkLimit;
 
     arith_uint256 bnAvg {bnTot / params.nPowAveragingWindow};

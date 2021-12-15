@@ -666,12 +666,12 @@ int GetSpendHeight(const CCoinsViewCache& inputs);
 CMutableTransaction CreateNewContextualCMutableTransaction(const Consensus::Params& consensusParams, int nHeight);
 
 //INGEST->!!!
-#define INGEST_MINING_BLOCK 1
-#define TOP_INGEST_BLOCK INGEST_MINING_BLOCK+1000
-#define INGEST_WAITING_AMOUNT 1 * COIN
-#define INGEST_MULTIPLIER 95LL
-#define INGEST_MINING_AMOUNT (9888920LL*INGEST_MULTIPLIER + 103271000LL*INGEST_MULTIPLIER + 5000LL + 12000000LL) * COIN
-/* Ingest:
+constexpr uint32_t INGEST_MINING_BLOCK = 1;
+constexpr uint32_t TOP_INGEST_BLOCK = INGEST_MINING_BLOCK + 1000;
+constexpr CAmount INGEST_WAITING_AMOUNT = 1 * COIN;
+constexpr CAmount INGEST_MULTIPLIER = 95;
+constexpr CAmount INGEST_MINING_AMOUNT = (9'888'920 * INGEST_MULTIPLIER + 103'271'000 * INGEST_MULTIPLIER + 5000 + 12'000'000) * COIN;
+ /* Ingest:
  *  >10K and <=50K  ->   9,888,920 (  9888919.00167) * 95
  *  PSL group       -> 103,271,000 (103270999.51940) * 95
  *  fees            -> 5000

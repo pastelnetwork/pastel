@@ -52,7 +52,7 @@ public:
     std::string KeyTwo() const noexcept override { return outpoint.IsNull() ? (secondKey.empty() ? address : secondKey) : outpoint.ToStringShort(); }
 
     bool HasKeyTwo() const noexcept override { return true; }
-    void SetKeyOne(std::string val) override { pastelID = std::move(val); }
+    void SetKeyOne(std::string&& sValue) override { pastelID = std::move(sValue); }
 
     std::string ToJSON() const noexcept override;
     std::string ToStr() const noexcept override;

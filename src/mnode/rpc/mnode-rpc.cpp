@@ -2,16 +2,18 @@
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 
-#include "init.h"
-#include "rpc/rpc_consts.h"
-#include "rpc/rpc_parser.h"
-#include "rpc/server.h"
+#include <init.h>
+#include <rpc/rpc_consts.h>
+#include <rpc/rpc_parser.h>
+#include <rpc/server.h>
 
 #include <mnode/tickets/tickets-all.h>
 #include <mnode/mnode-controller.h>
 #include <mnode/mnode-masternode.h>
 #include <mnode/rpc/mnode-rpc.h>
 #include <mnode/rpc/masternode.h>
+#include <mnode/rpc/masternodebroadcast.h>
+#include <mnode/rpc/tickets-activate.h>
 #include <mnode/rpc/tickets-fake.h>
 #include <mnode/rpc/tickets-list.h>
 #include <mnode/rpc/tickets-register.h>
@@ -20,282 +22,13 @@
 #include <mnode/rpc/tickets-tools.h>
 #include <mnode/rpc/mnode-rpc-utils.h>
 #include <mnode/rpc/pastelid-rpc.h>
-
-#ifdef ENABLE_WALLET
-#include "wallet/wallet.h"
-void EnsureWalletIsUnlocked();
-#endif // ENABLE_WALLET
+#include <mnode/rpc/ingest.h>
 
 using namespace std;
 
 const CAmount kPastelidRegistrationFeeBase = 1000;
 const CAmount kUsernameRegistrationFeeBase = 100;
 const CAmount kUsernameChangeFeeBase = 5000;
-
-bool DecodeHexVecMnb(std::vector<CMasternodeBroadcast>& vecMnb, const std::string& strHexMnb) {
-
-    if (!IsHex(strHexMnb))
-        return false;
-
-    v_uint8 mnbData(ParseHex(strHexMnb));
-    CDataStream ssData(mnbData, SER_NETWORK, PROTOCOL_VERSION);
-    try {
-        ssData >> vecMnb;
-    }
-    catch (const std::exception&) {
-        return false;
-    }
-
-    return true;
-}
-
-UniValue masternodebroadcast(const UniValue& params, bool fHelp)
-{
-    std::string strCommand;
-    if (!params.empty())
-        strCommand = params[0].get_str();
-
-    if (fHelp  ||
-        (
-#ifdef ENABLE_WALLET
-            strCommand != "create-alias" && strCommand != "create-all" &&
-#endif // ENABLE_WALLET
-            strCommand != "decode" && strCommand != "relay"))
-        throw std::runtime_error(
-                "masternodebroadcast \"command\"...\n"
-                "Set of commands to create and relay masternode broadcast messages\n"
-                "\nArguments:\n"
-                "1. \"command\"        (string or set of strings, required) The command to execute\n"
-                "\nAvailable commands:\n"
-#ifdef ENABLE_WALLET
-                "  create-alias  - Create single remote masternode broadcast message by assigned alias configured in masternode.conf\n"
-                "  create-all    - Create remote masternode broadcast messages for all masternodes configured in masternode.conf\n"
-#endif // ENABLE_WALLET
-                "  decode        - Decode masternode broadcast message\n"
-                "  relay         - Relay masternode broadcast message to the network\n"
-                );
-
-    KeyIO keyIO(Params());
-#ifdef ENABLE_WALLET
-    if (strCommand == "create-alias")
-    {
-        // wait for reindex and/or import to finish
-        if (fImporting || fReindex)
-            throw JSONRPCError(RPC_INTERNAL_ERROR, "Wait for reindex and/or import to finish");
-
-        if (params.size() < 2)
-            throw JSONRPCError(RPC_INVALID_PARAMETER, "Please specify an alias");
-
-        {
-            LOCK(pwalletMain->cs_wallet);
-            EnsureWalletIsUnlocked();
-        }
-
-        bool fFound = false;
-        std::string strAlias = params[1].get_str();
-
-        UniValue statusObj(UniValue::VOBJ);
-        std::vector<CMasternodeBroadcast> vecMnb;
-
-        statusObj.pushKV(RPC_KEY_ALIAS, strAlias);
-    
-        for (const auto& mne : masterNodeCtrl.masternodeConfig.getEntries()) {
-            if(mne.getAlias() == strAlias) {
-                fFound = true;
-                std::string strError;
-                CMasternodeBroadcast mnb;
-
-                bool fResult = CMasternodeBroadcast::Create(mne.getIp(), mne.getPrivKey(), mne.getTxHash(), mne.getOutputIndex(), 
-                                                            mne.getExtIp(), mne.getExtP2P(), mne.getExtKey(), mne.getExtCfg(),
-                                                            strError, mnb, true);
-
-                statusObj.pushKV(RPC_KEY_RESULT, get_rpc_result(fResult));
-                if(fResult) {
-                    vecMnb.push_back(mnb);
-                    CDataStream ssVecMnb(SER_NETWORK, PROTOCOL_VERSION);
-                    ssVecMnb << vecMnb;
-                    statusObj.pushKV("hex", HexStr(ssVecMnb.begin(), ssVecMnb.end()));
-                } else {
-                    statusObj.pushKV(RPC_KEY_ERROR_MESSAGE, strError);
-                }
-                break;
-            }
-        }
-
-        if(!fFound) {
-            statusObj.pushKV(RPC_KEY_RESULT, "not found");
-            statusObj.pushKV(RPC_KEY_ERROR_MESSAGE, "Could not find alias in config. Verify with list-conf.");
-        }
-
-        return statusObj;
-
-    }
-
-    if (strCommand == "create-all")
-    {
-        // wait for reindex and/or import to finish
-        if (fImporting || fReindex)
-            throw JSONRPCError(RPC_INTERNAL_ERROR, "Wait for reindex and/or import to finish");
-
-        {
-            LOCK(pwalletMain->cs_wallet);
-            EnsureWalletIsUnlocked();
-        }
-
-        std::vector<CMasternodeConfig::CMasternodeEntry> mnEntries;
-        mnEntries = masterNodeCtrl.masternodeConfig.getEntries();
-
-        int nSuccessful = 0;
-        int nFailed = 0;
-
-        UniValue resultsObj(UniValue::VOBJ);
-        std::vector<CMasternodeBroadcast> vecMnb;
-    
-        for (const auto& mne : masterNodeCtrl.masternodeConfig.getEntries()) {
-            std::string strError;
-            CMasternodeBroadcast mnb;
-
-            bool fResult = CMasternodeBroadcast::Create(mne.getIp(), mne.getPrivKey(), mne.getTxHash(), mne.getOutputIndex(), 
-                                                        mne.getExtIp(), mne.getExtP2P(), mne.getExtKey(), mne.getExtCfg(),
-                                                        strError, mnb, true);
-
-            UniValue statusObj(UniValue::VOBJ);
-            statusObj.pushKV(RPC_KEY_ALIAS, mne.getAlias());
-            statusObj.pushKV(RPC_KEY_RESULT, get_rpc_result(fResult));
-
-            if(fResult) {
-                nSuccessful++;
-                vecMnb.push_back(mnb);
-            } else {
-                nFailed++;
-                statusObj.pushKV(RPC_KEY_ERROR_MESSAGE, strError);
-            }
-
-            resultsObj.pushKV(RPC_KEY_STATUS, statusObj);
-        }
-
-        CDataStream ssVecMnb(SER_NETWORK, PROTOCOL_VERSION);
-        ssVecMnb << vecMnb;
-        UniValue returnObj(UniValue::VOBJ);
-        returnObj.pushKV("overall", strprintf("Successfully created broadcast messages for %d masternodes, failed to create %d, total %d", nSuccessful, nFailed, nSuccessful + nFailed));
-        returnObj.pushKV("detail", resultsObj);
-        returnObj.pushKV("hex", HexStr(ssVecMnb.begin(), ssVecMnb.end()));
-
-        return returnObj;
-    }
-#endif // ENABLE_WALLET
-
-    if (strCommand == "decode")
-    {
-        if (params.size() != 2)
-            throw JSONRPCError(RPC_INVALID_PARAMETER, "Correct usage is 'masternodebroadcast decode \"hexstring\"'");
-
-        std::vector<CMasternodeBroadcast> vecMnb;
-
-        if (!DecodeHexVecMnb(vecMnb, params[1].get_str()))
-            throw JSONRPCError(RPC_DESERIALIZATION_ERROR, "Masternode broadcast message decode failed");
-
-        int nSuccessful = 0;
-        int nFailed = 0;
-        int nDos = 0;
-        UniValue returnObj(UniValue::VOBJ);
-    
-        for (auto& mnb : vecMnb) {
-            UniValue resultObj(UniValue::VOBJ);
-
-            if(mnb.CheckSignature(nDos)) {
-                nSuccessful++;
-                resultObj.pushKV("outpoint", mnb.vin.prevout.ToStringShort());
-                resultObj.pushKV("addr", mnb.addr.ToString());
-
-                CTxDestination dest1 = mnb.pubKeyCollateralAddress.GetID();
-                std::string address1 = keyIO.EncodeDestination(dest1);
-                resultObj.pushKV("pubKeyCollateralAddress", address1);
-
-                CTxDestination dest2 = mnb.pubKeyMasternode.GetID();
-                std::string address2 = keyIO.EncodeDestination(dest2);
-                resultObj.pushKV("pubKeyMasternode", address2);
-
-                resultObj.pushKV("vchSig", EncodeBase64(&mnb.vchSig[0], mnb.vchSig.size()));
-                resultObj.pushKV("sigTime", mnb.sigTime);
-                resultObj.pushKV("protocolVersion", mnb.nProtocolVersion);
-
-                UniValue lastPingObj(UniValue::VOBJ);
-                lastPingObj.pushKV("outpoint", mnb.lastPing.vin.prevout.ToStringShort());
-                lastPingObj.pushKV("blockHash", mnb.lastPing.blockHash.ToString());
-                lastPingObj.pushKV("sigTime", mnb.lastPing.sigTime);
-                lastPingObj.pushKV("vchSig", EncodeBase64(&mnb.lastPing.vchSig[0], mnb.lastPing.vchSig.size()));
-
-                resultObj.pushKV("lastPing", lastPingObj);
-            } else {
-                nFailed++;
-                resultObj.pushKV(RPC_KEY_ERROR_MESSAGE, "Masternode broadcast signature verification failed");
-            }
-
-            returnObj.pushKV(mnb.GetHash().ToString(), resultObj);
-        }
-
-        returnObj.pushKV("overall", strprintf("Successfully decoded broadcast messages for %d masternodes, failed to decode %d, total %d", nSuccessful, nFailed, nSuccessful + nFailed));
-
-        return returnObj;
-    }
-
-    if (strCommand == "relay")
-    {
-        if (params.size() < 2 || params.size() > 3)
-            throw JSONRPCError(RPC_INVALID_PARAMETER,   "masternodebroadcast relay \"hexstring\" ( fast )\n"
-                                                        "\nArguments:\n"
-                                                        "1. \"hex\"      (string, required) Broadcast messages hex string\n"
-                                                        "2. fast       (string, optional) If none, using safe method\n");
-
-        std::vector<CMasternodeBroadcast> vecMnb;
-
-        if (!DecodeHexVecMnb(vecMnb, params[1].get_str()))
-            throw JSONRPCError(RPC_DESERIALIZATION_ERROR, "Masternode broadcast message decode failed");
-
-        int nSuccessful = 0;
-        int nFailed = 0;
-        bool fSafe = params.size() == 2;
-        UniValue returnObj(UniValue::VOBJ);
-
-        // verify all signatures first, bailout if any of them broken
-        for (auto& mnb : vecMnb) {
-            UniValue resultObj(UniValue::VOBJ);
-
-            resultObj.pushKV("outpoint", mnb.vin.prevout.ToStringShort());
-            resultObj.pushKV("addr", mnb.addr.ToString());
-
-            int nDos = 0;
-            bool fResult;
-            if (mnb.CheckSignature(nDos)) {
-                if (fSafe) {
-                    fResult = masterNodeCtrl.masternodeManager.CheckMnbAndUpdateMasternodeList(nullptr, mnb, nDos);
-                } else {
-                    masterNodeCtrl.masternodeManager.UpdateMasternodeList(mnb);
-                    mnb.Relay();
-                    fResult = true;
-                }
-            } else fResult = false;
-
-            if(fResult) {
-                nSuccessful++;
-                resultObj.pushKV(mnb.GetHash().ToString(), RPC_RESULT_SUCCESS);
-            } else {
-                nFailed++;
-                resultObj.pushKV(RPC_KEY_ERROR_MESSAGE, "Masternode broadcast signature verification failed");
-            }
-
-            returnObj.pushKV(mnb.GetHash().ToString(), resultObj);
-        }
-
-        returnObj.pushKV("overall", strprintf("Successfully relayed broadcast messages for %d masternodes, failed to relay %d, total %d", nSuccessful, nFailed, nSuccessful + nFailed));
-
-        return returnObj;
-    }
-
-    return NullUniValue;
-}
-
 
 UniValue mnsync(const UniValue& params, bool fHelp)
 {
@@ -655,10 +388,10 @@ Available commands:
 UniValue tickets(const UniValue& params, bool fHelp)
 {
 #ifdef FAKE_TICKET
-    RPC_CMD_PARSER(TICKETS, params, Register, find, list, get, makefaketicket, sendfaketicket, tools);
+    RPC_CMD_PARSER(TICKETS, params, Register, activate, find, list, get, tools, makefaketicket, sendfaketicket);
 #else
-    RPC_CMD_PARSER(TICKETS, params, Register, find, list, get, tools);
-#endif	
+    RPC_CMD_PARSER(TICKETS, params, Register, activate, find, list, get, tools);
+#endif // FAKE_TICKET
 	if (fHelp || !TICKETS.IsCmdSupported())
 		throw runtime_error(
 R"(tickets "command"...
@@ -669,9 +402,11 @@ Arguments:
 
 Available commands:
   register ... - Register specific Pastel tickets into the blockchain. If successful, returns "txid".
+  activate ... - Activate Pastel tickets.
   find ...     - Find specific Pastel tickets in the blockchain.
   list ...     - List all specific Pastel tickets in the blockchain.
-  get ...      - Get Pastel ticket by txid.
+  get  ...     - Get Pastel ticket by txid.
+  tools...     - Pastel ticket tools.
 )");
 	
 	std::string strCmd, strError;
@@ -679,6 +414,9 @@ Available commands:
     {
         case RPC_CMD_TICKETS::Register:
             return tickets_register(params);
+
+        case RPC_CMD_TICKETS::activate:
+            return tickets_activate(params);
 
         case RPC_CMD_TICKETS::find:
             return tickets_find(params);
@@ -706,190 +444,6 @@ Available commands:
     return NullUniValue;
 }
 
-/**
- * Decodes ANI address to CTxDestination object that represents Pastel address.
- * 
- * \param aniAddress - public or script ANI address
- * \return CTxDestination object that represents Pastel address
- */
-CTxDestination ani2psl(const std::string& aniAddress)
-{
-    v_uint8 vchRet;
-    if (!DecodeBase58Check(aniAddress, vchRet))
-        throw JSONRPCError(RPC_INVALID_PARAMETER, "Invalid ANI address\n");
-    
-    uint160 hash;
-    std::copy(vchRet.cbegin() + 1, vchRet.cend(), hash.begin());
-    // DecodeBase58Check checks that vchRet.size() >= 4 
-    if (vchRet.front() == 23) //ANI_PUBKEY_ADDRESS
-        return CKeyID(hash);
-    if (vchRet.front() == 9) //ANI_SCRIPT_ADDRESS
-        return CScriptID(hash);
-
-    throw JSONRPCError(RPC_INVALID_PARAMETER, "Invalid ANI address type\n");
-}
-
-/**
- * Decodes private key string (base58 encoded) to CKey object.
- * 
- * \param str - private key string
- * \return CKey object that encapsulates private key
- */
-CKey ani2psl_secret(const std::string& str, std::string &sKeyError)
-{
-    KeyIO keyIO(Params());
-    return keyIO.DecodeSecret(str, sKeyError);
-}
-
-//INGEST->!!!
-#define INGEST
-UniValue ingest(const UniValue& params, bool fHelp)
-{
-    std::string strCommand;
-    if (params.size() >= 1)
-        strCommand = params[0].get_str();
-
-    if (fHelp || (strCommand != "ingest" && strCommand != "ani2psl" && strCommand != "ani2psl_secret"))
-        throw runtime_error(
-                "\"ingest\" ingest|ani2psl|ani2psl_secret ...\n"
-        );
-
-    KeyIO keyIO(Params());
-#ifdef INGEST
-    if (strCommand == "ingest") {
-        if (params.size() != 3)
-            throw JSONRPCError(RPC_INVALID_PARAMETER,
-                               "ingest ingest filepath max_tx_per_block\n");
-
-        std::string path = params[1].get_str();
-        int max_tx = std::stoi(params[2].get_str());
-        if (max_tx <= 0 ) max_tx = 1000;
-
-        EnsureWalletIsUnlocked();
-
-        UniValue mnObj(UniValue::VOBJ);
-
-        UniValue addressErrors(UniValue::VOBJ);
-        UniValue tnxErrors(UniValue::VOBJ);
-
-        size_t txCounter = 0;
-        size_t lineCounter = 0;
-
-        std::ifstream infile(path);
-        if (!infile)
-            throw JSONRPCError(RPC_INVALID_PARAMETER,
-                               "Cannot open file!!!\n");
-
-        std::ofstream outfile(path+".output");
-        while (!infile.eof()) { //-V1024
-            txCounter++;
-
-            std::vector<CRecipient> vecSend;
-            std::string line;
-            CAmount totalAmount = 0;
-            while (vecSend.size() < max_tx && std::getline(infile, line))
-            {
-                //AW7rZFu6semXGqyUBsaxuXs6LymQh2kwRA,40101110000000
-                //comma must be 35th character!!
-                std::string aniAddress = line.substr(0,34);
-
-                CTxDestination dest = ani2psl(aniAddress);
-                if (!IsValidDestination(dest)) {
-                    addressErrors.pushKV(aniAddress, std::string("Invalid Pastel address converted from ANI address"));
-                    continue;
-                }
-
-                //ani has the same as psl total amount (21 000 000 000)
-                //and same number of decimals - 5 (x.00 000)
-                //so no conversion of amount needed
-                CAmount aniAmount = std::stoll(line.substr(35));
-                if (aniAmount <= 0){
-                    addressErrors.pushKV(aniAddress, std::string("Invalid amount for send for ANI address"));
-                    continue;
-                }
-                aniAmount *= INGEST_MULTIPLIER;
-                totalAmount += aniAmount;
-
-                CScript scriptPubKey = GetScriptForDestination(dest);
-                CRecipient recipient = {scriptPubKey, aniAmount, false};
-                vecSend.push_back(recipient);
-            }
-
-            auto lines = vecSend.size();
-
-            if (lines == 0)
-                continue;
-
-    //        // Check funds
-    //        CAmount nBalance = GetAccountBalance("", 1, ISMINE_SPENDABLE);
-    //        if (totalAmount > nBalance)
-    //        throw JSONRPCError(RPC_WALLET_INSUFFICIENT_FUNDS, "Account has insufficient funds");
-
-            //// Send
-            CWalletTx wtx;
-            wtx.strFromAccount = "";
-
-            CReserveKey keyChange(pwalletMain);
-            CAmount nFeeRequired = 0;
-            int nChangePosRet = -1;
-
-            string strFailReason;
-
-            if (!pwalletMain->CreateTransaction(vecSend, wtx, keyChange, nFeeRequired, nChangePosRet, strFailReason)){
-                tnxErrors.pushKV(std::to_string(txCounter), std::string{"CreateTransaction failed - "} + strFailReason);
-                lineCounter+=lines;
-                continue;
-            }
-
-            if (!pwalletMain->CommitTransaction(wtx, keyChange)){
-                tnxErrors.pushKV(std::to_string(txCounter), "CommitTransaction failed");
-                lineCounter+=lines;
-                continue;
-            }
-
-            UniValue obj(UniValue::VOBJ);
-            obj.pushKV(wtx.GetHash().GetHex(), (uint64_t)lines);
-            mnObj.pushKV(std::to_string(txCounter), obj);
-
-            outfile << wtx.GetHash().GetHex() << " : " << lineCounter+1 << "-" << lineCounter+lines << " (" << lines << ")\n";
-            outfile.flush();
-            lineCounter+=lines;
-        }
-
-        mnObj.pushKV("address_errors", addressErrors);
-        mnObj.pushKV("tnx_errors", tnxErrors);
-
-        return mnObj;
-    }
-#endif
-    if (strCommand == "ani2psl")
-    {
-        if (params.size() != 2)
-            throw JSONRPCError(RPC_INVALID_PARAMETER, "ingest ani2psl ...\n");
-
-        const std::string aniAddress = params[1].get_str();
-
-        const CTxDestination dest = ani2psl(aniAddress);
-        return keyIO.EncodeDestination(dest);
-    }
-
-    // ingest ani private key (32-byte)
-    if (strCommand == "ani2psl_secret")
-    {
-        if (params.size() != 2)
-            throw JSONRPCError(RPC_INVALID_PARAMETER, "ingest ani2psl_secret ...\n");
-
-        const std::string aniSecret = params[1].get_str();
-        std::string sKeyError;
-        const CKey pslKey = ani2psl_secret(aniSecret, sKeyError);
-        if (!pslKey.IsValid())
-            throw JSONRPCError(RPC_INVALID_PARAMETER, tinyformat::format("Invalid private key, %s", sKeyError.c_str()));
-        return keyIO.EncodeSecret(pslKey);
-    }
-    return NullUniValue;
-}
-
-//<-INGEST!!!
 static const CRPCCommand commands[] =
 { //  category              name                        actor (function)           okSafeMode
     /* Masternode */
@@ -903,9 +457,7 @@ static const CRPCCommand commands[] =
     { "mnode",               "getfeeschedule",         &getfeeschedule,         true  },
     { "mnode",               "chaindata",              &chaindata,              true  },
     { "mnode",               "tickets",                &tickets,                true  },
-//INGEST->!!!
-    { "mnode",               "ingest",                 &ingest,                true  },
-//<-INGEST!!!
+    { "mnode",               "ingest",                 &ingest,                 true  },
 };
 
 

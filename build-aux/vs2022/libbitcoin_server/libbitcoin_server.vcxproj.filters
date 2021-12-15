@@ -262,6 +262,18 @@
     <ClCompile Include="..\..\..\src\mnode\rpc\tickets-get.cpp">
       <Filter>Source Files\mnode\rpc</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\..\src\mnode\tickets\action-act.cpp">
+      <Filter>Source Files\mnode\tickets</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\src\mnode\rpc\ingest.cpp">
+      <Filter>Source Files\mnode\rpc</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\src\mnode\rpc\masternodebroadcast.cpp">
+      <Filter>Source Files\mnode\rpc</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\src\mnode\rpc\tickets-activate.cpp">
+      <Filter>Source Files\mnode\rpc</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\..\src\addrman.h">
@@ -555,12 +567,29 @@
     <ClInclude Include="..\..\..\src\mnode\tickets\ticket_signing.h">
       <Filter>Source Files\mnode\tickets</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\..\src\mnode\ticket.h" />
     <ClInclude Include="..\..\..\src\mnode\rpc\tickets-get.h">
       <Filter>Source Files\mnode\rpc</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\src\mnode\rpc\tickets-find.h">
       <Filter>Source Files\mnode\rpc</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\mnode\tickets\action-act.h">
+      <Filter>Source Files\mnode\tickets</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\mnode\tickets\ticket.h">
+      <Filter>Source Files\mnode\tickets</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\mnode\rpc\ingest.h">
+      <Filter>Source Files\mnode\rpc</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\mnode\rpc\masternodebroadcast.h">
+      <Filter>Source Files\mnode\rpc</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\mnode\rpc\tickets-activate.h">
+      <Filter>Source Files\mnode\rpc</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\mnode\tickets\ticket-mn-fees.h">
+      <Filter>Source Files\mnode\tickets</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

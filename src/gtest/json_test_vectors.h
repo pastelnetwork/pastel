@@ -8,8 +8,9 @@
 #include <univalue.h>
 
 UniValue read_json(const std::string& jsondata);
+UniValue read_json(const char* szJsonData);
 
-// #define PRINT_JSON 1
+    // #define PRINT_JSON 1
 
 template<typename T>
 void expect_deser_same(const T& expected)

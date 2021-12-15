@@ -28,21 +28,19 @@ using NFTSellTickets_t = std::vector<CNFTSellTicket>;
 class CNFTSellTicket : public CPastelTicket
 {
 public:
-    std::string pastelID;
     std::string NFTTxnId;
     unsigned int askedPrice{};
     unsigned int activeAfter{};  //as a block height
     unsigned int activeBefore{}; //as a block height
     unsigned short copyNumber{};
     std::string reserved;
-    v_uint8 signature;
 
     std::string key;
 
 public:
     CNFTSellTicket() = default;
 
-    explicit CNFTSellTicket(std::string _pastelID) : pastelID(std::move(_pastelID))
+    explicit CNFTSellTicket(std::string _pastelID) : m_sPastelID(std::move(_pastelID))
     {}
 
     TicketID ID() const noexcept override { return TicketID::Sell; }
@@ -51,28 +49,38 @@ public:
     void Clear() noexcept override
     {
         CPastelTicket::Clear();
-        pastelID.clear();
+        m_sPastelID.clear();
         NFTTxnId.clear();
         askedPrice = 0;
         activeAfter = 0;
         activeBefore = 0;
         copyNumber = 0;
         reserved.clear();
-        signature.clear();
+        clearSignature();
         key.clear();
     }
     std::string KeyOne() const noexcept override { return !key.empty() ? key : NFTTxnId + ":" + std::to_string(copyNumber); } //txid:#
-    std::string MVKeyOne() const noexcept override { return pastelID; }
+    std::string MVKeyOne() const noexcept override { return m_sPastelID; }
     std::string MVKeyTwo() const noexcept override { return NFTTxnId; }
 
     bool HasMVKeyOne() const noexcept override { return true; }
     bool HasMVKeyTwo() const noexcept override { return true; }
-    void SetKeyOne(std::string val) override { key = std::move(val); }
+    void SetKeyOne(std::string&& sValue) override { key = std::move(sValue); }
 
     std::string ToJSON() const noexcept override;
     std::string ToStr() const noexcept override;
     bool IsValid(const bool bPreReg, const int nDepth) const override;
     CAmount TicketPrice(const unsigned int nHeight) const noexcept override { return std::max(10u, askedPrice / 50); }
+    bool IsSameSignature(const v_uint8& signature) const noexcept { return m_signature == signature; }
+    // sign the ticket with the PastelID's private key - creates signature
+    void sign(SecureString&& strKeyPass);
+
+    // getters for ticket fields
+    const std::string& getPastelID() const noexcept { return m_sPastelID; }
+    const std::string getSignature() const noexcept { return vector_to_string(m_signature); }
+
+    // setters for ticket fields
+    void clearSignature() { m_signature.clear(); }
 
     void SerializationOp(CDataStream& s, const SERIALIZE_ACTION ser_action) override
     {
@@ -80,7 +88,7 @@ public:
         std::string error;
         if (!VersionMgmt(error, bRead))
             throw std::runtime_error(error);
-        READWRITE(pastelID);
+        READWRITE(m_sPastelID);
         READWRITE(m_nVersion);
         // v0
         READWRITE(NFTTxnId);
@@ -89,7 +97,7 @@ public:
         READWRITE(activeBefore);
         READWRITE(copyNumber);
         READWRITE(reserved);
-        READWRITE(signature);
+        READWRITE(m_signature);
         READWRITE(m_nTimestamp);
         READWRITE(m_txid);
         READWRITE(m_nBlock);
@@ -100,4 +108,8 @@ public:
 
     static NFTSellTickets_t FindAllTicketByPastelID(const std::string& pastelID);
     static NFTSellTickets_t FindAllTicketByNFTTxnID(const std::string& NFTTxnId);
+
+protected:
+    std::string m_sPastelID;
+    v_uint8 m_signature;
 };

@@ -46,18 +46,18 @@ void trade_copy_validation(const string& nftTxnId, const v_uint8& signature)
                 "The activation ticket with txid [%s] referred by this trade ticket is invalid", nftTxnId));
         }
 
-        auto pNFTTicket = CPastelTicketProcessor::GetTicket(actTicket->regTicketTxnId, TicketID::NFT);
+        auto pNFTTicket = CPastelTicketProcessor::GetTicket(actTicket->getRegTxId(), TicketID::NFT);
         if (!pNFTTicket) {
             throw runtime_error(strprintf(
                 "The registration ticket with txid [%s] referred by activation ticket is invalid",
-                actTicket->regTicketTxnId));
+                actTicket->getRegTxId()));
         }
 
         auto NFTTicket = dynamic_cast<const CNFTRegTicket*>(pNFTTicket.get());
         if (!NFTTicket) {
             throw runtime_error(strprintf(
                 "The registration ticket with txid [%s] referred by activation ticket is invalid",
-                actTicket->regTicketTxnId));
+                actTicket->getRegTxId()));
         }
 
         totalCopies = NFTTicket->getTotalCopies();
@@ -172,7 +172,7 @@ bool CNFTTradeTicket::IsValid(const bool bPreReg, const int nDepth) const
     unique_ptr<CPastelTicket> sellTicket;
     if (!common_validation(
             *this, bPreReg, sellTxnId, sellTicket,
-            [](const TicketID tid) { return (tid != TicketID::Sell); },
+            [](const TicketID tid) noexcept { return (tid != TicketID::Sell); },
             "Trade", "sell", nDepth, price + TicketPrice(chainHeight))) {
         throw runtime_error(strprintf("The Trade ticket with Sell txid [%s] is not validated", sellTxnId));
     }
@@ -180,7 +180,7 @@ bool CNFTTradeTicket::IsValid(const bool bPreReg, const int nDepth) const
     unique_ptr<CPastelTicket> buyTicket;
     if (!common_validation(
             *this, bPreReg, buyTxnId, buyTicket,
-            [](const TicketID tid) { return (tid != TicketID::Buy); },
+            [](const TicketID tid) noexcept { return (tid != TicketID::Buy); },
             "Trade", "buy", nDepth, price + TicketPrice(chainHeight))) {
         throw runtime_error(strprintf("The Trade ticket with Buy txid [%s] is not validated", buyTxnId));
     }
@@ -250,7 +250,7 @@ CAmount CNFTTradeTicket::GetExtraOutputs(vector<CTxOut>& outputs) const
     if (!NFTSellTicket)
         throw runtime_error(strprintf("The NFT Sell ticket with this txid [%s] is not in the blockchain", sellTxnId));
 
-    auto sellerPastelID = NFTSellTicket->pastelID;
+    auto sellerPastelID = NFTSellTicket->getPastelID();
     CPastelIDRegTicket sellerPastelIDticket;
     if (!CPastelIDRegTicket::FindTicketInDb(sellerPastelID, sellerPastelIDticket))
         throw runtime_error(strprintf(

@@ -128,40 +128,40 @@ public:
  */
 
 //! total number of buckets for tried addresses
-#define ADDRMAN_TRIED_BUCKET_COUNT 256
+constexpr uint32_t ADDRMAN_TRIED_BUCKET_COUNT = 256;
 
 //! total number of buckets for new addresses
-#define ADDRMAN_NEW_BUCKET_COUNT 1024
+constexpr size_t ADDRMAN_NEW_BUCKET_COUNT = 1024;
 
 //! maximum allowed number of entries in buckets for new and tried addresses
-#define ADDRMAN_BUCKET_SIZE 64
+constexpr size_t ADDRMAN_BUCKET_SIZE = 64;
 
 //! over how many buckets entries with tried addresses from a single group (/16 for IPv4) are spread
-#define ADDRMAN_TRIED_BUCKETS_PER_GROUP 8
+constexpr size_t ADDRMAN_TRIED_BUCKETS_PER_GROUP = 8;
 
 //! over how many buckets entries with new addresses originating from a single group are spread
-#define ADDRMAN_NEW_BUCKETS_PER_SOURCE_GROUP 64
+constexpr size_t ADDRMAN_NEW_BUCKETS_PER_SOURCE_GROUP = 64;
 
 //! in how many buckets for entries with new addresses a single address may occur
-#define ADDRMAN_NEW_BUCKETS_PER_ADDRESS 8
+constexpr size_t ADDRMAN_NEW_BUCKETS_PER_ADDRESS = 8;
 
 //! how old addresses can maximally be
-#define ADDRMAN_HORIZON_DAYS 30
+constexpr size_t ADDRMAN_HORIZON_DAYS = 30;
 
 //! after how many failed attempts we give up on a new node
-#define ADDRMAN_RETRIES 3
+constexpr size_t ADDRMAN_RETRIES = 3;
 
 //! how many successive failures are allowed ...
-#define ADDRMAN_MAX_FAILURES 10
+constexpr size_t ADDRMAN_MAX_FAILURES = 10;
 
 //! ... in at least this many days
-#define ADDRMAN_MIN_FAIL_DAYS 7
+constexpr size_t ADDRMAN_MIN_FAIL_DAYS = 7;
 
 //! the maximum percentage of nodes to return in a getaddr call
-#define ADDRMAN_GETADDR_MAX_PCT 23
+constexpr size_t ADDRMAN_GETADDR_MAX_PCT = 23;
 
 //! the maximum number of nodes to return in a getaddr call
-#define ADDRMAN_GETADDR_MAX 2500
+constexpr size_t ADDRMAN_GETADDR_MAX = 2500;
 
 /** 
  * Stochastical (IP) address manager 
@@ -201,14 +201,14 @@ protected:
     uint256 nKey;
 
     //! Find an entry.
-    CAddrInfo* Find(const CNetAddr& addr, int *pnId = NULL);
+    CAddrInfo* Find(const CNetAddr& addr, int *pnId = nullptr);
 
     //! find an entry, creating it if necessary.
     //! nTime and nServices of the found node are updated, if necessary.
-    CAddrInfo* Create(const CAddress &addr, const CNetAddr &addrSource, int *pnId = NULL);
+    CAddrInfo* Create(const CAddress &addr, const CNetAddr &addrSource, int *pnId = nullptr);
 
     //! Swap two elements in vRandom.
-    void SwapRandom(unsigned int nRandomPos1, unsigned int nRandomPos2);
+    void SwapRandom(const size_t nRandomPos1, const size_t nRandomPos2);
 
     //! Move an entry from the "new" table(s) to the "tried" table
     void MakeTried(CAddrInfo& info, int nId);
@@ -291,32 +291,37 @@ public:
         s << nUBuckets;
         std::map<int, int> mapUnkIds;
         int nIds = 0;
-        for (std::map<int, CAddrInfo>::const_iterator it = mapInfo.begin(); it != mapInfo.end(); it++) {
-            mapUnkIds[(*it).first] = nIds;
-            const CAddrInfo &info = (*it).second;
-            if (info.nRefCount) {
+        for (const auto& [id, info]: mapInfo)
+        {
+            mapUnkIds[id] = nIds;
+            if (info.nRefCount)
+            {
                 assert(nIds != nNew); // this means nNew was wrong, oh ow
                 s << info;
                 nIds++;
             }
         }
         nIds = 0;
-        for (std::map<int, CAddrInfo>::const_iterator it = mapInfo.begin(); it != mapInfo.end(); it++) {
-            const CAddrInfo &info = (*it).second;
-            if (info.fInTried) {
+        for (const auto& [id, info] : mapInfo)
+        {
+            if (info.fInTried)
+            {
                 assert(nIds != nTried); // this means nTried was wrong, oh ow
                 s << info;
                 nIds++;
             }
         }
-        for (int bucket = 0; bucket < ADDRMAN_NEW_BUCKET_COUNT; bucket++) {
+        for (size_t bucket = 0; bucket < ADDRMAN_NEW_BUCKET_COUNT; bucket++)
+        {
             int nSize = 0;
-            for (int i = 0; i < ADDRMAN_BUCKET_SIZE; i++) {
+            for (size_t i = 0; i < ADDRMAN_BUCKET_SIZE; i++)
+            {
                 if (vvNew[bucket][i] != -1)
                     nSize++;
             }
             s << nSize;
-            for (int i = 0; i < ADDRMAN_BUCKET_SIZE; i++) {
+            for (size_t i = 0; i < ADDRMAN_BUCKET_SIZE; i++)
+            {
                 if (vvNew[bucket][i] != -1) {
                     int nIndex = mapUnkIds[vvNew[bucket][i]];
                     s << nIndex;
@@ -355,7 +360,8 @@ public:
         }
 
         // Deserialize entries from the new table.
-        for (int n = 0; n < nNew; n++) {
+        for (int n = 0; n < nNew; n++)
+        {
             CAddrInfo &info = mapInfo[n];
             s >> info;
             mapAddr[info] = n;
@@ -376,13 +382,15 @@ public:
 
         // Deserialize entries from the tried table.
         int nLost = 0;
-        for (int n = 0; n < nTried; n++) {
+        for (int n = 0; n < nTried; n++)
+        {
             CAddrInfo info;
             s >> info;
             int nKBucket = info.GetTriedBucket(nKey);
             int nKBucketPos = info.GetBucketPosition(nKey, false, nKBucket);
-            if (vvTried[nKBucket][nKBucketPos] == -1) {
-                info.nRandomPos = vRandom.size();
+            if (vvTried[nKBucket][nKBucketPos] == -1)
+            {
+                info.nRandomPos = static_cast<int>(vRandom.size());
                 info.fInTried = true;
                 vRandom.push_back(nIdCount);
                 mapInfo[nIdCount] = info;
@@ -456,15 +464,19 @@ public:
         Clear();
     }
 
-    ~CAddrMan()
+    ~CAddrMan() noexcept
     {
         nKey.SetNull();
     }
 
     //! Return the number of (unique) addresses in all tables.
-    size_t size() const
+    size_t size() const noexcept
     {
         return vRandom.size();
+    }
+    bool empty() const noexcept
+    {
+        return vRandom.empty();
     }
 
     //! Consistency check

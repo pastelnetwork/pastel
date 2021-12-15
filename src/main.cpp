@@ -1654,7 +1654,8 @@ bool ReadBlockFromDisk(CBlock& block, const CBlockIndex* pindex, const Consensus
 CAmount GetBlockSubsidy(int nHeight, const Consensus::Params& consensusParams)
 {
     //INGEST->!!!
-    if (!Params().IsRegTest()) {
+    if (!Params().IsRegTest())
+    {
         if (nHeight == INGEST_MINING_BLOCK)
             return INGEST_MINING_AMOUNT;
         if (nHeight < TOP_INGEST_BLOCK)

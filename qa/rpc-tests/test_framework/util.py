@@ -485,7 +485,7 @@ def assert_raises_rpc(code, expected_error_substring, func, *args, **kwargs):
                 raise AssertionError(f"Invalid JSONRPCException code {err['code']}, expected {code} in {repr(e)}")
             if expected_error_substring and expected_error_substring not in str(e):
                 raise AssertionError(f"Invalid JSONRPCException message: Couldn't find {repr(expected_error_substring)} in {repr(e)}")
-        print(f"RPC Exception received: {e!r}.\nExpected substring: [{expected_error_substring}]");
+        print(f" >>> RPC Exception received:\n{e!r}.\n <<< Expected substring: [{expected_error_substring}]");
     except Exception as e:
         raise AssertionError("Unexpected exception raised: "+type(e).__name__)
     else:

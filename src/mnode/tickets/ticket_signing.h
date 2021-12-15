@@ -23,7 +23,6 @@ public:
 
     typedef struct _signer
     {
-        _signer() = default;
         const char* name;       // signer name
         const char* altName;    // optional alternative signer name (nullptr if not needed)
         const char* desc;       // signer description - used for logging
@@ -39,7 +38,7 @@ public:
     // serialize/deserialize signatures
     void serialize_signatures(CDataStream& s, const SERIALIZE_ACTION ser_action);
 
-    // check if sPastelID is signature creator
+    // check if sPastelID is principal signature creator
     bool IsCreatorPastelId(const std::string& sPastelID) const noexcept { return m_vPastelID[SIGN_PRINCIPAL] == sPastelID; }
     std::string getCreatorPastelId() const noexcept { return m_vPastelID[SIGN_PRINCIPAL]; }
     // get PastelID by signature id
@@ -49,13 +48,13 @@ public:
 
 protected:
     // default signature names, can be redefined by overriding get_signature_names
-    static constexpr std::array<signer, SIGN_COUNT> SIGNER = 
+    static constexpr std::array<signer, SIGN_COUNT> SIGNER =
     {{
-        { "principal", "creator", "Principal"},
-        {       "mn1",   nullptr,       "MN1"},
-        {       "mn2",   nullptr,       "MN2"},
-        {       "mn3",   nullptr,       "MN3"}
-     }};
+        {"principal", "creator", "Principal"},
+        {"mn1", nullptr, "MN1"},
+        {"mn2", nullptr, "MN2"},
+        {"mn3", nullptr, "MN3"}
+    }};
 
     // array of Pastel IDs that signed the ticket
     std::array<std::string, SIGN_COUNT> m_vPastelID;

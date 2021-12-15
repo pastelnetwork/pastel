@@ -21,6 +21,11 @@ constexpr auto TICKET_NAME_ETHEREUM_ADDRESS_CHANGE  = "ethereum-address-change";
 constexpr auto TICKET_NAME_ACTION_REG               = "action-reg";             // Action registration ticket
 constexpr auto TICKET_NAME_ACTION_ACT               = "action-act";             // Action activation ticket
 
+// support fake tickets
+#ifndef FAKE_TICKET
+#define FAKE_TICKET
+#endif
+
 /**
  * Ticket Type IDs.
  */

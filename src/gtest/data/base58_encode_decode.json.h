@@ -1,3 +1,8 @@
+#pragma once
+
+namespace json_tests
+{
+constexpr auto TEST_BASE58_ENCODE_DECODE_JSON = R"(
 [
 ["", ""],
 ["61", "2g"],
@@ -12,3 +17,6 @@
 ["10c8511e", "Rt5zm"],
 ["00000000000000000000", "1111111111"]
 ]
+)";
+
+};

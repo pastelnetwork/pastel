@@ -1,3 +1,8 @@
+#pragma once
+
+namespace json_tests
+{
+constexpr auto TEST_BASE58_KEYS_VALID = R"(
 [
     [
         "Ptq6hqeeAXta25PGaKHs1ymktHbEb8ugxeG",
@@ -424,3 +429,6 @@
         }
     ]
 ]
+)";
+
+};

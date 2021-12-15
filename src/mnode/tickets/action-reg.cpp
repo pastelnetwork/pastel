@@ -79,7 +79,7 @@ void CActionRegTicket::parse_action_ticket()
         string sActionType = jsonTicketObj["action_type"];
         if (!SetActionType(sActionType))
             throw runtime_error(strprintf("Action type [%s] is not supported", sActionType));
-        m_nCreatorHeight = jsonTicketObj["blocknum"];
+        m_nCalledAtHeight = jsonTicketObj["blocknum"];
 
     } catch (const json::exception& ex) {
         throw runtime_error(strprintf("Failed to parse Action ticket json. %s", SAFE_SZ(ex.what())));
@@ -92,6 +92,8 @@ void CActionRegTicket::Clear() noexcept
     CPastelTicket::Clear();
     m_sActionTicket.clear();
     SetActionType("");
+    m_sCallerPastelId.clear();
+    m_nCalledAtHeight = 0;
     CTicketSigning::clear_signatures();
     m_keyOne.clear();
     m_keyTwo.clear();
@@ -130,13 +132,13 @@ string CActionRegTicket::ToJSON() const noexcept
         {"ticket",
             {
                {"type", GetTicketName()},
+               {"version", GetStoredVersion()},
                {"action_ticket", m_sActionTicket},
                {"action_type", m_sActionType},
-               {"version", GetStoredVersion()},
                get_signatures_json(),
                {"key1", m_keyOne},
                {"key2", m_keyTwo},
-               {"called_at", m_nCreatorHeight},
+               {"called_at", m_nCalledAtHeight},
                {"storage_fee", m_storageFee}
             }
         }
@@ -184,7 +186,7 @@ bool CActionRegTicket::IsValid(const bool bPreReg, const int nDepth) const
     }
 
     // B. Something to validate always
-    validate_signatures(nDepth, m_nCreatorHeight, m_sActionTicket);
+    validate_signatures(nDepth, m_nCalledAtHeight, m_sActionTicket);
     return true;
 }
 

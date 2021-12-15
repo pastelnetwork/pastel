@@ -48,7 +48,7 @@ bool CNFTBuyTicket::IsValid(const bool bPreReg, const int nDepth) const
     unique_ptr<CPastelTicket> pastelTicket;
     if (!common_validation(
             *this, bPreReg, sellTxnId, pastelTicket,
-            [](const TicketID tid) { return (tid != TicketID::Sell); },
+            [](const TicketID tid) noexcept { return (tid != TicketID::Sell); },
             "Buy", "sell", nDepth, price + TicketPrice(chainHeight))) {
         throw runtime_error(strprintf("The Buy ticket with Sell txid [%s] is not validated", sellTxnId));
     }

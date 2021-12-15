@@ -1,3 +1,4 @@
+// Copyright (c) 2021 The Pastel developers
 #include "gmock/gmock.h"
 #include "univalue.h"
 #include <boost/program_options/options_description.hpp>

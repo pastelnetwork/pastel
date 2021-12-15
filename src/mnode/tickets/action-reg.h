@@ -91,15 +91,18 @@ public:
 
     bool HasKeyTwo() const noexcept override { return true; }
     bool HasMVKeyOne() const noexcept override { return true; }
-    void SetKeyOne(std::string val) override { m_keyOne = std::move(val); }
+    void SetKeyOne(std::string &&sValue) override { m_keyOne = std::move(sValue); }
 
     std::string ToJSON() const noexcept override;
     std::string ToStr() const noexcept override { return m_sActionTicket; }
     bool IsValid(const bool bPreReg, const int nDepth) const override;
+    // check if sPastelID belongs to the action caller
+    bool IsCallerPastelId(const std::string& sCallerPastelID) const noexcept { return m_sCallerPastelId == sCallerPastelID; }
 
     // getters for ticket fields
     CAmount getStorageFee() const noexcept { return m_storageFee; }
-    uint32_t getCreatorHeight() const noexcept { return m_nCreatorHeight; }
+    uint32_t getCalledAtHeight() const noexcept { return m_nCalledAtHeight; }
+    const std::string getCallerPastelId() const noexcept { return m_sCallerPastelId; }
 
     /**
      * Serialize/Deserialize action registration ticket.
@@ -117,12 +120,14 @@ public:
 
         // v1
         READWRITE(m_sActionTicket);
+        if (bRead) // parse base64-encoded action registration ticket (m_sActionTicket) after reading from blockchain
+            parse_action_ticket();
         READWRITE(m_sActionType);
         const bool bValidActionType = SetActionType(m_sActionType);
         serialize_signatures(s, ser_action);
         READWRITE(m_keyOne);
         READWRITE(m_keyTwo);
-        READWRITE(m_nCreatorHeight);
+        READWRITE(m_nCalledAtHeight);
         READWRITE(m_storageFee);
         if (m_nTimestamp == 0)
             GenerateTimestamp();
@@ -143,12 +148,12 @@ protected:
     std::string m_sActionTicket;        // action reg ticket json (encoded with base64 when passed via rpc parameter)
     std::string m_sActionType;          // action type: sense (dupe detection), cascade (storage)
     ACTION_TICKET_TYPE m_ActionType{ACTION_TICKET_TYPE::UNKNOWN};
-    std::string m_sCallerPastelId;      // Pastel ID of the action caller
-    uint32_t m_nCreatorHeight{0};       // blocknum when the ticket was created by the wallet
+    std::string m_sCallerPastelId;      // Pastel ID of the Action caller
+    uint32_t m_nCalledAtHeight{0};      // block at which action was requested
 
     std::string m_keyOne;               // key #1
     std::string m_keyTwo;               // key #2
-    CAmount m_storageFee{0};            // storage fee in PSL
+    CAmount m_storageFee{0};                // storage fee in PSL
 
     // parse base64-encoded action_ticket in json format, may throw runtime_error exception
     void parse_action_ticket();

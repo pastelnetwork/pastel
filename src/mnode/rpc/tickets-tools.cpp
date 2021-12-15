@@ -191,7 +191,7 @@ UniValue tickets_tools_validateownership(const UniValue& params)
     if (params.size() < 5)
         throw JSONRPCError(RPC_INVALID_PARAMETER,
 R"(tickets tools validateownership "txid" "pastelid" "passphrase"
-Get ownership validation by pastelid. If unsuccessful, method return NFT:"",trade:"". Every other case successful.
+Get ownership validation by pastelid. If unsuccessful, method return nft:"",trade:"". Every other case successful.
 
 Arguments:
 1. "txid"       (string, required) txid of the original nft registration 
@@ -200,7 +200,7 @@ Arguments:
 
 Validate ownership
 )" + HelpExampleCli("tickets tools validateownership", R"(""e4ee20e436d33f59cc313647bacff0c5b0df5b7b1c1fa13189ea7bc8b9df15a4" jXYqZNPj21RVnwxnEJ654wEdzi7GZTZ5LAdiotBmPrF7pDMkpX1JegDMQZX55WZLkvy9fxNpZcbBJuE8QYUqBF "passphrase")") +
-                               R"(
+R"(
 As json rpc
 )" + HelpExampleRpc("tickets", R"("tools", "validateownership", "e4ee20e436d33f59cc313647bacff0c5b0df5b7b1c1fa13189ea7bc8b9df15a4" "jXYqZNPj21RVnwxnEJ654wEdzi7GZTZ5LAdiotBmPrF7pDMkpX1JegDMQZX55WZLkvy9fxNpZcbBJuE8QYUqBF" "passphrase")"));
 

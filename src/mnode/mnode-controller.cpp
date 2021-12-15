@@ -492,7 +492,7 @@ CAmount CMasterNodeController::GetNetworkFeePerMB()
                     cnt++;
                 }
                 // Use trimmean to calculate the value with fixed 25% percentage
-                nFee = ceil(TRIMMEAN(feeArray, mapMasternodes.size(), 0.25));
+                nFee = static_cast<CAmount>(ceil(TRIMMEAN(feeArray, mapMasternodes.size(), 0.25)));
                 delete[] feeArray;
             } catch (std::bad_alloc&) {
                 LogPrint("masternode", "Could't allocate memory for input of TRIMMEAN");

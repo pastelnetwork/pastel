@@ -11,3 +11,14 @@ UniValue read_json(const std::string& jsondata)
     }
     return v.get_array();
 }
+
+UniValue read_json(const char *szJsonData)
+{
+    UniValue v;
+
+    if (!(v.read(szJsonData) && v.isArray())) {
+        ADD_FAILURE();
+        return UniValue(UniValue::VARR);
+    }
+    return v.get_array();
+}

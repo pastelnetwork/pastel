@@ -17,7 +17,7 @@ class CPastelTicket
 {
 public:
     // abstract classes should have virtual destructor
-    virtual ~CPastelTicket() {}
+    virtual ~CPastelTicket() = default;
     // get ticket type
     virtual TicketID ID() const noexcept = 0;
     // get json representation
@@ -43,7 +43,7 @@ public:
         return TICKET_INFO[to_integral_type<TicketID>(ID())].nVersion;
     }
     /**
-     * Get ticket price.
+     * Get ticket price in PSL.
      * Returns default fee as defined in <ticket-types.h>.
      * This can be redefined in a specific ticket class (for example if fee depends on height).
      * 
@@ -116,7 +116,7 @@ public:
     virtual std::string MVKeyTwo() const noexcept { return ""; }
     virtual std::string MVKeyThree() const noexcept { return ""; }
 
-    virtual void SetKeyOne(std::string val) = 0;
+    virtual void SetKeyOne(std::string &&sValue) = 0;
 
 protected:
     std::string m_txid;          // ticket transaction id

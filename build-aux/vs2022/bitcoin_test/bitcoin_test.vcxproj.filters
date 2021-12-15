@@ -10,9 +10,6 @@
     <ClCompile Include="..\..\..\src\test\accounting_tests.cpp">
       <Filter>UnitTest Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\src\test\addrman_tests.cpp">
-      <Filter>UnitTest Files</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\..\src\test\alert_tests.cpp">
       <Filter>UnitTest Files</Filter>
     </ClCompile>
@@ -22,18 +19,6 @@
     <ClCompile Include="..\..\..\src\test\arith_uint256_tests.cpp">
       <Filter>UnitTest Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\src\test\base32_tests.cpp">
-      <Filter>UnitTest Files</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\..\src\test\base58_tests.cpp">
-      <Filter>UnitTest Files</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\..\src\test\base64_tests.cpp">
-      <Filter>UnitTest Files</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\..\src\test\bech32_tests.cpp">
-      <Filter>UnitTest Files</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\..\src\test\bip32_tests.cpp">
       <Filter>UnitTest Files</Filter>
     </ClCompile>
@@ -41,9 +26,6 @@
       <Filter>UnitTest Files</Filter>
     </ClCompile>
     <ClCompile Include="..\..\..\src\test\checkblock_tests.cpp">
-      <Filter>UnitTest Files</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\..\src\test\Checkpoints_tests.cpp">
       <Filter>UnitTest Files</Filter>
     </ClCompile>
     <ClCompile Include="..\..\..\src\test\coins_tests.cpp">
@@ -70,16 +52,10 @@
     <ClCompile Include="..\..\..\src\test\getarg_tests.cpp">
       <Filter>UnitTest Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\src\test\hash_tests.cpp">
-      <Filter>UnitTest Files</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\..\src\test\key_tests.cpp">
       <Filter>UnitTest Files</Filter>
     </ClCompile>
     <ClCompile Include="..\..\..\src\test\main_tests.cpp">
-      <Filter>UnitTest Files</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\..\src\test\miner_tests.cpp">
       <Filter>UnitTest Files</Filter>
     </ClCompile>
     <ClCompile Include="..\..\..\src\test\mruset_tests.cpp">
@@ -112,9 +88,6 @@
     <ClCompile Include="..\..\..\src\test\rpc_wallet_tests.cpp">
       <Filter>UnitTest Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\src\test\sanity_tests.cpp">
-      <Filter>UnitTest Files</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\..\src\test\scheduler_tests.cpp">
       <Filter>UnitTest Files</Filter>
     </ClCompile>
@@ -143,9 +116,6 @@
       <Filter>UnitTest Files</Filter>
     </ClCompile>
     <ClCompile Include="..\..\..\src\test\test_bitcoin.cpp">
-      <Filter>UnitTest Files</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\..\src\test\timedata_tests.cpp">
       <Filter>UnitTest Files</Filter>
     </ClCompile>
     <ClCompile Include="..\..\..\src\test\torcontrol_tests.cpp">
@@ -179,9 +149,6 @@
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <None Include="..\..\..\src\test\README.md">
-      <Filter>UnitTest Files</Filter>
-    </None>
     <None Include="..\..\..\src\Makefile.test.include" />
   </ItemGroup>
 </Project>

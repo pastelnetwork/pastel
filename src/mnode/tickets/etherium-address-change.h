@@ -54,7 +54,7 @@ public:
     bool HasMVKeyOne() const noexcept override { return false; }
     bool HasMVKeyTwo() const noexcept override { return false; }
 
-    void SetKeyOne(std::string val) override { ethereumAddress = std::move(val); }
+    void SetKeyOne(std::string&& sValue) override { ethereumAddress = std::move(sValue); }
 
     std::string ToJSON() const noexcept override;
     std::string ToStr() const noexcept override;
