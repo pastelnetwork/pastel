@@ -160,7 +160,7 @@ class UserNameChangeTest(PastelTestFramework):
         assert_raises_rpc(rpc.RPC_MISC_ERROR, self.ERR_READ_PASTELID_FILE, 
             self.nodes[2].tickets, "register", "username", username2, self.n1_pastelid1, self.passphrase)
         # using invalid passphrase 
-        assert_raises_rpc(rpc.RPC_MISC_ERROR, self.ERR_READ_PASTELID_FILE, 
+        assert_raises_rpc(rpc.RPC_MISC_ERROR, self.ERR_INVALID_PASSPHRASE, 
             self.nodes[1].tickets, "register", "username", username2, self.n1_pastelid1, self.new_passphrase)
 
         # second username change too early - less than 10 blocks for regtest
