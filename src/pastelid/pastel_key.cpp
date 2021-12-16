@@ -12,6 +12,9 @@
 #include <mnode/tickets/pastelid-reg.h>
 
 using namespace std;
+using namespace legroast;
+using namespace ed_crypto;
+using namespace secure_container;
 
 /**
 * Generate new PastelID (EdDSA448) and LegRoast public/private key pairs.
@@ -23,9 +26,6 @@ using namespace std;
 pastelid_store_t CPastelID::CreateNewPastelKeys(SecureString&& passPhrase)
 {
     pastelid_store_t resultMap;
-    using namespace legroast;
-    using namespace ed_crypto;
-    using namespace secure_container;
     try
     {
         // PastelID private/public keys (EdDSA448)
@@ -69,6 +69,43 @@ CPastelID::SIGN_ALGORITHM CPastelID::GetAlgorithmByName(const string& s)
 }
 
 /**
+ * Read ed448 private key from PKCS8 encrypted file.
+ * Generate new LegRoast private-public key pair.
+ * Create new secure container and delete PKCS8 file.
+ * 
+ * \return true if new secure container file successfully generated
+ */
+bool CPastelID::ProcessEd448_PastelKeyFile(string& error, const string& sFilePath, const SecureString& sPassPhrase, SecureString&& sNewPassPhrase)
+{
+    bool bRet = false;
+    try
+    {
+        CLegRoast<algorithm::Legendre_Middle> LegRoastKey;
+        CSecureContainer cont;
+
+        // for backward compatibility read ed448 private key from PKCS8 encrypted file
+        // this will throw ed_crypto::crypto_exception in case it can't decrypt file
+        const auto key = ed_crypto::key_dsa448::read_private_key_from_PKCS8_file(sFilePath, sPassPhrase.c_str());
+
+        string sED448pkey = key.private_key_raw().str();
+        // we don't have LegRoast key in the old PKCS8-file, generate it and replace file with the new secure container
+        // generate LegRoast private/public key pair
+        LegRoastKey.keygen();
+        cont.add_public_item(PUBLIC_ITEM_TYPE::pubkey_legroast, move(EncodeLegRoastPubKey(LegRoastKey.get_public_key())));
+        cont.add_secure_item_string(SECURE_ITEM_TYPE::pkey_ed448, sED448pkey);
+        cont.add_secure_item_vector(SECURE_ITEM_TYPE::pkey_legroast, move(LegRoastKey.get_private_key()));
+        // write new secure container
+        bRet = cont.write_to_file(sFilePath, move(sNewPassPhrase));
+        if (!bRet)
+            error = strprintf("Failed to write secure container file [%s]", sFilePath);
+    } catch (const ed_crypto::crypto_exception& ex)
+    {
+        error = ex.what();
+    }
+    return bRet;
+}
+
+/**
 * Sign text with the private key associated with PastelID.
 * throws runtime_error exception in case of any read/write operations with secure container
 * 
@@ -81,8 +118,6 @@ CPastelID::SIGN_ALGORITHM CPastelID::GetAlgorithmByName(const string& s)
 */
 string CPastelID::Sign(const string& sText, const string& sPastelID, SecureString&& sPassPhrase, const SIGN_ALGORITHM alg, const bool fBase64)
 {
-    using namespace secure_container;
-    using namespace legroast;
     string sSignature;
     string error;
     try
@@ -93,45 +128,22 @@ string CPastelID::Sign(const string& sText, const string& sPastelID, SecureStrin
         string sED448pkey;
         // first try to read file as a secure container
         // returns false if file content does not start with secure container prefix
-        if (cont.read_from_file(sFilePath, sPassPhrase))
+        bool bRead = cont.read_from_file(sFilePath, sPassPhrase);
+        if (!bRead)
         {
-            switch (alg)
-            {
-                case SIGN_ALGORITHM::ed448:
-                    sED448pkey = cont.extract_secure_data_string(SECURE_ITEM_TYPE::pkey_ed448);
-                    break;
-
-                case SIGN_ALGORITHM::legroast:
-                {
-                    v_uint8 pkey = cont.extract_secure_data(SECURE_ITEM_TYPE::pkey_legroast);
-                    if (!LegRoastKey.set_private_key(error, pkey.data(), pkey.size()))
-                        throw runtime_error(error);
-                } break;
-
-                default:
-                    break;
-            }
-        } else {
-            // for backward compatibility read ed448 private key from PKCS8 encrypted file
-            auto key = ed_crypto::key_dsa448::read_private_key_from_PKCS8_file(sFilePath, sPassPhrase.c_str());
-            sED448pkey = key.private_key_raw().str();
-            if (alg == SIGN_ALGORITHM::legroast) {
-                // we don't have LegRoast key in the old PKCS8-file, generate it and replace file with the new secure container
-                // generate LegRoast private/public key pair
-                LegRoastKey.keygen();
-                cont.add_public_item(PUBLIC_ITEM_TYPE::pubkey_legroast, move(EncodeLegRoastPubKey(LegRoastKey.get_public_key())));
-                cont.add_secure_item_string(SECURE_ITEM_TYPE::pkey_ed448, sED448pkey);
-                cont.add_secure_item_vector(SECURE_ITEM_TYPE::pkey_legroast, move(LegRoastKey.get_private_key()));
-                // write new secure container
-                if (!cont.write_to_file(sFilePath, move(sPassPhrase)))
-                    throw runtime_error(strprintf("Failed to write secure container file [%s]", sFilePath));
-            }
+            // for backward compatibility try to read ed448 private key from PKCS8 encrypted file
+            SecureString sPassPhraseNew(sPassPhrase);
+            if (!ProcessEd448_PastelKeyFile(error, sFilePath, sPassPhrase, move(sPassPhraseNew)))
+                throw runtime_error(error);
+            bRead = cont.read_from_file(sFilePath, sPassPhrase);
         }
+        if (!bRead)
+            throw runtime_error(strprintf("Cannot access secure container '%s'", sFilePath));
         switch (alg)
         {
-            case SIGN_ALGORITHM::ed448:
-            {
-                auto key = ed_crypto::key_dsa448::create_from_raw_private(reinterpret_cast<const unsigned char*>(sED448pkey.data()), sED448pkey.size());
+            case SIGN_ALGORITHM::ed448: {
+                sED448pkey = cont.extract_secure_data_string(SECURE_ITEM_TYPE::pkey_ed448);
+                const auto key = ed_crypto::key_dsa448::create_from_raw_private(reinterpret_cast<const unsigned char*>(sED448pkey.data()), sED448pkey.size());
                 // sign with ed448 key
                 ed_crypto::buffer sigBuf = ed_crypto::crypto_sign::sign(sText, key);
                 sSignature = fBase64 ? sigBuf.Base64() : sigBuf.str();
@@ -139,6 +151,9 @@ string CPastelID::Sign(const string& sText, const string& sPastelID, SecureStrin
 
             case SIGN_ALGORITHM::legroast:
             {
+                v_uint8 pkey = cont.extract_secure_data(SECURE_ITEM_TYPE::pkey_legroast);
+                if (!LegRoastKey.set_private_key(error, pkey.data(), pkey.size()))
+                    throw runtime_error(error);
                 if (!LegRoastKey.sign(error, reinterpret_cast<const unsigned char*>(sText.data()), sText.length()))
                     throw runtime_error(strprintf("Failed to sign text message with the LegRoast private key. %s", error));
                 sSignature = LegRoastKey.get_signature();
@@ -167,8 +182,6 @@ string CPastelID::Sign(const string& sText, const string& sPastelID, SecureStrin
 */
 bool CPastelID::Verify(const string& sText, const string& sSignature, const string& sPastelID, const SIGN_ALGORITHM alg, const bool fBase64)
 {
-    using namespace legroast;
-    using namespace secure_container;
     bool bRet = false;
     string error;
     try
@@ -256,7 +269,6 @@ bool CPastelID::Verify(const string& sText, const string& sSignature, const stri
 */
 pastelid_store_t CPastelID::GetStoredPastelIDs(const bool bPastelIdOnly, string* psPastelID)
 {
-    using namespace secure_container;
     string error;
     fs::path pathPastelKeys(GetArg("-pastelkeysdir", "pastelkeys"));
     pathPastelKeys = GetDataDir() / pathPastelKeys;
@@ -330,7 +342,6 @@ bool CPastelID::isValidPassphrase(const string& sPastelId, const SecureString& s
  */
 bool CPastelID::ChangePassphrase(std::string &error, const std::string& sPastelId, SecureString&& sOldPassphrase, SecureString&& sNewPassphrase)
 {
-    using namespace secure_container;
     bool bRet = false;
     string sError;
     try
