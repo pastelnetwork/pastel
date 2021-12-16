@@ -20,7 +20,7 @@ class PastelTestFramework (BitcoinTestFramework):
 
     # error strings
     ERR_READ_PASTELID_FILE = "Failed to read Pastel secure container file"
-    ERR_INVALID_PASSPHRASE = "Passphrase is invalid"
+    ERR_INVALID_PASS = "Passphrase is invalid"
 
     # create new PastelID and associated LegRoast keys on node node_no
     # returns PastelID
