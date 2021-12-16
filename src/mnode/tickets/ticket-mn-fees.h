@@ -29,16 +29,16 @@ public:
     // get all MN fees in PSL
     CAmount getAllMNFees() const noexcept
     {
-        return GetStorageFee() * (static_cast<double>(getMNFees().all) / 100);
+        return static_cast<CAmount>(GetStorageFee() * (static_cast<double>(getMNFees().all) / 100));
     }
     // get principal MN fee in PSL
     CAmount getPrincipalMNFee() const noexcept
     {
-        return getAllMNFees() * (static_cast<double>(getMNFees().principalShare) / 100);
+        return static_cast<CAmount>(getAllMNFees() * (static_cast<double>(getMNFees().principalShare) / 100));
     }
     // get othe MNs fee in PSL
     CAmount getOtherMNFee() const noexcept
     {
-        return getAllMNFees() * (static_cast<double>(getMNFees().otherShare) / 100);
+        return static_cast<CAmount>(getAllMNFees() * (static_cast<double>(getMNFees().otherShare) / 100));
     }
 };

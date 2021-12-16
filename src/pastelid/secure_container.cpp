@@ -2,6 +2,7 @@
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 
+#include <pastelid/pastel_key.h>
 #include "pastelid/secure_container.h"
 #include "tinyformat.h"
 #include "compat/endian.h"
@@ -189,7 +190,14 @@ bool CSecureContainer::change_passphrase(const std::string& sFilePath, SecureStr
     if (sNewPassphrase.empty())
         return false;
     if (!read_from_file(sFilePath, sOldPassphrase))
-        return false;
+    {
+        string error;
+        // for backward compatibility try to read ed448 private key from PKCS8 encrypted file
+        if (!CPastelID::ProcessEd448_PastelKeyFile(error, sFilePath, sOldPassphrase, move(sNewPassphrase)))
+            throw runtime_error(error);
+        // container is already written with the new passphrase
+        return true;
+    }
     return write_to_file(sFilePath, move(sNewPassphrase));
 }
 

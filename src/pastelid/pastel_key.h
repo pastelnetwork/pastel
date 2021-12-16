@@ -48,6 +48,8 @@ public:
     static bool isValidPassphrase(const std::string& sPastelId, const SecureString& strKeyPass) noexcept;
     // Change passphrase used to encrypt the secure container
     static bool ChangePassphrase(std::string &error, const std::string& sPastelId, SecureString&& sOldPassphrase, SecureString&& sNewPassphrase);
+    // read ed448 private key from PKCS8 file (olf format)
+    static bool ProcessEd448_PastelKeyFile(std::string& error, const std::string& sFilePath, const SecureString& sOldPassPhrase, SecureString &&sNewPassPhrase);
 
 protected:
     // encode/decode PastelID
