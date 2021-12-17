@@ -279,6 +279,12 @@ private:
     bool read_public_items_ex(std::ifstream& fs, uint64_t& nDataSize);
 };
 
+    class secure_container_exception : public std::runtime_error 
+    {
+    public:
+        explicit secure_container_exception(const std::string &what) : std::runtime_error(what) { }
+    };
+
 } // namespace secure_container
 
 /*

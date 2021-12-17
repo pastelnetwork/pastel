@@ -391,7 +391,7 @@ bool CSecureContainer::read_from_file(const string& sFilePath, const SecureStrin
                 if (crypto_aead_xchacha20poly1305_ietf_decrypt(item.data.data(), &nDecryptedLength, nullptr,
                         encrypted_data.data(), encrypted_data.size(), nullptr, 0, item.nonce.data(), pw.p) != 0)
                 {
-                    throw runtime_error(strprintf("Failed to decrypt secure item '%s' data", sType));
+                    throw secure_container_exception(strprintf("Passphrase is invalid. Failed to decrypt secure item '%s' data", sType));
                 }
                 item.data.resize(nDecryptedLength);
                 m_vSecureItems.push_back(move(item));
@@ -402,6 +402,10 @@ bool CSecureContainer::read_from_file(const string& sFilePath, const SecureStrin
     catch (const std::out_of_range &ex)
     {
         throw runtime_error(strprintf("Pastel secure container file format error. %s", ex.what()));
+    }
+    catch (const secure_container_exception &ex)
+    {
+        throw runtime_error(strprintf("%s", ex.what()));
     }
     catch (const std::exception &ex)
     {
