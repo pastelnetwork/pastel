@@ -485,7 +485,9 @@ unique_ptr<CPastelTicket> CPastelTicketProcessor::GetTicket(const uint256 &txid)
 {
     CTransaction tx;
     uint256 hashBlock;
-    if (!GetTransaction(txid, tx, Params().GetConsensus(), hashBlock, true))
+    uint32_t ticketHeight;
+
+    if (!GetTransaction(txid, tx, Params().GetConsensus(), hashBlock, &ticketHeight, true))
         throw runtime_error(strprintf("No information available about transaction"));
 
     CMutableTransaction mtx(tx);
@@ -500,6 +502,7 @@ unique_ptr<CPastelTicket> CPastelTicketProcessor::GetTicket(const uint256 &txid)
     unique_ptr<CPastelTicket> ticket;
     try
     {
+        LogPrintf("tanlm CPastelTicketProcessor::GetTicket %b h%d\n", mempool.exists(txid), ticketHeight);
         string ticketBlockTxIdStr = tx.GetHash().GetHex();
         int ticketBlockHeight = -1;
         if (mapBlockIndex.count(hashBlock) != 0)

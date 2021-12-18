@@ -1272,6 +1272,7 @@ bool AcceptToMemoryPool(
         CTxMemPool& pool, CValidationState &state, const CTransaction &tx, bool fLimitFree,
         bool* pfMissingInputs, bool fRejectAbsurdFee)
 {
+	LogPrintf("tanlm AcceptToMemoryPool begin\n");
     AssertLockHeld(cs_main);
     if (pfMissingInputs)
         *pfMissingInputs = false;
@@ -1497,6 +1498,7 @@ bool AcceptToMemoryPool(
             return error("AcceptToMemoryPool [%s]: BUG! PLEASE REPORT THIS! ConnectInputs failed against MANDATORY but not STANDARD flags", hash.ToString());
         }
 
+        LogPrintf("tanlm AcceptToMemoryPool end\n");
         // Store transaction in memory
         pool.addUnchecked(hash, entry, !fnIsInitialBlockDownload(consensusParams));
     }
@@ -1510,16 +1512,20 @@ bool AcceptToMemoryPool(
  * Return transaction in txOut, and if it was found inside a block, its hash is placed in hashBlock.
  * If blockIndex is provided, the transaction is fetched from the corresponding block.
  */
-bool GetTransaction(const uint256 &hash, CTransaction &txOut, const Consensus::Params& consensusParams, uint256 &hashBlock, bool fAllowSlow, CBlockIndex* blockIndex)
+bool GetTransaction(const uint256 &hash, CTransaction &txOut, const Consensus::Params& consensusParams, uint256 &hashBlock, uint32_t *pnBlockHeight, bool fAllowSlow, CBlockIndex* blockIndex)
 {
     CBlockIndex *pindexSlow = blockIndex;
+    uint32_t blkHeight;
 
     LOCK(cs_main);
 
     if (!blockIndex)
     {
-        if (mempool.lookup(hash, txOut))
+        if (mempool.lookup(hash, txOut, blkHeight))
+        {
+            *pnBlockHeight = blkHeight;
             return true;
+        }
 
         if (fTxIndex)
         {
@@ -5036,7 +5042,8 @@ void static ProcessGetData(CNode* pfrom, const Consensus::Params& consensusParam
                 bool isExpiringSoon = false;
                 bool pushed = false;
                 CTransaction tx;
-                bool isInMempool = mempool.lookup(inv.hash, tx);
+                uint32_t height;
+                bool isInMempool = mempool.lookup(inv.hash, tx, height);
                 if (isInMempool) {
                     isExpiringSoon = IsExpiringSoonTx(tx, currentHeight + 1);
                 }
@@ -5775,10 +5782,11 @@ static bool ProcessMessage(const CChainParams& chainparams, CNode* pfrom, string
         std::vector<uint256> vtxid;
         mempool.queryHashes(vtxid);
         vector<CInv> vInv;
+        uint32_t height;
         for (auto &hash : vtxid)
         {
             CTransaction tx;
-            bool fInMemPool = mempool.lookup(hash, tx);
+            bool fInMemPool = mempool.lookup(hash, tx, height);
             if (fInMemPool && IsExpiringSoonTx(tx, currentHeight + 1)) {
                 continue;
             }

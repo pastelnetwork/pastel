@@ -373,7 +373,8 @@ Available commands:
 
         CTransaction tx;
         uint256 hashBlock;
-        if (!GetTransaction(hash, tx, Params().GetConsensus(), hashBlock, true))
+        uint32_t height;
+        if (!GetTransaction(hash, tx, Params().GetConsensus(), hashBlock, &height, true))
             throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "No information available about transaction");
 
         std::string error, output_data;

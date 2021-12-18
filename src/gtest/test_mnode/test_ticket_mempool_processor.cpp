@@ -16,7 +16,7 @@ public:
     {}
     
     // Lookup for the transaction with the specific hash (txid).
-    MOCK_METHOD(bool, lookup, (const uint256& txid, CTransaction& tx), (const, override));
+    MOCK_METHOD(bool, lookup, (const uint256& txid, CTransaction& tx, uint32_t& height), (const, override));
     // Get a list of transactions by txids
     MOCK_METHOD(void, batch_lookup, (const std::vector<uint256>& vTxid, std::vector<CMutableTransaction>& vTx, v_uints& vBlockHeight), (const, override));
 };

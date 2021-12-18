@@ -298,7 +298,8 @@ Result (if verbose > 0):
 
     CTransaction tx;
     uint256 hashBlock;
-    if (!GetTransaction(hash, tx, Params().GetConsensus(), hashBlock, true, blockindex))
+    uint32_t height;
+    if (!GetTransaction(hash, tx, Params().GetConsensus(), hashBlock, &height, true, blockindex))
     {
         std::string errmsg;
         if (blockindex) {
@@ -384,7 +385,8 @@ UniValue gettxoutproof(const UniValue& params, bool fHelp)
     if (!pblockindex)
     {
         CTransaction tx;
-        if (!GetTransaction(oneTxid, tx, consensusParams, hashBlock, false) || hashBlock.IsNull())
+        uint32_t height;
+        if (!GetTransaction(oneTxid, tx, consensusParams, hashBlock, &height, false) || hashBlock.IsNull())
             throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Transaction not yet in block");
         if (!mapBlockIndex.count(hashBlock))
             throw JSONRPCError(RPC_INTERNAL_ERROR, "Transaction index corrupt");
