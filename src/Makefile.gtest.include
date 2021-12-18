@@ -60,7 +60,9 @@ pastel_gtest_SOURCES +=\
 	gtest/test_txid.cpp\
 	gtest/test_upgrades.cpp\
 	gtest/test_validation.cpp\
-	gtest/test_zip32.cpp
+	gtest/test_zip32.cpp\
+	gtest/test_uint256.cpp \
+	gtest/test_arith_uint256.cpp
 
 if ENABLE_WALLET
 pastel_gtest_SOURCES += \
@@ -68,9 +70,6 @@ pastel_gtest_SOURCES += \
 	wallet/gtest/test_wallet_ismine.cpp
 endif
 
-pastel_gtest_SOURCES += \
-	test/uint256_tests.cpp \
-	test/arith_uint256_tests.cpp
 
 pastel_gtest_CPPFLAGS = $(AM_CPPFLAGS) -DBINARY_OUTPUT -DCURVE_ALT_BN128 -DSTATIC $(BITCOIN_INCLUDES) -I$(srcdir)/gtest
 pastel_gtest_CXXFLAGS = $(AM_CXXFLAGS) $(PIE_FLAGS) -I$(srcdir)/gtest
