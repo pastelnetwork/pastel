@@ -1272,7 +1272,6 @@ bool AcceptToMemoryPool(
         CTxMemPool& pool, CValidationState &state, const CTransaction &tx, bool fLimitFree,
         bool* pfMissingInputs, bool fRejectAbsurdFee)
 {
-	LogPrintf("tanlm AcceptToMemoryPool begin\n");
     AssertLockHeld(cs_main);
     if (pfMissingInputs)
         *pfMissingInputs = false;
@@ -1498,7 +1497,6 @@ bool AcceptToMemoryPool(
             return error("AcceptToMemoryPool [%s]: BUG! PLEASE REPORT THIS! ConnectInputs failed against MANDATORY but not STANDARD flags", hash.ToString());
         }
 
-        LogPrintf("tanlm AcceptToMemoryPool end\n");
         // Store transaction in memory
         pool.addUnchecked(hash, entry, !fnIsInitialBlockDownload(consensusParams));
     }
