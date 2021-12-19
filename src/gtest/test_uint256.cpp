@@ -73,20 +73,20 @@ inline uint160 uint160S(const std::string& str)
 
 TEST(uint256_tests, basics) // constructors, equality, inequality
 {
-    EXPECT_TRUE(1 == 0+1);
+    EXPECT_EQ(1 , 0+1);
     // constructor uint256(vector<char>):
-    EXPECT_TRUE(R1L.ToString() == ArrayToString(R1Array,32));
-    EXPECT_TRUE(R1S.ToString() == ArrayToString(R1Array,20));
-    EXPECT_TRUE(R2L.ToString() == ArrayToString(R2Array,32));
-    EXPECT_TRUE(R2S.ToString() == ArrayToString(R2Array,20));
-    EXPECT_TRUE(ZeroL.ToString() == ArrayToString(ZeroArray,32));
-    EXPECT_TRUE(ZeroS.ToString() == ArrayToString(ZeroArray,20));
-    EXPECT_TRUE(OneL.ToString() == ArrayToString(OneArray,32));
-    EXPECT_TRUE(OneS.ToString() == ArrayToString(OneArray,20));
-    EXPECT_TRUE(MaxL.ToString() == ArrayToString(MaxArray,32));
-    EXPECT_TRUE(MaxS.ToString() == ArrayToString(MaxArray,20));
-    EXPECT_TRUE(OneL.ToString() != ArrayToString(ZeroArray,32));
-    EXPECT_TRUE(OneS.ToString() != ArrayToString(ZeroArray,20));
+    EXPECT_EQ(R1L.ToString() , ArrayToString(R1Array,32));
+    EXPECT_EQ(R1S.ToString() , ArrayToString(R1Array,20));
+    EXPECT_EQ(R2L.ToString() , ArrayToString(R2Array,32));
+    EXPECT_EQ(R2S.ToString() , ArrayToString(R2Array,20));
+    EXPECT_EQ(ZeroL.ToString() , ArrayToString(ZeroArray,32));
+    EXPECT_EQ(ZeroS.ToString() , ArrayToString(ZeroArray,20));
+    EXPECT_EQ(OneL.ToString() , ArrayToString(OneArray,32));
+    EXPECT_EQ(OneS.ToString() , ArrayToString(OneArray,20));
+    EXPECT_EQ(MaxL.ToString() , ArrayToString(MaxArray,32));
+    EXPECT_EQ(MaxS.ToString() , ArrayToString(MaxArray,20));
+    EXPECT_NE(OneL.ToString() , ArrayToString(ZeroArray,32));
+    EXPECT_NE(OneS.ToString() , ArrayToString(ZeroArray,20));
 
     // == and !=
     EXPECT_TRUE(R1L != R2L && R1S != R2S);
@@ -95,32 +95,32 @@ TEST(uint256_tests, basics) // constructors, equality, inequality
     EXPECT_TRUE(MaxL != ZeroL && MaxS != ZeroS);
 
     // String Constructor and Copy Constructor
-    EXPECT_TRUE(uint256S("0x"+R1L.ToString()) == R1L);
-    EXPECT_TRUE(uint256S("0x"+R2L.ToString()) == R2L);
-    EXPECT_TRUE(uint256S("0x"+ZeroL.ToString()) == ZeroL);
-    EXPECT_TRUE(uint256S("0x"+OneL.ToString()) == OneL);
-    EXPECT_TRUE(uint256S("0x"+MaxL.ToString()) == MaxL);
-    EXPECT_TRUE(uint256S(R1L.ToString()) == R1L);
-    EXPECT_TRUE(uint256S("   0x"+R1L.ToString()+"   ") == R1L);
-    EXPECT_TRUE(uint256S("") == ZeroL);
-    EXPECT_TRUE(R1L == uint256S(R1ArrayHex));
-    EXPECT_TRUE(uint256(R1L) == R1L);
-    EXPECT_TRUE(uint256(ZeroL) == ZeroL);
-    EXPECT_TRUE(uint256(OneL) == OneL);
+    EXPECT_EQ(uint256S("0x"+R1L.ToString()) , R1L);
+    EXPECT_EQ(uint256S("0x"+R2L.ToString()) , R2L);
+    EXPECT_EQ(uint256S("0x"+ZeroL.ToString()) , ZeroL);
+    EXPECT_EQ(uint256S("0x"+OneL.ToString()) , OneL);
+    EXPECT_EQ(uint256S("0x"+MaxL.ToString()) , MaxL);
+    EXPECT_EQ(uint256S(R1L.ToString()) , R1L);
+    EXPECT_EQ(uint256S("   0x"+R1L.ToString()+"   ") , R1L);
+    EXPECT_EQ(uint256S("") , ZeroL);
+    EXPECT_EQ(R1L , uint256S(R1ArrayHex));
+    EXPECT_EQ(uint256(R1L) , R1L);
+    EXPECT_EQ(uint256(ZeroL) , ZeroL);
+    EXPECT_EQ(uint256(OneL) , OneL);
 
-    EXPECT_TRUE(uint160S("0x"+R1S.ToString()) == R1S);
-    EXPECT_TRUE(uint160S("0x"+R2S.ToString()) == R2S);
-    EXPECT_TRUE(uint160S("0x"+ZeroS.ToString()) == ZeroS);
-    EXPECT_TRUE(uint160S("0x"+OneS.ToString()) == OneS);
-    EXPECT_TRUE(uint160S("0x"+MaxS.ToString()) == MaxS);
-    EXPECT_TRUE(uint160S(R1S.ToString()) == R1S);
-    EXPECT_TRUE(uint160S("   0x"+R1S.ToString()+"   ") == R1S);
-    EXPECT_TRUE(uint160S("") == ZeroS);
-    EXPECT_TRUE(R1S == uint160S(R1ArrayHex));
+    EXPECT_EQ(uint160S("0x"+R1S.ToString()) , R1S);
+    EXPECT_EQ(uint160S("0x"+R2S.ToString()) , R2S);
+    EXPECT_EQ(uint160S("0x"+ZeroS.ToString()) , ZeroS);
+    EXPECT_EQ(uint160S("0x"+OneS.ToString()) , OneS);
+    EXPECT_EQ(uint160S("0x"+MaxS.ToString()) , MaxS);
+    EXPECT_EQ(uint160S(R1S.ToString()) , R1S);
+    EXPECT_EQ(uint160S("   0x"+R1S.ToString()+"   ") , R1S);
+    EXPECT_EQ(uint160S("") , ZeroS);
+    EXPECT_EQ(R1S , uint160S(R1ArrayHex));
 
-    EXPECT_TRUE(uint160(R1S) == R1S);
-    EXPECT_TRUE(uint160(ZeroS) == ZeroS);
-    EXPECT_TRUE(uint160(OneS) == OneS);
+    EXPECT_EQ(uint160(R1S) , R1S);
+    EXPECT_EQ(uint160(ZeroS) , ZeroS);
+    EXPECT_EQ(uint160(OneS) , OneS);
 }
 
 TEST(uint256_tests, comparison ) // <= >= < >
@@ -157,111 +157,111 @@ TEST(uint256_tests, comparison ) // <= >= < >
 
 TEST(uint256_tests, methods ) // GetHex SetHex begin() end() size() GetLow64 GetSerializeSize, Serialize, Unserialize
 {
-    EXPECT_TRUE(R1L.GetHex() == R1L.ToString());
-    EXPECT_TRUE(R2L.GetHex() == R2L.ToString());
-    EXPECT_TRUE(OneL.GetHex() == OneL.ToString());
-    EXPECT_TRUE(MaxL.GetHex() == MaxL.ToString());
+    EXPECT_EQ(R1L.GetHex() , R1L.ToString());
+    EXPECT_EQ(R2L.GetHex() , R2L.ToString());
+    EXPECT_EQ(OneL.GetHex() , OneL.ToString());
+    EXPECT_EQ(MaxL.GetHex() , MaxL.ToString());
     uint256 TmpL(R1L);
-    EXPECT_TRUE(TmpL == R1L);
-    TmpL.SetHex(R2L.ToString());   EXPECT_TRUE(TmpL == R2L);
-    TmpL.SetHex(ZeroL.ToString()); EXPECT_TRUE(TmpL == uint256());
+    EXPECT_EQ(TmpL , R1L);
+    TmpL.SetHex(R2L.ToString());   EXPECT_EQ(TmpL , R2L);
+    TmpL.SetHex(ZeroL.ToString()); EXPECT_EQ(TmpL , uint256());
 
     TmpL.SetHex(R1L.ToString());
-    EXPECT_TRUE(memcmp(R1L.begin(), R1Array, 32)==0);
-    EXPECT_TRUE(memcmp(TmpL.begin(), R1Array, 32)==0);
-    EXPECT_TRUE(memcmp(R2L.begin(), R2Array, 32)==0);
-    EXPECT_TRUE(memcmp(ZeroL.begin(), ZeroArray, 32)==0);
-    EXPECT_TRUE(memcmp(OneL.begin(), OneArray, 32)==0);
-    EXPECT_TRUE(R1L.size() == sizeof(R1L));
-    EXPECT_TRUE(sizeof(R1L) == 32);
-    EXPECT_TRUE(R1L.size() == 32);
-    EXPECT_TRUE(R2L.size() == 32);
-    EXPECT_TRUE(ZeroL.size() == 32);
-    EXPECT_TRUE(MaxL.size() == 32);
-    EXPECT_TRUE(R1L.begin() + 32 == R1L.end());
-    EXPECT_TRUE(R2L.begin() + 32 == R2L.end());
-    EXPECT_TRUE(OneL.begin() + 32 == OneL.end());
-    EXPECT_TRUE(MaxL.begin() + 32 == MaxL.end());
-    EXPECT_TRUE(TmpL.begin() + 32 == TmpL.end());
-    EXPECT_TRUE(GetSerializeSize(R1L, 0, PROTOCOL_VERSION) == 32);
-    EXPECT_TRUE(GetSerializeSize(ZeroL, 0, PROTOCOL_VERSION) == 32);
+    EXPECT_EQ(memcmp(R1L.begin(), R1Array, 32),0);
+    EXPECT_EQ(memcmp(TmpL.begin(), R1Array, 32),0);
+    EXPECT_EQ(memcmp(R2L.begin(), R2Array, 32),0);
+    EXPECT_EQ(memcmp(ZeroL.begin(), ZeroArray, 32),0);
+    EXPECT_EQ(memcmp(OneL.begin(), OneArray, 32),0);
+    EXPECT_EQ(R1L.size() , sizeof(R1L));
+    EXPECT_EQ(sizeof(R1L) , 32);
+    EXPECT_EQ(R1L.size() , 32);
+    EXPECT_EQ(R2L.size() , 32);
+    EXPECT_EQ(ZeroL.size() , 32);
+    EXPECT_EQ(MaxL.size() , 32);
+    EXPECT_EQ(R1L.begin() + 32 , R1L.end());
+    EXPECT_EQ(R2L.begin() + 32 , R2L.end());
+    EXPECT_EQ(OneL.begin() + 32 , OneL.end());
+    EXPECT_EQ(MaxL.begin() + 32 , MaxL.end());
+    EXPECT_EQ(TmpL.begin() + 32 , TmpL.end());
+    EXPECT_EQ(GetSerializeSize(R1L, 0, PROTOCOL_VERSION) , 32);
+    EXPECT_EQ(GetSerializeSize(ZeroL, 0, PROTOCOL_VERSION) , 32);
 
     CDataStream ss(0, PROTOCOL_VERSION);
     ss << R1L;
-    EXPECT_TRUE(ss.str() == std::string(R1Array,R1Array+32));
+    EXPECT_EQ(ss.str() , std::string(R1Array,R1Array+32));
     ss >> TmpL;
-    EXPECT_TRUE(R1L == TmpL);
+    EXPECT_EQ(R1L , TmpL);
     ss.clear();
     ss << ZeroL;
-    EXPECT_TRUE(ss.str() == std::string(ZeroArray,ZeroArray+32));
+    EXPECT_EQ(ss.str() , std::string(ZeroArray,ZeroArray+32));
     ss >> TmpL;
-    EXPECT_TRUE(ZeroL == TmpL);
+    EXPECT_EQ(ZeroL , TmpL);
     ss.clear();
     ss << MaxL;
-    EXPECT_TRUE(ss.str() == std::string(MaxArray,MaxArray+32));
+    EXPECT_EQ(ss.str() , std::string(MaxArray,MaxArray+32));
     ss >> TmpL;
-    EXPECT_TRUE(MaxL == TmpL);
+    EXPECT_EQ(MaxL , TmpL);
     ss.clear();
 
-    EXPECT_TRUE(R1S.GetHex() == R1S.ToString());
-    EXPECT_TRUE(R2S.GetHex() == R2S.ToString());
-    EXPECT_TRUE(OneS.GetHex() == OneS.ToString());
-    EXPECT_TRUE(MaxS.GetHex() == MaxS.ToString());
+    EXPECT_EQ(R1S.GetHex() , R1S.ToString());
+    EXPECT_EQ(R2S.GetHex() , R2S.ToString());
+    EXPECT_EQ(OneS.GetHex() , OneS.ToString());
+    EXPECT_EQ(MaxS.GetHex() , MaxS.ToString());
     uint160 TmpS(R1S);
-    EXPECT_TRUE(TmpS == R1S);
-    TmpS.SetHex(R2S.ToString());   EXPECT_TRUE(TmpS == R2S);
-    TmpS.SetHex(ZeroS.ToString()); EXPECT_TRUE(TmpS == uint160());
+    EXPECT_EQ(TmpS , R1S);
+    TmpS.SetHex(R2S.ToString());   EXPECT_EQ(TmpS , R2S);
+    TmpS.SetHex(ZeroS.ToString()); EXPECT_EQ(TmpS , uint160());
 
     TmpS.SetHex(R1S.ToString());
-    EXPECT_TRUE(memcmp(R1S.begin(), R1Array, 20)==0);
-    EXPECT_TRUE(memcmp(TmpS.begin(), R1Array, 20)==0);
-    EXPECT_TRUE(memcmp(R2S.begin(), R2Array, 20)==0);
-    EXPECT_TRUE(memcmp(ZeroS.begin(), ZeroArray, 20)==0);
-    EXPECT_TRUE(memcmp(OneS.begin(), OneArray, 20)==0);
-    EXPECT_TRUE(R1S.size() == sizeof(R1S));
-    EXPECT_TRUE(sizeof(R1S) == 20);
-    EXPECT_TRUE(R1S.size() == 20);
-    EXPECT_TRUE(R2S.size() == 20);
-    EXPECT_TRUE(ZeroS.size() == 20);
-    EXPECT_TRUE(MaxS.size() == 20);
-    EXPECT_TRUE(R1S.begin() + 20 == R1S.end());
-    EXPECT_TRUE(R2S.begin() + 20 == R2S.end());
-    EXPECT_TRUE(OneS.begin() + 20 == OneS.end());
-    EXPECT_TRUE(MaxS.begin() + 20 == MaxS.end());
-    EXPECT_TRUE(TmpS.begin() + 20 == TmpS.end());
-    EXPECT_TRUE(GetSerializeSize(R1S, 0, PROTOCOL_VERSION) == 20);
-    EXPECT_TRUE(GetSerializeSize(ZeroS, 0, PROTOCOL_VERSION) == 20);
+    EXPECT_EQ(memcmp(R1S.begin(), R1Array, 20),0);
+    EXPECT_EQ(memcmp(TmpS.begin(), R1Array, 20),0);
+    EXPECT_EQ(memcmp(R2S.begin(), R2Array, 20),0);
+    EXPECT_EQ(memcmp(ZeroS.begin(), ZeroArray, 20),0);
+    EXPECT_EQ(memcmp(OneS.begin(), OneArray, 20),0);
+    EXPECT_EQ(R1S.size() , sizeof(R1S));
+    EXPECT_EQ(sizeof(R1S) , 20);
+    EXPECT_EQ(R1S.size() , 20);
+    EXPECT_EQ(R2S.size() , 20);
+    EXPECT_EQ(ZeroS.size() , 20);
+    EXPECT_EQ(MaxS.size() , 20);
+    EXPECT_EQ(R1S.begin() + 20 , R1S.end());
+    EXPECT_EQ(R2S.begin() + 20 , R2S.end());
+    EXPECT_EQ(OneS.begin() + 20 , OneS.end());
+    EXPECT_EQ(MaxS.begin() + 20 , MaxS.end());
+    EXPECT_EQ(TmpS.begin() + 20 , TmpS.end());
+    EXPECT_EQ(GetSerializeSize(R1S, 0, PROTOCOL_VERSION) , 20);
+    EXPECT_EQ(GetSerializeSize(ZeroS, 0, PROTOCOL_VERSION) , 20);
 
     ss << R1S;
-    EXPECT_TRUE(ss.str() == std::string(R1Array,R1Array+20));
+    EXPECT_EQ(ss.str() , std::string(R1Array,R1Array+20));
     ss >> TmpS;
-    EXPECT_TRUE(R1S == TmpS);
+    EXPECT_EQ(R1S , TmpS);
     ss.clear();
     ss << ZeroS;
-    EXPECT_TRUE(ss.str() == std::string(ZeroArray,ZeroArray+20));
+    EXPECT_EQ(ss.str() , std::string(ZeroArray,ZeroArray+20));
     ss >> TmpS;
-    EXPECT_TRUE(ZeroS == TmpS);
+    EXPECT_EQ(ZeroS , TmpS);
     ss.clear();
     ss << MaxS;
-    EXPECT_TRUE(ss.str() == std::string(MaxArray,MaxArray+20));
+    EXPECT_EQ(ss.str() , std::string(MaxArray,MaxArray+20));
     ss >> TmpS;
-    EXPECT_TRUE(MaxS == TmpS);
+    EXPECT_EQ(MaxS , TmpS);
     ss.clear();
 }
 
 TEST(uint256_tests, conversion )
 {
-    EXPECT_TRUE(ArithToUint256(UintToArith256(ZeroL)) == ZeroL);
-    EXPECT_TRUE(ArithToUint256(UintToArith256(OneL)) == OneL);
-    EXPECT_TRUE(ArithToUint256(UintToArith256(R1L)) == R1L);
-    EXPECT_TRUE(ArithToUint256(UintToArith256(R2L)) == R2L);
-    EXPECT_TRUE(UintToArith256(ZeroL) == 0);
-    EXPECT_TRUE(UintToArith256(OneL) == 1);
-    EXPECT_TRUE(ArithToUint256(0) == ZeroL);
-    EXPECT_TRUE(ArithToUint256(1) == OneL);
-    EXPECT_TRUE(arith_uint256(R1L.GetHex()) == UintToArith256(R1L));
-    EXPECT_TRUE(arith_uint256(R2L.GetHex()) == UintToArith256(R2L));
-    EXPECT_TRUE(R1L.GetHex() == UintToArith256(R1L).GetHex());
-    EXPECT_TRUE(R2L.GetHex() == UintToArith256(R2L).GetHex());
+    EXPECT_EQ(ArithToUint256(UintToArith256(ZeroL)) , ZeroL);
+    EXPECT_EQ(ArithToUint256(UintToArith256(OneL)) , OneL);
+    EXPECT_EQ(ArithToUint256(UintToArith256(R1L)) , R1L);
+    EXPECT_EQ(ArithToUint256(UintToArith256(R2L)) , R2L);
+    EXPECT_EQ(UintToArith256(ZeroL) , 0);
+    EXPECT_EQ(UintToArith256(OneL) , 1);
+    EXPECT_EQ(ArithToUint256(0) , ZeroL);
+    EXPECT_EQ(ArithToUint256(1) , OneL);
+    EXPECT_EQ(arith_uint256(R1L.GetHex()) , UintToArith256(R1L));
+    EXPECT_EQ(arith_uint256(R2L.GetHex()) , UintToArith256(R2L));
+    EXPECT_EQ(R1L.GetHex() , UintToArith256(R1L).GetHex());
+    EXPECT_EQ(R2L.GetHex() , UintToArith256(R2L).GetHex());
 }
 
