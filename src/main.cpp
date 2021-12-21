@@ -1561,6 +1561,7 @@ bool GetTransaction(const uint256 &hash, CTransaction &txOut, const Consensus::P
             if(pnBlockHeight)
             {
                 *pnBlockHeight = nHeight;
+            }
         }
     }
 
