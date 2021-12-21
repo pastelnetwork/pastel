@@ -1557,6 +1557,10 @@ bool GetTransaction(const uint256 &hash, CTransaction &txOut, const Consensus::P
             }
             if (nHeight > 0)
                 pindexSlow = chainActive[nHeight];
+
+            if(pnBlockHeight)
+            {
+                *pnBlockHeight = nHeight;
         }
     }
 
@@ -1570,6 +1574,10 @@ bool GetTransaction(const uint256 &hash, CTransaction &txOut, const Consensus::P
                 if (tx.GetHash() == hash) {
                     txOut = tx;
                     hashBlock = pindexSlow->GetBlockHash();
+                    if(pnBlockHeight)
+                    {
+                        *pnBlockHeight = pindexSlow->nHeight;
+                    }
                     return true;
                 }
             }
