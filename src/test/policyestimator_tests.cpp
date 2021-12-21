@@ -75,8 +75,7 @@ BOOST_AUTO_TEST_CASE(BlockPolicyEstimates)
             // 1/10 blocks add lowest fee/pri transactions
             while (txHashes[9-h].size()) {
                 CTransaction btx;
-                uint32_t height;
-                if (mpool.lookup(txHashes[9-h].back(), btx, height))
+                if (mpool.lookup(txHashes[9-h].back(), btx))
                     block.push_back(btx);
                 txHashes[9-h].pop_back();
             }
@@ -151,8 +150,7 @@ BOOST_AUTO_TEST_CASE(BlockPolicyEstimates)
     for (int j = 0; j < 10; j++) {
         while(txHashes[j].size()) {
             CTransaction btx;
-            uint32_t height;
-            if (mpool.lookup(txHashes[j].back(), btx, height))
+            if (mpool.lookup(txHashes[j].back(), btx))
                 block.push_back(btx);
             txHashes[j].pop_back();
         }
@@ -173,8 +171,7 @@ BOOST_AUTO_TEST_CASE(BlockPolicyEstimates)
                 uint256 hash = tx.GetHash();
                 mpool.addUnchecked(hash, entry.Fee(feeV[k/4][j]).Time(GetTime()).Priority(priV[k/4][j]).Height(blocknum).FromTx(tx, &mpool));
                 CTransaction btx;
-                uint32_t height;
-                if (mpool.lookup(hash, btx, height))
+                if (mpool.lookup(hash, btx))
                     block.push_back(btx);
             }
         }

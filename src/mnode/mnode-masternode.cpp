@@ -279,8 +279,7 @@ bool CMasternode::IsInputAssociatedWithPubkey()
 
     CTransaction tx;
     uint256 hash;
-    uint32_t height;
-    if (GetTransaction(vin.prevout.hash, tx, m_chainparams.GetConsensus(), hash, &height, true))
+    if (GetTransaction(vin.prevout.hash, tx, m_chainparams.GetConsensus(), hash, true))
     {
         for (const auto & out : tx.vout)
         {
@@ -687,8 +686,7 @@ bool CMasternodeBroadcast::CheckOutpoint(int& nDos)
     // should be at least not earlier than block when 1000 PASTEL tx got nMasternodeMinimumConfirmations
     uint256 hashBlock = uint256();
     CTransaction tx2;
-    uint32_t height;
-    GetTransaction(vin.prevout.hash, tx2, m_chainparams.GetConsensus(), hashBlock, &height, true);
+    GetTransaction(vin.prevout.hash, tx2, m_chainparams.GetConsensus(), hashBlock, true);
     {
         LOCK(cs_main);
         const auto mi = mapBlockIndex.find(hashBlock);

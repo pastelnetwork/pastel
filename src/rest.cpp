@@ -353,8 +353,7 @@ static bool rest_tx(HTTPRequest* req, const std::string& strURIPart)
 
     CTransaction tx;
     uint256 hashBlock = uint256();
-    uint32_t height;
-    if (!GetTransaction(hash, tx, Params().GetConsensus(), hashBlock, &height, true))
+    if (!GetTransaction(hash, tx, Params().GetConsensus(), hashBlock, true))
         return RESTERR(req, HTTP_NOT_FOUND, hashStr + " not found");
 
     CDataStream ssTx(SER_NETWORK, PROTOCOL_VERSION);

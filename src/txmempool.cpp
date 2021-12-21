@@ -490,14 +490,17 @@ void CTxMemPool::queryHashes(vector<uint256>& vtxid)
   * \param nBlockHeight - block height of txid
   * \return true if transaction was retrieved by txid
   */
-bool CTxMemPool::lookup(const uint256& txid, CTransaction& result, uint32_t &nBlockHeight) const
+bool CTxMemPool::lookup(const uint256& txid, CTransaction& result, uint32_t* nBlockHeight) const
 {
     LOCK(cs);
     const auto it = mapTx.find(txid);
     if (it == mapTx.cend())
         return false;
     result = it->GetTx();
-    nBlockHeight = it->GetHeight();
+    if(nBlockHeight)
+    {
+        *nBlockHeight = it->GetHeight();
+    }
     return true;
 }
 
@@ -632,8 +635,7 @@ bool CCoinsViewMemPool::GetCoins(const uint256 &txid, CCoins &coins) const
     // conflict with the underlying cache, and it cannot have pruned entries (as it contains full)
     // transactions. First checking the underlying cache risks returning a pruned entry instead.
     CTransaction tx;
-    uint32_t height;
-    if (mempool.lookup(txid, tx, height))
+    if (mempool.lookup(txid, tx))
     {
         coins = CCoins(tx, MEMPOOL_HEIGHT);
         return true;

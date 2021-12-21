@@ -215,7 +215,7 @@ public:
     }
 
     // Lookup for the transaction with the specific hash (txid).
-    virtual bool lookup(const uint256 &txid, CTransaction& tx, uint32_t &nBlockHeight) const;
+    virtual bool lookup(const uint256 &txid, CTransaction& tx, uint32_t * pnBlockHeight = nullptr) const;
     // Get a list of transactions by txids
     virtual void batch_lookup(const std::vector<uint256>& vTxid, std::vector<CMutableTransaction>& vTx, v_uints &vBlockHeight) const;
 

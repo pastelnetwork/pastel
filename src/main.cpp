@@ -1510,18 +1510,16 @@ bool AcceptToMemoryPool(
  * Return transaction in txOut, and if it was found inside a block, its hash is placed in hashBlock.
  * If blockIndex is provided, the transaction is fetched from the corresponding block.
  */
-bool GetTransaction(const uint256 &hash, CTransaction &txOut, const Consensus::Params& consensusParams, uint256 &hashBlock, uint32_t *pnBlockHeight, bool fAllowSlow, CBlockIndex* blockIndex)
+bool GetTransaction(const uint256 &hash, CTransaction &txOut, const Consensus::Params& consensusParams, uint256 &hashBlock, bool fAllowSlow, uint32_t *pnBlockHeight, CBlockIndex* blockIndex)
 {
     CBlockIndex *pindexSlow = blockIndex;
-    uint32_t blkHeight;
 
     LOCK(cs_main);
 
     if (!blockIndex)
     {
-        if (mempool.lookup(hash, txOut, blkHeight))
+        if (mempool.lookup(hash, txOut, pnBlockHeight))
         {
-            *pnBlockHeight = blkHeight;
             return true;
         }
 
@@ -5040,8 +5038,7 @@ void static ProcessGetData(CNode* pfrom, const Consensus::Params& consensusParam
                 bool isExpiringSoon = false;
                 bool pushed = false;
                 CTransaction tx;
-                uint32_t height;
-                bool isInMempool = mempool.lookup(inv.hash, tx, height);
+                bool isInMempool = mempool.lookup(inv.hash, tx);
                 if (isInMempool) {
                     isExpiringSoon = IsExpiringSoonTx(tx, currentHeight + 1);
                 }
@@ -5780,11 +5777,10 @@ static bool ProcessMessage(const CChainParams& chainparams, CNode* pfrom, string
         std::vector<uint256> vtxid;
         mempool.queryHashes(vtxid);
         vector<CInv> vInv;
-        uint32_t height;
         for (auto &hash : vtxid)
         {
             CTransaction tx;
-            bool fInMemPool = mempool.lookup(hash, tx, height);
+            bool fInMemPool = mempool.lookup(hash, tx);
             if (fInMemPool && IsExpiringSoonTx(tx, currentHeight + 1)) {
                 continue;
             }
