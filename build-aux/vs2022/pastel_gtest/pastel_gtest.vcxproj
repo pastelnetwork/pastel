@@ -102,6 +102,7 @@
   <ItemGroup>
     <ClCompile Include="..\..\..\src\gtest\json_test_vectors.cpp" />
     <ClCompile Include="..\..\..\src\gtest\test_addrman.cpp" />
+    <ClCompile Include="..\..\..\src\gtest\test_arith_uint256.cpp" />
     <ClCompile Include="..\..\..\src\gtest\test_base32.cpp" />
     <ClCompile Include="..\..\..\src\gtest\test_base58.cpp" />
     <ClCompile Include="..\..\..\src\gtest\test_base64.cpp" />
@@ -149,6 +150,7 @@
     <ClCompile Include="..\..\..\src\gtest\test_timedata.cpp" />
     <ClCompile Include="..\..\..\src\gtest\test_transaction_builder.cpp" />
     <ClCompile Include="..\..\..\src\gtest\test_txid.cpp" />
+    <ClCompile Include="..\..\..\src\gtest\test_uint256.cpp" />
     <ClCompile Include="..\..\..\src\gtest\test_upgrades.cpp" />
     <ClCompile Include="..\..\..\src\gtest\test_utils.cpp" />
     <ClCompile Include="..\..\..\src\gtest\test_validation.cpp" />

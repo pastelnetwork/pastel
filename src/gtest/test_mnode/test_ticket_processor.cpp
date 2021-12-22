@@ -71,6 +71,7 @@ TEST_F(TestTicketProcessor, ticket_compression)
     const auto strTicket = ticket->ToStr();
     ticket->signature = string_to_vector(CPastelID::Sign(strTicket, ticket->pastelID, move(TEST_PASSPHRASE)));
 
+    EXPECT_CALL(*ticket, IsValid).WillRepeatedly(Return(true));
     EXPECT_CALL(*ticket, GetVersion).WillRepeatedly([&]() -> short { return ticket->CChangeUsernameTicket::GetVersion(); });
     EXPECT_CALL(*ticket, VersionMgmt).WillRepeatedly([&](string& error, const bool bRead) -> bool 
         { return ticket->CChangeUsernameTicket::VersionMgmt(error, bRead); });
