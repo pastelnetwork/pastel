@@ -93,7 +93,7 @@ TEST(test_univalue, univalue_typecheck)
     UniValue v5;
     EXPECT_TRUE(v5.read("[true, 10]"));
     EXPECT_NO_THROW(v5.get_array());
-    std::vector<UniValue> vals = v5.getValues();
+    vector<UniValue> vals = v5.getValues();
     EXPECT_THROW(vals[0].get_int(), runtime_error);
     EXPECT_EQ(vals[0].get_bool(), true);
 
@@ -302,7 +302,7 @@ TEST(test_univalue, univalue_readwrite)
     EXPECT_EQ(obj.size(), 3);
 
     EXPECT_TRUE(obj["key1"].isStr());
-    std::string correctValue("str");
+    string correctValue("str");
     correctValue.push_back('\0');
     EXPECT_EQ(obj["key1"].getValStr(), correctValue);
     EXPECT_TRUE(obj["key2"].isNum());

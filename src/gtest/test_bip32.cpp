@@ -8,6 +8,7 @@
 #include "uint256.h"
 #include "util.h"
 #include "utilstrencodings.h"
+#include "vector_types.h"
 
 #include <gtest/gtest.h>
 #include <tuple>
@@ -19,18 +20,18 @@ using namespace std;
 using namespace testing;
 
 struct TestDerivation {
-    std::string pub;
-    std::string prv;
+    string pub;
+    string prv;
     unsigned int nChild;
 };
 
 struct TestVector {
-    std::string strHexMaster;
-    std::vector<TestDerivation> vDerive;
+    string strHexMaster;
+    vector<TestDerivation> vDerive;
 
-    TestVector(std::string strHexMasterIn) : strHexMaster(strHexMasterIn) {}
+    TestVector(string strHexMasterIn) : strHexMaster(strHexMasterIn) {}
 
-    TestVector& operator()(std::string pub, std::string prv, unsigned int nChild) {
+    TestVector& operator()(string pub, string prv, unsigned int nChild) {
         vDerive.push_back(TestDerivation());
         TestDerivation &der = vDerive.back();
         der.pub = pub;
@@ -102,7 +103,7 @@ TestVector test2 =
 
 
 void RunTest(const TestVector &test) {
-    std::vector<unsigned char> seed = ParseHex(test.strHexMaster);
+    v_uint8 seed = ParseHex(test.strHexMaster);
     CExtKey key;
     CExtPubKey pubkey;
     key.SetMaster(&seed[0], seed.size());
