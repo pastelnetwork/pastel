@@ -1,4 +1,5 @@
 // Copyright (c) 2011-2013 The Bitcoin Core developers
+// Copyright (c) 2021 The Pastel developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -50,7 +51,7 @@ TEST_P(PTest_Multisig, multisig_verify)
     const int sample = GetParam();
 
     EXPECT_TRUE(sample < static_cast<int>(Consensus::MAX_NETWORK_UPGRADES));
-    
+
     uint32_t consensusBranchId = NetworkUpgradeInfo[sample].nBranchId;
     unsigned int flags = SCRIPT_VERIFY_P2SH | SCRIPT_VERIFY_STRICTENC;
 
