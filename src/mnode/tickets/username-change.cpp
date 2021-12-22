@@ -51,9 +51,9 @@ string CChangeUsernameTicket::ToStr() const noexcept
  * Check if username change ticket is valid.
  * Possible call stack:
  *    "tickets register username" RPC -> SendTicket (bPreReg=true)
- *    ProcessNewBlock->AcceptBlock--
+ *    ProcessNewBlock->AcceptBlock-+
  *                                 |
- *    TestBlockValidity-------------->ContextualCheckBlock->ContextualCheckTransaction->ValidateIfTicketTransaction
+ *    TestBlockValidity------------+--->ContextualCheckBlock->ContextualCheckTransaction->ValidateIfTicketTransaction
  * 
  * \param bPreReg - ticket pre-registration
  * \param nDepth
@@ -81,7 +81,8 @@ bool CChangeUsernameTicket::IsValid(const bool bPreReg, const int nDepth) const
     const bool bDBUserChangedName_MemPool = bTicketExistsInDB && TktMemPool.TicketExistsBySecondaryKey(tktDB.pastelID);
 
     // These checks executed ONLY before ticket made into transaction
-    if (bPreReg) {
+    if (bPreReg)
+    {
         // search for username-change tickets in the mempool by username
         tktMP.Clear();
         tktMP.username = username;
@@ -101,7 +102,8 @@ bool CChangeUsernameTicket::IsValid(const bool bPreReg, const int nDepth) const
                                           TICKET_NAME_USERNAME_CHANGE, username, tktMP.GetTxId()));
 
         // Check if the username is already registered in the blockchain.
-        if (bTicketExistsInDB && masterNodeCtrl.masternodeTickets.getValueBySecondaryKey(tktDB) == username) {
+        if (bTicketExistsInDB && masterNodeCtrl.masternodeTickets.getValueBySecondaryKey(tktDB) == username)
+        {
             // do not throw an error if the user with tktDB.pastelid has already changed username
             // username-change transaction was found in the mempool
             if (!bDBUserChangedName_MemPool)
@@ -139,9 +141,11 @@ bool CChangeUsernameTicket::IsValid(const bool bPreReg, const int nDepth) const
     tktDB.pastelID = pastelID;
     // find username-change ticket in DB by Pastel ID
     const bool bFoundTicketByPastelID_DB = masterNodeCtrl.masternodeTickets.FindTicketBySecondaryKey(tktDB);
-    if (bFoundTicketByPastelID_DB) {
+    if (bFoundTicketByPastelID_DB)
+    {
         const unsigned int height = (bPreReg || IsBlock(0)) ? chainHeight : m_nBlock;
-        if (height <= tktDB.GetBlock() + CChangeUsernameTicket::GetDisablePeriodInBlocks()) {
+        if (height <= tktDB.GetBlock() + CChangeUsernameTicket::GetDisablePeriodInBlocks())
+        {
             string sTimeDiff;
             // If PastelID has changed Username in last 24 hours (~24*24 blocks), do not allow them to change (for mainnet & testnet)
             // For regtest - number of blocks is 10

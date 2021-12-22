@@ -158,7 +158,7 @@ static int FileWriteStr(const std::string &str, FILE *fp)
 
 static void DebugPrintInit()
 {
-    assert(mutexDebugLog == NULL);
+    assert(mutexDebugLog == nullptr);
     mutexDebugLog = new std::mutex();
     vMsgsBeforeOpenLog = new list<string>;
 }
@@ -168,11 +168,12 @@ void OpenDebugLog()
     boost::call_once(&DebugPrintInit, debugPrintInitFlag);
     std::scoped_lock scoped_lock(*mutexDebugLog);
 
-    assert(fileout == NULL);
+    assert(fileout == nullptr);
     assert(vMsgsBeforeOpenLog);
     fs::path pathDebug = GetDataDir() / "debug.log";
     fileout = fopen(pathDebug.string().c_str(), "a");
-    if (fileout) setbuf(fileout, NULL); // unbuffered
+    if (fileout)
+        setbuf(fileout, nullptr); // unbuffered
 
     // dump buffered messages from before we opened the log
     while (!vMsgsBeforeOpenLog->empty()) {
@@ -181,7 +182,7 @@ void OpenDebugLog()
     }
 
     delete vMsgsBeforeOpenLog;
-    vMsgsBeforeOpenLog = NULL;
+    vMsgsBeforeOpenLog = nullptr;
 }
 
 bool LogAcceptCategory(const char* category)
@@ -256,7 +257,7 @@ int LogPrintStr(const std::string &str)
         string strTimestamped = LogTimestampStr(str, &fStartedNewLine);
 
         // buffer if we haven't opened the log yet
-        if (fileout == NULL) {
+        if (!fileout) {
             assert(vMsgsBeforeOpenLog);
             ret = strTimestamped.length();
             vMsgsBeforeOpenLog->push_back(strTimestamped);
@@ -267,8 +268,8 @@ int LogPrintStr(const std::string &str)
             if (fReopenDebugLog) {
                 fReopenDebugLog = false;
                 fs::path pathDebug = GetDataDir() / "debug.log";
-                if (freopen(pathDebug.string().c_str(),"a",fileout) != NULL)
-                    setbuf(fileout, NULL); // unbuffered
+                if (freopen(pathDebug.string().c_str(), "a", fileout) != nullptr)
+                    setbuf(fileout, nullptr); // unbuffered
             }
 
             ret = FileWriteStr(strTimestamped, fileout);

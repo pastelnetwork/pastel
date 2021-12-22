@@ -145,7 +145,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         initialize_chain_clean(self.options.tmpdir, self.total_number_of_nodes)
 
     def setup_network(self, split=False):
-        self.setup_masternodes_network(private_keys_list, self.number_of_simple_nodes)
+        self.setup_masternodes_network(private_keys_list, self.number_of_simple_nodes, "masternode,mnpayments,governance,compress")
 
     # generate blocks up to new_height on mining node, sync all nodes
     def mining_inc(self, new_height, nodeNo = 0):

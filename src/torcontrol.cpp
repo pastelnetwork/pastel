@@ -8,6 +8,7 @@
 #include "net.h"
 #include "util.h"
 #include "crypto/hmac_sha256.h"
+#include <map_types.h>
 
 #include <vector>
 #include <deque>
@@ -272,9 +273,9 @@ static std::pair<std::string,std::string> SplitTorReplyLine(const std::string &s
  * the server reply formats for PROTOCOLINFO (S3.21), AUTHCHALLENGE (S3.24),
  * and ADD_ONION (S3.27). See also sections 2.1 and 2.3.
  */
-static std::map<std::string,std::string> ParseTorReplyMapping(const std::string &s)
+static m_strings ParseTorReplyMapping(const std::string &s)
 {
-    std::map<std::string,std::string> mapping;
+    m_strings mapping;
     size_t ptr=0;
     while (ptr < s.size()) {
         std::string key, value;
@@ -283,7 +284,7 @@ static std::map<std::string,std::string> ParseTorReplyMapping(const std::string 
             ++ptr;
         }
         if (ptr == s.size()) // unexpected end of line
-            return std::map<std::string,std::string>();
+            return m_strings();
         if (s[ptr] == ' ') // The remaining string is an OptArguments
             break;
         ++ptr; // skip '='
@@ -297,7 +298,7 @@ static std::map<std::string,std::string> ParseTorReplyMapping(const std::string 
                 ++ptr;
             }
             if (ptr == s.size()) // unexpected end of line
-                return std::map<std::string,std::string>();
+                return m_strings();
             ++ptr; // skip closing '"'
             /**
              * Unescape value. Per https://spec.torproject.org/control-spec section 2.1.1:
@@ -335,7 +336,7 @@ static std::map<std::string,std::string> ParseTorReplyMapping(const std::string 
                         if (j == 3 && value[i] > '3') {
                             j--;
                         }
-                        escaped_value.push_back(strtol(value.substr(i, j).c_str(), nullptr, 8));
+                        escaped_value.push_back(static_cast<char>(strtol(value.substr(i, j).c_str(), nullptr, 8)));
                         // Account for automatic incrementing at loop end
                         i += j - 1;
                     } else {
@@ -368,8 +369,13 @@ static std::map<std::string,std::string> ParseTorReplyMapping(const std::string 
  */
 static std::pair<bool,std::string> ReadBinaryFile(const std::string &filename, size_t maxsize=std::numeric_limits<size_t>::max())
 {
-    FILE *f = fopen(filename.c_str(), "rb");
-    if (f == NULL)
+    FILE* f = nullptr;
+#if defined(_MSC_VER) && (_MSC_VER >= 1400)
+    const errno_t err = fopen_s(&f, filename.c_str(), "rb");
+#else
+    f = fopen(filename.c_str(), "rb");
+#endif
+    if (!f)
         return std::make_pair(false,"");
     std::string retval;
     char buffer[128];
@@ -394,8 +400,13 @@ static std::pair<bool,std::string> ReadBinaryFile(const std::string &filename, s
  */
 static bool WriteBinaryFile(const std::string &filename, const std::string &data)
 {
-    FILE *f = fopen(filename.c_str(), "wb");
-    if (f == NULL)
+    FILE* f = nullptr;
+#if defined(_MSC_VER) && (_MSC_VER >= 1400)
+    const errno_t err = fopen_s(&f, filename.c_str(), "wb");
+#else
+    f = fopen(filename.c_str(), "wb");
+#endif
+    if (!f)
         return false;
     if (fwrite(data.data(), 1, data.size(), f) != data.size()) {
         fclose(f);

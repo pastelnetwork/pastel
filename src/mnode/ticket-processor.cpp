@@ -2,21 +2,24 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 
+#include <inttypes.h>
+#include <json/json.hpp>
+
+#if defined(HAVE_CONFIG_H)
+#include "config/bitcoin-config.h"
+#endif
+#include <str_utils.h>
 #include <main.h>
 #include <deprecation.h>
 #include <script/sign.h>
 #include <core_io.h>
 #include <key_io.h>
 #include <init.h>
-#include <str_utils.h>
 #include <mnode/tickets/ticket-types.h>
 #include <mnode/tickets/tickets-all.h>
-#include "mnode/mnode-controller.h"
-#include "mnode/ticket-processor.h"
-#include "mnode/ticket-txmempool.h"
-
-#include "json/json.hpp"
-#include <inttypes.h>
+#include <mnode/mnode-controller.h>
+#include <mnode/ticket-processor.h>
+#include <mnode/ticket-txmempool.h>
 
 using json = nlohmann::json;
 using namespace std;
@@ -143,11 +146,14 @@ void CPastelTicketProcessor::UpdateDB_MVK(const CPastelTicket& ticket, const str
 {
     v_strings mainKeys;
     auto realMVKey = RealMVKey(mvKey);
-    dbs.at(ticket.ID())->Read(realMVKey, mainKeys);
+    auto itDB = dbs.find(ticket.ID());
+    if (itDB == dbs.end())
+        return;
+    itDB->second->Read(realMVKey, mainKeys);
     if (find(mainKeys.cbegin(), mainKeys.cend(), ticket.KeyOne()) == mainKeys.cend())
     {
         mainKeys.emplace_back(ticket.KeyOne());
-        dbs.at(ticket.ID())->Write(realMVKey, mainKeys, true);
+        itDB->second->Write(realMVKey, mainKeys, true);
     }
 }
 
@@ -157,11 +163,14 @@ bool CPastelTicketProcessor::UpdateDB(CPastelTicket &ticket, string& txid, const
         ticket.SetTxId(move(txid));
     if (nBlockHeight != 0)
         ticket.SetBlock(nBlockHeight);
-    dbs.at(ticket.ID())->Write(ticket.KeyOne(), ticket, true);
+    auto itDB = dbs.find(ticket.ID());
+    if (itDB == dbs.end())
+        return false;
+    itDB->second->Write(ticket.KeyOne(), ticket, true);
     if (ticket.HasKeyTwo())
     {
         auto realKeyTwo = RealKeyTwo(ticket.KeyTwo());
-        dbs.at(ticket.ID())->Write(realKeyTwo, ticket.KeyOne(), true);
+        itDB->second->Write(realKeyTwo, ticket.KeyOne(), true);
     }
 
     if (ticket.HasMVKeyOne())
@@ -182,37 +191,49 @@ bool CPastelTicketProcessor::UpdateDB(CPastelTicket &ticket, string& txid, const
  * Parses the first byte from the stream - it defines ticket id.
  * 
  * \param tx - transaction
- * \param data_stream - data stream
+ * \param data_stream - compressed data stream ()
  * \param ticket_id - ticket id (first byte in the data stream)
  * \param error - returns error message if any
+ * \param bCompressed - true if ticket data were compressed using zstd
  * \param bLog
  * \return 
  */
-bool CPastelTicketProcessor::preParseTicket(const CMutableTransaction& tx, CDataStream& data_stream, TicketID& ticket_id, string& error, const bool bLog)
+bool CPastelTicketProcessor::preParseTicket(const CMutableTransaction& tx, CCompressedDataStream& data_stream, TicketID& ticket_id, string& error, const bool bLog)
 {
-    v_uint8 output_data;
+    CSerializeData vOutputData;
     bool bRet = false;
     do
     {
-        if (!ParseP2FMSTransaction(tx, output_data, error))
+        if (!ParseP2FMSTransaction(tx, vOutputData, error))
             break;
-        if (output_data.empty())
+        if (vOutputData.empty())
         {
             error = "No correct data found in transaction - empty data";
             break;
         }
-        data_stream.write(reinterpret_cast<char*>(output_data.data()), output_data.size());
-        uint8_t u;
-        data_stream >> u;
+        // first byte of the ticket data:
+        // +---------bits---------+------------+
+        // | 1  2  3  4  5  6  7  |      8     |
+        // +----------------------+------------+
+        // | ticket id (0..127)   | compressed |
+        // +----------------------+------------+
+        uint8_t nTicketID = vOutputData[0];
 
+        const bool bCompressed = (nTicketID & TICKET_COMPRESS_ENABLE_MASK) > 0;
+        nTicketID &= TICKET_COMPRESS_DISABLE_MASK;
         // validate ticket id
-        if (u >= to_integral_type<TicketID>(TicketID::COUNT))
+        if (nTicketID >= to_integral_type<TicketID>(TicketID::COUNT))
         {
-            error = strprintf("Unknown ticket type (%hhu) found in P2FMS transaction", u);
+            error = strprintf("Unknown ticket type (%hhu) found in P2FMS transaction", nTicketID);
             break;
         }
-        ticket_id = static_cast<TicketID>(u);
-        bRet = true;
+        ticket_id = static_cast<TicketID>(nTicketID);
+        const size_t nOutputDataSize = vOutputData.size();
+        bRet = data_stream.SetData(error, bCompressed, 1, move(vOutputData));
+        if (!bRet)
+            error = strprintf("Failed to uncompress data for '%s' ticket. %s", GetTicketDescription(ticket_id), error);
+        else if (bCompressed)
+            LogPrint("compress", "Ticket [%hhu] data uncompressed [%zu]->[%zu]\n", nTicketID, nOutputDataSize, data_stream.size());
     } while (false);
     return bRet;
 }
@@ -225,7 +246,7 @@ bool CPastelTicketProcessor::ValidateIfTicketTransaction(const int nHeight, cons
     CMutableTransaction mtx(tx);
 
     string error_ret;
-    CDataStream data_stream(SER_NETWORK, DATASTREAM_VERSION);
+    CCompressedDataStream data_stream(SER_NETWORK, DATASTREAM_VERSION);
     TicketID ticket_id;
 
     if (!preParseTicket(tx, data_stream, ticket_id, error_ret, false))
@@ -252,7 +273,7 @@ bool CPastelTicketProcessor::ValidateIfTicketTransaction(const int nHeight, cons
 
         ticket = CreateTicket(ticket_id);
         if (!ticket)
-            error_ret = strprintf("unknown ticket_id %hu", to_integral_type<TicketID>(ticket_id));
+            error_ret = strprintf("unknown ticket type %hhu", to_integral_type<TicketID>(ticket_id));
         else
         {
             // deserialize ticket data
@@ -416,7 +437,7 @@ bool CPastelTicketProcessor::ValidateIfTicketTransaction(const int nHeight, cons
 bool CPastelTicketProcessor::ParseTicketAndUpdateDB(CMutableTransaction& tx, const unsigned int nBlockHeight)
 {
     string error_ret;
-    CDataStream data_stream(SER_NETWORK, DATASTREAM_VERSION);
+    CCompressedDataStream data_stream(SER_NETWORK, DATASTREAM_VERSION);
     TicketID ticket_id;
 
     if (!preParseTicket(tx, data_stream, ticket_id, error_ret))
@@ -471,7 +492,7 @@ unique_ptr<CPastelTicket> CPastelTicketProcessor::GetTicket(const uint256 &txid)
 
     TicketID ticket_id;
     string error_ret;
-    CDataStream data_stream(SER_NETWORK, DATASTREAM_VERSION);
+    CCompressedDataStream data_stream(SER_NETWORK, DATASTREAM_VERSION);
 
     if (!preParseTicket(mtx, data_stream, ticket_id, error_ret))
         throw runtime_error(strprintf("Failed to parse P2FMS transaction from data provided. %s", error_ret));
@@ -523,7 +544,10 @@ unique_ptr<CPastelTicket> CPastelTicketProcessor::GetTicket(const string& _txid,
 bool CPastelTicketProcessor::CheckTicketExist(const CPastelTicket& ticket)
 {
     auto key = ticket.KeyOne();
-    return dbs.at(ticket.ID())->Exists(key);
+    const auto itDB = dbs.find(ticket.ID());
+    if (itDB == dbs.cend())
+        return false;
+    return itDB->second->Exists(key);
 }
 
 bool CPastelTicketProcessor::CheckTicketExistBySecondaryKey(const CPastelTicket& ticket)
@@ -532,8 +556,9 @@ bool CPastelTicketProcessor::CheckTicketExistBySecondaryKey(const CPastelTicket&
     {
         string mainKey;
         const auto sRealKeyTwo = RealKeyTwo(ticket.KeyTwo());
-        if (dbs.at(ticket.ID())->Read(sRealKeyTwo, mainKey))
-            return dbs.at(ticket.ID())->Exists(mainKey);
+        const auto itDB = dbs.find(ticket.ID());
+        if (itDB != dbs.cend() && itDB->second->Read(sRealKeyTwo, mainKey))
+            return itDB->second->Exists(mainKey);
     }
     return false;
 }
@@ -547,7 +572,10 @@ bool CPastelTicketProcessor::CheckTicketExistBySecondaryKey(const CPastelTicket&
 bool CPastelTicketProcessor::FindTicket(CPastelTicket& ticket) const
 {
     const auto sKey = ticket.KeyOne();
-    return dbs.at(ticket.ID())->Read(sKey, ticket);
+    const auto itDB = dbs.find(ticket.ID());
+    if (itDB != dbs.cend())
+        return itDB->second->Read(sKey, ticket);
+    return false;
 }
 
 /**
@@ -562,8 +590,9 @@ bool CPastelTicketProcessor::FindTicketBySecondaryKey(CPastelTicket& ticket)
     {
         string sMainKey;
         const auto sRealKeyTwo = RealKeyTwo(ticket.KeyTwo());
-        if (dbs.at(ticket.ID())->Read(sRealKeyTwo, sMainKey))
-            return dbs.at(ticket.ID())->Read(sMainKey, ticket);
+        const auto itDB = dbs.find(ticket.ID());
+        if (itDB != dbs.cend() && itDB->second->Read(sRealKeyTwo, sMainKey))
+            return itDB->second->Read(sMainKey, ticket);
     }
     return false;
 }
@@ -573,11 +602,14 @@ void CPastelTicketProcessor::ProcessTicketsByMVKey(const string& mvKey, F f) con
 {
     v_strings vMainKeys;
     const auto realMVKey = RealMVKey(mvKey);
-    dbs.at(_TicketType::GetID())->Read(realMVKey, vMainKeys);
+    const auto itDB = dbs.find(_TicketType::GetID());
+    if (itDB == dbs.cend())
+        return;
+    itDB->second->Read(realMVKey, vMainKeys);
     for (const auto& key : vMainKeys)
     {
         _TicketType ticket;
-        if (dbs.at(_TicketType::GetID())->Read(key, ticket))
+        if (itDB->second->Read(key, ticket))
         {
             if (!f(ticket))
                 break; // stop processing tickets if functor returned false
@@ -591,12 +623,16 @@ vector<_TicketType> CPastelTicketProcessor::FindTicketsByMVKey(const string& mvK
     vector<_TicketType> tickets;
     v_strings vMainKeys;
     auto realMVKey = RealMVKey(mvKey);
-    dbs.at(_TicketType::GetID())->Read(realMVKey, vMainKeys);
-    for (const auto& key : vMainKeys)
+    const auto itDB = dbs.find(_TicketType::GetID());
+    if (itDB != dbs.cend())
     {
-        _TicketType ticket;
-        if (dbs.at(_TicketType::GetID())->Read(key, ticket))
-            tickets.emplace_back(ticket);
+        itDB->second->Read(realMVKey, vMainKeys);
+        for (const auto& key : vMainKeys)
+        {
+            _TicketType ticket;
+            if (itDB->second->Read(key, ticket))
+                tickets.emplace_back(ticket);
+        }
     }
     return tickets;
 }
@@ -604,10 +640,12 @@ vector<_TicketType> CPastelTicketProcessor::FindTicketsByMVKey(const string& mvK
 string CPastelTicketProcessor::getValueBySecondaryKey(const CPastelTicket& ticket) const
 {
     string retVal;
-    if (ticket.HasKeyTwo()) {
+    if (ticket.HasKeyTwo())
+    {
         string sMainKey;
         const auto sRealKeyTwo = RealKeyTwo(ticket.KeyTwo());
-        if (dbs.at(ticket.ID())->Read(sRealKeyTwo, sMainKey))
+        const auto itDB = dbs.find(ticket.ID());
+        if (itDB != dbs.cend() && itDB->second->Read(sRealKeyTwo, sMainKey))
             retVal = sMainKey;
     }
     return retVal;
@@ -628,15 +666,19 @@ template ActionActivateTickets_t CPastelTicketProcessor::FindTicketsByMVKey<CAct
 v_strings CPastelTicketProcessor::GetAllKeys(const TicketID id) const
 {
     v_strings vResults;
-    unique_ptr<CDBIterator> pcursor(dbs.at(id)->NewIterator());
-    pcursor->SeekToFirst();
-    string sKey;
-    while (pcursor->Valid())
+    const auto itDB = dbs.find(id);
+    if (itDB != dbs.cend())
     {
-        sKey.clear();
-        if (pcursor->GetKey(sKey))
-            vResults.emplace_back(move(sKey));
-        pcursor->Next();
+        unique_ptr<CDBIterator> pcursor(itDB->second->NewIterator());
+        pcursor->SeekToFirst();
+        string sKey;
+        while (pcursor->Valid())
+        {
+            sKey.clear();
+            if (pcursor->GetKey(sKey))
+                vResults.emplace_back(move(sKey));
+            pcursor->Next();
+        }
     }
     return vResults;
 }
@@ -1020,9 +1062,29 @@ string CPastelTicketProcessor::SendTicket(const CPastelTicket& ticket, const opt
     vector<CTxOut> extraOutputs;
     const CAmount extraAmount = ticket.GetExtraOutputs(extraOutputs);
 
-    CDataStream data_stream(SER_NETWORK, DATASTREAM_VERSION);
-    data_stream << to_integral_type<TicketID>(ticket.ID());
+    CCompressedDataStream data_stream(SER_NETWORK, DATASTREAM_VERSION);
+    auto nTicketID = to_integral_type<TicketID>(ticket.ID());
+#ifdef ENABLE_TICKET_COMPRESS
+    // compressed flag is saved in highest bit of the ticket id
+    nTicketID |= TICKET_COMPRESS_ENABLE_MASK;
+#endif
+    data_stream << nTicketID;
     data_stream << ticket;
+    const size_t nUncompressedSize = data_stream.size();
+#ifdef ENABLE_TICKET_COMPRESS
+    // compress ticket data
+    if (!data_stream.CompressData(error, sizeof(TicketID), 
+        [&](CSerializeData::iterator start, CSerializeData::iterator end)
+        {
+            if (start != end)
+                *start = nTicketID & TICKET_COMPRESS_DISABLE_MASK;
+        }))
+        throw runtime_error(strprintf("Failed to compress ticket (%s) data. %s", ticket.GetTicketName(), error));
+    if (data_stream.IsCompressed())
+        LogPrint("compress", "Ticket (%hhu) data compressed [%zu]->[%zu]\n", to_integral_type<TicketID>(ticket.ID()), nUncompressedSize, data_stream.size() + 1);
+    else
+        LogPrint("compress", "Ticket (%hhu) data [%zu bytes] was not compressed due to size or bad compression ratio\n", to_integral_type<TicketID>(ticket.ID()), nUncompressedSize);
+#endif
 
     unsigned int chainHeight = GetActiveChainHeight();
 
@@ -1473,7 +1535,7 @@ bool CPastelTicketProcessor::StoreP2FMSTransaction(const CMutableTransaction& tx
  */
 bool CPastelTicketProcessor::ParseP2FMSTransaction(const CMutableTransaction& tx_in, string& output_string, string& error)
 {
-    v_uint8 output_data;
+    CSerializeData output_data;
     const bool bOk = ParseP2FMSTransaction(tx_in, output_data, error);
     if (bOk)
         output_string = vector_to_string(output_data);
@@ -1488,7 +1550,7 @@ bool CPastelTicketProcessor::ParseP2FMSTransaction(const CMutableTransaction& tx
  * \param error_ret - returns an error if any
  * \return true if P2FMS was found in the transaction and successfully parsed, validated and copied to the output data
  */
-bool CPastelTicketProcessor::ParseP2FMSTransaction(const CMutableTransaction& tx_in, v_uint8& output_data, string& error_ret)
+bool CPastelTicketProcessor::ParseP2FMSTransaction(const CMutableTransaction& tx_in, CSerializeData& output_data, string& error_ret)
 {
     bool bFoundMS = false;
     // reuse vector to process tx outputs

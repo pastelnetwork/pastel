@@ -16,6 +16,7 @@ $(package)_cmake_opts+= -DENABLE_CURVE=OFF
 $(package)_cmake_opts+= -DWITH_DOC=OFF
 $(package)_cmake_opts+= -DBUILD_SHARED=OFF
 $(package)_cmake_opts+= -DBUILD_TESTS=OFF
+$(package)_cmake_opts+= -DCMAKE_INSTALL_PREFIX=$($(package)_staging_prefix_dir)
 endef
 
 define $(package)_preprocess_cmds
@@ -29,12 +30,12 @@ endef
 
 define $(package)_build_cmds
   cd build && \
-  $(MAKE) -j$(JOBCOUNT) VERBOSE=1
+  $(MAKE) -j$(JOBCOUNT)
 endef
 
 define $(package)_stage_cmds
   mkdir -p $($(package)_staging_dir)$(host_prefix)/lib && \
-  $(MAKE) -C ./build/ VERBOSE=1 DESTDIR=$($(package)_staging_prefix_dir) install && \
+  $(MAKE) -C ./build/ VERBOSE=1 install && \
   install ./build/lib/libzmq.a $($(package)_staging_dir)$(host_prefix)/lib/libzmq.a && \
   cp -a ./include $($(package)_staging_dir)$(host_prefix)/
 endef

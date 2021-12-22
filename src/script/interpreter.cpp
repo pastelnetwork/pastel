@@ -1026,12 +1026,12 @@ public:
         // Serialize nVersion
         ::Serialize(s, txTo.nVersion);
         // Serialize vin
-        unsigned int nInputs = fAnyoneCanPay ? 1 : txTo.vin.size();
+        const uint64_t nInputs = fAnyoneCanPay ? 1 : txTo.vin.size();
         ::WriteCompactSize(s, nInputs);
         for (unsigned int nInput = 0; nInput < nInputs; nInput++)
              SerializeInput(s, nInput);
         // Serialize vout
-        unsigned int nOutputs = fHashNone ? 0 : (fHashSingle ? nIn+1 : txTo.vout.size());
+        const uint64_t nOutputs = fHashNone ? 0 : (fHashSingle ? nIn+1 : txTo.vout.size());
         ::WriteCompactSize(s, nOutputs);
         for (unsigned int nOutput = 0; nOutput < nOutputs; nOutput++)
              SerializeOutput(s, nOutput);

@@ -1,9 +1,9 @@
+#include <gtest/gtest.h>
+
 #include "streams.h"
 #include "chainparams.h"
-#include "mock_mnode_ticket.h"
-#include "mnode/ticket-processor.h"
-
-#include <gtest/gtest.h>
+#include <test_mnode/mock_ticket.h>
+#include <mnode/ticket-processor.h>
 
 using namespace testing;
 using namespace std;
@@ -54,6 +54,10 @@ public:
         mn_signature.assign({'s', 'i', 'g', '1'});
         // full ticket signature by pastel id key
         pslid_signature.assign({'s', 'i', 'g', '2'});
+        ON_CALL(*this, SerializationOp).WillByDefault([this](CDataStream& s, const SERIALIZE_ACTION ser_action)
+            {
+                return this->CPastelIDRegTicket::SerializationOp(s, ser_action);
+            });
     }
 
     void TearDown() override
@@ -72,6 +76,7 @@ TEST_F(TestPastelIDRegTicket, v0_readwrite)
         Sequence s1;
         EXPECT_CALL(*this, VersionMgmt).WillOnce(Return(true));
         EXPECT_CALL(*this, GetVersion).WillOnce(Return(0));
+        EXPECT_CALL(*this, SerializationOp);
         m_nVersion = 0;
         m_DataStream << *this;
     }
@@ -83,6 +88,7 @@ TEST_F(TestPastelIDRegTicket, v0_readwrite)
         Sequence s2;
         EXPECT_CALL(*this, VersionMgmt).WillOnce([this](string& error, const bool bRead) { return this->CPastelIDRegTicket::VersionMgmt(error, bRead); });
         EXPECT_CALL(*this, GetVersion).WillRepeatedly([this]() { return this->CPastelIDRegTicket::GetVersion(); });
+        EXPECT_CALL(*this, SerializationOp);
         m_nVersion = -1;
         m_DataStream >> *this;
         EXPECT_EQ(m_nVersion, 0);
@@ -94,6 +100,7 @@ TEST_F(TestPastelIDRegTicket, v1_readwrite)
 {
     EXPECT_CALL(*this, VersionMgmt).WillRepeatedly([this](string& error, const bool bRead) { return this->CPastelIDRegTicket::VersionMgmt(error, bRead); });
     EXPECT_CALL(*this, GetVersion).WillRepeatedly([this]() { return this->CPastelIDRegTicket::GetVersion(); });
+    EXPECT_CALL(*this, SerializationOp).Times(AnyNumber());
     // write v1 with version
     m_DataStream << *this;
 
@@ -112,6 +119,7 @@ TEST_F(TestPastelIDRegTicket, v1_write_v0_read)
     EXPECT_CALL(*this, GetVersion)
         .WillOnce(Return(1))
         .WillOnce(Return(0));
+    EXPECT_CALL(*this, SerializationOp).Times(AnyNumber());
     // write v1 with version
     m_DataStream << *this;
     Clear();

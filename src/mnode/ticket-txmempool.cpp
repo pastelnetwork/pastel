@@ -14,7 +14,7 @@ using namespace std;
  */
 void CTicketTxMemPoolTracker::processTransaction(const CTxMemPoolEntry& entry, [[maybe_unused]] const bool fCurrentEstimate)
 {
-    CDataStream data_stream(SER_NETWORK, DATASTREAM_VERSION);
+    CCompressedDataStream data_stream(SER_NETWORK, DATASTREAM_VERSION);
     TicketID ticket_id;
     string error;
     const auto& tx = entry.GetTx();

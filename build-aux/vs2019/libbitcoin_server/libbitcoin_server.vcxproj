@@ -235,6 +235,7 @@
     <ClInclude Include="..\..\..\src\mnode\tickets\action-act.h" />
     <ClInclude Include="..\..\..\src\mnode\tickets\action-reg.h" />
     <ClInclude Include="..\..\..\src\mnode\tickets\etherium-address-change.h" />
+    <ClInclude Include="..\..\..\src\mnode\tickets\ticket-mn-fees.h" />
     <ClInclude Include="..\..\..\src\mnode\tickets\nft-act.h" />
     <ClInclude Include="..\..\..\src\mnode\tickets\nft-buy.h" />
     <ClInclude Include="..\..\..\src\mnode\tickets\nft-reg.h" />
