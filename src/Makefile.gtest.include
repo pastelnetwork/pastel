@@ -73,7 +73,8 @@ pastel_gtest_SOURCES +=\
 	gtest/test_uint256.cpp \
 	gtest/test_arith_uint256.cpp\
 	gtest/test_multisig.cpp\
-	gtest/test_sha256compress.cpp
+	gtest/test_sha256compress.cpp\
+	gtest/test_serialize.cpp
 
 if ENABLE_WALLET
 pastel_gtest_SOURCES += \
