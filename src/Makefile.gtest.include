@@ -19,7 +19,7 @@ pastel_gtest_SOURCES += \
 	wallet/gtest/test_wallet_zkeys.cpp
 endif
 pastel_gtest_SOURCES +=\
-	gtest/test_mnode/mock_mnode_ticket.h\
+	gtest/test_mnode/mock_ticket.h\
 	gtest/test_mnode/test_governance.cpp\
 	gtest/test_mnode/test_mnode_rpc.cpp\
 	gtest/test_mnode/test_pastel.cpp\
@@ -39,6 +39,7 @@ pastel_gtest_SOURCES +=\
 	gtest/test_checkblock.cpp\
 	gtest/test_checkpoints.cpp\
 	gtest/test_circuit.cpp\
+	gtest/test_datacompressor.cpp\
 	gtest/test_deprecation.cpp\
 	gtest/test_equihash.cpp\
 	gtest/test_hash.cpp\
@@ -83,8 +84,20 @@ endif
 pastel_gtest_CPPFLAGS = $(AM_CPPFLAGS) -DBINARY_OUTPUT -DCURVE_ALT_BN128 -DSTATIC $(BITCOIN_INCLUDES) -I$(srcdir)/gtest
 pastel_gtest_CXXFLAGS = $(AM_CXXFLAGS) $(PIE_FLAGS) -I$(srcdir)/gtest
 
-pastel_gtest_LDADD = -lgtest -lgmock $(LIBBITCOIN_SERVER) $(LIBBITCOIN_CLI) $(LIBBITCOIN_COMMON) $(LIBBITCOIN_UTIL) \
-  $(LIBBITCOIN_CRYPTO) $(LIBUNIVALUE) $(LIBLEVELDB) $(LIBMEMENV) $(BOOST_LIBS) $(LIBSECP256K1)
+pastel_gtest_LDADD =\
+ -lgtest\
+ -lgmock\
+ $(LIBBITCOIN_SERVER)\
+ $(LIBBITCOIN_CLI)\
+ $(LIBBITCOIN_COMMON)\
+ $(LIBBITCOIN_UTIL)\
+ $(LIBBITCOIN_CRYPTO)\
+ $(LIBUNIVALUE)\
+ $(LIBLEVELDB)\
+ $(LIBMEMENV)\
+ $(BOOST_LIBS)\
+ $(LIBSECP256K1)
+
 if ENABLE_ZMQ
 pastel_gtest_LDADD += $(LIBBITCOIN_ZMQ) $(ZMQ_LIBS)
 endif
@@ -92,12 +105,21 @@ if ENABLE_WALLET
 pastel_gtest_LDADD += $(LIBBITCOIN_WALLET)
 endif
 
-pastel_gtest_LDADD += $(LIBZCASH_CONSENSUS) $(BDB_LIBS) $(SSL_LIBS) $(CRYPTO_LIBS) $(EVENT_PTHREADS_LIBS) $(EVENT_LIBS) $(LIBZCASH) $(LIBSNARK) $(LIBZCASH_LIBS)
+pastel_gtest_LDADD +=\
+ $(LIBZCASH_CONSENSUS)\
+ $(BDB_LIBS)\
+ $(SSL_LIBS)\
+ $(CRYPTO_LIBS)\
+ $(EVENT_PTHREADS_LIBS)\
+ $(EVENT_LIBS)\
+ $(LIBZCASH)\
+ $(LIBSNARK)\
+ $(LIBZCASH_LIBS)\
+ $(ZSTD_LIBS)
 
 if ENABLE_PROTON
 pastel_gtest_LDADD += $(LIBBITCOIN_PROTON) $(PROTON_LIBS)
 endif
-
 
 pastel_gtest_LDFLAGS = $(RELDFLAGS) $(AM_LDFLAGS) $(LIBTOOL_APP_LDFLAGS) -static
 

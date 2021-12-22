@@ -1,11 +1,14 @@
 #pragma once
 // Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2014 The Bitcoin Core developers
+// Copyright (c) 2018-2021 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
-// file COPYING or http://www.opensource.org/licenses/mit-license.php.
-#include "primitives/transaction.h"
-#include "script/script.h"
-#include "serialize.h"
+// file COPYING or https://www.opensource.org/licenses/mit-license.php.
+
+#include <primitives/transaction.h>
+#include <script/script.h>
+#include <serialize.h>
+#include <vector_types.h>
 
 class CKeyID;
 class CPubKey;
@@ -31,7 +34,7 @@ private:
      * transactions, in which case this value becomes dependent on nVersion
      * and nHeight of the enclosing transaction.
      */
-    static const unsigned int nSpecialScripts = 6;
+    static constexpr unsigned int nSpecialScripts = 6;
 
     CScript &script;
 protected:
@@ -46,16 +49,16 @@ protected:
     bool IsToScriptID(CScriptID &hash) const;
     bool IsToPubKey(CPubKey &pubkey) const;
 
-    bool Compress(std::vector<unsigned char> &out) const;
-    unsigned int GetSpecialSize(unsigned int nSize) const;
-    bool Decompress(unsigned int nSize, const std::vector<unsigned char> &out);
+    bool Compress(v_uint8 &out) const;
+    unsigned int GetSpecialSize(const unsigned int nSize) const noexcept;
+    bool Decompress(const unsigned int nSize, const v_uint8& out);
 
 public:
     CScriptCompressor(CScript &scriptIn) : script(scriptIn) { }
 
     template<typename Stream>
     void Serialize(Stream &s) const {
-        std::vector<unsigned char> compr;
+        v_uint8 compr;
         if (Compress(compr)) {
             s << CFlatData(compr);
             return;
@@ -70,7 +73,7 @@ public:
         unsigned int nSize = 0;
         s >> VARINT(nSize);
         if (nSize < nSpecialScripts) { //-V547
-            std::vector<unsigned char> vch(GetSpecialSize(nSize), 0x00);
+            v_uint8 vch(GetSpecialSize(nSize), 0x00);
             s >> REF(CFlatData(vch));
             Decompress(nSize, vch);
             return;

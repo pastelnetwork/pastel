@@ -38,7 +38,7 @@ void CPastelTicketMemPoolProcessor::Initialize(const CTxMemPool& pool, std::shar
     if (vTx.size() != vBlockHeight.size())
         throw runtime_error("Failed to retrieve ticket transactions from the memory pool");
 
-    CDataStream data_stream(SER_NETWORK, DATASTREAM_VERSION);
+    CCompressedDataStream data_stream(SER_NETWORK, DATASTREAM_VERSION);
     string error;
     // parse P2FMS transactions and create tickets
     size_t i = 0;

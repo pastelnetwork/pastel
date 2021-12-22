@@ -1,9 +1,9 @@
+#include <gtest/gtest.h>
+
 #include "streams.h"
 #include "chainparams.h"
-#include "mock_mnode_ticket.h"
-#include "mnode/ticket-processor.h"
-
-#include <gtest/gtest.h>
+#include <test_mnode/mock_ticket.h>
+#include <mnode/ticket-processor.h>
 
 using namespace testing;
 using namespace std;

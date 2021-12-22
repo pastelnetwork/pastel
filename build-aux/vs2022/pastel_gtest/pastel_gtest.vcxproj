@@ -107,6 +107,7 @@
     <ClCompile Include="..\..\..\src\gtest\test_base64.cpp" />
     <ClCompile Include="..\..\..\src\gtest\test_bech32.cpp" />
     <ClCompile Include="..\..\..\src\gtest\test_checkpoints.cpp" />
+    <ClCompile Include="..\..\..\src\gtest\test_datacompressor.cpp" />
     <ClCompile Include="..\..\..\src\gtest\test_hash.cpp" />
     <ClCompile Include="..\..\..\src\gtest\test_mnode\test_governance.cpp" />
     <ClCompile Include="..\..\..\src\gtest\test_mnode\test_pastel.cpp" />
@@ -163,7 +164,7 @@
     <ClInclude Include="..\..\..\src\gtest\data\base58_keys_valid.json.h" />
     <ClInclude Include="..\..\..\src\gtest\json_test_vectors.h" />
     <ClInclude Include="..\..\..\src\gtest\test_mnode\test_ticket_mempool.h" />
-    <ClInclude Include="..\..\..\src\gtest\test_mnode\mock_mnode_ticket.h" />
+    <ClInclude Include="..\..\..\src\gtest\test_mnode\mock_ticket.h" />
     <ClInclude Include="..\..\..\src\gtest\pastel_gtest_main.h" />
     <ClInclude Include="..\..\..\src\gtest\test_mempool_entryhelper.h" />
     <ClInclude Include="..\..\..\src\gtest\test_utils.h" />

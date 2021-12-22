@@ -36,16 +36,16 @@ pastelid_store_t CPastelID::CreateNewPastelKeys(SecureString&& passPhrase)
         CLegRoast<algorithm::Legendre_Middle> LegRoastKey;
         // generate LegRoast private/public key pair
         LegRoastKey.keygen();
-        string sEncodedPubKey = EncodeLegRoastPubKey(LegRoastKey.get_public_key());
+        string sEncodedLegRoastPubKey = EncodeLegRoastPubKey(LegRoastKey.get_public_key());
         // write secure container with both private keys
         CSecureContainer cont;
-        cont.add_public_item(PUBLIC_ITEM_TYPE::pubkey_legroast, sEncodedPubKey);
+        cont.add_public_item(PUBLIC_ITEM_TYPE::pubkey_legroast, sEncodedLegRoastPubKey);
         cont.add_secure_item_vector(SECURE_ITEM_TYPE::pkey_ed448, key.private_key_raw().data());
         cont.add_secure_item_vector(SECURE_ITEM_TYPE::pkey_legroast, LegRoastKey.get_private_key());
         cont.write_to_file(GetSecureContFilePath(sPastelID, true), move(passPhrase));
 
         // populate storage object with encoded PastelID and LegRoast public keys
-        resultMap.emplace(move(sPastelID), move(sEncodedPubKey));
+        resultMap.emplace(move(sPastelID), move(sEncodedLegRoastPubKey));
     } catch (const crypto_exception& ex) {
         throw runtime_error(ex.what());
     }
