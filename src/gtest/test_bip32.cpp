@@ -2,17 +2,21 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php .
 
-#include <boost/test/unit_test.hpp>
 
 #include "key.h"
 #include "key_io.h"
 #include "uint256.h"
 #include "util.h"
 #include "utilstrencodings.h"
-#include "test/test_bitcoin.h"
 
+#include <gtest/gtest.h>
+#include <tuple>
 #include <string>
 #include <vector>
+#include "clientversion.h"
+
+using namespace std;
+using namespace testing;
 
 struct TestDerivation {
     std::string pub;
@@ -35,6 +39,22 @@ struct TestVector {
         return *this;
     }
 };
+
+class TestBip32 : public Test
+{
+public:
+    void SetUp() override
+    {
+        SelectParams(CBaseChainParams::Network::MAIN);
+    }
+
+    void TearDown() override
+    {
+    }
+
+
+};
+
 
 TestVector test1 =
   TestVector("000102030405060708090a0b0c0d0e0f")
@@ -78,6 +98,9 @@ TestVector test2 =
      "xprvA2nrNbFZABcdryreWet9Ea4LvTJcGsqrMzxHx98MMrotbir7yrKCEXw7nadnHM8Dq38EGfSh6dqA9QWTyefMLEcBYJUuekgW4BYPJcr9E7j",
      0);
 
+
+
+
 void RunTest(const TestVector &test) {
     std::vector<unsigned char> seed = ParseHex(test.strHexMaster);
     CExtKey key;
@@ -92,52 +115,46 @@ void RunTest(const TestVector &test) {
         pubkey.Encode(data);
 
         // Test private key
-        BOOST_CHECK(keyIO.EncodeExtKey(key) == derive.prv);
-        BOOST_CHECK(keyIO.DecodeExtKey(derive.prv) == key); //ensure a base58 decoded key also matches
+        EXPECT_EQ(keyIO.EncodeExtKey(key) , derive.prv);
+        EXPECT_EQ(keyIO.DecodeExtKey(derive.prv) , key); //ensure a base58 decoded key also matches
 
         // Test public key
-        BOOST_CHECK(keyIO.EncodeExtPubKey(pubkey) == derive.pub);
-        BOOST_CHECK(keyIO.DecodeExtPubKey(derive.pub) == pubkey); //ensure a base58 decoded pubkey also matches
+        EXPECT_EQ(keyIO.EncodeExtPubKey(pubkey) , derive.pub);
+        EXPECT_EQ(keyIO.DecodeExtPubKey(derive.pub) , pubkey); //ensure a base58 decoded pubkey also matches
 
         // Derive new keys
         CExtKey keyNew;
-        BOOST_CHECK(key.Derive(keyNew, derive.nChild));
+        EXPECT_TRUE(key.Derive(keyNew, derive.nChild));
         CExtPubKey pubkeyNew = keyNew.Neuter();
         if (!(derive.nChild & 0x80000000)) {
             // Compare with public derivation
             CExtPubKey pubkeyNew2;
-            BOOST_CHECK(pubkey.Derive(pubkeyNew2, derive.nChild));
-            BOOST_CHECK(pubkeyNew == pubkeyNew2);
+            EXPECT_TRUE(pubkey.Derive(pubkeyNew2, derive.nChild));
+            EXPECT_EQ(pubkeyNew , pubkeyNew2);
         }
         key = keyNew;
         pubkey = pubkeyNew;
 
         CDataStream ssPub(SER_DISK, CLIENT_VERSION);
         ssPub << pubkeyNew;
-        BOOST_CHECK(ssPub.size() == 75);
+        EXPECT_EQ(ssPub.size() , 75);
 
         CDataStream ssPriv(SER_DISK, CLIENT_VERSION);
         ssPriv << keyNew;
-        BOOST_CHECK(ssPriv.size() == 75);
+        EXPECT_EQ(ssPriv.size() , 75);
 
         CExtPubKey pubCheck;
         CExtKey privCheck;
         ssPub >> pubCheck;
         ssPriv >> privCheck;
 
-        BOOST_CHECK(pubCheck == pubkeyNew);
-        BOOST_CHECK(privCheck == keyNew);
+        EXPECT_EQ(pubCheck , pubkeyNew);
+        EXPECT_EQ(privCheck , keyNew);
     }
 }
 
-BOOST_FIXTURE_TEST_SUITE(bip32_tests, BasicTestingSetup)
-
-BOOST_AUTO_TEST_CASE(bip32_test1) {
+TEST_F(TestBip32, testvectors)
+{
     RunTest(test1);
-}
-
-BOOST_AUTO_TEST_CASE(bip32_test2) {
     RunTest(test2);
 }
-
-BOOST_AUTO_TEST_SUITE_END()

@@ -109,33 +109,33 @@ static void CheckCompare(const int64_t& num1, const int64_t& num2)
     const CScriptNum scriptnum1(num1);
     const CScriptNum scriptnum2(num2);
 
-    BOOST_CHECK((bignum1 == bignum1) == (scriptnum1 == scriptnum1)); //-V501
-    BOOST_CHECK((bignum1 != bignum1) ==  (scriptnum1 != scriptnum1)); //-V501
-    BOOST_CHECK((bignum1 < bignum1) ==  (scriptnum1 < scriptnum1)); //-V501
-    BOOST_CHECK((bignum1 > bignum1) ==  (scriptnum1 > scriptnum1)); //-V501
-    BOOST_CHECK((bignum1 >= bignum1) ==  (scriptnum1 >= scriptnum1)); //-V501
-    BOOST_CHECK((bignum1 <= bignum1) ==  (scriptnum1 <= scriptnum1)); //-V501
+    EXPECT_EQ((bignum1 == bignum1) , (scriptnum1 == scriptnum1)); //-V501
+    EXPECT_EQ((bignum1 != bignum1) ,  (scriptnum1 != scriptnum1)); //-V501
+    EXPECT_EQ((bignum1 < bignum1) ,  (scriptnum1 < scriptnum1)); //-V501
+    EXPECT_EQ((bignum1 > bignum1) ,  (scriptnum1 > scriptnum1)); //-V501
+    EXPECT_EQ((bignum1 >= bignum1) ,  (scriptnum1 >= scriptnum1)); //-V501
+    EXPECT_EQ((bignum1 <= bignum1) ,  (scriptnum1 <= scriptnum1)); //-V501
 
-    BOOST_CHECK((bignum1 == bignum1) == (scriptnum1 == num1)); //-V501
-    BOOST_CHECK((bignum1 != bignum1) ==  (scriptnum1 != num1)); //-V501
-    BOOST_CHECK((bignum1 < bignum1) ==  (scriptnum1 < num1)); //-V501
-    BOOST_CHECK((bignum1 > bignum1) ==  (scriptnum1 > num1)); //-V501
-    BOOST_CHECK((bignum1 >= bignum1) ==  (scriptnum1 >= num1)); //-V501
-    BOOST_CHECK((bignum1 <= bignum1) ==  (scriptnum1 <= num1)); //-V501
+    EXPECT_EQ((bignum1 == bignum1) , (scriptnum1 == num1)); //-V501
+    EXPECT_EQ((bignum1 != bignum1) ,  (scriptnum1 != num1)); //-V501
+    EXPECT_EQ((bignum1 < bignum1) ,  (scriptnum1 < num1)); //-V501
+    EXPECT_EQ((bignum1 > bignum1) ,  (scriptnum1 > num1)); //-V501
+    EXPECT_EQ((bignum1 >= bignum1) ,  (scriptnum1 >= num1)); //-V501
+    EXPECT_EQ((bignum1 <= bignum1) ,  (scriptnum1 <= num1)); //-V501
 
-    BOOST_CHECK((bignum1 == bignum2) ==  (scriptnum1 == scriptnum2));
-    BOOST_CHECK((bignum1 != bignum2) ==  (scriptnum1 != scriptnum2));
-    BOOST_CHECK((bignum1 < bignum2) ==  (scriptnum1 < scriptnum2));
-    BOOST_CHECK((bignum1 > bignum2) ==  (scriptnum1 > scriptnum2));
-    BOOST_CHECK((bignum1 >= bignum2) ==  (scriptnum1 >= scriptnum2));
-    BOOST_CHECK((bignum1 <= bignum2) ==  (scriptnum1 <= scriptnum2));
+    EXPECT_EQ((bignum1 == bignum2) ,  (scriptnum1 == scriptnum2));
+    EXPECT_EQ((bignum1 != bignum2) ,  (scriptnum1 != scriptnum2));
+    EXPECT_EQ((bignum1 < bignum2) ,  (scriptnum1 < scriptnum2));
+    EXPECT_EQ((bignum1 > bignum2) ,  (scriptnum1 > scriptnum2));
+    EXPECT_EQ((bignum1 >= bignum2) ,  (scriptnum1 >= scriptnum2));
+    EXPECT_EQ((bignum1 <= bignum2) ,  (scriptnum1 <= scriptnum2));
 
-    BOOST_CHECK((bignum1 == bignum2) ==  (scriptnum1 == num2));
-    BOOST_CHECK((bignum1 != bignum2) ==  (scriptnum1 != num2));
-    BOOST_CHECK((bignum1 < bignum2) ==  (scriptnum1 < num2));
-    BOOST_CHECK((bignum1 > bignum2) ==  (scriptnum1 > num2));
-    BOOST_CHECK((bignum1 >= bignum2) ==  (scriptnum1 >= num2));
-    BOOST_CHECK((bignum1 <= bignum2) ==  (scriptnum1 <= num2));
+    EXPECT_EQ((bignum1 == bignum2) ,  (scriptnum1 == num2));
+    EXPECT_EQ((bignum1 != bignum2) ,  (scriptnum1 != num2));
+    EXPECT_EQ((bignum1 < bignum2) ,  (scriptnum1 < num2));
+    EXPECT_EQ((bignum1 > bignum2) ,  (scriptnum1 > num2));
+    EXPECT_EQ((bignum1 >= bignum2) ,  (scriptnum1 >= num2));
+    EXPECT_EQ((bignum1 <= bignum2) ,  (scriptnum1 <= num2));
 }
 
 static void RunCreate(const int64_t& num)
@@ -146,7 +146,7 @@ static void RunCreate(const int64_t& num)
         CheckCreateVch(num);
     else
     {
-        BOOST_CHECK_THROW (CheckCreateVch(num), scriptnum_error);
+        EXPECT_THROW (CheckCreateVch(num), scriptnum_error);
     }
 }
 
@@ -158,7 +158,7 @@ static void RunOperators(const int64_t& num1, const int64_t& num2)
     CheckCompare(num1, num2);
 }
 
-BOOST_AUTO_TEST_CASE(creation)
+TEST(test_scriptnum, creation)
 {
     for(size_t i = 0; i < sizeof(values) / sizeof(values[0]); ++i)
     {
@@ -171,7 +171,7 @@ BOOST_AUTO_TEST_CASE(creation)
     }
 }
 
-BOOST_AUTO_TEST_CASE(operators)
+TEST(test_scriptnum, operators)
 {
     for(size_t i = 0; i < sizeof(values) / sizeof(values[0]); ++i)
     {
@@ -193,4 +193,3 @@ BOOST_AUTO_TEST_CASE(operators)
     }
 }
 
-BOOST_AUTO_TEST_SUITE_END()
