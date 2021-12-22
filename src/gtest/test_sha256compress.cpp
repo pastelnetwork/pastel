@@ -1,14 +1,19 @@
-#include "test/test_bitcoin.h"
+// Copyright (c) 2017 Pieter Wuille
+// Copyright (c) 2021 The Pastel developers
+// Distributed under the MIT software license, see the accompanying
+// file COPYING or https://www.opensource.org/licenses/mit-license.php.
+
 #include "crypto/sha256.h"
 #include "uint256.h"
 
 #include <stdexcept>
 
-#include <boost/test/unit_test.hpp>
+#include <gtest/gtest.h>
 
-BOOST_FIXTURE_TEST_SUITE(sha256compress_tests, BasicTestingSetup)
+using namespace std;
+using namespace testing;
 
-BOOST_AUTO_TEST_CASE(compression)
+TEST(test_sha256compress, compression)
 {
 	{
 		unsigned char preimage[64] = {};
@@ -19,8 +24,7 @@ BOOST_AUTO_TEST_CASE(compression)
 
 		hasher.FinalizeNoPadding(digest.begin());
 
-		BOOST_CHECK_MESSAGE(digest == uint256S("d8a93718eaf9feba4362d2c091d4e58ccabe9f779957336269b4b917be9856da"),
-			                digest.GetHex());
+		EXPECT_EQ(digest , uint256S("d8a93718eaf9feba4362d2c091d4e58ccabe9f779957336269b4b917be9856da")) << digest.GetHex();
 	}
 
 	{
@@ -28,7 +32,7 @@ BOOST_AUTO_TEST_CASE(compression)
 		CSHA256 hasher;
 		hasher.Write(&preimage[0], 63);
 		uint256 digest;
-		BOOST_CHECK_THROW(hasher.FinalizeNoPadding(digest.begin()), std::length_error);
+		EXPECT_THROW(hasher.FinalizeNoPadding(digest.begin()), std::length_error);
 	}
 
 	{
@@ -36,7 +40,7 @@ BOOST_AUTO_TEST_CASE(compression)
 		CSHA256 hasher;
 		hasher.Write(&preimage[0], 65);
 		uint256 digest;
-		BOOST_CHECK_THROW(hasher.FinalizeNoPadding(digest.begin()), std::length_error);
+		EXPECT_THROW(hasher.FinalizeNoPadding(digest.begin()), std::length_error);
 	}
 
 	{
@@ -49,8 +53,7 @@ BOOST_AUTO_TEST_CASE(compression)
 
 		hasher.FinalizeNoPadding(digest.begin());
 
-		BOOST_CHECK_MESSAGE(digest == uint256S("d8a93718eaf9feba4362d2c091d4e58ccabe9f779957336269b4b917be9856da"),
-			                digest.GetHex());
+		EXPECT_EQ(digest , uint256S("d8a93718eaf9feba4362d2c091d4e58ccabe9f779957336269b4b917be9856da")) << digest.GetHex();
 	}
 
     {
@@ -78,9 +81,7 @@ BOOST_AUTO_TEST_CASE(compression)
 
         hasher.FinalizeNoPadding(digest.begin());
 
-        BOOST_CHECK_MESSAGE(digest == uint256S("da70ec41879e36b000281733d4deb27ddf41e8e343a38f2fabbd2d8611987d86"),
-            digest.GetHex());
+        EXPECT_EQ(digest , uint256S("da70ec41879e36b000281733d4deb27ddf41e8e343a38f2fabbd2d8611987d86")) << digest.GetHex();
     }
 }
 
-BOOST_AUTO_TEST_SUITE_END()
