@@ -3,6 +3,11 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php .
 
+#include <tuple>
+#include <string>
+#include <vector>
+
+#include <gtest/gtest.h>
 
 #include "key.h"
 #include "key_io.h"
@@ -10,11 +15,6 @@
 #include "util.h"
 #include "utilstrencodings.h"
 #include "vector_types.h"
-
-#include <gtest/gtest.h>
-#include <tuple>
-#include <string>
-#include <vector>
 #include "clientversion.h"
 
 using namespace std;
@@ -42,15 +42,15 @@ struct TestVector {
     }
 };
 
-class TestBip32 : public Test
+class PTestBip32 : public TestWithParam<TestVector>
 {
 public:
-    void SetUp() override
+    static void SetUpTestSuite()
     {
         SelectParams(CBaseChainParams::Network::MAIN);
     }
 
-    void TearDown() override
+    void TearDown() 
     {
     }
 
@@ -100,10 +100,9 @@ TestVector test2 =
      "xprvA2nrNbFZABcdryreWet9Ea4LvTJcGsqrMzxHx98MMrotbir7yrKCEXw7nadnHM8Dq38EGfSh6dqA9QWTyefMLEcBYJUuekgW4BYPJcr9E7j",
      0);
 
-
-
-
-void RunTest(const TestVector &test) {
+TEST_P(PTestBip32, testvectors)
+{
+    const auto &test = GetParam();
     v_uint8 seed = ParseHex(test.strHexMaster);
     CExtKey key;
     CExtPubKey pubkey;
@@ -155,8 +154,8 @@ void RunTest(const TestVector &test) {
     }
 }
 
-TEST_F(TestBip32, testvectors)
-{
-    RunTest(test1);
-    RunTest(test2);
-}
+INSTANTIATE_TEST_SUITE_P(bip32, PTestBip32,
+Values(
+test1,
+test2
+));

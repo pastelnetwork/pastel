@@ -294,7 +294,7 @@ TEST(test_univalue, univalue_readwrite)
     EXPECT_TRUE(v.read(strJson1));
 
     EXPECT_TRUE(v.isArray());
-    EXPECT_EQ(v.size(), 2);
+    EXPECT_EQ(v.size(), 2u);
 
     EXPECT_EQ(v[0].getValStr(), "1.10000000");
 
