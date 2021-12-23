@@ -70,7 +70,7 @@ TEST(bech32_deterministic, valid)
             EXPECT_EQ(ret.second, input);
         } else
             // Invalid input
-            EXPECT_TRUE(encoded.empty());
+            EXPECT_TRUE( encoded.empty() );
     }
 
     for (uint8_t i = 0; i < 255; i++)
