@@ -57,7 +57,6 @@ public:
 
 };
 
-
 TestVector test1 =
   TestVector("000102030405060708090a0b0c0d0e0f")
     ("xpub661MyMwAqRbcFtXgS5sYJABqqG9YLmC4Q1Rdap9gSE8NqtwybGhePY2gZ29ESFjqJoCu1Rupje8YtGqsefD265TMg7usUDFdp6W1EGMcet8",
