@@ -487,20 +487,22 @@ void CTxMemPool::queryHashes(vector<uint256>& vtxid)
   * 
   * \param txid - transaction hash
   * \param tx - transaction
-  * \param nBlockHeight - block height of txid
+  * \param pnBlockHeight - if defined (not nullptr) - will return block height if tx found
   * \return true if transaction was retrieved by txid
   */
-bool CTxMemPool::lookup(const uint256& txid, CTransaction& result, uint32_t* nBlockHeight) const
+bool CTxMemPool::lookup(const uint256& txid, CTransaction& result, uint32_t* pnBlockHeight) const
 {
     LOCK(cs);
     const auto it = mapTx.find(txid);
     if (it == mapTx.cend())
-        return false;
-    result = it->GetTx();
-    if(nBlockHeight)
     {
-        *nBlockHeight = it->GetHeight();
+        if (pnBlockHeight)
+            *pnBlockHeight = numeric_limits<uint32_t> ::max();
+        return false;
     }
+    result = it->GetTx();
+    if(pnBlockHeight)
+        *pnBlockHeight = it->GetHeight();
     return true;
 }
 

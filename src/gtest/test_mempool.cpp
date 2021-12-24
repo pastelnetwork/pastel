@@ -3,6 +3,7 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 
+#include <limits>
 #include <gtest/gtest.h>
 #include <gtest/gtest-spi.h>
 
@@ -18,6 +19,7 @@
 #include "test_mempool_entryhelper.h"
 
 using namespace testing;
+using namespace std;
 
 // Implementation is in test_checktransaction.cpp
 extern CMutableTransaction GetValidTransaction();
@@ -392,7 +394,7 @@ TEST_F(TestMemPool, RemoveWithoutBranchId)
     // Add some Sprout transactions
     for (auto i = 1; i < 11; i++)
     {
-        CMutableTransaction tx = CMutableTransaction();
+        CMutableTransaction tx;
         tx.vout.resize(1);
         tx.vout[0].scriptPubKey = CScript() << OP_11 << OP_EQUAL;
         tx.vout[0].nValue = i * COIN;
@@ -409,7 +411,7 @@ TEST_F(TestMemPool, RemoveWithoutBranchId)
     // Add some dummy transactions
     for (auto i = 1; i < 11; i++)
     {
-        CMutableTransaction tx = CMutableTransaction();
+        CMutableTransaction tx;
         tx.vout.resize(1);
         tx.vout[0].scriptPubKey = CScript() << OP_11 << OP_EQUAL;
         tx.vout[0].nValue = i * COIN + 100;
@@ -420,7 +422,7 @@ TEST_F(TestMemPool, RemoveWithoutBranchId)
     // Add some Overwinter transactions
     for (auto i = 1; i < 11; i++)
     {
-        CMutableTransaction tx = CMutableTransaction();
+        CMutableTransaction tx;
         tx.vout.resize(1);
         tx.vout[0].scriptPubKey = CScript() << OP_11 << OP_EQUAL;
         tx.vout[0].nValue = i * COIN + 200;
@@ -454,4 +456,30 @@ TEST_F(TestMemPool, SetSanityCheck)
     EXPECT_EQ(pool.GetCheckFrequency(), 0);
 }
 
+TEST_F(TestMemPool, lookup)
+{
+    TestMemPoolEntryHelper entry;
+    entry.nFee = 10000LL;
+    entry.hadNoDependencies = true;
+
+     CTxMemPool pool(CFeeRate(0));
+    EXPECT_EQ(pool.size(), 0u);
+    EXPECT_EQ(pool.GetTransactionsUpdated(), 0u);
+
+    // add overwinter transaction
+    CMutableTransaction tx = GetValidTransaction();
+    const auto txid = tx.GetHash();
+    pool.addUnchecked(txid, entry.BranchId(NetworkUpgradeInfo[Consensus::UPGRADE_OVERWINTER].nBranchId).FromTx(tx));
+    EXPECT_EQ(pool.size(), 1u);
+    EXPECT_EQ(pool.GetTransactionsUpdated(), 1u);
+
+    CTransaction txOut;
+    uint32_t nBlockHeight = 0; // set it to smth other than -1 to make sure lookup sets it to -1
+    EXPECT_FALSE(pool.lookup(uint256S("unknown_txid"), txOut, &nBlockHeight));
+    EXPECT_EQ(nBlockHeight, numeric_limits<uint32_t>::max());
+
+    nBlockHeight = 0;
+    EXPECT_TRUE(pool.lookup(txid, txOut, &nBlockHeight));
+    EXPECT_NE(nBlockHeight, numeric_limits<uint32_t>::max());
+}
 #endif // ENABLE_MINING

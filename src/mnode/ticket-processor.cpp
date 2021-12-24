@@ -481,13 +481,25 @@ string CPastelTicketProcessor::GetTicketJSON(const uint256 &txid)
     return "";
 }
 
+/**
+ * Get Pastel ticket by transaction id (txid).
+ * May throw runtime_error exception in case:
+ *  - transaction not found by txid
+ *  - failed to parse ticket transaction
+ *  - not supported ticket (new nodes introduced new ticket types)
+ * 
+ * \param txid - ticket transaction id
+ * \return created unique_ptr for Pastel ticket by txid
+ */
 unique_ptr<CPastelTicket> CPastelTicketProcessor::GetTicket(const uint256 &txid)
 {
     CTransaction tx;
     uint256 hashBlock;
-    uint32_t ticketHeight= numeric_limits<uint32_t>::max();
+    // undefined ticket height = -1
+    uint32_t nTicketHeight = numeric_limits<uint32_t>::max();
 
-    if (!GetTransaction(txid, tx, Params().GetConsensus(), hashBlock, true, &ticketHeight))
+    // get ticket transaction by txid, also may return ticket height
+    if (!GetTransaction(txid, tx, Params().GetConsensus(), hashBlock, true, &nTicketHeight))
         throw runtime_error(strprintf("No information available about transaction"));
 
     CMutableTransaction mtx(tx);
@@ -496,32 +508,32 @@ unique_ptr<CPastelTicket> CPastelTicketProcessor::GetTicket(const uint256 &txid)
     string error_ret;
     CCompressedDataStream data_stream(SER_NETWORK, DATASTREAM_VERSION);
 
+    // parse ticket transaction into data_stream
     if (!preParseTicket(mtx, data_stream, ticket_id, error_ret))
         throw runtime_error(strprintf("Failed to parse P2FMS transaction from data provided. %s", error_ret));
 
     unique_ptr<CPastelTicket> ticket;
+    string ticketBlockTxIdStr = tx.GetHash().GetHex();
     try
     {
-        string ticketBlockTxIdStr = tx.GetHash().GetHex();
-        int ticketBlockHeight = -1;
-
-        if(ticketHeight == numeric_limits<uint32_t>::max())
+        if (nTicketHeight == numeric_limits<uint32_t>::max())
         {
+            // if ticket block height is still not defined - lookup it up in mapBlockIndex by hash
             if (mapBlockIndex.count(hashBlock) != 0)
-                ticketBlockHeight = mapBlockIndex[hashBlock]->nHeight;
+                nTicketHeight = mapBlockIndex[hashBlock]->nHeight;
         }
-        else
-            ticketBlockHeight = ticketHeight;
 
+        // create Pastel ticket by id
         ticket = CreateTicket(ticket_id);
         if (ticket)
         {
+            // deserialize data to ticket object
             data_stream >> *ticket;
             ticket->SetTxId(move(ticketBlockTxIdStr));
-            ticket->SetBlock(ticketBlockHeight);
+            ticket->SetBlock(nTicketHeight);
         }
         else
-            error_ret = "unknown ticket_id";
+            error_ret = strprintf("unknown ticket_id %hhu", to_integral_type<TicketID>(ticket_id));
     }
     catch (const exception& ex)
     {
@@ -529,11 +541,11 @@ unique_ptr<CPastelTicket> CPastelTicketProcessor::GetTicket(const uint256 &txid)
     }
     catch (...)
     {
-        error_ret = "Failed to parse and unpack ticket - Unknown exception";
+        error_ret = strprintf("Failed to parse and unpack ticket - Unknown exception");
     }
 
     if (!ticket)
-        LogPrintf("CPastelTicketProcessor::ParseTicketAndUpdateDB -- Invalid ticket ['%s', txid=%s]. ERROR: %s\n", 
+        LogPrintf("CPastelTicketProcessor::GetTicket -- Invalid ticket ['%s', txid=%s]. ERROR: %s\n", 
             GetTicketDescription(ticket_id), tx.GetHash().GetHex(), error_ret);
 
     return ticket;

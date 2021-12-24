@@ -1,7 +1,14 @@
 // Copyright (c) 2010 Satoshi Nakamoto
 // Copyright (c) 2009-2015 The Bitcoin Core developers
+// Copyright (c) 2018-2021 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php .
+
+#include <stdint.h>
+#include <variant>
+
+#include <univalue.h>
+#include <boost/assign/list_of.hpp>
 
 #include "consensus/upgrades.h"
 #include "consensus/validation.h"
@@ -23,13 +30,6 @@
 #ifdef ENABLE_WALLET
 #include "wallet/wallet.h"
 #endif
-
-#include <stdint.h>
-#include <variant>
-
-#include <boost/assign/list_of.hpp>
-
-#include <univalue.h>
 
 using namespace std;
 

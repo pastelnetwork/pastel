@@ -32,12 +32,12 @@ public:
     // excluding Equihash solution
     static constexpr size_t EMPTY_HEADER_SIZE =
         sizeof(nVersion) +
-        32 + /* hashPrevBlock */
-        32 + /* hashMerkleRoot */
-        32 + /* hashFinalSaplingRoot */
+        sizeof(hashPrevBlock) + 
+        sizeof(hashMerkleRoot) + 
+        sizeof(hashFinalSaplingRoot) +
         sizeof(nTime) +
         sizeof(nBits) +
-        32;  /* nNonce */
+        sizeof(nNonce);
     static constexpr size_t HEADER_SIZE = 
         EMPTY_HEADER_SIZE +
         (32 + 4) * 3; /* nSolution - can be empty vector */
@@ -78,7 +78,7 @@ public:
     bool IsNull() const noexcept { return (nBits == 0); }
 
     uint256 GetHash() const noexcept;
-    int64_t GetBlockTime() const noexcept { return (int64_t)nTime; }
+    int64_t GetBlockTime() const noexcept { return static_cast<int64_t>(nTime); }
 };
 
 

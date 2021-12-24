@@ -475,17 +475,19 @@ void FindNextBlocksToDownload(NodeId nodeid, unsigned int count, std::vector<CBl
     int nWindowEnd = state->pindexLastCommonBlock->nHeight + BLOCK_DOWNLOAD_WINDOW;
     int nMaxHeight = std::min<int>(state->pindexBestKnownBlock->nHeight, nWindowEnd + 1);
     NodeId waitingfor = -1;
-    while (pindexWalk->nHeight < nMaxHeight) {
+    while (pindexWalk->nHeight < nMaxHeight)
+    {
         // Read up to 128 (or more, if more blocks than that are needed) successors of pindexWalk (towards
         // pindexBestKnownBlock) into vToFetch. We fetch 128, because CBlockIndex::GetAncestor may be as expensive
         // as iterating over ~100 CBlockIndex* entries anyway.
-        int nToFetch = std::min(nMaxHeight - pindexWalk->nHeight, std::max<int>(count - vBlocks.size(), 128));
+        size_t nToFetch = std::min<size_t>(
+            static_cast<size_t>(nMaxHeight - pindexWalk->nHeight), 
+            static_cast<size_t>(std::max<int>(count - static_cast<unsigned int>(vBlocks.size()), 128)));
         vToFetch.resize(nToFetch);
-        pindexWalk = state->pindexBestKnownBlock->GetAncestor(pindexWalk->nHeight + nToFetch);
+        pindexWalk = state->pindexBestKnownBlock->GetAncestor(static_cast<int>(pindexWalk->nHeight + nToFetch));
         vToFetch[nToFetch - 1] = pindexWalk;
-        for (unsigned int i = nToFetch - 1; i > 0; i--) {
+        for (size_t i = nToFetch - 1; i > 0; i--)
             vToFetch[i - 1] = vToFetch[i]->pprev;
-        }
 
         // Iterate over those blocks in vToFetch (in forward direction), adding the ones that
         // are not yet downloaded and not in flight to vBlocks. In the meantime, update
@@ -1281,7 +1283,7 @@ bool AcceptToMemoryPool(
     auto consensusBranchId = CurrentEpochBranchId(nextBlockHeight, consensusParams);
 
     // Node operator can choose to reject tx by number of transparent inputs
-    static_assert(std::numeric_limits<size_t>::max() >= std::numeric_limits<int64_t>::max(), "size_t too small");
+    static_assert(std::numeric_limits<size_t>::max() >= std::numeric_limits<uint64_t>::max(), "size_t too small");
 
     const uint256 hash = tx.GetHash();
     auto verifier = libzcash::ProofVerifier::Strict();
@@ -1507,85 +1509,115 @@ bool AcceptToMemoryPool(
 }
 
 /**
- * Return transaction in txOut, and if it was found inside a block, its hash is placed in hashBlock.
+ * Search for transaction by txid (transaction hash) and return in txOut.
+ * If transaction was found inside a block, its hash is placed in hashBlock.
  * If blockIndex is provided, the transaction is fetched from the corresponding block.
+ * 
+ * \param hash - transaction hash
+ * \param txOut - returns transaction object if found (in case GetTransaction returns true)
+ * \param consensusParams - chain consensus parameters
+ * \param hashBlock - returns hash of the found block if the transaction found inside a block
+ * \param fAllowSlow - if true: use coin database to locate block that contains transaction
+ * \param pnBlockHeight - if not nullptr - returns block height if found, or -1 if not
+ * \param blockIndex - optional hint to get transaction from the specified block
+ * \return true if transaction was found by hash
  */
-bool GetTransaction(const uint256 &hash, CTransaction &txOut, const Consensus::Params& consensusParams, uint256 &hashBlock, bool fAllowSlow, uint32_t *pnBlockHeight, CBlockIndex* blockIndex)
+bool GetTransaction(const uint256 &txid, CTransaction &txOut, const Consensus::Params& consensusParams, uint256 &hashBlock, 
+    const bool fAllowSlow, uint32_t *pnBlockHeight, CBlockIndex* blockIndex)
 {
     CBlockIndex *pindexSlow = blockIndex;
-
+    bool bRet = false;
+    // unknown block height is -1
+    uint32_t nBlockHeight = numeric_limits<uint32_t>::max();
     LOCK(cs_main);
-
-    if (!blockIndex)
+    do
     {
-        if (mempool.lookup(hash, txOut, pnBlockHeight))
+        // if no blockIndex hint given
+        if (!blockIndex)
         {
-            return true;
-        }
-
-        if (fTxIndex)
-        {
-            CDiskTxPos postx;
-            if (pblocktree->ReadTxIndex(hash, postx))
+            // check first if the transaction exists in mempool
+            if (mempool.lookup(txid, txOut, &nBlockHeight))
             {
-                CAutoFile file(OpenBlockFile(postx, true), SER_DISK, CLIENT_VERSION);
-                if (file.IsNull())
-                    return error("%s: OpenBlockFile failed", __func__);
-                CBlockHeader header;
-                try {
-                    file >> header;
-                    fseek(file.Get(), postx.nTxOffset, SEEK_CUR);
-                    file >> txOut;
-                } catch (const std::exception& e) {
-                    return error("%s: Deserialize or I/O error - %s", __func__, e.what());
+                bRet = true; // found tx
+                break;
+            }
+
+            // if transaction index exists - use it to search for the tx
+            if (fTxIndex)
+            {
+                CDiskTxPos postx;
+                // get tx position in block tree file
+                if (pblocktree->ReadTxIndex(txid, postx))
+                {
+                    CAutoFile file(OpenBlockFile(postx, true), SER_DISK, CLIENT_VERSION);
+                    if (file.IsNull())
+                    {
+                        bRet = error("%s: OpenBlockFile failed", __func__);
+                        break;
+                    }
+
+                    // found tx, read block header and transaction from postx position
+                    CBlockHeader header;
+                    bool bReadFromTxIndex = false;
+                    try
+                    {
+                        file >> header;
+                        fseek(file.Get(), postx.nTxOffset, SEEK_CUR);
+                        file >> txOut;
+                        bReadFromTxIndex = true;
+                    } catch (const std::exception& e) {
+                        error("%s: Deserialize or I/O error - %s", __func__, e.what());
+                    }
+                    if (!bReadFromTxIndex)
+                        break;
+                    hashBlock = header.GetHash();
+                    if (txOut.GetHash() != txid)
+                    {
+                        bRet = error("%s: txid mismatch", __func__);
+                        break;
+                    }
+                    // block height is not defined in this case
+                    bRet = true;
+                    break;
                 }
-                hashBlock = header.GetHash();
-                if (txOut.GetHash() != hash)
-                    return error("%s: txid mismatch", __func__);
-                return true;
+            }
+
+            // use coin database to locate block that contains transaction, and scan it
+            if (fAllowSlow)
+            {
+                int nHeight = -1;
+                {
+                    CCoinsViewCache& view = *pcoinsTip;
+                    const CCoins* coins = view.AccessCoins(txid);
+                    if (coins)
+                        nHeight = coins->nHeight;
+                }
+                if (nHeight > 0)
+                    pindexSlow = chainActive[nHeight];
             }
         }
 
-        if (fAllowSlow)
-        { // use coin database to locate block that contains transaction, and scan it
-            int nHeight = -1;
-            {
-                CCoinsViewCache &view = *pcoinsTip;
-                const CCoins* coins = view.AccessCoins(hash);
-                if (coins)
-                    nHeight = coins->nHeight;
-            }
-            if (nHeight > 0)
-                pindexSlow = chainActive[nHeight];
-
-            if(pnBlockHeight)
-            {
-                *pnBlockHeight = nHeight;
-            }
-        }
-    }
-
-    if (pindexSlow)
-    {
-        CBlock block;
-        if (ReadBlockFromDisk(block, pindexSlow, consensusParams))
+        if (pindexSlow)
         {
-            for (const auto &tx : block.vtx)
+            nBlockHeight = pindexSlow->nHeight;
+            CBlock block;
+            if (ReadBlockFromDisk(block, pindexSlow, consensusParams))
             {
-                if (tx.GetHash() == hash) {
+                for (const auto& tx : block.vtx)
+                {
+                    if (tx.GetHash() != txid)
+                        continue;
                     txOut = tx;
                     hashBlock = pindexSlow->GetBlockHash();
-                    if(pnBlockHeight)
-                    {
-                        *pnBlockHeight = pindexSlow->nHeight;
-                    }
-                    return true;
+                    bRet = true;
+                    break;
                 }
             }
         }
-    }
-
-    return false;
+    } while (false);
+    if (pnBlockHeight)
+        *pnBlockHeight = nBlockHeight; // if block height is still not defined: -1 will assigned
+    return bRet;
 }
 
 //////////////////////////////////////////////////////////////////////////////
