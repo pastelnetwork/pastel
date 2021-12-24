@@ -63,7 +63,6 @@ BITCOIN_TESTS =\
   test/policyestimator_tests.cpp \
   test/pow_tests.cpp \
   test/prevector_tests.cpp \
-  test/raii_event_tests.cpp \
   test/reverselock_tests.cpp \
   test/rpc_tests.cpp \
   test/scheduler_tests.cpp \
