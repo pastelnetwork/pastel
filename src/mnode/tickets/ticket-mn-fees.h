@@ -39,7 +39,7 @@ public:
     }
     CAmount getPrincipalMNFee() const noexcept { return static_cast<CAmount>(getPrincipalMNFeePSL() * COIN); }
 
-        // get othe MNs fee in PSL
+    // get other MNs fee in PSL
     double getOtherMNFeePSL() const noexcept
     {
         return getAllMNFeesPSL() * (static_cast<double>(getMNFees().otherShare) / 100);
