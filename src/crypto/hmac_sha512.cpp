@@ -6,6 +6,7 @@
 
 #include <string.h>
 
+const size_t CHMAC_SHA512::OUTPUT_SIZE;
 CHMAC_SHA512::CHMAC_SHA512(const unsigned char* key, size_t keylen)
 {
     unsigned char rkey[128];

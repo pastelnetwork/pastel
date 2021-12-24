@@ -42,6 +42,7 @@ pastel_gtest_SOURCES +=\
 	gtest/test_circuit.cpp\
 	gtest/test_compress.cpp\
 	gtest/test_convertbits.cpp\
+	gtest/test_crypto.cpp\
 	gtest/test_datacompressor.cpp\
 	gtest/test_deprecation.cpp\
 	gtest/test_equihash.cpp\
@@ -106,6 +107,8 @@ endif
 if ENABLE_WALLET
 pastel_gtest_LDADD += $(LIBBITCOIN_WALLET)
 endif
+
+pastel_gtest_CXXFLAGS = $(AM_CXXFLAGS) $(PIE_FLAGS)
 
 pastel_gtest_LDADD +=\
  $(LIBZCASH_CONSENSUS)\
