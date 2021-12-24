@@ -51,7 +51,6 @@ BITCOIN_TESTS =\
   test/bloom_tests.cpp \
   test/checkblock_tests.cpp \
   test/coins_tests.cpp \
-  test/convertbits_tests.cpp \
   test/crypto_tests.cpp \
   test/DoS_tests.cpp \
   test/equihash_tests.cpp \
