@@ -70,11 +70,11 @@ pastel_gtest_SOURCES +=\
 	gtest/test_upgrades.cpp\
 	gtest/test_validation.cpp\
 	gtest/test_zip32.cpp\
+	gtest/test_uint256.cpp\
+	gtest/test_arith_uint256.cpp\
 	gtest/test_univalue.cpp\
 	gtest/test_bip32.cpp\
 	gtest/test_scriptnum.cpp
-	gtest/test_uint256.cpp \
-	gtest/test_arith_uint256.cpp
 
 if ENABLE_WALLET
 pastel_gtest_SOURCES += \
