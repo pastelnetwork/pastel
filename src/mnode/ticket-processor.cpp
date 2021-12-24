@@ -357,7 +357,7 @@ bool CPastelTicketProcessor::ValidateIfTicketTransaction(const int nHeight, cons
 
                 if (i == num - 3)
                 {
-                    const CAmount mnFee = mnFeeTicket->getPrincipalMNFee() * COIN;
+                    const CAmount mnFee = mnFeeTicket->getPrincipalMNFee();
                     if (mnFee != txOut.nValue)
                     {
                         bOk = false;
@@ -368,7 +368,7 @@ bool CPastelTicketProcessor::ValidateIfTicketTransaction(const int nHeight, cons
                 }
                 if (i >= num - 2)
                 {
-                    const CAmount mnFee = mnFeeTicket->getOtherMNFee() * COIN;
+                    const CAmount mnFee = mnFeeTicket->getOtherMNFee();
                     if (mnFee != txOut.nValue)
                     {
                         bOk = false;

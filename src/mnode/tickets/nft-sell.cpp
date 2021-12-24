@@ -72,7 +72,7 @@ bool CNFTSellTicket::IsValid(const bool bPreReg, const int nDepth) const
     if (!common_validation(
             *this, bPreReg, NFTTxnId, pastelTicket,
             [](const TicketID tid) noexcept { return (tid != TicketID::Activate && tid != TicketID::Trade); },
-            "Sell", "activation or trade", nDepth, TicketPrice(chainHeight))) {
+            "Sell", "activation or trade", nDepth, TicketPrice(chainHeight) * COIN)) {
         throw runtime_error(strprintf("The Sell ticket with this txid [%s] is not validated", NFTTxnId));
     }
 

@@ -61,7 +61,7 @@ bool CNFTRoyaltyTicket::IsValid(const bool bPreReg, const int nDepth) const
     if (!common_validation(
             *this, bPreReg, NFTTxnId, pastelTicket,
             [](const TicketID tid) noexcept { return (tid != TicketID::NFT); },
-            "Royalty", "NFT", nDepth, TicketPrice(chainHeight))) {
+            "Royalty", "NFT", nDepth, TicketPrice(chainHeight) * COIN)) {
         throw runtime_error(strprintf("The Change Royalty ticket with NFT txid [%s] is not validated", NFTTxnId));
     }
 
