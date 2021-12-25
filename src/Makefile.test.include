@@ -47,7 +47,6 @@ BITCOIN_TESTS =\
   test/bignum.h \
   test/alert_tests.cpp \
   test/allocator_tests.cpp \
-  test/bip32_tests.cpp \
   test/bloom_tests.cpp \
   test/checkblock_tests.cpp \
   test/coins_tests.cpp \
@@ -72,7 +71,6 @@ BITCOIN_TESTS =\
   test/scheduler_tests.cpp \
   test/script_P2SH_tests.cpp \
   test/script_tests.cpp \
-  test/scriptnum_tests.cpp \
   test/serialize_tests.cpp \
   test/sighash_tests.cpp \
   test/sigopcount_tests.cpp \
@@ -81,7 +79,6 @@ BITCOIN_TESTS =\
   test/test_bitcoin.h \
   test/torcontrol_tests.cpp \
   test/transaction_tests.cpp \
-  test/univalue_tests.cpp \
   test/util_tests.cpp \
   test/sha256compress_tests.cpp
 
