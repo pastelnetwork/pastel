@@ -81,7 +81,6 @@ pastel_gtest_SOURCES +=\
 	gtest/test_validation.cpp\
 	gtest/test_zip32.cpp
 	
-
 if ENABLE_WALLET
 pastel_gtest_SOURCES += \
 	wallet/gtest/test_wallet.cpp\
