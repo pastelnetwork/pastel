@@ -76,11 +76,10 @@ pastel_gtest_SOURCES +=\
 	gtest/test_transaction_builder.cpp\
 	gtest/test_txid.cpp\
 	gtest/test_uint256.cpp\
+	gtest/test_univalue.cpp
 	gtest/test_upgrades.cpp\
 	gtest/test_validation.cpp\
-	gtest/test_zip32.cpp\
-	gtest/test_uint256.cpp\
-	gtest/test_univalue.cpp
+	gtest/test_zip32.cpp
 	
 
 if ENABLE_WALLET
