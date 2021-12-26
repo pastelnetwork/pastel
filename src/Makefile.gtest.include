@@ -112,8 +112,6 @@ if ENABLE_WALLET
 pastel_gtest_LDADD += $(LIBBITCOIN_WALLET)
 endif
 
-pastel_gtest_CXXFLAGS = $(AM_CXXFLAGS) $(PIE_FLAGS)
-
 pastel_gtest_LDADD +=\
  $(LIBZCASH_CONSENSUS)\
  $(BDB_LIBS)\
