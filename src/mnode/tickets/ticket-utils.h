@@ -13,36 +13,52 @@
 #include "wallet/wallet.h"
 #endif // ENABLE_WALLET
 
-
+/**
+ * Common ticket validation.
+ * 
+ * \param ticket - ticket to validate
+ * \param bPreReg - if true - pre-registration
+ * \param strTxId - txid of the ticket
+ * \param pastelTicket - ticket return by txid=strTxId
+ * \param f - custom lambda validation function
+ * \param thisTicket - description of the ticket to validate
+ * \param prevTicket - description of the parent ticket (NFT Activation -> NFT Registration)
+ * \param depth - current depth of the blockchain
+ * \param ticketPrice - amount in patoshis to pay for registration
+ * \return 
+ */
 template <class T, typename F>
-bool common_validation(const T& ticket, bool bPreReg, const std::string& strTxnId, std::unique_ptr<CPastelTicket>& pastelTicket, F f, const std::string& thisTicket, const std::string& prevTicket, int depth, const CAmount ticketPrice)
+bool common_validation(const T& ticket, bool bPreReg, const std::string& strTxId, 
+    std::unique_ptr<CPastelTicket>& pastelTicket, F f, const std::string& thisTicket, 
+    const std::string& prevTicket, int depth, const CAmount ticketPrice)
 {
     // A. Something to check ONLY before ticket made into transaction
-    if (bPreReg) {
+    if (bPreReg)
+    {
         // A. Validate that address has coins to pay for registration - 10PSL + fee
-        if (pwalletMain->GetBalance() < ticketPrice * COIN) {
-            throw std::runtime_error(strprintf("Not enough coins to cover price [%" PRId64 "]", ticketPrice));
-        }
+        if (pwalletMain->GetBalance() < ticketPrice)
+            throw std::runtime_error(strprintf("Not enough coins to cover price [%" PRId64 "]", ticketPrice));       
     }
 
     // C. Something to always validate
 
     // C.1 Check there are ticket referred from that new ticket with this tnxId
     uint256 txid;
-    txid.SetHex(strTxnId);
-    //  Get ticket pointed by NFTTxnId. This is either Activation or Trade tickets (Sell, Buy, Trade)
-    try {
+    txid.SetHex(strTxId);
+    // Get ticket pointed by txid. This is either Activation or Trade tickets (Sell, Buy, Trade)
+    try
+    {
         pastelTicket = CPastelTicketProcessor::GetTicket(txid);
     } catch ([[maybe_unused]] const std::runtime_error& ex) {
         throw std::runtime_error(strprintf(
             "The %s ticket [txid=%s] referred by this %s ticket is not in the blockchain. [txid=%s] (ERROR: %s)",
-            prevTicket, strTxnId, thisTicket, ticket.GetTxId(), ex.what()));
+            prevTicket, strTxId, thisTicket, ticket.GetTxId(), ex.what()));
     }
 
     if (!pastelTicket || f(pastelTicket->ID())) {
         throw std::runtime_error(strprintf(
             "The %s ticket with this txid [%s] referred by this %s ticket is not in the blockchain",
-            prevTicket, strTxnId, thisTicket));
+            prevTicket, strTxId, thisTicket));
     }
 
     // B.1 Something to validate only if NOT Initial Download
@@ -71,7 +87,7 @@ bool common_validation(const T& ticket, bool bPreReg, const std::string& strTxnI
         return true;
 
     if (!pastelTicket->IsValid(false, ++depth)) {
-        throw std::runtime_error(strprintf("The %s ticket with this txid [%s] is invalid", prevTicket, strTxnId));
+        throw std::runtime_error(strprintf("The %s ticket with this txid [%s] is invalid", prevTicket, strTxId));
     }
 
     return true;

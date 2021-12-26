@@ -27,18 +27,22 @@ public:
     virtual mn_fees_t getMNFees() const noexcept = 0;
 
     // get all MN fees in PSL
-    CAmount getAllMNFees() const noexcept
+    double getAllMNFeesPSL() const noexcept
     {
-        return static_cast<CAmount>(GetStorageFee() * (static_cast<double>(getMNFees().all) / 100));
+        return (static_cast<double>(GetStorageFee()) * getMNFees().all) / 100;
     }
+    CAmount getAllMNFees() const noexcept { return static_cast<CAmount>(getAllMNFeesPSL() * COIN); }
     // get principal MN fee in PSL
-    CAmount getPrincipalMNFee() const noexcept
+    double getPrincipalMNFeePSL() const noexcept
     {
-        return static_cast<CAmount>(getAllMNFees() * (static_cast<double>(getMNFees().principalShare) / 100));
+        return (getAllMNFeesPSL() * getMNFees().principalShare) / 100;
     }
-    // get othe MNs fee in PSL
-    CAmount getOtherMNFee() const noexcept
+    CAmount getPrincipalMNFee() const noexcept { return static_cast<CAmount>(getPrincipalMNFeePSL() * COIN); }
+
+    // get other MNs fee in PSL
+    double getOtherMNFeePSL() const noexcept
     {
-        return static_cast<CAmount>(getAllMNFees() * (static_cast<double>(getMNFees().otherShare) / 100));
+        return getAllMNFeesPSL() * (static_cast<double>(getMNFees().otherShare) / 100);
     }
+    CAmount getOtherMNFee() const noexcept { return static_cast<CAmount>(getOtherMNFeePSL() * COIN); }
 };

@@ -64,7 +64,7 @@ bool CNFTActivateTicket::IsValid(const bool bPreReg, const int nDepth) const
             *this, bPreReg, m_regTicketTxId, pastelTicket,
             [](const TicketID tid) noexcept { return (tid != TicketID::NFT); },
             "Activation", "NFT", nDepth,
-            TicketPrice(chainHeight) + getAllMNFees())) { // fee for ticket + all MN storage fees (percent from storage fee)
+            TicketPrice(chainHeight) * COIN + getAllMNFees())) { // fee for ticket + all MN storage fees (percent from storage fee)
         throw runtime_error(strprintf(
             "The Activation ticket for the Registration ticket with txid [%s] is not validated [block = %u txid = %s]",
             m_regTicketTxId, m_nBlock, m_txid));
@@ -142,7 +142,7 @@ CAmount CNFTActivateTicket::GetExtraOutputs(vector<CTxOut>& outputs) const
                 strprintf("The PastelID [%s] from the NFT ticket with this txid [%s] has invalid MN's address", mnPastelID, m_regTicketTxId));
 
         // caclulate MN fee in patoshis
-        const CAmount nAmount = COIN * (mn == CNFTRegTicket::SIGN_MAIN ? getPrincipalMNFee() : getOtherMNFee());
+        const CAmount nAmount = mn == CNFTRegTicket::SIGN_MAIN ? getPrincipalMNFee() : getOtherMNFee();
         nAllAmount += nAmount;
 
         outputs.emplace_back(nAmount, GetScriptForDestination(dest));
