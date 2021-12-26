@@ -18,8 +18,11 @@
 #include <mnode/mnode-consts.h>
 #include <mnode/tickets/ticket-types.h>
 #include <mnode/tickets/ticket.h>
+#include <datacompressor.h>
 
 constexpr int DATASTREAM_VERSION = 1;
+constexpr uint8_t TICKET_COMPRESS_ENABLE_MASK  = (1<<7); // using bit 7 to mark a ticket is compressed
+constexpr uint8_t TICKET_COMPRESS_DISABLE_MASK = 0x7F;
 
 // tuple <NFT registration txid, NFT trade txid>
 using reg_trade_txid_t = std::tuple<std::string, std::string>;
@@ -130,7 +133,7 @@ public:
         const std::vector<CTxOut>& extraOutputs, const CAmount extraAmount, CMutableTransaction& tx_out, 
         const CAmount price, const opt_string_t& sFundingAddress, std::string& error_ret);
 #endif // ENABLE_WALLET
-    static bool ParseP2FMSTransaction(const CMutableTransaction& tx_in, v_uint8& output_data, std::string& error_ret);
+    static bool ParseP2FMSTransaction(const CMutableTransaction& tx_in, CSerializeData& output_data, std::string& error_ret);
     static bool ParseP2FMSTransaction(const CMutableTransaction& tx_in, std::string& output_string, std::string& error_ret);
     // Add P2FMS transaction to the memory pool
     static bool StoreP2FMSTransaction(const CMutableTransaction& tx_out, std::string& error_ret);
@@ -156,8 +159,8 @@ public:
     static std::string CreateFakeTransaction(CPastelTicket& ticket, CAmount ticketPrice, const std::vector<std::pair<std::string, CAmount>>& extraPayments, const std::string& strVerb, bool bSend);
 #endif // FAKE_TICKET
 
-    // Reads P2FMS (Pay-to-Fake-Multisig) transaction into CDataStream object.
-    static bool preParseTicket(const CMutableTransaction& tx, CDataStream& data_stream, TicketID& ticket_id, std::string& error, const bool bLog = true);
+    // Reads P2FMS (Pay-to-Fake-Multisig) transaction into CCompressedDataStream object.
+    static bool preParseTicket(const CMutableTransaction& tx, CCompressedDataStream& data_stream, TicketID& ticket_id, std::string& error, const bool bLog = true);
 
     // Get mempool tracker for ticket transactions
     static std::shared_ptr<ITxMemPoolTracker> GetTxMemPoolTracker();

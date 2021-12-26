@@ -190,6 +190,15 @@
     <ClCompile Include="..\..\..\src\gtest\test_hash.cpp">
       <Filter>UnitTest Files</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\..\src\gtest\test_datacompressor.cpp">
+      <Filter>UnitTest Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\src\gtest\test_arith_uint256.cpp">
+      <Filter>UnitTest Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\src\gtest\test_uint256.cpp">
+      <Filter>UnitTest Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\..\src\gtest\json_test_vectors.h">
@@ -210,7 +219,7 @@
     <ClInclude Include="..\..\..\src\gtest\test_mnode\test_ticket_mempool.h">
       <Filter>UnitTest Files\test_mnode</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\..\src\gtest\test_mnode\mock_mnode_ticket.h">
+    <ClInclude Include="..\..\..\src\gtest\test_mnode\mock_ticket.h">
       <Filter>UnitTest Files\test_mnode</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\src\gtest\data\base58_encode_decode.json.h">

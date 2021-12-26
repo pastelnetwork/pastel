@@ -16,9 +16,6 @@
     <ClCompile Include="..\..\..\src\test\allocator_tests.cpp">
       <Filter>UnitTest Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\src\test\arith_uint256_tests.cpp">
-      <Filter>UnitTest Files</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\..\src\test\bip32_tests.cpp">
       <Filter>UnitTest Files</Filter>
     </ClCompile>
@@ -122,9 +119,6 @@
       <Filter>UnitTest Files</Filter>
     </ClCompile>
     <ClCompile Include="..\..\..\src\test\transaction_tests.cpp">
-      <Filter>UnitTest Files</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\..\src\test\uint256_tests.cpp">
       <Filter>UnitTest Files</Filter>
     </ClCompile>
     <ClCompile Include="..\..\..\src\test\univalue_tests.cpp">
