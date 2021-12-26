@@ -412,133 +412,75 @@ TEST(arith_uint256_tests, methods) // GetHex SetHex size() GetLow64 GetSerialize
     }
 }
 
-TEST(arith_uint256_tests, bignum_SetCompact)
+class PTest_arith_uint256: public TestWithParam<tuple<uint32_t, string, uint32_t, bool, bool>>
+{};
+
+TEST_P(PTest_arith_uint256, bignum_SetCompact) 
 {
+    const auto &setCompact = get<0>(GetParam());
+    const auto &expectedHex = get<1>(GetParam());
+    const auto &getCompact = get<2>(GetParam());
+    const auto &expectedNeg = get<3>(GetParam());
+    const auto &expectedOverflow = get<4>(GetParam());
+
     arith_uint256 num;
     bool fNegative;
     bool fOverflow;
-    num.SetCompact(0, &fNegative, &fOverflow);
-    EXPECT_EQ(num.GetHex(), "0000000000000000000000000000000000000000000000000000000000000000");
-    EXPECT_EQ(num.GetCompact(), 0U);
-    EXPECT_FALSE(fNegative);
-    EXPECT_FALSE(fOverflow);
+    num.SetCompact(setCompact, &fNegative, &fOverflow);
+    EXPECT_EQ(num.GetHex(), expectedHex);
+    EXPECT_EQ(num.GetCompact(), getCompact);
+    EXPECT_EQ(fNegative, expectedNeg);
+    EXPECT_EQ(fOverflow, expectedOverflow);
+}
 
-    num.SetCompact(0x00123456, &fNegative, &fOverflow);
-    EXPECT_EQ(num.GetHex(), "0000000000000000000000000000000000000000000000000000000000000000");
-    EXPECT_EQ(num.GetCompact(), 0U);
-    EXPECT_FALSE(fNegative);
-    EXPECT_FALSE(fOverflow);
+INSTANTIATE_TEST_SUITE_P(bignum_SetCompact, PTest_arith_uint256, Values(
+    make_tuple(0U, "0000000000000000000000000000000000000000000000000000000000000000", 0U, false, false),
+    make_tuple(0x00123456U, "0000000000000000000000000000000000000000000000000000000000000000", 0U, false, false),
+    make_tuple(0x01003456U, "0000000000000000000000000000000000000000000000000000000000000000", 0U, false, false),
+    make_tuple(0x02000056U, "0000000000000000000000000000000000000000000000000000000000000000", 0U, false, false),
+    make_tuple(0x03000000U, "0000000000000000000000000000000000000000000000000000000000000000", 0U, false, false),
+    make_tuple(0x04000000U, "0000000000000000000000000000000000000000000000000000000000000000", 0U, false, false),
+    make_tuple(0x00923456U, "0000000000000000000000000000000000000000000000000000000000000000", 0U, false, false),
+    make_tuple(0x01803456U, "0000000000000000000000000000000000000000000000000000000000000000", 0U, false, false),
+    make_tuple(0x02800056U, "0000000000000000000000000000000000000000000000000000000000000000", 0U, false, false),
+    make_tuple(0x03800000U, "0000000000000000000000000000000000000000000000000000000000000000", 0U, false, false),
+    make_tuple(0x04800000U, "0000000000000000000000000000000000000000000000000000000000000000", 0U, false, false),
+    make_tuple(0x01123456U, "0000000000000000000000000000000000000000000000000000000000000012", 0x01120000U, false, false)
+));
 
-    num.SetCompact(0x01003456, &fNegative, &fOverflow);
-    EXPECT_EQ(num.GetHex(), "0000000000000000000000000000000000000000000000000000000000000000");
-    EXPECT_EQ(num.GetCompact(), 0U);
-    EXPECT_FALSE(fNegative);
-    EXPECT_FALSE(fOverflow);
+class PTest_arith_uint256_80: public TestWithParam<tuple<uint32_t, string, uint32_t, bool, bool>>
+{};
 
-    num.SetCompact(0x02000056, &fNegative, &fOverflow);
-    EXPECT_EQ(num.GetHex(), "0000000000000000000000000000000000000000000000000000000000000000");
-    EXPECT_EQ(num.GetCompact(), 0U);
-    EXPECT_FALSE(fNegative);
-    EXPECT_FALSE(fOverflow);
+TEST_P(PTest_arith_uint256_80, bignum_SetCompact) 
+{
+    const auto &setCompact = get<0>(GetParam());
+    const auto &expectedHex = get<1>(GetParam());
+    const auto &getCompact = get<2>(GetParam());
+    const auto &expectedNeg = get<3>(GetParam());
+    const auto &expectedOverflow = get<4>(GetParam());
 
-    num.SetCompact(0x03000000, &fNegative, &fOverflow);
-    EXPECT_EQ(num.GetHex(), "0000000000000000000000000000000000000000000000000000000000000000");
-    EXPECT_EQ(num.GetCompact(), 0U);
-    EXPECT_FALSE(fNegative);
-    EXPECT_FALSE(fOverflow);
-
-    num.SetCompact(0x04000000, &fNegative, &fOverflow);
-    EXPECT_EQ(num.GetHex(), "0000000000000000000000000000000000000000000000000000000000000000");
-    EXPECT_EQ(num.GetCompact(), 0U);
-    EXPECT_FALSE(fNegative);
-    EXPECT_FALSE(fOverflow);
-
-    num.SetCompact(0x00923456, &fNegative, &fOverflow);
-    EXPECT_EQ(num.GetHex(), "0000000000000000000000000000000000000000000000000000000000000000");
-    EXPECT_EQ(num.GetCompact(), 0U);
-    EXPECT_FALSE(fNegative);
-    EXPECT_FALSE(fOverflow);
-
-    num.SetCompact(0x01803456, &fNegative, &fOverflow);
-    EXPECT_EQ(num.GetHex(), "0000000000000000000000000000000000000000000000000000000000000000");
-    EXPECT_EQ(num.GetCompact(), 0U);
-    EXPECT_FALSE(fNegative);
-    EXPECT_FALSE(fOverflow);
-
-    num.SetCompact(0x02800056, &fNegative, &fOverflow);
-    EXPECT_EQ(num.GetHex(), "0000000000000000000000000000000000000000000000000000000000000000");
-    EXPECT_EQ(num.GetCompact(), 0U);
-    EXPECT_FALSE(fNegative);
-    EXPECT_FALSE(fOverflow);
-
-    num.SetCompact(0x03800000, &fNegative, &fOverflow);
-    EXPECT_EQ(num.GetHex(), "0000000000000000000000000000000000000000000000000000000000000000");
-    EXPECT_EQ(num.GetCompact(), 0U);
-    EXPECT_FALSE(fNegative);
-    EXPECT_FALSE(fOverflow);
-
-    num.SetCompact(0x04800000, &fNegative, &fOverflow);
-    EXPECT_EQ(num.GetHex(), "0000000000000000000000000000000000000000000000000000000000000000");
-    EXPECT_EQ(num.GetCompact(), 0U);
-    EXPECT_FALSE(fNegative);
-    EXPECT_FALSE(fOverflow);
-
-    num.SetCompact(0x01123456, &fNegative, &fOverflow);
-    EXPECT_EQ(num.GetHex(), "0000000000000000000000000000000000000000000000000000000000000012");
-    EXPECT_EQ(num.GetCompact(), 0x01120000U);
-    EXPECT_FALSE(fNegative);
-    EXPECT_FALSE(fOverflow);
-
+    arith_uint256 num;
+    bool fNegative;
+    bool fOverflow;
     // Make sure that we don't generate compacts with the 0x00800000 bit set
     num = 0x80;
     EXPECT_EQ(num.GetCompact(), 0x02008000U);
-
-    num.SetCompact(0x01fedcba, &fNegative, &fOverflow);
-    EXPECT_EQ(num.GetHex(), "000000000000000000000000000000000000000000000000000000000000007e");
-    EXPECT_EQ(num.GetCompact(true), 0x01fe0000U);
-    EXPECT_TRUE(fNegative);
-    EXPECT_FALSE(fOverflow);
-
-    num.SetCompact(0x02123456, &fNegative, &fOverflow);
-    EXPECT_EQ(num.GetHex(), "0000000000000000000000000000000000000000000000000000000000001234");
-    EXPECT_EQ(num.GetCompact(), 0x02123400U);
-    EXPECT_FALSE(fNegative);
-    EXPECT_FALSE(fOverflow);
-
-    num.SetCompact(0x03123456, &fNegative, &fOverflow);
-    EXPECT_EQ(num.GetHex(), "0000000000000000000000000000000000000000000000000000000000123456");
-    EXPECT_EQ(num.GetCompact(), 0x03123456U);
-    EXPECT_FALSE(fNegative);
-    EXPECT_FALSE(fOverflow);
-
-    num.SetCompact(0x04123456, &fNegative, &fOverflow);
-    EXPECT_EQ(num.GetHex(), "0000000000000000000000000000000000000000000000000000000012345600");
-    EXPECT_EQ(num.GetCompact(), 0x04123456U);
-    EXPECT_FALSE(fNegative);
-    EXPECT_FALSE(fOverflow);
-
-    num.SetCompact(0x04923456, &fNegative, &fOverflow);
-    EXPECT_EQ(num.GetHex(), "0000000000000000000000000000000000000000000000000000000012345600");
-    EXPECT_EQ(num.GetCompact(true), 0x04923456U);
-    EXPECT_TRUE(fNegative);
-    EXPECT_FALSE(fOverflow);
-
-    num.SetCompact(0x05009234, &fNegative, &fOverflow);
-    EXPECT_EQ(num.GetHex(), "0000000000000000000000000000000000000000000000000000000092340000");
-    EXPECT_EQ(num.GetCompact(), 0x05009234U);
-    EXPECT_FALSE(fNegative);
-    EXPECT_FALSE(fOverflow);
-
-    num.SetCompact(0x20123456, &fNegative, &fOverflow);
-    EXPECT_EQ(num.GetHex(), "1234560000000000000000000000000000000000000000000000000000000000");
-    EXPECT_EQ(num.GetCompact(), 0x20123456U);
-    EXPECT_FALSE(fNegative);
-    EXPECT_FALSE(fOverflow);
-
-    num.SetCompact(0xff123456, &fNegative, &fOverflow);
-    EXPECT_FALSE(fNegative);
-    EXPECT_TRUE(fOverflow);
+    num.SetCompact(setCompact, &fNegative, &fOverflow);
+    EXPECT_EQ(num.GetHex(), expectedHex);
+    EXPECT_EQ(num.GetCompact(expectedNeg), getCompact);
+    EXPECT_EQ(fNegative, expectedNeg);
+    EXPECT_EQ(fOverflow, expectedOverflow);
 }
+INSTANTIATE_TEST_SUITE_P(bignum_SetCompact_80, PTest_arith_uint256_80, Values(
+    make_tuple(0x01fedcbaU, "000000000000000000000000000000000000000000000000000000000000007e", 0x01fe0000U, true, false),
+    make_tuple(0x02123456U, "0000000000000000000000000000000000000000000000000000000000001234", 0x02123400U, false, false),
+    make_tuple(0x03123456U, "0000000000000000000000000000000000000000000000000000000000123456", 0x03123456U, false, false),
+    make_tuple(0x04123456U, "0000000000000000000000000000000000000000000000000000000012345600", 0x04123456U, false, false),
+    make_tuple(0x04923456U, "0000000000000000000000000000000000000000000000000000000012345600", 0x04923456U, true, false),
+    make_tuple(0x05009234U, "0000000000000000000000000000000000000000000000000000000092340000", 0x05009234U, false, false),
+    make_tuple(0x20123456U, "1234560000000000000000000000000000000000000000000000000000000000", 0x20123456U, false, false),
+    make_tuple(0xff123456U, "0000000000000000000000000000000000000000000000000000000000000000", 0U, false, true)
+));
 
 TEST(arith_uint256_tests, getmaxcoverage) // some more tests just to get 100% coverage
 {
