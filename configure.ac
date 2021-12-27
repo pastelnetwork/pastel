@@ -156,6 +156,13 @@ AC_ARG_ENABLE([zmq],
   [use_zmq=$enableval],
   [use_zmq=yes])
 
+# Enable ticket compression using zstd library
+AC_ARG_ENABLE([compress],
+  [AS_HELP_STRING([--enable-compress],
+  [enable ticket compression (default is no)])],
+  [enable_compress=$enableval],
+  [enable_compress=no])
+
 AC_ARG_WITH([protoc-bindir],[AS_HELP_STRING([--with-protoc-bindir=BIN_DIR],[specify protoc bin path])], [protoc_bin_path=$withval], [])
 
 AC_ARG_ENABLE(man,
@@ -656,6 +663,9 @@ if test x$use_tests = xyes; then
   fi
 fi
 
+AC_CHECK_HEADER([zstd.h],, AC_MSG_ERROR(libzstd headers missing),)
+AC_CHECK_LIB([zstd],[main],ZSTD_LIBS=-lzstd,AC_MSG_ERROR(libzstd missing))
+
 if test x$use_boost = xyes; then
 BOOST_LIBS="$BOOST_THREAD_LDFLAGS $BOOST_SYSTEM_LIBS $BOOST_FILESYSTEM_LIBS $BOOST_PROGRAM_OPTIONS_LIBS $BOOST_THREAD_LIBS $BOOST_CHRONO_LIBS"
 AC_MSG_NOTICE([Using boost linker options: [$BOOST_LIBS]])
@@ -852,11 +862,16 @@ if test x$build_pastel_utils$build_pastel_libs$build_pasteld$use_tests = xnonono
   AC_MSG_ERROR([No targets! Please specify at least one of: --with-utils --with-libs --with-daemon or --enable-tests])
 fi
 
+if test x$enable_compress = xyes; then
+    AC_DEFINE(ENABLE_TICKET_COMPRESS, 1, [Define to 1 to enable ticket compression])
+fi
+
 AM_CONDITIONAL([TARGET_DARWIN], [test x$TARGET_OS = xdarwin])
 AM_CONDITIONAL([BUILD_DARWIN], [test x$BUILD_OS = xdarwin])
 AM_CONDITIONAL([TARGET_WINDOWS], [test x$TARGET_OS = xwindows])
 AM_CONDITIONAL([ENABLE_WALLET],[test x$enable_wallet = xyes])
 AM_CONDITIONAL([ENABLE_MINING],[test x$enable_mining = xyes])
+AM_CONDITIONAL([ENABLE_TICKET_COMPRESS],[test x$enable_compress = xyes])
 AM_CONDITIONAL([ENABLE_TESTS],[test x$BUILD_TEST = xyes])
 AM_CONDITIONAL([USE_LCOV],[test x$use_lcov = xyes])
 AM_CONDITIONAL([GLIBC_BACK_COMPAT],[test x$use_glibc_compat = xyes])
@@ -903,6 +918,7 @@ AC_SUBST(GMPXX_LIBS)
 AC_SUBST(LIBSNARK_DEPINST)
 AC_SUBST(LIBZCASH_LIBS)
 AC_SUBST(PROTON_LIBS)
+AC_SUBST(ZSTD_LIBS)
 AC_CONFIG_FILES([Makefile src/Makefile doc/man/Makefile src/test/buildenv.py])
 AC_CONFIG_FILES([qa/pull-tester/run-pasteld-for-test.sh],[chmod +x qa/pull-tester/run-pasteld-for-test.sh])
 AC_CONFIG_FILES([qa/pull-tester/tests-config.sh],[chmod +x qa/pull-tester/tests-config.sh])
@@ -951,6 +967,7 @@ echo "Options used to compile and link:"
 echo "  with wallet   = $enable_wallet"
 echo "  with proton   = $use_proton"
 echo "  with zmq      = $use_zmq"
+echo "  with ticket compression = $enable_compress"
 echo "  with test     = $use_tests"
 echo "  debug enabled = $enable_debug"
 echo "  werror        = $enable_werror"

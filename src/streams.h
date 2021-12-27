@@ -114,6 +114,12 @@ public:
     }
 #endif
 
+    CBaseDataStream(vector_type&& vchIn, const int nType, const int nVersion) : 
+        vch(move(vchIn))
+    {
+        Init(nType, nVersion);
+    }
+
     CBaseDataStream(const vector_type& vchIn, const int nType, const int nVersion) : 
         vch(vchIn.cbegin(), vchIn.cend())
     {
@@ -176,7 +182,7 @@ public:
     iterator end() { return vch.end(); }
     size_type size() const noexcept                  { return vch.size() - nReadPos; }
     bool empty() const noexcept                      { return vch.size() == nReadPos; }
-    void resize(size_type n, value_type c=0)         { vch.resize(n + nReadPos, c); }
+    void resize(size_type n, value_type c = 0)         { vch.resize(n + nReadPos, c); }
     void reserve(size_type n)                        { vch.reserve(n + nReadPos); }
     const_reference operator[](size_type pos) const  { return vch[pos + nReadPos]; }
     reference operator[](size_type pos)              { return vch[pos + nReadPos]; }

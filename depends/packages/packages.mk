@@ -38,7 +38,7 @@ zcash_packages := libgmp libsodium
 ifeq ($(host_os),darwin)
 packages := macosx_sdk
 endif
-packages += boost openssl libevent zeromq $(zcash_packages) googletest
+packages += boost openssl libevent zeromq $(zcash_packages) googletest zstd
 native_packages := native_ccache native_rust
 $(host_arch)_$(host_os)_native_packages += native_b2
 ifneq ($(build_os),darwin)

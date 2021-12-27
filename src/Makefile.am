@@ -257,6 +257,7 @@ BITCOIN_CORE_H = \
   consensus/validation.h \
   core_io.h \
   core_memusage.h \
+  datacompressor.h\
   deprecation.h \
   fs.h \
   hash.h \
@@ -348,7 +349,7 @@ BITCOIN_CORE_H = \
   zmq/zmqconfig.h\
   zmq/zmqnotificationinterface.h \
   zmq/zmqpublishnotifier.h \
-  $(MNODE_H) \
+  $(MNODE_H)\
   $(PASTELID_H)
 
 obj/build.h: FORCE
@@ -486,6 +487,7 @@ libbitcoin_common_a_SOURCES = \
   consensus/upgrades.cpp \
   core_read.cpp \
   core_write.cpp \
+  datacompressor.cpp\
   hash.cpp \
   key.cpp \
   key_io.cpp \
@@ -503,7 +505,7 @@ libbitcoin_common_a_SOURCES = \
   script/standard.cpp \
   transaction_builder.cpp \
   utiltest.cpp \
-  $(BITCOIN_CORE_H) \
+  $(BITCOIN_CORE_H)\
   $(LIBZCASH_H)
 
 # util: shared between all executables.
@@ -556,32 +558,33 @@ if TARGET_WINDOWS
 pasteld_SOURCES += pasteld-res.rc
 endif
 
-pasteld_LDADD = \
-  $(LIBBITCOIN_SERVER) \
-  $(LIBBITCOIN_WALLET) \
-  $(LIBBITCOIN_COMMON) \
-  $(LIBUNIVALUE) \
-  $(LIBBITCOIN_UTIL) \
-  $(LIBBITCOIN_ZMQ) \
-  $(LIBBITCOIN_PROTON) \
-  $(LIBBITCOIN_CRYPTO) \
-  $(LIBZCASH) \
-  $(LIBSNARK) \
-  $(LIBLEVELDB) \
-  $(LIBMEMENV) \
+pasteld_LDADD =\
+  $(LIBBITCOIN_SERVER)\
+  $(LIBBITCOIN_WALLET)\
+  $(LIBBITCOIN_COMMON)\
+  $(LIBUNIVALUE)\
+  $(LIBBITCOIN_UTIL)\
+  $(LIBBITCOIN_ZMQ)\
+  $(LIBBITCOIN_PROTON)\
+  $(LIBBITCOIN_CRYPTO)\
+  $(LIBZCASH)\
+  $(LIBSNARK)\
+  $(LIBLEVELDB)\
+  $(LIBMEMENV)\
   $(LIBSECP256K1)
 
-pasteld_LDADD += \
-  $(BOOST_LIBS) \
-  $(BDB_LIBS) \
-  $(SSL_LIBS) \
-  $(CRYPTO_LIBS) \
-  $(EVENT_PTHREADS_LIBS) \
-  $(EVENT_LIBS) \
-  $(ZMQ_LIBS) \
-  $(PROTON_LIBS) \
-  $(LIBBITCOIN_CRYPTO) \
-  $(LIBZCASH_LIBS)
+pasteld_LDADD +=\
+  $(BOOST_LIBS)\
+  $(BDB_LIBS)\
+  $(SSL_LIBS)\
+  $(CRYPTO_LIBS)\
+  $(EVENT_PTHREADS_LIBS)\
+  $(EVENT_LIBS)\
+  $(ZMQ_LIBS)\
+  $(PROTON_LIBS)\
+  $(LIBBITCOIN_CRYPTO)\
+  $(LIBZCASH_LIBS)\
+  $(ZSTD_LIBS)
 
 # bitcoin-cli binary #
 pastel_cli_SOURCES = bitcoin-cli.cpp
@@ -593,17 +596,17 @@ if TARGET_WINDOWS
 pastel_cli_SOURCES += bitcoin-cli-res.rc
 endif
 
-pastel_cli_LDADD = \
-  $(LIBBITCOIN_CLI) \
-  $(LIBUNIVALUE) \
-  $(LIBBITCOIN_UTIL) \
-  $(BOOST_LIBS) \
-  $(SSL_LIBS) \
-  $(CRYPTO_LIBS) \
-  $(EVENT_LIBS) \
-  $(LIBZCASH) \
-  $(LIBSNARK) \
-  $(LIBBITCOIN_CRYPTO) \
+pastel_cli_LDADD =\
+  $(LIBBITCOIN_CLI)\
+  $(LIBUNIVALUE)\
+  $(LIBBITCOIN_UTIL)\
+  $(BOOST_LIBS)\
+  $(SSL_LIBS)\
+  $(CRYPTO_LIBS)\
+  $(EVENT_LIBS)\
+  $(LIBZCASH)\
+  $(LIBSNARK)\
+  $(LIBBITCOIN_CRYPTO)\
   $(LIBZCASH_LIBS)
 #
 
@@ -618,17 +621,21 @@ pastel_tx_SOURCES += bitcoin-tx-res.rc
 endif
 
 # FIXME: Is libzcash needed for pastel_tx?
-pastel_tx_LDADD = \
-  $(LIBUNIVALUE) \
-  $(LIBBITCOIN_COMMON) \
-  $(LIBBITCOIN_UTIL) \
-  $(LIBSECP256K1) \
-  $(LIBZCASH) \
-  $(LIBSNARK) \
-  $(LIBBITCOIN_CRYPTO) \
+pastel_tx_LDADD =\
+  $(LIBUNIVALUE)\
+  $(LIBBITCOIN_COMMON)\
+  $(LIBBITCOIN_UTIL)\
+  $(LIBSECP256K1)\
+  $(LIBZCASH)\
+  $(LIBSNARK)\
+  $(LIBBITCOIN_CRYPTO)\
   $(LIBZCASH_LIBS)
 
-pastel_tx_LDADD += $(BOOST_LIBS) $(CRYPTO_LIBS)
+pastel_tx_LDADD += \
+  $(BOOST_LIBS)\
+  $(CRYPTO_LIBS)\
+  $(ZSTD_LIBS)
+
 #
 
 # zcash protocol primitives #

@@ -4,8 +4,10 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 #include "support/cleanse.h"
+#include <cstring>
 #include <memory>
 #include <vector>
+#include <string>
 
 template <typename T>
 struct zero_after_free_allocator : public std::allocator<T> {
@@ -42,3 +44,11 @@ struct zero_after_free_allocator : public std::allocator<T> {
 
 // Byte-vector that clears its contents before deletion.
 typedef std::vector<char, zero_after_free_allocator<char> > CSerializeData;
+
+inline std::string vector_to_string(const CSerializeData& v)
+{
+    std::string s;
+    s.resize(v.size());
+    memcpy(s.data(), v.data(), v.size());
+    return s;
+}
