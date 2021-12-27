@@ -57,6 +57,7 @@ pastel_gtest_SOURCES +=\
 	gtest/test_merkletree.cpp\
 	gtest/test_metrics.cpp\
 	gtest/test_miner.cpp\
+	gtest/test_multisig.cpp\
 	gtest/test_netbase.cpp\
 	gtest/test_noteencryption.cpp\
 	gtest/test_numeric_range.cpp\
@@ -69,6 +70,8 @@ pastel_gtest_SOURCES +=\
 	gtest/test_sanity.cpp\
 	gtest/test_sapling_note.cpp\
 	gtest/test_scriptnum.cpp\
+	gtest/test_serialize.cpp\
+	gtest/test_sha256compress.cpp\
 	gtest/test_str_encodings.cpp\
 	gtest/test_str_utils.cpp\
 	gtest/test_tautology.cpp\
