@@ -129,7 +129,7 @@ TEST(test_serialize, arrays)
 
     array<int32_t, 2> test = {100, 200};
 
-    EXPECT_EQ(GetSerializeSize(test, 0, 0), 8);
+    EXPECT_EQ(GetSerializeSize(test, 0, 0), 8u);
 }
 
 TEST(test_serialize, sizes)
@@ -149,18 +149,18 @@ TEST(test_serialize, sizes)
     EXPECT_EQ(sizeof(char), GetSerializeSize(bool(0), 0));
 
     // Sanity-check GetSerializeSize and c++ type matching
-    EXPECT_EQ(GetSerializeSize(char(0), 0), 1);
-    EXPECT_EQ(GetSerializeSize(int8_t(0), 0), 1);
-    EXPECT_EQ(GetSerializeSize(uint8_t(0), 0), 1);
-    EXPECT_EQ(GetSerializeSize(int16_t(0), 0), 2);
-    EXPECT_EQ(GetSerializeSize(uint16_t(0), 0), 2);
-    EXPECT_EQ(GetSerializeSize(int32_t(0), 0), 4);
-    EXPECT_EQ(GetSerializeSize(uint32_t(0), 0), 4);
-    EXPECT_EQ(GetSerializeSize(int64_t(0), 0), 8);
-    EXPECT_EQ(GetSerializeSize(uint64_t(0), 0), 8);
-    EXPECT_EQ(GetSerializeSize(float(0), 0), 4);
-    EXPECT_EQ(GetSerializeSize(double(0), 0), 8);
-    EXPECT_EQ(GetSerializeSize(bool(0), 0), 1);
+    EXPECT_EQ(GetSerializeSize(char(0), 0), 1U);
+    EXPECT_EQ(GetSerializeSize(int8_t(0), 0), 1U);
+    EXPECT_EQ(GetSerializeSize(uint8_t(0), 0), 1U);
+    EXPECT_EQ(GetSerializeSize(int16_t(0), 0), 2U);
+    EXPECT_EQ(GetSerializeSize(uint16_t(0), 0), 2U);
+    EXPECT_EQ(GetSerializeSize(int32_t(0), 0), 4U);
+    EXPECT_EQ(GetSerializeSize(uint32_t(0), 0), 4U);
+    EXPECT_EQ(GetSerializeSize(int64_t(0), 0), 8U);
+    EXPECT_EQ(GetSerializeSize(uint64_t(0), 0), 8U);
+    EXPECT_EQ(GetSerializeSize(float(0), 0), 4U);
+    EXPECT_EQ(GetSerializeSize(double(0), 0), 8U);
+    EXPECT_EQ(GetSerializeSize(bool(0), 0), 1U);
 }
 
 TEST(test_serialize, floats_conversion)
@@ -174,24 +174,24 @@ TEST(test_serialize, floats_conversion)
     EXPECT_EQ(ser_uint32_to_float(0x40800000), 4.0F);
     EXPECT_EQ(ser_uint32_to_float(0x44444444), 785.066650390625F);
 
-    EXPECT_EQ(ser_float_to_uint32(0.0F), 0x00000000);
-    EXPECT_EQ(ser_float_to_uint32(0.5F), 0x3f000000);
-    EXPECT_EQ(ser_float_to_uint32(1.0F), 0x3f800000);
-    EXPECT_EQ(ser_float_to_uint32(2.0F), 0x40000000);
-    EXPECT_EQ(ser_float_to_uint32(4.0F), 0x40800000);
-    EXPECT_EQ(ser_float_to_uint32(785.066650390625F), 0x44444444);
+    EXPECT_EQ(ser_float_to_uint32(0.0F), 0x00000000U);
+    EXPECT_EQ(ser_float_to_uint32(0.5F), 0x3f000000U);
+    EXPECT_EQ(ser_float_to_uint32(1.0F), 0x3f800000U);
+    EXPECT_EQ(ser_float_to_uint32(2.0F), 0x40000000U);
+    EXPECT_EQ(ser_float_to_uint32(4.0F), 0x40800000U);
+    EXPECT_EQ(ser_float_to_uint32(785.066650390625F), 0x44444444U);
 }
 
 TEST(test_serialize, doubles_conversion)
 {
     // Choose values that map unambigiously to binary floating point to avoid
     // rounding issues at the compiler side.
-    EXPECT_EQ(ser_uint64_to_double(0x0000000000000000ULL), 0.0);
-    EXPECT_EQ(ser_uint64_to_double(0x3fe0000000000000ULL), 0.5);
-    EXPECT_EQ(ser_uint64_to_double(0x3ff0000000000000ULL), 1.0);
-    EXPECT_EQ(ser_uint64_to_double(0x4000000000000000ULL), 2.0);
-    EXPECT_EQ(ser_uint64_to_double(0x4010000000000000ULL), 4.0);
-    EXPECT_EQ(ser_uint64_to_double(0x4088888880000000ULL), 785.066650390625);
+    EXPECT_EQ(ser_uint64_to_double(0x0000000000000000ULL), 0.0F);
+    EXPECT_EQ(ser_uint64_to_double(0x3fe0000000000000ULL), 0.5F);
+    EXPECT_EQ(ser_uint64_to_double(0x3ff0000000000000ULL), 1.0F);
+    EXPECT_EQ(ser_uint64_to_double(0x4000000000000000ULL), 2.0F);
+    EXPECT_EQ(ser_uint64_to_double(0x4010000000000000ULL), 4.0F);
+    EXPECT_EQ(ser_uint64_to_double(0x4088888880000000ULL), 785.066650390625F);
 
     EXPECT_EQ(ser_double_to_uint64(0.0), 0x0000000000000000ULL);
     EXPECT_EQ(ser_double_to_uint64(0.5), 0x3fe0000000000000ULL);
@@ -334,7 +334,7 @@ TEST(test_serialize, noncanonical)
     // 0xfd encoded with three bytes is OK:
     ss.write("\xfd\xfd\x00", 3);
     n = ReadCompactSize(ss);
-    EXPECT_EQ(n, 0xfd);
+    EXPECT_EQ(n, 0xfdU);
 
     // zero encoded with five bytes:
     ss.write("\xfe\x00\x00\x00\x00", 5);
@@ -373,39 +373,39 @@ TEST(test_serialize, insert_delete)
 {
     // Test inserting/deleting bytes.
     CDataStream ss(SER_DISK, 0);
-    EXPECT_EQ(ss.size(), 0);
+    EXPECT_EQ(ss.size(), 0U);
 
     ss.write("\x00\x01\x02\xff", 4);
-    EXPECT_EQ(ss.size(), 4);
+    EXPECT_EQ(ss.size(), 4U);
 
     char c = (char)11;
 
     // Inserting at beginning/end/middle:
     ss.insert(ss.begin(), c);
-    EXPECT_EQ(ss.size(), 5);
+    EXPECT_EQ(ss.size(), 5U);
     EXPECT_EQ(ss[0], c);
     EXPECT_EQ(ss[1], 0);
 
     ss.insert(ss.end(), c);
-    EXPECT_EQ(ss.size(), 6);
+    EXPECT_EQ(ss.size(), 6U);
     EXPECT_EQ(ss[4], (char)0xff);
     EXPECT_EQ(ss[5], c);
 
     ss.insert(ss.begin()+2, c);
-    EXPECT_EQ(ss.size(), 7);
+    EXPECT_EQ(ss.size(), 7U);
     EXPECT_EQ(ss[2], c);
 
     // Delete at beginning/end/middle
     ss.erase(ss.begin());
-    EXPECT_EQ(ss.size(), 6);
+    EXPECT_EQ(ss.size(), 6U);
     EXPECT_EQ(ss[0], 0);
 
     ss.erase(ss.begin()+ss.size()-1);
-    EXPECT_EQ(ss.size(), 5);
+    EXPECT_EQ(ss.size(), 5U);
     EXPECT_EQ(ss[4], (char)0xff);
 
     ss.erase(ss.begin()+1);
-    EXPECT_EQ(ss.size(), 4);
+    EXPECT_EQ(ss.size(), 4U);
     EXPECT_EQ(ss[0], 0);
     EXPECT_EQ(ss[1], 1);
     EXPECT_EQ(ss[2], 2);
@@ -414,7 +414,7 @@ TEST(test_serialize, insert_delete)
     // Make sure GetAndClear does the right thing:
     CSerializeData d;
     ss.GetAndClear(d);
-    EXPECT_EQ(ss.size(), 0);
+    EXPECT_EQ(ss.size(), 0U);
 }
 
 TEST(test_serialize, class_methods)
