@@ -31,14 +31,19 @@ pastel_gtest_SOURCES +=\
 	gtest/test_mnode/test_ticket_processor.cpp\
 	gtest/test_addrman.cpp\
 	gtest/test_allocator.cpp\
+	gtest/test_arith_uint256.cpp\
 	gtest/test_base32.cpp\
 	gtest/test_base58.cpp\
 	gtest/test_base64.cpp\
 	gtest/test_bech32.cpp\
+	gtest/test_bip32.cpp\
 	gtest/test_block.cpp\
 	gtest/test_checkblock.cpp\
 	gtest/test_checkpoints.cpp\
 	gtest/test_circuit.cpp\
+	gtest/test_compress.cpp\
+	gtest/test_convertbits.cpp\
+	gtest/test_crypto.cpp\
 	gtest/test_datacompressor.cpp\
 	gtest/test_deprecation.cpp\
 	gtest/test_equihash.cpp\
@@ -58,25 +63,24 @@ pastel_gtest_SOURCES +=\
 	gtest/test_pedersen_hash.cpp\
 	gtest/test_pow.cpp\
 	gtest/test_proofs.cpp\
+	gtest/test_raii_event.cpp\
 	gtest/test_random.cpp\
 	gtest/test_rpc.cpp\
 	gtest/test_sanity.cpp\
 	gtest/test_sapling_note.cpp\
+	gtest/test_scriptnum.cpp\
 	gtest/test_str_encodings.cpp\
 	gtest/test_str_utils.cpp\
 	gtest/test_tautology.cpp\
 	gtest/test_timedata.cpp\
 	gtest/test_transaction_builder.cpp\
 	gtest/test_txid.cpp\
+	gtest/test_uint256.cpp\
+	gtest/test_univalue.cpp\
 	gtest/test_upgrades.cpp\
 	gtest/test_validation.cpp\
-	gtest/test_zip32.cpp\
-	gtest/test_uint256.cpp\
-	gtest/test_arith_uint256.cpp\
-	gtest/test_univalue.cpp\
-	gtest/test_bip32.cpp\
-	gtest/test_scriptnum.cpp
-
+	gtest/test_zip32.cpp
+	
 if ENABLE_WALLET
 pastel_gtest_SOURCES += \
 	wallet/gtest/test_wallet.cpp\

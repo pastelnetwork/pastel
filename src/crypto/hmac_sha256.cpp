@@ -6,6 +6,7 @@
 
 #include <string.h>
 
+const size_t CHMAC_SHA256::OUTPUT_SIZE;
 CHMAC_SHA256::CHMAC_SHA256(const unsigned char* key, size_t keylen)
 {
     unsigned char rkey[64];
