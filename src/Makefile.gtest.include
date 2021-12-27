@@ -70,7 +70,7 @@ pastel_gtest_SOURCES +=\
 	gtest/test_upgrades.cpp\
 	gtest/test_validation.cpp\
 	gtest/test_zip32.cpp\
-	gtest/test_uint256.cpp \
+	gtest/test_uint256.cpp\
 	gtest/test_arith_uint256.cpp\
 	gtest/test_multisig.cpp\
 	gtest/test_sha256compress.cpp\
