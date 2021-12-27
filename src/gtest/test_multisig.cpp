@@ -268,7 +268,7 @@ TEST(PTest_Multisig, multisig_Solver1)
         CScript s;
         s << ToByteVector(key[0].GetPubKey()) << OP_CHECKSIG;
         EXPECT_TRUE(Solver(s, whichType, solutions));
-        EXPECT_EQ(solutions.size() , 1);
+        EXPECT_EQ(solutions.size() , 1U);
         CTxDestination addr;
         EXPECT_TRUE(ExtractDestination(s, addr));
         EXPECT_EQ(addr , keyaddr[0]);
@@ -283,7 +283,7 @@ TEST(PTest_Multisig, multisig_Solver1)
         CScript s;
         s << OP_DUP << OP_HASH160 << ToByteVector(key[0].GetPubKey().GetID()) << OP_EQUALVERIFY << OP_CHECKSIG;
         EXPECT_TRUE(Solver(s, whichType, solutions));
-        EXPECT_EQ(solutions.size() , 1);
+        EXPECT_EQ(solutions.size() , 1U);
         CTxDestination addr;
         EXPECT_TRUE(ExtractDestination(s, addr));
         EXPECT_EQ(addr , keyaddr[0]);
@@ -319,7 +319,7 @@ TEST(PTest_Multisig, multisig_Solver1)
         EXPECT_TRUE(ExtractDestinations(s, whichType, addrs, nRequired));
         EXPECT_EQ(addrs[0] , keyaddr[0]);
         EXPECT_EQ(addrs[1] , keyaddr[1]);
-        EXPECT_EQ(nRequired , 1);
+        EXPECT_EQ(nRequired , 1U);
 #ifdef ENABLE_WALLET
         EXPECT_TRUE(IsMine(keystore, s));
         EXPECT_TRUE(!IsMine(emptykeystore, s));
@@ -332,6 +332,6 @@ TEST(PTest_Multisig, multisig_Solver1)
         CScript s;
         s << OP_2 << ToByteVector(key[0].GetPubKey()) << ToByteVector(key[1].GetPubKey()) << ToByteVector(key[2].GetPubKey()) << OP_3 << OP_CHECKMULTISIG;
         EXPECT_TRUE(Solver(s, whichType, solutions));
-        EXPECT_EQ(solutions.size() , 5);
+        EXPECT_EQ(solutions.size() , 5U);
     }
 }
