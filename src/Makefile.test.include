@@ -46,13 +46,9 @@ GENERATED_TEST_FILES = $(JSON_TEST_FILES:.json=.json.h) $(RAW_TEST_FILES:.raw=.r
 BITCOIN_TESTS =\
   test/bignum.h \
   test/alert_tests.cpp \
-  test/allocator_tests.cpp \
   test/bloom_tests.cpp \
   test/checkblock_tests.cpp \
   test/coins_tests.cpp \
-  test/compress_tests.cpp \
-  test/convertbits_tests.cpp \
-  test/crypto_tests.cpp \
   test/DoS_tests.cpp \
   test/equihash_tests.cpp \
   test/getarg_tests.cpp \
@@ -64,7 +60,6 @@ BITCOIN_TESTS =\
   test/policyestimator_tests.cpp \
   test/pow_tests.cpp \
   test/prevector_tests.cpp \
-  test/raii_event_tests.cpp \
   test/reverselock_tests.cpp \
   test/rpc_tests.cpp \
   test/scheduler_tests.cpp \

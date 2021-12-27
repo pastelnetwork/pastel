@@ -1,7 +1,8 @@
 // Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2014 The Bitcoin Core developers
+// Copyright (c) 2018-2021 The Bitcoin Core developers
 // Distributed under the MIT software license, see the accompanying
-// file COPYING or http://www.opensource.org/licenses/mit-license.php.
+// file COPYING or https://www.opensource.org/licenses/mit-license.php.
 
 #include "txdb.h"
 
@@ -288,7 +289,8 @@ bool CBlockTreeDB::EraseBatchSync(const std::vector<const CBlockIndex*>& blockin
     return WriteBatch(batch, true);
 }
 
-bool CBlockTreeDB::ReadTxIndex(const uint256 &txid, CDiskTxPos &pos) {
+bool CBlockTreeDB::ReadTxIndex(const uint256 &txid, CDiskTxPos &pos)
+{
     return Read(make_pair(DB_TXINDEX, txid), pos);
 }
 

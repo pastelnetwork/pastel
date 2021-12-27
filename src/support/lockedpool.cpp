@@ -288,7 +288,7 @@ size_t PosixLockedPageAllocator::GetLimit()
 
 /*******************************************************************************/
 // Implementation: LockedPool
-
+const size_t LockedPool::ARENA_SIZE;
 LockedPool::LockedPool(std::unique_ptr<LockedPageAllocator> allocator_in, LockingFailed_Callback lf_cb_in):
     allocator(std::move(allocator_in)), lf_cb(lf_cb_in), cumulative_bytes_locked(0)
 {

@@ -173,7 +173,7 @@ bool CNFTTradeTicket::IsValid(const bool bPreReg, const int nDepth) const
     if (!common_validation(
             *this, bPreReg, sellTxnId, sellTicket,
             [](const TicketID tid) noexcept { return (tid != TicketID::Sell); },
-            "Trade", "sell", nDepth, price + TicketPrice(chainHeight))) {
+            "Trade", "sell", nDepth, (price + TicketPrice(chainHeight)) * COIN)) {
         throw runtime_error(strprintf("The Trade ticket with Sell txid [%s] is not validated", sellTxnId));
     }
 
@@ -181,7 +181,7 @@ bool CNFTTradeTicket::IsValid(const bool bPreReg, const int nDepth) const
     if (!common_validation(
             *this, bPreReg, buyTxnId, buyTicket,
             [](const TicketID tid) noexcept { return (tid != TicketID::Buy); },
-            "Trade", "buy", nDepth, price + TicketPrice(chainHeight))) {
+            "Trade", "buy", nDepth, (price + TicketPrice(chainHeight)) * COIN)) {
         throw runtime_error(strprintf("The Trade ticket with Buy txid [%s] is not validated", buyTxnId));
     }
 

@@ -1,12 +1,23 @@
 #pragma once
 // Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2014 The Bitcoin Core developers
+// Copyright (c) 2018-2021 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
-// file COPYING or http://www.opensource.org/licenses/mit-license.php.
+// file COPYING or https://www.opensource.org/licenses/mit-license.php.
 
 #if defined(HAVE_CONFIG_H)
 #include "config/bitcoin-config.h"
 #endif
+
+#include <algorithm>
+#include <exception>
+#include <map>
+#include <set>
+#include <stdint.h>
+#include <string>
+#include <unordered_map>
+#include <utility>
+#include <vector>
 
 #include "amount.h"
 #include "chain.h"
@@ -25,16 +36,6 @@
 #include "tinyformat.h"
 #include "txmempool.h"
 #include "uint256.h"
-
-#include <algorithm>
-#include <exception>
-#include <map>
-#include <unordered_map>
-#include <set>
-#include <stdint.h>
-#include <string>
-#include <utility>
-#include <vector>
 
 class CBlockIndex;
 class CBlockTreeDB;
@@ -247,7 +248,8 @@ void PartitionCheck(
 /** Format a string that describes several potential problems detected by the core */
 std::string GetWarnings(const std::string& strFor);
 /** Retrieve a transaction (from memory pool, or from disk, if possible) */
-bool GetTransaction(const uint256 &hash, CTransaction &tx, const Consensus::Params& consensusParams, uint256 &hashBlock, bool fAllowSlow = false, CBlockIndex* blockIndex = nullptr);
+bool GetTransaction(const uint256 &hash, CTransaction &tx, const Consensus::Params& consensusParams, uint256 &hashBlock, 
+    const bool fAllowSlow = false, uint32_t *pnBlockHeight = nullptr, CBlockIndex* blockIndex = nullptr);
 /** Find the best known block, and make it the tip of the block chain */
 bool ActivateBestChain(CValidationState &state, const CChainParams& chainparams, const CBlock *pblock = nullptr);
 CAmount GetBlockSubsidy(int nHeight, const Consensus::Params& consensusParams);

@@ -87,7 +87,7 @@ public:
 
     bool IsTxId(const std::string& txid) noexcept { return m_txid == txid; }
     void SetTxId(std::string&& txid) noexcept { m_txid = std::move(txid); }
-    void SetBlock(const int nBlockHeight) noexcept { m_nBlock = nBlockHeight; }
+    void SetBlock(const uint32_t nBlockHeight) noexcept { m_nBlock = nBlockHeight; }
 
     virtual CAmount GetStorageFee() const noexcept { return 0; }
 
@@ -120,7 +120,7 @@ public:
 
 protected:
     std::string m_txid;          // ticket transaction id
-    unsigned int m_nBlock{0};    // ticket block
+    uint32_t m_nBlock{0};        // ticket block
     std::int64_t m_nTimestamp{}; // create timestamp
     short m_nVersion{ -1 };      // stored ticket version
 

@@ -41,6 +41,9 @@ pastel_gtest_SOURCES +=\
 	gtest/test_checkblock.cpp\
 	gtest/test_checkpoints.cpp\
 	gtest/test_circuit.cpp\
+	gtest/test_compress.cpp\
+	gtest/test_convertbits.cpp\
+	gtest/test_crypto.cpp\
 	gtest/test_datacompressor.cpp\
 	gtest/test_deprecation.cpp\
 	gtest/test_equihash.cpp\
@@ -61,6 +64,7 @@ pastel_gtest_SOURCES +=\
 	gtest/test_pedersen_hash.cpp\
 	gtest/test_pow.cpp\
 	gtest/test_proofs.cpp\
+	gtest/test_raii_event.cpp\
 	gtest/test_random.cpp\
 	gtest/test_rpc.cpp\
 	gtest/test_sanity.cpp\
