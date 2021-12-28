@@ -32,21 +32,29 @@ class TestAccounting : public Test
 public:
     void SetUp() override
     {
-        cout << "haha " << endl;
-       
+        pathTemp = fs::temp_directory_path() / fs::unique_path();
+        ASSERT_TRUE(fs::create_directories(pathTemp));
+
+        m_sSavedDataDir = mapArgs["-datadir"];
     }
 
     void TearDown() 
-    {
-        cout << "huhu " << endl;
+    {   
+        fs::remove_all(pathTemp);
+
+        mapArgs["-datadir"] = m_sSavedDataDir;
     }
+    fs::path pathTemp;
+    string m_sSavedDataDir;
 };
 
 TEST_F(TestAccounting, acc_orderupgrade)
 {
+    SelectParams(CBaseChainParams::Network::MAIN);
+    mapArgs["-datadir"] = pathTemp.string();
     bool fFirstRun;
     ASSERT_EQ(DB_LOAD_OK, pWallet.LoadWallet(fFirstRun));
-    RegisterValidationInterface(&pWallet);
+    // RegisterValidationInterface(&pWallet);
 
     CWalletDB walletdb(pWallet.strWalletFile);
     std::vector<CWalletTx*> vpwtx;
@@ -152,4 +160,6 @@ TEST_F(TestAccounting, acc_orderupgrade)
     EXPECT_TRUE(results[4].strComment.empty());
     EXPECT_EQ(results[5].nTime , 1333333334u);
     EXPECT_EQ(6u , vpwtx[1]->nOrderPos);
+
+    //  UnregisterValidationInterface(&pWallet);
 }
