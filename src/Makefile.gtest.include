@@ -1,6 +1,10 @@
 TESTS += pastel-gtest
 noinst_PROGRAMS += pastel-gtest
 
+RAW_TEST_FILES = test/data/alertTests.raw
+
+GENERATED_TEST_FILES = $(RAW_TEST_FILES:.raw=.raw.h)
+
 # tool for generating our public parameters.
 # test_checktransaction.cpp MUST be before
 # any test that calls SelectParams().
@@ -86,12 +90,13 @@ pastel_gtest_SOURCES +=\
 	
 if ENABLE_WALLET
 pastel_gtest_SOURCES += \
+	wallet/gtest/test_accounting.cpp\
 	wallet/gtest/test_wallet.cpp\
 	wallet/gtest/test_wallet_ismine.cpp
 endif
 
 
-pastel_gtest_CPPFLAGS = $(AM_CPPFLAGS) -DBINARY_OUTPUT -DCURVE_ALT_BN128 -DSTATIC $(BITCOIN_INCLUDES) -I$(srcdir)/gtest
+pastel_gtest_CPPFLAGS = $(AM_CPPFLAGS) -DBINARY_OUTPUT -DCURVE_ALT_BN128 -DSTATIC $(BITCOIN_INCLUDES) -I$(srcdir)/gtest -I$(builddir)/test/
 pastel_gtest_CXXFLAGS = $(AM_CXXFLAGS) $(PIE_FLAGS) -I$(srcdir)/gtest
 
 pastel_gtest_LDADD =\
@@ -133,8 +138,18 @@ endif
 
 pastel_gtest_LDFLAGS = $(RELDFLAGS) $(AM_LDFLAGS) $(LIBTOOL_APP_LDFLAGS) -static
 
+nodist_pastel_gtest_SOURCES: $(GENERATED_TEST_FILES)
+
 pastel-gtest_check: pastel-gtest FORCE
 	./pastel-gtest
 
 pastel-gtest-expected-failures: pastel-gtest FORCE
 	./pastel-gtest --gtest_filter=*DISABLED_* --gtest_also_run_disabled_tests
+
+%.raw.h: %.raw
+	@$(MKDIR_P) $(@D)
+	@echo "namespace alert_tests{" > $@
+	@echo "static unsigned const char $(*F)[] = {" >> $@
+	@$(HEXDUMP) -v -e '8/1 "0x%02x, "' -e '"\n"' $< | $(SED) -e 's/0x  ,//g' >> $@
+	@echo "};};" >> $@
+	@echo "Generated $@"
