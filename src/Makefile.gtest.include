@@ -1,10 +1,6 @@
 TESTS += pastel-gtest
 noinst_PROGRAMS += pastel-gtest
 
-RAW_TEST_FILES = test/data/alertTests.raw
-
-GENERATED_TEST_FILES = $(RAW_TEST_FILES:.raw=.raw.h)
-
 # tool for generating our public parameters.
 # test_checktransaction.cpp MUST be before
 # any test that calls SelectParams().
@@ -34,6 +30,7 @@ pastel_gtest_SOURCES +=\
 	gtest/test_mnode/test_ticket_mempool_processor.cpp\
 	gtest/test_mnode/test_ticket_processor.cpp\
 	gtest/test_addrman.cpp\
+	gtest/test_alert.cpp\
 	gtest/test_allocator.cpp\
 	gtest/test_arith_uint256.cpp\
 	gtest/test_base32.cpp\
@@ -137,8 +134,6 @@ pastel_gtest_LDADD += $(LIBBITCOIN_PROTON) $(PROTON_LIBS)
 endif
 
 pastel_gtest_LDFLAGS = $(RELDFLAGS) $(AM_LDFLAGS) $(LIBTOOL_APP_LDFLAGS) -static
-
-nodist_pastel_gtest_SOURCES: $(GENERATED_TEST_FILES)
 
 pastel-gtest_check: pastel-gtest FORCE
 	./pastel-gtest

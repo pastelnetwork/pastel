@@ -71,9 +71,9 @@ using namespace testing;
 
 // Code to output a C-style array of values
 template<typename T>
-std::string HexStrArray(const T itbegin, const T itend, int lineLength)
+string HexStrArray(const T itbegin, const T itend, int lineLength)
 {
-    std::string rv;
+    string rv;
     static const char hexmap[16] = { '0', '1', '2', '3', '4', '5', '6', '7',
                                      '8', '9', 'a', 'b', 'c', 'd', 'e', 'f' };
     rv.reserve((itend-itbegin)*3);
@@ -100,11 +100,10 @@ std::string HexStrArray(const T itbegin, const T itend, int lineLength)
 }
 
 template<typename T>
-inline std::string HexStrArray(const T& vch, int lineLength)
+inline string HexStrArray(const T& vch, int lineLength)
 {
     return HexStrArray(vch.begin(), vch.end(), lineLength);
 }
-
 
 // Sign CAlert with alert private key
 bool SignAlert(CAlert &alert)
@@ -112,10 +111,10 @@ bool SignAlert(CAlert &alert)
     // serialize alert data
     CDataStream sMsg(SER_NETWORK, PROTOCOL_VERSION);
     sMsg << *(CUnsignedAlert*)&alert;
-    alert.vchMsg = std::vector<unsigned char>(sMsg.begin(), sMsg.end());
+    alert.vchMsg = vector<unsigned char>(sMsg.begin(), sMsg.end());
 
     // sign alert
-    std::vector<unsigned char> vchTmp(ParseHex(pszPrivKey));
+    vector<unsigned char> vchTmp(ParseHex(pszPrivKey));
     CPrivKey vchPrivKey(vchTmp.begin(), vchTmp.end());
     CKey key;
     if (!key.SetPrivKey(vchPrivKey, false))
@@ -164,11 +163,11 @@ void GenerateAlertTests()
     SignAndSerialize(alert, sBuffer);
 
     // More tests go here ...
-    alert.setSubVer.insert(std::string("/MagicBean:0.1.0/"));
+    alert.setSubVer.insert(string("/MagicBean:0.1.0/"));
     alert.strStatusBar  = "Alert 1 for MagicBean 0.1.0";
     SignAndSerialize(alert, sBuffer);
 
-    alert.setSubVer.insert(std::string("/MagicBean:0.2.0/"));
+    alert.setSubVer.insert(string("/MagicBean:0.2.0/"));
     alert.strStatusBar  = "Alert 1 for MagicBean 0.1.0, 0.2.0";
     SignAndSerialize(alert, sBuffer);
 
@@ -203,7 +202,7 @@ void GenerateAlertTests()
 
     ++alert.nID;
     alert.strStatusBar  = "Alert 2 for MagicBean 0.1.0";
-    alert.setSubVer.insert(std::string("/MagicBean:0.1.0/"));
+    alert.setSubVer.insert(string("/MagicBean:0.1.0/"));
     SignAndSerialize(alert, sBuffer);
 
     ++alert.nID;
@@ -215,39 +214,31 @@ void GenerateAlertTests()
 
     if (b) {
         // Print the hex array, which will become the contents of alertTest.raw.h
-        std::vector<unsigned char> vch = std::vector<unsigned char>(sBuffer.begin(), sBuffer.end());
+        vector<unsigned char> vch = vector<unsigned char>(sBuffer.begin(), sBuffer.end());
         printf("%s\n", HexStrArray(vch, 8).c_str());
 
         // Write the data to alertTests.raw.NEW, to be copied to src/test/data/alertTests.raw
-        std::ofstream outfile("alertTests.raw.NEW", std::ios::out | std::ios::binary);
+        ofstream outfile("alertTests.raw.NEW", ios::out | ios::binary);
         outfile.write((const char*)&vch[0], vch.size());
         outfile.close();
     }
 }
 
-
-
-struct GenerateAlertTestsFixture : public TestingSetup {
-  GenerateAlertTestsFixture() {}
-  ~GenerateAlertTestsFixture() {}
+struct GenerateAlertTestsFixture : public Test {
 };
 
-BOOST_FIXTURE_TEST_SUITE(Generate_Alert_Test_Data, GenerateAlertTestsFixture);
-BOOST_AUTO_TEST_CASE(GenerateTheAlertTests)
+TEST_F(GenerateAlertTestsFixture, GenerateTheAlertTests)
 {
     GenerateAlertTests();
 }
-BOOST_AUTO_TEST_SUITE_END()
-
 
 #else
-
 
 struct ReadAlerts : public Test
 {
     ReadAlerts()
     {
-        std::vector<unsigned char> vch(alert_tests::alertTests, alert_tests::alertTests + sizeof(alert_tests::alertTests));
+        vector<unsigned char> vch(alert_tests::alertTests, alert_tests::alertTests + sizeof(alert_tests::alertTests));
         CDataStream stream(vch, SER_DISK, CLIENT_VERSION);
         try {
             while (!stream.eof())
@@ -257,27 +248,24 @@ struct ReadAlerts : public Test
                 alerts.push_back(alert);
             }
         }
-        catch (const std::exception&) { }
+        catch (const exception&) { }
     }
     ~ReadAlerts() { }
 
-    static std::vector<std::string> read_lines(fs::path filepath)
+    static vector<string> read_lines(fs::path filepath)
     {
-        std::vector<std::string> result;
+        vector<string> result;
 
-        std::ifstream f(filepath.string().c_str());
-        std::string line;
-        while (std::getline(f,line))
+        ifstream f(filepath.string().c_str());
+        string line;
+        while (getline(f,line))
             result.push_back(line);
 
         return result;
     }
 
-    std::vector<CAlert> alerts;
+    vector<CAlert> alerts;
 };
-
-// BOOST_FIXTURE_TEST_SUITE(Alert_tests, ReadAlerts)
-
 
 TEST_F(ReadAlerts, AlertApplies)
 {
@@ -321,132 +309,131 @@ TEST_F(ReadAlerts, AlertApplies)
 }
 
 
-// BOOST_AUTO_TEST_CASE(AlertNotify)
-// {
-//     SetMockTime(11);
-//     auto pChainParams = CreateChainParams(CBaseChainParams::Network::MAIN);
-//     const auto& alertKey = pChainParams->AlertKey();
+TEST_F(ReadAlerts, AlertNotify)
+{
+    SetMockTime(11);
+    auto pChainParams = CreateChainParams(CBaseChainParams::Network::MAIN);
+    const auto& alertKey = pChainParams->AlertKey();
 
-//     fs::path temp = GetTempPath() /
-//         fs::unique_path("alertnotify-%%%%.txt");
+    fs::path temp = GetTempPath() /
+        fs::unique_path("alertnotify-%%%%.txt");
 
-//     mapArgs["-alertnotify"] = std::string("echo %s >> ") + temp.string();
+    mapArgs["-alertnotify"] = string("echo %s >> ") + temp.string();
 
-//     for (auto &alert : alerts)
-//         alert.ProcessAlert(alertKey, false);
+    for (auto &alert : alerts)
+        alert.ProcessAlert(alertKey, false);
 
-//     std::vector<std::string> r = read_lines(temp);
-//     BOOST_CHECK_EQUAL(r.size(), 6u);
+    vector<string> r = read_lines(temp);
+    EXPECT_EQ(r.size(), 6u);
 
-// // Windows built-in echo semantics are different than posixy shells. Quotes and
-// // whitespace are printed literally.
+// Windows built-in echo semantics are different than posixy shells. Quotes and
+// whitespace are printed literally.
 
-// #ifndef WIN32
-//     BOOST_CHECK_EQUAL(r[0], "Alert 1");
-//     BOOST_CHECK_EQUAL(r[1], "Alert 2, cancels 1");
-//     BOOST_CHECK_EQUAL(r[2], "Alert 2, cancels 1");
-//     BOOST_CHECK_EQUAL(r[3], "Alert 3, disables RPC");
-//     BOOST_CHECK_EQUAL(r[4], "Alert 4, reenables RPC"); // dashes should be removed
-//     BOOST_CHECK_EQUAL(r[5], "Evil Alert; /bin/ls; echo "); // single-quotes should be removed
-// #else
-//     BOOST_CHECK_EQUAL(r[0], "'Alert 1' ");
-//     BOOST_CHECK_EQUAL(r[1], "'Alert 2, cancels 1' ");
-//     BOOST_CHECK_EQUAL(r[2], "'Alert 2, cancels 1' ");
-//     BOOST_CHECK_EQUAL(r[3], "'Alert 3, disables RPC' ");
-//     BOOST_CHECK_EQUAL(r[4], "'Alert 4, reenables RPC' "); // dashes should be removed
-//     BOOST_CHECK_EQUAL(r[5], "'Evil Alert; /bin/ls; echo ' ");
-// #endif
-//     fs::remove(temp);
+#ifndef WIN32
+    EXPECT_EQ(r[0], "Alert 1");
+    EXPECT_EQ(r[1], "Alert 2, cancels 1");
+    EXPECT_EQ(r[2], "Alert 2, cancels 1");
+    EXPECT_EQ(r[3], "Alert 3, disables RPC");
+    EXPECT_EQ(r[4], "Alert 4, reenables RPC"); // dashes should be removed
+    EXPECT_EQ(r[5], "Evil Alert; /bin/ls; echo "); // single-quotes should be removed
+#else
+    EXPECT_EQ(r[0], "'Alert 1' ");
+    EXPECT_EQ(r[1], "'Alert 2, cancels 1' ");
+    EXPECT_EQ(r[2], "'Alert 2, cancels 1' ");
+    EXPECT_EQ(r[3], "'Alert 3, disables RPC' ");
+    EXPECT_EQ(r[4], "'Alert 4, reenables RPC' "); // dashes should be removed
+    EXPECT_EQ(r[5], "'Evil Alert; /bin/ls; echo ' ");
+#endif
+    fs::remove(temp);
 
-//     SetMockTime(0);
-//     mapAlerts.clear();
-// }
+    SetMockTime(0);
+    mapAlerts.clear();
+}
 
-// BOOST_AUTO_TEST_CASE(AlertDisablesRPC)
-// {
-//     SetMockTime(11);
-//     auto pChainParams = CreateChainParams(CBaseChainParams::Network::MAIN);
-//     const auto& alertKey = pChainParams->AlertKey();
+TEST_F(ReadAlerts, AlertDisablesRPC)
+{
+    SetMockTime(11);
+    auto pChainParams = CreateChainParams(CBaseChainParams::Network::MAIN);
+    const auto& alertKey = pChainParams->AlertKey();
 
-//     // Command should work before alerts
-//     BOOST_CHECK_EQUAL(GetWarnings("rpc"), "");
+    // Command should work before alerts
+    EXPECT_EQ(GetWarnings("rpc"), "");
 
-//     // First alert should disable RPC
-//     alerts[5].ProcessAlert(alertKey, false);
-//     BOOST_CHECK_EQUAL(alerts[5].strRPCError, "RPC disabled");
-//     BOOST_CHECK_EQUAL(GetWarnings("rpc"), "RPC disabled");
+    // First alert should disable RPC
+    alerts[5].ProcessAlert(alertKey, false);
+    EXPECT_EQ(alerts[5].strRPCError, "RPC disabled");
+    EXPECT_EQ(GetWarnings("rpc"), "RPC disabled");
 
-//     // Second alert should re-enable RPC
-//     alerts[6].ProcessAlert(alertKey, false);
-//     BOOST_CHECK_EQUAL(alerts[6].strRPCError, "");
-//     BOOST_CHECK_EQUAL(GetWarnings("rpc"), "");
+    // Second alert should re-enable RPC
+    alerts[6].ProcessAlert(alertKey, false);
+    EXPECT_EQ(alerts[6].strRPCError, "");
+    EXPECT_EQ(GetWarnings("rpc"), "");
 
-//     SetMockTime(0);
-//     mapAlerts.clear();
-// }
+    SetMockTime(0);
+    mapAlerts.clear();
+}
 
-// static bool InitialDownloadCheckFalseFunc(const Consensus::Params &) { return false; }
+static bool InitialDownloadCheckFalseFunc(const Consensus::Params &) { return false; }
+#define GTEST_COUT cerr << "[          ] "
 
-// BOOST_AUTO_TEST_CASE(PartitionAlert)
-// {
-//     // Test PartitionCheck
-//     CCriticalSection csDummy;
-//     CBlockIndex indexDummy[400];
-//     auto pChainParams = CreateChainParams(CBaseChainParams::Network::MAIN);
-//     const auto& consensusParams = pChainParams->GetConsensus();
-//     int64_t nPowTargetSpacing = consensusParams.nPowTargetSpacing;
+TEST_F(ReadAlerts, PartitionAlert)
+{
+    // Test PartitionCheck
+    CCriticalSection csDummy;
+    CBlockIndex indexDummy[400];
+    auto pChainParams = CreateChainParams(CBaseChainParams::Network::MAIN);
+    const auto& consensusParams = pChainParams->GetConsensus();
+    int64_t nPowTargetSpacing = consensusParams.nPowTargetSpacing;
 
-//     // Generate fake blockchain timestamps relative to
-//     // an arbitrary time:
-//     int64_t now = 1427379054;
-//     SetMockTime(now);
-//     for (int i = 0; i < 400; i++)
-//     {
-//         indexDummy[i].phashBlock = nullptr;
-//         if (i == 0)
-//             indexDummy[i].pprev = nullptr;
-//         else indexDummy[i].pprev = &indexDummy[i-1];
-//         indexDummy[i].nHeight = i;
-//         indexDummy[i].nTime = now - (400-i)*nPowTargetSpacing;
-//         // Other members don't matter, the partition check code doesn't
-//         // use them
-//     }
+    // Generate fake blockchain timestamps relative to
+    // an arbitrary time:
+    int64_t now = 1427379054;
+    SetMockTime(now);
+    for (int i = 0; i < 400; i++)
+    {
+        indexDummy[i].phashBlock = nullptr;
+        if (i == 0)
+            indexDummy[i].pprev = nullptr;
+        else indexDummy[i].pprev = &indexDummy[i-1];
+        indexDummy[i].nHeight = i;
+        indexDummy[i].nTime = now - (400-i)*nPowTargetSpacing;
+        // Other members don't matter, the partition check code doesn't
+        // use them
+    }
 
 
-//     // Test 1: chain with blocks every nPowTargetSpacing seconds,
-//     // as normal, no worries:
-//     PartitionCheck(consensusParams, InitialDownloadCheckFalseFunc, csDummy, &indexDummy[399], nPowTargetSpacing);
-//     BOOST_CHECK(strMiscWarning.empty());
+    // Test 1: chain with blocks every nPowTargetSpacing seconds,
+    // as normal, no worries:
+    PartitionCheck(consensusParams, InitialDownloadCheckFalseFunc, csDummy, &indexDummy[399], nPowTargetSpacing);
+    EXPECT_TRUE(strMiscWarning.empty());
 
-//     // Test 2: go 3.5 hours without a block, expect a warning:
-//     now += 3*60*60+30*60;
-//     SetMockTime(now);
-//     PartitionCheck(consensusParams, InitialDownloadCheckFalseFunc, csDummy, &indexDummy[399], nPowTargetSpacing);
-//     BOOST_CHECK(!strMiscWarning.empty());
-//     BOOST_TEST_MESSAGE(std::string("Got alert text: ")+strMiscWarning);
-//     strMiscWarning = "";
+    // Test 2: go 3.5 hours without a block, expect a warning:
+    now += 3*60*60+30*60;
+    SetMockTime(now);
+    PartitionCheck(consensusParams, InitialDownloadCheckFalseFunc, csDummy, &indexDummy[399], nPowTargetSpacing);
+    EXPECT_TRUE(!strMiscWarning.empty());
+    GTEST_COUT << string("Got alert text: ") << strMiscWarning << endl;
+    strMiscWarning = "";
 
-//     // Test 3: test the "partition alerts only go off once per day"
-//     // code:
-//     now += 60*10;
-//     SetMockTime(now);
-//     PartitionCheck(consensusParams, InitialDownloadCheckFalseFunc, csDummy, &indexDummy[399], nPowTargetSpacing);
-//     BOOST_CHECK(strMiscWarning.empty());
+    // Test 3: test the "partition alerts only go off once per day"
+    // code:
+    now += 60*10;
+    SetMockTime(now);
+    PartitionCheck(consensusParams, InitialDownloadCheckFalseFunc, csDummy, &indexDummy[399], nPowTargetSpacing);
+    EXPECT_TRUE(strMiscWarning.empty());
 
-//     // Test 4: get 2.5 times as many blocks as expected:
-//     now += 60*60*24; // Pretend it is a day later
-//     SetMockTime(now);
-//     int64_t quickSpacing = nPowTargetSpacing*2/5;
-//     for (int i = 0; i < 400; i++) // Tweak chain timestamps:
-//         indexDummy[i].nTime = now - (400-i)*quickSpacing;
-//     PartitionCheck(consensusParams, InitialDownloadCheckFalseFunc, csDummy, &indexDummy[399], nPowTargetSpacing);
-//     BOOST_CHECK(!strMiscWarning.empty());
-//     BOOST_TEST_MESSAGE(std::string("Got alert text: ")+strMiscWarning);
-//     strMiscWarning = "";
+    // Test 4: get 2.5 times as many blocks as expected:
+    now += 60*60*24; // Pretend it is a day later
+    SetMockTime(now);
+    int64_t quickSpacing = nPowTargetSpacing*2/5;
+    for (int i = 0; i < 400; i++) // Tweak chain timestamps:
+        indexDummy[i].nTime = now - (400-i)*quickSpacing;
+    PartitionCheck(consensusParams, InitialDownloadCheckFalseFunc, csDummy, &indexDummy[399], nPowTargetSpacing);
+    EXPECT_TRUE(!strMiscWarning.empty());
+    GTEST_COUT << string("Got alert text: ") << strMiscWarning << endl;
+    strMiscWarning = "";
 
-//     SetMockTime(0);
-// }
-
-// BOOST_AUTO_TEST_SUITE_END()
+    SetMockTime(0);
+}
 
 #endif
