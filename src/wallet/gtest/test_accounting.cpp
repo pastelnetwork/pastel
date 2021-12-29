@@ -13,15 +13,14 @@
 using namespace std;
 using namespace testing;
 
-CWallet pWallet("wallet_crypted_sapling.dat");
 
 static void
-GetResults(CWalletDB& walletdb, std::map<CAmount, CAccountingEntry>& results)
+GetResults(CWallet* wallet, CWalletDB& walletdb, map<CAmount, CAccountingEntry>& results)
 {
-    std::list<CAccountingEntry> aes;
+    list<CAccountingEntry> aes;
 
     results.clear();
-    EXPECT_EQ(walletdb.ReorderTransactions(&pWallet) , DB_LOAD_OK);
+    EXPECT_EQ(walletdb.ReorderTransactions(wallet) , DB_LOAD_OK);
     walletdb.ListAccountCreditDebit("", aes);
     for (const auto& ae : aes)
         results[ae.nOrderPos] = ae;
@@ -33,7 +32,7 @@ public:
     void SetUp() override
     {
         pathTemp = fs::temp_directory_path() / fs::unique_path();
-        ASSERT_TRUE(fs::create_directories(pathTemp));
+        EXPECT_TRUE(fs::create_directories(pathTemp));
 
         m_sSavedDataDir = mapArgs["-datadir"];
     }
@@ -50,19 +49,20 @@ public:
 
 TEST_F(TestAccounting, acc_orderupgrade)
 {
-    SelectParams(CBaseChainParams::Network::MAIN);
+    SelectParams(CBaseChainParams::Network::TESTNET);
     mapArgs["-datadir"] = pathTemp.string();
     bool fFirstRun;
-    ASSERT_EQ(DB_LOAD_OK, pWallet.LoadWallet(fFirstRun));
-    // RegisterValidationInterface(&pWallet);
+    CWallet wallet("wallet_crypted_sapling.dat");
+    EXPECT_EQ(DB_LOAD_OK, wallet.LoadWallet(fFirstRun));
+    // RegisterValidationInterface(&wallet);
 
-    CWalletDB walletdb(pWallet.strWalletFile);
-    std::vector<CWalletTx*> vpwtx;
+    CWalletDB walletdb(wallet.strWalletFile);
+    vector<CWalletTx*> vpwtx;
     CWalletTx wtx;
     CAccountingEntry ae;
-    std::map<CAmount, CAccountingEntry> results;
+    map<CAmount, CAccountingEntry> results;
 
-    LOCK(pWallet.cs_wallet);
+    LOCK(wallet.cs_wallet);
 
     ae.strAccount = "";
     ae.nCreditDebit = 1;
@@ -72,8 +72,8 @@ TEST_F(TestAccounting, acc_orderupgrade)
     walletdb.WriteAccountingEntry(ae);
 
     wtx.mapValue["comment"] = "z";
-    pWallet.AddToWallet(wtx, false, &walletdb);
-    vpwtx.push_back(&pWallet.mapWallet[wtx.GetHash()]);
+    wallet.AddToWallet(wtx, false, &walletdb);
+    vpwtx.push_back(&wallet.mapWallet[wtx.GetHash()]);
     vpwtx[0]->nTimeReceived = (unsigned int)1333333335;
     vpwtx[0]->nOrderPos = -1;
 
@@ -81,9 +81,9 @@ TEST_F(TestAccounting, acc_orderupgrade)
     ae.strOtherAccount = "c";
     walletdb.WriteAccountingEntry(ae);
 
-    GetResults(walletdb, results);
+    GetResults(&wallet, walletdb, results);
 
-    EXPECT_EQ(pWallet.nOrderPosNext , 3);
+    EXPECT_EQ(wallet.nOrderPosNext , 3);
     EXPECT_EQ(2u , results.size());
     EXPECT_EQ(results[0].nTime , 1333333333);
     EXPECT_TRUE(results[0].strComment.empty());
@@ -94,13 +94,13 @@ TEST_F(TestAccounting, acc_orderupgrade)
 
     ae.nTime = 1333333330;
     ae.strOtherAccount = "d";
-    ae.nOrderPos = pWallet.IncOrderPosNext();
+    ae.nOrderPos = wallet.IncOrderPosNext();
     walletdb.WriteAccountingEntry(ae);
 
-    GetResults(walletdb, results);
+    GetResults(&wallet, walletdb, results);
 
     EXPECT_EQ(results.size() , 3u);
-    EXPECT_EQ(pWallet.nOrderPosNext , 4u);
+    EXPECT_EQ(wallet.nOrderPosNext , 4u);
     EXPECT_EQ(results[0].nTime , 1333333333u);
     EXPECT_EQ(1u , vpwtx[0]->nOrderPos);
     EXPECT_EQ(results[2].nTime , 1333333336u);
@@ -114,8 +114,8 @@ TEST_F(TestAccounting, acc_orderupgrade)
         --tx.nLockTime;  // Just to change the hash :)
         *static_cast<CTransaction*>(&wtx) = CTransaction(tx);
     }
-    pWallet.AddToWallet(wtx, false, &walletdb);
-    vpwtx.push_back(&pWallet.mapWallet[wtx.GetHash()]);
+    wallet.AddToWallet(wtx, false, &walletdb);
+    vpwtx.push_back(&wallet.mapWallet[wtx.GetHash()]);
     vpwtx[1]->nTimeReceived = (unsigned int)1333333336;
 
     wtx.mapValue["comment"] = "x";
@@ -124,15 +124,15 @@ TEST_F(TestAccounting, acc_orderupgrade)
         --tx.nLockTime;  // Just to change the hash :)
         *static_cast<CTransaction*>(&wtx) = CTransaction(tx);
     }
-    pWallet.AddToWallet(wtx, false, &walletdb);
-    vpwtx.push_back(&pWallet.mapWallet[wtx.GetHash()]);
+    wallet.AddToWallet(wtx, false, &walletdb);
+    vpwtx.push_back(&wallet.mapWallet[wtx.GetHash()]);
     vpwtx[2]->nTimeReceived = (unsigned int)1333333329;
     vpwtx[2]->nOrderPos = -1;
 
-    GetResults(walletdb, results);
+    GetResults(&wallet, walletdb, results);
 
     EXPECT_EQ(results.size() , 3u);
-    EXPECT_EQ(pWallet.nOrderPosNext , 6u);
+    EXPECT_EQ(wallet.nOrderPosNext , 6u);
     EXPECT_EQ(0u , vpwtx[2]->nOrderPos);
     EXPECT_EQ(results[1].nTime , 1333333333u);
     EXPECT_EQ(2u , vpwtx[0]->nOrderPos);
@@ -147,10 +147,10 @@ TEST_F(TestAccounting, acc_orderupgrade)
     ae.nOrderPos = -1;
     walletdb.WriteAccountingEntry(ae);
 
-    GetResults(walletdb, results);
+    GetResults(&wallet, walletdb, results);
 
     EXPECT_EQ(results.size() , 4u);
-    EXPECT_EQ(pWallet.nOrderPosNext , 7u);
+    EXPECT_EQ(wallet.nOrderPosNext , 7u);
     EXPECT_EQ(0u , vpwtx[2]->nOrderPos);
     EXPECT_EQ(results[1].nTime , 1333333333u);
     EXPECT_EQ(2u , vpwtx[0]->nOrderPos);
@@ -161,5 +161,5 @@ TEST_F(TestAccounting, acc_orderupgrade)
     EXPECT_EQ(results[5].nTime , 1333333334u);
     EXPECT_EQ(6u , vpwtx[1]->nOrderPos);
 
-    //  UnregisterValidationInterface(&pWallet);
+    //  UnregisterValidationInterface(&wallet);
 }
