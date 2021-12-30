@@ -150,7 +150,7 @@ void Transform(uint64_t* s, const unsigned char* chunk)
 
 
 ////// SHA-512
-
+const size_t CSHA512::OUTPUT_SIZE;
 CSHA512::CSHA512() : bytes(0)
 {
     sha512::Initialize(s);

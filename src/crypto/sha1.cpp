@@ -145,7 +145,7 @@ void Transform(uint32_t* s, const unsigned char* chunk)
 } // namespace
 
 ////// SHA1
-
+const size_t CSHA1::OUTPUT_SIZE;
 CSHA1::CSHA1() : bytes(0)
 {
     sha1::Initialize(s);
