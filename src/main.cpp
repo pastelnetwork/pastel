@@ -180,7 +180,7 @@ namespace {
      * messages or ban them when processing happens afterwards. Protected by
      * cs_main.
      */
-    map<uint256, NodeId> mapBlockSource;
+    unordered_map<uint256, NodeId> mapBlockSource;
 
     /**
      * Filter for transactions that were recently rejected by
@@ -1819,18 +1819,22 @@ void static InvalidChainFound(CBlockIndex* pindexNew, const CChainParams& chainp
     CheckForkWarningConditions(chainparams.GetConsensus());
 }
 
-void static InvalidBlockFound(CBlockIndex *pindex, const CValidationState &state, const CChainParams& chainparams) {
+void static InvalidBlockFound(CBlockIndex *pindex, const CValidationState &state, const CChainParams& chainparams)
+{
     int nDoS = 0;
-    if (state.IsInvalid(nDoS)) {
-        std::map<uint256, NodeId>::iterator it = mapBlockSource.find(pindex->GetBlockHash());
-        if (it != mapBlockSource.end() && State(it->second)) {
+    if (state.IsInvalid(nDoS))
+    {
+        auto it = mapBlockSource.find(pindex->GetBlockHash());
+        if (it != mapBlockSource.end() && State(it->second))
+        {
             CBlockReject reject = {state.GetRejectCode(), state.GetRejectReason().substr(0, MAX_REJECT_MESSAGE_LENGTH), pindex->GetBlockHash()};
             State(it->second)->rejects.push_back(reject);
             if (nDoS > 0)
                 Misbehaving(it->second, nDoS);
         }
     }
-    if (!state.CorruptionPossible()) {
+    if (!state.CorruptionPossible())
+    {
         pindex->nStatus |= BLOCK_FAILED_VALID;
         setDirtyBlockIndex.insert(pindex);
         setBlockIndexCandidates.erase(pindex);
@@ -4523,7 +4527,7 @@ bool InitBlockIndex(const CChainParams& chainparams)
 bool LoadExternalBlockFile(const CChainParams& chainparams, FILE* fileIn, CDiskBlockPos *dbp)
 {
     // Map of disk positions for blocks with unknown parent (only used for reindex)
-    static std::multimap<uint256, CDiskBlockPos> mapBlocksUnknownParent;
+    static std::unordered_multimap<uint256, CDiskBlockPos> mapBlocksUnknownParent;
     int64_t nStart = GetTimeMillis();
 
     int nLoaded = 0;
@@ -4568,16 +4572,17 @@ bool LoadExternalBlockFile(const CChainParams& chainparams, FILE* fileIn, CDiskB
 
                 // detect out of order blocks, and store them for later
                 uint256 hash = block.GetHash();
-                if (hash != consensusParams.hashGenesisBlock && mapBlockIndex.find(block.hashPrevBlock) == mapBlockIndex.end()) {
-                    LogPrint("reindex", "%s: Out of order block %s, parent %s not known\n", __func__, hash.ToString(),
-                            block.hashPrevBlock.ToString());
+                if (hash != consensusParams.hashGenesisBlock && mapBlockIndex.find(block.hashPrevBlock) == mapBlockIndex.end())
+                {
+                    LogPrint("reindex", "%s: Out of order block %s, parent %s not known\n", __func__, hash.ToString(), block.hashPrevBlock.ToString());
                     if (dbp)
-                        mapBlocksUnknownParent.insert(std::make_pair(block.hashPrevBlock, *dbp));
+                        mapBlocksUnknownParent.emplace(block.hashPrevBlock, *dbp);
                     continue;
                 }
 
                 // process in case the block isn't known yet
-                if (mapBlockIndex.count(hash) == 0 || (mapBlockIndex[hash]->nStatus & BLOCK_HAVE_DATA) == 0) {
+                if (mapBlockIndex.count(hash) == 0 || (mapBlockIndex[hash]->nStatus & BLOCK_HAVE_DATA) == 0)
+                {
                     CValidationState state;
                     if (ProcessNewBlock(state, chainparams, nullptr, &block, true, dbp))
                         nLoaded++;
@@ -4596,12 +4601,12 @@ bool LoadExternalBlockFile(const CChainParams& chainparams, FILE* fileIn, CDiskB
                     uint256 head = queue.front();
                     queue.pop_front();
                     auto range = mapBlocksUnknownParent.equal_range(head);
-                    while (range.first != range.second) {
+                    while (range.first != range.second)
+                    {
                         auto it = range.first;
                         if (ReadBlockFromDisk(block, it->second, consensusParams))
                         {
-                            LogPrintf("%s: Processing out of order child %s of %s\n", __func__, block.GetHash().ToString(),
-                                    head.ToString());
+                            LogPrintf("%s: Processing out of order child %s of %s\n", __func__, block.GetHash().ToString(), head.ToString());
                             CValidationState dummy;
                             if (ProcessNewBlock(dummy, chainparams, nullptr, &block, true, &it->second))
                             {

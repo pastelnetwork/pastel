@@ -16,6 +16,30 @@
 using json = nlohmann::json;
 using namespace std;
 
+/**
+ * Get Action Ticket type name.
+ * 
+ * \param actionTicketType - action ticket type
+ * \return type name
+ */
+const char* GetActionTypeName(const ACTION_TICKET_TYPE actionTicketType) noexcept
+{
+    const char* szActionTypeName = nullptr;
+    switch (actionTicketType) {
+    case ACTION_TICKET_TYPE::SENSE:
+        szActionTypeName = ACTION_TICKET_TYPE_SENSE;
+        break;
+
+    case ACTION_TICKET_TYPE::CASCADE:
+        szActionTypeName = ACTION_TICKET_TYPE_CASCADE;
+        break;
+
+    default:
+        break;
+    }
+    return szActionTypeName;
+}
+
 // ----Action Registration Ticket-- -- ////////////////////////////////////////////////////////////////////////////////////////////////////////
 /* current action_ticket passed base64-encoded
 {
@@ -114,7 +138,7 @@ bool CActionRegTicket::SetActionType(const string& sActionType)
     if (m_sActionType == ACTION_TICKET_TYPE_SENSE)
         m_ActionType = ACTION_TICKET_TYPE::SENSE;
     else if (m_sActionType == ACTION_TICKET_TYPE_CASCADE)
-        m_ActionType = ACTION_TICKET_TYPE::CASCASE;
+        m_ActionType = ACTION_TICKET_TYPE::CASCADE;
     return (m_ActionType != ACTION_TICKET_TYPE::UNKNOWN);
 }
 
@@ -223,4 +247,29 @@ bool CActionRegTicket::CheckIfTicketInDb(const string& key)
 ActionRegTickets_t CActionRegTicket::FindAllTicketByPastelID(const string& pastelID)
 {
     return masterNodeCtrl.masternodeTickets.FindTicketsByMVKey<CActionRegTicket>(pastelID);
+}
+
+/**
+ * Get action fees based on data size.
+ * 
+ * \param nDataSizeInMB - data size in MB
+ * \return map of <actionTicketType> -> <fee>
+ */
+action_fee_map_t CActionRegTicket::GetActionFees(const size_t nDataSizeInMB)
+{
+    action_fee_map_t feeMap;
+    const CAmount nStorageFeePerMB = masterNodeCtrl.GetNetworkFeePerMB();
+    const CAmount nTicketFeePerKB = masterNodeCtrl.GetNFTTicketFeePerKB();
+    
+    CAmount nActionFeePerMB = masterNodeCtrl.GetActionTicketFeePerMB(ACTION_TICKET_TYPE::SENSE);
+
+    // calculate sense fee
+    CAmount nFee = nDataSizeInMB * nActionFeePerMB + nStorageFeePerMB * ACTION_DUPE_DATA_SIZE_MB + nTicketFeePerKB * ACTION_SENSE_TICKET_SIZE_KB;
+    feeMap.emplace(ACTION_TICKET_TYPE::SENSE, nFee);
+
+    // calculate cascade fee
+    nFee = nStorageFeePerMB * nDataSizeInMB * ACTION_STORAGE_MULTIPLIER + nTicketFeePerKB * ACTION_CASCADE_TICKET_SIZE_KB;
+    feeMap.emplace(ACTION_TICKET_TYPE::CASCADE, nFee);
+
+    return feeMap;
 }

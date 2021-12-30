@@ -22,7 +22,6 @@
     <ClCompile Include="..\..\..\src\test\accounting_tests.cpp" />
     <ClCompile Include="..\..\..\src\test\alert_tests.cpp" />
     <ClCompile Include="..\..\..\src\test\allocator_tests.cpp" />
-    <ClCompile Include="..\..\..\src\test\arith_uint256_tests.cpp" />
     <ClCompile Include="..\..\..\src\test\bip32_tests.cpp" />
     <ClCompile Include="..\..\..\src\test\bloom_tests.cpp" />
     <ClCompile Include="..\..\..\src\test\checkblock_tests.cpp" />
@@ -58,7 +57,6 @@
     <ClCompile Include="..\..\..\src\test\test_bitcoin.cpp" />
     <ClCompile Include="..\..\..\src\test\torcontrol_tests.cpp" />
     <ClCompile Include="..\..\..\src\test\transaction_tests.cpp" />
-    <ClCompile Include="..\..\..\src\test\uint256_tests.cpp" />
     <ClCompile Include="..\..\..\src\test\univalue_tests.cpp" />
     <ClCompile Include="..\..\..\src\test\util_tests.cpp" />
     <ClCompile Include="..\..\..\src\wallet\test\wallet_tests.cpp" />

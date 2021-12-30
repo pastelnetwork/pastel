@@ -2,7 +2,7 @@
 // Copyright (c) 2014-2017 The Dash Core developers
 // Copyright (c) 2018-2021 The Pastel Core developers
 // Distributed under the MIT/X11 software license, see the accompanying
-// file COPYING or http://www.opensource.org/licenses/mit-license.php.
+// file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <string>
 #include <map>
 #include <vector>
@@ -223,18 +223,18 @@ public:
         return nTimeToCheckAt - lastPing.sigTime < nSeconds;
     }
 
-    bool IsEnabled() { return nActiveState == MASTERNODE_ENABLED; }
-    bool IsPreEnabled() { return nActiveState == MASTERNODE_PRE_ENABLED; }
-    bool IsPoSeBanned() { return nActiveState == MASTERNODE_POSE_BAN; }
+    bool IsEnabled() const noexcept { return nActiveState == MASTERNODE_ENABLED; }
+    bool IsPreEnabled() const noexcept { return nActiveState == MASTERNODE_PRE_ENABLED; }
+    bool IsPoSeBanned() const noexcept { return nActiveState == MASTERNODE_POSE_BAN; }
     // NOTE: this one relies on nPoSeBanScore, not on nActiveState as everything else here
     bool IsPoSeVerified();
-    bool IsExpired() { return nActiveState == MASTERNODE_EXPIRED; }
-    bool IsOutpointSpent() { return nActiveState == MASTERNODE_OUTPOINT_SPENT; }
-    bool IsUpdateRequired() { return nActiveState == MASTERNODE_UPDATE_REQUIRED; }
-    bool IsWatchdogExpired() { return nActiveState == MASTERNODE_WATCHDOG_EXPIRED; }
-    bool IsNewStartRequired() { return nActiveState == MASTERNODE_NEW_START_REQUIRED; }
+    bool IsExpired() const noexcept { return nActiveState == MASTERNODE_EXPIRED; }
+    bool IsOutpointSpent() const noexcept { return nActiveState == MASTERNODE_OUTPOINT_SPENT; }
+    bool IsUpdateRequired() const noexcept { return nActiveState == MASTERNODE_UPDATE_REQUIRED; }
+    bool IsWatchdogExpired() const noexcept { return nActiveState == MASTERNODE_WATCHDOG_EXPIRED; }
+    bool IsNewStartRequired() const noexcept { return nActiveState == MASTERNODE_NEW_START_REQUIRED; }
 
-    static bool IsValidStateForAutoStart(int nActiveStateIn)
+    static bool IsValidStateForAutoStart(int nActiveStateIn) noexcept
     {
         return  nActiveStateIn == MASTERNODE_ENABLED ||
                 nActiveStateIn == MASTERNODE_PRE_ENABLED ||
@@ -242,7 +242,7 @@ public:
                 nActiveStateIn == MASTERNODE_WATCHDOG_EXPIRED;
     }
 
-    bool IsValidForPayment()
+    bool IsValidForPayment() noexcept
     {
         if(nActiveState == MASTERNODE_ENABLED) {
             return true;

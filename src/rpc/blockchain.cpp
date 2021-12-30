@@ -89,11 +89,11 @@ static UniValue ValuePoolDesc(
     rv.pushKV("monitored", (bool)chainValue);
     if (chainValue) {
         rv.pushKV("chainValue", ValueFromAmount(*chainValue));
-        rv.pushKV("chainValuePsl", *chainValue);
+        rv.pushKV("chainValuePat", *chainValue);
     }
     if (valueDelta) {
         rv.pushKV("valueDelta", ValueFromAmount(*valueDelta));
-        rv.pushKV("valueDeltaPsl", *valueDelta);
+        rv.pushKV("valueDeltaPat", *valueDelta);
     }
     return rv;
 }
@@ -602,6 +602,7 @@ Result:
   "bestblock" : "hash",      (string) the block hash
   "confirmations" : n,       (numeric) The number of confirmations
   "value" : x.xxx,           (numeric) The transaction value in )" + CURRENCY_UNIT + R"(
+  "valuePat" : xxxx,           (numeric) The transaction value in )" + MINOR_CURRENCY_UNIT + R"(
   "scriptPubKey" : {         (json object)
      "asm" : "code",         (string)
      "hex" : "hex",          (string)
@@ -659,6 +660,7 @@ Get unspent transactions
     else
         ret.pushKV("confirmations", pindex->nHeight - coins.nHeight + 1);
     ret.pushKV("value", ValueFromAmount(coins.vout[n].nValue));
+    ret.pushKV("valuePat", coins.vout[n].nValue);
     UniValue o(UniValue::VOBJ);
     ScriptPubKeyToJSON(coins.vout[n].scriptPubKey, o, true);
     ret.pushKV("scriptPubKey", o);

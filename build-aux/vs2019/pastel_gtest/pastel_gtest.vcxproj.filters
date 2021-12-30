@@ -193,6 +193,15 @@
     <ClCompile Include="..\..\..\src\gtest\test_datacompressor.cpp">
       <Filter>UnitTest Files</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\..\src\gtest\test_arith_uint256.cpp">
+      <Filter>UnitTest Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\src\gtest\test_uint256.cpp">
+      <Filter>UnitTest Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\src\gtest\test_trimmean.cpp">
+      <Filter>UnitTest Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\..\src\gtest\json_test_vectors.h">

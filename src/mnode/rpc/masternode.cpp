@@ -279,7 +279,7 @@ UniValue masternode(const UniValue& params, bool fHelp)
         std::string strMode = params[1].get_str();
 
         if (strMode == "enabled")
-            return masterNodeCtrl.masternodeManager.CountEnabled();
+            return static_cast<uint64_t>(masterNodeCtrl.masternodeManager.CountEnabled());
 
         int nCount;
         masternode_info_t mnInfo;
@@ -289,7 +289,7 @@ UniValue masternode(const UniValue& params, bool fHelp)
             return nCount;
 
         if (strMode == "all")
-            return strprintf("Total: %d (Enabled: %d / Qualify: %d)",
+            return strprintf("Total: %zu (Enabled: %zu / Qualify: %d)",
                              masterNodeCtrl.masternodeManager.size(), masterNodeCtrl.masternodeManager.CountEnabled(), nCount);
     }
 
