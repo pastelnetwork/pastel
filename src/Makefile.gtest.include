@@ -39,6 +39,7 @@ pastel_gtest_SOURCES +=\
 	gtest/test_bech32.cpp\
 	gtest/test_bip32.cpp\
 	gtest/test_block.cpp\
+	gtest/test_bloom.cpp\
 	gtest/test_checkblock.cpp\
 	gtest/test_checkpoints.cpp\
 	gtest/test_circuit.cpp\
