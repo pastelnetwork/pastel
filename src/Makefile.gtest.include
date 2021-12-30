@@ -142,10 +142,3 @@ pastel-gtest_check: pastel-gtest FORCE
 pastel-gtest-expected-failures: pastel-gtest FORCE
 	./pastel-gtest --gtest_filter=*DISABLED_* --gtest_also_run_disabled_tests
 
-%.raw.h: %.raw
-	@$(MKDIR_P) $(@D)
-	@echo "namespace alert_tests{" > $@
-	@echo "static unsigned const char $(*F)[] = {" >> $@
-	@$(HEXDUMP) -v -e '8/1 "0x%02x, "' -e '"\n"' $< | $(SED) -e 's/0x  ,//g' >> $@
-	@echo "};};" >> $@
-	@echo "Generated $@"
