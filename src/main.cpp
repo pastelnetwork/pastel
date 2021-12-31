@@ -4026,9 +4026,20 @@ FILE* OpenDiskFile(const CDiskBlockPos &pos, const char *prefix, bool fReadOnly)
         return nullptr;
     fs::path path = GetBlockPosFilename(pos, prefix);
     fs::create_directories(path.parent_path());
-    FILE* file = fopen(path.string().c_str(), "rb+");
+    FILE* file = nullptr;
+#if defined(_MSC_VER) && (_MSC_VER >= 1400)
+    errno_t err = fopen_s(&file, path.string().c_str(), "rb+");
+#else
+    file = fopen(path.string().c_str(), "rb+");
+#endif
     if (!file && !fReadOnly)
+    {
+#if defined(_MSC_VER) && (_MSC_VER >= 1400)
+        err = fopen_s(&file, path.string().c_str(), "wb+");
+#else
         file = fopen(path.string().c_str(), "wb+");
+#endif
+    }
     if (!file) {
         LogPrintf("Unable to open file %s\n", path.string());
         return nullptr;

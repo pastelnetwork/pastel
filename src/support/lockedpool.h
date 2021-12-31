@@ -19,7 +19,7 @@
 class LockedPageAllocator
 {
 public:
-    virtual ~LockedPageAllocator() {}
+    virtual ~LockedPageAllocator() = default;
     /** Allocate and lock memory pages.
      * If len is not a multiple of the system page size, it is rounded up.
      * Returns nullptr in case of allocation failure.
@@ -39,7 +39,7 @@ public:
      * process, in bytes. Return size_t max if there is no limit or the limit
      * is unknown. Return 0 if no memory can be locked at all.
      */
-    virtual size_t GetLimit() = 0;
+    virtual size_t GetLimit() const noexcept = 0;
 };
 
 /* An arena manages a contiguous region of memory by dividing it into

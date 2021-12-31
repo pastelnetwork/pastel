@@ -28,11 +28,58 @@ constexpr const CNodeHelper::CAllNodes CNodeHelper::AllNodes;
 MasterNode specific logic and initializations
 */
 
+void CMasterNodeController::InvalidateParameters()
+{
+    MasternodeProtocolVersion = 0;
+    MasternodeFeePerMBDefault = 0;
+    NFTTicketFeePerKBDefault = 0;
+    ActionTicketFeePerMBDefault = 0;
+
+    ChainDeflationRateDefault = 0.0;
+
+    ChainBaselineDifficultyLowerIndex = 0;
+    ChainBaselineDifficultyUpperIndex = 0;
+    ChainTrailingAverageDifficultyRange = 0;
+
+    MasternodeUsernameFirstChangeFee = 0;
+    MasternodeUsernameChangeAgainFee = 0;
+
+    MasternodeEthereumAddressFirstChangeFee = 0;
+    MasternodeEthereumAddressChangeAgainFee = 0;
+
+    MasternodeCheckSeconds = 0;
+    MasternodeMinMNBSeconds = 0;
+    MasternodeMinMNPSeconds = 0;
+    MasternodeExpirationSeconds = 0;
+    MasternodeWatchdogMaxSeconds = 0;
+    MasternodeWatchdogMaxSeconds = 0;
+    MasternodeNewStartRequiredSeconds = 0;
+
+    MasternodePOSEBanMaxScore = 0;
+    nMasterNodeMaximumOutboundConnections = 0;
+
+    nMasternodePaymentsVotersIndexDelta = 0;
+    nMasternodePaymentsFeatureWinnerBlockIndexDelta = 0;
+
+    nMasternodeTopMNsNumberMin = 0;
+    nMasternodeTopMNsNumber = 0;
+
+    nGovernanceVotingPeriodBlocks = 0;
+    MinTicketConfirmations = 0;
+    MaxBuyTicketAge = 0;
+
+    MasternodeCollateral = 0;
+    nMasternodeMinimumConfirmations = 0;
+    nMasternodePaymentsIncreaseBlock = 0;
+    nMasternodePaymentsIncreasePeriod = 0;
+    nFulfilledRequestExpireTime = 0;
+}
+
 void CMasterNodeController::SetParameters()
 {
     //CURRENT VERSION OF MASTERNODE NETWORK - SHOULD BE EQUAL TO PROTOCOL_VERSION
     //this will allow to filter out old MN when ALL NETWORK is updated 
-    MasternodeProtocolVersion           = 170008;
+    MasternodeProtocolVersion           = PROTOCOL_VERSION;
     
     MasternodeFeePerMBDefault           = 50;
     // default NFT ticket fee in PSL per KB
@@ -74,17 +121,17 @@ void CMasterNodeController::SetParameters()
     MaxBuyTicketAge = 24; //1 hour, 1 block per 2.5 minutes
     
     if (Params().IsMainNet()) {
-        MasternodeCollateral                = 5000000;
+        MasternodeCollateral                = 5'000'000;
     
         nMasternodeMinimumConfirmations = 15;
-        nMasternodePaymentsIncreaseBlock = 150000;
+        nMasternodePaymentsIncreaseBlock = 150'000;
         nMasternodePaymentsIncreasePeriod = 576*30;
         nFulfilledRequestExpireTime = 60*60; // 60 minutes
         
         TicketGreenAddress = "PtoySpxXAE3V6XR239AqGzCfKNrJcX6n52L";
     }
     else if (Params().IsTestNet()) {
-        MasternodeCollateral                = 1000000;
+        MasternodeCollateral                = 1'000'000;
     
         nMasternodeMinimumConfirmations = 1;
         nMasternodePaymentsIncreaseBlock = 4030;

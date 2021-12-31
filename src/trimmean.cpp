@@ -4,6 +4,8 @@
 
 #include <unistd.h>
 #include <sys/types.h>
+#include <limits>
+
 #include <trimmean.h>
 using namespace std;
 
@@ -87,7 +89,6 @@ inline static double mean(const vector<CAmount>& v, const ssize_t low, const ssi
 double TRIMMEAN(const std::vector<CAmount>& vInput, const double percent, TrimmeanErrorNumber* pErrNo)
 {
     /* Error Handling */
-    constexpr double NaN = 0 * (1e308 * 1e308);
     TrimmeanErrorNumber err = TrimmeanErrorNumber::ENOERROR;
     do {
         if (percent < 0 || percent >= 1) // Percent out of range.
@@ -105,7 +106,7 @@ double TRIMMEAN(const std::vector<CAmount>& vInput, const double percent, Trimme
     {
         if (pErrNo)
             *pErrNo = err;
-        return NaN;
+        return numeric_limits<double>::quiet_NaN();
     }
 
     // Copy input data into a local array which we will sort: we don't want to modify the original

@@ -2,6 +2,8 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 
+#include <cmath>
+#include <limits>
 #include <gtest/gtest.h>
 
 #include <trimmean.h>
@@ -47,18 +49,22 @@ TEST(trimMean, invalid_data)
 	// negative percent
 	double fResult = TRIMMEAN(vData, -0.25, &errNo);
 	EXPECT_EQ(errNo, TrimmeanErrorNumber::EBADPCNT);
+    EXPECT_TRUE(isnan(fResult));
 
 	// 100% percent
 	fResult = TRIMMEAN(vData, 1.0, &errNo);
 	EXPECT_EQ(errNo, TrimmeanErrorNumber::EBADPCNT);
+    EXPECT_TRUE(isnan(fResult));
 
 	// 120% percent
 	fResult = TRIMMEAN(vData, 1.2, &errNo);
 	EXPECT_EQ(errNo, TrimmeanErrorNumber::EBADPCNT);
+    EXPECT_TRUE(isnan(fResult));
 
 	// empty data
 	vData.clear();
 	fResult = TRIMMEAN(vData, 0.2, &errNo);
 	EXPECT_EQ(errNo, TrimmeanErrorNumber::EBADINPUT);
+    EXPECT_TRUE(isnan(fResult));
 }
 

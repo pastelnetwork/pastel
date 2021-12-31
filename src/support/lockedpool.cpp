@@ -174,7 +174,7 @@ public:
     Win32LockedPageAllocator();
     void* AllocateLocked(size_t len, bool *lockingSuccess);
     void FreeLocked(void* addr, size_t len);
-    size_t GetLimit();
+    size_t GetLimit() const noexcept override;
 private:
     size_t page_size;
 };
@@ -206,7 +206,7 @@ void Win32LockedPageAllocator::FreeLocked(void* addr, size_t len)
     VirtualUnlock(const_cast<void*>(addr), len);
 }
 
-size_t Win32LockedPageAllocator::GetLimit()
+size_t Win32LockedPageAllocator::GetLimit() const noexcept
 {
     // TODO is there a limit on windows, how to get it?
     return std::numeric_limits<size_t>::max();
@@ -226,7 +226,7 @@ public:
     PosixLockedPageAllocator();
     void* AllocateLocked(size_t len, bool *lockingSuccess);
     void FreeLocked(void* addr, size_t len);
-    size_t GetLimit();
+    size_t GetLimit() const noexcept override;
 private:
     size_t page_size;
 };
@@ -272,19 +272,19 @@ void PosixLockedPageAllocator::FreeLocked(void* addr, size_t len)
     munlock(addr, len);
     munmap(addr, len);
 }
-size_t PosixLockedPageAllocator::GetLimit()
+size_t PosixLockedPageAllocator::GetLimit() const noexcept
 {
 #ifdef RLIMIT_MEMLOCK
     struct rlimit rlim;
-    if (getrlimit(RLIMIT_MEMLOCK, &rlim) == 0) {
-        if (rlim.rlim_cur != RLIM_INFINITY) {
+    if (getrlimit(RLIMIT_MEMLOCK, &rlim) == 0)
+    {
+        if (rlim.rlim_cur != RLIM_INFINITY)
             return rlim.rlim_cur;
-        }
     }
 #endif
     return std::numeric_limits<size_t>::max();
 }
-#endif
+#endif // !WIN32
 
 /*******************************************************************************/
 // Implementation: LockedPool
@@ -360,20 +360,21 @@ bool LockedPool::new_arena(size_t size, size_t align)
     // by the process limit. This makes sure that the first arena will at least
     // be locked. An exception to this is if the process limit is 0:
     // in this case no memory can be locked at all so we'll skip past this logic.
-    if (arenas.empty()) {
+    if (arenas.empty())
+    {
         size_t limit = allocator->GetLimit();
-        if (limit > 0) {
+        if (limit > 0)
             size = std::min(size, limit);
-        }
     }
     void *addr = allocator->AllocateLocked(size, &locked);
-    if (!addr) {
+    if (!addr)
         return false;
-    }
-    if (locked) {
+    if (locked)
         cumulative_bytes_locked += size;
-    } else if (lf_cb) { // Call the locking-failed callback if locking failed
-        if (!lf_cb()) { // If the callback returns false, free the memory and fail, otherwise consider the user warned and proceed.
+    else if (lf_cb)
+    { // Call the locking-failed callback if locking failed
+        if (!lf_cb())
+        { // If the callback returns false, free the memory and fail, otherwise consider the user warned and proceed.
             allocator->FreeLocked(addr, size);
             return false;
         }

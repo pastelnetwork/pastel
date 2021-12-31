@@ -31,6 +31,7 @@ class CMasterNodeController
 {
 private:
     void SetParameters();
+    void InvalidateParameters();
     double getNetworkDifficulty(const CBlockIndex* blockindex, const bool bNetworkDifficulty) const;
     CACNotificationInterface* pacNotificationInterface;
     
@@ -94,6 +95,7 @@ public:
         semMasternodeOutbound(nullptr),
         fMasterNode(false)
     {
+        InvalidateParameters();
     }
 
     bool IsMasterNode() const {return fMasterNode;}

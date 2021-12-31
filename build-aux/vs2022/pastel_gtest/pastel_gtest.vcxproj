@@ -102,12 +102,17 @@
   <ItemGroup>
     <ClCompile Include="..\..\..\src\gtest\json_test_vectors.cpp" />
     <ClCompile Include="..\..\..\src\gtest\test_addrman.cpp" />
+    <ClCompile Include="..\..\..\src\gtest\test_allocator.cpp" />
     <ClCompile Include="..\..\..\src\gtest\test_arith_uint256.cpp" />
     <ClCompile Include="..\..\..\src\gtest\test_base32.cpp" />
     <ClCompile Include="..\..\..\src\gtest\test_base58.cpp" />
     <ClCompile Include="..\..\..\src\gtest\test_base64.cpp" />
     <ClCompile Include="..\..\..\src\gtest\test_bech32.cpp" />
+    <ClCompile Include="..\..\..\src\gtest\test_bip32.cpp" />
     <ClCompile Include="..\..\..\src\gtest\test_checkpoints.cpp" />
+    <ClCompile Include="..\..\..\src\gtest\test_compress.cpp" />
+    <ClCompile Include="..\..\..\src\gtest\test_convertbits.cpp" />
+    <ClCompile Include="..\..\..\src\gtest\test_crypto.cpp" />
     <ClCompile Include="..\..\..\src\gtest\test_datacompressor.cpp" />
     <ClCompile Include="..\..\..\src\gtest\test_hash.cpp" />
     <ClCompile Include="..\..\..\src\gtest\test_mnode\test_governance.cpp" />
@@ -134,16 +139,21 @@
     <ClCompile Include="..\..\..\src\gtest\test_merkletree.cpp" />
     <ClCompile Include="..\..\..\src\gtest\test_metrics.cpp" />
     <ClCompile Include="..\..\..\src\gtest\test_miner.cpp" />
+    <ClCompile Include="..\..\..\src\gtest\test_multisig.cpp" />
     <ClCompile Include="..\..\..\src\gtest\test_netbase.cpp" />
     <ClCompile Include="..\..\..\src\gtest\test_noteencryption.cpp" />
     <ClCompile Include="..\..\..\src\gtest\test_numeric_range.cpp" />
     <ClCompile Include="..\..\..\src\gtest\test_pedersen_hash.cpp" />
     <ClCompile Include="..\..\..\src\gtest\test_pow.cpp" />
     <ClCompile Include="..\..\..\src\gtest\test_proofs.cpp" />
+    <ClCompile Include="..\..\..\src\gtest\test_raii_event.cpp" />
     <ClCompile Include="..\..\..\src\gtest\test_random.cpp" />
     <ClCompile Include="..\..\..\src\gtest\test_rpc.cpp" />
     <ClCompile Include="..\..\..\src\gtest\test_sanity.cpp" />
     <ClCompile Include="..\..\..\src\gtest\test_sapling_note.cpp" />
+    <ClCompile Include="..\..\..\src\gtest\test_scriptnum.cpp" />
+    <ClCompile Include="..\..\..\src\gtest\test_serialize.cpp" />
+    <ClCompile Include="..\..\..\src\gtest\test_sha256compress.cpp" />
     <ClCompile Include="..\..\..\src\gtest\test_str_encodings.cpp" />
     <ClCompile Include="..\..\..\src\gtest\test_str_utils.cpp" />
     <ClCompile Include="..\..\..\src\gtest\test_tautology.cpp" />
@@ -152,6 +162,7 @@
     <ClCompile Include="..\..\..\src\gtest\test_trimmean.cpp" />
     <ClCompile Include="..\..\..\src\gtest\test_txid.cpp" />
     <ClCompile Include="..\..\..\src\gtest\test_uint256.cpp" />
+    <ClCompile Include="..\..\..\src\gtest\test_univalue.cpp" />
     <ClCompile Include="..\..\..\src\gtest\test_upgrades.cpp" />
     <ClCompile Include="..\..\..\src\gtest\test_utils.cpp" />
     <ClCompile Include="..\..\..\src\gtest\test_validation.cpp" />
@@ -162,6 +173,7 @@
     <ClCompile Include="..\..\vs\port\uint128.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\..\..\src\gtest\bignum.h" />
     <ClInclude Include="..\..\..\src\gtest\data\base58_encode_decode.json.h" />
     <ClInclude Include="..\..\..\src\gtest\data\base58_keys_invalid.json.h" />
     <ClInclude Include="..\..\..\src\gtest\data\base58_keys_valid.json.h" />

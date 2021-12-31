@@ -23,6 +23,7 @@
 #include "streams.h"
 #include "txdb.h"
 #include "utiltest.h"
+#include <vector_types.h>
 #include "wallet/wallet.h"
 
 #include "zcbenchmarks.h"
@@ -33,12 +34,14 @@
 #include "librustzcash.h"
 
 using namespace libzcash;
+using namespace std;
+
 // This method is based on Shutdown from init.cpp
 void pre_wallet_load()
 {
     LogPrintf("%s: In progress...\n", __func__);
     if (ShutdownRequested())
-        throw std::runtime_error("The node is shutting down");
+        throw runtime_error("The node is shutting down");
 
     if (pwalletMain)
         pwalletMain->Flush(false);
@@ -121,21 +124,21 @@ double benchmark_solve_equihash()
 
     struct timeval tv_start;
     timer_start(tv_start);
-    std::set<std::vector<unsigned int>> solns;
+    set<v_uints> solns;
     EhOptimisedSolveUncancellable(n, k, eh_state,
-                                  [](std::vector<unsigned char> soln) { return false; });
+                                  [](const v_uint8 &soln) { return false; });
     return timer_stop(tv_start);
 }
 
 v_doubles benchmark_solve_equihash_threaded(int nThreads)
 {
     v_doubles ret;
-    std::vector<std::future<double>> tasks;
-    std::vector<std::thread> threads;
+    vector<future<double>> tasks;
+    vector<thread> threads;
     for (int i = 0; i < nThreads; i++) {
-        std::packaged_task<double(void)> task(&benchmark_solve_equihash);
+        packaged_task<double(void)> task(&benchmark_solve_equihash);
         tasks.emplace_back(task.get_future());
-        threads.emplace_back(std::move(task));
+        threads.emplace_back(move(task));
     }
     for (auto it = tasks.begin(); it != tasks.end(); it++) {
         it->wait();
@@ -192,7 +195,7 @@ double benchmark_large_tx(size_t nInputs)
     // Sign for all the inputs
     auto consensusBranchId = NetworkUpgradeInfo[Consensus::UPGRADE_SAPLING].nBranchId;
     for (size_t i = 0; i < nInputs; i++) {
-        SignSignature(tempKeystore, prevPubKey, spending_tx, i, 1000000, SIGHASH_ALL, consensusBranchId);
+        SignSignature(tempKeystore, prevPubKey, spending_tx, static_cast<unsigned int>(i), 1000000, SIGHASH_ALL, consensusBranchId);
     }
 
     // Spending tx has all its inputs signed and does not need to be mutated anymore
@@ -207,7 +210,7 @@ double benchmark_large_tx(size_t nInputs)
         assert(VerifyScript(final_spending_tx.vin[i].scriptSig,
                             prevPubKey,
                             STANDARD_SCRIPT_VERIFY_FLAGS,
-                            TransactionSignatureChecker(&final_spending_tx, i, 1000000, txdata),
+                            TransactionSignatureChecker(&final_spending_tx, static_cast<unsigned int>(i), 1000000, txdata),
                             consensusBranchId,
                             &serror));
     }
@@ -220,7 +223,7 @@ class FakeCoinsViewDB : public CCoinsViewDB {
     SproutMerkleTree t;
 
 public:
-    FakeCoinsViewDB(std::string dbName, uint256& hash) : CCoinsViewDB(dbName, 100, false, false), hash(hash) {}
+    FakeCoinsViewDB(string dbName, uint256& hash) : CCoinsViewDB(dbName, 100, false, false), hash(hash) {}
 
     bool GetAnchorAt(const uint256 &rt, SproutMerkleTree &tree) const {
         if (rt == t.root()) {
@@ -261,9 +264,15 @@ double benchmark_connectblock_slow()
     // Test for issue 2017-05-01.a
     SelectParams(CBaseChainParams::Network::MAIN);
     CBlock block;
-    FILE* fp = fopen((GetDataDir() / "benchmark/block-107134.dat").string().c_str(), "rb");
+    string filePath = (GetDataDir() / "benchmark/block-107134.dat").string();
+    FILE* fp = nullptr;
+#if defined(_MSC_VER) && (_MSC_VER >= 1400)
+    const errno_t err = fopen_s(&fp, filePath.c_str(), "rb");
+#else
+    fp = fopen(filePath.c_str(), "rb");
+#endif
     if (!fp)
-        throw std::runtime_error("Failed to open block data file");
+        throw runtime_error("Failed to open block data file");
     CAutoFile blkFile(fp, SER_DISK, CLIENT_VERSION);
     blkFile >> block;
     blkFile.fclose();
@@ -280,7 +289,7 @@ double benchmark_connectblock_slow()
     indexPrev.phashBlock = &hashPrev;
     indexPrev.nHeight = index.nHeight - 1;
     index.pprev = &indexPrev;
-    mapBlockIndex.insert(std::make_pair(hashPrev, &indexPrev));
+    mapBlockIndex.insert(make_pair(hashPrev, &indexPrev));
 
     CValidationState state;
     struct timeval tv_start;
@@ -354,7 +363,7 @@ double benchmark_create_sapling_spend()
 
     CDataStream ss(SER_NETWORK, PROTOCOL_VERSION);
     ss << witness.path();
-    std::vector<unsigned char> witnessChars(ss.begin(), ss.end());
+    v_uint8 witnessChars(ss.begin(), ss.end());
 
     uint256 alpha;
     librustzcash_sapling_generate_r(alpha.begin());
@@ -392,7 +401,7 @@ double benchmark_create_sapling_output()
     auto sk = libzcash::SaplingSpendingKey::random();
     auto address = sk.default_address();
 
-    std::array<unsigned char, ZC_MEMO_SIZE> memo{};
+    array<unsigned char, ZC_MEMO_SIZE> memo{};
     SaplingNote note(address, GetRand(MAX_MONEY));
 
     libzcash::SaplingNotePlaintext notePlaintext(note, memo);

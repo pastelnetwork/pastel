@@ -98,26 +98,26 @@ Arguments:
   "data_size"         (string, required) data size in MB
 
 Returns:
-[
-    { "action_type": "<action_type_name>",   (string) action type name
-      "fee": x.xxx,                          (numeric) fee in )" + CURRENCY_UNIT + R"(
-      "feePat": xxxx                         (numeric) fee in )" + MINOR_CURRENCY_UNIT + R"(
-    },
-    ......
-]
+{
+    "datasize": xxx,                    (numeric) data size in MB
+    "<action-type>fee": xxxx,           (numeric) action fee in )" + MINOR_CURRENCY_UNIT + R"(
+    "<action-type>feePsl": x.xxx,       (numeric) action fee in )" + CURRENCY_UNIT + R"(
+    .....
+}
 )");
-            ssize_t nDataSizeInMB = get_long_number(params[1]);
+            const ssize_t nDataSizeInMB = get_long_number(params[1]);
             if (nDataSizeInMB < 0)
                 throw JSONRPCError(RPC_INVALID_PARAMETER, "<data size> parameter cannnot be negative");
             const auto feeMap = CActionRegTicket::GetActionFees(nDataSizeInMB);
-            retObj.setArray();
+            retObj.setObject();
+            retObj.pushKV("datasize", nDataSizeInMB);
+            string sActionFeeKey;
             for (const auto& [actionTicketType, fee] : feeMap)
             {
-                UniValue actFeeObj(UniValue::VOBJ);
-                actFeeObj.pushKV("action_type", SAFE_SZ(GetActionTypeName(actionTicketType)));
-                actFeeObj.pushKV("fee", ValueFromAmount(fee));
-                actFeeObj.pushKV("feePat", fee);
-                retObj.push_back(move(actFeeObj));
+                sActionFeeKey = strprintf("%sfee", SAFE_SZ(GetActionTypeName(actionTicketType)));
+                retObj.pushKV(sActionFeeKey, fee);
+                sActionFeeKey += "Psl";
+                retObj.pushKV(sActionFeeKey, ValueFromAmount(fee));
             }
         } break;
 

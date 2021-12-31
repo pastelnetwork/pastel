@@ -8,6 +8,8 @@ from test_framework.util import (
     assert_raises_rpc,
     assert_shows_help,
     wait_and_assert_operationid_status,
+    start_nodes,
+    connect_nodes_bi
 )
 from pastel_test_framework import PastelTestFramework
 import test_framework.rpc_consts as rpc
@@ -29,6 +31,16 @@ class UserNameChangeTest(PastelTestFramework):
     n2_pastelid = None
     n3_pastelid = None
     node1_balancer = None
+
+    def setup_network(self):
+        self.nodes = start_nodes(self.num_nodes, self.options.tmpdir,
+                                 extra_args=[['-debug=compress']] * self.num_nodes)
+        connect_nodes_bi(self.nodes,0,1)
+        connect_nodes_bi(self.nodes,1,2)
+        connect_nodes_bi(self.nodes,0,2)
+        connect_nodes_bi(self.nodes,0,3)
+        self.is_network_split=False
+        self.sync_all()
 
     def list_username_tickets(self, nExpectedCount):
         """
