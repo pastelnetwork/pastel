@@ -52,7 +52,6 @@ BITCOIN_TESTS =\
   test/equihash_tests.cpp \
   test/getarg_tests.cpp \
   test/key_tests.cpp \
-  test/dbwrapper_tests.cpp \
   test/main_tests.cpp \
   test/mruset_tests.cpp \
   test/pmt_tests.cpp \

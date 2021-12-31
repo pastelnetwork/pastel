@@ -46,6 +46,7 @@ pastel_gtest_SOURCES +=\
 	gtest/test_convertbits.cpp\
 	gtest/test_crypto.cpp\
 	gtest/test_datacompressor.cpp\
+	gtest/test_dbwrapper.cpp\
 	gtest/test_deprecation.cpp\
 	gtest/test_equihash.cpp\
 	gtest/test_hash.cpp\
