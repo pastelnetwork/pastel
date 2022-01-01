@@ -34,17 +34,13 @@ public:
         pathTemp = fs::temp_directory_path() / fs::unique_path();
         EXPECT_TRUE(fs::create_directories(pathTemp));
 
-        m_sSavedDataDir = mapArgs["-datadir"];
     }
 
     void TearDown() 
     {   
         fs::remove_all(pathTemp);
-
-        mapArgs["-datadir"] = m_sSavedDataDir;
     }
     fs::path pathTemp;
-    string m_sSavedDataDir;
 };
 
 TEST_F(TestAccounting, acc_orderupgrade)
