@@ -97,8 +97,6 @@ pastel_gtest_SOURCES += \
 	wallet/gtest/test_wallet_ismine.cpp
 endif
 
-#pastel_gtest_SOURCES += $(RAW_GTEST_FILES)
-
 pastel_gtest_CPPFLAGS = $(AM_CPPFLAGS) -DBINARY_OUTPUT -DCURVE_ALT_BN128 -DSTATIC $(BITCOIN_INCLUDES) -I$(srcdir)/gtest 
 pastel_gtest_CXXFLAGS = $(AM_CXXFLAGS) $(PIE_FLAGS) -I$(srcdir)/gtest
 
