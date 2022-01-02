@@ -32,8 +32,8 @@ struct COrphanTx {
     CTransaction tx;
     NodeId fromPeer;
 };
-extern std::map<uint256, COrphanTx> mapOrphanTransactions;
-extern std::map<uint256, std::set<uint256> > mapOrphanTransactionsByPrev;
+extern map<uint256, COrphanTx> mapOrphanTransactions;
+extern map<uint256, set<uint256> > mapOrphanTransactionsByPrev;
 
 CService ip(uint32_t i)
 {
@@ -42,7 +42,7 @@ CService ip(uint32_t i)
     return CService(CNetAddr(s), Params().GetDefaultPort());
 }
 
-class PTestDoS : public Test
+class TestDoS : public Test
 {
 public:
     
@@ -59,7 +59,7 @@ public:
 
 };
 
-TEST_F(PTestDoS, DoS_banning)
+TEST_F(TestDoS, DoS_banning)
 {
     CNode::ClearBanned();
     CAddress addr1(ip(0xa0b0c001));
@@ -81,8 +81,8 @@ TEST_F(PTestDoS, DoS_banning)
     SendMessages(Params().GetConsensus(), &dummyNode2, false);
     EXPECT_TRUE( CNode::IsBanned(addr2) );
 }
-/*
-BOOST_AUTO_TEST_CASE(DoS_banscore)
+
+TEST_F(TestDoS, DoS_banscore)
 {
     CNode::ClearBanned();
     mapArgs["-banscore"] = "111"; // because 11 is my favorite number
@@ -91,17 +91,17 @@ BOOST_AUTO_TEST_CASE(DoS_banscore)
     dummyNode1.nVersion = 1;
     Misbehaving(dummyNode1.GetId(), 100);
     SendMessages(Params().GetConsensus(), &dummyNode1, false);
-    BOOST_CHECK(!CNode::IsBanned(addr1));
+    EXPECT_TRUE(!CNode::IsBanned(addr1));
     Misbehaving(dummyNode1.GetId(), 10);
     SendMessages(Params().GetConsensus(), &dummyNode1, false);
-    BOOST_CHECK(!CNode::IsBanned(addr1));
+    EXPECT_TRUE(!CNode::IsBanned(addr1));
     Misbehaving(dummyNode1.GetId(), 1);
     SendMessages(Params().GetConsensus(), &dummyNode1, false);
-    BOOST_CHECK(CNode::IsBanned(addr1));
+    EXPECT_TRUE(CNode::IsBanned(addr1));
     mapArgs.erase("-banscore");
 }
 
-BOOST_AUTO_TEST_CASE(DoS_bantime)
+TEST_F(TestDoS, DoS_bantime)
 {
     CNode::ClearBanned();
     int64_t nStartTime = GetTime();
@@ -113,27 +113,32 @@ BOOST_AUTO_TEST_CASE(DoS_bantime)
 
     Misbehaving(dummyNode.GetId(), 100);
     SendMessages(Params().GetConsensus(), &dummyNode, false);
-    BOOST_CHECK(CNode::IsBanned(addr));
+    EXPECT_TRUE(CNode::IsBanned(addr));
 
     SetMockTime(nStartTime+60*60);
-    BOOST_CHECK(CNode::IsBanned(addr));
+    EXPECT_TRUE(CNode::IsBanned(addr));
 
     SetMockTime(nStartTime+60*60*24+1);
-    BOOST_CHECK(!CNode::IsBanned(addr));
+    EXPECT_TRUE(!CNode::IsBanned(addr));
 }
 
 CTransaction RandomOrphan()
 {
-    std::map<uint256, COrphanTx>::iterator it;
+    map<uint256, COrphanTx>::iterator it;
     it = mapOrphanTransactions.lower_bound(GetRandHash());
     if (it == mapOrphanTransactions.end())
         it = mapOrphanTransactions.begin();
     return it->second.tx;
 }
 
+class PTestDoS : public TestWithParam<int>
+{};
 // Parameterized testing over consensus branch ids
-BOOST_DATA_TEST_CASE(DoS_mapOrphans, boost::unit_test::data::xrange(static_cast<int>(Consensus::MAX_NETWORK_UPGRADES)))
+TEST_P(PTestDoS, DoS_mapOrphans)
 {
+    const int sample = GetParam();
+    EXPECT_TRUE(sample < static_cast<int>(Consensus::MAX_NETWORK_UPGRADES));
+
     uint32_t consensusBranchId = NetworkUpgradeInfo[sample].nBranchId;
 
     CKey key;
@@ -194,7 +199,7 @@ BOOST_DATA_TEST_CASE(DoS_mapOrphans, boost::unit_test::data::xrange(static_cast<
         for (unsigned int j = 1; j < tx.vin.size(); j++)
             tx.vin[j].scriptSig = tx.vin[0].scriptSig;
 
-        BOOST_CHECK(!AddOrphanTx(tx, i));
+        EXPECT_TRUE(!AddOrphanTx(tx, i));
     }
 
     // Test EraseOrphansFor:
@@ -202,18 +207,19 @@ BOOST_DATA_TEST_CASE(DoS_mapOrphans, boost::unit_test::data::xrange(static_cast<
     {
         size_t sizeBefore = mapOrphanTransactions.size();
         EraseOrphansFor(i);
-        BOOST_CHECK(mapOrphanTransactions.size() < sizeBefore);
+        EXPECT_TRUE(mapOrphanTransactions.size() < sizeBefore);
     }
 
     // Test LimitOrphanTxSize() function:
     LimitOrphanTxSize(40);
-    BOOST_CHECK(mapOrphanTransactions.size() <= 40);
+    EXPECT_TRUE(mapOrphanTransactions.size() <= 40);
     LimitOrphanTxSize(10);
-    BOOST_CHECK(mapOrphanTransactions.size() <= 10);
+    EXPECT_TRUE(mapOrphanTransactions.size() <= 10);
     LimitOrphanTxSize(0);
-    BOOST_CHECK(mapOrphanTransactions.empty());
-    BOOST_CHECK(mapOrphanTransactionsByPrev.empty());
+    EXPECT_TRUE(mapOrphanTransactions.empty());
+    EXPECT_TRUE(mapOrphanTransactionsByPrev.empty());
 }
 
-BOOST_AUTO_TEST_SUITE_END()
-*/
+INSTANTIATE_TEST_SUITE_P(DoS_mapOrphans, PTestDoS, Values(
+    0,1,2,3
+));
