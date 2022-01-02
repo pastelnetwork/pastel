@@ -110,7 +110,7 @@ Returns:
                 throw JSONRPCError(RPC_INVALID_PARAMETER, "<data size> parameter cannnot be negative");
             const auto feeMap = CActionRegTicket::GetActionFees(nDataSizeInMB);
             retObj.setObject();
-            retObj.pushKV("datasize", nDataSizeInMB);
+            retObj.pushKV("datasize", static_cast<uint64_t>(nDataSizeInMB));
             string sActionFeeKey;
             for (const auto& [actionTicketType, fee] : feeMap)
             {

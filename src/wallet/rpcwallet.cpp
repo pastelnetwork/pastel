@@ -3376,7 +3376,7 @@ Examples:
         entry.pushKV("outputPrev", (int)op.n);
         entry.pushKV("address", keyIO.EncodePaymentAddress(pa));
         entry.pushKV("value", ValueFromAmount(notePt.value()));
-        entry.pushKV("valuePsl", notePt.value());
+        entry.pushKV("valuePat", notePt.value());
         spends.push_back(entry);
     }
 
@@ -3418,7 +3418,7 @@ Examples:
         entry.pushKV("outgoing", isOutgoing);
         entry.pushKV("address", keyIO.EncodePaymentAddress(pa));
         entry.pushKV("value", ValueFromAmount(notePt.value()));
-        entry.pushKV("valuePsl", notePt.value());
+        entry.pushKV("valuePat", notePt.value());
         addMemo(entry, memo);
         outputs.push_back(entry);
     }
