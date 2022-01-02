@@ -139,7 +139,9 @@ endif
 
 pastel_gtest_LDFLAGS = $(RELDFLAGS) $(AM_LDFLAGS) $(LIBTOOL_APP_LDFLAGS) -static
 
-nodist_pastel_gtest_SOURCES: $(GENERATED_GTEST_FILES)
+nodist_pastel_gtest_SOURCES = $(GENERATED_GTEST_FILES)
+
+$(pastel_gtest_SOURCES): $(GENERATED_GTEST_FILES)
 
 pastel-gtest_check: pastel-gtest FORCE
 	./pastel-gtest
