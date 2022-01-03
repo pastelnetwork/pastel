@@ -124,7 +124,7 @@ void TxToJSON(const CTransaction& tx, const uint256 hashBlock, UniValue& entry)
             CSpentIndexKey spentKey(txin.prevout.hash, txin.prevout.n);
             if (fSpentIndex && GetSpentIndex(spentKey, spentInfo)) {
                 in.pushKV("value", ValueFromAmount(spentInfo.patoshis));
-                in.pushKV("valuePsl", spentInfo.patoshis);
+                in.pushKV("valuePat", spentInfo.patoshis);
 
                 auto dest = DestFromAddressHash(spentInfo.addressType, spentInfo.addressHash);
                 if (IsValidDestination(dest))
@@ -141,7 +141,7 @@ void TxToJSON(const CTransaction& tx, const uint256 hashBlock, UniValue& entry)
         const CTxOut& txout = tx.vout[i];
         UniValue out(UniValue::VOBJ);
         out.pushKV("value", ValueFromAmount(txout.nValue));
-        out.pushKV("valuePsl", txout.nValue);
+        out.pushKV("valuePat", txout.nValue);
         out.pushKV("n", (int64_t)i);
         UniValue o(UniValue::VOBJ);
         ScriptPubKeyToJSON(txout.scriptPubKey, o, true);
@@ -161,7 +161,7 @@ void TxToJSON(const CTransaction& tx, const uint256 hashBlock, UniValue& entry)
 
     if (tx.fOverwintered && tx.nVersion >= SAPLING_TX_VERSION) {
         entry.pushKV("valueBalance", ValueFromAmount(tx.valueBalance));
-        entry.pushKV("valueBalancePsl", tx.valueBalance);
+        entry.pushKV("valueBalancePat", tx.valueBalance);
         UniValue vspenddesc = TxShieldedSpendsToJSON(tx);
         entry.pushKV("vShieldedSpend", vspenddesc);
         UniValue voutputdesc = TxShieldedOutputsToJSON(tx);

@@ -1460,7 +1460,7 @@ void ListTransactions(const CWalletTx& wtx, const string& strAccount, int nMinDe
             MaybePushAddress(entry, s.destination);
             entry.pushKV("category", "send");
             entry.pushKV("amount", ValueFromAmount(-s.amount));
-            entry.pushKV("amountPsl", -s.amount);
+            entry.pushKV("amountPat", -s.amount);
             entry.pushKV("vout", s.vout);
             entry.pushKV("fee", ValueFromAmount(-nFee));
             if (fLong)
@@ -1499,7 +1499,7 @@ void ListTransactions(const CWalletTx& wtx, const string& strAccount, int nMinDe
                     entry.pushKV("category", "receive");
                 }
                 entry.pushKV("amount", ValueFromAmount(r.amount));
-                entry.pushKV("amountPsl", r.amount);
+                entry.pushKV("amountPat", r.amount);
                 entry.pushKV("vout", r.vout);
                 if (fLong)
                     WalletTxToJSON(wtx, entry);
@@ -1852,7 +1852,7 @@ Result:
 {
   "status" : "mined|waiting|expiringsoon|expired", (string) The transaction status, can be 'mined', 'waiting', 'expiringsoon' or 'expired'
   "amount" : x.xxx,         (numeric) The transaction amount in )" + CURRENCY_UNIT + R"(
-  "amountPsl" : xxx,        (numeric) The amount in )" + MINOR_CURRENCY_UNIT + R"(
+  "amountPat" : xxx,        (numeric) The amount in )" + MINOR_CURRENCY_UNIT + R"(
   "confirmations" : n,      (numeric) The number of confirmations
   "blockhash" : "hash",     (string) The block hash
   "blockindex" : xx,        (numeric) The block index
@@ -1866,7 +1866,7 @@ Result:
       "address" : "zcashaddress",  (string) The Pastel address involved in the transaction
       "category" : "send|receive", (string) The category, either 'send' or 'receive'
       "amount" : x.xxx             (numeric) The amount in )" + CURRENCY_UNIT + R"(
-      "amountPsl" : xxx            (numeric) The amount in )" + MINOR_CURRENCY_UNIT + R"(
+      "amountPat" : xxx            (numeric) The amount in )" + MINOR_CURRENCY_UNIT + R"(
       "vout" : n,                  (numeric) the vout value
     }
     ,...
@@ -1902,7 +1902,7 @@ Examples:
     CAmount nFee = (wtx.IsFromMe(filter) ? wtx.GetValueOut() - nDebit : 0);
 
     entry.pushKV("amount", ValueFromAmount(nNet - nFee));
-    entry.pushKV("amountPsl", nNet - nFee);
+    entry.pushKV("amountPat", nNet - nFee);
     if (wtx.IsFromMe(filter))
         entry.pushKV("fee", ValueFromAmount(nFee));
 
@@ -3056,8 +3056,8 @@ Arguments:
 Result:
 {
   "txid": txid",             (string) the transaction id.
-  "amount": xxxxx,           (numeric) the amount of value in the note.
-  "amountPsl" : xxxx         (numeric) the amount in )" + CURRENCY_UNIT + R"(.
+  "amount": xxxxx,           (numeric) the amount of value in the note in )" + CURRENCY_UNIT + R"(.
+  "amountPat" : xxxx         (numeric) the amount in )" + MINOR_CURRENCY_UNIT + R"(.
   "memo": xxxxx,             (string) hexadecimal string representation of memo field.
   "confirmations" : n,       (numeric) the number of confirmations.
   "blockheight": n,          (numeric) The block height containing the transaction.
@@ -3109,7 +3109,7 @@ Examples:
             UniValue obj(UniValue::VOBJ);
             obj.pushKV("txid", entry.op.hash.ToString());
             obj.pushKV("amount", ValueFromAmount(CAmount(entry.note.value())));
-            obj.pushKV("amountPsl", CAmount(entry.note.value()));
+            obj.pushKV("amountPat", CAmount(entry.note.value()));
             obj.pushKV("memo", HexStr(entry.memo));
             obj.pushKV("outindex", (int)entry.op.n);
             obj.pushKV("confirmations", entry.confirmations);
@@ -3268,8 +3268,6 @@ Result:
   "spends" : [
     {
       "type" : "sprout|sapling",      (string) The type of address
-      "js" : n,                       (numeric, sprout) the index of the JSDescription within vJoinSplit
-      "jsSpend" : n,                  (numeric, sprout) the index of the spend within the JSDescription
       "spend" : n,                    (numeric, sapling) the index of the spend within vShieldedSpend
       "txidPrev" : "transactionid",   (string) The id for the transaction this note was created in
       "jsPrev" : n,                   (numeric, sprout) the index of the JSDescription within vJoinSplit
@@ -3277,20 +3275,18 @@ Result:
       "outputPrev" : n,               (numeric, sapling) the index of the output within the vShieldedOutput
       "address" : "zcashaddress",     (string) The Zcash address involved in the transaction
       "value" : x.xxx                 (numeric) The amount in )" + CURRENCY_UNIT + R"(
-      "valuePsl" : xxxx               (numeric) The amount in patoshis
+      "valuePat" : xxxx               (numeric) The amount in )" + MINOR_CURRENCY_UNIT + R"(
     }
     ,...
   ],
   "outputs" : [
     {
       "type" : "sprout|sapling",      (string) The type of address
-      "js" : n,                       (numeric, sprout) the index of the JSDescription within vJoinSplit
-      "jsOutput" : n,                 (numeric, sprout) the index of the output within the JSDescription
       "output" : n,                   (numeric, sapling) the index of the output within the vShieldedOutput
       "address" : "zcashaddress",     (string) The Zcash address involved in the transaction
       "outgoing" : true|false         (boolean, sapling) True if the output is not for an address in the wallet
       "value" : x.xxx                 (numeric) The amount in )" + CURRENCY_UNIT + R"(
-      "valuePsl" : xxxx               (numeric) The amount in patoshis
+      "valuePat" : xxxx               (numeric) The amount in )" + MINOR_CURRENCY_UNIT + R"(
       "memo" : "hexmemo",             (string) Hexademical string representation of the memo field
       "memoStr" : "memo",             (string) Only returned if memo contains valid UTF-8 text.
     }
@@ -3380,7 +3376,7 @@ Examples:
         entry.pushKV("outputPrev", (int)op.n);
         entry.pushKV("address", keyIO.EncodePaymentAddress(pa));
         entry.pushKV("value", ValueFromAmount(notePt.value()));
-        entry.pushKV("valuePsl", notePt.value());
+        entry.pushKV("valuePat", notePt.value());
         spends.push_back(entry);
     }
 
@@ -3422,7 +3418,7 @@ Examples:
         entry.pushKV("outgoing", isOutgoing);
         entry.pushKV("address", keyIO.EncodePaymentAddress(pa));
         entry.pushKV("value", ValueFromAmount(notePt.value()));
-        entry.pushKV("valuePsl", notePt.value());
+        entry.pushKV("valuePat", notePt.value());
         addMemo(entry, memo);
         outputs.push_back(entry);
     }

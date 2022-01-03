@@ -218,7 +218,13 @@ void Shutdown()
     if (fFeeEstimatesInitialized)
     {
         fs::path est_path = GetDataDir() / FEE_ESTIMATES_FILENAME;
-        CAutoFile est_fileout(fopen(est_path.string().c_str(), "wb"), SER_DISK, CLIENT_VERSION);
+        FILE* fp = nullptr;
+#if defined(_MSC_VER) && (_MSC_VER >= 1400)
+        const errno_t err = fopen_s(&fp, est_path.string().c_str(), "wb");
+#else
+        fp = fopen(est_path.string().c_str(), "wb");
+#endif
+        CAutoFile est_fileout(fp, SER_DISK, CLIENT_VERSION);
         if (!est_fileout.IsNull())
             mempool.WriteFeeEstimates(est_fileout);
         else
@@ -625,7 +631,8 @@ void ThreadImport(std::vector<fs::path> vImportFiles)
     if (fReindex) {
         CImportingNow imp;
         int nFile = 0;
-        while (true) {
+        while (true)
+        {
             CDiskBlockPos pos(nFile, 0);
             if (!fs::exists(GetBlockPosFilename(pos, "blk")))
                 break; // No block files left to reindex
@@ -633,6 +640,7 @@ void ThreadImport(std::vector<fs::path> vImportFiles)
             if (!file)
                 break; // This error is logged in OpenBlockFile
             LogPrintf("Reindexing block file blk%05u.dat...\n", (unsigned int)nFile);
+            // file is autoclosed in LoadExternalBlockFile
             LoadExternalBlockFile(chainparams, file, &pos);
             nFile++;
         }
@@ -645,12 +653,20 @@ void ThreadImport(std::vector<fs::path> vImportFiles)
 
     // hardcoded $DATADIR/bootstrap.dat
     fs::path pathBootstrap = GetDataDir() / "bootstrap.dat";
-    if (fs::exists(pathBootstrap)) {
-        FILE *file = fopen(pathBootstrap.string().c_str(), "rb");
-        if (file) {
+    if (fs::exists(pathBootstrap))
+    {
+        FILE* file = nullptr;
+#if defined(_MSC_VER) && (_MSC_VER >= 1400)
+        const errno_t err = fopen_s(&file, pathBootstrap.string().c_str(), "rb");
+#else
+        file = fopen(pathBootstrap.string().c_str(), "rb");
+#endif
+        if (file)
+        {
             CImportingNow imp;
             fs::path pathBootstrapOld = GetDataDir() / "bootstrap.dat.old";
             LogPrintf("Importing bootstrap.dat...\n");
+            // file is autoclosed in LoadExternalBlockFile
             LoadExternalBlockFile(chainparams, file);
             RenameOver(pathBootstrap, pathBootstrapOld);
         } else {
@@ -661,10 +677,17 @@ void ThreadImport(std::vector<fs::path> vImportFiles)
     // -loadblock=
     for (const auto& path : vImportFiles)
     {
-        FILE *file = fopen(path.string().c_str(), "rb");
-        if (file) {
+        FILE* file = nullptr;
+#if defined(_MSC_VER) && (_MSC_VER >= 1400)
+        const errno_t err = fopen_s(&file, path.string().c_str(), "rb");
+#else
+        file = fopen(path.string().c_str(), "rb");
+#endif
+        if (file)
+        {
             CImportingNow imp;
             LogPrintf("Importing blocks file %s...\n", path.string());
+            // file is autoclosed in LoadExternalBlockFile
             LoadExternalBlockFile(chainparams, file);
         } else {
             LogPrintf("Warning: Could not open blocks file %s\n", path.string());
@@ -1161,8 +1184,14 @@ bool AppInit2(boost::thread_group& threadGroup, CScheduler& scheduler)
 #endif
     // Make sure only a single Bitcoin process is using the data directory.
     fs::path pathLockFile = GetDataDir() / ".lock";
-    FILE* file = fopen(pathLockFile.string().c_str(), "a"); // empty lock file; created if it doesn't exist.
-    if (file) fclose(file);
+    FILE* file = nullptr;
+#if defined(_MSC_VER) && (_MSC_VER >= 1400)
+    errno_t err = fopen_s(&file, pathLockFile.string().c_str(), "a");
+#else
+    file = fopen(pathLockFile.string().c_str(), "a"); // empty lock file; created if it doesn't exist.
+#endif
+    if (file)
+        fclose(file);
 
     try {
         static boost::interprocess::file_lock lock(pathLockFile.string().c_str());
@@ -1578,7 +1607,13 @@ bool AppInit2(boost::thread_group& threadGroup, CScheduler& scheduler)
     LogPrintf(" block index %15dms\n", GetTimeMillis() - nStart);
 
     fs::path est_path = GetDataDir() / FEE_ESTIMATES_FILENAME;
-    CAutoFile est_filein(fopen(est_path.string().c_str(), "rb"), SER_DISK, CLIENT_VERSION);
+    FILE* fp = nullptr;
+#if defined(_MSC_VER) && (_MSC_VER >= 1400)
+    err = fopen_s(&fp, est_path.string().c_str(), "rb");
+#else
+    fp = fopen(est_path.string().c_str(), "rb");
+#endif
+    CAutoFile est_filein(fp, SER_DISK, CLIENT_VERSION);
     // Allowed to fail as this file IS missing on first startup.
     if (!est_filein.IsNull())
         mempool.ReadFeeEstimates(est_filein);

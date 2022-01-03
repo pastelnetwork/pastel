@@ -56,7 +56,7 @@ class ListReceivedTest (BitcoinTestFramework):
         outputs.append({
             'address': pt['outputs'][0]['address'],
             'value': pt['outputs'][0]['value'],
-            'valuePsl': pt['outputs'][0]['valuePsl'],
+            'valuePat': pt['outputs'][0]['valuePat'],
             'memo': pt['outputs'][0]['memo'],
         })
 
@@ -69,20 +69,20 @@ class ListReceivedTest (BitcoinTestFramework):
         outputs.append({
             'address': pt['outputs'][1]['address'],
             'value': pt['outputs'][1]['value'],
-            'valuePsl': pt['outputs'][1]['valuePsl'],
+            'valuePat': pt['outputs'][1]['valuePat'],
             'memo': pt['outputs'][1]['memo'],
         })
 
         assert({
             'address': zaddr1,
             'value': Decimal('1'),
-            'valuePsl': 100000,
+            'valuePat': 100000,
             'memo': my_memo,
         } in outputs)
         assert({
             'address': zaddrExt,
             'value': Decimal('2'),
-            'valuePsl': 200000,
+            'valuePat': 200000,
             'memo': no_memo,
         } in outputs)
 
@@ -96,7 +96,7 @@ class ListReceivedTest (BitcoinTestFramework):
         assert_equal(1, len(r), "Should have received one (unconfirmed) note")
         assert_equal(txid, r[0]['txid'])
         assert_equal(1, r[0]['amount'])
-        assert_equal(100000, r[0]['amountPsl'])
+        assert_equal(100000, r[0]['amountPat'])
         assert_false(r[0]['change'], "Note should not be change")
         assert_equal(my_memo, r[0]['memo'])
         assert_equal(0, r[0]['confirmations'])
@@ -140,7 +140,7 @@ class ListReceivedTest (BitcoinTestFramework):
         assert_equal(pt['spends'][0]['outputPrev'], 0)
         assert_equal(pt['spends'][0]['address'], zaddr1)
         assert_equal(pt['spends'][0]['value'], Decimal('1.0'))
-        assert_equal(pt['spends'][0]['valuePsl'], 100000)
+        assert_equal(pt['spends'][0]['valuePat'], 100000)
 
         # Output orders can be randomized, so we check the output
         # positions and contents separately
@@ -152,7 +152,7 @@ class ListReceivedTest (BitcoinTestFramework):
         outputs.append({
             'address': pt['outputs'][0]['address'],
             'value': pt['outputs'][0]['value'],
-            'valuePsl': pt['outputs'][0]['valuePsl'],
+            'valuePat': pt['outputs'][0]['valuePat'],
             'memo': pt['outputs'][0]['memo'],
         })
 
@@ -162,20 +162,20 @@ class ListReceivedTest (BitcoinTestFramework):
         outputs.append({
             'address': pt['outputs'][1]['address'],
             'value': pt['outputs'][1]['value'],
-            'valuePsl': pt['outputs'][1]['valuePsl'],
+            'valuePat': pt['outputs'][1]['valuePat'],
             'memo': pt['outputs'][1]['memo'],
         })
 
         assert({
             'address': zaddr2,
             'value': Decimal('0.6'),
-            'valuePsl': 60000,
+            'valuePat': 60000,
             'memo': no_memo,
         } in outputs)
         assert({
             'address': zaddr1,
             'value': Decimal('0.4') - self._fee,
-            'valuePsl': 40000 - self._fee * self._coin,
+            'valuePat': 40000 - self._fee * self._coin,
             'memo': no_memo,
         } in outputs)
 
@@ -186,13 +186,13 @@ class ListReceivedTest (BitcoinTestFramework):
 
         assert_equal(txid, r[0]['txid'])
         assert_equal(Decimal('0.4')-self._fee, r[0]['amount'])
-        assert_equal(40000 - self._fee * self._coin, r[0]['amountPsl'])
+        assert_equal(40000 - self._fee * self._coin, r[0]['amountPat'])
         assert_true(r[0]['change'], "Note valued at (0.4-"+str(self._fee)+") should be change")
         assert_equal(no_memo, r[0]['memo'])
 
         # The old note still exists (it's immutable), even though it is spent
         assert_equal(Decimal('1.0'), r[1]['amount'])
-        assert_equal(100000, r[1]['amountPsl'])
+        assert_equal(100000, r[1]['amountPat'])
         assert_false(r[1]['change'], "Note valued at 1.0 should not be change")
         assert_equal(my_memo, r[1]['memo'])
 
@@ -202,7 +202,7 @@ class ListReceivedTest (BitcoinTestFramework):
         assert_equal(1, len(r), "zaddr2 Should have received 1 notes")
         assert_equal(txid, r[0]['txid'])
         assert_equal(Decimal('0.6'), r[0]['amount'])
-        assert_equal(60000, r[0]['amountPsl'])
+        assert_equal(60000, r[0]['amountPat'])
         assert_false(r[0]['change'], "Note valued at 0.6 should not be change")
         assert_equal(no_memo, r[0]['memo'])
 

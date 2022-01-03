@@ -126,14 +126,19 @@ TEST(AllocatorTests, arena_tests)
 class TestLockedPageAllocator: public LockedPageAllocator
 {
 public:
-    TestLockedPageAllocator(int count_in, int lockedcount_in): count(count_in), lockedcount(lockedcount_in) {}
-    void* AllocateLocked(size_t len, bool *lockingSuccess)
+    TestLockedPageAllocator(const size_t count_in, const size_t lockedcount_in) : 
+        count(count_in), 
+        lockedcount(lockedcount_in)
+    {}
+    void* AllocateLocked(size_t len, bool *lockingSuccess) noexcept
     {
         *lockingSuccess = false;
-        if (count > 0) {
+        if (count > 0)
+        {
             --count;
 
-            if (lockedcount > 0) {
+            if (lockedcount > 0)
+            {
                 --lockedcount;
                 *lockingSuccess = true;
             }
@@ -142,22 +147,23 @@ public:
         }
         return 0;
     }
+
     void FreeLocked(void* addr, size_t len)
-    {
-    }
-    size_t GetLimit()
+    {}
+
+    size_t GetLimit() const noexcept override
     {
         return numeric_limits<size_t>::max();
     }
 private:
-    int count;
-    int lockedcount;
+    size_t count;
+    size_t lockedcount;
 };
 
 TEST(AllocatorTests, lockedpool_tests_mock)
 {
     // Test over three virtual arenas, of which one will succeed being locked
-    unique_ptr<LockedPageAllocator> x(new TestLockedPageAllocator(3, 1));
+    auto x = make_unique<TestLockedPageAllocator>(3, 1);
     LockedPool pool(move(x));
     EXPECT_EQ(pool.stats().total , 0);
     EXPECT_EQ(pool.stats().locked , 0);

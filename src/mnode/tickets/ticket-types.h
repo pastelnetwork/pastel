@@ -89,3 +89,12 @@ inline std::string GetTicketDescription(const TicketID id) noexcept
 
 // default ticket fees
 constexpr CAmount GREEN_FEE_PERCENT = 2;
+
+// action ticket types
+enum class ACTION_TICKET_TYPE
+{
+    UNKNOWN = 0, // unknown action type (default)
+    SENSE = 1,   // Sense - dupe detection
+    CASCADE = 2, // Cascase - storage
+    COUNT        // number of supported action types
+};

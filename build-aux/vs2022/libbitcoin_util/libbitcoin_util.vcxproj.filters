@@ -67,6 +67,9 @@
     <ClCompile Include="..\..\..\src\chainparamsbase.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\..\src\trimmean.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\..\src\clientversion.h">
@@ -142,6 +145,9 @@
       <Filter>Source Files</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\src\scope_guard.hpp">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\trimmean.h">
       <Filter>Source Files</Filter>
     </ClInclude>
   </ItemGroup>

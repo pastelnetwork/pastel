@@ -341,17 +341,24 @@ int CMasternodeMan::CountMasternodes(int nProtocolVersion)
     return nCount;
 }
 
-int CMasternodeMan::CountEnabled(int nProtocolVersion)
+/**
+ * Get number of enabled masternodes.
+ * 
+ * \param nProtocolVersion - supported MN protocol version
+ * \return number of enabled MNs that satisfies protocol filter
+ */
+size_t CMasternodeMan::CountEnabled(const int nProtocolVersion) const noexcept
 {
     LOCK(cs);
-    int nCount = 0;
-    nProtocolVersion = nProtocolVersion == -1 ? masterNodeCtrl.MasternodeProtocolVersion : nProtocolVersion;
+    const int nMNProtocolVersion = nProtocolVersion == -1 ? masterNodeCtrl.MasternodeProtocolVersion : nProtocolVersion;
 
-    for (auto& mnpair : mapMasternodes) {
-        if(mnpair.second.nProtocolVersion < nProtocolVersion || !mnpair.second.IsEnabled()) continue;
-        nCount++;
+    size_t nCount = 0;
+    for (const auto& [op, mn] : mapMasternodes)
+    {
+        if (mn.nProtocolVersion < nMNProtocolVersion || !mn.IsEnabled())
+            continue;
+        ++nCount;
     }
-
     return nCount;
 }
 
@@ -548,11 +555,17 @@ masternode_info_t CMasternodeMan::FindRandomNotInVec(const std::vector<COutPoint
 
     nProtocolVersion = nProtocolVersion == -1 ? masterNodeCtrl.MasternodeProtocolVersion : nProtocolVersion;
 
-    int nCountEnabled = CountEnabled(nProtocolVersion);
-    int nCountNotExcluded = nCountEnabled - vecToExclude.size();
+    const size_t nCountEnabled = CountEnabled(nProtocolVersion);
+    if (vecToExclude.size() > nCountEnabled)
+    {
+        LogPrintf("WARNING: number of excluded masternodes (%zu) is greater than number of enabled masternodes (%zu)\n", vecToExclude.size(), nCountEnabled);
+        return masternode_info_t();
+    }
+    const size_t nCountNotExcluded = nCountEnabled - vecToExclude.size();
 
-    LogPrintf("CMasternodeMan::FindRandomNotInVec -- %d enabled masternodes, %d masternodes to choose from\n", nCountEnabled, nCountNotExcluded);
-    if(nCountNotExcluded < 1) return masternode_info_t();
+    LogPrintf("CMasternodeMan::FindRandomNotInVec -- %zu enabled masternodes, %zu masternodes to choose from\n", nCountEnabled, nCountNotExcluded);
+    if(nCountNotExcluded < 1)
+        return masternode_info_t();
 
     // fill a vector of pointers
     std::vector<CMasternode*> vpMasternodesShuffled;

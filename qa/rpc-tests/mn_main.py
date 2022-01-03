@@ -1,15 +1,21 @@
 #!/usr/bin/env python3
 # Copyright (c) 2018-2021 The Pastel Core developers
 # Distributed under the MIT software license, see the accompanying
-# file COPYING or http://www.opensource.org/licenses/mit-license.php.
+# file COPYING or https://www.opensource.org/licenses/mit-license.php.
 
 from test_framework.test_framework import BitcoinTestFramework
-from test_framework.util import assert_equal, assert_greater_than, initialize_chain_clean, \
-    initialize_datadir, start_nodes, start_node, connect_nodes_bi, \
-    pasteld_processes, wait_and_assert_operationid_status, p2p_port, \
+from test_framework.util import (
+    assert_equal, 
+    assert_greater_than,
+    assert_shows_help,
+    assert_raises_rpc,
+    initialize_chain_clean,
+    start_node, 
+    connect_nodes_bi,
     stop_node
-
+)
 from mn_common import MasterNodeCommon
+import test_framework.rpc_consts as rpc
 
 import os
 import sys
@@ -37,6 +43,35 @@ class MasterNodeMainTest (MasterNodeCommon):
         self.is_network_split = False
         self.setup_masternodes_network(private_keys_list, self.number_of_simple_nodes)
 
+    def storagefee_tests (self):
+            print("=== Test MN Fees ===")
+            assert_shows_help(self.nodes[0].storagefee)
+
+            nfee_mn0 = self.nodes[0].storagefee("getnetworkfee")["networkfee"]
+            nfee_mn1 = self.nodes[1].storagefee("getnetworkfee")["networkfee"]
+            nfee_mn2 = self.nodes[2].storagefee("getnetworkfee")["networkfee"]
+            assert_equal(nfee_mn0, 50)
+            assert_equal(nfee_mn1, 50)
+            assert_equal(nfee_mn2, 50)
+            print("Network fee is ", nfee_mn0)
+
+            lfee_mn0 = self.nodes[0].storagefee("getlocalfee")["localfee"]
+            assert_equal(lfee_mn0, 50)
+            print("Local fee of MN0 is ", lfee_mn0)
+
+            assert_raises_rpc(rpc.RPC_INVALID_PARAMETER, "storagefee getactionfees",
+                self.nodes[0].storagefee, "getactionfees")
+            assert_raises_rpc(rpc.RPC_INVALID_PARAMETER, "negative",
+                self.nodes[0].storagefee, "getactionfees", "-10")
+            actionfees = self.nodes[0].storagefee("getactionfees", "10")
+            assert_equal(10, actionfees["datasize"])
+            sense_fee = actionfees["sensefee"]
+            cascade_fee = actionfees["cascadefee"]
+            print(f"action fee [sense]: {sense_fee}")
+            print(f"action fee [cascade]: {cascade_fee}")
+            assert_greater_than(sense_fee, 0)
+            assert_greater_than(cascade_fee, 0)
+
     def run_test (self):
         tests = ['cache', 'sync', 'ping', 'restart', 'spent', 'fee']
 
@@ -51,18 +86,7 @@ class MasterNodeMainTest (MasterNodeCommon):
 
         # tests = ['cache', 'sync', 'ping', 'restart', 'spent', "fee"]
         if 'fee' in tests:
-            print("=== Test MN Fee ===")
-            nfee_mn0 = self.nodes[0].storagefee("getnetworkfee")["networkfee"]
-            nfee_mn1 = self.nodes[1].storagefee("getnetworkfee")["networkfee"]
-            nfee_mn2 = self.nodes[2].storagefee("getnetworkfee")["networkfee"]
-            assert_equal(nfee_mn0, 50)
-            assert_equal(nfee_mn1, 50)
-            assert_equal(nfee_mn2, 50)
-            print("Network fee is ", nfee_mn0)
-
-            lfee_mn0 = self.nodes[0].storagefee("getlocalfee")["localfee"]
-            assert_equal(lfee_mn0, 50)
-            print("Local fee of MN0 is ", lfee_mn0)
+            self.storagefee_tests()
 
         #print("Test sync after crash")
         # 1. kill (not gracefully) node0 (masternode)

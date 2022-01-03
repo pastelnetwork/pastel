@@ -56,12 +56,17 @@ mvkey #1: action caller PastelID
 constexpr auto ACTION_TICKET_TYPE_SENSE = "sense";
 constexpr auto ACTION_TICKET_TYPE_CASCADE = "cascade";
 
-enum class ACTION_TICKET_TYPE {
-    UNKNOWN = 0,        // unknown action type (default)
-    SENSE = 1,          // Sense - dupe detection
-    CASCASE = 2,        // Cascase - storage
-    COUNT               // number of supported action types
-};
+// default size of action tickets to calculate action fees
+constexpr uint32_t ACTION_SENSE_TICKET_SIZE_KB = 5;
+constexpr uint32_t ACTION_CASCADE_TICKET_SIZE_KB = 5;
+
+constexpr uint32_t ACTION_DUPE_DATA_SIZE_MB = 5;
+constexpr uint32_t ACTION_STORAGE_MULTIPLIER = 50;
+
+using action_fee_map_t = std::unordered_map<ACTION_TICKET_TYPE, CAmount>;
+
+// get action type name
+const char *GetActionTypeName(const ACTION_TICKET_TYPE actionTicketType) noexcept;
 
 class CActionRegTicket : 
     public CPastelTicket,
@@ -143,6 +148,8 @@ public:
     static bool FindTicketInDb(const std::string& key, CActionRegTicket& _ticket);
     static bool CheckIfTicketInDb(const std::string& key);
     static ActionRegTickets_t FindAllTicketByPastelID(const std::string& pastelID);
+    // get action storage fees
+    static action_fee_map_t GetActionFees(const size_t nDataSizeInMB);
 
 protected:
     std::string m_sActionTicket;        // action reg ticket json (encoded with base64 when passed via rpc parameter)

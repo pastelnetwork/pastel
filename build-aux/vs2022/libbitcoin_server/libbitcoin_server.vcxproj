@@ -124,6 +124,7 @@
     <ClCompile Include="..\..\..\src\mnode\mnode-validation.cpp" />
     <ClCompile Include="..\..\..\src\mnode\rpc\mnode-rpc-utils.cpp" />
     <ClCompile Include="..\..\..\src\mnode\rpc\pastelid-rpc.cpp" />
+    <ClCompile Include="..\..\..\src\mnode\rpc\storage-fee.cpp" />
     <ClCompile Include="..\..\..\src\mnode\rpc\tickets-activate.cpp" />
     <ClCompile Include="..\..\..\src\mnode\rpc\tickets-fake.cpp" />
     <ClCompile Include="..\..\..\src\mnode\rpc\tickets-find.cpp" />
@@ -205,6 +206,7 @@
     <ClInclude Include="..\..\..\src\mnode\rpc\masternodebroadcast.h" />
     <ClInclude Include="..\..\..\src\mnode\rpc\mnode-rpc-utils.h" />
     <ClInclude Include="..\..\..\src\mnode\rpc\pastelid-rpc.h" />
+    <ClInclude Include="..\..\..\src\mnode\rpc\storage-fee.h" />
     <ClInclude Include="..\..\..\src\mnode\rpc\tickets-activate.h" />
     <ClInclude Include="..\..\..\src\mnode\rpc\tickets-fake.h" />
     <ClInclude Include="..\..\..\src\mnode\rpc\tickets-find.h" />
