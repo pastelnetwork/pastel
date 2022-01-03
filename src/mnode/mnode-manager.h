@@ -142,7 +142,7 @@ public:
     int CountMasternodes(int nProtocolVersion = -1);
     /// Count enabled Masternodes filtered by nProtocolVersion.
     /// Masternode nProtocolVersion should match or be above the one specified in param here.
-    int CountEnabled(int nProtocolVersion = -1);
+    size_t CountEnabled(const int nProtocolVersion = -1) const noexcept;
 
     /// Count Masternodes by network type - NET_IPV4, NET_IPV6, NET_TOR
     // int CountByIP(int nNetworkType);
@@ -165,7 +165,7 @@ public:
     /// Find a random entry
     masternode_info_t FindRandomNotInVec(const std::vector<COutPoint> &vecToExclude, int nProtocolVersion = -1);
 
-    std::map<COutPoint, CMasternode> GetFullMasternodeMap() { return mapMasternodes; }
+    auto GetFullMasternodeMap() const noexcept { return mapMasternodes; }
 
     bool GetMasternodeRanks(rank_pair_vec_t& vecMasternodeRanksRet, int nBlockHeight = -1, int nMinProtocol = 0);
     bool GetMasternodeRank(const COutPoint &outpoint, int& nRankRet, int nBlockHeight = -1, int nMinProtocol = 0);

@@ -104,6 +104,7 @@
     <ClCompile Include="..\..\..\src\support\cleanse.cpp" />
     <ClCompile Include="..\..\..\src\support\lockedpool.cpp" />
     <ClCompile Include="..\..\..\src\sync.cpp" />
+    <ClCompile Include="..\..\..\src\trimmean.cpp" />
     <ClCompile Include="..\..\..\src\util.cpp" />
     <ClCompile Include="..\..\..\src\utilmoneystr.cpp" />
     <ClCompile Include="..\..\..\src\utilstrencodings.cpp" />
@@ -131,6 +132,7 @@
     <ClInclude Include="..\..\..\src\support\events.h" />
     <ClInclude Include="..\..\..\src\support\lockedpool.h" />
     <ClInclude Include="..\..\..\src\sync.h" />
+    <ClInclude Include="..\..\..\src\trimmean.h" />
     <ClInclude Include="..\..\..\src\util.h" />
     <ClInclude Include="..\..\..\src\utilmoneystr.h" />
     <ClInclude Include="..\..\..\src\utilstrencodings.h" />

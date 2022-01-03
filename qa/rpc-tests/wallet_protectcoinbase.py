@@ -24,7 +24,7 @@ def check_value_pool(node, name, total):
             found = True
             assert_equal(pool['monitored'], True)
             assert_equal(pool['chainValue'], total)
-            assert_equal(pool['chainValuePsl'], total * COIN)
+            assert_equal(pool['chainValuePat'], total * COIN)
     assert(found)
 
 class WalletProtectCoinbaseTest (BitcoinTestFramework):

@@ -132,7 +132,7 @@ bool CChangeUsernameTicket::IsValid(const bool bPreReg, const int nDepth) const
     if (bTicketExistsInDB && !bDBUserChangedName_MemPool && (!tktDB.IsBlock(m_nBlock) || !tktDB.IsTxId(m_txid)) &&
         masterNodeCtrl.masternodeTickets.getValueBySecondaryKey(tktDB) == username) {
         throw runtime_error(strprintf("This Username Change Request is already registered in blockchain [Username = %s]"
-                                      "[this ticket block = %u txid = %s; found ticket block  = %u txid = %s]",
+                                      "[this ticket block = %u, txid = %s; found ticket block  = %u, txid = %s]",
                                       username, tktDB.GetBlock(), tktDB.GetTxId(), GetBlock(), GetTxId()));
     }
 

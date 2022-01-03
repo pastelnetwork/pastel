@@ -1,21 +1,26 @@
-// Copyright (c) 2018 airk42
+// Copyright (c) 2018-2021 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
-// file COPYING or http://www.opensource.org/licenses/mit-license.php.
+// file COPYING or https://www.opensource.org/licenses/mit-license.php.
 
-#include "main.h"
-#include "init.h"
-#include "util.h"
-#include "base58.h"
-#include "ui_interface.h"
-#include "key_io.h"
+#include <vector>
 
-#include "mnode/mnode-controller.h"
-#include "mnode/mnode-sync.h"
-#include "mnode/mnode-manager.h"
-#include "mnode/mnode-msgsigner.h"
-#include "mnode/mnode-db.h"
+#include <main.h>
+#include <init.h>
+#include <util.h>
+#include <base58.h>
+#include <ui_interface.h>
+#include <key_io.h>
+#include <trimmean.h>
+
+#include <mnode/mnode-controller.h>
+#include <mnode/mnode-sync.h>
+#include <mnode/mnode-manager.h>
+#include <mnode/mnode-msgsigner.h>
+#include <mnode/mnode-db.h>
 
 #include <boost/lexical_cast.hpp>
+
+using namespace std;
 
 constexpr const CNodeHelper::CFullyConnectedOnly CNodeHelper::FullyConnectedOnly;
 constexpr const CNodeHelper::CAllNodes CNodeHelper::AllNodes;
@@ -23,20 +28,70 @@ constexpr const CNodeHelper::CAllNodes CNodeHelper::AllNodes;
 MasterNode specific logic and initializations
 */
 
+void CMasterNodeController::InvalidateParameters()
+{
+    MasternodeProtocolVersion = 0;
+    MasternodeFeePerMBDefault = 0;
+    NFTTicketFeePerKBDefault = 0;
+    ActionTicketFeePerMBDefault = 0;
+
+    ChainDeflationRateDefault = 0.0;
+
+    ChainBaselineDifficultyLowerIndex = 0;
+    ChainBaselineDifficultyUpperIndex = 0;
+    ChainTrailingAverageDifficultyRange = 0;
+
+    MasternodeUsernameFirstChangeFee = 0;
+    MasternodeUsernameChangeAgainFee = 0;
+
+    MasternodeEthereumAddressFirstChangeFee = 0;
+    MasternodeEthereumAddressChangeAgainFee = 0;
+
+    MasternodeCheckSeconds = 0;
+    MasternodeMinMNBSeconds = 0;
+    MasternodeMinMNPSeconds = 0;
+    MasternodeExpirationSeconds = 0;
+    MasternodeWatchdogMaxSeconds = 0;
+    MasternodeWatchdogMaxSeconds = 0;
+    MasternodeNewStartRequiredSeconds = 0;
+
+    MasternodePOSEBanMaxScore = 0;
+    nMasterNodeMaximumOutboundConnections = 0;
+
+    nMasternodePaymentsVotersIndexDelta = 0;
+    nMasternodePaymentsFeatureWinnerBlockIndexDelta = 0;
+
+    nMasternodeTopMNsNumberMin = 0;
+    nMasternodeTopMNsNumber = 0;
+
+    nGovernanceVotingPeriodBlocks = 0;
+    MinTicketConfirmations = 0;
+    MaxBuyTicketAge = 0;
+
+    MasternodeCollateral = 0;
+    nMasternodeMinimumConfirmations = 0;
+    nMasternodePaymentsIncreaseBlock = 0;
+    nMasternodePaymentsIncreasePeriod = 0;
+    nFulfilledRequestExpireTime = 0;
+}
+
 void CMasterNodeController::SetParameters()
 {
     //CURRENT VERSION OF MASTERNODE NETWORK - SHOULD BE EQUAL TO PROTOCOL_VERSION
     //this will allow to filter out old MN when ALL NETWORK is updated 
-    MasternodeProtocolVersion           = 170008;
+    MasternodeProtocolVersion           = PROTOCOL_VERSION;
     
     MasternodeFeePerMBDefault           = 50;
+    // default NFT ticket fee in PSL per KB
     NFTTicketFeePerKBDefault            = 3;
+    // default action ticket fee in PSL per KB
+    ActionTicketFeePerMBDefault         = 10;
 
     ChainDeflationRateDefault           = 1;
 
-    ChainBaselineDifficultyLowerIndex   = 100000;
-    ChainBaselineDifficultyUpperIndex   = 150000;
-    ChainTrailingAverageDifficultyRange = 10000;
+    ChainBaselineDifficultyLowerIndex   = 100'000;
+    ChainBaselineDifficultyUpperIndex   = 150'000;
+    ChainTrailingAverageDifficultyRange = 10'000;
 
     MasternodeUsernameFirstChangeFee   = 100;
     MasternodeUsernameChangeAgainFee   = 5000;
@@ -66,17 +121,17 @@ void CMasterNodeController::SetParameters()
     MaxBuyTicketAge = 24; //1 hour, 1 block per 2.5 minutes
     
     if (Params().IsMainNet()) {
-        MasternodeCollateral                = 5000000;
+        MasternodeCollateral                = 5'000'000;
     
         nMasternodeMinimumConfirmations = 15;
-        nMasternodePaymentsIncreaseBlock = 150000;
+        nMasternodePaymentsIncreaseBlock = 150'000;
         nMasternodePaymentsIncreasePeriod = 576*30;
         nFulfilledRequestExpireTime = 60*60; // 60 minutes
         
         TicketGreenAddress = "PtoySpxXAE3V6XR239AqGzCfKNrJcX6n52L";
     }
     else if (Params().IsTestNet()) {
-        MasternodeCollateral                = 1000000;
+        MasternodeCollateral                = 1'000'000;
     
         nMasternodeMinimumConfirmations = 1;
         nMasternodePaymentsIncreaseBlock = 4030;
@@ -106,27 +161,24 @@ void CMasterNodeController::SetParameters()
 }
 
 // Get network difficulty. This implementation is copied from blockchain.cpp
-double CMasterNodeController::getNetworkDifficulty(const CBlockIndex* blockindex, bool networkDifficulty) const
+double CMasterNodeController::getNetworkDifficulty(const CBlockIndex* blockindex, const bool bNetworkDifficulty) const
 {
     // Floating point number that is a multiple of the minimum difficulty,
     // minimum difficulty = 1.0.
-    if (blockindex == NULL)
+    if (!blockindex)
     {
-        if (chainActive.Tip() == NULL)
+        if (!chainActive.Tip())
             return 1.0;
-        else
-            blockindex = chainActive.Tip();
+        blockindex = chainActive.Tip();
     }
 
     uint32_t bits;
-    if (networkDifficulty) {
+    if (bNetworkDifficulty)
         bits = GetNextWorkRequired(blockindex, nullptr, Params().GetConsensus());
-    } else {
+    else
         bits = blockindex->nBits;
-    }
 
-    uint32_t powLimit =
-        UintToArith256(Params().GetConsensus().powLimit).GetCompact();
+    uint32_t powLimit = UintToArith256(Params().GetConsensus().powLimit).GetCompact();
     int nShift = (bits >> 24) & 0xff;
     int nShiftAmount = (powLimit >> 24) & 0xff;
 
@@ -288,7 +340,7 @@ bool CMasterNodeController::EnableMasterNode(std::ostringstream& strErrors, boos
 
 void CMasterNodeController::StartMasterNode(boost::thread_group& threadGroup)
 {
-    if (semMasternodeOutbound == NULL) {
+    if (!semMasternodeOutbound) {
         // initialize semaphore
         semMasternodeOutbound = new CSemaphore(nMasterNodeMaximumOutboundConnections);
     }
@@ -304,7 +356,7 @@ void CMasterNodeController::StopMasterNode()
             semMasternodeOutbound->post();
 
     delete semMasternodeOutbound;
-    semMasternodeOutbound = NULL;
+    semMasternodeOutbound = nullptr;
 }
 
 
@@ -453,7 +505,7 @@ void CMasterNodeController::ShutdownMasterNode()
     if (pacNotificationInterface) {
         UnregisterValidationInterface(pacNotificationInterface);
         delete pacNotificationInterface;
-        pacNotificationInterface = NULL;
+        pacNotificationInterface = nullptr;
     }
 
     // STORE DATA CACHES INTO SERIALIZED DAT FILES
@@ -477,75 +529,82 @@ fs::path CMasterNodeController::GetMasternodeConfigFile()
     return pathConfigFile;
 }
 
-CAmount CMasterNodeController::GetNetworkFeePerMB()
+CAmount CMasterNodeController::GetNetworkFeePerMB() const noexcept
 {
     CAmount nFee = masterNodeCtrl.MasternodeFeePerMBDefault;
-
-    if (fMasterNode) {
-        std::map<COutPoint, CMasternode> mapMasternodes = masternodeManager.GetFullMasternodeMap();
-        if (mapMasternodes.size()) {
-            try {
-                CAmount* feeArray = new CAmount[mapMasternodes.size()];
-                int cnt = 0;
-                for (const auto& [op, mn] : mapMasternodes) {
-                    feeArray[cnt] = mn.aMNFeePerMB > 0 ? mn.aMNFeePerMB : masterNodeCtrl.MasternodeFeePerMBDefault;
-                    cnt++;
-                }
-                // Use trimmean to calculate the value with fixed 25% percentage
-                nFee = static_cast<CAmount>(ceil(TRIMMEAN(feeArray, mapMasternodes.size(), 0.25)));
-                delete[] feeArray;
-            } catch (std::bad_alloc&) {
-                LogPrint("masternode", "Could't allocate memory for input of TRIMMEAN");
-            }
+    if (fMasterNode)
+    {
+        // COutPoint => CMasternode
+        const auto mapMasternodes = masternodeManager.GetFullMasternodeMap();
+        if (!mapMasternodes.empty())
+        {
+            vector<CAmount> vFee(mapMasternodes.size());
+            size_t cnt = 0;
+            for (const auto& [op, mn] : mapMasternodes)
+                vFee[cnt++] = mn.aMNFeePerMB > 0 ? mn.aMNFeePerMB : masterNodeCtrl.MasternodeFeePerMBDefault;
+            // Use trimmean to calculate the value with fixed 25% percentage
+            nFee = static_cast<CAmount>(ceil(TRIMMEAN(vFee, 0.25)));
         }
     }
-
     return nFee;
 }
 
-CAmount CMasterNodeController::GetNFTTicketFeePerKB()
+CAmount CMasterNodeController::GetNFTTicketFeePerKB() const noexcept
 {
-
-    if (fMasterNode) {
+    if (fMasterNode)
+    {
         CAmount nFee = 0;
-        std::map<COutPoint, CMasternode> mapMasternodes = masternodeManager.GetFullMasternodeMap();
-        for (auto& mnpair : mapMasternodes) {
-            CMasternode mn = mnpair.second;
+        // COutPoint => CMasternode
+        const auto mapMasternodes = masternodeManager.GetFullMasternodeMap();
+        for (const auto& [op, mn] : mapMasternodes)
             nFee += mn.aNFTTicketFeePerKB > 0? mn.aNFTTicketFeePerKB: masterNodeCtrl.NFTTicketFeePerKBDefault;
-        }
         nFee /= mapMasternodes.size();
         return nFee;
     }
-
     return NFTTicketFeePerKBDefault;
 }
 
-double CMasterNodeController::GetChainDeflationRate() const {
-    if (chainActive.Height() <= ChainBaselineDifficultyUpperIndex + ChainTrailingAverageDifficultyRange) {
+/**
+ * Get fee in PSL for the given action ticket type per KB.
+ * 
+ * \param actionTicketType - action ticket type (sense, cascade)
+ * \return fee for the given action ticket type
+ */
+CAmount CMasterNodeController::GetActionTicketFeePerMB(const ACTION_TICKET_TYPE actionTicketType) const noexcept
+{
+    // this should use median fees for actions fee reported by SNs
+    return ActionTicketFeePerMBDefault;
+}
+
+double CMasterNodeController::GetChainDeflationRate() const
+{
+    const int nChainHeight = chainActive.Height();
+
+    if (nChainHeight < 0 || static_cast<uint32_t>(nChainHeight) <= ChainBaselineDifficultyUpperIndex + ChainTrailingAverageDifficultyRange)
         return ChainDeflationRateDefault;
-    } else {
-        // Get baseline average difficulty
-        double totalBaselineDifficulty = 0.0;
-        for (CAmount i = ChainBaselineDifficultyLowerIndex; i < ChainBaselineDifficultyUpperIndex; i++) {
-            CBlockIndex* index = chainActive[i];
-            totalBaselineDifficulty += getNetworkDifficulty(index, true);
-        }
-        double averageBaselineDifficulty = totalBaselineDifficulty/(ChainBaselineDifficultyUpperIndex - ChainBaselineDifficultyLowerIndex);
-        // Get trailing average difficulty
-        CAmount endTrailingIndex = ChainBaselineDifficultyUpperIndex + ChainTrailingAverageDifficultyRange*((chainActive.Height() - ChainBaselineDifficultyUpperIndex)/ChainTrailingAverageDifficultyRange );
-        CAmount startTrailingIndex = endTrailingIndex - ChainTrailingAverageDifficultyRange;
-        
-        
-        double totalTrailingDifficulty = 0.0;
-        for (CAmount i = startTrailingIndex; i < endTrailingIndex; i++) {
-            CBlockIndex* index = chainActive[i];
-            totalTrailingDifficulty += getNetworkDifficulty(index, true);
-        }
-        double averageTrailingDifficulty = totalTrailingDifficulty/ChainTrailingAverageDifficultyRange;
 
-        return averageTrailingDifficulty/averageBaselineDifficulty;
-
+    // Get baseline average difficulty
+    double totalBaselineDifficulty = 0.0;
+    for (uint32_t i = ChainBaselineDifficultyLowerIndex; i < ChainBaselineDifficultyUpperIndex; i++)
+    {
+        const CBlockIndex* index = chainActive[i];
+        totalBaselineDifficulty += getNetworkDifficulty(index, true);
     }
+    const double averageBaselineDifficulty = totalBaselineDifficulty/(ChainBaselineDifficultyUpperIndex - ChainBaselineDifficultyLowerIndex);
+    // Get trailing average difficulty
+    uint32_t endTrailingIndex = ChainBaselineDifficultyUpperIndex + ChainTrailingAverageDifficultyRange*((chainActive.Height() - ChainBaselineDifficultyUpperIndex)/ChainTrailingAverageDifficultyRange );
+    uint32_t startTrailingIndex = endTrailingIndex - ChainTrailingAverageDifficultyRange;
+        
+        
+    double totalTrailingDifficulty = 0.0;
+    for (uint32_t i = startTrailingIndex; i < endTrailingIndex; i++)
+    {
+        const CBlockIndex* index = chainActive[i];
+        totalTrailingDifficulty += getNetworkDifficulty(index, true);
+    }
+    const double averageTrailingDifficulty = totalTrailingDifficulty/ChainTrailingAverageDifficultyRange;
+
+    return averageTrailingDifficulty/averageBaselineDifficulty;
 }
 
 /*
@@ -569,7 +628,7 @@ void CMasterNodeController::ThreadMnbRequestConnections()
         std::pair<CService, std::set<uint256> > p = masterNodeCtrl.masternodeManager.PopScheduledMnbRequestConnection();
         if(p.first == CService() || p.second.empty()) continue;
 
-        ConnectNode(CAddress(p.first, NODE_NETWORK), NULL, true);
+        ConnectNode(CAddress(p.first, NODE_NETWORK), nullptr, true);
 
         LOCK(cs_vNodes);
 
@@ -638,159 +697,3 @@ void CMasterNodeController::ThreadMasterNodeMaintenance()
 }
 
 
-///////////////////////////////////////////////////////////////////////////
-// TRIMMEAN Helper Functions
-///////////////////////////////////////////////////////////////////////////
-
-/* Partitioning algorithm for QuickSort and QuickSelect */
-static CAmount partition(CAmount array[], CAmount low, CAmount high) {
-
-    // Pick the first element to be the pivot.
-    CAmount pivotIndex = low;
-    CAmount pivot = array[low];
-    
-    do {
-        
-        while (low <= high && array[low] <= pivot)
-            low++;
-        
-        while (array[high] > pivot)
-            high--;
-        if (low < high) {
-            CAmount temp = array[low];
-            array[low] = array[high];
-            array[high] = temp;
-
-        }
-        
-    } while (low < high);
-    
-    CAmount temp = array[pivotIndex];
-    array[pivotIndex] = array[high];
-    array[high] = temp;
-    
-    pivotIndex = high;
-    return pivotIndex;
-    
-}
-
-/* QuickSort algorithm */
-static void quickSort(CAmount array[], CAmount first, CAmount last) {
-    
-    if (last - first >= 1) {
-        
-        CAmount pivotIndex = partition(array, first, last);
-        
-        quickSort(array, first, pivotIndex-1);
-        quickSort(array, pivotIndex+1, last);
-
-    }
-    
-}
-
-/* QuickSelect algorithm */
-static CAmount quickSelect(CAmount array[], CAmount first, CAmount last, CAmount k) {
-    
-    if (last - first >= 1) {
-        
-        CAmount pivotIndex = partition(array, first, last);
-        
-        if (pivotIndex == k)
-            return array[pivotIndex];
-        
-        else if (k < pivotIndex)
-            return quickSelect(array, first, pivotIndex-1, k);
-        
-        else
-            return quickSelect(array, pivotIndex+1, last, k);
-        
-    }
-    
-    return array[first];
-    
-}
-
-/* Calculate mean given starting and ending array index */
-inline
-static double mean(CAmount array[], CAmount low, CAmount high) {
-    
-    int acc = 0;
-    
-    for (CAmount i = low; i <= high; i++)
-        acc += array[i];
-    
-    return acc / static_cast<double>(high - low + 1);
-    
-}
-
-///////////////////////////////////////////////////////////////////////////
-// TRIMMEAN Implementation
-///////////////////////////////////////////////////////////////////////////
-
-// Given an array of integers, exclude "percent" percent of data points from the top and bottom tails
-// of a data set. Calculate and return the mean of the remaining data.
-//
-// inputArray: data set; array of integers to examine
-// n: size of data set
-// percent: fractional number of data points to exclude, where 0 <= percent < 1
-// errorno (optional): pointer to ErrorNumber enumerated type for additional error information
-//
-// If any errors are encountered, return NaN. If the errorno argument is defined, additional information
-// about the offending error will be provided in the form of an error code.
-double TRIMMEAN(CAmount inputArray[], CAmount n, double percent, TrimmeanErrorNumber* errorno)
-{
-    /* Error Handling */
-
-    double NaN = 0 * (1e308 * 1e308);
-    bool enoIsDefined = errorno != nullptr;
-
-    if (n <= 0) {
-        // size (n) out of range.
-        if (enoIsDefined)
-            *errorno = TrimmeanErrorNumber::EBADN;
-
-        return NaN;
-    }
-
-    if (percent < 0 || percent >= 1) {
-        // Percent out of range.
-        if (enoIsDefined)
-            *errorno = TrimmeanErrorNumber::EBADPCNT;
-
-        return NaN;
-    }
-
-    if (inputArray == nullptr) {
-        // inputArray is null.
-        if (enoIsDefined)
-            *errorno = TrimmeanErrorNumber::EBADARR;
-
-        return NaN;
-    }
-
-    /* TRIMMEAN */
-
-    // Copy inputArray into a local array which we will sort: we don't want to modify the original
-    // input array.
-    CAmount* array = new CAmount[n];
-    for (int i = 0; i < n; i++)
-        array[i] = inputArray[i];
-
-    // Use QuickSort algorithm to sort the array.
-    quickSort(array, 0, n - 1);
-
-    // Calculate the number of elements to exclude and round down to the nearest even number.
-    CAmount elementsToExclude = n * percent;
-    if (elementsToExclude % 2 != 0)
-        elementsToExclude--;
-
-    // Using our sorted array, exclude the lowest and highest (elementsToExclude / 2) elements and
-    // return the trimmed average.
-    CAmount low = elementsToExclude / 2;
-    CAmount high = n - (elementsToExclude / 2) - 1;
-
-    double retVal = mean(array, low, high);
-    delete[] array;
-
-    return retVal;
-}

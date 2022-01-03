@@ -119,6 +119,7 @@ MNODE_CPP =\
   mnode/rpc/mnode-rpc-utils.cpp\
   mnode/rpc/mnode-rpc.cpp\
   mnode/rpc/pastelid-rpc.cpp\
+  mnode/rpc/storage-fee.cpp\
   mnode/rpc/tickets-activate.cpp\
   mnode/rpc/tickets-fake.cpp\
   mnode/rpc/tickets-list.cpp\
@@ -164,6 +165,7 @@ MNODE_H = \
   mnode/rpc/mnode-register.h\
   mnode/rpc/mnode-rpc.h\
   mnode/rpc/pastelid-rpc.h\
+  mnode/rpc/storage-fee.h\
   mnode/rpc/tickets-activate.h\
   mnode/rpc/tickets-fake.h\
   mnode/rpc/tickets-list.h\
@@ -320,6 +322,7 @@ BITCOIN_CORE_H = \
   tinyformat.h \
   torcontrol.h \
   transaction_builder.h \
+  trimmean.h\
   txdb.h \
   txmempool.h \
   txmempool_entry.h\
@@ -513,24 +516,25 @@ libbitcoin_common_a_SOURCES = \
 # backward-compatibility objects and their sanity checks are linked.
 libbitcoin_util_a_CPPFLAGS = $(AM_CPPFLAGS) $(BITCOIN_INCLUDES)
 libbitcoin_util_a_CXXFLAGS = $(AM_CXXFLAGS) $(PIE_FLAGS)
-libbitcoin_util_a_SOURCES = \
-  support/lockedpool.cpp \
-  chainparamsbase.cpp \
-  clientversion.cpp \
-  compat/glibc_sanity.cpp \
-  compat/glibcxx_sanity.cpp \
-  compat/strnlen.cpp \
-  random.cpp \
-  rpc/protocol.cpp \
-  support/cleanse.cpp \
-  sync.cpp \
-  uint256.cpp \
-  util.cpp \
-  utilmoneystr.cpp \
-  ascii85.cpp \
-  utilstrencodings.cpp \
-  utiltime.cpp \
-  $(BITCOIN_CORE_H) \
+libbitcoin_util_a_SOURCES =\
+  compat/glibc_sanity.cpp\
+  compat/glibcxx_sanity.cpp\
+  compat/strnlen.cpp\
+  support/lockedpool.cpp\
+  support/cleanse.cpp\
+  ascii85.cpp\
+  chainparamsbase.cpp\
+  clientversion.cpp\
+  random.cpp\
+  rpc/protocol.cpp\
+  sync.cpp\
+  trimmean.cpp\
+  uint256.cpp\
+  util.cpp\
+  utilmoneystr.cpp\
+  utilstrencodings.cpp\
+  utiltime.cpp\
+  $(BITCOIN_CORE_H)\
   $(LIBZCASH_H)
 
 if GLIBC_BACK_COMPAT

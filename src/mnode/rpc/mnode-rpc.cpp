@@ -20,6 +20,7 @@
 #include <mnode/rpc/tickets-find.h>
 #include <mnode/rpc/tickets-get.h>
 #include <mnode/rpc/tickets-tools.h>
+#include <mnode/rpc/storage-fee.h>
 #include <mnode/rpc/mnode-rpc-utils.h>
 #include <mnode/rpc/pastelid-rpc.h>
 #include <mnode/rpc/ingest.h>
@@ -189,108 +190,8 @@ UniValue governance(const UniValue& params, bool fHelp)
     return NullUniValue;
 }
 
-UniValue storagefee(const UniValue& params, bool fHelp)
-{
-    RPC_CMD_PARSER(STORAGE_FEE, params, setfee, getnetworkfee, getnftticketfee, getlocalfee);
-
-    if (fHelp || !STORAGE_FEE.IsCmdSupported())
-        throw runtime_error(
-R"(storagefee "command"...
-Set of commands to deal with Storage Fee and related actions
-
-Arguments:
-1. "command"        (string or set of strings, required) The command to execute
-
-Available commands:
-  setfee <n>		- Set storage fee for MN.
-  getnetworkfee	- Get Network median storage fee.
-  getnftticketfee	- Get Network median NFT ticket fee.
-  getlocalfee		- Get local masternode storage fee.
-)");
-
-    if (STORAGE_FEE.IsCmd(RPC_CMD_STORAGE_FEE::setfee))
-    {
-        if (!masterNodeCtrl.IsActiveMasterNode())
-            throw JSONRPCError(RPC_INTERNAL_ERROR, "This is not a active masternode. Only active MN can set its fee");
-
-        if (params.size() == 1) {
-            // If no additional parameter (fee) added, that means we use fee levels bound to PSL deflation
-            CAmount levelsBoundFee = static_cast<CAmount>(masterNodeCtrl.GetNetworkFeePerMB() / masterNodeCtrl.GetChainDeflationRate());
-
-            CMasternode masternode;
-            if (masterNodeCtrl.masternodeManager.Get(masterNodeCtrl.activeMasternode.outpoint, masternode)) {
-
-                // Update masternode localfee
-                masterNodeCtrl.masternodeManager.SetMasternodeFee(masterNodeCtrl.activeMasternode.outpoint, levelsBoundFee);
-
-                // Send message to inform other masternodes
-                masterNodeCtrl.masternodeMessages.BroadcastNewFee(levelsBoundFee);
-
-            } else {
-                throw JSONRPCError(RPC_INTERNAL_ERROR, "Masternode is not found!");
-            }
-
-        } else if (params.size() == 2) {
-            // If additional parameter added, it means the new fee that we need to update.
-            CAmount newFee = get_long_number(params[1]);
-
-            CMasternode masternode;
-            if (masterNodeCtrl.masternodeManager.Get(masterNodeCtrl.activeMasternode.outpoint, masternode)) {
-
-                // Update masternode localfee
-                masterNodeCtrl.masternodeManager.SetMasternodeFee(masterNodeCtrl.activeMasternode.outpoint, newFee);
-
-                // Send message to inform other masternodes
-                masterNodeCtrl.masternodeMessages.BroadcastNewFee(newFee);
-
-            } else {
-                throw JSONRPCError(RPC_INTERNAL_ERROR, "Masternode is not found!");
-            }
-        } else {
-            throw JSONRPCError(RPC_INVALID_PARAMETER, "Correct usage is 'masternode setfee' or 'masternode setfee \"newfee\"'");
-        }
-        return true;
-
-    }
-    if (STORAGE_FEE.IsCmd(RPC_CMD_STORAGE_FEE::getnetworkfee))
-    {
-        CAmount nFee = masterNodeCtrl.GetNetworkFeePerMB();
-
-        UniValue mnObj(UniValue::VOBJ);
-        mnObj.pushKV("networkfee", nFee);
-        return mnObj;
-    }
-    if (STORAGE_FEE.IsCmd(RPC_CMD_STORAGE_FEE::getnftticketfee))
-    {
-        CAmount nFee = masterNodeCtrl.GetNFTTicketFeePerKB();
-
-        UniValue mnObj(UniValue::VOBJ);
-        mnObj.pushKV("nftticketfee", nFee);
-        return mnObj;
-    }
-    if (STORAGE_FEE.IsCmd(RPC_CMD_STORAGE_FEE::getlocalfee))
-    {
-        if (!masterNodeCtrl.IsActiveMasterNode()) {
-            throw JSONRPCError(RPC_INTERNAL_ERROR, "This is not a active masternode. Only active MN can set its fee");
-        }
-
-        UniValue mnObj(UniValue::VOBJ);
-
-        CMasternode masternode;
-        if(masterNodeCtrl.masternodeManager.Get(masterNodeCtrl.activeMasternode.outpoint, masternode)) {
-            mnObj.pushKV("localfee", masternode.aMNFeePerMB == 0? masterNodeCtrl.MasternodeFeePerMBDefault: masternode.aMNFeePerMB);
-            return mnObj;
-        } else {
-            throw JSONRPCError(RPC_INTERNAL_ERROR, "Masternode is not found!");
-        }
-    }
-    return NullUniValue;
-}
-
 UniValue getfeeschedule(const UniValue& params, bool fHelp)
 {
-    RPC_CMD_PARSER(STORAGE_FEE, params, setfee, getnetworkfee, getnftticketfee, getlocalfee);
-
     if (fHelp)
         throw runtime_error(
 R"(getfeeschedule

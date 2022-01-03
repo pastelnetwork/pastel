@@ -1,7 +1,7 @@
 #pragma once
-// Copyright (c) 2019-2021 The Pastel Core developers
+// Copyright (c) 2018-2021 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
-// file COPYING or http://www.opensource.org/licenses/mit-license.php.
+// file COPYING or https://www.opensource.org/licenses/mit-license.php.
 
 #include <string>
 
@@ -19,6 +19,7 @@
 #include "mnode/mnode-messageproc.h"
 #include "mnode/mnode-notificationinterface.h"
 #include "mnode/ticket-processor.h"
+#include <mnode/tickets/ticket-types.h>
 
 #ifdef ENABLE_WALLET
 #include "wallet/wallet.h"
@@ -30,7 +31,8 @@ class CMasterNodeController
 {
 private:
     void SetParameters();
-    double getNetworkDifficulty(const CBlockIndex* blockindex, bool networkDifficulty) const;
+    void InvalidateParameters();
+    double getNetworkDifficulty(const CBlockIndex* blockindex, const bool bNetworkDifficulty) const;
     CACNotificationInterface* pacNotificationInterface;
     
 public:
@@ -59,6 +61,7 @@ public:
     int MasternodeCollateral;
     CAmount MasternodeFeePerMBDefault;
     CAmount NFTTicketFeePerKBDefault;
+    CAmount ActionTicketFeePerMBDefault;
 
     CAmount MasternodeUsernameFirstChangeFee;
     CAmount MasternodeUsernameChangeAgainFee;
@@ -67,9 +70,9 @@ public:
     CAmount MasternodeEthereumAddressChangeAgainFee;
 
     double ChainDeflationRateDefault;
-    CAmount ChainBaselineDifficultyLowerIndex;
-    CAmount ChainBaselineDifficultyUpperIndex;
-    CAmount ChainTrailingAverageDifficultyRange;
+    uint32_t ChainBaselineDifficultyLowerIndex;
+    uint32_t ChainBaselineDifficultyUpperIndex;
+    uint32_t ChainTrailingAverageDifficultyRange;
 
     int MasternodeCheckSeconds, MasternodeMinMNBSeconds, MasternodeMinMNPSeconds, MasternodeExpirationSeconds, MasternodeWatchdogMaxSeconds, MasternodeNewStartRequiredSeconds;
     int MasternodePOSEBanMaxScore;
@@ -92,6 +95,7 @@ public:
         semMasternodeOutbound(nullptr),
         fMasterNode(false)
     {
+        InvalidateParameters();
     }
 
     bool IsMasterNode() const {return fMasterNode;}
@@ -115,8 +119,10 @@ public:
     bool AlreadyHave(const CInv& inv);
     bool ProcessGetData(CNode* pfrom, const CInv& inv);
 
-    CAmount GetNetworkFeePerMB();
-    CAmount GetNFTTicketFeePerKB();
+    CAmount GetNetworkFeePerMB() const noexcept;
+    CAmount GetNFTTicketFeePerKB() const noexcept;
+    // get fee in PSL for the given action ticket type
+    CAmount GetActionTicketFeePerMB(const ACTION_TICKET_TYPE actionTicketType) const noexcept;
 
     double GetChainDeflationRate() const;
 
@@ -128,12 +134,3 @@ public:
 };
 
 extern CMasterNodeController masterNodeCtrl;
-
-enum class TrimmeanErrorNumber {
-    
-    EBADN,
-    EBADPCNT,
-    EBADARR
-    
-};
-double TRIMMEAN(CAmount inputArray[], CAmount n, double percent, TrimmeanErrorNumber *errorno = nullptr);

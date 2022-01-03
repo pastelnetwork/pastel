@@ -274,6 +274,9 @@
     <ClCompile Include="..\..\..\src\mnode\rpc\tickets-activate.cpp">
       <Filter>Source Files\mnode\rpc</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\..\src\mnode\rpc\storage-fee.cpp">
+      <Filter>Source Files\mnode\rpc</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\..\src\addrman.h">
@@ -590,6 +593,9 @@
     </ClInclude>
     <ClInclude Include="..\..\..\src\mnode\tickets\ticket-mn-fees.h">
       <Filter>Source Files\mnode\tickets</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\mnode\rpc\storage-fee.h">
+      <Filter>Source Files\mnode\rpc</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>
