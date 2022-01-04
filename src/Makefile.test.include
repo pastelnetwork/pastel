@@ -50,7 +50,6 @@ BITCOIN_TESTS =\
   test/checkblock_tests.cpp \
   test/coins_tests.cpp \
   test/dbwrapper_tests.cpp \
-  test/main_tests.cpp \
   test/mruset_tests.cpp \
   test/pmt_tests.cpp \
   test/policyestimator_tests.cpp \

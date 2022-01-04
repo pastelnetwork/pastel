@@ -55,6 +55,7 @@ pastel_gtest_SOURCES +=\
 	gtest/test_keystore.cpp\
 	gtest/test_legroast.cpp\
 	gtest/test_libzcash_utils.cpp\
+	gtest/test_main.cpp\
 	gtest/test_mempool.cpp\
 	gtest/test_merkletree.cpp\
 	gtest/test_metrics.cpp\
