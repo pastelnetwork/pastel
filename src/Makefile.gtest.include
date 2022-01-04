@@ -66,6 +66,7 @@ pastel_gtest_SOURCES +=\
 	gtest/test_noteencryption.cpp\
 	gtest/test_numeric_range.cpp\
 	gtest/test_pedersen_hash.cpp\
+	gtest/test_pmt.cpp\
 	gtest/test_pow.cpp\
 	gtest/test_proofs.cpp\
 	gtest/test_raii_event.cpp\
