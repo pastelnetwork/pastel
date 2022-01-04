@@ -817,7 +817,7 @@ TEST(test_coins, coins_cache_simulation_test)
 
 // TEST(test_coins, coins_coinbase_spends)
 // {
-//     CCoinsViewTest base;
+//     CCoinsViewTest base
 //     CCoinsViewCacheTest cache(&base);
 
 //     // Create coinbase transaction
