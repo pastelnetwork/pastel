@@ -60,6 +60,7 @@ pastel_gtest_SOURCES +=\
 	gtest/test_merkletree.cpp\
 	gtest/test_metrics.cpp\
 	gtest/test_miner.cpp\
+	gtest/test_mruset.cpp\
 	gtest/test_multisig.cpp\
 	gtest/test_netbase.cpp\
 	gtest/test_noteencryption.cpp\
