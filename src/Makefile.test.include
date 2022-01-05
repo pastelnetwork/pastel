@@ -49,7 +49,6 @@ BITCOIN_TESTS =\
   test/main_tests.cpp \
   test/mruset_tests.cpp \
   test/pmt_tests.cpp \
-  test/policyestimator_tests.cpp \
   test/pow_tests.cpp \
   test/prevector_tests.cpp \
   test/reverselock_tests.cpp \
