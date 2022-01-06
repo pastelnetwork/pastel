@@ -72,6 +72,7 @@ pastel_gtest_SOURCES +=\
 	gtest/test_pedersen_hash.cpp\
 	gtest/test_policyestimator.cpp\
 	gtest/test_pow.cpp\
+	gtest/test_prevector.cpp\
 	gtest/test_proofs.cpp\
 	gtest/test_raii_event.cpp\
 	gtest/test_random.cpp\
