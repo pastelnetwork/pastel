@@ -125,7 +125,7 @@ TEST(test_dbwrapper, iterator_ordering)
         EXPECT_TRUE(dbw.Write(key, value));
     }
 
-    boost::scoped_ptr<CDBIterator> it(const_cast<CDBWrapper*>(&dbw)->NewIterator());
+    unique_ptr<CDBIterator> it(const_cast<CDBWrapper*>(&dbw)->NewIterator());
     for (int seek_start : {0x00, 0x80}) {
         it->Seek((uint8_t)seek_start);
         for (int x=seek_start; x<256; ++x) {
@@ -199,7 +199,7 @@ TEST(test_dbwrapper, iterator_string_ordering)
         }
     }
 
-    boost::scoped_ptr<CDBIterator> it(const_cast<CDBWrapper*>(&dbw)->NewIterator());
+    unique_ptr<CDBIterator> it(const_cast<CDBWrapper*>(&dbw)->NewIterator());
     for (int seek_start : {0, 5}) {
         int n = snprintf(buf, sizeof(buf), "%d", seek_start);
         assert(n > 0 && n < sizeof(buf));
