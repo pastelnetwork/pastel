@@ -1,16 +1,14 @@
 // Copyright (c) 2014 The Bitcoin Core developers
+// Copyright (c) 2021 The Pastel developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
+
+#include <gtest/gtest.h>
 
 #include "chainparams.h"
 #include "main.h"
 
-#include "test/test_bitcoin.h"
-
-#include <boost/signals2/signal.hpp>
-#include <boost/test/unit_test.hpp>
-
-BOOST_FIXTURE_TEST_SUITE(main_tests, TestingSetup)
+using namespace testing;
 
 static void TestBlockSubsidyHalvings(const Consensus::Params& consensusParams)
 {
@@ -19,16 +17,16 @@ static void TestBlockSubsidyHalvings(const Consensus::Params& consensusParams)
     
     CAmount total = 0;
     CAmount nPreviousSubsidy = nInitialSubsidy * 2; // for height == 0
-    BOOST_CHECK_EQUAL(nPreviousSubsidy, nInitialSubsidy * 2);
+    EXPECT_EQ(nPreviousSubsidy, nInitialSubsidy * 2);
     for (int nHalvings = 0; nHalvings < maxHalvings; nHalvings++) {
         //1002 is the first block with real subsidy
         int nHeight = 1002 + nHalvings * consensusParams.nSubsidyHalvingInterval;
         CAmount nSubsidy = GetBlockSubsidy(nHeight, consensusParams);
-        BOOST_CHECK(nSubsidy <= nInitialSubsidy);
-        BOOST_CHECK_EQUAL(nSubsidy, nPreviousSubsidy / 2);
+        EXPECT_TRUE(nSubsidy <= nInitialSubsidy);
+        EXPECT_EQ(nSubsidy, nPreviousSubsidy / 2);
         nPreviousSubsidy = nSubsidy;
     }
-    BOOST_CHECK_EQUAL(GetBlockSubsidy(maxHalvings * consensusParams.nSubsidyHalvingInterval, consensusParams), 0);
+    EXPECT_EQ(GetBlockSubsidy(maxHalvings * consensusParams.nSubsidyHalvingInterval, consensusParams), 0);
 }
 
 static void TestBlockSubsidyHalvings(int nSubsidyHalvingInterval)
@@ -38,7 +36,7 @@ static void TestBlockSubsidyHalvings(int nSubsidyHalvingInterval)
     TestBlockSubsidyHalvings(consensusParams);
 }
 
-BOOST_AUTO_TEST_CASE(block_subsidy_test)
+TEST(test_main, block_subsidy_test)
 {
     auto pChainParams = CreateChainParams(CBaseChainParams::Network::MAIN);
     TestBlockSubsidyHalvings(pChainParams->GetConsensus()); // As in main
@@ -46,7 +44,7 @@ BOOST_AUTO_TEST_CASE(block_subsidy_test)
     TestBlockSubsidyHalvings(100000);
 }
 
-BOOST_AUTO_TEST_CASE(subsidy_limit_test)
+TEST(test_main, subsidy_limit_test)
 {
     auto pChainParams = CreateChainParams(CBaseChainParams::Network::MAIN);
     const auto& consensusParams = pChainParams->GetConsensus();
@@ -55,10 +53,10 @@ BOOST_AUTO_TEST_CASE(subsidy_limit_test)
     for (int nHeight = 1002, i=1; nHeight < 56000000; nHeight += consensusParams.nSubsidyHalvingInterval, i++) {
         CAmount nSubsidy = GetBlockSubsidy(nHeight, consensusParams);
         if (nSubsidy == 0) break;
-        BOOST_CHECK(nSubsidy <= REWARD * COIN);
+        EXPECT_TRUE(nSubsidy <= REWARD * COIN);
         nSum += nSubsidy * consensusParams.nSubsidyHalvingInterval;
         // printf("%d. Height = %d; Subsidy = %lu; Sum = %lu\n", i, nHeight, nSubsidy, nSum);
-        BOOST_CHECK(MoneyRange(nSum));
+        EXPECT_TRUE(MoneyRange(nSum));
     }
     // Changing the block interval from 10 to 2.5 minutes causes truncation
     // effects to occur earlier (from the 9th halving interval instead of the
@@ -100,24 +98,22 @@ BOOST_AUTO_TEST_CASE(subsidy_limit_test)
     29. Height = 23520000; Subsidy = 2; Sum = 1049999989920000
     30. Height = 24360000; Subsidy = 1; Sum = 1049999990760000
     */
-    BOOST_CHECK_EQUAL(nSum, 1049999990760000ULL);
+    EXPECT_EQ(nSum, 1049999990760000ULL);
 }
 
 bool ReturnFalse() { return false; }
 bool ReturnTrue() { return true; }
 
-BOOST_AUTO_TEST_CASE(test_combiner_all)
+TEST(test_main, test_combiner_all)
 {
     boost::signals2::signal<bool (), CombinerAll> Test;
-    BOOST_CHECK(Test());
+    EXPECT_TRUE(Test());
     Test.connect(&ReturnFalse);
-    BOOST_CHECK(!Test());
+    EXPECT_TRUE(!Test());
     Test.connect(&ReturnTrue);
-    BOOST_CHECK(!Test());
+    EXPECT_TRUE(!Test());
     Test.disconnect(&ReturnFalse);
-    BOOST_CHECK(Test());
+    EXPECT_TRUE(Test());
     Test.disconnect(&ReturnTrue);
-    BOOST_CHECK(Test());
+    EXPECT_TRUE(Test());
 }
-
-BOOST_AUTO_TEST_SUITE_END()
