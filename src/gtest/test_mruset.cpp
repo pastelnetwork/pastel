@@ -1,25 +1,24 @@
 // Copyright (c) 2012-2013 The Bitcoin Core developers
+// Copyright (c) 2021 The Pastel developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#include "mruset.h"
+#include <set>
+#include <deque>
+#include <gtest/gtest.h>
 
+#include "mruset.h"
 #include "random.h"
 #include "util.h"
-#include "test/test_bitcoin.h"
 
-#include <set>
-
-#include <boost/test/unit_test.hpp>
 
 #define NUM_TESTS 16
 #define MAX_SIZE 100
 
 using namespace std;
+using namespace testing;
 
-BOOST_FIXTURE_TEST_SUITE(mruset_tests, BasicTestingSetup)
-
-BOOST_AUTO_TEST_CASE(mruset_test)
+TEST(test_mruset, mruset_test)
 {
     // The mruset being tested.
     mruset<int> mru(5000);
@@ -30,8 +29,8 @@ BOOST_AUTO_TEST_CASE(mruset_test)
         mru.clear();
 
         // A deque + set to simulate the mruset.
-        std::deque<int> rep;
-        std::set<int> all;
+        deque<int> rep;
+        set<int> all;
 
         // Insert 10000 random integers below 15000.
         for (int j=0; j<10000; j++) {
@@ -55,30 +54,29 @@ BOOST_AUTO_TEST_CASE(mruset_test)
                 // Check that all elements that should be in there, are in there.
                 for (const auto x : rep)
 		{
-                    BOOST_CHECK(mru.count(x));
-                    BOOST_CHECK(mru2.count(x));
+                    EXPECT_TRUE(mru.count(x) > 0);
+                    EXPECT_TRUE(mru2.count(x) > 0);
                 }
 
                 // Check that all elements that are in there, should be in there.
                 for (const auto x : mru)
 		{
-                    BOOST_CHECK(all.count(x));
+                    EXPECT_TRUE(all.count(x) > 0);
                 }
 
                 // Check that all elements that are in there, should be in there.
                 for (const auto x : mru2)
 		{
-                    BOOST_CHECK(all.count(x));
+                    EXPECT_TRUE(all.count(x) > 0);
                 }
 
                 for (int t = 0; t < 10; t++) {
                     int r = GetRandInt(15000);
-                    BOOST_CHECK(all.count(r) == mru.count(r));
-                    BOOST_CHECK(all.count(r) == mru2.count(r));
+                    EXPECT_EQ(all.count(r) , mru.count(r));
+                    EXPECT_EQ(all.count(r) , mru2.count(r));
                 }
             }
         }
     }
 }
 
-BOOST_AUTO_TEST_SUITE_END()
