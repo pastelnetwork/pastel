@@ -12,6 +12,8 @@ public:
     void InitializeRegTest();
     void FinalizeRegTest();
     void generate_coins(const size_t N);
+    void SetupTesting();
+    void FinalizeSetupTesting();
 
 protected:
     CCoinsViewDB* pcoinsdbview = nullptr;

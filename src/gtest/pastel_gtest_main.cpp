@@ -6,6 +6,8 @@
 #include <boost/program_options/variables_map.hpp>
 #include <boost/program_options/parsers.hpp>
 
+#include "rpc/server.h"
+#include "rpc/register.h"
 #include "crypto/common.h"
 #include "key.h"
 #include "pubkey.h"
@@ -111,6 +113,23 @@ void CPastelTest_Environment::generate_coins(const size_t N)
 #else
     return;
 #endif
+}
+
+void CPastelTest_Environment::SetupTesting()
+{
+    RegisterAllCoreRPCCommands(tableRPC);
+    // pblocktree = new CBlockTreeDB(1 << 20, true);
+    // pcoinsdbview = new CCoinsViewDB(1 << 23, true);
+    // pcoinsTip = new CCoinsViewCache(pcoinsdbview);
+    // InitBlockIndex(Params());
+}
+
+void CPastelTest_Environment::FinalizeSetupTesting()
+{
+    // UnloadBlockIndex();
+    // delete pcoinsTip;
+    // delete pcoinsdbview;
+    // delete pblocktree;
 }
 
 void CPastelTest_Environment::InitializeRegTest()
