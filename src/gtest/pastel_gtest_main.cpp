@@ -117,19 +117,38 @@ void CPastelTest_Environment::generate_coins(const size_t N)
 
 void CPastelTest_Environment::SetupTesting()
 {
+    // assert(init_and_check_sodium() != -1);
+    // ECC_Start();
+    SelectParams(CBaseChainParams::Network::MAIN);
     RegisterAllCoreRPCCommands(tableRPC);
-    // pblocktree = new CBlockTreeDB(1 << 20, true);
-    // pcoinsdbview = new CCoinsViewDB(1 << 23, true);
-    // pcoinsTip = new CCoinsViewCache(pcoinsdbview);
-    // InitBlockIndex(Params());
+#ifdef ENABLE_WALLET
+        RegisterWalletRPCCommands(tableRPC);
+#endif
+    pblocktree = new CBlockTreeDB(1 << 20, true);
+    pcoinsdbview = new CCoinsViewDB(1 << 23, true);
+    pcoinsTip = new CCoinsViewCache(pcoinsdbview);
+    InitBlockIndex(Params());
 }
 
 void CPastelTest_Environment::FinalizeSetupTesting()
 {
-    // UnloadBlockIndex();
-    // delete pcoinsTip;
-    // delete pcoinsdbview;
-    // delete pblocktree;
+    UnloadBlockIndex();
+    if (pcoinsTip)
+    {
+        delete pcoinsTip;
+        pcoinsTip = nullptr;
+    }
+    if (pcoinsdbview)
+    {
+        delete pcoinsdbview;
+        pcoinsdbview = nullptr;
+    }
+    if (pblocktree)
+    {
+        delete pblocktree;
+        pblocktree = nullptr;
+    }
+    ClearMetrics();
 }
 
 void CPastelTest_Environment::InitializeRegTest()
@@ -168,6 +187,7 @@ void CPastelTest_Environment::FinalizeRegTest()
         pwalletMain = nullptr;
     }
 #endif // ENABLE_WALLET
+    std::cout << "TANLMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMmm" << std::endl;
     UnloadBlockIndex();
     if (pcoinsTip)
     {

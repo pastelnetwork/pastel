@@ -15,6 +15,7 @@
 #include "main.h"
 #include "utilstrencodings.h"
 #include <univalue.h>
+#include "pastel_gtest_main.h"
 
 #include <boost/algorithm/string.hpp>
 
@@ -36,7 +37,7 @@ createArgs(int nRequired, const char* address1=nullptr, const char* address2=nul
 UniValue CallRPC(string args)
 {
     vector<string> vArgs;
-    regex pattern(" \t");
+    regex pattern(" |\t");
     // vArgs = vector<string>(
     //                 sregex_token_iterator(args.begin(), args.end(), pattern, -1),
     //                 sregex_token_iterator()
@@ -51,7 +52,7 @@ UniValue CallRPC(string args)
         }
     }
     UniValue params = RPCConvertValues(strMethod, vArgs);
-    EXPECT_TRUE(tableRPC[strMethod]);
+    EXPECT_TRUE(tableRPC[strMethod] != nullptr);
     rpcfn_type method = tableRPC[strMethod]->actor;
     try {
         UniValue result = (*method)(params, false);
@@ -62,21 +63,21 @@ UniValue CallRPC(string args)
     }
 }
 
-class PTest_Rpc : public Test
+class TestRpc : public Test
 {
 public:
     static void SetUpTestSuite()
     {
-        RegisterAllCoreRPCCommands(tableRPC);
+        gl_pPastelTestEnv->SetupTesting();
     }
 
-    void TearDown() 
+    static void TearDownTestSuite()
     {
-
+        gl_pPastelTestEnv->FinalizeSetupTesting();
     }
 };
 
-TEST_F(PTest_Rpc, rpc_rawparams)
+TEST_F(TestRpc, rpc_rawparams)
 {
     // Test raw transaction API argument handling
     UniValue r;
@@ -120,8 +121,8 @@ TEST_F(PTest_Rpc, rpc_rawparams)
     EXPECT_THROW(CallRPC("sendrawtransaction DEADBEEF"), runtime_error);
     EXPECT_THROW(CallRPC(string("sendrawtransaction ")+rawtx+" extra"), runtime_error);
 }
-/*
-BOOST_AUTO_TEST_CASE(rpc_rawsign)
+
+TEST_F(TestRpc, rpc_rawsign)
 {
     UniValue r;
     // input is a 1-of-2 multisig (so is output):
@@ -135,192 +136,219 @@ BOOST_AUTO_TEST_CASE(rpc_rawsign)
     string privkey1 = "\"KzsXybp9jX64P5ekX1KUxRQ79Jht9uzW7LorgwE65i5rWACL6LQe\"";
     string privkey2 = "\"Kyhdf5LuKTRx4ge69ybABsiUAWjVRK4XGxAKk2FQLp2HjGMy87Z4\"";
     r = CallRPC(string("signrawtransaction ")+notsigned+" "+prevout+" "+"[]");
-    BOOST_CHECK(find_value(r.get_obj(), "complete").get_bool() == false);
+    EXPECT_FALSE(find_value(r.get_obj(), "complete").get_bool());
     r = CallRPC(string("signrawtransaction ")+notsigned+" "+prevout+" "+"["+privkey1+","+privkey2+"]");
-    BOOST_CHECK(find_value(r.get_obj(), "complete").get_bool() == true);
+    EXPECT_TRUE(find_value(r.get_obj(), "complete").get_bool());
 }
 
-BOOST_AUTO_TEST_CASE(rpc_format_monetary_values)
+class PTestRpc : public TestWithParam<tuple<CAmount, string>>
+{};
+
+TEST_P(PTestRpc, rpc_format_monetary_values)
 {
-    BOOST_CHECK(ValueFromAmount(0LL).write() == "0.00000");
-    BOOST_CHECK(ValueFromAmount(1LL).write() == "0.00001");
-    BOOST_CHECK(ValueFromAmount(17622195LL).write() == "176.22195");
-    BOOST_CHECK(ValueFromAmount(50000000LL).write() == "500.00000");
-    BOOST_CHECK(ValueFromAmount(89898989LL).write() == "898.98989");
-    BOOST_CHECK(ValueFromAmount(100000000LL).write() == "1000.00000");
-    BOOST_CHECK(ValueFromAmount(2099999999999990LL).write() == "20999999999.99990");
-    BOOST_CHECK(ValueFromAmount(2099999999999999LL).write() == "20999999999.99999");
-
-    BOOST_CHECK_EQUAL(ValueFromAmount(0).write(), "0.00000");
-    BOOST_CHECK_EQUAL(ValueFromAmount((COIN/10000)*123456789).write(), "12345.67890");
-    BOOST_CHECK_EQUAL(ValueFromAmount(-COIN).write(), "-1.00000");
-    BOOST_CHECK_EQUAL(ValueFromAmount(-COIN/10).write(), "-0.10000");
-
-    BOOST_CHECK_EQUAL(ValueFromAmount(COIN*100000000).write(), "100000000.00000");
-    BOOST_CHECK_EQUAL(ValueFromAmount(COIN*10000000).write(), "10000000.00000");
-    BOOST_CHECK_EQUAL(ValueFromAmount(COIN*1000000).write(), "1000000.00000");
-    BOOST_CHECK_EQUAL(ValueFromAmount(COIN*100000).write(), "100000.00000");
-    BOOST_CHECK_EQUAL(ValueFromAmount(COIN*10000).write(), "10000.00000");
-    BOOST_CHECK_EQUAL(ValueFromAmount(COIN*1000).write(), "1000.00000");
-    BOOST_CHECK_EQUAL(ValueFromAmount(COIN*100).write(), "100.00000");
-    BOOST_CHECK_EQUAL(ValueFromAmount(COIN*10).write(), "10.00000");
-    BOOST_CHECK_EQUAL(ValueFromAmount(COIN).write(), "1.00000");
-    BOOST_CHECK_EQUAL(ValueFromAmount(COIN/10).write(), "0.10000");
-    BOOST_CHECK_EQUAL(ValueFromAmount(COIN/100).write(), "0.01000");
-    BOOST_CHECK_EQUAL(ValueFromAmount(COIN/1000).write(), "0.00100");
-    BOOST_CHECK_EQUAL(ValueFromAmount(COIN/10000).write(), "0.00010");
-    BOOST_CHECK_EQUAL(ValueFromAmount(COIN/100000).write(), "0.00001");
+    const auto value = get<0>(GetParam());
+    const auto expectedValue = get<1>(GetParam());
+    EXPECT_EQ(ValueFromAmount(value).write() , expectedValue);
 }
+
+INSTANTIATE_TEST_SUITE_P(rpc_format_monetary_values, PTestRpc, Values(
+    make_tuple(0LL,                     "0.00000"),
+    make_tuple(1LL,                     "0.00001"),
+    make_tuple(17622195LL,              "176.22195"),
+    make_tuple(50000000LL,              "500.00000"),
+    make_tuple(89898989LL,              "898.98989"),
+    make_tuple(100000000LL,             "1000.00000"),
+    make_tuple(2099999999999990LL,      "20999999999.99990"),
+    make_tuple(2099999999999999LL,      "20999999999.99999"),
+
+    make_tuple(0,                       "0.00000"),
+    make_tuple((COIN/10000)*123456789,  "12345.67890"),
+    make_tuple(-COIN,                   "-1.00000"),
+    make_tuple(-COIN/10,                "-0.10000"),
+
+    make_tuple(COIN*100000000,          "100000000.00000"),
+    make_tuple(COIN*10000000,           "10000000.00000"),
+    make_tuple(COIN*1000000,            "1000000.00000"),
+    make_tuple(COIN*100000,             "100000.00000"),
+    make_tuple(COIN*10000,              "10000.00000"),
+    make_tuple(COIN*1000,               "1000.00000"),
+    make_tuple(COIN*100,                "100.00000"),
+    make_tuple(COIN*10,                 "10.00000"),
+    make_tuple(COIN,                    "1.00000"),
+    make_tuple(COIN/10,                 "0.10000"),
+    make_tuple(COIN/100,                "0.01000"),
+    make_tuple(COIN/1000,               "0.00100"),
+    make_tuple(COIN/10000,              "0.00010"),
+    make_tuple(COIN/100000,             "0.00001")
+ ));
+
 
 static UniValue ValueFromString(const std::string &str)
 {
     UniValue value;
     //printf("%s\n", str.c_str());
-    BOOST_CHECK(value.setNumStr(str));
+    EXPECT_TRUE(value.setNumStr(str));
     return value;
 }
 
-BOOST_AUTO_TEST_CASE(rpc_parse_monetary_values)
+class PTestRpc1 : public TestWithParam<tuple<string, CAmount, bool>>
+{};
+
+TEST_P(PTestRpc1, rpc_parse_monetary_values)
 {
-    //COIN_DECIMALS is 5 for Pastel
+    const auto value = get<0>(GetParam());
+    const auto expectedValue = get<1>(GetParam());
+    const auto thow = get<2>(GetParam());
 
-    BOOST_CHECK_THROW(AmountFromValue(ValueFromString("-0.00000001")), UniValue);
-    BOOST_CHECK_EQUAL(AmountFromValue(ValueFromString("0")), 0LL);
-    BOOST_CHECK_EQUAL(AmountFromValue(ValueFromString("0.00000")), 0LL);
-    BOOST_CHECK_EQUAL(AmountFromValue(ValueFromString("0.00001")), 1LL);
-    BOOST_CHECK_EQUAL(AmountFromValue(ValueFromString("0.17622")), 17622LL);
-    BOOST_CHECK_EQUAL(AmountFromValue(ValueFromString("0.5")), 50000LL);
-    BOOST_CHECK_EQUAL(AmountFromValue(ValueFromString("0.50000")), 50000LL);
-    BOOST_CHECK_EQUAL(AmountFromValue(ValueFromString("0.89898")), 89898LL);
-    BOOST_CHECK_EQUAL(AmountFromValue(ValueFromString("1.00000")), 100000LL);
-    BOOST_CHECK_EQUAL(AmountFromValue(ValueFromString("20999999.9999")),  2099999999990LL);
-    BOOST_CHECK_EQUAL(AmountFromValue(ValueFromString("20999999.99999")), 2099999999999LL);
-
-    BOOST_CHECK_EQUAL(AmountFromValue(ValueFromString("1e-5")), COIN/100000);
-    BOOST_CHECK_EQUAL(AmountFromValue(ValueFromString("0.1e-4")), COIN/100000);
-    BOOST_CHECK_EQUAL(AmountFromValue(ValueFromString("0.01e-3")), COIN/100000);
-    BOOST_CHECK_EQUAL(AmountFromValue(ValueFromString("0.0000000000000000000000000000000000000000000000000000000000000000000000001e+68")), COIN/100000);
-    BOOST_CHECK_EQUAL(AmountFromValue(ValueFromString("10000000000000000000000000000000000000000000000000000000000000000e-64")), COIN);
-    BOOST_CHECK_EQUAL(AmountFromValue(ValueFromString("0.000000000000000000000000000000000000000000000000000000000000000100000000000000000000000000000000000000000000000000000e64")), COIN);
-
-    BOOST_CHECK_THROW(AmountFromValue(ValueFromString("1e-6")), UniValue); //should fail
-    BOOST_CHECK_THROW(AmountFromValue(ValueFromString("0.000019")), UniValue); //should fail
-    BOOST_CHECK_EQUAL(AmountFromValue(ValueFromString("0.00001000000")), 1LL); //should pass, cut trailing 0
-    BOOST_CHECK_THROW(AmountFromValue(ValueFromString("19e-6")), UniValue); //should fail
-    BOOST_CHECK_EQUAL(AmountFromValue(ValueFromString("0.19e-3")), 19); //should pass, leading 0 is present
-
-    BOOST_CHECK_THROW(AmountFromValue(ValueFromString("92233720368.54775")), UniValue); //overflow error
-    BOOST_CHECK_THROW(AmountFromValue(ValueFromString("1e+11")), UniValue); //overflow error
-    BOOST_CHECK_THROW(AmountFromValue(ValueFromString("1e11")), UniValue); //overflow error signless
-    BOOST_CHECK_THROW(AmountFromValue(ValueFromString("93e+9")), UniValue); //overflow error
+    if(thow)
+    {
+        EXPECT_THROW(AmountFromValue(ValueFromString(value)), UniValue);
+    }
+    else
+    {
+        EXPECT_EQ(AmountFromValue(ValueFromString(value)) , expectedValue);
+    }
 }
 
-BOOST_AUTO_TEST_CASE(json_parse_errors)
+INSTANTIATE_TEST_SUITE_P(rpc_parse_monetary_values, PTestRpc1, Values(
+    make_tuple("-0.00000001",                     0,                   true),
+    make_tuple("0",                               0LL,                 false),
+    make_tuple("0.00000",                         0LL,                 false),
+    make_tuple("0.00001",                         1LL,                 false),
+    make_tuple("0.17622",                         17622LL,             false),
+    make_tuple("0.5",                             50000LL,             false),
+    make_tuple("0.50000",                         50000LL,             false),
+    make_tuple("0.89898",                         89898LL,             false),
+    make_tuple("1.00000",                         100000LL,            false),
+    make_tuple("20999999.9999",                   2099999999990LL,     false),
+    make_tuple("20999999.99999",                  2099999999999LL,     false),
+
+    make_tuple("1e-5",                            COIN/100000,         false),
+    make_tuple("0.1e-4",                          COIN/100000,         false),
+    make_tuple("0.01e-3",                         COIN/100000,         false),
+    make_tuple("0.0000000000000000000000000000000000000000000000000000000000000000000000001e+68", COIN/100000,     false),
+    make_tuple("10000000000000000000000000000000000000000000000000000000000000000e-64",           COIN,     false),
+    make_tuple("0.000000000000000000000000000000000000000000000000000000000000000100000000000000000000000000000000000000000000000000000e64", COIN,     false),
+
+    make_tuple("1e-6",                            0,                   true),
+    make_tuple("0.000019",                        0,                   true),
+    make_tuple("0.00001000000",                   1LL,                 false),
+    make_tuple("19e-6",                           0,                   true),
+    make_tuple("0.19e-3",                         19,                  false),
+
+    make_tuple("92233720368.54775",               0,                   true),
+    make_tuple("1e+11",                           0,                   true),
+    make_tuple("1e11",                            0,                   true),
+    make_tuple("93e+9",                           0,                   true)
+));
+
+TEST(test_rpc, json_parse_errors)
 {
     // Valid
-    BOOST_CHECK_EQUAL(ParseNonRFCJSONValue("1.0").get_real(), 1.0);
+    EXPECT_EQ(ParseNonRFCJSONValue("1.0").get_real(), 1.0);
     // Valid, with leading or trailing whitespace
-    BOOST_CHECK_EQUAL(ParseNonRFCJSONValue(" 1.0").get_real(), 1.0);
-    BOOST_CHECK_EQUAL(ParseNonRFCJSONValue("1.0 ").get_real(), 1.0);
+    EXPECT_EQ(ParseNonRFCJSONValue(" 1.0").get_real(), 1.0);
+    EXPECT_EQ(ParseNonRFCJSONValue("1.0 ").get_real(), 1.0);
 
-    BOOST_CHECK_THROW(AmountFromValue(ParseNonRFCJSONValue(".19e-3")), std::runtime_error); //should fail, missing leading 0, therefore invalid JSON
-    BOOST_CHECK_EQUAL(AmountFromValue(ParseNonRFCJSONValue("0.00000000000000000000000000000000001e+30 ")), 1);
+    EXPECT_THROW(AmountFromValue(ParseNonRFCJSONValue(".19e-3")), std::runtime_error); //should fail, missing leading 0, therefore invalid JSON
+    EXPECT_EQ(AmountFromValue(ParseNonRFCJSONValue("0.00000000000000000000000000000000001e+30 ")), 1);
     // Invalid, initial garbage
-    BOOST_CHECK_THROW(ParseNonRFCJSONValue("[1.0"), std::runtime_error);
-    BOOST_CHECK_THROW(ParseNonRFCJSONValue("a1.0"), std::runtime_error);
+    EXPECT_THROW(ParseNonRFCJSONValue("[1.0"), std::runtime_error);
+    EXPECT_THROW(ParseNonRFCJSONValue("a1.0"), std::runtime_error);
     // Invalid, trailing garbage
-    BOOST_CHECK_THROW(ParseNonRFCJSONValue("1.0sds"), std::runtime_error);
-    BOOST_CHECK_THROW(ParseNonRFCJSONValue("1.0]"), std::runtime_error);
+    EXPECT_THROW(ParseNonRFCJSONValue("1.0sds"), std::runtime_error);
+    EXPECT_THROW(ParseNonRFCJSONValue("1.0]"), std::runtime_error);
     // BTC addresses should fail parsing
-    BOOST_CHECK_THROW(ParseNonRFCJSONValue("175tWpb8K1S7NmH4Zx6rewF9WQrcZv245W"), std::runtime_error);
-    BOOST_CHECK_THROW(ParseNonRFCJSONValue("3J98t1WpEZ73CNmQviecrnyiWrnqRhWNL"), std::runtime_error);
+    EXPECT_THROW(ParseNonRFCJSONValue("175tWpb8K1S7NmH4Zx6rewF9WQrcZv245W"), std::runtime_error);
+    EXPECT_THROW(ParseNonRFCJSONValue("3J98t1WpEZ73CNmQviecrnyiWrnqRhWNL"), std::runtime_error);
 }
 
-BOOST_AUTO_TEST_CASE(rpc_ban)
+
+TEST(test_rpc, rpc_ban)
 {
-    BOOST_CHECK_NO_THROW(CallRPC(string("clearbanned")));
+    EXPECT_NO_THROW(CallRPC(string("clearbanned")));
     
     UniValue r;
-    BOOST_CHECK_NO_THROW(r = CallRPC(string("setban 127.0.0.0 add")));
-    BOOST_CHECK_THROW(r = CallRPC(string("setban 127.0.0.0:8334")), runtime_error); //portnumber for setban not allowed
-    BOOST_CHECK_NO_THROW(r = CallRPC(string("listbanned")));
+    EXPECT_NO_THROW(r = CallRPC(string("setban 127.0.0.0 add")));
+    EXPECT_THROW(r = CallRPC(string("setban 127.0.0.0:8334")), runtime_error); //portnumber for setban not allowed
+    EXPECT_NO_THROW(r = CallRPC(string("listbanned")));
     UniValue ar = r.get_array();
     UniValue o1 = ar[0].get_obj();
     UniValue adr = find_value(o1, "address");
-    BOOST_CHECK_EQUAL(adr.get_str(), "127.0.0.0/255.255.255.255");
-    BOOST_CHECK_NO_THROW(CallRPC(string("setban 127.0.0.0 remove")));;
-    BOOST_CHECK_NO_THROW(r = CallRPC(string("listbanned")));
+    EXPECT_EQ(adr.get_str(), "127.0.0.0/255.255.255.255");
+    EXPECT_NO_THROW(CallRPC(string("setban 127.0.0.0 remove")));;
+    EXPECT_NO_THROW(r = CallRPC(string("listbanned")));
     ar = r.get_array();
-    BOOST_CHECK_EQUAL(ar.size(), 0);
+    EXPECT_EQ(ar.size(), 0);
 
-    BOOST_CHECK_NO_THROW(r = CallRPC(string("setban 127.0.0.0/24 add 1607731200 true")));
-    BOOST_CHECK_NO_THROW(r = CallRPC(string("listbanned")));
+    EXPECT_NO_THROW(r = CallRPC(string("setban 127.0.0.0/24 add 1607731200 true")));
+    EXPECT_NO_THROW(r = CallRPC(string("listbanned")));
     ar = r.get_array();
     o1 = ar[0].get_obj();
     adr = find_value(o1, "address");
     UniValue banned_until = find_value(o1, "banned_until");
-    BOOST_CHECK_EQUAL(adr.get_str(), "127.0.0.0/255.255.255.0");
-    BOOST_CHECK_EQUAL(banned_until.get_int64(), 1607731200); // absolute time check
+    EXPECT_EQ(adr.get_str(), "127.0.0.0/255.255.255.0");
+    EXPECT_EQ(banned_until.get_int64(), 1607731200); // absolute time check
 
-    BOOST_CHECK_NO_THROW(CallRPC(string("clearbanned")));
+    EXPECT_NO_THROW(CallRPC(string("clearbanned")));
 
-    BOOST_CHECK_NO_THROW(r = CallRPC(string("setban 127.0.0.0/24 add 200")));
-    BOOST_CHECK_NO_THROW(r = CallRPC(string("listbanned")));
+    EXPECT_NO_THROW(r = CallRPC(string("setban 127.0.0.0/24 add 200")));
+    EXPECT_NO_THROW(r = CallRPC(string("listbanned")));
     ar = r.get_array();
     o1 = ar[0].get_obj();
     adr = find_value(o1, "address");
     banned_until = find_value(o1, "banned_until");
-    BOOST_CHECK_EQUAL(adr.get_str(), "127.0.0.0/255.255.255.0");
+    EXPECT_EQ(adr.get_str(), "127.0.0.0/255.255.255.0");
     int64_t now = GetTime();
-    BOOST_CHECK(banned_until.get_int64() > now);
-    BOOST_CHECK(banned_until.get_int64()-now <= 200);
+    EXPECT_TRUE(banned_until.get_int64() > now);
+    EXPECT_TRUE(banned_until.get_int64()-now <= 200);
 
     // must throw an exception because 127.0.0.1 is in already banned subnet range
-    BOOST_CHECK_THROW(r = CallRPC(string("setban 127.0.0.1 add")), runtime_error);
+    EXPECT_THROW(r = CallRPC(string("setban 127.0.0.1 add")), runtime_error);
 
-    BOOST_CHECK_NO_THROW(CallRPC(string("setban 127.0.0.0/24 remove")));;
-    BOOST_CHECK_NO_THROW(r = CallRPC(string("listbanned")));
+    EXPECT_NO_THROW(CallRPC(string("setban 127.0.0.0/24 remove")));;
+    EXPECT_NO_THROW(r = CallRPC(string("listbanned")));
     ar = r.get_array();
-    BOOST_CHECK_EQUAL(ar.size(), 0);
+    EXPECT_EQ(ar.size(), 0);
 
-    BOOST_CHECK_NO_THROW(r = CallRPC(string("setban 127.0.0.0/255.255.0.0 add")));
-    BOOST_CHECK_THROW(r = CallRPC(string("setban 127.0.1.1 add")), runtime_error);
+    EXPECT_NO_THROW(r = CallRPC(string("setban 127.0.0.0/255.255.0.0 add")));
+    EXPECT_THROW(r = CallRPC(string("setban 127.0.1.1 add")), runtime_error);
 
-    BOOST_CHECK_NO_THROW(CallRPC(string("clearbanned")));
-    BOOST_CHECK_NO_THROW(r = CallRPC(string("listbanned")));
+    EXPECT_NO_THROW(CallRPC(string("clearbanned")));
+    EXPECT_NO_THROW(r = CallRPC(string("listbanned")));
     ar = r.get_array();
-    BOOST_CHECK_EQUAL(ar.size(), 0);
+    EXPECT_EQ(ar.size(), 0);
 
 
-    BOOST_CHECK_THROW(r = CallRPC(string("setban test add")), runtime_error); //invalid IP
+    EXPECT_THROW(r = CallRPC(string("setban test add")), runtime_error); //invalid IP
 
     //IPv6 tests
-    BOOST_CHECK_NO_THROW(r = CallRPC(string("setban FE80:0000:0000:0000:0202:B3FF:FE1E:8329 add")));
-    BOOST_CHECK_NO_THROW(r = CallRPC(string("listbanned")));
+    EXPECT_NO_THROW(r = CallRPC(string("setban FE80:0000:0000:0000:0202:B3FF:FE1E:8329 add")));
+    EXPECT_NO_THROW(r = CallRPC(string("listbanned")));
     ar = r.get_array();
     o1 = ar[0].get_obj();
     adr = find_value(o1, "address");
-    BOOST_CHECK_EQUAL(adr.get_str(), "fe80::202:b3ff:fe1e:8329/ffff:ffff:ffff:ffff:ffff:ffff:ffff:ffff");
+    EXPECT_EQ(adr.get_str(), "fe80::202:b3ff:fe1e:8329/ffff:ffff:ffff:ffff:ffff:ffff:ffff:ffff");
 
-    BOOST_CHECK_NO_THROW(CallRPC(string("clearbanned")));
-    BOOST_CHECK_NO_THROW(r = CallRPC(string("setban 2001:db8::/30 add")));
-    BOOST_CHECK_NO_THROW(r = CallRPC(string("listbanned")));
+    EXPECT_NO_THROW(CallRPC(string("clearbanned")));
+    EXPECT_NO_THROW(r = CallRPC(string("setban 2001:db8::/30 add")));
+    EXPECT_NO_THROW(r = CallRPC(string("listbanned")));
     ar = r.get_array();
     o1 = ar[0].get_obj();
     adr = find_value(o1, "address");
-    BOOST_CHECK_EQUAL(adr.get_str(), "2001:db8::/ffff:fffc:0:0:0:0:0:0");
+    EXPECT_EQ(adr.get_str(), "2001:db8::/ffff:fffc:0:0:0:0:0:0");
 
-    BOOST_CHECK_NO_THROW(CallRPC(string("clearbanned")));
-    BOOST_CHECK_NO_THROW(r = CallRPC(string("setban 2001:4d48:ac57:400:cacf:e9ff:fe1d:9c63/128 add")));
-    BOOST_CHECK_NO_THROW(r = CallRPC(string("listbanned")));
+    EXPECT_NO_THROW(CallRPC(string("clearbanned")));
+    EXPECT_NO_THROW(r = CallRPC(string("setban 2001:4d48:ac57:400:cacf:e9ff:fe1d:9c63/128 add")));
+    EXPECT_NO_THROW(r = CallRPC(string("listbanned")));
     ar = r.get_array();
     o1 = ar[0].get_obj();
     adr = find_value(o1, "address");
-    BOOST_CHECK_EQUAL(adr.get_str(), "2001:4d48:ac57:400:cacf:e9ff:fe1d:9c63/ffff:ffff:ffff:ffff:ffff:ffff:ffff:ffff");
+    EXPECT_EQ(adr.get_str(), "2001:4d48:ac57:400:cacf:e9ff:fe1d:9c63/ffff:ffff:ffff:ffff:ffff:ffff:ffff:ffff");
 }
 
 
-BOOST_AUTO_TEST_CASE(rpc_raw_create_overwinter_v3)
+TEST_F(TestRpc, rpc_raw_create_overwinter_v3)
 {
     SelectParams(CBaseChainParams::Network::REGTEST);
     UpdateNetworkUpgradeParameters(Consensus::UPGRADE_OVERWINTER, Consensus::NetworkUpgrade::ALWAYS_ACTIVE);
@@ -336,11 +364,11 @@ BOOST_AUTO_TEST_CASE(rpc_raw_create_overwinter_v3)
     r = CallRPC(string("createrawtransaction ") + prevout + " " +
       "{\"ttTigMmXu3SJwFsJfBxyTcAY3zD2CxrE9YG\":11}");
     std::string rawhex = r.get_str();
-    BOOST_CHECK_NO_THROW(r = CallRPC(string("decoderawtransaction ") + rawhex));
-    BOOST_CHECK_EQUAL(find_value(r.get_obj(), "overwintered").get_bool(), true);
-    BOOST_CHECK_EQUAL(find_value(r.get_obj(), "version").get_int(), 3);
-    BOOST_CHECK_EQUAL(find_value(r.get_obj(), "expiryheight").get_int(), 21);
-    BOOST_CHECK_EQUAL(
+    EXPECT_NO_THROW(r = CallRPC(string("decoderawtransaction ") + rawhex));
+    EXPECT_EQ(find_value(r.get_obj(), "overwintered").get_bool(), true);
+    EXPECT_EQ(find_value(r.get_obj(), "version").get_int(), 3);
+    EXPECT_EQ(find_value(r.get_obj(), "expiryheight").get_int(), 21);
+    EXPECT_EQ(
         ParseHexToUInt32(find_value(r.get_obj(), "versiongroupid").get_str()),
         OVERWINTER_VERSION_GROUP_ID);
 
@@ -352,33 +380,33 @@ BOOST_AUTO_TEST_CASE(rpc_raw_create_overwinter_v3)
     CDataStream ss2(ParseHex(rawhex), SER_DISK, PROTOCOL_VERSION);
     CMutableTransaction mtx;
     ss2 >> mtx;
-    BOOST_CHECK_EQUAL(tx.GetHash().GetHex(), CTransaction(mtx).GetHash().GetHex());
+    EXPECT_EQ(tx.GetHash().GetHex(), CTransaction(mtx).GetHash().GetHex());
 
     // Revert to default
     UpdateNetworkUpgradeParameters(Consensus::UPGRADE_OVERWINTER, Consensus::NetworkUpgrade::NO_ACTIVATION_HEIGHT);
 }
 
-BOOST_AUTO_TEST_CASE(rpc_getnetworksolps)
+TEST(test_rpc, rpc_getnetworksolps)
 {
-    BOOST_CHECK_NO_THROW(CallRPC("getnetworksolps"));
-    BOOST_CHECK_NO_THROW(CallRPC("getnetworksolps 120"));
-    BOOST_CHECK_NO_THROW(CallRPC("getnetworksolps 120 -1"));
+    EXPECT_NO_THROW(CallRPC("getnetworksolps"));
+    EXPECT_NO_THROW(CallRPC("getnetworksolps 120"));
+    EXPECT_NO_THROW(CallRPC("getnetworksolps 120 -1"));
 }
 
 void CheckRPCThrows(std::string rpcString, std::string expectedErrorMessage) {
     try {
         CallRPC(rpcString);
         // Note: CallRPC catches (const UniValue& objError) and rethrows a runtime_error
-        BOOST_FAIL("Should have caused an error");
+        // BOOST_FAIL("Should have caused an error");
     } catch (const std::runtime_error& e) {
-        BOOST_CHECK_EQUAL(expectedErrorMessage, e.what());
+        EXPECT_EQ(expectedErrorMessage, e.what());
     } catch(const std::exception& e) {
-        BOOST_FAIL(std::string("Unexpected exception: ") + typeid(e).name() + ", message=\"" + e.what() + "\"");
+        // BOOST_FAIL(std::string("Unexpected exception: ") + typeid(e).name() + ", message=\"" + e.what() + "\"");
     }
 }
 
 // Test parameter processing (not functionality)
-BOOST_AUTO_TEST_CASE(rpc_insightexplorer)
+TEST_F(TestRpc, rpc_insightexplorer)
 {
     CheckRPCThrows("getblockdeltas \"a\"",
         "Error: getblockdeltas is disabled. "
@@ -393,9 +421,9 @@ BOOST_AUTO_TEST_CASE(rpc_insightexplorer)
 
     std::string addr = "PthhsEaVCV8WZHw5eoyufm8pQhT8iQdKJPi";
 
-    BOOST_CHECK_NO_THROW(CallRPC("getaddressmempool \"" + addr + "\""));
-    BOOST_CHECK_NO_THROW(CallRPC("getaddressmempool {\"addresses\":[\"" + addr + "\"]}"));
-    BOOST_CHECK_NO_THROW(CallRPC("getaddressmempool {\"addresses\":[\"" + addr + "\",\"" + addr + "\"]}")); 
+    EXPECT_NO_THROW(CallRPC("getaddressmempool \"" + addr + "\""));
+    EXPECT_NO_THROW(CallRPC("getaddressmempool {\"addresses\":[\"" + addr + "\"]}"));
+    EXPECT_NO_THROW(CallRPC("getaddressmempool {\"addresses\":[\"" + addr + "\",\"" + addr + "\"]}")); 
 
     CheckRPCThrows("getblockdeltas \"00040fe8ec8471911baa1db1266ea15dd06b4a8a5c453883c000b031973dce08\"",
         "Block not found");
@@ -403,5 +431,3 @@ BOOST_AUTO_TEST_CASE(rpc_insightexplorer)
     fExperimentalMode = false;
     fInsightExplorer = false;
 }
-BOOST_AUTO_TEST_SUITE_END()
-*/
