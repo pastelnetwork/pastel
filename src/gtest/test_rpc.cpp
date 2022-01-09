@@ -17,6 +17,8 @@
 #include <univalue.h>
 #include "pastel_gtest_main.h"
 
+#include <boost/algorithm/string.hpp>
+
 using namespace std;
 using namespace testing;
 
@@ -36,10 +38,11 @@ UniValue CallRPC(string args)
 {
     vector<string> vArgs;
     regex pattern(" |\t");
-    vArgs = vector<string>(
-                    sregex_token_iterator(args.begin(), args.end(), pattern, -1),
-                    sregex_token_iterator()
-                    );
+    // vArgs = vector<string>(
+    //                 sregex_token_iterator(args.begin(), args.end(), pattern, -1),
+    //                 sregex_token_iterator()
+    //                 );
+    boost::split(vArgs, args, boost::is_any_of(" \t"));
     string strMethod = vArgs[0];
     vArgs.erase(vArgs.begin());
     // Handle empty strings the same way as CLI
@@ -65,12 +68,14 @@ class TestRpc : public Test
 public:
     static void SetUpTestSuite()
     {
-        gl_pPastelTestEnv->SetupTesting();
+        // gl_pPastelTestEnv->SetupTesting();
+        gl_pPastelTestEnv->InitializeRegTest();
     }
 
     static void TearDownTestSuite()
     {
-        gl_pPastelTestEnv->FinalizeSetupTesting();
+        // gl_pPastelTestEnv->FinalizeSetupTesting();
+        gl_pPastelTestEnv->FinalizeRegTest();
     }
 };
 
@@ -86,35 +91,10 @@ void CheckRPCThrows(string rpcString, string expectedErrorMessage) {
     }
 }
 
-// Test parameter processing (not functionality)
-TEST_F(TestRpc, rpc_insightexplorer)
-{
-    CheckRPCThrows("getblockdeltas \"a\"",
-        "Error: getblockdeltas is disabled. "
-        "Run './pastel-cli help getblockdeltas' for instructions on how to enable this feature.");
-
-    CheckRPCThrows("getaddressmempool \"a\"",
-        "Error: getaddressmempool is disabled. "
-        "Run './pastel-cli help getaddressmempool' for instructions on how to enable this feature.");
-
-    fExperimentalMode = true;
-    fInsightExplorer = true;
-
-    string addr = "PthhsEaVCV8WZHw5eoyufm8pQhT8iQdKJPi";
-
-    EXPECT_NO_THROW(CallRPC("getaddressmempool \"" + addr + "\""));
-    EXPECT_NO_THROW(CallRPC("getaddressmempool {\"addresses\":[\"" + addr + "\"]}"));
-    EXPECT_NO_THROW(CallRPC("getaddressmempool {\"addresses\":[\"" + addr + "\",\"" + addr + "\"]}")); 
-
-    CheckRPCThrows("getblockdeltas \"00040fe8ec8471911baa1db1266ea15dd06b4a8a5c453883c000b031973dce08\"",
-        "Block not found");
-    // revert
-    fExperimentalMode = false;
-    fInsightExplorer = false;
-}
 
 TEST_F(TestRpc, rpc_rawparams)
 {
+    SelectParams(CBaseChainParams::Network::MAIN);
     // Test raw transaction API argument handling
     UniValue r;
 
@@ -160,6 +140,7 @@ TEST_F(TestRpc, rpc_rawparams)
 
 TEST_F(TestRpc, rpc_rawsign)
 {
+    SelectParams(CBaseChainParams::Network::MAIN);
     UniValue r;
     // input is a 1-of-2 multisig (so is output):
     string prevout =
@@ -424,4 +405,34 @@ TEST(test_rpc, rpc_getnetworksolps)
     EXPECT_NO_THROW(CallRPC("getnetworksolps"));
     EXPECT_NO_THROW(CallRPC("getnetworksolps 120"));
     EXPECT_NO_THROW(CallRPC("getnetworksolps 120 -1"));
+}
+
+
+// Test parameter processing (not functionality)
+TEST_F(TestRpc, rpc_insightexplorer)
+{
+    SelectParams(CBaseChainParams::Network::MAIN);
+    
+    CheckRPCThrows("getblockdeltas \"a\"",
+        "Error: getblockdeltas is disabled. "
+        "Run './pastel-cli help getblockdeltas' for instructions on how to enable this feature.");
+
+    CheckRPCThrows("getaddressmempool \"a\"",
+        "Error: getaddressmempool is disabled. "
+        "Run './pastel-cli help getaddressmempool' for instructions on how to enable this feature.");
+
+    fExperimentalMode = true;
+    fInsightExplorer = true;
+
+    string addr = "PthhsEaVCV8WZHw5eoyufm8pQhT8iQdKJPi";
+
+    EXPECT_NO_THROW(CallRPC("getaddressmempool \"" + addr + "\""));
+    EXPECT_NO_THROW(CallRPC("getaddressmempool {\"addresses\":[\"" + addr + "\"]}"));
+    EXPECT_NO_THROW(CallRPC("getaddressmempool {\"addresses\":[\"" + addr + "\",\"" + addr + "\"]}")); 
+
+    CheckRPCThrows("getblockdeltas \"00040fe8ec8471911baa1db1266ea15dd06b4a8a5c453883c000b031973dce08\"",
+        "Block not found");
+    // revert
+    fExperimentalMode = false;
+    fInsightExplorer = false;
 }
