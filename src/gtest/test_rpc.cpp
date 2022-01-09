@@ -17,8 +17,6 @@
 #include <univalue.h>
 #include "pastel_gtest_main.h"
 
-#include <boost/algorithm/string.hpp>
-
 using namespace std;
 using namespace testing;
 
@@ -38,11 +36,10 @@ UniValue CallRPC(string args)
 {
     vector<string> vArgs;
     regex pattern(" |\t");
-    // vArgs = vector<string>(
-    //                 sregex_token_iterator(args.begin(), args.end(), pattern, -1),
-    //                 sregex_token_iterator()
-    //                 );
-    boost::split(vArgs, args, boost::is_any_of(" \t"));
+    vArgs = vector<string>(
+                    sregex_token_iterator(args.begin(), args.end(), pattern, -1),
+                    sregex_token_iterator()
+                    );
     string strMethod = vArgs[0];
     vArgs.erase(vArgs.begin());
     // Handle empty strings the same way as CLI
@@ -76,6 +73,45 @@ public:
         gl_pPastelTestEnv->FinalizeSetupTesting();
     }
 };
+
+void CheckRPCThrows(string rpcString, string expectedErrorMessage) {
+    try {
+        CallRPC(rpcString);
+        // Note: CallRPC catches (const UniValue& objError) and rethrows a runtime_error
+        // BOOST_FAIL("Should have caused an error");
+    } catch (const runtime_error& e) {
+        EXPECT_EQ(expectedErrorMessage, e.what());
+    } catch(const exception& e) {
+        // BOOST_FAIL(string("Unexpected exception: ") + typeid(e).name() + ", message=\"" + e.what() + "\"");
+    }
+}
+
+// Test parameter processing (not functionality)
+TEST_F(TestRpc, rpc_insightexplorer)
+{
+    CheckRPCThrows("getblockdeltas \"a\"",
+        "Error: getblockdeltas is disabled. "
+        "Run './pastel-cli help getblockdeltas' for instructions on how to enable this feature.");
+
+    CheckRPCThrows("getaddressmempool \"a\"",
+        "Error: getaddressmempool is disabled. "
+        "Run './pastel-cli help getaddressmempool' for instructions on how to enable this feature.");
+
+    fExperimentalMode = true;
+    fInsightExplorer = true;
+
+    string addr = "PthhsEaVCV8WZHw5eoyufm8pQhT8iQdKJPi";
+
+    EXPECT_NO_THROW(CallRPC("getaddressmempool \"" + addr + "\""));
+    EXPECT_NO_THROW(CallRPC("getaddressmempool {\"addresses\":[\"" + addr + "\"]}"));
+    EXPECT_NO_THROW(CallRPC("getaddressmempool {\"addresses\":[\"" + addr + "\",\"" + addr + "\"]}")); 
+
+    CheckRPCThrows("getblockdeltas \"00040fe8ec8471911baa1db1266ea15dd06b4a8a5c453883c000b031973dce08\"",
+        "Block not found");
+    // revert
+    fExperimentalMode = false;
+    fInsightExplorer = false;
+}
 
 TEST_F(TestRpc, rpc_rawparams)
 {
@@ -182,8 +218,7 @@ INSTANTIATE_TEST_SUITE_P(rpc_format_monetary_values, PTestRpc, Values(
     make_tuple(COIN/100000,             "0.00001")
  ));
 
-
-static UniValue ValueFromString(const std::string &str)
+static UniValue ValueFromString(const string &str)
 {
     UniValue value;
     //printf("%s\n", str.c_str());
@@ -250,17 +285,17 @@ TEST(test_rpc, json_parse_errors)
     EXPECT_EQ(ParseNonRFCJSONValue(" 1.0").get_real(), 1.0);
     EXPECT_EQ(ParseNonRFCJSONValue("1.0 ").get_real(), 1.0);
 
-    EXPECT_THROW(AmountFromValue(ParseNonRFCJSONValue(".19e-3")), std::runtime_error); //should fail, missing leading 0, therefore invalid JSON
+    EXPECT_THROW(AmountFromValue(ParseNonRFCJSONValue(".19e-3")), runtime_error); //should fail, missing leading 0, therefore invalid JSON
     EXPECT_EQ(AmountFromValue(ParseNonRFCJSONValue("0.00000000000000000000000000000000001e+30 ")), 1);
     // Invalid, initial garbage
-    EXPECT_THROW(ParseNonRFCJSONValue("[1.0"), std::runtime_error);
-    EXPECT_THROW(ParseNonRFCJSONValue("a1.0"), std::runtime_error);
+    EXPECT_THROW(ParseNonRFCJSONValue("[1.0"), runtime_error);
+    EXPECT_THROW(ParseNonRFCJSONValue("a1.0"), runtime_error);
     // Invalid, trailing garbage
-    EXPECT_THROW(ParseNonRFCJSONValue("1.0sds"), std::runtime_error);
-    EXPECT_THROW(ParseNonRFCJSONValue("1.0]"), std::runtime_error);
+    EXPECT_THROW(ParseNonRFCJSONValue("1.0sds"), runtime_error);
+    EXPECT_THROW(ParseNonRFCJSONValue("1.0]"), runtime_error);
     // BTC addresses should fail parsing
-    EXPECT_THROW(ParseNonRFCJSONValue("175tWpb8K1S7NmH4Zx6rewF9WQrcZv245W"), std::runtime_error);
-    EXPECT_THROW(ParseNonRFCJSONValue("3J98t1WpEZ73CNmQviecrnyiWrnqRhWNL"), std::runtime_error);
+    EXPECT_THROW(ParseNonRFCJSONValue("175tWpb8K1S7NmH4Zx6rewF9WQrcZv245W"), runtime_error);
+    EXPECT_THROW(ParseNonRFCJSONValue("3J98t1WpEZ73CNmQviecrnyiWrnqRhWNL"), runtime_error);
 }
 
 
@@ -319,7 +354,6 @@ TEST(test_rpc, rpc_ban)
     ar = r.get_array();
     EXPECT_EQ(ar.size(), 0);
 
-
     EXPECT_THROW(r = CallRPC(string("setban test add")), runtime_error); //invalid IP
 
     //IPv6 tests
@@ -347,7 +381,6 @@ TEST(test_rpc, rpc_ban)
     EXPECT_EQ(adr.get_str(), "2001:4d48:ac57:400:cacf:e9ff:fe1d:9c63/ffff:ffff:ffff:ffff:ffff:ffff:ffff:ffff");
 }
 
-
 TEST_F(TestRpc, rpc_raw_create_overwinter_v3)
 {
     SelectParams(CBaseChainParams::Network::REGTEST);
@@ -358,12 +391,12 @@ TEST_F(TestRpc, rpc_raw_create_overwinter_v3)
     // private: cMbEk1XMfhzUKEkcHgsXpDdchsjwMvTDhxRV6xNLbQ9a7tFMz8sS
 
     UniValue r;
-    std::string prevout =
+    string prevout =
       "[{\"txid\":\"b4cc287e58f87cdae59417329f710f3ecd75a4ee1d2872b7248f50977c8493f3\","
       "\"vout\":1}]";
     r = CallRPC(string("createrawtransaction ") + prevout + " " +
       "{\"ttTigMmXu3SJwFsJfBxyTcAY3zD2CxrE9YG\":11}");
-    std::string rawhex = r.get_str();
+    string rawhex = r.get_str();
     EXPECT_NO_THROW(r = CallRPC(string("decoderawtransaction ") + rawhex));
     EXPECT_EQ(find_value(r.get_obj(), "overwintered").get_bool(), true);
     EXPECT_EQ(find_value(r.get_obj(), "version").get_int(), 3);
@@ -391,43 +424,4 @@ TEST(test_rpc, rpc_getnetworksolps)
     EXPECT_NO_THROW(CallRPC("getnetworksolps"));
     EXPECT_NO_THROW(CallRPC("getnetworksolps 120"));
     EXPECT_NO_THROW(CallRPC("getnetworksolps 120 -1"));
-}
-
-void CheckRPCThrows(std::string rpcString, std::string expectedErrorMessage) {
-    try {
-        CallRPC(rpcString);
-        // Note: CallRPC catches (const UniValue& objError) and rethrows a runtime_error
-        // BOOST_FAIL("Should have caused an error");
-    } catch (const std::runtime_error& e) {
-        EXPECT_EQ(expectedErrorMessage, e.what());
-    } catch(const std::exception& e) {
-        // BOOST_FAIL(std::string("Unexpected exception: ") + typeid(e).name() + ", message=\"" + e.what() + "\"");
-    }
-}
-
-// Test parameter processing (not functionality)
-TEST_F(TestRpc, rpc_insightexplorer)
-{
-    CheckRPCThrows("getblockdeltas \"a\"",
-        "Error: getblockdeltas is disabled. "
-        "Run './pastel-cli help getblockdeltas' for instructions on how to enable this feature.");
-
-    CheckRPCThrows("getaddressmempool \"a\"",
-        "Error: getaddressmempool is disabled. "
-        "Run './pastel-cli help getaddressmempool' for instructions on how to enable this feature.");
-
-    fExperimentalMode = true;
-    fInsightExplorer = true;
-
-    std::string addr = "PthhsEaVCV8WZHw5eoyufm8pQhT8iQdKJPi";
-
-    EXPECT_NO_THROW(CallRPC("getaddressmempool \"" + addr + "\""));
-    EXPECT_NO_THROW(CallRPC("getaddressmempool {\"addresses\":[\"" + addr + "\"]}"));
-    EXPECT_NO_THROW(CallRPC("getaddressmempool {\"addresses\":[\"" + addr + "\",\"" + addr + "\"]}")); 
-
-    CheckRPCThrows("getblockdeltas \"00040fe8ec8471911baa1db1266ea15dd06b4a8a5c453883c000b031973dce08\"",
-        "Block not found");
-    // revert
-    fExperimentalMode = false;
-    fInsightExplorer = false;
 }
