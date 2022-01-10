@@ -37,12 +37,22 @@ createArgs(int nRequired, const char* address1=nullptr, const char* address2=nul
 UniValue CallRPC(string args)
 {
     vector<string> vArgs;
-    regex pattern(" |\t");
-    // vArgs = vector<string>(
-    //                 sregex_token_iterator(args.begin(), args.end(), pattern, -1),
-    //                 sregex_token_iterator()
-    //                 );
-    boost::split(vArgs, args, boost::is_any_of(" \t"));
+    vector<string> vArgs1;
+
+    regex pattern("\\ |\t");
+    vArgs = vector<string>(
+                    sregex_token_iterator(args.begin(), args.end(), pattern, -1),
+                    sregex_token_iterator()
+                    );
+    // for (string i: vArgs)
+    //     std::cout << "tanlm " << i << "END ";
+    // std::cout << std::endl;
+
+    // boost::split(vArgs1, args, boost::is_any_of(" \t"));
+    // for (string i: vArgs1)
+    //     std::cout << "tanlm1 " << i << "END ";
+    // std::cout << std::endl;
+
     string strMethod = vArgs[0];
     vArgs.erase(vArgs.begin());
     // Handle empty strings the same way as CLI
@@ -68,14 +78,14 @@ class TestRpc : public Test
 public:
     static void SetUpTestSuite()
     {
-        // gl_pPastelTestEnv->SetupTesting();
-        gl_pPastelTestEnv->InitializeRegTest();
+        gl_pPastelTestEnv->SetupTesting();
+        // gl_pPastelTestEnv->InitializeRegTest();
     }
 
     static void TearDownTestSuite()
     {
-        // gl_pPastelTestEnv->FinalizeSetupTesting();
-        gl_pPastelTestEnv->FinalizeRegTest();
+        gl_pPastelTestEnv->FinalizeSetupTesting();
+        // gl_pPastelTestEnv->FinalizeRegTest();
     }
 };
 
@@ -140,7 +150,7 @@ TEST_F(TestRpc, rpc_rawparams)
 
 TEST_F(TestRpc, rpc_rawsign)
 {
-    SelectParams(CBaseChainParams::Network::MAIN);
+    // SelectParams(CBaseChainParams::Network::MAIN);
     UniValue r;
     // input is a 1-of-2 multisig (so is output):
     string prevout =
@@ -280,7 +290,7 @@ TEST(test_rpc, json_parse_errors)
 }
 
 
-TEST(test_rpc, rpc_ban)
+TEST_F(TestRpc, rpc_ban)
 {
     EXPECT_NO_THROW(CallRPC(string("clearbanned")));
     
