@@ -1,24 +1,28 @@
 // Copyright (c) 2014 The Bitcoin Core developers
+// Copyright (c) 2021 The Pastel developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
+
+#include <vector>
+#include <map>
+
+#include <gtest/gtest.h>
 
 #include "coins.h"
 #include "random.h"
 #include "script/standard.h"
 #include "uint256.h"
 #include "utilstrencodings.h"
-#include "test/test_bitcoin.h"
 #include "consensus/validation.h"
 #include "main.h"
 #include "undo.h"
 #include "primitives/transaction.h"
 #include "pubkey.h"
-
-#include <vector>
-#include <map>
-
-#include <boost/test/unit_test.hpp>
 #include "zcash/IncrementalMerkleTree.hpp"
+#include "clientversion.h"
+
+using namespace std;
+using namespace testing;
 
 namespace
 {
@@ -27,11 +31,11 @@ class CCoinsViewTest : public CCoinsView
     uint256 hashBestBlock_;
     uint256 hashBestSproutAnchor_;
     uint256 hashBestSaplingAnchor_;
-    std::map<uint256, CCoins> map_;
-    std::map<uint256, SproutMerkleTree> mapSproutAnchors_;
-    std::map<uint256, SaplingMerkleTree> mapSaplingAnchors_;
-    std::map<uint256, bool> mapSproutNullifiers_;
-    std::map<uint256, bool> mapSaplingNullifiers_;
+    map<uint256, CCoins> map_;
+    map<uint256, SproutMerkleTree> mapSproutAnchors_;
+    map<uint256, SaplingMerkleTree> mapSaplingAnchors_;
+    map<uint256, bool> mapSproutNullifiers_;
+    map<uint256, bool> mapSaplingNullifiers_;
 
 public:
     CCoinsViewTest() {
@@ -46,7 +50,7 @@ public:
             return true;
         }
 
-        std::map<uint256, SproutMerkleTree>::const_iterator it = mapSproutAnchors_.find(rt);
+        map<uint256, SproutMerkleTree>::const_iterator it = mapSproutAnchors_.find(rt);
         if (it == mapSproutAnchors_.end()) {
             return false;
         } else {
@@ -62,7 +66,7 @@ public:
             return true;
         }
 
-        std::map<uint256, SaplingMerkleTree>::const_iterator it = mapSaplingAnchors_.find(rt);
+        map<uint256, SaplingMerkleTree>::const_iterator it = mapSaplingAnchors_.find(rt);
         if (it == mapSaplingAnchors_.end()) {
             return false;
         } else {
@@ -73,7 +77,7 @@ public:
 
     bool GetNullifier(const uint256 &nf, ShieldedType type) const
     {
-        const std::map<uint256, bool>* mapToUse;
+        const map<uint256, bool>* mapToUse;
         switch (type) {
             case SPROUT:
                 mapToUse = &mapSproutNullifiers_;
@@ -82,9 +86,9 @@ public:
                 mapToUse = &mapSaplingNullifiers_;
                 break;
             default:
-                throw std::runtime_error("Unknown shielded type");
+                throw runtime_error("Unknown shielded type");
         }
-        std::map<uint256, bool>::const_iterator it = mapToUse->find(nf);
+        map<uint256, bool>::const_iterator it = mapToUse->find(nf);
         if (it == mapToUse->end()) {
             return false;
         } else {
@@ -103,13 +107,13 @@ public:
                 return hashBestSaplingAnchor_;
                 break;
             default:
-                throw std::runtime_error("Unknown shielded type");
+                throw runtime_error("Unknown shielded type");
         }
     }
 
     bool GetCoins(const uint256& txid, CCoins& coins) const
     {
-        std::map<uint256, CCoins>::const_iterator it = map_.find(txid);
+        map<uint256, CCoins>::const_iterator it = map_.find(txid);
         if (it == map_.end()) {
             return false;
         }
@@ -129,7 +133,7 @@ public:
 
     uint256 GetBestBlock() const { return hashBestBlock_; }
 
-    void BatchWriteNullifiers(CNullifiersMap& mapNullifiers, std::map<uint256, bool>& cacheNullifiers)
+    void BatchWriteNullifiers(CNullifiersMap& mapNullifiers, map<uint256, bool>& cacheNullifiers)
     {
         for (CNullifiersMap::iterator it = mapNullifiers.begin(); it != mapNullifiers.end(); ) {
             if (it->second.flags & CNullifiersCacheEntry::DIRTY) {
@@ -145,14 +149,14 @@ public:
     }
 
     template<typename Tree, typename Map, typename MapEntry>
-    void BatchWriteAnchors(Map& mapAnchors, std::map<uint256, Tree>& cacheAnchors)
+    void BatchWriteAnchors(Map& mapAnchors, map<uint256, Tree>& cacheAnchors)
     {
         for (auto it = mapAnchors.begin(); it != mapAnchors.end(); ) {
             if (it->second.flags & MapEntry::DIRTY) {
                 // Same optimization used in CCoinsViewDB is to only write dirty entries.
                 if (it->second.entered) {
                     if (it->first != Tree::empty_root()) {
-                        auto ret = cacheAnchors.insert(std::make_pair(it->first, Tree())).first;
+                        auto ret = cacheAnchors.insert(make_pair(it->first, Tree())).first;
                         ret->second = it->second.tree;
                     }
                 } else {
@@ -218,7 +222,7 @@ public:
         for (CCoinsMap::iterator it = cacheCoins.begin(); it != cacheCoins.end(); it++) {
             ret += it->second.coins.DynamicMemoryUsage();
         }
-        BOOST_CHECK_EQUAL(DynamicMemoryUsage(), ret);
+        EXPECT_EQ(DynamicMemoryUsage(), ret);
     }
 
 };
@@ -248,17 +252,17 @@ template<typename Tree> bool GetAnchorAt(const CCoinsViewCacheTest &cache, const
 template<> bool GetAnchorAt(const CCoinsViewCacheTest &cache, const uint256 &rt, SproutMerkleTree &tree) { return cache.GetSproutAnchorAt(rt, tree); }
 template<> bool GetAnchorAt(const CCoinsViewCacheTest &cache, const uint256 &rt, SaplingMerkleTree &tree) { return cache.GetSaplingAnchorAt(rt, tree); }
 
-BOOST_FIXTURE_TEST_SUITE(coins_tests, BasicTestingSetup)
+// BOOST_FIXTURE_TEST_SUITE(coins_tests, BasicTestingSetup)
 
 void checkNullifierCache(const CCoinsViewCacheTest &cache, const TxWithNullifiers &txWithNullifiers, bool shouldBeInCache) {
     // Make sure the nullifiers have not gotten mixed up
-    BOOST_CHECK(!cache.GetNullifier(txWithNullifiers.saplingNullifier, SPROUT));
+    EXPECT_TRUE(!cache.GetNullifier(txWithNullifiers.saplingNullifier, SPROUT));
     // Check if the nullifiers either are or are not in the cache
     bool containsSaplingNullifier = cache.GetNullifier(txWithNullifiers.saplingNullifier, SAPLING);
-    BOOST_CHECK(containsSaplingNullifier == shouldBeInCache);
+    EXPECT_EQ(containsSaplingNullifier , shouldBeInCache);
 }
 
-BOOST_AUTO_TEST_CASE(nullifier_regression_test)
+TEST(test_coins, nullifier_regression_test)
 {
     // Correct behavior:
     {
@@ -346,6 +350,9 @@ BOOST_AUTO_TEST_CASE(nullifier_regression_test)
     }
 }
 
+class PTestCoins : public TestWithParam<ShieldedType>
+{};
+
 template<typename Tree> void anchorPopRegressionTestImpl(ShieldedType type)
 {
     // Correct behavior:
@@ -372,8 +379,8 @@ template<typename Tree> void anchorPopRegressionTestImpl(ShieldedType type)
         // The base contains the anchor, of course!
         {
             Tree checkTree;
-            BOOST_CHECK(GetAnchorAt(cache1, tree.root(), checkTree));
-            BOOST_CHECK(checkTree.root() == tree.root());
+            EXPECT_TRUE(GetAnchorAt(cache1, tree.root(), checkTree));
+            EXPECT_EQ(checkTree.root() , tree.root());
         }
     }
 
@@ -404,8 +411,8 @@ template<typename Tree> void anchorPopRegressionTestImpl(ShieldedType type)
         // treestate...
         {
             Tree checktree;
-            BOOST_CHECK(GetAnchorAt(cache1, tree.root(), checktree));
-            BOOST_CHECK(checktree.root() == tree.root()); // Oh, shucks.
+            EXPECT_TRUE(GetAnchorAt(cache1, tree.root(), checktree));
+            EXPECT_EQ(checktree.root() , tree.root()); // Oh, shucks.
         }
 
         // Flushing cache won't help either, just makes the inconsistency
@@ -413,21 +420,24 @@ template<typename Tree> void anchorPopRegressionTestImpl(ShieldedType type)
         cache1.Flush();
         {
             Tree checktree;
-            BOOST_CHECK(GetAnchorAt(cache1, tree.root(), checktree));
-            BOOST_CHECK(checktree.root() == tree.root()); // Oh, shucks.
+            EXPECT_TRUE(GetAnchorAt(cache1, tree.root(), checktree));
+            EXPECT_EQ(checktree.root() , tree.root()); // Oh, shucks.
         }
     }
 }
 
-BOOST_AUTO_TEST_CASE(anchor_pop_regression_test)
+TEST_P(PTestCoins, anchor_pop_regression_test)
 {
-    BOOST_TEST_CONTEXT("Sprout") {
-        anchorPopRegressionTestImpl<SproutMerkleTree>(SPROUT);
-    }
-    BOOST_TEST_CONTEXT("Sapling") {
-        anchorPopRegressionTestImpl<SaplingMerkleTree>(SAPLING);
-    }
+    const auto &test = GetParam();
+
+    anchorPopRegressionTestImpl<SproutMerkleTree>(test);
 }
+
+INSTANTIATE_TEST_SUITE_P(anchor_pop_regression_test, PTestCoins, Values(
+    SPROUT,
+    SAPLING
+));
+
 
 template<typename Tree> void anchorRegressionTestImpl(ShieldedType type)
 {
@@ -444,8 +454,8 @@ template<typename Tree> void anchorRegressionTestImpl(ShieldedType type)
         cache1.Flush();
 
         cache1.PopAnchor(Tree::empty_root(), type);
-        BOOST_CHECK(cache1.GetBestAnchor(type) == Tree::empty_root());
-        BOOST_CHECK(!GetAnchorAt(cache1, tree.root(), tree));
+        EXPECT_EQ(cache1.GetBestAnchor(type) , Tree::empty_root());
+        EXPECT_TRUE(!GetAnchorAt(cache1, tree.root(), tree));
     }
 
     // Also correct behavior:
@@ -461,8 +471,8 @@ template<typename Tree> void anchorRegressionTestImpl(ShieldedType type)
 
         cache1.PopAnchor(Tree::empty_root(), type);
         cache1.Flush();
-        BOOST_CHECK(cache1.GetBestAnchor(type) == Tree::empty_root());
-        BOOST_CHECK(!GetAnchorAt(cache1, tree.root(), tree));
+        EXPECT_EQ(cache1.GetBestAnchor(type) , Tree::empty_root());
+        EXPECT_TRUE(!GetAnchorAt(cache1, tree.root(), tree));
     }
 
     // Works because we bring the anchor in from parent cache.
@@ -479,13 +489,13 @@ template<typename Tree> void anchorRegressionTestImpl(ShieldedType type)
         {
             // Pop anchor.
             CCoinsViewCacheTest cache2(&cache1);
-            BOOST_CHECK(GetAnchorAt(cache2, tree.root(), tree));
+            EXPECT_TRUE(GetAnchorAt(cache2, tree.root(), tree));
             cache2.PopAnchor(Tree::empty_root(), type);
             cache2.Flush();
         }
 
-        BOOST_CHECK(cache1.GetBestAnchor(type) == Tree::empty_root());
-        BOOST_CHECK(!GetAnchorAt(cache1, tree.root(), tree));
+        EXPECT_EQ(cache1.GetBestAnchor(type) , Tree::empty_root());
+        EXPECT_TRUE(!GetAnchorAt(cache1, tree.root(), tree));
     }
 
     // Was broken:
@@ -506,22 +516,30 @@ template<typename Tree> void anchorRegressionTestImpl(ShieldedType type)
             cache2.Flush();
         }
 
-        BOOST_CHECK(cache1.GetBestAnchor(type) == Tree::empty_root());
-        BOOST_CHECK(!GetAnchorAt(cache1, tree.root(), tree));
+        EXPECT_EQ(cache1.GetBestAnchor(type) , Tree::empty_root());
+        EXPECT_TRUE(!GetAnchorAt(cache1, tree.root(), tree));
     }
 }
 
-BOOST_AUTO_TEST_CASE(anchor_regression_test)
+TEST_P(PTestCoins, anchor_regression_test)
 {
-    BOOST_TEST_CONTEXT("Sprout") {
-        anchorRegressionTestImpl<SproutMerkleTree>(SPROUT);
+    const auto &test = GetParam();
+    if(SPROUT == test)
+    {
+        anchorRegressionTestImpl<SproutMerkleTree>(test);
     }
-    BOOST_TEST_CONTEXT("Sapling") {
-        anchorRegressionTestImpl<SaplingMerkleTree>(SAPLING);
+    else if (SAPLING == test)
+    {
+        anchorRegressionTestImpl<SaplingMerkleTree>(test);
     }
+        
 }
+INSTANTIATE_TEST_SUITE_P(anchor_regression_test, PTestCoins, Values(
+    SPROUT,
+    SAPLING
+));
 
-BOOST_AUTO_TEST_CASE(nullifiers_test)
+TEST(test_coins, nullifiers_test)
 {
     CCoinsViewTest base;
     CCoinsViewCacheTest cache(&base);
@@ -544,6 +562,7 @@ BOOST_AUTO_TEST_CASE(nullifiers_test)
     checkNullifierCache(cache3, txWithNullifiers, false);
 }
 
+
 template<typename Tree> void anchorsFlushImpl(ShieldedType type)
 {
     CCoinsViewTest base;
@@ -551,7 +570,7 @@ template<typename Tree> void anchorsFlushImpl(ShieldedType type)
     {
         CCoinsViewCacheTest cache(&base);
         Tree tree;
-        BOOST_CHECK(GetAnchorAt(cache, cache.GetBestAnchor(type), tree));
+        EXPECT_TRUE(GetAnchorAt(cache, cache.GetBestAnchor(type), tree));
         tree.append(GetRandHash());
 
         newrt = tree.root();
@@ -563,26 +582,34 @@ template<typename Tree> void anchorsFlushImpl(ShieldedType type)
     {
         CCoinsViewCacheTest cache(&base);
         Tree tree;
-        BOOST_CHECK(GetAnchorAt(cache, cache.GetBestAnchor(type), tree));
+        EXPECT_TRUE(GetAnchorAt(cache, cache.GetBestAnchor(type), tree));
 
         // Get the cached entry.
-        BOOST_CHECK(GetAnchorAt(cache, cache.GetBestAnchor(type), tree));
+        EXPECT_TRUE(GetAnchorAt(cache, cache.GetBestAnchor(type), tree));
 
         uint256 check_rt = tree.root();
 
-        BOOST_CHECK(check_rt == newrt);
+        EXPECT_EQ(check_rt , newrt);
     }
 }
 
-BOOST_AUTO_TEST_CASE(anchors_flush_test)
+TEST_P(PTestCoins, anchors_flush_test)
 {
-    BOOST_TEST_CONTEXT("Sprout") {
-        anchorsFlushImpl<SproutMerkleTree>(SPROUT);
+    const auto &test = GetParam();
+    if(SPROUT == test)
+    {
+        anchorsFlushImpl<SproutMerkleTree>(test);
     }
-    BOOST_TEST_CONTEXT("Sapling") {
-        anchorsFlushImpl<SaplingMerkleTree>(SAPLING);
+    else if (SAPLING == test)
+    {
+        anchorRegressionTestImpl<SaplingMerkleTree>(test);
     }
+        
 }
+INSTANTIATE_TEST_SUITE_P(anchors_flush_test, PTestCoins, Values(
+    SPROUT,
+    SAPLING
+));
 
 template<typename Tree> void anchorsTestImpl(ShieldedType type)
 {
@@ -592,13 +619,13 @@ template<typename Tree> void anchorsTestImpl(ShieldedType type)
     CCoinsViewTest base;
     CCoinsViewCacheTest cache(&base);
 
-    BOOST_CHECK(cache.GetBestAnchor(type) == Tree::empty_root());
+    EXPECT_EQ(cache.GetBestAnchor(type) , Tree::empty_root());
 
     {
         Tree tree;
 
-        BOOST_CHECK(GetAnchorAt(cache, cache.GetBestAnchor(type), tree));
-        BOOST_CHECK(cache.GetBestAnchor(type) == tree.root());
+        EXPECT_TRUE(GetAnchorAt(cache, cache.GetBestAnchor(type), tree));
+        EXPECT_EQ(cache.GetBestAnchor(type) , tree.root());
         tree.append(GetRandHash());
         tree.append(GetRandHash());
         tree.append(GetRandHash());
@@ -614,13 +641,13 @@ template<typename Tree> void anchorsTestImpl(ShieldedType type)
         uint256 newrt2;
 
         cache.PushAnchor(tree);
-        BOOST_CHECK(cache.GetBestAnchor(type) == newrt);
+        EXPECT_EQ(cache.GetBestAnchor(type) , newrt);
 
         {
             Tree confirm_same;
-            BOOST_CHECK(GetAnchorAt(cache, cache.GetBestAnchor(type), confirm_same));
+            EXPECT_TRUE(GetAnchorAt(cache, cache.GetBestAnchor(type), confirm_same));
 
-            BOOST_CHECK(confirm_same.root() == newrt);
+            EXPECT_EQ(confirm_same.root() , newrt);
         }
 
         tree.append(GetRandHash());
@@ -629,18 +656,18 @@ template<typename Tree> void anchorsTestImpl(ShieldedType type)
         newrt2 = tree.root();
 
         cache.PushAnchor(tree);
-        BOOST_CHECK(cache.GetBestAnchor(type) == newrt2);
+        EXPECT_EQ(cache.GetBestAnchor(type) , newrt2);
 
         Tree test_tree;
-        BOOST_CHECK(GetAnchorAt(cache, cache.GetBestAnchor(type), test_tree));
+        EXPECT_TRUE(GetAnchorAt(cache, cache.GetBestAnchor(type), test_tree));
 
-        BOOST_CHECK(tree.root() == test_tree.root());
+        EXPECT_EQ(tree.root() , test_tree.root());
 
         {
             Tree test_tree2;
             GetAnchorAt(cache, newrt, test_tree2);
             
-            BOOST_CHECK(test_tree2.root() == newrt);
+            EXPECT_EQ(test_tree2.root() , newrt);
         }
 
         {
@@ -654,15 +681,24 @@ template<typename Tree> void anchorsTestImpl(ShieldedType type)
     }
 }
 
-BOOST_AUTO_TEST_CASE(anchors_test)
+TEST_P(PTestCoins, anchors_test)
 {
-    BOOST_TEST_CONTEXT("Sprout") {
-        anchorsTestImpl<SproutMerkleTree>(SPROUT);
+    const auto &test = GetParam();
+    if(SPROUT == test)
+    {
+        anchorsTestImpl<SproutMerkleTree>(test);
     }
-    BOOST_TEST_CONTEXT("Sapling") {
-        anchorsTestImpl<SaplingMerkleTree>(SAPLING);
+    else if (SAPLING == test)
+    {
+        anchorsTestImpl<SaplingMerkleTree>(test);
     }
+        
 }
+INSTANTIATE_TEST_SUITE_P(anchors_test, PTestCoins, Values(
+    SPROUT,
+    SAPLING
+));
+
 
 static const unsigned int NUM_SIMULATION_ITERATIONS = 40000;
 
@@ -675,7 +711,7 @@ static const unsigned int NUM_SIMULATION_ITERATIONS = 40000;
 //
 // During the process, booleans are kept to make sure that the randomized
 // operation hits all branches.
-BOOST_AUTO_TEST_CASE(coins_cache_simulation_test)
+TEST(test_coins, coins_cache_simulation_test)
 {
     // Various coverage trackers.
     bool removed_all_caches = false;
@@ -687,15 +723,15 @@ BOOST_AUTO_TEST_CASE(coins_cache_simulation_test)
     bool missed_an_entry = false;
 
     // A simple map to track what we expect the cache stack to represent.
-    std::map<uint256, CCoins> result;
+    map<uint256, CCoins> result;
 
     // The cache stack.
     CCoinsViewTest base; // A CCoinsViewTest at the bottom.
-    std::vector<CCoinsViewCacheTest*> stack; // A stack of CCoinsViewCaches on top.
+    vector<CCoinsViewCacheTest*> stack; // A stack of CCoinsViewCaches on top.
     stack.push_back(new CCoinsViewCacheTest(&base)); // Start with one cache.
 
     // Use a limited set of random transaction ids, so we do test overwriting entries.
-    std::vector<uint256> txids;
+    vector<uint256> txids;
     txids.resize(NUM_SIMULATION_ITERATIONS / 8);
     for (unsigned int i = 0; i < txids.size(); i++) {
         txids[i] = GetRandHash();
@@ -707,7 +743,7 @@ BOOST_AUTO_TEST_CASE(coins_cache_simulation_test)
             uint256 txid = txids[insecure_rand() % txids.size()]; // txid we're going to modify in this iteration.
             CCoins& coins = result[txid];
             CCoinsModifier entry = stack.back()->ModifyCoins(txid);
-            BOOST_CHECK(coins == *entry);
+            EXPECT_EQ(coins , *entry);
             if (insecure_rand() % 5 == 0 || coins.IsPruned()) {
                 if (coins.IsPruned()) {
                     added_an_entry = true;
@@ -727,13 +763,13 @@ BOOST_AUTO_TEST_CASE(coins_cache_simulation_test)
 
         // Once every 1000 iterations and at the end, verify the full cache.
         if (insecure_rand() % 1000 == 1 || i == NUM_SIMULATION_ITERATIONS - 1) {
-            for (std::map<uint256, CCoins>::iterator it = result.begin(); it != result.end(); it++) {
+            for (map<uint256, CCoins>::iterator it = result.begin(); it != result.end(); it++) {
                 const CCoins* coins = stack.back()->AccessCoins(it->first);
                 if (coins) {
-                    BOOST_CHECK(*coins == it->second);
+                    EXPECT_EQ(*coins , it->second);
                     found_an_entry = true;
                 } else {
-                    BOOST_CHECK(it->second.IsPruned());
+                    EXPECT_TRUE(it->second.IsPruned());
                     missed_an_entry = true;
                 }
             }
@@ -770,18 +806,18 @@ BOOST_AUTO_TEST_CASE(coins_cache_simulation_test)
     }
 
     // Verify coverage.
-    BOOST_CHECK(removed_all_caches);
-    BOOST_CHECK(reached_4_caches);
-    BOOST_CHECK(added_an_entry);
-    BOOST_CHECK(removed_an_entry);
-    BOOST_CHECK(updated_an_entry);
-    BOOST_CHECK(found_an_entry);
-    BOOST_CHECK(missed_an_entry);
+    EXPECT_TRUE(removed_all_caches);
+    EXPECT_TRUE(reached_4_caches);
+    EXPECT_TRUE(added_an_entry);
+    EXPECT_TRUE(removed_an_entry);
+    EXPECT_TRUE(updated_an_entry);
+    EXPECT_TRUE(found_an_entry);
+    EXPECT_TRUE(missed_an_entry);
 }
 
-// BOOST_AUTO_TEST_CASE(coins_coinbase_spends)
+// TEST(test_coins, coins_coinbase_spends)
 // {
-//     CCoinsViewTest base;
+//     CCoinsViewTest base
 //     CCoinsViewCacheTest cache(&base);
 
 //     // Create coinbase transaction
@@ -795,7 +831,7 @@ BOOST_AUTO_TEST_CASE(coins_cache_simulation_test)
 
 //     CTransaction tx(mtx);
 
-//     BOOST_CHECK(tx.IsCoinBase());
+//     EXPECT_TRUE(tx.IsCoinBase());
 
 //     CValidationState state;
 //     UpdateCoins(tx, cache, 100);
@@ -809,7 +845,7 @@ BOOST_AUTO_TEST_CASE(coins_cache_simulation_test)
 
 //     {
 //         CTransaction tx2(mtx2);
-//         BOOST_CHECK(Consensus::CheckTxInputs(tx2, state, cache, 100+COINBASE_MATURITY, Params().GetConsensus()));
+//         EXPECT_TRUE(Consensus::CheckTxInputs(tx2, state, cache, 100+COINBASE_MATURITY, Params().GetConsensus()));
 //     }
 
 //     mtx2.vout.resize(1);
@@ -818,27 +854,28 @@ BOOST_AUTO_TEST_CASE(coins_cache_simulation_test)
 
 //     {
 //         CTransaction tx2(mtx2);
-//         BOOST_CHECK(!Consensus::CheckTxInputs(tx2, state, cache, 100+COINBASE_MATURITY, Params().GetConsensus()));
-//         BOOST_CHECK(state.GetRejectReason() == "bad-txns-coinbase-spend-has-transparent-outputs");
+//         EXPECT_TRUE(!Consensus::CheckTxInputs(tx2, state, cache, 100+COINBASE_MATURITY, Params().GetConsensus()));
+//         EXPECT_EQ(state.GetRejectReason() , "bad-txns-coinbase-spend-has-transparent-outputs");
 //     }
 // }
+
 
 // This test is similar to the previous test
 // except the emphasis is on testing the functionality of UpdateCoins
 // random txs are created and UpdateCoins is used to update the cache stack
-BOOST_AUTO_TEST_CASE(updatecoins_simulation_test)
+TEST(test_coins, updatecoins_simulation_test)
 {
     // A simple map to track what we expect the cache stack to represent.
-    std::map<uint256, CCoins> result;
+    map<uint256, CCoins> result;
 
     // The cache stack.
     CCoinsViewTest base; // A CCoinsViewTest at the bottom.
-    std::vector<CCoinsViewCacheTest*> stack; // A stack of CCoinsViewCaches on top.
+    vector<CCoinsViewCacheTest*> stack; // A stack of CCoinsViewCaches on top.
     stack.push_back(new CCoinsViewCacheTest(&base)); // Start with one cache.
 
     // Track the txids we've used and whether they have been spent or not
-    std::map<uint256, CAmount> coinbaseids;
-    std::set<uint256> alltxids;
+    map<uint256, CAmount> coinbaseids;
+    set<uint256> alltxids;
 
     for (unsigned int i = 0; i < NUM_SIMULATION_ITERATIONS; i++) {
         {
@@ -857,7 +894,7 @@ BOOST_AUTO_TEST_CASE(updatecoins_simulation_test)
             else {
                 uint256 prevouthash;
                 // equally likely to spend coinbase or non coinbase
-                std::set<uint256>::iterator txIt = alltxids.lower_bound(GetRandHash());
+                set<uint256>::iterator txIt = alltxids.lower_bound(GetRandHash());
                 if (txIt == alltxids.end()) {
                     txIt = alltxids.begin();
                 }
@@ -888,12 +925,12 @@ BOOST_AUTO_TEST_CASE(updatecoins_simulation_test)
 
         // Once every 1000 iterations and at the end, verify the full cache.
         if (insecure_rand() % 1000 == 1 || i == NUM_SIMULATION_ITERATIONS - 1) {
-            for (std::map<uint256, CCoins>::iterator it = result.begin(); it != result.end(); it++) {
+            for (map<uint256, CCoins>::iterator it = result.begin(); it != result.end(); it++) {
                 const CCoins* coins = stack.back()->AccessCoins(it->first);
                 if (coins) {
-                    BOOST_CHECK(*coins == it->second);
+                    EXPECT_EQ(*coins , it->second);
                  } else {
-                    BOOST_CHECK(it->second.IsPruned());
+                    EXPECT_TRUE(it->second.IsPruned());
                  }
             }
         }
@@ -922,73 +959,72 @@ BOOST_AUTO_TEST_CASE(updatecoins_simulation_test)
     }
 }
 
-BOOST_AUTO_TEST_CASE(ccoins_serialization)
+TEST(test_coins, ccoins_serialization)
 {
     // Good example
     CDataStream ss1(ParseHex("0104835800816115944e077fe7c803cfa57f29b36bf87c1d358bb85e"), SER_DISK, CLIENT_VERSION);
     CCoins cc1;
     ss1 >> cc1;
-    BOOST_CHECK_EQUAL(cc1.nVersion, 1);
-    BOOST_CHECK_EQUAL(cc1.fCoinBase, false);
-    BOOST_CHECK_EQUAL(cc1.nHeight, 203998);
-    BOOST_CHECK_EQUAL(cc1.vout.size(), 2);
-    BOOST_CHECK_EQUAL(cc1.IsAvailable(0), false);
-    BOOST_CHECK_EQUAL(cc1.IsAvailable(1), true);
-    BOOST_CHECK_EQUAL(cc1.vout[1].nValue, 60000000000ULL);
-    BOOST_CHECK_EQUAL(HexStr(cc1.vout[1].scriptPubKey), HexStr(GetScriptForDestination(CKeyID(uint160(ParseHex("816115944e077fe7c803cfa57f29b36bf87c1d35"))))));
+    EXPECT_EQ(cc1.nVersion, 1);
+    EXPECT_FALSE(cc1.fCoinBase);
+    EXPECT_EQ(cc1.nHeight, 203998);
+    EXPECT_EQ(cc1.vout.size(), 2U);
+    EXPECT_FALSE(cc1.IsAvailable(0));
+    EXPECT_TRUE(cc1.IsAvailable(1));
+    EXPECT_EQ(cc1.vout[1].nValue, 60000000000ULL);
+    EXPECT_EQ(HexStr(cc1.vout[1].scriptPubKey), HexStr(GetScriptForDestination(CKeyID(uint160(ParseHex("816115944e077fe7c803cfa57f29b36bf87c1d35"))))));
 
     // Good example
     CDataStream ss2(ParseHex("0109044086ef97d5790061b01caab50f1b8e9c50a5057eb43c2d9563a4eebbd123008c988f1a4a4de2161e0f50aac7f17e7f9555caa486af3b"), SER_DISK, CLIENT_VERSION);
     CCoins cc2;
     ss2 >> cc2;
-    BOOST_CHECK_EQUAL(cc2.nVersion, 1);
-    BOOST_CHECK_EQUAL(cc2.fCoinBase, true);
-    BOOST_CHECK_EQUAL(cc2.nHeight, 120891);
-    BOOST_CHECK_EQUAL(cc2.vout.size(), 17);
+    EXPECT_EQ(cc2.nVersion, 1);
+    EXPECT_TRUE(cc2.fCoinBase);
+    EXPECT_EQ(cc2.nHeight, 120891);
+    EXPECT_EQ(cc2.vout.size(), 17U);
     for (int i = 0; i < 17; i++) {
-        BOOST_CHECK_EQUAL(cc2.IsAvailable(i), i == 4 || i == 16);
+        EXPECT_EQ(cc2.IsAvailable(i), i == 4 || i == 16);
     }
-    BOOST_CHECK_EQUAL(cc2.vout[4].nValue, 234925952);
-    BOOST_CHECK_EQUAL(HexStr(cc2.vout[4].scriptPubKey), HexStr(GetScriptForDestination(CKeyID(uint160(ParseHex("61b01caab50f1b8e9c50a5057eb43c2d9563a4ee"))))));
-    BOOST_CHECK_EQUAL(cc2.vout[16].nValue, 110397);
-    BOOST_CHECK_EQUAL(HexStr(cc2.vout[16].scriptPubKey), HexStr(GetScriptForDestination(CKeyID(uint160(ParseHex("8c988f1a4a4de2161e0f50aac7f17e7f9555caa4"))))));
+    EXPECT_EQ(cc2.vout[4].nValue, 234925952);
+    EXPECT_EQ(HexStr(cc2.vout[4].scriptPubKey), HexStr(GetScriptForDestination(CKeyID(uint160(ParseHex("61b01caab50f1b8e9c50a5057eb43c2d9563a4ee"))))));
+    EXPECT_EQ(cc2.vout[16].nValue, 110397);
+    EXPECT_EQ(HexStr(cc2.vout[16].scriptPubKey), HexStr(GetScriptForDestination(CKeyID(uint160(ParseHex("8c988f1a4a4de2161e0f50aac7f17e7f9555caa4"))))));
 
     // Smallest possible example
     CDataStream ssx(SER_DISK, CLIENT_VERSION);
-    BOOST_CHECK_EQUAL(HexStr(ssx.begin(), ssx.end()), "");
+    EXPECT_EQ(HexStr(ssx.begin(), ssx.end()), "");
 
     CDataStream ss3(ParseHex("0002000600"), SER_DISK, CLIENT_VERSION);
     CCoins cc3;
     ss3 >> cc3;
-    BOOST_CHECK_EQUAL(cc3.nVersion, 0);
-    BOOST_CHECK_EQUAL(cc3.fCoinBase, false);
-    BOOST_CHECK_EQUAL(cc3.nHeight, 0);
-    BOOST_CHECK_EQUAL(cc3.vout.size(), 1);
-    BOOST_CHECK_EQUAL(cc3.IsAvailable(0), true);
-    BOOST_CHECK_EQUAL(cc3.vout[0].nValue, 0);
-    BOOST_CHECK_EQUAL(cc3.vout[0].scriptPubKey.size(), 0);
+    EXPECT_EQ(cc3.nVersion, 0);
+    EXPECT_FALSE(cc3.fCoinBase);
+    EXPECT_EQ(cc3.nHeight, 0);
+    EXPECT_EQ(cc3.vout.size(), 1U);
+    EXPECT_TRUE(cc3.IsAvailable(0));
+    EXPECT_EQ(cc3.vout[0].nValue, 0);
+    EXPECT_EQ(cc3.vout[0].scriptPubKey.size(), 0U);
 
     // scriptPubKey that ends beyond the end of the stream
     CDataStream ss4(ParseHex("0002000800"), SER_DISK, CLIENT_VERSION);
     try {
         CCoins cc4;
         ss4 >> cc4;
-        BOOST_CHECK_MESSAGE(false, "We should have thrown");
-    } catch ([[maybe_unused]] const std::ios_base::failure& e) {
+        EXPECT_FALSE(false) << "We should have thrown";
+    } catch ([[maybe_unused]] const ios_base::failure& e) {
     }
 
     // Very large scriptPubKey (3*10^9 bytes) past the end of the stream
     CDataStream tmp(SER_DISK, CLIENT_VERSION);
     uint64_t x = 3000000000ULL;
     tmp << VARINT(x);
-    BOOST_CHECK_EQUAL(HexStr(tmp.begin(), tmp.end()), "8a95c0bb00");
+    EXPECT_EQ(HexStr(tmp.begin(), tmp.end()), "8a95c0bb00");
     CDataStream ss5(ParseHex("0002008a95c0bb0000"), SER_DISK, CLIENT_VERSION);
     try {
         CCoins cc5;
         ss5 >> cc5;
-        BOOST_CHECK_MESSAGE(false, "We should have thrown");
-    } catch ([[maybe_unused]] const std::ios_base::failure& e) {
+        EXPECT_FALSE(false) << "We should have thrown";
+        // BOOST_CHECK_MESSAGE(false, "We should have thrown");
+    } catch ([[maybe_unused]] const ios_base::failure& e) {
     }
 }
-
-BOOST_AUTO_TEST_SUITE_END()
