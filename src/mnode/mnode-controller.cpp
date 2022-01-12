@@ -54,6 +54,7 @@ void CMasterNodeController::InvalidateParameters()
     MasternodeWatchdogMaxSeconds = 0;
     MasternodeWatchdogMaxSeconds = 0;
     MasternodeNewStartRequiredSeconds = 0;
+    MasternodeWeekBySeconds = 0;
 
     MasternodePOSEBanMaxScore = 0;
     nMasterNodeMaximumOutboundConnections = 0;
@@ -105,7 +106,8 @@ void CMasterNodeController::SetParameters()
     MasternodeExpirationSeconds         =  65 * 60;
     MasternodeWatchdogMaxSeconds        = 120 * 60;
     MasternodeNewStartRequiredSeconds   = 180 * 60;
-    
+    MasternodeWeekBySeconds             = 7 * 24 * 60 * 60;
+
     MasternodePOSEBanMaxScore           = 5;
     nMasterNodeMaximumOutboundConnections = 20;
 
@@ -148,7 +150,8 @@ void CMasterNodeController::SetParameters()
         MasternodeMinMNPSeconds             =  1 * 60;    
         MasternodeExpirationSeconds         =  3 * 60;
         MasternodeNewStartRequiredSeconds   =  6 * 60;
-    
+        MasternodeWeekBySeconds             =  10 * 60;
+
         MasternodeCollateral                = 1000;
         
         TicketGreenAddress = "tPj5BfCrLfLpuviSJrD3B1yyWp3XkgtFjb6";

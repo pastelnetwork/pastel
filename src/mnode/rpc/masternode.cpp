@@ -117,6 +117,10 @@ UniValue masternodelist(const UniValue& params, bool fHelp)
         std::map<COutPoint, CMasternode> mapMasternodes = masterNodeCtrl.masternodeManager.GetFullMasternodeMap();
         for (auto& mnpair : mapMasternodes) {
             CMasternode mn = mnpair.second;
+            if( mn.IsNewStartRequired() && ! mn.IsPingedWithin(masterNodeCtrl.MasternodeWeekBySeconds) ) 
+            {
+                continue;
+            }
             std::string strOutpoint = mnpair.first.ToStringShort();
             CTxDestination dest = mn.pubKeyCollateralAddress.GetID();
             std::string address = keyIO.EncodeDestination(dest);
