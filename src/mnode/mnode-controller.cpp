@@ -150,6 +150,7 @@ void CMasterNodeController::SetParameters()
         MasternodeMinMNPSeconds             =  1 * 60;    
         MasternodeExpirationSeconds         =  3 * 60;
         MasternodeNewStartRequiredSeconds   =  6 * 60;
+
         MasternodeWeekBySeconds             =  10 * 60;
 
         MasternodeCollateral                = 1000;
