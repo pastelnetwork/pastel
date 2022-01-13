@@ -1,4 +1,5 @@
 // Copyright (c) 2013-2014 The Bitcoin Core developers
+// Copyright (c) 2021 The Pastel developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 
@@ -30,13 +31,6 @@
 #include "univalue.h"
 #include "test_rpc.h"
 #include "pastel_gtest_main.h"
-// #include "test/test_bitcoin.h"
-
-
-
-// #include <boost/algorithm/string.hpp>
-// #include <boost/test/unit_test.hpp>
-// #include <boost/format.hpp>
 
 using namespace std;
 using namespace testing;
@@ -62,19 +56,14 @@ class TestRpcWallet : public Test
 public:
     static void SetUpTestSuite()
     {
-        std::cout << "tanlm TestRpcWallet SetUpTestSuite" << std::endl;
         gl_pPastelTestEnv->SetupTesting();
     }
 
     static void TearDownTestSuite()
     {
-        std::cout << "tanlm TestRpcWallet TearDownTestSuite" << std::endl;
         gl_pPastelTestEnv->FinalizeSetupTesting();
     }
 };
-
-
-
 
 TEST_F(TestRpcWallet, rpc_addmultisig)
 {
@@ -120,16 +109,12 @@ class TestRpcWallet1 : public Test
 {
 public:
     static void SetUpTestSuite()
-    // static void SetUpTestCase()
     {
-        std::cout << "tanlm TestRpcWallet SetUpTestSuite" << std::endl;
         gl_pPastelTestEnv->SetupTesting();
     }
 
     static void TearDownTestSuite()
-    // static void TearDownTestCase()
     {
-        std::cout << "tanlm TestRpcWallet TearDownTestSuite" << std::endl;
         gl_pPastelTestEnv->FinalizeSetupTesting();
     }
 };
@@ -257,7 +242,6 @@ TEST_F(TestRpcWallet1, rpc_wallet)
     EXPECT_NO_THROW(CallRPC("getaccountaddress \"\""));
     /* Accounts are deprecated */
     EXPECT_THROW(CallRPC("getaccountaddress accountThatDoesntExists"), runtime_error);
-    std::cout << "tanlm" << strAccount << "END"<<std::endl;
     EXPECT_NO_THROW(retValue = CallRPC("getaccountaddress " + (strAccount.empty() ? "\"\"" : strAccount)) );
     EXPECT_EQ(keyIO.DecodeDestination(retValue.get_str()) , demoAddress);
 
@@ -492,18 +476,6 @@ void CheckHaveAddr(const libzcash::PaymentAddress& addr) {
     EXPECT_TRUE(test(*addr_of_type));
 }
 
-// void CheckRPCThrows(string rpcString, string expectedErrorMessage) {
-//     try {
-//         CallRPC(rpcString);
-//         // Note: CallRPC catches (const UniValue& objError) and rethrows a runtime_error
-//         // BOOST_FAIL("Should have caused an error");
-//     } catch (const runtime_error& e) {
-//         EXPECT_EQ(expectedErrorMessage, e.what());
-//     } catch(const exception& e) {
-//         // BOOST_FAIL(string("Unexpected exception: ") + typeid(e).name() + ", message=\"" + e.what() + "\"");
-//     }
-// }
-
 TEST_F(TestRpcWallet, rpc_wallet_z_getnewaddress)
 {
     using namespace libzcash;
@@ -552,7 +524,6 @@ public:
         set_state(OperationStatus::SUCCESS);
     }
 };
-
 
 /*
  * Test Aysnc RPC queue and operations.
@@ -635,7 +606,6 @@ TEST_F(TestRpcWallet, rpc_wallet_async_operations)
     EXPECT_EQ(opids.count(op3->getId()), 1U);
     q->finishAndWait();
 }
-
 
 // The CountOperation will increment this global
 atomic<int64_t> gCounter(0);
@@ -992,16 +962,12 @@ class TestRpcWallet2 : public Test
 {
 public:
     static void SetUpTestSuite()
-    // static void SetUpTestCase()
     {
-        std::cout << "tanlm TestRpcWallet SetUpTestSuite" << std::endl;
         gl_pPastelTestEnv->SetupTesting();
     }
 
     static void TearDownTestSuite()
-    // static void TearDownTestCase()
     {
-        std::cout << "tanlm TestRpcWallet TearDownTestSuite" << std::endl;
         gl_pPastelTestEnv->FinalizeSetupTesting();
     }
 };
@@ -1067,7 +1033,6 @@ TEST_F(TestRpcWallet2, rpc_wallet_encrypted_wallet_sapzkeys)
     // but there are tests for this in gtest.
 }
 
-
 TEST_F(TestRpcWallet2, rpc_z_listunspent_parameters)
 {
     SelectParams(CBaseChainParams::Network::TESTNET);
@@ -1104,7 +1069,6 @@ TEST_F(TestRpcWallet2, rpc_z_listunspent_parameters)
     // wrong network, regtest instead of testnet
     EXPECT_THROW(CallRPC("z_listunspent 1 999 true [\"pzregtestsapling15r8tvulwztl460m5feqmap5fr0xj7qajlzt9g9vhs58c8d2yd6cvuplc9s7qkk5rd2v37fcdyey\"]"), runtime_error);
 }
-
 
 TEST_F(TestRpcWallet2, rpc_z_shieldcoinbase_parameters)
 {

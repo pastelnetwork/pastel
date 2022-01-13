@@ -120,13 +120,6 @@ void CPastelTest_Environment::generate_coins(const size_t N)
 
 void CPastelTest_Environment::SetupTesting()
 {
-    // ECC_Stop();
-    // assert(init_and_check_sodium() != -1);
-    // ECC_Start();
-    SetupEnvironment();
-    SetupNetworking();
-    fPrintToDebugLog = false; // don't want to write to debug.log file
-    fCheckBlockIndex = true;
     SelectParams(CBaseChainParams::Network::MAIN);
 
     libsnark::default_r1cs_ppzksnark_pp::init_public_params();
@@ -156,18 +149,13 @@ void CPastelTest_Environment::SetupTesting()
 
     fnIsInitialBlockDownload = TestIsInitialBlockDownload;
 
-    
-
     RegisterAllCoreRPCCommands(tableRPC);
 #ifdef ENABLE_WALLET
-        // bitdb.MakeMock();
         RegisterWalletRPCCommands(tableRPC);
 #endif
 
     ClearDatadirCache();
     pathTemp = fs::temp_directory_path() / fs::unique_path();
-    std::cout << "tanlm SetupTesting " << pathTemp << std::endl;
-    // pathTemp = GetTempPath() / strprintf("pastel-gtest_%lu_%i", (unsigned long)GetTime(), (int)(GetRand(100000)));
     fs::create_directories(pathTemp);
     mapArgs["-datadir"] = pathTemp.string();
 
@@ -179,7 +167,7 @@ void CPastelTest_Environment::SetupTesting()
 
 #ifdef ENABLE_WALLET
     ASSERT_EQ(pwalletMain, nullptr);
-    pwalletMain = new CWallet("pastel_wallet.dat");
+    pwalletMain = new CWallet("pastel_gtest_wallet.dat");
     bool bFirstRun = true;
     pwalletMain->LoadWallet(bFirstRun);
     RegisterValidationInterface(pwalletMain);
@@ -223,7 +211,6 @@ void CPastelTest_Environment::FinalizeSetupTesting()
         bitdb.Flush(true);
         bitdb.Reset();
 #endif
-    fs::remove_all(pathTemp);
     // reset TestIsInitialBlockDownload
     latchToFalse.store(false, std::memory_order_relaxed);
     ClearMetrics();
