@@ -83,6 +83,7 @@ pastel_gtest_SOURCES +=\
 	gtest/test_rpc.cpp\
 	gtest/test_sanity.cpp\
 	gtest/test_sapling_note.cpp\
+	gtest/test_scheduler.cpp\
 	gtest/test_scriptnum.cpp\
 	gtest/test_serialize.cpp\
 	gtest/test_sha256compress.cpp\
