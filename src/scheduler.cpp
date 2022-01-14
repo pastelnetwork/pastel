@@ -89,7 +89,7 @@ void CScheduler::schedule(CScheduler::Function f, std::chrono::system_clock::tim
 
 void CScheduler::scheduleFromNow(CScheduler::Function f, int64_t deltaSeconds)
 {
-    schedule(f, std::chrono::system_clock::now() + std::chrono::seconds(deltaSeconds));
+    schedule(std::move(f), std::chrono::system_clock::now() + std::chrono::seconds(deltaSeconds));
 }
 
 static void Repeat(CScheduler* s, CScheduler::Function f, int64_t deltaSeconds)

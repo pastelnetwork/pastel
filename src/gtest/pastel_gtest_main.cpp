@@ -67,7 +67,6 @@ bool TestIsInitialBlockDownload(const Consensus::Params& consensusParams)
 
 void CPastelTest_Environment::SetUp()
 {
-    std::cout << "tanlm CPastelTest_Environment SetUp" << std::endl;
     ASSERT_EQ(init_and_check_sodium(), 0);
     ECC_Start();
 
@@ -103,7 +102,6 @@ void CPastelTest_Environment::SetUp()
 
 void CPastelTest_Environment::TearDown()
 {
-    std::cout << "tanlm CPastelTest_Environment TearDown" << std::endl;
     ECC_Stop();
 }
 

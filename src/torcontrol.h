@@ -6,6 +6,7 @@
 /**
  * Functionality for communicating with Tor.
  */
+#include <boost/thread.hpp>
 #include "scheduler.h"
 
 extern const std::string DEFAULT_TOR_CONTROL;
