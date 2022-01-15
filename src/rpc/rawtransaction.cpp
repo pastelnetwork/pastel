@@ -91,7 +91,7 @@ void TxToJSON(const CTransaction& tx, const uint256 hashBlock, UniValue& entry)
 {
     const uint256 &txid = tx.GetHash();
     entry.pushKV("txid", txid.GetHex());
-    entry.pushKV("size", ::GetSerializeSize(tx, SER_NETWORK, PROTOCOL_VERSION));
+    entry.pushKV("size", static_cast<uint64_t>(::GetSerializeSize(tx, SER_NETWORK, PROTOCOL_VERSION)));
     entry.pushKV("overwintered", tx.fOverwintered);
     entry.pushKV("version", tx.nVersion);
     if (tx.fOverwintered) {
