@@ -1,6 +1,6 @@
 // Copyright (c) 2010 Satoshi Nakamoto
 // Copyright (c) 2009-2015 The Bitcoin Core developers
-// Copyright (c) 2018-2021 The Pastel Core developers
+// Copyright (c) 2018-2022 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php .
 
@@ -91,6 +91,7 @@ void TxToJSON(const CTransaction& tx, const uint256 hashBlock, UniValue& entry)
 {
     const uint256 &txid = tx.GetHash();
     entry.pushKV("txid", txid.GetHex());
+    entry.pushKV("size", ::GetSerializeSize(tx, SER_NETWORK, PROTOCOL_VERSION));
     entry.pushKV("overwintered", tx.fOverwintered);
     entry.pushKV("version", tx.nVersion);
     if (tx.fOverwintered) {
@@ -330,23 +331,28 @@ UniValue gettxoutproof(const UniValue& params, bool fHelp)
 {
     if (fHelp || (params.size() != 1 && params.size() != 2))
         throw runtime_error(
-            "gettxoutproof [\"txid\",...] ( blockhash )\n"
-            "\nReturns a hex-encoded proof that \"txid\" was included in a block.\n"
-            "\nNOTE: By default this function only works sometimes. This is when there is an\n"
-            "unspent output in the utxo for this transaction. To make it always work,\n"
-            "you need to maintain a transaction index, using the -txindex command line option or\n"
-            "specify the block in which the transaction is included in manually (by blockhash).\n"
-            "\nReturn the raw transaction data.\n"
-            "\nArguments:\n"
-            "1. \"txids\"       (string) A json array of txids to filter\n"
-            "    [\n"
-            "      \"txid\"     (string) A transaction hash\n"
-            "      ,...\n"
-            "    ]\n"
-            "2. \"block hash\"  (string, optional) If specified, looks for txid in the block with this hash\n"
-            "\nResult:\n"
-            "\"data\"           (string) A string that is a serialized, hex-encoded data for the proof.\n"
-        );
+R"(gettxoutproof ["txid",...] ( blockhash )
+
+Returns a hex-encoded proof that "txid" was included in a block.
+
+NOTE: By default this function only works sometimes. This is when there is an
+unspent output in the utxo for this transaction. To make it always work,
+you need to maintain a transaction index, using the -txindex command line option or
+specify the block in which the transaction is included in manually (by blockhash).
+
+Return the raw transaction data.
+
+Arguments:
+1. "txids"       (string) A json array of txids to filter
+    [
+      "txid"     (string) A transaction hash
+      ,...
+    ]
+2. "block hash"  (string, optional) If specified, looks for txid in the block with this hash
+
+Result:
+  "data"         (string) A string that is a serialized, hex-encoded data for the proof.
+)");
 
     set<uint256> setTxids;
     uint256 oneTxid;
@@ -447,36 +453,38 @@ UniValue createrawtransaction(const UniValue& params, bool fHelp)
 {
     if (fHelp || params.size() < 2 || params.size() > 4)
         throw runtime_error(
-            "createrawtransaction [{\"txid\":\"id\",\"vout\":n},...] {\"address\":amount,...} ( locktime ) ( expiryheight )\n"
-            "\nCreate a transaction spending the given inputs and sending to the given addresses.\n"
-            "Returns hex-encoded raw transaction.\n"
-            "Note that the transaction's inputs are not signed, and\n"
-            "it is not stored in the wallet or transmitted to the network.\n"
+R"(createrawtransaction [{"txid":"id", "vout":n},...] {"address":amount,...} ( locktime ) ( expiryheight )
 
-            "\nArguments:\n"
-            "1. \"transactions\"        (string, required) A json array of json objects\n"
-            "     [\n"
-            "       {\n"
-            "         \"txid\":\"id\",    (string, required) The transaction id\n"
-            "         \"vout\":n        (numeric, required) The output number\n"
-            "         \"sequence\":n    (numeric, optional) The sequence number\n"
-            "       }\n"
-            "       ,...\n"
-            "     ]\n"
-            "2. \"addresses\"           (string, required) a json object with addresses as keys and amounts as values\n"
-            "    {\n"
-            "      \"address\": x.xxx   (numeric, required) The key is the Pastel address, the value is the " + CURRENCY_UNIT + " amount\n"
-            "      ,...\n"
-            "    }\n"
-            "3. locktime              (numeric, optional, default=0) Raw locktime. Non-0 value also locktime-activates inputs\n"
-            "4. expiryheight          (numeric, optional, default=nextblockheight+" + strprintf("%d", DEFAULT_TX_EXPIRY_DELTA) + ") Expiry height of transaction (if Overwinter is active)\n"
-            "\nResult:\n"
-            "\"transaction\"            (string) hex string of the transaction\n"
+Create a transaction spending the given inputs and sending to the given addresses.
+Returns hex-encoded raw transaction.
+Note that the transaction's inputs are not signed, and
+it is not stored in the wallet or transmitted to the network.
 
-            "\nExamples\n"
-            + HelpExampleCli("createrawtransaction", "\"[{\\\"txid\\\":\\\"myid\\\",\\\"vout\\\":0}]\" \"{\\\"address\\\":0.01}\"")
-            + HelpExampleRpc("createrawtransaction", "\"[{\\\"txid\\\":\\\"myid\\\",\\\"vout\\\":0}]\", \"{\\\"address\\\":0.01}\"")
-        );
+Arguments:
+1. "transactions"        (string, required) A json array of json objects
+     [
+       {
+         "txid":"id",    (string, required) The transaction id
+         "vout":n        (numeric, required) The output number
+         "sequence":n    (numeric, optional) The sequence number
+       }
+       ,...
+     ]
+2. "addresses"           (string, required) a json object with addresses as keys and amounts as values
+    {
+      "address": x.xxx   (numeric, required) The key is the Pastel address, the value is the )" + CURRENCY_UNIT + R"( amount
+      ,...
+    }
+3. locktime              (numeric, optional, default=0) Raw locktime. Non-0 value also locktime-activates inputs
+4. expiryheight          (numeric, optional, default=nextblockheight+)" + strprintf("%d", DEFAULT_TX_EXPIRY_DELTA) + R"() Expiry height of transaction (if Overwinter is active)
+
+Result:
+  "transaction"          (string) hex string of the transaction
+
+Examples:
+)" + HelpExampleCli("createrawtransaction", "\"[{\\\"txid\\\":\\\"myid\\\",\\\"vout\\\":0}]\" \"{\\\"address\\\":0.01}\"")
+   + HelpExampleRpc("createrawtransaction", "\"[{\\\"txid\\\":\\\"myid\\\",\\\"vout\\\":0}]\", \"{\\\"address\\\":0.01}\"")
+);
 
     LOCK(cs_main);
     RPCTypeCheck(params, {UniValue::VARR, UniValue::VOBJ, UniValue::VNUM, UniValue::VNUM}, true);
@@ -486,7 +494,11 @@ UniValue createrawtransaction(const UniValue& params, bool fHelp)
     UniValue inputs = params[0].get_array();
     UniValue sendTo = params[1].get_obj();
 
-    int nextBlockHeight = chainActive.Height() + 1;
+    int nextBlockHeight;
+    {
+        LOCK(cs_main);
+        nextBlockHeight = chainActive.Height() + 1;
+    }
     CMutableTransaction rawTx = CreateNewContextualCMutableTransaction(
         Params().GetConsensus(), nextBlockHeight);
 
@@ -504,7 +516,7 @@ UniValue createrawtransaction(const UniValue& params, bool fHelp)
                 throw JSONRPCError(RPC_INVALID_PARAMETER, strprintf("Invalid parameter, expiryheight must be nonnegative and less than %d.", TX_EXPIRY_HEIGHT_THRESHOLD));
             }
             // DoS mitigation: reject transactions expiring soon
-            if (nextBlockHeight + TX_EXPIRING_SOON_THRESHOLD > nExpiryHeight) {
+            if (nExpiryHeight != 0 && nextBlockHeight + TX_EXPIRING_SOON_THRESHOLD > nExpiryHeight) {
                 throw JSONRPCError(RPC_INVALID_PARAMETER,
                     strprintf("Invalid parameter, expiryheight should be at least %d to avoid transaction expiring soon",
                     nextBlockHeight + TX_EXPIRING_SOON_THRESHOLD));
@@ -567,82 +579,57 @@ UniValue decoderawtransaction(const UniValue& params, bool fHelp)
 {
     if (fHelp || params.size() != 1)
         throw runtime_error(
-            "decoderawtransaction \"hexstring\"\n"
-            "\nReturn a JSON object representing the serialized, hex-encoded transaction.\n"
+R"(decoderawtransaction "hexstring"
 
-            "\nArguments:\n"
-            "1. \"hex\"      (string, required) The transaction hex string\n"
+Return a JSON object representing the serialized, hex-encoded transaction.
 
-            "\nResult:\n"
-            "{\n"
-            "  \"txid\" : \"id\",        (string) The transaction id\n"
-            "  \"overwintered\" : bool   (boolean) The Overwintered flag\n"
-            "  \"version\" : n,          (numeric) The version\n"
-            "  \"versiongroupid\": \"hex\"   (string, optional) The version group id (Overwintered txs)\n"
-            "  \"locktime\" : ttt,       (numeric) The lock time\n"
-            "  \"expiryheight\" : n,     (numeric, optional) Last valid block height for mining transaction (Overwintered txs)\n"
-            "  \"vin\" : [               (array of json objects)\n"
-            "     {\n"
-            "       \"txid\": \"id\",    (string) The transaction id\n"
-            "       \"vout\": n,         (numeric) The output number\n"
-            "       \"scriptSig\": {     (json object) The script\n"
-            "         \"asm\": \"asm\",  (string) asm\n"
-            "         \"hex\": \"hex\"   (string) hex\n"
-            "       },\n"
-            "       \"sequence\": n     (numeric) The script sequence number\n"
-            "     }\n"
-            "     ,...\n"
-            "  ],\n"
-            "  \"vout\" : [             (array of json objects)\n"
-            "     {\n"
-            "       \"value\" : x.xxx,            (numeric) The value in " + CURRENCY_UNIT + "\n"
-            "       \"n\" : n,                    (numeric) index\n"
-            "       \"scriptPubKey\" : {          (json object)\n"
-            "         \"asm\" : \"asm\",          (string) the asm\n"
-            "         \"hex\" : \"hex\",          (string) the hex\n"
-            "         \"reqSigs\" : n,            (numeric) The required sigs\n"
-            "         \"type\" : \"pubkeyhash\",  (string) The type, eg 'pubkeyhash'\n"
-            "         \"addresses\" : [           (json array of string)\n"
-            "           \"Ptor9ydHJuGpNWFAX3ZTu3bXevEhCaDVrsY\"   (string) Pastel address\n"
-            "           ,...\n"
-            "         ]\n"
-            "       }\n"
-            "     }\n"
-            "     ,...\n"
-            "  ],\n"
-            "  \"vjoinsplit\" : [        (array of json objects, only for version >= 2)\n"
-            "     {\n"
-            "       \"vpub_old\" : x.xxx,         (numeric) public input value in " + CURRENCY_UNIT + "\n"
-            "       \"vpub_new\" : x.xxx,         (numeric) public output value in " + CURRENCY_UNIT + "\n"
-            "       \"anchor\" : \"hex\",         (string) the anchor\n"
-            "       \"nullifiers\" : [            (json array of string)\n"
-            "         \"hex\"                     (string) input note nullifier\n"
-            "         ,...\n"
-            "       ],\n"
-            "       \"commitments\" : [           (json array of string)\n"
-            "         \"hex\"                     (string) output note commitment\n"
-            "         ,...\n"
-            "       ],\n"
-            "       \"onetimePubKey\" : \"hex\",  (string) the onetime public key used to encrypt the ciphertexts\n"
-            "       \"randomSeed\" : \"hex\",     (string) the random seed\n"
-            "       \"macs\" : [                  (json array of string)\n"
-            "         \"hex\"                     (string) input note MAC\n"
-            "         ,...\n"
-            "       ],\n"
-            "       \"proof\" : \"hex\",          (string) the zero-knowledge proof\n"
-            "       \"ciphertexts\" : [           (json array of string)\n"
-            "         \"hex\"                     (string) output note ciphertext\n"
-            "         ,...\n"
-            "       ]\n"
-            "     }\n"
-            "     ,...\n"
-            "  ],\n"
-            "}\n"
+Arguments:
+1. "hex"      (string, required) The transaction hex string
 
-            "\nExamples:\n"
-            + HelpExampleCli("decoderawtransaction", "\"hexstring\"")
-            + HelpExampleRpc("decoderawtransaction", "\"hexstring\"")
-        );
+Result:
+{
+  "txid" : "id",          (string) The transaction id
+  "size" : n,             (numeric) The transaction size
+  "overwintered" : bool   (boolean) The Overwintered flag
+  "version" : n,          (numeric) The version
+  "versiongroupid":"hex"  (string, optional) The version group id (Overwintered txs)
+  "locktime" : ttt,       (numeric) The lock time
+  "expiryheight" : n,     (numeric, optional) Last valid block height for mining transaction (Overwintered txs)
+  "vin" : [               (array of json objects)
+     {
+       "txid": "id",      (string) The transaction id
+       "vout": n,         (numeric) The output number
+       "scriptSig": {     (json object) The script
+         "asm": "asm",    (string) asm
+         "hex": "hex"     (string) hex
+       },
+       "sequence": n      (numeric) The script sequence number
+     }
+     ,...
+  ],
+  "vout" : [             (array of json objects)
+     {
+       "value" : x.xxx,          (numeric) The value in )" + CURRENCY_UNIT + R"(
+       "n" : n,                  (numeric) index
+       "scriptPubKey" : {        (json object)
+         "asm" : "asm",          (string) the asm
+         "hex" : "hex",          (string) the hex
+         "reqSigs" : n,          (numeric) The required sigs
+         "type" : "pubkeyhash",  (string) The type, eg 'pubkeyhash'
+         "addresses" : [         (json array of string)
+           "Ptor9ydHJuGpNWFAX3ZTu3bXevEhCaDVrsY"   (string) Pastel t-address
+           ,...
+         ]
+       }
+     }
+     ,...
+  ],
+}
+
+Examples:
+)"+ HelpExampleCli("decoderawtransaction", "\"hexstring\"")
+  + HelpExampleRpc("decoderawtransaction", "\"hexstring\"")
+);
 
     LOCK(cs_main);
     RPCTypeCheck(params, {UniValue::VSTR});
@@ -662,26 +649,30 @@ UniValue decodescript(const UniValue& params, bool fHelp)
 {
     if (fHelp || params.size() != 1)
         throw runtime_error(
-            "decodescript \"hex\"\n"
-            "\nDecode a hex-encoded script.\n"
-            "\nArguments:\n"
-            "1. \"hex\"     (string) the hex encoded script\n"
-            "\nResult:\n"
-            "{\n"
-            "  \"asm\":\"asm\",   (string) Script public key\n"
-            "  \"hex\":\"hex\",   (string) hex encoded public key\n"
-            "  \"type\":\"type\", (string) The output type\n"
-            "  \"reqSigs\": n,    (numeric) The required signatures\n"
-            "  \"addresses\": [   (json array of string)\n"
-            "     \"address\"     (string) Pastel address\n"
-            "     ,...\n"
-            "  ],\n"
-            "  \"p2sh\",\"address\" (string) script address\n"
-            "}\n"
-            "\nExamples:\n"
-            + HelpExampleCli("decodescript", "\"hexstring\"")
-            + HelpExampleRpc("decodescript", "\"hexstring\"")
-        );
+R"(decodescript "hex"
+
+Decode a hex-encoded script.
+
+Arguments:
+1. "hex"     (string) the hex encoded script
+
+Result:
+{
+  "asm":"asm",     (string) Script public key
+  "hex":"hex",     (string) hex encoded public key
+  "type":"type",   (string) The output type
+  "reqSigs": n,    (numeric) The required signatures
+  "addresses": [   (json array of strings)
+     "address"     (string) Pastel address
+     ,...
+  ],
+  "p2sh","address" (string) script address
+}
+
+Examples:
+)" + HelpExampleCli("decodescript", "\"hexstring\"")
+   + HelpExampleRpc("decodescript", "\"hexstring\"")
+);
 
     LOCK(cs_main);
     RPCTypeCheck(params, {UniValue::VSTR});
@@ -717,64 +708,66 @@ UniValue signrawtransaction(const UniValue& params, bool fHelp)
 {
     if (fHelp || params.size() < 1 || params.size() > 5)
         throw runtime_error(
-            "signrawtransaction \"hexstring\" ( [{\"txid\":\"id\",\"vout\":n,\"scriptPubKey\":\"hex\",\"redeemScript\":\"hex\"},...] [\"privatekey1\",...] sighashtype )\n"
-            "\nSign inputs for raw transaction (serialized, hex-encoded).\n"
-            "The second optional argument (may be null) is an array of previous transaction outputs that\n"
-            "this transaction depends on but may not yet be in the block chain.\n"
-            "The third optional argument (may be null) is an array of base58-encoded private\n"
-            "keys that, if given, will be the only keys used to sign the transaction.\n"
+R"(signrawtransaction "hexstring" ( [{"txid":"id","vout":n,"scriptPubKey":"hex","redeemScript":"hex"},...] ["privatekey1",...] sighashtype )
+
+Sign inputs for raw transaction (serialized, hex-encoded).
+The second optional argument (may be null) is an array of previous transaction outputs that
+this transaction depends on but may not yet be in the block chain.
+The third optional argument (may be null) is an array of base58-encoded private
+keys that, if given, will be the only keys used to sign the transaction.
+)"
 #ifdef ENABLE_WALLET
             + HelpRequiringPassphrase() + "\n"
 #endif
+R"(
+Arguments:
+1. "hexstring"     (string, required) The transaction hex string
+2. "prevtxs"       (string, optional) An json array of previous dependent transaction outputs
+     [               (json array of json objects, or 'null' if none provided)
+       {
+         "txid":"id",             (string, required) The transaction id
+         "vout":n,                (numeric, required) The output number
+         "scriptPubKey": "hex",   (string, required) script key
+         "redeemScript": "hex",   (string, required for P2SH) redeem script
+         "amount": value          (numeric, required) The amount spent
+       }
+       ,...
+    ]
+3. "privatekeys"     (string, optional) A json array of base58-encoded private keys for signing
+    [                (json array of strings, or 'null' if none provided)
+      "privatekey"   (string) private key in base58-encoding
+      ,...
+    ]
+4. "sighashtype"     (string, optional, default=ALL) The signature hash type. Must be one of
+       "ALL"
+       "NONE"
+       "SINGLE"
+       "ALL|ANYONECANPAY"
+       "NONE|ANYONECANPAY"
+       "SINGLE|ANYONECANPAY"
+5.  "branchid"       (string, optional) The hex representation of the consensus branch id to sign with.
+    This can be used to force signing with consensus rules that are ahead of the node's current height.
 
-            "\nArguments:\n"
-            "1. \"hexstring\"     (string, required) The transaction hex string\n"
-            "2. \"prevtxs\"       (string, optional) An json array of previous dependent transaction outputs\n"
-            "     [               (json array of json objects, or 'null' if none provided)\n"
-            "       {\n"
-            "         \"txid\":\"id\",             (string, required) The transaction id\n"
-            "         \"vout\":n,                  (numeric, required) The output number\n"
-            "         \"scriptPubKey\": \"hex\",   (string, required) script key\n"
-            "         \"redeemScript\": \"hex\",   (string, required for P2SH) redeem script\n"
-            "         \"amount\": value            (numeric, required) The amount spent\n"
-            "       }\n"
-            "       ,...\n"
-            "    ]\n"
-            "3. \"privatekeys\"     (string, optional) A json array of base58-encoded private keys for signing\n"
-            "    [                  (json array of strings, or 'null' if none provided)\n"
-            "      \"privatekey\"   (string) private key in base58-encoding\n"
-            "      ,...\n"
-            "    ]\n"
-            "4. \"sighashtype\"     (string, optional, default=ALL) The signature hash type. Must be one of\n"
-            "       \"ALL\"\n"
-            "       \"NONE\"\n"
-            "       \"SINGLE\"\n"
-            "       \"ALL|ANYONECANPAY\"\n"
-            "       \"NONE|ANYONECANPAY\"\n"
-            "       \"SINGLE|ANYONECANPAY\"\n"
-            "5.  \"branchid\"       (string, optional) The hex representation of the consensus branch id to sign with."
-            " This can be used to force signing with consensus rules that are ahead of the node's current height.\n"
+Result:
+{
+  "hex" : "value",           (string) The hex-encoded raw transaction with signature(s)
+  "complete" : true|false,   (boolean) If the transaction has a complete set of signatures
+  "errors" : [               (json array of objects) Script verification errors (if there are any)
+    {
+      "txid" : "hash",       (string) The hash of the referenced, previous transaction
+      "vout" : n,            (numeric) The index of the output to spent and used as input
+      "scriptSig" : "hex",   (string) The hex-encoded signature script
+      "sequence" : n,        (numeric) Script sequence number
+      "error" : "text"       (string) Verification or signing error related to the input
+    }
+    ,...
+  ]
+}
 
-            "\nResult:\n"
-            "{\n"
-            "  \"hex\" : \"value\",           (string) The hex-encoded raw transaction with signature(s)\n"
-            "  \"complete\" : true|false,   (boolean) If the transaction has a complete set of signatures\n"
-            "  \"errors\" : [                 (json array of objects) Script verification errors (if there are any)\n"
-            "    {\n"
-            "      \"txid\" : \"hash\",           (string) The hash of the referenced, previous transaction\n"
-            "      \"vout\" : n,                (numeric) The index of the output to spent and used as input\n"
-            "      \"scriptSig\" : \"hex\",       (string) The hex-encoded signature script\n"
-            "      \"sequence\" : n,            (numeric) Script sequence number\n"
-            "      \"error\" : \"text\"           (string) Verification or signing error related to the input\n"
-            "    }\n"
-            "    ,...\n"
-            "  ]\n"
-            "}\n"
-
-            "\nExamples:\n"
-            + HelpExampleCli("signrawtransaction", "\"myhex\"")
-            + HelpExampleRpc("signrawtransaction", "\"myhex\"")
-        );
+Examples:
+)"  + HelpExampleCli("signrawtransaction", "\"myhex\"")
+    + HelpExampleRpc("signrawtransaction", "\"myhex\"")
+);
 
 #ifdef ENABLE_WALLET
     LOCK2(cs_main, pwalletMain ? &pwalletMain->cs_wallet : nullptr);
@@ -920,7 +913,7 @@ UniValue signrawtransaction(const UniValue& params, bool fHelp)
     uint8_t nHashType = to_integral_type(SIGHASH::ALL);
     if (params.size() > 3 && !params[3].isNull())
     {
-        static unordered_map<string, int> mapSigHashValues =
+        static unordered_map<string, uint8_t> mapSigHashValues =
             {
                 {                 "ALL", to_integral_type(SIGHASH::ALL)},
                 {    "ALL|ANYONECANPAY", enum_or(SIGHASH::ALL, SIGHASH::ANYONECANPAY)},
@@ -1031,10 +1024,12 @@ Create a transaction
         throw JSONRPCError(RPC_DESERIALIZATION_ERROR, "TX decode failed");
     const auto &txid = tx.GetHash();
 
+    auto chainparams = Params();
+
     // DoS mitigation: reject transactions expiring soon
     if (tx.nExpiryHeight > 0) {
         int nextBlockHeight = chainActive.Height() + 1;
-        if (NetworkUpgradeActive(nextBlockHeight, Params().GetConsensus(), Consensus::UPGRADE_OVERWINTER)) {
+        if (NetworkUpgradeActive(nextBlockHeight, chainparams.GetConsensus(), Consensus::UPGRADE_OVERWINTER)) {
             if (nextBlockHeight + TX_EXPIRING_SOON_THRESHOLD > tx.nExpiryHeight) {
                 throw JSONRPCError(RPC_TRANSACTION_REJECTED,
                     strprintf("tx-expiring-soon: expiryheight is %u but should be at least %d to avoid transaction expiring soon",
@@ -1056,7 +1051,7 @@ Create a transaction
         // push to local node and sync with wallets
         CValidationState state;
         bool fMissingInputs;
-        if (!AcceptToMemoryPool(Params(), mempool, state, tx, false, &fMissingInputs, !fOverrideFees)) {
+        if (!AcceptToMemoryPool(chainparams, mempool, state, tx, false, &fMissingInputs, !fOverrideFees)) {
             if (state.IsInvalid()) {
                 throw JSONRPCError(RPC_TRANSACTION_REJECTED, strprintf("%i: %s", state.GetRejectCode(), state.GetRejectReason()));
             } else {
