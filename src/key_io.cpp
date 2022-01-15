@@ -235,7 +235,7 @@ std::string KeyIO::EncodeSecret(const CKey& key)
 CExtPubKey KeyIO::DecodeExtPubKey(const std::string& str)
 {
     CExtPubKey key;
-    std::vector<unsigned char> data;
+    v_uint8 data;
     if (DecodeBase58Check(str, data))
     {
         const auto& prefix = m_KeyConstants.Base58Prefix(KeyConstants::Base58Type::EXT_PUBLIC_KEY);

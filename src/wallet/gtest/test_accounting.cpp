@@ -1,14 +1,13 @@
 // Copyright (c) 2012-2014 The Bitcoin Core developers
-// Copyright (c) 2021 The Pastel developers
+// Copyright (c) 2021-2022 The Pastel developers
 // Distributed under the MIT software license, see the accompanying
-// file COPYING or http://www.opensource.org/licenses/mit-license.php.
-
+// file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <stdint.h>
-
 #include <gtest/gtest.h>
 
-#include "wallet/db.h"
-#include "wallet/wallet.h"
+#include <wallet/db.h>
+#include <wallet/wallet.h>
+#include <pastel_gtest_main.h>
 
 using namespace std;
 using namespace testing;
@@ -29,24 +28,19 @@ GetResults(CWallet* wallet, CWalletDB& walletdb, map<CAmount, CAccountingEntry>&
 class TestAccounting : public Test
 {
 public:
-    void SetUp() override
+    static void SetUpTestSuite()
     {
-        pathTemp = fs::temp_directory_path() / fs::unique_path();
-        EXPECT_TRUE(fs::create_directories(pathTemp));
-
+        gl_pPastelTestEnv->InitializeChainTest(CBaseChainParams::Network::TESTNET);
     }
 
-    void TearDown() override
-    {   
-        fs::remove_all(pathTemp);
+    static void TearDownTestSuite()
+    {
+        gl_pPastelTestEnv->FinalizeRegTest();
     }
-    fs::path pathTemp;
 };
 
 TEST_F(TestAccounting, acc_orderupgrade)
 {
-    SelectParams(CBaseChainParams::Network::TESTNET);
-    mapArgs["-datadir"] = pathTemp.string();
     bool fFirstRun;
     CWallet wallet("wallet_crypted_sapling.dat");
     EXPECT_EQ(DB_LOAD_OK, wallet.LoadWallet(fFirstRun));
@@ -156,6 +150,4 @@ TEST_F(TestAccounting, acc_orderupgrade)
     EXPECT_TRUE(results[4].strComment.empty());
     EXPECT_EQ(results[5].nTime , 1333333334u);
     EXPECT_EQ(6u , vpwtx[1]->nOrderPos);
-
-    //  UnregisterValidationInterface(&wallet);
 }

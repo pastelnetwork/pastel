@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2021 The Pastel Core Developers
+// Copyright (c) 2018-2022 The Pastel Core Developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <json/json.hpp>
@@ -12,7 +12,7 @@
 #include <mnode/tickets/nft-act.h>
 #include <mnode/tickets/ticket-utils.h>
 #ifdef ENABLE_WALLET
-#include "wallet/wallet.h"
+#include <wallet/wallet.h>
 #endif // ENABLE_WALLET
 
 using json = nlohmann::json;
@@ -54,67 +54,94 @@ void CNFTActivateTicket::sign(SecureString&& strKeyPass)
     string_to_vector(CPastelID::Sign(ToStr(), m_sPastelID, move(strKeyPass)), m_signature);
 }
 
-bool CNFTActivateTicket::IsValid(const bool bPreReg, const int nDepth) const
+/**
+ * Validate Pastel ticket.
+ * 
+ * \param bPreReg - if true: called from ticket pre-registration
+ * \param nDepth - ticket height
+ * \return ticket validation state and error message if any
+ */
+ticket_validation_t CNFTActivateTicket::IsValid(const bool bPreReg, const uint32_t nDepth) const noexcept
 {
     const unsigned int chainHeight = GetActiveChainHeight();
-
-    // 0. Common validations
-    unique_ptr<CPastelTicket> pastelTicket;
-    if (!common_validation(
+    ticket_validation_t tv;
+    do
+    {
+        // 0. Common validations
+        unique_ptr<CPastelTicket> pastelTicket;
+        const ticket_validation_t commonTV = common_ticket_validation(
             *this, bPreReg, m_regTicketTxId, pastelTicket,
             [](const TicketID tid) noexcept { return (tid != TicketID::NFT); },
-            "Activation", "NFT", nDepth,
-            TicketPrice(chainHeight) * COIN + getAllMNFees())) { // fee for ticket + all MN storage fees (percent from storage fee)
-        throw runtime_error(strprintf(
-            "The Activation ticket for the Registration ticket with txid [%s] is not validated [block = %u txid = %s]",
-            m_regTicketTxId, m_nBlock, m_txid));
-    }
+            GetTicketDescription(), ::GetTicketDescription(TicketID::NFT), nDepth,
+            TicketPrice(chainHeight) * COIN + getAllMNFees()); // fee for ticket + all MN storage fees (percent from storage fee)
 
-    // Check the Activation ticket for that Registration ticket is already in the database
-    // (ticket transaction replay attack protection)
-    CNFTActivateTicket existingTicket;
-    if (FindTicketInDb(m_regTicketTxId, existingTicket))
-    {
-        if (bPreReg || // if pre reg - this is probably repeating call, so signatures can be the same
-            !existingTicket.IsSameSignature(m_signature) ||
-            !existingTicket.IsBlock(m_nBlock) ||
-            existingTicket.m_txid != m_txid) { // check if this is not the same ticket!!
-            throw runtime_error(strprintf(
-                "The Activation ticket for the Registration ticket with txid [%s] already exists"
-                "[this ticket block = %u txid = %s; found ticket block = %u txid = %s]",
-                m_regTicketTxId, m_nBlock, m_txid, existingTicket.m_nBlock, existingTicket.m_txid));
+        if (commonTV.IsNotValid())
+        {
+            // enrich the error message
+            tv.errorMsg = strprintf(
+                "The Activation ticket for the Registration ticket with txid [%s] is not validated [block = %u, txid = %s]",
+                m_regTicketTxId, m_nBlock, m_txid);
+            tv.state = commonTV.state;
+            break;
         }
-    }
 
-    auto NFTTicket = dynamic_cast<CNFTRegTicket*>(pastelTicket.get());
-    if (!NFTTicket) {
-        throw runtime_error(strprintf(
-            "The NFT ticket with this txid [%s] is not in the blockchain or is invalid", m_regTicketTxId));
-    }
+        // Check the Activation ticket for that Registration ticket is already in the database
+        // (ticket transaction replay attack protection)
+        CNFTActivateTicket existingTicket;
+        if (FindTicketInDb(m_regTicketTxId, existingTicket))
+        {
+            if (bPreReg || // if pre reg - this is probably repeating call, so signatures can be the same
+                !existingTicket.IsSameSignature(m_signature) || // check if this is not the same ticket!!
+                !existingTicket.IsBlock(m_nBlock) ||
+                !existingTicket.IsTxId(m_txid))
+            {
+                tv.errorMsg = strprintf(
+                    "The Activation ticket for the Registration ticket with txid [%s] already exists"
+                    "[this ticket block = %u, txid = %s; found ticket block = %u, txid = %s]",
+                    m_regTicketTxId, m_nBlock, m_txid, existingTicket.m_nBlock, existingTicket.m_txid);
+                break;
+            }
+        }
 
-    // 1. check creator PastelID in NFTReg ticket matches PastelID from this ticket
-    if (!NFTTicket->IsCreatorPastelId(m_sPastelID))
-    {
-        throw runtime_error(strprintf(
-            "The PastelID [%s] is not matching the Creator's PastelID [%s] in the NFT Reg ticket with this txid [%s]",
-            m_sPastelID, NFTTicket->getCreatorPastelId(), m_regTicketTxId));
-    }
+        auto NFTTicket = dynamic_cast<CNFTRegTicket*>(pastelTicket.get());
+        // this is already validated in common_ticket_validation, but just double check that we retrieved a parent activation reg ticket
+        if (!NFTTicket)
+        {
+            tv.errorMsg = strprintf(
+                "The NFT ticket with this txid [%s] is not in the blockchain or is invalid",
+                m_regTicketTxId);
+            break;
+        }
 
-    // 2. check NFTReg ticket is at the assumed height
-    if (NFTTicket->getCreatorHeight() != m_creatorHeight) {
-        throw runtime_error(strprintf(
-            "The CreatorHeight [%d] is not matching the CreatorHeight [%d] in the NFT Reg ticket with this txid [%s]",
-            m_creatorHeight, NFTTicket->getCreatorHeight(), m_regTicketTxId));
-    }
+        // 1. check creator PastelID in NFTReg ticket matches PastelID from this ticket
+        if (!NFTTicket->IsCreatorPastelId(m_sPastelID))
+        {
+            tv.errorMsg = strprintf(
+                "The PastelID [%s] is not matching the Creator's PastelID [%s] in the NFT Reg ticket with this txid [%s]",
+                m_sPastelID, NFTTicket->getCreatorPastelId(), m_regTicketTxId);
+            break;
+        }
 
-    // 3. check NFTReg ticket fee is same as storageFee
-    if (NFTTicket->getStorageFee() != m_storageFee) {
-        throw runtime_error(strprintf(
-            "The storage fee [%d] is not matching the storage fee [%d] in the NFT Reg ticket with this txid [%s]",
-            m_storageFee, NFTTicket->getStorageFee(), m_regTicketTxId));
-    }
+        // 2. check NFTReg ticket is at the assumed height
+        if (NFTTicket->getCreatorHeight() != m_creatorHeight)
+        {
+            tv.errorMsg = strprintf(
+                "The CreatorHeight [%d] is not matching the CreatorHeight [%d] in the NFT Reg ticket with this txid [%s]",
+                m_creatorHeight, NFTTicket->getCreatorHeight(), m_regTicketTxId);
+            break;
+        }
 
-    return true;
+        // 3. check NFTReg ticket fee is same as storageFee
+        if (NFTTicket->getStorageFee() != m_storageFee)
+        {
+            tv.errorMsg = strprintf(
+                "The storage fee [%d] is not matching the storage fee [%" PRIi64 "] in the NFT Reg ticket with this txid [%s]",
+                m_storageFee, NFTTicket->getStorageFee(), m_regTicketTxId);
+            break;
+        }
+        tv.setValid();
+    } while (false);
+    return tv;
 }
 
 CAmount CNFTActivateTicket::GetExtraOutputs(vector<CTxOut>& outputs) const

@@ -321,10 +321,10 @@ public:
 
     CTxOut() noexcept
     {
-        SetNull();
+        Clear();
     }
 
-    CTxOut(const CAmount& nValueIn, CScript scriptPubKeyIn);
+    CTxOut(const CAmount& nValueIn, CScript scriptPubKeyIn) noexcept;
 
     ADD_SERIALIZE_METHODS;
 
@@ -335,7 +335,7 @@ public:
         READWRITE(*(CScriptBase*)(&scriptPubKey));
     }
 
-    void SetNull() noexcept
+    void Clear() noexcept
     {
         nValue = -1;
         scriptPubKey.clear();
@@ -446,8 +446,8 @@ public:
     const bool fOverwintered;
     const int32_t nVersion;
     const uint32_t nVersionGroupId;
-    const std::vector<CTxIn> vin;
-    const std::vector<CTxOut> vout;
+    const std::vector<CTxIn> vin;       // tx inputs
+    const std::vector<CTxOut> vout;     // tx outputs
     // There are two possible values of nLockTime: 
     // lock-by-blockheight and lock-by-blocktime, distinguished by whether nLockTime < LOCKTIME_THRESHOLD.
     const uint32_t nLockTime;

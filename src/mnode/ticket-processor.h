@@ -144,7 +144,7 @@ public:
     static std::unique_ptr<CPastelTicket> GetTicket(const std::string& _txid, const TicketID ticketID);
     static std::string GetTicketJSON(const uint256 &txid);
 
-    static bool ValidateIfTicketTransaction(const int nHeight, const CTransaction& tx);
+    static ticket_validation_t ValidateIfTicketTransaction(const uint32_t nHeight, const CTransaction& tx);
     
     static bool WalkBackTradingChain(
             const std::string& sTxId,   // txid of the starting ticket
@@ -164,4 +164,7 @@ public:
 
     // Get mempool tracker for ticket transactions
     static std::shared_ptr<ITxMemPoolTracker> GetTxMemPoolTracker();
+
+private:
+    static ticket_validation_t ValidateTicketFees(const uint32_t nHeight, const CTransaction& tx, std::unique_ptr<CPastelTicket>&& ticket) noexcept;
 };

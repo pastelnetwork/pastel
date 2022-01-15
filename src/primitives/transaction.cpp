@@ -21,7 +21,6 @@ std::string COutPoint::ToStringShort() const
     return strprintf("%s-%u", hash.ToString().substr(0,64), n == -1? 0: n);
 }
 
-
 std::string SaplingOutPoint::ToString() const
 {
     return strprintf("SaplingOutPoint(%s, %u)", hash.ToString().substr(0, 10), n);
@@ -56,7 +55,7 @@ std::string CTxIn::ToString() const
     return str;
 }
 
-CTxOut::CTxOut(const CAmount& nValueIn, CScript scriptPubKeyIn)
+CTxOut::CTxOut(const CAmount& nValueIn, CScript scriptPubKeyIn) noexcept
 {
     nValue = nValueIn;
     scriptPubKey = scriptPubKeyIn;

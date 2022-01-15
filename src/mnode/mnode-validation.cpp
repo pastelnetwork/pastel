@@ -1,9 +1,9 @@
-// Copyright (c) 2018 airk42
+// Copyright (c) 2018-2022 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
-// file COPYING or http://www.opensource.org/licenses/mit-license.php.
-
-#include "mnode/mnode-validation.h"
-#include "mnode/mnode-controller.h"
+// file COPYING or https://www.opensource.org/licenses/mit-license.php.
+#include <cinttypes>
+#include <mnode/mnode-validation.h>
+#include <mnode/mnode-controller.h>
 
 /*
 Wrappers for BlockChain specific logic
@@ -12,10 +12,12 @@ Wrappers for BlockChain specific logic
 bool GetBlockHash(uint256& hashRet, int nBlockHeight)
 {
     LOCK(cs_main);
-    if(chainActive.Tip() == NULL) return false;
-    if(nBlockHeight < -1 || nBlockHeight > chainActive.Height()) return false;
-    if(nBlockHeight == -1) nBlockHeight = chainActive.Height();
-    hashRet = chainActive[nBlockHeight]->GetBlockHash();
+    if (!chainActive.Tip())
+        return false;
+    if (nBlockHeight < -1 || nBlockHeight > chainActive.Height())
+        return false;
+    if (nBlockHeight == -1) nBlockHeight = chainActive.Height();
+        hashRet = chainActive[nBlockHeight]->GetBlockHash();
     return true;
 }
 
@@ -48,26 +50,30 @@ int GetUTXOConfirmations(const COutPoint& outpoint)
 bool GetMasternodeOutpointAndKeys(CWallet* pWalletMain, COutPoint& outpointRet, CPubKey& pubKeyRet, CKey& keyRet, std::string strTxHash, std::string strOutputIndex)
 {
     // wait for reindex and/or import to finish
-    if (fImporting || fReindex || pWalletMain == NULL) return false;
+    if (fImporting || fReindex || !pWalletMain)
+        return false;
 
     // Find possible candidates
     std::vector<COutput> vPossibleCoins;
     pWalletMain->AvailableCoins(vPossibleCoins, true, nullptr, false, true, masterNodeCtrl.MasternodeCollateral, true);
-    if(vPossibleCoins.empty()) {
+    if(vPossibleCoins.empty())
+    {
         LogPrintf("GetMasternodeOutpointAndKeys -- Could not locate any valid masternode vin\n");
         return false;
     }
 
-    if(strTxHash.empty()) // No output specified, select the first one
+    if (strTxHash.empty()) // No output specified, select the first one
         return GetOutpointAndKeysFromOutput(pWalletMain, vPossibleCoins[0], outpointRet, pubKeyRet, keyRet);
 
     // Find specific vin
-    uint256 txHash = uint256S(strTxHash);
+    const uint256 txHash = uint256S(strTxHash);
     int nOutputIndex = atoi(strOutputIndex.c_str());
 
     for (const auto& out : vPossibleCoins)
-        if(out.tx->GetHash() == txHash && out.i == nOutputIndex) // found it!
+    {
+        if (out.tx->GetHash() == txHash && out.i == nOutputIndex) // found it!
             return GetOutpointAndKeysFromOutput(pWalletMain, out, outpointRet, pubKeyRet, keyRet);
+    }
 
     LogPrintf("GetMasternodeOutpointAndKeys -- Could not locate specified masternode vin\n");
     return false;
@@ -76,7 +82,8 @@ bool GetMasternodeOutpointAndKeys(CWallet* pWalletMain, COutPoint& outpointRet, 
 bool GetOutpointAndKeysFromOutput(CWallet* pWalletMain, const COutput& out, COutPoint& outpointRet, CPubKey& pubKeyRet, CKey& keyRet)
 {
     // wait for reindex and/or import to finish
-    if (fImporting || fReindex || pWalletMain == NULL) return false;
+    if (fImporting || fReindex || !pWalletMain)
+        return false;
 
     CScript pubScript;
 
@@ -87,12 +94,14 @@ bool GetOutpointAndKeysFromOutput(CWallet* pWalletMain, const COutput& out, COut
     ExtractDestination(pubScript, dest);
 
     const CKeyID *keyID = std::get_if<CKeyID>(&dest);
-    if (!keyID) {
+    if (!keyID)
+    {
         LogPrintf("GetOutpointAndKeysFromOutput -- Address does not refer to a key\n");
         return false;
     }
 
-    if (!pWalletMain->GetKey(*keyID, keyRet)) {
+    if (!pWalletMain->GetKey(*keyID, keyRet))
+    {
         LogPrintf ("GetOutpointAndKeysFromOutput -- Private key for address is not known\n");
         return false;
     }
@@ -125,34 +134,41 @@ void FillOtherBlockPayments(CMutableTransaction& txNew, int nBlockHeight, CAmoun
 *
 *   Governance payments in each CB should not exceed the amount in the current voted payment
 */
-bool IsBlockValid(const CBlock& block, int nBlockHeight, CAmount blockReward, std::string &strErrorRet)
+bool IsBlockValid(const Consensus::Params& consensusParams, const CBlock& block, int nBlockHeight, CAmount blockReward, std::string& strErrorRet)
 {
-    strErrorRet = "";
+    strErrorRet.clear();
 
     //1. less then total reward per block
-    if (block.vtx[0].GetValueOut() > blockReward) {
-        strErrorRet = strprintf("coinbase pays too much at height %d (actual=%d vs limit=%d), exceeded block reward, budgets are disabled",
-                                nBlockHeight, block.vtx[0].GetValueOut(), blockReward);
+    const CAmount nValueOut = block.vtx[0].GetValueOut();
+    if (nValueOut > blockReward)
+    {
+        strErrorRet = strprintf("coinbase pays too much at height %d (actual=%" PRIi64 " vs limit=%" PRIi64 "), exceeded block reward, budgets are disabled",
+                                nBlockHeight, nValueOut, blockReward);
         return false;
     }
 
-    if(!masterNodeCtrl.masternodeSync.IsSynced()) {
+    if (!masterNodeCtrl.masternodeSync.IsSynced())
+    {
+        const bool fInitialDownload = fnIsInitialBlockDownload(consensusParams);
         //there is no data to use to check anything, let's just accept the longest chain
-        if(fDebug) LogPrintf("IsBlockValid -- WARNING: Client not synced, skipping block payee checks\n");
+        if (fDebug && !fInitialDownload)
+            LogPrintf("IsBlockValid -- WARNING: Client not synced, skipping block payee checks\n");
         return true;
     }
 
     //3. check governance and masternode payments and payee
-    if(!masterNodeCtrl.masternodePayments.IsTransactionValid(block.vtx[0], nBlockHeight)) {
-        strErrorRet = strprintf("InValid coinbase transaction (MN payment) at height %d: %s", nBlockHeight, block.vtx[0].ToString());
+    if(!masterNodeCtrl.masternodePayments.IsTransactionValid(block.vtx[0], nBlockHeight))
+    {
+        strErrorRet = strprintf("Invalid coinbase transaction (MN payment) at height %d: %s", nBlockHeight, block.vtx[0].ToString());
         return false;
     }
-    if(!masterNodeCtrl.masternodeGovernance.IsTransactionValid(block.vtx[0], nBlockHeight)) {
-        strErrorRet = strprintf("InValid coinbase transaction (governance payment) at height %d: %s", nBlockHeight, block.vtx[0].ToString());
+    if(!masterNodeCtrl.masternodeGovernance.IsTransactionValid(block.vtx[0], nBlockHeight))
+    {
+        strErrorRet = strprintf("Invalid coinbase transaction (governance payment) at height %d: %s", nBlockHeight, block.vtx[0].ToString());
         return false;
     }
 
-    // there was no MN nor Govenrance payments on this block
+    // there was no MN for Governance payments on this block
     LogPrint("mnpayments", "IsBlockValid -- Valid masternode payment at height %d: %s", nBlockHeight, block.vtx[0].ToString());
     return true;
 }

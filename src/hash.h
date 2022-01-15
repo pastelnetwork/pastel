@@ -113,7 +113,7 @@ inline uint160 Hash160(const T1 pbegin, const T1 pend)
 }
 
 /** Compute the 160-bit hash of a vector. */
-inline uint160 Hash160(const std::vector<unsigned char>& vch)
+inline uint160 Hash160(const v_uint8& vch)
 {
     return Hash160(vch.begin(), vch.end());
 }
@@ -229,6 +229,6 @@ uint256 SerializeHash(const T& obj, int nType=SER_GETHASH, int nVersion=PROTOCOL
     return ss.GetHash();
 }
 
-unsigned int MurmurHash3(unsigned int nHashSeed, const std::vector<unsigned char>& vDataToHash);
+unsigned int MurmurHash3(unsigned int nHashSeed, const v_uint8& vDataToHash);
 
 void BIP32Hash(const ChainCode &chainCode, unsigned int nChild, unsigned char header, const unsigned char data[32], unsigned char output[64]);

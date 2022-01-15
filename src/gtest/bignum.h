@@ -1,20 +1,17 @@
+#pragma once
 // Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2013 The Bitcoin Core developers
+// Copyright (c) 2018-2022 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
-// file COPYING or http://www.opensource.org/licenses/mit-license.php.
-
-#ifndef BITCOIN_TEST_BIGNUM_H
-#define BITCOIN_TEST_BIGNUM_H
+// file COPYING or https://www.opensource.org/licenses/mit-license.php.
 
 #include <algorithm>
 #include <cassert>
 #include <limits>
 #include <stdexcept>
-#include <stdint.h>
-#include <string>
-#include <vector>
-
 #include <openssl/bn.h>
+
+#include <vector_types.h>
 
 class bignum_error : public std::runtime_error
 {
@@ -59,7 +56,7 @@ public:
 
     CBigNum(long long n)          { bn = BN_new(); assert(bn); setint64(n); }
 
-    explicit CBigNum(const std::vector<unsigned char>& vch)
+    explicit CBigNum(const v_uint8 & vch)
     {
         bn = BN_new();
         assert(bn);
@@ -120,9 +117,9 @@ public:
         BN_mpi2bn(pch, p - pch, bn);
     }
 
-    void setvch(const std::vector<unsigned char>& vch)
+    void setvch(const v_uint8& vch)
     {
-        std::vector<unsigned char> vch2(vch.size() + 4);
+        v_uint8 vch2(vch.size() + 4);
         unsigned int nSize = vch.size();
         // BIGNUM's byte stream format expects 4 bytes of
         // big endian size data info at the front
@@ -135,12 +132,12 @@ public:
         BN_mpi2bn(&vch2[0], vch2.size(), bn);
     }
 
-    std::vector<unsigned char> getvch() const
+    v_uint8 getvch() const
     {
-        unsigned int nSize = BN_bn2mpi(bn, NULL);
+        unsigned int nSize = BN_bn2mpi(bn, nullptr);
         if (nSize <= 4)
-            return std::vector<unsigned char>();
-        std::vector<unsigned char> vch(nSize);
+            return v_uint8();
+        v_uint8 vch(nSize);
         BN_bn2mpi(bn, &vch[0]);
         vch.erase(vch.begin(), vch.begin() + 4);
         reverse(vch.begin(), vch.end());
@@ -189,5 +186,3 @@ inline bool operator<=(const CBigNum& a, const CBigNum& b) { return (BN_cmp(a.bn
 inline bool operator>=(const CBigNum& a, const CBigNum& b) { return (BN_cmp(a.bn, b.bn) >= 0); }
 inline bool operator<(const CBigNum& a, const CBigNum& b)  { return (BN_cmp(a.bn, b.bn) < 0); }
 inline bool operator>(const CBigNum& a, const CBigNum& b)  { return (BN_cmp(a.bn, b.bn) > 0); }
-
-#endif // BITCOIN_TEST_BIGNUM_H

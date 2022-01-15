@@ -429,7 +429,7 @@ UniValue verifytxoutproof(const UniValue& params, bool fHelp)
 
     UniValue res(UniValue::VARR);
 
-    vector<uint256> vMatch;
+    v_uint256 vMatch;
     if (merkleBlock.txn.ExtractMatches(vMatch) != merkleBlock.header.hashMerkleRoot)
         return res;
 
@@ -858,7 +858,12 @@ UniValue signrawtransaction(const UniValue& params, bool fHelp)
 
             UniValue prevOut = p.get_obj();
 
-            RPCTypeCheckObj(prevOut, {{"txid", UniValue::VSTR},{"vout", UniValue::VNUM},{"scriptPubKey", UniValue::VSTR}});
+            RPCTypeCheckObj(prevOut, 
+                {
+                    {"txid", UniValue::VSTR},
+                    {"vout", UniValue::VNUM},
+                    {"scriptPubKey", UniValue::VSTR}
+                });
 
             uint256 txid = ParseHashO(prevOut, "txid");
 
@@ -889,7 +894,13 @@ UniValue signrawtransaction(const UniValue& params, bool fHelp)
             // if redeemScript given and not using the local wallet (private keys
             // given), add redeemScript to the tempKeystore so it can be signed:
             if (fGivenKeys && scriptPubKey.IsPayToScriptHash()) {
-                RPCTypeCheckObj(prevOut, {{"txid", UniValue::VSTR},{"vout", UniValue::VNUM},{"scriptPubKey", UniValue::VSTR},{"redeemScript",UniValue::VSTR}});
+                RPCTypeCheckObj(prevOut,
+                    {
+                        {"txid", UniValue::VSTR},
+                        {"vout", UniValue::VNUM},
+                        {"scriptPubKey", UniValue::VSTR},
+                        {"redeemScript", UniValue::VSTR}
+                    });
                 UniValue v = find_value(prevOut, "redeemScript");
                 if (!v.isNull()) {
                     vector<unsigned char> rsData(ParseHexV(v, "redeemScript"));
@@ -906,18 +917,18 @@ UniValue signrawtransaction(const UniValue& params, bool fHelp)
     const CKeyStore& keystore = tempKeystore;
 #endif
 
-    int nHashType = SIGHASH_ALL;
-    if (params.size() > 3 && !params[3].isNull()) {
-        static map<string, int> mapSigHashValues =
+    uint8_t nHashType = to_integral_type(SIGHASH::ALL);
+    if (params.size() > 3 && !params[3].isNull())
+    {
+        static unordered_map<string, int> mapSigHashValues =
             {
-            {string("ALL"), int(SIGHASH_ALL)},
-            {string("ALL|ANYONECANPAY"), int(SIGHASH_ALL|SIGHASH_ANYONECANPAY)},
-            {string("NONE"), int(SIGHASH_NONE)},
-            {string("NONE|ANYONECANPAY"), int(SIGHASH_NONE|SIGHASH_ANYONECANPAY)},
-            {string("SINGLE"), int(SIGHASH_SINGLE)},
-            {string("SINGLE|ANYONECANPAY"), int(SIGHASH_SINGLE|SIGHASH_ANYONECANPAY)}
-            }
-            ;
+                {                 "ALL", to_integral_type(SIGHASH::ALL)},
+                {    "ALL|ANYONECANPAY", enum_or(SIGHASH::ALL, SIGHASH::ANYONECANPAY)},
+                {                "NONE", to_integral_type(SIGHASH::NONE)},
+                {   "NONE|ANYONECANPAY", enum_or(SIGHASH::NONE, SIGHASH::ANYONECANPAY)},
+                {              "SINGLE", to_integral_type(SIGHASH::SINGLE)},
+                { "SINGLE|ANYONECANPAY", enum_or(SIGHASH::SINGLE, SIGHASH::ANYONECANPAY)}
+            };
         string strHashType = params[3].get_str();
         if (mapSigHashValues.count(strHashType))
             nHashType = mapSigHashValues[strHashType];
@@ -925,7 +936,7 @@ UniValue signrawtransaction(const UniValue& params, bool fHelp)
             throw JSONRPCError(RPC_INVALID_PARAMETER, "Invalid sighash param");
     }
 
-    bool fHashSingle = ((nHashType & ~SIGHASH_ANYONECANPAY) == SIGHASH_SINGLE);
+    const bool fHashSingle = ((nHashType & ~to_integral_type(SIGHASH::ANYONECANPAY)) == to_integral_type(SIGHASH::SINGLE));
     // Use the approximate release height if it is greater so offline nodes 
     // have a better estimation of the current height and will be more likely to
     // determine the correct consensus branch ID.  Regtest mode ignores release height.

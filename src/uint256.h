@@ -6,7 +6,7 @@
 #include <assert.h>
 #include <stdexcept>
 
-#include "vector_types.h"
+#include <vector_types.h>
 
 template <class T>
 inline void hash_combine(std::size_t& seed, const T& v)
@@ -32,6 +32,46 @@ public:
     }
 
     explicit base_blob(const v_uint8& vch);
+
+    base_blob(base_blob && b) noexcept
+    {
+#ifdef _MSC_VER
+        memcpy_s(data, sizeof(data), b.data, sizeof(b.data));
+#else
+        memcpy(data, b.data, sizeof(data));
+#endif
+        b.SetNull();
+    }
+    base_blob& operator=(base_blob && b) noexcept
+    {
+        if (this != &b)
+        {
+#ifdef _MSC_VER
+            memcpy_s(data, sizeof(data), b.data, sizeof(b.data));
+#else
+            memcpy(data, b.data, sizeof(data));
+#endif
+            b.SetNull();
+        }
+        return *this;
+    }
+    base_blob(const base_blob & b)
+    {
+#ifdef _MSC_VER
+        memcpy_s(data, sizeof(data), b.data, sizeof(b.data));
+#else
+        memcpy(data, b.data, sizeof(data));
+#endif
+    }
+    base_blob& operator=(const base_blob & b) noexcept
+    {
+#ifdef _MSC_VER
+        memcpy_s(data, sizeof(data), b.data, sizeof(b.data));
+#else
+        memcpy(data, b.data, sizeof(data));
+#endif
+        return *this;
+    }
 
     bool IsNull() const noexcept
     {
@@ -120,11 +160,11 @@ public:
  */
 class uint256 : public base_blob<256> {
 public:
-    uint256() {}
-    uint256(const base_blob<256>& b) : 
+    uint256() noexcept {}
+    uint256(const base_blob<256>& b) noexcept : 
         base_blob<256>(b)
     {}
-    explicit uint256(const v_uint8& vch) : 
+    explicit uint256(const v_uint8& vch) noexcept : 
         base_blob<256>(vch)
     {}
 
@@ -167,6 +207,8 @@ inline uint256 uint256S(const std::string& str)
     rv.SetHex(str);
     return rv;
 }
+
+using v_uint256 = std::vector<uint256>;
 
 namespace std
 {

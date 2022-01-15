@@ -18,12 +18,12 @@
 #include "utilstrencodings.h"
 
 #include <stdio.h>
+#include <str_utils.h>
 
-#include <boost/algorithm/string.hpp>
-#include <boost/assign/list_of.hpp>
+using namespace std;
 
 static bool fCreateBlank;
-static std::map<std::string,UniValue> registers;
+static map<std::string,UniValue> registers;
 static const int CONTINUE_EXECUTION=-1;
 
 //
@@ -121,30 +121,37 @@ static void RegisterSet(const std::string& strInput)
     RegisterSetJson(key, valStr);
 }
 
-static void RegisterLoad(const std::string& strInput)
+static void RegisterLoad(const string& strInput)
 {
     // separate NAME:FILENAME in string
     size_t pos = strInput.find(':');
-    if ((pos == std::string::npos) ||
+    if ((pos == string::npos) ||
         (pos == 0) ||
         (pos == (strInput.size() - 1)))
-        throw std::runtime_error("Register load requires NAME:FILENAME");
+        throw runtime_error("Register load requires NAME:FILENAME");
 
-    std::string key = strInput.substr(0, pos);
-    std::string filename = strInput.substr(pos + 1, std::string::npos);
+    string key = strInput.substr(0, pos);
+    string filename = strInput.substr(pos + 1, string::npos);
 
-    FILE *f = fopen(filename.c_str(), "r");
-    if (!f) {
-        std::string strErr = "Cannot open file " + filename;
-        throw std::runtime_error(strErr);
+    FILE* f = nullptr;
+#if defined(_MSC_VER) && (_MSC_VER >= 1400)
+    const errno_t err = fopen_s(&f, filename.c_str(), "r");
+#else
+    f = fopen(filename.c_str(), "r");
+#endif
+    if (!f)
+    {
+        string strErr = "Cannot open file " + filename;
+        throw runtime_error(strErr);
     }
 
     // load file chunks into one big buffer
-    std::string valStr;
-    while ((!feof(f)) && (!ferror(f))) {
+    string valStr;
+    while (!feof(f) && !ferror(f))
+    {
         char buf[4096];
-        int bread = fread(buf, 1, sizeof(buf), f);
-        if (bread <= 0)
+        const size_t bread = fread(buf, 1, sizeof(buf), f);
+        if (bread == 0)
             break;
 
         valStr.insert(valStr.size(), buf, bread);
@@ -153,9 +160,10 @@ static void RegisterLoad(const std::string& strInput)
     int error = ferror(f);
     fclose(f);
 
-    if (error) {
-        std::string strErr = "Error reading file " + filename;
-        throw std::runtime_error(strErr);
+    if (error)
+    {
+        string strErr = "Error reading file " + filename;
+        throw runtime_error(strErr);
     }
 
     // evaluate as JSON buffer register
@@ -189,32 +197,32 @@ static void MutateTxLocktime(CMutableTransaction& tx, const std::string& cmdVal)
     tx.nLockTime = (unsigned int) newLocktime;
 }
 
-static void MutateTxAddInput(CMutableTransaction& tx, const std::string& strInput)
+static void MutateTxAddInput(CMutableTransaction& tx, const string& strInput)
 {
-    std::vector<std::string> vStrInputParts;
-    boost::split(vStrInputParts, strInput, boost::is_any_of(":"));
+    v_strings vStrInputParts;
+    str_split(vStrInputParts, strInput, ':');
 
     // separate TXID:VOUT in string
     if (vStrInputParts.size()<2)
-        throw std::runtime_error("TX input missing separator");
+        throw runtime_error("TX input missing separator");
 
     // extract and validate TXID
-    std::string strTxid = vStrInputParts[0];
+    string strTxid = vStrInputParts[0];
     if ((strTxid.size() != 64) || !IsHex(strTxid))
-        throw std::runtime_error("invalid TX input txid");
+        throw runtime_error("invalid TX input txid");
     uint256 txid(uint256S(strTxid));
 
-    static const unsigned int minTxOutSz = 9;
-    static const unsigned int maxVout = MAX_BLOCK_SIZE / minTxOutSz;
+    constexpr unsigned int minTxOutSz = 9;
+    constexpr unsigned int maxVout = MAX_BLOCK_SIZE / minTxOutSz;
 
     // extract and validate vout
-    std::string strVout = vStrInputParts[1];
+    string strVout = vStrInputParts[1];
     int vout = atoi(strVout);
     if ((vout < 0) || (vout > (int)maxVout))
-        throw std::runtime_error("invalid TX input vout");
+        throw runtime_error("invalid TX input vout");
 
     // extract the optional sequence number
-    uint32_t nSequenceIn=std::numeric_limits<unsigned int>::max();
+    uint32_t nSequenceIn=numeric_limits<unsigned int>::max();
     if (vStrInputParts.size() > 2)
         nSequenceIn = atoi(vStrInputParts[2]);
 
@@ -223,7 +231,7 @@ static void MutateTxAddInput(CMutableTransaction& tx, const std::string& strInpu
     tx.vin.push_back(txin);
 }
 
-static void MutateTxAddOutAddr(CMutableTransaction& tx, const std::string& strInput)
+static void MutateTxAddOutAddr(CMutableTransaction& tx, const string& strInput)
 {
     // separate VALUE:ADDRESS in string
     size_t pos = strInput.find(':');
@@ -305,17 +313,17 @@ static void MutateTxDelOutput(CMutableTransaction& tx, const std::string& strOut
 static const unsigned int N_SIGHASH_OPTS = 6;
 static const struct {
     const char *flagStr;
-    int flags;
+    uint8_t flags;
 } sighashOptions[N_SIGHASH_OPTS] = {
-    {"ALL", SIGHASH_ALL},
-    {"NONE", SIGHASH_NONE},
-    {"SINGLE", SIGHASH_SINGLE},
-    {"ALL|ANYONECANPAY", SIGHASH_ALL|SIGHASH_ANYONECANPAY},
-    {"NONE|ANYONECANPAY", SIGHASH_NONE|SIGHASH_ANYONECANPAY},
-    {"SINGLE|ANYONECANPAY", SIGHASH_SINGLE|SIGHASH_ANYONECANPAY},
+    {"ALL", to_integral_type(SIGHASH::ALL)},
+    {"NONE", to_integral_type(SIGHASH::NONE)},
+    {"SINGLE", to_integral_type(SIGHASH::SINGLE)},
+    {"ALL|ANYONECANPAY", enum_or(SIGHASH::ALL, SIGHASH::ANYONECANPAY)},
+    {"NONE|ANYONECANPAY", enum_or(SIGHASH::NONE, SIGHASH::ANYONECANPAY)},
+    {"SINGLE|ANYONECANPAY", enum_or(SIGHASH::SINGLE, SIGHASH::ANYONECANPAY)},
 };
 
-static bool findSighashFlags(int& flags, const std::string& flagStr)
+static bool findSighashFlags(uint8_t& flags, const std::string& flagStr)
 {
     flags = 0;
 
@@ -373,7 +381,7 @@ static void MutateTxSign(CMutableTransaction& tx, const std::string& strInput)
     }
 
     // extract and validate SIGHASH-FLAGS
-    int nHashType = SIGHASH_ALL;
+    uint8_t nHashType = to_integral_type(SIGHASH::ALL);
     std::string flagStr;
     if (pos != std::string::npos) {
         flagStr = strInput.substr(pos + 1, std::string::npos);
@@ -421,11 +429,16 @@ static void MutateTxSign(CMutableTransaction& tx, const std::string& strInput)
             if (!prevOut.isObject())
                 throw std::runtime_error("expected prevtxs internal object");
 
-            std::map<std::string,UniValue::VType> types = boost::assign::map_list_of("txid", UniValue::VSTR)("vout",UniValue::VNUM)("scriptPubKey",UniValue::VSTR);
+            map<string, UniValue::VType> types = 
+                {
+                    {"txid", UniValue::VSTR},
+                    {"vout", UniValue::VNUM},
+                    {"scriptPubKey", UniValue::VSTR}
+                };
             if (!prevOut.checkObject(types))
                 throw std::runtime_error("prevtxs internal object typecheck fail");
 
-            uint256 txid = ParseHashUV(prevOut["txid"], "txid");
+            const uint256 txid = ParseHashUV(prevOut["txid"], "txid");
 
             int nOut = atoi(prevOut["vout"].getValStr());
             if (nOut < 0)
@@ -465,7 +478,8 @@ static void MutateTxSign(CMutableTransaction& tx, const std::string& strInput)
 
     const CKeyStore& keystore = tempKeystore;
 
-    bool fHashSingle = ((nHashType & ~SIGHASH_ANYONECANPAY) == SIGHASH_SINGLE);
+    const bool fHashSingle = ((nHashType & ~to_integral_type(SIGHASH::ANYONECANPAY)) 
+        == to_integral_type(SIGHASH::SINGLE));
 
     // Grab the consensus branch ID for the given height
     auto consensusBranchId = CurrentEpochBranchId(nHeight, Params().GetConsensus());
@@ -588,12 +602,13 @@ static void OutputTx(const CTransaction& tx)
         OutputTxHex(tx);
 }
 
-static std::string readStdin()
+static string readStdin()
 {
     char buf[4096];
-    std::string ret;
+    string ret;
 
-    while (!feof(stdin)) {
+    while (!feof(stdin))
+    {
         size_t bread = fread(buf, 1, sizeof(buf), stdin);
         ret.append(buf, bread);
         if (bread < sizeof(buf))
@@ -602,9 +617,7 @@ static std::string readStdin()
 
     if (ferror(stdin))
         throw std::runtime_error("error reading stdin");
-
-    boost::algorithm::trim_right(ret);
-
+    rtrim(ret);
     return ret;
 }
 

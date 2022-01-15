@@ -149,6 +149,7 @@
     <ClCompile Include="..\..\..\src\mnode\tickets\ticket_signing.cpp" />
     <ClCompile Include="..\..\..\src\mnode\tickets\username-change.cpp" />
     <ClCompile Include="..\..\..\src\net.cpp" />
+    <ClCompile Include="..\..\..\src\netmsg\block-cache.cpp" />
     <ClCompile Include="..\..\..\src\noui.cpp" />
     <ClCompile Include="..\..\..\src\pastelid\pastel_key.cpp" />
     <ClCompile Include="..\..\..\src\pastelid\secure_container.cpp" />
@@ -254,6 +255,7 @@
     <ClInclude Include="..\..\..\src\mnode\tickets\username-change.h" />
     <ClInclude Include="..\..\..\src\mruset.h" />
     <ClInclude Include="..\..\..\src\net.h" />
+    <ClInclude Include="..\..\..\src\netmsg\block-cache.h" />
     <ClInclude Include="..\..\..\src\nodehelper.h" />
     <ClInclude Include="..\..\..\src\noui.h" />
     <ClInclude Include="..\..\..\src\pastelid\common.h" />

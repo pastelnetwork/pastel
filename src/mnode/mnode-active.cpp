@@ -1,6 +1,7 @@
 // Copyright (c) 2014-2017 The Dash Core developers
+// Copyright (c) 2019-2022 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
-// file COPYING or http://www.opensource.org/licenses/mit-license.php.
+// file COPYING or https://www.opensource.org/licenses/mit-license.php.
 
 #include "util.h"
 #include "protocol.h"
@@ -11,6 +12,8 @@
 #include "mnode/mnode-manager.h"
 #include "mnode/mnode-sync.h"
 #include "mnode/mnode-controller.h"
+
+using namespace std;
 
 void CActiveMasternode::ManageState()
 {
@@ -43,19 +46,7 @@ void CActiveMasternode::ManageState()
     SendMasternodePing();
 }
 
-std::string CActiveMasternode::GetStateString() const
-{
-    switch (nState) {
-        case ActiveMasternodeState::Initial:        return "INITIAL";
-        case ActiveMasternodeState::SyncInProcess:  return "SYNC_IN_PROCESS";
-        case ActiveMasternodeState::InputTooNew:    return "INPUT_TOO_NEW";
-        case ActiveMasternodeState::NotCapable:     return "NOT_CAPABLE";
-        case ActiveMasternodeState::Started:        return "STARTED";
-        default:                                    return "UNKNOWN";
-    }
-}
-
-std::string CActiveMasternode::GetStatus() const
+string CActiveMasternode::GetStatus() const noexcept
 {
     switch (nState) {
         case ActiveMasternodeState::Initial:        return "Node just started, not yet activated";
@@ -67,9 +58,9 @@ std::string CActiveMasternode::GetStatus() const
     }
 }
 
-std::string CActiveMasternode::GetTypeString() const
+string CActiveMasternode::GetTypeString() const noexcept
 {
-    std::string strType;
+    string strType;
     switch(mnType) {
     case MasternodeType::Remote:
         strType = "REMOTE";

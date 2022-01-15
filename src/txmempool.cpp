@@ -513,7 +513,7 @@ bool CTxMemPool::lookup(const uint256& txid, CTransaction& result, uint32_t* pnB
  * \param vTxid - input vector of transaction hashes (txids)
  * \param vTx - output vector of transactions
   */
-void CTxMemPool::batch_lookup(const vector<uint256>& vTxid, vector<CMutableTransaction>& vTx, v_uints &vBlockHeight) const
+void CTxMemPool::batch_lookup(const v_uint256& vTxid, vector<CMutableTransaction>& vTx, v_uints& vBlockHeight) const
 {
     vTx.clear();
     vBlockHeight.clear();
