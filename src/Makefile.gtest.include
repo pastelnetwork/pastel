@@ -3,7 +3,11 @@ noinst_PROGRAMS += pastel-gtest
 
 RAW_GTEST_FILES = gtest/data/alertTests.raw
 
-GENERATED_GTEST_FILES = $(RAW_GTEST_FILES:.raw=.raw.h)
+JSON_GTEST_FILES = \
+	gtest/data/script_valid.json \
+  	gtest/data/script_invalid.json
+
+GENERATED_GTEST_FILES = $(JSON_GTEST_FILES:.json=.json.h) $(RAW_GTEST_FILES:.raw=.raw.h)
 
 # tool for generating our public parameters.
 # test_checktransaction.cpp MUST be before
@@ -87,6 +91,7 @@ pastel_gtest_SOURCES +=\
 	gtest/test_rpccmd_parser.cpp\
 	gtest/test_sanity.cpp\
 	gtest/test_sapling_note.cpp\
+	gtest/test_script.cpp\
 	gtest/test_scriptnum.cpp\
 	gtest/test_script_P2SH.cpp\
 	gtest/test_serialize.cpp\
@@ -156,7 +161,6 @@ pastel_gtest_LDFLAGS = $(RELDFLAGS) $(AM_LDFLAGS) $(LIBTOOL_APP_LDFLAGS) -static
 nodist_pastel_gtest_SOURCES = $(GENERATED_GTEST_FILES)
 
 $(pastel_gtest_SOURCES): $(GENERATED_GTEST_FILES)
-
 pastel-gtest_check: pastel-gtest FORCE
 	./pastel-gtest
 
@@ -166,6 +170,14 @@ pastel-gtest-expected-failures: pastel-gtest FORCE
 %.raw.h: %.raw
 	@$(MKDIR_P) $(@D)
 	@echo "namespace alert_tests{" > $@
+	@echo "static unsigned const char $(*F)[] = {" >> $@
+	@$(HEXDUMP) -v -e '8/1 "0x%02x, "' -e '"\n"' $< | $(SED) -e 's/0x  ,//g' >> $@
+	@echo "};};" >> $@
+	@echo "Generated $@"
+
+%.json.h: %.json
+	@$(MKDIR_P) $(@D)
+	@echo "namespace json_tests{" > $@
 	@echo "static unsigned const char $(*F)[] = {" >> $@
 	@$(HEXDUMP) -v -e '8/1 "0x%02x, "' -e '"\n"' $< | $(SED) -e 's/0x  ,//g' >> $@
 	@echo "};};" >> $@
