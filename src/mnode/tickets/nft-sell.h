@@ -1,5 +1,5 @@
 #pragma once
-// Copyright (c) 2018-2021 The Pastel Core developers
+// Copyright (c) 2018-2022 The Pastel Core developers
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <mnode/tickets/ticket.h>
@@ -45,6 +45,10 @@ public:
 
     TicketID ID() const noexcept override { return TicketID::Sell; }
     static TicketID GetID() { return TicketID::Sell; }
+    constexpr auto GetTicketDescription() const
+    {
+        return TICKET_INFO[to_integral_type<TicketID>(TicketID::Sell)].szDescription;
+    }
 
     void Clear() noexcept override
     {
@@ -69,7 +73,7 @@ public:
 
     std::string ToJSON() const noexcept override;
     std::string ToStr() const noexcept override;
-    bool IsValid(const bool bPreReg, const int nDepth) const override;
+    ticket_validation_t IsValid(const bool bPreReg, const uint32_t nDepth) const noexcept override;
     CAmount TicketPrice(const unsigned int nHeight) const noexcept override { return std::max(10u, askedPrice / 50); }
     bool IsSameSignature(const v_uint8& signature) const noexcept { return m_signature == signature; }
     // sign the ticket with the PastelID's private key - creates signature

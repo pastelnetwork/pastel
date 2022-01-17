@@ -26,3 +26,15 @@ to_integral_type(const _EnumClass e) -> typename std::underlying_type<_EnumClass
 	return static_cast<typename std::underlying_type<_EnumClass>::type>(e);
 }
 #endif
+
+template <typename _EnumClass>
+constexpr auto enum_or(const _EnumClass e1, const _EnumClass e2)
+{
+    return to_integral_type<_EnumClass>(e1) | to_integral_type<_EnumClass>(e2);
+}
+
+template <typename _EnumClass>
+constexpr bool is_enum_valid(const std::underlying_type_t<_EnumClass> e, const _EnumClass eLowValid, const _EnumClass eHighValid)
+{
+    return (e >= to_integral_type<_EnumClass>(eLowValid) && (e <= to_integral_type<_EnumClass>(eHighValid)));
+}

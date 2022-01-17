@@ -18,7 +18,7 @@ public:
     // Lookup for the transaction with the specific hash (txid).
     MOCK_METHOD(bool, lookup, (const uint256& txid, CTransaction& tx, uint32_t* nBlockHeight), (const, override));
     // Get a list of transactions by txids
-    MOCK_METHOD(void, batch_lookup, (const std::vector<uint256>& vTxid, std::vector<CMutableTransaction>& vTx, v_uints& vBlockHeight), (const, override));
+    MOCK_METHOD(void, batch_lookup, (const v_uint256& vTxid, std::vector<CMutableTransaction>& vTx, v_uints& vBlockHeight), (const, override));
 };
 
 class TestTktMemPoolProcessor : 
@@ -38,7 +38,7 @@ TEST_F(TestTktMemPoolProcessor, ticket_search)
     auto pMemPoolTracker = make_shared<MockTicketTxMemPoolTracker>();
     ASSERT_NE(pMemPoolTracker, nullptr);
 
-    vector<uint256> vTxid_username, vTxid_pastelid;
+    v_uint256 vTxid_username, vTxid_pastelid;
     vector<CMutableTransaction> vTx;
     v_uints vBlockHeight;
     for (uint32_t i = 0; i < 10; ++i) {

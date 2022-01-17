@@ -36,6 +36,6 @@ public:
         MAX_BECH32_TYPES
     };
 
-    virtual const std::vector<unsigned char>& Base58Prefix(const Base58Type type) const noexcept = 0;
+    virtual const v_uint8& Base58Prefix(const Base58Type type) const noexcept = 0;
     virtual const std::string& Bech32HRP(const Bech32Type type) const noexcept = 0;
 };

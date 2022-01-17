@@ -1,13 +1,14 @@
 #pragma once
 // Copyright (c) 2014-2017 The Dash Core developers
-// Copyright (c) 2018-2021 The Pastel Core developers
+// Copyright (c) 2018-2022 The Pastel Core developers
 // Distributed under the MIT/X11 software license, see the accompanying
-// file COPYING or http://www.opensource.org/licenses/mit-license.php.
+// file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <string>
+
+#include <univalue.h>
 
 #include "chain.h"
 #include "net.h"
-#include "univalue.h"
 
 //
 // CMasternodeSync : Sync masternode assets in stages
@@ -16,12 +17,14 @@
 class CMasternodeSync
 {
 public:
-    enum class MasternodeType {
+    enum class MasternodeType
+    {
         Unknown = 0,
         Remote  = 1
     };
 
-    enum class MasternodeSyncState {
+    enum class MasternodeSyncState
+    {
         Failed          = -1,
         Initial         = 0,    // sync just started, was reset recently or still in IDB
         Waiting         = 1,    // waiting after initial to see if we can get more headers/blocks
@@ -61,17 +64,17 @@ public:
         Reset();
     }
 
-    bool IsFailed() { return syncState == MasternodeSyncState::Failed; }
-    bool IsBlockchainSynced() { return syncState > MasternodeSyncState::Waiting; }
-    bool IsMasternodeListSynced() { return syncState > MasternodeSyncState::List; }
-    bool IsWinnersListSynced() { return syncState > MasternodeSyncState::Winners; }
-    bool IsGovernanceSynced() { return syncState > MasternodeSyncState::Governance; }
-    bool IsSynced() { return syncState == MasternodeSyncState::Finished; }
+    bool IsFailed() const noexcept { return syncState == MasternodeSyncState::Failed; }
+    bool IsBlockchainSynced() const noexcept { return syncState > MasternodeSyncState::Waiting; }
+    bool IsMasternodeListSynced() const noexcept { return syncState > MasternodeSyncState::List; }
+    bool IsWinnersListSynced() const noexcept { return syncState > MasternodeSyncState::Winners; }
+    bool IsGovernanceSynced() const noexcept { return syncState > MasternodeSyncState::Governance; }
+    bool IsSynced() const noexcept { return syncState == MasternodeSyncState::Finished; }
 
-    int GetAssetID() { return (int)syncState; }
-    int GetAttempt() { return nRequestedMasternodeAttempt; }
+    int GetAssetID() const noexcept { return (int)syncState; }
+    int GetAttempt() const noexcept { return nRequestedMasternodeAttempt; }
     void BumpAssetLastTime(std::string strFuncName);
-    int64_t GetAssetStartTime() { return nTimeAssetSyncStarted; }
+    int64_t GetAssetStartTime() const noexcept { return nTimeAssetSyncStarted; }
     std::string GetSyncStatusShort();
     std::string GetSyncStatus();
 

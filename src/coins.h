@@ -116,7 +116,7 @@ public:
         for (auto &txout : vout)
         {
             if (txout.scriptPubKey.IsUnspendable())
-                txout.SetNull();
+                txout.Clear();
         }
         Cleanup();
     }
@@ -519,7 +519,7 @@ public:
     bool Flush();
 
     //! Calculate the size of the cache (in number of transactions)
-    unsigned int GetCacheSize() const;
+    size_t GetCacheSize() const noexcept;
 
     //! Calculate the size of the cache (in bytes)
     size_t DynamicMemoryUsage() const;

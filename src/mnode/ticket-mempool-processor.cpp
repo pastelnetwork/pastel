@@ -25,7 +25,7 @@ void CPastelTicketMemPoolProcessor::Initialize(const CTxMemPool& pool, std::shar
         throw runtime_error("Failed to get Pastel memory pool tracker for ticket transactions");
 
     // vector of transaction hashes (txids) for the specified ticket id
-    vector<uint256> vTxid;
+    v_uint256 vTxid;
     pTracker->getTicketTransactions(m_TicketID, vTxid);
 
     if (vTxid.empty())

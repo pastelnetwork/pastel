@@ -1,8 +1,9 @@
 #pragma once
 // Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2014 The Bitcoin Core developers
+// Copyright (c) 2018-2022 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
-// file COPYING or http://www.opensource.org/licenses/mit-license.php.
+// file COPYING or https://www.opensource.org/licenses/mit-license.php.
 
 /** The minimum allowed block version (network rule) */
 constexpr int32_t MIN_BLOCK_VERSION = 4;
@@ -17,16 +18,16 @@ constexpr int32_t SAPLING_MIN_TX_VERSION = 4;
 /** The maximum allowed Sapling transaction version (network rule) */
 constexpr int32_t SAPLING_MAX_TX_VERSION = 4;
 /** The maximum allowed size for a serialized block, in bytes (network rule) */
-constexpr unsigned int MAX_BLOCK_SIZE = 2000000;
+constexpr unsigned int MAX_BLOCK_SIZE = 2'000'000;
 /** The maximum allowed number of signature check operations in a block (network rule) */
-constexpr unsigned int MAX_BLOCK_SIGOPS = 20000;
+constexpr unsigned int MAX_BLOCK_SIGOPS = 20'000;
 /** The maximum size of a transaction (network rule) */
-constexpr unsigned int MAX_TX_SIZE_BEFORE_SAPLING = 100000;
+constexpr unsigned int MAX_TX_SIZE_BEFORE_SAPLING = 100'000;
 constexpr unsigned int MAX_TX_SIZE_AFTER_SAPLING = MAX_BLOCK_SIZE;
 /** Coinbase transaction outputs can only be spent after this number of new blocks (network rule) */
 const int COINBASE_MATURITY = 100;
 /** The minimum value which is invalid for expiry height, used by CTransaction and CMutableTransaction */
-constexpr uint32_t TX_EXPIRY_HEIGHT_THRESHOLD = 500000000;
+constexpr uint32_t TX_EXPIRY_HEIGHT_THRESHOLD = 500'000'000;
 
 /** Flags for LockTime() */
 enum {

@@ -1,8 +1,8 @@
 #pragma once
 // Copyright (c) 2014-2017 The Dash Core developers
-// Copyright (c) 2019-2021 The Pastel Core developers
+// Copyright (c) 2019-2022 The Pastel Core developers
 // Distributed under the MIT/X11 software license, see the accompanying
-// file COPYING or http://www.opensource.org/licenses/mit-license.php.
+// file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <string>
 #include <map>
 
@@ -16,19 +16,38 @@
 class CActiveMasternode
 {
 public:
-    enum class MasternodeType {
+    enum class MasternodeType
+    {
         Unknown = 0,
         Remote  = 1
     };
 
-    enum class ActiveMasternodeState {
+    enum class ActiveMasternodeState : uint8_t
+    {
         Initial        = 0, // initial state
         SyncInProcess  = 1,
         InputTooNew    = 2,
         NotCapable     = 3,
-        Started        = 4
+        Started        = 4,
+        COUNT          = 5
     };
 
+    typedef struct _ActiveMNStateInfo
+    {
+        const ActiveMasternodeState state{};
+        const char* szState{};
+    } ActiveMNStateInfo;
+
+protected:
+    static constexpr std::array<ActiveMNStateInfo, to_integral_type<ActiveMasternodeState>(ActiveMasternodeState::COUNT)> ACTIVE_MN_STATE =
+        {{
+               { ActiveMasternodeState::Initial,         "INITIAL" },
+               { ActiveMasternodeState::SyncInProcess,   "SYNC_IN_PROCESS" },
+               { ActiveMasternodeState::InputTooNew,     "INPUT_TOO_NEW" },
+               { ActiveMasternodeState::NotCapable,      "NOT_CAPABLE" },
+               { ActiveMasternodeState::Started,         "STARTED" }
+        }};
+    
 private:
     // critical section to protect the inner data structures
     mutable CCriticalSection cs;
@@ -66,9 +85,17 @@ public:
     /// Manage state of active Masternode
     void ManageState();
 
-    std::string GetStateString() const;
-    std::string GetStatus() const;
-    std::string GetTypeString() const;
+    /**
+     * Get Active MasterNode current state string.
+     * 
+     * \return Active MN state string (not nullptr)
+     */
+    auto GetStateString() const noexcept
+    {
+        return ACTIVE_MN_STATE[to_integral_type<ActiveMasternodeState>(nState)].szState;
+    }
+    std::string GetStatus() const noexcept;
+    std::string GetTypeString() const noexcept;
 
 private:
     void ManageStateInitial();

@@ -1,7 +1,7 @@
 #pragma once
 // Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2014 The Bitcoin Core developers
-// Copyright (c) 2018-2021 The Pastel Core developers
+// Copyright (c) 2018-2022 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 
@@ -9,15 +9,13 @@
 #include "config/bitcoin-config.h"
 #endif
 
-#include <algorithm>
-#include <exception>
-#include <map>
-#include <set>
 #include <stdint.h>
+#include <exception>
 #include <string>
+#include <vector>
+#include <set>
 #include <unordered_map>
 #include <utility>
-#include <vector>
 
 #include "amount.h"
 #include "chain.h"
@@ -84,7 +82,11 @@ static constexpr int DEFAULT_SCRIPTCHECK_THREADS = 0;
 /** Number of blocks that can be requested at any given time from a single peer. */
 static constexpr int MAX_BLOCKS_IN_TRANSIT_PER_PEER = 16;
 /** Timeout in seconds during which a peer must stall block download progress before being disconnected. */
-static constexpr unsigned int BLOCK_STALLING_TIMEOUT = 2;
+static constexpr unsigned int BLOCK_STALLING_TIMEOUT_SECS = 2;
+/** Timeout in micro-seconds during which a peer must stall block download progress before being disconnected. */
+static constexpr int64_t BLOCK_STALLING_TIMEOUT_MICROSECS = BLOCK_STALLING_TIMEOUT_SECS * 1'000'000;
+/** Timeout in seconds to log block download timeout reduction */
+static constexpr int64_t BLOCK_STALLING_LOG_TIMEOUT_MICROSECS = 60 * 1'000'000;
 /** Number of headers sent in one getheaders result. We rely on the assumption that if a peer sends
  *  less than this number, we reached its tip. Changing this value is a protocol upgrade. */
 static constexpr size_t MAX_HEADERS_RESULTS = 160;
@@ -148,6 +150,7 @@ extern bool fIsBareMultisigStd;
 extern bool fCheckBlockIndex;
 extern bool fCheckpointsEnabled;
 // TODO: remove this flag by structuring our code such that
+// TODO: remove this flag by structuring our code such that
 // it is unneeded for testing
 // extern bool fCoinbaseEnforcedProtectionEnabled;
 extern size_t nCoinCacheUsage;
@@ -203,8 +206,8 @@ bool ProcessNewBlock(
     const CChainParams& chainparams, 
     const CNode* pfrom, 
     const CBlock* pblock, 
-    bool fForceProcessing, 
-    CDiskBlockPos *dbp);
+    const bool fForceProcessing, 
+    CDiskBlockPos *dbp = nullptr);
 /** Check whether enough disk space is available for an incoming block */
 bool CheckDiskSpace(uint64_t nAdditionalBytes = 0);
 /** Open a block file (blk?????.dat) */
@@ -229,7 +232,7 @@ bool ProcessMessages(const CChainParams& chainparams, CNode* pfrom);
  * @param[in]   pto             The node which we are sending messages to.
  * @param[in]   fSendTrickle    When true send the trickled data, otherwise trickle the data until true.
  */
-bool SendMessages(const Consensus::Params& consensusParams, CNode* pto, bool fSendTrickle);
+bool SendMessages(const CChainParams& chainparams, CNode* pto, bool fSendTrickle);
 /** Run an instance of the script checking thread */
 void ThreadScriptCheck();
 
@@ -416,7 +419,7 @@ bool CheckTxInputs(const CTransaction& tx, CValidationState& state, const CCoins
  * Check if transaction is final and can be included in a block with the
  * specified height and time. Consensus critical.
  */
-bool IsFinalTx(const CTransaction &tx, int nBlockHeight, int64_t nBlockTime);
+bool IsFinalTx(const CTransaction &tx, const uint32_t nBlockHeight, int64_t nBlockTime);
 
 /**
  * Check if transaction is expired and can be included in a block with the
@@ -457,14 +460,32 @@ private:
     PrecomputedTransactionData *txdata;
 
 public:
-    CScriptCheck(): amount(0), ptxTo(0), nIn(0), nFlags(0), cacheStore(false), consensusBranchId(0), error(SCRIPT_ERR_UNKNOWN_ERROR), txdata(nullptr) {}
+    CScriptCheck(): 
+        amount(0),
+        ptxTo(0),
+        nIn(0),
+        nFlags(0),
+        cacheStore(false),
+        consensusBranchId(0),
+        error(SCRIPT_ERR_UNKNOWN_ERROR),
+        txdata(nullptr)
+    {}
     CScriptCheck(const CCoins& txFromIn, const CTransaction& txToIn, unsigned int nInIn, unsigned int nFlagsIn, bool cacheIn, uint32_t consensusBranchIdIn, PrecomputedTransactionData* txdataIn) :
-        scriptPubKey(txFromIn.vout[txToIn.vin[nInIn].prevout.n].scriptPubKey), amount(txFromIn.vout[txToIn.vin[nInIn].prevout.n].nValue),
-        ptxTo(&txToIn), nIn(nInIn), nFlags(nFlagsIn), cacheStore(cacheIn), consensusBranchId(consensusBranchIdIn), error(SCRIPT_ERR_UNKNOWN_ERROR), txdata(txdataIn) { }
+        scriptPubKey(txFromIn.vout[txToIn.vin[nInIn].prevout.n].scriptPubKey),
+        amount(txFromIn.vout[txToIn.vin[nInIn].prevout.n].nValue),
+        ptxTo(&txToIn),
+        nIn(nInIn),
+        nFlags(nFlagsIn),
+        cacheStore(cacheIn),
+        consensusBranchId(consensusBranchIdIn),
+        error(SCRIPT_ERR_UNKNOWN_ERROR),
+        txdata(txdataIn)
+    {}
 
     bool operator()();
 
-    void swap(CScriptCheck &check) {
+    void swap(CScriptCheck &check) noexcept
+    {
         scriptPubKey.swap(check.scriptPubKey);
         std::swap(ptxTo, check.ptxTo);
         std::swap(amount, check.amount);
@@ -476,7 +497,7 @@ public:
         std::swap(txdata, check.txdata);
     }
 
-    ScriptError GetScriptError() const { return error; }
+    ScriptError GetScriptError() const noexcept { return error; }
 };
 
 bool GetSpentIndex(CSpentIndexKey &key, CSpentIndexValue &value);

@@ -187,11 +187,11 @@ BOOST_AUTO_TEST_CASE(coin_selection_tests)
 
         // empty the wallet and start again, now with fractions of a cent, to test sub-cent change avoidance
         empty_wallet();
-        add_coin(0.1*CENT);
-        add_coin(0.2*CENT);
-        add_coin(0.3*CENT);
-        add_coin(0.4*CENT);
-        add_coin(0.5*CENT);
+        add_coin(static_cast<CAmount>(0.1*CENT));
+        add_coin(static_cast<CAmount>(0.2*CENT));
+        add_coin(static_cast<CAmount>(0.3*CENT));
+        add_coin(static_cast<CAmount>(0.4*CENT));
+        add_coin(static_cast<CAmount>(0.5*CENT));
 
         // try making 1 cent from 0.1 + 0.2 + 0.3 + 0.4 + 0.5 = 1.5 cents
         // we'll get sub-cent change whatever happens, so can expect 1.0 exactly
@@ -206,8 +206,8 @@ BOOST_AUTO_TEST_CASE(coin_selection_tests)
         BOOST_CHECK_EQUAL(nValueRet, 1 * CENT); // we should get the exact amount
 
         // if we add more sub-cent coins:
-        add_coin(0.6*CENT);
-        add_coin(0.7*CENT);
+        add_coin(static_cast<CAmount>(0.6*CENT));
+        add_coin(static_cast<CAmount>(0.7*CENT));
 
         // and try again to make 1.0 cents, we can still make 1.0 cents
         BOOST_CHECK( wallet.SelectCoinsMinConf(1 * CENT, 1, 1, vCoins, setCoinsRet, nValueRet));
@@ -228,9 +228,9 @@ BOOST_AUTO_TEST_CASE(coin_selection_tests)
 
         // sometimes it will fail, and so we use the next biggest coin:
         empty_wallet();
-        add_coin(0.5 * CENT);
-        add_coin(0.6 * CENT);
-        add_coin(0.7 * CENT);
+        add_coin(static_cast<CAmount>(0.5 * CENT));
+        add_coin(static_cast<CAmount>(0.6 * CENT));
+        add_coin(static_cast<CAmount>(0.7 * CENT));
         add_coin(1111 * CENT);
         BOOST_CHECK( wallet.SelectCoinsMinConf(1 * CENT, 1, 1, vCoins, setCoinsRet, nValueRet));
         BOOST_CHECK_EQUAL(nValueRet, 1111 * CENT); // we get the bigger coin
@@ -238,9 +238,9 @@ BOOST_AUTO_TEST_CASE(coin_selection_tests)
 
         // but sometimes it's possible, and we use an exact subset (0.4 + 0.6 = 1.0)
         empty_wallet();
-        add_coin(0.4 * CENT);
-        add_coin(0.6 * CENT);
-        add_coin(0.8 * CENT);
+        add_coin(static_cast<CAmount>(0.4 * CENT));
+        add_coin(static_cast<CAmount>(0.6 * CENT));
+        add_coin(static_cast<CAmount>(0.8 * CENT));
         add_coin(1111 * CENT);
         BOOST_CHECK( wallet.SelectCoinsMinConf(1 * CENT, 1, 1, vCoins, setCoinsRet, nValueRet));
         BOOST_CHECK_EQUAL(nValueRet, 1 * CENT);   // we should get the exact amount
@@ -248,17 +248,17 @@ BOOST_AUTO_TEST_CASE(coin_selection_tests)
 
         // test avoiding sub-cent change
         empty_wallet();
-        add_coin(0.0005 * COIN);
-        add_coin(0.01 * COIN);
+        add_coin(static_cast<CAmount>(0.0005 * COIN));
+        add_coin(static_cast<CAmount>(0.01 * COIN));
         add_coin(1 * COIN);
 
         // trying to make 1.0001 from these three coins
-        BOOST_CHECK( wallet.SelectCoinsMinConf(1.0001 * COIN, 1, 1, vCoins, setCoinsRet, nValueRet));
+        BOOST_CHECK( wallet.SelectCoinsMinConf(static_cast<CAmount>(1.0001 * COIN), 1, 1, vCoins, setCoinsRet, nValueRet));
         BOOST_CHECK_EQUAL(nValueRet, 1.0105 * COIN);   // we should get all coins
         BOOST_CHECK_EQUAL(setCoinsRet.size(), 3U);
 
         // but if we try to make 0.999, we should take the bigger of the two small coins to avoid sub-cent change
-        BOOST_CHECK( wallet.SelectCoinsMinConf(0.999 * COIN, 1, 1, vCoins, setCoinsRet, nValueRet));
+        BOOST_CHECK( wallet.SelectCoinsMinConf(static_cast<CAmount>(0.999 * COIN), 1, 1, vCoins, setCoinsRet, nValueRet));
         BOOST_CHECK_EQUAL(nValueRet, 1.01 * COIN);   // we should get 1 + 0.01
         BOOST_CHECK_EQUAL(setCoinsRet.size(), 2U);
 

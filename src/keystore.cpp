@@ -97,7 +97,7 @@ static bool ExtractPubKey(const CScript &dest, CPubKey& pubKeyOut)
     //TODO: Use Solver to extract this?
     CScript::const_iterator pc = dest.begin();
     opcodetype opcode;
-    std::vector<unsigned char> vch;
+    v_uint8 vch;
     if (!dest.GetOp(pc, opcode, vch) || vch.size() < 33 || vch.size() > 65)
         return false;
     pubKeyOut = CPubKey(vch);

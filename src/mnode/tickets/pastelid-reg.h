@@ -30,9 +30,9 @@ public:
 
 public:
     CPastelIDRegTicket() = default;
-    explicit CPastelIDRegTicket(std::string&& _pastelID) : pastelID(std::move(_pastelID))
-    {
-    }
+    explicit CPastelIDRegTicket(std::string&& _pastelID) : 
+        pastelID(std::move(_pastelID))
+    {}
 
     TicketID ID() const noexcept override { return TicketID::PastelID; }
     static TicketID GetID() { return TicketID::PastelID; }
@@ -57,7 +57,7 @@ public:
     std::string ToJSON() const noexcept override;
     std::string ToStr() const noexcept override;
     void ToStrStream(std::stringstream& ss, const bool bIncludeMNsignature = true) const noexcept;
-    bool IsValid(const bool bPreReg, const int nDepth) const override;
+    ticket_validation_t IsValid(const bool bPreReg, const uint32_t nDepth) const noexcept override;
 
     CAmount TicketPrice(const unsigned int nHeight) const noexcept override { return nHeight <= 10000 ? CPastelTicket::TicketPrice(nHeight) : 1000; }
 

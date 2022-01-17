@@ -12,7 +12,7 @@ extern CCriticalSection cs_mapOurMessages;
 //extern CCriticalSection cs_mapLatestSender;
 
 bool Sign(const std::string& message, std::string& signatureBase64, std::string& error_ret);
-bool Sign(const std::string& message, std::vector<unsigned char>& signature, std::string& error_ret);
+bool Sign(const std::string& message, v_uint8& signature, std::string& error_ret);
 
 // Type to distinguish the way we build/parse messages.
 enum class CMasternodeMessageType: uint8_t
@@ -29,7 +29,7 @@ public:
     uint8_t messageType;
     std::string message;
     int64_t sigTime{}; //message times
-    std::vector<unsigned char> vchSig;
+    v_uint8 vchSig;
 
     CMasternodeMessage() = default;
     

@@ -1,5 +1,5 @@
 #pragma once
-// Copyright (c) 2018-2021 The Pastel Core developers
+// Copyright (c) 2018-2022 The Pastel Core developers
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <chainparams.h>
@@ -28,17 +28,24 @@ public:
     std::string pastelID;
     std::string username;
     CAmount fee{100};
-    v_uint8 signature;
+
+protected:
+    v_uint8 m_signature;
 
 public:
     CChangeUsernameTicket() = default;
 
-    explicit CChangeUsernameTicket(std::string _pastelID, std::string _username) : pastelID(std::move(_pastelID)), username(std::move(_username))
-    {
-    }
+    explicit CChangeUsernameTicket(std::string _pastelID, std::string _username) : 
+        pastelID(std::move(_pastelID)),
+        username(std::move(_username))
+    {}
 
     TicketID ID() const noexcept override { return TicketID::Username; }
     static TicketID GetID() { return TicketID::Username; }
+    constexpr auto GetTicketDescription() const
+    {
+        return TICKET_INFO[to_integral_type<TicketID>(TicketID::Username)].szDescription;
+    }
 
     void Clear() noexcept override
     {
@@ -46,7 +53,7 @@ public:
         pastelID.clear();
         username.clear();
         fee = 100;
-        signature.clear();
+        m_signature.clear();
     }
 
     std::string KeyOne() const noexcept override { return username; }
@@ -57,11 +64,12 @@ public:
     bool HasMVKeyTwo() const noexcept override { return false; }
 
     void SetKeyOne(std::string&& sValue) override { username = std::move(sValue); }
+    void set_signature(const std::string& signature);
 
     std::string ToJSON() const noexcept override;
     std::string ToStr() const noexcept override;
     CAmount TicketPrice(const unsigned int nHeight) const noexcept override { return fee; }
-    bool IsValid(const bool bPreReg, const int nDepth) const override;
+    ticket_validation_t IsValid(const bool bPreReg, const uint32_t nDepth) const noexcept override;
     /**
      * Disable changing username for this number of blocks since last change.
      * 
@@ -85,7 +93,7 @@ public:
         // v0
         READWRITE(username);
         READWRITE(fee);
-        READWRITE(signature);
+        READWRITE(m_signature);
         READWRITE(m_nTimestamp);
         READWRITE(m_txid);
         READWRITE(m_nBlock);

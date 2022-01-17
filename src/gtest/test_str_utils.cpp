@@ -1,5 +1,6 @@
 #include "str_utils.h"
 #include "gtest/gtest.h"
+#include <vector_types.h>
 
 using namespace testing;
 using namespace std;
@@ -360,3 +361,25 @@ TEST(str_utils, str_append_field)
     str_append_field(s, "d", ", ");
     EXPECT_EQ(s, "ab,c, d");
 }
+
+class PTest_StrUtils_str_split : public TestWithParam<tuple<string, char, v_strings>>
+{};
+
+TEST_P(PTest_StrUtils_str_split, test)
+{
+	const string &s = get<0>(GetParam());
+    const char ch = get<1>(GetParam());
+    const auto& vExpected = get<2>(GetParam());
+    v_strings v;
+    str_split(v, s, ch);
+	EXPECT_EQ(v, vExpected);
+}
+
+INSTANTIATE_TEST_SUITE_P(str_utils, PTest_StrUtils_str_split,
+	Values(
+		make_tuple("a-b-c", '-', v_strings{"a", "b", "c"}),
+		make_tuple("a--c", '-', v_strings{"a", "", "c"}),
+		make_tuple("-b-", '-', v_strings{"", "b", ""}),
+		make_tuple("a", '-', v_strings{"a"}),
+		make_tuple("", '-', v_strings{""})
+	));

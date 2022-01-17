@@ -297,14 +297,14 @@ BOOST_AUTO_TEST_CASE(CreateNewBlock_validity)
             eq.digitK(0);
 
             // Convert solution indices to byte array (decompress) and pass it to validBlock method.
-            std::set<std::vector<unsigned char>> solns;
+            std::set<v_uint8> solns;
             for (size_t s = 0; s < eq.nsols; s++) {
                 LogPrint("pow", "Checking solution %d\n", s+1);
                 std::vector<eh_index> index_vector(PROOFSIZE);
                 for (size_t i = 0; i < PROOFSIZE; i++) {
                     index_vector[i] = eq.sols[s][i];
                 }
-                std::vector<unsigned char> sol_char = GetMinimalFromIndices(index_vector, DIGITBITS);
+                v_uint8 sol_char = GetMinimalFromIndices(index_vector, DIGITBITS);
                 solns.insert(sol_char);
             }
 
@@ -373,7 +373,7 @@ BOOST_AUTO_TEST_CASE(CreateNewBlock_validity)
     // block size > limit
     tx.vin[0].scriptSig = CScript();
     // 18 * (520char + DROP) + OP_1 = 9433 bytes
-    std::vector<unsigned char> vchData(520);
+    v_uint8 vchData(520);
     for (unsigned int i = 0; i < 18; ++i)
         tx.vin[0].scriptSig << vchData << OP_DROP;
     tx.vin[0].scriptSig << OP_1;
@@ -437,7 +437,7 @@ BOOST_AUTO_TEST_CASE(CreateNewBlock_validity)
     hash = tx.GetHash();
     mempool.addUnchecked(hash, entry.Time(GetTime()).SpendsCoinbase(true).FromTx(tx));
     tx.vin[0].prevout.hash = hash;
-    tx.vin[0].scriptSig = CScript() << std::vector<unsigned char>(script.begin(), script.end());
+    tx.vin[0].scriptSig = CScript() << v_uint8(script.begin(), script.end());
     tx.vout[0].nValue -= 10000;
     hash = tx.GetHash();
     mempool.addUnchecked(hash, entry.Time(GetTime()).SpendsCoinbase(false).FromTx(tx));

@@ -120,7 +120,7 @@ CBlockTemplate* CreateNewBlock(const CChainParams& chainparams, const CScript& s
     // -regtest only: allow overriding block.nVersion with
     // -blockversion=N to test forking scenarios
     if (chainparams.MineBlocksOnDemand())
-        pblock->nVersion = GetArg("-blockversion", pblock->nVersion);
+        pblock->nVersion = static_cast<int32_t>(GetArg("-blockversion", pblock->nVersion));
 
     // Add dummy coinbase tx as first transaction
     pblock->vtx.push_back(CTransaction());
@@ -128,18 +128,18 @@ CBlockTemplate* CreateNewBlock(const CChainParams& chainparams, const CScript& s
     pblocktemplate->vTxSigOps.push_back(-1); // updated at end
 
     // Largest block you're willing to create:
-    unsigned int nBlockMaxSize = GetArg("-blockmaxsize", DEFAULT_BLOCK_MAX_SIZE);
+    unsigned int nBlockMaxSize = static_cast<unsigned int>(GetArg("-blockmaxsize", DEFAULT_BLOCK_MAX_SIZE));
     // Limit to betweeen 1K and MAX_BLOCK_SIZE-1K for sanity:
-    nBlockMaxSize = std::max((unsigned int)1000, std::min((unsigned int)(MAX_BLOCK_SIZE-1000), nBlockMaxSize));
+    nBlockMaxSize = std::max<unsigned int>(1000, std::min<unsigned int>(MAX_BLOCK_SIZE-1000, nBlockMaxSize));
 
     // How much of the block should be dedicated to high-priority transactions,
     // included regardless of the fees they pay
-    unsigned int nBlockPrioritySize = GetArg("-blockprioritysize", DEFAULT_BLOCK_PRIORITY_SIZE);
+    unsigned int nBlockPrioritySize = static_cast<unsigned int>(GetArg("-blockprioritysize", DEFAULT_BLOCK_PRIORITY_SIZE));
     nBlockPrioritySize = std::min(nBlockMaxSize, nBlockPrioritySize);
 
     // Minimum block size you want to create; block will be filled with free transactions
     // until there are no more or the block reaches this size:
-    unsigned int nBlockMinSize = GetArg("-blockminsize", DEFAULT_BLOCK_MIN_SIZE);
+    unsigned int nBlockMinSize = static_cast<unsigned int>(GetArg("-blockminsize", DEFAULT_BLOCK_MIN_SIZE));
     nBlockMinSize = std::min(nBlockMaxSize, nBlockMinSize);
 
     // Collect memory pool transactions into the block
@@ -159,7 +159,7 @@ CBlockTemplate* CreateNewBlock(const CChainParams& chainparams, const CScript& s
 
         // Priority order to process transactions
         list<COrphan> vOrphan; // list memory doesn't move
-        map<uint256, vector<COrphan*> > mapDependers;
+        unordered_map<uint256, vector<COrphan*> > mapDependers;
         bool fPrintPriority = GetBoolArg("-printpriority", false);
 
         // This vector will be sorted into a priority queue:
@@ -222,10 +222,11 @@ CBlockTemplate* CreateNewBlock(const CChainParams& chainparams, const CScript& s
             }
             nTotalIn += tx.GetShieldedValueIn();
 
-            if (fMissingInputs) continue;
+            if (fMissingInputs)
+                continue;
 
             // Priority is sum(valuein * age) / modified_txsize
-            unsigned int nTxSize = ::GetSerializeSize(tx, SER_NETWORK, PROTOCOL_VERSION);
+            const size_t nTxSize = ::GetSerializeSize(tx, SER_NETWORK, PROTOCOL_VERSION);
             dPriority = tx.ComputePriority(dPriority, nTxSize);
 
             uint256 hash = tx.GetHash();
@@ -239,7 +240,7 @@ CBlockTemplate* CreateNewBlock(const CChainParams& chainparams, const CScript& s
                 porphan->feeRate = feeRate;
             }
             else
-                vecPriority.push_back(TxPriority(dPriority, feeRate, &(mi->GetTx())));
+                vecPriority.emplace_back(dPriority, feeRate, &(mi->GetTx()));
         }
 
         // Collect transactions into block
@@ -263,7 +264,7 @@ CBlockTemplate* CreateNewBlock(const CChainParams& chainparams, const CScript& s
             vecPriority.pop_back();
 
             // Size limits
-            unsigned int nTxSize = ::GetSerializeSize(tx, SER_NETWORK, PROTOCOL_VERSION);
+            const size_t nTxSize = ::GetSerializeSize(tx, SER_NETWORK, PROTOCOL_VERSION);
             if (nBlockSize + nTxSize >= nBlockMaxSize)
                 continue;
 
@@ -332,14 +333,13 @@ CBlockTemplate* CreateNewBlock(const CChainParams& chainparams, const CScript& s
             {
                 for (auto porphan : mapDependers[hash])
                 {
-                    if (!porphan->setDependsOn.empty())
+                    if (porphan->setDependsOn.empty())
+                        continue;
+                    porphan->setDependsOn.erase(hash);
+                    if (porphan->setDependsOn.empty())
                     {
-                        porphan->setDependsOn.erase(hash);
-                        if (porphan->setDependsOn.empty())
-                        {
-                            vecPriority.push_back(TxPriority(porphan->dPriority, porphan->feeRate, porphan->ptx));
-                            std::push_heap(vecPriority.begin(), vecPriority.end(), comparer);
-                        }
+                        vecPriority.emplace_back(porphan->dPriority, porphan->feeRate, porphan->ptx);
+                        std::push_heap(vecPriority.begin(), vecPriority.end(), comparer);
                     }
                 }
             }
@@ -347,7 +347,7 @@ CBlockTemplate* CreateNewBlock(const CChainParams& chainparams, const CScript& s
 
         nLastBlockTx = nBlockTx;
         nLastBlockSize = nBlockSize;
-        LogPrintf("CreateNewBlock(): total size %u\n", nBlockSize);
+        LogPrintf("CreateNewBlock(): total size %" PRIu64 "\n", nBlockSize);
 
         // Create coinbase tx
         CMutableTransaction txNew = CreateNewContextualCMutableTransaction(chainparams.GetConsensus(), nHeight);
@@ -621,13 +621,13 @@ void static BitcoinMiner()
                 LogPrint("pow", "Running Equihash solver \"%s\" with nNonce = %s\n",
                          solver, pblock->nNonce.ToString());
 
-                std::function<bool(std::vector<unsigned char>)> validBlock =
+                std::function<bool(v_uint8)> validBlock =
 #ifdef ENABLE_WALLET
                         [&pblock, &hashTarget, &pwallet, &reservekey, &m_cs, &cancelSolver, &chainparams]
 #else
                         [&pblock, &hashTarget, &m_cs, &cancelSolver, &chainparams]
 #endif
-                        (std::vector<unsigned char> soln) {
+                    (const v_uint8 &soln) {
                     // Write the solution to the hash and compute the result.
                     LogPrint("pow", "- Checking solution against target\n");
                     pblock->nSolution = soln;
@@ -692,7 +692,7 @@ void static BitcoinMiner()
                         for (size_t i = 0; i < PROOFSIZE; i++) {
                             index_vector[i] = eq.sols[s][i];
                         }
-                        std::vector<unsigned char> sol_char = GetMinimalFromIndices(index_vector, DIGITBITS);
+                        v_uint8 sol_char = GetMinimalFromIndices(index_vector, DIGITBITS);
 
                         if (validBlock(sol_char)) {
                             // If we find a POW solution, do not try other solutions

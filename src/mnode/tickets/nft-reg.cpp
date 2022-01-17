@@ -1,8 +1,7 @@
-// Copyright (c) 2018-2021 The Pastel Core Developers
+// Copyright (c) 2018-2022 The Pastel Core Developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
-
-#include <inttypes.h>
+#include <cinttypes>
 
 #include <str_utils.h>
 #include <init.h>
@@ -88,58 +87,90 @@ void CNFTRegTicket::parse_nft_ticket()
 }
 
 /**
- * Checks whether the ticket is valid.
+ * Validate Pastel ticket.
  * 
  * \param bPreReg - if true: called from ticket pre-registration
  * \param nDepth - ticket height
  * \return true if the ticket is valid
  */
-bool CNFTRegTicket::IsValid(const bool bPreReg, const int nDepth) const
+ticket_validation_t CNFTRegTicket::IsValid(const bool bPreReg, const uint32_t nDepth) const noexcept
 {
     const unsigned int chainHeight = GetActiveChainHeight();
-
-    if (bPreReg)
+    ticket_validation_t tv;
+    do
     {
-        // A. Something to check ONLY before the ticket made into transaction.
-        // Only done after Create
+        if (bPreReg)
+        {
+            // A. Something to check ONLY before the ticket made into transaction.
+            // Only done after Create
 
-        // A.1 check that the NFT ticket is already in the blockchain
-        if (masterNodeCtrl.masternodeTickets.CheckTicketExist(*this))
-            throw runtime_error(strprintf(
-                "This NFT is already registered in blockchain [Key1 = %s; Key2 = %s]", m_keyOne, m_keyTwo));
+            // A.1 check that the NFT ticket is already in the blockchain
+            if (masterNodeCtrl.masternodeTickets.CheckTicketExist(*this))
+            {
+                tv.errorMsg = strprintf(
+                    "This NFT is already registered in blockchain [Key1 = %s; Key2 = %s]", 
+                    m_keyOne, m_keyTwo);
+                break;
+            }
 
-        // A.2 validate that address has coins to pay for registration - 10PSL
-        const auto fullTicketPrice = TicketPrice(chainHeight); //10% of storage fee is paid by the 'creator' and this ticket is created by MN
-        if (pwalletMain->GetBalance() < fullTicketPrice * COIN) {
-            throw runtime_error(strprintf("Not enough coins to cover price [%" PRId64 "]", fullTicketPrice));
+            // A.2 validate that address has coins to pay for registration - 10PSL
+            const auto fullTicketPrice = TicketPrice(chainHeight); //10% of storage fee is paid by the 'creator' and this ticket is created by MN
+            if (pwalletMain->GetBalance() < fullTicketPrice * COIN)
+            {
+                tv.errorMsg = strprintf(
+                    "Not enough coins to cover price [%" PRId64 "]", 
+                    fullTicketPrice);
+                break;
+            }
         }
-    }
 
-    // (ticket transaction replay attack protection)
-    CNFTRegTicket ticket;
-    if ((FindTicketInDb(m_keyOne, ticket) || (FindTicketInDb(m_keyTwo, ticket))) &&
-        (!ticket.IsBlock(m_nBlock) || !ticket.IsTxId(m_txid)))
-    {
-        throw runtime_error(strprintf(
-            "This NFT is already registered in blockchain [Key1 = %s; Key2 = %s]"
-            "[this ticket block = %u txid = %s; found ticket block = %u txid = %s]",
-            m_keyOne, KeyTwo(), m_nBlock, m_txid, ticket.GetBlock(), ticket.m_txid));
-    }
+        // (ticket transaction replay attack protection)
+        CNFTRegTicket ticket;
+        if ((FindTicketInDb(m_keyOne, ticket) || (FindTicketInDb(m_keyTwo, ticket))) &&
+            (!ticket.IsBlock(m_nBlock) || !ticket.IsTxId(m_txid)))
+        {
+            tv.errorMsg = strprintf(
+                "This NFT is already registered in blockchain [Key1 = %s; Key2 = %s]"
+                "[this ticket block = %u, txid = %s; found ticket block = %u, txid = %s]",
+                m_keyOne, KeyTwo(), m_nBlock, m_txid, ticket.GetBlock(), ticket.m_txid);
+            break;
+        }
 
-    // B. Something to validate always
-    validate_signatures(nDepth, m_nCreatorHeight, m_sNFTTicket);
+        // B. Something to validate always
+        ticket_validation_t sigTv = validate_signatures(nDepth, m_nCreatorHeight, m_sNFTTicket);
+        if (sigTv.IsNotValid())
+        {
+            tv.state = sigTv.state;
+            tv.errorMsg = strprintf(
+                "%s ticket signature validation failed. %s",
+                GetTicketDescription(), sigTv.errorMsg);
+            break;
+        }
 
-    if (m_nRoyalty < 0 || m_nRoyalty > 0.2)
-        throw runtime_error(strprintf("Royalty can't be %hu per cent, Min is 0 and Max is 20 per cent", m_nRoyalty * 100));
+        if (m_nRoyalty < 0 || m_nRoyalty > 0.2)
+        {
+            tv.errorMsg = strprintf(
+                "Royalty can't be %hu per cent, Min is 0 and Max is 20 per cent", 
+                m_nRoyalty * 100);
+            break;
+        }
 
-    if (hasGreenFee())
-    {
-        KeyIO keyIO(Params());
-        const auto dest = keyIO.DecodeDestination(m_sGreenAddress);
-        if (!IsValidDestination(dest))
-            throw runtime_error(strprintf("The Green NFT address [%s] is invalid", m_sGreenAddress));
-    }
-    return true;
+        if (hasGreenFee())
+        {
+            KeyIO keyIO(Params());
+            const auto dest = keyIO.DecodeDestination(m_sGreenAddress);
+            if (!IsValidDestination(dest))
+            {
+                tv.errorMsg = strprintf(
+                    "The Green NFT address [%s] is invalid", 
+                    m_sGreenAddress);
+                break;
+            }
+        }
+
+        tv.setValid();
+    } while (false);
+    return tv;
 }
 
 void CNFTRegTicket::Clear() noexcept

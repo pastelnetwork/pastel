@@ -1,8 +1,8 @@
-// Copyright (c) 2019-2021 The Pastel Core developers
+// Copyright (c) 2019-2022 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 
-#include <inttypes.h>
+#include <cinttypes>
 #include <json/json.hpp>
 
 #if defined(HAVE_CONFIG_H)
@@ -238,120 +238,90 @@ bool CPastelTicketProcessor::preParseTicket(const CMutableTransaction& tx, CComp
     return bRet;
 }
 
-// Called from ContextualCheckTransaction, which called from:
-//      AcceptToMemoryPool <- CheckTransaction - this is to validate the new transaction
-//      ProcessNewBlock <- AcceptBlock <- CheckBlock <- CheckTransaction <- ContextualCheckBlock - this is to validate transaction in the blocks (new or not)
-bool CPastelTicketProcessor::ValidateIfTicketTransaction(const int nHeight, const CTransaction& tx)
+/**
+ * Ticket fees validation.
+ * 
+ * \param nHeight - current height
+ * \param tx - ticket transaction
+ * \param ticket - ticket object
+ * \return validation status with error message if any
+ */
+ticket_validation_t CPastelTicketProcessor::ValidateTicketFees(const uint32_t nHeight, const CTransaction& tx, unique_ptr<CPastelTicket>&& ticket) noexcept
 {
-    CMutableTransaction mtx(tx);
-
-    string error_ret;
-    CCompressedDataStream data_stream(SER_NETWORK, DATASTREAM_VERSION);
-    TicketID ticket_id;
-
-    if (!preParseTicket(tx, data_stream, ticket_id, error_ret, false))
-        return true; // this is not a ticket
-
-    CAmount storageFee = 0;
-    CAmount tradePrice = 0;
-    CAmount royaltyFee = 0;
-    CAmount greenFee = 0;
-    CAmount expectedTicketFee = 0;
-
-    // use if low fee that will be rounded to 0. can be like?
-    bool hasRoyaltyFee{false};
-    bool hasGreenFee{false};
-
-    // this is a ticket and it needs to be validated
-    bool bOk = false;
-    unique_ptr<CPastelTicket> ticket;
-    try
+    ticket_validation_t tv;
+    do
     {
-        string ticketBlockTxIdStr = tx.GetHash().GetHex();
-        LogPrintf("CPastelTicketProcessor::ValidateIfTicketTransaction -- Processing ticket ['%s', txid=%s, nHeight=%d, stream size=%zu]\n", 
-           GetTicketDescription(ticket_id), ticketBlockTxIdStr, nHeight, data_stream.size());
+        // expected ticket fee in patoshis
+        CAmount expectedTicketFee = ticket->TicketPrice(nHeight) * COIN;
+        // storage fee in PSL
+        CAmount storageFee = ticket->GetStorageFee();
 
-        ticket = CreateTicket(ticket_id);
-        if (!ticket)
-            error_ret = strprintf("unknown ticket type %hhu", to_integral_type<TicketID>(ticket_id));
-        else
+        CAmount tradePrice = 0;
+        optional<CAmount> royaltyFee;
+        optional<CAmount> greenFee;
+
+        const TicketID ticket_id = ticket->ID(); 
+        if (ticket_id == TicketID::Trade)
         {
-            // deserialize ticket data
-            data_stream >> *ticket;
-            ticket->SetTxId(move(ticketBlockTxIdStr));
-            ticket->SetBlock(nHeight);
-            bOk = ticket->IsValid(false, 0);
-            // expected ticket fee in patoshis
-            expectedTicketFee = ticket->TicketPrice(nHeight) * COIN;
-            // storage fee in PSL
-            storageFee = ticket->GetStorageFee();
-            if (ticket_id == TicketID::Trade)
+            const auto trade_ticket = dynamic_cast<CNFTTradeTicket*>(ticket.get());
+            if (!trade_ticket)
             {
-                auto trade_ticket = dynamic_cast<CNFTTradeTicket *>(ticket.get());
-                if (!trade_ticket)
-                    throw runtime_error("Invalid NFT Trade ticket");
-
-                auto NFTTicket = trade_ticket->FindNFTRegTicket();
-                if (!NFTTicket)
-                  throw runtime_error("NFT Reg ticket not found");
-
-                auto NFTRegTicket = dynamic_cast<CNFTRegTicket*>(NFTTicket.get());
-                if (!NFTRegTicket)
-                  throw runtime_error("Invalid NFT Reg ticket");
-
-                // trade price in patoshis
-                tradePrice = trade_ticket->price * COIN;
-                if (NFTRegTicket->getRoyalty() > 0)
-                {
-                    hasRoyaltyFee = true;
-                    royaltyFee = static_cast<CAmount>(tradePrice * NFTRegTicket->getRoyalty());
-                }
-                if ((hasGreenFee = NFTRegTicket->hasGreenFee()))
-                    greenFee = tradePrice * CNFTRegTicket::GreenPercent(nHeight) / 100;
-                tradePrice -= (royaltyFee + greenFee);
+                tv.errorMsg = strprintf("Invalid %s ticket", ::GetTicketDescription(TicketID::Trade));
+                break;
             }
-        }
-    }
-    catch (const exception& ex)
-    {
-        error_ret = strprintf("Failed to parse and unpack ticket - %s", ex.what());
-        bOk = false;
-    }
-    catch (...)
-    {
-        error_ret = "Failed to parse and unpack ticket - Unknown exception";
-        bOk = false;
-    }
 
-    if (bOk)
-    {
-        // Validate various Fees
+            const auto NFTTicket = trade_ticket->FindNFTRegTicket();
+            if (!NFTTicket)
+            {
+                tv.errorMsg = strprintf(
+                    "%s ticket not found for the %s ticket with txid=%s", 
+                    ::GetTicketDescription(TicketID::NFT), ::GetTicketDescription(TicketID::Trade), ticket->GetTxId());
+                break;
+            }
+
+            const auto NFTRegTicket = dynamic_cast<CNFTRegTicket*>(NFTTicket.get());
+            if (!NFTRegTicket)
+            {
+                tv.errorMsg = strprintf(
+                    "Invalid %s ticket referred by the %s ticket with txid=%s",
+                    ::GetTicketDescription(TicketID::NFT), ::GetTicketDescription(TicketID::Trade), ticket->GetTxId());
+                break;
+            }
+
+            // trade price in patoshis
+            tradePrice = trade_ticket->price * COIN;
+            if (NFTRegTicket->getRoyalty() > 0)
+                royaltyFee = static_cast<CAmount>(tradePrice * NFTRegTicket->getRoyalty());
+            if (NFTRegTicket->hasGreenFee())
+                greenFee = tradePrice * CNFTRegTicket::GreenPercent(nHeight) / 100;
+            tradePrice -= (royaltyFee.value_or(0) + greenFee.value_or(0));
+        }
+
+        // Validate various fees
         const auto num = tx.vout.size();
         CAmount ticketFee = 0;
 
+        // set of tickets where the last output is a change
+        static unordered_set<TicketID> TICKETS_LAST_OUTPUT_AS_CHANGE = 
+            { TicketID::PastelID, TicketID::NFT, TicketID::Sell, TicketID::Buy, TicketID::Royalty, TicketID::Username, TicketID::EthereumAddress, TicketID::ActionReg };
+        ticket_validation_t tv1;
+        tv1.state = TICKET_VALIDATION_STATE::VALID;
         for (size_t i = 0; i < num; i++)
         {
-            if ((ticket_id == TicketID::PastelID ||
-                 ticket_id == TicketID::NFT ||
-                 ticket_id == TicketID::Sell ||
-                 ticket_id == TicketID::Buy ||
-                 ticket_id == TicketID::Royalty ||
-                 ticket_id == TicketID::Username ||
-                 ticket_id == TicketID::EthereumAddress ||
-                 ticket_id == TicketID::ActionReg) &&
-                i == num - 1) // in these tickets last output is change
+            // in these tickets last output is a change
+            if (TICKETS_LAST_OUTPUT_AS_CHANGE.count(ticket_id) && i == num - 1)
                 break;
             const auto& txOut = tx.vout[i];
             // in these tickets last 4 outputs are: change and payments to 3 MNs
             if ((ticket_id == TicketID::Activate) || (ticket_id == TicketID::ActionActivate))
-            { 
+            {
                 if (i == num - 4)
                     continue;
-                auto mnFeeTicket = dynamic_cast<CPastelTicketMNFee*>(ticket.get());
+                const auto mnFeeTicket = dynamic_cast<CPastelTicketMNFee*>(ticket.get());
                 if (!mnFeeTicket)
                 {
-                    error_ret = "Internal error - invalid activation ticket";
-                    bOk = false;
+                    tv1.errorMsg = "Internal error - invalid activation ticket";
+                    tv1.state = TICKET_VALIDATION_STATE::INVALID;
                     break;
                 }
 
@@ -360,8 +330,10 @@ bool CPastelTicketProcessor::ValidateIfTicketTransaction(const int nHeight, cons
                     const CAmount mnFee = mnFeeTicket->getPrincipalMNFee();
                     if (mnFee != txOut.nValue)
                     {
-                        bOk = false;
-                        error_ret = strprintf("Wrong principal MN fee: expected - %" PRId64 ", real - %" PRId64, mnFee, txOut.nValue);
+                        tv1.errorMsg = strprintf(
+                            "Wrong principal MN fee: expected - %" PRId64 ", real - %" PRId64, 
+                            mnFee, txOut.nValue);
+                        tv1.state = TICKET_VALIDATION_STATE::INVALID;
                         break;
                     }
                     continue;
@@ -371,8 +343,10 @@ bool CPastelTicketProcessor::ValidateIfTicketTransaction(const int nHeight, cons
                     const CAmount mnFee = mnFeeTicket->getOtherMNFee();
                     if (mnFee != txOut.nValue)
                     {
-                        bOk = false;
-                        error_ret = strprintf("Wrong MN%zu fee: expected - %" PRId64 ", real - %" PRId64, i - num - 4, mnFee, txOut.nValue);
+                        tv1.errorMsg = strprintf(
+                            "Wrong MN%zu fee: expected - %" PRId64 ", real - %" PRId64, 
+                            i - num - 4, mnFee, txOut.nValue);
+                        tv1.state = TICKET_VALIDATION_STATE::INVALID;
                         break;
                     }
                     continue;
@@ -381,36 +355,44 @@ bool CPastelTicketProcessor::ValidateIfTicketTransaction(const int nHeight, cons
             // in these tickets last 2 outputs are: change and payment to the seller
             if (ticket_id == TicketID::Trade)
             {
-                if (i == (hasRoyaltyFee && hasGreenFee ? num - 4 :
-                          hasRoyaltyFee || hasGreenFee ? num - 3 : num - 2))
+                size_t nFeesDefined = 0;
+                if (royaltyFee.has_value())
+                    ++nFeesDefined;
+                if (greenFee.has_value())
+                    ++nFeesDefined;
+                if (i == (nFeesDefined == 2 ? num - 4 : (nFeesDefined == 1 ? num - 3 : num - 2)))
                     continue;
-                if (i == (hasRoyaltyFee && hasGreenFee ? num - 3 :
-                                 hasRoyaltyFee || hasGreenFee ? num - 2 : num - 1))
+                if (i == (nFeesDefined == 2 ? num - 3 : (nFeesDefined == 1 ? num - 2 : num - 1)))
                 {
                     if (tradePrice != txOut.nValue)
                     {
-                        bOk = false;
-                        error_ret = strprintf("Wrong payment to the seller: expected - %" PRId64 ", real - %" PRId64, tradePrice, txOut.nValue);
+                        tv1.errorMsg = strprintf(
+                            "Wrong payment to the seller: expected - %" PRId64 ", real - %" PRId64,
+                            tradePrice, txOut.nValue);
+                        tv1.state = TICKET_VALIDATION_STATE::INVALID;
                         break;
                     }
                     continue;
                 }
-                if (hasRoyaltyFee && i == (hasGreenFee ? num - 2 : num - 1))
+                if (royaltyFee.has_value() && i == (greenFee.has_value() ? num - 2 : num - 1))
                 {
                     if (royaltyFee != txOut.nValue)
                     {
-                        bOk = false;
-                        error_ret = strprintf("Wrong payment to the royalty owner: expected - %" PRId64 ", real - %" PRId64, royaltyFee, txOut.nValue);
+                        tv1.errorMsg = strprintf(
+                            "Wrong payment to the royalty owner: expected - %" PRId64 ", real - %" PRId64, 
+                            royaltyFee.value(), txOut.nValue);
+                        tv1.state = TICKET_VALIDATION_STATE::INVALID;
                         break;
                     }
                     continue;
                 }
-                if (hasGreenFee && i == num - 1)
+                if (greenFee.has_value() && i == num - 1)
                 {
                     if (greenFee != txOut.nValue)
                     {
-                        bOk = false;
-                        error_ret = strprintf("Wrong payment to the green NFT: expected - %" PRId64 ", real - %" PRId64, greenFee, txOut.nValue);
+                        tv1.errorMsg = strprintf("Wrong payment to the green NFT: expected - %" PRId64 ", real - %" PRId64, 
+                            greenFee.value(), txOut.nValue);
+                        tv1.state = TICKET_VALIDATION_STATE::INVALID;
                         break;
                     }
                     continue;
@@ -419,19 +401,111 @@ bool CPastelTicketProcessor::ValidateIfTicketTransaction(const int nHeight, cons
 
             ticketFee += txOut.nValue;
         } // for tx.vouts
-
-        if (bOk && (expectedTicketFee != ticketFee))
+        if (tv1.IsNotValid())
         {
-            bOk = false;
-            error_ret = strprintf("Wrong ticket fee: expected - %" PRId64 ", real - %" PRId64, expectedTicketFee, ticketFee);
+            tv = move(tv1);
+            break;
         }
-    }
 
-    if (!bOk)
-        LogPrintf("CPastelTicketProcessor::ValidateIfTicketTransaction -- Invalid ticket ['%s', txid=%s, nHeight=%d]. ERROR: %s\n", 
-            GetTicketDescription(ticket_id), tx.GetHash().GetHex(), nHeight, error_ret);
+        if (expectedTicketFee != ticketFee)
+        {
+            tv.errorMsg = strprintf(
+                "Wrong ticket fee: expected - %" PRId64 ", real - %" PRId64, 
+                expectedTicketFee, ticketFee);
+            break;
+        }
 
-    return bOk;
+        tv.setValid();
+    } while (false);
+    return tv;
+}
+
+ /**
+ * Called for contextual validation of ticket transactions in the blocks (new or not).
+ *                   generate --+
+ *                              |
+ *          ProcessBlockFound --+                  TestBlockValidity --+
+ *                              |                                      |
+ *    ProcessMessages (block) --+--> ProcessNewBlock --> AcceptBlock --+-> ContextualCheckBlock --+--> ContextualCheckTransaction -> ValidateIfTicketTransaction
+ *                                                                                                |
+ *                               SendTicket -> StoreP2FMSTransaction --+-> AcceptToMemoryPool ----+
+ *                                                                     | 
+ *                                              ProcessMessages (tx) --+
+ * 
+ * ContextualCheckBlock calls for all transactions in a block ContextualCheckTransaction.
+ * AcceptToMemoryPool calls both CheckTransaction and ContextualCheckTransaction to validation transaction.
+ * TestBlockValidity called from miner only.
+ * generate RPC API is used only in regtest network.
+ * 
+ * \param nHeight - current block height
+ * \param tx - transaction to validate
+ * \return ticket validation status (TICKET_VALIDATION_STATE enum)
+ *    NOT_TICKET     - if transaction being validated is not a ticket transaction
+ *    VALID          - ticket is valid
+ *    MISSING_INPUTS - ticket is missing some dependent data (for example, nft-act ticket can't find nft-reg ticket)
+ *    INVALID        - ticket validation failed, error message is returned in errorMsg
+ */
+ticket_validation_t CPastelTicketProcessor::ValidateIfTicketTransaction(const uint32_t nHeight, const CTransaction& tx)
+{
+    ticket_validation_t tv;
+    CCompressedDataStream data_stream(SER_NETWORK, DATASTREAM_VERSION);
+    TicketID ticket_id;
+
+    do
+    {
+        if (!preParseTicket(tx, data_stream, ticket_id, tv.errorMsg, false))
+        {
+            // this is not a ticket
+            tv.state = TICKET_VALIDATION_STATE::NOT_TICKET;
+            break;
+        }
+
+        // this is a ticket and it needs to be validated
+        bool bOk = false;
+        unique_ptr<CPastelTicket> ticket;
+        try
+        {
+            string ticketBlockTxIdStr = tx.GetHash().GetHex();
+            LogPrintf("ValidateIfTicketTransaction -- Processing ticket ['%s', txid=%s, nHeight=%u, size=%zu]\n", 
+               GetTicketDescription(ticket_id), ticketBlockTxIdStr, nHeight, data_stream.size());
+
+            // create ticket by id
+            ticket = CreateTicket(ticket_id);
+            if (!ticket)
+            {
+                tv.errorMsg = strprintf("unknown ticket type %hhu", to_integral_type<TicketID>(ticket_id));
+                break;
+            }
+            // deserialize ticket data
+            data_stream >> *ticket;
+            ticket->SetTxId(move(ticketBlockTxIdStr));
+            ticket->SetBlock(nHeight);
+            // ticket validation
+            tv = ticket->IsValid(false, 0);
+            if (tv.IsNotValid())
+                break;
+        }
+        catch (const exception& ex)
+        {
+            tv.errorMsg = strprintf("Failed to parse and unpack ticket - %s", ex.what());
+            break;
+        }
+        catch (...)
+        {
+            tv.errorMsg = "Failed to parse and unpack ticket - Unknown exception";
+            break;
+        }
+        tv = ValidateTicketFees(nHeight, tx, move(ticket));
+        if (tv.IsNotValid())
+        {
+            LogPrintf("ValidateIfTicketTransaction -- Invalid ticket ['%s', txid=%s, nHeight=%u]. ERROR: %s\n",
+                      GetTicketDescription(ticket_id), tx.GetHash().GetHex(), nHeight, tv.errorMsg);
+            break;
+        }
+
+        tv.setValid();
+    } while (false);
+    return tv;
 }
 
 bool CPastelTicketProcessor::ParseTicketAndUpdateDB(CMutableTransaction& tx, const unsigned int nBlockHeight)
@@ -446,12 +520,12 @@ bool CPastelTicketProcessor::ParseTicketAndUpdateDB(CMutableTransaction& tx, con
     try {
         string txid = tx.GetHash().GetHex();
 
-        LogPrintf("CPastelTicketProcessor::ParseTicketAndUpdateDB (called from UpdatedBlockTip) -- Processing ticket ['%s', txid=%s, nBlockHeight=%u]\n", 
+        LogPrintf("ParseTicketAndUpdateDB -- Processing ticket ['%s', txid=%s, nBlockHeight=%u]\n", 
             GetTicketDescription(ticket_id), txid, nBlockHeight);
 
         auto ticket = CreateTicket(ticket_id);
         if (!ticket)
-            error_ret = "unknown ticket_id";
+            error_ret = strprintf("unknown ticket type %hhu", to_integral_type<TicketID>(ticket_id));
         else
         {
             data_stream >> *ticket;
@@ -467,7 +541,7 @@ bool CPastelTicketProcessor::ParseTicketAndUpdateDB(CMutableTransaction& tx, con
         error_ret = "Failed to parse and unpack ticket - Unknown exception";
     }
 
-    LogPrintf("CPastelTicketProcessor::ParseTicketAndUpdateDB -- Invalid ticket ['%s', txid=%s, nBlockHeight=%u]. ERROR: %s\n", 
+    LogPrintf("ParseTicketAndUpdateDB -- Invalid ticket ['%s', txid=%s, nBlockHeight=%u]. ERROR: %s\n", 
         GetTicketDescription(ticket_id), tx.GetHash().GetHex(), nBlockHeight, error_ret);
 
     return false;
@@ -1068,16 +1142,9 @@ string CPastelTicketProcessor::SendTicket(const CPastelTicket& ticket, const opt
 {
     string error;
 
-    try
-    {
-        ticket.IsValid(true, 0);
-    }
-    catch (const exception& ex) {
-        throw runtime_error(strprintf("Ticket (%s) is invalid - %s", ticket.GetTicketName(), ex.what()));
-    }
-    catch (...) {
-        throw runtime_error(strprintf("Ticket (%s) is invalid - Unknown exception", ticket.GetTicketName()));
-    }
+    const ticket_validation_t tv = ticket.IsValid(true, 0);
+    if (tv.IsNotValid())
+        throw runtime_error(strprintf("Ticket (%s) is invalid. %s", ticket.GetTicketName(), tv.errorMsg));
 
     vector<CTxOut> extraOutputs;
     const CAmount extraAmount = ticket.GetExtraOutputs(extraOutputs);
@@ -1484,7 +1551,7 @@ bool CPastelTicketProcessor::CreateP2FMSTransactionWithExtra(const CDataStream& 
 
                 // sign transaction - unlock input
                 SignatureData sigdata;
-                ProduceSignature(MutableTransactionSignatureCreator(pwalletMain, &tx_out, 0, prevAmount, SIGHASH_ALL), prevPubKey, sigdata, consensusBranchId);
+                ProduceSignature(MutableTransactionSignatureCreator(pwalletMain, &tx_out, 0, prevAmount, to_integral_type(SIGHASH::ALL)), prevPubKey, sigdata, consensusBranchId);
                 UpdateTransaction(tx_out, 0, sigdata);
 
                 // Calculate correct fee

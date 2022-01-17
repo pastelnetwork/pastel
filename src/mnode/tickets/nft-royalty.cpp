@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2021 The Pastel Core Developers
+// Copyright (c) 2018-2022 The Pastel Core Developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <json/json.hpp>
@@ -31,7 +31,7 @@ CNFTRoyaltyTicket CNFTRoyaltyTicket::Create(
     ticket.GenerateTimestamp();
 
     const auto strTicket = ticket.ToStr();
-    string_to_vector(CPastelID::Sign(strTicket, ticket.pastelID, move(strKeyPass)), ticket.signature);
+    string_to_vector(CPastelID::Sign(strTicket, ticket.pastelID, move(strKeyPass)), ticket.m_signature);
 
     return ticket;
 }
@@ -46,88 +46,142 @@ string CNFTRoyaltyTicket::ToStr() const noexcept
     return ss.str();
 }
 
-bool CNFTRoyaltyTicket::IsValid(const bool bPreReg, const int nDepth) const
+/**
+ * Validate Pastel ticket.
+ * 
+ * \param bPreReg - if true: called from ticket pre-registration
+ * \param nDepth - ticket height
+ * \return true if the ticket is valid
+ */
+ticket_validation_t CNFTRoyaltyTicket::IsValid(const bool bPreReg, const uint32_t nDepth) const noexcept
 {
     const unsigned int chainHeight = GetActiveChainHeight();
+    ticket_validation_t tv;
+    do
+    {
+        if (newPastelID.empty())
+        {
+            tv.errorMsg = "The Change Royalty ticket new_pastelID is empty";
+            break;
+        }
 
-    if (newPastelID.empty())
-        throw runtime_error("The Change Royalty ticket new_pastelID is empty");
+        if (pastelID == newPastelID)
+        {
+            tv.errorMsg = "The Change Royalty ticket new_pastelID is equal to current pastelID";
+            break;
+        }
 
-    if (pastelID == newPastelID)
-        throw runtime_error("The Change Royalty ticket new_pastelID is equal to current pastelID");
-
-    // 0. Common validations
-    unique_ptr<CPastelTicket> pastelTicket;
-    if (!common_validation(
+        // 0. Common validations
+        unique_ptr<CPastelTicket> pastelTicket;
+        const ticket_validation_t commonTV = common_ticket_validation(
             *this, bPreReg, NFTTxnId, pastelTicket,
             [](const TicketID tid) noexcept { return (tid != TicketID::NFT); },
-            "Royalty", "NFT", nDepth, TicketPrice(chainHeight) * COIN)) {
-        throw runtime_error(strprintf("The Change Royalty ticket with NFT txid [%s] is not validated", NFTTxnId));
-    }
-
-    auto NFTTicket = dynamic_cast<const CNFTRegTicket*>(pastelTicket.get());
-    if (!NFTTicket)
-        throw runtime_error(strprintf("The NFT Reg ticket with txid [%s] is not in the blockchain or is invalid", NFTTxnId));
-
-    if (NFTTicket->getRoyalty() == 0)
-        throw runtime_error(strprintf("The NFT Reg ticket with txid [%s] has no royalty", NFTTxnId));
-
-    // Check the Royalty change ticket for that NFT is already in the database
-    // (ticket transaction replay attack protection)
-    CNFTRoyaltyTicket _ticket;
-    if (FindTicketInDb(KeyOne(), _ticket) &&
-        (bPreReg || // if pre reg - this is probably repeating call, so signatures can be the same
-         _ticket.signature != signature || !_ticket.IsBlock(m_nBlock) || _ticket.m_txid != m_txid)) {
-        throw runtime_error(strprintf(
-            "The Change Royalty ticket is already registered in blockchain [pastelID = %s; new_pastelID = %s]"
-            "[this ticket block = %u txid = %s; found ticket block = %u txid = %s] with NFT txid [%s]",
-            pastelID, newPastelID, m_nBlock, m_txid, _ticket.GetBlock(), _ticket.m_txid, NFTTxnId));
-    }
-
-    CPastelIDRegTicket newPastelIDticket;
-    if (!CPastelIDRegTicket::FindTicketInDb(newPastelID, newPastelIDticket)) {
-        throw runtime_error(strprintf(
-            "The new_pastelID [%s] for Change Royalty ticket with NFT txid [%s] is not in the blockchain or is invalid",
-            newPastelID, NFTTxnId));
-    }
-
-    int index{0};
-    int foundIndex{-1};
-    unsigned int highBlock{0};
-    const auto tickets = CNFTRoyaltyTicket::FindAllTicketByNFTTxnID(NFTTxnId);
-    for (const auto& royaltyTicket : tickets) {
-        if (royaltyTicket.signature == signature)
-            continue;
-        if (royaltyTicket.m_nBlock == 0) {
-            throw runtime_error(strprintf(
-                "The old Change Royalty ticket is registered in blockchain [pastelID = %s; new_pastelID = %s]"
-                "with [ticket block = %d txid = %s] is invalid",
-                royaltyTicket.pastelID, royaltyTicket.newPastelID, royaltyTicket.GetBlock(), royaltyTicket.m_txid));
-        }
-        if (royaltyTicket.m_nBlock > highBlock) {
-            highBlock = royaltyTicket.m_nBlock;
-            foundIndex = index;
-        }
-        ++index;
-    }
-    if (foundIndex >= 0) {
-        // 1. check PastelID in Royalty ticket matches PastelID from this ticket
-        if (tickets.at(foundIndex).newPastelID != pastelID) {
-            throw runtime_error(strprintf(
-                "The PastelID [%s] is not matching the PastelID [%s] in the Change Royalty ticket with NFT txid [%s]",
-                pastelID, tickets.at(foundIndex).newPastelID, NFTTxnId));
-        }
-    } else {
-        // 1. check creator PastelID in NFTReg ticket matches PastelID from this ticket
-        if (!NFTTicket->IsCreatorPastelId(pastelID))
+            GetTicketDescription(), ::GetTicketDescription(TicketID::NFT), nDepth, TicketPrice(chainHeight) * COIN);
+        if (commonTV.IsNotValid())
         {
-            throw runtime_error(strprintf(
-                "The PastelID [%s] is not matching the Creator's PastelID [%s] in the NFT Reg ticket with this txid [%s]",
-                pastelID, NFTTicket->getCreatorPastelId(), NFTTxnId));
+            // enrich the error message
+            tv.errorMsg = strprintf(
+                "The Change Royalty ticket with NFT txid [%s] is not validated [block = %u, txid = %s]. %s", 
+                NFTTxnId, m_nBlock, m_txid, commonTV.errorMsg);
+            tv.state = commonTV.state;
+            break;
         }
-    }
 
-    return true;
+        auto NFTTicket = dynamic_cast<const CNFTRegTicket*>(pastelTicket.get());
+        if (!NFTTicket)
+        {
+            tv.errorMsg = strprintf(
+                "The NFT Reg ticket with txid [%s] is not in the blockchain or is invalid", 
+                NFTTxnId);
+            break;
+        }
+
+        if (NFTTicket->getRoyalty() == 0)
+        {
+            tv.errorMsg = strprintf(
+                "The NFT Reg ticket with txid [%s] has no royalty", 
+                NFTTxnId);
+            break;
+        }
+
+        // Check the Royalty change ticket for that NFT is already in the database
+        // (ticket transaction replay attack protection)
+        CNFTRoyaltyTicket _ticket;
+        if (FindTicketInDb(KeyOne(), _ticket) &&
+            (bPreReg || // if pre reg - this is probably repeating call, so signatures can be the same
+             !_ticket.IsSameSignature(m_signature) || 
+             !_ticket.IsBlock(m_nBlock) || 
+             !_ticket.IsTxId(m_txid)))
+        {
+            tv.errorMsg =strprintf(
+                "The Change Royalty ticket is already registered in blockchain [pastelID = %s; new_pastelID = %s]"
+                "[this ticket block = %u txid = %s; found ticket block = %u txid = %s] with NFT txid [%s]",
+                pastelID, newPastelID, m_nBlock, m_txid, _ticket.GetBlock(), _ticket.m_txid, NFTTxnId);
+        }
+
+        CPastelIDRegTicket newPastelIDticket;
+        if (!CPastelIDRegTicket::FindTicketInDb(newPastelID, newPastelIDticket))
+        {
+            tv.errorMsg = strprintf(
+                "The new_pastelID [%s] for Change Royalty ticket with NFT txid [%s] is not in the blockchain or is invalid",
+                newPastelID, NFTTxnId);
+            break;
+        }
+
+        size_t nIndex = 0;
+        size_t nFoundIndex = numeric_limits<size_t>::max();
+        uint32_t nHighBlock = 0;
+        const auto tickets = CNFTRoyaltyTicket::FindAllTicketByNFTTxnID(NFTTxnId);
+        ticket_validation_t tv1;
+        tv1.setValid();
+        for (const auto& royaltyTicket : tickets)
+        {
+            if (royaltyTicket.IsSameSignature(m_signature))
+                continue;
+            if (royaltyTicket.m_nBlock == 0)
+            {
+                tv1.errorMsg = strprintf(
+                    "The old Change Royalty ticket is registered in blockchain [pastelID = %s; new_pastelID = %s]"
+                    "with [ticket block = %d, txid = %s] is invalid",
+                    royaltyTicket.pastelID, royaltyTicket.newPastelID, royaltyTicket.GetBlock(), royaltyTicket.m_txid);
+                break;
+            }
+            if (royaltyTicket.m_nBlock > nHighBlock)
+            {
+                nHighBlock = royaltyTicket.m_nBlock;
+                nFoundIndex = nIndex;
+            }
+            ++nIndex;
+        }
+        if (tv1.IsNotValid())
+        {
+            tv = move(tv1);
+            break;
+        }
+        if (nFoundIndex != numeric_limits<size_t>::max())
+        {
+            // 1. check PastelID in Royalty ticket matches PastelID from this ticket
+            if (tickets.at(nFoundIndex).newPastelID != pastelID)
+            {
+                tv.errorMsg = strprintf(
+                    "The PastelID [%s] is not matching the PastelID [%s] in the Change Royalty ticket with NFT txid [%s]",
+                    pastelID, tickets.at(nFoundIndex).newPastelID, NFTTxnId);
+                break;
+            }
+        } else {
+            // 1. check creator PastelID in NFTReg ticket matches PastelID from this ticket
+            if (!NFTTicket->IsCreatorPastelId(pastelID))
+            {
+                tv.errorMsg = strprintf(
+                    "The PastelID [%s] is not matching the Creator's PastelID [%s] in the NFT Reg ticket with this txid [%s]",
+                    pastelID, NFTTicket->getCreatorPastelId(), NFTTxnId);
+                break;
+            }
+        }
+
+        tv.setValid();
+    } while (false);
+    return tv;
 }
 
 string CNFTRoyaltyTicket::ToJSON() const noexcept
@@ -143,7 +197,7 @@ string CNFTRoyaltyTicket::ToJSON() const noexcept
                 {"pastelID", pastelID},
                 {"new_pastelID", newPastelID},
                 {"nft_txid", NFTTxnId},
-                {"signature", ed_crypto::Hex_Encode(signature.data(), signature.size())}
+                {"signature", ed_crypto::Hex_Encode(m_signature.data(), m_signature.size())}
             }
         }
     };
@@ -152,7 +206,7 @@ string CNFTRoyaltyTicket::ToJSON() const noexcept
 
 bool CNFTRoyaltyTicket::FindTicketInDb(const string& key, CNFTRoyaltyTicket& ticket)
 {
-    ticket.signature = {key.cbegin(), key.cend()};
+    string_to_vector(key, ticket.m_signature);
     return masterNodeCtrl.masternodeTickets.FindTicket(ticket);
 }
 

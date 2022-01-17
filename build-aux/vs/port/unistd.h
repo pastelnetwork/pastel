@@ -3,7 +3,7 @@
 #define _UNISTD_H    1
 
 #include <io.h>
-#include <inttypes.h>
+#include <cinttypes>
 #include <time.h>
 #include <BaseTsd.h>
 

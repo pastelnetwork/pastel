@@ -27,7 +27,7 @@ public:
     CTxIn vin{};
     uint256 blockHash{};
     int64_t sigTime{}; //mnp message times
-    std::vector<unsigned char> vchSig{};
+    v_uint8 vchSig{};
 
     CMasternodePing() = default;
 
@@ -386,8 +386,8 @@ public:
     CService addr{};
     int nonce{};
     int nBlockHeight{};
-    std::vector<unsigned char> vchSig1{};
-    std::vector<unsigned char> vchSig2{};
+    v_uint8 vchSig1{};
+    v_uint8 vchSig2{};
 
     CMasternodeVerification() = default;
 
