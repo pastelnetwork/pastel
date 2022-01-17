@@ -18,6 +18,8 @@ EXTRA_DIST += \
 	test/data/txcreatesign.hex
 
 JSON_TEST_FILES = \
+  test/data/script_valid.json \
+  test/data/script_invalid.json \
   test/data/tx_invalid.json \
   test/data/tx_valid.json \
   test/data/sighash.json \
@@ -47,6 +49,7 @@ BITCOIN_TESTS =\
   test/reverselock_tests.cpp \
   test/rpc_tests.cpp \
   test/scheduler_tests.cpp \
+  test/script_tests.cpp \
   test/sighash_tests.cpp \
   test/sigopcount_tests.cpp \
   test/skiplist_tests.cpp \
