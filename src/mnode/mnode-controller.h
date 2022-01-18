@@ -76,7 +76,8 @@ public:
 
     int MasternodeCheckSeconds, MasternodeMinMNBSeconds, MasternodeMinMNPSeconds, MasternodeExpirationSeconds, MasternodeWatchdogMaxSeconds, MasternodeNewStartRequiredSeconds;
     int MasternodePOSEBanMaxScore;
-    int MasternodeWeekBySeconds;
+    // Timer to track if a restart required MN is expired
+    int MNStartRequiredExpirationTime;
     int nGovernanceVotingPeriodBlocks;
 
     int nMasternodeMinimumConfirmations, nMasternodePaymentsIncreaseBlock, nMasternodePaymentsIncreasePeriod;

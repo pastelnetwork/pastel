@@ -55,11 +55,20 @@ UniValue masternodelist(const UniValue& params, bool fHelp)
 {
     std::string strMode = "status";
     std::string strFilter;
+    std::string strExtra = "";
 
     if (!params.empty())
         strMode = params[0].get_str();
-    if (params.size() == 2)
+    if (params.size() >= 2)
         strFilter = params[1].get_str();
+    if (params.size() == 3)
+    {
+        strExtra = params[2].get_str();
+    }
+    else if (params.size() > 3)
+    {
+        throw JSONRPCError(RPC_INVALID_PARAMETER, "Too many parameters");
+    }
 
     if (fHelp || (strMode != "activeseconds" && strMode != "addr" && strMode != "full" && strMode != "info" &&
                   strMode != "lastseen" && strMode != "lastpaidtime" && strMode != "lastpaidblock" &&
@@ -69,9 +78,10 @@ UniValue masternodelist(const UniValue& params, bool fHelp)
             "masternodelist ( \"mode\" \"filter\" )\n"
             "Get a list of masternodes in different modes\n"
             "\nArguments:\n"
-            "1. \"mode\"      (string, optional/required to use filter, defaults = status) The mode to run list in\n"
+            "1. \"mode\"      (string, optional) Required to use filter, defaults = status) The mode to run list in\n"
             "2. \"filter\"    (string, optional) Filter results. Partial match by outpoint by default in all modes,\n"
             "                                    additional matches in some modes are also available\n"
+            "3. \"allnode\"   (string, optional) Force to show all MNs including expired NEW_START_REQUIRED\n"
             "\nAvailable modes:\n"
             "  activeseconds  - Print number of seconds masternode recognized by the network as enabled\n"
             "                   (since latest issued \"masternode start/start-many/start-alias\")\n"
@@ -117,7 +127,7 @@ UniValue masternodelist(const UniValue& params, bool fHelp)
         std::map<COutPoint, CMasternode> mapMasternodes = masterNodeCtrl.masternodeManager.GetFullMasternodeMap();
         for (auto& mnpair : mapMasternodes) {
             CMasternode mn = mnpair.second;
-            if( mn.IsNewStartRequired() && ! mn.IsPingedWithin(masterNodeCtrl.MasternodeWeekBySeconds) ) 
+            if( mn.IsNewStartRequired() && ! mn.IsPingedWithin(masterNodeCtrl.MNStartRequiredExpirationTime) && strExtra != "allnode") 
             {
                 continue;
             }
