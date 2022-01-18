@@ -730,8 +730,9 @@ void CMasternodePayments::RequestLowDataPaymentBlocks(CNode* pnode)
             // We have no idea about this block height, let's ask
             vToFetch.push_back(CInv(MSG_MASTERNODE_PAYMENT_BLOCK, pindex->GetBlockHash()));
             // We should not violate GETDATA rules
-            if(vToFetch.size() == MAX_INV_SZ) {
-                LogPrintf("CMasternodePayments::SyncLowDataPaymentBlocks -- asking peer %d for %d blocks\n", pnode->id, MAX_INV_SZ);
+            if(vToFetch.size() == MAX_INV_SZ)
+            {
+                LogPrintf("CMasternodePayments::SyncLowDataPaymentBlocks -- asking peer %d for %zu blocks\n", pnode->id, MAX_INV_SZ);
                 pnode->PushMessage("getdata", vToFetch);
                 // Start filling new batch
                 vToFetch.clear();
@@ -778,12 +779,13 @@ void CMasternodePayments::RequestLowDataPaymentBlocks(CNode* pnode)
         // END DEBUG
         // Low data block found, let's try to sync it
         uint256 hash;
-        if(GetBlockHash(hash, it->first)) {
+        if (GetBlockHash(hash, it->first))
             vToFetch.push_back(CInv(MSG_MASTERNODE_PAYMENT_BLOCK, hash));
-        }
+
         // We should not violate GETDATA rules
-        if(vToFetch.size() == MAX_INV_SZ) {
-            LogPrintf("CMasternodePayments::SyncLowDataPaymentBlocks -- asking peer %d for %d payment blocks\n", pnode->id, MAX_INV_SZ);
+        if (vToFetch.size() == MAX_INV_SZ)
+        {
+            LogPrintf("CMasternodePayments::SyncLowDataPaymentBlocks -- asking peer %d for %zu payment blocks\n", pnode->id, MAX_INV_SZ);
             pnode->PushMessage("getdata", vToFetch);
             // Start filling new batch
             vToFetch.clear();
@@ -791,8 +793,9 @@ void CMasternodePayments::RequestLowDataPaymentBlocks(CNode* pnode)
         ++it;
     }
     // Ask for the rest of it
-    if(!vToFetch.empty()) {
-        LogPrintf("CMasternodePayments::SyncLowDataPaymentBlocks -- asking peer %d for %d payment blocks\n", pnode->id, vToFetch.size());
+    if(!vToFetch.empty())
+    {
+        LogPrintf("CMasternodePayments::SyncLowDataPaymentBlocks -- asking peer %d for %zu payment blocks\n", pnode->id, vToFetch.size());
         pnode->PushMessage("getdata", vToFetch);
     }
 }

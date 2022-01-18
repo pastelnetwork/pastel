@@ -13,7 +13,7 @@
 #ifdef _WIN32_WINNT
 #undef _WIN32_WINNT
 #endif
-#define _WIN32_WINNT 0x0501
+#define _WIN32_WINNT 0x0601
 #define WIN32_LEAN_AND_MEAN 1
 #ifndef NOMINMAX
 #define NOMINMAX
@@ -48,16 +48,14 @@ static inline size_t align_up(size_t x, size_t align)
 // Implementation: Arena
 
 Arena::Arena(void *base_in, size_t size_in, size_t alignment_in):
-    base(static_cast<char*>(base_in)), end(static_cast<char*>(base_in) + size_in), alignment(alignment_in)
+    base(static_cast<char*>(base_in)),
+    end(static_cast<char*>(base_in) + size_in),
+    alignment(alignment_in)
 {
     // Start with one free chunk that covers the entire arena
     auto it = size_to_free_chunk.emplace(size_in, base);
     chunks_free.emplace(base, it);
     chunks_free_end.emplace(base + size_in, it);
-}
-
-Arena::~Arena()
-{
 }
 
 void* Arena::alloc(size_t size)
@@ -98,14 +96,13 @@ void* Arena::alloc(size_t size)
 void Arena::free(void *ptr) noexcept
 {
     // Freeing the nullptr pointer is OK.
-    if (ptr == nullptr) {
+    if (!ptr)
         return;
-    }
 
     // Remove chunk from used map
     auto i = chunks_used.find(static_cast<char*>(ptr));
     if (i == chunks_used.end()) {
-        assert(!"Arena: invalid or double free");
+        assert(("Arena: invalid or double free", 1==2));
     }
     std::pair<char*, size_t> freed = *i;
     chunks_used.erase(i);
@@ -288,15 +285,12 @@ size_t PosixLockedPageAllocator::GetLimit() const noexcept
 
 /*******************************************************************************/
 // Implementation: LockedPool
-const size_t LockedPool::ARENA_SIZE;
 LockedPool::LockedPool(std::unique_ptr<LockedPageAllocator> allocator_in, LockingFailed_Callback lf_cb_in):
-    allocator(std::move(allocator_in)), lf_cb(lf_cb_in), cumulative_bytes_locked(0)
-{
-}
+    allocator(std::move(allocator_in)), 
+    lf_cb(lf_cb_in),
+    cumulative_bytes_locked(0)
+{}
 
-LockedPool::~LockedPool()
-{
-}
 void* LockedPool::alloc(size_t size)
 {
     std::lock_guard<std::mutex> lock(mutex);
@@ -306,11 +300,11 @@ void* LockedPool::alloc(size_t size)
         return nullptr;
 
     // Try allocating from each current arena
-    for (auto &arena: arenas) {
+    for (auto &arena: arenas)
+    {
         void *addr = arena.alloc(size);
-        if (addr) {
+        if (addr)
             return addr;
-        }
     }
     // If that fails, create a new one
     if (new_arena(ARENA_SIZE, ARENA_ALIGN)) {
@@ -322,9 +316,8 @@ void* LockedPool::alloc(size_t size)
 void LockedPool::free(void *ptr) noexcept
 {
     // Freeing the nullptr pointer is OK.
-    if (ptr == nullptr) {
+    if (!ptr)
         return;
-    }
 
     std::lock_guard<std::mutex> lock(mutex);
     // TODO we can do better than this linear search by keeping a map of arena
@@ -335,7 +328,7 @@ void LockedPool::free(void *ptr) noexcept
             return;
         }
     }
-    assert(!"LockedPool: invalid address not pointing to any arena");
+   assert(("LockedPool: invalid address not pointing to any arena", 1==2));
 }
 
 LockedPool::Stats LockedPool::stats() const
@@ -384,9 +377,12 @@ bool LockedPool::new_arena(size_t size, size_t align)
 }
 
 LockedPool::LockedPageArena::LockedPageArena(LockedPageAllocator *allocator_in, void *base_in, size_t size_in, size_t align_in):
-    Arena(base_in, size_in, align_in), base(base_in), size(size_in), allocator(allocator_in)
-{
-}
+    Arena(base_in, size_in, align_in),
+    base(base_in),
+    size(size_in),
+    allocator(allocator_in)
+{}
+
 LockedPool::LockedPageArena::~LockedPageArena()
 {
     allocator->FreeLocked(base, size);

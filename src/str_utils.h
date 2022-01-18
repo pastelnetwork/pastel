@@ -1,11 +1,10 @@
 #pragma once
-// Copyright (c) 2021 Pastel Core developers
+// Copyright (c) 2021-2022 Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
-// file COPYING or http://www.opensource.org/licenses/mit-license.php.
+// file COPYING or https://www.opensource.org/licenses/mit-license.php.
 
-#include <string>
 #include <algorithm>
-#include <cstring>
+#include <vector_types.h>
 
 /**
  * test if character is white space not using locale.
@@ -315,4 +314,23 @@ static void str_append_field(std::string& str, const char* szField, const char* 
         str += szDelimiter;
     if (szField)
         str += szField;
+}
+
+/**
+ * Split string s with delimiter chDelimiter into vector v.
+ * 
+ * \param v - output vector of strings
+ * \param s - input string
+ * \param chDelimiter  - string parts delimiter
+ */
+static void str_split(v_strings &v, const std::string &s, const char chDelimiter)
+{
+    v.clear();
+    std::string::size_type posStart = 0;
+    for (std::string::size_type posEnd = 0; (posEnd = s.find(chDelimiter, posEnd)) != std::string::npos; ++posEnd)
+    {
+        v.emplace_back(s.substr(posStart, posEnd - posStart));
+        posStart = posEnd + 1;
+    }
+    v.emplace_back(s.substr(posStart));
 }

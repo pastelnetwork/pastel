@@ -49,7 +49,7 @@ class Arena
 {
 public:
     Arena(void *base, size_t size, size_t alignment);
-    virtual ~Arena();
+    virtual ~Arena() = default;
 
     Arena(const Arena& other) = delete; // non construction-copyable
     Arena& operator=(const Arena&) = delete; // non copyable
@@ -130,11 +130,11 @@ public:
      * allocation and deallocation overhead. Setting it too high allocates
      * more locked memory from the OS than strictly necessary.
      */
-    static const size_t ARENA_SIZE = 256*1024;
+    static constexpr size_t ARENA_SIZE = 256*1024;
     /** Chunk alignment. Another compromise. Setting this too high will waste
      * memory, setting it too low will facilitate fragmentation.
      */
-    static const size_t ARENA_ALIGN = 16;
+    static constexpr size_t ARENA_ALIGN = 16;
 
     /** Callback when allocation succeeds but locking fails.
      */
@@ -159,7 +159,7 @@ public:
      * it returns true the allocation proceeds, but it could warn.
      */
     explicit LockedPool(std::unique_ptr<LockedPageAllocator> allocator, LockingFailed_Callback lf_cb_in = nullptr);
-    ~LockedPool();
+    virtual ~LockedPool() = default;
 
     LockedPool(const LockedPool& other) = delete; // non construction-copyable
     LockedPool& operator=(const LockedPool&) = delete; // non copyable
@@ -185,7 +185,7 @@ private:
     {
     public:
         LockedPageArena(LockedPageAllocator *alloc_in, void *base_in, size_t size, size_t align);
-        ~LockedPageArena();
+        ~LockedPageArena() override;
     private:
         void *base;
         size_t size;

@@ -47,7 +47,7 @@ TEST(circuit, values)
 
 TEST(circuit, endianness)
 {
-    std::vector<unsigned char> before = {
+    v_uint8 before = {
          0,  1,  2,  3,  4,  5,  6,  7,
          8,  9, 10, 11, 12, 13, 14, 15,
         16, 17, 18, 19, 20, 21, 22, 23,
@@ -59,7 +59,7 @@ TEST(circuit, endianness)
     };
     auto result = swap_endianness_u64(before);
 
-    std::vector<unsigned char> after = {
+    v_uint8 after = {
         56, 57, 58, 59, 60, 61, 62, 63,
         48, 49, 50, 51, 52, 53, 54, 55,
         40, 41, 42, 43, 44, 45, 46, 47,
@@ -72,7 +72,7 @@ TEST(circuit, endianness)
 
     EXPECT_EQ(after, result);
 
-    std::vector<unsigned char> bad = {0, 1, 2, 3};
+    v_uint8 bad = {0, 1, 2, 3};
 
     ASSERT_THROW(swap_endianness_u64(bad), std::length_error);
 }

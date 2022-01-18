@@ -1,27 +1,10 @@
-#include <gmock/gmock.h>
+#include <mock_validation_state.h>
 
-#include "consensus/validation.h"
 #include "main.h"
 #include "key_io.h"
 #include "zcash/Proof.hpp"
 #include "clientversion.h"
 
-class MockCValidationState : public CValidationState {
-public:
-    MOCK_METHOD(bool, DoS, (int level, bool ret,
-             unsigned char chRejectCodeIn, std::string strRejectReasonIn,
-             bool corruptionIn), (override));
-    MOCK_METHOD(bool, Invalid, (bool ret,
-                 unsigned char _chRejectCode, std::string _strRejectReason), (override));
-    MOCK_METHOD(bool, Error, (const std::string &strRejectReasonIn), (override));
-    MOCK_METHOD(bool, IsValid, (), (const, override));
-    MOCK_METHOD(bool, IsInvalid, (), (const, override));
-    MOCK_METHOD(bool, IsError, (), (const, override));
-    MOCK_METHOD(bool, IsInvalid, (int& nDoSOut), (const, override));
-    MOCK_METHOD(bool, CorruptionPossible, (), (const, override));
-    MOCK_METHOD(unsigned char, GetRejectCode, (), (const, override));
-    MOCK_METHOD(std::string, GetRejectReason, (), (const, override));
-};
 
 TEST(CheckBlock, VersionTooLow) {
     SelectParams(CBaseChainParams::Network::MAIN);

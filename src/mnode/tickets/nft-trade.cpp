@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2021 The Pastel Core Developers
+// Copyright (c) 2018-2022 The Pastel Core Developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <optional>
@@ -24,69 +24,92 @@ using namespace std;
  * @param nftTnxId is the NFT txid with either 1) NFT activation ticket or 2) trade ticket in it
  * @param signature is the signature of current CNFTTradeTicket that is checked
  */
-void trade_copy_validation(const string& nftTxnId, const v_uint8& signature)
+ticket_validation_t trade_copy_validation(const string& nftTxnId, const v_uint8& signature)
 {
     //  if (!masterNodeCtrl.masternodeSync.IsSynced()) {
     //    throw runtime_error("Can not validate trade ticket as master node is not synced");
     //  }
 
-    size_t totalCopies{0};
+    size_t nTotalCopies{0};
+    ticket_validation_t tv;
 
-    uint256 txid;
-    txid.SetHex(nftTxnId);
-    auto nftTicket = CPastelTicketProcessor::GetTicket(txid);
-    if (!nftTicket) {
-        throw runtime_error(strprintf(
-            "The NFT ticket with txid [%s] referred by this trade ticket is not in the blockchain", nftTxnId));
-    }
-    if (nftTicket->ID() == TicketID::Activate) {
-        auto actTicket = dynamic_cast<const CNFTActivateTicket*>(nftTicket.get());
-        if (!actTicket) {
-            throw runtime_error(strprintf(
-                "The activation ticket with txid [%s] referred by this trade ticket is invalid", nftTxnId));
+    do
+    {
+        const uint256 txid = uint256S(nftTxnId);
+        const auto nftTicket = CPastelTicketProcessor::GetTicket(txid);
+        if (!nftTicket)
+        {
+            tv.errorMsg = strprintf(
+                "The NFT ticket with txid [%s] referred by this trade ticket is not in the blockchain", 
+                nftTxnId);
+            break;
+        }
+        if (nftTicket->ID() == TicketID::Activate)
+        {
+            const auto actTicket = dynamic_cast<const CNFTActivateTicket*>(nftTicket.get());
+            if (!actTicket)
+            {
+                tv.errorMsg = strprintf(
+                    "The activation ticket with txid [%s] referred by this trade ticket is invalid", 
+                    nftTxnId);
+                break;
+            }
+
+            const auto pNFTTicket = CPastelTicketProcessor::GetTicket(actTicket->getRegTxId(), TicketID::NFT);
+            if (!pNFTTicket)
+            {
+                tv.errorMsg = strprintf(
+                    "The registration ticket with txid [%s] referred by activation ticket is invalid",
+                    actTicket->getRegTxId());
+                break;
+            }
+
+            const auto NFTTicket = dynamic_cast<const CNFTRegTicket*>(pNFTTicket.get());
+            if (!NFTTicket)
+            {
+                tv.errorMsg = strprintf(
+                    "The registration ticket with txid [%s] referred by activation ticket is invalid",
+                    actTicket->getRegTxId());
+                break;
+            }
+
+            nTotalCopies = NFTTicket->getTotalCopies();
+        } else if (nftTicket->ID() == TicketID::Trade) {
+            const auto tradeTicket = dynamic_cast<const CNFTTradeTicket*>(nftTicket.get());
+            if (!tradeTicket)
+            {
+                tv.errorMsg = strprintf(
+                    "The trade ticket with txid [%s] referred by this trade ticket is invalid", 
+                    nftTxnId);
+                break;
+            }
+
+            nTotalCopies = 1;
+        } else {
+            tv.errorMsg = strprintf(
+                "Unknown ticket with txid [%s] referred by this trade ticket is invalid", 
+                nftTxnId);
+            break;
         }
 
-        auto pNFTTicket = CPastelTicketProcessor::GetTicket(actTicket->getRegTxId(), TicketID::NFT);
-        if (!pNFTTicket) {
-            throw runtime_error(strprintf(
-                "The registration ticket with txid [%s] referred by activation ticket is invalid",
-                actTicket->getRegTxId()));
+        size_t nSoldCopies{0};
+        const auto existingTradeTickets = CNFTTradeTicket::FindAllTicketByNFTTxnID(nftTxnId);
+        for (const auto& t : existingTradeTickets)
+        {
+            if (!t.IsSameSignature(signature))
+                ++nSoldCopies;
         }
 
-        auto NFTTicket = dynamic_cast<const CNFTRegTicket*>(pNFTTicket.get());
-        if (!NFTTicket) {
-            throw runtime_error(strprintf(
-                "The registration ticket with txid [%s] referred by activation ticket is invalid",
-                actTicket->getRegTxId()));
+        if (nSoldCopies >= nTotalCopies)
+        {
+            tv.errorMsg = strprintf(
+                "Invalid trade ticket - cannot exceed the total number of available copies [%zu] with sold [%zu] copies",
+                nTotalCopies, nSoldCopies);
+            break;
         }
-
-        totalCopies = NFTTicket->getTotalCopies();
-    } else if (nftTicket->ID() == TicketID::Trade) {
-        auto tradeTicket = dynamic_cast<const CNFTTradeTicket*>(nftTicket.get());
-        if (!tradeTicket) {
-            throw runtime_error(strprintf(
-                "The trade ticket with txid [%s] referred by this trade ticket is invalid", nftTxnId));
-        }
-
-        totalCopies = 1;
-    } else {
-        throw runtime_error(strprintf(
-            "Unknown ticket with txid [%s] referred by this trade ticket is invalid", nftTxnId));
-    }
-
-    size_t soldCopies{0};
-    const auto existingTradeTickets = CNFTTradeTicket::FindAllTicketByNFTTxnID(nftTxnId);
-    for (const auto& t : existingTradeTickets) {
-        if (t.signature != signature) {
-            ++soldCopies;
-        }
-    }
-
-    if (soldCopies >= totalCopies) {
-        throw runtime_error(strprintf(
-            "Invalid trade ticket - cannot exceed the total number of available copies [%zu] with sold [%zu] copies",
-            totalCopies, soldCopies));
-    }
+        tv.setValid();
+    } while (false);
+    return tv;
 }
 
 // CNFTTradeTicket ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -128,7 +151,7 @@ CNFTTradeTicket CNFTTradeTicket::Create(string _sellTxnId, string _buyTxnId, str
         ticket.SetCopySerialNr(get<1>(NFTRegTicket_TxId_Serial.value()));
     }
     const auto strTicket = ticket.ToStr();
-    string_to_vector(CPastelID::Sign(strTicket, ticket.pastelID, move(strKeyPass)), ticket.signature);
+    string_to_vector(CPastelID::Sign(strTicket, ticket.pastelID, move(strKeyPass)), ticket.m_signature);
 
     return ticket;
 }
@@ -164,79 +187,124 @@ string CNFTTradeTicket::ToStr() const noexcept
     return ss.str();
 }
 
-bool CNFTTradeTicket::IsValid(const bool bPreReg, const int nDepth) const
+/**
+ * Validate Pastel ticket.
+ * 
+ * \param bPreReg - if true: called from ticket pre-registration
+ * \param nDepth - ticket height
+ * \return true if the ticket is valid
+ */
+ticket_validation_t CNFTTradeTicket::IsValid(const bool bPreReg, const uint32_t nDepth) const noexcept
 {
     const unsigned int chainHeight = GetActiveChainHeight();
+    ticket_validation_t tv;
 
-    // 0. Common validations
-    unique_ptr<CPastelTicket> sellTicket;
-    if (!common_validation(
+    do
+    {
+        // 0. Common validations
+        unique_ptr<CPastelTicket> sellTicket;
+        ticket_validation_t commonTV = common_ticket_validation(
             *this, bPreReg, sellTxnId, sellTicket,
             [](const TicketID tid) noexcept { return (tid != TicketID::Sell); },
-            "Trade", "sell", nDepth, (price + TicketPrice(chainHeight)) * COIN)) {
-        throw runtime_error(strprintf("The Trade ticket with Sell txid [%s] is not validated", sellTxnId));
-    }
+            GetTicketDescription(), ::GetTicketDescription(TicketID::Sell), nDepth, (price + TicketPrice(chainHeight)) * COIN);
+        if (commonTV.IsNotValid())
+        {
+            tv.errorMsg = strprintf(
+                "The Trade ticket with Sell txid [%s] is not validated. %s", 
+                sellTxnId, commonTV.errorMsg);
+            tv.state = commonTV.state;
+            break;
+        }
 
-    unique_ptr<CPastelTicket> buyTicket;
-    if (!common_validation(
+        unique_ptr<CPastelTicket> buyTicket;
+        commonTV = common_ticket_validation(
             *this, bPreReg, buyTxnId, buyTicket,
             [](const TicketID tid) noexcept { return (tid != TicketID::Buy); },
-            "Trade", "buy", nDepth, (price + TicketPrice(chainHeight)) * COIN)) {
-        throw runtime_error(strprintf("The Trade ticket with Buy txid [%s] is not validated", buyTxnId));
-    }
-
-    // 1. Verify that there is no another Trade ticket for the same Sell ticket
-    CNFTTradeTicket _tradeTicket;
-    if (CNFTTradeTicket::GetTradeTicketBySellTicket(sellTxnId, _tradeTicket)) {
-        // (ticket transaction replay attack protection)
-        if (signature != _tradeTicket.signature ||
-            m_txid != _tradeTicket.m_txid ||
-            !_tradeTicket.IsBlock(m_nBlock)) {
-            throw runtime_error(strprintf(
-                "There is already exist trade ticket for the sell ticket with this txid [%s]. Signature - our=%s; their=%s"
-                "[this ticket block = %u txid = %s; found ticket block = %u txid = %s]",
-                sellTxnId,
-                ed_crypto::Hex_Encode(signature.data(), signature.size()),
-                ed_crypto::Hex_Encode(_tradeTicket.signature.data(), _tradeTicket.signature.size()),
-                m_nBlock, m_txid, _tradeTicket.GetBlock(), _tradeTicket.m_txid));
+            GetTicketDescription(), ::GetTicketDescription(TicketID::Buy), nDepth, (price + TicketPrice(chainHeight)) * COIN);
+        if (commonTV.IsNotValid())
+        {
+            tv.errorMsg = strprintf(
+                "The Trade ticket with Buy txid [%s] is not validated. %s", 
+                buyTxnId, commonTV.errorMsg);
+            tv.state = commonTV.state;
+            break;
         }
-    }
-    // 1. Verify that there is no another Trade ticket for the same Buy ticket
-    _tradeTicket.sellTxnId = "";
-    if (CNFTTradeTicket::GetTradeTicketByBuyTicket(buyTxnId, _tradeTicket)) {
-        //Compare signatures to skip if the same ticket
-        if (signature != _tradeTicket.signature || m_txid != _tradeTicket.m_txid || !_tradeTicket.IsBlock(m_nBlock)) {
-            throw runtime_error(strprintf(
-                "There is already exist trade ticket for the buy ticket with this txid [%s]", buyTxnId));
+
+        // 1. Verify that there is no another Trade ticket for the same Sell ticket
+        CNFTTradeTicket _tradeTicket;
+        if (CNFTTradeTicket::GetTradeTicketBySellTicket(sellTxnId, _tradeTicket))
+        {
+            // (ticket transaction replay attack protection)
+            if (!_tradeTicket.IsSameSignature(m_signature) ||
+                !_tradeTicket.IsTxId(m_txid) ||
+                !_tradeTicket.IsBlock(m_nBlock))
+            {
+                tv.errorMsg = strprintf(
+                    "There is already exist trade ticket for the sell ticket with this txid [%s]. Signature - our=%s; their=%s"
+                    "[this ticket block = %u txid = %s; found ticket block = %u txid = %s]",
+                    sellTxnId,
+                    ed_crypto::Hex_Encode(m_signature.data(), m_signature.size()),
+                    ed_crypto::Hex_Encode(_tradeTicket.m_signature.data(), _tradeTicket.m_signature.size()),
+                    m_nBlock, m_txid, _tradeTicket.GetBlock(), _tradeTicket.m_txid);
+                break;
+            }
         }
-    }
+        // 1. Verify that there is no another Trade ticket for the same Buy ticket
+        _tradeTicket.sellTxnId.clear();
+        if (CNFTTradeTicket::GetTradeTicketByBuyTicket(buyTxnId, _tradeTicket))
+        {
+            //Compare signatures to skip if the same ticket
+            if (!_tradeTicket.IsSameSignature(m_signature) || 
+                !_tradeTicket.IsTxId(m_txid) || 
+                !_tradeTicket.IsBlock(m_nBlock))
+            {
+                tv.errorMsg = strprintf(
+                    "There is already exist trade ticket for the buy ticket with this txid [%s]", 
+                    buyTxnId);
+                break;
+            }
+        }
 
-    // Verify asked price
-    auto sellTicketReal = dynamic_cast<const CNFTSellTicket*>(sellTicket.get());
-    if (!sellTicketReal) {
-        throw runtime_error(strprintf(
-            "The sell ticket with txid [%s] referred by this trade ticket is invalid", sellTxnId));
-    }
-    if (!sellTicketReal->askedPrice) {
-        throw runtime_error(strprintf("The NFT Sell ticket with txid [%s] asked price should be not 0", sellTxnId));
-    }
+        // Verify asked price
+        const auto sellTicketReal = dynamic_cast<const CNFTSellTicket*>(sellTicket.get());
+        if (!sellTicketReal)
+        {
+            tv.errorMsg = strprintf(
+                "The sell ticket with txid [%s] referred by this trade ticket is invalid", 
+                sellTxnId);
+            break;
+        }
+        if (!sellTicketReal->askedPrice)
+        {
+            tv.errorMsg = strprintf(
+                "The NFT Sell ticket with txid [%s] asked price should be not 0", 
+                sellTxnId);
+            break;
+        }
 
-    // 2. Verify Trade ticket PastelID is the same as in Buy Ticket
-    auto buyTicketReal = dynamic_cast<CNFTBuyTicket*>(buyTicket.get());
-    if (!buyTicketReal) {
-        throw runtime_error(strprintf(
-            "The buy ticket with this txid [%s] referred by this trade ticket is invalid", buyTxnId));
-    }
-    string& buyersPastelID = buyTicketReal->pastelID;
-    if (buyersPastelID != pastelID) {
-        throw runtime_error(strprintf(
-            "The PastelID [%s] in this Trade ticket is not matching the PastelID [%s] in the Buy ticket with this txid [%s]",
-            pastelID, buyersPastelID, buyTxnId));
-    }
+        // 2. Verify Trade ticket PastelID is the same as in Buy Ticket
+        const auto buyTicketReal = dynamic_cast<CNFTBuyTicket*>(buyTicket.get());
+        if (!buyTicketReal)
+        {
+            tv.errorMsg = strprintf(
+                "The buy ticket with this txid [%s] referred by this trade ticket is invalid", 
+                buyTxnId);
+            break;
+        }
+        const string& buyersPastelID = buyTicketReal->pastelID;
+        if (buyersPastelID != pastelID)
+        {
+            tv.errorMsg = strprintf(
+                "The PastelID [%s] in this Trade ticket is not matching the PastelID [%s] in the Buy ticket with this txid [%s]",
+                pastelID, buyersPastelID, buyTxnId);
+            break;
+        }
 
-    trade_copy_validation(NFTTxnId, signature);
+        trade_copy_validation(NFTTxnId, m_signature);
 
-    return true;
+        tv.setValid();
+    } while (false);
+    return tv;
 }
 
 CAmount CNFTTradeTicket::GetExtraOutputs(vector<CTxOut>& outputs) const
@@ -341,7 +409,7 @@ string CNFTTradeTicket::ToJSON() const noexcept
                 {"nft_txid", NFTTxnId}, 
                 {"registration_txid", nftRegTxnId}, 
                 {"copy_serial_nr", nftCopySerialNr}, 
-                {"signature", ed_crypto::Hex_Encode(signature.data(), signature.size())}
+                {"signature", ed_crypto::Hex_Encode(m_signature.data(), m_signature.size())}
             }
         }
     };

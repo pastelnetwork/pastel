@@ -1,7 +1,8 @@
 // Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2014 The Bitcoin Core developers
+// Copyright (c) 2018-2022 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
-// file COPYING or http://www.opensource.org/licenses/mit-license.php.
+// file COPYING or https://www.opensource.org/licenses/mit-license.php.
 
 #if defined(HAVE_CONFIG_H)
 #include "config/bitcoin-config.h"
@@ -368,6 +369,17 @@ CNode* FindNode(const CService& addr)
     {
         if ((CService)pnode->addr == addr)
             return (pnode);
+    }
+    return nullptr;
+}
+
+CNode* FindNode(const NodeId id)
+{
+    LOCK(cs_vNodes);
+    for (auto pnode : vNodes)
+    {
+        if (pnode->id == id)
+            return pnode;
     }
     return nullptr;
 }
@@ -811,7 +823,7 @@ static bool ReverseCompareNodeTimeConnected(const CNodeRef &a, const CNodeRef &b
 
 class CompareNetGroupKeyed
 {
-    std::vector<unsigned char> vchSecretKey;
+    v_uint8 vchSecretKey;
 public:
     CompareNetGroupKeyed()
     {
@@ -821,9 +833,9 @@ public:
 
     bool operator()(const CNodeRef &a, const CNodeRef &b)
     {
-        std::vector<unsigned char> vchGroupA, vchGroupB;
+        v_uint8 vchGroupA, vchGroupB;
         CSHA256 hashA, hashB;
-        std::vector<unsigned char> vchA(32), vchB(32);
+        v_uint8 vchA(32), vchB(32);
 
         vchGroupA = a->addr.GetGroup();
         vchGroupB = b->addr.GetGroup();
@@ -954,7 +966,8 @@ static bool AttemptToEvictConnection(bool fPreferNewConnection) {
     return true;
 }
 
-static void AcceptConnection(const ListenSocket& hListenSocket) {
+static void AcceptConnection(const ListenSocket& hListenSocket)
+{
     struct sockaddr_storage sockaddr;
     socklen_t len = sizeof(sockaddr);
     SOCKET hSocket = accept(hListenSocket.socket, (struct sockaddr*)&sockaddr, &len);
@@ -1313,7 +1326,6 @@ void ThreadSocketHandler()
     }
 }
 
-
 void ThreadDNSAddressSeed()
 {
     // goal: only query DNS seeds if address need is acute
@@ -1437,7 +1449,7 @@ void ThreadOpenConnections()
         // Only connect out to one peer per network group (/16 for IPv4).
         // Do this here so we don't have to critsect vNodes inside mapAddresses critsect.
         int nOutbound = 0;
-        set<vector<unsigned char> > setConnected;
+        set<v_uint8> setConnected;
         {
             LOCK(cs_vNodes);
             for (auto pnode : vNodes)
@@ -1601,7 +1613,6 @@ bool OpenNetworkConnection(const CAddress& addrConnect, CSemaphoreGrant *grantOu
     return true;
 }
 
-
 void ThreadMessageHandler()
 {
     const CChainParams& chainparams = Params();
@@ -1641,10 +1652,9 @@ void ThreadMessageHandler()
 
                     if (pnode->nSendSize < SendBufferSize())
                     {
-                        if (!pnode->vRecvGetData.empty() || (!pnode->vRecvMsg.empty() && pnode->vRecvMsg[0].complete()))
-                        {
+                        if (!pnode->vRecvGetData.empty() || 
+                           (!pnode->vRecvMsg.empty() && pnode->vRecvMsg[0].complete()))
                             fSleep = false;
-                        }
                     }
                 }
             }
@@ -1654,7 +1664,7 @@ void ThreadMessageHandler()
             {
                 TRY_LOCK(pnode->cs_vSend, lockSend);
                 if (lockSend)
-                    g_signals.SendMessages(chainparams.GetConsensus(), pnode, pnode == pnodeTrickle || pnode->fWhitelisted);
+                    g_signals.SendMessages(chainparams, pnode, pnode == pnodeTrickle || pnode->fWhitelisted);
             }
             boost::this_thread::interruption_point();
         }
@@ -1672,7 +1682,7 @@ void ThreadMessageHandler()
 
 bool BindListenPort(const CService &addrBind, string& strError, bool fWhitelisted)
 {
-    strError = "";
+    strError.clear();
     int nOne = 1;
 
     // Create socket for listening for incoming connections
@@ -1961,8 +1971,8 @@ void RelayTransaction(const CTransaction& tx, const CDataStream& ss)
         }
 
         // Save original serialized message so newer versions are preserved
-        mapRelay.insert(std::make_pair(inv, ss));
-        vRelayExpiration.push_back(std::make_pair(GetTime() + 15 * 60, inv));
+        mapRelay.emplace(inv, ss);
+        vRelayExpiration.emplace_back(GetTime() + 15 * 60, inv);
     }
     LOCK(cs_vNodes);
     for (auto pnode : vNodes)

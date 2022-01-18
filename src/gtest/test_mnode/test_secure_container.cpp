@@ -1,12 +1,15 @@
-#include "pastelid/secure_container.h"
-#include "utilstrencodings.h"
-#include "test_utils.h"
-#include "fs.h"
-#include <unistd.h>
-
-#include "json/json.hpp"
-#include "gtest/gtest.h"
+// Copyright (c) 2021-2022 The Pastel developers
+// Distributed under the MIT software license, see the accompanying
+// file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <stdio.h>
+#include <json/json.hpp>
+#include <gtest/gtest.h>
+
+#include <unistd.h>
+#include <fs.h>
+#include <pastelid/secure_container.h>
+#include <utilstrencodings.h>
+#include <test_utils.h>
 
 using json = nlohmann::json;
 using namespace std;

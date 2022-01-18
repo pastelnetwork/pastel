@@ -280,6 +280,7 @@ BITCOIN_CORE_H = \
   metrics.h \
   miner.h \
   mruset.h \
+  netmsg/block-cache.h\
   net.h \
   nodehelper.h \
   netbase.h \
@@ -383,6 +384,7 @@ libbitcoin_server_a_SOURCES = \
   merkleblock.cpp \
   metrics.cpp \
   miner.cpp \
+  netmsg/block-cache.cpp\
   net.cpp \
   noui.cpp \
   policy/fees.cpp \

@@ -1,5 +1,5 @@
 // Copyright (c) 2012-2013 The Bitcoin Core developers
-// Copyright (c) 2021 The Pastel developers
+// Copyright (c) 2021-2022 The Pastel developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php .
 
@@ -7,18 +7,19 @@
 
 #include <gtest/gtest.h>
 
-#include "bloom.h"
-#include "clientversion.h"
-#include "key.h"
-#include "key_io.h"
-#include "merkleblock.h"
-#include "random.h"
-#include "serialize.h"
-#include "streams.h"
-#include "uint256.h"
-#include "util.h"
-#include "utilstrencodings.h"
-#include "vector_types.h"
+#include <bloom.h>
+#include <clientversion.h>
+#include <key.h>
+#include <key_io.h>
+#include <merkleblock.h>
+#include <random.h>
+#include <serialize.h>
+#include <streams.h>
+#include <uint256.h>
+#include <util.h>
+#include <utilstrencodings.h>
+#include <vector_types.h>
+#include <pastel_gtest_main.h>
 
 using namespace std;
 using namespace testing;
@@ -74,7 +75,16 @@ INSTANTIATE_TEST_SUITE_P(bloom_create_insert_serialize, PTest_bloom, Values(
     make_tuple(3, 0.01, 2147483649UL, BLOOM_UPDATE_ALL, string("03ce4299050000000100008001"))
 ));
 
-TEST(test_bloom, bloom_create_insert_key)
+class test_bloom : public Test
+{
+public:
+    static void SetUpTestSuite()
+    {
+        init_zksnark_params();
+    }
+};
+
+TEST_F(test_bloom, bloom_create_insert_key)
 {
     KeyIO keyIO(Params());
     string strSecret = string("5Kg1gnAjaLfKiwhhPpGS3QfRg2m6awQvaj98JCZBZQ5SuS2F15C");
@@ -99,15 +109,14 @@ TEST(test_bloom, bloom_create_insert_key)
 
     auto streamIt = stream.begin();
     auto expIt = expected.begin();
-    while(streamIt != stream.end())
-    {
+    while (streamIt != stream.end()) {
         EXPECT_EQ(*streamIt, *expIt);
         streamIt++;
         expIt++;
     }
 }
 
-TEST(test_bloom, bloom_match)
+TEST_F(test_bloom, bloom_match)
 {
     // Random real transaction (b4749f017444b051c44dfd2720e88f314ff94f3dd6d56d40ef65854fcd7fff6b)
     CTransaction tx;
@@ -178,8 +187,7 @@ TEST(test_bloom, bloom_match)
     EXPECT_TRUE(!filter.IsRelevantAndUpdate(tx)) << "Simple Bloom filter matched COutPoint for an output we didn't care about";
 }
 
-#if 1
-TEST(test_bloom, merkle_block_1)
+TEST_F(test_bloom, merkle_block_1)
 {
     // Random real block (0000000000013b8ab2cd513b0261a14096412195a72a0c4827d229dcc7e0f7af)
     // With 9 txes
@@ -200,7 +208,7 @@ TEST(test_bloom, merkle_block_1)
     EXPECT_EQ(merkleBlock.vMatchedTxn[0].second , uint256S("0x74d681e0e03bafa802c8aa084379aa98d9fcd632ddc2ed9782b586ec87451f20"));
     EXPECT_EQ(merkleBlock.vMatchedTxn[0].first , 8U);
 
-    vector<uint256> vMatched;
+    v_uint256 vMatched;
     EXPECT_EQ(merkleBlock.txn.ExtractMatches(vMatched) , block.hashMerkleRoot);
     EXPECT_EQ(vMatched.size() , merkleBlock.vMatchedTxn.size());
     for (unsigned int i = 0; i < vMatched.size(); i++)
@@ -224,7 +232,7 @@ TEST(test_bloom, merkle_block_1)
         EXPECT_EQ(vMatched[i] , merkleBlock.vMatchedTxn[i].second);
 }
 
-TEST(test_bloom, merkle_block_2)
+TEST_F(test_bloom, merkle_block_2)
 {
     // Random real block (000000005a4ded781e667e06ceefafb71410b511fe0d5adc3e5a27ecbec34ae6)
     // With 4 txes
@@ -245,7 +253,7 @@ TEST(test_bloom, merkle_block_2)
     EXPECT_EQ(merkleBlock.vMatchedTxn[0].second , uint256S("0xe980fe9f792d014e73b95203dc1335c5f9ce19ac537a419e6df5b47aecb93b70"));
     EXPECT_EQ(merkleBlock.vMatchedTxn[0].first , 0U);
 
-    vector<uint256> vMatched;
+    v_uint256 vMatched;
     EXPECT_EQ(merkleBlock.txn.ExtractMatches(vMatched) , block.hashMerkleRoot);
     EXPECT_EQ(vMatched.size() , merkleBlock.vMatchedTxn.size());
     for (unsigned int i = 0; i < vMatched.size(); i++)
@@ -278,7 +286,7 @@ TEST(test_bloom, merkle_block_2)
         EXPECT_EQ(vMatched[i] , merkleBlock.vMatchedTxn[i].second);
 }
 
-TEST(test_bloom, merkle_block_2_with_update_none)
+TEST_F(test_bloom, merkle_block_2_with_update_none)
 {
     // Random real block (000000005a4ded781e667e06ceefafb71410b511fe0d5adc3e5a27ecbec34ae6)
     // With 4 txes
@@ -299,7 +307,7 @@ TEST(test_bloom, merkle_block_2_with_update_none)
     EXPECT_EQ(merkleBlock.vMatchedTxn[0].second , uint256S("0xe980fe9f792d014e73b95203dc1335c5f9ce19ac537a419e6df5b47aecb93b70"));
     EXPECT_EQ(merkleBlock.vMatchedTxn[0].first , 0U);
 
-    vector<uint256> vMatched;
+    v_uint256 vMatched;
     EXPECT_EQ(merkleBlock.txn.ExtractMatches(vMatched) , block.hashMerkleRoot);
     EXPECT_EQ(vMatched.size() , merkleBlock.vMatchedTxn.size());
     for (unsigned int i = 0; i < vMatched.size(); i++)
@@ -329,7 +337,7 @@ TEST(test_bloom, merkle_block_2_with_update_none)
         EXPECT_EQ(vMatched[i] , merkleBlock.vMatchedTxn[i].second);
 }
 
-TEST(test_bloom, merkle_block_3_and_serialize)
+TEST_F(test_bloom, merkle_block_3_and_serialize)
 {
     // Random real block (000000000000dab0130bbcc991d3d7ae6b81aa6f50a798888dfe62337458dc45)
     // With one tx
@@ -349,7 +357,7 @@ TEST(test_bloom, merkle_block_3_and_serialize)
     EXPECT_EQ(merkleBlock.vMatchedTxn[0].second , uint256S("0x63194f18be0af63f2c6bc9dc0f777cbefed3d9415c4af83f3ee3a3d669c00cb5"));
     EXPECT_EQ(merkleBlock.vMatchedTxn[0].first , 0U);
 
-    vector<uint256> vMatched;
+    v_uint256 vMatched;
     EXPECT_EQ(merkleBlock.txn.ExtractMatches(vMatched) , block.hashMerkleRoot);
     EXPECT_EQ(vMatched.size() , merkleBlock.vMatchedTxn.size());
     for (unsigned int i = 0; i < vMatched.size(); i++)
@@ -374,7 +382,7 @@ TEST(test_bloom, merkle_block_3_and_serialize)
     }
 }
 
-TEST(test_bloom, merkle_block_4)
+TEST_F(test_bloom, merkle_block_4)
 {
     // Random real block (000000000000b731f2eef9e8c63173adfb07e41bd53eb0ef0a6b720d6cb6dea4)
     // With 7 txes
@@ -395,7 +403,7 @@ TEST(test_bloom, merkle_block_4)
     EXPECT_EQ(merkleBlock.vMatchedTxn[0].second , uint256S("0x0a2a92f0bda4727d0a13eaddf4dd9ac6b5c61a1429e6b2b818f19b15df0ac154"));
     EXPECT_EQ(merkleBlock.vMatchedTxn[0].first , 6U);
 
-    vector<uint256> vMatched;
+    v_uint256 vMatched;
     EXPECT_EQ(merkleBlock.txn.ExtractMatches(vMatched) , block.hashMerkleRoot);
     EXPECT_EQ(vMatched.size() , merkleBlock.vMatchedTxn.size());
     for (unsigned int i = 0; i < vMatched.size(); i++)
@@ -419,7 +427,7 @@ TEST(test_bloom, merkle_block_4)
         EXPECT_EQ(vMatched[i] , merkleBlock.vMatchedTxn[i].second);
 }
 
-TEST(test_bloom, merkle_block_4_test_p2pubkey_only)
+TEST_F(test_bloom, merkle_block_4_test_p2pubkey_only)
 {
     // Random real block (000000000000b731f2eef9e8c63173adfb07e41bd53eb0ef0a6b720d6cb6dea4)
     // With 7 txes
@@ -442,7 +450,7 @@ TEST(test_bloom, merkle_block_4_test_p2pubkey_only)
     EXPECT_TRUE(!filter.contains(COutPoint(uint256S("0x02981fa052f0481dbc5868f4fc2166035a10f27a03cfd2de67326471df5bc041"), 0)));
 }
 
-TEST(test_bloom, merkle_block_4_test_update_none)
+TEST_F(test_bloom, merkle_block_4_test_update_none)
 {
     // Random real block (000000000000b731f2eef9e8c63173adfb07e41bd53eb0ef0a6b720d6cb6dea4)
     // With 7 txes
@@ -463,7 +471,6 @@ TEST(test_bloom, merkle_block_4_test_update_none)
     EXPECT_TRUE(!filter.contains(COutPoint(uint256S("0x147caa76786596590baa4e98f5d9f48b86c7765e489f7a6ff3360fe5c674360b"), 0)));
     EXPECT_TRUE(!filter.contains(COutPoint(uint256S("0x02981fa052f0481dbc5868f4fc2166035a10f27a03cfd2de67326471df5bc041"), 0)));
 }
-#endif
 
 static v_uint8 RandomData()
 {
@@ -473,7 +480,7 @@ static v_uint8 RandomData()
 
 #define GTEST_COUT cerr << "[          ] "
 
-TEST(test_bloom, rolling_bloom)
+TEST_F(test_bloom, rolling_bloom)
 {
     // last-100-entry, 1% false positive:
     CRollingBloomFilter rb1(100, 0.01);

@@ -38,7 +38,7 @@ bool CCoins::Spend(uint32_t nPos)
 {
     if (nPos >= vout.size() || vout[nPos].IsNull())
         return false;
-    vout[nPos].SetNull();
+    vout[nPos].Clear();
     Cleanup();
     return true;
 }
@@ -532,7 +532,8 @@ bool CCoinsViewCache::Flush() {
     return fOk;
 }
 
-unsigned int CCoinsViewCache::GetCacheSize() const {
+size_t CCoinsViewCache::GetCacheSize() const noexcept
+{
     return cacheCoins.size();
 }
 

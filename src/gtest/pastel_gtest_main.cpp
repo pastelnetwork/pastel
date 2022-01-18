@@ -1,10 +1,6 @@
 // Copyright (c) 2021 The Pastel developers
 #include "gmock/gmock.h"
 #include "univalue.h"
-#include <boost/program_options/options_description.hpp>
-#include <boost/program_options/cmdline.hpp>
-#include <boost/program_options/variables_map.hpp>
-#include <boost/program_options/parsers.hpp>
 
 #include "crypto/common.h"
 #include "key.h"
@@ -19,6 +15,9 @@
 #include <libsnark/zk_proof_systems/ppzksnark/r1cs_ppzksnark/r1cs_ppzksnark.hpp>
 #include "librustzcash.h"
 #include "pastel_gtest_main.h"
+#include <test_utils.h>
+#include <rpc/server.h>
+#include <rpc/register.h>
 
 struct ECCryptoClosure
 {
@@ -62,9 +61,13 @@ bool TestIsInitialBlockDownload(const Consensus::Params& consensusParams)
     return false;
 }
 
-void CPastelTest_Environment::SetUp()
+void init_zksnark_params()
 {
-    ASSERT_EQ(init_and_check_sodium(), 0);
+    static bool gl_bZkSnarkParamsInitialized = false;
+    if (gl_bZkSnarkParamsInitialized)
+        return;
+    gl_bZkSnarkParamsInitialized = true;
+
     ECC_Start();
 
     libsnark::default_r1cs_ppzksnark_pp::init_public_params();
@@ -75,7 +78,7 @@ void CPastelTest_Environment::SetUp()
     fs::path sapling_output = ZC_GetParamsDir() / "sapling-output.params";
     fs::path sprout_groth16 = ZC_GetParamsDir() / "sprout-groth16.params";
 
-    ASSERT_EQ(sizeof(fs::path::value_type), sizeof(codeunit))  << "librustzcash not configured correctly";
+    ASSERT_EQ(sizeof(fs::path::value_type), sizeof(codeunit)) << "librustzcash not configured correctly";
 
     auto sapling_spend_str = sapling_spend.native();
     auto sapling_output_str = sapling_output.native();
@@ -91,10 +94,18 @@ void CPastelTest_Environment::SetUp()
         reinterpret_cast<const codeunit*>(sprout_groth16_str.c_str()),
         sprout_groth16_str.length(),
         "e9b238411bd6c0ec4791e9d04245ec350c9c5744f5610dfcce4365d5ca49dfefd5054e371842b3f88fa1b9d7e8e075249b3ebabd167fa8b0f3161292d36c180a");
+}
+
+void CPastelTest_Environment::SetUp()
+{
+    ASSERT_EQ(init_and_check_sodium(), 0);
 
     fnIsInitialBlockDownload = TestIsInitialBlockDownload;
 
+    SetupEnvironment();
     SetupNetworking();
+
+    RegisterAllCoreRPCCommands(tableRPC);
 }
 
 void CPastelTest_Environment::TearDown()
@@ -113,21 +124,68 @@ void CPastelTest_Environment::generate_coins(const size_t N)
 #endif
 }
 
-void CPastelTest_Environment::InitializeRegTest()
+/**
+ * Generate unique temp directory and set it as a datadir.
+ * \return temp datadir
+ */
+std::string CPastelTest_Environment::GenerateTempDataDir()
 {
-    SelectParams(CBaseChainParams::Network::REGTEST);
+    // cleanup existing data directory
+    ClearTempDataDir();
+
+    // generate temporary unique datadir
+    auto sTempDataDir = generateTempFileName(nullptr);
+    m_TempDataDir = fs::path(sTempDataDir);
+    if (!fs::exists(m_TempDataDir))
+        fs::create_directories(m_TempDataDir);
+    // clear cached data dirs
+    ClearDatadirCache();
+    mapArgs["-datadir"] = sTempDataDir;
+    return sTempDataDir;
+}
+
+/**
+ * Cleanup temporary datadir.
+ */
+void CPastelTest_Environment::ClearTempDataDir()
+{
+    if (!fs::exists(m_TempDataDir))
+        return;
+    fs::remove_all(m_TempDataDir);
+}
+
+/**
+ * Initialize given network for unittests.
+ * 
+ * \param network - main, regtest or testnet
+ * \return if true - regtest initialized successfully
+ */
+void CPastelTest_Environment::InitializeChainTest(const CBaseChainParams::Network network)
+{
+    init_zksnark_params();
+
+    SelectParams(network);
+    const auto sTempDataDir = GenerateTempDataDir();
+    ASSERT_TRUE(fs::exists(m_TempDataDir)) << "Failed to initialize temporary datadir [" << sTempDataDir << "] for regtest network unittests";
 
     ASSERT_EQ(pblocktree, nullptr);
     pblocktree = new CBlockTreeDB(1 << 20, true);
     pcoinsdbview = new CCoinsViewDB(1 << 23, true);
     pcoinsTip = new CCoinsViewCache(pcoinsdbview);
-    InitBlockIndex(Params());
+    ASSERT_TRUE(InitBlockIndex(Params())) << "Failed to initialize block index for regtest network unittests";
 
 #ifdef ENABLE_WALLET
+    bitdb.MakeMock();
+
     ASSERT_EQ(pwalletMain, nullptr);
     pwalletMain = new CWallet("test_wallet.dat");
     bool bFirstRun = true;
     pwalletMain->LoadWallet(bFirstRun);
+    static bool bWalletRPCInitialized = false;
+    if (!bWalletRPCInitialized) {
+        RegisterWalletRPCCommands(tableRPC);
+        bWalletRPCInitialized = true;
+    }
     RegisterValidationInterface(pwalletMain);
 #endif // ENABLE_WALLET
     nScriptCheckThreads = 3;
@@ -136,7 +194,12 @@ void CPastelTest_Environment::InitializeRegTest()
     RegisterNodeSignals(GetNodeSignals());
 }
 
-void CPastelTest_Environment::FinalizeRegTest()
+void CPastelTest_Environment::InitializeRegTest()
+{
+    InitializeChainTest(CBaseChainParams::Network::REGTEST);
+}
+
+void CPastelTest_Environment::FinalizeChainTest()
 {
     UnregisterNodeSignals(GetNodeSignals());
     threadGroup.interrupt_all();
@@ -167,35 +230,34 @@ void CPastelTest_Environment::FinalizeRegTest()
     }
     // reset TestIsInitialBlockDownload
     latchToFalse.store(false, std::memory_order_relaxed);
+#ifdef ENABLE_WALLET
+    bitdb.Flush(true);
+    bitdb.Reset();
+#endif
     ClearMetrics();
+    ClearTempDataDir();
 }
 
 int main(int argc, char **argv)
 {
     // supported command-line options
-    constexpr auto CMDLINE_PARAM_HELP = "help";
-    constexpr auto CMDLINE_PARAM_FILTER = "filter";
+    /*
+    * Google Test supports the following command-line parameters:
+        --gtest_list_tests
+        --gtest_filter=<test string> - use google test filter, where
+           <test string> is a serier of wildcard patterns separated by colons (:).
+           examples:
+             --gtest_filter=*
+             --gtest_filter=test1*:PTest
+             --gtest_filter=-test2*:test3*
+        --gtest_repeat=N - repeat test N times
+        --gtest_break_on_failure
+        --gtest_throw_on_failure
+        --gtest_catch_exceptions=0
+        --gtest_output="(xml|json):<filename>"
+        --gtest_color=(yes|no|auto)
 
-    // parse command-line options:
-    //   --filter=MyTest* - this can be used to debug specific tests by name
-    //   --filter=*include_tests*:-exclude_tests
-    namespace po = boost::program_options;
-    po::options_description cmdline_options_desc("Pastel Core Google Test command-line options");
-    cmdline_options_desc.add_options()(CMDLINE_PARAM_HELP, "show help message")(CMDLINE_PARAM_FILTER, po::value<std::string>(), "use filter to execute specific Google tests only, supports *, exclusions with -");
-    po::variables_map vm;
-    po::store(po::parse_command_line(argc, argv, cmdline_options_desc), vm);
-    po::notify(vm);
-
-    if (vm.count(CMDLINE_PARAM_HELP)) {
-        std::cout << cmdline_options_desc << std::endl;
-        return 1;
-    }
-    std::string sGoogleTestFilter;
-    if (vm.count(CMDLINE_PARAM_FILTER))
-        sGoogleTestFilter = vm[CMDLINE_PARAM_FILTER].as<std::string>();
-
-    if (!sGoogleTestFilter.empty())
-        ::testing::GTEST_FLAG(filter) = sGoogleTestFilter.c_str();
+    */
     testing::InitGoogleMock(&argc, argv);
   
     gl_pPastelTestEnv = new CPastelTest_Environment();

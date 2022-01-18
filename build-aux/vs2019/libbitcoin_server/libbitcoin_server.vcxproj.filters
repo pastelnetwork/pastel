@@ -29,6 +29,9 @@
     <Filter Include="Source Files\mnode\tickets">
       <UniqueIdentifier>{cd3002d9-cffe-4729-9cb0-f8b9eddbad85}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Source Files\netmsg">
+      <UniqueIdentifier>{5a2fc04c-c719-47a3-bb25-58c62f94375b}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\..\src\sendalert.cpp">
@@ -276,6 +279,9 @@
     </ClCompile>
     <ClCompile Include="..\..\..\src\mnode\rpc\storage-fee.cpp">
       <Filter>Source Files\mnode\rpc</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\src\netmsg\block-cache.cpp">
+      <Filter>Source Files\netmsg</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -596,6 +602,9 @@
     </ClInclude>
     <ClInclude Include="..\..\..\src\mnode\rpc\storage-fee.h">
       <Filter>Source Files\mnode\rpc</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\netmsg\block-cache.h">
+      <Filter>Source Files\netmsg</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

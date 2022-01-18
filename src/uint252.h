@@ -5,7 +5,8 @@
 
 // Wrapper of uint256 with guarantee that first
 // four bits are zero.
-class uint252 {
+class uint252
+{
 private:
     uint256 contents;
 
@@ -32,14 +33,20 @@ public:
         return contents.end();
     }
 
-    uint252() : contents() {};
-    explicit uint252(const uint256& in) : contents(in) {
+    uint252() : 
+        contents()
+    {}
+
+    explicit uint252(const uint256& in) :
+        contents(in)
+    {
         if (*contents.begin() & 0xF0) {
             throw std::domain_error("leading bits are set in argument given to uint252 constructor");
         }
     }
 
-    uint256 inner() const {
+    uint256 inner() const noexcept
+    {
         return contents;
     }
 
