@@ -19,10 +19,6 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="..\..\..\src\test\policyestimator_tests.cpp" />
-    <ClCompile Include="..\..\..\src\test\pow_tests.cpp" />
-    <ClCompile Include="..\..\..\src\test\prevector_tests.cpp" />
-    <ClCompile Include="..\..\..\src\test\reverselock_tests.cpp" />
     <ClCompile Include="..\..\..\src\test\rpc_tests.cpp" />
     <ClCompile Include="..\..\..\src\test\rpc_wallet_tests.cpp" />
     <ClCompile Include="..\..\..\src\test\scheduler_tests.cpp" />

@@ -76,13 +76,22 @@
     <ClCompile Include="..\..\..\src\gtest\test_pedersen_hash.cpp">
       <Filter>UnitTest Files</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\..\src\gtest\test_policyestimator.cpp">
+      <Filter>UnitTest Files</Filter>
+    </ClCompile>
     <ClCompile Include="..\..\..\src\gtest\test_pow.cpp">
+      <Filter>UnitTest Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\src\gtest\test_prevector.cpp">
       <Filter>UnitTest Files</Filter>
     </ClCompile>
     <ClCompile Include="..\..\..\src\gtest\test_proofs.cpp">
       <Filter>UnitTest Files</Filter>
     </ClCompile>
     <ClCompile Include="..\..\..\src\gtest\test_random.cpp">
+      <Filter>UnitTest Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\src\gtest\test_reverselock.cpp">
       <Filter>UnitTest Files</Filter>
     </ClCompile>
     <ClCompile Include="..\..\..\src\gtest\test_rpc.cpp">
