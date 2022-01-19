@@ -105,7 +105,7 @@ TEST_P(PTestBip32, testvectors)
     v_uint8 seed = ParseHex(test.strHexMaster);
     CExtKey key;
     CExtPubKey pubkey;
-    key.SetMaster(&seed[0], seed.size());
+    key.SetMaster(&seed[0], static_cast<unsigned int>(seed.size()));
     pubkey = key.Neuter();
     KeyIO keyIO(Params());
     for (const auto &derive : test.vDerive)

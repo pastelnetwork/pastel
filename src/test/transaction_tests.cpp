@@ -28,9 +28,7 @@
 
 #include <boost/algorithm/string/classification.hpp>
 #include <boost/algorithm/string/split.hpp>
-#include <boost/assign/list_of.hpp>
 #include <boost/test/unit_test.hpp>
-#include <boost/assign/list_of.hpp>
 #include <boost/test/data/test_case.hpp>
 
 #include <univalue.h>
@@ -44,17 +42,19 @@ using namespace std;
 // In script_tests.cpp
 extern UniValue read_json(const std::string& jsondata);
 
-static std::map<string, unsigned int> mapFlagNames = boost::assign::map_list_of
-    (string("NONE"), (unsigned int)SCRIPT_VERIFY_NONE)
-    (string("P2SH"), (unsigned int)SCRIPT_VERIFY_P2SH)
-    (string("STRICTENC"), (unsigned int)SCRIPT_VERIFY_STRICTENC)
-    (string("LOW_S"), (unsigned int)SCRIPT_VERIFY_LOW_S)
-    (string("SIGPUSHONLY"), (unsigned int)SCRIPT_VERIFY_SIGPUSHONLY)
-    (string("MINIMALDATA"), (unsigned int)SCRIPT_VERIFY_MINIMALDATA)
-    (string("NULLDUMMY"), (unsigned int)SCRIPT_VERIFY_NULLDUMMY)
-    (string("DISCOURAGE_UPGRADABLE_NOPS"), (unsigned int)SCRIPT_VERIFY_DISCOURAGE_UPGRADABLE_NOPS)
-    (string("CLEANSTACK"), (unsigned int)SCRIPT_VERIFY_CLEANSTACK)
-    (string("CHECKLOCKTIMEVERIFY"), (unsigned int)SCRIPT_VERIFY_CHECKLOCKTIMEVERIFY);
+static std::map<string, unsigned int> mapFlagNames = 
+{
+    {"NONE", (unsigned int)SCRIPT_VERIFY_NONE},
+    {"P2SH", (unsigned int)SCRIPT_VERIFY_P2SH},
+    {"STRICTENC", (unsigned int)SCRIPT_VERIFY_STRICTENC},
+    {"LOW_S", (unsigned int)SCRIPT_VERIFY_LOW_S},
+    {"SIGPUSHONLY", (unsigned int)SCRIPT_VERIFY_SIGPUSHONLY},
+    {"MINIMALDATA", (unsigned int)SCRIPT_VERIFY_MINIMALDATA},
+    {"NULLDUMMY", (unsigned int)SCRIPT_VERIFY_NULLDUMMY},
+    {"DISCOURAGE_UPGRADABLE_NOPS", (unsigned int)SCRIPT_VERIFY_DISCOURAGE_UPGRADABLE_NOPS},
+    {"CLEANSTACK", (unsigned int)SCRIPT_VERIFY_CLEANSTACK},
+    {"CHECKLOCKTIMEVERIFY", (unsigned int)SCRIPT_VERIFY_CHECKLOCKTIMEVERIFY}
+};
 
 unsigned int ParseScriptFlags(string strFlags)
 {
@@ -400,13 +400,13 @@ BOOST_DATA_TEST_CASE(test_Get, boost::unit_test::data::xrange(static_cast<int>(C
     t1.vin.resize(3);
     t1.vin[0].prevout.hash = dummyTransactions[0].GetHash();
     t1.vin[0].prevout.n = 1;
-    t1.vin[0].scriptSig << std::vector<unsigned char>(65, 0);
+    t1.vin[0].scriptSig << v_uint8(65, 0);
     t1.vin[1].prevout.hash = dummyTransactions[1].GetHash();
     t1.vin[1].prevout.n = 0;
-    t1.vin[1].scriptSig << std::vector<unsigned char>(65, 0) << std::vector<unsigned char>(33, 4);
+    t1.vin[1].scriptSig << v_uint8(65, 0) << v_uint8(33, 4);
     t1.vin[2].prevout.hash = dummyTransactions[1].GetHash();
     t1.vin[2].prevout.n = 1;
-    t1.vin[2].scriptSig << std::vector<unsigned char>(65, 0) << std::vector<unsigned char>(33, 4);
+    t1.vin[2].scriptSig << v_uint8(65, 0) << v_uint8(33, 4);
     t1.vout.resize(2);
     t1.vout[0].nValue = 90*CENT;
     t1.vout[0].scriptPubKey << OP_1;
@@ -437,16 +437,17 @@ BOOST_AUTO_TEST_CASE(test_big_overwinter_transaction) {
     CKeyID hash = key.GetPubKey().GetID();
     CScript scriptPubKey = GetScriptForDestination(hash);
 
-    vector<int> sigHashes;
-    sigHashes.push_back(SIGHASH_NONE | SIGHASH_ANYONECANPAY);
-    sigHashes.push_back(SIGHASH_SINGLE | SIGHASH_ANYONECANPAY);
-    sigHashes.push_back(SIGHASH_ALL | SIGHASH_ANYONECANPAY);
-    sigHashes.push_back(SIGHASH_NONE);
-    sigHashes.push_back(SIGHASH_SINGLE);
-    sigHashes.push_back(SIGHASH_ALL);
+    v_uint8 sigHashes;
+    sigHashes.push_back(enum_or(SIGHASH::NONE, SIGHASH::ANYONECANPAY));
+    sigHashes.push_back(enum_or(SIGHASH::SINGLE, SIGHASH::ANYONECANPAY));
+    sigHashes.push_back(enum_or(SIGHASH::ALL, SIGHASH::ANYONECANPAY));
+    sigHashes.push_back(to_integral_type(SIGHASH::NONE));
+    sigHashes.push_back(to_integral_type(SIGHASH::SINGLE));
+    sigHashes.push_back(to_integral_type(SIGHASH::ALL));
 
     // create a big transaction of 4500 inputs signed by the same key
-    for(uint32_t ij = 0; ij < 4500; ij++) {
+    for(uint32_t ij = 0; ij < 4500; ij++)
+    {
         uint32_t i = mtx.vin.size();
         uint256 prevId;
         prevId.SetHex("0000000000000000000000000000000000000000000000000000000000000100");
@@ -518,7 +519,7 @@ BOOST_AUTO_TEST_CASE(test_IsStandard)
     t.vin.resize(1);
     t.vin[0].prevout.hash = dummyTransactions[0].GetHash();
     t.vin[0].prevout.n = 1;
-    t.vin[0].scriptSig << std::vector<unsigned char>(65, 0);
+    t.vin[0].scriptSig << v_uint8(65, 0);
     t.vout.resize(1);
     t.vout[0].nValue = 90*CENT;
     CKey key;

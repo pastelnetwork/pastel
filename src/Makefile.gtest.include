@@ -56,6 +56,7 @@ pastel_gtest_SOURCES +=\
 	gtest/test_deprecation.cpp\
 	gtest/test_DoS.cpp\
 	gtest/test_equihash.cpp\
+	gtest/test_enum_util.cpp\
 	gtest/test_getarg.cpp\
 	gtest/test_hash.cpp\
 	gtest/test_httprpc.cpp\

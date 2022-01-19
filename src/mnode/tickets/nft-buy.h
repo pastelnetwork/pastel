@@ -1,5 +1,5 @@
 #pragma once
-// Copyright (c) 2018-2021 The Pastel Core developers
+// Copyright (c) 2018-2022 The Pastel Core developers
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <mnode/tickets/ticket.h>
@@ -28,17 +28,20 @@ public:
     std::string sellTxnId;
     unsigned int price{};
     std::string reserved;
-    v_uint8 signature;
+    v_uint8 m_signature;
 
 public:
     CNFTBuyTicket() = default;
 
     explicit CNFTBuyTicket(std::string _pastelID) : pastelID(std::move(_pastelID))
-    {
-    }
+    {}
 
     TicketID ID() const noexcept override { return TicketID::Buy; }
     static TicketID GetID() { return TicketID::Buy; }
+    constexpr auto GetTicketDescription() const
+    {
+        return TICKET_INFO[to_integral_type<TicketID>(TicketID::Buy)].szDescription;
+    }
 
     void Clear() noexcept override
     {
@@ -47,7 +50,7 @@ public:
         sellTxnId.clear();
         price = 0;
         reserved.clear();
-        signature.clear();
+        m_signature.clear();
     }
     std::string KeyOne() const noexcept override { return sellTxnId; } // this is the latest (active) buy ticket for this sell ticket
     std::string MVKeyOne() const noexcept override { return pastelID; }
@@ -61,11 +64,12 @@ public:
 
     std::string ToJSON() const noexcept override;
     std::string ToStr() const noexcept override;
-    bool IsValid(const bool bPreReg, const int nDepth) const override;
+    ticket_validation_t IsValid(const bool bPreReg, const uint32_t nDepth) const noexcept override;
+    bool IsSameSignature(const v_uint8& signature) const noexcept { return m_signature == signature; }
 
     // getters for ticket fields
     const std::string& getPastelID() const noexcept { return pastelID; }
-    const std::string getSignature() const noexcept { return vector_to_string(signature); }
+    const std::string getSignature() const noexcept { return vector_to_string(m_signature); }
 
     void SerializationOp(CDataStream& s, const SERIALIZE_ACTION ser_action) override
     {
@@ -79,7 +83,7 @@ public:
         READWRITE(sellTxnId);
         READWRITE(price);
         READWRITE(reserved);
-        READWRITE(signature);
+        READWRITE(m_signature);
         READWRITE(m_nTimestamp);
         READWRITE(m_txid);
         READWRITE(m_nBlock);

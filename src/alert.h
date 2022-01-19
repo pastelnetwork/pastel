@@ -1,15 +1,17 @@
 #pragma once
 // Copyright (c) 2010 Satoshi Nakamoto
 // Copyright (c) 2009-2013 The Bitcoin Core developers
+// Copyright (c) 2018-2022 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
-// file COPYING or http://www.opensource.org/licenses/mit-license.php.
-#include "serialize.h"
-#include "sync.h"
-
+// file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <map>
 #include <set>
 #include <stdint.h>
 #include <string>
+
+#include <serialize.h>
+#include <sync.h>
+#include <vector_types.h>
 
 class CAlert;
 class CNode;
@@ -73,8 +75,8 @@ public:
 class CAlert : public CUnsignedAlert
 {
 public:
-    std::vector<unsigned char> vchMsg;
-    std::vector<unsigned char> vchSig;
+    v_uint8 vchMsg;
+    v_uint8 vchSig;
 
     CAlert()
     {
@@ -98,8 +100,8 @@ public:
     bool AppliesTo(int nVersion, const std::string& strSubVerIn) const;
     bool AppliesToMe() const;
     bool RelayTo(CNode* pnode) const;
-    bool CheckSignature(const std::vector<unsigned char>& alertKey) const;
-    bool ProcessAlert(const std::vector<unsigned char>& alertKey, bool fThread = true); // fThread means run -alertnotify in a free-running thread
+    bool CheckSignature(const v_uint8 & alertKey) const;
+    bool ProcessAlert(const v_uint8 & alertKey, bool fThread = true); // fThread means run -alertnotify in a free-running thread
     static void Notify(const std::string& strMessage, bool fThread);
 
     /*

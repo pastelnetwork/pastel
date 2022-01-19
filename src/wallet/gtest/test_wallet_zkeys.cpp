@@ -6,6 +6,7 @@
 #include "wallet/wallet.h"
 #include "wallet/walletdb.h"
 #include "util.h"
+#include <pastel_gtest_main.h>
 
 using namespace std;
 
@@ -110,25 +111,15 @@ TEST(wallet_zkeys_tests, StoreAndLoadSaplingZkeys)
 class CTestWalletZkeys : public ::testing::Test
 {
 public:
-    void SetUp() override
+    static void SetUpTestSuite()
     {
-        // Get temporary and unique path for file.
-        // Note: / operator to append paths
-        pathTemp = fs::temp_directory_path() / fs::unique_path();
-        ASSERT_TRUE(fs::create_directories(pathTemp));
-
-        m_sSavedDataDir = mapArgs["-datadir"];
+        gl_pPastelTestEnv->InitializeChainTest(CBaseChainParams::Network::TESTNET);
     }
 
-    void TearDown() override
+    static void TearDownTestSuite()
     {
-        fs::remove_all(pathTemp);
-
-        mapArgs["-datadir"] = m_sSavedDataDir;
+        gl_pPastelTestEnv->FinalizeRegTest();
     }
-
-    fs::path pathTemp;
-    string m_sSavedDataDir;
 };
 
 /**
@@ -136,10 +127,6 @@ public:
  */
 TEST_F(CTestWalletZkeys, WriteCryptedSaplingZkeyDirectToDb)
 {
-    SelectParams(CBaseChainParams::Network::TESTNET);
-
-    mapArgs["-datadir"] = pathTemp.string();
-
     bool fFirstRun;
     CWallet wallet("wallet_crypted_sapling.dat");
     LOCK(wallet.cs_wallet);

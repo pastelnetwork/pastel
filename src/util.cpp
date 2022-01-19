@@ -538,6 +538,9 @@ const fs::path& GetDataDir(bool fNetSpecific)
     return path;
 }
 
+/**
+ * Clear cached data dirs.
+ */
 void ClearDatadirCache()
 {
     pathCached = fs::path();

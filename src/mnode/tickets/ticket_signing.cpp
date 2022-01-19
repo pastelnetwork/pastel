@@ -1,11 +1,11 @@
-// Copyright (c) 2018-2021 The Pastel Core developers
+// Copyright (c) 2018-2022 The Pastel Core developers
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
+#include <unordered_map>
+
 #include <str_utils.h>
 #include <serialize.h>
 #include <streams.h>
-#include <unordered_map>
-
 #include <pastelid/common.h>
 #include <mnode/tickets/pastelid-reg.h>
 #include <mnode/tickets/ticket_signing.h>
@@ -126,7 +126,7 @@ void CTicketSigning::serialize_signatures(CDataStream& s, const SERIALIZE_ACTION
  * Returns empty string if signature id is invalid.
  * 
  * \param sigId - signature id (creator, main, mn2, mn3)
- * \return 
+ * \return PastelID
  */
 string CTicketSigning::getPastelID(const short sigId) const noexcept
 {
@@ -135,11 +135,21 @@ string CTicketSigning::getPastelID(const short sigId) const noexcept
     return m_vPastelID[sigId];
 }
 
-void CTicketSigning::validate_signatures(const unsigned int nDepth, const uint32_t nCreatorHeight, const string& sTicketToValidate) const
+/**
+ * Validate ticket signatures.
+ * 
+ * \param nDepth - ticket height
+ * \param nCreatorHeight - PastelID registration ticket height for the principal signature creator
+ * \param sTicketToValidate - ticket content to validate
+ * \return ticket validation state and error message if any
+ */
+ticket_validation_t CTicketSigning::validate_signatures(const uint32_t nDepth, const uint32_t nCreatorHeight, const string& sTicketToValidate) const noexcept
 {
-    unsigned int nCurDepth = nDepth;
+    uint32_t nCurDepth = nDepth;
     unordered_map<string, int> pidCountMap;
     map<COutPoint, int> outCountMap{};
+    ticket_validation_t tv;
+    tv.setValid();
 
     for (auto mnIndex = SIGN_PRINCIPAL; mnIndex < SIGN_COUNT; ++mnIndex)
     {
@@ -149,27 +159,52 @@ void CTicketSigning::validate_signatures(const unsigned int nDepth, const uint32
         CPastelIDRegTicket pastelIdRegTicket;
         const auto& sigDesc = SIGNER[mnIndex].desc;
         if (!CPastelIDRegTicket::FindTicketInDb(m_vPastelID[mnIndex], pastelIdRegTicket))
-            throw runtime_error(strprintf("%s PastelID is not registered [%s]", sigDesc, m_vPastelID[mnIndex]));
-        // 2. PastelIDs are valid
-        try
         {
-            pastelIdRegTicket.IsValid(false, ++nCurDepth);
-        } catch (const exception& ex) {
-            throw runtime_error(strprintf("%s PastelID is invalid [%s] - %s", sigDesc, m_vPastelID[mnIndex], ex.what()));
-        } catch (...) {
-            throw runtime_error(strprintf("%s PastelID is invalid [%s] - Unknown exception", sigDesc, m_vPastelID[mnIndex]));
+            tv.state = TICKET_VALIDATION_STATE::MISSING_INPUTS;
+            tv.errorMsg = strprintf(
+                "%s %s ticket not found [%s]",
+                sigDesc, ::GetTicketDescription(TicketID::PastelID), m_vPastelID[mnIndex]);
+            break;
+        }
+            
+        // 2. PastelIDs are valid
+        tv = pastelIdRegTicket.IsValid(false, ++nCurDepth);
+        if (tv.IsNotValid())
+        {
+            tv.errorMsg = strprintf(
+                "%s %s ticket is invalid [%s]. %s", 
+                sigDesc, ::GetTicketDescription(TicketID::PastelID), m_vPastelID[mnIndex], tv.errorMsg);
+            break;
         }
         // 3. principal PastelID is personal PastelID and MNs PastelIDs are not personal
         const bool bIsPrincipal = mnIndex == SIGN_PRINCIPAL;
         if (bIsPrincipal != pastelIdRegTicket.outpoint.IsNull())
-            throw runtime_error(strprintf("%s PastelID is NOT %s PastelID [%s]", sigDesc, bIsPrincipal ? "personal" : "masternode", m_vPastelID[mnIndex]));
+        {
+            tv.state = TICKET_VALIDATION_STATE::INVALID;
+            tv.errorMsg = strprintf(
+                "%s PastelID is NOT %s PastelID [%s]",
+                sigDesc, bIsPrincipal ? "personal" : "masternode", m_vPastelID[mnIndex]);
+            break;
+        }
         if (!bIsPrincipal)
         {
             // Check that MN1, MN2 and MN3 are all different = here by just PastleId
             if (++pidCountMap[pastelIdRegTicket.pastelID] != 1)
-                throw runtime_error(strprintf("MNs PastelIDs can not be the same - [%s]", pastelIdRegTicket.pastelID));
+            {
+                tv.state = TICKET_VALIDATION_STATE::INVALID;
+                tv.errorMsg = strprintf(
+                    "MNs PastelIDs can not be the same - [%s]",
+                    pastelIdRegTicket.pastelID);
+                break;
+            }
             if (++outCountMap[pastelIdRegTicket.outpoint] != 1)
-                throw runtime_error(strprintf("MNs PastelID can not be from the same MN - [%s]", pastelIdRegTicket.outpoint.ToStringShort()));
+            {
+                tv.state = TICKET_VALIDATION_STATE::INVALID;
+                tv.errorMsg = strprintf(
+                    "MNs PastelID can not be from the same MN - [%s]", 
+                    pastelIdRegTicket.outpoint.ToStringShort());
+                break;
+            }
 
             // 4. Masternodes beyond these PastelIDs, were in the top 10 at the block when the registration happened
             if (masterNodeCtrl.masternodeSync.IsSynced()) // ticket needs synced MNs
@@ -181,15 +216,30 @@ void CTicketSigning::validate_signatures(const unsigned int nDepth, const uint32
                     });
 
                 if (foundIt == topBlockMNs.cend()) //not found
-                    throw runtime_error(strprintf("MN%hi was NOT in the top masternodes list for block %u", mnIndex, nCreatorHeight));
+                {
+                    tv.state = TICKET_VALIDATION_STATE::INVALID;
+                    tv.errorMsg = strprintf(
+                        "MN%hi was NOT in the top masternodes list for block %u", 
+                        mnIndex, nCreatorHeight);
+                    break;
+                }
             }
         }
     }
+    if (tv.IsNotValid())
+        return tv;
 
     // 5. Signatures matches included PastelIDs (signature verification is slower - hence separate loop)
     for (auto mnIndex = SIGN_PRINCIPAL; mnIndex < SIGN_COUNT; ++mnIndex)
     {
         if (!CPastelID::Verify(sTicketToValidate, vector_to_string(m_vTicketSignature[mnIndex]), m_vPastelID[mnIndex]))
-            throw runtime_error(strprintf("%s signature is invalid", SIGNER[mnIndex].desc));
+        {
+            tv.state = TICKET_VALIDATION_STATE::INVALID;
+            tv.errorMsg = strprintf(
+                "%s signature is invalid", 
+                SIGNER[mnIndex].desc);
+            break;
+        }
     }
+    return tv;
 }

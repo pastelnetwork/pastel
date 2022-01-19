@@ -1,52 +1,61 @@
 // Copyright (c) 2009-2014 The Bitcoin Core developers
+// Copyright (c) 2018-2022 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
-// file COPYING or http://www.opensource.org/licenses/mit-license.php.
+// file COPYING or https://www.opensource.org/licenses/mit-license.php.
+#include <univalue.h>
 
 #include "core_io.h"
-
 #include "key_io.h"
 #include "primitives/transaction.h"
 #include "script/script.h"
 #include "script/standard.h"
 #include "serialize.h"
 #include "streams.h"
-#include <univalue.h>
 #include "util.h"
 #include "utilmoneystr.h"
 #include "utilstrencodings.h"
 #include "script/interpreter.h"
-
-#include <boost/assign/list_of.hpp>
 
 using namespace std;
 
 string FormatScript(const CScript& script)
 {
     string ret;
-    CScript::const_iterator it = script.begin();
+    auto it = script.begin();
     opcodetype op;
-    while (it != script.end()) {
-        CScript::const_iterator it2 = it;
-        vector<unsigned char> vch;
-        if (script.GetOp2(it, op, &vch)) {
-            if (op == OP_0) {
+    v_uint8 vch;
+    string str;
+    while (it != script.end())
+    {
+        auto it2 = it;
+        vch.clear();
+        if (script.GetOp2(it, op, &vch))
+        {
+            if (op == OP_0)
+            {
                 ret += "0 ";
                 continue;
-            } else if ((op >= OP_1 && op <= OP_16) || op == OP_1NEGATE) {
+            }
+            if ((op >= OP_1 && op <= OP_16) || op == OP_1NEGATE)
+            {
                 ret += strprintf("%i ", op - OP_1NEGATE - 1);
                 continue;
-            } else if (op >= OP_NOP && op <= OP_CHECKMULTISIGVERIFY) {
-                string str(GetOpName(op));
-                if (str.substr(0, 3) == string("OP_")) {
+            }
+            if (op >= OP_NOP && op <= OP_CHECKMULTISIGVERIFY)
+            {
+                str = GetOpName(op);
+                if (str.substr(0, 3).compare("OP_") == 0)
+                {
                     ret += str.substr(3, string::npos) + " ";
                     continue;
                 }
             }
-            if (vch.size() > 0) {
-                ret += strprintf("0x%x 0x%x ", HexStr(it2, it - vch.size()), HexStr(it - vch.size(), it));
-            } else {
+            if (!vch.empty())
+                ret += strprintf("0x%x 0x%x ", 
+                    HexStr(it2, it - static_cast<unsigned int>(vch.size())), 
+                    HexStr(it - static_cast<unsigned int>(vch.size()), it));
+            else
                 ret += strprintf("0x%x", HexStr(it2, it));
-            }
             continue;
         }
         ret += strprintf("0x%x ", HexStr(it2, script.end()));
@@ -55,15 +64,15 @@ string FormatScript(const CScript& script)
     return ret.substr(0, ret.size() - 1);
 }
 
-const map<unsigned char, string> mapSigHashTypes =
-    boost::assign::map_list_of
-    (static_cast<unsigned char>(SIGHASH_ALL), string("ALL"))
-    (static_cast<unsigned char>(SIGHASH_ALL|SIGHASH_ANYONECANPAY), string("ALL|ANYONECANPAY"))
-    (static_cast<unsigned char>(SIGHASH_NONE), string("NONE"))
-    (static_cast<unsigned char>(SIGHASH_NONE|SIGHASH_ANYONECANPAY), string("NONE|ANYONECANPAY"))
-    (static_cast<unsigned char>(SIGHASH_SINGLE), string("SINGLE"))
-    (static_cast<unsigned char>(SIGHASH_SINGLE|SIGHASH_ANYONECANPAY), string("SINGLE|ANYONECANPAY"))
-    ;
+const unordered_map<uint8_t, string> mapSigHashTypes =
+    {
+        { to_integral_type(SIGHASH::ALL),                 "ALL" },
+        { enum_or(SIGHASH::ALL, SIGHASH::ANYONECANPAY),   "ALL|ANYONECANPAY" },
+        { to_integral_type(SIGHASH::NONE),                "NONE" },
+        { enum_or(SIGHASH::NONE, SIGHASH::ANYONECANPAY),  "NONE|ANYONECANPAY" },
+        { to_integral_type(SIGHASH::SINGLE),               "SINGLE" },
+        { enum_or(SIGHASH::SINGLE, SIGHASH::ANYONECANPAY), "SINGLE|ANYONECANPAY" } 
+    };
 
 /**
  * Create the assembly string representation of a CScript object.
@@ -76,7 +85,7 @@ string ScriptToAsmStr(const CScript& script, const bool fAttemptSighashDecode)
 {
     string str;
     opcodetype opcode;
-    vector<unsigned char> vch;
+    v_uint8 vch;
     CScript::const_iterator pc = script.begin();
     while (pc < script.end()) {
         if (!str.empty()) {
@@ -87,7 +96,7 @@ string ScriptToAsmStr(const CScript& script, const bool fAttemptSighashDecode)
             return str;
         }
         if (0 <= opcode && opcode <= OP_PUSHDATA4) {
-            if (vch.size() <= static_cast<vector<unsigned char>::size_type>(4)) {
+            if (vch.size() <= static_cast<v_uint8::size_type>(4)) {
                 str += strprintf("%d", CScriptNum(vch, false).getint());
             } else {
                 // the IsUnspendable check makes sure not to try to decode OP_RETURN data that may match the format of a signature
@@ -97,8 +106,8 @@ string ScriptToAsmStr(const CScript& script, const bool fAttemptSighashDecode)
                     // this won't decode correctly formatted public keys in Pubkey or Multisig scripts due to
                     // the restrictions on the pubkey formats (see IsCompressedOrUncompressedPubKey) being incongruous with the
                     // checks in CheckSignatureEncoding.
-                    if (CheckSignatureEncoding(vch, SCRIPT_VERIFY_STRICTENC, NULL)) {
-                        const unsigned char chSigHashType = vch.back();
+                    if (CheckSignatureEncoding(vch, SCRIPT_VERIFY_STRICTENC, nullptr)) {
+                        const uint8_t chSigHashType = vch.back();
                         if (mapSigHashTypes.count(chSigHashType)) {
                             strSigHashDecode = "[" + mapSigHashTypes.find(chSigHashType)->second + "]";
                             vch.pop_back(); // remove the sighash type byte. it will be replaced by the decode.

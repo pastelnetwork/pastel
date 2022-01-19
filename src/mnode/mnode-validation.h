@@ -1,7 +1,7 @@
 #pragma once
 // Copyright (c) 2018-2021 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
-// file COPYING or http://www.opensource.org/licenses/mit-license.php.
+// file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <string>
 
 #include "main.h"
@@ -23,4 +23,5 @@ void FillOtherBlockPayments(CMutableTransaction& txNew, int nBlockHeight, CAmoun
     bool GetOutpointAndKeysFromOutput(CWallet* pwalletMain, const COutput& out, COutPoint& outpointRet, CPubKey& pubKeyRet, CKey& keyRet);
 #endif
 
-bool IsBlockValid(const CBlock& block, int nBlockHeight, CAmount blockReward, std::string &strErrorRet);
+bool IsBlockValid(const Consensus::Params& consensusParams, 
+    const CBlock& block, int nBlockHeight, CAmount blockReward, std::string& strErrorRet);

@@ -1,11 +1,9 @@
+#pragma once
 // Copyright (c) 2010 Satoshi Nakamoto
 // Copyright (c) 2009-2014 The Bitcoin Core developers
+// Copyright (c) 2018-2022 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
-// file COPYING or http://www.opensource.org/licenses/mit-license.php.
-
-#ifndef BITCOIN_RPCSERVER_H
-#define BITCOIN_RPCSERVER_H
-
+// file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include "amount.h"
 #include "rpc/protocol.h"
 #include "uint256.h"
@@ -73,7 +71,7 @@ void RPCTypeCheck(const UniValue& params,
 
 /*
   Check for expected keys/value types in an Object.
-  Use like: RPCTypeCheckObj(object, boost::assign::map_list_of("name", str_type)("value", int_type));
+  Use like: RPCTypeCheckObj(object,{{"name", str_type}, {"value", int_type}});
 */
 void RPCTypeCheckObj(const UniValue& o,
                   const std::map<std::string, UniValue::VType>& typesExpected, bool fAllowNull=false);
@@ -186,5 +184,3 @@ void StopRPC();
 std::string JSONRPCExecBatch(const UniValue& vReq);
 
 extern std::string experimentalDisabledHelpMsg(const std::string& rpc, const std::string& enableArg);
-
-#endif // BITCOIN_RPCSERVER_H

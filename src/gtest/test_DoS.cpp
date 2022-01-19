@@ -1,25 +1,24 @@
 // Copyright (c) 2011-2014 The Bitcoin Core developers
-// Copyright (c) 2021 The Pastel developers
+// Copyright (c) 2021-2022 The Pastel developers
 // Distributed under the MIT software license, see the accompanying
-// file COPYING or http://www.opensource.org/licenses/mit-license.php.
+// file COPYING or https://www.opensource.org/licenses/mit-license.php.
 
 //
 // Unit tests for denial-of-service detection/prevention code
 //
 
 #include <stdint.h>
-
 #include <gtest/gtest.h>
 
-#include "pastel_gtest_main.h"
-#include "consensus/upgrades.h"
-#include "keystore.h"
-#include "main.h"
-#include "net.h"
-#include "pow.h"
-#include "script/sign.h"
-#include "serialize.h"
-#include "util.h"
+#include <consensus/upgrades.h>
+#include <keystore.h>
+#include <main.h>
+#include <net.h>
+#include <pow.h>
+#include <script/sign.h>
+#include <serialize.h>
+#include <util.h>
+#include <pastel_gtest_main.h>
 
 using namespace std;
 using namespace testing;
@@ -32,8 +31,8 @@ struct COrphanTx {
     CTransaction tx;
     NodeId fromPeer;
 };
-extern map<uint256, COrphanTx> mapOrphanTransactions;
-extern map<uint256, set<uint256> > mapOrphanTransactionsByPrev;
+extern unordered_map<uint256, COrphanTx> mapOrphanTransactions;
+extern unordered_map<uint256, set<uint256>> mapOrphanTransactionsByPrev;
 
 CService ip(uint32_t i)
 {
@@ -49,14 +48,12 @@ public:
     static void SetUpTestSuite()
     {
         gl_pPastelTestEnv->InitializeRegTest();
-        gl_pPastelTestEnv->generate_coins(101);
     }
 
     static void TearDownTestSuite()
     {
         gl_pPastelTestEnv->FinalizeRegTest();
     }
-
 };
 
 TEST_F(TestDoS, DoS_banning)
@@ -66,7 +63,7 @@ TEST_F(TestDoS, DoS_banning)
     CNode dummyNode1(INVALID_SOCKET, addr1, "", true);
     dummyNode1.nVersion = 1;
     Misbehaving(dummyNode1.GetId(), 100); // Should get banned
-    SendMessages(Params().GetConsensus(), &dummyNode1, false);
+    SendMessages(Params(), &dummyNode1, false);
     EXPECT_TRUE( CNode::IsBanned(addr1) );
     EXPECT_TRUE( !CNode::IsBanned(ip(0xa0b0c001|0x0000ff00)) ); // Different IP, not banned
 
@@ -74,11 +71,11 @@ TEST_F(TestDoS, DoS_banning)
     CNode dummyNode2(INVALID_SOCKET, addr2, "", true);
     dummyNode2.nVersion = 1;
     Misbehaving(dummyNode2.GetId(), 50);
-    SendMessages(Params().GetConsensus(), & dummyNode2, false);
+    SendMessages(Params(), & dummyNode2, false);
     EXPECT_TRUE( !CNode::IsBanned(addr2) ); // 2 not banned yet...
     EXPECT_TRUE( CNode::IsBanned(addr1) );  // ... but 1 still should be
     Misbehaving(dummyNode2.GetId(), 50);
-    SendMessages(Params().GetConsensus(), &dummyNode2, false);
+    SendMessages(Params(), &dummyNode2, false);
     EXPECT_TRUE( CNode::IsBanned(addr2) );
 }
 
@@ -90,13 +87,13 @@ TEST_F(TestDoS, DoS_banscore)
     CNode dummyNode1(INVALID_SOCKET, addr1, "", true);
     dummyNode1.nVersion = 1;
     Misbehaving(dummyNode1.GetId(), 100);
-    SendMessages(Params().GetConsensus(), &dummyNode1, false);
+    SendMessages(Params(), &dummyNode1, false);
     EXPECT_TRUE(!CNode::IsBanned(addr1));
     Misbehaving(dummyNode1.GetId(), 10);
-    SendMessages(Params().GetConsensus(), &dummyNode1, false);
+    SendMessages(Params(), &dummyNode1, false);
     EXPECT_TRUE(!CNode::IsBanned(addr1));
     Misbehaving(dummyNode1.GetId(), 1);
-    SendMessages(Params().GetConsensus(), &dummyNode1, false);
+    SendMessages(Params(), &dummyNode1, false);
     EXPECT_TRUE(CNode::IsBanned(addr1));
     mapArgs.erase("-banscore");
 }
@@ -112,7 +109,7 @@ TEST_F(TestDoS, DoS_bantime)
     dummyNode.nVersion = 1;
 
     Misbehaving(dummyNode.GetId(), 100);
-    SendMessages(Params().GetConsensus(), &dummyNode, false);
+    SendMessages(Params(), &dummyNode, false);
     EXPECT_TRUE(CNode::IsBanned(addr));
 
     SetMockTime(nStartTime+60*60);
@@ -124,20 +121,20 @@ TEST_F(TestDoS, DoS_bantime)
 
 CTransaction RandomOrphan()
 {
-    map<uint256, COrphanTx>::iterator it;
-    it = mapOrphanTransactions.lower_bound(GetRandHash());
-    if (it == mapOrphanTransactions.end())
+    auto it = mapOrphanTransactions.find(GetRandHash());
+    if (it == mapOrphanTransactions.cend())
         it = mapOrphanTransactions.begin();
     return it->second.tx;
 }
 
 class PTestDoS : public TestWithParam<int>
 {};
+
 // Parameterized testing over consensus branch ids
 TEST_P(PTestDoS, DoS_mapOrphans)
 {
     const int sample = GetParam();
-    EXPECT_TRUE(sample < static_cast<int>(Consensus::MAX_NETWORK_UPGRADES));
+    EXPECT_LT(sample, static_cast<int>(Consensus::MAX_NETWORK_UPGRADES));
 
     uint32_t consensusBranchId = NetworkUpgradeInfo[sample].nBranchId;
 
@@ -173,7 +170,7 @@ TEST_P(PTestDoS, DoS_mapOrphans)
         tx.vout.resize(1);
         tx.vout[0].nValue = 1*CENT;
         tx.vout[0].scriptPubKey = GetScriptForDestination(key.GetPubKey().GetID());
-        SignSignature(keystore, txPrev, tx, 0, SIGHASH_ALL, consensusBranchId);
+        SignSignature(keystore, txPrev, tx, 0, to_integral_type(SIGHASH::ALL), consensusBranchId);
 
         AddOrphanTx(tx, i);
     }
@@ -193,7 +190,7 @@ TEST_P(PTestDoS, DoS_mapOrphans)
             tx.vin[j].prevout.n = j;
             tx.vin[j].prevout.hash = txPrev.GetHash();
         }
-        SignSignature(keystore, txPrev, tx, 0, SIGHASH_ALL, consensusBranchId);
+        SignSignature(keystore, txPrev, tx, 0, to_integral_type(SIGHASH::ALL), consensusBranchId);
         // Re-use same signature for other inputs
         // (they don't have to be valid for this test)
         for (unsigned int j = 1; j < tx.vin.size(); j++)

@@ -1,31 +1,13 @@
-#include <gtest/gtest.h>
-#include <gmock/gmock.h>
 #include <sodium.h>
+#include <mock_validation_state.h>
 
 #include "main.h"
 #include "primitives/transaction.h"
-#include "consensus/validation.h"
 
 using namespace testing;
 
-class MockCValidationState : public CValidationState {
-public:
-    MOCK_METHOD(bool, DoS, (int level, bool ret,
-             unsigned char chRejectCodeIn, std::string strRejectReasonIn,
-             bool corruptionIn), ());
-    MOCK_METHOD(bool, Invalid, (bool ret,
-                 unsigned char _chRejectCode, std::string _strRejectReason));
-    MOCK_METHOD(bool, Error, (std::string strRejectReasonIn), ());
-    MOCK_METHOD(bool, IsValid, (), (const));
-    MOCK_METHOD(bool, IsInvalid, (), (const));
-    MOCK_METHOD(bool, IsError, (), (const));
-    MOCK_METHOD(bool, IsInvalid, (int& nDoSOut), (const));
-    MOCK_METHOD(bool, CorruptionPossible, (), (const));
-    MOCK_METHOD(unsigned char, GetRejectCode, (), (const));
-    MOCK_METHOD(std::string, GetRejectReason, (), (const));
-};
-
-CMutableTransaction GetValidTransaction() {
+CMutableTransaction GetValidTransaction()
+{
     uint32_t consensusBranchId = SPROUT_BRANCH_ID;
 
     CMutableTransaction mtx;

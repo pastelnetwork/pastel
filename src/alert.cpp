@@ -1,20 +1,20 @@
 // Copyright (c) 2010 Satoshi Nakamoto
 // Copyright (c) 2009-2014 The Bitcoin Core developers
+// Copyright (c) 2018-2022 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
-// file COPYING or http://www.opensource.org/licenses/mit-license.php.
+// file COPYING or https://www.opensource.org/licenses/mit-license.php.
+
+#include <algorithm>
+#include <map>
+#include <stdint.h>
 
 #include "alert.h"
-
 #include "clientversion.h"
 #include "net.h"
 #include "pubkey.h"
 #include "timedata.h"
 #include "ui_interface.h"
 #include "util.h"
-
-#include <stdint.h>
-#include <algorithm>
-#include <map>
 
 #include <boost/algorithm/string/classification.hpp>
 #include <boost/algorithm/string/replace.hpp>
@@ -146,7 +146,7 @@ bool CAlert::RelayTo(CNode* pnode) const
     return false;
 }
 
-bool CAlert::CheckSignature(const std::vector<unsigned char>& alertKey) const
+bool CAlert::CheckSignature(const v_uint8 & alertKey) const
 {
     CPubKey key(alertKey);
     if (!key.Verify(Hash(vchMsg.begin(), vchMsg.end()), vchSig))
@@ -170,7 +170,7 @@ CAlert CAlert::getAlertByHash(const uint256 &hash)
     return retval;
 }
 
-bool CAlert::ProcessAlert(const std::vector<unsigned char>& alertKey, bool fThread)
+bool CAlert::ProcessAlert(const v_uint8 & alertKey, bool fThread)
 {
     if (!CheckSignature(alertKey))
         return false;

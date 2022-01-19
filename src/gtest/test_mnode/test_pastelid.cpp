@@ -1,13 +1,17 @@
-#include "pastelid/pastel_key.h"
-#include "fs.h"
-#include "util.h"
-#include "scope_guard.hpp"
-#include "chainparams.h"
-#include "test_utils.h"
-
-#include "gtest/gtest.h"
-#include <tuple>
+// Copyright (c) 2018-2022 The Pastel developers
+// Distributed under the MIT software license, see the accompanying
+// file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <string>
+#include <tuple>
+#include <gtest/gtest.h>
+#include <scope_guard.hpp>
+
+#include <pastelid/pastel_key.h>
+#include <fs.h>
+#include <util.h>
+#include <chainparams.h>
+#include <test_utils.h>
+#include <pastel_gtest_main.h>
 
 using namespace std;
 using namespace testing;
@@ -33,17 +37,15 @@ INSTANTIATE_TEST_SUITE_P(PastelID, PTest_PastelID_Alg,
 TEST(PastelID, GetStoredPastelIDs)
 {
     SelectParams(CBaseChainParams::Network::REGTEST);
-    auto sTempPath = generateTempFileName(nullptr);
-    auto tempPath = fs::path(sTempPath);
-    if (!fs::exists(tempPath))
-        fs::create_directories(tempPath);
+
+    string sTempPath = gl_pPastelTestEnv->GenerateTempDataDir();
     auto guard = sg::make_scope_guard([&]() noexcept 
     {
-        fs::remove_all(tempPath);
+        gl_pPastelTestEnv->ClearTempDataDir();
     });
-    mapArgs["-datadir"] = sTempPath;
+
     auto mapIDs = CPastelID::GetStoredPastelIDs(true);
-    EXPECT_TRUE(mapIDs.empty());
+    EXPECT_TRUE(mapIDs.empty()) << "Found some PastelIDs in [" << sTempPath << "]";
 
     const auto PASS1 = "passphrase1";
     const auto PASS2 = "passphrase2";

@@ -36,8 +36,6 @@
 
 #include <stdint.h>
 
-#include <boost/assign/list_of.hpp>
-
 #include <univalue.h>
 
 #include <numeric>
@@ -1220,7 +1218,7 @@ struct tallyitem
 {
     CAmount nAmount;
     int nConf;
-    vector<uint256> txids;
+    v_uint256 txids;
     bool fIsWatchonly;
     tallyitem()
     {
@@ -2267,9 +2265,9 @@ UniValue lockunspent(const UniValue& params, bool fHelp)
     LOCK2(cs_main, pwalletMain->cs_wallet);
 
     if (params.size() == 1)
-        RPCTypeCheck(params, boost::assign::list_of(UniValue::VBOOL));
+        RPCTypeCheck(params, {UniValue::VBOOL});
     else
-        RPCTypeCheck(params, boost::assign::list_of(UniValue::VBOOL)(UniValue::VARR));
+        RPCTypeCheck(params, {UniValue::VBOOL, UniValue::VARR});
 
     bool fUnlock = params[0].get_bool();
 
@@ -2286,7 +2284,8 @@ UniValue lockunspent(const UniValue& params, bool fHelp)
             throw JSONRPCError(RPC_INVALID_PARAMETER, "Invalid parameter, expected object");
         const UniValue& o = output.get_obj();
 
-        RPCTypeCheckObj(o, boost::assign::map_list_of("txid", UniValue::VSTR)("vout", UniValue::VNUM));
+        RPCTypeCheckObj(o, {
+            {"txid", UniValue::VSTR}, {"vout", UniValue::VNUM}});
 
         string txid = find_value(o, "txid").get_str();
         if (!IsHex(txid))
@@ -2446,7 +2445,7 @@ UniValue resendwallettransactions(const UniValue& params, bool fHelp)
 
     LOCK2(cs_main, pwalletMain->cs_wallet);
 
-    std::vector<uint256> txids = pwalletMain->ResendWalletTransactionsBefore(GetTime());
+    v_uint256 txids = pwalletMain->ResendWalletTransactionsBefore(GetTime());
     UniValue result(UniValue::VARR);
     for (const auto& txid : txids)
         result.push_back(txid.ToString());
@@ -2501,7 +2500,7 @@ Examples
     + HelpExampleRpc("listunspent", "6, 9999999 \"[\\\"PtczsZ91Bt3oDPDQotzUsrx1wjmsFVgf28n\\\",\\\"PtczsZ91Bt3oDPDQotzUsrx1wjmsFVgf28n\\\"]\"")
 );
 
-    RPCTypeCheck(params, boost::assign::list_of(UniValue::VNUM)(UniValue::VNUM)(UniValue::VARR));
+    RPCTypeCheck(params, {UniValue::VNUM, UniValue::VNUM, UniValue::VARR});
 
     int nMinDepth = 1;
     if (params.size() > 0)
@@ -2628,7 +2627,7 @@ Examples:
     + HelpExampleRpc("z_listunspent", "6 9999999 false \"[\\\"Pzb8Ya6owSbT1EWKistVWFAEVXerZLi5nfuar8DqRZ2tkwHgvTP6GT8H6EaFf6wCnY7zwtbtnc7EcTGTfg9GdmNnV2xuYS3\\\",\\\"PzSSk8QJFqjo133DoFZvn9wwcCxt5RYeeLFJZRgws6xgJ3LroqRgXKNkhkG3ENmC8oe82UTr3PHcQB9mw7DSLXhyP6atQQ5\\\"]\"")
 );
 
-    RPCTypeCheck(params, boost::assign::list_of(UniValue::VNUM)(UniValue::VNUM)(UniValue::VBOOL)(UniValue::VARR));
+    RPCTypeCheck(params, {UniValue::VNUM, UniValue::VNUM, UniValue::VBOOL, UniValue::VARR});
 
     int nMinDepth = 1;
     if (params.size() > 0) {
@@ -2757,7 +2756,7 @@ Create a transaction with no inputs
     + HelpExampleCli("sendrawtransaction", "\"signedtransactionhex\"")
 );
 
-    RPCTypeCheck(params, boost::assign::list_of(UniValue::VSTR));
+    RPCTypeCheck(params, {UniValue::VSTR});
 
     // parse hex string from parameter
     CTransaction origTx;
@@ -2837,20 +2836,17 @@ UniValue zc_benchmark(const UniValue& params, bool fHelp)
             }
             sample_times.push_back(benchmark_large_tx(nInputs));
         } else if (benchmarktype == "connectblockslow") {
-            if (Params().NetworkIDString() != "regtest") {
+            if (!Params().IsRegTest())
                 throw JSONRPCError(RPC_TYPE_ERROR, "Benchmark must be run in regtest mode");
-            }
             sample_times.push_back(benchmark_connectblock_slow());
         } else if (benchmarktype == "sendtoaddress") {
-            if (Params().NetworkIDString() != "regtest") {
+            if (!Params().IsRegTest())
                 throw JSONRPCError(RPC_TYPE_ERROR, "Benchmark must be run in regtest mode");
-            }
             auto amount = AmountFromValue(params[2]);
             sample_times.push_back(benchmark_sendtoaddress(amount));
         } else if (benchmarktype == "loadwallet") {
-            if (Params().NetworkIDString() != "regtest") {
+            if (!Params().IsRegTest())
                 throw JSONRPCError(RPC_TYPE_ERROR, "Benchmark must be run in regtest mode");
-            }
             sample_times.push_back(benchmark_loadwallet());
         } else if (benchmarktype == "listunspent") {
             sample_times.push_back(benchmark_listunspent());

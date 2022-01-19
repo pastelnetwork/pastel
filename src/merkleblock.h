@@ -54,10 +54,10 @@ protected:
     unsigned int nTransactions;
 
     /** node-is-parent-of-matched-txid bits */
-    std::vector<bool> vBits;
+    v_bools vBits;
 
     /** txids and internal hashes */
-    std::vector<uint256> vHash;
+    v_uint256 vHash;
 
     /** flag set when encountering invalid data */
     bool fBad;
@@ -68,16 +68,16 @@ protected:
     }
 
     /** calculate the hash of a node in the merkle tree (at leaf level: the txid itself) */
-    uint256 CalcHash(int height, unsigned int pos, const std::vector<uint256> &vTxid);
+    uint256 CalcHash(int height, unsigned int pos, const v_uint256& vTxid);
 
     /** recursive function that traverses tree nodes, storing the data as bits and hashes */
-    void TraverseAndBuild(int height, unsigned int pos, const std::vector<uint256> &vTxid, const std::vector<bool> &vMatch);
+    void TraverseAndBuild(int height, unsigned int pos, const v_uint256& vTxid, const v_bools& vMatch);
 
     /**
      * recursive function that traverses tree nodes, consuming the bits and hashes produced by TraverseAndBuild.
      * it returns the hash of the respective node.
      */
-    uint256 TraverseAndExtract(int height, unsigned int pos, unsigned int &nBitsUsed, unsigned int &nHashUsed, std::vector<uint256> &vMatch);
+    uint256 TraverseAndExtract(int height, unsigned int pos, unsigned int& nBitsUsed, unsigned int& nHashUsed, v_uint256& vMatch);
 
 public:
 
@@ -89,7 +89,7 @@ public:
     {
         READWRITE(nTransactions);
         READWRITE(vHash);
-        std::vector<unsigned char> vBytes;
+        v_uint8 vBytes;
         if (ser_action == SERIALIZE_ACTION::Read)
         {
             READWRITE(vBytes);
@@ -107,7 +107,7 @@ public:
     }
 
     /** Construct a partial merkle tree from a list of transaction ids, and a mask that selects a subset of them */
-    CPartialMerkleTree(const std::vector<uint256> &vTxid, const std::vector<bool> &vMatch);
+    CPartialMerkleTree(const v_uint256& vTxid, const v_bools& vMatch);
 
     CPartialMerkleTree();
 
@@ -115,7 +115,7 @@ public:
      * extract the matching txid's represented by this partial merkle tree.
      * returns the merkle root, or 0 in case of failure
      */
-    uint256 ExtractMatches(std::vector<uint256> &vMatch);
+    uint256 ExtractMatches(v_uint256& vMatch);
 };
 
 
