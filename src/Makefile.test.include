@@ -43,10 +43,6 @@ GENERATED_TEST_FILES = $(JSON_TEST_FILES:.json=.json.h)
 
 BITCOIN_TESTS =\
   test/bignum.h \
-  test/policyestimator_tests.cpp \
-  test/pow_tests.cpp \
-  test/prevector_tests.cpp \
-  test/reverselock_tests.cpp \
   test/rpc_tests.cpp \
   test/scheduler_tests.cpp \
   test/script_P2SH_tests.cpp \

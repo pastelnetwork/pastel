@@ -152,11 +152,14 @@
     <ClCompile Include="..\..\..\src\gtest\test_noteencryption.cpp" />
     <ClCompile Include="..\..\..\src\gtest\test_numeric_range.cpp" />
     <ClCompile Include="..\..\..\src\gtest\test_pedersen_hash.cpp" />
+    <ClCompile Include="..\..\..\src\gtest\test_policyestimator.cpp" />
     <ClCompile Include="..\..\..\src\gtest\test_pmt.cpp" />
     <ClCompile Include="..\..\..\src\gtest\test_pow.cpp" />
+    <ClCompile Include="..\..\..\src\gtest\test_prevector.cpp" />
     <ClCompile Include="..\..\..\src\gtest\test_proofs.cpp" />
     <ClCompile Include="..\..\..\src\gtest\test_raii_event.cpp" />
     <ClCompile Include="..\..\..\src\gtest\test_random.cpp" />
+    <ClCompile Include="..\..\..\src\gtest\test_reverselock.cpp" />
     <ClCompile Include="..\..\..\src\gtest\test_rpc.cpp" />
     <ClCompile Include="..\..\..\src\gtest\test_sanity.cpp" />
     <ClCompile Include="..\..\..\src\gtest\test_sapling_note.cpp" />

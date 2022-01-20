@@ -1,23 +1,23 @@
 // Copyright (c) 2015 The Bitcoin Core developers
+// Copyright (c) 2021 The Pastel developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
 #include <vector>
+
+#include <gtest/gtest.h>
+
 #include "prevector.h"
 #include "random.h"
-
 #include "serialize.h"
 #include "streams.h"
 
-#include "test/test_bitcoin.h"
-
-#include <boost/test/unit_test.hpp>
-
-BOOST_FIXTURE_TEST_SUITE(PrevectorTests, TestingSetup)
+using namespace std;
+using namespace testing;
 
 template<unsigned int N, typename T>
 class prevector_tester {
-    typedef std::vector<T> realtype;
+    typedef vector<T> realtype;
     realtype real_vector;
 
     typedef prevector<N, T> pretype;
@@ -27,58 +27,58 @@ class prevector_tester {
 
     void test() {
         const pretype& const_pre_vector = pre_vector;
-        BOOST_CHECK_EQUAL(real_vector.size(), pre_vector.size());
-        BOOST_CHECK_EQUAL(real_vector.empty(), pre_vector.empty());
+        EXPECT_EQ(real_vector.size(), pre_vector.size());
+        EXPECT_EQ(real_vector.empty(), pre_vector.empty());
         for (Size s = 0; s < real_vector.size(); s++) {
-             BOOST_CHECK(real_vector[s] == pre_vector[s]);
-             BOOST_CHECK(&(pre_vector[s]) == &(pre_vector.begin()[s]));
-             BOOST_CHECK(&(pre_vector[s]) == &*(pre_vector.begin() + s));
-             BOOST_CHECK(&(pre_vector[s]) == &*((pre_vector.end() + s) - real_vector.size()));
+             EXPECT_EQ(real_vector[s] , pre_vector[s]);
+             EXPECT_EQ(&(pre_vector[s]) , &(pre_vector.begin()[s]));
+             EXPECT_EQ(&(pre_vector[s]) , &*(pre_vector.begin() + s));
+             EXPECT_EQ(&(pre_vector[s]) , &*((pre_vector.end() + s) - real_vector.size()));
         }
         // BOOST_CHECK(realtype(pre_vector) == real_vector);
-        BOOST_CHECK(pretype(real_vector.begin(), real_vector.end()) == pre_vector);
-        BOOST_CHECK(pretype(pre_vector.begin(), pre_vector.end()) == pre_vector);
+        EXPECT_EQ(pretype(real_vector.begin(), real_vector.end()) , pre_vector);
+        EXPECT_EQ(pretype(pre_vector.begin(), pre_vector.end()) , pre_vector);
         size_t pos = 0;
         for (const T& v : pre_vector)
 	{
-             BOOST_CHECK(v == real_vector[pos++]);
+             EXPECT_EQ(v , real_vector[pos++]);
         }
         for (auto it = pre_vector.rbegin(); it != pre_vector.rend(); ++it)
 	{
-             BOOST_CHECK(*it == real_vector[--pos]);
+             EXPECT_EQ(*it , real_vector[--pos]);
         }
         for (const T& v : const_pre_vector)
 	{
-             BOOST_CHECK(v == real_vector[pos++]);
+             EXPECT_EQ(v , real_vector[pos++]);
         }
         for (auto it = const_pre_vector.rbegin(); it != const_pre_vector.rend(); ++it)
 	{
-             BOOST_CHECK(*it == real_vector[--pos]);
+             EXPECT_EQ(*it , real_vector[--pos]);
         }
         CDataStream ss1(SER_DISK, 0);
         CDataStream ss2(SER_DISK, 0);
         ss1 << real_vector;
         ss2 << pre_vector;
-        BOOST_CHECK_EQUAL(ss1.size(), ss2.size());
+        EXPECT_EQ(ss1.size(), ss2.size());
         for (Size s = 0; s < ss1.size(); s++) {
-            BOOST_CHECK_EQUAL(ss1[s], ss2[s]);
+            EXPECT_EQ(ss1[s], ss2[s]);
         }
     }
 
 public:
     void resize(Size s) {
         real_vector.resize(s);
-        BOOST_CHECK_EQUAL(real_vector.size(), s);
+        EXPECT_EQ(real_vector.size(), s);
         pre_vector.resize(s);
-        BOOST_CHECK_EQUAL(pre_vector.size(), s);
+        EXPECT_EQ(pre_vector.size(), s);
         test();
     }
 
     void reserve(Size s) {
         real_vector.reserve(s);
-        BOOST_CHECK(real_vector.capacity() >= s);
+        EXPECT_TRUE(real_vector.capacity() >= s);
         pre_vector.reserve(s);
-        BOOST_CHECK(pre_vector.capacity() >= s);
+        EXPECT_TRUE(pre_vector.capacity() >= s);
         test();
     }
 
@@ -155,7 +155,7 @@ public:
     }
 };
 
-BOOST_AUTO_TEST_CASE(PrevectorTestInt)
+TEST(test_prevector, PrevectorTestInt)
 {
     for (int j = 0; j < 64; j++) {
         prevector_tester<8, int> test;
@@ -168,14 +168,14 @@ BOOST_AUTO_TEST_CASE(PrevectorTestInt)
                 test.erase(insecure_rand() % test.size());
             }
             if (((r >> 4) % 8) == 2) {
-                int new_size = std::max<int>(0, std::min<int>(30, test.size() + (insecure_rand() % 5) - 2));
+                int new_size = max<int>(0, min<int>(30, test.size() + (insecure_rand() % 5) - 2));
                 test.resize(new_size);
             }
             if (((r >> 7) % 8) == 3) {
                 test.insert(insecure_rand() % (test.size() + 1), 1 + (insecure_rand() % 2), insecure_rand());
             }
             if (((r >> 10) % 8) == 4) {
-                int del = std::min<int>(test.size(), 1 + (insecure_rand() % 2));
+                int del = min<int>(test.size(), 1 + (insecure_rand() % 2));
                 int beg = insecure_rand() % (test.size() + 1 - del);
                 test.erase(beg, beg + del);
             }
@@ -194,7 +194,7 @@ BOOST_AUTO_TEST_CASE(PrevectorTestInt)
                 test.insert_range(insecure_rand() % (test.size() + 1), values, values + num);
             }
             if (((r >> 26) % 32) == 8) {
-                int del = std::min<int>(test.size(), 1 + (insecure_rand() % 4));
+                int del = min<int>(test.size(), 1 + (insecure_rand() % 4));
                 int beg = insecure_rand() % (test.size() + 1 - del);
                 test.erase(beg, beg + del);
             }
@@ -217,5 +217,3 @@ BOOST_AUTO_TEST_CASE(PrevectorTestInt)
         }
     }
 }
-
-BOOST_AUTO_TEST_SUITE_END()

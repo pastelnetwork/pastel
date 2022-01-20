@@ -1,19 +1,20 @@
 // Copyright (c) 2011-2015 The Bitcoin Core developers
+// Copyright (c) 2021 The Pastel developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
+#include <gtest/gtest.h>
+
+#include "test_mempool_entryhelper.h"
 #include "policy/fees.h"
 #include "txmempool.h"
 #include "uint256.h"
 #include "util.h"
 
-#include "test/test_bitcoin.h"
+using namespace std;
+using namespace testing;
 
-#include <boost/test/unit_test.hpp>
-
-BOOST_FIXTURE_TEST_SUITE(policyestimator_tests, BasicTestingSetup)
-
-BOOST_AUTO_TEST_CASE(BlockPolicyEstimates)
+TEST(test_policyestimator, BlockPolicyEstimates)
 {
     CTxMemPool mpool(CFeeRate(1000));
     TestMemPoolEntryHelper entry;
@@ -21,8 +22,8 @@ BOOST_AUTO_TEST_CASE(BlockPolicyEstimates)
     double basepri = 1e6;
     CAmount deltaFee(100);
     double deltaPri=5e5;
-    std::vector<CAmount> feeV[2];
-    std::vector<double> priV[2];
+    vector<CAmount> feeV[2];
+    v_doubles priV[2];
 
     // Populate vectors of increasing fees or priorities
     for (int j = 0; j < 10; j++) {
@@ -38,14 +39,14 @@ BOOST_AUTO_TEST_CASE(BlockPolicyEstimates)
     // added to the mempool by their associate fee/pri
     // txHashes[j] is populated with transactions either of
     // fee = basefee * (j+1)  OR  pri = 10^6 * 10^(j+1)
-    std::vector<uint256> txHashes[10];
+    vector<uint256> txHashes[10];
 
     // Create a transaction template
     CScript garbage;
     for (unsigned int i = 0; i < 128; i++)
         garbage.push_back('X');
     CMutableTransaction tx;
-    std::list<CTransaction> dummyConflicted;
+    list<CTransaction> dummyConflicted;
     tx.vin.resize(1);
     tx.vin[0].scriptSig = garbage;
     tx.vout.resize(1);
@@ -53,7 +54,7 @@ BOOST_AUTO_TEST_CASE(BlockPolicyEstimates)
     CFeeRate baseRate(basefee, ::GetSerializeSize(tx, SER_NETWORK, PROTOCOL_VERSION));
 
     // Create a fake block
-    std::vector<CTransaction> block;
+    vector<CTransaction> block;
     int blocknum = 0;
 
     // Loop through 200 blocks
@@ -86,14 +87,14 @@ BOOST_AUTO_TEST_CASE(BlockPolicyEstimates)
             // At this point we should need to combine 5 buckets to get enough data points
             // So estimateFee(1) should fail and estimateFee(2) should return somewhere around
             // 8*baserate
-            BOOST_CHECK(mpool.estimateFee(1) == CFeeRate(0));
-            BOOST_CHECK(mpool.estimateFee(2).GetFeePerK() < 8*baseRate.GetFeePerK() + deltaFee);
-            BOOST_CHECK(mpool.estimateFee(2).GetFeePerK() > 8*baseRate.GetFeePerK() - deltaFee);
+            EXPECT_EQ(mpool.estimateFee(1) , CFeeRate(0));
+            EXPECT_TRUE(mpool.estimateFee(2).GetFeePerK() < 8*baseRate.GetFeePerK() + deltaFee);
+            EXPECT_TRUE(mpool.estimateFee(2).GetFeePerK() > 8*baseRate.GetFeePerK() - deltaFee);
         }
     }
 
-    std::vector<CAmount> origFeeEst;
-    std::vector<double> origPriEst;
+    vector<CAmount> origFeeEst;
+    v_doubles origPriEst;
     // Highest feerate is 10*baseRate and gets in all blocks,
     // second highest feerate is 9*baseRate and gets in 9/10 blocks = 90%,
     // third highest feerate is 8*base rate, and gets in 8/10 blocks = 80%,
@@ -104,13 +105,13 @@ BOOST_AUTO_TEST_CASE(BlockPolicyEstimates)
         origFeeEst.push_back(mpool.estimateFee(i).GetFeePerK());
         origPriEst.push_back(mpool.estimatePriority(i));
         if (i > 1) { // Fee estimates should be monotonically decreasing
-            BOOST_CHECK(origFeeEst[i-1] <= origFeeEst[i-2]);
-            BOOST_CHECK(origPriEst[i-1] <= origPriEst[i-2]);
+            EXPECT_TRUE(origFeeEst[i-1] <= origFeeEst[i-2]);
+            EXPECT_TRUE(origPriEst[i-1] <= origPriEst[i-2]);
         }
-        BOOST_CHECK(origFeeEst[i-1] < (10-i)*baseRate.GetFeePerK() + deltaFee);
-        BOOST_CHECK(origFeeEst[i-1] > (10-i)*baseRate.GetFeePerK() - deltaFee);
-        BOOST_CHECK(origPriEst[i-1] < pow(10,10-i) * basepri + deltaPri);
-        BOOST_CHECK(origPriEst[i-1] > pow(10,10-i) * basepri - deltaPri);
+        EXPECT_TRUE(origFeeEst[i-1] < (10-i)*baseRate.GetFeePerK() + deltaFee);
+        EXPECT_TRUE(origFeeEst[i-1] > (10-i)*baseRate.GetFeePerK() - deltaFee);
+        EXPECT_TRUE(origPriEst[i-1] < pow(10,10-i) * basepri + deltaPri);
+        EXPECT_TRUE(origPriEst[i-1] > pow(10,10-i) * basepri - deltaPri);
     }
 
     // Mine 50 more blocks with no transactions happening, estimates shouldn't change
@@ -119,10 +120,10 @@ BOOST_AUTO_TEST_CASE(BlockPolicyEstimates)
         mpool.removeForBlock(block, ++blocknum, dummyConflicted);
 
     for (int i = 1; i < 10;i++) {
-        BOOST_CHECK(mpool.estimateFee(i).GetFeePerK() < origFeeEst[i-1] + deltaFee);
-        BOOST_CHECK(mpool.estimateFee(i).GetFeePerK() > origFeeEst[i-1] - deltaFee);
-        BOOST_CHECK(mpool.estimatePriority(i) < origPriEst[i-1] + deltaPri);
-        BOOST_CHECK(mpool.estimatePriority(i) > origPriEst[i-1] - deltaPri);
+        EXPECT_TRUE(mpool.estimateFee(i).GetFeePerK() < origFeeEst[i-1] + deltaFee);
+        EXPECT_TRUE(mpool.estimateFee(i).GetFeePerK() > origFeeEst[i-1] - deltaFee);
+        EXPECT_TRUE(mpool.estimatePriority(i) < origPriEst[i-1] + deltaPri);
+        EXPECT_TRUE(mpool.estimatePriority(i) > origPriEst[i-1] - deltaPri);
     }
 
 
@@ -141,8 +142,8 @@ BOOST_AUTO_TEST_CASE(BlockPolicyEstimates)
     }
 
     for (int i = 1; i < 10;i++) {
-        BOOST_CHECK(mpool.estimateFee(i).GetFeePerK() > origFeeEst[i-1] - deltaFee);
-        BOOST_CHECK(mpool.estimatePriority(i) > origPriEst[i-1] - deltaPri);
+        EXPECT_TRUE(mpool.estimateFee(i).GetFeePerK() > origFeeEst[i-1] - deltaFee);
+        EXPECT_TRUE(mpool.estimatePriority(i) > origPriEst[i-1] - deltaPri);
     }
 
     // Mine all those transactions
@@ -158,8 +159,8 @@ BOOST_AUTO_TEST_CASE(BlockPolicyEstimates)
     mpool.removeForBlock(block, 265, dummyConflicted);
     block.clear();
     for (int i = 1; i < 10;i++) {
-        BOOST_CHECK(mpool.estimateFee(i).GetFeePerK() > origFeeEst[i-1] - deltaFee);
-        BOOST_CHECK(mpool.estimatePriority(i) > origPriEst[i-1] - deltaPri);
+        EXPECT_TRUE(mpool.estimateFee(i).GetFeePerK() > origFeeEst[i-1] - deltaFee);
+        EXPECT_TRUE(mpool.estimatePriority(i) > origPriEst[i-1] - deltaPri);
     }
 
     // Mine 100 more blocks where everything is mined every block
@@ -179,30 +180,28 @@ BOOST_AUTO_TEST_CASE(BlockPolicyEstimates)
         block.clear();
     }
     for (int i = 1; i < 9; i++) {
-        BOOST_CHECK(mpool.estimateFee(i).GetFeePerK() < origFeeEst[i-1] - deltaFee);
-        BOOST_CHECK(mpool.estimatePriority(i) < origPriEst[i-1] - deltaPri);
+        EXPECT_TRUE(mpool.estimateFee(i).GetFeePerK() < origFeeEst[i-1] - deltaFee);
+        EXPECT_TRUE(mpool.estimatePriority(i) < origPriEst[i-1] - deltaPri);
     }
 }
 
 
-BOOST_AUTO_TEST_CASE(TxConfirmStats_FindBucketIndex)
+TEST(test_policyestimator, TxConfirmStats_FindBucketIndex)
 {
-    std::vector<double> buckets {0.0, 3.5, 42.0};
+    v_doubles buckets {0.0, 3.5, 42.0};
     TxConfirmStats txcs;
 
     txcs.Initialize(buckets, MAX_BLOCK_CONFIRMS, DEFAULT_DECAY, "Test");
 
-    BOOST_CHECK_EQUAL(txcs.FindBucketIndex(-1.0), 0);
-    BOOST_CHECK_EQUAL(txcs.FindBucketIndex(0.0), 0);
-    BOOST_CHECK_EQUAL(txcs.FindBucketIndex(1.0), 1);
-    BOOST_CHECK_EQUAL(txcs.FindBucketIndex(3.5), 1);
-    BOOST_CHECK_EQUAL(txcs.FindBucketIndex(4.0), 2);
-    BOOST_CHECK_EQUAL(txcs.FindBucketIndex(43.0), 3);
-    BOOST_CHECK_EQUAL(txcs.FindBucketIndex(INF_FEERATE), 3);
-    BOOST_CHECK_EQUAL(txcs.FindBucketIndex(2.0*INF_FEERATE), 3);
-    BOOST_CHECK_EQUAL(txcs.FindBucketIndex(std::numeric_limits<double>::infinity()), 3);
-    BOOST_CHECK_EQUAL(txcs.FindBucketIndex(2.0*std::numeric_limits<double>::infinity()), 3);
-    BOOST_CHECK_EQUAL(txcs.FindBucketIndex(nan("")), 0);
+    EXPECT_EQ(txcs.FindBucketIndex(-1.0), 0U);
+    EXPECT_EQ(txcs.FindBucketIndex(0.0), 0U);
+    EXPECT_EQ(txcs.FindBucketIndex(1.0), 1U);
+    EXPECT_EQ(txcs.FindBucketIndex(3.5), 1U);
+    EXPECT_EQ(txcs.FindBucketIndex(4.0), 2U);
+    EXPECT_EQ(txcs.FindBucketIndex(43.0), 3U);
+    EXPECT_EQ(txcs.FindBucketIndex(INF_FEERATE), 3U);
+    EXPECT_EQ(txcs.FindBucketIndex(2.0*INF_FEERATE), 3U);
+    EXPECT_EQ(txcs.FindBucketIndex(numeric_limits<double>::infinity()), 3U);
+    EXPECT_EQ(txcs.FindBucketIndex(2.0*numeric_limits<double>::infinity()), 3U);
+    EXPECT_EQ(txcs.FindBucketIndex(nan("")), 0U);
 }
-
-BOOST_AUTO_TEST_SUITE_END()
