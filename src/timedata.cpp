@@ -22,13 +22,13 @@ static int64_t nTimeOffset = 0;
  *  - Median of other nodes clocks
  *  - The user (asking the user to fix the system clock if the first two disagree)
  */
-int64_t GetTimeOffset()
+int64_t GetTimeOffset() noexcept
 {
     LOCK(cs_nTimeOffset);
     return nTimeOffset;
 }
 
-int64_t GetAdjustedTime()
+int64_t GetAdjustedTime() noexcept
 {
     return GetTime() + GetTimeOffset();
 }

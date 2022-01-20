@@ -277,6 +277,9 @@
     <ClCompile Include="..\..\..\src\gtest\test_enum_util.cpp">
       <Filter>UnitTest Files</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\..\src\gtest\test_rpccmd_parser.cpp">
+      <Filter>UnitTest Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\..\src\gtest\json_test_vectors.h">

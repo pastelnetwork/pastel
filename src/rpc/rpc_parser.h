@@ -1,17 +1,17 @@
 #pragma once
-// Copyright (c) 2021 Pastel Core developers
+// Copyright (c) 2021-2022 Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 
-#include "enum_util.h"
-#include "tinyformat.h"
-#include "rpc/protocol.h"
-#include "core_io.h"
-#include "str_utils.h"
-
+#include <sstream>
 #include <string>
 #include <unordered_map>
-#include <sstream>
+
+#include <enum_util.h>
+#include <tinyformat.h>
+#include <rpc/protocol.h>
+#include <core_io.h>
+#include <str_utils.h>
 
 template <typename RPC_CMD_ENUM>
 class RPCCommandParser
@@ -24,8 +24,14 @@ public:
     {
         std::string error;
         if (!ParseCmdList(error, szCmdList))
-            throw JSONRPCError(RPC_MISC_ERROR, "Failed to parse rpc command list. " + error);
+            throw JSONRPCError(RPC_MISC_ERROR, "Failed to parse the list of RPC commands. " + error);
         ParseParams();
+    }
+
+    // returns number of supported commands
+    constexpr size_t size()
+    {
+        return to_integral_type<RPC_CMD_ENUM>(RPC_CMD_ENUM::rpc_command_count) - 1;
     }
 
     // returns rpc command (enumeration type)
@@ -35,26 +41,42 @@ public:
     // returns true if cmd was passed
     bool IsCmd(const RPC_CMD_ENUM& cmd) const noexcept { return m_Cmd == cmd; }
 
+    // typecheck helper
+    template<typename... Ts>
+    using AllRpcCmdEnums = typename std::enable_if_t<std::conjunction_v<std::is_same<Ts, RPC_CMD_ENUM>...>>;
+
+    // returns true if cmd equals any of the parameters (all params should have RPC_CMD_ENUM type)
+    // function is enabled if all Ts... have the same type as RPC_CMD_ENUM
+    template <typename T, typename... Ts, typename = AllRpcCmdEnums<Ts...>>
+    bool IsCmdAnyOf(const T cmd1, Ts... xs) const noexcept
+    {
+        if (IsCmd(cmd1))
+            return true;
+        if constexpr (sizeof... (xs) > 0)
+            return IsCmdAnyOf(xs...);
+        return false;
+    }
+
 protected:
+    // map of supported RPC commands <name> -> <enum>
     using map_cmdenum_t = std::unordered_map<std::string, RPC_CMD_ENUM>;
 
     bool ParseCmdList(std::string &error, const char* szCmdList)
     {
         error.clear();
-        if (!szCmdList)
+        if (!szCmdList || !*szCmdList)
         {
-            error = "rpc command list is empty";
+            error = "RPC command list is empty";
             return false;
         }
         m_CmdMap.clear();
         std::string sCmdList(szCmdList), sToken;
         std::istringstream tokenStream(sCmdList);
         auto nCmdNo = to_integral_type<RPC_CMD_ENUM>(RPC_CMD_ENUM::unknown);
-        const auto nMaxCmdNo = to_integral_type<RPC_CMD_ENUM>(RPC_CMD_ENUM::max_command_count);
         bool bRet = true;
         while (std::getline(tokenStream, sToken, ','))
         {
-            if (++nCmdNo >= nMaxCmdNo)
+            if (++nCmdNo > size())
             {
                 bRet = false;
                 break;
@@ -65,10 +87,10 @@ protected:
             replaceAll(sToken, "__", "-");
             m_CmdMap.emplace(sToken, static_cast<RPC_CMD_ENUM>(nCmdNo));
         }
-        if (nCmdNo + 1 != nMaxCmdNo)
+        if (nCmdNo != size())
             bRet = false;
         if (!bRet)
-            error = tfm::format("Failed to parser the list of rpc commands [%s] - mismatch", szCmdList);
+            error = strprintf("RPC enum mismatch [%s]", szCmdList);
         return bRet;
     }
 
@@ -105,15 +127,16 @@ protected:
 // special syntax for commands that contain hyphen (-):
 //      find-all -> find__all
 // double underscore is replaced by single hyphen in the command name
-#define RPC_CMD_PARSER(command,params,...) \
-    enum class RPC_CMD_##command : uint32_t{unknown = 0, __VA_ARGS__, max_command_count}; \
+#define RPC_CMD_PARSER(command, params, ...) \
+    enum class RPC_CMD_##command : uint32_t \
+    { unknown = 0, __VA_ARGS__, rpc_command_count }; \
     RPCCommandParser<RPC_CMD_##command> command(params, 0, #__VA_ARGS__);
 
 // parse second command in params (UniValue array)
 // examples:
 //     RPC_CMD_PARSER2(LIST, params, id, art, act, sell, buy, trade, down)
-#define RPC_CMD_PARSER2(command,params,...) \
+#define RPC_CMD_PARSER2(command, params, ...) \
     enum class RPC_CMD_##command : uint32_t \
-    { unknown = 0, __VA_ARGS__, max_command_count }; \
+    { unknown = 0, __VA_ARGS__, rpc_command_count }; \
     RPCCommandParser<RPC_CMD_##command> command(params, 1, #__VA_ARGS__);
 
