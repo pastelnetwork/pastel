@@ -22,21 +22,19 @@
 using namespace std;
 using namespace testing;
 
-typedef vector<unsigned char> valtype;
-
 
 CScript
 sign_multisig(CScript scriptPubKey, vector<CKey> keys, CTransaction transaction, int whichIn, uint32_t consensusBranchId)
 {
-    uint256 hash = SignatureHash(scriptPubKey, transaction, whichIn, SIGHASH_ALL, 0, consensusBranchId);
+    uint256 hash = SignatureHash(scriptPubKey, transaction, whichIn, to_integral_type(SIGHASH::ALL), 0, consensusBranchId);
 
     CScript result;
     result << OP_0; // CHECKMULTISIG bug workaround
     for (const auto &key : keys)
     {
-        vector<unsigned char> vchSig;
+        v_uint8 vchSig;
         EXPECT_TRUE(key.Sign(hash, vchSig));
-        vchSig.push_back((unsigned char)SIGHASH_ALL);
+        vchSig.push_back(to_integral_type(SIGHASH::ALL));
         result << vchSig;
     }
     return result;
@@ -195,7 +193,7 @@ TEST_P(PTest_Multisig, multisig_Sign)
 
     for (int i = 0; i < 3; i++)
     {
-        EXPECT_TRUE(SignSignature(keystore, txFrom, txTo[i], 0, SIGHASH_ALL, consensusBranchId))<< strprintf("SignSignature %d", i);
+        EXPECT_TRUE(SignSignature(keystore, txFrom, txTo[i], 0, to_integral_type(SIGHASH::ALL), consensusBranchId))<< strprintf("SignSignature %d", i);
     }
 }
 
@@ -263,7 +261,7 @@ TEST(PTest_Multisig, multisig_Solver1)
     partialkeystore.AddKey(key[0]);
 
     {
-        vector<valtype> solutions;
+        vector<v_uint8> solutions;
         txnouttype whichType;
         CScript s;
         s << ToByteVector(key[0].GetPubKey()) << OP_CHECKSIG;
@@ -278,7 +276,7 @@ TEST(PTest_Multisig, multisig_Solver1)
 #endif
     }
     {
-        vector<valtype> solutions;
+        vector<v_uint8> solutions;
         txnouttype whichType;
         CScript s;
         s << OP_DUP << OP_HASH160 << ToByteVector(key[0].GetPubKey().GetID()) << OP_EQUALVERIFY << OP_CHECKSIG;
@@ -293,7 +291,7 @@ TEST(PTest_Multisig, multisig_Solver1)
 #endif
     }
     {
-        vector<valtype> solutions;
+        vector<v_uint8> solutions;
         txnouttype whichType;
         CScript s;
         s << OP_2 << ToByteVector(key[0].GetPubKey()) << ToByteVector(key[1].GetPubKey()) << OP_2 << OP_CHECKMULTISIG;
@@ -308,7 +306,7 @@ TEST(PTest_Multisig, multisig_Solver1)
 #endif
     }
     {
-        vector<valtype> solutions;
+        vector<v_uint8> solutions;
         txnouttype whichType;
         CScript s;
         s << OP_1 << ToByteVector(key[0].GetPubKey()) << ToByteVector(key[1].GetPubKey()) << OP_2 << OP_CHECKMULTISIG;
@@ -327,7 +325,7 @@ TEST(PTest_Multisig, multisig_Solver1)
 #endif
     }
     {
-        vector<valtype> solutions;
+        vector<v_uint8> solutions;
         txnouttype whichType;
         CScript s;
         s << OP_2 << ToByteVector(key[0].GetPubKey()) << ToByteVector(key[1].GetPubKey()) << ToByteVector(key[2].GetPubKey()) << OP_3 << OP_CHECKMULTISIG;

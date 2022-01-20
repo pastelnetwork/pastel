@@ -24,11 +24,11 @@
 static const unsigned int MAX_SCRIPT_ELEMENT_SIZE = 520; // bytes
 
 // Maximum script length in bytes
-static const int MAX_SCRIPT_SIZE = 10000;
+constexpr int MAX_SCRIPT_SIZE = 10'000;
 
 // Threshold for nLockTime: below this value it is interpreted as block number,
 // otherwise as UNIX timestamp.
-static const unsigned int LOCKTIME_THRESHOLD = 500000000; // Tue Nov  5 00:53:20 1985 UTC
+constexpr unsigned int LOCKTIME_THRESHOLD = 500'000'000; // Tue Nov  5 00:53:20 1985 UTC
 
 template <typename T>
 v_uint8 ToByteVector(const T& in)

@@ -194,9 +194,8 @@ double benchmark_large_tx(size_t nInputs)
 
     // Sign for all the inputs
     auto consensusBranchId = NetworkUpgradeInfo[Consensus::UPGRADE_SAPLING].nBranchId;
-    for (size_t i = 0; i < nInputs; i++) {
-        SignSignature(tempKeystore, prevPubKey, spending_tx, static_cast<unsigned int>(i), 1000000, SIGHASH_ALL, consensusBranchId);
-    }
+    for (size_t i = 0; i < nInputs; i++)
+        SignSignature(tempKeystore, prevPubKey, spending_tx, static_cast<unsigned int>(i), 1'000'000, to_integral_type(SIGHASH::ALL), consensusBranchId);
 
     // Spending tx has all its inputs signed and does not need to be mutated anymore
     CTransaction final_spending_tx(spending_tx);
@@ -210,7 +209,7 @@ double benchmark_large_tx(size_t nInputs)
         assert(VerifyScript(final_spending_tx.vin[i].scriptSig,
                             prevPubKey,
                             STANDARD_SCRIPT_VERIFY_FLAGS,
-                            TransactionSignatureChecker(&final_spending_tx, static_cast<unsigned int>(i), 1000000, txdata),
+                            TransactionSignatureChecker(&final_spending_tx, static_cast<unsigned int>(i), 1'000'000, txdata),
                             consensusBranchId,
                             &serror));
     }

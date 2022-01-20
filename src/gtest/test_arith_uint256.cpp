@@ -1,17 +1,18 @@
 // Copyright (c) 2011-2013 The Bitcoin Core developers
-// Copyright (c) 2021 The Pastel developers
+// Copyright (c) 2021-2022 The Pastel developers
 // Distributed under the MIT software license, see the accompanying
-// file COPYING or http://www.opensource.org/licenses/mit-license.php.
+// file COPYING or https://www.opensource.org/licenses/mit-license.php.
 
-#include <gmock/gmock.h>
 #include <stdint.h>
 #include <sstream>
 #include <iomanip>
 #include <limits>
 #include <cmath>
+#include <string>
+#include <gmock/gmock.h>
+
 #include "uint256.h"
 #include "arith_uint256.h"
-#include <string>
 #include "version.h"
 #include <vector_types.h>
 

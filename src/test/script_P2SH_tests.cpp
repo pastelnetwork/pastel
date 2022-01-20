@@ -110,7 +110,7 @@ BOOST_DATA_TEST_CASE(sign, boost::unit_test::data::xrange(static_cast<int>(Conse
     }
     for (int i = 0; i < 8; i++)
     {
-        BOOST_CHECK_MESSAGE(SignSignature(keystore, txFrom, txTo[i], 0, SIGHASH_ALL, consensusBranchId), strprintf("SignSignature %d", i));
+        BOOST_CHECK_MESSAGE(SignSignature(keystore, txFrom, txTo[i], 0, to_integral_type(SIGHASH::ALL), consensusBranchId), strprintf("SignSignature %d", i));
     }
     // All of the above should be OK, and the txTos have valid signatures
     // Check to make sure signature verification fails if we use the wrong ScriptSig:
@@ -215,7 +215,7 @@ BOOST_DATA_TEST_CASE(set, boost::unit_test::data::xrange(static_cast<int>(Consen
     }
     for (int i = 0; i < 4; i++)
     {
-        BOOST_CHECK_MESSAGE(SignSignature(keystore, txFrom, txTo[i], 0, SIGHASH_ALL, consensusBranchId), strprintf("SignSignature %d", i));
+        BOOST_CHECK_MESSAGE(SignSignature(keystore, txFrom, txTo[i], 0, to_integral_type(SIGHASH::ALL), consensusBranchId), strprintf("SignSignature %d", i));
         BOOST_CHECK_MESSAGE(IsStandardTx(txTo[i], reason, chainparams), strprintf("txTo[%d].IsStandard", i));
     }
 }
@@ -349,9 +349,9 @@ BOOST_DATA_TEST_CASE(AreInputsStandard, boost::unit_test::data::xrange(static_ca
         txTo.vin[i].prevout.n = i;
         txTo.vin[i].prevout.hash = txFrom.GetHash();
     }
-    BOOST_CHECK(SignSignature(keystore, txFrom, txTo, 0, SIGHASH_ALL, consensusBranchId));
-    BOOST_CHECK(SignSignature(keystore, txFrom, txTo, 1, SIGHASH_ALL, consensusBranchId));
-    BOOST_CHECK(SignSignature(keystore, txFrom, txTo, 2, SIGHASH_ALL, consensusBranchId));
+    BOOST_CHECK(SignSignature(keystore, txFrom, txTo, 0, to_integral_type(SIGHASH::ALL), consensusBranchId));
+    BOOST_CHECK(SignSignature(keystore, txFrom, txTo, 1, to_integral_type(SIGHASH::ALL), consensusBranchId));
+    BOOST_CHECK(SignSignature(keystore, txFrom, txTo, 2, to_integral_type(SIGHASH::ALL), consensusBranchId));
     // SignSignature doesn't know how to sign these. We're
     // not testing validating signatures, so just create
     // dummy signatures that DO include the correct P2SH scripts:

@@ -25,7 +25,7 @@
 extern UniValue read_json(const std::string& jsondata);
 
 // Old script.cpp SignatureHash function
-uint256 static SignatureHashOld(CScript scriptCode, const CTransaction& txTo, unsigned int nIn, int nHashType)
+uint256 static SignatureHashOld(CScript scriptCode, const CTransaction& txTo, unsigned int nIn, const uint8_t nHashType)
 {
     static const uint256 one(uint256S("0000000000000000000000000000000000000000000000000000000000000001"));
     if (nIn >= txTo.vin.size())
@@ -40,8 +40,9 @@ uint256 static SignatureHashOld(CScript scriptCode, const CTransaction& txTo, un
         txTmp.vin[i].scriptSig = CScript();
     txTmp.vin[nIn].scriptSig = scriptCode;
 
+    const uint8_t nHashTypeValue = nHashType & 0x1f;
     // Blank out some of the outputs
-    if ((nHashType & 0x1f) == SIGHASH_NONE)
+    if (nHashTypeValue == to_integral_type(SIGHASH::NONE))
     {
         // Wildcard payee
         txTmp.vout.clear();
@@ -51,7 +52,7 @@ uint256 static SignatureHashOld(CScript scriptCode, const CTransaction& txTo, un
             if (i != nIn)
                 txTmp.vin[i].nSequence = 0;
     }
-    else if ((nHashType & 0x1f) == SIGHASH_SINGLE)
+    else if (nHashTypeValue == to_integral_type(SIGHASH::SINGLE))
     {
         // Only lock-in the txout payee at same index as txin
         unsigned int nOut = nIn;
@@ -62,7 +63,7 @@ uint256 static SignatureHashOld(CScript scriptCode, const CTransaction& txTo, un
         }
         txTmp.vout.resize(nOut+1);
         for (unsigned int i = 0; i < nOut; i++)
-            txTmp.vout[i].SetNull();
+            txTmp.vout[i].Clear();
 
         // Let the others update at will
         for (unsigned int i = 0; i < txTmp.vin.size(); i++)
@@ -71,7 +72,7 @@ uint256 static SignatureHashOld(CScript scriptCode, const CTransaction& txTo, un
     }
 
     // Blank out other inputs completely, not recommended for open transactions
-    if (nHashType & SIGHASH_ANYONECANPAY)
+    if (nHashType & to_integral_type(SIGHASH::ANYONECANPAY))
     {
         txTmp.vin[0] = txTmp.vin[nIn];
         txTmp.vin.resize(1);
@@ -126,7 +127,6 @@ void static RandomTransaction(CMutableTransaction &tx, bool fSingle, uint32_t co
     int outs = fSingle ? ins : (insecure_rand() % 4) + 1;
     int shielded_spends = (insecure_rand() % 4) + 1;
     int shielded_outs = (insecure_rand() % 4) + 1;
-    int joinsplits = (insecure_rand() % 4);
     for (int in = 0; in < ins; in++) {
         tx.vin.push_back(CTxIn());
         CTxIn &txin = tx.vin.back();

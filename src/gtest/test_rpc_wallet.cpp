@@ -56,12 +56,12 @@ class TestRpcWallet : public Test
 public:
     static void SetUpTestSuite()
     {
-        gl_pPastelTestEnv->SetupTesting();
+         gl_pPastelTestEnv->InitializeRegTest();
     }
 
     static void TearDownTestSuite()
     {
-        gl_pPastelTestEnv->FinalizeSetupTesting();
+        gl_pPastelTestEnv->FinalizeRegTest();
     }
 };
 
@@ -110,12 +110,12 @@ class TestRpcWallet1 : public Test
 public:
     static void SetUpTestSuite()
     {
-        gl_pPastelTestEnv->SetupTesting();
+        gl_pPastelTestEnv->InitializeRegTest();
     }
 
     static void TearDownTestSuite()
     {
-        gl_pPastelTestEnv->FinalizeSetupTesting();
+        gl_pPastelTestEnv->FinalizeRegTest();
     }
 };
 
@@ -963,12 +963,12 @@ class TestRpcWallet2 : public Test
 public:
     static void SetUpTestSuite()
     {
-        gl_pPastelTestEnv->SetupTesting();
+        gl_pPastelTestEnv->InitializeRegTest();
     }
 
     static void TearDownTestSuite()
     {
-        gl_pPastelTestEnv->FinalizeSetupTesting();
+        gl_pPastelTestEnv->FinalizeRegTest();
     }
 };
 

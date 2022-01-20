@@ -19,23 +19,6 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="..\..\..\src\test\accounting_tests.cpp" />
-    <ClCompile Include="..\..\..\src\test\alert_tests.cpp" />
-    <ClCompile Include="..\..\..\src\test\bloom_tests.cpp" />
-    <ClCompile Include="..\..\..\src\test\checkblock_tests.cpp" />
-    <ClCompile Include="..\..\..\src\test\coins_tests.cpp" />
-    <ClCompile Include="..\..\..\src\test\dbwrapper_tests.cpp" />
-    <ClCompile Include="..\..\..\src\test\DoS_tests.cpp" />
-    <ClCompile Include="..\..\..\src\test\equihash_tests.cpp" />
-    <ClCompile Include="..\..\..\src\test\getarg_tests.cpp" />
-    <ClCompile Include="..\..\..\src\test\key_tests.cpp" />
-    <ClCompile Include="..\..\..\src\test\main_tests.cpp" />
-    <ClCompile Include="..\..\..\src\test\mruset_tests.cpp" />
-    <ClCompile Include="..\..\..\src\test\pmt_tests.cpp" />
-    <ClCompile Include="..\..\..\src\test\policyestimator_tests.cpp" />
-    <ClCompile Include="..\..\..\src\test\pow_tests.cpp" />
-    <ClCompile Include="..\..\..\src\test\prevector_tests.cpp" />
-    <ClCompile Include="..\..\..\src\test\reverselock_tests.cpp" />
     <ClCompile Include="..\..\..\src\test\rpc_tests.cpp" />
     <ClCompile Include="..\..\..\src\test\rpc_wallet_tests.cpp" />
     <ClCompile Include="..\..\..\src\test\scheduler_tests.cpp" />
@@ -51,7 +34,6 @@
     <ClCompile Include="..\..\..\src\wallet\test\wallet_tests.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\..\..\src\test\bignum.h" />
     <ClInclude Include="..\..\..\src\test\rpc_tests.h" />
     <ClInclude Include="..\..\..\src\test\test_bitcoin.h" />
   </ItemGroup>

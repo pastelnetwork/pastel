@@ -19,7 +19,7 @@ CCriticalSection cs_mapOurMessages;
 
 bool Sign(const std::string& message, std::string& signatureBase64, std::string& error_ret)
 {
-    vector<unsigned char> signature;
+    v_uint8 signature;
     if (!Sign(message, signature, error_ret)){
         return false;
     }
@@ -28,7 +28,7 @@ bool Sign(const std::string& message, std::string& signatureBase64, std::string&
     return true;
 }
 
-bool Sign(const std::string& message, std::vector<unsigned char>& signature, std::string& error_ret)
+bool Sign(const std::string& message, v_uint8& signature, std::string& error_ret)
 {
     if(!CMessageSigner::SignMessage(message, signature, masterNodeCtrl.activeMasternode.keyMasternode)) {
         error_ret = "Sign -- SignMessage() failed";

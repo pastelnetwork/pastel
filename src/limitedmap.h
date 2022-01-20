@@ -1,9 +1,8 @@
+#pragma once
 // Copyright (c) 2012-2014 The Bitcoin Core developers
+// Copyright (c) 2018-2022 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
-// file COPYING or http://www.opensource.org/licenses/mit-license.php.
-
-#ifndef BITCOIN_LIMITEDMAP_H
-#define BITCOIN_LIMITEDMAP_H
+// file COPYING or https://www.opensource.org/licenses/mit-license.php.
 
 #include <assert.h>
 #include <map>
@@ -78,7 +77,7 @@ public:
         // Shouldn't ever get here
         assert(0);
     }
-    size_type max_size() const { return nMaxSize; }
+    size_type max_size() const noexcept { return nMaxSize; }
     size_type max_size(size_type s)
     {
         if (s)
@@ -90,5 +89,3 @@ public:
         return nMaxSize;
     }
 };
-
-#endif // BITCOIN_LIMITEDMAP_H

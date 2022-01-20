@@ -274,7 +274,7 @@ UniValue mempoolToJSON(bool fVerbose = false)
         }
         return o;
     }
-    vector<uint256> vtxid;
+    v_uint256 vtxid;
     mempool.queryHashes(vtxid);
 
     UniValue a(UniValue::VARR);

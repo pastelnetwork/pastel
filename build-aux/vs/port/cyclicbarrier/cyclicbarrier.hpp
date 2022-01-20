@@ -1,5 +1,5 @@
 #pragma once
-#include <inttypes.h>
+#include <cinttypes>
 #include <stdint.h>
 #include <mutex>
 #include <condition_variable>

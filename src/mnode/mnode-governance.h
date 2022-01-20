@@ -19,7 +19,7 @@ public:
     uint256 ticketId;
     int nVoteBlockHeight;
     bool bVote;
-    std::vector<unsigned char> vchSig;
+    v_uint8 vchSig;
 
     int nWaitForTicketRank;
     int nSyncBlockHeight;
@@ -93,7 +93,7 @@ public:
     int             nStopVoteBlockHeight;   // blockheight when the voting for this ticket ends
     int             nYesVotes;
 
-    std::map<std::vector<unsigned char>, CGovernanceVote> mapVotes;
+    std::map<v_uint8, CGovernanceVote> mapVotes;
 
     //if a winner
     int             nFirstPaymentBlockHeight;   // blockheight when the payment to this ticket starts

@@ -1,5 +1,5 @@
 #pragma once
-// Copyright (c) 2018-2021 The Pastel Core developers
+// Copyright (c) 2018-2022 The Pastel Core developers
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <array>
@@ -64,5 +64,6 @@ protected:
     // get json object with all signatures
     nlohmann::json get_signatures_json() const;
 
-    void validate_signatures(const unsigned int nDepth, const uint32_t nCreatorHeight, const std::string &sTicketToValidate) const;
+    // validate ticket signatures
+    ticket_validation_t validate_signatures(const uint32_t nDepth, const uint32_t nCreatorHeight, const std::string &sTicketToValidate) const noexcept;
 };

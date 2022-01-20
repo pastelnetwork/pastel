@@ -1,14 +1,48 @@
 #pragma once
-// Copyright (c) 2018-2021 The Pastel Core developers
+// Copyright (c) 2018-2022 The Pastel Core developers
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 
 #include <string>
 #include <vector>
 
-#include "amount.h"
-#include "primitives/transaction.h"
+#include <amount.h>
+#include <primitives/transaction.h>
 #include <mnode/tickets/ticket-types.h>
+
+typedef enum class _TICKET_VALIDATION_STATE : uint8_t
+{
+    INVALID = 0,
+    VALID,
+    MISSING_INPUTS,
+    NOT_TICKET
+} TICKET_VALIDATION_STATE;
+
+typedef struct _ticket_validation_t
+{
+    std::string errorMsg;
+    TICKET_VALIDATION_STATE state{TICKET_VALIDATION_STATE::INVALID};
+
+/*
+    _ticket_validation_t() = default;
+    _ticket_validation_t(const TICKET_VALIDATION_STATE &aState) : 
+        state(aState)
+    {}
+    _ticket_validation_t(_ticket_validation_t&& tv) noexcept = default;
+    _ticket_validation_t& operator=(_ticket_validation_t&& tv) noexcept = default;
+*/
+    bool IsNotValid() const noexcept { return state != TICKET_VALIDATION_STATE::VALID; }
+    void clear() noexcept
+    {
+        state = TICKET_VALIDATION_STATE::INVALID;
+        errorMsg.clear();
+    }
+    void setValid() noexcept
+    {
+        state = TICKET_VALIDATION_STATE::VALID;
+        errorMsg.clear();
+    }
+} ticket_validation_t;
 
 /**
  * Base class for all Pastel tickets.
@@ -23,9 +57,12 @@ public:
     // get json representation
     virtual std::string ToJSON() const noexcept = 0;
     virtual std::string ToStr() const noexcept = 0;
-    virtual bool IsValid(const bool bPreReg, const int nDepth) const = 0; //if preReg = true - validate pre registration conditions
-                                                            //  ex.: address has enough coins for registration
-                                                            //else - validate ticket in general
+    /**
+     * if preReg = true - validate pre-registration conditions.
+     *   ex.: address has enough coins for registration
+     * else - validate ticket in general
+     */
+    virtual ticket_validation_t IsValid(const bool bPreReg, const uint32_t nDepth) const noexcept = 0; 
     // stored ticket version
     short GetStoredVersion() const noexcept { return m_nVersion; }
     const std::string GetTxId() const noexcept { return m_txid; }
@@ -85,7 +122,7 @@ public:
         m_nVersion = -1;
     }
 
-    bool IsTxId(const std::string& txid) noexcept { return m_txid == txid; }
+    bool IsTxId(const std::string& txid) const noexcept { return m_txid == txid; }
     void SetTxId(std::string&& txid) noexcept { m_txid = std::move(txid); }
     void SetBlock(const uint32_t nBlockHeight) noexcept { m_nBlock = nBlockHeight; }
 

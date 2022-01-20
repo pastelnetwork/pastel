@@ -115,7 +115,7 @@ bool DecodeBase58(const std::string& str, v_uint8& vchRet) noexcept
  * \param vchIn - input byte vector
  * \return generated 'base58 encoded' string
  */
-std::string EncodeBase58Check(const std::vector<unsigned char>& vchIn) noexcept
+std::string EncodeBase58Check(const v_uint8 & vchIn) noexcept
 {
     v_uint8 vch;
     vch.reserve(vchIn.size() + 4);

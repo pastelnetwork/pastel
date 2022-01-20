@@ -1,7 +1,7 @@
 // Copyright (c) 2013 The Bitcoin Core developers
-// Copyright (c) 2021 The Pastel developers
+// Copyright (c) 2021-2022 The Pastel developers
 // Distributed under the MIT software license, see the accompanying
-// file COPYING or http://www.opensource.org/licenses/mit-license.php.
+// file COPYING or https://www.opensource.org/licenses/mit-license.php.
 
 //
 // Unit tests for alert system
@@ -111,10 +111,10 @@ bool SignAlert(CAlert &alert)
     // serialize alert data
     CDataStream sMsg(SER_NETWORK, PROTOCOL_VERSION);
     sMsg << *(CUnsignedAlert*)&alert;
-    alert.vchMsg = vector<unsigned char>(sMsg.begin(), sMsg.end());
+    alert.vchMsg = v_uint8(sMsg.begin(), sMsg.end());
 
     // sign alert
-    vector<unsigned char> vchTmp(ParseHex(pszPrivKey));
+    v_uint8 vchTmp(ParseHex(pszPrivKey));
     CPrivKey vchPrivKey(vchTmp.begin(), vchTmp.end());
     CKey key;
     if (!key.SetPrivKey(vchPrivKey, false))
@@ -214,7 +214,7 @@ void GenerateAlertTests()
 
     if (b) {
         // Print the hex array, which will become the contents of alertTest.raw.h
-        vector<unsigned char> vch = vector<unsigned char>(sBuffer.begin(), sBuffer.end());
+        v_uint8 vch = v_uint8(sBuffer.begin(), sBuffer.end());
         printf("%s\n", HexStrArray(vch, 8).c_str());
 
         // Write the data to alertTests.raw.NEW, to be copied to src/test/data/alertTests.raw
@@ -238,7 +238,7 @@ struct ReadAlerts : public Test
 {
     ReadAlerts()
     {
-        vector<unsigned char> vch(alert_tests::alertTests, alert_tests::alertTests + sizeof(alert_tests::alertTests));
+        v_uint8 vch(alert_tests::alertTests, alert_tests::alertTests + sizeof(alert_tests::alertTests));
         CDataStream stream(vch, SER_DISK, CLIENT_VERSION);
         try {
             while (!stream.eof())
@@ -252,9 +252,9 @@ struct ReadAlerts : public Test
     }
     ~ReadAlerts() { }
 
-    static vector<string> read_lines(fs::path filepath)
+    static v_strings read_lines(fs::path filepath)
     {
-        vector<string> result;
+        v_strings result;
 
         ifstream f(filepath.string().c_str());
         string line;

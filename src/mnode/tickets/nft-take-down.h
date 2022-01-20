@@ -1,5 +1,5 @@
 #pragma once
-// Copyright (c) 2018-2021 The Pastel Core developers
+// Copyright (c) 2018-2022 The Pastel Core developers
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <mnode/tickets/ticket.h>
@@ -19,10 +19,18 @@ public:
 
     TicketID ID() const noexcept override { return TicketID::Down; }
     static TicketID GetID() { return TicketID::Down; }
+    constexpr auto GetTicketDescription() const
+    {
+        return TICKET_INFO[to_integral_type<TicketID>(TicketID::Down)].szDescription;
+    }
 
     std::string ToJSON() const noexcept override { return "{}"; }
     std::string ToStr() const noexcept override { return ""; }
-    bool IsValid(const bool bPreReg, const int nDepth) const override { return false; }
+    ticket_validation_t IsValid(const bool bPreReg, const uint32_t nDepth) const noexcept override
+    {
+        ticket_validation_t tv;
+        return tv;
+    }
     std::string KeyOne() const noexcept override { return ""; }
     void SetKeyOne(std::string &&sValue) override {}
 

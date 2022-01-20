@@ -69,9 +69,11 @@ TEST_F(TestTicketProcessor, ticket_compression)
     ticket->pastelID = keys.begin()->first;
     ticket->fee = 0;
     const auto strTicket = ticket->ToStr();
-    ticket->signature = string_to_vector(CPastelID::Sign(strTicket, ticket->pastelID, move(TEST_PASSPHRASE)));
+    ticket->set_signature(CPastelID::Sign(strTicket, ticket->pastelID, move(TEST_PASSPHRASE)));
 
-    EXPECT_CALL(*ticket, IsValid).WillRepeatedly(Return(true));
+    ticket_validation_t tvValid;
+    tvValid.state = TICKET_VALIDATION_STATE::VALID;
+    EXPECT_CALL(*ticket, IsValid).WillRepeatedly(Return(tvValid));
     EXPECT_CALL(*ticket, GetVersion).WillRepeatedly([&]() -> short { return ticket->CChangeUsernameTicket::GetVersion(); });
     EXPECT_CALL(*ticket, VersionMgmt).WillRepeatedly([&](string& error, const bool bRead) -> bool 
         { return ticket->CChangeUsernameTicket::VersionMgmt(error, bRead); });

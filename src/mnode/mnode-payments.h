@@ -25,7 +25,7 @@ class CMasternodePayee
 {
 private:
     CScript scriptPubKey;
-    std::vector<uint256> vecVoteHashes;
+    v_uint256 vecVoteHashes;
 
 public:
     CMasternodePayee() :
@@ -52,7 +52,7 @@ public:
     CScript GetPayee() { return scriptPubKey; }
 
     void AddVoteHash(const uint256 hashIn) { vecVoteHashes.push_back(hashIn); }
-    std::vector<uint256> GetVoteHashes() { return vecVoteHashes; }
+    v_uint256 GetVoteHashes() { return vecVoteHashes; }
     size_t GetVoteCount() const noexcept { return vecVoteHashes.size(); }
 };
 

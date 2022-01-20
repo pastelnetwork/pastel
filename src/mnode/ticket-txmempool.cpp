@@ -57,7 +57,7 @@ void CTicketTxMemPoolTracker::removeTx(const uint256& txid)
  * \param ticket_id - Pastel ticket id filter
  * \param vTxid - vector of ticket-transactions (txids) in the mempool 
  */
-void CTicketTxMemPoolTracker::getTicketTransactions(const TicketID ticket_id, std::vector<uint256>& vTxid)
+void CTicketTxMemPoolTracker::getTicketTransactions(const TicketID ticket_id, v_uint256& vTxid)
 {
     vTxid.clear();
     vTxid.reserve(5);

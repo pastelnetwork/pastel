@@ -17,8 +17,6 @@
 #include <univalue.h>
 #include "pastel_gtest_main.h"
 
-#include <boost/algorithm/string.hpp>
-
 using namespace std;
 using namespace testing;
 
@@ -37,21 +35,12 @@ createArgs(int nRequired, const char* address1=nullptr, const char* address2=nul
 UniValue CallRPC(string args)
 {
     vector<string> vArgs;
-    vector<string> vArgs1;
 
     regex pattern("\\ |\t");
     vArgs = vector<string>(
                     sregex_token_iterator(args.begin(), args.end(), pattern, -1),
                     sregex_token_iterator()
                     );
-    // for (string i: vArgs)
-    //     std::cout << "tanlm " << i << "END ";
-    // std::cout << std::endl;
-
-    // boost::split(vArgs1, args, boost::is_any_of(" \t"));
-    // for (string i: vArgs1)
-    //     std::cout << "tanlm1 " << i << "END ";
-    // std::cout << std::endl;
 
     string strMethod = vArgs[0];
     vArgs.erase(vArgs.begin());
@@ -78,14 +67,12 @@ class TestRpc : public Test
 public:
     static void SetUpTestSuite()
     {
-        gl_pPastelTestEnv->SetupTesting();
-        // gl_pPastelTestEnv->InitializeRegTest();
+        gl_pPastelTestEnv->InitializeRegTest();
     }
 
     static void TearDownTestSuite()
     {
-        gl_pPastelTestEnv->FinalizeSetupTesting();
-        // gl_pPastelTestEnv->FinalizeRegTest();
+        gl_pPastelTestEnv->FinalizeRegTest();
     }
 };
 

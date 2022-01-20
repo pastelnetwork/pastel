@@ -46,7 +46,7 @@ TEST(test_pmt, pmt_test1)
 
         // calculate actual merkle root and height
         uint256 merkleRoot1 = block.BuildMerkleTree();
-        vector<uint256> vTxid(nTx, uint256());
+        v_uint256 vTxid(nTx, uint256());
         for (unsigned int j=0; j<nTx; j++)
             vTxid[j] = block.vtx[j].GetHash();
         int nHeight = 1, nTx_ = nTx;
@@ -97,7 +97,7 @@ TEST(test_pmt, pmt_test1)
             for (int j=0; j<4; j++) {
                 CPartialMerkleTreeTester pmt3(pmt2);
                 pmt3.Damage();
-                vector<uint256> vMatchTxid3;
+                v_uint256 vMatchTxid3;
                 uint256 merkleRoot3 = pmt3.ExtractMatches(vMatchTxid3);
                 EXPECT_NE(merkleRoot3 , merkleRoot1);
             }
@@ -107,14 +107,14 @@ TEST(test_pmt, pmt_test1)
 
 TEST(test_pmt, pmt_malleability)
 {
-    vector<uint256> vTxid = {
+    v_uint256 vTxid = {
         ArithToUint256(1), ArithToUint256(2),
         ArithToUint256(3), ArithToUint256(4),
         ArithToUint256(5), ArithToUint256(6),
         ArithToUint256(7), ArithToUint256(8),
         ArithToUint256(9), ArithToUint256(10),
         ArithToUint256(9), ArithToUint256(10)};
-    vector<bool> vMatch =  {false,false,false,false,false,false,false,false,false,true,true,false};
+    v_bools vMatch =  {false,false,false,false,false,false,false,false,false,true,true,false};
 
     CPartialMerkleTree tree(vTxid, vMatch);
     EXPECT_TRUE(tree.ExtractMatches(vTxid).IsNull());
