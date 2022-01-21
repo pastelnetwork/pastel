@@ -3,6 +3,11 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
+#include <iostream>
+#include <random>
+
+#include <gtest/gtest.h>
+
 #include "consensus/upgrades.h"
 #include "consensus/validation.h"
 #include "data/sighash.json.h"
@@ -16,33 +21,12 @@
 #include "version.h"
 #include "sodium.h"
 #include "json_test_vectors.h"
-
-#include <iostream>
-#include <random>
-
-#include <gtest/gtest.h>
-
-// #include <boost/test/unit_test.hpp>
-
 #include <univalue.h>
 
 using namespace std;
 using namespace testing;
 
-// extern UniValue read_json(const std::string& jsondata);
-UniValue
-read_json1(const std::string& jsondata)
-{
-    UniValue v;
-
-    if (!v.read(jsondata) || !v.isArray())
-    {
-        EXPECT_TRUE(false) << "Parse error.";
-        return UniValue(UniValue::VARR);
-    }
-    return v.get_array();
-}
-
+extern UniValue read_json(const string& jsondata);
 
 // Old script.cpp SignatureHash function
 uint256 static SignatureHashOld(CScript scriptCode, const CTransaction& txTo, unsigned int nIn, int nHashType)
@@ -114,12 +98,12 @@ void static RandomScript(CScript &script) {
 // Overwinter tx version numbers are selected randomly from current version range.
 // http://en.cppreference.com/w/cpp/numeric/random/uniform_int_distribution
 // https://stackoverflow.com/a/19728404
-std::random_device rd;
-std::mt19937 rng(rd());
-std::uniform_int_distribution<int> overwinter_version_dist(
+random_device rd;
+mt19937 rng(rd());
+uniform_int_distribution<int> overwinter_version_dist(
     CTransaction::OVERWINTER_MIN_CURRENT_VERSION,
     CTransaction::OVERWINTER_MAX_CURRENT_VERSION);
-std::uniform_int_distribution<int> sapling_version_dist(
+uniform_int_distribution<int> sapling_version_dist(
     CTransaction::SAPLING_MIN_CURRENT_VERSION,
     CTransaction::SAPLING_MAX_CURRENT_VERSION);
 
@@ -182,53 +166,5 @@ void static RandomTransaction(CMutableTransaction &tx, bool fSingle, uint32_t co
             randombytes_buf(odesc.zkproof.data(), odesc.zkproof.size());
             tx.vShieldedOutput.push_back(odesc);
         }
-    }
-}
-
-TEST(test_sighash, sighash_from_data)
-{
-    UniValue tests = read_json1(std::string(json_tests::sighash, json_tests::sighash + sizeof(json_tests::sighash)));
-
-    for (const auto& test : tests.getValues()) {
-        // UniValue test = tests[idx];
-        std::string strTest = test.write();
-        if (test.size() < 1) // Allow for extra stuff (useful for comments)
-        {
-            EXPECT_TRUE(false) << "Bad test: " << strTest;
-            continue;
-        }
-        if (test.size() == 1) continue; // comment
-
-        std::string raw_tx, raw_script, sigHashHex;
-        int nIn, nHashType;
-        uint256 sh;
-        CTransaction tx;
-        CScript scriptCode = CScript();
-
-        // try {
-          // deserialize test data
-          raw_tx = test[0].get_str();
-          raw_script = test[1].get_str();
-          nIn = test[2].get_int();
-          nHashType = test[3].get_int();
-          sigHashHex = test[4].get_str();
-
-          CDataStream stream(ParseHex(raw_tx), SER_NETWORK, PROTOCOL_VERSION);
-          stream >> tx;
-
-        //   CValidationState state;
-        //   auto verifier = libzcash::ProofVerifier::Strict();
-        //   EXPECT_TRUE(CheckTransaction(tx, state, verifier)) << strTest;
-        //   EXPECT_TRUE(state.IsValid());
-
-        //   std::vector<unsigned char> raw = ParseHex(raw_script);
-        //   scriptCode.insert(scriptCode.end(), raw.begin(), raw.end());
-        // } catch (...) {
-        //   EXPECT_TRUE(false) << "Bad test, couldn't deserialize data: " << strTest;
-        //   continue;
-        // }
-
-        sh = SignatureHash(scriptCode, tx, nIn, nHashType, 0, 0);
-        EXPECT_EQ(sh.GetHex() , sigHashHex) << strTest;
     }
 }

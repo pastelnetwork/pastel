@@ -6,8 +6,8 @@
 #ifndef BITCOIN_SCRIPT_INTERPRETER_H
 #define BITCOIN_SCRIPT_INTERPRETER_H
 
-#include "script_error.h"
-#include "primitives/transaction.h"
+#include <script/script_error.h>
+#include <primitives/transaction.h>
 
 #include <vector>
 #include <stdint.h>
@@ -111,7 +111,7 @@ uint256 SignatureHash(
     int nHashType,
     const CAmount& amount,
     uint32_t consensusBranchId,
-    const PrecomputedTransactionData* cache = NULL);
+    const PrecomputedTransactionData* cache = nullptr);
 
 class BaseSignatureChecker
 {
@@ -145,7 +145,7 @@ protected:
     virtual bool VerifySignature(const std::vector<unsigned char>& vchSig, const CPubKey& vchPubKey, const uint256& sighash) const;
 
 public:
-    TransactionSignatureChecker(const CTransaction* txToIn, unsigned int nInIn, const CAmount& amountIn) : txTo(txToIn), nIn(nInIn), amount(amountIn), txdata(NULL) {}
+    TransactionSignatureChecker(const CTransaction* txToIn, unsigned int nInIn, const CAmount& amountIn) : txTo(txToIn), nIn(nInIn), amount(amountIn), txdata(nullptr) {}
     TransactionSignatureChecker(const CTransaction* txToIn, unsigned int nInIn, const CAmount& amountIn, const PrecomputedTransactionData& txdataIn) : txTo(txToIn), nIn(nInIn), amount(amountIn), txdata(&txdataIn) {}
     bool CheckSig(const std::vector<unsigned char>& scriptSig, const std::vector<unsigned char>& vchPubKey, const CScript& scriptCode, uint32_t consensusBranchId) const;
     bool CheckLockTime(const CScriptNum& nLockTime) const;
@@ -166,13 +166,13 @@ bool EvalScript(
     unsigned int flags,
     const BaseSignatureChecker& checker,
     uint32_t consensusBranchId,
-    ScriptError* error = NULL);
+    ScriptError* error = nullptr);
 bool VerifyScript(
     const CScript& scriptSig,
     const CScript& scriptPubKey,
     unsigned int flags,
     const BaseSignatureChecker& checker,
     uint32_t consensusBranchId,
-    ScriptError* serror = NULL);
+    ScriptError* serror = nullptr);
 
 #endif // BITCOIN_SCRIPT_INTERPRETER_H

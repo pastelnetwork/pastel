@@ -3,10 +3,12 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php .
 
-#include "keystore.h"
-#include "key.h"
-#include "pubkey.h"
-#include "util.h"
+#include <keystore.h>
+#include <key.h>
+#include <pubkey.h>
+#include <util.h>
+
+using namespace std;
 
 bool CKeyStore::AddKey(const CKey &key) {
     return AddKeyPubKey(key, key.GetPubKey());
@@ -97,7 +99,7 @@ static bool ExtractPubKey(const CScript &dest, CPubKey& pubKeyOut)
     //TODO: Use Solver to extract this?
     CScript::const_iterator pc = dest.begin();
     opcodetype opcode;
-    std::vector<unsigned char> vch;
+    v_uint8 vch;
     if (!dest.GetOp(pc, opcode, vch) || vch.size() < 33 || vch.size() > 65)
         return false;
     pubKeyOut = CPubKey(vch);

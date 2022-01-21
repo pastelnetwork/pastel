@@ -3,20 +3,20 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#include "interpreter.h"
+#include <script/interpreter.h>
 
-#include "consensus/upgrades.h"
-#include "primitives/transaction.h"
-#include "crypto/ripemd160.h"
-#include "crypto/sha1.h"
-#include "crypto/sha256.h"
-#include "pubkey.h"
-#include "script/script.h"
-#include "uint256.h"
+#include <consensus/upgrades.h>
+#include <primitives/transaction.h>
+#include <crypto/ripemd160.h>
+#include <crypto/sha1.h>
+#include <crypto/sha256.h>
+#include <pubkey.h>
+#include <script/script.h>
+#include <uint256.h>
 
 using namespace std;
 
-typedef vector<unsigned char> valtype;
+typedef v_uint8 valtype;
 
 namespace {
 
@@ -96,7 +96,7 @@ bool static IsCompressedOrUncompressedPubKey(const valtype &vchPubKey) {
  *
  * This function is consensus-critical since BIP66.
  */
-bool static IsValidSignatureEncoding(const std::vector<unsigned char> &sig) {
+bool static IsValidSignatureEncoding(const v_uint8 &sig) {
     // Format: 0x30 [total-length] 0x02 [R-length] [R] 0x02 [S-length] [S] [sighash]
     // * total-length: 1-byte length descriptor of everything that follows,
     //   excluding the sighash byte.
@@ -168,7 +168,7 @@ bool static IsLowDERSignature(const valtype &vchSig, ScriptError* serror) {
     // https://bitcoin.stackexchange.com/a/12556:
     //     Also note that inside transaction signatures, an extra hashtype byte
     //     follows the actual signature data.
-    std::vector<unsigned char> vchSigCopy(vchSig.begin(), vchSig.begin() + vchSig.size() - 1);
+    v_uint8 vchSigCopy(vchSig.begin(), vchSig.begin() + vchSig.size() - 1);
     // If the S value is above the order of the curve divided by two, its
     // complement modulo the order could have been used instead, which is
     // one byte shorter when encoded correctly.
@@ -234,7 +234,7 @@ bool static CheckMinimalPush(const valtype& data, opcodetype opcode) {
 }
 
 bool EvalScript(
-    vector<vector<unsigned char> >& stack,
+    vector<v_uint8 >& stack,
     const CScript& script,
     unsigned int flags,
     const BaseSignatureChecker& checker,
@@ -1046,7 +1046,7 @@ public:
             // keeps the JoinSplit cryptographically bound
             // to the transaction.
             //
-            std::vector<int> v;
+            vector<int> v;
             ::Serialize(s, v);
         }
     }
@@ -1248,14 +1248,14 @@ uint256 SignatureHash(
 }
 
 bool TransactionSignatureChecker::VerifySignature(
-    const std::vector<unsigned char>& vchSig, const CPubKey& pubkey, const uint256& sighash) const
+    const v_uint8& vchSig, const CPubKey& pubkey, const uint256& sighash) const
 {
     return pubkey.Verify(sighash, vchSig);
 }
 
 bool TransactionSignatureChecker::CheckSig(
-    const vector<unsigned char>& vchSigIn,
-    const vector<unsigned char>& vchPubKey,
+    const v_uint8& vchSigIn,
+    const v_uint8& vchPubKey,
     const CScript& scriptCode,
     uint32_t consensusBranchId) const
 {
@@ -1264,7 +1264,7 @@ bool TransactionSignatureChecker::CheckSig(
         return false;
 
     // Hash type is one byte tacked on to the end of the signature
-    vector<unsigned char> vchSig(vchSigIn);
+    v_uint8 vchSig(vchSigIn);
     if (vchSig.empty())
         return false;
     int nHashType = vchSig.back();
@@ -1334,7 +1334,7 @@ bool VerifyScript(
         return set_error(serror, SCRIPT_ERR_SIG_PUSHONLY);
     }
 
-    vector<vector<unsigned char> > stack, stackCopy;
+    vector<v_uint8 > stack, stackCopy;
     if (!EvalScript(stack, scriptSig, flags, checker, consensusBranchId, serror))
         // serror is set
         return false;

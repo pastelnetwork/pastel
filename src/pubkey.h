@@ -4,9 +4,9 @@
 // Copyright (c) 2017 The Zcash developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
-#include "hash.h"
-#include "serialize.h"
-#include "uint256.h"
+#include <hash.h>
+#include <serialize.h>
+#include <uint256.h>
 
 #include <stdexcept>
 #include <vector>
@@ -30,10 +30,10 @@ public:
     /**
      * secp256k1:
      */
-    static const unsigned int PUBLIC_KEY_SIZE             = 65;
-    static const unsigned int COMPRESSED_PUBLIC_KEY_SIZE  = 33;
-    static const unsigned int SIGNATURE_SIZE              = 72;
-    static const unsigned int COMPACT_SIGNATURE_SIZE      = 65;
+    static constexpr unsigned int PUBLIC_KEY_SIZE             = 65;
+    static constexpr unsigned int COMPRESSED_PUBLIC_KEY_SIZE  = 33;
+    static constexpr unsigned int SIGNATURE_SIZE              = 72;
+    static constexpr unsigned int COMPACT_SIGNATURE_SIZE      = 65;
     /**
      * see www.keylength.com
      * script supports up to 75 for single byte push

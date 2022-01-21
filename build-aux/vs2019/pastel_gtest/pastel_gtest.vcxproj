@@ -151,9 +151,12 @@
     <ClCompile Include="..\..\..\src\gtest\test_rpc.cpp" />
     <ClCompile Include="..\..\..\src\gtest\test_sanity.cpp" />
     <ClCompile Include="..\..\..\src\gtest\test_sapling_note.cpp" />
+    <ClCompile Include="..\..\..\src\gtest\test_script.cpp" />
     <ClCompile Include="..\..\..\src\gtest\test_scriptnum.cpp" />
+    <ClCompile Include="..\..\..\src\gtest\test_script_P2SH.cpp" />
     <ClCompile Include="..\..\..\src\gtest\test_serialize.cpp" />
     <ClCompile Include="..\..\..\src\gtest\test_sha256compress.cpp" />
+    <ClCompile Include="..\..\..\src\gtest\test_sighash.cpp" />
     <ClCompile Include="..\..\..\src\gtest\test_str_encodings.cpp" />
     <ClCompile Include="..\..\..\src\gtest\test_str_utils.cpp" />
     <ClCompile Include="..\..\..\src\gtest\test_tautology.cpp" />
