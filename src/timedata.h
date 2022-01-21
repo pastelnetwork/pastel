@@ -1,6 +1,6 @@
 #pragma once
 // Copyright (c) 2014 The Bitcoin Core developers
-// Copyright (c) 2021 The Pastel Core developers
+// Copyright (c) 2021-2022 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 
@@ -65,7 +65,7 @@ public:
 };
 
 /** Functions to keep track of adjusted P2P time */
-int64_t GetTimeOffset();
-int64_t GetAdjustedTime();
+int64_t GetTimeOffset() noexcept;
+int64_t GetAdjustedTime() noexcept;
 void AddTimeData(const CNetAddr& ip, int64_t nTime);
 
