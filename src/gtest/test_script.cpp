@@ -11,20 +11,20 @@
 
 #include <gtest/gtest.h>
 
-#include "data/script_invalid.json.h"
-#include "data/script_valid.json.h"
-#include "consensus/upgrades.h"
-#include "core_io.h"
-#include "key.h"
-#include "keystore.h"
-#include "main.h"
-#include "script/script.h"
-#include "script/script_error.h"
-#include "script/sign.h"
-#include "util.h"
+#include <data/script_invalid.json.h>
+#include <data/script_valid.json.h>
+#include <consensus/upgrades.h>
+#include <core_io.h>
+#include <key.h>
+#include <keystore.h>
+#include <main.h>
+#include <script/script.h>
+#include <script/script_error.h>
+#include <script/sign.h>
+#include <util.h>
 
 #if defined(HAVE_CONSENSUS_LIB)
-#include "script/zcashconsensus.h"
+#include <script/zcashconsensus.h>
 #endif
 #include <univalue.h>
 
@@ -36,7 +36,7 @@ using namespace testing;
 
 static const unsigned int flags = SCRIPT_VERIFY_P2SH | SCRIPT_VERIFY_STRICTENC;
 
-static std::map<string, unsigned int> mapFlagNames = {
+static map<string, unsigned int> mapFlagNames = {
     {string("NONE"), (unsigned int)SCRIPT_VERIFY_NONE},
     {string("P2SH"), (unsigned int)SCRIPT_VERIFY_P2SH},
     {string("STRICTENC"), (unsigned int)SCRIPT_VERIFY_STRICTENC},
@@ -78,7 +78,7 @@ string FormatScriptFlags(unsigned int flags)
         return "";
     }
     string ret;
-    std::map<string, unsigned int>::const_iterator it = mapFlagNames.begin();
+    map<string, unsigned int>::const_iterator it = mapFlagNames.begin();
     while (it != mapFlagNames.end()) {
         if (flags & it->second) {
             ret += it->first + ",";
@@ -89,7 +89,7 @@ string FormatScriptFlags(unsigned int flags)
 }
 
 UniValue
-read_json_script(const std::string& jsondata)
+read_json_script(const string& jsondata)
 {
     UniValue v;
 
@@ -110,7 +110,7 @@ CMutableTransaction BuildCreditingTransaction(const CScript& scriptPubKey)
     txCredit.vout.resize(1);
     txCredit.vin[0].prevout.SetNull();
     txCredit.vin[0].scriptSig = CScript() << CScriptNum(0) << CScriptNum(0);
-    txCredit.vin[0].nSequence = std::numeric_limits<unsigned int>::max();
+    txCredit.vin[0].nSequence = numeric_limits<unsigned int>::max();
     txCredit.vout[0].scriptPubKey = scriptPubKey;
     txCredit.vout[0].nValue = 0;
 
@@ -127,21 +127,21 @@ CMutableTransaction BuildSpendingTransaction(const CScript& scriptSig, const CMu
     txSpend.vin[0].prevout.hash = txCredit.GetHash();
     txSpend.vin[0].prevout.n = 0;
     txSpend.vin[0].scriptSig = scriptSig;
-    txSpend.vin[0].nSequence = std::numeric_limits<unsigned int>::max();
+    txSpend.vin[0].nSequence = numeric_limits<unsigned int>::max();
     txSpend.vout[0].scriptPubKey = CScript();
     txSpend.vout[0].nValue = 0;
 
     return txSpend;
 }
 
-void DoTest(const CScript& scriptPubKey, const CScript& scriptSig, int flags, uint32_t consensusBranchId, bool expect, const std::string& message)
+void DoTest(const CScript& scriptPubKey, const CScript& scriptSig, int flags, uint32_t consensusBranchId, bool expect, const string& message)
 {
     ScriptError err;
     CMutableTransaction txCredit = BuildCreditingTransaction(scriptPubKey);
     CMutableTransaction tx = BuildSpendingTransaction(scriptSig, txCredit);
     CMutableTransaction tx2 = tx;
     EXPECT_EQ(VerifyScript(scriptSig, scriptPubKey, flags, MutableTransactionSignatureChecker(&tx, 0, txCredit.vout[0].nValue), consensusBranchId, &err) , expect) << message;
-    EXPECT_EQ(expect , (err == SCRIPT_ERR_OK)) << std::string(ScriptErrorString(err)) + ": " + message;
+    EXPECT_EQ(expect , (err == SCRIPT_ERR_OK)) << string(ScriptErrorString(err)) + ": " + message;
 #if defined(HAVE_CONSENSUS_LIB)
     int expectedSuccessCode = expect ? 1 : 0;
     CDataStream stream(SER_NETWORK, PROTOCOL_VERSION);
@@ -150,11 +150,11 @@ void DoTest(const CScript& scriptPubKey, const CScript& scriptSig, int flags, ui
 #endif
 }
 
-void static NegateSignatureS(std::vector<unsigned char>& vchSig) {
+void static NegateSignatureS(v_uint8& vchSig) {
     // Parse the signature.
-    std::vector<unsigned char> r, s;
-    r = std::vector<unsigned char>(vchSig.begin() + 4, vchSig.begin() + 4 + vchSig[3]);
-    s = std::vector<unsigned char>(vchSig.begin() + 6 + vchSig[3], vchSig.begin() + 6 + vchSig[3] + vchSig[5 + vchSig[3]]);
+    v_uint8 r, s;
+    r = v_uint8(vchSig.begin() + 4, vchSig.begin() + 4 + vchSig[3]);
+    s = v_uint8(vchSig.begin() + 6 + vchSig[3], vchSig.begin() + 6 + vchSig[3] + vchSig[5 + vchSig[3]]);
 
     // Really ugly to implement mod-n negation here, but it would be feature creep to expose such functionality from libsecp256k1.
     static const unsigned char order[33] = {
@@ -233,8 +233,8 @@ private:
     CTransaction creditTx;
     CMutableTransaction spendTx;
     bool havePush;
-    std::vector<unsigned char> push;
-    std::string comment;
+    v_uint8 push;
+    string comment;
     int flags;
     uint32_t consensusBranchId;
 
@@ -246,7 +246,7 @@ private:
         }
     }
 
-    void DoPush(const std::vector<unsigned char>& data)
+    void DoPush(const v_uint8& data)
     {
          DoPush();
          push = data;
@@ -254,7 +254,7 @@ private:
     }
 
 public:
-    TestBuilder(const CScript& redeemScript, const std::string& comment_, int flags_, bool P2SH = false) : scriptPubKey(redeemScript), havePush(false), comment(comment_), flags(flags_), consensusBranchId(0)
+    TestBuilder(const CScript& redeemScript, const string& comment_, int flags_, bool P2SH = false) : scriptPubKey(redeemScript), havePush(false), comment(comment_), flags(flags_), consensusBranchId(0)
     {
         if (P2SH) {
             creditTx = BuildCreditingTransaction(CScript() << OP_HASH160 << ToByteVector(CScriptID(redeemScript)) << OP_EQUAL);
@@ -278,7 +278,7 @@ public:
         return *this;
     }
 
-    TestBuilder& Push(const std::string& hex)
+    TestBuilder& Push(const string& hex)
     {
         DoPush(ParseHex(hex));
         return *this;
@@ -287,15 +287,15 @@ public:
     TestBuilder& PushSig(const CKey& key, int nHashType = SIGHASH_ALL, unsigned int lenR = 32, unsigned int lenS = 32)
     {
         uint256 hash = SignatureHash(scriptPubKey, spendTx, 0, nHashType, 0, consensusBranchId);
-        std::vector<unsigned char> vchSig, r, s;
+        v_uint8 vchSig, r, s;
         uint32_t iter = 0;
         do {
             key.Sign(hash, vchSig, iter++);
             if ((lenS == 33) != (vchSig[5 + vchSig[3]] == 33)) {
                 NegateSignatureS(vchSig);
             }
-            r = std::vector<unsigned char>(vchSig.begin() + 4, vchSig.begin() + 4 + vchSig[3]);
-            s = std::vector<unsigned char>(vchSig.begin() + 6 + vchSig[3], vchSig.begin() + 6 + vchSig[3] + vchSig[5 + vchSig[3]]);
+            r = v_uint8(vchSig.begin() + 4, vchSig.begin() + 4 + vchSig[3]);
+            s = v_uint8(vchSig.begin() + 6 + vchSig[3], vchSig.begin() + 6 + vchSig[3] + vchSig[5 + vchSig[3]]);
         } while (lenR != r.size() || lenS != s.size());
         vchSig.push_back(static_cast<unsigned char>(nHashType));
         DoPush(vchSig);
@@ -304,23 +304,23 @@ public:
 
     TestBuilder& Push(const CPubKey& pubkey)
     {
-        DoPush(std::vector<unsigned char>(pubkey.begin(), pubkey.end()));
+        DoPush(v_uint8(pubkey.begin(), pubkey.end()));
         return *this;
     }
 
     TestBuilder& PushRedeem()
     {
-        DoPush(std::vector<unsigned char>(scriptPubKey.begin(), scriptPubKey.end()));
+        DoPush(v_uint8(scriptPubKey.begin(), scriptPubKey.end()));
         return *this;
     }
 
-    TestBuilder& EditPush(unsigned int pos, const std::string& hexin, const std::string& hexout)
+    TestBuilder& EditPush(unsigned int pos, const string& hexin, const string& hexout)
     {
         assert(havePush);
-        std::vector<unsigned char> datain = ParseHex(hexin);
-        std::vector<unsigned char> dataout = ParseHex(hexout);
+        v_uint8 datain = ParseHex(hexin);
+        v_uint8 dataout = ParseHex(hexout);
         assert(pos + datain.size() <= push.size());
-        EXPECT_EQ(std::vector<unsigned char>(push.begin() + pos, push.begin() + pos + datain.size()) , datain) << comment;
+        EXPECT_EQ(v_uint8(push.begin() + pos, push.begin() + pos + datain.size()) , datain) << comment;
         push.erase(push.begin() + pos, push.begin() + pos + datain.size());
         push.insert(push.begin() + pos, dataout.begin(), dataout.end());
         return *this;
@@ -354,7 +354,7 @@ public:
         return array;
     }
 
-    std::string GetComment()
+    string GetComment()
     {
         return comment;
     }
@@ -370,8 +370,8 @@ TEST(test_script, script_build)
 {
     const KeyData keys;
 
-    std::vector<TestBuilder> good;
-    std::vector<TestBuilder> bad;
+    vector<TestBuilder> good;
+    vector<TestBuilder> bad;
 
     good.push_back(TestBuilder(CScript() << ToByteVector(keys.pubkey0) << OP_CHECKSIG,
                                "P2PK", 0
@@ -573,12 +573,12 @@ TEST(test_script, script_build)
                               ).PushSig(keys.key0).PushRedeem());
 
 
-    std::set<std::string> tests_good;
-    std::set<std::string> tests_bad;
+    set<string> tests_good;
+    set<string> tests_bad;
 
     {
-        UniValue json_good = read_json_script(std::string(json_tests::script_valid, json_tests::script_valid + sizeof(json_tests::script_valid)));
-        UniValue json_bad = read_json_script(std::string(json_tests::script_invalid, json_tests::script_invalid + sizeof(json_tests::script_invalid)));
+        UniValue json_good = read_json_script(string(json_tests::script_valid, json_tests::script_valid + sizeof(json_tests::script_valid)));
+        UniValue json_bad = read_json_script(string(json_tests::script_invalid, json_tests::script_invalid + sizeof(json_tests::script_invalid)));
 
         for (size_t idx = 0; idx < json_good.size(); idx++) {
             const UniValue& tv = json_good[idx];
@@ -590,13 +590,13 @@ TEST(test_script, script_build)
         }
     }
 
-    std::string strGood;
-    std::string strBad;
+    string strGood;
+    string strBad;
 
     for(auto& test : good)
     {
         test.Test(true);
-        std::string str = test.GetJSON().write();
+        string str = test.GetJSON().write();
 #ifndef UPDATE_JSON_TESTS
         if (tests_good.count(str) == 0) {
             EXPECT_FALSE(false) << "Missing auto script_valid test: " + test.GetComment();
@@ -607,7 +607,7 @@ TEST(test_script, script_build)
     for (auto& test : bad)
     {
         test.Test(false);
-        std::string str = test.GetJSON().write();
+        string str = test.GetJSON().write();
 #ifndef UPDATE_JSON_TESTS
         if (tests_bad.count(str) == 0) {
             EXPECT_FALSE(false) << "Missing auto script_invalid test: " + test.GetComment();
@@ -644,7 +644,7 @@ TEST_P(PTest_Script, script_valid)
     // Inner arrays are [ "scriptSig", "scriptPubKey", "flags" ]
     // ... where scriptSig and scriptPubKey are stringified
     // scripts.
-    UniValue tests = read_json_script(std::string(json_tests::script_valid, json_tests::script_valid + sizeof(json_tests::script_valid)));
+    UniValue tests = read_json_script(string(json_tests::script_valid, json_tests::script_valid + sizeof(json_tests::script_valid)));
 
     for (size_t idx = 0; idx < tests.size(); idx++) {
         UniValue test = tests[idx];
@@ -675,7 +675,7 @@ TEST_P(PTest_Script, script_invalid)
     uint32_t consensusBranchId = NetworkUpgradeInfo[sample].nBranchId;
 
     // Scripts that should evaluate as invalid
-    UniValue tests = read_json_script(std::string(json_tests::script_invalid, json_tests::script_invalid + sizeof(json_tests::script_invalid)));
+    UniValue tests = read_json_script(string(json_tests::script_invalid, json_tests::script_invalid + sizeof(json_tests::script_invalid)));
 
     for (size_t idx = 0; idx < tests.size(); idx++) {
         UniValue test = tests[idx];
@@ -712,28 +712,28 @@ TEST_P(PTest_Script, script_PushData)
     static const unsigned char pushdata4[] = { OP_PUSHDATA4, 1, 0, 0, 0, 0x5a };
 
     ScriptError err;
-    vector<vector<unsigned char> > directStack;
+    vector<v_uint8 > directStack;
     EXPECT_TRUE(EvalScript(directStack, CScript(&direct[0], &direct[sizeof(direct)]), SCRIPT_VERIFY_P2SH, BaseSignatureChecker(), consensusBranchId, &err));
     EXPECT_EQ(err , SCRIPT_ERR_OK) << ScriptErrorString(err);
 
-    vector<vector<unsigned char> > pushdata1Stack;
+    vector<v_uint8 > pushdata1Stack;
     EXPECT_TRUE(EvalScript(pushdata1Stack, CScript(&pushdata1[0], &pushdata1[sizeof(pushdata1)]), SCRIPT_VERIFY_P2SH, BaseSignatureChecker(), consensusBranchId, &err));
     EXPECT_EQ(pushdata1Stack , directStack);
     EXPECT_EQ(err , SCRIPT_ERR_OK) << ScriptErrorString(err);
 
-    vector<vector<unsigned char> > pushdata2Stack;
+    vector<v_uint8 > pushdata2Stack;
     EXPECT_TRUE(EvalScript(pushdata2Stack, CScript(&pushdata2[0], &pushdata2[sizeof(pushdata2)]), SCRIPT_VERIFY_P2SH, BaseSignatureChecker(), consensusBranchId, &err));
     EXPECT_EQ(pushdata2Stack , directStack);
     EXPECT_EQ(err , SCRIPT_ERR_OK) << ScriptErrorString(err);
 
-    vector<vector<unsigned char> > pushdata4Stack;
+    vector<v_uint8 > pushdata4Stack;
     EXPECT_TRUE(EvalScript(pushdata4Stack, CScript(&pushdata4[0], &pushdata4[sizeof(pushdata4)]), SCRIPT_VERIFY_P2SH, BaseSignatureChecker(), consensusBranchId, &err));
     EXPECT_EQ(pushdata4Stack , directStack);
     EXPECT_EQ(err , SCRIPT_ERR_OK) << ScriptErrorString(err);
 }
 
 CScript
-sign_multisig(CScript scriptPubKey, std::vector<CKey> keys, CTransaction transaction, uint32_t consensusBranchId)
+sign_multisig(CScript scriptPubKey, vector<CKey> keys, CTransaction transaction, uint32_t consensusBranchId)
 {
     uint256 hash = SignatureHash(scriptPubKey, transaction, 0, SIGHASH_ALL, 0, consensusBranchId);
 
@@ -749,7 +749,7 @@ sign_multisig(CScript scriptPubKey, std::vector<CKey> keys, CTransaction transac
     result << OP_0;
     for (const auto &key : keys)
     {
-        vector<unsigned char> vchSig;
+        v_uint8 vchSig;
         EXPECT_TRUE(key.Sign(hash, vchSig));
         vchSig.push_back((unsigned char)SIGHASH_ALL);
         result << vchSig;
@@ -759,7 +759,7 @@ sign_multisig(CScript scriptPubKey, std::vector<CKey> keys, CTransaction transac
 CScript
 sign_multisig(CScript scriptPubKey, const CKey &key, CTransaction transaction, uint32_t consensusBranchId)
 {
-    std::vector<CKey> keys;
+    vector<CKey> keys;
     keys.push_back(key);
     return sign_multisig(scriptPubKey, keys, transaction, consensusBranchId);
 }
@@ -819,7 +819,7 @@ TEST_P(PTest_Script, script_CHECKMULTISIG23)
     CMutableTransaction txFrom23 = BuildCreditingTransaction(scriptPubKey23);
     CMutableTransaction txTo23 = BuildSpendingTransaction(CScript(), txFrom23);
 
-    std::vector<CKey> keys;
+    vector<CKey> keys;
     keys.push_back(key1); keys.push_back(key2);
     CScript goodsig1 = sign_multisig(scriptPubKey23, keys, txTo23, consensusBranchId);
     EXPECT_TRUE(VerifyScript(goodsig1, scriptPubKey23, flags, MutableTransactionSignatureChecker(&txTo23, 0, txFrom23.vout[0].nValue), consensusBranchId, &err));
@@ -931,7 +931,7 @@ TEST_P(PTest_Script, script_combineSigs)
     combined = CombineSignatures(scriptPubKey, MutableTransactionSignatureChecker(&txTo, 0, amount), SignatureData(scriptSigCopy), SignatureData(scriptSig), consensusBranchId);
     EXPECT_TRUE(combined.scriptSig == scriptSigCopy || combined.scriptSig == scriptSig);
     // dummy scriptSigCopy with placeholder, should always choose non-placeholder:
-    scriptSigCopy = CScript() << OP_0 << vector<unsigned char>(pkSingle.begin(), pkSingle.end());
+    scriptSigCopy = CScript() << OP_0 << v_uint8(pkSingle.begin(), pkSingle.end());
     combined = CombineSignatures(scriptPubKey, MutableTransactionSignatureChecker(&txTo, 0, amount), SignatureData(scriptSigCopy), SignatureData(scriptSig), consensusBranchId);
     EXPECT_EQ(combined.scriptSig , scriptSig);
     combined = CombineSignatures(scriptPubKey, MutableTransactionSignatureChecker(&txTo, 0, amount), SignatureData(scriptSig), SignatureData(scriptSigCopy), consensusBranchId);
@@ -947,15 +947,15 @@ TEST_P(PTest_Script, script_combineSigs)
     EXPECT_EQ(combined.scriptSig , scriptSig);
 
     // A couple of partially-signed versions:
-    vector<unsigned char> sig1;
+    v_uint8 sig1;
     uint256 hash1 = SignatureHash(scriptPubKey, txTo, 0, SIGHASH_ALL, 0, consensusBranchId);
     EXPECT_TRUE(keys[0].Sign(hash1, sig1));
     sig1.push_back(SIGHASH_ALL);
-    vector<unsigned char> sig2;
+    v_uint8 sig2;
     uint256 hash2 = SignatureHash(scriptPubKey, txTo, 0, SIGHASH_NONE, 0, consensusBranchId);
     EXPECT_TRUE(keys[1].Sign(hash2, sig2));
     sig2.push_back(SIGHASH_NONE);
-    vector<unsigned char> sig3;
+    v_uint8 sig3;
     uint256 hash3 = SignatureHash(scriptPubKey, txTo, 0, SIGHASH_SINGLE, 0, consensusBranchId);
     EXPECT_TRUE(keys[2].Sign(hash3, sig3));
     sig3.push_back(SIGHASH_SINGLE);
@@ -1007,7 +1007,7 @@ TEST_P(PTest_Script, script_standard_push)
     }
 
     for (unsigned int i=0; i<=MAX_SCRIPT_ELEMENT_SIZE; i++) {
-        std::vector<unsigned char> data(i, '\111'); //-V536
+        v_uint8 data(i, '\111'); //-V536
         CScript script;
         script << data;
         EXPECT_TRUE(script.IsPushOnly()) << "Length " << i << " is not pure push.";
@@ -1040,7 +1040,7 @@ TEST(test_script, script_GetScriptAsm)
 
     string derSig("304502207fa7a6d1e0ee81132a269ad84e68d695483745cde8b541e3bf630749894e342a022100c1f7ab20e13e22fb95281a870f3dcf38d782e53023ee313d741ad0cfbc0c5090");
     string pubKey("03b0da749730dc9b4b1f4a14d6902877a92541f5368778853d9c4a0cb7802dcfb2");
-    vector<unsigned char> vchPubKey = ToByteVector(ParseHex(pubKey));
+    v_uint8 vchPubKey = ToByteVector(ParseHex(pubKey));
 
     EXPECT_EQ(derSig + "00 " + pubKey, ScriptToAsmStr(CScript() << ToByteVector(ParseHex(derSig + "00")) << vchPubKey, true));
     EXPECT_EQ(derSig + "80 " + pubKey, ScriptToAsmStr(CScript() << ToByteVector(ParseHex(derSig + "80")) << vchPubKey, true));
