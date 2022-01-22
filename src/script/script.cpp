@@ -4,10 +4,10 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#include "script.h"
+#include <script/script.h>
 
-#include "tinyformat.h"
-#include "utilstrencodings.h"
+#include <tinyformat.h>
+#include <utilstrencodings.h>
 
 using namespace std;
 
@@ -21,7 +21,7 @@ inline string ValueString(const v_uint8& vch)
 }
 } // anon namespace
 
-const char* GetOpName(opcodetype opcode)
+string GetOpName(opcodetype opcode)
 {
     switch (opcode)
     {
