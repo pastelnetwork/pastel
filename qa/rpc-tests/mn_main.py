@@ -158,6 +158,8 @@ class MasterNodeMainTest (MasterNodeCommon):
 
             self.wait_for_mn_state(150, 50, "EXPIRED", self.nodes[1:self.total_number_of_nodes], mn_id)
             self.wait_for_mn_state(360, 30, "NEW_START_REQUIRED", self.nodes[1:self.total_number_of_nodes], mn_id)
+            # regtest, the NEW_START_REQUIRED masternode is longer than 10 minutes will not be shown.
+            self.wait_for_mn_state(240, 30, "", self.nodes[1:self.total_number_of_nodes], mn_id)
 
             print("Starting node 0 as Masternode again...")
             self.nodes.append(start_node(0, self.options.tmpdir, ["-debug=masternode", "-masternode", "-txindex=1", "-reindex", "-masternodeprivkey=91sY9h4AQ62bAhNk1aJ7uJeSnQzSFtz7QmW5imrKmiACm7QJLXe"]))

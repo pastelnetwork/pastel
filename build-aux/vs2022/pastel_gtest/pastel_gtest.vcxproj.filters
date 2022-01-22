@@ -76,13 +76,22 @@
     <ClCompile Include="..\..\..\src\gtest\test_pedersen_hash.cpp">
       <Filter>UnitTest Files</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\..\src\gtest\test_policyestimator.cpp">
+      <Filter>UnitTest Files</Filter>
+    </ClCompile>
     <ClCompile Include="..\..\..\src\gtest\test_pow.cpp">
+      <Filter>UnitTest Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\src\gtest\test_prevector.cpp">
       <Filter>UnitTest Files</Filter>
     </ClCompile>
     <ClCompile Include="..\..\..\src\gtest\test_proofs.cpp">
       <Filter>UnitTest Files</Filter>
     </ClCompile>
     <ClCompile Include="..\..\..\src\gtest\test_random.cpp">
+      <Filter>UnitTest Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\src\gtest\test_reverselock.cpp">
       <Filter>UnitTest Files</Filter>
     </ClCompile>
     <ClCompile Include="..\..\..\src\gtest\test_rpc.cpp">
@@ -244,6 +253,42 @@
     <ClCompile Include="..\..\..\src\gtest\test_univalue.cpp">
       <Filter>UnitTest Files</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\..\src\gtest\test_alert.cpp">
+      <Filter>UnitTest Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\src\gtest\test_bloom.cpp">
+      <Filter>UnitTest Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\src\gtest\test_DoS.cpp">
+      <Filter>UnitTest Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\src\gtest\test_getarg.cpp">
+      <Filter>UnitTest Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\src\wallet\gtest\test_accounting.cpp">
+      <Filter>UnitTest Files\wallet</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\src\gtest\test_coins.cpp">
+      <Filter>UnitTest Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\src\gtest\test_dbwrapper.cpp">
+      <Filter>UnitTest Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\src\gtest\test_main.cpp">
+      <Filter>UnitTest Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\src\gtest\test_pmt.cpp">
+      <Filter>UnitTest Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\src\gtest\test_mruset.cpp">
+      <Filter>UnitTest Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\src\gtest\test_enum_util.cpp">
+      <Filter>UnitTest Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\src\gtest\test_rpccmd_parser.cpp">
+      <Filter>UnitTest Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\..\src\gtest\json_test_vectors.h">
@@ -279,8 +324,14 @@
     <ClInclude Include="..\..\..\src\gtest\bignum.h">
       <Filter>UnitTest Files</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\..\src\gtest\mock_validation_state.h">
+      <Filter>UnitTest Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="..\..\..\src\Makefile.gtest.include" />
+    <None Include="..\..\..\src\gtest\.dirstamp">
+      <Filter>UnitTest Files</Filter>
+    </None>
   </ItemGroup>
 </Project>

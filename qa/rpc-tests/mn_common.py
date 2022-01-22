@@ -140,7 +140,7 @@ class MasterNodeCommon (PastelTestFramework):
         time.sleep(init_wait)
 
         for _ in range(repeatMore):
-            result = all(node.masternode("list")[mnId] == wait_for for node in node_list)
+            result = all(node.masternode("list").get(mnId, "") == wait_for for node in node_list)
             if not result:
                 if debug:
                     [print(node.masternode("list")) for node in node_list]
@@ -150,7 +150,7 @@ class MasterNodeCommon (PastelTestFramework):
                 break
         if debug:
             [print(node.masternode("list")) for node in node_list]
-        [assert_equal(node.masternode("list")[mnId], wait_for) for node in node_list]
+        [assert_equal(node.masternode("list").get(mnId, ""), wait_for) for node in node_list]
 
     def create_masternode_conf(self, name, n, dirname, txid, vin, private_key, mn_port):
         datadir = os.path.join(dirname, "node"+str(n))

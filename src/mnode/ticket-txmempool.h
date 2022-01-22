@@ -26,7 +26,7 @@ public:
     void removeTx(const uint256 &txid) override;
 
     // get list of ticket transactions in mempool by ticket id
-    virtual void getTicketTransactions(const TicketID ticket_id, std::vector<uint256> &vTxid);
+    virtual void getTicketTransactions(const TicketID ticket_id, v_uint256& vTxid);
     // get number of ticket transactions in mempool by ticket id
     virtual size_t count(const TicketID ticket_id) const noexcept;
 

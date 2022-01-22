@@ -1,5 +1,7 @@
+#pragma once
 // Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2014 The Bitcoin Core developers
+// Copyright (c) 2018-2022 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -12,7 +14,11 @@
 #include <vector>
 #include <stdint.h>
 #include <string>
-#include <climits>
+#include <vector>
+
+#include <script/script_error.h>
+#include <primitives/transaction.h>
+#include <enum_util.h>
 
 class CPubKey;
 class CScript;
@@ -20,16 +26,17 @@ class CTransaction;
 class uint256;
 
 /** Special case nIn for signing JoinSplits. */
-const unsigned int NOT_AN_INPUT = UINT_MAX;
+inline constexpr unsigned int NOT_AN_INPUT = std::numeric_limits<unsigned int>::max();
 
 /** Signature hash types/flags */
-enum
+typedef enum class _SIGHASH : uint8_t
 {
-    SIGHASH_ALL = 1,
-    SIGHASH_NONE = 2,
-    SIGHASH_SINGLE = 3,
-    SIGHASH_ANYONECANPAY = 0x80,
-};
+    ALL = 1,
+    NONE = 2,
+    SINGLE = 3,
+    ANYONECANPAY = 0x80
+} SIGHASH;
+
 
 /** Script verification flags */
 enum
@@ -88,7 +95,7 @@ enum
     SCRIPT_VERIFY_CHECKLOCKTIMEVERIFY = (1U << 9),
 };
 
-bool CheckSignatureEncoding(const std::vector<unsigned char> &vchSig, unsigned int flags, ScriptError* serror);
+bool CheckSignatureEncoding(const v_uint8 &vchSig, unsigned int flags, ScriptError* serror);
 
 struct PrecomputedTransactionData
 {
@@ -108,7 +115,7 @@ uint256 SignatureHash(
     const CScript &scriptCode,
     const CTransaction& txTo,
     unsigned int nIn,
-    int nHashType,
+    const uint8_t nHashType,
     const CAmount& amount,
     uint32_t consensusBranchId,
     const PrecomputedTransactionData* cache = nullptr);
@@ -117,8 +124,8 @@ class BaseSignatureChecker
 {
 public:
     virtual bool CheckSig(
-        const std::vector<unsigned char>& scriptSig,
-        const std::vector<unsigned char>& vchPubKey,
+        const v_uint8& scriptSig,
+        const v_uint8& vchPubKey,
         const CScript& scriptCode,
         uint32_t consensusBranchId) const
     {
@@ -142,12 +149,22 @@ private:
     const PrecomputedTransactionData* txdata;
 
 protected:
-    virtual bool VerifySignature(const std::vector<unsigned char>& vchSig, const CPubKey& vchPubKey, const uint256& sighash) const;
+    virtual bool VerifySignature(const v_uint8& vchSig, const CPubKey& vchPubKey, const uint256& sighash) const;
 
 public:
-    TransactionSignatureChecker(const CTransaction* txToIn, unsigned int nInIn, const CAmount& amountIn) : txTo(txToIn), nIn(nInIn), amount(amountIn), txdata(nullptr) {}
-    TransactionSignatureChecker(const CTransaction* txToIn, unsigned int nInIn, const CAmount& amountIn, const PrecomputedTransactionData& txdataIn) : txTo(txToIn), nIn(nInIn), amount(amountIn), txdata(&txdataIn) {}
-    bool CheckSig(const std::vector<unsigned char>& scriptSig, const std::vector<unsigned char>& vchPubKey, const CScript& scriptCode, uint32_t consensusBranchId) const;
+    TransactionSignatureChecker(const CTransaction* txToIn, unsigned int nInIn, const CAmount& amountIn) :
+        txTo(txToIn),
+        nIn(nInIn),
+        amount(amountIn),
+        txdata(nullptr)
+    {}
+    TransactionSignatureChecker(const CTransaction* txToIn, unsigned int nInIn, const CAmount& amountIn, const PrecomputedTransactionData& txdataIn) :
+        txTo(txToIn),
+        nIn(nInIn),
+        amount(amountIn),
+        txdata(&txdataIn)
+    {}
+    bool CheckSig(const v_uint8& scriptSig, const v_uint8& vchPubKey, const CScript& scriptCode, uint32_t consensusBranchId) const;
     bool CheckLockTime(const CScriptNum& nLockTime) const;
 };
 
@@ -161,7 +178,7 @@ public:
 };
 
 bool EvalScript(
-    std::vector<std::vector<unsigned char> >& stack,
+    std::vector<v_uint8>& stack,
     const CScript& script,
     unsigned int flags,
     const BaseSignatureChecker& checker,

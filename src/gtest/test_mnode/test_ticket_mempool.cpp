@@ -14,7 +14,7 @@
 using namespace testing;
 using namespace std;
 
-void MockTicketTxMemPoolTracker::Mock_AddTestData(const TicketID ticket_id, const size_t nCount, vector<uint256>& vTxid)
+void MockTicketTxMemPoolTracker::Mock_AddTestData(const TicketID ticket_id, const size_t nCount, v_uint256& vTxid)
 {
     vTxid.clear();
     vTxid.reserve(nCount);
@@ -30,7 +30,7 @@ void MockTicketTxMemPoolTracker::Mock_AddTestData(const TicketID ticket_id, cons
     }
 }
 
-void MockTicketTxMemPoolTracker::Mock_AddTestTxids(const TicketID ticket_id, const vector<uint256>& vTxid)
+void MockTicketTxMemPoolTracker::Mock_AddTestTxids(const TicketID ticket_id, const v_uint256& vTxid)
 {
     for (const auto &txid : vTxid)
     {
@@ -140,7 +140,7 @@ TEST_F(TestTicketTxMemPoolTracker, mempool_addremove)
     EXPECT_EQ(m_MemPoolTracker->size_mapTicket(), 2u);
     EXPECT_EQ(m_MemPoolTracker->size_mapTxId(), 2u);
 
-    vector<uint256> vTxid;
+    v_uint256 vTxid;
     m_MemPoolTracker->Call_getTicketTransactions(TicketID::NFT, vTxid);
     EXPECT_EQ(vTxid.size(), 1u);
     if (!vTxid.empty())

@@ -271,7 +271,8 @@ pastelid_store_t CPastelID::GetStoredPastelIDs(const bool bPastelIdOnly, string*
 {
     string error;
     fs::path pathPastelKeys(GetArg("-pastelkeysdir", "pastelkeys"));
-    pathPastelKeys = GetDataDir() / pathPastelKeys;
+    // use net-specific data dir
+    pathPastelKeys = GetDataDir(true) / pathPastelKeys;
 
     pastelid_store_t resultMap;
     if (fs::exists(pathPastelKeys))

@@ -7,17 +7,17 @@
 
 #include <gtest/gtest.h>
 
-#include "consensus/upgrades.h"
-#include "core_io.h"
-#include "key.h"
-#include "keystore.h"
-#include "main.h"
-#include "script/script.h"
-#include "script/script_error.h"
-#include "script/sign.h"
+#include <consensus/upgrades.h>
+#include <core_io.h>
+#include <key.h>
+#include <keystore.h>
+#include <main.h>
+#include <script/script.h>
+#include <script/script_error.h>
+#include <script/sign.h>
 
 #ifdef ENABLE_WALLET
-#include "wallet/wallet_ismine.h"
+#include <wallet/wallet_ismine.h>
 #endif
 
 using namespace std;
@@ -113,7 +113,7 @@ TEST_P(PTest_ScriptP2SH, sign)
     }
     for (int i = 0; i < 8; i++)
     {
-        EXPECT_TRUE(SignSignature(keystore, txFrom, txTo[i], 0, SIGHASH_ALL, consensusBranchId)) << strprintf("SignSignature %d", i);
+        EXPECT_TRUE(SignSignature(keystore, txFrom, txTo[i], 0, to_integral_type(SIGHASH::ALL), consensusBranchId)) << strprintf("SignSignature %d", i);
     }
     // All of the above should be OK, and the txTos have valid signatures
     // Check to make sure signature verification fails if we use the wrong ScriptSig:
@@ -224,7 +224,7 @@ TEST_P(PTest_ScriptP2SH, set)
     }
     for (int i = 0; i < 4; i++)
     {
-        EXPECT_TRUE(SignSignature(keystore, txFrom, txTo[i], 0, SIGHASH_ALL, consensusBranchId)) << strprintf("SignSignature %d", i);
+        EXPECT_TRUE(SignSignature(keystore, txFrom, txTo[i], 0, to_integral_type(SIGHASH::ALL), consensusBranchId)) << strprintf("SignSignature %d", i);
         EXPECT_TRUE(IsStandardTx(txTo[i], reason, chainparams)) << strprintf("txTo[%d].IsStandard", i);
     }
 }
@@ -333,9 +333,9 @@ TEST_P(PTest_ScriptP2SH, AreInputsStandard)
         txTo.vin[i].prevout.n = i;
         txTo.vin[i].prevout.hash = txFrom.GetHash();
     }
-    EXPECT_TRUE(SignSignature(keystore, txFrom, txTo, 0, SIGHASH_ALL, consensusBranchId));
-    EXPECT_TRUE(SignSignature(keystore, txFrom, txTo, 1, SIGHASH_ALL, consensusBranchId));
-    EXPECT_TRUE(SignSignature(keystore, txFrom, txTo, 2, SIGHASH_ALL, consensusBranchId));
+    EXPECT_TRUE(SignSignature(keystore, txFrom, txTo, 0, to_integral_type(SIGHASH::ALL), consensusBranchId));
+    EXPECT_TRUE(SignSignature(keystore, txFrom, txTo, 1, to_integral_type(SIGHASH::ALL), consensusBranchId));
+    EXPECT_TRUE(SignSignature(keystore, txFrom, txTo, 2, to_integral_type(SIGHASH::ALL), consensusBranchId));
     // SignSignature doesn't know how to sign these. We're
     // not testing validating signatures, so just create
     // dummy signatures that DO include the correct P2SH scripts:

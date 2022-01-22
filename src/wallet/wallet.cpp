@@ -1,6 +1,6 @@
 // Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2014 The Bitcoin Core developers
-// Copyright (c) 2018-2021 Pastel Core developers
+// Copyright (c) 2018-2022 Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 
@@ -409,7 +409,13 @@ bool CWallet::Unlock(const SecureString& strWalletPassphrase)
 
 unsigned int GetMsecTimeDelta(const int64_t nStartTime) noexcept
 {
-    return static_cast<unsigned int>(100 / ((double)(GetTimeMillis() - nStartTime)));
+    const int64_t nEndTime = GetTimeMillis();
+    if (nEndTime == nStartTime)
+        return 100;
+    const unsigned int nDelta = static_cast<unsigned int>(100 / ((double)(nEndTime - nStartTime)));
+    if (!nDelta)
+        return 100;
+    return nDelta;
 }
 
 bool CWallet::ChangeWalletPassphrase(const SecureString& strOldWalletPassphrase, const SecureString& strNewWalletPassphrase)
@@ -486,7 +492,8 @@ std::set<std::pair<libzcash::PaymentAddress, uint256>> CWallet::GetNullifiersFor
     std::map<libzcash::SaplingIncomingViewingKey, std::vector<libzcash::SaplingPaymentAddress>> ivkMap;
     for (const auto & addr : addresses) {
         auto saplingAddr = std::get_if<libzcash::SaplingPaymentAddress>(&addr);
-        if (saplingAddr != nullptr) {
+        if (saplingAddr)
+        {
             libzcash::SaplingIncomingViewingKey ivk;
             this->GetSaplingIncomingViewingKey(*saplingAddr, ivk);
             ivkMap[ivk].push_back(*saplingAddr);
@@ -980,15 +987,15 @@ bool CWallet::EncryptWallet(const SecureString& strWalletPassphrase)
 
     CCrypter crypter;
     int64_t nStartTime = GetTimeMillis();
-    crypter.SetKeyFromPassphrase(strWalletPassphrase, kMasterKey.vchSalt, 25000, kMasterKey.nDerivationMethod);
-    kMasterKey.nDeriveIterations = 2500000 / GetMsecTimeDelta(nStartTime);
+    crypter.SetKeyFromPassphrase(strWalletPassphrase, kMasterKey.vchSalt, 25'000, kMasterKey.nDerivationMethod);
+    kMasterKey.nDeriveIterations = 2'500'000 / GetMsecTimeDelta(nStartTime);
 
     nStartTime = GetTimeMillis();
     crypter.SetKeyFromPassphrase(strWalletPassphrase, kMasterKey.vchSalt, kMasterKey.nDeriveIterations, kMasterKey.nDerivationMethod);
     kMasterKey.nDeriveIterations = (kMasterKey.nDeriveIterations + kMasterKey.nDeriveIterations * GetMsecTimeDelta(nStartTime)) / 2;
 
-    if (kMasterKey.nDeriveIterations < 25000)
-        kMasterKey.nDeriveIterations = 25000;
+    if (kMasterKey.nDeriveIterations < 25'000)
+        kMasterKey.nDeriveIterations = 25'000;
 
     LogPrintf("Encrypting Wallet with an nDeriveIterations of %i\n", kMasterKey.nDeriveIterations);
 
@@ -1006,7 +1013,7 @@ bool CWallet::EncryptWallet(const SecureString& strWalletPassphrase)
             pwalletdbEncryption = new CWalletDB(strWalletFile);
             if (!pwalletdbEncryption->TxnBegin()) {
                 delete pwalletdbEncryption;
-                pwalletdbEncryption = NULL;
+                pwalletdbEncryption = nullptr;
                 return false;
             }
             pwalletdbEncryption->WriteMasterKey(nMasterKeyMaxID, kMasterKey);
@@ -2052,7 +2059,7 @@ int CWallet::ScanForWalletTransactions(CBlockIndex* pindexStart, bool fUpdate)
 
     CBlockIndex* pindex = pindexStart;
 
-    std::vector<uint256> myTxHashes;
+    v_uint256 myTxHashes;
 
     {
         LOCK2(cs_main, cs_wallet);
@@ -2124,7 +2131,7 @@ void CWallet::ReacceptWalletTransactions()
     if (!fBroadcastTransactions)
         return;
     LOCK2(cs_main, cs_wallet);
-    std::map<int64_t, CWalletTx*> mapSorted;
+    unordered_map<int64_t, CWalletTx*> mapSorted;
 
     // Sort pending wallet transactions based on their initial wallet insertion order
     for (auto &[txId, wtx] : mapWallet)
@@ -2133,7 +2140,7 @@ void CWallet::ReacceptWalletTransactions()
 
         const int nDepth = wtx.GetDepthInMainChain();
         if (!wtx.IsCoinBase() && nDepth < 0)
-            mapSorted.insert(std::make_pair(wtx.nOrderPos, &wtx));
+            mapSorted.emplace(wtx.nOrderPos, &wtx);
     }
 
     // Try to add wallet transactions to memory pool
@@ -2161,7 +2168,7 @@ bool CWalletTx::RelayWalletTransaction()
 set<uint256> CWalletTx::GetConflicts() const
 {
     set<uint256> result;
-    if (pwallet != NULL)
+    if (pwallet)
     {
         uint256 myHash = GetHash();
         result = pwallet->GetConflicts(myHash);
@@ -2357,9 +2364,9 @@ bool CWalletTx::IsTrusted() const
     return true;
 }
 
-std::vector<uint256> CWallet::ResendWalletTransactionsBefore(int64_t nTime)
+v_uint256 CWallet::ResendWalletTransactionsBefore(int64_t nTime)
 {
-    std::vector<uint256> result;
+    v_uint256 result;
 
     LOCK(cs_wallet);
     // Sort them in chronological order
@@ -2397,7 +2404,7 @@ void CWallet::ResendWalletTransactions(int64_t nBestBlockTime)
 
     // Rebroadcast unconfirmed txes older than 5 minutes before the last
     // block was found:
-    std::vector<uint256> relayed = ResendWalletTransactionsBefore(nBestBlockTime-5*60);
+    v_uint256 relayed = ResendWalletTransactionsBefore(nBestBlockTime - 5 * 60);
     if (!relayed.empty())
         LogPrintf("%s: rebroadcast %u unconfirmed transactions\n", __func__, relayed.size());
 }
@@ -2645,7 +2652,7 @@ bool CWallet::SelectCoinsMinConf(const CAmount& nTargetValue, int nConfMine, int
 
     if (nTotalLower < nTargetValue)
     {
-        if (coinLowestLarger.second.first == NULL)
+        if (!coinLowestLarger.second.first)
             return false;
         setCoinsRet.insert(coinLowestLarger.second);
         nValueRet += coinLowestLarger.first;
@@ -3029,7 +3036,7 @@ bool CWallet::CreateTransaction(const vector<CRecipient>& vecSend, CWalletTx& wt
                     const CScript& scriptPubKey = pTx->vout[nOut].scriptPubKey;
                     SignatureData sigdata;
                     if (sign)
-                        signSuccess = ProduceSignature(TransactionSignatureCreator(this, &txNewConst, nIn, pTx->vout[nOut].nValue, SIGHASH_ALL), scriptPubKey, sigdata, consensusBranchId);
+                        signSuccess = ProduceSignature(TransactionSignatureCreator(this, &txNewConst, nIn, pTx->vout[nOut].nValue, to_integral_type(SIGHASH::ALL)), scriptPubKey, sigdata, consensusBranchId);
                     else
                         signSuccess = ProduceSignature(DummySignatureCreator(this), scriptPubKey, sigdata, consensusBranchId);
 
@@ -3115,7 +3122,7 @@ bool CWallet::CommitTransaction(CWalletTx& wtxNew, CReserveKey& reservekey)
             // This is only to keep the database open to defeat the auto-flush for the
             // duration of this scope.  This is the only place where this optimization
             // maybe makes sense; please don't do it anywhere else.
-            CWalletDB* pwalletdb = fFileBacked ? new CWalletDB(strWalletFile,"r+") : NULL;
+            CWalletDB* pwalletdb = fFileBacked ? new CWalletDB(strWalletFile,"r+") : nullptr;
 
             // Take key pair from key pool so it won't be used again
             reservekey.KeepKey();
@@ -3934,7 +3941,7 @@ int CMerkleTx::GetBlocksToMaturity() const
 bool CMerkleTx::AcceptToMemoryPool(bool fLimitFree, bool fRejectAbsurdFee)
 {
     CValidationState state;
-    return ::AcceptToMemoryPool(Params(), mempool, state, *this, fLimitFree, NULL, fRejectAbsurdFee);
+    return ::AcceptToMemoryPool(Params(), mempool, state, *this, fLimitFree, nullptr, fRejectAbsurdFee);
 }
 
 /**

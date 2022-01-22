@@ -224,17 +224,21 @@ public:
         _union()
     {}
 
-    explicit prevector(size_type n) : 
+    prevector(prevector&& p) = default;
+    prevector& operator=(prevector&& p) = default;
+
+    explicit prevector(const size_type n) : 
         _size(0)
     {
         resize(n);
     }
 
-    explicit prevector(size_type n, const T& val = T()) : 
+    explicit prevector(const size_type n, const T& val = T()) : 
         _size(0)
     {
         change_capacity(n);
-        while (size() < n) {
+        while (size() < n)
+        {
             _size++;
             new(static_cast<void*>(item_ptr(size() - 1))) T(val);
         }
@@ -244,7 +248,8 @@ public:
     prevector(InputIterator first, InputIterator last) : _size(0) {
         size_type n = static_cast<size_type>(std::distance(first, last));
         change_capacity(n);
-        while (first != last) {
+        while (first != last)
+        {
             _size++;
             new(static_cast<void*>(item_ptr(size() - 1))) T(*first);
             ++first;

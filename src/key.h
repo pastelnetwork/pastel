@@ -126,7 +126,7 @@ public:
      * Create a DER-serialized signature.
      * The test_case parameter tweaks the deterministic nonce.
      */
-    bool Sign(const uint256& hash, std::vector<unsigned char>& vchSig, const uint32_t test_case = 0) const;
+    bool Sign(const uint256& hash, v_uint8& vchSig, const uint32_t test_case = 0) const;
 
     /**
      * Create a compact signature (65 bytes), which allows reconstructing the used public key.
@@ -135,7 +135,7 @@ public:
      *                  0x1D = second key with even y, 0x1E = second key with odd y,
      *                  add 0x04 for compressed keys.
      */
-    bool SignCompact(const uint256& hash, std::vector<unsigned char>& vchSig) const;
+    bool SignCompact(const uint256& hash, v_uint8& vchSig) const;
 
     //! Derive BIP32 child key.
     bool Derive(CKey& keyChild, ChainCode &ccChild, const unsigned int nChild, const ChainCode& cc) const;

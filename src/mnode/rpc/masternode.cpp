@@ -1,23 +1,27 @@
-// Copyright (c) 2018-2021 The Pastel Core developers
+// Copyright (c) 2018-2022 The Pastel Core developers
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 
-#include "key_io.h"
-#include "main.h"
-#include "init.h"
-#include "rpc/server.h"
-#include "rpc/rpc_consts.h"
-#include "mnode/mnode-controller.h"
-#include "mnode/rpc/masternode.h"
-#include "mnode/rpc/mnode-rpc-utils.h"
+#include <key_io.h>
+#include <main.h>
+#include <init.h>
+#include <rpc/rpc_consts.h>
+#include <rpc/rpc_parser.h>
+#include <rpc/server.h>
+#include <mnode/mnode-controller.h>
+#include <mnode/rpc/masternode.h>
+#include <mnode/rpc/mnode-rpc-utils.h>
 
-UniValue formatMnsInfo(const std::vector<CMasternode>& topBlockMNs)
+using namespace std;
+
+UniValue formatMnsInfo(const vector<CMasternode>& topBlockMNs)
 {
     UniValue mnArray(UniValue::VARR);
 
     int i = 0;
     KeyIO keyIO(Params());
-    for (const auto& mn : topBlockMNs) {
+    for (const auto& mn : topBlockMNs)
+    {
         UniValue objItem(UniValue::VOBJ);
         objItem.pushKV("rank", strprintf("%d", ++i));
 
@@ -25,9 +29,9 @@ UniValue formatMnsInfo(const std::vector<CMasternode>& topBlockMNs)
         objItem.pushKV("protocol", (int64_t)mn.nProtocolVersion);
         objItem.pushKV("outpoint", mn.vin.prevout.ToStringShort());
 
-        CTxDestination dest = mn.pubKeyCollateralAddress.GetID();
-        std::string address = keyIO.EncodeDestination(dest);
-        objItem.pushKV("payee", address);
+        const CTxDestination dest = mn.pubKeyCollateralAddress.GetID();
+        string address = keyIO.EncodeDestination(dest);
+        objItem.pushKV("payee", move(address));
         objItem.pushKV("lastseen", mn.nTimeLastPing);
         objItem.pushKV("activeseconds", mn.nTimeLastPing - mn.sigTime);
 
@@ -36,7 +40,7 @@ UniValue formatMnsInfo(const std::vector<CMasternode>& topBlockMNs)
         objItem.pushKV("extKey", mn.strExtraLayerKey);
         objItem.pushKV("extCfg", mn.strExtraLayerCfg);
 
-        mnArray.push_back(std::move(objItem));
+        mnArray.push_back(move(objItem));
     }
     return mnArray;
 }
@@ -53,47 +57,51 @@ UniValue messageToJson(const CMasternodeMessage& msg)
 
 UniValue masternodelist(const UniValue& params, bool fHelp)
 {
-    std::string strMode = "status";
-    std::string strFilter;
+    string strFilter;
+    string strExtra;
 
-    if (!params.empty())
-        strMode = params[0].get_str();
-    if (params.size() == 2)
+    RPC_CMD_PARSER(MNLIST, params, activeseconds, addr, full, info, lastpaidblock, lastpaidtime, lastseen, payee, protocol, pubkey, rank, status, extra);
+    if (fHelp || !MNLIST.IsCmdSupported())
+        throw runtime_error(
+R"(masternodelist ( "mode" "filter" )
+Get a list of masternodes in different modes
+
+Arguments:
+1. "mode"      (string, optional) Required to use filter, defaults = status) The mode to run list in
+2. "filter"    (string, optional) Filter results. Partial match by outpoint by default in all modes,
+                                   additional matches in some modes are also available
+3. "allnode"   (string, optional) Force to show all MNs including expired NEW_START_REQUIRED
+
+Available modes:
+  activeseconds  - Print number of seconds masternode recognized by the network as enabled
+                   (since latest issued \"masternode start/start-many/start-alias\")
+  addr           - Print ip address associated with a masternode (can be additionally filtered, partial match)
+  full           - Print info in format 'status protocol payee lastseen activeseconds lastpaidtime lastpaidblock IP'
+                   (can be additionally filtered, partial match)
+  info           - Print info in format 'status protocol payee lastseen activeseconds sentinelversion sentinelstate IP'
+                   (can be additionally filtered, partial match)
+  lastpaidblock  - Print the last block height a node was paid on the network
+  lastpaidtime   - Print the last time a node was paid on the network
+  lastseen       - Print timestamp of when a masternode was last seen on the network
+  payee          - Print Dash address associated with a masternode (can be additionally filtered,
+                   partial match)
+  protocol       - Print protocol of a masternode (can be additionally filtered, exact match)
+  pubkey         - Print the masternode (not collateral) public key
+  rank           - Print rank of a masternode based on current block
+  status         - Print masternode status: PRE_ENABLED / ENABLED / EXPIRED / WATCHDOG_EXPIRED / NEW_START_REQUIRED /
+                   UPDATE_REQUIRED / POSE_BAN / OUTPOINT_SPENT (can be additionally filtered, partial match)
+  extra          - Print PASTEL data associated with the masternode
+)");
+
+    if (params.size() >= 2)
         strFilter = params[1].get_str();
+    if (params.size() == 3)
+        strExtra = params[2].get_str();
+    else if (params.size() > 3)
+        throw JSONRPCError(RPC_INVALID_PARAMETER, "Too many parameters");
 
-    if (fHelp || (strMode != "activeseconds" && strMode != "addr" && strMode != "full" && strMode != "info" &&
-                  strMode != "lastseen" && strMode != "lastpaidtime" && strMode != "lastpaidblock" &&
-                  strMode != "protocol" && strMode != "payee" && strMode != "pubkey" &&
-                  strMode != "rank" && strMode != "status" && strMode != "extra")) {
-        throw std::runtime_error(
-            "masternodelist ( \"mode\" \"filter\" )\n"
-            "Get a list of masternodes in different modes\n"
-            "\nArguments:\n"
-            "1. \"mode\"      (string, optional/required to use filter, defaults = status) The mode to run list in\n"
-            "2. \"filter\"    (string, optional) Filter results. Partial match by outpoint by default in all modes,\n"
-            "                                    additional matches in some modes are also available\n"
-            "\nAvailable modes:\n"
-            "  activeseconds  - Print number of seconds masternode recognized by the network as enabled\n"
-            "                   (since latest issued \"masternode start/start-many/start-alias\")\n"
-            "  addr           - Print ip address associated with a masternode (can be additionally filtered, partial match)\n"
-            "  full           - Print info in format 'status protocol payee lastseen activeseconds lastpaidtime lastpaidblock IP'\n"
-            "                   (can be additionally filtered, partial match)\n"
-            "  info           - Print info in format 'status protocol payee lastseen activeseconds sentinelversion sentinelstate IP'\n"
-            "                   (can be additionally filtered, partial match)\n"
-            "  lastpaidblock  - Print the last block height a node was paid on the network\n"
-            "  lastpaidtime   - Print the last time a node was paid on the network\n"
-            "  lastseen       - Print timestamp of when a masternode was last seen on the network\n"
-            "  payee          - Print Dash address associated with a masternode (can be additionally filtered,\n"
-            "                   partial match)\n"
-            "  protocol       - Print protocol of a masternode (can be additionally filtered, exact match)\n"
-            "  pubkey         - Print the masternode (not collateral) public key\n"
-            "  rank           - Print rank of a masternode based on current block\n"
-            "  status         - Print masternode status: PRE_ENABLED / ENABLED / EXPIRED / WATCHDOG_EXPIRED / NEW_START_REQUIRED /\n"
-            "                   UPDATE_REQUIRED / POSE_BAN / OUTPOINT_SPENT (can be additionally filtered, partial match)\n"
-            "  extra          - Print PASTEL data associated with the masternode\n");
-    }
-
-    if (strMode == "full" || strMode == "lastpaidtime" || strMode == "lastpaidblock") {
+    if (MNLIST.IsCmdAnyOf(RPC_CMD_MNLIST::full, RPC_CMD_MNLIST::lastpaidtime, RPC_CMD_MNLIST::lastpaidblock))
+    {
         CBlockIndex* pindex = nullptr;
         {
             LOCK(cs_main);
@@ -104,90 +112,151 @@ UniValue masternodelist(const UniValue& params, bool fHelp)
 
     KeyIO keyIO(Params());
     UniValue obj(UniValue::VOBJ);
-    if (strMode == "rank") {
+    const auto mode = MNLIST.cmd();
+    if (MNLIST.IsCmd(RPC_CMD_MNLIST::rank)) 
+    {
         CMasternodeMan::rank_pair_vec_t vMasternodeRanks;
         masterNodeCtrl.masternodeManager.GetMasternodeRanks(vMasternodeRanks);
-        for (auto& mnpair : vMasternodeRanks) {
-            std::string strOutpoint = mnpair.second.vin.prevout.ToStringShort();
-            if (!strFilter.empty() && strOutpoint.find(strFilter) == std::string::npos)
+        for (const auto& mnpair : vMasternodeRanks)
+        {
+            string strOutpoint = mnpair.second.vin.prevout.ToStringShort();
+            if (!strFilter.empty() && strOutpoint.find(strFilter) == string::npos)
                 continue;
             obj.pushKV(strOutpoint, mnpair.first);
         }
     } else {
-        std::map<COutPoint, CMasternode> mapMasternodes = masterNodeCtrl.masternodeManager.GetFullMasternodeMap();
-        for (auto& mnpair : mapMasternodes) {
-            CMasternode mn = mnpair.second;
-            std::string strOutpoint = mnpair.first.ToStringShort();
-            CTxDestination dest = mn.pubKeyCollateralAddress.GetID();
-            std::string address = keyIO.EncodeDestination(dest);
+        const auto mapMasternodes = masterNodeCtrl.masternodeManager.GetFullMasternodeMap();
+        const bool bShowAllNodes = strExtra == "allnode";
+        for (const auto& [outpoint, mn] : mapMasternodes)
+        {
+            if( mn.IsNewStartRequired() && ! mn.IsPingedWithin(masterNodeCtrl.MNStartRequiredExpirationTime) && !bShowAllNodes ) 
+            {
+                continue;
+            }
+            string strOutpoint = outpoint.ToStringShort();
+            const CTxDestination dest = mn.pubKeyCollateralAddress.GetID();
+            string address = keyIO.EncodeDestination(dest);
 
-            if (strMode == "activeseconds") {
-                if (strFilter != "" && strOutpoint.find(strFilter) == std::string::npos)
-                    continue;
-                obj.pushKV(strOutpoint, (int64_t)(mn.lastPing.sigTime - mn.sigTime));
-            } else if (strMode == "addr") {
-                std::string strAddress = mn.addr.ToString();
-                if (strFilter != "" && strAddress.find(strFilter) == std::string::npos &&
-                    strOutpoint.find(strFilter) == std::string::npos)
-                    continue; //-V1051
-                obj.pushKV(strOutpoint, strAddress);
-            } else if (strMode == "full") {
-                std::ostringstream streamFull;
+            switch (mode)
+            {
+                case RPC_CMD_MNLIST::activeseconds:
+                {
+                    if (!strFilter.empty() && strOutpoint.find(strFilter) == string::npos)
+                        continue;
+                    obj.pushKV(strOutpoint, (int64_t)(mn.lastPing.sigTime - mn.sigTime));
+                } break;
+                
+                case RPC_CMD_MNLIST::addr:
+                {
+                    string strAddress = mn.addr.ToString();
+                    if (!strFilter.empty() && strAddress.find(strFilter) == string::npos &&
+                        strOutpoint.find(strFilter) == string::npos)
+                        continue; //-V1051
+                    obj.pushKV(strOutpoint, move(strAddress));
+                } break;
 
-                streamFull << std::setw(18) << mn.GetStatus() << " " << mn.nProtocolVersion << " " << address << " " << (int64_t)mn.lastPing.sigTime << " " << std::setw(8) << (int64_t)(mn.lastPing.sigTime - mn.sigTime) << " " << std::setw(10) << mn.GetLastPaidTime() << " " << std::setw(6) << mn.GetLastPaidBlock() << " " << mn.addr.ToString();
-                std::string strFull = streamFull.str();
-                if (strFilter != "" && strFull.find(strFilter) == std::string::npos &&
-                    strOutpoint.find(strFilter) == std::string::npos)
-                    continue; //-V1051
-                obj.pushKV(strOutpoint, strFull);
-            } else if (strMode == "info") {
-                std::ostringstream streamInfo;
-                streamInfo << std::setw(18) << mn.GetStatus() << " " << mn.nProtocolVersion << " " << address << " " << (int64_t)mn.lastPing.sigTime << " " << std::setw(8) << (int64_t)(mn.lastPing.sigTime - mn.sigTime) << " " << mn.addr.ToString();
-                std::string strInfo = streamInfo.str();
-                if (strFilter != "" && strInfo.find(strFilter) == std::string::npos &&
-                    strOutpoint.find(strFilter) == std::string::npos)
-                    continue; //-V1051
-                obj.pushKV(strOutpoint, strInfo);
-            } else if (strMode == "lastpaidblock") {
-                if (strFilter != "" && strOutpoint.find(strFilter) == std::string::npos)
-                    continue;
-                obj.pushKV(strOutpoint, mn.GetLastPaidBlock());
-            } else if (strMode == "lastpaidtime") {
-                if (strFilter != "" && strOutpoint.find(strFilter) == std::string::npos)
-                    continue;
-                obj.pushKV(strOutpoint, mn.GetLastPaidTime());
-            } else if (strMode == "lastseen") {
-                if (strFilter != "" && strOutpoint.find(strFilter) == std::string::npos)
-                    continue;
-                obj.pushKV(strOutpoint, (int64_t)mn.lastPing.sigTime);
-            } else if (strMode == "payee") {
-                if (strFilter != "" && address.find(strFilter) == std::string::npos &&
-                    strOutpoint.find(strFilter) == std::string::npos)
-                    continue;
-                obj.pushKV(strOutpoint, address);
-            } else if (strMode == "protocol") {
-                if (strFilter != "" && strFilter != strprintf("%d", mn.nProtocolVersion) &&
-                    strOutpoint.find(strFilter) == std::string::npos)
-                    continue;
-                obj.pushKV(strOutpoint, (int64_t)mn.nProtocolVersion);
-            } else if (strMode == "pubkey") {
-                if (strFilter != "" && strOutpoint.find(strFilter) == std::string::npos)
-                    continue;
-                obj.pushKV(strOutpoint, HexStr(mn.pubKeyMasternode));
-            } else if (strMode == "status") {
-                std::string strStatus = mn.GetStatus();
-                if (strFilter != "" && strStatus.find(strFilter) == std::string::npos &&
-                    strOutpoint.find(strFilter) == std::string::npos)
-                    continue; //-V1051
-                obj.pushKV(strOutpoint, strStatus);
-            } else if (strMode == "extra") {
-                UniValue objItem(UniValue::VOBJ);
-                objItem.pushKV("extAddress", mn.strExtraLayerAddress);
-                objItem.pushKV("extP2P", mn.strExtraLayerP2P);
-                objItem.pushKV("extKey", mn.strExtraLayerKey);
-                objItem.pushKV("extCfg", mn.strExtraLayerCfg);
+                case RPC_CMD_MNLIST::full:
+                {
+                    ostringstream streamFull;
+                    streamFull 
+                        << setw(18) << mn.GetStatus() << " " 
+                        << mn.nProtocolVersion << " " 
+                        << address << " " 
+                        << (int64_t)mn.lastPing.sigTime << " " 
+                        << setw(8) << (int64_t)(mn.lastPing.sigTime - mn.sigTime) << " " 
+                        << setw(10) << mn.GetLastPaidTime() << " " 
+                        << setw(6) << mn.GetLastPaidBlock() << " " 
+                        << mn.addr.ToString();
+                    string strFull = streamFull.str();
+                    if (!strFilter.empty() && strFull.find(strFilter) == string::npos &&
+                        strOutpoint.find(strFilter) == string::npos)
+                        continue; //-V1051
+                    obj.pushKV(strOutpoint, move(strFull));
+                } break;
 
-                obj.pushKV(strOutpoint, objItem);
+                case RPC_CMD_MNLIST::info: 
+                {
+                    ostringstream streamInfo;
+                    streamInfo 
+                        << setw(18) << mn.GetStatus() << " " 
+                        << mn.nProtocolVersion << " " 
+                        << address << " " 
+                        << (int64_t)mn.lastPing.sigTime << " " 
+                        << setw(8) << (int64_t)(mn.lastPing.sigTime - mn.sigTime) << " " 
+                        << mn.addr.ToString();
+                    string strInfo = streamInfo.str();
+                    if (!strFilter.empty() && strInfo.find(strFilter) == string::npos &&
+                        strOutpoint.find(strFilter) == string::npos)
+                        continue; //-V1051
+                    obj.pushKV(strOutpoint, move(strInfo));
+                } break;
+                
+                case RPC_CMD_MNLIST::lastpaidblock:
+                {
+                    if (!strFilter.empty() && strOutpoint.find(strFilter) == string::npos)
+                        continue;
+                    obj.pushKV(strOutpoint, mn.GetLastPaidBlock());
+                } break;
+
+                case RPC_CMD_MNLIST::lastpaidtime:
+                {
+                    if (!strFilter.empty() && strOutpoint.find(strFilter) == string::npos)
+                        continue;
+                    obj.pushKV(strOutpoint, mn.GetLastPaidTime());
+                } break;
+
+                case RPC_CMD_MNLIST::lastseen:
+                {
+                    if (!strFilter.empty() && strOutpoint.find(strFilter) == string::npos)
+                        continue;
+                    obj.pushKV(strOutpoint, (int64_t)mn.lastPing.sigTime);
+                } break;
+
+                case RPC_CMD_MNLIST::payee:
+                {
+                    if (!strFilter.empty() && address.find(strFilter) == string::npos &&
+                        strOutpoint.find(strFilter) == string::npos)
+                        continue;
+                    obj.pushKV(strOutpoint, move(address));
+                } break;
+
+                case RPC_CMD_MNLIST::protocol: 
+                {
+                    if (!strFilter.empty() && strFilter != strprintf("%d", mn.nProtocolVersion) &&
+                        strOutpoint.find(strFilter) == string::npos)
+                        continue;
+                    obj.pushKV(strOutpoint, (int64_t)mn.nProtocolVersion);
+                } break;
+
+                case RPC_CMD_MNLIST::pubkey: 
+                {
+                    if (!strFilter.empty() && strOutpoint.find(strFilter) == string::npos)
+                        continue;
+                    obj.pushKV(strOutpoint, HexStr(mn.pubKeyMasternode));
+                } break;
+
+                case RPC_CMD_MNLIST::status: 
+                {
+                    string strStatus = mn.GetStatus();
+                    if (!strFilter.empty() && strStatus.find(strFilter) == string::npos &&
+                        strOutpoint.find(strFilter) == string::npos)
+                        continue; //-V1051
+                    obj.pushKV(strOutpoint, move(strStatus));
+                } break;
+
+                case RPC_CMD_MNLIST::extra: 
+                {
+                    UniValue objItem(UniValue::VOBJ);
+                    objItem.pushKV("extAddress", mn.strExtraLayerAddress);
+                    objItem.pushKV("extP2P", mn.strExtraLayerP2P);
+                    objItem.pushKV("extKey", mn.strExtraLayerKey);
+                    objItem.pushKV("extCfg", mn.strExtraLayerCfg);
+
+                    obj.pushKV(strOutpoint, move(objItem));
+                } break;
+
+                default:
+                    break;
             }
         }
     }
@@ -196,7 +265,7 @@ UniValue masternodelist(const UniValue& params, bool fHelp)
 
 UniValue masternode(const UniValue& params, bool fHelp)
 {
-    std::string strCommand;
+    string strCommand;
     if (!params.empty()) {
         strCommand = params[0].get_str();
     }
@@ -215,7 +284,7 @@ UniValue masternode(const UniValue& params, bool fHelp)
             strCommand != "list" && strCommand != "list-conf" && strCommand != "count" &&
             strCommand != "debug" && strCommand != "current" && strCommand != "winner" && strCommand != "winners" && strCommand != "genkey" &&
             strCommand != "connect" && strCommand != "status" && strCommand != "top" && strCommand != "message"))
-        throw std::runtime_error(
+        throw runtime_error(
             "masternode \"command\"...\n"
             "Set of commands to execute masternode related actions\n"
             "\nArguments:\n"
@@ -248,6 +317,9 @@ UniValue masternode(const UniValue& params, bool fHelp)
         for (unsigned int i = 1; i < params.size(); i++) {
             newParams.push_back(params[i]);
         }
+        if( 1u == params.size() )
+            newParams.push_back(UniValue(UniValue::VSTR, "status"));
+            
         return masternodelist(newParams, fHelp);
     }
 
@@ -255,7 +327,7 @@ UniValue masternode(const UniValue& params, bool fHelp)
         if (params.size() < 2)
             throw JSONRPCError(RPC_INVALID_PARAMETER, "Masternode address required");
 
-        std::string strAddress = params[1].get_str();
+        string strAddress = params[1].get_str();
 
         CService addr;
         if (!Lookup(strAddress.c_str(), addr, 0, false))
@@ -276,7 +348,7 @@ UniValue masternode(const UniValue& params, bool fHelp)
         if (params.size() == 1)
             return static_cast<uint64_t>(masterNodeCtrl.masternodeManager.size());
 
-        std::string strMode = params[1].get_str();
+        string strMode = params[1].get_str();
 
         if (strMode == "enabled")
             return static_cast<uint64_t>(masterNodeCtrl.masternodeManager.CountEnabled());
@@ -316,7 +388,7 @@ UniValue masternode(const UniValue& params, bool fHelp)
         obj.pushKV("outpoint", mnInfo.vin.prevout.ToStringShort());
 
         CTxDestination dest = mnInfo.pubKeyCollateralAddress.GetID();
-        std::string address = keyIO.EncodeDestination(dest);
+        string address = keyIO.EncodeDestination(dest);
         obj.pushKV("payee", address);
 
         obj.pushKV("lastseen", mnInfo.nTimeLastPing);
@@ -334,7 +406,7 @@ UniValue masternode(const UniValue& params, bool fHelp)
             EnsureWalletIsUnlocked();
         }
 
-        std::string strAlias = params[1].get_str();
+        string strAlias = params[1].get_str();
 
         bool fFound = false;
 
@@ -344,7 +416,7 @@ UniValue masternode(const UniValue& params, bool fHelp)
         for (const auto& mne : masterNodeCtrl.masternodeConfig.getEntries()) {
             if (mne.getAlias() == strAlias) {
                 fFound = true;
-                std::string strError;
+                string strError;
                 CMasternodeBroadcast mnb;
 
 
@@ -387,7 +459,7 @@ UniValue masternode(const UniValue& params, bool fHelp)
         UniValue resultsObj(UniValue::VOBJ);
 
         for (const auto& mne : masterNodeCtrl.masternodeConfig.getEntries()) {
-            std::string strError;
+            string strError;
 
             COutPoint outpoint = COutPoint(uint256S(mne.getTxHash()), uint32_t(atoi(mne.getOutputIndex().c_str())));
             CMasternode mn;
@@ -447,7 +519,7 @@ UniValue masternode(const UniValue& params, bool fHelp)
             CMasternode mn;
             bool fFound = masterNodeCtrl.masternodeManager.Get(outpoint, mn);
 
-            std::string strStatus = fFound ? mn.GetStatus() : "MISSING";
+            string strStatus = fFound ? mn.GetStatus() : "MISSING";
 
             UniValue mnObj(UniValue::VOBJ);
             mnObj.pushKV(RPC_KEY_ALIAS, mne.getAlias());
@@ -490,28 +562,28 @@ UniValue masternode(const UniValue& params, bool fHelp)
         UniValue resultObj(UniValue::VOBJ);
 
         //Alias
-        std::string strAlias = params[1].get_str();
+        string strAlias = params[1].get_str();
 
         //mnAddress:port
-        std::string strMnAddress = params[2].get_str();
+        string strMnAddress = params[2].get_str();
         //TODO : validate correct address format
 
         //extAddress:port
-        std::string strExtAddress = params[3].get_str();
+        string strExtAddress = params[3].get_str();
         //TODO : validate correct address format
 
         //extP2P:port
-        std::string strExtP2P = params[4].get_str();
+        string strExtP2P = params[4].get_str();
         //TODO : validate correct address format
 
         //txid:index
-        std::vector<COutput> vPossibleCoins;
+        vector<COutput> vPossibleCoins;
         pwalletMain->AvailableCoins(vPossibleCoins, true, nullptr, false, true, masterNodeCtrl.MasternodeCollateral, true);
         if (vPossibleCoins.empty()) {
             throw JSONRPCError(RPC_INVALID_PARAMETER, "No spendable collateral transactions exist");
         }
 
-        std::string strTxid, strIndex;
+        string strTxid, strIndex;
         bool bFound = false;
         if (params.size() != 7) {
             strTxid = params[5].get_str();
@@ -528,7 +600,7 @@ UniValue masternode(const UniValue& params, bool fHelp)
         } else {
             COutput out = vPossibleCoins.front();
             strTxid = out.tx->GetHash().ToString();
-            strIndex = std::to_string(out.i);
+            strIndex = to_string(out.i);
         }
         if (!bFound) {
             throw JSONRPCError(RPC_INVALID_PARAMETER, "Collateral transaction doesn't exist or unspendable");
@@ -539,16 +611,16 @@ UniValue masternode(const UniValue& params, bool fHelp)
         secret.MakeNewKey(false);
         if (!secret.IsValid()) // should not happen as MakeNewKey always sets valid flag
             throw JSONRPCError(RPC_MISC_ERROR, "Failed to generate private key");
-        std::string mnPrivKey = keyIO.EncodeSecret(secret);
+        string mnPrivKey = keyIO.EncodeSecret(secret);
 
         //PastelID
-        std::string pastelID;
+        string pastelID;
         /*      THIS WILL NOT WORK for Hot/Cold case - PastelID has to be created and registered from the cold MN itself
         SecureString strKeyPass(params[4].get_str());
         
-        std::string pastelID = CPastelID::CreateNewLocalKey(strKeyPass);
-        CPastelIDRegTicket regTicket = CPastelIDRegTicket::Create(pastelID, strKeyPass, std::string{});
-        std::string txid = CPastelTicketProcessor::SendTicket(regTicket);
+        string pastelID = CPastelID::CreateNewLocalKey(strKeyPass);
+        CPastelIDRegTicket regTicket = CPastelIDRegTicket::Create(pastelID, strKeyPass, string{});
+        string txid = CPastelTicketProcessor::SendTicket(regTicket);
 */
 
         //Create JSON
@@ -568,7 +640,7 @@ UniValue masternode(const UniValue& params, bool fHelp)
 #ifdef ENABLE_WALLET
     if (strCommand == "outputs") {
         // Find possible candidates
-        std::vector<COutput> vPossibleCoins;
+        vector<COutput> vPossibleCoins;
 
         pwalletMain->AvailableCoins(vPossibleCoins, true, nullptr, false, true, masterNodeCtrl.MasternodeCollateral, true);
 
@@ -593,7 +665,7 @@ UniValue masternode(const UniValue& params, bool fHelp)
         CMasternode mn;
         if (masterNodeCtrl.masternodeManager.Get(masterNodeCtrl.activeMasternode.outpoint, mn)) {
             CTxDestination dest = mn.pubKeyCollateralAddress.GetID();
-            std::string address = keyIO.EncodeDestination(dest);
+            string address = keyIO.EncodeDestination(dest);
             mnObj.pushKV("payee", address);
         }
 
@@ -612,7 +684,7 @@ UniValue masternode(const UniValue& params, bool fHelp)
         }
 
         int nLast = 10;
-        std::string strFilter;
+        string strFilter;
 
         if (params.size() >= 2) {
             nLast = get_number(params[1]);
@@ -628,8 +700,8 @@ UniValue masternode(const UniValue& params, bool fHelp)
         UniValue obj(UniValue::VOBJ);
 
         for (int i = nHeight - nLast; i < nHeight + 20; i++) {
-            std::string strPayment = masterNodeCtrl.masternodePayments.GetRequiredPaymentsString(i);
-            if (!strFilter.empty() && strPayment.find(strFilter) == std::string::npos)
+            string strPayment = masterNodeCtrl.masternodePayments.GetRequiredPaymentsString(i);
+            if (!strFilter.empty() && strPayment.find(strFilter) == string::npos)
                 continue;
             obj.pushKV(strprintf("%d", i), strPayment);
         }
@@ -672,7 +744,7 @@ UniValue masternode(const UniValue& params, bool fHelp)
         return obj;
     }
     if (strCommand == "message") {
-        std::string strCmd;
+        string strCmd;
 
         if (params.size() >= 2) {
             strCmd = params[1].get_str();
@@ -692,8 +764,8 @@ UniValue masternode(const UniValue& params, bool fHelp)
             throw JSONRPCError(RPC_INTERNAL_ERROR, "This is not a masternode - only Masternode can send/sign messages");
 
         if (strCmd == "send") {
-            std::string strPubKey = params[2].get_str();
-            std::string messageText = params[3].get_str();
+            string strPubKey = params[2].get_str();
+            string messageText = params[3].get_str();
 
             if (!IsHex(strPubKey))
                 throw JSONRPCError(RPC_INTERNAL_ERROR, "Invalid Masternode Public Key");
@@ -720,19 +792,19 @@ UniValue masternode(const UniValue& params, bool fHelp)
 
 
         } else if (strCmd == "sign") {
-            std::string message = params[2].get_str();
+            string message = params[2].get_str();
 
-            std::string error_ret;
-            std::vector<unsigned char> signature;
+            string error_ret;
+            v_uint8 signature;
             if (!Sign(message, signature, error_ret))
                 throw JSONRPCError(RPC_INVALID_PARAMETER, strprintf("Sign failed - %s", error_ret));
 
             UniValue obj(UniValue::VOBJ);
-            obj.pushKV("signature", std::string(signature.begin(), signature.end()));
+            obj.pushKV("signature", vector_to_string(signature));
             if (params.size() == 3) {
                 int n = get_number(params[3]);
                 if (n > 0) {
-                    std::string strPubKey = keyIO.EncodeDestination(masterNodeCtrl.activeMasternode.pubKeyMasternode.GetID());
+                    string strPubKey = keyIO.EncodeDestination(masterNodeCtrl.activeMasternode.pubKeyMasternode.GetID());
                     obj.pushKV("pubkey", strPubKey);
                 }
             }

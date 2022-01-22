@@ -26,6 +26,10 @@ Genesis block for RegTest found
   solution: 07b461d5f48e91b1fe4a65a112b513c1ad230a9bd4b8f79c069da636341051b3ff455393
 
  */
+#include <cassert>
+#include <optional>
+#include <variant>
+#include <vector>
 
 #include "key_io.h"
 #include "main.h"
@@ -34,13 +38,6 @@ Genesis block for RegTest found
 #include "util.h"
 #include "utilstrencodings.h"
 #include "chainparamsseeds.h"
-
-#include <assert.h>
-#include <vector>
-#include <optional>
-#include <variant>
-
-#include <boost/assign/list_of.hpp>
 
 using namespace std;
 
@@ -393,9 +390,10 @@ public:
         fMineBlocksOnDemand = false;
         fTestnetToBeDeprecatedFieldRPC = false;
 
-        checkpointData.mapCheckpoints = boost::assign::map_list_of
-            (0, consensus.hashGenesisBlock)
-            (2700, uint256S("00005558df2a688c6d53c7b78001074515d33cd29589a311f8c6aa4db2df4e44"));
+        checkpointData.mapCheckpoints = {
+            {0, consensus.hashGenesisBlock},
+            {2700, uint256S("00005558df2a688c6d53c7b78001074515d33cd29589a311f8c6aa4db2df4e44")}
+        };
         checkpointData.nTimeLastCheckpoint = 1612317919; // * UNIX timestamp of last checkpoint block
         checkpointData.nTransactionsLastCheckpoint = 3588; // * total number of transactions between genesis and last checkpoint
                                 //   (the tx=... number in the UpdateTip debug.log lines - "UpdateTip: new best=... tx=...")
@@ -495,7 +493,7 @@ public:
         fTestnetToBeDeprecatedFieldRPC = true;
 
 
-        checkpointData.mapCheckpoints = boost::assign::map_list_of(0, consensus.hashGenesisBlock);
+        checkpointData.mapCheckpoints = {{0, consensus.hashGenesisBlock}};
         checkpointData.nTimeLastCheckpoint = genesis.nTime; // * UNIX timestamp of last checkpoint block
         checkpointData.nTransactionsLastCheckpoint = 0;     // * total number of transactions between genesis and last checkpoint
                                 //   (the tx=... number in the SetBestChain debug.log lines)
@@ -509,7 +507,8 @@ public:
  */
 class CRegTestParams : public CChainParams {
 public:
-    CRegTestParams() {
+    CRegTestParams()
+    {
         strNetworkID = "regtest";
         network = CBaseChainParams::Network::REGTEST;
         strCurrencyUnits = "REG";
@@ -591,7 +590,7 @@ public:
         fMineBlocksOnDemand = true;
         fTestnetToBeDeprecatedFieldRPC = false;
 
-        checkpointData.mapCheckpoints = boost::assign::map_list_of(0, consensus.hashGenesisBlock);
+        checkpointData.mapCheckpoints = {{0, consensus.hashGenesisBlock}};
         checkpointData.nTimeLastCheckpoint = genesis.nTime;
         checkpointData.nTransactionsLastCheckpoint = 0;
         checkpointData.fTransactionsPerDay = 0;

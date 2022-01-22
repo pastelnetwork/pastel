@@ -57,9 +57,9 @@ protected:
 class CChainParams : public CBaseKeyConstants
 {
 public:
-    const Consensus::Params& GetConsensus() const { return consensus; }
-    const CMessageHeader::MessageStartChars& MessageStart() const { return pchMessageStart; }
-    const v_uint8& AlertKey() const { return vAlertPubKey; }
+    const Consensus::Params& GetConsensus() const noexcept { return consensus; }
+    const CMessageHeader::MessageStartChars& MessageStart() const noexcept { return pchMessageStart; }
+    const v_uint8& AlertKey() const noexcept { return vAlertPubKey; }
     int GetDefaultPort() const noexcept { return nDefaultPort; }
 
     const CBlock& GenesisBlock() const noexcept { return genesis; }

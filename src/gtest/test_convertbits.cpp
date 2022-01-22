@@ -14,10 +14,17 @@ using namespace testing;
 
 TEST(test_convertbits, convertbits_deterministic)
 {
-    for (size_t i = 0; i < 256; i++) {
-        v_uint8 input(32, i);
-        v_uint8 data;
-        v_uint8 output;
+    v_uint8 input;
+    v_uint8 data;
+    v_uint8 output;
+    input.reserve(50);
+    data.reserve(100);
+    output.reserve(50);
+    for (uint16_t i = 0; i < 256; ++i)
+    {
+        data.clear();
+        output.clear();
+        input.assign(32, static_cast<uint8_t>(i));
         ConvertBits<8, 5, true>([&](unsigned char c) { data.push_back(c); }, input.begin(), input.end());
         ConvertBits<5, 8, false>([&](unsigned char c) { output.push_back(c); }, data.begin(), data.end());
         EXPECT_EQ(data.size(), 52u);
@@ -25,10 +32,11 @@ TEST(test_convertbits, convertbits_deterministic)
         EXPECT_EQ(input , output);
     }
 
-    for (size_t i = 0; i < 256; i++) {
-        v_uint8 input(43, i);
-        v_uint8 data;
-        v_uint8 output;
+    for (uint16_t i = 0; i < 256; ++i)
+    {
+        input.assign(43, static_cast<uint8_t>(i));
+        data.clear();
+        output.clear();
         ConvertBits<8, 5, true>([&](unsigned char c) { data.push_back(c); }, input.begin(), input.end());
         ConvertBits<5, 8, false>([&](unsigned char c) { output.push_back(c); }, data.begin(), data.end());
         EXPECT_EQ(data.size(), 69u);
@@ -39,10 +47,15 @@ TEST(test_convertbits, convertbits_deterministic)
 
 TEST(test_convertbits, convertbits_random)
 {
-    for (size_t i = 0; i < 1000; i++) {
+    v_uint8 data;
+    v_uint8 output;
+    data.reserve(52);
+    output.reserve(32);
+    for (size_t i = 0; i < 1000; i++)
+    {
         auto input = libzcash::random_uint256();
-        v_uint8 data;
-        v_uint8 output;
+        data.clear();
+        output.clear();
         ConvertBits<8, 5, true>([&](unsigned char c) { data.push_back(c); }, input.begin(), input.end());
         ConvertBits<5, 8, false>([&](unsigned char c) { output.push_back(c); }, data.begin(), data.end());
         EXPECT_EQ(data.size(), 52u);

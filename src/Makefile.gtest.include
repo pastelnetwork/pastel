@@ -61,6 +61,7 @@ pastel_gtest_SOURCES +=\
 	gtest/test_deprecation.cpp\
 	gtest/test_DoS.cpp\
 	gtest/test_equihash.cpp\
+	gtest/test_enum_util.cpp\
 	gtest/test_getarg.cpp\
 	gtest/test_hash.cpp\
 	gtest/test_httprpc.cpp\
@@ -79,12 +80,16 @@ pastel_gtest_SOURCES +=\
 	gtest/test_noteencryption.cpp\
 	gtest/test_numeric_range.cpp\
 	gtest/test_pedersen_hash.cpp\
+	gtest/test_policyestimator.cpp\
 	gtest/test_pmt.cpp\
 	gtest/test_pow.cpp\
+	gtest/test_prevector.cpp\
 	gtest/test_proofs.cpp\
 	gtest/test_raii_event.cpp\
 	gtest/test_random.cpp\
+	gtest/test_reverselock.cpp\
 	gtest/test_rpc.cpp\
+	gtest/test_rpccmd_parser.cpp\
 	gtest/test_sanity.cpp\
 	gtest/test_sapling_note.cpp\
 	gtest/test_script.cpp\

@@ -65,7 +65,7 @@ using TicketInfo = struct
 static constexpr std::array<TicketInfo, to_integral_type<TicketID>(TicketID::COUNT)> TICKET_INFO =
     {{
         //     ticket id           |   ticket description       |        ticket name                 | version | DB subfolder  |  default fee
-        {TicketID::PastelID,        "Pastel ID Registration",       TICKET_NAME_ID_REG,                  1,       "pslids",       10   },
+        {TicketID::PastelID,        "PastelID Registration",        TICKET_NAME_ID_REG,                  1,       "pslids",       10   },
         {TicketID::NFT,             "NFT Registration",             TICKET_NAME_NFT_REG,                 0,       "nftreg",       10   },
         {TicketID::Activate,        "NFT Activation",               TICKET_NAME_NFT_ACT,                 0,       "nftcnf",       10   },
         {TicketID::Sell,            "NFT Sell",                     TICKET_NAME_NFT_SELL,                0,       "nftsel",       10   },
@@ -98,3 +98,7 @@ enum class ACTION_TICKET_TYPE
     CASCADE = 2, // Cascase - storage
     COUNT        // number of supported action types
 };
+
+
+
+

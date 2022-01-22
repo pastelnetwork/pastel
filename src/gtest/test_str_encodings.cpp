@@ -1,4 +1,4 @@
-#include <inttypes.h>
+#include <cinttypes>
 
 #include "utilstrencodings.h"
 #include "tinyformat.h"

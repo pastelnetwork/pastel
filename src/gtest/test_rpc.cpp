@@ -1,13 +1,16 @@
+// Copyright (c) 2018-2022 The Pastel developers
+// Distributed under the MIT software license, see the accompanying
+// file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <gtest/gtest.h>
 #include <univalue.h>
 
-#include "chain.h"
-#include "chainparams.h"
-#include "clientversion.h"
-#include "primitives/block.h"
-#include "rpc/server.h"
-#include "streams.h"
-#include "utilstrencodings.h"
+#include <chain.h>
+#include <chainparams.h>
+#include <clientversion.h>
+#include <primitives/block.h>
+#include <rpc/server.h>
+#include <streams.h>
+#include <utilstrencodings.h>
 
 extern UniValue blockToJSON(const CBlock& block, const CBlockIndex* blockindex, bool txDetails = false);
 

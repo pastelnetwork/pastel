@@ -1,7 +1,8 @@
 // Copyright (c) 2014 The Bitcoin Core developers
+// Copyright (c) 2018-2022 The Pastel Core Developers
 // Distributed under the MIT software license, see the accompanying
-// file COPYING or http://www.opensource.org/licenses/mit-license.php.
-#include <inttypes.h>
+// file COPYING or https://www.opensource.org/licenses/mit-license.php.
+#include <cinttypes>
 
 #include "timedata.h"
 #include "netbase.h"
@@ -21,13 +22,13 @@ static int64_t nTimeOffset = 0;
  *  - Median of other nodes clocks
  *  - The user (asking the user to fix the system clock if the first two disagree)
  */
-int64_t GetTimeOffset()
+int64_t GetTimeOffset() noexcept
 {
     LOCK(cs_nTimeOffset);
     return nTimeOffset;
 }
 
-int64_t GetAdjustedTime()
+int64_t GetAdjustedTime() noexcept
 {
     return GetTime() + GetTimeOffset();
 }

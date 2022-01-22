@@ -92,80 +92,116 @@ string CPastelIDRegTicket::ToStr() const noexcept
     return ss.str();
 }
 
-bool CPastelIDRegTicket::IsValid(const bool bPreReg, const int nDepth) const
+/**
+ * Validate Pastel ticket.
+ * 
+ * \param bPreReg - if true: called from ticket pre-registration
+ * \param nDepth - ticket height
+ * \return true if the ticket is valid
+ */
+ticket_validation_t CPastelIDRegTicket::IsValid(const bool bPreReg, const uint32_t nDepth) const noexcept
 {
-    // Something to check ONLY before ticket made into transaction
-    if (bPreReg)
-    { 
-        //1. check that PastelID ticket is not already in the blockchain.
-        // Only done after Create
-        if (masterNodeCtrl.masternodeTickets.CheckTicketExist(*this))
-            throw runtime_error(strprintf("This PastelID is already registered in blockchain [%s]", pastelID));
-
-        //TODO Pastel: validate that address has coins to pay for registration - 10PSL + fee
-        // ...
-    }
-
-    stringstream ss;
-    ToStrStream(ss, false);
-
-    if (masterNodeCtrl.masternodeSync.IsSynced()) { // Validate only if both blockchain and MNs are synced
-        if (!outpoint.IsNull()) {                   // validations only for MN PastelID
-            // 1. check if TicketDB already has PastelID with the same outpoint,
-            // and if yes, reject if it has different signature OR different blocks or transaction ID
-            // (ticket transaction replay attack protection)
-            CPastelIDRegTicket _ticket;
-            _ticket.outpoint = outpoint;
-            if (masterNodeCtrl.masternodeTickets.FindTicketBySecondaryKey(_ticket)) {
-                if (_ticket.mn_signature != mn_signature || !_ticket.IsBlock(m_nBlock) || _ticket.m_txid != m_txid) {
-                    throw runtime_error(strprintf(
-                        "Masternode's outpoint - [%s] is already registered as a ticket. Your PastelID - [%s] "
-                        "[this ticket block = %u txid = %s; found ticket block = %u txid = %s]",
-                        outpoint.ToStringShort(), pastelID, m_nBlock, m_txid, _ticket.m_nBlock, _ticket.m_txid));
-                }
-            }
-
-            // 2. Check outpoint belongs to active MN
-            // However! If this is validation of an old ticket, MN can be not active or eve alive anymore
-            //So will skip the MN validation if ticket is fully confirmed (older then MinTicketConfirmations blocks)
-            unsigned int currentHeight;
+    ticket_validation_t tv;
+    do
+    {
+        // Something to check ONLY before ticket made into transaction
+        if (bPreReg)
+        { 
+            //1. check that PastelID ticket is not already in the blockchain.
+            // Only done after Create
+            if (masterNodeCtrl.masternodeTickets.CheckTicketExist(*this))
             {
-                LOCK(cs_main);
-                currentHeight = static_cast<unsigned int>(chainActive.Height());
+                tv.errorMsg = strprintf("This PastelID is already registered in blockchain [%s]", pastelID);
+                break;
             }
-            //during transaction validation before ticket made in to the block_ticket.ticketBlock will == 0
-            if (_ticket.IsBlock(0) || currentHeight - _ticket.GetBlock() < masterNodeCtrl.MinTicketConfirmations) {
-                CMasternode mnInfo;
-                if (!masterNodeCtrl.masternodeManager.Get(outpoint, mnInfo)) {
-                    throw runtime_error(strprintf(
-                        "Unknown Masternode - [%s]. PastelID - [%s]", outpoint.ToStringShort(), pastelID));
-                }
-                if (!mnInfo.IsEnabled()) {
-                    throw runtime_error(strprintf(
-                        "Non an active Masternode - [%s]. PastelID - [%s]", outpoint.ToStringShort(), pastelID));
+
+            //TODO Pastel: validate that address has coins to pay for registration - 10PSL + fee
+            // ...
+        }
+
+        stringstream ss;
+        ToStrStream(ss, false);
+
+        // Validate only if both blockchain and MNs are synced
+        if (masterNodeCtrl.masternodeSync.IsSynced())
+        { 
+            // validations only for MN PastelID
+            if (!outpoint.IsNull())
+            {
+                // 1. check if TicketDB already has PastelID with the same outpoint,
+                // and if yes, reject if it has different signature OR different blocks or transaction ID
+                // (ticket transaction replay attack protection)
+                CPastelIDRegTicket _ticket;
+                _ticket.outpoint = outpoint;
+                if (masterNodeCtrl.masternodeTickets.FindTicketBySecondaryKey(_ticket))
+                {
+                    if (_ticket.mn_signature != mn_signature || 
+                        !_ticket.IsBlock(m_nBlock) || 
+                        !_ticket.IsTxId(m_txid))
+                    {
+                        tv.errorMsg = strprintf(
+                            "Masternode's outpoint - [%s] is already registered as a ticket. Your PastelID - [%s] "
+                            "[this ticket block = %u txid = %s; found ticket block = %u txid = %s]",
+                            outpoint.ToStringShort(), pastelID, m_nBlock, m_txid, _ticket.m_nBlock, _ticket.m_txid);
+                        break;
+                    }
                 }
 
-                // 3. Validate MN signature using public key of MN identified by outpoint
-                string errRet;
-                if (!CMessageSigner::VerifyMessage(mnInfo.pubKeyMasternode, mn_signature, ss.str(), errRet)) {
-                    throw runtime_error(strprintf(
-                        "Ticket's MN signature is invalid. Error - %s. Outpoint - [%s]; PastelID - [%s]",
-                        errRet, outpoint.ToStringShort(), pastelID));
+                // 2. Check outpoint belongs to active MN
+                // However! If this is validation of an old ticket, MN can be not active or eve alive anymore
+                //So will skip the MN validation if ticket is fully confirmed (older then MinTicketConfirmations blocks)
+                unsigned int currentHeight;
+                {
+                    LOCK(cs_main);
+                    currentHeight = static_cast<unsigned int>(chainActive.Height());
+                }
+                //during transaction validation before ticket made in to the block_ticket.ticketBlock will == 0
+                if (_ticket.IsBlock(0) || currentHeight - _ticket.GetBlock() < masterNodeCtrl.MinTicketConfirmations)
+                {
+                    CMasternode mnInfo;
+                    if (!masterNodeCtrl.masternodeManager.Get(outpoint, mnInfo))
+                    {
+                        tv.errorMsg = strprintf(
+                            "Unknown Masternode - [%s]. PastelID - [%s]", 
+                            outpoint.ToStringShort(), pastelID);
+                        break;
+                    }
+                    if (!mnInfo.IsEnabled())
+                    {
+                        tv.errorMsg = strprintf(
+                            "Non an active Masternode - [%s]. PastelID - [%s]", 
+                            outpoint.ToStringShort(), pastelID);
+                        break;
+                    }
+
+                    // 3. Validate MN signature using public key of MN identified by outpoint
+                    string errRet;
+                    if (!CMessageSigner::VerifyMessage(mnInfo.pubKeyMasternode, mn_signature, ss.str(), errRet))
+                    {
+                        tv.errorMsg = strprintf(
+                            "Ticket's MN signature is invalid. Error - %s. Outpoint - [%s]; PastelID - [%s]",
+                            errRet, outpoint.ToStringShort(), pastelID);
+                        break;
+                    }
                 }
             }
         }
-    }
 
-    // Something to always validate
-    // 1. Ticket signature is valid
-    ss << vector_to_string(mn_signature);
-    const string fullTicket = ss.str();
-    if (!CPastelID::Verify(fullTicket, vector_to_string(pslid_signature), pastelID))
-        throw runtime_error(strprintf("Ticket's PastelID signature is invalid. PastelID - [%s]", pastelID));
+        // Something to validate always
+        // 1. Ticket signature is valid
+        ss << vector_to_string(mn_signature);
+        const string fullTicket = ss.str();
+        if (!CPastelID::Verify(fullTicket, vector_to_string(pslid_signature), pastelID))
+        {
+            tv.errorMsg = strprintf("Ticket's PastelID signature is invalid. PastelID - [%s]", pastelID);
+            break;
+        }
 
-    // 2. Ticket pay correct registration fee - is validated in ValidateIfTicketTransaction
+        // 2. Ticket pay correct registration fee - is validated in ValidateIfTicketTransaction
 
-    return true;
+        tv.setValid();
+    } while (false);
+    return tv;
 }
 
 string CPastelIDRegTicket::ToJSON() const noexcept

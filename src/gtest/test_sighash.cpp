@@ -8,19 +8,19 @@
 
 #include <gtest/gtest.h>
 
-#include "consensus/upgrades.h"
-#include "consensus/validation.h"
-#include "data/sighash.json.h"
-#include "main.h"
-#include "random.h"
-#include "script/interpreter.h"
-#include "script/script.h"
-#include "serialize.h"
-#include "test/test_bitcoin.h"
-#include "util.h"
-#include "version.h"
-#include "sodium.h"
-#include "json_test_vectors.h"
+#include <consensus/upgrades.h>
+#include <consensus/validation.h>
+#include <data/sighash.json.h>
+#include <main.h>
+#include <random.h>
+#include <script/interpreter.h>
+#include <script/script.h>
+#include <serialize.h>
+#include <test/test_bitcoin.h>
+#include <util.h>
+#include <version.h>
+#include <sodium.h>
+#include <json_test_vectors.h>
 #include <univalue.h>
 
 using namespace std;
@@ -45,7 +45,7 @@ uint256 static SignatureHashOld(CScript scriptCode, const CTransaction& txTo, un
     txTmp.vin[nIn].scriptSig = scriptCode;
 
     // Blank out some of the outputs
-    if ((nHashType & 0x1f) == SIGHASH_NONE)
+    if ((nHashType & 0x1f) == to_integral_type(SIGHASH::NONE))
     {
         // Wildcard payee
         txTmp.vout.clear();
@@ -55,7 +55,7 @@ uint256 static SignatureHashOld(CScript scriptCode, const CTransaction& txTo, un
             if (i != nIn)
                 txTmp.vin[i].nSequence = 0;
     }
-    else if ((nHashType & 0x1f) == SIGHASH_SINGLE)
+    else if ((nHashType & 0x1f) == to_integral_type(SIGHASH::SINGLE))
     {
         // Only lock-in the txout payee at same index as txin
         unsigned int nOut = nIn;
@@ -66,7 +66,7 @@ uint256 static SignatureHashOld(CScript scriptCode, const CTransaction& txTo, un
         }
         txTmp.vout.resize(nOut+1);
         for (unsigned int i = 0; i < nOut; i++)
-            txTmp.vout[i].SetNull();
+            txTmp.vout[i].Clear();
 
         // Let the others update at will
         for (unsigned int i = 0; i < txTmp.vin.size(); i++)
@@ -75,7 +75,7 @@ uint256 static SignatureHashOld(CScript scriptCode, const CTransaction& txTo, un
     }
 
     // Blank out other inputs completely, not recommended for open transactions
-    if (nHashType & SIGHASH_ANYONECANPAY)
+    if (nHashType & to_integral_type(SIGHASH::ANYONECANPAY))
     {
         txTmp.vin[0] = txTmp.vin[nIn];
         txTmp.vin.resize(1);

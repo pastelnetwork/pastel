@@ -1,14 +1,14 @@
 // Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2014 The Bitcoin Core developers
+// Copyright (c) 2018-2022 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
-// file COPYING or http://www.opensource.org/licenses/mit-license.php.
+// file COPYING or https://www.opensource.org/licenses/mit-license.php.
 
-#include "primitives/block.h"
-
-#include "hash.h"
-#include "tinyformat.h"
-#include "utilstrencodings.h"
-#include "crypto/common.h"
+#include <primitives/block.h>
+#include <hash.h>
+#include <tinyformat.h>
+#include <utilstrencodings.h>
+#include <crypto/common.h>
 
 uint256 CBlockHeader::GetHash() const noexcept
 {
@@ -76,11 +76,11 @@ uint256 CBlock::BuildMerkleTree(bool* pbMutated) const
     return (vMerkleTree.empty() ? uint256() : vMerkleTree.back());
 }
 
-std::vector<uint256> CBlock::GetMerkleBranch(const size_t nIndex) const noexcept
+v_uint256 CBlock::GetMerkleBranch(const size_t nIndex) const noexcept
 {
     if (vMerkleTree.empty())
         BuildMerkleTree();
-    std::vector<uint256> vMerkleBranch;
+    v_uint256 vMerkleBranch;
     size_t j = 0;
     size_t nIdx = nIndex;
     for (size_t nSize = vtx.size(); nSize > 1; nSize = (nSize + 1) / 2)
@@ -93,7 +93,7 @@ std::vector<uint256> CBlock::GetMerkleBranch(const size_t nIndex) const noexcept
     return vMerkleBranch;
 }
 
-uint256 CBlock::CheckMerkleBranch(uint256 hash, const std::vector<uint256>& vMerkleBranch, int nIndex) noexcept
+uint256 CBlock::CheckMerkleBranch(uint256 hash, const v_uint256& vMerkleBranch, int nIndex) noexcept
 {
     if (nIndex == -1)
         return uint256();

@@ -46,6 +46,7 @@ string generateRandomId(const size_t nLength)
  * Generate temporary file name with extension.
  * 
  * \param szFileExt - optional extension
+ * \return generated filename
  */
 std::string generateTempFileName(const char* szFileExt)
 {

@@ -1,10 +1,9 @@
+#pragma once
 // Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2014 The Bitcoin Core developers
+// Copyright (c) 2018-2022 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
-// file COPYING or http://www.opensource.org/licenses/mit-license.php.
-
-#ifndef BITCOIN_CONSENSUS_VALIDATION_H
-#define BITCOIN_CONSENSUS_VALIDATION_H
+// file COPYING or https://www.opensource.org/licenses/mit-license.php.
 
 #include <string>
 
@@ -17,64 +16,88 @@ static const unsigned char REJECT_NONSTANDARD = 0x40;
 static const unsigned char REJECT_DUST = 0x41;
 static const unsigned char REJECT_INSUFFICIENTFEE = 0x42;
 static const unsigned char REJECT_CHECKPOINT = 0x43;
+static const unsigned char REJECT_MISSING_INPUTS = 0x44;
 
 /** Capture information about block/transaction validation */
-class CValidationState {
+class CValidationState
+{
 private:
-    enum mode_state {
-        MODE_VALID,   //! everything ok
-        MODE_INVALID, //! network rule violation (DoS value may be set)
-        MODE_ERROR,   //! run-time error
+    enum class STATE
+    {
+        VALID,   //! everything ok
+        INVALID, //! network rule violation (DoS value may be set)
+        ERR      //! run-time error
     } mode;
     int nDoS;
     std::string strRejectReason;
     unsigned char chRejectCode;
-    bool corruptionPossible;
+    bool m_bCorruptionPossible;
+
 public:
-    CValidationState() : mode(MODE_VALID), nDoS(0), chRejectCode(0), corruptionPossible(false) {}
-    virtual bool DoS(int level, bool ret = false,
-             unsigned char chRejectCodeIn=0, std::string strRejectReasonIn="",
-             bool corruptionIn=false) {
+    CValidationState() : 
+        mode(STATE::VALID), 
+        nDoS(0), 
+        chRejectCode(0), 
+        m_bCorruptionPossible(false)
+    {}
+    virtual bool DoS(const int level, const bool bRet = false,
+             unsigned char chRejectCodeIn=0, const std::string strRejectReasonIn="",
+             const bool bCorruptionPossible = false) noexcept
+    {
         chRejectCode = chRejectCodeIn;
         strRejectReason = strRejectReasonIn;
-        corruptionPossible = corruptionIn;
-        if (mode == MODE_ERROR)
-            return ret;
+        m_bCorruptionPossible = bCorruptionPossible;
+        if (mode == STATE::ERR)
+            return bRet;
         nDoS += level;
-        mode = MODE_INVALID;
-        return ret;
+        mode = STATE::INVALID;
+        return bRet;
     }
-    virtual bool Invalid(bool ret = false,
-                 unsigned char _chRejectCode=0, std::string _strRejectReason="") {
+
+    virtual bool Invalid(const bool ret = false, const unsigned char _chRejectCode = 0, const std::string _strRejectReason = "") noexcept
+    {
         return DoS(0, ret, _chRejectCode, _strRejectReason);
     }
-    virtual bool Error(const std::string& strRejectReasonIn) {
-        if (mode == MODE_VALID)
+
+    virtual bool Error(const std::string& strRejectReasonIn) noexcept
+    {
+        if (mode == STATE::VALID)
             strRejectReason = strRejectReasonIn;
-        mode = MODE_ERROR;
+        mode = STATE::ERR;
         return false;
     }
-    virtual bool IsValid() const {
-        return mode == MODE_VALID;
+
+    virtual bool IsValid() const noexcept
+    {
+        return mode == STATE::VALID;
     }
-    virtual bool IsInvalid() const {
-        return mode == MODE_INVALID;
+
+    virtual bool IsInvalid() const noexcept
+    {
+        return mode == STATE::INVALID;
     }
-    virtual bool IsError() const {
-        return mode == MODE_ERROR;
+
+    virtual bool IsError() const noexcept
+    {
+        return mode == STATE::ERR;
     }
-    virtual bool IsInvalid(int &nDoSOut) const {
-        if (IsInvalid()) {
+
+    virtual bool IsInvalid(int &nDoSOut) const noexcept 
+    {
+        if (IsInvalid())
+        {
             nDoSOut = nDoS;
             return true;
         }
         return false;
     }
-    virtual bool CorruptionPossible() const {
-        return corruptionPossible;
-    }
-    virtual unsigned char GetRejectCode() const { return chRejectCode; }
-    virtual std::string GetRejectReason() const { return strRejectReason; }
-};
 
-#endif // BITCOIN_CONSENSUS_VALIDATION_H
+    virtual bool CorruptionPossible() const noexcept
+    {
+        return m_bCorruptionPossible;
+    }
+
+    virtual unsigned char GetRejectCode() const noexcept { return chRejectCode; }
+    virtual bool IsRejectCode(const unsigned char chRejCode) const noexcept { return chRejCode == chRejectCode; }
+    virtual std::string GetRejectReason() const noexcept { return strRejectReason; }
+};

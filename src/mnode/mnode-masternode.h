@@ -27,7 +27,7 @@ public:
     CTxIn vin{};
     uint256 blockHash{};
     int64_t sigTime{}; //mnp message times
-    std::vector<unsigned char> vchSig{};
+    v_uint8 vchSig{};
 
     CMasternodePing() = default;
 
@@ -211,15 +211,14 @@ public:
     static CollateralStatus CheckCollateral(const COutPoint& outpoint, int& nHeightRet);
     void Check(bool fForce = false);
 
-    bool IsBroadcastedWithin(int nSeconds) { return GetAdjustedTime() - sigTime < nSeconds; }
+    bool IsBroadcastedWithin(int nSeconds) const noexcept { return GetAdjustedTime() - sigTime < nSeconds; }
 
-    bool IsPingedWithin(int nSeconds, int64_t nTimeToCheckAt = -1)
+    bool IsPingedWithin(const int nSeconds, int64_t nTimeToCheckAt = -1) const noexcept
     {
-        if(lastPing == CMasternodePing()) return false;
-
-        if(nTimeToCheckAt == -1) {
+        if (lastPing == CMasternodePing())
+            return false;
+        if(nTimeToCheckAt == -1)
             nTimeToCheckAt = GetAdjustedTime();
-        }
         return nTimeToCheckAt - lastPing.sigTime < nSeconds;
     }
 
@@ -267,8 +266,8 @@ public:
     std::string GetStateString() const;
     std::string GetStatus() const;
 
-    int64_t GetLastPaidTime() { return nTimeLastPaid; }
-    int GetLastPaidBlock() { return nBlockLastPaid; }
+    int64_t GetLastPaidTime() const noexcept { return nTimeLastPaid; }
+    int GetLastPaidBlock() const noexcept { return nBlockLastPaid; }
     void UpdateLastPaid(const CBlockIndex *pindex, int nMaxBlocksToScanBack);
     
     bool VerifyCollateral(CollateralStatus& collateralStatus);
@@ -386,8 +385,8 @@ public:
     CService addr{};
     int nonce{};
     int nBlockHeight{};
-    std::vector<unsigned char> vchSig1{};
-    std::vector<unsigned char> vchSig2{};
+    v_uint8 vchSig1{};
+    v_uint8 vchSig2{};
 
     CMasternodeVerification() = default;
 

@@ -1,10 +1,9 @@
+#pragma once
 // Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2014 The Bitcoin Core developers
+// Copyright (c) 2018-2022 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
-// file COPYING or http://www.opensource.org/licenses/mit-license.php.
-
-#ifndef BITCOIN_NET_H
-#define BITCOIN_NET_H
+// file COPYING or https://www.opensource.org/licenses/mit-license.php.
 
 #include "bloom.h"
 #include "compat.h"
@@ -43,7 +42,7 @@ static const int PING_INTERVAL = 2 * 60;
 /** Time after which to disconnect, after waiting for a ping response (or inactivity). */
 static const int TIMEOUT_INTERVAL = 20 * 60;
 /** The maximum number of entries in an 'inv' protocol message */
-static const unsigned int MAX_INV_SZ = 50000;
+constexpr size_t MAX_INV_SZ = 50'000;
 /** The maximum number of new addresses to accumulate before announcing. */
 static const unsigned int MAX_ADDR_TO_SEND = 1000;
 /** Maximum length of incoming protocol messages (no message over 2 MiB is currently acceptable). */
@@ -64,12 +63,15 @@ static const int NETWORK_UPGRADE_PEER_PREFERENCE_BLOCK_PERIOD = 24 * 24 * 3;
 size_t ReceiveFloodSize();
 size_t SendBufferSize();
 
+typedef int NodeId;
+
 void AddOneShot(const std::string& strDest);
 void AddressCurrentlyConnected(const CService& addr);
 CNode* FindNode(const CNetAddr& ip);
 CNode* FindNode(const CSubNet& subNet);
 CNode* FindNode(const std::string& addrName);
 CNode* FindNode(const CService& ip);
+CNode* FindNode(const NodeId id);
 CNode* ConnectNode(CAddress addrConnect, const char *pszDest = nullptr, bool fConnectToMasternode = false);
 
 bool OpenNetworkConnection(const CAddress& addrConnect, CSemaphoreGrant *grantOutbound = nullptr, const char *strDest = nullptr, bool fOneShot = false);
@@ -79,7 +81,6 @@ void StartNode(boost::thread_group& threadGroup, CScheduler& scheduler);
 bool StopNode();
 void SocketSendData(CNode *pnode);
 
-typedef int NodeId;
 
 struct CombinerAll
 {
@@ -101,7 +102,7 @@ struct CNodeSignals
 {
     boost::signals2::signal<int ()> GetHeight;
     boost::signals2::signal<bool (const CChainParams&, CNode*), CombinerAll> ProcessMessages;
-    boost::signals2::signal<bool (const Consensus::Params&, CNode*, bool), CombinerAll> SendMessages;
+    boost::signals2::signal<bool (const CChainParams&, CNode*, bool), CombinerAll> SendMessages;
     boost::signals2::signal<void (NodeId, const CNode*)> InitializeNode;
     boost::signals2::signal<void (NodeId)> FinalizeNode;
 };
@@ -192,10 +193,8 @@ public:
     std::string addrLocal;
 };
 
-
-
-
-class CNetMessage {
+class CNetMessage
+{
 public:
     bool in_data;                   // parsing header (false) or data (true)
 
@@ -655,5 +654,3 @@ public:
     bool Write(const CAddrMan& addr);
     bool Read(CAddrMan& addr);
 };
-
-#endif // BITCOIN_NET_H

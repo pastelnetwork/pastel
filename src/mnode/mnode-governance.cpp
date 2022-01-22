@@ -106,7 +106,7 @@ int CMasternodeGovernance::CalculateLastPaymentBlock(CAmount amount, int nHeight
 
 CAmount CMasternodeGovernance::IncrementTicketPaidAmount(CAmount payment, CGovernanceTicket& ticket)
 {
-    auto aAmountPaid = 0;
+    CAmount aAmountPaid = 0;
     {
         LOCK(cs_mapTickets);
         auto ti1 = mapTickets.find(ticket.ticketId);
@@ -126,7 +126,7 @@ bool CMasternodeGovernance::AddTicket(std::string address, CAmount totalReward, 
     newTicketId.SetNull();
 
     if (!masterNodeCtrl.IsActiveMasterNode()){
-        strErrorRet = strprintf("Only Active Master Node can vote");
+        strErrorRet = "Only Active Master Node can vote";
         LogPrintf("CMasternodeGovernance::AddTicket -- %s\n", strErrorRet);
         return false;
     }
@@ -535,7 +535,8 @@ bool CGovernanceTicket::AddVote(CGovernanceVote& voteNew, std::string& strErrorR
 
         mapVotes[voteNew.vchSig] = voteNew;
     }
-    if (voteNew.bVote) nYesVotes++;
+    if (voteNew.bVote)
+        nYesVotes++;
 
     LogPrintf("CGovernanceTicket::AddVote -- New vote for ticket = %s - %s vote; total votes(yes votes) - %d(%d)\n",
                                             GetHash().ToString(), voteNew.bVote? "Yes": "No", mapVotes.size(), nYesVotes);
@@ -546,11 +547,11 @@ bool CGovernanceTicket::AddVote(CGovernanceVote& voteNew, std::string& strErrorR
 
 bool CGovernanceTicket::IsWinner(int height)
 {
-    int tenPercent = ceil(masterNodeCtrl.masternodeManager.size()/10.0);
-    float fiftyOne = (float)mapVotes.size() * 51.0 / 100.0;
+    const uint32_t tenPercent = static_cast<uint32_t>(ceil(masterNodeCtrl.masternodeManager.size()/10.0));
+    const double fiftyOne = (double)mapVotes.size() * 51.0 / 100.0;
     // If number of all votes for the ticket >= 10% from current number of active MN's...
     // and number of yes votes >= 51% of all votes
-    LogPrint("governance", "CGovernanceTicket::IsWinner -- TicketID - %s, Vote is %s, Votes = %d, Yes Votes = %d, 10 percent of MNs is = %d\n", 
+    LogPrint("governance", "CGovernanceTicket::IsWinner -- TicketID - %s, Vote is %s, Votes = %d, Yes Votes = %d, 10 percent of MNs is = %u\n", 
                                                 GetHash().ToString(), VoteOpen(height)? "open": "closed", mapVotes.size(), nYesVotes, tenPercent);
     return !VoteOpen(height) &&
            (tenPercent > 0) &&

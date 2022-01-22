@@ -1,9 +1,16 @@
+// Copyright (c) 2013 The Bitcoin Core developers
+// Copyright (c) 2021 The Pastel developers
+// Distributed under the MIT software license, see the accompanying
+// file COPYING or https://www.opensource.org/licenses/mit-license.php .
+
 #include <gtest/gtest.h>
 
 #include "chain.h"
 #include "chainparams.h"
 #include "pow.h"
 #include "random.h"
+
+using namespace std;
 
 TEST(PoW, DifficultyAveraging) {
     SelectParams(CBaseChainParams::Network::MAIN);
@@ -12,7 +19,7 @@ TEST(PoW, DifficultyAveraging) {
     size_t firstBlk = lastBlk - params.nPowAveragingWindow;
 
     // Start with blocks evenly-spaced and equal difficulty
-    std::vector<CBlockIndex> blocks(lastBlk+1);
+    vector<CBlockIndex> blocks(lastBlk+1);
     for (int i = 0; i <= lastBlk; i++) {
         blocks[i].pprev = i ? &blocks[i - 1] : nullptr;
         blocks[i].nHeight = i;
@@ -76,7 +83,7 @@ TEST(PoW, MinDifficultyRules) {
     size_t firstBlk = lastBlk - params.nPowAveragingWindow;
 
     // Start with blocks evenly-spaced and equal difficulty
-    std::vector<CBlockIndex> blocks(lastBlk+1);
+    vector<CBlockIndex> blocks(lastBlk+1);
     for (int i = 0; i <= lastBlk; i++) {
         blocks[i].pprev = i ? &blocks[i - 1] : nullptr;
         blocks[i].nHeight = params.nPowAllowMinDifficultyBlocksAfterHeight.value() + i;
@@ -108,4 +115,84 @@ TEST(PoW, MinDifficultyRules) {
     // Result should be the minimum difficulty
     EXPECT_EQ(GetNextWorkRequired(&blocks[lastBlk], &next, params),
               UintToArith256(params.powLimit).GetCompact());
+}
+
+/* Test calculation of next difficulty target with no constraints applying */
+TEST(PoW, get_next_work)
+{
+    SelectParams(CBaseChainParams::Network::MAIN);
+    const Consensus::Params& params = Params().GetConsensus();
+
+    int64_t nLastRetargetTime = 1262149169; // NOTE: Not an actual block time
+    int64_t nThisTime = 1262152739;  // Block #32255 of Bitcoin
+    arith_uint256 bnAvg;
+    bnAvg.SetCompact(0x1d00ffff);
+    EXPECT_EQ(0x1d011998,
+                      CalculateNextWorkRequired(bnAvg, nThisTime, nLastRetargetTime, params));
+}
+
+/* Test the constraint on the upper bound for next work */
+TEST(PoW, get_next_work_pow_limit)
+{
+    SelectParams(CBaseChainParams::Network::MAIN);
+    const Consensus::Params& params = Params().GetConsensus();
+
+    int64_t nLastRetargetTime = 1231006505; // Block #0 of Bitcoin
+    int64_t nThisTime = 1233061996;  // Block #2015 of Bitcoin
+    arith_uint256 bnAvg;
+    bnAvg.SetCompact(0x1f07ffff);
+    EXPECT_EQ(0x1f07ffff,
+                      CalculateNextWorkRequired(bnAvg, nThisTime, nLastRetargetTime, params));
+}
+
+/* Test the constraint on the lower bound for actual time taken */
+TEST(PoW, get_next_work_lower_limit_actual)
+{
+    SelectParams(CBaseChainParams::Network::MAIN);
+    const Consensus::Params& params = Params().GetConsensus();
+
+    int64_t nLastRetargetTime = 1279296753; // NOTE: Not an actual block time
+    int64_t nThisTime = 1279297671;  // Block #68543 of Bitcoin
+    arith_uint256 bnAvg;
+    bnAvg.SetCompact(0x1c05a3f4);
+    EXPECT_EQ(0x1c04bceb,
+                      CalculateNextWorkRequired(bnAvg, nThisTime, nLastRetargetTime, params));
+}
+
+/* Test the constraint on the upper bound for actual time taken */
+TEST(PoW, get_next_work_upper_limit_actual)
+{
+    SelectParams(CBaseChainParams::Network::MAIN);
+    const Consensus::Params& params = Params().GetConsensus();
+
+    int64_t nLastRetargetTime = 1269205629; // NOTE: Not an actual block time
+    int64_t nThisTime = 1269211443;  // Block #46367 of Bitcoin
+    arith_uint256 bnAvg;
+    bnAvg.SetCompact(0x1c387f6f);
+    EXPECT_EQ(0x1c4a93bb,
+                      CalculateNextWorkRequired(bnAvg, nThisTime, nLastRetargetTime, params));
+}
+
+TEST(PoW, GetBlockProofEquivalentTime_test)
+{
+    SelectParams(CBaseChainParams::Network::MAIN);
+    const Consensus::Params& params = Params().GetConsensus();
+
+    vector<CBlockIndex> blocks(10000);
+    for (int i = 0; i < 10000; i++) {
+        blocks[i].pprev = i ? &blocks[i - 1] : NULL;
+        blocks[i].nHeight = i;
+        blocks[i].nTime = 1269211443 + i * params.nPowTargetSpacing;
+        blocks[i].nBits = 0x207fffff; /* target 0x7fffff000... */
+        blocks[i].nChainWork = i ? blocks[i - 1].nChainWork + GetBlockProof(blocks[i - 1]) : arith_uint256(0);
+    }
+
+    for (int j = 0; j < 1000; j++) {
+        CBlockIndex *p1 = &blocks[GetRand(10000)];
+        CBlockIndex *p2 = &blocks[GetRand(10000)];
+        CBlockIndex *p3 = &blocks[GetRand(10000)];
+
+        int64_t tdiff = GetBlockProofEquivalentTime(*p1, *p2, *p3, params);
+        EXPECT_EQ(tdiff, p1->GetBlockTime() - p2->GetBlockTime());
+    }
 }

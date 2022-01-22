@@ -731,7 +731,7 @@ TEST(test_coins, coins_cache_simulation_test)
     stack.push_back(new CCoinsViewCacheTest(&base)); // Start with one cache.
 
     // Use a limited set of random transaction ids, so we do test overwriting entries.
-    vector<uint256> txids;
+    v_uint256 txids;
     txids.resize(NUM_SIMULATION_ITERATIONS / 8);
     for (unsigned int i = 0; i < txids.size(); i++) {
         txids[i] = GetRandHash();

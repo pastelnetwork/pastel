@@ -10,7 +10,7 @@ class MockPastelIDRegTicket : public CPastelIDRegTicket
 {
 public:
     MOCK_METHOD(bool, VersionMgmt, (std::string & error, const bool bRead), (noexcept, override));
-    MOCK_METHOD(bool, IsValid, (const bool preReg, const int depth), (const, override));
+    MOCK_METHOD(ticket_validation_t, IsValid, (const bool preReg, const uint32_t nDepth), (const, noexcept, override));
     MOCK_METHOD(short, GetVersion, (), (const, noexcept, override));
     MOCK_METHOD(void, SerializationOp, (CDataStream & s, const SERIALIZE_ACTION ser_action), (override));
 };
@@ -19,7 +19,7 @@ class MockChangeUserNameTicket : public CChangeUsernameTicket
 {
 public:
     MOCK_METHOD(bool, VersionMgmt, (std::string & error, const bool bRead), (noexcept, override));
-    MOCK_METHOD(bool, IsValid, (const bool preReg, const int depth), (const, override));
+    MOCK_METHOD(ticket_validation_t, IsValid, (const bool preReg, const uint32_t nDepth), (const, noexcept, override));
     MOCK_METHOD(short, GetVersion, (), (const, noexcept, override));
     MOCK_METHOD(void, SerializationOp, (CDataStream & s, const SERIALIZE_ACTION ser_action), (override));
 };

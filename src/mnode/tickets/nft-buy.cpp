@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2021 The Pastel Core Developers
+// Copyright (c) 2018-2022 The Pastel Core Developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <json/json.hpp>
@@ -25,7 +25,7 @@ CNFTBuyTicket CNFTBuyTicket::Create(string _sellTxnId, int _price, string _paste
     ticket.GenerateTimestamp();
 
     const auto strTicket = ticket.ToStr();
-    string_to_vector(CPastelID::Sign(strTicket, ticket.pastelID, move(strKeyPass)), ticket.signature);
+    string_to_vector(CPastelID::Sign(strTicket, ticket.pastelID, move(strKeyPass)), ticket.m_signature);
 
     return ticket;
 }
@@ -40,84 +40,114 @@ string CNFTBuyTicket::ToStr() const noexcept
     return ss.str();
 }
 
-bool CNFTBuyTicket::IsValid(const bool bPreReg, const int nDepth) const
+ticket_validation_t CNFTBuyTicket::IsValid(const bool bPreReg, const uint32_t nDepth) const noexcept
 {
     const unsigned int chainHeight = GetActiveChainHeight();
-
-    // 0. Common validations
-    unique_ptr<CPastelTicket> pastelTicket;
-    if (!common_validation(
+    ticket_validation_t tv;
+    do
+    {
+        // 0. Common validations
+        unique_ptr<CPastelTicket> pastelTicket;
+        const ticket_validation_t commonTV = common_ticket_validation(
             *this, bPreReg, sellTxnId, pastelTicket,
             [](const TicketID tid) noexcept { return (tid != TicketID::Sell); },
-            "Buy", "sell", nDepth, (price + TicketPrice(chainHeight)) * COIN)) {
-        throw runtime_error(strprintf("The Buy ticket with Sell txid [%s] is not validated", sellTxnId));
-    }
+            GetTicketDescription(), ::GetTicketDescription(TicketID::Sell), nDepth, (price + TicketPrice(chainHeight)) * COIN);
+        if (commonTV.IsNotValid())
+        {
+            tv.errorMsg = strprintf(
+                "The Buy ticket with Sell txid [%s] is not validated. %s", 
+                sellTxnId, commonTV.errorMsg);
+            tv.state = commonTV.state;
+            break;
+        }
 
-    // 1. Verify that there is no another buy ticket for the same sell ticket
-    // or if there are, it is older then 1h and there is no trade ticket for it
-    //buyTicket->ticketBlock <= height+24 (2.5m per block -> 24blocks/per hour) - MaxBuyTicketAge
-    CNFTBuyTicket existingBuyTicket;
-    if (CNFTBuyTicket::FindTicketInDb(sellTxnId, existingBuyTicket)) {
-        // fixed: new buy ticket is not created due to the next condition
-        //if (bPreReg)
-        //{  // if pre reg - this is probably repeating call, so signatures can be the same
-        //  throw runtime_error(strprintf(
-        //    "Buy ticket [%s] already exists for this sell ticket [%s]", existingBuyTicket.m_txid, sellTxnId));
-        //}
+        // 1. Verify that there is no another buy ticket for the same sell ticket
+        // or if there are, it is older then 1h and there is no trade ticket for it
+        //buyTicket->ticketBlock <= height+24 (2.5m per block -> 24blocks/per hour) - MaxBuyTicketAge
+        CNFTBuyTicket existingBuyTicket;
+        if (CNFTBuyTicket::FindTicketInDb(sellTxnId, existingBuyTicket))
+        {
+            // fixed: new buy ticket is not created due to the next condition
+            //if (bPreReg)
+            //{  // if pre reg - this is probably repeating call, so signatures can be the same
+            //  throw runtime_error(strprintf(
+            //    "Buy ticket [%s] already exists for this sell ticket [%s]", existingBuyTicket.m_txid, sellTxnId));
+            //}
 
-        // (ticket transaction replay attack protection)
-        // though the similar transaction will be allowed if existing Buy ticket has expired
-        if (existingBuyTicket.signature != signature ||
-            !existingBuyTicket.IsBlock(m_nBlock) ||
-            existingBuyTicket.m_txid != m_txid) {
-            //check trade ticket
-            if (CNFTTradeTicket::CheckTradeTicketExistByBuyTicket(existingBuyTicket.m_txid)) {
-                throw runtime_error(strprintf(
-                    "The sell ticket you are trying to buy [%s] is already sold", sellTxnId));
-            }
+            // (ticket transaction replay attack protection)
+            // though the similar transaction will be allowed if existing Buy ticket has expired
+            if (!existingBuyTicket.IsSameSignature(m_signature) || 
+                !existingBuyTicket.IsBlock(m_nBlock) ||
+                !existingBuyTicket.IsTxId(m_txid))
+            {
+                //check trade ticket
+                if (CNFTTradeTicket::CheckTradeTicketExistByBuyTicket(existingBuyTicket.m_txid))
+                {
+                    tv.errorMsg = strprintf(
+                        "The sell ticket you are trying to buy [%s] is already sold", 
+                        sellTxnId);
+                    break;
+                }
 
-            // find if it is the old ticket
-            if (m_nBlock > 0 && existingBuyTicket.m_nBlock > m_nBlock) {
-                throw runtime_error(strprintf(
-                    "This Buy ticket has been replaced with another ticket. txid - [%s].", existingBuyTicket.m_txid));
-            }
+                // find if it is the old ticket
+                if (m_nBlock > 0 && existingBuyTicket.m_nBlock > m_nBlock)
+                {
+                    tv.errorMsg = strprintf(
+                        "This Buy ticket has been replaced with another ticket. txid - [%s]",
+                        existingBuyTicket.m_txid);
+                    break;
+                }
 
-            //check age
-            if (existingBuyTicket.m_nBlock + masterNodeCtrl.MaxBuyTicketAge > chainHeight) {
-                throw runtime_error(strprintf(
-                    "Buy ticket [%s] already exists and is not yet 1h old for this sell ticket [%s]"
-                    "[this ticket block = %u txid = %s; found ticket block = %u txid = %s]",
-                    existingBuyTicket.m_txid, sellTxnId, m_nBlock, m_txid, existingBuyTicket.m_nBlock, existingBuyTicket.m_txid));
+                //check age
+                if (existingBuyTicket.m_nBlock + masterNodeCtrl.MaxBuyTicketAge > chainHeight)
+                {
+                    tv.errorMsg = strprintf(
+                        "Buy ticket [%s] already exists and is not yet 1h old for this sell ticket [%s]"
+                        "[this ticket block = %u, txid = %s; found ticket block = %u, txid = %s]",
+                        existingBuyTicket.m_txid, sellTxnId, m_nBlock, m_txid, existingBuyTicket.m_nBlock, existingBuyTicket.m_txid);
+                    break;
+                }
             }
         }
-    }
 
-    auto sellTicket = dynamic_cast<const CNFTSellTicket*>(pastelTicket.get());
-    if (!sellTicket) {
-        throw runtime_error(strprintf(
-            "The sell ticket with this txid [%s] referred by this buy ticket is invalid", sellTxnId));
-    }
+        auto sellTicket = dynamic_cast<const CNFTSellTicket*>(pastelTicket.get());
+        if (!sellTicket)
+        {
+            tv.errorMsg = strprintf(
+                "The sell ticket with this txid [%s] referred by this buy ticket is invalid", 
+                sellTxnId);
+            break;
+        }
 
-    // 2. Verify Sell ticket is already or still active
-    const unsigned int height = (bPreReg || IsBlock(0)) ? chainHeight : m_nBlock;
-    if (height < sellTicket->activeAfter) {
-        throw runtime_error(strprintf(
-            "Sell ticket [%s] is only active after [%d] block height (Buy ticket block is [%d])",
-            sellTicket->GetTxId(), sellTicket->activeAfter, height));
-    }
-    if (sellTicket->activeBefore > 0 && height > sellTicket->activeBefore) {
-        throw runtime_error(strprintf(
-            "Sell ticket [%s] is only active before [%d] block height (Buy ticket block is [%d])",
-            sellTicket->GetTxId(), sellTicket->activeBefore, height));
-    }
+        // 2. Verify Sell ticket is already or still active
+        const unsigned int height = (bPreReg || IsBlock(0)) ? chainHeight : m_nBlock;
+        if (height < sellTicket->activeAfter)
+        {
+            tv.errorMsg = strprintf(
+                "Sell ticket [%s] is only active after [%u] block height (Buy ticket block is [%u])",
+                sellTicket->GetTxId(), sellTicket->activeAfter, height);
+            break;
+        }
+        if (sellTicket->activeBefore > 0 && height > sellTicket->activeBefore)
+        {
+            tv.errorMsg = strprintf(
+                "Sell ticket [%s] is only active before [%u] block height (Buy ticket block is [%u])",
+                sellTicket->GetTxId(), sellTicket->activeBefore, height);
+            break;
+        }
 
-    // 3. Verify that the price is correct
-    if (price < sellTicket->askedPrice) {
-        throw runtime_error(strprintf(
-            "The offered price [%d] is less than asked in the sell ticket [%d]", price, sellTicket->askedPrice));
-    }
+        // 3. Verify that the price is correct
+        if (price < sellTicket->askedPrice)
+        {
+            tv.errorMsg = strprintf(
+                "The offered price [%u] is less than asked in the sell ticket [%u]", 
+                price, sellTicket->askedPrice);
+            break;
+        }
 
-    return true;
+        tv.setValid();
+    } while (false);
+    return tv;
 }
 
 string CNFTBuyTicket::ToJSON() const noexcept
@@ -133,7 +163,7 @@ string CNFTBuyTicket::ToJSON() const noexcept
                 {"pastelID", pastelID},
                 {"sell_txid", sellTxnId},
                 {"price", price},
-                {"signature", ed_crypto::Hex_Encode(signature.data(), signature.size())}
+                {"signature", ed_crypto::Hex_Encode(m_signature.data(), m_signature.size())}
             }
         }
     };
