@@ -90,6 +90,7 @@ pastel_gtest_SOURCES +=\
 	gtest/test_scriptnum.cpp\
 	gtest/test_serialize.cpp\
 	gtest/test_sha256compress.cpp\
+	gtest/test_sigopcount.cpp\
 	gtest/test_str_encodings.cpp\
 	gtest/test_str_utils.cpp\
 	gtest/test_tautology.cpp\

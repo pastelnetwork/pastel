@@ -4,15 +4,15 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#include "script.h"
+#include <script/script.h>
 
-#include "tinyformat.h"
-#include "utilstrencodings.h"
+#include <tinyformat.h>
+#include <utilstrencodings.h>
 
 using namespace std;
 
 namespace {
-inline std::string ValueString(const v_uint8& vch)
+inline string ValueString(const v_uint8& vch)
 {
     if (vch.size() <= 4)
         return strprintf("%d", CScriptNum(vch, false).getint());
@@ -21,7 +21,7 @@ inline std::string ValueString(const v_uint8& vch)
 }
 } // anon namespace
 
-const char* GetOpName(opcodetype opcode)
+string GetOpName(opcodetype opcode)
 {
     switch (opcode)
     {
@@ -254,9 +254,9 @@ bool CScript::IsPushOnly() const
     return true;
 }
 
-std::string CScript::ToString() const
+string CScript::ToString() const
 {
-    std::string str;
+    string str;
     opcodetype opcode;
     v_uint8 vch;
     const_iterator pc = begin();
