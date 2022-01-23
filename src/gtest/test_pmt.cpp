@@ -6,13 +6,13 @@
 #include <vector>
 #include <gtest/gtest.h>
 
-#include "merkleblock.h"
-#include "serialize.h"
-#include "streams.h"
-#include "uint256.h"
-#include "arith_uint256.h"
-#include "version.h"
-#include "random.h"
+#include <merkleblock.h>
+#include <serialize.h>
+#include <streams.h>
+#include <uint256.h>
+#include <arith_uint256.h>
+#include <version.h>
+#include <random.h>
 
 using namespace testing;
 using namespace std;
@@ -31,7 +31,7 @@ public:
 TEST(test_pmt, pmt_test1)
 {
     seed_insecure_rand(false);
-    static const unsigned int nTxCounts[] = {1, 4, 7, 17, 56, 100, 127, 256, 312, 513, 1000, 4095};
+    static constexpr unsigned int nTxCounts[] = {1, 4, 7, 17, 56, 100, 127, 256, 312, 513, 1000, 4095};
 
     for (int n = 0; n < 12; n++) {
         unsigned int nTx = nTxCounts[n];
@@ -58,8 +58,8 @@ TEST(test_pmt, pmt_test1)
         // check with random subsets with inclusion chances 1, 1/2, 1/4, ..., 1/128
         for (int att = 1; att < 15; att++) {
             // build random subset of txid's
-            vector<bool> vMatch(nTx, false);
-            vector<uint256> vMatchTxid1;
+            v_bools vMatch(nTx, false);
+            v_uint256 vMatchTxid1;
             for (unsigned int j=0; j<nTx; j++) {
                 bool fInclude = (insecure_rand() & ((1 << (att/2)) - 1)) == 0;
                 vMatch[j] = fInclude;
@@ -83,7 +83,7 @@ TEST(test_pmt, pmt_test1)
             ss >> pmt2;
 
             // extract merkle root and matched txids from copy
-            vector<uint256> vMatchTxid2;
+            v_uint256 vMatchTxid2;
             uint256 merkleRoot2 = pmt2.ExtractMatches(vMatchTxid2);
 
             // check that it has the same merkle root as the original, and a valid one

@@ -39,7 +39,7 @@ TEST(test_policyestimator, BlockPolicyEstimates)
     // added to the mempool by their associate fee/pri
     // txHashes[j] is populated with transactions either of
     // fee = basefee * (j+1)  OR  pri = 10^6 * 10^(j+1)
-    vector<uint256> txHashes[10];
+    v_uint256 txHashes[10];
 
     // Create a transaction template
     CScript garbage;
