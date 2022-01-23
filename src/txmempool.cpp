@@ -4,17 +4,17 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#include "txmempool.h"
-#include "clientversion.h"
-#include "consensus/consensus.h"
-#include "consensus/validation.h"
-#include "main.h"
-#include "policy/fees.h"
-#include "streams.h"
-#include "timedata.h"
-#include "util.h"
-#include "utilmoneystr.h"
-#include "version.h"
+#include <txmempool.h>
+#include <clientversion.h>
+#include <consensus/consensus.h>
+#include <consensus/validation.h>
+#include <main.h>
+#include <policy/fees.h>
+#include <streams.h>
+#include <timedata.h>
+#include <util.h>
+#include <utilmoneystr.h>
+#include <version.h>
 
 using namespace std;
 
@@ -34,7 +34,7 @@ CTxMemPool::CTxMemPool(const CFeeRate& _minRelayFee) :
 }
 
 // add object to track all add/remove events for transactions in mempool
-void CTxMemPool::AddTxMemPoolTracker(std::shared_ptr<ITxMemPoolTracker> pTracker)
+void CTxMemPool::AddTxMemPoolTracker(shared_ptr<ITxMemPoolTracker> pTracker)
 {
     if (!pTracker)
         return;
@@ -89,8 +89,8 @@ bool CTxMemPool::addUnchecked(const uint256& hash, const CTxMemPoolEntry &entry,
 }
 
 void CTxMemPool::getAddressIndex(
-    const std::vector<std::pair<uint160, CScript::ScriptType>>& vAddresses,
-    std::vector<std::pair<CMempoolAddressDeltaKey, CMempoolAddressDelta>>& results)
+    const vector<pair<uint160, CScript::ScriptType>>& vAddresses,
+    vector<pair<CMempoolAddressDeltaKey, CMempoolAddressDelta>>& results)
 {
     LOCK(cs);
     for (const auto& [addressHash, addressType] : vAddresses)
@@ -123,11 +123,11 @@ bool CTxMemPool::getSpentIndex(const CSpentIndexKey &key, CSpentIndexValue &valu
  * \param pRemovedTxList - return a list of removed transactions (if not nullptr)
  * \param fRecursive - if true - remove all child transactions (even if original tx is not in mempool)
  */
-void CTxMemPool::remove(const CTransaction& origTx, const bool fRecursive, std::list<CTransaction>* pRemovedTxList)
+void CTxMemPool::remove(const CTransaction& origTx, const bool fRecursive, list<CTransaction>* pRemovedTxList)
 {
     {
         LOCK(cs);
-        std::deque<uint256> txToRemove;
+        deque<uint256> txToRemove;
         const auto& txid = origTx.GetHash();
         txToRemove.emplace_back(txid);
         if (fRecursive && !mapTx.count(txid))
@@ -250,7 +250,7 @@ void CTxMemPool::removeWithAnchor(const uint256 &invalidRoot, ShieldedType type)
         remove(tx);
 }
 
-void CTxMemPool::removeConflicts(const CTransaction &tx, std::list<CTransaction>& removed)
+void CTxMemPool::removeConflicts(const CTransaction &tx, list<CTransaction>& removed)
 {
     // Remove transactions which depend on inputs of tx, recursively
     list<CTransaction> result;
@@ -299,11 +299,11 @@ void CTxMemPool::removeExpired(unsigned int nBlockHeight)
 /**
  * Called when a block is connected. Removes from mempool and updates the miner fee estimator.
  */
-void CTxMemPool::removeForBlock(const std::vector<CTransaction>& vtx, unsigned int nBlockHeight,
-                                std::list<CTransaction>& conflicts, bool fCurrentEstimate)
+void CTxMemPool::removeForBlock(const vector<CTransaction>& vtx, unsigned int nBlockHeight,
+                                list<CTransaction>& conflicts, bool fCurrentEstimate)
 {
     LOCK(cs);
-    std::vector<CTxMemPoolEntry> entries;
+    vector<CTxMemPoolEntry> entries;
     for (const auto& tx : vtx)
     {
         uint256 hash = tx.GetHash();
@@ -329,7 +329,7 @@ void CTxMemPool::removeForBlock(const std::vector<CTransaction>& vtx, unsigned i
 void CTxMemPool::removeWithoutBranchId(uint32_t nMemPoolBranchId)
 {
     LOCK(cs);
-    std::list<CTransaction> transactionsToRemove;
+    list<CTransaction> transactionsToRemove;
 
     for (auto it = mapTx.begin(); it != mapTx.end(); it++)
     {
@@ -432,7 +432,7 @@ void CTxMemPool::check(const CCoinsViewCache *pcoins) const
             stepsSinceLastRemove = 0;
         }
     }
-    //for (std::map<COutPoint, CInPoint>::const_iterator it = mapNextTx.begin(); it != mapNextTx.end(); it++)
+    //for (map<COutPoint, CInPoint>::const_iterator it = mapNextTx.begin(); it != mapNextTx.end(); it++)
     for (const auto &[outPoint, inPoint] : mapNextTx)
     {
         uint256 hash = inPoint.ptx->GetHash();
@@ -472,7 +472,7 @@ void CTxMemPool::checkNullifiers(ShieldedType type) const
     }
 }
 
-void CTxMemPool::queryHashes(vector<uint256>& vtxid)
+void CTxMemPool::queryHashes(v_uint256& vtxid)
 {
     vtxid.clear();
 
@@ -549,7 +549,7 @@ CTxMemPool::WriteFeeEstimates(CAutoFile& fileout) const
         fileout << CLIENT_VERSION; // version that wrote the file
         minerPolicyEstimator->Write(fileout);
     }
-    catch (const std::exception&) {
+    catch (const exception&) {
         LogPrintf("CTxMemPool::WriteFeeEstimates(): unable to write policy estimator data (non-fatal)\n");
         return false;
     }
@@ -567,7 +567,7 @@ bool CTxMemPool::ReadFeeEstimates(CAutoFile& filein)
         LOCK(cs);
         minerPolicyEstimator->Read(filein);
     }
-    catch (const std::exception&) {
+    catch (const exception&) {
         LogPrintf("CTxMemPool::ReadFeeEstimates(): unable to read policy estimator data (non-fatal)\n");
         return false;
     }
