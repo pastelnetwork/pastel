@@ -34,7 +34,7 @@ using namespace testing;
 // Uncomment if you want to output updated JSON tests.
 // #define UPDATE_JSON_TESTS
 
-static const unsigned int flags = SCRIPT_VERIFY_P2SH | SCRIPT_VERIFY_STRICTENC;
+constexpr unsigned int flags = SCRIPT_VERIFY_P2SH | SCRIPT_VERIFY_STRICTENC;
 
 static map<string, unsigned int> mapFlagNames = {
     {string("NONE"), (unsigned int)SCRIPT_VERIFY_NONE},
@@ -157,7 +157,7 @@ void static NegateSignatureS(v_uint8& vchSig) {
     s = v_uint8(vchSig.begin() + 6 + vchSig[3], vchSig.begin() + 6 + vchSig[3] + vchSig[5 + vchSig[3]]);
 
     // Really ugly to implement mod-n negation here, but it would be feature creep to expose such functionality from libsecp256k1.
-    static const unsigned char order[33] = {
+    constexpr unsigned char order[33] = {
         0x00,
         0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
         0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFE,
@@ -706,10 +706,10 @@ TEST_P(PTest_Script, script_PushData)
 
     // Check that PUSHDATA1, PUSHDATA2, and PUSHDATA4 create the same value on
     // the stack as the 1-75 opcodes do.
-    static const unsigned char direct[] = { 1, 0x5a };
-    static const unsigned char pushdata1[] = { OP_PUSHDATA1, 1, 0x5a };
-    static const unsigned char pushdata2[] = { OP_PUSHDATA2, 1, 0, 0x5a };
-    static const unsigned char pushdata4[] = { OP_PUSHDATA4, 1, 0, 0, 0, 0x5a };
+    constexpr unsigned char direct[] = { 1, 0x5a };
+    constexpr unsigned char pushdata1[] = { OP_PUSHDATA1, 1, 0x5a };
+    constexpr unsigned char pushdata2[] = { OP_PUSHDATA2, 1, 0, 0x5a };
+    constexpr unsigned char pushdata4[] = { OP_PUSHDATA4, 1, 0, 0, 0, 0x5a };
 
     ScriptError err;
     vector<v_uint8 > directStack;
@@ -1027,7 +1027,7 @@ TEST(test_script, script_IsPushOnly_on_invalid_scripts)
     // because P2SH evaluation uses it, although this specific behavior should
     // not be consensus critical as the P2SH evaluation would fail first due to
     // the invalid push. Still, it doesn't hurt to test it explicitly.
-    static const unsigned char direct[] = { 1 };
+    constexpr unsigned char direct[] = { 1 };
     EXPECT_TRUE(!CScript(direct, direct+sizeof(direct)).IsPushOnly());
 }
 
