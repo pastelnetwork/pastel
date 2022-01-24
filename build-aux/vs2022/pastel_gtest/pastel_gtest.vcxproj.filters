@@ -253,6 +253,15 @@
     <ClCompile Include="..\..\..\src\gtest\test_sighash.cpp">
       <Filter>UnitTest Files</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\..\src\gtest\test_sigopcount.cpp">
+      <Filter>UnitTest Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\src\gtest\test_skiplist.cpp">
+      <Filter>UnitTest Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\src\gtest\test_torcontrol.cpp">
+      <Filter>UnitTest Files</Filter>
+    </ClCompile>
     <ClCompile Include="..\..\..\src\gtest\test_univalue.cpp">
       <Filter>UnitTest Files</Filter>
     </ClCompile>

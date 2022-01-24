@@ -10,6 +10,8 @@
 #include <utilstrencodings.h>
 #include <crypto/common.h>
 
+using namespace std;
+
 uint256 CBlockHeader::GetHash() const noexcept
 {
     return SerializeHash(*this);
@@ -62,7 +64,7 @@ uint256 CBlock::BuildMerkleTree(bool* pbMutated) const
     {
         for (size_t i = 0; i < nSize; i += 2)
         {
-            size_t i2 = std::min(i+1, nSize-1);
+            size_t i2 = min(i+1, nSize-1);
             if (i2 == i + 1 && i2 + 1 == nSize && vMerkleTree[j+i] == vMerkleTree[j+i2])
                 // Two identical hashes at the end of the list at a particular level.
                 bMutated = true;
@@ -85,7 +87,7 @@ v_uint256 CBlock::GetMerkleBranch(const size_t nIndex) const noexcept
     size_t nIdx = nIndex;
     for (size_t nSize = vtx.size(); nSize > 1; nSize = (nSize + 1) / 2)
     {
-        size_t i = std::min(nIdx ^ 1, nSize - 1);
+        size_t i = min(nIdx ^ 1, nSize - 1);
         vMerkleBranch.push_back(vMerkleTree[j + i]);
         nIdx >>= 1;
         j += nSize;
@@ -108,9 +110,9 @@ uint256 CBlock::CheckMerkleBranch(uint256 hash, const v_uint256& vMerkleBranch, 
     return hash;
 }
 
-std::string CBlock::ToString() const
+string CBlock::ToString() const
 {
-    std::stringstream s;
+    stringstream s;
     s << strprintf("CBlock(hash=%s, ver=%d, hashPrevBlock=%s, hashMerkleRoot=%s, hashFinalSaplingRoot=%s, nTime=%u, nBits=%08x, nNonce=%s, vtx=%u)\n",
         GetHash().ToString(),
         nVersion,
