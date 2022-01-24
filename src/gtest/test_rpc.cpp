@@ -7,15 +7,15 @@
 
 #include <gtest/gtest.h>
 
-#include "rpc/server.h"
-#include "rpc/client.h"
-#include "rpc/register.h"
-#include "key_io.h"
-#include "netbase.h"
-#include "main.h"
-#include "utilstrencodings.h"
+#include <rpc/server.h>
+#include <rpc/client.h>
+#include <rpc/register.h>
+#include <key_io.h>
+#include <netbase.h>
+#include <main.h>
+#include <utilstrencodings.h>
 #include <univalue.h>
-#include "pastel_gtest_main.h"
+#include <pastel_gtest_main.h>
 
 using namespace std;
 using namespace testing;

@@ -3,16 +3,16 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#include "rpc/server.h"
+#include <rpc/server.h>
 
-#include "init.h"
-#include "key_io.h"
-#include "random.h"
-#include "sync.h"
-#include "ui_interface.h"
-#include "util.h"
-#include "utilstrencodings.h"
-#include "asyncrpcqueue.h"
+#include <init.h>
+#include <key_io.h>
+#include <random.h>
+#include <sync.h>
+#include <ui_interface.h>
+#include <util.h>
+#include <utilstrencodings.h>
+#include <asyncrpcqueue.h>
 
 #include <memory>
 
@@ -30,12 +30,12 @@ using namespace std;
 
 static bool fRPCRunning = false;
 static bool fRPCInWarmup = true;
-static std::string rpcWarmupStatus("RPC server started");
+static string rpcWarmupStatus("RPC server started");
 static CCriticalSection cs_rpcWarmup;
 /* Timer-creating functions */
-static std::vector<RPCTimerInterface*> timerInterfaces;
+static vector<RPCTimerInterface*> timerInterfaces;
 // Map of name to timer.
-static std::map<std::string, std::shared_ptr<RPCTimerBase> > deadlineTimers;
+static map<string, shared_ptr<RPCTimerBase> > deadlineTimers;
 
 static struct CRPCSignals
 {
@@ -141,7 +141,7 @@ uint256 ParseHashO(const UniValue& o, string strKey)
 {
     return ParseHashV(find_value(o, strKey), strKey);
 }
-vector<unsigned char> ParseHexV(const UniValue& v, string strName)
+v_uint8 ParseHexV(const UniValue& v, string strName)
 {
     string strHex;
     if (v.isStr())
@@ -150,7 +150,7 @@ vector<unsigned char> ParseHexV(const UniValue& v, string strName)
         throw JSONRPCError(RPC_INVALID_PARAMETER, strName+" must be hexadecimal string (not '"+strHex+"')");
     return ParseHex(strHex);
 }
-vector<unsigned char> ParseHexO(const UniValue& o, string strKey)
+v_uint8 ParseHexO(const UniValue& o, string strKey)
 {
     return ParseHexV(find_value(o, strKey), strKey);
 }
@@ -159,7 +159,7 @@ vector<unsigned char> ParseHexO(const UniValue& o, string strKey)
  * Note: This interface may still be subject to change.
  */
 
-std::string CRPCTable::help(const std::string& strCommand) const
+string CRPCTable::help(const string& strCommand) const
 {
     string strRet;
     string category;
@@ -185,7 +185,7 @@ std::string CRPCTable::help(const std::string& strCommand) const
             if (setDone.insert(pfn).second)
                 (*pfn)(params, true);
         }
-        catch (const std::exception& e)
+        catch (const exception& e)
         {
             // Help text is returned in an exception
             string strHelp = string(e.what());
@@ -269,7 +269,7 @@ CRPCTable::CRPCTable()
     }
 }
 
-const CRPCCommand *CRPCTable::operator[](const std::string &name) const
+const CRPCCommand *CRPCTable::operator[](const string &name) const
 {
     map<string, const CRPCCommand*>::const_iterator it = mapCommands.find(name);
     if (it == mapCommands.end())
@@ -277,7 +277,7 @@ const CRPCCommand *CRPCTable::operator[](const std::string &name) const
     return (*it).second;
 }
 
-bool CRPCTable::appendCommand(const std::string& name, const CRPCCommand* pcmd)
+bool CRPCTable::appendCommand(const string& name, const CRPCCommand* pcmd)
 {
     if (IsRPCRunning())
         return false;
@@ -337,7 +337,7 @@ bool IsRPCRunning()
     return fRPCRunning;
 }
 
-void SetRPCWarmupStatus(const std::string& newStatus)
+void SetRPCWarmupStatus(const string& newStatus)
 {
     LOCK(cs_rpcWarmup);
     rpcWarmupStatus = newStatus;
@@ -350,7 +350,7 @@ void SetRPCWarmupFinished()
     fRPCInWarmup = false;
 }
 
-bool RPCIsInWarmup(std::string *outStatus)
+bool RPCIsInWarmup(string *outStatus)
 {
     LOCK(cs_rpcWarmup);
     if (outStatus)
@@ -403,7 +403,7 @@ static UniValue JSONRPCExecOne(const UniValue& req)
     {
         rpc_result = JSONRPCReplyObj(NullUniValue, objError, jreq.id);
     }
-    catch (const std::exception& e)
+    catch (const exception& e)
     {
         rpc_result = JSONRPCReplyObj(NullUniValue,
                                      JSONRPCError(RPC_PARSE_ERROR, e.what()), jreq.id);
@@ -412,7 +412,7 @@ static UniValue JSONRPCExecOne(const UniValue& req)
     return rpc_result;
 }
 
-std::string JSONRPCExecBatch(const UniValue& vReq)
+string JSONRPCExecBatch(const UniValue& vReq)
 {
     UniValue ret(UniValue::VARR);
     for (size_t reqIdx = 0; reqIdx < vReq.size(); reqIdx++)
@@ -421,7 +421,7 @@ std::string JSONRPCExecBatch(const UniValue& vReq)
     return ret.write() + "\n";
 }
 
-UniValue CRPCTable::execute(const std::string &strMethod, const UniValue &params) const
+UniValue CRPCTable::execute(const string &strMethod, const UniValue &params) const
 {
     // Return immediately if in warmup
     {
@@ -442,7 +442,7 @@ UniValue CRPCTable::execute(const std::string &strMethod, const UniValue &params
         // Execute
         return pcmd->actor(params, false);
     }
-    catch (const std::exception& e)
+    catch (const exception& e)
     {
         throw JSONRPCError(RPC_MISC_ERROR, e.what());
     }
@@ -450,12 +450,12 @@ UniValue CRPCTable::execute(const std::string &strMethod, const UniValue &params
     g_rpcSignals.PostCommand(*pcmd);
 }
 
-std::string HelpExampleCli(const std::string& methodname, const std::string& args)
+string HelpExampleCli(const string& methodname, const string& args)
 {
     return "> pastel-cli " + methodname + " " + args + "\n";
 }
 
-std::string HelpExampleRpc(const std::string& methodname, const std::string& args)
+string HelpExampleRpc(const string& methodname, const string& args)
 {
     return "> curl --user myusername --data-binary '{\"jsonrpc\": \"1.0\", \"id\":\"curltest\", "
         "\"method\": \"" + methodname + "\", \"params\": [" + args + "] }' -H 'content-type: text/plain;' http://127.0.0.1:9932/\n";
@@ -478,25 +478,25 @@ void RPCRegisterTimerInterface(RPCTimerInterface *iface)
 
 void RPCUnregisterTimerInterface(RPCTimerInterface *iface)
 {
-    std::vector<RPCTimerInterface*>::iterator i = std::find(timerInterfaces.begin(), timerInterfaces.end(), iface);
+    vector<RPCTimerInterface*>::iterator i = find(timerInterfaces.begin(), timerInterfaces.end(), iface);
     assert(i != timerInterfaces.end());
     timerInterfaces.erase(i);
 }
 
-void RPCRunLater(const std::string& name, boost::function<void(void)> func, int64_t nSeconds)
+void RPCRunLater(const string& name, boost::function<void(void)> func, int64_t nSeconds)
 {
     if (timerInterfaces.empty())
         throw JSONRPCError(RPC_INTERNAL_ERROR, "No timer handler registered for RPC");
     deadlineTimers.erase(name);
     RPCTimerInterface* timerInterface = timerInterfaces[0];
     LogPrint("rpc", "queue run of timer %s in %i seconds (using %s)\n", name, nSeconds, timerInterface->Name());
-    deadlineTimers.insert(std::make_pair(name, std::shared_ptr<RPCTimerBase>(timerInterface->NewTimer(func, nSeconds*1000))));
+    deadlineTimers.insert(make_pair(name, shared_ptr<RPCTimerBase>(timerInterface->NewTimer(func, nSeconds*1000))));
 }
 
 CRPCTable tableRPC;
 
 // Return async rpc queue
-std::shared_ptr<AsyncRPCQueue> getAsyncRPCQueue()
+shared_ptr<AsyncRPCQueue> getAsyncRPCQueue()
 {
     return AsyncRPCQueue::sharedInstance();
 }

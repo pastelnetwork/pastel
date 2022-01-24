@@ -5,12 +5,12 @@
 #ifndef ASYNCRPCOPERATION_MERGETOADDRESS_H
 #define ASYNCRPCOPERATION_MERGETOADDRESS_H
 
-#include "amount.h"
-#include "asyncrpcoperation.h"
-#include "primitives/transaction.h"
-#include "transaction_builder.h"
-#include "wallet.h"
-#include "zcash/Address.hpp"
+#include <amount.h>
+#include <asyncrpcoperation.h>
+#include <primitives/transaction.h>
+#include <transaction_builder.h>
+#include <wallet/wallet.h>
+#include <zcash/Address.hpp>
 
 #include <array>
 #include <tuple>
