@@ -3,19 +3,20 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#include "pubkey.h"
+#include <pubkey.h>
 
 #include <secp256k1.h>
 #include <secp256k1_recovery.h>
 
+using namespace std;
+
 namespace
 {
 /* Global secp256k1_context object used for verification. */
-secp256k1_context* secp256k1_context_verify = NULL;
+secp256k1_context* secp256k1_context_verify = nullptr;
 }
 
-
-bool CPubKey::Verify(const uint256 &hash, const std::vector<unsigned char>& vchSig) const {
+bool CPubKey::Verify(const uint256 &hash, const v_uint8& vchSig) const {
     if (!IsValid())
         return false;
     secp256k1_pubkey pubkey;
@@ -36,7 +37,7 @@ bool CPubKey::Verify(const uint256 &hash, const std::vector<unsigned char>& vchS
     return secp256k1_ecdsa_verify(secp256k1_context_verify, &sig, hash.begin(), &pubkey);
 }
 
-bool CPubKey::RecoverCompact(const uint256 &hash, const std::vector<unsigned char>& vchSig) {
+bool CPubKey::RecoverCompact(const uint256 &hash, const v_uint8& vchSig) {
     if (vchSig.size() != COMPACT_SIGNATURE_SIZE)
         return false;
     int recid = (vchSig[0] - 27) & 3;
@@ -124,14 +125,14 @@ bool CExtPubKey::Derive(CExtPubKey &out, unsigned int nChild) const {
     return pubkey.Derive(out.pubkey, out.chaincode, nChild, chaincode);
 }
 
-/* static */ bool CPubKey::CheckLowS(const std::vector<unsigned char>& vchSig) {
+/* static */ bool CPubKey::CheckLowS(const v_uint8& vchSig) {
     secp256k1_ecdsa_signature sig;
 
     /* Pastel, unlike Bitcoin, has always enforced strict DER signatures. */
     if (!secp256k1_ecdsa_signature_parse_der(secp256k1_context_verify, &sig, &vchSig[0], vchSig.size())) {
         return false;
     }
-    return (!secp256k1_ecdsa_signature_normalize(secp256k1_context_verify, NULL, &sig));
+    return (!secp256k1_ecdsa_signature_normalize(secp256k1_context_verify, nullptr, &sig));
 }
 
 /* static */ int ECCVerifyHandle::refcount = 0;
@@ -139,9 +140,9 @@ bool CExtPubKey::Derive(CExtPubKey &out, unsigned int nChild) const {
 ECCVerifyHandle::ECCVerifyHandle()
 {
     if (refcount == 0) {
-        assert(secp256k1_context_verify == NULL);
+        assert(secp256k1_context_verify == nullptr);
         secp256k1_context_verify = secp256k1_context_create(SECP256K1_CONTEXT_VERIFY);
-        assert(secp256k1_context_verify != NULL);
+        assert(secp256k1_context_verify != nullptr);
     }
     refcount++;
 }
@@ -150,8 +151,8 @@ ECCVerifyHandle::~ECCVerifyHandle()
 {
     refcount--;
     if (refcount == 0) {
-        assert(secp256k1_context_verify != NULL);
+        assert(secp256k1_context_verify != nullptr);
         secp256k1_context_destroy(secp256k1_context_verify);
-        secp256k1_context_verify = NULL;
+        secp256k1_context_verify = nullptr;
     }
 }

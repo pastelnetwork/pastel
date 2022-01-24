@@ -167,10 +167,13 @@
     <ClCompile Include="..\..\..\src\gtest\test_scriptnum.cpp" />
     <ClCompile Include="..\..\..\src\gtest\test_serialize.cpp" />
     <ClCompile Include="..\..\..\src\gtest\test_sha256compress.cpp" />
+    <ClCompile Include="..\..\..\src\gtest\test_sigopcount.cpp" />
+    <ClCompile Include="..\..\..\src\gtest\test_skiplist.cpp" />
     <ClCompile Include="..\..\..\src\gtest\test_str_encodings.cpp" />
     <ClCompile Include="..\..\..\src\gtest\test_str_utils.cpp" />
     <ClCompile Include="..\..\..\src\gtest\test_tautology.cpp" />
     <ClCompile Include="..\..\..\src\gtest\test_timedata.cpp" />
+    <ClCompile Include="..\..\..\src\gtest\test_torcontrol.cpp" />
     <ClCompile Include="..\..\..\src\gtest\test_transaction_builder.cpp" />
     <ClCompile Include="..\..\..\src\gtest\test_trimmean.cpp" />
     <ClCompile Include="..\..\..\src\gtest\test_txid.cpp" />

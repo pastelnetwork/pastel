@@ -25,16 +25,7 @@
     <ClCompile Include="..\..\..\src\test\sighash_tests.cpp">
       <Filter>UnitTest Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\src\test\sigopcount_tests.cpp">
-      <Filter>UnitTest Files</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\..\src\test\skiplist_tests.cpp">
-      <Filter>UnitTest Files</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\..\src\test\test_bitcoin.cpp">
-      <Filter>UnitTest Files</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\..\src\test\torcontrol_tests.cpp">
       <Filter>UnitTest Files</Filter>
     </ClCompile>
     <ClCompile Include="..\..\..\src\test\transaction_tests.cpp">

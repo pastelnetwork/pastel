@@ -6,9 +6,9 @@
 #include <vector>
 #include <gtest/gtest.h>
 
-#include "main.h"
-#include "random.h"
-#include "util.h"
+#include <main.h>
+#include <random.h>
+#include <util.h>
 
 using namespace std;
 using namespace testing;

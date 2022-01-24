@@ -5,9 +5,9 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 
-#include "script/interpreter.h"
-#include "uint256.h"
-#include "chainparams.h"
+#include <script/interpreter.h>
+#include <uint256.h>
+#include <chainparams.h>
 
 #include <stdint.h>
 #include <variant>
