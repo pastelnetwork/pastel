@@ -84,6 +84,7 @@ pastel_gtest_SOURCES +=\
 	gtest/test_random.cpp\
 	gtest/test_reverselock.cpp\
 	gtest/test_rpc.cpp\
+	gtest/test_rpccmd_parser.cpp\
 	gtest/test_sanity.cpp\
 	gtest/test_sapling_note.cpp\
 	gtest/test_scriptnum.cpp\

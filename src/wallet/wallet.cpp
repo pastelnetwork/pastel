@@ -415,6 +415,7 @@ unsigned int GetMsecTimeDelta(const int64_t nStartTime) noexcept
     const unsigned int nDelta = static_cast<unsigned int>(100 / ((double)(nEndTime - nStartTime)));
     if (!nDelta)
         return 100;
+    return nDelta;
 }
 
 bool CWallet::ChangeWalletPassphrase(const SecureString& strOldWalletPassphrase, const SecureString& strNewWalletPassphrase)

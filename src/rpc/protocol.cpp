@@ -1,9 +1,14 @@
 // Copyright (c) 2010 Satoshi Nakamoto
 // Copyright (c) 2009-2014 The Bitcoin Core developers
+// Copyright (c) 2018-2022 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
-// file COPYING or http://www.opensource.org/licenses/mit-license.php.
+// file COPYING or https://www.opensource.org/licenses/mit-license.php.
 
-#include "rpc/protocol.h"
+#include <fstream>
+#include <stdint.h>
+
+#include <rpc/protocol.h>
+#include <rpc/rpc_consts.h>
 
 #include "random.h"
 #include "tinyformat.h"
@@ -11,9 +16,6 @@
 #include "utilstrencodings.h"
 #include "utiltime.h"
 #include "version.h"
-
-#include <stdint.h>
-#include <fstream>
 
 using namespace std;
 
@@ -39,9 +41,9 @@ UniValue JSONRPCReplyObj(const UniValue& result, const UniValue& error, const Un
 {
     UniValue reply(UniValue::VOBJ);
     if (!error.isNull())
-        reply.pushKV("result", NullUniValue);
+        reply.pushKV(RPC_KEY_RESULT, NullUniValue);
     else
-        reply.pushKV("result", result);
+        reply.pushKV(RPC_KEY_RESULT, result);
     reply.pushKV("error", error);
     reply.pushKV("id", id);
     return reply;
@@ -56,8 +58,8 @@ string JSONRPCReply(const UniValue& result, const UniValue& error, const UniValu
 UniValue JSONRPCError(int code, const string& message)
 {
     UniValue error(UniValue::VOBJ);
-    error.pushKV("code", code);
-    error.pushKV("message", message);
+    error.pushKV(RPC_KEY_CODE, code);
+    error.pushKV(RPC_KEY_MESSAGE, message);
     return error;
 }
 
