@@ -4,12 +4,10 @@
 
 #include <iomanip>
 #include <stdio.h>
-#include <univalue.h>
+#include "univalue.h"
 #include "univalue_escapes.h"
 
-using namespace std;
-
-static void json_escape(const string& inS, string& outS)
+static void json_escape(const std::string& inS, std::string& outS)
 {
     for (unsigned int i = 0; i < inS.size(); i++) {
         unsigned char ch = inS[i];
@@ -22,10 +20,10 @@ static void json_escape(const string& inS, string& outS)
     }
 }
 
-string UniValue::write(unsigned int prettyIndent,
+std::string UniValue::write(unsigned int prettyIndent,
                             unsigned int indentLevel) const
 {
-    string s;
+    std::string s;
     s.reserve(2048);
     write(prettyIndent, indentLevel, s);
     return s;
@@ -33,7 +31,7 @@ string UniValue::write(unsigned int prettyIndent,
 
 void UniValue::write(unsigned int prettyIndent,
                      unsigned int indentLevel,
-                     string& s) const
+                     std::string& s) const
 {
     unsigned int modIndent = indentLevel;
     if (modIndent == 0)
@@ -63,12 +61,12 @@ void UniValue::write(unsigned int prettyIndent,
     }
 }
 
-static void indentStr(unsigned int prettyIndent, unsigned int indentLevel, string& s)
+static void indentStr(unsigned int prettyIndent, unsigned int indentLevel, std::string& s)
 {
     s.append(prettyIndent * indentLevel, ' ');
 }
 
-void UniValue::writeArray(unsigned int prettyIndent, unsigned int indentLevel, string& s) const
+void UniValue::writeArray(unsigned int prettyIndent, unsigned int indentLevel, std::string& s) const
 {
     s += '[';
     if (prettyIndent)
@@ -90,7 +88,7 @@ void UniValue::writeArray(unsigned int prettyIndent, unsigned int indentLevel, s
     s += ']';
 }
 
-void UniValue::writeObject(unsigned int prettyIndent, unsigned int indentLevel, string& s) const
+void UniValue::writeObject(unsigned int prettyIndent, unsigned int indentLevel, std::string& s) const
 {
     s += '{';
     if (prettyIndent)

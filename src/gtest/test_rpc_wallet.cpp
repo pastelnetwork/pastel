@@ -38,7 +38,7 @@ using namespace testing;
 extern UniValue createArgs(int nRequired, const char* address1 = nullptr, const char* address2 = nullptr);
 extern UniValue CallRPC(string args);
 
-extern CWallet* pwalletMain;
+// extern CWallet* pwalletMain;
 
 bool find_error(const UniValue& objError, const string& expected) {
     return find_value(objError, "message").get_str().find(expected) != string::npos;
@@ -512,9 +512,7 @@ public:
     MockSleepOperation(int t=1000) {
         this->naptime = chrono::milliseconds(t);
     }
-    virtual ~MockSleepOperation() {
-    }
-    virtual void main() {
+    void main() override {
         set_state(OperationStatus::EXECUTING);
         start_execution_clock();
         this_thread::sleep_for(chrono::milliseconds(naptime));
@@ -613,8 +611,7 @@ atomic<int64_t> gCounter(0);
 class CountOperation : public AsyncRPCOperation {
 public:
     CountOperation() {}
-    virtual ~CountOperation() {}
-    virtual void main() {
+    void main() override {
         set_state(OperationStatus::EXECUTING);
         gCounter++;
         this_thread::sleep_for(chrono::milliseconds(1000));

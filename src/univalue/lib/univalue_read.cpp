@@ -5,10 +5,9 @@
 #include <string.h>
 #include <vector>
 #include <stdio.h>
-#include <univalue.h>
+#include "univalue.h"
 #include "univalue_utffilter.h"
 
-using namespace std;
 /*
  * According to stackexchange, the original json test suite wanted
  * to limit depth to 22.  Widely-deployed PHP bails at depth 512,
@@ -49,7 +48,7 @@ static const char *hatoui(const char *first, const char *last,
     return first;
 }
 
-enum jtokentype getJsonToken(string& tokenVal, unsigned int& consumed,
+enum jtokentype getJsonToken(std::string& tokenVal, unsigned int& consumed,
                             const char *raw, const char *end)
 {
     tokenVal.clear();
@@ -121,7 +120,7 @@ enum jtokentype getJsonToken(string& tokenVal, unsigned int& consumed,
     case '8':
     case '9': {
         // part 1: int
-        string numStr;
+        std::string numStr;
 
         const char *first = raw;
 
@@ -173,7 +172,7 @@ enum jtokentype getJsonToken(string& tokenVal, unsigned int& consumed,
             }
         }
 
-        tokenVal = move(numStr);
+        tokenVal = std::move(numStr);
         consumed = static_cast<unsigned int>(raw - rawStart);
         return JTOK_NUMBER;
         }
@@ -181,7 +180,7 @@ enum jtokentype getJsonToken(string& tokenVal, unsigned int& consumed,
     case '"': {
         raw++;                                // skip "
 
-        string valStr;
+        std::string valStr;
         JSONUTF8StringFilter writer(valStr);
 
         while (true) {
@@ -235,7 +234,7 @@ enum jtokentype getJsonToken(string& tokenVal, unsigned int& consumed,
 
         if (!writer.finalize())
             return JTOK_ERR;
-        tokenVal = move(valStr);
+        tokenVal = std::move(valStr);
         consumed = static_cast<unsigned int>(raw - rawStart);
         return JTOK_STRING;
         }
@@ -262,9 +261,9 @@ bool UniValue::read(const char *raw, size_t size)
     clear();
 
     uint32_t expectMask = 0;
-    vector<UniValue*> stack;
+    std::vector<UniValue*> stack;
 
-    string tokenVal;
+    std::string tokenVal;
     unsigned int consumed;
     enum jtokentype tok = JTOK_NONE;
     enum jtokentype last_tok = JTOK_NONE;
@@ -326,7 +325,7 @@ bool UniValue::read(const char *raw, size_t size)
             } else {
                 UniValue tmpVal(utyp);
                 UniValue *top = stack.back();
-                top->values.push_back(move(tmpVal));
+                top->values.push_back(std::move(tmpVal));
 
                 UniValue *newTop = &(top->values.back());
                 stack.push_back(newTop);
@@ -401,12 +400,12 @@ bool UniValue::read(const char *raw, size_t size)
             }
 
             if (!stack.size()) {
-                *this = move(tmpVal);
+                *this = std::move(tmpVal);
                 break;
             }
 
             UniValue *top = stack.back();
-            top->values.push_back(move(tmpVal));
+            top->values.push_back(std::move(tmpVal));
 
             setExpect(NOT_VALUE);
             break;
@@ -415,12 +414,12 @@ bool UniValue::read(const char *raw, size_t size)
         case JTOK_NUMBER: {
             UniValue tmpVal(VNUM, tokenVal);
             if (!stack.size()) {
-                *this = move(tmpVal);
+                *this = std::move(tmpVal);
                 break;
             }
 
             UniValue *top = stack.back();
-            top->values.push_back(move(tmpVal));
+            top->values.push_back(std::move(tmpVal));
 
             setExpect(NOT_VALUE);
             break;
@@ -435,11 +434,11 @@ bool UniValue::read(const char *raw, size_t size)
             } else {
                 UniValue tmpVal(VSTR, tokenVal);
                 if (!stack.size()) {
-                    *this = move(tmpVal);
+                    *this = std::move(tmpVal);
                     break;
                 }
                 UniValue *top = stack.back();
-                top->values.push_back(move(tmpVal));
+                top->values.push_back(std::move(tmpVal));
             }
 
             setExpect(NOT_VALUE);

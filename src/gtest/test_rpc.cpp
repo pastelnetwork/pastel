@@ -4,6 +4,7 @@
 #include <regex>
 
 #include <gtest/gtest.h>
+#include <univalue.h>
 
 #include <rpc/server.h>
 #include <rpc/client.h>
@@ -12,7 +13,6 @@
 #include <netbase.h>
 #include <main.h>
 #include <utilstrencodings.h>
-#include <univalue.h>
 #include <pastel_gtest_main.h>
 
 using namespace std;
@@ -226,9 +226,9 @@ TEST_P(PTestRpc1, rpc_parse_monetary_values)
 {
     const auto value = get<0>(GetParam());
     const auto expectedValue = get<1>(GetParam());
-    const auto thow = get<2>(GetParam());
+    const auto isThrow = get<2>(GetParam());
 
-    if(thow)
+    if(isThrow)
     {
         EXPECT_THROW(AmountFromValue(ValueFromString(value)), UniValue);
     }

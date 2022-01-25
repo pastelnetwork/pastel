@@ -28,7 +28,6 @@ struct ECCryptoClosure
 
 ECCryptoClosure instance_of_eccryptoclosure;
 CPastelTest_Environment *gl_pPastelTestEnv = nullptr;
-fs::path pathTemp;
 
 #ifdef ENABLE_WALLET
 extern CWallet* pwalletMain;
