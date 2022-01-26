@@ -65,7 +65,7 @@ uint256 static SignatureHashOld(CScript scriptCode, const CTransaction& txTo, un
         }
         txTmp.vout.resize(nOut+1);
         for (unsigned int i = 0; i < nOut; i++)
-            txTmp.vout[i].SetNull();
+            txTmp.vout[i].Clear();
 
         // Let the others update at will
         for (unsigned int i = 0; i < txTmp.vin.size(); i++)
@@ -74,7 +74,7 @@ uint256 static SignatureHashOld(CScript scriptCode, const CTransaction& txTo, un
     }
 
     // Blank out other inputs completely, not recommended for open transactions
-    if (nHashType & SIGHASH_ANYONECANPAY)
+    if (nHashType & to_integral_type(SIGHASH::ANYONECANPAY))
     {
         txTmp.vin[0] = txTmp.vin[nIn];
         txTmp.vin.resize(1);
