@@ -47,8 +47,7 @@ BITCOIN_TESTS =\
   test/test_bitcoin.cpp \
   test/test_bitcoin.h \
   test/torcontrol_tests.cpp \
-  test/transaction_tests.cpp \
-  test/util_tests.cpp
+  test/transaction_tests.cpp
 
 if ENABLE_WALLET
 BITCOIN_TESTS += \
