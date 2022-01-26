@@ -2,29 +2,27 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php .
 
-#include "asyncrpcoperation_sendmany.h"
-#include "asyncrpcqueue.h"
-#include "amount.h"
-#include "consensus/upgrades.h"
-#include "core_io.h"
-#include "init.h"
-#include "key_io.h"
-#include "main.h"
-#include "net.h"
-#include "netbase.h"
-#include "rpc/protocol.h"
-#include "rpc/server.h"
-#include "rpc/rpc_consts.h"
-#include "timedata.h"
-#include "util.h"
-#include "utilmoneystr.h"
-#include "wallet.h"
-#include "walletdb.h"
-#include "script/interpreter.h"
-#include "utiltime.h"
-#include "zcash/IncrementalMerkleTree.hpp"
-#include "sodium.h"
-#include "miner.h"
+#include <wallet/asyncrpcoperation_sendmany.h>
+#include <asyncrpcqueue.h>
+#include <amount.h>
+#include <consensus/upgrades.h>
+#include <core_io.h>
+#include <init.h>
+#include <key_io.h>
+#include <main.h>
+#include <net.h>
+#include <netbase.h>
+#include <rpc/protocol.h>
+#include <rpc/server.h>
+#include <rpc/rpc_consts.h>
+#include <timedata.h>
+#include <util.h>
+#include <utilmoneystr.h>
+#include <script/interpreter.h>
+#include <utiltime.h>
+#include <zcash/IncrementalMerkleTree.hpp>
+#include <sodium.h>
+#include <miner.h>
 
 #include <array>
 #include <iostream>
@@ -34,16 +32,17 @@
 #include <variant>
 
 using namespace libzcash;
+using namespace std;
 
 extern UniValue signrawtransaction(const UniValue& params, bool fHelp);
 extern UniValue sendrawtransaction(const UniValue& params, bool fHelp);
 
 AsyncRPCOperation_sendmany::AsyncRPCOperation_sendmany(
-        std::optional<TransactionBuilder> builder,
+        optional<TransactionBuilder> builder,
         CMutableTransaction contextualTx,
-        std::string fromAddress,
-        std::vector<SendManyRecipient> tOutputs,
-        std::vector<SendManyRecipient> zOutputs,
+        string fromAddress,
+        vector<SendManyRecipient> tOutputs,
+        vector<SendManyRecipient> zOutputs,
         int minDepth,
         CAmount fee,
         UniValue contextInfo,
@@ -89,12 +88,12 @@ AsyncRPCOperation_sendmany::AsyncRPCOperation_sendmany(
             throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid from address");
 
         // We don't need to lock on the wallet as spending key related methods are thread-safe
-        if (!std::visit(HaveSpendingKeyForPaymentAddress(pwalletMain), address))
+        if (!visit(HaveSpendingKeyForPaymentAddress(pwalletMain), address))
             throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid from address, no spending key found for zaddr");
 
         isfromzaddr_ = true;
         frompaymentaddress_ = address;
-        spendingkey_ = std::visit(GetSpendingKeyForPaymentAddress(pwalletMain), address).value();
+        spendingkey_ = visit(GetSpendingKeyForPaymentAddress(pwalletMain), address).value();
     }
 
     if (isfromzaddr_ && minDepth==0)
@@ -133,7 +132,7 @@ void AsyncRPCOperation_sendmany::main() {
         success = main_impl();
     } catch (const UniValue& objError) {
         int code = find_value(objError, "code").get_int();
-        std::string message = find_value(objError, "message").get_str();
+        string message = find_value(objError, "message").get_str();
         set_error_code(code);
         set_error_message(message);
     } catch (const runtime_error& e) {
@@ -163,7 +162,7 @@ void AsyncRPCOperation_sendmany::main() {
     stop_execution_clock();
     set_state(success ? OperationStatus::SUCCESS : OperationStatus::FAILED);
 
-    std::string s = strprintf("%s: z_sendmany finished (status=%s", getId(), getStateAsString());
+    string s = strprintf("%s: z_sendmany finished (status=%s", getId(), getStateAsString());
     if (success)
         s += strprintf(", txid=%s)\n", tx_.GetHash().ToString());
     else
@@ -204,7 +203,7 @@ bool AsyncRPCOperation_sendmany::main_impl() {
 
     CAmount t_inputs_total = 0;
     for (const auto &t : t_inputs_)
-        t_inputs_total += std::get<2>(t);
+        t_inputs_total += get<2>(t);
 
     CAmount z_inputs_total = 0;
     for (const auto &t : z_sapling_inputs_)
@@ -212,11 +211,11 @@ bool AsyncRPCOperation_sendmany::main_impl() {
 
     CAmount t_outputs_total = 0;
     for (const auto &t : t_outputs_)
-        t_outputs_total += std::get<1>(t);
+        t_outputs_total += get<1>(t);
 
     CAmount z_outputs_total = 0;
     for (const auto &t : z_outputs_)
-        z_outputs_total += std::get<1>(t);
+        z_outputs_total += get<1>(t);
 
     const CAmount sendAmount = z_outputs_total + t_outputs_total;
     const CAmount targetAmount = sendAmount + minersFee;
@@ -248,13 +247,13 @@ bool AsyncRPCOperation_sendmany::main_impl() {
         CAmount dustThreshold = out.GetDustThreshold(minRelayTxFee);
         CAmount dustChange = -1;
 
-        std::vector<SendManyInputUTXO> selectedTInputs;
+        vector<SendManyInputUTXO> selectedTInputs;
         for (const auto & t : t_inputs_)
         {
-            const bool b = std::get<3>(t);
+            const bool b = get<3>(t);
             if (b)
                 selectedUTXOCoinbase = true;
-            selectedUTXOAmount += std::get<2>(t);
+            selectedUTXOAmount += get<2>(t);
             selectedTInputs.push_back(t);
             if (selectedUTXOAmount >= targetAmount)
             {
@@ -280,18 +279,18 @@ bool AsyncRPCOperation_sendmany::main_impl() {
             CScript scriptPubKey = GetScriptForDestination(fromtaddr_);
             for (const auto &t : t_inputs_)
             {
-                uint256 txid = std::get<0>(t);
-                int vout = std::get<1>(t);
-                CAmount amount = std::get<2>(t);
+                uint256 txid = get<0>(t);
+                int vout = get<1>(t);
+                CAmount amount = get<2>(t);
                 builder_.AddTransparentInput(COutPoint(txid, vout), scriptPubKey, amount);
             }
         } else {
             CMutableTransaction rawTx(tx_);
             for (const auto &t : t_inputs_)
             {
-                uint256 txid = std::get<0>(t);
-                int vout = std::get<1>(t);
-                CAmount amount = std::get<2>(t);
+                uint256 txid = get<0>(t);
+                int vout = get<1>(t);
+                CAmount amount = get<2>(t);
                 CTxIn in(COutPoint(txid, vout));
                 rawTx.vin.push_back(in);
             }
@@ -322,7 +321,7 @@ bool AsyncRPCOperation_sendmany::main_impl() {
         SaplingExpandedSpendingKey expsk;
         uint256 ovk;
         if (isfromzaddr_) {
-            auto sk = std::get<libzcash::SaplingExtendedSpendingKey>(spendingkey_);
+            auto sk = get<libzcash::SaplingExtendedSpendingKey>(spendingkey_);
             expsk = sk.expsk;
             ovk = expsk.full_viewing_key().ovk;
         } else {
@@ -368,8 +367,8 @@ bool AsyncRPCOperation_sendmany::main_impl() {
         }
 
         // Select Sapling notes
-        std::vector<SaplingOutPoint> ops;
-        std::vector<SaplingNote> notes;
+        vector<SaplingOutPoint> ops;
+        vector<SaplingNote> notes;
         CAmount sum = 0;
         for (const auto &t : z_sapling_inputs_)
         {
@@ -382,7 +381,7 @@ bool AsyncRPCOperation_sendmany::main_impl() {
 
         // Fetch Sapling anchor and witnesses
         uint256 anchor;
-        std::vector<std::optional<SaplingWitness>> witnesses;
+        vector<optional<SaplingWitness>> witnesses;
         {
             LOCK2(cs_main, pwalletMain->cs_wallet);
             pwalletMain->GetSaplingNoteWitnesses(ops, witnesses, anchor);
@@ -399,13 +398,13 @@ bool AsyncRPCOperation_sendmany::main_impl() {
         // Add Sapling outputs
         for (const auto &r : z_outputs_)
         {
-            const auto &address = std::get<0>(r);
-            const auto value = std::get<1>(r);
-            const auto &hexMemo = std::get<2>(r);
+            const auto &address = get<0>(r);
+            const auto value = get<1>(r);
+            const auto &hexMemo = get<2>(r);
 
             auto addr = keyIO.DecodePaymentAddress(address);
-            assert(std::get_if<libzcash::SaplingPaymentAddress>(&addr) != nullptr);
-            auto to = std::get<libzcash::SaplingPaymentAddress>(addr);
+            assert(get_if<libzcash::SaplingPaymentAddress>(&addr) != nullptr);
+            auto to = get<libzcash::SaplingPaymentAddress>(addr);
 
             auto memo = get_memo_from_hex_string(hexMemo);
 
@@ -415,8 +414,8 @@ bool AsyncRPCOperation_sendmany::main_impl() {
         // Add transparent outputs
         for (const auto &r : t_outputs_)
         {
-            const auto &outputAddress = std::get<0>(r);
-            const auto amount = std::get<1>(r);
+            const auto &outputAddress = get<0>(r);
+            const auto amount = get<1>(r);
 
             auto address = keyIO.DecodeDestination(outputAddress);
             builder_.AddTransparentOutput(address, amount);
@@ -506,7 +505,7 @@ void AsyncRPCOperation_sendmany::sign_send_raw_transaction(UniValue obj)
     if (rawtxnValue.isNull()) {
         throw JSONRPCError(RPC_WALLET_ERROR, "Missing hex data for raw transaction");
     }
-    std::string rawtxn = rawtxnValue.get_str();
+    string rawtxn = rawtxnValue.get_str();
 
     UniValue params = UniValue(UniValue::VARR);
     params.push_back(rawtxn);
@@ -590,8 +589,8 @@ bool AsyncRPCOperation_sendmany::find_utxos(const bool fAcceptCoinbase)
     }
 
     // sort in ascending order, so smaller utxos appear first
-    std::sort(t_inputs_.begin(), t_inputs_.end(), [](SendManyInputUTXO i, SendManyInputUTXO j) -> bool {
-        return ( std::get<2>(i) < std::get<2>(j));
+    sort(t_inputs_.begin(), t_inputs_.end(), [](SendManyInputUTXO i, SendManyInputUTXO j) -> bool {
+        return ( get<2>(i) < get<2>(j));
     });
 
     return t_inputs_.size() > 0;
@@ -600,7 +599,7 @@ bool AsyncRPCOperation_sendmany::find_utxos(const bool fAcceptCoinbase)
 
 bool AsyncRPCOperation_sendmany::find_unspent_notes()
 {
-    std::vector<SaplingNoteEntry> saplingEntries;
+    vector<SaplingNoteEntry> saplingEntries;
     {
         LOCK2(cs_main, pwalletMain->cs_wallet);
         pwalletMain->GetFilteredNotes(saplingEntries, fromaddress_, mindepth_);
@@ -615,7 +614,7 @@ bool AsyncRPCOperation_sendmany::find_unspent_notes()
     for (const auto &entry : saplingEntries)
     {
         z_sapling_inputs_.push_back(entry);
-        std::string data(entry.memo.cbegin(), entry.memo.cend());
+        string data(entry.memo.cbegin(), entry.memo.cend());
         LogPrint("zrpcunsafe", "%s: found unspent Sapling note (txid=%s, vShieldedSpend=%d, amount=%s, memo=%s)\n",
             getId(),
             entry.op.hash.ToString().substr(0, 10),
@@ -624,7 +623,7 @@ bool AsyncRPCOperation_sendmany::find_unspent_notes()
             HexStr(data).substr(0, 10));
     }
 
-    std::sort(z_sapling_inputs_.begin(), z_sapling_inputs_.end(),
+    sort(z_sapling_inputs_.begin(), z_sapling_inputs_.end(),
         [](SaplingNoteEntry i, SaplingNoteEntry j) -> bool {
             return i.note.value() > j.note.value();
         });
@@ -640,8 +639,8 @@ void AsyncRPCOperation_sendmany::add_taddr_outputs_to_tx() {
 
     for (const auto &r : t_outputs_)
     {
-        const auto &outputAddress = std::get<0>(r);
-        const CAmount nAmount = std::get<1>(r);
+        const auto &outputAddress = get<0>(r);
+        const CAmount nAmount = get<1>(r);
 
         auto address = keyIO.DecodeDestination(outputAddress);
         if (!IsValidDestination(address))
@@ -687,10 +686,10 @@ void AsyncRPCOperation_sendmany::add_taddr_change_output_to_tx(CAmount amount) {
     tx_ = CTransaction(rawTx);
 }
 
-std::array<unsigned char, ZC_MEMO_SIZE> AsyncRPCOperation_sendmany::get_memo_from_hex_string(std::string s)
+array<unsigned char, ZC_MEMO_SIZE> AsyncRPCOperation_sendmany::get_memo_from_hex_string(string s)
 {
     // initialize to default memo (no_memo), see section 5.5 of the protocol spec
-    std::array<unsigned char, ZC_MEMO_SIZE> memo = {{0xF6}};
+    array<unsigned char, ZC_MEMO_SIZE> memo = {{0xF6}};
     v_uint8 rawMemo = ParseHex(s.c_str());
 
     // If ParseHex comes across a non-hex char, it will stop but still return results so far.

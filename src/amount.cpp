@@ -3,8 +3,8 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#include "amount.h"
-#include "tinyformat.h"
+#include <amount.h>
+#include <tinyformat.h>
 
 const std::string CURRENCY_UNIT = "PSL";
 const std::string MINOR_CURRENCY_UNIT = "patoshis";

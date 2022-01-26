@@ -2,6 +2,8 @@
 #include "gmock/gmock.h"
 #include "univalue.h"
 
+#include "rpc/server.h"
+#include "rpc/register.h"
 #include "crypto/common.h"
 #include "key.h"
 #include "pubkey.h"

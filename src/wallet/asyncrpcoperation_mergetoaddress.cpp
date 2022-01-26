@@ -2,29 +2,27 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php .
 
-#include "asyncrpcoperation_mergetoaddress.h"
+#include <wallet/asyncrpcoperation_mergetoaddress.h>
 
-#include "amount.h"
-#include "asyncrpcqueue.h"
-#include "core_io.h"
-#include "init.h"
-#include "key_io.h"
-#include "main.h"
-#include "miner.h"
-#include "net.h"
-#include "netbase.h"
-#include "rpc/protocol.h"
-#include "rpc/server.h"
-#include "rpc/rpc_consts.h"
-#include "script/interpreter.h"
-#include "sodium.h"
-#include "timedata.h"
-#include "util.h"
-#include "utilmoneystr.h"
-#include "utiltime.h"
-#include "wallet.h"
-#include "walletdb.h"
-#include "zcash/IncrementalMerkleTree.hpp"
+#include <amount.h>
+#include <asyncrpcqueue.h>
+#include <core_io.h>
+#include <init.h>
+#include <key_io.h>
+#include <main.h>
+#include <miner.h>
+#include <net.h>
+#include <netbase.h>
+#include <rpc/protocol.h>
+#include <rpc/server.h>
+#include <rpc/rpc_consts.h>
+#include <script/interpreter.h>
+#include <sodium.h>
+#include <timedata.h>
+#include <util.h>
+#include <utilmoneystr.h>
+#include <utiltime.h>
+#include <zcash/IncrementalMerkleTree.hpp>
 
 #include <chrono>
 #include <iostream>
@@ -39,10 +37,10 @@ extern UniValue sendrawtransaction(const UniValue& params, bool fHelp);
 
 AsyncRPCOperation_mergetoaddress::AsyncRPCOperation_mergetoaddress
 (
-    std::optional<TransactionBuilder> builder,
+    optional<TransactionBuilder> builder,
     CMutableTransaction contextualTx,
-    std::vector<MergeToAddressInputUTXO> utxoInputs,
-    std::vector<MergeToAddressInputSaplingNote> saplingNoteInputs,
+    vector<MergeToAddressInputUTXO> utxoInputs,
+    vector<MergeToAddressInputSaplingNote> saplingNoteInputs,
     MergeToAddressRecipient recipient,
     CAmount fee,
     UniValue contextInfo) :
@@ -57,7 +55,7 @@ AsyncRPCOperation_mergetoaddress::AsyncRPCOperation_mergetoaddress
         throw JSONRPCError(RPC_INVALID_PARAMETER, "No inputs");
     }
 
-    if (std::get<0>(recipient).size() == 0) {
+    if (get<0>(recipient).size() == 0) {
         throw JSONRPCError(RPC_INVALID_PARAMETER, "Recipient parameter missing");
     }
 
@@ -68,12 +66,12 @@ AsyncRPCOperation_mergetoaddress::AsyncRPCOperation_mergetoaddress
     }
 
     KeyIO keyIO(Params());
-    toTaddr_ = keyIO.DecodeDestination(std::get<0>(recipient));
+    toTaddr_ = keyIO.DecodeDestination(get<0>(recipient));
     isToTaddr_ = IsValidDestination(toTaddr_);
     isToZaddr_ = false;
 
     if (!isToTaddr_) {
-        auto address = keyIO.DecodePaymentAddress(std::get<0>(recipient));
+        auto address = keyIO.DecodePaymentAddress(get<0>(recipient));
         if (IsValidPaymentAddress(address)) {
             isToZaddr_ = true;
             toPaymentAddress_ = address;
@@ -127,7 +125,7 @@ void AsyncRPCOperation_mergetoaddress::main()
         success = main_impl();
     } catch (const UniValue& objError) {
         int code = find_value(objError, "code").get_int();
-        std::string message = find_value(objError, "message").get_str();
+        string message = find_value(objError, "message").get_str();
         set_error_code(code);
         set_error_message(message);
     } catch (const runtime_error& e) {
@@ -162,7 +160,7 @@ void AsyncRPCOperation_mergetoaddress::main()
         set_state(OperationStatus::FAILED);
     }
 
-    std::string s = strprintf("%s: z_mergetoaddress finished (status=%s", getId(), getStateAsString());
+    string s = strprintf("%s: z_mergetoaddress finished (status=%s", getId(), getStateAsString());
     if (success) {
         s += strprintf(", txid=%s)\n", tx_.GetHash().ToString());
     } else {
@@ -188,12 +186,12 @@ bool AsyncRPCOperation_mergetoaddress::main_impl()
 
     CAmount t_inputs_total = 0;
     for (MergeToAddressInputUTXO& t : utxoInputs_) {
-        t_inputs_total += std::get<1>(t);
+        t_inputs_total += get<1>(t);
     }
 
     CAmount z_inputs_total = 0;
     for (const MergeToAddressInputSaplingNote& t : saplingNoteInputs_) {
-        z_inputs_total += std::get<2>(t);
+        z_inputs_total += get<2>(t);
     }
 
     CAmount targetAmount = z_inputs_total + t_inputs_total;
@@ -210,7 +208,7 @@ bool AsyncRPCOperation_mergetoaddress::main_impl()
     if (!isUsingBuilder_) {
         CMutableTransaction rawTx(tx_);
         for (const MergeToAddressInputUTXO& t : utxoInputs_) {
-            CTxIn in(std::get<0>(t));
+            CTxIn in(get<0>(t));
             rawTx.vin.push_back(in);
         }
         if (isToTaddr_) {
@@ -250,21 +248,21 @@ bool AsyncRPCOperation_mergetoaddress::main_impl()
 
 
         for (const MergeToAddressInputUTXO& t : utxoInputs_) {
-            COutPoint outPoint = std::get<0>(t);
-            CAmount amount = std::get<1>(t);
-            CScript scriptPubKey = std::get<2>(t);
+            COutPoint outPoint = get<0>(t);
+            CAmount amount = get<1>(t);
+            CScript scriptPubKey = get<2>(t);
             builder_.AddTransparentInput(outPoint, scriptPubKey, amount);
         }
 
-        std::optional<uint256> ovk;
+        optional<uint256> ovk;
         // Select Sapling notes
-        std::vector<SaplingOutPoint> saplingOPs;
-        std::vector<SaplingNote> saplingNotes;
-        std::vector<SaplingExpandedSpendingKey> expsks;
+        vector<SaplingOutPoint> saplingOPs;
+        vector<SaplingNote> saplingNotes;
+        vector<SaplingExpandedSpendingKey> expsks;
         for (const MergeToAddressInputSaplingNote& saplingNoteInput: saplingNoteInputs_) {
-            saplingOPs.push_back(std::get<0>(saplingNoteInput));
-            saplingNotes.push_back(std::get<1>(saplingNoteInput));
-            auto expsk = std::get<3>(saplingNoteInput);
+            saplingOPs.push_back(get<0>(saplingNoteInput));
+            saplingNotes.push_back(get<1>(saplingNoteInput));
+            auto expsk = get<3>(saplingNoteInput);
             expsks.push_back(expsk);
             if (!ovk) {
                 ovk = expsk.full_viewing_key().ovk;
@@ -273,7 +271,7 @@ bool AsyncRPCOperation_mergetoaddress::main_impl()
 
         // Fetch Sapling anchor and witnesses
         uint256 anchor;
-        std::vector<std::optional<SaplingWitness>> witnesses;
+        vector<optional<SaplingWitness>> witnesses;
         {
             LOCK2(cs_main, pwalletMain->cs_wallet);
             pwalletMain->GetSaplingNoteWitnesses(saplingOPs, witnesses, anchor);
@@ -290,10 +288,10 @@ bool AsyncRPCOperation_mergetoaddress::main_impl()
         if (isToTaddr_) {
             builder_.AddTransparentOutput(toTaddr_, sendAmount);
         } else {
-            std::string zaddr = std::get<0>(recipient_);
-            std::string memo = std::get<1>(recipient_);
-            std::array<unsigned char, ZC_MEMO_SIZE> hexMemo = get_memo_from_hex_string(memo);
-            auto saplingPaymentAddress = std::get_if<libzcash::SaplingPaymentAddress>(&toPaymentAddress_);
+            string zaddr = get<0>(recipient_);
+            string memo = get<1>(recipient_);
+            array<unsigned char, ZC_MEMO_SIZE> hexMemo = get_memo_from_hex_string(memo);
+            auto saplingPaymentAddress = get_if<libzcash::SaplingPaymentAddress>(&toPaymentAddress_);
             if (saplingPaymentAddress == nullptr) {
                 // This should never happen as we have already determined that the payment is to sapling
                 throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Could not get Sapling payment address.");
@@ -384,7 +382,7 @@ void AsyncRPCOperation_mergetoaddress::sign_send_raw_transaction(UniValue obj)
     if (rawtxnValue.isNull()) {
         throw JSONRPCError(RPC_WALLET_ERROR, "Missing hex data for raw transaction");
     }
-    std::string rawtxn = rawtxnValue.get_str();
+    string rawtxn = rawtxnValue.get_str();
 
     UniValue params = UniValue(UniValue::VARR);
     params.push_back(rawtxn);
@@ -436,9 +434,9 @@ void AsyncRPCOperation_mergetoaddress::sign_send_raw_transaction(UniValue obj)
     tx_ = tx;
 }
 
-std::array<unsigned char, ZC_MEMO_SIZE> AsyncRPCOperation_mergetoaddress::get_memo_from_hex_string(std::string s)
+array<unsigned char, ZC_MEMO_SIZE> AsyncRPCOperation_mergetoaddress::get_memo_from_hex_string(string s)
 {
-    std::array<unsigned char, ZC_MEMO_SIZE> memo = {{0x00}};
+    array<unsigned char, ZC_MEMO_SIZE> memo = {{0x00}};
 
     v_uint8 rawMemo = ParseHex(s.c_str());
 
@@ -481,7 +479,7 @@ UniValue AsyncRPCOperation_mergetoaddress::getStatus() const
  void AsyncRPCOperation_mergetoaddress::lock_utxos() {
     LOCK2(cs_main, pwalletMain->cs_wallet);
     for (auto utxo : utxoInputs_) {
-        pwalletMain->LockCoin(std::get<0>(utxo));
+        pwalletMain->LockCoin(get<0>(utxo));
     }
 }
 
@@ -491,7 +489,7 @@ UniValue AsyncRPCOperation_mergetoaddress::getStatus() const
 void AsyncRPCOperation_mergetoaddress::unlock_utxos() {
     LOCK2(cs_main, pwalletMain->cs_wallet);
     for (auto utxo : utxoInputs_) {
-        pwalletMain->UnlockCoin(std::get<0>(utxo));
+        pwalletMain->UnlockCoin(get<0>(utxo));
     }
 }
 
@@ -503,7 +501,7 @@ void AsyncRPCOperation_mergetoaddress::unlock_utxos() {
  {
     LOCK2(cs_main, pwalletMain->cs_wallet);
     for (const auto &note : saplingNoteInputs_)
-        pwalletMain->LockNote(std::get<0>(note));
+        pwalletMain->LockNote(get<0>(note));
 }
 
 /**
@@ -513,5 +511,5 @@ void AsyncRPCOperation_mergetoaddress::unlock_notes()
 {
     LOCK2(cs_main, pwalletMain->cs_wallet);
     for (const auto &note : saplingNoteInputs_)
-        pwalletMain->UnlockNote(std::get<0>(note));
+        pwalletMain->UnlockNote(get<0>(note));
 }

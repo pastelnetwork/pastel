@@ -16,10 +16,10 @@
 #include <array>
 #include <variant>
 
-#include "zcash/NoteEncryption.hpp"
-#include "zcash/Zcash.h"
-#include "zcash/Proof.hpp"
-#include "zcash/Note.hpp"
+#include <zcash/NoteEncryption.hpp>
+#include <zcash/Zcash.h>
+#include <zcash/Proof.hpp>
+#include <zcash/Note.hpp>
 
 // Overwinter transaction version
 static const int32_t OVERWINTER_TX_VERSION = 3;

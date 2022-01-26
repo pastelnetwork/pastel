@@ -4,9 +4,9 @@
 // Copyright (c) 2018-2022 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
-#include "amount.h"
-#include "rpc/protocol.h"
-#include "uint256.h"
+#include <amount.h>
+#include <rpc/protocol.h>
+#include <uint256.h>
 
 #include <list>
 #include <map>

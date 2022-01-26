@@ -2,15 +2,17 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php .
 
-#include "transaction_builder.h"
+#include <transaction_builder.h>
 
-#include "main.h"
-#include "pubkey.h"
-#include "rpc/protocol.h"
-#include "script/sign.h"
-#include "key_io.h"
+#include <main.h>
+#include <pubkey.h>
+#include <rpc/protocol.h>
+#include <script/sign.h>
+#include <key_io.h>
 
 #include <librustzcash.h>
+
+using namespace std;
 
 SpendDescriptionInfo::SpendDescriptionInfo(
     libzcash::SaplingExpandedSpendingKey expsk,
@@ -23,11 +25,11 @@ SpendDescriptionInfo::SpendDescriptionInfo(
 
 TransactionBuilderResult::TransactionBuilderResult(const CTransaction& tx) : maybeTx(tx) {}
 
-TransactionBuilderResult::TransactionBuilderResult(const std::string& error) : maybeError(error) {}
+TransactionBuilderResult::TransactionBuilderResult(const string& error) : maybeError(error) {}
 
-bool TransactionBuilderResult::IsTx() { return maybeTx != std::nullopt; }
+bool TransactionBuilderResult::IsTx() { return maybeTx != nullopt; }
 
-bool TransactionBuilderResult::IsError() { return maybeError != std::nullopt; }
+bool TransactionBuilderResult::IsError() { return maybeError != nullopt; }
 
 CTransaction TransactionBuilderResult::GetTxOrThrow() {
     if (maybeTx.has_value())
@@ -35,11 +37,11 @@ CTransaction TransactionBuilderResult::GetTxOrThrow() {
     throw JSONRPCError(RPC_WALLET_ERROR, "Failed to build transaction: " + GetError());
 }
 
-std::string TransactionBuilderResult::GetError() {
+string TransactionBuilderResult::GetError() {
     if (maybeError.has_value())
         return maybeError.value();
     // This can only happen if isTx() is true in which case we should not call getError()
-    throw std::runtime_error("getError() was called in TransactionBuilderResult, but the result was not initialized as an error.");
+    throw runtime_error("getError() was called in TransactionBuilderResult, but the result was not initialized as an error.");
 }
 
 TransactionBuilder::TransactionBuilder(
@@ -58,7 +60,7 @@ void TransactionBuilder::AddSaplingSpend(
 {
     // Sanity check: cannot add Sapling spend to pre-Sapling transaction
     if (mtx.nVersion < SAPLING_TX_VERSION) {
-        throw std::runtime_error("TransactionBuilder cannot add Sapling spend to pre-Sapling transaction");
+        throw runtime_error("TransactionBuilder cannot add Sapling spend to pre-Sapling transaction");
     }
 
     // Consistency check: all anchors must equal the first one
@@ -74,11 +76,11 @@ void TransactionBuilder::AddSaplingOutput(
     uint256 ovk,
     libzcash::SaplingPaymentAddress to,
     CAmount value,
-    std::array<unsigned char, ZC_MEMO_SIZE> memo)
+    array<unsigned char, ZC_MEMO_SIZE> memo)
 {
     // Sanity check: cannot add Sapling output to pre-Sapling transaction
     if (mtx.nVersion < SAPLING_TX_VERSION) {
-        throw std::runtime_error("TransactionBuilder cannot add Sapling output to pre-Sapling transaction");
+        throw runtime_error("TransactionBuilder cannot add Sapling output to pre-Sapling transaction");
     }
 
     auto note = libzcash::SaplingNote(to, value);
@@ -89,7 +91,7 @@ void TransactionBuilder::AddSaplingOutput(
 void TransactionBuilder::AddTransparentInput(COutPoint utxo, CScript scriptPubKey, CAmount value)
 {
     if (keystore == nullptr) {
-        throw std::runtime_error("Cannot add transparent inputs to a TransactionBuilder without a keystore");
+        throw runtime_error("Cannot add transparent inputs to a TransactionBuilder without a keystore");
     }
 
     mtx.vin.emplace_back(utxo);
@@ -114,8 +116,8 @@ void TransactionBuilder::SetFee(CAmount fee)
 
 void TransactionBuilder::SendChangeTo(libzcash::SaplingPaymentAddress changeAddr, uint256 ovk)
 {
-    zChangeAddr = std::make_pair(ovk, changeAddr);
-    tChangeAddr = std::nullopt;
+    zChangeAddr = make_pair(ovk, changeAddr);
+    tChangeAddr = nullopt;
 }
 
 void TransactionBuilder::SendChangeTo(CTxDestination& changeAddr)
@@ -125,7 +127,7 @@ void TransactionBuilder::SendChangeTo(CTxDestination& changeAddr)
     }
 
     tChangeAddr = changeAddr;
-    zChangeAddr = std::nullopt;
+    zChangeAddr = nullopt;
 }
 
 TransactionBuilderResult TransactionBuilder::Build()
@@ -267,7 +269,7 @@ TransactionBuilderResult TransactionBuilder::Build()
     CScript scriptCode;
     try {
         dataToBeSigned = SignatureHash(scriptCode, mtx, NOT_AN_INPUT, to_integral_type(SIGHASH::ALL), 0, consensusBranchId);
-    } catch (std::logic_error ex) {
+    } catch (logic_error ex) {
         librustzcash_sapling_proving_ctx_free(ctx);
         return TransactionBuilderResult("Could not construct signature hash");
     }

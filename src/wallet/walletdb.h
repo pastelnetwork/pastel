@@ -4,12 +4,12 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#include "amount.h"
-#include "wallet/db.h"
-#include "key.h"
-#include "keystore.h"
-#include "vector_types.h"
-#include "zcash/Address.hpp"
+#include <amount.h>
+#include <wallet/db.h>
+#include <key.h>
+#include <keystore.h>
+#include <vector_types.h>
+#include <zcash/Address.hpp>
 
 #include <list>
 #include <stdint.h>
