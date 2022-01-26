@@ -4,17 +4,19 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 
-#include "key_io.h"
-#include "base58.h"
-#include "bech32.h"
-#include "script/script.h"
-#include "utilstrencodings.h"
-#include "vector_types.h"
+#include <key_io.h>
+#include <base58.h>
+#include <bech32.h>
+#include <script/script.h>
+#include <utilstrencodings.h>
+#include <vector_types.h>
 
 #include <assert.h>
 #include <string.h>
 #include <algorithm>
 #include <variant>
+
+using namespace std;
 
 namespace
 {
@@ -28,21 +30,21 @@ public:
 		m_KeyConstants(keyConstants)
 	{}
 
-    std::string operator()(const CKeyID& id) const
+    string operator()(const CKeyID& id) const
     {
         v_uint8 data = m_KeyConstants.Base58Prefix(KeyConstants::Base58Type::PUBKEY_ADDRESS);
         data.insert(data.end(), id.begin(), id.end());
         return EncodeBase58Check(data);
     }
 
-    std::string operator()(const CScriptID& id) const
+    string operator()(const CScriptID& id) const
     {
         v_uint8 data = m_KeyConstants.Base58Prefix(KeyConstants::Base58Type::SCRIPT_ADDRESS);
         data.insert(data.end(), id.begin(), id.end());
         return EncodeBase58Check(data);
     }
 
-    std::string operator()(const CNoDestination& no) const { return {}; }
+    string operator()(const CNoDestination& no) const { return {}; }
 };
 
 class PaymentAddressEncoder
@@ -55,7 +57,7 @@ public:
 		m_KeyConstants(keyConstants)
 	{}
 
-    std::string operator()(const libzcash::SaplingPaymentAddress& zaddr) const
+    string operator()(const libzcash::SaplingPaymentAddress& zaddr) const
     {
         CDataStream ss(SER_NETWORK, PROTOCOL_VERSION);
         ss << zaddr;
@@ -68,7 +70,7 @@ public:
         return bech32::Encode(m_KeyConstants.Bech32HRP(KeyConstants::Bech32Type::SAPLING_PAYMENT_ADDRESS), data);
     }
 
-    std::string operator()(const libzcash::InvalidEncoding& no) const { return {}; }
+    string operator()(const libzcash::InvalidEncoding& no) const { return {}; }
 };
 
 class ViewingKeyEncoder
@@ -81,7 +83,7 @@ public:
 		m_KeyConstants(keyConstants)
 	{}
 
-    std::string operator()(const libzcash::SaplingExtendedFullViewingKey& extfvk) const
+    string operator()(const libzcash::SaplingExtendedFullViewingKey& extfvk) const
     {
         CDataStream ss(SER_NETWORK, PROTOCOL_VERSION);
         ss << extfvk;
@@ -91,13 +93,13 @@ public:
         // See calculation comment below
         data.reserve((serkey.size() * 8 + 4) / 5);
         ConvertBits<8, 5, true>([&](unsigned char c) { data.push_back(c); }, serkey.begin(), serkey.end());
-        std::string ret = bech32::Encode(m_KeyConstants.Bech32HRP(KeyConstants::Bech32Type::SAPLING_EXTENDED_FVK), data);
+        string ret = bech32::Encode(m_KeyConstants.Bech32HRP(KeyConstants::Bech32Type::SAPLING_EXTENDED_FVK), data);
         memory_cleanse(serkey.data(), serkey.size());
         memory_cleanse(data.data(), data.size());
         return ret;
     }
 
-    std::string operator()(const libzcash::InvalidEncoding& no) const { return {}; }
+    string operator()(const libzcash::InvalidEncoding& no) const { return {}; }
 };
 
 class SpendingKeyEncoder
@@ -110,7 +112,7 @@ public:
 		m_KeyConstants(keyConstants)
 	{}
 
-    std::string operator()(const libzcash::SaplingExtendedSpendingKey& zkey) const
+    string operator()(const libzcash::SaplingExtendedSpendingKey& zkey) const
     {
         CDataStream ss(SER_NETWORK, PROTOCOL_VERSION);
         ss << zkey;
@@ -120,13 +122,13 @@ public:
         // See calculation comment below
         data.reserve((serkey.size() * 8 + 4) / 5);
         ConvertBits<8, 5, true>([&](unsigned char c) { data.push_back(c); }, serkey.begin(), serkey.end());
-        std::string ret = bech32::Encode(m_KeyConstants.Bech32HRP(KeyConstants::Bech32Type::SAPLING_EXTENDED_SPEND_KEY), data);
+        string ret = bech32::Encode(m_KeyConstants.Bech32HRP(KeyConstants::Bech32Type::SAPLING_EXTENDED_SPEND_KEY), data);
         memory_cleanse(serkey.data(), serkey.size());
         memory_cleanse(data.data(), data.size());
         return ret;
     }
 
-    std::string operator()(const libzcash::InvalidEncoding& no) const { return {}; }
+    string operator()(const libzcash::InvalidEncoding& no) const { return {}; }
 };
 
 // Sizes of SaplingPaymentAddress, SaplingExtendedFullViewingKey, and
@@ -138,7 +140,7 @@ const size_t ConvertedSaplingExtendedFullViewingKeySize = (ZIP32_XFVK_SIZE * 8 +
 const size_t ConvertedSaplingExtendedSpendingKeySize = (ZIP32_XSK_SIZE * 8 + 4) / 5;
 } // namespace
 
-CTxDestination KeyIO::DecodeDestination(const std::string& str)
+CTxDestination KeyIO::DecodeDestination(const string& str)
 {
     v_uint8 data;
     uint160 hash;
@@ -148,17 +150,17 @@ CTxDestination KeyIO::DecodeDestination(const std::string& str)
         // Public-key-hash-addresses have version 0 (or 111 testnet).
         // The data vector contains RIPEMD160(SHA256(pubkey)), where pubkey is the serialized public key.
         const auto& pubkey_prefix = m_KeyConstants.Base58Prefix(KeyConstants::Base58Type::PUBKEY_ADDRESS);
-        if (data.size() == hash.size() + pubkey_prefix.size() && std::equal(pubkey_prefix.begin(), pubkey_prefix.end(), data.begin()))
+        if (data.size() == hash.size() + pubkey_prefix.size() && equal(pubkey_prefix.begin(), pubkey_prefix.end(), data.begin()))
         {
-            std::copy(data.begin() + pubkey_prefix.size(), data.end(), hash.begin());
+            copy(data.begin() + pubkey_prefix.size(), data.end(), hash.begin());
             return CKeyID(hash);
         }
         // Script-hash-addresses have version 5 (or 196 testnet).
         // The data vector contains RIPEMD160(SHA256(cscript)), where cscript is the serialized redemption script.
         const auto& script_prefix = m_KeyConstants.Base58Prefix(KeyConstants::Base58Type::SCRIPT_ADDRESS);
-        if (data.size() == hash.size() + script_prefix.size() && std::equal(script_prefix.begin(), script_prefix.end(), data.begin()))
+        if (data.size() == hash.size() + script_prefix.size() && equal(script_prefix.begin(), script_prefix.end(), data.begin()))
         {
-            std::copy(data.begin() + script_prefix.size(), data.end(), hash.begin());
+            copy(data.begin() + script_prefix.size(), data.end(), hash.begin());
             return CScriptID(hash);
         }
     }
@@ -171,7 +173,7 @@ CTxDestination KeyIO::DecodeDestination(const std::string& str)
  * \param str - private key string
  * \return CKey object that encapsulates private key
  */
-CKey KeyIO::DecodeSecret(const std::string& str, std::string& error)
+CKey KeyIO::DecodeSecret(const string& str, string& error)
 {
     CKey key;
     v_uint8 data;
@@ -190,7 +192,7 @@ CKey KeyIO::DecodeSecret(const std::string& str, std::string& error)
         const auto nKeySize = privkey_prefix.size() + CKey::KEY_SIZE;
         if  ((data.size() == nKeySize ||
             ((data.size() == nKeySize + 1) && data.back() == 1)) &&
-            std::equal(privkey_prefix.cbegin(), privkey_prefix.cend(), data.cbegin()))
+            equal(privkey_prefix.cbegin(), privkey_prefix.cend(), data.cbegin()))
         {
             const bool bCompressed = data.size() == nKeySize + 1;
             key.Set(data.cbegin() + privkey_prefix.size(), data.cbegin() + nKeySize, bCompressed);
@@ -218,7 +220,7 @@ CKey KeyIO::DecodeSecret(const std::string& str, std::string& error)
  * \param key - CKey object that encapsulates private key
  * \return string representation of private key
  */
-std::string KeyIO::EncodeSecret(const CKey& key)
+string KeyIO::EncodeSecret(const CKey& key)
 {
     assert(key.IsValid());
     v_uint8 data = m_KeyConstants.Base58Prefix(KeyConstants::Base58Type::SECRET_KEY);
@@ -227,78 +229,78 @@ std::string KeyIO::EncodeSecret(const CKey& key)
     if (key.IsCompressed())
         data.push_back(1);
     // base58 encoding
-    std::string ret = EncodeBase58Check(data);
+    string ret = EncodeBase58Check(data);
     memory_cleanse(data.data(), data.size());
     return ret;
 }
 
-CExtPubKey KeyIO::DecodeExtPubKey(const std::string& str)
+CExtPubKey KeyIO::DecodeExtPubKey(const string& str)
 {
     CExtPubKey key;
     v_uint8 data;
     if (DecodeBase58Check(str, data))
     {
         const auto& prefix = m_KeyConstants.Base58Prefix(KeyConstants::Base58Type::EXT_PUBLIC_KEY);
-        if (data.size() == BIP32_EXTKEY_SIZE + prefix.size() && std::equal(prefix.begin(), prefix.end(), data.begin()))
+        if (data.size() == BIP32_EXTKEY_SIZE + prefix.size() && equal(prefix.begin(), prefix.end(), data.begin()))
             key.Decode(data.data() + prefix.size());
     }
     return key;
 }
 
-std::string KeyIO::EncodeExtPubKey(const CExtPubKey& key)
+string KeyIO::EncodeExtPubKey(const CExtPubKey& key)
 {
     v_uint8 data = m_KeyConstants.Base58Prefix(KeyConstants::Base58Type::EXT_PUBLIC_KEY);
     const size_t size = data.size();
     data.resize(size + BIP32_EXTKEY_SIZE);
     key.Encode(data.data() + size);
-    std::string ret = EncodeBase58Check(data);
+    string ret = EncodeBase58Check(data);
     return ret;
 }
 
-CExtKey KeyIO::DecodeExtKey(const std::string& str)
+CExtKey KeyIO::DecodeExtKey(const string& str)
 {
     CExtKey key;
     v_uint8 data;
     if (DecodeBase58Check(str, data))
     {
         const auto& prefix = m_KeyConstants.Base58Prefix(KeyConstants::Base58Type::EXT_SECRET_KEY);
-        if (data.size() == BIP32_EXTKEY_SIZE + prefix.size() && std::equal(prefix.cbegin(), prefix.cend(), data.cbegin()))
+        if (data.size() == BIP32_EXTKEY_SIZE + prefix.size() && equal(prefix.cbegin(), prefix.cend(), data.cbegin()))
             key.Decode(data.data() + prefix.size());
     }
     return key;
 }
 
-std::string KeyIO::EncodeExtKey(const CExtKey& key)
+string KeyIO::EncodeExtKey(const CExtKey& key)
 {
     v_uint8 data = m_KeyConstants.Base58Prefix(KeyConstants::Base58Type::EXT_SECRET_KEY);
     const size_t size = data.size();
     data.resize(size + BIP32_EXTKEY_SIZE);
     key.Encode(data.data() + size);
-    std::string ret = EncodeBase58Check(data);
+    string ret = EncodeBase58Check(data);
     memory_cleanse(data.data(), data.size());
     return ret;
 }
 
-std::string KeyIO::EncodeDestination(const CTxDestination& dest)
+string KeyIO::EncodeDestination(const CTxDestination& dest)
 {
-    return std::visit(DestinationEncoder(m_KeyConstants), dest);
+    return visit(DestinationEncoder(m_KeyConstants), dest);
 }
 
-bool KeyIO::IsValidDestinationString(const std::string& str)
+bool KeyIO::IsValidDestinationString(const string& str)
 {
     return IsValidDestination(DecodeDestination(str));
 }
 
-std::string KeyIO::EncodePaymentAddress(const libzcash::PaymentAddress& zaddr)
+string KeyIO::EncodePaymentAddress(const libzcash::PaymentAddress& zaddr)
 {
-    return std::visit(PaymentAddressEncoder(m_KeyConstants), zaddr);
+    return visit(PaymentAddressEncoder(m_KeyConstants), zaddr);
 }
 
 template<typename T1, typename T2>
 T1 DecodeSapling(
     const KeyConstants& keyConstants,
-    const std::string& str,
-    std::pair<KeyConstants::Bech32Type, size_t> sapling)
+    const string& str,
+    pair<KeyConstants::Bech32Type, size_t> sapling)
 {
     v_uint8 data;
     auto bech = bech32::Decode(str);
@@ -319,46 +321,46 @@ T1 DecodeSapling(
     return libzcash::InvalidEncoding();
 }
 
-libzcash::PaymentAddress KeyIO::DecodePaymentAddress(const std::string& str)
+libzcash::PaymentAddress KeyIO::DecodePaymentAddress(const string& str)
 {
     return DecodeSapling<libzcash::PaymentAddress, libzcash::SaplingPaymentAddress>
         (
             m_KeyConstants,
             str,
-            std::make_pair(KeyConstants::Bech32Type::SAPLING_PAYMENT_ADDRESS, ConvertedSaplingPaymentAddressSize)
+            make_pair(KeyConstants::Bech32Type::SAPLING_PAYMENT_ADDRESS, ConvertedSaplingPaymentAddressSize)
         );
 }
 
-bool KeyIO::IsValidPaymentAddressString(const std::string& str) {
+bool KeyIO::IsValidPaymentAddressString(const string& str) {
     return IsValidPaymentAddress(DecodePaymentAddress(str));
 }
 
-std::string KeyIO::EncodeViewingKey(const libzcash::ViewingKey& vk)
+string KeyIO::EncodeViewingKey(const libzcash::ViewingKey& vk)
 {
-    return std::visit(ViewingKeyEncoder(m_KeyConstants), vk);
+    return visit(ViewingKeyEncoder(m_KeyConstants), vk);
 }
 
-libzcash::ViewingKey KeyIO::DecodeViewingKey(const std::string& str)
+libzcash::ViewingKey KeyIO::DecodeViewingKey(const string& str)
 {
     return DecodeSapling<libzcash::ViewingKey, libzcash::SaplingExtendedFullViewingKey>
         (
             m_KeyConstants,
             str,
-            std::make_pair(KeyConstants::Bech32Type::SAPLING_EXTENDED_FVK, ConvertedSaplingExtendedFullViewingKeySize)
+            make_pair(KeyConstants::Bech32Type::SAPLING_EXTENDED_FVK, ConvertedSaplingExtendedFullViewingKeySize)
         );
 }
 
-std::string KeyIO::EncodeSpendingKey(const libzcash::SpendingKey& zkey)
+string KeyIO::EncodeSpendingKey(const libzcash::SpendingKey& zkey)
 {
-    return std::visit(SpendingKeyEncoder(m_KeyConstants), zkey);
+    return visit(SpendingKeyEncoder(m_KeyConstants), zkey);
 }
 
-libzcash::SpendingKey KeyIO::DecodeSpendingKey(const std::string& str)
+libzcash::SpendingKey KeyIO::DecodeSpendingKey(const string& str)
 {
     return DecodeSapling<libzcash::SpendingKey, libzcash::SaplingExtendedSpendingKey>
         (
             m_KeyConstants,
             str,
-            std::make_pair(KeyConstants::Bech32Type::SAPLING_EXTENDED_SPEND_KEY, ConvertedSaplingExtendedSpendingKeySize)
+            make_pair(KeyConstants::Bech32Type::SAPLING_EXTENDED_SPEND_KEY, ConvertedSaplingExtendedSpendingKeySize)
         );
 }

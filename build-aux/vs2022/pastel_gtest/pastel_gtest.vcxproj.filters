@@ -97,6 +97,9 @@
     <ClCompile Include="..\..\..\src\gtest\test_rpc.cpp">
       <Filter>UnitTest Files</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\..\src\gtest\test_rpc_wallet.cpp">
+      <Filter>UnitTest Files</Filter>
+    </ClCompile>
     <ClCompile Include="..\..\..\src\gtest\test_sapling_note.cpp">
       <Filter>UnitTest Files</Filter>
     </ClCompile>

@@ -115,7 +115,8 @@ if ENABLE_WALLET
 pastel_gtest_SOURCES += \
 	wallet/gtest/test_accounting.cpp\
 	wallet/gtest/test_wallet.cpp\
-	wallet/gtest/test_wallet_ismine.cpp
+	wallet/gtest/test_wallet_ismine.cpp\
+	gtest/test_rpc_wallet.cpp
 endif
 
 pastel_gtest_CPPFLAGS = $(AM_CPPFLAGS) -DBINARY_OUTPUT -DCURVE_ALT_BN128 -DSTATIC $(BITCOIN_INCLUDES) -I$(srcdir)/gtest 

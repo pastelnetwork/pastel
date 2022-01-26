@@ -3,25 +3,27 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php .
 
-#include "primitives/transaction.h"
+#include <primitives/transaction.h>
 
-#include "hash.h"
-#include "tinyformat.h"
-#include "utilstrencodings.h"
+#include <hash.h>
+#include <tinyformat.h>
+#include <utilstrencodings.h>
 
-#include "librustzcash.h"
+#include <librustzcash.h>
 
-std::string COutPoint::ToString() const
+using namespace std;
+
+string COutPoint::ToString() const
 {
     return strprintf("COutPoint(%s, %u)", hash.ToString().substr(0,10), n == -1? 0: n);
 }
 
-std::string COutPoint::ToStringShort() const
+string COutPoint::ToStringShort() const
 {
     return strprintf("%s-%u", hash.ToString().substr(0,64), n == -1? 0: n);
 }
 
-std::string SaplingOutPoint::ToString() const
+string SaplingOutPoint::ToString() const
 {
     return strprintf("SaplingOutPoint(%s, %u)", hash.ToString().substr(0, 10), n);
 }
@@ -40,16 +42,16 @@ CTxIn::CTxIn(const uint256 &hashPrevTx, uint32_t nOut, CScript scriptSigIn, uint
     nSequence = nSequenceIn;
 }
 
-std::string CTxIn::ToString() const
+string CTxIn::ToString() const
 {
-    std::string str;
+    string str;
     str += "CTxIn(";
     str += prevout.ToString();
     if (prevout.IsNull())
         str += strprintf(", coinbase %s", HexStr(scriptSig));
     else
         str += strprintf(", scriptSig=%s", HexStr(scriptSig).substr(0, 24));
-    if (nSequence != std::numeric_limits<unsigned int>::max())
+    if (nSequence != numeric_limits<unsigned int>::max())
         str += strprintf(", nSequence=%u", nSequence);
     str += ")";
     return str;
@@ -66,7 +68,7 @@ uint256 CTxOut::GetHash() const
     return SerializeHash(*this);
 }
 
-std::string CTxOut::ToString() const
+string CTxOut::ToString() const
 {
     return strprintf("CTxOut(nValue=%d.%08d, scriptPubKey=%s)", nValue / COIN, nValue % COIN, HexStr(scriptPubKey).substr(0, 30));
 }
@@ -99,9 +101,9 @@ uint256 CMutableTransaction::GetHash() const
     return SerializeHash(*this);
 }
 
-std::string CMutableTransaction::ToString() const
+string CMutableTransaction::ToString() const
 {
-    std::string str;
+    string str;
     str += strprintf("CMutableTransaction(hash=%s, ver=%d, vin.size=%zu, vout.size=%zu, nLockTime=%u)\n",
         GetHash().ToString().substr(0,10),
         nVersion,
@@ -172,13 +174,13 @@ CTransaction::CTransaction(CMutableTransaction &&tx) :
     nVersion(tx.nVersion), 
     fOverwintered(tx.fOverwintered), 
     nVersionGroupId(tx.nVersionGroupId),
-    vin(std::move(tx.vin)), 
-    vout(std::move(tx.vout)), 
+    vin(move(tx.vin)), 
+    vout(move(tx.vout)), 
     nLockTime(tx.nLockTime), 
     nExpiryHeight(tx.nExpiryHeight),
     valueBalance(tx.valueBalance),
-    vShieldedSpend(std::move(tx.vShieldedSpend)), 
-    vShieldedOutput(std::move(tx.vShieldedOutput))
+    vShieldedSpend(move(tx.vShieldedSpend)), 
+    vShieldedOutput(move(tx.vShieldedOutput))
 {
     UpdateHash();
 }
@@ -187,13 +189,13 @@ CTransaction& CTransaction::operator=(const CTransaction &tx) {
     *const_cast<bool*>(&fOverwintered) = tx.fOverwintered;
     *const_cast<int*>(&nVersion) = tx.nVersion;
     *const_cast<uint32_t*>(&nVersionGroupId) = tx.nVersionGroupId;
-    *const_cast<std::vector<CTxIn>*>(&vin) = tx.vin;
-    *const_cast<std::vector<CTxOut>*>(&vout) = tx.vout;
+    *const_cast<vector<CTxIn>*>(&vin) = tx.vin;
+    *const_cast<vector<CTxOut>*>(&vout) = tx.vout;
     *const_cast<unsigned int*>(&nLockTime) = tx.nLockTime;
     *const_cast<uint32_t*>(&nExpiryHeight) = tx.nExpiryHeight;
     *const_cast<CAmount*>(&valueBalance) = tx.valueBalance;
-    *const_cast<std::vector<SpendDescription>*>(&vShieldedSpend) = tx.vShieldedSpend;
-    *const_cast<std::vector<OutputDescription>*>(&vShieldedOutput) = tx.vShieldedOutput;
+    *const_cast<vector<SpendDescription>*>(&vShieldedSpend) = tx.vShieldedSpend;
+    *const_cast<vector<OutputDescription>*>(&vShieldedOutput) = tx.vShieldedOutput;
     *const_cast<binding_sig_t*>(&bindingSig) = tx.bindingSig;
     *const_cast<uint256*>(&hash) = tx.hash;
     return *this;
@@ -206,7 +208,7 @@ CAmount CTransaction::GetValueOut() const
     {
         nValueOut += txOut.nValue;
         if (!MoneyRange(txOut.nValue) || !MoneyRange(nValueOut))
-            throw std::runtime_error("CTransaction::GetValueOut(): value out of range");
+            throw runtime_error("CTransaction::GetValueOut(): value out of range");
     }
 
     if (valueBalance <= 0) {
@@ -214,7 +216,7 @@ CAmount CTransaction::GetValueOut() const
         nValueOut += -valueBalance;
 
         if (!MoneyRange(-valueBalance) || !MoneyRange(nValueOut)) {
-            throw std::runtime_error("CTransaction::GetValueOut(): value out of range");
+            throw runtime_error("CTransaction::GetValueOut(): value out of range");
         }
     }
 
@@ -230,7 +232,7 @@ CAmount CTransaction::GetShieldedValueIn() const
         nValue += valueBalance;
 
         if (!MoneyRange(valueBalance) || !MoneyRange(nValue)) {
-            throw std::runtime_error("CTransaction::GetShieldedValueIn(): value out of range");
+            throw runtime_error("CTransaction::GetShieldedValueIn(): value out of range");
         }
     }
 
@@ -258,16 +260,16 @@ size_t CTransaction::CalculateModifiedSize(const size_t nTxSize) const
         nTransactionSize = static_cast<unsigned int>(::GetSerializeSize(*this, SER_NETWORK, PROTOCOL_VERSION));
     for (const auto &txIn : vin)
     {
-        const size_t offset = 41U + std::min(110U, txIn.scriptSig.size());
+        const size_t offset = 41U + min(110U, txIn.scriptSig.size());
         if (nTransactionSize > offset)
             nTransactionSize -= offset;
     }
     return nTransactionSize;
 }
 
-std::string CTransaction::ToString() const
+string CTransaction::ToString() const
 {
-    std::string str;
+    string str;
     if (!fOverwintered) {
         str += strprintf("CTransaction(hash=%s, ver=%d, vin.size=%zu, vout.size=%zu, nLockTime=%u)\n",
             GetHash().ToString().substr(0,10),

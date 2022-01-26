@@ -16,7 +16,7 @@ using namespace std;
 
 static boost::uuids::random_generator uuidgen;
 
-static std::map<OperationStatus, std::string> OperationStatusMap = {
+static map<OperationStatus, string> OperationStatusMap = {
     {OperationStatus::READY, "queued"},
     {OperationStatus::EXECUTING, "executing"},
     {OperationStatus::CANCELLED, "cancelled"},
@@ -31,7 +31,7 @@ AsyncRPCOperation::AsyncRPCOperation() : error_code_(0), error_message_() {
     // Set a unique reference for each operation
     boost::uuids::uuid uuid = uuidgen();
     id_ = "opid-" + boost::uuids::to_string(uuid);
-    creation_time_ = (int64_t)time(NULL);
+    creation_time_ = (int64_t)time(nullptr);
     set_state(OperationStatus::READY);
 }
 
@@ -68,16 +68,16 @@ void AsyncRPCOperation::cancel() {
  * Start timing the execution run of the code you're interested in
  */
 void AsyncRPCOperation::start_execution_clock() {
-    std::lock_guard<std::mutex> guard(lock_);
-    start_time_ = std::chrono::system_clock::now();
+    lock_guard<mutex> guard(lock_);
+    start_time_ = chrono::system_clock::now();
 }
 
 /**
  * Stop timing the execution run
  */
 void AsyncRPCOperation::stop_execution_clock() {
-    std::lock_guard<std::mutex> guard(lock_);
-    end_time_ = std::chrono::system_clock::now();
+    lock_guard<mutex> guard(lock_);
+    end_time_ = chrono::system_clock::now();
 }
 
 /**
@@ -118,7 +118,7 @@ UniValue AsyncRPCOperation::getError() const {
         return NullUniValue;
     }
 
-    std::lock_guard<std::mutex> guard(lock_);
+    lock_guard<mutex> guard(lock_);
     UniValue error(UniValue::VOBJ);
     error.pushKV("code", this->error_code_);
     error.pushKV("message", this->error_message_);
@@ -134,7 +134,7 @@ UniValue AsyncRPCOperation::getResult() const {
         return NullUniValue;
     }
 
-    std::lock_guard<std::mutex> guard(lock_);
+    lock_guard<mutex> guard(lock_);
     return this->result_;
 }
 
@@ -161,7 +161,7 @@ UniValue AsyncRPCOperation::getStatus() const {
         obj.pushKV("result", result);
 
         // Include execution time for successful operation
-        std::chrono::duration<double> elapsed_seconds = end_time_ - start_time_;
+        chrono::duration<double> elapsed_seconds = end_time_ - start_time_;
         obj.pushKV("execution_secs", elapsed_seconds.count());
 
     }
@@ -171,7 +171,7 @@ UniValue AsyncRPCOperation::getStatus() const {
 /**
  * Return the operation state in human readable form.
  */
-std::string AsyncRPCOperation::getStateAsString() const {
+string AsyncRPCOperation::getStateAsString() const {
     OperationStatus status = this->getState();
     return OperationStatusMap[status];
 }
