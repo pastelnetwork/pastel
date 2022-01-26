@@ -13,10 +13,9 @@
 #include <pubkey.h>
 #include <script/script.h>
 #include <uint256.h>
+#include <enum_util.h>
 
 using namespace std;
-
-typedef v_uint8 valtype;
 
 namespace {
 

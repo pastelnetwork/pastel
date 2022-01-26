@@ -5,13 +5,7 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#ifndef BITCOIN_SCRIPT_INTERPRETER_H
-#define BITCOIN_SCRIPT_INTERPRETER_H
-
-#include <script/script_error.h>
-#include <primitives/transaction.h>
-
-#include <vector>
+#include <climits>
 #include <stdint.h>
 #include <string>
 #include <vector>
@@ -191,5 +185,3 @@ bool VerifyScript(
     const BaseSignatureChecker& checker,
     uint32_t consensusBranchId,
     ScriptError* serror = nullptr);
-
-#endif // BITCOIN_SCRIPT_INTERPRETER_H
