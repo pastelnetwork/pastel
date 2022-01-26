@@ -8,19 +8,19 @@
 
 #include <gtest/gtest.h>
 
-#include "consensus/upgrades.h"
-#include "consensus/validation.h"
-#include "data/sighash.json.h"
-#include "main.h"
-#include "random.h"
-#include "script/interpreter.h"
-#include "script/script.h"
-#include "serialize.h"
-#include "test/test_bitcoin.h"
-#include "util.h"
-#include "version.h"
-#include "sodium.h"
-#include "json_test_vectors.h"
+#include <consensus/upgrades.h>
+#include <consensus/validation.h>
+#include <data/sighash.json.h>
+#include <main.h>
+#include <random.h>
+#include <script/interpreter.h>
+#include <script/script.h>
+#include <serialize.h>
+#include <test/test_bitcoin.h>
+#include <util.h>
+#include <version.h>
+#include <sodium.h>
+#include <json_test_vectors.h>
 #include <univalue.h>
 
 using namespace std;
