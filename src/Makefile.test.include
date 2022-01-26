@@ -43,7 +43,6 @@ GENERATED_TEST_FILES = $(JSON_TEST_FILES:.json=.json.h)
 
 BITCOIN_TESTS =\
   test/bignum.h \
-  test/rpc_tests.cpp \
   test/scheduler_tests.cpp \
   test/script_P2SH_tests.cpp \
   test/script_tests.cpp \
@@ -58,8 +57,7 @@ BITCOIN_TESTS =\
 
 if ENABLE_WALLET
 BITCOIN_TESTS += \
-  wallet/test/wallet_tests.cpp \
-  test/rpc_wallet_tests.cpp
+  wallet/test/wallet_tests.cpp
 endif
 
 test_test_bitcoin_SOURCES = $(BITCOIN_TESTS) $(JSON_TEST_FILES)

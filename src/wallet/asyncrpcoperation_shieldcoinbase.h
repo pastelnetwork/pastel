@@ -2,12 +2,12 @@
 // Copyright (c) 2017 The Zcash developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
-#include "asyncrpcoperation.h"
-#include "amount.h"
-#include "primitives/transaction.h"
-#include "transaction_builder.h"
-#include "zcash/Address.hpp"
-#include "wallet.h"
+#include <asyncrpcoperation.h>
+#include <amount.h>
+#include <primitives/transaction.h>
+#include <transaction_builder.h>
+#include <zcash/Address.hpp>
+#include <wallet/wallet.h>
 
 #include <unordered_map>
 #include <tuple>

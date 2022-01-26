@@ -2,16 +2,18 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#include "asyncrpcqueue.h"
+#include <asyncrpcqueue.h>
 
-static std::atomic<size_t> workerCounter(0);
+using namespace std;
+
+static atomic<size_t> workerCounter(0);
 
 /**
  * Static method to return the shared/default queue.
  */
 shared_ptr<AsyncRPCQueue> AsyncRPCQueue::sharedInstance() {
     // Thread-safe in C+11 and gcc 4.3
-    static shared_ptr<AsyncRPCQueue> q = std::make_shared<AsyncRPCQueue>();
+    static shared_ptr<AsyncRPCQueue> q = make_shared<AsyncRPCQueue>();
     return q;
 }
 
@@ -29,9 +31,9 @@ void AsyncRPCQueue::run(size_t workerId) {
 
     while (true) {
         AsyncRPCOperationId key;
-        std::shared_ptr<AsyncRPCOperation> operation;
+        shared_ptr<AsyncRPCOperation> operation;
         {
-            std::unique_lock<std::mutex> guard(lock_);
+            unique_lock<mutex> guard(lock_);
             while (operation_id_queue_.empty() && !isClosed() && !isFinishing()) {
                 this->condition_.wait(guard);
             }
@@ -77,12 +79,12 @@ void AsyncRPCQueue::run(size_t workerId) {
  * To retain polymorphic behaviour, i.e. main() method of derived classes is invoked,
  * caller should create the shared_ptr like this:
  *
- * std::shared_ptr<AsyncRPCOperation> ptr(new MyCustomAsyncRPCOperation(params));
+ * shared_ptr<AsyncRPCOperation> ptr(new MyCustomAsyncRPCOperation(params));
  *
- * Don't use std::make_shared<AsyncRPCOperation>().
+ * Don't use make_shared<AsyncRPCOperation>().
  */
-void AsyncRPCQueue::addOperation(const std::shared_ptr<AsyncRPCOperation> &ptrOperation) {
-    std::lock_guard<std::mutex> guard(lock_);
+void AsyncRPCQueue::addOperation(const shared_ptr<AsyncRPCOperation> &ptrOperation) {
+    lock_guard<mutex> guard(lock_);
 
     // Don't add if queue is closed or finishing
     if (isClosed() || isFinishing()) {
@@ -98,10 +100,10 @@ void AsyncRPCQueue::addOperation(const std::shared_ptr<AsyncRPCOperation> &ptrOp
 /**
  * Return the operation for a given operation id.
  */
-std::shared_ptr<AsyncRPCOperation> AsyncRPCQueue::getOperationForId(AsyncRPCOperationId id) const {
-    std::shared_ptr<AsyncRPCOperation> ptr;
+shared_ptr<AsyncRPCOperation> AsyncRPCQueue::getOperationForId(AsyncRPCOperationId id) const {
+    shared_ptr<AsyncRPCOperation> ptr;
 
-    std::lock_guard<std::mutex> guard(lock_);
+    lock_guard<mutex> guard(lock_);
     AsyncRPCOperationMap::const_iterator iter = operation_map_.find(id);
     if (iter != operation_map_.end()) {
         ptr = iter->second;
@@ -112,10 +114,10 @@ std::shared_ptr<AsyncRPCOperation> AsyncRPCQueue::getOperationForId(AsyncRPCOper
 /**
  * Return the operation for a given operation id and then remove the operation from internal storage.
  */
-std::shared_ptr<AsyncRPCOperation> AsyncRPCQueue::popOperationForId(AsyncRPCOperationId id) {
-    std::shared_ptr<AsyncRPCOperation> ptr = getOperationForId(id);
+shared_ptr<AsyncRPCOperation> AsyncRPCQueue::popOperationForId(AsyncRPCOperationId id) {
+    shared_ptr<AsyncRPCOperation> ptr = getOperationForId(id);
     if (ptr) {
-        std::lock_guard<std::mutex> guard(lock_);
+        lock_guard<mutex> guard(lock_);
         // Note: if the id still exists in the operationIdQueue, when it gets processed by a worker
         // there will no operation in the map to execute, so nothing will happen.
         operation_map_.erase(id);
@@ -156,7 +158,7 @@ void AsyncRPCQueue::finish() {
  *  Call cancel() on all operations
  */
 void AsyncRPCQueue::cancelAllOperations() {
-    std::lock_guard<std::mutex> guard(lock_);
+    lock_guard<mutex> guard(lock_);
     for (auto key : operation_map_) {
         key.second->cancel();
     }
@@ -167,7 +169,7 @@ void AsyncRPCQueue::cancelAllOperations() {
  * Return the number of operations in the queue
  */
 size_t AsyncRPCQueue::getOperationCount() const {
-    std::lock_guard<std::mutex> guard(lock_);
+    lock_guard<mutex> guard(lock_);
     return operation_id_queue_.size();
 }
 
@@ -175,24 +177,24 @@ size_t AsyncRPCQueue::getOperationCount() const {
  * Spawn a worker thread
  */
 void AsyncRPCQueue::addWorker() {
-    std::lock_guard<std::mutex> guard(lock_);
-    workers_.emplace_back( std::thread(&AsyncRPCQueue::run, this, ++workerCounter) );
+    lock_guard<mutex> guard(lock_);
+    workers_.emplace_back( thread(&AsyncRPCQueue::run, this, ++workerCounter) );
 }
 
 /**
  * Return the number of worker threads spawned by the queue
  */
 size_t AsyncRPCQueue::getNumberOfWorkers() const {
-    std::lock_guard<std::mutex> guard(lock_);
+    lock_guard<mutex> guard(lock_);
     return workers_.size();
 }
 
 /**
  * Return a list of all known operation ids found in internal storage.
  */
-std::vector<AsyncRPCOperationId> AsyncRPCQueue::getAllOperationIds() const {
-    std::lock_guard<std::mutex> guard(lock_);
-    std::vector<AsyncRPCOperationId> v;
+vector<AsyncRPCOperationId> AsyncRPCQueue::getAllOperationIds() const {
+    lock_guard<mutex> guard(lock_);
+    vector<AsyncRPCOperationId> v;
     for(auto & entry: operation_map_) {
         v.push_back(entry.first);
     }
@@ -221,11 +223,11 @@ void AsyncRPCQueue::finishAndWait() {
 void AsyncRPCQueue::wait_for_worker_threads() {
     // Notify any workers who are waiting, so they see the updated queue state
     {
-        std::lock_guard<std::mutex> guard(lock_);
+        lock_guard<mutex> guard(lock_);
         this->condition_.notify_all();
     }
         
-    for (std::thread & t : this->workers_) {
+    for (thread & t : this->workers_) {
         if (t.joinable()) {
             t.join();
         }

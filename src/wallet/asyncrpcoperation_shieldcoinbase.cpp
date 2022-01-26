@@ -2,27 +2,25 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php .
 
-#include "asyncrpcqueue.h"
-#include "amount.h"
-#include "consensus/upgrades.h"
-#include "core_io.h"
-#include "init.h"
-#include "key_io.h"
-#include "main.h"
-#include "net.h"
-#include "netbase.h"
-#include "rpc/protocol.h"
-#include "rpc/server.h"
-#include "timedata.h"
-#include "util.h"
-#include "utilmoneystr.h"
-#include "wallet.h"
-#include "walletdb.h"
-#include "script/interpreter.h"
-#include "utiltime.h"
-#include "zcash/IncrementalMerkleTree.hpp"
-#include "sodium.h"
-#include "miner.h"
+#include <asyncrpcqueue.h>
+#include <amount.h>
+#include <consensus/upgrades.h>
+#include <core_io.h>
+#include <init.h>
+#include <key_io.h>
+#include <main.h>
+#include <net.h>
+#include <netbase.h>
+#include <rpc/protocol.h>
+#include <rpc/server.h>
+#include <timedata.h>
+#include <util.h>
+#include <utilmoneystr.h>
+#include <script/interpreter.h>
+#include <utiltime.h>
+#include <zcash/IncrementalMerkleTree.hpp>
+#include <sodium.h>
+#include <miner.h>
 
 #include <array>
 #include <iostream>
@@ -32,15 +30,15 @@
 #include <string>
 #include <variant>
 
-#include "asyncrpcoperation_shieldcoinbase.h"
+#include <wallet/asyncrpcoperation_shieldcoinbase.h>
 
 using namespace libzcash;
 
 AsyncRPCOperation_shieldcoinbase::AsyncRPCOperation_shieldcoinbase(
         TransactionBuilder builder,
         CMutableTransaction contextualTx,
-        std::vector<ShieldCoinbaseUTXO> inputs,
-        std::string toAddress,
+        vector<ShieldCoinbaseUTXO> inputs,
+        string toAddress,
         CAmount fee,
         UniValue contextInfo) :
         builder_(builder), tx_(contextualTx), inputs_(inputs), fee_(fee), contextinfo_(contextInfo)
@@ -105,7 +103,7 @@ void AsyncRPCOperation_shieldcoinbase::main() {
         success = main_impl();
     } catch (const UniValue& objError) {
         int code = find_value(objError, "code").get_int();
-        std::string message = find_value(objError, "message").get_str();
+        string message = find_value(objError, "message").get_str();
         set_error_code(code);
         set_error_message(message);
     } catch (const runtime_error& e) {
@@ -140,7 +138,7 @@ void AsyncRPCOperation_shieldcoinbase::main() {
         set_state(OperationStatus::FAILED);
     }
 
-    std::string s = strprintf("%s: z_shieldcoinbase finished (status=%s", getId(), getStateAsString());
+    string s = strprintf("%s: z_shieldcoinbase finished (status=%s", getId(), getStateAsString());
     if (success) {
         s += strprintf(", txid=%s)\n", tx_.GetHash().ToString());
     } else {
@@ -173,7 +171,7 @@ bool AsyncRPCOperation_shieldcoinbase::main_impl() {
     LogPrint("zrpc", "%s: spending %s to shield %s with fee %s\n",
             getId(), FormatMoney(targetAmount), FormatMoney(sendAmount), FormatMoney(minersFee));
 
-    return std::visit(ShieldToAddress(this, sendAmount), tozaddr_);
+    return visit(ShieldToAddress(this, sendAmount), tozaddr_);
 }
 
 extern UniValue signrawtransaction(const UniValue& params, bool fHelp);
@@ -246,7 +244,7 @@ void AsyncRPCOperation_shieldcoinbase::sign_send_raw_transaction(UniValue obj)
     if (rawtxnValue.isNull()) {
         throw JSONRPCError(RPC_WALLET_ERROR, "Missing hex data for raw transaction");
     }
-    std::string rawtxn = rawtxnValue.get_str();
+    string rawtxn = rawtxnValue.get_str();
 
     UniValue params = UniValue(UniValue::VARR);
     params.push_back(rawtxn);

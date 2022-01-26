@@ -6,11 +6,11 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 
-#include "chainparams.h"
-#include "key.h"
-#include "pubkey.h"
-#include "script/standard.h"
-#include "zcash/Address.hpp"
+#include <chainparams.h>
+#include <key.h>
+#include <pubkey.h>
+#include <script/standard.h>
+#include <zcash/Address.hpp>
 
 #include <vector>
 #include <string>
