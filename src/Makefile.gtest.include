@@ -6,6 +6,8 @@ RAW_GTEST_FILES = gtest/data/alertTests.raw
 JSON_GTEST_FILES = \
 	gtest/data/script_valid.json \
   	gtest/data/script_invalid.json \
+	gtest/data/tx_invalid.json \
+  	gtest/data/tx_valid.json \
 	gtest/data/sighash.json
 
 GENERATED_GTEST_FILES = $(JSON_GTEST_FILES:.json=.json.h) $(RAW_GTEST_FILES:.raw=.raw.h)
@@ -102,6 +104,7 @@ pastel_gtest_SOURCES +=\
 	gtest/test_str_utils.cpp\
 	gtest/test_tautology.cpp\
 	gtest/test_timedata.cpp\
+	gtest/test_transaction.cpp\
 	gtest/test_transaction_builder.cpp\
 	gtest/test_trimmean.cpp\
 	gtest/test_txid.cpp\
