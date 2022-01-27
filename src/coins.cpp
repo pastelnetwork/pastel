@@ -2,15 +2,18 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#include "coins.h"
+#include <coins.h>
 
-#include "memusage.h"
-#include "random.h"
-#include "version.h"
-#include "policy/fees.h"
+#include <memusage.h>
+#include <random.h>
+#include <version.h>
+#include <policy/fees.h>
 
 #include <assert.h>
 #include <unordered_map>
+
+using namespace std;
+
 /**
  * calculate number of bytes for the bitmask, and its number of non-zero bytes
  * each bit in the bitmask represents the availability of one output, but the
@@ -105,7 +108,7 @@ CCoinsMap::const_iterator CCoinsViewCache::FetchCoins(const uint256 &txid) const
     CCoins tmp;
     if (!base->GetCoins(txid, tmp))
         return cacheCoins.end();
-    CCoinsMap::iterator ret = cacheCoins.insert(std::make_pair(txid, CCoinsCacheEntry())).first;
+    CCoinsMap::iterator ret = cacheCoins.insert(make_pair(txid, CCoinsCacheEntry())).first;
     tmp.swap(ret->second.coins);
     if (ret->second.coins.IsPruned()) {
         // The parent only has an empty entry for this txid; we can consider our
@@ -132,7 +135,7 @@ bool CCoinsViewCache::GetSproutAnchorAt(const uint256 &rt, SproutMerkleTree &tre
         return false;
     }
 
-    CAnchorsSproutMap::iterator ret = cacheSproutAnchors.insert(std::make_pair(rt, CAnchorsSproutCacheEntry())).first;
+    CAnchorsSproutMap::iterator ret = cacheSproutAnchors.insert(make_pair(rt, CAnchorsSproutCacheEntry())).first;
     ret->second.entered = true;
     ret->second.tree = tree;
     cachedCoinsUsage += ret->second.tree.DynamicMemoryUsage();
@@ -155,7 +158,7 @@ bool CCoinsViewCache::GetSaplingAnchorAt(const uint256 &rt, SaplingMerkleTree &t
         return false;
     }
 
-    CAnchorsSaplingMap::iterator ret = cacheSaplingAnchors.insert(std::make_pair(rt, CAnchorsSaplingCacheEntry())).first;
+    CAnchorsSaplingMap::iterator ret = cacheSaplingAnchors.insert(make_pair(rt, CAnchorsSaplingCacheEntry())).first;
     ret->second.entered = true;
     ret->second.tree = tree;
     cachedCoinsUsage += ret->second.tree.DynamicMemoryUsage();
@@ -173,7 +176,7 @@ bool CCoinsViewCache::GetNullifier(const uint256 &nullifier, ShieldedType type) 
             cacheToUse = &cacheSaplingNullifiers;
             break;
         default:
-            throw std::runtime_error("Unknown shielded type");
+            throw runtime_error("Unknown shielded type");
     }
     CNullifiersMap::iterator it = cacheToUse->find(nullifier);
     if (it != cacheToUse->end())
@@ -183,7 +186,7 @@ bool CCoinsViewCache::GetNullifier(const uint256 &nullifier, ShieldedType type) 
     bool tmp = base->GetNullifier(nullifier, type);
     entry.entered = tmp;
 
-    cacheToUse->insert(std::make_pair(nullifier, entry));
+    cacheToUse->insert(make_pair(nullifier, entry));
 
     return tmp;
 }
@@ -206,7 +209,7 @@ void CCoinsViewCache::AbstractPushAnchor(
     // different way (make all blocks modify mapAnchors somehow)
     // but this is simpler to reason about.
     if (currentRoot != newrt) {
-        auto insertRet = cacheAnchors.insert(std::make_pair(newrt, CacheEntry()));
+        auto insertRet = cacheAnchors.insert(make_pair(newrt, CacheEntry()));
         CacheIterator ret = insertRet.first;
 
         ret->second.entered = true;
@@ -311,7 +314,7 @@ void CCoinsViewCache::PopAnchor(const uint256 &newrt, ShieldedType type) {
             );
             break;
         default:
-            throw std::runtime_error("Unknown shielded type");
+            throw runtime_error("Unknown shielded type");
     }
 }
 
@@ -319,7 +322,7 @@ void CCoinsViewCache::SetNullifiers(const CTransaction& tx, bool spent)
 {
     for (const auto &spendDescription : tx.vShieldedSpend)
     {
-        auto ret = cacheSaplingNullifiers.insert(std::make_pair(spendDescription.nullifier, CNullifiersCacheEntry()));
+        auto ret = cacheSaplingNullifiers.insert(make_pair(spendDescription.nullifier, CNullifiersCacheEntry()));
         ret.first->second.entered = spent;
         ret.first->second.flags |= CNullifiersCacheEntry::DIRTY;
     }
@@ -336,7 +339,7 @@ bool CCoinsViewCache::GetCoins(const uint256 &txid, CCoins &coins) const {
 
 CCoinsModifier CCoinsViewCache::ModifyCoins(const uint256 &txid) {
     assert(!hasModifier);
-    std::pair<CCoinsMap::iterator, bool> ret = cacheCoins.insert(std::make_pair(txid, CCoinsCacheEntry()));
+    pair<CCoinsMap::iterator, bool> ret = cacheCoins.insert(make_pair(txid, CCoinsCacheEntry()));
     size_t cachedCoinUsage = 0;
     if (ret.second) {
         if (!base->GetCoins(txid, ret.first->second.coins)) {
@@ -357,7 +360,7 @@ CCoinsModifier CCoinsViewCache::ModifyCoins(const uint256 &txid) {
 
 CCoinsModifier CCoinsViewCache::ModifyNewCoins(const uint256 &txid) {
     assert(!hasModifier);
-    std::pair<CCoinsMap::iterator, bool> ret = cacheCoins.insert(std::make_pair(txid, CCoinsCacheEntry()));
+    pair<CCoinsMap::iterator, bool> ret = cacheCoins.insert(make_pair(txid, CCoinsCacheEntry()));
     ret.first->second.coins.Clear();
     ret.first->second.flags = CCoinsCacheEntry::FRESH;
     ret.first->second.flags |= CCoinsCacheEntry::DIRTY;
@@ -367,7 +370,7 @@ CCoinsModifier CCoinsViewCache::ModifyNewCoins(const uint256 &txid) {
 const CCoins* CCoinsViewCache::AccessCoins(const uint256 &txid) const {
     CCoinsMap::const_iterator it = FetchCoins(txid);
     if (it == cacheCoins.end()) {
-        return NULL;
+        return nullptr;
     } else {
         return &it->second.coins;
     }
@@ -402,7 +405,7 @@ uint256 CCoinsViewCache::GetBestAnchor(ShieldedType type) const {
             return hashSaplingAnchor;
             break;
         default:
-            throw std::runtime_error("Unknown shielded type");
+            throw runtime_error("Unknown shielded type");
     }
 }
 
@@ -560,7 +563,7 @@ CAmount CCoinsViewCache::GetValueIn(const CTransaction& tx) const
 
 bool CCoinsViewCache::HaveShieldedRequirements(const CTransaction& tx) const
 {
-    std::unordered_map<uint256, SproutMerkleTree, CCoinsKeyHasher> intermediates;
+    unordered_map<uint256, SproutMerkleTree, CCoinsKeyHasher> intermediates;
 
     for (const auto &spendDescription : tx.vShieldedSpend)
     {

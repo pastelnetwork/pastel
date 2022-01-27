@@ -1,28 +1,30 @@
 // Copyright (c) 2013 The Bitcoin Core developers
+// Copyright (c) 2021 The Pastel developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
-
-#include "consensus/upgrades.h"
-#include "consensus/validation.h"
-#include "data/sighash.json.h"
-#include "main.h"
-#include "random.h"
-#include "script/interpreter.h"
-#include "script/script.h"
-#include "serialize.h"
-#include "test/test_bitcoin.h"
-#include "util.h"
-#include "version.h"
-#include "sodium.h"
 
 #include <iostream>
 #include <random>
 
-#include <boost/test/unit_test.hpp>
+#include <gtest/gtest.h>
 
+#include <consensus/upgrades.h>
+#include <consensus/validation.h>
+#include <data/sighash.json.h>
+#include <main.h>
+#include <random.h>
+#include <script/interpreter.h>
+#include <script/script.h>
+#include <serialize.h>
+#include <test/test_bitcoin.h>
+#include <util.h>
+#include <version.h>
+#include <sodium.h>
+#include <json_test_vectors.h>
 #include <univalue.h>
 
-extern UniValue read_json(const std::string& jsondata);
+using namespace std;
+using namespace testing;
 
 // Old script.cpp SignatureHash function
 uint256 static SignatureHashOld(CScript scriptCode, const CTransaction& txTo, unsigned int nIn, const uint8_t nHashType)
@@ -95,12 +97,12 @@ void static RandomScript(CScript &script) {
 // Overwinter tx version numbers are selected randomly from current version range.
 // http://en.cppreference.com/w/cpp/numeric/random/uniform_int_distribution
 // https://stackoverflow.com/a/19728404
-std::random_device rd;
-std::mt19937 rng(rd());
-std::uniform_int_distribution<int> overwinter_version_dist(
+random_device rd;
+mt19937 rng(rd());
+uniform_int_distribution<int> overwinter_version_dist(
     CTransaction::OVERWINTER_MIN_CURRENT_VERSION,
     CTransaction::OVERWINTER_MAX_CURRENT_VERSION);
-std::uniform_int_distribution<int> sapling_version_dist(
+uniform_int_distribution<int> sapling_version_dist(
     CTransaction::SAPLING_MIN_CURRENT_VERSION,
     CTransaction::SAPLING_MAX_CURRENT_VERSION);
 

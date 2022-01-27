@@ -12,7 +12,7 @@
 using namespace std;
 
 namespace {
-inline std::string ValueString(const v_uint8& vch)
+inline string ValueString(const v_uint8& vch)
 {
     if (vch.size() <= 4)
         return strprintf("%d", CScriptNum(vch, false).getint());
@@ -254,9 +254,9 @@ bool CScript::IsPushOnly() const
     return true;
 }
 
-std::string CScript::ToString() const
+string CScript::ToString() const
 {
-    std::string str;
+    string str;
     opcodetype opcode;
     v_uint8 vch;
     const_iterator pc = begin();

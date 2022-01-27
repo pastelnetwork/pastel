@@ -4,12 +4,12 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 
-#include "primitives/transaction.h"
-#include "key.h"
-#include "keystore.h"
-#include "script/sign.h"
-#include "script/standard.h"
-#include "uint256.h"
+#include <primitives/transaction.h>
+#include <key.h>
+#include <keystore.h>
+#include <script/sign.h>
+#include <script/standard.h>
+#include <uint256.h>
 
 using namespace std;
 
@@ -39,7 +39,7 @@ bool TransactionSignatureCreator::CreateSig(v_uint8& vchSig, const CKeyID& addre
     return true;
 }
 
-static bool Sign1(const CKeyID& address, const BaseSignatureCreator& creator, const CScript& scriptCode, std::vector<v_uint8>& ret, uint32_t consensusBranchId)
+static bool Sign1(const CKeyID& address, const BaseSignatureCreator& creator, const CScript& scriptCode, vector<v_uint8>& ret, uint32_t consensusBranchId)
 {
     v_uint8 vchSig;
     if (!creator.CreateSig(vchSig, address, scriptCode, consensusBranchId))
@@ -48,7 +48,7 @@ static bool Sign1(const CKeyID& address, const BaseSignatureCreator& creator, co
     return true;
 }
 
-static bool SignN(const vector<v_uint8>& multisigdata, const BaseSignatureCreator& creator, const CScript& scriptCode, std::vector<v_uint8>& ret, uint32_t consensusBranchId)
+static bool SignN(const vector<v_uint8>& multisigdata, const BaseSignatureCreator& creator, const CScript& scriptCode, vector<v_uint8>& ret, uint32_t consensusBranchId)
 {
     int nSigned = 0;
     int nRequired = multisigdata.front()[0];
@@ -69,7 +69,7 @@ static bool SignN(const vector<v_uint8>& multisigdata, const BaseSignatureCreato
  * Returns false if scriptPubKey could not be completely satisfied.
  */
 static bool SignStep(const BaseSignatureCreator& creator, const CScript& scriptPubKey,
-                     std::vector<v_uint8>& ret, txnouttype& whichTypeRet, uint32_t consensusBranchId)
+                     vector<v_uint8>& ret, txnouttype& whichTypeRet, uint32_t consensusBranchId)
 {
     CScript scriptRet;
     uint160 h160;
@@ -135,7 +135,7 @@ bool ProduceSignature(const BaseSignatureCreator& creator, const CScript& fromPu
 {
     CScript script = fromPubKey;
     bool solved = true;
-    std::vector<v_uint8> result;
+    vector<v_uint8> result;
     txnouttype whichType;
     solved = SignStep(creator, script, result, whichType, consensusBranchId);
     CScript subscript;
@@ -245,7 +245,7 @@ static vector<v_uint8> CombineMultisig(const CScript& scriptPubKey, const BaseSi
     }
     // Now build a merged CScript:
     unsigned int nSigsHave = 0;
-    std::vector<v_uint8> result;
+    vector<v_uint8> result;
     result.push_back(v_uint8()); // pop-one-too-many workaround
     for (size_t i = 0; (i < nPubKeys) && (nSigsHave < nSigsRequired); i++)
     {
@@ -266,10 +266,10 @@ namespace
 {
 struct Stacks
 {
-    std::vector<v_uint8> script;
+    vector<v_uint8> script;
 
     Stacks() {}
-    explicit Stacks(const std::vector<v_uint8>& scriptSigStack_) : script(scriptSigStack_) {}
+    explicit Stacks(const vector<v_uint8>& scriptSigStack_) : script(scriptSigStack_) {}
     explicit Stacks(const SignatureData& data, uint32_t consensusBranchId) {
         EvalScript(script, data.scriptSig, SCRIPT_VERIFY_STRICTENC, BaseSignatureChecker(), consensusBranchId);
     }

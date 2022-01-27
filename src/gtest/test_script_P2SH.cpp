@@ -1,27 +1,27 @@
 // Copyright (c) 2012-2013 The Bitcoin Core developers
+// Copyright (c) 2021 The Pastel developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#include "consensus/upgrades.h"
-#include "core_io.h"
-#include "key.h"
-#include "keystore.h"
-#include "main.h"
-#include "script/script.h"
-#include "script/script_error.h"
-#include "script/sign.h"
-#include "test/test_bitcoin.h"
-
-#ifdef ENABLE_WALLET
-#include "wallet/wallet_ismine.h"
-#endif
-
 #include <vector>
 
-#include <boost/test/unit_test.hpp>
-#include <boost/test/data/test_case.hpp>
+#include <gtest/gtest.h>
+
+#include <consensus/upgrades.h>
+#include <core_io.h>
+#include <key.h>
+#include <keystore.h>
+#include <main.h>
+#include <script/script.h>
+#include <script/script_error.h>
+#include <script/sign.h>
+
+#ifdef ENABLE_WALLET
+#include <wallet/wallet_ismine.h>
+#endif
 
 using namespace std;
+using namespace testing;
 
 // Helpers:
 static v_uint8 Serialize(const CScript& s)
@@ -48,12 +48,15 @@ static bool Verify(const CScript& scriptSig, const CScript& scriptPubKey, bool f
     return VerifyScript(scriptSig, scriptPubKey, fStrict ? SCRIPT_VERIFY_P2SH : SCRIPT_VERIFY_NONE, MutableTransactionSignatureChecker(&txTo, 0, txFrom.vout[0].nValue), consensusBranchId, &err);
 }
 
-
-BOOST_FIXTURE_TEST_SUITE(script_P2SH_tests, BasicTestingSetup)
+class PTest_ScriptP2SH : public TestWithParam<int>
+{};
 
 // Parameterized testing over consensus branch ids
-BOOST_DATA_TEST_CASE(sign, boost::unit_test::data::xrange(static_cast<int>(Consensus::MAX_NETWORK_UPGRADES)))
+TEST_P(PTest_ScriptP2SH, sign)
 {
+    const int sample = GetParam();
+    EXPECT_TRUE(sample < static_cast<int>(Consensus::MAX_NETWORK_UPGRADES));
+
     LOCK(cs_main);
     uint32_t consensusBranchId = NetworkUpgradeInfo[sample].nBranchId;
     // Pay-to-script-hash looks like this:
@@ -94,7 +97,7 @@ BOOST_DATA_TEST_CASE(sign, boost::unit_test::data::xrange(static_cast<int>(Conse
         txFrom.vout[i+4].nValue = COIN;
     }
     const auto& chainparams = Params();
-    BOOST_CHECK(IsStandardTx(txFrom, reason, chainparams));
+    EXPECT_TRUE(IsStandardTx(txFrom, reason, chainparams));
 
     CMutableTransaction txTo[8]; // Spending transactions
     for (int i = 0; i < 8; i++)
@@ -105,12 +108,12 @@ BOOST_DATA_TEST_CASE(sign, boost::unit_test::data::xrange(static_cast<int>(Conse
         txTo[i].vin[0].prevout.hash = txFrom.GetHash();
         txTo[i].vout[0].nValue = 1;
 #ifdef ENABLE_WALLET
-        BOOST_CHECK_MESSAGE(IsMine(keystore, txFrom.vout[i].scriptPubKey), strprintf("IsMine %d", i));
+        EXPECT_TRUE(IsMine(keystore, txFrom.vout[i].scriptPubKey)) << strprintf("IsMine %d", i);
 #endif
     }
     for (int i = 0; i < 8; i++)
     {
-        BOOST_CHECK_MESSAGE(SignSignature(keystore, txFrom, txTo[i], 0, to_integral_type(SIGHASH::ALL), consensusBranchId), strprintf("SignSignature %d", i));
+        EXPECT_TRUE(SignSignature(keystore, txFrom, txTo[i], 0, to_integral_type(SIGHASH::ALL), consensusBranchId)) << strprintf("SignSignature %d", i);
     }
     // All of the above should be OK, and the txTos have valid signatures
     // Check to make sure signature verification fails if we use the wrong ScriptSig:
@@ -122,17 +125,20 @@ BOOST_DATA_TEST_CASE(sign, boost::unit_test::data::xrange(static_cast<int>(Conse
             txTo[i].vin[0].scriptSig = txTo[j].vin[0].scriptSig;
             bool sigOK = CScriptCheck(CCoins(txFrom, 0), txTo[i], 0, SCRIPT_VERIFY_P2SH | SCRIPT_VERIFY_STRICTENC, false, consensusBranchId, &txdata)();
             if (i == j)
-                BOOST_CHECK_MESSAGE(sigOK, strprintf("VerifySignature %d %d", i, j));
+                EXPECT_TRUE(sigOK) << strprintf("VerifySignature %d %d", i, j);
             else
-                BOOST_CHECK_MESSAGE(!sigOK, strprintf("VerifySignature %d %d", i, j));
+                EXPECT_TRUE(!sigOK) << strprintf("VerifySignature %d %d", i, j);
             txTo[i].vin[0].scriptSig = sigSave;
         }
     }
 }
 
 // Parameterized testing over consensus branch ids
-BOOST_DATA_TEST_CASE(norecurse, boost::unit_test::data::xrange(static_cast<int>(Consensus::MAX_NETWORK_UPGRADES)))
+TEST_P(PTest_ScriptP2SH, norecurse)
 {
+    const int sample = GetParam();
+    EXPECT_TRUE(sample < static_cast<int>(Consensus::MAX_NETWORK_UPGRADES));
+
     uint32_t consensusBranchId = NetworkUpgradeInfo[sample].nBranchId;
 
     ScriptError err;
@@ -147,8 +153,8 @@ BOOST_DATA_TEST_CASE(norecurse, boost::unit_test::data::xrange(static_cast<int>(
     scriptSig << Serialize(invalidAsScript);
 
     // Should not verify, because it will try to execute OP_INVALIDOPCODE
-    BOOST_CHECK(!Verify(scriptSig, p2sh, true, err, consensusBranchId));
-    BOOST_CHECK_MESSAGE(err == SCRIPT_ERR_BAD_OPCODE, ScriptErrorString(err));
+    EXPECT_TRUE(!Verify(scriptSig, p2sh, true, err, consensusBranchId));
+    EXPECT_EQ(err , SCRIPT_ERR_BAD_OPCODE) << ScriptErrorString(err);
 
     // Try to recur, and verification should succeed because
     // the inner HASH160 <> EQUAL should only check the hash:
@@ -156,19 +162,22 @@ BOOST_DATA_TEST_CASE(norecurse, boost::unit_test::data::xrange(static_cast<int>(
     CScript scriptSig2;
     scriptSig2 << Serialize(invalidAsScript) << Serialize(p2sh);
 
-    BOOST_CHECK(Verify(scriptSig2, p2sh2, true, err, consensusBranchId));
-    BOOST_CHECK_MESSAGE(err == SCRIPT_ERR_OK, ScriptErrorString(err));
+    EXPECT_TRUE(Verify(scriptSig2, p2sh2, true, err, consensusBranchId));
+    EXPECT_EQ(err , SCRIPT_ERR_OK) << ScriptErrorString(err);
 }
 
 // Parameterized testing over consensus branch ids
-BOOST_DATA_TEST_CASE(set, boost::unit_test::data::xrange(static_cast<int>(Consensus::MAX_NETWORK_UPGRADES)))
+TEST_P(PTest_ScriptP2SH, set)
 {
+    const int sample = GetParam();
+    EXPECT_TRUE(sample < static_cast<int>(Consensus::MAX_NETWORK_UPGRADES));
+
     LOCK(cs_main);
     uint32_t consensusBranchId = NetworkUpgradeInfo[sample].nBranchId;
     // Test the CScript::Set* methods
     CBasicKeyStore keystore;
     CKey key[4];
-    std::vector<CPubKey> keys;
+    vector<CPubKey> keys;
     for (int i = 0; i < 4; i++)
     {
         key[i].MakeNewKey(true);
@@ -178,9 +187,9 @@ BOOST_DATA_TEST_CASE(set, boost::unit_test::data::xrange(static_cast<int>(Consen
 
     CScript inner[4];
     inner[0] = GetScriptForDestination(key[0].GetPubKey().GetID());
-    inner[1] = GetScriptForMultisig(2, std::vector<CPubKey>(keys.begin(), keys.begin()+2));
-    inner[2] = GetScriptForMultisig(1, std::vector<CPubKey>(keys.begin(), keys.begin()+2));
-    inner[3] = GetScriptForMultisig(2, std::vector<CPubKey>(keys.begin(), keys.begin()+3));
+    inner[1] = GetScriptForMultisig(2, vector<CPubKey>(keys.begin(), keys.begin()+2));
+    inner[2] = GetScriptForMultisig(1, vector<CPubKey>(keys.begin(), keys.begin()+2));
+    inner[3] = GetScriptForMultisig(2, vector<CPubKey>(keys.begin(), keys.begin()+3));
 
     CScript outer[4];
     for (int i = 0; i < 4; i++)
@@ -198,7 +207,7 @@ BOOST_DATA_TEST_CASE(set, boost::unit_test::data::xrange(static_cast<int>(Consen
         txFrom.vout[i].nValue = CENT;
     }
     const auto& chainparams = Params();
-    BOOST_CHECK(IsStandardTx(txFrom, reason, chainparams));
+    EXPECT_TRUE(IsStandardTx(txFrom, reason, chainparams));
 
     CMutableTransaction txTo[4]; // Spending transactions
     for (int i = 0; i < 4; i++)
@@ -210,50 +219,22 @@ BOOST_DATA_TEST_CASE(set, boost::unit_test::data::xrange(static_cast<int>(Consen
         txTo[i].vout[0].nValue = 1*CENT;
         txTo[i].vout[0].scriptPubKey = inner[i];
 #ifdef ENABLE_WALLET
-        BOOST_CHECK_MESSAGE(IsMine(keystore, txFrom.vout[i].scriptPubKey), strprintf("IsMine %d", i));
+        EXPECT_TRUE(IsMine(keystore, txFrom.vout[i].scriptPubKey)) << strprintf("IsMine %d", i);
 #endif
     }
     for (int i = 0; i < 4; i++)
     {
-        BOOST_CHECK_MESSAGE(SignSignature(keystore, txFrom, txTo[i], 0, to_integral_type(SIGHASH::ALL), consensusBranchId), strprintf("SignSignature %d", i));
-        BOOST_CHECK_MESSAGE(IsStandardTx(txTo[i], reason, chainparams), strprintf("txTo[%d].IsStandard", i));
+        EXPECT_TRUE(SignSignature(keystore, txFrom, txTo[i], 0, to_integral_type(SIGHASH::ALL), consensusBranchId)) << strprintf("SignSignature %d", i);
+        EXPECT_TRUE(IsStandardTx(txTo[i], reason, chainparams)) << strprintf("txTo[%d].IsStandard", i);
     }
 }
 
-BOOST_AUTO_TEST_CASE(is)
-{
-    // Test CScript::IsPayToScriptHash()
-    uint160 dummy;
-    CScript p2sh;
-    p2sh << OP_HASH160 << ToByteVector(dummy) << OP_EQUAL;
-    BOOST_CHECK(p2sh.IsPayToScriptHash());
-
-    // Not considered pay-to-script-hash if using one of the OP_PUSHDATA opcodes:
-    static const unsigned char direct[] =    { OP_HASH160, 20, 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0, OP_EQUAL };
-    BOOST_CHECK(CScript(direct, direct+sizeof(direct)).IsPayToScriptHash());
-    static const unsigned char pushdata1[] = { OP_HASH160, OP_PUSHDATA1, 20, 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0, OP_EQUAL };
-    BOOST_CHECK(!CScript(pushdata1, pushdata1+sizeof(pushdata1)).IsPayToScriptHash());
-    static const unsigned char pushdata2[] = { OP_HASH160, OP_PUSHDATA2, 20,0, 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0, OP_EQUAL };
-    BOOST_CHECK(!CScript(pushdata2, pushdata2+sizeof(pushdata2)).IsPayToScriptHash());
-    static const unsigned char pushdata4[] = { OP_HASH160, OP_PUSHDATA4, 20,0,0,0, 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0, OP_EQUAL };
-    BOOST_CHECK(!CScript(pushdata4, pushdata4+sizeof(pushdata4)).IsPayToScriptHash());
-
-    CScript not_p2sh;
-    BOOST_CHECK(!not_p2sh.IsPayToScriptHash());
-
-    not_p2sh.clear(); not_p2sh << OP_HASH160 << ToByteVector(dummy) << ToByteVector(dummy) << OP_EQUAL;
-    BOOST_CHECK(!not_p2sh.IsPayToScriptHash());
-
-    not_p2sh.clear(); not_p2sh << OP_NOP << ToByteVector(dummy) << OP_EQUAL;
-    BOOST_CHECK(!not_p2sh.IsPayToScriptHash());
-
-    not_p2sh.clear(); not_p2sh << OP_HASH160 << ToByteVector(dummy) << OP_CHECKSIG;
-    BOOST_CHECK(!not_p2sh.IsPayToScriptHash());
-}
-
 // Parameterized testing over consensus branch ids
-BOOST_DATA_TEST_CASE(switchover, boost::unit_test::data::xrange(static_cast<int>(Consensus::MAX_NETWORK_UPGRADES)))
+TEST_P(PTest_ScriptP2SH, switchover)
 {
+    const int sample = GetParam();
+    EXPECT_TRUE(sample < static_cast<int>(Consensus::MAX_NETWORK_UPGRADES));
+
     uint32_t consensusBranchId = NetworkUpgradeInfo[sample].nBranchId;
 
     // Test switch over code
@@ -267,16 +248,19 @@ BOOST_DATA_TEST_CASE(switchover, boost::unit_test::data::xrange(static_cast<int>
 
 
     // Validation should succeed under old rules (hash is correct):
-    BOOST_CHECK(Verify(scriptSig, fund, false, err, consensusBranchId));
-    BOOST_CHECK_MESSAGE(err == SCRIPT_ERR_OK, ScriptErrorString(err));
+    EXPECT_TRUE(Verify(scriptSig, fund, false, err, consensusBranchId));
+    EXPECT_EQ(err , SCRIPT_ERR_OK) << ScriptErrorString(err);
     // Fail under new:
-    BOOST_CHECK(!Verify(scriptSig, fund, true, err, consensusBranchId));
-    BOOST_CHECK_MESSAGE(err == SCRIPT_ERR_EQUALVERIFY, ScriptErrorString(err));
+    EXPECT_TRUE(!Verify(scriptSig, fund, true, err, consensusBranchId));
+    EXPECT_EQ(err , SCRIPT_ERR_EQUALVERIFY) << ScriptErrorString(err);
 }
 
 // Parameterized testing over consensus branch ids
-BOOST_DATA_TEST_CASE(AreInputsStandard, boost::unit_test::data::xrange(static_cast<int>(Consensus::MAX_NETWORK_UPGRADES)))
+TEST_P(PTest_ScriptP2SH, AreInputsStandard)
 {
+    const int sample = GetParam();
+    EXPECT_TRUE(sample < static_cast<int>(Consensus::MAX_NETWORK_UPGRADES));
+
     LOCK(cs_main);
     uint32_t consensusBranchId = NetworkUpgradeInfo[sample].nBranchId;
     CCoinsView coinsDummy;
@@ -349,25 +333,25 @@ BOOST_DATA_TEST_CASE(AreInputsStandard, boost::unit_test::data::xrange(static_ca
         txTo.vin[i].prevout.n = i;
         txTo.vin[i].prevout.hash = txFrom.GetHash();
     }
-    BOOST_CHECK(SignSignature(keystore, txFrom, txTo, 0, to_integral_type(SIGHASH::ALL), consensusBranchId));
-    BOOST_CHECK(SignSignature(keystore, txFrom, txTo, 1, to_integral_type(SIGHASH::ALL), consensusBranchId));
-    BOOST_CHECK(SignSignature(keystore, txFrom, txTo, 2, to_integral_type(SIGHASH::ALL), consensusBranchId));
+    EXPECT_TRUE(SignSignature(keystore, txFrom, txTo, 0, to_integral_type(SIGHASH::ALL), consensusBranchId));
+    EXPECT_TRUE(SignSignature(keystore, txFrom, txTo, 1, to_integral_type(SIGHASH::ALL), consensusBranchId));
+    EXPECT_TRUE(SignSignature(keystore, txFrom, txTo, 2, to_integral_type(SIGHASH::ALL), consensusBranchId));
     // SignSignature doesn't know how to sign these. We're
     // not testing validating signatures, so just create
     // dummy signatures that DO include the correct P2SH scripts:
-    txTo.vin[3].scriptSig << OP_11 << OP_11 << vector<unsigned char>(oneAndTwo.begin(), oneAndTwo.end());
-    txTo.vin[4].scriptSig << vector<unsigned char>(fifteenSigops.begin(), fifteenSigops.end());
+    txTo.vin[3].scriptSig << OP_11 << OP_11 << v_uint8(oneAndTwo.begin(), oneAndTwo.end());
+    txTo.vin[4].scriptSig << v_uint8(fifteenSigops.begin(), fifteenSigops.end());
 
-    BOOST_CHECK(::AreInputsStandard(txTo, coins, consensusBranchId));
+    EXPECT_TRUE(::AreInputsStandard(txTo, coins, consensusBranchId));
     // 22 P2SH sigops for all inputs (1 for vin[0], 6 for vin[3], 15 for vin[4]
-    BOOST_CHECK_EQUAL(GetP2SHSigOpCount(txTo, coins), 22U);
+    EXPECT_EQ(GetP2SHSigOpCount(txTo, coins), 22U);
 
     // Make sure adding crap to the scriptSigs makes them non-standard:
     for (int i = 0; i < 3; i++)
     {
         CScript t = txTo.vin[i].scriptSig;
         txTo.vin[i].scriptSig = (CScript() << 11) + t;
-        BOOST_CHECK(!::AreInputsStandard(txTo, coins, consensusBranchId));
+        EXPECT_TRUE(!::AreInputsStandard(txTo, coins, consensusBranchId));
         txTo.vin[i].scriptSig = t;
     }
 
@@ -378,10 +362,10 @@ BOOST_DATA_TEST_CASE(AreInputsStandard, boost::unit_test::data::xrange(static_ca
     txToNonStd1.vin.resize(1);
     txToNonStd1.vin[0].prevout.n = 5;
     txToNonStd1.vin[0].prevout.hash = txFrom.GetHash();
-    txToNonStd1.vin[0].scriptSig << vector<unsigned char>(sixteenSigops.begin(), sixteenSigops.end());
+    txToNonStd1.vin[0].scriptSig << v_uint8(sixteenSigops.begin(), sixteenSigops.end());
 
-    BOOST_CHECK(!::AreInputsStandard(txToNonStd1, coins, consensusBranchId));
-    BOOST_CHECK_EQUAL(GetP2SHSigOpCount(txToNonStd1, coins), 16U);
+    EXPECT_TRUE(!::AreInputsStandard(txToNonStd1, coins, consensusBranchId));
+    EXPECT_EQ(GetP2SHSigOpCount(txToNonStd1, coins), 16U);
 
     CMutableTransaction txToNonStd2;
     txToNonStd2.vout.resize(1);
@@ -390,10 +374,43 @@ BOOST_DATA_TEST_CASE(AreInputsStandard, boost::unit_test::data::xrange(static_ca
     txToNonStd2.vin.resize(1);
     txToNonStd2.vin[0].prevout.n = 6;
     txToNonStd2.vin[0].prevout.hash = txFrom.GetHash();
-    txToNonStd2.vin[0].scriptSig << vector<unsigned char>(twentySigops.begin(), twentySigops.end());
+    txToNonStd2.vin[0].scriptSig << v_uint8(twentySigops.begin(), twentySigops.end());
 
-    BOOST_CHECK(!::AreInputsStandard(txToNonStd2, coins, consensusBranchId));
-    BOOST_CHECK_EQUAL(GetP2SHSigOpCount(txToNonStd2, coins), 20U);
+    EXPECT_TRUE(!::AreInputsStandard(txToNonStd2, coins, consensusBranchId));
+    EXPECT_EQ(GetP2SHSigOpCount(txToNonStd2, coins), 20U);
 }
 
-BOOST_AUTO_TEST_SUITE_END()
+INSTANTIATE_TEST_SUITE_P(script_P2SH, PTest_ScriptP2SH, Values(
+    0,1,2,3
+));
+
+TEST(test_script_P2SH, is)
+{
+    // Test CScript::IsPayToScriptHash()
+    uint160 dummy;
+    CScript p2sh;
+    p2sh << OP_HASH160 << ToByteVector(dummy) << OP_EQUAL;
+    EXPECT_TRUE(p2sh.IsPayToScriptHash());
+
+    // Not considered pay-to-script-hash if using one of the OP_PUSHDATA opcodes:
+    static const unsigned char direct[] =    { OP_HASH160, 20, 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0, OP_EQUAL };
+    EXPECT_TRUE(CScript(direct, direct+sizeof(direct)).IsPayToScriptHash());
+    static const unsigned char pushdata1[] = { OP_HASH160, OP_PUSHDATA1, 20, 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0, OP_EQUAL };
+    EXPECT_TRUE(!CScript(pushdata1, pushdata1+sizeof(pushdata1)).IsPayToScriptHash());
+    static const unsigned char pushdata2[] = { OP_HASH160, OP_PUSHDATA2, 20,0, 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0, OP_EQUAL };
+    EXPECT_TRUE(!CScript(pushdata2, pushdata2+sizeof(pushdata2)).IsPayToScriptHash());
+    static const unsigned char pushdata4[] = { OP_HASH160, OP_PUSHDATA4, 20,0,0,0, 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0, OP_EQUAL };
+    EXPECT_TRUE(!CScript(pushdata4, pushdata4+sizeof(pushdata4)).IsPayToScriptHash());
+
+    CScript not_p2sh;
+    EXPECT_TRUE(!not_p2sh.IsPayToScriptHash());
+
+    not_p2sh.clear(); not_p2sh << OP_HASH160 << ToByteVector(dummy) << ToByteVector(dummy) << OP_EQUAL;
+    EXPECT_TRUE(!not_p2sh.IsPayToScriptHash());
+
+    not_p2sh.clear(); not_p2sh << OP_NOP << ToByteVector(dummy) << OP_EQUAL;
+    EXPECT_TRUE(!not_p2sh.IsPayToScriptHash());
+
+    not_p2sh.clear(); not_p2sh << OP_HASH160 << ToByteVector(dummy) << OP_CHECKSIG;
+    EXPECT_TRUE(!not_p2sh.IsPayToScriptHash());
+}

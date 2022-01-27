@@ -3,15 +3,15 @@
 // Copyright (c) 2009-2014 The Bitcoin Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
-#include "compressor.h"
-#include "core_memusage.h"
-#include "memusage.h"
-#include "serialize.h"
-#include "uint256.h"
+#include <compressor.h>
+#include <core_memusage.h>
+#include <memusage.h>
+#include <serialize.h>
+#include <uint256.h>
 #include <assert.h>
 #include <stdint.h>
 #include <unordered_map>
-#include "zcash/IncrementalMerkleTree.hpp"
+#include <zcash/IncrementalMerkleTree.hpp>
 
 /** 
  * Pruned version of CTransaction: only retains metadata and unspent transaction outputs

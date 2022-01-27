@@ -19,7 +19,6 @@
 #include "script/script_error.h"
 #include "script/sign.h"
 #include "primitives/transaction.h"
-
 #include "sodium.h"
 
 #include <array>
@@ -40,7 +39,19 @@
 using namespace std;
 
 // In script_tests.cpp
-extern UniValue read_json(const std::string& jsondata);
+// extern UniValue read_json(const std::string& jsondata);
+UniValue
+read_json(const std::string& jsondata)
+{
+    UniValue v;
+
+    if (!v.read(jsondata) || !v.isArray())
+    {
+        BOOST_ERROR("Parse error.");
+        return UniValue(UniValue::VARR);
+    }
+    return v.get_array();
+}
 
 static std::map<string, unsigned int> mapFlagNames = 
 {

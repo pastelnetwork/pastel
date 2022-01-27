@@ -1068,7 +1068,7 @@ public:
             // keeps the JoinSplit cryptographically bound
             // to the transaction.
             //
-            std::vector<int> v;
+            vector<int> v;
             ::Serialize(s, v);
         }
     }
