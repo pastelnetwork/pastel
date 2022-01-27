@@ -22,6 +22,7 @@
 #include <script/script_error.h>
 #include <script/sign.h>
 #include <util.h>
+#include <json_test_vectors.h>
 
 #if defined(HAVE_CONSENSUS_LIB)
 #include <script/zcashconsensus.h>
@@ -577,8 +578,8 @@ TEST(test_script, script_build)
     set<string> tests_bad;
 
     {
-        UniValue json_good = read_json_script(string(json_tests::script_valid, json_tests::script_valid + sizeof(json_tests::script_valid)));
-        UniValue json_bad = read_json_script(string(json_tests::script_invalid, json_tests::script_invalid + sizeof(json_tests::script_invalid)));
+        UniValue json_good = read_json(string(json_tests::script_valid, json_tests::script_valid + sizeof(json_tests::script_valid)));
+        UniValue json_bad = read_json(string(json_tests::script_invalid, json_tests::script_invalid + sizeof(json_tests::script_invalid)));
 
         for (size_t idx = 0; idx < json_good.size(); idx++) {
             const UniValue& tv = json_good[idx];
@@ -644,7 +645,7 @@ TEST_P(PTest_Script, script_valid)
     // Inner arrays are [ "scriptSig", "scriptPubKey", "flags" ]
     // ... where scriptSig and scriptPubKey are stringified
     // scripts.
-    UniValue tests = read_json_script(string(json_tests::script_valid, json_tests::script_valid + sizeof(json_tests::script_valid)));
+    UniValue tests = read_json(string(json_tests::script_valid, json_tests::script_valid + sizeof(json_tests::script_valid)));
 
     for (size_t idx = 0; idx < tests.size(); idx++) {
         UniValue test = tests[idx];
@@ -675,7 +676,7 @@ TEST_P(PTest_Script, script_invalid)
     uint32_t consensusBranchId = NetworkUpgradeInfo[sample].nBranchId;
 
     // Scripts that should evaluate as invalid
-    UniValue tests = read_json_script(string(json_tests::script_invalid, json_tests::script_invalid + sizeof(json_tests::script_invalid)));
+    UniValue tests = read_json(string(json_tests::script_invalid, json_tests::script_invalid + sizeof(json_tests::script_invalid)));
 
     for (size_t idx = 0; idx < tests.size(); idx++) {
         UniValue test = tests[idx];
