@@ -160,7 +160,9 @@ TEST_P(PTest_Util2, util_ParseMoney)
 }
 INSTANTIATE_TEST_SUITE_P(util_ParseMoney, PTest_Util2, Values(
     make_tuple(0, "0.0"),
+
     make_tuple((COIN/10000)*123456789, "12345.6789"),
+
     make_tuple(COIN*100000000, "100000000.00"),
     make_tuple(COIN*10000000, "10000000.00"),
     make_tuple(COIN*1000000, "1000000.00"),
@@ -177,122 +179,156 @@ INSTANTIATE_TEST_SUITE_P(util_ParseMoney, PTest_Util2, Values(
     make_tuple(COIN/100000, "0.00001")
 ));
 
-// BOOST_AUTO_TEST_CASE(util_IsHex)
-// {
-//     BOOST_CHECK(IsHex("00"));
-//     BOOST_CHECK(IsHex("00112233445566778899aabbccddeeffAABBCCDDEEFF"));
-//     BOOST_CHECK(IsHex("ff"));
-//     BOOST_CHECK(IsHex("FF"));
+class PTest_Util3: public TestWithParam<tuple<string, bool>>
+{};
 
-//     BOOST_CHECK(!IsHex(""));
-//     BOOST_CHECK(!IsHex("0"));
-//     BOOST_CHECK(!IsHex("a"));
-//     BOOST_CHECK(!IsHex("eleven"));
-//     BOOST_CHECK(!IsHex("00xx00"));
-//     BOOST_CHECK(!IsHex("0x0000"));
-// }
+TEST_P(PTest_Util3, util_IsHex)
+{
+    const auto &hexStr = get<0>(GetParam());
+    const auto &isHex = get<1>(GetParam());
 
-// BOOST_AUTO_TEST_CASE(util_seed_insecure_rand)
-// {
-//     seed_insecure_rand(true);
-//     for (int mod=2;mod<11;mod++)
-//     {
-//         int mask = 1;
-//         // Really rough binomal confidence approximation.
-//         int err = 30*10000./mod*sqrt((1./mod*(1-1./mod))/10000.);
-//         //mask is 2^ceil(log2(mod))-1
-//         while(mask<mod-1)mask=(mask<<1)+1;
+    if( isHex )
+    {
+        EXPECT_TRUE( IsHex(hexStr) );
+    }
+    else
+    {
+        EXPECT_FALSE( IsHex(hexStr) );
+    }
+}
 
-//         int count = 0;
-//         //How often does it get a zero from the uniform range [0,mod)?
-//         for (int i = 0; i < 10000; i++) {
-//             uint32_t rval;
-//             do{
-//                 rval=insecure_rand()&mask;
-//             }while(rval>=(uint32_t)mod);
-//             count += rval==0;
-//         }
-//         BOOST_CHECK(count<=10000/mod+err);
-//         BOOST_CHECK(count>=10000/mod-err);
-//     }
-// }
+INSTANTIATE_TEST_SUITE_P(util_IsHex, PTest_Util3, Values(
+    make_tuple("00", true),
+    make_tuple("00112233445566778899aabbccddeeffAABBCCDDEEFF", true),
+    make_tuple("ff", true),
+    make_tuple("FF", true),
 
-// BOOST_AUTO_TEST_CASE(util_TimingResistantEqual)
-// {
-//     BOOST_CHECK(TimingResistantEqual(std::string(""), std::string("")));
-//     BOOST_CHECK(!TimingResistantEqual(std::string("abc"), std::string("")));
-//     BOOST_CHECK(!TimingResistantEqual(std::string(""), std::string("abc")));
-//     BOOST_CHECK(!TimingResistantEqual(std::string("a"), std::string("aa")));
-//     BOOST_CHECK(!TimingResistantEqual(std::string("aa"), std::string("a")));
-//     BOOST_CHECK(TimingResistantEqual(std::string("abc"), std::string("abc")));
-//     BOOST_CHECK(!TimingResistantEqual(std::string("abc"), std::string("aba")));
-// }
+    make_tuple("", false),
+    make_tuple("0", false),
+    make_tuple("a", false),
+    make_tuple("eleven", false),
+    make_tuple("00xx00", false),
+    make_tuple("0x0000", false)
+));
 
-// /* Test strprintf formatting directives.
-//  * Put a string before and after to ensure sanity of element sizes on stack. */
-// #define B "check_prefix"
-// #define E "check_postfix"
-// BOOST_AUTO_TEST_CASE(strprintf_numbers)
-// {
-//     int64_t s64t = -9223372036854775807LL; /* signed 64 bit test value */
-//     uint64_t u64t = 18446744073709551615ULL; /* unsigned 64 bit test value */
-//     BOOST_CHECK(strprintf("%s %d %s", B, s64t, E) == B" -9223372036854775807 " E);
-//     BOOST_CHECK(strprintf("%s %u %s", B, u64t, E) == B" 18446744073709551615 " E);
-//     BOOST_CHECK(strprintf("%s %x %s", B, u64t, E) == B" ffffffffffffffff " E);
+TEST(test_util, util_seed_insecure_rand)
+{
+    seed_insecure_rand(true);
+    for (int mod=2;mod<11;mod++)
+    {
+        int mask = 1;
+        // Really rough binomal confidence approximation.
+        int err = 30*10000./mod*sqrt((1./mod*(1-1./mod))/10000.);
+        //mask is 2^ceil(log2(mod))-1
+        while(mask<mod-1)mask=(mask<<1)+1;
 
-//     size_t st = 12345678; /* unsigned size_t test value */
-//     ssize_t sst = -12345678; /* signed size_t test value */
-//     BOOST_CHECK(strprintf("%s %d %s", B, sst, E) == B" -12345678 " E);
-//     BOOST_CHECK(strprintf("%s %u %s", B, st, E) == B" 12345678 " E);
-//     BOOST_CHECK(strprintf("%s %x %s", B, st, E) == B" bc614e " E);
+        int count = 0;
+        //How often does it get a zero from the uniform range [0,mod)?
+        for (int i = 0; i < 10000; i++) {
+            uint32_t rval;
+            do{
+                rval=insecure_rand()&mask;
+            }while(rval>=(uint32_t)mod);
+            count += rval==0;
+        }
+        EXPECT_TRUE(count<=10000/mod+err);
+        EXPECT_TRUE(count>=10000/mod-err);
+    }
+}
 
-//     ptrdiff_t pt = 87654321; /* positive ptrdiff_t test value */
-//     ptrdiff_t spt = -87654321; /* negative ptrdiff_t test value */
-//     BOOST_CHECK(strprintf("%s %d %s", B, spt, E) == B" -87654321 " E);
-//     BOOST_CHECK(strprintf("%s %u %s", B, pt, E) == B" 87654321 " E);
-//     BOOST_CHECK(strprintf("%s %x %s", B, pt, E) == B" 5397fb1 " E);
-// }
-// #undef B
-// #undef E
+class PTest_Util4: public TestWithParam<tuple<string, string, bool>>
+{};
 
-// /* Check for mingw/wine issue #3494
-//  * Remove this test before time.ctime(0xffffffff) == 'Sun Feb  7 07:28:15 2106'
-//  */
-// BOOST_AUTO_TEST_CASE(gettime)
-// {
-//     BOOST_CHECK((GetTime() & ~0xFFFFFFFFLL) == 0);
-// }
+TEST_P(PTest_Util4, util_TimingResistantEqual)
+{
+    const auto &str1 = get<0>(GetParam());
+    const auto &str2 = get<1>(GetParam());
+    const auto &isEqual = get<2>(GetParam());
 
-// BOOST_AUTO_TEST_CASE(test_FormatParagraph)
-// {
-//     BOOST_CHECK_EQUAL(FormatParagraph("", 79, 0), "");
-//     BOOST_CHECK_EQUAL(FormatParagraph("test", 79, 0), "test");
-//     BOOST_CHECK_EQUAL(FormatParagraph(" test", 79, 0), "test");
-//     BOOST_CHECK_EQUAL(FormatParagraph("test test", 79, 0), "test test");
-//     BOOST_CHECK_EQUAL(FormatParagraph("test test", 4, 0), "test\ntest");
-//     BOOST_CHECK_EQUAL(FormatParagraph("testerde test ", 4, 0), "testerde\ntest");
-//     BOOST_CHECK_EQUAL(FormatParagraph("test test", 4, 4), "test\n    test");
-//     BOOST_CHECK_EQUAL(FormatParagraph("This is a very long test string. This is a second sentence in the very long test string."), "This is a very long test string. This is a second sentence in the very long\ntest string.");
-// }
+    if( isEqual )
+    {
+        EXPECT_TRUE( TimingResistantEqual(str1, str2 ) );
+    }
+    else
+    {
+        EXPECT_FALSE( TimingResistantEqual(str1, str2) );
+    }
+}
 
-// BOOST_AUTO_TEST_CASE(test_FormatSubVersion)
-// {
-//     std::vector<std::string> comments;
-//     comments.push_back(std::string("comment1"));
-//     std::vector<std::string> comments2;
-//     comments2.push_back(std::string("comment1"));
-//     comments2.push_back(SanitizeString(std::string("Comment2; .,_?@; !\"#$%&'()*+-/<=>[]\\^`{|}~"), SAFE_CHARS_UA_COMMENT)); // Semicolon is discouraged but not forbidden by BIP-0014
-//     BOOST_CHECK_EQUAL(FormatSubVersion("Test", 99900, std::vector<std::string>()), std::string("/Test:0.9.99-beta1/"));
-//     BOOST_CHECK_EQUAL(FormatSubVersion("Test", 99924, std::vector<std::string>()), std::string("/Test:0.9.99-beta25/"));
-//     BOOST_CHECK_EQUAL(FormatSubVersion("Test", 99925, std::vector<std::string>()), std::string("/Test:0.9.99-rc1/"));
-//     BOOST_CHECK_EQUAL(FormatSubVersion("Test", 99949, std::vector<std::string>()), std::string("/Test:0.9.99-rc25/"));
-//     BOOST_CHECK_EQUAL(FormatSubVersion("Test", 99950, std::vector<std::string>()), std::string("/Test:0.9.99/"));
-//     BOOST_CHECK_EQUAL(FormatSubVersion("Test", 99951, std::vector<std::string>()), std::string("/Test:0.9.99-1/"));
-//     BOOST_CHECK_EQUAL(FormatSubVersion("Test", 99999, std::vector<std::string>()), std::string("/Test:0.9.99-49/"));
-//     BOOST_CHECK_EQUAL(FormatSubVersion("Test", 99900, comments),  std::string("/Test:0.9.99-beta1(comment1)/"));
-//     BOOST_CHECK_EQUAL(FormatSubVersion("Test", 99950, comments),  std::string("/Test:0.9.99(comment1)/"));
-//     BOOST_CHECK_EQUAL(FormatSubVersion("Test", 99900, comments2), std::string("/Test:0.9.99-beta1(comment1; Comment2; .,_?@; )/"));
-//     BOOST_CHECK_EQUAL(FormatSubVersion("Test", 99950, comments2), std::string("/Test:0.9.99(comment1; Comment2; .,_?@; )/"));
-// }
+INSTANTIATE_TEST_SUITE_P(util_TimingResistantEqual, PTest_Util4, Values(
+    make_tuple("", "", true),
+    make_tuple("abc", "abc", true),
 
-// BOOST_AUTO_TEST_SUITE_END()
+    make_tuple("abc", "", false),
+    make_tuple("", "abc", false),
+    make_tuple("a", "aa", false),
+    make_tuple("aa", "a", false),
+    make_tuple("abc", "aba", false)
+));
+
+/* Test strprintf formatting directives.
+ * Put a string before and after to ensure sanity of element sizes on stack. */
+#define B "check_prefix"
+#define E "check_postfix"
+TEST(test_util, strprintf_numbers)
+{
+    int64_t s64t = -9223372036854775807LL; /* signed 64 bit test value */
+    uint64_t u64t = 18446744073709551615ULL; /* unsigned 64 bit test value */
+    EXPECT_EQ(strprintf("%s %d %s", B, s64t, E) , B" -9223372036854775807 " E);
+    EXPECT_EQ(strprintf("%s %u %s", B, u64t, E) , B" 18446744073709551615 " E);
+    EXPECT_EQ(strprintf("%s %x %s", B, u64t, E) , B" ffffffffffffffff " E);
+
+    size_t st = 12345678; /* unsigned size_t test value */
+    ssize_t sst = -12345678; /* signed size_t test value */
+    EXPECT_EQ(strprintf("%s %d %s", B, sst, E) , B" -12345678 " E);
+    EXPECT_EQ(strprintf("%s %u %s", B, st, E) , B" 12345678 " E);
+    EXPECT_EQ(strprintf("%s %x %s", B, st, E) , B" bc614e " E);
+
+    ptrdiff_t pt = 87654321; /* positive ptrdiff_t test value */
+    ptrdiff_t spt = -87654321; /* negative ptrdiff_t test value */
+    EXPECT_EQ(strprintf("%s %d %s", B, spt, E) , B" -87654321 " E);
+    EXPECT_EQ(strprintf("%s %u %s", B, pt, E) , B" 87654321 " E);
+    EXPECT_EQ(strprintf("%s %x %s", B, pt, E) , B" 5397fb1 " E);
+}
+#undef B
+#undef E
+
+/* Check for mingw/wine issue #3494
+ * Remove this test before time.ctime(0xffffffff) == 'Sun Feb  7 07:28:15 2106'
+ */
+TEST(test_util, gettime)
+{
+    EXPECT_EQ((GetTime() & ~0xFFFFFFFFLL) , 0);
+}
+
+TEST(test_util, test_FormatParagraph)
+{
+    EXPECT_EQ(FormatParagraph("", 79, 0), "");
+    EXPECT_EQ(FormatParagraph("test", 79, 0), "test");
+    EXPECT_EQ(FormatParagraph(" test", 79, 0), "test");
+    EXPECT_EQ(FormatParagraph("test test", 79, 0), "test test");
+    EXPECT_EQ(FormatParagraph("test test", 4, 0), "test\ntest");
+    EXPECT_EQ(FormatParagraph("testerde test ", 4, 0), "testerde\ntest");
+    EXPECT_EQ(FormatParagraph("test test", 4, 4), "test\n    test");
+    EXPECT_EQ(FormatParagraph("This is a very long test string. This is a second sentence in the very long test string."), "This is a very long test string. This is a second sentence in the very long\ntest string.");
+}
+
+TEST(test_util, test_FormatSubVersion)
+{
+    vector<string> comments;
+    comments.push_back(string("comment1"));
+    vector<string> comments2;
+    comments2.push_back(string("comment1"));
+    comments2.push_back(SanitizeString(string("Comment2; .,_?@; !\"#$%&'()*+-/<=>[]\\^`{|}~"), SAFE_CHARS_UA_COMMENT)); // Semicolon is discouraged but not forbidden by BIP-0014
+    EXPECT_EQ(FormatSubVersion("Test", 99900, vector<string>()), string("/Test:0.9.99-beta1/"));
+    EXPECT_EQ(FormatSubVersion("Test", 99924, vector<string>()), string("/Test:0.9.99-beta25/"));
+    EXPECT_EQ(FormatSubVersion("Test", 99925, vector<string>()), string("/Test:0.9.99-rc1/"));
+    EXPECT_EQ(FormatSubVersion("Test", 99949, vector<string>()), string("/Test:0.9.99-rc25/"));
+    EXPECT_EQ(FormatSubVersion("Test", 99950, vector<string>()), string("/Test:0.9.99/"));
+    EXPECT_EQ(FormatSubVersion("Test", 99951, vector<string>()), string("/Test:0.9.99-1/"));
+    EXPECT_EQ(FormatSubVersion("Test", 99999, vector<string>()), string("/Test:0.9.99-49/"));
+    EXPECT_EQ(FormatSubVersion("Test", 99900, comments),  string("/Test:0.9.99-beta1(comment1)/"));
+    EXPECT_EQ(FormatSubVersion("Test", 99950, comments),  string("/Test:0.9.99(comment1)/"));
+    EXPECT_EQ(FormatSubVersion("Test", 99900, comments2), string("/Test:0.9.99-beta1(comment1; Comment2; .,_?@; )/"));
+    EXPECT_EQ(FormatSubVersion("Test", 99950, comments2), string("/Test:0.9.99(comment1; Comment2; .,_?@; )/"));
+}
