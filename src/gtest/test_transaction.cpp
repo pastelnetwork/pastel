@@ -87,8 +87,8 @@ TEST(test_transaction, tx_valid)
     // ... where all scripts are stringified scripts.
     //
     // verifyFlags is a comma separated list of script verification flags to apply, or "NONE"
-    UniValue tests = read_json(std::string(json_tests::tx_valid, json_tests::tx_valid + sizeof(json_tests::tx_valid)));
-    std::string comment("");
+    UniValue tests = read_json(string(json_tests::tx_valid, json_tests::tx_valid + sizeof(json_tests::tx_valid)));
+    string comment("");
 
     auto verifier = libzcash::ProofVerifier::Strict();
     ScriptError err;
@@ -175,8 +175,8 @@ TEST(test_transaction, tx_invalid)
     // ... where all scripts are stringified scripts.
     //
     // verifyFlags is a comma separated list of script verification flags to apply, or "NONE"
-    UniValue tests = read_json(std::string(json_tests::tx_invalid, json_tests::tx_invalid + sizeof(json_tests::tx_invalid)));
-    std::string comment("");
+    UniValue tests = read_json(string(json_tests::tx_invalid, json_tests::tx_invalid + sizeof(json_tests::tx_invalid)));
+    string comment("");
 
     auto verifier = libzcash::ProofVerifier::Strict();
     ScriptError err;
@@ -274,10 +274,10 @@ TEST(test_transaction, basic_transaction_tests)
 // paid to a TX_PUBKEY, the second 21 and 22 CENT outputs
 // paid to a TX_PUBKEYHASH.
 //
-static std::vector<CMutableTransaction>
+static vector<CMutableTransaction>
 SetupDummyInputs(CBasicKeyStore& keystoreRet, CCoinsViewCache& coinsRet)
 {
-    std::vector<CMutableTransaction> dummyTransactions;
+    vector<CMutableTransaction> dummyTransactions;
     dummyTransactions.resize(2);
 
     // Add some keys to the keystore:
@@ -369,220 +369,228 @@ void test_simple_sapling_invalidity(uint32_t consensusBranchId, CMutableTransact
     }
 }
 
-// // Parameterized testing over consensus branch ids
-// BOOST_DATA_TEST_CASE(test_Get, boost::unit_test::data::xrange(static_cast<int>(Consensus::MAX_NETWORK_UPGRADES)))
-// {
-//     uint32_t consensusBranchId = NetworkUpgradeInfo[sample].nBranchId;
+class PTest_Transaction : public TestWithParam<int>
+{};
 
-//     CBasicKeyStore keystore;
-//     CCoinsView coinsDummy;
-//     CCoinsViewCache coins(&coinsDummy);
-//     std::vector<CMutableTransaction> dummyTransactions = SetupDummyInputs(keystore, coins);
+// Parameterized testing over consensus branch ids
+TEST_P(PTest_Transaction, test_Get)
+{
+    const int sample = GetParam();
+    EXPECT_LT(sample, static_cast<int>(Consensus::MAX_NETWORK_UPGRADES));
 
-//     CMutableTransaction t1;
-//     t1.vin.resize(3);
-//     t1.vin[0].prevout.hash = dummyTransactions[0].GetHash();
-//     t1.vin[0].prevout.n = 1;
-//     t1.vin[0].scriptSig << v_uint8(65, 0);
-//     t1.vin[1].prevout.hash = dummyTransactions[1].GetHash();
-//     t1.vin[1].prevout.n = 0;
-//     t1.vin[1].scriptSig << v_uint8(65, 0) << v_uint8(33, 4);
-//     t1.vin[2].prevout.hash = dummyTransactions[1].GetHash();
-//     t1.vin[2].prevout.n = 1;
-//     t1.vin[2].scriptSig << v_uint8(65, 0) << v_uint8(33, 4);
-//     t1.vout.resize(2);
-//     t1.vout[0].nValue = 90*CENT;
-//     t1.vout[0].scriptPubKey << OP_1;
+    uint32_t consensusBranchId = NetworkUpgradeInfo[sample].nBranchId;
 
-//     BOOST_CHECK(AreInputsStandard(t1, coins, consensusBranchId));
-//     BOOST_CHECK_EQUAL(coins.GetValueIn(t1), (50+21+22)*CENT);
+    CBasicKeyStore keystore;
+    CCoinsView coinsDummy;
+    CCoinsViewCache coins(&coinsDummy);
+    vector<CMutableTransaction> dummyTransactions = SetupDummyInputs(keystore, coins);
 
-//     // Adding extra junk to the scriptSig should make it non-standard:
-//     t1.vin[0].scriptSig << OP_11;
-//     BOOST_CHECK(!AreInputsStandard(t1, coins, consensusBranchId));
+    CMutableTransaction t1;
+    t1.vin.resize(3);
+    t1.vin[0].prevout.hash = dummyTransactions[0].GetHash();
+    t1.vin[0].prevout.n = 1;
+    t1.vin[0].scriptSig << v_uint8(65, 0);
+    t1.vin[1].prevout.hash = dummyTransactions[1].GetHash();
+    t1.vin[1].prevout.n = 0;
+    t1.vin[1].scriptSig << v_uint8(65, 0) << v_uint8(33, 4);
+    t1.vin[2].prevout.hash = dummyTransactions[1].GetHash();
+    t1.vin[2].prevout.n = 1;
+    t1.vin[2].scriptSig << v_uint8(65, 0) << v_uint8(33, 4);
+    t1.vout.resize(2);
+    t1.vout[0].nValue = 90*CENT;
+    t1.vout[0].scriptPubKey << OP_1;
 
-//     // ... as should not having enough:
-//     t1.vin[0].scriptSig = CScript();
-//     BOOST_CHECK(!AreInputsStandard(t1, coins, consensusBranchId));
-// }
+    EXPECT_TRUE(AreInputsStandard(t1, coins, consensusBranchId));
+    EXPECT_EQ(coins.GetValueIn(t1), (50+21+22)*CENT);
 
-// BOOST_AUTO_TEST_CASE(test_big_overwinter_transaction) {
-//     uint32_t consensusBranchId = NetworkUpgradeInfo[Consensus::UPGRADE_OVERWINTER].nBranchId;
-//     CMutableTransaction mtx;
-//     mtx.fOverwintered = true;
-//     mtx.nVersion = OVERWINTER_TX_VERSION;
-//     mtx.nVersionGroupId = OVERWINTER_VERSION_GROUP_ID;
+    // Adding extra junk to the scriptSig should make it non-standard:
+    t1.vin[0].scriptSig << OP_11;
+    EXPECT_TRUE(!AreInputsStandard(t1, coins, consensusBranchId));
 
-//     CKey key;
-//     key.MakeNewKey(false);
-//     CBasicKeyStore keystore;
-//     keystore.AddKeyPubKey(key, key.GetPubKey());
-//     CKeyID hash = key.GetPubKey().GetID();
-//     CScript scriptPubKey = GetScriptForDestination(hash);
+    // ... as should not having enough:
+    t1.vin[0].scriptSig = CScript();
+    EXPECT_TRUE(!AreInputsStandard(t1, coins, consensusBranchId));
+}
 
-//     v_uint8 sigHashes;
-//     sigHashes.push_back(enum_or(SIGHASH::NONE, SIGHASH::ANYONECANPAY));
-//     sigHashes.push_back(enum_or(SIGHASH::SINGLE, SIGHASH::ANYONECANPAY));
-//     sigHashes.push_back(enum_or(SIGHASH::ALL, SIGHASH::ANYONECANPAY));
-//     sigHashes.push_back(to_integral_type(SIGHASH::NONE));
-//     sigHashes.push_back(to_integral_type(SIGHASH::SINGLE));
-//     sigHashes.push_back(to_integral_type(SIGHASH::ALL));
+INSTANTIATE_TEST_SUITE_P(test_Get, PTest_Transaction, Values(
+    0,1,2,3
+));
 
-//     // create a big transaction of 4500 inputs signed by the same key
-//     for(uint32_t ij = 0; ij < 4500; ij++)
-//     {
-//         uint32_t i = mtx.vin.size();
-//         uint256 prevId;
-//         prevId.SetHex("0000000000000000000000000000000000000000000000000000000000000100");
-//         COutPoint outpoint(prevId, i);
+TEST(test_transaction, test_big_overwinter_transaction) {
+    uint32_t consensusBranchId = NetworkUpgradeInfo[Consensus::UPGRADE_OVERWINTER].nBranchId;
+    CMutableTransaction mtx;
+    mtx.fOverwintered = true;
+    mtx.nVersion = OVERWINTER_TX_VERSION;
+    mtx.nVersionGroupId = OVERWINTER_VERSION_GROUP_ID;
 
-//         mtx.vin.resize(mtx.vin.size() + 1);
-//         mtx.vin[i].prevout = outpoint;
-//         mtx.vin[i].scriptSig = CScript();
+    CKey key;
+    key.MakeNewKey(false);
+    CBasicKeyStore keystore;
+    keystore.AddKeyPubKey(key, key.GetPubKey());
+    CKeyID hash = key.GetPubKey().GetID();
+    CScript scriptPubKey = GetScriptForDestination(hash);
 
-//         mtx.vout.resize(mtx.vout.size() + 1);
-//         mtx.vout[i].nValue = 1000;
-//         mtx.vout[i].scriptPubKey = CScript() << OP_1;
-//     }
+    v_uint8 sigHashes;
+    sigHashes.push_back(enum_or(SIGHASH::NONE, SIGHASH::ANYONECANPAY));
+    sigHashes.push_back(enum_or(SIGHASH::SINGLE, SIGHASH::ANYONECANPAY));
+    sigHashes.push_back(enum_or(SIGHASH::ALL, SIGHASH::ANYONECANPAY));
+    sigHashes.push_back(to_integral_type(SIGHASH::NONE));
+    sigHashes.push_back(to_integral_type(SIGHASH::SINGLE));
+    sigHashes.push_back(to_integral_type(SIGHASH::ALL));
 
-//     // sign all inputs
-//     for(uint32_t i = 0; i < mtx.vin.size(); i++) {
-//         bool hashSigned = SignSignature(keystore, scriptPubKey, mtx, i, 1000, sigHashes.at(i % sigHashes.size()), consensusBranchId);
-//         assert(hashSigned);
-//     }
+    // create a big transaction of 4500 inputs signed by the same key
+    for(uint32_t ij = 0; ij < 4500; ij++)
+    {
+        uint32_t i = mtx.vin.size();
+        uint256 prevId;
+        prevId.SetHex("0000000000000000000000000000000000000000000000000000000000000100");
+        COutPoint outpoint(prevId, i);
 
-//     CTransaction tx;
-//     CDataStream ssout(SER_NETWORK, PROTOCOL_VERSION);
-//     ssout << mtx;
-//     ssout >> tx;
+        mtx.vin.resize(mtx.vin.size() + 1);
+        mtx.vin[i].prevout = outpoint;
+        mtx.vin[i].scriptSig = CScript();
 
-//     // check all inputs concurrently, with the cache
-//     PrecomputedTransactionData txdata(tx);
-//     boost::thread_group threadGroup;
-//     CCheckQueue<CScriptCheck> scriptcheckqueue(128);
-//     CCheckQueueControl<CScriptCheck> control(&scriptcheckqueue);
+        mtx.vout.resize(mtx.vout.size() + 1);
+        mtx.vout[i].nValue = 1000;
+        mtx.vout[i].scriptPubKey = CScript() << OP_1;
+    }
 
-//     for (int i=0; i<20; i++)
-//         threadGroup.create_thread(boost::bind(&CCheckQueue<CScriptCheck>::Thread, boost::ref(scriptcheckqueue)));
+    // sign all inputs
+    for(uint32_t i = 0; i < mtx.vin.size(); i++) {
+        bool hashSigned = SignSignature(keystore, scriptPubKey, mtx, i, 1000, sigHashes.at(i % sigHashes.size()), consensusBranchId);
+        assert(hashSigned);
+    }
 
-//     CCoins coins;
-//     coins.nVersion = 1;
-//     coins.fCoinBase = false;
-//     for(uint32_t i = 0; i < mtx.vin.size(); i++) {
-//         CTxOut txout;
-//         txout.nValue = 1000;
-//         txout.scriptPubKey = scriptPubKey;
-//         coins.vout.push_back(txout);
-//     }
+    CTransaction tx;
+    CDataStream ssout(SER_NETWORK, PROTOCOL_VERSION);
+    ssout << mtx;
+    ssout >> tx;
 
-//     for(uint32_t i = 0; i < mtx.vin.size(); i++) {
-//         std::vector<CScriptCheck> vChecks;
-//         CScriptCheck check(coins, tx, i, SCRIPT_VERIFY_P2SH, false, consensusBranchId, &txdata);
-//         vChecks.push_back(CScriptCheck());
-//         check.swap(vChecks.back());
-//         control.Add(vChecks);
-//     }
+    // check all inputs concurrently, with the cache
+    PrecomputedTransactionData txdata(tx);
+    boost::thread_group threadGroup;
+    CCheckQueue<CScriptCheck> scriptcheckqueue(128);
+    CCheckQueueControl<CScriptCheck> control(&scriptcheckqueue);
 
-//     bool controlCheck = control.Wait();
-//     assert(controlCheck);
+    for (int i=0; i<20; i++)
+        threadGroup.create_thread(boost::bind(&CCheckQueue<CScriptCheck>::Thread, boost::ref(scriptcheckqueue)));
 
-//     threadGroup.interrupt_all();
-//     threadGroup.join_all();
-// }
+    CCoins coins;
+    coins.nVersion = 1;
+    coins.fCoinBase = false;
+    for(uint32_t i = 0; i < mtx.vin.size(); i++) {
+        CTxOut txout;
+        txout.nValue = 1000;
+        txout.scriptPubKey = scriptPubKey;
+        coins.vout.push_back(txout);
+    }
 
-// BOOST_AUTO_TEST_CASE(test_IsStandard)
-// {
-//     LOCK(cs_main);
-//     CBasicKeyStore keystore;
-//     CCoinsView coinsDummy;
-//     CCoinsViewCache coins(&coinsDummy);
-//     std::vector<CMutableTransaction> dummyTransactions = SetupDummyInputs(keystore, coins);
+    for(uint32_t i = 0; i < mtx.vin.size(); i++) {
+        vector<CScriptCheck> vChecks;
+        CScriptCheck check(coins, tx, i, SCRIPT_VERIFY_P2SH, false, consensusBranchId, &txdata);
+        vChecks.push_back(CScriptCheck());
+        check.swap(vChecks.back());
+        control.Add(vChecks);
+    }
 
-//     CMutableTransaction t;
-//     t.vin.resize(1);
-//     t.vin[0].prevout.hash = dummyTransactions[0].GetHash();
-//     t.vin[0].prevout.n = 1;
-//     t.vin[0].scriptSig << v_uint8(65, 0);
-//     t.vout.resize(1);
-//     t.vout[0].nValue = 90*CENT;
-//     CKey key;
-//     key.MakeNewKey(true);
-//     t.vout[0].scriptPubKey = GetScriptForDestination(key.GetPubKey().GetID());
+    bool controlCheck = control.Wait();
+    assert(controlCheck);
 
-//     const auto& chainparams = Params();
-//     string reason;
-//     BOOST_CHECK(IsStandardTx(t, reason, chainparams));
+    threadGroup.interrupt_all();
+    threadGroup.join_all();
+}
 
-//     t.vout[0].nValue = 53; // dust
-//     BOOST_CHECK(!IsStandardTx(t, reason, chainparams));
+TEST(test_transaction, test_IsStandard)
+{
+    LOCK(cs_main);
+    CBasicKeyStore keystore;
+    CCoinsView coinsDummy;
+    CCoinsViewCache coins(&coinsDummy);
+    vector<CMutableTransaction> dummyTransactions = SetupDummyInputs(keystore, coins);
 
-//     t.vout[0].nValue = 2730; // not dust
-//     BOOST_CHECK(IsStandardTx(t, reason, chainparams));
+    CMutableTransaction t;
+    t.vin.resize(1);
+    t.vin[0].prevout.hash = dummyTransactions[0].GetHash();
+    t.vin[0].prevout.n = 1;
+    t.vin[0].scriptSig << v_uint8(65, 0);
+    t.vout.resize(1);
+    t.vout[0].nValue = 90*CENT;
+    CKey key;
+    key.MakeNewKey(true);
+    t.vout[0].scriptPubKey = GetScriptForDestination(key.GetPubKey().GetID());
 
-//     t.vout[0].scriptPubKey = CScript() << OP_1;
-//     BOOST_CHECK(!IsStandardTx(t, reason, chainparams));
+    const auto& chainparams = Params();
+    string reason;
+    EXPECT_TRUE(IsStandardTx(t, reason, chainparams));
 
-//     // 80-byte TX_NULL_DATA (standard)
-//     t.vout[0].scriptPubKey = CScript() << OP_RETURN << ParseHex("04678afdb0fe5548271967f1a67130b7105cd6a828e03909a67962e0ea1f61deb649f6bc3f4cef3804678afdb0fe5548271967f1a67130b7105cd6a828e03909a67962e0ea1f61deb649f6bc3f4cef38");
-//     BOOST_CHECK(IsStandardTx(t, reason, chainparams));
+    t.vout[0].nValue = 53; // dust
+    EXPECT_TRUE(!IsStandardTx(t, reason, chainparams));
 
-//     // 81-byte TX_NULL_DATA (non-standard)
-//     t.vout[0].scriptPubKey = CScript() << OP_RETURN << ParseHex("04678afdb0fe5548271967f1a67130b7105cd6a828e03909a67962e0ea1f61deb649f6bc3f4cef3804678afdb0fe5548271967f1a67130b7105cd6a828e03909a67962e0ea1f61deb649f6bc3f4cef3800");
-//     BOOST_CHECK(!IsStandardTx(t, reason, chainparams));
+    t.vout[0].nValue = 2730; // not dust
+    EXPECT_TRUE(IsStandardTx(t, reason, chainparams));
 
-//     // TX_NULL_DATA w/o PUSHDATA
-//     t.vout.resize(1);
-//     t.vout[0].scriptPubKey = CScript() << OP_RETURN;
-//     BOOST_CHECK(IsStandardTx(t, reason, chainparams));
+    t.vout[0].scriptPubKey = CScript() << OP_1;
+    EXPECT_TRUE(!IsStandardTx(t, reason, chainparams));
 
-//     // Only one TX_NULL_DATA permitted in all cases
-//     t.vout.resize(2);
-//     t.vout[0].scriptPubKey = CScript() << OP_RETURN << ParseHex("04678afdb0fe5548271967f1a67130b7105cd6a828e03909a67962e0ea1f61deb649f6bc3f4cef38");
-//     t.vout[1].scriptPubKey = CScript() << OP_RETURN << ParseHex("04678afdb0fe5548271967f1a67130b7105cd6a828e03909a67962e0ea1f61deb649f6bc3f4cef38");
-//     BOOST_CHECK(!IsStandardTx(t, reason, chainparams));
+    // 80-byte TX_NULL_DATA (standard)
+    t.vout[0].scriptPubKey = CScript() << OP_RETURN << ParseHex("04678afdb0fe5548271967f1a67130b7105cd6a828e03909a67962e0ea1f61deb649f6bc3f4cef3804678afdb0fe5548271967f1a67130b7105cd6a828e03909a67962e0ea1f61deb649f6bc3f4cef38");
+    EXPECT_TRUE(IsStandardTx(t, reason, chainparams));
 
-//     t.vout[0].scriptPubKey = CScript() << OP_RETURN << ParseHex("04678afdb0fe5548271967f1a67130b7105cd6a828e03909a67962e0ea1f61deb649f6bc3f4cef38");
-//     t.vout[1].scriptPubKey = CScript() << OP_RETURN;
-//     BOOST_CHECK(!IsStandardTx(t, reason, chainparams));
+    // 81-byte TX_NULL_DATA (non-standard)
+    t.vout[0].scriptPubKey = CScript() << OP_RETURN << ParseHex("04678afdb0fe5548271967f1a67130b7105cd6a828e03909a67962e0ea1f61deb649f6bc3f4cef3804678afdb0fe5548271967f1a67130b7105cd6a828e03909a67962e0ea1f61deb649f6bc3f4cef3800");
+    EXPECT_TRUE(!IsStandardTx(t, reason, chainparams));
 
-//     t.vout[0].scriptPubKey = CScript() << OP_RETURN;
-//     t.vout[1].scriptPubKey = CScript() << OP_RETURN;
-//     BOOST_CHECK(!IsStandardTx(t, reason, chainparams));
-// }
+    // TX_NULL_DATA w/o PUSHDATA
+    t.vout.resize(1);
+    t.vout[0].scriptPubKey = CScript() << OP_RETURN;
+    EXPECT_TRUE(IsStandardTx(t, reason, chainparams));
 
-// BOOST_AUTO_TEST_CASE(test_IsStandardV2)
-// {
-//     LOCK(cs_main);
-//     CBasicKeyStore keystore;
-//     CCoinsView coinsDummy;
-//     CCoinsViewCache coins(&coinsDummy);
-//     std::vector<CMutableTransaction> dummyTransactions = SetupDummyInputs(keystore, coins);
+    // Only one TX_NULL_DATA permitted in all cases
+    t.vout.resize(2);
+    t.vout[0].scriptPubKey = CScript() << OP_RETURN << ParseHex("04678afdb0fe5548271967f1a67130b7105cd6a828e03909a67962e0ea1f61deb649f6bc3f4cef38");
+    t.vout[1].scriptPubKey = CScript() << OP_RETURN << ParseHex("04678afdb0fe5548271967f1a67130b7105cd6a828e03909a67962e0ea1f61deb649f6bc3f4cef38");
+    EXPECT_TRUE(!IsStandardTx(t, reason, chainparams));
 
-//     CMutableTransaction t;
-//     t.vin.resize(1);
-//     t.vin[0].prevout.hash = dummyTransactions[0].GetHash();
-//     t.vin[0].prevout.n = 1;
-//     t.vin[0].scriptSig << v_uint8(65, 0);
-//     t.vout.resize(1);
-//     t.vout[0].nValue = 90*CENT;
-//     CKey key;
-//     key.MakeNewKey(true);
-//     t.vout[0].scriptPubKey = GetScriptForDestination(key.GetPubKey().GetID());
+    t.vout[0].scriptPubKey = CScript() << OP_RETURN << ParseHex("04678afdb0fe5548271967f1a67130b7105cd6a828e03909a67962e0ea1f61deb649f6bc3f4cef38");
+    t.vout[1].scriptPubKey = CScript() << OP_RETURN;
+    EXPECT_TRUE(!IsStandardTx(t, reason, chainparams));
 
-//     const auto& chainparams = Params();
-//     string reason;
-//     // A v2 transaction with no JoinSplits is still standard.
-//     t.nVersion = 2;
-//     BOOST_CHECK(IsStandardTx(t, reason, chainparams));
+    t.vout[0].scriptPubKey = CScript() << OP_RETURN;
+    t.vout[1].scriptPubKey = CScript() << OP_RETURN;
+    EXPECT_TRUE(!IsStandardTx(t, reason, chainparams));
+}
 
-//     // v2 transactions can still be non-standard for the same reasons as v1.
-//     t.vout[0].nValue = 53; // dust
-//     BOOST_CHECK(!IsStandardTx(t, reason, chainparams));
+TEST(test_transaction, test_IsStandardV2)
+{
+    LOCK(cs_main);
+    CBasicKeyStore keystore;
+    CCoinsView coinsDummy;
+    CCoinsViewCache coins(&coinsDummy);
+    vector<CMutableTransaction> dummyTransactions = SetupDummyInputs(keystore, coins);
 
-//     // v3 is not standard.
-//     t.nVersion = 3;
-//     t.vout[0].nValue = 90*CENT;
-//     BOOST_CHECK(!IsStandardTx(t, reason, chainparams));
-// }
+    CMutableTransaction t;
+    t.vin.resize(1);
+    t.vin[0].prevout.hash = dummyTransactions[0].GetHash();
+    t.vin[0].prevout.n = 1;
+    t.vin[0].scriptSig << v_uint8(65, 0);
+    t.vout.resize(1);
+    t.vout[0].nValue = 90*CENT;
+    CKey key;
+    key.MakeNewKey(true);
+    t.vout[0].scriptPubKey = GetScriptForDestination(key.GetPubKey().GetID());
 
-// BOOST_AUTO_TEST_SUITE_END()
+    const auto& chainparams = Params();
+    string reason;
+    // A v2 transaction with no JoinSplits is still standard.
+    t.nVersion = 2;
+    EXPECT_TRUE(IsStandardTx(t, reason, chainparams));
+
+    // v2 transactions can still be non-standard for the same reasons as v1.
+    t.vout[0].nValue = 53; // dust
+    EXPECT_TRUE(!IsStandardTx(t, reason, chainparams));
+
+    // v3 is not standard.
+    t.nVersion = 3;
+    t.vout[0].nValue = 90*CENT;
+    EXPECT_TRUE(!IsStandardTx(t, reason, chainparams));
+}

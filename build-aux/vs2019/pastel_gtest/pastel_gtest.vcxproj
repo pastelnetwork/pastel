@@ -174,12 +174,14 @@
     <ClCompile Include="..\..\..\src\gtest\test_str_utils.cpp" />
     <ClCompile Include="..\..\..\src\gtest\test_tautology.cpp" />
     <ClCompile Include="..\..\..\src\gtest\test_timedata.cpp" />
+    <ClCompile Include="..\..\..\src\gtest\test_transaction.cpp" />
     <ClCompile Include="..\..\..\src\gtest\test_transaction_builder.cpp" />
     <ClCompile Include="..\..\..\src\gtest\test_trimmean.cpp" />
     <ClCompile Include="..\..\..\src\gtest\test_txid.cpp" />
     <ClCompile Include="..\..\..\src\gtest\test_uint256.cpp" />
     <ClCompile Include="..\..\..\src\gtest\test_univalue.cpp" />
     <ClCompile Include="..\..\..\src\gtest\test_upgrades.cpp" />
+    <ClCompile Include="..\..\..\src\gtest\test_util.cpp" />
     <ClCompile Include="..\..\..\src\gtest\test_utils.cpp" />
     <ClCompile Include="..\..\..\src\gtest\test_validation.cpp" />
     <ClCompile Include="..\..\..\src\gtest\test_zip32.cpp" />
