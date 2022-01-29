@@ -5,13 +5,13 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 
-#include "amount.h"
-#include "random.h"
-#include "script/script.h"
-#include "serialize.h"
-#include "streams.h"
-#include "uint256.h"
-#include "consensus/consensus.h"
+#include <amount.h>
+#include <random.h>
+#include <script/script.h>
+#include <serialize.h>
+#include <streams.h>
+#include <uint256.h>
+#include <consensus/consensus.h>
 
 #include <array>
 #include <variant>
