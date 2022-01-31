@@ -3,16 +3,16 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 
-#include "core_io.h"
-#include "primitives/block.h"
-#include "primitives/transaction.h"
-#include "script/script.h"
-#include "serialize.h"
-#include "streams.h"
+#include <core_io.h>
+#include <primitives/block.h>
+#include <primitives/transaction.h>
+#include <script/script.h>
+#include <serialize.h>
+#include <streams.h>
 #include <univalue.h>
-#include "util.h"
-#include "utilstrencodings.h"
-#include "version.h"
+#include <util.h>
+#include <utilstrencodings.h>
+#include <version.h>
 
 #include <boost/algorithm/string/classification.hpp>
 #include <boost/algorithm/string/predicate.hpp>
@@ -21,7 +21,7 @@
 
 using namespace std;
 
-CScript ParseScript(const std::string& s)
+CScript ParseScript(const string& s)
 {
     CScript result;
 
@@ -35,14 +35,15 @@ CScript ParseScript(const std::string& s)
             if (op < OP_NOP && op != OP_RESERVED)
                 continue;
 
-            const char* name = GetOpName((opcodetype)op);
-            if (strcmp(name, "OP_UNKNOWN") == 0)
+            string strName = GetOpName(static_cast<opcodetype>(op));
+            if (strName == "OP_UNKNOWN")
                 continue;
-            string strName(name);
-            mapOpNames[strName] = (opcodetype)op;
+            mapOpNames[strName] = static_cast<opcodetype>(op);
             // Convenience: OP_ADD and just ADD are both recognized:
-            boost::algorithm::replace_first(strName, "OP_", "");
-            mapOpNames[strName] = (opcodetype)op;
+            if (strName.compare(0, 3, "OP_") == 0)
+            {
+                mapOpNames[strName.substr(3)] = static_cast<opcodetype>(op);
+            }
         }
     }
 
@@ -89,7 +90,7 @@ CScript ParseScript(const std::string& s)
     return result;
 }
 
-bool DecodeHexTx(CTransaction& tx, const std::string& strHexTx)
+bool DecodeHexTx(CTransaction& tx, const string& strHexTx)
 {
     if (!IsHex(strHexTx))
         return false;
@@ -99,14 +100,14 @@ bool DecodeHexTx(CTransaction& tx, const std::string& strHexTx)
     try {
         ssData >> tx;
     }
-    catch (const std::exception&) {
+    catch (const exception&) {
         return false;
     }
 
     return true;
 }
 
-bool DecodeHexBlk(CBlock& block, const std::string& strHexBlk)
+bool DecodeHexBlk(CBlock& block, const string& strHexBlk)
 {
     if (!IsHex(strHexBlk))
         return false;
@@ -116,7 +117,7 @@ bool DecodeHexBlk(CBlock& block, const std::string& strHexBlk)
     try {
         ssBlock >> block;
     }
-    catch (const std::exception&) {
+    catch (const exception&) {
         return false;
     }
 
@@ -131,7 +132,7 @@ uint256 ParseHashUV(const UniValue& v, const string& strName)
     return ParseHashStr(strHex, strName);  // Note: ParseHashStr("") throws a runtime_error
 }
 
-uint256 ParseHashStr(const std::string& strHex, const std::string& strName)
+uint256 ParseHashStr(const string& strHex, const string& strName)
 {
     if (!IsHex(strHex)) // Note: IsHex("") is false
         throw runtime_error(strName+" must be hexadecimal string (not '"+strHex+"')");

@@ -3,7 +3,7 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#include "chain.h"
+#include <chain.h>
 
 using namespace std;
 
@@ -38,7 +38,7 @@ CBlockLocator CChain::GetLocator(const CBlockIndex *pindex) const {
         if (pindex->nHeight == 0)
             break;
         // Exponentially larger steps back, plus the genesis block.
-        int nHeight = std::max(pindex->nHeight - nStep, 0);
+        int nHeight = max(pindex->nHeight - nStep, 0);
         if (Contains(pindex)) {
             // Use O(1) CChain index if possible.
             pindex = (*this)[nHeight];
@@ -75,12 +75,12 @@ int static inline GetSkipHeight(int height) {
     return (height & 1) ? InvertLowestOne(InvertLowestOne(height - 1)) + 1 : InvertLowestOne(height);
 }
 
-CBlockIndex* CBlockIndex::GetAncestor(int height)
+const CBlockIndex* CBlockIndex::GetAncestor(int height) const
 {
     if (height > nHeight || height < 0)
         return nullptr;
 
-    CBlockIndex* pindexWalk = this;
+    const CBlockIndex* pindexWalk = this;
     int heightWalk = nHeight;
     while (heightWalk > height) {
         int heightSkip = GetSkipHeight(heightWalk);
@@ -101,9 +101,9 @@ CBlockIndex* CBlockIndex::GetAncestor(int height)
     return pindexWalk;
 }
 
-const CBlockIndex* CBlockIndex::GetAncestor(int height) const
+CBlockIndex* CBlockIndex::GetAncestor(int height)
 {
-    return const_cast<CBlockIndex*>(this)->GetAncestor(height);
+    return const_cast<CBlockIndex*>(static_cast<const CBlockIndex*>(this)->GetAncestor(height));
 }
 
 void CBlockIndex::BuildSkip()

@@ -4,8 +4,8 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#include "crypto/common.h"
-#include "prevector.h"
+#include <crypto/common.h>
+#include <prevector.h>
 
 #include <assert.h>
 #include <climits>
@@ -14,8 +14,8 @@
 #include <stdint.h>
 #include <string.h>
 
-#include "uint256.h"
-#include "vector_types.h"
+#include <uint256.h>
+#include <vector_types.h>
 
 #ifdef _MSC_VER
 #pragma warning(push)
@@ -183,7 +183,7 @@ enum opcodetype
     OP_INVALIDOPCODE = 0xff,
 };
 
-const char* GetOpName(opcodetype opcode);
+std::string GetOpName(opcodetype opcode);
 
 class scriptnum_error : public std::runtime_error
 {

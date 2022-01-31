@@ -20,10 +20,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\..\src\test\scheduler_tests.cpp" />
-    <ClCompile Include="..\..\..\src\test\sigopcount_tests.cpp" />
-    <ClCompile Include="..\..\..\src\test\skiplist_tests.cpp" />
     <ClCompile Include="..\..\..\src\test\test_bitcoin.cpp" />
-    <ClCompile Include="..\..\..\src\test\torcontrol_tests.cpp" />
     <ClCompile Include="..\..\..\src\test\transaction_tests.cpp" />
     <ClCompile Include="..\..\..\src\test\util_tests.cpp" />
     <ClCompile Include="..\..\..\src\wallet\test\wallet_tests.cpp" />

@@ -3,12 +3,13 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#include "uint256.h"
-
-#include "utilstrencodings.h"
+#include <uint256.h>
+#include <utilstrencodings.h>
 
 #include <stdio.h>
 #include <string.h>
+
+using namespace std;
 
 template <unsigned int BITS>
 base_blob<BITS>::base_blob(const v_uint8& vch)
@@ -18,12 +19,12 @@ base_blob<BITS>::base_blob(const v_uint8& vch)
 }
 
 template <unsigned int BITS>
-std::string base_blob<BITS>::GetHex() const
+string base_blob<BITS>::GetHex() const
 {
     char psz[sizeof(data) * 2 + 1];
     for (unsigned int i = 0; i < sizeof(data); i++)
         sprintf(psz + i * 2, "%02x", data[sizeof(data) - i - 1]);
-    return std::string(psz, psz + sizeof(data) * 2);
+    return string(psz, psz + sizeof(data) * 2);
 }
 
 template <unsigned int BITS>
@@ -56,30 +57,30 @@ void base_blob<BITS>::SetHex(const char* psz)
 }
 
 template <unsigned int BITS>
-void base_blob<BITS>::SetHex(const std::string& str)
+void base_blob<BITS>::SetHex(const string& str)
 {
     SetHex(str.c_str());
 }
 
 template <unsigned int BITS>
-std::string base_blob<BITS>::ToString() const
+string base_blob<BITS>::ToString() const
 {
     return (GetHex());
 }
 
 // Explicit instantiations for base_blob<160>
 template base_blob<160>::base_blob(const v_uint8&);
-template std::string base_blob<160>::GetHex() const;
-template std::string base_blob<160>::ToString() const;
+template string base_blob<160>::GetHex() const;
+template string base_blob<160>::ToString() const;
 template void base_blob<160>::SetHex(const char*);
-template void base_blob<160>::SetHex(const std::string&);
+template void base_blob<160>::SetHex(const string&);
 
 // Explicit instantiations for base_blob<256>
 template base_blob<256>::base_blob(const v_uint8&);
-template std::string base_blob<256>::GetHex() const;
-template std::string base_blob<256>::ToString() const;
+template string base_blob<256>::GetHex() const;
+template string base_blob<256>::ToString() const;
 template void base_blob<256>::SetHex(const char*);
-template void base_blob<256>::SetHex(const std::string&);
+template void base_blob<256>::SetHex(const string&);
 
 static void inline HashMix(uint32_t& a, uint32_t& b, uint32_t& c)
 {

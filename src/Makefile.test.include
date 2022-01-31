@@ -42,11 +42,8 @@ GENERATED_TEST_FILES = $(JSON_TEST_FILES:.json=.json.h)
 BITCOIN_TESTS =\
   test/bignum.h \
   test/scheduler_tests.cpp \
-  test/sigopcount_tests.cpp \
-  test/skiplist_tests.cpp \
   test/test_bitcoin.cpp \
   test/test_bitcoin.h \
-  test/torcontrol_tests.cpp \
   test/transaction_tests.cpp \
   test/util_tests.cpp
 
