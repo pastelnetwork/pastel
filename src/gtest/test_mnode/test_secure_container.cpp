@@ -9,7 +9,7 @@
 #include <fs.h>
 #include <pastelid/secure_container.h>
 #include <utilstrencodings.h>
-#include <test_utils.h>
+#include <pastel_gtest_utils.h>
 
 using json = nlohmann::json;
 using namespace std;

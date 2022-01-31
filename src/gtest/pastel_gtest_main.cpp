@@ -17,7 +17,7 @@
 #include <libsnark/zk_proof_systems/ppzksnark/r1cs_ppzksnark/r1cs_ppzksnark.hpp>
 #include "librustzcash.h"
 #include "pastel_gtest_main.h"
-#include <test_utils.h>
+#include <pastel_gtest_utils.h>
 #include <rpc/server.h>
 #include <rpc/register.h>
 

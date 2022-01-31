@@ -10,7 +10,7 @@
 #include <fs.h>
 #include <util.h>
 #include <chainparams.h>
-#include <test_utils.h>
+#include <pastel_gtest_utils.h>
 #include <pastel_gtest_main.h>
 
 using namespace std;

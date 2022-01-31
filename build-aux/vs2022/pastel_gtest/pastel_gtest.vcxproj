@@ -188,7 +188,7 @@
     <ClCompile Include="..\..\..\src\gtest\test_univalue.cpp" />
     <ClCompile Include="..\..\..\src\gtest\test_upgrades.cpp" />
     <ClCompile Include="..\..\..\src\gtest\test_util.cpp" />
-    <ClCompile Include="..\..\..\src\gtest\test_utils.cpp" />
+    <ClCompile Include="..\..\..\src\gtest\pastel_gtest_utils.cpp" />
     <ClCompile Include="..\..\..\src\gtest\test_validation.cpp" />
     <ClCompile Include="..\..\..\src\gtest\test_zip32.cpp" />
     <ClCompile Include="..\..\..\src\gtest\test_enum_util.cpp" />
@@ -209,7 +209,7 @@
     <ClInclude Include="..\..\..\src\gtest\test_mnode\mock_ticket.h" />
     <ClInclude Include="..\..\..\src\gtest\pastel_gtest_main.h" />
     <ClInclude Include="..\..\..\src\gtest\test_mempool_entryhelper.h" />
-    <ClInclude Include="..\..\..\src\gtest\test_utils.h" />
+    <ClInclude Include="..\..\..\src\gtest\pastel_gtest_utils.h" />
     <ClInclude Include="..\..\vs\port\uint128.h" />
   </ItemGroup>
   <ItemGroup>

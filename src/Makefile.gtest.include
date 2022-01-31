@@ -33,8 +33,8 @@ GENERATED_GTEST_FILES = $(JSON_GTEST_FILES:.json=.json.h) $(RAW_GTEST_FILES:.raw
 pastel_gtest_SOURCES = \
 	gtest/pastel_gtest_main.cpp \
 	gtest/pastel_gtest_main.h \
-	gtest/test_utils.cpp \
-	gtest/test_utils.h \
+	gtest/pastel_gtest_utils.cpp \
+	gtest/pastel_gtest_utils.h \
 	gtest/test_checktransaction.cpp \
 	gtest/json_test_vectors.cpp \
 	gtest/json_test_vectors.h
