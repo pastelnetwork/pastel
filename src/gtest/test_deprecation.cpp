@@ -12,22 +12,23 @@
 #include <boost/bind/bind.hpp>
 #include <fstream>
 
+using namespace std;
 using ::testing::StrictMock;
 using namespace boost::placeholders;
 
-static const std::string CLIENT_VERSION_STR = FormatVersion(CLIENT_VERSION);
-extern std::atomic<bool> fRequestShutdown;
+static const string CLIENT_VERSION_STR = FormatVersion(CLIENT_VERSION);
+extern atomic<bool> fRequestShutdown;
 
 class MockUIInterface {
 public:
-    MOCK_METHOD3(ThreadSafeMessageBox, bool(const std::string& message,
-                                      const std::string& caption,
+    MOCK_METHOD3(ThreadSafeMessageBox, bool(const string& message,
+                                      const string& caption,
                                       unsigned int style));
 };
 
 static bool ThreadSafeMessageBox(MockUIInterface *mock,
-                                 const std::string& message,
-                                 const std::string& caption,
+                                 const string& message,
+                                 const string& caption,
                                  unsigned int style)
 {
     return mock->ThreadSafeMessageBox(message, caption, style);
@@ -49,12 +50,12 @@ protected:
 
     StrictMock<MockUIInterface> mock_;
 
-    static std::vector<std::string> read_lines(fs::path filepath) {
-        std::vector<std::string> result;
+    static vector<string> read_lines(fs::path filepath) {
+        vector<string> result;
 
-        std::ifstream f(filepath.string().c_str());
-        std::string line;
-        while (std::getline(f,line)) {
+        ifstream f(filepath.string().c_str());
+        string line;
+        while (getline(f,line)) {
             result.push_back(line);
         }
 
@@ -126,12 +127,12 @@ TEST_F(DeprecationTest, AlertNotify) {
     fs::path temp = GetTempPath() /
         fs::unique_path("alertnotify-%%%%.txt");
 
-    mapArgs["-alertnotify"] = std::string("echo %s >> ") + temp.string();
+    mapArgs["-alertnotify"] = string("echo %s >> ") + temp.string();
 
     EXPECT_CALL(mock_, ThreadSafeMessageBox(::testing::_, "", CClientUIInterface::MSG_WARNING));
     EnforceNodeDeprecation(DEPRECATION_HEIGHT - DEPRECATION_WARN_LIMIT, false, false);
 
-    std::vector<std::string> r = read_lines(temp);
+    vector<string> r = read_lines(temp);
     EXPECT_EQ(r.size(), 1u);
 
     // -alertnotify restricts the message to safe characters.

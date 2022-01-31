@@ -46,11 +46,6 @@ BITCOIN_TESTS =\
   test/test_bitcoin.h \
   test/torcontrol_tests.cpp
 
-if ENABLE_WALLET
-BITCOIN_TESTS += \
-  wallet/test/wallet_tests.cpp
-endif
-
 test_test_bitcoin_SOURCES = $(BITCOIN_TESTS) $(JSON_TEST_FILES)
 test_test_bitcoin_CPPFLAGS = $(AM_CPPFLAGS) $(BITCOIN_INCLUDES) -I$(builddir)/test/ $(TESTDEFS) $(EVENT_CFLAGS)
 test_test_bitcoin_LDADD =
