@@ -594,3 +594,4 @@ TEST(test_transaction, test_IsStandardV2)
     t.vout[0].nValue = 90*CENT;
     EXPECT_TRUE(!IsStandardTx(t, reason, chainparams));
 }
+
