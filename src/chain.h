@@ -5,12 +5,12 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#include "arith_uint256.h"
-#include "primitives/block.h"
-#include "pow.h"
-#include "tinyformat.h"
-#include "uint256.h"
-#include "vector_types.h"
+#include <arith_uint256.h>
+#include <primitives/block.h>
+#include <pow.h>
+#include <tinyformat.h>
+#include <uint256.h>
+#include <vector_types.h>
 
 #include <vector>
 

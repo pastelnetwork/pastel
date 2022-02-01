@@ -3,15 +3,14 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php .
 
-#include "script/standard.h"
-#include "script/script.h"
+#include <script/standard.h>
+#include <script/script.h>
 #include <base58.h>
-#include "pubkey.h"
-#include "util.h"
-#include "utilstrencodings.h"
-using namespace std;
+#include <pubkey.h>
+#include <util.h>
+#include <utilstrencodings.h>
 
-typedef vector<unsigned char> valtype;
+using namespace std;
 
 unsigned nMaxDatacarrierBytes = MAX_OP_RETURN_RELAY;
 
@@ -28,7 +27,7 @@ const char* GetTxnOutputType(txnouttype t)
     case TX_MULTISIG: return "multisig";
     case TX_NULL_DATA: return "nulldata";
     }
-    return NULL;
+    return nullptr;
 }
 
 /**
@@ -133,7 +132,7 @@ bool Solver(const CScript& scriptPubKey, txnouttype& typeRet, vector<v_uint8>& v
                     (opcode1 >= OP_1 && opcode1 <= OP_16))
                 {
                     char n = (char)CScript::DecodeOP_N(opcode1);
-                    vSolutionsRet.push_back(valtype(1, n));
+                    vSolutionsRet.push_back(v_uint8(1, n));
                 }
                 else
                     break;
@@ -157,7 +156,7 @@ bool Solver(const CScript& scriptPubKey, txnouttype& typeRet, vector<v_uint8>& v
     return false;
 }
 
-int ScriptSigArgsExpected(txnouttype t, const std::vector<std::vector<unsigned char> >& vSolutions)
+int ScriptSigArgsExpected(txnouttype t, const vector<v_uint8 >& vSolutions)
 {
     switch (t)
     {
@@ -180,7 +179,7 @@ int ScriptSigArgsExpected(txnouttype t, const std::vector<std::vector<unsigned c
 
 bool IsStandard(const CScript& scriptPubKey, txnouttype& whichType)
 {
-    vector<valtype> vSolutions;
+    vector<v_uint8> vSolutions;
     if (!Solver(scriptPubKey, whichType, vSolutions))
         return false;
 
@@ -200,7 +199,7 @@ bool IsStandard(const CScript& scriptPubKey, txnouttype& whichType)
 
 bool ExtractDestination(const CScript& scriptPubKey, CTxDestination& addressRet)
 {
-    vector<valtype> vSolutions;
+    vector<v_uint8> vSolutions;
     txnouttype whichType;
     if (!Solver(scriptPubKey, whichType, vSolutions))
         return false;
@@ -232,7 +231,7 @@ bool ExtractDestinations(const CScript& scriptPubKey, txnouttype& typeRet, vecto
 {
     addressRet.clear();
     typeRet = TX_NONSTANDARD;
-    vector<valtype> vSolutions;
+    vector<v_uint8> vSolutions;
     if (!Solver(scriptPubKey, typeRet, vSolutions))
         return false;
     if (typeRet == TX_NULL_DATA){
@@ -300,11 +299,11 @@ CScript GetScriptForDestination(const CTxDestination& dest)
 {
     CScript script;
 
-    std::visit(CScriptVisitor(&script), dest);
+    visit(CScriptVisitor(&script), dest);
     return script;
 }
 
-CScript GetScriptForMultisig(int nRequired, const std::vector<CPubKey>& keys)
+CScript GetScriptForMultisig(int nRequired, const vector<CPubKey>& keys)
 {
     CScript script;
 
@@ -317,17 +316,17 @@ CScript GetScriptForMultisig(int nRequired, const std::vector<CPubKey>& keys)
 
 bool IsValidDestination(const CTxDestination& dest) noexcept
 {
-    return !std::holds_alternative<CNoDestination>(dest);
+    return !holds_alternative<CNoDestination>(dest);
 }
 
 bool IsKeyDestination(const CTxDestination& dest) noexcept
 {
-    return std::holds_alternative<CKeyID>(dest);
+    return holds_alternative<CKeyID>(dest);
 }
 
 bool IsScriptDestination(const CTxDestination& dest) noexcept
 {
-    return std::holds_alternative<CScriptID>(dest);
+    return holds_alternative<CScriptID>(dest);
 }
 
 // insightexplorer

@@ -40,11 +40,8 @@ GENERATED_TEST_FILES = $(JSON_TEST_FILES:.json=.json.h)
 BITCOIN_TESTS =\
   test/bignum.h \
   test/scheduler_tests.cpp \
-  test/sigopcount_tests.cpp \
-  test/skiplist_tests.cpp \
   test/test_bitcoin.cpp \
-  test/test_bitcoin.h \
-  test/torcontrol_tests.cpp
+  test/test_bitcoin.h
 
 test_test_bitcoin_SOURCES = $(BITCOIN_TESTS) $(JSON_TEST_FILES)
 test_test_bitcoin_CPPFLAGS = $(AM_CPPFLAGS) $(BITCOIN_INCLUDES) -I$(builddir)/test/ $(TESTDEFS) $(EVENT_CFLAGS)

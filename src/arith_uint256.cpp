@@ -3,17 +3,18 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#include "arith_uint256.h"
-
-#include "uint256.h"
-#include "utilstrencodings.h"
-#include "crypto/common.h"
+#include <arith_uint256.h>
+#include <uint256.h>
+#include <utilstrencodings.h>
+#include <crypto/common.h>
 
 #include <stdio.h>
 #include <string.h>
 
+using namespace std;
+
 template <unsigned int BITS>
-base_uint<BITS>::base_uint(const std::string& str)
+base_uint<BITS>::base_uint(const string& str)
 {
     SetHex(str);
 }
@@ -145,7 +146,7 @@ double base_uint<BITS>::getdouble() const
 }
 
 template <unsigned int BITS>
-std::string base_uint<BITS>::GetHex() const
+string base_uint<BITS>::GetHex() const
 {
     return ArithToUint256(*this).GetHex();
 }
@@ -157,13 +158,13 @@ void base_uint<BITS>::SetHex(const char* psz)
 }
 
 template <unsigned int BITS>
-void base_uint<BITS>::SetHex(const std::string& str)
+void base_uint<BITS>::SetHex(const string& str)
 {
     SetHex(str.c_str());
 }
 
 template <unsigned int BITS>
-std::string base_uint<BITS>::ToString() const
+string base_uint<BITS>::ToString() const
 {
     return (GetHex());
 }
@@ -184,7 +185,7 @@ unsigned int base_uint<BITS>::bits() const
 }
 
 // Explicit instantiations for base_uint<256>
-template base_uint<256>::base_uint(const std::string&);
+template base_uint<256>::base_uint(const string&);
 template base_uint<256>& base_uint<256>::operator<<=(unsigned int);
 template base_uint<256>& base_uint<256>::operator>>=(unsigned int);
 template base_uint<256>& base_uint<256>::operator*=(uint32_t b32);
@@ -193,10 +194,10 @@ template base_uint<256>& base_uint<256>::operator/=(const base_uint<256>& b);
 template int base_uint<256>::CompareTo(const base_uint<256>&) const;
 template bool base_uint<256>::EqualTo(uint64_t) const;
 template double base_uint<256>::getdouble() const;
-template std::string base_uint<256>::GetHex() const;
-template std::string base_uint<256>::ToString() const;
+template string base_uint<256>::GetHex() const;
+template string base_uint<256>::ToString() const;
 template void base_uint<256>::SetHex(const char*);
-template void base_uint<256>::SetHex(const std::string&);
+template void base_uint<256>::SetHex(const string&);
 template unsigned int base_uint<256>::bits() const;
 
 // This implementation directly uses shifts instead of going
