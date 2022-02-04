@@ -18,8 +18,6 @@ EXTRA_DIST += \
 	test/data/txcreatesign.hex
 
 JSON_TEST_FILES = \
-  test/data/tx_invalid.json \
-  test/data/tx_valid.json \
   test/data/sighash.json \
   test/data/merkle_roots.json \
   test/data/merkle_roots_empty.json \
@@ -43,14 +41,7 @@ BITCOIN_TESTS =\
   test/bignum.h \
   test/scheduler_tests.cpp \
   test/test_bitcoin.cpp \
-  test/test_bitcoin.h \
-  test/transaction_tests.cpp \
-  test/util_tests.cpp
-
-if ENABLE_WALLET
-BITCOIN_TESTS += \
-  wallet/test/wallet_tests.cpp
-endif
+  test/test_bitcoin.h
 
 test_test_bitcoin_SOURCES = $(BITCOIN_TESTS) $(JSON_TEST_FILES)
 test_test_bitcoin_CPPFLAGS = $(AM_CPPFLAGS) $(BITCOIN_INCLUDES) -I$(builddir)/test/ $(TESTDEFS) $(EVENT_CFLAGS)
