@@ -215,13 +215,17 @@ UniValue help(const UniValue& params, bool fHelp)
 {
     if (fHelp || params.size() > 1)
         throw runtime_error(
-            "help ( \"command\" )\n"
-            "\nList all commands, or get help for a specified command.\n"
-            "\nArguments:\n"
-            "1. \"command\"     (string, optional) The command to get help on\n"
-            "\nResult:\n"
-            "\"text\"     (string) The help text\n"
-        );
+R"(help ( "command" )
+
+List all commands, or get help for a specified command.
+
+Arguments:
+1. "command"     (string, optional) The command to get help on
+
+Result:
+"text"     (string) The help text
+)"
+);
 
     string strCommand;
     if (params.size() > 0)
@@ -236,8 +240,11 @@ UniValue stop(const UniValue& params, bool fHelp)
     // Accept the deprecated and ignored 'detach' boolean argument
     if (fHelp || params.size() > 1)
         throw runtime_error(
-            "stop\n"
-            "\nStop Pastel server.");
+R"(stop
+
+Stop Pastel server.
+)"
+);
     // Event loop will exit after current HTTP requests have been handled, so
     // this reply will get back to the client.
     StartShutdown();

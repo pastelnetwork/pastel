@@ -62,7 +62,13 @@ UniValue ingest(const UniValue& params, bool fHelp)
 
 	if (fHelp || !INGEST.IsCmdSupported())
         throw runtime_error(
-            R"("ingest" ingest|ani2psl|ani2psl_secret ...)");
+R"("ingest" ingest|ani2psl|ani2psl_secret ...
+
+Examples:
+)"
++ HelpExampleCli("ingest", "")
++ HelpExampleRpc("ingest", "")
+);
 
     KeyIO keyIO(Params());
 #ifdef INGEST_RPC_CMD

@@ -28,7 +28,12 @@ Available commands:
   getnftticketfee            - Get Network median NFT ticket fee.
   getlocalfee                - Get local masternode storage fee.
   getactionfees <data_size>  - Get action fee by data size (in MB)
-)");
+
+Examples:
+)"
++ HelpExampleCli("storagefee", "")
++ HelpExampleRpc("storagefee", "")
+);
 
     UniValue retObj;
     switch (STORAGE_FEE.cmd())

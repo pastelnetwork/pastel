@@ -3,27 +3,27 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 
-#include "clientversion.h"
-#include "init.h"
-#include "key_io.h"
-#include "main.h"
-#include "net.h"
-#include "netbase.h"
-#include "rpc/server.h"
-#include "timedata.h"
-#include "txmempool.h"
-#include "util.h"
-#ifdef ENABLE_WALLET
-#include "wallet/wallet.h"
-#include "wallet/walletdb.h"
-#endif
-
 #include <stdint.h>
 #include <variant>
 
 #include <univalue.h>
 
-#include "zcash/Address.hpp"
+#include <clientversion.h>
+#include <init.h>
+#include <key_io.h>
+#include <main.h>
+#include <net.h>
+#include <netbase.h>
+#include <rpc/server.h>
+#include <timedata.h>
+#include <txmempool.h>
+#include <util.h>
+#ifdef ENABLE_WALLET
+#include <wallet/wallet.h>
+#include <wallet/walletdb.h>
+#endif
+
+#include <zcash/Address.hpp>
 
 using namespace std;
 
@@ -44,31 +44,35 @@ UniValue getinfo(const UniValue& params, bool fHelp)
 {
     if (fHelp || params.size() != 0)
         throw runtime_error(
-            "getinfo\n"
-            "Returns an object containing various state info.\n"
-            "\nResult:\n"
-            "{\n"
-            "  \"version\": xxxxx,           (numeric) the server version\n"
-            "  \"protocolversion\": xxxxx,   (numeric) the protocol version\n"
-            "  \"walletversion\": xxxxx,     (numeric) the wallet version\n"
-            "  \"balance\": xxxxxxx,         (numeric) the total Pastel balance of the wallet\n"
-            "  \"blocks\": xxxxxx,           (numeric) the current number of blocks processed in the server\n"
-            "  \"timeoffset\": xxxxx,        (numeric) the time offset\n"
-            "  \"connections\": xxxxx,       (numeric) the number of connections\n"
-            "  \"proxy\": \"host:port\",     (string, optional) the proxy used by the server\n"
-            "  \"difficulty\": xxxxxx,       (numeric) the current difficulty\n"
-            "  \"testnet\": true|false,      (boolean) if the server is using testnet or not\n"
-            "  \"keypoololdest\": xxxxxx,    (numeric) the timestamp (seconds since GMT epoch) of the oldest pre-generated key in the key pool\n"
-            "  \"keypoolsize\": xxxx,        (numeric) how many new keys are pre-generated\n"
-            "  \"unlocked_until\": ttt,      (numeric) the timestamp in seconds since epoch (midnight Jan 1 1970 GMT) that the wallet is unlocked for transfers, or 0 if the wallet is locked\n"
-            "  \"paytxfee\": x.xxxx,         (numeric) the transaction fee set in " + CURRENCY_UNIT + "/kB\n"
-            "  \"relayfee\": x.xxxx,         (numeric) minimum relay fee for non-free transactions in " + CURRENCY_UNIT + "/kB\n"
-            "  \"errors\": \"...\"           (string) any error messages\n"
-            "}\n"
-            "\nExamples:\n"
-            + HelpExampleCli("getinfo", "")
-            + HelpExampleRpc("getinfo", "")
-        );
+R"(getinfo
+
+Returns an object containing various state info.
+
+Result:
+{
+  "version": xxxxx,           (numeric) the server version
+  "protocolversion": xxxxx,   (numeric) the protocol version
+  "walletversion": xxxxx,     (numeric) the wallet version
+  "balance": xxxxxxx,         (numeric) the total Pastel balance of the wallet
+  "blocks": xxxxxx,           (numeric) the current number of blocks processed in the server
+  "timeoffset": xxxxx,        (numeric) the time offset
+  "connections": xxxxx,       (numeric) the number of connections
+  "proxy": "host:port",       (string, optional) the proxy used by the server
+  "difficulty": xxxxxx,       (numeric) the current difficulty
+  "testnet": true|false,      (boolean) if the server is using testnet or not
+  "keypoololdest": xxxxxx,    (numeric) the timestamp (seconds since GMT epoch) of the oldest pre-generated key in the key pool
+  "keypoolsize": xxxx,        (numeric) how many new keys are pre-generated
+  "unlocked_until": ttt,      (numeric) the timestamp in seconds since epoch (midnight Jan 1 1970 GMT) that the wallet is unlocked for transfers, or 0 if the wallet is locked
+  "paytxfee": x.xxxx,         (numeric) the transaction fee set in )" + CURRENCY_UNIT + R"(/kB
+  "relayfee": x.xxxx,         (numeric) minimum relay fee for non-free transactions in )" + CURRENCY_UNIT + R"(/kB
+  "errors": "..."             (string) any error messages
+}
+
+Examples:
+)"
++ HelpExampleCli("getinfo", "")
++ HelpExampleRpc("getinfo", "")
+);
 
 #ifdef ENABLE_WALLET
     LOCK2(cs_main, pwalletMain ? &pwalletMain->cs_wallet : NULL);
@@ -154,25 +158,30 @@ UniValue validateaddress(const UniValue& params, bool fHelp)
 {
     if (fHelp || params.size() != 1)
         throw runtime_error(
-            "validateaddress \"zcashaddress\"\n"
-            "\nReturn information about the given Pastel address.\n"
-            "\nArguments:\n"
-            "1. \"zcashaddress\"     (string, required) The Pastel address to validate\n"
-            "\nResult:\n"
-            "{\n"
-            "  \"isvalid\" : true|false,         (boolean) If the address is valid or not. If not, this is the only property returned.\n"
-            "  \"address\" : \"zcashaddress\",   (string) The Pastel address validated\n"
-            "  \"scriptPubKey\" : \"hex\",       (string) The hex encoded scriptPubKey generated by the address\n"
-            "  \"ismine\" : true|false,          (boolean) If the address is yours or not\n"
-            "  \"isscript\" : true|false,        (boolean) If the key is a script\n"
-            "  \"pubkey\" : \"publickeyhex\",    (string) The hex value of the raw public key\n"
-            "  \"iscompressed\" : true|false,    (boolean) If the address is compressed\n"
-            "  \"account\" : \"account\"         (string) DEPRECATED. The account associated with the address, \"\" is the default account\n"
-            "}\n"
-            "\nExamples:\n"
-            + HelpExampleCli("validateaddress", "\"1PSSGeFHDnKNxiEyFrD1wcEaHr9hrQDDWc\"")
-            + HelpExampleRpc("validateaddress", "\"1PSSGeFHDnKNxiEyFrD1wcEaHr9hrQDDWc\"")
-        );
+R"(validateaddress "zcashaddress"
+
+Return information about the given Pastel address.
+
+Arguments:
+1. "zcashaddress"     (string, required) The Pastel address to validate
+
+Result:
+{
+  "isvalid" : true|false,       (boolean) If the address is valid or not. If not, this is the only property returned.
+  "address" : "zcashaddress",   (string) The Pastel address validated
+  "scriptPubKey" : "hex",       (string) The hex encoded scriptPubKey generated by the address
+  "ismine" : true|false,        (boolean) If the address is yours or not
+  "isscript" : true|false,      (boolean) If the key is a script
+  "pubkey" : "publickeyhex",    (string) The hex value of the raw public key
+  "iscompressed" : true|false,  (boolean) If the address is compressed
+  "account" : "account"         (string) DEPRECATED. The account associated with the address, "" is the default account
+}
+
+Examples:
+)"
++ HelpExampleCli("validateaddress", "\"1PSSGeFHDnKNxiEyFrD1wcEaHr9hrQDDWc\"")
++ HelpExampleRpc("validateaddress", "\"1PSSGeFHDnKNxiEyFrD1wcEaHr9hrQDDWc\"")
+);
 
 #ifdef ENABLE_WALLET
     LOCK2(cs_main, pwalletMain ? &pwalletMain->cs_wallet : NULL);
@@ -231,27 +240,31 @@ UniValue z_validateaddress(const UniValue& params, bool fHelp)
 {
     if (fHelp || params.size() != 1)
         throw runtime_error(
-            "z_validateaddress \"zaddr\"\n"
-            "\nReturn information about the given z address.\n"
-            "\nArguments:\n"
-            "1. \"zaddr\"     (string, required) The z address to validate\n"
-            "\nResult:\n"
-            "{\n"
-            "  \"isvalid\" : true|false,      (boolean) If the address is valid or not. If not, this is the only property returned.\n"
-            "  \"address\" : \"zaddr\",         (string) The z address validated\n"
-            "  \"type\" : \"xxxx\",             (string) \"sprout\" or \"sapling\"\n"
-            "  \"ismine\" : true|false,       (boolean) If the address is yours or not\n"
-            "  \"payingkey\" : \"hex\",         (string) [sprout] The hex value of the paying key, a_pk\n"
-            "  \"transmissionkey\" : \"hex\",   (string) [sprout] The hex value of the transmission key, pk_enc\n"
-            "  \"diversifier\" : \"hex\",       (string) [sapling] The hex value of the diversifier, d\n"
-            "  \"diversifiedtransmissionkey\" : \"hex\", (string) [sapling] The hex value of pk_d\n"
+R"(z_validateaddress "zaddr"
 
-            "}\n"
-            "\nExamples:\n"
-            + HelpExampleCli("z_validateaddress", "\"PzWcy67ygestjagHaFZxjWxmawMeShmQWNPE8FNJp23pQS2twecwps5223ajUtN7iihxR4MmLDFQ19heHkBx5AKaDooS6aQ\"")
-            + HelpExampleRpc("z_validateaddress", "\"PzWcy67ygestjagHaFZxjWxmawMeShmQWNPE8FNJp23pQS2twecwps5223ajUtN7iihxR4MmLDFQ19heHkBx5AKaDooS6aQ\"")
-        );
+Return information about the given z address.
 
+Arguments:
+1. "zaddr"     (string, required) The z address to validate
+
+Result:
+{
+  "isvalid" : true|false,       (boolean) If the address is valid or not. If not, this is the only property returned.
+  "address" : "zaddr",          (string) The z address validated
+  "type" : "xxxx",              (string) "sprout" or "sapling"
+  "ismine" : true|false,        (boolean) If the address is yours or not
+  "payingkey" : "hex",          (string) [sprout] The hex value of the paying key, a_pk
+  "transmissionkey" : "hex",    (string) [sprout] The hex value of the transmission key, pk_enc
+  "diversifier" : "hex",        (string) [sapling] The hex value of the diversifier, d
+  "diversifiedtransmissionkey" :"hex", (string) [sapling] The hex value of pk_d
+
+}
+
+Examples:
+)"
++ HelpExampleCli("z_validateaddress", "\"PzWcy67ygestjagHaFZxjWxmawMeShmQWNPE8FNJp23pQS2twecwps5223ajUtN7iihxR4MmLDFQ19heHkBx5AKaDooS6aQ\"")
++ HelpExampleRpc("z_validateaddress", "\"PzWcy67ygestjagHaFZxjWxmawMeShmQWNPE8FNJp23pQS2twecwps5223ajUtN7iihxR4MmLDFQ19heHkBx5AKaDooS6aQ\"")
+);
 
 #ifdef ENABLE_WALLET
     LOCK2(cs_main, pwalletMain->cs_wallet);
@@ -345,33 +358,33 @@ CScript _createmultisig_redeemScript(const UniValue& params)
 UniValue createmultisig(const UniValue& params, bool fHelp)
 {
     if (fHelp || params.size() < 2 || params.size() > 2)
-    {
-        string msg = "createmultisig nrequired [\"key\",...]\n"
-            "\nCreates a multi-signature address with n signature of m keys required.\n"
-            "It returns a json object with the address and redeemScript.\n"
+        throw runtime_error(
+R"(createmultisig nrequired ["key",...]
+    
+Creates a multi-signature address with n signature of m keys required.
+It returns a json object with the address and redeemScript.
 
-            "\nArguments:\n"
-            "1. nrequired      (numeric, required) The number of required signatures out of the n keys or addresses.\n"
-            "2. \"keys\"       (string, required) A json array of keys which are Pastel addresses or hex-encoded public keys\n"
-            "     [\n"
-            "       \"key\"    (string) Pastel address or hex-encoded public key\n"
-            "       ,...\n"
-            "     ]\n"
+Arguments:
+1. nrequired    (numeric, required) The number of required signatures out of the n keys or addresses.
+2. "keys"       (string, required) A json array of keys which are Pastel addresses or hex-encoded public keys
+     [
+       "key"    (string) Pastel address or hex-encoded public key
+       ,...
+     ]
 
-            "\nResult:\n"
-            "{\n"
-            "  \"address\":\"multisigaddress\",  (string) The value of the new multisig address.\n"
-            "  \"redeemScript\":\"script\"       (string) The string value of the hex-encoded redemption script.\n"
-            "}\n"
+Result:
+{
+  "address":"multisigaddress",  (string) The value of the new multisig address.
+  "redeemScript":"script"       (string) The string value of the hex-encoded redemption script.
+}
 
-            "\nExamples:\n"
-            "\nCreate a multisig address from 2 addresses\n"
-            + HelpExampleCli("createmultisig", "2 \"[\\\"Ptor9ydHJuGpNWFAX3ZTu3bXevEhCaDVrsY\\\",\\\"Ptor9ydHJuGpNWFAX3ZTu3bXevEhCaDVrsY\\\"]\"") +
-            "\nAs a json rpc call\n"
-            + HelpExampleRpc("createmultisig", "2, \"[\\\"Ptor9ydHJuGpNWFAX3ZTu3bXevEhCaDVrsY\\\",\\\"Ptor9ydHJuGpNWFAX3ZTu3bXevEhCaDVrsY\\\"]\"")
-        ;
-        throw runtime_error(msg);
-    }
+Examples:
+
+Create a multisig address from 2 addresses
+)" + HelpExampleCli("createmultisig", "2 \"[\\\"Ptor9ydHJuGpNWFAX3ZTu3bXevEhCaDVrsY\\\",\\\"Ptor9ydHJuGpNWFAX3ZTu3bXevEhCaDVrsY\\\"]\"") + R"(
+As a json rpc call
+)" + HelpExampleRpc("createmultisig", "2, \"[\\\"Ptor9ydHJuGpNWFAX3ZTu3bXevEhCaDVrsY\\\",\\\"Ptor9ydHJuGpNWFAX3ZTu3bXevEhCaDVrsY\\\"]\"")
+);
 
     // Construct using pay-to-script-hash:
     CScript inner = _createmultisig_redeemScript(params);
@@ -389,24 +402,28 @@ UniValue verifymessage(const UniValue& params, bool fHelp)
 {
     if (fHelp || params.size() != 3)
         throw runtime_error(
-            "verifymessage \"zcashaddress\" \"signature\" \"message\"\n"
-            "\nVerify a signed message\n"
-            "\nArguments:\n"
-            "1. \"zcashaddress\"    (string, required) The Pastel address to use for the signature.\n"
-            "2. \"signature\"       (string, required) The signature provided by the signer in base 64 encoding (see signmessage).\n"
-            "3. \"message\"         (string, required) The message that was signed.\n"
-            "\nResult:\n"
-            "true|false   (boolean) If the signature is verified or not.\n"
-            "\nExamples:\n"
-            "\nUnlock the wallet for 30 seconds\n"
-            + HelpExampleCli("walletpassphrase", "\"mypassphrase\" 30") +
-            "\nCreate the signature\n"
-            + HelpExampleCli("signmessage", "\"Ptor9ydHJuGpNWFAX3ZTu3bXevEhCaDVrsY\" \"my message\"") +
-            "\nVerify the signature\n"
-            + HelpExampleCli("verifymessage", "\"Ptor9ydHJuGpNWFAX3ZTu3bXevEhCaDVrsY\" \"signature\" \"my message\"") +
-            "\nAs json rpc\n"
-            + HelpExampleRpc("verifymessage", "\"Ptor9ydHJuGpNWFAX3ZTu3bXevEhCaDVrsY\", \"signature\", \"my message\"")
-        );
+R"(verifymessage "zcashaddress" "signature" "message"
+
+Verify a signed message
+
+Arguments:
+1. "zcashaddress"    (string, required) The Pastel address to use for the signature.
+2. "signature"       (string, required) The signature provided by the signer in base 64 encoding (see signmessage).
+3. "message"         (string, required) The message that was signed.
+
+Result:
+true|false   (boolean) If the signature is verified or not.
+
+Examples:
+Unlock the wallet for 30 seconds
+)" + HelpExampleCli("walletpassphrase", "\"mypassphrase\" 30") + R"(
+Create the signature
+)" + HelpExampleCli("signmessage", "\"Ptor9ydHJuGpNWFAX3ZTu3bXevEhCaDVrsY\" \"my message\"") + R"(
+Verify the signature
+)" + HelpExampleCli("verifymessage", "\"Ptor9ydHJuGpNWFAX3ZTu3bXevEhCaDVrsY\" \"signature\" \"my message\"") + R"(
+As json rpc
+)" + HelpExampleRpc("verifymessage", "\"Ptor9ydHJuGpNWFAX3ZTu3bXevEhCaDVrsY\", \"signature\", \"my message\"")
+);
 
     LOCK(cs_main);
 
@@ -446,12 +463,19 @@ UniValue setmocktime(const UniValue& params, bool fHelp)
 {
     if (fHelp || params.size() != 1)
         throw runtime_error(
-            "setmocktime timestamp\n"
-            "\nSet the local time to given timestamp (-regtest only)\n"
-            "\nArguments:\n"
-            "1. timestamp  (integer, required) Unix seconds-since-epoch timestamp\n"
-            "   Pass 0 to go back to using the system time."
-        );
+R"(setmocktime timestamp
+
+Set the local time to given timestamp (-regtest only)
+
+Arguments:
+1. timestamp  (integer, required) Unix seconds-since-epoch timestamp
+   Pass 0 to go back to using the system time.
+
+Examples:
+)"
++ HelpExampleCli("setmocktime", "")
++ HelpExampleRpc("setmocktime", "")
+);
 
     if (!Params().MineBlocksOnDemand())
         throw runtime_error("setmocktime for regression testing (-regtest mode) only");
@@ -492,23 +516,27 @@ UniValue getmemoryinfo(const UniValue& params, bool fHelp)
      */
     if (fHelp || params.size() != 0)
         throw runtime_error(
-            "getmemoryinfo\n"
-            "Returns an object containing information about memory usage.\n"
-            "\nResult:\n"
-            "{\n"
-            "  \"locked\": {               (json object) Information about locked memory manager\n"
-            "    \"used\": xxxxx,          (numeric) Number of bytes used\n"
-            "    \"free\": xxxxx,          (numeric) Number of bytes available in current arenas\n"
-            "    \"total\": xxxxxxx,       (numeric) Total number of bytes managed\n"
-            "    \"locked\": xxxxxx,       (numeric) Amount of bytes that succeeded locking. If this number is smaller than total, locking pages failed at some point and key data could be swapped to disk.\n"
-            "    \"chunks_used\": xxxxx,   (numeric) Number allocated chunks\n"
-            "    \"chunks_free\": xxxxx,   (numeric) Number unused chunks\n"
-            "  }\n"
-            "}\n"
-            "\nExamples:\n"
-            + HelpExampleCli("getmemoryinfo", "")
-            + HelpExampleRpc("getmemoryinfo", "")
-        );
+R"(getmemoryinfo
+
+Returns an object containing information about memory usage.
+
+Result:
+{
+  "locked": {               (json object) Information about locked memory manager
+    "used": xxxxx,          (numeric) Number of bytes used
+    "free": xxxxx,          (numeric) Number of bytes available in current arenas
+    "total": xxxxxxx,       (numeric) Total number of bytes managed
+    "locked": xxxxxx,       (numeric) Amount of bytes that succeeded locking. If this number is smaller than total, locking pages failed at some point and key data could be swapped to disk.
+    "chunks_used": xxxxx,   (numeric) Number allocated chunks
+    "chunks_free": xxxxx,   (numeric) Number unused chunks
+  }
+}
+
+Examples:
+)"
++ HelpExampleCli("getmemoryinfo", "")
++ HelpExampleRpc("getmemoryinfo", "")
+);
     UniValue obj(UniValue::VOBJ);
     obj.pushKV("locked", RPCLockedMemoryInfo());
     return obj;
@@ -597,6 +625,7 @@ UniValue getaddressmempool(const UniValue& params, bool fHelp)
     if (fHelp || params.size() != 1)
         throw runtime_error(
 R"(getaddressmempool {addresses: [taddr, ...]}
+
 Returns all mempool deltas for an address.)"
 + disabledMsg +
 R"(Arguments:
@@ -621,6 +650,7 @@ Result:
     prevout     (string) The previous transaction output index (if spending)
   }
 ]
+
 Examples:)"
             + HelpExampleCli("getaddressmempool", "'{\"addresses\": [\"tPp3pfmLi57S8qoccfWnn2o4tXyoQ23wVSp\"]}'")
             + HelpExampleRpc("getaddressmempool", "{\"addresses\": [\"tPp3pfmLi57S8qoccfWnn2o4tXyoQ23wVSp\"]}")
