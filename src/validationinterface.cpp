@@ -6,6 +6,7 @@
 #include "validationinterface.h"
 #include <boost/bind/bind.hpp>
 using namespace boost::placeholders;
+using namespace std;
 
 static CMainSignals g_signals;
 

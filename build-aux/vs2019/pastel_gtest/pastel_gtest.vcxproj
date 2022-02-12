@@ -162,8 +162,10 @@
     <ClCompile Include="..\..\..\src\gtest\test_reverselock.cpp" />
     <ClCompile Include="..\..\..\src\gtest\test_rpc.cpp" />
     <ClCompile Include="..\..\..\src\gtest\test_rpc_wallet.cpp" />
+    <ClCompile Include="..\..\..\src\gtest\test_rpccmd_parser.cpp" />
     <ClCompile Include="..\..\..\src\gtest\test_sanity.cpp" />
     <ClCompile Include="..\..\..\src\gtest\test_sapling_note.cpp" />
+    <ClCompile Include="..\..\..\src\gtest\test_scheduler.cpp" />
     <ClCompile Include="..\..\..\src\gtest\test_script.cpp" />
     <ClCompile Include="..\..\..\src\gtest\test_scriptnum.cpp" />
     <ClCompile Include="..\..\..\src\gtest\test_script_P2SH.cpp" />
@@ -174,6 +176,7 @@
     <ClCompile Include="..\..\..\src\gtest\test_skiplist.cpp" />
     <ClCompile Include="..\..\..\src\gtest\test_str_encodings.cpp" />
     <ClCompile Include="..\..\..\src\gtest\test_str_utils.cpp" />
+    <ClCompile Include="..\..\..\src\gtest\test_svc_thread.cpp" />
     <ClCompile Include="..\..\..\src\gtest\test_tautology.cpp" />
     <ClCompile Include="..\..\..\src\gtest\test_timedata.cpp" />
     <ClCompile Include="..\..\..\src\gtest\test_transaction.cpp" />
@@ -188,7 +191,7 @@
     <ClCompile Include="..\..\..\src\gtest\test_utils.cpp" />
     <ClCompile Include="..\..\..\src\gtest\test_validation.cpp" />
     <ClCompile Include="..\..\..\src\gtest\test_zip32.cpp" />
-    <ClCompile Include="..\..\..\src\test_enum_util.cpp" />
+    <ClCompile Include="..\..\..\src\gtest\test_enum_util.cpp" />
     <ClCompile Include="..\..\..\src\wallet\gtest\test_accounting.cpp" />
     <ClCompile Include="..\..\..\src\wallet\gtest\test_wallet.cpp" />
     <ClCompile Include="..\..\..\src\wallet\gtest\test_wallet_ismine.cpp" />
@@ -210,7 +213,10 @@
     <ClInclude Include="..\..\vs\port\uint128.h" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="..\..\..\src\gtest\.dirstamp" />
+    <None Include="..\..\..\src\gtest\data\script_valid.json" />
+    <None Include="..\..\..\src\gtest\data\sighash.json" />
+    <None Include="..\..\..\src\gtest\data\tx_invalid.json" />
+    <None Include="..\..\..\src\gtest\data\tx_valid.json" />
     <None Include="..\..\..\src\Makefile.gtest.include" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

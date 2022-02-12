@@ -1,28 +1,23 @@
 // Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2014 The Bitcoin Core developers
+// Copyright (c) 2018-2022 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php .
-
-#include "db.h"
-
-#include "addrman.h"
-#include "fs.h"
-#include "hash.h"
-#include "protocol.h"
-#include "util.h"
-#include "utilstrencodings.h"
-
 #include <stdint.h>
-
 #ifndef WIN32
 #include <sys/stat.h>
 #endif
 
-#include <boost/thread.hpp>
-#include <boost/version.hpp>
+#include <addrman.h>
+#include <fs.h>
+#include <hash.h>
+#include <protocol.h>
+#include <util.h>
+#include <utilstrencodings.h>
+#include <svc_thread.h>
+#include <wallet/db.h>
 
 using namespace std;
-
 
 //
 // CDB
@@ -74,7 +69,7 @@ bool CDBEnv::Open(const fs::path& pathIn)
     if (fDbEnvInit)
         return true;
 
-    boost::this_thread::interruption_point();
+    func_thread_interrupt_point();
 
     strPath = pathIn.string();
     fs::path pathLogDir = pathIn / "database";
@@ -119,7 +114,7 @@ void CDBEnv::MakeMock()
     if (fDbEnvInit)
         throw runtime_error("CDBEnv::MakeMock: Already initialized");
 
-    boost::this_thread::interruption_point();
+    func_thread_interrupt_point();
 
     LogPrint("db", "CDBEnv::MakeMock\n");
 

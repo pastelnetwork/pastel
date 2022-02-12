@@ -10,9 +10,7 @@
 #include <sstream>
 #include <unistd.h>
 
-#include <boost/algorithm/string/replace.hpp>
 #include <boost/math/distributions/poisson.hpp>
-#include <boost/thread.hpp>
 #include <sodium.h>
 
 #include <main.h>
@@ -52,6 +50,7 @@ using namespace std;
 #endif
 
 #include "librustzcash.h"
+#include <script_check.h>
 
 string STR_MSG_MAGIC("Zcash Signed Message:\n");
 
@@ -68,7 +67,6 @@ CBlockIndex *pindexBestHeader = nullptr;
 static int64_t nTimeBestReceived = 0;
 CWaitableCriticalSection csBestBlock;
 CConditionVariable cvBlockChange;
-int nScriptCheckThreads = 0;
 bool fExperimentalMode = false;
 bool fImporting = false;
 bool fReindex = false;
@@ -220,7 +218,7 @@ namespace {
      *
      * Memory used: 1.7MB
      */
-    boost::scoped_ptr<CRollingBloomFilter> recentRejects;
+    unique_ptr<CRollingBloomFilter> recentRejects;
     uint256 hashRecentRejectsChainTip;
 
     /** Blocks that are in flight, and that are in the queue to be downloaded. Protected by cs_main. */
@@ -1026,7 +1024,7 @@ bool ContextualCheckTransaction(
     if (!saplingActive)
     {
         // Size limits
-        BOOST_STATIC_ASSERT(MAX_BLOCK_SIZE > MAX_TX_SIZE_BEFORE_SAPLING); // sanity
+        static_assert(MAX_BLOCK_SIZE > MAX_TX_SIZE_BEFORE_SAPLING); // sanity
         if (::GetSerializeSize(tx, SER_NETWORK, PROTOCOL_VERSION) > MAX_TX_SIZE_BEFORE_SAPLING)
             return state.DoS(100, error("ContextualCheckTransaction(): size limits failed"),
                             REJECT_INVALID, "bad-txns-oversize");
@@ -1182,8 +1180,8 @@ bool CheckTransactionWithoutProofVerification(const CTransaction& tx, CValidatio
                          REJECT_INVALID, "bad-txns-vout-empty");
 
     // Size limits
-    BOOST_STATIC_ASSERT(MAX_BLOCK_SIZE >= MAX_TX_SIZE_AFTER_SAPLING); // sanity
-    BOOST_STATIC_ASSERT(MAX_TX_SIZE_AFTER_SAPLING > MAX_TX_SIZE_BEFORE_SAPLING); // sanity
+    static_assert(MAX_BLOCK_SIZE >= MAX_TX_SIZE_AFTER_SAPLING); // sanity
+    static_assert(MAX_TX_SIZE_AFTER_SAPLING > MAX_TX_SIZE_BEFORE_SAPLING); // sanity
     if (::GetSerializeSize(tx, SER_NETWORK, PROTOCOL_VERSION) > MAX_TX_SIZE_AFTER_SAPLING)
         return state.DoS(100, error("CheckTransaction(): size limits failed"),
                          REJECT_INVALID, "bad-txns-oversize");
@@ -1704,13 +1702,13 @@ bool ReadBlockFromDisk(CBlock& block, const CDiskBlockPos& pos, const Consensus:
     // Open history file to read
     CAutoFile filein(OpenBlockFile(pos, true), SER_DISK, CLIENT_VERSION);
     if (filein.IsNull())
-        return error("ReadBlockFromDisk: OpenBlockFile failed for %s", pos.ToString());
+        return error("ReadBlockFromDisk: OpenBlockFile failed for %s (errno=%d)", pos.ToString(), errno);
 
     // Read block
     try {
         filein >> block;
     }
-    catch (const exception& e) {
+    catch (const exception& e) {    
         return error("%s: Deserialize or I/O error - %s at %s", __func__, e.what(), pos.ToString());
     }
 
@@ -1970,14 +1968,6 @@ void UpdateCoins(const CTransaction& tx, CCoinsViewCache& inputs, int nHeight)
 {
     CTxUndo txundo;
     UpdateCoins(tx, inputs, txundo, nHeight);
-}
-
-bool CScriptCheck::operator()() {
-    const CScript &scriptSig = ptxTo->vin[nIn].scriptSig;
-    if (!VerifyScript(scriptSig, scriptPubKey, nFlags, CachingTransactionSignatureChecker(ptxTo, nIn, amount, cacheStore, *txdata), consensusBranchId, &error)) {
-        return ::error("CScriptCheck(): %s:%d VerifySignature failed: %s", ptxTo->GetHash().ToString(), nIn, ScriptErrorString(error));
-    }
-    return true;
 }
 
 int GetSpendHeight(const CCoinsViewCache& inputs)
@@ -2349,13 +2339,6 @@ void static FlushBlockFile(bool fFinalize = false)
 
 bool FindUndoPos(CValidationState &state, int nFile, CDiskBlockPos &pos, unsigned int nAddSize);
 
-static CCheckQueue<CScriptCheck> scriptcheckqueue(128);
-
-void ThreadScriptCheck() {
-    RenameThread("pastel-scriptch");
-    scriptcheckqueue.Thread();
-}
-
 //
 // Called periodically asynchronously; alerts if it smells like
 // we're being fed a bad chain (blocks being generated much
@@ -2489,7 +2472,7 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, const CChainPara
 
     CBlockUndo blockundo;
 
-    CCheckQueueControl<CScriptCheck> control(fExpensiveChecks && nScriptCheckThreads ? &scriptcheckqueue : nullptr);
+    auto scriptCheckControl = gl_ScriptCheckManager.create_master(fExpensiveChecks);
 
     int64_t nTimeStart = GetTimeMicros();
     CAmount nFees = 0;
@@ -2564,9 +2547,9 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, const CChainPara
 
             vector<CScriptCheck> vChecks;
             bool fCacheResults = fJustCheck; /* Don't cache results if we're actually connecting blocks (still consult the cache, though) */
-            if (!ContextualCheckInputs(tx, state, view, fExpensiveChecks, flags, fCacheResults, txdata[i], consensusParams, consensusBranchId, nScriptCheckThreads ? &vChecks : nullptr))
+            if (!ContextualCheckInputs(tx, state, view, fExpensiveChecks, flags, fCacheResults, txdata[i], consensusParams, consensusBranchId, gl_ScriptCheckManager.GetThreadCount() ? &vChecks : nullptr))
                 return false;
-            control.Add(vChecks);
+            scriptCheckControl->Add(vChecks);
         }
 
         CTxUndo undoDummy;
@@ -2610,7 +2593,7 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, const CChainPara
                          "ConnectBlock(): %s", strError), 
                          REJECT_INVALID, "bad-cb-amount");
    
-    if (!control.Wait())
+    if (!scriptCheckControl->Wait())
         return state.DoS(100, false);
     int64_t nTime2 = GetTimeMicros(); nTimeVerify += nTime2 - nTimeStart;
     LogPrint("bench", "    - Verify %u txins: %.2fms (%.3fms/txin) [%.2fs]\n", nInputs - 1, 0.001 * (nTime2 - nTimeStart), nInputs <= 1 ? 0 : 0.001 * (nTime2 - nTimeStart) / (nInputs-1), nTimeVerify * 0.000001);
@@ -3202,7 +3185,7 @@ bool ActivateBestChain(CValidationState &state, const CChainParams& chainparams,
     const auto& consensusParams = chainparams.GetConsensus();
     do
     {
-        boost::this_thread::interruption_point();
+        func_thread_interrupt_point();
 
         bool fInitialDownload;
         {
@@ -4155,7 +4138,7 @@ static bool LoadBlockIndexDB(const CChainParams& chainparams)
     if (!pblocktree->LoadBlockIndexGuts(chainparams))
         return false;
 
-    boost::this_thread::interruption_point();
+    func_thread_interrupt_point();
 
     // Calculate nChainWork
     vector<pair<int, CBlockIndex*> > vSortedByHeight;
@@ -4337,7 +4320,7 @@ bool CVerifyDB::VerifyDB(const CChainParams& chainparams, CCoinsView *coinsview,
     const auto &consensusParams = chainparams.GetConsensus();
     for (CBlockIndex* pindex = chainActive.Tip(); pindex && pindex->pprev; pindex = pindex->pprev)
     {
-        boost::this_thread::interruption_point();
+        func_thread_interrupt_point();
         uiInterface.ShowProgress(_("Verifying blocks..."), max(1, min(99, (int)(((double)(chainActive.Height() - pindex->nHeight)) / (double)nCheckDepth * (nCheckLevel >= 4 ? 50 : 100)))));
         if (pindex->nHeight < chainActive.Height()-nCheckDepth)
             break;
@@ -4379,8 +4362,9 @@ bool CVerifyDB::VerifyDB(const CChainParams& chainparams, CCoinsView *coinsview,
     // check level 4: try reconnecting blocks
     if (nCheckLevel >= 4) {
         CBlockIndex *pindex = pindexState;
-        while (pindex != chainActive.Tip()) {
-            boost::this_thread::interruption_point();
+        while (pindex != chainActive.Tip())
+        {
+            func_thread_interrupt_point();
             uiInterface.ShowProgress(_("Verifying blocks..."), max(1, min(99, 100 - (int)(((double)(chainActive.Height() - pindex->nHeight)) / (double)nCheckDepth * 50))));
             pindex = chainActive.Next(pindex);
             CBlock block;
@@ -4574,7 +4558,7 @@ void UnloadBlockIndex()
     setDirtyBlockIndex.clear();
     setDirtyFileInfo.clear();
     mapNodeState.clear();
-    recentRejects.reset(nullptr);
+    recentRejects.reset();
 
     for (auto& entry : mapBlockIndex)
         delete entry.second;
@@ -4595,7 +4579,7 @@ bool InitBlockIndex(const CChainParams& chainparams)
     LOCK(cs_main);
 
     // Initialize global variables that cannot be constructed at startup.
-    recentRejects.reset(new CRollingBloomFilter(120000, 0.000001));
+    recentRejects = make_unique<CRollingBloomFilter>(120000, 0.000001);
 
     // Check whether we're already initialized
     if (chainActive.Genesis())
@@ -4663,7 +4647,7 @@ bool LoadExternalBlockFile(const CChainParams& chainparams, FILE* fileIn, CDiskB
         const auto &consensusParams = chainparams.GetConsensus();
         while (!blkdat.eof())
         {
-            boost::this_thread::interruption_point();
+            func_thread_interrupt_point();
 
             blkdat.SetPos(nRewind);
             nRewind++; // start one byte further next time, in case of failure
@@ -5034,13 +5018,6 @@ string GetWarnings(const string& strFor)
     return "error";
 }
 
-
-
-
-
-
-
-
 //////////////////////////////////////////////////////////////////////////////
 //
 // Messages
@@ -5099,7 +5076,7 @@ void static ProcessGetData(CNode* pfrom, const Consensus::Params& consensusParam
 
         const CInv &inv = *it;
         {
-            boost::this_thread::interruption_point();
+            func_thread_interrupt_point();
             it++;
 
             if (inv.type == MSG_BLOCK || inv.type == MSG_FILTERED_BLOCK)
@@ -5437,7 +5414,7 @@ static bool ProcessMessage(const CChainParams& chainparams, CNode* pfrom, string
         int64_t nSince = nNow - 10 * 60;
         for (auto& addr : vAddr)
         {
-            boost::this_thread::interruption_point();
+            func_thread_interrupt_point();
 
             if (addr.nTime <= 100000000 || addr.nTime > nNow + 10 * 60)
                 addr.nTime = nNow - 5 * 24 * 60 * 60;
@@ -5502,7 +5479,7 @@ static bool ProcessMessage(const CChainParams& chainparams, CNode* pfrom, string
         {
             const CInv &inv = vInv[nInv];
 
-            boost::this_thread::interruption_point();
+            func_thread_interrupt_point();
             pfrom->AddInventoryKnown(inv);
 
             bool fAlreadyHave = AlreadyHave(inv);
@@ -6236,7 +6213,7 @@ bool ProcessMessages(const CChainParams& chainparams, CNode* pfrom)
         try
         {
             fRet = ProcessMessage(chainparams, pfrom, strCommand, vRecv, msg.nTime);
-            boost::this_thread::interruption_point();
+            func_thread_interrupt_point();
         }
         catch (const ios_base::failure& e)
         {
@@ -6255,8 +6232,7 @@ bool ProcessMessages(const CChainParams& chainparams, CNode* pfrom)
             {
                 PrintExceptionContinue(&e, "ProcessMessages()");
             }
-        }
-        catch (const boost::thread_interrupted&) {
+        } catch (const func_thread_interrupted&) {
             throw;
         }
         catch (const exception& e) {

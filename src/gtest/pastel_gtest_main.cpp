@@ -70,8 +70,6 @@ void init_zksnark_params()
         return;
     gl_bZkSnarkParamsInitialized = true;
 
-    ECC_Start();
-
     libsnark::default_r1cs_ppzksnark_pp::init_public_params();
     libsnark::inhibit_profiling_info = true;
     libsnark::inhibit_profiling_counters = true;
@@ -101,6 +99,7 @@ void init_zksnark_params()
 void CPastelTest_Environment::SetUp()
 {
     ASSERT_EQ(init_and_check_sodium(), 0);
+    ECC_Start();
 
     fnIsInitialBlockDownload = TestIsInitialBlockDownload;
 
@@ -190,9 +189,8 @@ void CPastelTest_Environment::InitializeChainTest(const CBaseChainParams::Networ
     }
     RegisterValidationInterface(pwalletMain);
 #endif // ENABLE_WALLET
-    nScriptCheckThreads = 3;
-    for (int i = 0; i < nScriptCheckThreads - 1; i++)
-        threadGroup.create_thread(&ThreadScriptCheck);
+    gl_ScriptCheckManager.SetThreadCount(3);
+    gl_ScriptCheckManager.create_workers(threadGroup);
     RegisterNodeSignals(GetNodeSignals());
 }
 
@@ -204,7 +202,7 @@ void CPastelTest_Environment::InitializeRegTest()
 void CPastelTest_Environment::FinalizeChainTest()
 {
     UnregisterNodeSignals(GetNodeSignals());
-    threadGroup.interrupt_all();
+    threadGroup.stop_all();
     threadGroup.join_all();
 #ifdef ENABLE_WALLET
     if (pwalletMain)

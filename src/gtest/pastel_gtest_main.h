@@ -1,8 +1,8 @@
 #pragma once
 #include <gtest/gtest.h>
-#include <boost/thread.hpp>
 
-#include "txdb.h"
+#include <txdb.h>
+#include <svc_thread.h>
 
 void init_zksnark_params();
 
@@ -29,7 +29,7 @@ public:
 
 protected:
     CCoinsViewDB* pcoinsdbview = nullptr;
-    boost::thread_group threadGroup;
+    CServiceThreadGroup threadGroup;
     fs::path m_TempDataDir; // generated temp datadir
 
     void SetUp() override;

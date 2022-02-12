@@ -320,9 +320,9 @@ CBlockPolicyEstimator::CBlockPolicyEstimator(const CFeeRate& _minRelayFee)
     }
     feeStats.Initialize(vfeelist, MAX_BLOCK_CONFIRMS, DEFAULT_DECAY, "FeeRate");
 
-    minTrackedPriority = ALLOW_FREE_THRESHOLD < MIN_PRIORITY ? MIN_PRIORITY : ALLOW_FREE_THRESHOLD;
+    minTrackedPriority = ALLOW_FREE_THRESHOLD < MIN_FEE_PRIORITY ? MIN_FEE_PRIORITY : ALLOW_FREE_THRESHOLD;
     v_doubles vprilist;
-    for (double bucketBoundary = minTrackedPriority; bucketBoundary <= MAX_PRIORITY; bucketBoundary *= PRI_SPACING) {
+    for (double bucketBoundary = minTrackedPriority; bucketBoundary <= MAX_FEE_PRIORITY; bucketBoundary *= PRI_SPACING) {
         vprilist.push_back(bucketBoundary);
     }
     priStats.Initialize(vprilist, MAX_BLOCK_CONFIRMS, DEFAULT_DECAY, "Priority");

@@ -206,15 +206,15 @@ double CMasterNodeController::getNetworkDifficulty(const CBlockIndex* blockindex
 
 
 #ifdef ENABLE_WALLET
-bool CMasterNodeController::EnableMasterNode(std::ostringstream& strErrors, boost::thread_group& threadGroup, CWallet* pWalletMain)
+bool CMasterNodeController::EnableMasterNode(ostringstream& strErrors, CServiceThreadGroup& threadGroup, CWallet* pWalletMain)
 #else
-bool CMasterNodeController::EnableMasterNode(std::ostringstream& strErrors, boost::thread_group& threadGroup)
+bool CMasterNodeController::EnableMasterNode(ostringstream& strErrors, CServiceThreadGroup& threadGroup)
 #endif
 {
     SetParameters();
 
     // parse masternode.conf
-    std::string strErr;
+    string strErr;
     if(!masternodeConfig.read(strErr)) {
         strErrors << "Error reading masternode configuration file: " << strErr.c_str();
         return false;
@@ -232,7 +232,7 @@ bool CMasterNodeController::EnableMasterNode(std::ostringstream& strErrors, boos
     if(fMasterNode) {
         LogPrintf("MASTERNODE:\n");
 
-        const std::string strMasterNodePrivKey = GetArg("-masternodeprivkey", "");
+        const string strMasterNodePrivKey = GetArg("-masternodeprivkey", "");
         if(!strMasterNodePrivKey.empty())
         {
             if(!CMessageSigner::GetKeysFromSecret(strMasterNodePrivKey, activeMasternode.keyMasternode, activeMasternode.pubKeyMasternode))
@@ -243,7 +243,7 @@ bool CMasterNodeController::EnableMasterNode(std::ostringstream& strErrors, boos
 
             KeyIO keyIO(Params());
             CTxDestination dest = activeMasternode.pubKeyMasternode.GetID();
-            std::string address = keyIO.EncodeDestination(dest);
+            string address = keyIO.EncodeDestination(dest);
 
             LogPrintf("  pubKeyMasternode: %s\n", address);
         } else {
@@ -281,7 +281,7 @@ bool CMasterNodeController::EnableMasterNode(std::ostringstream& strErrors, boos
     // LOAD SERIALIZED DAT FILES INTO DATA CACHES FOR INTERNAL USE
 
     fs::path pathDB = GetDataDir();
-    std::string strDBName;
+    string strDBName;
 
     strDBName = "mncache.dat";
     uiInterface.InitMessage(_("Loading masternode cache..."));
@@ -337,20 +337,19 @@ bool CMasterNodeController::EnableMasterNode(std::ostringstream& strErrors, boos
     pacNotificationInterface->InitializeCurrentBlockTip();
 
     //Enable Maintenance thread
-    threadGroup.create_thread(boost::bind(std::function<void()>(std::bind(&CMasterNodeController::ThreadMasterNodeMaintenance, this))));
+    threadGroup.add_thread(make_shared<CMasterNodeMaintenanceThread>());
 
     return true;
 }
 
-void CMasterNodeController::StartMasterNode(boost::thread_group& threadGroup)
+void CMasterNodeController::StartMasterNode(CServiceThreadGroup& threadGroup)
 {
-    if (!semMasternodeOutbound) {
-        // initialize semaphore
-        semMasternodeOutbound = new CSemaphore(nMasterNodeMaximumOutboundConnections);
-    }
+    // initialize semaphore
+    if (!semMasternodeOutbound)
+        semMasternodeOutbound = make_unique<CSemaphore>(nMasterNodeMaximumOutboundConnections);
 
     //Enable Broadcast re-requests thread
-    threadGroup.create_thread(boost::bind(std::function<void()>(std::bind(&CMasterNodeController::ThreadMnbRequestConnections, this))));
+    threadGroup.add_thread(make_shared<CMnbRequestConnectionsThread>());
 }
 
 void CMasterNodeController::StopMasterNode()
@@ -358,13 +357,10 @@ void CMasterNodeController::StopMasterNode()
     if (semMasternodeOutbound)
         for (int i=0; i<nMasterNodeMaximumOutboundConnections; i++)
             semMasternodeOutbound->post();
-
-    delete semMasternodeOutbound;
-    semMasternodeOutbound = nullptr;
 }
 
 
-bool CMasterNodeController::ProcessMessage(CNode* pfrom, std::string& strCommand, CDataStream& vRecv)
+bool CMasterNodeController::ProcessMessage(CNode* pfrom, string& strCommand, CDataStream& vRecv)
 {
     masternodeManager.ProcessMessage(pfrom, strCommand, vRecv);
     masternodePayments.ProcessMessage(pfrom, strCommand, vRecv);
@@ -615,38 +611,42 @@ double CMasterNodeController::GetChainDeflationRate() const
 Threads
 */
 
-void CMasterNodeController::ThreadMnbRequestConnections()
+void CMnbRequestConnectionsThread::execute()
 {
-    RenameThread("pastel-mn-mnbreq");
-
     // Connecting to specific addresses, no masternode connections available
     if (mapArgs.count("-connect") && mapMultiArgs["-connect"].size() > 0)
         return;
 
-    while (true)
+    while (!shouldStop())
     {
-        MilliSleep(500);
+        unique_lock<mutex> lck(m_mutex);
+        if (m_condVar.wait_for(lck, 500ms) == cv_status::no_timeout)
+            continue;
 
-        CSemaphoreGrant grant(*semMasternodeOutbound);
+        CSemaphoreGrant grant(*(masterNodeCtrl.semMasternodeOutbound));
 
-        std::pair<CService, std::set<uint256> > p = masterNodeCtrl.masternodeManager.PopScheduledMnbRequestConnection();
-        if(p.first == CService() || p.second.empty()) continue;
+        auto p = masterNodeCtrl.masternodeManager.PopScheduledMnbRequestConnection();
+        if(p.first == CService() || p.second.empty())
+            continue;
 
         ConnectNode(CAddress(p.first, NODE_NETWORK), nullptr, true);
 
         LOCK(cs_vNodes);
 
         CNode *pnode = FindNode(p.first);
-        if(!pnode || pnode->fDisconnect) continue;
+        if (!pnode || pnode->fDisconnect)
+            continue;
 
         grant.MoveTo(pnode->grantMasternodeOutbound);
 
         // compile request vector
-        std::vector<CInv> vToFetch;
-        std::set<uint256>::iterator it = p.second.begin();
-        while(it != p.second.end()) {
-            if(*it != uint256()) {
-                vToFetch.push_back(CInv(MSG_MASTERNODE_ANNOUNCE, *it));
+        vector<CInv> vToFetch;
+        auto it = p.second.begin();
+        while (it != p.second.end())
+        {
+            if (*it != uint256())
+            {
+                vToFetch.emplace_back(MSG_MASTERNODE_ANNOUNCE, *it);
                 LogPrint("masternode", "ThreadMnbRequestConnections -- asking for mnb %s from addr=%s\n", it->ToString(), p.first.ToString());
             }
             ++it;
@@ -657,24 +657,26 @@ void CMasterNodeController::ThreadMnbRequestConnections()
     }
 }
 
-void CMasterNodeController::ThreadMasterNodeMaintenance()
+void CMasterNodeMaintenanceThread::execute()
 {
-    static bool fOneThread;
-    if(fOneThread) return;
+    static bool fOneThread = false;
+    if (fOneThread)
+        return;
     fOneThread = true;
-
-    RenameThread("pastel-mn");
 
     unsigned int nTick = 0;
 
-    while (true)
+    while (!shouldStop())
     {
-        MilliSleep(1000);
+        unique_lock<mutex> lck(m_mutex);
+        if (m_condVar.wait_for(lck, 500ms) == cv_status::no_timeout)
+            continue;
 
         // try to sync from all available nodes, one step at a time
         masterNodeCtrl.masternodeSync.ProcessTick();
 
-        if(masterNodeCtrl.masternodeSync.IsBlockchainSynced() && !ShutdownRequested()) {
+        if(masterNodeCtrl.masternodeSync.IsBlockchainSynced() && !ShutdownRequested())
+        {
 
             nTick++;
 

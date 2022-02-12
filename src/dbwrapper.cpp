@@ -1,16 +1,21 @@
 // Copyright (c) 2012-2014 The Bitcoin Core developers
+// Copyright (c) 2018-2022 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
-// file COPYING or http://www.opensource.org/licenses/mit-license.php.
+// file COPYING or https://www.opensource.org/licenses/mit-license.php.
+
+#include <stdint.h>
+
+#include <leveldb/cache.h>
+#include <leveldb/env.h>
+#include <leveldb/filter_policy.h>
 
 #include "dbwrapper.h"
 
 #include "util.h"
 
-#include <leveldb/cache.h>
-#include <leveldb/env.h>
-#include <leveldb/filter_policy.h>
 #include <memenv.h>
-#include <stdint.h>
+
+using namespace std;
 
 static leveldb::Options GetOptions(size_t nCacheSize)
 {
@@ -75,13 +80,13 @@ bool CDBWrapper::WriteBatch(CDBBatch& batch, bool fSync)
 
 bool CDBWrapper::IsEmpty()
 {
-    boost::scoped_ptr<CDBIterator> it(NewIterator());
+    unique_ptr<CDBIterator> it = NewIterator();
     it->SeekToFirst();
     return !(it->Valid());
 }
 
 CDBIterator::~CDBIterator() { delete piter; }
-bool CDBIterator::Valid() { return piter->Valid(); }
+bool CDBIterator::Valid() const { return piter->Valid(); }
 void CDBIterator::SeekToFirst() { piter->SeekToFirst(); }
 void CDBIterator::Next() { piter->Next(); }
 

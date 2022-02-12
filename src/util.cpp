@@ -1,31 +1,36 @@
 // Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2014 The Bitcoin Core developers
-// Copyright (c) 2018-2021 The Pastel Core developers
+// Copyright (c) 2018-2022 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
-// file COPYING or http://www.opensource.org/licenses/mit-license.php.
+// file COPYING or https://www.opensource.org/licenses/mit-license.php.
 
 #if defined(HAVE_CONFIG_H)
 #include "config/bitcoin-config.h"
 #endif
 
-#include "util.h"
-#include "chainparamsbase.h"
-#include "random.h"
-#include "serialize.h"
-#include "sync.h"
-#include "utilstrencodings.h"
-#include "utiltime.h"
-#include "clientversion.h"
-
-#include <stdarg.h>
-#include <stdio.h>
 #include <fstream>
 #include <mutex>
+#include <stdarg.h>
+#include <stdio.h>
+#include <thread>
+#include <unistd.h>
 
 #if (defined(__FreeBSD__) || defined(__OpenBSD__) || defined(__DragonFly__))
 #include <pthread.h>
 #include <pthread_np.h>
 #endif
+
+#include <util.h>
+#include <chainparamsbase.h>
+#include <random.h>
+#include <serialize.h>
+#include <sync.h>
+#include <utilstrencodings.h>
+#include <utiltime.h>
+#include <clientversion.h>
+#include <str_utils.h>
+#include <map_types.h>
+
 
 #ifndef WIN32
 // for posix_fallocate
@@ -47,23 +52,23 @@
 #else
 
 #ifdef _MSC_VER
-#pragma warning(disable:4786)
-#pragma warning(disable:4804)
-#pragma warning(disable:4805)
-#pragma warning(disable:4717)
+#pragma warning(disable : 4786 4804 4805 4717)
+#include <processthreadsapi.h>
 #endif
 
 #ifdef _WIN32_WINNT
 #undef _WIN32_WINNT
 #endif
-#define _WIN32_WINNT 0x0501
+#define _WIN32_WINNT 0x0601
 
 #ifdef _WIN32_IE
 #undef _WIN32_IE
 #endif
-#define _WIN32_IE 0x0501
+#define _WIN32_IE 0x0601
 
+#ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN 1
+#endif
 #ifndef NOMINMAX
 #define NOMINMAX
 #endif
@@ -76,29 +81,14 @@
 #include <sys/prctl.h>
 #endif
 
-#include <boost/algorithm/string/case_conv.hpp> // for to_lower()
-#include <boost/algorithm/string/join.hpp>
 #include <boost/algorithm/string/predicate.hpp> // for startswith() and endswith()
 #include <boost/program_options/detail/config_file.hpp>
 #include <boost/program_options/parsers.hpp>
-#include <boost/thread.hpp>
-
-// Work around clang compilation problem in Boost 1.46:
-// /usr/include/boost/program_options/detail/config_file.hpp:163:17: error: call to function 'to_internal' that is neither visible in the template definition nor found by argument-dependent lookup
-// See also: http://stackoverflow.com/questions/10020179/compilation-fail-in-boost-librairies-program-options
-//           http://clang.debian.net/status.php?version=3.0&key=CANNOT_FIND_FUNCTION
-namespace boost {
-
-    namespace program_options {
-        std::string to_internal(const std::string&);
-    }
-
-} // namespace boost
 
 using namespace std;
 
-map<string, string> mapArgs;
-map<string, vector<string> > mapMultiArgs;
+m_strings mapArgs;
+map<string, v_strings> mapMultiArgs;
 bool fDebug = false;
 bool fPrintToConsole = false;
 bool fPrintToDebugLog = true;
@@ -122,10 +112,10 @@ CTranslationInterface translationInterface;
  * the mutex).
  */
 
-static boost::once_flag debugPrintInitFlag = BOOST_ONCE_INIT;
+static std::once_flag debugPrintInitFlag;
 
 /**
- * We use boost::call_once() to make sure mutexDebugLog and
+ * We use std::call_once() to make sure mutexDebugLog and
  * vMsgsBeforeOpenLog are initialized in a thread-safe manner.
  *
  * NOTE: fileout, mutexDebugLog and sometimes vMsgsBeforeOpenLog
@@ -165,7 +155,7 @@ static void DebugPrintInit()
 
 void OpenDebugLog()
 {
-    boost::call_once(&DebugPrintInit, debugPrintInitFlag);
+    std::call_once(debugPrintInitFlag, &DebugPrintInit);
     std::scoped_lock scoped_lock(*mutexDebugLog);
 
     assert(fileout == nullptr);
@@ -196,11 +186,11 @@ bool LogAcceptCategory(const char* category)
         // This helps prevent issues debugging global destructors,
         // where mapMultiArgs might be deleted before another
         // global destructor calls LogPrint()
-        static boost::thread_specific_ptr<set<string> > ptrCategory;
+        static thread_local unique_ptr<set<string>> ptrCategory;
         if (!ptrCategory.get())
         {
             const auto& vCategories = mapMultiArgs["-debug"];
-            ptrCategory.reset(new set<string>(vCategories.cbegin(), vCategories.cend()));
+            ptrCategory = make_unique<set<string>>(vCategories.cbegin(), vCategories.cend());
             // thread_specific_ptr automatically deletes the set when the thread ends.
         }
         const set<string>& setCategories = *ptrCategory.get();
@@ -214,6 +204,44 @@ bool LogAcceptCategory(const char* category)
     return true;
 }
 
+#ifdef __linux__
+thread_local pid_t gl_LinuxTID = gettid();
+#endif // __linux__
+
+/**
+* Get thread id in decimal format.
+* 
+* \return thread id
+*/
+string get_tid() noexcept
+{
+#ifdef __linux__
+    auto tid = gl_LinuxTID;
+#else
+    auto tid = this_thread::get_id();
+#endif
+    std::ostringstream s;
+    s << tid;
+    return s.str();
+}
+
+/**
+* Get thread id in hex format.
+* 
+* \return thread id
+*/
+inline string get_tid_hex() noexcept
+{
+#ifdef __linux__
+    auto tid = gl_LinuxTID;
+#else
+    auto tid = this_thread::get_id();
+#endif
+    ostringstream s;
+    s << hex << uppercase << tid;
+    return s.str();
+}
+
 /**
  * fStartedNewLine is a state variable held by the calling context that will
  * suppress printing of the timestamp when multiple calls are made that don't
@@ -222,14 +250,16 @@ bool LogAcceptCategory(const char* category)
 static std::string LogTimestampStr(const std::string &str, bool *fStartedNewLine)
 {
     string strStamped;
+    strStamped.reserve(30 + str.size());
 
     if (!fLogTimestamps)
         return str;
 
+    strStamped = get_tid_hex() + " - ";
     if (*fStartedNewLine)
-        strStamped =  DateTimeStrFormat("%Y-%m-%d %H:%M:%S", GetTime()) + ' ' + str;
+        strStamped += DateTimeStrFormat("%Y-%m-%d %H:%M:%S", GetTime()) + ' ' + str;
     else
-        strStamped = str;
+        strStamped += str;
 
     if (!str.empty() && str[str.size()-1] == '\n')
         *fStartedNewLine = true;
@@ -251,13 +281,14 @@ int LogPrintStr(const std::string &str)
     }
     else if (fPrintToDebugLog)
     {
-        boost::call_once(&DebugPrintInit, debugPrintInitFlag);
+        std::call_once(debugPrintInitFlag, &DebugPrintInit);
         std::scoped_lock scoped_lock(*mutexDebugLog);
 
         string strTimestamped = LogTimestampStr(str, &fStartedNewLine);
 
         // buffer if we haven't opened the log yet
-        if (!fileout) {
+        if (!fileout)
+        {
             assert(vMsgsBeforeOpenLog);
             ret = strTimestamped.length();
             vMsgsBeforeOpenLog->push_back(strTimestamped);
@@ -265,7 +296,8 @@ int LogPrintStr(const std::string &str)
         else
         {
             // reopen the log file, if requested
-            if (fReopenDebugLog) {
+            if (fReopenDebugLog)
+            {
                 fReopenDebugLog = false;
                 fs::path pathDebug = GetDataDir() / "debug.log";
                 if (freopen(pathDebug.string().c_str(), "a", fileout) != nullptr)
@@ -309,7 +341,7 @@ void ParseParameters(int argc, const char* const argv[])
             str = str.substr(0, is_index);
         }
 #ifdef WIN32
-        boost::to_lower(str);
+        lowercase(str);
         if (boost::algorithm::starts_with(str, "/"))
             str = "-" + str.substr(1);
 #endif
@@ -392,7 +424,7 @@ static std::string FormatException(const std::exception* pex, const char* pszThr
 {
 #ifdef WIN32
     char pszModule[MAX_PATH] = "";
-    GetModuleFileNameA(NULL, pszModule, sizeof(pszModule));
+    GetModuleFileNameA(nullptr, pszModule, sizeof(pszModule));
 #else
     const char* pszModule = "Pastel";
 #endif
@@ -777,19 +809,32 @@ void runCommand(const std::string& strCommand)
         LogPrintf("runCommand error: system(%s) returned %d\n", strCommand, nErr);
 }
 
-void RenameThread(const char* name)
+void RenameThread(const char* szThreadName, void* pThreadNativeHandle)
 {
+    if (!szThreadName || !*szThreadName)
+        return;
 #if defined(PR_SET_NAME)
     // Only the first 15 characters are used (16 - NUL terminator)
-    ::prctl(PR_SET_NAME, name, 0, 0, 0);
+    ::prctl(PR_SET_NAME, szThreadName, 0, 0, 0);
 #elif (defined(__FreeBSD__) || defined(__OpenBSD__) || defined(__DragonFly__))
-    pthread_set_name_np(pthread_self(), name);
+    pthread_set_name_np(pthread_self(), szThreadName);
 
 #elif defined(MAC_OSX)
-    pthread_setname_np(name);
+    pthread_setname_np(szThreadName);
+#elif defined(_MSC_VER)
+    wstring wsName;
+    const int nNameLen = static_cast<int>(strlen(szThreadName));
+    int nRes = MultiByteToWideChar(CP_UTF8, 0, szThreadName, nNameLen, nullptr, 0);
+    if (nRes > 0)
+    {
+        wsName.resize(nRes + 10);
+        nRes = MultiByteToWideChar(CP_UTF8, 0, szThreadName, nNameLen, wsName.data(), static_cast<int>(wsName.size()));
+        if (nRes > 0)
+            SetThreadDescription(static_cast<HANDLE>(pThreadNativeHandle), wsName.c_str());
+    }
 #else
     // Prevent warnings for unused parameters...
-    (void)name;
+    (void)szThreadName;
 #endif
 }
 
@@ -861,7 +906,7 @@ std::string LicenseInfo()
 
 int GetNumCores()
 {
-    return boost::thread::physical_concurrency();
+    return std::thread::hardware_concurrency();
 }
 
 InsecureRand::InsecureRand(bool _fDeterministic)

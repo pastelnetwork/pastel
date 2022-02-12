@@ -17,8 +17,6 @@
 #include "util.h"
 
 #include <boost/algorithm/string/classification.hpp>
-#include <boost/algorithm/string/replace.hpp>
-#include <boost/thread.hpp>
 
 using namespace std;
 
@@ -246,21 +244,25 @@ bool CAlert::ProcessAlert(const v_uint8 & alertKey, bool fThread)
 }
 
 void
-CAlert::Notify(const std::string& strMessage, bool fThread)
+CAlert::Notify(const string& strMessage, bool fThread)
 {
-    std::string strCmd = GetArg("-alertnotify", "");
+    string strCmd = GetArg("-alertnotify", "");
     if (strCmd.empty()) return;
 
     // Alert text should be plain ascii coming from a trusted source, but to
     // be safe we first strip anything not in safeChars, then add single quotes around
     // the whole string before passing it to the shell:
-    std::string singleQuote("'");
-    std::string safeStatus = SanitizeString(strMessage);
+    string singleQuote("'");
+    string safeStatus = SanitizeString(strMessage);
     safeStatus = singleQuote+safeStatus+singleQuote;
-    boost::replace_all(strCmd, "%s", safeStatus);
+    replaceAll(strCmd, "%s", safeStatus);
 
     if (fThread)
-        boost::thread t(runCommand, strCmd); // thread runs free
+    {
+        thread t(runCommand, strCmd); // thread runs free
+        if (t.joinable())
+            t.join();
+    }
     else
         runCommand(strCmd);
 }

@@ -1,42 +1,38 @@
 // Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2014 The Bitcoin Core developers
-// Copyright (c) 2018-2021 The Bitcoin Core developers
+// Copyright (c) 2018-2022 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
-
-#include "txdb.h"
-
-#include "chainparams.h"
-#include "hash.h"
-#include "main.h"
-#include "pow.h"
-#include "uint256.h"
-
 #include <stdint.h>
 
-#include <boost/thread.hpp>
+#include <txdb.h>
+#include <chainparams.h>
+#include <hash.h>
+#include <main.h>
+#include <pow.h>
+#include <uint256.h>
 
 using namespace std;
 
 // NOTE: Per issue #3277, do not use the prefix 'X' or 'x' as they were
 // previously used by DB_SAPLING_ANCHOR and DB_BEST_SAPLING_ANCHOR.
-static const char DB_SPROUT_ANCHOR = 'A';
-static const char DB_SAPLING_ANCHOR = 'Z';
-static const char DB_NULLIFIER = 's';
-static const char DB_SAPLING_NULLIFIER = 'S';
-static const char DB_COINS = 'c';
-static const char DB_BLOCK_FILES = 'f';
-static const char DB_TXINDEX = 't';
-static const char DB_BLOCK_INDEX = 'b';
+static constexpr char DB_SPROUT_ANCHOR = 'A';
+static constexpr char DB_SAPLING_ANCHOR = 'Z';
+static constexpr char DB_NULLIFIER = 's';
+static constexpr char DB_SAPLING_NULLIFIER = 'S';
+static constexpr char DB_COINS = 'c';
+static constexpr char DB_BLOCK_FILES = 'f';
+static constexpr char DB_TXINDEX = 't';
+static constexpr char DB_BLOCK_INDEX = 'b';
 
-static const char DB_BEST_BLOCK = 'B';
-static const char DB_BEST_SPROUT_ANCHOR = 'a';
-static const char DB_BEST_SAPLING_ANCHOR = 'z';
-static const char DB_FLAG = 'F';
-static const char DB_REINDEX_FLAG = 'R';
-static const char DB_LAST_BLOCK = 'l';
+static constexpr char DB_BEST_BLOCK = 'B';
+static constexpr char DB_BEST_SPROUT_ANCHOR = 'a';
+static constexpr char DB_BEST_SAPLING_ANCHOR = 'z';
+static constexpr char DB_FLAG = 'F';
+static constexpr char DB_REINDEX_FLAG = 'R';
+static constexpr char DB_LAST_BLOCK = 'l';
 
-static const char DB_SPENTINDEX = 'p';
+static constexpr char DB_SPENTINDEX = 'p';
 
 
 CCoinsViewDB::CCoinsViewDB(std::string dbName, size_t nCacheSize, bool fMemory, bool fWipe) : db(GetDataDir() / dbName, nCacheSize, fMemory, fWipe) {
@@ -223,19 +219,21 @@ bool CBlockTreeDB::ReadLastBlockFile(int &nFile) {
     return Read(DB_LAST_BLOCK, nFile);
 }
 
-bool CCoinsViewDB::GetStats(CCoinsStats &stats) const {
+bool CCoinsViewDB::GetStats(CCoinsStats &stats) const
+{
     /* It seems that there are no "const iterators" for LevelDB.  Since we
        only need read operations on it, use a const-cast to get around
        that restriction.  */
-    boost::scoped_ptr<CDBIterator> pcursor(const_cast<CDBWrapper*>(&db)->NewIterator());
+    auto pcursor = const_cast<CDBWrapper*>(&db)->NewIterator();
     pcursor->Seek(DB_COINS);
 
     CHashWriter ss(SER_GETHASH, PROTOCOL_VERSION);
     stats.hashBlock = GetBestBlock();
     ss << stats.hashBlock;
     CAmount nTotalAmount = 0;
-    while (pcursor->Valid()) {
-        boost::this_thread::interruption_point();
+    while (pcursor->Valid())
+    {
+        func_thread_interrupt_point();
         std::pair<char, uint256> key;
         CCoins coins;
         if (pcursor->GetKey(key) && key.first == DB_COINS) {
@@ -315,14 +313,13 @@ bool CBlockTreeDB::ReadFlag(const std::string &name, bool &fValue) {
 
 bool CBlockTreeDB::LoadBlockIndexGuts(const CChainParams& chainparams)
 {
-    boost::scoped_ptr<CDBIterator> pcursor(NewIterator());
-
+    auto pcursor = NewIterator();
     pcursor->Seek(make_pair(DB_BLOCK_INDEX, uint256()));
 
     // Load mapBlockIndex
     while (pcursor->Valid())
     {
-        boost::this_thread::interruption_point();
+        func_thread_interrupt_point();
         std::pair<char, uint256> key;
         if (pcursor->GetKey(key) && key.first == DB_BLOCK_INDEX) {
             CDiskBlockIndex diskindex;

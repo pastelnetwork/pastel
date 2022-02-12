@@ -27,7 +27,7 @@
 #include <optional>
 
 #include <boost/signals2.hpp>
-#include <boost/thread/exceptions.hpp>
+#include <thread>
 
 static const bool DEFAULT_LOGTIMEMICROS = false;
 static const bool DEFAULT_LOGIPS        = false;
@@ -72,6 +72,14 @@ bool SetupNetworking();
 bool LogAcceptCategory(const char* category);
 /** Send a string to the log output */
 int LogPrintStr(const std::string &str);
+
+#ifdef __linux__
+extern thread_local pid_t gl_LinuxTID;
+#endif // __linux__
+// get thread id in decimal format
+std::string get_tid() noexcept;
+// get thread id in hex format
+std::string get_tid_hex() noexcept;
 
 template <typename... Args>
 static inline void LogPrintf(const char* fmt, const Args&... args)
@@ -226,35 +234,8 @@ std::string HelpMessageOpt(const std::string& option, const std::string& message
 int GetNumCores();
 
 void SetThreadPriority(int nPriority);
-void RenameThread(const char* name);
-
-/**
- * .. and a wrapper that just calls func once
- */
-template <typename Callable> void TraceThread(const char* name,  Callable func)
-{
-    std::string s = strprintf("pastel-%s", name);
-    RenameThread(s.c_str());
-    try
-    {
-        LogPrintf("%s thread start\n", name);
-        func();
-        LogPrintf("%s thread exit\n", name);
-    }
-    catch (const boost::thread_interrupted&)
-    {
-        LogPrintf("%s thread interrupt\n", name);
-        throw;
-    }
-    catch (const std::exception& e) {
-        PrintExceptionContinue(&e, name);
-        throw;
-    }
-    catch (...) {
-        PrintExceptionContinue(nullptr, name);
-        throw;
-    }
-}
+// rename thread
+void RenameThread(const char* szThreadName, void *pThreadNativeHandle = nullptr);
 
 class InsecureRand
 {

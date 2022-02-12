@@ -1,6 +1,6 @@
 #include <gtest/gtest.h>
 
-#include "test/data/sapling_key_components.json.h"
+#include <gtest/data/sapling_key_components.json.h>
 
 #include "keystore.h"
 #include "random.h"

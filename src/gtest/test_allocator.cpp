@@ -1,11 +1,11 @@
 // Copyright (c) 2012-2013 The Bitcoin Core developers
-// Copyright (c) 2021 The Pastel developers
+// Copyright (c) 2021-2022 The Pastel developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php .
 
 #include <gtest/gtest.h>
 
-#include "support/allocators/secure.h"
+#include <support/allocators/secure.h>
 
 using namespace std;
 using namespace testing;
@@ -130,7 +130,7 @@ public:
         count(count_in), 
         lockedcount(lockedcount_in)
     {}
-    void* AllocateLocked(size_t len, bool *lockingSuccess) noexcept
+    void* AllocateLocked(size_t len, bool *lockingSuccess) noexcept override
     {
         *lockingSuccess = false;
         if (count > 0)
@@ -148,7 +148,7 @@ public:
         return 0;
     }
 
-    void FreeLocked(void* addr, size_t len)
+    void FreeLocked(void* addr, size_t len) override
     {}
 
     size_t GetLimit() const noexcept override

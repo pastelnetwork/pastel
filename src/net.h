@@ -5,20 +5,6 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 
-#include "bloom.h"
-#include "compat.h"
-#include "hash.h"
-#include "limitedmap.h"
-#include "mruset.h"
-#include "netbase.h"
-#include "protocol.h"
-#include "random.h"
-#include "streams.h"
-#include "sync.h"
-#include "uint256.h"
-#include "utilstrencodings.h"
-#include "chainparams.h"
-
 #include <deque>
 #include <stdint.h>
 
@@ -28,14 +14,25 @@
 
 #include <boost/signals2/signal.hpp>
 
+#include <bloom.h>
+#include <compat.h>
+#include <hash.h>
+#include <limitedmap.h>
+#include <mruset.h>
+#include <netbase.h>
+#include <protocol.h>
+#include <random.h>
+#include <streams.h>
+#include <sync.h>
+#include <uint256.h>
+#include <utilstrencodings.h>
+#include <chainparams.h>
+#include <svc_thread.h>
+
 class CAddrMan;
 class CBlockIndex;
 class CScheduler;
 class CNode;
-
-namespace boost {
-    class thread_group;
-} // namespace boost
 
 /** Time between pings automatically sent out for latency probing and keepalive (in seconds). */
 static const int PING_INTERVAL = 2 * 60;
@@ -77,7 +74,7 @@ CNode* ConnectNode(CAddress addrConnect, const char *pszDest = nullptr, bool fCo
 bool OpenNetworkConnection(const CAddress& addrConnect, CSemaphoreGrant *grantOutbound = nullptr, const char *strDest = nullptr, bool fOneShot = false);
 unsigned short GetListenPort();
 bool BindListenPort(const CService &bindAddr, std::string& strError, bool fWhitelisted = false);
-void StartNode(boost::thread_group& threadGroup, CScheduler& scheduler);
+void StartNode(CServiceThreadGroup& threadGroup, CScheduler &scheduler);
 bool StopNode();
 void SocketSendData(CNode *pnode);
 
@@ -637,6 +634,15 @@ public:
     static uint64_t GetTotalBytesSent();
 };
 
+class CSocketHandlerThread : public CStoppableServiceThread
+{
+public:
+    CSocketHandlerThread() : 
+        CStoppableServiceThread("net")
+    {}
+
+    void execute() override;
+};
 
 
 class CTransaction;

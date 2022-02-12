@@ -1,31 +1,29 @@
 #pragma once
-// Copyright (c) 2018-2021 The Pastel Core developers
+// Copyright (c) 2018-2022 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 
 #include <string>
 
-#include "coins.h"
-#include "nodehelper.h"
-
-#include "mnode/mnode-config.h"
-#include "mnode/mnode-manager.h"
-#include "mnode/mnode-sync.h"
-#include "mnode/mnode-requesttracker.h"
-#include "mnode/mnode-active.h"
-#include "mnode/mnode-payments.h"
-#include "mnode/mnode-validation.h"
-#include "mnode/mnode-governance.h"
-#include "mnode/mnode-messageproc.h"
-#include "mnode/mnode-notificationinterface.h"
-#include "mnode/ticket-processor.h"
+#include <coins.h>
+#include <nodehelper.h>
+#include <svc_thread.h>
+#include <mnode/mnode-config.h>
+#include <mnode/mnode-manager.h>
+#include <mnode/mnode-sync.h>
+#include <mnode/mnode-requesttracker.h>
+#include <mnode/mnode-active.h>
+#include <mnode/mnode-payments.h>
+#include <mnode/mnode-validation.h>
+#include <mnode/mnode-governance.h>
+#include <mnode/mnode-messageproc.h>
+#include <mnode/mnode-notificationinterface.h>
+#include <mnode/ticket-processor.h>
 #include <mnode/tickets/ticket-types.h>
 
 #ifdef ENABLE_WALLET
-#include "wallet/wallet.h"
+#include <wallet/wallet.h>
 #endif
-
-#include <boost/thread.hpp>
 
 class CMasterNodeController
 {
@@ -103,11 +101,11 @@ public:
     bool IsActiveMasterNode() const {return fMasterNode && activeMasternode.nState == CActiveMasternode::ActiveMasternodeState::Started;}
 
 #ifdef ENABLE_WALLET
-    bool EnableMasterNode(std::ostringstream& strErrors, boost::thread_group& threadGroup, CWallet* pwalletMain);
+    bool EnableMasterNode(std::ostringstream& strErrors, CServiceThreadGroup& threadGroup, CWallet* pwalletMain);
 #else
-    bool EnableMasterNode(std::ostringstream& strErrors, boost::thread_group& threadGroup);
+    bool EnableMasterNode(std::ostringstream& strErrors, CServiceThreadGroup& threadGroup);
 #endif
-    void StartMasterNode(boost::thread_group& threadGroup);
+    void StartMasterNode(CServiceThreadGroup& threadGroup);
     void StopMasterNode();
 
     void ShutdownMasterNode();
@@ -128,10 +126,26 @@ public:
     double GetChainDeflationRate() const;
 
     /***** MasterNode operations *****/
-    CSemaphore *semMasternodeOutbound;
-
-    void ThreadMasterNodeMaintenance();
-    void ThreadMnbRequestConnections();
+    unique_ptr<CSemaphore> semMasternodeOutbound;
 };
 
+class CMnbRequestConnectionsThread : public CStoppableServiceThread
+{
+public:
+    CMnbRequestConnectionsThread() :
+        CStoppableServiceThread("mn-mnbreq")
+    {}
+
+    void execute() override;
+};
+
+class CMasterNodeMaintenanceThread : public CStoppableServiceThread
+{
+public:
+    CMasterNodeMaintenanceThread() :
+        CStoppableServiceThread("mn")
+    {}
+
+    void execute() override;
+};
 extern CMasterNodeController masterNodeCtrl;

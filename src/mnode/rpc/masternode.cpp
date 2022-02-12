@@ -1,6 +1,7 @@
 // Copyright (c) 2018-2022 The Pastel Core developers
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
+#include <iomanip>
 
 #include <key_io.h>
 #include <main.h>
@@ -11,7 +12,6 @@
 #include <mnode/mnode-controller.h>
 #include <mnode/rpc/masternode.h>
 #include <mnode/rpc/mnode-rpc-utils.h>
-
 using namespace std;
 
 UniValue formatMnsInfo(const vector<CMasternode>& topBlockMNs)

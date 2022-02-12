@@ -44,10 +44,10 @@ size_t CBlockCache::revalidate_blocks(const CChainParams& chainparams)
     unique_lock<mutex> lck(m_CacheMapLock);
     if (m_bProcessing)
         return 0;
-    m_bProcessing.store(true);
+    m_bProcessing = true;
     auto guard = sg::make_scope_guard([this]() noexcept
     {
-        m_bProcessing.store(false);
+        m_bProcessing = false;
     });
     size_t nCount = 0;
     // blocks successfully revalidated that should be removed from the cache map

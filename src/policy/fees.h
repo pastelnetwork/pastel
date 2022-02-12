@@ -198,8 +198,8 @@ static constexpr double SUFFICIENT_PRITXS = .2;
 static constexpr double MIN_FEERATE = 10;
 static constexpr double MAX_FEERATE = 1e7;
 static constexpr double INF_FEERATE = MAX_MONEY;
-static constexpr double MIN_PRIORITY = 10;
-static constexpr double MAX_PRIORITY = 1e16;
+static constexpr double MIN_FEE_PRIORITY = 10;
+static constexpr double MAX_FEE_PRIORITY = 1e16;
 static constexpr double INF_PRIORITY = 1e9 * MAX_MONEY;
 
 // We have to lump transactions into buckets based on fee or priority, but we want to be able

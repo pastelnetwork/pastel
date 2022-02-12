@@ -84,3 +84,14 @@
 #endif // __GXX_EXPERIMENTAL_CXX0X__ || _cplusplus >= 201103L
 #endif // __GNUG__
 
+
+// detect if compiler supports parallel STL
+// clang does not support parallel STL yet
+// mingw gcc requires libtbb
+#ifdef _MSC_VER
+#if _MSC_VER >= 1915 // Visual Studio 2017 15.8
+#ifndef PARALLEL_STL
+#define PARALLEL_STL
+#endif // PARALLEL_STL
+#endif
+#endif

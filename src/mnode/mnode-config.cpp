@@ -1,3 +1,5 @@
+#include <iomanip>
+
 #include "mnode/mnode-config.h"
 #include "mnode/mnode-controller.h"
 
@@ -118,7 +120,7 @@ bool CMasternodeConfig::read(std::string& strErr)
         };
         pathMasternodeConfigFile += "-sample";
         std::ofstream o(pathMasternodeConfigFile.string().c_str());
-        o << std::setw(4) << jsonObj << std::endl;
+        o << setw(4) << jsonObj << std::endl;
 
         return true; // Nothing to read, so just return
     }

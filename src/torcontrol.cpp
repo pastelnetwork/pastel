@@ -16,13 +16,10 @@
 #include <set>
 #include <stdlib.h>
 
-#include <boost/function.hpp>
-#include <boost/bind/bind.hpp>
 #include <boost/signals2/signal.hpp>
 #include <boost/algorithm/string/predicate.hpp>
 #include <boost/algorithm/string/split.hpp>
 #include <boost/algorithm/string/classification.hpp>
-#include <boost/algorithm/string/replace.hpp>
 
 #include <event2/bufferevent.h>
 #include <event2/buffer.h>
@@ -662,7 +659,7 @@ void TorController::protocolinfo_cb(TorControlConnection& conn, const TorControl
         if (!torpassword.empty()) {
             if (methods.count("HASHEDPASSWORD")) {
                 LogPrint("tor", "tor: Using HASHEDPASSWORD authentication\n");
-                boost::replace_all(torpassword, "\"", "\\\"");
+                replaceAll(torpassword, "\"", "\\\"");
                 conn.Command("AUTHENTICATE \"" + torpassword + "\"", boost::bind(&TorController::auth_cb, this, _1, _2));
             } else {
                 LogPrintf("tor: Password provided with -torpassword, but HASHEDPASSWORD authentication is not available\n");
@@ -745,48 +742,38 @@ void TorController::reconnect_cb(evutil_socket_t fd, short what, void *arg)
     self->Reconnect();
 }
 
-/****** Thread ********/
-static struct event_base *gBase;
-static boost::thread torControlThread;
-
-static void TorControlThread()
+void CTorControlThread::execute()
 {
-    TorController ctrl(gBase, GetArg("-torcontrol", DEFAULT_TOR_CONTROL));
-
-    event_base_dispatch(gBase);
-}
-
-void StartTorControl(boost::thread_group& threadGroup, CScheduler& scheduler)
-{
-    assert(!gBase);
+    assert(!m_eventBase);
 #ifdef WIN32
     evthread_use_windows_threads();
 #else
     evthread_use_pthreads();
 #endif
-    gBase = event_base_new();
-    if (!gBase) {
-        LogPrintf("tor: Unable to create event_base\n");
+    m_eventBase = event_base_new();
+    if (!m_eventBase) {
+        LogPrintf("[%s] Unable to create event_base\n", m_sThreadName);
         return;
     }
+    LogPrintf("[%s] created event_base\n", m_sThreadName);
 
-    torControlThread = boost::thread(boost::bind(&TraceThread<void (*)()>, "torcontrol", &TorControlThread));
+    TorController ctrl(m_eventBase, GetArg("-torcontrol", DEFAULT_TOR_CONTROL));
+    event_base_dispatch(m_eventBase);
 }
 
-void InterruptTorControl()
+CTorControlThread::~CTorControlThread()
 {
-    if (gBase) {
-        LogPrintf("tor: Thread interrupt\n");
-        event_base_loopbreak(gBase);
+    if (m_eventBase)
+    {
+        event_base_free(m_eventBase);
+        m_eventBase = nullptr;
     }
 }
 
-void StopTorControl()
+void CTorControlThread::stop()
 {
-    if (gBase) {
-        torControlThread.join();
-        event_base_free(gBase);
-        gBase = 0;
-    }
-}
+    LogPrintf("[%s] stopping thread\n", m_sThreadName);
 
+    CServiceThread::stop();
+    event_base_loopbreak(m_eventBase);
+}

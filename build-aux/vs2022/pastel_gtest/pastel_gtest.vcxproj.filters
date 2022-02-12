@@ -307,6 +307,12 @@
     <ClCompile Include="..\..\..\src\gtest\test_rpccmd_parser.cpp">
       <Filter>UnitTest Files</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\..\src\gtest\test_scheduler.cpp">
+      <Filter>UnitTest Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\src\gtest\test_svc_thread.cpp">
+      <Filter>UnitTest Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\..\src\gtest\json_test_vectors.h">
@@ -351,5 +357,22 @@
     <None Include="..\..\..\src\gtest\.dirstamp">
       <Filter>UnitTest Files</Filter>
     </None>
+    <None Include="..\..\..\src\gtest\data\script_valid.json">
+      <Filter>UnitTest Files\data</Filter>
+    </None>
+    <None Include="..\..\..\src\gtest\data\sighash.json">
+      <Filter>UnitTest Files\data</Filter>
+    </None>
+    <None Include="..\..\..\src\gtest\data\tx_invalid.json">
+      <Filter>UnitTest Files\data</Filter>
+    </None>
+    <None Include="..\..\..\src\gtest\data\tx_valid.json">
+      <Filter>UnitTest Files\data</Filter>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <CustomBuild Include="..\..\..\src\gtest\data\script_invalid.json">
+      <Filter>UnitTest Files\data</Filter>
+    </CustomBuild>
   </ItemGroup>
 </Project>

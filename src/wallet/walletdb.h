@@ -1,8 +1,9 @@
 #pragma once
 // Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2013 The Bitcoin Core developers
+// Copyright (c) 2018-2022 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
-// file COPYING or http://www.opensource.org/licenses/mit-license.php.
+// file COPYING or https://www.opensource.org/licenses/mit-license.php.
 
 #include <amount.h>
 #include <wallet/db.h>
@@ -15,6 +16,7 @@
 #include <stdint.h>
 #include <string>
 #include <utility>
+#include <svc_thread.h>
 
 class CAccount;
 class CAccountingEntry;
@@ -119,9 +121,12 @@ public:
 class CWalletDB : public CDB
 {
 public:
-    CWalletDB(const std::string& strFilename, const char* pszMode = "r+", bool fFlushOnClose = true) : CDB(strFilename, pszMode, fFlushOnClose)
-    {
-    }
+    CWalletDB(const std::string& strFilename, const char* pszMode = "r+", bool fFlushOnClose = true) : 
+        CDB(strFilename, pszMode, fFlushOnClose)
+    {}
+
+    CWalletDB(const CWalletDB&) = delete;
+    void operator=(const CWalletDB&) = delete;
 
     bool WriteName(const std::string& strAddress, const std::string& strName);
     bool EraseName(const std::string& strAddress);
@@ -195,13 +200,23 @@ public:
 
     static void IncrementUpdateCounter();
     static unsigned int GetUpdateCounter();
-private:
-    CWalletDB(const CWalletDB&);
-    void operator=(const CWalletDB&);
 
+private:
     bool WriteAccountingEntry(const uint64_t nAccEntryNum, const CAccountingEntry& acentry);
 };
 
 bool BackupWallet(const CWallet& wallet, const std::string& strDest);
-void ThreadFlushWalletDB(const std::string& strFile);
 
+class CFlushWalletDBThread : public CStoppableServiceThread
+{
+public:
+    CFlushWalletDBThread(const std::string& sWalletFile) : 
+        CStoppableServiceThread("wallet"),
+        m_sWalletFile(sWalletFile)
+    {}
+
+    void execute() override;
+
+private:
+    std::string m_sWalletFile;
+};

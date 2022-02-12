@@ -3,12 +3,27 @@ noinst_PROGRAMS += pastel-gtest
 
 RAW_GTEST_FILES = gtest/data/alertTests.raw
 
-JSON_GTEST_FILES = \
-	gtest/data/script_valid.json \
-  	gtest/data/script_invalid.json \
-	gtest/data/tx_invalid.json \
-  	gtest/data/tx_valid.json \
-	gtest/data/sighash.json
+JSON_GTEST_FILES =\
+	gtest/data/script_valid.json\
+  	gtest/data/script_invalid.json\
+	gtest/data/tx_invalid.json\
+  	gtest/data/tx_valid.json\
+	gtest/data/sighash.json\
+	gtest/data/g1_compressed.json\
+	gtest/data/g2_compressed.json\
+	gtest/data/merkle_commitments.json\
+	gtest/data/merkle_commitments_sapling.json\ 
+	gtest/data/merkle_path.json\
+	gtest/data/merkle_path_sapling.json\
+	gtest/data/merkle_roots.json\
+	gtest/data/merkle_roots_empty.json\
+	gtest/data/merkle_roots_empty_sapling.json\
+	gtest/data/merkle_roots_sapling.json\
+	gtest/data/merkle_serialization.json\
+	gtest/data/merkle_serialization_sapling.json\
+	gtest/data/merkle_witness_serialization.json\
+	gtest/data/merkle_witness_serialization_sapling.json\
+	gtest/data/sapling_key_components.json
 
 GENERATED_GTEST_FILES = $(JSON_GTEST_FILES:.json=.json.h) $(RAW_GTEST_FILES:.raw=.raw.h)
 
@@ -94,6 +109,7 @@ pastel_gtest_SOURCES +=\
 	gtest/test_rpccmd_parser.cpp\
 	gtest/test_sanity.cpp\
 	gtest/test_sapling_note.cpp\
+	gtest/test_scheduler.cpp\
 	gtest/test_script.cpp\
 	gtest/test_scriptnum.cpp\
 	gtest/test_script_P2SH.cpp\
@@ -104,6 +120,7 @@ pastel_gtest_SOURCES +=\
 	gtest/test_skiplist.cpp\
 	gtest/test_str_encodings.cpp\
 	gtest/test_str_utils.cpp\
+	gtest/test_svc_thread.cpp\
 	gtest/test_tautology.cpp\
 	gtest/test_timedata.cpp\
 	gtest/test_transaction.cpp\

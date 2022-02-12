@@ -1,22 +1,21 @@
+#pragma once
 // Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2014 The Bitcoin Core developers
+// Copyright (c) 2018-2022 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
-// file COPYING or http://www.opensource.org/licenses/mit-license.php.
-
-#ifndef BITCOIN_WALLET_DB_H
-#define BITCOIN_WALLET_DB_H
-
-#include "clientversion.h"
-#include "serialize.h"
-#include "streams.h"
-#include "sync.h"
-#include "version.h"
-
+// file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <map>
 #include <string>
 #include <vector>
 
 #include <db_cxx.h>
+
+#include <clientversion.h>
+#include <serialize.h>
+#include <streams.h>
+#include <sync.h>
+#include <version.h>
+
 
 class CDBEnv
 {
@@ -122,7 +121,7 @@ protected:
         datValue.set_flags(DB_DBT_MALLOC);
         int ret = pdb->get(activeTxn, &datKey, &datValue, 0);
         memset(datKey.get_data(), 0, datKey.get_size());
-        if (datValue.get_data() == NULL)
+        if (!datValue.get_data())
             return false;
 
         // Unserialize value
@@ -301,5 +300,3 @@ public:
 
     bool static Rewrite(const std::string& strFile, const char* pszSkip = NULL);
 };
-
-#endif // BITCOIN_WALLET_DB_H

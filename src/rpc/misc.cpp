@@ -21,8 +21,6 @@
 #include <stdint.h>
 #include <variant>
 
-#include <boost/assign/list_of.hpp>
-
 #include <univalue.h>
 
 #include "zcash/Address.hpp"
@@ -464,7 +462,7 @@ UniValue setmocktime(const UniValue& params, bool fHelp)
     // in a long time.
     LOCK2(cs_main, cs_vNodes);
 
-    RPCTypeCheck(params, boost::assign::list_of(UniValue::VNUM));
+    RPCTypeCheck(params, {UniValue::VNUM});
     SetMockTime(params[0].get_int64());
 
     uint64_t t = GetTime();

@@ -303,6 +303,7 @@ BITCOIN_CORE_H = \
   rpc/rpc_consts.h \
   rpc/rpc_parser.h \
   scheduler.h \
+  script_check.h \
   script/interpreter.h \
   script/script.h \
   script/script_error.h \
@@ -317,6 +318,7 @@ BITCOIN_CORE_H = \
   support/cleanse.h \
   support/events.h \
   support/lockedpool.h \
+  svc_thread.h \
   sync.h \
   threadsafety.h \
   timedata.h \
@@ -397,6 +399,7 @@ libbitcoin_server_a_SOURCES = \
   rpc/rawtransaction.cpp \
   rpc/server.cpp \
   script/sigcache.cpp \
+  script_check.cpp \
   timedata.cpp \
   torcontrol.cpp \
   txdb.cpp \
@@ -740,6 +743,5 @@ endif
 	$(AM_V_GEN) $(PROTOC) --cpp_out=$(@D) --proto_path=$(abspath $(<D) $<)
 
 if ENABLE_TESTS
-include Makefile.test.include
 include Makefile.gtest.include
 endif
