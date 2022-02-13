@@ -77,6 +77,8 @@ public:
         });
         try
         {
+            // rename thread
+            RenameThread(m_sThreadName.c_str(), reinterpret_cast<void*>(m_Thread.native_handle()));
             if (m_bTrace)
                 LogPrintf("[%s] thread start\n", m_sThreadName);
             execute();
@@ -154,7 +156,6 @@ public:
 
     void execute() override
     {
-        RenameThread(m_sThreadName.c_str(), reinterpret_cast<void*>(m_Thread.native_handle()));
         m_func();
     }
 
