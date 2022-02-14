@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Copyright (c) 2018-2021 The Pastel Core developers
+# Copyright (c) 2018-2022 The Pastel Core developers
 # Distributed under the MIT software license, see the accompanying
 # file COPYING or http://www.opensource.org/licenses/mit-license.php.
 from test_framework.util import (
@@ -426,6 +426,8 @@ class MasterNodeTicketsTest(MasterNodeCommon):
                                                                     "10", "1"), # Verb = 1 - will modify Act ticket signature to make it invalid (non matchig creator's PastelID)
         }
 
+        # sync mempools
+        self.sync_all()
         for n, t in tickets.items():
             try:
                 self.nodes[0].sendrawtransaction(t)
