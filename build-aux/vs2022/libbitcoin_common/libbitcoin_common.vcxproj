@@ -149,6 +149,7 @@
     <ClInclude Include="..\..\..\src\script\sigcache.h" />
     <ClInclude Include="..\..\..\src\script\sign.h" />
     <ClInclude Include="..\..\..\src\script\standard.h" />
+    <ClInclude Include="..\..\..\src\svc_thread.h" />
     <ClInclude Include="..\..\..\src\transaction_builder.h" />
     <ClInclude Include="..\..\..\src\uint252.h" />
     <ClInclude Include="..\..\..\src\uint256.h" />

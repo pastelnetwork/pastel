@@ -32,9 +32,7 @@
 #include <assert.h>
 #include <random>
 #include <variant>
-
-#include <boost/algorithm/string/replace.hpp>
-#include <boost/thread.hpp>
+#include <thread>
 
 using namespace std;
 using namespace libzcash;
@@ -1313,8 +1311,10 @@ bool CWallet::AddToWallet(const CWalletTx& wtxIn, bool fFromLoadWallet, CWalletD
 
         if ( !strCmd.empty())
         {
-            boost::replace_all(strCmd, "%s", wtxIn.GetHash().GetHex());
-            boost::thread t(runCommand, strCmd); // thread runs free
+            replaceAll(strCmd, "%s", wtxIn.GetHash().GetHex());
+            thread t(runCommand, strCmd); // thread runs free
+            if (t.joinable())
+                t.join();
         }
 
     }

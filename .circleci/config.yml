@@ -45,12 +45,6 @@ jobs:
           command: |
             ./full_test_suite.py gtest
       - run:
-          name: btest
-          working_directory: qa/test-suite
-          no_output_timeout: 30m
-          command: |
-           ./full_test_suite.py btest
-      - run:
           name: util-test
           working_directory: qa/test-suite        
           command: |

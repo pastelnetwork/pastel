@@ -5,6 +5,7 @@
 #include "random.h"
 #include "version.h"
 #include "streams.h"
+#include <svc_thread.h>
 
 #include "zcash/util.h"
 #include "librustzcash.h"
@@ -153,9 +154,11 @@ std::optional<SaplingNotePlaintext> SaplingNotePlaintext::attempt_sapling_enc_de
         ss >> ret;
         assert(ss.size() == 0);
         return ret;
-    } catch (const boost::thread_interrupted&) {
+    }
+    catch (const func_thread_interrupted&) {
         throw;
-    } catch (...) {
+    }
+    catch (...) {
         return std::nullopt;
     }
 }
@@ -270,7 +273,8 @@ std::optional<SaplingNotePlaintext> SaplingNotePlaintext::attempt_sapling_enc_de
         ss >> ret;
         assert(ss.size() == 0);
         return ret;
-    } catch (const boost::thread_interrupted&) {
+    }
+    catch (const func_thread_interrupted&) {
         throw;
     } catch (...) {
         return std::nullopt;

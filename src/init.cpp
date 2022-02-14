@@ -7,71 +7,67 @@
 #include "config/bitcoin-config.h"
 #endif
 
-#include "init.h"
-#include "crypto/common.h"
-#include "addrman.h"
-#include "amount.h"
-#include "checkpoints.h"
-#include "compat/sanity.h"
-#include "consensus/upgrades.h"
-#include "consensus/validation.h"
-#include "httpserver.h"
-#include "httprpc.h"
-#include "key.h"
-#include "main.h"
-#include "metrics.h"
-#include "miner.h"
-#include "net.h"
-#include "rpc/server.h"
-#include "rpc/register.h"
-#include "script/standard.h"
-#include "key_io.h"
-#include "script/sigcache.h"
-#include "scheduler.h"
-#include "txdb.h"
-#include "torcontrol.h"
-#include "ui_interface.h"
-#include "util.h"
-#include "utilmoneystr.h"
-#include "validationinterface.h"
-#ifdef ENABLE_WALLET
-#include "wallet/wallet.h"
-#include "wallet/walletdb.h"
-#endif
 #include <stdint.h>
 #include <stdio.h>
 #include <unistd.h>
-
 #ifndef WIN32
 #include <signal.h>
 #endif
 
-#include <boost/algorithm/string/classification.hpp>
-#include <boost/algorithm/string/predicate.hpp>
-#include <boost/algorithm/string/replace.hpp>
-#include <boost/algorithm/string/split.hpp>
-#include <boost/bind/bind.hpp>
-#include <boost/function.hpp>
-#include <boost/interprocess/sync/file_lock.hpp>
-#include <boost/thread.hpp>
+#include <libsnark/common/profiling.hpp>
 #include <openssl/opensslv.h>
 
-#include <libsnark/common/profiling.hpp>
-
 #if ENABLE_ZMQ
-#include "zmq/zmqnotificationinterface.h"
+#include <zmq/zmqnotificationinterface.h>
 #endif
 
 #if ENABLE_PROTON
-#include "amqp/amqpnotificationinterface.h"
+#include <amqp/amqpnotificationinterface.h>
 #endif
+#include <librustzcash.h>
+
+
+#include <init.h>
+#include <crypto/common.h>
+#include <addrman.h>
+#include <amount.h>
+#include <checkpoints.h>
+#include <compat/sanity.h>
+#include <consensus/upgrades.h>
+#include <consensus/validation.h>
+#include <httpserver.h>
+#include <httprpc.h>
+#include <key.h>
+#include <main.h>
+#include <metrics.h>
+#include <miner.h>
+#include <net.h>
+#include <rpc/server.h>
+#include <rpc/register.h>
+#include <script/standard.h>
+#include <key_io.h>
+#include <script/sigcache.h>
+#include <scheduler.h>
+#include <txdb.h>
+#include <torcontrol.h>
+#include <ui_interface.h>
+#include <util.h>
+#include <utilmoneystr.h>
+#include <validationinterface.h>
+#ifdef ENABLE_WALLET
+#include <wallet/wallet.h>
+#include <wallet/walletdb.h>
+#endif
+#include <mnode/mnode-controller.h>
+#include <port_config.h>
+
+#include <boost/algorithm/string/classification.hpp>
+#include <boost/algorithm/string/split.hpp>
+#include <boost/interprocess/sync/file_lock.hpp>
+#include <script_check.h>
 
 //MasterNode
-#include "mnode/mnode-controller.h"
 CMasterNodeController masterNodeCtrl;
-
-#include "librustzcash.h"
-#include <port_config.h>
 
 using namespace std;
 
@@ -169,19 +165,19 @@ public:
 
 static CCoinsViewDB *pcoinsdbview = nullptr;
 static CCoinsViewErrorCatcher* pcoinscatcher = nullptr;
-static boost::scoped_ptr<ECCVerifyHandle> globalVerifyHandle;
+static unique_ptr<ECCVerifyHandle> globalVerifyHandle;
 
-void Interrupt(boost::thread_group& threadGroup)
+void Interrupt(CServiceThreadGroup& threadGroup, CScheduler &scheduler)
 {
     InterruptHTTPServer();
     InterruptHTTPRPC();
     InterruptRPC();
     InterruptREST();
-    InterruptTorControl();
-    threadGroup.interrupt_all();
+    threadGroup.stop_all();
+    scheduler.stop(false);
 }
 
-void Shutdown()
+void Shutdown(CServiceThreadGroup& threadGroup, CScheduler &scheduler)
 {
     LogPrintf("%s: In progress...\n", __func__);
     static CCriticalSection cs_Shutdown;
@@ -212,7 +208,8 @@ void Shutdown()
  #endif
 #endif
     StopNode();
-    StopTorControl();
+    threadGroup.join_all();
+    scheduler.join_all();
     UnregisterNodeSignals(GetNodeSignals());
 
     if (fFeeEstimatesInitialized)
@@ -562,8 +559,8 @@ static void BlockNotifyCallback(const uint256& hashNewTip)
 {
     std::string strCmd = GetArg("-blocknotify", "");
 
-    boost::replace_all(strCmd, "%s", hashNewTip.GetHex());
-    boost::thread t(runCommand, strCmd); // thread runs free
+    replaceAll(strCmd, "%s", hashNewTip.GetHex());
+    thread t(runCommand, strCmd); // thread runs free
 }
 
 struct CImportingNow
@@ -774,7 +771,7 @@ static void ZC_LoadParams(
     LogPrintf("Loaded Sapling parameters in %fs seconds.\n", elapsed);
 }
 
-bool AppInitServers(boost::thread_group& threadGroup)
+bool AppInitServers()
 {
     RPCServer::OnStopped(&OnRPCStopped);
     RPCServer::OnPreCommand(&OnRPCPreCommand);
@@ -794,7 +791,7 @@ bool AppInitServers(boost::thread_group& threadGroup)
 /** Initialize pasteld.
  *  @pre Parameters should be parsed and config file should be read.
  */
-bool AppInit2(boost::thread_group& threadGroup, CScheduler& scheduler)
+bool AppInit2(CServiceThreadGroup& threadGroup, CScheduler& scheduler)
 {
     // ********************************************************* Step 1: setup
 #ifdef _MSC_VER
@@ -1002,13 +999,7 @@ bool AppInit2(boost::thread_group& threadGroup, CScheduler& scheduler)
     fCheckpointsEnabled = GetBoolArg("-checkpoints", true);
 
     // -par=0 means autodetect, but nScriptCheckThreads==0 means no concurrency
-    nScriptCheckThreads = GetArg("-par", DEFAULT_SCRIPTCHECK_THREADS);
-    if (nScriptCheckThreads <= 0)
-        nScriptCheckThreads += GetNumCores();
-    if (nScriptCheckThreads <= 1)
-        nScriptCheckThreads = 0;
-    else if (nScriptCheckThreads > MAX_SCRIPTCHECK_THREADS)
-        nScriptCheckThreads = MAX_SCRIPTCHECK_THREADS;
+    gl_ScriptCheckManager.SetThreadCount(GetArg("-par", DEFAULT_SCRIPTCHECK_THREADS));
 
     fServer = GetBoolArg("-server", false);
 
@@ -1169,7 +1160,7 @@ bool AppInit2(boost::thread_group& threadGroup, CScheduler& scheduler)
 
     // Initialize elliptic curve code
     ECC_Start();
-    globalVerifyHandle.reset(new ECCVerifyHandle());
+    globalVerifyHandle = make_unique<ECCVerifyHandle>();
 
     // Sanity check
     if (!InitSanityCheck())
@@ -1222,15 +1213,10 @@ bool AppInit2(boost::thread_group& threadGroup, CScheduler& scheduler)
     LogPrintf("Using at most %i connections (%i file descriptors available)\n", nMaxConnections, nFD);
     std::ostringstream strErrors;
 
-    LogPrintf("Using %u threads for script verification\n", nScriptCheckThreads);
-    if (nScriptCheckThreads) {
-        for (int i=0; i<nScriptCheckThreads-1; i++)
-            threadGroup.create_thread(&ThreadScriptCheck);
-    }
+    gl_ScriptCheckManager.create_workers(threadGroup);
 
     // Start the lightweight task scheduler thread
-    CScheduler::Function serviceLoop = boost::bind(&CScheduler::serviceQueue, &scheduler);
-    threadGroup.create_thread(boost::bind(&TraceThread<CScheduler::Function>, "scheduler", serviceLoop));
+    scheduler.add_workers(1);
 
     // Count uptime
     MarkStartTime();
@@ -1240,7 +1226,7 @@ bool AppInit2(boost::thread_group& threadGroup, CScheduler& scheduler)
             !fPrintToConsole && !GetBoolArg("-daemon", false)) {
         // Start the persistent metrics interface
         ConnectMetricsScreen();
-        threadGroup.create_thread(&ThreadShowMetricsScreen);
+        threadGroup.add_func_thread("metrics-screen", ThreadShowMetricsScreen);
     }
 
     // These must be disabled for now, they are buggy and we probably don't
@@ -1259,7 +1245,7 @@ bool AppInit2(boost::thread_group& threadGroup, CScheduler& scheduler)
     if (fServer)
     {
         uiInterface.InitMessage.connect(SetRPCWarmupStatus);
-        if (!AppInitServers(threadGroup))
+        if (!AppInitServers())
             return InitError(_("Unable to start HTTP server. See debug log for details."));
     }
 
@@ -1289,13 +1275,13 @@ bool AppInit2(boost::thread_group& threadGroup, CScheduler& scheduler)
     RegisterNodeSignals(GetNodeSignals());
 
     // sanitize comments per BIP-0014, format user agent and check total size
-    std::vector<string> uacomments;
+    v_strings uacomments;
     for (const auto &cmt : mapMultiArgs["-uacomment"])
     {
         auto sComment = SanitizeString(cmt, SAFE_CHARS_UA_COMMENT);
         if (cmt != sComment)
             return InitError(strprintf("User Agent comment (%s) contains unsafe characters.", cmt));
-        uacomments.push_back(std::move(sComment));
+        uacomments.emplace_back(std::move(sComment));
     }
     strSubVersion = FormatSubVersion(CLIENT_NAME, CLIENT_VERSION, uacomments);
     if (strSubVersion.size() > MAX_SUBVERSION_LENGTH) {
@@ -1826,7 +1812,7 @@ bool AppInit2(boost::thread_group& threadGroup, CScheduler& scheduler)
         for (const auto& strFile : mapMultiArgs["-loadblock"])
             vImportFiles.push_back(strFile);
     }
-    threadGroup.create_thread(boost::bind(&ThreadImport, vImportFiles));
+    threadGroup.add_func_thread("import-files", bind(&ThreadImport, vImportFiles));
     if (!chainActive.Tip())
     {
         LogPrintf("Waiting for genesis block to be imported...\n");
@@ -1862,15 +1848,15 @@ bool AppInit2(boost::thread_group& threadGroup, CScheduler& scheduler)
 #endif
 
     if (GetBoolArg("-listenonion", DEFAULT_LISTEN_ONION))
-        StartTorControl(threadGroup, scheduler);
+        threadGroup.add_thread(make_shared<CTorControlThread>());
 
     StartNode(threadGroup, scheduler);
 
     // Monitor the chain, and alert if we get blocks much quicker or slower than expected
     const auto& consensusParams = chainparams.GetConsensus();
-    int64_t nPowTargetSpacing = consensusParams.nPowTargetSpacing;
-    CScheduler::Function f = boost::bind(&PartitionCheck, consensusParams, fnIsInitialBlockDownload,
-                                         boost::ref(cs_main), boost::cref(pindexBestHeader), nPowTargetSpacing);
+    const int64_t nPowTargetSpacing = consensusParams.nPowTargetSpacing;
+    CScheduler::Function f = bind(&PartitionCheck, consensusParams, fnIsInitialBlockDownload,
+                                   std::ref(cs_main), std::cref(pindexBestHeader), nPowTargetSpacing);
     scheduler.scheduleEvery(f, nPowTargetSpacing);
 
 #ifdef ENABLE_MINING
@@ -1889,17 +1875,18 @@ bool AppInit2(boost::thread_group& threadGroup, CScheduler& scheduler)
     uiInterface.InitMessage(_("Done loading"));
 
 #ifdef ENABLE_WALLET
-    if (pwalletMain) {
+    if (pwalletMain)
+    {
         // Add wallet transactions that aren't already in a block to mapTransactions
         pwalletMain->ReacceptWalletTransactions();
 
         // Run a thread to flush wallet periodically
-        threadGroup.create_thread(boost::bind(&ThreadFlushWalletDB, boost::ref(pwalletMain->strWalletFile)));
+        threadGroup.add_thread(make_shared<CFlushWalletDBThread>(pwalletMain->strWalletFile));
     }
 #endif
 
     // SENDALERT
-    threadGroup.create_thread(boost::bind(ThreadSendAlert));
+    threadGroup.add_func_thread("sendalert", ThreadSendAlert);
 
     return !fRequestShutdown;
 }

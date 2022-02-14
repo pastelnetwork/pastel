@@ -3,14 +3,18 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 
+#include <detect_cpp_standard.h>
 #include <array>
 #include <map>
 #include <string>
 #include <regex>
+#include <algorithm>
+#ifdef PARALLEL_STL
+#include <execution>
+#endif
 
 #include <univalue.h>
 #include <sodium.h>
-
 #include <gtest/gtest.h>
 
 #include <data/tx_invalid.json.h>
@@ -29,8 +33,6 @@
 #include <script/sign.h>
 #include <primitives/transaction.h>
 #include <json_test_vectors.h>
-
-#include <boost/thread.hpp>
 
 #include <zcash/Note.hpp>
 #include <zcash/Address.hpp>
@@ -439,27 +441,34 @@ TEST(test_transaction, test_big_overwinter_transaction) {
     sigHashes.push_back(to_integral_type(SIGHASH::ALL));
 
     // create a big transaction of 4500 inputs signed by the same key
-    for(uint32_t ij = 0; ij < 4500; ij++)
+    const uint256 prevId = uint256S("0000000000000000000000000000000000000000000000000000000000000100");
+    // number of tx inputs
+    constexpr uint32_t TEST_TX_INPUT_SIZE = 4500;
+    mtx.vin.reserve(TEST_TX_INPUT_SIZE);
+    mtx.vout.reserve(TEST_TX_INPUT_SIZE);
+    for(uint32_t i = 0; i < TEST_TX_INPUT_SIZE; ++i)
     {
-        uint32_t i = mtx.vin.size();
-        uint256 prevId;
-        prevId.SetHex("0000000000000000000000000000000000000000000000000000000000000100");
         COutPoint outpoint(prevId, i);
-
-        mtx.vin.resize(mtx.vin.size() + 1);
-        mtx.vin[i].prevout = outpoint;
-        mtx.vin[i].scriptSig = CScript();
-
-        mtx.vout.resize(mtx.vout.size() + 1);
-        mtx.vout[i].nValue = 1000;
-        mtx.vout[i].scriptPubKey = CScript() << OP_1;
+        mtx.vin.emplace_back(outpoint);
+        mtx.vout.emplace_back(1000, CScript() << OP_1);
     }
 
-    // sign all inputs
-    for(uint32_t i = 0; i < mtx.vin.size(); i++) {
-        bool hashSigned = SignSignature(keystore, scriptPubKey, mtx, i, 1000, sigHashes.at(i % sigHashes.size()), consensusBranchId);
-        assert(hashSigned);
+#ifndef PARALLEL_STL
+    // clang does not support parallel STL yet
+    for (size_t i = 0; i < TEST_TX_INPUT_SIZE; ++i)
+    {
+        const bool bHashSigned = SignSignature(keystore, scriptPubKey, mtx, i, 1000, sigHashes.at(i % sigHashes.size()), consensusBranchId);
+        ASSERT_TRUE(bHashSigned);
     }
+#else
+    // sign all inputs concurrently
+    for_each(execution::par_unseq, mtx.vin.begin(), mtx.vin.end(), [&](const CTxIn& txIn)
+        {
+            const uint32_t i = txIn.prevout.n;
+            const bool bHashSigned = SignSignature(keystore, scriptPubKey, mtx, i, 1000, sigHashes.at(i % sigHashes.size()), consensusBranchId);
+            ASSERT_TRUE(bHashSigned);
+        });
+#endif
 
     CTransaction tx;
     CDataStream ssout(SER_NETWORK, PROTOCOL_VERSION);
@@ -468,35 +477,32 @@ TEST(test_transaction, test_big_overwinter_transaction) {
 
     // check all inputs concurrently, with the cache
     PrecomputedTransactionData txdata(tx);
-    boost::thread_group threadGroup;
-    CCheckQueue<CScriptCheck> scriptcheckqueue(128);
-    CCheckQueueControl<CScriptCheck> control(&scriptcheckqueue);
+    CServiceThreadGroup threadGroup;
+    CScriptCheckManager scriptCheckMgr;
+    scriptCheckMgr.SetThreadCount(MAX_SCRIPTCHECK_THREADS + 10);
+    // (for MAX_SCRIPTCHECK_THREADS=16) only 15 workers should be created
+    scriptCheckMgr.create_workers(threadGroup);
 
-    for (int i=0; i<20; i++)
-        threadGroup.create_thread(boost::bind(&CCheckQueue<CScriptCheck>::Thread, boost::ref(scriptcheckqueue)));
+    auto scriptCheckControl = scriptCheckMgr.create_master(true);
 
     CCoins coins;
     coins.nVersion = 1;
     coins.fCoinBase = false;
-    for(uint32_t i = 0; i < mtx.vin.size(); i++) {
-        CTxOut txout;
-        txout.nValue = 1000;
-        txout.scriptPubKey = scriptPubKey;
-        coins.vout.push_back(txout);
+    for (auto &txIn : mtx.vin)
+        coins.vout.emplace_back(1000, scriptPubKey);
+
+    vector<CScriptCheck> vChecks;
+    for(uint32_t i = 0; i < mtx.vin.size(); i++)
+    {
+        vChecks.clear();
+        vChecks.emplace_back(coins, tx, i, SCRIPT_VERIFY_P2SH, false, consensusBranchId, &txdata);
+        scriptCheckControl->Add(vChecks);
     }
 
-    for(uint32_t i = 0; i < mtx.vin.size(); i++) {
-        vector<CScriptCheck> vChecks;
-        CScriptCheck check(coins, tx, i, SCRIPT_VERIFY_P2SH, false, consensusBranchId, &txdata);
-        vChecks.push_back(CScriptCheck());
-        check.swap(vChecks.back());
-        control.Add(vChecks);
-    }
+    const bool bControlCheck = scriptCheckControl->Wait();
+    ASSERT_TRUE(bControlCheck);
 
-    bool controlCheck = control.Wait();
-    assert(controlCheck);
-
-    threadGroup.interrupt_all();
+    threadGroup.stop_all();
     threadGroup.join_all();
 }
 

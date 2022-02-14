@@ -1,12 +1,13 @@
 #include <gtest/gtest.h>
 
-#include "fs.h"
-#include "zcash/Address.hpp"
+#include <fs.h>
+#include <zcash/Address.hpp>
 #include <chainparams.h>
-#include "wallet/wallet.h"
-#include "wallet/walletdb.h"
-#include "util.h"
+#include <wallet/wallet.h>
+#include <wallet/walletdb.h>
+#include <util.h>
 #include <pastel_gtest_main.h>
+#include <scope_guard.hpp>
 
 using namespace std;
 
@@ -118,7 +119,7 @@ public:
 
     static void TearDownTestSuite()
     {
-        gl_pPastelTestEnv->FinalizeRegTest();
+        gl_pPastelTestEnv->FinalizeChainTest();
     }
 };
 
@@ -127,8 +128,17 @@ public:
  */
 TEST_F(CTestWalletZkeys, WriteCryptedSaplingZkeyDirectToDb)
 {
-    bool fFirstRun;
-    CWallet wallet("wallet_crypted_sapling.dat");
+    bool fFirstRun = true;
+    fs::path tempWalletPath = fs::temp_directory_path() / "wallet_crypted_sapling.dat";
+
+    // cleanup temp wallet after test completes
+    auto guard = sg::make_scope_guard([&]() noexcept
+    {
+        if (fs::exists(tempWalletPath))
+            fs::remove(tempWalletPath);
+    });
+
+    CWallet wallet(tempWalletPath.string());
     LOCK(wallet.cs_wallet);
     ASSERT_EQ(DB_LOAD_OK, wallet.LoadWallet(fFirstRun));
 
@@ -176,7 +186,7 @@ TEST_F(CTestWalletZkeys, WriteCryptedSaplingZkeyDirectToDb)
     auto address2 = wallet.GenerateNewSaplingZKey();
 
     // Create a new wallet from the existing wallet path
-    CWallet wallet2("wallet_crypted_sapling.dat");
+    CWallet wallet2(tempWalletPath.string());
     ASSERT_EQ(DB_LOAD_OK, wallet2.LoadWallet(fFirstRun));
 
     // Confirm it's not the same as the other wallet

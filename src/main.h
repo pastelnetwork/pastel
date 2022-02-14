@@ -34,12 +34,12 @@
 #include "tinyformat.h"
 #include "txmempool.h"
 #include "uint256.h"
+#include <script_check.h>
 
 class CBlockIndex;
 class CBlockTreeDB;
 class CBloomFilter;
 class CInv;
-class CScriptCheck;
 class CValidationInterface;
 class CValidationState;
 struct PrecomputedTransactionData;
@@ -75,10 +75,6 @@ static constexpr unsigned int MAX_BLOCKFILE_SIZE = 0x8000000; // 128 MiB
 static constexpr unsigned int BLOCKFILE_CHUNK_SIZE = 0x1000000; // 16 MiB
 /** The pre-allocation chunk size for rev?????.dat files (since 0.8) */
 static constexpr unsigned int UNDOFILE_CHUNK_SIZE = 0x100000; // 1 MiB
-/** Maximum number of script-checking threads allowed */
-static constexpr int MAX_SCRIPTCHECK_THREADS = 16;
-/** -par default (number of script-checking threads, 0 = auto) */
-static constexpr int DEFAULT_SCRIPTCHECK_THREADS = 0;
 /** Number of blocks that can be requested at any given time from a single peer. */
 static constexpr int MAX_BLOCKS_IN_TRANSIT_PER_PEER = 16;
 /** Timeout in seconds during which a peer must stall block download progress before being disconnected. */
@@ -144,7 +140,6 @@ extern CConditionVariable cvBlockChange;
 extern bool fExperimentalMode;
 extern bool fImporting;
 extern bool fReindex;
-extern int nScriptCheckThreads;
 extern bool fTxIndex;
 extern bool fIsBareMultisigStd;
 extern bool fCheckBlockIndex;
@@ -194,7 +189,11 @@ void UnregisterNodeSignals(CNodeSignals& nodeSignals);
  * block is made active. Note that it does not, however, guarantee that the
  * specific block passed to it has been checked for validity!
  *
- * @param[out]  state   This may be set to an Error state if any error occurred processing it, including during validation/connection/etc of otherwise unrelated blocks during reorganisation; or it may be set to an Invalid state if pblock is itself invalid (but this is not guaranteed even when the block is checked). If you want to *possibly* get feedback on whether pblock is valid, you must also install a CValidationInterface (see validationinterface.h) - this will have its BlockChecked method called whenever *any* block completes validation.
+ * @param[out]  state   This may be set to an Error state if any error occurred processing it, including during 
+ *                      validation/connection/etc of otherwise unrelated blocks during reorganisation; 
+ *                      or it may be set to an Invalid state if pblock is itself invalid (but this is not guaranteed even when the block is checked). 
+ *                      If you want to *possibly* get feedback on whether pblock is valid, you must also install a CValidationInterface (see validationinterface.h) - 
+ *                      this will have its BlockChecked method called whenever *any* block completes validation.
  * @param[in]   pfrom   The node which we are receiving the block from; it is added to mapBlockSource and may be penalised if the block is invalid.
  * @param[in]   pblock  The block we want to process.
  * @param[in]   fForceProcessing Process this block even if unrequested; used for non-network block sources and whitelisted peers.
@@ -233,8 +232,6 @@ bool ProcessMessages(const CChainParams& chainparams, CNode* pfrom);
  * @param[in]   fSendTrickle    When true send the trickled data, otherwise trickle the data until true.
  */
 bool SendMessages(const CChainParams& chainparams, CNode* pto, bool fSendTrickle);
-/** Run an instance of the script checking thread */
-void ThreadScriptCheck();
 
 /** Check whether we are doing an initial block download (synchronizing from disk or network) */
 using funcIsInitialBlockDownload_t = std::function<bool(const Consensus::Params& params)>;
@@ -441,64 +438,6 @@ bool IsExpiringSoonTx(const CTransaction &tx, int nNextBlockHeight);
  * See consensus/consensus.h for flag definitions.
  */
 bool CheckFinalTx(const CTransaction &tx, int flags = -1);
-
-/** 
- * Closure representing one script verification
- * Note that this stores references to the spending transaction 
- */
-class CScriptCheck
-{
-private:
-    CScript scriptPubKey;
-    CAmount amount;
-    const CTransaction *ptxTo;
-    unsigned int nIn;
-    unsigned int nFlags;
-    bool cacheStore;
-    uint32_t consensusBranchId;
-    ScriptError error;
-    PrecomputedTransactionData *txdata;
-
-public:
-    CScriptCheck(): 
-        amount(0),
-        ptxTo(0),
-        nIn(0),
-        nFlags(0),
-        cacheStore(false),
-        consensusBranchId(0),
-        error(SCRIPT_ERR_UNKNOWN_ERROR),
-        txdata(nullptr)
-    {}
-    CScriptCheck(const CCoins& txFromIn, const CTransaction& txToIn, unsigned int nInIn, unsigned int nFlagsIn, bool cacheIn, uint32_t consensusBranchIdIn, PrecomputedTransactionData* txdataIn) :
-        scriptPubKey(txFromIn.vout[txToIn.vin[nInIn].prevout.n].scriptPubKey),
-        amount(txFromIn.vout[txToIn.vin[nInIn].prevout.n].nValue),
-        ptxTo(&txToIn),
-        nIn(nInIn),
-        nFlags(nFlagsIn),
-        cacheStore(cacheIn),
-        consensusBranchId(consensusBranchIdIn),
-        error(SCRIPT_ERR_UNKNOWN_ERROR),
-        txdata(txdataIn)
-    {}
-
-    bool operator()();
-
-    void swap(CScriptCheck &check) noexcept
-    {
-        scriptPubKey.swap(check.scriptPubKey);
-        std::swap(ptxTo, check.ptxTo);
-        std::swap(amount, check.amount);
-        std::swap(nIn, check.nIn);
-        std::swap(nFlags, check.nFlags);
-        std::swap(cacheStore, check.cacheStore);
-        std::swap(consensusBranchId, check.consensusBranchId);
-        std::swap(error, check.error);
-        std::swap(txdata, check.txdata);
-    }
-
-    ScriptError GetScriptError() const noexcept { return error; }
-};
 
 bool GetSpentIndex(CSpentIndexKey &key, CSpentIndexValue &value);
 

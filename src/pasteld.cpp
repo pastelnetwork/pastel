@@ -1,7 +1,11 @@
 // Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2013 The Bitcoin Core developers
+// Copyright (c) 2018-2022 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
-// file COPYING or http://www.opensource.org/licenses/mit-license.php.
+// file COPYING or https://www.opensource.org/licenses/mit-license.php.
+#include <stdio.h>
+
+#include <boost/algorithm/string/predicate.hpp>
 
 #include "clientversion.h"
 #include "rpc/server.h"
@@ -12,11 +16,6 @@
 #include "util.h"
 #include "httpserver.h"
 #include "httprpc.h"
-
-#include <boost/algorithm/string/predicate.hpp>
-#include <boost/thread.hpp>
-
-#include <stdio.h>
 
 /* Introduction text for doxygen: */
 
@@ -36,7 +35,7 @@
 
 static bool fDaemon;
 
-void WaitForShutdown(boost::thread_group* threadGroup)
+void WaitForShutdown(CServiceThreadGroup& threadGroup, CScheduler &scheduler)
 {
     bool fShutdown = ShutdownRequested();
     // Tell the main threads to shutdown.
@@ -45,11 +44,7 @@ void WaitForShutdown(boost::thread_group* threadGroup)
         MilliSleep(200);
         fShutdown = ShutdownRequested();
     }
-    if (threadGroup)
-    {
-        Interrupt(*threadGroup);
-        threadGroup->join_all();
-    }
+    Interrupt(threadGroup, scheduler);
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -58,8 +53,8 @@ void WaitForShutdown(boost::thread_group* threadGroup)
 //
 bool AppInit(int argc, char* argv[])
 {
-    boost::thread_group threadGroup;
-    CScheduler scheduler;
+    CServiceThreadGroup threadGroup;
+    CScheduler scheduler("scheduler");
 
     bool fRet = false;
 
@@ -169,19 +164,14 @@ bool AppInit(int argc, char* argv[])
     catch (const std::exception& e) {
         PrintExceptionContinue(&e, "AppInit()");
     } catch (...) {
-        PrintExceptionContinue(NULL, "AppInit()");
+        PrintExceptionContinue(nullptr, "AppInit()");
     }
 
     if (!fRet)
-    {
-        Interrupt(threadGroup);
-        // threadGroup.join_all(); was left out intentionally here, because we didn't re-test all of
-        // the startup-failure cases to make sure they don't result in a hang due to some
-        // thread-blocking-waiting-for-another-thread-during-startup case
-    } else {
-        WaitForShutdown(&threadGroup);
-    }
-    Shutdown();
+        Interrupt(threadGroup, scheduler);
+    else
+        WaitForShutdown(threadGroup, scheduler);
+    Shutdown(threadGroup, scheduler);
 
     return fRet;
 }

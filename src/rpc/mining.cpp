@@ -30,7 +30,6 @@
 
 #include <stdint.h>
 
-#include <boost/assign/list_of.hpp>
 #include <univalue.h>
 
 using namespace std;
@@ -604,7 +603,6 @@ Examples:
     {
         // Wait to respond until either the best block changes, OR a minute has passed and there are more transactions
         uint256 hashWatchedChain;
-        boost::system_time checktxtime;
         unsigned int nTransactionsUpdatedLastLP;
 
         if (lpval.isStr())
@@ -625,17 +623,17 @@ Examples:
         // Release the wallet and main lock while waiting
         LEAVE_CRITICAL_SECTION(cs_main);
         {
-            checktxtime = boost::get_system_time() + boost::posix_time::minutes(1);
+            auto checktxtime = chrono::system_clock::now() + 1min;
 
-            boost::unique_lock<boost::mutex> lock(csBestBlock);
+            unique_lock<mutex> lock(csBestBlock);
             while (chainActive.Tip()->GetBlockHash() == hashWatchedChain && IsRPCRunning())
             {
-                if (!cvBlockChange.timed_wait(lock, checktxtime))
+                if (cvBlockChange.wait_until(lock, checktxtime) == cv_status::timeout)
                 {
                     // Timeout: Check transactions for update
                     if (mempool.GetTransactionsUpdated() != nTransactionsUpdatedLastLP)
                         break;
-                    checktxtime += boost::posix_time::seconds(10);
+                    checktxtime += 10s;
                 }
             }
         }
@@ -896,7 +894,7 @@ UniValue estimatefee(const UniValue& params, bool fHelp)
             + HelpExampleCli("estimatefee", "6")
             );
 
-    RPCTypeCheck(params, boost::assign::list_of(UniValue::VNUM));
+    RPCTypeCheck(params, {UniValue::VNUM});
 
     int nBlocks = params[0].get_int();
     if (nBlocks < 1)
@@ -928,7 +926,7 @@ UniValue estimatepriority(const UniValue& params, bool fHelp)
             + HelpExampleCli("estimatepriority", "6")
             );
 
-    RPCTypeCheck(params, boost::assign::list_of(UniValue::VNUM));
+    RPCTypeCheck(params, {UniValue::VNUM});
 
     int nBlocks = params[0].get_int();
     if (nBlocks < 1)

@@ -21,9 +21,8 @@ BIN_CHECKS=$(top_srcdir)/contrib/devtools/symbol-check.py \
            $(top_srcdir)/contrib/devtools/security-check.py
 
 COVERAGE_INFO = baseline_filtered_combined.info baseline.info \
-  leveldb_baseline.info test_bitcoin_filtered.info total_coverage.info \
-  baseline_filtered.info \
-  leveldb_baseline_filtered.info test_bitcoin_coverage.info test_bitcoin.info \
+  leveldb_baseline.info total_coverage.info \
+  baseline_filtered.info leveldb_baseline_filtered.info  \
   pastel-gtest.info pastel-gtest_filtered.info pastel-gtest_coverage.info
 
 dist-hook:
@@ -60,9 +59,7 @@ baseline_filtered.info: baseline.info
                       "$(abs_builddir)/depends/x86_64-unknown-linux-gnu/include/gmock/*" \
                       "$(abs_builddir)/depends/x86_64-unknown-linux-gnu/include/gtest/*" \
                       "$(abs_builddir)/src/gtest/*" \
-                      "$(abs_builddir)/src/test/*" \
                       "$(abs_builddir)/src/wallet/gtest/*" \
-                      "$(abs_builddir)/src/wallet/test/*" \
                       -o $@
 
 leveldb_baseline.info: baseline_filtered.info
@@ -75,31 +72,11 @@ leveldb_baseline_filtered.info: leveldb_baseline.info
                       "$(abs_builddir)/depends/x86_64-unknown-linux-gnu/include/gmock/*" \
                       "$(abs_builddir)/depends/x86_64-unknown-linux-gnu/include/gtest/*" \
                       "$(abs_builddir)/src/gtest/*" \
-                      "$(abs_builddir)/src/test/*" \
                       "$(abs_builddir)/src/wallet/gtest/*" \
-                      "$(abs_builddir)/src/wallet/test/*" \
                       -o $@
 
 baseline_filtered_combined.info: leveldb_baseline_filtered.info baseline_filtered.info
 	$(LCOV) -a leveldb_baseline_filtered.info -a baseline_filtered.info -o $@
-
-test_bitcoin.info: baseline_filtered_combined.info
-	$(MAKE) -C src/ bitcoin_test_check
-	$(LCOV) -c -d $(abs_builddir)/src -t test_bitcoin -o $@
-	$(LCOV) -z -d $(abs_builddir)/src
-	$(LCOV) -z -d $(abs_builddir)/src/leveldb
-
-test_bitcoin_filtered.info: test_bitcoin.info
-	$(LCOV) -r $< "/usr/include/*" \
-                      "$(abs_builddir)/depends/x86_64-unknown-linux-gnu/include/*.h" \
-                      "$(abs_builddir)/depends/x86_64-unknown-linux-gnu/include/boost/*" \
-                      "$(abs_builddir)/depends/x86_64-unknown-linux-gnu/include/gmock/*" \
-                      "$(abs_builddir)/depends/x86_64-unknown-linux-gnu/include/gtest/*" \
-                      "$(abs_builddir)/src/gtest/*" \
-                      "$(abs_builddir)/src/test/*" \
-                      "$(abs_builddir)/src/wallet/gtest/*" \
-                      "$(abs_builddir)/src/wallet/test/*" \
-                      -o $@
 
 pastel-gtest.info: baseline_filtered_combined.info
 	$(MAKE) -C src/ pastel-gtest_check
@@ -114,23 +91,14 @@ pastel-gtest_filtered.info: pastel-gtest.info
                       "$(abs_builddir)/depends/x86_64-unknown-linux-gnu/include/gmock/*" \
                       "$(abs_builddir)/depends/x86_64-unknown-linux-gnu/include/gtest/*" \
                       "$(abs_builddir)/src/gtest/*" \
-                      "$(abs_builddir)/src/test/*" \
                       "$(abs_builddir)/src/wallet/gtest/*" \
-                      "$(abs_builddir)/src/wallet/test/*" \
                       -o $@
-
-test_bitcoin_coverage.info: baseline_filtered_combined.info test_bitcoin_filtered.info
-	$(LCOV) -a baseline_filtered.info -a leveldb_baseline_filtered.info -a test_bitcoin_filtered.info -o $@
 
 pastel-gtest_coverage.info: baseline_filtered_combined.info pastel-gtest_filtered.info
 	$(LCOV) -a baseline_filtered.info -a leveldb_baseline_filtered.info -a pastel-gtest_filtered.info -o $@
 
-total_coverage.info:  baseline_filtered_combined.info test_bitcoin_filtered.info pastel-gtest_filtered.info
-	$(LCOV) -a baseline_filtered.info -a leveldb_baseline_filtered.info -a test_bitcoin_filtered.info -a pastel-gtest_filtered.info -o $@ | $(GREP) "\%" | $(AWK) '{ print substr($$3,2,50) "/" $$5 }' > coverage_percent.txt
-
-test_bitcoin.coverage/.dirstamp:  test_bitcoin_coverage.info
-	$(GENHTML) -s $< -o $(@D)
-	@touch $@
+total_coverage.info:  baseline_filtered_combined.info pastel-gtest_filtered.info
+	$(LCOV) -a baseline_filtered.info -a leveldb_baseline_filtered.info -a -a pastel-gtest_filtered.info -o $@ | $(GREP) "\%" | $(AWK) '{ print substr($$3,2,50) "/" $$5 }' > coverage_percent.txt
 
 pastel-gtest.coverage/.dirstamp:  pastel-gtest_coverage.info
 	$(GENHTML) -s $< -o $(@D)
@@ -141,8 +109,6 @@ cov-pastel: pastel-gtest.coverage/.dirstamp
 total.coverage/.dirstamp: total_coverage.info
 	$(GENHTML) -s $< -o $(@D)
 	@touch $@
-
-cov: test_bitcoin.coverage/.dirstamp cov-pastel total.coverage/.dirstamp
 
 endif
 
@@ -158,11 +124,11 @@ analyze:
 	./pcutil/static_code_analysis.py
 
 test:
-	./qa/test-suite/full_test_suite.py
+	./qa/test-suite/full_test_suite.py $(filter-out $@,$(MAKECMDGOALS))
 
 .INTERMEDIATE: $(COVERAGE_INFO)
 
 DISTCHECK_CONFIGURE_FLAGS = --enable-man
 
 clean-local:
-	rm -rf test_bitcoin.coverage/ pastel-gtest.coverage/ total.coverage/
+	rm -rf pastel-gtest.coverage/ total.coverage/

@@ -1,20 +1,7 @@
 // Copyright (c) 2016 The Zcash developers
+// Copyright (c) 2018-2022 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
-// file COPYING or http://www.opensource.org/licenses/mit-license.php.
-
-#include "metrics.h"
-
-#include "chainparams.h"
-#include "checkpoints.h"
-#include "main.h"
-#include "ui_interface.h"
-#include "util.h"
-#include "utiltime.h"
-#include "utilmoneystr.h"
-#include "utilstrencodings.h"
-
-#include <boost/thread.hpp>
-#include <boost/thread/synchronized_value.hpp>
+// file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <string>
 #ifdef WIN32
 #include <io.h>
@@ -22,6 +9,19 @@
 #include <sys/ioctl.h>
 #endif
 #include <unistd.h>
+
+#include <boost/thread/synchronized_value.hpp>
+
+#include <metrics.h>
+#include <chainparams.h>
+#include <checkpoints.h>
+#include <main.h>
+#include <ui_interface.h>
+#include <util.h>
+#include <utiltime.h>
+#include <utilmoneystr.h>
+#include <utilstrencodings.h>
+
 
 void AtomicTimer::start()
 {
@@ -457,8 +457,7 @@ void SendVTSequence(const char *szVTcmd)
 
 void ThreadShowMetricsScreen()
 {
-    // Make this thread recognisable as the metrics screen thread
-    RenameThread("pastel-metrics-screen");
+    // Make this thread recognizable as the metrics screen thread
 
     // Determine whether we should render a persistent UI or rolling metrics
     bool isTTY = isatty(STDOUT_FILENO);
@@ -541,8 +540,9 @@ void ThreadShowMetricsScreen()
         }
 
         *nNextRefresh = GetTime() + nRefresh;
-        while (GetTime() < *nNextRefresh) {
-            boost::this_thread::interruption_point();
+        while (GetTime() < *nNextRefresh)
+        {
+            func_thread_interrupt_point();
             MilliSleep(200);
         }
 

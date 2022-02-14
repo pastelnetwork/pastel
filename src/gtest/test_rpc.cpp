@@ -99,7 +99,7 @@ void CheckRPCThrows(string rpcString, string expectedErrorMessage) {
         // BOOST_FAIL("Should have caused an error");
     } catch (const runtime_error& e) {
         EXPECT_EQ(expectedErrorMessage, e.what());
-    } catch(const exception& e) {
+    } catch([[maybe_unused]] const exception& e) {
         // BOOST_FAIL(string("Unexpected exception: ") + typeid(e).name() + ", message=\"" + e.what() + "\"");
     }
 }

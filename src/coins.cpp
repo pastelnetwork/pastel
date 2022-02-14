@@ -605,7 +605,7 @@ double CCoinsViewCache::GetPriority(const CTransaction &tx, int nHeight) const
     // (Note that coinbase transactions cannot contain JoinSplits, or Sapling shielded Spends or Outputs.)
 
     if (tx.vShieldedSpend.size() > 0 || tx.vShieldedOutput.size() > 0) {
-        return MAX_PRIORITY;
+        return MAX_FEE_PRIORITY;
     }
 
     // FIXME: this logic is partially duplicated between here and CreateNewBlock in miner.cpp.

@@ -5,6 +5,7 @@
 
 #include <stdint.h>
 #include <vector>
+#include <cmath>
 #include <unistd.h>
 
 #include <gtest/gtest.h>

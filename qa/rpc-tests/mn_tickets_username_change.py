@@ -142,8 +142,8 @@ class UserNameChangeTest(PastelTestFramework):
         self.node1_balance = self.nodes[1].getbalance()
         # register first time username 'Morpheus' for n1_pastelid1 - keep it in mempool only
         result = self.nodes[1].tickets("register", "username", username1, self.n1_pastelid1, self.passphrase)
-        print(result)
         txid = result["txid"]
+        print(f"Registered '{username1} on node #1 for Pastel ID #1: {result}")
         assert_true(txid, "No username-change ticket was created")
 
         # try to register the same username - mempool transaction exists with the same username
@@ -153,7 +153,6 @@ class UserNameChangeTest(PastelTestFramework):
         assert_raises_rpc(rpc.RPC_MISC_ERROR, "same PastelID in the memory pool", 
             self.nodes[1].tickets, "register", "username", username2, self.n1_pastelid1, self.passphrase)
         # commit transaction for username1 change
-        self.sync_all()
         self.generate_and_sync_inc(1)
         self.list_username_tickets(1)
         self.check_username_change_ticket(txid, username1, self.n1_pastelid1, self.USERNAME_CHANGE_FEE_FIRST_TIME)
@@ -181,20 +180,24 @@ class UserNameChangeTest(PastelTestFramework):
         self.generate_and_sync_inc(self.CHANGE_DISABLED_BLOCK_COUNT)
 
         self.node1_balance = self.nodes[1].getbalance()
+        print(f"node #1 balance: {self.node1_balance}")
         # register second time username 'Trinity' for n1_pastelid1
         result = self.nodes[1].tickets("register", "username", username2, self.n1_pastelid1, self.passphrase)
-        print(result)
         txid2 = result["txid"]
+        print(f"Registered '{username2} on node #1 for Pastel ID #1: {result}")
         assert_true(txid2, "No username-change ticket was created")
+        # should sync mempools
+        # if, for example, node0 don't have this tx in mempool, next tx "register username1 for Pastel ID #2" 
+        # will be rejected because it's taken (registered to Pastel ID #1)
+        self.sync_all()
 
         # 'Morpheus' username registered to n1_pastelid1 is not active now (ticket transaction is in the mempool, but not yet in blockchain)
         # n1_pastelid2 can use this username now - first username change for this pastelid
         result = self.nodes[1].tickets("register", "username", username1, self.n1_pastelid2, self.passphrase)
-        print(result)
         txid1 = result["txid"]
+        print(f"Registered '{username1} on node #1 for Pastel ID #2: {result}")
         assert_true(txid1, "No username-change ticket was created")
         # commit transactions for both username1 & username2 changes
-        self.sync_all()
         self.generate_and_sync_inc(1)
 
         # check txid1,txid2 transactions
@@ -214,7 +217,6 @@ class UserNameChangeTest(PastelTestFramework):
         print(result)
         txid3 = result["txid"]
         assert_true(txid3, "No username-change ticket was created")
-        self.sync_all()
         self.generate_and_sync_inc(1)
         # check txid3 transaction
         self.list_username_tickets(3)
@@ -251,14 +253,12 @@ class UserNameChangeTest(PastelTestFramework):
         print(result)
         txid4 = result["txid"]
         assert_true(txid4, "No username-change ticket was created")
-        self.sync_all()
         self.generate_and_sync_inc(1)
         self.list_username_tickets(4)
         self.check_username_change_ticket(txid4, username5, self.n1_pastelid2, self.USERNAME_CHANGE_FEE_SECOND_TIME)
         amounts = self.nodes[1].listaddressamounts(False, "all")
         nT1 -= self.USERNAME_CHANGE_FEE_SECOND_TIME
         assert_equal(nT1, amounts[addr[1]], "node1 taddr1 amount does not match")
-        self.sync_all()
         self.generate_and_sync_inc(10) # allow next username change
         # not enough funds on the address
         assert_raises_rpc(rpc.RPC_MISC_ERROR, "No unspent transaction found for address", 
@@ -268,7 +268,6 @@ class UserNameChangeTest(PastelTestFramework):
         print(result)
         txid5 = result["txid"]
         assert_true(txid4, "No username-change ticket was created")
-        self.sync_all()
         self.generate_and_sync_inc(1)
         self.list_username_tickets(5)
         self.check_username_change_ticket(txid5, username6, self.n1_pastelid1, self.USERNAME_CHANGE_FEE_SECOND_TIME)

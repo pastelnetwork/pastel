@@ -2,7 +2,6 @@
 
 #include "crypto/common.h"
 #include <unistd.h>
-#include <boost/static_assert.hpp>
 #include <libsnark/common/default_types/r1cs_ppzksnark_pp.hpp>
 #include <libsnark/zk_proof_systems/ppzksnark/r1cs_ppzksnark/r1cs_ppzksnark.hpp>
 #include <mutex>
@@ -17,7 +16,7 @@ typedef alt_bn128_pp::Fp_type curve_Fr;
 typedef alt_bn128_pp::Fq_type curve_Fq;
 typedef alt_bn128_pp::Fqe_type curve_Fq2;
 
-BOOST_STATIC_ASSERT(sizeof(mp_limb_t) == 8);
+static_assert(sizeof(mp_limb_t) == 8);
 
 namespace libzcash {
 

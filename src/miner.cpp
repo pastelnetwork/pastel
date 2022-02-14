@@ -1,9 +1,17 @@
 // Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2014 The Bitcoin Core developers
+// Copyright (c) 2018-2022 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
+#include <tuple>
+#ifdef ENABLE_MINING
+#include <functional>
+#endif
+#include <mutex>
 
-#include "miner.h"
+#include <sodium.h>
+
+#include <miner.h>
 #ifdef ENABLE_MINING
 #include "pow/tromp/equi_miner.h"
 #endif
@@ -31,15 +39,6 @@
 #ifdef ENABLE_WALLET
 #include "wallet/wallet.h"
 #endif
-
-#include "sodium.h"
-
-#include <boost/thread.hpp>
-#include <tuple>
-#ifdef ENABLE_MINING
-#include <functional>
-#endif
-#include <mutex>
 #include "mnode/mnode-validation.h"
 
 using namespace std;
@@ -657,7 +656,7 @@ void static BitcoinMiner()
                     if (chainparams.MineBlocksOnDemand()) {
                         // Increment here because throwing skips the call below
                         ehSolverRuns.increment();
-                        throw boost::thread_interrupted();
+                        throw func_thread_interrupted();
                     }
 
                     return true;
@@ -716,7 +715,7 @@ void static BitcoinMiner()
                 }
 
                 // Check for stop or if block needs to be rebuilt
-                boost::this_thread::interruption_point();
+                func_thread_interrupt_point();
                 // Regtest mode doesn't require peers
                 if (vNodes.empty() && chainparams.MiningRequiresPeers())
                     break;
@@ -738,15 +737,13 @@ void static BitcoinMiner()
             }
         }
     }
-    catch (const boost::thread_interrupted&)
-    {
+    catch (const func_thread_interrupted&) {
         miningTimer.stop();
         c.disconnect();
         LogPrintf("PastelMiner terminated\n");
         throw;
     }
-    catch (const std::runtime_error &e)
-    {
+    catch (const std::runtime_error &e) {
         miningTimer.stop();
         c.disconnect();
         LogPrintf("PastelMiner runtime error: %s\n", e.what());
@@ -762,28 +759,26 @@ void GenerateBitcoins(bool fGenerate, CWallet* pwallet, int nThreads, const CCha
 void GenerateBitcoins(bool fGenerate, int nThreads, const CChainParams& chainparams)
 #endif
 {
-    static boost::thread_group* minerThreads = nullptr;
+    static CServiceThreadGroup minerThreads;
 
     if (nThreads < 0)
         nThreads = GetNumCores();
 
-    if (minerThreads)
+    if (minerThreads.empty())
     {
-        minerThreads->interrupt_all();
-        minerThreads->join_all();
-        delete minerThreads;
-        minerThreads = nullptr;
+        minerThreads.stop_all();
+        minerThreads.join_all();
     }
 
     if (nThreads == 0 || !fGenerate)
         return;
 
-    minerThreads = new boost::thread_group();
-    for (int i = 0; i < nThreads; i++) {
+    for (int i = 0; i < nThreads; i++)
+    {
 #ifdef ENABLE_WALLET
-        minerThreads->create_thread(boost::bind(&BitcoinMiner, pwallet));
+        minerThreads.add_func_thread("miner", bind(&BitcoinMiner, pwallet));
 #else
-        minerThreads->create_thread(boost::bind(&BitcoinMiner));
+        minerThreads.add_func_thread("miner", BitcoinMiner);
 #endif
     }
 }

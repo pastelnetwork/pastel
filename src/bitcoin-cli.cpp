@@ -10,6 +10,7 @@
 #include "rpc/rpc_consts.h"
 #include "util.h"
 #include "utilstrencodings.h"
+#include <svc_thread.h>
 
 #include <stdio.h>
 
@@ -338,7 +339,7 @@ int CommandLineRPC(int argc, char *argv[])
             }
         } while (fWait);
     }
-    catch (const boost::thread_interrupted&)
+    catch (const func_thread_interrupted&)
     {
         throw;
     }

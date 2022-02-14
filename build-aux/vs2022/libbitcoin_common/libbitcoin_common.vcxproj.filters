@@ -210,5 +210,8 @@
     <ClInclude Include="..\..\..\src\datacompressor.h">
       <Filter>Source Files</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\..\src\svc_thread.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

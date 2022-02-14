@@ -1,17 +1,19 @@
 // Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2014 The Bitcoin Core developers
+// Copyright (c) 2018-2022 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
-// file COPYING or http://www.opensource.org/licenses/mit-license.php.
-
-#include "sigcache.h"
-
-#include "memusage.h"
-#include "pubkey.h"
-#include "random.h"
-#include "uint256.h"
-#include "util.h"
+// file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <unordered_set>
-#include <boost/thread.hpp>
+#include <shared_mutex>
+
+#include <script/sigcache.h>
+#include <memusage.h>
+#include <pubkey.h>
+#include <random.h>
+#include <uint256.h>
+#include <util.h>
+
+using namespace std;
 
 namespace {
 
@@ -39,8 +41,7 @@ private:
     uint256 nonce;
     typedef std::unordered_set<uint256, CSignatureCacheHasher> map_type;
     map_type setValid;
-    boost::shared_mutex cs_sigcache;
-
+    shared_mutex cs_sigcache;
 
 public:
     CSignatureCache()
@@ -57,13 +58,13 @@ public:
     bool
     Get(const uint256& entry)
     {
-        boost::shared_lock<boost::shared_mutex> lock(cs_sigcache);
+        shared_lock<shared_mutex> lock(cs_sigcache);
         return setValid.count(entry);
     }
 
     void Erase(const uint256& entry)
     {
-        boost::unique_lock<boost::shared_mutex> lock(cs_sigcache);
+        unique_lock<shared_mutex> lock(cs_sigcache);
         setValid.erase(entry);
     }
 
@@ -72,7 +73,7 @@ public:
         size_t nMaxCacheSize = GetArg("-maxsigcachesize", DEFAULT_MAX_SIG_CACHE_SIZE) * ((size_t) 1 << 20);
         if (nMaxCacheSize <= 0) return;
 
-        boost::unique_lock<boost::shared_mutex> lock(cs_sigcache);
+        unique_lock<shared_mutex> lock(cs_sigcache);
         while (memusage::DynamicUsage(setValid) > nMaxCacheSize)
         {
             map_type::size_type s = GetRand(setValid.bucket_count());

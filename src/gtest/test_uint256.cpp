@@ -1,21 +1,22 @@
 // Copyright (c) 2011-2013 The Bitcoin Core developers
-// Copyright (c) 2021 The Pastel developers
+// Copyright (c) 2021-2022 The Pastel developers
 // Distributed under the MIT software license, see the accompanying
-// file COPYING or http://www.opensource.org/licenses/mit-license.php.
-#include "arith_uint256.h"
-#include "uint256.h"
-#include "version.h"
-#include "test/test_bitcoin.h"
-
-#include <gmock/gmock.h>
-#include <gtest/gtest.h>
-#include <stdint.h>
-#include <sstream>
+// file COPYING or https://www.opensource.org/licenses/mit-license.php.
+#include <cmath>
 #include <iomanip>
 #include <limits>
-#include <cmath>
-#include <string>
+#include <sstream>
+#include <stdint.h>
 #include <stdio.h>
+#include <string>
+
+#include <gmock/gmock.h>
+
+#include <arith_uint256.h>
+#include <uint256.h>
+#include <serialize.h>
+#include <streams.h>
+#include <version.h>
 
 constexpr unsigned char R1Array[] =
     "\x9c\x52\x4a\xdb\xcf\x56\x11\x12\x2b\x29\x12\x5e\x5d\x35\xd2\xd2"

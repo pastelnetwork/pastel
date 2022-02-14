@@ -1,10 +1,11 @@
 // Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2014 The Bitcoin Core developers
+// Copyright (c) 2018-2022 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php .
+#include <atomic>
 
 #include <wallet/walletdb.h>
-
 #include <consensus/validation.h>
 #include <fs.h>
 #include <key_io.h>
@@ -16,10 +17,6 @@
 #include <utiltime.h>
 #include <wallet/wallet.h>
 #include <zcash/Proof.hpp>
-
-#include <boost/scoped_ptr.hpp>
-#include <boost/thread.hpp>
-#include <atomic>
 
 using namespace std;
 
@@ -852,7 +849,7 @@ DBErrors CWalletDB::LoadWallet(CWallet* pwallet)
         }
         pcursor->close();
     }
-    catch (const boost::thread_interrupted&) {
+    catch (const func_thread_interrupted&) {
         throw;
     }
     catch (...) {
@@ -957,7 +954,7 @@ DBErrors CWalletDB::FindWalletTx(CWallet* pwallet, v_uint256& vTxHash, vector<CW
         }
         pcursor->close();
     }
-    catch (const boost::thread_interrupted&) {
+    catch (const func_thread_interrupted&) {
         throw;
     }
     catch (...) {
@@ -988,11 +985,8 @@ DBErrors CWalletDB::ZapWalletTx(CWallet* pwallet, vector<CWalletTx>& vWtx)
     return DB_LOAD_OK;
 }
 
-void ThreadFlushWalletDB(const string& strFile)
+void CFlushWalletDBThread::execute()
 {
-    // Make this thread recognisable as the wallet flushing thread
-    RenameThread("pastel-wallet");
-
     static bool fOneThread;
     if (fOneThread)
         return;
@@ -1003,9 +997,11 @@ void ThreadFlushWalletDB(const string& strFile)
     unsigned int nLastSeen = CWalletDB::GetUpdateCounter();
     unsigned int nLastFlushed = CWalletDB::GetUpdateCounter();
     int64_t nLastWalletUpdate = GetTime();
-    while (true)
+    while (!shouldStop())
     {
-        MilliSleep(500);
+        unique_lock<mutex> lck(m_mutex);
+        if (m_condVar.wait_for(lck, 500ms) == cv_status::no_timeout)
+            continue;
 
         if (nLastSeen != CWalletDB::GetUpdateCounter())
         {
@@ -1020,7 +1016,7 @@ void ThreadFlushWalletDB(const string& strFile)
             {
                 // Don't do this if any databases are in use
                 int nRefCount = 0;
-                map<string, int>::iterator mi = bitdb.mapFileUseCount.begin();
+                auto mi = bitdb.mapFileUseCount.begin();
                 while (mi != bitdb.mapFileUseCount.end())
                 {
                     nRefCount += (*mi).second;
@@ -1029,8 +1025,8 @@ void ThreadFlushWalletDB(const string& strFile)
 
                 if (nRefCount == 0)
                 {
-                    boost::this_thread::interruption_point();
-                    map<string, int>::iterator mi = bitdb.mapFileUseCount.find(strFile);
+                    func_thread_interrupt_point();
+                    auto mi = bitdb.mapFileUseCount.find(m_sWalletFile);
                     if (mi != bitdb.mapFileUseCount.end())
                     {
                         LogPrint("db", "Flushing wallet.dat\n");
@@ -1038,8 +1034,8 @@ void ThreadFlushWalletDB(const string& strFile)
                         int64_t nStart = GetTimeMillis();
 
                         // Flush wallet.dat so it's self contained
-                        bitdb.CloseDb(strFile);
-                        bitdb.CheckpointLSN(strFile);
+                        bitdb.CloseDb(m_sWalletFile);
+                        bitdb.CheckpointLSN(m_sWalletFile);
 
                         bitdb.mapFileUseCount.erase(mi++);
                         LogPrint("db", "Flushed wallet.dat %dms\n", GetTimeMillis() - nStart);
@@ -1120,7 +1116,7 @@ bool CWalletDB::Recover(CDBEnv& dbenv, const string& filename, bool fOnlyKeys)
     }
     LogPrintf("Salvage(aggressive) found %u records\n", salvagedData.size());
 
-    boost::scoped_ptr<Db> pdbCopy(new Db(dbenv.dbenv, 0));
+    auto pdbCopy = make_unique<Db>(dbenv.dbenv, 0);
     int ret = pdbCopy->open(nullptr,               // Txn pointer
                             filename.c_str(),   // Filename
                             "main",             // Logical db name
@@ -1215,3 +1211,4 @@ unsigned int CWalletDB::GetUpdateCounter()
 {
     return nWalletDBUpdateCounter;
 }
+

@@ -1,38 +1,37 @@
-#include <gtest/gtest.h>
-
-#include "test/data/merkle_roots.json.h"
-#include "test/data/merkle_roots_empty.json.h"
-#include "test/data/merkle_serialization.json.h"
-#include "test/data/merkle_witness_serialization.json.h"
-#include "test/data/merkle_path.json.h"
-#include "test/data/merkle_commitments.json.h"
-
-#include "test/data/merkle_roots_sapling.json.h"
-#include "test/data/merkle_roots_empty_sapling.json.h"
-#include "test/data/merkle_serialization_sapling.json.h"
-#include "test/data/merkle_witness_serialization_sapling.json.h"
-#include "test/data/merkle_path_sapling.json.h"
-#include "test/data/merkle_commitments_sapling.json.h"
-
 #include <iostream>
-
 #include <stdexcept>
 
-#include "utilstrencodings.h"
-#include "version.h"
-#include "serialize.h"
-#include "streams.h"
-#include "vector_types.h"
+#include <gtest/gtest.h>
 
-#include "zcash/IncrementalMerkleTree.hpp"
-#include "zcash/util.h"
+#include <gtest/data/merkle_roots.json.h>
+#include <gtest/data/merkle_roots_empty.json.h>
+#include <gtest/data/merkle_serialization.json.h>
+#include <gtest/data/merkle_witness_serialization.json.h>
+#include <gtest/data/merkle_path.json.h>
+#include <gtest/data/merkle_commitments.json.h>
+        
+#include <gtest/data/merkle_roots_sapling.json.h>
+#include <gtest/data/merkle_roots_empty_sapling.json.h>
+#include <gtest/data/merkle_serialization_sapling.json.h>
+#include <gtest/data/merkle_witness_serialization_sapling.json.h>
+#include <gtest/data/merkle_path_sapling.json.h>
+#include <gtest/data/merkle_commitments_sapling.json.h>
 
 #include <libsnark/common/default_types/r1cs_ppzksnark_pp.hpp>
-#include <libsnark/zk_proof_systems/ppzksnark/r1cs_ppzksnark/r1cs_ppzksnark.hpp>
 #include <libsnark/gadgetlib1/gadgets/hashes/sha256/sha256_gadget.hpp>
 #include <libsnark/gadgetlib1/gadgets/merkle_tree/merkle_tree_check_read_gadget.hpp>
+#include <libsnark/zk_proof_systems/ppzksnark/r1cs_ppzksnark/r1cs_ppzksnark.hpp>
+#include <zcash/IncrementalMerkleTree.hpp>
+#include <zcash/util.h>
 
-#include "json_test_vectors.h"
+#include <utilstrencodings.h>
+#include <version.h>
+#include <serialize.h>
+#include <streams.h>
+#include <vector_types.h>
+#include <json_test_vectors.h>
+
+
 
 using namespace std;
 using namespace libsnark;

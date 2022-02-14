@@ -13,17 +13,15 @@
 #include <util.h>
 #include <utilstrencodings.h>
 #include <asyncrpcqueue.h>
+#include <str_utils.h>
 
 #include <memory>
 
 #include <univalue.h>
 
-#include <boost/bind/bind.hpp>
 #include <boost/iostreams/concepts.hpp>
 #include <boost/iostreams/stream.hpp>
 #include <boost/signals2/signal.hpp>
-#include <boost/thread.hpp>
-#include <boost/algorithm/string/case_conv.hpp> // for to_upper()
 
 using namespace RPCServer;
 using namespace std;
@@ -45,24 +43,24 @@ static struct CRPCSignals
     boost::signals2::signal<void (const CRPCCommand&)> PostCommand;
 } g_rpcSignals;
 
-void RPCServer::OnStarted(boost::function<void ()> slot)
+void RPCServer::OnStarted(function<void ()> slot)
 {
     g_rpcSignals.Started.connect(slot);
 }
 
-void RPCServer::OnStopped(boost::function<void ()> slot)
+void RPCServer::OnStopped(function<void ()> slot)
 {
     g_rpcSignals.Stopped.connect(slot);
 }
 
-void RPCServer::OnPreCommand(boost::function<void (const CRPCCommand&)> slot)
+void RPCServer::OnPreCommand(function<void (const CRPCCommand&)> slot)
 {
-    g_rpcSignals.PreCommand.connect(boost::bind(slot, boost::placeholders::_1));
+    g_rpcSignals.PreCommand.connect(bind(slot, placeholders::_1));
 }
 
-void RPCServer::OnPostCommand(boost::function<void (const CRPCCommand&)> slot)
+void RPCServer::OnPostCommand(function<void (const CRPCCommand&)> slot)
 {
-    g_rpcSignals.PostCommand.connect(boost::bind(slot, boost::placeholders::_1));
+    g_rpcSignals.PostCommand.connect(bind(slot, placeholders::_1));
 }
 
 void RPCTypeCheck(const UniValue& params,
@@ -200,7 +198,7 @@ string CRPCTable::help(const string& strCommand) const
                         strRet += "\n";
                     category = pcmd->category;
                     string firstLetter = category.substr(0,1);
-                    boost::to_upper(firstLetter);
+                    uppercase(firstLetter);
                     strRet += "== " + firstLetter + category.substr(1) + " ==\n";
                 }
             }
@@ -483,7 +481,7 @@ void RPCUnregisterTimerInterface(RPCTimerInterface *iface)
     timerInterfaces.erase(i);
 }
 
-void RPCRunLater(const string& name, boost::function<void(void)> func, int64_t nSeconds)
+void RPCRunLater(const string& name, function<void(void)> func, int64_t nSeconds)
 {
     if (timerInterfaces.empty())
         throw JSONRPCError(RPC_INTERNAL_ERROR, "No timer handler registered for RPC");

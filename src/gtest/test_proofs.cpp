@@ -1,11 +1,18 @@
-#include <gtest/gtest.h>
-#include "zcash/Proof.hpp"
-
 #include <iostream>
 
+#include <gtest/gtest.h>
+#include <gtest/data/g1_compressed.json.h>
+#include <gtest/data/g2_compressed.json.h>
+
+#include <zcash/Proof.hpp>
 #include <libsnark/common/default_types/r1cs_ppzksnark_pp.hpp>
 #include <libsnark/relations/constraint_satisfaction_problems/r1cs/examples/r1cs_examples.hpp>
 #include <libsnark/zk_proof_systems/ppzksnark/r1cs_ppzksnark/r1cs_ppzksnark.hpp>
+
+#include <streams.h>
+#include <utilstrencodings.h>
+#include <version.h>
+#include <json_test_vectors.h>
 
 using namespace libzcash;
 
@@ -16,10 +23,6 @@ typedef libsnark::default_r1cs_ppzksnark_pp::GT_type curve_GT;
 typedef libsnark::default_r1cs_ppzksnark_pp::Fp_type curve_Fr;
 typedef libsnark::default_r1cs_ppzksnark_pp::Fq_type curve_Fq;
 typedef libsnark::default_r1cs_ppzksnark_pp::Fqe_type curve_Fq2;
-
-#include "streams.h"
-#include "version.h"
-#include "utilstrencodings.h"
 
 TEST(proofs, g1_pairing_at_infinity)
 {
@@ -668,9 +671,6 @@ TEST(proofs, g2_deserialization)
     }
 }
 
-#include "json_test_vectors.h"
-#include "test/data/g1_compressed.json.h"
-
 TEST(proofs, g1_test_vectors)
 {
     UniValue v = read_json(std::string(json_tests::g1_compressed, json_tests::g1_compressed + sizeof(json_tests::g1_compressed)));
@@ -684,8 +684,6 @@ TEST(proofs, g1_test_vectors)
         ASSERT_TRUE(expected.to_libsnark_g1<curve_G1>() == e);
     }
 }
-
-#include "test/data/g2_compressed.json.h"
 
 TEST(proofs, g2_test_vectors)
 {

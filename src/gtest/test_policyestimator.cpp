@@ -1,15 +1,17 @@
 // Copyright (c) 2011-2015 The Bitcoin Core developers
-// Copyright (c) 2021 The Pastel developers
+// Copyright (c) 2021-2022 The Pastel developers
 // Distributed under the MIT software license, see the accompanying
-// file COPYING or http://www.opensource.org/licenses/mit-license.php.
+// file COPYING or https://www.opensource.org/licenses/mit-license.php.
 
+#include <cmath>
 #include <gtest/gtest.h>
 
+#include <policy/fees.h>
+#include <txmempool.h>
+#include <uint256.h>
+#include <util.h>
+
 #include "test_mempool_entryhelper.h"
-#include "policy/fees.h"
-#include "txmempool.h"
-#include "uint256.h"
-#include "util.h"
 
 using namespace std;
 using namespace testing;

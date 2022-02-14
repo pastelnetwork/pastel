@@ -1,12 +1,13 @@
 // Copyright (c) 2012 Pieter Wuille
+// Copyright (c) 2018-2022 The Pastel Core Developers
 // Distributed under the MIT software license, see the accompanying
-// file COPYING or http://www.opensource.org/licenses/mit-license.php.
+// file COPYING or https://www.opensource.org/licenses/mit-license.php.
+#include <cmath>
 
-#include "addrman.h"
-
-#include "hash.h"
-#include "serialize.h"
-#include "streams.h"
+#include <addrman.h>
+#include <hash.h>
+#include <serialize.h>
+#include <streams.h>
 
 int CAddrInfo::GetTriedBucket(const uint256& nKey) const
 {

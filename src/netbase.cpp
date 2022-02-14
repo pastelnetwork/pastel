@@ -1,21 +1,12 @@
 // Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2014 The Bitcoin Core developers
+// Copyright (c) 2018-2022 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
-// file COPYING or http://www.opensource.org/licenses/mit-license.php.
+// file COPYING or https://www.opensource.org/licenses/mit-license.php.
 
 #ifdef HAVE_CONFIG_H
 #include "config/bitcoin-config.h"
 #endif
-
-#include "netbase.h"
-
-#include "hash.h"
-#include "sync.h"
-#include "uint256.h"
-#include "random.h"
-#include "util.h"
-#include "str_utils.h"
-#include "utilstrencodings.h"
 
 #ifdef HAVE_GETADDRINFO_A
 #include <netdb.h>
@@ -29,7 +20,15 @@
 #endif
 #include <unistd.h>
 
-#include <boost/thread.hpp>
+#include <netbase.h>
+#include <hash.h>
+#include <sync.h>
+#include <uint256.h>
+#include <random.h>
+#include <util.h>
+#include <str_utils.h>
+#include <utilstrencodings.h>
+#include <svc_thread.h>
 
 using namespace std;
 
@@ -176,7 +175,7 @@ bool static LookupIntern(const char *pszName, vector<CNetAddr>& vIP, unsigned in
         // 2 seconds looks fine in our situation.
         struct timespec ts = { 2, 0 };
         gai_suspend(&query, 1, &ts);
-        boost::this_thread::interruption_point();
+        func_thread_interrupt_point();
 
         nErr = gai_error(query);
         if (0 == nErr)
@@ -307,7 +306,7 @@ bool static InterruptibleRecv(char* data, size_t len, int timeout, SOCKET& hSock
                 return false;
             }
         }
-        boost::this_thread::interruption_point();
+        func_thread_interrupt_point();
         curTime = GetTimeMillis();
     }
     return len == 0;

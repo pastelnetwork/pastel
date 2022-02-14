@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 # Copyright (c) 2014-2016 The Bitcoin Core developers
+# Copyright (c) 2018-2022 The Pastel Core developers
 # Distributed under the MIT software license, see the accompanying
 # file COPYING or https://www.opensource.org/licenses/mit-license.php .
 
@@ -79,7 +80,6 @@ class RESTTest (BitcoinTestFramework):
         assert_equal(self.nodes[0].getbalance(), self._reward)
 
         txid = self.nodes[0].sendtoaddress(self.nodes[1].getnewaddress(), 0.1)
-        self.sync_all()
         self.generate_and_sync_inc(1, 2)
         bb_hash = self.nodes[0].getbestblockhash()
 
@@ -163,6 +163,8 @@ class RESTTest (BitcoinTestFramework):
 
         # do a tx and don't sync
         txid = self.nodes[0].sendtoaddress(self.nodes[1].getnewaddress(), 0.1)
+        self.generate_and_sync_inc(1)
+
         json_string = http_get_call(url.hostname, url.port, '/rest/tx/'+txid+self.FORMAT_SEPARATOR+"json")
         json_obj = json.loads(json_string)
         vintx = json_obj['vin'][0]['txid'] # get the vin to later check for utxo (should be spent by then)
@@ -209,8 +211,8 @@ class RESTTest (BitcoinTestFramework):
         response = http_post_call(url.hostname, url.port, '/rest/getutxos'+json_request+self.FORMAT_SEPARATOR+'json', '', True)
         assert_equal(response.status, 200) # must be a 500 because we exceeding the limits
 
-        self.nodes[0].generate(1) # generate block to not affect upcoming tests
-        self.sync_all()
+        # generate block to not affect upcoming tests
+        self.generate_and_sync_inc(1)
 
         ################
         # /rest/block/ #

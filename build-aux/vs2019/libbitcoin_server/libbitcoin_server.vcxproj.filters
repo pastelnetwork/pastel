@@ -283,6 +283,9 @@
     <ClCompile Include="..\..\..\src\netmsg\block-cache.cpp">
       <Filter>Source Files\netmsg</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\..\src\script_check.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\..\src\addrman.h">
@@ -605,6 +608,9 @@
     </ClInclude>
     <ClInclude Include="..\..\..\src\netmsg\block-cache.h">
       <Filter>Source Files\netmsg</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\script_check.h">
+      <Filter>Source Files</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

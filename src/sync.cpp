@@ -8,7 +8,7 @@
 
 #include <stdio.h>
 
-#include <boost/thread.hpp>
+using namespace std;
 
 #ifdef DEBUG_LOCKCONTENTION
 void PrintLockContention(const char* pszName, const char* pszFile, int nLine)
@@ -39,28 +39,28 @@ struct CLockLocation {
         fTry = fTryIn;
     }
 
-    std::string ToString() const
+    string ToString() const
     {
         return mutexName + "  " + sourceFile + ":" + itostr(sourceLine) + (fTry ? " (TRY)" : "");
     }
 
-    std::string MutexName() const { return mutexName; }
+    string MutexName() const { return mutexName; }
 
     bool fTry;
 private:
-    std::string mutexName;
-    std::string sourceFile;
+    string mutexName;
+    string sourceFile;
     int sourceLine;
 };
 
-typedef std::vector<std::pair<void*, CLockLocation> > LockStack;
+typedef vector<pair<void*, CLockLocation> > LockStack;
 
-static boost::mutex dd_mutex;
-static std::map<std::pair<void*, void*>, LockStack> lockorders;
-static boost::thread_specific_ptr<LockStack> lockstack;
+static mutex dd_mutex;
+static map<pair<void*, void*>, LockStack> lockorders;
+static thread_local unique_ptr<LockStack> lockstack;
 
 
-static void potential_deadlock_detected(const std::pair<void*, void*>& mismatch, const LockStack& s1, const LockStack& s2)
+static void potential_deadlock_detected(const pair<void*, void*>& mismatch, const LockStack& s1, const LockStack& s2)
 {
     // We attempt to not assert on probably-not deadlocks by assuming that
     // a try lock will immediately have otherwise bailed if it had
@@ -117,12 +117,12 @@ static void potential_deadlock_detected(const std::pair<void*, void*>& mismatch,
 
 static void push_lock(void* c, const CLockLocation& locklocation, bool fTry)
 {
-    if (lockstack.get() == NULL)
-        lockstack.reset(new LockStack);
+    if (!lockstack)
+        lockstack = make_unique<LockStack>();
 
     dd_mutex.lock();
 
-    (*lockstack).push_back(std::make_pair(c, locklocation));
+    lockstack->push_back(make_pair(c, locklocation));
 
     if (!fTry) {
         for (const auto &[pLock, lockLocation] : (*lockstack))
@@ -130,12 +130,12 @@ static void push_lock(void* c, const CLockLocation& locklocation, bool fTry)
             if (pLock == c)
                 break;
 
-            std::pair<void*, void*> p1 = std::make_pair(pLock, c);
+            pair<void*, void*> p1 = make_pair(pLock, c);
             if (lockorders.count(p1))
                 continue;
             lockorders[p1] = (*lockstack);
 
-            std::pair<void*, void*> p2 = std::make_pair(c, pLock);
+            pair<void*, void*> p2 = make_pair(c, pLock);
             if (lockorders.count(p2))
                 potential_deadlock_detected(p1, lockorders[p2], lockorders[p1]);
         }
@@ -146,7 +146,7 @@ static void push_lock(void* c, const CLockLocation& locklocation, bool fTry)
 static void pop_lock()
 {
     dd_mutex.lock();
-    (*lockstack).pop_back();
+    lockstack->pop_back();
     dd_mutex.unlock();
 }
 
@@ -160,11 +160,11 @@ void LeaveCritical()
     pop_lock();
 }
 
-std::string LocksHeld()
+string LocksHeld()
 {
-    std::string result;
+    string result;
     for (const auto &[pLock, lockLocation] : *lockstack)
-        result += lockLocation.ToString() + std::string("\n");
+        result += lockLocation.ToString() + string("\n");
     return result;
 }
 

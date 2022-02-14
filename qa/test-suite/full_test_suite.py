@@ -74,7 +74,6 @@ def check_security_hardening():
     ret &= test_rpath_runpath('src/pastel-cli')
     ret &= test_rpath_runpath('src/pastel-gtest')
     ret &= test_rpath_runpath('src/pastel-tx')
-    ret &= test_rpath_runpath('src/test/test_bitcoin')
 
     # NOTE: checksec.sh does not reliably determine whether FORTIFY_SOURCE
     # is enabled for the entire binary. See issue #915.
@@ -82,7 +81,6 @@ def check_security_hardening():
     ret &= test_fortify_source('src/pastel-cli')
     ret &= test_fortify_source('src/pastel-gtest')
     ret &= test_fortify_source('src/pastel-tx')
-    ret &= test_fortify_source('src/test/test_bitcoin')
 
     return ret
 
@@ -121,9 +119,9 @@ def ensure_no_dot_so_in_depends():
 
 def util_test():
     return subprocess.call(
-        [repofile('src/test/bitcoin-util-test.py')],
+        [repofile('qa/test-suite/pastel-util-test.py')],
         cwd=repofile('src'),
-        env={'PYTHONPATH': repofile('src/test'), 'srcdir': repofile('src')}
+        env={'PYTHONPATH': repofile('qa/test-suite'), 'testdir': repofile('qa/test-suite')}
     ) == 0
 
 
@@ -132,7 +130,6 @@ def util_test():
 #
 
 STAGES = [
-    'btest',
     'gtest',
     'sec-hard',
     'no-dot-so',
@@ -147,7 +144,6 @@ STAGES = [
 ]
 
 STAGE_COMMANDS = {
-    'btest': [repofile('src/test/test_bitcoin'), '-p'],
     'gtest': [repofile('src/pastel-gtest')],
     'sec-hard': check_security_hardening,
     'no-dot-so': ensure_no_dot_so_in_depends,

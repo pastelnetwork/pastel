@@ -2,35 +2,32 @@
 // Copyright (c) 2018-2022 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
-
-#include "httpserver.h"
-
-#include "chainparamsbase.h"
-#include "compat.h"
-#include "util.h"
-#include "netbase.h"
-#include "rpc/protocol.h" // For HTTP status codes
-#include "sync.h"
-#include "ui_interface.h"
-#include "vector_types.h"
-
+#include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <cinttypes>
-
-#include <sys/types.h>
 #include <sys/stat.h>
-#include <signal.h>
-
+#include <sys/types.h>
+#include <cinttypes>
 #include <deque>
+#include <thread>
 
+#include <httpserver.h>
+#include <chainparamsbase.h>
+#include <compat.h>
+#include <util.h>
+#include <netbase.h>
+#include <rpc/protocol.h> // For HTTP status code
+#include <sync.h>
+#include <ui_interface.h>
+#include <vector_types.h>
+
+#include <event2/buffer.h>
 #include <event2/event.h>
 #include <event2/http.h>
-#include <event2/thread.h>
-#include <event2/buffer.h>
-#include <event2/util.h>
 #include <event2/keyvalq_struct.h>
+#include <event2/thread.h>
+#include <event2/util.h>
 
 #ifdef EVENT__HAVE_NETINET_IN_H
 #include <netinet/in.h>
@@ -38,9 +35,6 @@
 #include <arpa/inet.h>
 #endif
 #endif
-
-#include <boost/algorithm/string/case_conv.hpp> // for to_lower()
-#include <boost/scoped_ptr.hpp>
 
 using namespace std;
 
@@ -57,7 +51,7 @@ public:
         func(req.get(), path);
     }
 
-    boost::scoped_ptr<HTTPRequest> req;
+    std::unique_ptr<HTTPRequest> req;
 
 private:
     std::string path;
@@ -87,12 +81,12 @@ private:
         WorkQueue &wq;
         ThreadCounter(WorkQueue &w): wq(w)
         {
-            boost::lock_guard<boost::mutex> lock(wq.cs);
+            unique_lock<mutex> lock(wq.cs);
             wq.numThreads += 1;
         }
         ~ThreadCounter()
         {
-            boost::lock_guard<boost::mutex> lock(wq.cs);
+            unique_lock<mutex> lock(wq.cs);
             wq.numThreads -= 1;
             wq.cond.notify_all();
         }
@@ -117,7 +111,7 @@ public:
     /** Enqueue a work item */
     bool Enqueue(WorkItem* item)
     {
-        boost::unique_lock<boost::mutex> lock(cs);
+        unique_lock<mutex> lock(cs);
         if (queue.size() >= maxDepth) {
             return false;
         }
@@ -132,7 +126,7 @@ public:
         while (running) {
             WorkItem* i = 0;
             {
-                boost::unique_lock<boost::mutex> lock(cs);
+                unique_lock<mutex> lock(cs);
                 while (running && queue.empty())
                     cond.wait(lock);
                 if (!running)
@@ -147,14 +141,14 @@ public:
     /** Interrupt and exit loops */
     void Interrupt()
     {
-        boost::unique_lock<boost::mutex> lock(cs);
+        unique_lock<mutex> lock(cs);
         running = false;
         cond.notify_all();
     }
     /** Wait for worker threads to exit */
     void WaitExit()
     {
-        boost::unique_lock<boost::mutex> lock(cs);
+        unique_lock<mutex> lock(cs);
         while (numThreads > 0)
             cond.wait(lock);
     }
@@ -162,7 +156,7 @@ public:
     /** Return current depth of queue */
     size_t Depth()
     {
-        boost::unique_lock<boost::mutex> lock(cs);
+        unique_lock<mutex> lock(cs);
         return queue.size();
     }
 };
@@ -471,17 +465,17 @@ bool InitHTTPServer()
     return true;
 }
 
-boost::thread threadHTTP;
+std::thread threadHTTP;
 
 bool StartHTTPServer()
 {
     LogPrint("http", "Starting HTTP server\n");
     int rpcThreads = std::max((long)GetArg("-rpcthreads", DEFAULT_HTTP_THREADS), 1L);
     LogPrintf("HTTP: starting %d worker threads\n", rpcThreads);
-    threadHTTP = boost::thread(boost::bind(&ThreadHTTP, eventBase, eventHTTP));
+    threadHTTP = thread(bind(&ThreadHTTP, eventBase, eventHTTP));
 
     for (int i = 0; i < rpcThreads; i++) {
-        boost::thread rpc_worker(HTTPWorkQueueRun, workQueue);
+        thread rpc_worker(HTTPWorkQueueRun, workQueue);
         rpc_worker.detach();
     }
     return true;
@@ -519,11 +513,11 @@ void StopHTTPServer()
         // master that appears to be solved, so in the future that solution
         // could be used again (if desirable).
         // (see discussion in https://github.com/bitcoin/bitcoin/pull/6990)
-        if (!threadHTTP.try_join_for(boost::chrono::milliseconds(2000))) {
-            LogPrintf("HTTP event loop did not exit within allotted time, sending loopbreak\n");
-            event_base_loopbreak(eventBase);
-            threadHTTP.join();
-        }
+//        if (!threadHTTP.try_join_for(chrono::milliseconds(2000))) {
+//            LogPrintf("HTTP event loop did not exit within allotted time, sending loopbreak\n");
+//            event_base_loopbreak(eventBase);
+        threadHTTP.join();
+//        }
     }
     if (eventHTTP) {
         evhttp_free(eventHTTP);
@@ -550,7 +544,7 @@ static void httpevent_callback_fn(evutil_socket_t, short, void* data)
         delete self;
 }
 
-HTTPEvent::HTTPEvent(struct event_base* base, bool deleteWhenTriggered, const boost::function<void(void)>& handler):
+HTTPEvent::HTTPEvent(struct event_base* base, bool deleteWhenTriggered, const std::function<void(void)>& handler):
     deleteWhenTriggered(deleteWhenTriggered), handler(handler)
 {
     ev = event_new(base, -1, 0, httpevent_callback_fn, this);

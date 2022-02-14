@@ -1,8 +1,8 @@
 #pragma once
 // Copyright (c) 2012-2014 The Bitcoin Core developers
-// Copyright (c) 2018-2021 The Pastel Core developers
+// Copyright (c) 2018-2022 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
-// file COPYING or http://www.opensource.org/licenses/mit-license.php.
+// file COPYING or https://www.opensource.org/licenses/mit-license.php.
 
 #include "clientversion.h"
 #include "serialize.h"
@@ -13,8 +13,8 @@
 #include <leveldb/db.h>
 #include <leveldb/write_batch.h>
 
-static const size_t DBWRAPPER_PREALLOC_KEY_SIZE = 64;
-static const size_t DBWRAPPER_PREALLOC_VALUE_SIZE = 1024;
+static constexpr size_t DBWRAPPER_PREALLOC_KEY_SIZE = 64;
+static constexpr size_t DBWRAPPER_PREALLOC_VALUE_SIZE = 1024;
 
 class dbwrapper_error : public std::runtime_error
 {
@@ -90,10 +90,12 @@ public:
      * @param[in] _piter           The original leveldb iterator.
      */
     CDBIterator(const CDBWrapper &_parent, leveldb::Iterator *_piter) :
-        parent(_parent), piter(_piter) { };
+        parent(_parent), 
+        piter(_piter)
+    {}
     ~CDBIterator();
 
-    bool Valid();
+    bool Valid() const;
 
     void SeekToFirst();
 
@@ -254,9 +256,9 @@ public:
         return WriteBatch(batch, true);
     }
 
-    CDBIterator *NewIterator() const
+    std::unique_ptr<CDBIterator> NewIterator() const
     {
-        return new CDBIterator(*this, pdb->NewIterator(iteroptions));
+        return std::make_unique<CDBIterator>(*this, pdb->NewIterator(iteroptions));
     }
 
     /**

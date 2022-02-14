@@ -1,9 +1,10 @@
 // Copyright (c) 2016 The Bitcoin Core developers
+// Copyright (c) 2018-2022 The PAstel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php .
 
-#include "support/lockedpool.h"
-#include "support/cleanse.h"
+#include <support/lockedpool.h>
+#include <support/cleanse.h>
 
 #if defined(HAVE_CONFIG_H)
 #include "config/bitcoin-config.h"
@@ -14,7 +15,9 @@
 #undef _WIN32_WINNT
 #endif
 #define _WIN32_WINNT 0x0601
+#ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN 1
+#endif
 #ifndef NOMINMAX
 #define NOMINMAX
 #endif
@@ -169,9 +172,10 @@ class Win32LockedPageAllocator: public LockedPageAllocator
 {
 public:
     Win32LockedPageAllocator();
-    void* AllocateLocked(size_t len, bool *lockingSuccess);
-    void FreeLocked(void* addr, size_t len);
+    void* AllocateLocked(size_t len, bool *lockingSuccess) override;
+    void FreeLocked(void* addr, size_t len) override;
     size_t GetLimit() const noexcept override;
+
 private:
     size_t page_size;
 };
@@ -221,9 +225,10 @@ class PosixLockedPageAllocator: public LockedPageAllocator
 {
 public:
     PosixLockedPageAllocator();
-    void* AllocateLocked(size_t len, bool *lockingSuccess);
-    void FreeLocked(void* addr, size_t len);
+    void* AllocateLocked(size_t len, bool *lockingSuccess) override;
+    void FreeLocked(void* addr, size_t len) override;
     size_t GetLimit() const noexcept override;
+
 private:
     size_t page_size;
 };

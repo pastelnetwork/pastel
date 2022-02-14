@@ -27,11 +27,11 @@ using ::testing::Return;
 
 
 // how many times to run all the tests to have a chance to catch errors that only show up with particular random shuffles
-#define RUN_TESTS 100
+constexpr size_t RUN_TESTS = 100;
 
 // some tests fail 1% of the time due to bad luck.
 // we repeat those tests this many times and only complain if all iterations of the test fail
-#define RANDOM_REPEATS 5
+constexpr size_t RANDOM_REPEATS = 5;
 
 typedef set<pair<const CWalletTx*,unsigned int> > CoinSet;
 
@@ -150,7 +150,7 @@ TEST(WalletTests, SetSaplingNoteAddrsInCWalletTx)
     nd.ivk = ivk;
     nd.witnesses.push_front(witness);
     nd.witnessHeight = 123;
-    noteData.insert(make_pair(op, nd));
+    noteData.emplace(op, nd);
 
     wtx.SetSaplingNoteData(noteData);
     EXPECT_EQ(noteData, wtx.mapSaplingNoteData);
@@ -177,7 +177,7 @@ TEST(WalletTests, SetInvalidSaplingNoteDataInCWalletTx) {
     mapSaplingNoteData_t noteData;
     SaplingOutPoint op {uint256(), 1};
     SaplingNoteData nd;
-    noteData.insert(make_pair(op, nd));
+    noteData.emplace(op, nd);
 
     EXPECT_THROW(wtx.SetSaplingNoteData(noteData), logic_error);
 }
@@ -270,7 +270,7 @@ TEST(WalletTests, GetConflictedSaplingNotes) {
     block.hashMerkleRoot = block.BuildMerkleTree();
     auto blockHash = block.GetHash();
     CBlockIndex fakeIndex {block};
-    mapBlockIndex.insert(make_pair(blockHash, &fakeIndex));
+    mapBlockIndex.emplace(blockHash, &fakeIndex);
     chainActive.SetTip(&fakeIndex);
     EXPECT_TRUE(chainActive.Contains(&fakeIndex));
     EXPECT_EQ(0, chainActive.Height());
@@ -398,7 +398,7 @@ TEST(WalletTests, SaplingNullifierIsSpent) {
     block.hashMerkleRoot = block.BuildMerkleTree();
     auto blockHash = block.GetHash();
     CBlockIndex fakeIndex {block};
-    mapBlockIndex.insert(make_pair(blockHash, &fakeIndex));
+    mapBlockIndex.emplace(blockHash, &fakeIndex);
     chainActive.SetTip(&fakeIndex);
     EXPECT_TRUE(chainActive.Contains(&fakeIndex));
     EXPECT_EQ(0, chainActive.Height());
@@ -466,7 +466,7 @@ TEST(WalletTests, NavigateFromSaplingNullifierToNote) {
     block.hashMerkleRoot = block.BuildMerkleTree();
     auto blockHash = block.GetHash();
     CBlockIndex fakeIndex {block};
-    mapBlockIndex.insert(make_pair(blockHash, &fakeIndex));
+    mapBlockIndex.emplace(blockHash, &fakeIndex);
     chainActive.SetTip(&fakeIndex);
     EXPECT_TRUE(chainActive.Contains(&fakeIndex));
     EXPECT_EQ(0, chainActive.Height());
@@ -562,7 +562,7 @@ TEST(WalletTests, SpentSaplingNoteIsFromMe) {
     block.hashMerkleRoot = block.BuildMerkleTree();
     auto blockHash = block.GetHash();
     CBlockIndex fakeIndex {block};
-    mapBlockIndex.insert(make_pair(blockHash, &fakeIndex));
+    mapBlockIndex.emplace(blockHash, &fakeIndex);
     chainActive.SetTip(&fakeIndex);
     EXPECT_TRUE(chainActive.Contains(&fakeIndex));
     EXPECT_EQ(0, chainActive.Height());
@@ -635,7 +635,7 @@ TEST(WalletTests, SpentSaplingNoteIsFromMe) {
     block2.hashPrevBlock = blockHash;
     auto blockHash2 = block2.GetHash();
     CBlockIndex fakeIndex2 {block2};
-    mapBlockIndex.insert(make_pair(blockHash2, &fakeIndex2));
+    mapBlockIndex.emplace(blockHash2, &fakeIndex2);
     fakeIndex2.nHeight = 1;
     chainActive.SetTip(&fakeIndex2);
     EXPECT_TRUE(chainActive.Contains(&fakeIndex2));
@@ -715,7 +715,7 @@ TEST(WalletTests, UpdatedSaplingNoteData)
     block.hashMerkleRoot = block.BuildMerkleTree();
     auto blockHash = block.GetHash();
     CBlockIndex fakeIndex {block};
-    mapBlockIndex.insert(make_pair(blockHash, &fakeIndex));
+    mapBlockIndex.emplace(blockHash, &fakeIndex);
     chainActive.SetTip(&fakeIndex);
     EXPECT_TRUE(chainActive.Contains(&fakeIndex));
     EXPECT_EQ(0, chainActive.Height());
@@ -835,7 +835,7 @@ TEST(WalletTests, MarkAffectedSaplingTransactionsDirty) {
     block.hashMerkleRoot = block.BuildMerkleTree();
     auto blockHash = block.GetHash();
     CBlockIndex fakeIndex {block};
-    mapBlockIndex.insert(make_pair(blockHash, &fakeIndex));
+    mapBlockIndex.emplace(blockHash, &fakeIndex);
     chainActive.SetTip(&fakeIndex);
     EXPECT_TRUE(chainActive.Contains(&fakeIndex));
     EXPECT_EQ(0, chainActive.Height());
@@ -979,7 +979,7 @@ TEST(test_wallet, coin_selection_tests)
     LOCK(wallet.cs_wallet);
 
     // test multiple times to allow for differences in the shuffle order
-    for (int i = 0; i < RUN_TESTS; i++)
+    for (size_t i = 0; i < RUN_TESTS; i++)
     {
         empty_wallet();
 
@@ -1181,7 +1181,7 @@ TEST(test_wallet, coin_selection_tests)
             EXPECT_TRUE(!equal_sets(setCoinsRet, setCoinsRet2));
 
             int fails = 0;
-            for (int i = 0; i < RANDOM_REPEATS; i++)
+            for (size_t i = 0; i < RANDOM_REPEATS; i++)
             {
                 // selecting 1 from 100 identical coins depends on the shuffle; this test will fail 1% of the time
                 // run the test RANDOM_REPEATS times and only complain if all of them fail
@@ -1198,7 +1198,7 @@ TEST(test_wallet, coin_selection_tests)
             add_coin( 5*CENT); add_coin(10*CENT); add_coin(15*CENT); add_coin(20*CENT); add_coin(25*CENT);
 
             fails = 0;
-            for (int i = 0; i < RANDOM_REPEATS; i++)
+            for (size_t i = 0; i < RANDOM_REPEATS; i++)
             {
                 // selecting 1 from 100 identical coins depends on the shuffle; this test will fail 1% of the time
                 // run the test RANDOM_REPEATS times and only complain if all of them fail

@@ -16,6 +16,7 @@
 #include "util.h"
 #include "utilmoneystr.h"
 #include "utilstrencodings.h"
+#include <svc_thread.h>
 
 #include <stdio.h>
 #include <str_utils.h>
@@ -533,7 +534,7 @@ public:
 static void MutateTx(CMutableTransaction& tx, const std::string& command,
                      const std::string& commandVal)
 {
-    boost::scoped_ptr<Secp256k1Init> ecc;
+    unique_ptr<Secp256k1Init> ecc;
 
     if (command == "nversion")
         MutateTxVersion(tx, commandVal);
@@ -555,10 +556,10 @@ static void MutateTx(CMutableTransaction& tx, const std::string& command,
         MutateTxAddOutScript(tx, commandVal);
 
     else if (command == "sign") {
-        if (!ecc) { ecc.reset(new Secp256k1Init()); }
+        if (!ecc)
+            ecc = make_unique<Secp256k1Init>();
         MutateTxSign(tx, commandVal);
     }
-
     else if (command == "load")
         RegisterLoad(commandVal);
 
@@ -672,7 +673,7 @@ static int CommandLineRawTx(int argc, char* argv[])
         OutputTx(tx);
     }
 
-    catch (const boost::thread_interrupted&) {
+    catch (const func_thread_interrupted&) {
         throw;
     }
     catch (const std::exception& e) {

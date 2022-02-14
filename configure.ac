@@ -635,32 +635,6 @@ if test x$use_tests = xyes; then
   if test x$HEXDUMP = x; then
     AC_MSG_ERROR(hexdump is required for tests)
   fi
-
-
-  if test x$use_boost = xyes; then
-
-  BOOST_TEST
-  AC_MSG_NOTICE([Using boost test: [$BOOST_UNIT_TEST_FRAMEWORK_LIBS]])
-
-  dnl Determine if -DBOOST_TEST_DYN_LINK is needed
-  AC_MSG_CHECKING([for dynamic linked boost test])
-  TEMP_LIBS="$LIBS"
-  LIBS="$LIBS $BOOST_UNIT_TEST_FRAMEWORK_LDFLAGS $BOOST_UNIT_TEST_FRAMEWORK_LIBS"
-  TEMP_CPPFLAGS="$CPPFLAGS"
-  CPPFLAGS="$CPPFLAGS $BOOST_CPPFLAGS"
-  AC_LINK_IFELSE([AC_LANG_SOURCE([
-       #define BOOST_TEST_DYN_LINK
-       #define BOOST_TEST_MAIN
-        #include <boost/test/unit_test.hpp>
-
-       ])],
-    [AC_MSG_RESULT(yes)]
-    [TESTDEFS="$TESTDEFS -DBOOST_TEST_DYN_LINK"],
-    [AC_MSG_RESULT(no)])
-  LIBS="$TEMP_LIBS"
-  CPPFLAGS="$TEMP_CPPFLAGS"
-
-  fi
 fi
 
 AC_CHECK_HEADER([zstd.h],, AC_MSG_ERROR(libzstd headers missing),)
@@ -919,7 +893,7 @@ AC_SUBST(LIBSNARK_DEPINST)
 AC_SUBST(LIBZCASH_LIBS)
 AC_SUBST(PROTON_LIBS)
 AC_SUBST(ZSTD_LIBS)
-AC_CONFIG_FILES([Makefile src/Makefile doc/man/Makefile src/test/buildenv.py])
+AC_CONFIG_FILES([Makefile src/Makefile doc/man/Makefile qa/test-suite/buildenv.py])
 AC_CONFIG_FILES([qa/pull-tester/run-pasteld-for-test.sh],[chmod +x qa/pull-tester/run-pasteld-for-test.sh])
 AC_CONFIG_FILES([qa/pull-tester/tests-config.sh],[chmod +x qa/pull-tester/tests-config.sh])
 
