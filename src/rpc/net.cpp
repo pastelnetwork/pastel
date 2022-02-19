@@ -2,19 +2,20 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#include "rpc/server.h"
-
-#include "clientversion.h"
-#include "main.h"
-#include "net.h"
-#include "netbase.h"
-#include "protocol.h"
-#include "sync.h"
-#include "timedata.h"
-#include "util.h"
-#include "version.h"
-#include "deprecation.h"
 #include <univalue.h>
+
+#include <rpc/server.h>
+
+#include <clientversion.h>
+#include <main.h>
+#include <net.h>
+#include <netbase.h>
+#include <protocol.h>
+#include <sync.h>
+#include <timedata.h>
+#include <util.h>
+#include <version.h>
+#include <deprecation.h>
 
 using namespace std;
 
@@ -22,14 +23,18 @@ UniValue getconnectioncount(const UniValue& params, bool fHelp)
 {
     if (fHelp || params.size() != 0)
         throw runtime_error(
-            "getconnectioncount\n"
-            "\nReturns the number of connections to other nodes.\n"
-            "\nbResult:\n"
-            "n          (numeric) The connection count\n"
-            "\nExamples:\n"
-            + HelpExampleCli("getconnectioncount", "")
-            + HelpExampleRpc("getconnectioncount", "")
-        );
+R"(getconnectioncount
+
+Returns the number of connections to other nodes.
+
+Result:
+n          (numeric) The connection count
+
+Examples:
+)"
++ HelpExampleCli("getconnectioncount", "")
++ HelpExampleRpc("getconnectioncount", "")
+);
 
     LOCK2(cs_main, cs_vNodes);
 
@@ -40,14 +45,17 @@ UniValue ping(const UniValue& params, bool fHelp)
 {
     if (fHelp || params.size() != 0)
         throw runtime_error(
-            "ping\n"
-            "\nRequests that a ping be sent to all other nodes, to measure ping time.\n"
-            "Results provided in getpeerinfo, pingtime and pingwait fields are decimal seconds.\n"
-            "Ping command is handled in queue with all other commands, so it measures processing backlog, not just network ping.\n"
-            "\nExamples:\n"
-            + HelpExampleCli("ping", "")
-            + HelpExampleRpc("ping", "")
-        );
+R"(ping
+
+Requests that a ping be sent to all other nodes, to measure ping time.
+Results provided in getpeerinfo, pingtime and pingwait fields are decimal seconds.
+Ping command is handled in queue with all other commands, so it measures processing backlog, not just network ping.
+
+Examples:
+)"
++ HelpExampleCli("ping", "")
++ HelpExampleRpc("ping", "")
+);
 
     // Request that each node send a ping during next message processing pass
     LOCK2(cs_main, cs_vNodes);
@@ -76,41 +84,45 @@ UniValue getpeerinfo(const UniValue& params, bool fHelp)
 {
     if (fHelp || params.size() != 0)
         throw runtime_error(
-            "getpeerinfo\n"
-            "\nReturns data about each connected network node as a json array of objects.\n"
-            "\nbResult:\n"
-            "[\n"
-            "  {\n"
-            "    \"id\": n,                   (numeric) Peer index\n"
-            "    \"addr\":\"host:port\",      (string) The ip address and port of the peer\n"
-            "    \"addrlocal\":\"ip:port\",   (string) local address\n"
-            "    \"services\":\"xxxxxxxxxxxxxxxx\",   (string) The services offered\n"
-            "    \"lastsend\": ttt,           (numeric) The time in seconds since epoch (Jan 1 1970 GMT) of the last send\n"
-            "    \"lastrecv\": ttt,           (numeric) The time in seconds since epoch (Jan 1 1970 GMT) of the last receive\n"
-            "    \"bytessent\": n,            (numeric) The total bytes sent\n"
-            "    \"bytesrecv\": n,            (numeric) The total bytes received\n"
-            "    \"conntime\": ttt,           (numeric) The connection time in seconds since epoch (Jan 1 1970 GMT)\n"
-            "    \"timeoffset\": ttt,         (numeric) The time offset in seconds\n"
-            "    \"pingtime\": n,             (numeric) ping time\n"
-            "    \"pingwait\": n,             (numeric) ping wait\n"
-            "    \"version\": v,              (numeric) The peer version, such as 170002\n"
-            "    \"subver\": \"/MagicBean:x.y.z[-v]/\",  (string) The string version\n"
-            "    \"inbound\": true|false,     (boolean) Inbound (true) or Outbound (false)\n"
-            "    \"startingheight\": n,       (numeric) The starting height (block) of the peer\n"
-            "    \"banscore\": n,             (numeric) The ban score\n"
-            "    \"synced_headers\": n,       (numeric) The last header we have in common with this peer\n"
-            "    \"synced_blocks\": n,        (numeric) The last block we have in common with this peer\n"
-            "    \"inflight\": [\n"
-            "       n,                        (numeric) The heights of blocks we're currently asking from this peer\n"
-            "       ...\n"
-            "    ]\n"
-            "  }\n"
-            "  ,...\n"
-            "]\n"
-            "\nExamples:\n"
-            + HelpExampleCli("getpeerinfo", "")
-            + HelpExampleRpc("getpeerinfo", "")
-        );
+R"(getpeerinfo
+
+Returns data about each connected network node as a json array of objects.
+
+Result:
+[
+  {
+    "id": n,                            (numeric) Peer index
+    "addr":"host:port",                 (string) The ip address and port of the peer
+    "addrlocal":"ip:port",              (string) local address
+    "services":"xxxxxxxxxxxxxxxx",      (string) The services offered
+    "lastsend": ttt,                    (numeric) The time in seconds since epoch (Jan 1 1970 GMT) of the last send
+    "lastrecv": ttt,                    (numeric) The time in seconds since epoch (Jan 1 1970 GMT) of the last receive
+    "bytessent": n,                     (numeric) The total bytes sent
+    "bytesrecv": n,                     (numeric) The total bytes received
+    "conntime": ttt,                    (numeric) The connection time in seconds since epoch (Jan 1 1970 GMT)
+    "timeoffset": ttt,                  (numeric) The time offset in seconds
+    "pingtime": n,                      (numeric) ping time
+    "pingwait": n,                      (numeric) ping wait
+    "version": v,                       (numeric) The peer version, such as 170002
+    "subver": "/MagicBean:x.y.z[-v]/",  (string) The string version
+    "inbound": true|false,              (boolean) Inbound (true) or Outbound (false)
+    "startingheight": n,                (numeric) The starting height (block) of the peer
+    "banscore": n,                      (numeric) The ban score
+    "synced_headers": n,                (numeric) The last header we have in common with this peer
+    "synced_blocks": n,                 (numeric) The last block we have in common with this peer
+    "inflight": [
+       n,                               (numeric) The heights of blocks we're currently asking from this peer
+       ...
+    ]
+  }
+  ,...
+]
+
+Examples:
+)"
++ HelpExampleCli("getpeerinfo", "")
++ HelpExampleRpc("getpeerinfo", "")
+);
 
     LOCK(cs_main);
 
@@ -170,16 +182,20 @@ UniValue addnode(const UniValue& params, bool fHelp)
     if (fHelp || params.size() != 2 ||
         (strCommand != "onetry" && strCommand != "add" && strCommand != "remove"))
         throw runtime_error(
-            "addnode \"node\" \"add|remove|onetry\"\n"
-            "\nAttempts add or remove a node from the addnode list.\n"
-            "Or try a connection to a node once.\n"
-            "\nArguments:\n"
-            "1. \"node\"     (string, required) The node (see getpeerinfo for nodes)\n"
-            "2. \"command\"  (string, required) 'add' to add a node to the list, 'remove' to remove a node from the list, 'onetry' to try a connection to the node once\n"
-            "\nExamples:\n"
-            + HelpExampleCli("addnode", "\"192.168.0.6:9933\" \"onetry\"")
-            + HelpExampleRpc("addnode", "\"192.168.0.6:9933\", \"onetry\"")
-        );
+R"(addnode "node" "add|remove|onetry"
+
+Attempts add or remove a node from the addnode list.
+Or try a connection to a node once.
+
+Arguments:
+1. "node"     (string, required) The node (see getpeerinfo for nodes)
+2. "command"  (string, required) 'add' to add a node to the list, 'remove' to remove a node from the list, 'onetry' to try a connection to the node once
+
+Examples:
+)"
++ HelpExampleCli("addnode", "\"192.168.0.6:9933\" \"onetry\"")
++ HelpExampleRpc("addnode", "\"192.168.0.6:9933\", \"onetry\"")
+);
 
     string strNode = params[0].get_str();
 
@@ -216,14 +232,18 @@ UniValue disconnectnode(const UniValue& params, bool fHelp)
 {
     if (fHelp || params.size() != 1)
         throw runtime_error(
-            "disconnectnode \"node\" \n"
-            "\nImmediately disconnects from the specified node.\n"
-            "\nArguments:\n"
-            "1. \"node\"     (string, required) The node (see getpeerinfo for nodes)\n"
-            "\nExamples:\n"
-            + HelpExampleCli("disconnectnode", "\"192.168.0.6:9933\"")
-            + HelpExampleRpc("disconnectnode", "\"192.168.0.6:9933\"")
-        );
+R"(disconnectnode "node"
+
+Immediately disconnects from the specified node.
+
+Arguments:
+1. "node"     (string, required) The node (see getpeerinfo for nodes)
+
+Examples:
+)"
++ HelpExampleCli("disconnectnode", "\"192.168.0.6:9933\"")
++ HelpExampleRpc("disconnectnode", "\"192.168.0.6:9933\"")
+);
 
     CNode* pNode = FindNode(params[0].get_str());
     if (pNode == NULL)
@@ -238,34 +258,39 @@ UniValue getaddednodeinfo(const UniValue& params, bool fHelp)
 {
     if (fHelp || params.size() < 1 || params.size() > 2)
         throw runtime_error(
-            "getaddednodeinfo dns ( \"node\" )\n"
-            "\nReturns information about the given added node, or all added nodes\n"
-            "(note that onetry addnodes are not listed here)\n"
-            "If dns is false, only a list of added nodes will be provided,\n"
-            "otherwise connected information will also be available.\n"
-            "\nArguments:\n"
-            "1. dns        (boolean, required) If false, only a list of added nodes will be provided, otherwise connected information will also be available.\n"
-            "2. \"node\"   (string, optional) If provided, return information about this specific node, otherwise all nodes are returned.\n"
-            "\nResult:\n"
-            "[\n"
-            "  {\n"
-            "    \"addednode\" : \"192.168.0.201\",   (string) The node ip address\n"
-            "    \"connected\" : true|false,          (boolean) If connected\n"
-            "    \"addresses\" : [\n"
-            "       {\n"
-            "         \"address\" : \"192.168.0.201:9933\",  (string) The Pastel server host and port\n"
-            "         \"connected\" : \"outbound\"           (string) connection, inbound or outbound\n"
-            "       }\n"
-            "       ,...\n"
-            "     ]\n"
-            "  }\n"
-            "  ,...\n"
-            "]\n"
-            "\nExamples:\n"
-            + HelpExampleCli("getaddednodeinfo", "true")
-            + HelpExampleCli("getaddednodeinfo", "true \"192.168.0.201\"")
-            + HelpExampleRpc("getaddednodeinfo", "true, \"192.168.0.201\"")
-        );
+R"(getaddednodeinfo dns ( "node" )
+
+Returns information about the given added node, or all added nodes
+(note that onetry addnodes are not listed here)
+If dns is false, only a list of added nodes will be provided,
+otherwise connected information will also be available.
+
+Arguments:
+1. dns       (boolean, required) If false, only a list of added nodes will be provided, otherwise connected information will also be available.
+2. "node"    (string, optional) If provided, return information about this specific node, otherwise all nodes are returned.
+
+Result:
+[
+  {
+    "addednode" : "192.168.0.201",   (string) The node ip address
+    "connected" : true|false,        (boolean) If connected
+    "addresses" : [
+       {
+         "address" : "192.168.0.201:9933",  (string) The Pastel server host and port
+         "connected" : "outbound"           (string) connection, inbound or outbound
+       }
+       ,...
+     ]
+  }
+  ,...
+]
+
+Examples:
+)"
++ HelpExampleCli("getaddednodeinfo", "true")
++ HelpExampleCli("getaddednodeinfo", "true \"192.168.0.201\"")
++ HelpExampleRpc("getaddednodeinfo", "true, \"192.168.0.201\"")
+);
 
     bool fDns = params[0].get_bool();
 
@@ -359,19 +384,23 @@ UniValue getnettotals(const UniValue& params, bool fHelp)
 {
     if (fHelp || params.size() > 0)
         throw runtime_error(
-            "getnettotals\n"
-            "\nReturns information about network traffic, including bytes in, bytes out,\n"
-            "and current time.\n"
-            "\nResult:\n"
-            "{\n"
-            "  \"totalbytesrecv\": n,   (numeric) Total bytes received\n"
-            "  \"totalbytessent\": n,   (numeric) Total bytes sent\n"
-            "  \"timemillis\": t        (numeric) Total cpu time\n"
-            "}\n"
-            "\nExamples:\n"
-            + HelpExampleCli("getnettotals", "")
-            + HelpExampleRpc("getnettotals", "")
-       );
+R"(getnettotals
+
+Returns information about network traffic, including bytes in, bytes out,
+and current time.
+
+Result:
+{
+  "totalbytesrecv": n,   (numeric) Total bytes received
+  "totalbytessent": n,   (numeric) Total bytes sent
+  "timemillis": t        (numeric) Total cpu time
+}
+
+Examples:
+)"
++ HelpExampleCli("getnettotals", "")
++ HelpExampleRpc("getnettotals", "")
+);
 
     UniValue obj(UniValue::VOBJ);
     obj.pushKV("totalbytesrecv", CNode::GetTotalBytesRecv());
@@ -406,18 +435,22 @@ UniValue getdeprecationinfo(const UniValue& params, bool fHelp)
     const CChainParams& chainparams = Params();
     if (fHelp || params.size() != 0 || chainparams.NetworkIDString() != "main")
         throw runtime_error(
-            "getdeprecationinfo\n"
-            "Returns an object containing current version and deprecation block height. Applicable only on mainnet.\n"
-            "\nResult:\n"
-            "{\n"
-            "  \"version\": xxxxx,                      (numeric) the server version\n"
-            "  \"subversion\": \"/MagicBean:x.y.z[-v]/\",     (string) the server subversion string\n"
-            "  \"deprecationheight\": xxxxx,            (numeric) the block height at which this version will deprecate and shut down\n"
-            "}\n"
-            "\nExamples:\n"
-            + HelpExampleCli("getdeprecationinfo", "")
-            + HelpExampleRpc("getdeprecationinfo", "")
-        );
+R"(getdeprecationinfo
+
+Returns an object containing current version and deprecation block height. Applicable only on mainnet.
+
+Result:
+{
+  "version": xxxxx,                      (numeric) the server version
+  "subversion": "/MagicBean:x.y.z[-v]/", (string) the server subversion string
+  "deprecationheight": xxxxx,            (numeric) the block height at which this version will deprecate and shut down
+}
+
+Examples:
+)"
++ HelpExampleCli("getdeprecationinfo", "")
++ HelpExampleRpc("getdeprecationinfo", "")
+);
 
     UniValue obj(UniValue::VOBJ);
     obj.pushKV("version", CLIENT_VERSION);
@@ -432,40 +465,44 @@ UniValue getnetworkinfo(const UniValue& params, bool fHelp)
 {
     if (fHelp || params.size() != 0)
         throw runtime_error(
-            "getnetworkinfo\n"
-            "Returns an object containing various state info regarding P2P networking.\n"
-            "\nResult:\n"
-            "{\n"
-            "  \"version\": xxxxx,                      (numeric) the server version\n"
-            "  \"subversion\": \"/MagicBean:x.y.z[-v]/\",     (string) the server subversion string\n"
-            "  \"protocolversion\": xxxxx,              (numeric) the protocol version\n"
-            "  \"localservices\": \"xxxxxxxxxxxxxxxx\", (string) the services we offer to the network\n"
-            "  \"timeoffset\": xxxxx,                   (numeric) the time offset\n"
-            "  \"connections\": xxxxx,                  (numeric) the number of connections\n"
-            "  \"networks\": [                          (array) information per network\n"
-            "  {\n"
-            "    \"name\": \"xxx\",                     (string) network (ipv4, ipv6 or onion)\n"
-            "    \"limited\": true|false,               (boolean) is the network limited using -onlynet?\n"
-            "    \"reachable\": true|false,             (boolean) is the network reachable?\n"
-            "    \"proxy\": \"host:port\"               (string) the proxy that is used for this network, or empty if none\n"
-            "  }\n"
-            "  ,...\n"
-            "  ],\n"
-            "  \"relayfee\": x.xxxxxxxx,                (numeric) minimum relay fee for non-free transactions in " + CURRENCY_UNIT + "/kB\n"
-            "  \"localaddresses\": [                    (array) list of local addresses\n"
-            "  {\n"
-            "    \"address\": \"xxxx\",                 (string) network address\n"
-            "    \"port\": xxx,                         (numeric) network port\n"
-            "    \"score\": xxx                         (numeric) relative score\n"
-            "  }\n"
-            "  ,...\n"
-            "  ]\n"
-            "  \"warnings\": \"...\"                    (string) any network warnings (such as alert messages) \n"
-            "}\n"
-            "\nExamples:\n"
-            + HelpExampleCli("getnetworkinfo", "")
-            + HelpExampleRpc("getnetworkinfo", "")
-        );
+R"(getnetworkinfo
+
+Returns an object containing various state info regarding P2P networking.
+
+Result:
+{
+  "version": xxxxx,                      (numeric) the server version
+  "subversion": "/MagicBean:x.y.z[-v]/", (string) the server subversion string
+  "protocolversion": xxxxx,              (numeric) the protocol version
+  "localservices": "xxxxxxxxxxxxxxxx",   (string) the services we offer to the network
+  "timeoffset": xxxxx,                   (numeric) the time offset
+  "connections": xxxxx,                  (numeric) the number of connections
+  "networks": [                          (array) information per network
+  {
+    "name": "xxx",                       (string) network (ipv4, ipv6 or onion)
+    "limited": true|false,               (boolean) is the network limited using -onlynet?
+    "reachable": true|false,             (boolean) is the network reachable?
+    "proxy": "host:port"                 (string) the proxy that is used for this network, or empty if none
+  }
+  ,...
+  ],
+  "relayfee": x.xxxxxxxx,                (numeric) minimum relay fee for non-free transactions in )" + CURRENCY_UNIT + R"(/kB
+  "localaddresses": [                    (array) list of local addresses
+  {
+    "address": "xxxx",                   (string) network address
+    "port": xxx,                         (numeric) network port
+    "score": xxx                         (numeric) relative score
+  }
+  ,...
+  ]
+  "warnings": "..."                      (string) any network warnings (such as alert messages)
+"}
+
+Examples:
+)"
++ HelpExampleCli("getnetworkinfo", "")
++ HelpExampleRpc("getnetworkinfo", "")
+);
 
     LOCK(cs_main);
 
@@ -503,18 +540,22 @@ UniValue setban(const UniValue& params, bool fHelp)
     if (fHelp || params.size() < 2 ||
         (strCommand != "add" && strCommand != "remove"))
         throw runtime_error(
-                            "setban \"ip(/netmask)\" \"add|remove\" (bantime) (absolute)\n"
-                            "\nAttempts add or remove a IP/Subnet from the banned list.\n"
-                            "\nArguments:\n"
-                            "1. \"ip(/netmask)\" (string, required) The IP/Subnet (see getpeerinfo for nodes ip) with a optional netmask (default is /32 = single ip)\n"
-                            "2. \"command\"      (string, required) 'add' to add a IP/Subnet to the list, 'remove' to remove a IP/Subnet from the list\n"
-                            "3. \"bantime\"      (numeric, optional) time in seconds how long (or until when if [absolute] is set) the ip is banned (0 or empty means using the default time of 24h which can also be overwritten by the -bantime startup argument)\n"
-                            "4. \"absolute\"     (boolean, optional) If set, the bantime must be a absolute timestamp in seconds since epoch (Jan 1 1970 GMT)\n"
-                            "\nExamples:\n"
-                            + HelpExampleCli("setban", "\"192.168.0.6\" \"add\" 86400")
-                            + HelpExampleCli("setban", "\"192.168.0.0/24\" \"add\"")
-                            + HelpExampleRpc("setban", "\"192.168.0.6\", \"add\" 86400")
-                            );
+R"(setban "ip(/netmask))" R"( "add|remove" (bantime) (absolute)
+
+Attempts add or remove a IP/Subnet from the banned list.
+
+Arguments:
+1. "ip(/netmask) )" R"((string, required) The IP/Subnet (see getpeerinfo for nodes ip) with a optional netmask (default is /32 = single ip)
+2. "command"     (string, required) 'add' to add a IP/Subnet to the list, 'remove' to remove a IP/Subnet from the list
+3. "bantime      (numeric, optional) time in seconds how long (or until when if [absolute] is set) the ip is banned (0 or empty means using the default time of 24h which can also be overwritten by the -bantime startup argument)
+4. "absolute     (boolean, optional) If set, the bantime must be a absolute timestamp in seconds since epoch (Jan 1 1970 GMT)
+
+Examples:
+)"
++ HelpExampleCli("setban", "\"192.168.0.6\" \"add\" 86400")
++ HelpExampleCli("setban", "\"192.168.0.0/24\" \"add\"")
++ HelpExampleRpc("setban", "\"192.168.0.6\", \"add\" 86400")
+);
 
     CSubNet subNet;
     CNetAddr netAddr;
@@ -563,12 +604,15 @@ UniValue listbanned(const UniValue& params, bool fHelp)
 {
     if (fHelp || params.size() != 0)
         throw runtime_error(
-                            "listbanned\n"
-                            "\nList all banned IPs/Subnets.\n"
-                            "\nExamples:\n"
-                            + HelpExampleCli("listbanned", "")
-                            + HelpExampleRpc("listbanned", "")
-                            );
+R"(listbanned
+
+List all banned IPs/Subnets.
+
+Examples:
+)"
++ HelpExampleCli("listbanned", "")
++ HelpExampleRpc("listbanned", "")
+);
 
     std::map<CSubNet, int64_t> banMap;
     CNode::GetBanned(banMap);
@@ -589,12 +633,15 @@ UniValue clearbanned(const UniValue& params, bool fHelp)
 {
     if (fHelp || params.size() != 0)
         throw runtime_error(
-                            "clearbanned\n"
-                            "\nClear all banned IPs.\n"
-                            "\nExamples:\n"
-                            + HelpExampleCli("clearbanned", "")
-                            + HelpExampleRpc("clearbanned", "")
-                            );
+R"(clearbanned
+
+Clear all banned IPs.
+
+Examples:
+)"
++ HelpExampleCli("clearbanned", "")
++ HelpExampleRpc("clearbanned", "")
+);
 
     CNode::ClearBanned();
 

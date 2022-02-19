@@ -16,7 +16,7 @@
 #endif // ENABLE_WALLET
 using namespace std;
 
-bool DecodeHexVecMnb(std::vector<CMasternodeBroadcast>& vecMnb, const std::string& strHexMnb)
+bool DecodeHexVecMnb(vector<CMasternodeBroadcast>& vecMnb, const string& strHexMnb)
 {
     if (!IsHex(strHexMnb))
         return false;
@@ -25,7 +25,7 @@ bool DecodeHexVecMnb(std::vector<CMasternodeBroadcast>& vecMnb, const std::strin
     CDataStream ssData(mnbData, SER_NETWORK, PROTOCOL_VERSION);
     try {
         ssData >> vecMnb;
-    } catch (const std::exception&) {
+    } catch (const exception&) {
         return false;
     }
 
@@ -45,17 +45,29 @@ UniValue masternodebroadcast(const UniValue& params, bool fHelp)
 #endif // ENABLE_WALLET
             strCommand != "decode" && strCommand != "relay"))
         throw runtime_error(
-            "masternodebroadcast \"command\"...\n"
-            "Set of commands to create and relay masternode broadcast messages\n"
-            "\nArguments:\n"
-            "1. \"command\"        (string or set of strings, required) The command to execute\n"
-            "\nAvailable commands:\n"
+R"(masternodebroadcast "command"...
+
+Set of commands to create and relay masternode broadcast messages
+
+Arguments:
+1. "command"        (string or set of strings, required) The command to execute
+
+Available commands:)"
 #ifdef ENABLE_WALLET
-            "  create-alias  - Create single remote masternode broadcast message by assigned alias configured in masternode.conf\n"
-            "  create-all    - Create remote masternode broadcast messages for all masternodes configured in masternode.conf\n"
+R"(
+  create-alias  - Create single remote masternode broadcast message by assigned alias configured in masternode.conf
+  create-all    - Create remote masternode broadcast messages for all masternodes configured in masternode.conf
+)"
 #endif // ENABLE_WALLET
-            "  decode        - Decode masternode broadcast message\n"
-            "  relay         - Relay masternode broadcast message to the network\n");
+R"(
+  decode        - Decode masternode broadcast message
+  relay         - Relay masternode broadcast message to the network
+
+Examples:
+)"
++ HelpExampleCli("masternodebroadcast", "")
++ HelpExampleRpc("masternodebroadcast", "")
+);
 
     KeyIO keyIO(Params());
 #ifdef ENABLE_WALLET
@@ -220,10 +232,13 @@ UniValue masternodebroadcast(const UniValue& params, bool fHelp)
 
     if (strCommand == "relay") {
         if (params.size() < 2 || params.size() > 3)
-            throw JSONRPCError(RPC_INVALID_PARAMETER, "masternodebroadcast relay \"hexstring\" ( fast )\n"
-                                                      "\nArguments:\n"
-                                                      "1. \"hex\"      (string, required) Broadcast messages hex string\n"
-                                                      "2. fast       (string, optional) If none, using safe method\n");
+            throw JSONRPCError(RPC_INVALID_PARAMETER, 
+R"(masternodebroadcast relay "hexstring" ( fast )
+
+Arguments:
+1. "hex"      (string, required) Broadcast messages hex string
+2. fast       (string, optional) If none, using safe method)"
+);
 
         vector<CMasternodeBroadcast> vecMnb;
 

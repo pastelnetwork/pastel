@@ -91,7 +91,12 @@ Available modes:
   status         - Print masternode status: PRE_ENABLED / ENABLED / EXPIRED / WATCHDOG_EXPIRED / NEW_START_REQUIRED /
                    UPDATE_REQUIRED / POSE_BAN / OUTPOINT_SPENT (can be additionally filtered, partial match)
   extra          - Print PASTEL data associated with the masternode
-)");
+
+Examples:
+)"
++ HelpExampleCli("masternodelist", "")
++ HelpExampleRpc("masternodelist", "")
+);
 
     if (params.size() >= 2)
         strFilter = params[1].get_str();
@@ -283,32 +288,41 @@ UniValue masternode(const UniValue& params, bool fHelp)
 #endif // ENABLE_WALLET
             strCommand != "list" && strCommand != "list-conf" && strCommand != "count" &&
             strCommand != "debug" && strCommand != "current" && strCommand != "winner" && strCommand != "winners" && strCommand != "genkey" &&
-            strCommand != "connect" && strCommand != "status" && strCommand != "top" && strCommand != "message"))
+            strCommand != "connect" && strCommand != "status" && strCommand != "top" && strCommand != "message" && strCommand != "make-conf"))
         throw runtime_error(
-            "masternode \"command\"...\n"
-            "Set of commands to execute masternode related actions\n"
-            "\nArguments:\n"
-            "1. \"command\"        (string or set of strings, required) The command to execute\n"
-            "\nAvailable commands:\n"
-            "  count        - Print number of all known masternodes (optional: 'ps', 'enabled', 'all', 'qualify')\n"
-            "  current      - Print info on current masternode winner to be paid the next block (calculated locally)\n"
-            "  genkey       - Generate new masternodeprivkey\n"
+R"(masternode "command"...
+
+Set of commands to execute masternode related actions
+
+Arguments:
+1. "command"        (string or set of strings, required) The command to execute
+
+Available commands:
+  count        - Print number of all known masternodes (optional: 'ps', 'enabled', 'all', 'qualify')
+  current      - Print info on current masternode winner to be paid the next block (calculated locally)
+  genkey       - Generate new masternodeprivkey
+)"
 #ifdef ENABLE_WALLET
-            "  outputs      - Print masternode compatible outputs\n"
-            "  start-alias  - Start single remote masternode by assigned alias configured in masternode.conf\n"
-            "  start-<mode> - Start remote masternodes configured in masternode.conf (<mode>: 'all', 'missing', 'disabled')\n"
+R"(
+  outputs      - Print masternode compatible outputs
+  start-alias  - Start single remote masternode by assigned alias configured in masternode.conf
+  start-<mode> - Start remote masternodes configured in masternode.conf (<mode>: 'all', 'missing', 'disabled')
+)"
 #endif // ENABLE_WALLET
-            "  status       - Print masternode status information\n"
-            "  list         - Print list of all known masternodes (see masternodelist for more info)\n"
-            "  list-conf    - Print masternode.conf in JSON format\n"
-            //"  make-conf    - Create masternode configuration in JSON format\n"
-            "  winner       - Print info on next masternode winner to vote for\n"
-            "  winners      - Print list of masternode winners\n"
-            "  top <n> <x>  - Print 10 top masternodes for the current or n-th block.\n"
-            "                        By default, method will only return historical masternodes (when n is specified) if they were seen by the node\n"
-            "                        If x presented and not 0 - method will return MNs 'calculated' based on the current list of MNs and hash of n'th block\n"
-            "                        (this maybe not accurate - MN existed before might not be in the current list)\n"
-            "  message <options> - Commands to deal with MN to MN messages - sign, send, print etc\n");
+R"(
+  status       - Print masternode status information
+  list         - Print list of all known masternodes (see masternodelist for more info)
+  list-conf    - Print masternode.conf in JSON format
+  make-conf    - Create masternode configuration in JSON format
+  winner       - Print info on next masternode winner to vote for
+  winners      - Print list of masternode winners
+  top <n> <x>  - Print 10 top masternodes for the current or n-th block.
+                        By default, method will only return historical masternodes (when n is specified) if they were seen by the node
+                        If x presented and not 0 - method will return MNs 'calculated' based on the current list of MNs and hash of n'th block
+                        (this maybe not accurate - MN existed before might not be in the current list)
+  message <options> - Commands to deal with MN to MN messages - sign, send, print etc\n"
+)"
+);
 
     KeyIO keyIO(Params());
     if (strCommand == "list") {
@@ -540,24 +554,29 @@ UniValue masternode(const UniValue& params, bool fHelp)
     if (strCommand == "make-conf") {
         if (params.size() != 6 && params.size() != 8)
             throw JSONRPCError(RPC_INVALID_PARAMETER,
-                               R"("masternode make-conf "alias" "mnAddress:port" "extAddress:port" "extP2P:port" "passphrase" "txid" "index"\n"
-                               "Create masternode configuration in JSON format:\n"
-                               "This will 1) generate MasterNode Private Key (mnPrivKey) and 2) generate and register MasterNode PastelID (extKey)\n"
-                               "If collateral txid and index are not provided, it will search for the first available non-locked outpoint with the correct amount (1000000 PSL)\n"
-                               "\nArguments:\n"
-                               "    "alias"             (string) (required) Local alias (name) of Master Node\n"
-                               "    "mnAddress:port"    (string) (required) The address and port of the Master Node's cNode\n"
-                               "    "extAddress:port"   (string) (required) The address and port of the Master Node's Storage Layer\n"
-                               "    "extP2P:port"       (string) (required) The address and port of the Master Node's Kademlia point\n"
-                               "    "passphrase"        (string) (required) passphrase for new PastelID\n"
-                               "    "txid"              (string) (optional) id of transaction with the collateral amount\n"
-                               "    "index"             (numeric) (optional) index in the transaction with the collateral amount\n"
-                               "\nCreate masternode configuration\n")" +
-                                   HelpExampleCli("masternode make-conf",
-                                                  R"("myMN" "127.0.0.1:9933" "127.0.0.1:4444" "127.0.0.1:5545" "bc1c5243284272dbb22c301a549d112e8bc9bc454b5ff50b1e5f7959d6b56726" 4)") +
-                                   "\nAs json rpc\n" + HelpExampleRpc("masternode make-conf", R"(""myMN" "127.0.0.1:9933" "127.0.0.1:4444" "127.0.0.1:5545" "bc1c5243284272dbb22c301a549d112e8bc9bc454b5ff50b1e5f7959d6b56726" 4")")
+R"("masternode make-conf "alias" "mnAddress:port" "extAddress:port" "extP2P:port" "passphrase" "txid" "index"
 
-            );
+Create masternode configuration in JSON format:
+This will 1) generate MasterNode Private Key (mnPrivKey) and 2) generate and register MasterNode PastelID (extKey)
+If collateral txid and index are not provided, it will search for the first available non-locked outpoint with the correct amount (1000000 PSL)
+
+Arguments:
+    "alias"             (string) (required) Local alias (name) of Master Node
+    "mnAddress:port"    (string) (required) The address and port of the Master Node's cNode
+    "extAddress:port"   (string) (required) The address and port of the Master Node's Storage Layer
+    "extP2P:port"       (string) (required) The address and port of the Master Node's Kademlia point
+    "passphrase"        (string) (required) passphrase for new PastelID
+    "txid"              (string) (optional) id of transaction with the collateral amount
+    "index"             (numeric) (optional) index in the transaction with the collateral amount
+
+Examples:
+Create masternode configuration
+)" + HelpExampleCli("masternode make-conf",
+                    R"("myMN" "127.0.0.1:9933" "127.0.0.1:4444" "127.0.0.1:5545" "bc1c5243284272dbb22c301a549d112e8bc9bc454b5ff50b1e5f7959d6b56726" 4)") + R"(
+As json rpc
+)" + HelpExampleRpc("masternode make-conf", R"(""myMN" "127.0.0.1:9933" "127.0.0.1:4444" "127.0.0.1:5545" "bc1c5243284272dbb22c301a549d112e8bc9bc454b5ff50b1e5f7959d6b56726" 4")")
+
+);
 
         UniValue resultObj(UniValue::VOBJ);
 
@@ -710,10 +729,14 @@ UniValue masternode(const UniValue& params, bool fHelp)
     }
     if (strCommand == "top") {
         if (params.size() > 3)
-            throw JSONRPCError(RPC_INVALID_PARAMETER, "Correct usage is:\n"
-                                                      "\t'masternode top'\n\t\tOR\n"
-                                                      "\t'masternode top \"block-height\"'\n\t\tOR\n"
-                                                      "\t'masternode top \"block-height\" 1'");
+            throw JSONRPCError(RPC_INVALID_PARAMETER, 
+R"(Correct usage is:
+    'masternode top'
+        OR
+    'masternode top "block-height"'
+        OR
+    'masternode top "block-height" 1')"
+);
 
         UniValue obj(UniValue::VOBJ);
 
@@ -752,13 +775,15 @@ UniValue masternode(const UniValue& params, bool fHelp)
         if (fHelp || //-V560
             (params.size() < 2 || params.size() > 4) ||
             (strCmd != "sign" && strCmd != "send" && strCmd != "print" && strCmd != "list"))
-            throw JSONRPCError(RPC_INVALID_PARAMETER, "Correct usage is:\n"
-                                                      "  masternode message send <mnPubKey> <message> - Send <message> to masternode identified by the <mnPubKey>\n"
-                                                      "  masternode message list - List received <messages>\n"
-                                                      "  masternode message print <messageID> - Print received <message> by <messageID>\n"
-                                                      "  masternode message sign <message> <x> - Sign <message> using masternodes key\n"
-                                                      "  \tif x is presented and not 0 - it will also returns the public key\n"
-                                                      "  \tuse \"verifymessage\" with masrternode's public key to verify signature\n");
+            throw JSONRPCError(RPC_INVALID_PARAMETER, R"(Correct usage is:
+    masternode message send <mnPubKey> <message> - Send <message> to masternode identified by the <mnPubKey>
+    masternode message list - List received <messages>
+    masternode message print <messageID> - Print received <message> by <messageID>
+    masternode message sign <message> <x> - Sign <message> using masternodes key
+        if x is presented and not 0 - it will also returns the public key
+        use "verifymessage" with masrternode's public key to verify signature
+)"
+);
 
         if (!masterNodeCtrl.IsMasterNode())
             throw JSONRPCError(RPC_INTERNAL_ERROR, "This is not a masternode - only Masternode can send/sign messages");

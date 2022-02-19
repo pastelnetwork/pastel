@@ -5,6 +5,7 @@
 #include "pastelid/pastel_key.h"
 #include "rpc/rpc_parser.h"
 #include "rpc/rpc_consts.h"
+#include "rpc/server.h"
 #include "mnode/rpc/pastelid-rpc.h"
 
 using namespace std;
@@ -14,8 +15,16 @@ UniValue pastelid_newkey(const UniValue& params)
     if (params.size() != 2)
         throw JSONRPCError(RPC_INVALID_PARAMETER,
 R"(pastelid newkey "passphrase"
+
 Generate new PastelID, associated keys (EdDSA448) and LegRoast signing keys.
-Return PastelID base58-encoded.)");
+
+Return PastelID base58-encoded.
+
+Examples:
+)"
++ HelpExampleCli("pastelid", "")
++ HelpExampleRpc("pastelid", "")
+);
 
     SecureString strKeyPass(params[1].get_str());
     if (strKeyPass.empty())

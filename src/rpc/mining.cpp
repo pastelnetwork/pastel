@@ -3,34 +3,33 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php .
 
-#include "amount.h"
-#include "chainparams.h"
-#include "consensus/consensus.h"
-#include "consensus/validation.h"
-#include "core_io.h"
-#ifdef ENABLE_MINING
-#include "crypto/equihash.h"
-#endif
-#include "init.h"
-#include "key_io.h"
-#include "main.h"
-#include "metrics.h"
-#include "miner.h"
-#include "net.h"
-#include "pow.h"
-#include "rpc/server.h"
-#include "txmempool.h"
-#include "util.h"
-#include "validationinterface.h"
-#ifdef ENABLE_WALLET
-#include "wallet/wallet.h"
-#endif
-
-#include "mnode/mnode-controller.h"
-
 #include <stdint.h>
 
 #include <univalue.h>
+
+#include <amount.h>
+#include <chainparams.h>
+#include <consensus/consensus.h>
+#include <consensus/validation.h>
+#include <core_io.h>
+#ifdef ENABLE_MINING
+#include <crypto/equihash.h>
+#endif
+#include <init.h>
+#include <key_io.h>
+#include <main.h>
+#include <metrics.h>
+#include <miner.h>
+#include <net.h>
+#include <pow.h>
+#include <rpc/server.h>
+#include <txmempool.h>
+#include <util.h>
+#include <validationinterface.h>
+#ifdef ENABLE_WALLET
+#include <wallet/wallet.h>
+#endif
+#include <mnode/mnode-controller.h>
 
 using namespace std;
 
@@ -189,7 +188,9 @@ Result:
 
 Examples:
 Generate 11 blocks
-)" + HelpExampleCli("generate", "11"));
+)" + HelpExampleCli("generate", "11")
+   + HelpExampleRpc("generate", "11")
+);
 
     if (GetArg("-mineraddress", "").empty()) {
 #ifdef ENABLE_WALLET
@@ -301,13 +302,13 @@ Arguments:
 
 Examples:
 Set the generation on with a limit of one processor
-)" + HelpExampleCli("setgenerate", "true 1") +
-"\nCheck the setting\n"
-+ HelpExampleCli("getgenerate", "") +
-"\nTurn off generation\n"
-+ HelpExampleCli("setgenerate", "false") +
-"\nUsing json rpc\n"
-+ HelpExampleRpc("setgenerate", "true, 1")
+)" + HelpExampleCli("setgenerate", "true 1") + R"(
+Check the setting
+)" + HelpExampleCli("getgenerate", "") + R"(
+Turn off generation
+)" + HelpExampleCli("setgenerate", "false") + R"(
+Using json rpc
+)" + HelpExampleRpc("setgenerate", "true, 1")
 );
 
     if (GetArg("-mineraddress", "").empty()) {
@@ -811,28 +812,32 @@ UniValue submitblock(const UniValue& params, bool fHelp)
 {
     if (fHelp || params.size() < 1 || params.size() > 2)
         throw runtime_error(
-            "submitblock \"hexdata\" ( \"jsonparametersobject\" )\n"
-            "\nAttempts to submit new block to network.\n"
-            "The 'jsonparametersobject' parameter is currently ignored.\n"
-            "See https://en.bitcoin.it/wiki/BIP_0022 for full specification.\n"
+R"(submitblock "hexdata" ( "jsonparametersobject" )
 
-            "\nArguments\n"
-            "1. \"hexdata\"    (string, required) the hex-encoded block data to submit\n"
-            "2. \"jsonparametersobject\"     (string, optional) object of optional parameters\n"
-            "    {\n"
-            "      \"workid\" : \"id\"    (string, optional) if the server provided a workid, it MUST be included with submissions\n"
-            "    }\n"
-            "\nResult:\n"
-            "\"duplicate\" - node already has valid copy of block\n"
-            "\"duplicate-invalid\" - node already has block, but it is invalid\n"
-            "\"duplicate-inconclusive\" - node already has block but has not validated it\n"
-            "\"inconclusive\" - node has not validated the block, it may not be on the node's current best chain\n"
-            "\"rejected\" - block was rejected as invalid\n"
-            "For more information on submitblock parameters and results, see: https://github.com/bitcoin/bips/blob/master/bip-0022.mediawiki#block-submission\n"
-            "\nExamples:\n"
-            + HelpExampleCli("submitblock", "\"mydata\"")
-            + HelpExampleRpc("submitblock", "\"mydata\"")
-        );
+Attempts to submit new block to network.
+The 'jsonparametersobject' parameter is currently ignored.
+See https://en.bitcoin.it/wiki/BIP_0022 for full specification.
+
+Arguments
+1. "hexdata"                (string, required) the hex-encoded block data to submit
+2. "jsonparametersobject"   (string, optional) object of optional parameters
+    {
+      "workid" : "id"       (string, optional) if the server provided a workid, it MUST be included with submissions
+    }
+
+Result:
+"duplicate" - node already has valid copy of block
+"duplicate-invalid" - node already has block, but it is invalid
+"duplicate-inconclusive" - node already has block but has not validated it
+"inconclusive" - node has not validated the block, it may not be on the node's current best chain
+"rejected" - block was rejected as invalid
+For more information on submitblock parameters and results, see: https://github.com/bitcoin/bips/blob/master/bip-0022.mediawiki#block-submission
+
+Examples:
+)"
++ HelpExampleCli("submitblock", "\"mydata\"")
++ HelpExampleRpc("submitblock", "\"mydata\"")
+);
 
     CBlock block;
     if (!DecodeHexBlk(block, params[0].get_str()))
@@ -879,20 +884,25 @@ UniValue estimatefee(const UniValue& params, bool fHelp)
 {
     if (fHelp || params.size() != 1)
         throw runtime_error(
-            "estimatefee nblocks\n"
-            "\nEstimates the approximate fee per kilobyte\n"
-            "needed for a transaction to begin confirmation\n"
-            "within nblocks blocks.\n"
-            "\nArguments:\n"
-            "1. nblocks     (numeric)\n"
-            "\nResult:\n"
-            "n :    (numeric) estimated fee-per-kilobyte\n"
-            "\n"
-            "-1.0 is returned if not enough transactions and\n"
-            "blocks have been observed to make an estimate.\n"
-            "\nExample:\n"
-            + HelpExampleCli("estimatefee", "6")
-            );
+R"(estimatefee nblocks
+
+Estimates the approximate fee per kilobyte
+needed for a transaction to begin confirmation
+within nblocks blocks.
+
+Arguments:
+1. nblocks     (numeric)
+
+Result:
+n :    (numeric) estimated fee-per-kilobyte
+
+-1.0 is returned if not enough transactions and
+blocks have been observed to make an estimate.
+
+Example:
+)"
++ HelpExampleCli("estimatefee", "6")
+);
 
     RPCTypeCheck(params, {UniValue::VNUM});
 
@@ -911,20 +921,24 @@ UniValue estimatepriority(const UniValue& params, bool fHelp)
 {
     if (fHelp || params.size() != 1)
         throw runtime_error(
-            "estimatepriority nblocks\n"
-            "\nEstimates the approximate priority\n"
-            "a zero-fee transaction needs to begin confirmation\n"
-            "within nblocks blocks.\n"
-            "\nArguments:\n"
-            "1. nblocks     (numeric)\n"
-            "\nResult:\n"
-            "n :    (numeric) estimated priority\n"
-            "\n"
-            "-1.0 is returned if not enough transactions and\n"
-            "blocks have been observed to make an estimate.\n"
-            "\nExample:\n"
-            + HelpExampleCli("estimatepriority", "6")
-            );
+R"(estimatepriority nblocks
+
+Estimates the approximate priority
+a zero-fee transaction needs to begin confirmation
+within nblocks blocks.
+
+Arguments:
+1. nblocks     (numeric)
+
+Result:
+n :    (numeric) estimated priority
+
+-1.0 is returned if not enough transactions and
+blocks have been observed to make an estimate.
+
+Example:
+)" + HelpExampleCli("estimatepriority", "6")
+);
 
     RPCTypeCheck(params, {UniValue::VNUM});
 
@@ -939,20 +953,25 @@ UniValue getblocksubsidy(const UniValue& params, bool fHelp)
 {
     if (fHelp || params.size() > 1)
         throw runtime_error(
-            "getblocksubsidy height\n"
-            "\nReturns block subsidy reward, taking into account the mining slow start, of block at index provided.\n"
-            "\nArguments:\n"
-            "1. height         (numeric, optional) The block height.  If not provided, defaults to the current height of the chain.\n"
-            "\nResult:\n"
-            "{\n"
-            "  \"miner\" : x.xxx           (numeric) The mining reward amount in " + CURRENCY_UNIT + ".\n"
-            "  \"masternode\" : x.xxx      (numeric) The masternode reward amount in " + CURRENCY_UNIT + ".\n"
-            "  \"governance\" : x.xxx      (numeric) The governance reward amount in " + CURRENCY_UNIT + ".\n"
-            "}\n"
-            "\nExamples:\n"
-            + HelpExampleCli("getblocksubsidy", "1000")
-            + HelpExampleRpc("getblocksubsidy", "1000")
-        );
+R"(getblocksubsidy height
+
+Returns block subsidy reward, taking into account the mining slow start, of block at index provided.
+
+Arguments:
+1. height         (numeric, optional) The block height.  If not provided, defaults to the current height of the chain.
+
+Result:
+{
+  "miner" : x.xxx           (numeric) The mining reward amount in )" + CURRENCY_UNIT + R"(.
+  "masternode" : x.xxx      (numeric) The masternode reward amount in )" + CURRENCY_UNIT + R"(.
+  "governance" : x.xxx      (numeric) The governance reward amount in )" + CURRENCY_UNIT + R"(.
+}
+
+Examples:
+)"
++ HelpExampleCli("getblocksubsidy", "1000")
++ HelpExampleRpc("getblocksubsidy", "1000")
+);
 
     LOCK(cs_main);
     int nHeight = (params.size()==1) ? params[0].get_int() : chainActive.Height();
@@ -982,18 +1001,22 @@ UniValue getnextblocksubsidy(const UniValue& params, bool fHelp)
 {
     if (fHelp || params.size() > 0)
         throw runtime_error(
-                "getnextblocksubsidy\n"
-                "\nReturns block subsidy rewards of the next block.\n"
-                "\nResult:\n"
-                "{\n"
-                "  \"miner\" : x.xxx           (numeric) The mining reward amount in " + CURRENCY_UNIT + ".\n"
-                "  \"masternode\" : x.xxx      (numeric) The masternode reward amount in " + CURRENCY_UNIT + ".\n"
-                "  \"governance\" : x.xxx      (numeric) The governance reward amount in " + CURRENCY_UNIT + ".\n"
-                "}\n"
-                "\nExamples:\n"
-                + HelpExampleCli("getblocksubsidy", "")
-                + HelpExampleRpc("getblocksubsidy", "")
-        );
+R"(getnextblocksubsidy
+
+Returns block subsidy rewards of the next block.
+
+Result:
+{
+  "miner" : x.xxx           (numeric) The mining reward amount in )" + CURRENCY_UNIT + R"(.
+  "masternode" : x.xxx      (numeric) The masternode reward amount in )" + CURRENCY_UNIT + R"(.
+  "governance" : x.xxx      (numeric) The governance reward amount in )" + CURRENCY_UNIT + R"(.
+}
+
+Examples:
+)"
++ HelpExampleCli("getblocksubsidy", "")
++ HelpExampleRpc("getblocksubsidy", "")
+);
     
     LOCK(cs_main);
     int nHeight = chainActive.Height()+1;

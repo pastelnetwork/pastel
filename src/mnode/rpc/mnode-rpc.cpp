@@ -39,7 +39,7 @@ UniValue mnsync(const UniValue& params, bool fHelp)
             "Returns the sync status, updates to the next step or resets it entirely.\n"
         );
 
-    std::string strMode = params[0].get_str();
+    string strMode = params[0].get_str();
 
     if(strMode == "status") {
         UniValue objStatus(UniValue::VOBJ);
@@ -72,25 +72,33 @@ UniValue mnsync(const UniValue& params, bool fHelp)
 
 UniValue governance(const UniValue& params, bool fHelp)
 {
-    std::string strMode;
+    string strMode;
     if (!params.empty())
         strMode = params[0].get_str();
 
        if (fHelp || (strMode != "ticket" && strMode != "list"))
             throw runtime_error(
-				"governance [ticket|list]\n"
-				"Cast a governance vote for new or existing ticket.\n"
-        );
+R"(governance [ticket|list]
 
-    std::string strCmd, strError;
+Cast a governance vote for new or existing ticket.
+
+Examples:
+)"
++ HelpExampleCli("governance", "")
++ HelpExampleRpc("governance", "")
+);
+
+    string strCmd, strError;
     if (strMode == "ticket")
     {
         if (params.size() < 4 || params.size() > 6)
             throw JSONRPCError(RPC_INVALID_PARAMETER,
-				"1.\n"
-				"governance ticket add \"address\" amount \"note\" <yes|no>\n"
-				"2.\n"
-				"governance ticket vote \"ticketID\" <yes|no>\n");
+R"(1.
+governance ticket add "address" amount "note" <yes|no>
+2.
+governance ticket vote "ticketID" <yes|no>
+)"
+);
 
         UniValue resultObj(UniValue::VOBJ);
     
@@ -99,16 +107,16 @@ UniValue governance(const UniValue& params, bool fHelp)
         {
             if (params.size() != 6)
                 throw JSONRPCError(RPC_INVALID_PARAMETER,
-					"governance ticket add \"address\" amount \"note\" <yes|no>\n");
+R"(governance ticket add "address" amount "note" <yes|no>)");
 
-            std::string address = params[2].get_str();
+            string address = params[2].get_str();
             CAmount amount = get_number(params[3]) * COIN;
-            std::string note = params[4].get_str();
-            std::string vote = params[5].get_str();
+            string note = params[4].get_str();
+            string vote = params[5].get_str();
 
             if (vote != "yes" && vote != "no")
                 throw JSONRPCError(RPC_INVALID_PARAMETER,
-					"governance ticket add \"address\" amount \"note\" <yes|no>\n");
+R"(governance ticket add "address" amount "note" <yes|no>)");
 
             uint256 newTicketId;
             if (!masterNodeCtrl.masternodeGovernance.AddTicket(address, amount, note, (vote == "yes"), newTicketId, strError)) {
@@ -124,14 +132,14 @@ UniValue governance(const UniValue& params, bool fHelp)
         {
             if (params.size() != 4)
                 throw JSONRPCError(RPC_INVALID_PARAMETER,
-					"governance ticket vote \"ticketID\" <yes|no>\n");
+R"(governance ticket vote "ticketID" <yes|no>)");
 
-            std::string ticketIdstr = params[2].get_str();
-            std::string vote = params[3].get_str();
+            string ticketIdstr = params[2].get_str();
+            string vote = params[3].get_str();
 
             if (vote != "yes" && vote != "no")
                 throw JSONRPCError(RPC_INVALID_PARAMETER,
-					"governance ticket add \"address\" amount \"note\" <yes|no>\n");
+R"(governance ticket add "address" amount "note" <yes|no>)");
 
             if (!IsHex(ticketIdstr))
                 throw JSONRPCError(RPC_INVALID_PARAMETER,
@@ -155,15 +163,16 @@ UniValue governance(const UniValue& params, bool fHelp)
     
         if (params.size() != 2)
             throw JSONRPCError(RPC_INVALID_PARAMETER,
-				"1.\n"
-				"governance list tickets\n"
-				"2.\n"
-				"governance list winners\n");
+R"(1.
+governance list tickets
+2.
+governance list winners)"
+);
         strCmd = params[1].get_str();
         if (strCmd == "tickets")
         {
             for (auto& s : masterNodeCtrl.masternodeGovernance.mapTickets) {
-                std::string id = s.first.ToString();
+                string id = s.first.ToString();
 
                 UniValue obj(UniValue::VOBJ);
                 obj.pushKV("id", id);
@@ -175,7 +184,7 @@ UniValue governance(const UniValue& params, bool fHelp)
         {
             for (auto& s : masterNodeCtrl.masternodeGovernance.mapTickets) {
                 if (s.second.nLastPaymentBlockHeight != 0) {
-                    std::string id = s.first.ToString();
+                    string id = s.first.ToString();
     
                     UniValue obj(UniValue::VOBJ);
                     obj.pushKV("id", id);
@@ -236,23 +245,30 @@ Arguments:
 
 Available commands:
   store "<data>"  - Store "<data>" into the blockchain. If successful, method returns "txid".
-  retrieve "txid" - Retrieve "data" from the blockchain by "txid".)");
+  retrieve "txid" - Retrieve "data" from the blockchain by "txid".
+  
+Examples:
+)"
++ HelpExampleCli("chaindata", "")
++ HelpExampleRpc("chaindata", "")  
+);
 
     if (CHAINDATA.IsCmd(RPC_CMD_CHAINDATA::store)) {
         if (params.size() != 2)
             throw JSONRPCError(RPC_INVALID_PARAMETER,
-				"chaindata store \"<data>\"\n"
-					"Store \"<data>\" into the blockchain. If successful, method returns \"txid\".");
+R"(chaindata store "<data>"
+Store "<data>" into the blockchain. If successful, method returns "txid".)"
+);
 
         // Get input data from parameter
-        std::string input_data = params[1].get_str();
+        string input_data = params[1].get_str();
         if (input_data.length() == 0)
             throw JSONRPCError(RPC_INVALID_PARAMETER, "No data provided\n");
 		if (input_data.length() > 4096)
 			throw JSONRPCError(RPC_INVALID_PARAMETER, "The data is to big. 4KB is Max\n");
 
-        std::string error;
-        std::string sFundingAddress;
+        string error;
+        string sFundingAddress;
         CMutableTransaction tx_out;
         if (!CPastelTicketProcessor::CreateP2FMSTransaction(input_data, tx_out, 1, sFundingAddress, error))
             throw JSONRPCError(RPC_INVALID_PARAMETER, strprintf("\"Failed to create P2FMS from data provided - %s", error));
@@ -267,8 +283,10 @@ Available commands:
     }
     if (CHAINDATA.IsCmd(RPC_CMD_CHAINDATA::retrieve)) {
         if (params.size() != 2)
-            throw JSONRPCError(RPC_INVALID_PARAMETER, "chaindata retrieve \"txid\"\n"
-                                                      "Retrieve \"data\" from the blockchain by \"txid\".");
+            throw JSONRPCError(RPC_INVALID_PARAMETER, 
+R"(chaindata retrieve "txid"
+Retrieve "data" from the blockchain by "txid".)"
+);
 
         uint256 hash = ParseHashV(params[1], "\"txid\"");
 
@@ -277,7 +295,7 @@ Available commands:
         if (!GetTransaction(hash, tx, Params().GetConsensus(), hashBlock, true))
             throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "No information available about transaction");
 
-        std::string error, output_data;
+        string error, output_data;
         if (!CPastelTicketProcessor::ParseP2FMSTransaction(tx, output_data, error))
             throw JSONRPCError(RPC_INVALID_PARAMETER, strprintf("\"Failed to create P2FMS from data provided - %s", error));
 
@@ -308,9 +326,14 @@ Available commands:
   list ...     - List all specific Pastel tickets in the blockchain.
   get  ...     - Get Pastel ticket by txid.
   tools...     - Pastel ticket tools.
-)");
+
+Examples:
+)"
++ HelpExampleCli("tickets", "")
++ HelpExampleRpc("tickets", "")
+);
 	
-	std::string strCmd, strError;
+	string strCmd, strError;
     switch (TICKETS.cmd())
     {
         case RPC_CMD_TICKETS::Register:

@@ -3,24 +3,23 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#include "amount.h"
-#include "chain.h"
-#include "chainparams.h"
-#include "checkpoints.h"
-#include "consensus/validation.h"
-#include "key_io.h"
-#include "main.h"
-#include "primitives/transaction.h"
-#include "rpc/server.h"
-#include "streams.h"
-#include "sync.h"
-#include "util.h"
-
 #include <stdint.h>
+#include <regex>
 
 #include <univalue.h>
 
-#include <regex>
+#include <amount.h>
+#include <chain.h>
+#include <chainparams.h>
+#include <checkpoints.h>
+#include <consensus/validation.h>
+#include <key_io.h>
+#include <main.h>
+#include <primitives/transaction.h>
+#include <rpc/server.h>
+#include <streams.h>
+#include <sync.h>
+#include <util.h>
 
 using namespace std;
 
@@ -80,9 +79,9 @@ double GetNetworkDifficulty(const CBlockIndex* blockindex)
 }
 
 static UniValue ValuePoolDesc(
-    const std::string &name,
-    const std::optional<CAmount> chainValue,
-    const std::optional<CAmount> valueDelta)
+    const string &name,
+    const optional<CAmount> chainValue,
+    const optional<CAmount> valueDelta)
 {
     UniValue rv(UniValue::VOBJ);
     rv.pushKV("id", name);
@@ -152,7 +151,7 @@ UniValue blockToJSON(const CBlock& block, const CBlockIndex* blockindex, bool tx
         else
             txs.push_back(tx.GetHash().GetHex());
     }
-    result.pushKV("tx", std::move(txs));
+    result.pushKV("tx", move(txs));
     result.pushKV("time", block.GetBlockTime());
     result.pushKV("nonce", block.nNonce.GetHex());
     result.pushKV("solution", HexStr(block.nSolution));
@@ -164,7 +163,7 @@ UniValue blockToJSON(const CBlock& block, const CBlockIndex* blockindex, bool tx
     UniValue valuePools(UniValue::VARR);
     valuePools.push_back(ValuePoolDesc("sprout", blockindex->nChainSproutValue, blockindex->nSproutValue));
     valuePools.push_back(ValuePoolDesc("sapling", blockindex->nChainSaplingValue, blockindex->nSaplingValue));
-    result.pushKV("valuePools", std::move(valuePools));
+    result.pushKV("valuePools", move(valuePools));
 
     if (blockindex->pprev)
         result.pushKV("previousblockhash", blockindex->pprev->GetBlockHash().GetHex());
@@ -401,7 +400,7 @@ Examples:
 
     LOCK(cs_main);
 
-    std::string strHash = params[0].get_str();
+    string strHash = params[0].get_str();
     uint256 hash(uint256S(strHash));
 
     bool fVerbose = true;
@@ -417,7 +416,7 @@ Examples:
     {
         CDataStream ssBlock(SER_NETWORK, PROTOCOL_VERSION);
         ssBlock << pblockindex->GetBlockHeader();
-        std::string strHex = HexStr(ssBlock.begin(), ssBlock.end());
+        string strHex = HexStr(ssBlock.begin(), ssBlock.end());
         return strHex;
     }
 
@@ -480,11 +479,11 @@ Examples:
 
     LOCK(cs_main);
 
-    std::string strHash = params[0].get_str();
+    string strHash = params[0].get_str();
 
     // If height is supplied, find the hash
     if (strHash.size() < (2 * sizeof(uint256))) {
-        // std::stoi allows characters, whereas we want to be strict
+        // stoi allows characters, whereas we want to be strict
         regex r("[[:digit:]]+");
         if (!regex_match(strHash, r)) {
             throw JSONRPCError(RPC_INVALID_PARAMETER, "Invalid block height parameter");
@@ -492,9 +491,9 @@ Examples:
 
         int nHeight = -1;
         try {
-            nHeight = std::stoi(strHash);
+            nHeight = stoi(strHash);
         }
-        catch (const std::exception &) {
+        catch (const exception &) {
             throw JSONRPCError(RPC_INVALID_PARAMETER, "Invalid block height parameter");
         }
 
@@ -535,7 +534,7 @@ Examples:
     {
         CDataStream ssBlock(SER_NETWORK, PROTOCOL_VERSION);
         ssBlock << block;
-        std::string strHex = HexStr(ssBlock.begin(), ssBlock.end());
+        string strHex = HexStr(ssBlock.begin(), ssBlock.end());
         return strHex;
     }
 
@@ -619,19 +618,18 @@ Result:
 
 Examples:
 Get unspent transactions
-)"
-+ HelpExampleCli("listunspent", "") +
-"\nView the details\n"
-+ HelpExampleCli("gettxout", "\"txid\" 1") +
-"\nAs a json rpc call\n"
-+ HelpExampleRpc("gettxout", "\"txid\", 1")
+)" + HelpExampleCli("listunspent", "") + R"(
+View the details
+)" + HelpExampleCli("gettxout", "\"txid\" 1") + R"(
+As a json rpc call
+)" + HelpExampleRpc("gettxout", "\"txid\", 1")
 );
 
     LOCK(cs_main);
 
     UniValue ret(UniValue::VOBJ);
 
-    std::string strHash = params[0].get_str();
+    string strHash = params[0].get_str();
     uint256 hash(uint256S(strHash));
     int n = params[1].get_int();
     bool fMempool = true;
@@ -722,7 +720,7 @@ static UniValue SoftForkMajorityDesc(int minVersion, CBlockIndex* pindex, int nR
     return rv;
 }
 
-static UniValue SoftForkDesc(const std::string &name, int version, CBlockIndex* pindex, const Consensus::Params& consensusParams)
+static UniValue SoftForkDesc(const string &name, int version, CBlockIndex* pindex, const Consensus::Params& consensusParams)
 {
     UniValue rv(UniValue::VOBJ);
     rv.pushKV("id", name);
@@ -833,8 +831,8 @@ Examples:
 
     CBlockIndex* tip = chainActive.Tip();
     UniValue valuePools(UniValue::VARR);
-    valuePools.push_back(ValuePoolDesc("sprout", tip->nChainSproutValue, std::nullopt));
-    valuePools.push_back(ValuePoolDesc("sapling", tip->nChainSaplingValue, std::nullopt));
+    valuePools.push_back(ValuePoolDesc("sprout", tip->nChainSproutValue, nullopt));
+    valuePools.push_back(ValuePoolDesc("sapling", tip->nChainSaplingValue, nullopt));
     obj.pushKV("valuePools",            valuePools);
 
     const Consensus::Params& consensusParams = Params().GetConsensus();
@@ -886,41 +884,46 @@ UniValue getchaintips(const UniValue& params, bool fHelp)
 {
     if (fHelp || params.size() != 0)
         throw runtime_error(
-            "getchaintips\n"
-            "Return information about all known tips in the block tree,"
-            " including the main chain as well as orphaned branches.\n"
-            "\nResult:\n"
-            "[\n"
-            "  {\n"
-            "    \"height\": xxxx,         (numeric) height of the chain tip\n"
-            "    \"hash\": \"xxxx\",         (string) block hash of the tip\n"
-            "    \"branchlen\": 0          (numeric) zero for main chain\n"
-            "    \"status\": \"active\"      (string) \"active\" for the main chain\n"
-            "  },\n"
-            "  {\n"
-            "    \"height\": xxxx,\n"
-            "    \"hash\": \"xxxx\",\n"
-            "    \"branchlen\": 1          (numeric) length of branch connecting the tip to the main chain\n"
-            "    \"status\": \"xxxx\"        (string) status of the chain (active, valid-fork, valid-headers, headers-only, invalid)\n"
-            "  }\n"
-            "]\n"
-            "Possible values for status:\n"
-            "1.  \"invalid\"               This branch contains at least one invalid block\n"
-            "2.  \"headers-only\"          Not all blocks for this branch are available, but the headers are valid\n"
-            "3.  \"valid-headers\"         All blocks are available for this branch, but they were never fully validated\n"
-            "4.  \"valid-fork\"            This branch is not part of the active chain, but is fully validated\n"
-            "5.  \"active\"                This is the tip of the active main chain, which is certainly valid\n"
-            "\nExamples:\n"
-            + HelpExampleCli("getchaintips", "")
-            + HelpExampleRpc("getchaintips", "")
-        );
+R"(getchaintips
+
+Return information about all known tips in the block tree,
+ including the main chain as well as orphaned branches.
+
+Result:
+[
+  {
+    "height": xxxx,         (numeric) height of the chain tip
+    "hash": "xxxx",         (string) block hash of the tip
+    "branchlen": 0          (numeric) zero for main chain
+    "status": "active"      (string) "active" for the main chain
+  },
+  {
+    "height": xxxx,
+    "hash": "xxxx",
+    "branchlen": 1          (numeric) length of branch connecting the tip to the main chain
+    "status": "xxxx"        (string) status of the chain (active, valid-fork, valid-headers, headers-only, invalid)
+  }
+]
+
+Possible values for status:
+1.  "invalid"               This branch contains at least one invalid block
+2.  "headers-only"          Not all blocks for this branch are available, but the headers are valid
+3.  "valid-headers"         All blocks are available for this branch, but they were never fully validated
+4.  "valid-fork"            This branch is not part of the active chain, but is fully validated
+5.  "active"                This is the tip of the active main chain, which is certainly valid
+
+Examples:
+)"
++ HelpExampleCli("getchaintips", "")
++ HelpExampleRpc("getchaintips", "")
+);
 
     LOCK(cs_main);
 
     /* Build up a list of chain tips.  We start with the list of all
        known blocks, and successively remove blocks that appear as pprev
        of another block.  */
-    std::set<const CBlockIndex*, CompareBlocksByHeight> setTips;
+    set<const CBlockIndex*, CompareBlocksByHeight> setTips;
     for (const auto &[hash, blockIndex] : mapBlockIndex)
         setTips.insert(blockIndex);
     for (const auto& [hash, blockIndex] : mapBlockIndex)
@@ -1010,17 +1013,22 @@ UniValue invalidateblock(const UniValue& params, bool fHelp)
 {
     if (fHelp || params.size() != 1)
         throw runtime_error(
-            "invalidateblock \"hash\"\n"
-            "\nPermanently marks a block as invalid, as if it violated a consensus rule.\n"
-            "\nArguments:\n"
-            "1. hash   (string, required) the hash of the block to mark as invalid\n"
-            "\nResult:\n"
-            "\nExamples:\n"
-            + HelpExampleCli("invalidateblock", "\"blockhash\"")
-            + HelpExampleRpc("invalidateblock", "\"blockhash\"")
-        );
+R"(invalidateblock "hash"
 
-    std::string strHash = params[0].get_str();
+Permanently marks a block as invalid, as if it violated a consensus rule.
+
+Arguments:
+1. hash   (string, required) the hash of the block to mark as invalid
+
+Result:
+
+Examples:
+)"
++ HelpExampleCli("invalidateblock", "\"blockhash\"")
++ HelpExampleRpc("invalidateblock", "\"blockhash\"")
+);
+
+    string strHash = params[0].get_str();
     uint256 hash(uint256S(strHash));
     CValidationState state;
     const auto& chainparams = Params();
@@ -1046,18 +1054,23 @@ UniValue reconsiderblock(const UniValue& params, bool fHelp)
 {
     if (fHelp || params.size() != 1)
         throw runtime_error(
-            "reconsiderblock \"hash\"\n"
-            "\nRemoves invalidity status of a block and its descendants, reconsider them for activation.\n"
-            "This can be used to undo the effects of invalidateblock.\n"
-            "\nArguments:\n"
-            "1. hash   (string, required) the hash of the block to reconsider\n"
-            "\nResult:\n"
-            "\nExamples:\n"
-            + HelpExampleCli("reconsiderblock", "\"blockhash\"")
-            + HelpExampleRpc("reconsiderblock", "\"blockhash\"")
-        );
+R"(reconsiderblock "hash"
 
-    std::string strHash = params[0].get_str();
+Removes invalidity status of a block and its descendants, reconsider them for activation.
+This can be used to undo the effects of invalidateblock.
+
+Arguments:
+1. hash   (string, required) the hash of the block to reconsider
+
+Result:
+
+Examples:
+)"
++ HelpExampleCli("reconsiderblock", "\"blockhash\"")
++ HelpExampleRpc("reconsiderblock", "\"blockhash\"")
+);
+
+    string strHash = params[0].get_str();
     uint256 hash(uint256S(strHash));
     CValidationState state;
 
@@ -1126,11 +1139,11 @@ UniValue blockToDeltasJSON(const CBlock& block, const CBlockIndex* blockindex)
                 delta.pushKV("prevtxid", input.prevout.hash.GetHex());
                 delta.pushKV("prevout", (int)input.prevout.n);
 
-                inputs.push_back(std::move(delta));
+                inputs.push_back(move(delta));
                 index ++;
             }
         }
-        entry.pushKV("inputs", std::move(inputs));
+        entry.pushKV("inputs", move(inputs));
 
         UniValue outputs(UniValue::VARR);
         
@@ -1151,14 +1164,14 @@ UniValue blockToDeltasJSON(const CBlock& block, const CBlockIndex* blockindex)
             delta.pushKV("patoshis", out.nValue);
             delta.pushKV("index", outIndex);
 
-            outputs.push_back(std::move(delta));
+            outputs.push_back(move(delta));
             outIndex ++;
         }
-        entry.pushKV("outputs", std::move(outputs));
-        deltas.push_back(std::move(entry));
+        entry.pushKV("outputs", move(outputs));
+        deltas.push_back(move(entry));
         i ++;
     }
-    result.pushKV("deltas", std::move(deltas));
+    result.pushKV("deltas", move(deltas));
     result.pushKV("time", block.GetBlockTime());
     result.pushKV("mediantime", (int64_t)blockindex->GetMedianTimePast());
     result.pushKV("nonce", block.nNonce.GetHex());
@@ -1177,9 +1190,9 @@ UniValue blockToDeltasJSON(const CBlock& block, const CBlockIndex* blockindex)
 // insightexplorer
 UniValue getblockdeltas(const UniValue& params, bool fHelp)
 {
-    const std::string enableArg = "insightexplorer";
+    const string enableArg = "insightexplorer";
     const bool enabled = fExperimentalMode && fInsightExplorer;
-    std::string disabledMsg = "";
+    string disabledMsg = "";
     if (!enabled) {
         disabledMsg = experimentalDisabledHelpMsg("getblockdeltas", enableArg);
     }
@@ -1190,6 +1203,7 @@ Returns the txid and index where an output is spent.)"
             + disabledMsg +
 R"(Arguments:
 1. "hash"          (string, required) The block hash
+
 Result:
 {
   "hash": "hash",              (string) block ID
@@ -1229,6 +1243,7 @@ Result:
   "previousblockhash": "hash", (hex string) The hash of the previous block
   "nextblockhash": "hash"      (hex string) The hash of the next block
 }
+
 Examples:)"
             + HelpExampleCli("getblockdeltas", "00227e566682aebd6a7a5b772c96d7a999cadaebeaf1ce96f4191a3aad58b00b")
             + HelpExampleRpc("getblockdeltas", "\"00227e566682aebd6a7a5b772c96d7a999cadaebeaf1ce96f4191a3aad58b00b\"")
@@ -1239,7 +1254,7 @@ Examples:)"
             "Run './pastel-cli help getblockdeltas' for instructions on how to enable this feature.");
     }
 
-    std::string strHash = params[0].get_str();
+    string strHash = params[0].get_str();
     uint256 hash(uint256S(strHash));
 
     if (mapBlockIndex.count(hash) == 0)
