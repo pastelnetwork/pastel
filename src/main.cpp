@@ -6148,110 +6148,113 @@ bool ProcessMessages(const CChainParams& chainparams, CNode* pfrom)
     // | msg start | command  |   size  | checksum |    data       |
     // +-----------+----------+---------+----------+---------------+
     //
-    bool fOk = true;
+    bool fMoreWork = false;
 
     if (!pfrom->vRecvGetData.empty())
         ProcessGetData(pfrom, chainparams.GetConsensus());
 
+    if (pfrom->fDisconnect)
+        return false;
+
     // this maintains the order of responses
-    if (!pfrom->vRecvGetData.empty()) return fOk;
+    if (!pfrom->vRecvGetData.empty()) return true;
 
-    deque<CNetMessage>::iterator it = pfrom->vRecvMsg.begin();
-    while (!pfrom->fDisconnect && it != pfrom->vRecvMsg.end()) {
-        // Don't bother if send buffer is too full to respond anyway
-        if (pfrom->nSendSize >= SendBufferSize())
-            break;
+    // Don't bother if send buffer is too full to respond anyway
+    if (pfrom->nSendSize >= SendBufferSize())
+        return false;
 
-        // get next message
-        CNetMessage& msg = *it;
+    auto it = pfrom->vRecvMsg.begin();
+    if (it == pfrom->vRecvMsg.end())
+        return false;
 
-        //if (fDebug)
-        //    LogPrintf("%s(message %u msgsz, %u bytes, complete:%s)\n", __func__,
-        //            msg.hdr.nMessageSize, msg.vRecv.size(),
-        //            msg.complete() ? "Y" : "N");
+    //if (fDebug)
+    //    LogPrintf("%s(message %u msgsz, %u bytes, complete:%s)\n", __func__,
+    //            msg.hdr.nMessageSize, msg.vRecv.size(),
+    //            msg.complete() ? "Y" : "N");
 
-        // end, if an incomplete message is found
-        if (!msg.complete())
-            break;
+    // end, if an incomplete message is found
+    if (!it->complete())
+        return false;
 
-        // at this point, any failure means we can delete the current message
-        it++;
+    // get next message
+    CNetMessage msg = move(*it);
 
-        // Scan for message start
-        if (memcmp(msg.hdr.pchMessageStart, chainparams.MessageStart(), MESSAGE_START_SIZE) != 0)
-        {
-            LogPrintf("PROCESSMESSAGE: INVALID MESSAGESTART %s peer=%d\n", SanitizeString(msg.hdr.GetCommand()), pfrom->id);
-            fOk = false;
-            break;
-        }
+    // at this point, any failure means we can delete the current message
+    pfrom->vRecvMsg.erase(pfrom->vRecvMsg.begin());
 
-        // Read header
-        CMessageHeader& hdr = msg.hdr;
-        if (!hdr.IsValid(chainparams.MessageStart()))
-        {
-            LogPrintf("PROCESSMESSAGE: ERRORS IN HEADER %s peer=%d\n", SanitizeString(hdr.GetCommand()), pfrom->id);
-            continue;
-        }
-        string strCommand = hdr.GetCommand();
+    fMoreWork = !pfrom->vRecvMsg.empty() && pfrom->vRecvMsg.front().complete();
 
-        // Message size
-        unsigned int nMessageSize = hdr.nMessageSize;
-
-        // Checksum
-        CDataStream& vRecv = msg.vRecv;
-        uint256 hash = Hash(vRecv.begin(), vRecv.begin() + nMessageSize);
-        unsigned int nChecksum = ReadLE32((unsigned char*)&hash);
-        if (nChecksum != hdr.nChecksum)
-        {
-            LogPrintf("%s(%s, %u bytes): CHECKSUM ERROR nChecksum=%08x hdr.nChecksum=%08x\n", __func__,
-               SanitizeString(strCommand), nMessageSize, nChecksum, hdr.nChecksum);
-            continue;
-        }
-
-        // Process message
-        bool fRet = false;
-        try
-        {
-            fRet = ProcessMessage(chainparams, pfrom, strCommand, vRecv, msg.nTime);
-            func_thread_interrupt_point();
-        }
-        catch (const ios_base::failure& e)
-        {
-            pfrom->PushMessage("reject", strCommand, REJECT_MALFORMED, string("error parsing message"));
-            if (strstr(e.what(), "end of data"))
-            {
-                // Allow exceptions from under-length message on vRecv
-                LogPrintf("%s(%s, %u bytes): Exception '%s' caught, normally caused by a message being shorter than its stated length\n", __func__, SanitizeString(strCommand), nMessageSize, e.what());
-            }
-            else if (strstr(e.what(), "size too large"))
-            {
-                // Allow exceptions from over-long size
-                LogPrintf("%s(%s, %u bytes): Exception '%s' caught\n", __func__, SanitizeString(strCommand), nMessageSize, e.what());
-            }
-            else
-            {
-                PrintExceptionContinue(&e, "ProcessMessages()");
-            }
-        } catch (const func_thread_interrupted&) {
-            throw;
-        }
-        catch (const exception& e) {
-            PrintExceptionContinue(&e, "ProcessMessages()");
-        } catch (...) {
-            PrintExceptionContinue(nullptr, "ProcessMessages()");
-        }
-
-        if (!fRet)
-            LogPrintf("%s(%s, %u bytes) FAILED peer=%d\n", __func__, SanitizeString(strCommand), nMessageSize, pfrom->id);
-
-        break;
+    // Scan for message start
+    if (memcmp(msg.hdr.pchMessageStart, chainparams.MessageStart(), MESSAGE_START_SIZE) != 0)
+    {
+        LogPrintf("PROCESSMESSAGE: INVALID MESSAGESTART %s peer=%d\n", SanitizeString(msg.hdr.GetCommand()), pfrom->id);
+        pfrom->fDisconnect = true;
+        return false;
     }
 
-    // In case the connection got shut down, its receive buffer was wiped
-    if (!pfrom->fDisconnect)
-        pfrom->vRecvMsg.erase(pfrom->vRecvMsg.begin(), it);
+    // Read header
+    CMessageHeader& hdr = msg.hdr;
+    if (!hdr.IsValid(chainparams.MessageStart()))
+    {
+        LogPrintf("PROCESSMESSAGE: ERRORS IN HEADER %s peer=%d\n", SanitizeString(hdr.GetCommand()), pfrom->id);
+        return fMoreWork;
+    }
+    string strCommand = hdr.GetCommand();
 
-    return fOk;
+    // Message size
+    unsigned int nMessageSize = hdr.nMessageSize;
+
+    // Checksum
+    CDataStream& vRecv = msg.vRecv;
+    uint256 hash = Hash(vRecv.begin(), vRecv.begin() + nMessageSize);
+    unsigned int nChecksum = ReadLE32((unsigned char*)&hash);
+    if (nChecksum != hdr.nChecksum)
+    {
+        LogPrintf("%s(%s, %u bytes): CHECKSUM ERROR nChecksum=%08x hdr.nChecksum=%08x\n", __func__,
+            SanitizeString(strCommand), nMessageSize, nChecksum, hdr.nChecksum);
+        return fMoreWork;
+    }
+
+    // Process message
+    bool fRet = false;
+    try
+    {
+        fRet = ProcessMessage(chainparams, pfrom, strCommand, vRecv, msg.nTime);
+        func_thread_interrupt_point();
+        if (!pfrom->vRecvGetData.empty())
+            fMoreWork = true;
+    }
+    catch (const ios_base::failure& e)
+    {
+        pfrom->PushMessage("reject", strCommand, REJECT_MALFORMED, string("error parsing message"));
+        if (strstr(e.what(), "end of data"))
+        {
+            // Allow exceptions from under-length message on vRecv
+            LogPrintf("%s(%s, %u bytes): Exception '%s' caught, normally caused by a message being shorter than its stated length\n", __func__, SanitizeString(strCommand), nMessageSize, e.what());
+        }
+        else if (strstr(e.what(), "size too large"))
+        {
+            // Allow exceptions from over-long size
+            LogPrintf("%s(%s, %u bytes): Exception '%s' caught\n", __func__, SanitizeString(strCommand), nMessageSize, e.what());
+        }
+        else
+        {
+            PrintExceptionContinue(&e, "ProcessMessages()");
+        }
+    } catch (const func_thread_interrupted&) {
+        throw;
+    }
+    catch (const exception& e) {
+        PrintExceptionContinue(&e, "ProcessMessages()");
+    } catch (...) {
+        PrintExceptionContinue(nullptr, "ProcessMessages()");
+    }
+
+    if (!fRet)
+        LogPrintf("%s(%s, %u bytes) FAILED peer=%d\n", __func__, SanitizeString(strCommand), nMessageSize, pfrom->id);
+
+
+    return fMoreWork;
 }
 
 /**
