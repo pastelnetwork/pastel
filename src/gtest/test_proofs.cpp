@@ -1,3 +1,6 @@
+#include <gtest/gtest.h>
+#include <zcash/Proof.hpp>
+
 #include <iostream>
 
 #include <gtest/gtest.h>

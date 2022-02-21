@@ -2,8 +2,8 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or httpa://www.opensource.org/licenses/mit-license.php.
 
-#include "test_utils.h"
-#include "fs.h"
+#include <pastel_gtest_utils.h>
+#include <fs.h>
 
 #include <random>
 using namespace std;

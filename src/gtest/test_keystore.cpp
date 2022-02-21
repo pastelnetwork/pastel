@@ -2,15 +2,15 @@
 
 #include <gtest/data/sapling_key_components.json.h>
 
-#include "keystore.h"
-#include "random.h"
-#include "utiltest.h"
+#include <keystore.h>
+#include <random.h>
+#include <utiltest.h>
 #ifdef ENABLE_WALLET
-#include "wallet/crypter.h"
+#include <wallet/crypter.h>
 #endif
-#include "zcash/Address.hpp"
+#include <zcash/Address.hpp>
 
-#include "json_test_vectors.h"
+#include <json_test_vectors.h>
 
 #define MAKE_STRING(x) std::string((x), (x)+sizeof(x))
 

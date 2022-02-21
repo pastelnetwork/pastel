@@ -1,7 +1,7 @@
 #include <gtest/gtest.h>
 
 #include "random.h"
-#include "test_utils.h"
+#include "pastel_gtest_utils.h"
 
 TEST(Random, MappedShuffle) {
     std::vector<int> a {8, 4, 6, 3, 5};

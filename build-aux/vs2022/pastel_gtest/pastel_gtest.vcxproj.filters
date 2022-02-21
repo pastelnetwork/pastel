@@ -142,7 +142,7 @@
     <ClCompile Include="..\..\..\src\gtest\test_util.cpp">
       <Filter>UnitTest Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\src\gtest\test_utils.cpp">
+    <ClCompile Include="..\..\..\src\gtest\pastel_gtest_utils.cpp">
       <Filter>UnitTest Files</Filter>
     </ClCompile>
     <ClCompile Include="..\..\..\src\gtest\test_mnode\test_governance.cpp">
@@ -321,7 +321,7 @@
     <ClInclude Include="..\..\vs\port\uint128.h">
       <Filter>Source Files\port</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\..\src\gtest\test_utils.h">
+    <ClInclude Include="..\..\..\src\gtest\pastel_gtest_utils.h">
       <Filter>UnitTest Files</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\src\gtest\pastel_gtest_main.h">
