@@ -63,8 +63,6 @@ static constexpr unsigned int MAX_P2SH_SIGOPS = 15;
 static constexpr unsigned int MAX_STANDARD_TX_SIGOPS = MAX_BLOCK_SIGOPS/5;
 /** Default for -minrelaytxfee, minimum relay fee for transactions */
 static constexpr unsigned int DEFAULT_MIN_RELAY_TX_FEE = 100;
-/** Default for -maxorphantx, maximum number of orphan transactions kept in memory */
-static constexpr unsigned int DEFAULT_MAX_ORPHAN_TRANSACTIONS = 100;
 /** Default for -txexpirydelta, in number of blocks */
 static constexpr unsigned int DEFAULT_TX_EXPIRY_DELTA = 20;
 /** The number of blocks within expiry height when a tx is considered to be expiring soon */

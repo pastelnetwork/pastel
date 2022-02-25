@@ -286,6 +286,7 @@ BITCOIN_CORE_H = \
   netbase.h \
   noui.h \
   numeric_range.h\
+  orphan-tx.h\
   policy/fees.h \
   port_config.h \
   pow.h \
@@ -389,6 +390,7 @@ libbitcoin_server_a_SOURCES = \
   netmsg/block-cache.cpp\
   net.cpp \
   noui.cpp \
+  orphan-tx.cpp \
   policy/fees.cpp \
   pow.cpp \
   rest.cpp \

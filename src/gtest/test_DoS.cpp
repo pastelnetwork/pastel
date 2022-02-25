@@ -18,21 +18,12 @@
 #include <script/sign.h>
 #include <serialize.h>
 #include <util.h>
+#include <orphan-tx.h>
+
 #include <pastel_gtest_main.h>
 
 using namespace std;
 using namespace testing;
-
-// Tests this internal-to-main.cpp method:
-extern bool AddOrphanTx(const CTransaction& tx, NodeId peer);
-extern void EraseOrphansFor(NodeId peer);
-extern unsigned int LimitOrphanTxSize(unsigned int nMaxOrphans);
-struct COrphanTx {
-    CTransaction tx;
-    NodeId fromPeer;
-};
-extern unordered_map<uint256, COrphanTx> mapOrphanTransactions;
-extern unordered_map<uint256, set<uint256>> mapOrphanTransactionsByPrev;
 
 CService ip(uint32_t i)
 {
@@ -121,10 +112,7 @@ TEST_F(TestDoS, DoS_bantime)
 
 CTransaction RandomOrphan()
 {
-    auto it = mapOrphanTransactions.find(GetRandHash());
-    if (it == mapOrphanTransactions.cend())
-        it = mapOrphanTransactions.begin();
-    return it->second.tx;
+    return gl_OrphanTxManager.getTxOrFirst(GetRandHash());
 }
 
 class PTestDoS : public TestWithParam<int>
@@ -155,7 +143,7 @@ TEST_P(PTestDoS, DoS_mapOrphans)
         tx.vout[0].nValue = 1*CENT;
         tx.vout[0].scriptPubKey = GetScriptForDestination(key.GetPubKey().GetID());
 
-        AddOrphanTx(tx, i);
+        gl_OrphanTxManager.AddOrphanTx(tx, i);
     }
 
     // ... and 50 that depend on other orphans:
@@ -172,7 +160,7 @@ TEST_P(PTestDoS, DoS_mapOrphans)
         tx.vout[0].scriptPubKey = GetScriptForDestination(key.GetPubKey().GetID());
         SignSignature(keystore, txPrev, tx, 0, to_integral_type(SIGHASH::ALL), consensusBranchId);
 
-        AddOrphanTx(tx, i);
+        gl_OrphanTxManager.AddOrphanTx(tx, i);
     }
 
     // This really-big orphan should be ignored:
@@ -196,25 +184,27 @@ TEST_P(PTestDoS, DoS_mapOrphans)
         for (unsigned int j = 1; j < tx.vin.size(); j++)
             tx.vin[j].scriptSig = tx.vin[0].scriptSig;
 
-        EXPECT_TRUE(!AddOrphanTx(tx, i));
+        EXPECT_TRUE(!gl_OrphanTxManager.AddOrphanTx(tx, i));
     }
 
     // Test EraseOrphansFor:
     for (NodeId i = 0; i < 3; i++)
     {
-        size_t sizeBefore = mapOrphanTransactions.size();
-        EraseOrphansFor(i);
-        EXPECT_TRUE(mapOrphanTransactions.size() < sizeBefore);
+        const size_t sizeBefore = gl_OrphanTxManager.size();
+        gl_OrphanTxManager.EraseOrphansFor(i);
+        EXPECT_LT(gl_OrphanTxManager.size(), sizeBefore);
     }
 
     // Test LimitOrphanTxSize() function:
-    LimitOrphanTxSize(40);
-    EXPECT_TRUE(mapOrphanTransactions.size() <= 40);
-    LimitOrphanTxSize(10);
-    EXPECT_TRUE(mapOrphanTransactions.size() <= 10);
-    LimitOrphanTxSize(0);
-    EXPECT_TRUE(mapOrphanTransactions.empty());
-    EXPECT_TRUE(mapOrphanTransactionsByPrev.empty());
+    gl_OrphanTxManager.LimitOrphanTxSize(40);
+    EXPECT_TRUE(gl_OrphanTxManager.size() <= 40);
+
+    gl_OrphanTxManager.LimitOrphanTxSize(10);
+    EXPECT_TRUE(gl_OrphanTxManager.size() <= 10);
+
+    gl_OrphanTxManager.LimitOrphanTxSize(0);
+    EXPECT_EQ(gl_OrphanTxManager.size(), 0u);
+    EXPECT_EQ(gl_OrphanTxManager.sizePrev(), 0u);
 }
 
 INSTANTIATE_TEST_SUITE_P(DoS_mapOrphans, PTestDoS, Values(

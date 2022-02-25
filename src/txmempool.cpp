@@ -432,7 +432,6 @@ void CTxMemPool::check(const CCoinsViewCache *pcoins) const
             stepsSinceLastRemove = 0;
         }
     }
-    //for (map<COutPoint, CInPoint>::const_iterator it = mapNextTx.begin(); it != mapNextTx.end(); it++)
     for (const auto &[outPoint, inPoint] : mapNextTx)
     {
         uint256 hash = inPoint.ptx->GetHash();

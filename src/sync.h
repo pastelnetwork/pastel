@@ -66,7 +66,7 @@ public:
 };
 
 /**
- * Wrapped boost mutex: supports recursive locking, but no waiting
+ * Wrapped mutex: supports recursive locking, but no waiting
  * TODO: We should move away from using the recursive lock by default.
  */
 typedef AnnotatedMixin<std::recursive_mutex> CCriticalSection;

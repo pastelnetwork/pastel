@@ -1,20 +1,19 @@
 // Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2014 The Bitcoin Core developers
+// Copyright (c) 2018-2022 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
-// file COPYING or http://www.opensource.org/licenses/mit-license.php.
-
-#include "protocol.h"
-
-#include "util.h"
-#include "utilstrencodings.h"
+// file COPYING or https://www.opensource.org/licenses/mit-license.php.
 
 #ifndef WIN32
 # include <arpa/inet.h>
 #endif
 
-/*
+#include <protocol.h>
+#include <util.h>
+#include <utilstrencodings.h>
 
-*/
+using namespace std;
+
 namespace NetMsgType {
 const char *MNANNOUNCE="mnb";       //MasterNode Announce
 const char *MNPING="mnp";           //MasterNode Ping
@@ -71,39 +70,61 @@ CMessageHeader::CMessageHeader(const MessageStartChars& pchMessageStartIn, const
     nChecksum = 0;
 }
 
-std::string CMessageHeader::GetCommand() const
+string CMessageHeader::GetCommand() const noexcept
 {
-    return std::string(pchCommand, pchCommand + strnlen(pchCommand, COMMAND_SIZE));
+    return string(pchCommand, pchCommand + strnlen(pchCommand, COMMAND_SIZE));
 }
 
-bool CMessageHeader::IsValid(const MessageStartChars& pchMessageStartIn) const
+bool CMessageHeader::IsValid(string &error, const MessageStartChars& pchExpectedMessageStart) const
 {
     // Check start string
-    if (memcmp(pchMessageStart, pchMessageStartIn, MESSAGE_START_SIZE) != 0)
-        return false;
-
-    // Check the command string for errors
-    for (const char* p1 = pchCommand; p1 < pchCommand + COMMAND_SIZE; p1++)
+    error.clear();
+    bool bRet = false;
+    do
     {
-        if (*p1 == 0)
+        if (memcmp(pchMessageStart, pchExpectedMessageStart, MESSAGE_START_SIZE) != 0)
         {
-            // Must be all zeros after the first zero
-            for (; p1 < pchCommand + COMMAND_SIZE; p1++)
-                if (*p1 != 0)
-                    return false;
+            error = "Invalid message prefix";
+            break;
         }
-        else if (*p1 < ' ' || *p1 > 0x7E)
-            return false;
-    }
 
-    // Message size
-    if (nMessageSize > MAX_DATA_SIZE)
-    {
-        LogPrintf("CMessageHeader::IsValid(): (%s, %u bytes) nMessageSize exceeds max size %u bytes\n", GetCommand(), nMessageSize, MAX_DATA_SIZE);
-        return false;
-    }
+        bool bCmdValid = true;
+        // Check the command string for errors
+        for (const char* p1 = pchCommand; p1 < pchCommand + COMMAND_SIZE; p1++)
+        {
+            if (*p1 == 0)
+            {
+                // Must be all zeros after the first zero
+                for (; p1 < pchCommand + COMMAND_SIZE; p1++)
+                {
+                    if (*p1 != 0)
+                    {
+                        bCmdValid = false;
+                        error = strprintf("Character '0x%X' found in the message command after first zero at pos %u", *p1, p1 - pchCommand);
+                        break;
+                    }
+                }
+            }
+            else if (*p1 < ' ' || *p1 > 0x7E)
+            {
+                bCmdValid = false;
+                error = strprintf("Invalid character '0x%X' found in the message command at pos %u", *p1, p1 - pchCommand);
+                break;
+            }
+        }
+        if (!bCmdValid)
+            break;
 
-    return true;
+        // Message size
+        if (nMessageSize > MAX_DATA_SIZE)
+        {
+            error = strprintf("Message size (%u) exceeds max size %u bytes", nMessageSize, MAX_DATA_SIZE);
+            break;
+        }
+
+        bRet = true;
+    } while (false);
+    return bRet;
 }
 
 
@@ -137,7 +158,7 @@ CInv::CInv(int typeIn, const uint256& hashIn)
     hash = hashIn;
 }
 
-CInv::CInv(const std::string& strType, const uint256& hashIn)
+CInv::CInv(const string& strType, const uint256& hashIn)
 {
     unsigned int i;
     for (i = 1; i < ARRAYLEN(ppszTypeName); i++)
@@ -149,7 +170,7 @@ CInv::CInv(const std::string& strType, const uint256& hashIn)
         }
     }
     if (i == ARRAYLEN(ppszTypeName))
-        throw std::out_of_range(strprintf("CInv::CInv(string, uint256): unknown type '%s'", strType));
+        throw out_of_range(strprintf("CInv::CInv(string, uint256): unknown type '%s'", strType));
     hash = hashIn;
 }
 
@@ -166,11 +187,11 @@ bool CInv::IsKnownType() const
 const char* CInv::GetCommand() const
 {
     if (!IsKnownType())
-        throw std::out_of_range(strprintf("CInv::GetCommand(): type=%d unknown type", type));
+        throw out_of_range(strprintf("CInv::GetCommand(): type=%d unknown type", type));
     return ppszTypeName[type];
 }
 
-std::string CInv::ToString() const
+string CInv::ToString() const
 {
     return strprintf("%s %s", GetCommand(), hash.ToString());
 }
