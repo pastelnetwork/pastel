@@ -547,8 +547,8 @@ Attempts add or remove a IP/Subnet from the banned list.
 Arguments:
 1. "ip(/netmask) )" R"((string, required) The IP/Subnet (see getpeerinfo for nodes ip) with a optional netmask (default is /32 = single ip)
 2. "command"     (string, required) 'add' to add a IP/Subnet to the list, 'remove' to remove a IP/Subnet from the list
-3. "bantime      (numeric, optional) time in seconds how long (or until when if [absolute] is set) the ip is banned (0 or empty means using the default time of 24h which can also be overwritten by the -bantime startup argument)
-4. "absolute     (boolean, optional) If set, the bantime must be a absolute timestamp in seconds since epoch (Jan 1 1970 GMT)
+3. "bantime"     (numeric, optional) time in seconds how long (or until when if [absolute] is set) the ip is banned (0 or empty means using the default time of 24h which can also be overwritten by the -bantime startup argument)
+4. "absolute"    (boolean, optional) If set, the bantime must be a absolute timestamp in seconds since epoch (Jan 1 1970 GMT)
 
 Examples:
 )"

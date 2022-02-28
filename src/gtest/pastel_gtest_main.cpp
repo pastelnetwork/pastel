@@ -183,7 +183,8 @@ void CPastelTest_Environment::InitializeChainTest(const CBaseChainParams::Networ
     bool bFirstRun = true;
     pwalletMain->LoadWallet(bFirstRun);
     static bool bWalletRPCInitialized = false;
-    if (!bWalletRPCInitialized) {
+    if (!bWalletRPCInitialized)
+    {
         RegisterWalletRPCCommands(tableRPC);
         bWalletRPCInitialized = true;
     }

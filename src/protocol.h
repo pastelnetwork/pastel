@@ -33,8 +33,8 @@ public:
     CMessageHeader(const MessageStartChars& pchMessageStartIn);
     CMessageHeader(const MessageStartChars& pchMessageStartIn, const char* pszCommand, unsigned int nMessageSizeIn);
 
-    std::string GetCommand() const;
-    bool IsValid(const MessageStartChars& messageStart) const;
+    std::string GetCommand() const noexcept;
+    bool IsValid(std::string &error, const MessageStartChars& pchExpectedMessageStart) const;
 
     ADD_SERIALIZE_METHODS;
 

@@ -38,6 +38,7 @@
 #include <wallet/asyncrpcoperation_sendmany.h>
 #include <wallet/asyncrpcoperation_shieldcoinbase.h>
 #include <netmsg/block-cache.h>
+#include <orphan-tx.h>
 
 //MasterNode
 #include <mnode/mnode-controller.h>
@@ -98,25 +99,6 @@ CFeeRate minRelayTxFee = CFeeRate(DEFAULT_MIN_RELAY_TX_FEE);
 CTxMemPool mempool(::minRelayTxFee);
 
 CBlockCache gl_BlockCache;
-
-/**
- * Orphan transaction.
- */
-struct COrphanTx
-{
-    COrphanTx() = default;
-    COrphanTx(const CTransaction& _tx, const NodeId &_fromPeer)
-    {
-        tx = _tx;
-        fromPeer = _fromPeer;
-    }
-    CTransaction tx;
-    NodeId fromPeer{0}; // tx is downloaded from this node
-};
-
-unordered_map<uint256, COrphanTx> mapOrphanTransactions GUARDED_BY(cs_main);
-unordered_map<uint256, set<uint256>> mapOrphanTransactionsByPrev GUARDED_BY(cs_main);
-void EraseOrphansFor(NodeId peer) EXCLUSIVE_LOCKS_REQUIRED(cs_main);
 
 /**
  * Returns true if there are nRequired or more blocks of minVersion or above
@@ -364,7 +346,7 @@ void FinalizeNode(NodeId nodeid) {
 
     for (const auto& entry : state->vBlocksInFlight)
         mapBlocksInFlight.erase(entry.hash);
-    EraseOrphansFor(nodeid);
+    gl_OrphanTxManager.EraseOrphansFor(nodeid);
     nPreferredDownload -= state->fPreferredDownload;
 
     mapNodeState.erase(nodeid);
@@ -609,89 +591,6 @@ CBlockIndex* FindForkInGlobalIndex(const CChain& chain, const CBlockLocator& loc
 
 CCoinsViewCache *pcoinsTip = nullptr;
 CBlockTreeDB *pblocktree = nullptr;
-
-//////////////////////////////////////////////////////////////////////////////
-//
-// mapOrphanTransactions
-//
-bool AddOrphanTx(const CTransaction& tx, NodeId peer) EXCLUSIVE_LOCKS_REQUIRED(cs_main)
-{
-    const uint256 txid = tx.GetHash();
-    if (mapOrphanTransactions.count(txid))
-        return false;
-
-    // Ignore big transactions, to avoid a
-    // send-big-orphans memory exhaustion attack. If a peer has a legitimate
-    // large transaction with a missing parent then we assume
-    // it will rebroadcast it later, after the parent transaction(s)
-    // have been mined or received.
-    // 10,000 orphans, each of which is at most 5,000 bytes big is
-    // at most 500 megabytes of orphans:
-    const size_t nTxSize = GetSerializeSize(tx, SER_NETWORK, tx.nVersion);
-    if (nTxSize > 5'000)
-    {
-        LogPrint("mempool", "ignoring large orphan tx (size: %zu, hash: %s)\n", nTxSize, txid.ToString());
-        return false;
-    }
-
-    mapOrphanTransactions.emplace(txid, COrphanTx(tx, peer));
-    for (const auto& txin : tx.vin)
-        mapOrphanTransactionsByPrev[txin.prevout.hash].insert(txid);
-
-    LogPrint("mempool", "stored orphan tx %s (map size %zu, prev size %zu)\n", txid.ToString(),
-             mapOrphanTransactions.size(), mapOrphanTransactionsByPrev.size());
-    return true;
-}
-
-void static EraseOrphanTx(uint256 hash) EXCLUSIVE_LOCKS_REQUIRED(cs_main)
-{
-    const auto it = mapOrphanTransactions.find(hash);
-    if (it == mapOrphanTransactions.cend())
-        return;
-    for (const auto& txin : it->second.tx.vin)
-    {
-        const auto itPrev = mapOrphanTransactionsByPrev.find(txin.prevout.hash);
-        if (itPrev == mapOrphanTransactionsByPrev.cend())
-            continue;
-        itPrev->second.erase(hash);
-        if (itPrev->second.empty())
-            mapOrphanTransactionsByPrev.erase(itPrev);
-    }
-    mapOrphanTransactions.erase(it);
-}
-
-void EraseOrphansFor(NodeId peer)
-{
-    int nErased = 0;
-    auto iter = mapOrphanTransactions.begin();
-    while (iter != mapOrphanTransactions.end())
-    {
-        auto maybeErase = iter++; // increment to avoid iterator becoming invalid
-        if (maybeErase->second.fromPeer == peer)
-        {
-            EraseOrphanTx(maybeErase->second.tx.GetHash());
-            ++nErased;
-        }
-    }
-    if (nErased > 0) 
-        LogPrint("mempool", "Erased %d orphan tx from peer %d\n", nErased, peer);
-}
-
-unsigned int LimitOrphanTxSize(unsigned int nMaxOrphans) EXCLUSIVE_LOCKS_REQUIRED(cs_main)
-{
-    unsigned int nEvicted = 0;
-    while (mapOrphanTransactions.size() > nMaxOrphans)
-    {
-        // Evict a random orphan
-        const uint256 randomhash = GetRandHash();
-        auto it = mapOrphanTransactions.find(randomhash);
-        if (it == mapOrphanTransactions.cend())
-            it = mapOrphanTransactions.begin();
-        EraseOrphanTx(it->first);
-        ++nEvicted;
-    }
-    return nEvicted;
-}
 
 bool IsStandardTx(const CTransaction& tx, string& reason, const CChainParams& chainparams, const int nHeight)
 {
@@ -4544,8 +4443,7 @@ void UnloadBlockIndex()
     pindexBestInvalid = nullptr;
     pindexBestHeader = nullptr;
     mempool.clear();
-    mapOrphanTransactions.clear();
-    mapOrphanTransactionsByPrev.clear();
+    gl_OrphanTxManager.clear();
     nSyncStarted = 0;
     mapBlocksUnlinked.clear();
     vinfoBlockFile.clear();
@@ -5041,7 +4939,7 @@ static bool AlreadyHave(const CInv& inv) EXCLUSIVE_LOCKS_REQUIRED(cs_main)
 
             return recentRejects->contains(inv.hash) ||
                    mempool.exists(inv.hash) ||
-                   mapOrphanTransactions.count(inv.hash) ||
+                   gl_OrphanTxManager.exists(inv.hash) ||
                    pcoinsTip->HaveCoins(inv.hash);
         }
     case MSG_BLOCK:
@@ -5517,7 +5415,7 @@ static bool ProcessMessage(const CChainParams& chainparams, CNode* pfrom, string
 
             if (pfrom->nSendSize > (SendBufferSize() * 2)) {
                 Misbehaving(pfrom->GetId(), 50);
-                return error("send buffer size() = %u", pfrom->nSendSize);
+                return error("send buffer size() = %zu", pfrom->nSendSize);
             }
         }
 
@@ -5533,16 +5431,16 @@ static bool ProcessMessage(const CChainParams& chainparams, CNode* pfrom, string
         {
             LOCK(cs_main);
             Misbehaving(pfrom->GetId(), 20);
-            return error("message getdata size() = %u", vInv.size());
+            return error("message getdata size() = %zu", vInv.size());
         }
 
         if (fDebug || (vInv.size() != 1))
-            LogPrint("net", "received getdata (%u invsz) peer=%d\n", vInv.size(), pfrom->id);
+            LogPrint("net", "received getdata (%zu invsz) peer=%d\n", vInv.size(), pfrom->id);
 
-        if ((fDebug && vInv.size() > 0) || (vInv.size() == 1))
+        if ((fDebug && !vInv.empty()) || (vInv.size() == 1))
             LogPrint("net", "received getdata for: %s peer=%d\n", vInv[0].ToString(), pfrom->id);
 
-        pfrom->vRecvGetData.insert(pfrom->vRecvGetData.end(), vInv.begin(), vInv.end());
+        pfrom->vRecvGetData.insert(pfrom->vRecvGetData.cend(), vInv.cbegin(), vInv.cend());
         ProcessGetData(pfrom, consensusParams);
     }
 
@@ -5632,8 +5530,6 @@ static bool ProcessMessage(const CChainParams& chainparams, CNode* pfrom, string
 
     else if (strCommand == "tx") // transaction message
     {
-        v_uint256 vWorkQueue;
-        v_uint256 vEraseQueue;
         CTransaction tx;
         vRecv >> tx;
 
@@ -5652,82 +5548,34 @@ static bool ProcessMessage(const CChainParams& chainparams, CNode* pfrom, string
         {
             mempool.check(pcoinsTip);
             RelayTransaction(tx);
-            vWorkQueue.push_back(inv.hash);
-
             LogPrint("mempool", "AcceptToMemoryPool: peer=%d %s: accepted %s (poolsz %u)\n",
                 pfrom->id, pfrom->cleanSubVer,
                 tx.GetHash().ToString(),
                 mempool.mapTx.size());
 
-            // Recursively process any orphan transactions that depended on this one
-            set<NodeId> setMisbehaving;
-            for (const auto &hash : vWorkQueue)
-            {
-                const auto itByPrev = mapOrphanTransactionsByPrev.find(hash);
-                if (itByPrev == mapOrphanTransactionsByPrev.cend())
-                    continue;
-                // go through all orphan transactions that depend on current tx (mapped by txid=hash)
-                for (const auto& orphanHash : itByPrev->second)
-                {
-                    const CTransaction& orphanTx = mapOrphanTransactions[orphanHash].tx;
-                    NodeId fromPeer = mapOrphanTransactions[orphanHash].fromPeer;
-                    bool fMissingInputs2 = false;
-                    // Use a dummy CValidationState so someone can't setup nodes to counter-DoS based on orphan
-                    // resolution (that is, feeding people an invalid transaction based on LegitTxX in order to get
-                    // anyone relaying LegitTxX banned)
-                    CValidationState stateDummy;
-
-                    if (setMisbehaving.count(fromPeer))
-                        continue;
-                    // try to accept orphan tx to the memory pool
-                    if (AcceptToMemoryPool(chainparams, mempool, stateDummy, orphanTx, true, &fMissingInputs2))
-                    {
-                        LogPrint("mempool", "   accepted orphan tx %s\n", orphanHash.ToString());
-                        RelayTransaction(orphanTx);
-                        vWorkQueue.push_back(orphanHash);
-                        vEraseQueue.push_back(orphanHash);
-                    }
-                    else if (!fMissingInputs2)
-                    {
-                        int nDos = 0;
-                        if (stateDummy.IsInvalid(nDos) && nDos > 0)
-                        {
-                            // Punish peer that gave us an invalid orphan tx
-                            Misbehaving(fromPeer, nDos);
-                            setMisbehaving.insert(fromPeer);
-                            LogPrint("mempool", "   invalid orphan tx %s\n", orphanHash.ToString());
-                        }
-                        // Has inputs but not accepted to mempool
-                        // Probably non-standard or insufficient fee/priority
-                        LogPrint("mempool", "   removed orphan tx %s\n", orphanHash.ToString());
-                        vEraseQueue.push_back(orphanHash);
-                        assert(recentRejects);
-                        recentRejects->insert(orphanHash);
-                    }
-                    mempool.check(pcoinsTip);
-                }
-            }
-
-            for (auto &hash : vEraseQueue)
-                EraseOrphanTx(hash);
+            // Recursively process any orphan transactions that depended on this o ne
+            gl_OrphanTxManager.ProcessOrphanTxs(chainparams, inv.hash, *recentRejects);
         }
         // TODO: currently, prohibit shielded spends/outputs from entering mapOrphans
         else if (fMissingInputs &&
                  tx.vShieldedSpend.empty() &&
                  tx.vShieldedOutput.empty())
         {
-            AddOrphanTx(tx, pfrom->GetId());
+            gl_OrphanTxManager.AddOrphanTx(tx, pfrom->GetId());
 
             // DoS prevention: do not allow mapOrphanTransactions to grow unbounded
-            unsigned int nMaxOrphanTx = (unsigned int)max((int64_t)0, GetArg("-maxorphantx", DEFAULT_MAX_ORPHAN_TRANSACTIONS));
-            unsigned int nEvicted = LimitOrphanTxSize(nMaxOrphanTx);
+            const size_t nMaxOrphanTx = static_cast<size_t>(max<int64_t>(0, GetArg("-maxorphantx", DEFAULT_MAX_ORPHAN_TRANSACTIONS)));
+            const size_t nEvicted = gl_OrphanTxManager.LimitOrphanTxSize(nMaxOrphanTx);
             if (nEvicted > 0)
-                LogPrint("mempool", "mapOrphan overflow, removed %u tx\n", nEvicted);
-        } else {
+                LogPrint("mempool", "mapOrphan overflow, removed %zu tx\n", nEvicted);
+        }
+        else
+        {
             assert(recentRejects);
             recentRejects->insert(tx.GetHash());
 
-            if (pfrom->fWhitelisted) {
+            if (pfrom->fWhitelisted)
+            {
                 // Always relay transactions received from whitelisted peers, even
                 // if they were already in the mempool or rejected from it due
                 // to policy, allowing the node to function as a gateway for
@@ -6138,8 +5986,9 @@ static bool ProcessMessage(const CChainParams& chainparams, CNode* pfrom, string
 // requires LOCK(cs_vRecvMsg)
 bool ProcessMessages(const CChainParams& chainparams, CNode* pfrom)
 {
-    //if (fDebug)
-    //    LogPrintf("%s(%u messages)\n", __func__, pfrom->vRecvMsg.size());
+
+    /*  if (fDebug)
+          LogPrintf("%s: %u messages\n", __func__, pfrom->vRecvMsg.size()); */
 
     // Message format:
     // +-----------+----------+---------+----------+---------------+
@@ -6154,10 +6003,12 @@ bool ProcessMessages(const CChainParams& chainparams, CNode* pfrom)
         ProcessGetData(pfrom, chainparams.GetConsensus());
 
     // this maintains the order of responses
-    if (!pfrom->vRecvGetData.empty()) return fOk;
+    if (!pfrom->vRecvGetData.empty())
+        return fOk;
 
-    deque<CNetMessage>::iterator it = pfrom->vRecvMsg.begin();
-    while (!pfrom->fDisconnect && it != pfrom->vRecvMsg.end()) {
+    auto it = pfrom->vRecvMsg.begin();
+    while (!pfrom->fDisconnect && it != pfrom->vRecvMsg.end())
+    {
         // Don't bother if send buffer is too full to respond anyway
         if (pfrom->nSendSize >= SendBufferSize())
             break;
@@ -6165,10 +6016,10 @@ bool ProcessMessages(const CChainParams& chainparams, CNode* pfrom)
         // get next message
         CNetMessage& msg = *it;
 
-        //if (fDebug)
-        //    LogPrintf("%s(message %u msgsz, %u bytes, complete:%s)\n", __func__,
-        //            msg.hdr.nMessageSize, msg.vRecv.size(),
-        //            msg.complete() ? "Y" : "N");
+        /* if (fDebug)
+            LogPrintf("%s: message size %u(hdr)/%u(actual) bytes, complete: %s\n", __func__,
+                    msg.hdr.nMessageSize, msg.vRecv.size(),
+                    msg.complete() ? "Y" : "N"); */
 
         // end, if an incomplete message is found
         if (!msg.complete())
@@ -6177,20 +6028,14 @@ bool ProcessMessages(const CChainParams& chainparams, CNode* pfrom)
         // at this point, any failure means we can delete the current message
         it++;
 
-        // Scan for message start
-        if (memcmp(msg.hdr.pchMessageStart, chainparams.MessageStart(), MESSAGE_START_SIZE) != 0)
+        // Read header
+        const CMessageHeader& hdr = msg.hdr;
+        string error;
+        if (!hdr.IsValid(error, chainparams.MessageStart()))
         {
-            LogPrintf("PROCESSMESSAGE: INVALID MESSAGESTART %s peer=%d\n", SanitizeString(msg.hdr.GetCommand()), pfrom->id);
+            LogPrintf("%s: ERRORS IN HEADER %s. %s, peer=%d\n", __func__, SanitizeString(hdr.GetCommand()), error, pfrom->id);
             fOk = false;
             break;
-        }
-
-        // Read header
-        CMessageHeader& hdr = msg.hdr;
-        if (!hdr.IsValid(chainparams.MessageStart()))
-        {
-            LogPrintf("PROCESSMESSAGE: ERRORS IN HEADER %s peer=%d\n", SanitizeString(hdr.GetCommand()), pfrom->id);
-            continue;
         }
         string strCommand = hdr.GetCommand();
 
@@ -6203,7 +6048,7 @@ bool ProcessMessages(const CChainParams& chainparams, CNode* pfrom)
         unsigned int nChecksum = ReadLE32((unsigned char*)&hash);
         if (nChecksum != hdr.nChecksum)
         {
-            LogPrintf("%s(%s, %u bytes): CHECKSUM ERROR nChecksum=%08x hdr.nChecksum=%08x\n", __func__,
+            LogPrintf("%s: (%s, %u bytes): CHECKSUM ERROR nChecksum=%08x hdr.nChecksum=%08x\n", __func__,
                SanitizeString(strCommand), nMessageSize, nChecksum, hdr.nChecksum);
             continue;
         }
@@ -6221,12 +6066,12 @@ bool ProcessMessages(const CChainParams& chainparams, CNode* pfrom)
             if (strstr(e.what(), "end of data"))
             {
                 // Allow exceptions from under-length message on vRecv
-                LogPrintf("%s(%s, %u bytes): Exception '%s' caught, normally caused by a message being shorter than its stated length\n", __func__, SanitizeString(strCommand), nMessageSize, e.what());
+                LogPrintf("%s: (%s, %u bytes): Exception '%s' caught, normally caused by a message being shorter than its stated length\n", __func__, SanitizeString(strCommand), nMessageSize, e.what());
             }
             else if (strstr(e.what(), "size too large"))
             {
                 // Allow exceptions from over-long size
-                LogPrintf("%s(%s, %u bytes): Exception '%s' caught\n", __func__, SanitizeString(strCommand), nMessageSize, e.what());
+                LogPrintf("%s: (%s, %u bytes): Exception '%s' caught\n", __func__, SanitizeString(strCommand), nMessageSize, e.what());
             }
             else
             {
@@ -6242,7 +6087,7 @@ bool ProcessMessages(const CChainParams& chainparams, CNode* pfrom)
         }
 
         if (!fRet)
-            LogPrintf("%s(%s, %u bytes) FAILED peer=%d\n", __func__, SanitizeString(strCommand), nMessageSize, pfrom->id);
+            LogPrintf("%s: (%s, %u bytes) FAILED peer=%d\n", __func__, SanitizeString(strCommand), nMessageSize, pfrom->id);
 
         break;
     }
@@ -6565,8 +6410,7 @@ public:
         mapBlockIndex.clear();
 
         // orphan transactions
-        mapOrphanTransactions.clear();
-        mapOrphanTransactionsByPrev.clear();
+        gl_OrphanTxManager.clear();
     }
 } instance_of_cmaincleanup;
 

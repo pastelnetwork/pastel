@@ -187,13 +187,27 @@ bool LogAcceptCategory(const char* category)
         // where mapMultiArgs might be deleted before another
         // global destructor calls LogPrint()
         static thread_local unique_ptr<set<string>> ptrCategory;
-        if (!ptrCategory.get())
+        if (!ptrCategory)
         {
-            const auto& vCategories = mapMultiArgs["-debug"];
-            ptrCategory = make_unique<set<string>>(vCategories.cbegin(), vCategories.cend());
+            const auto &vCategories = mapMultiArgs["-debug"];
+            // preprocess debug log categories
+            // support multiple categories separated by comma
+            set<string> setCategories;
+            for (const auto& sCategory : vCategories)
+            {
+                if (sCategory.find(',') != string::npos)
+                {
+                    v_strings v;
+                    str_split(v, sCategory, ',');
+                    setCategories.insert(v.cbegin(), v.cend());
+                }
+                else
+                    setCategories.insert(sCategory);
+            }
+            ptrCategory = make_unique<set<string>>(move(setCategories));
             // thread_specific_ptr automatically deletes the set when the thread ends.
         }
-        const set<string>& setCategories = *ptrCategory.get();
+        const auto& setCategories = *ptrCategory.get();
 
         // if not debugging everything and not debugging specific category, LogPrint does nothing.
         if (setCategories.count(string("")) == 0 &&

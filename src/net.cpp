@@ -2388,7 +2388,7 @@ void CNode::BeginMessage(const char* pszCommand) EXCLUSIVE_LOCK_FUNCTION(cs_vSen
     ENTER_CRITICAL_SECTION(cs_vSend);
     assert(ssSend.size() == 0);
     ssSend << CMessageHeader(Params().MessageStart(), pszCommand, 0);
-    LogPrint("net", "sending: %s ", SanitizeString(pszCommand));
+    LogPrint("net", "sending: [%s]\n", SanitizeString(pszCommand));
 }
 
 void CNode::AbortMessage() UNLOCK_FUNCTION(cs_vSend)
@@ -2414,7 +2414,7 @@ void CNode::EndMessage() UNLOCK_FUNCTION(cs_vSend)
     if (mapArgs.count("-fuzzmessagestest"))
         Fuzz(static_cast<int>(GetArg("-fuzzmessagestest", 10)));
 
-    if (ssSend.size() == 0)
+    if (ssSend.empty())
     {
         LEAVE_CRITICAL_SECTION(cs_vSend);
         return;
@@ -2424,20 +2424,20 @@ void CNode::EndMessage() UNLOCK_FUNCTION(cs_vSend)
     WriteLE32((uint8_t*)&ssSend[CMessageHeader::MESSAGE_SIZE_OFFSET], nSize);
 
     // Set the checksum
-    uint256 hash = Hash(ssSend.begin() + CMessageHeader::HEADER_SIZE, ssSend.end());
+    const uint256 hash = Hash(ssSend.begin() + CMessageHeader::HEADER_SIZE, ssSend.end());
     unsigned int nChecksum = 0;
     memcpy(&nChecksum, &hash, sizeof(nChecksum));
     assert(ssSend.size () >= CMessageHeader::CHECKSUM_OFFSET + sizeof(nChecksum));
     memcpy((char*)&ssSend[CMessageHeader::CHECKSUM_OFFSET], &nChecksum, sizeof(nChecksum));
 
-    LogPrint("net", "(%u bytes) peer=%d\n", nSize, id);
+    LogPrint("net", "sent: (%u bytes) peer=%d\n", nSize, id);
 
-    std::deque<CSerializeData>::iterator it = vSendMsg.insert(vSendMsg.end(), CSerializeData());
-    ssSend.GetAndClear(*it);
-    nSendSize += (*it).size();
+    auto &msgData = vSendMsg.emplace_back();
+    ssSend.GetAndClear(msgData);
+    nSendSize += msgData.size();
 
     // If write queue empty, attempt "optimistic write"
-    if (it == vSendMsg.begin())
+    if (msgData == vSendMsg.front())
         SocketSendData(this);
 
     LEAVE_CRITICAL_SECTION(cs_vSend);

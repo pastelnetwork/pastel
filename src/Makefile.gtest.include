@@ -96,6 +96,7 @@ pastel_gtest_SOURCES +=\
 	gtest/test_netbase.cpp\
 	gtest/test_noteencryption.cpp\
 	gtest/test_numeric_range.cpp\
+	gtest/test_orphan_tx.cpp\
 	gtest/test_pedersen_hash.cpp\
 	gtest/test_policyestimator.cpp\
 	gtest/test_pmt.cpp\
