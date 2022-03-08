@@ -17,6 +17,8 @@ CCriticalSection cs_vecPayees;
 CCriticalSection cs_mapMasternodeBlockPayees;
 CCriticalSection cs_mapMasternodePaymentVotes;
 
+using namespace std;
+
 CAmount CMasternodePayments::GetMasternodePayment(int nHeight, CAmount blockValue)
 {
     CAmount ret = blockValue/5; // ALWAYS 20%
@@ -326,58 +328,85 @@ bool CMasternodeBlockPayees::HasPayeeWithVotes(const CScript& payeeIn, int nVote
     return false;
 }
 
+constexpr int MN_FEWVOTE_ACTIVATION_HEIGHT = 228700;
+
 bool CMasternodeBlockPayees::IsTransactionValid(const CTransaction& txNew)
 {
+    // get current height
+    const int nCurrentHeight = GetChainHeight();
+    const auto& chainparams = Params();
+    const bool bEnableFewVoteCheck = !chainparams.IsMainNet() || (nCurrentHeight >= MN_FEWVOTE_ACTIVATION_HEIGHT);
+
     LOCK(cs_vecPayees);
 
-    int nMaxSignatures = 0;
-    std::string strPayeesPossible = "";
+    const CAmount nMasternodePayment = masterNodeCtrl.masternodePayments.GetMasternodePayment(nBlockHeight, txNew.GetValueOut());
 
-    CAmount nMasternodePayment = masterNodeCtrl.masternodePayments.GetMasternodePayment(nBlockHeight, txNew.GetValueOut());
-
-    //require at least MNPAYMENTS_SIGNATURES_REQUIRED signatures
-
-    BOOST_FOREACH(CMasternodePayee& payee, vecPayees) {
-        if (payee.GetVoteCount() >= nMaxSignatures) {
-            nMaxSignatures = payee.GetVoteCount();
-        }
-    }
+    string strPayeesPossible;
+    // fill payee list ordered by vote count in descending order
+    vector<reference_wrapper<const CMasternodePayee>> vOrderedPayee;
+    vOrderedPayee.reserve(vecPayees.size());
+    for (const auto& payee : vecPayees)
+        vOrderedPayee.emplace_back(cref(payee));
+    sort(vOrderedPayee.begin(), vOrderedPayee.end(), [](const reference_wrapper<const CMasternodePayee>& left, const 
+		reference_wrapper<const CMasternodePayee>& right) -> bool
+        { return left.get().GetVoteCount() > right.get().GetVoteCount(); });
 
     // if we don't have at least MNPAYMENTS_SIGNATURES_REQUIRED signatures on a payee, approve whichever is the longest chain
-    if(nMaxSignatures < MNPAYMENTS_SIGNATURES_REQUIRED) return true;
+    if (vOrderedPayee.empty() || (!bEnableFewVoteCheck && vOrderedPayee.front().get().GetVoteCount() < MNPAYMENTS_SIGNATURES_REQUIRED))
+        return true;
 
-    BOOST_FOREACH(CMasternodePayee& payee, vecPayees) {
-        if (payee.GetVoteCount() >= MNPAYMENTS_SIGNATURES_REQUIRED) {
-            BOOST_FOREACH(CTxOut txout, txNew.vout) {
-                if (payee.GetPayee() == txout.scriptPubKey && nMasternodePayment == txout.nValue) {
-                    LogPrint("mnpayments", "CMasternodeBlockPayees::IsTransactionValid -- Found required payment\n");
-                    return true;
-                }
-            }
+    string address;
+    bool bFound = false;
+    size_t nPayeesWithVotes = 0;
+    for (const auto& payeeRef : vOrderedPayee)
+    {
+        const auto& payee = payeeRef.get();
 
-            CTxDestination dest;
-            ExtractDestination(payee.GetPayee(), dest);
-            std::string address = EncodeDestination(dest);
+        // skip payees without votes
+        const auto nVoteCount = payee.GetVoteCount();
+        if (nVoteCount == 0)
+            break; // vOrderedPayee is sorted by vote count
 
-            if(strPayeesPossible == "") {
-                strPayeesPossible = address;
-            } else {
-                strPayeesPossible += "," + address;
+        ++nPayeesWithVotes;
+        for (const auto &txout : txNew.vout)
+        {
+            if (payee.GetPayee() == txout.scriptPubKey && nMasternodePayment == txout.nValue)
+            {
+                LogPrint("mnpayments", "CMasternodeBlockPayees::IsTransactionValid -- Found required payment\n");
+                bFound = true;
+                break;
             }
         }
-    }
 
-    LogPrintf("CMasternodeBlockPayees::IsTransactionValid -- ERROR: Missing required payment, possible payees: '%s', amount: %" PRId64 " PASTEL\n", strPayeesPossible, nMasternodePayment);
-    BOOST_FOREACH(CTxOut txout, txNew.vout) {
+        if (bFound)
+            break;
         CTxDestination dest;
-        ExtractDestination(txout.scriptPubKey, dest);
-        std::string address = EncodeDestination(dest);
-        LogPrintf("\t%s -- %" PRId64 " \n", address, txout.nValue);
-    
-        LogPrintf("\t%s\n", txout.scriptPubKey.ToString());
-    }
+        if (ExtractDestination(payee.GetPayee(), dest))
+        {
+            address = EncodeDestination(dest);
 
-    return false;
+            if (!strPayeesPossible.empty())
+                strPayeesPossible += ',';
+            strPayeesPossible += strprintf("%s(%zu)", address, nVoteCount);
+        }
+    }
+    if (!bFound && !nPayeesWithVotes)
+        bFound = true;
+    if (!bFound)
+    {
+        LogPrintf("CMasternodeBlockPayees::IsTransactionValid -- ERROR: Missing required payment, possible payees: '%s', amount: %" PRId64 " PSL\n",
+            strPayeesPossible, nMasternodePayment);
+        for (const auto& txout : txNew.vout)
+        {
+            CTxDestination dest;
+            if (!ExtractDestination(txout.scriptPubKey, dest))
+                continue;
+            address = EncodeDestination(dest);
+            LogPrintf("\t%s -- %" PRId64 " \n", address, txout.nValue);
+            LogPrintf("\t%s\n", txout.scriptPubKey.ToString());
+        }
+    }
+    return bFound;
 }
 
 std::string CMasternodeBlockPayees::GetRequiredPaymentsString()

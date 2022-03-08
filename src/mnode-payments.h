@@ -19,7 +19,7 @@ extern CCriticalSection cs_mapMasternodePayeeVotes;
 class CMasternodePaymentVote;
 
 static const int MNPAYMENTS_SIGNATURES_REQUIRED         = 6;
-static const int MNPAYMENTS_SIGNATURES_TOTAL            = 10;
+static const int MNPAYMENTS_SIGNATURES_TOTAL            = 20;
 
 typedef std::vector<COutPoint> outpoint_vector;
 
@@ -50,11 +50,11 @@ public:
         READWRITE(vecVoteHashes);
     }
 
-    CScript GetPayee() { return scriptPubKey; }
+    CScript GetPayee() const noexcept { return scriptPubKey; }
 
     void AddVoteHash(uint256 hashIn) { vecVoteHashes.push_back(hashIn); }
-    std::vector<uint256> GetVoteHashes() { return vecVoteHashes; }
-    int GetVoteCount() { return vecVoteHashes.size(); }
+    std::vector<uint256> GetVoteHashes() const noexcept { return vecVoteHashes; }
+    int GetVoteCount() const noexcept { return vecVoteHashes.size(); }
 
 };
 
@@ -193,8 +193,8 @@ public:
     void FillMasterNodePayment(CMutableTransaction& txNew, int nBlockHeight, CAmount blockReward, CTxOut& txoutMasternodeRet);
     std::string ToString() const;
 
-    int GetBlockCount() { return mapMasternodeBlockPayees.size(); }
-    int GetVoteCount() { return mapMasternodePaymentVotes.size(); }
+    int GetBlockCount() const noexcept { return mapMasternodeBlockPayees.size(); }
+    int GetVoteCount() const noexcept { return mapMasternodePaymentVotes.size(); }
 
     bool IsEnoughData();
     int GetStorageLimit();

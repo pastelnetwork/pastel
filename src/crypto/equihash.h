@@ -6,6 +6,7 @@
 #ifndef BITCOIN_EQUIHASH_H
 #define BITCOIN_EQUIHASH_H
 
+#include <stdexcept>
 #include "crypto/sha256.h"
 #include "utilstrencodings.h"
 
