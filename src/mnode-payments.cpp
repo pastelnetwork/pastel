@@ -352,8 +352,15 @@ bool CMasternodeBlockPayees::IsTransactionValid(const CTransaction& txNew)
         { return left.get().GetVoteCount() > right.get().GetVoteCount(); });
 
     // if we don't have at least MNPAYMENTS_SIGNATURES_REQUIRED signatures on a payee, approve whichever is the longest chain
-    if (vOrderedPayee.empty() || (!bEnableFewVoteCheck && vOrderedPayee.front().get().GetVoteCount() < MNPAYMENTS_SIGNATURES_REQUIRED))
+    if (vOrderedPayee.empty()) {
+        LogPrintf("CMasternodeBlockPayees::IsTransactionValid -- no scheduled MN payments, block - %d\n", nCurrentHeight);
         return true;
+    }
+    auto maxVotes = vOrderedPayee.front().get().GetVoteCount();
+    if (!bEnableFewVoteCheck && maxVotes < MNPAYMENTS_SIGNATURES_REQUIRED) {
+        LogPrintf("CMasternodeBlockPayees::IsTransactionValid -- extra vote check is not enabled AND we only have %d signatures in the maximum vote, approve it anyway, block - %d\n", maxVotes, nCurrentHeight);
+        return true;
+    }
 
     string address;
     bool bFound = false;
@@ -438,6 +445,8 @@ bool CMasternodePayments::IsTransactionValid(const CTransaction& txNew, int nBlo
     if(mapMasternodeBlockPayees.count(nBlockHeight)){
         return mapMasternodeBlockPayees[nBlockHeight].IsTransactionValid(txNew);
     }
+    
+    LogPrint("mnpayments", "CMasternodePayments::IsTransactionValid -- no winner MN for block - %d\n", nBlockHeight);
 
     return true;
 }
