@@ -1,14 +1,13 @@
 #pragma once
-// Copyright (c) 2018-2021 The Pastel Core developers
+// Copyright (c) 2018-2022 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#include "vector"
-#include "map"
+#include <vector>
+#include <map>
 
-#include "main.h"
-
-#include "mnode/mnode-masternode.h"
+#include <main.h>
+#include <mnode/mnode-masternode.h>
 
 extern CCriticalSection cs_vecPayees;
 extern CCriticalSection cs_mapMasternodeBlockPayees;
@@ -16,8 +15,8 @@ extern CCriticalSection cs_mapMasternodePayeeVotes;
 
 class CMasternodePaymentVote;
 
-static constexpr size_t MNPAYMENTS_SIGNATURES_REQUIRED     = 6;
-static constexpr size_t MNPAYMENTS_SIGNATURES_TOTAL = 10;
+static constexpr size_t MNPAYMENTS_SIGNATURES_REQUIRED  = 6;
+static constexpr size_t MNPAYMENTS_SIGNATURES_TOTAL     = 20;
 
 typedef std::vector<COutPoint> outpoint_vector;
 
@@ -28,14 +27,12 @@ private:
     v_uint256 vecVoteHashes;
 
 public:
-    CMasternodePayee() :
-        scriptPubKey(),
-        vecVoteHashes()
-        {}
+    CMasternodePayee() noexcept :
+        scriptPubKey()
+    {}
 
-    CMasternodePayee(CScript payee, uint256 hashIn) :
-        scriptPubKey(payee),
-        vecVoteHashes()
+    CMasternodePayee(CScript payee, uint256 hashIn) noexcept :
+        scriptPubKey(payee)
     {
         vecVoteHashes.push_back(hashIn);
     }
@@ -49,10 +46,10 @@ public:
         READWRITE(vecVoteHashes);
     }
 
-    CScript GetPayee() { return scriptPubKey; }
+    CScript GetPayee() const noexcept { return scriptPubKey; }
 
     void AddVoteHash(const uint256 hashIn) { vecVoteHashes.push_back(hashIn); }
-    v_uint256 GetVoteHashes() { return vecVoteHashes; }
+    v_uint256 GetVoteHashes() const noexcept { return vecVoteHashes; }
     size_t GetVoteCount() const noexcept { return vecVoteHashes.size(); }
 };
 
@@ -63,14 +60,12 @@ public:
     int nBlockHeight;
     std::vector<CMasternodePayee> vecPayees;
 
-    CMasternodeBlockPayees() :
-        nBlockHeight(0),
-        vecPayees()
-        {}
-    CMasternodeBlockPayees(int nBlockHeightIn) :
-        nBlockHeight(nBlockHeightIn),
-        vecPayees()
-        {}
+    CMasternodeBlockPayees() noexcept:
+        nBlockHeight(0)
+    {}
+    CMasternodeBlockPayees(int nBlockHeightIn) noexcept:
+        nBlockHeight(nBlockHeightIn)
+    {}
 
     ADD_SERIALIZE_METHODS;
 
@@ -85,9 +80,9 @@ public:
     bool GetBestPayee(CScript& payeeRet);
     bool HasPayeeWithVotes(const CScript& payeeIn, int nVotesReq);
 
-    bool IsTransactionValid(const CTransaction& txNew);
+    bool IsTransactionValid(const CTransaction& txNew) const;
 
-    std::string GetRequiredPaymentsString();
+    std::string GetRequiredPaymentsString() const;
 };
 
 // vote for the winning payment
@@ -98,21 +93,17 @@ public:
 
     int nBlockHeight;
     CScript payee;
-    std::vector<unsigned char> vchSig;
+    v_uint8 vchSig;
 
-    CMasternodePaymentVote() :
-        vinMasternode(),
-        nBlockHeight(0),
-        payee(),
-        vchSig()
-        {}
+    CMasternodePaymentVote() noexcept :
+        nBlockHeight(0)
+     {}
 
     CMasternodePaymentVote(COutPoint outpointMasternode, int nBlockHeight, CScript payee) :
         vinMasternode(outpointMasternode),
         nBlockHeight(nBlockHeight),
-        payee(payee),
-        vchSig()
-        {}
+        payee(payee)
+     {}
 
     ADD_SERIALIZE_METHODS;
 
@@ -125,7 +116,8 @@ public:
         READWRITE(vchSig);
     }
 
-    uint256 GetHash() const {
+    uint256 GetHash() const
+    {
         CHashWriter ss(SER_GETHASH, PROTOCOL_VERSION);
         ss << *(CScriptBase*)(&payee);
         ss << nBlockHeight;
@@ -139,7 +131,7 @@ public:
     bool IsValid(CNode* pnode, int nValidationHeight, std::string& strError);
     void Relay();
 
-    bool IsVerified() { return !vchSig.empty(); }
+    bool IsVerified() const noexcept { return !vchSig.empty(); }
     void MarkAsNotVerified() { vchSig.clear(); }
 
     std::string ToString() const;

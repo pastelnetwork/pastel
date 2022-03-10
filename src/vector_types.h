@@ -17,6 +17,7 @@ using v_bytes = std::vector<std::byte>;
 using v_ints = std::vector<int>;
 using v_doubles = std::vector<double>;
 using v_bools = std::vector<bool>;
+using v_sizet = std::vector<size_t>;
 
 /**
  * Converts string to byte vector.

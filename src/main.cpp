@@ -304,12 +304,6 @@ CNodeState *State(NodeId pnode)
     return &it->second;
 }
 
-int GetHeight()
-{
-    LOCK(cs_main);
-    return chainActive.Height();
-}
-
 void UpdatePreferredDownload(CNode* node, CNodeState* state)
 {
     nPreferredDownload -= state->fPreferredDownload;
@@ -555,7 +549,7 @@ bool GetNodeStateStats(NodeId nodeid, CNodeStateStats &stats)
 
 void RegisterNodeSignals(CNodeSignals& nodeSignals)
 {
-    nodeSignals.GetHeight.connect(&GetHeight);
+    nodeSignals.GetHeight.connect(&GetChainHeight);
     nodeSignals.ProcessMessages.connect(&ProcessMessages);
     nodeSignals.SendMessages.connect(&SendMessages);
     nodeSignals.InitializeNode.connect(&InitializeNode);
@@ -564,7 +558,7 @@ void RegisterNodeSignals(CNodeSignals& nodeSignals)
 
 void UnregisterNodeSignals(CNodeSignals& nodeSignals)
 {
-    nodeSignals.GetHeight.disconnect(&GetHeight);
+    nodeSignals.GetHeight.disconnect(&GetChainHeight);
     nodeSignals.ProcessMessages.disconnect(&ProcessMessages);
     nodeSignals.SendMessages.disconnect(&SendMessages);
     nodeSignals.InitializeNode.disconnect(&InitializeNode);
@@ -1876,6 +1870,12 @@ int GetSpendHeight(const CCoinsViewCache& inputs)
     return pindexPrev->nHeight + 1;
 }
 
+int GetChainHeight()
+{
+    LOCK(cs_main);
+    return chainActive.Height();
+}
+
 namespace Consensus {
 bool CheckTxInputs(const CTransaction& tx, CValidationState& state, const CCoinsViewCache& inputs, int nSpendHeight, const Consensus::Params& consensusParams)
 {
@@ -3104,8 +3104,9 @@ bool ActivateBestChain(CValidationState &state, const CChainParams& chainparams,
         // When we reach this point, we switched to a new tip (stored in pindexNewTip).
 
         // Notifications/callbacks that can run without cs_main
-        if (!fInitialDownload) {
-            uint256 hashNewTip = pindexNewTip->GetBlockHash();
+        if (!fInitialDownload)
+        {
+            const uint256 hashNewTip = pindexNewTip->GetBlockHash();
             // Relay inventory, but don't relay old inventory during initial block download.
             int nBlockEstimate = 0;
             if (fCheckpointsEnabled)
@@ -4643,9 +4644,8 @@ bool LoadExternalBlockFile(const CChainParams& chainparams, FILE* fileIn, CDiskB
 
 static void CheckBlockIndex(const Consensus::Params& consensusParams)
 {
-    if (!fCheckBlockIndex) {
+    if (!fCheckBlockIndex)
         return;
-    }
 
     LOCK(cs_main);
 
@@ -4960,7 +4960,7 @@ static bool AlreadyHave(const CInv& inv) EXCLUSIVE_LOCKS_REQUIRED(cs_main)
  */
 void static ProcessGetData(CNode* pfrom, const Consensus::Params& consensusParams)
 {
-    const int currentHeight = GetHeight();
+    const int currentHeight = GetChainHeight();
     vector<CInv> vNotFound;
 
     LOCK(cs_main);
@@ -5149,7 +5149,7 @@ static bool ProcessMessage(const CChainParams& chainparams, CNode* pfrom, string
         }
 
         // Reject incoming connections from nodes that don't know about the current epoch
-        auto currentEpoch = CurrentEpoch(GetHeight(), consensusParams);
+        auto currentEpoch = CurrentEpoch(GetChainHeight(), consensusParams);
         if (pfrom->nVersion < consensusParams.vUpgrades[currentEpoch].nProtocolVersion)
         {
             LogPrintf("peer=%d using obsolete version %i; disconnecting\n", pfrom->id, pfrom->nVersion);
@@ -5281,12 +5281,12 @@ static bool ProcessMessage(const CChainParams& chainparams, CNode* pfrom, string
     // 1. The version message has been received
     // 2. Peer version is below the minimum version for the current epoch
     else if (pfrom->nVersion < consensusParams.vUpgrades[
-        CurrentEpoch(GetHeight(), consensusParams)].nProtocolVersion)
+        CurrentEpoch(GetChainHeight(), consensusParams)].nProtocolVersion)
     {
         LogPrintf("peer=%d using obsolete version %i; disconnecting\n", pfrom->id, pfrom->nVersion);
         pfrom->PushMessage("reject", strCommand, REJECT_OBSOLETE,
                             strprintf("Version must be %d or greater",
-                            consensusParams.vUpgrades[CurrentEpoch(GetHeight(), consensusParams)].nProtocolVersion));
+                            consensusParams.vUpgrades[CurrentEpoch(GetChainHeight(), consensusParams)].nProtocolVersion));
         pfrom->fDisconnect = true;
         return false;
     }
@@ -5736,7 +5736,7 @@ static bool ProcessMessage(const CChainParams& chainparams, CNode* pfrom, string
 
     else if (strCommand == "mempool")
     {
-        const int currentHeight = GetHeight();
+        const int currentHeight = GetChainHeight();
 
         LOCK2(cs_main, pfrom->cs_filter);
 

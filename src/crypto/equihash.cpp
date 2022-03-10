@@ -1,6 +1,6 @@
 // Copyright (c) 2016 Jack Grigg
 // Copyright (c) 2016 The Zcash developers
-// Copyright (c) 2021 The Pastel Core developers
+// Copyright (c) 2021-2022 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 
@@ -14,17 +14,16 @@
 // https://www.internetsociety.org/sites/default/files/blogs-media/equihash-asymmetric-proof-of-work-based-generalized-birthday-problem.pdf
 
 #if defined(HAVE_CONFIG_H)
-#include "config/bitcoin-config.h"
+#include <config/bitcoin-config.h>
 #endif
-
-#include "compat/endian.h"
-#include "crypto/equihash.h"
-#include "util.h"
 
 #include <algorithm>
 #include <iostream>
-#include <stdexcept>
 #include <optional>
+
+#include <compat/endian.h>
+#include <crypto/equihash.h>
+#include <util.h>
 
 static EhSolverCancelledException solver_cancelled;
 

@@ -633,7 +633,7 @@ bool CMasternodeMan::GetMasternodeRank(const COutPoint& outpoint, int& nRankRet,
         return false;
 
     // make sure we know about this block
-    uint256 nBlockHash = uint256();
+    uint256 nBlockHash;
     if (!GetBlockHash(nBlockHash, nBlockHeight)) {
         LogPrintf("CMasternodeMan::%s -- ERROR: GetBlockHash() failed at nBlockHeight %d\n", __func__, nBlockHeight);
         return false;
