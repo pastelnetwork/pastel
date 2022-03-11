@@ -1,23 +1,24 @@
-// Copyright (c) 2018-2021 The PASTELCoin Developers
+// Copyright (c) 2018-2022 The PASTELCoin Developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
 #include <unistd.h>
 
-#include "main.h"
-#include "core_io.h"
-#include "key_io.h"
-
-#include "mnode-controller.h"
-#include "mnode-payments.h"
-#include "mnode-validation.h"
-#include "mnode-msgsigner.h"
-
-#include <boost/lexical_cast.hpp>
+#include <main.h>
+#include <core_io.h>
+#include <key_io.h>
+#include <vector_types.h>
+         
+#include <mnode/mnode-controller.h>
+#include <mnode/mnode-payments.h>
+#include <mnode/mnode-validation.h>
+#include <mnode/mnode-msgsigner.h>
 
 CCriticalSection cs_vecPayees;
 CCriticalSection cs_mapMasternodeBlockPayees;
 CCriticalSection cs_mapMasternodePaymentVotes;
+
+using namespace std;
 
 CAmount CMasternodePayments::GetMasternodePayment(int nHeight, CAmount blockValue)
 {
@@ -206,7 +207,7 @@ bool CMasternodePaymentVote::Sign()
 {
     std::string strError;
     std::string strMessage = vinMasternode.prevout.ToStringShort() +
-                boost::lexical_cast<std::string>(nBlockHeight) +
+                to_string(nBlockHeight) +
                 ScriptToAsmStr(payee);
 
     if(!CMessageSigner::SignMessage(strMessage, vchSig, masterNodeCtrl.activeMasternode.keyMasternode)) {
@@ -343,85 +344,121 @@ bool CMasternodeBlockPayees::HasPayeeWithVotes(const CScript& payeeIn, int nVote
     return false;
 }
 
-bool CMasternodeBlockPayees::IsTransactionValid(const CTransaction& txNew)
+constexpr int MN_FEWVOTE_ACTIVATION_HEIGHT = 228'700;
+
+/**
+ * Validate transaction - check for scheduled MN payments.
+ * 
+ * mainnet logic before block 228700:
+ *   - the transaction was considered valid if there were less than 6 votes
+ * new voting logic is activated at block height 228700 (or regtest,testnet):
+ *   - the transaction is checked for payment regardless of the payee vote count
+ *   - regular transactions with no votes are considered valid
+ * 
+ * \param txNew - transaction to validate
+ * \return true - if transaction is valid
+ */
+bool CMasternodeBlockPayees::IsTransactionValid(const CTransaction& txNew) const
 {
+    // get current height
+    const int nCurrentHeight = GetChainHeight();
+    const auto& chainparams = Params();
+    const bool bEnableFewVoteCheck = !chainparams.IsMainNet() || (nCurrentHeight >= MN_FEWVOTE_ACTIVATION_HEIGHT);
+
     LOCK(cs_vecPayees);
 
-    size_t nMaxSignatures = 0;
-    std::string strPayeesPossible;
+    const CAmount nMasternodePayment = masterNodeCtrl.masternodePayments.GetMasternodePayment(nBlockHeight, txNew.GetValueOut());
 
-    CAmount nMasternodePayment = masterNodeCtrl.masternodePayments.GetMasternodePayment(nBlockHeight, txNew.GetValueOut());
-
-    //require at least MNPAYMENTS_SIGNATURES_REQUIRED signatures
-    for (const auto & payee : vecPayees)
-    {
-        if (payee.GetVoteCount() >= nMaxSignatures)
-            nMaxSignatures = payee.GetVoteCount();
-    }
+    string strPayeesPossible;
+    // fill payee list (only references to the actual payees) ordered by vote count in descending order
+    vector<reference_wrapper<const CMasternodePayee>> vOrderedPayee;
+    vOrderedPayee.reserve(vecPayees.size());
+    for (const auto& payee : vecPayees)
+        vOrderedPayee.emplace_back(cref(payee));
+    sort(vOrderedPayee.begin(), vOrderedPayee.end(), [](const auto& left, const auto& right) -> bool
+        { return left.get().GetVoteCount() > right.get().GetVoteCount(); });
 
     // if we don't have at least MNPAYMENTS_SIGNATURES_REQUIRED signatures on a payee, approve whichever is the longest chain
-    if (nMaxSignatures < MNPAYMENTS_SIGNATURES_REQUIRED)
-        return true;
-
-    std::string address;
-    KeyIO keyIO(Params());
-    for (auto& payee : vecPayees)
+    if (vOrderedPayee.empty())
     {
-        if (payee.GetVoteCount() < MNPAYMENTS_SIGNATURES_REQUIRED)
-            continue;
+        LogPrintf("CMasternodeBlockPayees::IsTransactionValid -- no scheduled MN payments, block - %d\n", nCurrentHeight);
+        return true;
+    }
+    const auto nMaxVotes = vOrderedPayee.front().get().GetVoteCount();
+    if (!bEnableFewVoteCheck && vOrderedPayee.front().get().GetVoteCount() < MNPAYMENTS_SIGNATURES_REQUIRED)
+    {
+        LogPrintf("CMasternodeBlockPayees::IsTransactionValid -- extra vote check is not enabled AND we only have %zu signatures in the maximum vote, approve it anyway, block - %d\n", 
+            nMaxVotes, nCurrentHeight);
+        return true;
+    }
+
+    KeyIO keyIO(chainparams);
+    bool bFound = false;
+    size_t nPayeesWithVotes = 0;
+    for (const auto& payeeRef : vOrderedPayee)
+    {
+        const auto& payee = payeeRef.get();
+
+        // skip payees without votes
+        const auto nVoteCount = payee.GetVoteCount();
+        if (nVoteCount == 0)
+            break; // vOrderedPayee is sorted by vote count
+
+        ++nPayeesWithVotes;
         for (const auto &txout : txNew.vout)
         {
             if (payee.GetPayee() == txout.scriptPubKey && nMasternodePayment == txout.nValue)
             {
                 LogPrint("mnpayments", "CMasternodeBlockPayees::IsTransactionValid -- Found required payment\n");
-                return true;
+                bFound = true;
+                break;
             }
         }
 
+        if (bFound)
+            break;
         CTxDestination dest;
-        ExtractDestination(payee.GetPayee(), dest);
-        address = keyIO.EncodeDestination(dest);
-
-        if (strPayeesPossible.empty())
-            strPayeesPossible = address;
-        else
-            strPayeesPossible += "," + address;
+        if (ExtractDestination(payee.GetPayee(), dest))
+            str_append_field(strPayeesPossible, 
+                strprintf("%s(%zu)", keyIO.EncodeDestination(dest), nVoteCount).c_str(), ", ");
     }
-
-    LogPrintf("CMasternodeBlockPayees::IsTransactionValid -- ERROR: Missing required payment, possible payees: '%s', amount: %" PRId64 " PASTEL\n", 
-        strPayeesPossible, nMasternodePayment);
-    for (const auto & txout : txNew.vout)
+    vOrderedPayee.clear();
+    if (!bFound && !nPayeesWithVotes)
+        bFound = true;
+    if (!bFound)
     {
-        CTxDestination dest;
-        ExtractDestination(txout.scriptPubKey, dest);
-        address = keyIO.EncodeDestination(dest);
-        LogPrintf("\t%s -- %" PRId64 " \n", address, txout.nValue);
-        LogPrintf("\t%s\n", txout.scriptPubKey.ToString());
-    }
-
-    return false;
-}
-
-std::string CMasternodeBlockPayees::GetRequiredPaymentsString()
-{
-    LOCK(cs_vecPayees);
-
-    std::string strRequiredPayments = "Unknown";
-
-    KeyIO keyIO(Params());
-    for (auto& payee : vecPayees)
-    {
-        CTxDestination dest;
-        ExtractDestination(payee.GetPayee(), dest);
-        std::string address = keyIO.EncodeDestination(dest);
-    
-        if (strRequiredPayments != "Unknown") {
-            strRequiredPayments += ", " + address + ":" + boost::lexical_cast<std::string>(payee.GetVoteCount());
-        } else {
-            strRequiredPayments = address + ":" + boost::lexical_cast<std::string>(payee.GetVoteCount());
+        LogPrintf("CMasternodeBlockPayees::IsTransactionValid -- ERROR: Missing required payment, possible payees: '%s', amount: %" PRId64 " PSL\n",
+            strPayeesPossible, nMasternodePayment);
+        for (const auto& txout : txNew.vout)
+        {
+            CTxDestination dest;
+            if (!ExtractDestination(txout.scriptPubKey, dest))
+                continue;
+            LogPrintf("\t%s -- %" PRId64 " \n", keyIO.EncodeDestination(dest), txout.nValue);
+            LogPrintf("\t%s\n", txout.scriptPubKey.ToString());
         }
     }
+    return bFound;
+}
 
+string CMasternodeBlockPayees::GetRequiredPaymentsString() const
+{
+    string strRequiredPayments;
+    KeyIO keyIO(Params());
+
+    {
+        LOCK(cs_vecPayees);
+        for (const auto& payee : vecPayees)
+        {
+            CTxDestination dest;
+            if (!ExtractDestination(payee.GetPayee(), dest))
+                continue;
+            str_append_field(strRequiredPayments, 
+                strprintf("%s:%zu", keyIO.EncodeDestination(dest), payee.GetVoteCount()).c_str(), ", ");
+        }
+    }
+    if (strRequiredPayments.empty())
+        strRequiredPayments = "Unknown";
     return strRequiredPayments;
 }
 
@@ -429,12 +466,13 @@ bool CMasternodePayments::IsTransactionValid(const CTransaction& txNew, int nBlo
 {
     LOCK(cs_mapMasternodeBlockPayees);
 
-    if(mapMasternodeBlockPayees.count(nBlockHeight)){
+    if(mapMasternodeBlockPayees.count(nBlockHeight))
         return mapMasternodeBlockPayees[nBlockHeight].IsTransactionValid(txNew);
-    }
-
+    
+    LogPrint("mnpayments", "CMasternodePayments::IsTransactionValid -- no winner MN for block - %d\n", nBlockHeight);
     return true;
 }
+
 void CMasternodePayments::CheckAndRemove()
 {
     if(!masterNodeCtrl.masternodeSync.IsBlockchainSynced()) return;
@@ -482,7 +520,7 @@ bool CMasternodePaymentVote::IsValid(CNode* pnode, int nValidationHeight, std::s
     // Regular clients (miners included) need to verify masternode rank for future block votes only.
     if(!masterNodeCtrl.IsMasterNode() && nBlockHeight < nValidationHeight) return true;
 
-    int nRank;
+    int nRank = -1;
 
     if(!masterNodeCtrl.masternodeManager.GetMasternodeRank(vinMasternode.prevout, nRank, nBlockHeight + masterNodeCtrl.nMasternodePaymentsVotersIndexDelta, nMinRequiredProtocol)) {
         LogPrint("mnpayments", "CMasternodePaymentVote::IsValid -- Can't calculate rank for masternode %s\n",
@@ -511,15 +549,17 @@ bool CMasternodePayments::ProcessBlock(int nBlockHeight)
 {
     // DETERMINE IF WE SHOULD BE VOTING FOR THE NEXT PAYEE
 
-    if(!masterNodeCtrl.IsMasterNode()) return false;
+    if(!masterNodeCtrl.IsMasterNode())
+        return false;
 
     // We have little chances to pick the right winner if winners list is out of sync
     // but we have no choice, so we'll try. However it doesn't make sense to even try to do so
     // if we have not enough data about masternodes.
-    if(!masterNodeCtrl.masternodeSync.IsMasternodeListSynced()) return false;
+    if(!masterNodeCtrl.masternodeSync.IsMasternodeListSynced())
+        return false;
 
-    //see if we can vote - we must be in the top 10 masternpode list to be allowed to vote
-    int nRank;
+    //see if we can vote - we must be in the top 20 masternode list to be allowed to vote
+    int nRank = -1;
 
     if (!masterNodeCtrl.masternodeManager.GetMasternodeRank(masterNodeCtrl.activeMasternode.outpoint, nRank, nBlockHeight + masterNodeCtrl.nMasternodePaymentsVotersIndexDelta)) {
         LogPrint("mnpayments", "CMasternodePayments::ProcessBlock -- Unknown Masternode\n");
@@ -654,11 +694,11 @@ bool CMasternodePaymentVote::CheckSignature(const CPubKey& pubKeyMasternode, int
     // do not ban by default
     nDos = 0;
 
-    std::string strMessage = vinMasternode.prevout.ToStringShort() +
-                boost::lexical_cast<std::string>(nBlockHeight) +
+    string strMessage = vinMasternode.prevout.ToStringShort() +
+                to_string(nBlockHeight) +
                 ScriptToAsmStr(payee);
 
-    std::string strError = "";
+    string strError;
     if (!CMessageSigner::VerifyMessage(pubKeyMasternode, vchSig, strMessage, strError)) {
         // Only ban for future block vote when we are already synced.
         // Otherwise it could be the case when MN which signed this vote is using another key now

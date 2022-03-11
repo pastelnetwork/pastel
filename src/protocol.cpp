@@ -14,26 +14,7 @@
 
 using namespace std;
 
-namespace NetMsgType {
-const char *MNANNOUNCE="mnb";       //MasterNode Announce
-const char *MNPING="mnp";           //MasterNode Ping
-const char *MNVERIFY="mnv";         //
-const char *DSEG="dseg";            //MasterNode Sync request
-const char *SYNCSTATUSCOUNT="ssc";  //MasterNode Sync status
-
-// const char *TXLOCKREQUEST="ix";
-// const char *TXLOCKVOTE="txlvote";
-const char *MASTERNODEPAYMENTVOTE="mnw";
-const char *MASTERNODEPAYMENTBLOCK="mnwb";
-const char *MASTERNODEPAYMENTSYNC="mnget";
-const char *GOVERNANCESYNC="gvget";
-const char *GOVERNANCE="gov";
-const char *GOVERNANCEVOTE="gvt";
-const char *DSTX="dstx";
-const char *MASTERNODEMESSAGE="mnmsg";
-};
-
-static const char* ppszTypeName[] =
+static constexpr array<const char *, 13> NET_MSG_TYPE =
 {
     "ERROR",
     "tx",
@@ -50,7 +31,6 @@ static const char* ppszTypeName[] =
     NetMsgType::DSTX,
     NetMsgType::MNVERIFY,
     NetMsgType::MASTERNODEMESSAGE
-
 };
 
 CMessageHeader::CMessageHeader(const MessageStartChars& pchMessageStartIn)
@@ -127,8 +107,6 @@ bool CMessageHeader::IsValid(string &error, const MessageStartChars& pchExpected
     return bRet;
 }
 
-
-
 CAddress::CAddress() : CService()
 {
     Init();
@@ -146,13 +124,13 @@ void CAddress::Init()
     nTime = 100000000;
 }
 
-CInv::CInv()
+CInv::CInv() noexcept
 {
     type = 0;
     hash.SetNull();
 }
 
-CInv::CInv(int typeIn, const uint256& hashIn)
+CInv::CInv(const int typeIn, const uint256& hashIn) noexcept
 {
     type = typeIn;
     hash = hashIn;
@@ -160,16 +138,16 @@ CInv::CInv(int typeIn, const uint256& hashIn)
 
 CInv::CInv(const string& strType, const uint256& hashIn)
 {
-    unsigned int i;
-    for (i = 1; i < ARRAYLEN(ppszTypeName); i++)
+    size_t i = 0;
+    for (i = 1; i < NET_MSG_TYPE.size(); ++i)
     {
-        if (strType == ppszTypeName[i])
+        if (strType == NET_MSG_TYPE[i])
         {
-            type = i;
+            type = static_cast<int>(i);
             break;
         }
     }
-    if (i == ARRAYLEN(ppszTypeName))
+    if (i == NET_MSG_TYPE.size())
         throw out_of_range(strprintf("CInv::CInv(string, uint256): unknown type '%s'", strType));
     hash = hashIn;
 }
@@ -179,16 +157,16 @@ bool operator<(const CInv& a, const CInv& b)
     return (a.type < b.type || (a.type == b.type && a.hash < b.hash));
 }
 
-bool CInv::IsKnownType() const
+bool CInv::IsKnownType() const noexcept
 {
-    return (type >= 1 && type < (int)ARRAYLEN(ppszTypeName));
+    return (type >= 1 && type < NET_MSG_TYPE.size());
 }
 
 const char* CInv::GetCommand() const
 {
     if (!IsKnownType())
         throw out_of_range(strprintf("CInv::GetCommand(): type=%d unknown type", type));
-    return ppszTypeName[type];
+    return NET_MSG_TYPE[type];
 }
 
 string CInv::ToString() const

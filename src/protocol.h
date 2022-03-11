@@ -122,8 +122,8 @@ public:
 class CInv
 {
 public:
-    CInv();
-    CInv(int typeIn, const uint256& hashIn);
+    CInv() noexcept;
+    CInv(const int typeIn, const uint256& hashIn) noexcept;
     CInv(const std::string& strType, const uint256& hashIn);
 
     ADD_SERIALIZE_METHODS;
@@ -137,7 +137,7 @@ public:
 
     friend bool operator<(const CInv& a, const CInv& b);
 
-    bool IsKnownType() const;
+    bool IsKnownType() const noexcept;
     const char* GetCommand() const;
     std::string ToString() const;
 
@@ -166,20 +166,22 @@ enum {
     MSG_MASTERNODE_MESSAGE
 };
 
-namespace NetMsgType {
-extern const char *MASTERNODEPAYMENTVOTE;
-extern const char *MASTERNODEPAYMENTBLOCK;
-extern const char *MASTERNODEPAYMENTSYNC;
-extern const char *GOVERNANCE;
-extern const char *GOVERNANCEVOTE;
-extern const char *GOVERNANCESYNC;
-extern const char *DSTX;
+namespace NetMsgType
+{
+    constexpr auto MNANNOUNCE               = "mnb";  //MasterNode Announce
+    constexpr auto MNPING                   = "mnp";  //MasterNode Ping
+    constexpr auto MNVERIFY                 = "mnv";  //
+    constexpr auto DSEG                     = "dseg"; //MasterNode Sync request
+    constexpr auto SYNCSTATUSCOUNT          = "ssc";  //MasterNode Sync status
 
-extern const char *MNANNOUNCE;
-extern const char *MNPING;
-extern const char *MNVERIFY;
-extern const char *DSEG;
-extern const char *SYNCSTATUSCOUNT;
-extern const char *MASTERNODEMESSAGE;
+    // const char *TXLOCKREQUEST="ix";
+    // const char *TXLOCKVOTE="txlvote";
+    constexpr auto MASTERNODEPAYMENTVOTE    = "mnw";
+    constexpr auto MASTERNODEPAYMENTBLOCK   = "mnwb";
+    constexpr auto MASTERNODEPAYMENTSYNC    = "mnget";
+    constexpr auto GOVERNANCESYNC           = "gvget";
+    constexpr auto GOVERNANCE               = "gov";
+    constexpr auto GOVERNANCEVOTE           = "gvt";
+    constexpr auto DSTX                     = "dstx";
+    constexpr auto MASTERNODEMESSAGE        = "mnmsg";
 };
-
