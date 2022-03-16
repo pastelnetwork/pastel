@@ -200,4 +200,7 @@ public:
     void Clear();
 
     void UpdatedBlockTip(const CBlockIndex *pindex);
+
+private:
+    bool CanVote(std::string& strErrorRet) const;
 };

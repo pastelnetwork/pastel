@@ -121,12 +121,38 @@ CAmount CMasternodeGovernance::IncrementTicketPaidAmount(CAmount payment, CGover
     return aAmountPaid;
 }
 
+bool CMasternodeGovernance::CanVote(std::string& strErrorRet) const
+{
+    if (!masterNodeCtrl.IsActiveMasterNode()){
+        strErrorRet = "Only Active Master Node can vote";
+    }
+
+    auto masterNode = CMasternode{};
+    if(!masterNodeCtrl.masternodeManager.Get(masterNodeCtrl.activeMasternode.outpoint, masterNode)){
+        strErrorRet = "Failure retrieving Master Node";
+    }
+
+    if (!masterNode.IsEnabled()){
+        strErrorRet = "Only enabled Master Node can vote";
+    }
+
+    constexpr static auto thirty_days = int{30 * 24 * 60};
+    if (masterNode.IsBroadcastedWithin(thirty_days)){
+        strErrorRet = "Master Node is not old enough to vote";
+    }
+
+    if (!strErrorRet.empty()){
+        return false;
+    }
+
+    return true;
+}
+
 bool CMasternodeGovernance::AddTicket(std::string address, CAmount totalReward, std::string note, bool vote, uint256& newTicketId, std::string& strErrorRet)
 {
     newTicketId.SetNull();
 
-    if (!masterNodeCtrl.IsActiveMasterNode()){
-        strErrorRet = "Only Active Master Node can vote";
+    if (!CanVote(strErrorRet)){
         LogPrintf("CMasternodeGovernance::AddTicket -- %s\n", strErrorRet);
         return false;
     }
@@ -177,8 +203,7 @@ bool CMasternodeGovernance::AddTicket(std::string address, CAmount totalReward, 
 
 bool CMasternodeGovernance::VoteForTicket(uint256 ticketId, bool vote, std::string& strErrorRet)
 {
-    if (!masterNodeCtrl.IsActiveMasterNode()){
-        strErrorRet = strprintf("Only Active Master Node can vote");
+    if (!CanVote(strErrorRet)){
         LogPrintf("CMasternodeGovernance::VoteForTicket -- %s\n", strErrorRet);
         return false;
     }
@@ -547,7 +572,7 @@ bool CGovernanceTicket::AddVote(CGovernanceVote& voteNew, std::string& strErrorR
 
 bool CGovernanceTicket::IsWinner(int height)
 {
-    const uint32_t tenPercent = static_cast<uint32_t>(ceil(masterNodeCtrl.masternodeManager.size()/10.0));
+    const uint32_t tenPercent = static_cast<uint32_t>(ceil(masterNodeCtrl.masternodeManager.CountEnabled()/10.0));
     const double fiftyOne = (double)mapVotes.size() * 51.0 / 100.0;
     // If number of all votes for the ticket >= 10% from current number of active MN's...
     // and number of yes votes >= 51% of all votes
