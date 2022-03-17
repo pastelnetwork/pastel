@@ -148,7 +148,7 @@ public:
     static bool FindTicketInDb(const std::string& key, CActionRegTicket& _ticket);
     static bool CheckIfTicketInDb(const std::string& key);
     static ActionRegTickets_t FindAllTicketByPastelID(const std::string& pastelID);
-    // get action storage fees
+    // get action storage fees in PSL
     static action_fee_map_t GetActionFees(const size_t nDataSizeInMB);
 
 protected:

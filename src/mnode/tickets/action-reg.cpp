@@ -273,10 +273,10 @@ ActionRegTickets_t CActionRegTicket::FindAllTicketByPastelID(const string& paste
 }
 
 /**
- * Get action fees based on data size.
+ * Get action fees based on data size in PSL.
  * 
  * \param nDataSizeInMB - data size in MB
- * \return map of <actionTicketType> -> <fee>
+ * \return map of <actionTicketType> -> <fee_in_psl>
  */
 action_fee_map_t CActionRegTicket::GetActionFees(const size_t nDataSizeInMB)
 {
@@ -284,7 +284,7 @@ action_fee_map_t CActionRegTicket::GetActionFees(const size_t nDataSizeInMB)
     const CAmount nStorageFeePerMB = masterNodeCtrl.GetNetworkFeePerMB();
     const CAmount nTicketFeePerKB = masterNodeCtrl.GetNFTTicketFeePerKB();
     
-    CAmount nActionFeePerMB = masterNodeCtrl.GetActionTicketFeePerMB(ACTION_TICKET_TYPE::SENSE);
+    const CAmount nActionFeePerMB = masterNodeCtrl.GetActionTicketFeePerMB(ACTION_TICKET_TYPE::SENSE);
 
     // calculate sense fee
     CAmount nFee = nDataSizeInMB * nActionFeePerMB + nStorageFeePerMB * ACTION_DUPE_DATA_SIZE_MB + nTicketFeePerKB * ACTION_SENSE_TICKET_SIZE_KB;

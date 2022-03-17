@@ -37,6 +37,8 @@ build-aux/m4/ltversion.m4
 build-aux/missing
 build-aux/compile
 build-aux/test-driver
+build-aux/vs2022/.vs/
+build-aux/vs2019/.vs/
 config.log
 config.status
 configure
@@ -69,6 +71,7 @@ src/univalue/gen
 *.pb.cc
 *.pb.h
 .vscode
+*.user
 
 *.log
 *.trs
