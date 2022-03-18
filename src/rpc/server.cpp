@@ -1,10 +1,12 @@
 // Copyright (c) 2010 Satoshi Nakamoto
 // Copyright (c) 2009-2014 The Bitcoin Core developers
+// Copyright (c) 2018-2022 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
-// file COPYING or http://www.opensource.org/licenses/mit-license.php.
+// file COPYING or https://www.opensource.org/licenses/mit-license.php.
+
+#include <univalue.h>
 
 #include <rpc/server.h>
-
 #include <init.h>
 #include <key_io.h>
 #include <random.h>
@@ -14,10 +16,6 @@
 #include <utilstrencodings.h>
 #include <asyncrpcqueue.h>
 #include <str_utils.h>
-
-#include <memory>
-
-#include <univalue.h>
 
 #include <boost/iostreams/concepts.hpp>
 #include <boost/iostreams/stream.hpp>
@@ -135,10 +133,12 @@ uint256 ParseHashV(const UniValue& v, string strName)
     result.SetHex(strHex);
     return result;
 }
+
 uint256 ParseHashO(const UniValue& o, string strKey)
 {
     return ParseHashV(find_value(o, strKey), strKey);
 }
+
 v_uint8 ParseHexV(const UniValue& v, string strName)
 {
     string strHex;
@@ -148,6 +148,7 @@ v_uint8 ParseHexV(const UniValue& v, string strName)
         throw JSONRPCError(RPC_INVALID_PARAMETER, strName+" must be hexadecimal string (not '"+strHex+"')");
     return ParseHex(strHex);
 }
+
 v_uint8 ParseHexO(const UniValue& o, string strKey)
 {
     return ParseHexV(find_value(o, strKey), strKey);
@@ -274,12 +275,12 @@ CRPCTable::CRPCTable()
     }
 }
 
-const CRPCCommand *CRPCTable::operator[](const string &name) const
+const CRPCCommand *CRPCTable::operator[](const string &name) const noexcept
 {
-    map<string, const CRPCCommand*>::const_iterator it = mapCommands.find(name);
-    if (it == mapCommands.end())
+    auto it = mapCommands.find(name);
+    if (it == mapCommands.cend())
         return nullptr;
-    return (*it).second;
+    return it->second;
 }
 
 bool CRPCTable::appendCommand(const string& name, const CRPCCommand* pcmd)
@@ -288,8 +289,8 @@ bool CRPCTable::appendCommand(const string& name, const CRPCCommand* pcmd)
         return false;
 
     // don't allow overwriting for now
-    map<string, const CRPCCommand*>::const_iterator it = mapCommands.find(name);
-    if (it != mapCommands.end())
+    auto it = mapCommands.find(name);
+    if (it != mapCommands.cend())
         return false;
 
     mapCommands[name] = pcmd;

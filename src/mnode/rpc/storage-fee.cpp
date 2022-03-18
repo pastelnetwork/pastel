@@ -24,9 +24,9 @@ Arguments:
 
 Available commands:
   setfee <n>                 - Set storage fee for MN.
-  getnetworkfee	             - Get Network median storage fee.
-  getnftticketfee            - Get Network median NFT ticket fee.
-  getlocalfee                - Get local masternode storage fee.
+  getnetworkfee	             - Get Network median storage fee (per MB).
+  getnftticketfee            - Get Network median NFT ticket fee (per KB).
+  getlocalfee                - Get local masternode storage fee (per MB).
   getactionfees <data_size>  - Get action fee by data size (in MB)
 
 Examples:
@@ -70,6 +70,7 @@ Examples:
 
             retObj.setObject();
             retObj.pushKV("networkfee", nFee);
+            retObj.pushKV("networkfeePat", nFee * COIN);
         } break;
 
         case RPC_CMD_STORAGE_FEE::getnftticketfee:
@@ -78,6 +79,7 @@ Examples:
 
             retObj.setObject();
             retObj.pushKV("nftticketfee", nFee);
+            retObj.pushKV("nftticketfeePat", nFee * COIN);
         } break;
 
         case RPC_CMD_STORAGE_FEE::getlocalfee:
@@ -90,7 +92,9 @@ Examples:
                 throw JSONRPCError(RPC_INTERNAL_ERROR, ERRMSG_MASTER_NODE_NOT_FOUND);
 
             retObj.setObject();
-            retObj.pushKV("localfee", masternode.aMNFeePerMB == 0 ? masterNodeCtrl.MasternodeFeePerMBDefault : masternode.aMNFeePerMB);
+            const auto nFee = masternode.aMNFeePerMB == 0 ? masterNodeCtrl.MasternodeFeePerMBDefault : masternode.aMNFeePerMB;
+            retObj.pushKV("localfee", nFee);
+            retObj.pushKV("localfeePat", nFee * COIN);
         } break;
 
         case RPC_CMD_STORAGE_FEE::getactionfees:
@@ -105,24 +109,25 @@ Arguments:
 Returns:
 {
     "datasize": xxx,                    (numeric) data size in MB
-    "<action-type>fee": xxxx,           (numeric) action fee in )" + MINOR_CURRENCY_UNIT + R"(
-    "<action-type>feePsl": x.xxx,       (numeric) action fee in )" + CURRENCY_UNIT + R"(
+    "<action-type>fee": xxxx,           (numeric) action fee in )" + CURRENCY_UNIT + R"(
+    "<action-type>feePat": x.xxx,       (numeric) action fee in )" + MINOR_CURRENCY_UNIT + R"(
     .....
 }
 )");
             const ssize_t nDataSizeInMB = get_long_number(params[1]);
             if (nDataSizeInMB < 0)
                 throw JSONRPCError(RPC_INVALID_PARAMETER, "<data size> parameter cannnot be negative");
+            // get map of action fees in PSL
             const auto feeMap = CActionRegTicket::GetActionFees(nDataSizeInMB);
             retObj.setObject();
             retObj.pushKV("datasize", static_cast<uint64_t>(nDataSizeInMB));
             string sActionFeeKey;
-            for (const auto& [actionTicketType, fee] : feeMap)
+            for (const auto& [actionTicketType, feePSL] : feeMap)
             {
                 sActionFeeKey = strprintf("%sfee", SAFE_SZ(GetActionTypeName(actionTicketType)));
-                retObj.pushKV(sActionFeeKey, fee);
-                sActionFeeKey += "Psl";
-                retObj.pushKV(sActionFeeKey, ValueFromAmount(fee));
+                retObj.pushKV(sActionFeeKey, feePSL);
+                sActionFeeKey += "Pat";
+                retObj.pushKV(sActionFeeKey, feePSL * COIN);
             }
         } break;
 
