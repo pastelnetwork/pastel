@@ -372,7 +372,7 @@ static bool HTTPBindAddresses(std::string &error, struct evhttp* http)
 /** Simple wrapper to set thread name and run work queue */
 static void HTTPWorkQueueRun(WorkQueue<HTTPClosure>* queue)
 {
-    RenameThread("pastel-httpworker");
+    RenameThread("psl-httpworker");
     queue->Run();
 }
 
