@@ -12,7 +12,11 @@
 
 using namespace std;
 
+#ifdef __MINGW64__
+__thread CServiceThread *funcThreadObj;
+#else
 thread_local CServiceThread* funcThreadObj = nullptr;
+#endif
 
 CScheduler::CScheduler(const char *szThreadName) : 
     m_sThreadName(szThreadName ? szThreadName : "scheduler"),

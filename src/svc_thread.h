@@ -21,7 +21,11 @@ class CServiceThread;
 class func_thread_interrupted : public std::exception
 {};
 
+#ifdef __MINGW64__
+extern __thread CServiceThread *funcThreadObj;
+#else
 extern thread_local CServiceThread *funcThreadObj;
+#endif
 
 /** 
  * Class to enhance std::thread.
@@ -36,7 +40,7 @@ public:
         m_bRunning(false),
         m_bStopRequested(false)
     {
-        m_sThreadName = strprintf("pastel-%s", SAFE_SZ(szThreadName));
+        m_sThreadName = strprintf("psl-%s", SAFE_SZ(szThreadName));
     }
 
     // disable copy
@@ -58,6 +62,7 @@ public:
             m_Thread = std::thread(&CServiceThread::run, this);
         }
         catch(...) {
+            LogPrintf("exception occured on thread [%s] creation\n", m_sThreadName);
             return false;
         }
         return true;
