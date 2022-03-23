@@ -12,7 +12,7 @@ JSON_GTEST_FILES =\
 	gtest/data/g1_compressed.json\
 	gtest/data/g2_compressed.json\
 	gtest/data/merkle_commitments.json\
-	gtest/data/merkle_commitments_sapling.json\ 
+	gtest/data/merkle_commitments_sapling.json\
 	gtest/data/merkle_path.json\
 	gtest/data/merkle_path_sapling.json\
 	gtest/data/merkle_roots.json\

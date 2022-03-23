@@ -2,7 +2,7 @@
 // Copyright (c) 2022 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
-#include <unordered_map>
+#include <map>
 #include <ctime>
 
 #include <primitives/block.h>
@@ -12,7 +12,7 @@
 // max number of attempts to revalidate cached block
 inline constexpr uint32_t MAX_REVALIDATION_COUNT = 20;
 // time in secs cached block should wait in a cache for the revalidation attempt
-inline constexpr time_t BLOCK_REVALIDATION_WAIT_TIME = 2;
+inline constexpr time_t BLOCK_REVALIDATION_WAIT_TIME = 3;
 
 /**
  * Class to use for temporary block cache.
@@ -33,6 +33,12 @@ public:
     bool add_block(const uint256& hash, const NodeId& nodeId, CBlock && block) noexcept;
     // try to revalidate cached blocks
     size_t revalidate_blocks(const CChainParams& chainparams);
+    // get number of blocks in a cache
+    size_t size() const noexcept;
+    // check whether block with the given hash exists in the cache
+    bool exists(const uint256& hash) const noexcept;
+    // check where prev block exists in the cache - if yes, add to unlinked map
+    bool check_prev_block(const CBlockIndex *pindex);
 
 protected:
     typedef struct _BLOCK_CACHE_ITEM
@@ -42,14 +48,13 @@ protected:
         uint32_t nValidationCounter; // number of revalidation attempts
         time_t nTimeAdded;           // time in secs when the block was cached
         time_t nTimeValidated;       // time in secs of the last revalidation attempt
+        bool bRevalidating;          // true if block is being revalidated
 
-        _BLOCK_CACHE_ITEM(const NodeId id, CBlock &&block_in) : 
+        _BLOCK_CACHE_ITEM(const NodeId id, CBlock &&block_in) noexcept : 
             nodeId(id),
-            block(std::move(block_in)),
-            nValidationCounter(0)
+            block(std::move(block_in))
         {
-            nTimeAdded = time(nullptr);
-            nTimeValidated = 0;
+            Added();
         }
 
         /**
@@ -62,17 +67,32 @@ protected:
         {
             return nTimeValidated ? nTimeValidated : nTimeAdded;
         }
+
+        /**
+         * Called when the block added to the cache.
+         */
+        void Added()
+        {
+            nTimeAdded = time(nullptr);
+            nTimeValidated = 0;
+            nValidationCounter = 0;
+            bRevalidating = false;
+        }
     } BLOCK_CACHE_ITEM;
 
-    /**
+    // process next block after revalidation
+    bool ProcessNextBlock(const uint256& hash);
+
+     /**
      * if true - processing cached blocks.
      * block cache revalidation can be called concurrently from multiple threads,
      * but we want only one executor at a time, so - first who entered revalidate_blocks
      * will set this flag and the other threads will just skip execution and don't hang on
      * exclusive lock
      */
-
     std::atomic_bool m_bProcessing;
     mutable std::mutex m_CacheMapLock; // mutex to protect access to m_BlockCacheMap
 	std::unordered_map<uint256, BLOCK_CACHE_ITEM> m_BlockCacheMap;
+    // blocks to add to unlinked map <cached_block_hash> -> <next block hash>
+    std::unordered_multimap<uint256, uint256> m_UnlinkedMap;
 };

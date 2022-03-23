@@ -98,6 +98,7 @@ CFeeRate minRelayTxFee = CFeeRate(DEFAULT_MIN_RELAY_TX_FEE);
 // transaction memory pool
 CTxMemPool mempool(::minRelayTxFee);
 
+// blocks that failed contextual validation are cached for revalidation
 CBlockCache gl_BlockCache;
 
 /**
@@ -169,9 +170,8 @@ namespace {
      * Every received block is assigned a unique and increasing identifier, so we
      * know which one to give priority in case of a fork.
      */
-    CCriticalSection cs_nBlockSequenceId;
     /** Blocks loaded from disk are assigned id 0, so start the counter at 1. */
-    uint32_t nBlockSequenceId = 1;
+    atomic_uint32_t nBlockSequenceId = 1;
 
     /**
      * Sources of received blocks, saved to be able to send them reject
@@ -2335,7 +2335,7 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, const CChainPara
         return false;
 
     // verify that the view's current state corresponds to the previous block
-    uint256 hashPrevBlock = !pindex->pprev ? uint256() : pindex->pprev->GetBlockHash();
+    const uint256 hashPrevBlock = !pindex->pprev ? uint256() : pindex->pprev->GetBlockHash();
     assert(hashPrevBlock == view.GetBestBlock());
 
     const auto& consensusParams = chainparams.GetConsensus();
@@ -2884,27 +2884,31 @@ static CBlockIndex* FindMostWorkChain()
         // Just going until the active chain is an optimization, as we know all blocks in it are valid already.
         CBlockIndex *pindexTest = pindexNew;
         bool fInvalidAncestor = false;
-        while (pindexTest && !chainActive.Contains(pindexTest)) {
+        while (pindexTest && !chainActive.Contains(pindexTest))
+        {
             assert(pindexTest->nChainTx || pindexTest->nHeight == 0);
 
             // Pruned nodes may have entries in setBlockIndexCandidates for
             // which block files have been deleted.  Remove those as candidates
             // for the most work chain if we come across them; we can't switch
             // to a chain unless we have all the non-active-chain parent blocks.
-            bool fFailedChain = pindexTest->nStatus & BLOCK_FAILED_MASK;
-            bool fMissingData = !(pindexTest->nStatus & BLOCK_HAVE_DATA);
-            if (fFailedChain || fMissingData) {
+            const bool fFailedChain = pindexTest->nStatus & BLOCK_FAILED_MASK;
+            const bool fMissingData = !(pindexTest->nStatus & BLOCK_HAVE_DATA);
+            if (fFailedChain || fMissingData)
+            {
                 // Candidate chain is not usable (either invalid or missing data)
                 if (fFailedChain && (!pindexBestInvalid || pindexNew->nChainWork > pindexBestInvalid->nChainWork))
                     pindexBestInvalid = pindexNew;
                 CBlockIndex *pindexFailed = pindexNew;
                 // Remove the entire chain from the set.
-                while (pindexTest != pindexFailed) {
-                    if (fFailedChain) {
+                while (pindexTest != pindexFailed)
+                {
+                    if (fFailedChain)
                         pindexFailed->nStatus |= BLOCK_FAILED_CHILD;
-                    } else if (fMissingData) {
+                    else if (fMissingData)
+                    {
                         // If we're missing data, then add back to mapBlocksUnlinked,
-                        // so that if the block arrives in the future we can try adding
+                        // so that if the block arrives in the future we can try adding it
                         // to setBlockIndexCandidates again.
                         mapBlocksUnlinked.emplace(pindexFailed->pprev, pindexFailed);
                     }
@@ -2926,10 +2930,9 @@ static CBlockIndex* FindMostWorkChain()
 static void PruneBlockIndexCandidates() {
     // Note that we can't delete the current block itself, as we may need to return to it later in case a
     // reorganization to a better block fails.
-    set<CBlockIndex*, CBlockIndexWorkComparator>::iterator it = setBlockIndexCandidates.begin();
-    while (it != setBlockIndexCandidates.end() && setBlockIndexCandidates.value_comp()(*it, chainActive.Tip())) {
+    auto it = setBlockIndexCandidates.begin();
+    while (it != setBlockIndexCandidates.end() && setBlockIndexCandidates.value_comp()(*it, chainActive.Tip()))
         it = setBlockIndexCandidates.erase(it);
-    }
     // Either the current tip or a successor of it we're working towards is left in setBlockIndexCandidates.
     assert(!setBlockIndexCandidates.empty());
 }
@@ -3136,6 +3139,47 @@ bool ActivateBestChain(CValidationState &state, const CChainParams& chainparams,
     return true;
 }
 
+uint32_t IncBlockSequenceId()
+{
+    return nBlockSequenceId++;
+}
+
+/**
+ * Add this block to unlinked block map.
+ * 
+ * \param pindex - block index pointer
+ */
+void AddBlockUnlinked(CBlockIndex* pindex)
+{
+    if (!pindex || !pindex->pprev || !pindex->pprev->IsValid(BLOCK_VALID_TREE))
+        return;
+    mapBlocksUnlinked.emplace(pindex->pprev, pindex);
+    LogPrint("net", "added unlinked block (%d)->(%d)\n", pindex->pprev->nHeight, pindex->nHeight);
+}
+
+/**
+ * Extract all unlinked blocks from map by block index key.
+ * 
+ * \param queue - deque to add block indexes
+ * \param pindex - block index key
+ */
+void ExtractUnlinkedBlocks(deque<CBlockIndex*>& queue, CBlockIndex* pindex)
+{
+    auto range = mapBlocksUnlinked.equal_range(pindex);
+    while (range.first != range.second)
+    {
+        auto it = range.first;
+        queue.push_back(it->second);
+        range.first = mapBlocksUnlinked.erase(it);
+    }
+}
+
+void AddBlockIndexCandidate(CBlockIndex* pindex)
+{
+    if (!chainActive.Tip() || !setBlockIndexCandidates.value_comp()(pindex, chainActive.Tip()))
+        setBlockIndexCandidates.insert(pindex);
+}
+
 bool InvalidateBlock(CValidationState& state, const CChainParams& chainparams, CBlockIndex *pindex)
 {
     AssertLockHeld(cs_main);
@@ -3177,27 +3221,41 @@ bool InvalidateBlock(CValidationState& state, const CChainParams& chainparams, C
     return true;
 }
 
-bool ReconsiderBlock(CValidationState& state, CBlockIndex *pindex)
+/**
+ * Remove invalidity status from a block and its descendants.
+ * Should be called under cs_main lock.
+ * 
+ * \param state - chain state
+ * \param pindex - index of the block to reconsider
+ */
+void ReconsiderBlock(CValidationState& state, CBlockIndex *pindex)
 {
     AssertLockHeld(cs_main);
 
     const int nHeight = pindex->nHeight;
+    pindex->UpdateChainTx();
 
     // Remove the invalidity flag from this block and all its descendants.
     for (auto &[hash, pBlockIndex] : mapBlockIndex)
     {
-        if (!pBlockIndex->IsValid() && pBlockIndex->GetAncestor(nHeight) == pindex)
+        const bool bBlockValid = pBlockIndex->IsValid();
+        const bool bDescendant = pBlockIndex->GetAncestor(nHeight) == pindex;
+        if (!bBlockValid && bDescendant)
         {
+            // remove invalidity status from the descendant block
             pBlockIndex->nStatus &= ~BLOCK_FAILED_MASK;
             setDirtyBlockIndex.insert(pBlockIndex);
             if (pBlockIndex->IsValid(BLOCK_VALID_TRANSACTIONS) && pBlockIndex->nChainTx && setBlockIndexCandidates.value_comp()(chainActive.Tip(), pBlockIndex))
                 setBlockIndexCandidates.insert(pBlockIndex);
             if (pBlockIndex == pindexBestInvalid)
+            {
+                LogPrint("net", "%s: reset invalid block marker\n", __func__);
                 pindexBestInvalid = nullptr; // Reset invalid block marker if it was pointing to one of those.
+            }
         }
     }
 
-    // Remove the invalidity flag from all ancestors too.
+    // Remove the invalidity status from all ancestor blocks too.
     while (pindex)
     {
         if (pindex->nStatus & BLOCK_FAILED_MASK)
@@ -3207,9 +3265,15 @@ bool ReconsiderBlock(CValidationState& state, CBlockIndex *pindex)
         }
         pindex = pindex->pprev;
     }
-    return true;
 }
 
+/**
+ * Add new block header to mapBlockIndex. Skips duplicates.
+ * 
+ * \param block - block header to add
+ * \param consensusParams
+ * \return pointer to the created block index or the one that exists already in the map
+ */
 CBlockIndex* AddToBlockIndex(const CBlockHeader& block, const Consensus::Params& consensusParams)
 {
     // Check for duplicates
@@ -3233,6 +3297,8 @@ CBlockIndex* AddToBlockIndex(const CBlockHeader& block, const Consensus::Params&
         pindexNew->pprev = miPrev->second;
         pindexNew->nHeight = pindexNew->pprev->nHeight + 1;
         pindexNew->BuildSkip();
+        // if previous block has failed contextual validation - add it to unlinked block map as well
+        gl_BlockCache.check_prev_block(pindexNew);
     }
     pindexNew->nChainWork = (pindexNew->pprev ? pindexNew->pprev->nChainWork : 0) + GetBlockProof(*pindexNew);
     pindexNew->RaiseValidity(BLOCK_VALID_TREE);
@@ -3240,12 +3306,11 @@ CBlockIndex* AddToBlockIndex(const CBlockHeader& block, const Consensus::Params&
         pindexBestHeader = pindexNew;
 
     setDirtyBlockIndex.insert(pindexNew);
-
     return pindexNew;
 }
 
 /** Mark a block as having its data received and checked (up to BLOCK_VALID_TRANSACTIONS). */
-bool ReceivedBlockTransactions(
+void ReceivedBlockTransactions(
     const CBlock &block,
     CValidationState& state,
     const CChainParams& chainparams,
@@ -3275,56 +3340,7 @@ bool ReceivedBlockTransactions(
     pindexNew->RaiseValidity(BLOCK_VALID_TRANSACTIONS);
     setDirtyBlockIndex.insert(pindexNew);
 
-    if (!pindexNew->pprev || pindexNew->pprev->nChainTx)
-    {
-        // If pindexNew is the genesis block or all parents are BLOCK_VALID_TRANSACTIONS.
-        deque<CBlockIndex*> queue;
-        queue.push_back(pindexNew);
-
-        // Recursively process any descendant blocks that now may be eligible to be connected.
-        while (!queue.empty())
-        {
-            auto pindex = queue.front();
-            queue.pop_front();
-            pindex->nChainTx = (pindex->pprev ? pindex->pprev->nChainTx : 0) + pindex->nTx;
-            if (pindex->pprev)
-            {
-                if (pindex->pprev->nChainSproutValue && pindex->nSproutValue)
-                    pindex->nChainSproutValue = *pindex->pprev->nChainSproutValue + *pindex->nSproutValue;
-                else
-                    pindex->nChainSproutValue = nullopt;
-                if (pindex->pprev->nChainSaplingValue)
-                    pindex->nChainSaplingValue = *pindex->pprev->nChainSaplingValue + pindex->nSaplingValue;
-                else
-                    pindex->nChainSaplingValue = nullopt;
-            }
-            else
-            {
-                pindex->nChainSproutValue = pindex->nSproutValue;
-                pindex->nChainSaplingValue = pindex->nSaplingValue;
-            }
-            {
-                LOCK(cs_nBlockSequenceId);
-                pindex->nSequenceId = nBlockSequenceId++;
-            }
-            if (!chainActive.Tip() || !setBlockIndexCandidates.value_comp()(pindex, chainActive.Tip()))
-                setBlockIndexCandidates.insert(pindex);
-            auto range = mapBlocksUnlinked.equal_range(pindex);
-            while (range.first != range.second)
-            {
-               auto it = range.first;
-               queue.push_back(it->second);
-               range.first = mapBlocksUnlinked.erase(it);
-            }
-        }
-    }
-    else
-    {
-        if (pindexNew->pprev && pindexNew->pprev->IsValid(BLOCK_VALID_TREE))
-            mapBlocksUnlinked.emplace(pindexNew->pprev, pindexNew);
-    }
-
-    return true;
+    pindexNew->UpdateChainTx();
 }
 
 bool FindBlockPos(CValidationState &state, CDiskBlockPos &pos, unsigned int nAddSize, unsigned int nHeight, uint64_t nTime, bool fKnown = false)
@@ -3640,6 +3656,9 @@ bool AcceptBlockHeader(
             *ppindex = pindex;
         if (pindex->nStatus & BLOCK_FAILED_MASK)
             return state.Invalid(error("%s: block is marked invalid", __func__), 0, "duplicate");
+        // if previous block has failed contextual validation - add it to unlinked block map as well
+        if (gl_BlockCache.check_prev_block(pindex))
+            LogPrint("net", "block %s (height=%d) added to cached unlinked map\n", hash.ToString(), pindex->nHeight);
         return true;
     }
 
@@ -3724,8 +3743,8 @@ bool AcceptBlock(
 
     // See method docstring for why this is always disabled
     auto verifier = libzcash::ProofVerifier::Disabled();
-    if ((!CheckBlock(block, state, chainparams, verifier)) || 
-         !ContextualCheckBlock(block, state, chainparams, pindex->pprev))
+    if (!CheckBlock(block, state, chainparams, verifier) || 
+        !ContextualCheckBlock(block, state, chainparams, pindex->pprev))
     {
         if (state.IsInvalid() && !state.CorruptionPossible())
         {
@@ -3747,8 +3766,7 @@ bool AcceptBlock(
             return error("AcceptBlock(): FindBlockPos failed");
         if (!dbp && !WriteBlockToDisk(block, blockPos, chainparams.MessageStart()))
             AbortNode(state, "Failed to write block");
-        if (!ReceivedBlockTransactions(block, state, chainparams, pindex, blockPos))
-            return error("AcceptBlock(): ReceivedBlockTransactions failed");
+        ReceivedBlockTransactions(block, state, chainparams, pindex, blockPos);
     } catch (const runtime_error& e) {
         return AbortNode(state, string("System error: ") + e.what());
     }
@@ -4019,9 +4037,9 @@ CBlockIndex * InsertBlockIndex(uint256 hash)
         return nullptr;
 
     // Return existing
-    BlockMap::iterator mi = mapBlockIndex.find(hash);
+    auto mi = mapBlockIndex.find(hash);
     if (mi != mapBlockIndex.end())
-        return (*mi).second;
+        return mi->second;
 
     // Create new
     CBlockIndex* pindexNew = new CBlockIndex();
@@ -4051,37 +4069,7 @@ static bool LoadBlockIndexDB(const CChainParams& chainparams)
         pindex->nChainWork = (pindex->pprev ? pindex->pprev->nChainWork : 0) + GetBlockProof(*pindex);
         // We can link the chain of blocks for which we've received transactions at some point.
         // Pruned nodes may have deleted the block.
-        if (pindex->nTx > 0)
-        {
-            if (pindex->pprev)
-            {
-                if (pindex->pprev->nChainTx)
-                {
-                    pindex->nChainTx = pindex->pprev->nChainTx + pindex->nTx;
-                    if (pindex->pprev->nChainSproutValue && pindex->nSproutValue)
-                        pindex->nChainSproutValue = *pindex->pprev->nChainSproutValue + *pindex->nSproutValue;
-                    else
-                        pindex->nChainSproutValue = nullopt;
-                    if (pindex->pprev->nChainSaplingValue)
-                        pindex->nChainSaplingValue = *pindex->pprev->nChainSaplingValue + pindex->nSaplingValue;
-                    else
-                        pindex->nChainSaplingValue = nullopt;
-                }
-                else
-                {
-                    pindex->nChainTx = 0;
-                    pindex->nChainSproutValue = nullopt;
-                    pindex->nChainSaplingValue = nullopt;
-                    mapBlocksUnlinked.insert(make_pair(pindex->pprev, pindex));
-                }
-            }
-            else
-            {
-                pindex->nChainTx = pindex->nTx;
-                pindex->nChainSproutValue = pindex->nSproutValue;
-                pindex->nChainSaplingValue = pindex->nSaplingValue;
-            }
-        }
+        pindex->UpdateChainValues();
         // Construct in-memory chain of branch IDs.
         // Relies on invariant: a block that does not activate a network upgrade
         // will always be valid under the same consensus rules as its parent.
@@ -4449,7 +4437,7 @@ void UnloadBlockIndex()
     mapBlocksUnlinked.clear();
     vinfoBlockFile.clear();
     nLastBlockFile = 0;
-    nBlockSequenceId = 1;
+    nBlockSequenceId.store(1);
     mapBlockSource.clear();
     mapBlocksInFlight.clear();
     nQueuedValidatedHeaders = 0;
@@ -4510,8 +4498,7 @@ bool InitBlockIndex(const CChainParams& chainparams)
             if (!WriteBlockToDisk(block, blockPos, chainparams.MessageStart()))
                 return error("LoadBlockIndex(): writing genesis block to disk failed");
             CBlockIndex *pindex = AddToBlockIndex(block, chainparams.GetConsensus());
-            if (!ReceivedBlockTransactions(block, state, chainparams, pindex, blockPos))
-                return error("LoadBlockIndex(): genesis block not accepted");
+            ReceivedBlockTransactions(block, state, chainparams, pindex, blockPos);
             if (!ActivateBestChain(state, chainparams, &block))
                 return error("LoadBlockIndex(): genesis block cannot be activated");
             // Force a chainstate write so that when we VerifyDB in a moment, it doesn't check stale data
@@ -4659,9 +4646,8 @@ static void CheckBlockIndex(const Consensus::Params& consensusParams)
 
     // Build forward-pointing map of the entire block tree.
     multimap<CBlockIndex*,CBlockIndex*> forward;
-    for (BlockMap::iterator it = mapBlockIndex.begin(); it != mapBlockIndex.end(); it++) {
-        forward.insert(make_pair(it->second->pprev, it->second));
-    }
+    for (const auto& [hash, blkIndex] : mapBlockIndex)
+        forward.emplace(blkIndex->pprev, blkIndex);
 
     assert(forward.size() == mapBlockIndex.size());
 
@@ -5690,10 +5676,13 @@ static bool ProcessMessage(const CChainParams& chainparams, CNode* pfrom, string
         // conditions in AcceptBlock().
         const bool bForceProcessing = pfrom->fWhitelisted && !fnIsInitialBlockDownload(consensusParams);
         ProcessNewBlock(state, chainparams, pfrom, &block, bForceProcessing);
+        // some input transactions may be missing for this block, in this case ProcessNewBlock 
+        // will set rejection code REJECT_MISSING_INPUTS.
         if (state.IsRejectCode(REJECT_MISSING_INPUTS))
         {
+            // add block to cache to revalidate later on periodically
             if (gl_BlockCache.add_block(inv.hash, pfrom->id, move(block)))
-                LogPrint("net", "block %s cached for revalidation, peer=%d\n", inv.hash.ToString(), pfrom->id);
+                LogPrintf("block %s cached for revalidation, peer=%d\n", inv.hash.ToString(), pfrom->id);
             else
                 LogPrint("net", "block %s already exists in a revalidation cache, peer=%d\n", inv.hash.ToString(), pfrom->id);
         }
@@ -6388,7 +6377,7 @@ bool SendMessages(const CChainParams& chainparams, CNode* pto, bool fSendTrickle
         // revalidate cached blocks if any
         const size_t nBlocksRevalidated = gl_BlockCache.revalidate_blocks(chainparams);
         if (nBlocksRevalidated)
-            LogPrintf("%zu block%s revalidated", nBlocksRevalidated, nBlocksRevalidated > 1 ? "s" : "");
+            LogPrintf("%zu block%s revalidated (block cache size=%zu)\n", nBlocksRevalidated, nBlocksRevalidated > 1 ? "s" : "", gl_BlockCache.size());
     }
     return true;
 }

@@ -5,7 +5,7 @@
 #include "main.h"
 #include "utiltest.h"
 
-extern bool ReceivedBlockTransactions(const CBlock &block, CValidationState& state, CBlockIndex *pindexNew, const CDiskBlockPos& pos);
+extern void ReceivedBlockTransactions(const CBlock &block, CValidationState& state, CBlockIndex *pindexNew, const CDiskBlockPos& pos);
 
 void ExpectOptionalAmount(CAmount expected, std::optional<CAmount> actual) {
     EXPECT_TRUE((bool)actual);
