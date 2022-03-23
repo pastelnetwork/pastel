@@ -17,11 +17,12 @@ namespace Checkpoints {
      * for every system. When reindexing from a fast disk with a slow CPU, it
      * can be up to 20, while when downloading from a slow network with a
      * fast multicore CPU, it won't be much higher than 1.
-     */
-    static const double SIGCHECK_VERIFICATION_FACTOR = 5.0;
+     */ 
+    static constexpr double SIGCHECK_VERIFICATION_FACTOR = 5.0;
 
     //! Guess how far we are in the verification process at the given block index
-    double GuessVerificationProgress(const CCheckpointData& data, CBlockIndex *pindex, bool fSigchecks) {
+    double GuessVerificationProgress(const CCheckpointData& data, CBlockIndex *pindex, bool fSigchecks)
+    {
         if (!pindex)
             return 0.0;
 

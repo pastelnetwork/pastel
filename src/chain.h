@@ -1,9 +1,9 @@
 #pragma once
 // Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2014 The Bitcoin Core developers
-// Copyright (c) 2018-2021 Pastel Core developers
+// Copyright (c) 2018-2022 Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
-// file COPYING or http://www.opensource.org/licenses/mit-license.php.
+// file COPYING or https://www.opensource.org/licenses/mit-license.php.
 
 #include <arith_uint256.h>
 #include <primitives/block.h>
@@ -11,8 +11,6 @@
 #include <tinyformat.h>
 #include <uint256.h>
 #include <vector_types.h>
-
-#include <vector>
 
 constexpr int SPROUT_VALUE_VERSION = 1001400;
 constexpr int SAPLING_VALUE_VERSION = 1010100;
@@ -195,87 +193,18 @@ public:
     //! (memory only) Sequential id assigned to distinguish order in which blocks are received.
     uint32_t nSequenceId;
 
-    void SetNull()
-    {
-        phashBlock = nullptr;
-        pprev = nullptr;
-        pskip = nullptr;
-        nHeight = 0;
-        nFile = 0;
-        nDataPos = 0;
-        nUndoPos = 0;
-        nChainWork = arith_uint256();
-        nTx = 0;
-        nChainTx = 0;
-        nStatus = 0;
-        nCachedBranchId = std::nullopt;
-        hashSproutAnchor = uint256();
-        hashFinalSproutRoot = uint256();
-        nSequenceId = 0;
-        nSproutValue = std::nullopt;
-        nChainSproutValue = std::nullopt;
-        nSaplingValue = 0;
-        nChainSaplingValue = std::nullopt;
-
-        nVersion       = 0;
-        hashMerkleRoot = uint256();
-        hashFinalSaplingRoot   = uint256();
-        nTime          = 0;
-        nBits          = 0;
-        nNonce         = uint256();
-        nSolution.clear();
-    }
+    void SetNull();
 
     CBlockIndex()
     {
         SetNull();
     }
 
-    CBlockIndex(const CBlockHeader& block)
-    {
-        SetNull();
+    CBlockIndex(const CBlockHeader& block);
 
-        nVersion       = block.nVersion;
-        hashMerkleRoot = block.hashMerkleRoot;
-        hashFinalSaplingRoot   = block.hashFinalSaplingRoot;
-        nTime          = block.nTime;
-        nBits          = block.nBits;
-        nNonce         = block.nNonce;
-        nSolution      = block.nSolution;
-    }
-
-    CDiskBlockPos GetBlockPos() const {
-        CDiskBlockPos ret;
-        if (nStatus & BLOCK_HAVE_DATA) {
-            ret.nFile = nFile;
-            ret.nPos  = nDataPos;
-        }
-        return ret;
-    }
-
-    CDiskBlockPos GetUndoPos() const {
-        CDiskBlockPos ret;
-        if (nStatus & BLOCK_HAVE_UNDO) {
-            ret.nFile = nFile;
-            ret.nPos  = nUndoPos;
-        }
-        return ret;
-    }
-
-    CBlockHeader GetBlockHeader() const noexcept
-    {
-        CBlockHeader block;
-        block.nVersion       = nVersion;
-        if (pprev)
-            block.hashPrevBlock = pprev->GetBlockHash();
-        block.hashMerkleRoot = hashMerkleRoot;
-        block.hashFinalSaplingRoot   = hashFinalSaplingRoot;
-        block.nTime          = nTime;
-        block.nBits          = nBits;
-        block.nNonce         = nNonce;
-        block.nSolution      = nSolution;
-        return block;
-    }
+    CDiskBlockPos GetBlockPos() const noexcept;
+    CDiskBlockPos GetUndoPos() const noexcept;
+    CBlockHeader GetBlockHeader() const noexcept;
 
     uint256 GetBlockHash() const noexcept
     {
@@ -312,7 +241,7 @@ public:
     }
 
     //! Check whether this block index entry is valid up to the passed validity level.
-    bool IsValid(enum BlockStatus nUpTo = BLOCK_VALID_TRANSACTIONS) const
+    bool IsValid(enum BlockStatus nUpTo = BLOCK_VALID_TRANSACTIONS) const noexcept
     {
         assert(!(nUpTo & ~BLOCK_VALID_MASK)); // Only validity flags allowed.
         if (nStatus & BLOCK_FAILED_MASK)
@@ -322,7 +251,7 @@ public:
 
     //! Raise the validity level of this block index entry.
     //! Returns true if the validity was changed.
-    bool RaiseValidity(enum BlockStatus nUpTo)
+    bool RaiseValidity(enum BlockStatus nUpTo) noexcept
     {
         assert(!(nUpTo & ~BLOCK_VALID_MASK)); // Only validity flags allowed.
         if (nStatus & BLOCK_FAILED_MASK)
@@ -338,8 +267,14 @@ public:
     void BuildSkip();
 
     //! Efficiently find an ancestor of this block.
-    CBlockIndex* GetAncestor(int height);
-    const CBlockIndex* GetAncestor(int height) const;
+    CBlockIndex* GetAncestor(const int height) noexcept;
+    const CBlockIndex* GetAncestor(const int height) const noexcept;
+
+    // update block chain values
+    bool UpdateChainValues();
+
+    // update tx count, chain values for this block and all descendants
+    void UpdateChainTx();
 };
 
 /** Used to marshal pointers into hashes for db storage. */
@@ -458,9 +393,10 @@ public:
     }
 
     /** Returns the index entry at a particular height in this chain, or NULL if no such height exists. */
-    CBlockIndex *operator[](int nHeight) const {
+    CBlockIndex *operator[](int nHeight) const
+    {
         if (nHeight < 0 || nHeight >= (int)vChain.size())
-            return NULL;
+            return nullptr;
         return vChain[nHeight];
     }
 
@@ -480,7 +416,7 @@ public:
         if (Contains(pindex))
             return (*this)[pindex->nHeight + 1];
         else
-            return NULL;
+            return nullptr;
     }
 
     /** Return the maximal height in the chain. Is equal to chain.Tip() ? chain.Tip()->nHeight : -1. */
