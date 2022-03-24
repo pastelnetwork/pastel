@@ -2178,7 +2178,7 @@ bool DisconnectBlock(
             const CTxUndo& txundo = blockUndo.vtxundo[i - 1];
             if (txundo.vprevout.size() != tx.vin.size())
                 return error("DisconnectBlock(): transaction and undo data inconsistent");
-            for (unsigned int j = tx.vin.size(); j-- > 0;)
+            for (unsigned int j = static_cast<unsigned int>(tx.vin.size()); j-- > 0;)
             {
                 const COutPoint& out = tx.vin[j].prevout;
                 const CTxInUndo& undo = txundo.vprevout[j];
