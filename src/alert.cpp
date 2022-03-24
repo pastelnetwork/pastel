@@ -16,8 +16,6 @@
 #include "ui_interface.h"
 #include "util.h"
 
-#include <boost/algorithm/string/classification.hpp>
-
 using namespace std;
 
 map<uint256, CAlert> mapAlerts;

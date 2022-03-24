@@ -198,7 +198,7 @@ public:
         }
         catch ([[maybe_unused]] const std::ios_base::failure& e)
         {
-            LogPrintf("CMasternode: missing extP2P!");
+            LogPrintf("CMasternode: missing extP2P!\n");
         }
     }
 
@@ -343,7 +343,7 @@ public:
         }
         catch ([[maybe_unused]] const std::ios_base::failure& e)
         {
-            LogPrintf("CMasternodeBroadcast: missing extP2P!");
+            LogPrintf("CMasternodeBroadcast: missing extP2P!\n");
         }
     }
 

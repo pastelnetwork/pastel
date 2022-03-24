@@ -1,5 +1,6 @@
 // Copyright (c) 2010 Satoshi Nakamoto
 // Copyright (c) 2009-2014 The Bitcoin Core developers
+// Copyright (c) 2018-2022 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -31,13 +32,13 @@ Genesis block for RegTest found
 #include <variant>
 #include <vector>
 
-#include "key_io.h"
-#include "main.h"
-#include "crypto/equihash.h"
-#include "port_config.h"
-#include "util.h"
-#include "utilstrencodings.h"
-#include "chainparamsseeds.h"
+#include <key_io.h>
+#include <main.h>
+#include <crypto/equihash.h>
+#include <port_config.h>
+#include <util.h>
+#include <utilstrencodings.h>
+#include <chainparamsseeds.h>
 
 using namespace std;
 
@@ -391,15 +392,19 @@ public:
         fTestnetToBeDeprecatedFieldRPC = false;
 
         checkpointData.mapCheckpoints = {
-            {0, consensus.hashGenesisBlock},
-            {2700, uint256S("00005558df2a688c6d53c7b78001074515d33cd29589a311f8c6aa4db2df4e44")}
+            { 0,        consensus.hashGenesisBlock },
+            // 1612317919: Tuesday, February 2, 2021 9:05:19 PM GMT-05:00
+            // tx: 3588; txPerDay: 800 (actual - 765)
+            { 2'700,    uint256S("00005558df2a688c6d53c7b78001074515d33cd29589a311f8c6aa4db2df4e44") },
+            // 1648076650: Wednesday, March 23, 2022 7:04:10 PM GMT-04:00
+            // tx: 457'181; txPerDay: 1120
+            { 237'200,  uint256S("0000000230338b9476ae927240f6d96be57e3f85a8169ede6ec654823757acd7") }
         };
-        checkpointData.nTimeLastCheckpoint = 1612317919; // * UNIX timestamp of last checkpoint block
-        checkpointData.nTransactionsLastCheckpoint = 3588; // * total number of transactions between genesis and last checkpoint
+        checkpointData.nTimeLastCheckpoint = 1648076650; // * UNIX timestamp of last checkpoint block
+        checkpointData.nTransactionsLastCheckpoint = 457'181; // * total number of transactions between genesis and last checkpoint
                                 //   (the tx=... number in the UpdateTip debug.log lines - "UpdateTip: new best=... tx=...")
-        checkpointData.fTransactionsPerDay = 800; // * estimated number of transactions per day after checkpoint
+        checkpointData.fTransactionsPerDay = 1120; // * estimated number of transactions per day after checkpoint
                                 //   total number of tx / (checkpoint block height / (24 * 24))
-                                //after first checkpoint math is = 765, but I'm setting 800
     }
 };
 
