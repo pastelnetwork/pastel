@@ -109,6 +109,55 @@ passphrase for the private key cannot be empty!)");
     return resultObj;
 }
 
+std::string readFile(std::string const& filepath)
+{
+    std::ifstream ifs(filepath, std::ios::binary|std::ios::ate);
+    if(!ifs)
+        throw runtime_error(strprintf("Cannot open file '%s'", filepath));
+    
+    auto end = ifs.tellg();
+    ifs.seekg(0, std::ios::beg);
+    auto size = std::size_t(end - ifs.tellg());
+    if(size == 0)
+        throw runtime_error(strprintf("File '%s' is empty", filepath));
+    
+    std::vector<unsigned char> buffer(size);
+    if(!ifs.read((char*)buffer.data(), buffer.size()))
+        throw runtime_error(strprintf("Cannot read file '%s'", filepath));
+    
+    return std::string(buffer.begin(), buffer.end());
+}
+
+UniValue pastelid_sign_file(const UniValue& params)
+{
+    if (params.size() < 4)
+        throw JSONRPCError(RPC_INVALID_PARAMETER,
+                           R"(pastelid sign-file file-path "PastelID" "passphrase" ("algorithm")
+Sign file at file-path with the internally stored private key associated with the PastelID (algorithm: ed448 [default] or legroast).)");
+    
+    SecureString strKeyPass(params[3].get_str());
+    if (strKeyPass.empty())
+        throw runtime_error(
+            R"(pastelid sign-file file-path "PastelID" <"passphrase"> ("algorithm")
+passphrase for the private key cannot be empty!)");
+
+    string sAlgorithm;
+    if (params.size() >= 5)
+        sAlgorithm = params[4].get_str();
+    const CPastelID::SIGN_ALGORITHM alg = CPastelID::GetAlgorithmByName(sAlgorithm);
+    if (alg == CPastelID::SIGN_ALGORITHM::not_defined)
+        throw runtime_error(strprintf("Signing algorithm '%s' is not supported", sAlgorithm));
+
+    std::string data = readFile(params[1].get_str());
+    
+    UniValue resultObj(UniValue::VOBJ);
+    
+    string sSignature = CPastelID::Sign(data, params[2].get_str(), move(strKeyPass), alg, true);
+    resultObj.pushKV("signature", move(sSignature));
+
+    return resultObj;
+}
+
 UniValue pastelid_verify(const UniValue& params)
 {
     if (params.size() < 4)
@@ -126,6 +175,30 @@ Verify "text"'s "signature" with with the private key associated with the Pastel
     UniValue resultObj(UniValue::VOBJ);
 
     const bool bRes = CPastelID::Verify(params[1].get_str(), params[2].get_str(), params[3].get_str(), alg, true);
+    resultObj.pushKV("verification", bRes ? "OK" : "Failed");
+
+    return resultObj;
+}
+
+UniValue pastelid_verify_file(const UniValue& params)
+{
+    if (params.size() < 4)
+        throw JSONRPCError(RPC_INVALID_PARAMETER,
+                           R"(pastelid verify-file file-path "signature" "PastelID" ("algorithm")
+Verify file's "signature" with with the private key associated with the PastelID (algorithm: ed448 or legroast).)");
+    
+    string sAlgorithm;
+    if (params.size() >= 5)
+        sAlgorithm = params[4].get_str();
+    const CPastelID::SIGN_ALGORITHM alg = CPastelID::GetAlgorithmByName(sAlgorithm);
+    if (alg == CPastelID::SIGN_ALGORITHM::not_defined)
+        throw runtime_error(strprintf("Signing algorithm '%s' is not supported", sAlgorithm));
+
+    std::string data = readFile(params[1].get_str());
+    
+    UniValue resultObj(UniValue::VOBJ);
+
+    const bool bRes = CPastelID::Verify(data, params[2].get_str(), params[3].get_str(), alg, true);
     resultObj.pushKV("verification", bRes ? "OK" : "Failed");
 
     return resultObj;
@@ -188,7 +261,7 @@ strprintf(R"(pastelid passwd "PastelID" "old_passphrase" "new_passphrase"
  */
 UniValue pastelid(const UniValue& params, bool fHelp)
 {
-    RPC_CMD_PARSER(PASTELID, params, newkey, importkey, list, sign, sign__by__key, verify, passwd);
+    RPC_CMD_PARSER(PASTELID, params, newkey, importkey, list, sign, sign__file, sign__by__key, verify, verify__file, passwd);
 
     if (fHelp || !PASTELID.IsCmdSupported())
         throw runtime_error(
@@ -200,17 +273,19 @@ Arguments:
 1. "command"        (string or set of strings, required) The command to execute
 
 Available commands:
-  newkey "passphrase"                                 - Generate new PastelID, associated keys (EdDSA448) and LegRoast signing keys.
-                                                        Return PastelID and LegRoast signing public key base58-encoded.
-                                                        "passphrase" will be used to encrypt the key file.
-  importkey "key" <"passphrase">                      - Import private "key" (EdDSA448) as PKCS8 encrypted string in PEM format. Return PastelID base58-encoded
-                                                        "passphrase" (optional) to decrypt the key for the purpose of validating and returning PastelID.
-                                                        NOTE: without "passphrase" key cannot be validated and if key is bad (not EdDSA448) call to "sign" will fail
-  list                                                - List all internally stored PastelIDs and associated keys. 
-  sign "text" "PastelID" "passphrase" ("algorithm")   - Sign "text" with the internally stored private key associated with the PastelID (algorithm: ed448 or legroast).
-  sign-by-key "text" "key" "passphrase"               - Sign "text" with the private "key" (EdDSA448) as PKCS8 encrypted string in PEM format.
-  verify "text" "signature" "PastelID" ("algorithm")  - Verify "text"'s "signature" with the private key associated with the PastelID (algorithm: ed448 or legroast).
-  passwd "PastelID" "old_passphrase" "new_passphrase" - Change passphrase used to encrypt the secure container associated with the PastelID.
+  newkey "passphrase"                                          - Generate new PastelID, associated keys (EdDSA448) and LegRoast signing keys.
+                                                                 Return PastelID and LegRoast signing public key base58-encoded.
+                                                                 "passphrase" will be used to encrypt the key file.
+  importkey "key" <"passphrase">                               - Import private "key" (EdDSA448) as PKCS8 encrypted string in PEM format. Return PastelID base58-encoded
+                                                                 "passphrase" (optional) to decrypt the key for the purpose of validating and returning PastelID.
+                                                                 NOTE: without "passphrase" key cannot be validated and if key is bad (not EdDSA448) call to "sign" will fail
+  list                                                         - List all internally stored PastelIDs and associated keys.
+  sign "text" "PastelID" "passphrase" ("algorithm")            - Sign "text" with the internally stored private key associated with the PastelID (algorithm: ed448 or legroast).
+  sign-file file-path "PastelID" "passphrase" ("algorithm")    - Sign file-path with the internally stored private key associated with the PastelID (algorithm: ed448 or legroast).
+  sign-by-key "text" "key" "passphrase"                        - Sign "text" with the private "key" (EdDSA448) as PKCS8 encrypted string in PEM format.
+  verify "text" "signature" "PastelID" ("algorithm")           - Verify "text"'s "signature" with the private key associated with the PastelID (algorithm: ed448 or legroast).
+  verify-file file-path "signature" "PastelID" ("algorithm")   - Verify file-path's "signature" with the private key associated with the PastelID (algorithm: ed448 or legroast).
+  passwd "PastelID" "old_passphrase" "new_passphrase"          - Change passphrase used to encrypt the secure container associated with the PastelID.
 )");
 
     UniValue result(UniValue::VOBJ);
@@ -234,6 +309,10 @@ Available commands:
         result = pastelid_sign(params);
         break;
 
+    case RPC_CMD_PASTELID::sign__file:
+        result = pastelid_sign_file(params);
+        break;
+        
     case RPC_CMD_PASTELID::sign__by__key: // sign-by-key
         result = pastelid_signbykey(params);
         break;
@@ -241,6 +320,10 @@ Available commands:
     // verify "text"'s "signature" with the public key associated with the PastelID (algorithm: ed448 or legroast)
     case RPC_CMD_PASTELID::verify:
         result = pastelid_verify(params);
+        break;
+
+    case RPC_CMD_PASTELID::verify__file:
+        result = pastelid_verify_file(params);
         break;
 
     case RPC_CMD_PASTELID::passwd:
