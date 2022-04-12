@@ -115,6 +115,10 @@ Examples:
         masterNodeCtrl.masternodeManager.UpdateLastPaid(pindex);
     }
 
+    auto is_filtered = [&](const auto&... filters) -> bool {
+        return !strFilter.empty() && ((filters.find(strFilter) == std::string::npos) && ...);
+    };
+
     KeyIO keyIO(Params());
     UniValue obj(UniValue::VOBJ);
     const auto mode = MNLIST.cmd();
@@ -125,7 +129,7 @@ Examples:
         for (const auto& mnpair : vMasternodeRanks)
         {
             string strOutpoint = mnpair.second.vin.prevout.ToStringShort();
-            if (!strFilter.empty() && strOutpoint.find(strFilter) == string::npos)
+            if (is_filtered(strOutpoint))
                 continue;
             obj.pushKV(strOutpoint, mnpair.first);
         }
@@ -146,7 +150,7 @@ Examples:
             {
                 case RPC_CMD_MNLIST::activeseconds:
                 {
-                    if (!strFilter.empty() && strOutpoint.find(strFilter) == string::npos)
+                    if (is_filtered(strOutpoint))
                         continue;
                     obj.pushKV(strOutpoint, (int64_t)(mn.lastPing.sigTime - mn.sigTime));
                 } break;
@@ -154,8 +158,7 @@ Examples:
                 case RPC_CMD_MNLIST::addr:
                 {
                     string strAddress = mn.addr.ToString();
-                    if (!strFilter.empty() && strAddress.find(strFilter) == string::npos &&
-                        strOutpoint.find(strFilter) == string::npos)
+                    if (is_filtered(strAddress, strOutpoint))
                         continue; //-V1051
                     obj.pushKV(strOutpoint, move(strAddress));
                 } break;
@@ -173,8 +176,7 @@ Examples:
                         << setw(6) << mn.GetLastPaidBlock() << " " 
                         << mn.addr.ToString();
                     string strFull = streamFull.str();
-                    if (!strFilter.empty() && strFull.find(strFilter) == string::npos &&
-                        strOutpoint.find(strFilter) == string::npos)
+                    if (is_filtered(strFull, strOutpoint))
                         continue; //-V1051
                     obj.pushKV(strOutpoint, move(strFull));
                 } break;
@@ -190,52 +192,49 @@ Examples:
                         << setw(8) << (int64_t)(mn.lastPing.sigTime - mn.sigTime) << " " 
                         << mn.addr.ToString();
                     string strInfo = streamInfo.str();
-                    if (!strFilter.empty() && strInfo.find(strFilter) == string::npos &&
-                        strOutpoint.find(strFilter) == string::npos)
+                    if (is_filtered(strInfo, strOutpoint))
                         continue; //-V1051
                     obj.pushKV(strOutpoint, move(strInfo));
                 } break;
                 
                 case RPC_CMD_MNLIST::lastpaidblock:
                 {
-                    if (!strFilter.empty() && strOutpoint.find(strFilter) == string::npos)
+                    if (is_filtered(strOutpoint))
                         continue;
                     obj.pushKV(strOutpoint, mn.GetLastPaidBlock());
                 } break;
 
                 case RPC_CMD_MNLIST::lastpaidtime:
                 {
-                    if (!strFilter.empty() && strOutpoint.find(strFilter) == string::npos)
+                    if (is_filtered(strOutpoint))
                         continue;
                     obj.pushKV(strOutpoint, mn.GetLastPaidTime());
                 } break;
 
                 case RPC_CMD_MNLIST::lastseen:
                 {
-                    if (!strFilter.empty() && strOutpoint.find(strFilter) == string::npos)
+                    if (is_filtered(strOutpoint))
                         continue;
                     obj.pushKV(strOutpoint, (int64_t)mn.lastPing.sigTime);
                 } break;
 
                 case RPC_CMD_MNLIST::payee:
                 {
-                    if (!strFilter.empty() && address.find(strFilter) == string::npos &&
-                        strOutpoint.find(strFilter) == string::npos)
+                    if (is_filtered(address, strOutpoint))
                         continue;
                     obj.pushKV(strOutpoint, move(address));
                 } break;
 
                 case RPC_CMD_MNLIST::protocol: 
                 {
-                    if (!strFilter.empty() && strFilter != strprintf("%d", mn.nProtocolVersion) &&
-                        strOutpoint.find(strFilter) == string::npos)
+                    if (is_filtered(strOutpoint) && strFilter != strprintf("%d", mn.nProtocolVersion))
                         continue;
                     obj.pushKV(strOutpoint, (int64_t)mn.nProtocolVersion);
                 } break;
 
                 case RPC_CMD_MNLIST::pubkey: 
                 {
-                    if (!strFilter.empty() && strOutpoint.find(strFilter) == string::npos)
+                    if (is_filtered(strOutpoint))
                         continue;
                     obj.pushKV(strOutpoint, HexStr(mn.pubKeyMasternode));
                 } break;
@@ -243,14 +242,17 @@ Examples:
                 case RPC_CMD_MNLIST::status: 
                 {
                     string strStatus = mn.GetStatus();
-                    if (!strFilter.empty() && strStatus.find(strFilter) == string::npos &&
-                        strOutpoint.find(strFilter) == string::npos)
+                    if (is_filtered(strStatus, strOutpoint))
                         continue; //-V1051
                     obj.pushKV(strOutpoint, move(strStatus));
                 } break;
 
                 case RPC_CMD_MNLIST::extra: 
                 {
+                    string strStatus = mn.GetStatus();
+                    if (is_filtered(strStatus, strOutpoint))
+                        continue;
+                    
                     UniValue objItem(UniValue::VOBJ);
                     objItem.pushKV("extAddress", mn.strExtraLayerAddress);
                     objItem.pushKV("extP2P", mn.strExtraLayerP2P);
