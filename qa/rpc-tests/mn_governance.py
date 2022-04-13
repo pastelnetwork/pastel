@@ -49,9 +49,33 @@ class MasterNodeGovernanceTest (MasterNodeCommon):
         self.setup_masternodes_network(private_keys_list, self.number_of_simple_nodes)
 
     def run_test (self):
+        # None of the nodes are active yet
+        assert_equal(self.nodes[0].governance("ticket", "add", "", "1000", "test", "yes")["errorMessage"], 
+            "Only Active Master Node can vote")
+        assert_equal(self.nodes[-1].governance("ticket", "add", "", "1000", "test", "yes")["errorMessage"], 
+            "Only Active Master Node can vote")
+
         self.mining_enough(self.mining_node_num, self.number_of_master_nodes)
         cold_nodes = {k: v for k, v in enumerate(private_keys_list)}
-        _, _, _ = self.start_mn(self.mining_node_num, self.hot_node_num, cold_nodes, self.total_number_of_nodes)
+
+        def pre_test():
+            # Some nodes are active but not enabled
+            # and some nodes are not master nodes
+            assert_equal(self.nodes[0].governance("ticket", "add", "", "1000", "test", "yes")["errorMessage"], 
+                "Only enabled Master Node can vote")
+            assert_equal(self.nodes[-1].governance("ticket", "add", "", "1000", "test", "yes")["errorMessage"], 
+                "Only Active Master Node can vote")
+
+        def post_test():
+            # Some nodes are active but not old enough to vote
+            # and some nodes are not master nodes
+            assert_equal(self.nodes[0].governance("ticket", "add", "", "1000", "test", "yes")["errorMessage"], 
+                "Master Node is not old enough to vote")
+            assert_equal(self.nodes[-1].governance("ticket", "add", "", "1000", "test", "yes")["errorMessage"], 
+                "Only Active Master Node can vote")
+
+        _, _, _ = self.start_mn(self.mining_node_num, self.hot_node_num, cold_nodes, self.total_number_of_nodes,
+                        pre_test, post_test)
 
         self.reconnect_nodes(0, self.number_of_master_nodes)
         self.sync_all()

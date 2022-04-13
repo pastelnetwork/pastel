@@ -3,6 +3,7 @@
 # Distributed under the MIT software license, see the accompanying
 # file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
+from requests import post
 from pastel_test_framework import PastelTestFramework
 from test_framework.util import (
     assert_equal, 
@@ -29,7 +30,7 @@ class MasterNodeCommon (PastelTestFramework):
         for index, key in enumerate(private_keys_list):
             print(f"start MN {index}")
             self.nodes.append(start_node(index, self.options.tmpdir, [f"-debug={debug_flags}", "-masternode", "-txindex=1", "-reindex", f"-masternodeprivkey={key}"]))
-        
+  
         for index2 in range (index+1, index+number_of_non_mn_to_start+1):
             print(f"start non-MN {index2}")
             self.nodes.append(start_node(index2, self.options.tmpdir, [f"-debug={debug_flags}"]))
@@ -56,7 +57,8 @@ class MasterNodeCommon (PastelTestFramework):
         blocks_to_mine = int(max(min_blocks_to_mine, 100))
         assert_equal(self.nodes[mining_node_num].getbalance(), self._reward*blocks_to_mine)
 
-    def start_mn(self, mining_node_num, hot_node_num, cold_nodes, num_of_nodes):
+    def start_mn(self, mining_node_num, hot_node_num, cold_nodes, num_of_nodes, 
+        preenabled_test_functor = None, postenabled_test_functor = None):
         
         mn_ids = dict()
         mn_aliases = dict()
@@ -115,6 +117,9 @@ class MasterNodeCommon (PastelTestFramework):
             assert_equal(res["alias"], mn_alias)
             assert_equal(res["result"], "successful")
             time.sleep(1)
+
+        if preenabled_test_functor is not None:
+            preenabled_test_functor()
         
         print("Waiting for PRE_ENABLED...")
         for ind, num in enumerate(mn_ids):
@@ -126,6 +131,9 @@ class MasterNodeCommon (PastelTestFramework):
             wait = 120 if ind == 0 else 0
             self.wait_for_mn_state(wait, 20, "ENABLED", self.nodes[0:num_of_nodes], mn_ids[num])
 
+        if postenabled_test_functor is not None:
+            postenabled_test_functor()
+            
         return mn_ids, mn_aliases, mn_collateral_addresses
 
 

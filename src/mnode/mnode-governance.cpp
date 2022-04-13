@@ -125,23 +125,23 @@ bool CMasternodeGovernance::CanVote(std::string& strErrorRet) const
 {
     if (!masterNodeCtrl.IsActiveMasterNode()){
         strErrorRet = "Only Active Master Node can vote";
+        return false;
     }
 
     auto masterNode = CMasternode{};
     if(!masterNodeCtrl.masternodeManager.Get(masterNodeCtrl.activeMasternode.outpoint, masterNode)){
         strErrorRet = "Failure retrieving Master Node";
+        return false;
     }
 
     if (!masterNode.IsEnabled()){
         strErrorRet = "Only enabled Master Node can vote";
+        return false;
     }
 
     constexpr static auto thirty_days = int{30 * 24 * 60};
     if (masterNode.IsBroadcastedWithin(thirty_days)){
         strErrorRet = "Master Node is not old enough to vote";
-    }
-
-    if (!strErrorRet.empty()){
         return false;
     }
 
