@@ -3,7 +3,6 @@
 # Distributed under the MIT software license, see the accompanying
 # file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-from requests import post
 from pastel_test_framework import PastelTestFramework
 from test_framework.util import (
     assert_equal, 
@@ -133,7 +132,7 @@ class MasterNodeCommon (PastelTestFramework):
 
         if postenabled_test_functor is not None:
             postenabled_test_functor()
-            
+
         return mn_ids, mn_aliases, mn_collateral_addresses
 
 
