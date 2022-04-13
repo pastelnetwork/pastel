@@ -66,6 +66,8 @@ class MasterNodeGovernanceTest (MasterNodeCommon):
         self.reconnect_nodes(0, self.number_of_master_nodes)
         self.sync_all()
 
+        self.test_psl21()
+
         print("Run freedcamp ID specific test")
         
         if(TEST_CASE_EXEC_NR == 40300409):
@@ -91,6 +93,22 @@ class MasterNodeGovernanceTest (MasterNodeCommon):
             json.dump(config, f, indent=4)
         return datadir
 
+
+    def test_psl21(self):
+        print("executing psl21 test")
+        print("Wait a min!")
+        time.sleep(60)
+
+        modes = ["activeseconds", "addr", "full", "info", "lastpaidblock", "lastpaidtime",
+            "lastseen", "payee", "protocol", "pubkey", "rank", "status", "extra"]
+
+        for mode in modes:
+            nodelist = self.nodes[0].masternodelist(mode)
+            for outpoint in nodelist:
+                print("filter on ", outpoint)
+                assert_equal(len(self.nodes[0].masternodelist(mode, outpoint)), 1)
+
+
     def test_40300409(self):
         # Sample aliases to be tested
         mn_aliases_to_be_modified = ["mn0", "mn6"]
@@ -103,6 +121,7 @@ class MasterNodeGovernanceTest (MasterNodeCommon):
         print("Wait a min!")
         time.sleep(60)
         mns = self.nodes[0].masternodelist("extra")
+
         # Modifying masternode #1 mn0
         self.modify_masternode_conf_extP2P(mn_aliases_to_be_modified[0],self.hot_node_num, self.options.tmpdir, mn_ext_add_to_modified_p2p )
       
