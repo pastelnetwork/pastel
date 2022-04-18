@@ -115,7 +115,7 @@ Examples:
         masterNodeCtrl.masternodeManager.UpdateLastPaid(pindex);
     }
 
-    auto is_filtered = [&](const auto&... filters) -> bool {
+    const auto is_filtered = [&](const auto&... filters) -> bool {
         return !strFilter.empty() && ((filters.find(strFilter) == std::string::npos) && ...);
     };
 
@@ -131,7 +131,7 @@ Examples:
             string strOutpoint = mnpair.second.vin.prevout.ToStringShort();
             if (is_filtered(strOutpoint))
                 continue;
-            obj.pushKV(strOutpoint, mnpair.first);
+            obj.pushKV(std::move(strOutpoint), mnpair.first);
         }
     } else {
         const auto mapMasternodes = masterNodeCtrl.masternodeManager.GetFullMasternodeMap();
@@ -152,7 +152,7 @@ Examples:
                 {
                     if (is_filtered(strOutpoint))
                         continue;
-                    obj.pushKV(strOutpoint, (int64_t)(mn.lastPing.sigTime - mn.sigTime));
+                    obj.pushKV(std::move(strOutpoint), (int64_t)(mn.lastPing.sigTime - mn.sigTime));
                 } break;
                 
                 case RPC_CMD_MNLIST::addr:
@@ -160,7 +160,7 @@ Examples:
                     string strAddress = mn.addr.ToString();
                     if (is_filtered(strAddress, strOutpoint))
                         continue; //-V1051
-                    obj.pushKV(strOutpoint, move(strAddress));
+                    obj.pushKV(std::move(strOutpoint), move(strAddress));
                 } break;
 
                 case RPC_CMD_MNLIST::full:
@@ -178,7 +178,7 @@ Examples:
                     string strFull = streamFull.str();
                     if (is_filtered(strFull, strOutpoint))
                         continue; //-V1051
-                    obj.pushKV(strOutpoint, move(strFull));
+                    obj.pushKV(std::move(strOutpoint), move(strFull));
                 } break;
 
                 case RPC_CMD_MNLIST::info: 
@@ -194,49 +194,49 @@ Examples:
                     string strInfo = streamInfo.str();
                     if (is_filtered(strInfo, strOutpoint))
                         continue; //-V1051
-                    obj.pushKV(strOutpoint, move(strInfo));
+                    obj.pushKV(std::move(strOutpoint), move(strInfo));
                 } break;
                 
                 case RPC_CMD_MNLIST::lastpaidblock:
                 {
                     if (is_filtered(strOutpoint))
                         continue;
-                    obj.pushKV(strOutpoint, mn.GetLastPaidBlock());
+                    obj.pushKV(std::move(strOutpoint), mn.GetLastPaidBlock());
                 } break;
 
                 case RPC_CMD_MNLIST::lastpaidtime:
                 {
                     if (is_filtered(strOutpoint))
                         continue;
-                    obj.pushKV(strOutpoint, mn.GetLastPaidTime());
+                    obj.pushKV(std::move(strOutpoint), mn.GetLastPaidTime());
                 } break;
 
                 case RPC_CMD_MNLIST::lastseen:
                 {
                     if (is_filtered(strOutpoint))
                         continue;
-                    obj.pushKV(strOutpoint, (int64_t)mn.lastPing.sigTime);
+                    obj.pushKV(std::move(strOutpoint), (int64_t)mn.lastPing.sigTime);
                 } break;
 
                 case RPC_CMD_MNLIST::payee:
                 {
                     if (is_filtered(address, strOutpoint))
                         continue;
-                    obj.pushKV(strOutpoint, move(address));
+                    obj.pushKV(std::move(strOutpoint), move(address));
                 } break;
 
                 case RPC_CMD_MNLIST::protocol: 
                 {
                     if (is_filtered(strOutpoint) && strFilter != strprintf("%d", mn.nProtocolVersion))
                         continue;
-                    obj.pushKV(strOutpoint, (int64_t)mn.nProtocolVersion);
+                    obj.pushKV(std::move(strOutpoint), (int64_t)mn.nProtocolVersion);
                 } break;
 
                 case RPC_CMD_MNLIST::pubkey: 
                 {
                     if (is_filtered(strOutpoint))
                         continue;
-                    obj.pushKV(strOutpoint, HexStr(mn.pubKeyMasternode));
+                    obj.pushKV(std::move(strOutpoint), HexStr(mn.pubKeyMasternode));
                 } break;
 
                 case RPC_CMD_MNLIST::status: 
@@ -244,7 +244,7 @@ Examples:
                     string strStatus = mn.GetStatus();
                     if (is_filtered(strStatus, strOutpoint))
                         continue; //-V1051
-                    obj.pushKV(strOutpoint, move(strStatus));
+                    obj.pushKV(std::move(strOutpoint), move(strStatus));
                 } break;
 
                 case RPC_CMD_MNLIST::extra: 
@@ -259,7 +259,7 @@ Examples:
                     objItem.pushKV("extKey", mn.strExtraLayerKey);
                     objItem.pushKV("extCfg", mn.strExtraLayerCfg);
 
-                    obj.pushKV(strOutpoint, move(objItem));
+                    obj.pushKV(std::move(strOutpoint), move(objItem));
                 } break;
 
                 default:
