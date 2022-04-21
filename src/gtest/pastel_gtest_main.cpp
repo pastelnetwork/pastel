@@ -1,4 +1,6 @@
-// Copyright (c) 2021 The Pastel developers
+// Copyright (c) 2021-2022 The Pastel developers
+// Distributed under the MIT software license, see the accompanying
+// file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include "gmock/gmock.h"
 #include "univalue.h"
 

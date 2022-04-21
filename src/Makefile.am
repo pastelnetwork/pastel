@@ -127,19 +127,22 @@ MNODE_CPP =\
   mnode/rpc/tickets-find.cpp\
   mnode/rpc/tickets-get.cpp\
   mnode/rpc/tickets-tools.cpp\
-  mnode/tickets/pastelid-reg.cpp\
-  mnode/tickets/nft-reg.cpp\
-  mnode/tickets/nft-act.cpp\
-  mnode/tickets/nft-sell.cpp\
-  mnode/tickets/nft-buy.cpp\
-  mnode/tickets/nft-trade.cpp\
-  mnode/tickets/nft-royalty.cpp\
-  mnode/tickets/nft-take-down.cpp\
-  mnode/tickets/username-change.cpp\
-  mnode/tickets/etherium-address-change.cpp\
   mnode/tickets/action-reg.cpp\
   mnode/tickets/action-act.cpp\
+  mnode/tickets/etherium-address-change.cpp\
+  mnode/tickets/nft-act.cpp\
+  mnode/tickets/nft-buy.cpp\
+  mnode/tickets/nft-collection-act.cpp\
+  mnode/tickets/nft-collection-reg.cpp\
+  mnode/tickets/nft-reg.cpp\
+  mnode/tickets/nft-royalty.cpp\
+  mnode/tickets/nft-sell.cpp\
+  mnode/tickets/nft-take-down.cpp\
+  mnode/tickets/nft-trade.cpp\
+  mnode/tickets/pastelid-reg.cpp\
+  mnode/tickets/ticket-extra-fees.cpp\
   mnode/tickets/ticket_signing.cpp\
+  mnode/tickets/username-change.cpp\
   mnode/mnode-config.cpp\
   mnode/mnode-active.cpp\
   mnode/mnode-manager.cpp\
@@ -173,24 +176,27 @@ MNODE_H = \
   mnode/rpc/tickets-find.h\
   mnode/rpc/tickets-get.h\
   mnode/rpc/tickets-tools.h\
-  mnode/tickets/ticket.h\
-  mnode/tickets/ticket-mn-fees.h\
-  mnode/tickets/pastelid-reg.h\
-  mnode/tickets/nft-reg.h\
-  mnode/tickets/nft-act.h\
-  mnode/tickets/nft-sell.h\
-  mnode/tickets/nft-buy.h\
-  mnode/tickets/nft-trade.h\
-  mnode/tickets/nft-take-down.h\
-  mnode/tickets/nft-royalty.h\
-  mnode/tickets/username-change.h\
-  mnode/tickets/etherium-address-change.h\
   mnode/tickets/action-reg.h\
   mnode/tickets/action-act.h\
-  mnode/tickets/ticket_signing.h\
-  mnode/tickets/tickets-all.h\
+  mnode/tickets/etherium-address-change.h\
+  mnode/tickets/ticket.h\
+  mnode/tickets/ticket-extra-fees.h\
+  mnode/tickets/ticket-mn-fees.h\
   mnode/tickets/ticket-types.h\
   mnode/tickets/ticket-utils.h\
+  mnode/tickets/ticket_signing.h\
+  mnode/tickets/tickets-all.h\
+  mnode/tickets/nft-act.h\
+  mnode/tickets/nft-buy.h\
+  mnode/tickets/nft-collection-act.h\
+  mnode/tickets/nft-collection-reg.h\
+  mnode/tickets/nft-reg.h\
+  mnode/tickets/nft-royalty.h\
+  mnode/tickets/nft-sell.h\
+  mnode/tickets/nft-take-down.h\
+  mnode/tickets/nft-trade.h\
+  mnode/tickets/pastelid-reg.h\
+  mnode/tickets/username-change.h\
   mnode/mnode-active.h\
   mnode/mnode-config.h\
   mnode/mnode-db.h\
@@ -312,6 +318,7 @@ BITCOIN_CORE_H = \
   script/sign.h \
   script/standard.h \
   serialize.h \
+  set_types.h \
   streams.h \
   str_types.h\
   support/allocators/secure.h \

@@ -40,7 +40,8 @@ public:
 public:
     CNFTSellTicket() = default;
 
-    explicit CNFTSellTicket(std::string _pastelID) : m_sPastelID(std::move(_pastelID))
+    explicit CNFTSellTicket(std::string _pastelID) : 
+        m_sPastelID(std::move(_pastelID))
     {}
 
     TicketID ID() const noexcept override { return TicketID::Sell; }
@@ -73,8 +74,9 @@ public:
 
     std::string ToJSON() const noexcept override;
     std::string ToStr() const noexcept override;
-    ticket_validation_t IsValid(const bool bPreReg, const uint32_t nDepth) const noexcept override;
-    CAmount TicketPrice(const unsigned int nHeight) const noexcept override { return std::max(10u, askedPrice / 50); }
+    ticket_validation_t IsValid(const bool bPreReg, const uint32_t nCallDepth) const noexcept override;
+    // get ticket price in PSL (2% of asked price)
+    CAmount TicketPricePSL(const uint32_t nHeight) const noexcept override { return std::max<CAmount>(10, askedPrice / 50); }
     bool IsSameSignature(const v_uint8& signature) const noexcept { return m_signature == signature; }
     // sign the ticket with the PastelID's private key - creates signature
     void sign(SecureString&& strKeyPass);

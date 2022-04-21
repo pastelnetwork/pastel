@@ -207,7 +207,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
             "nft_ticket_version": 1,
             "author": self.creator_pastelid1,
             "blocknum": self.creator_ticket_height,
-            "data_hash": "ABCDEFG",
+            "block_hash": "ABCDEFG",
             "copies": self.total_copies,
             "royalty": 0.1,
             "green": True,

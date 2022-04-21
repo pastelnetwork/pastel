@@ -65,5 +65,5 @@ protected:
     nlohmann::json get_signatures_json() const;
 
     // validate ticket signatures
-    ticket_validation_t validate_signatures(const uint32_t nDepth, const uint32_t nCreatorHeight, const std::string &sTicketToValidate) const noexcept;
+    ticket_validation_t validate_signatures(const uint32_t nCallDepth, const uint32_t nCreatorHeight, const std::string &sTicketToValidate) const noexcept;
 };

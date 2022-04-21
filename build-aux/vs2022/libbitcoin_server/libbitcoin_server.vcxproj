@@ -140,12 +140,15 @@
     <ClCompile Include="..\..\..\src\mnode\tickets\etherium-address-change.cpp" />
     <ClCompile Include="..\..\..\src\mnode\tickets\nft-act.cpp" />
     <ClCompile Include="..\..\..\src\mnode\tickets\nft-buy.cpp" />
+    <ClCompile Include="..\..\..\src\mnode\tickets\nft-collection-act.cpp" />
+    <ClCompile Include="..\..\..\src\mnode\tickets\nft-collection-reg.cpp" />
     <ClCompile Include="..\..\..\src\mnode\tickets\nft-reg.cpp" />
     <ClCompile Include="..\..\..\src\mnode\tickets\nft-royalty.cpp" />
     <ClCompile Include="..\..\..\src\mnode\tickets\nft-sell.cpp" />
     <ClCompile Include="..\..\..\src\mnode\tickets\nft-take-down.cpp" />
     <ClCompile Include="..\..\..\src\mnode\tickets\nft-trade.cpp" />
     <ClCompile Include="..\..\..\src\mnode\tickets\pastelid-reg.cpp" />
+    <ClCompile Include="..\..\..\src\mnode\tickets\ticket-extra-fees.cpp" />
     <ClCompile Include="..\..\..\src\mnode\tickets\ticket_signing.cpp" />
     <ClCompile Include="..\..\..\src\mnode\tickets\username-change.cpp" />
     <ClCompile Include="..\..\..\src\net.cpp" />
@@ -240,6 +243,9 @@
     <ClInclude Include="..\..\..\src\mnode\tickets\action-act.h" />
     <ClInclude Include="..\..\..\src\mnode\tickets\action-reg.h" />
     <ClInclude Include="..\..\..\src\mnode\tickets\etherium-address-change.h" />
+    <ClInclude Include="..\..\..\src\mnode\tickets\nft-collection-act.h" />
+    <ClInclude Include="..\..\..\src\mnode\tickets\nft-collection-reg.h" />
+    <ClInclude Include="..\..\..\src\mnode\tickets\ticket-extra-fees.h" />
     <ClInclude Include="..\..\..\src\mnode\tickets\ticket-mn-fees.h" />
     <ClInclude Include="..\..\..\src\mnode\tickets\nft-act.h" />
     <ClInclude Include="..\..\..\src\mnode\tickets\nft-buy.h" />
@@ -273,6 +279,7 @@
     <ClInclude Include="..\..\..\src\rpc\server.h" />
     <ClInclude Include="..\..\..\src\script_check.h" />
     <ClInclude Include="..\..\..\src\serialize.h" />
+    <ClInclude Include="..\..\..\src\set_types.h" />
     <ClInclude Include="..\..\..\src\streams.h" />
     <ClInclude Include="..\..\..\src\str_types.h" />
     <ClInclude Include="..\..\..\src\threadsafety.h" />

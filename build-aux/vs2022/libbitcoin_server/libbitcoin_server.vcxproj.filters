@@ -289,6 +289,15 @@
     <ClCompile Include="..\..\..\src\orphan-tx.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\..\src\mnode\tickets\nft-collection-reg.cpp">
+      <Filter>Source Files\mnode\tickets</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\src\mnode\tickets\ticket-extra-fees.cpp">
+      <Filter>Source Files\mnode\tickets</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\src\mnode\tickets\nft-collection-act.cpp">
+      <Filter>Source Files\mnode\tickets</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\..\src\addrman.h">
@@ -617,6 +626,18 @@
     </ClInclude>
     <ClInclude Include="..\..\..\src\orphan-tx.h">
       <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\mnode\tickets\nft-collection-reg.h">
+      <Filter>Source Files\mnode\tickets</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\mnode\tickets\ticket-extra-fees.h">
+      <Filter>Source Files\mnode\tickets</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\set_types.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\mnode\tickets\nft-collection-act.h">
+      <Filter>Source Files\mnode\tickets</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

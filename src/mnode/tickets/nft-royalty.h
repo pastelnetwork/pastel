@@ -35,7 +35,7 @@ public:
     static TicketID GetID() { return TicketID::Royalty; }
     constexpr auto GetTicketDescription() const
     {
-        return TICKET_INFO[to_integral_type<TicketID>(TicketID::NFT)].szDescription;
+        return TICKET_INFO[to_integral_type<TicketID>(TicketID::Royalty)].szDescription;
     }
 
     void Clear() noexcept override
@@ -56,7 +56,7 @@ public:
 
     std::string ToJSON() const noexcept final;
     std::string ToStr() const noexcept final;
-    ticket_validation_t IsValid(const bool bPreReg, const uint32_t nDepth) const noexcept override;
+    ticket_validation_t IsValid(const bool bPreReg, const uint32_t nCallDepth) const noexcept override;
     bool IsSameSignature(const v_uint8& signature) const noexcept { return m_signature == signature; }
 
     // getters for ticket fields

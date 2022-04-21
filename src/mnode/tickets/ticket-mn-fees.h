@@ -1,5 +1,5 @@
 #pragma once
-// Copyright (c) 2018-2021 The Pastel Core developers
+// Copyright (c) 2018-2022 The Pastel Core developers
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 
@@ -20,8 +20,6 @@ public:
         uint8_t otherShare; // other MNs fee share percentage (from all MN fees)
     } mn_fees_t;
 
-    virtual ~CPastelTicketMNFee() = default;
-
     // get MN fees
     // with C++20 this can be rewritten as constexpr virtual and calculated at compile-time
     virtual mn_fees_t getMNFees() const noexcept = 0;
@@ -31,12 +29,14 @@ public:
     {
         return (static_cast<double>(GetStorageFee()) * getMNFees().all) / 100;
     }
+    // get all MN fees in patoshis
     CAmount getAllMNFees() const noexcept { return static_cast<CAmount>(getAllMNFeesPSL() * COIN); }
     // get principal MN fee in PSL
     double getPrincipalMNFeePSL() const noexcept
     {
         return (getAllMNFeesPSL() * getMNFees().principalShare) / 100;
     }
+    // get principal MN fee in patoshis
     CAmount getPrincipalMNFee() const noexcept { return static_cast<CAmount>(getPrincipalMNFeePSL() * COIN); }
 
     // get other MNs fee in PSL
@@ -44,5 +44,6 @@ public:
     {
         return getAllMNFeesPSL() * (static_cast<double>(getMNFees().otherShare) / 100);
     }
+    // get other MNs fee in patoshis
     CAmount getOtherMNFee() const noexcept { return static_cast<CAmount>(getOtherMNFeePSL() * COIN); }
 };

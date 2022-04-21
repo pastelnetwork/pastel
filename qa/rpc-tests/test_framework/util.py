@@ -471,7 +471,7 @@ def assert_greater_than(thing1, thing2):
 def assert_raises(exc, func, *args, **kwargs):
     assert_raises_message(exc, None, func, *args, **kwargs)
 
-def assert_raises_rpc(code, expected_error_substring, func, *args, **kwargs):
+def assert_raises_rpc(expected_code, expected_error_substring, func, *args, **kwargs):
     """
     Asserts that func throws and that the exception contains 'errstr' in its message and
     exception code matches.
@@ -479,22 +479,24 @@ def assert_raises_rpc(code, expected_error_substring, func, *args, **kwargs):
     try:
         func(*args, **kwargs)
     except JSONRPCException as e:
-        if e.error['message'] is None:
-            err = e.error['error']
-            if code and code != err['code']:
-                raise AssertionError(f"Invalid JSONRPCException code {err['code']}, expected {code} in {repr(e)}")
-            if expected_error_substring and expected_error_substring not in str(e):
-                raise AssertionError(f"Invalid JSONRPCException message: Couldn't find {repr(expected_error_substring)} in {repr(e)}")
+        if e.error['code'] is None:
+            code = e.error['error']
+        else:
+            code = e.error['code']
+        if expected_code and (expected_code != code):
+            raise AssertionError(f"Invalid JSONRPCException code {code}, expected {expected_code} in {e!r}")
+        if expected_error_substring and expected_error_substring not in str(e):
+            raise AssertionError(f"Invalid JSONRPCException message: Couldn't find {repr(expected_error_substring)} in {e!r}")
         print(f" >>> RPC Exception received:\n{e!r}.\n <<< Expected substring: [{expected_error_substring}]");
     except Exception as e:
         raise AssertionError("Unexpected exception raised: "+type(e).__name__)
     else:
         err_info = " and ".join([ 
-            f"the error code {code}" if code else "", 
+            f"the error code {expected_code}" if expected_code else "", 
             f"error message containing [{expected_error_substring}]" if expected_error_substring else ""])
         if err_info:
-            raise AssertionError(f"No exception raised, but expected with {err_info}")
-        raise AssertionError("No exception raised")
+            raise AssertionError(f"No JSONRPCException raised, but expected with {err_info}")
+        raise AssertionError("No JSONRPCException raised")
 
 def assert_raises_message(ExceptionType, errstr, func, *args, **kwargs):
     """
