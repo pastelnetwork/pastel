@@ -176,5 +176,5 @@ TEST_F(TestNFTRegTicket, RetrieveCollectionTicket)
 	m_sNFTCollectionTxid = TEST_COLLECTION_TXID;
 	EXPECT_EQ(RetrieveCollectionTicket(error, bInvalidTxId), nullptr);
 	EXPECT_FALSE(bInvalidTxId);
-	EXPECT_FALSE(error.empty());
+	EXPECT_TRUE(error.empty());
 }
