@@ -139,9 +139,9 @@ bool CMasternodeGovernance::CanVote(std::string& strErrorRet) const
         return false;
     }
 
-    constexpr static auto thirty_days = int{30 * 24 * 60};
-    if (masterNode.IsBroadcastedWithin(thirty_days)){
-        strErrorRet = "Master Node is not old enough to vote";
+    constexpr static auto thirty_days_in_seconds = int32_t{30 * 24 * 60 * 60};
+    if (!masterNode.IsBroadcastedWithin(thirty_days_in_seconds)){
+        strErrorRet = "Master Node has not broadcasted within 30 days";
         return false;
     }
 
