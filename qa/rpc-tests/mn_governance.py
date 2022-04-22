@@ -74,8 +74,11 @@ class MasterNodeGovernanceTest (MasterNodeCommon):
             assert_equal(self.nodes[-1].governance("ticket", "add", "", "1000", "test", "yes")["errorMessage"], 
                 "Only Active Master Node can vote")
 
+        # Set the mock time to at least 30 days from now to allow passing the IsBroadcastedWithin check.
+        mock_time = int(time.time()) + (31 * 24 * 60 * 60)
+
         _, _, _ = self.start_mn(self.mining_node_num, self.hot_node_num, cold_nodes, self.total_number_of_nodes,
-                        pre_test, post_test)
+                        mock_time, pre_test, post_test)
 
         self.reconnect_nodes(0, self.number_of_master_nodes)
         self.sync_all()

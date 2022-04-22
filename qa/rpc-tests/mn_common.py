@@ -57,8 +57,8 @@ class MasterNodeCommon (PastelTestFramework):
         assert_equal(self.nodes[mining_node_num].getbalance(), self._reward*blocks_to_mine)
 
     def start_mn(self, mining_node_num, hot_node_num, cold_nodes, num_of_nodes, 
-        preenabled_test_functor = None, postenabled_test_functor = None):
-        
+        mock_time = None, preenabled_test_functor = None, postenabled_test_functor = None):
+
         mn_ids = dict()
         mn_aliases = dict()
         mn_collateral_addresses = dict()
@@ -125,13 +125,22 @@ class MasterNodeCommon (PastelTestFramework):
             wait = 30 if ind == 0 else 0
             self.wait_for_mn_state(wait, 10, "PRE_ENABLED", self.nodes[0:num_of_nodes], mn_ids[num])
 
-        print("Waiting for ENABLED...")
-        for ind, num in enumerate(mn_ids):
-            wait = 120 if ind == 0 else 0
-            self.wait_for_mn_state(wait, 20, "ENABLED", self.nodes[0:num_of_nodes], mn_ids[num])
+        def wait_for_enabled(byPassAssert):
+            print("Waiting for ENABLED...")
+            for ind, num in enumerate(mn_ids):
+                wait = 120 if ind == 0 else 0
+                self.wait_for_mn_state(wait, 20, "ENABLED", self.nodes[0:num_of_nodes], mn_ids[num], 1, byPassAssert)
+        wait_for_enabled(False)
 
         if postenabled_test_functor is not None:
             postenabled_test_functor()
+
+        if mock_time is not None:
+            for node in self.nodes:
+                node.setmocktime(mock_time)
+            # For some reason the masternodes become disabled after setting the mock time, 
+            # need to wait until the masternodes are enabled again.
+            wait_for_enabled(True)
 
         return mn_ids, mn_aliases, mn_collateral_addresses
 
@@ -141,7 +150,7 @@ class MasterNodeCommon (PastelTestFramework):
             connect_nodes_bi(self.nodes, pair[0], pair[1])        
 
 
-    def wait_for_mn_state(self, init_wait, more_wait, wait_for, node_list, mnId, repeatMore=1):
+    def wait_for_mn_state(self, init_wait, more_wait, wait_for, node_list, mnId, repeatMore=1, byPassAssert=False):
         debug = False
         print(f'Waiting {init_wait} seconds...')
         time.sleep(init_wait)
@@ -157,7 +166,8 @@ class MasterNodeCommon (PastelTestFramework):
                 break
         if debug:
             [print(node.masternode("list")) for node in node_list]
-        [assert_equal(node.masternode("list").get(mnId, ""), wait_for) for node in node_list]
+        if not byPassAssert:
+            [assert_equal(node.masternode("list").get(mnId, ""), wait_for) for node in node_list]
 
     def create_masternode_conf(self, name, n, dirname, txid, vin, private_key, mn_port):
         datadir = os.path.join(dirname, "node"+str(n))
