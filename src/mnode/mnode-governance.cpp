@@ -64,9 +64,11 @@ bool CMasternodeGovernance::GetCurrentPaymentTicket(int nBlockHeight, CGovernanc
     }
     LOCK(cs_mapTickets);
     if (!ticketId.IsNull() && mapTickets.count(ticketId)) {
-        ticket = mapTickets[ticketId];
-        if (ticket.nFirstPaymentBlockHeight <= nBlockHeight)
+        auto &aTicket = mapTickets[ticketId];
+        if (ticket.nFirstPaymentBlockHeight <= nBlockHeight) {
+            ticket = aTicket;
             return true;
+        }
     }
 
     return false;
