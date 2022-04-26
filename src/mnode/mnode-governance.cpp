@@ -107,17 +107,23 @@ int CMasternodeGovernance::CalculateLastPaymentBlock(CAmount amount, int nHeight
     return nHeight-1;
 }
 
-CAmount CMasternodeGovernance::IncrementTicketPaidAmount(CAmount payment, CGovernanceTicket& ticket)
+CAmount CMasternodeGovernance::UpdateTicketPaidAmount(int nHeight)
 {
     CAmount aAmountPaid = 0;
+    
+    CGovernanceTicket ticket;
+    if (GetCurrentPaymentTicket(nHeight, ticket))
     {
         LOCK(cs_mapTickets);
         auto ti1 = mapTickets.find(ticket.ticketId);
         if (ti1 != mapTickets.end()) {
             if(!ti1->second.IsPaid())
             {
-                ti1->second.nAmountPaid += payment;
-                aAmountPaid = ti1->second.nAmountPaid;
+                auto start = ti1->second.nFirstPaymentBlockHeight;
+                for (auto i = start; i <= nHeight; i++) {
+                    aAmountPaid += GetGovernancePaymentForHeight(i);
+                }
+                ti1->second.nAmountPaid = aAmountPaid;
             }
         }
     }
@@ -242,9 +248,6 @@ bool CMasternodeGovernance::IsTransactionValid(const CTransaction& txNew, int nH
             tnxPayment = txout.nValue;
             if (nGovernancePayment == txout.nValue) {
                 LogPrint("governance", "CMasternodeGovernance::IsTransactionValid -- Found required payment\n");
-
-                IncrementTicketPaidAmount(nGovernancePayment, ticket);
-
                 return true;
             }
         }
@@ -265,6 +268,8 @@ bool CMasternodeGovernance::IsTransactionValid(const CTransaction& txNew, int nH
 
 bool CMasternodeGovernance::ProcessBlock(int nBlockHeight)
 {
+    UpdateTicketPaidAmount(nBlockHeight);
+    
     return true;
 }
 

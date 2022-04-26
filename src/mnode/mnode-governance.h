@@ -186,7 +186,7 @@ public:
     
     int CalculateLastPaymentBlock(CAmount amount, int nHeight);
     int GetLastScheduledPaymentBlock();
-    CAmount IncrementTicketPaidAmount(CAmount payment, CGovernanceTicket& ticket);
+    CAmount UpdateTicketPaidAmount(int nHeight);
 
     bool IsTransactionValid(const CTransaction& txNew, int nHeight);
     bool ProcessBlock(int nBlockHeight);
