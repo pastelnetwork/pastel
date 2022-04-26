@@ -40,7 +40,7 @@ CAmount CMasternodeGovernance::GetCurrentPaymentAmount(int nBlockHeight, CAmount
     return GetGovernancePayment(blockReward);
 }
 
-bool CMasternodeGovernance::GetCurrentPaymentTicket(int nBlockHeight, CGovernanceTicket& ticket)
+bool CMasternodeGovernance::GetCurrentPaymentTicket(int nBlockHeight, CGovernanceTicket& ticket, bool logError)
 {   
     uint256 ticketId;
     {
@@ -57,7 +57,8 @@ bool CMasternodeGovernance::GetCurrentPaymentTicket(int nBlockHeight, CGovernanc
             if (it != mapPayments.end())
                 ticketId = it->second;
             else {
-                LogPrintf("CMasternodeGovernance::GetCurrentPaymentTicket -- no tickets for the height - %d\n", nBlockHeight);
+                if (!logError)
+                    LogPrintf("CMasternodeGovernance::GetCurrentPaymentTicket -- no tickets for the height - %d\n", nBlockHeight);
                 return false;
             }
         }
@@ -114,7 +115,7 @@ CAmount CMasternodeGovernance::UpdateTicketPaidAmount(int nHeight)
     CAmount aAmountPaid = 0;
     
     CGovernanceTicket ticket;
-    if (GetCurrentPaymentTicket(nHeight, ticket))
+    if (GetCurrentPaymentTicket(nHeight, ticket, false))
     {
         LOCK(cs_mapTickets);
         auto ti1 = mapTickets.find(ticket.ticketId);
