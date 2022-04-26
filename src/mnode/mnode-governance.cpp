@@ -57,7 +57,7 @@ bool CMasternodeGovernance::GetCurrentPaymentTicket(int nBlockHeight, CGovernanc
             if (it != mapPayments.end())
                 ticketId = it->second;
             else {
-                if (!logError)
+                if (logError)
                     LogPrintf("CMasternodeGovernance::GetCurrentPaymentTicket -- no tickets for the height - %d\n", nBlockHeight);
                 return false;
             }
