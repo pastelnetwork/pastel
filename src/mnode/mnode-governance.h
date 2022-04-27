@@ -177,7 +177,7 @@ public:
     CAmount GetGovernancePaymentForHeight(int nHeight);
     CAmount GetGovernancePayment(CAmount blockValue);
     void FillGovernancePayment(CMutableTransaction& txNew, int nBlockHeight, CAmount blockReward, CTxOut& txoutGovernanceRet);
-    bool GetCurrentPaymentTicket(int nBlockHeight, CGovernanceTicket& ticket);
+    bool GetCurrentPaymentTicket(int nBlockHeight, CGovernanceTicket& ticket, bool logError = true);
     CAmount GetCurrentPaymentAmount(int nBlockHeight, CAmount blockReward);
 
     bool AddTicket(std::string address, CAmount totalReward, std::string note, bool vote, uint256& newTicketId, std::string& strErrorRet);
