@@ -1518,6 +1518,7 @@ bool GetTransaction(const uint256 &txid, CTransaction &txOut, const Consensus::P
             if (fAllowSlow)
             {
                 int nHeight = -1;
+                if (pcoinsTip)
                 {
                     CCoinsViewCache& view = *pcoinsTip;
                     const CCoins* coins = view.AccessCoins(txid);

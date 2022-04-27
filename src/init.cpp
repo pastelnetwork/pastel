@@ -1227,7 +1227,7 @@ bool AppInit2(CServiceThreadGroup& threadGroup, CScheduler& scheduler)
             !fPrintToConsole && !GetBoolArg("-daemon", false)) {
         // Start the persistent metrics interface
         ConnectMetricsScreen();
-        threadGroup.add_func_thread("metrics-screen", ThreadShowMetricsScreen);
+        threadGroup.add_func_thread("metrics", ThreadShowMetricsScreen);
     }
 
     // These must be disabled for now, they are buggy and we probably don't

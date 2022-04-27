@@ -6,6 +6,7 @@
 #include <utilstrencodings.h>
 #include <mnode/tickets/nft-reg.h>
 #include <mnode/mnode-controller.h>
+#include <pastel_gtest_main.h>
 
 using namespace std;
 using namespace testing;
@@ -145,7 +146,18 @@ INSTANTIATE_TEST_SUITE_P(test_nft_reg, PTestNFTRegTicket_parsetkt, Values(
 class TestNFTRegTicket : 
 	public CNFTRegTicket,
 	public Test
-{};
+{
+public:
+	static void SetUpTestSuite()
+	{
+		gl_pPastelTestEnv->InitializeRegTest();
+	}
+
+	static void TearDownTestSuite()
+	{
+		gl_pPastelTestEnv->FinalizeRegTest();
+	}
+};
 
 TEST_F(TestNFTRegTicket, RetrieveCollectionTicket)
 {
@@ -164,5 +176,5 @@ TEST_F(TestNFTRegTicket, RetrieveCollectionTicket)
 	m_sNFTCollectionTxid = TEST_COLLECTION_TXID;
 	EXPECT_EQ(RetrieveCollectionTicket(error, bInvalidTxId), nullptr);
 	EXPECT_FALSE(bInvalidTxId);
-	EXPECT_TRUE(error.empty());
+	EXPECT_FALSE(error.empty());
 }
