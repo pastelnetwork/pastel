@@ -67,7 +67,7 @@ public:
         ss << message;
         return ss.GetHash();
     }
-    bool IsVerified() { return !vchSig.empty(); }
+    bool IsVerified() const noexcept { return !vchSig.empty(); }
     void MarkAsNotVerified() { vchSig.clear(); }
 
     bool Sign();

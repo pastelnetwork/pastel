@@ -276,11 +276,11 @@ bool CMasternodePayments::AddPaymentVote(const CMasternodePaymentVote& vote)
     return true;
 }
 
-bool CMasternodePayments::HasVerifiedPaymentVote(uint256 hashIn)
+bool CMasternodePayments::HasVerifiedPaymentVote(const uint256 &hashIn)
 {
     LOCK(cs_mapMasternodePaymentVotes);
-    std::map<uint256, CMasternodePaymentVote>::iterator it = mapMasternodePaymentVotes.find(hashIn);
-    return it != mapMasternodePaymentVotes.end() && it->second.IsVerified();
+    auto it = mapMasternodePaymentVotes.find(hashIn);
+    return it != mapMasternodePaymentVotes.cend() && it->second.IsVerified();
 }
 
 
