@@ -110,12 +110,12 @@ declare -a testScriptsMN=(
     'secure_container.py'
     'mn_tickets_username_change.py'
     'mn_tickets_validation.py'
+    'mn_governance.py'
     'mn_messaging.py'
     'mn_payment.py'
     'mn_bugs.py'
     'mn_main.py'
     'mn_tickets.py'
-    'mn_governance.py'
 )
 
 declare -a testScriptsExt=(
