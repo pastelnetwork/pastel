@@ -27,7 +27,7 @@ class CChangeUsernameTicket : public CPastelTicket
 public:
     std::string pastelID;
     std::string username;
-    CAmount fee{100};
+    CAmount fee{100}; // in PSL
 
 protected:
     v_uint8 m_signature;
@@ -52,7 +52,7 @@ public:
         CPastelTicket::Clear();
         pastelID.clear();
         username.clear();
-        fee = 100;
+        fee = 100; // PSL
         m_signature.clear();
     }
 
@@ -60,16 +60,15 @@ public:
     std::string KeyTwo() const noexcept override { return pastelID; }
 
     bool HasKeyTwo() const noexcept override { return true; }
-    bool HasMVKeyOne() const noexcept override { return false; }
-    bool HasMVKeyTwo() const noexcept override { return false; }
 
     void SetKeyOne(std::string&& sValue) override { username = std::move(sValue); }
     void set_signature(const std::string& signature);
 
     std::string ToJSON() const noexcept override;
     std::string ToStr() const noexcept override;
-    CAmount TicketPrice(const unsigned int nHeight) const noexcept override { return fee; }
-    ticket_validation_t IsValid(const bool bPreReg, const uint32_t nDepth) const noexcept override;
+    // get ticket price in PSL
+    CAmount TicketPricePSL(const uint32_t nHeight) const noexcept override { return fee; }
+    ticket_validation_t IsValid(const bool bPreReg, const uint32_t nCallDepth) const noexcept override;
     /**
      * Disable changing username for this number of blocks since last change.
      * 

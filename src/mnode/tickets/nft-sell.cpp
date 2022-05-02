@@ -67,10 +67,10 @@ void CNFTSellTicket::sign(SecureString&& strKeyPass)
  * Validate Pastel ticket.
  * 
  * \param bPreReg - if true: called from ticket pre-registration
- * \param nDepth - ticket height
+ * \param nCallDepth - function call depth
  * \return true if the ticket is valid
  */
-ticket_validation_t CNFTSellTicket::IsValid(const bool bPreReg, const uint32_t nDepth) const noexcept
+ticket_validation_t CNFTSellTicket::IsValid(const bool bPreReg, const uint32_t nCallDepth) const noexcept
 {
     const unsigned int chainHeight = GetActiveChainHeight();
     ticket_validation_t tv;
@@ -81,7 +81,7 @@ ticket_validation_t CNFTSellTicket::IsValid(const bool bPreReg, const uint32_t n
         const ticket_validation_t commonTV = common_ticket_validation(
             *this, bPreReg, NFTTxnId, pastelTicket,
             [](const TicketID tid) noexcept { return (tid != TicketID::Activate && tid != TicketID::Trade); },
-            GetTicketDescription(), "activation or trade", nDepth, TicketPrice(chainHeight) * COIN);
+            GetTicketDescription(), "activation or trade", nCallDepth, TicketPricePSL(chainHeight));
         if (commonTV.IsNotValid())
         {
             tv.errorMsg = strprintf(
@@ -173,7 +173,7 @@ ticket_validation_t CNFTSellTicket::IsValid(const bool bPreReg, const uint32_t n
             if (bPreReg || !bTicketFound)
             {
                 ticket_validation_t actTV = fnVerifyAvailableCopies("registration", nTotalCopies);
-                if (!actTV.IsNotValid())
+                if (actTV.IsNotValid())
                 {
                     tv = move(actTV);
                     break;
@@ -203,7 +203,7 @@ ticket_validation_t CNFTSellTicket::IsValid(const bool bPreReg, const uint32_t n
             if (bPreReg || !bTicketFound)
             { //else if this is already confirmed ticket - skip this check, otherwise it will failed
                 ticket_validation_t actTV = fnVerifyAvailableCopies("trade", nTotalCopies);
-                if (!actTV.IsNotValid())
+                if (actTV.IsNotValid())
                 {
                     tv = move(actTV);
                     break;

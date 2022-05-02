@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2021 The Pastel Core developers
+// Copyright (c) 2018-2022 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 
@@ -17,8 +17,6 @@
 #include <mnode/mnode-manager.h>
 #include <mnode/mnode-msgsigner.h>
 #include <mnode/mnode-db.h>
-
-#include <boost/lexical_cast.hpp>
 
 using namespace std;
 
@@ -264,7 +262,7 @@ bool CMasterNodeController::EnableMasterNode(ostringstream& strErrors, CServiceT
         for (const auto & mne : masternodeConfig.getEntries())
         {
             mnTxHash.SetHex(mne.getTxHash());
-            outputIndex = boost::lexical_cast<unsigned int>(mne.getOutputIndex());
+            outputIndex = stoi(mne.getOutputIndex());
             COutPoint outpoint = COutPoint(mnTxHash, outputIndex);
             // don't lock non-spendable outpoint (i.e. it's already spent or it's not from this wallet at all)
             if (!IsMineSpendable(pWalletMain->GetIsMine(CTxIn(outpoint))))
@@ -354,9 +352,10 @@ void CMasterNodeController::StartMasterNode(CServiceThreadGroup& threadGroup)
 
 void CMasterNodeController::StopMasterNode()
 {
-    if (semMasternodeOutbound)
-        for (int i=0; i<nMasterNodeMaximumOutboundConnections; i++)
-            semMasternodeOutbound->post();
+    if (!semMasternodeOutbound)
+        return;
+    for (int i=0; i<nMasterNodeMaximumOutboundConnections; i++)
+        semMasternodeOutbound->post();
 }
 
 
@@ -392,8 +391,9 @@ bool CMasterNodeController::AlreadyHave(const CInv& inv)
 
     case MSG_MASTERNODE_PAYMENT_BLOCK:
         {
-            BlockMap::iterator mi = mapBlockIndex.find(inv.hash);
-            return mi != mapBlockIndex.end() && masternodePayments.mapMasternodeBlockPayees.find(mi->second->nHeight) != masternodePayments.mapMasternodeBlockPayees.end();
+            const auto mi = mapBlockIndex.find(inv.hash);
+            return (mi != mapBlockIndex.cend()) && 
+                   (masternodePayments.mapMasternodeBlockPayees.find(mi->second->nHeight) != masternodePayments.mapMasternodeBlockPayees.cend());
         }
 
     case MSG_MASTERNODE_ANNOUNCE:
@@ -404,7 +404,7 @@ bool CMasterNodeController::AlreadyHave(const CInv& inv)
 
     case MSG_MASTERNODE_VERIFY:
         return masternodeManager.mapSeenMasternodeVerification.count(inv.hash);
-    };
+    }
 
     return true;
 }

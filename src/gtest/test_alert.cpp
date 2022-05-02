@@ -396,7 +396,7 @@ TEST_F(ReadAlerts, PartitionAlert)
             indexDummy[i].pprev = nullptr;
         else indexDummy[i].pprev = &indexDummy[i-1];
         indexDummy[i].nHeight = i;
-        indexDummy[i].nTime = now - (400-i)*nPowTargetSpacing;
+        indexDummy[i].nTime = static_cast<unsigned int>(now - (400-i)*nPowTargetSpacing);
         // Other members don't matter, the partition check code doesn't
         // use them
     }
@@ -427,7 +427,7 @@ TEST_F(ReadAlerts, PartitionAlert)
     SetMockTime(now);
     int64_t quickSpacing = nPowTargetSpacing*2/5;
     for (int i = 0; i < 400; i++) // Tweak chain timestamps:
-        indexDummy[i].nTime = now - (400-i)*quickSpacing;
+        indexDummy[i].nTime = static_cast<unsigned int>(now - (400-i)*quickSpacing);
     PartitionCheck(consensusParams, InitialDownloadCheckFalseFunc, csDummy, &indexDummy[399], nPowTargetSpacing);
     EXPECT_TRUE(!strMiscWarning.empty());
     GTEST_COUT << string("Got alert text: ") << strMiscWarning << endl;

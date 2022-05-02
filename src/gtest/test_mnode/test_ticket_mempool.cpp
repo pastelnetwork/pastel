@@ -8,8 +8,8 @@
 #include <mnode/ticket-processor.h>
 #include <mnode/tickets/nft-reg.h>
 #include <mnode/tickets/username-change.h>
-#include "test_mempool_entryhelper.h"
-#include "test_mnode/test_ticket_mempool.h"
+#include <test_mempool_entryhelper.h>
+#include <test_mnode/test_ticket_mempool.h>
 
 using namespace testing;
 using namespace std;

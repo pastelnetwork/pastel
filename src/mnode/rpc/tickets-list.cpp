@@ -11,7 +11,7 @@
 
 UniValue tickets_list(const UniValue& params)
 {
-    RPC_CMD_PARSER2(LIST, params, id, nft, act, sell, buy, trade, down, royalty, username, ethereumaddress, action, action__act);
+    RPC_CMD_PARSER2(LIST, params, id, nft, nft__collection, nft__collection__act, act, sell, buy, trade, down, royalty, username, ethereumaddress, action, action__act);
     if ((params.size() < 2 || params.size() > 4) || !LIST.IsCmdSupported())
         throw JSONRPCError(RPC_INVALID_PARAMETER,
 R"(tickets list "type" ("filter") ("minheight")
@@ -30,11 +30,11 @@ Available types:
               active   - lists only activated NFT tickets - with Act ticket.
               inactive - lists only non-activated NFT tickets - without Act ticket created (confirmed).
               sold     - lists only sold NFT tickets - with Trade ticket created for all copies.
-  act     - List ALL NFT activation tickets. Without filter parameter lists ALL Act tickets.
+  act     - List ALL NFT activation tickets. Without filter parameter lists ALL activation tickets.
             Filter:
-              all       - lists all Act tickets (including non-confirmed). Default.
-              available - lists non sold Act tickets - without Trade tickets for all copies (confirmed).
-              sold      - lists only sold Act tickets - with Trade tickets for all copies.
+              all       - lists all NFT activation tickets (including non-confirmed). Default.
+              available - lists non sold NFT activation tickets - without Trade tickets for all copies (confirmed).
+              sold      - lists only sold NFT activation tickets - with Trade tickets for all copies.
   sell    - List ALL NFT sell tickets. Without filter parameter lists ALL Sell tickets.
             Filter:
               all         - lists all Sell tickets (including non-confirmed). Default.
@@ -54,6 +54,14 @@ Available types:
               sold      - lists only sold Trade tickets (with Sell tickets).
             Optional parameters:
               <pastelID> - apply filter on trade ticket that belong to the correspond pastelID only
+  nft-collection - List ALL new NFT collection registration tickets. Without filter parameter lists ALL NFT collection tickets.
+            Filter:
+              all      - lists all NFT collection tickets (including non-confirmed). Default.
+              active   - lists only activated NFT collection tickets - with act-collection ticket.
+              inactive - lists only non-activated NFT collection tickets - without act-collection ticket created (confirmed).
+  nft-collection-act - List ALL new NFT collection activation tickets. Without filter parameter lists ALL activation tickets.
+            Filter:
+              all      - lists all NFT collection activation tickets (including non-confirmed). Default.
   royalty - List ALL NFT royalty tickets. Without filter parameter lists ALL royalty tickets.
             Filter:
               all       - list all Royalty tickets. Default.
@@ -68,12 +76,12 @@ Available types:
               all      - lists all Action tickets (including non-confirmed). Default.
               active   - lists only activated Action tickets - with Action-Act ticket.
               inactive - lists only non-activated Action tickets - without Action-Act ticket created (confirmed).
-  action-act - List action activation tickets. Without filter parameter lists ALL action-act tickets.
+  action-act - List action activation tickets. Without filter parameter lists ALL activation tickets.
             Filter:
               all       - lists all Act tickets (including non-confirmed). Default.
 
 Arguments:
-1. minheight	 - minimum height for returned tickets (only tickets registered after this height will be returned).
+1. minheight	 - (optional) minimum height for returned tickets (only tickets registered after this height will be returned).
 
 Example: List ALL PastelID tickets
 )" + HelpExampleCli("tickets list id", "") +
@@ -81,16 +89,15 @@ R"(
 As json rpc
 )" + HelpExampleRpc("tickets", R"("list", "id")"));
 
+    // trade,buy and sell tickets have special parsing logic
+    const bool bSpecialParsingLogic = LIST.IsCmdAnyOf(RPC_CMD_LIST::trade, RPC_CMD_LIST::buy, RPC_CMD_LIST::sell);
+
     std::string filter = "all";
-    if (params.size() > 2 && LIST.cmd() != RPC_CMD_LIST::trade // RPC_CMD_LIST::trade has its own parsing logic
-        && LIST.cmd() != RPC_CMD_LIST::buy                     // RPC_CMD_LIST::buy has its own parsing logic
-        && LIST.cmd() != RPC_CMD_LIST::sell)                   // RPC_CMD_LIST::sell has its own parsing logic
+    if (params.size() > 2 && !bSpecialParsingLogic)
         filter = params[2].get_str();
 
     int minheight = 0;
-    if (params.size() > 3 && LIST.cmd() != RPC_CMD_LIST::trade // RPC_CMD_LIST::trade has its own parsing logic
-        && LIST.cmd() != RPC_CMD_LIST::buy                     // RPC_CMD_LIST::buy has its own parsing logic
-        && LIST.cmd() != RPC_CMD_LIST::sell)                   // RPC_CMD_LIST::sell has its own parsing logic
+    if (params.size() > 3 && !bSpecialParsingLogic)
         minheight = get_number(params[3]);
 
     UniValue obj(UniValue::VARR);
@@ -126,6 +133,20 @@ As json rpc
             obj.read(masterNodeCtrl.masternodeTickets.ListFilterActTickets(1));
         else if (filter == "sold")
             obj.read(masterNodeCtrl.masternodeTickets.ListFilterActTickets(2));
+        break;
+
+    case RPC_CMD_LIST::nft__collection:
+        if (filter == "all")
+            obj.read(masterNodeCtrl.masternodeTickets.ListTickets<CNFTCollectionRegTicket>());
+        else if (filter == "active")
+            obj.read(masterNodeCtrl.masternodeTickets.ListFilterNFTCollectionTickets(1));
+        else if (filter == "inactive")
+            obj.read(masterNodeCtrl.masternodeTickets.ListFilterNFTCollectionTickets(2));
+        break;
+
+    case RPC_CMD_LIST::nft__collection__act:
+        if (filter == "all")
+            obj.read(masterNodeCtrl.masternodeTickets.ListTickets<CNFTCollectionActivateTicket>());
         break;
 
     case RPC_CMD_LIST::sell: {

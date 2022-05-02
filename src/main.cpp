@@ -1518,6 +1518,7 @@ bool GetTransaction(const uint256 &txid, CTransaction &txOut, const Consensus::P
             if (fAllowSlow)
             {
                 int nHeight = -1;
+                if (pcoinsTip)
                 {
                     CCoinsViewCache& view = *pcoinsTip;
                     const CCoins* coins = view.AccessCoins(txid);
@@ -2260,7 +2261,7 @@ void PartitionCheck(
 
     const int SPAN_HOURS=4;
     const int SPAN_SECONDS=SPAN_HOURS*60*60;
-    const auto BLOCKS_EXPECTED = SPAN_SECONDS / nPowTargetSpacing;
+    const double BLOCKS_EXPECTED = static_cast<double>(SPAN_SECONDS / nPowTargetSpacing);
 
     boost::math::poisson_distribution<double> poisson(BLOCKS_EXPECTED);
 
@@ -2375,7 +2376,7 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, const CChainPara
 
     int64_t nTimeStart = GetTimeMicros();
     CAmount nFees = 0;
-    int nInputs = 0;
+    size_t nInputs = 0;
     unsigned int nSigOps = 0;
     CDiskTxPos pos(pindex->GetBlockPos(), GetSizeOfCompactSize(block.vtx.size()));
     vector<pair<uint256, CDiskTxPos> > vPos;
@@ -2452,16 +2453,15 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, const CChainPara
         }
 
         CTxUndo undoDummy;
-        if (i > 0) {
+        if (i > 0)
             blockundo.vtxundo.push_back(CTxUndo());
-        }
         UpdateCoins(tx, view, i == 0 ? undoDummy : blockundo.vtxundo.back(), pindex->nHeight);
 
         for (const auto &outputDescription : tx.vShieldedOutput)
             sapling_tree.append(outputDescription.cm);
 
-        vPos.push_back(make_pair(tx.GetHash(), pos));
-        pos.nTxOffset += ::GetSerializeSize(tx, SER_DISK, CLIENT_VERSION);
+        vPos.emplace_back(tx.GetHash(), pos);
+        pos.nTxOffset += static_cast<unsigned int>(::GetSerializeSize(tx, SER_DISK, CLIENT_VERSION));
     }
 
     view.PushAnchor(sprout_tree);
@@ -2480,11 +2480,15 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, const CChainPara
         }
     }
 
-    int64_t nTime1 = GetTimeMicros(); nTimeConnect += nTime1 - nTimeStart;
-    LogPrint("bench", "      - Connect %u transactions: %.2fms (%.3fms/tx, %.3fms/txin) [%.2fs]\n", 
-        (unsigned)block.vtx.size(), 0.001 * (nTime1 - nTimeStart), 0.001 * (nTime1 - nTimeStart) / block.vtx.size(), nInputs <= 1 ? 0 : 0.001 * (nTime1 - nTimeStart) / (nInputs-1), nTimeConnect * 0.000001);
+    const int64_t nTime1 = GetTimeMicros(); nTimeConnect += nTime1 - nTimeStart;
+    LogPrint("bench", "      - Connect %zu transactions: %.2fms (%.3fms/tx, %.3fms/txin) [%.2fs]\n", 
+        block.vtx.size(),
+        0.001 * (nTime1 - nTimeStart), 
+        0.001 * (nTime1 - nTimeStart) / block.vtx.size(), 
+        nInputs <= 1 ? 0 : 0.001 * (nTime1 - nTimeStart) / (nInputs-1), 
+        nTimeConnect * 0.000001);
 
-    CAmount blockReward = nFees + GetBlockSubsidy(pindex->nHeight, consensusParams);
+    const CAmount blockReward = nFees + GetBlockSubsidy(pindex->nHeight, consensusParams);
 
     string strError;
     if (!IsBlockValid(consensusParams, block, pindex->nHeight, blockReward, strError))
@@ -2494,8 +2498,12 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, const CChainPara
    
     if (!scriptCheckControl->Wait())
         return state.DoS(100, false);
-    int64_t nTime2 = GetTimeMicros(); nTimeVerify += nTime2 - nTimeStart;
-    LogPrint("bench", "    - Verify %u txins: %.2fms (%.3fms/txin) [%.2fs]\n", nInputs - 1, 0.001 * (nTime2 - nTimeStart), nInputs <= 1 ? 0 : 0.001 * (nTime2 - nTimeStart) / (nInputs-1), nTimeVerify * 0.000001);
+    const int64_t nTime2 = GetTimeMicros(); nTimeVerify += nTime2 - nTimeStart;
+    LogPrint("bench", "    - Verify %zu txins: %.2fms (%.3fms/txin) [%.2fs]\n", 
+        nInputs ? nInputs - 1 : 0, 
+        0.001 * (nTime2 - nTimeStart), 
+        nInputs <= 1 ? 0 : 0.001 * (nTime2 - nTimeStart) / (nInputs-1), 
+        nTimeVerify * 0.000001);
 
     if (fJustCheck)
         return true;
@@ -2503,9 +2511,10 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, const CChainPara
     // Write undo information to disk
     if (pindex->GetUndoPos().IsNull() || !pindex->IsValid(BLOCK_VALID_SCRIPTS))
     {
-        if (pindex->GetUndoPos().IsNull()) {
+        if (pindex->GetUndoPos().IsNull())
+        {
             CDiskBlockPos pos;
-            if (!FindUndoPos(state, pindex->nFile, pos, ::GetSerializeSize(blockundo, SER_DISK, CLIENT_VERSION) + 40))
+            if (!FindUndoPos(state, pindex->nFile, pos, static_cast<unsigned int>(::GetSerializeSize(blockundo, SER_DISK, CLIENT_VERSION) + 40)))
                 return error("ConnectBlock(): FindUndoPos failed");
             if (pindex->pprev)
             {
@@ -3317,7 +3326,7 @@ void ReceivedBlockTransactions(
     CBlockIndex *pindexNew,
     const CDiskBlockPos& pos)
 {
-    pindexNew->nTx = block.vtx.size();
+    pindexNew->nTx = static_cast<unsigned int>(block.vtx.size());
     pindexNew->nChainTx = 0;
     CAmount sproutValue = 0;
     CAmount saplingValue = 0;
@@ -4559,7 +4568,7 @@ bool LoadExternalBlockFile(const CChainParams& chainparams, FILE* fileIn, CDiskB
                 // read block
                 const uint64_t nBlockPos = blkdat.GetPos();
                 if (dbp)
-                    dbp->nPos = nBlockPos;
+                    dbp->nPos = static_cast<unsigned int>(nBlockPos);
                 blkdat.SetLimit(nBlockPos + nSize);
                 blkdat.SetPos(nBlockPos);
                 CBlock block;
@@ -5300,8 +5309,8 @@ static bool ProcessMessage(const CChainParams& chainparams, CNode* pfrom, string
         {
             func_thread_interrupt_point();
 
-            if (addr.nTime <= 100000000 || addr.nTime > nNow + 10 * 60)
-                addr.nTime = nNow - 5 * 24 * 60 * 60;
+            if (addr.nTime <= 100'000'000 || addr.nTime > nNow + 10 * 60)
+                addr.nTime = static_cast<unsigned int>(nNow - 5 * 24 * 3600);
             pfrom->AddAddressKnown(addr);
             bool fReachable = IsReachable(addr);
             if (addr.nTime > nSince && !pfrom->fGetAddr && vAddr.size() <= 10 && addr.IsRoutable())
@@ -5450,12 +5459,12 @@ static bool ProcessMessage(const CChainParams& chainparams, CNode* pfrom, string
         {
             if (pindex->GetBlockHash() == hashStop)
             {
-                LogPrint("net", "  getblocks stopping at %d %s\n", pindex->nHeight, pindex->GetBlockHash().ToString());
+                LogPrint("net", " getblocks stopping at %d %s\n", pindex->nHeight, pindex->GetBlockHash().ToString());
                 break;
             }
             // If pruning, don't inv blocks unless we have on disk and are likely to still have
             // for some reasonable time window (1 hour) that block relay might require.
-            const int nPrunedBlocksLikelyToHave = MIN_BLOCKS_TO_KEEP - 3600 / consensusParams.nPowTargetSpacing;
+            const int nPrunedBlocksLikelyToHave = static_cast<int>(MIN_BLOCKS_TO_KEEP - 3600 / consensusParams.nPowTargetSpacing);
             if (fPruneMode && (!(pindex->nStatus & BLOCK_HAVE_DATA) || pindex->nHeight <= chainActive.Tip()->nHeight - nPrunedBlocksLikelyToHave))
             {
                 LogPrint("net", " getblocks stopping, pruned or too old block at %d %s\n", pindex->nHeight, pindex->GetBlockHash().ToString());
@@ -5466,7 +5475,7 @@ static bool ProcessMessage(const CChainParams& chainparams, CNode* pfrom, string
             {
                 // When this block is requested, we'll send an inv that'll
                 // trigger the peer to getblocks the next batch of inventory.
-                LogPrint("net", "  getblocks stopping at limit %d %s\n", pindex->nHeight, pindex->GetBlockHash().ToString());
+                LogPrint("net", " getblocks stopping at limit %d %s\n", pindex->nHeight, pindex->GetBlockHash().ToString());
                 pfrom->hashContinue = pindex->GetBlockHash();
                 break;
             }

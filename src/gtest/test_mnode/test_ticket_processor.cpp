@@ -1,9 +1,12 @@
+// Copyright (c) 2021-2022 The Pastel developers
+// Distributed under the MIT software license, see the accompanying
+// file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <gtest/gtest.h>
 #include <json/json.hpp>
 
+#include <mnode/ticket-processor.h>
 #include <pastel_gtest_main.h>
 #include <test_mnode/mock_ticket.h>
-#include <mnode/ticket-processor.h>
 
 using namespace std;
 using namespace testing;

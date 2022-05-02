@@ -1,5 +1,5 @@
 // Copyright (c) 2013 The Bitcoin Core developers
-// Copyright (c) 2021 The Pastel developers
+// Copyright (c) 2021-2022 The Pastel developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php .
 
@@ -20,10 +20,11 @@ TEST(PoW, DifficultyAveraging) {
 
     // Start with blocks evenly-spaced and equal difficulty
     vector<CBlockIndex> blocks(lastBlk+1);
-    for (int i = 0; i <= lastBlk; i++) {
+    for (int i = 0; i <= lastBlk; i++)
+    {
         blocks[i].pprev = i ? &blocks[i - 1] : nullptr;
         blocks[i].nHeight = i;
-        blocks[i].nTime = 1269211443 + i * params.nPowTargetSpacing;
+        blocks[i].nTime = static_cast<unsigned int>(1'269'211'443 + i * params.nPowTargetSpacing);
         blocks[i].nBits = 0x1e7fffff; /* target 0x007fffff000... */
         blocks[i].nChainWork = i ? blocks[i - 1].nChainWork + GetBlockProof(blocks[i - 1]) : arith_uint256(0);
     }
@@ -40,11 +41,11 @@ TEST(PoW, DifficultyAveraging) {
     arith_uint256 bnRes;
     bnRes.SetCompact(0x1e7fffff);
     bnRes /= params.AveragingWindowTimespan();
-    bnRes *= params.AveragingWindowTimespan();
+    bnRes *= static_cast<uint32_t>(params.AveragingWindowTimespan());
     EXPECT_EQ(bnRes.GetCompact(), GetNextWorkRequired(&blocks[lastBlk], nullptr, params));
 
     // Randomise the final block time (plus 1 to ensure it is always different)
-    blocks[lastBlk].nTime += GetRand(params.nPowTargetSpacing/2) + 1;
+    blocks[lastBlk].nTime += static_cast<uint32_t>(GetRand(params.nPowTargetSpacing/2)) + 1;
 
     // Result should be the same as if last difficulty was used
     bnAvg.SetCompact(blocks[lastBlk].nBits);
@@ -87,24 +88,24 @@ TEST(PoW, MinDifficultyRules) {
     for (int i = 0; i <= lastBlk; i++) {
         blocks[i].pprev = i ? &blocks[i - 1] : nullptr;
         blocks[i].nHeight = params.nPowAllowMinDifficultyBlocksAfterHeight.value() + i;
-        blocks[i].nTime = 1269211443 + i * params.nPowTargetSpacing;
+        blocks[i].nTime = static_cast<unsigned int>(1'269'211'443 + i * params.nPowTargetSpacing);
         blocks[i].nBits = 0x1e7fffff; /* target 0x007fffff000... */
         blocks[i].nChainWork = i ? blocks[i - 1].nChainWork + GetBlockProof(blocks[i - 1]) : arith_uint256(0);
     }
 
     // Create a new block at the target spacing
     CBlockHeader next;
-    next.nTime = blocks[lastBlk].nTime + params.nPowTargetSpacing;
+    next.nTime = blocks[lastBlk].nTime + static_cast<uint32_t>(params.nPowTargetSpacing);
 
     // Result should be unchanged, modulo integer division precision loss
     arith_uint256 bnRes;
     bnRes.SetCompact(0x1e7fffff);
     bnRes /= params.AveragingWindowTimespan();
-    bnRes *= params.AveragingWindowTimespan();
+    bnRes *= static_cast<uint32_t>(params.AveragingWindowTimespan());
     EXPECT_EQ(GetNextWorkRequired(&blocks[lastBlk], &next, params), bnRes.GetCompact());
 
     // Delay last block up to the edge of the min-difficulty limit
-    next.nTime += params.nPowTargetSpacing * 5;
+    next.nTime += static_cast<unsigned int>(params.nPowTargetSpacing * 5);
 
     // Result should be unchanged, modulo integer division precision loss
     EXPECT_EQ(GetNextWorkRequired(&blocks[lastBlk], &next, params), bnRes.GetCompact());
@@ -123,8 +124,8 @@ TEST(PoW, get_next_work)
     SelectParams(CBaseChainParams::Network::MAIN);
     const Consensus::Params& params = Params().GetConsensus();
 
-    int64_t nLastRetargetTime = 1262149169; // NOTE: Not an actual block time
-    int64_t nThisTime = 1262152739;  // Block #32255 of Bitcoin
+    int64_t nLastRetargetTime = 1'262'149'169; // NOTE: Not an actual block time
+    int64_t nThisTime = 1'262'152'739;  // Block #32255 of Bitcoin
     arith_uint256 bnAvg;
     bnAvg.SetCompact(0x1d00ffff);
     EXPECT_EQ(0x1d011998,
@@ -137,8 +138,8 @@ TEST(PoW, get_next_work_pow_limit)
     SelectParams(CBaseChainParams::Network::MAIN);
     const Consensus::Params& params = Params().GetConsensus();
 
-    int64_t nLastRetargetTime = 1231006505; // Block #0 of Bitcoin
-    int64_t nThisTime = 1233061996;  // Block #2015 of Bitcoin
+    int64_t nLastRetargetTime = 1'231'006'505; // Block #0 of Bitcoin
+    int64_t nThisTime = 1'233'061'996;  // Block #2015 of Bitcoin
     arith_uint256 bnAvg;
     bnAvg.SetCompact(0x1f07ffff);
     EXPECT_EQ(0x1f07ffff,
@@ -151,8 +152,8 @@ TEST(PoW, get_next_work_lower_limit_actual)
     SelectParams(CBaseChainParams::Network::MAIN);
     const Consensus::Params& params = Params().GetConsensus();
 
-    int64_t nLastRetargetTime = 1279296753; // NOTE: Not an actual block time
-    int64_t nThisTime = 1279297671;  // Block #68543 of Bitcoin
+    int64_t nLastRetargetTime = 1'279'296'753; // NOTE: Not an actual block time
+    int64_t nThisTime = 1'279'297'671;  // Block #68543 of Bitcoin
     arith_uint256 bnAvg;
     bnAvg.SetCompact(0x1c05a3f4);
     EXPECT_EQ(0x1c04bceb,
@@ -165,8 +166,8 @@ TEST(PoW, get_next_work_upper_limit_actual)
     SelectParams(CBaseChainParams::Network::MAIN);
     const Consensus::Params& params = Params().GetConsensus();
 
-    int64_t nLastRetargetTime = 1269205629; // NOTE: Not an actual block time
-    int64_t nThisTime = 1269211443;  // Block #46367 of Bitcoin
+    int64_t nLastRetargetTime = 1'269'205'629; // NOTE: Not an actual block time
+    int64_t nThisTime = 1'269'211'443;  // Block #46367 of Bitcoin
     arith_uint256 bnAvg;
     bnAvg.SetCompact(0x1c387f6f);
     EXPECT_EQ(0x1c4a93bb,
@@ -179,10 +180,11 @@ TEST(PoW, GetBlockProofEquivalentTime_test)
     const Consensus::Params& params = Params().GetConsensus();
 
     vector<CBlockIndex> blocks(10000);
-    for (int i = 0; i < 10000; i++) {
-        blocks[i].pprev = i ? &blocks[i - 1] : NULL;
+    for (int i = 0; i < 10000; i++)
+    {
+        blocks[i].pprev = i ? &blocks[i - 1] : nullptr;
         blocks[i].nHeight = i;
-        blocks[i].nTime = 1269211443 + i * params.nPowTargetSpacing;
+        blocks[i].nTime = static_cast<unsigned int>(1'269'211'443 + i * params.nPowTargetSpacing);
         blocks[i].nBits = 0x207fffff; /* target 0x7fffff000... */
         blocks[i].nChainWork = i ? blocks[i - 1].nChainWork + GetBlockProof(blocks[i - 1]) : arith_uint256(0);
     }

@@ -38,3 +38,6 @@ class PastelTestFramework (BitcoinTestFramework):
         value_hashed = self.get_rand_testdata(letters, 10)
         encoded_value = value_hashed.encode()
         return hashlib.sha3_256(encoded_value).hexdigest()
+
+    def get_random_txid(self):
+        return ('%064x' % random.getrandbits(256))

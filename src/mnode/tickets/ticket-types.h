@@ -20,6 +20,8 @@ constexpr auto TICKET_NAME_USERNAME_CHANGE          = "username-change";        
 constexpr auto TICKET_NAME_ETHEREUM_ADDRESS_CHANGE  = "ethereum-address-change";
 constexpr auto TICKET_NAME_ACTION_REG               = "action-reg";             // Action registration ticket
 constexpr auto TICKET_NAME_ACTION_ACT               = "action-act";             // Action activation ticket
+constexpr auto TICKET_NAME_NFT_COLLECTION_REG       = "nft-collection-reg";     // NFT Collection registration ticket
+constexpr auto TICKET_NAME_NFT_COLLECTION_ACT       = "nft-collection-act";     // NFT Collection activation ticket
 
 // support fake tickets
 #ifndef FAKE_TICKET
@@ -30,18 +32,20 @@ constexpr auto TICKET_NAME_ACTION_ACT               = "action-act";             
  * Ticket Type IDs.
  */
 enum class TicketID : uint8_t {
-    PastelID = 0, // Pastel ID registration ticket
-    NFT,          // NFT registration ticket
-    Activate,     // NFT activation ticket
-    Sell,         // NFT sell ticket
-    Buy,          // NFT buy ticket
-    Trade,        // NFT trade ticket
+    PastelID = 0,       // Pastel ID registration ticket
+    NFT,                // NFT registration ticket
+    Activate,           // NFT activation ticket
+    Sell,               // NFT sell ticket
+    Buy,                // NFT buy ticket
+    Trade,              // NFT trade ticket
     Down,
-    Royalty,         // NFT royalty ticket
-    Username,        // Username Change Request ticket
-    EthereumAddress, // Ethereum Address Change Request ticket
-    ActionReg,       // Action registration ticket
-    ActionActivate,  // Action activation ticket
+    Royalty,            // NFT royalty ticket
+    Username,           // Username Change Request ticket
+    EthereumAddress,    // Ethereum Address Change Request ticket
+    ActionReg,          // Action registration ticket
+    ActionActivate,     // Action activation ticket
+    NFTCollectionReg,   // NFT collection registration ticket
+    NFTCollectionAct,   // NFT collection activation ticket
 
     COUNT // number of ticket types
 };
@@ -54,9 +58,9 @@ using TicketInfo = struct
     TicketID id;               // ticket id
     const char* szDescription; // ticket description
     const char* szName;        // ticket name
-    unsigned short nVersion;   // ticket version
+    uint16_t nVersion;         // ticket version
     const char* szDBSubFolder; // ticket db subfolder
-    CAmount defaultFee;        // default ticket fee (ticket price), can be overriden in a specific ticket class depending on height
+    CAmount defaultFee;        // default ticket fee (ticket price in PSL), can be overriden in a specific ticket class depending on height
 };
 
 /**
@@ -64,19 +68,21 @@ using TicketInfo = struct
  */
 static constexpr std::array<TicketInfo, to_integral_type<TicketID>(TicketID::COUNT)> TICKET_INFO =
     {{
-        //     ticket id           |   ticket description       |        ticket name                 | version | DB subfolder  |  default fee
-        {TicketID::PastelID,        "PastelID Registration",        TICKET_NAME_ID_REG,                  1,       "pslids",       10   },
-        {TicketID::NFT,             "NFT Registration",             TICKET_NAME_NFT_REG,                 0,       "nftreg",       10   },
-        {TicketID::Activate,        "NFT Activation",               TICKET_NAME_NFT_ACT,                 0,       "nftcnf",       10   },
-        {TicketID::Sell,            "NFT Sell",                     TICKET_NAME_NFT_SELL,                0,       "nftsel",       10   },
-        {TicketID::Buy,             "NFT Buy",                      TICKET_NAME_NFT_BUY,                 0,       "nftbuy",       10   },
-        {TicketID::Trade,           "NFT Trade",                    TICKET_NAME_NFT_TRADE,               0,       "nfttrd",       10   },
-        {TicketID::Down,            "Take Down",                    TICKET_NAME_TAKE_DOWN,               0,       "nfttdn",     1000   },
-        {TicketID::Royalty,         "NFT Royalty",                  TICKET_NAME_NFT_ROYALTY,             1,       "nftrty",       10   },
-        {TicketID::Username,        "Username Change",              TICKET_NAME_USERNAME_CHANGE,         1,       "usrnme",      100   },
-        {TicketID::EthereumAddress, "Ethereum Address Change",      TICKET_NAME_ETHEREUM_ADDRESS_CHANGE, 1,       "ethaddr",     100   },
-        {TicketID::ActionReg,       "Action Registration",          TICKET_NAME_ACTION_REG,              1,       "actreg",       10   },
-        {TicketID::ActionActivate,  "Action Activation",            TICKET_NAME_ACTION_ACT,              1,       "actcnf",       10   }
+        //     ticket id            |   ticket description       |        ticket name                 | version | DB subfolder  |  default fee
+        {TicketID::PastelID,          "PastelID Registration",        TICKET_NAME_ID_REG,                  1,       "pslids",       10   },
+        {TicketID::NFT,               "NFT Registration",             TICKET_NAME_NFT_REG,                 1,       "nftreg",       10   }, // nft_ticket version 2
+        {TicketID::Activate,          "NFT Activation",               TICKET_NAME_NFT_ACT,                 0,       "nftcnf",       10   },
+        {TicketID::Sell,              "NFT Sell",                     TICKET_NAME_NFT_SELL,                0,       "nftsel",       10   },
+        {TicketID::Buy,               "NFT Buy",                      TICKET_NAME_NFT_BUY,                 0,       "nftbuy",       10   },
+        {TicketID::Trade,             "NFT Trade",                    TICKET_NAME_NFT_TRADE,               0,       "nfttrd",       10   },
+        {TicketID::Down,              "Take Down",                    TICKET_NAME_TAKE_DOWN,               0,       "nfttdn",     1000   },
+        {TicketID::Royalty,           "NFT Royalty",                  TICKET_NAME_NFT_ROYALTY,             1,       "nftrty",       10   },
+        {TicketID::Username,          "Username Change",              TICKET_NAME_USERNAME_CHANGE,         1,       "usrnme",      100   },
+        {TicketID::EthereumAddress,   "Ethereum Address Change",      TICKET_NAME_ETHEREUM_ADDRESS_CHANGE, 1,       "ethaddr",     100   },
+        {TicketID::ActionReg,         "Action Registration",          TICKET_NAME_ACTION_REG,              1,       "actreg",       10   },
+        {TicketID::ActionActivate,    "Action Activation",            TICKET_NAME_ACTION_ACT,              1,       "actcnf",       10   },
+        {TicketID::NFTCollectionReg,  "NFT Collection Registration",  TICKET_NAME_NFT_COLLECTION_REG,      1,       "nftcollreg",   10   }, // nft_collection_ticket version 1
+        {TicketID::NFTCollectionAct,  "NFT Collection Activation",    TICKET_NAME_NFT_COLLECTION_ACT,      1,       "nftcollact",   10   }
     }};
 
 inline std::string GetTicketDescription(const TicketID id) noexcept
@@ -89,6 +95,9 @@ inline std::string GetTicketDescription(const TicketID id) noexcept
 
 // default ticket fees
 constexpr CAmount GREEN_FEE_PERCENT = 2;
+
+constexpr float MAX_ROYALTY = 0.2f;
+constexpr uint16_t MAX_ROYALTY_PERCENT = 20;
 
 // action ticket types
 enum class ACTION_TICKET_TYPE

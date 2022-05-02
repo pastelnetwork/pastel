@@ -8,5 +8,6 @@
 // "tickets activate" rpc API is called also from "tickets register ..."
 UniValue tickets_activate_nft(const UniValue& params, const bool bRegisterAPI = false);
 UniValue tickets_activate_action(const UniValue& params, const bool bRegisterAPI = false);
+UniValue tickets_activate_nft_collection(const UniValue& params, const bool bRegisterAPI = false);
 
 UniValue tickets_activate(const UniValue& params);

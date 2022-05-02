@@ -89,10 +89,10 @@ void CActionActivateTicket::sign(SecureString&& strKeyPass)
  * Validate Pastel ticket.
  * 
  * \param bPreReg - if true: called from ticket pre-registration
- * \param nDepth - ticket height
+ * \param nCallDepth - function call depth
  * \return ticket validation state and error message if any
  */
-ticket_validation_t CActionActivateTicket::IsValid(const bool bPreReg, const uint32_t nDepth) const noexcept
+ticket_validation_t CActionActivateTicket::IsValid(const bool bPreReg, const uint32_t nCallDepth) const noexcept
 {
     const unsigned int chainHeight = GetActiveChainHeight();
     ticket_validation_t tv;
@@ -103,15 +103,15 @@ ticket_validation_t CActionActivateTicket::IsValid(const bool bPreReg, const uin
         const ticket_validation_t commonTV = common_ticket_validation(
             *this, bPreReg, m_regTicketTxId, pastelTicket,
             [](const TicketID tid) noexcept { return (tid != TicketID::ActionReg); },
-            GetTicketDescription(), ::GetTicketDescription(TicketID::ActionReg), nDepth,
-            TicketPrice(chainHeight) * COIN + getAllMNFees()); // fee for ticket + all MN storage fees (percent from storage fee)
+            GetTicketDescription(), ::GetTicketDescription(TicketID::ActionReg), nCallDepth,
+            TicketPricePSL(chainHeight) + static_cast<CAmount>(getAllMNFeesPSL())); // fee for ticket + all MN storage fees (percent from storage fee)
 
         if (commonTV.IsNotValid())
         {
             // enrich the error message
             tv.errorMsg = strprintf(
-                "The Activation ticket for the Registration ticket with txid [%s] is not validated [block = %u, txid = %s]. %s",
-                m_regTicketTxId, m_nBlock, m_txid, commonTV.errorMsg);
+                "The Activation ticket for the Registration ticket with txid [%s] is not validated%s. %s",
+                m_regTicketTxId, bPreReg ? "" : strprintf(" [block=%u, txid=%s]", m_nBlock, m_txid), commonTV.errorMsg);
             tv.state = commonTV.state;
             break;
         }
@@ -127,9 +127,10 @@ ticket_validation_t CActionActivateTicket::IsValid(const bool bPreReg, const uin
                 !existingTicket.IsTxId(m_txid))
             {
                 tv.errorMsg = strprintf(
-                    "The Activation ticket for the Registration ticket with txid [%s] already exists"
-                    "[this ticket block = %u, txid = %s; found ticket block = %u, txid = %s]",
-                    m_regTicketTxId, m_nBlock, m_txid, existingTicket.m_nBlock, existingTicket.m_txid);
+                    "The Activation ticket for the Registration ticket with txid [%s] already exists [%sfound ticket block=%u, txid=%s]",
+                    m_regTicketTxId, 
+                    bPreReg ? "" : strprintf("this ticket block=%u txid=%s; ", m_nBlock, m_txid),
+                    existingTicket.m_nBlock, existingTicket.m_txid);
                 break;
             }
         }
@@ -191,13 +192,14 @@ CAmount CActionActivateTicket::GetExtraOutputs(vector<CTxOut>& outputs) const
         CPastelIDRegTicket mnPastelIDticket;
         if (!CPastelIDRegTicket::FindTicketInDb(mnPastelID, mnPastelIDticket))
             throw runtime_error(strprintf(
-                "The PastelID [%s] from the Action Registration ticket with this txid [%s] is not in the blockchain or is invalid",
-                mnPastelID, m_regTicketTxId));
+                "The PastelID [%s] from the %s with this txid [%s] is not in the blockchain or is invalid",
+                mnPastelID, ::GetTicketDescription(TicketID::ActionReg), m_regTicketTxId));
 
         const auto dest = keyIO.DecodeDestination(mnPastelIDticket.address);
         if (!IsValidDestination(dest))
-            throw runtime_error(
-                strprintf("The PastelID [%s] from the Action Reg ticket with this txid [%s] has invalid MN's address", mnPastelID, m_regTicketTxId));
+            throw runtime_error(strprintf(
+                "The PastelID [%s] from the %s ticket with this txid [%s] has invalid MN's address", 
+                mnPastelID, ::GetTicketDescription(TicketID::ActionReg), m_regTicketTxId));
 
         // caclulate MN fee in patoshis
         const CAmount nAmount = mn == CActionRegTicket::SIGN_MAIN ? getPrincipalMNFee() : getOtherMNFee();

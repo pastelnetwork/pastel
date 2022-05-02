@@ -1,25 +1,25 @@
-// Copyright (c) 2021 The Pastel developers
-#include "gmock/gmock.h"
-#include "univalue.h"
-
-#include "rpc/server.h"
-#include "rpc/register.h"
-#include "crypto/common.h"
-#include "key.h"
-#include "pubkey.h"
-#include "util.h"
-#include "metrics.h"
-#ifdef ENABLE_WALLET
-#include "wallet/wallet.h"
-#endif // ENABLE_WALLET
-
+// Copyright (c) 2021-2022 The Pastel developers
+// Distributed under the MIT software license, see the accompanying
+// file COPYING or https://www.opensource.org/licenses/mit-license.php.
+#include <gmock/gmock.h>
+#include <univalue.h>
 #include <libsnark/common/default_types/r1cs_ppzksnark_pp.hpp>
 #include <libsnark/zk_proof_systems/ppzksnark/r1cs_ppzksnark/r1cs_ppzksnark.hpp>
 #include "librustzcash.h"
-#include "pastel_gtest_main.h"
-#include <pastel_gtest_utils.h>
+
 #include <rpc/server.h>
 #include <rpc/register.h>
+#include <crypto/common.h>
+#include <key.h>
+#include <pubkey.h>
+#include <util.h>
+#include <metrics.h>
+#ifdef ENABLE_WALLET
+#include <wallet/wallet.h>
+#endif // ENABLE_WALLET
+
+#include <pastel_gtest_main.h>
+#include <pastel_gtest_utils.h>
 
 struct ECCryptoClosure
 {
@@ -163,6 +163,12 @@ void CPastelTest_Environment::ClearTempDataDir()
  */
 void CPastelTest_Environment::InitializeChainTest(const CBaseChainParams::Network network)
 {
+    if (m_TestNetwork.has_value())
+    {
+        if (m_TestNetwork.value() == network)
+            return; // this test network is already initialized
+        FinalizeChainTest();
+    }
     init_zksnark_params();
 
     SelectParams(network);
@@ -193,6 +199,8 @@ void CPastelTest_Environment::InitializeChainTest(const CBaseChainParams::Networ
     gl_ScriptCheckManager.SetThreadCount(3);
     gl_ScriptCheckManager.create_workers(threadGroup);
     RegisterNodeSignals(GetNodeSignals());
+
+    m_TestNetwork = network;
 }
 
 void CPastelTest_Environment::InitializeRegTest()
@@ -237,6 +245,7 @@ void CPastelTest_Environment::FinalizeChainTest()
 #endif
     ClearMetrics();
     ClearTempDataDir();
+    m_TestNetwork.reset();
 }
 
 int main(int argc, char **argv)

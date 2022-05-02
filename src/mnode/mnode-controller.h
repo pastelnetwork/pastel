@@ -97,8 +97,8 @@ public:
         InvalidateParameters();
     }
 
-    bool IsMasterNode() const {return fMasterNode;}
-    bool IsActiveMasterNode() const {return fMasterNode && activeMasternode.nState == CActiveMasternode::ActiveMasternodeState::Started;}
+    bool IsMasterNode() const noexcept {return fMasterNode;}
+    bool IsActiveMasterNode() const noexcept {return fMasterNode && activeMasternode.nState == CActiveMasternode::ActiveMasternodeState::Started;}
 
 #ifdef ENABLE_WALLET
     bool EnableMasterNode(std::ostringstream& strErrors, CServiceThreadGroup& threadGroup, CWallet* pwalletMain);
@@ -112,7 +112,7 @@ public:
 
     fs::path GetMasternodeConfigFile();
 
-    bool IsSynced() {return masternodeSync.IsSynced();}
+    bool IsSynced() const noexcept {return masternodeSync.IsSynced();}
 
     bool ProcessMessage(CNode* pfrom, std::string& strCommand, CDataStream& vRecv);
     bool AlreadyHave(const CInv& inv);

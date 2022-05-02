@@ -175,10 +175,10 @@ string CActionRegTicket::ToJSON() const noexcept
  * Validate Pastel ticket.
  * 
  * \param bPreReg - if true: called from ticket pre-registration
- * \param nDepth - ticket height
+ * \param nCallDepth - function call depth
  * \return ticket validation state and error message if any
  */
-ticket_validation_t CActionRegTicket::IsValid(const bool bPreReg, const uint32_t nDepth) const noexcept
+ticket_validation_t CActionRegTicket::IsValid(const bool bPreReg, const uint32_t nCallDepth) const noexcept
 {
     const unsigned int chainHeight = GetActiveChainHeight();
     ticket_validation_t tv;
@@ -199,11 +199,11 @@ ticket_validation_t CActionRegTicket::IsValid(const bool bPreReg, const uint32_t
             }
 
             // A.2 validate that address has coins to pay for registration - 10PSL
-            const auto fullTicketPrice = TicketPrice(chainHeight); //10% of storage fee is paid by the 'caller' and this ticket is created by MN
+            const auto fullTicketPrice = TicketPricePSL(chainHeight); //10% of storage fee is paid by the 'caller' and this ticket is created by MN
             if (pwalletMain->GetBalance() < fullTicketPrice * COIN)
             {
                 tv.errorMsg = strprintf(
-                    "Not enough coins to cover price [%" PRId64 "]", 
+                    "Not enough coins to cover price [%" PRId64 " PSL]", 
                     fullTicketPrice);
                 break;
             }
@@ -215,14 +215,15 @@ ticket_validation_t CActionRegTicket::IsValid(const bool bPreReg, const uint32_t
             (!ticket.IsBlock(m_nBlock) || !ticket.IsTxId(m_txid)))
         {
             tv.errorMsg = strprintf(
-                "This Action is already registered in blockchain [Key1 = %s; Key2 = %s]"
-                "[this ticket block = %u, txid = %s; found ticket block = %u, txid = %s]",
-                m_keyOne, KeyTwo(), m_nBlock, m_txid, ticket.GetBlock(), ticket.m_txid);
+                "This Action is already registered in blockchain [Key1=%s; Key2=%s] [%sfound ticket block=%u, txid=%s]",
+                m_keyOne, KeyTwo(), 
+                bPreReg ? "" : strprintf("this ticket block=%u txid=%s; ", m_nBlock, m_txid),
+                ticket.GetBlock(), ticket.m_txid);
             break;
         }
 
         // B. Something to validate always
-        ticket_validation_t sigTv = validate_signatures(nDepth, m_nCalledAtHeight, m_sActionTicket);
+        ticket_validation_t sigTv = validate_signatures(nCallDepth, m_nCalledAtHeight, m_sActionTicket);
         if (sigTv.IsNotValid())
         {
             tv.state = sigTv.state;

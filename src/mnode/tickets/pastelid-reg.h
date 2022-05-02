@@ -57,9 +57,10 @@ public:
     std::string ToJSON() const noexcept override;
     std::string ToStr() const noexcept override;
     void ToStrStream(std::stringstream& ss, const bool bIncludeMNsignature = true) const noexcept;
-    ticket_validation_t IsValid(const bool bPreReg, const uint32_t nDepth) const noexcept override;
+    ticket_validation_t IsValid(const bool bPreReg, const uint32_t nCallDepth) const noexcept override;
 
-    CAmount TicketPrice(const unsigned int nHeight) const noexcept override { return nHeight <= 10000 ? CPastelTicket::TicketPrice(nHeight) : 1000; }
+    // get ticket price in PSL
+    CAmount TicketPricePSL(const uint32_t nHeight) const noexcept override { return nHeight <= 10000 ? CPastelTicket::TicketPricePSL(nHeight) : 1000; }
 
     std::string PastelIDType() const noexcept { return outpoint.IsNull() ? "personal" : "masternode"; }
 

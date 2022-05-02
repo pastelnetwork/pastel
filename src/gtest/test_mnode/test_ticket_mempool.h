@@ -3,8 +3,8 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 
-#include "gmock/gmock.h"
-#include "mnode/ticket-txmempool.h"
+#include <gmock/gmock.h>
+#include <mnode/ticket-txmempool.h>
 
 class MockTicketTxMemPoolTracker : public CTicketTxMemPoolTracker
 {

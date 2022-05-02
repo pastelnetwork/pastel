@@ -197,6 +197,7 @@ inline uint256 uint256S(const char *str)
     rv.SetHex(str);
     return rv;
 }
+
 /* uint256 from std::string.
  * This is a separate function because the constructor uint256(const std::string &str) can result
  * in dangerously catching uint256(0) via std::string(const char*).
@@ -207,6 +208,9 @@ inline uint256 uint256S(const std::string& str)
     rv.SetHex(str);
     return rv;
 }
+
+// convert hex-encoded string to uint256 with error checking
+bool parse_uint256(std::string& error, uint256& value, const std::string &sUint256, const char *szValueDesc = nullptr);
 
 using v_uint256 = std::vector<uint256>;
 

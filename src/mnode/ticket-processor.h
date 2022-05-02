@@ -75,9 +75,6 @@ class CPastelTicketProcessor
     template <class _TicketType, typename F>
     std::string filterTickets(F f, const bool bCheckConfirmation = true) const;
 
-    template <class _TicketType, typename F>
-    void ProcessTicketsByMVKey(const std::string& mvKey, F f) const;
-
 public:
     CPastelTicketProcessor() = default;
 
@@ -88,17 +85,46 @@ public:
     void UpdatedBlockTip(const CBlockIndex* cBlockIndex, bool fInitialDownload);
     bool ParseTicketAndUpdateDB(CMutableTransaction& tx, const unsigned int nBlockHeight);
 
-    static std::string RealKeyTwo(const std::string& key) { return "@2@" + key; }
-    static std::string RealMVKey(const std::string& key) { return "@M@" + key; }
+    static std::string RealKeyTwo(const std::string& key) noexcept { return "@2@" + key; }
+    static std::string RealMVKey(const std::string& key) noexcept { return "@M@" + key; }
 
     bool UpdateDB(CPastelTicket& ticket, std::string& txid, const unsigned int nBlockHeight);
     void UpdateDB_MVK(const CPastelTicket& ticket, const std::string& mvKey);
 
+    // check whether ticket exists (use keyOne as a key)
     bool CheckTicketExist(const CPastelTicket& ticket);
     bool FindTicket(CPastelTicket& ticket) const;
 
+    // Check whether ticket exists (use keyTwo as a key).
     bool CheckTicketExistBySecondaryKey(const CPastelTicket& ticket);
     bool FindTicketBySecondaryKey(CPastelTicket& ticket);
+
+    /**
+    * Process tickets of the specified type using functor F.
+    *   functor F should return false to stop enumeration.
+    * 
+    * \param mvKey - mvKey to use for tickets enumeration
+    * \param f - functor to call for each ticket found by mvKey
+    */
+    template <class _TicketType, typename _TicketFunctor>
+    void ProcessTicketsByMVKey(const std::string& mvKey, _TicketFunctor f) const
+    {
+        v_strings vMainKeys;
+        const auto realMVKey = RealMVKey(mvKey);
+        const auto itDB = dbs.find(_TicketType::GetID());
+        if (itDB == dbs.cend())
+            return;
+        itDB->second->Read(realMVKey, vMainKeys);
+        for (const auto& key : vMainKeys)
+        {
+            _TicketType ticket;
+            if (itDB->second->Read(key, ticket))
+            {
+                if (!f(ticket))
+                    break; // stop processing tickets if functor returned false
+            }
+        }
+    }
 
     template <class _TicketType>
     std::vector<_TicketType> FindTicketsByMVKey(const std::string& mvKey);
@@ -110,10 +136,11 @@ public:
     template <class _TicketType>
     std::string ListTickets() const;
 
-    // list NFT registration tickets using filter
     std::string ListFilterPastelIDTickets(const short filter = 0, // 1 - mn;        2 - personal;     3 - mine
                                           const pastelid_store_t* pmapIDs = nullptr) const;
+    // list NFT registration tickets using filter
     std::string ListFilterNFTTickets(const short filter = 0) const;   // 1 - active;    2 - inactive;     3 - sold
+    std::string ListFilterNFTCollectionTickets(const short filter = 0) const;   // 1 - active;    2 - inactive;
     std::string ListFilterActTickets(const short filter = 0) const;   // 1 - available; 2 - sold
     std::string ListFilterSellTickets(const short filter = 0, const std::string& pastelID = "") const;  // 0 - all, 1 - available; 2 - unavailable;  3 - expired; 4 - sold
     std::string ListFilterBuyTickets(const short filter = 0, const std::string& pastelID = "") const;   // 0 - all, 1 - traded;    2 - expired
@@ -126,12 +153,12 @@ public:
     static size_t CreateP2FMSScripts(const CDataStream& input_stream, std::vector<CScript>& vOutScripts);
 #ifdef ENABLE_WALLET
     static bool CreateP2FMSTransaction(const std::string& input_string, CMutableTransaction& tx_out, 
-        const CAmount price, const opt_string_t& sFundingAddress, std::string& error_ret);
+        const CAmount pricePSL, const opt_string_t& sFundingAddress, std::string& error_ret);
     static bool CreateP2FMSTransaction(const CDataStream& input_stream, CMutableTransaction& tx_out, 
-        const CAmount price, const opt_string_t& sFundingAddress, std::string& error_ret);
+        const CAmount pricePSL, const opt_string_t& sFundingAddress, std::string& error_ret);
     static bool CreateP2FMSTransactionWithExtra(const CDataStream& input_data, 
         const std::vector<CTxOut>& extraOutputs, const CAmount extraAmount, CMutableTransaction& tx_out, 
-        const CAmount price, const opt_string_t& sFundingAddress, std::string& error_ret);
+        const CAmount pricePSL, const opt_string_t& sFundingAddress, std::string& error_ret);
 #endif // ENABLE_WALLET
     static bool ParseP2FMSTransaction(const CMutableTransaction& tx_in, CSerializeData& output_data, std::string& error_ret);
     static bool ParseP2FMSTransaction(const CMutableTransaction& tx_in, std::string& output_string, std::string& error_ret);
@@ -156,7 +183,8 @@ public:
     
     std::optional<reg_trade_txid_t> ValidateOwnership(const std::string& _txid, const std::string& _pastelID);
 #ifdef FAKE_TICKET
-    static std::string CreateFakeTransaction(CPastelTicket& ticket, CAmount ticketPrice, const std::vector<std::pair<std::string, CAmount>>& extraPayments, const std::string& strVerb, bool bSend);
+    static std::string CreateFakeTransaction(CPastelTicket& ticket, const CAmount ticketPricePSL, 
+        const std::vector<std::pair<std::string, CAmount>>& extraPayments, const std::string& strVerb, bool bSend);
 #endif // FAKE_TICKET
 
     // Reads P2FMS (Pay-to-Fake-Multisig) transaction into CCompressedDataStream object.
