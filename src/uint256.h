@@ -225,7 +225,7 @@ namespace std
             // Start with a hash value of 0
             size_t seed = 0;
 
-            static constexpr auto N = key.SIZE / sizeof(uint64_t);
+            static const auto N = key.SIZE / sizeof(uint64_t);
             // Modify 'seed' by XORing and bit-shifting in
             // one member of after the other
             auto p = key.begin();
