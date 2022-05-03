@@ -1,7 +1,8 @@
 // Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2014 The Bitcoin Core developers
+// Copyright (c) 2018-2022 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
-// file COPYING or http://www.opensource.org/licenses/mit-license.php.
+// file COPYING or https://www.opensource.org/licenses/mit-license.php.
 
 #if defined(HAVE_CONFIG_H)
 #include "config/bitcoin-config.h"
@@ -716,7 +717,6 @@ bool InitSanityCheck(void)
     return true;
 }
 
-
 static void ZC_LoadParams(
     const CChainParams& chainparams
 )
@@ -770,6 +770,9 @@ static void ZC_LoadParams(
     gettimeofday(&tv_end, 0);
     elapsed = float(tv_end.tv_sec-tv_start.tv_sec) + (tv_end.tv_usec-tv_start.tv_usec)/float(1000000);
     LogPrintf("Loaded Sapling parameters in %fs seconds.\n", elapsed);
+
+    if (!gl_pOrphanTxManager)
+        gl_pOrphanTxManager = make_unique<COrphanTxManager>();
 }
 
 bool AppInitServers()
