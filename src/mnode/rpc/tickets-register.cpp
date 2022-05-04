@@ -233,9 +233,10 @@ Arguments:
         "blocknum":       <block number when the ticket was created by the creator>,
         "block_hash":     "<base64'ed hash of the NFT collection>",
         "closing_height": <a closing block height after which no new NFTs would be allowed>,
-        "nft_max_count":  <max number of NFTs allowed in this collection>
+        "nft_max_count":  <max number of NFTs allowed in this collection>,
+        "nft_copy_count": <number of copies for NFTs in a collection>,
         "royalty":        <how much creator should get on all future resales>,
-        "green":          boolean
+        "green":          boolean,
         "app_ticket":     "<application-specific-data>"
     }
 2. "signatures"	(string, required) Signatures (base64) and PastelIDs of the principal and verifying masternodes (MN2 and MN3) as JSON:
@@ -796,6 +797,8 @@ Available types:
   nft        - Register new NFT ticket.
   act        - Send activation for the new registered NFT ticket.
                Same as "tickets activate nft...".
+  nft-collection - Register new NFT collection ticket.
+  nft-collection-act - Activate NFT collection. Same as "activate nft-collection".
   sell       - Register NFT sell ticket.
   buy        - Register NFT buy ticket.
   trade      - Register NFT trade ticket. 

@@ -39,7 +39,7 @@ UniValue tickets_find(const UniValue& params)
 
     if (!FIND.IsCmdSupported())
         throw JSONRPCError(RPC_INVALID_PARAMETER,
-R"(tickets find "type" "key""
+R"(tickets find "type" "key"
 Set of commands to find different types of Pastel tickets.
 
 Available types:

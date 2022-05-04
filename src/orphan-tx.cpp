@@ -9,7 +9,7 @@
 
 using namespace std;
 
-COrphanTxManager gl_OrphanTxManager;
+unique_ptr<COrphanTxManager> gl_pOrphanTxManager;
 
 /**
  * Add orphan transaction to map.
@@ -205,10 +205,13 @@ void COrphanTxManager::ProcessOrphanTxs(const CChainParams& chainparams,
     while (!workQueue.empty())
     {
         const auto &prevTxId = workQueue.front();
-        workQueue.pop_front();
         const auto itByPrev = m_mapOrphanTransactionsByPrev.find(prevTxId);
         if (itByPrev == m_mapOrphanTransactionsByPrev.cend())
+        {
+            workQueue.pop_front();
             continue;
+        }
+        workQueue.pop_front();
         // go through all orphan transactions that depend on current tx (mapped by txid=hash)
         for (const auto& orphanHash : itByPrev->second)
         {

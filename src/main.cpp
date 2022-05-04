@@ -320,27 +320,29 @@ int64_t GetBlockTimeout(int64_t nTime, int nValidatedQueuedBefore, const Consens
     return nTime + 500'000 * consensusParams.nPowTargetSpacing * (4 + nValidatedQueuedBefore);
 }
 
-void InitializeNode(NodeId nodeid, const CNode *pnode) {
+void InitializeNode(NodeId nodeid, const CNode *pnode)
+{
     LOCK(cs_main);
     CNodeState &state = mapNodeState.emplace(nodeid, CNodeState()).first->second;
     state.name = pnode->addrName;
     state.address = pnode->addr;
 }
 
-void FinalizeNode(NodeId nodeid) {
+void FinalizeNode(NodeId nodeid)
+{
     LOCK(cs_main);
     CNodeState *state = State(nodeid);
 
     if (state->fSyncStarted)
         nSyncStarted--;
 
-    if (state->nMisbehavior == 0 && state->fCurrentlyConnected) {
+    if (state->nMisbehavior == 0 && state->fCurrentlyConnected)
         AddressCurrentlyConnected(state->address);
-    }
 
     for (const auto& entry : state->vBlocksInFlight)
         mapBlocksInFlight.erase(entry.hash);
-    gl_OrphanTxManager.EraseOrphansFor(nodeid);
+    if (gl_pOrphanTxManager)
+        gl_pOrphanTxManager->EraseOrphansFor(nodeid);
     nPreferredDownload -= state->fPreferredDownload;
 
     mapNodeState.erase(nodeid);
@@ -4441,7 +4443,8 @@ void UnloadBlockIndex()
     pindexBestInvalid = nullptr;
     pindexBestHeader = nullptr;
     mempool.clear();
-    gl_OrphanTxManager.clear();
+    if (gl_pOrphanTxManager)
+        gl_pOrphanTxManager->clear();
     nSyncStarted = 0;
     mapBlocksUnlinked.clear();
     vinfoBlockFile.clear();
@@ -4934,7 +4937,7 @@ static bool AlreadyHave(const CInv& inv) EXCLUSIVE_LOCKS_REQUIRED(cs_main)
 
             return recentRejects->contains(inv.hash) ||
                    mempool.exists(inv.hash) ||
-                   gl_OrphanTxManager.exists(inv.hash) ||
+                   gl_pOrphanTxManager->exists(inv.hash) ||
                    pcoinsTip->HaveCoins(inv.hash);
         }
     case MSG_BLOCK:
@@ -5549,18 +5552,18 @@ static bool ProcessMessage(const CChainParams& chainparams, CNode* pfrom, string
                 mempool.mapTx.size());
 
             // Recursively process any orphan transactions that depended on this o ne
-            gl_OrphanTxManager.ProcessOrphanTxs(chainparams, inv.hash, *recentRejects);
+            gl_pOrphanTxManager->ProcessOrphanTxs(chainparams, inv.hash, *recentRejects);
         }
         // TODO: currently, prohibit shielded spends/outputs from entering mapOrphans
         else if (fMissingInputs &&
                  tx.vShieldedSpend.empty() &&
                  tx.vShieldedOutput.empty())
         {
-            gl_OrphanTxManager.AddOrphanTx(tx, pfrom->GetId());
+            gl_pOrphanTxManager->AddOrphanTx(tx, pfrom->GetId());
 
             // DoS prevention: do not allow mapOrphanTransactions to grow unbounded
             const size_t nMaxOrphanTx = static_cast<size_t>(max<int64_t>(0, GetArg("-maxorphantx", DEFAULT_MAX_ORPHAN_TRANSACTIONS)));
-            const size_t nEvicted = gl_OrphanTxManager.LimitOrphanTxSize(nMaxOrphanTx);
+            const size_t nEvicted = gl_pOrphanTxManager->LimitOrphanTxSize(nMaxOrphanTx);
             if (nEvicted > 0)
                 LogPrint("mempool", "mapOrphan overflow, removed %zu tx\n", nEvicted);
         }
@@ -6406,9 +6409,6 @@ public:
         for (auto& [hash, pBlockIndex] : mapBlockIndex)
             delete pBlockIndex;
         mapBlockIndex.clear();
-
-        // orphan transactions
-        gl_OrphanTxManager.clear();
     }
 } instance_of_cmaincleanup;
 

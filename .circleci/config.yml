@@ -72,11 +72,12 @@ jobs:
           command: |
             ./full_test_suite.py rpc-ext
       - run:
-          name: rpc-mnfast
+          name: rpc-mn
           working_directory: qa/test-suite
-          no_output_timeout: 30m
+          no_output_timeout: 45m
           command: |
-            ./full_test_suite.py rpc-mnfast
+            export PYTHONUNBUFFERED=1
+            ./full_test_suite.py rpc-mn
   build_windows:
     executor: pastel-builder
     working_directory: /pastel
