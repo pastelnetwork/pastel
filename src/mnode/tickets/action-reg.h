@@ -100,7 +100,7 @@ public:
 
     std::string ToJSON() const noexcept override;
     std::string ToStr() const noexcept override { return m_sActionTicket; }
-    ticket_validation_t IsValid(const bool bPreReg, const uint32_t nDepth) const noexcept override;
+    ticket_validation_t IsValid(const bool bPreReg, const uint32_t nCallDepth) const noexcept override;
     // check if sPastelID belongs to the action caller
     bool IsCallerPastelId(const std::string& sCallerPastelID) const noexcept { return m_sCallerPastelId == sCallerPastelID; }
 

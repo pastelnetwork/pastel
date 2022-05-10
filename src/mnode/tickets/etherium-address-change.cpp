@@ -51,10 +51,10 @@ string CChangeEthereumAddressTicket::ToStr() const noexcept
  * Validate Pastel ticket.
  * 
  * \param bPreReg - if true: called from ticket pre-registration
- * \param nDepth - ticket height
+ * \param nCallDepth - function call depth
  * \return ticket validation state and error message if any
  */
-ticket_validation_t CChangeEthereumAddressTicket::IsValid(const bool bPreReg, const uint32_t nDepth) const noexcept
+ticket_validation_t CChangeEthereumAddressTicket::IsValid(const bool bPreReg, const uint32_t nCallDepth) const noexcept
 {
     const unsigned int chainHeight = GetActiveChainHeight();
     ticket_validation_t tv;
@@ -66,11 +66,11 @@ ticket_validation_t CChangeEthereumAddressTicket::IsValid(const bool bPreReg, co
         if (bPreReg)
         {
             // A2. Check if address has coins to pay for Ethereum Address Change Ticket
-            const auto fullTicketPrice = TicketPrice(chainHeight);
+            const auto fullTicketPrice = TicketPricePSL(chainHeight);
             if (pwalletMain->GetBalance() < fullTicketPrice * COIN)
             {
                 tv.errorMsg = strprintf(
-                    "Not enough coins to cover price [%" PRId64 "]", 
+                    "Not enough coins to cover price [%" PRId64 " PSL]", 
                     fullTicketPrice);
                 break;
             }
@@ -100,9 +100,10 @@ ticket_validation_t CChangeEthereumAddressTicket::IsValid(const bool bPreReg, co
             masterNodeCtrl.masternodeTickets.getValueBySecondaryKey(existingTicket) == ethereumAddress)
         {
             tv.errorMsg = strprintf(
-                "This Ethereum Address Change Request is already registered in blockchain [Ethereum Address = %s]"
-                "[this ticket block = %u txid = %s; found ticket block  = %u txid = %s]",
-                ethereumAddress, existingTicket.GetBlock(), existingTicket.m_txid, m_nBlock, m_txid);
+                "This Ethereum Address Change Request is already registered in blockchain [Ethereum Address = %s] [%sfound ticket block=%u, txid=%s]",
+                ethereumAddress,
+                bPreReg ? "" : strprintf("this ticket block=%u txid=%s; ", m_nBlock, m_txid),
+                existingTicket.GetBlock(), existingTicket.m_txid);
             break;
         }
 

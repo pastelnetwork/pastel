@@ -107,18 +107,15 @@ declare -a testScriptsToFix=(
 )
 
 declare -a testScriptsMN=(
-    'mn_main.py'
-    'mn_tickets.py'
-    'mn_governance.py'
-)
-
-declare -a testScriptsMNfast=(
     'secure_container.py'
     'mn_tickets_username_change.py'
     'mn_tickets_validation.py'
+    'mn_governance.py'
     'mn_messaging.py'
     'mn_payment.py'
     'mn_bugs.py'
+    'mn_main.py'
+    'mn_tickets.py'
 )
 
 declare -a testScriptsExt=(
@@ -279,7 +276,6 @@ elif test -n "$testScriptName"; then
 else
     runTestGroup "testScripts"
     runTestGroup "testScriptsExt"
-    runTestGroup "testScriptsMNfast"
     runTestGroup "testScriptsMN"
 fi
 

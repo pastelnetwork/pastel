@@ -40,7 +40,7 @@ string CNFTBuyTicket::ToStr() const noexcept
     return ss.str();
 }
 
-ticket_validation_t CNFTBuyTicket::IsValid(const bool bPreReg, const uint32_t nDepth) const noexcept
+ticket_validation_t CNFTBuyTicket::IsValid(const bool bPreReg, const uint32_t nCallDepth) const noexcept
 {
     const unsigned int chainHeight = GetActiveChainHeight();
     ticket_validation_t tv;
@@ -51,7 +51,8 @@ ticket_validation_t CNFTBuyTicket::IsValid(const bool bPreReg, const uint32_t nD
         const ticket_validation_t commonTV = common_ticket_validation(
             *this, bPreReg, sellTxnId, pastelTicket,
             [](const TicketID tid) noexcept { return (tid != TicketID::Sell); },
-            GetTicketDescription(), ::GetTicketDescription(TicketID::Sell), nDepth, (price + TicketPrice(chainHeight)) * COIN);
+            GetTicketDescription(), ::GetTicketDescription(TicketID::Sell), nCallDepth, 
+            price + TicketPricePSL(chainHeight));
         if (commonTV.IsNotValid())
         {
             tv.errorMsg = strprintf(
@@ -102,9 +103,10 @@ ticket_validation_t CNFTBuyTicket::IsValid(const bool bPreReg, const uint32_t nD
                 if (existingBuyTicket.m_nBlock + masterNodeCtrl.MaxBuyTicketAge > chainHeight)
                 {
                     tv.errorMsg = strprintf(
-                        "Buy ticket [%s] already exists and is not yet 1h old for this sell ticket [%s]"
-                        "[this ticket block = %u, txid = %s; found ticket block = %u, txid = %s]",
-                        existingBuyTicket.m_txid, sellTxnId, m_nBlock, m_txid, existingBuyTicket.m_nBlock, existingBuyTicket.m_txid);
+                        "Buy ticket [%s] already exists and is not yet 1h old for this sell ticket [%s] [%sfound ticket block=%u, txid=%s]",
+                        existingBuyTicket.m_txid, sellTxnId, 
+                        bPreReg ? "" : strprintf("this ticket block=%u txid=%s; ", m_nBlock, m_txid),
+                        existingBuyTicket.m_nBlock, existingBuyTicket.m_txid);
                     break;
                 }
             }

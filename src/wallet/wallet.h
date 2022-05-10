@@ -959,7 +959,7 @@ public:
         const libzcash::SaplingPaymentAddress &addr);
     bool AddCryptedSaplingSpendingKey(
         const libzcash::SaplingExtendedFullViewingKey &extfvk,
-        const std::vector<unsigned char> &vchCryptedSecret);
+        const v_uint8 &vchCryptedSecret);
     //! Adds spending key to the store, without saving it to disk (used by LoadWallet)
     bool LoadSaplingZKey(const libzcash::SaplingExtendedSpendingKey &key);
     //! Load spending key metadata (used by LoadWallet)
@@ -973,7 +973,7 @@ public:
         const libzcash::SaplingIncomingViewingKey &ivk);
     //! Adds an encrypted spending key to the store, without saving it to disk (used by LoadWallet)
     bool LoadCryptedSaplingZKey(const libzcash::SaplingExtendedFullViewingKey &extfvk,
-                                const std::vector<unsigned char> &vchCryptedSecret);
+                                const v_uint8 &vchCryptedSecret);
 
     /** 
      * Increment the next transaction order id
@@ -1158,7 +1158,7 @@ public:
     void GenerateNewSeed();
 
     bool SetHDSeed(const HDSeed& seed);
-    bool SetCryptedHDSeed(const uint256& seedFp, const std::vector<unsigned char> &vchCryptedSecret);
+    bool SetCryptedHDSeed(const uint256& seedFp, const v_uint8 &vchCryptedSecret) override;
 
     /* Returns the wallet's HD seed or throw JSONRPCError(...) */
     HDSeed GetHDSeedForRPC() const;
@@ -1170,7 +1170,7 @@ public:
     /* Set the current HD seed, without saving it to disk (used by LoadWallet) */
     bool LoadHDSeed(const HDSeed& key);
     /* Set the current encrypted HD seed, without saving it to disk (used by LoadWallet) */
-    bool LoadCryptedHDSeed(const uint256& seedFp, const std::vector<unsigned char>& seed);
+    bool LoadCryptedHDSeed(const uint256& seedFp, const v_uint8& seed);
     
     /* Find notes filtered by payment address, min depth, ability to spend */
     void GetFilteredNotes(std::vector<SaplingNoteEntry>& saplingEntries,

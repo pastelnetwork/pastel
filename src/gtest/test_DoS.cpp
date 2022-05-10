@@ -112,7 +112,7 @@ TEST_F(TestDoS, DoS_bantime)
 
 CTransaction RandomOrphan()
 {
-    return gl_OrphanTxManager.getTxOrFirst(GetRandHash());
+    return gl_pOrphanTxManager->getTxOrFirst(GetRandHash());
 }
 
 class PTestDoS : public TestWithParam<int>
@@ -143,7 +143,7 @@ TEST_P(PTestDoS, DoS_mapOrphans)
         tx.vout[0].nValue = 1*CENT;
         tx.vout[0].scriptPubKey = GetScriptForDestination(key.GetPubKey().GetID());
 
-        gl_OrphanTxManager.AddOrphanTx(tx, i);
+        gl_pOrphanTxManager->AddOrphanTx(tx, i);
     }
 
     // ... and 50 that depend on other orphans:
@@ -160,7 +160,7 @@ TEST_P(PTestDoS, DoS_mapOrphans)
         tx.vout[0].scriptPubKey = GetScriptForDestination(key.GetPubKey().GetID());
         SignSignature(keystore, txPrev, tx, 0, to_integral_type(SIGHASH::ALL), consensusBranchId);
 
-        gl_OrphanTxManager.AddOrphanTx(tx, i);
+        gl_pOrphanTxManager->AddOrphanTx(tx, i);
     }
 
     // This really-big orphan should be ignored:
@@ -184,27 +184,27 @@ TEST_P(PTestDoS, DoS_mapOrphans)
         for (unsigned int j = 1; j < tx.vin.size(); j++)
             tx.vin[j].scriptSig = tx.vin[0].scriptSig;
 
-        EXPECT_TRUE(!gl_OrphanTxManager.AddOrphanTx(tx, i));
+        EXPECT_TRUE(!gl_pOrphanTxManager->AddOrphanTx(tx, i));
     }
 
     // Test EraseOrphansFor:
     for (NodeId i = 0; i < 3; i++)
     {
-        const size_t sizeBefore = gl_OrphanTxManager.size();
-        gl_OrphanTxManager.EraseOrphansFor(i);
-        EXPECT_LT(gl_OrphanTxManager.size(), sizeBefore);
+        const size_t sizeBefore = gl_pOrphanTxManager->size();
+        gl_pOrphanTxManager->EraseOrphansFor(i);
+        EXPECT_LT(gl_pOrphanTxManager->size(), sizeBefore);
     }
 
     // Test LimitOrphanTxSize() function:
-    gl_OrphanTxManager.LimitOrphanTxSize(40);
-    EXPECT_TRUE(gl_OrphanTxManager.size() <= 40);
+    gl_pOrphanTxManager->LimitOrphanTxSize(40);
+    EXPECT_TRUE(gl_pOrphanTxManager->size() <= 40);
 
-    gl_OrphanTxManager.LimitOrphanTxSize(10);
-    EXPECT_TRUE(gl_OrphanTxManager.size() <= 10);
+    gl_pOrphanTxManager->LimitOrphanTxSize(10);
+    EXPECT_TRUE(gl_pOrphanTxManager->size() <= 10);
 
-    gl_OrphanTxManager.LimitOrphanTxSize(0);
-    EXPECT_EQ(gl_OrphanTxManager.size(), 0u);
-    EXPECT_EQ(gl_OrphanTxManager.sizePrev(), 0u);
+    gl_pOrphanTxManager->LimitOrphanTxSize(0);
+    EXPECT_EQ(gl_pOrphanTxManager->size(), 0u);
+    EXPECT_EQ(gl_pOrphanTxManager->sizePrev(), 0u);
 }
 
 INSTANTIATE_TEST_SUITE_P(DoS_mapOrphans, PTestDoS, Values(

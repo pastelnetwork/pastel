@@ -75,7 +75,7 @@ TEST(test_pmt, pmt_test1)
             ss << pmt1;
 
             // verify CPartialMerkleTree's size guarantees
-            unsigned int n = min<unsigned int>(nTx, 1 + vMatchTxid1.size()*nHeight);
+            unsigned int n = min<unsigned int>(nTx, 1 + static_cast<unsigned int>(vMatchTxid1.size()*nHeight));
             EXPECT_TRUE(ss.size() <= 10 + (258*n+7)/8);
 
             // deserialize into a tester copy

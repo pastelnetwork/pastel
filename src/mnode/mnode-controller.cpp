@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2021 The Pastel Core developers
+// Copyright (c) 2018-2022 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 
@@ -17,8 +17,6 @@
 #include <mnode/mnode-manager.h>
 #include <mnode/mnode-msgsigner.h>
 #include <mnode/mnode-db.h>
-
-#include <boost/lexical_cast.hpp>
 
 using namespace std;
 
@@ -264,7 +262,7 @@ bool CMasterNodeController::EnableMasterNode(ostringstream& strErrors, CServiceT
         for (const auto & mne : masternodeConfig.getEntries())
         {
             mnTxHash.SetHex(mne.getTxHash());
-            outputIndex = boost::lexical_cast<unsigned int>(mne.getOutputIndex());
+            outputIndex = stoi(mne.getOutputIndex());
             COutPoint outpoint = COutPoint(mnTxHash, outputIndex);
             // don't lock non-spendable outpoint (i.e. it's already spent or it's not from this wallet at all)
             if (!IsMineSpendable(pWalletMain->GetIsMine(CTxIn(outpoint))))
@@ -354,9 +352,10 @@ void CMasterNodeController::StartMasterNode(CServiceThreadGroup& threadGroup)
 
 void CMasterNodeController::StopMasterNode()
 {
-    if (semMasternodeOutbound)
-        for (int i=0; i<nMasterNodeMaximumOutboundConnections; i++)
-            semMasternodeOutbound->post();
+    if (!semMasternodeOutbound)
+        return;
+    for (int i=0; i<nMasterNodeMaximumOutboundConnections; i++)
+        semMasternodeOutbound->post();
 }
 
 
@@ -383,6 +382,7 @@ bool CMasterNodeController::AlreadyHave(const CInv& inv)
 
     case MSG_MASTERNODE_GOVERNANCE_VOTE:
         {
+            LOCK(cs_mapVotes);
             auto vi = masternodeGovernance.mapVotes.find(inv.hash);
             return vi != masternodeGovernance.mapVotes.end() && !vi->second.ReprocessVote();
         }
@@ -392,8 +392,9 @@ bool CMasterNodeController::AlreadyHave(const CInv& inv)
 
     case MSG_MASTERNODE_PAYMENT_BLOCK:
         {
-            BlockMap::iterator mi = mapBlockIndex.find(inv.hash);
-            return mi != mapBlockIndex.end() && masternodePayments.mapMasternodeBlockPayees.find(mi->second->nHeight) != masternodePayments.mapMasternodeBlockPayees.end();
+            const auto mi = mapBlockIndex.find(inv.hash);
+            return (mi != mapBlockIndex.cend()) && 
+                   (masternodePayments.mapMasternodeBlockPayees.find(mi->second->nHeight) != masternodePayments.mapMasternodeBlockPayees.cend());
         }
 
     case MSG_MASTERNODE_ANNOUNCE:
@@ -404,100 +405,119 @@ bool CMasterNodeController::AlreadyHave(const CInv& inv)
 
     case MSG_MASTERNODE_VERIFY:
         return masternodeManager.mapSeenMasternodeVerification.count(inv.hash);
-    };
+    }
 
     return true;
 }
 
 bool CMasterNodeController::ProcessGetData(CNode* pfrom, const CInv& inv)
 {
-    bool pushed = false;
+    bool bPushed = false;
 
-    if (inv.type == MSG_MASTERNODE_MESSAGE) {
-        LOCK(cs_mapSeenMessages);
-        auto vi = masternodeMessages.mapSeenMessages.find(inv.hash);
-        if(vi != masternodeMessages.mapSeenMessages.end() && vi->second.IsVerified()) {
-            CDataStream ss(SER_NETWORK, PROTOCOL_VERSION);
-            ss.reserve(1000);
-            ss << masternodeMessages.mapSeenMessages[inv.hash];
-            pfrom->PushMessage(NetMsgType::MASTERNODEMESSAGE, ss);
-            pushed = true;
-        }
-    }
-
-    if (!pushed && inv.type == MSG_MASTERNODE_GOVERNANCE) {
-        if(masternodeGovernance.mapTickets.count(inv.hash)) {
-            CDataStream ss(SER_NETWORK, PROTOCOL_VERSION);
-            ss.reserve(1000);
-            ss << masternodeGovernance.mapTickets[inv.hash];
-            pfrom->PushMessage(NetMsgType::GOVERNANCE, ss);
-            pushed = true;
-        }
-    }
-
-    if (!pushed && inv.type == MSG_MASTERNODE_GOVERNANCE_VOTE) {
-        LOCK(cs_mapVotes);
-        auto vi = masternodeGovernance.mapVotes.find(inv.hash);
-        if(vi != masternodeGovernance.mapVotes.end() && vi->second.IsVerified()) {
-            CDataStream ss(SER_NETWORK, PROTOCOL_VERSION);
-            ss.reserve(1000);
-            ss << masternodeGovernance.mapVotes[inv.hash];
-            pfrom->PushMessage(NetMsgType::GOVERNANCEVOTE, ss);
-            pushed = true;
-        }
-    }
-
-    if (!pushed && inv.type == MSG_MASTERNODE_PAYMENT_VOTE) {
-        if(masternodePayments.HasVerifiedPaymentVote(inv.hash)) {
-            CDataStream ss(SER_NETWORK, PROTOCOL_VERSION);
-            ss.reserve(1000);
-            ss << masternodePayments.mapMasternodePaymentVotes[inv.hash];
-            pfrom->PushMessage(NetMsgType::MASTERNODEPAYMENTVOTE, ss);
-            pushed = true;
-        }
-    }
-
-    if (!pushed && inv.type == MSG_MASTERNODE_PAYMENT_BLOCK) {
-        BlockMap::iterator mi = mapBlockIndex.find(inv.hash);
-        LOCK(cs_mapMasternodeBlockPayees);
-        if (mi != mapBlockIndex.end() && masternodePayments.mapMasternodeBlockPayees.count(mi->second->nHeight)) {
-            for (auto & payee : masternodePayments.mapMasternodeBlockPayees[mi->second->nHeight].vecPayees)
+    switch (inv.type)
+    {
+        case MSG_MASTERNODE_MESSAGE:
+        {
+            LOCK(cs_mapSeenMessages);
+            const auto vi = masternodeMessages.mapSeenMessages.find(inv.hash);
+            if (vi != masternodeMessages.mapSeenMessages.cend() && vi->second.IsVerified())
             {
-                auto vecVoteHashes = payee.GetVoteHashes();
-                for (auto& hash : vecVoteHashes)
+                CDataStream ss(SER_NETWORK, PROTOCOL_VERSION);
+                ss.reserve(1000);
+                ss << masternodeMessages.mapSeenMessages[inv.hash];
+                pfrom->PushMessage(NetMsgType::MASTERNODEMESSAGE, ss);
+                bPushed = true;
+            } 
+        } break;
+
+        case MSG_MASTERNODE_GOVERNANCE:
+        {
+            if (masternodeGovernance.mapTickets.count(inv.hash))
+            {
+                CDataStream ss(SER_NETWORK, PROTOCOL_VERSION);
+                ss.reserve(1000);
+                ss << masternodeGovernance.mapTickets[inv.hash];
+                pfrom->PushMessage(NetMsgType::GOVERNANCE, ss);
+                bPushed = true;
+            }
+        } break;
+
+        case MSG_MASTERNODE_GOVERNANCE_VOTE:
+        {
+            LOCK(cs_mapVotes);
+            const auto vi = masternodeGovernance.mapVotes.find(inv.hash);
+            if (vi != masternodeGovernance.mapVotes.cend() && vi->second.IsVerified())
+            {
+                CDataStream ss(SER_NETWORK, PROTOCOL_VERSION);
+                ss.reserve(1000);
+                ss << masternodeGovernance.mapVotes[inv.hash];
+                pfrom->PushMessage(NetMsgType::GOVERNANCEVOTE, ss);
+                bPushed = true;
+            }
+        } break;
+
+        case MSG_MASTERNODE_PAYMENT_VOTE:
+        {
+            if (masternodePayments.HasVerifiedPaymentVote(inv.hash))
+            {
+                CDataStream ss(SER_NETWORK, PROTOCOL_VERSION);
+                ss.reserve(1000);
+                ss << masternodePayments.mapMasternodePaymentVotes[inv.hash];
+                pfrom->PushMessage(NetMsgType::MASTERNODEPAYMENTVOTE, ss);
+                bPushed = true;
+            }
+        } break;
+
+        case MSG_MASTERNODE_PAYMENT_BLOCK:
+        {
+            const auto mi = mapBlockIndex.find(inv.hash);
+            LOCK(cs_mapMasternodeBlockPayees);
+            if (mi != mapBlockIndex.cend() && masternodePayments.mapMasternodeBlockPayees.count(mi->second->nHeight))
+            {
+                for (const auto & payee : masternodePayments.mapMasternodeBlockPayees[mi->second->nHeight].vecPayees)
                 {
-                    if(masternodePayments.HasVerifiedPaymentVote(hash)) {
-                        CDataStream ss(SER_NETWORK, PROTOCOL_VERSION);
-                        ss.reserve(1000);
-                        ss << masternodePayments.mapMasternodePaymentVotes[hash];
-                        pfrom->PushMessage(NetMsgType::MASTERNODEPAYMENTVOTE, ss);
+                    const auto vecVoteHashes = payee.GetVoteHashes();
+                    for (const auto& hash : vecVoteHashes)
+                    {
+                        if (masternodePayments.HasVerifiedPaymentVote(hash))
+                        {
+                            CDataStream ss(SER_NETWORK, PROTOCOL_VERSION);
+                            ss.reserve(1000);
+                            ss << masternodePayments.mapMasternodePaymentVotes[hash];
+                            pfrom->PushMessage(NetMsgType::MASTERNODEPAYMENTVOTE, ss);
+                        }
                     }
                 }
+                bPushed = true;
             }
-            pushed = true;
-        }
+        } break;
+
+        case MSG_MASTERNODE_ANNOUNCE:
+        {
+            if (masternodeManager.mapSeenMasternodeBroadcast.count(inv.hash))
+            {
+                CDataStream ss(SER_NETWORK, PROTOCOL_VERSION);
+                ss.reserve(1000);
+                ss << masternodeManager.mapSeenMasternodeBroadcast[inv.hash].second;
+                pfrom->PushMessage(NetMsgType::MNANNOUNCE, ss);
+                bPushed = true;
+            }
+        } break;
+
+        case MSG_MASTERNODE_PING:
+        {
+            if (masternodeManager.mapSeenMasternodePing.count(inv.hash))
+            {
+                CDataStream ss(SER_NETWORK, PROTOCOL_VERSION);
+                ss.reserve(1000);
+                ss << masternodeManager.mapSeenMasternodePing[inv.hash];
+                pfrom->PushMessage(NetMsgType::MNPING, ss);
+                bPushed = true;
+            }
+        } break;
     }
 
-    if (!pushed && inv.type == MSG_MASTERNODE_ANNOUNCE) {
-        if(masternodeManager.mapSeenMasternodeBroadcast.count(inv.hash)){
-            CDataStream ss(SER_NETWORK, PROTOCOL_VERSION);
-            ss.reserve(1000);
-            ss << masternodeManager.mapSeenMasternodeBroadcast[inv.hash].second;
-            pfrom->PushMessage(NetMsgType::MNANNOUNCE, ss);
-            pushed = true;
-        }
-    }
-
-    if (!pushed && inv.type == MSG_MASTERNODE_PING) {
-        if(masternodeManager.mapSeenMasternodePing.count(inv.hash)) {
-            CDataStream ss(SER_NETWORK, PROTOCOL_VERSION);
-            ss.reserve(1000);
-            ss << masternodeManager.mapSeenMasternodePing[inv.hash];
-            pfrom->PushMessage(NetMsgType::MNPING, ss);
-            pushed = true;
-        }
-    }
-    return pushed;
+    return bPushed;
 }
 
 void CMasterNodeController::ShutdownMasterNode()

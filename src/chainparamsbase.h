@@ -1,8 +1,8 @@
 #pragma once
 // Copyright (c) 2014 The Bitcoin Core developers
+// Copyright (c) 2018-2022 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
-// file COPYING or http://www.opensource.org/licenses/mit-license.php.
-
+// file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <string>
 #include <memory>
 
@@ -22,11 +22,11 @@ public:
         MAX_NETWORK_TYPES
     };
 
-    const std::string& DataDir() const { return strDataDir; }
-    int RPCPort() const { return nRPCPort; }
+    const std::string& DataDir() const noexcept { return strDataDir; }
+    int RPCPort() const noexcept { return nRPCPort; }
 
 protected:
-    CBaseChainParams() {}
+    CBaseChainParams() = default;
 
     int nRPCPort = 0;
     std::string strDataDir;

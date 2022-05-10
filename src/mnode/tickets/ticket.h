@@ -2,7 +2,6 @@
 // Copyright (c) 2018-2022 The Pastel Core developers
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
-
 #include <string>
 #include <vector>
 
@@ -23,14 +22,6 @@ typedef struct _ticket_validation_t
     std::string errorMsg;
     TICKET_VALIDATION_STATE state{TICKET_VALIDATION_STATE::INVALID};
 
-/*
-    _ticket_validation_t() = default;
-    _ticket_validation_t(const TICKET_VALIDATION_STATE &aState) : 
-        state(aState)
-    {}
-    _ticket_validation_t(_ticket_validation_t&& tv) noexcept = default;
-    _ticket_validation_t& operator=(_ticket_validation_t&& tv) noexcept = default;
-*/
     bool IsNotValid() const noexcept { return state != TICKET_VALIDATION_STATE::VALID; }
     void clear() noexcept
     {
@@ -62,7 +53,7 @@ public:
      *   ex.: address has enough coins for registration
      * else - validate ticket in general
      */
-    virtual ticket_validation_t IsValid(const bool bPreReg, const uint32_t nDepth) const noexcept = 0; 
+    virtual ticket_validation_t IsValid(const bool bPreReg, const uint32_t nCallDepth) const noexcept = 0; 
     // stored ticket version
     short GetStoredVersion() const noexcept { return m_nVersion; }
     const std::string GetTxId() const noexcept { return m_txid; }
@@ -87,7 +78,7 @@ public:
      * \param nHeight - blockchain height
      * \return ticket price for the specified blockchain height
      */
-    virtual CAmount TicketPrice(const unsigned int nHeight) const noexcept
+    virtual CAmount TicketPricePSL(const uint32_t nHeight) const noexcept
     {
         return TICKET_INFO[to_integral_type<TicketID>(ID())].defaultFee;
     }
@@ -148,10 +139,10 @@ public:
     virtual bool HasMVKeyThree() const noexcept { return false; }
 
     virtual std::string KeyOne() const noexcept = 0; //Key to the object itself
-    virtual std::string KeyTwo() const noexcept { return ""; }
-    virtual std::string MVKeyOne() const noexcept { return ""; }
-    virtual std::string MVKeyTwo() const noexcept { return ""; }
-    virtual std::string MVKeyThree() const noexcept { return ""; }
+    virtual std::string KeyTwo() const noexcept { return {}; }
+    virtual std::string MVKeyOne() const noexcept { return {}; }
+    virtual std::string MVKeyTwo() const noexcept { return {}; }
+    virtual std::string MVKeyThree() const noexcept { return {}; }
 
     virtual void SetKeyOne(std::string &&sValue) = 0;
 

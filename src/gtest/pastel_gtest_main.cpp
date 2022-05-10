@@ -1,25 +1,26 @@
-// Copyright (c) 2021 The Pastel developers
-#include "gmock/gmock.h"
-#include "univalue.h"
-
-#include "rpc/server.h"
-#include "rpc/register.h"
-#include "crypto/common.h"
-#include "key.h"
-#include "pubkey.h"
-#include "util.h"
-#include "metrics.h"
-#ifdef ENABLE_WALLET
-#include "wallet/wallet.h"
-#endif // ENABLE_WALLET
-
+// Copyright (c) 2021-2022 The Pastel developers
+// Distributed under the MIT software license, see the accompanying
+// file COPYING or https://www.opensource.org/licenses/mit-license.php.
+#include <gmock/gmock.h>
+#include <univalue.h>
 #include <libsnark/common/default_types/r1cs_ppzksnark_pp.hpp>
 #include <libsnark/zk_proof_systems/ppzksnark/r1cs_ppzksnark/r1cs_ppzksnark.hpp>
 #include "librustzcash.h"
-#include "pastel_gtest_main.h"
-#include <pastel_gtest_utils.h>
+
 #include <rpc/server.h>
 #include <rpc/register.h>
+#include <crypto/common.h>
+#include <key.h>
+#include <pubkey.h>
+#include <util.h>
+#include <metrics.h>
+#include <orphan-tx.h>
+#ifdef ENABLE_WALLET
+#include <wallet/wallet.h>
+#endif // ENABLE_WALLET
+
+#include <pastel_gtest_main.h>
+#include <pastel_gtest_utils.h>
 
 struct ECCryptoClosure
 {
@@ -37,18 +38,20 @@ extern CWallet* pwalletMain;
 extern UniValue generate(const UniValue& params, bool fHelp);
 #endif
 
+using namespace std;
+
 // Once this function has returned false, it must remain false.
-static std::atomic<bool> latchToFalse{false};
+static atomic_bool latchToFalse{false};
 
 // resettable version of IsInitialBlockDownload
 bool TestIsInitialBlockDownload(const Consensus::Params& consensusParams)
 {
     // Optimization: pre-test latch before taking the lock.
-    if (latchToFalse.load(std::memory_order_relaxed))
+    if (latchToFalse.load(memory_order_relaxed))
         return false;
 
     LOCK(cs_main);
-    if (latchToFalse.load(std::memory_order_relaxed))
+    if (latchToFalse.load(memory_order_relaxed))
         return false;
     if (fImporting || fReindex)
         return true;
@@ -59,7 +62,7 @@ bool TestIsInitialBlockDownload(const Consensus::Params& consensusParams)
     if (chainActive.Tip()->GetBlockTime() < (GetTime() - nMaxTipAge))
         return true;
     LogPrintf("Leaving InitialBlockDownload (latching to false)\n");
-    latchToFalse.store(true, std::memory_order_relaxed);
+    latchToFalse.store(true, memory_order_relaxed);
     return false;
 }
 
@@ -94,6 +97,9 @@ void init_zksnark_params()
         reinterpret_cast<const codeunit*>(sprout_groth16_str.c_str()),
         sprout_groth16_str.length(),
         "e9b238411bd6c0ec4791e9d04245ec350c9c5744f5610dfcce4365d5ca49dfefd5054e371842b3f88fa1b9d7e8e075249b3ebabd167fa8b0f3161292d36c180a");
+
+    if (!gl_pOrphanTxManager)
+        gl_pOrphanTxManager = make_unique<COrphanTxManager>();
 }
 
 void CPastelTest_Environment::SetUp()
@@ -129,7 +135,7 @@ void CPastelTest_Environment::generate_coins(const size_t N)
  * Generate unique temp directory and set it as a datadir.
  * \return temp datadir
  */
-std::string CPastelTest_Environment::GenerateTempDataDir()
+string CPastelTest_Environment::GenerateTempDataDir()
 {
     // cleanup existing data directory
     ClearTempDataDir();
@@ -163,6 +169,12 @@ void CPastelTest_Environment::ClearTempDataDir()
  */
 void CPastelTest_Environment::InitializeChainTest(const CBaseChainParams::Network network)
 {
+    if (m_TestNetwork.has_value())
+    {
+        if (m_TestNetwork.value() == network)
+            return; // this test network is already initialized
+        FinalizeChainTest();
+    }
     init_zksnark_params();
 
     SelectParams(network);
@@ -193,6 +205,8 @@ void CPastelTest_Environment::InitializeChainTest(const CBaseChainParams::Networ
     gl_ScriptCheckManager.SetThreadCount(3);
     gl_ScriptCheckManager.create_workers(threadGroup);
     RegisterNodeSignals(GetNodeSignals());
+
+    m_TestNetwork = network;
 }
 
 void CPastelTest_Environment::InitializeRegTest()
@@ -230,13 +244,14 @@ void CPastelTest_Environment::FinalizeChainTest()
         pblocktree = nullptr;
     }
     // reset TestIsInitialBlockDownload
-    latchToFalse.store(false, std::memory_order_relaxed);
+    latchToFalse.store(false, memory_order_relaxed);
 #ifdef ENABLE_WALLET
     bitdb.Flush(true);
     bitdb.Reset();
 #endif
     ClearMetrics();
     ClearTempDataDir();
+    m_TestNetwork.reset();
 }
 
 int main(int argc, char **argv)
@@ -264,10 +279,11 @@ int main(int argc, char **argv)
     gl_pPastelTestEnv = new CPastelTest_Environment();
     if (!gl_pPastelTestEnv)
     {
-        std::cerr << "Failed to create Pastel test environment";
+        cerr << "Failed to create Pastel test environment";
         return 2;
     }
     ::testing::AddGlobalTestEnvironment(gl_pPastelTestEnv);
+    init_zksnark_params();
 
     auto ret = RUN_ALL_TESTS();
     return ret;

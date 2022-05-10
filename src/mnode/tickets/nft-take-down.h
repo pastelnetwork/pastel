@@ -15,7 +15,7 @@ class CTakeDownTicket : public CPastelTicket
 {
 public:
     static bool FindTicketInDb(const std::string& key, CTakeDownTicket& ticket);
-    CAmount TicketPrice(const unsigned int nHeight) const noexcept override { return nHeight <= 10000 ? CPastelTicket::TicketPrice(nHeight) : 100000; }
+    CAmount TicketPricePSL(const uint32_t nHeight) const noexcept override { return nHeight <= 10'000 ? CPastelTicket::TicketPricePSL(nHeight) : 100'000; }
 
     TicketID ID() const noexcept override { return TicketID::Down; }
     static TicketID GetID() { return TicketID::Down; }
@@ -26,7 +26,7 @@ public:
 
     std::string ToJSON() const noexcept override { return "{}"; }
     std::string ToStr() const noexcept override { return ""; }
-    ticket_validation_t IsValid(const bool bPreReg, const uint32_t nDepth) const noexcept override
+    ticket_validation_t IsValid(const bool bPreReg, const uint32_t nCallDepth) const noexcept override
     {
         ticket_validation_t tv;
         return tv;

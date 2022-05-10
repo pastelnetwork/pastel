@@ -23,9 +23,9 @@ UniValue tickets_fake(const UniValue& params, const bool bSend)
         SecureString strKeyPass(params[3].get_str());
         string address;
         auto regTicket = CPastelIDRegTicket::Create(move(pastelID), move(strKeyPass), move(address));
-        CAmount ticketPrice = get_long_number(params[4].get_str());
+        const CAmount ticketPricePSL = get_long_number(params[4].get_str());
         string strVerb = params[5].get_str();
-        resultObj = CPastelTicketProcessor::CreateFakeTransaction(regTicket, ticketPrice, vector<pair<string, CAmount>>{}, strVerb, bSend);
+        resultObj = CPastelTicketProcessor::CreateFakeTransaction(regTicket, ticketPricePSL, vector<pair<string, CAmount>>{}, strVerb, bSend);
     } break;
 
     case RPC_CMD_FAKETICKET::id: {
@@ -33,9 +33,9 @@ UniValue tickets_fake(const UniValue& params, const bool bSend)
         SecureString strKeyPass(params[3].get_str());
         string address = params[4].get_str();
         auto pastelIDRegTicket = CPastelIDRegTicket::Create(move(pastelID), move(strKeyPass), move(address));
-        CAmount ticketPrice = get_long_number(params[5].get_str());
+        const CAmount ticketPricePSL = get_long_number(params[5].get_str());
         string strVerb = params[6].get_str();
-        resultObj = CPastelTicketProcessor::CreateFakeTransaction(pastelIDRegTicket, ticketPrice, vector<pair<string, CAmount>>{}, strVerb, bSend);
+        resultObj = CPastelTicketProcessor::CreateFakeTransaction(pastelIDRegTicket, ticketPricePSL, vector<pair<string, CAmount>>{}, strVerb, bSend);
     } break;
 
     case RPC_CMD_FAKETICKET::nft: {
@@ -51,9 +51,9 @@ UniValue tickets_fake(const UniValue& params, const bool bSend)
         CAmount nStorageFee = get_long_number(params[8]);
         auto NFTRegTicket = CNFTRegTicket::Create(move(nft_ticket), signatures,
                                                   move(sPastelID), move(strKeyPass), move(key1), move(key2), nStorageFee);
-        CAmount ticketPrice = get_long_number(params[10].get_str());
+        const CAmount ticketPricePSL = get_long_number(params[10].get_str());
         string strVerb = params[11].get_str();
-        resultObj = CPastelTicketProcessor::CreateFakeTransaction(NFTRegTicket, ticketPrice, vector<pair<string, CAmount>>{}, strVerb, bSend);
+        resultObj = CPastelTicketProcessor::CreateFakeTransaction(NFTRegTicket, ticketPricePSL, vector<pair<string, CAmount>>{}, strVerb, bSend);
     } break;
 
     case RPC_CMD_FAKETICKET::act: {
@@ -63,7 +63,7 @@ UniValue tickets_fake(const UniValue& params, const bool bSend)
         string pastelID = params[5].get_str();
         SecureString strKeyPass(params[6].get_str());
         auto NFTActTicket = CNFTActivateTicket::Create(move(regTicketTxID), height, fee, move(pastelID), move(strKeyPass));
-        CAmount ticketPrice = get_long_number(params[7].get_str());
+        const CAmount ticketPricePSL = get_long_number(params[7].get_str());
         string strVerb = params[8].get_str();
         auto addresses = vector<pair<string, CAmount>>{};
         if (params.size() >= 11)
@@ -72,7 +72,7 @@ UniValue tickets_fake(const UniValue& params, const bool bSend)
             addresses.emplace_back(params[11].get_str(), get_long_number(params[12].get_str()));
         if (params.size() == 15)
             addresses.emplace_back(params[13].get_str(), get_long_number(params[14].get_str()));
-        resultObj = CPastelTicketProcessor::CreateFakeTransaction(NFTActTicket, ticketPrice, addresses, strVerb, bSend);
+        resultObj = CPastelTicketProcessor::CreateFakeTransaction(NFTActTicket, ticketPricePSL, addresses, strVerb, bSend);
     } break;
 
     case RPC_CMD_FAKETICKET::sell: {
@@ -87,9 +87,9 @@ UniValue tickets_fake(const UniValue& params, const bool bSend)
 
         auto NFTSellTicket = CNFTSellTicket::Create(NFTTicketTxnID, price, after, before, 0, pastelID, move(strKeyPass));
 
-        CAmount ticketPrice = get_long_number(params[8].get_str());
+        const CAmount ticketPricePSL = get_long_number(params[8].get_str());
         string strVerb = params[9].get_str();
-        resultObj = CPastelTicketProcessor::CreateFakeTransaction(NFTSellTicket, ticketPrice, vector<pair<string, CAmount>>{}, strVerb, bSend);
+        resultObj = CPastelTicketProcessor::CreateFakeTransaction(NFTSellTicket, ticketPricePSL, vector<pair<string, CAmount>>{}, strVerb, bSend);
     } break;
 
     default:

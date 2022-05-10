@@ -18,6 +18,9 @@
 #include <streams.h>
 #include <version.h>
 
+using namespace std;
+using namespace testing;
+
 constexpr unsigned char R1Array[] =
     "\x9c\x52\x4a\xdb\xcf\x56\x11\x12\x2b\x29\x12\x5e\x5d\x35\xd2\xd2"
     "\x22\x81\xaa\xb5\x33\xf0\x08\x32\xd5\x56\xb1\xf9\xea\xe5\x1d\x7d";
@@ -49,13 +52,13 @@ constexpr unsigned char MaxArray[] =
 const uint256 MaxL = uint256(v_uint8(MaxArray, MaxArray + 32));
 const uint160 MaxS = uint160(v_uint8(MaxArray, MaxArray + 20));
 
-std::string ArrayToString(const unsigned char A[], unsigned int width)
+string ArrayToString(const unsigned char A[], unsigned int width)
 {
-    std::stringstream Stream;
-    Stream << std::hex;
+    stringstream Stream;
+    Stream << hex;
     for (unsigned int i = 0; i < width; ++i)
     {
-        Stream<<std::setw(2)<<std::setfill('0')<<(unsigned int)A[width-i-1];
+        Stream<<setw(2)<<setfill('0')<<(unsigned int)A[width-i-1];
     }
     return Stream.str();
 }
@@ -66,7 +69,7 @@ inline uint160 uint160S(const char *str)
     rv.SetHex(str);
     return rv;
 }
-inline uint160 uint160S(const std::string& str)
+inline uint160 uint160S(const string& str)
 {
     uint160 rv;
     rv.SetHex(str);
@@ -125,7 +128,7 @@ TEST(uint256_tests, basics) // constructors, equality, inequality
     EXPECT_EQ(uint160(OneS) , OneS);
 }
 
-TEST(uint256_tests, comparison ) // <= >= < >
+TEST(uint256_tests, comparison) // <= >= < >
 {
     uint256 LastL;
     for (int i = 255; i >= 0; --i) {
@@ -157,7 +160,7 @@ TEST(uint256_tests, comparison ) // <= >= < >
     EXPECT_TRUE( R2S < MaxS );
 }
 
-TEST(uint256_tests, methods ) // GetHex SetHex begin() end() size() GetLow64 GetSerializeSize, Serialize, Unserialize
+TEST(uint256_tests, methods) // GetHex SetHex begin() end() size() GetLow64 GetSerializeSize, Serialize, Unserialize
 {
     EXPECT_EQ(R1L.GetHex() , R1L.ToString());
     EXPECT_EQ(R2L.GetHex() , R2L.ToString());
@@ -190,17 +193,17 @@ TEST(uint256_tests, methods ) // GetHex SetHex begin() end() size() GetLow64 Get
 
     CDataStream ss(0, PROTOCOL_VERSION);
     ss << R1L;
-    EXPECT_EQ(ss.str() , std::string(R1Array,R1Array+32));
+    EXPECT_EQ(ss.str() , string(R1Array,R1Array+32));
     ss >> TmpL;
     EXPECT_EQ(R1L , TmpL);
     ss.clear();
     ss << ZeroL;
-    EXPECT_EQ(ss.str() , std::string(ZeroArray,ZeroArray+32));
+    EXPECT_EQ(ss.str() , string(ZeroArray,ZeroArray+32));
     ss >> TmpL;
     EXPECT_EQ(ZeroL , TmpL);
     ss.clear();
     ss << MaxL;
-    EXPECT_EQ(ss.str() , std::string(MaxArray,MaxArray+32));
+    EXPECT_EQ(ss.str() , string(MaxArray,MaxArray+32));
     ss >> TmpL;
     EXPECT_EQ(MaxL , TmpL);
     ss.clear();
@@ -235,23 +238,23 @@ TEST(uint256_tests, methods ) // GetHex SetHex begin() end() size() GetLow64 Get
     EXPECT_EQ(GetSerializeSize(ZeroS, 0, PROTOCOL_VERSION) , 20);
 
     ss << R1S;
-    EXPECT_EQ(ss.str() , std::string(R1Array,R1Array+20));
+    EXPECT_EQ(ss.str() , string(R1Array,R1Array+20));
     ss >> TmpS;
     EXPECT_EQ(R1S , TmpS);
     ss.clear();
     ss << ZeroS;
-    EXPECT_EQ(ss.str() , std::string(ZeroArray,ZeroArray+20));
+    EXPECT_EQ(ss.str() , string(ZeroArray,ZeroArray+20));
     ss >> TmpS;
     EXPECT_EQ(ZeroS , TmpS);
     ss.clear();
     ss << MaxS;
-    EXPECT_EQ(ss.str() , std::string(MaxArray,MaxArray+20));
+    EXPECT_EQ(ss.str() , string(MaxArray,MaxArray+20));
     ss >> TmpS;
     EXPECT_EQ(MaxS , TmpS);
     ss.clear();
 }
 
-TEST(uint256_tests, conversion )
+TEST(uint256_tests, conversion)
 {
     EXPECT_EQ(ArithToUint256(UintToArith256(ZeroL)) , ZeroL);
     EXPECT_EQ(ArithToUint256(UintToArith256(OneL)) , OneL);
@@ -266,4 +269,38 @@ TEST(uint256_tests, conversion )
     EXPECT_EQ(R1L.GetHex() , UintToArith256(R1L).GetHex());
     EXPECT_EQ(R2L.GetHex() , UintToArith256(R2L).GetHex());
 }
+
+class PTest_parse_uint256 : public TestWithParam<
+    tuple<
+        string,  // input string uint256
+        bool,    // expected bool result
+        string,  // value description
+        string>  // expected error substring
+    >
+{};
+
+TEST_P(PTest_parse_uint256, test)
+{
+    const auto& p = GetParam();
+
+    string error;
+    uint256 hash;
+    const auto& sDesc = get<2>(p);
+    const bool bRet = parse_uint256(error, hash, get<0>(p), sDesc.empty() ? nullptr : sDesc.c_str());
+    const bool bExpectedRet = get<1>(p);
+    EXPECT_EQ(bRet, bExpectedRet);
+    if (!bExpectedRet)
+        EXPECT_NE(error.find(get<3>(p)), string::npos);
+}
+
+INSTANTIATE_TEST_SUITE_P(uint256_tests, PTest_parse_uint256,
+    Values(
+        make_tuple("123", false, "", "Incorrect uint256 value size: 3, expected: 64."),
+        make_tuple("0102030405060708090A0B0C0D0E0F101112131415161718191A1B1C1D1E1F202122", false, 
+            "test_uint256", "Incorrect test_uint256 value size: 68, expected: 64."),
+        make_tuple("xx02030405060708090A0B0C0D0E0F101112131415161718191A1B1C1D1E1F20", false, 
+            "test_uint256", "Invalid test_uint256 hex value"),
+        make_tuple("0102030405060708090A0B0C0D0E0F101112131415161718191A1B1C1D1E1F20", true, 
+            "", "")
+));
 

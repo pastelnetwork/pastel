@@ -1,15 +1,14 @@
 #pragma once
-// Copyright (c) 2018-2021 The Pastel Core developers
+// Copyright (c) 2018-2022 The Pastel Core developers
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
-
-#include "vector_types.h"
-#include "support/allocators/secure.h"
-#include "map_types.h"
-#include "legroast.h"
-#include "fs.h"
-
 #include <unordered_map>
+
+#include <fs.h>
+#include <vector_types.h>
+#include <support/allocators/secure.h>
+#include <map_types.h>
+#include <legroast.h>
 
 // storage type for pastel ids and associated keys
 using pastelid_store_t = mu_strings;

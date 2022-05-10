@@ -340,6 +340,10 @@ bool CSecureContainer::read_from_file(const string& sFilePath, const SecureStrin
         {
             clear();
 
+            if (!fs::exists(sFilePath))
+                throw runtime_error(strprintf(
+                    "Pastel ID [%s] is not stored in this local node",
+                    fs::path(sFilePath).filename().string()));
             ifstream fs(sFilePath, ios::in | ios::ate | ios::binary);
             fs.exceptions(std::ifstream::failbit | std::ifstream::badbit);
             v_uint8 v;
@@ -357,12 +361,16 @@ bool CSecureContainer::read_from_file(const string& sFilePath, const SecureStrin
             j.at("timestamp").get_to(m_nTimestamp);
             j.at("encryption").get_to(m_sEncryptionAlgorithm);
             if (m_sEncryptionAlgorithm.compare(SECURE_CONTAINER_ENCRYPTION) != 0)
-                throw runtime_error(strprintf("Encryption algorithm '%s' is not supported", m_sEncryptionAlgorithm.c_str()));
+                throw runtime_error(strprintf(
+                    "Encryption algorithm '%s' is not supported", 
+                    m_sEncryptionAlgorithm.c_str()));
 
             CSodiumAutoBuf pw;
             // allocate secure memory for the key, buffer is reused for all secure items
             if (!pw.allocate(PWKEY_BUFSUZE))
-                throw runtime_error(strprintf("Failed to allocate memory (%zu bytes)", PWKEY_BUFSUZE));
+                throw runtime_error(strprintf(
+                    "Failed to allocate memory (%zu bytes)", 
+                    PWKEY_BUFSUZE));
 
             // process encrypted items
             // read nonce for each item and use it to derive password key from passphrase and 
@@ -391,7 +399,9 @@ bool CSecureContainer::read_from_file(const string& sFilePath, const SecureStrin
                 if (crypto_aead_xchacha20poly1305_ietf_decrypt(item.data.data(), &nDecryptedLength, nullptr,
                         encrypted_data.data(), encrypted_data.size(), nullptr, 0, item.nonce.data(), pw.p) != 0)
                 {
-                    throw secure_container_exception(strprintf("Passphrase is invalid. Failed to decrypt secure item '%s' data", sType));
+                    throw secure_container_exception(strprintf(
+                        "Passphrase is invalid. Failed to decrypt secure item '%s' data", 
+                        sType));
                 }
                 item.data.resize(nDecryptedLength);
                 m_vSecureItems.push_back(move(item));

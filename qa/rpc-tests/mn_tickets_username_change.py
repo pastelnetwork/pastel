@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Copyright (c) 2021 The Pastel Core developers
+# Copyright (c) 2021-2022 The Pastel Core developers
 # Distributed under the MIT software license, see the accompanying
 # file COPYING or https://www.opensource.org/licenses/mit-license.php.
 from test_framework.util import (
@@ -117,11 +117,11 @@ class UserNameChangeTest(PastelTestFramework):
 
         self.list_username_tickets(0)
 
-        # missing pastel id
-        assert_raises_rpc(rpc.RPC_INVALID_PARAMETER, "JSONRPC error", 
+        # missing pastel id - returns rpc command help
+        assert_raises_rpc(rpc.RPC_INVALID_PARAMETER, "tickets register username", 
             self.nodes[1].tickets, "register", "username", "neo")
-        # missing passphrase
-        assert_raises_rpc(rpc.RPC_INVALID_PARAMETER, "JSONRPC error", 
+        # missing passphrase - returns rpc command help
+        assert_raises_rpc(rpc.RPC_INVALID_PARAMETER, "tickets register username", 
             self.nodes[1].tickets, "register", "username", "neo", self.n1_pastelid1)
         # too short username < 4 chars
         assert_raises_rpc(rpc.RPC_MISC_ERROR, "Invalid size of username", 

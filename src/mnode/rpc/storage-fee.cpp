@@ -104,19 +104,23 @@ Examples:
 Get action fees based on data size.
 
 Arguments:
-  "data_size"         (string, required) data size in MB
+  "data_size"         (string, required) data size in MB (min 1MB)
 
 Returns:
 {
-    "datasize": xxx,                    (numeric) data size in MB
+    "datasize": xxx,                    (numeric) data size in MB (min 1MB)
     "<action-type>fee": xxxx,           (numeric) action fee in )" + CURRENCY_UNIT + R"(
     "<action-type>feePat": x.xxx,       (numeric) action fee in )" + MINOR_CURRENCY_UNIT + R"(
     .....
 }
 )");
-            const ssize_t nDataSizeInMB = get_long_number(params[1]);
+            ssize_t nDataSizeInMB = get_long_number(params[1]);
             if (nDataSizeInMB < 0)
-                throw JSONRPCError(RPC_INVALID_PARAMETER, "<data size> parameter cannnot be negative");
+                throw JSONRPCError(RPC_INVALID_PARAMETER, "<data size> parameter cannot be negative");
+
+            if (nDataSizeInMB == 0)
+                nDataSizeInMB = 1;
+
             // get map of action fees in PSL
             const auto feeMap = CActionRegTicket::GetActionFees(nDataSizeInMB);
             retObj.setObject();

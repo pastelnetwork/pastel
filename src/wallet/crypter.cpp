@@ -1,18 +1,18 @@
-// Copyright (c) 2009-2013 The Bitcoin Core developers
+// Copyright (c) 2009-2014 The Bitcoin Core developers
+// Copyright (c) 2018-2022 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php .
-
-#include "crypter.h"
-
-#include "script/script.h"
-#include "script/standard.h"
-#include "streams.h"
-#include "util.h"
-
 #include <string>
 #include <vector>
 #include <openssl/aes.h>
 #include <openssl/evp.h>
+#include <scope_guard.hpp>
+
+#include <wallet/crypter.h>
+#include <script/script.h>
+#include <script/standard.h>
+#include <streams.h>
+#include <util.h>
 
 bool CCrypter::SetKeyFromPassphrase(const SecureString& strKeyData, const v_uint8& chSalt, const unsigned int nRounds, const unsigned int nDerivationMethod)
 {
@@ -22,7 +22,7 @@ bool CCrypter::SetKeyFromPassphrase(const SecureString& strKeyData, const v_uint
     int i = 0;
     if (nDerivationMethod == 0)
         i = EVP_BytesToKey(EVP_aes_256_cbc(), EVP_sha512(), &chSalt[0],
-                          (unsigned char *)&strKeyData[0], strKeyData.size(), nRounds, vchKey.data(), vchIV.data());
+                          (unsigned char *)&strKeyData[0], static_cast<int>(strKeyData.size()), nRounds, vchKey.data(), vchIV.data());
 
     if (i != (int)WALLET_CRYPTO_KEY_SIZE)
     {
@@ -54,20 +54,31 @@ bool CCrypter::Encrypt(const CKeyingMaterial& vchPlaintext, v_uint8& vchCipherte
 
     // max ciphertext len for a n bytes of plaintext is
     // n + AES_BLOCK_SIZE - 1 bytes
-    int nLen = vchPlaintext.size();
+    const int nLen = static_cast<int>(vchPlaintext.size());
     int nCLen = nLen + AES_BLOCK_SIZE, nFLen = 0;
     vchCiphertext = v_uint8(nCLen);
 
-    bool fOk = true;
+    bool fOk = false;
+    do
+    {
+        EVP_CIPHER_CTX* ctx = EVP_CIPHER_CTX_new();
+        assert(ctx);
+        const auto guard = sg::make_scope_guard([&]() noexcept
+            {
+                if (ctx)
+                    EVP_CIPHER_CTX_free(ctx);
+            });
+        if (EVP_EncryptInit_ex(ctx, EVP_aes_256_cbc(), nullptr, vchKey.data(), vchIV.data()) != 1)
+            break;
+        if (EVP_EncryptUpdate(ctx, &vchCiphertext[0], &nCLen, &vchPlaintext[0], nLen) != 1)
+            break;
+        if (EVP_EncryptFinal_ex(ctx, (&vchCiphertext[0]) + nCLen, &nFLen) != 1)
+            break;
+        fOk = true;
+    } while (false);
 
-    EVP_CIPHER_CTX* ctx = EVP_CIPHER_CTX_new();
-    assert(ctx);
-    if (fOk) fOk = EVP_EncryptInit_ex(ctx, EVP_aes_256_cbc(), NULL, vchKey.data(), vchIV.data()) != 0;
-    if (fOk) fOk = EVP_EncryptUpdate(ctx, &vchCiphertext[0], &nCLen, &vchPlaintext[0], nLen) != 0;
-    if (fOk) fOk = EVP_EncryptFinal_ex(ctx, (&vchCiphertext[0]) + nCLen, &nFLen) != 0;
-    EVP_CIPHER_CTX_free(ctx);
-
-    if (!fOk) return false;
+    if (!fOk)
+        return false;
 
     vchCiphertext.resize(nCLen + nFLen);
     return true;
@@ -79,21 +90,32 @@ bool CCrypter::Decrypt(const v_uint8& vchCiphertext, CKeyingMaterial& vchPlainte
         return false;
 
     // plaintext will always be equal to or lesser than length of ciphertext
-    int nLen = vchCiphertext.size();
+    const int nLen = static_cast<int>(vchCiphertext.size());
     int nPLen = nLen, nFLen = 0;
 
     vchPlaintext = CKeyingMaterial(nPLen);
 
-    bool fOk = true;
+    bool fOk = false;
+    do
+    {
+        EVP_CIPHER_CTX* ctx = EVP_CIPHER_CTX_new();
+        assert(ctx);
+        const auto guard = sg::make_scope_guard([&]() noexcept
+            {
+                if (ctx)
+                    EVP_CIPHER_CTX_free(ctx);
+            });
+        if (EVP_DecryptInit_ex(ctx, EVP_aes_256_cbc(), nullptr, vchKey.data(), vchIV.data()) != 1)
+            break;
+        if (EVP_DecryptUpdate(ctx, &vchPlaintext[0], &nPLen, &vchCiphertext[0], nLen) != 1)
+            break;
+        if (EVP_DecryptFinal_ex(ctx, (&vchPlaintext[0]) + nPLen, &nFLen) != 1)
+            break;
+        fOk = true;
+    } while (false);
 
-    EVP_CIPHER_CTX* ctx = EVP_CIPHER_CTX_new();
-    assert(ctx);
-    if (fOk) fOk = EVP_DecryptInit_ex(ctx, EVP_aes_256_cbc(), NULL, vchKey.data(), vchIV.data()) != 0;
-    if (fOk) fOk = EVP_DecryptUpdate(ctx, &vchPlaintext[0], &nPLen, &vchCiphertext[0], nLen) != 0;
-    if (fOk) fOk = EVP_DecryptFinal_ex(ctx, (&vchPlaintext[0]) + nPLen, &nFLen) != 0;
-    EVP_CIPHER_CTX_free(ctx);
-
-    if (!fOk) return false;
+    if (!fOk)
+        return false;
 
     vchPlaintext.resize(nPLen + nFLen);
     return true;
@@ -200,20 +222,18 @@ bool CCryptoKeyStore::Unlock(const CKeyingMaterial& vMasterKeyIn)
 
         bool keyPass = false;
         bool keyFail = false;
-        if (!cryptedHDSeed.first.IsNull()) {
+        if (!cryptedHDSeed.first.IsNull())
+        {
             HDSeed seed;
             if (!DecryptHDSeed(vMasterKeyIn, cryptedHDSeed.second, cryptedHDSeed.first, seed))
-            {
                 keyFail = true;
-            } else {
+            else
                 keyPass = true;
-            }
         }
-        CryptedKeyMap::const_iterator mi = mapCryptedKeys.begin();
-        for (; mi != mapCryptedKeys.end(); ++mi)
+        auto mi = mapCryptedKeys.begin();
+        for (const auto &[keyID, cryptKey] : mapCryptedKeys)
         {
-            const CPubKey &vchPubKey = (*mi).second.first;
-            const v_uint8& vchCryptedSecret = (*mi).second.second;
+            const auto& [vchPubKey, vchCryptedSecret] = cryptKey;
             CKey key;
             if (!DecryptKey(vMasterKeyIn, vchCryptedSecret, vchPubKey, key))
             {
@@ -224,11 +244,8 @@ bool CCryptoKeyStore::Unlock(const CKeyingMaterial& vMasterKeyIn)
             if (fDecryptionThoroughlyChecked)
                 break;
         }
-        CryptedSaplingSpendingKeyMap::const_iterator miSapling = mapCryptedSaplingSpendingKeys.begin();
-        for (; miSapling != mapCryptedSaplingSpendingKeys.end(); ++miSapling)
+        for (const auto &[extfvk, vchCryptedSecret] : mapCryptedSaplingSpendingKeys)
         {
-            const libzcash::SaplingExtendedFullViewingKey &extfvk = (*miSapling).first;
-            const v_uint8& vchCryptedSecret = (*miSapling).second;
             libzcash::SaplingExtendedSpendingKey sk;
             if (!DecryptSaplingSpendingKey(vMasterKeyIn, vchCryptedSecret, extfvk, sk))
             {
@@ -257,9 +274,8 @@ bool CCryptoKeyStore::SetHDSeed(const HDSeed& seed)
 {
     {
         LOCK(cs_KeyStore);
-        if (!fUseCrypto) {
+        if (!fUseCrypto)
             return CBasicKeyStore::SetHDSeed(seed);
-        }
 
         if (IsLocked())
             return false;
@@ -286,7 +302,8 @@ bool CCryptoKeyStore::SetCryptedHDSeed(
     if (!fUseCrypto)
         return false;
 
-    if (!cryptedHDSeed.first.IsNull()) {
+    if (!cryptedHDSeed.first.IsNull())
+    {
         // Don't allow an existing seed to be changed. We can maybe relax this
         // restriction later once we have worked out the UX implications.
         return false;
@@ -392,9 +409,8 @@ bool CCryptoKeyStore::AddSaplingSpendingKey(
     ss << sk;
     CKeyingMaterial vchSecret(ss.begin(), ss.end());
     auto extfvk = sk.ToXFVK();
-    if (!EncryptSecret(vMasterKey, vchSecret, extfvk.fvk.GetFingerprint(), vchCryptedSecret)) {
+    if (!EncryptSecret(vMasterKey, vchSecret, extfvk.fvk.GetFingerprint(), vchCryptedSecret))
         return false;
-    }
 
     return AddCryptedSaplingSpendingKey(extfvk, vchCryptedSecret);
 }
@@ -404,14 +420,12 @@ bool CCryptoKeyStore::AddCryptedSaplingSpendingKey(
     const v_uint8& vchCryptedSecret)
 {
     LOCK(cs_KeyStore);
-    if (!SetCrypted()) {
+    if (!SetCrypted())
         return false;
-    }
 
     // if extfvk is not in SaplingFullViewingKeyMap, add it
-    if (!CBasicKeyStore::AddSaplingFullViewingKey(extfvk)) {
+    if (!CBasicKeyStore::AddSaplingFullViewingKey(extfvk))
         return false;
-    }
 
     mapCryptedSaplingSpendingKeys[extfvk] = vchCryptedSecret;
     return true;
@@ -444,19 +458,18 @@ bool CCryptoKeyStore::EncryptKeys(CKeyingMaterial& vMasterKeyIn)
             return false;
 
         fUseCrypto = true;
-        if (!hdSeed.IsNull()) {
+        if (!hdSeed.IsNull())
+        {
             {
                 v_uint8 vchCryptedSecret;
                 // Use seed's fingerprint as IV
                 // TODO: Handle this properly when we make encryption a supported feature
                 auto seedFp = hdSeed.Fingerprint();
-                if (!EncryptSecret(vMasterKeyIn, hdSeed.RawSeed(), seedFp, vchCryptedSecret)) {
+                if (!EncryptSecret(vMasterKeyIn, hdSeed.RawSeed(), seedFp, vchCryptedSecret))
                     return false;
-                }
                 // This will call into CWallet to store the crypted seed to disk
-                if (!SetCryptedHDSeed(seedFp, vchCryptedSecret)) {
+                if (!SetCryptedHDSeed(seedFp, vchCryptedSecret))
                     return false;
-                }
             }
             hdSeed = HDSeed();
         }
@@ -466,12 +479,10 @@ bool CCryptoKeyStore::EncryptKeys(CKeyingMaterial& vMasterKeyIn)
             CPubKey vchPubKey = key.GetPubKey();
             CKeyingMaterial vchSecret(key.begin(), key.end());
             v_uint8 vchCryptedSecret;
-            if (!EncryptSecret(vMasterKeyIn, vchSecret, vchPubKey.GetHash(), vchCryptedSecret)) {
+            if (!EncryptSecret(vMasterKeyIn, vchSecret, vchPubKey.GetHash(), vchCryptedSecret))
                 return false;
-            }
-            if (!AddCryptedKey(vchPubKey, vchCryptedSecret)) {
+            if (!AddCryptedKey(vchPubKey, vchCryptedSecret))
                 return false;
-            }
         }
         mapKeys.clear();
         //! Sapling key support
@@ -483,12 +494,10 @@ bool CCryptoKeyStore::EncryptKeys(CKeyingMaterial& vMasterKeyIn)
             CKeyingMaterial vchSecret(ss.begin(), ss.end());
             auto extfvk = sk.ToXFVK();
             v_uint8 vchCryptedSecret;
-            if (!EncryptSecret(vMasterKeyIn, vchSecret, extfvk.fvk.GetFingerprint(), vchCryptedSecret)) {
+            if (!EncryptSecret(vMasterKeyIn, vchSecret, extfvk.fvk.GetFingerprint(), vchCryptedSecret))
                 return false;
-            }
-            if (!AddCryptedSaplingSpendingKey(extfvk, vchCryptedSecret)) {
+            if (!AddCryptedSaplingSpendingKey(extfvk, vchCryptedSecret))
                 return false;
-            }
         }
         mapSaplingSpendingKeys.clear();
     }

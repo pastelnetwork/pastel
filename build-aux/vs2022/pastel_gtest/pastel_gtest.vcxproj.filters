@@ -316,6 +316,12 @@
     <ClCompile Include="..\..\..\src\gtest\test_orphan_tx.cpp">
       <Filter>UnitTest Files</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\..\src\gtest\test_mnode\test_ticket_nft-reg.cpp">
+      <Filter>UnitTest Files\test_mnode</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\src\gtest\test_mnode\test_ticket_nft-collection-reg.cpp">
+      <Filter>UnitTest Files\test_mnode</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\..\src\gtest\json_test_vectors.h">
