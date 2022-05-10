@@ -1,12 +1,12 @@
 // Copyright (c) 2014-2017 The Dash Core developers
+// Copyright (c) 2018-2022 The Pastel Core developers
 // Distributed under the MIT/X11 software license, see the accompanying
-// file COPYING or http://www.opensource.org/licenses/mit-license.php.
+// file COPYING or https://www.opensource.org/licenses/mit-license.php.
+#include <main.h>
+#include <base58.h>
+#include <key_io.h>
 
-#include "main.h"
-#include "base58.h"
-#include "key_io.h"
-
-#include "mnode/mnode-msgsigner.h"
+#include <mnode/mnode-msgsigner.h>
 
 bool CMessageSigner::GetKeysFromSecret(const std::string &strSecret, CKey& keyRet, CPubKey& pubkeyRet)
 {
@@ -19,7 +19,7 @@ bool CMessageSigner::GetKeysFromSecret(const std::string &strSecret, CKey& keyRe
     return true;
 }
 
-bool CMessageSigner::SignMessage(const std::string &strMessage, std::vector<unsigned char>& vchSigRet, const CKey key)
+bool CMessageSigner::SignMessage(const std::string &strMessage, v_uint8& vchSigRet, const CKey key)
 {
     CHashWriter ss(SER_GETHASH, 0);
     ss << STR_MSG_MAGIC;
@@ -28,7 +28,7 @@ bool CMessageSigner::SignMessage(const std::string &strMessage, std::vector<unsi
     return CHashSigner::SignHash(ss.GetHash(), key, vchSigRet);
 }
 
-bool CMessageSigner::VerifyMessage(const CPubKey pubkey, const std::vector<unsigned char>& vchSig, const std::string strMessage, std::string& strErrorRet)
+bool CMessageSigner::VerifyMessage(const CPubKey pubkey, const v_uint8& vchSig, const std::string strMessage, std::string& strErrorRet)
 {
     CHashWriter ss(SER_GETHASH, 0);
     ss << STR_MSG_MAGIC;
@@ -37,12 +37,12 @@ bool CMessageSigner::VerifyMessage(const CPubKey pubkey, const std::vector<unsig
     return CHashSigner::VerifyHash(ss.GetHash(), pubkey, vchSig, strErrorRet);
 }
 
-bool CHashSigner::SignHash(const uint256& hash, const CKey key, std::vector<unsigned char>& vchSigRet)
+bool CHashSigner::SignHash(const uint256& hash, const CKey key, v_uint8& vchSigRet)
 {
     return key.SignCompact(hash, vchSigRet);
 }
 
-bool CHashSigner::VerifyHash(const uint256& hash, const CPubKey pubkey, const std::vector<unsigned char>& vchSig, std::string& strErrorRet)
+bool CHashSigner::VerifyHash(const uint256& hash, const CPubKey pubkey, const v_uint8& vchSig, std::string& strErrorRet)
 {
     CPubKey pubkeyFromSig;
     if(!pubkeyFromSig.RecoverCompact(hash, vchSig)) {

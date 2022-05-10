@@ -19,7 +19,7 @@ using NFTBuyTickets_t = std::vector<CNFTBuyTicket>;
 		"price": "",
 		"reserved": "",
 		"signature": ""
-	},
+	}
  */
 class CNFTBuyTicket : public CPastelTicket
 {
@@ -60,11 +60,12 @@ public:
     bool HasMVKeyTwo() const noexcept override { return false; }
     void SetKeyOne(std::string&& sValue) override { sellTxnId = std::move(sValue); }
 
-    CAmount TicketPrice(const unsigned int nHeight) const noexcept override { return std::max(10u, price / 100); }
+    // get ticket price in PSL (1% from price)
+    CAmount TicketPricePSL(const uint32_t nHeight) const noexcept override { return std::max<CAmount>(10, price / 100); }
 
     std::string ToJSON() const noexcept override;
     std::string ToStr() const noexcept override;
-    ticket_validation_t IsValid(const bool bPreReg, const uint32_t nDepth) const noexcept override;
+    ticket_validation_t IsValid(const bool bPreReg, const uint32_t nCallDepth) const noexcept override;
     bool IsSameSignature(const v_uint8& signature) const noexcept { return m_signature == signature; }
 
     // getters for ticket fields

@@ -13,6 +13,7 @@
 #include <exception>
 #include <string>
 #include <vector>
+#include <deque>
 #include <set>
 #include <unordered_map>
 #include <utility>
@@ -165,7 +166,7 @@ extern bool fPruneMode;
 /** Number of MiB of block files that we're trying to stay below. */
 extern uint64_t nPruneTarget;
 /** Block files containing a block-height within MIN_BLOCKS_TO_KEEP of chainActive.Tip() will not be pruned. */
-static constexpr unsigned int MIN_BLOCKS_TO_KEEP = 288;
+static constexpr uint32_t MIN_BLOCKS_TO_KEEP = 288;
 
 // Require that user allocate at least 550MB for block & undo files (blk???.dat and rev???.dat)
 // At 1MB per block, 288 blocks = 288MB.
@@ -600,11 +601,16 @@ public:
 /** Find the last common block between the parameter chain and a locator. */
 CBlockIndex* FindForkInGlobalIndex(const CChain& chain, const CBlockLocator& locator);
 
+uint32_t IncBlockSequenceId();
+void AddBlockUnlinked(CBlockIndex* pindex);
+void ExtractUnlinkedBlocks(std::deque<CBlockIndex*>& queue, CBlockIndex* pindex);
+void AddBlockIndexCandidate(CBlockIndex* pindex);
+
 /** Mark a block as invalid. */
 bool InvalidateBlock(CValidationState& state, const CChainParams& chainparams, CBlockIndex *pindex);
 
 /** Remove invalidity status from a block and its descendants. */
-bool ReconsiderBlock(CValidationState& state, CBlockIndex *pindex);
+void ReconsiderBlock(CValidationState& state, CBlockIndex *pindex);
 
 /** The currently-connected chain of blocks (protected by cs_main). */
 extern CChain chainActive;

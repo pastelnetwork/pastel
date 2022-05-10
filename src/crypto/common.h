@@ -1,9 +1,8 @@
+#pragma once
 // Copyright (c) 2014 The Bitcoin Core developers
+// Copyright (c) 2018-2022 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
-
-#ifndef BITCOIN_CRYPTO_COMMON_H
-#define BITCOIN_CRYPTO_COMMON_H
 
 #if defined(HAVE_CONFIG_H)
 #include "bitcoin-config.h"
@@ -13,8 +12,8 @@
 #include <assert.h>
 #include <string.h>
 
-#include "sodium.h"
-#include "compat/endian.h"
+#include <sodium.h>
+#include <compat/endian.h>
 
 #if defined(NDEBUG)
 # error "Zcash cannot be compiled without assertions."
@@ -122,5 +121,3 @@ int inline init_and_check_sodium()
 
     return 0;
 }
-
-#endif // BITCOIN_CRYPTO_COMMON_H

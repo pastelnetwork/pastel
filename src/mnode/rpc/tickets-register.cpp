@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2021 The Pastel Core developers
+// Copyright (c) 2018-2022 The Pastel Core developers
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 
@@ -105,15 +105,21 @@ As json rpc:
     return result;
 }
 
+/**
+* Register NFT ticket.
+* 
+* \param params - RPC params
+* \return rpc result in json format
+*/
 UniValue tickets_register_nft(const UniValue& params)
 {
     if (params.size() < 9)
         throw JSONRPCError(RPC_INVALID_PARAMETER,
-R"(tickets register nft "nft-ticket" "{signatures}" "pastelid" "passphrase" "key1" "key2" "fee" ["address"]
+R"(tickets register nft "{nft-ticket}" "{signatures}" "pastelid" "passphrase" "key1" "key2" "fee" ["address"]
 Register new NFT ticket. If successful, method returns "txid".
 
 Arguments:
-1. "nft-ticket"	(string, required) Base64 encoded NFT ticket created by the creator.
+1. "{nft-ticket}"	(string, required) Base64 encoded NFT ticket created by the creator.
     {
         "nft_ticket_version": 1,
         "author":        "<authors-PastelID>",
@@ -124,7 +130,7 @@ Arguments:
         "green":         boolean
         "app_ticket":    "<application-specific-data>"
     }
-2. "signatures"	(string, required) Signatures (base64) and PastelIDs of the principal and verifying masternodes (MN2 and MN3) as JSON:
+2. "{signatures}"	(string, required) Signatures (base64) and PastelIDs of the principal and verifying masternodes (MN2 and MN3) as JSON:
     {
         "principal": { "principal PastelID": "principal Signature" },
               "mn2": { "mn2 PastelID": "mn2 Signature" },
@@ -137,7 +143,7 @@ Arguments:
 7. "fee"        (int, required) The agreed upon storage fee.
 8. "address"    (string, optional) The Pastel blockchain t-address to use for funding the registration.
 
-NFT Reg Ticket:
+NFT Registration ticket:
 {
     "txid":   <"ticket transaction id">
     "height": <ticket block>,
@@ -200,6 +206,116 @@ As json rpc:
     return result;
 }
 
+/**
+ * Register NFT collection ticket.
+ * 
+ * \param params - RPC params
+ * \return rpc result in json format
+ */
+UniValue tickets_register_nft_collection(const UniValue& params)
+{
+    if (params.size() < 9)
+        throw JSONRPCError(RPC_INVALID_PARAMETER,
+R"(tickets register nft-collection "{nft-collection-ticket}" "{signatures}" "pastelid" "passphrase" "key1" "key2" "fee" ["address"]
+Register new NFT collection ticket. If successful, method returns "txid".
+
+Arguments:
+1. "{nft-collection-ticket}"  (string, required) Base64 encoded NFT ticket created by the creator.
+    {
+        "nft_collection_ticket_version": 1,
+        "nft_collection_name": "<NFT collection name>",
+        "creator":             "<Pastel ID of the NFT collection creator>",
+        "permitted_users": [
+           "<Pastel ID of the user 1>",
+           "<Pastel ID of the user 2>", 
+           ...
+        ],
+        "blocknum":       <block number when the ticket was created by the creator>,
+        "block_hash":     "<base64'ed hash of the NFT collection>",
+        "closing_height": <a closing block height after which no new NFTs would be allowed>,
+        "nft_max_count":  <max number of NFTs allowed in this collection>,
+        "nft_copy_count": <number of copies for NFTs in a collection>,
+        "royalty":        <how much creator should get on all future resales>,
+        "green":          boolean,
+        "app_ticket":     "<application-specific-data>"
+    }
+2. "signatures"	(string, required) Signatures (base64) and PastelIDs of the principal and verifying masternodes (MN2 and MN3) as JSON:
+    {
+        "principal": { "principal PastelID": "principal Signature" },
+              "mn2": { "mn2 PastelID": "mn2 Signature" },
+              "mn3": { "mn3 PastelID": "mn3 Signature" }
+    }
+3. "pastelid"   (string, required) The current, registering masternode (MN1) PastelID. NOTE: PastelID must be generated and stored inside node. See "pastelid newkey".
+4. "passphrase" (string, required) The passphrase to the private key associated with PastelID and stored inside node. See "pastelid newkey".
+5. "key1"       (string, required) The first key to search ticket.
+6. "key2"       (string, required) The second key to search ticket.
+7. "fee"        (int, required) The agreed upon storage fee.
+8. "address"    (string, optional) The Pastel blockchain t-address to use for funding the registration.
+
+NFT Collection Registration Ticket:
+{
+    "txid":   <"ticket transaction id">
+    "height": <ticket block>,
+    "ticket": {
+        "type":            "nft-collection-reg",
+        "nft_collection_ticket": {...},
+        "version":         <version>
+        "signatures": {
+            "principal": { "PastelID": <"signature"> },
+                  "mn1": { "PastelID": <"signature"> },
+                  "mn2": { "PastelID": <"signature"> },
+                  "mn3": { "PastelID": <"signature"> }
+        },
+        "key1":            "<search key 1>",
+        "key2":            "<search key 2>",
+        "creator_height":  <creator height>,
+        "closing_height":  <closing height>,
+        "nft_max_count":   <nft max count>,
+        "royalty":         <royalty fee>,
+        "royalty_address": <"address for royalty payment">,
+        "green":           boolean,
+        "storage_fee":     <agreed upon storage fee>,
+    }
+}
+
+Register NFT collection ticket:
+)" + HelpExampleCli("tickets register nft-collection", R"(""ticket-blob" "{signatures}" jXYqZNPj21RVnwxnEJ654wEdzi7GZTZ5LAdiotBmPrF7pDMkpX1JegDMQZX55WZLkvy9fxNpZcbBJuE8QYUqBF "passphrase", "key1", "key2", 100)") +
+R"(
+As json rpc:
+)" + HelpExampleRpc("tickets", R"("register", "nft-collection", "ticket" "{signatures}" "jXYqZNPj21RVnwxnEJ654wEdzi7GZTZ5LAdiotBmPrF7pDMkpX1JegDMQZX55WZLkvy9fxNpZcbBJuE8QYUqBF" "passphrase", "key1", "key2", 100)")
+);
+
+    if (!masterNodeCtrl.IsActiveMasterNode())
+        throw JSONRPCError(RPC_INTERNAL_ERROR, "This is not an active masternode. Only an active MN can register an NFT collection ticket");
+
+    if (fImporting || fReindex)
+        throw JSONRPCError(RPC_INVALID_PARAMETER, "Initial blocks download. Re-try later");
+
+    string nft_collection_ticket = params[2].get_str();
+    string signatures = params[3].get_str();
+    string sPastelID = params[4].get_str();
+
+    SecureString strKeyPass(params[5].get_str());
+
+    string key1 = params[6].get_str();
+    string key2 = params[7].get_str();
+
+    const CAmount nStorageFee = get_long_number(params[8]);
+
+    opt_string_t sFundingAddress;
+    if (params.size() >= 10)
+        sFundingAddress = params[9].get_str();
+
+    const auto NFTCollectionRegTicket = CNFTCollectionRegTicket::Create(
+        move(nft_collection_ticket), signatures, move(sPastelID), move(strKeyPass),
+        move(key1), move(key2), nStorageFee);
+    string txid = CPastelTicketProcessor::SendTicket(NFTCollectionRegTicket, sFundingAddress);
+
+    UniValue result(UniValue::VOBJ);
+    result.pushKV(RPC_KEY_TXID, move(txid));
+    return result;
+}
+
 UniValue tickets_register_sell(const UniValue& params)
 {
     if (params.size() < 6)
@@ -242,7 +358,7 @@ As json rpc:
 );
 
     string NFTTicketTxnID = params[2].get_str();
-    int price = get_number(params[3]);
+    const int price = get_number(params[3]);
 
     string pastelID = params[4].get_str();
     SecureString strKeyPass(params[5].get_str());
@@ -681,6 +797,8 @@ Available types:
   nft        - Register new NFT ticket.
   act        - Send activation for the new registered NFT ticket.
                Same as "tickets activate nft...".
+  nft-collection - Register new NFT collection ticket.
+  nft-collection-act - Activate NFT collection. Same as "activate nft-collection".
   sell       - Register NFT sell ticket.
   buy        - Register NFT buy ticket.
   trade      - Register NFT trade ticket. 
@@ -696,7 +814,7 @@ Available types:
 UniValue tickets_register(const UniValue& params)
 {
     RPC_CMD_PARSER2(REGISTER, params, mnid, id, nft, act, sell, buy, trade, 
-        down, royalty, username, ethereumaddress, action, action__act);
+        down, royalty, username, ethereumaddress, action, action__act, nft__collection, nft__collection__act);
 
     if (!REGISTER.IsCmdSupported())
         tickets_register_help();
@@ -755,6 +873,14 @@ UniValue tickets_register(const UniValue& params)
 
         case RPC_CMD_REGISTER::action__act:
             result = tickets_activate_action(params, true);
+            break;
+
+        case RPC_CMD_REGISTER::nft__collection:
+            result = tickets_register_nft_collection(params);
+            break;
+
+        case RPC_CMD_REGISTER::nft__collection__act:
+            result = tickets_activate_nft_collection(params, true);
             break;
 
         default:

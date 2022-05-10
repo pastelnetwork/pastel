@@ -50,10 +50,10 @@ string CNFTRoyaltyTicket::ToStr() const noexcept
  * Validate Pastel ticket.
  * 
  * \param bPreReg - if true: called from ticket pre-registration
- * \param nDepth - ticket height
+ * \param nCallDepth - function call depth
  * \return true if the ticket is valid
  */
-ticket_validation_t CNFTRoyaltyTicket::IsValid(const bool bPreReg, const uint32_t nDepth) const noexcept
+ticket_validation_t CNFTRoyaltyTicket::IsValid(const bool bPreReg, const uint32_t nCallDepth) const noexcept
 {
     const unsigned int chainHeight = GetActiveChainHeight();
     ticket_validation_t tv;
@@ -76,13 +76,14 @@ ticket_validation_t CNFTRoyaltyTicket::IsValid(const bool bPreReg, const uint32_
         const ticket_validation_t commonTV = common_ticket_validation(
             *this, bPreReg, NFTTxnId, pastelTicket,
             [](const TicketID tid) noexcept { return (tid != TicketID::NFT); },
-            GetTicketDescription(), ::GetTicketDescription(TicketID::NFT), nDepth, TicketPrice(chainHeight) * COIN);
+            GetTicketDescription(), ::GetTicketDescription(TicketID::NFT), nCallDepth, 
+            TicketPricePSL(chainHeight));
         if (commonTV.IsNotValid())
         {
             // enrich the error message
             tv.errorMsg = strprintf(
-                "The Change Royalty ticket with NFT txid [%s] is not validated [block = %u, txid = %s]. %s", 
-                NFTTxnId, m_nBlock, m_txid, commonTV.errorMsg);
+                "The Change Royalty ticket with NFT txid [%s] is not validated%s. %s", 
+                NFTTxnId, bPreReg ? "" : strprintf(" [block=%u, txid=%s]", m_nBlock, m_txid), commonTV.errorMsg);
             tv.state = commonTV.state;
             break;
         }
@@ -114,9 +115,10 @@ ticket_validation_t CNFTRoyaltyTicket::IsValid(const bool bPreReg, const uint32_
              !_ticket.IsTxId(m_txid)))
         {
             tv.errorMsg =strprintf(
-                "The Change Royalty ticket is already registered in blockchain [pastelID = %s; new_pastelID = %s]"
-                "[this ticket block = %u txid = %s; found ticket block = %u txid = %s] with NFT txid [%s]",
-                pastelID, newPastelID, m_nBlock, m_txid, _ticket.GetBlock(), _ticket.m_txid, NFTTxnId);
+                "The Change Royalty ticket is already registered in blockchain [pastelID=%s; new_pastelID=%s] [%sfound ticket block=%u, txid=%s] with NFT txid [%s]",
+                pastelID, newPastelID, 
+                bPreReg ? "" : strprintf("this ticket block=%u txid=%s; ", m_nBlock, m_txid),
+                _ticket.GetBlock(), _ticket.m_txid, NFTTxnId);
         }
 
         CPastelIDRegTicket newPastelIDticket;

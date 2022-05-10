@@ -103,9 +103,8 @@ void UpdateTime(CBlockHeader* pblock, const Consensus::Params& consensusParams, 
     pblock->nTime = std::max(pindexPrev->GetMedianTimePast()+1, GetAdjustedTime());
 
     // Updating time can change work required on testnet:
-    if (consensusParams.nPowAllowMinDifficultyBlocksAfterHeight != std::nullopt) {
+    if (consensusParams.nPowAllowMinDifficultyBlocksAfterHeight.has_value())
         pblock->nBits = GetNextWorkRequired(pindexPrev, pblock, consensusParams);
-    }
 }
 
 CBlockTemplate* CreateNewBlock(const CChainParams& chainparams, const CScript& scriptPubKeyIn)
@@ -190,7 +189,8 @@ CBlockTemplate* CreateNewBlock(const CChainParams& chainparams, const CScript& s
                     if (!mempool.mapTx.count(txin.prevout.hash))
                     {
                         LogPrintf("ERROR: mempool transaction missing input\n");
-                        if (fDebug) assert("mempool transaction missing input" == 0);
+                        if (fDebug)
+                            assert("mempool transaction missing input" == 0);
                         fMissingInputs = true;
                         if (porphan)
                             vOrphan.pop_back();
@@ -729,7 +729,7 @@ void static BitcoinMiner()
                 // Update nNonce and nTime
                 pblock->nNonce = ArithToUint256(UintToArith256(pblock->nNonce) + 1);
                 UpdateTime(pblock, chainparams.GetConsensus(), pindexPrev);
-                if (chainparams.GetConsensus().nPowAllowMinDifficultyBlocksAfterHeight != std::nullopt)
+                if (chainparams.GetConsensus().nPowAllowMinDifficultyBlocksAfterHeight.has_value())
                 {
                     // Changing pblock->nTime can change work required on testnet:
                     hashTarget.SetCompact(pblock->nBits);

@@ -1,8 +1,9 @@
 #pragma once
 // Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2014 The Bitcoin Core developers
+// Copyright (c) 2018-2022 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
-// file COPYING or http://www.opensource.org/licenses/mit-license.php.
+// file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <assert.h>
 #include <stdexcept>
 
@@ -197,6 +198,7 @@ inline uint256 uint256S(const char *str)
     rv.SetHex(str);
     return rv;
 }
+
 /* uint256 from std::string.
  * This is a separate function because the constructor uint256(const std::string &str) can result
  * in dangerously catching uint256(0) via std::string(const char*).
@@ -207,6 +209,9 @@ inline uint256 uint256S(const std::string& str)
     rv.SetHex(str);
     return rv;
 }
+
+// convert hex-encoded string to uint256 with error checking
+bool parse_uint256(std::string& error, uint256& value, const std::string &sUint256, const char *szValueDesc = nullptr);
 
 using v_uint256 = std::vector<uint256>;
 
@@ -226,7 +231,7 @@ namespace std
             auto p = key.begin();
             for (int i = 0; i < N; ++i)
             {
-                hash_combine(seed, *reinterpret_cast<const uint64_t*>(p));
+                hash_combine<uint64_t>(seed, *reinterpret_cast<const uint64_t*>(p));
                 p += sizeof(uint64_t);
             }
             return seed;

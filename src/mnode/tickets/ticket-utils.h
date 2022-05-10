@@ -17,7 +17,7 @@
 
 /**
  * Common ticket validation.
- * Does not throw exceptions
+ * Does not throw exceptions.
  * 
  * \param ticket - ticket to validate
  * \param bPreReg - if true - pre-registration
@@ -26,8 +26,8 @@
  * \param fValidation - custom lambda validation function
  * \param sThisTicketDescription - description of the ticket to validate
  * \param sParentTicketDescription - description of the parent ticket (NFT Activation -> NFT Registration)
- * \param nDepth - current depth of the blockchain
- * \param ticketPrice - amount in patoshis to pay for registration
+ * \param nCallDepth - current common_ticket_validation function call depth
+ * \param ticketPriceInPSL - amount in PSL to pay for registration
  * \return ticket validation status and error message if any
  */
 template <class T, typename F>
@@ -35,7 +35,7 @@ ticket_validation_t common_ticket_validation(const T& ticket, bool bPreReg, cons
     std::unique_ptr<CPastelTicket>& parentTicket, F fValidation,
     const std::string& sThisTicketDescription, 
     const std::string& sParentTicketDescription, 
-    const uint32_t nDepth, const CAmount ticketPrice) noexcept
+    const uint32_t nCallDepth, const CAmount ticketPriceInPSL) noexcept
 {
     // default is invalid state
     ticket_validation_t tv;
@@ -45,43 +45,61 @@ ticket_validation_t common_ticket_validation(const T& ticket, bool bPreReg, cons
         if (bPreReg)
         {
             // A. Validate that address has coins to pay for registration - 10PSL + fee
-            if (pwalletMain->GetBalance() < ticketPrice)
+            if (pwalletMain->GetBalance() < ticketPriceInPSL * COIN)
             {
                 tv.errorMsg = strprintf(
-                    "Not enough coins to cover price [%" PRId64 "]",
-                    ticketPrice);
+                    "Not enough coins to cover price [%" PRId64 " PSL]",
+                    ticketPriceInPSL);
                 break;
             }
         }
 
-        // C. Something to validate always
+        // B. Something to validate always
 
-        // C.1 Check there are ticket referred from that new ticket with this tnxId
-        const uint256 txidParent = uint256S(strParentTxId);
-        // Get ticket pointed by txid. This is either Activation or Trade tickets (Sell, Buy, Trade)
+        // B.1 Check there is a ticket referred from that new ticket with this tnxId
+        uint256 txidParent;
+        if (!parse_uint256(tv.errorMsg, txidParent, strParentTxId, 
+            strprintf("%s ticket txid", sParentTicketDescription.c_str()).c_str()))
+            break;
+        // B.2 Get ticket pointed by txid. This is either Activation or Trade tickets (Sell, Buy, Trade)
+        string sGetError;
         try
         {
-            parentTicket = CPastelTicketProcessor::GetTicket(txidParent);
+            parentTicket = masterNodeCtrl.masternodeTickets.GetTicket(txidParent);
         } catch (const std::exception& ex) {
+            sGetError = ex.what();
+        }
+
+        // B.3 Validate referred parent ticket
+        if (!parentTicket)
+        {
             tv.errorMsg = strprintf(
-                "The %s ticket [txid=%s] referred by this %s ticket is not in the blockchain. [txid=%s] (ERROR: %s)",
-                sParentTicketDescription, strParentTxId, sThisTicketDescription, ticket.GetTxId(), ex.what());
+                "The %s ticket with this txid [%s] referred by this %s ticket [txid=%s] is not in the blockchain. %s",
+                sParentTicketDescription, strParentTxId, sThisTicketDescription, ticket.GetTxId(), sGetError);
             tv.state = TICKET_VALIDATION_STATE::MISSING_INPUTS;
             break;
         }
 
-        if (!parentTicket || fValidation(parentTicket->ID()))
+        // B.4 Use lambda function to validate parent ticket
+        if (fValidation(parentTicket->ID()))
         {
             tv.errorMsg = strprintf(
-                "The %s ticket with this txid [%s] referred by this %s ticket is not in the blockchain",
+                "The %s ticket with this txid [%s] referred by this %s ticket is not valid ticket type",
                 sParentTicketDescription, strParentTxId, sThisTicketDescription);
-            // if validation lambda fails - it means that we found a parent ticket, but it didn't pass validation
-            if (!parentTicket)
-                tv.state = TICKET_VALIDATION_STATE::MISSING_INPUTS;
             break;
         }
 
-        // B.1 Something to validate only if NOT Initial Download
+        // B.5 Validate that referred parent ticket has valid height
+        if (!bPreReg && (parentTicket->GetBlock() > ticket.GetBlock()))
+        {
+            tv.errorMsg = strprintf(
+                "The %s ticket with this txid [%s] referred by this %s ticket [txid=%s] has invalid height %u > %u",
+                sParentTicketDescription, strParentTxId, sThisTicketDescription, ticket.GetTxId(), 
+                parentTicket->GetBlock(), ticket.GetBlock());
+            break;
+        }
+        
+        // C.1 Something to validate only if NOT Initial Download
         if (masterNodeCtrl.masternodeSync.IsSynced())
         {
             const unsigned int chainHeight = GetActiveChainHeight();
@@ -97,28 +115,35 @@ ticket_validation_t common_ticket_validation(const T& ticket, bool bPreReg, cons
                 break;
             }
         }
-        // C.3 Verify signature
+
+        // D.1 Verify signature
         // We will check that it is the correct PastelID and the one that belongs to the owner of the ticket in the following steps
         const std::string strThisTicket = ticket.ToStr();
         if (!CPastelID::Verify(strThisTicket, ticket.getSignature(), ticket.getPastelID()))
         {
-            tv.errorMsg = strprintf("%s ticket's signature is invalid. PastelID - [%s]", sThisTicketDescription, ticket.getPastelID());
+            tv.errorMsg = strprintf(
+                "%s ticket's signature is invalid. PastelID - [%s]",
+                sThisTicketDescription, ticket.getPastelID());
             break;
         }
 
-        // C.3 check the referred ticket is valid
-        // (IsValid of the referred ticket validates signatures as well!)
-        if (nDepth != std::numeric_limits<uint32_t>::max())
+        // D.2 check the referred ticket is valid only once
+        // IsValid of the referred ticket validates signatures as well!
+        // Referred ticket validation is called with (nCallDepth + 1) to avoid that.
+        if (nCallDepth > 0)
         {
             tv.setValid();
             break;
         }
 
-        const auto parentTV = parentTicket->IsValid(false, nDepth + 1);
+        // D.3 Validate parent ticket
+        const auto parentTV = parentTicket->IsValid(false, nCallDepth + 1);
         if (parentTV.IsNotValid())
         {
             tv.state = parentTV.state;
-            tv.errorMsg = strprintf("The %s ticket with this txid [%s] is invalid. %s", sParentTicketDescription, strParentTxId, parentTV.errorMsg);
+            tv.errorMsg = strprintf(
+                "The %s ticket with this txid [%s] is invalid. %s",
+                sParentTicketDescription, strParentTxId, parentTV.errorMsg);
             break;
         }
         // ticket has passed common validation

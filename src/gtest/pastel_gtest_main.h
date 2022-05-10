@@ -1,4 +1,7 @@
 #pragma once
+// Copyright (c) 2021-2022 The Pastel developers
+// Distributed under the MIT software license, see the accompanying
+// file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <gtest/gtest.h>
 
 #include <txdb.h>
@@ -31,6 +34,7 @@ protected:
     CCoinsViewDB* pcoinsdbview = nullptr;
     CServiceThreadGroup threadGroup;
     fs::path m_TempDataDir; // generated temp datadir
+    std::optional<CBaseChainParams::Network> m_TestNetwork;
 
     void SetUp() override;
     void TearDown() override;

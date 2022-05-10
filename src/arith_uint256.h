@@ -1,11 +1,9 @@
+#pragma once
 // Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2014 The Bitcoin developers
+// Copyright (c) 2018-2022 The Pastel developers
 // Distributed under the MIT software license, see the accompanying
-// file COPYING or http://www.opensource.org/licenses/mit-license.php.
-
-#ifndef BITCOIN_ARITH_UINT256_H
-#define BITCOIN_ARITH_UINT256_H
-
+// file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <assert.h>
 #include <cstring>
 #include <stdexcept>
@@ -286,5 +284,3 @@ public:
 
 uint256 ArithToUint256(const arith_uint256 &);
 arith_uint256 UintToArith256(const uint256 &);
-
-#endif // BITCOIN_ARITH_UINT256_H

@@ -1,5 +1,6 @@
 // Copyright (c) 2010 Satoshi Nakamoto
 // Copyright (c) 2009-2014 The Bitcoin Core developers
+// Copyright (c) 2018-2022 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -31,13 +32,13 @@ Genesis block for RegTest found
 #include <variant>
 #include <vector>
 
-#include "key_io.h"
-#include "main.h"
-#include "crypto/equihash.h"
-#include "port_config.h"
-#include "util.h"
-#include "utilstrencodings.h"
-#include "chainparamsseeds.h"
+#include <key_io.h>
+#include <main.h>
+#include <crypto/equihash.h>
+#include <port_config.h>
+#include <util.h>
+#include <utilstrencodings.h>
+#include <chainparamsseeds.h>
 
 using namespace std;
 
@@ -310,7 +311,7 @@ public:
         network = CBaseChainParams::Network::MAIN;
         strCurrencyUnits = "PSL";
         bip44CoinType = 133; // As registered in https://github.com/patoshilabs/slips/blob/master/slip-0044.md
-        consensus.nSubsidyHalvingInterval = 840000;
+        consensus.nSubsidyHalvingInterval = 840'000;
         consensus.nMajorityEnforceBlockUpgrade = 750;
         consensus.nMajorityRejectBlockOutdated = 950;
         consensus.nMajorityWindow = 4000;
@@ -329,7 +330,7 @@ public:
         consensus.vUpgrades[Consensus::UPGRADE_OVERWINTER].nActivationHeight = OVERWINTER_STARTING_BLOCK;
         consensus.vUpgrades[Consensus::UPGRADE_SAPLING].nProtocolVersion = 170007;
         consensus.vUpgrades[Consensus::UPGRADE_SAPLING].nActivationHeight = SAPLING_STARTING_BLOCK;
-        consensus.nMaxGovernanceAmount = 100000000*COIN;
+        consensus.nMaxGovernanceAmount = 100'000'000*COIN;
 
         // The best chain should have at least this much work.
         consensus.nMinimumChainWork = uint256S("000000000000000000000000000000000000000000000000000000000624f116"); //2702
@@ -343,7 +344,7 @@ public:
         pchMessageStart[3] = 0xfc;
         vAlertPubKey = ParseHex("0441f3821b035bc418b8fbe8e912005112826a5c51fdcf5fbac6d7dd2ab545183049e51c3f2ed2a70b1e48a59b4c3367c15d30fbff461afc6b83932fefedfe5d41");
         nDefaultPort = MAINNET_DEFAULT_PORT;
-        nPruneAfterHeight = 100000;
+        nPruneAfterHeight = 100'000;
         const size_t N = 200, K = 9;
         BOOST_STATIC_ASSERT(equihash_parameters_acceptable(N, K));
         consensus.nEquihashN = N;
@@ -391,15 +392,19 @@ public:
         fTestnetToBeDeprecatedFieldRPC = false;
 
         checkpointData.mapCheckpoints = {
-            {0, consensus.hashGenesisBlock},
-            {2700, uint256S("00005558df2a688c6d53c7b78001074515d33cd29589a311f8c6aa4db2df4e44")}
+            { 0,        consensus.hashGenesisBlock },
+            // 1612317919: Tuesday, February 2, 2021 9:05:19 PM GMT-05:00
+            // tx: 3588; txPerDay: 800 (actual - 765)
+            { 2'700,    uint256S("00005558df2a688c6d53c7b78001074515d33cd29589a311f8c6aa4db2df4e44") },
+            // 1648076650: Wednesday, March 23, 2022 7:04:10 PM GMT-04:00
+            // tx: 457'181; txPerDay: 1120
+            { 237'200,  uint256S("0000000230338b9476ae927240f6d96be57e3f85a8169ede6ec654823757acd7") }
         };
-        checkpointData.nTimeLastCheckpoint = 1612317919; // * UNIX timestamp of last checkpoint block
-        checkpointData.nTransactionsLastCheckpoint = 3588; // * total number of transactions between genesis and last checkpoint
+        checkpointData.nTimeLastCheckpoint = 1648076650; // * UNIX timestamp of last checkpoint block
+        checkpointData.nTransactionsLastCheckpoint = 457'181; // * total number of transactions between genesis and last checkpoint
                                 //   (the tx=... number in the UpdateTip debug.log lines - "UpdateTip: new best=... tx=...")
-        checkpointData.fTransactionsPerDay = 800; // * estimated number of transactions per day after checkpoint
+        checkpointData.fTransactionsPerDay = 1120; // * estimated number of transactions per day after checkpoint
                                 //   total number of tx / (checkpoint block height / (24 * 24))
-                                //after first checkpoint math is = 765, but I'm setting 800
     }
 };
 
@@ -413,7 +418,7 @@ public:
         network = CBaseChainParams::Network::TESTNET;
         strCurrencyUnits = "LSP";
         bip44CoinType = 1;
-        consensus.nSubsidyHalvingInterval = 840000;
+        consensus.nSubsidyHalvingInterval = 840'000;
         consensus.nMajorityEnforceBlockUpgrade = 51;
         consensus.nMajorityRejectBlockOutdated = 75;
         consensus.nMajorityWindow = 400;
@@ -423,7 +428,7 @@ public:
         consensus.nPowMaxAdjustDown = 32; // 32% adjustment down
         consensus.nPowMaxAdjustUp = 16; // 16% adjustment up
         consensus.nPowTargetSpacing = static_cast<int64_t>(2.5 * 60);
-        consensus.nPowAllowMinDifficultyBlocksAfterHeight = 299187;
+        consensus.nPowAllowMinDifficultyBlocksAfterHeight = 299'187;
         consensus.vUpgrades[Consensus::BASE_SPROUT].nProtocolVersion = 170002;
         consensus.vUpgrades[Consensus::BASE_SPROUT].nActivationHeight = Consensus::NetworkUpgrade::ALWAYS_ACTIVE;
         consensus.vUpgrades[Consensus::UPGRADE_TESTDUMMY].nProtocolVersion = 170002;
@@ -432,7 +437,7 @@ public:
         consensus.vUpgrades[Consensus::UPGRADE_OVERWINTER].nActivationHeight = OVERWINTER_STARTING_BLOCK;
         consensus.vUpgrades[Consensus::UPGRADE_SAPLING].nProtocolVersion = 170007;
         consensus.vUpgrades[Consensus::UPGRADE_SAPLING].nActivationHeight = SAPLING_STARTING_BLOCK;
-        consensus.nMaxGovernanceAmount = 1000000*COIN;
+        consensus.nMaxGovernanceAmount = 1'000'000*COIN;
 
         // The best chain should have at least this much work.
         consensus.nMinimumChainWork = uint256S("0x00");
@@ -532,7 +537,7 @@ public:
         consensus.vUpgrades[Consensus::UPGRADE_OVERWINTER].nActivationHeight = Consensus::NetworkUpgrade::NO_ACTIVATION_HEIGHT;
         consensus.vUpgrades[Consensus::UPGRADE_SAPLING].nProtocolVersion = 170008;
         consensus.vUpgrades[Consensus::UPGRADE_SAPLING].nActivationHeight = Consensus::NetworkUpgrade::NO_ACTIVATION_HEIGHT;
-        consensus.nMaxGovernanceAmount = 1000000*COIN;
+        consensus.nMaxGovernanceAmount = 1'000'000*COIN;
 
         // The best chain should have at least this much work.
         consensus.nMinimumChainWork = uint256S("0x00");

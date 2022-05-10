@@ -1,17 +1,17 @@
-#include "httprpc.h"
+#include <httprpc.h>
+#include <chainparams.h>
+#include <httpserver.h>
+#include <key_io.h>
+#include <rpc/protocol.h>
+#include <rpc/server.h>
+#include <random.h>
+#include <sync.h>
+#include <util.h>
+#include <utilstrencodings.h>
+#include <ui_interface.h>
+#include <str_utils.h>
 
-#include "chainparams.h"
-#include "httpserver.h"
-#include "key_io.h"
-#include "rpc/protocol.h"
-#include "rpc/server.h"
-#include "random.h"
-#include "sync.h"
-#include "util.h"
-#include "utilstrencodings.h"
-#include "ui_interface.h"
-
-#include <boost/algorithm/string.hpp> // boost::trim
+using namespace std;
 
 /** WWW-Authenticate to present with 401 Unauthorized response */
 static const char* WWW_AUTH_HEADER_DATA = "Basic realm=\"jsonrpc\"";
@@ -22,7 +22,7 @@ static const char* WWW_AUTH_HEADER_DATA = "Basic realm=\"jsonrpc\"";
 class HTTPRPCTimer : public RPCTimerBase
 {
 public:
-    HTTPRPCTimer(struct event_base* eventBase, std::function<void(void)>& func, int64_t millis) :
+    HTTPRPCTimer(struct event_base* eventBase, function<void(void)>& func, int64_t millis) :
         ev(eventBase, false, func)
     {
         struct timeval tv;
@@ -44,7 +44,7 @@ public:
     {
         return "HTTP";
     }
-    RPCTimerBase* NewTimer(std::function<void(void)>& func, int64_t millis)
+    RPCTimerBase* NewTimer(function<void(void)>& func, int64_t millis)
     {
         return new HTTPRPCTimer(base, func, millis);
     }
@@ -54,7 +54,7 @@ private:
 
 
 /* Pre-base64-encoded authentication token */
-static std::string strRPCUserColonPass;
+static string strRPCUserColonPass;
 /* Stored RPC timer interface (for unregistration) */
 static HTTPRPCTimerInterface* httpRPCTimerInterface = 0;
 
@@ -69,25 +69,25 @@ static void JSONErrorReply(HTTPRequest* req, const UniValue& objError, const Uni
     else if (code == RPC_METHOD_NOT_FOUND)
         nStatus = HTTP_NOT_FOUND;
 
-    std::string strReply = JSONRPCReply(NullUniValue, objError, id);
+    string strReply = JSONRPCReply(NullUniValue, objError, id);
 
     req->WriteHeader("Content-Type", "application/json");
     req->WriteReply(nStatus, strReply);
 }
 
-static bool RPCAuthorized(const std::string& strAuth)
+static bool RPCAuthorized(const string& strAuth)
 {
     if (strRPCUserColonPass.empty()) // Belt-and-suspenders measure if InitRPCAuthentication was not called
         return false;
     if (strAuth.substr(0, 6) != "Basic ")
         return false;
-    std::string strUserPass64 = strAuth.substr(6);
-    boost::trim(strUserPass64);
-    std::string strUserPass = DecodeBase64(strUserPass64);
+    string strUserPass64 = strAuth.substr(6);
+    trim(strUserPass64);
+    string strUserPass = DecodeBase64(strUserPass64);
     return TimingResistantEqual(strUserPass, strRPCUserColonPass);
 }
 
-static bool HTTPReq_JSONRPC(HTTPRequest* req, const std::string &)
+static bool HTTPReq_JSONRPC(HTTPRequest* req, const string &)
 {
     // JSONRPC handles only POST
     if (req->GetRequestMethod() != HTTPRequest::POST) {
@@ -95,7 +95,7 @@ static bool HTTPReq_JSONRPC(HTTPRequest* req, const std::string &)
         return false;
     }
     // Check authorization
-    std::pair<bool, std::string> authHeader = req->GetHeader("authorization");
+    pair<bool, string> authHeader = req->GetHeader("authorization");
     if (!authHeader.first) {
         req->WriteHeader("WWW-Authenticate", WWW_AUTH_HEADER_DATA);
         req->WriteReply(HTTP_UNAUTHORIZED);
@@ -122,7 +122,7 @@ static bool HTTPReq_JSONRPC(HTTPRequest* req, const std::string &)
         if (!valRequest.read(req->ReadBody()))
             throw JSONRPCError(RPC_PARSE_ERROR, "Parse error");
 
-        std::string strReply;
+        string strReply;
         // singleton request
         if (valRequest.isObject()) {
             jreq.parse(valRequest);
@@ -143,7 +143,7 @@ static bool HTTPReq_JSONRPC(HTTPRequest* req, const std::string &)
     } catch (const UniValue& objError) {
         JSONErrorReply(req, objError, jreq.id);
         return false;
-    } catch (const std::exception& e) {
+    } catch (const exception& e) {
         JSONErrorReply(req, JSONRPCError(RPC_PARSE_ERROR, e.what()), jreq.id);
         return false;
     }

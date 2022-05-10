@@ -124,7 +124,7 @@ std::string CMasternodeMessage::ToString() const
     
     masternode_info_t mnInfo;
     if(!masterNodeCtrl.masternodeManager.GetMasternodeInfo(pubKeyTo, mnInfo)) {
-        throw std::runtime_error(strprintf("Unknown Masternode"));
+        throw std::runtime_error("Unknown Masternode");
     }
     
     return std::make_unique<CMasternodeMessage>(masterNodeCtrl.activeMasternode.outpoint, mnInfo.vin.prevout, msgType, msg);

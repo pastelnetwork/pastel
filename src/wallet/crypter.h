@@ -1,15 +1,16 @@
 #pragma once
 // Copyright (c) 2009-2014 The Bitcoin Core developers
+// Copyright (c) 2018-2022 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php .
-#include "keystore.h"
-#include "serialize.h"
-#include "streams.h"
-#include "support/allocators/secure.h"
-#include "vector_types.h"
-#include "zcash/Address.hpp"
-
 #include <atomic>
+
+#include <keystore.h>
+#include <serialize.h>
+#include <streams.h>
+#include <support/allocators/secure.h>
+#include <vector_types.h>
+#include <zcash/Address.hpp>
 
 class uint256;
 
@@ -64,30 +65,33 @@ public:
         // ie slightly lower than the lowest hardware we need bother supporting
         nDeriveIterations = 25000;
         nDerivationMethod = 0;
-        vchOtherDerivationParameters = std::vector<unsigned char>(0);
     }
 };
 
-typedef std::vector<unsigned char, secure_allocator<unsigned char> > CKeyingMaterial;
+using CKeyingMaterial = std::vector<unsigned char, secure_allocator<unsigned char>>;
 
 class CSecureDataStream : public CBaseDataStream<CKeyingMaterial>
 {
 public:
-    explicit CSecureDataStream(int nTypeIn, int nVersionIn) : CBaseDataStream(nTypeIn, nVersionIn) { }
+    explicit CSecureDataStream(int nTypeIn, int nVersionIn) : 
+        CBaseDataStream(nTypeIn, nVersionIn)
+    {}
 
     CSecureDataStream(const_iterator pbegin, const_iterator pend, int nTypeIn, int nVersionIn) :
-            CBaseDataStream(pbegin, pend, nTypeIn, nVersionIn) { }
+        CBaseDataStream(pbegin, pend, nTypeIn, nVersionIn)
+    {}
 
     CSecureDataStream(const vector_type& vchIn, int nTypeIn, int nVersionIn) :
-            CBaseDataStream(vchIn, nTypeIn, nVersionIn) { }
+        CBaseDataStream(vchIn, nTypeIn, nVersionIn)
+    {}
 };
 
 /** Encryption/decryption context with key information */
 class CCrypter
 {
 private:
-    std::vector<unsigned char, secure_allocator<unsigned char>> vchKey;
-    std::vector<unsigned char, secure_allocator<unsigned char>> vchIV;
+    CKeyingMaterial vchKey;
+    CKeyingMaterial vchIV;
     bool fKeySet;
 
 public:
@@ -128,9 +132,9 @@ private:
 
     CKeyingMaterial vMasterKey;
 
-    //! if fUseCrypto is true, mapKeys, mapSproutSpendingKeys, and mapSaplingSpendingKeys must be empty
-    //! if fUseCrypto is false, vMasterKey must be empty
-    std::atomic<bool> fUseCrypto;
+    // if fUseCrypto is true, mapKeys, mapSproutSpendingKeys, and mapSaplingSpendingKeys must be empty
+    // if fUseCrypto is false, vMasterKey must be empty
+    std::atomic_bool fUseCrypto;
 
     //! keeps track of whether Unlock has run a thorough check before
     bool fDecryptionThoroughlyChecked;
@@ -144,17 +148,18 @@ protected:
     bool Unlock(const CKeyingMaterial& vMasterKeyIn);
 
 public:
-    CCryptoKeyStore() : fUseCrypto(false), fDecryptionThoroughlyChecked(false)
-    {
-    }
+    CCryptoKeyStore() noexcept :
+        fUseCrypto(false),
+        fDecryptionThoroughlyChecked(false)
+    {}
 
-    bool IsCrypted() const
+    bool IsCrypted() const noexcept
     {
         LOCK(cs_KeyStore);
         return fUseCrypto;
     }
 
-    bool IsLocked() const
+    bool IsLocked() const noexcept
     {
         LOCK(cs_KeyStore);
         return fUseCrypto && vMasterKey.empty();
@@ -182,13 +187,10 @@ public:
     {
         LOCK(cs_KeyStore);
         if (!fUseCrypto)
-        {
             return CBasicKeyStore::GetKeys();
-        }
         std::set<CKeyID> set_address;
-        for (const auto& mi : mapCryptedKeys) {
+        for (const auto& mi : mapCryptedKeys)
             set_address.insert(mi.first);
-        }
         return set_address;
     }
 
@@ -202,10 +204,10 @@ public:
         LOCK(cs_KeyStore);
         if (!fUseCrypto)
             return CBasicKeyStore::HaveSaplingSpendingKey(extfvk);
-        for (auto entry : mapCryptedSaplingSpendingKeys) {
-            if (entry.first == extfvk) {
+        for (auto entry : mapCryptedSaplingSpendingKeys)
+        {
+            if (entry.first == extfvk)
                 return true;
-            }
         }
         return false;
     }

@@ -1,15 +1,14 @@
-// Copyright (c) 2018-2021 The Pastel Core developers
+// Copyright (c) 2018-2022 The Pastel Core developers
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
-#include "base58.h"
-#include "fs.h"
-#include "key_io.h"
-#include "str_utils.h"
-#include "pastelid/pastel_key.h"
-#include "pastelid/ed.h"
-#include "pastelid/secure_container.h"
-#include "mnode/mnode-controller.h"
+#include <base58.h>
+#include <key_io.h>
+#include <str_utils.h>
+#include <pastelid/ed.h>
+#include <pastelid/secure_container.h>
+#include <mnode/mnode-controller.h>
 #include <mnode/tickets/pastelid-reg.h>
+#include <pastelid/pastel_key.h>
 
 using namespace std;
 using namespace legroast;

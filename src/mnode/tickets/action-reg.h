@@ -100,7 +100,7 @@ public:
 
     std::string ToJSON() const noexcept override;
     std::string ToStr() const noexcept override { return m_sActionTicket; }
-    ticket_validation_t IsValid(const bool bPreReg, const uint32_t nDepth) const noexcept override;
+    ticket_validation_t IsValid(const bool bPreReg, const uint32_t nCallDepth) const noexcept override;
     // check if sPastelID belongs to the action caller
     bool IsCallerPastelId(const std::string& sCallerPastelID) const noexcept { return m_sCallerPastelId == sCallerPastelID; }
 
@@ -148,7 +148,7 @@ public:
     static bool FindTicketInDb(const std::string& key, CActionRegTicket& _ticket);
     static bool CheckIfTicketInDb(const std::string& key);
     static ActionRegTickets_t FindAllTicketByPastelID(const std::string& pastelID);
-    // get action storage fees
+    // get action storage fees in PSL
     static action_fee_map_t GetActionFees(const size_t nDataSizeInMB);
 
 protected:

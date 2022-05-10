@@ -25,7 +25,9 @@ CPastelIDRegTicket CPastelIDRegTicket::Create(string&& _pastelID, SecureString&&
     const auto mapPastelIDs = CPastelID::GetStoredPastelIDs(false, &ticket.pastelID);
     const auto it = mapPastelIDs.find(ticket.pastelID);
     if (it == mapPastelIDs.cend())
-        throw runtime_error(strprintf("PastelID [%s] should be generated and stored inside the local node. See \"pastelid newkey\"", ticket.pastelID));
+        throw runtime_error(strprintf(
+            "PastelID [%s] should be generated and stored inside the local node. See \"pastelid newkey\"", 
+            ticket.pastelID));
 
     const bool isMN = _address.empty();
 
@@ -96,10 +98,10 @@ string CPastelIDRegTicket::ToStr() const noexcept
  * Validate Pastel ticket.
  * 
  * \param bPreReg - if true: called from ticket pre-registration
- * \param nDepth - ticket height
+ * \param nCallDepth - function call depth
  * \return true if the ticket is valid
  */
-ticket_validation_t CPastelIDRegTicket::IsValid(const bool bPreReg, const uint32_t nDepth) const noexcept
+ticket_validation_t CPastelIDRegTicket::IsValid(const bool bPreReg, const uint32_t nCallDepth) const noexcept
 {
     ticket_validation_t tv;
     do
@@ -140,9 +142,10 @@ ticket_validation_t CPastelIDRegTicket::IsValid(const bool bPreReg, const uint32
                         !_ticket.IsTxId(m_txid))
                     {
                         tv.errorMsg = strprintf(
-                            "Masternode's outpoint - [%s] is already registered as a ticket. Your PastelID - [%s] "
-                            "[this ticket block = %u txid = %s; found ticket block = %u txid = %s]",
-                            outpoint.ToStringShort(), pastelID, m_nBlock, m_txid, _ticket.m_nBlock, _ticket.m_txid);
+                            "Masternode's outpoint - [%s] is already registered as a ticket. Your PastelID - [%s] [%sfound ticket block=%u, txid=%s]",
+                            outpoint.ToStringShort(), pastelID, 
+                            bPreReg ? "" : strprintf("this ticket block=%u txid=%s; ", m_nBlock, m_txid),
+                            _ticket.m_nBlock, _ticket.m_txid);
                         break;
                     }
                 }

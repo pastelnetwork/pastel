@@ -191,10 +191,10 @@ string CNFTTradeTicket::ToStr() const noexcept
  * Validate Pastel ticket.
  * 
  * \param bPreReg - if true: called from ticket pre-registration
- * \param nDepth - ticket height
+ * \param nCallDepth - function call depth
  * \return true if the ticket is valid
  */
-ticket_validation_t CNFTTradeTicket::IsValid(const bool bPreReg, const uint32_t nDepth) const noexcept
+ticket_validation_t CNFTTradeTicket::IsValid(const bool bPreReg, const uint32_t nCallDepth) const noexcept
 {
     const unsigned int chainHeight = GetActiveChainHeight();
     ticket_validation_t tv;
@@ -206,7 +206,8 @@ ticket_validation_t CNFTTradeTicket::IsValid(const bool bPreReg, const uint32_t 
         ticket_validation_t commonTV = common_ticket_validation(
             *this, bPreReg, sellTxnId, sellTicket,
             [](const TicketID tid) noexcept { return (tid != TicketID::Sell); },
-            GetTicketDescription(), ::GetTicketDescription(TicketID::Sell), nDepth, (price + TicketPrice(chainHeight)) * COIN);
+            GetTicketDescription(), ::GetTicketDescription(TicketID::Sell), nCallDepth, 
+            price + TicketPricePSL(chainHeight));
         if (commonTV.IsNotValid())
         {
             tv.errorMsg = strprintf(
@@ -220,7 +221,8 @@ ticket_validation_t CNFTTradeTicket::IsValid(const bool bPreReg, const uint32_t 
         commonTV = common_ticket_validation(
             *this, bPreReg, buyTxnId, buyTicket,
             [](const TicketID tid) noexcept { return (tid != TicketID::Buy); },
-            GetTicketDescription(), ::GetTicketDescription(TicketID::Buy), nDepth, (price + TicketPrice(chainHeight)) * COIN);
+            GetTicketDescription(), ::GetTicketDescription(TicketID::Buy), nCallDepth, 
+            price + TicketPricePSL(chainHeight));
         if (commonTV.IsNotValid())
         {
             tv.errorMsg = strprintf(
@@ -240,12 +242,12 @@ ticket_validation_t CNFTTradeTicket::IsValid(const bool bPreReg, const uint32_t 
                 !_tradeTicket.IsBlock(m_nBlock))
             {
                 tv.errorMsg = strprintf(
-                    "There is already exist trade ticket for the sell ticket with this txid [%s]. Signature - our=%s; their=%s"
-                    "[this ticket block = %u txid = %s; found ticket block = %u txid = %s]",
+                    "There is already exist trade ticket for the sell ticket with this txid [%s]. Signature - our=%s; their=%s [%sfound ticket block=%u, txid=%s]",
                     sellTxnId,
                     ed_crypto::Hex_Encode(m_signature.data(), m_signature.size()),
                     ed_crypto::Hex_Encode(_tradeTicket.m_signature.data(), _tradeTicket.m_signature.size()),
-                    m_nBlock, m_txid, _tradeTicket.GetBlock(), _tradeTicket.m_txid);
+                    bPreReg ? "" : strprintf("this ticket block=%u txid=%s; ", m_nBlock, m_txid),
+                    _tradeTicket.GetBlock(), _tradeTicket.m_txid);
                 break;
             }
         }

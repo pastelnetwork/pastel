@@ -4,17 +4,17 @@
 // Copyright (c) 2018-2022 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
-#include <amount.h>
-#include <rpc/protocol.h>
-#include <uint256.h>
-
 #include <list>
 #include <map>
 #include <stdint.h>
-#include <string>
 #include <memory>
 
 #include <univalue.h>
+
+#include <uint256.h>
+#include <amount.h>
+#include <rpc/protocol.h>
+#include <vector_types.h>
 
 class AsyncRPCQueue;
 class CRPCCommand;
@@ -133,7 +133,7 @@ private:
     std::map<std::string, const CRPCCommand*> mapCommands;
 public:
     CRPCTable();
-    const CRPCCommand* operator[](const std::string& name) const;
+    const CRPCCommand* operator[](const std::string& name) const noexcept;
     std::string help(const std::string& name) const;
 
     /**
@@ -162,14 +162,14 @@ extern CRPCTable tableRPC;
  */
 extern uint256 ParseHashV(const UniValue& v, std::string strName);
 extern uint256 ParseHashO(const UniValue& o, std::string strKey);
-extern std::vector<unsigned char> ParseHexV(const UniValue& v, std::string strName);
-extern std::vector<unsigned char> ParseHexO(const UniValue& o, std::string strKey);
+extern v_uint8 ParseHexV(const UniValue& v, std::string strName);
+extern v_uint8 ParseHexO(const UniValue& o, std::string strKey);
 
 extern int64_t nWalletUnlockTime;
 extern CAmount AmountFromValue(const UniValue& value);
 extern UniValue ValueFromAmount(const CAmount& amount);
-extern double GetDifficulty(const CBlockIndex* blockindex = NULL);
-extern double GetNetworkDifficulty(const CBlockIndex* blockindex = NULL);
+extern double GetDifficulty(const CBlockIndex* blockindex = nullptr);
+extern double GetNetworkDifficulty(const CBlockIndex* blockindex = nullptr);
 extern std::string HelpRequiringPassphrase();
 extern std::string HelpExampleCli(const std::string& methodname, const std::string& args);
 extern std::string HelpExampleRpc(const std::string& methodname, const std::string& args);

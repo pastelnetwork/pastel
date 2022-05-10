@@ -26,7 +26,7 @@ class CChangeEthereumAddressTicket : public CPastelTicket
 public:
     std::string pastelID;
     std::string ethereumAddress;
-    CAmount fee{100};
+    CAmount fee{100}; // fee in PSL
     v_uint8 signature;
 
 public:
@@ -49,7 +49,7 @@ public:
         CPastelTicket::Clear();
         pastelID.clear();
         ethereumAddress.clear();
-        fee = 100;
+        fee = 100; // PSL
         signature.clear();
     }
     std::string KeyOne() const noexcept override { return ethereumAddress; }
@@ -63,8 +63,9 @@ public:
 
     std::string ToJSON() const noexcept override;
     std::string ToStr() const noexcept override;
-    CAmount TicketPrice(const unsigned int nHeight) const noexcept override { return fee; }
-    ticket_validation_t IsValid(const bool bPreReg, const uint32_t nDepth) const noexcept override;
+    // get ticket price in PSL
+    CAmount TicketPricePSL(const uint32_t nHeight) const noexcept override { return fee; }
+    ticket_validation_t IsValid(const bool bPreReg, const uint32_t nCallDepth) const noexcept override;
 
     void SerializationOp(CDataStream& s, const SERIALIZE_ACTION ser_action) override
     {

@@ -6,6 +6,7 @@
 #include <consensus/validation.h>
 #include <scope_guard.hpp>
 #include <main.h>
+#include <reverselock.h>
 
 using namespace std;
 
@@ -14,7 +15,7 @@ CBlockCache::CBlockCache() noexcept :
 {}
 
 /**
- * Add block to cache.
+ * Add block to the cache.
  * 
  * \param nodeId - id of the node the block was received from
  * \param block that failed validation and has to be revalidated later
@@ -24,10 +25,50 @@ CBlockCache::CBlockCache() noexcept :
 bool CBlockCache::add_block(const uint256& hash, const NodeId& nodeId, CBlock&& block) noexcept
 {
     unique_lock<mutex> lck(m_CacheMapLock);
-    if (m_BlockCacheMap.count(hash))
+    auto it = m_BlockCacheMap.find(hash);
+    if (it != m_BlockCacheMap.end())
+    {
+        // we have already this block in a cache
+        // just reset revalidation counter
+        it->second.Added();
         return false;
+    }
     m_BlockCacheMap.emplace(hash, BLOCK_CACHE_ITEM(nodeId, move(block)));
     return true;
+}
+
+/**
+ * Process next block after revalidating current block.
+ * Should be called under m_CacheMapLock.
+ * 
+ * \param hash - hash if the revalidated block
+ * \return true if at least one next block was found and updated
+ */
+bool CBlockCache::ProcessNextBlock(const uint256 &hash)
+{
+    bool bChainUpdated = false;
+    // check if we have any next blocks in unlinked map
+    auto range = m_UnlinkedMap.equal_range(hash);
+
+    LOCK(cs_main);
+    while (range.first != range.second)
+    {
+        auto it = range.first;
+        const auto& hashNext = it->second;
+        LogPrint("net", "processing cached unlinked block %s\n", hashNext.ToString());
+        // find block index
+        auto itBlock = mapBlockIndex.find(hashNext);
+        if (itBlock != mapBlockIndex.cend())
+        {
+            auto pindexNext = itBlock->second;
+            pindexNext->UpdateChainTx();
+            bChainUpdated = true;
+            range.first = m_UnlinkedMap.erase(it);
+        }
+        else
+            ++range.first;
+    }
+    return bChainUpdated;
 }
 
 /**
@@ -42,6 +83,7 @@ size_t CBlockCache::revalidate_blocks(const CChainParams& chainparams)
     if (m_bProcessing)
         return 0;
     unique_lock<mutex> lck(m_CacheMapLock);
+    // make sure this function is called only from one thread
     if (m_bProcessing)
         return 0;
     m_bProcessing = true;
@@ -60,6 +102,9 @@ size_t CBlockCache::revalidate_blocks(const CChainParams& chainparams)
     time_t nNow = time(nullptr);
     for (auto& [hash, item] : m_BlockCacheMap)
     {
+        // skip items that being processed
+        if (item.bRevalidating)
+            continue;
         // block should be revalidated only after BLOCK_REVALIDATION_WAIT_TIME secs
         // from either last revalidation attempt or time the block was cached
         if (difftime(nNow, item.GetLastUpdateTime()) < BLOCK_REVALIDATION_WAIT_TIME)
@@ -71,28 +116,39 @@ size_t CBlockCache::revalidate_blocks(const CChainParams& chainparams)
         CNode* pfrom = FindNode(item.nodeId);
         if (!pfrom)
         {
-            LogPrint("net", "could not find node by peer id=%d, revalidating block %s\n", item.nodeId, sHash);
+            LogPrintf("could not find node by peer id=%d, revalidating block %s\n", item.nodeId, sHash);
             vToDelete.push_back(hash);
             continue;
         }
         // revalidation attempt counter
         ++item.nValidationCounter;
-        LogPrint("net", "revalidating block %s from peer=%d, attempt #%u\n", sHash, item.nodeId, item.nValidationCounter);
+        uint32_t nBlockHeight = numeric_limits<uint32_t>::max();
         {
             LOCK(cs_main);
-            // have to remove the invalidity flags from this block
-            // cs_main should be locked to access to mapBlockIndex 
+            // reconsider this block
+            // cs_main should be locked to access to mapBlockIndex
             auto itBlock = mapBlockIndex.find(hash);
             if (itBlock != mapBlockIndex.end())
             {
                 CBlockIndex* pindex = itBlock->second;
-                if (pindex && (pindex->nStatus & BLOCK_FAILED_MASK))
-                    pindex->nStatus &= ~BLOCK_FAILED_MASK;
+                if (pindex)
+                {
+                    if (pindex->nHeight >= 0)
+                        nBlockHeight = static_cast<uint32_t>(pindex->nHeight);
+                    LogPrintf("revalidating block %s from peer=%d at height=%u, attempt #%u\n", sHash, item.nodeId, nBlockHeight, item.nValidationCounter);
+                    // remove invalidity status from a block and its descendants
+                    ReconsiderBlock(state, pindex);
+                }
             }
         }
-        // try to reprocess the block
-        //   - try to revalidate block and update blockchain tip (connect newly accepted block)
-        ProcessNewBlock(state, chainparams, pfrom, &item.block, true);
+        item.bRevalidating = true;
+        {
+            reverse_lock<unique_lock<mutex> > rlock(lck);
+            // try to reprocess the block
+            //   - try to revalidate block and update blockchain tip (connect newly accepted block)
+            //   - calls ActivateBestChain in case block is validated
+            ProcessNewBlock(state, chainparams, pfrom, &item.block, true);
+        }
         int nDoS = 0; // denial-of-service code
         bool bReject = false;
         if (state.IsRejectCode(REJECT_MISSING_INPUTS))
@@ -102,9 +158,11 @@ size_t CBlockCache::revalidate_blocks(const CChainParams& chainparams)
             if (item.nValidationCounter < MAX_REVALIDATION_COUNT)
             {
                 item.nTimeValidated = time(nullptr);
+                // clear revalidating flag for this item to be processed again
+                item.bRevalidating = false;
                 continue;
             }
-            LogPrint("net", "max revalidation attempts reached (%u) for block %s from peer=%d\n", MAX_REVALIDATION_COUNT, sHash, item.nodeId);
+            LogPrintf("max revalidation attempts reached (%u) for block %s (height %u) from peer=%d\n", MAX_REVALIDATION_COUNT, sHash, nBlockHeight, item.nodeId);
             nDoS = 10;
             // we have to reject the block - max number of revalidation attempts has been reached
             bReject = true;
@@ -121,17 +179,24 @@ size_t CBlockCache::revalidate_blocks(const CChainParams& chainparams)
                 LOCK(cs_main);
                 Misbehaving(pfrom->GetId(), nDoS);
             }
+            // add block hash to rejected array to be removed later from the cached map
             vRejected.push_back(hash);
         }
         else
         {
-            // we have successfully processed this block and can safely remove it from cache
+            LogPrintf("block %s revalidated at height %u, peer=%d\n", sHash, nBlockHeight, item.nodeId);
+            // we have successfully processed this block and can safely remove it from the cache map
             vToDelete.push_back(hash);
             ++nCount;
-            // scan for better chains in the block chain database, that are not yet connected in the active best chain
-            CValidationState chainState;
-            if (!ActivateBestChain(chainState, chainparams))
-                error("Failed to connect best block");
+
+            // process next potential blocks to be included into blockchain
+            // blocks with prevBlockHash==hash are added to the multimap cache
+            if (ProcessNextBlock(hash))
+            {
+                reverse_lock<unique_lock<mutex> > rlock(lck);
+                CValidationState state;
+                ActivateBestChain(state, chainparams);
+            }
         } 
         nNow = time(nullptr);
     }
@@ -142,7 +207,50 @@ size_t CBlockCache::revalidate_blocks(const CChainParams& chainparams)
         LogPrint("net", "block %s removed from revalidation cache\n", hash.ToString());
     }
     // delete rejected blocks
-    for (const auto &hash: vRejected)
+    for (const auto &hash : vRejected)
+    {
         m_BlockCacheMap.erase(hash);
+        LogPrint("net", "rejected block %s removed from revalidation cache\n", hash.ToString());
+    }
     return nCount;
+}
+
+size_t CBlockCache::size() const noexcept
+{
+    unique_lock<mutex> lck(m_CacheMapLock);
+    return m_BlockCacheMap.size();
+}
+
+/**
+ * Check whether block with the given hash exists in the cache.
+ * 
+ * \param hash - block hash to check
+ * \return true if block exists in the cache
+ */
+bool CBlockCache::exists(const uint256& hash) const noexcept
+{
+    unique_lock<mutex> lck(m_CacheMapLock);
+    const auto it = m_BlockCacheMap.find(hash);
+    return it != m_BlockCacheMap.cend();
+}
+
+/**
+ * Check where prev block exists in the cache - if yes, add to unlinked map.
+ * 
+ * \return true if block was added
+ */
+bool CBlockCache::check_prev_block(const CBlockIndex *pindex)
+{
+    if (!pindex || !pindex->pprev)
+        return false;
+    const auto &prevBlockHash = pindex->pprev->GetBlockHash();
+
+    unique_lock<mutex> lck(m_CacheMapLock);
+    const auto it = m_BlockCacheMap.find(prevBlockHash);
+    if (it == m_BlockCacheMap.cend())
+        return false;
+    const auto &hash = pindex->GetBlockHash();
+    m_UnlinkedMap.emplace(prevBlockHash, hash);
+    LogPrintf("block added to cached unlinked map (%s)->(%s)\n", prevBlockHash.ToString(), hash.ToString());
+    return true;
 }

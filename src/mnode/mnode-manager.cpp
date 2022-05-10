@@ -407,7 +407,7 @@ CMasternode* CMasternodeMan::Find(const COutPoint &outpoint)
     return it == mapMasternodes.end() ? NULL : &(it->second);
 }
 
-bool CMasternodeMan::Get(const COutPoint& outpoint, CMasternode& masternodeRet)
+bool CMasternodeMan::Get(const COutPoint& outpoint, CMasternode& masternodeRet) noexcept
 {
     // Theses mutexes are recursive so double locking by the same thread is safe.
     LOCK(cs);
@@ -475,41 +475,40 @@ bool CMasternodeMan::GetNextMasternodeInQueueForPayment(int nBlockHeight, bool f
     mnInfoRet = masternode_info_t();
     nCountRet = 0;
 
-    if (!masterNodeCtrl.masternodeSync.IsWinnersListSynced()) {
-        // without winner list we can't reliably find the next winner anyway
-        return false;
-    }
+    if (!masterNodeCtrl.masternodeSync.IsWinnersListSynced())
+        return false; // without winner list we can't reliably find the next winner anyway
 
     // Need LOCK2 here to ensure consistent locking order because the GetBlockHash call below locks cs_main
     LOCK2(cs_main,cs);
 
+    // Make a vector with all of the last paid times
     std::vector<std::pair<int, CMasternode*> > vecMasternodeLastPaid;
-
-    /*
-        Make a vector with all of the last paid times
-    */
-
-    int nMnCount = CountMasternodes();
-
-    for (auto& mnpair : mapMasternodes) {
-        if(!mnpair.second.IsValidForPayment()) continue;
+    const int nMnCount = CountMasternodes();
+    for (auto& mnpair : mapMasternodes)
+    {
+        if (!mnpair.second.IsValidForPayment())
+            continue;
 
         //check protocol version
-        if(mnpair.second.nProtocolVersion < masterNodeCtrl.MasternodeProtocolVersion) continue;
+        if (mnpair.second.nProtocolVersion < masterNodeCtrl.MasternodeProtocolVersion)
+            continue;
 
         //it's in the list (up to 8 entries ahead of current block to allow propagation) -- so let's skip it
-        if(masterNodeCtrl.masternodePayments.IsScheduled(mnpair.second, nBlockHeight)) continue;
+        if (masterNodeCtrl.masternodePayments.IsScheduled(mnpair.second, nBlockHeight))
+            continue;
 
         //it's too new, wait for a cycle
-        if(fFilterSigTime && mnpair.second.sigTime + (nMnCount*2.6*60) > GetAdjustedTime()) continue;
+        if (fFilterSigTime && mnpair.second.sigTime + (nMnCount*2.6*60) > GetAdjustedTime())
+            continue;
 
         //make sure it has at least as many confirmations as there are masternodes
-        if(GetUTXOConfirmations(mnpair.first) < nMnCount) continue;
+        if (GetUTXOConfirmations(mnpair.first) < nMnCount)
+            continue;
 
-        vecMasternodeLastPaid.push_back(std::make_pair(mnpair.second.GetLastPaidBlock(), &mnpair.second));
+        vecMasternodeLastPaid.emplace_back(mnpair.second.GetLastPaidBlock(), &mnpair.second);
     }
 
-    nCountRet = (int)vecMasternodeLastPaid.size();
+    nCountRet = static_cast<int>(vecMasternodeLastPaid.size());
 
     //when the network is in the process of upgrading, don't penalize nodes that recently restarted
     if(fFilterSigTime && nCountRet < nMnCount/3)

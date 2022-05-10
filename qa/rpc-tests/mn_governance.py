@@ -83,69 +83,76 @@ class MasterNodeGovernanceTest (MasterNodeCommon):
         self.reconnect_nodes(0, self.number_of_master_nodes)
         self.sync_all()
 
-        print("Register first ticket")
-        #1. First ticket
+        print("MN0: register first governance ticket (1000) and vote 'yes'")
+        #1. MN0: register first governance ticket
         address1 = self.nodes[0].getnewaddress()
         res1 = self.nodes[0].governance("ticket", "add", address1, "1000", "test", "yes")
         assert_equal(res1['result'], 'successful')
         ticket1_id = res1['ticketId']
-        print(ticket1_id)
+        print(f'MN0: governance ticket successfully registered: {ticket1_id}')
 
+        # MN0: Ticket for this address and amount is already registered
         res1 = self.nodes[0].governance("ticket", "add", address1, "1000", "test", "yes")
         assert_equal(res1['result'], 'failed')
-
+        # MN0: signature already exists: MN has already voted for this ticket
         res1 = self.nodes[0].governance("ticket", "vote", ticket1_id, "yes")
         assert_equal(res1['result'], 'failed')
 
         time.sleep(3)
         
-        print("Vote yes for first ticket")
+        print("MN1: vote 'yes' for the first ticket (second 'yes' vote)")
         res1 = self.nodes[1].governance("ticket", "vote", ticket1_id, "yes")
         assert_equal(res1['result'], 'successful')
 
+        # MN1: Ticket for this address and amount is already registered
         res1 = self.nodes[1].governance("ticket", "add", address1, "1000", "test", "no")
         assert_equal(res1['result'], 'failed')
 
         time.sleep(3)
 
+        # MN2: Ticket for this address and amount is already registered
         res1 = self.nodes[2].governance("ticket", "add", address1, "1000", "test", "no")
         assert_equal(res1['result'], 'failed')
 
-        print("Vote no for first ticket")
+        print("MN2: vote 'no' for the first ticket")
         res1 = self.nodes[2].governance("ticket", "vote", ticket1_id, "no")
         assert_equal(res1['result'], 'successful')
 
         time.sleep(3)
 
+        # non_mn1: Only Active Master Node can add governance ticket
         res1 = self.nodes[self.mining_node_num].governance("ticket", "add", address1, str(self.collateral), "test", "no")
         assert_equal(res1['result'], 'failed')
 
+        # non_mn1: Only Active Master Node can vote
         res1 = self.nodes[self.mining_node_num].governance("ticket", "vote", ticket1_id, "yes")
         assert_equal(res1['result'], 'failed')
 
         address2 = self.nodes[self.mining_node_num].getnewaddress()
         res1 = self.nodes[self.mining_node_num].governance("ticket", "add", address2, str(self.collateral), "test", "yes")
-        assert_equal(res1['errorMessage'], "Only Active Master Node can vote")
+        assert_equal(res1['errorMessage'], "Only Active Master Node can add governance ticket")
 
         time.sleep(3)
 
-        print("Register second ticket")
+        print("MN2: register second governance ticket (2000 PSL) and vote 'yes'")
         #2. Second ticket
         res1 = self.nodes[2].governance("ticket", "add", address2, "2000", "test", "yes")
         assert_equal(res1['result'], 'successful')
         ticket2_id = res1['ticketId']
+        print(f'MN2: governance ticket successfully registered: {ticket2_id}')
 
-        self.nodes[self.mining_node_num].generate(5)
+        self.generate_and_sync_inc(5, self.mining_node_num)
 
         print("Waiting 120 seconds")
         time.sleep(120)
-        self.sync_all()
 
-        print("Test tickets votes")
-        #3. Preliminary test, should be 2 tickets: 1st ticket - 3 votes, 2 yes; 2nd ticket - 1 vote, 1 yes
+        print("Test governance tickets votes")
+        #3. Preliminary test, should be 2 tickets:
+        #     1st ticket - 3 votes, 2 yes (MN0, MN1), 1 no (MN2)
+        #     2nd ticket - 1 vote, 1 yes (MN2)
         for i in range(0, self.total_number_of_nodes):
             res1 = self.nodes[i].governance("list", "tickets")
-            print(res1)
+            print(f'node{i}: {res1}')
             for j in range(0, 2):
                 if res1[j]['id'] == ticket1_id:
                     print(res1[j]['ticket'])
@@ -157,15 +164,11 @@ class MasterNodeGovernanceTest (MasterNodeCommon):
                     assert_equal(res1[0]['id'], res1[1]['id'])
 
         print("Mining 577 blocks")
-        #4. mine 576 blocks - ticket 1 should become winner
-        # 12 active MN/s - needs min 10% voted (2) => need 2 yes votes (51% of 3) 
-        for ind in range (577):
-            self.nodes[self.mining_node_num].generate(1)
-            # self.sync_all()
-            time.sleep(1)
-
-        print("Waiting 60 seconds")
-        time.sleep(60)
+        #4. mine 577 blocks - ticket 1 should become winner
+        # 12 active MN/s - need min 10% voted (2) => need 2 yes votes (51% of 3) 
+        for ind in range (57):
+            self.generate_and_sync_inc(10, self.mining_node_num)
+        self.generate_and_sync_inc(7, self.mining_node_num)
 
         print(self.nodes[0].governance("list", "tickets"))
         print(self.nodes[0].governance("list", "winners"))
@@ -173,12 +176,10 @@ class MasterNodeGovernanceTest (MasterNodeCommon):
         print("Mining 10 more blocks")
         #4. mine 576 blocks - ticket 1 should become winner
         # 12 active MN/s - needs min 10% voted (2) => need 2 yes votes (51% of 3) 
-        for ind in range (10):
-            self.nodes[self.mining_node_num].generate(1)
-            # self.sync_all()
-            time.sleep(1)
+        self.generate_and_sync_inc(10, self.mining_node_num)
+        time.sleep(60)
 
-        print("Test winner tickets, should be "+ticket1_id)
+        print(f"Test winner tickets, should be {ticket1_id}")
         for i in range(0, self.total_number_of_nodes):
             res1 = self.nodes[i].governance("list", "winners")
             print(res1)

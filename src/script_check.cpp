@@ -91,7 +91,7 @@ void CScriptCheckManager::create_workers(CServiceThreadGroup &threadGroup)
     string sThreadName;
     for (size_t i = 0; i < m_nScriptCheckThreads - 1; ++i)
     {
-        sThreadName = strprintf("script-ch%d", i + 1);
+        sThreadName = strprintf("scr-ch%d", i + 1);
         threadGroup.add_thread(make_shared<CScriptCheckWorker>(&m_ScriptCheckQueue, false, sThreadName.c_str()), true);
     }
 }
@@ -99,5 +99,5 @@ void CScriptCheckManager::create_workers(CServiceThreadGroup &threadGroup)
 unique_ptr<CScriptCheckWorker> CScriptCheckManager::create_master(const bool bEnabled)
 {
     return make_unique<CScriptCheckWorker>(bEnabled && m_nScriptCheckThreads ? &m_ScriptCheckQueue : nullptr, 
-        true, "script-chm");
+        true, "scr-chm");
 }

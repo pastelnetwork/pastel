@@ -71,4 +71,4 @@ protected:
     virtual bool AcceptOrphanTxToMemPool(const CChainParams& chainparams, CValidationState &state, const CTransaction &orphanTx, bool &fMissingInputs) const;
 };
 
-extern COrphanTxManager gl_OrphanTxManager;
+extern std::unique_ptr<COrphanTxManager> gl_pOrphanTxManager;

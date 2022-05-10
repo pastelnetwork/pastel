@@ -66,10 +66,10 @@ string CChangeUsernameTicket::ToStr() const noexcept
  *    TestBlockValidity------------+--->ContextualCheckBlock->ContextualCheckTransaction->ValidateIfTicketTransaction
  * 
  * \param bPreReg - ticket pre-registration
- * \param nDepth
+ * \param nCallDepth - current function call depth
  * \return true if ticket is valid
  */
-ticket_validation_t CChangeUsernameTicket::IsValid(const bool bPreReg, const uint32_t nDepth) const noexcept
+ticket_validation_t CChangeUsernameTicket::IsValid(const bool bPreReg, const uint32_t nCallDepth) const noexcept
 {
     using namespace chrono;
     using namespace literals::chrono_literals;
@@ -138,12 +138,12 @@ ticket_validation_t CChangeUsernameTicket::IsValid(const bool bPreReg, const uin
             }
 
             // Check if address has coins to pay for Username Change Ticket
-            const auto fullTicketPrice = TicketPrice(chainHeight);
+            const auto fullTicketPrice = TicketPricePSL(chainHeight);
 
             if (pwalletMain->GetBalance() < fullTicketPrice * COIN)
             {
                 tv.errorMsg = strprintf(
-                    "Not enough coins to cover price [%" PRId64 "]", 
+                    "Not enough coins to cover price [%" PRId64 " PSL]", 
                     fullTicketPrice);
                 break;
             }
@@ -174,9 +174,10 @@ ticket_validation_t CChangeUsernameTicket::IsValid(const bool bPreReg, const uin
             masterNodeCtrl.masternodeTickets.getValueBySecondaryKey(tktDB) == username)
         {
             tv.errorMsg = strprintf(
-                "This Username Change Request is already registered in blockchain [Username = %s]"
-                "[this ticket block = %u, txid = %s; found ticket block  = %u, txid = %s]",
-                username, tktDB.GetBlock(), tktDB.GetTxId(), GetBlock(), GetTxId());
+                "This Username Change Request is already registered in blockchain [Username = %s] [%sfound ticket block=%u, txid=%s]",
+                username, 
+                bPreReg ? "" : strprintf("this ticket block=%u txid=%s; ", m_nBlock, m_txid),
+                tktDB.GetBlock(), tktDB.GetTxId());
             break;
         }
 

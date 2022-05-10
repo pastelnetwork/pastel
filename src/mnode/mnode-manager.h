@@ -150,7 +150,7 @@ public:
     void DsegUpdate(CNode* pnode);
 
     /// Versions of Find that are safe to use from outside the class
-    bool Get(const COutPoint& outpoint, CMasternode& masternodeRet);
+    bool Get(const COutPoint& outpoint, CMasternode& masternodeRet) noexcept;
     bool Has(const COutPoint& outpoint);
 
     bool GetMasternodeInfo(const COutPoint& outpoint, masternode_info_t& mnInfoRet);

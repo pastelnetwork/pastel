@@ -473,7 +473,7 @@ class RawTransactionsTest(BitcoinTestFramework):
         fundedTx = self.nodes[1].fundrawtransaction(rawTx)
 
         #now we need to unlock
-        self.nodes[1].walletpassphrase("test", 100)
+        self.nodes[1].walletpassphrase("test", 300)
         signedTx = self.nodes[1].signrawtransaction(fundedTx['hex'])
         txId = self.nodes[1].sendrawtransaction(signedTx['hex'])
         self.generate_and_sync_inc(1, 1)

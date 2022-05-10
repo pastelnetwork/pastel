@@ -129,6 +129,8 @@
     <ClCompile Include="..\..\..\src\gtest\test_mnode\test_secure_container.cpp" />
     <ClCompile Include="..\..\..\src\gtest\test_mnode\test_ticket_mempool.cpp" />
     <ClCompile Include="..\..\..\src\gtest\test_mnode\test_ticket_mempool_processor.cpp" />
+    <ClCompile Include="..\..\..\src\gtest\test_mnode\test_ticket_nft-collection-reg.cpp" />
+    <ClCompile Include="..\..\..\src\gtest\test_mnode\test_ticket_nft-reg.cpp" />
     <ClCompile Include="..\..\..\src\gtest\test_mnode\test_ticket_processor.cpp" />
     <ClCompile Include="..\..\..\src\gtest\pastel_gtest_main.cpp" />
     <ClCompile Include="..\..\..\src\gtest\test_block.cpp" />

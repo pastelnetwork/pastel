@@ -1,13 +1,15 @@
 // Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2014 The Bitcoin Core developers
+// Copyright (c) 2018-2022 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
-// file COPYING or http://www.opensource.org/licenses/mit-license.php.
+// file COPYING or https://www.opensource.org/licenses/mit-license.php.
+#include <stdio.h>
+#include <string.h>
+
+#include <tinyformat.h>
 
 #include <uint256.h>
 #include <utilstrencodings.h>
-
-#include <stdio.h>
-#include <string.h>
 
 using namespace std;
 
@@ -144,4 +146,39 @@ uint64_t uint256::GetHash(const uint256& salt) const noexcept
     HashFinal(a, b, c);
 
     return ((((uint64_t)b) << 32) | c);
+}
+
+/**
+ * Convert string to uint256 with error checking.
+ * 
+ * \param error - return error if any
+ * \param hash - converted uint256
+ * \param sUint256 - input uint256 value string
+ * \param szValueDesc - optional value description (to form an error message)
+ *  
+ * \return true if string was successfully converted to uint256
+ */
+bool parse_uint256(string& error, uint256& value, const string &sUint256, const char *szValueDesc)
+{
+    bool bRet = false;
+    do
+    {
+        // validate string size
+        if (sUint256.size() != uint256::SIZE * 2)
+        {
+            error = strprintf("Incorrect %s value size: %zu, expected: %zu. [%s]",
+                szValueDesc ? szValueDesc : "uint256", sUint256.size(), uint256::SIZE * 2, sUint256);
+            break;
+        }
+        if (!IsHex(sUint256))
+        {
+            error = strprintf("Invalid %s hex value: %s",
+                szValueDesc ? szValueDesc : "uint256", sUint256);
+            break;
+        }
+
+        value = uint256S(sUint256);
+        bRet = true;
+    } while (false);
+    return bRet;
 }

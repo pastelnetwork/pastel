@@ -39,7 +39,7 @@ unsigned int GetNextWorkRequired(const CBlockIndex* pindexLast, const CBlockHead
         // Comparing to pindexLast->nHeight with >= because this function
         // returns the work required for the block after pindexLast.
         if (params.nPowAllowMinDifficultyBlocksAfterHeight.has_value() &&
-            pindexLast->nHeight >= params.nPowAllowMinDifficultyBlocksAfterHeight.value())
+            static_cast<unsigned int>(pindexLast->nHeight) >= params.nPowAllowMinDifficultyBlocksAfterHeight.value())
         {
             // Special difficulty rule for testnet:
             // If the new block's timestamp is more than 6 * 2.5 minutes
@@ -89,7 +89,7 @@ unsigned int CalculateNextWorkRequired(arith_uint256 bnAvg,
     const arith_uint256 bnPowLimit = UintToArith256(params.powLimit);
     arith_uint256 bnNew {bnAvg};
     bnNew /= params.AveragingWindowTimespan();
-    bnNew *= nActualTimespan;
+    bnNew *= static_cast<uint32_t>(nActualTimespan);
 
     if (bnNew > bnPowLimit)
         bnNew = bnPowLimit;

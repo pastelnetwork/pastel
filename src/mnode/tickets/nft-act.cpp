@@ -58,10 +58,10 @@ void CNFTActivateTicket::sign(SecureString&& strKeyPass)
  * Validate Pastel ticket.
  * 
  * \param bPreReg - if true: called from ticket pre-registration
- * \param nDepth - ticket height
+ * \param nCallDepth - function call depth
  * \return ticket validation state and error message if any
  */
-ticket_validation_t CNFTActivateTicket::IsValid(const bool bPreReg, const uint32_t nDepth) const noexcept
+ticket_validation_t CNFTActivateTicket::IsValid(const bool bPreReg, const uint32_t nCallDepth) const noexcept
 {
     const unsigned int chainHeight = GetActiveChainHeight();
     ticket_validation_t tv;
@@ -72,15 +72,15 @@ ticket_validation_t CNFTActivateTicket::IsValid(const bool bPreReg, const uint32
         const ticket_validation_t commonTV = common_ticket_validation(
             *this, bPreReg, m_regTicketTxId, pastelTicket,
             [](const TicketID tid) noexcept { return (tid != TicketID::NFT); },
-            GetTicketDescription(), ::GetTicketDescription(TicketID::NFT), nDepth,
-            TicketPrice(chainHeight) * COIN + getAllMNFees()); // fee for ticket + all MN storage fees (percent from storage fee)
+            GetTicketDescription(), ::GetTicketDescription(TicketID::NFT), nCallDepth,
+            TicketPricePSL(chainHeight) + static_cast<CAmount>(getAllMNFeesPSL())); // fee for ticket + all MN storage fees (percent from storage fee)
 
         if (commonTV.IsNotValid())
         {
             // enrich the error message
             tv.errorMsg = strprintf(
-                "The Activation ticket for the Registration ticket with txid [%s] is not validated [block = %u, txid = %s]",
-                m_regTicketTxId, m_nBlock, m_txid);
+                "The Activation ticket for the Registration ticket with txid [%s] is not validated%s. %s",
+                m_regTicketTxId, bPreReg ? "" : strprintf(" [block=%u, txid=%s]", m_nBlock, m_txid), commonTV.errorMsg);
             tv.state = commonTV.state;
             break;
         }
@@ -96,9 +96,10 @@ ticket_validation_t CNFTActivateTicket::IsValid(const bool bPreReg, const uint32
                 !existingTicket.IsTxId(m_txid))
             {
                 tv.errorMsg = strprintf(
-                    "The Activation ticket for the Registration ticket with txid [%s] already exists"
-                    "[this ticket block = %u, txid = %s; found ticket block = %u, txid = %s]",
-                    m_regTicketTxId, m_nBlock, m_txid, existingTicket.m_nBlock, existingTicket.m_txid);
+                    "The Activation ticket for the Registration ticket with txid [%s] already exists [%sfound ticket block=%u, txid=%s]",
+                    m_regTicketTxId, 
+                    bPreReg ? "" : strprintf("this ticket block=%u txid=%s; ", m_nBlock, m_txid),
+                    existingTicket.m_nBlock, existingTicket.m_txid);
                 break;
             }
         }
@@ -108,7 +109,7 @@ ticket_validation_t CNFTActivateTicket::IsValid(const bool bPreReg, const uint32
         if (!NFTTicket)
         {
             tv.errorMsg = strprintf(
-                "The NFT ticket with this txid [%s] is not in the blockchain or is invalid",
+                "The NFT Reg ticket with this txid [%s] is not in the blockchain or is invalid",
                 m_regTicketTxId);
             break;
         }

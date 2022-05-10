@@ -13,12 +13,12 @@ using NFTActivateTickets_t = std::vector<CNFTActivateTicket>;
 // NFT Activation Ticket ////////////////////////////////////////////////////////////////////////////////////////////////
 /*
 	"ticket": {
-		"type": "activation",
-		"pastelID": "",         //PastelID of the creator
-		"reg_txid": "",         //tnx with registration ticket in it
-		"creator_height": "",    //block at which creator created NFT Ticket
-		                        //is used to check if the MN that created NFT registration ticket was indeed top MN when creator create ticket
-		"reg_fee": "",          //should match the registration fee from NFT Reg Ticket
+		"type": "nft-act",
+		"pastelID": "",         // PastelID of the creator
+		"reg_txid": "",         // tnx with registration ticket in it
+		"creator_height": "",   // block at which creator created NFT Ticket
+		                        // is used to check if the MN that created NFT registration ticket was indeed top MN when creator create ticket
+		"reg_fee": "",          // should match the registration fee from NFT Reg Ticket
 		"signature": ""
 	}
 
@@ -67,7 +67,7 @@ public:
 
     std::string ToJSON() const noexcept override;
     std::string ToStr() const noexcept override;
-    ticket_validation_t IsValid(const bool bPreReg, const uint32_t nDepth) const noexcept override;
+    ticket_validation_t IsValid(const bool bPreReg, const uint32_t nCallDepth) const noexcept override;
     CAmount GetStorageFee() const noexcept override { return m_storageFee; }
     bool IsSameSignature(const v_uint8& signature) const noexcept { return m_signature == signature; }
     // sign the ticket with the PastelID's private key - creates signature

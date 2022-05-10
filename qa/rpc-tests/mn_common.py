@@ -25,7 +25,7 @@ getcontext().prec = 16
 class MasterNodeCommon (PastelTestFramework):
     collateral = int(1000)
 
-    def setup_masternodes_network(self, private_keys_list, number_of_non_mn_to_start=0, debug_flags="masternode,mnpayments,governance"):
+    def setup_masternodes_network(self, private_keys_list, number_of_non_mn_to_start=0, debug_flags=""):
         for index, key in enumerate(private_keys_list):
             print(f"start MN {index}")
             self.nodes.append(start_node(index, self.options.tmpdir, [f"-debug={debug_flags}", "-masternode", "-txindex=1", "-reindex", f"-masternodeprivkey={key}"]))
@@ -69,9 +69,7 @@ class MasterNodeCommon (PastelTestFramework):
             print(f"{ind}: Sending {self.collateral} coins to node {hot_node_num}; collateral address {collateral_address} ...")
             collateral_txid = self.nodes[mining_node_num].sendtoaddress(collateral_address, self.collateral, "", "", False)
 
-            self.sync_all()
-            self.nodes[mining_node_num].generate(1)
-            self.sync_all()
+            self.generate_and_sync_inc(1, mining_node_num)
             
             assert_equal(self.nodes[hot_node_num].getbalance(), self.collateral*(ind+1))
             
