@@ -104,40 +104,40 @@ As json rpc
     switch (LIST.cmd()) {
     case RPC_CMD_LIST::id:
         if (filter == "all")
-            obj.read(masterNodeCtrl.masternodeTickets.ListTickets<CPastelIDRegTicket>());
+            obj.read(masterNodeCtrl.masternodeTickets.ListTickets<CPastelIDRegTicket>(minheight));
         else if (filter == "mn")
-            obj.read(masterNodeCtrl.masternodeTickets.ListFilterPastelIDTickets(1));
+            obj.read(masterNodeCtrl.masternodeTickets.ListFilterPastelIDTickets(minheight, 1));
         else if (filter == "personal")
-            obj.read(masterNodeCtrl.masternodeTickets.ListFilterPastelIDTickets(2));
+            obj.read(masterNodeCtrl.masternodeTickets.ListFilterPastelIDTickets(minheight, 2));
         else if (filter == "mine") {
             const auto mapIDs = CPastelID::GetStoredPastelIDs(true);
-            obj.read(masterNodeCtrl.masternodeTickets.ListFilterPastelIDTickets(3, &mapIDs));
+            obj.read(masterNodeCtrl.masternodeTickets.ListFilterPastelIDTickets(minheight, 3, &mapIDs));
         }
         break;
 
     case RPC_CMD_LIST::nft:
         if (filter == "all")
-            obj.read(masterNodeCtrl.masternodeTickets.ListTickets<CNFTRegTicket>());
+            obj.read(masterNodeCtrl.masternodeTickets.ListTickets<CNFTRegTicket>(minheight));
         else if (filter == "active")
-            obj.read(masterNodeCtrl.masternodeTickets.ListFilterNFTTickets(1));
+            obj.read(masterNodeCtrl.masternodeTickets.ListFilterNFTTickets(minheight, 1));
         else if (filter == "inactive")
-            obj.read(masterNodeCtrl.masternodeTickets.ListFilterNFTTickets(2));
+            obj.read(masterNodeCtrl.masternodeTickets.ListFilterNFTTickets(minheight, 2));
         else if (filter == "sold")
-            obj.read(masterNodeCtrl.masternodeTickets.ListFilterNFTTickets(3));
+            obj.read(masterNodeCtrl.masternodeTickets.ListFilterNFTTickets(minheight, 3));
         break;
 
     case RPC_CMD_LIST::act:
         if (filter == "all")
-            obj.read(masterNodeCtrl.masternodeTickets.ListTickets<CNFTActivateTicket>());
+            obj.read(masterNodeCtrl.masternodeTickets.ListTickets<CNFTActivateTicket>(minheight));
         else if (filter == "available")
-            obj.read(masterNodeCtrl.masternodeTickets.ListFilterActTickets(1));
+            obj.read(masterNodeCtrl.masternodeTickets.ListFilterActTickets(minheight, 1));
         else if (filter == "sold")
-            obj.read(masterNodeCtrl.masternodeTickets.ListFilterActTickets(2));
+            obj.read(masterNodeCtrl.masternodeTickets.ListFilterActTickets(minheight, 2));
         break;
 
     case RPC_CMD_LIST::nft__collection:
         if (filter == "all")
-            obj.read(masterNodeCtrl.masternodeTickets.ListTickets<CNFTCollectionRegTicket>());
+            obj.read(masterNodeCtrl.masternodeTickets.ListTickets<CNFTCollectionRegTicket>(minheight));
         else if (filter == "active")
             obj.read(masterNodeCtrl.masternodeTickets.ListFilterNFTCollectionTickets(1));
         else if (filter == "inactive")
@@ -146,7 +146,7 @@ As json rpc
 
     case RPC_CMD_LIST::nft__collection__act:
         if (filter == "all")
-            obj.read(masterNodeCtrl.masternodeTickets.ListTickets<CNFTCollectionActivateTicket>());
+            obj.read(masterNodeCtrl.masternodeTickets.ListTickets<CNFTCollectionActivateTicket>(minheight));
         break;
 
     case RPC_CMD_LIST::sell: {
@@ -177,15 +177,15 @@ As json rpc
             }
         }
         if (filter == "all")
-            obj.read(masterNodeCtrl.masternodeTickets.ListFilterSellTickets(0, pastelID));
+            obj.read(masterNodeCtrl.masternodeTickets.ListFilterSellTickets(minheight, 0, pastelID));
         else if (filter == "available")
-            obj.read(masterNodeCtrl.masternodeTickets.ListFilterSellTickets(1, pastelID));
+            obj.read(masterNodeCtrl.masternodeTickets.ListFilterSellTickets(minheight, 1, pastelID));
         else if (filter == "unavailable")
-            obj.read(masterNodeCtrl.masternodeTickets.ListFilterSellTickets(2, pastelID));
+            obj.read(masterNodeCtrl.masternodeTickets.ListFilterSellTickets(minheight, 2, pastelID));
         else if (filter == "expired")
-            obj.read(masterNodeCtrl.masternodeTickets.ListFilterSellTickets(3, pastelID));
+            obj.read(masterNodeCtrl.masternodeTickets.ListFilterSellTickets(minheight, 3, pastelID));
         else if (filter == "sold")
-            obj.read(masterNodeCtrl.masternodeTickets.ListFilterSellTickets(4, pastelID));
+            obj.read(masterNodeCtrl.masternodeTickets.ListFilterSellTickets(minheight, 4, pastelID));
         break;
     }
 
@@ -217,11 +217,11 @@ As json rpc
             }
         }
         if (filter == "all")
-            obj.read(masterNodeCtrl.masternodeTickets.ListFilterBuyTickets(0, pastelID));
+            obj.read(masterNodeCtrl.masternodeTickets.ListFilterBuyTickets(minheight, 0, pastelID));
         else if (filter == "expired")
-            obj.read(masterNodeCtrl.masternodeTickets.ListFilterBuyTickets(1, pastelID));
+            obj.read(masterNodeCtrl.masternodeTickets.ListFilterBuyTickets(minheight, 1, pastelID));
         else if (filter == "sold")
-            obj.read(masterNodeCtrl.masternodeTickets.ListFilterBuyTickets(2, pastelID));
+            obj.read(masterNodeCtrl.masternodeTickets.ListFilterBuyTickets(minheight, 2, pastelID));
         break;
     }
 
@@ -253,44 +253,44 @@ As json rpc
             }
         }
         if (filter == "all")
-            obj.read(masterNodeCtrl.masternodeTickets.ListFilterTradeTickets(0, pastelID));
+            obj.read(masterNodeCtrl.masternodeTickets.ListFilterTradeTickets(minheight, 0, pastelID));
         else if (filter == "available")
-            obj.read(masterNodeCtrl.masternodeTickets.ListFilterTradeTickets(1, pastelID));
+            obj.read(masterNodeCtrl.masternodeTickets.ListFilterTradeTickets(minheight, 1, pastelID));
         else if (filter == "sold")
-            obj.read(masterNodeCtrl.masternodeTickets.ListFilterTradeTickets(2, pastelID));
+            obj.read(masterNodeCtrl.masternodeTickets.ListFilterTradeTickets(minheight, 2, pastelID));
         break;
     }
 
     case RPC_CMD_LIST::royalty: {
         if (filter == "all")
-            obj.read(masterNodeCtrl.masternodeTickets.ListTickets<CNFTRoyaltyTicket>());
+            obj.read(masterNodeCtrl.masternodeTickets.ListTickets<CNFTRoyaltyTicket>(minheight));
         break;
     }
 
     case RPC_CMD_LIST::username: {
         if (filter == "all")
-            obj.read(masterNodeCtrl.masternodeTickets.ListTickets<CChangeUsernameTicket>());
+            obj.read(masterNodeCtrl.masternodeTickets.ListTickets<CChangeUsernameTicket>(minheight));
         break;
     }
 
     case RPC_CMD_LIST::ethereumaddress: {
         if (filter == "all")
-            obj.read(masterNodeCtrl.masternodeTickets.ListTickets<CChangeEthereumAddressTicket>());
+            obj.read(masterNodeCtrl.masternodeTickets.ListTickets<CChangeEthereumAddressTicket>(minheight));
         break;
     }
 
     case RPC_CMD_LIST::action:
         if (filter == "all")
-            obj.read(masterNodeCtrl.masternodeTickets.ListTickets<CActionRegTicket>());
+            obj.read(masterNodeCtrl.masternodeTickets.ListTickets<CActionRegTicket>(minheight));
         else if (filter == "active")
-            obj.read(masterNodeCtrl.masternodeTickets.ListFilterActionTickets(1));
+            obj.read(masterNodeCtrl.masternodeTickets.ListFilterActionTickets(minheight, 1));
         else if (filter == "inactive")
-            obj.read(masterNodeCtrl.masternodeTickets.ListFilterActionTickets(2));
+            obj.read(masterNodeCtrl.masternodeTickets.ListFilterActionTickets(minheight, 2));
         break;
 
     case RPC_CMD_LIST::action__act:
         if (filter == "all")
-            obj.read(masterNodeCtrl.masternodeTickets.ListTickets<CActionActivateTicket>());
+            obj.read(masterNodeCtrl.masternodeTickets.ListTickets<CActionActivateTicket>(minheight));
         break;
 
     default:

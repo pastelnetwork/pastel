@@ -307,15 +307,15 @@ ticket_validation_t CPastelTicketProcessor::ValidateTicketFees(const uint32_t nH
 
         // set of tickets where the last output is a change
         static unordered_set<TicketID> TICKETS_LAST_OUTPUT_AS_CHANGE = 
-            { 
-                TicketID::PastelID, 
-                TicketID::NFT, 
-                TicketID::Sell, 
-                TicketID::Buy, 
-                TicketID::Royalty, 
-                TicketID::Username, 
-                TicketID::EthereumAddress, 
-                TicketID::ActionReg, 
+            {
+                TicketID::PastelID,
+                TicketID::NFT,
+                TicketID::Sell,
+                TicketID::Buy,
+                TicketID::Royalty,
+                TicketID::Username,
+                TicketID::EthereumAddress,
+                TicketID::ActionReg,
                 TicketID::NFTCollectionReg
             };
         ticket_validation_t tv1;
@@ -599,7 +599,7 @@ unique_ptr<CPastelTicket> CPastelTicketProcessor::GetTicket(const uint256 &txid)
     // parse ticket transaction into data_stream
     if (!preParseTicket(mtx, data_stream, ticket_id, error_ret))
         throw runtime_error(strprintf(
-            "Failed to parse P2FMS transaction from data provided. %s", 
+            "Failed to parse P2FMS transaction from data provided. %s",
             error_ret));
 
     unique_ptr<CPastelTicket> ticket;
@@ -653,7 +653,7 @@ unique_ptr<CPastelTicket> CPastelTicketProcessor::GetTicket(const string& _txid,
 
 /**
  * Check whether ticket exists (use keyOne as a key).
- * 
+ *
  * \param ticket - ticket to search (ID and keyOne are used for search)
  * \return true if ticket with the given parameters was found in ticket DB
  */
@@ -668,7 +668,7 @@ bool CPastelTicketProcessor::CheckTicketExist(const CPastelTicket& ticket)
 
 /**
 * Check whether ticket exists (use keyTwo as a key).
-* 
+*
 * \param ticket - ticket to search (ID and keyTwo are used for search)
 * \return true if ticket with the given parameters was found in ticket DB
 */
@@ -795,7 +795,7 @@ v_strings CPastelTicketProcessor::GetAllKeys(const TicketID id) const
  *      if functor returns false - enumerations will be stopped
  */
 template <class _TicketType, typename F>
-void CPastelTicketProcessor::listTickets(F f) const
+void CPastelTicketProcessor::listTickets(F f, const int minHeight) const
 {
     auto vKeys = GetAllKeys(_TicketType::GetID());
     for (auto& key : vKeys)
@@ -806,38 +806,40 @@ void CPastelTicketProcessor::listTickets(F f) const
         ticket.SetKeyOne(move(key));
         if (!FindTicket(ticket))
             continue;
+        if (ticket.GetBlock()<minHeight)
+            continue;
         if (!f(ticket))
             break;
     }
 }
 
 template <class _TicketType>
-string CPastelTicketProcessor::ListTickets() const
+string CPastelTicketProcessor::ListTickets(const int minHeight) const
 {
     json jArray;
     listTickets<_TicketType>([&](const _TicketType& ticket) -> bool
     {
         jArray.push_back(json::parse(ticket.ToJSON()));
         return true;
-    });
+    }, minHeight);
     return jArray.dump();
 }
-template string CPastelTicketProcessor::ListTickets<CPastelIDRegTicket>() const;
-template string CPastelTicketProcessor::ListTickets<CNFTRegTicket>() const;
-template string CPastelTicketProcessor::ListTickets<CNFTCollectionRegTicket>() const;
-template string CPastelTicketProcessor::ListTickets<CNFTCollectionActivateTicket>() const;
-template string CPastelTicketProcessor::ListTickets<CNFTActivateTicket>() const;
-template string CPastelTicketProcessor::ListTickets<CNFTSellTicket>() const;
-template string CPastelTicketProcessor::ListTickets<CNFTBuyTicket>() const;
-template string CPastelTicketProcessor::ListTickets<CNFTTradeTicket>() const;
-template string CPastelTicketProcessor::ListTickets<CNFTRoyaltyTicket>() const;
-template string CPastelTicketProcessor::ListTickets<CChangeUsernameTicket>() const;
-template string CPastelTicketProcessor::ListTickets<CChangeEthereumAddressTicket>() const;
-template string CPastelTicketProcessor::ListTickets<CActionRegTicket>() const;
-template string CPastelTicketProcessor::ListTickets<CActionActivateTicket>() const;
+template string CPastelTicketProcessor::ListTickets<CPastelIDRegTicket>(const int minHeight) const;
+template string CPastelTicketProcessor::ListTickets<CNFTRegTicket>(const int minHeight) const;
+template string CPastelTicketProcessor::ListTickets<CNFTCollectionRegTicket>(const int minHeight) const;
+template string CPastelTicketProcessor::ListTickets<CNFTCollectionActivateTicket>(const int minHeight) const;
+template string CPastelTicketProcessor::ListTickets<CNFTActivateTicket>(const int minHeight) const;
+template string CPastelTicketProcessor::ListTickets<CNFTSellTicket>(const int minHeight) const;
+template string CPastelTicketProcessor::ListTickets<CNFTBuyTicket>(const int minHeight) const;
+template string CPastelTicketProcessor::ListTickets<CNFTTradeTicket>(const int minHeight) const;
+template string CPastelTicketProcessor::ListTickets<CNFTRoyaltyTicket>(const int minHeight) const;
+template string CPastelTicketProcessor::ListTickets<CChangeUsernameTicket>(const int minHeight) const;
+template string CPastelTicketProcessor::ListTickets<CChangeEthereumAddressTicket>(const int minHeight) const;
+template string CPastelTicketProcessor::ListTickets<CActionRegTicket>(const int minHeight) const;
+template string CPastelTicketProcessor::ListTickets<CActionActivateTicket>(const int minHeight) const;
 
 template <class _TicketType, typename F>
-string CPastelTicketProcessor::filterTickets(F f, const bool bCheckConfirmation) const
+string CPastelTicketProcessor::filterTickets(F f, const int minHeight, const bool bCheckConfirmation) const
 {
     json jArray;
     const unsigned int nChainHeight = GetActiveChainHeight();
@@ -852,7 +854,7 @@ string CPastelTicketProcessor::filterTickets(F f, const bool bCheckConfirmation)
             return true;
         jArray.push_back(json::parse(ticket.ToJSON()));
         return true;
-    });
+    }, minHeight);
     return jArray.dump();
 }
 
@@ -866,7 +868,7 @@ string CPastelTicketProcessor::filterTickets(F f, const bool bCheckConfirmation)
  * \param pmapIDs - map of locally stored PastelIDs -> LegRoast public key
  * \return json with filtered tickets
  */
-string CPastelTicketProcessor::ListFilterPastelIDTickets(const short filter, const pastelid_store_t* pmapIDs) const
+string CPastelTicketProcessor::ListFilterPastelIDTickets(const int minHeight, const short filter, const pastelid_store_t* pmapIDs) const
 {
     return filterTickets<CPastelIDRegTicket>(
         [&](const CPastelIDRegTicket& t, const unsigned int chainHeight) -> bool
@@ -879,11 +881,11 @@ string CPastelTicketProcessor::ListFilterPastelIDTickets(const short filter, con
                     pmapIDs && pmapIDs->find(t.pastelID) != pmapIDs->cend()))
                 return false;
             return true;
-        });
+        }, minHeight);
 }
 
 // 1 - active;    2 - inactive;     3 - sold
-string CPastelTicketProcessor::ListFilterNFTTickets(const short filter) const
+string CPastelTicketProcessor::ListFilterNFTTickets(const int minHeight, const short filter) const
 {
     return filterTickets<CNFTRegTicket>(
         [&](const CNFTRegTicket& t, const unsigned int nChainHeight) -> bool
@@ -909,11 +911,11 @@ string CPastelTicketProcessor::ListFilterNFTTickets(const short filter) const
             } else if (filter == 2)
                 return false; //don't skip inactive
             return true;
-        });
+        }, minHeight);
 }
 
 // 1 - active;    2 - inactive;
-string CPastelTicketProcessor::ListFilterNFTCollectionTickets(const short filter) const
+string CPastelTicketProcessor::ListFilterNFTCollectionTickets(const int minHeight, const short filter) const
 {
     return filterTickets<CNFTCollectionRegTicket>(
         [&](const CNFTCollectionRegTicket& t, const unsigned int nChainHeight) -> bool
@@ -923,15 +925,15 @@ string CPastelTicketProcessor::ListFilterNFTCollectionTickets(const short filter
             {
                 if (filter == 1)
                     return false; //don't skip active
-            } else 
+            } else
             if (filter == 2)
                 return false; //don't skip inactive
             return true;
-        });
+        }, minHeight);
 }
 
 // 1 - active; 2 - inactive
-string CPastelTicketProcessor::ListFilterActionTickets(const short filter) const
+string CPastelTicketProcessor::ListFilterActionTickets(const int minHeight, const short filter) const
 {
     return filterTickets<CActionRegTicket>(
         [&](const CActionRegTicket& t, const unsigned int nChainHeight) -> bool
@@ -944,11 +946,11 @@ string CPastelTicketProcessor::ListFilterActionTickets(const short filter) const
             } else if (filter == 2)
                 return false; //don't skip inactive
             return true;
-        });
+        }, minHeight);
 }
 
 // 1 - available;      2 - sold
-string CPastelTicketProcessor::ListFilterActTickets(const short filter) const
+string CPastelTicketProcessor::ListFilterActTickets(const int minHeight, const short filter) const
 {
     return filterTickets<CNFTActivateTicket>(
         [&](const CNFTActivateTicket& t, const unsigned int chainHeight) -> bool
@@ -966,15 +968,15 @@ string CPastelTicketProcessor::ListFilterActTickets(const short filter) const
             } else if (filter == 2)
                 return false; //don't skip sold
             return true;
-        });
+        }, minHeight);
 }
 
 // 0 - all, 1 - available; 2 - unavailable; 3 - expired; 4 - sold
-string CPastelTicketProcessor::ListFilterSellTickets(const short filter, const string& pastelID) const
+string CPastelTicketProcessor::ListFilterSellTickets(const int minHeight, const short filter, const string& pastelID) const
 {
     const bool checkConfirmation{filter > 0};
     if (filter == 0 && pastelID.empty()) {
-            return ListTickets<CNFTSellTicket>(); // get all
+            return ListTickets<CNFTSellTicket>(minHeight); // get all
     }
     return filterTickets<CNFTSellTicket>(
         [&](const CNFTSellTicket& t, const unsigned int chainHeight) -> bool
@@ -1021,11 +1023,11 @@ string CPastelTicketProcessor::ListFilterSellTickets(const short filter, const s
 }
 
 // 0 - all, 1 - expired;    2 - sold
-string CPastelTicketProcessor::ListFilterBuyTickets(const short filter, const string& pastelID) const
+string CPastelTicketProcessor::ListFilterBuyTickets(const int minHeight, const short filter, const string& pastelID) const
 {
     const bool checkConfirmation{filter > 0};
     if (filter == 0 && pastelID.empty()) {
-            return ListTickets<CNFTBuyTicket>(); // get all
+            return ListTickets<CNFTBuyTicket>(minHeight); // get all
     }
     return filterTickets<CNFTBuyTicket>(
         [&](const CNFTBuyTicket& t, const unsigned int chainHeight) -> bool
@@ -1044,11 +1046,11 @@ string CPastelTicketProcessor::ListFilterBuyTickets(const short filter, const st
 }
 
 // 0 - all, 1 - available;      2 - sold
-string CPastelTicketProcessor::ListFilterTradeTickets(const short filter, const string& pastelID) const
+string CPastelTicketProcessor::ListFilterTradeTickets(const int minHeight, const short filter, const string& pastelID) const
 {
     const bool checkConfirmation{filter > 0};
     if (filter == 0 && pastelID.empty()) {
-            return ListTickets<CNFTTradeTicket>(); // get all
+            return ListTickets<CNFTTradeTicket>(minHeight); // get all
     }
     return filterTickets<CNFTTradeTicket>(
         [&](const CNFTTradeTicket& t, const unsigned int chainHeight) -> bool
@@ -1520,7 +1522,7 @@ bool CPastelTicketProcessor::CreateP2FMSTransactionWithExtra(const CDataStream& 
     const size_t nFakeTxCount = vOutScripts.size();
     // Amount in patoshis per output
     const CAmount perOutputAmount = (pricePSL * COIN) / nFakeTxCount;
-    // MUST be precise!!! in patoshis 
+    // MUST be precise!!! in patoshis
     const CAmount lost = (pricePSL * COIN) - perOutputAmount * nFakeTxCount;
     // total amount to spend in patoshis
     const CAmount allSpentAmount = (pricePSL * COIN) + nAproxFeeNeeded + extraAmount;
@@ -1791,7 +1793,7 @@ optional<reg_trade_txid_t> CPastelTicketProcessor::ValidateOwnership(const strin
 }
 
 #ifdef FAKE_TICKET
-string CPastelTicketProcessor::CreateFakeTransaction(CPastelTicket& ticket, const CAmount ticketPricePSL, 
+string CPastelTicketProcessor::CreateFakeTransaction(CPastelTicket& ticket, const CAmount ticketPricePSL,
     const vector<pair<string, CAmount>>& extraPayments, const string& strVerb, bool bSend)
 {
     string error;
