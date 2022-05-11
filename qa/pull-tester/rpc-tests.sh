@@ -114,6 +114,9 @@ declare -a testScriptsMN=(
     'mn_messaging.py'
     'mn_payment.py'
     'mn_bugs.py'
+)
+
+declare -a testScriptsMNslow=(
     'mn_main.py'
     'mn_tickets.py'
 )
@@ -277,6 +280,7 @@ else
     runTestGroup "testScripts"
     runTestGroup "testScriptsExt"
     runTestGroup "testScriptsMN"
+    runTestGroup "testScriptsMNslow"
 fi
 
 echo -e "\n\nTests completed: $(expr $successCount + ${#failures[@]})"
