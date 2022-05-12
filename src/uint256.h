@@ -237,5 +237,4 @@ namespace std
             return seed;
         }
     };
-
 }

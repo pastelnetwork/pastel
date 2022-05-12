@@ -83,11 +83,7 @@ As json rpc:
         sFundingAddress = params[7].get_str();
 
     const auto NFTActTicket = CNFTActivateTicket::Create(move(regTicketTxID), height, fee, move(pastelID), move(strKeyPass));
-    string txid = CPastelTicketProcessor::SendTicket(NFTActTicket, sFundingAddress);
-
-    UniValue result(UniValue::VOBJ);
-    result.pushKV(RPC_KEY_TXID, move(txid));
-    return result;
+    return GenerateSendTicketResult(CPastelTicketProcessor::SendTicket(NFTActTicket, sFundingAddress));
 }
 
 UniValue tickets_activate_action(const UniValue& params, const bool bRegisterAPI)
@@ -146,11 +142,7 @@ As json rpc:
         sFundingAddress = params[7].get_str();
 
     const auto ActionActivateTicket = CActionActivateTicket::Create(move(regTicketTxID), height, fee, move(pastelID), move(strKeyPass));
-    string txid = CPastelTicketProcessor::SendTicket(ActionActivateTicket, sFundingAddress);
-
-    UniValue result(UniValue::VOBJ);
-    result.pushKV(RPC_KEY_TXID, move(txid));
-    return result;
+    return GenerateSendTicketResult(CPastelTicketProcessor::SendTicket(ActionActivateTicket, sFundingAddress));
 }
 
 UniValue tickets_activate_nft_collection(const UniValue& params, const bool bRegisterAPI)
@@ -209,11 +201,7 @@ As json rpc:
         sFundingAddress = params[7].get_str();
 
     const auto NFTCollectionActTicket = CNFTCollectionActivateTicket::Create(move(regTicketTxID), height, fee, move(pastelID), move(strKeyPass));
-    string txid = CPastelTicketProcessor::SendTicket(NFTCollectionActTicket, sFundingAddress);
-
-    UniValue result(UniValue::VOBJ);
-    result.pushKV(RPC_KEY_TXID, move(txid));
-    return result;
+    return GenerateSendTicketResult(CPastelTicketProcessor::SendTicket(NFTCollectionActTicket, sFundingAddress));
 }
 
 UniValue tickets_activate(const UniValue& params)

@@ -48,8 +48,7 @@ using namespace std;
  * \param signatures - signatures json
  * \param sPastelID - NFT collection creator's Pastel ID
  * \param strKeyPass - passphrase for creator's secure container
- * \param keyOne - search key #1
- * \param keyTwo - search key #2
+ * \param label - search key #2
  * \param storageFee - ticket storage fee
  * \return - NFT collection ticket object
  */
@@ -58,8 +57,7 @@ CNFTCollectionRegTicket CNFTCollectionRegTicket::Create(
     const string& signatures,
     string &&sPastelID,
     SecureString&& strKeyPass,
-    string &&keyOne,
-    string &&keyTwo,
+    string &&label,
     const CAmount storageFee)
 {
     CNFTCollectionRegTicket ticket(move(nft_collection_ticket));
@@ -67,9 +65,9 @@ CNFTCollectionRegTicket CNFTCollectionRegTicket::Create(
 
     // parse and set principal's and MN2/3's signatures
     ticket.set_signatures(signatures);
-    ticket.m_keyOne = move(keyOne);
-    ticket.m_keyTwo = move(keyTwo);
+    ticket.m_label = move(label);
     ticket.m_storageFee = storageFee;
+    ticket.GenerateKeyOne();
     ticket.GenerateTimestamp();
 
     ticket.m_vPastelID[SIGN_MAIN] = move(sPastelID);
@@ -233,8 +231,8 @@ ticket_validation_t CNFTCollectionRegTicket::IsValid(const bool bPreReg, const u
             if (masterNodeCtrl.masternodeTickets.CheckTicketExist(*this))
             {
                 tv.errorMsg = strprintf(
-                    "This NFT collection '%s' is already registered in blockchain [Key1=%s; Key2=%s]", 
-                    m_sNFTCollectionName, m_keyOne, m_keyTwo);
+                    "This NFT collection '%s' is already registered in blockchain [key=%s; label=%s]", 
+                    m_sNFTCollectionName, m_keyOne, m_label);
                 break;
             }
 
@@ -276,12 +274,11 @@ ticket_validation_t CNFTCollectionRegTicket::IsValid(const bool bPreReg, const u
 
         // (ticket transaction replay attack protection)
         CNFTCollectionRegTicket ticket;
-        if ((FindTicketInDb(m_keyOne, ticket) || FindTicketInDb(m_keyTwo, ticket)) &&
-            (!ticket.IsBlock(m_nBlock) || !ticket.IsTxId(m_txid)))
+        if (FindTicketInDb(m_keyOne, ticket) && (!ticket.IsBlock(m_nBlock) || !ticket.IsTxId(m_txid)))
         {
             tv.errorMsg = strprintf(
-                "This NFT collection '%s' is already registered in blockchain [Key1=%s; Key2=%s] [%sfound ticket block=%u, txid=%s]",
-                m_sNFTCollectionName, m_keyOne, KeyTwo(), 
+                "This NFT collection '%s' is already registered in blockchain [key=%s; label=%s] [%sfound ticket block=%u, txid=%s]",
+                m_sNFTCollectionName, m_keyOne, m_label, 
                 bPreReg ? "" : strprintf("this ticket block=%u txid=%s; ", m_nBlock, m_txid),
                 ticket.GetBlock(), ticket.m_txid);
             break;
@@ -347,8 +344,8 @@ string CNFTCollectionRegTicket::ToJSON() const noexcept
                 {"version", GetStoredVersion()},
                 get_signatures_json(),
                 {"permitted_users", m_PermittedUsers},
-                {"key1", m_keyOne},
-                {"key2", m_keyTwo},
+                {"key", m_keyOne},
+                {"label", m_label},
                 {"creator_height", m_nCreatorHeight},
                 {"closing_height", m_nClosingHeight},
                 {"nft_max_count", m_nMaxNFTCount},
@@ -365,33 +362,29 @@ string CNFTCollectionRegTicket::ToJSON() const noexcept
 }
 
 /**
-* Find ticket in DB by primary & secondary key.
+* Find ticket in DB by primary key.
 * 
-* \param key - lookup key, used in a search by both primary and secondary keys
+* \param key - lookup key, used in a search by primary key
 * \param ticket - returns ticket if found
 * \return true if ticket was found
 */
 bool CNFTCollectionRegTicket::FindTicketInDb(const string& key, CNFTCollectionRegTicket& ticket)
 {
     ticket.m_keyOne = key;
-    ticket.m_keyTwo = key;
-    return masterNodeCtrl.masternodeTickets.FindTicket(ticket) ||
-        masterNodeCtrl.masternodeTickets.FindTicketBySecondaryKey(ticket);
+    return masterNodeCtrl.masternodeTickets.FindTicket(ticket);
 }
 
 /**
-* Check if ticket exists in a DB by primary or secondary key.
+* Check if ticket exists in a DB by primary key.
 * 
-* \param key - lookup key, used in a search by both primary and secondary keys
+* \param key - lookup key, used in a search by primary key
 * \return true if ticket exists in a DB
 */
 bool CNFTCollectionRegTicket::CheckIfTicketInDb(const string& key)
 {
     CNFTCollectionRegTicket ticket;
     ticket.m_keyOne = key;
-    ticket.m_keyTwo = key;
-    return masterNodeCtrl.masternodeTickets.CheckTicketExist(ticket) ||
-        masterNodeCtrl.masternodeTickets.CheckTicketExistBySecondaryKey(ticket);
+    return masterNodeCtrl.masternodeTickets.CheckTicketExist(ticket);
 }
 
 NFTCollectionRegTickets_t CNFTCollectionRegTicket::FindAllTicketByPastelID(const string& pastelID)

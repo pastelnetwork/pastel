@@ -16,9 +16,8 @@ public:
     void Clear() noexcept override;
 
     std::string KeyOne() const noexcept override { return m_keyOne; }
-    std::string KeyTwo() const noexcept override { return m_keyTwo; }
     void SetKeyOne(std::string &&sValue) override { m_keyOne = std::move(sValue); }
-    bool HasKeyTwo() const noexcept override { return true; }
+    void GenerateKeyOne() override;
 
     static CAmount GreenPercent(const unsigned int nHeight) { return GREEN_FEE_PERCENT; }
     static std::string GreenAddress(const unsigned int nHeight);
@@ -40,8 +39,8 @@ public:
 protected:
     uint32_t m_nCreatorHeight{}; // blocknum when the ticket was created by the wallet
 
-    std::string m_keyOne;        // key #1
-    std::string m_keyTwo;        // key #2
+    std::string m_keyOne;        // key #1 (primary)
+    std::string m_label;         // label
     CAmount m_storageFee{};      // ticket storage fee in PSL
 
     float m_nRoyalty{0.0f};      // how much creator(s) should get on all future resales

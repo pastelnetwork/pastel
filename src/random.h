@@ -1,15 +1,13 @@
+#pragma once
 // Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2014 The Bitcoin Core developers
+// Copyright (c) 2018-2022 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
-
-#ifndef BITCOIN_RANDOM_H
-#define BITCOIN_RANDOM_H
-
-#include "uint256.h"
-
 #include <functional>
 #include <stdint.h>
+
+#include <uint256.h>
 
 /**
  * Functions to gather random data via the libsodium CSPRNG
@@ -18,6 +16,13 @@ void GetRandBytes(unsigned char* buf, size_t num);
 uint64_t GetRand(uint64_t nMax);
 int GetRandInt(int nMax);
 uint256 GetRandHash();
+
+// generate random string and return base85 encoded.
+std::string generateRandomBase85Str(const size_t nBaseLength);
+// generate random string and return base64 encoded.
+std::string generateRandomBase64Str(const size_t nBaseLength);
+// generate random string and return base32 encoded.
+std::string generateRandomBase32Str(const size_t nBaseLength);
 
 /**
  * Identity function for MappedShuffle, so that elements retain their original order.
@@ -41,7 +46,7 @@ void MappedShuffle(RandomAccessIterator first,
                    std::function<int(int)> gen)
 {
     for (size_t i = len-1; i > 0; --i) {
-        auto r = gen(i+1);
+        auto r = gen(static_cast<int>(i+1));
         assert(r >= 0);
         assert(r <= i);
         std::swap(first[i], first[r]);
@@ -71,4 +76,3 @@ static inline uint32_t insecure_rand(void)
     return (insecure_rand_Rw << 16) + insecure_rand_Rz;
 }
 
-#endif // BITCOIN_RANDOM_H

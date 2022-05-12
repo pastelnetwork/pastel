@@ -45,14 +45,16 @@ public:
         newPastelID.clear();
         NFTTxnId.clear();
         m_signature.clear();
+        m_keyOne.clear();
     }
-    std::string KeyOne() const noexcept final { return {m_signature.cbegin(), m_signature.cend()}; }
+    std::string KeyOne() const noexcept final { return m_keyOne; }
     std::string MVKeyOne() const noexcept final { return pastelID; }
     std::string MVKeyTwo() const noexcept final { return NFTTxnId; }
 
     bool HasMVKeyOne() const noexcept final { return true; }
     bool HasMVKeyTwo() const noexcept final { return true; }
-    void SetKeyOne(std::string&& sValue) final { m_signature = string_to_vector(sValue); }
+    void SetKeyOne(std::string&& sValue) final;
+    void GenerateKeyOne() override;
 
     std::string ToJSON() const noexcept final;
     std::string ToStr() const noexcept final;
@@ -76,6 +78,8 @@ public:
         // v0
         READWRITE(NFTTxnId);
         READWRITE(m_signature);
+        if (bRead)
+            GenerateKeyOne();
         READWRITE(m_nTimestamp);
         READWRITE(m_txid);
         READWRITE(m_nBlock);
@@ -91,5 +95,6 @@ protected:
     std::string pastelID;    //pastelID of the old (current at moment of creation) royalty recipient
     std::string newPastelID; //pastelID of the new royalty recipient
     std::string NFTTxnId;    //txid of the NFT for royalty payments
+    std::string m_keyOne;
     v_uint8 m_signature;
 };

@@ -3,24 +3,22 @@
 // Copyright (c) 2018-2022 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
-
-#include "random.h"
-
-#include "support/cleanse.h"
 #ifdef WIN32
-#include "compat.h" // for Windows API
-#endif
-#include "serialize.h"        // for begin_ptr(vec)
-#include "util.h"             // for LogPrint()
-#include "utilstrencodings.h" // for GetTime()
-
-#include <limits>
-
-#ifndef WIN32
+#include <compat.h> // for Windows API
+#else
 #include <sys/time.h>
 #endif
+#include <limits>
 
-#include "sodium.h"
+#include <sodium.h>
+
+#include <serialize.h>        // for begin_ptr(vec)
+#include <util.h>             // for LogPrint()
+#include <utilstrencodings.h> // for GetTime()
+#include <random.h>
+#include <support/cleanse.h>
+
+using namespace std;
 
 static inline int64_t GetPerformanceCounter()
 {
@@ -65,6 +63,48 @@ uint256 GetRandHash()
     uint256 hash;
     GetRandBytes((unsigned char*)&hash, sizeof(hash));
     return hash;
+}
+
+/**
+* generate random string and return base85 encoded.
+* 
+* \param nBaseLength - generated random bytes length
+* \return base85 encoded random string (length differs from nBaseLength)
+*/
+string generateRandomBase85Str(const size_t nBaseLength)
+{
+    string s;
+    s.resize(nBaseLength);
+    GetRandBytes(reinterpret_cast<unsigned char *>(s.data()), nBaseLength);
+    return EncodeAscii85(s);
+}
+
+/**
+* generate random string and return base64 encoded.
+* 
+* \param nBaseLength - generated random bytes length
+* \return base64 encoded random string (length differs from nBaseLength)
+*/
+string generateRandomBase64Str(const size_t nBaseLength)
+{
+    string s;
+    s.resize(nBaseLength);
+    GetRandBytes(reinterpret_cast<unsigned char *>(s.data()), nBaseLength);
+    return EncodeBase64(s);
+}
+
+/**
+* generate random string and return base64 encoded.
+* 
+* \param nBaseLength - generated random bytes length
+* \return base32 encoded random string (length differs from nBaseLength)
+*/
+string generateRandomBase32Str(const size_t nBaseLength)
+{
+    string s;
+    s.resize(nBaseLength);
+    GetRandBytes(reinterpret_cast<unsigned char *>(s.data()), nBaseLength);
+    return EncodeBase32(s);
 }
 
 uint32_t insecure_rand_Rz = 11;

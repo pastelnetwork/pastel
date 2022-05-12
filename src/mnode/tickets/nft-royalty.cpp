@@ -5,6 +5,7 @@
 
 #include <init.h>
 #include <vector_types.h>
+#include <utilstrencodings.h>
 #include <pastelid/common.h>
 #include <pastelid/pastel_key.h>
 #include <mnode/tickets/pastelid-reg.h>
@@ -32,8 +33,19 @@ CNFTRoyaltyTicket CNFTRoyaltyTicket::Create(
 
     const auto strTicket = ticket.ToStr();
     string_to_vector(CPastelID::Sign(strTicket, ticket.pastelID, move(strKeyPass)), ticket.m_signature);
+    ticket.GenerateKeyOne();
 
     return ticket;
+}
+
+void CNFTRoyaltyTicket::SetKeyOne(std::string&& sValue) 
+{ 
+    m_keyOne = move(sValue);
+}
+
+void CNFTRoyaltyTicket::GenerateKeyOne()
+{
+    m_keyOne = EncodeBase32(m_signature.data(), m_signature.size());
 }
 
 string CNFTRoyaltyTicket::ToStr() const noexcept
@@ -208,7 +220,7 @@ string CNFTRoyaltyTicket::ToJSON() const noexcept
 
 bool CNFTRoyaltyTicket::FindTicketInDb(const string& key, CNFTRoyaltyTicket& ticket)
 {
-    string_to_vector(key, ticket.m_signature);
+    ticket.m_keyOne = key;
     return masterNodeCtrl.masternodeTickets.FindTicket(ticket);
 }
 

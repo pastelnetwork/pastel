@@ -96,7 +96,7 @@ As json rpc
     if (params.size() > 2 && !bSpecialParsingLogic)
         filter = params[2].get_str();
 
-    int minheight = 0;
+    uint32_t minheight = 0;
     if (params.size() > 3 && !bSpecialParsingLogic)
         minheight = get_number(params[3]);
 

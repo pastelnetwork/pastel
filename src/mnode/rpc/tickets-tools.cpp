@@ -73,9 +73,9 @@ UniValue tickets_tools_getregbytrade(const UniValue& params)
 
 UniValue tickets_tools_gettotalstoragefee(const UniValue& params)
 {
-    if (params.size() != 10)
+    if (params.size() != 9)
         throw JSONRPCError(RPC_INVALID_PARAMETER,
-R"(tickets tools gettotalstoragefee "ticket" "{signatures}" "pastelid" "passphrase" "key1" "key2" "fee" "imagesize"
+R"(tickets tools gettotalstoragefee "ticket" "{signatures}" "pastelid" "passphrase" "label" "fee" "imagesize"
 Get full storage fee for the NFT registration. If successful, method returns total amount of fee.
 
 Arguments:
@@ -89,24 +89,23 @@ Arguments:
 		"app_ticket": "<application-specific-data>",
 		"reserved": "<empty-string-for-now>"
 	}
-2. "signatures"	(string, required) Signatures (base64) and PastelIDs of the author and verifying masternodes (MN2 and MN3) as JSON:
+2. "signatures"	(string, required) Signatures (base64) and PastelIDs of the creator and verifying masternodes (MN2 and MN3) as JSON:
 	{
-		"creator":{"authorsPastelID": "authorsSignature"},
-		"mn2":{"mn2PastelID":"mn2Signature"},
-		"mn2":{"mn3PastelID":"mn3Signature"}
+        "principal": { "principal PastelID": "principal Signature" },
+              "mn2": { "mn2 PastelID": "mn2 Signature" },
+              "mn3": { "mn3 PastelID": "mn3 Signature" }
 	}
 3. "pastelid"   (string, required) The current, registering masternode (MN1) PastelID. NOTE: PastelID must be generated and stored inside node. See "pastelid newkey".
 4. "passphrase" (string, required) The passphrase to the private key associated with PastelID and stored inside node. See "pastelid newkey".
-5. "key1"       (string, required) The first key to search ticket.
-6. "key2"       (string, required) The second key to search ticket.
-7. "fee"        (int, required) The agreed upon storage fee.
-8. "imagesize"  (int, required) size of image in MB
+5. "label"      (string, required) The label which can be used to search for the ticket.
+6. "fee"        (int, required) The agreed upon storage fee.
+7. "imagesize"  (int, required) size of image in MB
 
 Get Total Storage Fee Ticket
-)" + HelpExampleCli("tickets tools gettotalstoragefee", R"(""ticket-blob" "{signatures}" jXYqZNPj21RVnwxnEJ654wEdzi7GZTZ5LAdiotBmPrF7pDMkpX1JegDMQZX55WZLkvy9fxNpZcbBJuE8QYUqBF "passphrase", "key1", "key2", 100, 3)") +
+)" + HelpExampleCli("tickets tools gettotalstoragefee", R"(""ticket-blob" "{signatures}" jXYqZNPj21RVnwxnEJ654wEdzi7GZTZ5LAdiotBmPrF7pDMkpX1JegDMQZX55WZLkvy9fxNpZcbBJuE8QYUqBF "passphrase", "label", 100, 3)") +
                                R"(
 As json rpc
-)" + HelpExampleRpc("tickets", R"("tools", "gettotalstoragefee", "ticket" "{signatures}" "jXYqZNPj21RVnwxnEJ654wEdzi7GZTZ5LAdiotBmPrF7pDMkpX1JegDMQZX55WZLkvy9fxNpZcbBJuE8QYUqBF" "passphrase", "key1", "key2", 100, 3)"));
+)" + HelpExampleRpc("tickets", R"("tools", "gettotalstoragefee", "ticket" "{signatures}" "jXYqZNPj21RVnwxnEJ654wEdzi7GZTZ5LAdiotBmPrF7pDMkpX1JegDMQZX55WZLkvy9fxNpZcbBJuE8QYUqBF" "passphrase", "label", 100, 3)"));
 
     if (fImporting || fReindex)
         throw JSONRPCError(RPC_INVALID_PARAMETER, "Initial blocks download. Re-try later");
@@ -117,22 +116,20 @@ As json rpc
 
     SecureString strKeyPass(params[5].get_str());
 
-    string key1 = params[6].get_str();
-    string key2 = params[7].get_str();
+    string label = params[6].get_str();
 
-    CAmount nStorageFee = get_long_number(params[8]);
-    CAmount imageSize = get_long_number(params[9]);
+    CAmount nStorageFee = get_long_number(params[7]);
+    CAmount imageSize = get_long_number(params[8]);
 
-    auto NFTRegTicket = CNFTRegTicket::Create(
+    const auto NFTRegTicket = CNFTRegTicket::Create(
         move(ticket),
         signatures,
         move(pastelID),
         move(strKeyPass),
-        move(key1),
-        move(key2),
+        move(label),
         nStorageFee);
     CDataStream data_stream(SER_NETWORK, DATASTREAM_VERSION);
-    data_stream << (uint8_t)NFTRegTicket.ID();
+    data_stream << to_integral_type(NFTRegTicket.ID());
     data_stream << NFTRegTicket;
     v_uint8 input_bytes{data_stream.cbegin(), data_stream.cend()};
     const CAmount totalFee = imageSize * masterNodeCtrl.GetNetworkFeePerMB() +

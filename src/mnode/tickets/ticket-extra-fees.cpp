@@ -15,7 +15,7 @@ void CTicketSignedWithExtraFees::Clear() noexcept
     CPastelTicket::Clear();
     clear_signatures();
     m_keyOne.clear();
-    m_keyTwo.clear();
+    m_label.clear();
     m_storageFee = 0;
     m_nCreatorHeight = 0;
     m_nRoyalty = 0.0f;
@@ -99,4 +99,12 @@ bool CTicketSignedWithExtraFees::ValidateFees(string& error) const noexcept
     } while (false);
 
     return bRet;
+}
+
+/**
+ * Generate unique random key #1.
+ */
+void CTicketSignedWithExtraFees::GenerateKeyOne()
+{
+    m_keyOne = generateRandomBase32Str(RANDOM_KEY_BASE_LENGTH);
 }

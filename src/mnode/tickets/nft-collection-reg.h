@@ -129,7 +129,7 @@ public:
         serialize_signatures(s, ser_action);
 
         READWRITE(m_keyOne);
-        READWRITE(m_keyTwo);
+        READWRITE(m_label);
         READWRITE(m_nCreatorHeight);
         READWRITE(m_nRoyalty);
         READWRITE(m_sGreenAddress);
@@ -140,7 +140,7 @@ public:
     }
 
     static CNFTCollectionRegTicket Create(std::string &&nft_collection_ticket, const std::string& signatures, 
-        std::string &&sPastelID, SecureString&& strKeyPass, std::string &&keyOne, std::string &&keyTwo, const CAmount storageFee);
+        std::string &&sPastelID, SecureString&& strKeyPass, std::string &&label, const CAmount storageFee);
     static bool FindTicketInDb(const std::string& key, CNFTCollectionRegTicket& ticket);
     static bool CheckIfTicketInDb(const std::string& key);
     static NFTCollectionRegTickets_t FindAllTicketByPastelID(const std::string& pastelID);
