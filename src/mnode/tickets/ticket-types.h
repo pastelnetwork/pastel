@@ -1,11 +1,11 @@
 #pragma once
-// Copyright (c) 2021 The Pastel Core developers
+// Copyright (c) 2021-2022 The Pastel Core developers
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 
 #include <array>
 
-#include "enum_util.h"
+#include <enum_util.h>
 
 // ticket names
 constexpr auto TICKET_NAME_ID_REG                   = "pastelid";               // Pastel ID registration ticket
@@ -98,16 +98,14 @@ constexpr CAmount GREEN_FEE_PERCENT = 2;
 
 constexpr float MAX_ROYALTY = 0.2f;
 constexpr uint16_t MAX_ROYALTY_PERCENT = 20;
+// length of the random string generated as a primary key of the ticket
+constexpr size_t RANDOM_KEY_BASE_LENGTH = 32;
 
 // action ticket types
 enum class ACTION_TICKET_TYPE
 {
     UNKNOWN = 0, // unknown action type (default)
     SENSE = 1,   // Sense - dupe detection
-    CASCADE = 2, // Cascase - storage
+    CASCADE = 2, // Cascade - storage
     COUNT        // number of supported action types
 };
-
-
-
-

@@ -46,13 +46,12 @@ UniValue tickets_fake(const UniValue& params, const bool bSend)
         string signatures = params[3].get_str();
         string sPastelID = params[4].get_str();
         SecureString strKeyPass(params[5].get_str());
-        string key1 = params[6].get_str();
-        string key2 = params[7].get_str();
-        CAmount nStorageFee = get_long_number(params[8]);
+        string label = params[6].get_str();
+        CAmount nStorageFee = get_long_number(params[7]);
         auto NFTRegTicket = CNFTRegTicket::Create(move(nft_ticket), signatures,
-                                                  move(sPastelID), move(strKeyPass), move(key1), move(key2), nStorageFee);
-        const CAmount ticketPricePSL = get_long_number(params[10].get_str());
-        string strVerb = params[11].get_str();
+                                                  move(sPastelID), move(strKeyPass),move(label), nStorageFee);
+        const CAmount ticketPricePSL = get_long_number(params[9].get_str());
+        string strVerb = params[10].get_str();
         resultObj = CPastelTicketProcessor::CreateFakeTransaction(NFTRegTicket, ticketPricePSL, vector<pair<string, CAmount>>{}, strVerb, bSend);
     } break;
 

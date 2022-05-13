@@ -1,16 +1,19 @@
 #!/usr/bin/env python3
-# Copyright (c) 2018-2021 The Pastel Core developers
+# Copyright (c) 2018-2022 The Pastel Core developers
 # Distributed under the MIT software license, see the accompanying
 # file COPYING or http://www.opensource.org/licenses/mit-license.php.
 import math
 
-from test_framework.util import assert_equal, assert_greater_than, \
-    assert_true, initialize_chain_clean, str_to_b64str
+from test_framework.util import (
+    assert_equal,
+    assert_true,
+    initialize_chain_clean,
+    str_to_b64str
+)
 from mn_common import MasterNodeCommon
 from test_framework.authproxy import JSONRPCException
 import json
 import time
-import base64
 
 from decimal import Decimal, getcontext
 getcontext().prec = 16
@@ -108,7 +111,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
 
         self.initialize()
 
-        nft_ticket_txid = self.register_nft_reg_ticket("key1", "key2")
+        nft_ticket_txid = self.register_nft_reg_ticket("nft-label")
         self.__wait_for_confirmation(self.non_mn3)
 
         act_ticket_txid = self.register_nft_act_ticket(nft_ticket_txid)
@@ -354,23 +357,23 @@ class MasterNodeTicketsTest(MasterNodeCommon):
 
         # Current nft_ticket - 8 Items!!!!
         # {
-        #   "version": integer          // 1
+        #   "nft_ticket_version": integer          // 1
         #   "author": bytes,            // PastelID of the author (creator)
         #   "blocknum": integer,        // block number when the ticket was created - this is to map the ticket to the MNs that should process it
         #   "block_hash": bytes         // hash of the top block when the ticket was created - this is to map the ticket to the MNs that should process it
         #   "copies": integer,          // number of copies
         #   "royalty": short,           // (not yet supported by cNode) how much creator should get on all future resales
-        #   "green_address": string,            // address for Green NFT payment (not yet supported by cNode)
+        #   "green": boolean,           // if Green NFT payment
         #   "app_ticket": ...
         # }
         json_ticket = {
-            "version": 1,
+            "nft_ticket_version": 1,
             "author": self.creator_pastelid1,
             "blocknum": self.creator_ticket_height,
             "block_hash": data_hash,
             "copies": total_copies,
             "royalty": 0,
-            "green_address": "",
+            "green": True,
             "app_ticket": app_ticket
         }
         self.ticket = str_to_b64str(json.dumps(json_ticket))
@@ -408,15 +411,14 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         })
         print(f"signatures_dict - {self.signatures_dict!r}")
 
-    def register_nft_reg_ticket(self, key1, key2):
+    def register_nft_reg_ticket(self, label):
         print("== Create the NFT registration ticket ==")
 
         self.create_nft_ticket_and_signatures(self.non_mn3, "HIJKLMNOP", "ABCDEFG", self.total_copies)
-        nft_ticket_txid = \
-            self.nodes[self.top_mns_index0].tickets("register", "nft",
+        nft_ticket_txid = self.nodes[self.top_mns_index0].tickets("register", "nft",
                                                     self.ticket, json.dumps(self.signatures_dict),
                                                     self.top_mn_pastelid0, self.passphrase,
-                                                    key1, key2, str(self.storage_fee))["txid"]
+                                                    label, str(self.storage_fee))["txid"]
         print(nft_ticket_txid)
         assert_true(nft_ticket_txid, "No ticket was created")
 
@@ -429,8 +431,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
     def register_nft_act_ticket(self, nft_ticket_txid):
         print("== Create the nft activation ticket ==")
 
-        act_ticket_txid = \
-            self.nodes[self.non_mn3].tickets("register", "act", nft_ticket_txid,
+        act_ticket_txid = self.nodes[self.non_mn3].tickets("register", "act", nft_ticket_txid,
                                              str(self.creator_ticket_height), str(self.storage_fee),
                                              self.creator_pastelid1, self.passphrase)["txid"]
         assert_true(act_ticket_txid, "No ticket was created")
@@ -442,8 +443,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
     def register_nft_sell_ticket(self, act_ticket_txid, copyNumber = 0):
         print("== Create the nft sell ticket ==")
 
-        sell_ticket_txid = \
-            self.nodes[self.non_mn3].tickets("register", "sell", act_ticket_txid, str(self.nft_copy_price),
+        sell_ticket_txid = self.nodes[self.non_mn3].tickets("register", "sell", act_ticket_txid, str(self.nft_copy_price),
                                              self.creator_pastelid1, self.passphrase, 0, 0, copyNumber)["txid"]
         assert_true(sell_ticket_txid, "No ticket was created")
         self.__wait_for_ticket_tnx()
@@ -460,8 +460,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
     def register_nft_buy_ticket(self, buyer_node, buyer_pastelid1, sell_ticket_txid):
         print("== Create the NFT buy ticket ==")
 
-        buy_ticket_txid = \
-            self.nodes[buyer_node].tickets("register", "buy", sell_ticket_txid, str(self.nft_copy_price),
+        buy_ticket_txid = self.nodes[buyer_node].tickets("register", "buy", sell_ticket_txid, str(self.nft_copy_price),
                                            buyer_pastelid1, self.passphrase)["txid"]
         assert_true(buy_ticket_txid, "No ticket was created")
         self.__wait_for_ticket_tnx()
@@ -499,8 +498,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         consaddress = self.nodes[buyer_node].getnewaddress()
         self.nodes[buyer_node].sendtoaddress(consaddress, coins_before, "", "", True)
 
-        trade_ticket_txid = \
-            self.nodes[buyer_node].tickets("register", "trade", sell_ticket_txid, buy_ticket_txid,
+        trade_ticket_txid = self.nodes[buyer_node].tickets("register", "trade", sell_ticket_txid, buy_ticket_txid,
                                            buyer_pastelid1, self.passphrase)["txid"]
         assert_true(trade_ticket_txid, "No ticket was created")
         self.__wait_for_ticket_tnx()

@@ -1,21 +1,20 @@
 // Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2014 The Bitcoin Core developers
+// Copyright (c) 2018-2022 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
-// file COPYING or http://www.opensource.org/licenses/mit-license.php.
-
-#include "utilstrencodings.h"
-#include "ascii85.h"
-
-#include "tinyformat.h"
-#include "vector_types.h"
-#include "str_utils.h"
-#include "util.h"
-
+// file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <cstdlib>
 #include <cstring>
 #include <errno.h>
 #include <iomanip>
 #include <limits>
+
+#include <utilstrencodings.h>
+#include <ascii85.h>
+#include <tinyformat.h>
+#include <vector_types.h>
+#include <str_utils.h>
+#include <util.h>
 
 using namespace std;
 
@@ -142,19 +141,19 @@ string EncodeAscii85(const unsigned char* istr, size_t len) noexcept
         if (nMaxLength <= 0)
             break;
         
-        v_uint8 vOut;
-        vOut.resize(nMaxLength);
-
-        const int32_t nEncodedLength = encode_ascii85(reinterpret_cast<const uint8_t*>(istr), nInputSize, vOut.data(), nMaxLength);
+        sRetVal.resize(nMaxLength);
+        const int32_t nEncodedLength = encode_ascii85(reinterpret_cast<const uint8_t*>(istr), nInputSize, reinterpret_cast<uint8_t*>(sRetVal.data()), nMaxLength);
         if (nEncodedLength > 0)
-            sRetVal.assign(vOut.cbegin(), vOut.cbegin() + nEncodedLength);
+            sRetVal.resize(nEncodedLength);
+        else
+            sRetVal.clear();
     } while (false);
     return sRetVal;
 }
 
 string EncodeAscii85(const string& str) noexcept
 {
-    return EncodeAscii85(reinterpret_cast<const unsigned char *>(str.c_str()), str.size());
+    return EncodeAscii85(reinterpret_cast<const unsigned char *>(str.data()), str.size());
 }
 
 v_uint8 DecodeAscii85(const char* ostr, bool* pfInvalid) noexcept
@@ -322,7 +321,8 @@ v_uint8 DecodeBase32(const char* p, bool* pfInvalid)
     const char* e = p;
     v_uint8 val;
     val.reserve(strlen(p));
-    while (*p != 0) {
+    while (*p != 0)
+    {
         int x = decode32_table[(unsigned char)*p];
         if (x == -1) break;
         val.push_back(x);
@@ -334,15 +334,18 @@ v_uint8 DecodeBase32(const char* p, bool* pfInvalid)
     bool valid = ConvertBits<5, 8, false>([&](unsigned char c) { ret.push_back(c); }, val.begin(), val.end());
 
     const char* q = p;
-    while (valid && *p != 0) {
-        if (*p != '=') {
+    while (valid && *p != 0)
+    {
+        if (*p != '=')
+        {
             valid = false;
             break;
         }
         ++p;
     }
     valid = valid && (p - e) % 8 == 0 && p - q < 8;
-    if (pfInvalid) *pfInvalid = !valid;
+    if (pfInvalid)
+        *pfInvalid = !valid;
 
     return ret;
 }

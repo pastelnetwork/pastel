@@ -84,8 +84,9 @@ TEST_F(TestTicketProcessor, ticket_compression)
         { ticket->CChangeUsernameTicket::SerializationOp(s, ser_action); });
 
     // serialize ticket, convert to tx, add to mempool, validate tx
-    string txid = SendTicket(*ticket);
-    EXPECT_TRUE(!txid.empty());
+    const auto result = SendTicket(*ticket);
+    EXPECT_TRUE(!get<0>(result).empty());
+    EXPECT_TRUE(!get<1>(result).empty());
 }
 #endif // ENABLE_WALLET
 #endif // ENABLE_MINING

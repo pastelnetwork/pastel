@@ -22,8 +22,8 @@ using ActionRegTickets_t = std::vector<CActionRegTicket>;
         "action_type": string,     // action type (sense, cascade)
         "version": integer,        // version of the blockchain representation of ticket, v1
         "signatures": object,      // signatures, see below
-        "key1": string,
-        "key2": string,
+        "key": string,             // primary key
+        "label": string,           // search label
         "called_at": unsigned int, // block at which action was requested,
                                    // is used to check if the SNs that created this ticket was indeed top SN
                                    // when that action call was made
@@ -48,8 +48,8 @@ signatures: {
           "mn3": { "PastelID" : "signature"},
 }
 
-  key #1: keyOne
-  key #2: keyTwo
+  key #1: keyOne (primary)
+  key #2: keyTwo (label)
 mvkey #1: action caller PastelID
 */
 
@@ -91,12 +91,11 @@ public:
     ACTION_TICKET_TYPE GetActionType() const noexcept { return m_ActionType; }
 
     std::string KeyOne() const noexcept override { return m_keyOne; }
-    std::string KeyTwo() const noexcept override { return m_keyTwo; }
     std::string MVKeyOne() const noexcept override { return m_sCallerPastelId; }
 
-    bool HasKeyTwo() const noexcept override { return true; }
     bool HasMVKeyOne() const noexcept override { return true; }
     void SetKeyOne(std::string &&sValue) override { m_keyOne = std::move(sValue); }
+    void GenerateKeyOne() override;
 
     std::string ToJSON() const noexcept override;
     std::string ToStr() const noexcept override { return m_sActionTicket; }
@@ -131,7 +130,7 @@ public:
         const bool bValidActionType = SetActionType(m_sActionType);
         serialize_signatures(s, ser_action);
         READWRITE(m_keyOne);
-        READWRITE(m_keyTwo);
+        READWRITE(m_label);
         READWRITE(m_nCalledAtHeight);
         READWRITE(m_storageFee);
         if (m_nTimestamp == 0)
@@ -144,7 +143,7 @@ public:
     }
 
     static CActionRegTicket Create(std::string && action_ticket, const std::string& signatures, 
-        std::string && sPastelID, SecureString&& strKeyPass, std::string &&keyOne, std::string &&keyTwo, const CAmount storageFee);
+        std::string && sPastelID, SecureString&& strKeyPass, std::string &&label, const CAmount storageFee);
     static bool FindTicketInDb(const std::string& key, CActionRegTicket& _ticket);
     static bool CheckIfTicketInDb(const std::string& key);
     static ActionRegTickets_t FindAllTicketByPastelID(const std::string& pastelID);
@@ -158,9 +157,9 @@ protected:
     std::string m_sCallerPastelId;      // Pastel ID of the Action caller
     uint32_t m_nCalledAtHeight{0};      // block at which action was requested
 
-    std::string m_keyOne;               // key #1
-    std::string m_keyTwo;               // key #2
-    CAmount m_storageFee{0};                // storage fee in PSL
+    std::string m_keyOne;               // key #1 (primary key, generated)
+    std::string m_label;                // ticket label
+    CAmount m_storageFee{0};            // storage fee in PSL
 
     // parse base64-encoded action_ticket in json format, may throw runtime_error exception
     void parse_action_ticket();

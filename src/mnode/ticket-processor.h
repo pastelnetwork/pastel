@@ -69,11 +69,11 @@ class CPastelTicketProcessor
     db_map_t dbs; // ticket db storage
 
     template <class _TicketType, typename F>
-    void listTickets(F f, const int minHeight) const;
+    void listTickets(F f, const uint32_t nMinHeight) const;
 
     // filter tickets of the specific type using functor f
     template <class _TicketType, typename F>
-    std::string filterTickets(F f, const int minHeight, const bool bCheckConfirmation = true) const;
+    std::string filterTickets(F f, const uint32_t nMinHeight, const bool bCheckConfirmation = true) const;
 
 public:
     CPastelTicketProcessor() = default;
@@ -134,18 +134,18 @@ public:
     std::string getValueBySecondaryKey(const CPastelTicket& ticket) const;
 
     template <class _TicketType>
-    std::string ListTickets(const int minHeight) const;
+    std::string ListTickets(const uint32_t nMinHeight) const;
 
     // list NFT registration tickets using filter
-    std::string ListFilterPastelIDTickets(const int minHeight, const short filter = 0, // 1 - mn;        2 - personal;     3 - mine
+    std::string ListFilterPastelIDTickets(const uint32_t nMinHeight, const short filter = 0, // 1 - mn;        2 - personal;     3 - mine
                                           const pastelid_store_t* pmapIDs = nullptr) const;
-    std::string ListFilterNFTTickets(const int minHeight, const short filter = 0) const;   // 1 - active;    2 - inactive;     3 - sold
-    std::string ListFilterNFTCollectionTickets(const int minHeight, const short filter = 0) const;   // 1 - active;    2 - inactive;
-    std::string ListFilterActTickets(const int minHeight, const short filter = 0) const;   // 1 - available; 2 - sold
-    std::string ListFilterSellTickets(const int minHeight, const short filter = 0, const std::string& pastelID = "") const;  // 0 - all, 1 - available; 2 - unavailable;  3 - expired; 4 - sold
-    std::string ListFilterBuyTickets(const int minHeight, const short filter = 0, const std::string& pastelID = "") const;   // 0 - all, 1 - traded;    2 - expired
-    std::string ListFilterTradeTickets(const int minHeight, const short filter = 0, const std::string& pastelID = "") const; // 0 - all, 1 - available; 2 - sold
-    std::string ListFilterActionTickets(const int minHeight, const short filter = 0) const; // 1 - active;    2 - inactive
+    std::string ListFilterNFTTickets(const uint32_t nMinHeight, const short filter = 0) const;   // 1 - active;    2 - inactive;     3 - sold
+    std::string ListFilterNFTCollectionTickets(const uint32_t nMinHeight, const short filter = 0) const;   // 1 - active;    2 - inactive;
+    std::string ListFilterActTickets(const uint32_t nMinHeight, const short filter = 0) const;   // 1 - available; 2 - sold
+    std::string ListFilterSellTickets(const uint32_t nMinHeight, const short filter = 0, const std::string& pastelID = "") const;  // 0 - all, 1 - available; 2 - unavailable;  3 - expired; 4 - sold
+    std::string ListFilterBuyTickets(const uint32_t nMinHeight, const short filter = 0, const std::string& pastelID = "") const;   // 0 - all, 1 - traded;    2 - expired
+    std::string ListFilterTradeTickets(const uint32_t nMinHeight, const short filter = 0, const std::string& pastelID = "") const; // 0 - all, 1 - available; 2 - sold
+    std::string ListFilterActionTickets(const uint32_t nMinHeight, const short filter = 0) const; // 1 - active;    2 - inactive
 
     // search for NFT registration tickets, calls functor for each matching ticket
     void SearchForNFTs(const search_thumbids_t &p, std::function<size_t(const CPastelTicket *, const nlohmann::json &)> &fnMatchFound) const;
@@ -165,7 +165,7 @@ public:
     // Add P2FMS transaction to the memory pool
     static bool StoreP2FMSTransaction(const CMutableTransaction& tx_out, std::string& error_ret);
 
-    static std::string SendTicket(const CPastelTicket& ticket, const opt_string_t& sFundingAddress = std::nullopt);
+    static std::tuple<std::string, std::string> SendTicket(const CPastelTicket& ticket, const opt_string_t& sFundingAddress = std::nullopt);
 
     static std::unique_ptr<CPastelTicket> GetTicket(const uint256 &txid);
     static std::unique_ptr<CPastelTicket> GetTicket(const std::string& _txid, const TicketID ticketID);

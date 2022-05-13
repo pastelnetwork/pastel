@@ -59,22 +59,21 @@ const char* GetActionTypeName(const ACTION_TICKET_TYPE actionTicketType) noexcep
  * \param signatures - json with (principal, mn2, mn3) signatures
  * \param sPastelID - PastelID of the action caller
  * \param strKeyPass - passphrase to access secure container for action caller (principal signer)
- * \param keyOne - key #1
- * \param keyTwo - key #2
+ * \param label - key #2 (search label)
  * \param storageFee - ticket fee
  * \return created action ticket
  */
 CActionRegTicket CActionRegTicket::Create(string&& action_ticket, const string& signatures, 
-    string&& sPastelID, SecureString&& strKeyPass, string &&keyOne, string &&keyTwo, const CAmount storageFee)
+    string&& sPastelID, SecureString&& strKeyPass, string &&label, const CAmount storageFee)
 {
     CActionRegTicket ticket(move(action_ticket));
     ticket.parse_action_ticket();
 
     // parse and set principal's and MN2/3's signatures
     ticket.set_signatures(signatures);
-    ticket.m_keyOne = move(keyOne);
-    ticket.m_keyTwo = move(keyTwo);
+    ticket.m_label = move(label);
     ticket.m_storageFee = storageFee;
+    ticket.GenerateKeyOne();
     ticket.GenerateTimestamp();
 
     ticket.m_vPastelID[SIGN_MAIN] = move(sPastelID);
@@ -120,7 +119,7 @@ void CActionRegTicket::Clear() noexcept
     m_nCalledAtHeight = 0;
     CTicketSigning::clear_signatures();
     m_keyOne.clear();
-    m_keyTwo.clear();
+    m_label.clear();
     m_storageFee = 0;
 }
 
@@ -160,8 +159,8 @@ string CActionRegTicket::ToJSON() const noexcept
                {"action_ticket", m_sActionTicket},
                {"action_type", m_sActionType},
                get_signatures_json(),
-               {"key1", m_keyOne},
-               {"key2", m_keyTwo},
+               {"key", m_keyOne},
+               {"label", m_label},
                {"called_at", m_nCalledAtHeight},
                {"storage_fee", m_storageFee}
             }
@@ -169,6 +168,14 @@ string CActionRegTicket::ToJSON() const noexcept
     };
 
     return jsonObj.dump(4);
+}
+
+/**
+* Generate unique random key #1.
+*/
+void CActionRegTicket::GenerateKeyOne()
+{
+    m_keyOne = generateRandomBase32Str(RANDOM_KEY_BASE_LENGTH);
 }
 
 /**
@@ -193,8 +200,8 @@ ticket_validation_t CActionRegTicket::IsValid(const bool bPreReg, const uint32_t
             if (masterNodeCtrl.masternodeTickets.CheckTicketExist(*this))
             {
                 tv.errorMsg = strprintf(
-                    "This Action is already registered in blockchain [Key1 = %s; Key2 = %s]", 
-                    m_keyOne, m_keyTwo);
+                    "This Action is already registered in blockchain [key=%s; label=%s]", 
+                    m_keyOne, m_label);
                 break;
             }
 
@@ -211,11 +218,10 @@ ticket_validation_t CActionRegTicket::IsValid(const bool bPreReg, const uint32_t
 
         // (ticket transaction replay attack protection)
         CActionRegTicket ticket;
-        if ((FindTicketInDb(m_keyOne, ticket) || FindTicketInDb(m_keyTwo, ticket)) &&
-            (!ticket.IsBlock(m_nBlock) || !ticket.IsTxId(m_txid)))
+        if (FindTicketInDb(m_keyOne, ticket) && (!ticket.IsBlock(m_nBlock) || !ticket.IsTxId(m_txid)))
         {
             tv.errorMsg = strprintf(
-                "This Action is already registered in blockchain [Key1=%s; Key2=%s] [%sfound ticket block=%u, txid=%s]",
+                "This Action is already registered in blockchain [key=%s; label=%s] [%sfound ticket block=%u, txid=%s]",
                 m_keyOne, KeyTwo(), 
                 bPreReg ? "" : strprintf("this ticket block=%u txid=%s; ", m_nBlock, m_txid),
                 ticket.GetBlock(), ticket.m_txid);
@@ -239,33 +245,29 @@ ticket_validation_t CActionRegTicket::IsValid(const bool bPreReg, const uint32_t
 }
 
 /**
- * Find ticket in a DB by primary & secondary key.
+ * Find ticket in a DB by primary key.
  * 
- * \param key - lookup key, used in a search by both primary and secondary keys
+ * \param key - lookup key, used in a search by primary key
  * \param ticket - returns ticket if found
  * \return true if ticket was found
  */
 bool CActionRegTicket::FindTicketInDb(const string& key, CActionRegTicket& ticket)
 {
     ticket.m_keyOne = key;
-    ticket.m_keyTwo = key;
-    return masterNodeCtrl.masternodeTickets.FindTicket(ticket) ||
-           masterNodeCtrl.masternodeTickets.FindTicketBySecondaryKey(ticket);
+    return masterNodeCtrl.masternodeTickets.FindTicket(ticket);
 }
 
 /**
- * Check if ticket exists in a DB by primary or secondary key.
+ * Check if ticket exists in a DB by primary key.
  * 
- * \param key - lookup key, used in a search by both primary and secondary keys
+ * \param key - lookup key, used in a search by primary key
  * \return true if ticket exists in a DB
  */
 bool CActionRegTicket::CheckIfTicketInDb(const string& key)
 {
     CActionRegTicket ticket;
     ticket.m_keyOne = key;
-    ticket.m_keyTwo = key;
-    return masterNodeCtrl.masternodeTickets.CheckTicketExist(ticket) ||
-           masterNodeCtrl.masternodeTickets.CheckTicketExistBySecondaryKey(ticket);
+    return masterNodeCtrl.masternodeTickets.CheckTicketExist(ticket);
 }
 
 ActionRegTickets_t CActionRegTicket::FindAllTicketByPastelID(const string& pastelID)

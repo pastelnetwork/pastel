@@ -145,6 +145,7 @@ public:
     virtual std::string MVKeyThree() const noexcept { return {}; }
 
     virtual void SetKeyOne(std::string &&sValue) = 0;
+    virtual void GenerateKeyOne() {}
 
 protected:
     std::string m_txid;          // ticket transaction id

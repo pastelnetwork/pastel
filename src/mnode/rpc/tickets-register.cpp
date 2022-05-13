@@ -1,7 +1,6 @@
 // Copyright (c) 2018-2022 The Pastel Core developers
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
-
 #include <rpc/rpc_parser.h>
 #include <rpc/rpc_consts.h>
 #include <rpc/server.h>
@@ -55,11 +54,7 @@ As json rpc:
         sFundingAddress = params[4].get_str();
 
     const auto regTicket = CPastelIDRegTicket::Create(move(pastelID), move(strKeyPass), sFundingAddress.value_or(""));
-    string txid = CPastelTicketProcessor::SendTicket(regTicket, sFundingAddress);
-
-    UniValue result(UniValue::VOBJ);
-    result.pushKV(RPC_KEY_TXID, move(txid));
-    return result;
+    return GenerateSendTicketResult(CPastelTicketProcessor::SendTicket(regTicket, sFundingAddress));
 }
 
 UniValue tickets_register_id(const UniValue& params)
@@ -98,11 +93,7 @@ As json rpc:
     string sAddress = params[4].get_str();
 
     const auto pastelIDRegTicket = CPastelIDRegTicket::Create(move(pastelID), move(strKeyPass), sAddress);
-    string txid = CPastelTicketProcessor::SendTicket(pastelIDRegTicket, sAddress);
-
-    UniValue result(UniValue::VOBJ);
-    result.pushKV(RPC_KEY_TXID, move(txid));
-    return result;
+    return GenerateSendTicketResult(CPastelTicketProcessor::SendTicket(pastelIDRegTicket, sAddress));
 }
 
 /**
@@ -113,22 +104,23 @@ As json rpc:
 */
 UniValue tickets_register_nft(const UniValue& params)
 {
-    if (params.size() < 9)
+    if (params.size() < 8)
         throw JSONRPCError(RPC_INVALID_PARAMETER,
-R"(tickets register nft "{nft-ticket}" "{signatures}" "pastelid" "passphrase" "key1" "key2" "fee" ["address"]
+R"(tickets register nft "{nft-ticket}" "{signatures}" "pastelid" "passphrase" "label" "fee" ["address"]
 Register new NFT ticket. If successful, method returns "txid".
 
 Arguments:
 1. "{nft-ticket}"	(string, required) Base64 encoded NFT ticket created by the creator.
     {
-        "nft_ticket_version": 1,
-        "author":        "<authors-PastelID>",
-        "blocknum":      <block-number-when-the-ticket-was-created-by-the-creator>,
-        "block_hash":    "<base64'ed-hash-of-the-nft>",
-        "copies":        <number-of-copies-of-nft-this-ticket-is-creating>,
-        "royalty":       <how-much-creator-should-get-on-all-future-resales>,
-        "green":         boolean
-        "app_ticket":    "<application-specific-data>"
+        "nft_ticket_version": 2,
+        "author":               "<PastelID of the author (creator)>",
+        "blocknum":             <block number when the ticket was created>,
+        "block_hash":           "<hash of the top block when the ticket was created>",
+        "copies":               <number of copies of NFT this ticket is creating, optional in v2>,
+        "royalty":              <royalty fee, how much creator should get on all future resales, optional in v2>,
+        "green":                <boolean, is there Green NFT payment or not, optional in v2>,
+        "nft_collection_txid":  "<transaction id of the NFT collection that NFT belongs to, v2 only, optional, can be empty>",
+        "app_ticket":           "<application-specific-data>"
     }
 2. "{signatures}"	(string, required) Signatures (base64) and PastelIDs of the principal and verifying masternodes (MN2 and MN3) as JSON:
     {
@@ -138,10 +130,9 @@ Arguments:
     }
 3. "pastelid"   (string, required) The current, registering masternode (MN1) PastelID. NOTE: PastelID must be generated and stored inside node. See "pastelid newkey".
 4. "passphrase" (string, required) The passphrase to the private key associated with PastelID and stored inside node. See "pastelid newkey".
-5. "key1"       (string, required) The first key to search ticket.
-6. "key2"       (string, required) The second key to search ticket.
-7. "fee"        (int, required) The agreed upon storage fee.
-8. "address"    (string, optional) The Pastel blockchain t-address to use for funding the registration.
+5. "label"      (string, required) The label which can be used to search for the ticket.
+6. "fee"        (int, required) The agreed upon storage fee.
+7. "address"    (string, optional) The Pastel blockchain t-address to use for funding the registration.
 
 NFT Registration ticket:
 {
@@ -157,9 +148,9 @@ NFT Registration ticket:
                   "mn2": { "PastelID": <"signature"> },
                   "mn3": { "PastelID": <"signature"> }
         },
-        "key1":            "<search key 1>",
-        "key2":            "<search key 2>",
-        "creator_height":   <creator height>,
+        "key":             "<search primary key>",
+        "label":           "<search label>",
+        "creator_height":  <creator height>,
         "total_copies":    <total copies>,
         "royalty":         <royalty fee>,
         "royalty_address": <"address for royalty payment">,
@@ -169,10 +160,10 @@ NFT Registration ticket:
 }
 
 Register NFT Ticket:
-)" + HelpExampleCli("tickets register nft", R"(""ticket-blob" "{signatures}" jXYqZNPj21RVnwxnEJ654wEdzi7GZTZ5LAdiotBmPrF7pDMkpX1JegDMQZX55WZLkvy9fxNpZcbBJuE8QYUqBF "passphrase", "key1", "key2", 100)") +
+)" + HelpExampleCli("tickets register nft", R"(""ticket-blob" "{signatures}" jXYqZNPj21RVnwxnEJ654wEdzi7GZTZ5LAdiotBmPrF7pDMkpX1JegDMQZX55WZLkvy9fxNpZcbBJuE8QYUqBF "passphrase", "label", 100)") +
 R"(
 As json rpc:
-)" + HelpExampleRpc("tickets", R"("register", "nft", "ticket" "{signatures}" "jXYqZNPj21RVnwxnEJ654wEdzi7GZTZ5LAdiotBmPrF7pDMkpX1JegDMQZX55WZLkvy9fxNpZcbBJuE8QYUqBF" "passphrase", "key1", "key2", 100)")
+)" + HelpExampleRpc("tickets", R"("register", "nft", "ticket" "{signatures}" "jXYqZNPj21RVnwxnEJ654wEdzi7GZTZ5LAdiotBmPrF7pDMkpX1JegDMQZX55WZLkvy9fxNpZcbBJuE8QYUqBF" "passphrase", "label", 100)")
 );
 
     if (!masterNodeCtrl.IsActiveMasterNode())
@@ -187,23 +178,18 @@ As json rpc:
 
     SecureString strKeyPass(params[5].get_str());
 
-    string key1 = params[6].get_str();
-    string key2 = params[7].get_str();
+    string label = params[6].get_str();
 
-    const CAmount nStorageFee = get_long_number(params[8]);
+    const CAmount nStorageFee = get_long_number(params[7]);
 
     opt_string_t sFundingAddress;
-    if (params.size() >= 10)
-        sFundingAddress = params[9].get_str();
+    if (params.size() >= 9)
+        sFundingAddress = params[8].get_str();
 
     const auto NFTRegTicket = CNFTRegTicket::Create(
         move(nft_ticket), signatures, move(sPastelID), move(strKeyPass),
-        move(key1), move(key2), nStorageFee);
-    string txid = CPastelTicketProcessor::SendTicket(NFTRegTicket, sFundingAddress);
-
-    UniValue result(UniValue::VOBJ);
-    result.pushKV(RPC_KEY_TXID, move(txid));
-    return result;
+        move(label), nStorageFee);
+    return GenerateSendTicketResult(CPastelTicketProcessor::SendTicket(NFTRegTicket, sFundingAddress));
 }
 
 /**
@@ -214,9 +200,9 @@ As json rpc:
  */
 UniValue tickets_register_nft_collection(const UniValue& params)
 {
-    if (params.size() < 9)
+    if (params.size() < 8)
         throw JSONRPCError(RPC_INVALID_PARAMETER,
-R"(tickets register nft-collection "{nft-collection-ticket}" "{signatures}" "pastelid" "passphrase" "key1" "key2" "fee" ["address"]
+R"(tickets register nft-collection "{nft-collection-ticket}" "{signatures}" "pastelid" "passphrase" "label" "fee" ["address"]
 Register new NFT collection ticket. If successful, method returns "txid".
 
 Arguments:
@@ -247,10 +233,9 @@ Arguments:
     }
 3. "pastelid"   (string, required) The current, registering masternode (MN1) PastelID. NOTE: PastelID must be generated and stored inside node. See "pastelid newkey".
 4. "passphrase" (string, required) The passphrase to the private key associated with PastelID and stored inside node. See "pastelid newkey".
-5. "key1"       (string, required) The first key to search ticket.
-6. "key2"       (string, required) The second key to search ticket.
-7. "fee"        (int, required) The agreed upon storage fee.
-8. "address"    (string, optional) The Pastel blockchain t-address to use for funding the registration.
+5. "label"      (string, required) The label which can be used to search for the ticket.
+6. "fee"        (int, required) The agreed upon storage fee.
+7. "address"    (string, optional) The Pastel blockchain t-address to use for funding the registration.
 
 NFT Collection Registration Ticket:
 {
@@ -266,8 +251,8 @@ NFT Collection Registration Ticket:
                   "mn2": { "PastelID": <"signature"> },
                   "mn3": { "PastelID": <"signature"> }
         },
-        "key1":            "<search key 1>",
-        "key2":            "<search key 2>",
+        "key":             "<search primary key>",
+        "label":           "<search label>",
         "creator_height":  <creator height>,
         "closing_height":  <closing height>,
         "nft_max_count":   <nft max count>,
@@ -279,10 +264,10 @@ NFT Collection Registration Ticket:
 }
 
 Register NFT collection ticket:
-)" + HelpExampleCli("tickets register nft-collection", R"(""ticket-blob" "{signatures}" jXYqZNPj21RVnwxnEJ654wEdzi7GZTZ5LAdiotBmPrF7pDMkpX1JegDMQZX55WZLkvy9fxNpZcbBJuE8QYUqBF "passphrase", "key1", "key2", 100)") +
+)" + HelpExampleCli("tickets register nft-collection", R"(""ticket-blob" "{signatures}" jXYqZNPj21RVnwxnEJ654wEdzi7GZTZ5LAdiotBmPrF7pDMkpX1JegDMQZX55WZLkvy9fxNpZcbBJuE8QYUqBF "passphrase", "label", 100)") +
 R"(
 As json rpc:
-)" + HelpExampleRpc("tickets", R"("register", "nft-collection", "ticket" "{signatures}" "jXYqZNPj21RVnwxnEJ654wEdzi7GZTZ5LAdiotBmPrF7pDMkpX1JegDMQZX55WZLkvy9fxNpZcbBJuE8QYUqBF" "passphrase", "key1", "key2", 100)")
+)" + HelpExampleRpc("tickets", R"("register", "nft-collection", "ticket" "{signatures}" "jXYqZNPj21RVnwxnEJ654wEdzi7GZTZ5LAdiotBmPrF7pDMkpX1JegDMQZX55WZLkvy9fxNpZcbBJuE8QYUqBF" "passphrase", "label", 100)")
 );
 
     if (!masterNodeCtrl.IsActiveMasterNode())
@@ -297,23 +282,18 @@ As json rpc:
 
     SecureString strKeyPass(params[5].get_str());
 
-    string key1 = params[6].get_str();
-    string key2 = params[7].get_str();
+    string label = params[6].get_str();
 
-    const CAmount nStorageFee = get_long_number(params[8]);
+    const CAmount nStorageFee = get_long_number(params[7]);
 
     opt_string_t sFundingAddress;
-    if (params.size() >= 10)
-        sFundingAddress = params[9].get_str();
+    if (params.size() >= 9)
+        sFundingAddress = params[8].get_str();
 
     const auto NFTCollectionRegTicket = CNFTCollectionRegTicket::Create(
         move(nft_collection_ticket), signatures, move(sPastelID), move(strKeyPass),
-        move(key1), move(key2), nStorageFee);
-    string txid = CPastelTicketProcessor::SendTicket(NFTCollectionRegTicket, sFundingAddress);
-
-    UniValue result(UniValue::VOBJ);
-    result.pushKV(RPC_KEY_TXID, move(txid));
-    return result;
+        move(label), nStorageFee);
+    return GenerateSendTicketResult(CPastelTicketProcessor::SendTicket(NFTCollectionRegTicket, sFundingAddress));
 }
 
 UniValue tickets_register_sell(const UniValue& params)
@@ -377,11 +357,7 @@ As json rpc:
         sFundingAddress = params[9].get_str();
 
     const auto NFTSellTicket = CNFTSellTicket::Create(NFTTicketTxnID, price, after, before, copyNumber, pastelID, move(strKeyPass));
-    string txid = CPastelTicketProcessor::SendTicket(NFTSellTicket, sFundingAddress);
-
-    UniValue result(UniValue::VOBJ);
-    result.pushKV(RPC_KEY_TXID, move(txid));
-    return result;
+    return GenerateSendTicketResult(CPastelTicketProcessor::SendTicket(NFTSellTicket, sFundingAddress));
 }
 
 UniValue tickets_register_buy(const UniValue& params)
@@ -429,11 +405,7 @@ As json rpc:
         sFundingAddress = params[6].get_str();
 
     const auto NFTBuyTicket = CNFTBuyTicket::Create(sellTicketTxID, price, pastelID, move(strKeyPass));
-    string txid = CPastelTicketProcessor::SendTicket(NFTBuyTicket, sFundingAddress);
-
-    UniValue result(UniValue::VOBJ);
-    result.pushKV(RPC_KEY_TXID, move(txid));
-    return result;
+    return GenerateSendTicketResult(CPastelTicketProcessor::SendTicket(NFTBuyTicket, sFundingAddress));
 }
 
 UniValue tickets_register_trade(const UniValue& params)
@@ -484,11 +456,7 @@ As json rpc:
         sFundingAddress = params[6].get_str();
 
     const auto NFTTradeTicket = CNFTTradeTicket::Create(sellTicketTxID, buyTicketTxID, pastelID, move(strKeyPass));
-    string txid = CPastelTicketProcessor::SendTicket(NFTTradeTicket, sFundingAddress);
-
-    UniValue result(UniValue::VOBJ);
-    result.pushKV(RPC_KEY_TXID, move(txid));
-    return result;
+    return GenerateSendTicketResult(CPastelTicketProcessor::SendTicket(NFTTradeTicket, sFundingAddress));
 }
 
 UniValue tickets_register_royalty(const UniValue& params)
@@ -541,11 +509,7 @@ As json rpc:
         sFundingAddress = params[6].get_str();
 
     const auto NFTRoyaltyTicket = CNFTRoyaltyTicket::Create(NFTTxnId, newPastelID, pastelID, move(strKeyPass));
-    string txid = CPastelTicketProcessor::SendTicket(NFTRoyaltyTicket, sFundingAddress);
-
-    UniValue result(UniValue::VOBJ);
-    result.pushKV(RPC_KEY_TXID, move(txid));
-    return result;
+    return GenerateSendTicketResult(CPastelTicketProcessor::SendTicket(NFTRoyaltyTicket, sFundingAddress));
 }
 
 UniValue tickets_register_down(const UniValue& params)
@@ -626,11 +590,7 @@ As json rpc:
         sFundingAddress = params[5].get_str();
 
     const auto changeUsernameTicket = CChangeUsernameTicket::Create(pastelID, username, move(strKeyPass));
-    string txid = CPastelTicketProcessor::SendTicket(changeUsernameTicket, sFundingAddress);
-
-    UniValue result(UniValue::VOBJ);
-    result.pushKV(RPC_KEY_TXID, move(txid));
-    return result;
+    return GenerateSendTicketResult(CPastelTicketProcessor::SendTicket(changeUsernameTicket, sFundingAddress));
 }
 
 UniValue tickets_register_ethereumaddress(const UniValue& params)
@@ -674,18 +634,14 @@ As json rpc:
         sFundingAddress = params[5].get_str();
 
     const auto EthereumAddressTicket = CChangeEthereumAddressTicket::Create(pastelID, ethereumAddress, move(strKeyPass));
-    string txid = CPastelTicketProcessor::SendTicket(EthereumAddressTicket, sFundingAddress);
-
-    UniValue result(UniValue::VOBJ);
-    result.pushKV(RPC_KEY_TXID, move(txid));
-    return result;
+    return GenerateSendTicketResult(CPastelTicketProcessor::SendTicket(EthereumAddressTicket, sFundingAddress));
 }
 
 UniValue tickets_register_action(const UniValue& params)
 {
-    if (params.size() < 9)
+    if (params.size() < 8)
         throw JSONRPCError(RPC_INVALID_PARAMETER,
-R"(tickets register action "action-ticket" "{signatures}" "pastelid" "passphrase" "key1" "key2" "fee" ["address"]
+R"(tickets register action "action-ticket" "{signatures}" "pastelid" "passphrase" "label" "fee" ["address"]
 Register new Action ticket. If successful, method returns "txid".
 Supported action types:
   - sense: dupe detection
@@ -709,10 +665,9 @@ Arguments:
     }
 3. "pastelid"   (string, required) The current, registering masternode (MN1) PastelID. NOTE: PastelID must be generated and stored inside node. See "pastelid newkey".
 4. "passphrase" (string, required) The passphrase to the private key associated with PastelID and stored inside node. See "pastelid newkey".
-5. "key1"       (string, required) The first key to search ticket.
-6. "key2"       (string, required) The second key to search ticket.
-7. "fee"        (int, required) The agreed upon storage fee.
-8. "address"    (string, optional) The Pastel blockchain t-address to use for funding the registration.
+5. "label"      (string, required) The label which can be used to search for the ticket.
+6. "fee"        (int, required) The agreed upon storage fee.
+7. "address"    (string, optional) The Pastel blockchain t-address to use for funding the registration.
 
 Action Reg Ticket:
 {
@@ -729,18 +684,18 @@ Action Reg Ticket:
                   "mn2": { "PastelID": <"signature"> },
                   "mn3": { "PastelID": <"signature"> }
         },
-        "key1":        "<search key 1>",
-        "key2":        "<search key 2>",
+        "key":         "<search primary key>",
+        "label":       "<search label>",
         "called_at":   <block height at which action was called>,
         "storage_fee": <agreed upon storage fee>,
     }
 }
 
 Register Action Ticket:
-)" + HelpExampleCli("tickets register action", R"(""ticket-blob" "{signatures}" jXYqZNPj21RVnwxnEJ654wEdzi7GZTZ5LAdiotBmPrF7pDMkpX1JegDMQZX55WZLkvy9fxNpZcbBJuE8QYUqBF "passphrase", "key1", "key2", 100)") +
+)" + HelpExampleCli("tickets register action", R"(""ticket-blob" "{signatures}" jXYqZNPj21RVnwxnEJ654wEdzi7GZTZ5LAdiotBmPrF7pDMkpX1JegDMQZX55WZLkvy9fxNpZcbBJuE8QYUqBF "passphrase", "label", 100)") +
 R"(
 As json rpc:
-)" + HelpExampleRpc("tickets", R"("register", "action", "ticket" "{signatures}" "jXYqZNPj21RVnwxnEJ654wEdzi7GZTZ5LAdiotBmPrF7pDMkpX1JegDMQZX55WZLkvy9fxNpZcbBJuE8QYUqBF" "passphrase", "key1", "key2", 100)"));
+)" + HelpExampleRpc("tickets", R"("register", "action", "ticket" "{signatures}" "jXYqZNPj21RVnwxnEJ654wEdzi7GZTZ5LAdiotBmPrF7pDMkpX1JegDMQZX55WZLkvy9fxNpZcbBJuE8QYUqBF" "passphrase", "label", 100)"));
 
     if (!masterNodeCtrl.IsActiveMasterNode())
         throw JSONRPCError(RPC_INTERNAL_ERROR, "This is not an active masternode. Only an active MN can register an Action ticket");
@@ -754,23 +709,18 @@ As json rpc:
 
     SecureString strKeyPass(params[5].get_str());
 
-    string key1 = params[6].get_str();
-    string key2 = params[7].get_str();
+    string label = params[6].get_str();
 
-    const CAmount nStorageFee = get_long_number(params[8]);
+    const CAmount nStorageFee = get_long_number(params[7]);
 
     opt_string_t sFundingAddress;
-    if (params.size() >= 10)
-        sFundingAddress = params[9].get_str();
+    if (params.size() >= 9)
+        sFundingAddress = params[8].get_str();
 
     const auto ActionRegTicket = CActionRegTicket::Create(
         move(sActionTicket), signatures, move(sPastelID), move(strKeyPass),
-        move(key1), move(key2), nStorageFee);
-    string txid = CPastelTicketProcessor::SendTicket(ActionRegTicket, sFundingAddress);
-
-    UniValue result(UniValue::VOBJ);
-    result.pushKV(RPC_KEY_TXID, move(txid));
-    return result;
+        move(label), nStorageFee);
+    return GenerateSendTicketResult(CPastelTicketProcessor::SendTicket(ActionRegTicket, sFundingAddress));
 }
 
 void tickets_register_help()

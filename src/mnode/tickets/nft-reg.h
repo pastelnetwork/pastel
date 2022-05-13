@@ -34,13 +34,13 @@ nft_ticket as base64(RegistrationTicket({some data}))
 bytes fields are base64 as strings
 
   "nft_ticket_version": integer  // 1 or 2
-  "author": bytes,               // PastelID of the author (creator)
+  "author": bytes,               // PastelID of the NFT creator
   "blocknum": integer,           // block number when the ticket was created - this is to map the ticket to the MNs that should process it
   "block_hash": bytes            // hash of the top block when the ticket was created - this is to map the ticket to the MNs that should process it
-  "copies": integer,             // number of copies, optional in v2
+  "copies": integer,             // number of copies of NFT this ticket is creating, optional in v2
   "royalty": float,              // royalty fee, how much creator should get on all future resales, optional in v2
   "green": boolean,              // is there Green NFT payment or not, optional in v2
-  "nft_collection_txid": bytes,  // transaction id of the NFT collection that NFT belongs to (optional, can be empty)
+  "nft_collection_txid": bytes,  // transaction id of the NFT collection that NFT belongs to, v2 only, optional, can be empty
   "app_ticket": bytes,           // cNode parses app_ticket only for search
   as base64(
   {
@@ -143,7 +143,7 @@ public:
         serialize_signatures(s, ser_action);
 
         READWRITE(m_keyOne);
-        READWRITE(m_keyTwo);
+        READWRITE(m_label);
         READWRITE(m_nCreatorHeight);
         READWRITE(m_nTotalCopies);
         READWRITE(m_nRoyalty);
@@ -155,7 +155,7 @@ public:
     }
 
     static CNFTRegTicket Create(std::string &&nft_ticket, const std::string& signatures, std::string &&sPastelID, 
-        SecureString&& strKeyPass, std::string &&keyOne, std::string &&keyTwo, const CAmount storageFee);
+        SecureString&& strKeyPass, std::string &&label, const CAmount storageFee);
     static bool FindTicketInDb(const std::string& key, CNFTRegTicket& ticket);
     static bool CheckIfTicketInDb(const std::string& key);
     static NFTRegTickets_t FindAllTicketByPastelID(const std::string& pastelID);
