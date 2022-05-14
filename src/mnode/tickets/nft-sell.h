@@ -33,6 +33,7 @@ public:
     unsigned int activeAfter{};  //as a block height
     unsigned int activeBefore{}; //as a block height
     unsigned short copyNumber{};
+    std::string intendedFor;
     std::string reserved;
 
     std::string key;
@@ -60,6 +61,7 @@ public:
         activeAfter = 0;
         activeBefore = 0;
         copyNumber = 0;
+        intendedFor.clear();
         reserved.clear();
         clearSignature();
         key.clear();
@@ -102,6 +104,7 @@ public:
         READWRITE(activeAfter);
         READWRITE(activeBefore);
         READWRITE(copyNumber);
+        READWRITE(intendedFor);
         READWRITE(reserved);
         READWRITE(m_signature);
         READWRITE(m_nTimestamp);
@@ -109,7 +112,7 @@ public:
         READWRITE(m_nBlock);
     }
 
-    static CNFTSellTicket Create(std::string _NFTTxnId, int _askedPrice, int _validAfter, int _validBefore, int _copy_number, std::string _pastelID, SecureString&& strKeyPass);
+    static CNFTSellTicket Create(std::string _NFTTxnId, int _askedPrice, int _validAfter, int _validBefore, int _copy_number, std::string _intendedFor, std::string _pastelID, SecureString&& strKeyPass);
     static bool FindTicketInDb(const std::string& key, CNFTSellTicket& ticket);
 
     static NFTSellTickets_t FindAllTicketByPastelID(const std::string& pastelID);
