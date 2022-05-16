@@ -48,9 +48,10 @@ signatures: {
           "mn3": { "PastelID" : "signature"},
 }
 
-  key #1: keyOne (primary)
-  key #2: keyTwo (label)
+  key #1: primary key (generated)
 mvkey #1: action caller PastelID
+mvkey #3: lable (optional)
+
 */
 
 constexpr auto ACTION_TICKET_TYPE_SENSE = "sense";
@@ -90,10 +91,13 @@ public:
     bool SetActionType(const std::string& sActionType);
     ACTION_TICKET_TYPE GetActionType() const noexcept { return m_ActionType; }
 
+    bool HasMVKeyOne() const noexcept override { return true; }
+    bool HasMVKeyTwo() const noexcept override { return !m_label.empty(); }
+
     std::string KeyOne() const noexcept override { return m_keyOne; }
     std::string MVKeyOne() const noexcept override { return m_sCallerPastelId; }
+    std::string MVKeyTwo() const noexcept override { return m_label; }
 
-    bool HasMVKeyOne() const noexcept override { return true; }
     void SetKeyOne(std::string &&sValue) override { m_keyOne = std::move(sValue); }
     void GenerateKeyOne() override;
 

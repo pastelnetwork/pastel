@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2021 The Pastel Core developers
+// Copyright (c) 2018-2022 The Pastel Core developers
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 
@@ -18,6 +18,7 @@
 #include <mnode/rpc/tickets-list.h>
 #include <mnode/rpc/tickets-register.h>
 #include <mnode/rpc/tickets-find.h>
+#include <mnode/rpc/tickets-findbylabel.h>
 #include <mnode/rpc/tickets-get.h>
 #include <mnode/rpc/tickets-tools.h>
 #include <mnode/rpc/storage-fee.h>
@@ -307,9 +308,9 @@ Retrieve "data" from the blockchain by "txid".)"
 UniValue tickets(const UniValue& params, bool fHelp)
 {
 #ifdef FAKE_TICKET
-    RPC_CMD_PARSER(TICKETS, params, Register, activate, find, list, get, tools, makefaketicket, sendfaketicket);
+    RPC_CMD_PARSER(TICKETS, params, Register, activate, find, findbylabel, list, get, tools, makefaketicket, sendfaketicket);
 #else
-    RPC_CMD_PARSER(TICKETS, params, Register, activate, find, list, get, tools);
+    RPC_CMD_PARSER(TICKETS, params, Register, activate, find, findbylabel, list, get, tools);
 #endif // FAKE_TICKET
 	if (fHelp || !TICKETS.IsCmdSupported())
 		throw runtime_error(
@@ -320,12 +321,13 @@ Arguments:
 1. "command"        (string or set of strings, required) The command to execute
 
 Available commands:
-  register ... - Register specific Pastel tickets into the blockchain. If successful, returns "txid".
-  activate ... - Activate Pastel tickets.
-  find ...     - Find specific Pastel tickets in the blockchain.
-  list ...     - List all specific Pastel tickets in the blockchain.
-  get  ...     - Get Pastel ticket by txid.
-  tools...     - Pastel ticket tools.
+  register    ... - Register specific Pastel tickets into the blockchain. If successful, returns "txid".
+  activate    ... - Activate Pastel tickets.
+  find        ... - Find specific Pastel tickets in the blockchain.
+  findbylabel ... - Find specific Pastel tickets in the blockchain by label.
+  list        ... - List all specific Pastel tickets in the blockchain.
+  get         ... - Get Pastel ticket by txid.
+  tools       ... - Pastel ticket tools.
 
 Examples:
 )"
@@ -344,6 +346,9 @@ Examples:
 
         case RPC_CMD_TICKETS::find:
             return tickets_find(params);
+
+        case RPC_CMD_TICKETS::findbylabel:
+            return tickets_findbylabel(params);
 
         case RPC_CMD_TICKETS::list:
             return tickets_list(params);

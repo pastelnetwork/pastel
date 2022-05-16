@@ -63,11 +63,13 @@ def EncodeDecimal(o):
 
 class AuthServiceProxy():
     __id_count = 0
+    alias = None
 
-    def __init__(self, service_url, service_name=None, timeout=HTTP_TIMEOUT, connection=None):
+    def __init__(self, service_url, service_name=None, timeout=HTTP_TIMEOUT, connection=None, _alias=None):
         self.__service_url = service_url
         self.__service_name = service_name
         self.__url = urlparse(service_url)
+        self.alias = _alias
         (user, passwd) = (self.__url.username, self.__url.password)
         try:
             user = user.encode('utf8')
@@ -103,7 +105,7 @@ class AuthServiceProxy():
             raise AttributeError
         if self.__service_name is not None:
             name = "%s.%s" % (self.__service_name, name)
-        return AuthServiceProxy(self.__service_url, name, connection=self.__conn)
+        return AuthServiceProxy(self.__service_url, name, connection=self.__conn, _alias=self.alias)
 
     def _request(self, method, path, postdata):
         '''
@@ -134,8 +136,10 @@ class AuthServiceProxy():
     def __call__(self, *args):
         AuthServiceProxy.__id_count += 1
 
-        log.debug("-%s-> %s %s"%(AuthServiceProxy.__id_count, self.__service_name,
-                                 json.dumps(args, default=EncodeDecimal)))
+        if self.alias is not None:
+            log.debug("[%s] -%s-> %s %s" % (self.alias, AuthServiceProxy.__id_count, self.__service_name, json.dumps(args, default=EncodeDecimal)))
+        else:            
+            log.debug("-%s-> %s %s" % (AuthServiceProxy.__id_count, self.__service_name, json.dumps(args, default=EncodeDecimal)))
         postdata = json.dumps({'version': '1.1',
                                'method': self.__service_name,
                                'params': args,
@@ -167,8 +171,14 @@ class AuthServiceProxy():
 
         responsedata = http_response.read().decode('utf8')
         response = json.loads(responsedata, parse_float=decimal.Decimal)
-        if "error" in response and response["error"] is None:
-            log.debug("<-%s- %s"%(response["id"], json.dumps(response["result"], default=EncodeDecimal)))
+        if self.alias is not None:
+            if "error" in response and response["error"] is None:
+                log.debug("[%s] <-%s- %s" % (self.alias, response["id"], json.dumps(response["result"], default=EncodeDecimal)))
+            else:
+                log.debug("[%s] <-- " % {self.alias, responsedata})
         else:
-            log.debug("<-- "+responsedata)
+            if "error" in response and response["error"] is None:
+                log.debug("<-%s- %s"%(response["id"], json.dumps(response["result"], default=EncodeDecimal)))
+            else:
+                log.debug("<-- "+responsedata)
         return response

@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2021 The Pastel Core developers
+// Copyright (c) 2018-2022 The Pastel Core developers
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 
@@ -18,14 +18,16 @@ static UniValue getTickets(const std::string& key, T2 key2 = "", Lambda otherFun
         return obj;
     }
     auto tickets = T::FindAllTicketByPastelID(key);
-    if (tickets.empty() && otherFunc != nullptr)
+    if (tickets.empty() && otherFunc)
         tickets = otherFunc(key2);
-    if (!tickets.empty()) {
+    if (!tickets.empty())
+    {
         UniValue tArray(UniValue::VARR);
-        for (auto t : tickets) {
+        for (const auto &t : tickets)
+        {
             UniValue obj(UniValue::VOBJ);
             obj.read(t.ToJSON());
-            tArray.push_back(obj);
+            tArray.push_back(move(obj));
         }
         return tArray;
     }

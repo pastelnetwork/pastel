@@ -298,6 +298,9 @@
     <ClCompile Include="..\..\..\src\mnode\tickets\nft-collection-act.cpp">
       <Filter>Source Files\mnode\tickets</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\..\src\mnode\rpc\tickets-findbylabel.cpp">
+      <Filter>Source Files\mnode\rpc</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\..\src\addrman.h">
@@ -638,6 +641,9 @@
     </ClInclude>
     <ClInclude Include="..\..\..\src\mnode\tickets\nft-collection-act.h">
       <Filter>Source Files\mnode\tickets</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\mnode\rpc\tickets-findbylabel.h">
+      <Filter>Source Files\mnode\rpc</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>
