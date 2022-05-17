@@ -180,7 +180,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         self.action_reg_ticket_tests("sense", "sense-action-label")
         self.action_activate_ticket_tests(False)
         self.nft_collection_reg_ticket_tests(TEST_COLLECTION_NAME + " #1", "coll-label")
-        self.nft_collection_tests("v2-coll-label")
+        self.nft_collection_tests("coll-label-v2")
         self.nft_collection_activate_ticket_tests(False)
 
         self.nft_reg_ticket_tests("nft-label")
@@ -232,7 +232,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
             self.nft_reg_ticket_tests("nft-label2")
             self.nft_activate_ticket_tests(True)
             self.nft_collection_reg_ticket_tests(TEST_COLLECTION_NAME + " #2", "coll-label2")
-            self.nft_collection_tests("v2_coll-label2")
+            self.nft_collection_tests("coll-label2-v2")
             self.nft_collection_activate_ticket_tests(True)
             self.nft_sell_ticket_tests(True)
             self.nft_buy_ticket_tests(True)
@@ -1069,7 +1069,9 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         assert_equal(result, "OK")
 
         #       3. by fingerprints, compare to ticket from 2 (label)
-        tkt2 = self.nodes[self.non_mn3].tickets("find", ticket_type, label)["ticket"]
+        lblNodes = self.nodes[self.non_mn3].tickets("findbylabel", ticket_type, label)
+        assert_equal(1, len(lblNodes), f"findbylabel {ticket_type} {label} was supposed to return only one ticket")
+        tkt2 = lblNodes[0]["ticket"]
         assert_equal(tkt2["type"], "action-reg")
         assert_equal(tkt2["action_ticket"], self.ticket)
         assert_equal(tkt2["key"], ticket_key)
@@ -1160,11 +1162,6 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         print(f"NFT collection registration ticket price - {self.nftcoll_reg_ticket_price}")
         assert_equal(coins_after, coins_before-self.nftcoll_reg_ticket_price)  # no fee yet, but ticket cost NFT ticket price
 
-
-        assert_raises_rpc(rpc.RPC_MISC_ERROR, f"This NFT collection '{nft_collection_name}' is already registered in blockchain",
-            self.nodes[self.top_mns_index0].tickets, "register", ticket_type,
-            self.ticket, json.dumps(self.signatures_dict), self.top_mn_pastelid0, self.passphrase, label, str(self.storage_fee))
-
         #   c.b find registration ticket
         #       c.b.1 by creators PastelID (this is MultiValue key)
         # TODO Pastel:
@@ -1200,7 +1197,9 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         assert_equal(result, "OK")
 
         #       c.b.3 by fingerprints, compare to ticket from c.b.2 (label)
-        tkt2 = self.nodes[self.non_mn3].tickets("find", ticket_type, label)["ticket"]
+        lblNodes = self.nodes[self.non_mn3].tickets("findbylabel", ticket_type, label)
+        assert_equal(1, len(lblNodes), f"findbylabel {ticket_type} {label} was supposed to return only one ticket")
+        tkt2 = lblNodes[0]["ticket"]
         assert_equal(tkt2['type'], "nft-collection-reg")
         assert_equal(tkt2['nft_collection_ticket'], self.ticket)
         assert_equal(tkt2["key"], ticket_key)
@@ -1553,11 +1552,6 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         print(f"NFT registration ticket price - {self.nftreg_ticket_price}")
         assert_equal(coins_after, coins_before-self.nftreg_ticket_price)  # no fee yet, but ticket cost NFT ticket price
 
-        #       c.a.8 fail if already registered
-        assert_raises_rpc(rpc.RPC_MISC_ERROR, "This NFT is already registered in blockchain",
-            self.nodes[self.top_mns_index0].tickets, "register", ticket_type,
-            self.ticket, json.dumps(self.signatures_dict), self.top_mn_pastelid0, self.passphrase, label, str(self.storage_fee))
-
         #   c.b find registration ticket
         #       c.b.1 by creators PastelID (this is MultiValue key)
         # TODO Pastel:
@@ -1588,7 +1582,9 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         assert_equal(result, "OK")
 
         #       c.b.3 by fingerprints, compare to ticket from c.b.2 (label)
-        tkt2 = self.nodes[self.non_mn3].tickets("find", ticket_type, label)["ticket"]
+        lblNodes = self.nodes[self.non_mn3].tickets("findbylabel", ticket_type, label)
+        assert_equal(1, len(lblNodes), f"findbylabel {ticket_type} {label} was supposed to return only one ticket")
+        tkt2 = lblNodes[0]["ticket"]
         assert_equal(tkt2['type'], "nft-reg")
         assert_equal(tkt2['nft_ticket'], self.ticket)
         assert_equal(tkt2["key"], ticket1_key)
@@ -2717,7 +2713,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         nft_ticket2_txid = self.nodes[self.top_mns_index0].tickets("register", "nft",
                                                                    self.ticket, json.dumps(self.signatures_dict),
                                                                    self.top_mn_pastelid0, self.passphrase,
-                                                                   "key3"+str(loop_number), "key4"+str(loop_number), str(self.storage_fee))["txid"]
+                                                                   "nft-label3_"+str(loop_number), str(self.storage_fee))["txid"]
         assert_true(nft_ticket2_txid, "No ticket was created")
         self.__wait_for_ticket_tnx()
 
@@ -2735,7 +2731,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         nft_ticket3_txid = self.nodes[self.top_mns_index0].tickets("register", "nft",
                                                                    self.ticket, json.dumps(self.signatures_dict),
                                                                    self.top_mn_pastelid0, self.passphrase,
-                                                                   "key5"+str(loop_number), "key6"+str(loop_number), str(self.storage_fee))["txid"]
+                                                                   "nft-label4_"+str(loop_number), str(self.storage_fee))["txid"]
         assert_true(nft_ticket3_txid, "No ticket was created")
         self.__wait_for_ticket_tnx()
 

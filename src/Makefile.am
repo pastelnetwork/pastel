@@ -125,6 +125,7 @@ MNODE_CPP =\
   mnode/rpc/tickets-list.cpp\
   mnode/rpc/tickets-register.cpp\
   mnode/rpc/tickets-find.cpp\
+  mnode/rpc/tickets-findbylabel.cpp\
   mnode/rpc/tickets-get.cpp\
   mnode/rpc/tickets-tools.cpp\
   mnode/tickets/action-reg.cpp\
@@ -174,6 +175,7 @@ MNODE_H = \
   mnode/rpc/tickets-list.h\
   mnode/rpc/tickets-register.h\
   mnode/rpc/tickets-find.h\
+  mnode/rpc/tickets-findbylabel.h\
   mnode/rpc/tickets-get.h\
   mnode/rpc/tickets-tools.h\
   mnode/tickets/action-reg.h\

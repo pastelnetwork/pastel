@@ -79,10 +79,10 @@ signatures: {
           "mn3": { "PastelID" : "signature"},
 }
 
-  key #1: keyOne
-  key #2: keyTwo
+  key #1: primary key (generated)
 mvkey #1: Creator PastelID
 mvkey #2: NFT Collection TxID (optional)
+mvket #3: label (optional)
 }
  */
 class CNFTRegTicket : public CTicketSignedWithExtraFees 
@@ -104,9 +104,11 @@ public:
 
     bool HasMVKeyOne() const noexcept override { return true; }
     bool HasMVKeyTwo() const noexcept override { return !m_sNFTCollectionTxid.empty(); }
+    bool HasMVKeyThree() const noexcept override { return !m_label.empty(); }
 
     std::string MVKeyOne() const noexcept override { return getCreatorPastelId(); }
     std::string MVKeyTwo() const noexcept override { return m_sNFTCollectionTxid; }
+    std::string MVKeyThree() const noexcept override { return m_label; }
 
     std::string ToJSON() const noexcept override;
     std::string ToStr() const noexcept override { return m_sNFTTicket; }

@@ -132,10 +132,6 @@ void CPastelTicketProcessor::UpdatedBlockTip(const CBlockIndex* cBlockIndex, boo
     if (!cBlockIndex)
         return;
 
-    if (fInitialDownload) {
-        //??
-    }
-
     CBlock block;
     if (!ReadBlockFromDisk(block, cBlockIndex, Params().GetConsensus()))
     {
@@ -143,7 +139,7 @@ void CPastelTicketProcessor::UpdatedBlockTip(const CBlockIndex* cBlockIndex, boo
         return;
     }
 
-    for (const CTransaction& tx : block.vtx)
+    for (const auto& tx : block.vtx)
     {
         CMutableTransaction mtx(tx);
         ParseTicketAndUpdateDB(mtx, cBlockIndex->nHeight);
@@ -722,16 +718,26 @@ bool CPastelTicketProcessor::FindTicketBySecondaryKey(CPastelTicket& ticket)
     return false;
 }
 
+/**
+ * Find all tickets by mvKey.
+ * 
+ * \param mvKey - key to search for. Tickets support up to 3 mvkeys.
+ * \return vector of found tickets with the given mvKey
+ */
 template <class _TicketType>
 vector<_TicketType> CPastelTicketProcessor::FindTicketsByMVKey(const string& mvKey)
 {
     vector<_TicketType> tickets;
     v_strings vMainKeys;
+    // get real MV key stored in DB: "@M@" + key
     auto realMVKey = RealMVKey(mvKey);
+    // get DB for the given ticket type
     const auto itDB = dbs.find(_TicketType::GetID());
     if (itDB != dbs.cend())
     {
+        // find primary keys of the tickets with mvKey
         itDB->second->Read(realMVKey, vMainKeys);
+        // read all tickets
         for (const auto& key : vMainKeys)
         {
             _TicketType ticket;

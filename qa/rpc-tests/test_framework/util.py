@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 # Copyright (c) 2014-2016 The Bitcoin Core developers
+# Copyright (c) 2018-2022 The Pastel Core developers
 # Distributed under the MIT software license, see the accompanying
 # file COPYING or https://www.opensource.org/licenses/mit-license.php .
-
 
 #
 # Helpful routines for regression testing
@@ -263,7 +263,8 @@ def start_node(i, dirname, extra_args=None, rpchost=None, timewait=None, binary=
         '-nuparams=5ba81b19:1', # Overwinter
         '-nuparams=76b809bb:1', # Sapling
     ])
-    if extra_args is not None: args.extend(extra_args)
+    if extra_args is not None:
+        args.extend(extra_args)
     pasteld_processes[i] = subprocess.Popen(args)
     devnull = open("/dev/null", "w+")
     if os.getenv("PYTHON_DEBUG", ""):
@@ -276,9 +277,9 @@ def start_node(i, dirname, extra_args=None, rpchost=None, timewait=None, binary=
     devnull.close()
     url = "http://rt:rt@%s:%d" % (rpchost or '127.0.0.1', rpc_port(i))
     if timewait is not None:
-        proxy = AuthServiceProxy(url, timeout=timewait)
+        proxy = AuthServiceProxy(url, timeout=timewait, _alias=str(i))
     else:
-        proxy = AuthServiceProxy(url)
+        proxy = AuthServiceProxy(url, _alias=str(i))
     proxy.url = url # store URL on proxy for info
     return proxy
 

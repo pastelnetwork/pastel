@@ -104,19 +104,24 @@ public:
     *   functor F should return false to stop enumeration.
     *
     * \param mvKey - mvKey to use for tickets enumeration
-    * \param f - functor to call for each ticket found by mvKey
+    * \param f - functor to call for each ticket found by mvKey.
+    *       Functor f should return false to stop enumeration.
     */
     template <class _TicketType, typename _TicketFunctor>
     void ProcessTicketsByMVKey(const std::string& mvKey, _TicketFunctor f) const
     {
         v_strings vMainKeys;
+        // get real MV key: "@M@" + key
         const auto realMVKey = RealMVKey(mvKey);
+        // get DB for the given ticket type
         const auto itDB = dbs.find(_TicketType::GetID());
         if (itDB == dbs.cend())
             return;
+        // read primary keys for the given MV key
         itDB->second->Read(realMVKey, vMainKeys);
         for (const auto& key : vMainKeys)
         {
+            // read ticket & call the functor
             _TicketType ticket;
             if (itDB->second->Read(key, ticket))
             {
@@ -126,6 +131,7 @@ public:
         }
     }
 
+    // find all tickets by mvKey
     template <class _TicketType>
     std::vector<_TicketType> FindTicketsByMVKey(const std::string& mvKey);
 
