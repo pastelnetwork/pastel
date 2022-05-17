@@ -301,13 +301,16 @@ bool CMasterNodeController::EnableMasterNode(ostringstream& strErrors, CServiceT
         uiInterface.InitMessage(_("Masternode cache is empty, skipping payments and governance cache..."));
     }
 
+#ifdef GOVERNANCE_TICKETS
     strDBName = "governance.dat";
     uiInterface.InitMessage(_("Loading governance cache..."));
     CFlatDB<CMasternodeGovernance> flatDB3(strDBName, "magicGovernanceCache");
-    if(!flatDB3.Load(masternodeGovernance)) {
+    if (!flatDB3.Load(masternodeGovernance))
+    {
         strErrors << _("Failed to load governance cache from") + "\n" + (pathDB / strDBName).string();
         return false;
     }
+#endif // GOVERNANCE_TICKETS
 
     strDBName = "netfulfilled.dat";
     uiInterface.InitMessage(_("Loading fulfilled requests cache..."));
@@ -363,9 +366,11 @@ bool CMasterNodeController::ProcessMessage(CNode* pfrom, string& strCommand, CDa
 {
     masternodeManager.ProcessMessage(pfrom, strCommand, vRecv);
     masternodePayments.ProcessMessage(pfrom, strCommand, vRecv);
-    masternodeGovernance.ProcessMessage(pfrom, strCommand, vRecv);
     masternodeMessages.ProcessMessage(pfrom, strCommand, vRecv);
     masternodeSync.ProcessMessage(pfrom, strCommand, vRecv);
+#ifdef GOVERNANCE_TICKETS
+    masternodeGovernance.ProcessMessage(pfrom, strCommand, vRecv);
+#endif // GOVERNANCE_TICKETS
 
     return true;
 }
@@ -377,6 +382,7 @@ bool CMasterNodeController::AlreadyHave(const CInv& inv)
     case MSG_MASTERNODE_MESSAGE:
         return masternodeMessages.mapSeenMessages.count(inv.hash);
 
+#ifdef GOVERNANCE_TICKETS
     case MSG_MASTERNODE_GOVERNANCE:
             return masternodeGovernance.mapTickets.count(inv.hash);
 
@@ -386,6 +392,7 @@ bool CMasterNodeController::AlreadyHave(const CInv& inv)
             auto vi = masternodeGovernance.mapVotes.find(inv.hash);
             return vi != masternodeGovernance.mapVotes.end() && !vi->second.ReprocessVote();
         }
+#endif // GOVERNANCE_TICKETS
 
     case MSG_MASTERNODE_PAYMENT_VOTE:
         return masternodePayments.mapMasternodePaymentVotes.count(inv.hash);
@@ -430,6 +437,7 @@ bool CMasterNodeController::ProcessGetData(CNode* pfrom, const CInv& inv)
             } 
         } break;
 
+#ifdef GOVERNANCE_TICKETS
         case MSG_MASTERNODE_GOVERNANCE:
         {
             if (masternodeGovernance.mapTickets.count(inv.hash))
@@ -455,6 +463,7 @@ bool CMasterNodeController::ProcessGetData(CNode* pfrom, const CInv& inv)
                 bPushed = true;
             }
         } break;
+#endif // GOVERNANCE_TICKETS
 
         case MSG_MASTERNODE_PAYMENT_VOTE:
         {
@@ -533,12 +542,14 @@ void CMasterNodeController::ShutdownMasterNode()
     flatDB1.Dump(masternodeManager);
     CFlatDB<CMasternodePayments> flatDB2("mnpayments.dat", "magicMasternodePaymentsCache");
     flatDB2.Dump(masternodePayments);
-    CFlatDB<CMasternodeGovernance> flatDB3("governance.dat", "magicGovernanceCache");
-    flatDB3.Dump(masternodeGovernance);
     CFlatDB<CMasternodeRequestTracker> flatDB4("netfulfilled.dat", "magicFulfilledCache");
     flatDB4.Dump(requestTracker);
     CFlatDB<CMasternodeMessageProcessor> flatDB5("messages.dat", "magicMessagesCache");
     flatDB5.Dump(masternodeMessages);
+#ifdef GOVERNANCE_TICKETS
+    CFlatDB<CMasternodeGovernance> flatDB3("governance.dat", "magicGovernanceCache");
+    flatDB3.Dump(masternodeGovernance);
+#endif // GOVERNANCE_TICKETS
 }
 
 fs::path CMasterNodeController::GetMasternodeConfigFile()
@@ -708,12 +719,15 @@ void CMasterNodeMaintenanceThread::execute()
             if(nTick % masterNodeCtrl.MasternodeMinMNPSeconds == 15)
                 masterNodeCtrl.activeMasternode.ManageState();
 
-            if(nTick % 60 == 0) {
+            if (nTick % 60 == 0)
+            {
                 masterNodeCtrl.masternodeManager.ProcessMasternodeConnections();
                 masterNodeCtrl.masternodeManager.CheckAndRemove(true);
                 masterNodeCtrl.masternodePayments.CheckAndRemove();
-                masterNodeCtrl.masternodeGovernance.CheckAndRemove();
                 masterNodeCtrl.masternodeMessages.CheckAndRemove();
+#ifdef GOVERNANCE_TICKETS
+                masterNodeCtrl.masternodeGovernance.CheckAndRemove();
+#endif // GOVERNANCE_TICKETS
             }
             if(masterNodeCtrl.IsMasterNode() && (nTick % (60 * 5) == 0)) {
                 masterNodeCtrl.masternodeManager.DoFullVerificationStep();

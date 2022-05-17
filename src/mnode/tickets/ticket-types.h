@@ -6,6 +6,7 @@
 #include <array>
 
 #include <enum_util.h>
+#include <amount.h>
 
 // ticket names
 constexpr auto TICKET_NAME_ID_REG                   = "pastelid";               // Pastel ID registration ticket
@@ -27,6 +28,8 @@ constexpr auto TICKET_NAME_NFT_COLLECTION_ACT       = "nft-collection-act";     
 #ifndef FAKE_TICKET
 #define FAKE_TICKET
 #endif
+
+//#define GOVERNANCE_TICKETS
 
 /**
  * Ticket Type IDs.

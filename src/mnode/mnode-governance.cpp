@@ -2,13 +2,13 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 
+#include <mnode/mnode-governance.h>
+#ifdef GOVERNANCE_TICKETS
 #include <main.h>
 #include <key_io.h>
 #include <enum_util.h>
-
 #include <mnode/mnode-controller.h>
 #include <mnode/mnode-msgsigner.h>
-#include <mnode/mnode-governance.h>
 
 CCriticalSection cs_mapTickets;
 CCriticalSection cs_mapPayments;
@@ -818,3 +818,5 @@ void CGovernanceVote::Relay()
     CInv inv(MSG_MASTERNODE_GOVERNANCE_VOTE, GetHash());
     CNodeHelper::RelayInv(inv);
 }
+
+#endif // GOVERNANCE_TICKETS

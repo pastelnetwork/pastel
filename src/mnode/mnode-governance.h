@@ -6,6 +6,8 @@
 #include <map>
 #include <mutex>
 
+#include <mnode/tickets/ticket-types.h>
+#ifdef GOVERNANCE_TICKETS
 #include <main.h>
 
 extern CCriticalSection cs_mapPayments;
@@ -249,3 +251,4 @@ public:
 protected:
     bool ProcessGovernanceVotes(const bool bVoteOnlyMsg, std::vector<CGovernanceVote>& vVotesToCheck, CNode* pfrom);
 };
+#endif // GOVERNANCE_TICKETS

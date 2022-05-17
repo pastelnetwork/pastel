@@ -3,12 +3,13 @@
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 
-#include "util.h"
-#include "main.h"
+#include <util.h>
+#include <main.h>
 
-#include "mnode/mnode-sync.h"
-#include "mnode/mnode-manager.h"
-#include "mnode/mnode-controller.h"
+#include <mnode/mnode-sync.h>
+#include <mnode/mnode-manager.h>
+#include <mnode/mnode-controller.h>
+#include <mnode/tickets/ticket-types.h>
 
 using namespace std;
 
@@ -333,17 +334,20 @@ void CMasternodeSync::ProcessTick()
                 return; //this will cause each peer to get one request each six seconds for the various assets we need
             }
 
+#ifdef GOVERNANCE_TICKETS
             if(syncState == MasternodeSyncState::Governance)
             {
                 LogPrint("governace", "CMasternodeSync::ProcessTick -- nTick %d syncState %d nTimeLastBumped %lld GetTime() %lld diff %lld\n", nTick, (int)syncState, nTimeLastBumped, GetTime(), GetTime() - nTimeLastBumped);
                 // check for timeout first
-                if (!CheckSyncTimeout(nTick, vNodesCopy)) {
+                if (!CheckSyncTimeout(nTick, vNodesCopy))
+                {
                     CNodeHelper::ReleaseNodeVector(vNodesCopy);
                     return; //this will cause each peer to get one request each six seconds for the various assets we need
                 }
 
                 // only request once from each peer
-                if(masterNodeCtrl.requestTracker.HasFulfilledRequest(pnode->addr, "governance-payment-sync")) continue;
+                if(masterNodeCtrl.requestTracker.HasFulfilledRequest(pnode->addr, "governance-payment-sync"))
+                    continue;
                 masterNodeCtrl.requestTracker.AddFulfilledRequest(pnode->addr, "governance-payment-sync");
 
                 nRequestedMasternodeAttempt++;
@@ -354,6 +358,7 @@ void CMasternodeSync::ProcessTick()
                 CNodeHelper::ReleaseNodeVector(vNodesCopy);
                 return; //this will cause each peer to get one request each six seconds for the various assets we need
             }
+#endif // GOVERNANCE_TICKETS
         }
     }
 
