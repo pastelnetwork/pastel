@@ -113,6 +113,7 @@ LIBZCASH_H = \
   zcash/Zcash.h
 
 MNODE_CPP =\
+  mnode/rpc/governance-rpc.cpp\
   mnode/rpc/ingest.cpp\
   mnode/rpc/masternode.cpp\
   mnode/rpc/masternodebroadcast.cpp\
@@ -162,6 +163,7 @@ MNODE_CPP =\
   mnode/mnode-controller.cpp
 
 MNODE_H = \
+  mnode/rpc/governance-rpc.h\
   mnode/rpc/ingest.h\
   mnode/rpc/masternode.h\
   mnode/rpc/masternodebroadcast.h\

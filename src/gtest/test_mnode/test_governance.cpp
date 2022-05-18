@@ -1,20 +1,21 @@
-// Copyright (c) 2021 The Pastel developers
+// Copyright (c) 2021-2022 The Pastel developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 
-#include <gtest/gtest.h>
-
 #include <string>
 
-#include "main.h"
-#include "key.h"
-#include "key_io.h"
-#include "chain.h"
-#include "chainparams.h"
+#include <gtest/gtest.h>
 
-#include "mnode/mnode-governance.h"
+#include <main.h>
+#include <key.h>
+#include <key_io.h>
+#include <chain.h>
+#include <chainparams.h>
+#include <mnode/mnode-governance.h>
 
-TEST(mnode_governance, CalculateLastPaymentBlock) {
+#ifdef GOVERNANCE_TICKETS
+TEST(mnode_governance, CalculateLastPaymentBlock)
+{
     SelectParams(CBaseChainParams::Network::TESTNET);
 
     CMasternodeGovernance gov;
@@ -31,7 +32,8 @@ TEST(mnode_governance, CalculateLastPaymentBlock) {
     // gov.AddTicket("tPVQMdSyVnSYgrww5TTXSJeF75aPQ3bAfdm", 1000000, "", true);
 }
 
-TEST(mnode_governance, TicketProcessing) {
+TEST(mnode_governance, TicketProcessing)
+{
     SelectParams(CBaseChainParams::Network::TESTNET);
 
     std::string address("tPVQMdSyVnSYgrww5TTXSJeF75aPQ3bAfdm");
@@ -140,3 +142,5 @@ TEST(mnode_governance, TicketProcessing) {
     res = gov.GetCurrentPaymentTicket(143+1001, ticket);
     EXPECT_EQ(false, res);
 }
+
+#endif // GOVERNANCE_TICKETS

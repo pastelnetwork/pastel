@@ -1,5 +1,6 @@
 // Copyright (c) 2010 Satoshi Nakamoto
 // Copyright (c) 2009-2014 The Bitcoin Core developers
+// Copyright (c) 2018-2022 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php .
 
@@ -981,19 +982,21 @@ Examples:
     CAmount nReward = GetBlockSubsidy(nHeight, Params().GetConsensus());
 
     CAmount nGovernancePayment = 0;
-    if (!masterNodeCtrl.masternodeGovernance.mapTickets.empty()){
+#ifdef GOVERNANCE_TICKETS
+    if (!masterNodeCtrl.masternodeGovernance.mapTickets.empty())
         nGovernancePayment = masterNodeCtrl.masternodeGovernance.GetCurrentPaymentAmount(nHeight, nReward);
-    }
+#endif // GOVERNANCE_TICKETS
 
     CAmount nMasternodePayment = 0;
-    if (masterNodeCtrl.masternodePayments.mapMasternodeBlockPayees.count(nHeight)){
+    if (masterNodeCtrl.masternodePayments.mapMasternodeBlockPayees.count(nHeight))
         nMasternodePayment = masterNodeCtrl.masternodePayments.GetMasternodePayment(0, nReward);//same for any height currently
-    }
 
     UniValue result(UniValue::VOBJ);
-    result.pushKV("miner", ValueFromAmount(nReward-nGovernancePayment-nMasternodePayment));
+    result.pushKV("miner", ValueFromAmount(nReward - nGovernancePayment - nMasternodePayment));
     result.pushKV("masternode", ValueFromAmount(nMasternodePayment));
+#ifdef GOVERNANCE_TICKETS
     result.pushKV("governance", ValueFromAmount(nGovernancePayment));
+#endif // GOVERNANCE_TICKETS
     return result;
 }
 
@@ -1024,19 +1027,21 @@ Examples:
     CAmount nReward = GetBlockSubsidy(nHeight, Params().GetConsensus());
     
     CAmount nGovernancePayment = 0;
-    if (!masterNodeCtrl.masternodeGovernance.mapTickets.empty()){
+#ifdef GOVERNANCE_TICKETS
+    if (!masterNodeCtrl.masternodeGovernance.mapTickets.empty())
         nGovernancePayment = masterNodeCtrl.masternodeGovernance.GetCurrentPaymentAmount(nHeight, nReward);
-    }
-    
+#endif // GOVERNANCE_TICKETS
+
     CAmount nMasternodePayment = 0;
-    if (masterNodeCtrl.masternodePayments.mapMasternodeBlockPayees.count(nHeight)){
+    if (masterNodeCtrl.masternodePayments.mapMasternodeBlockPayees.count(nHeight))
         nMasternodePayment = masterNodeCtrl.masternodePayments.GetMasternodePayment(0, nReward);//same for any height currently
-    }
     
     UniValue result(UniValue::VOBJ);
-    result.pushKV("miner", ValueFromAmount(nReward-nGovernancePayment-nMasternodePayment));
+    result.pushKV("miner", ValueFromAmount(nReward - nGovernancePayment - nMasternodePayment));
     result.pushKV("masternode", ValueFromAmount(nMasternodePayment));
+#ifdef GOVERNANCE_TICKETS
     result.pushKV("governance", ValueFromAmount(nGovernancePayment));
+#endif // GOVERNANCE_TICKETS
     return result;
 }
 

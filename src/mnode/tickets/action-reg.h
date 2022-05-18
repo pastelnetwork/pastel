@@ -50,7 +50,7 @@ signatures: {
 
   key #1: primary key (generated)
 mvkey #1: action caller PastelID
-mvkey #3: lable (optional)
+mvkey #3: label (optional)
 
 */
 

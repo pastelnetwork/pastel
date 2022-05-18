@@ -2,8 +2,10 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <cinttypes>
+
 #include <mnode/mnode-validation.h>
 #include <mnode/mnode-controller.h>
+#include <mnode/tickets/ticket-types.h>
 
 /*
 Wrappers for BlockChain specific logic
@@ -116,8 +118,10 @@ void FillOtherBlockPayments(CMutableTransaction& txNew, int nBlockHeight, CAmoun
 {
     // Fill Governance payment
     //TODO: Fix governance tickets processing
+#ifdef GOVERNANCE_TICKETS
     masterNodeCtrl.masternodeGovernance.FillGovernancePayment(txNew, nBlockHeight, blockReward, txoutGovernanceRet);
-    
+#endif // GOVERNANCE_TICKETS
+
     // FILL BLOCK PAYEE WITH MASTERNODE PAYMENT
     masterNodeCtrl.masternodePayments.FillMasterNodePayment(txNew, nBlockHeight, blockReward, txoutMasternodeRet);
 
@@ -162,11 +166,13 @@ bool IsBlockValid(const Consensus::Params& consensusParams, const CBlock& block,
         strErrorRet = strprintf("Invalid coinbase transaction (MN payment) at height %d: %s", nBlockHeight, block.vtx[0].ToString());
         return false;
     }
+#ifdef GOVERNANCE_TICKETS
     if(!masterNodeCtrl.masternodeGovernance.IsTransactionValid(block.vtx[0], nBlockHeight))
     {
         strErrorRet = strprintf("Invalid coinbase transaction (governance payment) at height %d: %s", nBlockHeight, block.vtx[0].ToString());
         return false;
     }
+#endif // GOVERNANCE_TICKETS
 
     // there was no MN for Governance payments on this block
     LogPrint("mnpayments", "IsBlockValid -- Valid masternode payment at height %d: %s", nBlockHeight, block.vtx[0].ToString());

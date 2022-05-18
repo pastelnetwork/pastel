@@ -45,12 +45,14 @@ public:
     CMasternodePayments masternodePayments;
     // Keep track of what node has/was asked for and when
     CMasternodeRequestTracker requestTracker;
-    // Keep track of what node has/was asked for and when
-    CMasternodeGovernance masternodeGovernance;
     // Keep track of the latest messages
     CMasternodeMessageProcessor masternodeMessages;
 	// Keep track of the tickets
 	CPastelTicketProcessor masternodeTickets;
+#ifdef GOVERNANCE_TICKETS
+    // Keep track of what node has/was asked for and when
+    CMasternodeGovernance masternodeGovernance;
+#endif // GOVERNANCE_TICKETS
 
     bool fMasterNode;
 
