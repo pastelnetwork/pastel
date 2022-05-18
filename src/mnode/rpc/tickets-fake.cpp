@@ -84,7 +84,7 @@ UniValue tickets_fake(const UniValue& params, const bool bSend)
         int after = get_number(params[6]);
         int before = get_number(params[7]);
         
-        string intendedFor = "";
+        string intendedFor;
 
         auto NFTSellTicket = CNFTSellTicket::Create(NFTTicketTxnID, price, after, before, 0, intendedFor, pastelID, move(strKeyPass));
 

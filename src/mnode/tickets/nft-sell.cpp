@@ -287,7 +287,7 @@ string CNFTSellTicket::ToJSON() const noexcept
                 {"asked_price", askedPrice}, 
                 {"valid_before", activeBefore},
                 {"valid_after", activeAfter},
-                {"locked_recipient", intendedFor.empty()? "anyone": intendedFor},
+                {"locked_recipient", intendedFor.empty()? "not defined": intendedFor},
                 {"signature", ed_crypto::Hex_Encode(m_signature.data(), m_signature.size())}
             }
         }
