@@ -498,11 +498,14 @@ public:
         fTestnetToBeDeprecatedFieldRPC = true;
 
 
-        checkpointData.mapCheckpoints = {{0, consensus.hashGenesisBlock}};
-        checkpointData.nTimeLastCheckpoint = genesis.nTime; // * UNIX timestamp of last checkpoint block
-        checkpointData.nTransactionsLastCheckpoint = 0;     // * total number of transactions between genesis and last checkpoint
+        checkpointData.mapCheckpoints = {
+            {0, consensus.hashGenesisBlock},
+            { 101'400,    uint256S("0000007f4e352e90fd23200eeaabfea5b4df772ba8021845ee2b404d8894f7aa") },
+        };
+        checkpointData.nTimeLastCheckpoint = genesis.nTime;     // * UNIX timestamp of last checkpoint block
+        checkpointData.nTransactionsLastCheckpoint = 166'521;   // * total number of transactions between genesis and last checkpoint
                                 //   (the tx=... number in the SetBestChain debug.log lines)
-        checkpointData.fTransactionsPerDay = 250;           // * estimated number of transactions per day after checkpoint
+        checkpointData.fTransactionsPerDay = 350;               // * estimated number of transactions per day after checkpoint
                                 //   total number of tx / (checkpoint block height / (24 * 24))
     }
 };

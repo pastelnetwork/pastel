@@ -355,8 +355,10 @@ As json rpc:
     string sFundingAddress;
     if (params.size() >= 10)
         sFundingAddress = params[9].get_str();
+    
+    string intendedFor;
 
-    const auto NFTSellTicket = CNFTSellTicket::Create(NFTTicketTxnID, price, after, before, copyNumber, pastelID, move(strKeyPass));
+    const auto NFTSellTicket = CNFTSellTicket::Create(NFTTicketTxnID, price, after, before, copyNumber, intendedFor, pastelID, move(strKeyPass));
     return GenerateSendTicketResult(CPastelTicketProcessor::SendTicket(NFTSellTicket, sFundingAddress));
 }
 

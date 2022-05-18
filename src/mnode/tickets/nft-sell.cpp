@@ -18,7 +18,7 @@ using json = nlohmann::json;
 using namespace std;
 
 // CNFTSellTicket ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-CNFTSellTicket CNFTSellTicket::Create(string _NFTTxnId, int _askedPrice, int _validAfter, int _validBefore, int _copy_number, string _pastelID, SecureString&& strKeyPass)
+CNFTSellTicket CNFTSellTicket::Create(string _NFTTxnId, int _askedPrice, int _validAfter, int _validBefore, int _copy_number, std::string _intendedFor, string _pastelID, SecureString&& strKeyPass)
 {
     CNFTSellTicket ticket(move(_pastelID));
 
@@ -26,6 +26,7 @@ CNFTSellTicket CNFTSellTicket::Create(string _NFTTxnId, int _askedPrice, int _va
     ticket.askedPrice = _askedPrice;
     ticket.activeBefore = _validBefore;
     ticket.activeAfter = _validAfter;
+    ticket.intendedFor = _intendedFor;
 
     ticket.GenerateTimestamp();
 
@@ -47,6 +48,7 @@ string CNFTSellTicket::ToStr() const noexcept
     ss << copyNumber;
     ss << activeBefore;
     ss << activeAfter;
+    ss << intendedFor;
     ss << m_nTimestamp;
     return ss.str();
 }
@@ -283,8 +285,9 @@ string CNFTSellTicket::ToJSON() const noexcept
                 {"nft_txid", NFTTxnId}, 
                 {"copy_number", copyNumber}, 
                 {"asked_price", askedPrice}, 
-                {"valid_after", activeAfter}, 
-                {"valid_before", activeBefore}, 
+                {"valid_before", activeBefore},
+                {"valid_after", activeAfter},
+                {"locked_recipient", intendedFor.empty()? "not defined": intendedFor},
                 {"signature", ed_crypto::Hex_Encode(m_signature.data(), m_signature.size())}
             }
         }
