@@ -373,6 +373,7 @@ void CMasternodeSync::ProcessTick()
             }
 #else
             if (syncState == MasternodeSyncState::Governance)
+                SwitchToNextAsset();
                 return;
 #endif // GOVERNANCE_TICKETS
         }
