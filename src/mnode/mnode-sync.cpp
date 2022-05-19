@@ -79,30 +79,38 @@ void CMasternodeSync::SwitchToNextAsset()
     {
         case(MasternodeSyncState::Failed):
             throw runtime_error("Can't switch to next asset from failed, should use Reset() first!");
-            break;
+
         case(MasternodeSyncState::Initial):
             ClearFulfilledRequests();
             syncState = MasternodeSyncState::Waiting;
             LogPrintf("CMasternodeSync::SwitchToNextAsset -- Starting %s\n", GetSyncStatus());
             break;
+
         case(MasternodeSyncState::Waiting):
             ClearFulfilledRequests();
             LogPrintf("CMasternodeSync::SwitchToNextAsset -- Completed %s in %llds\n", GetSyncStatus(), GetTime() - nTimeAssetSyncStarted);
             syncState = MasternodeSyncState::List;
             LogPrintf("CMasternodeSync::SwitchToNextAsset -- Starting %s\n", GetSyncStatus());
             break;
+
         case(MasternodeSyncState::List):
             LogPrintf("CMasternodeSync::SwitchToNextAsset -- Completed %s in %llds\n", GetSyncStatus(), GetTime() - nTimeAssetSyncStarted);
             syncState = MasternodeSyncState::Winners;
             LogPrintf("CMasternodeSync::SwitchToNextAsset -- Starting %s\n", GetSyncStatus());
             break;
+
         case(MasternodeSyncState::Winners):
             LogPrintf("CMasternodeSync::SwitchToNextAsset -- Completed %s in %llds\n", GetSyncStatus(), GetTime() - nTimeAssetSyncStarted);
             syncState = MasternodeSyncState::Governance;
+#ifdef GOVERNANCE_TICKETS
             LogPrintf("CMasternodeSync::SwitchToNextAsset -- Starting %s\n", GetSyncStatus());
+#endif // GOVERNANCE_TICKETS
             break;
+
         case(MasternodeSyncState::Governance):
+#ifdef GOVERNANCE_TICKETS
             LogPrintf("CMasternodeSync::SwitchToNextAsset -- Completed %s in %llds\n", GetSyncStatus(), GetTime() - nTimeAssetSyncStarted);
+#endif // GOVERNANCE_TICKETS
             syncState = MasternodeSyncState::Finished;
             LogPrintf("CMasternodeSync::SwitchToNextAsset -- Starting %s\n", GetSyncStatus());
 
@@ -158,7 +166,8 @@ void CMasternodeSync::ClearFulfilledRequests()
 bool CMasternodeSync::CheckSyncTimeout(int nTick, vector<CNode*> &vNodesCopy)
 {
     // check for timeout first
-    if(GetTime() - nTimeLastBumped > MasternodeSyncTimeoutSeconds) {
+    if(GetTime() - nTimeLastBumped > MasternodeSyncTimeoutSeconds)
+    {
         LogPrintf("CMasternodeSync::ProcessTick -- nTick %d syncState %d -- timeout\n", nTick, (int)syncState);
         if (nRequestedMasternodeAttempt == 0) {
             LogPrintf("CMasternodeSync::ProcessTick -- ERROR: failed to sync %s\n", GetSyncStatusShort());
@@ -179,7 +188,8 @@ void CMasternodeSync::ProcessTick()
 
     // reset the sync process if the last call to this function was more than 60 minutes ago (client was in sleep mode)
     static int64_t nTimeLastProcess = GetTime();
-    if(GetTime() - nTimeLastProcess > 60*60) {
+    if (GetTime() - nTimeLastProcess > 60*60)
+    {
         LogPrintf("CMasternodeSync::HasSyncFailures -- WARNING: no actions for too long, restarting sync...\n");
         Reset();
         SwitchToNextAsset();
@@ -189,9 +199,10 @@ void CMasternodeSync::ProcessTick()
     nTimeLastProcess = GetTime();
 
     // reset sync status in case of any other sync failure
-    if(IsFailed())
+    if (IsFailed())
     {
-        if(nTimeLastFailure + (1*60) < GetTime()) { // 1 minute cooldown after failed sync
+        if (nTimeLastFailure + (1*60) < GetTime())
+        { // 1 minute cooldown after failed sync
             LogPrintf("CMasternodeSync::HasSyncFailures -- WARNING: failed to sync, trying again...\n");
             Reset();
             SwitchToNextAsset();
@@ -294,11 +305,11 @@ void CMasternodeSync::ProcessTick()
                 masterNodeCtrl.masternodeManager.DsegUpdate(pnode);
 
                 CNodeHelper::ReleaseNodeVector(vNodesCopy);
-                return; //this will cause each peer to get one request each six seconds for the various assets we need
+                return; // this will cause each peer to get one request each six seconds for the various assets we need
             }
 
             // MNW : SYNC MASTERNODE PAYMENT VOTES FROM OTHER CONNECTED CLIENTS
-            if(syncState == MasternodeSyncState::Winners)
+            if (syncState == MasternodeSyncState::Winners)
             {
                 LogPrint("mnpayments", "CMasternodeSync::ProcessTick -- nTick %d syncState %d nTimeLastBumped %lld GetTime() %lld diff %lld\n", nTick, (int)syncState, nTimeLastBumped, GetTime(), GetTime() - nTimeLastBumped);
                 // check for timeout first
@@ -312,7 +323,8 @@ void CMasternodeSync::ProcessTick()
                 // check for data
                 // if mnpayments already has enough blocks and votes, switch to the next asset
                 // try to fetch data from at least two peers though
-                if(nRequestedMasternodeAttempt > 1 && masterNodeCtrl.masternodePayments.IsEnoughData()) {
+                if (nRequestedMasternodeAttempt > 1 && masterNodeCtrl.masternodePayments.IsEnoughData())
+                {
                     LogPrintf("CMasternodeSync::ProcessTick -- nTick %d syncState %d -- found enough data\n", nTick, (int)syncState);
                     SwitchToNextAsset();
                     CNodeHelper::ReleaseNodeVector(vNodesCopy);
@@ -320,7 +332,8 @@ void CMasternodeSync::ProcessTick()
                 }
 
                 // only request once from each peer
-                if(masterNodeCtrl.requestTracker.HasFulfilledRequest(pnode->addr, "masternode-payment-sync")) continue;
+                if (masterNodeCtrl.requestTracker.HasFulfilledRequest(pnode->addr, "masternode-payment-sync"))
+                    continue;
                 masterNodeCtrl.requestTracker.AddFulfilledRequest(pnode->addr, "masternode-payment-sync");
 
                 nRequestedMasternodeAttempt++;
@@ -358,6 +371,9 @@ void CMasternodeSync::ProcessTick()
                 CNodeHelper::ReleaseNodeVector(vNodesCopy);
                 return; //this will cause each peer to get one request each six seconds for the various assets we need
             }
+#else
+            if (syncState == MasternodeSyncState::Governance)
+                return;
 #endif // GOVERNANCE_TICKETS
         }
     }
