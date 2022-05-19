@@ -221,7 +221,7 @@ string CMasternodeConfig::getAlias(const COutPoint &outpoint) const noexcept
 {
     unique_lock<mutex> lck(m_mtx);
     string sAlias;
-    const auto it = find_if(entries.cbegin(), entries.cend(), [&](CMasternodeEntry& mne)
+    const auto it = find_if(entries.cbegin(), entries.cend(), [&](const CMasternodeEntry& mne)
         {
             return (outpoint.hash.ToString() == mne.getTxHash()) && 
                 (to_string(outpoint.n) == mne.getOutputIndex());
