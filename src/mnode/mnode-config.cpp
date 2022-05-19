@@ -1,15 +1,21 @@
+// Copyright (c) 2014-2017 The Dash Core developers
+// Copyright (c) 2019-2022 The Pastel Core developers
+// Distributed under the MIT/X11 software license, see the accompanying
+// file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <iomanip>
 
-#include "mnode/mnode-config.h"
-#include "mnode/mnode-controller.h"
+#include <json/json.hpp>
 
-#include "netbase.h"
-#include "chainparams.h"
-#include "util.h"
-#include "port_config.h"
+#include <mnode/mnode-config.h>
+#include <mnode/mnode-controller.h>
 
-#include "json/json.hpp"
+#include <netbase.h>
+#include <chainparams.h>
+#include <util.h>
+#include <port_config.h>
+
 using json = nlohmann::json;
+using namespace std;
 
 /*
     {
@@ -26,7 +32,7 @@ using json = nlohmann::json;
     }
 */
 
-bool isOutIdxValid(std::string& outIdx, std::string alias, std::string& strErr)
+bool isOutIdxValid(string& outIdx, string alias, string& strErr)
 {
     bool retVal = false;
     char* p = nullptr;
@@ -53,10 +59,10 @@ bool isOutIdxValid(std::string& outIdx, std::string alias, std::string& strErr)
     return retVal;
 }
 
-bool checkIPAddressPort(std::string& address, std::string alias, bool checkPort, std::string& strErr)
+bool checkIPAddressPort(string& address, string alias, bool checkPort, string& strErr)
 {
     uint16_t port = 0;
-    std::string hostname;
+    string hostname;
     strErr.clear();
     if (!SplitHostPort(strErr, address, port, hostname) || port == 0 || hostname.empty())
     {
@@ -84,20 +90,20 @@ bool checkIPAddressPort(std::string& address, std::string alias, bool checkPort,
     }
     return true;
 }
-std::string get_string(json::iterator& it, std::string name)
+string get_string(json::iterator& it, string name)
 {
     if (it->count(name) && !it->at(name).is_null() && it->at(name).is_string())
         return it->at(name);
     return "";
 }
-std::string get_obj_as_string(json::iterator& it, std::string name)
+string get_obj_as_string(json::iterator& it, string name)
 {
     if (it->count(name) && !it->at(name).is_null() && it->at(name).is_object())
         return it->at(name).dump();
     return "";
 }
 
-bool CMasternodeConfig::read(std::string& strErr)
+bool CMasternodeConfig::read(string& strErr)
 {
     fs::path pathMasternodeConfigFile = masterNodeCtrl.GetMasternodeConfigFile();
     fs::ifstream streamConfig(pathMasternodeConfigFile);
@@ -119,8 +125,8 @@ bool CMasternodeConfig::read(std::string& strErr)
             }}
         };
         pathMasternodeConfigFile += "-sample";
-        std::ofstream o(pathMasternodeConfigFile.string().c_str());
-        o << setw(4) << jsonObj << std::endl;
+        ofstream o(pathMasternodeConfigFile.string().c_str());
+        o << setw(4) << jsonObj << endl;
 
         return true; // Nothing to read, so just return
     }
@@ -136,14 +142,14 @@ bool CMasternodeConfig::read(std::string& strErr)
         strErr = strprintf("Config file is invalid - %s\n", e.what());
         return false;
     }
-    catch(const std::exception& e)
+    catch(const exception& e)
     {
         streamConfig.close();
         strErr = strprintf("Error while processing config file - %s\n", e.what());
         return false;
     }
     
-    std::string strWhat;
+    string strWhat;
     for (json::iterator it = jsonObj.begin(); it != jsonObj.end(); ++it) {
         
         if (it.key().empty() || !it->count("mnAddress") || !it->count("mnPrivKey") || !it->count("txid") || !it->count("outIndex")) {
@@ -151,7 +157,7 @@ bool CMasternodeConfig::read(std::string& strErr)
             continue;
         }
 
-        std::string alias, mnAddress, mnPrivKey, txid, outIndex, extAddress, extKey, extCfg, extP2P;
+        string alias, mnAddress, mnPrivKey, txid, outIndex, extAddress, extKey, extCfg, extP2P;
         
         alias = it.key();
 
@@ -191,7 +197,7 @@ bool CMasternodeConfig::read(std::string& strErr)
         extKey = get_string(it, "extKey");
         extCfg = get_obj_as_string(it, "extCfg");
 
-        if (extCfg.length() > 1024) extCfg.erase(1024, std::string::npos);
+        if (extCfg.length() > 1024) extCfg.erase(1024, string::npos);
 
         CMasternodeEntry cme(alias, mnAddress, mnPrivKey, txid, outIndex, extAddress, extP2P, extKey, extCfg);
         entries.push_back(cme);
@@ -203,4 +209,24 @@ bool CMasternodeConfig::read(std::string& strErr)
     }
 
     return true;
+}
+
+int CMasternodeConfig::getCount() const noexcept
+{
+    unique_lock<mutex> lck(m_mtx);
+    return (int)entries.size();
+}
+
+string CMasternodeConfig::getAlias(const COutPoint &outpoint) const noexcept
+{
+    unique_lock<mutex> lck(m_mtx);
+    string sAlias;
+    const auto it = find_if(entries.cbegin(), entries.cend(), [&](CMasternodeEntry& mne)
+        {
+            return (outpoint.hash.ToString() == mne.getTxHash()) && 
+                (to_string(outpoint.n) == mne.getOutputIndex());
+        });
+    if (it != entries.cend())
+        sAlias = it->getAlias();
+    return sAlias;
 }

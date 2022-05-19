@@ -268,27 +268,567 @@ Examples:
     return obj;
 }
 
-UniValue masternode(const UniValue& params, bool fHelp)
+UniValue masternode_list(const UniValue& params, const bool fHelp)
 {
-    string strCommand;
-    if (!params.empty()) {
-        strCommand = params[0].get_str();
+    UniValue newParams(UniValue::VARR);
+    // forward params but skip "list"
+    for (size_t i = 1; i < params.size(); ++i)
+        newParams.push_back(params[i]);
+    if( 1u == params.size() )
+        newParams.push_back(UniValue(UniValue::VSTR, "status"));
+
+    return masternodelist(newParams, fHelp);
+
+}
+
+UniValue masternode_connect(const UniValue& params, const bool fHelp)
+{
+    if (params.size() < 2)
+        throw JSONRPCError(RPC_INVALID_PARAMETER, "Masternode address required");
+
+    string strAddress = params[1].get_str();
+
+    CService addr;
+    if (!Lookup(strAddress.c_str(), addr, 0, false))
+        throw JSONRPCError(RPC_INTERNAL_ERROR, strprintf("Incorrect masternode address %s", strAddress));
+
+    CNode* pnode = ConnectNode(CAddress(addr, NODE_NETWORK), nullptr);
+
+    if (!pnode)
+        throw JSONRPCError(RPC_INTERNAL_ERROR, strprintf("Couldn't connect to masternode %s", strAddress));
+
+    return "successfully connected";
+}
+
+UniValue masternode_count(const UniValue& params)
+{
+    if (params.size() > 2)
+        throw JSONRPCError(RPC_INVALID_PARAMETER, "Too many parameters");
+
+    if (params.size() == 1)
+        return static_cast<uint64_t>(masterNodeCtrl.masternodeManager.size());
+
+    string strMode = params[1].get_str();
+
+    if (strMode == "enabled")
+        return static_cast<uint64_t>(masterNodeCtrl.masternodeManager.CountEnabled());
+
+    int nCount;
+    masternode_info_t mnInfo;
+    masterNodeCtrl.masternodeManager.GetNextMasternodeInQueueForPayment(true, nCount, mnInfo);
+
+    if (strMode == "qualify")
+        return nCount;
+
+    if (strMode == "all")
+        return strprintf("Total: %zu (Enabled: %zu / Qualify: %d)",
+            masterNodeCtrl.masternodeManager.size(), masterNodeCtrl.masternodeManager.CountEnabled(), nCount);
+
+    return NullUniValue;
+}
+
+UniValue masternode_winner(const UniValue& params, KeyIO &keyIO, const bool bIsCurrentCmd)
+{
+    int nCount;
+    int nHeight;
+    masternode_info_t mnInfo;
+    CBlockIndex* pindex = nullptr;
+    {
+        LOCK(cs_main);
+        pindex = chainActive.Tip();
     }
+    nHeight = pindex->nHeight + (bIsCurrentCmd ? 1 : masterNodeCtrl.nMasternodePaymentsFeatureWinnerBlockIndexDelta);
+    masterNodeCtrl.masternodeManager.UpdateLastPaid(pindex);
+
+    if (!masterNodeCtrl.masternodeManager.GetNextMasternodeInQueueForPayment(nHeight, true, nCount, mnInfo))
+        return "unknown";
+
+    UniValue obj(UniValue::VOBJ);
+
+    obj.pushKV("height", nHeight);
+    obj.pushKV("IP:port", mnInfo.addr.ToString());
+    obj.pushKV("protocol", (int64_t)mnInfo.nProtocolVersion);
+    obj.pushKV("outpoint", mnInfo.vin.prevout.ToStringShort());
+
+    CTxDestination dest = mnInfo.pubKeyCollateralAddress.GetID();
+    string address = keyIO.EncodeDestination(dest);
+    obj.pushKV("payee", move(address));
+
+    obj.pushKV("lastseen", mnInfo.nTimeLastPing);
+    obj.pushKV("activeseconds", mnInfo.nTimeLastPing - mnInfo.sigTime);
+    return obj;
+}
 
 #ifdef ENABLE_WALLET
-    if (strCommand == "start-many")
+UniValue masternode_start_alias(const UniValue& params)
+{
+    if (params.size() < 2)
+        throw JSONRPCError(RPC_INVALID_PARAMETER, "Please specify an alias");
+
+    {
+        LOCK(pwalletMain->cs_wallet);
+        EnsureWalletIsUnlocked();
+    }
+
+    string strAlias = params[1].get_str();
+
+    bool fFound = false;
+
+    UniValue statusObj(UniValue::VOBJ);
+    statusObj.pushKV(RPC_KEY_ALIAS, strAlias);
+
+    for (const auto& mne : masterNodeCtrl.masternodeConfig.getEntries())
+    {
+        if (mne.getAlias() == strAlias)
+        {
+            fFound = true;
+            string strError;
+            CMasternodeBroadcast mnb;
+
+            bool fResult = CMasternodeBroadcast::Create(mne.getIp(), mne.getPrivKey(), mne.getTxHash(), mne.getOutputIndex(),
+                mne.getExtIp(), mne.getExtP2P(), mne.getExtKey(), mne.getExtCfg(),
+                strError, mnb);
+
+            statusObj.pushKV(RPC_KEY_RESULT, get_rpc_result(fResult));
+            if (fResult)
+            {
+                masterNodeCtrl.masternodeManager.UpdateMasternodeList(mnb);
+                mnb.Relay();
+            } else
+                statusObj.pushKV(RPC_KEY_ERROR_MESSAGE, strError);
+            break;
+        }
+    }
+
+    if (!fFound)
+    {
+        statusObj.pushKV(RPC_KEY_RESULT, RPC_RESULT_FAILED);
+        statusObj.pushKV(RPC_KEY_ERROR_MESSAGE, "Could not find alias in config. Verify with list-conf.");
+    }
+
+    return statusObj;
+}
+
+UniValue masternode_start_all(const UniValue& params, const bool bStartMissing, const bool bStartDisabled)
+{
+    {
+        LOCK(pwalletMain->cs_wallet);
+        EnsureWalletIsUnlocked();
+    }
+
+    if ((bStartMissing || bStartDisabled) && !masterNodeCtrl.masternodeSync.IsMasternodeListSynced())
+        throw JSONRPCError(RPC_CLIENT_IN_INITIAL_DOWNLOAD, "You can't use this command until masternode list is synced");
+
+    int nSuccessful = 0;
+    int nFailed = 0;
+
+    UniValue resultsObj(UniValue::VOBJ);
+
+    for (const auto& mne : masterNodeCtrl.masternodeConfig.getEntries())
+    {
+        string strError;
+
+        COutPoint outpoint = COutPoint(uint256S(mne.getTxHash()), uint32_t(atoi(mne.getOutputIndex().c_str())));
+        CMasternode mn;
+        const bool fFound = masterNodeCtrl.masternodeManager.Get(outpoint, mn);
+        CMasternodeBroadcast mnb;
+
+        if (bStartMissing && fFound)
+            continue;
+        if (bStartDisabled && fFound && mn.IsEnabled())
+            continue;
+
+        bool fResult = CMasternodeBroadcast::Create(mne.getIp(), mne.getPrivKey(), mne.getTxHash(), mne.getOutputIndex(),
+            mne.getExtIp(), mne.getExtP2P(), mne.getExtKey(), mne.getExtCfg(),
+            strError, mnb);
+
+        UniValue statusObj(UniValue::VOBJ);
+        statusObj.pushKV(RPC_KEY_ALIAS, mne.getAlias());
+        statusObj.pushKV(RPC_KEY_RESULT, get_rpc_result(fResult));
+
+        if (fResult)
+        {
+            nSuccessful++;
+            masterNodeCtrl.masternodeManager.UpdateMasternodeList(mnb);
+            mnb.Relay();
+        } else {
+            nFailed++;
+            statusObj.pushKV(RPC_KEY_ERROR_MESSAGE, strError);
+        }
+
+        resultsObj.pushKV(RPC_KEY_STATUS, move(statusObj));
+    }
+
+    UniValue returnObj(UniValue::VOBJ);
+    returnObj.pushKV("overall", strprintf("Successfully started %d masternodes, failed to start %d, total %d", nSuccessful, nFailed, nSuccessful + nFailed));
+    returnObj.pushKV("detail", resultsObj);
+
+    return returnObj;
+}
+
+UniValue masternode_outputs(const UniValue& params)
+{
+    // Find possible candidates
+    vector<COutput> vPossibleCoins;
+
+    pwalletMain->AvailableCoins(vPossibleCoins, true, nullptr, false, true, masterNodeCtrl.MasternodeCollateral, true);
+
+    UniValue obj(UniValue::VOBJ);
+    for (auto& out : vPossibleCoins)
+        obj.pushKV(out.tx->GetHash().ToString(), strprintf("%d", out.i));
+
+    return obj;
+}
+#endif // ENABLE_WALLET
+
+UniValue masternode_genkey(const UniValue& params, KeyIO &keyIO)
+{
+    CKey secret;
+    secret.MakeNewKey(false);
+    if (secret.IsValid())
+        return keyIO.EncodeSecret(secret);
+    UniValue statusObj(UniValue::VOBJ);
+    statusObj.pushKV(RPC_KEY_RESULT, RPC_RESULT_FAILED);
+    statusObj.pushKV(RPC_KEY_ERROR_MESSAGE, "Failed to generate private key");
+    return statusObj;
+}
+
+UniValue masternode_list_conf(const UniValue& params)
+{
+    UniValue resultObj(UniValue::VOBJ);
+
+    for (const auto& mne : masterNodeCtrl.masternodeConfig.getEntries())
+    {
+        COutPoint outpoint = COutPoint(uint256S(mne.getTxHash()), uint32_t(atoi(mne.getOutputIndex().c_str())));
+        CMasternode mn;
+        const bool fFound = masterNodeCtrl.masternodeManager.Get(outpoint, mn);
+
+        string strStatus = fFound ? mn.GetStatus() : "MISSING";
+
+        UniValue mnObj(UniValue::VOBJ);
+        mnObj.pushKV(RPC_KEY_ALIAS, mne.getAlias());
+        mnObj.pushKV("address", mne.getIp());
+        mnObj.pushKV("privateKey", mne.getPrivKey());
+        mnObj.pushKV("txHash", mne.getTxHash());
+        mnObj.pushKV("outputIndex", mne.getOutputIndex());
+        mnObj.pushKV("extAddress", mne.getExtIp());
+        mnObj.pushKV("extP2P", mne.getExtP2P());
+        mnObj.pushKV("extKey", mne.getExtKey());
+        mnObj.pushKV("extCfg", mne.getExtCfg());
+        mnObj.pushKV(RPC_KEY_STATUS, strStatus);
+        resultObj.pushKV("masternode", move(mnObj));
+    }
+
+    return resultObj;
+}
+
+UniValue masternode_make_conf(const UniValue& params, KeyIO &keyIO)
+{
+    if (params.size() != 6 && params.size() != 8)
+        throw JSONRPCError(RPC_INVALID_PARAMETER,
+            R"("masternode make-conf "alias" "mnAddress:port" "extAddress:port" "extP2P:port" "passphrase" "txid" "index"
+
+Create masternode configuration in JSON format:
+This will 1) generate MasterNode Private Key (mnPrivKey) and 2) generate and register MasterNode PastelID (extKey)
+If collateral txid and index are not provided, it will search for the first available non-locked outpoint with the correct amount (1000000 PSL)
+
+Arguments:
+    "alias"             (string) (required) Local alias (name) of Master Node
+    "mnAddress:port"    (string) (required) The address and port of the Master Node's cNode
+    "extAddress:port"   (string) (required) The address and port of the Master Node's Storage Layer
+    "extP2P:port"       (string) (required) The address and port of the Master Node's Kademlia point
+    "passphrase"        (string) (required) passphrase for new PastelID
+    "txid"              (string) (optional) id of transaction with the collateral amount
+    "index"             (numeric) (optional) index in the transaction with the collateral amount
+
+Examples:
+Create masternode configuration
+)" + HelpExampleCli("masternode make-conf",
+    R"("myMN" "127.0.0.1:9933" "127.0.0.1:4444" "127.0.0.1:5545" "bc1c5243284272dbb22c301a549d112e8bc9bc454b5ff50b1e5f7959d6b56726" 4)") + R"(
+As json rpc
+)" + HelpExampleRpc("masternode make-conf", R"(""myMN" "127.0.0.1:9933" "127.0.0.1:4444" "127.0.0.1:5545" "bc1c5243284272dbb22c301a549d112e8bc9bc454b5ff50b1e5f7959d6b56726" 4")")
+
+);
+
+    UniValue resultObj(UniValue::VOBJ);
+
+    //Alias
+    string strAlias = params[1].get_str();
+
+    //mnAddress:port
+    string strMnAddress = params[2].get_str();
+    //TODO : validate correct address format
+
+    //extAddress:port
+    string strExtAddress = params[3].get_str();
+    //TODO : validate correct address format
+
+    //extP2P:port
+    string strExtP2P = params[4].get_str();
+    //TODO : validate correct address format
+
+    //txid:index
+    vector<COutput> vPossibleCoins;
+    pwalletMain->AvailableCoins(vPossibleCoins, true, nullptr, false, true, masterNodeCtrl.MasternodeCollateral, true);
+    if (vPossibleCoins.empty())
+        throw JSONRPCError(RPC_INVALID_PARAMETER, "No spendable collateral transactions exist");
+
+    string strTxid, strIndex;
+    bool bFound = false;
+    if (params.size() != 7)
+    {
+        strTxid = params[5].get_str();
+        strIndex = params[6].get_str();
+        //TODO : validate Outpoint
+        for (COutput& out : vPossibleCoins)
+        {
+            if (out.tx->GetHash().ToString() == strTxid)
+            {
+                if (out.i == get_number(params[5]))
+                {
+                    bFound = true;
+                    break;
+                }
+            }
+        }
+    } else {
+        COutput out = vPossibleCoins.front();
+        strTxid = out.tx->GetHash().ToString();
+        strIndex = to_string(out.i);
+    }
+    if (!bFound) {
+        throw JSONRPCError(RPC_INVALID_PARAMETER, "Collateral transaction doesn't exist or unspendable");
+    }
+
+    //mnPrivKey
+    CKey secret;
+    secret.MakeNewKey(false);
+    if (!secret.IsValid()) // should not happen as MakeNewKey always sets valid flag
+        throw JSONRPCError(RPC_MISC_ERROR, "Failed to generate private key");
+    string mnPrivKey = keyIO.EncodeSecret(secret);
+
+    //PastelID
+    string pastelID;
+    /*      THIS WILL NOT WORK for Hot/Cold case - PastelID has to be created and registered from the cold MN itself
+    SecureString strKeyPass(params[4].get_str());
+
+    string pastelID = CPastelID::CreateNewLocalKey(strKeyPass);
+    CPastelIDRegTicket regTicket = CPastelIDRegTicket::Create(pastelID, strKeyPass, string{});
+    string txid = CPastelTicketProcessor::SendTicket(regTicket);
+    */
+
+    //Create JSON
+    UniValue mnObj(UniValue::VOBJ);
+    mnObj.pushKV("mnAddress", strMnAddress);
+    mnObj.pushKV("extAddress", strExtAddress);
+    mnObj.pushKV("extP2P", strExtP2P);
+    mnObj.pushKV(RPC_KEY_TXID, strTxid);
+    mnObj.pushKV("outIndex", strIndex);
+    mnObj.pushKV("mnPrivKey", mnPrivKey);
+    mnObj.pushKV("extKey", pastelID);
+    resultObj.pushKV(strAlias, move(mnObj));
+
+    return resultObj;
+}
+
+UniValue masternode_winners(const UniValue& params)
+{
+    int nHeight;
+    {
+        LOCK(cs_main);
+        CBlockIndex* pindex = chainActive.Tip();
+        if (!pindex)
+            return NullUniValue;
+        nHeight = pindex->nHeight;
+    }
+
+    int nLast = 10;
+    string strFilter;
+
+    if (params.size() >= 2)
+        nLast = get_number(params[1]);
+
+    if (params.size() == 3)
+        strFilter = params[2].get_str();
+
+    if (params.size() > 3)
+        throw JSONRPCError(RPC_INVALID_PARAMETER, R"(Correct usage is 'masternode winners ( "count" "filter" )')");
+
+    UniValue obj(UniValue::VOBJ);
+
+    for (int i = nHeight - nLast; i < nHeight + 20; i++)
+    {
+        string strPayment = masterNodeCtrl.masternodePayments.GetRequiredPaymentsString(i);
+        if (!strFilter.empty() && strPayment.find(strFilter) == string::npos)
+            continue;
+        obj.pushKV(strprintf("%d", i), move(strPayment));
+    }
+
+    return obj;
+
+}
+
+UniValue masternode_status(const UniValue& params, KeyIO &keyIO)
+{
+    if (!masterNodeCtrl.IsMasterNode())
+        throw JSONRPCError(RPC_INTERNAL_ERROR, "This is not a masternode");
+
+    UniValue mnObj(UniValue::VOBJ);
+
+    const auto& activeMN = masterNodeCtrl.activeMasternode;
+    const auto& activeMNconfig = masterNodeCtrl.masternodeConfig;
+    mnObj.pushKV("outpoint", activeMN.outpoint.ToStringShort());
+    mnObj.pushKV("service", activeMN.service.ToString());
+
+    CMasternode mn;
+    if (masterNodeCtrl.masternodeManager.Get(activeMN.outpoint, mn))
+    {
+        CTxDestination dest = mn.pubKeyCollateralAddress.GetID();
+        string address = keyIO.EncodeDestination(dest);
+        mnObj.pushKV("payee", move(address));
+        mnObj.pushKV("extAddress", mn.strExtraLayerAddress);
+        mnObj.pushKV("extP2P", mn.strExtraLayerP2P);
+        mnObj.pushKV("extKey", mn.strExtraLayerKey);
+        mnObj.pushKV("extCfg", mn.strExtraLayerCfg);
+    }
+    string sAlias = masterNodeCtrl.masternodeConfig.getAlias(activeMN.outpoint);
+    if (!sAlias.empty())
+        mnObj.pushKV(RPC_KEY_ALIAS, move(sAlias));
+    mnObj.pushKV(RPC_KEY_STATUS, activeMN.GetStatus());
+    return mnObj;
+}
+
+UniValue masternode_top(const UniValue& params)
+{
+    if (params.size() > 3)
+        throw JSONRPCError(RPC_INVALID_PARAMETER, 
+            R"(Correct usage is:
+    'masternode top'
+        OR
+    'masternode top "block-height"'
+        OR
+    'masternode top "block-height" 1')"
+        );
+
+    UniValue obj(UniValue::VOBJ);
+
+    int nHeight;
+    if (params.size() >= 2)
+        nHeight = get_number(params[1]);
+    else
+    {
+        LOCK(cs_main);
+        CBlockIndex* pindex = chainActive.Tip();
+        if (!pindex)
+            return false;
+        nHeight = pindex->nHeight;
+    }
+
+    if (nHeight < 0 || nHeight > chainActive.Height())
+        throw JSONRPCError(RPC_INVALID_PARAMETER, "Block height out of range");
+
+    bool bCalculateIfNotSeen = false;
+    if (params.size() == 3)
+        bCalculateIfNotSeen = params[2].get_str() == "1";
+
+    auto topBlockMNs = masterNodeCtrl.masternodeManager.GetTopMNsForBlock(nHeight, bCalculateIfNotSeen);
+
+    UniValue mnsArray = formatMnsInfo(topBlockMNs);
+    obj.pushKV(strprintf("%d", nHeight), move(mnsArray));
+    return obj;
+}
+
+UniValue masternode_message(const UniValue& params, const bool fHelp, KeyIO &keyIO)
+{
+    RPC_CMD_PARSER2(MSG, params, sign, send, print, list);
+
+    if (fHelp || (params.size() < 2 || params.size() > 4) || !MSG.IsCmdSupported())
+        throw JSONRPCError(RPC_INVALID_PARAMETER, 
+R"(Correct usage is:
+    masternode message send <mnPubKey> <message> - Send <message> to masternode identified by the <mnPubKey>
+    masternode message list - List received <messages>
+    masternode message print <messageID> - Print received <message> by <messageID>
+    masternode message sign <message> <x> - Sign <message> using masternodes key
+        if x is presented and not 0 - it will also returns the public key
+        use "verifymessage" with masrternode's public key to verify signature
+)");
+
+    if (!masterNodeCtrl.IsMasterNode())
+        throw JSONRPCError(RPC_INTERNAL_ERROR, "This is not a masternode - only Masternode can send/sign messages");
+
+    switch (MSG.cmd())
+    {
+        case RPC_CMD_MSG::send: {
+            string strPubKey = params[2].get_str();
+            string messageText = params[3].get_str();
+
+            if (!IsHex(strPubKey))
+                throw JSONRPCError(RPC_INTERNAL_ERROR, "Invalid Masternode Public Key");
+
+            CPubKey vchPubKey(ParseHex(strPubKey));
+            masterNodeCtrl.masternodeMessages.SendMessage(vchPubKey, CMasternodeMessageType::PLAINTEXT, messageText);
+        } break;
+
+        case RPC_CMD_MSG::list: {
+            if (!masterNodeCtrl.IsMasterNode())
+                throw JSONRPCError(RPC_INTERNAL_ERROR, "This is not a masternode - only Masternode can send/receive/sign messages");
+
+            UniValue arr(UniValue::VARR);
+            for (const auto& msg : masterNodeCtrl.masternodeMessages.mapOurMessages)
+            {
+                UniValue obj(UniValue::VOBJ);
+                obj.pushKV(msg.first.ToString(), messageToJson(msg.second));
+                arr.push_back(move(obj));
+            }
+            return arr;
+        } break;
+
+        case RPC_CMD_MSG::print:
+            if (!masterNodeCtrl.IsMasterNode())
+                throw JSONRPCError(RPC_INTERNAL_ERROR, "This is not a masternode - only Masternode can send/receive/sign messages");
+            break;
+
+        case RPC_CMD_MSG::sign: {
+            string message = params[2].get_str();
+            string error_ret;
+            v_uint8 signature;
+            if (!Sign(message, signature, error_ret))
+                throw JSONRPCError(RPC_INVALID_PARAMETER, strprintf("Sign failed - %s", error_ret));
+
+            UniValue obj(UniValue::VOBJ);
+            obj.pushKV("signature", vector_to_string(signature));
+            if (params.size() == 3)
+            {
+                int n = get_number(params[3]);
+                if (n > 0)
+                {
+                    string strPubKey = keyIO.EncodeDestination(masterNodeCtrl.activeMasternode.pubKeyMasternode.GetID());
+                    obj.pushKV("pubkey", move(strPubKey));
+                }
+            }
+            return obj;
+        } break;
+    }
+    return NullUniValue;
+}
+
+UniValue masternode(const UniValue& params, bool fHelp)
+{
+#ifdef ENABLE_WALLET
+    RPC_CMD_PARSER(MN, params, list, list__conf, count, debug, current, winner, winners,
+        genkey, connect, status, top, message, make__conf,
+        start__many, start__alias, start__all, start__missing, start__disabled, outputs);
+#else
+    RPC_CMD_PARSER(MN, params, list, list__conf, count, debug, current, winner, winners,
+        genkey, connect, status, top, message, make__conf);
+#endif // ENABLE_WALLET
+
+#ifdef ENABLE_WALLET
+    if (MN.IsCmd(RPC_CMD_MN::start__many))
         throw JSONRPCError(RPC_INVALID_PARAMETER, "DEPRECATED, please use start-all instead");
 #endif // ENABLE_WALLET
 
-    if (fHelp ||
-        (
-#ifdef ENABLE_WALLET
-            strCommand != "start-alias" && strCommand != "start-all" && strCommand != "start-missing" &&
-            strCommand != "start-disabled" && strCommand != "outputs" &&
-#endif // ENABLE_WALLET
-            strCommand != "list" && strCommand != "list-conf" && strCommand != "count" &&
-            strCommand != "debug" && strCommand != "current" && strCommand != "winner" && strCommand != "winners" && strCommand != "genkey" &&
-            strCommand != "connect" && strCommand != "status" && strCommand != "top" && strCommand != "message" && strCommand != "make-conf"))
+    if (fHelp || MN.IsCmdSupported())
         throw runtime_error(
 R"(masternode "command"...
 
@@ -325,516 +865,57 @@ R"(
 );
 
     KeyIO keyIO(Params());
-    if (strCommand == "list") {
-        UniValue newParams(UniValue::VARR);
-        // forward params but skip "list"
-        for (unsigned int i = 1; i < params.size(); i++) {
-            newParams.push_back(params[i]);
-        }
-        if( 1u == params.size() )
-            newParams.push_back(UniValue(UniValue::VSTR, "status"));
-            
-        return masternodelist(newParams, fHelp);
-    }
+    switch (MN.cmd())
+    {
+        case RPC_CMD_MN::list:
+            return masternode_list(params, fHelp);
 
-    if (strCommand == "connect") {
-        if (params.size() < 2)
-            throw JSONRPCError(RPC_INVALID_PARAMETER, "Masternode address required");
+        case RPC_CMD_MN::connect:
+            return masternode_connect(params, fHelp);
 
-        string strAddress = params[1].get_str();
+        case RPC_CMD_MN::count:
+            return masternode_count(params);
 
-        CService addr;
-        if (!Lookup(strAddress.c_str(), addr, 0, false))
-            throw JSONRPCError(RPC_INTERNAL_ERROR, strprintf("Incorrect masternode address %s", strAddress));
+        case RPC_CMD_MN::current:
+        case RPC_CMD_MN::winner:
+            return masternode_winner(params, keyIO, MN.IsCmd(RPC_CMD_MN::current));
 
-        CNode* pnode = ConnectNode(CAddress(addr, NODE_NETWORK), nullptr);
+        case RPC_CMD_MN::genkey: 
+            // generate new private key
+            return masternode_genkey(params, keyIO);
 
-        if (!pnode)
-            throw JSONRPCError(RPC_INTERNAL_ERROR, strprintf("Couldn't connect to masternode %s", strAddress));
+        case RPC_CMD_MN::list__conf:
+            return masternode_list_conf(params);
 
-        return "successfully connected";
-    }
+        case RPC_CMD_MN::make__conf:
+            return masternode_make_conf(params, keyIO);
 
-    if (strCommand == "count") {
-        if (params.size() > 2)
-            throw JSONRPCError(RPC_INVALID_PARAMETER, "Too many parameters");
+        case RPC_CMD_MN::status:
+            return masternode_status(params, keyIO);
 
-        if (params.size() == 1)
-            return static_cast<uint64_t>(masterNodeCtrl.masternodeManager.size());
+        case RPC_CMD_MN::winners:
+            return masternode_winners(params);
 
-        string strMode = params[1].get_str();
+        case RPC_CMD_MN::top:
+            return masternode_top(params);
 
-        if (strMode == "enabled")
-            return static_cast<uint64_t>(masterNodeCtrl.masternodeManager.CountEnabled());
-
-        int nCount;
-        masternode_info_t mnInfo;
-        masterNodeCtrl.masternodeManager.GetNextMasternodeInQueueForPayment(true, nCount, mnInfo);
-
-        if (strMode == "qualify")
-            return nCount;
-
-        if (strMode == "all")
-            return strprintf("Total: %zu (Enabled: %zu / Qualify: %d)",
-                             masterNodeCtrl.masternodeManager.size(), masterNodeCtrl.masternodeManager.CountEnabled(), nCount);
-    }
-
-    if (strCommand == "current" || strCommand == "winner") {
-        int nCount;
-        int nHeight;
-        masternode_info_t mnInfo;
-        CBlockIndex* pindex = nullptr;
-        {
-            LOCK(cs_main);
-            pindex = chainActive.Tip();
-        }
-        nHeight = pindex->nHeight + (strCommand == "current" ? 1 : masterNodeCtrl.nMasternodePaymentsFeatureWinnerBlockIndexDelta);
-        masterNodeCtrl.masternodeManager.UpdateLastPaid(pindex);
-
-        if (!masterNodeCtrl.masternodeManager.GetNextMasternodeInQueueForPayment(nHeight, true, nCount, mnInfo))
-            return "unknown";
-
-        UniValue obj(UniValue::VOBJ);
-
-        obj.pushKV("height", nHeight);
-        obj.pushKV("IP:port", mnInfo.addr.ToString());
-        obj.pushKV("protocol", (int64_t)mnInfo.nProtocolVersion);
-        obj.pushKV("outpoint", mnInfo.vin.prevout.ToStringShort());
-
-        CTxDestination dest = mnInfo.pubKeyCollateralAddress.GetID();
-        string address = keyIO.EncodeDestination(dest);
-        obj.pushKV("payee", address);
-
-        obj.pushKV("lastseen", mnInfo.nTimeLastPing);
-        obj.pushKV("activeseconds", mnInfo.nTimeLastPing - mnInfo.sigTime);
-        return obj;
-    }
+        case RPC_CMD_MN::message:
+            return masternode_message(params, fHelp, keyIO);
 
 #ifdef ENABLE_WALLET
-    if (strCommand == "start-alias") {
-        if (params.size() < 2)
-            throw JSONRPCError(RPC_INVALID_PARAMETER, "Please specify an alias");
+        case RPC_CMD_MN::start__alias:
+            return masternode_start_alias(params);
 
-        {
-            LOCK(pwalletMain->cs_wallet);
-            EnsureWalletIsUnlocked();
-        }
+        case RPC_CMD_MN::start__all:
+        case RPC_CMD_MN::start__missing:
+        case RPC_CMD_MN::start__disabled:
+            return masternode_start_all(params, MN.IsCmd(RPC_CMD_MN::start__missing),
+                MN.IsCmd(RPC_CMD_MN::start__disabled));
 
-        string strAlias = params[1].get_str();
-
-        bool fFound = false;
-
-        UniValue statusObj(UniValue::VOBJ);
-        statusObj.pushKV(RPC_KEY_ALIAS, strAlias);
-
-        for (const auto& mne : masterNodeCtrl.masternodeConfig.getEntries()) {
-            if (mne.getAlias() == strAlias) {
-                fFound = true;
-                string strError;
-                CMasternodeBroadcast mnb;
-
-
-                bool fResult = CMasternodeBroadcast::Create(mne.getIp(), mne.getPrivKey(), mne.getTxHash(), mne.getOutputIndex(),
-                                                            mne.getExtIp(), mne.getExtP2P(), mne.getExtKey(), mne.getExtCfg(),
-                                                            strError, mnb);
-
-                statusObj.pushKV(RPC_KEY_RESULT, get_rpc_result(fResult));
-                if (fResult) {
-                    masterNodeCtrl.masternodeManager.UpdateMasternodeList(mnb);
-                    mnb.Relay();
-                } else {
-                    statusObj.pushKV(RPC_KEY_ERROR_MESSAGE, strError);
-                }
-                break;
-            }
-        }
-
-        if (!fFound) {
-            statusObj.pushKV(RPC_KEY_RESULT, RPC_RESULT_FAILED);
-            statusObj.pushKV(RPC_KEY_ERROR_MESSAGE, "Could not find alias in config. Verify with list-conf.");
-        }
-
-        return statusObj;
-    }
-
-    if (strCommand == "start-all" || strCommand == "start-missing" || strCommand == "start-disabled") {
-        {
-            LOCK(pwalletMain->cs_wallet);
-            EnsureWalletIsUnlocked();
-        }
-
-        if ((strCommand == "start-missing" || strCommand == "start-disabled") && !masterNodeCtrl.masternodeSync.IsMasternodeListSynced()) {
-            throw JSONRPCError(RPC_CLIENT_IN_INITIAL_DOWNLOAD, "You can't use this command until masternode list is synced");
-        }
-
-        int nSuccessful = 0;
-        int nFailed = 0;
-
-        UniValue resultsObj(UniValue::VOBJ);
-
-        for (const auto& mne : masterNodeCtrl.masternodeConfig.getEntries()) {
-            string strError;
-
-            COutPoint outpoint = COutPoint(uint256S(mne.getTxHash()), uint32_t(atoi(mne.getOutputIndex().c_str())));
-            CMasternode mn;
-            bool fFound = masterNodeCtrl.masternodeManager.Get(outpoint, mn);
-            CMasternodeBroadcast mnb;
-
-            if (strCommand == "start-missing" && fFound)
-                continue;
-            if (strCommand == "start-disabled" && fFound && mn.IsEnabled())
-                continue;
-
-            bool fResult = CMasternodeBroadcast::Create(mne.getIp(), mne.getPrivKey(), mne.getTxHash(), mne.getOutputIndex(),
-                                                        mne.getExtIp(), mne.getExtP2P(), mne.getExtKey(), mne.getExtCfg(),
-                                                        strError, mnb);
-
-            UniValue statusObj(UniValue::VOBJ);
-            statusObj.pushKV(RPC_KEY_ALIAS, mne.getAlias());
-            statusObj.pushKV(RPC_KEY_RESULT, get_rpc_result(fResult));
-
-            if (fResult) {
-                nSuccessful++;
-                masterNodeCtrl.masternodeManager.UpdateMasternodeList(mnb);
-                mnb.Relay();
-            } else {
-                nFailed++;
-                statusObj.pushKV(RPC_KEY_ERROR_MESSAGE, strError);
-            }
-
-            resultsObj.pushKV(RPC_KEY_STATUS, statusObj);
-        }
-
-        UniValue returnObj(UniValue::VOBJ);
-        returnObj.pushKV("overall", strprintf("Successfully started %d masternodes, failed to start %d, total %d", nSuccessful, nFailed, nSuccessful + nFailed));
-        returnObj.pushKV("detail", resultsObj);
-
-        return returnObj;
-    }
+        case RPC_CMD_MN::outputs:
+            return masternode_outputs(params);
 #endif // ENABLE_WALLET
-
-    // generate new private key
-    if (strCommand == "genkey") {
-        CKey secret;
-        secret.MakeNewKey(false);
-        if (secret.IsValid())
-            return keyIO.EncodeSecret(secret);
-        UniValue statusObj(UniValue::VOBJ);
-        statusObj.pushKV(RPC_KEY_RESULT, RPC_RESULT_FAILED);
-        statusObj.pushKV(RPC_KEY_ERROR_MESSAGE, "Failed to generate private key");
-        return statusObj;
     }
 
-    if (strCommand == "list-conf") {
-        UniValue resultObj(UniValue::VOBJ);
-
-        for (const auto& mne : masterNodeCtrl.masternodeConfig.getEntries()) {
-            COutPoint outpoint = COutPoint(uint256S(mne.getTxHash()), uint32_t(atoi(mne.getOutputIndex().c_str())));
-            CMasternode mn;
-            bool fFound = masterNodeCtrl.masternodeManager.Get(outpoint, mn);
-
-            string strStatus = fFound ? mn.GetStatus() : "MISSING";
-
-            UniValue mnObj(UniValue::VOBJ);
-            mnObj.pushKV(RPC_KEY_ALIAS, mne.getAlias());
-            mnObj.pushKV("address", mne.getIp());
-            mnObj.pushKV("privateKey", mne.getPrivKey());
-            mnObj.pushKV("txHash", mne.getTxHash());
-            mnObj.pushKV("outputIndex", mne.getOutputIndex());
-            mnObj.pushKV("extAddress", mne.getExtIp());
-            mnObj.pushKV("extP2P", mne.getExtP2P());
-            mnObj.pushKV("extKey", mne.getExtKey());
-            mnObj.pushKV("extCfg", mne.getExtCfg());
-            mnObj.pushKV(RPC_KEY_STATUS, strStatus);
-            resultObj.pushKV("masternode", mnObj);
-        }
-
-        return resultObj;
-    }
-    if (strCommand == "make-conf") {
-        if (params.size() != 6 && params.size() != 8)
-            throw JSONRPCError(RPC_INVALID_PARAMETER,
-R"("masternode make-conf "alias" "mnAddress:port" "extAddress:port" "extP2P:port" "passphrase" "txid" "index"
-
-Create masternode configuration in JSON format:
-This will 1) generate MasterNode Private Key (mnPrivKey) and 2) generate and register MasterNode PastelID (extKey)
-If collateral txid and index are not provided, it will search for the first available non-locked outpoint with the correct amount (1000000 PSL)
-
-Arguments:
-    "alias"             (string) (required) Local alias (name) of Master Node
-    "mnAddress:port"    (string) (required) The address and port of the Master Node's cNode
-    "extAddress:port"   (string) (required) The address and port of the Master Node's Storage Layer
-    "extP2P:port"       (string) (required) The address and port of the Master Node's Kademlia point
-    "passphrase"        (string) (required) passphrase for new PastelID
-    "txid"              (string) (optional) id of transaction with the collateral amount
-    "index"             (numeric) (optional) index in the transaction with the collateral amount
-
-Examples:
-Create masternode configuration
-)" + HelpExampleCli("masternode make-conf",
-                    R"("myMN" "127.0.0.1:9933" "127.0.0.1:4444" "127.0.0.1:5545" "bc1c5243284272dbb22c301a549d112e8bc9bc454b5ff50b1e5f7959d6b56726" 4)") + R"(
-As json rpc
-)" + HelpExampleRpc("masternode make-conf", R"(""myMN" "127.0.0.1:9933" "127.0.0.1:4444" "127.0.0.1:5545" "bc1c5243284272dbb22c301a549d112e8bc9bc454b5ff50b1e5f7959d6b56726" 4")")
-
-);
-
-        UniValue resultObj(UniValue::VOBJ);
-
-        //Alias
-        string strAlias = params[1].get_str();
-
-        //mnAddress:port
-        string strMnAddress = params[2].get_str();
-        //TODO : validate correct address format
-
-        //extAddress:port
-        string strExtAddress = params[3].get_str();
-        //TODO : validate correct address format
-
-        //extP2P:port
-        string strExtP2P = params[4].get_str();
-        //TODO : validate correct address format
-
-        //txid:index
-        vector<COutput> vPossibleCoins;
-        pwalletMain->AvailableCoins(vPossibleCoins, true, nullptr, false, true, masterNodeCtrl.MasternodeCollateral, true);
-        if (vPossibleCoins.empty()) {
-            throw JSONRPCError(RPC_INVALID_PARAMETER, "No spendable collateral transactions exist");
-        }
-
-        string strTxid, strIndex;
-        bool bFound = false;
-        if (params.size() != 7) {
-            strTxid = params[5].get_str();
-            strIndex = params[6].get_str();
-            //TODO : validate Outpoint
-            for (COutput& out : vPossibleCoins) {
-                if (out.tx->GetHash().ToString() == strTxid) {
-                    if (out.i == get_number(params[5])) {
-                        bFound = true;
-                        break;
-                    }
-                }
-            }
-        } else {
-            COutput out = vPossibleCoins.front();
-            strTxid = out.tx->GetHash().ToString();
-            strIndex = to_string(out.i);
-        }
-        if (!bFound) {
-            throw JSONRPCError(RPC_INVALID_PARAMETER, "Collateral transaction doesn't exist or unspendable");
-        }
-
-        //mnPrivKey
-        CKey secret;
-        secret.MakeNewKey(false);
-        if (!secret.IsValid()) // should not happen as MakeNewKey always sets valid flag
-            throw JSONRPCError(RPC_MISC_ERROR, "Failed to generate private key");
-        string mnPrivKey = keyIO.EncodeSecret(secret);
-
-        //PastelID
-        string pastelID;
-        /*      THIS WILL NOT WORK for Hot/Cold case - PastelID has to be created and registered from the cold MN itself
-        SecureString strKeyPass(params[4].get_str());
-        
-        string pastelID = CPastelID::CreateNewLocalKey(strKeyPass);
-        CPastelIDRegTicket regTicket = CPastelIDRegTicket::Create(pastelID, strKeyPass, string{});
-        string txid = CPastelTicketProcessor::SendTicket(regTicket);
-*/
-
-        //Create JSON
-        UniValue mnObj(UniValue::VOBJ);
-        mnObj.pushKV("mnAddress", strMnAddress);
-        mnObj.pushKV("extAddress", strExtAddress);
-        mnObj.pushKV("extP2P", strExtP2P);
-        mnObj.pushKV(RPC_KEY_TXID, strTxid);
-        mnObj.pushKV("outIndex", strIndex);
-        mnObj.pushKV("mnPrivKey", mnPrivKey);
-        mnObj.pushKV("extKey", pastelID);
-        resultObj.pushKV(strAlias, mnObj);
-
-        return resultObj;
-    }
-
-#ifdef ENABLE_WALLET
-    if (strCommand == "outputs") {
-        // Find possible candidates
-        vector<COutput> vPossibleCoins;
-
-        pwalletMain->AvailableCoins(vPossibleCoins, true, nullptr, false, true, masterNodeCtrl.MasternodeCollateral, true);
-
-        UniValue obj(UniValue::VOBJ);
-        for (auto& out : vPossibleCoins) {
-            obj.pushKV(out.tx->GetHash().ToString(), strprintf("%d", out.i));
-        }
-
-        return obj;
-    }
-#endif // ENABLE_WALLET
-
-    if (strCommand == "status") {
-        if (!masterNodeCtrl.IsMasterNode())
-            throw JSONRPCError(RPC_INTERNAL_ERROR, "This is not a masternode");
-
-        UniValue mnObj(UniValue::VOBJ);
-
-        mnObj.pushKV("outpoint", masterNodeCtrl.activeMasternode.outpoint.ToStringShort());
-        mnObj.pushKV("service", masterNodeCtrl.activeMasternode.service.ToString());
-
-        CMasternode mn;
-        if (masterNodeCtrl.masternodeManager.Get(masterNodeCtrl.activeMasternode.outpoint, mn)) {
-            CTxDestination dest = mn.pubKeyCollateralAddress.GetID();
-            string address = keyIO.EncodeDestination(dest);
-            mnObj.pushKV("payee", address);
-        }
-
-        mnObj.pushKV(RPC_KEY_STATUS, masterNodeCtrl.activeMasternode.GetStatus());
-        return mnObj;
-    }
-
-    if (strCommand == "winners") {
-        int nHeight;
-        {
-            LOCK(cs_main);
-            CBlockIndex* pindex = chainActive.Tip();
-            if (!pindex)
-                return NullUniValue;
-            nHeight = pindex->nHeight;
-        }
-
-        int nLast = 10;
-        string strFilter;
-
-        if (params.size() >= 2) {
-            nLast = get_number(params[1]);
-        }
-
-        if (params.size() == 3) {
-            strFilter = params[2].get_str();
-        }
-
-        if (params.size() > 3)
-            throw JSONRPCError(RPC_INVALID_PARAMETER, R"(Correct usage is 'masternode winners ( "count" "filter" )')");
-
-        UniValue obj(UniValue::VOBJ);
-
-        for (int i = nHeight - nLast; i < nHeight + 20; i++) {
-            string strPayment = masterNodeCtrl.masternodePayments.GetRequiredPaymentsString(i);
-            if (!strFilter.empty() && strPayment.find(strFilter) == string::npos)
-                continue;
-            obj.pushKV(strprintf("%d", i), strPayment);
-        }
-
-        return obj;
-    }
-    if (strCommand == "top") {
-        if (params.size() > 3)
-            throw JSONRPCError(RPC_INVALID_PARAMETER, 
-R"(Correct usage is:
-    'masternode top'
-        OR
-    'masternode top "block-height"'
-        OR
-    'masternode top "block-height" 1')"
-);
-
-        UniValue obj(UniValue::VOBJ);
-
-        int nHeight;
-        if (params.size() >= 2) {
-            nHeight = get_number(params[1]);
-        } else {
-            LOCK(cs_main);
-            CBlockIndex* pindex = chainActive.Tip();
-            if (!pindex)
-                return false;
-            nHeight = pindex->nHeight;
-        }
-
-        if (nHeight < 0 || nHeight > chainActive.Height()) {
-            throw JSONRPCError(RPC_INVALID_PARAMETER, "Block height out of range");
-        }
-
-        bool bCalculateIfNotSeen = false;
-        if (params.size() == 3)
-            bCalculateIfNotSeen = params[2].get_str() == "1";
-
-        auto topBlockMNs = masterNodeCtrl.masternodeManager.GetTopMNsForBlock(nHeight, bCalculateIfNotSeen);
-
-        UniValue mnsArray = formatMnsInfo(topBlockMNs);
-        obj.pushKV(strprintf("%d", nHeight), mnsArray);
-
-        return obj;
-    }
-    if (strCommand == "message") {
-        string strCmd;
-
-        if (params.size() >= 2) {
-            strCmd = params[1].get_str();
-        }
-        if (fHelp || //-V560
-            (params.size() < 2 || params.size() > 4) ||
-            (strCmd != "sign" && strCmd != "send" && strCmd != "print" && strCmd != "list"))
-            throw JSONRPCError(RPC_INVALID_PARAMETER, R"(Correct usage is:
-    masternode message send <mnPubKey> <message> - Send <message> to masternode identified by the <mnPubKey>
-    masternode message list - List received <messages>
-    masternode message print <messageID> - Print received <message> by <messageID>
-    masternode message sign <message> <x> - Sign <message> using masternodes key
-        if x is presented and not 0 - it will also returns the public key
-        use "verifymessage" with masrternode's public key to verify signature
-)"
-);
-
-        if (!masterNodeCtrl.IsMasterNode())
-            throw JSONRPCError(RPC_INTERNAL_ERROR, "This is not a masternode - only Masternode can send/sign messages");
-
-        if (strCmd == "send") {
-            string strPubKey = params[2].get_str();
-            string messageText = params[3].get_str();
-
-            if (!IsHex(strPubKey))
-                throw JSONRPCError(RPC_INTERNAL_ERROR, "Invalid Masternode Public Key");
-
-            CPubKey vchPubKey(ParseHex(strPubKey));
-
-            masterNodeCtrl.masternodeMessages.SendMessage(vchPubKey, CMasternodeMessageType::PLAINTEXT, messageText);
-
-        } else if (strCmd == "list") {
-            if (!masterNodeCtrl.IsMasterNode())
-                throw JSONRPCError(RPC_INTERNAL_ERROR, "This is not a masternode - only Masternode can send/receive/sign messages");
-
-            UniValue arr(UniValue::VARR);
-            for (const auto& msg : masterNodeCtrl.masternodeMessages.mapOurMessages) {
-                UniValue obj(UniValue::VOBJ);
-                obj.pushKV(msg.first.ToString(), messageToJson(msg.second));
-                arr.push_back(obj);
-            }
-            return arr;
-
-        } else if (strCmd == "print") {
-            if (!masterNodeCtrl.IsMasterNode())
-                throw JSONRPCError(RPC_INTERNAL_ERROR, "This is not a masternode - only Masternode can send/receive/sign messages");
-
-
-        } else if (strCmd == "sign") {
-            string message = params[2].get_str();
-
-            string error_ret;
-            v_uint8 signature;
-            if (!Sign(message, signature, error_ret))
-                throw JSONRPCError(RPC_INVALID_PARAMETER, strprintf("Sign failed - %s", error_ret));
-
-            UniValue obj(UniValue::VOBJ);
-            obj.pushKV("signature", vector_to_string(signature));
-            if (params.size() == 3) {
-                int n = get_number(params[3]);
-                if (n > 0) {
-                    string strPubKey = keyIO.EncodeDestination(masterNodeCtrl.activeMasternode.pubKeyMasternode.GetID());
-                    obj.pushKV("pubkey", strPubKey);
-                }
-            }
-            return obj;
-        }
-    }
     return NullUniValue;
 }
