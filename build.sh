@@ -1,5 +1,8 @@
 #!/bin/bash
-
+# Usage:
+#  Linux: ./build.sh
+#  MingW: HOST=x86_64-w64-mingw32 ./build.sh
+#  macOS: HOST=x86_64-apple-darwin14 ./build.sh
 set -euo pipefail
 
 function cmd_pref()
