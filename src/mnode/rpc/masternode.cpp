@@ -828,7 +828,7 @@ UniValue masternode(const UniValue& params, bool fHelp)
         throw JSONRPCError(RPC_INVALID_PARAMETER, "DEPRECATED, please use start-all instead");
 #endif // ENABLE_WALLET
 
-    if (fHelp || MN.IsCmdSupported())
+    if (fHelp || !MN.IsCmdSupported())
         throw runtime_error(
 R"(masternode "command"...
 
