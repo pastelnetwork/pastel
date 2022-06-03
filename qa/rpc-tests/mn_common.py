@@ -79,7 +79,7 @@ class MasterNodeCommon (PastelTestFramework):
             config[name]["outIndex"] = str(self.collateral_index)
             config[name]["extAddress"] = f"127.0.0.1:{random.randint(2000, 5000)}"
             config[name]["extP2P"] = f"127.0.0.1:{random.randint(22000, 25000)}"
-            config[name]["extKey"] = ''.join(random.sample(self.privKey, len(self.privKey)))
+            config[name]["extKey"] = self.mnid
             config[name]["extCfg"] = {}
             config[name]["extCfg"]["param1"] = str(random.randint(0, 9))
             config[name]["extCfg"]["param2"] = str(random.randint(0, 9))
