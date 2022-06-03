@@ -22,7 +22,8 @@ UniValue tickets_fake(const UniValue& params, const bool bSend)
         string pastelID = params[2].get_str();
         SecureString strKeyPass(params[3].get_str());
         string address;
-        auto regTicket = CPastelIDRegTicket::Create(move(pastelID), move(strKeyPass), move(address));
+        auto mnRegData = make_optional<CMNID_RegData>(true);
+        auto regTicket = CPastelIDRegTicket::Create(move(pastelID), move(strKeyPass), move(address), mnRegData);
         const CAmount ticketPricePSL = get_long_number(params[4].get_str());
         string strVerb = params[5].get_str();
         resultObj = CPastelTicketProcessor::CreateFakeTransaction(regTicket, ticketPricePSL, vector<pair<string, CAmount>>{}, strVerb, bSend);

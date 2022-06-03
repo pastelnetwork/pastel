@@ -133,7 +133,8 @@ void CActiveMasternode::ManageStateInitial()
             return !fFoundLocal;
         });
         // nothing and no live connections, can't do anything for now
-        if (empty) {
+        if (empty)
+        {
             nState = ActiveMasternodeState::NotCapable;
             strNotCapableReason = "Can't detect valid external address. Will retry when there are some connections available.";
             LogPrintf("CActiveMasternode::ManageStateInitial -- %s: %s\n", GetStateString(), strNotCapableReason);
@@ -141,14 +142,16 @@ void CActiveMasternode::ManageStateInitial()
         }
     }
 
-    if(!fFoundLocal) {
+    if(!fFoundLocal)
+    {
         nState = ActiveMasternodeState::NotCapable;
         strNotCapableReason = "Can't detect valid external address. Please consider using the externalip configuration option if problem persists. Make sure to use IPv4 address only.";
         LogPrintf("CActiveMasternode::ManageStateInitial -- %s: %s\n", GetStateString(), strNotCapableReason);
         return;
     }
 
-    if (chainparams.IsMainNet()) {
+    if (chainparams.IsMainNet())
+    {
         if(service.GetPort() != MAINNET_DEFAULT_PORT)
         {
             nState = ActiveMasternodeState::NotCapable;
@@ -158,15 +161,17 @@ void CActiveMasternode::ManageStateInitial()
         }
     } else if (service.GetPort() == MAINNET_DEFAULT_PORT) {
         nState = ActiveMasternodeState::NotCapable;
-        strNotCapableReason = strprintf("Invalid port: %hu - %hu is only supported on mainnet.", service.GetPort(), MAINNET_DEFAULT_PORT);
+        strNotCapableReason = strprintf("Invalid port: %hu is only supported on mainnet.", service.GetPort());
         LogPrintf("CActiveMasternode::ManageStateInitial -- %s: %s\n", GetStateString(), strNotCapableReason);
         return;
     }
 
-    if (!chainparams.IsRegTest()) {
+    if (!chainparams.IsRegTest())
+    {
         LogPrintf("CActiveMasternode::ManageStateInitial -- Checking inbound connection to '%s'\n", service.ToString());
 
-        if(!ConnectNode(CAddress(service, NODE_NETWORK), nullptr, true)) {
+        if(!ConnectNode(CAddress(service, NODE_NETWORK), nullptr, true))
+        {
             nState = ActiveMasternodeState::NotCapable;
             strNotCapableReason = "Could not connect to " + service.ToString();
             LogPrintf("CActiveMasternode::ManageStateInitial -- %s: %s\n", GetStateString(), strNotCapableReason);
@@ -187,26 +192,31 @@ void CActiveMasternode::ManageStateRemote()
 
     masterNodeCtrl.masternodeManager.CheckMasternode(pubKeyMasternode, true);
     masternode_info_t infoMn;
-    if(masterNodeCtrl.masternodeManager.GetMasternodeInfo(pubKeyMasternode, infoMn)) {
-        if(infoMn.nProtocolVersion != PROTOCOL_VERSION) {
+    if (masterNodeCtrl.masternodeManager.GetMasternodeInfo(pubKeyMasternode, infoMn))
+    {
+        if (infoMn.nProtocolVersion != PROTOCOL_VERSION)
+        {
             nState = ActiveMasternodeState::NotCapable;
             strNotCapableReason = "Invalid protocol version";
             LogPrintf("CActiveMasternode::ManageStateRemote -- %s: %s\n", GetStateString(), strNotCapableReason);
             return;
         }
-        if(!Params().IsRegTest() && service != infoMn.addr) {
+        if (!Params().IsRegTest() && service != infoMn.addr)
+        {
             nState = ActiveMasternodeState::NotCapable;
             strNotCapableReason = "Broadcasted IP doesn't match our external address. Make sure you issued a new broadcast if IP of this masternode changed recently.";
             LogPrintf("CActiveMasternode::ManageStateRemote -- %s: %s\n", GetStateString(), strNotCapableReason);
             return;
         }
-        if(!CMasternode::IsValidStateForAutoStart(infoMn.nActiveState)) {
+        if (!CMasternode::IsValidStateForAutoStart(infoMn.nActiveState))
+        {
             nState = ActiveMasternodeState::NotCapable;
             strNotCapableReason = strprintf("Masternode in %s state", CMasternode::StateToString(infoMn.nActiveState));
             LogPrintf("CActiveMasternode::ManageStateRemote -- %s: %s\n", GetStateString(), strNotCapableReason);
             return;
         }
-        if(nState != ActiveMasternodeState::Started) {
+        if (!IsStarted())
+        {
             LogPrintf("CActiveMasternode::ManageStateRemote -- STARTED!\n");
             outpoint = infoMn.vin.prevout;
             service = infoMn.addr;
@@ -214,7 +224,8 @@ void CActiveMasternode::ManageStateRemote()
             nState = ActiveMasternodeState::Started;
         }
     }
-    else {
+    else
+    {
         nState = ActiveMasternodeState::NotCapable;
         strNotCapableReason = "Masternode not in masternode list";
         LogPrintf("CActiveMasternode::ManageStateRemote -- %s: %s\n", GetStateString(), strNotCapableReason);

@@ -31,9 +31,8 @@ void CACNotificationInterface::UpdatedBlockTip(const CBlockIndex *pindexNew, boo
     masterNodeCtrl.masternodeSync.UpdatedBlockTip(pindexNew, fInitialDownload);
 	masterNodeCtrl.masternodeTickets.UpdatedBlockTip(pindexNew, fInitialDownload);
 	
-	if (fInitialDownload) {
+	if (fInitialDownload)
 		return;
-	}
 	
 	masterNodeCtrl.masternodeManager.UpdatedBlockTip(pindexNew);
 	masterNodeCtrl.masternodePayments.UpdatedBlockTip(pindexNew);

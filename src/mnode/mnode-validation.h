@@ -5,7 +5,6 @@
 #include <string>
 
 #include <main.h>
-
 #ifdef ENABLE_WALLET
 #include <wallet/wallet.h>
 #endif

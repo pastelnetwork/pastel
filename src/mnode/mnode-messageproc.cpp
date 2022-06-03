@@ -1,13 +1,12 @@
-// Copyright (c) 2018 The PASTELCoin Developers
+// Copyright (c) 2018-2022 The Pastel Developers
 // Distributed under the MIT software license, see the accompanying
-// file COPYING or http://www.opensource.org/licenses/mit-license.php.
-
-#include "main.h"
-#include "key_io.h"
-#include "core_io.h"
-#include "deprecation.h"
-#include "script/sign.h"
-#include "init.h"
+// file COPYING or https://www.opensource.org/licenses/mit-license.php.
+#include <main.h>
+#include <key_io.h>
+#include <core_io.h>
+#include <deprecation.h>
+#include <script/sign.h>
+#include <init.h>
 
 #include "mnode/mnode-controller.h"
 #include "mnode/mnode-msgsigner.h"
@@ -140,17 +139,18 @@ void CMasternodeMessageProcessor::BroadcastNewFee(const CAmount newFee)
 
 void CMasternodeMessageProcessor::ProcessMessage(CNode* pFrom, std::string& strCommand, CDataStream& vRecv)
 {
-    if (strCommand == NetMsgType::MASTERNODEMESSAGE) {
-
+    if (strCommand == NetMsgType::MASTERNODEMESSAGE)
+    {
         CMasternodeMessage message;
         vRecv >> message;
         LogPrintf("MASTERNODEMESSAGE -- Get message %s from %d\n", message.ToString(), pFrom->id);
 
-        uint256 messageId = message.GetHash();
+        const uint256 messageId = message.GetHash();
 
         pFrom->setAskFor.erase(messageId);
 
-        if(!masterNodeCtrl.masternodeSync.IsMasternodeListSynced()) return;
+        if (!masterNodeCtrl.masternodeSync.IsMasternodeListSynced())
+            return;
 
 //        check
 //        cs_mapLatestSender

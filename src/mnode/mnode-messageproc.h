@@ -1,11 +1,11 @@
 #pragma once
-// Copyright (c) 2018-2021 The Pastel Core developers
+// Copyright (c) 2018-2022 The Pastel Core developers
 // Distributed under the MIT/X11 software license, see the accompanying
-// file COPYING or http://www.opensource.org/licenses/mit-license.php.
-
-#include "main.h"
-#include "enum_util.h"
+// file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <map>
+
+#include <main.h>
+#include <enum_util.h>
 
 extern CCriticalSection cs_mapSeenMessages;
 extern CCriticalSection cs_mapOurMessages;

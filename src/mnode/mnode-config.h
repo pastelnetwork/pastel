@@ -49,6 +49,8 @@ public:
         const std::string& getExtP2P() const noexcept { return extP2P; }
         const std::string& getExtKey() const noexcept { return extKey; }
         const std::string& getExtCfg() const noexcept { return extCfg; }
+
+        COutPoint getOutPoint() const noexcept;
     };
 
     CMasternodeConfig() noexcept

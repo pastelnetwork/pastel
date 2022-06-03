@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Copyright (c) 2018-2021 The Pastel Core developers
+# Copyright (c) 2018-2022 The Pastel Core developers
 # Distributed under the MIT software license, see the accompanying
 # file COPYING or https://www.opensource.org/licenses/mit-license.php.
 
@@ -42,6 +42,7 @@ class MasterNodeMainTest (MasterNodeCommon):
         self.nodes = []
         self.is_network_split = False
         self.setup_masternodes_network(private_keys_list, self.number_of_simple_nodes)
+        # self.setup_masternodes_network_new(self.number_of_master_nodes, self.number_of_simple_nodes, self.mining_node_num, self.hot_node_num)
 
     def storagefee_tests (self):
             print("=== Test MN Fees ===")

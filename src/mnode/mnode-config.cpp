@@ -230,3 +230,13 @@ string CMasternodeConfig::getAlias(const COutPoint &outpoint) const noexcept
         sAlias = it->getAlias();
     return sAlias;
 }
+
+/**
+* Get masternode outpoint by txid+index.
+* 
+* \return COutPoint
+*/
+COutPoint CMasternodeConfig::CMasternodeEntry::getOutPoint() const noexcept
+{
+    return COutPoint(uint256S(getTxHash()), uint32_t(atoi(getOutputIndex().c_str())));
+}
