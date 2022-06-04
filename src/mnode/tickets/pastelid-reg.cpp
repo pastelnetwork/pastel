@@ -54,12 +54,10 @@ CPastelIDRegTicket CPastelIDRegTicket::Create(string&& sPastelID, SecureString&&
                 throw runtime_error("This is not a active masternode. Only active MN can register its PastelID");
 
             // get collateral address if not passed via parameter
-            if (ticket.address.empty())
-            {
-                KeyIO keyIO(Params());
-                const CTxDestination dest = mn.pubKeyCollateralAddress.GetID();
-                ticket.address = keyIO.EncodeDestination(dest);
-            }
+            KeyIO keyIO(Params());
+            const CTxDestination dest = mn.pubKeyCollateralAddress.GetID();
+            ticket.address = keyIO.EncodeDestination(dest);
+            ticket.outpoint = masterNodeCtrl.activeMasternode.outpoint;
         }
         else
             // outpoint hash
