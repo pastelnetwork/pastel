@@ -3,15 +3,20 @@
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <iomanip>
 
+#if defined(HAVE_CONFIG_H)
+#include "config/bitcoin-config.h"
+#endif
 #include <key_io.h>
-#include <main.h>
 #include <init.h>
+#include <main.h>
+#include <pastelid/pastel_key.h>
 #include <rpc/rpc_consts.h>
 #include <rpc/rpc_parser.h>
 #include <rpc/server.h>
 #include <mnode/mnode-controller.h>
 #include <mnode/rpc/masternode.h>
 #include <mnode/rpc/mnode-rpc-utils.h>
+#include <mnode/tickets/pastelid-reg.h>
 using namespace std;
 
 UniValue formatMnsInfo(const vector<CMasternode>& topBlockMNs)
@@ -385,7 +390,7 @@ UniValue masternode_start_alias(const UniValue& params)
             string strError;
             CMasternodeBroadcast mnb;
 
-            bool fResult = CMasternodeBroadcast::Create(mne.getIp(), mne.getPrivKey(), mne.getTxHash(), mne.getOutputIndex(),
+            const bool fResult = CMasternodeBroadcast::Create(mne.getIp(), mne.getPrivKey(), mne.getTxHash(), mne.getOutputIndex(),
                 mne.getExtIp(), mne.getExtP2P(), mne.getExtKey(), mne.getExtCfg(),
                 strError, mnb);
 
@@ -428,7 +433,7 @@ UniValue masternode_start_all(const UniValue& params, const bool bStartMissing, 
     {
         string strError;
 
-        COutPoint outpoint = COutPoint(uint256S(mne.getTxHash()), uint32_t(atoi(mne.getOutputIndex().c_str())));
+        COutPoint outpoint = mne.getOutPoint();
         CMasternode mn;
         const bool fFound = masterNodeCtrl.masternodeManager.Get(outpoint, mn);
         CMasternodeBroadcast mnb;
@@ -466,18 +471,178 @@ UniValue masternode_start_all(const UniValue& params, const bool bStartMissing, 
     return returnObj;
 }
 
+/**
+ * List masternode outputs (collateral txid+index).
+ * 
+ * \param params
+ * \return output UniValue json object
+ */
 UniValue masternode_outputs(const UniValue& params)
 {
-    // Find possible candidates
+    // Find possible coin candidates
     vector<COutput> vPossibleCoins;
 
     pwalletMain->AvailableCoins(vPossibleCoins, true, nullptr, false, true, masterNodeCtrl.MasternodeCollateral, true);
 
     UniValue obj(UniValue::VOBJ);
-    for (auto& out : vPossibleCoins)
-        obj.pushKV(out.tx->GetHash().ToString(), strprintf("%d", out.i));
+
+    obj.reserve(vPossibleCoins.size());
+    for (const auto& out : vPossibleCoins)
+        obj.pushKV(out.tx->GetHash().ToString(), to_string(out.i));
 
     return obj;
+}
+
+/**
+ * Initialize masternode with existing outpoint (collateral txid & index).
+ *    - check that outpoint exists in the local wallet
+ *    - has 5M PSL (1M for testnet)
+ *    - not locked
+ *    - outpoint is not used in any registered mnid
+ * Generates masternode private key.
+ * Generates new Pastel ID and registers mnid using given outpoint.
+ * mnid reg ticket is signed by new private key.
+ * Node is not required to be MasterNode in the active state.
+ * 
+ * \param params - input parameters
+ * \return output UniValue json object
+ */
+UniValue masternode_init(const UniValue& params, const bool fHelp, KeyIO &keyIO)
+{
+    if (params.size() != 4 || fHelp)
+        throw JSONRPCError(RPC_INVALID_PARAMETER,
+R"("masternode init "passphrase" "txid" index
+
+Initialize masternode with the collateral from the local wallet.
+Generates new Pastel ID, registers mnid and generates masternode private key.
+Collateral txid and index should point to the non-locked outpoint 
+with the correct amount ()" + to_string(masterNodeCtrl.MasternodeCollateral) + R"( PSL).
+
+Arguments:
+    "passphrase"        (string) (required) passphrase for new PastelID
+    "txid"              (string) (required) id of transaction with the collateral amount
+     index              (numeric) (required) index in the transaction with the collateral amount
+
+Returns:
+  {
+     { "mnid": "<Generated and registered Pastel ID>" },
+     { "legRoastKey": "<Generated and registered LegRoast private key>" },
+     { "txid": "<txid>" },
+     { "outIndex": <index> },
+     { "privKey": "<Generated masternode private key>" }
+  }
+
+Examples:
+Initialize masternode
+)" + HelpExampleCli("masternode init",
+    R"("secure-passphrase" "bc1c5243284272dbb22c301a549d112e8bc9bc454b5ff50b1e5f7959d6b56726" 4)") + R"(
+As json rpc
+)" + HelpExampleRpc("masternode init", 
+    R"(""secure-passphrase" "bc1c5243284272dbb22c301a549d112e8bc9bc454b5ff50b1e5f7959d6b56726" 4")")
+);
+    throw JSONRPCError(RPC_INVALID_REQUEST, "Not supported");
+
+    SecureString strKeyPass(params[1].get_str());
+    string strTxId(params[2].get_str());
+    int nTxIndex = -1;
+    try
+    {
+        nTxIndex = params[3].get_int();
+    }
+    catch (const runtime_error& ex)
+    {
+        throw JSONRPCError(RPC_INVALID_PARAMETER, 
+            strprintf("Invalid outpoint index parameter '%s'. %s", params[3].get_str(), ex.what()));
+    }
+    // wait for reindex and/or import to finish
+    if (fImporting || fReindex)
+        throw runtime_error("Reindexing blockchain, please wait...");
+
+    if (!pwalletMain)
+        throw runtime_error("Wallet is not initialized");
+
+    auto mnidRegData = make_optional<CMNID_RegData>(false);
+    mnidRegData->outpoint = COutPoint(uint256S(strTxId), nTxIndex);
+
+    string sFundingAddress;
+    vector<COutput> vPossibleCoins;
+    {
+        LOCK(pwalletMain->cs_wallet);
+
+        EnsureWalletIsUnlocked();
+        pwalletMain->AvailableCoins(vPossibleCoins, true, nullptr, false, true, masterNodeCtrl.MasternodeCollateral, true);
+        if (vPossibleCoins.empty())
+            throw runtime_error("No spendable collateral transactions exist");
+        bool bFound = false;
+        for (const auto& out : vPossibleCoins)
+        {
+            if (out.tx && 
+                 (out.tx->GetHash().ToString() == strTxId) &&
+                 (out.i == nTxIndex))
+            {
+                bFound = true;
+                // retrieve public key for collateral address
+                const CScript pubScript = out.tx->vout[out.i].scriptPubKey;
+                // get destination collateral address
+                CTxDestination dest;
+                if (!ExtractDestination(pubScript, dest))
+                    throw runtime_error(strprintf(
+                        "Failed to retrieve destination address for the collateral transaction '%s-%d'",
+                        strTxId, nTxIndex));
+                // get collateral address
+                sFundingAddress = keyIO.EncodeDestination(dest);
+                break;
+            }
+        }
+        if (!bFound)
+            throw runtime_error(strprintf(
+                "Collateral transaction '%s-%d' doesn't exist",
+                strTxId, nTxIndex));
+        // check if this is spendable outpoint
+        if (!IsMineSpendable(pwalletMain->GetIsMine(CTxIn(mnidRegData->outpoint))))
+            throw JSONRPCError(RPC_MISC_ERROR,
+                strprintf("Collateral transaction '%s-%d' is not spendable",
+                strTxId, nTxIndex));
+    }
+
+    // check that outpoint is not used in any registered mnid
+    if (masterNodeCtrl.masternodeManager.Has(mnidRegData->outpoint))
+        throw runtime_error(strprintf(
+            "Collateral outpoint '%s-%d' is already used by registered masternode",
+            strTxId, nTxIndex));
+    CPastelIDRegTicket ticket;
+    if (CPastelIDRegTicket::FindTicketInDb(mnidRegData->outpoint.ToStringShort(), ticket))
+        throw runtime_error(strprintf(
+            "Collateral outpoint '%s-%d' is already used by registered mnid '%s'",
+            strTxId, nTxIndex, ticket.pastelID));
+
+    // generate masternode private key
+    mnidRegData->mnPrivKey.MakeNewKey(false);
+    if (!mnidRegData->mnPrivKey.IsValid()) // should not happen as MakeNewKey always sets valid flag
+        throw runtime_error("Failed to generate private key for the masternode");
+    string mnPrivKeyStr = keyIO.EncodeSecret(mnidRegData->mnPrivKey);
+
+    // generate new Pastel ID & LegRoast keys
+    SecureString sKeyPass(strKeyPass);
+    auto idStore = CPastelID::CreateNewPastelKeys(move(sKeyPass));
+    if (idStore.empty())
+        throw runtime_error("Failed to generate Pastel ID for the masternode");
+
+    string sPastelID = idStore.begin()->first;
+
+    // create mnid registration ticket
+    auto regTicket = CPastelIDRegTicket::Create(move(sPastelID), move(strKeyPass), move(sFundingAddress), mnidRegData);
+    // send ticket tx to the blockchain
+    auto ticketTx = CPastelTicketProcessor::SendTicket(regTicket);
+
+    // generate result
+    UniValue retObj(UniValue::VOBJ);
+    retObj.pushKV("mnid", idStore.begin()->first);
+    retObj.pushKV(RPC_KEY_TXID, move(strTxId));
+    retObj.pushKV("outIndex", nTxIndex);
+    retObj.pushKV(RPC_KEY_LEGROAST, move(idStore.begin()->second));
+    retObj.pushKV(RPC_KEY_PRIVKEY, move(mnPrivKeyStr));
+    return retObj;
 }
 #endif // ENABLE_WALLET
 
@@ -499,7 +664,7 @@ UniValue masternode_list_conf(const UniValue& params)
 
     for (const auto& mne : masterNodeCtrl.masternodeConfig.getEntries())
     {
-        COutPoint outpoint = COutPoint(uint256S(mne.getTxHash()), uint32_t(atoi(mne.getOutputIndex().c_str())));
+        COutPoint outpoint = mne.getOutPoint();
         CMasternode mn;
         const bool fFound = masterNodeCtrl.masternodeManager.Get(outpoint, mn);
 
@@ -526,7 +691,7 @@ UniValue masternode_make_conf(const UniValue& params, KeyIO &keyIO)
 {
     if (params.size() != 6 && params.size() != 8)
         throw JSONRPCError(RPC_INVALID_PARAMETER,
-            R"("masternode make-conf "alias" "mnAddress:port" "extAddress:port" "extP2P:port" "passphrase" "txid" "index"
+R"("masternode make-conf "alias" "mnAddress:port" "extAddress:port" "extP2P:port" "passphrase" "txid" index
 
 Create masternode configuration in JSON format:
 This will 1) generate MasterNode Private Key (mnPrivKey) and 2) generate and register MasterNode PastelID (extKey)
@@ -539,7 +704,7 @@ Arguments:
     "extP2P:port"       (string) (required) The address and port of the Master Node's Kademlia point
     "passphrase"        (string) (required) passphrase for new PastelID
     "txid"              (string) (optional) id of transaction with the collateral amount
-    "index"             (numeric) (optional) index in the transaction with the collateral amount
+     index              (numeric) (optional) index in the transaction with the collateral amount
 
 Examples:
 Create masternode configuration
@@ -547,7 +712,6 @@ Create masternode configuration
     R"("myMN" "127.0.0.1:9933" "127.0.0.1:4444" "127.0.0.1:5545" "bc1c5243284272dbb22c301a549d112e8bc9bc454b5ff50b1e5f7959d6b56726" 4)") + R"(
 As json rpc
 )" + HelpExampleRpc("masternode make-conf", R"(""myMN" "127.0.0.1:9933" "127.0.0.1:4444" "127.0.0.1:5545" "bc1c5243284272dbb22c301a549d112e8bc9bc454b5ff50b1e5f7959d6b56726" 4")")
-
 );
 
     UniValue resultObj(UniValue::VOBJ);
@@ -580,7 +744,7 @@ As json rpc
         strTxid = params[5].get_str();
         strIndex = params[6].get_str();
         //TODO : validate Outpoint
-        for (COutput& out : vPossibleCoins)
+        for (const COutput& out : vPossibleCoins)
         {
             if (out.tx->GetHash().ToString() == strTxid)
             {
@@ -596,9 +760,8 @@ As json rpc
         strTxid = out.tx->GetHash().ToString();
         strIndex = to_string(out.i);
     }
-    if (!bFound) {
+    if (!bFound)
         throw JSONRPCError(RPC_INVALID_PARAMETER, "Collateral transaction doesn't exist or unspendable");
-    }
 
     //mnPrivKey
     CKey secret;
@@ -815,7 +978,7 @@ R"(Correct usage is:
 UniValue masternode(const UniValue& params, bool fHelp)
 {
 #ifdef ENABLE_WALLET
-    RPC_CMD_PARSER(MN, params, list, list__conf, count, debug, current, winner, winners,
+    RPC_CMD_PARSER(MN, params, init, list, list__conf, count, debug, current, winner, winners,
         genkey, connect, status, top, message, make__conf,
         start__many, start__alias, start__all, start__missing, start__disabled, outputs);
 #else
@@ -844,6 +1007,7 @@ Available commands:
 )"
 #ifdef ENABLE_WALLET
 R"(
+  init         - Initialize masternode
   outputs      - Print masternode compatible outputs
   start-alias  - Start single remote masternode by assigned alias configured in masternode.conf
   start-<mode> - Start remote masternodes configured in masternode.conf (<mode>: 'all', 'missing', 'disabled')
@@ -903,6 +1067,9 @@ R"(
             return masternode_message(params, fHelp, keyIO);
 
 #ifdef ENABLE_WALLET
+        case RPC_CMD_MN::init:
+            return masternode_init(params, fHelp, keyIO);
+
         case RPC_CMD_MN::start__alias:
             return masternode_start_alias(params);
 

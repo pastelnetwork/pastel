@@ -121,7 +121,7 @@ void CMasterNodeController::SetParameters()
     MaxBuyTicketAge = 24; //1 hour, 1 block per 2.5 minutes
     
     if (Params().IsMainNet()) {
-        MasternodeCollateral                = 5'000'000;
+        MasternodeCollateral                = 5'000'000; // PSL
     
         nMasternodeMinimumConfirmations = 15;
         nMasternodePaymentsIncreaseBlock = 150'000;
@@ -131,7 +131,7 @@ void CMasterNodeController::SetParameters()
         TicketGreenAddress = "PtoySpxXAE3V6XR239AqGzCfKNrJcX6n52L";
     }
     else if (Params().IsTestNet()) {
-        MasternodeCollateral                = 1'000'000;
+        MasternodeCollateral                = 1'000'000; // PSL
     
         nMasternodeMinimumConfirmations = 1;
         nMasternodePaymentsIncreaseBlock = 4030;
@@ -151,7 +151,7 @@ void CMasterNodeController::SetParameters()
 
         MNStartRequiredExpirationTime             =  10 * 60;
 
-        MasternodeCollateral                = 1000;
+        MasternodeCollateral                = 1000; // PSL
         
         TicketGreenAddress = "tPj5BfCrLfLpuviSJrD3B1yyWp3XkgtFjb6";
     
@@ -257,13 +257,9 @@ bool CMasterNodeController::EnableMasterNode(ostringstream& strErrors, CServiceT
     if(GetBoolArg("-mnconflock", true) && pWalletMain && (masternodeConfig.getCount() > 0)) {
         LOCK(pWalletMain->cs_wallet);
         LogPrintf("Locking Masternodes:\n");
-        uint256 mnTxHash;
-        int outputIndex;
         for (const auto & mne : masternodeConfig.getEntries())
         {
-            mnTxHash.SetHex(mne.getTxHash());
-            outputIndex = stoi(mne.getOutputIndex());
-            COutPoint outpoint = COutPoint(mnTxHash, outputIndex);
+            COutPoint outpoint = mne.getOutPoint();
             // don't lock non-spendable outpoint (i.e. it's already spent or it's not from this wallet at all)
             if (!IsMineSpendable(pWalletMain->GetIsMine(CTxIn(outpoint))))
             {

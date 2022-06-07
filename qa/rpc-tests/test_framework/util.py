@@ -53,9 +53,11 @@ def sync_blocks(rpc_connections, wait=1, stop_after=-1):
     Wait until everybody has the same block count
     """
     print("Waiting for blocks to sync (wait interval=%d sec each, max tries=%d" %(wait, stop_after))
+    # filter out None items
+    nodeList = list(filter(None, rpc_connections))
     count = 0
     while True:
-        counts = [ x.getblockcount() for x in rpc_connections ]
+        counts = [ x.getblockcount() for x in nodeList ]
         count += 1
         if counts == [ counts[0] ]*len(counts):
             break
@@ -71,14 +73,18 @@ def sync_mempools(rpc_connections, wait=1, stop_after=-1):
     """
     print("Waiting for mempools to sync (wait interval=%d sec each, max tries=%d" %(wait, stop_after))
     count = 0
+    # filter out None items
+    nodeList = list(filter(None, rpc_connections))
+    if len(nodeList) == 0:
+        return
     while True:
-        pool = set(rpc_connections[0].getrawmempool())
+        pool = set(nodeList[0].getrawmempool())
         num_match = 1
         count += 1
-        for i in range(1, len(rpc_connections)):
-            if set(rpc_connections[i].getrawmempool()) == pool:
+        for i in range(1, len(nodeList)):
+            if set(nodeList[i].getrawmempool()) == pool:
                 num_match = num_match+1
-        if num_match == len(rpc_connections):
+        if num_match == len(nodeList):
             break
         if stop_after != -1 and count > stop_after:
             break
@@ -307,7 +313,7 @@ def stop_node(node, i):
     del pasteld_processes[i]
 
 def stop_nodes(nodes):
-    for node in nodes:
+    for node in (n for n in nodes if n is not None):
         try:
             node.stop()
         except http.client.CannotSendRequest as e:

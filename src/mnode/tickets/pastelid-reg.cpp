@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2021 The Pastel Core Developers
+// Copyright (c) 2018-2022 The Pastel Core Developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <json/json.hpp>
@@ -16,9 +16,22 @@ using json = nlohmann::json;
 using namespace std;
 
 // CPastelIDRegTicket ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-CPastelIDRegTicket CPastelIDRegTicket::Create(string&& _pastelID, SecureString&& strKeyPass, const string& _address)
+/**
+ * Create Pastel ID registration ticket.
+ * 
+ * \param sPastelID - Pastel ID to register (should be stored in the local secure container)
+ * \param strKeyPass - passphrase to access secure container
+ * \param sFundingAaddress - funding address - can be empty for mnid registration
+ * \param mnRegData - optional data for mnid registration ticket
+ *    mnRegData.bUseActiveMN - if true - use active masternode to get outpoint and sign ticket
+ *    mnRegData.outpoint - outpoint with the collateral tx for mnid registration (not used if bUseActiveMN=true)
+ *    mnRegData.privKey - private key to use for ticket signing (not used if bUseActiveMN=true)
+ * \return Pastel ID registration ticket
+ */
+CPastelIDRegTicket CPastelIDRegTicket::Create(string&& sPastelID, SecureString&& strKeyPass, 
+    string&& sFundingAddress, const optional<CMNID_RegData> &mnRegData)
 {
-    CPastelIDRegTicket ticket(move(_pastelID));
+    CPastelIDRegTicket ticket(move(sPastelID));
 
     // PastelID must be created via "pastelid newkey" and stored in the local secure container
     // retrieve all pastelids created locally
@@ -29,32 +42,37 @@ CPastelIDRegTicket CPastelIDRegTicket::Create(string&& _pastelID, SecureString&&
             "PastelID [%s] should be generated and stored inside the local node. See \"pastelid newkey\"", 
             ticket.pastelID));
 
-    const bool isMN = _address.empty();
+    ticket.address = move(sFundingAddress);
+    const bool isMNid = mnRegData.has_value();
 
-    if (isMN)
+    if (isMNid)
     {
-        CMasternode mn;
-        if (!masterNodeCtrl.masternodeManager.Get(masterNodeCtrl.activeMasternode.outpoint, mn))
-            throw runtime_error("This is not a active masternode. Only active MN can register its PastelID");
+        if (mnRegData->bUseActiveMN)
+        {
+            CMasternode mn;
+            if (!masterNodeCtrl.masternodeManager.Get(masterNodeCtrl.activeMasternode.outpoint, mn))
+                throw runtime_error("This is not a active masternode. Only active MN can register its PastelID");
 
-        //collateral address
-        KeyIO keyIO(Params());
-        const CTxDestination dest = mn.pubKeyCollateralAddress.GetID();
-        ticket.address = keyIO.EncodeDestination(dest);
-
-        //outpoint hash
-        ticket.outpoint = masterNodeCtrl.activeMasternode.outpoint;
-    } else
-        ticket.address = _address;
+            // get collateral address if not passed via parameter
+            KeyIO keyIO(Params());
+            const CTxDestination dest = mn.pubKeyCollateralAddress.GetID();
+            ticket.address = keyIO.EncodeDestination(dest);
+            ticket.outpoint = masterNodeCtrl.activeMasternode.outpoint;
+        }
+        else
+            // outpoint hash
+            ticket.outpoint = mnRegData->outpoint;
+    }
     ticket.pq_key = it->second; // encoded LegRoast public key
     ticket.GenerateTimestamp();
 
     stringstream ss;
     // serialize all ticket fields except mn signature
     ticket.ToStrStream(ss, false);
-    if (isMN)
+    if (isMNid)
     {
-        if (!CMessageSigner::SignMessage(ss.str(), ticket.mn_signature, masterNodeCtrl.activeMasternode.keyMasternode))
+        if (!CMessageSigner::SignMessage(ss.str(), ticket.mn_signature, 
+            mnRegData->bUseActiveMN ? masterNodeCtrl.activeMasternode.keyMasternode : mnRegData->mnPrivKey))
             throw runtime_error("MN Sign of the ticket has failed");
         ss << vector_to_string(ticket.mn_signature);
     }
@@ -151,8 +169,8 @@ ticket_validation_t CPastelIDRegTicket::IsValid(const bool bPreReg, const uint32
                 }
 
                 // 2. Check outpoint belongs to active MN
-                // However! If this is validation of an old ticket, MN can be not active or eve alive anymore
-                //So will skip the MN validation if ticket is fully confirmed (older then MinTicketConfirmations blocks)
+                // However! If this is validation of an old ticket, MN can be not active or even alive anymore
+                // So will skip the MN validation if ticket is fully confirmed (older then MinTicketConfirmations blocks)
                 unsigned int currentHeight;
                 {
                     LOCK(cs_main);
@@ -172,7 +190,7 @@ ticket_validation_t CPastelIDRegTicket::IsValid(const bool bPreReg, const uint32
                     if (!mnInfo.IsEnabled())
                     {
                         tv.errorMsg = strprintf(
-                            "Non an active Masternode - [%s]. PastelID - [%s]", 
+                            "Not an active Masternode - [%s]. PastelID - [%s]", 
                             outpoint.ToStringShort(), pastelID);
                         break;
                     }

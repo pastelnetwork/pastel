@@ -1,29 +1,9 @@
 #pragma once
 // Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2014 The Bitcoin Core developers
+// Copyright (c) 2018-2022 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
-#include <amount.h>
-#include <coins.h>
-#include <key.h>
-#include <keystore.h>
-#include <main.h>
-#include <map_types.h>
-#include <primitives/block.h>
-#include <primitives/transaction.h>
-#include <tinyformat.h>
-#include <ui_interface.h>
-#include <util.h>
-#include <map_types.h>
-#include <utilstrencodings.h>
-#include <validationinterface.h>
-#include <wallet/crypter.h>
-#include <wallet/wallet_ismine.h>
-#include <wallet/walletdb.h>
-#include <wallet/rpcwallet.h>
-#include <zcash/Address.hpp>
-#include <base58.h>
-
 #include <algorithm>
 #include <map>
 #include <optional>
@@ -33,6 +13,26 @@
 #include <string>
 #include <utility>
 #include <vector>
+
+#include <amount.h>
+#include <coins.h>
+#include <key.h>
+#include <keystore.h>
+#include <main.h>
+#include <base58.h>
+#include <map_types.h>
+#include <primitives/block.h>
+#include <primitives/transaction.h>
+#include <tinyformat.h>
+#include <ui_interface.h>
+#include <util.h>
+#include <utilstrencodings.h>
+#include <validationinterface.h>
+#include <wallet/crypter.h>
+#include <wallet/wallet_ismine.h>
+#include <wallet/walletdb.h>
+#include <wallet/rpcwallet.h>
+#include <zcash/Address.hpp>
 
 /**
  * Settings
@@ -313,7 +313,7 @@ public:
 
     CWalletTx()
     {
-        Init(NULL);
+        Init(nullptr);
     }
 
     CWalletTx(const CWallet* pwalletIn)
@@ -500,9 +500,6 @@ public:
 
     std::string ToString() const;
 };
-
-
-
 
 /** Private key that includes an expiration date in case it never gets used. */
 class CWalletKey

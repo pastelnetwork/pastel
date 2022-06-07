@@ -1,9 +1,11 @@
 #pragma once
 // Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2014 The Bitcoin Core developers
-// Copyright (c) 2018-2021 The Pastel Core developers
+// Copyright (c) 2018-2022 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
+#include <array>
+#include <variant>
 
 #include <amount.h>
 #include <random.h>
@@ -12,9 +14,6 @@
 #include <streams.h>
 #include <uint256.h>
 #include <consensus/consensus.h>
-
-#include <array>
-#include <variant>
 
 #include <zcash/NoteEncryption.hpp>
 #include <zcash/Zcash.h>
@@ -205,9 +204,9 @@ public:
     void SetNull() noexcept
     { 
         hash.SetNull(); 
-        n = (uint32_t) -1;
+        n = std::numeric_limits<uint32_t>::max();
     }
-    bool IsNull() const noexcept { return (hash.IsNull() && n == (uint32_t) -1); }
+    bool IsNull() const noexcept { return (hash.IsNull() && n == std::numeric_limits<uint32_t>::max()); }
 
     friend bool operator<(const BaseOutPoint& a, const BaseOutPoint& b) noexcept
     {

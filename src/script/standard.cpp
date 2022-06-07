@@ -204,27 +204,34 @@ bool ExtractDestination(const CScript& scriptPubKey, CTxDestination& addressRet)
     if (!Solver(scriptPubKey, whichType, vSolutions))
         return false;
 
-    if (whichType == TX_PUBKEY)
+    bool bRet = false;
+    switch (whichType)
     {
-        CPubKey pubKey(vSolutions[0]);
-        if (!pubKey.IsValid())
-            return false;
+        case TX_PUBKEY: {
+            CPubKey pubKey(vSolutions[0]);
+            if (pubKey.IsValid())
+            {
+                addressRet = pubKey.GetID();
+                bRet = true;
+            }
+        } break;
 
-        addressRet = pubKey.GetID();
-        return true;
+        case TX_PUBKEYHASH: {
+            addressRet = CKeyID(uint160(vSolutions[0]));
+            bRet = true;
+        } break;
+
+        case TX_SCRIPTHASH: {
+            addressRet = CScriptID(uint160(vSolutions[0]));
+            bRet = true;
+        } break;
+
+        default:
+            break;
     }
-    else if (whichType == TX_PUBKEYHASH)
-    {
-        addressRet = CKeyID(uint160(vSolutions[0]));
-        return true;
-    }
-    else if (whichType == TX_SCRIPTHASH)
-    {
-        addressRet = CScriptID(uint160(vSolutions[0]));
-        return true;
-    }
+
     // Multisig txns have more than one address...
-    return false;
+    return bRet;
 }
 
 bool ExtractDestinations(const CScript& scriptPubKey, txnouttype& typeRet, vector<CTxDestination>& addressRet, int& nRequiredRet)
