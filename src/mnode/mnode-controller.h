@@ -99,8 +99,8 @@ public:
         InvalidateParameters();
     }
 
-    bool IsMasterNode() const noexcept {return fMasterNode;}
-    bool IsActiveMasterNode() const noexcept {return fMasterNode && activeMasternode.nState == CActiveMasternode::ActiveMasternodeState::Started;}
+    bool IsMasterNode() const noexcept { return fMasterNode; }
+    bool IsActiveMasterNode() const noexcept { return fMasterNode && activeMasternode.IsStarted(); }
 
 #ifdef ENABLE_WALLET
     bool EnableMasterNode(std::ostringstream& strErrors, CServiceThreadGroup& threadGroup, CWallet* pwalletMain);

@@ -58,7 +58,7 @@ protected:
     static std::string EncodeLegRoastPubKey(const std::string& sPubKey);
     static bool DecodeLegRoastPubKey(const std::string& sLRKey, v_uint8& vData);
 
- private:
+private:
     // get full path for the secure container based on Pastel ID
     static fs::path GetSecureContFilePathEx(const std::string& sPastelID, const bool bCreateDirs = false);
     // get full path for the secure container based on Pastel ID

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-# Copyright (c) 2018-2021 The Pastel Core developers
+# Copyright (c) 2018-2022 The Pastel Core developers
 # Distributed under the MIT software license, see the accompanying
-# file COPYING or http://www.opensource.org/licenses/mit-license.php.
+# file COPYING or https://www.opensource.org/licenses/mit-license.php.
 
 from pastel_test_framework import PastelTestFramework
 from test_framework.util import (
@@ -12,7 +12,7 @@ from test_framework.util import (
     stop_node
 )
 from test_framework.authproxy import JSONRPCException
-
+from pathlib import Path
 import os
 import time
 import itertools
@@ -24,6 +24,73 @@ getcontext().prec = 16
 
 class MasterNodeCommon (PastelTestFramework):
     collateral = int(1000)
+
+    class MasterNode:
+        index = None            # masternode index
+        passphrase = None       # passphrase to access secure container data
+        mnid = None             # generated Pastel ID
+        lrKey = None            # generated LegRoast key
+        privKey = None          # generated private key
+        port = None
+        collateral_address = None
+        collateral_txid = None
+        collateral_index = None
+
+        def __init__(self, index, passphrase):
+            self.index = index
+            self.passphrase = passphrase
+            self.port = p2p_port(index)
+
+        @property
+        def id(self): # masternode collateral id
+            return str(self.collateral_txid) + "-" + str(self.collateral_index)
+
+        @property
+        def alias(self): # masternode alias
+            return f'mn{self.index}'
+
+        def create_masternode_conf(self, dirname):
+            """create masternode.conf for this masternode
+
+            Args:
+                dirname (str): node base directory
+
+            Returns:
+                str: node data directory
+            """
+            datadir = Path(dirname, f"node{self.index}")
+            if not datadir.is_dir():
+                datadir.mkdir()
+            regtestdir = datadir / "regtest"
+            if not regtestdir.is_dir():
+                regtestdir.mkdir()
+            cfg_file = regtestdir / "masternode.conf"
+        
+            config = {}
+            if cfg_file.is_file():
+                with cfg_file.open() as json_file:  
+                    config = json.load(json_file)
+
+            name = self.alias
+            config[name] = {}
+            config[name]["mnAddress"] = f"127.0.0.1:{self.port}"
+            config[name]["mnPrivKey"] = self.privKey
+            config[name]["txid"] = self.collateral_txid
+            config[name]["outIndex"] = str(self.collateral_index)
+            config[name]["extAddress"] = f"127.0.0.1:{random.randint(2000, 5000)}"
+            config[name]["extP2P"] = f"127.0.0.1:{random.randint(22000, 25000)}"
+            config[name]["extKey"] = self.mnid
+            config[name]["extCfg"] = {}
+            config[name]["extCfg"]["param1"] = str(random.randint(0, 9))
+            config[name]["extCfg"]["param2"] = str(random.randint(0, 9))
+
+            print(f"Creating masternode.conf for node {name}...")
+            with cfg_file.open('w') as f:
+                json.dump(config, f, indent=4)
+            return str(datadir)
+
+
+    mnNodes = list()
 
     def setup_masternodes_network(self, private_keys_list, number_of_non_mn_to_start=0, debug_flags=""):
         for index, key in enumerate(private_keys_list):
@@ -37,6 +104,59 @@ class MasterNodeCommon (PastelTestFramework):
         for pair in itertools.combinations(range(index2+1), 2):
             connect_nodes_bi(self.nodes, pair[0], pair[1])
 
+    def setup_masternodes_network_new(self, mn_count=1, non_mn_count=2, mining_node_num=1, hot_node_num=2, debug_flags=""):
+        # create list of mns
+        # start only non-mn nodes
+        for index in range(mn_count + non_mn_count):
+            if index < mn_count:
+                mn = self.MasterNode(index, self.passphrase)
+                self.mnNodes.append(mn)
+                self.nodes.append(None) # add dummy node for now
+            else:
+                print(f"starting non-mn{index} node")
+                self.nodes.append(start_node(index, self.options.tmpdir, [f"-debug={debug_flags}"]))
+
+        # connect non-mn nodes
+        for pair in itertools.combinations(range(mn_count, mn_count + non_mn_count), 2):
+            connect_nodes_bi(self.nodes, pair[0], pair[1])
+
+        # mining enough coins for collateral for mn_count nodes
+        self.mining_enough(mining_node_num, mn_count)
+
+        # send coins to the collateral address on hot node
+        for index, mn in enumerate(self.mnNodes):
+            mn.collateral_address = self.nodes[hot_node_num].getnewaddress()
+            print(f"{index}: Sending {self.collateral} coins to node {hot_node_num}; collateral address {mn.collateral_address} ...")
+            mn.collateral_txid = self.nodes[mining_node_num].sendtoaddress(mn.collateral_address, self.collateral, "", "", False)
+            
+        self.generate_and_sync_inc(1, mining_node_num)
+        assert_equal(self.nodes[hot_node_num].getbalance(), self.collateral * len(self.mnNodes))
+        
+        # prepare parameters and create masternode.conf for all masternodes
+        for index, mn in enumerate(self.mnNodes):
+            # get the collateral outpoint indexes
+            outputs = self.nodes[hot_node_num].masternode("outputs")
+            mn.collateral_index = int(outputs[mn.collateral_txid])
+            print(f"node{hot_node_num} collateral outputs: {outputs}")
+            # generate info for masternodes (masternode init)
+            params = self.nodes[hot_node_num].masternode("init", mn.passphrase, mn.collateral_txid, mn.collateral_index)
+            mn.mnid = params["mnid"]
+            mn.lrKey = params["legRoastKey"]
+            mn.privKey = params["privKey"]
+            print(f"mn{index} id: {mn.mnid}")
+            mn.create_masternode_conf(self.options.tmpdir)
+        self.generate_and_sync_inc(1, mining_node_num)
+
+        # starting masternodes
+        for index, mn in enumerate(self.mnNodes):
+            print(f"starting {mn.alias} masternode")
+            self.nodes[index] = start_node(index, self.options.tmpdir, [f"-debug={debug_flags}", "-masternode", "-txindex=1", "-reindex", f"-masternodeprivkey={mn.privKey}"])
+        
+        # connect nodes (non-mn nodes already interconnected)
+        for pair in itertools.combinations(range(mn_count + non_mn_count), 2):
+            connect_nodes_bi(self.nodes, pair[0], pair[1])
+
+        self.sync_all()
 
     def mining_enough(self, mining_node_num, nodes_to_start):
         min_blocks_to_mine = nodes_to_start*self.collateral/self._reward
@@ -48,13 +168,12 @@ class MasterNodeCommon (PastelTestFramework):
             blocks_to_mine_part = int(min(blocks_to_mine, 100))
             blocks_to_mine -= blocks_to_mine_part
             print(f"Mining {blocks_to_mine_part} blocks on node {mining_node_num}...")
-            self.nodes[mining_node_num].generate(blocks_to_mine_part)
-        self.sync_all()
-        self.nodes[mining_node_num].generate(100)
-        self.sync_all()
+            self.generate_and_sync_inc(blocks_to_mine_part, mining_node_num)
+        self.generate_and_sync_inc(100, mining_node_num)
 
         blocks_to_mine = int(max(min_blocks_to_mine, 100))
         assert_equal(self.nodes[mining_node_num].getbalance(), self._reward*blocks_to_mine)
+
 
     def start_mn(self, mining_node_num, hot_node_num, cold_nodes, num_of_nodes):
         
@@ -69,7 +188,6 @@ class MasterNodeCommon (PastelTestFramework):
             collateral_txid = self.nodes[mining_node_num].sendtoaddress(collateral_address, self.collateral, "", "", False)
 
             self.generate_and_sync_inc(1, mining_node_num)
-            
             assert_equal(self.nodes[hot_node_num].getbalance(), self.collateral*(ind+1))
             
             # print("node {0} collateral outputs".format(hot_node_num))
@@ -149,6 +267,7 @@ class MasterNodeCommon (PastelTestFramework):
         if debug:
             [print(node.masternode("list")) for node in node_list]
         [assert_equal(node.masternode("list").get(mnId, ""), wait_for) for node in node_list]
+
 
     def create_masternode_conf(self, name, n, dirname, txid, vin, private_key, mn_port):
         datadir = os.path.join(dirname, "node"+str(n))

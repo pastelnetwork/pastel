@@ -96,6 +96,7 @@ public:
     }
     std::string GetStatus() const noexcept;
     std::string GetTypeString() const noexcept;
+    bool IsStarted() const noexcept { return nState == ActiveMasternodeState::Started; }
 
 private:
     void ManageStateInitial();
