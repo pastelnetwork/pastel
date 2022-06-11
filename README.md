@@ -1,6 +1,6 @@
 Pastel v1.1 - Cezanne
 
-[![PastelNetwork](https://circleci.com/gh/pastelnetwork/pastel.svg?style=shield)](https://circleci.com/pastelnetwork/pastel)
+[![PastelNetwork](https://circleci.com/gh/pastelnetwork/pastel.svg?style=shield)]([https://circleci.com/pastelnetwork/pastel](https://app.circleci.com/pipelines/github/pastelnetwork/pastel))
 
 What is Pastel?
 --------------
