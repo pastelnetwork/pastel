@@ -1,5 +1,7 @@
 Pastel v1.1 - Cezanne
 
+Master [![PastelNetwork](https://circleci.com/gh/pastelnetwork/pastel.svg?style=svg)](https://circleci.com/pastelnetwork/pastel)
+
 What is Pastel?
 --------------
 
