@@ -1,4 +1,4 @@
-Pastel v1.0-rc1
+Pastel v1.1 - Cezanne
 
 What is Pastel?
 --------------
