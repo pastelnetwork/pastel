@@ -15,17 +15,17 @@ using json = nlohmann::json;
 using namespace std;
 
 // CNFTBuyTicket ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-CNFTBuyTicket CNFTBuyTicket::Create(string _sellTxnId, int _price, string _pastelID, SecureString&& strKeyPass)
+CNFTBuyTicket CNFTBuyTicket::Create(string &&sellTxId, int _price, string &&sPastelID, SecureString&& strKeyPass)
 {
-    CNFTBuyTicket ticket(move(_pastelID));
+    CNFTBuyTicket ticket(move(sPastelID));
 
-    ticket.sellTxnId = move(_sellTxnId);
+    ticket.m_sellTxId = move(sellTxId);
     ticket.price = _price;
 
     ticket.GenerateTimestamp();
 
     const auto strTicket = ticket.ToStr();
-    string_to_vector(CPastelID::Sign(strTicket, ticket.pastelID, move(strKeyPass)), ticket.m_signature);
+    string_to_vector(CPastelID::Sign(strTicket, ticket.m_sPastelID, move(strKeyPass)), ticket.m_signature);
 
     return ticket;
 }
@@ -33,13 +33,20 @@ CNFTBuyTicket CNFTBuyTicket::Create(string _sellTxnId, int _price, string _paste
 string CNFTBuyTicket::ToStr() const noexcept
 {
     stringstream ss;
-    ss << pastelID;
-    ss << sellTxnId;
+    ss << m_sPastelID;
+    ss << m_sellTxId;
     ss << price;
     ss << m_nTimestamp;
     return ss.str();
 }
 
+/**
+* Validate Pastel ticket.
+* 
+* \param bPreReg - if true: called from ticket pre-registration
+* \param nCallDepth - function call depth
+* \return true if the ticket is valid
+*/
 ticket_validation_t CNFTBuyTicket::IsValid(const bool bPreReg, const uint32_t nCallDepth) const noexcept
 {
     const unsigned int chainHeight = GetActiveChainHeight();
@@ -49,7 +56,7 @@ ticket_validation_t CNFTBuyTicket::IsValid(const bool bPreReg, const uint32_t nC
         // 0. Common validations
         unique_ptr<CPastelTicket> pastelTicket;
         const ticket_validation_t commonTV = common_ticket_validation(
-            *this, bPreReg, sellTxnId, pastelTicket,
+            *this, bPreReg, m_sellTxId, pastelTicket,
             [](const TicketID tid) noexcept { return (tid != TicketID::Sell); },
             GetTicketDescription(), ::GetTicketDescription(TicketID::Sell), nCallDepth, 
             price + TicketPricePSL(chainHeight));
@@ -57,7 +64,7 @@ ticket_validation_t CNFTBuyTicket::IsValid(const bool bPreReg, const uint32_t nC
         {
             tv.errorMsg = strprintf(
                 "The Buy ticket with Sell txid [%s] is not validated. %s", 
-                sellTxnId, commonTV.errorMsg);
+                m_sellTxId, commonTV.errorMsg);
             tv.state = commonTV.state;
             break;
         }
@@ -66,7 +73,7 @@ ticket_validation_t CNFTBuyTicket::IsValid(const bool bPreReg, const uint32_t nC
         // or if there are, it is older then 1h and there is no trade ticket for it
         //buyTicket->ticketBlock <= height+24 (2.5m per block -> 24blocks/per hour) - MaxBuyTicketAge
         CNFTBuyTicket existingBuyTicket;
-        if (CNFTBuyTicket::FindTicketInDb(sellTxnId, existingBuyTicket))
+        if (CNFTBuyTicket::FindTicketInDb(m_sellTxId, existingBuyTicket))
         {
             // fixed: new buy ticket is not created due to the next condition
             //if (bPreReg)
@@ -86,7 +93,7 @@ ticket_validation_t CNFTBuyTicket::IsValid(const bool bPreReg, const uint32_t nC
                 {
                     tv.errorMsg = strprintf(
                         "The sell ticket you are trying to buy [%s] is already sold", 
-                        sellTxnId);
+                        m_sellTxId);
                     break;
                 }
 
@@ -104,7 +111,7 @@ ticket_validation_t CNFTBuyTicket::IsValid(const bool bPreReg, const uint32_t nC
                 {
                     tv.errorMsg = strprintf(
                         "Buy ticket [%s] already exists and is not yet 1h old for this sell ticket [%s] [%sfound ticket block=%u, txid=%s]",
-                        existingBuyTicket.m_txid, sellTxnId, 
+                        existingBuyTicket.m_txid, m_sellTxId, 
                         bPreReg ? "" : strprintf("this ticket block=%u txid=%s; ", m_nBlock, m_txid),
                         existingBuyTicket.m_nBlock, existingBuyTicket.m_txid);
                     break;
@@ -117,33 +124,47 @@ ticket_validation_t CNFTBuyTicket::IsValid(const bool bPreReg, const uint32_t nC
         {
             tv.errorMsg = strprintf(
                 "The sell ticket with this txid [%s] referred by this buy ticket is invalid", 
-                sellTxnId);
+                m_sellTxId);
             break;
         }
 
-        // 2. Verify Sell ticket is already or still active
+        // Verify Sell ticket is already or still active
         const unsigned int height = (bPreReg || IsBlock(0)) ? chainHeight : m_nBlock;
-        if (height < sellTicket->activeAfter)
+        const auto sellTicketState = sellTicket->checkValidState(height);
+        if (sellTicketState == SELL_TICKET_STATE::NOT_ACTIVE)
         {
             tv.errorMsg = strprintf(
                 "Sell ticket [%s] is only active after [%u] block height (Buy ticket block is [%u])",
-                sellTicket->GetTxId(), sellTicket->activeAfter, height);
+                sellTicket->GetTxId(), sellTicket->getValidAfter(), height);
             break;
         }
-        if (sellTicket->activeBefore > 0 && height > sellTicket->activeBefore)
+        if (sellTicketState == SELL_TICKET_STATE::EXPIRED)
         {
             tv.errorMsg = strprintf(
                 "Sell ticket [%s] is only active before [%u] block height (Buy ticket block is [%u])",
-                sellTicket->GetTxId(), sellTicket->activeBefore, height);
+                sellTicket->GetTxId(), sellTicket->getValidBefore(), height);
             break;
         }
 
-        // 3. Verify that the price is correct
-        if (price < sellTicket->askedPrice)
+        // Verify intended recipient
+        const auto &sIntendedFor = sellTicket->getIntendedForPastelID();
+        if (!sIntendedFor.empty())
+        {
+            if (sIntendedFor != m_sPastelID)
+            {
+                tv.errorMsg = strprintf(
+                    "Sell ticket [%s] intended recipient Pastel ID [%s] does not match Buyer's Pastel ID [%s]",
+                    sellTicket->GetTxId(), sIntendedFor, m_sPastelID);
+                break;
+            }
+        }
+        
+        // Verify that the price is correct
+        if (price < sellTicket->getAskedPricePSL())
         {
             tv.errorMsg = strprintf(
                 "The offered price [%u] is less than asked in the sell ticket [%u]", 
-                price, sellTicket->askedPrice);
+                price, sellTicket->getAskedPricePSL());
             break;
         }
 
@@ -162,8 +183,8 @@ string CNFTBuyTicket::ToJSON() const noexcept
             {
                 {"type", GetTicketName()}, 
                 {"version", GetStoredVersion()},
-                {"pastelID", pastelID},
-                {"sell_txid", sellTxnId},
+                {"pastelID", m_sPastelID},
+                {"sell_txid", m_sellTxId},
                 {"price", price},
                 {"signature", ed_crypto::Hex_Encode(m_signature.data(), m_signature.size())}
             }
@@ -174,14 +195,14 @@ string CNFTBuyTicket::ToJSON() const noexcept
 
 bool CNFTBuyTicket::FindTicketInDb(const string& key, CNFTBuyTicket& ticket)
 {
-    ticket.sellTxnId = key;
+    ticket.m_sellTxId = key;
     return masterNodeCtrl.masternodeTickets.FindTicket(ticket);
 }
 
 bool CNFTBuyTicket::CheckBuyTicketExistBySellTicket(const string& _sellTxnId)
 {
     CNFTBuyTicket _ticket;
-    _ticket.sellTxnId = _sellTxnId;
+    _ticket.m_sellTxId = _sellTxnId;
     return masterNodeCtrl.masternodeTickets.CheckTicketExist(_ticket);
 }
 

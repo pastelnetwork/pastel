@@ -177,6 +177,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         self.mn_pastelid_ticket_tests(False)
         self.personal_pastelid_ticket_tests(False)
         self.register_mn_pastelid()
+        self.nft_intended_for_tests()
         self.action_reg_ticket_tests("sense", "sense-action-label")
         self.action_activate_ticket_tests(False)
         self.nft_collection_reg_ticket_tests(TEST_COLLECTION_NAME + " #1", "coll-label")
@@ -2224,12 +2225,84 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         print("Action activation tickets tested")
 
     # ===============================================================================================================
+    def nft_intended_for_tests(self):
+        """ tests intendedFor for sell tickets
+        """
+        print('=== Testing intendedFor feature for NFTs ===')
+
+        # register and activate nft
+        self.nodes[self.mining_node_num].sendtoaddress(self.nonmn3_address1, 5000 + self.collateral, "", "", False)
+        self.generate_and_sync_inc(1, self.mining_node_num)
+
+        self.create_nft_ticket_v2(self.non_mn3, "", False, 1)
+        nft_ticket_txid = self.nodes[self.top_mns_index0].tickets("register", "nft",
+            self.ticket, json.dumps(self.signatures_dict), self.top_mn_pastelid0, self.passphrase, "NFT-intended-for", str(self.storage_fee))["txid"]
+        print(f' - registered NFT ticket [{nft_ticket_txid}]')
+        # wait for 10 confirmations
+        self.generate_and_sync_inc(10, self.mining_node_num)
+        print(f' - NFT ticket [{nft_ticket_txid}] confirmed')
+
+        # Activate NFT
+        # tickets activate nft "reg-ticket-txid" "creator-height" "fee" "PastelID" "passphrase" ["address"]
+        nftact_ticket_txid = self.nodes[self.non_mn3].tickets("activate", "nft",
+            nft_ticket_txid, (self.creator_ticket_height), str(self.storage_fee), self.creator_pastelid1, self.passphrase)["txid"]
+        assert_true(nftact_ticket_txid, "No NFT activation ticket was created")
+        print(f' - NFT [{nft_ticket_txid}] activated, txid: [{nftact_ticket_txid}]')
+        # wait for 10 confirmations
+        self.generate_and_sync_inc(10, self.mining_node_num)
+        print(f' - NFT activation [{nftact_ticket_txid}] confirmed')
+
+        # register NFT Sell ticket with intended recipient creator_pastelid3
+        # tickets register sell "nft-txid" "price" "PastelID" "passphrase" [valid-after] [valid-before] [copy-number] ["address"] ["intendedFor"]
+        nft_ticket_price = 1000
+        sell_ticket_txid = self.nodes[self.non_mn3].tickets("register", "sell",
+            nftact_ticket_txid, str(nft_ticket_price), self.creator_pastelid1, self.passphrase, 0, 0, 1, "", self.creator_pastelid3)["txid"]
+        assert_true(sell_ticket_txid, "No NFT Sell ticket was created")
+        print(f' - NFT Sell ticket created [{sell_ticket_txid}] with intended recipient [{self.creator_pastelid3}]')
+        self.__wait_for_ticket_tnx()
+
+        # wait for 10 confirmations
+        self.generate_and_sync_inc(10, self.mining_node_num)
+        print(f' - NFT Sell [{sell_ticket_txid}] confirmed')
+
+        # tickets register buy "sell_txid" "price" "PastelID" "passphrase" ["address"]
+        # try to buy this NFT with different Pastel ID (creator_pastelid2)
+        assert_raises_rpc(rpc.RPC_MISC_ERROR, f"does not match Buyer's Pastel ID",
+            self.nodes[self.non_mn3].tickets, "register", "buy", sell_ticket_txid, str(nft_ticket_price), 
+            self.creator_pastelid2, self.passphrase)
+
+        # register buy for the correct intended recipient creator_pastelid3
+        buy_ticket_txid = self.nodes[self.non_mn3].tickets("register", "buy", 
+            sell_ticket_txid, str(nft_ticket_price), self.creator_pastelid3, self.passphrase)["txid"]
+        print(f' - NFT Buy ticket created [{buy_ticket_txid}]')
+        self.__wait_for_ticket_tnx()
+
+        # wait for 10 confirmations
+        self.generate_and_sync_inc(10, self.mining_node_num)
+        print(f' - NFT Buy [{buy_ticket_txid}] confirmed')
+
+        # tickets register trade "sell_txid" "buy_txid" "PastelID" "passphrase" ["address"]
+        # try to create trade ticket with incorrect Pastel ID
+        assert_raises_rpc(rpc.RPC_MISC_ERROR, "is not matching",
+            self.nodes[self.non_mn3].tickets, "register", "trade", sell_ticket_txid, buy_ticket_txid, 
+            self.creator_pastelid2, self.passphrase)
+
+        # register trade ticket
+        trade_ticket_txid = self.nodes[self.non_mn3].tickets("register", "trade", sell_ticket_txid, buy_ticket_txid,
+            self.creator_pastelid3, self.passphrase)
+        print(f' - NFT Trade ticket created [{trade_ticket_txid}]')
+        self.__wait_for_ticket_tnx()
+        print('=== intendedFor feature for NFTs tested ===')
+
+    # ===============================================================================================================
     def nft_sell_ticket_tests(self, skip_some_tests):
         print("== NFT sell Tickets test (selling original NFT ticket) ==")
         # tickets register sell nft_txid price PastelID passphrase valid_after valid_before
         #
-
         ticket_type = "sell"
+
+        assert_shows_help(self.nodes[0].tickets, "register", ticket_type)
+
         self.make_zero_balance(self.non_mn3)
         # 1. fail if not enough coins to pay tnx fee (2% from price - 2M from 100M)
         if not skip_some_tests:
@@ -3078,9 +3151,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
 
     def __wait_for_sync_all(self, v):
         time.sleep(2)
-        self.sync_all()
-        self.nodes[self.mining_node_num].generate(v)
-        self.sync_all()
+        self.generate_and_sync_inc(v, self.mining_node_num)
 
     def __wait_for_sync_all10(self):
         time.sleep(2)

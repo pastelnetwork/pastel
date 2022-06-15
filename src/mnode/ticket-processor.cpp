@@ -1019,21 +1019,19 @@ string CPastelTicketProcessor::ListFilterSellTickets(const uint32_t nMinHeight, 
                 if (existingBuyTicket.GetBlock() + masterNodeCtrl.MaxBuyTicketAge <= chainHeight)
                     return true;
             }
+            const SELL_TICKET_STATE state = t.checkValidState(chainHeight);
             if (filter == 1)
             {
-                //skip sell ticket that is not yet active
-                if (t.activeAfter > 0 && chainHeight <= t.activeAfter)
-                    return true;
-                //skip sell ticket that is already not active
-                if (t.activeBefore > 0 && chainHeight >= t.activeBefore)
+                //skip sell ticket that is not yet active or expired
+                if (state == SELL_TICKET_STATE::NOT_ACTIVE || state == SELL_TICKET_STATE::EXPIRED)
                     return true;
             } else if (filter == 2) {
                 //skip sell ticket that is already active
-                if (t.activeAfter > 0 && chainHeight >= t.activeAfter)
+                if (state == SELL_TICKET_STATE::ACTIVE || state == SELL_TICKET_STATE::UNAVAILABLE)
                     return true;
             } else if (filter == 3) {
                 //skip sell ticket that is still active
-                if (t.activeBefore > 0 && chainHeight <= t.activeBefore)
+                if (state == SELL_TICKET_STATE::ACTIVE)
                     return true;
             }
             return false;
@@ -1050,7 +1048,7 @@ string CPastelTicketProcessor::ListFilterBuyTickets(const uint32_t nMinHeight, c
     return filterTickets<CNFTBuyTicket>(
         [&](const CNFTBuyTicket& t, const unsigned int chainHeight) -> bool
         {
-            if (!pastelID.empty() && t.pastelID != pastelID)
+            if (!pastelID.empty() && t.getPastelID() != pastelID)
                 return true; // ignore tickets that do not belong to this pastelID
             if (filter == 0)
                 return false; // get all belong to this pastel ID
@@ -1075,7 +1073,7 @@ string CPastelTicketProcessor::ListFilterTradeTickets(const uint32_t nMinHeight,
         {
             //find Trade tickets listing this Trade ticket txid as NFT ticket
             auto tradeTickets = CNFTTradeTicket::FindAllTicketByNFTTxnID(t.GetTxId());
-            if (!pastelID.empty() && t.pastelID != pastelID)
+            if (!pastelID.empty() && t.getPastelID() != pastelID)
                 return true; // ignore tickets that do not belong to this pastelID
             if (filter == 0)
                 return false; // get all belong to this pastel ID
@@ -1118,7 +1116,7 @@ bool CPastelTicketProcessor::WalkBackTradingChain(
                                    pastelTicket->GetTxId(), sTxId);
                 break;
             }
-            if (!WalkBackTradingChain(shortPath ? tradeTicket->NFTTxnId : tradeTicket->buyTxnId, chain, shortPath,
+            if (!WalkBackTradingChain(shortPath ? tradeTicket->getNFTTxId() : tradeTicket->getBuyTxId(), chain, shortPath,
                                       errRet))
                 break;
         } else if (pastelTicket->ID() == TicketID::Buy) {
@@ -1128,16 +1126,16 @@ bool CPastelTicketProcessor::WalkBackTradingChain(
                                    pastelTicket->GetTxId(), sTxId);
                 break;
             }
-            if (!WalkBackTradingChain(tradeTicket->sellTxnId, chain, shortPath, errRet))
+            if (!WalkBackTradingChain(tradeTicket->getSellTxId(), chain, shortPath, errRet))
                 break;
         } else if (pastelTicket->ID() == TicketID::Sell) {
-            auto tradeTicket = dynamic_cast<CNFTSellTicket *>(pastelTicket.get());
-            if (!tradeTicket) {
+            auto sellTicket = dynamic_cast<CNFTSellTicket *>(pastelTicket.get());
+            if (!sellTicket) {
                 errRet = strprintf("The Sell ticket [txid=%s] referred by this ticket [txid=%s] is invalid",
                                    pastelTicket->GetTxId(), sTxId);
                 break;
             }
-            if (!WalkBackTradingChain(tradeTicket->NFTTxnId, chain, shortPath, errRet))
+            if (!WalkBackTradingChain(sellTicket->getNFTTxId(), chain, shortPath, errRet))
                 break;
         } else if (pastelTicket->ID() == TicketID::Activate) {
             auto actTicket = dynamic_cast<CNFTActivateTicket *>(pastelTicket.get());

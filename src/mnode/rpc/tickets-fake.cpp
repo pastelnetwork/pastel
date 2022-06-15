@@ -87,7 +87,8 @@ UniValue tickets_fake(const UniValue& params, const bool bSend)
         
         string intendedFor;
 
-        auto NFTSellTicket = CNFTSellTicket::Create(NFTTicketTxnID, price, after, before, 0, intendedFor, pastelID, move(strKeyPass));
+        auto NFTSellTicket = CNFTSellTicket::Create(move(NFTTicketTxnID), price, after, before, 0, 
+            move(intendedFor), move(pastelID), move(strKeyPass));
 
         const CAmount ticketPricePSL = get_long_number(params[8].get_str());
         string strVerb = params[9].get_str();

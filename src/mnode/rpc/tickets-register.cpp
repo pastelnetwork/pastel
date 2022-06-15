@@ -301,20 +301,22 @@ UniValue tickets_register_sell(const UniValue& params)
 {
     if (params.size() < 6)
         throw JSONRPCError(RPC_INVALID_PARAMETER,
-R"(tickets register sell "nft_txid" "price" "PastelID" "passphrase" [valid_after] [valid_before] [copy_number] ["address"]
+R"(tickets register sell "nft-txid" "price" "PastelID" "passphrase" [valid-after] [valid-before] [copy-number] ["address"] ["intendedFor"]
 Register NFT sell ticket. If successful, method returns "txid".
 
 Arguments:
-1. "nft_txid"      (string, required) tnx_id of the NFT to sell, this is either:
+1. "nft-txid"      (string, required) tnx_id of the NFT to sell, this is either:
                        1) NFT activation ticket, if seller is original creator
                        2) trade ticket, if seller is owner of the bought NFT
-2. price           (int, required) Sale price.
+2. price           (int, required) Sale price in PSL.
 3. "PastelID"      (string, required) The PastelID of seller. This MUST be the same PastelID that was used to sign the ticket referred by the nft_txid.
 4. "passphrase"    (string, required) The passphrase to the private key associated with creator's PastelID and stored inside node.
-5. valid_after     (int, optional) The block height after which this sell ticket will become active (use 0 for upon registration).
-6. valid_before    (int, optional) The block height after which this sell ticket is no more valid (use 0 for never).
-7. copy_number     (int, optional) If presented - will replace the original not yet sold Sell ticket with this copy number.
+5. valid-after     (int, optional) The block height after which this sell ticket will become active (use 0 for upon registration).
+6. valid-before    (int, optional) The block height after which this sell ticket is no more valid (use 0 for never).
+7. copy-number     (int, optional) If presented - will replace the original not yet sold Sell ticket with this copy number.
                                    If the original has been already sold - operation will fail.
+8. "address"       (string, optional) The Pastel blockchain t-address to use for funding the registration (leave empty for default funding).
+9. "intendedFor"   (string, optional) The PastelID of the intended recipient of the NFT (empty by default).
 NFT Trade Ticket:
 {
 	"ticket": {
@@ -324,7 +326,7 @@ NFT Trade Ticket:
 		"copy_number": "",
 		"asked_price": "",
 		"valid_after": "",
-		"valid_before": "",\n"
+		"valid_before": "",
 		"signature": ""
 	},
 	"height": "",
@@ -339,27 +341,44 @@ As json rpc:
 );
 
     string NFTTicketTxnID = params[2].get_str();
-    const int price = get_number(params[3]);
+    const int priceInPSL = get_number(params[3]);
 
     string pastelID = params[4].get_str();
     SecureString strKeyPass(params[5].get_str());
 
-    int after = 0;
+    int64_t nValidAfter = 0;
     if (params.size() >= 7)
-        after = get_number(params[6]);
-    int before = 0;
+    {
+        nValidAfter = get_long_number(params[6]);
+        rpc_check_unsigned_param<uint32_t>("<valid-after>", nValidAfter);
+    }
+    int64_t nValidBefore = 0;
     if (params.size() >= 8)
-        before = get_number(params[7]);
-    int copyNumber = 0;
+    {
+        nValidBefore = get_long_number(params[7]);
+        rpc_check_unsigned_param<uint32_t>("<valid-before>", nValidBefore);
+    }
+    if (nValidAfter > 0 && nValidBefore > 0 && nValidBefore <= nValidAfter)
+        throw JSONRPCError(RPC_INVALID_PARAMETER, 
+            "<valid-before> parameter cannot be less than or equal <valid-after>");
+    int64_t nCopyNumber = 0;
     if (params.size() >= 9)
-        copyNumber = get_number(params[8]);
+    {
+        nCopyNumber = get_long_number(params[8]);
+        rpc_check_unsigned_param<uint16_t>("<copy number>", nCopyNumber);
+    }
     string sFundingAddress;
     if (params.size() >= 10)
         sFundingAddress = params[9].get_str();
     
-    string intendedFor;
+    string sIntendedForPastelID;
+    if (params.size() >= 11)
+        sIntendedForPastelID = params[10].get_str();
 
-    const auto NFTSellTicket = CNFTSellTicket::Create(NFTTicketTxnID, price, after, before, copyNumber, intendedFor, pastelID, move(strKeyPass));
+    const auto NFTSellTicket = CNFTSellTicket::Create(move(NFTTicketTxnID), priceInPSL, 
+        static_cast<uint32_t>(nValidAfter), static_cast<uint32_t>(nValidBefore), 
+        static_cast<uint16_t>(nCopyNumber), 
+        move(sIntendedForPastelID), move(pastelID), move(strKeyPass));
     return GenerateSendTicketResult(CPastelTicketProcessor::SendTicket(NFTSellTicket, sFundingAddress));
 }
 
@@ -400,14 +419,14 @@ As json rpc:
     string sellTicketTxID = params[2].get_str();
     int price = get_number(params[3]);
 
-    string pastelID = params[4].get_str();
+    string sPastelID = params[4].get_str();
     SecureString strKeyPass(params[5].get_str());
 
     opt_string_t sFundingAddress;
     if (params.size() >= 7)
         sFundingAddress = params[6].get_str();
 
-    const auto NFTBuyTicket = CNFTBuyTicket::Create(sellTicketTxID, price, pastelID, move(strKeyPass));
+    const auto NFTBuyTicket = CNFTBuyTicket::Create(move(sellTicketTxID), price, move(sPastelID), move(strKeyPass));
     return GenerateSendTicketResult(CPastelTicketProcessor::SendTicket(NFTBuyTicket, sFundingAddress));
 }
 
@@ -451,14 +470,15 @@ As json rpc:
     string sellTicketTxID = params[2].get_str();
     string buyTicketTxID = params[3].get_str();
 
-    string pastelID = params[4].get_str();
+    string sPastelID = params[4].get_str();
     SecureString strKeyPass(params[5].get_str());
 
     opt_string_t sFundingAddress;
     if (params.size() >= 7)
         sFundingAddress = params[6].get_str();
 
-    const auto NFTTradeTicket = CNFTTradeTicket::Create(sellTicketTxID, buyTicketTxID, pastelID, move(strKeyPass));
+    const auto NFTTradeTicket = CNFTTradeTicket::Create(move(sellTicketTxID), 
+        move(buyTicketTxID), move(sPastelID), move(strKeyPass));
     return GenerateSendTicketResult(CPastelTicketProcessor::SendTicket(NFTTradeTicket, sFundingAddress));
 }
 
