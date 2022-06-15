@@ -163,7 +163,6 @@ ticket_validation_t CNFTSellTicket::IsValid(const bool bPreReg, const uint32_t n
                 bTicketFound = true;
         }
 
-        // Check PastelID in this ticket matches PastelID in the referred ticket (Activation or Trade)
         size_t nTotalCopies{0};
         // Verify the NFT is not already sold or gifted
         const auto fnVerifyAvailableCopies = [this](const string& strTicket, const size_t nTotalCopies) -> ticket_validation_t
@@ -185,6 +184,7 @@ ticket_validation_t CNFTSellTicket::IsValid(const bool bPreReg, const uint32_t n
             } while (false);
             return tv;
         };
+        // Check PastelID in this ticket matches PastelID in the referred ticket (Activation or Trade)
         if (pastelTicket->ID() == TicketID::Activate)
         {
             // 1.a

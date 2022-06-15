@@ -304,6 +304,8 @@ ticket_validation_t CNFTTradeTicket::IsValid(const bool bPreReg, const uint32_t 
         }
 
         // Verify intended recipient of the Sell ticket
+        // this should be already checked when in sell ticket registration
+        // but let's double check here
         const auto &sIntendedFor = pSellTicket->getIntendedForPastelID();
         if (!sIntendedFor.empty())
         {
