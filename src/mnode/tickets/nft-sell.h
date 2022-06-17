@@ -15,8 +15,7 @@ typedef enum class _SELL_TICKET_STATE : uint8_t
     NOT_DEFINED = 0, // <valid-before> and <valid-after> are not defined (=0)
     NOT_ACTIVE,      // current-height <= <valid-after>
     ACTIVE,          // <valid-after> .. current-height .. <valid-before>
-    EXPIRED,         // current-height >= <valid-before>
-    UNAVAILABLE      // current-height > <valid-after>, but <valid-before> not defined
+    EXPIRED          // current-height >= <valid-before>
 } SELL_TICKET_STATE;
 
 // NFT Sell Ticket /////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -138,7 +137,7 @@ public:
     static bool FindTicketInDb(const std::string& key, CNFTSellTicket& ticket);
 
     static NFTSellTickets_t FindAllTicketByPastelID(const std::string& pastelID);
-    static NFTSellTickets_t FindAllTicketByNFTTxnID(const std::string& NFTTxnId);
+    static NFTSellTickets_t FindAllTicketByNFTTxID(const std::string& NFTTxnId);
 
 protected:
     std::string m_nftTxId;

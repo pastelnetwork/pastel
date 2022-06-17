@@ -93,7 +93,7 @@ ticket_validation_t trade_copy_validation(const string& nftTxnId, const v_uint8&
         }
 
         size_t nSoldCopies{0};
-        const auto existingTradeTickets = CNFTTradeTicket::FindAllTicketByNFTTxnID(nftTxnId);
+        const auto existingTradeTickets = CNFTTradeTicket::FindAllTicketByNFTTxID(nftTxnId);
         for (const auto& t : existingTradeTickets)
         {
             if (!t.IsSameSignature(signature))
@@ -304,7 +304,7 @@ ticket_validation_t CNFTTradeTicket::IsValid(const bool bPreReg, const uint32_t 
         }
 
         // Verify intended recipient of the Sell ticket
-        // this should be already checked when in sell ticket registration
+        // this should be already checked in sell ticket registration
         // but let's double check here
         const auto &sIntendedFor = pSellTicket->getIntendedForPastelID();
         if (!sIntendedFor.empty())
@@ -448,7 +448,7 @@ NFTTradeTickets_t CNFTTradeTicket::FindAllTicketByPastelID(const string& pastelI
     return masterNodeCtrl.masternodeTickets.FindTicketsByMVKey<CNFTTradeTicket>(pastelID);
 }
 
-NFTTradeTickets_t CNFTTradeTicket::FindAllTicketByNFTTxnID(const string& NFTTxnId)
+NFTTradeTickets_t CNFTTradeTicket::FindAllTicketByNFTTxID(const string& NFTTxnId)
 {
     return masterNodeCtrl.masternodeTickets.FindTicketsByMVKey<CNFTTradeTicket>(NFTTxnId);
 }

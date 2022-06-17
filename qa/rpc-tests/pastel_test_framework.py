@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Copyright (c) 2018-2021 The Pastel Core developers
+# Copyright (c) 2018-2022 The Pastel Core developers
 # Distributed under the MIT software license, see the accompanying
 # file COPYING or https://www.opensource.org/licenses/mit-license.php.
 
@@ -10,9 +10,31 @@ from test_framework.util import (
 import hashlib
 import string
 import random
+from enum import (
+    Enum, 
+    auto
+)
 from test_framework.authproxy import JSONRPCException
 from decimal import Decimal, getcontext
 getcontext().prec = 16
+
+# Pastel ticket types
+class TicketType(Enum):
+    ID = auto()
+    MNID = auto()
+    NFT = auto()
+    ACTIVATE = auto()
+    SELL = auto()
+    BUY = auto()
+    TRADE = auto()
+    DOWN = auto()
+    ROYALTY = auto()
+    USERNAME = auto()
+    ETHERIUM_ADDRESS = auto()
+    ACTION = auto()
+    ACTION_ACTIVATE = auto()
+    NFT_COLLECTION = auto()
+    NFT_COLLECTION_ACTIVATE = auto()
 
 class PastelTestFramework (BitcoinTestFramework):
     passphrase = "passphrase"
@@ -21,6 +43,31 @@ class PastelTestFramework (BitcoinTestFramework):
     # error strings
     ERR_READ_PASTELID_FILE = "Failed to read Pastel secure container file"
     ERR_INVALID_PASS = "Passphrase is invalid"
+
+    def __init__(self):
+        super().__init__()
+
+        # registered ticket counters
+        self._ticket_counters = dict()
+
+    def ticket_counter(self, ticket_type) -> int:
+        if ticket_type in self._ticket_counters:
+            return self._ticket_counters[ticket_type]
+        else:
+            return 0
+
+    def inc_ticket_counter(self, ticket_type, count = 1):
+        if ticket_type in self._ticket_counters:
+            self._ticket_counters[ticket_type] += count
+        else:
+            self._ticket_counters[ticket_type] = count
+        print(f'{ticket_type} tickets: {self.ticket_counter(ticket_type)}')
+
+    def list_all_ticket_counters(self):
+        print('+=== Counters for registered tickets ===')
+        for name, member in TicketType.__members__.items():
+            print(f'|{name:>24} : {self.ticket_counter(member)}')
+        print('+=======================================')
 
     # create new PastelID and associated LegRoast keys on node node_no
     # returns PastelID

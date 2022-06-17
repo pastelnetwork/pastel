@@ -915,7 +915,7 @@ string CPastelTicketProcessor::ListFilterNFTTickets(const uint32_t nMinHeight, c
                 if (CNFTActivateTicket::FindTicketInDb(t.GetTxId(), actTicket))
                 {
                     //find Trade tickets listing that Act ticket txid as NFT ticket
-                    const auto vTradeTickets = CNFTTradeTicket::FindAllTicketByNFTTxnID(actTicket.GetTxId());
+                    const auto vTradeTickets = CNFTTradeTicket::FindAllTicketByNFTTxID(actTicket.GetTxId());
                     if (vTradeTickets.size() >= t.getTotalCopies())
                         return false; //don't skip sold
                 }
@@ -974,7 +974,7 @@ string CPastelTicketProcessor::ListFilterActTickets(const uint32_t nMinHeight, c
         [&](const CNFTActivateTicket& t, const unsigned int chainHeight) -> bool
         {
             //find Trade tickets listing this Act ticket txid as NFT ticket
-            auto vTradeTickets = CNFTTradeTicket::FindAllTicketByNFTTxnID(t.GetTxId());
+            auto vTradeTickets = CNFTTradeTicket::FindAllTicketByNFTTxID(t.GetTxId());
             auto ticket = GetTicket(t.getRegTxId(), TicketID::NFT);
             auto NFTRegTicket = dynamic_cast<CNFTRegTicket*>(ticket.get());
             if (!NFTRegTicket)
@@ -1026,12 +1026,12 @@ string CPastelTicketProcessor::ListFilterSellTickets(const uint32_t nMinHeight, 
                 if (state == SELL_TICKET_STATE::NOT_ACTIVE || state == SELL_TICKET_STATE::EXPIRED)
                     return true;
             } else if (filter == 2) {
-                //skip sell ticket that is already active
-                if (state == SELL_TICKET_STATE::ACTIVE || state == SELL_TICKET_STATE::UNAVAILABLE)
+                //skip sell ticket that is already active or expired
+                if (state == SELL_TICKET_STATE::ACTIVE || state == SELL_TICKET_STATE::EXPIRED)
                     return true;
             } else if (filter == 3) {
                 //skip sell ticket that is still active
-                if (state == SELL_TICKET_STATE::ACTIVE)
+                if (state != SELL_TICKET_STATE::EXPIRED)
                     return true;
             }
             return false;
@@ -1061,23 +1061,23 @@ string CPastelTicketProcessor::ListFilterBuyTickets(const uint32_t nMinHeight, c
         }, checkConfirmation);
 }
 
-// 0 - all, 1 - available;      2 - sold
+// 0 - all, 1 - available; 2 - sold
 string CPastelTicketProcessor::ListFilterTradeTickets(const uint32_t nMinHeight, const short filter, const string& pastelID) const
 {
     const bool checkConfirmation{filter > 0};
-    if (filter == 0 && pastelID.empty()) {
-            return ListTickets<CNFTTradeTicket>(nMinHeight); // get all
-    }
+    if (filter == 0 && pastelID.empty())
+        return ListTickets<CNFTTradeTicket>(nMinHeight); // get all
     return filterTickets<CNFTTradeTicket>(
         [&](const CNFTTradeTicket& t, const unsigned int chainHeight) -> bool
         {
             //find Trade tickets listing this Trade ticket txid as NFT ticket
-            auto tradeTickets = CNFTTradeTicket::FindAllTicketByNFTTxnID(t.GetTxId());
+            const auto tradeTickets = CNFTTradeTicket::FindAllTicketByNFTTxID(t.GetTxId());
             if (!pastelID.empty() && t.getPastelID() != pastelID)
                 return true; // ignore tickets that do not belong to this pastelID
             if (filter == 0)
-                return false; // get all belong to this pastel ID
-            if (tradeTickets.empty()) {
+                return false; // get all tickets that belong to this pastel ID
+            if (tradeTickets.empty())
+            {
                 if (filter == 1)
                     return false; //don't skip available
             } else if (filter == 2)

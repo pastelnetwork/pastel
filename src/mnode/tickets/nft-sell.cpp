@@ -40,7 +40,7 @@ CNFTSellTicket CNFTSellTicket::Create(string &&NFTTxnId,
     //NOTE: Sell ticket for Trade ticket will always has copyNumber = 1
     ticket.m_nCopyNumber = nCopyNumber > 0 ?
         nCopyNumber :
-        static_cast<decltype(ticket.m_nCopyNumber)>(CNFTSellTicket::FindAllTicketByNFTTxnID(ticket.m_nftTxId).size()) + 1;
+        static_cast<decltype(ticket.m_nCopyNumber)>(CNFTSellTicket::FindAllTicketByNFTTxID(ticket.m_nftTxId).size()) + 1;
     ticket.key = ticket.m_nftTxId + ":" + to_string(ticket.m_nCopyNumber);
     ticket.sign(move(strKeyPass));
     return ticket;
@@ -97,10 +97,8 @@ SELL_TICKET_STATE CNFTSellTicket::checkValidState(const uint32_t nHeight) const 
                     state = SELL_TICKET_STATE::EXPIRED;
                     break;
                 }
-                state = SELL_TICKET_STATE::ACTIVE;
-                break;
             }
-            state = SELL_TICKET_STATE::UNAVAILABLE;
+            state = SELL_TICKET_STATE::ACTIVE;
             break;
         }
         if (m_nValidBefore > 0)
@@ -168,7 +166,7 @@ ticket_validation_t CNFTSellTicket::IsValid(const bool bPreReg, const uint32_t n
         const auto fnVerifyAvailableCopies = [this](const string& strTicket, const size_t nTotalCopies) -> ticket_validation_t
         {
             ticket_validation_t tv;
-            const auto existingTradeTickets = CNFTTradeTicket::FindAllTicketByNFTTxnID(m_nftTxId);
+            const auto existingTradeTickets = CNFTTradeTicket::FindAllTicketByNFTTxID(m_nftTxId);
             const size_t nSoldCopies = existingTradeTickets.size();
             do
             {
@@ -277,7 +275,7 @@ ticket_validation_t CNFTSellTicket::IsValid(const bool bPreReg, const uint32_t n
         // (ticket transaction replay attack protection)
         // If found similar ticket, replacement is possible if allowed
         // Can be a few Sell tickets
-        const auto existingSellTickets = CNFTSellTicket::FindAllTicketByNFTTxnID(m_nftTxId);
+        const auto existingSellTickets = CNFTSellTicket::FindAllTicketByNFTTxID(m_nftTxId);
         for (const auto& t : existingSellTickets)
         {
             if (t.IsBlock(m_nBlock) || t.IsTxId(m_txid) || t.m_nCopyNumber != m_nCopyNumber)
@@ -358,7 +356,7 @@ NFTSellTickets_t CNFTSellTicket::FindAllTicketByPastelID(const string& pastelID)
     return masterNodeCtrl.masternodeTickets.FindTicketsByMVKey<CNFTSellTicket>(pastelID);
 }
 
-NFTSellTickets_t CNFTSellTicket::FindAllTicketByNFTTxnID(const string& NFTTxnId)
+NFTSellTickets_t CNFTSellTicket::FindAllTicketByNFTTxID(const string& NFTTxnId)
 {
     return masterNodeCtrl.masternodeTickets.FindTicketsByMVKey<CNFTSellTicket>(NFTTxnId);
 }

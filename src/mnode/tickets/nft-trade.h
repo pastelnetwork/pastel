@@ -26,6 +26,12 @@ using NFTTradeTickets_t = std::vector<CNFTTradeTicket>;
 		"reserved": "",
 		"signature": ""
 	}
+
+     key #1: sell ticket txid
+     key #2:  buy ticket txid
+  mv key #1: Pastel ID
+  mv key #2: txid with either 1) NFT activation ticket or 2) trade ticket in it
+  mv key #3: NFT registration ticket txid
  */
 using txid_serial_tuple_t = std::tuple<std::string, std::string>;
 
@@ -119,7 +125,7 @@ public:
     static bool FindTicketInDb(const std::string& key, CNFTTradeTicket& ticket);
 
     static NFTTradeTickets_t FindAllTicketByPastelID(const std::string& pastelID);
-    static NFTTradeTickets_t FindAllTicketByNFTTxnID(const std::string& NFTTxnId);
+    static NFTTradeTickets_t FindAllTicketByNFTTxID(const std::string& NFTTxnId);
     static NFTTradeTickets_t FindAllTicketByRegTnxID(const std::string& nftRegTxnId);
 
     static bool CheckTradeTicketExistBySellTicket(const std::string& _sellTxnId);

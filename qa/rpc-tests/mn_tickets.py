@@ -15,6 +15,7 @@ from test_framework.util import (
     str_to_b64str
 )
 from mn_common import MasterNodeCommon
+from pastel_test_framework import TicketType
 from test_framework.authproxy import JSONRPCException
 import json
 import time
@@ -64,6 +65,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
 
     def __init__(self):
         super().__init__()
+
         self.errorString = ""
         self.is_network_split = False
         self.nodes = []
@@ -346,6 +348,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         self.mn0_ticket1_txid = self.nodes[0].tickets("register", ticket_type, self.mn0_pastelid1, self.passphrase)["txid"]
         assert_true(self.mn0_ticket1_txid, "No ticket was created")
         self.__wait_for_sync_all(1)
+        self.inc_ticket_counter(TicketType.MNID)
 
         #       a.a.7 check correct amount of change
         coins_after = self.nodes[0].getbalance()
@@ -434,6 +437,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
                                                                self.nonmn3_address1)["txid"]
         assert_true(nonmn3_ticket1_txid, "No ticket was created")
         self.__wait_for_sync_all(1)
+        self.inc_ticket_counter(TicketType.ID)        
 
         #       a.a.5 check correct amount of change
         coins_after = self.nodes[self.non_mn3].getbalance()
@@ -503,6 +507,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
                                                                self.passphrase, self.nonmn5_royalty_address1)["txid"]
         assert_true(nonmn5_ticket1_txid, "No ticket was created")
         self.__wait_for_sync_all(1)
+        self.inc_ticket_counter(TicketType.ID)
 
         # check correct amount of change
         coins_after = self.nodes[self.non_mn5].getbalance()
@@ -654,6 +659,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
                                                                self.passphrase, self.nonmn6_royalty_address1)["txid"]
         assert_true(nonmn6_ticket1_txid, "No ticket was created")
         self.__wait_for_sync_all(1)
+        self.inc_ticket_counter(TicketType.ID)
 
         # check correct amount of change
         coins_after = self.nodes[self.non_mn6].getbalance()
@@ -1014,9 +1020,11 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         self.nodes[self.non_mn3].tickets("register", "id", self.creator_pastelid3, self.passphrase, self.nonmn3_address1)
         self.nodes[self.non_mn4].tickets("register", "id", self.nonmn4_pastelid1, self.passphrase, self.nonmn4_address1)
         self.nodes[self.mining_node_num].tickets("register", "id", self.nonmn1_pastelid1, self.passphrase, self.miner_address)
+        self.inc_ticket_counter(TicketType.ID, 5)
         for n in range(1, 12):  # mn0 has its PastelID registered already
             self.nodes[n].tickets("register", "mnid", self.mn_pastelids[n], self.passphrase)
         self.__wait_for_sync_all(1)
+        self.inc_ticket_counter(TicketType.MNID, 11)
 
     # ===============================================================================================================
     # Action registration ticket tests - tested on non_mn3 node
@@ -1045,6 +1053,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         assert_true(self.actionreg_ticket1_txid, "No ticket was created")
         self.__wait_for_ticket_tnx()
         print(self.nodes[self.top_mns_index0].getblockcount())
+        self.inc_ticket_counter(TicketType.ACTION)
 
         #       check correct amount of change and correct amount spent
         coins_after = self.nodes[self.top_mns_index0].getbalance()
@@ -1291,6 +1300,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         nft_ticket1_txid = self.nodes[self.top_mns_index0].tickets("register", ticket_type,
             self.ticket, json.dumps(self.signatures_dict), self.top_mn_pastelid0, self.passphrase, label + "_1", str(self.storage_fee))["txid"]
         print(f'registered NFT ticket #1 [{nft_ticket1_txid}] in NFT collection [{self.nft_collection_name}]')
+        self.inc_ticket_counter(TicketType.NFT)
         self.__wait_for_ticket_tnx()
 
         # add nft-reg ticket #2 successfully (creator_pastelid2 user)
@@ -1299,6 +1309,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         nft_ticket2_txid = self.nodes[self.top_mns_index0].tickets("register", ticket_type,
             self.ticket, json.dumps(self.signatures_dict), self.top_mn_pastelid0, self.passphrase, label + "_2", str(self.storage_fee))["txid"]
         print(f'registered NFT ticket #2 [{nft_ticket2_txid}] in NFT collection [{self.nft_collection_name}]')
+        self.inc_ticket_counter(TicketType.NFT)
         self.__wait_for_ticket_tnx()
 
         # cannot register more than 2 nft tickets (will exceed nft_max_count)
@@ -1316,6 +1327,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
             self.ticket, json.dumps(self.signatures_dict), self.top_mn_pastelid0, self.passphrase,
             label, str(self.storage_fee))["txid"]
         assert_true(self.nftcoll_reg_ticket1_txid, "No ticket was created")
+        self.inc_ticket_counter(TicketType.NFT_COLLECTION)
         self.__wait_for_sync_all(1)
         self.__wait_for_sync_all(10)
         
@@ -1544,6 +1556,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         self.nft_ticket1_txid = result["txid"]
         ticket1_key = result["key"]
         assert_true(self.nft_ticket1_txid, "No ticket was created")
+        self.inc_ticket_counter(TicketType.NFT)
         print(f"NFT ticket created at {self.nft_ticket1_creator_height}")
         self.__wait_for_sync_all(1)
 
@@ -1810,6 +1823,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
                                                         self.nft_ticket1_txid, new_pastelid1,
                                                         old_pastelid1, self.passphrase)["txid"]
         assert_true(nft_royalty_txid, "No ticket was created")
+        self.inc_ticket_counter(TicketType.ROYALTY)
         self.__wait_for_ticket_tnx()
 
         # fail if already registered
@@ -1956,6 +1970,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         self.nftact_ticket1_txid = self.nodes[self.non_mn3].tickets(cmd, cmd_param,
             self.nft_ticket1_txid, (self.creator_ticket_height), str(self.storage_fee), self.creator_pastelid1, self.passphrase)["txid"]
         assert_true(self.nftact_ticket1_txid, "No ticket was created")
+        self.inc_ticket_counter(TicketType.ACTIVATE)
         self.__wait_for_ticket_tnx()
 
         #       d.a.9 check correct amount of change and correct amount spent and correct amount of fee paid
@@ -2237,7 +2252,9 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         self.create_nft_ticket_v2(self.non_mn3, "", False, 1)
         nft_ticket_txid = self.nodes[self.top_mns_index0].tickets("register", "nft",
             self.ticket, json.dumps(self.signatures_dict), self.top_mn_pastelid0, self.passphrase, "NFT-intended-for", str(self.storage_fee))["txid"]
+        self.inc_ticket_counter(TicketType.NFT)
         print(f' - registered NFT ticket [{nft_ticket_txid}]')
+
         # wait for 10 confirmations
         self.generate_and_sync_inc(10, self.mining_node_num)
         print(f' - NFT ticket [{nft_ticket_txid}] confirmed')
@@ -2248,6 +2265,8 @@ class MasterNodeTicketsTest(MasterNodeCommon):
             nft_ticket_txid, (self.creator_ticket_height), str(self.storage_fee), self.creator_pastelid1, self.passphrase)["txid"]
         assert_true(nftact_ticket_txid, "No NFT activation ticket was created")
         print(f' - NFT [{nft_ticket_txid}] activated, txid: [{nftact_ticket_txid}]')
+        self.inc_ticket_counter(TicketType.ACTIVATE)
+
         # wait for 10 confirmations
         self.generate_and_sync_inc(10, self.mining_node_num)
         print(f' - NFT activation [{nftact_ticket_txid}] confirmed')
@@ -2255,11 +2274,13 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         # register NFT Sell ticket with intended recipient creator_pastelid3
         # tickets register sell "nft-txid" "price" "PastelID" "passphrase" [valid-after] [valid-before] [copy-number] ["address"] ["intendedFor"]
         nft_ticket_price = 1000
+        current_height = self.nodes[self.non_mn3].getblockcount()
         sell_ticket_txid = self.nodes[self.non_mn3].tickets("register", "sell",
-            nftact_ticket_txid, str(nft_ticket_price), self.creator_pastelid1, self.passphrase, 0, 0, 1, "", self.creator_pastelid3)["txid"]
+            nftact_ticket_txid, str(nft_ticket_price), self.creator_pastelid1, self.passphrase, 0,
+            current_height + 30, 1, "", self.creator_pastelid3)["txid"]
         assert_true(sell_ticket_txid, "No NFT Sell ticket was created")
         print(f' - NFT Sell ticket created [{sell_ticket_txid}] with intended recipient [{self.creator_pastelid3}]')
-        self.__wait_for_ticket_tnx()
+        self.inc_ticket_counter(TicketType.SELL)
 
         # wait for 10 confirmations
         self.generate_and_sync_inc(10, self.mining_node_num)
@@ -2274,8 +2295,9 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         # register buy for the correct intended recipient creator_pastelid3
         buy_ticket_txid = self.nodes[self.non_mn3].tickets("register", "buy", 
             sell_ticket_txid, str(nft_ticket_price), self.creator_pastelid3, self.passphrase)["txid"]
+        assert_true(buy_ticket_txid, "No NFT Buy ticket was created")
         print(f' - NFT Buy ticket created [{buy_ticket_txid}]')
-        self.__wait_for_ticket_tnx()
+        self.inc_ticket_counter(TicketType.BUY)
 
         # wait for 10 confirmations
         self.generate_and_sync_inc(10, self.mining_node_num)
@@ -2290,7 +2312,9 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         # register trade ticket
         trade_ticket_txid = self.nodes[self.non_mn3].tickets("register", "trade", sell_ticket_txid, buy_ticket_txid,
             self.creator_pastelid3, self.passphrase)
+        assert_true(trade_ticket_txid, "No NFT Trade ticket was created")
         print(f' - NFT Trade ticket created [{trade_ticket_txid}]')
+        self.inc_ticket_counter(TicketType.TRADE)
         self.__wait_for_ticket_tnx()
         print('=== intendedFor feature for NFTs tested ===')
 
@@ -2348,6 +2372,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         self.nft_ticket1_sell_ticket_txid = self.nodes[self.non_mn3].tickets("register", ticket_type,
             self.nftact_ticket1_txid, str("100000"),self.creator_pastelid1, self.passphrase)["txid"]
         assert_true(self.nft_ticket1_sell_ticket_txid, "No ticket was created")
+        self.inc_ticket_counter(TicketType.SELL)
         self.__wait_for_ticket_tnx()
 
         # 5. check correct amount of change and correct amount spent
@@ -2458,11 +2483,10 @@ class MasterNodeTicketsTest(MasterNodeCommon):
             self.nft_ticket1_sell_ticket_txid, str("100"), self.nonmn4_pastelid1, self.passphrase)
 
         # Create buy ticket
-        self.nft_ticket1_buy_ticket_txid = \
-            self.nodes[self.non_mn4].tickets("register", ticket_type,
-                                             self.nft_ticket1_sell_ticket_txid, str("100000"),
-                                             self.nonmn4_pastelid1, self.passphrase)["txid"]
+        self.nft_ticket1_buy_ticket_txid = self.nodes[self.non_mn4].tickets("register", ticket_type,
+            self.nft_ticket1_sell_ticket_txid, str("100000"), self.nonmn4_pastelid1, self.passphrase)["txid"]
         assert_true(self.nft_ticket1_buy_ticket_txid, "No ticket was created")
+        self.inc_ticket_counter(TicketType.BUY)
         self.__wait_for_ticket_tnx()
 
         # check correct amount of change and correct amount spent
@@ -2534,11 +2558,10 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         self.nodes[self.non_mn4].sendtoaddress(consaddress, balance, "", "", True)
 
         # Create trade ticket
-        self.nft_ticket1_trade_ticket_txid = \
-            self.nodes[self.non_mn4].tickets("register", ticket_type,
-                                             self.nft_ticket1_sell_ticket_txid, self.nft_ticket1_buy_ticket_txid,
-                                             self.nonmn4_pastelid1, self.passphrase)["txid"]
+        self.nft_ticket1_trade_ticket_txid = self.nodes[self.non_mn4].tickets("register", ticket_type,
+            self.nft_ticket1_sell_ticket_txid, self.nft_ticket1_buy_ticket_txid, self.nonmn4_pastelid1, self.passphrase)["txid"]
         assert_true(self.nft_ticket1_trade_ticket_txid, "No ticket was created")
+        self.inc_ticket_counter(TicketType.TRADE)
         self.__wait_for_ticket_tnx()
 
         # check correct amount of change and correct amount spent
@@ -2613,27 +2636,27 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         self.nodes[self.mining_node_num].sendtoaddress(self.nonmn4_address1, 100000, "", "", False)
         self.__wait_for_sync_all(1)
 
-        # now there is 1 Trade ticket and it is non-sold
+        # now there is 1 Trade ticket and it is not sold
         new_trade_ticket = self.sell_buy_trade_test("T1", self.non_mn4, self.nonmn4_pastelid1,
                                                     self.non_mn3, self.nonmn3_pastelid1,
                                                     self.nft_ticket1_trade_ticket_txid, self.is_green)
-        # now there are 2 Trade ticket and 1 of it's sold
+        # now there are 2 Trade tickets and 1 of them is sold
         new_trade_ticket = self.sell_buy_trade_test("T2", self.non_mn3, self.nonmn3_pastelid1,
                                                     self.non_mn4, self.nonmn4_pastelid1,
                                                     new_trade_ticket, self.is_green)
-        # now there are 3 Trade ticket and 2 of it's sold
+        # now there are 3 Trade tickets and 2 of them are sold
         new_trade_ticket = self.sell_buy_trade_test("T3", self.non_mn4, self.nonmn4_pastelid1,
                                                     self.non_mn3, self.nonmn3_pastelid1,
                                                     new_trade_ticket, self.is_green)
-        # now there are 4 Trade ticket and 3 of it's sold
+        # now there are 4 Trade tickets and 3 of them are sold
         new_trade_ticket = self.sell_buy_trade_test("T4", self.non_mn3, self.nonmn3_pastelid1,
                                                     self.non_mn4, self.nonmn4_pastelid1,
                                                     new_trade_ticket, self.is_green)
-        # now there are 5 Trade ticket and 4 of it's sold
+        # now there are 5 Trade tickets and 4 of them are sold
         self.sell_buy_trade_test("T5", self.non_mn4, self.nonmn4_pastelid1,
                                  self.non_mn3, self.nonmn3_pastelid1,
                                  new_trade_ticket, self.is_green)
-        # now there are 6 Trade ticket and 5 of it's sold
+        # now there are 6 Trade tickets and 5 of them are sold
 
         original_nft_trade_tickets = []
         for i in range(1, 10):
@@ -2643,7 +2666,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
                                                                        self.nftact_ticket1_txid,
                                                                        self.is_green, True)
                                               )
-        # now there are 15 Trade ticket and 5 of it's sold
+        # now there are 15 Trade tickets and 5 of them are sold
 
         self.sell_buy_trade_test("A10-Fail", self.non_mn3, self.creator_pastelid1,
                                  self.non_mn4, self.nonmn4_pastelid1,
@@ -2681,6 +2704,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         sell_ticket_txid = self.nodes[seller_node].tickets("register", "sell", nft_to_sell_txid, str("1000"),
                                                            seller_pastelid, self.passphrase)["txid"]
         assert_true(sell_ticket_txid, "No ticket was created")
+        self.inc_ticket_counter(TicketType.SELL)
         print(f"sell_ticket_txid: {sell_ticket_txid}")
 
         self.__wait_for_ticket_tnx()
@@ -2694,6 +2718,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         buy_ticket_txid = self.nodes[buyer_node].tickets("register", "buy", sell_ticket_txid, str("1000"),
                                                          buyer_pastelid, self.passphrase)["txid"]
         assert_true(buy_ticket_txid, "No ticket was created")
+        self.inc_ticket_counter(TicketType.BUY)
         print(f"buy_ticket_txid: {buy_ticket_txid}")
 
         self.__wait_for_ticket_tnx()
@@ -2708,6 +2733,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
                                                            sell_ticket_txid, buy_ticket_txid,
                                                            buyer_pastelid, self.passphrase)["txid"]
         assert_true(trade_ticket_txid, "No ticket was created")
+        self.inc_ticket_counter(TicketType.TRADE)
         print(f"trade_ticket_txid: {trade_ticket_txid}")
         # Chosen trade ticket for validating ownership 
         # 1. We need a list ( at least with 1 element)
@@ -2767,20 +2793,17 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         print("== Tickets List Filter test ==")
 
         self.generate_and_sync_inc(1)
-
-        number_personal_nodes = 6
-        number_personal_nodes += self.royalty_tickets_tests
-        # if self.is_green:
-        #     number_personal_nodes += 1
-
+        self.list_all_ticket_counters()
+            
+        print(' --- list id')
         tickets_list = self.nodes[self.non_mn3].tickets("list", "id")
-        assert_equal(len(tickets_list), 12 + number_personal_nodes + loop_number * 2)
+        assert_equal(len(tickets_list), self.ticket_counter(TicketType.ID) + self.ticket_counter(TicketType.MNID))
         tickets_list = self.nodes[self.non_mn3].tickets("list", "id", "all")
-        assert_equal(len(tickets_list), 12 + number_personal_nodes + loop_number * 2)
+        assert_equal(len(tickets_list), self.ticket_counter(TicketType.ID) + self.ticket_counter(TicketType.MNID))
         tickets_list = self.nodes[self.non_mn3].tickets("list", "id", "mn")
-        assert_equal(len(tickets_list), 12)
+        assert_equal(len(tickets_list), self.ticket_counter(TicketType.MNID))
         tickets_list = self.nodes[self.non_mn3].tickets("list", "id", "personal")
-        # assert_equal(len(tickets_list), number_personal_nodes + loop_number * 2)
+        assert_equal(len(tickets_list), self.ticket_counter(TicketType.ID))
 
         self.create_nft_ticket_v1(self.non_mn3, 5, self.royalty, self.is_green, False)
         nft_ticket2_txid = self.nodes[self.top_mns_index0].tickets("register", "nft",
@@ -2789,6 +2812,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
                                                                    "nft-label3_"+str(loop_number), str(self.storage_fee))["txid"]
         assert_true(nft_ticket2_txid, "No ticket was created")
         self.__wait_for_ticket_tnx()
+        self.inc_ticket_counter(TicketType.NFT)
 
         self.slow_mine(2, 10, 2, 0.5)
 
@@ -2799,6 +2823,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
                                                                        self.creator_pastelid1, self.passphrase)["txid"]
         assert_true(nft_ticket2_act_ticket_txid, "No ticket was created")
         self.__wait_for_ticket_tnx()
+        self.inc_ticket_counter(TicketType.ACTIVATE)
 
         self.create_nft_ticket_v1(self.non_mn3, 1, self.royalty, self.is_green, False)
         nft_ticket3_txid = self.nodes[self.top_mns_index0].tickets("register", "nft",
@@ -2807,28 +2832,31 @@ class MasterNodeTicketsTest(MasterNodeCommon):
                                                                    "nft-label4_"+str(loop_number), str(self.storage_fee))["txid"]
         assert_true(nft_ticket3_txid, "No ticket was created")
         self.__wait_for_ticket_tnx()
+        self.inc_ticket_counter(TicketType.NFT)
 
         self.slow_mine(2, 10, 2, 0.5)
 
+        print(' --- list nft')
         tickets_list = self.nodes[self.non_mn3].tickets("list", "nft")
-        assert_equal(len(tickets_list), 2 + 3*(loop_number+1))
+        assert_equal(len(tickets_list), self.ticket_counter(TicketType.NFT))
         tickets_list = self.nodes[self.non_mn3].tickets("list", "nft", "all")
-        assert_equal(len(tickets_list), 2 + 3*(loop_number+1))
+        assert_equal(len(tickets_list), self.ticket_counter(TicketType.NFT))
         tickets_list = self.nodes[self.non_mn3].tickets("list", "nft", "active")
-        assert_equal(len(tickets_list), 2*(loop_number+1))
+        assert_equal(len(tickets_list), self.ticket_counter(TicketType.ACTIVATE))
         tickets_list = self.nodes[self.non_mn3].tickets("list", "nft", "inactive")
-        assert_equal(len(tickets_list), 2 + 1*(loop_number+1))
+        assert_equal(len(tickets_list), self.ticket_counter(TicketType.NFT) - self.ticket_counter(TicketType.ACTIVATE))
         tickets_list = self.nodes[self.non_mn3].tickets("list", "nft", "sold")
-        assert_equal(len(tickets_list), 1*(loop_number+1))
+        assert_equal(len(tickets_list), 1 + (loop_number+1))
 
+        print(' --- list act')
         tickets_list = self.nodes[self.non_mn3].tickets("list", "act")
-        assert_equal(len(tickets_list), 2*(loop_number+1))
+        assert_equal(len(tickets_list), self.ticket_counter(TicketType.ACTIVATE))
         tickets_list = self.nodes[self.non_mn3].tickets("list", "act", "all")
-        assert_equal(len(tickets_list), 2*(loop_number+1))
+        assert_equal(len(tickets_list), self.ticket_counter(TicketType.ACTIVATE))
         tickets_list = self.nodes[self.non_mn3].tickets("list", "act", "available")
-        assert_equal(len(tickets_list), 1*(loop_number+1))
+        assert_equal(len(tickets_list), loop_number+1)
         tickets_list = self.nodes[self.non_mn3].tickets("list", "act", "sold")
-        assert_equal(len(tickets_list), 1*(loop_number+1))
+        assert_equal(len(tickets_list), 1 + (loop_number+1))
 
         cur_block = self.nodes[self.non_mn3].getblockcount()
         sell_ticket1_txid = self.nodes[self.non_mn3].tickets("register", "sell", nft_ticket2_act_ticket_txid,
@@ -2838,6 +2866,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         assert_true(sell_ticket1_txid, "No ticket was created")
         self.__wait_for_ticket_tnx()  # cur+5 block
         print(sell_ticket1_txid)
+        self.inc_ticket_counter(TicketType.SELL)
 
         sell_ticket2_txid = self.nodes[self.non_mn3].tickets("register", "sell", nft_ticket2_act_ticket_txid,
                                                              str("1000"),
@@ -2846,6 +2875,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         assert_true(sell_ticket2_txid, "No ticket was created")
         self.__wait_for_ticket_tnx()  # cur+10 block
         print(sell_ticket2_txid)
+        self.inc_ticket_counter(TicketType.SELL)
 
         sell_ticket3_txid = self.nodes[self.non_mn3].tickets("register", "sell", nft_ticket2_act_ticket_txid,
                                                              str("1000"),
@@ -2855,11 +2885,15 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         self.__wait_for_ticket_tnx()  # cur+15 block
         self.slow_mine(1, 10, 2, 0.5)  # cur+25
         print(sell_ticket3_txid)
+        self.inc_ticket_counter(TicketType.SELL)
 
+        self.list_all_ticket_counters()
+
+        print(' --- list sell')
         tickets_list = self.nodes[self.non_mn3].tickets("list", "sell")
-        assert_equal(len(tickets_list), 18*(loop_number+1))
+        assert_equal(len(tickets_list), self.ticket_counter(TicketType.SELL))
         tickets_list = self.nodes[self.non_mn3].tickets("list", "sell", "all")
-        assert_equal(len(tickets_list), 18*(loop_number+1))
+        assert_equal(len(tickets_list), self.ticket_counter(TicketType.SELL))
         tickets_list = self.nodes[self.non_mn3].tickets("list", "sell", "available")
         assert_equal(len(tickets_list), 1)
         tickets_list = self.nodes[self.non_mn3].tickets("list", "sell", "unavailable")
@@ -2870,29 +2904,35 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         buy_ticket_txid = self.nodes[self.non_mn4].tickets("register", "buy", sell_ticket2_txid, str("1000"),
                                                            self.nonmn4_pastelid1, self.passphrase)["txid"]
         assert_true(buy_ticket_txid, "No ticket was created")
+        self.inc_ticket_counter(TicketType.BUY)
         print(f"buy_ticket_txid: {buy_ticket_txid}")
         self.__wait_for_ticket_tnx()  # +15 block
         self.slow_mine(2, 10, 2, 0.5)  # +25
-        tickets_list = self.nodes[self.non_mn3].tickets("list", "buy")
-        assert_equal(len(tickets_list), 16*(loop_number+1))
-        tickets_list = self.nodes[self.non_mn3].tickets("list", "buy", "all")
-        assert_equal(len(tickets_list), 16*(loop_number+1))
-        tickets_list = self.nodes[self.non_mn3].tickets("list", "buy", "expired")
-        assert_equal(len(tickets_list), 1*(loop_number+1))
-        tickets_list = self.nodes[self.non_mn3].tickets("list", "buy", "sold")
-        assert_equal(len(tickets_list), 15*(loop_number+1))
 
+        print(' --- list buy')
+        tickets_list = self.nodes[self.non_mn3].tickets("list", "buy")
+        assert_equal(len(tickets_list), self.ticket_counter(TicketType.BUY))
+        tickets_list = self.nodes[self.non_mn3].tickets("list", "buy", "all")
+        assert_equal(len(tickets_list), self.ticket_counter(TicketType.BUY))
+        tickets_list = self.nodes[self.non_mn3].tickets("list", "buy", "expired")
+        assert_equal(len(tickets_list), (loop_number+1))
+        tickets_list = self.nodes[self.non_mn3].tickets("list", "buy", "sold")
+        assert_equal(len(tickets_list), self.ticket_counter(TicketType.BUY) - (loop_number+1))
+
+        print(' --- list trade')
         tickets_list = self.nodes[self.non_mn3].tickets("list", "trade")
-        assert_equal(len(tickets_list), 15*(loop_number+1))
+        assert_equal(len(tickets_list), self.ticket_counter(TicketType.TRADE))
         tickets_list = self.nodes[self.non_mn3].tickets("list", "trade", "all")
-        assert_equal(len(tickets_list), 15*(loop_number+1))
+        assert_equal(len(tickets_list), self.ticket_counter(TicketType.TRADE))
         tickets_list = self.nodes[self.non_mn3].tickets("list", "trade", "available")
-        assert_equal(len(tickets_list), 10*(loop_number+1))
+        available_trade_tkts = 1 + 10*(loop_number+1)
+        assert_equal(len(tickets_list), available_trade_tkts)
         tickets_list = self.nodes[self.non_mn3].tickets("list", "trade", "sold")
-        assert_equal(len(tickets_list), 5*(loop_number+1))
+        assert_equal(len(tickets_list), self.ticket_counter(TicketType.TRADE) - available_trade_tkts)
 
         print ("Test listing buy/sell/trade tickets by Pastel ID")
 
+        print(' --- list sell pastel-id1')
         tickets_list = self.nodes[self.non_mn3].tickets("list", "sell", self.creator_pastelid1)
         assert_equal(len(tickets_list), 2*(loop_number+1))
         tickets_list = self.nodes[self.non_mn3].tickets("list", "sell", "all", self.creator_pastelid1)
@@ -2904,6 +2944,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         tickets_list = self.nodes[self.non_mn3].tickets("list", "sell", "expired", self.creator_pastelid1)
         assert_equal(len(tickets_list), 2 + (loop_number*2))
 
+        print(' --- list buy pastel-id1')
         tickets_list = self.nodes[self.non_mn3].tickets("list", "buy", self.nonmn4_pastelid1)
         assert_equal(len(tickets_list), 13*(loop_number+1))
         tickets_list = self.nodes[self.non_mn3].tickets("list", "buy", "all", self.nonmn4_pastelid1)
@@ -2913,6 +2954,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         tickets_list = self.nodes[self.non_mn3].tickets("list", "buy", "sold", self.nonmn4_pastelid1)
         assert_equal(len(tickets_list), 12*(loop_number+1))
 
+        print(' --- list trade pastel-id1')
         tickets_list = self.nodes[self.non_mn3].tickets("list", "trade", self.nonmn3_pastelid1)
         assert_equal(len(tickets_list), 3*(loop_number+1))
         tickets_list = self.nodes[self.non_mn3].tickets("list", "trade", "all", self.nonmn3_pastelid1)
