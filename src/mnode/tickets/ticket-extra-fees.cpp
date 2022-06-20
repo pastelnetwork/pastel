@@ -33,7 +33,7 @@ string CTicketSignedWithExtraFees::GetRoyaltyPayeePastelID() const
         return {};
 
     // get royalty tickets by txid 
-    const auto vTickets = CNFTRoyaltyTicket::FindAllTicketByNFTTxnID(m_txid);
+    const auto vTickets = CNFTRoyaltyTicket::FindAllTicketByNFTTxID(m_txid);
     // find the ticket with max height
     const auto it = max_element(vTickets.cbegin(), vTickets.cend(),
         [&](const auto& ticketL, const auto& ticketR) -> bool

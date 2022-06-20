@@ -1,16 +1,18 @@
-// Copyright (c) 2021 The Pastel developers
+// Copyright (c) 2021-2022 The Pastel developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 
-#include <gtest/gtest.h>
 #include <tuple>
 
+#include <gtest/gtest.h>
+
 #include <base58.h>
-#include <mnode/rpc/mnode-rpc.h>
 #include <utilstrencodings.h>
 #include <vector_types.h>
 #include <chainparams.h>
+#include <mnode/rpc/mnode-rpc.h>
 #include <mnode/rpc/ingest.h>
+#include <mnode/rpc/mnode-rpc-utils.h>
 
 using namespace testing;
 using namespace std;
@@ -92,3 +94,14 @@ INSTANTIATE_TEST_SUITE_P(mnode_rpc_ani2psl, PTest_ani2psl_secret,
         }, true, true)
 	));
 
+TEST(mnode_rpc, rpc_check_unsigned_param)
+{
+    EXPECT_THROW(rpc_check_unsigned_param<uint16_t>("test-negative", -1), UniValue);
+    EXPECT_THROW(rpc_check_unsigned_param<uint16_t>("test-overflow", 100'000), UniValue);
+    EXPECT_NO_THROW(rpc_check_unsigned_param<uint16_t>("test", 42));
+
+    EXPECT_THROW(rpc_check_unsigned_param<uint32_t>("test-negative", -5), UniValue);
+    constexpr int64_t nOverflowUint32Value = 0x1'0000'000F;
+    EXPECT_THROW(rpc_check_unsigned_param<uint32_t>("test-overflow", nOverflowUint32Value), UniValue);
+    EXPECT_NO_THROW(rpc_check_unsigned_param<uint32_t>("test", 42));
+}

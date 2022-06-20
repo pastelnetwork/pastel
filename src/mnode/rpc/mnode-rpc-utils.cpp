@@ -11,9 +11,9 @@ int get_number(const UniValue& v)
     return v.isStr() ? std::stoi(v.get_str()) : v.get_int();
 }
 
-long long get_long_number(const UniValue& v)
+int64_t get_long_number(const UniValue& v)
 {
-    return v.isStr() ? std::stoll(v.get_str()) : (long long)v.get_int();
+    return v.isStr() ? std::stoll(v.get_str()) : (long long)v.get_int64();
 }
 
 /**

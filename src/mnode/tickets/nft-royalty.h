@@ -89,7 +89,7 @@ public:
     static bool FindTicketInDb(const std::string& key, CNFTRoyaltyTicket& ticket);
 
     static NFTRoyaltyTickets_t FindAllTicketByPastelID(const std::string& pastelID);
-    static NFTRoyaltyTickets_t FindAllTicketByNFTTxnID(const std::string& NFTTxnId);
+    static NFTRoyaltyTickets_t FindAllTicketByNFTTxID(const std::string& NFTTxnId);
 
 protected:
     std::string pastelID;    //pastelID of the old (current at moment of creation) royalty recipient

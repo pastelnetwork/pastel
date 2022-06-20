@@ -18,23 +18,30 @@ using json = nlohmann::json;
 using namespace std;
 
 // CNFTSellTicket ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-CNFTSellTicket CNFTSellTicket::Create(string _NFTTxnId, int _askedPrice, int _validAfter, int _validBefore, int _copy_number, std::string _intendedFor, string _pastelID, SecureString&& strKeyPass)
+CNFTSellTicket CNFTSellTicket::Create(string &&NFTTxnId, 
+    const unsigned int nAskedPricePSL, 
+    const unsigned int nValidAfter, 
+    const unsigned int nValidBefore, 
+    const unsigned short nCopyNumber, 
+    std::string &&sIntendedForPastelID, 
+    string &&pastelID, 
+    SecureString&& strKeyPass)
 {
-    CNFTSellTicket ticket(move(_pastelID));
+    CNFTSellTicket ticket(move(pastelID));
 
-    ticket.NFTTxnId = move(_NFTTxnId);
-    ticket.askedPrice = _askedPrice;
-    ticket.activeBefore = _validBefore;
-    ticket.activeAfter = _validAfter;
-    ticket.intendedFor = _intendedFor;
+    ticket.m_nftTxId = move(NFTTxnId);
+    ticket.m_nAskedPricePSL = nAskedPricePSL;
+    ticket.m_nValidAfter = nValidAfter;
+    ticket.m_nValidBefore = nValidBefore;
+    ticket.m_sIntendedForPastelID = move(sIntendedForPastelID);
 
     ticket.GenerateTimestamp();
 
     //NOTE: Sell ticket for Trade ticket will always has copyNumber = 1
-    ticket.copyNumber = _copy_number > 0 ?
-                            _copy_number :
-                            static_cast<decltype(ticket.copyNumber)>(CNFTSellTicket::FindAllTicketByNFTTxnID(ticket.NFTTxnId).size()) + 1;
-    ticket.key = ticket.NFTTxnId + ":" + to_string(ticket.copyNumber);
+    ticket.m_nCopyNumber = nCopyNumber > 0 ?
+        nCopyNumber :
+        static_cast<decltype(ticket.m_nCopyNumber)>(CNFTSellTicket::FindAllTicketByNFTTxID(ticket.m_nftTxId).size()) + 1;
+    ticket.key = ticket.m_nftTxId + ":" + to_string(ticket.m_nCopyNumber);
     ticket.sign(move(strKeyPass));
     return ticket;
 }
@@ -43,12 +50,12 @@ string CNFTSellTicket::ToStr() const noexcept
 {
     stringstream ss;
     ss << m_sPastelID;
-    ss << NFTTxnId;
-    ss << askedPrice;
-    ss << copyNumber;
-    ss << activeBefore;
-    ss << activeAfter;
-    ss << intendedFor;
+    ss << m_nftTxId;
+    ss << m_nAskedPricePSL;
+    ss << m_nCopyNumber;
+    ss << m_nValidBefore;
+    ss << m_nValidAfter;
+    ss << m_sIntendedForPastelID;
     ss << m_nTimestamp;
     return ss.str();
 }
@@ -63,6 +70,49 @@ string CNFTSellTicket::ToStr() const noexcept
 void CNFTSellTicket::sign(SecureString&& strKeyPass)
 {
     string_to_vector(CPastelID::Sign(ToStr(), m_sPastelID, move(strKeyPass)), m_signature);
+}
+
+/**
+ * Check sell ticket valid state.
+ * 
+ * \param nHeight - current blockchain height to check for
+ * \return sell ticket validation state
+ */
+SELL_TICKET_STATE CNFTSellTicket::checkValidState(const uint32_t nHeight) const noexcept
+{
+    SELL_TICKET_STATE state = SELL_TICKET_STATE::NOT_DEFINED;
+    do
+    {
+        if (m_nValidAfter > 0)
+        {
+            if (nHeight <= m_nValidAfter)
+            {
+                state = SELL_TICKET_STATE::NOT_ACTIVE;
+                break;
+            }
+            if (m_nValidBefore > 0)
+            {
+                if (nHeight >= m_nValidBefore)
+                {
+                    state = SELL_TICKET_STATE::EXPIRED;
+                    break;
+                }
+            }
+            state = SELL_TICKET_STATE::ACTIVE;
+            break;
+        }
+        if (m_nValidBefore > 0)
+        {
+            if (nHeight >= m_nValidBefore)
+            {
+                state = SELL_TICKET_STATE::EXPIRED;
+                break;
+            }
+            state = SELL_TICKET_STATE::ACTIVE;
+            break;
+        }
+    } while (false);
+    return state;
 }
 
 /**
@@ -81,23 +131,23 @@ ticket_validation_t CNFTSellTicket::IsValid(const bool bPreReg, const uint32_t n
         // 0. Common validations
         unique_ptr<CPastelTicket> pastelTicket;
         const ticket_validation_t commonTV = common_ticket_validation(
-            *this, bPreReg, NFTTxnId, pastelTicket,
+            *this, bPreReg, m_nftTxId, pastelTicket,
             [](const TicketID tid) noexcept { return (tid != TicketID::Activate && tid != TicketID::Trade); },
             GetTicketDescription(), "activation or trade", nCallDepth, TicketPricePSL(chainHeight));
         if (commonTV.IsNotValid())
         {
             tv.errorMsg = strprintf(
                 "The Sell ticket with this txid [%s] is not validated. %s", 
-                NFTTxnId, commonTV.errorMsg);
+                m_nftTxId, commonTV.errorMsg);
             tv.state = commonTV.state;
             break;
         }
 
-        if (!askedPrice)
+        if (!m_nAskedPricePSL)
         {
             tv.errorMsg = strprintf(
                 "The asked price for Sell ticket with NFT txid [%s] should be not 0", 
-                NFTTxnId);
+                m_nftTxId);
             break;
         }
 
@@ -111,13 +161,12 @@ ticket_validation_t CNFTSellTicket::IsValid(const bool bPreReg, const uint32_t n
                 bTicketFound = true;
         }
 
-        // Check PastelID in this ticket matches PastelID in the referred ticket (Activation or Trade)
         size_t nTotalCopies{0};
         // Verify the NFT is not already sold or gifted
         const auto fnVerifyAvailableCopies = [this](const string& strTicket, const size_t nTotalCopies) -> ticket_validation_t
         {
             ticket_validation_t tv;
-            const auto existingTradeTickets = CNFTTradeTicket::FindAllTicketByNFTTxnID(NFTTxnId);
+            const auto existingTradeTickets = CNFTTradeTicket::FindAllTicketByNFTTxID(m_nftTxId);
             const size_t nSoldCopies = existingTradeTickets.size();
             do
             {
@@ -126,13 +175,14 @@ ticket_validation_t CNFTSellTicket::IsValid(const bool bPreReg, const uint32_t n
                     tv.errorMsg = strprintf(
                         "The NFT you are trying to sell - from %s ticket [%s] - is already sold - "
                         "there are already [%zu] sold copies, but only [%zu] copies were available",
-                        strTicket, NFTTxnId, nSoldCopies, nTotalCopies);
+                        strTicket, m_nftTxId, nSoldCopies, nTotalCopies);
                     break;
                 }
                 tv.setValid();
             } while (false);
             return tv;
         };
+        // Check PastelID in this ticket matches PastelID in the referred ticket (Activation or Trade)
         if (pastelTicket->ID() == TicketID::Activate)
         {
             // 1.a
@@ -141,7 +191,7 @@ ticket_validation_t CNFTSellTicket::IsValid(const bool bPreReg, const uint32_t n
             {
                 tv.errorMsg = strprintf(
                     "The activation ticket with this txid [%s] referred by this sell ticket is invalid",
-                    NFTTxnId);
+                    m_nftTxId);
                 break;
             }
             const string& creatorPastelID = actTicket->getPastelID();
@@ -149,7 +199,7 @@ ticket_validation_t CNFTSellTicket::IsValid(const bool bPreReg, const uint32_t n
             {
                 tv.errorMsg = strprintf(
                     "The PastelID [%s] in this ticket is not matching the Creator's PastelID [%s] in the NFT Activation ticket with this txid [%s]",
-                    m_sPastelID, creatorPastelID, NFTTxnId);
+                    m_sPastelID, creatorPastelID, m_nftTxId);
                 break;
             }
             //  Get ticket pointed by NFTTxnId. Here, this is an Activation ticket
@@ -188,15 +238,15 @@ ticket_validation_t CNFTSellTicket::IsValid(const bool bPreReg, const uint32_t n
             {
                 tv.errorMsg = strprintf(
                     "The trade ticket with this txid [%s] referred by this sell ticket is invalid", 
-                    NFTTxnId);
+                    m_nftTxId);
                 break;
             }
-            const string& ownersPastelID = tradeTicket->pastelID;
+            const string& ownersPastelID = tradeTicket->getPastelID();
             if (ownersPastelID != m_sPastelID)
             {
                 tv.errorMsg = strprintf(
                     "The PastelID [%s] in this ticket is not matching the PastelID [%s] in the Trade ticket with this txid [%s]",
-                    m_sPastelID, ownersPastelID, NFTTxnId);
+                    m_sPastelID, ownersPastelID, m_nftTxId);
                 break;
             }
             nTotalCopies = 1;
@@ -213,11 +263,11 @@ ticket_validation_t CNFTSellTicket::IsValid(const bool bPreReg, const uint32_t n
             }
         }
 
-        if (copyNumber > nTotalCopies || copyNumber == 0)
+        if (m_nCopyNumber > nTotalCopies || m_nCopyNumber == 0)
         {
             tv.errorMsg = strprintf(
                 "Invalid Sell ticket - copy number [%hu] cannot exceed the total number of available copies [%zu] or be 0",
-                copyNumber, nTotalCopies);
+                m_nCopyNumber, nTotalCopies);
             break;
         }
 
@@ -225,17 +275,17 @@ ticket_validation_t CNFTSellTicket::IsValid(const bool bPreReg, const uint32_t n
         // (ticket transaction replay attack protection)
         // If found similar ticket, replacement is possible if allowed
         // Can be a few Sell tickets
-        const auto existingSellTickets = CNFTSellTicket::FindAllTicketByNFTTxnID(NFTTxnId);
+        const auto existingSellTickets = CNFTSellTicket::FindAllTicketByNFTTxID(m_nftTxId);
         for (const auto& t : existingSellTickets)
         {
-            if (t.IsBlock(m_nBlock) || t.IsTxId(m_txid) || t.copyNumber != copyNumber)
+            if (t.IsBlock(m_nBlock) || t.IsTxId(m_txid) || t.m_nCopyNumber != m_nCopyNumber)
                 continue;
 
             if (CNFTTradeTicket::CheckTradeTicketExistBySellTicket(t.m_txid))
             {
                 tv.errorMsg = strprintf(
                     "Cannot replace Sell ticket - it has been already sold, txid - [%s], copyNumber [%hu].",
-                    t.m_txid, copyNumber);
+                    t.m_txid, m_nCopyNumber);
                 break;
             }
 
@@ -244,7 +294,7 @@ ticket_validation_t CNFTSellTicket::IsValid(const bool bPreReg, const uint32_t n
             {
                 tv.errorMsg = strprintf(
                     "This Sell ticket has been replaced with another ticket, txid - [%s], copyNumber [%hu].",
-                    t.m_txid, copyNumber);
+                    t.m_txid, m_nCopyNumber);
                 break;
             }
 
@@ -253,7 +303,7 @@ ticket_validation_t CNFTSellTicket::IsValid(const bool bPreReg, const uint32_t n
             {
                 tv.errorMsg = strprintf(
                     "Can not replace the Sell ticket as master node not is not synced, txid - [%s], copyNumber [%hu].",
-                    t.m_txid, copyNumber);
+                    t.m_txid, m_nCopyNumber);
                 break;
             }
             const unsigned int chainHeight = GetActiveChainHeight();
@@ -262,7 +312,7 @@ ticket_validation_t CNFTSellTicket::IsValid(const bool bPreReg, const uint32_t n
                 // 1 block per 2.5; 4 blocks per 10 min; 24 blocks per 1h; 576 blocks per 24 h;
                 tv.errorMsg = strprintf(
                     "Can only replace Sell ticket after 5 days, txid - [%s] copyNumber [%hu].",
-                    t.m_txid, copyNumber);
+                    t.m_txid, m_nCopyNumber);
                 break;
             }
         }
@@ -282,12 +332,12 @@ string CNFTSellTicket::ToJSON() const noexcept
                 {"type", GetTicketName()}, 
                 {"version", GetStoredVersion()}, 
                 {"pastelID", m_sPastelID}, 
-                {"nft_txid", NFTTxnId}, 
-                {"copy_number", copyNumber}, 
-                {"asked_price", askedPrice}, 
-                {"valid_before", activeBefore},
-                {"valid_after", activeAfter},
-                {"locked_recipient", intendedFor.empty()? "not defined": intendedFor},
+                {"nft_txid", m_nftTxId}, 
+                {"copy_number", m_nCopyNumber}, 
+                {"asked_price", m_nAskedPricePSL}, 
+                {"valid_before", m_nValidBefore},
+                {"valid_after", m_nValidAfter},
+                {"locked_recipient", m_sIntendedForPastelID.empty()? "not defined": m_sIntendedForPastelID},
                 {"signature", ed_crypto::Hex_Encode(m_signature.data(), m_signature.size())}
             }
         }
@@ -306,7 +356,7 @@ NFTSellTickets_t CNFTSellTicket::FindAllTicketByPastelID(const string& pastelID)
     return masterNodeCtrl.masternodeTickets.FindTicketsByMVKey<CNFTSellTicket>(pastelID);
 }
 
-NFTSellTickets_t CNFTSellTicket::FindAllTicketByNFTTxnID(const string& NFTTxnId)
+NFTSellTickets_t CNFTSellTicket::FindAllTicketByNFTTxID(const string& NFTTxnId)
 {
     return masterNodeCtrl.masternodeTickets.FindTicketsByMVKey<CNFTSellTicket>(NFTTxnId);
 }

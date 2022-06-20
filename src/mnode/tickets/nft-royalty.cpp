@@ -145,7 +145,7 @@ ticket_validation_t CNFTRoyaltyTicket::IsValid(const bool bPreReg, const uint32_
         size_t nIndex = 0;
         size_t nFoundIndex = numeric_limits<size_t>::max();
         uint32_t nHighBlock = 0;
-        const auto tickets = CNFTRoyaltyTicket::FindAllTicketByNFTTxnID(NFTTxnId);
+        const auto tickets = CNFTRoyaltyTicket::FindAllTicketByNFTTxID(NFTTxnId);
         ticket_validation_t tv1;
         tv1.setValid();
         for (const auto& royaltyTicket : tickets)
@@ -229,7 +229,7 @@ NFTRoyaltyTickets_t CNFTRoyaltyTicket::FindAllTicketByPastelID(const string& pas
     return masterNodeCtrl.masternodeTickets.FindTicketsByMVKey<CNFTRoyaltyTicket>(pastelID);
 }
 
-NFTRoyaltyTickets_t CNFTRoyaltyTicket::FindAllTicketByNFTTxnID(const string& NFTTxnId)
+NFTRoyaltyTickets_t CNFTRoyaltyTicket::FindAllTicketByNFTTxID(const string& NFTTxnId)
 {
     return masterNodeCtrl.masternodeTickets.FindTicketsByMVKey<CNFTRoyaltyTicket>(NFTTxnId);
 }
