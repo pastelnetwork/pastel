@@ -13,9 +13,9 @@
 #include <mnode/tickets/action-act.h>
 #include <mnode/tickets/nft-collection-reg.h>
 #include <mnode/tickets/nft-collection-act.h>
-#include <mnode/tickets/nft-buy.h>
-#include <mnode/tickets/nft-sell.h>
-#include <mnode/tickets/nft-trade.h>
+#include <mnode/tickets/offer.h>
+#include <mnode/tickets/accept.h>
+#include <mnode/tickets/transfer.h>
 #include <mnode/tickets/nft-take-down.h>
 #include <mnode/tickets/nft-royalty.h>
 #include <mnode/tickets/username-change.h>

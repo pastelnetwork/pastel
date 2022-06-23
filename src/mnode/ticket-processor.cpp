@@ -85,16 +85,16 @@ unique_ptr<CPastelTicket> CPastelTicketProcessor::CreateTicket(const TicketID ti
         ticket = make_unique<CNFTActivateTicket>();
         break;
 
-    case TicketID::Sell:
-        ticket = make_unique<CNFTSellTicket>();
+    case TicketID::Offer:
+        ticket = make_unique<COfferTicket>();
         break;
 
-    case TicketID::Buy:
-        ticket = make_unique<CNFTBuyTicket>();
+    case TicketID::Accept:
+        ticket = make_unique<CAcceptTicket>();
         break;
 
-    case TicketID::Trade:
-        ticket = make_unique<CNFTTradeTicket>();
+    case TicketID::Transfer:
+        ticket = make_unique<CTransferTicket>();
         break;
 
     case TicketID::Royalty:
@@ -256,45 +256,45 @@ ticket_validation_t CPastelTicketProcessor::ValidateTicketFees(const uint32_t nH
         // expected ticket fee in patoshis
         const CAmount expectedTicketFee = ticket->TicketPricePSL(nHeight) * COIN;
 
-        CAmount tradePrice = 0;
+        CAmount transferPrice = 0;
         optional<CAmount> royaltyFee;
         optional<CAmount> greenFee;
 
         const TicketID ticket_id = ticket->ID(); 
-        if (ticket_id == TicketID::Trade)
+        if (ticket_id == TicketID::Transfer)
         {
-            const auto trade_ticket = dynamic_cast<CNFTTradeTicket*>(ticket.get());
-            if (!trade_ticket)
+            const auto pTransferTicket = dynamic_cast<CTransferTicket*>(ticket.get());
+            if (!pTransferTicket)
             {
-                tv.errorMsg = strprintf("Invalid %s ticket", ::GetTicketDescription(TicketID::Trade));
+                tv.errorMsg = strprintf("Invalid %s ticket", ::GetTicketDescription(TicketID::Transfer));
                 break;
             }
 
-            const auto NFTTicket = trade_ticket->FindNFTRegTicket();
-            if (!NFTTicket)
+            const auto nftTicket = pTransferTicket->FindNFTRegTicket();
+            if (!nftTicket)
             {
                 tv.errorMsg = strprintf(
                     "%s ticket not found for the %s ticket with txid=%s", 
-                    ::GetTicketDescription(TicketID::NFT), ::GetTicketDescription(TicketID::Trade), ticket->GetTxId());
+                    ::GetTicketDescription(TicketID::NFT), ::GetTicketDescription(TicketID::Transfer), ticket->GetTxId());
                 break;
             }
 
-            const auto NFTRegTicket = dynamic_cast<CNFTRegTicket*>(NFTTicket.get());
-            if (!NFTRegTicket)
+            const auto pNFTRegTicket = dynamic_cast<CNFTRegTicket*>(nftTicket.get());
+            if (!pNFTRegTicket)
             {
                 tv.errorMsg = strprintf(
                     "Invalid %s ticket referred by the %s ticket with txid=%s",
-                    ::GetTicketDescription(TicketID::NFT), ::GetTicketDescription(TicketID::Trade), ticket->GetTxId());
+                    ::GetTicketDescription(TicketID::NFT), ::GetTicketDescription(TicketID::Transfer), ticket->GetTxId());
                 break;
             }
 
-            // trade price in patoshis
-            tradePrice = trade_ticket->price * COIN;
-            if (NFTRegTicket->getRoyalty() > 0)
-                royaltyFee = static_cast<CAmount>(tradePrice * NFTRegTicket->getRoyalty());
-            if (NFTRegTicket->hasGreenFee())
-                greenFee = tradePrice * CNFTRegTicket::GreenPercent(nHeight) / 100;
-            tradePrice -= (royaltyFee.value_or(0) + greenFee.value_or(0));
+            // transfer price in patoshis
+            transferPrice = pTransferTicket->price * COIN;
+            if (pNFTRegTicket->getRoyalty() > 0)
+                royaltyFee = static_cast<CAmount>(transferPrice * pNFTRegTicket->getRoyalty());
+            if (pNFTRegTicket->hasGreenFee())
+                greenFee = transferPrice * CNFTRegTicket::GreenPercent(nHeight) / 100;
+            transferPrice -= (royaltyFee.value_or(0) + greenFee.value_or(0));
         }
 
         // Validate various fees
@@ -306,8 +306,8 @@ ticket_validation_t CPastelTicketProcessor::ValidateTicketFees(const uint32_t nH
             {
                 TicketID::PastelID,
                 TicketID::NFT,
-                TicketID::Sell,
-                TicketID::Buy,
+                TicketID::Offer,
+                TicketID::Accept,
                 TicketID::Royalty,
                 TicketID::Username,
                 TicketID::EthereumAddress,
@@ -362,8 +362,8 @@ ticket_validation_t CPastelTicketProcessor::ValidateTicketFees(const uint32_t nH
                     continue;
                 }
             }
-            // in these tickets last 2 outputs are: change and payment to the seller
-            if (ticket_id == TicketID::Trade)
+            // in these tickets last 2 outputs are: change and payment to the current owner
+            if (ticket_id == TicketID::Transfer)
             {
                 size_t nFeesDefined = 0;
                 if (royaltyFee.has_value())
@@ -374,11 +374,11 @@ ticket_validation_t CPastelTicketProcessor::ValidateTicketFees(const uint32_t nH
                     continue;
                 if (i == (nFeesDefined == 2 ? num - 3 : (nFeesDefined == 1 ? num - 2 : num - 1)))
                 {
-                    if (tradePrice != txOut.nValue)
+                    if (transferPrice != txOut.nValue)
                     {
                         tv1.errorMsg = strprintf(
                             "Wrong payment to the seller: expected - %" PRId64 ", real - %" PRId64,
-                            tradePrice, txOut.nValue);
+                            transferPrice, txOut.nValue);
                         tv1.state = TICKET_VALIDATION_STATE::INVALID;
                         break;
                     }
@@ -776,9 +776,9 @@ template NFTRegTickets_t CPastelTicketProcessor::FindTicketsByMVKey<CNFTRegTicke
 template NFTCollectionRegTickets_t CPastelTicketProcessor::FindTicketsByMVKey<CNFTCollectionRegTicket>(const string&);
 template NFTCollectionActivateTickets_t CPastelTicketProcessor::FindTicketsByMVKey<CNFTCollectionActivateTicket>(const string&);
 template NFTActivateTickets_t CPastelTicketProcessor::FindTicketsByMVKey<CNFTActivateTicket>(const string&);
-template NFTSellTickets_t CPastelTicketProcessor::FindTicketsByMVKey<CNFTSellTicket>(const string&);
-template NFTBuyTickets_t CPastelTicketProcessor::FindTicketsByMVKey<CNFTBuyTicket>(const string&);
-template NFTTradeTickets_t CPastelTicketProcessor::FindTicketsByMVKey<CNFTTradeTicket>(const string&);
+template OfferTickets_t CPastelTicketProcessor::FindTicketsByMVKey<COfferTicket>(const string&);
+template AcceptTickets_t CPastelTicketProcessor::FindTicketsByMVKey<CAcceptTicket>(const string&);
+template TransferTickets_t CPastelTicketProcessor::FindTicketsByMVKey<CTransferTicket>(const string&);
 template NFTRoyaltyTickets_t CPastelTicketProcessor::FindTicketsByMVKey<CNFTRoyaltyTicket>(const string&);
 template ChangeUsernameTickets_t CPastelTicketProcessor::FindTicketsByMVKey<CChangeUsernameTicket>(const string&);
 template ChangeEthereumAddressTickets_t CPastelTicketProcessor::FindTicketsByMVKey<CChangeEthereumAddressTicket>(const string&);
@@ -847,9 +847,9 @@ template string CPastelTicketProcessor::ListTickets<CNFTRegTicket>(const uint32_
 template string CPastelTicketProcessor::ListTickets<CNFTCollectionRegTicket>(const uint32_t nMinHeight) const;
 template string CPastelTicketProcessor::ListTickets<CNFTCollectionActivateTicket>(const uint32_t nMinHeight) const;
 template string CPastelTicketProcessor::ListTickets<CNFTActivateTicket>(const uint32_t nMinHeight) const;
-template string CPastelTicketProcessor::ListTickets<CNFTSellTicket>(const uint32_t nMinHeight) const;
-template string CPastelTicketProcessor::ListTickets<CNFTBuyTicket>(const uint32_t nMinHeight) const;
-template string CPastelTicketProcessor::ListTickets<CNFTTradeTicket>(const uint32_t nMinHeight) const;
+template string CPastelTicketProcessor::ListTickets<COfferTicket>(const uint32_t nMinHeight) const;
+template string CPastelTicketProcessor::ListTickets<CAcceptTicket>(const uint32_t nMinHeight) const;
+template string CPastelTicketProcessor::ListTickets<CTransferTicket>(const uint32_t nMinHeight) const;
 template string CPastelTicketProcessor::ListTickets<CNFTRoyaltyTicket>(const uint32_t nMinHeight) const;
 template string CPastelTicketProcessor::ListTickets<CChangeUsernameTicket>(const uint32_t nMinHeight) const;
 template string CPastelTicketProcessor::ListTickets<CChangeEthereumAddressTicket>(const uint32_t nMinHeight) const;
@@ -902,7 +902,7 @@ string CPastelTicketProcessor::ListFilterPastelIDTickets(const uint32_t nMinHeig
         }, nMinHeight);
 }
 
-// 1 - active;    2 - inactive;     3 - sold
+// 1 - active;    2 - inactive;     3 - transferred|sold
 string CPastelTicketProcessor::ListFilterNFTTickets(const uint32_t nMinHeight, const short filter) const
 {
     return filterTickets<CNFTRegTicket>(
@@ -911,13 +911,13 @@ string CPastelTicketProcessor::ListFilterNFTTickets(const uint32_t nMinHeight, c
             if (filter == 3)
             {
                 CNFTActivateTicket actTicket;
-                // find Act ticket for this Reg ticket
+                // find NFT Activate ticket for this Reg ticket
                 if (CNFTActivateTicket::FindTicketInDb(t.GetTxId(), actTicket))
                 {
-                    //find Trade tickets listing that Act ticket txid as NFT ticket
-                    const auto vTradeTickets = CNFTTradeTicket::FindAllTicketByNFTTxID(actTicket.GetTxId());
-                    if (vTradeTickets.size() >= t.getTotalCopies())
-                        return false; //don't skip sold
+                    // find Transfer tickets listing that NFT Activate ticket txid as NFT ticket
+                    const auto vTransferTickets = CTransferTicket::FindAllTicketByNFTTxID(actTicket.GetTxId());
+                    if (vTransferTickets.size() >= t.getTotalCopies())
+                        return false; //don't skip transferred|sold
                 }
             }
 
@@ -967,121 +967,119 @@ string CPastelTicketProcessor::ListFilterActionTickets(const uint32_t nMinHeight
         }, nMinHeight);
 }
 
-// 1 - available;      2 - sold
+// 1 - available;      2 - transferred|sold
 string CPastelTicketProcessor::ListFilterActTickets(const uint32_t nMinHeight, const short filter) const
 {
     return filterTickets<CNFTActivateTicket>(
         [&](const CNFTActivateTicket& t, const unsigned int chainHeight) -> bool
         {
-            //find Trade tickets listing this Act ticket txid as NFT ticket
-            auto vTradeTickets = CNFTTradeTicket::FindAllTicketByNFTTxID(t.GetTxId());
-            auto ticket = GetTicket(t.getRegTxId(), TicketID::NFT);
-            auto NFTRegTicket = dynamic_cast<CNFTRegTicket*>(ticket.get());
+            // find Transfer tickets listing this Act ticket txid as NFT ticket
+            const auto vTransferTickets = CTransferTicket::FindAllTicketByNFTTxID(t.GetTxId());
+            const auto ticket = GetTicket(t.getRegTxId(), TicketID::NFT);
+            const auto NFTRegTicket = dynamic_cast<CNFTRegTicket*>(ticket.get());
             if (!NFTRegTicket)
                 return true;
-            if (vTradeTickets.size() < NFTRegTicket->getTotalCopies())
+            if (vTransferTickets.size() < NFTRegTicket->getTotalCopies())
             {
                 if (filter == 1)
                     return false; //don't skip available
             } else if (filter == 2)
-                return false; //don't skip sold
+                return false; //don't skip transferred|sold
             return true;
         }, nMinHeight);
 }
 
-// 0 - all, 1 - available; 2 - unavailable; 3 - expired; 4 - sold
-string CPastelTicketProcessor::ListFilterSellTickets(const uint32_t nMinHeight, const short filter, const string& pastelID) const
+// 0 - all, 1 - available; 2 - unavailable; 3 - expired; 4 - transferred|sold
+string CPastelTicketProcessor::ListFilterOfferTickets(const uint32_t nMinHeight, const short filter, const string& pastelID) const
 {
     const bool checkConfirmation{filter > 0};
     if (filter == 0 && pastelID.empty()) {
-            return ListTickets<CNFTSellTicket>(nMinHeight); // get all
+            return ListTickets<COfferTicket>(nMinHeight); // get all
     }
-    return filterTickets<CNFTSellTicket>(
-        [&](const CNFTSellTicket& t, const unsigned int chainHeight) -> bool
+    return filterTickets<COfferTicket>(
+        [&](const COfferTicket& t, const unsigned int chainHeight) -> bool
         {
             if (!pastelID.empty() && t.getPastelID() != pastelID)
-            {
                 return true; // ignore tickets that do not belong to this pastelID
-            }
-            CNFTBuyTicket existingBuyTicket;
-            //find buy ticket for this sell ticket, if any
-            if (CNFTBuyTicket::FindTicketInDb(t.GetTxId(), existingBuyTicket))
+            CAcceptTicket existingAcceptTicket;
+            // find accept ticket for this offer ticket, if any
+            if (CAcceptTicket::FindTicketInDb(t.GetTxId(), existingAcceptTicket))
             {
-                //check if trade ticket exists for this sell ticket
-                if (CNFTTradeTicket::CheckTradeTicketExistByBuyTicket(existingBuyTicket.GetTxId()))
+                // check if transfer ticket exists for this offer ticket
+                if (CTransferTicket::CheckTransferTicketExistByAcceptTicket(existingAcceptTicket.GetTxId()))
                 {
                     if (filter == 4)
-                        return false; // don't skip sold
+                        return false; // don't skip transferred|sold
                     else
                         return true;
-                };
-                //if not - check age
-                if (existingBuyTicket.GetBlock() + masterNodeCtrl.MaxBuyTicketAge <= chainHeight)
+                }
+                // if not - check age
+                if (existingAcceptTicket.GetBlock() + masterNodeCtrl.MaxAcceptTicketAge <= chainHeight)
                     return true;
             }
-            const SELL_TICKET_STATE state = t.checkValidState(chainHeight);
+            const OFFER_TICKET_STATE state = t.checkValidState(chainHeight);
             if (filter == 1)
             {
-                //skip sell ticket that is not yet active or expired
-                if (state == SELL_TICKET_STATE::NOT_ACTIVE || state == SELL_TICKET_STATE::EXPIRED)
+                // skip offer ticket that is not yet active or expired
+                if (state == OFFER_TICKET_STATE::NOT_ACTIVE || state == OFFER_TICKET_STATE::EXPIRED)
                     return true;
             } else if (filter == 2) {
-                //skip sell ticket that is already active or expired
-                if (state == SELL_TICKET_STATE::ACTIVE || state == SELL_TICKET_STATE::EXPIRED)
+                // skip offer ticket that is already active or expired
+                if (state == OFFER_TICKET_STATE::ACTIVE || state == OFFER_TICKET_STATE::EXPIRED)
                     return true;
             } else if (filter == 3) {
-                //skip sell ticket that is still active
-                if (state != SELL_TICKET_STATE::EXPIRED)
+                // skip offer ticket that is still active
+                if (state != OFFER_TICKET_STATE::EXPIRED)
                     return true;
             }
             return false;
         }, checkConfirmation);
 }
 
-// 0 - all, 1 - expired;    2 - sold
-string CPastelTicketProcessor::ListFilterBuyTickets(const uint32_t nMinHeight, const short filter, const string& pastelID) const
+// 0 - all, 1 - expired;    2 - transferred|sold
+string CPastelTicketProcessor::ListFilterAcceptTickets(const uint32_t nMinHeight, const short filter, const string& pastelID) const
 {
     const bool checkConfirmation{filter > 0};
     if (filter == 0 && pastelID.empty()) {
-            return ListTickets<CNFTBuyTicket>(nMinHeight); // get all
+            return ListTickets<CAcceptTicket>(nMinHeight); // get all
     }
-    return filterTickets<CNFTBuyTicket>(
-        [&](const CNFTBuyTicket& t, const unsigned int chainHeight) -> bool
+    return filterTickets<CAcceptTicket>(
+        [&](const CAcceptTicket& t, const unsigned int chainHeight) -> bool
         {
             if (!pastelID.empty() && t.getPastelID() != pastelID)
                 return true; // ignore tickets that do not belong to this pastelID
             if (filter == 0)
                 return false; // get all belong to this pastel ID
-            if (CNFTTradeTicket::CheckTradeTicketExistByBuyTicket(t.GetTxId())) {
+            if (CTransferTicket::CheckTransferTicketExistByAcceptTicket(t.GetTxId())) {
                 if (filter == 2)
-                    return false; //don't skip traded
-            } else if (filter == 1 && t.GetBlock() + masterNodeCtrl.MaxBuyTicketAge < chainHeight)
-                return false; //don't skip non sold, and expired
+                    return false; // don't skip transferred
+            } else if (filter == 1 && t.GetBlock() + masterNodeCtrl.MaxAcceptTicketAge < chainHeight)
+                return false; //don't skip non transferred|sold, and expired
             return true;
         }, checkConfirmation);
 }
 
-// 0 - all, 1 - available; 2 - sold
-string CPastelTicketProcessor::ListFilterTradeTickets(const uint32_t nMinHeight, const short filter, const string& pastelID) const
+// 0 - all, 1 - available; 2 - transferred|sold
+string CPastelTicketProcessor::ListFilterTransferTickets(const uint32_t nMinHeight, const short filter, const string& pastelID) const
 {
     const bool checkConfirmation{filter > 0};
     if (filter == 0 && pastelID.empty())
-        return ListTickets<CNFTTradeTicket>(nMinHeight); // get all
-    return filterTickets<CNFTTradeTicket>(
-        [&](const CNFTTradeTicket& t, const unsigned int chainHeight) -> bool
+        return ListTickets<CTransferTicket>(nMinHeight); // get all
+    return filterTickets<CTransferTicket>(
+        [&](const CTransferTicket& t, const unsigned int chainHeight) -> bool
         {
-            //find Trade tickets listing this Trade ticket txid as NFT ticket
-            const auto tradeTickets = CNFTTradeTicket::FindAllTicketByNFTTxID(t.GetTxId());
+            // find Transfer tickets listing this Transfer ticket txid as NFT ticket
+            const auto vTransferTickets = CTransferTicket::FindAllTicketByNFTTxID(t.GetTxId());
             if (!pastelID.empty() && t.getPastelID() != pastelID)
                 return true; // ignore tickets that do not belong to this pastelID
             if (filter == 0)
                 return false; // get all tickets that belong to this pastel ID
-            if (tradeTickets.empty())
+            if (vTransferTickets.empty())
             {
                 if (filter == 1)
                     return false; //don't skip available
             } else if (filter == 2)
-                return false; //don't skip sold
+                return false; //don't skip transferred|sold
             return true;
         }, checkConfirmation);
 }
@@ -1096,7 +1094,7 @@ bool CPastelTicketProcessor::WalkBackTradingChain(
     
     uint256 txid;
     txid.SetHex(sTxId);
-    //  Get ticket pointed by NFTTxnId. This is either Activation or Trade tickets (Sell, Buy, Trade)
+    //  Get ticket pointed by NFTTxnId. This is either Activation or Transfer tickets (Offer, Accept, Transfer)
     try
     {
         pastelTicket = CPastelTicketProcessor::GetTicket(txid);
@@ -1108,65 +1106,74 @@ bool CPastelTicketProcessor::WalkBackTradingChain(
     }
     
     bool bOk = false;
-    do {
-        if (pastelTicket->ID() == TicketID::Trade) {
-            auto tradeTicket = dynamic_cast<CNFTTradeTicket *>(pastelTicket.get());
-            if (!tradeTicket) {
-                errRet = strprintf("The Trade ticket [txid=%s] referred by this ticket [txid=%s] is invalid",
-                                   pastelTicket->GetTxId(), sTxId);
+    do
+    {
+        if (pastelTicket->ID() == TicketID::Transfer)
+        {
+            const auto pTransferTicket = dynamic_cast<CTransferTicket *>(pastelTicket.get());
+            if (!pTransferTicket)
+            {
+                errRet = strprintf("The %s ticket [txid=%s] referred by this ticket [txid=%s] is invalid",
+                    ::GetTicketDescription(TicketID::Transfer), pastelTicket->GetTxId(), sTxId);
                 break;
             }
-            if (!WalkBackTradingChain(shortPath ? tradeTicket->getNFTTxId() : tradeTicket->getBuyTxId(), chain, shortPath,
-                                      errRet))
+            if (!WalkBackTradingChain(shortPath ? pTransferTicket->getNFTTxId() : pTransferTicket->getAcceptTxId(), 
+                    chain, shortPath, errRet))
                 break;
-        } else if (pastelTicket->ID() == TicketID::Buy) {
-            auto tradeTicket = dynamic_cast<CNFTBuyTicket *>(pastelTicket.get());
-            if (!tradeTicket) {
-                errRet = strprintf("The Buy ticket [txid=%s] referred by this ticket [txid=%s] is invalid",
-                                   pastelTicket->GetTxId(), sTxId);
-                break;
-            }
-            if (!WalkBackTradingChain(tradeTicket->getSellTxId(), chain, shortPath, errRet))
-                break;
-        } else if (pastelTicket->ID() == TicketID::Sell) {
-            auto sellTicket = dynamic_cast<CNFTSellTicket *>(pastelTicket.get());
-            if (!sellTicket) {
-                errRet = strprintf("The Sell ticket [txid=%s] referred by this ticket [txid=%s] is invalid",
-                                   pastelTicket->GetTxId(), sTxId);
+        } else if (pastelTicket->ID() == TicketID::Accept) {
+            const auto pAcceptTicket = dynamic_cast<CAcceptTicket *>(pastelTicket.get());
+            if (!pAcceptTicket)
+            {
+                errRet = strprintf("The %s ticket [txid=%s] referred by this ticket [txid=%s] is invalid",
+                    ::GetTicketDescription(TicketID::Accept), pastelTicket->GetTxId(), sTxId);
                 break;
             }
-            if (!WalkBackTradingChain(sellTicket->getNFTTxId(), chain, shortPath, errRet))
+            if (!WalkBackTradingChain(pAcceptTicket->getOfferTxId(), chain, shortPath, errRet))
+                break;
+        } else if (pastelTicket->ID() == TicketID::Offer) {
+            const auto pOfferTicket = dynamic_cast<COfferTicket *>(pastelTicket.get());
+            if (!pOfferTicket)
+            {
+                errRet = strprintf("The %s ticket [txid=%s] referred by this ticket [txid=%s] is invalid",
+                    ::GetTicketDescription(TicketID::Offer), pastelTicket->GetTxId(), sTxId);
+                break;
+            }
+            if (!WalkBackTradingChain(pOfferTicket->getNFTTxId(), chain, shortPath, errRet))
                 break;
         } else if (pastelTicket->ID() == TicketID::Activate) {
-            auto actTicket = dynamic_cast<CNFTActivateTicket *>(pastelTicket.get());
-            if (!actTicket) {
-                errRet = strprintf("The Activation ticket [txid=%s] referred by ticket [txid=%s] is invalid",
-                                   pastelTicket->GetTxId(), sTxId);
+            const auto pNftActTicket = dynamic_cast<CNFTActivateTicket *>(pastelTicket.get());
+            if (!pNftActTicket)
+            {
+                errRet = strprintf("The %s ticket [txid=%s] referred by ticket [txid=%s] is invalid",
+                    ::GetTicketDescription(TicketID::Activate), pastelTicket->GetTxId(), sTxId);
                 break;
             }
-            if (!WalkBackTradingChain(actTicket->getRegTxId(), chain, shortPath, errRet))
+            if (!WalkBackTradingChain(pNftActTicket->getRegTxId(), chain, shortPath, errRet))
                 break;
         } else if (pastelTicket->ID() == TicketID::NFT) {
-            auto regTicket = dynamic_cast<CNFTRegTicket *>(pastelTicket.get());
-            if (!regTicket) {
-                errRet = strprintf("The NFT Registration ticket [txid=%s] referred by ticket [txid=%s] is invalid",
-                                   pastelTicket->GetTxId(), sTxId);
+            const auto pNftRegTicket = dynamic_cast<CNFTRegTicket *>(pastelTicket.get());
+            if (!pNftRegTicket)
+            {
+                errRet = strprintf("The %s ticket [txid=%s] referred by ticket [txid=%s] is invalid",
+                    ::GetTicketDescription(TicketID::NFT), pastelTicket->GetTxId(), sTxId);
                 break;
             }
         } else if (pastelTicket->ID() == TicketID::ActionActivate) {
-            auto actTicket = dynamic_cast<CActionActivateTicket*>(pastelTicket.get());
-            if (!actTicket) {
-                errRet = strprintf("The Action Activation ticket [txid=%s] referred by ticket [txid=%s] is invalid",
-                                   pastelTicket->GetTxId(), sTxId);
+            const auto pActionActTicket = dynamic_cast<CActionActivateTicket*>(pastelTicket.get());
+            if (!pActionActTicket)
+            {
+                errRet = strprintf("The %s ticket [txid=%s] referred by ticket [txid=%s] is invalid",
+                    ::GetTicketDescription(TicketID::ActionActivate), pastelTicket->GetTxId(), sTxId);
                 break;
             }
-            if (!WalkBackTradingChain(actTicket->getRegTxId(), chain, shortPath, errRet))
+            if (!WalkBackTradingChain(pActionActTicket->getRegTxId(), chain, shortPath, errRet))
                 break;
         } else if (pastelTicket->ID() == TicketID::ActionReg) {
-            auto regTicket = dynamic_cast<CActionRegTicket*>(pastelTicket.get());
-            if (!regTicket) {
-                errRet = strprintf("The Action Registration ticket [txid=%s] referred by ticket [txid=%s] is invalid",
-                                   pastelTicket->GetTxId(), sTxId);
+            const auto pActionRegTicket = dynamic_cast<CActionRegTicket*>(pastelTicket.get());
+            if (!pActionRegTicket)
+            {
+                errRet = strprintf("The %s ticket [txid=%s] referred by ticket [txid=%s] is invalid",
+                    ::GetTicketDescription(TicketID::ActionReg), pastelTicket->GetTxId(), sTxId);
                 break;
             }
         } else {
@@ -1768,24 +1775,24 @@ bool CPastelTicketProcessor::ParseP2FMSTransaction(const CMutableTransaction& tx
 /**
  * Validate NFT ownership.
  * 
- * \param _txid - NFT registration txid
- * \param _pastelID - Pastel ID of the owner to validate
- * \return optional tuple <NFT registration txid, NFT trade txid>
+ * \param txid - NFT registration txid
+ * \param pastelID - Pastel ID of the owner to validate
+ * \return optional tuple <NFT registration txid, Transfer txid>
  */
-optional<reg_trade_txid_t> CPastelTicketProcessor::ValidateOwnership(const string &_txid, const string &_pastelID)
+optional<reg_transfer_txid_t> CPastelTicketProcessor::ValidateOwnership(const string &txid, const string &pastelID)
 {
-    optional<reg_trade_txid_t> retVal;
+    optional<reg_transfer_txid_t> retVal;
     try
     {
         // Find ticket by txid
-        auto ticket = CPastelTicketProcessor::GetTicket(_txid, TicketID::NFT);
+        auto ticket = CPastelTicketProcessor::GetTicket(txid, TicketID::NFT);
         auto NFTTicket = dynamic_cast<CNFTRegTicket*>(ticket.get());
         if (!NFTTicket)
             return nullopt;
 
-        // Check if creator and _pastelID are equal
-        if ((NFTTicket->IsCreatorPastelId(_pastelID)) && CNFTActivateTicket::CheckTicketExistByNFTTicketID(NFTTicket->GetTxId()))
-            return make_tuple(_txid, "");
+        // Check if creator and pastelID are equal
+        if ((NFTTicket->IsCreatorPastelId(pastelID)) && CNFTActivateTicket::CheckTicketExistByNFTTicketID(NFTTicket->GetTxId()))
+            return make_tuple(txid, "");
 
     }
     catch(const runtime_error& e)
@@ -1793,18 +1800,18 @@ optional<reg_trade_txid_t> CPastelTicketProcessor::ValidateOwnership(const strin
         LogPrintf("Was not able to process ValidateOwnership request due to: %s\n", e.what()); 
     }
 
-    //If we are here it means it is a nested trade ticket 
-    //List trade tickets by reg txID and rearrange them by blockheight
-    const auto tradeTickets = CNFTTradeTicket::FindAllTicketByRegTnxID(_txid);
+    // If we are here it means it is a nested transfer ticket 
+    // List transfer tickets by reg txID and rearrange them by blockheight
+    const auto vTransferTickets = CTransferTicket::FindAllTicketByRegTxID(txid);
     
     // Go through each if not empty and rearrange them by block-height
-    if(!tradeTickets.empty())
+    if (!vTransferTickets.empty())
     {
-        //sort(tradeTickets.begin(), tradeTickets.end(), [](CNFTTradeTicket & one, CNFTTradeTicket & two){return one.GetBlock() < two.GetBlock();});
-        const auto ownersPastelIds_with_TxIds = CNFTTradeTicket::GetPastelIdAndTxIdWithTopHeightPerCopy(tradeTickets);
-        const auto it = ownersPastelIds_with_TxIds.find(_pastelID);
+        //sort(vTransferTickets.begin(), vTransferTickets.end(), [](CTransferTicket & one, CTransferTicket & two){return one.GetBlock() < two.GetBlock();});
+        const auto ownersPastelIds_with_TxIds = CTransferTicket::GetPastelIdAndTxIdWithTopHeightPerCopy(vTransferTickets);
+        const auto it = ownersPastelIds_with_TxIds.find(pastelID);
         if (it != ownersPastelIds_with_TxIds.cend())
-            retVal = make_tuple(_txid, it->second);
+            retVal = make_tuple(txid, it->second);
     }
 
     return retVal;
@@ -1857,14 +1864,14 @@ string CPastelTicketProcessor::CreateFakeTransaction(CPastelTicket& ticket, cons
             auto t = (CActionActivateTicket*)&ticket;
             t->setCalledAtHeight(1);
         }
-    } else if (ticket.ID() == TicketID::Sell) {
+    } else if (ticket.ID() == TicketID::Offer) {
         if (strVerb == "1") {
-            auto t = (CNFTSellTicket*)&ticket;
+            auto t = dynamic_cast<COfferTicket*>(&ticket);
             t->clearSignature();
         }
-    } else if (ticket.ID() == TicketID::Buy) {
+    } else if (ticket.ID() == TicketID::Accept) {
         ;
-    } else if (ticket.ID() == TicketID::Trade) {
+    } else if (ticket.ID() == TicketID::Transfer) {
         ;
     }
 

@@ -36,7 +36,8 @@ static UniValue getTickets(const std::string& key, T2 key2 = "", Lambda otherFun
 
 UniValue tickets_find(const UniValue& params)
 {
-    RPC_CMD_PARSER2(FIND, params, id, nft, nft__collection, nft__collection__act, act, sell, buy, trade, 
+    RPC_CMD_PARSER2(FIND, params, id, nft, nft__collection, nft__collection__act, act, 
+        sell, offer, buy, accept, trade, transfer,
         down, royalty, username, ethereumaddress, action, action__act);
 
     if (!FIND.IsCmdSupported())
@@ -52,12 +53,12 @@ Available types:
              The "key" is 'Key1' or 'Key2' OR 'creator's PastelID'
   act      - Find NFT confirmation ticket.
              The "key" is 'NFT Registration ticket txid' OR 'creator's PastelID' OR 'creator's height (block height at what original NFT registration request was created)'
-  sell     - Find NFT sell ticket.
-             The "key" is either Activation OR Trade txid PLUS number of copy - "txid:number"
+  offer    - Find offer ticket.
+             The "key" is either Activation OR Transfer txid PLUS number of copy - "txid:number"
              ex.: 907e5e4c6fc4d14660a22afe2bdf6d27a3c8762abf0a89355bb19b7d9e7dc440:1
-  buy      - Find NFT buy ticket.
+  accept   - Find accept ticket.
              The "key" is ...
-  trade    - Find NFT trade ticket.
+  transfer - Find transfer ticket.
              The "key" is ...
   nft-collection - Find new NFT collection registration ticket.
              The "key" is 'Key1' or 'Key2' OR 'creator's PastelID'
@@ -105,13 +106,16 @@ As json rpc
         return getTickets<CNFTActivateTicket, int>(key, atoi(key), CNFTActivateTicket::FindAllTicketByCreatorHeight);
 
     case RPC_CMD_FIND::sell:
-        return getTickets<CNFTSellTicket>(key, key, CNFTSellTicket::FindAllTicketByNFTTxID);
+    case RPC_CMD_FIND::offer:
+        return getTickets<COfferTicket>(key, key, COfferTicket::FindAllTicketByNFTTxID);
 
     case RPC_CMD_FIND::buy:
-        return getTickets<CNFTBuyTicket>(key);
+    case RPC_CMD_FIND::accept:
+        return getTickets<CAcceptTicket>(key);
 
     case RPC_CMD_FIND::trade:
-        return getTickets<CNFTTradeTicket>(key);
+    case RPC_CMD_FIND::transfer:
+        return getTickets<CTransferTicket>(key);
 
     case RPC_CMD_FIND::nft__collection:
         return getTickets<CNFTCollectionRegTicket>(key);

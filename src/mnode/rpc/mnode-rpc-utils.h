@@ -4,6 +4,7 @@
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <tuple>
 #include <string>
+#include <limits>
 
 #include <univalue.h>
 #include <tinyformat.h>

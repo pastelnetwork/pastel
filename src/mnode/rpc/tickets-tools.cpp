@@ -50,7 +50,7 @@ UniValue tickets_tools_printtradingchain(const UniValue& params)
     return NullUniValue;
 }
 
-UniValue tickets_tools_getregbytrade(const UniValue& params)
+UniValue tickets_tools_getregbytransfer(const UniValue& params)
 {
     string txid;
     if (params.size() > 2)
@@ -188,7 +188,7 @@ UniValue tickets_tools_validateownership(const UniValue& params)
     if (params.size() < 5)
         throw JSONRPCError(RPC_INVALID_PARAMETER,
 R"(tickets tools validateownership "txid" "pastelid" "passphrase"
-Get ownership validation by pastelid. If unsuccessful, method return nft:"",trade:"". Every other case successful.
+Get ownership validation by pastelid. If unsuccessful, method return nft:"",transfer:"". Every other case successful.
 
 Arguments:
 1. "txid"       (string, required) txid of the original nft registration 
@@ -237,12 +237,12 @@ As json rpc
         if (result.has_value())
         {
             retVal.pushKV("nft", std::move(get<0>(result.value())));
-            retVal.pushKV("trade", std::move(get<1>(result.value())));
+            retVal.pushKV("transfer", std::move(get<1>(result.value())));
         }
         else 
         {
             retVal.pushKV("nft", "");
-            retVal.pushKV("trade", "");
+            retVal.pushKV("transfer", "");
         }
     }
     return retVal;
@@ -428,8 +428,8 @@ As json rpc:
 
 UniValue tickets_tools(const UniValue& params)
 {
-    RPC_CMD_PARSER2(TOOLS, params, printtradingchain, getregbytrade, gettotalstoragefee, 
-        validateusername, validateethereumaddress, validateownership, searchthumbids);
+    RPC_CMD_PARSER2(TOOLS, params, printtradingchain, getregbytrade, getregbytransfer,
+        gettotalstoragefee, validateusername, validateethereumaddress, validateownership, searchthumbids);
 
     UniValue result;
     switch (TOOLS.cmd())
@@ -438,8 +438,9 @@ UniValue tickets_tools(const UniValue& params)
             result = tickets_tools_printtradingchain(params);
             break;
 
+        case RPC_CMD_TOOLS::getregbytransfer:
         case RPC_CMD_TOOLS::getregbytrade:
-            result = tickets_tools_getregbytrade(params);
+            result = tickets_tools_getregbytransfer(params);
             break;
 
         case RPC_CMD_TOOLS::gettotalstoragefee:

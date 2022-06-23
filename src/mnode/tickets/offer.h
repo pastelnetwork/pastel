@@ -5,26 +5,26 @@
 #include <mnode/tickets/ticket.h>
 
 // forward ticket class declaration
-class CNFTSellTicket;
+class COfferTicket;
 
 // ticket vector
-using NFTSellTickets_t = std::vector<CNFTSellTicket>;
+using OfferTickets_t = std::vector<COfferTicket>;
 
-typedef enum class _SELL_TICKET_STATE : uint8_t
+typedef enum class _OFFER_TICKET_STATE : uint8_t
 {
     NOT_DEFINED = 0, // <valid-before> and <valid-after> are not defined (=0)
     NOT_ACTIVE,      // current-height <= <valid-after>
     ACTIVE,          // <valid-after> .. current-height .. <valid-before>
     EXPIRED          // current-height >= <valid-before>
-} SELL_TICKET_STATE;
+} OFFER_TICKET_STATE;
 
-// NFT Sell Ticket /////////////////////////////////////////////////////////////////////////////////////////////////////
+// Offer Ticket /////////////////////////////////////////////////////////////////////////////////////////////////////
 /*
 	"ticket": {
-		"type": "nft-sell",
-		"pastelID": "",     //PastelID of the NFT owner - either 1) an original creator; or 2) a previous buyer,
-		                    //should be the same in either 1) NFT activation ticket or 2) trade ticket
-		"nft_txid": "",     //txid with either 1) NFT activation ticket or 2) trade ticket in it
+		"type": "offer",
+		"pastelID": "",     // PastelID of the NFT owner - either 1) an original creator; or 2) a previous buyer,
+		                    // should be the same in either 1) NFT activation ticket or 2) trade ticket
+		"txid": "",         // txid with either 1) NFT activation ticket or 2) trade ticket in it
 		"asked_price": "",
 		"valid_after": "",
 		"valid_before": "",
@@ -32,29 +32,29 @@ typedef enum class _SELL_TICKET_STATE : uint8_t
 		"signature": ""
 	}
 
-       key #1: <NFT_txid>:<copy_number>
-    MV key #1: seller PastelID
-    MV key #2: NFT txid
+       key #1: <txid>:<copy_number>
+    MV key #1: offerer PastelID
+    MV key #2: NFT registration ticket txid
  */
 
-class CNFTSellTicket : public CPastelTicket
+class COfferTicket : public CPastelTicket
 {
 public:
     std::string reserved;
     std::string key;
 
 public:
-    CNFTSellTicket() = default;
+    COfferTicket() = default;
 
-    explicit CNFTSellTicket(std::string _pastelID) : 
+    explicit COfferTicket(std::string _pastelID) : 
         m_sPastelID(std::move(_pastelID))
     {}
 
-    TicketID ID() const noexcept override { return TicketID::Sell; }
-    static TicketID GetID() { return TicketID::Sell; }
+    TicketID ID() const noexcept override { return TicketID::Offer; }
+    static TicketID GetID() { return TicketID::Offer; }
     constexpr auto GetTicketDescription() const
     {
-        return TICKET_INFO[to_integral_type<TicketID>(TicketID::Sell)].szDescription;
+        return TICKET_INFO[to_integral_type<TicketID>(TicketID::Offer)].szDescription;
     }
 
     void Clear() noexcept override
@@ -88,8 +88,8 @@ public:
     bool IsSameSignature(const v_uint8& signature) const noexcept { return m_signature == signature; }
     // sign the ticket with the PastelID's private key - creates signature
     void sign(SecureString&& strKeyPass);
-    // check sell ticket valid state
-    SELL_TICKET_STATE checkValidState(const uint32_t nHeight) const noexcept;
+    // check offer ticket valid state
+    OFFER_TICKET_STATE checkValidState(const uint32_t nHeight) const noexcept;
 
     // getters for ticket fields
     const std::string& getPastelID() const noexcept { return m_sPastelID; }
@@ -126,7 +126,7 @@ public:
         READWRITE(m_nBlock);
     }
 
-    static CNFTSellTicket Create(std::string &&NFTTxnId, 
+    static COfferTicket Create(std::string &&txid, 
         const unsigned int nAskedPricePSL, 
         const uint32_t nValidAfter, 
         const uint32_t nValidBefore, 
@@ -134,14 +134,14 @@ public:
         std::string &&sIntendedForPastelID, 
         std::string &&pastelID, 
         SecureString&& strKeyPass);
-    static bool FindTicketInDb(const std::string& key, CNFTSellTicket& ticket);
+    static bool FindTicketInDb(const std::string& key, COfferTicket& ticket);
 
-    static NFTSellTickets_t FindAllTicketByPastelID(const std::string& pastelID);
-    static NFTSellTickets_t FindAllTicketByNFTTxID(const std::string& NFTTxnId);
+    static OfferTickets_t FindAllTicketByPastelID(const std::string& pastelID);
+    static OfferTickets_t FindAllTicketByNFTTxID(const std::string& NFTTxnId);
 
 protected:
     std::string m_nftTxId;
-    std::string m_sPastelID; // Pastel ID of the NFT seller
+    std::string m_sPastelID; // Pastel ID of the offerer
     std::string m_sIntendedForPastelID; // Pastel ID of intended recipient of the NFT (can be empty)
     unsigned int m_nAskedPricePSL = 0;
     uint32_t m_nValidAfter = 0;  //as a block height

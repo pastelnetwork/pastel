@@ -129,21 +129,21 @@ MNODE_CPP =\
   mnode/rpc/tickets-findbylabel.cpp\
   mnode/rpc/tickets-get.cpp\
   mnode/rpc/tickets-tools.cpp\
+  mnode/tickets/accept.cpp\
   mnode/tickets/action-reg.cpp\
   mnode/tickets/action-act.cpp\
   mnode/tickets/etherium-address-change.cpp\
   mnode/tickets/nft-act.cpp\
-  mnode/tickets/nft-buy.cpp\
   mnode/tickets/nft-collection-act.cpp\
   mnode/tickets/nft-collection-reg.cpp\
   mnode/tickets/nft-reg.cpp\
   mnode/tickets/nft-royalty.cpp\
-  mnode/tickets/nft-sell.cpp\
   mnode/tickets/nft-take-down.cpp\
-  mnode/tickets/nft-trade.cpp\
+  mnode/tickets/offer.cpp\
   mnode/tickets/pastelid-reg.cpp\
   mnode/tickets/ticket-extra-fees.cpp\
   mnode/tickets/ticket_signing.cpp\
+  mnode/tickets/transfer.cpp\
   mnode/tickets/username-change.cpp\
   mnode/mnode-config.cpp\
   mnode/mnode-active.cpp\
@@ -183,6 +183,7 @@ MNODE_H = \
   mnode/tickets/action-reg.h\
   mnode/tickets/action-act.h\
   mnode/tickets/etherium-address-change.h\
+  mnode/tickets/accept.h\
   mnode/tickets/ticket.h\
   mnode/tickets/ticket-extra-fees.h\
   mnode/tickets/ticket-mn-fees.h\
@@ -191,15 +192,14 @@ MNODE_H = \
   mnode/tickets/ticket_signing.h\
   mnode/tickets/tickets-all.h\
   mnode/tickets/nft-act.h\
-  mnode/tickets/nft-buy.h\
   mnode/tickets/nft-collection-act.h\
   mnode/tickets/nft-collection-reg.h\
   mnode/tickets/nft-reg.h\
   mnode/tickets/nft-royalty.h\
-  mnode/tickets/nft-sell.h\
   mnode/tickets/nft-take-down.h\
-  mnode/tickets/nft-trade.h\
+  mnode/tickets/offer.h\
   mnode/tickets/pastelid-reg.h\
+  mnode/tickets/transfer.h\
   mnode/tickets/username-change.h\
   mnode/mnode-active.h\
   mnode/mnode-config.h\
