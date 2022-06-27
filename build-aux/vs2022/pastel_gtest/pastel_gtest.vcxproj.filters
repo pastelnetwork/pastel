@@ -322,7 +322,7 @@
     <ClCompile Include="..\..\..\src\gtest\test_mnode\test_ticket_nft-collection-reg.cpp">
       <Filter>UnitTest Files\test_mnode</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\src\gtest\test_mnode\test_ticket_nft-sell.cpp">
+    <ClCompile Include="..\..\..\src\gtest\test_mnode\test_ticket_offer.cpp">
       <Filter>UnitTest Files\test_mnode</Filter>
     </ClCompile>
   </ItemGroup>

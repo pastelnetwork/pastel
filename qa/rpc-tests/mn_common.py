@@ -2,7 +2,13 @@
 # Copyright (c) 2018-2022 The Pastel Core developers
 # Distributed under the MIT software license, see the accompanying
 # file COPYING or https://www.opensource.org/licenses/mit-license.php.
-
+from pathlib import Path
+import os
+import time
+import itertools
+import json
+import random
+from decimal import getcontext
 from pastel_test_framework import PastelTestFramework
 from test_framework.util import (
     assert_equal, 
@@ -11,15 +17,6 @@ from test_framework.util import (
     p2p_port,
     stop_node
 )
-from test_framework.authproxy import JSONRPCException
-from pathlib import Path
-import os
-import time
-import itertools
-import json
-import random
-
-from decimal import Decimal, getcontext
 getcontext().prec = 16
 
 class MasterNodeCommon (PastelTestFramework):
@@ -42,11 +39,21 @@ class MasterNodeCommon (PastelTestFramework):
             self.port = p2p_port(index)
 
         @property
-        def id(self): # masternode collateral id
+        def id(self) -> str:
+            """ masternode collateral id property
+
+            Returns:
+                str: masternode collateral id (txid-index)
+            """
             return str(self.collateral_txid) + "-" + str(self.collateral_index)
 
         @property
-        def alias(self): # masternode alias
+        def alias(self) -> str:
+            """masternode alias property
+
+            Returns:
+                str: masternode alias
+            """
             return f'mn{self.index}'
 
         def create_masternode_conf(self, dirname):

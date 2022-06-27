@@ -61,7 +61,7 @@ ticket_validation_t common_ticket_validation(const T& ticket, bool bPreReg, cons
         if (!parse_uint256(tv.errorMsg, txidParent, strParentTxId, 
             strprintf("%s ticket txid", sParentTicketDescription.c_str()).c_str()))
             break;
-        // B.2 Get ticket pointed by txid. This is either Activation or Trade tickets (Sell, Buy, Trade)
+        // B.2 Get ticket pointed by txid. This is either Activation or Transfer tickets (Offer, Accept, Transfer)
         string sGetError;
         try
         {

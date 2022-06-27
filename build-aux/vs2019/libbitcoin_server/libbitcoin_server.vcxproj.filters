@@ -229,7 +229,7 @@
     <ClCompile Include="..\..\..\src\mnode\tickets\nft-act.cpp">
       <Filter>Source Files\mnode\tickets</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\src\mnode\tickets\nft-buy.cpp">
+    <ClCompile Include="..\..\..\src\mnode\tickets\accept.cpp">
       <Filter>Source Files\mnode\tickets</Filter>
     </ClCompile>
     <ClCompile Include="..\..\..\src\mnode\tickets\nft-reg.cpp">
@@ -238,7 +238,7 @@
     <ClCompile Include="..\..\..\src\mnode\tickets\nft-royalty.cpp">
       <Filter>Source Files\mnode\tickets</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\src\mnode\tickets\nft-sell.cpp">
+    <ClCompile Include="..\..\..\src\mnode\tickets\offer.cpp">
       <Filter>Source Files\mnode\tickets</Filter>
     </ClCompile>
     <ClCompile Include="..\..\..\src\mnode\tickets\username-change.cpp">
@@ -247,7 +247,7 @@
     <ClCompile Include="..\..\..\src\mnode\tickets\etherium-address-change.cpp">
       <Filter>Source Files\mnode\tickets</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\src\mnode\tickets\nft-trade.cpp">
+    <ClCompile Include="..\..\..\src\mnode\tickets\transfer.cpp">
       <Filter>Source Files\mnode\tickets</Filter>
     </ClCompile>
     <ClCompile Include="..\..\..\src\mnode\tickets\nft-take-down.cpp">
@@ -297,6 +297,12 @@
     </ClCompile>
     <ClCompile Include="..\..\..\src\mnode\tickets\nft-collection-act.cpp">
       <Filter>Source Files\mnode\tickets</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\src\mnode\rpc\tickets-findbylabel.cpp">
+      <Filter>Source Files\mnode\rpc</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\src\mnode\rpc\governance-rpc.cpp">
+      <Filter>Source Files\mnode\rpc</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -555,13 +561,13 @@
     <ClInclude Include="..\..\..\src\mnode\tickets\nft-act.h">
       <Filter>Source Files\mnode\tickets</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\..\src\mnode\tickets\nft-sell.h">
+    <ClInclude Include="..\..\..\src\mnode\tickets\offer.h">
       <Filter>Source Files\mnode\tickets</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\..\src\mnode\tickets\nft-buy.h">
+    <ClInclude Include="..\..\..\src\mnode\tickets\accept.h">
       <Filter>Source Files\mnode\tickets</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\..\src\mnode\tickets\nft-trade.h">
+    <ClInclude Include="..\..\..\src\mnode\tickets\transfer.h">
       <Filter>Source Files\mnode\tickets</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\src\mnode\tickets\nft-take-down.h">
@@ -638,6 +644,12 @@
     </ClInclude>
     <ClInclude Include="..\..\..\src\mnode\tickets\nft-collection-act.h">
       <Filter>Source Files\mnode\tickets</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\mnode\rpc\tickets-findbylabel.h">
+      <Filter>Source Files\mnode\rpc</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\mnode\rpc\governance-rpc.h">
+      <Filter>Source Files\mnode\rpc</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>
