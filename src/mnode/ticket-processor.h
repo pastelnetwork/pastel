@@ -1,5 +1,5 @@
 #pragma once
-// Copyright (c) 2018-2021 The Pastel Core developers
+// Copyright (c) 2018-2022 The Pastel Core developers
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <memory>
@@ -24,8 +24,8 @@ constexpr int DATASTREAM_VERSION = 1;
 constexpr uint8_t TICKET_COMPRESS_ENABLE_MASK  = (1<<7); // using bit 7 to mark a ticket is compressed
 constexpr uint8_t TICKET_COMPRESS_DISABLE_MASK = 0x7F;
 
-// tuple <NFT registration txid, NFT trade txid>
-using reg_trade_txid_t = std::tuple<std::string, std::string>;
+// tuple <NFT registration txid, Transfer txid>
+using reg_transfer_txid_t = std::tuple<std::string, std::string>;
 
 // Get height of the active blockchain + 1
 unsigned int GetActiveChainHeight();
@@ -145,12 +145,12 @@ public:
     // list NFT registration tickets using filter
     std::string ListFilterPastelIDTickets(const uint32_t nMinHeight, const short filter = 0, // 1 - mn;        2 - personal;     3 - mine
                                           const pastelid_store_t* pmapIDs = nullptr) const;
-    std::string ListFilterNFTTickets(const uint32_t nMinHeight, const short filter = 0) const;   // 1 - active;    2 - inactive;     3 - sold
+    std::string ListFilterNFTTickets(const uint32_t nMinHeight, const short filter = 0) const;   // 1 - active;    2 - inactive;     3 - transferred
     std::string ListFilterNFTCollectionTickets(const uint32_t nMinHeight, const short filter = 0) const;   // 1 - active;    2 - inactive;
-    std::string ListFilterActTickets(const uint32_t nMinHeight, const short filter = 0) const;   // 1 - available; 2 - sold
-    std::string ListFilterSellTickets(const uint32_t nMinHeight, const short filter = 0, const std::string& pastelID = "") const;  // 0 - all, 1 - available; 2 - unavailable;  3 - expired; 4 - sold
-    std::string ListFilterBuyTickets(const uint32_t nMinHeight, const short filter = 0, const std::string& pastelID = "") const;   // 0 - all, 1 - traded;    2 - expired
-    std::string ListFilterTradeTickets(const uint32_t nMinHeight, const short filter = 0, const std::string& pastelID = "") const; // 0 - all, 1 - available; 2 - sold
+    std::string ListFilterActTickets(const uint32_t nMinHeight, const short filter = 0) const;   // 1 - available; 2 - transferred
+    std::string ListFilterOfferTickets(const uint32_t nMinHeight, const short filter = 0, const std::string& pastelID = "") const;  // 0 - all, 1 - available; 2 - unavailable;  3 - expired; 4 - transferred
+    std::string ListFilterAcceptTickets(const uint32_t nMinHeight, const short filter = 0, const std::string& pastelID = "") const;   // 0 - all, 1 - transferred; 2 - expired
+    std::string ListFilterTransferTickets(const uint32_t nMinHeight, const short filter = 0, const std::string& pastelID = "") const; // 0 - all, 1 - available; 2 - transferred
     std::string ListFilterActionTickets(const uint32_t nMinHeight, const short filter = 0) const; // 1 - active;    2 - inactive
 
     // search for NFT registration tickets, calls functor for each matching ticket
@@ -183,11 +183,11 @@ public:
             const std::string& sTxId,   // txid of the starting ticket
             PastelTickets_t& chain,     // vector with the tickets in chain
             bool shortPath,             // follow short or long path
-                                        //      Trade, Act, Reg in short walk
-                                        //      Trade, Buy, Sell, Act or Reg in long walk
+                                        //      Transfer, Act, Reg in short walk
+                                        //      Transfer, Accept, Offer, Act or Reg in long walk
             std::string& errRet) noexcept;
     
-    std::optional<reg_trade_txid_t> ValidateOwnership(const std::string& _txid, const std::string& _pastelID);
+    std::optional<reg_transfer_txid_t> ValidateOwnership(const std::string& _txid, const std::string& _pastelID);
 #ifdef FAKE_TICKET
     static std::string CreateFakeTransaction(CPastelTicket& ticket, const CAmount ticketPricePSL,
         const std::vector<std::pair<std::string, CAmount>>& extraPayments, const std::string& strVerb, bool bSend);

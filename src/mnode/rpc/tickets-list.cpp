@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2021 The Pastel Core developers
+// Copyright (c) 2018-2022 The Pastel Core developers
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 
@@ -9,9 +9,13 @@
 #include "mnode/rpc/mnode-rpc-utils.h"
 #include "mnode/rpc/tickets-list.h"
 
+using namespace std;
+
 UniValue tickets_list(const UniValue& params)
 {
-    RPC_CMD_PARSER2(LIST, params, id, nft, nft__collection, nft__collection__act, act, sell, buy, trade, down, royalty, username, ethereumaddress, action, action__act);
+    RPC_CMD_PARSER2(LIST, params, id, nft, nft__collection, nft__collection__act, act, 
+        sell, offer, buy, accept, trade, transfer,
+        down, royalty, username, ethereumaddress, action, action__act);
     if ((params.size() < 2 || params.size() > 4) || !LIST.IsCmdSupported())
         throw JSONRPCError(RPC_INVALID_PARAMETER,
 R"(tickets list "type" ("filter") ("minheight")
@@ -26,34 +30,34 @@ Available types:
               mine     - lists only registered PastelIDs available on the local node.
   nft     - List ALL new NFT registration tickets. Without filter parameter lists ALL NFT tickets.
             Filter:
-              all      - lists all NFT tickets (including non-confirmed). Default.
-              active   - lists only activated NFT tickets - with Act ticket.
-              inactive - lists only non-activated NFT tickets - without Act ticket created (confirmed).
-              sold     - lists only sold NFT tickets - with Trade ticket created for all copies.
+              all         - lists all NFT tickets (including non-confirmed). Default.
+              active      - lists only activated NFT tickets - with Act ticket.
+              inactive    - lists only non-activated NFT tickets - without Act ticket created (confirmed).
+              transferred - lists only transferred NFT tickets - with Transfer ticket created for all copies.
   act     - List ALL NFT activation tickets. Without filter parameter lists ALL activation tickets.
             Filter:
-              all       - lists all NFT activation tickets (including non-confirmed). Default.
-              available - lists non sold NFT activation tickets - without Trade tickets for all copies (confirmed).
-              sold      - lists only sold NFT activation tickets - with Trade tickets for all copies.
-  sell    - List ALL NFT sell tickets. Without filter parameter lists ALL Sell tickets.
+              all         - lists all NFT activation tickets (including non-confirmed). Default.
+              available   - lists not transferred NFT activation tickets - without Transfer tickets for all copies (confirmed).
+              transferred - lists only transferred NFT activation tickets - with Transfer tickets for all copies.
+  offer   - List ALL Offer tickets. Without filter parameter lists ALL Offer tickets.
             Filter:
-              all         - lists all Sell tickets (including non-confirmed). Default.
-              available   - list only Sell tickets that are confirmed, active and open for buying (no active Buy ticket and no Trade ticket).
-              unavailable - list only Sell tickets that are confirmed, but not yet active (current block height is less then valid_after).
-              expired     - list only Sell tickets that are expired (current block height is more then valid_before).
-              sold        - lists only sold Sell tickets - with Trade ticket created.
-  buy     - List ALL NFT buy tickets. Without filter parameter lists ALL Buy tickets.
+              all         - lists all Offer tickets (including non-confirmed). Default.
+              available   - list only Offer tickets that are confirmed, active and open for acceptance (no active Accept ticket and no Transfer ticket).
+              unavailable - list only Offer tickets that are confirmed, but not yet active (current block height is less then valid_after).
+              expired     - list only Offer tickets that are expired (current block height is more then valid_before).
+              transferred - lists only transferred Offer tickets - with Transfer ticket created.
+  accept  - List ALL Accept tickets. Without filter parameter lists ALL Accept tickets.
             Filter:
-              all     - list all Buy tickets (including non-confirmed). Default.
-              expired - list Buy tickets that expired (Trade ticket was not created in time - 1h/24blocks)
-              sold    - list Buy tickets with Trade ticket created
-  trade   - List ALL NFT trade tickets. Without filter parameter lists ALL Trade tickets.
+              all         - list all Accept tickets (including non-confirmed). Default.
+              expired     - list Accept tickets that expired (Transfer ticket was not created in time - 1h/24blocks)
+              transferred - list Accept tickets with Transfer ticket created
+  transfer - List ALL Transfer tickets. Without filter parameter lists ALL Transfer tickets.
             Filter:
-              all       - list all Trade tickets (including non-confirmed). Default.
-              available - lists never sold Trade tickets (without Sell tickets).
-              sold      - lists only sold Trade tickets (with Sell tickets).
+              all         - list all Transfer tickets (including non-confirmed). Default.
+              available   - lists never processed Transfer tickets (without Offer tickets).
+              transferred - lists only processed Transfer tickets (with Offer tickets).
             Optional parameters:
-              <pastelID> - apply filter on trade ticket that belong to the correspond pastelID only
+              <pastelID> - apply filter on Transfer ticket that belongs to the given Pastel ID only
   nft-collection - List ALL new NFT collection registration tickets. Without filter parameter lists ALL NFT collection tickets.
             Filter:
               all      - lists all NFT collection tickets (including non-confirmed). Default.
@@ -83,16 +87,22 @@ Available types:
 Arguments:
 1. minheight	 - (optional) minimum height for returned tickets (only tickets registered after this height will be returned).
 
-Example: List ALL PastelID tickets
+Example: List ALL Pastel ID tickets:
 )" + HelpExampleCli("tickets list id", "") +
 R"(
 As json rpc
 )" + HelpExampleRpc("tickets", R"("list", "id")"));
 
-    // trade,buy and sell tickets have special parsing logic
-    const bool bSpecialParsingLogic = LIST.IsCmdAnyOf(RPC_CMD_LIST::trade, RPC_CMD_LIST::buy, RPC_CMD_LIST::sell);
+    // transfer,accept and offer tickets have special parsing logic
+    const bool bSpecialParsingLogic = LIST.IsCmdAnyOf(
+        RPC_CMD_LIST::trade,
+        RPC_CMD_LIST::transfer,
+        RPC_CMD_LIST::buy,
+        RPC_CMD_LIST::accept,
+        RPC_CMD_LIST::sell,
+        RPC_CMD_LIST::offer);
 
-    std::string filter = "all";
+    string filter = "all";
     if (params.size() > 2 && !bSpecialParsingLogic)
         filter = params[2].get_str();
 
@@ -101,8 +111,9 @@ As json rpc
         minheight = get_number(params[3]);
 
     UniValue obj(UniValue::VARR);
-    switch (LIST.cmd()) {
-    case RPC_CMD_LIST::id:
+    switch (LIST.cmd())
+    {
+    case RPC_CMD_LIST::id: {
         if (filter == "all")
             obj.read(masterNodeCtrl.masternodeTickets.ListTickets<CPastelIDRegTicket>(minheight));
         else if (filter == "mn")
@@ -113,103 +124,146 @@ As json rpc
             const auto mapIDs = CPastelID::GetStoredPastelIDs(true);
             obj.read(masterNodeCtrl.masternodeTickets.ListFilterPastelIDTickets(minheight, 3, &mapIDs));
         }
-        break;
+    } break;
 
-    case RPC_CMD_LIST::nft:
+    case RPC_CMD_LIST::nft: {
         if (filter == "all")
             obj.read(masterNodeCtrl.masternodeTickets.ListTickets<CNFTRegTicket>(minheight));
         else if (filter == "active")
             obj.read(masterNodeCtrl.masternodeTickets.ListFilterNFTTickets(minheight, 1));
         else if (filter == "inactive")
             obj.read(masterNodeCtrl.masternodeTickets.ListFilterNFTTickets(minheight, 2));
-        else if (filter == "sold")
+        else if ((filter == "transferred") || (filter == "sold"))
             obj.read(masterNodeCtrl.masternodeTickets.ListFilterNFTTickets(minheight, 3));
-        break;
+    } break;
 
-    case RPC_CMD_LIST::act:
+    case RPC_CMD_LIST::act: {
         if (filter == "all")
             obj.read(masterNodeCtrl.masternodeTickets.ListTickets<CNFTActivateTicket>(minheight));
         else if (filter == "available")
             obj.read(masterNodeCtrl.masternodeTickets.ListFilterActTickets(minheight, 1));
-        else if (filter == "sold")
+        else if ((filter == "transferred") || (filter == "sold"))
             obj.read(masterNodeCtrl.masternodeTickets.ListFilterActTickets(minheight, 2));
-        break;
+    } break;
 
-    case RPC_CMD_LIST::nft__collection:
+    case RPC_CMD_LIST::nft__collection: {
         if (filter == "all")
             obj.read(masterNodeCtrl.masternodeTickets.ListTickets<CNFTCollectionRegTicket>(minheight));
         else if (filter == "active")
             obj.read(masterNodeCtrl.masternodeTickets.ListFilterNFTCollectionTickets(1));
         else if (filter == "inactive")
             obj.read(masterNodeCtrl.masternodeTickets.ListFilterNFTCollectionTickets(2));
-        break;
+    } break;
 
-    case RPC_CMD_LIST::nft__collection__act:
+    case RPC_CMD_LIST::nft__collection__act: {
         if (filter == "all")
             obj.read(masterNodeCtrl.masternodeTickets.ListTickets<CNFTCollectionActivateTicket>(minheight));
-        break;
+    } break;
 
-    case RPC_CMD_LIST::sell: {
-        std::string pastelID;
+    case RPC_CMD_LIST::sell:
+    case RPC_CMD_LIST::offer:
+    {
+        string pastelID;
 
-        if (params.size() > 2 && params[2].get_str() != "all" && params[2].get_str() != "available" && params[2].get_str() != "unavailable" && params[2].get_str() != "expired" && params[2].get_str() != "sold") {
-            if (params[2].get_str().find_first_not_of("0123456789") == std::string::npos) {
-                // This means min_height is input.
-                minheight = get_number(params[2]);
-            } else {
-                // This means pastelID is input
-                pastelID = params[2].get_str();
-            }
+        if (params.size() > 2 && 
+            params[2].get_str() != "all" && 
+            params[2].get_str() != "available" && 
+            params[2].get_str() != "unavailable" && 
+            params[2].get_str() != "expired" && 
+            params[2].get_str() != "transferred" &&
+            params[2].get_str() != "sold")
+        {
+            if (params[2].get_str().find_first_not_of("0123456789") == string::npos)
+                minheight = get_number(params[2]); // This means min_height is input.
+            else
+                pastelID = params[2].get_str();    // This means pastel ID is input
         } else if (params.size() > 2) {
             filter = params[2].get_str();
-            if (params.size() > 3) {
-                if (params[3].get_str().find_first_not_of("0123456789") == std::string::npos) {
-                    // This means min_height is input.
-                    minheight = get_number(params[3]);
-                } else {
-                    // This means pastelID is input
-                    pastelID = params[3].get_str();
-                }
+            if (params.size() > 3)
+            {
+                if (params[3].get_str().find_first_not_of("0123456789") == string::npos)
+                    minheight = get_number(params[3]); // This means min_height is input.
+                else
+                    pastelID = params[3].get_str(); // This means pastelID is input
             }
-            if (params.size() > 4) {
+            if (params.size() > 4)
+            {
                 pastelID = params[3].get_str();
                 minheight = get_number(params[4]);
             }
         }
         if (filter == "all")
-            obj.read(masterNodeCtrl.masternodeTickets.ListFilterSellTickets(minheight, 0, pastelID));
+            obj.read(masterNodeCtrl.masternodeTickets.ListFilterOfferTickets(minheight, 0, pastelID));
         else if (filter == "available")
-            obj.read(masterNodeCtrl.masternodeTickets.ListFilterSellTickets(minheight, 1, pastelID));
+            obj.read(masterNodeCtrl.masternodeTickets.ListFilterOfferTickets(minheight, 1, pastelID));
         else if (filter == "unavailable")
-            obj.read(masterNodeCtrl.masternodeTickets.ListFilterSellTickets(minheight, 2, pastelID));
+            obj.read(masterNodeCtrl.masternodeTickets.ListFilterOfferTickets(minheight, 2, pastelID));
         else if (filter == "expired")
-            obj.read(masterNodeCtrl.masternodeTickets.ListFilterSellTickets(minheight, 3, pastelID));
-        else if (filter == "sold")
-            obj.read(masterNodeCtrl.masternodeTickets.ListFilterSellTickets(minheight, 4, pastelID));
-        break;
-    }
+            obj.read(masterNodeCtrl.masternodeTickets.ListFilterOfferTickets(minheight, 3, pastelID));
+        else if ((filter == "transferred") || (filter == "sold"))
+            obj.read(masterNodeCtrl.masternodeTickets.ListFilterOfferTickets(minheight, 4, pastelID));
+    } break;
 
-    case RPC_CMD_LIST::buy: {
-        std::string pastelID;
+    case RPC_CMD_LIST::buy:
+    case RPC_CMD_LIST::accept:
+    {
+        string pastelID;
 
-        if (params.size() > 2 && params[2].get_str() != "all" && params[2].get_str() != "expired" && params[2].get_str() != "sold") {
-            if (params[2].get_str().find_first_not_of("0123456789") == std::string::npos) {
-                // This means min_height is input.
-                minheight = get_number(params[2]);
-            } else {
-                // This means pastelID is input
-                pastelID = params[2].get_str();
-            }
+        if (params.size() > 2 && 
+            params[2].get_str() != "all" && 
+            params[2].get_str() != "expired" && 
+            params[2].get_str() != "transferred" &&
+            params[2].get_str() != "sold")
+        {
+            if (params[2].get_str().find_first_not_of("0123456789") == string::npos)
+                minheight = get_number(params[2]); // This means min_height is input.
+            else
+                pastelID = params[2].get_str(); // This means pastelID is input
         } else if (params.size() > 2) {
             filter = params[2].get_str();
             if (params.size() > 3) {
-                if (params[3].get_str().find_first_not_of("0123456789") == std::string::npos) {
-                    // This means min_height is input.
-                    minheight = get_number(params[3]);
-                } else {
-                    // This means pastelID is input
-                    pastelID = params[3].get_str();
-                }
+                if (params[3].get_str().find_first_not_of("0123456789") == string::npos)
+                    minheight = get_number(params[3]); // This means min_height is input.
+                else
+                    pastelID = params[3].get_str(); // This means pastelID is input
+            }
+            if (params.size() > 4)
+            {
+                pastelID = params[3].get_str();
+                minheight = get_number(params[4]);
+            }
+        }
+        if (filter == "all")
+            obj.read(masterNodeCtrl.masternodeTickets.ListFilterAcceptTickets(minheight, 0, pastelID));
+        else if (filter == "expired")
+            obj.read(masterNodeCtrl.masternodeTickets.ListFilterAcceptTickets(minheight, 1, pastelID));
+        else if ((filter == "transferred") || (filter == "sold"))
+            obj.read(masterNodeCtrl.masternodeTickets.ListFilterAcceptTickets(minheight, 2, pastelID));
+    } break;
+
+    case RPC_CMD_LIST::trade:
+    case RPC_CMD_LIST::transfer:
+    {
+        string pastelID;
+
+        if (params.size() > 2 && 
+            params[2].get_str() != "all" && 
+            params[2].get_str() != "available" && 
+            params[2].get_str() != "transferred" &&
+            params[2].get_str() != "sold")
+        {
+            if (params[2].get_str().find_first_not_of("0123456789") == string::npos)
+                minheight = get_number(params[2]); // This means min_height is input.
+            else
+                pastelID = params[2].get_str(); // This means pastelID is input
+        } else if (params.size() > 2) {
+            filter = params[2].get_str();
+            if (params.size() > 3)
+            {
+                if (params[3].get_str().find_first_not_of("0123456789") == string::npos)
+                    minheight = get_number(params[3]); // This means min_height is input.
+                else
+                    pastelID = params[3].get_str(); // This means pastelID is input
             }
             if (params.size() > 4) {
                 pastelID = params[3].get_str();
@@ -217,76 +271,36 @@ As json rpc
             }
         }
         if (filter == "all")
-            obj.read(masterNodeCtrl.masternodeTickets.ListFilterBuyTickets(minheight, 0, pastelID));
-        else if (filter == "expired")
-            obj.read(masterNodeCtrl.masternodeTickets.ListFilterBuyTickets(minheight, 1, pastelID));
-        else if (filter == "sold")
-            obj.read(masterNodeCtrl.masternodeTickets.ListFilterBuyTickets(minheight, 2, pastelID));
-        break;
-    }
-
-    case RPC_CMD_LIST::trade: {
-        std::string pastelID;
-
-        if (params.size() > 2 && params[2].get_str() != "all" && params[2].get_str() != "available" && params[2].get_str() != "sold") {
-            if (params[2].get_str().find_first_not_of("0123456789") == std::string::npos) {
-                // This means min_height is input.
-                minheight = get_number(params[2]);
-            } else {
-                // This means pastelID is input
-                pastelID = params[2].get_str();
-            }
-        } else if (params.size() > 2) {
-            filter = params[2].get_str();
-            if (params.size() > 3) {
-                if (params[3].get_str().find_first_not_of("0123456789") == std::string::npos) {
-                    // This means min_height is input.
-                    minheight = get_number(params[3]);
-                } else {
-                    // This means pastelID is input
-                    pastelID = params[3].get_str();
-                }
-            }
-            if (params.size() > 4) {
-                pastelID = params[3].get_str();
-                minheight = get_number(params[4]);
-            }
-        }
-        if (filter == "all")
-            obj.read(masterNodeCtrl.masternodeTickets.ListFilterTradeTickets(minheight, 0, pastelID));
+            obj.read(masterNodeCtrl.masternodeTickets.ListFilterTransferTickets(minheight, 0, pastelID));
         else if (filter == "available")
-            obj.read(masterNodeCtrl.masternodeTickets.ListFilterTradeTickets(minheight, 1, pastelID));
-        else if (filter == "sold")
-            obj.read(masterNodeCtrl.masternodeTickets.ListFilterTradeTickets(minheight, 2, pastelID));
-        break;
-    }
+            obj.read(masterNodeCtrl.masternodeTickets.ListFilterTransferTickets(minheight, 1, pastelID));
+        else if ((filter == "transferred") || (filter == "sold"))
+            obj.read(masterNodeCtrl.masternodeTickets.ListFilterTransferTickets(minheight, 2, pastelID));
+    } break;
 
     case RPC_CMD_LIST::royalty: {
         if (filter == "all")
             obj.read(masterNodeCtrl.masternodeTickets.ListTickets<CNFTRoyaltyTicket>(minheight));
-        break;
-    }
+    } break;
 
     case RPC_CMD_LIST::username: {
         if (filter == "all")
             obj.read(masterNodeCtrl.masternodeTickets.ListTickets<CChangeUsernameTicket>(minheight));
-        break;
-    }
+    } break;
 
     case RPC_CMD_LIST::ethereumaddress: {
         if (filter == "all")
             obj.read(masterNodeCtrl.masternodeTickets.ListTickets<CChangeEthereumAddressTicket>(minheight));
-        break;
-    }
+    } break;
 
-    case RPC_CMD_LIST::action:
+    case RPC_CMD_LIST::action: {
         if (filter == "all")
             obj.read(masterNodeCtrl.masternodeTickets.ListTickets<CActionRegTicket>(minheight));
         else if (filter == "active")
             obj.read(masterNodeCtrl.masternodeTickets.ListFilterActionTickets(minheight, 1));
         else if (filter == "inactive")
             obj.read(masterNodeCtrl.masternodeTickets.ListFilterActionTickets(minheight, 2));
-        break;
+    } break;
 
     case RPC_CMD_LIST::action__act:
         if (filter == "all")

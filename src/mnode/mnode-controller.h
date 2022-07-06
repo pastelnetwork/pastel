@@ -87,7 +87,7 @@ public:
     int nFulfilledRequestExpireTime;
 
     unsigned int MinTicketConfirmations;
-    unsigned int MaxBuyTicketAge;
+    unsigned int MaxAcceptTicketAge;
     
     std::string TicketGreenAddress;
 

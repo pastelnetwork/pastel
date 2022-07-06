@@ -297,32 +297,32 @@ As json rpc:
     return GenerateSendTicketResult(CPastelTicketProcessor::SendTicket(NFTCollectionRegTicket, sFundingAddress));
 }
 
-UniValue tickets_register_sell(const UniValue& params)
+UniValue tickets_register_offer(const UniValue& params)
 {
     if (params.size() < 6)
         throw JSONRPCError(RPC_INVALID_PARAMETER,
-R"(tickets register sell "nft-txid" "price" "PastelID" "passphrase" [valid-after] [valid-before] [copy-number] ["address"] ["intendedFor"]
-Register NFT sell ticket. If successful, method returns "txid".
+R"(tickets register offer "txid" "price" "PastelID" "passphrase" [valid-after] [valid-before] [copy-number] ["address"] ["intendedFor"]
+Register offer ticket. If successful, method returns "txid".
 
 Arguments:
-1. "nft-txid"      (string, required) tnx_id of the NFT to sell, this is either:
-                       1) NFT activation ticket, if seller is original creator
-                       2) trade ticket, if seller is owner of the bought NFT
-2. price           (int, required) Sale price in PSL.
-3. "PastelID"      (string, required) The PastelID of seller. This MUST be the same PastelID that was used to sign the ticket referred by the nft_txid.
-4. "passphrase"    (string, required) The passphrase to the private key associated with creator's PastelID and stored inside node.
-5. valid-after     (int, optional) The block height after which this sell ticket will become active (use 0 for upon registration).
-6. valid-before    (int, optional) The block height after which this sell ticket is no more valid (use 0 for never).
-7. copy-number     (int, optional) If presented - will replace the original not yet sold Sell ticket with this copy number.
-                                   If the original has been already sold - operation will fail.
+1. "txid"          (string, required) txid of the ticket to offer, this is either:
+                       1) NFT Activation ticket, if current owner is original creator
+                       2) Transfer ticket, if current owner is the owner of the transferred NFT
+2. price           (int, required) Offer price in PSL.
+3. "PastelID"      (string, required) The Pastel ID of the current owner. This MUST be the same Pastel ID that was used to sign the ticket referred by the 'txid'.
+4. "passphrase"    (string, required) The passphrase to the private key associated with creator's Pastel ID and stored inside node.
+5. valid-after     (int, optional) The block height after which this offer ticket will become active (use 0 for upon registration).
+6. valid-before    (int, optional) The block height after which this offer ticket is no more valid (use 0 for never).
+7. copy-number     (int, optional) If presented - will replace the original not yet accepted Offer ticket with this copy number.
+                                   If the original has been already offered - operation will fail.
 8. "address"       (string, optional) The Pastel blockchain t-address to use for funding the registration (leave empty for default funding).
-9. "intendedFor"   (string, optional) The PastelID of the intended recipient of the NFT (empty by default).
-NFT Trade Ticket:
+9. "intendedFor"   (string, optional) The PastelID of the intended recipient of the offer (empty by default).
+Offer Ticket:
 {
 	"ticket": {
-		"type": "sell",
+		"type": "offer",
 		"pastelID": "",
-		"nft_txid": "",
+		"txid": "",
 		"copy_number": "",
 		"asked_price": "",
 		"valid_after": "",
@@ -333,14 +333,14 @@ NFT Trade Ticket:
 	"txid": ""
   }
 
-Trade Ticket:
-)" + HelpExampleCli("tickets register sell", R"("907e5e4c6fc4d14660a22afe2bdf6d27a3c8762abf0a89355bb19b7d9e7dc440 100000 jXYqZNPj21RVnwxnEJ654wEdzi7GZTZ5LAdiotBmPrF7pDMkpX1JegDMQZX55WZLkvy9fxNpZcbBJuE8QYUqBF "passphrase")") +
+Offer Ticket:
+)" + HelpExampleCli("tickets register offer", R"("907e5e4c6fc4d14660a22afe2bdf6d27a3c8762abf0a89355bb19b7d9e7dc440 100000 jXYqZNPj21RVnwxnEJ654wEdzi7GZTZ5LAdiotBmPrF7pDMkpX1JegDMQZX55WZLkvy9fxNpZcbBJuE8QYUqBF "passphrase")") +
 R"(
 As json rpc:
-)" + HelpExampleRpc("tickets", R"("register", "sell", "907e5e4c6fc4d14660a22afe2bdf6d27a3c8762abf0a89355bb19b7d9e7dc440" "100000" "jXYqZNPj21RVnwxnEJ654wEdzi7GZTZ5LAdiotBmPrF7pDMkpX1JegDMQZX55WZLkvy9fxNpZcbBJuE8QYUqBF", "passphrase")")
+)" + HelpExampleRpc("tickets", R"("register", "offer", "907e5e4c6fc4d14660a22afe2bdf6d27a3c8762abf0a89355bb19b7d9e7dc440" "100000" "jXYqZNPj21RVnwxnEJ654wEdzi7GZTZ5LAdiotBmPrF7pDMkpX1JegDMQZX55WZLkvy9fxNpZcbBJuE8QYUqBF", "passphrase")")
 );
 
-    string NFTTicketTxnID = params[2].get_str();
+    string txid = params[2].get_str();
     const int priceInPSL = get_number(params[3]);
 
     string pastelID = params[4].get_str();
@@ -375,33 +375,33 @@ As json rpc:
     if (params.size() >= 11)
         sIntendedForPastelID = params[10].get_str();
 
-    const auto NFTSellTicket = CNFTSellTicket::Create(move(NFTTicketTxnID), priceInPSL, 
+    const auto offerTicket = COfferTicket::Create(move(txid), priceInPSL, 
         static_cast<uint32_t>(nValidAfter), static_cast<uint32_t>(nValidBefore), 
         static_cast<uint16_t>(nCopyNumber), 
         move(sIntendedForPastelID), move(pastelID), move(strKeyPass));
-    return GenerateSendTicketResult(CPastelTicketProcessor::SendTicket(NFTSellTicket, sFundingAddress));
+    return GenerateSendTicketResult(CPastelTicketProcessor::SendTicket(offerTicket, sFundingAddress));
 }
 
-UniValue tickets_register_buy(const UniValue& params)
+UniValue tickets_register_accept(const UniValue& params)
 {
     if (params.size() < 6)
         throw JSONRPCError(RPC_INVALID_PARAMETER,
-R"(tickets register buy "sell_txid" "price" "PastelID" "passphrase" ["address"]
-Register NFT buy ticket. If successful, method returns "txid".
+R"(tickets register accept "offer_txid" "price" "PastelID" "passphrase" ["address"]
+Register Accept ticket. If successful, method returns "txid".
 
 Arguments:
-1. "sell_txid"     (string, required) tnx_id of the sell ticket to buy.
-2. price           (int, required) Buy price, shall be equal or more then asked price in the sell ticket.
-3. "PastelID"      (string, required) The PastelID of buyer.
+1. "offer_txid"    (string, required) txid of the offer ticket to accept.
+2. price           (int, required) accepted price, shall be equal or more then asked price in the offer ticket.
+3. "PastelID"      (string, required) The Pastel ID of the new owner.
 4. "passphrase"    (string, required) The passphrase to the private key associated with creator's PastelID and stored inside node.
 5. "address"       (string, optional) The Pastel blockchain t-address to use for funding the registration.
 
-NFT Trade Ticket:
+Accept Ticket:
 {
 	"ticket": {
-		"type": "sell",
+		"type": "accept",
 		"pastelID": "",
-		"sell_txid": "",
+		"offer_txid": "",
 		"price": "",
 		"signature": ""
 	},
@@ -409,14 +409,14 @@ NFT Trade Ticket:
 	"txid": ""
   }
 
-Trade Ticket:
-)" + HelpExampleCli("tickets register buy", R"("907e5e4c6fc4d14660a22afe2bdf6d27a3c8762abf0a89355bb19b7d9e7dc440 100000 jXYqZNPj21RVnwxnEJ654wEdzi7GZTZ5LAdiotBmPrF7pDMkpX1JegDMQZX55WZLkvy9fxNpZcbBJuE8QYUqBF "passphrase")") +
+Accept Ticket:
+)" + HelpExampleCli("tickets register accept", R"("907e5e4c6fc4d14660a22afe2bdf6d27a3c8762abf0a89355bb19b7d9e7dc440 100000 jXYqZNPj21RVnwxnEJ654wEdzi7GZTZ5LAdiotBmPrF7pDMkpX1JegDMQZX55WZLkvy9fxNpZcbBJuE8QYUqBF "passphrase")") +
 R"(
 As json rpc:
-)" + HelpExampleRpc("tickets", R"("register", "buy", "907e5e4c6fc4d14660a22afe2bdf6d27a3c8762abf0a89355bb19b7d9e7dc440" "100000" "jXYqZNPj21RVnwxnEJ654wEdzi7GZTZ5LAdiotBmPrF7pDMkpX1JegDMQZX55WZLkvy9fxNpZcbBJuE8QYUqBF", "passphrase")")
+)" + HelpExampleRpc("tickets", R"("register", "accept", "907e5e4c6fc4d14660a22afe2bdf6d27a3c8762abf0a89355bb19b7d9e7dc440" "100000" "jXYqZNPj21RVnwxnEJ654wEdzi7GZTZ5LAdiotBmPrF7pDMkpX1JegDMQZX55WZLkvy9fxNpZcbBJuE8QYUqBF", "passphrase")")
 );
 
-    string sellTicketTxID = params[2].get_str();
+    string offerTxID = params[2].get_str();
     int price = get_number(params[3]);
 
     string sPastelID = params[4].get_str();
@@ -426,33 +426,33 @@ As json rpc:
     if (params.size() >= 7)
         sFundingAddress = params[6].get_str();
 
-    const auto NFTBuyTicket = CNFTBuyTicket::Create(move(sellTicketTxID), price, move(sPastelID), move(strKeyPass));
-    return GenerateSendTicketResult(CPastelTicketProcessor::SendTicket(NFTBuyTicket, sFundingAddress));
+    const auto acceptTicket = CAcceptTicket::Create(move(offerTxID), price, move(sPastelID), move(strKeyPass));
+    return GenerateSendTicketResult(CPastelTicketProcessor::SendTicket(acceptTicket, sFundingAddress));
 }
 
-UniValue tickets_register_trade(const UniValue& params)
+UniValue tickets_register_transfer(const UniValue& params)
 {
     if (params.size() < 6)
         throw JSONRPCError(RPC_INVALID_PARAMETER,
-R"(tickets register trade "sell_txid" "buy_txid" "PastelID" "passphrase" ["address"]
-Register NFT trade ticket. And pay price requested in sell ticket and confirmed in buy ticket to the address associated with sellers PastelID
-If successful, method returns "txid".
+R"(tickets register transfer "offer_txid" "accept_txid" "PastelID" "passphrase" ["address"]
+Register Transfer ticket. And pay price requested in Offer ticket and confirmed in Accept ticket to the address associated with 
+the current owner's Pastel ID. If successful, method returns "txid".
 
 Arguments:
-1. "sell_txid"     (string, required) tnx_id of the sell ticket
-2. "buy_txid"      (string, required) tnx_id of the buy ticket
-3. "PastelID"      (string, required) The PastelID of buyer. This MUST be the same PastelID that was used to sign the buy ticket
-4. "passphrase"    (string, required) The passphrase to the private key associated with creator's PastelID and stored inside node. See "pastelid newkey".
+1. "offer_txid"    (string, required) txid of the Offer ticket.
+2. "accept_txid"   (string, required) txid of the Accept ticket.
+3. "PastelID"      (string, required) The Pastel ID of the new owner. This MUST be the same Pastel ID that was used to sign the Accept ticket.
+4. "passphrase"    (string, required) The passphrase to the private key associated with creator's Pastel ID and stored inside node. See "pastelid newkey".
 5. "address"       (string, optional) The Pastel blockchain t-address to use for funding the registration.
 
-NFT Trade Ticket:
+Transfer Ticket:
 {
 	"ticket": {
-		"type": "sell",
+		"type": "transfer",
 		"pastelID": "",
-		"sell_txid": "",
-		"buy_txid": "",
-        "nft_txid": "",
+		"offer_txid": "",
+		"accept_txid": "",
+        "txid": "",
         "price": "",
 		"signature": ""
 	},
@@ -460,15 +460,15 @@ NFT Trade Ticket:
 	"txid": ""
   }
 
-Trade Ticket:
-)" + HelpExampleCli("tickets register trade", R"("907e5e4c6fc4d14660a22afe2bdf6d27a3c8762abf0a89355bb19b7d9e7dc440 907e5e4c6fc4d14660a22afe2bdf6d27a3c8762abf0a89355bb19b7d9e7dc440 jXYqZNPj21RVnwxnEJ654wEdzi7GZTZ5LAdiotBmPrF7pDMkpX1JegDMQZX55WZLkvy9fxNpZcbBJuE8QYUqBF "passphrase")") +
+Transfer Ticket:
+)" + HelpExampleCli("tickets register transfer", R"("907e5e4c6fc4d14660a22afe2bdf6d27a3c8762abf0a89355bb19b7d9e7dc440 907e5e4c6fc4d14660a22afe2bdf6d27a3c8762abf0a89355bb19b7d9e7dc440 jXYqZNPj21RVnwxnEJ654wEdzi7GZTZ5LAdiotBmPrF7pDMkpX1JegDMQZX55WZLkvy9fxNpZcbBJuE8QYUqBF "passphrase")") +
 R"(
 As json rpc:
-)" + HelpExampleRpc("tickets", R"("register", "trade", "907e5e4c6fc4d14660a22afe2bdf6d27a3c8762abf0a89355bb19b7d9e7dc440" "907e5e4c6fc4d14660a22afe2bdf6d27a3c8762abf0a89355bb19b7d9e7dc440" "jXYqZNPj21RVnwxnEJ654wEdzi7GZTZ5LAdiotBmPrF7pDMkpX1JegDMQZX55WZLkvy9fxNpZcbBJuE8QYUqBF", "passphrase")")
+)" + HelpExampleRpc("tickets", R"("register", "transfer", "907e5e4c6fc4d14660a22afe2bdf6d27a3c8762abf0a89355bb19b7d9e7dc440" "907e5e4c6fc4d14660a22afe2bdf6d27a3c8762abf0a89355bb19b7d9e7dc440" "jXYqZNPj21RVnwxnEJ654wEdzi7GZTZ5LAdiotBmPrF7pDMkpX1JegDMQZX55WZLkvy9fxNpZcbBJuE8QYUqBF", "passphrase")")
 );
 
-    string sellTicketTxID = params[2].get_str();
-    string buyTicketTxID = params[3].get_str();
+    string offerTxID = params[2].get_str();
+    string acceptTxID = params[3].get_str();
 
     string sPastelID = params[4].get_str();
     SecureString strKeyPass(params[5].get_str());
@@ -477,9 +477,9 @@ As json rpc:
     if (params.size() >= 7)
         sFundingAddress = params[6].get_str();
 
-    const auto NFTTradeTicket = CNFTTradeTicket::Create(move(sellTicketTxID), 
-        move(buyTicketTxID), move(sPastelID), move(strKeyPass));
-    return GenerateSendTicketResult(CPastelTicketProcessor::SendTicket(NFTTradeTicket, sFundingAddress));
+    const auto transferTicket = CTransferTicket::Create(move(offerTxID), 
+        move(acceptTxID), move(sPastelID), move(strKeyPass));
+    return GenerateSendTicketResult(CPastelTicketProcessor::SendTicket(transferTicket, sFundingAddress));
 }
 
 UniValue tickets_register_royalty(const UniValue& params)
@@ -772,9 +772,9 @@ Available types:
                Same as "tickets activate nft...".
   nft-collection - Register new NFT collection ticket.
   nft-collection-act - Activate NFT collection. Same as "activate nft-collection".
-  sell       - Register NFT sell ticket.
-  buy        - Register NFT buy ticket.
-  trade      - Register NFT trade ticket. 
+  offer      - Register Offer ticket.
+  accept     - Register Accept ticket.
+  transfer   - Register Transfer ticket. 
   down       - Register take down ticket.
   username   - Register Username Change Request ticket.
   royalty    - Register NFT royalty ticket.
@@ -786,7 +786,8 @@ Available types:
 
 UniValue tickets_register(const UniValue& params)
 {
-    RPC_CMD_PARSER2(REGISTER, params, mnid, id, nft, act, sell, buy, trade, 
+    RPC_CMD_PARSER2(REGISTER, params, mnid, id, nft, act, 
+        sell, offer, buy, accept, trade, transfer,
         down, royalty, username, ethereumaddress, action, action__act, nft__collection, nft__collection__act);
 
     if (!REGISTER.IsCmdSupported())
@@ -813,15 +814,18 @@ UniValue tickets_register(const UniValue& params)
             break;
 
         case RPC_CMD_REGISTER::sell:
-            result = tickets_register_sell(params);
+        case RPC_CMD_REGISTER::offer:
+            result = tickets_register_offer(params);
             break;
 
         case RPC_CMD_REGISTER::buy:
-            result = tickets_register_buy(params);
+        case RPC_CMD_REGISTER::accept:
+            result = tickets_register_accept(params);
             break;
 
         case RPC_CMD_REGISTER::trade:
-            result = tickets_register_trade(params);
+        case RPC_CMD_REGISTER::transfer:
+            result = tickets_register_transfer(params);
             break;
 
         case RPC_CMD_REGISTER::royalty:

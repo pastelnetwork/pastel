@@ -56,7 +56,7 @@ pastel_gtest_SOURCES +=\
 	gtest/test_mnode/test_ticket_mempool_processor.cpp\
 	gtest/test_mnode/test_ticket_nft-collection-reg.cpp\
 	gtest/test_mnode/test_ticket_nft-reg.cpp\
-	gtest/test_mnode/test_ticket_nft-sell.cpp\
+	gtest/test_mnode/test_ticket_offer.cpp\
 	gtest/test_mnode/test_ticket_processor.cpp\
 	gtest/test_addrman.cpp\
 	gtest/test_alert.cpp\

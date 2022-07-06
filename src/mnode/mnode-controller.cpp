@@ -65,7 +65,7 @@ void CMasterNodeController::InvalidateParameters()
 
     nGovernanceVotingPeriodBlocks = 0;
     MinTicketConfirmations = 0;
-    MaxBuyTicketAge = 0;
+    MaxAcceptTicketAge = 0;
 
     MasternodeCollateral = 0;
     nMasternodeMinimumConfirmations = 0;
@@ -118,7 +118,7 @@ void CMasterNodeController::SetParameters()
     nGovernanceVotingPeriodBlocks = 576; //24 hours, 1 block per 2.5 minutes
     
     MinTicketConfirmations = 10; //blocks
-    MaxBuyTicketAge = 24; //1 hour, 1 block per 2.5 minutes
+    MaxAcceptTicketAge = 24; //1 hour, 1 block per 2.5 minutes
     
     if (Params().IsMainNet()) {
         MasternodeCollateral                = 5'000'000; // PSL

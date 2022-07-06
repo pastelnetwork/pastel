@@ -12,9 +12,9 @@
 constexpr auto TICKET_NAME_ID_REG                   = "pastelid";               // Pastel ID registration ticket
 constexpr auto TICKET_NAME_NFT_REG                  = "nft-reg";                // NFT registration ticket
 constexpr auto TICKET_NAME_NFT_ACT                  = "nft-act";                // NFT activation ticket
-constexpr auto TICKET_NAME_NFT_SELL                 = "nft-sell";               // NFT sell ticket
-constexpr auto TICKET_NAME_NFT_BUY                  = "nft-buy";                // NFT buy ticket
-constexpr auto TICKET_NAME_NFT_TRADE                = "nft-trade";              // NFT trade ticket
+constexpr auto TICKET_NAME_OFFER                    = "offer";                  // Offer ticket (former nft-sell)
+constexpr auto TICKET_NAME_ACCEPT                   = "accept";                 // Accept ticket (former nft-buy)
+constexpr auto TICKET_NAME_TRANSFER                 = "transfer";               // Transfer ticket (former nft-trade)
 constexpr auto TICKET_NAME_TAKE_DOWN                = "nft-take-down";
 constexpr auto TICKET_NAME_NFT_ROYALTY              = "nft-royalty";            // NFT royalty ticket
 constexpr auto TICKET_NAME_USERNAME_CHANGE          = "username-change";        // Username change ticket
@@ -34,13 +34,14 @@ constexpr auto TICKET_NAME_NFT_COLLECTION_ACT       = "nft-collection-act";     
 /**
  * Ticket Type IDs.
  */
-enum class TicketID : uint8_t {
+enum class TicketID : uint8_t
+{
     PastelID = 0,       // Pastel ID registration ticket
     NFT,                // NFT registration ticket
     Activate,           // NFT activation ticket
-    Sell,               // NFT sell ticket
-    Buy,                // NFT buy ticket
-    Trade,              // NFT trade ticket
+    Offer,              // Offer ticket (former NFT Sell)
+    Accept,             // Accept ticket (former NFT Buy)
+    Transfer,           // Transfer ticket (former NFT Trade)
     Down,
     Royalty,            // NFT royalty ticket
     Username,           // Username Change Request ticket
@@ -75,9 +76,9 @@ static constexpr std::array<TicketInfo, to_integral_type<TicketID>(TicketID::COU
         {TicketID::PastelID,          "PastelID Registration",        TICKET_NAME_ID_REG,                  1,       "pslids",       10   },
         {TicketID::NFT,               "NFT Registration",             TICKET_NAME_NFT_REG,                 1,       "nftreg",       10   }, // nft_ticket version 2
         {TicketID::Activate,          "NFT Activation",               TICKET_NAME_NFT_ACT,                 0,       "nftcnf",       10   },
-        {TicketID::Sell,              "NFT Sell",                     TICKET_NAME_NFT_SELL,                0,       "nftsel",       10   },
-        {TicketID::Buy,               "NFT Buy",                      TICKET_NAME_NFT_BUY,                 0,       "nftbuy",       10   },
-        {TicketID::Trade,             "NFT Trade",                    TICKET_NAME_NFT_TRADE,               0,       "nfttrd",       10   },
+        {TicketID::Offer,             "Offer",                        TICKET_NAME_OFFER,                   0,       "offer",        10   },
+        {TicketID::Accept,            "Accept",                       TICKET_NAME_ACCEPT,                  0,       "accept",       10   },
+        {TicketID::Transfer,          "Transfer",                     TICKET_NAME_TRANSFER,                0,       "transfer",     10   },
         {TicketID::Down,              "Take Down",                    TICKET_NAME_TAKE_DOWN,               0,       "nfttdn",     1000   },
         {TicketID::Royalty,           "NFT Royalty",                  TICKET_NAME_NFT_ROYALTY,             1,       "nftrty",       10   },
         {TicketID::Username,          "Username Change",              TICKET_NAME_USERNAME_CHANGE,         1,       "usrnme",      100   },

@@ -2,6 +2,8 @@
 # Copyright (c) 2018-2022 The Pastel Core developers
 # Distributed under the MIT software license, see the accompanying
 # file COPYING or https://www.opensource.org/licenses/mit-license.php.
+import json
+import time
 from test_framework.util import (
     assert_equal,
     assert_raises_rpc, 
@@ -12,8 +14,6 @@ from test_framework.util import (
 import test_framework.rpc_consts as rpc
 from mn_common import MasterNodeCommon
 from test_framework.authproxy import JSONRPCException
-import json
-import time
 
 from decimal import getcontext
 getcontext().prec = 16
@@ -120,10 +120,10 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         self.fake_pastelid_tnx_tests()
         self.fake_nftreg_tnx_tests()
         self.fake_nftact_tnx_tests()
-        self.fake_nftsell_tnx_tests1()
-        self.fake_nftbuy_tnx_tests()
-        self.fake_nfttrade_tnx_tests()
-        self.fake_nftsell_tnx_tests2()
+        self.fake_offer_tnx_tests1()
+        self.fake_accept_tnx_tests()
+        self.fake_transfer_tnx_tests()
+        self.fake_offer_tnx_tests2()
 
     def fake_pastelid_tnx_tests(self):
         print("== Pastelid ticket transaction validation test ==")
@@ -402,8 +402,8 @@ class MasterNodeTicketsTest(MasterNodeCommon):
 
         print("== NFT Registration Activation ticket transaction validation tested ==")
 
-    def fake_nftsell_tnx_tests1(self):
-        print("== NFT Sell ticket transaction validation test (for activation ticket) ==")
+    def fake_offer_tnx_tests1(self):
+        print("== Offer ticket transaction validation test (for activation ticket) ==")
 
         self.nodes[self.mining_node_num].sendtoaddress(self.nonmn3_address1, 200, "", "", False)
         time.sleep(2)
@@ -418,7 +418,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
 
         tickets = {
             # 1. check PastelID in this ticket matches PastelID in the referred Activation ticket
-            "sell-bad-nfts-sign": self.nodes[self.non_mn3].tickets("makefaketicket", "sell",
+            "offer-bad-nfts-sign": self.nodes[self.non_mn3].tickets("makefaketicket", "offer",
                                                                     self.nft_ticket1_act_ticket_txid, "100000",
                                                                     self.creator_pastelid1, self.passphrase,
                                                                     "0", "0",
@@ -435,26 +435,26 @@ class MasterNodeTicketsTest(MasterNodeCommon):
                 print(n + ": " + self.errorString)
             assert_equal("bad-tx-invalid-ticket" in self.errorString, True)
 
-        print("== NFT Sell ticket transaction validation tested (for activation ticket) ==")
+        print("== Offer ticket transaction validation tested (for activation ticket) ==")
 
-    def fake_nftbuy_tnx_tests(self):
-        print("== NFT Buy ticket transaction validation test ==")
+    def fake_accept_tnx_tests(self):
+        print("== Accept ticket transaction validation test ==")
 
-        print("== NFT Buy ticket transaction validation tested ==")
+        print("== Accept ticket transaction validation tested ==")
 
-    def fake_nfttrade_tnx_tests(self):
-        print("== NFT Trade ticket transaction validation test ==")
+    def fake_transfer_tnx_tests(self):
+        print("== Transfer ticket transaction validation test ==")
 
-        print("== NFT Trade ticket transaction validation tested ==")
+        print("== Transfer ticket transaction validation tested ==")
 
-    def fake_nftsell_tnx_tests2(self):
-        print("== NFT Sell ticket transaction validation test (for trade ticket) ==")
-        # 1. check PastelID in this ticket matches PastelID in the referred Trade ticket
-        # 2. Verify the NFT is not already sold
-        #    Verify there is no already trade ticket referring to that trade ticket
-        #    Verify the number of existing trade tickets less then number of copies in the registration ticket
+    def fake_offer_tnx_tests2(self):
+        print("== Offer ticket transaction validation test (for transfer ticket) ==")
+        # 1. check PastelID in this ticket matches PastelID in the referred Transfer ticket
+        # 2. Verify the NFT is not already transferred
+        #    Verify there is no already transfer ticket referring to that offer ticket
+        #    Verify the number of existing transfer tickets less then number of copies in the registration ticket
 
-        print("== NFT Sell ticket transaction validation tested (for trade ticket) ==")
+        print("== Offer ticket transaction validation tested (for transfer ticket) ==")
 
 if __name__ == '__main__':
     MasterNodeTicketsTest().main()
