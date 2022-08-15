@@ -1,9 +1,49 @@
 # Use the latest 2.1 version of CircleCI pipeline process engine. See: https://circleci.com/docs/2.0/configuration-reference
+orbs:
+  go: circleci/go@1.5.0
 version: 2.1
 executors:
   pastel-builder:
     docker:
       - image: akobrin/pastel:0.0.1
+commands:
+  github-upload:
+    parameters:
+      working_directory:
+        type: string
+      binaryName:
+        type: string
+      target:
+        type: string
+    steps:
+      - run:
+          name: Upload << parameters.target >> to pastel GitHub repo
+          working_directory: << parameters.working_directory >>
+          command: |
+             wget https://github.com/github-release/github-release/releases/download/v0.10.0/linux-amd64-github-release.bz2
+             bzip2 -d ./linux-amd64-github-release.bz2
+             mv linux-amd64-github-release github-release
+             ls -a            
+             chmod u+r+x github-release 
+             if [[ "<< parameters.target >>" == *"linux"* ]]; then
+                export EXPORT_ARTIFACT=<< parameters.binaryName >>
+                echo "Check existence of << parameters.binaryName >> build and upload to GitHub"
+                test -f $EXPORT_ARTIFACT
+                ./github-release upload --user pastelnetwork --repo pastel --tag $CIRCLE_TAG --name << parameters.binaryName >>-linux-amd64 --file << parameters.binaryName >>
+              fi
+              if [[ "<< parameters.target >>" == *"darwin"* ]]; then
+                export EXPORT_ARTIFACT=<< parameters.binaryName >>
+                echo "Check existence of << parameters.binaryName >> build and upload to GitHub"
+                test -f $EXPORT_ARTIFACT
+                ./github-release upload --user pastelnetwork --repo pastel --tag $CIRCLE_TAG --name << parameters.binaryName >>-darwin-amd64 --file << parameters.binaryName >>
+              fi
+              if [[ "<< parameters.target >>" == *"windows"* ]]; then
+                export EXPORT_ARTIFACT=<< parameters.binaryName >>.exe
+                echo "Check existence of << parameters.binaryName >>.exe build and upload to GitHub"
+                test -f $EXPORT_ARTIFACT
+                ./github-release upload --user pastelnetwork --repo pastel --tag $CIRCLE_TAG --name << parameters.binaryName >>-win-amd64 --file << parameters.binaryName >>.exe
+              fi
+            
 jobs:
   build_and_test_linux:
     executor: pastel-builder
@@ -118,6 +158,147 @@ jobs:
       - store_artifacts:
           path: /pastel/src/pastel-tx.exe
           destination: /macOS/pastel-tx
+  build_test_release_linux:
+    executor: pastel-builder
+    working_directory: /pastel
+    resource_class: medium+
+    steps:
+      - checkout
+      - run:
+          name: Building Pastel Core (Linux version)
+          no_output_timeout: 30m
+          command: |
+            ./build.sh -j2
+      - store_artifacts:
+          path: /pastel/src/pasteld
+          destination: /linux/pasteld
+      - store_artifacts:
+          path: /pastel/src/pastel-cli
+          destination: /linux/pastel-cli
+      - store_artifacts:
+          path: /pastel/src/pastel-tx
+          destination: /linux/pastel-tx
+      - run:
+          name: Static code analysis
+          working_directory: /pastel
+          no_output_timeout: 10m
+          command: |
+            ./pcutil/static_code_analysis.py -p $TEST_MAILBOX_PWD -e $PVS_EMAIL -n $PVS_SERIAL -j 3
+      - store_artifacts:
+          path: /pastel/pcutil/artifacts
+      - run:
+          name: Fetching zkSNARK parameters
+          working_directory: pcutil
+          command: |
+            ./fetch-params.sh
+      - run:
+          name: gtest
+          working_directory: qa/test-suite
+          no_output_timeout: 30m
+          command: |
+            ./full_test_suite.py gtest
+      - run:
+          name: util-test
+          working_directory: qa/test-suite        
+          command: |
+            ./full_test_suite.py util-test
+      - run:
+          name: secp256k1
+          working_directory: qa/test-suite
+          command: |
+            ./full_test_suite.py secp256k1
+      - run:
+          name: univalue
+          working_directory: qa/test-suite
+          command: |
+            ./full_test_suite.py univalue
+      - run:
+          name: rpc-common
+          working_directory: qa/test-suite
+          no_output_timeout: 30m
+          command: |
+            ./full_test_suite.py rpc-common
+      - run:
+          name: rpc-ext
+          working_directory: qa/test-suite
+          no_output_timeout: 30m
+          command: |
+            ./full_test_suite.py rpc-ext
+      - run:
+          name: rpc-mn
+          working_directory: qa/test-suite
+          no_output_timeout: 45m
+          command: |
+            export PYTHONUNBUFFERED=1
+            ./full_test_suite.py rpc-mn
+      - store_artifacts:
+          path: /pastel/pcutil/artifacts
+      - github-upload:
+          working_directory: /pastel/src/
+          binaryName: pasteld
+          target: linux
+      - github-upload:
+          working_directory: /pastel/src/
+          binaryName: pastel-cli
+          target: linux
+
+  build_release_windows:
+    executor: pastel-builder
+    working_directory: /pastel
+    resource_class: medium+
+    steps:
+      - checkout
+      - run:
+          name: Building Pastel Core (Windows version)
+          no_output_timeout: 30m
+          command: |
+            HOST=x86_64-w64-mingw32 ./build.sh -j2
+      - store_artifacts:
+          path: /pastel/src/pasteld.exe
+          destination: /windows/pasteld.exe
+      - github-upload:
+          working_directory: /pastel/src/
+          binaryName: pasteld
+          target: windows
+      - store_artifacts:
+          path: /pastel/src/pastel-cli.exe
+          destination: /windows/pastel-cli.exe
+      - github-upload:
+          working_directory: /pastel/src/
+          binaryName: pastel-cli
+          target: windows
+      - store_artifacts:
+          path: /pastel/src/pastel-tx.exe
+          destination: /windows/pastel-tx.exe
+
+  build_release_macOS:
+    executor: pastel-builder
+    working_directory: /pastel
+    resource_class: medium+
+    steps:
+      - checkout
+      - run:
+          name: Building Pastel Core (macOS version)
+          no_output_timeout: 30m
+          command: |
+            HOST=x86_64-apple-darwin14 ./build.sh -j2
+      - store_artifacts:
+          path: /pastel/src/pasteld
+          destination: /macOS/pasteld
+      - github-upload:
+          working_directory: /pastel/src/
+          binaryName: pasteld
+          target: darwin
+      - store_artifacts:
+          path: /pastel/src/pastel-cli
+          destination: /macOS/pastel-cli
+      - github-upload:
+          working_directory: /pastel/src/
+          binaryName: pastel-cli
+          target: darwin
+      - store_artifacts:
+          path: /pastel/src/pastel-tx.exe
+          destination: /macOS/pastel-tx
 
 workflows:
     build_and_test:
@@ -125,3 +306,27 @@ workflows:
         - build_and_test_linux
         - build_windows
         - build_macOS
+        - build_test_release_linux:
+            filters:
+              branches:
+                ignore: /.*/
+              tags:
+                only: /^v.*/
+            context:
+              - Release
+        - build_release_windows:
+            filters:
+              branches:
+                ignore: /.*/
+              tags:
+                only: /^v.*/
+            context:
+              - Release
+        - build_release_macOS:
+            filters:
+              branches:
+                ignore: /.*/
+              tags:
+                only: /^v.*/
+            context:
+              - Release
