@@ -53,7 +53,8 @@ As json rpc:
     if (params.size() >= 5)
         sFundingAddress = params[4].get_str();
 
-    const auto regTicket = CPastelIDRegTicket::Create(move(pastelID), move(strKeyPass), sFundingAddress.value_or(""));
+    auto mnidRegData = make_optional<CMNID_RegData>(true);
+    const auto regTicket = CPastelIDRegTicket::Create(move(pastelID), move(strKeyPass), sFundingAddress.value_or(""), mnidRegData);
     return GenerateSendTicketResult(CPastelTicketProcessor::SendTicket(regTicket, sFundingAddress));
 }
 
@@ -90,10 +91,10 @@ As json rpc:
 
     string pastelID = params[2].get_str();
     SecureString strKeyPass(params[3].get_str());
-    string sAddress = params[4].get_str();
+    string sFundingAddress = params[4].get_str();
 
-    const auto pastelIDRegTicket = CPastelIDRegTicket::Create(move(pastelID), move(strKeyPass), sAddress);
-    return GenerateSendTicketResult(CPastelTicketProcessor::SendTicket(pastelIDRegTicket, sAddress));
+    const auto pastelIDRegTicket = CPastelIDRegTicket::Create(move(pastelID), move(strKeyPass), sFundingAddress);
+    return GenerateSendTicketResult(CPastelTicketProcessor::SendTicket(pastelIDRegTicket, sFundingAddress));
 }
 
 /**
