@@ -1,14 +1,31 @@
 #pragma once
-// Copyright (c) 2018-2021 The Pastel Core developers
+// Copyright (c) 2018-2022 The Pastel Core developers
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
+#include <optional>
+
 #include <mnode/tickets/ticket.h>
+#include <key.h>
+#include <primitives/transaction.h>
 
 // forward ticket class declaration
 class CPastelIDRegTicket;
 
 // ticket vector
 using PastelIDRegTickets_t = std::vector<CPastelIDRegTicket>;
+
+// registration data for mnid
+typedef struct _MNID_RegData
+{
+    _MNID_RegData(const bool useActiveMN) :
+        bUseActiveMN(useActiveMN)
+    {}
+    bool bUseActiveMN = true;
+    // masternode outpoint
+    COutPoint outpoint; // used only if bUseActiveMN = false
+    // masternode private key - used to sign reg ticket
+    CKey mnPrivKey; // used only if bUseActiveMN = false
+} CMNID_RegData;
 
 // PastelID Ticket //////////////////////////////////////////////////////////////////////////////////////////////////////
 //
@@ -91,7 +108,8 @@ public:
         }
     }
 
-    static CPastelIDRegTicket Create(std::string&& _pastelID, SecureString&& strKeyPass, const std::string& _address);
+    static CPastelIDRegTicket Create(std::string&& sPastelID, SecureString&& strKeyPass, 
+        const std::string& sFundingAaddress, const std::optional<CMNID_RegData> &mnRegData = std::nullopt);
     static bool FindTicketInDb(const std::string& key, CPastelIDRegTicket& ticket);
     static PastelIDRegTickets_t FindAllTicketByPastelAddress(const std::string& address);
 };
