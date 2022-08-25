@@ -4893,15 +4893,14 @@ string GetWarnings(const string& strFor)
     // Alerts
     {
         LOCK(cs_mapAlerts);
-        for (auto& [hash, alert]: mapAlerts)
+        for (const auto& [hash, alert]: mapAlerts)
         {
             if (alert.AppliesToMe() && alert.nPriority > nPriority)
             {
                 nPriority = alert.nPriority;
                 strStatusBar = alert.strStatusBar;
-                if (alert.nPriority >= ALERT_PRIORITY_SAFE_MODE) {
+                if (alert.nPriority >= ALERT_PRIORITY_SAFE_MODE)
                     strRPC = alert.strRPCError;
-                }
             }
         }
     }
@@ -5853,7 +5852,7 @@ static bool ProcessMessage(const CChainParams& chainparams, CNode* pfrom, string
         CAlert alert;
         vRecv >> alert;
 
-        uint256 alertHash = alert.GetHash();
+        const uint256 alertHash = alert.GetHash();
         if (pfrom->setKnown.count(alertHash) == 0)
         {
             if (alert.ProcessAlert(chainparams.AlertKey()))
@@ -5862,7 +5861,7 @@ static bool ProcessMessage(const CChainParams& chainparams, CNode* pfrom, string
                 pfrom->setKnown.insert(alertHash);
                 {
                     LOCK(cs_vNodes);
-                    for (auto pnode : vNodes)
+                    for (const auto pnode : vNodes)
                         alert.RelayTo(pnode);
                 }
             }
