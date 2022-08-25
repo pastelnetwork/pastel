@@ -8,17 +8,17 @@
 #include <map>
 #include <stdint.h>
 
-#include "alert.h"
-#include "clientversion.h"
-#include "net.h"
-#include "pubkey.h"
-#include "timedata.h"
-#include "ui_interface.h"
-#include "util.h"
+#include <alert.h>
+#include <clientversion.h>
+#include <net.h>
+#include <pubkey.h>
+#include <timedata.h>
+#include <ui_interface.h>
+#include <util.h>
 
 using namespace std;
 
-map<uint256, CAlert> mapAlerts;
+unordered_map<uint256, CAlert> mapAlerts;
 CCriticalSection cs_mapAlerts;
 
 void CUnsignedAlert::SetNull()
@@ -39,13 +39,13 @@ void CUnsignedAlert::SetNull()
     strRPCError.clear();
 }
 
-std::string CUnsignedAlert::ToString() const
+string CUnsignedAlert::ToString() const
 {
-    std::string strSetCancel;
+    string strSetCancel;
     strSetCancel.reserve(setCancel.size() * 3);
     for (const auto & n : setCancel)
         strSetCancel += strprintf("%d ", n);
-    std::string strSetSubVer;
+    string strSetSubVer;
     for(const auto& str : setSubVer)
         strSetSubVer += "\"" + str + "\" ";
     return strprintf(
@@ -86,29 +86,29 @@ void CAlert::SetNull()
     vchSig.clear();
 }
 
-bool CAlert::IsNull() const
+bool CAlert::IsNull() const noexcept
 {
     return (nExpiration == 0);
 }
 
-uint256 CAlert::GetHash() const
+uint256 CAlert::GetHash() const noexcept
 {
     return Hash(this->vchMsg.begin(), this->vchMsg.end());
 }
 
-bool CAlert::IsInEffect() const
+bool CAlert::IsInEffect() const noexcept
 {
     return (GetAdjustedTime() < nExpiration);
 }
 
-bool CAlert::Cancels(const CAlert& alert) const
+bool CAlert::Cancels(const CAlert& alert) const noexcept
 {
     if (!IsInEffect())
         return false; // this was a no-op before 31403
     return (alert.nID <= nCancel || setCancel.count(alert.nID));
 }
 
-bool CAlert::AppliesTo(int nVersion, const std::string& strSubVerIn) const
+bool CAlert::AppliesTo(int nVersion, const string& strSubVerIn) const noexcept
 {
     // TODO: rework for client-version-embedded-in-strSubVer ?
     return (IsInEffect() &&
@@ -116,9 +116,9 @@ bool CAlert::AppliesTo(int nVersion, const std::string& strSubVerIn) const
             (setSubVer.empty() || setSubVer.count(strSubVerIn)));
 }
 
-bool CAlert::AppliesToMe() const
+bool CAlert::AppliesToMe() const noexcept
 {
-    return AppliesTo(PROTOCOL_VERSION, FormatSubVersion(CLIENT_NAME, CLIENT_VERSION, std::vector<std::string>()));
+    return AppliesTo(PROTOCOL_VERSION, FormatSubVersion(CLIENT_NAME, CLIENT_VERSION, v_strings()));
 }
 
 bool CAlert::RelayTo(CNode* pnode) const
@@ -159,7 +159,7 @@ CAlert CAlert::getAlertByHash(const uint256 &hash)
     CAlert retval;
     {
         LOCK(cs_mapAlerts);
-        map<uint256, CAlert>::iterator mi = mapAlerts.find(hash);
+        auto mi = mapAlerts.find(hash);
         if(mi != mapAlerts.end())
             retval = mi->second;
     }
@@ -180,7 +180,7 @@ bool CAlert::ProcessAlert(const v_uint8 & alertKey, bool fThread)
     // alerts or it will be ignored (so an attacker can't
     // send an "everything is OK, don't panic" version that
     // cannot be overridden):
-    int maxInt = std::numeric_limits<int>::max();
+    static constexpr int maxInt = numeric_limits<int>::max();
     if (nID == maxInt)
     {
         if (!(
@@ -198,24 +198,25 @@ bool CAlert::ProcessAlert(const v_uint8 & alertKey, bool fThread)
     {
         LOCK(cs_mapAlerts);
         // Cancel previous alerts
-        for (map<uint256, CAlert>::iterator mi = mapAlerts.begin(); mi != mapAlerts.end();)
+        v_uint256 vAlertsToDelete;
+        for (const auto& [hash, alert] : mapAlerts)
         {
-            const CAlert& alert = (*mi).second;
             if (Cancels(alert))
             {
                 LogPrint("alert", "cancelling alert %d\n", alert.nID);
-                uiInterface.NotifyAlertChanged((*mi).first, CT_DELETED);
-                mapAlerts.erase(mi++);
+                uiInterface.NotifyAlertChanged(hash, CT_DELETED);
+                vAlertsToDelete.emplace_back(hash);
             }
             else if (!alert.IsInEffect())
             {
                 LogPrint("alert", "expiring alert %d\n", alert.nID);
-                uiInterface.NotifyAlertChanged((*mi).first, CT_DELETED);
-                mapAlerts.erase(mi++);
+                uiInterface.NotifyAlertChanged(hash, CT_DELETED);
+                vAlertsToDelete.emplace_back(hash);
             }
-            else
-                mi++;
         }
+        // erase marked alerts
+        for (const auto& hash : vAlertsToDelete)
+            mapAlerts.erase(hash);
 
         // Check if this alert has been cancelled
         for (const auto &[hash, alert] : mapAlerts)
@@ -228,7 +229,7 @@ bool CAlert::ProcessAlert(const v_uint8 & alertKey, bool fThread)
         }
 
         // Add to mapAlerts
-        mapAlerts.insert(make_pair(GetHash(), *this));
+        mapAlerts.emplace(GetHash(), *this);
         // Notify UI and -alertnotify if it applies to me
         if(AppliesToMe())
         {
@@ -241,8 +242,7 @@ bool CAlert::ProcessAlert(const v_uint8 & alertKey, bool fThread)
     return true;
 }
 
-void
-CAlert::Notify(const string& strMessage, bool fThread)
+void CAlert::Notify(const string& strMessage, bool fThread)
 {
     string strCmd = GetArg("-alertnotify", "");
     if (strCmd.empty()) return;
