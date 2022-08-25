@@ -883,7 +883,7 @@ bool AppInit2(CServiceThreadGroup& threadGroup, CScheduler& scheduler)
     fLogIPs = GetBoolArg("-logips", false);
 
     LogPrintf("\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n");
-    LogPrintf("Pastel version %s (%s)\n", FormatFullVersion(), CLIENT_DATE);
+    LogPrintf("Pastel version %s (%s), protocol version (%d)\n", FormatFullVersion(), CLIENT_DATE, PROTOCOL_VERSION);
 
     // when specifying an explicit binding address, you want to listen on it
     // even when -connect or -proxy is specified
