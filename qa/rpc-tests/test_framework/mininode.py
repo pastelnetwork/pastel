@@ -2,6 +2,7 @@
 # Copyright (c) 2010 ArtForz -- public domain half-a-node
 # Copyright (c) 2012 Jeff Garzik
 # Copyright (c) 2010-2016 The Bitcoin Core developers
+# Copyright (c) 2018-2022 The Pastel Core developers
 # Distributed under the MIT software license, see the accompanying
 # file COPYING or https://www.opensource.org/licenses/mit-license.php .
 
@@ -49,6 +50,7 @@ SPROUT_PROTO_VERSION = 170002  # past bip-31 for ping/pong
 OVERWINTER_PROTO_VERSION = 170003
 SAPLING_PROTO_VERSION = 170006
 BLOSSOM_PROTO_VERSION = 170008
+LATEST_PROTO_VERSION = 170009
 
 MY_SUBVERSION = b"/python-mininode-tester:0.0.2/"
 
@@ -950,7 +952,7 @@ class CAlert(object):
 class msg_version(object):
     command = b"version"
 
-    def __init__(self, protocol_version=BLOSSOM_PROTO_VERSION):
+    def __init__(self, protocol_version=LATEST_PROTO_VERSION):
         self.nVersion = protocol_version
         self.nServices = 1
         self.nTime = int(time.time())
@@ -1395,7 +1397,7 @@ class NodeConnCB(object):
     def on_version(self, conn, message):
         if message.nVersion >= 209:
             conn.send_message(msg_verack())
-        conn.ver_send = min(BLOSSOM_PROTO_VERSION, message.nVersion)
+        conn.ver_send = min(LATEST_PROTO_VERSION, message.nVersion)
         if message.nVersion < 209:
             conn.ver_recv = conn.ver_send
 
@@ -1459,7 +1461,7 @@ class NodeConn(asyncore.dispatcher):
    
     }
 
-    def __init__(self, dstaddr, dstport, rpc, callback, net="regtest", protocol_version=BLOSSOM_PROTO_VERSION):
+    def __init__(self, dstaddr, dstport, rpc, callback, net="regtest", protocol_version=LATEST_PROTO_VERSION):
         asyncore.dispatcher.__init__(self, map=mininode_socket_map)
         self.log = logging.getLogger("NodeConn(%s:%d)" % (dstaddr, dstport))
         self.dstaddr = dstaddr

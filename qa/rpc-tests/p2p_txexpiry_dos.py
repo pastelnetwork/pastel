@@ -4,7 +4,7 @@
 # file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
 from test_framework.mininode import NodeConn, NetworkThread, \
-    msg_tx, BLOSSOM_PROTO_VERSION
+    msg_tx, LATEST_PROTO_VERSION
 from test_framework.test_framework import BitcoinTestFramework
 from test_framework.util import initialize_chain_clean, start_nodes, \
     p2p_port, assert_equal
@@ -33,7 +33,7 @@ class TxExpiryDoSTest(BitcoinTestFramework):
 
         connections = []
         connections.append(NodeConn('127.0.0.1', p2p_port(0), self.nodes[0],
-                                    test_node, "regtest", BLOSSOM_PROTO_VERSION))
+                                    test_node, "regtest", LATEST_PROTO_VERSION))
         test_node.add_connection(connections[0])
 
         # Start up network handling in another thread
@@ -44,7 +44,7 @@ class TxExpiryDoSTest(BitcoinTestFramework):
         # Verify mininodes are connected to zcashd nodes
         peerinfo = self.nodes[0].getpeerinfo()
         versions = [x["version"] for x in peerinfo]
-        assert_equal(1, versions.count(BLOSSOM_PROTO_VERSION))
+        assert_equal(1, versions.count(LATEST_PROTO_VERSION))
         assert_equal(0, peerinfo[0]["banscore"])
 
         coinbase_blocks = self.nodes[0].generate(1)
@@ -65,7 +65,7 @@ class TxExpiryDoSTest(BitcoinTestFramework):
         # and still has a banscore of 0.
         peerinfo = self.nodes[0].getpeerinfo()
         versions = [x["version"] for x in peerinfo]
-        assert_equal(1, versions.count(BLOSSOM_PROTO_VERSION))
+        assert_equal(1, versions.count(LATEST_PROTO_VERSION))
         assert_equal(0, peerinfo[0]["banscore"])
 
         # Mine a block and resend the transaction
@@ -78,7 +78,7 @@ class TxExpiryDoSTest(BitcoinTestFramework):
         # but has a banscore of 10.
         peerinfo = self.nodes[0].getpeerinfo()
         versions = [x["version"] for x in peerinfo]
-        assert_equal(1, versions.count(BLOSSOM_PROTO_VERSION))
+        assert_equal(1, versions.count(LATEST_PROTO_VERSION))
         assert_equal(10, peerinfo[0]["banscore"])
 
         [c.disconnect_node() for c in connections]
