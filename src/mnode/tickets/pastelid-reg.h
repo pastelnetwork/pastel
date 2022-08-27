@@ -109,7 +109,7 @@ public:
     }
 
     static CPastelIDRegTicket Create(std::string&& sPastelID, SecureString&& strKeyPass, 
-        std::string&& sFundingAaddress, const std::optional<CMNID_RegData> &mnRegData = std::nullopt);
+        const std::string& sFundingAaddress, const std::optional<CMNID_RegData> &mnRegData = std::nullopt);
     static bool FindTicketInDb(const std::string& key, CPastelIDRegTicket& ticket);
     static PastelIDRegTickets_t FindAllTicketByPastelAddress(const std::string& address);
 };

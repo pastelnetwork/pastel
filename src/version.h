@@ -8,7 +8,7 @@
  * network protocol versioning
  */
 
-inline constexpr int PROTOCOL_VERSION = 170008;
+inline constexpr int PROTOCOL_VERSION = 170009;
 
 //! initial proto version, to be increased after version/verack negotiation
 inline constexpr int INIT_PROTO_VERSION = 209;
@@ -17,7 +17,7 @@ inline constexpr int INIT_PROTO_VERSION = 209;
 inline constexpr int GETHEADERS_VERSION = 31800;
 
 //! disconnect from peers older than this proto version
-inline constexpr int MIN_PEER_PROTO_VERSION = 170008;
+inline constexpr int MIN_PEER_PROTO_VERSION = 170009;
 
 //! nTime field added to CAddress, starting with this version;
 //! if possible, avoid requesting addresses nodes older than this

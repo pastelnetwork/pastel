@@ -29,7 +29,7 @@ using namespace std;
  * \return Pastel ID registration ticket
  */
 CPastelIDRegTicket CPastelIDRegTicket::Create(string&& sPastelID, SecureString&& strKeyPass, 
-    string&& sFundingAddress, const optional<CMNID_RegData> &mnRegData)
+    const string& sFundingAddress, const optional<CMNID_RegData> &mnRegData)
 {
     CPastelIDRegTicket ticket(move(sPastelID));
 
@@ -42,7 +42,7 @@ CPastelIDRegTicket CPastelIDRegTicket::Create(string&& sPastelID, SecureString&&
             "PastelID [%s] should be generated and stored inside the local node. See \"pastelid newkey\"", 
             ticket.pastelID));
 
-    ticket.address = move(sFundingAddress);
+    ticket.address = sFundingAddress;
     const bool isMNid = mnRegData.has_value();
 
     if (isMNid)

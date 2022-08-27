@@ -8,6 +8,7 @@
 #include <set>
 #include <stdint.h>
 #include <string>
+#include <uint256.h>
 
 #include <serialize.h>
 #include <sync.h>
@@ -15,9 +16,8 @@
 
 class CAlert;
 class CNode;
-class uint256;
 
-extern std::map<uint256, CAlert> mapAlerts;
+extern std::unordered_map<uint256, CAlert> mapAlerts;
 extern CCriticalSection cs_mapAlerts;
 
 /** Alerts are for notifying old versions if they become too obsolete and
@@ -93,12 +93,12 @@ public:
     }
 
     void SetNull();
-    bool IsNull() const;
-    uint256 GetHash() const;
-    bool IsInEffect() const;
-    bool Cancels(const CAlert& alert) const;
-    bool AppliesTo(int nVersion, const std::string& strSubVerIn) const;
-    bool AppliesToMe() const;
+    bool IsNull() const noexcept;
+    uint256 GetHash() const noexcept;
+    bool IsInEffect() const noexcept;
+    bool Cancels(const CAlert& alert) const noexcept;
+    bool AppliesTo(int nVersion, const std::string& strSubVerIn) const noexcept;
+    bool AppliesToMe() const noexcept;
     bool RelayTo(CNode* pnode) const;
     bool CheckSignature(const v_uint8 & alertKey) const;
     bool ProcessAlert(const v_uint8 & alertKey, bool fThread = true); // fThread means run -alertnotify in a free-running thread
