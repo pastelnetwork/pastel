@@ -5,7 +5,7 @@
 
 from test_framework.authproxy import JSONRPCException
 from test_framework.mininode import NodeConn, NetworkThread, CInv, \
-    msg_mempool, msg_getdata, msg_tx, mininode_lock, BLOSSOM_PROTO_VERSION
+    msg_mempool, msg_getdata, msg_tx, mininode_lock, LATEST_PROTO_VERSION
 from test_framework.test_framework import BitcoinTestFramework
 from test_framework.util import assert_equal, connect_nodes_bi, fail, \
     initialize_chain_clean, p2p_port, start_nodes, sync_blocks, sync_mempools
@@ -86,7 +86,7 @@ class TxExpiringSoonTest(BitcoinTestFramework):
         testnode0 = TestNode()
         connections = []
         connections.append(NodeConn('127.0.0.1', p2p_port(0), self.nodes[0],
-                                    testnode0, "regtest", BLOSSOM_PROTO_VERSION))
+                                    testnode0, "regtest", LATEST_PROTO_VERSION))
         testnode0.add_connection(connections[0])
 
         # Start up network handling in another thread
@@ -96,7 +96,7 @@ class TxExpiringSoonTest(BitcoinTestFramework):
         # Verify mininodes are connected to pasteld nodes
         peerinfo = self.nodes[0].getpeerinfo()
         versions = [x["version"] for x in peerinfo]
-        assert_equal(3, versions.count(BLOSSOM_PROTO_VERSION))
+        assert_equal(3, versions.count(LATEST_PROTO_VERSION))
         assert_equal(0, peerinfo[0]["banscore"])
 
         # Mine some blocks so we can spend
@@ -151,7 +151,7 @@ class TxExpiringSoonTest(BitcoinTestFramework):
         # Set up test node for node 2
         testnode2 = TestNode()
         connections.append(NodeConn('127.0.0.1', p2p_port(2), self.nodes[2],
-                                    testnode2, "regtest", BLOSSOM_PROTO_VERSION))
+                                    testnode2, "regtest", LATEST_PROTO_VERSION))
         testnode2.add_connection(connections[-1])
 
         # Verify block count

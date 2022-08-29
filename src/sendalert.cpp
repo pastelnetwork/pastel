@@ -1,4 +1,6 @@
 // Copyright (c) 2016-2018 The Zcash developers
+// Copyright (c) 2018-2022 The Pastel Core developers
+// 
 // Original code from: https://gist.github.com/laanwj/0e689cfa37b52bcbbb44
 
 /*
@@ -38,21 +40,22 @@ the bad alert.
 
 */
 
-#include "main.h"
-#include "net.h"
-#include "alert.h"
-#include "init.h"
+#include <main.h>
+#include <net.h>
+#include <alert.h>
+#include <init.h>
 
-#include "util.h"
-#include "utiltime.h"
-#include "key.h"
-#include "clientversion.h"
-#include "chainparams.h"
+#include <util.h>
+#include <utiltime.h>
+#include <key.h>
+#include <clientversion.h>
+#include <chainparams.h>
 
-#include "alertkeys.h"
+#include <alertkeys.h>
 
+using namespace std;
 
-static const int64_t DAYS = 24 * 60 * 60;
+static constexpr int64_t DAYS = 24 * 60 * 60;
 
 void ThreadSendAlert()
 {
@@ -71,9 +74,9 @@ void ThreadSendAlert()
     //
     CAlert alert;
     alert.nRelayUntil   = GetTime() + 15 * 60;
-    alert.nExpiration   = GetTime() + 10 * 365 * 24 * 60 * 60;
-    alert.nID           = 1006;  // use https://github.com/zcash/zcash/wiki/specification#assigned-numbers to keep track of alert IDs
-    alert.nCancel       = 1005;  // cancels previous messages up to this ID number
+    alert.nExpiration   = GetTime() + 10 * 365 * DAYS;
+    alert.nID           = 1007;  // alert ID
+    alert.nCancel       = 1006;  // cancels previous messages up to this ID number
 
     // These versions are protocol versions
     // 170002 : 1.0.0
@@ -88,18 +91,17 @@ void ThreadSendAlert()
     //  2000 for longer invalid proof-of-work chain
     //  Higher numbers mean higher priority
     //  4000 or higher will put the RPC into safe mode
-    alert.nPriority     = 4000;
+    alert.nPriority     = ALERT_PRIORITY_SAFE_MODE;
     alert.strComment    = "";
-    alert.strStatusBar  = "Your client version 1.0.0 has degraded networking behavior. Please update to the most recent version of Pastel (1.0.1 or later).";
+    alert.strStatusBar  = "Your pasteld client version has degraded networking behavior. Please update to the most recent version of Pastel (1.1.2 or later).";
     alert.strRPCError   = alert.strStatusBar;
 
     // Set specific client version/versions here. If setSubVer is empty, no filtering on subver is done:
-    // alert.setSubVer.insert(std::string("/MagicBean:0.7.2/"));
-    const std::vector<std::string> useragents = {}; //{"MagicBean", "BeanStalk", "AppleSeed", "EleosZcash"};
+    // alert.setSubVer.insert(string("/MagicBean:1.1.2/"));
+    const v_strings useragents = {}; //{"MagicBean", "BeanStalk", "AppleSeed", "EleosZcash"};
 
     for (const auto& useragent : useragents)
-    {
-    }
+    {}
 
     // Sanity check
     assert(alert.strComment.length() <= 65536); // max length in alert.h
@@ -108,16 +110,26 @@ void ThreadSendAlert()
 
     // Sign
     const CChainParams& chainparams = Params();
-    std::string networkID = chainparams.NetworkIDString();
-    bool fIsTestNet = networkID.compare("test") == 0;
-    std::vector<unsigned char> vchTmp(ParseHex(fIsTestNet ? pszTestNetPrivKey : pszPrivKey));
-    CPrivKey vchPrivKey(vchTmp.begin(), vchTmp.end());
+    const char* szPrivKey = nullptr;
+    if (chainparams.IsMainNet())
+        szPrivKey = pszPrivKey;
+    else if (chainparams.IsTestNet())
+        szPrivKey = pszTestNetPrivKey;
+    else if (chainparams.IsRegTest())
+        szPrivKey = pszRegTestPrivKey;
+    else
+    {
+        printf("ThreadSendAlert() : cannot retrieve alert private key, unknown network type\n");
+        return;
+    }
+    v_uint8 vchTmp(ParseHex(szPrivKey));
+    CPrivKey privKey(vchTmp.begin(), vchTmp.end());
 
     CDataStream sMsg(SER_NETWORK, CLIENT_VERSION);
     sMsg << *(CUnsignedAlert*)&alert;
-    alert.vchMsg = std::vector<unsigned char>(sMsg.begin(), sMsg.end());
+    alert.vchMsg = v_uint8(sMsg.begin(), sMsg.end());
     CKey key;
-    if (!key.SetPrivKey(vchPrivKey, false))
+    if (!key.SetPrivKey(privKey, false))
     {
         printf("ThreadSendAlert() : key.SetPrivKey failed\n");
         return;

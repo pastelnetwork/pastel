@@ -70,8 +70,9 @@ public:
 
     friend bool operator==(const CKey& a, const CKey& b)
     {
-        return a.fCompressed == b.fCompressed && a.size() == b.size() &&
-               memcmp(a.keydata.data(), b.keydata.data(), a.size()) == 0;
+        return a.fCompressed == b.fCompressed &&
+		a.size() == b.size() &&
+            	memcmp(a.keydata.data(), b.keydata.data(), a.size()) == 0;
     }
 
     //! Initialize using begin and end iterators to byte data.
@@ -92,7 +93,7 @@ public:
     }
 
     //! Simple read-only vector-like interface.
-    unsigned int size() const noexcept { return (fValid ? KEY_SIZE : 0); }
+    unsigned int size() const noexcept { return (fValid ? keydata.size() : 0); }
     const unsigned char* begin() const noexcept { return keydata.data(); }
     const unsigned char* end() const noexcept { return keydata.data() + size(); }
     const unsigned char* cbegin() const noexcept { return keydata.data(); }
@@ -162,8 +163,11 @@ struct CExtKey {
 
     friend bool operator==(const CExtKey& a, const CExtKey& b)
     {
-        return a.nDepth == b.nDepth && memcmp(&a.vchFingerprint[0], &b.vchFingerprint[0], 4) == 0 && a.nChild == b.nChild &&
-               a.chaincode == b.chaincode && a.key == b.key;
+        return a.nDepth == b.nDepth &&
+		memcmp(&a.vchFingerprint[0], &b.vchFingerprint[0], sizeof(vchFingerprint)) == 0 &&
+		a.nChild == b.nChild &&
+            	a.chaincode == b.chaincode &&
+		a.key == b.key;
     }
 
     void Encode(unsigned char code[BIP32_EXTKEY_SIZE]) const;

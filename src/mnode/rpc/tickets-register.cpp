@@ -93,8 +93,8 @@ As json rpc:
     SecureString strKeyPass(params[3].get_str());
     string sFundingAddress = params[4].get_str();
 
-    const auto pastelIDRegTicket = CPastelIDRegTicket::Create(move(pastelID), move(strKeyPass), move(sFundingAddress));
-    return GenerateSendTicketResult(CPastelTicketProcessor::SendTicket(pastelIDRegTicket, move(sFundingAddress)));
+    const auto pastelIDRegTicket = CPastelIDRegTicket::Create(move(pastelID), move(strKeyPass), sFundingAddress);
+    return GenerateSendTicketResult(CPastelTicketProcessor::SendTicket(pastelIDRegTicket, sFundingAddress));
 }
 
 /**

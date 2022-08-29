@@ -100,7 +100,7 @@ ticket_validation_t CAcceptTicket::IsValid(const bool bPreReg, const uint32_t nC
                 if (m_nBlock > 0 && existingAcceptTicket.m_nBlock > m_nBlock)
                 {
                     tv.errorMsg = strprintf(
-                        "This Accept ticket has been replaced with another ticket. txid - [%s]",
+                        "This Accept ticket has been replaced with another ticket, txid - [%s]",
                         existingAcceptTicket.m_txid);
                     break;
                 }
