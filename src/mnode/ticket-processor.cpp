@@ -31,10 +31,10 @@ static shared_ptr<ITxMemPoolTracker> TicketTxMemPoolTracker;
  * 
  * \return 0 if chain is not initialized or height of the active chain
  */
-unsigned int GetActiveChainHeight()
+uint32_t GetActiveChainHeight()
 {
     LOCK(cs_main);
-    return static_cast<unsigned int>(chainActive.Height()) + 1;
+    return static_cast<uint32_t>(chainActive.Height()) + 1;
 }
 
 void CPastelTicketProcessor::InitTicketDB()
@@ -860,7 +860,7 @@ template <class _TicketType, typename F>
 string CPastelTicketProcessor::filterTickets(F f, const uint32_t nMinHeight, const bool bCheckConfirmation) const
 {
     json jArray;
-    const unsigned int nChainHeight = GetActiveChainHeight();
+    const auto nChainHeight = GetActiveChainHeight();
     // list tickets with the specific type (_TicketType) and add to json array if functor f applies
     listTickets<_TicketType>([&](const _TicketType& ticket) -> bool
     {
@@ -1227,7 +1227,7 @@ tuple<string, string> CPastelTicketProcessor::SendTicket(const CPastelTicket& ti
         LogPrint("compress", "Ticket (%hhu) data [%zu bytes] was not compressed due to size or bad compression ratio\n", to_integral_type<TicketID>(ticket.ID()), nUncompressedSize);
 #endif
 
-    unsigned int chainHeight = GetActiveChainHeight();
+    const auto chainHeight = GetActiveChainHeight();
 
     CMutableTransaction tx;
     if (!CreateP2FMSTransactionWithExtra(data_stream, extraOutputs, extraAmount, tx, 
@@ -1547,7 +1547,7 @@ bool CPastelTicketProcessor::CreateP2FMSTransactionWithExtra(const CDataStream& 
     // total amount to spend in patoshis
     const CAmount allSpentAmount = (pricePSL * COIN) + nAproxFeeNeeded + extraAmount;
 
-    unsigned int chainHeight = GetActiveChainHeight();
+    auto chainHeight = GetActiveChainHeight();
     if (!chainParams.IsRegTest())
         chainHeight = max(chainHeight, APPROX_RELEASE_HEIGHT);
     auto consensusBranchId = CurrentEpochBranchId(chainHeight, chainParams.GetConsensus());

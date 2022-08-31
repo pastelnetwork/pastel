@@ -94,7 +94,7 @@ void CActionActivateTicket::sign(SecureString&& strKeyPass)
  */
 ticket_validation_t CActionActivateTicket::IsValid(const bool bPreReg, const uint32_t nCallDepth) const noexcept
 {
-    const unsigned int chainHeight = GetActiveChainHeight();
+    const auto chainHeight = GetActiveChainHeight();
     ticket_validation_t tv;
     do
     {

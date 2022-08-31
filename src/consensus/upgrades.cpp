@@ -1,14 +1,16 @@
 // Copyright (c) 2018 The Zcash developers
+// Copyright (c) 2018-2022 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
-// file COPYING or http://www.opensource.org/licenses/mit-license.php.
+// file COPYING or https://www.opensource.org/licenses/mit-license.php.
 
-#include "consensus/upgrades.h"
+#include <consensus/upgrades.h>
 
 /**
  * General information about each network upgrade.
  * Ordered by Consensus::UpgradeIndex.
  */
-const struct NUInfo NetworkUpgradeInfo[Consensus::MAX_NETWORK_UPGRADES] = {
+const struct NUInfo NetworkUpgradeInfo[to_integral_type(Consensus::UpgradeIndex::MAX_NETWORK_UPGRADES)] =
+{
     {
         /*.nBranchId =*/ 0,
         /*.strName =*/ "Sprout",
@@ -28,22 +30,24 @@ const struct NUInfo NetworkUpgradeInfo[Consensus::MAX_NETWORK_UPGRADES] = {
         /*.nBranchId =*/ 0x76b809bb,
         /*.strName =*/ "Sapling",
         /*.strInfo =*/ "See https://z.cash/upgrade/sapling.html for details.",
+    },
+    {
+        /*.nBranchId =*/ 0x26ab2455,
+        /*.strName =*/ "Cezanne",
+        /*.strInfo =*/ "See https://pastel.network/cezanne-mainnet-release/ for details.",
     }
 };
 
-const uint32_t SPROUT_BRANCH_ID = NetworkUpgradeInfo[Consensus::BASE_SPROUT].nBranchId;
-
 UpgradeState NetworkUpgradeState(
-    const unsigned int nHeight,
+    const uint32_t nHeight,
     const Consensus::Params& params,
-    Consensus::UpgradeIndex idx)
+    Consensus::UpgradeIndex idx) noexcept
 {
-    assert(idx >= Consensus::BASE_SPROUT && idx < Consensus::MAX_NETWORK_UPGRADES);
-    const auto nActivationHeight = params.vUpgrades[idx].nActivationHeight;
-
+    const auto nActivationHeight = params.vUpgrades[to_integral_type(idx)].nActivationHeight;
     if (nActivationHeight == Consensus::NetworkUpgrade::NO_ACTIVATION_HEIGHT)
-        return UPGRADE_DISABLED;
-    if (nHeight >= static_cast<unsigned int>(nActivationHeight))
+        return UpgradeState::UPGRADE_DISABLED;
+
+    if (nHeight >= nActivationHeight)
     {
         // From ZIP 200:
         //
@@ -54,68 +58,66 @@ UpgradeState NetworkUpgradeState(
         //     For removal of ambiguity, the block at height ACTIVATION_HEIGHT - 1 is
         //     subject to the pre-upgrade consensus rules, and would be the last common
         //     block in the event of a persistent pre-upgrade branch.
-        return UPGRADE_ACTIVE;
+        return UpgradeState::UPGRADE_ACTIVE;
     }
-    return UPGRADE_PENDING;
+    return UpgradeState::UPGRADE_PENDING;
 }
 
 bool NetworkUpgradeActive(
-    const unsigned int nHeight,
+    const uint32_t nHeight,
     const Consensus::Params& params,
-    Consensus::UpgradeIndex idx)
+    Consensus::UpgradeIndex idx) noexcept
 {
-    return NetworkUpgradeState(nHeight, params, idx) == UPGRADE_ACTIVE;
+    return NetworkUpgradeState(nHeight, params, idx) == UpgradeState::UPGRADE_ACTIVE;
 }
 
-int CurrentEpoch(int nHeight, const Consensus::Params& params)
+int CurrentEpoch(const uint32_t nHeight, const Consensus::Params& params) noexcept
 {
-    for (auto idxInt = Consensus::MAX_NETWORK_UPGRADES - 1; idxInt >= Consensus::BASE_SPROUT; idxInt--)
+    for (auto idxInt = to_integral_type(Consensus::UpgradeIndex::MAX_NETWORK_UPGRADES) - 1; idxInt >= to_integral_type(Consensus::UpgradeIndex::BASE_SPROUT); --idxInt)
     {
         if (NetworkUpgradeActive(nHeight, params, Consensus::UpgradeIndex(idxInt)))
             return idxInt;
     }
     // Base case
-    return Consensus::BASE_SPROUT;
+    return to_integral_type(Consensus::UpgradeIndex::BASE_SPROUT);
 }
 
-uint32_t CurrentEpochBranchId(int nHeight, const Consensus::Params& params) {
+uint32_t CurrentEpochBranchId(const uint32_t nHeight, const Consensus::Params& params) noexcept
+{
     return NetworkUpgradeInfo[CurrentEpoch(nHeight, params)].nBranchId;
 }
 
-bool IsConsensusBranchId(int branchId) {
-    for (int idx = Consensus::BASE_SPROUT; idx < Consensus::MAX_NETWORK_UPGRADES; idx++) {
-        if (branchId == NetworkUpgradeInfo[idx].nBranchId) {
+bool IsConsensusBranchId(const uint32_t branchId) noexcept
+{
+    for (auto idx = to_integral_type(Consensus::UpgradeIndex::BASE_SPROUT); idx < to_integral_type(Consensus::UpgradeIndex::MAX_NETWORK_UPGRADES); ++idx)
+    {
+        if (branchId == NetworkUpgradeInfo[idx].nBranchId)
             return true;
-        }
     }
     return false;
 }
 
 bool IsActivationHeight(
-    int nHeight,
+    const uint32_t nHeight,
     const Consensus::Params& params,
-    Consensus::UpgradeIndex idx)
+    Consensus::UpgradeIndex idx) noexcept
 {
-    assert(idx >= Consensus::BASE_SPROUT && idx < Consensus::MAX_NETWORK_UPGRADES);
-
     // Don't count Sprout as an activation height
-    if (idx == Consensus::BASE_SPROUT) {
+    if (idx == Consensus::UpgradeIndex::BASE_SPROUT)
         return false;
-    }
 
-    return nHeight >= 0 && nHeight == params.vUpgrades[idx].nActivationHeight;
+    return (nHeight != Consensus::NetworkUpgrade::NO_ACTIVATION_HEIGHT) && 
+           (nHeight == params.vUpgrades[to_integral_type(idx)].nActivationHeight);
 }
 
-bool IsActivationHeightForAnyUpgrade(
-    int nHeight,
-    const Consensus::Params& params)
+bool IsActivationHeightForAnyUpgrade(const uint32_t nHeight, const Consensus::Params& params)
 {
-    if (nHeight < 0) {
+    if (nHeight == Consensus::NetworkUpgrade::NO_ACTIVATION_HEIGHT)
         return false;
-    }
 
     // Don't count Sprout as an activation height
-    for (int idx = Consensus::BASE_SPROUT + 1; idx < Consensus::MAX_NETWORK_UPGRADES; idx++) {
+    for (auto idx = to_integral_type(Consensus::UpgradeIndex::BASE_SPROUT) + 1; idx < to_integral_type(Consensus::UpgradeIndex::MAX_NETWORK_UPGRADES); ++idx)
+    {
         if (nHeight == params.vUpgrades[idx].nActivationHeight)
             return true;
     }
@@ -123,28 +125,34 @@ bool IsActivationHeightForAnyUpgrade(
     return false;
 }
 
-std::optional<int> NextEpoch(int nHeight, const Consensus::Params& params)
+std::optional<uint32_t> NextEpoch(const uint32_t nHeight, const Consensus::Params& params) noexcept
 {
-    if (nHeight < 0)
+    if (nHeight == Consensus::NetworkUpgrade::NO_ACTIVATION_HEIGHT)
         return std::nullopt;
 
     // Sprout is never pending
-    for (auto idx = Consensus::BASE_SPROUT + 1; idx < Consensus::MAX_NETWORK_UPGRADES; idx++)
+    for (auto idx = to_integral_type(Consensus::UpgradeIndex::BASE_SPROUT) + 1; idx < to_integral_type(Consensus::UpgradeIndex::MAX_NETWORK_UPGRADES); ++idx)
     {
-        if (NetworkUpgradeState(static_cast<unsigned int>(nHeight), params, Consensus::UpgradeIndex(idx)) == UPGRADE_PENDING)
+        if (NetworkUpgradeState(nHeight, params, Consensus::UpgradeIndex(idx)) == UpgradeState::UPGRADE_PENDING)
             return idx;
     }
 
     return std::nullopt;
 }
 
-std::optional<int> NextActivationHeight(
-    int nHeight,
-    const Consensus::Params& params)
+std::optional<uint32_t> NextActivationHeight(
+    uint32_t nHeight,
+    const Consensus::Params& params) noexcept
 {
-    auto idx = NextEpoch(nHeight, params);
-    if (idx) {
+    const auto idx = NextEpoch(nHeight, params);
+    if (idx)
         return params.vUpgrades[idx.value()].nActivationHeight;
-    }
     return std::nullopt;
 }
+
+uint32_t GetUpgradeBranchId(Consensus::UpgradeIndex idx) noexcept
+{
+    return NetworkUpgradeInfo[to_integral_type(idx)].nBranchId;
+}
+
+const uint32_t SPROUT_BRANCH_ID = GetUpgradeBranchId(Consensus::UpgradeIndex::BASE_SPROUT);

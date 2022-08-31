@@ -74,7 +74,7 @@ void CNFTSellTicket::sign(SecureString&& strKeyPass)
  */
 ticket_validation_t CNFTSellTicket::IsValid(const bool bPreReg, const uint32_t nCallDepth) const noexcept
 {
-    const unsigned int chainHeight = GetActiveChainHeight();
+    const auto chainHeight = GetActiveChainHeight();
     ticket_validation_t tv;
     do
     {
@@ -256,7 +256,7 @@ ticket_validation_t CNFTSellTicket::IsValid(const bool bPreReg, const uint32_t n
                     t.m_txid, copyNumber);
                 break;
             }
-            const unsigned int chainHeight = GetActiveChainHeight();
+            const auto chainHeight = GetActiveChainHeight();
             if (t.m_nBlock + 2880 > chainHeight)
             {
                 // 1 block per 2.5; 4 blocks per 10 min; 24 blocks per 1h; 576 blocks per 24 h;

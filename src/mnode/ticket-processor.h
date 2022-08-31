@@ -28,7 +28,7 @@ constexpr uint8_t TICKET_COMPRESS_DISABLE_MASK = 0x7F;
 using reg_trade_txid_t = std::tuple<std::string, std::string>;
 
 // Get height of the active blockchain + 1
-unsigned int GetActiveChainHeight();
+uint32_t GetActiveChainHeight();
 
 // structure used by 'tickets tools searchthumbids' rpc
 typedef struct _search_thumbids_t

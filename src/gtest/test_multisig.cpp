@@ -48,7 +48,7 @@ TEST_P(PTest_Multisig, multisig_verify)
 {
     const int sample = GetParam();
 
-    EXPECT_TRUE(sample < static_cast<int>(Consensus::MAX_NETWORK_UPGRADES));
+    EXPECT_TRUE(sample < static_cast<int>(Consensus::UpgradeIndex::MAX_NETWORK_UPGRADES));
 
     uint32_t consensusBranchId = NetworkUpgradeInfo[sample].nBranchId;
     unsigned int flags = SCRIPT_VERIFY_P2SH | SCRIPT_VERIFY_STRICTENC;
@@ -153,7 +153,7 @@ TEST_P(PTest_Multisig, multisig_Sign)
 {
     const int sample = GetParam();
 
-    EXPECT_TRUE(sample < static_cast<int>(Consensus::MAX_NETWORK_UPGRADES));
+    EXPECT_TRUE(sample < static_cast<int>(Consensus::UpgradeIndex::MAX_NETWORK_UPGRADES));
 
     uint32_t consensusBranchId = NetworkUpgradeInfo[sample].nBranchId;
 

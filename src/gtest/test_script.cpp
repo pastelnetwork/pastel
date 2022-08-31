@@ -636,7 +636,7 @@ class PTest_Script : public TestWithParam<int>
 TEST_P(PTest_Script, script_valid)
 {
     const int sample = GetParam();
-    EXPECT_TRUE(sample < static_cast<int>(Consensus::MAX_NETWORK_UPGRADES));
+    EXPECT_TRUE(sample < static_cast<int>(Consensus::UpgradeIndex::MAX_NETWORK_UPGRADES));
 
     uint32_t consensusBranchId = NetworkUpgradeInfo[sample].nBranchId;
 
@@ -672,7 +672,7 @@ TEST_P(PTest_Script, script_valid)
 TEST_P(PTest_Script, script_invalid)
 {    
     const int sample = GetParam();
-    EXPECT_TRUE(sample < static_cast<int>(Consensus::MAX_NETWORK_UPGRADES));
+    EXPECT_TRUE(sample < static_cast<int>(Consensus::UpgradeIndex::MAX_NETWORK_UPGRADES));
     uint32_t consensusBranchId = NetworkUpgradeInfo[sample].nBranchId;
 
     // Scripts that should evaluate as invalid
@@ -702,7 +702,7 @@ TEST_P(PTest_Script, script_invalid)
 TEST_P(PTest_Script, script_PushData)
 {
     const int sample = GetParam();
-    EXPECT_TRUE(sample < static_cast<int>(Consensus::MAX_NETWORK_UPGRADES));
+    EXPECT_TRUE(sample < static_cast<int>(Consensus::UpgradeIndex::MAX_NETWORK_UPGRADES));
     uint32_t consensusBranchId = NetworkUpgradeInfo[sample].nBranchId;
 
     // Check that PUSHDATA1, PUSHDATA2, and PUSHDATA4 create the same value on
@@ -769,7 +769,7 @@ sign_multisig(CScript scriptPubKey, const CKey &key, CTransaction transaction, u
 TEST_P(PTest_Script, script_CHECKMULTISIG12)
 {
     const int sample = GetParam();
-    EXPECT_TRUE(sample < static_cast<int>(Consensus::MAX_NETWORK_UPGRADES));
+    EXPECT_TRUE(sample < static_cast<int>(Consensus::UpgradeIndex::MAX_NETWORK_UPGRADES));
     uint32_t consensusBranchId = NetworkUpgradeInfo[sample].nBranchId;
 
     ScriptError err;
@@ -804,7 +804,7 @@ TEST_P(PTest_Script, script_CHECKMULTISIG12)
 TEST_P(PTest_Script, script_CHECKMULTISIG23)
 {
     const int sample = GetParam();
-    EXPECT_TRUE(sample < static_cast<int>(Consensus::MAX_NETWORK_UPGRADES));
+    EXPECT_TRUE(sample < static_cast<int>(Consensus::UpgradeIndex::MAX_NETWORK_UPGRADES));
     uint32_t consensusBranchId = NetworkUpgradeInfo[sample].nBranchId;
 
     ScriptError err;
@@ -880,7 +880,7 @@ TEST_P(PTest_Script, script_CHECKMULTISIG23)
 TEST_P(PTest_Script, script_combineSigs)
 {
     const int sample = GetParam();
-    EXPECT_TRUE(sample < static_cast<int>(Consensus::MAX_NETWORK_UPGRADES));
+    EXPECT_TRUE(sample < static_cast<int>(Consensus::UpgradeIndex::MAX_NETWORK_UPGRADES));
     uint32_t consensusBranchId = NetworkUpgradeInfo[sample].nBranchId;
 
     // Test the CombineSignatures function
@@ -995,7 +995,7 @@ TEST_P(PTest_Script, script_combineSigs)
 TEST_P(PTest_Script, script_standard_push)
 {
     const int sample = GetParam();
-    EXPECT_TRUE(sample < static_cast<int>(Consensus::MAX_NETWORK_UPGRADES));
+    EXPECT_TRUE(sample < static_cast<int>(Consensus::UpgradeIndex::MAX_NETWORK_UPGRADES));
     uint32_t consensusBranchId = NetworkUpgradeInfo[sample].nBranchId;
 
     ScriptError err;

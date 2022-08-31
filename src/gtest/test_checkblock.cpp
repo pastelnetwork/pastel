@@ -64,8 +64,8 @@ protected:
 
     void TearDown() override {
         // Revert to test default. No-op on mainnet params.
-        UpdateNetworkUpgradeParameters(Consensus::UPGRADE_SAPLING, Consensus::NetworkUpgrade::NO_ACTIVATION_HEIGHT);
-        UpdateNetworkUpgradeParameters(Consensus::UPGRADE_OVERWINTER, Consensus::NetworkUpgrade::NO_ACTIVATION_HEIGHT);
+        UpdateNetworkUpgradeParameters(Consensus::UpgradeIndex::UPGRADE_SAPLING, Consensus::NetworkUpgrade::NO_ACTIVATION_HEIGHT);
+        UpdateNetworkUpgradeParameters(Consensus::UpgradeIndex::UPGRADE_OVERWINTER, Consensus::NetworkUpgrade::NO_ACTIVATION_HEIGHT);
     }
 
     // Returns a valid but empty mutable transaction at block height 1.
@@ -204,7 +204,7 @@ TEST_F(ContextualCheckBlockTest, BlockSproutRulesAcceptSproutTx) {
 // Test block evaluated under Overwinter rules will accept Overwinter transactions.
 TEST_F(ContextualCheckBlockTest, BlockOverwinterRulesAcceptOverwinterTx) {
     SelectParams(CBaseChainParams::Network::REGTEST);
-    UpdateNetworkUpgradeParameters(Consensus::UPGRADE_OVERWINTER, 1);
+    UpdateNetworkUpgradeParameters(Consensus::UpgradeIndex::UPGRADE_OVERWINTER, 1);
 
     CMutableTransaction mtx = GetFirstBlockCoinbaseTx();
 
@@ -221,8 +221,8 @@ TEST_F(ContextualCheckBlockTest, BlockOverwinterRulesAcceptOverwinterTx) {
 // Test that a block evaluated under Sapling rules can contain Sapling transactions.
 TEST_F(ContextualCheckBlockTest, BlockSaplingRulesAcceptSaplingTx) {
     SelectParams(CBaseChainParams::Network::REGTEST);
-    UpdateNetworkUpgradeParameters(Consensus::UPGRADE_OVERWINTER, 1);
-    UpdateNetworkUpgradeParameters(Consensus::UPGRADE_SAPLING, 1);
+    UpdateNetworkUpgradeParameters(Consensus::UpgradeIndex::UPGRADE_OVERWINTER, 1);
+    UpdateNetworkUpgradeParameters(Consensus::UpgradeIndex::UPGRADE_SAPLING, 1);
 
     CMutableTransaction mtx = GetFirstBlockCoinbaseTx();
 
@@ -274,7 +274,7 @@ TEST_F(ContextualCheckBlockTest, BlockSproutRulesRejectOtherTx)
 TEST_F(ContextualCheckBlockTest, BlockOverwinterRulesRejectOtherTx)
 {
     SelectParams(CBaseChainParams::Network::REGTEST);
-    UpdateNetworkUpgradeParameters(Consensus::UPGRADE_OVERWINTER, 1);
+    UpdateNetworkUpgradeParameters(Consensus::UpgradeIndex::UPGRADE_OVERWINTER, 1);
 
     CMutableTransaction mtx = GetFirstBlockCoinbaseTx();
 
@@ -301,8 +301,8 @@ TEST_F(ContextualCheckBlockTest, BlockOverwinterRulesRejectOtherTx)
 // Test block evaluated under Sapling rules cannot contain non-Sapling transactions.
 TEST_F(ContextualCheckBlockTest, BlockSaplingRulesRejectOtherTx) {
     SelectParams(CBaseChainParams::Network::REGTEST);
-    UpdateNetworkUpgradeParameters(Consensus::UPGRADE_OVERWINTER, 1);
-    UpdateNetworkUpgradeParameters(Consensus::UPGRADE_SAPLING, 1);
+    UpdateNetworkUpgradeParameters(Consensus::UpgradeIndex::UPGRADE_OVERWINTER, 1);
+    UpdateNetworkUpgradeParameters(Consensus::UpgradeIndex::UPGRADE_SAPLING, 1);
 
     CMutableTransaction mtx = GetFirstBlockCoinbaseTx();
 

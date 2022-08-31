@@ -3793,7 +3793,7 @@ Examples:
     mtx.nVersion = SAPLING_TX_VERSION;
     constexpr auto max_tx_size = MAX_TX_SIZE_AFTER_SAPLING;
     // If Sapling is not active, do not allow sending from or sending to Sapling addresses.
-    if (!NetworkUpgradeActive(nextBlockHeight, Params().GetConsensus(), Consensus::UPGRADE_SAPLING))
+    if (!NetworkUpgradeActive(nextBlockHeight, Params().GetConsensus(), Consensus::UpgradeIndex::UPGRADE_SAPLING))
     {
         if (bFromSapling || bContainsSaplingOutput)
             throw JSONRPCError(RPC_INVALID_PARAMETER, "Invalid parameter, Sapling has not activated");
@@ -3978,24 +3978,21 @@ Examples:
         }
     }
 
-    int nextBlockHeight = chainActive.Height() + 1;
-    bool overwinterActive = NetworkUpgradeActive(nextBlockHeight, Params().GetConsensus(), Consensus::UPGRADE_OVERWINTER);
+    const uint32_t nextBlockHeight = chainActive.Height() + 1;
+    bool overwinterActive = NetworkUpgradeActive(nextBlockHeight, Params().GetConsensus(), Consensus::UpgradeIndex::UPGRADE_OVERWINTER);
     unsigned int max_tx_size = MAX_TX_SIZE_AFTER_SAPLING;
-    if (!NetworkUpgradeActive(nextBlockHeight, Params().GetConsensus(), Consensus::UPGRADE_SAPLING)) {
+    if (!NetworkUpgradeActive(nextBlockHeight, Params().GetConsensus(), Consensus::UpgradeIndex::UPGRADE_SAPLING))
         max_tx_size = MAX_TX_SIZE_BEFORE_SAPLING;
-    }
 
     // If Sapling is not active, do not allow sending to a Sapling address.
-    if (!NetworkUpgradeActive(nextBlockHeight, Params().GetConsensus(), Consensus::UPGRADE_SAPLING)) {
-        auto res = keyIO.DecodePaymentAddress(destaddress);
-        if (IsValidPaymentAddress(res)) {
-            bool toSapling = get_if<libzcash::SaplingPaymentAddress>(&res) != nullptr;
-            if (toSapling) {
-                throw JSONRPCError(RPC_INVALID_PARAMETER, "Invalid parameter, Sapling has not activated");
-            }
-        } else {
+    if (!NetworkUpgradeActive(nextBlockHeight, Params().GetConsensus(), Consensus::UpgradeIndex::UPGRADE_SAPLING))
+    {
+        const auto res = keyIO.DecodePaymentAddress(destaddress);
+        if (!IsValidPaymentAddress(res))
             throw JSONRPCError(RPC_INVALID_PARAMETER, string("Invalid parameter, unknown address format: ") + destaddress );
-        }
+        bool toSapling = get_if<libzcash::SaplingPaymentAddress>(&res) != nullptr;
+        if (toSapling)
+            throw JSONRPCError(RPC_INVALID_PARAMETER, "Invalid parameter, Sapling has not activated");
     }
 
     // Prepare to get coinbase utxos
@@ -4008,9 +4005,8 @@ Examples:
 
     // Set of addresses to filter utxos by
     set<CTxDestination> destinations = {};
-    if (!isFromWildcard) {
+    if (!isFromWildcard)
         destinations.insert(taddr);
-    }
 
     // Get available utxos
     vector<COutput> vecOutputs;
@@ -4241,9 +4237,9 @@ Examples:
         throw JSONRPCError(RPC_INVALID_PARAMETER, "Cannot specify specific zaddrs when using \"ANY_SAPLING\"");
     }
 
-    const int nextBlockHeight = chainActive.Height() + 1;
-    const bool overwinterActive = NetworkUpgradeActive(nextBlockHeight, Params().GetConsensus(), Consensus::UPGRADE_OVERWINTER);
-    const bool saplingActive = NetworkUpgradeActive(nextBlockHeight, Params().GetConsensus(), Consensus::UPGRADE_SAPLING);
+    const uint32_t nextBlockHeight = chainActive.Height() + 1;
+    const bool overwinterActive = NetworkUpgradeActive(nextBlockHeight, Params().GetConsensus(), Consensus::UpgradeIndex::UPGRADE_OVERWINTER);
+    const bool saplingActive = NetworkUpgradeActive(nextBlockHeight, Params().GetConsensus(), Consensus::UpgradeIndex::UPGRADE_SAPLING);
 
     // Validate the destination address
     auto destaddress = params[1].get_str();

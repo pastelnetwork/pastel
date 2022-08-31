@@ -1134,18 +1134,19 @@ bool AppInit2(CServiceThreadGroup& threadGroup, CScheduler& scheduler)
             if (vDeploymentParams.size() != 2) {
                 return InitError("Network upgrade parameters malformed, expecting hexBranchId:activationHeight");
             }
-            int nActivationHeight;
-            if (!ParseInt32(vDeploymentParams[1], &nActivationHeight)) {
+            int nValue;
+            if (!ParseInt32(vDeploymentParams[1], &nValue) || (nValue < 0))
                 return InitError(strprintf("Invalid nActivationHeight (%s)", vDeploymentParams[1]));
-            }
+            const uint32_t nActivationHeight = static_cast<uint32_t>(nValue);
             bool found = false;
             // Exclude Sprout from upgrades
-            for (auto i = Consensus::BASE_SPROUT + 1; i < Consensus::MAX_NETWORK_UPGRADES; ++i)
+            for (auto i = to_integral_type(Consensus::UpgradeIndex::BASE_SPROUT) + 1; i < to_integral_type(Consensus::UpgradeIndex::MAX_NETWORK_UPGRADES); ++i)
             {
-                if (vDeploymentParams[0].compare(HexInt(NetworkUpgradeInfo[i].nBranchId)) == 0) {
+                if (vDeploymentParams[0].compare(HexInt(NetworkUpgradeInfo[i].nBranchId)) == 0)
+                {
                     UpdateNetworkUpgradeParameters(Consensus::UpgradeIndex(i), nActivationHeight);
                     found = true;
-                    LogPrintf("Setting network upgrade activation parameters for %s to height=%d\n", vDeploymentParams[0], nActivationHeight);
+                    LogPrintf("Setting network upgrade activation parameters for %s to height=%u\n", vDeploymentParams[0], nActivationHeight);
                     break;
                 }
             }

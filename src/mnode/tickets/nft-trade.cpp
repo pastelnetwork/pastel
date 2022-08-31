@@ -196,7 +196,7 @@ string CNFTTradeTicket::ToStr() const noexcept
  */
 ticket_validation_t CNFTTradeTicket::IsValid(const bool bPreReg, const uint32_t nCallDepth) const noexcept
 {
-    const unsigned int chainHeight = GetActiveChainHeight();
+    const auto chainHeight = GetActiveChainHeight();
     ticket_validation_t tv;
 
     do
@@ -356,7 +356,7 @@ CAmount CNFTTradeTicket::GetExtraOutputs(vector<CTxOut>& outputs) const
 
     if (NFTRegTicket->hasGreenFee())
     {
-        const unsigned int chainHeight = GetActiveChainHeight();
+        const auto chainHeight = GetActiveChainHeight();
         nGreenNFTAmount = nPriceAmount * CNFTRegTicket::GreenPercent(chainHeight) / 100;
     }
 

@@ -507,7 +507,7 @@ Examples:
     UniValue inputs = params[0].get_array();
     UniValue sendTo = params[1].get_obj();
 
-    int nextBlockHeight;
+    uint32_t nextBlockHeight = 0;
     {
         LOCK(cs_main);
         nextBlockHeight = chainActive.Height() + 1;
@@ -522,9 +522,11 @@ Examples:
         rawTx.nLockTime = static_cast<uint32_t>(nLockTime);
     }
     
-    if (params.size() > 3 && !params[3].isNull()) {
-        if (NetworkUpgradeActive(nextBlockHeight, Params().GetConsensus(), Consensus::UPGRADE_OVERWINTER)) {
-            int64_t nExpiryHeight = params[3].get_int64();
+    if (params.size() > 3 && !params[3].isNull())
+    {
+        if (NetworkUpgradeActive(nextBlockHeight, Params().GetConsensus(), Consensus::UpgradeIndex::UPGRADE_OVERWINTER))
+        {
+            const int64_t nExpiryHeight = params[3].get_int64();
             if (nExpiryHeight < 0 || nExpiryHeight >= TX_EXPIRY_HEIGHT_THRESHOLD) {
                 throw JSONRPCError(RPC_INVALID_PARAMETER, strprintf("Invalid parameter, expiryheight must be nonnegative and less than %d.", TX_EXPIRY_HEIGHT_THRESHOLD));
             }
@@ -540,7 +542,8 @@ Examples:
         }
     }
 
-    for (size_t idx = 0; idx < inputs.size(); idx++) {
+    for (size_t idx = 0; idx < inputs.size(); idx++)
+    {
         const UniValue& input = inputs[idx];
         const UniValue& o = input.get_obj();
 
@@ -1040,9 +1043,11 @@ As a json rpc call
     auto chainparams = Params();
 
     // DoS mitigation: reject transactions expiring soon
-    if (tx.nExpiryHeight > 0) {
-        int nextBlockHeight = chainActive.Height() + 1;
-        if (NetworkUpgradeActive(nextBlockHeight, chainparams.GetConsensus(), Consensus::UPGRADE_OVERWINTER)) {
+    if (tx.nExpiryHeight > 0)
+    {
+        uint32_t nextBlockHeight = chainActive.Height() + 1;
+        if (NetworkUpgradeActive(nextBlockHeight, chainparams.GetConsensus(), Consensus::UpgradeIndex::UPGRADE_OVERWINTER))
+        {
             if (nextBlockHeight + TX_EXPIRING_SOON_THRESHOLD > tx.nExpiryHeight) {
                 throw JSONRPCError(RPC_TRANSACTION_REJECTED,
                     strprintf("tx-expiring-soon: expiryheight is %u but should be at least %d to avoid transaction expiring soon",

@@ -55,7 +55,7 @@ class PTest_ScriptP2SH : public TestWithParam<int>
 TEST_P(PTest_ScriptP2SH, sign)
 {
     const int sample = GetParam();
-    EXPECT_TRUE(sample < static_cast<int>(Consensus::MAX_NETWORK_UPGRADES));
+    EXPECT_TRUE(sample < static_cast<int>(Consensus::UpgradeIndex::MAX_NETWORK_UPGRADES));
 
     LOCK(cs_main);
     uint32_t consensusBranchId = NetworkUpgradeInfo[sample].nBranchId;
@@ -137,7 +137,7 @@ TEST_P(PTest_ScriptP2SH, sign)
 TEST_P(PTest_ScriptP2SH, norecurse)
 {
     const int sample = GetParam();
-    EXPECT_TRUE(sample < static_cast<int>(Consensus::MAX_NETWORK_UPGRADES));
+    EXPECT_TRUE(sample < static_cast<int>(Consensus::UpgradeIndex::MAX_NETWORK_UPGRADES));
 
     uint32_t consensusBranchId = NetworkUpgradeInfo[sample].nBranchId;
 
@@ -170,7 +170,7 @@ TEST_P(PTest_ScriptP2SH, norecurse)
 TEST_P(PTest_ScriptP2SH, set)
 {
     const int sample = GetParam();
-    EXPECT_TRUE(sample < static_cast<int>(Consensus::MAX_NETWORK_UPGRADES));
+    EXPECT_TRUE(sample < static_cast<int>(Consensus::UpgradeIndex::MAX_NETWORK_UPGRADES));
 
     LOCK(cs_main);
     uint32_t consensusBranchId = NetworkUpgradeInfo[sample].nBranchId;
@@ -233,7 +233,7 @@ TEST_P(PTest_ScriptP2SH, set)
 TEST_P(PTest_ScriptP2SH, switchover)
 {
     const int sample = GetParam();
-    EXPECT_TRUE(sample < static_cast<int>(Consensus::MAX_NETWORK_UPGRADES));
+    EXPECT_TRUE(sample < static_cast<int>(Consensus::UpgradeIndex::MAX_NETWORK_UPGRADES));
 
     uint32_t consensusBranchId = NetworkUpgradeInfo[sample].nBranchId;
 
@@ -259,7 +259,7 @@ TEST_P(PTest_ScriptP2SH, switchover)
 TEST_P(PTest_ScriptP2SH, AreInputsStandard)
 {
     const int sample = GetParam();
-    EXPECT_TRUE(sample < static_cast<int>(Consensus::MAX_NETWORK_UPGRADES));
+    EXPECT_TRUE(sample < static_cast<int>(Consensus::UpgradeIndex::MAX_NETWORK_UPGRADES));
 
     LOCK(cs_main);
     uint32_t consensusBranchId = NetworkUpgradeInfo[sample].nBranchId;
