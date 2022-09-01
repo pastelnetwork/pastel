@@ -92,6 +92,9 @@ struct Params
     int64_t MaxActualTimespan() const noexcept { return (AveragingWindowTimespan() * (100 + nPowMaxAdjustDown)) / 100; }
     uint256 nMinimumChainWork;
     int64_t nMaxGovernanceAmount;
+    // The period before a network upgrade activates, where connections to upgrading peers are preferred (in blocks)
+    uint32_t nNetworkUpgradePeerPreferenceBlockPeriod = 0;
+
 
     /**
      * Add network upgrade.

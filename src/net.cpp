@@ -892,7 +892,7 @@ static bool AttemptToEvictConnection(bool fPreferNewConnection) {
 
         if ((nActivationHeight > 0) && (nActivationHeight != Consensus::NetworkUpgrade::NO_ACTIVATION_HEIGHT) &&
             height < nActivationHeight &&
-            height + NETWORK_UPGRADE_PEER_PREFERENCE_BLOCK_PERIOD >= nActivationHeight)
+            height + consensus.nNetworkUpgradePeerPreferenceBlockPeriod >= nActivationHeight)
         {
             // Find any nodes which don't support the protocol version for the next upgrade
             for (const auto &node : vEvictionCandidates)
