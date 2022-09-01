@@ -7,6 +7,49 @@ executors:
     docker:
       - image: akobrin/pastel:0.0.1
 commands:
+  upload-s3:
+    parameters:
+      working_directory:
+        type: string
+      target:
+        type: string
+    steps:
+      - run:
+          name: Create Zip File for << parameters.target >>
+          working_directory: << parameters.working_directory >>
+          command: |
+            ls -a            
+            if [[ "<< parameters.target >>" == *"linux"* ]]; then
+              mkdir linuxr
+              cp pasteld /linuxr/pasteld
+              cp pastel-cli /linuxr/pastel-cli
+              cd linuxr && zip pastel-linux-amd64.zip pasteld pastel-cli && ls -a
+               
+            fi
+            if [[ "<< parameters.target >>" == *"darwin"* ]]; then
+              mkdir darwinr
+              cp pasteld /darwinr/pasteld
+              cp pastel-cli /darwinr/pastel-cli
+              cd darwinr && zip pastel-darwin-amd64.zip pasteld pastel-cli && ls -a
+            fi
+            if [[ "<< parameters.target >>" == *"win"* ]]; then
+              mkdir winr
+              cp pasteld /winr/pasteld.exe
+              cp pastel-cli /winr/pastel-cli.exe
+              cd winr && zip pastel-win-amd64.zip pasteld pastel-cli && ls -a
+            fi
+            
+      - aws-cli/setup:
+          aws-access-key-id: AWS_ACCESS_KEY_ID
+          aws-secret-access-key: AWS_SECRET_ACCESS_KEY
+      - aws-s3/copy:
+          from: << parameters.working_directory >>/pastel-<< parameters.target >>-amd64.zip
+          to: s3://$ROOT_BUCKET_NAME/pasteld
+          arguments: |
+            --acl public-read \
+            --cache-control "max-age=86400"
+      - run: aws cloudfront create-invalidation --distribution-id $CLOUDFRONT_ID --paths /beta/pasteld/\* 
+  
   github-upload:
     parameters:
       working_directory:
@@ -241,6 +284,9 @@ jobs:
           working_directory: /pastel/src/
           binaryName: pastel-cli
           target: linux
+      - upload-s3:
+          working_directory: /pastel/src/
+          target: linux
 
   build_release_windows:
     executor: pastel-builder
@@ -270,6 +316,9 @@ jobs:
       - store_artifacts:
           path: /pastel/src/pastel-tx.exe
           destination: /windows/pastel-tx.exe
+      - upload-s3:
+          working_directory: /pastel/src/
+          target: win
 
   build_release_macOS:
     executor: pastel-builder
@@ -299,6 +348,9 @@ jobs:
       - store_artifacts:
           path: /pastel/src/pastel-tx.exe
           destination: /macOS/pastel-tx
+      - upload-s3:
+          working_directory: /pastel/src/
+          target: darwin
 
 workflows:
     build_and_test:
@@ -314,6 +366,7 @@ workflows:
                 only: /^v.*/
             context:
               - Release
+              - weekly-beta-builds
         - build_release_windows:
             filters:
               branches:
@@ -322,6 +375,7 @@ workflows:
                 only: /^v.*/
             context:
               - Release
+              - weekly-beta-builds
         - build_release_macOS:
             filters:
               branches:
@@ -330,3 +384,4 @@ workflows:
                 only: /^v.*/
             context:
               - Release
+              - weekly-beta-builds
