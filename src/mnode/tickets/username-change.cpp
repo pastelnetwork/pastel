@@ -77,7 +77,7 @@ ticket_validation_t CChangeUsernameTicket::IsValid(const bool bPreReg, const uin
     // username-change ticket keys:
     // 1) username
     // 2) pastelid
-    const unsigned int chainHeight = GetActiveChainHeight();
+    const auto chainHeight = GetActiveChainHeight();
 
     // initialize Pastel Ticket mempool processor for username-change tickets
     // retrieve mempool transactions with TicketID::Username tickets

@@ -124,7 +124,7 @@ OFFER_TICKET_STATE COfferTicket::checkValidState(const uint32_t nHeight) const n
  */
 ticket_validation_t COfferTicket::IsValid(const bool bPreReg, const uint32_t nCallDepth) const noexcept
 {
-    const unsigned int chainHeight = GetActiveChainHeight();
+    const auto chainHeight = GetActiveChainHeight();
     ticket_validation_t tv;
     do
     {
@@ -306,7 +306,6 @@ ticket_validation_t COfferTicket::IsValid(const bool bPreReg, const uint32_t nCa
                     GetTicketDescription(), t.m_txid, m_nCopyNumber);
                 break;
             }
-            const unsigned int chainHeight = GetActiveChainHeight();
             if (t.m_nBlock + 2880 > chainHeight)
             {
                 // 1 block per 2.5; 4 blocks per 10 min; 24 blocks per 1h; 576 blocks per 24 h;

@@ -378,7 +378,7 @@ TEST_F(TestRpc, rpc_ban)
 TEST_F(TestRpc, rpc_raw_create_overwinter_v3)
 {
     SelectParams(CBaseChainParams::Network::REGTEST);
-    UpdateNetworkUpgradeParameters(Consensus::UPGRADE_OVERWINTER, Consensus::NetworkUpgrade::ALWAYS_ACTIVE);
+    UpdateNetworkUpgradeParameters(Consensus::UpgradeIndex::UPGRADE_OVERWINTER, Consensus::NetworkUpgrade::ALWAYS_ACTIVE);
 
     // Sample regtest address:
     // public: tPmCf9DhN5jv5CgrxDMHRz6wsEjWwM6qJnZ
@@ -410,7 +410,7 @@ TEST_F(TestRpc, rpc_raw_create_overwinter_v3)
     EXPECT_EQ(tx.GetHash().GetHex(), CTransaction(mtx).GetHash().GetHex());
 
     // Revert to default
-    UpdateNetworkUpgradeParameters(Consensus::UPGRADE_OVERWINTER, Consensus::NetworkUpgrade::NO_ACTIVATION_HEIGHT);
+    UpdateNetworkUpgradeParameters(Consensus::UpgradeIndex::UPGRADE_OVERWINTER, Consensus::NetworkUpgrade::NO_ACTIVATION_HEIGHT);
 }
 
 TEST(test_rpc, rpc_getnetworksolps)

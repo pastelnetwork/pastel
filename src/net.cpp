@@ -869,33 +869,35 @@ static bool AttemptToEvictConnection(bool fPreferNewConnection) {
         }
     }
 
-    if (vEvictionCandidates.empty()) return false;
+    if (vEvictionCandidates.empty())
+        return false;
 
     // Protect connections with certain characteristics
 
     // Check version of eviction candidates and prioritize nodes which do not support network upgrade.
     std::vector<CNodeRef> vTmpEvictionCandidates;
-    int height;
+    uint32_t height;
     {
         LOCK(cs_main);
-        height = chainActive.Height();
+        const int nCurrentHeight = chainActive.Height();
+        height = nCurrentHeight == -1 ? 0 : static_cast<uint32_t>(nCurrentHeight);
     }
 
-    const Consensus::Params& params = Params().GetConsensus();
-    const auto nextEpoch = NextEpoch(height, params);
+    const auto& consensus = Params().GetConsensus();
+    const auto nextEpoch = NextEpoch(height, consensus);
     if (nextEpoch.has_value())
     {
         const auto idx = nextEpoch.value();
-        const auto nActivationHeight = params.vUpgrades[idx].nActivationHeight;
+        const auto nActivationHeight = consensus.vUpgrades[idx].nActivationHeight;
 
-        if (nActivationHeight > 0 &&
+        if ((nActivationHeight > 0) && (nActivationHeight != Consensus::NetworkUpgrade::NO_ACTIVATION_HEIGHT) &&
             height < nActivationHeight &&
-            height >= nActivationHeight - NETWORK_UPGRADE_PEER_PREFERENCE_BLOCK_PERIOD)
+            height + consensus.nNetworkUpgradePeerPreferenceBlockPeriod >= nActivationHeight)
         {
             // Find any nodes which don't support the protocol version for the next upgrade
-            for (const CNodeRef &node : vEvictionCandidates)
+            for (const auto &node : vEvictionCandidates)
             {
-                if (node->nVersion < params.vUpgrades[idx].nProtocolVersion)
+                if (node->nVersion < consensus.vUpgrades[idx].nProtocolVersion)
                     vTmpEvictionCandidates.push_back(node);
             }
 

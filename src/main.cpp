@@ -591,8 +591,8 @@ CBlockTreeDB *pblocktree = nullptr;
 bool IsStandardTx(const CTransaction& tx, string& reason, const CChainParams& chainparams, const int nHeight)
 {
     const auto& consensusParams = chainparams.GetConsensus();
-    const bool overwinterActive = NetworkUpgradeActive(nHeight, consensusParams, Consensus::UPGRADE_OVERWINTER);
-    const bool saplingActive = NetworkUpgradeActive(nHeight, consensusParams, Consensus::UPGRADE_SAPLING);
+    const bool overwinterActive = NetworkUpgradeActive(nHeight, consensusParams, Consensus::UpgradeIndex::UPGRADE_OVERWINTER);
+    const bool saplingActive = NetworkUpgradeActive(nHeight, consensusParams, Consensus::UpgradeIndex::UPGRADE_SAPLING);
 
     if (saplingActive) {
         // Sapling standard rules apply
@@ -842,8 +842,8 @@ bool ContextualCheckTransaction(
     funcIsInitialBlockDownload_t isInitBlockDownload)
 {
     const auto& consensusParams = chainparams.GetConsensus();
-    const bool overwinterActive = NetworkUpgradeActive(nHeight, consensusParams, Consensus::UPGRADE_OVERWINTER);
-    const bool saplingActive = NetworkUpgradeActive(nHeight, consensusParams, Consensus::UPGRADE_SAPLING);
+    const bool overwinterActive = NetworkUpgradeActive(nHeight, consensusParams, Consensus::UpgradeIndex::UPGRADE_OVERWINTER);
+    const bool saplingActive = NetworkUpgradeActive(nHeight, consensusParams, Consensus::UpgradeIndex::UPGRADE_SAPLING);
     const bool isSprout = !overwinterActive;
 
     // If Sprout rules apply, reject transactions which are intended for Overwinter and beyond
@@ -2199,11 +2199,10 @@ bool DisconnectBlock(
     // However, this is only reliable if the last block was on or after
     // the Sapling activation height. Otherwise, the last anchor was the
     // empty root.
-    if (NetworkUpgradeActive(pindex->pprev->nHeight, chainparams.GetConsensus(), Consensus::UPGRADE_SAPLING)) {
+    if (NetworkUpgradeActive(pindex->pprev->nHeight, chainparams.GetConsensus(), Consensus::UpgradeIndex::UPGRADE_SAPLING))
         view.PopAnchor(pindex->pprev->hashFinalSaplingRoot, SAPLING);
-    } else {
+    else
         view.PopAnchor(SaplingMerkleTree::empty_root(), SAPLING);
-    }
 
     // move best block pointer to prevout block
     view.SetBestBlock(pindex->pprev->GetBlockHash());
@@ -2474,8 +2473,10 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, const CChainPara
 
     // If Sapling is active, block.hashFinalSaplingRoot must be the
     // same as the root of the Sapling tree
-    if (NetworkUpgradeActive(pindex->nHeight, consensusParams, Consensus::UPGRADE_SAPLING)) {
-        if (block.hashFinalSaplingRoot != sapling_tree.root()) {
+    if (NetworkUpgradeActive(pindex->nHeight, consensusParams, Consensus::UpgradeIndex::UPGRADE_SAPLING))
+    {
+        if (block.hashFinalSaplingRoot != sapling_tree.root())
+        {
             return state.DoS(100,
                          error("ConnectBlock(): block's hashFinalSaplingRoot is incorrect"),
                                REJECT_INVALID, "bad-sapling-root-in-block");
@@ -6412,12 +6413,13 @@ public:
 } instance_of_cmaincleanup;
 
 // Set default values of new CMutableTransaction based on consensus rules at given height.
-CMutableTransaction CreateNewContextualCMutableTransaction(const Consensus::Params& consensusParams, int nHeight)
+CMutableTransaction CreateNewContextualCMutableTransaction(const Consensus::Params& consensusParams, const uint32_t nHeight)
 {
     CMutableTransaction mtx;
 
-    const bool isOverwintered = NetworkUpgradeActive(nHeight, consensusParams, Consensus::UPGRADE_OVERWINTER);
-    if (isOverwintered) {
+    const bool isOverwintered = NetworkUpgradeActive(nHeight, consensusParams, Consensus::UpgradeIndex::UPGRADE_OVERWINTER);
+    if (isOverwintered)
+    {
         mtx.fOverwintered = true;
         mtx.nExpiryHeight = nHeight + expiryDelta;
 
@@ -6425,7 +6427,8 @@ CMutableTransaction CreateNewContextualCMutableTransaction(const Consensus::Para
         // of the current epoch (see below: Overwinter->Sapling), the transaction will be rejected if it falls within
         // the expiring soon threshold of 3 blocks (for DoS mitigation) based on the current height.
         // TODO: Generalise this code so behaviour applies to all post-Overwinter epochs
-        if (NetworkUpgradeActive(nHeight, consensusParams, Consensus::UPGRADE_SAPLING)) {
+        if (NetworkUpgradeActive(nHeight, consensusParams, Consensus::UpgradeIndex::UPGRADE_SAPLING))
+        {
             mtx.nVersionGroupId = SAPLING_VERSION_GROUP_ID;
             mtx.nVersion = SAPLING_TX_VERSION;
         } else {
@@ -6433,7 +6436,7 @@ CMutableTransaction CreateNewContextualCMutableTransaction(const Consensus::Para
             mtx.nVersion = OVERWINTER_TX_VERSION;
             mtx.nExpiryHeight = min(
                 mtx.nExpiryHeight,
-                static_cast<uint32_t>(consensusParams.vUpgrades[Consensus::UPGRADE_SAPLING].nActivationHeight - 1));
+                consensusParams.vUpgrades[to_integral_type(Consensus::UpgradeIndex::UPGRADE_SAPLING)].nActivationHeight - 1);
         }
     }
     return mtx;

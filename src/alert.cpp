@@ -242,8 +242,7 @@ bool CAlert::ProcessAlert(const v_uint8 & alertKey, bool fThread)
     return true;
 }
 
-void
-CAlert::Notify(const string& strMessage, bool fThread)
+void CAlert::Notify(const string& strMessage, bool fThread)
 {
     string strCmd = GetArg("-alertnotify", "");
     if (strCmd.empty()) return;

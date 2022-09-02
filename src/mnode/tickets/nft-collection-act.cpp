@@ -63,7 +63,7 @@ void CNFTCollectionActivateTicket::sign(SecureString&& strKeyPass)
 */
 ticket_validation_t CNFTCollectionActivateTicket::IsValid(const bool bPreReg, const uint32_t nCallDepth) const noexcept
 {
-    const unsigned int chainHeight = GetActiveChainHeight();
+    const auto chainHeight = GetActiveChainHeight();
     ticket_validation_t tv;
     do
     {

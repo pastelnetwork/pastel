@@ -95,6 +95,12 @@ public:
     bool IsTestNet() const noexcept { return network == CBaseChainParams::Network::TESTNET; }
     bool IsRegTest() const noexcept { return network == CBaseChainParams::Network::REGTEST; }
 
+    void UpdateNetworkUpgradeParameters(Consensus::UpgradeIndex idx, const uint32_t nActivationHeight)
+    {
+        if (IsRegTest())
+            consensus.UpdateNetworkUpgradeParameters(idx, nActivationHeight);
+    }
+
 protected:
     CChainParams()
     {
@@ -143,4 +149,4 @@ bool SelectParamsFromCommandLine();
 /**
  * Allows modifying the network upgrade regtest parameters.
  */
-void UpdateNetworkUpgradeParameters(Consensus::UpgradeIndex idx, const int nActivationHeight);
+void UpdateNetworkUpgradeParameters(Consensus::UpgradeIndex idx, const uint32_t nActivationHeight);

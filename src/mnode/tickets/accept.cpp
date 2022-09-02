@@ -48,7 +48,7 @@ string CAcceptTicket::ToStr() const noexcept
 */
 ticket_validation_t CAcceptTicket::IsValid(const bool bPreReg, const uint32_t nCallDepth) const noexcept
 {
-    const unsigned int chainHeight = GetActiveChainHeight();
+    const auto chainHeight = GetActiveChainHeight();
     ticket_validation_t tv;
     do
     {

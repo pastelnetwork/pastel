@@ -122,7 +122,7 @@ class PTestDoS : public TestWithParam<int>
 TEST_P(PTestDoS, DoS_mapOrphans)
 {
     const int sample = GetParam();
-    EXPECT_LT(sample, static_cast<int>(Consensus::MAX_NETWORK_UPGRADES));
+    EXPECT_LT(sample, static_cast<int>(Consensus::UpgradeIndex::MAX_NETWORK_UPGRADES));
 
     uint32_t consensusBranchId = NetworkUpgradeInfo[sample].nBranchId;
 

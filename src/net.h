@@ -53,9 +53,11 @@ static const size_t MAPASKFOR_MAX_SZ = MAX_INV_SZ;
 /** The maximum number of entries in setAskFor (larger due to getdata latency)*/
 static const size_t SETASKFOR_MAX_SZ = 2 * MAX_INV_SZ;
 /** The maximum number of peer connections to maintain. */
-static const unsigned int DEFAULT_MAX_PEER_CONNECTIONS = 125;
-/** The period before a network upgrade activates, where connections to upgrading peers are preferred (in blocks). */
-static const int NETWORK_UPGRADE_PEER_PREFERENCE_BLOCK_PERIOD = 24 * 24 * 3;
+static constexpr unsigned int DEFAULT_MAX_PEER_CONNECTIONS = 125;
+// The period before a network upgrade activates, where connections to upgrading peers are preferred (in blocks).
+constexpr uint32_t MAINNET_NETWORK_UPGRADE_PEER_PREFERENCE_BLOCK_PERIOD = 24 * 24 * 3;
+constexpr uint32_t TESTNET_NETWORK_UPGRADE_PEER_PREFERENCE_BLOCK_PERIOD = 24 * 2;
+constexpr uint32_t REGTEST_NETWORK_UPGRADE_PEER_PREFERENCE_BLOCK_PERIOD = 24;
 
 size_t ReceiveFloodSize();
 size_t SendBufferSize();

@@ -84,9 +84,10 @@ public:
 };
 
 // Valid overwinter v3 format tx gets rejected because overwinter hasn't activated yet.
-TEST(Mempool, OverwinterNotActiveYet) {
+TEST(Mempool, OverwinterNotActiveYet)
+{
     SelectParams(CBaseChainParams::Network::REGTEST);
-    UpdateNetworkUpgradeParameters(Consensus::UPGRADE_OVERWINTER, Consensus::NetworkUpgrade::NO_ACTIVATION_HEIGHT);
+    UpdateNetworkUpgradeParameters(Consensus::UpgradeIndex::UPGRADE_OVERWINTER, Consensus::NetworkUpgrade::NO_ACTIVATION_HEIGHT);
 
     CTxMemPool pool(::minRelayTxFee);
     bool missingInputs;
@@ -102,14 +103,15 @@ TEST(Mempool, OverwinterNotActiveYet) {
     EXPECT_EQ(state1.GetRejectReason(), "tx-overwinter-not-active");
 
     // Revert to default
-    UpdateNetworkUpgradeParameters(Consensus::UPGRADE_OVERWINTER, Consensus::NetworkUpgrade::NO_ACTIVATION_HEIGHT);
+    UpdateNetworkUpgradeParameters(Consensus::UpgradeIndex::UPGRADE_OVERWINTER, Consensus::NetworkUpgrade::NO_ACTIVATION_HEIGHT);
 }
 
 // Sprout transaction version 3 when Overwinter is not active:
 // 1. pass CheckTransaction (and CheckTransactionWithoutProofVerification)
 // 2. pass ContextualCheckTransaction
 // 3. fail IsStandardTx
-TEST(Mempool, SproutV3TxFailsAsExpected) {
+TEST(Mempool, SproutV3TxFailsAsExpected)
+{
     SelectParams(CBaseChainParams::Network::TESTNET);
 
     CTxMemPool pool(::minRelayTxFee);
@@ -128,9 +130,10 @@ TEST(Mempool, SproutV3TxFailsAsExpected) {
 // Sprout transaction version 3 when Overwinter is always active:
 // 1. pass CheckTransaction (and CheckTransactionWithoutProofVerification)
 // 2. fails ContextualCheckTransaction
-TEST(Mempool, SproutV3TxWhenOverwinterActive) {
+TEST(Mempool, SproutV3TxWhenOverwinterActive)
+{
     SelectParams(CBaseChainParams::Network::REGTEST);
-    UpdateNetworkUpgradeParameters(Consensus::UPGRADE_OVERWINTER, Consensus::NetworkUpgrade::ALWAYS_ACTIVE);
+    UpdateNetworkUpgradeParameters(Consensus::UpgradeIndex::UPGRADE_OVERWINTER, Consensus::NetworkUpgrade::ALWAYS_ACTIVE);
 
     CTxMemPool pool(::minRelayTxFee);
     bool missingInputs;
@@ -144,15 +147,16 @@ TEST(Mempool, SproutV3TxWhenOverwinterActive) {
     EXPECT_EQ(state1.GetRejectReason(), "tx-overwinter-flag-not-set");
 
     // Revert to default
-    UpdateNetworkUpgradeParameters(Consensus::UPGRADE_OVERWINTER, Consensus::NetworkUpgrade::NO_ACTIVATION_HEIGHT);
+    UpdateNetworkUpgradeParameters(Consensus::UpgradeIndex::UPGRADE_OVERWINTER, Consensus::NetworkUpgrade::NO_ACTIVATION_HEIGHT);
 }
 
 // Sprout transaction with negative version, rejected by the mempool in CheckTransaction
 // under Sprout consensus rules, should still be rejected under Overwinter consensus rules.
 // 1. fails CheckTransaction (specifically CheckTransactionWithoutProofVerification)
-TEST(Mempool, SproutNegativeVersionTxWhenOverwinterActive) {
+TEST(Mempool, SproutNegativeVersionTxWhenOverwinterActive)
+{
     SelectParams(CBaseChainParams::Network::REGTEST);
-    UpdateNetworkUpgradeParameters(Consensus::UPGRADE_OVERWINTER, Consensus::NetworkUpgrade::ALWAYS_ACTIVE);
+    UpdateNetworkUpgradeParameters(Consensus::UpgradeIndex::UPGRADE_OVERWINTER, Consensus::NetworkUpgrade::ALWAYS_ACTIVE);
 
     CTxMemPool pool(::minRelayTxFee);
     bool missingInputs;
@@ -194,12 +198,13 @@ TEST(Mempool, SproutNegativeVersionTxWhenOverwinterActive) {
     }
 
     // Revert to default
-    UpdateNetworkUpgradeParameters(Consensus::UPGRADE_OVERWINTER, Consensus::NetworkUpgrade::NO_ACTIVATION_HEIGHT);
+    UpdateNetworkUpgradeParameters(Consensus::UpgradeIndex::UPGRADE_OVERWINTER, Consensus::NetworkUpgrade::NO_ACTIVATION_HEIGHT);
 }
 
-TEST(Mempool, ExpiringSoonTxRejection) {
+TEST(Mempool, ExpiringSoonTxRejection)
+{
     SelectParams(CBaseChainParams::Network::REGTEST);
-    UpdateNetworkUpgradeParameters(Consensus::UPGRADE_OVERWINTER, Consensus::NetworkUpgrade::ALWAYS_ACTIVE);
+    UpdateNetworkUpgradeParameters(Consensus::UpgradeIndex::UPGRADE_OVERWINTER, Consensus::NetworkUpgrade::ALWAYS_ACTIVE);
 
     CTxMemPool pool(::minRelayTxFee);
     bool missingInputs;
@@ -224,7 +229,7 @@ TEST(Mempool, ExpiringSoonTxRejection) {
     }
 
     // Revert to default
-    UpdateNetworkUpgradeParameters(Consensus::UPGRADE_OVERWINTER, Consensus::NetworkUpgrade::NO_ACTIVATION_HEIGHT);
+    UpdateNetworkUpgradeParameters(Consensus::UpgradeIndex::UPGRADE_OVERWINTER, Consensus::NetworkUpgrade::NO_ACTIVATION_HEIGHT);
 }
 
 #ifdef ENABLE_MINING
@@ -398,14 +403,14 @@ TEST_F(TestMemPool, RemoveWithoutBranchId)
         tx.vout.resize(1);
         tx.vout[0].scriptPubKey = CScript() << OP_11 << OP_EQUAL;
         tx.vout[0].nValue = i * COIN;
-        pool.addUnchecked(tx.GetHash(), entry.BranchId(NetworkUpgradeInfo[Consensus::BASE_SPROUT].nBranchId).FromTx(tx));
+        pool.addUnchecked(tx.GetHash(), entry.BranchId(GetUpgradeBranchId(Consensus::UpgradeIndex::BASE_SPROUT)).FromTx(tx));
     }
     EXPECT_EQ(pool.size(), 10u);
 
     // Check the pool only contains Sprout transactions
     for (auto it = pool.mapTx.begin(); it != pool.mapTx.end(); it++)
     {
-        EXPECT_EQ(it->GetValidatedBranchId(), NetworkUpgradeInfo[Consensus::BASE_SPROUT].nBranchId);
+        EXPECT_EQ(it->GetValidatedBranchId(), GetUpgradeBranchId(Consensus::UpgradeIndex::BASE_SPROUT));
     }
 
     // Add some dummy transactions
@@ -415,7 +420,7 @@ TEST_F(TestMemPool, RemoveWithoutBranchId)
         tx.vout.resize(1);
         tx.vout[0].scriptPubKey = CScript() << OP_11 << OP_EQUAL;
         tx.vout[0].nValue = i * COIN + 100;
-        pool.addUnchecked(tx.GetHash(), entry.BranchId(NetworkUpgradeInfo[Consensus::UPGRADE_TESTDUMMY].nBranchId).FromTx(tx));
+        pool.addUnchecked(tx.GetHash(), entry.BranchId(GetUpgradeBranchId(Consensus::UpgradeIndex::UPGRADE_TESTDUMMY)).FromTx(tx));
     }
     EXPECT_EQ(pool.size(), 20u);
 
@@ -426,22 +431,22 @@ TEST_F(TestMemPool, RemoveWithoutBranchId)
         tx.vout.resize(1);
         tx.vout[0].scriptPubKey = CScript() << OP_11 << OP_EQUAL;
         tx.vout[0].nValue = i * COIN + 200;
-        pool.addUnchecked(tx.GetHash(), entry.BranchId(NetworkUpgradeInfo[Consensus::UPGRADE_OVERWINTER].nBranchId).FromTx(tx));
+        pool.addUnchecked(tx.GetHash(), entry.BranchId(GetUpgradeBranchId(Consensus::UpgradeIndex::UPGRADE_OVERWINTER)).FromTx(tx));
     }
     EXPECT_EQ(pool.size(), 30u);
 
     // Remove transactions that are not for Overwinter
-    pool.removeWithoutBranchId(NetworkUpgradeInfo[Consensus::UPGRADE_OVERWINTER].nBranchId);
+    pool.removeWithoutBranchId(GetUpgradeBranchId(Consensus::UpgradeIndex::UPGRADE_OVERWINTER));
     EXPECT_EQ(pool.size(), 10u);
 
     // Check the pool only contains Overwinter transactions
     for (auto it = pool.mapTx.begin(); it != pool.mapTx.end(); it++)
     {
-        EXPECT_EQ(it->GetValidatedBranchId(), NetworkUpgradeInfo[Consensus::UPGRADE_OVERWINTER].nBranchId);
+        EXPECT_EQ(it->GetValidatedBranchId(), GetUpgradeBranchId(Consensus::UpgradeIndex::UPGRADE_OVERWINTER));
     }
 
     // Roll back to Sprout
-    pool.removeWithoutBranchId(NetworkUpgradeInfo[Consensus::BASE_SPROUT].nBranchId);
+    pool.removeWithoutBranchId(GetUpgradeBranchId(Consensus::UpgradeIndex::BASE_SPROUT));
     EXPECT_EQ(pool.size(), 0u);
 }
 
@@ -469,7 +474,7 @@ TEST_F(TestMemPool, lookup)
     // add overwinter transaction
     CMutableTransaction tx = GetValidTransaction();
     const auto txid = tx.GetHash();
-    pool.addUnchecked(txid, entry.BranchId(NetworkUpgradeInfo[Consensus::UPGRADE_OVERWINTER].nBranchId).FromTx(tx));
+    pool.addUnchecked(txid, entry.BranchId(GetUpgradeBranchId(Consensus::UpgradeIndex::UPGRADE_OVERWINTER)).FromTx(tx));
     EXPECT_EQ(pool.size(), 1u);
     EXPECT_EQ(pool.GetTransactionsUpdated(), 1u);
 
