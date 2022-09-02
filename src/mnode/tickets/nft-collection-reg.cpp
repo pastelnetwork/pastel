@@ -218,7 +218,7 @@ void CNFTCollectionRegTicket::parse_nft_collection_ticket()
 */
 ticket_validation_t CNFTCollectionRegTicket::IsValid(const bool bPreReg, const uint32_t nCallDepth) const noexcept
 {
-    const unsigned int chainHeight = GetActiveChainHeight();
+    const auto chainHeight = GetActiveChainHeight();
     ticket_validation_t tv;
     do
     {

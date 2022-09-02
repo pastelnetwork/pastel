@@ -314,7 +314,7 @@ ticket_validation_t CNFTRegTicket::IsValidCollection(const bool bPreReg) const n
             break;
         }
 
-        const unsigned int chainHeight = GetActiveChainHeight();
+        const auto chainHeight = GetActiveChainHeight();
 
         // check that NFT reg ticket height is less than closing height for the NFT Collection
         if (bPreReg && (chainHeight > pNFTCollTicket->getClosingHeight()))
@@ -368,7 +368,7 @@ ticket_validation_t CNFTRegTicket::IsValidCollection(const bool bPreReg) const n
  */
 ticket_validation_t CNFTRegTicket::IsValid(const bool bPreReg, const uint32_t nCallDepth) const noexcept
 {
-    const unsigned int chainHeight = GetActiveChainHeight();
+    const auto chainHeight = GetActiveChainHeight();
     ticket_validation_t tv;
     do
     {

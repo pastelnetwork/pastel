@@ -93,7 +93,7 @@ public:
     }
 
     //! Simple read-only vector-like interface.
-    unsigned int size() const noexcept { return (fValid ? keydata.size() : 0); }
+    unsigned int size() const noexcept { return (fValid ? static_cast<int>(keydata.size()) : 0); }
     const unsigned char* begin() const noexcept { return keydata.data(); }
     const unsigned char* end() const noexcept { return keydata.data() + size(); }
     const unsigned char* cbegin() const noexcept { return keydata.data(); }

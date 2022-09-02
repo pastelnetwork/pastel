@@ -65,7 +65,8 @@ public:
     }
 };
 
-TEST(Validation, ContextualCheckInputsPassesWithCoinbase) {
+TEST(Validation, ContextualCheckInputsPassesWithCoinbase)
+{
     // Create fake coinbase transaction
     CMutableTransaction mtx;
     mtx.vin.resize(1);
@@ -77,7 +78,8 @@ TEST(Validation, ContextualCheckInputsPassesWithCoinbase) {
     CCoinsViewCache view(&fakeDB);
 
     auto pMainNetParams = CreateChainParams(CBaseChainParams::Network::MAIN);
-    for (int idx = Consensus::BASE_SPROUT; idx < Consensus::MAX_NETWORK_UPGRADES; idx++) {
+    for (auto idx = to_integral_type(Consensus::UpgradeIndex::BASE_SPROUT); idx < to_integral_type(Consensus::UpgradeIndex::MAX_NETWORK_UPGRADES); ++idx)
+    {
         auto consensusBranchId = NetworkUpgradeInfo[idx].nBranchId;
         CValidationState state;
         PrecomputedTransactionData txdata(tx);

@@ -102,10 +102,10 @@ ticket_validation_t common_ticket_validation(const T& ticket, bool bPreReg, cons
         // C.1 Something to validate only if NOT Initial Download
         if (masterNodeCtrl.masternodeSync.IsSynced())
         {
-            const unsigned int chainHeight = GetActiveChainHeight();
+            const auto chainHeight = GetActiveChainHeight();
 
             // C.2 Verify Min Confirmations
-            const unsigned int height = ticket.IsBlock(0) ? chainHeight : ticket.GetBlock();
+            const auto height = ticket.IsBlock(0) ? chainHeight : ticket.GetBlock();
             if (chainHeight - parentTicket->GetBlock() < masterNodeCtrl.MinTicketConfirmations)
             {
                 tv.errorMsg = strprintf(

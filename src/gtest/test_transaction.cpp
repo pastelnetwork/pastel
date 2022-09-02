@@ -378,7 +378,7 @@ class PTest_Transaction : public TestWithParam<int>
 TEST_P(PTest_Transaction, test_Get)
 {
     const int sample = GetParam();
-    EXPECT_LT(sample, static_cast<int>(Consensus::MAX_NETWORK_UPGRADES));
+    EXPECT_LT(sample, static_cast<int>(Consensus::UpgradeIndex::MAX_NETWORK_UPGRADES));
 
     uint32_t consensusBranchId = NetworkUpgradeInfo[sample].nBranchId;
 
@@ -418,8 +418,9 @@ INSTANTIATE_TEST_SUITE_P(test_Get, PTest_Transaction, Values(
     0,1,2,3
 ));
 
-TEST(test_transaction, test_big_overwinter_transaction) {
-    uint32_t consensusBranchId = NetworkUpgradeInfo[Consensus::UPGRADE_OVERWINTER].nBranchId;
+TEST(test_transaction, test_big_overwinter_transaction)
+{
+    const uint32_t consensusBranchId = GetUpgradeBranchId(Consensus::UpgradeIndex::UPGRADE_OVERWINTER);
     CMutableTransaction mtx;
     mtx.fOverwintered = true;
     mtx.nVersion = OVERWINTER_TX_VERSION;

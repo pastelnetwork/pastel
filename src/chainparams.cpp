@@ -42,8 +42,16 @@ Genesis block for RegTest found
 
 using namespace std;
 
-constexpr unsigned int OVERWINTER_STARTING_BLOCK = 10;
-constexpr unsigned int SAPLING_STARTING_BLOCK = 20;
+// mainnet upgrades activation heights
+constexpr uint32_t MAINNET_OVERWINTER_STARTING_BLOCK = 10;
+constexpr uint32_t MAINNET_SAPLING_STARTING_BLOCK = 20;
+constexpr uint32_t MAINNET_CEZANNE_UPGRADE_STARTING_BLOCK = 340'000;
+
+// testnet upgrades activation heights
+constexpr uint32_t TESTNET_OVERWINTER_STARTING_BLOCK = 10;
+constexpr uint32_t TESTNET_SAPLING_STARTING_BLOCK = 20;
+constexpr uint32_t TESTNET_CEZANNE_UPGRADE_STARTING_BLOCK = 160'000;
+
 
 static CBlock CreateGenesisBlock(const char* pszTimestamp, 
                                  const v_uint8 &genesisPubKey, 
@@ -322,14 +330,13 @@ public:
         consensus.nPowMaxAdjustUp = 16; // 16% adjustment up
         consensus.nPowTargetSpacing = static_cast<int64_t>(2.5 * 60);
         consensus.nPowAllowMinDifficultyBlocksAfterHeight = std::nullopt;
-        consensus.vUpgrades[Consensus::BASE_SPROUT].nProtocolVersion = 170002;
-        consensus.vUpgrades[Consensus::BASE_SPROUT].nActivationHeight = Consensus::NetworkUpgrade::ALWAYS_ACTIVE;
-        consensus.vUpgrades[Consensus::UPGRADE_TESTDUMMY].nProtocolVersion = 170002;
-        consensus.vUpgrades[Consensus::UPGRADE_TESTDUMMY].nActivationHeight = Consensus::NetworkUpgrade::NO_ACTIVATION_HEIGHT;
-        consensus.vUpgrades[Consensus::UPGRADE_OVERWINTER].nProtocolVersion = 170005;
-        consensus.vUpgrades[Consensus::UPGRADE_OVERWINTER].nActivationHeight = OVERWINTER_STARTING_BLOCK;
-        consensus.vUpgrades[Consensus::UPGRADE_SAPLING].nProtocolVersion = 170007;
-        consensus.vUpgrades[Consensus::UPGRADE_SAPLING].nActivationHeight = SAPLING_STARTING_BLOCK;
+        consensus.AddNetworkUpgrade(Consensus::UpgradeIndex::BASE_SPROUT, 170002, Consensus::NetworkUpgrade::ALWAYS_ACTIVE);
+        consensus.AddNetworkUpgrade(Consensus::UpgradeIndex::UPGRADE_TESTDUMMY, 170002, Consensus::NetworkUpgrade::NO_ACTIVATION_HEIGHT);
+        consensus.AddNetworkUpgrade(Consensus::UpgradeIndex::UPGRADE_OVERWINTER, 170005, MAINNET_OVERWINTER_STARTING_BLOCK);
+        consensus.AddNetworkUpgrade(Consensus::UpgradeIndex::UPGRADE_SAPLING, 170007, MAINNET_SAPLING_STARTING_BLOCK);
+        consensus.AddNetworkUpgrade(Consensus::UpgradeIndex::UPGRADE_CEZANNE, 170009, MAINNET_CEZANNE_UPGRADE_STARTING_BLOCK);
+        // The period before a network upgrade activates, where connections to upgrading peers are preferred (in blocks).
+        consensus.nNetworkUpgradePeerPreferenceBlockPeriod = MAINNET_NETWORK_UPGRADE_PEER_PREFERENCE_BLOCK_PERIOD;
         consensus.nMaxGovernanceAmount = 100'000'000*COIN;
 
         // The best chain should have at least this much work.
@@ -429,14 +436,13 @@ public:
         consensus.nPowMaxAdjustUp = 16; // 16% adjustment up
         consensus.nPowTargetSpacing = static_cast<int64_t>(2.5 * 60);
         consensus.nPowAllowMinDifficultyBlocksAfterHeight = 299'187;
-        consensus.vUpgrades[Consensus::BASE_SPROUT].nProtocolVersion = 170002;
-        consensus.vUpgrades[Consensus::BASE_SPROUT].nActivationHeight = Consensus::NetworkUpgrade::ALWAYS_ACTIVE;
-        consensus.vUpgrades[Consensus::UPGRADE_TESTDUMMY].nProtocolVersion = 170002;
-        consensus.vUpgrades[Consensus::UPGRADE_TESTDUMMY].nActivationHeight = Consensus::NetworkUpgrade::NO_ACTIVATION_HEIGHT;
-        consensus.vUpgrades[Consensus::UPGRADE_OVERWINTER].nProtocolVersion = 170003;
-        consensus.vUpgrades[Consensus::UPGRADE_OVERWINTER].nActivationHeight = OVERWINTER_STARTING_BLOCK;
-        consensus.vUpgrades[Consensus::UPGRADE_SAPLING].nProtocolVersion = 170007;
-        consensus.vUpgrades[Consensus::UPGRADE_SAPLING].nActivationHeight = SAPLING_STARTING_BLOCK;
+        consensus.AddNetworkUpgrade(Consensus::UpgradeIndex::BASE_SPROUT, 170002, Consensus::NetworkUpgrade::ALWAYS_ACTIVE);
+        consensus.AddNetworkUpgrade(Consensus::UpgradeIndex::UPGRADE_TESTDUMMY, 170002, Consensus::NetworkUpgrade::NO_ACTIVATION_HEIGHT);
+        consensus.AddNetworkUpgrade(Consensus::UpgradeIndex::UPGRADE_OVERWINTER, 170005, TESTNET_OVERWINTER_STARTING_BLOCK);
+        consensus.AddNetworkUpgrade(Consensus::UpgradeIndex::UPGRADE_SAPLING, 170007, TESTNET_SAPLING_STARTING_BLOCK);
+        consensus.AddNetworkUpgrade(Consensus::UpgradeIndex::UPGRADE_CEZANNE, 170009, TESTNET_CEZANNE_UPGRADE_STARTING_BLOCK);
+        // The period before a network upgrade activates, where connections to upgrading peers are preferred (in blocks).
+        consensus.nNetworkUpgradePeerPreferenceBlockPeriod = TESTNET_NETWORK_UPGRADE_PEER_PREFERENCE_BLOCK_PERIOD;
         consensus.nMaxGovernanceAmount = 1'000'000*COIN;
 
         // The best chain should have at least this much work.
@@ -532,14 +538,13 @@ public:
         consensus.nPowMaxAdjustUp = 0; // Turn off adjustment up
         consensus.nPowTargetSpacing = static_cast<int64_t>(2.5 * 60);
         consensus.nPowAllowMinDifficultyBlocksAfterHeight = 0;
-        consensus.vUpgrades[Consensus::BASE_SPROUT].nProtocolVersion = 170002;
-        consensus.vUpgrades[Consensus::BASE_SPROUT].nActivationHeight = Consensus::NetworkUpgrade::ALWAYS_ACTIVE;
-        consensus.vUpgrades[Consensus::UPGRADE_TESTDUMMY].nProtocolVersion = 170002;
-        consensus.vUpgrades[Consensus::UPGRADE_TESTDUMMY].nActivationHeight = Consensus::NetworkUpgrade::NO_ACTIVATION_HEIGHT;
-        consensus.vUpgrades[Consensus::UPGRADE_OVERWINTER].nProtocolVersion = 170003;
-        consensus.vUpgrades[Consensus::UPGRADE_OVERWINTER].nActivationHeight = Consensus::NetworkUpgrade::NO_ACTIVATION_HEIGHT;
-        consensus.vUpgrades[Consensus::UPGRADE_SAPLING].nProtocolVersion = 170008;
-        consensus.vUpgrades[Consensus::UPGRADE_SAPLING].nActivationHeight = Consensus::NetworkUpgrade::NO_ACTIVATION_HEIGHT;
+        consensus.AddNetworkUpgrade(Consensus::UpgradeIndex::BASE_SPROUT, 170002, Consensus::NetworkUpgrade::ALWAYS_ACTIVE);
+        consensus.AddNetworkUpgrade(Consensus::UpgradeIndex::UPGRADE_TESTDUMMY, 170002, Consensus::NetworkUpgrade::NO_ACTIVATION_HEIGHT);
+        consensus.AddNetworkUpgrade(Consensus::UpgradeIndex::UPGRADE_OVERWINTER, 170003, Consensus::NetworkUpgrade::NO_ACTIVATION_HEIGHT);
+        consensus.AddNetworkUpgrade(Consensus::UpgradeIndex::UPGRADE_SAPLING, 170008, Consensus::NetworkUpgrade::NO_ACTIVATION_HEIGHT);
+        consensus.AddNetworkUpgrade(Consensus::UpgradeIndex::UPGRADE_CEZANNE, 170009, Consensus::NetworkUpgrade::NO_ACTIVATION_HEIGHT);
+        // The period before a network upgrade activates, where connections to upgrading peers are preferred (in blocks).
+        consensus.nNetworkUpgradePeerPreferenceBlockPeriod = REGTEST_NETWORK_UPGRADE_PEER_PREFERENCE_BLOCK_PERIOD;
         consensus.nMaxGovernanceAmount = 1'000'000*COIN;
 
         // The best chain should have at least this much work.
@@ -604,12 +609,6 @@ public:
         checkpointData.nTransactionsLastCheckpoint = 0;
         checkpointData.fTransactionsPerDay = 0;
     }
-
-    void UpdateNetworkUpgradeParameters(Consensus::UpgradeIndex idx, const int nActivationHeight)
-    {
-        assert(idx > Consensus::BASE_SPROUT && idx < Consensus::MAX_NETWORK_UPGRADES);
-        consensus.vUpgrades[idx].nActivationHeight = nActivationHeight;
-    }
 };
 
 // global blockchain parameters
@@ -673,7 +672,7 @@ bool SelectParamsFromCommandLine()
     return true;
 }
 
-void UpdateNetworkUpgradeParameters(Consensus::UpgradeIndex idx, const int nActivationHeight)
+void UpdateNetworkUpgradeParameters(Consensus::UpgradeIndex idx, const uint32_t nActivationHeight)
 {
     if (globalChainParams && globalChainParams->IsRegTest())
     {

@@ -193,7 +193,7 @@ double benchmark_large_tx(size_t nInputs)
     }
 
     // Sign for all the inputs
-    auto consensusBranchId = NetworkUpgradeInfo[Consensus::UPGRADE_SAPLING].nBranchId;
+    const auto consensusBranchId = NetworkUpgradeInfo[to_integral_type(Consensus::UpgradeIndex::UPGRADE_SAPLING)].nBranchId;
     for (size_t i = 0; i < nInputs; i++)
         SignSignature(tempKeystore, prevPubKey, spending_tx, static_cast<unsigned int>(i), 1'000'000, to_integral_type(SIGHASH::ALL), consensusBranchId);
 

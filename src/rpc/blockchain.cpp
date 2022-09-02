@@ -733,13 +733,23 @@ static UniValue SoftForkDesc(const string &name, int version, CBlockIndex* pinde
 static UniValue NetworkUpgradeDesc(const Consensus::Params& consensusParams, Consensus::UpgradeIndex idx, int height)
 {
     UniValue rv(UniValue::VOBJ);
-    auto upgrade = NetworkUpgradeInfo[idx];
+    const auto upgrade = NetworkUpgradeInfo[to_integral_type(idx)];
     rv.pushKV("name", upgrade.strName);
-    rv.pushKV("activationheight", consensusParams.vUpgrades[idx].nActivationHeight);
-    switch (NetworkUpgradeState(height, consensusParams, idx)) {
-        case UPGRADE_DISABLED: rv.pushKV("status", "disabled"); break;
-        case UPGRADE_PENDING: rv.pushKV("status", "pending"); break;
-        case UPGRADE_ACTIVE: rv.pushKV("status", "active"); break;
+    const auto nActivationHeight = consensusParams.vUpgrades[to_integral_type(idx)].nActivationHeight;
+    rv.pushKV("activationheight", nActivationHeight == Consensus::NetworkUpgrade::NO_ACTIVATION_HEIGHT ? -1 : static_cast<int64_t>(nActivationHeight));
+    switch (NetworkUpgradeState(height, consensusParams, idx))
+    {
+        case UpgradeState::UPGRADE_DISABLED:
+            rv.pushKV("status", "disabled");
+            break;
+
+        case UpgradeState::UPGRADE_PENDING:
+            rv.pushKV("status", "pending");
+            break;
+
+        case UpgradeState::UPGRADE_ACTIVE:
+            rv.pushKV("status", "active");
+            break;
     }
     rv.pushKV("info", upgrade.strInfo);
     return rv;
@@ -749,14 +759,15 @@ void NetworkUpgradeDescPushBack(
     UniValue& networkUpgrades,
     const Consensus::Params& consensusParams,
     Consensus::UpgradeIndex idx,
-    int height)
+    const uint32_t height)
 {
     // Network upgrades with an activation height of NO_ACTIVATION_HEIGHT are
     // hidden. This is used when network upgrade implementations are merged
     // without specifying the activation height.
-    if (consensusParams.vUpgrades[idx].nActivationHeight != Consensus::NetworkUpgrade::NO_ACTIVATION_HEIGHT) {
+    if (consensusParams.vUpgrades[to_integral_type(idx)].nActivationHeight != Consensus::NetworkUpgrade::NO_ACTIVATION_HEIGHT)
+    {
         networkUpgrades.pushKV(
-            HexInt(NetworkUpgradeInfo[idx].nBranchId),
+            HexInt(NetworkUpgradeInfo[to_integral_type(idx)].nBranchId),
             NetworkUpgradeDesc(consensusParams, idx, height));
     }
 }
@@ -843,7 +854,9 @@ Examples:
     obj.pushKV("softforks",             softforks);
 
     UniValue upgrades(UniValue::VOBJ);
-    for (int i = Consensus::UPGRADE_OVERWINTER; i < Consensus::MAX_NETWORK_UPGRADES; i++) {
+    for (auto i = to_integral_type(Consensus::UpgradeIndex::UPGRADE_OVERWINTER); 
+        i < to_integral_type(Consensus::UpgradeIndex::MAX_NETWORK_UPGRADES); ++i)
+    {
         NetworkUpgradeDescPushBack(upgrades, consensusParams, Consensus::UpgradeIndex(i), tip->nHeight);
     }
     obj.pushKV("upgrades", upgrades);
