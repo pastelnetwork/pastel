@@ -199,50 +199,36 @@ workflows:
     PastelBuild:
       jobs:
         - build_platform:
-            platform: linux
-            static_code_analysis: true
-            run_tests: true
-        - build_platform:
-            platform: windows
-            host: x86_64-w64-mingw32
-            ext: .exe
-        - build_platform:
-            platform: darwin
-            host: x86_64-apple-darwin14
-        - build_platform:
+            name: Build Pastel for Linux platform (release)
             platform: linux
             debug_mode: false
             deploy: true
             filters:
               branches:
-                ignore: /.*/
-              tags:
-                only: /^v.*/
+                only: build_changes
             context:
               - Release
               - weekly-beta-builds
         - build_platform:
+            name: Build Pastel for Windows platform (release)
             platform: windows
             debug_mode: false
             ext: .exe
             deploy: true
             filters:
               branches:
-                ignore: /.*/
-              tags:
-                only: /^v.*/
+                only: build_changes
             context:
               - Release
               - weekly-beta-builds
         - build_platform:
+            name: Build Pastel for macOS platform (release)
             platform: darwin
             debug_mode: false
             deploy: true
             filters:
               branches:
-                ignore: /.*/
-              tags:
-                only: /^v.*/
+                only: build_changes
             context:
               - Release
               - weekly-beta-builds
