@@ -195,6 +195,7 @@ jobs:
                   ./full_test_suite.py rpc-mn
 
 workflows:
+    version: 2
     PastelBuild:
       jobs:
         - build_platform:
