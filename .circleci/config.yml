@@ -25,7 +25,7 @@ commands:
           working_directory: << parameters.root_directory >>
           command: |
             reldir="<< parameters.platform >>-release"
-            echo "<< parameters.platofmr >> release directory: $reldir"
+            echo "<< parameters.platform >> release directory: $reldir"
             mkdir -p "$reldir"
             cp src/{pasteld$ext,pastel-cli$ext} "$reldir/"
             cd "$reldir" && zip pastel-$(os)-amd64.zip *            
@@ -195,7 +195,7 @@ jobs:
                   ./full_test_suite.py rpc-mn
 
 workflows:
-    Pastel:
+    PastelBuild:
       jobs:
         - build_platform:
             platform: linux
