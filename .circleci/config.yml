@@ -21,7 +21,7 @@ commands:
         default: ""
     steps:
       - run:
-          name: Create Zip File for << parameters.platform >>
+          name: Prepare archive for AWS (<< parameters.platform >>)
           working_directory: << parameters.root_directory >>
           command: |
             reldir="<< parameters.platform >>-release"
@@ -54,7 +54,7 @@ commands:
         type: string
     steps:
       - run:
-          name: Upload << parameters.platform >> to pastel GitHub repo
+          name: Uploading executable files to Pastel GitHub repo (<< parameters.platform >>)
           working_directory: << parameters.root_directory >>
           command: |
             wget https://github.com/github-release/github-release/releases/download/v0.10.0/linux-amd64-github-release.bz2
@@ -98,6 +98,7 @@ jobs:
       ext:
         type: string
         default: ""
+    name: build-<< parameters.platform >>
     executor: pastel-builder
     working_directory: /pastel
     resource_class: medium+
@@ -154,40 +155,40 @@ jobs:
                 command: |
                   ./fetch-params.sh
             - run:
-                name: gtest
+                name: Tests - gtest
                 working_directory: qa/test-suite
                 no_output_timeout: 30m
                 command: |
                   ./full_test_suite.py gtest
             - run:
-                name: util-test
+                name: Tests - util-test
                 working_directory: qa/test-suite        
                 command: |
                   ./full_test_suite.py util-test
             - run:
-                name: secp256k1
+                name: Tests - secp256k1
                 working_directory: qa/test-suite
                 command: |
                   ./full_test_suite.py secp256k1
             - run:
-                name: univalue
+                name: Tests - univalue
                 working_directory: qa/test-suite
                 command: |
                   ./full_test_suite.py univalue
             - run:
-                name: rpc-common
+                name: Tests - rpc-common
                 working_directory: qa/test-suite
                 no_output_timeout: 30m
                 command: |
                   ./full_test_suite.py rpc-common
             - run:
-                name: rpc-ext
+                name: Tests - rpc-ext
                 working_directory: qa/test-suite
                 no_output_timeout: 30m
                 command: |
                   ./full_test_suite.py rpc-ext
             - run:
-                name: rpc-mn
+                name: Tests - rpc-mn
                 working_directory: qa/test-suite
                 no_output_timeout: 45m
                 command: |
