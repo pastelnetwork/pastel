@@ -21,7 +21,7 @@ commands:
         default: ""
     steps:
       - run:
-          name: Create Zip File for << parameters.target >>
+          name: Create Zip File for << parameters.platform >>
           working_directory: << parameters.root_directory >>
           command: |
             reldir="<< parameters.platform >>-release"
@@ -50,11 +50,11 @@ commands:
       ext:
         type: string
         default: ""
-      target:
+      platform:
         type: string
     steps:
       - run:
-          name: Upload << parameters.target >> to pastel GitHub repo
+          name: Upload << parameters.platform >> to pastel GitHub repo
           working_directory: << parameters.root_directory >>
           command: |
             wget https://github.com/github-release/github-release/releases/download/v0.10.0/linux-amd64-github-release.bz2
