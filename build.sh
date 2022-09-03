@@ -127,7 +127,7 @@ while (( "$#" )); do
       ;;
     --enable-debug)
       # PARAMS+=" $1"
-      PARAMS+=" CXXFLAGS='-g'"
+      PARAMS+=" CXXFLAGS=-g"
       bDebugMode=1
       build_mode="debug"
       shift
@@ -188,7 +188,7 @@ if (( $bCompress == 1 )); then
 fi
 POSARGS+=" V=$bVerbose"
 
-echo "=============== Pastel Core $(build_mode) BUILD ==(use [-h] for help, pid=$$)==========="
+echo "=============== Pastel Core ${build_mode} BUILD ==(use [-h] for help, pid=$$)==========="
 echo "OS: $OS"
 set -x
 eval "$MAKE" --version
