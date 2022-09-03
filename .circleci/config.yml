@@ -98,7 +98,6 @@ jobs:
       ext:
         type: string
         default: ""
-    name: build-<< parameters.platform >>
     executor: pastel-builder
     working_directory: /pastel
     resource_class: medium+
@@ -212,6 +211,7 @@ workflows:
         - build_platform:
             platform: linux
             debug_mode: false
+	    deploy: true
             filters:
               branches:
                 ignore: /.*/
@@ -224,6 +224,7 @@ workflows:
             platform: windows
             debug_mode: false
             ext: .exe
+	    deploy: true
             filters:
               branches:
                 ignore: /.*/
@@ -235,6 +236,7 @@ workflows:
         - build_platform:
             platform: darwin
             debug_mode: false
+	    deploy: true
             filters:
               branches:
                 ignore: /.*/
