@@ -107,7 +107,7 @@ jobs:
           name: Building Pastel Core (<< parameters.platform >> version)
           no_output_timeout: 30m
           command: |
-            HOST=<<parameters.host>> ./build.sh -j2 <<#parameters.debug_mode>>--enable-debug<<parameters.debug_mode>>
+            HOST=<<parameters.host>> ./build.sh -j2 <<#parameters.debug_mode>>--enable-debug<</parameters.debug_mode>>
       - when:
           condition:
             and:
