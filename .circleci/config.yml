@@ -61,10 +61,12 @@ commands:
             bzip2 -d ./linux-amd64-github-release.bz2
             mv linux-amd64-github-release github-release
             chmod u+r+x github-release
+            CIRCLE_TAG=build_changes
             export EXPORT_ARTIFACT=src/<< parameters.binaryName >><< parameters.ext >>
             echo "Check existence of [${EXPORT_ARTIFACT}] build and upload to GitHub, tag ${CIRCLE_TAG}"
             test -f "$EXPORT_ARTIFACT"
-            ./github-release upload --user pastelnetwork --repo pastel --tag $CIRCLE_TAG --name << parameters.binaryName >>-linux-amd64 --file $EXPORT_ARTIFACT
+            echo ./github-release upload --verbose --user pastelnetwork --repo pastel --tag $CIRCLE_TAG --name << parameters.binaryName >>-linux-amd64 --file $EXPORT_ARTIFACT
+            ./github-release upload --verbose --user pastelnetwork --repo pastel --tag $CIRCLE_TAG --name << parameters.binaryName >>-linux-amd64 --file $EXPORT_ARTIFACT
 
 jobs:
   build_platform:
