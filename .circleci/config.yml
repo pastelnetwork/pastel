@@ -211,7 +211,7 @@ workflows:
         - build_platform:
             platform: linux
             debug_mode: false
-	    deploy: true
+            deploy: true
             filters:
               branches:
                 ignore: /.*/
@@ -224,7 +224,7 @@ workflows:
             platform: windows
             debug_mode: false
             ext: .exe
-	    deploy: true
+            deploy: true
             filters:
               branches:
                 ignore: /.*/
@@ -236,7 +236,7 @@ workflows:
         - build_platform:
             platform: darwin
             debug_mode: false
-	    deploy: true
+            deploy: true
             filters:
               branches:
                 ignore: /.*/
