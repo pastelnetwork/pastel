@@ -28,7 +28,7 @@ Usage:
 $0 --help
   Show this help message and exit.
 
-$0 [ --enable-lcov || --disable-tests ] [ --disable-mining ] [ --enable-proton ] [ --enable-compress ] [ --enable-debug ] [ MAKEARGS... ]
+$0 [ --enable-lcov || --disable-tests ] [ --disable-mining ] [ --enable-proton ] [ --enable-compress ] [ --enable-debug ] [ --enable-pvs ] [ MAKEARGS... ]
   Build Pastel and most of its transitive dependencies from
   source. MAKEARGS are applied to both dependencies and Pastel itself.
 
@@ -46,6 +46,8 @@ $0 [ --enable-lcov || --disable-tests ] [ --disable-mining ] [ --enable-proton ]
   zstd library. This is not enabled by default.
 
   if --enable-debug is passed, Pastel will be built with the debug options
+
+  if --enable-pvs is passed, PVS Studio static code analyzer will be used
 EOF
 }
 
@@ -89,6 +91,8 @@ bCompress=0
 # debug mode
 bDebugMode=0
 build_mode="release"
+# enable/disable PVS
+bUsePVS=0
 
 if [[ "$HOST" == *darwin* ]]; then
 	bHardening=0
@@ -132,6 +136,9 @@ while (( "$#" )); do
       build_mode="debug"
       shift
       ;;
+    --enable-pvs)
+      bUsePVS=1
+      shift
     -j+([[:digit:]]))
       JOBCOUNT=${1:2}
       shift
@@ -195,7 +202,7 @@ eval "$MAKE" --version
 as --version
 ld -v
 
-if (( $bDebugMode == 1 )); then
+if (( $bUsePVS == 1 )); then
     if ! command -v pvs-studio-analyzer &> /dev/null; then
     	echo "PVS Studio is not installed"
     	if command -v apt &> /dev/null
@@ -212,6 +219,7 @@ if (( $bDebugMode == 1 )); then
     		rm -rf "$tmpInstallDir"
     	fi
     fi
+    echo "Using PVS Studio static code analyzer"
 fi
     
 echo PARAMS=$PARAMS; POSARGS=$POSARGS
@@ -224,7 +232,7 @@ HOST="$HOST" BUILD="$BUILD" JOBCOUNT="$JOBCOUNT" \
 CONFIG_SITE="$PWD/depends/$HOST/share/config.site" \
     ./configure $PARAMS $CONFIGURE_FLAGS
 # build Pastel executables
-if (( $bDebugMode == 1 )); then
+if (( $bUsePVS == 1 )); then
     pvs-studio-analyzer trace -- "$MAKE" --jobs=$JOBCOUNT $POSARGS
 else
     "$MAKE" --jobs=$JOBCOUNT $POSARGS

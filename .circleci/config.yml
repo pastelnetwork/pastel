@@ -108,7 +108,7 @@ jobs:
           name: Building Pastel Core (<< parameters.platform >> version)
           no_output_timeout: 30m
           command: |
-            HOST=<<parameters.host>> ./build.sh -j2 <<#parameters.debug_mode>>--enable-debug<</parameters.debug_mode>>
+            HOST=<<parameters.host>> ./build.sh -j2<<#parameters.debug_mode>> --enable-debug<</parameters.debug_mode>><<#parameters.static_code_analysis>> --enable-pvs<</parameters.static_code_analysis>>
       - when:
           condition:
             and:
@@ -202,7 +202,7 @@ workflows:
         - build_platform:
             name: Build Pastel for Linux platform (debug)
             platform: linux
-            static_code_analysis: true
+            static_code_analysis: false
             run_tests: true
         - build_platform:
             name: Build Pastel for Windows platform (debug)
