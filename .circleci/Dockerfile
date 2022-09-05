@@ -5,7 +5,7 @@ RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone \
   && apt update \
   && apt install -y --no-install-recommends \
      pkg-config tzdata make automake cmake libtool patch \
-     bsdmainutils curl wget zip unzip xz-utils zlib1g-dev git openssh-client \
+     bsdmainutils curl wget unzip xz-utils zlib1g-dev git openssh-client \
      g++-10-multilib mingw-w64 python3-dev python3-pip gnupg2\
   && update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-10 100 --slave \
      /usr/bin/g++ g++ /usr/bin/g++-10 --slave /usr/bin/gcov gcov /usr/bin/gcov-10 \

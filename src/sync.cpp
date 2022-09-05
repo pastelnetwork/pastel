@@ -110,7 +110,7 @@ static void potential_deadlock_detected(const pair<void*, void*>& mismatch, cons
                 onlyMaybeDeadlock = true;
             secondLocked = true;
         }
-        LogPrintf(" %s\n", lockLocation.ToString());
+        LogPrintf(" %s\n", i.second.ToString());
     }
     assert(onlyMaybeDeadlock);
 }
