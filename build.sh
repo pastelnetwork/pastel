@@ -28,7 +28,7 @@ Usage:
 $0 --help
   Show this help message and exit.
 
-$0 [ --enable-lcov || --disable-tests ] [ --disable-mining ] [ --enable-proton ] [ --enable-compress ] [ MAKEARGS... ]
+$0 [ --enable-lcov || --disable-tests ] [ --disable-mining ] [ --enable-proton ] [ --enable-compress ] [ --enable-debug ] [ --enable-pvs ] [ MAKEARGS... ]
   Build Pastel and most of its transitive dependencies from
   source. MAKEARGS are applied to both dependencies and Pastel itself.
 
@@ -44,6 +44,10 @@ $0 [ --enable-lcov || --disable-tests ] [ --disable-mining ] [ --enable-proton ]
 
   if --enable-compress is passed, Pastel is configured to compress ticket data with
   zstd library. This is not enabled by default.
+
+  if --enable-debug is passed, Pastel will be built with the debug options
+
+  if --enable-pvs is passed, PVS Studio static code analyzer will be used
 EOF
 }
 
@@ -84,6 +88,11 @@ bProton=0
 bVerbose=1
 # disable ticket compression by default
 bCompress=0
+# debug mode
+bDebugMode=0
+build_mode="release"
+# enable/disable PVS
+bUsePVS=0
 
 if [[ "$HOST" == *darwin* ]]; then
 	bHardening=0
@@ -121,7 +130,14 @@ while (( "$#" )); do
       shift
       ;;
     --enable-debug)
-      PARAMS+=" $1"
+      # PARAMS+=" $1"
+      PARAMS+=" CXXFLAGS=-g"
+      bDebugMode=1
+      build_mode="debug"
+      shift
+      ;;
+    --enable-pvs)
+      bUsePVS=1
       shift
       ;;
     -j+([[:digit:]]))
@@ -180,33 +196,45 @@ if (( $bCompress == 1 )); then
 fi
 POSARGS+=" V=$bVerbose"
 
-echo "=============== Pastel Core BUILD ==(use [-h] for help, pid=$$)==========="
+echo "=============== Pastel Core ${build_mode} BUILD ==(use [-h] for help, pid=$$)==========="
 echo "OS: $OS"
 set -x
 eval "$MAKE" --version
 as --version
 ld -v
 
-if ! command -v pvs-studio-analyzer &> /dev/null
-then
-	echo "PVS Studio is not installed"
-	if command -v apt &> /dev/null
-	then
-		echo "Installing PVS Studio"
-		tmpInstallDir="$BUILDDIR/build-aux/tmp"
-		mkdir -p "$tmpInstallDir"
-		cd "$tmpInstallDir"
-		wget -q -O - https://files.viva64.com/etc/pubkey.txt | sudo apt-key add -
-		sudo wget -O /etc/apt/sources.list.d/viva64.list https://files.viva64.com/etc/viva64.list
-   		sudo apt update
-		sudo apt install -y --no-install-recommends pvs-studio
-		cd "$BUILDDIR"
-		rm -rf "$tmpInstallDir"
-	fi
+if (( $bUsePVS == 1 )); then
+    if ! command -v pvs-studio-analyzer &> /dev/null; then
+    	echo "PVS Studio is not installed"
+    	if command -v apt &> /dev/null
+    	then
+    		echo "Installing PVS Studio"
+    		tmpInstallDir="$BUILDDIR/build-aux/tmp"
+    		mkdir -p "$tmpInstallDir"
+    		cd "$tmpInstallDir"
+    		wget -q -O - https://files.viva64.com/etc/pubkey.txt | sudo apt-key add -
+    		sudo wget -O /etc/apt/sources.list.d/viva64.list https://files.viva64.com/etc/viva64.list
+    		sudo apt update
+    		sudo apt install -y --no-install-recommends pvs-studio
+    		cd "$BUILDDIR"
+    		rm -rf "$tmpInstallDir"
+    	fi
+    fi
+    echo "Using PVS Studio static code analyzer"
 fi
-
+    
 echo PARAMS=$PARAMS; POSARGS=$POSARGS
-HOST="$HOST" BUILD="$BUILD" JOBCOUNT="$JOBCOUNT" "$MAKE" -C ./depends/ --jobs=$JOBCOUNT $POSARGS
+# build Pastel dependent libraries in /depends folder
+HOST="$HOST" BUILD="$BUILD" JOBCOUNT="$JOBCOUNT" \
+  "$MAKE" -C ./depends/ --jobs=$JOBCOUNT $POSARGS
+# use autoconf to generate 'configure' script from configure.ac
 ./autogen.sh
-CONFIG_SITE="$PWD/depends/$HOST/share/config.site" ./configure $PARAMS $CONFIGURE_FLAGS CXXFLAGS='-g'
-pvs-studio-analyzer trace -- "$MAKE" --jobs=$JOBCOUNT $POSARGS
+# configure Pastel
+CONFIG_SITE="$PWD/depends/$HOST/share/config.site" \
+    ./configure $PARAMS $CONFIGURE_FLAGS
+# build Pastel executables
+if (( $bUsePVS == 1 )); then
+    pvs-studio-analyzer trace -- "$MAKE" --jobs=$JOBCOUNT $POSARGS
+else
+    "$MAKE" --jobs=$JOBCOUNT $POSARGS
+fi
