@@ -139,6 +139,7 @@ while (( "$#" )); do
     --enable-pvs)
       bUsePVS=1
       shift
+      ;;
     -j+([[:digit:]]))
       JOBCOUNT=${1:2}
       shift
