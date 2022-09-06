@@ -27,8 +27,9 @@ commands:
             reldir="<< parameters.platform >>-release"
             echo "<< parameters.platform >> release directory: $reldir"
             mkdir -p "$reldir"
-            cp src/{pasteld$ext,pastel-cli$ext} "$reldir/"
-            cd "$reldir" && zip pastel-$(os)-amd64.zip *            
+            cp src/{pasteld<< parameters.ext >>,pastel-cli<< parameters.ext >>} "$reldir/"
+            cd "$reldir" && zip pastel-<< parameters.platform >>-amd64.zip *
+            ls -l
       - aws-cli/setup:
           aws-access-key-id: AWS_ACCESS_KEY_ID
           aws-secret-access-key: AWS_SECRET_ACCESS_KEY
@@ -54,7 +55,7 @@ commands:
         type: string
     steps:
       - run:
-          name: Uploading executable files to Pastel GitHub repo (<< parameters.platform >>)
+          name: Uploading executables to Pastel GitHub repo (<< parameters.platform >>)
           working_directory: << parameters.root_directory >>
           command: |
             wget https://github.com/github-release/github-release/releases/download/v0.10.0/linux-amd64-github-release.bz2
@@ -63,9 +64,16 @@ commands:
             chmod u+r+x github-release
             export EXPORT_ARTIFACT=src/<< parameters.binaryName >><< parameters.ext >>
             echo "Check existence of [${EXPORT_ARTIFACT}] build and upload to GitHub, tag ${CIRCLE_TAG}"
-            test -f "$EXPORT_ARTIFACT"
-            echo ./github-release --verbose upload --user pastelnetwork --repo pastel --tag $CIRCLE_TAG --name << parameters.binaryName >>-linux-amd64 --file $EXPORT_ARTIFACT
-            ./github-release --verbose upload --user pastelnetwork --repo pastel --tag $CIRCLE_TAG --name << parameters.binaryName >>-linux-amd64 --file $EXPORT_ARTIFACT
+            if test -z "${CIRCLE_TAG}"; then
+               echo "Git tag is not defined"
+               exit 1
+            fi
+            if test ! -f "$EXPORT_ARTIFACT"; then
+               echo "Artifact [$EXPORT_ARTIFACT] not found"
+               exit 2
+            fi
+            echo ./github-release --verbose upload --user pastelnetwork --repo pastel --tag $CIRCLE_TAG --name << parameters.binaryName >>-<< parameters.platform >>-amd64 --file $EXPORT_ARTIFACT
+            ./github-release --verbose upload --user pastelnetwork --repo pastel --tag $CIRCLE_TAG --name << parameters.binaryName >>-<< parameters.platform >>-amd64 --file $EXPORT_ARTIFACT
 
 jobs:
   build_platform:
@@ -200,22 +208,31 @@ workflows:
     PastelBuild:
       jobs:
         - build_platform:
+            name: Build Pastel for Linux platform (release)
+            platform: linux
+                - build_platform:
             name: Build Pastel for Linux platform (debug)
             platform: linux
             static_code_analysis: false
             run_tests: true
+            filters:
+              tags:
+                ignore: /^v.*/
         - build_platform:
             name: Build Pastel for Windows platform (debug)
             platform: windows
             host: x86_64-w64-mingw32
             ext: .exe
+            filters:
+              tags:
+                ignore: /^v.*/
         - build_platform:
             name: Build Pastel for macOS platform (debug)
             platform: darwin
             host: x86_64-apple-darwin14
-        - build_platform:
-            name: Build Pastel for Linux platform (release)
-            platform: linux
+            filters:
+              tags:
+                ignore: /^v.*/
             debug_mode: false
             deploy: true
             filters:
@@ -229,8 +246,9 @@ workflows:
         - build_platform:
             name: Build Pastel for Windows platform (release)
             platform: windows
-            debug_mode: false
+            host: x86_64-w64-mingw32
             ext: .exe
+            debug_mode: false
             deploy: true
             filters:
               branches:
@@ -243,6 +261,7 @@ workflows:
         - build_platform:
             name: Build Pastel for macOS platform (release)
             platform: darwin
+            host: x86_64-apple-darwin14
             debug_mode: false
             deploy: true
             filters:
