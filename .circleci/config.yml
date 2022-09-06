@@ -208,9 +208,6 @@ workflows:
     PastelBuild:
       jobs:
         - build_platform:
-            name: Build Pastel for Linux platform (release)
-            platform: linux
-                - build_platform:
             name: Build Pastel for Linux platform (debug)
             platform: linux
             static_code_analysis: false
@@ -233,6 +230,9 @@ workflows:
             filters:
               tags:
                 ignore: /^v.*/
+        - build_platform:
+            name: Build Pastel for Linux platform (release)
+            platform: linux
             debug_mode: false
             deploy: true
             filters:
