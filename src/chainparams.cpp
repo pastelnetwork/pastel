@@ -45,12 +45,12 @@ using namespace std;
 // mainnet upgrades activation heights
 constexpr uint32_t MAINNET_OVERWINTER_STARTING_BLOCK = 10;
 constexpr uint32_t MAINNET_SAPLING_STARTING_BLOCK = 20;
-constexpr uint32_t MAINNET_CEZANNE_UPGRADE_STARTING_BLOCK = 340'000;
+constexpr uint32_t MAINNET_CEZANNE_UPGRADE_STARTING_BLOCK = 335'200;
 
 // testnet upgrades activation heights
 constexpr uint32_t TESTNET_OVERWINTER_STARTING_BLOCK = 10;
 constexpr uint32_t TESTNET_SAPLING_STARTING_BLOCK = 20;
-constexpr uint32_t TESTNET_CEZANNE_UPGRADE_STARTING_BLOCK = 160'000;
+constexpr uint32_t TESTNET_CEZANNE_UPGRADE_STARTING_BLOCK = 157'650;
 
 
 static CBlock CreateGenesisBlock(const char* pszTimestamp, 

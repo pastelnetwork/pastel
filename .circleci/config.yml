@@ -16,9 +16,15 @@ commands:
         default: /pastel
       platform:
         type: string
+        description: Build platform. Must be one of the "linux", "darwin", "windows"
+      platform_suffix:
+        type: string
+        default: ""
+        description: Suffix to use in package filename for the current platform.
       ext:
         type: string
         default: ""
+        description: executable file extension, should be defined as .exe only for Windows
     steps:
       - run:
           name: Prepare archive for AWS (<< parameters.platform >>)
@@ -28,14 +34,14 @@ commands:
             echo "<< parameters.platform >> release directory: $reldir"
             mkdir -p "$reldir"
             cp src/{pasteld<< parameters.ext >>,pastel-cli<< parameters.ext >>} "$reldir/"
-            cd "$reldir" && zip pastel-<< parameters.platform >>-amd64.zip *
+            cd "$reldir" && zip pastel-<< parameters.platform_suffix >>-amd64.zip *
             ls -l
       - aws-cli/setup:
           aws-access-key-id: AWS_ACCESS_KEY_ID
           aws-secret-access-key: AWS_SECRET_ACCESS_KEY
       - aws-s3/copy:
-          from: << parameters.root_directory >>/<< parameters.platform >>-release/pastel-<< parameters.platform >>-amd64.zip
-          to: s3://$ROOT_BUCKET_NAME/pasteld/pastel-<< parameters.platform >>-amd64.zip
+          from: << parameters.root_directory >>/<< parameters.platform >>-release/pastel-<< parameters.platform_suffix >>-amd64.zip
+          to: s3://$ROOT_BUCKET_NAME/pasteld/pastel-<< parameters.platform_suffix >>-amd64.zip
           arguments: |
             --acl public-read \
             --cache-control "max-age=86400"
@@ -51,8 +57,10 @@ commands:
       ext:
         type: string
         default: ""
+        description: executable file extension, should be defined as .exe only for Windows
       platform:
         type: string
+        description: Build platform. Must be one of the "linux", "darwin", "windows"
     steps:
       - run:
           name: Uploading executables to Pastel GitHub repo (<< parameters.platform >>)
@@ -81,6 +89,10 @@ jobs:
       platform:
         type: string
         description: Build platform. Must be one of the "linux", "darwin", "windows"
+      platform_suffix:
+        type: string
+        default: ""
+        description: Suffix to use in package filename for the current platform. Define when deploy=true.
       host:
         default: ""
         type: string
@@ -154,6 +166,7 @@ jobs:
             - upload-s3:
                 ext: << parameters.ext >>
                 platform: << parameters.platform >>
+                platform_suffix: << parameters.platform_suffix >>
       - when:
           condition: << parameters.run_tests >>
           steps:
@@ -233,6 +246,7 @@ workflows:
         - build_platform:
             name: Build Pastel for Linux platform (release)
             platform: linux
+            platform_suffix: linux
             debug_mode: false
             deploy: true
             filters:
@@ -246,6 +260,7 @@ workflows:
         - build_platform:
             name: Build Pastel for Windows platform (release)
             platform: windows
+            platform_suffix: win
             host: x86_64-w64-mingw32
             ext: .exe
             debug_mode: false
@@ -261,6 +276,7 @@ workflows:
         - build_platform:
             name: Build Pastel for macOS platform (release)
             platform: darwin
+            platform_suffix: darwin
             host: x86_64-apple-darwin14
             debug_mode: false
             deploy: true
