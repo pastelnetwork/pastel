@@ -241,12 +241,10 @@ public:
                 nActiveStateIn == MASTERNODE_WATCHDOG_EXPIRED;
     }
 
-    bool IsValidForPayment() noexcept
+    bool IsValidForPayment() const noexcept
     {
-        if(nActiveState == MASTERNODE_ENABLED) {
+        if (nActiveState == MASTERNODE_ENABLED)
             return true;
-        }
-
         return false;
     }
 
@@ -260,7 +258,7 @@ public:
     void DecreasePoSeBanScore();
     void PoSeBan();
 
-    masternode_info_t GetInfo();
+    masternode_info_t GetInfo() const noexcept;
 
     static std::string StateToString(int nStateIn);
     std::string GetStateString() const;
@@ -384,13 +382,13 @@ public:
     CTxIn vin2{};
     CService addr{};
     int nonce{};
-    int nBlockHeight{};
+    uint32_t nBlockHeight{};
     v_uint8 vchSig1{};
     v_uint8 vchSig2{};
 
     CMasternodeVerification() = default;
 
-    CMasternodeVerification(CService addr, int nonce, int nBlockHeight) :
+    CMasternodeVerification(CService addr, int nonce, uint32_t nBlockHeight) :
         addr(addr),
         nonce(nonce),
         nBlockHeight(nBlockHeight)

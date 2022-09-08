@@ -1178,7 +1178,7 @@ bool AppInit2(CServiceThreadGroup& threadGroup, CScheduler& scheduler)
     if (strWalletFile != walletFilePath.stem().string() + walletFilePath.extension().string())
         return InitError(strprintf(_("Wallet %s resides outside data directory %s"), strWalletFile, strDataDir));
 #endif
-    // Make sure only a single Bitcoin process is using the data directory.
+    // Make sure only a single pasteld process is using the data directory.
     fs::path pathLockFile = GetDataDir() / ".lock";
     FILE* file = nullptr;
 #if defined(_MSC_VER) && (_MSC_VER >= 1400)
@@ -1827,12 +1827,13 @@ bool AppInit2(CServiceThreadGroup& threadGroup, CScheduler& scheduler)
 
     // ********************************************************* Step 11: start masternode
 #ifdef ENABLE_WALLET
-    if (!masterNodeCtrl.EnableMasterNode(strErrors, threadGroup, pwalletMain)) {
+    if (!masterNodeCtrl.EnableMasterNode(strErrors, threadGroup, pwalletMain))
 #else
-    if (!masterNodeCtrl.EnableMasterNode(strErrors, threadGroup)) {
+    if (!masterNodeCtrl.EnableMasterNode(strErrors, threadGroup))
 #endif
+    {
        return InitError(strErrors.str());
-   }
+    }
 
 
     // ********************************************************* Step 12: start node

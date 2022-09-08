@@ -155,18 +155,23 @@ static void DebugPrintInit()
 
 void OpenDebugLog()
 {
-    std::call_once(debugPrintInitFlag, &DebugPrintInit);
-    std::scoped_lock scoped_lock(*mutexDebugLog);
+    call_once(debugPrintInitFlag, &DebugPrintInit);
+    scoped_lock scoped_lock(*mutexDebugLog);
 
     assert(fileout == nullptr);
     assert(vMsgsBeforeOpenLog);
-    fs::path pathDebug = GetDataDir() / "debug.log";
-    fileout = fopen(pathDebug.string().c_str(), "a");
-    if (fileout)
-        setbuf(fileout, nullptr); // unbuffered
+    const fs::path pathDebugLog = GetDataDir() / "debug.log";
+    fileout = fopen(pathDebugLog.string().c_str(), "a");
+    if (!fileout)
+    {
+        printf("ERROR: failed to open debug log file [%s]. %s", pathDebugLog.string().c_str(), strerror(errno));
+        return;
+    }
+    setbuf(fileout, nullptr); // unbuffered
 
     // dump buffered messages from before we opened the log
-    while (!vMsgsBeforeOpenLog->empty()) {
+    while (!vMsgsBeforeOpenLog->empty())
+    {
         FileWriteStr(vMsgsBeforeOpenLog->front(), fileout);
         vMsgsBeforeOpenLog->pop_front();
     }

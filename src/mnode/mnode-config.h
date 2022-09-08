@@ -5,6 +5,7 @@
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <vector>
 #include <map_types.h>
+#include <mutex>
 
 #include <mnode/mnode-masternode.h>
 

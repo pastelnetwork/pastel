@@ -9,11 +9,12 @@
 #include <map>
 #include <list>
 #include <set>
+#include <atomic>
 
-#include "net.h"
-#include "sync.h"
+#include <net.h>
+#include <sync.h>
 
-#include "mnode/mnode-masternode.h"
+#include <mnode/mnode-masternode.h>
 
 using namespace std;
 
@@ -48,7 +49,7 @@ private:
     mutable CCriticalSection cs;
 
     // Keep track of current block height
-    int nCachedBlockHeight;
+    std::atomic_uint32_t nCachedBlockHeight;
 
     // map to hold all MNs
     std::map<COutPoint, CMasternode> mapMasternodes;
@@ -139,10 +140,11 @@ public:
 
     /// Count Masternodes filtered by nProtocolVersion.
     /// Masternode nProtocolVersion should match or be above the one specified in param here.
-    int CountMasternodes(int nProtocolVersion = -1);
+    uint32_t CountMasternodes(const int nProtocolVersion = -1) const noexcept;
     /// Count enabled Masternodes filtered by nProtocolVersion.
     /// Masternode nProtocolVersion should match or be above the one specified in param here.
     size_t CountEnabled(const int nProtocolVersion = -1) const noexcept;
+    uint32_t GetCachedBlockHeight() const noexcept { return nCachedBlockHeight; }
 
     /// Count Masternodes by network type - NET_IPV4, NET_IPV6, NET_TOR
     // int CountByIP(int nNetworkType);
@@ -153,14 +155,14 @@ public:
     bool Get(const COutPoint& outpoint, CMasternode& masternodeRet);
     bool Has(const COutPoint& outpoint);
 
-    bool GetMasternodeInfo(const COutPoint& outpoint, masternode_info_t& mnInfoRet);
-    bool GetMasternodeInfo(const CPubKey& pubKeyMasternode, masternode_info_t& mnInfoRet);
-    bool GetMasternodeInfo(const CScript& payee, masternode_info_t& mnInfoRet);
+    bool GetMasternodeInfo(const COutPoint& outpoint, masternode_info_t& mnInfoRet) const noexcept;
+    bool GetMasternodeInfo(const CPubKey& pubKeyMasternode, masternode_info_t& mnInfoRet) const noexcept;
+    bool GetMasternodeInfo(const CScript& payee, masternode_info_t& mnInfoRet) const noexcept;
 
     /// Find an entry in the masternode list that is next to be paid
-    bool GetNextMasternodeInQueueForPayment(int nBlockHeight, bool fFilterSigTime, int& nCountRet, masternode_info_t& mnInfoRet);
+    bool GetNextMasternodeInQueueForPayment(int nBlockHeight, bool fFilterSigTime, uint32_t& nCountRet, masternode_info_t& mnInfoRet);
     /// Same as above but use current block height
-    bool GetNextMasternodeInQueueForPayment(bool fFilterSigTime, int& nCountRet, masternode_info_t& mnInfoRet);
+    bool GetNextMasternodeInQueueForPayment(bool fFilterSigTime, uint32_t& nCountRet, masternode_info_t& mnInfoRet);
 
     /// Find a random entry
     masternode_info_t FindRandomNotInVec(const std::vector<COutPoint> &vecToExclude, int nProtocolVersion = -1);

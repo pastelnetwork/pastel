@@ -197,7 +197,7 @@ void CActiveMasternode::ManageStateRemote()
         if (infoMn.nProtocolVersion != PROTOCOL_VERSION)
         {
             nState = ActiveMasternodeState::NotCapable;
-            strNotCapableReason = "Invalid protocol version";
+            strNotCapableReason = strprintf("Invalid protocol version %d, required %d", infoMn.nProtocolVersion, PROTOCOL_VERSION);
             LogPrintf("CActiveMasternode::ManageStateRemote -- %s: %s\n", GetStateString(), strNotCapableReason);
             return;
         }

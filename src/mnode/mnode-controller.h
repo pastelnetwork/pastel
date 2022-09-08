@@ -57,7 +57,6 @@ public:
     bool fMasterNode;
 
 public:
-    int MasternodeProtocolVersion;
     int MasternodeCollateral;
     CAmount MasternodeFeePerMBDefault;
     CAmount NFTTicketFeePerKBDefault;
@@ -80,7 +79,7 @@ public:
     int MNStartRequiredExpirationTime;
     int nGovernanceVotingPeriodBlocks;
 
-    int nMasternodeMinimumConfirmations, nMasternodePaymentsIncreaseBlock, nMasternodePaymentsIncreasePeriod;
+    uint32_t nMasternodeMinimumConfirmations, nMasternodePaymentsIncreaseBlock, nMasternodePaymentsIncreasePeriod;
     int nMasternodePaymentsVotersIndexDelta, nMasternodePaymentsFeatureWinnerBlockIndexDelta;
     int nMasternodeTopMNsNumber, nMasternodeTopMNsNumberMin;
     int nMasterNodeMaximumOutboundConnections;
@@ -101,6 +100,7 @@ public:
 
     bool IsMasterNode() const noexcept { return fMasterNode; }
     bool IsActiveMasterNode() const noexcept { return fMasterNode && activeMasternode.IsStarted(); }
+    int GetSupportedProtocolVersion() const noexcept;
 
 #ifdef ENABLE_WALLET
     bool EnableMasterNode(std::ostringstream& strErrors, CServiceThreadGroup& threadGroup, CWallet* pwalletMain);

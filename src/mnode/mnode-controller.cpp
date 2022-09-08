@@ -28,7 +28,6 @@ MasterNode specific logic and initializations
 
 void CMasterNodeController::InvalidateParameters()
 {
-    MasternodeProtocolVersion = 0;
     MasternodeFeePerMBDefault = 0;
     NFTTicketFeePerKBDefault = 0;
     ActionTicketFeePerMBDefault = 0;
@@ -75,11 +74,7 @@ void CMasterNodeController::InvalidateParameters()
 }
 
 void CMasterNodeController::SetParameters()
-{
-    //CURRENT VERSION OF MASTERNODE NETWORK - SHOULD BE EQUAL TO PROTOCOL_VERSION
-    //this will allow to filter out old MN when ALL NETWORK is updated 
-    MasternodeProtocolVersion           = PROTOCOL_VERSION;
-    
+{  
     MasternodeFeePerMBDefault           = 50;
     // default NFT ticket fee in PSL per KB
     NFTTicketFeePerKBDefault            = 3;
@@ -120,7 +115,9 @@ void CMasterNodeController::SetParameters()
     MinTicketConfirmations = 10; //blocks
     MaxAcceptTicketAge = 24; //1 hour, 1 block per 2.5 minutes
     
-    if (Params().IsMainNet()) {
+    const auto& chainparams = Params();
+    if (chainparams.IsMainNet())
+    {
         MasternodeCollateral                = 5'000'000; // PSL
     
         nMasternodeMinimumConfirmations = 15;
@@ -129,8 +126,7 @@ void CMasterNodeController::SetParameters()
         nFulfilledRequestExpireTime = 60*60; // 60 minutes
         
         TicketGreenAddress = "PtoySpxXAE3V6XR239AqGzCfKNrJcX6n52L";
-    }
-    else if (Params().IsTestNet()) {
+    } else if (chainparams.IsTestNet()) {
         MasternodeCollateral                = 1'000'000; // PSL
     
         nMasternodeMinimumConfirmations = 1;
@@ -138,8 +134,7 @@ void CMasterNodeController::SetParameters()
         nMasternodePaymentsIncreasePeriod = 10;
         
         TicketGreenAddress = "tPj5BfCrLfLpuviSJrD3B1yyWp3XkgtFjb6";
-    }
-    else if (Params().IsRegTest()) {
+    } else if (chainparams.IsRegTest()) {
         nMasternodeMinimumConfirmations = 1;
         nMasternodePaymentsIncreaseBlock = 350;
         nMasternodePaymentsIncreasePeriod = 10;
@@ -158,8 +153,27 @@ void CMasterNodeController::SetParameters()
         LogPrintf("Regtest Mode: MNP = %d sec; Expiration = %d sec; Restart = %d sec \n", MasternodeMinMNPSeconds, MasternodeExpirationSeconds, MasternodeNewStartRequiredSeconds);
     }
     else{
-        //TODO Pastel: accert
+        //TODO Pastel: assert
     }
+}
+
+/**
+* Get supported MN protocol version for the current cached block height.
+* 
+* \return supported protocol version
+*/
+int CMasterNodeController::GetSupportedProtocolVersion() const noexcept
+{
+    const int nCachedBlockHeight = masternodeManager.GetCachedBlockHeight();
+
+    const auto& consensusParams = Params().GetConsensus();
+    const auto currentEpoch = CurrentEpoch(nCachedBlockHeight, consensusParams);
+    const int nCurrentEpochProtocolVersion = consensusParams.vUpgrades[currentEpoch].nProtocolVersion;
+
+    int nSupportedProtocolVersion = MN_MIN_PROTOCOL_VERSION;
+    if ((nCurrentEpochProtocolVersion > nSupportedProtocolVersion && (nCurrentEpochProtocolVersion <= PROTOCOL_VERSION)))
+        nSupportedProtocolVersion = nCurrentEpochProtocolVersion;
+    return nSupportedProtocolVersion;
 }
 
 // Get network difficulty. This implementation is copied from blockchain.cpp
@@ -201,7 +215,6 @@ double CMasterNodeController::getNetworkDifficulty(const CBlockIndex* blockindex
 
     return dDiff;
 }
-
 
 #ifdef ENABLE_WALLET
 bool CMasterNodeController::EnableMasterNode(ostringstream& strErrors, CServiceThreadGroup& threadGroup, CWallet* pWalletMain)

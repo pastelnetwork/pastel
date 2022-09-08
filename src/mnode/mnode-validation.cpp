@@ -44,7 +44,7 @@ int GetUTXOConfirmations(const COutPoint& outpoint)
 {
     // -1 means UTXO is yet unknown or already spent
     LOCK(cs_main);
-    int nPrevoutHeight = GetUTXOHeight(outpoint);
+    const int nPrevoutHeight = GetUTXOHeight(outpoint);
     return (nPrevoutHeight > -1 && chainActive.Tip()) ? chainActive.Height() - nPrevoutHeight + 1 : -1;
 }
 
