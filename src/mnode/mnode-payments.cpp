@@ -36,7 +36,7 @@ void CMasternodePayments::FillMasterNodePayment(CMutableTransaction& txNew, int 
 
     if(!GetBlockPayee(nBlockHeight, scriptPubKey)) {
         // no masternode detected...
-        int nCount = 0;
+        uint32_t nCount = 0;
         masternode_info_t mnInfo;
         if(!masterNodeCtrl.masternodeManager.GetNextMasternodeInQueueForPayment(nBlockHeight, true, nCount, mnInfo)) {
             // ...and we can't calculate it on our own
@@ -234,7 +234,7 @@ bool CMasternodePayments::GetBlockPayee(int nBlockHeight, CScript& payee)
 
 // Is this masternode scheduled to get paid soon?
 // -- Only look ahead up to 8 blocks to allow for propagation of the latest 2 blocks of votes
-bool CMasternodePayments::IsScheduled(CMasternode& mn, int nNotBlockHeight)
+bool CMasternodePayments::IsScheduled(const CMasternode& mn, const int nNotBlockHeight)
 {
     LOCK(cs_mapMasternodeBlockPayees);
 
@@ -510,7 +510,7 @@ bool CMasternodePaymentVote::IsValid(CNode* pnode, int nValidationHeight, std::s
         return false;
     }
 
-    int nMinRequiredProtocol = masterNodeCtrl.MasternodeProtocolVersion;
+    const int nMinRequiredProtocol = masterNodeCtrl.GetSupportedProtocolVersion();
     if(mnInfo.nProtocolVersion < nMinRequiredProtocol) {
         strError = strprintf("Masternode protocol is too old: nProtocolVersion=%d, nMinRequiredProtocol=%d", mnInfo.nProtocolVersion, nMinRequiredProtocol);
         return false;
@@ -577,7 +577,7 @@ bool CMasternodePayments::ProcessBlock(int nBlockHeight)
     LogPrintf("CMasternodePayments::ProcessBlock -- Start: nBlockHeight=%d, masternode=%s\n", nBlockHeight, masterNodeCtrl.activeMasternode.outpoint.ToStringShort());
 
     // pay to the oldest MN that still had no payment but its input is old enough and it was active long enough
-    int nCount = 0;
+    uint32_t nCount = 0;
     masternode_info_t mnInfo;
 
     if (!masterNodeCtrl.masternodeManager.GetNextMasternodeInQueueForPayment(nBlockHeight, true, nCount, mnInfo)) {

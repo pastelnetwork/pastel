@@ -50,7 +50,7 @@ constexpr uint32_t MAINNET_CEZANNE_UPGRADE_STARTING_BLOCK = 335'200;
 // testnet upgrades activation heights
 constexpr uint32_t TESTNET_OVERWINTER_STARTING_BLOCK = 10;
 constexpr uint32_t TESTNET_SAPLING_STARTING_BLOCK = 20;
-constexpr uint32_t TESTNET_CEZANNE_UPGRADE_STARTING_BLOCK = 157'777;
+constexpr uint32_t TESTNET_CEZANNE_UPGRADE_STARTING_BLOCK = 158'100;
 
 
 static CBlock CreateGenesisBlock(const char* pszTimestamp, 

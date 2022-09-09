@@ -10,6 +10,9 @@
 
 inline constexpr int PROTOCOL_VERSION = 170009;
 
+// min MasterNodes protocol version before Cezanne upgrade
+inline constexpr int MN_MIN_PROTOCOL_VERSION = 170008;
+
 //! initial proto version, to be increased after version/verack negotiation
 inline constexpr int INIT_PROTO_VERSION = 209;
 

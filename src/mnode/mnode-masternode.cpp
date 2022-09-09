@@ -153,9 +153,11 @@ void CMasternode::Check(bool fForce)
 {
     LOCK(cs);
 
-    if(ShutdownRequested()) return;
+    if (ShutdownRequested())
+        return;
 
-    if(!fForce && (GetTime() - nTimeLastChecked < masterNodeCtrl.MasternodeCheckSeconds)) return;
+    if(!fForce && (GetTime() - nTimeLastChecked < masterNodeCtrl.MasternodeCheckSeconds))
+        return;
     nTimeLastChecked = GetTime();
 
     LogPrint("masternode", "CMasternode::Check -- Masternode %s is in %s state\n", vin.prevout.ToStringShort(), GetStateString());
@@ -164,8 +166,9 @@ void CMasternode::Check(bool fForce)
     if (IsOutpointSpent())
         return;
 
-    int nHeight = 0;
-    if(!fUnitTest) {
+    int nCurrentHeight = 0;
+    if(!fUnitTest)
+    {
         TRY_LOCK(cs_main, lockMain);
         if(!lockMain)
             return;
@@ -178,12 +181,12 @@ void CMasternode::Check(bool fForce)
             return;
         }
 
-        nHeight = chainActive.Height();
+        nCurrentHeight = chainActive.Height();
     }
 
     if(IsPoSeBanned())
     {
-        if (nHeight < nPoSeBanHeight)
+        if (nCurrentHeight < nPoSeBanHeight)
             return; // too early?
         // Otherwise give it a chance to proceed further to do all the usual checks and to change its state.
         // Masternode still will be on the edge and can be banned back easily if it keeps ignoring mnverify
@@ -193,25 +196,24 @@ void CMasternode::Check(bool fForce)
     } else if(nPoSeBanScore >= masterNodeCtrl.MasternodePOSEBanMaxScore) {
         nActiveState = MASTERNODE_POSE_BAN;
         // ban for the whole payment cycle
-        nPoSeBanHeight = nHeight + static_cast<int>(masterNodeCtrl.masternodeManager.size());
+        nPoSeBanHeight = nCurrentHeight + static_cast<int>(masterNodeCtrl.masternodeManager.size());
         LogPrintf("CMasternode::Check -- Masternode %s is banned till block %d now\n", vin.prevout.ToStringShort(), nPoSeBanHeight);
         return;
     }
 
-    int nActiveStatePrev = nActiveState;
-    bool fOurMasternode = masterNodeCtrl.IsMasterNode() && masterNodeCtrl.activeMasternode.pubKeyMasternode == pubKeyMasternode;
+    const int nActiveStatePrev = nActiveState;
+    const bool fOurMasternode = masterNodeCtrl.IsMasterNode() && masterNodeCtrl.activeMasternode.pubKeyMasternode == pubKeyMasternode;
 
-                   // masternode doesn't meet payment protocol requirements ...
-    bool fRequireUpdate = nProtocolVersion < masterNodeCtrl.MasternodeProtocolVersion ||
-                   // or it's our own node and we just updated it to the new protocol but we are still waiting for activation ...
-                   (fOurMasternode && nProtocolVersion < PROTOCOL_VERSION);
-
-    if(fRequireUpdate)
+    // change status to UPDATE_REQUIRED if:
+    //   - masternode doesn't meet payment protocol requirements ... or
+    //   - we're masternode and our current protocol version is less than latest
+    const bool bUpdateRequired = (nProtocolVersion < masterNodeCtrl.GetSupportedProtocolVersion()) ||
+        (fOurMasternode && (nProtocolVersion < PROTOCOL_VERSION));
+    if (bUpdateRequired)
     {
         nActiveState = MASTERNODE_UPDATE_REQUIRED;
-        if(nActiveStatePrev != nActiveState) {
+        if (nActiveStatePrev != nActiveState)
             LogPrint("masternode", "CMasternode::Check -- Masternode %s is in %s state now\n", vin.prevout.ToStringShort(), GetStateString());
-        }
         return;
     }
 
@@ -306,7 +308,7 @@ bool CMasternode::IsValidNetAddr(CService addrIn)
             (addrIn.IsIPv4() && IsReachable(addrIn) && addrIn.IsRoutable());
 }
 
-masternode_info_t CMasternode::GetInfo()
+masternode_info_t CMasternode::GetInfo() const noexcept
 {
     masternode_info_t info{*this};
     info.nTimeLastPing = lastPing.sigTime;
@@ -427,8 +429,10 @@ bool CMasternode::VerifyCollateral(CollateralStatus& collateralStatus)
         return false;
     }
     
-    if (chainActive.Height() - nHeight + 1 < masterNodeCtrl.nMasternodeMinimumConfirmations) {
-        LogPrintf("CMasternode::VerifyCollateral -- Masternode UTXO must have at least %d confirmations, masternode=%s\n",
+    const int nConfirmations = chainActive.Height() - nHeight + 1;
+    if (nConfirmations < 0 || static_cast<uint32_t>(nConfirmations) < masterNodeCtrl.nMasternodeMinimumConfirmations)
+    {
+        LogPrintf("CMasternode::VerifyCollateral -- Masternode UTXO must have at least %u confirmations, masternode=%s\n",
                     masterNodeCtrl.nMasternodeMinimumConfirmations, vin.prevout.ToStringShort());
         // maybe we miss few blocks, let this mnb to be checked again later
         return false;
@@ -470,9 +474,13 @@ bool CMasternodeBroadcast::Create(string strService, string strKeyMasternode, st
     if (!GetMasternodeOutpointAndKeys(pwalletMain, outpoint, pubKeyCollateralAddressNew, keyCollateralAddressNew, strTxHash, strOutputIndex))
         return fnLog(strprintf("Could not allocate outpoint %s:%s for masternode %s", strTxHash, strOutputIndex, strService));
     
-    int outpointConfirmations = GetUTXOConfirmations(outpoint);
-    if (outpointConfirmations < masterNodeCtrl.nMasternodeMinimumConfirmations) {
-        return fnLog(strprintf("Masternode UTXO must have at least %d confirmations, has only %d", masterNodeCtrl.nMasternodeMinimumConfirmations, outpointConfirmations));
+    const int outpointConfirmations = GetUTXOConfirmations(outpoint);
+    if (outpointConfirmations < 0 || (static_cast<uint32_t>(outpointConfirmations) < masterNodeCtrl.nMasternodeMinimumConfirmations))
+    {
+        string sMsg = strprintf("Masternode UTXO must have at least %u confirmations", masterNodeCtrl.nMasternodeMinimumConfirmations);
+        if (outpointConfirmations >= 0)
+            sMsg += strprintf(", has only %d", outpointConfirmations);
+        return fnLog(sMsg);
     }
     
     CService service;
@@ -563,7 +571,7 @@ bool CMasternodeBroadcast::SimpleCheck(int& nDos)
         nActiveState = MASTERNODE_EXPIRED;
     }
 
-    if(nProtocolVersion < masterNodeCtrl.MasternodeProtocolVersion) {
+    if (nProtocolVersion < masterNodeCtrl.GetSupportedProtocolVersion()) {
         LogPrintf("CMasternodeBroadcast::SimpleCheck -- ignoring outdated Masternode: masternode=%s  nProtocolVersion=%d\n", vin.prevout.ToStringShort(), nProtocolVersion);
         return false;
     }
@@ -879,8 +887,9 @@ bool CMasternodePing::CheckAndUpdate(CMasternode* pmn, bool fFromNewBroadcast, i
 
     {
         LOCK(cs_main);
-        BlockMap::iterator mi = mapBlockIndex.find(blockHash);
-        if ((*mi).second && (*mi).second->nHeight < chainActive.Height() - 24) {
+        const auto mi = mapBlockIndex.find(blockHash);
+        if (mi->second && mi->second->nHeight < chainActive.Height() - 24)
+        {
             LogPrintf("CMasternodePing::CheckAndUpdate -- Masternode ping is invalid, block hash is too old: masternode=%s  blockHash=%s\n", vin.prevout.ToStringShort(), blockHash.ToString());
             // nDos = 1;
             return false;

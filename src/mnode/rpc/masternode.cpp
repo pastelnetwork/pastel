@@ -318,12 +318,12 @@ UniValue masternode_count(const UniValue& params)
     if (strMode == "enabled")
         return static_cast<uint64_t>(masterNodeCtrl.masternodeManager.CountEnabled());
 
-    int nCount;
+    uint32_t nCount = 0;
     masternode_info_t mnInfo;
     masterNodeCtrl.masternodeManager.GetNextMasternodeInQueueForPayment(true, nCount, mnInfo);
 
     if (strMode == "qualify")
-        return nCount;
+        return static_cast<uint64_t>(nCount);
 
     if (strMode == "all")
         return strprintf("Total: %zu (Enabled: %zu / Qualify: %d)",
@@ -334,7 +334,7 @@ UniValue masternode_count(const UniValue& params)
 
 UniValue masternode_winner(const UniValue& params, KeyIO &keyIO, const bool bIsCurrentCmd)
 {
-    int nCount;
+    uint32_t nCount = 0;
     int nHeight;
     masternode_info_t mnInfo;
     CBlockIndex* pindex = nullptr;
