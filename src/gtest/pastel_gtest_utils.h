@@ -4,6 +4,7 @@
 // file COPYING or httpa://www.opensource.org/licenses/mit-license.php.
 
 #include <string>
+#include <consensus/params.h>
 
 int GenZero(int n);
 int GenMax(int n);
@@ -15,3 +16,6 @@ std::string generateRandomId(const size_t nLength);
 // this is for test purposes only - no need to use mkstemp function
 // or ensure that file is unique
 std::string generateTempFileName(const char* szFileExt = ".tmp");
+
+const Consensus::Params& RegtestActivateSapling();
+void RegtestDeactivateSapling();
