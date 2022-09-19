@@ -53,7 +53,7 @@ TEST(TransactionBuilder, Invoke)
     EXPECT_EQ(tx1.valueBalance, -40000);
 
     CValidationState state;
-    EXPECT_TRUE(ContextualCheckTransaction(tx1, state, Params(), 2, 0));
+    EXPECT_TRUE(ContextualCheckTransaction(tx1, state, Params(), 2, true));
     EXPECT_EQ(state.GetRejectReason(), "");
 
     // Prepare to spend the note that was just created
@@ -85,7 +85,7 @@ TEST(TransactionBuilder, Invoke)
     EXPECT_EQ(tx2.vShieldedOutput.size(), 2);
     EXPECT_EQ(tx2.valueBalance, 10000);
 
-    EXPECT_TRUE(ContextualCheckTransaction(tx2, state, Params(), 3, 0));
+    EXPECT_TRUE(ContextualCheckTransaction(tx2, state, Params(), 3, true));
     EXPECT_EQ(state.GetRejectReason(), "");
 
     // Revert to default
@@ -96,7 +96,7 @@ TEST(TransactionBuilder, Invoke)
 TEST(TransactionBuilder, ThrowsOnTransparentInputWithoutKeyStore)
 {
     SelectParams(CBaseChainParams::Network::REGTEST);
-    auto consensusParams = Params().GetConsensus();
+    const auto &consensusParams = Params().GetConsensus();
 
     auto builder = TransactionBuilder(consensusParams, 1);
     ASSERT_THROW(builder.AddTransparentInput(COutPoint(), CScript(), 1), std::runtime_error);
@@ -105,7 +105,7 @@ TEST(TransactionBuilder, ThrowsOnTransparentInputWithoutKeyStore)
 TEST(TransactionBuilder, RejectsInvalidTransparentOutput)
 {
     SelectParams(CBaseChainParams::Network::REGTEST);
-    auto consensusParams = Params().GetConsensus();
+    const auto &consensusParams = Params().GetConsensus();
 
     // Default CTxDestination type is an invalid address
     CTxDestination taddr;
@@ -116,7 +116,7 @@ TEST(TransactionBuilder, RejectsInvalidTransparentOutput)
 TEST(TransactionBuilder, RejectsInvalidTransparentChangeAddress)
 {
     SelectParams(CBaseChainParams::Network::REGTEST);
-    auto consensusParams = Params().GetConsensus();
+    const auto &consensusParams = Params().GetConsensus();
 
     // Default CTxDestination type is an invalid address
     CTxDestination taddr;
@@ -334,7 +334,7 @@ TEST(TransactionBuilder, CheckSaplingTxVersion)
 {
     SelectParams(CBaseChainParams::Network::REGTEST);
     UpdateNetworkUpgradeParameters(Consensus::UpgradeIndex::UPGRADE_OVERWINTER, Consensus::NetworkUpgrade::ALWAYS_ACTIVE);
-    auto consensusParams = Params().GetConsensus();
+    const auto &consensusParams = Params().GetConsensus();
 
     auto sk = libzcash::SaplingSpendingKey::random();
     auto expsk = sk.expanded_spending_key();

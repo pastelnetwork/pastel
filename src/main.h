@@ -382,8 +382,8 @@ bool ContextualCheckTransaction(
     const CTransaction& tx,
     CValidationState &state,
     const CChainParams& chainparams,
-    int nHeight,
-    int dosLevel,
+    const int nHeight,
+    const bool isMined,
     funcIsInitialBlockDownload_t isInitBlockDownload = fnIsInitialBlockDownload);
 
 /** Apply the effects of this transaction on the UTXO set represented by view */
