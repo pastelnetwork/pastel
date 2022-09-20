@@ -1,5 +1,5 @@
 // Copyright (c) 2014 The Bitcoin Core developers
-// Copyright (c) 2021 The Pastel developers
+// Copyright (c) 2021-2022 The Pastel developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -31,14 +31,14 @@ static void TestBlockSubsidyHalvings(const Consensus::Params& consensusParams)
 
 static void TestBlockSubsidyHalvings(int nSubsidyHalvingInterval)
 {
-    Consensus::Params consensusParams;
+    Consensus::Params consensusParams(ChainNetwork::REGTEST);
     consensusParams.nSubsidyHalvingInterval = nSubsidyHalvingInterval;
     TestBlockSubsidyHalvings(consensusParams);
 }
 
 TEST(test_main, block_subsidy_test)
 {
-    auto pChainParams = CreateChainParams(CBaseChainParams::Network::MAIN);
+    auto pChainParams = CreateChainParams(ChainNetwork::MAIN);
     TestBlockSubsidyHalvings(pChainParams->GetConsensus()); // As in main
     TestBlockSubsidyHalvings(500000);
     TestBlockSubsidyHalvings(100000);
@@ -46,7 +46,7 @@ TEST(test_main, block_subsidy_test)
 
 TEST(test_main, subsidy_limit_test)
 {
-    auto pChainParams = CreateChainParams(CBaseChainParams::Network::MAIN);
+    auto pChainParams = CreateChainParams(ChainNetwork::MAIN);
     const auto& consensusParams = pChainParams->GetConsensus();
     CAmount nSum = 0;
     //1002 is the first block with real subsidy

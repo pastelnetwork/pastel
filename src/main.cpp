@@ -1754,8 +1754,11 @@ bool IsInitialBlockDownload(const Consensus::Params& consensusParams)
         return true;
     if (chainActive.Tip()->nChainWork < UintToArith256(consensusParams.nMinimumChainWork))
         return true;
-    if (chainActive.Tip()->GetBlockTime() < (GetTime() - nMaxTipAge))
-        return true;
+    if (consensusParams.network != ChainNetwork::REGTEST)
+    {
+        if (chainActive.Tip()->GetBlockTime() < (GetTime() - nMaxTipAge))
+            return true;
+    }
     LogPrintf("Leaving InitialBlockDownload (latching to false)\n");
     latchToFalse.store(true, memory_order_relaxed);
     return false;
@@ -5608,82 +5611,92 @@ static bool ProcessMessage(const CChainParams& chainparams, CNode* pfrom, string
         pfrom->PushMessage("headers", vHeaders);
     }
 
-    else if (strCommand == "tx" && !bIsInitialBlockDownload) // transaction message, skip in IBD mode
+    else if (strCommand == "tx") // transaction message
     {
         CTransaction tx;
         vRecv >> tx;
+        const auto& txid = tx.GetHash();
 
-        CInv inv(MSG_TX, tx.GetHash());
-        pfrom->AddInventoryKnown(inv);
-
-        LOCK(cs_main);
-
-        bool fMissingInputs = false;
-        CValidationState state;
-
-        pfrom->setAskFor.erase(inv.hash);
-        mapAlreadyAskedFor.erase(inv);
-
-        if (!AlreadyHave(inv) && AcceptToMemoryPool(chainparams, mempool, state, tx, true, &fMissingInputs))
+        // skip tx in IBD mode
+        if (bIsInitialBlockDownload)
         {
-            mempool.check(pcoinsTip);
-            RelayTransaction(tx);
-            LogPrint("mempool", "AcceptToMemoryPool: peer=%d %s: accepted %s (poolsz %u)\n",
-                pfrom->id, pfrom->cleanSubVer,
-                tx.GetHash().ToString(),
-                mempool.mapTx.size());
-
-            // Recursively process any orphan transactions that depended on this one
-            gl_pOrphanTxManager->ProcessOrphanTxs(chainparams, inv.hash, *recentRejects);
-        }
-        // TODO: currently, prohibit shielded spends/outputs from entering mapOrphans
-        else if (fMissingInputs &&
-                 tx.vShieldedSpend.empty() &&
-                 tx.vShieldedOutput.empty())
-        {
-            gl_pOrphanTxManager->AddOrphanTx(tx, pfrom->GetId());
-
-            // DoS prevention: do not allow mapOrphanTransactions to grow unbounded
-            const size_t nMaxOrphanTx = static_cast<size_t>(max<int64_t>(0, GetArg("-maxorphantx", DEFAULT_MAX_ORPHAN_TRANSACTIONS)));
-            const size_t nEvicted = gl_pOrphanTxManager->LimitOrphanTxSize(nMaxOrphanTx);
-            if (nEvicted > 0)
-                LogPrint("mempool", "mapOrphan overflow, removed %zu tx\n", nEvicted);
+            LogPrintf("'tx' message skipped in IBD mode [%s]\n", txid.ToString());
         }
         else
         {
-            assert(recentRejects);
-            recentRejects->insert(tx.GetHash());
+            CInv inv(MSG_TX, txid);
+            pfrom->AddInventoryKnown(inv);
 
-            if (pfrom->fWhitelisted)
+            LOCK(cs_main);
+
+            bool fMissingInputs = false;
+            CValidationState state;
+
+            pfrom->setAskFor.erase(inv.hash);
+            mapAlreadyAskedFor.erase(inv);
+
+            if (!AlreadyHave(inv) && AcceptToMemoryPool(chainparams, mempool, state, tx, true, &fMissingInputs))
             {
-                // Always relay transactions received from whitelisted peers, even
-                // if they were already in the mempool or rejected from it due
-                // to policy, allowing the node to function as a gateway for
-                // nodes hidden behind it.
-                //
-                // Never relay transactions that we would assign a non-zero DoS
-                // score for, as we expect peers to do the same with us in that
-                // case.
-                int nDoS = 0;
-                if (!state.IsInvalid(nDoS) || nDoS == 0) {
-                    LogPrintf("Force relaying tx %s from whitelisted peer=%d\n", tx.GetHash().ToString(), pfrom->id);
-                    RelayTransaction(tx);
-                } else {
-                    LogPrintf("Not relaying invalid transaction %s from whitelisted peer=%d (%s (code %d))\n",
-                        tx.GetHash().ToString(), pfrom->id, state.GetRejectReason(), state.GetRejectCode());
+                mempool.check(pcoinsTip);
+                RelayTransaction(tx);
+                LogPrint("mempool", "AcceptToMemoryPool: peer=%d %s: accepted %s (poolsz %u)\n",
+                    pfrom->id, pfrom->cleanSubVer,
+                    txid.ToString(),
+                    mempool.mapTx.size());
+
+                // Recursively process any orphan transactions that depended on this one
+                gl_pOrphanTxManager->ProcessOrphanTxs(chainparams, inv.hash, *recentRejects);
+            }
+            // TODO: currently, prohibit shielded spends/outputs from entering mapOrphans
+            else if (fMissingInputs &&
+                tx.vShieldedSpend.empty() &&
+                tx.vShieldedOutput.empty())
+            {
+                gl_pOrphanTxManager->AddOrphanTx(tx, pfrom->GetId());
+
+                // DoS prevention: do not allow mapOrphanTransactions to grow unbounded
+                const size_t nMaxOrphanTx = static_cast<size_t>(max<int64_t>(0, GetArg("-maxorphantx", DEFAULT_MAX_ORPHAN_TRANSACTIONS)));
+                const size_t nEvicted = gl_pOrphanTxManager->LimitOrphanTxSize(nMaxOrphanTx);
+                if (nEvicted > 0)
+                    LogPrint("mempool", "mapOrphan overflow, removed %zu tx\n", nEvicted);
+            }
+            else
+            {
+                assert(recentRejects);
+                recentRejects->insert(txid);
+
+                if (pfrom->fWhitelisted)
+                {
+                    // Always relay transactions received from whitelisted peers, even
+                    // if they were already in the mempool or rejected from it due
+                    // to policy, allowing the node to function as a gateway for
+                    // nodes hidden behind it.
+                    //
+                    // Never relay transactions that we would assign a non-zero DoS
+                    // score for, as we expect peers to do the same with us in that
+                    // case.
+                    int nDoS = 0;
+                    if (!state.IsInvalid(nDoS) || nDoS == 0) {
+                        LogPrintf("Force relaying tx %s from whitelisted peer=%d\n", txid.ToString(), pfrom->id);
+                        RelayTransaction(tx);
+                    }
+                    else {
+                        LogPrintf("Not relaying invalid transaction %s from whitelisted peer=%d (%s (code %d))\n",
+                            txid.ToString(), pfrom->id, state.GetRejectReason(), state.GetRejectCode());
+                    }
                 }
             }
-        }
-        int nDoS = 0;
-        if (state.IsInvalid(nDoS))
-        {
-            LogPrint("mempool", "%s from peer=%d %s was not accepted into the memory pool: %s\n", tx.GetHash().ToString(),
-                pfrom->id, pfrom->cleanSubVer,
-                state.GetRejectReason());
-            pfrom->PushMessage("reject", strCommand, state.GetRejectCode(),
-                               state.GetRejectReason().substr(0, MAX_REJECT_MESSAGE_LENGTH), inv.hash);
-            if (nDoS > 0)
-                Misbehaving(pfrom->GetId(), nDoS);
+            int nDoS = 0;
+            if (state.IsInvalid(nDoS))
+            {
+                LogPrint("mempool", "%s from peer=%d %s was not accepted into the memory pool: %s\n", txid.ToString(),
+                    pfrom->id, pfrom->cleanSubVer,
+                    state.GetRejectReason());
+                pfrom->PushMessage("reject", strCommand, state.GetRejectCode(),
+                    state.GetRejectReason().substr(0, MAX_REJECT_MESSAGE_LENGTH), inv.hash);
+                if (nDoS > 0)
+                    Misbehaving(pfrom->GetId(), nDoS);
+            }
         }
     }
 

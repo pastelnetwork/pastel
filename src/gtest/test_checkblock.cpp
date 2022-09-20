@@ -1,13 +1,18 @@
+// Copyright (c) 2018-2022 The Pastel developers
+// Distributed under the MIT software license, see the accompanying
+// file COPYING or https://www.opensource.org/licenses/mit-license.php.
+
 #include <mock_validation_state.h>
 
-#include "main.h"
-#include "key_io.h"
-#include "zcash/Proof.hpp"
-#include "clientversion.h"
+#include <main.h>
+#include <key_io.h>
+#include <zcash/Proof.hpp>
+#include <clientversion.h>
 
 
-TEST(CheckBlock, VersionTooLow) {
-    SelectParams(CBaseChainParams::Network::MAIN);
+TEST(CheckBlock, VersionTooLow)
+{
+    SelectParams(ChainNetwork::MAIN);
     auto verifier = libzcash::ProofVerifier::Strict();
 
     CBlock block;
@@ -21,8 +26,9 @@ TEST(CheckBlock, VersionTooLow) {
 
 // Test that a Sprout tx with negative version is still rejected
 // by CheckBlock under Sprout consensus rules.
-TEST(CheckBlock, BlockSproutRejectsBadVersion) {
-    SelectParams(CBaseChainParams::Network::MAIN);
+TEST(CheckBlock, BlockSproutRejectsBadVersion)
+{
+    SelectParams(ChainNetwork::MAIN);
     const auto& chainparams = Params();
 
     CMutableTransaction mtx;
@@ -59,7 +65,7 @@ class ContextualCheckBlockTest : public ::testing::Test
 protected:
     void SetUp() override
     {
-        SelectParams(CBaseChainParams::Network::MAIN);
+        SelectParams(ChainNetwork::MAIN);
     }
 
     void TearDown() override
@@ -203,7 +209,7 @@ TEST_F(ContextualCheckBlockTest, BlockSproutRulesAcceptSproutTx) {
 
 // Test block evaluated under Overwinter rules will accept Overwinter transactions.
 TEST_F(ContextualCheckBlockTest, BlockOverwinterRulesAcceptOverwinterTx) {
-    SelectParams(CBaseChainParams::Network::REGTEST);
+    SelectParams(ChainNetwork::REGTEST);
     UpdateNetworkUpgradeParameters(Consensus::UpgradeIndex::UPGRADE_OVERWINTER, 1);
 
     CMutableTransaction mtx = GetFirstBlockCoinbaseTx();
@@ -220,7 +226,7 @@ TEST_F(ContextualCheckBlockTest, BlockOverwinterRulesAcceptOverwinterTx) {
 
 // Test that a block evaluated under Sapling rules can contain Sapling transactions.
 TEST_F(ContextualCheckBlockTest, BlockSaplingRulesAcceptSaplingTx) {
-    SelectParams(CBaseChainParams::Network::REGTEST);
+    SelectParams(ChainNetwork::REGTEST);
     UpdateNetworkUpgradeParameters(Consensus::UpgradeIndex::UPGRADE_OVERWINTER, 1);
     UpdateNetworkUpgradeParameters(Consensus::UpgradeIndex::UPGRADE_SAPLING, 1);
 
@@ -273,7 +279,7 @@ TEST_F(ContextualCheckBlockTest, BlockSproutRulesRejectOtherTx)
 // transactions.
 TEST_F(ContextualCheckBlockTest, BlockOverwinterRulesRejectOtherTx)
 {
-    SelectParams(CBaseChainParams::Network::REGTEST);
+    SelectParams(ChainNetwork::REGTEST);
     UpdateNetworkUpgradeParameters(Consensus::UpgradeIndex::UPGRADE_OVERWINTER, 1);
 
     CMutableTransaction mtx = GetFirstBlockCoinbaseTx();
@@ -300,7 +306,7 @@ TEST_F(ContextualCheckBlockTest, BlockOverwinterRulesRejectOtherTx)
 
 // Test block evaluated under Sapling rules cannot contain non-Sapling transactions.
 TEST_F(ContextualCheckBlockTest, BlockSaplingRulesRejectOtherTx) {
-    SelectParams(CBaseChainParams::Network::REGTEST);
+    SelectParams(ChainNetwork::REGTEST);
     UpdateNetworkUpgradeParameters(Consensus::UpgradeIndex::UPGRADE_OVERWINTER, 1);
     UpdateNetworkUpgradeParameters(Consensus::UpgradeIndex::UPGRADE_SAPLING, 1);
 

@@ -17,7 +17,7 @@ using namespace std;
 // TODO: checkpoints have been removed for now.
 TEST(checkpoints, totalblocks)
 {
-    auto chainparams = CreateChainParams(CBaseChainParams::Network::MAIN);
+    auto chainparams = CreateChainParams(ChainNetwork::MAIN);
     ASSERT_NE(chainparams, nullptr);
     const CCheckpointData& checkpoints = chainparams->Checkpoints();
     EXPECT_GE(Checkpoints::GetTotalBlocksEstimate(checkpoints), 237'200u);

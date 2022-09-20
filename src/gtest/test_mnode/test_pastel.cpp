@@ -37,7 +37,7 @@ public:
 
     static void SetupTestSuite()
     {
-        SelectParams(CBaseChainParams::Network::REGTEST);
+        SelectParams(ChainNetwork::REGTEST);
         SecureString sPassPhrase("passphrase");
         m_sPastelID = TEST_PASTEL_ID;
     }

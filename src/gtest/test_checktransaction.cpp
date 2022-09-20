@@ -80,7 +80,7 @@ TEST(checktransaction_tests, bad_txns_vout_empty)
 
 TEST(checktransaction_tests, bad_txns_oversize) 
 {
-    SelectParams(CBaseChainParams::Network::REGTEST);
+    SelectParams(ChainNetwork::REGTEST);
     CMutableTransaction mtx = GetValidTransaction();
 
     mtx.vin[0].scriptSig = CScript();
@@ -498,7 +498,7 @@ TEST(checktransaction_tests, overwinter_version_low)
 // Test bad Overwinter version number in ContextualCheckTransaction
 TEST(checktransaction_tests, overwinter_version_high)
 {
-    SelectParams(CBaseChainParams::Network::REGTEST);
+    SelectParams(ChainNetwork::REGTEST);
     UpdateNetworkUpgradeParameters(Consensus::UpgradeIndex::UPGRADE_OVERWINTER, Consensus::NetworkUpgrade::ALWAYS_ACTIVE);
 
     CMutableTransaction mtx = GetValidTransaction();
@@ -537,7 +537,7 @@ TEST(checktransaction_tests, overwinter_bad_VersionGroupId)
 // This tests an Overwinter transaction checked against Sprout
 TEST(checktransaction_tests, overwinter_not_active)
 {
-    SelectParams(CBaseChainParams::Network::TESTNET);
+    SelectParams(ChainNetwork::TESTNET);
 
     CMutableTransaction mtx = GetValidTransaction();
     mtx.fOverwintered = true;
@@ -564,7 +564,7 @@ TEST(checktransaction_tests, overwinter_not_active)
 // This tests a transaction without the fOverwintered flag set, against the Overwinter consensus rule set.
 TEST(checktransaction_tests, overwinter_flag_not_set)
 {
-    SelectParams(CBaseChainParams::Network::REGTEST);
+    SelectParams(ChainNetwork::REGTEST);
     UpdateNetworkUpgradeParameters(Consensus::UpgradeIndex::UPGRADE_OVERWINTER, Consensus::NetworkUpgrade::ALWAYS_ACTIVE);
 
     CMutableTransaction mtx = GetValidTransaction();
@@ -620,7 +620,7 @@ static void ContextualCreateTxCheck(const Consensus::Params& params, const int n
 // Test CreateNewContextualCMutableTransaction sets default values based on height
 TEST(checktransaction_tests, OverwinteredContextualCreateTx)
 {
-    SelectParams(CBaseChainParams::Network::REGTEST);
+    SelectParams(ChainNetwork::REGTEST);
     const Consensus::Params& consensusParams = Params().GetConsensus();
     int overwinterActivationHeight = 5;
     int saplingActivationHeight = 30;

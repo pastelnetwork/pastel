@@ -30,7 +30,7 @@ class TestAccounting : public Test
 public:
     static void SetUpTestSuite()
     {
-        gl_pPastelTestEnv->InitializeChainTest(CBaseChainParams::Network::TESTNET);
+        gl_pPastelTestEnv->InitializeChainTest(ChainNetwork::TESTNET);
     }
 
     static void TearDownTestSuite()

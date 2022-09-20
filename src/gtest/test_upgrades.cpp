@@ -13,7 +13,7 @@ class UpgradesTest : public Test
 protected:
     static void SetUpTestSuite()
     {
-        SelectParams(CBaseChainParams::Network::REGTEST);
+        SelectParams(ChainNetwork::REGTEST);
     }
 
     void TearDown() override

@@ -10,6 +10,7 @@
 #include <uint256.h>
 #include <key_constants.h>
 #include <enum_util.h>
+#include <consensus/consensus.h>
 
 namespace Consensus {
 
@@ -94,7 +95,11 @@ struct Params
     int64_t nMaxGovernanceAmount;
     // The period before a network upgrade activates, where connections to upgrading peers are preferred (in blocks)
     uint32_t nNetworkUpgradePeerPreferenceBlockPeriod = 0;
+    ChainNetwork network;
 
+    Params(const ChainNetwork aNetwork) :
+        network(aNetwork)
+    {}
 
     /**
      * Add network upgrade.
@@ -115,5 +120,6 @@ struct Params
         const auto nUpgradeIndex = to_integral_type(idx);
         vUpgrades[nUpgradeIndex].nActivationHeight = nActivationHeight;
     }
+
 };
 } // namespace Consensus

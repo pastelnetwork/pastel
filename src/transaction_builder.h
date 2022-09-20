@@ -1,21 +1,20 @@
+#pragma once
 // Copyright (c) 2018 The Zcash developers
+// Copyright (c) 2018-2022 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
-// file COPYING or http://www.opensource.org/licenses/mit-license.php.
+// file COPYING or https://www.opensource.org/licenses/mit-license.php.
+#include <optional>
 
-#ifndef TRANSACTION_BUILDER_H
-#define TRANSACTION_BUILDER_H
-
+#include <uint256.h>
 #include <consensus/params.h>
 #include <keystore.h>
 #include <primitives/transaction.h>
 #include <script/script.h>
 #include <script/standard.h>
-#include <uint256.h>
 #include <zcash/Address.hpp>
 #include <zcash/IncrementalMerkleTree.hpp>
 #include <zcash/Note.hpp>
 #include <zcash/NoteEncryption.hpp>
-#include <optional>
 
 struct SpendDescriptionInfo {
     libzcash::SaplingExpandedSpendingKey expsk;
@@ -51,7 +50,8 @@ struct TransparentInputInfo {
         CAmount value) : scriptPubKey(scriptPubKey), value(value) {}
 };
 
-class TransactionBuilderResult {
+class TransactionBuilderResult
+{
 private:
     std::optional<CTransaction> maybeTx;
     std::optional<std::string> maybeError;
@@ -68,7 +68,7 @@ public:
 class TransactionBuilder
 {
 private:
-    Consensus::Params consensusParams;
+    const Consensus::Params &consensusParams;
     int nHeight;
     const CKeyStore* keystore;
     CMutableTransaction mtx;
@@ -82,8 +82,7 @@ private:
     std::optional<CTxDestination> tChangeAddr;
 
 public:
-    TransactionBuilder() : consensusParams{}, nHeight{}, keystore{} {}
-    TransactionBuilder(const Consensus::Params& consensusParams, int nHeight, CKeyStore* keyStore = nullptr);
+    TransactionBuilder(const Consensus::Params& consensusParams, const int nHeight, CKeyStore* keyStore = nullptr);
 
     void SetFee(CAmount fee);
 
@@ -112,5 +111,3 @@ public:
 
     TransactionBuilderResult Build();
 };
-
-#endif /* TRANSACTION_BUILDER_H */

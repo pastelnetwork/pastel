@@ -61,7 +61,7 @@ std::string generateTempFileName(const char* szFileExt)
 // Sapling
 const Consensus::Params& RegtestActivateSapling()
 {
-    SelectParams(CBaseChainParams::Network::REGTEST);
+    SelectParams(ChainNetwork::REGTEST);
     UpdateNetworkUpgradeParameters(Consensus::UpgradeIndex::UPGRADE_OVERWINTER, Consensus::NetworkUpgrade::ALWAYS_ACTIVE);
     UpdateNetworkUpgradeParameters(Consensus::UpgradeIndex::UPGRADE_SAPLING, Consensus::NetworkUpgrade::ALWAYS_ACTIVE);
     return Params().GetConsensus();

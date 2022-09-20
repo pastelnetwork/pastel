@@ -16,7 +16,7 @@
 #ifdef GOVERNANCE_TICKETS
 TEST(mnode_governance, CalculateLastPaymentBlock)
 {
-    SelectParams(CBaseChainParams::Network::TESTNET);
+    SelectParams(ChainNetwork::TESTNET);
 
     CMasternodeGovernance gov;
 
@@ -34,7 +34,7 @@ TEST(mnode_governance, CalculateLastPaymentBlock)
 
 TEST(mnode_governance, TicketProcessing)
 {
-    SelectParams(CBaseChainParams::Network::TESTNET);
+    SelectParams(ChainNetwork::TESTNET);
 
     std::string address("tPVQMdSyVnSYgrww5TTXSJeF75aPQ3bAfdm");
     

@@ -312,11 +312,13 @@ static CBlock CreateRegtestGenesisBlock()
 
 const arith_uint256 maxUint = UintToArith256(uint256S("ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"));
 
-class CMainParams : public CChainParams {
+class CMainParams : public CChainParams
+{
 public:
-    CMainParams() {
+    CMainParams() :
+        CChainParams(ChainNetwork::MAIN)
+    {
         strNetworkID = "main";
-        network = CBaseChainParams::Network::MAIN;
         strCurrencyUnits = "PSL";
         bip44CoinType = 133; // As registered in https://github.com/patoshilabs/slips/blob/master/slip-0044.md
         consensus.nSubsidyHalvingInterval = 840'000;
@@ -418,11 +420,13 @@ public:
 /**
  * Testnet (v3)
  */
-class CTestNetParams : public CChainParams {
+class CTestNetParams : public CChainParams
+{
 public:
-    CTestNetParams() {
+    CTestNetParams() :
+        CChainParams(ChainNetwork::TESTNET)
+    {
         strNetworkID = "test";
-        network = CBaseChainParams::Network::TESTNET;
         strCurrencyUnits = "LSP";
         bip44CoinType = 1;
         consensus.nSubsidyHalvingInterval = 840'000;
@@ -519,12 +523,13 @@ public:
 /**
  * Regression test
  */
-class CRegTestParams : public CChainParams {
+class CRegTestParams : public CChainParams
+{
 public:
-    CRegTestParams()
+    CRegTestParams() :
+        CChainParams(ChainNetwork::REGTEST)
     {
         strNetworkID = "regtest";
-        network = CBaseChainParams::Network::REGTEST;
         strCurrencyUnits = "REG";
         bip44CoinType = 1;
         consensus.nSubsidyHalvingInterval = 150;
@@ -626,20 +631,20 @@ const CChainParams &Params()
  * \param network - MAIN, TESTNET or REGTEST
  * \return unique_ptr with chain parameters
  */
-std::unique_ptr<const CChainParams> CreateChainParams(const CBaseChainParams::Network network)
+std::unique_ptr<const CChainParams> CreateChainParams(const ChainNetwork network)
 {
     std::unique_ptr<CChainParams> ChainParams;
     switch (network)
     {
-        case CBaseChainParams::Network::MAIN:
+        case ChainNetwork::MAIN:
             ChainParams = std::make_unique<CMainParams>();
             break;
 
-        case CBaseChainParams::Network::TESTNET:
+        case ChainNetwork::TESTNET:
             ChainParams = std::make_unique<CTestNetParams>();
             break;
 
-        case CBaseChainParams::Network::REGTEST:
+        case ChainNetwork::REGTEST:
             ChainParams = std::make_unique<CRegTestParams>();
             break;
 
@@ -656,7 +661,7 @@ std::unique_ptr<const CChainParams> CreateChainParams(const CBaseChainParams::Ne
  * 
  * \param network - blockchain network type (MAIN, TESTNET or REGTEST)
  */
-void SelectParams(const CBaseChainParams::Network network)
+void SelectParams(const ChainNetwork network)
 {
     SelectBaseParams(network);
     globalChainParams = CreateChainParams(network);
@@ -664,8 +669,8 @@ void SelectParams(const CBaseChainParams::Network network)
 
 bool SelectParamsFromCommandLine()
 {
-    CBaseChainParams::Network network = NetworkIdFromCommandLine();
-    if (network == CBaseChainParams::Network::MAX_NETWORK_TYPES)
+    const ChainNetwork network = NetworkIdFromCommandLine();
+    if (network == ChainNetwork::MAX_NETWORK_TYPES)
         return false;
 
     SelectParams(network);

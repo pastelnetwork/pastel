@@ -1,12 +1,11 @@
 // Copyright (c) 2010 Satoshi Nakamoto
 // Copyright (c) 2009-2014 The Bitcoin Core developers
-// Copyright (c) 2018-2021 Pastel Core developers
+// Copyright (c) 2018-2022 Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php .
 
 #include <stdint.h>
 #include <numeric>
-#include <optional>
 #include <variant>
 
 #include <univalue.h>
@@ -3699,7 +3698,10 @@ Examples:
     auto fromaddress = params[0].get_str();
     bool fromTaddr = false;
     bool bFromSapling = false;
-    KeyIO keyIO(Params());
+
+    const auto& chainparams = Params();
+    const auto& consensusParams = chainparams.GetConsensus();
+    KeyIO keyIO(chainparams);
     CTxDestination taddr = keyIO.DecodeDestination(fromaddress);
     fromTaddr = IsValidDestination(taddr);
     if (!fromTaddr)
@@ -3793,7 +3795,7 @@ Examples:
     mtx.nVersion = SAPLING_TX_VERSION;
     constexpr auto max_tx_size = MAX_TX_SIZE_AFTER_SAPLING;
     // If Sapling is not active, do not allow sending from or sending to Sapling addresses.
-    if (!NetworkUpgradeActive(nextBlockHeight, Params().GetConsensus(), Consensus::UpgradeIndex::UPGRADE_SAPLING))
+    if (!NetworkUpgradeActive(nextBlockHeight, consensusParams, Consensus::UpgradeIndex::UPGRADE_SAPLING))
     {
         if (bFromSapling || bContainsSaplingOutput)
             throw JSONRPCError(RPC_INVALID_PARAMETER, "Invalid parameter, Sapling has not activated");
@@ -3860,18 +3862,18 @@ Examples:
     UniValue contextInfo = o;
 
     // Builder (used if Sapling addresses are involved)
-    optional<TransactionBuilder> builder = TransactionBuilder(Params().GetConsensus(), nextBlockHeight, pwalletMain);
+    auto builder = make_unique<TransactionBuilder>(consensusParams, nextBlockHeight, pwalletMain);
 
     // Contextual transaction we will build on
     // (used if no Sapling addresses are involved)
-    CMutableTransaction contextualTx = CreateNewContextualCMutableTransaction(Params().GetConsensus(), nextBlockHeight);
+    CMutableTransaction contextualTx = CreateNewContextualCMutableTransaction(consensusParams, nextBlockHeight);
     const bool isShielded = !fromTaddr || zaddrRecipients.size() > 0;
     if (contextualTx.nVersion == 1 && isShielded)
         contextualTx.nVersion = 2; // Tx format should support vjoinsplits 
 
     // Create operation and add to global queue
     auto q = getAsyncRPCQueue();
-    auto operation = make_shared<AsyncRPCOperation_sendmany>(builder, contextualTx, fromaddress, taddrRecipients, zaddrRecipients, nMinDepth, nFee, contextInfo, bReturnChangeToSenderAddr);
+    auto operation = make_shared<AsyncRPCOperation_sendmany>(move(builder), contextualTx, fromaddress, taddrRecipients, zaddrRecipients, nMinDepth, nFee, contextInfo, bReturnChangeToSenderAddr);
     q->addOperation(operation);
     AsyncRPCOperationId operationId = operation->getId();
     return operationId;
@@ -3945,7 +3947,11 @@ Examples:
     // Validate the from address
     auto fromaddress = params[0].get_str();
     bool isFromWildcard = fromaddress == "*";
-    KeyIO keyIO(Params());
+
+    const auto& chainparams = Params();
+    const auto& consensusParams = chainparams.GetConsensus();
+
+    KeyIO keyIO(chainparams);
     CTxDestination taddr;
     if (!isFromWildcard) {
         taddr = keyIO.DecodeDestination(fromaddress);
@@ -3979,13 +3985,13 @@ Examples:
     }
 
     const uint32_t nextBlockHeight = chainActive.Height() + 1;
-    bool overwinterActive = NetworkUpgradeActive(nextBlockHeight, Params().GetConsensus(), Consensus::UpgradeIndex::UPGRADE_OVERWINTER);
+    bool overwinterActive = NetworkUpgradeActive(nextBlockHeight, consensusParams, Consensus::UpgradeIndex::UPGRADE_OVERWINTER);
     unsigned int max_tx_size = MAX_TX_SIZE_AFTER_SAPLING;
-    if (!NetworkUpgradeActive(nextBlockHeight, Params().GetConsensus(), Consensus::UpgradeIndex::UPGRADE_SAPLING))
+    if (!NetworkUpgradeActive(nextBlockHeight, consensusParams, Consensus::UpgradeIndex::UPGRADE_SAPLING))
         max_tx_size = MAX_TX_SIZE_BEFORE_SAPLING;
 
     // If Sapling is not active, do not allow sending to a Sapling address.
-    if (!NetworkUpgradeActive(nextBlockHeight, Params().GetConsensus(), Consensus::UpgradeIndex::UPGRADE_SAPLING))
+    if (!NetworkUpgradeActive(nextBlockHeight, consensusParams, Consensus::UpgradeIndex::UPGRADE_SAPLING))
     {
         const auto res = keyIO.DecodePaymentAddress(destaddress);
         if (!IsValidPaymentAddress(res))
@@ -4081,20 +4087,18 @@ Examples:
     contextInfo.pushKV("fee", ValueFromAmount(nFee));
 
     // Builder (used if Sapling addresses are involved)
-    TransactionBuilder builder = TransactionBuilder(
-        Params().GetConsensus(), nextBlockHeight, pwalletMain);
+    auto builder = make_unique<TransactionBuilder>(consensusParams, nextBlockHeight, pwalletMain);
 
     // Contextual transaction we will build on
     // (used if no Sapling addresses are involved)
-    CMutableTransaction contextualTx = CreateNewContextualCMutableTransaction(
-        Params().GetConsensus(), nextBlockHeight);
+    CMutableTransaction contextualTx = CreateNewContextualCMutableTransaction(consensusParams, nextBlockHeight);
     if (contextualTx.nVersion == 1) {
         contextualTx.nVersion = 2; // Tx format should support vjoinsplits 
     }
 
     // Create operation and add to global queue
     shared_ptr<AsyncRPCQueue> q = getAsyncRPCQueue();
-    shared_ptr<AsyncRPCOperation> operation( new AsyncRPCOperation_shieldcoinbase(builder, contextualTx, inputs, destaddress, nFee, contextInfo) );
+    auto operation = make_shared<AsyncRPCOperation_shieldcoinbase>(move(builder), contextualTx, inputs, destaddress, nFee, contextInfo);
     q->addOperation(operation);
     AsyncRPCOperationId operationId = operation->getId();
 
@@ -4199,9 +4203,13 @@ Examples:
     // Keep track of addresses to spot duplicates
     set<string> setAddress;
 
-    KeyIO keyIO(Params());
+    const auto& chainparams = Params();
+    const auto& consensusParams = chainparams.GetConsensus();
+
+    KeyIO keyIO(chainparams);
     // Sources
-    for (const UniValue& o : addresses.getValues()) {
+    for (const UniValue& o : addresses.getValues())
+    {
         if (!o.isStr())
             throw JSONRPCError(RPC_INVALID_PARAMETER, "Invalid parameter, expected string");
 
@@ -4238,8 +4246,8 @@ Examples:
     }
 
     const uint32_t nextBlockHeight = chainActive.Height() + 1;
-    const bool overwinterActive = NetworkUpgradeActive(nextBlockHeight, Params().GetConsensus(), Consensus::UpgradeIndex::UPGRADE_OVERWINTER);
-    const bool saplingActive = NetworkUpgradeActive(nextBlockHeight, Params().GetConsensus(), Consensus::UpgradeIndex::UPGRADE_SAPLING);
+    const bool overwinterActive = NetworkUpgradeActive(nextBlockHeight, consensusParams, Consensus::UpgradeIndex::UPGRADE_OVERWINTER);
+    const bool saplingActive = NetworkUpgradeActive(nextBlockHeight, consensusParams, Consensus::UpgradeIndex::UPGRADE_SAPLING);
 
     // Validate the destination address
     auto destaddress = params[1].get_str();
@@ -4439,18 +4447,15 @@ Examples:
     contextInfo.pushKV("fee", ValueFromAmount(nFee));
 
     // Contextual transaction we will build on
-    CMutableTransaction contextualTx = CreateNewContextualCMutableTransaction(
-        Params().GetConsensus(),
-        nextBlockHeight);
+    CMutableTransaction contextualTx = CreateNewContextualCMutableTransaction(consensusParams, nextBlockHeight);
     // Builder (used if Sapling addresses are involved)
-    optional<TransactionBuilder> builder;
-    if (isToSaplingZaddr || saplingNoteInputs.size() > 0) {
-        builder = TransactionBuilder(Params().GetConsensus(), nextBlockHeight, pwalletMain);
-    }
+    unique_ptr<TransactionBuilder> builder;
+    if (isToSaplingZaddr || saplingNoteInputs.size() > 0)
+        builder = make_unique<TransactionBuilder>(consensusParams, nextBlockHeight, pwalletMain);
     // Create operation and add to global queue
     shared_ptr<AsyncRPCQueue> q = getAsyncRPCQueue();
     shared_ptr<AsyncRPCOperation> operation(
-        new AsyncRPCOperation_mergetoaddress(builder, contextualTx, utxoInputs, saplingNoteInputs, recipient, nFee, contextInfo) );
+        new AsyncRPCOperation_mergetoaddress(move(builder), contextualTx, utxoInputs, saplingNoteInputs, recipient, nFee, contextInfo) );
     q->addOperation(operation);
     AsyncRPCOperationId operationId = operation->getId();
 

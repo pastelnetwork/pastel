@@ -121,7 +121,7 @@ public:
 
 TEST_F(TestRpcWallet1, rpc_wallet)
 {
-    SelectParams(CBaseChainParams::Network::MAIN);
+    SelectParams(ChainNetwork::MAIN);
     // Test RPC calls for various wallet statistics
     UniValue r;
 
@@ -323,7 +323,7 @@ TEST_F(TestRpcWallet1, rpc_wallet)
 
 TEST_F(TestRpcWallet, rpc_wallet_getbalance)
 {
-    SelectParams(CBaseChainParams::Network::TESTNET);
+    SelectParams(ChainNetwork::TESTNET);
 
     LOCK2(cs_main, pwalletMain->cs_wallet);
 
@@ -355,7 +355,7 @@ TEST_F(TestRpcWallet, rpc_wallet_getbalance)
  */
 TEST_F(TestRpcWallet, rpc_wallet_z_validateaddress)
 {
-    SelectParams(CBaseChainParams::Network::MAIN);
+    SelectParams(ChainNetwork::MAIN);
 
     LOCK2(cs_main, pwalletMain->cs_wallet);
 
@@ -760,7 +760,7 @@ TEST_F(TestRpcWallet, rpc_z_getoperations)
 
 TEST_F(TestRpcWallet, rpc_z_sendmany_parameters)
 {
-    SelectParams(CBaseChainParams::Network::TESTNET);
+    SelectParams(ChainNetwork::TESTNET);
     KeyIO keyIO(Params());
     LOCK2(cs_main, pwalletMain->cs_wallet);
 
@@ -820,33 +820,33 @@ TEST_F(TestRpcWallet, rpc_z_sendmany_parameters)
     vector<SendManyRecipient> vZRecipients; // vector of z-address recipients
     // Test constructor of AsyncRPCOperation_sendmany
     try {
-        auto operation = make_shared<AsyncRPCOperation_sendmany>(nullopt, mtx, "", vTRecipients, vZRecipients, -1);
+        auto operation = make_shared<AsyncRPCOperation_sendmany>(nullptr, mtx, "", vTRecipients, vZRecipients, -1);
     } catch (const UniValue& objError) {
         EXPECT_TRUE( find_error(objError, "Minconf cannot be negative"));
     }
 
     try {
-        auto operation = make_shared<AsyncRPCOperation_sendmany>(nullopt, mtx, "", vTRecipients, vZRecipients, 1);
+        auto operation = make_shared<AsyncRPCOperation_sendmany>(nullptr, mtx, "", vTRecipients, vZRecipients, 1);
     } catch (const UniValue& objError) {
         EXPECT_TRUE( find_error(objError, "From address parameter missing"));
     }
 
     try {
-        auto operation = make_shared<AsyncRPCOperation_sendmany>(nullopt, mtx, "tPmCf9DhN5jv5CgrxDMHRz6wsEjWwM6qJnZ", vTRecipients, vZRecipients, 1);
+        auto operation = make_shared<AsyncRPCOperation_sendmany>(nullptr, mtx, "tPmCf9DhN5jv5CgrxDMHRz6wsEjWwM6qJnZ", vTRecipients, vZRecipients, 1);
     } catch (const UniValue& objError) {
         EXPECT_TRUE( find_error(objError, "No recipients"));
     }
 
     vTRecipients.emplace_back("dummy", 1, "");
     try {
-        auto operation = make_shared<AsyncRPCOperation_sendmany>(nullopt, mtx, "INVALID", vTRecipients, vZRecipients, 1);
+        auto operation = make_shared<AsyncRPCOperation_sendmany>(nullptr, mtx, "INVALID", vTRecipients, vZRecipients, 1);
     } catch (const UniValue& objError) {
         EXPECT_TRUE( find_error(objError, "Invalid from address"));
     }
 
     // Testnet payment addresses begin with 'tZ'.  This test detects an incorrect prefix.
     try {
-        auto operation = make_shared<AsyncRPCOperation_sendmany>(nullopt, mtx, 
+        auto operation = make_shared<AsyncRPCOperation_sendmany>(nullptr, mtx, 
             "tTWgZLnrRJ13fF6YDJmnL32QZqJJD8UfMBcjGhECgF8GTT54SrAkHyvUW5AgbqTF2v4WLRq7Nchrymbr3eyWY2RNoGJjmNL", vTRecipients, vZRecipients, 1);
     } catch (const UniValue& objError) {
         EXPECT_TRUE( find_error(objError, "Invalid from address"));
@@ -855,7 +855,7 @@ TEST_F(TestRpcWallet, rpc_z_sendmany_parameters)
 
 TEST_F(TestRpcWallet, rpc_z_sendmany_taddr_to_sapling)
 {
-    SelectParams(CBaseChainParams::Network::REGTEST);
+    SelectParams(ChainNetwork::REGTEST);
     UpdateNetworkUpgradeParameters(Consensus::UpgradeIndex::UPGRADE_OVERWINTER, Consensus::NetworkUpgrade::ALWAYS_ACTIVE);
     UpdateNetworkUpgradeParameters(Consensus::UpgradeIndex::UPGRADE_SAPLING, Consensus::NetworkUpgrade::ALWAYS_ACTIVE);
 
@@ -867,14 +867,16 @@ TEST_F(TestRpcWallet, rpc_z_sendmany_taddr_to_sapling)
 
     UniValue retValue;
 
-    KeyIO keyIO(Params());
+    const auto& chainparams = Params();
+    const auto &consensusParams = chainparams.GetConsensus();
+
+    KeyIO keyIO(chainparams);
     // add keys manually
     auto taddr = pwalletMain->GenerateNewKey().GetID();
     string taddr1 = keyIO.EncodeDestination(taddr);
     auto pa = pwalletMain->GenerateNewSaplingZKey();
     string zaddr1 = keyIO.EncodePaymentAddress(pa);
 
-    auto consensusParams = Params().GetConsensus();
     retValue = CallRPC("getblockcount");
     int nextBlockHeight = retValue.get_int() + 1;
 
@@ -894,7 +896,7 @@ TEST_F(TestRpcWallet, rpc_z_sendmany_taddr_to_sapling)
     auto blockHash = block.GetHash();
     CBlockIndex fakeIndex {block};
     fakeIndex.nHeight = 1;
-    mapBlockIndex.insert(make_pair(blockHash, &fakeIndex));
+    mapBlockIndex.emplace(blockHash, &fakeIndex);
     chainActive.SetTip(&fakeIndex);
     EXPECT_TRUE(chainActive.Contains(&fakeIndex));
     EXPECT_EQ(1, chainActive.Height());
@@ -902,12 +904,12 @@ TEST_F(TestRpcWallet, rpc_z_sendmany_taddr_to_sapling)
     pwalletMain->AddToWallet(wtx, true, nullptr);
 
     // Context that z_sendmany requires
-    auto builder = TransactionBuilder(consensusParams, nextBlockHeight, pwalletMain);
+    auto builder = make_unique<TransactionBuilder>(consensusParams, nextBlockHeight, pwalletMain);
     mtx = CreateNewContextualCMutableTransaction(consensusParams, nextBlockHeight);
 
     vector<SendManyRecipient> vtRecipients;
     vector<SendManyRecipient> vzRecipients = { SendManyRecipient(zaddr1, 1 * COIN, "ABCD") };
-    auto operation = make_shared<AsyncRPCOperation_sendmany>(builder, mtx, taddr1, vtRecipients, vzRecipients, 0);
+    auto operation = make_shared<AsyncRPCOperation_sendmany>(move(builder), mtx, taddr1, vtRecipients, vzRecipients, 0);
 
     // Enable test mode so tx is not sent
     operation->testmode = true;
@@ -1032,7 +1034,7 @@ TEST_F(TestRpcWallet2, rpc_wallet_encrypted_wallet_sapzkeys)
 
 TEST_F(TestRpcWallet2, rpc_z_listunspent_parameters)
 {
-    SelectParams(CBaseChainParams::Network::TESTNET);
+    SelectParams(ChainNetwork::TESTNET);
 
     LOCK2(cs_main, pwalletMain->cs_wallet);
 
@@ -1069,7 +1071,7 @@ TEST_F(TestRpcWallet2, rpc_z_listunspent_parameters)
 
 TEST_F(TestRpcWallet2, rpc_z_shieldcoinbase_parameters)
 {
-    SelectParams(CBaseChainParams::Network::TESTNET);
+    SelectParams(ChainNetwork::TESTNET);
 
     LOCK2(cs_main, pwalletMain->cs_wallet);
 
@@ -1124,13 +1126,13 @@ TEST_F(TestRpcWallet2, rpc_z_shieldcoinbase_parameters)
 
     vector<ShieldCoinbaseUTXO> vInputs;
     try {
-        auto operation = make_shared<AsyncRPCOperation_shieldcoinbase>(TransactionBuilder(), mtx, vInputs, testnetzaddr, -1);
+        auto operation = make_shared<AsyncRPCOperation_shieldcoinbase>(nullptr, mtx, vInputs, testnetzaddr, -1);
     } catch (const UniValue& objError) {
         EXPECT_TRUE( find_error(objError, "Fee is out of range"));
     }
 
     try {
-        auto operation = make_shared<AsyncRPCOperation_shieldcoinbase>(TransactionBuilder(), mtx, vInputs, testnetzaddr, 1);
+        auto operation = make_shared<AsyncRPCOperation_shieldcoinbase>(nullptr, mtx, vInputs, testnetzaddr, 1);
     } catch (const UniValue& objError) {
         EXPECT_TRUE( find_error(objError, "Empty inputs"));
     }
@@ -1138,7 +1140,7 @@ TEST_F(TestRpcWallet2, rpc_z_shieldcoinbase_parameters)
     // Testnet payment addresses begin with 'tZ'.  This test detects an incorrect prefix.
     try {
         vInputs.emplace_back(uint256(), 0, 0);
-        auto operation = make_shared<AsyncRPCOperation_shieldcoinbase>(TransactionBuilder(), mtx, vInputs, mainnetzaddr, 1);
+        auto operation = make_shared<AsyncRPCOperation_shieldcoinbase>(nullptr, mtx, vInputs, mainnetzaddr, 1);
     } catch (const UniValue& objError) {
         EXPECT_TRUE( find_error(objError, "Invalid to address"));
     }
@@ -1147,7 +1149,7 @@ TEST_F(TestRpcWallet2, rpc_z_shieldcoinbase_parameters)
 
 TEST_F(TestRpcWallet2, rpc_z_mergetoaddress_parameters)
 {
-    SelectParams(CBaseChainParams::Network::TESTNET);
+    SelectParams(ChainNetwork::TESTNET);
 
     LOCK2(cs_main, pwalletMain->cs_wallet);
 
@@ -1235,14 +1237,14 @@ TEST_F(TestRpcWallet2, rpc_z_mergetoaddress_parameters)
     vector<MergeToAddressInputUTXO> utxoInputs;
     vector<MergeToAddressInputSaplingNote> saplingNoteInputs;
     try {
-        auto operation = make_shared<AsyncRPCOperation_mergetoaddress>(nullopt, mtx, utxoInputs, saplingNoteInputs, testnetzaddr, -1);
+        auto operation = make_shared<AsyncRPCOperation_mergetoaddress>(nullptr, mtx, utxoInputs, saplingNoteInputs, testnetzaddr, -1);
         // BOOST_FAIL("Should have caused an error");
     } catch (const UniValue& objError) {
         EXPECT_TRUE( find_error(objError, "Fee is out of range"));
     }
 
     try {
-        auto operation = make_shared<AsyncRPCOperation_mergetoaddress>(nullopt, mtx, utxoInputs, saplingNoteInputs, testnetzaddr, 1);
+        auto operation = make_shared<AsyncRPCOperation_mergetoaddress>(nullptr, mtx, utxoInputs, saplingNoteInputs, testnetzaddr, 1);
         // BOOST_FAIL("Should have caused an error");
     } catch (const UniValue& objError) {
         EXPECT_TRUE( find_error(objError, "No inputs"));
@@ -1251,7 +1253,7 @@ TEST_F(TestRpcWallet2, rpc_z_mergetoaddress_parameters)
     utxoInputs.emplace_back(COutPoint(uint256(), 0), 0, CScript());
     try {
         MergeToAddressRecipient badaddr("", "memo");
-        auto operation = make_shared<AsyncRPCOperation_mergetoaddress>(nullopt, mtx, utxoInputs, saplingNoteInputs, badaddr, 1);
+        auto operation = make_shared<AsyncRPCOperation_mergetoaddress>(nullptr, mtx, utxoInputs, saplingNoteInputs, badaddr, 1);
         // BOOST_FAIL("Should have caused an error");
     } catch (const UniValue& objError) {
         EXPECT_TRUE( find_error(objError, "Recipient parameter missing"));
@@ -1259,7 +1261,7 @@ TEST_F(TestRpcWallet2, rpc_z_mergetoaddress_parameters)
 
     // Testnet payment addresses begin with 'tZ'.  This test detects an incorrect prefix.
     try {
-        auto operation = make_shared<AsyncRPCOperation_mergetoaddress>(nullopt, mtx, utxoInputs, saplingNoteInputs, mainnetzaddr, 1);
+        auto operation = make_shared<AsyncRPCOperation_mergetoaddress>(nullptr, mtx, utxoInputs, saplingNoteInputs, mainnetzaddr, 1);
         // BOOST_FAIL("Should have caused an error");
     } catch (const UniValue& objError) {
         EXPECT_TRUE( find_error(objError, "Invalid recipient address"));

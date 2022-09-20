@@ -1,4 +1,5 @@
 // Copyright (c) 2016 The Zcash developers
+// Copyright (c) 2018-2022 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php .
 
@@ -38,11 +39,11 @@ extern UniValue signrawtransaction(const UniValue& params, bool fHelp);
 extern UniValue sendrawtransaction(const UniValue& params, bool fHelp);
 
 AsyncRPCOperation_sendmany::AsyncRPCOperation_sendmany(
-        optional<TransactionBuilder> builder,
-        CMutableTransaction contextualTx,
+        unique_ptr<TransactionBuilder> builder,
+        const CMutableTransaction &contextualTx,
         string fromAddress,
-        vector<SendManyRecipient> tOutputs,
-        vector<SendManyRecipient> zOutputs,
+        const vector<SendManyRecipient> &tOutputs,
+        const vector<SendManyRecipient> &zOutputs,
         int minDepth,
         CAmount fee,
         UniValue contextInfo,
@@ -58,25 +59,26 @@ AsyncRPCOperation_sendmany::AsyncRPCOperation_sendmany(
 {
     assert(fee_ >= 0);
 
-    if (minDepth < 0) {
+    if (minDepth < 0)
         throw JSONRPCError(RPC_INVALID_PARAMETER, "Minconf cannot be negative");
-    }
 
-    if (fromAddress.size() == 0) {
+    if (fromAddress.empty())
         throw JSONRPCError(RPC_INVALID_PARAMETER, "From address parameter missing");
-    }
 
-    if (tOutputs.size() == 0 && zOutputs.size() == 0) {
+    if (tOutputs.empty() && zOutputs.empty())
         throw JSONRPCError(RPC_INVALID_PARAMETER, "No recipients");
-    }
 
+    const auto& chainparams = Params();
     isUsingBuilder_ = false;
-    if (builder) {
+    if (builder)
+    {
         isUsingBuilder_ = true;
-        builder_ = builder.value();
+        m_builder = move(builder);
     }
+    else
+        m_builder = make_unique<TransactionBuilder>(chainparams.GetConsensus(), 0);
 
-    KeyIO keyIO(Params());
+    KeyIO keyIO(chainparams);
     fromtaddr_ = keyIO.DecodeDestination(fromAddress);
     isfromtaddr_ = IsValidDestination(fromtaddr_);
     isfromzaddr_ = false;
@@ -282,7 +284,7 @@ bool AsyncRPCOperation_sendmany::main_impl() {
                 uint256 txid = get<0>(t);
                 int vout = get<1>(t);
                 CAmount amount = get<2>(t);
-                builder_.AddTransparentInput(COutPoint(txid, vout), scriptPubKey, amount);
+                m_builder->AddTransparentInput(COutPoint(txid, vout), scriptPubKey, amount);
             }
         } else {
             CMutableTransaction rawTx(tx_);
@@ -314,8 +316,9 @@ bool AsyncRPCOperation_sendmany::main_impl() {
      * Sprout not involved, so we just use the TransactionBuilder and we're done.
      * We added the transparent inputs to the builder earlier.
      */
-    if (isUsingBuilder_) {
-        builder_.SetFee(minersFee);
+    if (isUsingBuilder_)
+    {
+        m_builder->SetFee(minersFee);
 
         // Get various necessary keys
         SaplingExpandedSpendingKey expsk;
@@ -363,7 +366,7 @@ bool AsyncRPCOperation_sendmany::main_impl() {
                 changeAddr = fromtaddr_;
             }
 
-            builder_.SendChangeTo(changeAddr);
+            m_builder->SendChangeTo(changeAddr);
         }
 
         // Select Sapling notes
@@ -392,7 +395,7 @@ bool AsyncRPCOperation_sendmany::main_impl() {
         {
             if (!witnesses[i])
                 throw JSONRPCError(RPC_WALLET_ERROR, "Missing witness for Sapling note");
-            builder_.AddSaplingSpend(expsk, notes[i], anchor, witnesses[i].value());
+            m_builder->AddSaplingSpend(expsk, notes[i], anchor, witnesses[i].value());
         }
 
         // Add Sapling outputs
@@ -408,7 +411,7 @@ bool AsyncRPCOperation_sendmany::main_impl() {
 
             auto memo = get_memo_from_hex_string(hexMemo);
 
-            builder_.AddSaplingOutput(ovk, to, value, memo);
+            m_builder->AddSaplingOutput(ovk, to, value, memo);
         }
 
         // Add transparent outputs
@@ -418,11 +421,11 @@ bool AsyncRPCOperation_sendmany::main_impl() {
             const auto amount = get<1>(r);
 
             auto address = keyIO.DecodeDestination(outputAddress);
-            builder_.AddTransparentOutput(address, amount);
+            m_builder->AddTransparentOutput(address, amount);
         }
 
         // Build the transaction
-        tx_ = builder_.Build().GetTxOrThrow();
+        tx_ = m_builder->Build().GetTxOrThrow();
 
         // Send the transaction
         // TODO: Use CWallet::CommitTransaction instead of sendrawtransaction

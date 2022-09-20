@@ -270,7 +270,7 @@ struct ReadAlerts : public Test
 TEST_F(ReadAlerts, AlertApplies)
 {
     SetMockTime(11);
-    auto pChainParams = CreateChainParams(CBaseChainParams::Network::MAIN);
+    auto pChainParams = CreateChainParams(ChainNetwork::MAIN);
     const auto& alertKey = pChainParams->AlertKey();
 
     for (const auto& alert : alerts)
@@ -312,7 +312,7 @@ TEST_F(ReadAlerts, AlertApplies)
 TEST_F(ReadAlerts, AlertNotify)
 {
     SetMockTime(11);
-    auto pChainParams = CreateChainParams(CBaseChainParams::Network::MAIN);
+    auto pChainParams = CreateChainParams(ChainNetwork::MAIN);
     const auto& alertKey = pChainParams->AlertKey();
 
     fs::path temp = GetTempPath() /
@@ -353,7 +353,7 @@ TEST_F(ReadAlerts, AlertNotify)
 TEST_F(ReadAlerts, AlertDisablesRPC)
 {
     SetMockTime(11);
-    auto pChainParams = CreateChainParams(CBaseChainParams::Network::MAIN);
+    auto pChainParams = CreateChainParams(ChainNetwork::MAIN);
     const auto& alertKey = pChainParams->AlertKey();
 
     // Command should work before alerts
@@ -381,7 +381,7 @@ TEST_F(ReadAlerts, PartitionAlert)
     // Test PartitionCheck
     CCriticalSection csDummy;
     CBlockIndex indexDummy[400];
-    auto pChainParams = CreateChainParams(CBaseChainParams::Network::MAIN);
+    auto pChainParams = CreateChainParams(ChainNetwork::MAIN);
     const auto& consensusParams = pChainParams->GetConsensus();
     int64_t nPowTargetSpacing = consensusParams.nPowTargetSpacing;
 

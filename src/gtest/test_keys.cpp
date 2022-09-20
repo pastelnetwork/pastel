@@ -17,7 +17,7 @@ using namespace testing;
 
 TEST(Keys, EncodeAndDecodeSapling)
 {
-    SelectParams(CBaseChainParams::Network::MAIN);
+    SelectParams(ChainNetwork::MAIN);
     KeyIO keyIO(Params());
     
     const auto msk = GetTestMasterSaplingSpendingKey();

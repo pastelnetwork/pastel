@@ -39,7 +39,7 @@ protected:
     virtual void SetUp() {
         uiInterface.ThreadSafeMessageBox.disconnect_all_slots();
         uiInterface.ThreadSafeMessageBox.connect(boost::bind(ThreadSafeMessageBox, &mock_, _1, _2, _3));
-        SelectParams(CBaseChainParams::Network::MAIN);
+        SelectParams(ChainNetwork::MAIN);
         
     }
 
@@ -110,14 +110,14 @@ TEST_F(DeprecationTest, DeprecatedNodeErrorIsRepeatedOnStartup) {
 }
 
 TEST_F(DeprecationTest, DeprecatedNodeIgnoredOnRegtest) {
-    SelectParams(CBaseChainParams::Network::REGTEST);
+    SelectParams(ChainNetwork::REGTEST);
     EXPECT_FALSE(ShutdownRequested());
     EnforceNodeDeprecation(DEPRECATION_HEIGHT+1);
     EXPECT_FALSE(ShutdownRequested());
 }
 
 TEST_F(DeprecationTest, DeprecatedNodeIgnoredOnTestnet) {
-    SelectParams(CBaseChainParams::Network::TESTNET);
+    SelectParams(ChainNetwork::TESTNET);
     EXPECT_FALSE(ShutdownRequested());
     EnforceNodeDeprecation(DEPRECATION_HEIGHT+1);
     EXPECT_FALSE(ShutdownRequested());

@@ -47,14 +47,8 @@ class PTestBip32 : public TestWithParam<TestVector>
 public:
     static void SetUpTestSuite()
     {
-        SelectParams(CBaseChainParams::Network::MAIN);
+        SelectParams(ChainNetwork::MAIN);
     }
-
-    void TearDown() 
-    {
-    }
-
-
 };
 
 TestVector test1 =

@@ -77,7 +77,7 @@ TEST(Validation, ContextualCheckInputsPassesWithCoinbase)
     FakeCoinsViewDB fakeDB;
     CCoinsViewCache view(&fakeDB);
 
-    auto pMainNetParams = CreateChainParams(CBaseChainParams::Network::MAIN);
+    auto pMainNetParams = CreateChainParams(ChainNetwork::MAIN);
     for (auto idx = to_integral_type(Consensus::UpgradeIndex::BASE_SPROUT); idx < to_integral_type(Consensus::UpgradeIndex::MAX_NETWORK_UPGRADES); ++idx)
     {
         auto consensusBranchId = NetworkUpgradeInfo[idx].nBranchId;

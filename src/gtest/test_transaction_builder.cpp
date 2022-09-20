@@ -1,26 +1,28 @@
-#include "chainparams.h"
-#include "consensus/params.h"
-#include "consensus/validation.h"
-#include "key_io.h"
-#include "main.h"
-#include "pubkey.h"
-#include "rpc/protocol.h"
-#include "transaction_builder.h"
-#include "zcash/Address.hpp"
-
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
-static const std::string tSecretRegtest = "cND2ZvtabDbJ1gucx9GWH6XT9kgTAqfb6cotPt5Q5CyxVDhid2EN";
+#include <chainparams.h>
+#include <consensus/params.h>
+#include <consensus/validation.h>
+#include <key_io.h>
+#include <main.h>
+#include <pubkey.h>
+#include <rpc/protocol.h>
+#include <transaction_builder.h>
+#include <zcash/Address.hpp>
+
+using namespace std;
+
+static const string tSecretRegtest = "cND2ZvtabDbJ1gucx9GWH6XT9kgTAqfb6cotPt5Q5CyxVDhid2EN";
 
 TEST(TransactionBuilder, Invoke)
 {
-    SelectParams(CBaseChainParams::Network::REGTEST);
+    SelectParams(ChainNetwork::REGTEST);
     UpdateNetworkUpgradeParameters(Consensus::UpgradeIndex::UPGRADE_OVERWINTER, Consensus::NetworkUpgrade::ALWAYS_ACTIVE);
     UpdateNetworkUpgradeParameters(Consensus::UpgradeIndex::UPGRADE_SAPLING, Consensus::NetworkUpgrade::ALWAYS_ACTIVE);
     auto consensusParams = Params().GetConsensus();
 
-    std::string sKeyError;
+    string sKeyError;
     CBasicKeyStore keystore;
     KeyIO keyIO(Params());
     const CKey tsk = keyIO.DecodeSecret(tSecretRegtest, sKeyError);
@@ -95,16 +97,16 @@ TEST(TransactionBuilder, Invoke)
 
 TEST(TransactionBuilder, ThrowsOnTransparentInputWithoutKeyStore)
 {
-    SelectParams(CBaseChainParams::Network::REGTEST);
+    SelectParams(ChainNetwork::REGTEST);
     const auto &consensusParams = Params().GetConsensus();
 
     auto builder = TransactionBuilder(consensusParams, 1);
-    ASSERT_THROW(builder.AddTransparentInput(COutPoint(), CScript(), 1), std::runtime_error);
+    ASSERT_THROW(builder.AddTransparentInput(COutPoint(), CScript(), 1), runtime_error);
 }
 
 TEST(TransactionBuilder, RejectsInvalidTransparentOutput)
 {
-    SelectParams(CBaseChainParams::Network::REGTEST);
+    SelectParams(ChainNetwork::REGTEST);
     const auto &consensusParams = Params().GetConsensus();
 
     // Default CTxDestination type is an invalid address
@@ -115,7 +117,7 @@ TEST(TransactionBuilder, RejectsInvalidTransparentOutput)
 
 TEST(TransactionBuilder, RejectsInvalidTransparentChangeAddress)
 {
-    SelectParams(CBaseChainParams::Network::REGTEST);
+    SelectParams(ChainNetwork::REGTEST);
     const auto &consensusParams = Params().GetConsensus();
 
     // Default CTxDestination type is an invalid address
@@ -126,7 +128,7 @@ TEST(TransactionBuilder, RejectsInvalidTransparentChangeAddress)
 
 TEST(TransactionBuilder, FailsWithNegativeChange)
 {
-    SelectParams(CBaseChainParams::Network::REGTEST);
+    SelectParams(ChainNetwork::REGTEST);
     UpdateNetworkUpgradeParameters(Consensus::UpgradeIndex::UPGRADE_OVERWINTER, Consensus::NetworkUpgrade::ALWAYS_ACTIVE);
     UpdateNetworkUpgradeParameters(Consensus::UpgradeIndex::UPGRADE_SAPLING, Consensus::NetworkUpgrade::ALWAYS_ACTIVE);
     auto consensusParams = Params().GetConsensus();
@@ -138,7 +140,7 @@ TEST(TransactionBuilder, FailsWithNegativeChange)
     auto pk = sk.default_address();
 
     // Set up dummy transparent address
-    std::string sKeyError;
+    string sKeyError;
     CBasicKeyStore keystore;
     KeyIO keyIO(Params());
     const CKey tsk = keyIO.DecodeSecret(tSecretRegtest, sKeyError);
@@ -159,24 +161,24 @@ TEST(TransactionBuilder, FailsWithNegativeChange)
 
     // Fail if there is only a Sapling output
     // 0.0005 z-ZEC out, 0.0001 t-ZEC fee
-    auto builder = TransactionBuilder(consensusParams, 1);
-    builder.AddSaplingOutput(fvk.ovk, pk, 50000, {});
-    EXPECT_EQ("Change cannot be negative", builder.Build().GetError());
+    auto builder = make_unique<TransactionBuilder>(consensusParams, 1);
+    builder->AddSaplingOutput(fvk.ovk, pk, 50000, {});
+    EXPECT_EQ("Change cannot be negative", builder->Build().GetError());
 
     // Fail if there is only a transparent output
     // 0.0005 t-ZEC out, 0.0001 t-ZEC fee
-    builder = TransactionBuilder(consensusParams, 1, &keystore);
-    builder.AddTransparentOutput(taddr, 50000);
-    EXPECT_EQ("Change cannot be negative", builder.Build().GetError());
+    builder = make_unique<TransactionBuilder>(consensusParams, 1, &keystore);
+    builder->AddTransparentOutput(taddr, 50000);
+    EXPECT_EQ("Change cannot be negative", builder->Build().GetError());
 
     // Fails if there is insufficient input
     // 0.0005 t-ZEC out, 0.0001 t-ZEC fee, 0.00059999 z-ZEC in
-    builder.AddSaplingSpend(expsk, note, anchor, witness);
-    EXPECT_EQ("Change cannot be negative", builder.Build().GetError());
+    builder->AddSaplingSpend(expsk, note, anchor, witness);
+    EXPECT_EQ("Change cannot be negative", builder->Build().GetError());
 
     // Succeeds if there is sufficient input
-    builder.AddTransparentInput(COutPoint(), scriptPubKey, 1);
-    EXPECT_TRUE(builder.Build().IsTx());
+    builder->AddTransparentInput(COutPoint(), scriptPubKey, 1);
+    EXPECT_TRUE(builder->Build().IsTx());
 
     // Revert to default
     UpdateNetworkUpgradeParameters(Consensus::UpgradeIndex::UPGRADE_SAPLING, Consensus::NetworkUpgrade::NO_ACTIVATION_HEIGHT);
@@ -185,7 +187,7 @@ TEST(TransactionBuilder, FailsWithNegativeChange)
 
 TEST(TransactionBuilder, ChangeOutput)
 {
-    SelectParams(CBaseChainParams::Network::REGTEST);
+    SelectParams(ChainNetwork::REGTEST);
     UpdateNetworkUpgradeParameters(Consensus::UpgradeIndex::UPGRADE_OVERWINTER, Consensus::NetworkUpgrade::ALWAYS_ACTIVE);
     UpdateNetworkUpgradeParameters(Consensus::UpgradeIndex::UPGRADE_SAPLING, Consensus::NetworkUpgrade::ALWAYS_ACTIVE);
     auto consensusParams = Params().GetConsensus();
@@ -209,7 +211,7 @@ TEST(TransactionBuilder, ChangeOutput)
     auto zChangeAddr = sk2.default_address();
 
     // Set up dummy transparent address
-    std::string sKeyError;
+    string sKeyError;
     CBasicKeyStore keystore;
     KeyIO keyIO(Params());
     const CKey tsk = keyIO.DecodeSecret(tSecretRegtest, sKeyError);
@@ -277,7 +279,7 @@ TEST(TransactionBuilder, ChangeOutput)
 
 TEST(TransactionBuilder, SetFee)
 {
-    SelectParams(CBaseChainParams::Network::REGTEST);
+    SelectParams(ChainNetwork::REGTEST);
     UpdateNetworkUpgradeParameters(Consensus::UpgradeIndex::UPGRADE_OVERWINTER, Consensus::NetworkUpgrade::ALWAYS_ACTIVE);
     UpdateNetworkUpgradeParameters(Consensus::UpgradeIndex::UPGRADE_SAPLING, Consensus::NetworkUpgrade::ALWAYS_ACTIVE);
     auto consensusParams = Params().GetConsensus();
@@ -332,7 +334,7 @@ TEST(TransactionBuilder, SetFee)
 
 TEST(TransactionBuilder, CheckSaplingTxVersion)
 {
-    SelectParams(CBaseChainParams::Network::REGTEST);
+    SelectParams(ChainNetwork::REGTEST);
     UpdateNetworkUpgradeParameters(Consensus::UpgradeIndex::UPGRADE_OVERWINTER, Consensus::NetworkUpgrade::ALWAYS_ACTIVE);
     const auto &consensusParams = Params().GetConsensus();
 
@@ -344,10 +346,10 @@ TEST(TransactionBuilder, CheckSaplingTxVersion)
     auto builder = TransactionBuilder(consensusParams, 1);
     try {
         builder.AddSaplingOutput(uint256(), pk, 12345, {});
-    } catch (std::runtime_error const & err) {
-        EXPECT_EQ(err.what(), std::string("TransactionBuilder cannot add Sapling output to pre-Sapling transaction"));
+    } catch (runtime_error const & err) {
+        EXPECT_EQ(err.what(), string("TransactionBuilder cannot add Sapling output to pre-Sapling transaction"));
     } catch(...) {
-        FAIL() << "Expected std::runtime_error";
+        FAIL() << "Expected runtime_error";
     }
 
     // Cannot add Sapling spends to a non-Sapling transaction
@@ -355,10 +357,10 @@ TEST(TransactionBuilder, CheckSaplingTxVersion)
     SaplingMerkleTree tree;
     try {
         builder.AddSaplingSpend(expsk, note, uint256(), tree.witness());
-    } catch (std::runtime_error const & err) {
-        EXPECT_EQ(err.what(), std::string("TransactionBuilder cannot add Sapling spend to pre-Sapling transaction"));
+    } catch (runtime_error const & err) {
+        EXPECT_EQ(err.what(), string("TransactionBuilder cannot add Sapling spend to pre-Sapling transaction"));
     } catch(...) {
-        FAIL() << "Expected std::runtime_error";
+        FAIL() << "Expected runtime_error";
     }
 
     // Revert to default
