@@ -290,15 +290,47 @@ struct CNodeState
         nBlocksInFlightValidHeaders = 0;
         fPreferredDownload = false;
     }
+
+    void BlocksInFlightCleanup(const NodeId nodeid)
+    {
+        string s;
+        const size_t nBlockCount = vBlocksInFlight.size();
+        const bool bLogNetCategory = LogAcceptCategory("net");
+        if (bLogNetCategory && nBlockCount)
+            s.reserve(nBlockCount * 42);
+        for (const auto& entry : vBlocksInFlight)
+        {
+            if (bLogNetCategory)
+            {
+                if (!s.empty())
+                    s += ", ";
+                s += entry.hash.ToString();
+                if (entry.pindex)
+                {
+                    int nHeight = entry.pindex->nHeight;
+                    if (nHeight >= 0)
+                        s += strprintf("(%d)", nHeight);
+                }
+            }
+
+            mapBlocksInFlight.erase(entry.hash);
+        }
+        if (bLogNetCategory && nBlockCount)
+            LogPrint("net", "Peer %d had %zu blocks in-flight [%s]\n", nodeid, nBlockCount, s.c_str());
+        nBlocksInFlight = 0;
+        nBlocksInFlightValidHeaders = 0;
+        pindexBestKnownBlock = nullptr;
+        hashLastUnknownBlock.SetNull();
+    }
 };
 
 /** Map maintaining per-node state. Requires cs_main. */
 unordered_map<NodeId, CNodeState> mapNodeState;
 
 // Requires cs_main.
-CNodeState *State(NodeId pnode)
+CNodeState *State(const NodeId nodeid)
 {
-    auto it = mapNodeState.find(pnode);
+    auto it = mapNodeState.find(nodeid);
     if (it == mapNodeState.end())
         return nullptr;
     return &it->second;
@@ -339,8 +371,7 @@ void FinalizeNode(NodeId nodeid)
     if (state->nMisbehavior == 0 && state->fCurrentlyConnected)
         AddressCurrentlyConnected(state->address);
 
-    for (const auto& entry : state->vBlocksInFlight)
-        mapBlocksInFlight.erase(entry.hash);
+    state->BlocksInFlightCleanup(nodeid);
     if (gl_pOrphanTxManager)
         gl_pOrphanTxManager->EraseOrphansFor(nodeid);
     nPreferredDownload -= state->fPreferredDownload;
@@ -379,7 +410,7 @@ void MarkBlockAsInFlight(NodeId nodeid, const uint256& hash, const Consensus::Pa
     int64_t nNow = GetTimeMicros();
     QueuedBlock newentry = {hash, pindex, nNow, pindex != nullptr, GetBlockTimeout(nNow, nQueuedValidatedHeaders, consensusParams)};
     nQueuedValidatedHeaders += newentry.fValidatedHeaders;
-    list<QueuedBlock>::iterator it = state->vBlocksInFlight.insert(state->vBlocksInFlight.end(), newentry);
+    auto it = state->vBlocksInFlight.insert(state->vBlocksInFlight.end(), newentry);
     state->nBlocksInFlight++;
     state->nBlocksInFlightValidHeaders += newentry.fValidatedHeaders;
     mapBlocksInFlight[hash] = make_pair(nodeid, it);
@@ -5424,15 +5455,14 @@ static bool ProcessMessage(const CChainParams& chainparams, CNode* pfrom, string
             func_thread_interrupt_point();
             pfrom->AddInventoryKnown(inv);
 
-            bool fAlreadyHave = AlreadyHave(inv);
+            const bool fAlreadyHave = AlreadyHave(inv);
             LogPrint("net", "got inv: %s  %s peer=%d\n", inv.ToString(), fAlreadyHave ? "have" : "new", pfrom->id);
 
-            if (!fAlreadyHave && !fImporting && !fReindex && inv.type != MSG_BLOCK)
-                pfrom->AskFor(inv);
-
-            if (inv.type == MSG_BLOCK) {
+            if (inv.type == MSG_BLOCK)
+            {
                 UpdateBlockAvailability(pfrom->GetId(), inv.hash);
-                if (!fAlreadyHave && !fImporting && !fReindex && !mapBlocksInFlight.count(inv.hash)) {
+                if (!fAlreadyHave && !fImporting && !fReindex && !mapBlocksInFlight.count(inv.hash))
+                {
                     // First request the headers preceding the announced block. In the normal fully-synced
                     // case where a new block is announced that succeeds the current tip (no reorganization),
                     // there are no such headers.
@@ -5444,7 +5474,8 @@ static bool ProcessMessage(const CChainParams& chainparams, CNode* pfrom, string
                     pfrom->PushMessage("getheaders", chainActive.GetLocator(pindexBestHeader), inv.hash);
                     CNodeState *nodestate = State(pfrom->GetId());
                     if (chainActive.Tip()->GetBlockTime() > GetAdjustedTime() - consensusParams.nPowTargetSpacing * 20 &&
-                        nodestate->nBlocksInFlight < MAX_BLOCKS_IN_TRANSIT_PER_PEER) {
+                        nodestate->nBlocksInFlight < MAX_BLOCKS_IN_TRANSIT_PER_PEER)
+                    {
                         vToFetch.push_back(inv);
                         // Mark block as in flight already, even though the actual "getdata" message only goes out
                         // later (within the same cs_main lock, though).
@@ -5452,6 +5483,11 @@ static bool ProcessMessage(const CChainParams& chainparams, CNode* pfrom, string
                     }
                     LogPrint("net", "getheaders (%d) %s to peer=%d\n", pindexBestHeader->nHeight, inv.hash.ToString(), pfrom->id);
                 }
+            }
+            else
+            {
+                if (!fAlreadyHave && !bIsInitialBlockDownload)
+                    pfrom->AskFor(inv);
             }
 
             // Track requests for our stuff
@@ -6239,7 +6275,8 @@ bool SendMessages(const CChainParams& chainparams, CNode* pto, bool fSendTrickle
                 pto->PushMessage("addr", vAddr);
         }
 
-        CNodeState* pNodeState = State(pto->GetId());
+        const NodeId nodeId = pto->GetId();
+        CNodeState* pNodeState = State(nodeId);
         if (!pNodeState)
         {
             LogPrintf("Banning unregistered peer %s!\n", pto->addr.ToString());
@@ -6278,7 +6315,7 @@ bool SendMessages(const CChainParams& chainparams, CNode* pto, bool fSendTrickle
                 state.fSyncStarted = true;
                 nSyncStarted++;
                 const auto pindexStart = pindexBestHeader->pprev ? pindexBestHeader->pprev : pindexBestHeader;
-                LogPrint("net", "initial getheaders (height=%d) to peer=%d (startheight=%d)\n", pindexStart->nHeight, pto->id, pto->nStartingHeight);
+                LogPrint("net", "initial getheaders (height=%d) to peer=%d (startheight=%d)\n", pindexStart->nHeight, nodeId, pto->nStartingHeight);
                 pto->PushMessage("getheaders", chainActive.GetLocator(pindexStart), uint256());
             }
         }
@@ -6346,8 +6383,9 @@ bool SendMessages(const CChainParams& chainparams, CNode* pto, bool fSendTrickle
             // Stalling only triggers when the block download window cannot move. During normal steady state,
             // the download window should be much larger than the to-be-downloaded set of blocks, so disconnection
             // should only happen during initial block download.
-            LogPrintf("Peer=%d is stalling block download, disconnecting\n", pto->id);
+            LogPrintf("Peer=%d is stalling block download (%d blocks in-flight), disconnecting\n", nodeId, state.nBlocksInFlight);
             pto->fDisconnect = true;
+            state.BlocksInFlightCleanup(nodeId);
         }
         // In case there is a block that has been in flight from this peer for (2 + 0.5 * N) times the block interval
         // (with N the number of validated blocks that were in flight at the time it was requested), disconnect due to
@@ -6368,7 +6406,7 @@ bool SendMessages(const CChainParams& chainparams, CNode* pto, bool fSendTrickle
                 // log this only if block download timeout becomes less than some predefined time
                 if (nTimeoutIfRequestedNow - nNow < BLOCK_STALLING_LOG_TIMEOUT_MICROSECS)
                     LogPrint("net", "Reducing block download timeout for peer=%d block=%s: %" PRIi64 " -> %" PRIi64 "\n",
-                        pto->id, queuedBlock.hash.ToString(), queuedBlock.nTimeDisconnect, nTimeoutIfRequestedNow);
+                        nodeId, queuedBlock.hash.ToString(), queuedBlock.nTimeDisconnect, nTimeoutIfRequestedNow);
                 queuedBlock.nTimeDisconnect = nTimeoutIfRequestedNow;
             }
             if (queuedBlock.nTimeDisconnect < nNow)
@@ -6389,13 +6427,13 @@ bool SendMessages(const CChainParams& chainparams, CNode* pto, bool fSendTrickle
         {
             vector<CBlockIndex*> vToDownload;
             NodeId staller = -1;
-            FindNextBlocksToDownload(pto->GetId(), MAX_BLOCKS_IN_TRANSIT_PER_PEER - state.nBlocksInFlight, vToDownload, staller);
+            FindNextBlocksToDownload(nodeId, MAX_BLOCKS_IN_TRANSIT_PER_PEER - state.nBlocksInFlight, vToDownload, staller);
             for (auto pindex : vToDownload)
             {
                 vGetData.push_back(CInv(MSG_BLOCK, pindex->GetBlockHash()));
-                MarkBlockAsInFlight(pto->GetId(), pindex->GetBlockHash(), consensusParams, pindex);
+                MarkBlockAsInFlight(nodeId, pindex->GetBlockHash(), consensusParams, pindex);
                 LogPrint("net", "Requesting block %s (height=%d) from peer=%d\n", pindex->GetBlockHash().ToString(),
-                    pindex->nHeight, pto->id);
+                    pindex->nHeight, nodeId);
             }
             if (state.nBlocksInFlight == 0 && staller != -1)
             {
@@ -6416,7 +6454,7 @@ bool SendMessages(const CChainParams& chainparams, CNode* pto, bool fSendTrickle
             if (!AlreadyHave(inv))
             {
                 if (fDebug)
-                    LogPrint("net", "Requesting %s from peer=%d\n", inv.ToString(), pto->id);
+                    LogPrint("net", "Requesting %s from peer=%d\n", inv.ToString(), nodeId);
                 vGetData.push_back(inv);
                 if (vGetData.size() >= 1000)
                 {
