@@ -1,19 +1,33 @@
 #!/usr/bin/env python3
 # Copyright (c) 2018 The Zcash developers
+# Copyright (c) 2018-2022 The Pastel Core developers
 # Distributed under the MIT software license, see the accompanying
 # file COPYING or https://www.opensource.org/licenses/mit-license.php .
 
 from test_framework.test_framework import BitcoinTestFramework
-from test_framework.util import assert_equal, assert_true, assert_false, wait_and_assert_operationid_status
+from test_framework.util import (
+    assert_equal,
+    assert_true,
+    assert_false,
+    wait_and_assert_operationid_status,
+    start_nodes
+)
 
 from decimal import Decimal
 
 class WalletChangeIndicatorTest (BitcoinTestFramework):
+    def setup_nodes(self):
+        return start_nodes(self.num_nodes, self.options.tmpdir, 
+            extra_args=[['-debug=net']] * self.num_nodes)
+
     # Tests
     def run_test(self):
         taddr = self.nodes[1].getnewaddress()
         zaddr1 = self.nodes[1].z_getnewaddress()
         zaddr2 = self.nodes[1].z_getnewaddress()
+
+        # generate one block to make sure initial block download (IBD) mode is reset
+        self.generate_and_sync_inc(1)
 
         self.nodes[0].sendtoaddress(taddr, Decimal('1.0'))
         self.generate_and_sync_inc(1)
