@@ -5164,6 +5164,8 @@ static bool ProcessMessage(const CChainParams& chainparams, CNode* pfrom, string
     }
 
     const auto& consensusParams = chainparams.GetConsensus();
+    // check if we're in IBD mode
+    const bool bIsInitialBlockDownload = fnIsInitialBlockDownload(consensusParams);
     if (strCommand == "version")
     {
         // Each connection can only send one version message
@@ -5247,7 +5249,7 @@ static bool ProcessMessage(const CChainParams& chainparams, CNode* pfrom, string
         if (!pfrom->fInbound)
         {
             // Advertise our address
-            if (fListen && !fnIsInitialBlockDownload(consensusParams))
+            if (fListen && !bIsInitialBlockDownload)
             {
                 CAddress addr = GetLocalAddress(&pfrom->addr);
                 if (addr.IsRoutable())
@@ -5537,7 +5539,7 @@ static bool ProcessMessage(const CChainParams& chainparams, CNode* pfrom, string
 
         LOCK(cs_main);
 
-        if (fnIsInitialBlockDownload(consensusParams))
+        if (bIsInitialBlockDownload)
             return true;
 
         CBlockIndex* pindex = nullptr;
@@ -5570,7 +5572,7 @@ static bool ProcessMessage(const CChainParams& chainparams, CNode* pfrom, string
         pfrom->PushMessage("headers", vHeaders);
     }
 
-    else if (strCommand == "tx") // transaction message
+    else if (strCommand == "tx" && !bIsInitialBlockDownload) // transaction message, skip in IBD mode
     {
         CTransaction tx;
         vRecv >> tx;
@@ -5730,7 +5732,7 @@ static bool ProcessMessage(const CChainParams& chainparams, CNode* pfrom, string
         // unless we're still syncing with the network.
         // Such an unrequested block may still be processed, subject to the
         // conditions in AcceptBlock().
-        const bool bForceProcessing = pfrom->fWhitelisted && !fnIsInitialBlockDownload(consensusParams);
+        const bool bForceProcessing = pfrom->fWhitelisted && !bIsInitialBlockDownload;
         ProcessNewBlock(state, chainparams, pfrom, &block, bForceProcessing);
         // some input transactions may be missing for this block, in this case ProcessNewBlock 
         // will set rejection code REJECT_MISSING_INPUTS.
