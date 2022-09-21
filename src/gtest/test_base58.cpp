@@ -75,7 +75,7 @@ TEST(base58, keys_valid_parse)
     CTxDestination destination;
     string strTest, sKeyError, exp_base58string;
     v_uint8 exp_payload;
-    SelectParams(CBaseChainParams::Network::MAIN);
+    SelectParams(ChainNetwork::MAIN);
 
     for (const auto& test : tests.getValues())
     {
@@ -87,7 +87,7 @@ TEST(base58, keys_valid_parse)
         const UniValue& metadata = test[2].get_obj();
         const bool isPrivkey = find_value(metadata, "isPrivkey").get_bool();
         const bool bIsTestnet = find_value(metadata, "chain").get_str() == "testnet";
-        SelectParams(bIsTestnet ? CBaseChainParams::Network::TESTNET : CBaseChainParams::Network::MAIN);
+        SelectParams(bIsTestnet ? ChainNetwork::TESTNET : ChainNetwork::MAIN);
         KeyIO keyIO(Params());
         if (isPrivkey)
         {
@@ -134,7 +134,7 @@ TEST(base58, keys_valid_gen)
         const UniValue& metadata = test[2].get_obj();
         const bool isPrivkey = find_value(metadata, "isPrivkey").get_bool();
         const bool bIsTestnet = find_value(metadata, "chain").get_str() == "testnet";
-        SelectParams(bIsTestnet ? CBaseChainParams::Network::TESTNET : CBaseChainParams::Network::MAIN);
+        SelectParams(bIsTestnet ? ChainNetwork::TESTNET : ChainNetwork::MAIN);
         KeyIO keyIO(Params());
         if (isPrivkey)
         {
@@ -154,7 +154,7 @@ TEST(base58, keys_valid_gen)
         }
     }
 
-    SelectParams(CBaseChainParams::Network::MAIN);
+    SelectParams(ChainNetwork::MAIN);
 }
 
 // Goal: check that base58 parsing code is robust against a variety of corrupted data
@@ -165,7 +165,7 @@ TEST(base58, keys_invalid)
     CTxDestination destination;
     string strTest, sKeyError, exp_base58string;
 
-    SelectParams(CBaseChainParams::Network::MAIN);
+    SelectParams(ChainNetwork::MAIN);
     KeyIO keyIO(Params());
     for (const auto& test : tests.getValues())
     {

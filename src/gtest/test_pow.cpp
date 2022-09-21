@@ -13,7 +13,7 @@
 using namespace std;
 
 TEST(PoW, DifficultyAveraging) {
-    SelectParams(CBaseChainParams::Network::MAIN);
+    SelectParams(ChainNetwork::MAIN);
     const Consensus::Params& params = Params().GetConsensus();
     size_t lastBlk = 2*params.nPowAveragingWindow+1002;
     size_t firstBlk = lastBlk - params.nPowAveragingWindow;
@@ -78,7 +78,7 @@ TEST(PoW, DifficultyAveraging) {
 }
 
 TEST(PoW, MinDifficultyRules) {
-    SelectParams(CBaseChainParams::Network::TESTNET);
+    SelectParams(ChainNetwork::TESTNET);
     const Consensus::Params& params = Params().GetConsensus();
     size_t lastBlk = 2*params.nPowAveragingWindow;
     size_t firstBlk = lastBlk - params.nPowAveragingWindow;
@@ -121,7 +121,7 @@ TEST(PoW, MinDifficultyRules) {
 /* Test calculation of next difficulty target with no constraints applying */
 TEST(PoW, get_next_work)
 {
-    SelectParams(CBaseChainParams::Network::MAIN);
+    SelectParams(ChainNetwork::MAIN);
     const Consensus::Params& params = Params().GetConsensus();
 
     int64_t nLastRetargetTime = 1'262'149'169; // NOTE: Not an actual block time
@@ -135,7 +135,7 @@ TEST(PoW, get_next_work)
 /* Test the constraint on the upper bound for next work */
 TEST(PoW, get_next_work_pow_limit)
 {
-    SelectParams(CBaseChainParams::Network::MAIN);
+    SelectParams(ChainNetwork::MAIN);
     const Consensus::Params& params = Params().GetConsensus();
 
     int64_t nLastRetargetTime = 1'231'006'505; // Block #0 of Bitcoin
@@ -149,7 +149,7 @@ TEST(PoW, get_next_work_pow_limit)
 /* Test the constraint on the lower bound for actual time taken */
 TEST(PoW, get_next_work_lower_limit_actual)
 {
-    SelectParams(CBaseChainParams::Network::MAIN);
+    SelectParams(ChainNetwork::MAIN);
     const Consensus::Params& params = Params().GetConsensus();
 
     int64_t nLastRetargetTime = 1'279'296'753; // NOTE: Not an actual block time
@@ -163,7 +163,7 @@ TEST(PoW, get_next_work_lower_limit_actual)
 /* Test the constraint on the upper bound for actual time taken */
 TEST(PoW, get_next_work_upper_limit_actual)
 {
-    SelectParams(CBaseChainParams::Network::MAIN);
+    SelectParams(ChainNetwork::MAIN);
     const Consensus::Params& params = Params().GetConsensus();
 
     int64_t nLastRetargetTime = 1'269'205'629; // NOTE: Not an actual block time
@@ -176,7 +176,7 @@ TEST(PoW, get_next_work_upper_limit_actual)
 
 TEST(PoW, GetBlockProofEquivalentTime_test)
 {
-    SelectParams(CBaseChainParams::Network::MAIN);
+    SelectParams(ChainNetwork::MAIN);
     const Consensus::Params& params = Params().GetConsensus();
 
     vector<CBlockIndex> blocks(10000);

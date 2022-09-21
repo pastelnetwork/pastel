@@ -5,6 +5,15 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 
+enum class ChainNetwork
+{
+    MAIN = 0,
+    TESTNET,
+    REGTEST,
+
+    MAX_NETWORK_TYPES
+};
+
 /** The minimum allowed block version (network rule) */
 constexpr int32_t MIN_BLOCK_VERSION = 4;
 /** The minimum allowed transaction version (network rule) */

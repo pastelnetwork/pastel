@@ -1,18 +1,20 @@
 #pragma once
 // Copyright (c) 2017 The Zcash developers
+// Copyright (c) 2018-2022 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
-// file COPYING or http://www.opensource.org/licenses/mit-license.php.
+// file COPYING or https://www.opensource.org/licenses/mit-license.php.
+#include <unordered_map>
+#include <tuple>
+
+#include <univalue.h>
+
+
 #include <asyncrpcoperation.h>
 #include <amount.h>
 #include <primitives/transaction.h>
 #include <transaction_builder.h>
 #include <zcash/Address.hpp>
 #include <wallet/wallet.h>
-
-#include <unordered_map>
-#include <tuple>
-
-#include <univalue.h>
 
 // Default transaction fee if caller does not specify one.
 constexpr CAmount SHIELD_COINBASE_DEFAULT_MINERS_FEE = 10000;
@@ -33,16 +35,17 @@ struct ShieldCoinbaseUTXO
     CAmount amount;
 };
 
-class AsyncRPCOperation_shieldcoinbase : public AsyncRPCOperation {
+class AsyncRPCOperation_shieldcoinbase : public AsyncRPCOperation
+{
 public:
     AsyncRPCOperation_shieldcoinbase(
-        TransactionBuilder builder,
-        CMutableTransaction contextualTx,
-        std::vector<ShieldCoinbaseUTXO> inputs,
+        std::unique_ptr<TransactionBuilder> builder,
+        const CMutableTransaction &contextualTx,
+        const std::vector<ShieldCoinbaseUTXO> &inputs,
         std::string toAddress,
         CAmount fee = SHIELD_COINBASE_DEFAULT_MINERS_FEE,
         UniValue contextInfo = NullUniValue);
-    virtual ~AsyncRPCOperation_shieldcoinbase();
+    ~AsyncRPCOperation_shieldcoinbase() override;
 
     // We don't want to be copied or moved around
     AsyncRPCOperation_shieldcoinbase(AsyncRPCOperation_shieldcoinbase const&) = delete;             // Copy construct
@@ -69,7 +72,7 @@ private:
 
     std::vector<ShieldCoinbaseUTXO> inputs_;
 
-    TransactionBuilder builder_;
+    std::unique_ptr<TransactionBuilder> m_builder;
     CTransaction tx_;
 
     bool main_impl();

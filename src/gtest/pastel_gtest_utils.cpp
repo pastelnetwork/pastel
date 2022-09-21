@@ -6,6 +6,7 @@
 #include <fs.h>
 
 #include <random>
+#include <chainparams.h>
 using namespace std;
 
 int GenZero(int n)
@@ -55,4 +56,19 @@ std::string generateTempFileName(const char* szFileExt)
         s += szFileExt;
     auto file = fs::temp_directory_path() / fs::path(s);
     return file.string();
+}
+
+// Sapling
+const Consensus::Params& RegtestActivateSapling()
+{
+    SelectParams(ChainNetwork::REGTEST);
+    UpdateNetworkUpgradeParameters(Consensus::UpgradeIndex::UPGRADE_OVERWINTER, Consensus::NetworkUpgrade::ALWAYS_ACTIVE);
+    UpdateNetworkUpgradeParameters(Consensus::UpgradeIndex::UPGRADE_SAPLING, Consensus::NetworkUpgrade::ALWAYS_ACTIVE);
+    return Params().GetConsensus();
+}
+
+void RegtestDeactivateSapling()
+{
+    UpdateNetworkUpgradeParameters(Consensus::UpgradeIndex::UPGRADE_SAPLING, Consensus::NetworkUpgrade::NO_ACTIVATION_HEIGHT);
+    UpdateNetworkUpgradeParameters(Consensus::UpgradeIndex::UPGRADE_OVERWINTER, Consensus::NetworkUpgrade::NO_ACTIVATION_HEIGHT);
 }

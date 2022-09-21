@@ -31,7 +31,7 @@ class PTest_ani2psl_secret : public TestWithParam<tuple<
 public:
     static void SetUpTestCase()
     {
-        SelectParams(CBaseChainParams::Network::REGTEST);
+        SelectParams(ChainNetwork::REGTEST);
     }
 };
 

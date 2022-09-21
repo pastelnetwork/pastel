@@ -107,7 +107,7 @@ double benchmark_solve_equihash()
     CDataStream ss(SER_NETWORK, PROTOCOL_VERSION);
     ss << I;
 
-    auto MainChainParams = CreateChainParams(CBaseChainParams::Network::MAIN);
+    auto MainChainParams = CreateChainParams(ChainNetwork::MAIN);
     const auto& consensusParams = MainChainParams->GetConsensus();
 
     unsigned int n = consensusParams.nEquihashN;
@@ -153,7 +153,7 @@ v_doubles benchmark_solve_equihash_threaded(int nThreads)
 
 double benchmark_verify_equihash()
 {
-    auto MainChainParams = CreateChainParams(CBaseChainParams::Network::MAIN);
+    auto MainChainParams = CreateChainParams(ChainNetwork::MAIN);
     const CBlock genesis = MainChainParams->GenesisBlock();
     CBlockHeader genesis_header = genesis.GetBlockHeader();
     struct timeval tv_start;
@@ -261,7 +261,7 @@ public:
 double benchmark_connectblock_slow()
 {
     // Test for issue 2017-05-01.a
-    SelectParams(CBaseChainParams::Network::MAIN);
+    SelectParams(ChainNetwork::MAIN);
     CBlock block;
     string filePath = (GetDataDir() / "benchmark/block-107134.dat").string();
     FILE* fp = nullptr;

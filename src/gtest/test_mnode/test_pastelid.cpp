@@ -36,7 +36,7 @@ INSTANTIATE_TEST_SUITE_P(PastelID, PTest_PastelID_Alg,
 
 TEST(PastelID, GetStoredPastelIDs)
 {
-    SelectParams(CBaseChainParams::Network::REGTEST);
+    SelectParams(ChainNetwork::REGTEST);
 
     string sTempPath = gl_pPastelTestEnv->GenerateTempDataDir();
     auto guard = sg::make_scope_guard([&]() noexcept 

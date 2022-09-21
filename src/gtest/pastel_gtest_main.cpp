@@ -1,6 +1,7 @@
 // Copyright (c) 2021-2022 The Pastel developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
+
 #include <gmock/gmock.h>
 #include <univalue.h>
 #include <libsnark/common/default_types/r1cs_ppzksnark_pp.hpp>
@@ -167,7 +168,7 @@ void CPastelTest_Environment::ClearTempDataDir()
  * \param network - main, regtest or testnet
  * \return if true - regtest initialized successfully
  */
-void CPastelTest_Environment::InitializeChainTest(const CBaseChainParams::Network network)
+void CPastelTest_Environment::InitializeChainTest(const ChainNetwork network)
 {
     if (m_TestNetwork.has_value())
     {
@@ -211,7 +212,7 @@ void CPastelTest_Environment::InitializeChainTest(const CBaseChainParams::Networ
 
 void CPastelTest_Environment::InitializeRegTest()
 {
-    InitializeChainTest(CBaseChainParams::Network::REGTEST);
+    InitializeChainTest(ChainNetwork::REGTEST);
 }
 
 void CPastelTest_Environment::FinalizeChainTest()

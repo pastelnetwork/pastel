@@ -1,13 +1,14 @@
 // Copyright (c) 2010 Satoshi Nakamoto
 // Copyright (c) 2009-2014 The Bitcoin Core developers
+// Copyright (c) 2018-2022 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
-// file COPYING or http://www.opensource.org/licenses/mit-license.php.
-
-#include "chainparamsbase.h"
-#include "port_config.h"
-#include "util.h"
+// file COPYING or https://www.opensource.org/licenses/mit-license.php.
 
 #include <assert.h>
+
+#include <chainparamsbase.h>
+#include <port_config.h>
+#include <util.h>
 
 /**
  * Main network
@@ -73,20 +74,20 @@ const CBaseChainParams& BaseParams()
  * \param network - blockchain type (MAIN, TESTNET or REGTEST)
  * \return std::unique_ptr<CBaseChainParams>
  */
-std::unique_ptr<CBaseChainParams> CreateBaseChainParams(const CBaseChainParams::Network network)
+std::unique_ptr<CBaseChainParams> CreateBaseChainParams(const ChainNetwork network)
 {
     std::unique_ptr<CBaseChainParams> BaseChainParams;
     switch (network)
     {
-    case CBaseChainParams::Network::MAIN:
+    case ChainNetwork::MAIN:
         BaseChainParams = std::make_unique<CBaseMainParams>();
         break;
 
-    case CBaseChainParams::Network::TESTNET:
+    case ChainNetwork::TESTNET:
         BaseChainParams = std::make_unique<CBaseTestNetParams>();
         break;
 
-    case CBaseChainParams::Network::REGTEST:
+    case ChainNetwork::REGTEST:
         BaseChainParams = std::make_unique<CBaseRegTestParams>();
         break;
 
@@ -99,29 +100,29 @@ std::unique_ptr<CBaseChainParams> CreateBaseChainParams(const CBaseChainParams::
 }
 
 /** Sets the params returned by Params() to those for the given network. */
-void SelectBaseParams(const CBaseChainParams::Network network)
+void SelectBaseParams(const ChainNetwork network)
 {
     globalChainBaseParams = CreateBaseChainParams(network);
 }
 
-CBaseChainParams::Network NetworkIdFromCommandLine()
+ChainNetwork NetworkIdFromCommandLine()
 {
-    bool fRegTest = GetBoolArg("-regtest", false);
-    bool fTestNet = GetBoolArg("-testnet", false);
+    const bool fRegTest = GetBoolArg("-regtest", false);
+    const bool fTestNet = GetBoolArg("-testnet", false);
 
     if (fTestNet && fRegTest)
-        return CBaseChainParams::Network::MAX_NETWORK_TYPES;
+        return ChainNetwork::MAX_NETWORK_TYPES;
     if (fRegTest)
-        return CBaseChainParams::Network::REGTEST;
+        return ChainNetwork::REGTEST;
     if (fTestNet)
-        return CBaseChainParams::Network::TESTNET;
-    return CBaseChainParams::Network::MAIN;
+        return ChainNetwork::TESTNET;
+    return ChainNetwork::MAIN;
 }
 
 bool SelectBaseParamsFromCommandLine()
 {
-    CBaseChainParams::Network network = NetworkIdFromCommandLine();
-    if (network == CBaseChainParams::Network::MAX_NETWORK_TYPES)
+    const ChainNetwork network = NetworkIdFromCommandLine();
+    if (network == ChainNetwork::MAX_NETWORK_TYPES)
         return false;
 
     SelectBaseParams(network);

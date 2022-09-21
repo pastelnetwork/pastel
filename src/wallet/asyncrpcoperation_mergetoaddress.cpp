@@ -1,10 +1,17 @@
 // Copyright (c) 2017 The Zcash developers
+// Copyright (c) 2018-2022 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
-// file COPYING or https://www.opensource.org/licenses/mit-license.php .
+// file COPYING or https://www.opensource.org/licenses/mit-license.php.
+
+#include <chrono>
+#include <iostream>
+#include <string>
+#include <thread>
+#include <unordered_map>
+#include <variant>
 
 #include <wallet/asyncrpcoperation_mergetoaddress.h>
 
-#include <amount.h>
 #include <asyncrpcqueue.h>
 #include <core_io.h>
 #include <init.h>
@@ -24,60 +31,57 @@
 #include <utiltime.h>
 #include <zcash/IncrementalMerkleTree.hpp>
 
-#include <chrono>
-#include <iostream>
-#include <string>
-#include <thread>
-#include <unordered_map>
-#include <variant>
-
 using namespace libzcash;
 
 extern UniValue sendrawtransaction(const UniValue& params, bool fHelp);
 
 AsyncRPCOperation_mergetoaddress::AsyncRPCOperation_mergetoaddress
 (
-    optional<TransactionBuilder> builder,
-    CMutableTransaction contextualTx,
-    vector<MergeToAddressInputUTXO> utxoInputs,
-    vector<MergeToAddressInputSaplingNote> saplingNoteInputs,
+    unique_ptr<TransactionBuilder> builder,
+    const CMutableTransaction &contextualTx,
+    const vector<MergeToAddressInputUTXO> &utxoInputs,
+    const vector<MergeToAddressInputSaplingNote> &saplingNoteInputs,
     MergeToAddressRecipient recipient,
     CAmount fee,
     UniValue contextInfo) :
-    tx_(contextualTx), utxoInputs_(utxoInputs),
-    saplingNoteInputs_(saplingNoteInputs), recipient_(recipient), fee_(fee), contextinfo_(contextInfo)
+        tx_(contextualTx),
+        utxoInputs_(utxoInputs),
+        saplingNoteInputs_(saplingNoteInputs),
+        recipient_(recipient),
+        fee_(fee),
+        contextinfo_(contextInfo)
 {
-    if (fee < 0 || fee > MAX_MONEY) {
+    if (fee < 0 || fee > MAX_MONEY)
         throw JSONRPCError(RPC_INVALID_PARAMETER, "Fee is out of range");
-    }
 
-    if (utxoInputs.empty() && saplingNoteInputs.empty()) {
+    if (utxoInputs.empty() && saplingNoteInputs.empty())
         throw JSONRPCError(RPC_INVALID_PARAMETER, "No inputs");
-    }
 
-    if (get<0>(recipient).size() == 0) {
+    if (get<0>(recipient).size() == 0)
         throw JSONRPCError(RPC_INVALID_PARAMETER, "Recipient parameter missing");
-    }
 
+    const auto& chainparams = Params();
     isUsingBuilder_ = false;
-    if (builder) {
+    if (builder)
+    {
         isUsingBuilder_ = true;
-        builder_ = builder.value();
+        m_builder = move(builder);
     }
+    else
+        m_builder = make_unique<TransactionBuilder>(chainparams.GetConsensus(), 0);
 
-    KeyIO keyIO(Params());
+    KeyIO keyIO(chainparams);
     toTaddr_ = keyIO.DecodeDestination(get<0>(recipient));
     isToTaddr_ = IsValidDestination(toTaddr_);
     isToZaddr_ = false;
 
-    if (!isToTaddr_) {
+    if (!isToTaddr_)
+    {
         auto address = keyIO.DecodePaymentAddress(get<0>(recipient));
-        if (IsValidPaymentAddress(address)) {
-            isToZaddr_ = true;
-            toPaymentAddress_ = address;
-        } else {
+        if (!IsValidPaymentAddress(address))
             throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid recipient address");
-        }
+        isToZaddr_ = true;
+        toPaymentAddress_ = address;
     }
 
     // Log the context info i.e. the call parameters to z_mergetoaddress
@@ -93,10 +97,6 @@ AsyncRPCOperation_mergetoaddress::AsyncRPCOperation_mergetoaddress
 
     // Enable payment disclosure if requested
     paymentDisclosureMode = fExperimentalMode && GetBoolArg("-paymentdisclosure", false);
-}
-
-AsyncRPCOperation_mergetoaddress::~AsyncRPCOperation_mergetoaddress()
-{
 }
 
 void AsyncRPCOperation_mergetoaddress::main()
@@ -243,15 +243,16 @@ bool AsyncRPCOperation_mergetoaddress::main_impl()
      *
      * This is based on code from AsyncRPCOperation_sendmany::main_impl() and should be refactored.
      */
-    if (isUsingBuilder_) {
-        builder_.SetFee(minersFee);
+    if (isUsingBuilder_)
+    {
+        m_builder->SetFee(minersFee);
 
 
         for (const MergeToAddressInputUTXO& t : utxoInputs_) {
             COutPoint outPoint = get<0>(t);
             CAmount amount = get<1>(t);
             CScript scriptPubKey = get<2>(t);
-            builder_.AddTransparentInput(outPoint, scriptPubKey, amount);
+            m_builder->AddTransparentInput(outPoint, scriptPubKey, amount);
         }
 
         optional<uint256> ovk;
@@ -282,11 +283,11 @@ bool AsyncRPCOperation_mergetoaddress::main_impl()
             if (!witnesses[i]) {
                 throw JSONRPCError(RPC_WALLET_ERROR, "Missing witness for Sapling note");
             }
-            builder_.AddSaplingSpend(expsks[i], saplingNotes[i], anchor, witnesses[i].value());
+            m_builder->AddSaplingSpend(expsks[i], saplingNotes[i], anchor, witnesses[i].value());
         }
 
         if (isToTaddr_) {
-            builder_.AddTransparentOutput(toTaddr_, sendAmount);
+            m_builder->AddTransparentOutput(toTaddr_, sendAmount);
         } else {
             string zaddr = get<0>(recipient_);
             string memo = get<1>(recipient_);
@@ -312,12 +313,12 @@ bool AsyncRPCOperation_mergetoaddress::main_impl()
             if (!ovk) {
                 throw JSONRPCError(RPC_WALLET_ERROR, "Sending to a Sapling address requires an ovk.");
             }
-            builder_.AddSaplingOutput(ovk.value(), *saplingPaymentAddress, sendAmount, hexMemo);
+            m_builder->AddSaplingOutput(ovk.value(), *saplingPaymentAddress, sendAmount, hexMemo);
         }
 
 
         // Build the transaction
-        tx_ = builder_.Build().GetTxOrThrow();
+        tx_ = m_builder->Build().GetTxOrThrow();
 
         // Send the transaction
         // TODO: Use CWallet::CommitTransaction instead of sendrawtransaction

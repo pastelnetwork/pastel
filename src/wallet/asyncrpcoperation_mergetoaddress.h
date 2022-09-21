@@ -1,9 +1,14 @@
+#pragma once
 // Copyright (c) 2017 The Zcash developers
+// Copyright (c) 2018-2022 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
-// file COPYING or http://www.opensource.org/licenses/mit-license.php.
+// file COPYING or https://www.opensource.org/licenses/mit-license.php.
 
-#ifndef ASYNCRPCOPERATION_MERGETOADDRESS_H
-#define ASYNCRPCOPERATION_MERGETOADDRESS_H
+#include <array>
+#include <tuple>
+#include <unordered_map>
+
+#include <univalue.h>
 
 #include <amount.h>
 #include <asyncrpcoperation.h>
@@ -11,12 +16,6 @@
 #include <transaction_builder.h>
 #include <wallet/wallet.h>
 #include <zcash/Address.hpp>
-
-#include <array>
-#include <tuple>
-#include <unordered_map>
-
-#include <univalue.h>
 
 // Default transaction fee if caller does not specify one.
 constexpr CAmount MERGE_TO_ADDRESS_OPERATION_DEFAULT_MINERS_FEE = static_cast<CAmount>(0.1 * COIN); //10 time more then regular fee
@@ -41,14 +40,13 @@ class AsyncRPCOperation_mergetoaddress : public AsyncRPCOperation
 {
 public:
     AsyncRPCOperation_mergetoaddress(
-        std::optional<TransactionBuilder> builder,
-        CMutableTransaction contextualTx,
-        std::vector<MergeToAddressInputUTXO> utxoInputs,
-        std::vector<MergeToAddressInputSaplingNote> saplingNoteInputs,
+        std::unique_ptr<TransactionBuilder> builder,
+        const CMutableTransaction &contextualTx,
+        const std::vector<MergeToAddressInputUTXO> &utxoInputs,
+        const  std::vector<MergeToAddressInputSaplingNote> &saplingNoteInputs,
         MergeToAddressRecipient recipient,
         CAmount fee = MERGE_TO_ADDRESS_OPERATION_DEFAULT_MINERS_FEE,
         UniValue contextInfo = NullUniValue);
-    virtual ~AsyncRPCOperation_mergetoaddress();
 
     // We don't want to be copied or moved around
     AsyncRPCOperation_mergetoaddress(AsyncRPCOperation_mergetoaddress const&) = delete;            // Copy construct
@@ -88,7 +86,7 @@ private:
     std::vector<MergeToAddressInputUTXO> utxoInputs_;
     std::vector<MergeToAddressInputSaplingNote> saplingNoteInputs_;
 
-    TransactionBuilder builder_;
+    std::unique_ptr<TransactionBuilder> m_builder;
     CTransaction tx_;
 
     std::array<unsigned char, ZC_MEMO_SIZE> get_memo_from_hex_string(std::string s);
@@ -146,6 +144,3 @@ public:
         delegate->state_.store(state);
     }
 };
-
-
-#endif /* ASYNCRPCOPERATION_MERGETOADDRESS_H */

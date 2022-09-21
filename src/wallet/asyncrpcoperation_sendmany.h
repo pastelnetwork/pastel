@@ -11,7 +11,6 @@
 #include <wallet/wallet.h>
 
 #include <array>
-#include <optional>
 #include <unordered_map>
 #include <tuple>
 
@@ -34,16 +33,15 @@ class AsyncRPCOperation_sendmany : public AsyncRPCOperation
 {
 public:
     AsyncRPCOperation_sendmany(
-        std::optional<TransactionBuilder> builder,
-        CMutableTransaction contextualTx,
+        std::unique_ptr<TransactionBuilder> builder,
+        const CMutableTransaction &contextualTx,
         std::string fromAddress,
-        std::vector<SendManyRecipient> tOutputs,
-        std::vector<SendManyRecipient> zOutputs,
+        const std::vector<SendManyRecipient> &tOutputs,
+        const std::vector<SendManyRecipient> &zOutputs,
         int minDepth,
         CAmount fee = ASYNC_RPC_OPERATION_DEFAULT_MINERS_FEE,
         UniValue contextInfo = NullUniValue,
         const bool bReturnChangeToSenderAddr = false);
-    virtual ~AsyncRPCOperation_sendmany() noexcept = default;
     
     // We don't want to be copied or moved around
     AsyncRPCOperation_sendmany(AsyncRPCOperation_sendmany const&) = delete;             // Copy construct
@@ -81,7 +79,7 @@ private:
     std::vector<SendManyInputUTXO> t_inputs_;
     std::vector<SaplingNoteEntry> z_sapling_inputs_;
 
-    TransactionBuilder builder_;
+    std::unique_ptr<TransactionBuilder> m_builder;
     CTransaction tx_;
    
     void add_taddr_change_output_to_tx(CAmount amount);

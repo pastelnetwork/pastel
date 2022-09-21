@@ -15,7 +15,7 @@ public:
     CPastelTest_Environment() = default;
 
     // initialize given network for unittests
-    void InitializeChainTest(const CBaseChainParams::Network network);
+    void InitializeChainTest(const ChainNetwork network);
     // finalize test network
     void FinalizeChainTest();
 
@@ -34,7 +34,7 @@ protected:
     CCoinsViewDB* pcoinsdbview = nullptr;
     CServiceThreadGroup threadGroup;
     fs::path m_TempDataDir; // generated temp datadir
-    std::optional<CBaseChainParams::Network> m_TestNetwork;
+    std::optional<ChainNetwork> m_TestNetwork;
 
     void SetUp() override;
     void TearDown() override;

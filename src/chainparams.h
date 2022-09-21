@@ -91,9 +91,15 @@ public:
     const std::vector<SeedSpec6>& FixedSeeds() const noexcept { return vFixedSeeds; }
     const CCheckpointData& Checkpoints() const noexcept { return checkpointData; }
 
-    bool IsMainNet() const noexcept { return network == CBaseChainParams::Network::MAIN; }
-    bool IsTestNet() const noexcept { return network == CBaseChainParams::Network::TESTNET; }
-    bool IsRegTest() const noexcept { return network == CBaseChainParams::Network::REGTEST; }
+    CChainParams(ChainNetwork network) :
+        consensus(network)
+    {
+        memset(&pchMessageStart, 0, sizeof(pchMessageStart));
+    }
+
+    bool IsMainNet() const noexcept { return consensus.network == ChainNetwork::MAIN; }
+    bool IsTestNet() const noexcept { return consensus.network == ChainNetwork::TESTNET; }
+    bool IsRegTest() const noexcept { return consensus.network == ChainNetwork::REGTEST; }
 
     void UpdateNetworkUpgradeParameters(Consensus::UpgradeIndex idx, const uint32_t nActivationHeight)
     {
@@ -102,11 +108,6 @@ public:
     }
 
 protected:
-    CChainParams()
-    {
-        memset(&pchMessageStart, 0, sizeof(pchMessageStart));
-    }
-
     Consensus::Params consensus;
     CMessageHeader::MessageStartChars pchMessageStart;
     //! Raw pub key bytes for the broadcast alert signing key.
@@ -115,7 +116,6 @@ protected:
     uint64_t nPruneAfterHeight = 0;
     std::vector<CDNSSeedData> vSeeds;
     std::string strNetworkID;
-    CBaseChainParams::Network network = CBaseChainParams::Network::MAIN;
     std::string strCurrencyUnits;
     uint32_t bip44CoinType = 0;
     CBlock genesis;
@@ -135,10 +135,10 @@ protected:
 const CChainParams &Params();
 
 // Create blockchain parameters based on network type.
-std::unique_ptr<const CChainParams> CreateChainParams(const CBaseChainParams::Network network);
+std::unique_ptr<const CChainParams> CreateChainParams(const ChainNetwork network);
 
 /** Sets the params returned by Params() to those for the given network. */
-void SelectParams(const CBaseChainParams::Network network);
+void SelectParams(const ChainNetwork network);
 
 /**
  * Looks for -regtest or -testnet and then calls SelectParams as appropriate.

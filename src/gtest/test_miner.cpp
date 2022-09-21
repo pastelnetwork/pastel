@@ -31,7 +31,7 @@ public:
 #endif
 
 TEST(Miner, GetMinerScriptPubKey) {
-    SelectParams(CBaseChainParams::Network::MAIN);
+    SelectParams(ChainNetwork::MAIN);
 
     const auto& chainparams = Params();
     

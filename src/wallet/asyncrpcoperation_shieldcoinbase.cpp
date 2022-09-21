@@ -1,9 +1,16 @@
 // Copyright (c) 2017 The Zcash developers
+// Copyright (c) 2018-2022 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
-// file COPYING or https://www.opensource.org/licenses/mit-license.php .
+// file COPYING or https://www.opensource.org/licenses/mit-license.php.
+
+#include <array>
+#include <iostream>
+#include <chrono>
+#include <thread>
+#include <string>
+#include <variant>
 
 #include <asyncrpcqueue.h>
-#include <amount.h>
 #include <consensus/upgrades.h>
 #include <core_io.h>
 #include <init.h>
@@ -22,45 +29,43 @@
 #include <sodium.h>
 #include <miner.h>
 
-#include <array>
-#include <iostream>
-#include <chrono>
-#include <optional>
-#include <thread>
-#include <string>
-#include <variant>
-
 #include <wallet/asyncrpcoperation_shieldcoinbase.h>
 
 using namespace libzcash;
 
 AsyncRPCOperation_shieldcoinbase::AsyncRPCOperation_shieldcoinbase(
-        TransactionBuilder builder,
-        CMutableTransaction contextualTx,
-        vector<ShieldCoinbaseUTXO> inputs,
+        unique_ptr<TransactionBuilder> builder,
+        const CMutableTransaction &contextualTx,
+        const vector<ShieldCoinbaseUTXO> &inputs,
         string toAddress,
         CAmount fee,
         UniValue contextInfo) :
-        builder_(builder), tx_(contextualTx), inputs_(inputs), fee_(fee), contextinfo_(contextInfo)
+            tx_(contextualTx),
+            inputs_(inputs),
+            fee_(fee),
+            contextinfo_(contextInfo)
 {
     assert(contextualTx.nVersion >= 2);  // transaction format version must support vjoinsplit
 
-    if (fee < 0 || fee > MAX_MONEY) {
+    if (fee < 0 || fee > MAX_MONEY)
         throw JSONRPCError(RPC_INVALID_PARAMETER, "Fee is out of range");
-    }
 
-    if (inputs.size() == 0) {
+    if (inputs.empty())
         throw JSONRPCError(RPC_WALLET_INSUFFICIENT_FUNDS, "Empty inputs");
-    }
+
+    const auto &chainparams = Params();
+
+    if (builder)
+        m_builder = move(builder);
+    else
+        m_builder = make_unique<TransactionBuilder>(chainparams.GetConsensus(), 0);
 
     //  Check the destination address is valid for this network i.e. not testnet being used on mainnet
-    KeyIO keyIO(Params());
+    KeyIO keyIO(chainparams);
     auto address = keyIO.DecodePaymentAddress(toAddress);
-    if (IsValidPaymentAddress(address)) {
-        tozaddr_ = address;
-    } else {
+    if (!IsValidPaymentAddress(address))
         throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid to address");
-    }
+    tozaddr_ = address;
 
     // Log the context info
     if (LogAcceptCategory("zrpcunsafe")) {
@@ -177,8 +182,9 @@ bool AsyncRPCOperation_shieldcoinbase::main_impl() {
 extern UniValue signrawtransaction(const UniValue& params, bool fHelp);
 extern UniValue sendrawtransaction(const UniValue& params, bool fHelp);
 
-bool ShieldToAddress::operator()(const libzcash::SaplingPaymentAddress &zaddr) const {
-    m_op->builder_.SetFee(m_op->fee_);
+bool ShieldToAddress::operator()(const libzcash::SaplingPaymentAddress &zaddr) const
+{
+    m_op->m_builder->SetFee(m_op->fee_);
 
     // Sending from a t-address, which we don't have an ovk for. Instead,
     // generate a common one from the HD seed. This ensures the data is
@@ -194,14 +200,14 @@ bool ShieldToAddress::operator()(const libzcash::SaplingPaymentAddress &zaddr) c
 
     // Add transparent inputs
     for (auto t : m_op->inputs_) {
-        m_op->builder_.AddTransparentInput(COutPoint(t.txid, t.vout), t.scriptPubKey, t.amount);
+        m_op->m_builder->AddTransparentInput(COutPoint(t.txid, t.vout), t.scriptPubKey, t.amount);
     }
 
     // Send all value to the target z-addr
-    m_op->builder_.SendChangeTo(zaddr, ovk);
+    m_op->m_builder->SendChangeTo(zaddr, ovk);
 
     // Build the transaction
-    m_op->tx_ = m_op->builder_.Build().GetTxOrThrow();
+    m_op->tx_ = m_op->m_builder->Build().GetTxOrThrow();
 
     // Send the transaction
     // TODO: Use CWallet::CommitTransaction instead of sendrawtransaction

@@ -22,7 +22,7 @@ using namespace std;
  */
 TEST(wallet_zkeys_tests, StoreAndLoadSaplingZkeys)
 {
-    SelectParams(CBaseChainParams::Network::MAIN);
+    SelectParams(ChainNetwork::MAIN);
 
     CWallet wallet;
     LOCK(wallet.cs_wallet);
@@ -114,7 +114,7 @@ class CTestWalletZkeys : public ::testing::Test
 public:
     static void SetUpTestSuite()
     {
-        gl_pPastelTestEnv->InitializeChainTest(CBaseChainParams::Network::TESTNET);
+        gl_pPastelTestEnv->InitializeChainTest(ChainNetwork::TESTNET);
     }
 
     static void TearDownTestSuite()

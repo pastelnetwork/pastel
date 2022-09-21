@@ -86,7 +86,7 @@ public:
 // Valid overwinter v3 format tx gets rejected because overwinter hasn't activated yet.
 TEST(Mempool, OverwinterNotActiveYet)
 {
-    SelectParams(CBaseChainParams::Network::REGTEST);
+    SelectParams(ChainNetwork::REGTEST);
     UpdateNetworkUpgradeParameters(Consensus::UpgradeIndex::UPGRADE_OVERWINTER, Consensus::NetworkUpgrade::NO_ACTIVATION_HEIGHT);
 
     CTxMemPool pool(::minRelayTxFee);
@@ -112,7 +112,7 @@ TEST(Mempool, OverwinterNotActiveYet)
 // 3. fail IsStandardTx
 TEST(Mempool, SproutV3TxFailsAsExpected)
 {
-    SelectParams(CBaseChainParams::Network::TESTNET);
+    SelectParams(ChainNetwork::TESTNET);
 
     CTxMemPool pool(::minRelayTxFee);
     bool missingInputs;
@@ -132,7 +132,7 @@ TEST(Mempool, SproutV3TxFailsAsExpected)
 // 2. fails ContextualCheckTransaction
 TEST(Mempool, SproutV3TxWhenOverwinterActive)
 {
-    SelectParams(CBaseChainParams::Network::REGTEST);
+    SelectParams(ChainNetwork::REGTEST);
     UpdateNetworkUpgradeParameters(Consensus::UpgradeIndex::UPGRADE_OVERWINTER, Consensus::NetworkUpgrade::ALWAYS_ACTIVE);
 
     CTxMemPool pool(::minRelayTxFee);
@@ -144,7 +144,7 @@ TEST(Mempool, SproutV3TxWhenOverwinterActive)
     CTransaction tx1(mtx);
 
     EXPECT_FALSE(AcceptToMemoryPool(Params(), pool, state1, tx1, false, &missingInputs));
-    EXPECT_EQ(state1.GetRejectReason(), "tx-overwinter-flag-not-set");
+    EXPECT_EQ(state1.GetRejectReason(), "tx-overwintered-flag-not-set");
 
     // Revert to default
     UpdateNetworkUpgradeParameters(Consensus::UpgradeIndex::UPGRADE_OVERWINTER, Consensus::NetworkUpgrade::NO_ACTIVATION_HEIGHT);
@@ -155,7 +155,7 @@ TEST(Mempool, SproutV3TxWhenOverwinterActive)
 // 1. fails CheckTransaction (specifically CheckTransactionWithoutProofVerification)
 TEST(Mempool, SproutNegativeVersionTxWhenOverwinterActive)
 {
-    SelectParams(CBaseChainParams::Network::REGTEST);
+    SelectParams(ChainNetwork::REGTEST);
     UpdateNetworkUpgradeParameters(Consensus::UpgradeIndex::UPGRADE_OVERWINTER, Consensus::NetworkUpgrade::ALWAYS_ACTIVE);
 
     CTxMemPool pool(::minRelayTxFee);
@@ -203,7 +203,7 @@ TEST(Mempool, SproutNegativeVersionTxWhenOverwinterActive)
 
 TEST(Mempool, ExpiringSoonTxRejection)
 {
-    SelectParams(CBaseChainParams::Network::REGTEST);
+    SelectParams(ChainNetwork::REGTEST);
     UpdateNetworkUpgradeParameters(Consensus::UpgradeIndex::UPGRADE_OVERWINTER, Consensus::NetworkUpgrade::ALWAYS_ACTIVE);
 
     CTxMemPool pool(::minRelayTxFee);

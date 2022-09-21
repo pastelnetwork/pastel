@@ -6,6 +6,8 @@
 #include <string>
 #include <memory>
 
+#include <consensus/consensus.h>
+
 /**
  * CBaseChainParams defines the base parameters (shared between pastel-cli and pasteld)
  * of a given instance of the Bitcoin system.
@@ -13,15 +15,6 @@
 class CBaseChainParams
 {
 public:
-    enum class Network
-    {
-        MAIN,
-        TESTNET,
-        REGTEST,
-
-        MAX_NETWORK_TYPES
-    };
-
     const std::string& DataDir() const noexcept { return strDataDir; }
     int RPCPort() const noexcept { return nRPCPort; }
 
@@ -36,10 +29,10 @@ protected:
  * Creates and returns a std::unique_ptr<CBaseChainParams>. This won't change after app
  * startup, except for unit tests.
  */
-std::unique_ptr<CBaseChainParams> CreateBaseChainParams(const CBaseChainParams::Network network);
+std::unique_ptr<CBaseChainParams> CreateBaseChainParams(const ChainNetwork network);
 
 /** Sets the params returned by Params() to those for the given network. */
-void SelectBaseParams(const CBaseChainParams::Network network);
+void SelectBaseParams(const ChainNetwork network);
 
 /**
  * Return the currently selected parameters. This won't change after app
@@ -51,7 +44,7 @@ const CBaseChainParams& BaseParams();
  * Looks for -regtest or -testnet and returns the appropriate Network ID.
  * Returns MAX_NETWORK_TYPES if an invalid combination is given.
  */
-CBaseChainParams::Network NetworkIdFromCommandLine();
+ChainNetwork NetworkIdFromCommandLine();
 
 /**
  * Calls NetworkIdFromCommandLine() and then calls SelectParams as appropriate.

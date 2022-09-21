@@ -86,7 +86,7 @@ private:
 
 TEST_F(TestOrphanTxManager, ProcessOrphanTxs)
 {
-	SelectParams(CBaseChainParams::Network::REGTEST);
+	SelectParams(ChainNetwork::REGTEST);
 
 	uint256 origin = GetRandHash();
 	const size_t nTxCount = CreateTestOrphanTxTree(origin, 7, 3);
