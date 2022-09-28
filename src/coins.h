@@ -375,7 +375,7 @@ public:
     virtual bool GetStats(CCoinsStats &stats) const;
 
     //! As we use CCoinsViews polymorphically, have a virtual destructor
-    virtual ~CCoinsView() {}
+    virtual ~CCoinsView() = default;
 };
 
 
@@ -387,13 +387,13 @@ protected:
 
 public:
     CCoinsViewBacked(CCoinsView *viewIn);
-    bool GetSproutAnchorAt(const uint256 &rt, SproutMerkleTree &tree) const;
-    bool GetSaplingAnchorAt(const uint256 &rt, SaplingMerkleTree &tree) const;
-    bool GetNullifier(const uint256 &nullifier, ShieldedType type) const;
-    bool GetCoins(const uint256 &txid, CCoins &coins) const;
-    bool HaveCoins(const uint256 &txid) const;
-    uint256 GetBestBlock() const;
-    uint256 GetBestAnchor(ShieldedType type) const;
+    bool GetSproutAnchorAt(const uint256 &rt, SproutMerkleTree &tree) const override;
+    bool GetSaplingAnchorAt(const uint256 &rt, SaplingMerkleTree &tree) const override;
+    bool GetNullifier(const uint256 &nullifier, ShieldedType type) const override;
+    bool GetCoins(const uint256 &txid, CCoins &coins) const override;
+    bool HaveCoins(const uint256 &txid) const override;
+    uint256 GetBestBlock() const override;
+    uint256 GetBestAnchor(ShieldedType type) const override;
     void SetBackend(CCoinsView &viewIn);
     bool BatchWrite(CCoinsMap &mapCoins,
                     const uint256 &hashBlock,
@@ -402,7 +402,7 @@ public:
                     CAnchorsSproutMap &mapSproutAnchors,
                     CAnchorsSaplingMap &mapSaplingAnchors,
                     CNullifiersMap &mapSproutNullifiers,
-                    CNullifiersMap &mapSaplingNullifiers);
+                    CNullifiersMap &mapSaplingNullifiers) override;
     bool GetStats(CCoinsStats &stats) const;
 };
 
@@ -458,13 +458,13 @@ public:
     ~CCoinsViewCache();
 
     // Standard CCoinsView methods
-    bool GetSproutAnchorAt(const uint256 &rt, SproutMerkleTree &tree) const;
-    bool GetSaplingAnchorAt(const uint256 &rt, SaplingMerkleTree &tree) const;
-    bool GetNullifier(const uint256 &nullifier, ShieldedType type) const;
-    bool GetCoins(const uint256 &txid, CCoins &coins) const;
-    bool HaveCoins(const uint256 &txid) const;
-    uint256 GetBestBlock() const;
-    uint256 GetBestAnchor(ShieldedType type) const;
+    bool GetSproutAnchorAt(const uint256 &rt, SproutMerkleTree &tree) const override;
+    bool GetSaplingAnchorAt(const uint256 &rt, SaplingMerkleTree &tree) const override;
+    bool GetNullifier(const uint256 &nullifier, ShieldedType type) const override;
+    bool GetCoins(const uint256 &txid, CCoins &coins) const override;
+    bool HaveCoins(const uint256 &txid) const override;
+    uint256 GetBestBlock() const override;
+    uint256 GetBestAnchor(ShieldedType type) const override;
     void SetBestBlock(const uint256 &hashBlock);
     bool BatchWrite(CCoinsMap &mapCoins,
                     const uint256 &hashBlock,
@@ -473,7 +473,7 @@ public:
                     CAnchorsSproutMap &mapSproutAnchors,
                     CAnchorsSaplingMap &mapSaplingAnchors,
                     CNullifiersMap &mapSproutNullifiers,
-                    CNullifiersMap &mapSaplingNullifiers);
+                    CNullifiersMap &mapSaplingNullifiers) override;
 
 
     // Adds the tree to mapSproutAnchors (or mapSaplingAnchors based on the type of tree)

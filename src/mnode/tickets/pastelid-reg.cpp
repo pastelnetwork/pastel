@@ -39,7 +39,7 @@ CPastelIDRegTicket CPastelIDRegTicket::Create(string&& sPastelID, SecureString&&
     const auto it = mapPastelIDs.find(ticket.pastelID);
     if (it == mapPastelIDs.cend())
         throw runtime_error(strprintf(
-            "PastelID [%s] should be generated and stored inside the local node. See \"pastelid newkey\"", 
+            "Pastel ID [%s] should be generated and stored inside the local node. See \"pastelid newkey\"", 
             ticket.pastelID));
 
     ticket.address = sFundingAddress;
@@ -51,7 +51,7 @@ CPastelIDRegTicket CPastelIDRegTicket::Create(string&& sPastelID, SecureString&&
         {
             CMasternode mn;
             if (!masterNodeCtrl.masternodeManager.Get(masterNodeCtrl.activeMasternode.outpoint, mn))
-                throw runtime_error("This is not a active masternode. Only active MN can register its PastelID");
+                throw runtime_error("This is not a active masternode. Only active MN can register its Pastel ID");
 
             // get collateral address if not passed via parameter
             KeyIO keyIO(Params());
@@ -127,11 +127,11 @@ ticket_validation_t CPastelIDRegTicket::IsValid(const bool bPreReg, const uint32
         // Something to check ONLY before ticket made into transaction
         if (bPreReg)
         { 
-            //1. check that PastelID ticket is not already in the blockchain.
+            //1. check that Pastel ID ticket is not already in the blockchain.
             // Only done after Create
             if (masterNodeCtrl.masternodeTickets.CheckTicketExist(*this))
             {
-                tv.errorMsg = strprintf("This PastelID is already registered in blockchain [%s]", pastelID);
+                tv.errorMsg = strprintf("This Pastel ID is already registered in blockchain [%s]", pastelID);
                 break;
             }
 
@@ -160,7 +160,7 @@ ticket_validation_t CPastelIDRegTicket::IsValid(const bool bPreReg, const uint32
                         !_ticket.IsTxId(m_txid))
                     {
                         tv.errorMsg = strprintf(
-                            "Masternode's outpoint - [%s] is already registered as a ticket. Your PastelID - [%s] [%sfound ticket block=%u, txid=%s]",
+                            "Masternode's outpoint - [%s] is already registered as a ticket. Your Pastel ID - [%s] [%sfound ticket block=%u, txid=%s]",
                             outpoint.ToStringShort(), pastelID, 
                             bPreReg ? "" : strprintf("this ticket block=%u txid=%s; ", m_nBlock, m_txid),
                             _ticket.m_nBlock, _ticket.m_txid);
@@ -183,14 +183,14 @@ ticket_validation_t CPastelIDRegTicket::IsValid(const bool bPreReg, const uint32
                     if (!masterNodeCtrl.masternodeManager.Get(outpoint, mnInfo))
                     {
                         tv.errorMsg = strprintf(
-                            "Unknown Masternode - [%s]. PastelID - [%s]", 
+                            "Unknown Masternode - [%s]. Pastel ID - [%s]", 
                             outpoint.ToStringShort(), pastelID);
                         break;
                     }
                     if (!mnInfo.IsEnabled())
                     {
                         tv.errorMsg = strprintf(
-                            "Not an active Masternode - [%s]. PastelID - [%s]", 
+                            "Not an active Masternode - [%s]. Pastel ID - [%s]", 
                             outpoint.ToStringShort(), pastelID);
                         break;
                     }
@@ -200,7 +200,7 @@ ticket_validation_t CPastelIDRegTicket::IsValid(const bool bPreReg, const uint32
                     if (!CMessageSigner::VerifyMessage(mnInfo.pubKeyMasternode, mn_signature, ss.str(), errRet))
                     {
                         tv.errorMsg = strprintf(
-                            "Ticket's MN signature is invalid. Error - %s. Outpoint - [%s]; PastelID - [%s]",
+                            "Ticket's MN signature is invalid. Error - %s. Outpoint - [%s]; Pastel ID - [%s]",
                             errRet, outpoint.ToStringShort(), pastelID);
                         break;
                     }
@@ -214,7 +214,7 @@ ticket_validation_t CPastelIDRegTicket::IsValid(const bool bPreReg, const uint32
         const string fullTicket = ss.str();
         if (!CPastelID::Verify(fullTicket, vector_to_string(pslid_signature), pastelID))
         {
-            tv.errorMsg = strprintf("Ticket's PastelID signature is invalid. PastelID - [%s]", pastelID);
+            tv.errorMsg = strprintf("Ticket's Pastel ID signature is invalid. Pastel ID - [%s]", pastelID);
             break;
         }
 

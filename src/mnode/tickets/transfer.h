@@ -18,10 +18,10 @@ using TransferTickets_t = std::vector<CTransferTicket>;
 /*
 	"ticket": {
 		"type": "transfer",
-		"pastelID": "",     // PastelID of the new owner (acceptor)
+		"pastelID": "",     // Pastel ID of the new owner (acceptor)
 		"offer_txid": "",   // txid with offer ticket
 		"accept_txid": "",  // txid with accept ticket
-		"nft_txid": "",     // txid with either 1) NFT activation ticket or 2) transfer ticket in it
+		"item_txid": "",    // txid with either 1) NFT or Action activation ticket or 2) transfer ticket txid
 		"price": "",
 		"reserved": "",
 		"signature": ""
@@ -30,16 +30,17 @@ using TransferTickets_t = std::vector<CTransferTicket>;
      key #1: offer ticket txid
      key #2: accept ticket txid
   mv key #1: Pastel ID
-  mv key #2: txid with either 1) NFT activation ticket or 2) transfer ticket in it
-  mv key #3: NFT registration ticket txid
+  mv key #2: one of these:
+                1) NFT activation ticket txid 
+                2) Action activation ticket txid
+                3) transfer ticket txid
+  mv key #3: NFT or Action registration ticket txid
  */
 using txid_serial_tuple_t = std::tuple<std::string, std::string>;
 
 class CTransferTicket : public CPastelTicket
 {
 public:
-    std::string nftCopySerialNr;
-
     unsigned int price{};
     std::string reserved;
 
@@ -65,9 +66,9 @@ public:
         m_sPastelID.clear();
         m_offerTxId.clear();
         m_acceptTxId.clear();
-        m_nftTxId.clear();
-        m_nftRegTxId.clear();
-        nftCopySerialNr.clear();
+        m_itemTxId.clear();
+        m_itemRegTxId.clear();
+        itemCopySerialNr.clear();
         price = 0;
         reserved.clear();
         m_signature.clear();
@@ -75,8 +76,8 @@ public:
     std::string KeyOne() const noexcept override { return m_offerTxId; }
     std::string KeyTwo() const noexcept override { return m_acceptTxId; }
     std::string MVKeyOne() const noexcept override { return m_sPastelID; }
-    std::string MVKeyTwo() const noexcept override { return m_nftTxId; }
-    std::string MVKeyThree() const noexcept override { return m_nftRegTxId; }
+    std::string MVKeyTwo() const noexcept override { return m_itemTxId; }
+    std::string MVKeyThree() const noexcept override { return m_itemRegTxId; }
 
     bool HasKeyTwo() const noexcept override { return true; }
     bool HasMVKeyOne() const noexcept override { return true; }
@@ -94,8 +95,15 @@ public:
     const std::string& getPastelID() const noexcept { return m_sPastelID; }
     const std::string& getOfferTxId() const noexcept { return m_offerTxId; }
     const std::string& getAcceptTxId() const noexcept { return m_acceptTxId; }
-    const std::string& getNFTTxId() const noexcept { return m_nftTxId; }
+    const std::string& getItemTxId() const noexcept { return m_itemTxId; }
     const std::string getSignature() const noexcept { return vector_to_string(m_signature); }
+    const std::string GetItemRegTicketTxid() const noexcept  { return m_itemRegTxId; }
+    const std::string& GetCopySerialNr() const noexcept { return itemCopySerialNr; }
+
+    // setters for ticket fields
+    void SetItemRegTicketTxid(const std::string& sItemRegTxId) noexcept { m_itemRegTxId = sItemRegTxId; }
+    void SetCopySerialNr(const std::string& CopySerialNr) noexcept { itemCopySerialNr = CopySerialNr; }
+
 
     void SerializationOp(CDataStream& s, const SERIALIZE_ACTION ser_action) override
     {
@@ -108,15 +116,15 @@ public:
         // v0
         READWRITE(m_offerTxId);
         READWRITE(m_acceptTxId);
-        READWRITE(m_nftTxId);
+        READWRITE(m_itemTxId);
         READWRITE(price);
         READWRITE(reserved);
         READWRITE(m_signature);
         READWRITE(m_nTimestamp);
         READWRITE(m_txid);
         READWRITE(m_nBlock);
-        READWRITE(m_nftRegTxId);
-        READWRITE(nftCopySerialNr);
+        READWRITE(m_itemRegTxId);
+        READWRITE(itemCopySerialNr);
     }
 
     CAmount GetExtraOutputs(std::vector<CTxOut>& outputs) const override;
@@ -125,28 +133,27 @@ public:
     static bool FindTicketInDb(const std::string& key, CTransferTicket& ticket);
 
     static TransferTickets_t FindAllTicketByPastelID(const std::string& pastelID);
-    static TransferTickets_t FindAllTicketByNFTTxID(const std::string& NFTTxnId);
-    static TransferTickets_t FindAllTicketByRegTxID(const std::string& nftRegTxnId);
+    static TransferTickets_t FindAllTicketByItemTxID(const std::string& ItemTxId);
+    static TransferTickets_t FindAllTicketByItemRegTxID(const std::string& itemRegTxId);
 
-    static bool CheckTransferTicketExistByOfferTicket(const std::string& offerTxnId);
-    static bool CheckTransferTicketExistByAcceptTicket(const std::string& acceptTxnId);
+    static bool CheckTransferTicketExistByOfferTicket(const std::string& offerTxId);
+    static bool CheckTransferTicketExistByAcceptTicket(const std::string& acceptTxId);
     static bool GetTransferTicketByOfferTicket(const std::string& offerTxnId, CTransferTicket& ticket);
     static bool GetTransferTicketByAcceptTicket(const std::string& acceptTxnId, CTransferTicket& ticket);
     static mu_strings GetPastelIdAndTxIdWithTopHeightPerCopy(const TransferTickets_t& allTickets);
 
-    std::unique_ptr<CPastelTicket> FindNFTRegTicket() const;
+    std::unique_ptr<CPastelTicket> FindItemRegTicket() const;
 
-    void SetNFTRegTicketTxid(const std::string& sNftRegTxid);
-    const std::string GetNFTRegTicketTxid() const;
-    void SetCopySerialNr(const std::string& nftCopySerialNr);
-    const std::string& GetCopySerialNr() const;
-
-    static std::optional<txid_serial_tuple_t> GetNFTRegTxIDAndSerialIfResoldNft(const std::string& _txid);
+    static std::optional<txid_serial_tuple_t> GetItemRegForMultipleTransfers(const std::string& _txid);
 
 protected:
-    std::string m_sPastelID;  // new owner (acceptor) Pastel ID
-    std::string m_offerTxId;  // Offer ticket txid
-    std::string m_acceptTxId; // Accept ticket txid
-    std::string m_nftTxId;    // txid with either 1) NFT activation ticket or 2) transfer ticket in it
-    std::string m_nftRegTxId; // NFT registration ticket txid
+    std::string m_sPastelID;   // new owner (acceptor) Pastel ID
+    std::string m_offerTxId;   // Offer ticket txid
+    std::string m_acceptTxId;  // Accept ticket txid
+    std::string m_itemTxId;    // 1) NFT or Action activation ticket txid or 
+                               // 2) transfer ticket txid for the NFT or Action
+    std::string m_itemRegTxId; // NFT or Action registration ticket txid
+    std::string itemCopySerialNr;
+
+    TicketID m_itemType{TicketID::Activate}; // item type (memory only): NFT or Action Activation or Transfer ticket
 };

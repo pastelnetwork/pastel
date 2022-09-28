@@ -7,12 +7,12 @@
 # Base class for RPC testing
 
 import logging
-import optparse
 import os
 import sys
 import shutil
 import tempfile
 import traceback
+import argparse
 
 from .authproxy import JSONRPCException
 from .util import (
@@ -100,7 +100,13 @@ class BitcoinTestFramework(object):
         wait_pastelds()
         self.setup_network(True)
 
-    def sync_all(self, wait=1, stop_after=-1):
+    def sync_all(self, wait: int = 1, stop_after: int = -1):
+        """Synchronize all nodes (blocks and mempools).
+
+        Args:
+            wait (int, optional): wait in secs between block count/mempool checks. Defaults t  1 sec.
+            stop_after (int, optional): _description_. Defaults to -1.
+        """
         if self.is_network_split:
             sync_blocks(self.nodes[:2])
             sync_blocks(self.nodes[2:])
@@ -119,37 +125,44 @@ class BitcoinTestFramework(object):
         wait_pastelds()
         self.setup_network(False)
 
-    # generate blocks up to new_height on node #nodeNo, sync all nodes
-    def generate_and_sync(self, new_height, nodeNo = 0):
-        current_height = self.nodes[nodeNo].getblockcount()
+    # generate blocks up to new_height on node #node_id, sync all nodes
+    def generate_and_sync(self, new_height, node_id = 0):
+        current_height = self.nodes[node_id].getblockcount()
         assert(new_height > current_height)
-        self.nodes[nodeNo].generate(new_height - current_height)
+        self.nodes[node_id].generate(new_height - current_height)
         self.sync_all()
-        assert_equal(new_height, self.nodes[nodeNo].getblockcount())
+        assert_equal(new_height, self.nodes[node_id].getblockcount())
 
-    # generate nblocks on node #nodeNo, sync all nodes
-    def generate_and_sync_inc(self, nblocks = 1, nodeNo = 0):
-        current_height = self.nodes[nodeNo].getblockcount()
+
+    def generate_and_sync_inc(self, nblocks = 1, node_id = 0):
+        """Generate nblocks on node #node_id, sync all nodes.
+
+        Args:
+            nblocks (int, optional): number of blocks to generate. Defaults to 1.
+            node_id (int, optional): node number to generate blocks on. Defaults to 0.
+        """
+        current_height = self.nodes[node_id].getblockcount()
         self.sync_all()
-        self.nodes[nodeNo].generate(nblocks)
+        self.nodes[node_id].generate(nblocks)
         self.sync_all()
-        assert_equal(current_height + nblocks, self.nodes[nodeNo].getblockcount())
+        assert_equal(current_height + nblocks, self.nodes[node_id].getblockcount())
+
 
     def main(self):
 
-        parser = optparse.OptionParser(usage="%prog [options]")
-        parser.add_option("--nocleanup", dest="nocleanup", default=False, action="store_true",
+        parser = argparse.ArgumentParser(usage="%prog [options]")
+        parser.add_argument("--nocleanup", dest="nocleanup", default=False, action="store_true",
                           help="Leave pastelds and test.* datadir on exit or error")
-        parser.add_option("--noshutdown", dest="noshutdown", default=False, action="store_true",
+        parser.add_argument("--noshutdown", dest="noshutdown", default=False, action="store_true",
                           help="Don't stop pastelds after the test execution")
-        parser.add_option("--srcdir", dest="srcdir", default="../../src",
+        parser.add_argument("--srcdir", dest="srcdir", default="../../src",
                           help="Source directory containing pasteld/pastel-cli (default: %default)")
-        parser.add_option("--tmpdir", dest="tmpdir", default=tempfile.mkdtemp(prefix="test"),
+        parser.add_argument("--tmpdir", dest="tmpdir", default=tempfile.mkdtemp(prefix="test"),
                           help="Root directory for datadirs")
-        parser.add_option("--tracerpc", dest="trace_rpc", default=False, action="store_true",
+        parser.add_argument("--tracerpc", dest="trace_rpc", default=False, action="store_true",
                           help="Print out all RPC calls as they are made")
         self.add_options(parser)
-        (self.options, self.args) = parser.parse_args()
+        self.options = parser.parse_args()
 
         if self.options.trace_rpc:
             logging.basicConfig(level=logging.DEBUG, datefmt='%H:%M:%S', format='%(asctime)s.%(msecs)03d [%(name)s:%(levelname)s] %(message)s')
@@ -186,7 +199,7 @@ class BitcoinTestFramework(object):
             stop_nodes(self.nodes)
             wait_pastelds()
         else:
-            print("Note: pastelds were not stopped and may still be running")
+            print("Note: pasteld nodes were not stopped and may still be running")
 
         if not self.options.nocleanup and not self.options.noshutdown:
             print("Cleaning up")
@@ -215,10 +228,10 @@ class ComparisonTestFramework(BitcoinTestFramework):
         self.setup_clean_chain = True
 
     def add_options(self, parser):
-        parser.add_option("--testbinary", dest="testbinary",
+        parser.add_argument("--testbinary", dest="testbinary",
                           default=os.getenv("PASTELD", "pasteld"),
                           help="pasteld binary to test")
-        parser.add_option("--refbinary", dest="refbinary",
+        parser.add_argument("--refbinary", dest="refbinary",
                           default=os.getenv("PASTELD", "pasteld"),
                           help="pasteld binary to use for reference nodes (if any)")
 

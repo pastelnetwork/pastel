@@ -16,20 +16,20 @@ using namespace ed_crypto;
 using namespace secure_container;
 
 /**
-* Generate new PastelID (EdDSA448) and LegRoast public/private key pairs.
-* Create new secure container to store all items associated with PastelID.
+* Generate new Pastel ID (EdDSA448) and LegRoast public/private key pairs.
+* Create new secure container to store all items associated with Pastel ID.
 * 
 * \param passPhrase - secure passphrase that will be used to encrypt secure container.
-* \return pastelid_store_t map [encoded PastelID] -> [encoded LegRoast public key]
+* \return pastelid_store_t map [encoded Pastel ID] -> [encoded LegRoast public key]
 */
 pastelid_store_t CPastelID::CreateNewPastelKeys(SecureString&& passPhrase)
 {
     pastelid_store_t resultMap;
     try
     {
-        // PastelID private/public keys (EdDSA448)
+        // Pastel ID private/public keys (EdDSA448)
         const key_dsa448 key = key_dsa448::generate_key();
-        // encode public key with PastelID prefix (A1DE), base58 encode + checksum
+        // encode public key with Pastel ID prefix (A1DE), base58 encode + checksum
         string sPastelID = EncodePastelID(key.public_key_raw().data());
         // LegRoast signing keys
         CLegRoast<algorithm::Legendre_Middle> LegRoastKey;
@@ -105,12 +105,12 @@ bool CPastelID::ProcessEd448_PastelKeyFile(string& error, const string& sFilePat
 }
 
 /**
-* Sign text with the private key associated with PastelID.
+* Sign text with the private key associated with Pastel ID.
 * throws runtime_error exception in case of any read/write operations with secure container
 * 
 * \param sText - text to sign
-* \param sPastelID - locally stored PastelID (base58-encoded with prefix and checksum)
-* \param sPassPhrase - passphrase used to access private keys associated with PastelID
+* \param sPastelID - locally stored Pastel ID (base58-encoded with prefix and checksum)
+* \param sPassPhrase - passphrase used to access private keys associated with Pastel ID
 * \param alg - algorithm to use for signing (ed448[default] or legroast)
 * \param fBase64 - if true, signature should be encoded in base64
 * \return signature
@@ -170,11 +170,11 @@ string CPastelID::Sign(const string& sText, const string& sPastelID, SecureStrin
 }
 
 /**
-* Verify signature with the public key associated with PastelID.
+* Verify signature with the public key associated with Pastel ID.
 * 
 * \param sText - text to verify signature for
 * \param sSignature - signature in base64 format
-* \param sPastelID - PastelID (encoded public EdDSA448 key)
+* \param sPastelID - Pastel ID (encoded public EdDSA448 key)
 * \param alg - algorithm to use for verification (ed448[default] or legroast)
 * \param fBase64 - if true signature is base64-encoded
 * \return true if signature is correct
@@ -207,25 +207,25 @@ bool CPastelID::Verify(const string& sText, const string& sSignature, const stri
                 v_uint8 vLRPubKey;
                 CSecureContainer cont;
                 const auto sFilePath = GetSecureContFilePath(sPastelID);
-                // check if this PastelID is stored locally
+                // check if this Pastel ID is stored locally
                 // if yes - read LegRoast public key from the secure container (no passphrase needed)
                 // if no - lookup ID Registration ticket in the blockchain and get LegRoast pubkey from the ticket
                 if (fs::exists(sFilePath))
                 {
                     // read public items from the secure container file
                     if (!cont.read_public_from_file(error, sFilePath))
-                        throw runtime_error(strprintf("%sLegRoast public key was not found in the secure container associated with PastelID [%s]. %s", 
+                        throw runtime_error(strprintf("%sLegRoast public key was not found in the secure container associated with Pastel ID [%s]. %s", 
                             LRERR_PREFIX, sPastelID, error));
                     // retrieve encoded LegRoast public key
                     if (!cont.get_public_data(PUBLIC_ITEM_TYPE::pubkey_legroast, sLegRoastPubKey))
-                        throw runtime_error(strprintf("%sLegRoast public key associated with the PastelID [%s] was not found", LRERR_PREFIX, sPastelID));
+                        throw runtime_error(strprintf("%sLegRoast public key associated with the Pastel ID [%s] was not found", LRERR_PREFIX, sPastelID));
                 } else {
                     CPastelIDRegTicket regTicket;
                     if (!CPastelIDRegTicket::FindTicketInDb(sPastelID, regTicket))
-                        throw runtime_error(strprintf("%sPastelID [%s] is not stored locally and PastelID registration ticket was not found in the blockchain", 
+                        throw runtime_error(strprintf("%sPastel ID [%s] is not stored locally and Pastel ID registration ticket was not found in the blockchain", 
                             LRERR_PREFIX, sPastelID));
                     if (regTicket.pq_key.empty())
-                        throw runtime_error(strprintf("%sPastelID [%s] registration ticket [txid=%s] was found in the blockchain, but LegRoast public key is empty", 
+                        throw runtime_error(strprintf("%sPastel ID [%s] registration ticket [txid=%s] was found in the blockchain, but LegRoast public key is empty", 
                             LRERR_PREFIX, regTicket.GetTxId()));
                     sLegRoastPubKey = move(regTicket.pq_key);
                 }
@@ -259,12 +259,12 @@ bool CPastelID::Verify(const string& sText, const string& sSignature, const stri
 }
 
 /**
-* Get PastelIDs stored locally in pastelkeys (pastelkeysdir option).
+* Get Pastel IDs stored locally in pastelkeys (pastelkeysdir option).
 * 
-* \param bPastelIdOnly - return PastelIDs only, otherwise returns PastelIDs along with associated keys
+* \param bPastelIdOnly - return Pastel IDs only, otherwise returns PastelIDs along with associated keys
 *                        read from the secure container
-* \param psPastelID - optional parameter, can be used as a filter to retrieve only specific PastelID
-* \return map of PastelID -> associated keys (LegRoast signing public key)
+* \param psPastelID - optional parameter, can be used as a filter to retrieve only specific Pastel ID
+* \return map of 'Pastel ID' -> associated keys (LegRoast signing public key)
 */
 pastelid_store_t CPastelID::GetStoredPastelIDs(const bool bPastelIdOnly, string* psPastelID)
 {

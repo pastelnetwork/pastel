@@ -271,6 +271,7 @@ BITCOIN_CORE_H = \
   core_memusage.h \
   datacompressor.h\
   deprecation.h \
+  enum_util.h \
   fs.h \
   hash.h \
   httprpc.h \

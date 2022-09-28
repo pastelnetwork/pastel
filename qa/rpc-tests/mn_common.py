@@ -11,9 +11,9 @@ import random
 from decimal import getcontext
 from pastel_test_framework import PastelTestFramework
 from test_framework.util import (
-    assert_equal, 
-    start_node, 
-    connect_nodes_bi, 
+    assert_equal,
+    start_node,
+    connect_nodes_bi,
     p2p_port,
     stop_node
 )

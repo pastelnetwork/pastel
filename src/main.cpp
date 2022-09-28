@@ -302,9 +302,7 @@ struct CNodeState
         {
             if (bLogNetCategory)
             {
-                if (!s.empty())
-                    s += ", ";
-                s += entry.hash.ToString();
+                str_append_field(s, entry.hash.ToString().c_str(), ", ");
                 if (entry.pindex)
                 {
                     int nHeight = entry.pindex->nHeight;

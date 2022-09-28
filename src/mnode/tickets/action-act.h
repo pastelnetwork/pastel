@@ -16,7 +16,7 @@ using ActionActivateTickets_t = std::vector<CActionActivateTicket>;
     "ticket": {
         "type": "action-act",
         "version": integer,      // version of the blockchain representation of ticket, 1 now
-        "pastelID": string,      // PastelID of the caller
+        "pastelID": string,      // Pastel ID of the caller
         "reg_txid": string,      // txid of the action registration ticket
         "called_at": int,        // block at which action was called (`action_ticket` was created)
                                  // is used to check if the MN that created action registration ticket was indeed the top MN when the the action was called
@@ -62,7 +62,7 @@ public:
     ticket_validation_t IsValid(const bool bPreReg, const uint32_t nCallDepth) const noexcept override;
     CAmount GetStorageFee() const noexcept override { return m_storageFee; }
     bool IsSameSignature(const v_uint8& signature) const noexcept { return m_signature == signature; }
-    // sign the ticket with the Action Caller PastelID's private key - creates signature
+    // sign the ticket with the Action Caller Pastel ID's private key - creates signature
     void sign(SecureString&& strKeyPass);
 
     // getters for ticket fields

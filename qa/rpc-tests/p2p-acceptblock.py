@@ -114,7 +114,7 @@ class TestNode(NodeConnCB):
 
 class AcceptBlockTest(BitcoinTestFramework):
     def add_options(self, parser):
-        parser.add_option("--testbinary", dest="testbinary",
+        parser.add_argument("--testbinary", dest="testbinary",
                           default=os.getenv("PASTELD", "pasteld"),
                           help="pasteld binary to test")
 

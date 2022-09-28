@@ -15,9 +15,9 @@ using ChangeEthereumAddressTickets_t = std::vector<CChangeEthereumAddressTicket>
 /*
 	"ticket": {
 		"type": "ethereumAddress",
-		"pastelID": "",    //PastelID of the ethereum address
-		"ethereumAddress": "",    //new valid ethereum address
-		"fee": "",         // fee to change ethereum address
+		"pastelID": "",         //Pastel ID of the ethereum address
+		"ethereumAddress": "",  //new valid ethereum address
+		"fee": "",              // fee to change ethereum address
 		"signature": ""
 	},
  */

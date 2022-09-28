@@ -6,6 +6,7 @@
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <array>
 #include <variant>
+#include <vector>
 
 #include <amount.h>
 #include <random.h>
@@ -238,6 +239,8 @@ public:
     std::string ToString() const;
     std::string ToStringShort() const;
 };
+
+using v_outpoints = std::vector<COutPoint>;
 
 /** An outpoint - a combination of a transaction hash and an index n into its sapling
  * output description (vShieldedOutput) */

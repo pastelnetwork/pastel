@@ -165,11 +165,11 @@ class MasterNodeTicketsTest(MasterNodeCommon):
 
             offer_ticket1_1 = self.nodes[self.non_mn3].tickets("find", "offer", act_ticket_txid+":2")
             assert_equal(offer_ticket1_1['ticket']['type'], "offer")
-            assert_equal(offer_ticket1_1['ticket']['nft_txid'], act_ticket_txid)
+            assert_equal(offer_ticket1_1['ticket']['item_txid'], act_ticket_txid)
             assert_equal(offer_ticket1_1["ticket"]["copy_number"], 2)
 
             offer_ticket1_2 = self.nodes[self.non_mn3].tickets("get", offer_ticket3_txid)
-            assert_equal(offer_ticket1_2["ticket"]["nft_txid"], offer_ticket1_1["ticket"]["nft_txid"])
+            assert_equal(offer_ticket1_2["ticket"]["item_txid"], offer_ticket1_1["ticket"]["item_txid"])
             assert_equal(offer_ticket1_2["ticket"]["copy_number"], offer_ticket1_1["ticket"]["copy_number"])
 
         self.__send_coins_to_accept(self.non_mn4, self.nonmn4_address1, 5)
@@ -304,6 +304,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
             self.nodes[n].tickets("register", "mnid", self.mn_pastelids[n], self.passphrase)
 
         self.__wait_for_sync_all(5)
+
 
     # ===============================================================================================================
     def generate_nft_app_ticket_details(self):
@@ -443,6 +444,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         print(f"top_mns_pastelids - {self.top_mn_pastelid0},{self.top_mn_pastelid1},{self.top_mn_pastelid2}")
         return top_mns_indexes
 
+
     # ===============================================================================================================
     def create_signatures(self, principal_node_num, make_bad_signatures_dicts = False):
         """Create ticket signatures
@@ -522,7 +524,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         # nft_ticket - v1
         # {
         #   "nft_ticket_version": integer  // 1
-        #   "author": bytes,               // PastelID of the author (creator)
+        #   "author": bytes,               // Pastel ID of the author (creator)
         #   "blocknum": integer,           // block number when the ticket was created - this is to map the ticket to the MNs that should process it
         #   "block_hash": bytes            // hash of the top block when the ticket was created - this is to map the ticket to the MNs that should process it
         #   "copies": integer,             // number of copies

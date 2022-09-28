@@ -150,5 +150,8 @@
     <ClInclude Include="..\..\..\src\trimmean.h">
       <Filter>Source Files</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\..\src\enum_util.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

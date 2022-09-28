@@ -46,13 +46,13 @@ R"(tickets find "type" "key"
 Set of commands to find different types of Pastel tickets.
 
 Available types:
-  id       - Find PastelID (both personal and masternode) registration ticket.
-             The "key" is PastelID or Collateral tnx outpoint for Masternode
+  id       - Find Pastel ID (both personal and masternode) registration ticket.
+             The "key" is Pastel ID or Collateral tnx outpoint for Masternode
              OR PastelID or Address for Personal PastelID
   nft      - Find new NFT registration ticket.
-             The "key" is 'Key1' or 'Key2' OR 'creator's PastelID'
+             The "key" is 'Key1' or 'Key2' OR 'creator's Pastel ID'
   act      - Find NFT confirmation ticket.
-             The "key" is 'NFT Registration ticket txid' OR 'creator's PastelID' OR 'creator's height (block height at what original NFT registration request was created)'
+             The "key" is 'NFT Registration ticket txid' OR 'creator's Pastel ID' OR 'creator's height (block height at what original NFT registration request was created)'
   offer    - Find offer ticket.
              The "key" is either Activation OR Transfer txid PLUS number of copy - "txid:number"
              ex.: 907e5e4c6fc4d14660a22afe2bdf6d27a3c8762abf0a89355bb19b7d9e7dc440:1
@@ -61,9 +61,9 @@ Available types:
   transfer - Find transfer ticket.
              The "key" is ...
   nft-collection - Find new NFT collection registration ticket.
-             The "key" is 'Key1' or 'Key2' OR 'creator's PastelID'
+             The "key" is 'Key1' or 'Key2' OR 'creator's Pastel ID'
   nft-collection-act - Find new NFT collection activation ticket.
-             The "key" is 'NFT Collection Reg ticket txid' OR 'creator's PastelID' OR 'creator's height (block height at what original NFT collection registration request was created)'
+             The "key" is 'NFT Collection Reg ticket txid' OR 'creator's Pastel ID' OR 'creator's height (block height at what original NFT collection registration request was created)'
   down     - Find take down ticket.
              The "key" is ...
   royalty  - Find NFT royalty ticket.
@@ -73,9 +73,9 @@ Available types:
   ethereumaddress  - Find ethereumaddress change ticket.
              The "key" is 'ethereumaddress'
   action   - Find action registration ticket.
-             The "key" is 'Key1' or 'Key2' OR 'action caller's PastelID'
+             The "key" is 'Key1' or 'Key2' OR 'action caller's Pastel ID'
   action-act - Find action activation ticket.
-             The "key" is 'ActionReg ticket txid' OR 'Caller's PastelID' OR 'called-At height (block height at what original Action registration ticket was created)'
+             The "key" is 'ActionReg ticket txid' OR 'Caller's Pastel ID' OR 'called-At height (block height at what original Action registration ticket was created)'
 
 Arguments:
 1. "key"    (string, required) The Key to use for ticket search. See types above...
@@ -107,7 +107,7 @@ As json rpc
 
     case RPC_CMD_FIND::sell:
     case RPC_CMD_FIND::offer:
-        return getTickets<COfferTicket>(key, key, COfferTicket::FindAllTicketByNFTTxID);
+        return getTickets<COfferTicket>(key, key, COfferTicket::FindAllTicketByItemTxId);
 
     case RPC_CMD_FIND::buy:
     case RPC_CMD_FIND::accept:

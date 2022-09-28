@@ -213,5 +213,8 @@
     <ClInclude Include="..\..\..\src\svc_thread.h">
       <Filter>Source Files</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\..\src\str_utils.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

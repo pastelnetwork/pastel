@@ -45,7 +45,7 @@ TEST(PastelID, GetStoredPastelIDs)
     });
 
     auto mapIDs = CPastelID::GetStoredPastelIDs(true);
-    EXPECT_TRUE(mapIDs.empty()) << "Found some PastelIDs in [" << sTempPath << "]";
+    EXPECT_TRUE(mapIDs.empty()) << "Found some Pastel IDs in [" << sTempPath << "]";
 
     const auto PASS1 = "passphrase1";
     const auto PASS2 = "passphrase2";

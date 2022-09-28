@@ -30,3 +30,10 @@ TEST(enum_utils, is_enum_valid)
     EXPECT_FALSE(is_enum_valid(8, TEST_ENUM::START, TEST_ENUM::END));
     EXPECT_FALSE(is_enum_valid(0, TEST_ENUM::START, TEST_ENUM::END));
 }
+
+TEST(enum_utils, is_enum_any_of)
+{
+    TEST_ENUM a = TEST_ENUM::ITEM_VALUE_2;
+    EXPECT_TRUE(is_enum_any_of(a, TEST_ENUM::START, TEST_ENUM::ITEM_VALUE_4, TEST_ENUM::ITEM_VALUE_2));
+    EXPECT_TRUE(is_enum_any_of(a, TEST_ENUM::START, TEST_ENUM::ITEM_VALUE_4, TEST_ENUM::END));
+}

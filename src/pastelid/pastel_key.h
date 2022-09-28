@@ -32,7 +32,7 @@ public:
         legroast = 2
     };
 
-    // Generate new PastelID(EdDSA448) and LegRoast public / private key pairs.
+    // Generate new Pastel ID(EdDSA448) and LegRoast public / private key pairs.
     static pastelid_store_t CreateNewPastelKeys(SecureString&& passPhrase);
     // Get signing algorithm enum by name.
     static SIGN_ALGORITHM GetAlgorithmByName(const std::string& s);

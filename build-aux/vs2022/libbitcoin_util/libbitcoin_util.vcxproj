@@ -118,6 +118,7 @@
     <ClInclude Include="..\..\..\src\compat\byteswap.h" />
     <ClInclude Include="..\..\..\src\compat\endian.h" />
     <ClInclude Include="..\..\..\src\compat\sanity.h" />
+    <ClInclude Include="..\..\..\src\enum_util.h" />
     <ClInclude Include="..\..\..\src\fs.h" />
     <ClInclude Include="..\..\..\src\numeric_range.h" />
     <ClInclude Include="..\..\..\src\random.h" />

@@ -355,7 +355,7 @@ public:
         nDefaultPort = MAINNET_DEFAULT_PORT;
         nPruneAfterHeight = 100'000;
         const size_t N = 200, K = 9;
-        BOOST_STATIC_ASSERT(equihash_parameters_acceptable(N, K));
+        static_assert(equihash_parameters_acceptable(N, K));
         consensus.nEquihashN = N;
         consensus.nEquihashK = K;
 
@@ -463,7 +463,7 @@ public:
         nDefaultPort = TESTNET_DEFAULT_PORT;
         nPruneAfterHeight = 1000;
         const size_t N = 200, K = 9;
-        BOOST_STATIC_ASSERT(equihash_parameters_acceptable(N, K));
+        static_assert(equihash_parameters_acceptable(N, K));
         consensus.nEquihashN = N;
         consensus.nEquihashK = K;
 
@@ -567,7 +567,7 @@ public:
         nDefaultPort = REGTEST_DEFAULT_PORT;
         nPruneAfterHeight = 1000;
         const size_t N = 48, K = 5;
-        BOOST_STATIC_ASSERT(equihash_parameters_acceptable(N, K));
+        static_assert(equihash_parameters_acceptable(N, K));
         consensus.nEquihashN = N;
         consensus.nEquihashK = K;
         

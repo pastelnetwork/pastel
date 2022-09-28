@@ -73,14 +73,14 @@ bytes fields are base64 as strings
 }
 
 signatures: {
-    "principal": { "PastelID" : "signature"},
-          "mn1": { "PastelID" : "signature"},
-          "mn2": { "PastelID" : "signature"},
-          "mn3": { "PastelID" : "signature"},
+    "principal": { "principal Pastel ID" : "signature"},
+          "mn1": { "mn1 Pastel ID" : "signature"},
+          "mn2": { "mn2 Pastel ID" : "signature"},
+          "mn3": { "mn3 Pastel ID" : "signature"},
 }
 
   key #1: primary key (generated)
-mvkey #1: Creator PastelID
+mvkey #1: Creator Pastel ID
 mvkey #2: NFT Collection TxID (optional)
 mvket #3: label (optional)
 }

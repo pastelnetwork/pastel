@@ -1,25 +1,27 @@
 // Copyright (c) 2012-2014 The Bitcoin Core developers
+// Copyright (c) 2018-2022 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
-// file COPYING or http://www.opensource.org/licenses/mit-license.php.
-
-#include "clientversion.h"
-
-#include "tinyformat.h"
+// file COPYING or https://www.opensource.org/licenses/mit-license.php.
 
 #include <string>
 
+#include <tinyformat.h>
 #include <boost/preprocessor/arithmetic/add.hpp>
 #include <boost/preprocessor/arithmetic/sub.hpp>
 #include <boost/preprocessor/comparison/equal.hpp>
 #include <boost/preprocessor/comparison/less.hpp>
 #include <boost/preprocessor/control/if.hpp>
 
+#include <clientversion.h>
+
+using namespace std;
+
 /**
  * Name of client reported in the 'version' message. Report the same name
  * for both bitcoind and bitcoin-core, to make it harder for attackers to
  * target servers or GUI users specifically.
  */
-const std::string CLIENT_NAME("MagicBean");
+const string CLIENT_NAME("MagicBean");
 
 /**
  * Client version number
@@ -97,10 +99,10 @@ const std::string CLIENT_NAME("MagicBean");
 #endif
 #endif
 
-const std::string CLIENT_BUILD(BUILD_DESC CLIENT_VERSION_SUFFIX);
-const std::string CLIENT_DATE(BUILD_DATE);
+const string CLIENT_BUILD(BUILD_DESC CLIENT_VERSION_SUFFIX);
+const string CLIENT_DATE(BUILD_DATE);
 
-std::string FormatVersion(int nVersion)
+string FormatVersion(int nVersion)
 {
     if (nVersion % 100 < 25)
         return strprintf("%d.%d.%d-beta%d", nVersion / 1000000, (nVersion / 10000) % 100, (nVersion / 100) % 100, (nVersion % 100)+1);
@@ -112,7 +114,7 @@ std::string FormatVersion(int nVersion)
         return strprintf("%d.%d.%d-%d", nVersion / 1000000, (nVersion / 10000) % 100, (nVersion / 100) % 100, (nVersion % 100)-50);
 }
 
-std::string FormatFullVersion()
+string FormatFullVersion()
 {
     return CLIENT_BUILD;
 }
@@ -120,14 +122,14 @@ std::string FormatFullVersion()
 /** 
  * Format the subversion field according to BIP 14 spec (https://github.com/bitcoin/bips/blob/master/bip-0014.mediawiki) 
  */
-std::string FormatSubVersion(const std::string& name, int nClientVersion, const std::vector<std::string>& comments)
+string FormatSubVersion(const string& name, int nClientVersion, const v_strings& comments)
 {
-    std::ostringstream ss;
+    ostringstream ss;
     ss << "/";
     ss << name << ":" << FormatVersion(nClientVersion);
     if (!comments.empty())
     {
-        std::vector<std::string>::const_iterator it(comments.begin());
+        v_strings::const_iterator it(comments.begin());
         ss << "(" << *it;
         for(++it; it != comments.end(); ++it)
             ss << "; " << *it;

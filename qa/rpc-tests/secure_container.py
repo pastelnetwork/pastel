@@ -60,36 +60,36 @@ class SecureContainerTest(PastelTestFramework):
         assert_raises_rpc(rpc.RPC_MISC_ERROR, "passphrase for new key cannot be empty", 
             self.nodes[0].pastelid, "newkey", "")
 
-        # List all internally stored PastelID and keys
+        # List all internally stored Pastel ID and keys
         print(" -pastelid list")
         # check Pastel IDs on node0
         id_list0 = self.nodes[0].pastelid("list")
         id_list0 = dict((key+str(i), val) for i, k in enumerate(id_list0) for key, val in k.items())
-        assert_true(self.pastelid1 in id_list0.values(), f"PastelID {self.pastelid1} not in the list")
-        assert_true(self.pastelid2 in id_list0.values(), f"PastelID {self.pastelid2} not in the list")
+        assert_true(self.pastelid1 in id_list0.values(), f"Pastel ID {self.pastelid1} not in the list")
+        assert_true(self.pastelid2 in id_list0.values(), f"Pastel ID {self.pastelid2} not in the list")
         # check Pastel IDs on node1
         id_list1 = self.nodes[1].pastelid("list")
         id_list1 = dict((key+str(i), val) for i, k in enumerate(id_list1) for key, val in k.items())
-        assert_true(self.pastelid3 in id_list1.values(), f"PastelID {self.pastelid3} not in the list")
+        assert_true(self.pastelid3 in id_list1.values(), f"Pastel ID {self.pastelid3} not in the list")
 
         print(" -pastelid sign & verify ed448")
         text_to_sign = "my text to sign"
-        # Sign "text" with the internally stored private key associated with the PastelID
+        # Sign "text" with the internally stored private key associated with the Pastel ID
         # check that signing with existing passphrase works, default algorithm - EdDSA448
         signature = self.nodes[0].pastelid("sign", text_to_sign, self.pastelid1, self.passphrase)["signature"]
         assert_true(signature, "Cannot sign text using existing passphrase. No ed448 signature was created")
         assert_equal(len(base64.b64decode(signature)), 114)
-        # Verify text"'s "signature" (EdDSA448) with the PastelID
+        # Verify text"'s "signature" (EdDSA448) with the Pastel ID
         result = self.nodes[0].pastelid("verify", text_to_sign, signature, self.pastelid1)["verification"]
         assert_equal(result, "OK")
-        # Fail to verify EdDSA448 signature with the different key (PastelID2)
+        # Fail to verify EdDSA448 signature with the different key (Pastel ID 2)
         result = self.nodes[0].pastelid("verify", text_to_sign, signature, self.pastelid2)["verification"]
         assert_equal(result, "Failed")
         # Fail to verify modified text (ed448 signature)
         text_to_sign_modified = 'X' + text_to_sign[1:]
         result = self.nodes[0].pastelid("verify", text_to_sign_modified, signature, self.pastelid1)["verification"]
         assert_equal(result, "Failed")
-        # try to sign using PastelID with invalid passphrase
+        # try to sign using Pastel ID with invalid passphrase
         assert_raises_rpc(rpc.RPC_MISC_ERROR, self.ERR_READ_PASTELID_FILE,
             self.nodes[1].pastelid, "sign", text_to_sign, self.pastelid1, self.new_passphrase)
 
@@ -99,10 +99,10 @@ class SecureContainerTest(PastelTestFramework):
         lr_signature = self.nodes[0].pastelid("sign", text_to_sign, self.pastelid1, self.passphrase, "legroast")["signature"]
         assert_true(lr_signature, "Cannot sign text using existing passphrase. No LegRoast signature was created")
         assert_equal(len(base64.b64decode(lr_signature)), 14272)
-        # Verify text"'s "signature" (LegRoast) with the PastelID
+        # Verify text"'s "signature" (LegRoast) with the Pastel ID
         result = self.nodes[0].pastelid("verify", text_to_sign, lr_signature, self.pastelid1, "legroast")["verification"]
         assert_equal(result, "OK")
-        # Fail to verify LegRoast signature with the different key (PastelID2)
+        # Fail to verify LegRoast signature with the different key (Pastel ID2)
         result = self.nodes[0].pastelid("verify", text_to_sign, lr_signature, self.pastelid2, "legroast")["verification"]
         assert_equal(result, "Failed")
         # Fail to verify modified text (LegRoast signature)
@@ -112,8 +112,8 @@ class SecureContainerTest(PastelTestFramework):
         # Sign message on node1 with the LegRoast key associated with pastelid3 
         lr_signature = self.nodes[1].pastelid("sign", text_to_sign, self.pastelid3, self.passphrase, "legroast")["signature"]
         assert_true(lr_signature, "Cannot sign text on node1 with LegRoast key associated with pastelid3. No LegRoast signature was created")
-        # ... but verify it on node0 that does not have pastelid3 and we don't have any PastelID reg tickets
-        assert_raises_rpc(rpc.RPC_MISC_ERROR, "is not stored locally and PastelID registration ticket was not found in the blockchain",
+        # ... but verify it on node0 that does not have pastelid3 and we don't have any Pastel ID reg tickets
+        assert_raises_rpc(rpc.RPC_MISC_ERROR, "is not stored locally and Pastel ID registration ticket was not found in the blockchain",
             self.nodes[0].pastelid, "verify", text_to_sign, lr_signature, self.pastelid3, "legroast")
         # now let's register pastelid3
         self.generate_and_sync_inc(10)
@@ -127,11 +127,11 @@ class SecureContainerTest(PastelTestFramework):
 
         # now we should be able to retrieve lr pubkey for pastelid3 on node0
         # but first make sure pastelid3 is not stored locally on node0
-        assert_true(self.pastelid3 not in id_list0.values(), f"PastelID3 {self.pastelid3} should not be stored on node0")
-           # Verify text"'s "signature" (LegRoast) with the PastelID3
+        assert_true(self.pastelid3 not in id_list0.values(), f"Pastel ID3 {self.pastelid3} should not be stored on node0")
+           # Verify text"'s "signature" (LegRoast) with the Pastel ID3
         result = self.nodes[0].pastelid("verify", text_to_sign, lr_signature, self.pastelid3, "legroast")["verification"]
         assert_equal(result, "OK")
-         # Fail to verify LegRoast signature with the different key (PastelID1)
+         # Fail to verify LegRoast signature with the different key (Pastel ID1)
         result = self.nodes[0].pastelid("verify", text_to_sign, lr_signature, self.pastelid1, "legroast")["verification"]
         assert_equal(result, "Failed")
         # Fail to verify modified text (LegRoast signature)

@@ -15,16 +15,22 @@
 #include <mnode/tickets/transfer.h>
 #include <mnode/tickets/ticket-utils.h>
 #include <mnode/ticket-processor.h>
+#include <mnode/tickets/action-reg.h>
+#include <mnode/tickets/action-act.h>
 
 using json = nlohmann::json;
 using namespace std;
 
 /**
  * Checks either still exist available copies to offer or generates exception otherwise
- * @param nftTnxId is the NFT txid with either 1) NFT activation ticket or 2) transfer ticket in it
- * @param signature is the signature of current CTransferTicket that is checked
+ * 
+ * \param itemTxId is one of the following:
+ *                     1) NFT activation ticket txid 
+ *                     2) Action activation ticket txid
+ *                     2) transfer ticket txid for NFT or Action
+ * \param signature is the signature of current CTransferTicket that is checked
  */
-ticket_validation_t transfer_copy_validation(const string& nftTxnId, const v_uint8& signature)
+ticket_validation_t transfer_copy_validation(const string& itemTxId, const v_uint8& signature)
 {
     //  if (!masterNodeCtrl.masternodeSync.IsSynced()) {
     //    throw runtime_error("Can not validate transfer ticket as master node is not synced");
@@ -35,65 +41,106 @@ ticket_validation_t transfer_copy_validation(const string& nftTxnId, const v_uin
 
     do
     {
-        const uint256 txid = uint256S(nftTxnId);
-        const auto nftTicket = CPastelTicketProcessor::GetTicket(txid);
-        if (!nftTicket)
+        const uint256 txid = uint256S(itemTxId);
+        const auto pTicket = CPastelTicketProcessor::GetTicket(txid);
+        if (!pTicket)
         {
             tv.errorMsg = strprintf(
                 "Ticket with txid [%s] referred by this Transfer ticket is not in the blockchain", 
-                nftTxnId);
+                itemTxId);
             break;
         }
-        if (nftTicket->ID() == TicketID::Activate)
+        switch (pTicket->ID())
         {
-            const auto pNFTActTicket = dynamic_cast<const CNFTActivateTicket*>(nftTicket.get());
-            if (!pNFTActTicket)
+            // NFT Activation ticket
+            case TicketID::Activate:
             {
-                tv.errorMsg = strprintf(
-                    "The %s ticket with txid [%s] referred by this Transfer ticket is invalid", 
-                    ::GetTicketDescription(TicketID::Activate), nftTxnId);
-                break;
-            }
+                const auto pNFTActTicket = dynamic_cast<const CNFTActivateTicket*>(pTicket.get());
+                if (!pNFTActTicket)
+                {
+                    tv.errorMsg = strprintf(
+                        "The %s ticket with txid [%s] referred by this Transfer ticket is invalid", 
+                        ::GetTicketDescription(TicketID::Activate), itemTxId);
+                    break;
+                }
 
-            const auto pNFTTicket = CPastelTicketProcessor::GetTicket(pNFTActTicket->getRegTxId(), TicketID::NFT);
-            if (!pNFTTicket)
+                const auto pNFTTicket = CPastelTicketProcessor::GetTicket(pNFTActTicket->getRegTxId(), TicketID::NFT);
+                if (!pNFTTicket)
+                {
+                    tv.errorMsg = strprintf(
+                        "The %s ticket with txid [%s] referred by %s ticket is invalid",
+                        ::GetTicketDescription(TicketID::NFT), pNFTActTicket->getRegTxId(), ::GetTicketDescription(TicketID::Activate));
+                    break;
+                }
+
+                const auto pNFTRegTicket = dynamic_cast<const CNFTRegTicket*>(pNFTTicket.get());
+                if (!pNFTRegTicket)
+                {
+                    tv.errorMsg = strprintf(
+                        "The %s ticket with txid [%s] referred by %s ticket is invalid",
+                        ::GetTicketDescription(TicketID::NFT), pNFTActTicket->getRegTxId(), ::GetTicketDescription(TicketID::Activate));
+                    break;
+                }
+
+                nTotalCopies = pNFTRegTicket->getTotalCopies();
+            } break;
+
+            // Action Activation ticket
+            case TicketID::ActionActivate:
             {
-                tv.errorMsg = strprintf(
-                    "The %s ticket with txid [%s] referred by %s ticket is invalid",
-                    ::GetTicketDescription(TicketID::NFT), pNFTActTicket->getRegTxId(), ::GetTicketDescription(TicketID::Activate));
-                break;
-            }
+                const auto pActionActTicket = dynamic_cast<const CActionActivateTicket*>(pTicket.get());
+                if (!pActionActTicket)
+                {
+                    tv.errorMsg = strprintf(
+                        "The %s ticket with txid [%s] referred by this Transfer ticket is invalid",
+                        ::GetTicketDescription(TicketID::ActionActivate), itemTxId);
+                    break;
+                }
 
-            const auto pNFTRegTicket = dynamic_cast<const CNFTRegTicket*>(pNFTTicket.get());
-            if (!pNFTRegTicket)
+                const auto pActionTicket = CPastelTicketProcessor::GetTicket(pActionActTicket->getRegTxId(), TicketID::ActionReg);
+                if (!pActionTicket)
+                {
+                    tv.errorMsg = strprintf(
+                        "The %s ticket with txid [%s] referred by %s ticket is invalid",
+                        ::GetTicketDescription(TicketID::ActionReg), pActionActTicket->getRegTxId(), ::GetTicketDescription(TicketID::ActionActivate));
+                    break;
+                }
+
+                const auto pActionRegTicket = dynamic_cast<const CActionRegTicket*>(pActionTicket.get());
+                if (!pActionRegTicket)
+                {
+                    tv.errorMsg = strprintf(
+                        "The %s ticket with txid [%s] referred by %s ticket is invalid",
+                        ::GetTicketDescription(TicketID::ActionReg), pActionActTicket->getRegTxId(), ::GetTicketDescription(TicketID::ActionActivate));
+                    break;
+                }
+
+                nTotalCopies = 100;
+            } break;
+
+            // Transfer ticket
+            case TicketID::Transfer:
             {
-                tv.errorMsg = strprintf(
-                    "The %s ticket with txid [%s] referred by %s ticket is invalid",
-                    ::GetTicketDescription(TicketID::NFT), pNFTActTicket->getRegTxId(), ::GetTicketDescription(TicketID::Activate));
-                break;
-            }
+                const auto pTransferTicket = dynamic_cast<const CTransferTicket*>(pTicket.get());
+                if (!pTransferTicket)
+                {
+                    tv.errorMsg = strprintf(
+                        "The registration ticket with txid [%s] referred by this Transfer ticket is invalid", itemTxId);
+                    break;
+                }
 
-            nTotalCopies = pNFTRegTicket->getTotalCopies();
-        } else if (nftTicket->ID() == TicketID::Transfer) {
-            const auto pTransferTicket = dynamic_cast<const CTransferTicket*>(nftTicket.get());
-            if (!pTransferTicket)
-            {
-                tv.errorMsg = strprintf(
-                    "The %s ticket with txid [%s] referred by this Transfer ticket is invalid", 
-                    ::GetTicketDescription(TicketID::NFT), nftTxnId);
-                break;
-            }
+                nTotalCopies = 1;
+            } break;
 
-            nTotalCopies = 1;
-        } else {
-            tv.errorMsg = strprintf(
-                "Unknown ticket with txid [%s] referred by this Transfer ticket is invalid", 
-                nftTxnId);
-            break;
+            default:
+                tv.errorMsg = strprintf(
+                    "Unknown ticket with txid [%s] referred by this Transfer ticket is invalid", 
+                    itemTxId);
+                break;
         }
 
         size_t nTransferredCopies{0};
-        const auto vExistingTransferTickets = CTransferTicket::FindAllTicketByNFTTxID(nftTxnId);
+        const auto vExistingTransferTickets = CTransferTicket::FindAllTicketByItemTxID(itemTxId);
         for (const auto& t : vExistingTransferTickets)
         {
             if (!t.IsSameSignature(signature))
@@ -127,30 +174,30 @@ CTransferTicket CTransferTicket::Create(string &&offerTxId, string &&acceptTxId,
             "The Offer ticket [txid=%s] referred by this Accept ticket is not in the blockchain. [txid=%s]",
             ticket.m_offerTxId, ticket.m_acceptTxId));
 
-    ticket.m_nftTxId = offerTicket->getNFTTxId();
+    ticket.m_itemTxId = offerTicket->getItemTxId();
     ticket.price = offerTicket->getAskedPricePSL();
 
     ticket.GenerateTimestamp();
 
-    // In case it is nested it means that we have the NFTTxId of the Offer ticket
-    // available within the transfer tickets.
-    // [0]: original registration ticket's txid
-    // [1]: copy number for a given NFT
-    auto NFTRegTicket_TxId_Serial = CTransferTicket::GetNFTRegTxIDAndSerialIfResoldNft(offerTicket->getNFTTxId());
-    if (!NFTRegTicket_TxId_Serial.has_value())
+    // In case it is nested it means that we have the Transfer TxId int the Offer ticket (reffered item).
+    // Returns tuple:
+    //   [0]: original registration ticket's txid
+    //   [1]: copy number for a given item (NFT or Action)
+    const auto multipleTransfers = CTransferTicket::GetItemRegForMultipleTransfers(offerTicket->getItemTxId());
+    if (!multipleTransfers.has_value())
     {
-        auto NFTTicket = ticket.FindNFTRegTicket();
+        auto NFTTicket = ticket.FindItemRegTicket();
         if (!NFTTicket)
             throw runtime_error("NFT Reg ticket not found");
 
         //Original TxId
-        ticket.SetNFTRegTicketTxid(NFTTicket->GetTxId());
+        ticket.SetItemRegTicketTxid(NFTTicket->GetTxId());
         //Copy nr.
         ticket.SetCopySerialNr(to_string(offerTicket->getCopyNumber()));
     } else {
         //This is the re-sold case
-        ticket.SetNFTRegTicketTxid(get<0>(NFTRegTicket_TxId_Serial.value()));
-        ticket.SetCopySerialNr(get<1>(NFTRegTicket_TxId_Serial.value()));
+        ticket.SetItemRegTicketTxid(get<0>(multipleTransfers.value()));
+        ticket.SetCopySerialNr(get<1>(multipleTransfers.value()));
     }
     const auto strTicket = ticket.ToStr();
     string_to_vector(CPastelID::Sign(strTicket, ticket.m_sPastelID, move(strKeyPass)), ticket.m_signature);
@@ -158,21 +205,22 @@ CTransferTicket CTransferTicket::Create(string &&offerTxId, string &&acceptTxId,
     return ticket;
 }
 
-optional<txid_serial_tuple_t> CTransferTicket::GetNFTRegTxIDAndSerialIfResoldNft(const string& _txid)
+optional<txid_serial_tuple_t> CTransferTicket::GetItemRegForMultipleTransfers(const string& itemTxId)
 {
     optional<txid_serial_tuple_t> retVal;
-    try {
+    try
+    {
         // Possible conversion to transfer ticket - if any
-        auto pNestedTicket = CPastelTicketProcessor::GetTicket(_txid, TicketID::Transfer);
+        const auto pNestedTicket = CPastelTicketProcessor::GetTicket(itemTxId, TicketID::Transfer);
         if (pNestedTicket)
         {
             const auto pTransferTicket = dynamic_cast<const CTransferTicket*>(pNestedTicket.get());
             if (pTransferTicket)
-                retVal = make_tuple(pTransferTicket->GetNFTRegTicketTxid(), pTransferTicket->GetCopySerialNr());
+                retVal = make_tuple(pTransferTicket->GetItemRegTicketTxid(), pTransferTicket->GetCopySerialNr());
         }
     } catch ([[maybe_unused]] const runtime_error& error) {
-        //Intentionally not throw exception!
-        LogPrintf("DebugPrint: NFT with this txid is not resold: %s", _txid);
+        //Intentionally not throwing exception!
+        LogPrintf("DebugPrint: NFT with this txid is not resold: %s", itemTxId);
     }
     return retVal;
 }
@@ -183,10 +231,10 @@ string CTransferTicket::ToStr() const noexcept
     ss << m_sPastelID;
     ss << m_offerTxId;
     ss << m_acceptTxId;
-    ss << m_nftTxId;
+    ss << m_itemTxId;
     ss << m_nTimestamp;
-    ss << m_nftRegTxId;
-    ss << nftCopySerialNr;
+    ss << m_itemRegTxId;
+    ss << itemCopySerialNr;
     return ss.str();
 }
 
@@ -324,32 +372,38 @@ ticket_validation_t CTransferTicket::IsValid(const bool bPreReg, const uint32_t 
             }
         }
 
-        transfer_copy_validation(m_nftTxId, m_signature);
+        transfer_copy_validation(m_itemTxId, m_signature);
 
         tv.setValid();
     } while (false);
     return tv;
 }
 
+/**
+ * Add extra outputs to the ticket.
+ * 
+ * \param outputs - vector of outputs: CTxOut
+ * \return - total amount of added outputs
+ */
 CAmount CTransferTicket::GetExtraOutputs(vector<CTxOut>& outputs) const
 {
-    auto pOfferTicket = CPastelTicketProcessor::GetTicket(m_offerTxId, TicketID::Offer);
+    const auto pOfferTicket = CPastelTicketProcessor::GetTicket(m_offerTxId, TicketID::Offer);
     if (!pOfferTicket)
         throw runtime_error(strprintf(
             "The %s ticket with this txid [%s] is not in the blockchain", 
             ::GetTicketDescription(TicketID::Offer), m_offerTxId));
 
-    auto offerTicket = dynamic_cast<const COfferTicket*>(pOfferTicket.get());
+    const auto offerTicket = dynamic_cast<const COfferTicket*>(pOfferTicket.get());
     if (!offerTicket)
         throw runtime_error(strprintf(
             "The %s ticket with this txid [%s] is not in the blockchain",
             ::GetTicketDescription(TicketID::Offer), m_offerTxId));
 
-    auto offererPastelID = offerTicket->getPastelID();
+    const auto offererPastelID = offerTicket->getPastelID();
     CPastelIDRegTicket offererPastelIDticket;
     if (!CPastelIDRegTicket::FindTicketInDb(offererPastelID, offererPastelIDticket))
         throw runtime_error(strprintf(
-            "The PastelID [%s] from %s ticket with this txid [%s] is not in the blockchain or is invalid",
+            "The Pastel ID [%s] from %s ticket with this txid [%s] is not in the blockchain or is invalid",
             offererPastelID, ::GetTicketDescription(TicketID::Offer), m_offerTxId));
 
     const auto nAskedPricePSL = offerTicket->getAskedPricePSL();
@@ -361,29 +415,35 @@ CAmount CTransferTicket::GetExtraOutputs(vector<CTxOut>& outputs) const
     CAmount nPriceAmount = nAskedPricePSL * COIN;
     CAmount nRoyaltyAmount = 0;
     CAmount nGreenNFTAmount = 0;
+    string sRoyaltyAddress, sGreenAddress;
 
-    auto NFTTicket = FindNFTRegTicket();
-    const auto pNFTRegTicket = dynamic_cast<CNFTRegTicket*>(NFTTicket.get());
-    if (!pNFTRegTicket)
-        throw runtime_error(strprintf(
-            "Can't find %s ticket for this %s ticket [txid=%s]",
-            ::GetTicketDescription(TicketID::NFT), ::GetTicketDescription(TicketID::Transfer), GetTxId()));
-
-    string strRoyaltyAddress;
-    if (pNFTRegTicket->getRoyalty() > 0)
+    const auto itemTicket = FindItemRegTicket();
+    switch (itemTicket->ID())
     {
-        strRoyaltyAddress = pNFTRegTicket->GetRoyaltyPayeeAddress();
-        if (strRoyaltyAddress.empty())
-            throw runtime_error(strprintf(
-                "The Creator Pastel ID [%s] from %s ticket with this txid [%s] is not in the blockchain or is invalid",
-                pNFTRegTicket->getCreatorPastelId(), ::GetTicketDescription(TicketID::NFT), pNFTRegTicket->GetTxId()));
-        nRoyaltyAmount = static_cast<CAmount>(nPriceAmount * pNFTRegTicket->getRoyalty());
-    }
+        case TicketID::NFT: {
+            const auto pNFTRegTicket = dynamic_cast<const CNFTRegTicket*>(itemTicket.get());
+            if (!pNFTRegTicket)
+                throw runtime_error(strprintf(
+                    "Can't find %s ticket for this %s ticket [txid=%s]",
+                    ::GetTicketDescription(TicketID::NFT), ::GetTicketDescription(TicketID::Transfer), GetTxId()));
 
-    if (pNFTRegTicket->hasGreenFee())
-    {
-        const auto chainHeight = GetActiveChainHeight();
-        nGreenNFTAmount = nPriceAmount * CNFTRegTicket::GreenPercent(chainHeight) / 100;
+            if (pNFTRegTicket->getRoyalty() > 0)
+            {
+                sRoyaltyAddress = pNFTRegTicket->GetRoyaltyPayeeAddress();
+                if (sRoyaltyAddress.empty())
+                    throw runtime_error(strprintf(
+                        "The Creator Pastel ID [%s] from %s ticket with this txid [%s] is not in the blockchain or is invalid",
+                        pNFTRegTicket->getCreatorPastelId(), ::GetTicketDescription(TicketID::NFT), pNFTRegTicket->GetTxId()));
+                nRoyaltyAmount = static_cast<CAmount>(nPriceAmount * pNFTRegTicket->getRoyalty());
+            }
+
+            if (pNFTRegTicket->hasGreenFee())
+            {
+                sGreenAddress = pNFTRegTicket->getGreenAddress();
+                const auto chainHeight = GetActiveChainHeight();
+                nGreenNFTAmount = nPriceAmount * CNFTRegTicket::GreenPercent(chainHeight) / 100;
+            }
+        } break;
     }
 
     nPriceAmount -= (nRoyaltyAmount + nGreenNFTAmount);
@@ -400,17 +460,18 @@ CAmount CTransferTicket::GetExtraOutputs(vector<CTxOut>& outputs) const
         return true;
     };
 
+    // add outputs
     if (!addOutput(offererPastelIDticket.address, nPriceAmount))
         throw runtime_error(
             strprintf("The Pastel ID [%s] from %s ticket with this txid [%s] has invalid address",
                       offererPastelID, ::GetTicketDescription(TicketID::Offer), m_offerTxId));
 
-    if (!strRoyaltyAddress.empty() && !addOutput(strRoyaltyAddress, nRoyaltyAmount))
+    if (!sRoyaltyAddress.empty() && !addOutput(sRoyaltyAddress, nRoyaltyAmount))
         throw runtime_error(
             strprintf("The Pastel ID [%s] from %s ticket with this txid [%s] has invalid address",
                       offererPastelID, ::GetTicketDescription(TicketID::Offer), m_offerTxId));
 
-    if (pNFTRegTicket->hasGreenFee() && !addOutput(pNFTRegTicket->getGreenAddress(), nGreenNFTAmount))
+    if (!sGreenAddress.empty() && !addOutput(sGreenAddress, nGreenNFTAmount))
         throw runtime_error(
             strprintf("The Pastel ID [%s] from %s ticket with this txid [%s] has invalid address",
                       offererPastelID, ::GetTicketDescription(TicketID::Offer), m_offerTxId));
@@ -431,9 +492,9 @@ string CTransferTicket::ToJSON() const noexcept
                 {"pastelID", m_sPastelID}, 
                 {"offer_txid", m_offerTxId}, 
                 {"accept_txid", m_acceptTxId}, 
-                {"nft_txid", m_nftTxId}, 
-                {"registration_txid", m_nftRegTxId}, 
-                {"copy_serial_nr", nftCopySerialNr}, 
+                {"item_txid", m_itemTxId}, 
+                {"registration_txid", m_itemRegTxId}, 
+                {"copy_serial_nr", itemCopySerialNr}, 
                 {"signature", ed_crypto::Hex_Encode(m_signature.data(), m_signature.size())}
             }
         }
@@ -454,14 +515,14 @@ TransferTickets_t CTransferTicket::FindAllTicketByPastelID(const string& pastelI
     return masterNodeCtrl.masternodeTickets.FindTicketsByMVKey<CTransferTicket>(pastelID);
 }
 
-TransferTickets_t CTransferTicket::FindAllTicketByNFTTxID(const string& NFTTxnId)
+TransferTickets_t CTransferTicket::FindAllTicketByItemTxID(const string& ItemTxId)
 {
-    return masterNodeCtrl.masternodeTickets.FindTicketsByMVKey<CTransferTicket>(NFTTxnId);
+    return masterNodeCtrl.masternodeTickets.FindTicketsByMVKey<CTransferTicket>(ItemTxId);
 }
 
-TransferTickets_t CTransferTicket::FindAllTicketByRegTxID(const string& nftRegTxnId)
+TransferTickets_t CTransferTicket::FindAllTicketByItemRegTxID(const string& itemRegTxnd)
 {
-    return masterNodeCtrl.masternodeTickets.FindTicketsByMVKey<CTransferTicket>(nftRegTxnId);
+    return masterNodeCtrl.masternodeTickets.FindTicketsByMVKey<CTransferTicket>(itemRegTxnd);
 }
 
 mu_strings CTransferTicket::GetPastelIdAndTxIdWithTopHeightPerCopy(const TransferTickets_t& filteredTickets)
@@ -476,10 +537,12 @@ mu_strings CTransferTicket::GetPastelIdAndTxIdWithTopHeightPerCopy(const Transfe
     unordered_map<string, pair<unsigned int, size_t>> copyOwner_Idxs;
     size_t winning_idx = 0;
 
-    for (const auto& element : filteredTickets) {
+    for (const auto& element : filteredTickets)
+    {
         const string& serial = element.GetCopySerialNr();
         auto it = copyOwner_Idxs.find(serial);
-        if (it != copyOwner_Idxs.cend()) {
+        if (it != copyOwner_Idxs.cend())
+        {
             //We do have it in our copyOwner_Idxs
             if (element.GetBlock() >= it->second.first)
                 it->second = make_pair(element.GetBlock(), winning_idx);
@@ -525,40 +588,60 @@ bool CTransferTicket::GetTransferTicketByAcceptTicket(const string& acceptTxnId,
     return masterNodeCtrl.masternodeTickets.FindTicket(ticket);
 }
 
-unique_ptr<CPastelTicket> CTransferTicket::FindNFTRegTicket() const
+/**
+ * Find registration item by walking back to trading chain.
+ * Only the following ticket types are expected at the top of the chain:
+ *  - NFT registration ticket
+ *  - Action registration ticket
+ * 
+ * \return registration ticket
+ * \throw runtime_error if reg ticket not found or not of the expected type
+ */
+unique_ptr<CPastelTicket> CTransferTicket::FindItemRegTicket() const
 {
     vector<unique_ptr<CPastelTicket>> chain;
     string errRet;
-    if (!CPastelTicketProcessor::WalkBackTradingChain(m_nftTxId, chain, true, errRet)) {
+    if (!CPastelTicketProcessor::WalkBackTradingChain(m_itemTxId, chain, true, errRet))
         throw runtime_error(errRet);
-    }
 
-    auto NFTRegTicket = dynamic_cast<CNFTRegTicket*>(chain.front().get());
-    if (!NFTRegTicket) {
-        throw runtime_error(
-            strprintf("This is not an NFT Registration ticket [txid=%s]",
-                      chain.front()->GetTxId()));
-    }
+    if (chain.empty())
+        throw runtime_error(strprintf(
+            "Cannot find registration ticket for the ticket [txid=%s]",
+                m_itemTxId));
 
+    // expected NFT or Action registration ticket
+    const auto pPastelTicket = chain.front().get();
+    switch (pPastelTicket->ID())
+    {
+        case TicketID::NFT:
+        {
+            const auto NFTRegTicket = dynamic_cast<const CNFTRegTicket*>(pPastelTicket);
+            if (!NFTRegTicket)
+            {
+                throw runtime_error(strprintf(
+                    "This is not a %s ticket [txid=%s]",
+                        ::GetTicketDescription(TicketID::NFT), pPastelTicket->GetTxId()));
+            }
+        } break;
+
+        case TicketID::ActionReg:
+        {
+            const auto ActionRegTicket = dynamic_cast<const CActionRegTicket*>(pPastelTicket);
+            if (!ActionRegTicket)
+            {
+                throw runtime_error(strprintf(
+                    "This is not a %s ticket [txid=%s]",
+                        ::GetTicketDescription(TicketID::ActionReg), pPastelTicket->GetTxId()));
+            }
+
+        }  break;
+
+        default:
+            throw runtime_error(strprintf(
+                "Expected %s or %s ticket but found %s [txid=%s]", 
+                    ::GetTicketDescription(TicketID::NFT), ::GetTicketDescription(TicketID::ActionReg),
+                    ::GetTicketDescription(pPastelTicket->ID()), pPastelTicket->GetTxId()));
+    }
     return move(chain.front());
 }
 
-void CTransferTicket::SetNFTRegTicketTxid(const string& _NftRegTxid)
-{
-    m_nftRegTxId = _NftRegTxid;
-}
-
-const string CTransferTicket::GetNFTRegTicketTxid() const
-{
-    return m_nftRegTxId;
-}
-
-void CTransferTicket::SetCopySerialNr(const string& _nftCopySerialNr)
-{
-    nftCopySerialNr = std::move(_nftCopySerialNr);
-}
-
-const std::string& CTransferTicket::GetCopySerialNr() const
-{
-    return nftCopySerialNr;
-}

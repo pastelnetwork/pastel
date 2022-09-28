@@ -22,12 +22,12 @@ R"(tickets list "type" ("filter") ("minheight")
 List all tickets of the specific type registered in the system
 
 Available types:
-  id      - List PastelID registration tickets. Without filter parameter lists ALL (both masternode and personal) PastelIDs.
+  id      - List PastelID registration tickets. Without filter parameter lists ALL (both masternode and personal) Pastel IDs.
             Filter:
-              all      - lists all masternode PastelIDs. Default.
-              mn       - lists only masternode PastelIDs.
-              personal - lists only personal PastelIDs.
-              mine     - lists only registered PastelIDs available on the local node.
+              all      - lists all masternode Pastel IDs. Default.
+              mn       - lists only masternode Pastel IDs.
+              personal - lists only personal Pastel IDs.
+              mine     - lists only registered Pastel IDs available on the local node.
   nft     - List ALL new NFT registration tickets. Without filter parameter lists ALL NFT tickets.
             Filter:
               all         - lists all NFT tickets (including non-confirmed). Default.
@@ -80,7 +80,8 @@ Available types:
               all      - lists all Action tickets (including non-confirmed). Default.
               active   - lists only activated Action tickets - with Action-Act ticket.
               inactive - lists only non-activated Action tickets - without Action-Act ticket created (confirmed).
-  action-act - List action activation tickets. Without filter parameter lists ALL activation tickets.
+              transferred - lists only transferred Action tickets - with Transfer ticket created.
+action-act - List action activation tickets. Without filter parameter lists ALL activation tickets.
             Filter:
               all       - lists all Act tickets (including non-confirmed). Default.
 
@@ -300,6 +301,8 @@ As json rpc
             obj.read(masterNodeCtrl.masternodeTickets.ListFilterActionTickets(minheight, 1));
         else if (filter == "inactive")
             obj.read(masterNodeCtrl.masternodeTickets.ListFilterActionTickets(minheight, 2));
+        else if (filter == "transferred")
+            obj.read(masterNodeCtrl.masternodeTickets.ListFilterActionTickets(minheight, 3));
     } break;
 
     case RPC_CMD_LIST::action__act:

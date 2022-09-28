@@ -18,23 +18,23 @@
 #include <unordered_map>
 #include <utility>
 
-#include "amount.h"
-#include "chain.h"
-#include "chainparams.h"
-#include "coins.h"
-#include "consensus/consensus.h"
-#include "consensus/upgrades.h"
-#include "net.h"
-#include "primitives/block.h"
-#include "primitives/transaction.h"
-#include "script/script.h"
-#include "script/sigcache.h"
-#include "script/standard.h"
-#include "spentindex.h"
-#include "sync.h"
-#include "tinyformat.h"
-#include "txmempool.h"
-#include "uint256.h"
+#include <amount.h>
+#include <chain.h>
+#include <chainparams.h>
+#include <coins.h>
+#include <consensus/consensus.h>
+#include <consensus/upgrades.h>
+#include <net.h>
+#include <primitives/block.h>
+#include <primitives/transaction.h>
+#include <script/script.h>
+#include <script/sigcache.h>
+#include <script/standard.h>
+#include <spentindex.h>
+#include <sync.h>
+#include <tinyformat.h>
+#include <txmempool.h>
+#include <uint256.h>
 #include <script_check.h>
 
 class CBlockIndex;
@@ -99,8 +99,8 @@ static constexpr unsigned int MAX_REJECT_MESSAGE_LENGTH = 111;
 static constexpr int64_t DEFAULT_MAX_TIP_AGE = 24 * 60 * 60;
 
 // Sanity check the magic numbers when we change them
-BOOST_STATIC_ASSERT(DEFAULT_BLOCK_MAX_SIZE <= MAX_BLOCK_SIZE);
-BOOST_STATIC_ASSERT(DEFAULT_BLOCK_PRIORITY_SIZE <= DEFAULT_BLOCK_MAX_SIZE);
+static_assert(DEFAULT_BLOCK_MAX_SIZE <= MAX_BLOCK_SIZE);
+static_assert(DEFAULT_BLOCK_PRIORITY_SIZE <= DEFAULT_BLOCK_MAX_SIZE);
 
 #define equihash_parameters_acceptable(N, K) \
     ((CBlockHeader::HEADER_SIZE + equihash_solution_size(N, K))*MAX_HEADERS_RESULTS < \

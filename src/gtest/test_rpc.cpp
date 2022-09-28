@@ -96,11 +96,11 @@ void CheckRPCThrows(string rpcString, string expectedErrorMessage) {
     try {
         CallRPC(rpcString);
         // Note: CallRPC catches (const UniValue& objError) and rethrows a runtime_error
-        // BOOST_FAIL("Should have caused an error");
+        // "Should have caused an error";
     } catch (const runtime_error& e) {
         EXPECT_EQ(expectedErrorMessage, e.what());
     } catch([[maybe_unused]] const exception& e) {
-        // BOOST_FAIL(string("Unexpected exception: ") + typeid(e).name() + ", message=\"" + e.what() + "\"");
+        // string("Unexpected exception: ") + typeid(e).name() + ", message=\"" + e.what() + "\"";
     }
 }
 

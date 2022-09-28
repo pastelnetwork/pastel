@@ -470,7 +470,7 @@ void CheckHaveAddr(const libzcash::PaymentAddress& addr) {
 
     EXPECT_TRUE(IsValidPaymentAddress(addr));
     auto addr_of_type = get_if<ADDR_TYPE>(&addr);
-    BOOST_ASSERT(addr_of_type != nullptr);
+    EXPECT_NE(addr_of_type, nullptr);
 
     HaveSpendingKeyForPaymentAddress test(pwalletMain);
     EXPECT_TRUE(test(*addr_of_type));
@@ -1238,14 +1238,14 @@ TEST_F(TestRpcWallet2, rpc_z_mergetoaddress_parameters)
     vector<MergeToAddressInputSaplingNote> saplingNoteInputs;
     try {
         auto operation = make_shared<AsyncRPCOperation_mergetoaddress>(nullptr, mtx, utxoInputs, saplingNoteInputs, testnetzaddr, -1);
-        // BOOST_FAIL("Should have caused an error");
+        // ("Should have caused an error");
     } catch (const UniValue& objError) {
         EXPECT_TRUE( find_error(objError, "Fee is out of range"));
     }
 
     try {
         auto operation = make_shared<AsyncRPCOperation_mergetoaddress>(nullptr, mtx, utxoInputs, saplingNoteInputs, testnetzaddr, 1);
-        // BOOST_FAIL("Should have caused an error");
+        // ("Should have caused an error");
     } catch (const UniValue& objError) {
         EXPECT_TRUE( find_error(objError, "No inputs"));
     }
@@ -1254,7 +1254,7 @@ TEST_F(TestRpcWallet2, rpc_z_mergetoaddress_parameters)
     try {
         MergeToAddressRecipient badaddr("", "memo");
         auto operation = make_shared<AsyncRPCOperation_mergetoaddress>(nullptr, mtx, utxoInputs, saplingNoteInputs, badaddr, 1);
-        // BOOST_FAIL("Should have caused an error");
+        // ("Should have caused an error");
     } catch (const UniValue& objError) {
         EXPECT_TRUE( find_error(objError, "Recipient parameter missing"));
     }
@@ -1262,7 +1262,7 @@ TEST_F(TestRpcWallet2, rpc_z_mergetoaddress_parameters)
     // Testnet payment addresses begin with 'tZ'.  This test detects an incorrect prefix.
     try {
         auto operation = make_shared<AsyncRPCOperation_mergetoaddress>(nullptr, mtx, utxoInputs, saplingNoteInputs, mainnetzaddr, 1);
-        // BOOST_FAIL("Should have caused an error");
+        // ("Should have caused an error");
     } catch (const UniValue& objError) {
         EXPECT_TRUE( find_error(objError, "Invalid recipient address"));
     }

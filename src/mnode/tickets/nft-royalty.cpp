@@ -174,20 +174,20 @@ ticket_validation_t CNFTRoyaltyTicket::IsValid(const bool bPreReg, const uint32_
         }
         if (nFoundIndex != numeric_limits<size_t>::max())
         {
-            // 1. check PastelID in Royalty ticket matches PastelID from this ticket
+            // 1. check Pastel ID in Royalty ticket matches PastelID from this ticket
             if (tickets.at(nFoundIndex).newPastelID != pastelID)
             {
                 tv.errorMsg = strprintf(
-                    "The PastelID [%s] is not matching the PastelID [%s] in the Change Royalty ticket with NFT txid [%s]",
+                    "The Pastel ID [%s] is not matching the Pastel ID [%s] in the Change Royalty ticket with NFT txid [%s]",
                     pastelID, tickets.at(nFoundIndex).newPastelID, NFTTxnId);
                 break;
             }
         } else {
-            // 1. check creator PastelID in NFTReg ticket matches PastelID from this ticket
+            // 1. check creator Pastel ID in NFTReg ticket matches Pastel ID from this ticket
             if (!NFTTicket->IsCreatorPastelId(pastelID))
             {
                 tv.errorMsg = strprintf(
-                    "The PastelID [%s] is not matching the Creator's PastelID [%s] in the NFT Reg ticket with this txid [%s]",
+                    "The Pastel ID [%s] is not matching the Creator's Pastel ID [%s] in the NFT Reg ticket with this txid [%s]",
                     pastelID, NFTTicket->getCreatorPastelId(), NFTTxnId);
                 break;
             }

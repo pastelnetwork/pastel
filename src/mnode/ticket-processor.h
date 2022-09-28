@@ -24,8 +24,8 @@ constexpr int DATASTREAM_VERSION = 1;
 constexpr uint8_t TICKET_COMPRESS_ENABLE_MASK  = (1<<7); // using bit 7 to mark a ticket is compressed
 constexpr uint8_t TICKET_COMPRESS_DISABLE_MASK = 0x7F;
 
-// tuple <NFT registration txid, Transfer txid>
-using reg_transfer_txid_t = std::tuple<std::string, std::string>;
+// tuple <item id, item registration txid, transfer ticket txid>
+using reg_transfer_txid_t = std::tuple<TicketID, std::string, std::string>;
 
 // Get height of the active blockchain + 1
 unsigned int GetActiveChainHeight();
@@ -43,7 +43,7 @@ typedef struct _search_thumbids_t
         { "descr", "creator_written_statement" }
     };
 
-    // PastelID of the creator - mandatory
+    // Pastel ID of the creator - mandatory
     std::string sCreatorPastelId;
     // block range for nft activation ticket search
     std::optional<numeric_range<uint32_t>> blockRange = std::nullopt;

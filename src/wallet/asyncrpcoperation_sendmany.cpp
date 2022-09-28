@@ -703,7 +703,7 @@ array<unsigned char, ZC_MEMO_SIZE> AsyncRPCOperation_sendmany::get_memo_from_hex
     if (rawMemo.size() > ZC_MEMO_SIZE)
         throw JSONRPCError(RPC_INVALID_PARAMETER, strprintf("Memo size of %d is too big, maximum allowed is %d", rawMemo.size(), ZC_MEMO_SIZE));
 
-    // copy vector into boost array
+    // copy vector into array
     const size_t lenMemo = rawMemo.size();
     for (size_t i = 0; i < ZC_MEMO_SIZE && i < lenMemo; i++)
         memo[i] = rawMemo[i];

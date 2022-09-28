@@ -25,17 +25,18 @@ using namespace std;
 const char* GetActionTypeName(const ACTION_TICKET_TYPE actionTicketType) noexcept
 {
     const char* szActionTypeName = nullptr;
-    switch (actionTicketType) {
-    case ACTION_TICKET_TYPE::SENSE:
-        szActionTypeName = ACTION_TICKET_TYPE_SENSE;
-        break;
+    switch (actionTicketType)
+    {
+        case ACTION_TICKET_TYPE::SENSE:
+            szActionTypeName = ACTION_TICKET_TYPE_SENSE;
+            break;
 
-    case ACTION_TICKET_TYPE::CASCADE:
-        szActionTypeName = ACTION_TICKET_TYPE_CASCADE;
-        break;
+        case ACTION_TICKET_TYPE::CASCADE:
+            szActionTypeName = ACTION_TICKET_TYPE_CASCADE;
+            break;
 
-    default:
-        break;
+        default:
+            break;
     }
     return szActionTypeName;
 }
@@ -44,7 +45,7 @@ const char* GetActionTypeName(const ACTION_TICKET_TYPE actionTicketType) noexcep
 /* current action_ticket passed base64-encoded
 {
   "action_ticket_version": integer // 1
-  "caller": string,                // PastelID of the caller
+  "caller": string,                // Pastel ID of the caller
   "blocknum": integer,             // block number when the ticket was created - this is to map the ticket to the MNs that should process it
   "block_hash": bytes              // hash of the top block when the ticket was created - this is to map the ticket to the MNs that should process it
   "action_type": string,           // action type (sense, cascade)
@@ -57,7 +58,7 @@ const char* GetActionTypeName(const ACTION_TICKET_TYPE actionTicketType) noexcep
  * 
  * \param action_ticket - base64-encoded action ticket in json format
  * \param signatures - json with (principal, mn2, mn3) signatures
- * \param sPastelID - PastelID of the action caller
+ * \param sPastelID - Pastel ID of the action caller
  * \param strKeyPass - passphrase to access secure container for action caller (principal signer)
  * \param label - key #2 (search label)
  * \param storageFee - ticket fee
@@ -229,7 +230,7 @@ ticket_validation_t CActionRegTicket::IsValid(const bool bPreReg, const uint32_t
         }
 
         // B. Something to validate always
-        ticket_validation_t sigTv = validate_signatures(nCallDepth, m_nCalledAtHeight, m_sActionTicket);
+        const ticket_validation_t sigTv = validate_signatures(nCallDepth, m_nCalledAtHeight, m_sActionTicket);
         if (sigTv.IsNotValid())
         {
             tv.state = sigTv.state;

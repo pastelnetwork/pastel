@@ -24,10 +24,10 @@ class CMasternodeBroadcast;
 class CMasternodePing
 {
 public:
-    CTxIn vin{};
-    uint256 blockHash{};
-    int64_t sigTime{}; //mnp message times
-    v_uint8 vchSig{};
+    CTxIn vin;
+    uint256 blockHash;
+    int64_t sigTime{0}; //mnp message times
+    v_uint8 vchSig;
 
     CMasternodePing() = default;
 
@@ -124,8 +124,9 @@ private:
     mutable CCriticalSection cs;
 
 public:
-    enum state {
-        MASTERNODE_PRE_ENABLED,
+    enum state
+    {
+        MASTERNODE_PRE_ENABLED = 0,
         MASTERNODE_ENABLED,
         MASTERNODE_EXPIRED,
         MASTERNODE_OUTPOINT_SPENT,
@@ -135,7 +136,8 @@ public:
         MASTERNODE_POSE_BAN
     };
 
-    enum CollateralStatus {
+    enum CollateralStatus
+    {
         COLLATERAL_OK,
         COLLATERAL_UTXO_NOT_FOUND,
         COLLATERAL_INVALID_AMOUNT
@@ -143,9 +145,9 @@ public:
 
 
     CMasternodePing lastPing{};
-    v_uint8 vchSig{};
+    v_uint8 vchSig;
 
-    uint256 nCollateralMinConfBlockHash{};
+    uint256 nCollateralMinConfBlockHash;
     int nBlockLastPaid{};
     int nPoSeBanScore{};
     int nPoSeBanHeight{};
@@ -245,6 +247,7 @@ public:
     {
         if (nActiveState == MASTERNODE_ENABLED)
             return true;
+
         return false;
     }
 

@@ -2723,7 +2723,7 @@ bool CWallet::SelectCoins(const CAmount& nTargetValue, set<pair<const CWalletTx*
     set<pair<const CWalletTx*, uint32_t> > setPresetCoins;
     CAmount nValueFromPresetInputs = 0;
 
-    vector<COutPoint> vPresetInputs;
+    v_outpoints vPresetInputs;
     if (coinControl)
         coinControl->ListSelected(vPresetInputs);
     for (const auto& outpoint : vPresetInputs)
@@ -3671,14 +3671,11 @@ bool CWallet::IsLockedCoin(uint256 hash, unsigned int n) const
     return (setLockedCoins.count(outpt) > 0);
 }
 
-void CWallet::ListLockedCoins(vector<COutPoint>& vOutpts)
+void CWallet::ListLockedCoins(v_outpoints& vOutPoints)
 {
     AssertLockHeld(cs_wallet); // setLockedCoins
-    for (set<COutPoint>::iterator it = setLockedCoins.begin();
-         it != setLockedCoins.end(); it++) {
-        COutPoint outpt = (*it);
-        vOutpts.push_back(outpt);
-    }
+    for (const auto &outpoint : vOutPoints)
+        vOutPoints.emplace_back(outpoint);
 }
 
 

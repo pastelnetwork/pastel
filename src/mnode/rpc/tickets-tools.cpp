@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2021 The Pastel Core developers
+// Copyright (c) 2018-2022 The Pastel Core developers
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 
@@ -89,14 +89,14 @@ Arguments:
 		"app_ticket": "<application-specific-data>",
 		"reserved": "<empty-string-for-now>"
 	}
-2. "signatures"	(string, required) Signatures (base64) and PastelIDs of the creator and verifying masternodes (MN2 and MN3) as JSON:
+2. "signatures"	(string, required) Signatures (base64) and Pastel IDs of the creator and verifying masternodes (MN2 and MN3) as JSON:
 	{
-        "principal": { "principal PastelID": "principal Signature" },
-              "mn2": { "mn2 PastelID": "mn2 Signature" },
-              "mn3": { "mn3 PastelID": "mn3 Signature" }
+        "principal": { "principal Pastel ID": "principal Signature" },
+              "mn2": { "mn2 Pastel ID": "mn2 Signature" },
+              "mn3": { "mn3 Pastel ID": "mn3 Signature" }
 	}
-3. "pastelid"   (string, required) The current, registering masternode (MN1) PastelID. NOTE: PastelID must be generated and stored inside node. See "pastelid newkey".
-4. "passphrase" (string, required) The passphrase to the private key associated with PastelID and stored inside node. See "pastelid newkey".
+3. "pastelid"   (string, required) The current, registering masternode (MN1) Pastel ID. NOTE: Pastel ID must be generated and stored inside node. See "pastelid newkey".
+4. "passphrase" (string, required) The passphrase to the private key associated with Pastel ID and stored inside node. See "pastelid newkey".
 5. "label"      (string, required) The label which can be used to search for the ticket.
 6. "fee"        (int, required) The agreed upon storage fee.
 7. "imagesize"  (int, required) size of image in MB
@@ -187,13 +187,22 @@ UniValue tickets_tools_validateownership(const UniValue& params)
 {
     if (params.size() < 5)
         throw JSONRPCError(RPC_INVALID_PARAMETER,
-R"(tickets tools validateownership "txid" "pastelid" "passphrase"
-Get ownership validation by pastelid. If unsuccessful, method return nft:"",transfer:"". Every other case successful.
+R"(tickets tools validateownership "item_txid" "pastelid" "passphrase"
+Get item ownership validation by pastelid.
+
+Returns:
+    {
+        "type": "<item type>",
+        "owns": True|False,
+        "txid": "<item txid>",
+        "transfer": "<transfer ticket txid>"
+    }
+ If unsuccessful, method returns empty values.
 
 Arguments:
 1. "txid"       (string, required) txid of the original nft registration 
-2. "pastelid"   (string, required) Registered pastelid which (according to the request) shall be the owner or the author of the registered NFT (of argument 1's txid)
-3. "passphrase" (string, required) The passphrase to the private key associated with PastelID and stored inside node. See "pastelid newkey".
+2. "pastelid"   (string, required) Registered pastelid which (according to the request) shall be the owner or the author of the registered item (of argument 1's txid)
+3. "passphrase" (string, required) The passphrase to the private key associated with Pastel ID and stored inside node. See "pastelid newkey".
 
 Validate ownership
 )" + HelpExampleCli("tickets tools validateownership", R"(""e4ee20e436d33f59cc313647bacff0c5b0df5b7b1c1fa13189ea7bc8b9df15a4" jXYqZNPj21RVnwxnEJ654wEdzi7GZTZ5LAdiotBmPrF7pDMkpX1JegDMQZX55WZLkvy9fxNpZcbBJuE8QYUqBF "passphrase")") +
@@ -201,47 +210,39 @@ R"(
 As json rpc
 )" + HelpExampleRpc("tickets", R"("tools", "validateownership", "e4ee20e436d33f59cc313647bacff0c5b0df5b7b1c1fa13189ea7bc8b9df15a4" "jXYqZNPj21RVnwxnEJ654wEdzi7GZTZ5LAdiotBmPrF7pDMkpX1JegDMQZX55WZLkvy9fxNpZcbBJuE8QYUqBF" "passphrase")"));
 
-    //result object
+    // result object
     UniValue retVal(UniValue::VOBJ);
-    //txid
-    string txid = params[2].get_str();
-    //pastelid
-    string pastelid = params[3].get_str();
+    // item txid
+    string item_txid = params[2].get_str();
+    // Pastel Id to validate ownership for
+    string sPastelId = params[3].get_str();
 
     //Check if pastelid is found within the stored ones
-    const auto pastelIDs = CPastelID::GetStoredPastelIDs();
-    bool bIdFound = false;
-    pastelid_store_t resultMap;
-
-    for (const auto& p : pastelIDs)
-    {
-        if (p.first.compare(pastelid) == 0)
-        {
-            bIdFound = true;
-            break;
-        }
-    }
-
-    if (!bIdFound)
+    const auto pastelIdMap = CPastelID::GetStoredPastelIDs(true, &sPastelId);
+    if (pastelIdMap.empty())
         throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY,
-                           "Error: Corresponding PastelID not found!");
+                           "Error: Corresponding Pastel ID not found!");
     //passphrase
     SecureString strKeyPass(params[4].get_str());
     if (!strKeyPass.empty())
     {
         //If passphrase is not valid exception is thrown
-        if (!CPastelID::isValidPassphrase(pastelid, strKeyPass))
+        if (!CPastelID::isValidPassphrase(sPastelId, strKeyPass))
             throw JSONRPCError(RPC_WALLET_PASSPHRASE_INCORRECT, "Error: Failed to validate passphrase!");
 
-        auto result = masterNodeCtrl.masternodeTickets.ValidateOwnership(txid, pastelid);
+        const auto result = masterNodeCtrl.masternodeTickets.ValidateOwnership(item_txid, sPastelId);
         if (result.has_value())
         {
-            retVal.pushKV("nft", std::move(get<0>(result.value())));
-            retVal.pushKV("transfer", std::move(get<1>(result.value())));
+            retVal.pushKV("type", GetTicketName(get<0>(result.value())));
+            retVal.pushKV("owns", true);
+            retVal.pushKV("txid", move(get<1>(result.value())));
+            retVal.pushKV("transfer", move(get<2>(result.value())));
         }
         else 
         {
-            retVal.pushKV("nft", "");
+            retVal.pushKV("type", "unknown");
+            retVal.pushKV("owns", false);
+            retVal.pushKV("txid", "");
             retVal.pushKV("transfer", "");
         }
     }
@@ -377,7 +378,7 @@ Search for the NFT registration tickets and thumbnail_hash using filters defined
 Arguments:
 1. Search JSON in format:
 {
-    "creator": "creator-pastel-id", // return nft registered by the creator with this exact PastelID
+    "creator": "creator-pastel-id", // return nft registered by the creator with this exact Pastel ID
                                     // this can have a special value - "mine"
     "blocks": [min, max],           // return nft with "min <= nft activation ticket block number <= max"
     "copies": [min, max],           // return nft with "min <= number of created copies <= max"
