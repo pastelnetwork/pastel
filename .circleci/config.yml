@@ -191,14 +191,17 @@ jobs:
                 ext: << parameters.ext >>
                 platform: << parameters.platform >>
                 platform_suffix: << parameters.platform_suffix >>
-  test_group_1:
+  test_group_gtest:
     executor: pastel-builder    
+    working_directory: /pastel
     steps:
       - attach_workspace:
           at: /tmp/ws
       - run:
           name: Setting up test environment
           command: |
+            mkdir -p /pastel
+            ls -la /tmp/ws
             cp -r /tmp/ws/{src,qa}/ /pastel/
             cp -r /tmp/ws/.pastel-params $HOME/
       - run:
@@ -222,8 +225,9 @@ jobs:
           working_directory: qa/test-suite
           command: |
             ./full_test_suite.py univalue
-  test_group_2:
+  test_group_rpc_common:
     executor: pastel-builder    
+    working_directory: /pastel
     steps:
       - attach_workspace:
           at: /tmp/ws
@@ -232,6 +236,7 @@ jobs:
           command: |
             cp -r /tmp/ws/{src,qa}/ /pastel/
             cp -r /tmp/ws/.pastel-params $HOME/
+            ls -la /pastel
       - run:
           name: Tests - rpc-common
           working_directory: qa/test-suite
@@ -244,8 +249,9 @@ jobs:
           no_output_timeout: 30m
           command: |
             ./full_test_suite.py rpc-ext
-  test_group_3:
+  test_group_mn:
     executor: pastel-builder    
+    working_directory: /pastel
     steps:
       - attach_workspace:
           at: /tmp/ws
@@ -261,8 +267,9 @@ jobs:
           command: |
             export PYTHONUNBUFFERED=1
             ./full_test_suite.py rpc-mn
-  test_group_4:
+  test_group_mn_tickets:
     executor: pastel-builder    
+    working_directory: /pastel
     steps:
       - attach_workspace:
           at: /tmp/ws
@@ -349,25 +356,25 @@ workflows:
             context:
               - Release
               - weekly-beta-builds
-        - test_group_1:
+        - test_group_gtest:
             requires:
               - Build Pastel for Linux platform (debug)
             filters:
               tags:
                 ignore: /^v.*/
-        - test_group_2:
+        - test_group_rpc_common:
             requires:
               - Build Pastel for Linux platform (debug)
             filters:
               tags:
                 ignore: /^v.*/
-        - test_group_3:
+        - test_group_mn:
             requires:
               - Build Pastel for Linux platform (debug)
             filters:
               tags:
                 ignore: /^v.*/
-        - test_group_4:
+        - test_group_mn_tickets:
             requires:
               - Build Pastel for Linux platform (debug)
             filters:
