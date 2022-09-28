@@ -29,7 +29,6 @@
 #define COPYRIGHT_YEAR 2022
 
 #endif //HAVE_CONFIG_H
-#include <vector_types.h>
 
 /**
  * Converts the parameter X to a string after macro replacement on X has been performed.
@@ -49,6 +48,9 @@
 
 #if !defined(WINDRES_PREPROC)
 
+#include <string>
+#include <vector>
+
 static const int CLIENT_VERSION =
                            1000000 * CLIENT_VERSION_MAJOR
                          +   10000 * CLIENT_VERSION_MINOR
@@ -62,6 +64,6 @@ extern const std::string CLIENT_DATE;
 
 std::string FormatVersion(int nVersion);
 std::string FormatFullVersion();
-std::string FormatSubVersion(const std::string& name, int nClientVersion, const v_strings& comments);
+std::string FormatSubVersion(const std::string& name, int nClientVersion, const std::vector<std::string>& comments);
 
 #endif // WINDRES_PREPROC

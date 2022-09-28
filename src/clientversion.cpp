@@ -13,6 +13,7 @@
 #include <boost/preprocessor/control/if.hpp>
 
 #include <clientversion.h>
+#include <vector_types.h>
 
 using namespace std;
 
