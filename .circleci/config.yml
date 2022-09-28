@@ -168,14 +168,14 @@ jobs:
                   cp -r qa/ /pasteld-files/
                   cp -r $HOME/.pastel-params/ /pasteld-files/
           # Persist the specified paths into the workspace for use in test jobs.
-          persist_to_workspace:
-            # Must be an absolute path, or relative path from working_directory. This is a
-            # directory on the container which is taken to be the root directory of the workspace
-            root: /pasteld-files
-            paths:
-              - .pastel-params
-              - src
-              - qa
+            - persist_to_workspace:
+              # Must be an absolute path, or relative path from working_directory. This is a
+              # directory on the container which is taken to be the root directory of the workspace
+                root: /pasteld-files
+                paths:
+                  - .pastel-params
+                  - src
+                  - qa
       - when:
           condition: << parameters.deploy >>
           steps:
@@ -351,19 +351,25 @@ workflows:
               - weekly-beta-builds
         - test_group_1:
             requires:
-              - build_platform
+              - Build Pastel for Linux platform (debug)
             filters:
               tags:
                 ignore: /^v.*/
         - test_group_2:
             requires:
-              - build_platform
+              - Build Pastel for Linux platform (debug)
             filters:
               tags:
                 ignore: /^v.*/
         - test_group_3:
             requires:
-              - build_platform
+              - Build Pastel for Linux platform (debug)
+            filters:
+              tags:
+                ignore: /^v.*/
+        - test_group_4:
+            requires:
+              - Build Pastel for Linux platform (debug)
             filters:
               tags:
                 ignore: /^v.*/
