@@ -151,7 +151,31 @@ jobs:
           destination: /<<parameters.platform>>/pastel-cli<<parameters.ext>>
       - store_artifacts:
           path: <<parameters.source_directory>>pastel-tx<<parameters.ext>>
-          destination: /<<parameters.platform>>/pastel-tx<<parameters.ext>>
+          destination: /<<parameters.platform>>/pastel-tx<<parameters.ext>>       
+      - when:
+          condition: << parameters.run_tests >>
+          steps:
+            - run:
+                name: Fetching zkSNARK parameters
+                working_directory: pcutil
+                command: |
+                  ./fetch-params.sh
+            - run:
+                name: Caching files for running tests
+                command: |
+                  mkdir -p /pasteld-files/src
+                  cp src/{pastel-cli,pasteld} /pasteld-files/src
+                  cp -r qa/ /pasteld-files/
+                  cp -r $HOME/.pastel-params/ /pasteld-files/
+          # Persist the specified paths into the workspace for use in test jobs.
+          persist_to_workspace:
+            # Must be an absolute path, or relative path from working_directory. This is a
+            # directory on the container which is taken to be the root directory of the workspace
+            root: /pasteld-files
+            paths:
+              - .pastel-params
+              - src
+              - qa
       - when:
           condition: << parameters.deploy >>
           steps:
@@ -167,55 +191,92 @@ jobs:
                 ext: << parameters.ext >>
                 platform: << parameters.platform >>
                 platform_suffix: << parameters.platform_suffix >>
-      - when:
-          condition: << parameters.run_tests >>
-          steps:
-            - run:
-                name: Fetching zkSNARK parameters
-                working_directory: pcutil
-                command: |
-                  ./fetch-params.sh
-            - run:
-                name: Tests - gtest
-                working_directory: qa/test-suite
-                no_output_timeout: 30m
-                command: |
-                  ./full_test_suite.py gtest
-            - run:
-                name: Tests - util-test
-                working_directory: qa/test-suite        
-                command: |
-                  ./full_test_suite.py util-test
-            - run:
-                name: Tests - secp256k1
-                working_directory: qa/test-suite
-                command: |
-                  ./full_test_suite.py secp256k1
-            - run:
-                name: Tests - univalue
-                working_directory: qa/test-suite
-                command: |
-                  ./full_test_suite.py univalue
-            - run:
-                name: Tests - rpc-common
-                working_directory: qa/test-suite
-                no_output_timeout: 30m
-                command: |
-                  ./full_test_suite.py rpc-common
-            - run:
-                name: Tests - rpc-ext
-                working_directory: qa/test-suite
-                no_output_timeout: 30m
-                command: |
-                  ./full_test_suite.py rpc-ext
-            - run:
-                name: Tests - rpc-mn
-                working_directory: qa/test-suite
-                no_output_timeout: 45m
-                command: |
-                  export PYTHONUNBUFFERED=1
-                  ./full_test_suite.py rpc-mn
-
+  test_group_1:
+    executor: pastel-builder    
+    steps:
+      - attach_workspace:
+          at: /tmp/ws
+      - run:
+          name: Setting up test environment
+          command: |
+            cp -r /tmp/ws/{src,qa}/ /pastel/
+            cp -r /tmp/ws/.pastel-params $HOME/
+      - run:
+          name: Tests - gtest
+          working_directory: qa/test-suite
+          no_output_timeout: 30m
+          command: |
+            ./full_test_suite.py gtest
+      - run:
+          name: Tests - util-test
+          working_directory: qa/test-suite        
+          command: |
+            ./full_test_suite.py util-test
+      - run:
+          name: Tests - secp256k1
+          working_directory: qa/test-suite
+          command: |
+            ./full_test_suite.py secp256k1
+      - run:
+          name: Tests - univalue
+          working_directory: qa/test-suite
+          command: |
+            ./full_test_suite.py univalue
+  test_group_2:
+    executor: pastel-builder    
+    steps:
+      - attach_workspace:
+          at: /tmp/ws
+      - run:
+          name: Setting up test environment
+          command: |
+            cp -r /tmp/ws/{src,qa}/ /pastel/
+            cp -r /tmp/ws/.pastel-params $HOME/
+      - run:
+          name: Tests - rpc-common
+          working_directory: qa/test-suite
+          no_output_timeout: 30m
+          command: |
+            ./full_test_suite.py rpc-common
+      - run:
+          name: Tests - rpc-ext
+          working_directory: qa/test-suite
+          no_output_timeout: 30m
+          command: |
+            ./full_test_suite.py rpc-ext
+  test_group_3:
+    executor: pastel-builder    
+    steps:
+      - attach_workspace:
+          at: /tmp/ws
+      - run:
+          name: Setting up test environment
+          command: |
+            cp -r /tmp/ws/{src,qa}/ /pastel/
+            cp -r /tmp/ws/.pastel-params $HOME/
+      - run:
+          name: Tests - rpc-mn
+          working_directory: qa/test-suite
+          no_output_timeout: 45m
+          command: |
+            export PYTHONUNBUFFERED=1
+            ./full_test_suite.py rpc-mn
+  test_group_4:
+    executor: pastel-builder    
+    steps:
+      - attach_workspace:
+          at: /tmp/ws
+      - run:
+          name: Setting up test environment
+          command: |
+            cp -r /tmp/ws/{src,qa}/ /pastel/
+            cp -r /tmp/ws/.pastel-params $HOME/
+      - run:
+          name: Tests - rpc-mn-
+          working_directory: qa/pull-tester
+          no_output_timeout: 30m
+          command: |
+            ./rpc-tests.sh --name=mn_tickets.py
 workflows:
     version: 2
     PastelBuild:
@@ -288,3 +349,21 @@ workflows:
             context:
               - Release
               - weekly-beta-builds
+        - test_group_1:
+            requires:
+              - build_platform
+            filters:
+              tags:
+                ignore: /^v.*/
+        - test_group_2:
+            requires:
+              - build_platform
+            filters:
+              tags:
+                ignore: /^v.*/
+        - test_group_3:
+            requires:
+              - build_platform
+            filters:
+              tags:
+                ignore: /^v.*/
