@@ -164,7 +164,7 @@ jobs:
                 name: Caching files for running tests
                 command: |
                   mkdir -p /pasteld-files/src
-                  cp src/{pastel-cli,pasteld} /pasteld-files/src
+                  cp src/{pastel-cli,pasteld,pastel-gtest} /pasteld-files/src
                   cp -r qa/ /pasteld-files/
                   cp -r $HOME/.pastel-params/ /pasteld-files/
           # Persist the specified paths into the workspace for use in test jobs.
@@ -279,7 +279,7 @@ jobs:
             cp -r /tmp/ws/{src,qa}/ /pastel/
             cp -r /tmp/ws/.pastel-params $HOME/
       - run:
-          name: Tests - rpc-mn-
+          name: Tests - rpc-mn-tickets
           working_directory: qa/pull-tester
           no_output_timeout: 30m
           command: |
@@ -357,24 +357,28 @@ workflows:
               - Release
               - weekly-beta-builds
         - test_group_gtest:
+            name: Tests (gtests,3rdparty)
             requires:
               - Build Pastel for Linux platform (debug)
             filters:
               tags:
                 ignore: /^v.*/
         - test_group_rpc_common:
+            name: Tests (RPC common,ext) 
             requires:
               - Build Pastel for Linux platform (debug)
             filters:
               tags:
                 ignore: /^v.*/
         - test_group_mn:
+            name: Tests (MN fast)
             requires:
               - Build Pastel for Linux platform (debug)
             filters:
               tags:
                 ignore: /^v.*/
         - test_group_mn_tickets:
+            name: Tests (MN tickets)
             requires:
               - Build Pastel for Linux platform (debug)
             filters:
