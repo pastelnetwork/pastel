@@ -165,7 +165,7 @@ public:
     bool GetNextMasternodeInQueueForPayment(bool fFilterSigTime, uint32_t& nCountRet, masternode_info_t& mnInfoRet);
 
     /// Find a random entry
-    masternode_info_t FindRandomNotInVec(const std::vector<COutPoint> &vecToExclude, int nProtocolVersion = -1);
+    masternode_info_t FindRandomNotInVec(const v_outpoints &vecToExclude, int nProtocolVersion = -1);
 
     auto GetFullMasternodeMap() const noexcept { return mapMasternodes; }
 

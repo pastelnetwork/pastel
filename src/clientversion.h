@@ -1,11 +1,9 @@
+#pragma once
 // Copyright (c) 2009-2014 The Bitcoin Core developers
 // Copyright (c) 2016-2017 The Zcash developers
 // Copyright (c) 2018-2022 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
-// file COPYING or http://www.opensource.org/licenses/mit-license.php.
-
-#ifndef BITCOIN_CLIENTVERSION_H
-#define BITCOIN_CLIENTVERSION_H
+// file COPYING or https://www.opensource.org/licenses/mit-license.php.
 
 #if defined(HAVE_CONFIG_H)
 #include "config/bitcoin-config.h"
@@ -69,5 +67,3 @@ std::string FormatFullVersion();
 std::string FormatSubVersion(const std::string& name, int nClientVersion, const std::vector<std::string>& comments);
 
 #endif // WINDRES_PREPROC
-
-#endif // BITCOIN_CLIENTVERSION_H

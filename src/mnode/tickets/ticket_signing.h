@@ -41,7 +41,7 @@ public:
     // check if sPastelID is principal signature creator
     bool IsCreatorPastelId(const std::string& sPastelID) const noexcept { return m_vPastelID[SIGN_PRINCIPAL] == sPastelID; }
     std::string getCreatorPastelId() const noexcept { return m_vPastelID[SIGN_PRINCIPAL]; }
-    // get PastelID by signature id
+    // get Pastel ID by signature id
     std::string getPastelID(const short sigId) const noexcept;
 
     bool isValidSigId(const short sigId) const noexcept { return (sigId >= SIGN_PRINCIPAL) && (sigId < SIGN_COUNT); }

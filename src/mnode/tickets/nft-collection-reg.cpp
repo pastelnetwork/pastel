@@ -27,7 +27,7 @@ using namespace std;
  * Current nft_collection_ticket !!!
  * {
  *    "nft_collection_ticket_version": integer     // 1
- *    "creator": bytes,           // PastelID of the NFT collection creator
+ *    "creator": bytes,           // Pastel ID of the NFT collection creator
  *    "permitted_users": [  // list of Pastel IDs that are permitted to register an NFT as part of the collection
  *        "xxxx",
  *        "xxxx",

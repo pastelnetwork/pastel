@@ -15,7 +15,7 @@ constexpr auto TICKET_NAME_NFT_ACT                  = "nft-act";                
 constexpr auto TICKET_NAME_OFFER                    = "offer";                  // Offer ticket (former nft-sell)
 constexpr auto TICKET_NAME_ACCEPT                   = "accept";                 // Accept ticket (former nft-buy)
 constexpr auto TICKET_NAME_TRANSFER                 = "transfer";               // Transfer ticket (former nft-trade)
-constexpr auto TICKET_NAME_TAKE_DOWN                = "nft-take-down";
+constexpr auto TICKET_NAME_TAKE_DOWN                = "take-down";
 constexpr auto TICKET_NAME_NFT_ROYALTY              = "nft-royalty";            // NFT royalty ticket
 constexpr auto TICKET_NAME_USERNAME_CHANGE          = "username-change";        // Username change ticket
 constexpr auto TICKET_NAME_ETHEREUM_ADDRESS_CHANGE  = "ethereum-address-change";
@@ -51,7 +51,8 @@ enum class TicketID : uint8_t
     NFTCollectionReg,   // NFT collection registration ticket
     NFTCollectionAct,   // NFT collection activation ticket
 
-    COUNT // number of ticket types
+    COUNT, // number of ticket types
+    InvalidID = std::numeric_limits<uint8_t>::max()
 };
 
 /**
@@ -73,7 +74,7 @@ using TicketInfo = struct
 static constexpr std::array<TicketInfo, to_integral_type<TicketID>(TicketID::COUNT)> TICKET_INFO =
     {{
         //     ticket id            |   ticket description       |        ticket name                 | version | DB subfolder  |  default fee
-        {TicketID::PastelID,          "PastelID Registration",        TICKET_NAME_ID_REG,                  1,       "pslids",       10   },
+        {TicketID::PastelID,          "Pastel ID Registration",       TICKET_NAME_ID_REG,                  1,       "pslids",       10   },
         {TicketID::NFT,               "NFT Registration",             TICKET_NAME_NFT_REG,                 1,       "nftreg",       10   }, // nft_ticket version 2
         {TicketID::Activate,          "NFT Activation",               TICKET_NAME_NFT_ACT,                 0,       "nftcnf",       10   },
         {TicketID::Offer,             "Offer",                        TICKET_NAME_OFFER,                   0,       "offer",        10   },
@@ -88,6 +89,14 @@ static constexpr std::array<TicketInfo, to_integral_type<TicketID>(TicketID::COU
         {TicketID::NFTCollectionReg,  "NFT Collection Registration",  TICKET_NAME_NFT_COLLECTION_REG,      1,       "nftcollreg",   10   }, // nft_collection_ticket version 1
         {TicketID::NFTCollectionAct,  "NFT Collection Activation",    TICKET_NAME_NFT_COLLECTION_ACT,      1,       "nftcollact",   10   }
     }};
+
+inline std::string GetTicketName(const TicketID id) noexcept
+{
+    std::string sName;
+    if (id != TicketID::COUNT)
+        sName = TICKET_INFO[to_integral_type<TicketID>(id)].szName;
+    return sName;
+}
 
 inline std::string GetTicketDescription(const TicketID id) noexcept
 {

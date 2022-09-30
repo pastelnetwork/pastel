@@ -25,7 +25,7 @@ using namespace std;
 /* Current nft_ticket
 {
     "nft_ticket_version": integer     // 1 or 2
-    "author": bytes,                  // PastelID of the NFT creator
+    "author": bytes,                  // Pastel ID of the NFT creator
     "blocknum": integer,              // block number when the ticket was created - this is to map the ticket to the MNs that should process it
     "block_hash": bytes               // hash of the top block when the ticket was created - this is to map the ticket to the MNs that should process it
     "copies": integer,                // number of copies

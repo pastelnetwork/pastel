@@ -66,7 +66,7 @@ UniValue masternodelist(const UniValue& params, bool fHelp)
     string strExtra;
 
     RPC_CMD_PARSER(MNLIST, params, activeseconds, addr, full, info, lastpaidblock, lastpaidtime, lastseen, payee, protocol, pubkey, rank, status, extra);
-    if (fHelp || !MNLIST.IsCmdSupported())
+    if (fHelp || (params.size() >= 2 && !MNLIST.IsCmdSupported()))
         throw runtime_error(
 R"(masternodelist ( "mode" "filter" )
 Get a list of masternodes in different modes
@@ -702,7 +702,7 @@ Arguments:
     "mnAddress:port"    (string) (required) The address and port of the Master Node's cNode
     "extAddress:port"   (string) (required) The address and port of the Master Node's Storage Layer
     "extP2P:port"       (string) (required) The address and port of the Master Node's Kademlia point
-    "passphrase"        (string) (required) passphrase for new PastelID
+    "passphrase"        (string) (required) passphrase for new Pastel ID
     "txid"              (string) (optional) id of transaction with the collateral amount
      index              (numeric) (optional) index in the transaction with the collateral amount
 
@@ -770,9 +770,9 @@ As json rpc
         throw JSONRPCError(RPC_MISC_ERROR, "Failed to generate private key");
     string mnPrivKey = keyIO.EncodeSecret(secret);
 
-    //PastelID
+    //Pastel ID
     string pastelID;
-    /*      THIS WILL NOT WORK for Hot/Cold case - PastelID has to be created and registered from the cold MN itself
+    /*      THIS WILL NOT WORK for Hot/Cold case - Pastel ID has to be created and registered from the cold MN itself
     SecureString strKeyPass(params[4].get_str());
 
     string pastelID = CPastelID::CreateNewLocalKey(strKeyPass);

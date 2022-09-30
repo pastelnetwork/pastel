@@ -40,7 +40,7 @@ string CAcceptTicket::ToStr() const noexcept
 }
 
 /**
-* Validate Pastel ticket.
+* Validate Accept ticket.
 * 
 * \param bPreReg - if true: called from ticket pre-registration
 * \param nCallDepth - function call depth
@@ -53,17 +53,17 @@ ticket_validation_t CAcceptTicket::IsValid(const bool bPreReg, const uint32_t nC
     do
     {
         // 0. Common validations
-        unique_ptr<CPastelTicket> pastelTicket;
+        unique_ptr<CPastelTicket> offerTicket;
         const ticket_validation_t commonTV = common_ticket_validation(
-            *this, bPreReg, m_offerTxId, pastelTicket,
+            *this, bPreReg, m_offerTxId, offerTicket,
             [](const TicketID tid) noexcept { return (tid != TicketID::Offer); },
             GetTicketDescription(), ::GetTicketDescription(TicketID::Offer), nCallDepth, 
             price + TicketPricePSL(chainHeight));
         if (commonTV.IsNotValid())
         {
             tv.errorMsg = strprintf(
-                "The Accept ticket with Offer txid [%s] is not validated. %s", 
-                m_offerTxId, commonTV.errorMsg);
+                "The %s ticket with Offer txid [%s] is not validated. %s", 
+                GetTicketDescription(), m_offerTxId, commonTV.errorMsg);
             tv.state = commonTV.state;
             break;
         }
@@ -91,8 +91,8 @@ ticket_validation_t CAcceptTicket::IsValid(const bool bPreReg, const uint32_t nC
                 if (CTransferTicket::CheckTransferTicketExistByAcceptTicket(existingAcceptTicket.m_txid))
                 {
                     tv.errorMsg = strprintf(
-                        "The Offer ticket you are trying to accept [%s] is already processed",
-                        m_offerTxId);
+                        "The %s ticket you are trying to accept [%s] is already processed",
+                        ::GetTicketDescription(TicketID::Offer), m_offerTxId);
                     break;
                 }
 
@@ -100,8 +100,8 @@ ticket_validation_t CAcceptTicket::IsValid(const bool bPreReg, const uint32_t nC
                 if (m_nBlock > 0 && existingAcceptTicket.m_nBlock > m_nBlock)
                 {
                     tv.errorMsg = strprintf(
-                        "This Accept ticket has been replaced with another ticket, txid - [%s]",
-                        existingAcceptTicket.m_txid);
+                        "This %s ticket has been replaced with another ticket, txid - [%s]",
+                        GetTicketDescription(), existingAcceptTicket.m_txid);
                     break;
                 }
 
@@ -109,8 +109,8 @@ ticket_validation_t CAcceptTicket::IsValid(const bool bPreReg, const uint32_t nC
                 if (existingAcceptTicket.m_nBlock + masterNodeCtrl.MaxAcceptTicketAge > chainHeight)
                 {
                     tv.errorMsg = strprintf(
-                        "Accept ticket [%s] already exists and is not yet 1h old for this Offer ticket [%s] [%sfound ticket block=%u, txid=%s]",
-                        existingAcceptTicket.m_txid, m_offerTxId, 
+                        "%s ticket [%s] already exists and is not yet 1h old for this Offer ticket [%s] [%sfound ticket block=%u, txid=%s]",
+                        GetTicketDescription(), existingAcceptTicket.m_txid, m_offerTxId, 
                         bPreReg ? "" : strprintf("this ticket block=%u txid=%s; ", m_nBlock, m_txid),
                         existingAcceptTicket.m_nBlock, existingAcceptTicket.m_txid);
                     break;
@@ -118,7 +118,7 @@ ticket_validation_t CAcceptTicket::IsValid(const bool bPreReg, const uint32_t nC
             }
         }
 
-        const auto pOfferTicket = dynamic_cast<const COfferTicket*>(pastelTicket.get());
+        const auto pOfferTicket = dynamic_cast<const COfferTicket*>(offerTicket.get());
         if (!pOfferTicket)
         {
             tv.errorMsg = strprintf(

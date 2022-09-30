@@ -136,16 +136,19 @@ void CMasternodeSync::SwitchToNextAsset()
 
 void CMasternodeSync::ProcessMessage(CNode* pfrom, string& strCommand, CDataStream& vRecv)
 {
-    if (strCommand == NetMsgType::SYNCSTATUSCOUNT) { //Sync status count
+    //Sync status count
+    if (strCommand == NetMsgType::SYNCSTATUSCOUNT)
+    {
 
         //do not care about stats if sync process finished or failed
-        if(IsSynced() || IsFailed()) return;
+        if (IsSynced() || IsFailed())
+            return;
 
         int nItemID;
         int nCount;
         vRecv >> nItemID >> nCount;
 
-        LogPrintf("SYNCSTATUSCOUNT -- got inventory count: nItemID=%d  nCount=%d  peer=%d\n", nItemID, nCount, pfrom->id);
+        LogPrintf("SYNCSTATUSCOUNT -- got inventory count from peer=%d: nItemID=%d  nCount=%d\n", pfrom->id, nItemID, nCount);
     }
 }
 
@@ -155,7 +158,8 @@ void CMasternodeSync::ClearFulfilledRequests()
     TRY_LOCK(cs_vNodes, lockRecv);
     if(!lockRecv) return;
 
-    CNodeHelper::ForEachNode(CNodeHelper::AllNodes, [](CNode* pnode) {
+    CNodeHelper::ForEachNode(CNodeHelper::AllNodes, [](CNode* pnode)
+    {
         masterNodeCtrl.requestTracker.RemoveFulfilledRequest(pnode->addr, "masternode-list-sync");
         masterNodeCtrl.requestTracker.RemoveFulfilledRequest(pnode->addr, "masternode-payment-sync");
         masterNodeCtrl.requestTracker.RemoveFulfilledRequest(pnode->addr, "governance-payment-sync");

@@ -18,8 +18,6 @@ class CMasternodePaymentVote;
 static constexpr size_t MNPAYMENTS_SIGNATURES_REQUIRED  = 6;
 static constexpr size_t MNPAYMENTS_SIGNATURES_TOTAL     = 20;
 
-typedef std::vector<COutPoint> outpoint_vector;
-
 class CMasternodePayee
 {
 private:

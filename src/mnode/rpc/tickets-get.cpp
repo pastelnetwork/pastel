@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2021 The Pastel Core developers
+// Copyright (c) 2018-2022 The Pastel Core developers
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 
@@ -19,7 +19,7 @@ Get (any) Pastel ticket by txid
 As json rpc
 )" + HelpExampleRpc("tickets", "get bc1c5243284272dbb22c301a549d112e8bc9bc454b5ff50b1e5f7959d6b56726"));
 
-    uint256 txid = ParseHashV(params[1], "\"txid\"");
+    const uint256 txid = ParseHashV(params[1], "\"txid\"");
     UniValue obj(UniValue::VOBJ);
     obj.read(CPastelTicketProcessor::GetTicketJSON(txid));
     return obj;

@@ -92,9 +92,9 @@ public:
     static NFTRoyaltyTickets_t FindAllTicketByNFTTxID(const std::string& NFTTxnId);
 
 protected:
-    std::string pastelID;    //pastelID of the old (current at moment of creation) royalty recipient
-    std::string newPastelID; //pastelID of the new royalty recipient
-    std::string NFTTxnId;    //txid of the NFT for royalty payments
+    std::string pastelID;    // Pastel ID of the old (current at moment of creation) royalty recipient
+    std::string newPastelID; // Pastel ID of the new royalty recipient
+    std::string NFTTxnId;    // txid of the NFT for royalty payments
     std::string m_keyOne;
     v_uint8 m_signature;
 };

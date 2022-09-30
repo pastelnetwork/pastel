@@ -35,25 +35,26 @@ Where action_ticket is an external base64-encoded JSON as a string:
 {
   "action_ticket_version": integer // 1
   "action_type": string,           // action type (sense, cascade)
-  "caller": bytes,                 // PastelID of the action caller
+  "caller": bytes,                 // Pastel ID of the action caller
   "blocknum": integer,             // block number when the ticket was created - this is to map the ticket to the MNs that should process it
   "block_hash": bytes              // hash of the top block when the ticket was created - this is to map the ticket to the MNs that should process it
   "app_ticket": bytes,             // as ascii85(app_ticket),
                                    // actual structure of app_ticket is different for different API and is not parsed by pasteld !!!!
 }
 signatures: {
-    "principal": { "PastelID" : "signature"},
-          "mn1": { "PastelID" : "signature"},
-          "mn2": { "PastelID" : "signature"},
-          "mn3": { "PastelID" : "signature"},
+    "principal": { "principal Pastel ID" : "signature"},
+          "mn1": { "mn1 Pastel ID" : "signature"},
+          "mn2": { "mn2 Pastel ID" : "signature"},
+          "mn3": { "mn3 Pastel ID" : "signature"},
 }
 
   key #1: primary key (generated)
-mvkey #1: action caller PastelID
+mvkey #1: action caller Pastel ID
 mvkey #3: label (optional)
 
 */
 
+// supported action ticket types
 constexpr auto ACTION_TICKET_TYPE_SENSE = "sense";
 constexpr auto ACTION_TICKET_TYPE_CASCADE = "cascade";
 

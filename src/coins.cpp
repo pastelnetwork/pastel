@@ -563,15 +563,18 @@ CAmount CCoinsViewCache::GetValueIn(const CTransaction& tx) const
 
 bool CCoinsViewCache::HaveShieldedRequirements(const CTransaction& tx) const
 {
-    unordered_map<uint256, SproutMerkleTree, CCoinsKeyHasher> intermediates;
-
     for (const auto &spendDescription : tx.vShieldedSpend)
     {
         if (GetNullifier(spendDescription.nullifier, SAPLING)) // Prevent double spends
+        {
+            // Sapling double-spend detected
             return false;
+        }
 
         SaplingMerkleTree tree;
-        if (!GetSaplingAnchorAt(spendDescription.anchor, tree)) {
+        if (!GetSaplingAnchorAt(spendDescription.anchor, tree))
+        {
+            // Transaction uses unknown Sapling anchor
             return false;
         }
     }

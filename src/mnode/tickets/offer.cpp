@@ -4,10 +4,13 @@
 #include <json/json.hpp>
 
 #include <init.h>
+#include <enum_util.h>
 #include <pastelid/common.h>
 #include <pastelid/pastel_key.h>
 #include <mnode/tickets/nft-reg.h>
 #include <mnode/tickets/nft-act.h>
+#include <mnode/tickets/action-reg.h>
+#include <mnode/tickets/action-act.h>
 #include <mnode/tickets/offer.h>
 #include <mnode/tickets/transfer.h>
 #include <mnode/tickets/ticket-utils.h>
@@ -18,7 +21,7 @@ using json = nlohmann::json;
 using namespace std;
 
 // COfferTicket ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-COfferTicket COfferTicket::Create(string &&txid, 
+COfferTicket COfferTicket::Create(string &&itemTxId, 
     const unsigned int nAskedPricePSL, 
     const unsigned int nValidAfter, 
     const unsigned int nValidBefore, 
@@ -29,7 +32,7 @@ COfferTicket COfferTicket::Create(string &&txid,
 {
     COfferTicket ticket(move(pastelID));
 
-    ticket.m_nftTxId = move(txid);
+    ticket.m_itemTxId = move(itemTxId);
     ticket.m_nAskedPricePSL = nAskedPricePSL;
     ticket.m_nValidAfter = nValidAfter;
     ticket.m_nValidBefore = nValidBefore;
@@ -40,17 +43,23 @@ COfferTicket COfferTicket::Create(string &&txid,
     // NOTE: Offer ticket for Transfer ticket will always has copyNumber = 1
     ticket.m_nCopyNumber = nCopyNumber > 0 ?
         nCopyNumber :
-        static_cast<decltype(ticket.m_nCopyNumber)>(COfferTicket::FindAllTicketByNFTTxID(ticket.m_nftTxId).size()) + 1;
-    ticket.key = ticket.m_nftTxId + ":" + to_string(ticket.m_nCopyNumber);
+        static_cast<decltype(ticket.m_nCopyNumber)>(COfferTicket::FindAllTicketByItemTxId(ticket.m_itemTxId).size()) + 1;
+    // set primary search key to <txid>:<copy_number>
+    ticket.key = ticket.m_itemTxId + ":" + to_string(ticket.m_nCopyNumber);
     ticket.sign(move(strKeyPass));
     return ticket;
 }
 
+/**
+ * Serialize offer ticket to string.
+ * 
+ * \return offer ticket serialization
+ */
 string COfferTicket::ToStr() const noexcept
 {
     stringstream ss;
     ss << m_sPastelID;
-    ss << m_nftTxId;
+    ss << m_itemTxId;
     ss << m_nAskedPricePSL;
     ss << m_nCopyNumber;
     ss << m_nValidBefore;
@@ -61,11 +70,11 @@ string COfferTicket::ToStr() const noexcept
 }
 
 /**
- * Sign the ticket with the PastelID's private key.
+ * Sign the ticket with the Pastel ID's private key.
  * Creates signature.
- * May throw runtime_error in case passphrase is invalid or I/O error with secure container.
  * 
- * \param strKeyPass - passphrase to access secure container (PastelID)
+ * \param strKeyPass - passphrase to access secure container (Pastel ID)
+ * \throw runtime_error in case passphrase is invalid or I/O error with secure container.
  */
 void COfferTicket::sign(SecureString&& strKeyPass)
 {
@@ -116,7 +125,7 @@ OFFER_TICKET_STATE COfferTicket::checkValidState(const uint32_t nHeight) const n
 }
 
 /**
- * Validate Pastel ticket.
+ * Validate Offer ticket.
  * 
  * \param bPreReg - if true: called from ticket pre-registration
  * \param nCallDepth - function call depth
@@ -129,16 +138,26 @@ ticket_validation_t COfferTicket::IsValid(const bool bPreReg, const uint32_t nCa
     do
     {
         // 0. Common validations
-        unique_ptr<CPastelTicket> pastelTicket;
+        unique_ptr<CPastelTicket> itemTicket;
         const ticket_validation_t commonTV = common_ticket_validation(
-            *this, bPreReg, m_nftTxId, pastelTicket,
-            [](const TicketID tid) noexcept { return (tid != TicketID::Activate && tid != TicketID::Transfer); },
+            *this, bPreReg, m_itemTxId, itemTicket,
+            [](const TicketID tid) noexcept
+            {
+                /* validate item ticket
+                   this should be one of the following tickets:
+                    - NFT activation ticket
+                    - Action activation ticket
+                    - Transfer ticket for NFT or Action
+                   should return false to pass validation
+                */
+                return !is_enum_any_of(tid, TicketID::Activate, TicketID::ActionActivate, TicketID::Transfer);
+            },
             GetTicketDescription(), "activation or transfer", nCallDepth, TicketPricePSL(chainHeight));
         if (commonTV.IsNotValid())
         {
             tv.errorMsg = strprintf(
                 "The %s ticket with this txid [%s] is not validated. %s", 
-                GetTicketDescription(), m_nftTxId, commonTV.errorMsg);
+                GetTicketDescription(), m_itemTxId, commonTV.errorMsg);
             tv.state = commonTV.state;
             break;
         }
@@ -146,8 +165,8 @@ ticket_validation_t COfferTicket::IsValid(const bool bPreReg, const uint32_t nCa
         if (!m_nAskedPricePSL)
         {
             tv.errorMsg = strprintf(
-                "The asked price for %s ticket with NFT txid [%s] should be not 0", 
-                GetTicketDescription(), m_nftTxId);
+                "The asked price for %s ticket with registration txid [%s] should be not 0", 
+                GetTicketDescription(), m_itemTxId);
             break;
         }
 
@@ -162,48 +181,104 @@ ticket_validation_t COfferTicket::IsValid(const bool bPreReg, const uint32_t nCa
         }
 
         size_t nTotalCopies{0};
-        // Verify the NFT is not already transferred or gifted
-        const auto fnVerifyAvailableCopies = [this](const string& strTicket, const size_t nTotalCopies) -> ticket_validation_t
+        TicketID originalItemType = itemTicket->ID(); // to be defined for Transfer ticket
+        // Verify the item is not already transferred or gifted
+        const auto fnVerifyAvailableCopies = [this, &originalItemType](const string& strTicket, const size_t nTotalCopies) -> ticket_validation_t
         {
             ticket_validation_t tv;
-            const auto vExistingTransferTickets = CTransferTicket::FindAllTicketByNFTTxID(m_nftTxId);
+            const auto vExistingTransferTickets = CTransferTicket::FindAllTicketByItemTxID(m_itemTxId);
             const size_t nTransferredCopies = vExistingTransferTickets.size();
             do
             {
                 if (nTransferredCopies >= nTotalCopies)
                 {
-                    tv.errorMsg = strprintf(
-                        "The NFT you are trying to offer - from %s ticket [%s] - is already offered - "
-                        "there are already [%zu] offered copies, but only [%zu] copies were available",
-                        strTicket, m_nftTxId, nTransferredCopies, nTotalCopies);
+                    if ((originalItemType == TicketID::ActionActivate) || (originalItemType == TicketID::ActionReg))
+                        tv.errorMsg = strprintf(
+                            "Ownership for the %s ticket [%s] is already transferred",
+                            strTicket, m_itemTxId);
+                    else
+                        tv.errorMsg = strprintf(
+                            "The NFT you are trying to offer - from %s ticket [%s] - is already transferred - "
+                            "there are already [%zu] transferred copies, but only [%zu] copies were available",
+                            strTicket, m_itemTxId, nTransferredCopies, nTotalCopies);
                     break;
                 }
                 tv.setValid();
             } while (false);
             return tv;
         };
-        // Check that Pastel ID in this ticket matches Pastel ID in the referred ticket (Activation or Transfer)
-        if (pastelTicket->ID() == TicketID::Activate)
+        if (itemTicket->ID() == TicketID::ActionActivate)
         {
-            // 1.a
-            const auto pNftActTicket = dynamic_cast<const CNFTActivateTicket*>(pastelTicket.get());
+            // get Action activation ticket
+            const auto pActionActTicket = dynamic_cast<const CActionActivateTicket*>(itemTicket.get());
+            if (!pActionActTicket)
+            {
+                tv.errorMsg = strprintf(
+                    "The %s ticket with this txid [%s] referred by this %s ticket is invalid",
+                    ::GetTicketDescription(TicketID::ActionActivate), m_itemTxId, ::GetTicketDescription(TicketID::Offer));
+                break;
+            }
+            // Check that Pastel ID in this Offer ticket matches Pastel ID in the referred Action Activation ticket
+            const string& actionCallerPastelID = pActionActTicket->getPastelID();
+            if (actionCallerPastelID != m_sPastelID)
+            {
+                tv.errorMsg = strprintf(
+                    "The Pastel ID [%s] in this ticket is not matching the Action Caller's Pastel ID [%s] in the %s ticket with this txid [%s]",
+                    m_sPastelID, actionCallerPastelID, ::GetTicketDescription(TicketID::ActionActivate), m_itemTxId);
+                break;
+            }
+            //  Get ticket pointed by Action Registration txid
+            const auto ticket = masterNodeCtrl.masternodeTickets.GetTicket(pActionActTicket->getRegTxId(), TicketID::ActionReg);
+            if (!ticket)
+            {
+                tv.errorMsg = strprintf(
+                    "The %s ticket with this txid [%s] referred by this %s ticket is invalid",
+                    ::GetTicketDescription(TicketID::ActionReg), pActionActTicket->getRegTxId(), ::GetTicketDescription(TicketID::ActionActivate));
+                break;
+            }
+            const auto pActionRegTicket = dynamic_cast<const CActionRegTicket*>(ticket.get());
+            if (!pActionRegTicket)
+            {
+                tv.errorMsg = strprintf(
+                    "The $s ticket with this txid [%s] referred by this %s ticket is invalid",
+                    ::GetTicketDescription(TicketID::ActionReg), pActionActTicket->getRegTxId(), ::GetTicketDescription(TicketID::ActionActivate));
+                break;
+            }
+            nTotalCopies = 1; // there can be only one owner of the action
+
+            // if this is already confirmed ticket - skip this check, otherwise it will fail
+            if (bPreReg || !bTicketFound)
+            {
+                ticket_validation_t actTV = fnVerifyAvailableCopies(::GetTicketDescription(TicketID::ActionReg), 1);
+                if (actTV.IsNotValid())
+                {
+                    tv = move(actTV);
+                    break;
+                }
+            }
+        }
+        else if (itemTicket->ID() == TicketID::Activate)
+        {
+            // get NFT activation ticket
+            const auto pNftActTicket = dynamic_cast<const CNFTActivateTicket*>(itemTicket.get());
             if (!pNftActTicket)
             {
                 tv.errorMsg = strprintf(
                     "The %s ticket with this txid [%s] referred by this %s ticket is invalid",
-                    ::GetTicketDescription(TicketID::Activate), m_nftTxId, ::GetTicketDescription(TicketID::Offer));
+                    ::GetTicketDescription(TicketID::Activate), m_itemTxId, ::GetTicketDescription(TicketID::Offer));
                 break;
             }
+            // Check that Pastel ID in this Offer ticket matches Pastel ID in the referred NFT Activation ticket
             const string& creatorPastelID = pNftActTicket->getPastelID();
             if (creatorPastelID != m_sPastelID)
             {
                 tv.errorMsg = strprintf(
-                    "The Pastel ID [%s] in this ticket is not matching the Creator's PastelID [%s] in the %s ticket with this txid [%s]",
-                    m_sPastelID, creatorPastelID, ::GetTicketDescription(TicketID::Activate), m_nftTxId);
+                    "The Pastel ID [%s] in this ticket is not matching the Creator's Pastel ID [%s] in the %s ticket with this txid [%s]",
+                    m_sPastelID, creatorPastelID, ::GetTicketDescription(TicketID::Activate), m_itemTxId);
                 break;
             }
-            //  Get ticket pointed by NFTTxnId. Here, this is an Activation ticket
-            const auto ticket = CPastelTicketProcessor::GetTicket(pNftActTicket->getRegTxId(), TicketID::NFT);
+            //  Get ticket pointed by NFT Registration txid
+            const auto ticket = masterNodeCtrl.masternodeTickets.GetTicket(pNftActTicket->getRegTxId(), TicketID::NFT);
             if (!ticket)
             {
                 tv.errorMsg = strprintf(
@@ -221,7 +296,7 @@ ticket_validation_t COfferTicket::IsValid(const bool bPreReg, const uint32_t nCa
             }
             nTotalCopies = pNFTRegTicket->getTotalCopies();
 
-            //else if this is already confirmed ticket - skip this check, otherwise it will failed
+            // if this is already confirmed ticket - skip this check, otherwise it will fail
             if (bPreReg || !bTicketFound)
             {
                 ticket_validation_t actTV = fnVerifyAvailableCopies(::GetTicketDescription(TicketID::NFT), nTotalCopies);
@@ -231,22 +306,23 @@ ticket_validation_t COfferTicket::IsValid(const bool bPreReg, const uint32_t nCa
                     break;
                 }
             }
-        } else if (pastelTicket->ID() == TicketID::Transfer) {
-            // 1.b
-            const auto pTransferTicket = dynamic_cast<const CTransferTicket*>(pastelTicket.get());
+        } else if (itemTicket->ID() == TicketID::Transfer) {
+            // get transfer ticket
+            const auto pTransferTicket = dynamic_cast<const CTransferTicket*>(itemTicket.get());
             if (!pTransferTicket)
             {
                 tv.errorMsg = strprintf(
                     "The %s ticket with this txid [%s] referred by this %s ticket is invalid", 
-                    ::GetTicketDescription(TicketID::Transfer), m_nftTxId, GetTicketDescription());
+                    ::GetTicketDescription(TicketID::Transfer), m_itemTxId, GetTicketDescription());
                 break;
             }
+            // Check that Pastel ID in this ticket matches Pastel ID in the referred Transfer ticket
             const string& ownersPastelID = pTransferTicket->getPastelID();
             if (ownersPastelID != m_sPastelID)
             {
                 tv.errorMsg = strprintf(
                     "The Pastel ID [%s] in this ticket is not matching the Pastel ID [%s] in the %s ticket with this txid [%s]",
-                    m_sPastelID, ownersPastelID, ::GetTicketDescription(TicketID::Transfer), m_nftTxId);
+                    m_sPastelID, ownersPastelID, ::GetTicketDescription(TicketID::Transfer), m_itemTxId);
                 break;
             }
             nTotalCopies = 1;
@@ -254,6 +330,24 @@ ticket_validation_t COfferTicket::IsValid(const bool bPreReg, const uint32_t nCa
             // 3.b Verify there is no already transfer ticket referring to that transfer ticket
             if (bPreReg || !bTicketFound)
             { //else if this is already confirmed ticket - skip this check, otherwise it will failed
+                PastelTickets_t vTicketChain;
+                // walk back trading chain to find original ticket
+                if (!masterNodeCtrl.masternodeTickets.WalkBackTradingChain(m_itemTxId, vTicketChain, true, tv.errorMsg))
+                {
+                    tv.errorMsg = strprintf(
+                        "Failed to walkback trading chain. %s",
+                        tv.errorMsg);
+                    break;
+                }
+                if (vTicketChain.empty())
+                {
+                    tv.errorMsg = strprintf(
+                        "Trading chain is empty for %s ticket with txid=%s",
+                        ::GetTicketDescription(TicketID::Transfer), m_itemTxId);
+                    break;
+                }
+                // original item comes first in a vector
+                originalItemType = vTicketChain.front()->ID();
                 ticket_validation_t actTV = fnVerifyAvailableCopies(::GetTicketDescription(TicketID::Transfer), nTotalCopies);
                 if (actTV.IsNotValid())
                 {
@@ -275,7 +369,7 @@ ticket_validation_t COfferTicket::IsValid(const bool bPreReg, const uint32_t nCa
         // (ticket transaction replay attack protection)
         // If found similar ticket, replacement is possible if allowed
         // Can be a few Offer tickets
-        const auto vExistingOfferTickets = COfferTicket::FindAllTicketByNFTTxID(m_nftTxId);
+        const auto vExistingOfferTickets = COfferTicket::FindAllTicketByItemTxId(m_itemTxId);
         for (const auto& t : vExistingOfferTickets)
         {
             if (t.IsBlock(m_nBlock) || t.IsTxId(m_txid) || t.m_nCopyNumber != m_nCopyNumber)
@@ -331,7 +425,7 @@ string COfferTicket::ToJSON() const noexcept
                 {"type", GetTicketName()}, 
                 {"version", GetStoredVersion()}, 
                 {"pastelID", m_sPastelID}, 
-                {"nft_txid", m_nftTxId}, 
+                {"item_txid", m_itemTxId}, 
                 {"copy_number", m_nCopyNumber}, 
                 {"asked_price", m_nAskedPricePSL}, 
                 {"valid_before", m_nValidBefore},
@@ -355,7 +449,7 @@ OfferTickets_t COfferTicket::FindAllTicketByPastelID(const string& pastelID)
     return masterNodeCtrl.masternodeTickets.FindTicketsByMVKey<COfferTicket>(pastelID);
 }
 
-OfferTickets_t COfferTicket::FindAllTicketByNFTTxID(const string& NFTTxnId)
+OfferTickets_t COfferTicket::FindAllTicketByItemTxId(const string& itemTxId)
 {
-    return masterNodeCtrl.masternodeTickets.FindTicketsByMVKey<COfferTicket>(NFTTxnId);
+    return masterNodeCtrl.masternodeTickets.FindTicketsByMVKey<COfferTicket>(itemTxId);
 }

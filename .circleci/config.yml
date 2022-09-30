@@ -151,22 +151,7 @@ jobs:
           destination: /<<parameters.platform>>/pastel-cli<<parameters.ext>>
       - store_artifacts:
           path: <<parameters.source_directory>>pastel-tx<<parameters.ext>>
-          destination: /<<parameters.platform>>/pastel-tx<<parameters.ext>>
-      - when:
-          condition: << parameters.deploy >>
-          steps:
-            - github-upload:
-                binaryName: pasteld
-                ext: << parameters.ext >>
-                platform: << parameters.platform >>
-            - github-upload:
-                binaryName: pastel-cli
-                ext: << parameters.ext >>
-                platform: << parameters.platform >>
-            - upload-s3:
-                ext: << parameters.ext >>
-                platform: << parameters.platform >>
-                platform_suffix: << parameters.platform_suffix >>
+          destination: /<<parameters.platform>>/pastel-tx<<parameters.ext>>       
       - when:
           condition: << parameters.run_tests >>
           steps:
@@ -175,12 +160,6 @@ jobs:
                 working_directory: pcutil
                 command: |
                   ./fetch-params.sh
-            - run:
-                name: Tests - gtest
-                working_directory: qa/test-suite
-                no_output_timeout: 30m
-                command: |
-                  ./full_test_suite.py gtest
             - run:
                 name: Tests - util-test
                 working_directory: qa/test-suite        
@@ -197,25 +176,101 @@ jobs:
                 command: |
                   ./full_test_suite.py univalue
             - run:
-                name: Tests - rpc-common
-                working_directory: qa/test-suite
-                no_output_timeout: 30m
+                name: Caching files for running tests
                 command: |
-                  ./full_test_suite.py rpc-common
-            - run:
-                name: Tests - rpc-ext
-                working_directory: qa/test-suite
-                no_output_timeout: 30m
-                command: |
-                  ./full_test_suite.py rpc-ext
-            - run:
-                name: Tests - rpc-mn
-                working_directory: qa/test-suite
-                no_output_timeout: 45m
-                command: |
-                  export PYTHONUNBUFFERED=1
-                  ./full_test_suite.py rpc-mn
-
+                  mkdir -p /pasteld-files/src
+                  cp src/{pastel-cli,pasteld,pastel-gtest,pastel-tx} /pasteld-files/src
+                  cp -r qa/ /pasteld-files/
+                  cp -r $HOME/.pastel-params/ /pasteld-files/
+          # Persist the specified paths into the workspace for use in test jobs.
+            - persist_to_workspace:
+              # Must be an absolute path, or relative path from working_directory. This is a
+              # directory on the container which is taken to be the root directory of the workspace
+                root: /pasteld-files
+                paths:
+                  - .pastel-params
+                  - src
+                  - qa
+      - when:
+          condition: << parameters.deploy >>
+          steps:
+            - github-upload:
+                binaryName: pasteld
+                ext: << parameters.ext >>
+                platform: << parameters.platform >>
+            - github-upload:
+                binaryName: pastel-cli
+                ext: << parameters.ext >>
+                platform: << parameters.platform >>
+            - upload-s3:
+                ext: << parameters.ext >>
+                platform: << parameters.platform >>
+                platform_suffix: << parameters.platform_suffix >>
+  test_group_rpc_common:
+    executor: pastel-builder    
+    working_directory: /pastel
+    steps:
+      - attach_workspace:
+          at: /tmp/ws
+      - run:
+          name: Setting up test environment
+          command: |
+            cp -r /tmp/ws/{src,qa}/ /pastel/
+            cp -r /tmp/ws/.pastel-params $HOME/
+            ls -la /pastel
+      - run:
+          name: Tests - gtest
+          working_directory: qa/test-suite
+          no_output_timeout: 30m
+          command: |
+            ./full_test_suite.py gtest
+      - run:
+          name: Tests - rpc-common
+          working_directory: qa/test-suite
+          no_output_timeout: 30m
+          command: |
+            ./full_test_suite.py rpc-common
+      - run:
+          name: Tests - rpc-ext
+          working_directory: qa/test-suite
+          no_output_timeout: 30m
+          command: |
+            ./full_test_suite.py rpc-ext
+  test_group_mn:
+    executor: pastel-builder    
+    working_directory: /pastel
+    steps:
+      - attach_workspace:
+          at: /tmp/ws
+      - run:
+          name: Setting up test environment
+          command: |
+            cp -r /tmp/ws/{src,qa}/ /pastel/
+            cp -r /tmp/ws/.pastel-params $HOME/
+      - run:
+          name: Tests - rpc-mn
+          working_directory: qa/test-suite
+          no_output_timeout: 45m
+          command: |
+            export PYTHONUNBUFFERED=1
+            ./full_test_suite.py rpc-mn
+  test_group_mn_tickets:
+    executor: pastel-builder    
+    working_directory: /pastel
+    steps:
+      - attach_workspace:
+          at: /tmp/ws
+      - run:
+          name: Setting up test environment
+          command: |
+            cp -r /tmp/ws/{src,qa}/ /pastel/
+            cp -r /tmp/ws/.pastel-params $HOME/
+      - run:
+          name: Tests - rpc-mn-tickets
+          working_directory: qa/pull-tester
+          no_output_timeout: 30m
+          command: |
+            ./rpc-tests.sh --name=mn_tickets.py
 workflows:
     version: 2
     PastelBuild:
@@ -288,3 +343,24 @@ workflows:
             context:
               - Release
               - weekly-beta-builds
+        - test_group_rpc_common:
+            name: Tests (gtest,RPC common,ext) 
+            requires:
+              - Build Pastel for Linux platform (debug)
+            filters:
+              tags:
+                ignore: /^v.*/
+        - test_group_mn:
+            name: Tests (MN fast)
+            requires:
+              - Build Pastel for Linux platform (debug)
+            filters:
+              tags:
+                ignore: /^v.*/
+        - test_group_mn_tickets:
+            name: Tests (MN tickets)
+            requires:
+              - Build Pastel for Linux platform (debug)
+            filters:
+              tags:
+                ignore: /^v.*/

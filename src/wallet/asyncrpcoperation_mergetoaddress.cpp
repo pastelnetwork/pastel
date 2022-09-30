@@ -451,7 +451,7 @@ array<unsigned char, ZC_MEMO_SIZE> AsyncRPCOperation_mergetoaddress::get_memo_fr
         throw JSONRPCError(RPC_INVALID_PARAMETER, strprintf("Memo size of %d is too big, maximum allowed is %d", rawMemo.size(), ZC_MEMO_SIZE));
     }
 
-    // copy vector into boost array
+    // copy vector into array
     size_t lenMemo = rawMemo.size();
     for (int i = 0; i < ZC_MEMO_SIZE && i < lenMemo; i++)
         memo[i] = rawMemo[i];

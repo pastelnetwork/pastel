@@ -8,7 +8,6 @@
 
 #include <univalue.h>
 
-
 #include <asyncrpcoperation.h>
 #include <amount.h>
 #include <primitives/transaction.h>
@@ -84,14 +83,17 @@ private:
     void unlock_utxos();
 };
 
-class ShieldToAddress : public boost::static_visitor<bool>
+class ShieldToAddress
 {
 private:
     AsyncRPCOperation_shieldcoinbase *m_op;
     CAmount sendAmount;
+
 public:
     ShieldToAddress(AsyncRPCOperation_shieldcoinbase *op, CAmount sendAmount) :
-        m_op(op), sendAmount(sendAmount) {}
+        m_op(op),
+        sendAmount(sendAmount)
+    {}
 
     bool operator()(const libzcash::SaplingPaymentAddress &zaddr) const;
     bool operator()(const libzcash::InvalidEncoding& no) const;

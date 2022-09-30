@@ -83,7 +83,7 @@ public:
     }
 };
 
-TEST(test_serialize, boost_optional)
+TEST(test_serialize, optional)
 {
     check_ser_rep<optional<unsigned char>>(0xff, {0x01, 0xff});
     check_ser_rep<optional<unsigned char>>(nullopt, {0x00});
@@ -111,7 +111,7 @@ TEST(test_serialize, arrays)
     EXPECT_EQ(hash , uint256S("13cb12b2dd098dced0064fe4897c97f907ba3ed36ae470c2e7fc2b1111eba35a"))<< "actually got: " << hash.ToString();
 
     {
-        // note: boost array of size 2 should serialize to be the same as a tuple
+        // note: array of size 2 should serialize to be the same as a tuple
         pair<string, string> test_case_2 = {string("zub"), string("baz")};
 
         CDataStream ss2(SER_DISK, 0);

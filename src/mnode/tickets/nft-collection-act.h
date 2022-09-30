@@ -14,7 +14,7 @@ using NFTCollectionActivateTickets_t = std::vector<CNFTCollectionActivateTicket>
 /*
 "ticket": {
   "type": "nft-collection-act",
-  "pastelID": "",          // PastelID of the creator
+  "pastelID": "",          // Pastel ID of the creator
   "reg_txid": "",          // tnx with NFT collection registration ticket in it
   "creator_height": "",    // block at which creator created NFT Ticket
   // is used to check if the MN that created NFT registration ticket was indeed top MN when creator create ticket

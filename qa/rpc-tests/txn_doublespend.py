@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 # Copyright (c) 2014-2016 The Bitcoin Core developers
+# Copyright (c) 2018-2022 The Pastel Core developers
 # Distributed under the MIT software license, see the accompanying
 # file COPYING or https://www.opensource.org/licenses/mit-license.php .
 
@@ -17,7 +18,7 @@ getcontext().prec = 16
 class TxnMallTest(BitcoinTestFramework):
 
     def add_options(self, parser):
-        parser.add_option("--mineblock", dest="mine_block", default=False, action="store_true",
+        parser.add_argument("--mineblock", dest="mine_block", default=False, action="store_true",
                           help="Test double-spend of 1-confirmed transaction")
 
     def setup_network(self):

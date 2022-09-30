@@ -17,9 +17,9 @@ UniValue pastelid_newkey(const UniValue& params)
         throw JSONRPCError(RPC_INVALID_PARAMETER,
 R"(pastelid newkey "passphrase"
 
-Generate new PastelID, associated keys (EdDSA448) and LegRoast signing keys.
+Generate new Pastel ID, associated keys (EdDSA448) and LegRoast signing keys.
 
-Return PastelID base58-encoded.
+Return Pastel ID base58-encoded.
 
 Examples:
 )"
@@ -36,7 +36,7 @@ passphrase for new key cannot be empty!)");
     UniValue resultObj(UniValue::VOBJ);
     auto keyMap = CPastelID::CreateNewPastelKeys(move(strKeyPass));
     if (keyMap.empty())
-        throw runtime_error("Failed to generate new PastelID and associated keys");
+        throw runtime_error("Failed to generate new Pastel ID and associated keys");
     resultObj.pushKV(RPC_KEY_PASTELID, keyMap.begin()->first);
     resultObj.pushKV(RPC_KEY_LEGROAST, move(keyMap.begin()->second));
     return resultObj;
@@ -47,7 +47,7 @@ UniValue pastelid_importkey(const UniValue& params)
     if (params.size() < 2 || params.size() > 3)
         throw JSONRPCError(RPC_INVALID_PARAMETER,
 R"(pastelid importkey "key" <"passphrase">
-Import PKCS8 encrypted private key (EdDSA448) in PEM format. Return PastelID base58-encoded if "passphrase" provided.)");
+Import PKCS8 encrypted private key (EdDSA448) in PEM format. Return Pastel ID base58-encoded if "passphrase" provided.)");
 
     throw runtime_error("\"pastelid importkey\" NOT IMPLEMENTED!!!");
 
@@ -87,7 +87,7 @@ UniValue pastelid_sign(const UniValue& params)
     if (params.size() < 4)
         throw JSONRPCError(RPC_INVALID_PARAMETER,
 R"(pastelid sign "text" "PastelID" "passphrase" ("algorithm")
-Sign "text" with the internally stored private key associated with the PastelID (algorithm: ed448 [default] or legroast).)");
+Sign "text" with the internally stored private key associated with the Pastel ID (algorithm: ed448 [default] or legroast).)");
 
     SecureString strKeyPass(params[3].get_str());
     if (strKeyPass.empty())
@@ -134,7 +134,7 @@ UniValue pastelid_sign_file(const UniValue& params)
     if (params.size() < 4)
         throw JSONRPCError(RPC_INVALID_PARAMETER,
                            R"(pastelid sign-file file-path "PastelID" "passphrase" ("algorithm")
-Sign file at file-path with the internally stored private key associated with the PastelID (algorithm: ed448 [default] or legroast).)");
+Sign file at file-path with the internally stored private key associated with the Pastel ID (algorithm: ed448 [default] or legroast).)");
     
     SecureString strKeyPass(params[3].get_str());
     if (strKeyPass.empty())
@@ -164,7 +164,7 @@ UniValue pastelid_verify(const UniValue& params)
     if (params.size() < 4)
         throw JSONRPCError(RPC_INVALID_PARAMETER,
 R"(pastelid verify "text" "signature" "PastelID" ("algorithm")
-Verify "text"'s "signature" with with the private key associated with the PastelID (algorithm: ed448 or legroast).)");
+Verify "text"'s "signature" with with the private key associated with the Pastel ID (algorithm: ed448 or legroast).)");
 
     string sAlgorithm;
     if (params.size() >= 5)
@@ -186,7 +186,7 @@ UniValue pastelid_verify_file(const UniValue& params)
     if (params.size() < 4)
         throw JSONRPCError(RPC_INVALID_PARAMETER,
                            R"(pastelid verify-file file-path "signature" "PastelID" ("algorithm")
-Verify file's "signature" with with the private key associated with the PastelID (algorithm: ed448 or legroast).)");
+Verify file's "signature" with with the private key associated with the Pastel ID (algorithm: ed448 or legroast).)");
     
     string sAlgorithm;
     if (params.size() >= 5)
@@ -227,7 +227,7 @@ UniValue pastelid_passwd(const UniValue& params)
     if (params.size() < 4)
         throw JSONRPCError(RPC_INVALID_PARAMETER,
 R"(pastelid passwd "PastelID" "old_passphrase" "new_passphrase"
-Change passphrase used to encrypt the secure container associated with the PastelID.)");
+Change passphrase used to encrypt the secure container associated with the Pastel ID.)");
 
     string sPastelID(params[1].get_str());
     SecureString strOldPass(params[2].get_str());
@@ -268,25 +268,25 @@ UniValue pastelid(const UniValue& params, bool fHelp)
         throw runtime_error(
 R"(pastelid "command"...
 Set of commands to deal with PastelID and related actions
-PastelID is the base58-encoded public key of the EdDSA448 key pair. EdDSA448 public key is 57 bytes
+Pastel ID is the base58-encoded public key of the EdDSA448 key pair. EdDSA448 public key is 57 bytes
 
 Arguments:
 1. "command"        (string or set of strings, required) The command to execute
 
 Available commands:
-  newkey "passphrase"                                          - Generate new PastelID, associated keys (EdDSA448) and LegRoast signing keys.
-                                                                 Return PastelID and LegRoast signing public key base58-encoded.
+  newkey "passphrase"                                          - Generate new Pastel ID, associated keys (EdDSA448) and LegRoast signing keys.
+                                                                 Return Pastel ID and LegRoast signing public key base58-encoded.
                                                                  "passphrase" will be used to encrypt the key file.
-  importkey "key" <"passphrase">                               - Import private "key" (EdDSA448) as PKCS8 encrypted string in PEM format. Return PastelID base58-encoded
-                                                                 "passphrase" (optional) to decrypt the key for the purpose of validating and returning PastelID.
+  importkey "key" <"passphrase">                               - Import private "key" (EdDSA448) as PKCS8 encrypted string in PEM format. Return Pastel ID base58-encoded
+                                                                 "passphrase" (optional) to decrypt the key for the purpose of validating and returning Pastel ID.
                                                                  NOTE: without "passphrase" key cannot be validated and if key is bad (not EdDSA448) call to "sign" will fail
-  list                                                         - List all internally stored PastelIDs and associated keys.
-  sign "text" "PastelID" "passphrase" ("algorithm")            - Sign "text" with the internally stored private key associated with the PastelID (algorithm: ed448 or legroast).
-  sign-file file-path "PastelID" "passphrase" ("algorithm")    - Sign file-path with the internally stored private key associated with the PastelID (algorithm: ed448 or legroast).
+  list                                                         - List all internally stored Pastel IDs and associated keys.
+  sign "text" "PastelID" "passphrase" ("algorithm")            - Sign "text" with the internally stored private key associated with the Pastel ID (algorithm: ed448 or legroast).
+  sign-file file-path "PastelID" "passphrase" ("algorithm")    - Sign file-path with the internally stored private key associated with the Pastel ID (algorithm: ed448 or legroast).
   sign-by-key "text" "key" "passphrase"                        - Sign "text" with the private "key" (EdDSA448) as PKCS8 encrypted string in PEM format.
-  verify "text" "signature" "PastelID" ("algorithm")           - Verify "text"'s "signature" with the private key associated with the PastelID (algorithm: ed448 or legroast).
-  verify-file file-path "signature" "PastelID" ("algorithm")   - Verify file-path's "signature" with the private key associated with the PastelID (algorithm: ed448 or legroast).
-  passwd "PastelID" "old_passphrase" "new_passphrase"          - Change passphrase used to encrypt the secure container associated with the PastelID.
+  verify "text" "signature" "PastelID" ("algorithm")           - Verify "text"'s "signature" with the private key associated with the Pastel ID (algorithm: ed448 or legroast).
+  verify-file file-path "signature" "PastelID" ("algorithm")   - Verify file-path's "signature" with the private key associated with the Pastel ID (algorithm: ed448 or legroast).
+  passwd "PastelID" "old_passphrase" "new_passphrase"          - Change passphrase used to encrypt the secure container associated with the Pastel ID.
 )");
 
     UniValue result(UniValue::VOBJ);
@@ -300,12 +300,12 @@ Available commands:
         result = pastelid_importkey(params);
         break;
 
-    // list all locally stored PastelIDs and associated public keys
+    // list all locally stored Pastel IDs and associated public keys
     case RPC_CMD_PASTELID::list:
         result = pastelid_list(params);
         break;
 
-    // sign text with the internally stored private key associated with the PastelID (ed448 or legroast).
+    // sign text with the internally stored private key associated with the Pastel ID (ed448 or legroast).
     case RPC_CMD_PASTELID::sign:
         result = pastelid_sign(params);
         break;
@@ -318,7 +318,7 @@ Available commands:
         result = pastelid_signbykey(params);
         break;
 
-    // verify "text"'s "signature" with the public key associated with the PastelID (algorithm: ed448 or legroast)
+    // verify "text"'s "signature" with the public key associated with the Pastel ID (algorithm: ed448 or legroast)
     case RPC_CMD_PASTELID::verify:
         result = pastelid_verify(params);
         break;

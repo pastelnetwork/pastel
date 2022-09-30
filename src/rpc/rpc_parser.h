@@ -41,13 +41,9 @@ public:
     // returns true if cmd was passed
     bool IsCmd(const RPC_CMD_ENUM& cmd) const noexcept { return m_Cmd == cmd; }
 
-    // typecheck helper
-    template<typename... Ts>
-    using AllRpcCmdEnums = typename std::enable_if_t<std::conjunction_v<std::is_same<Ts, RPC_CMD_ENUM>...>>;
-
     // returns true if cmd equals any of the parameters (all params should have RPC_CMD_ENUM type)
     // function is enabled if all Ts... have the same type as RPC_CMD_ENUM
-    template <typename T, typename... Ts, typename = AllRpcCmdEnums<Ts...>>
+    template <typename T, typename... Ts, typename = AllParamsHaveSameType<T, Ts...>>
     bool IsCmdAnyOf(const T cmd1, Ts... xs) const noexcept
     {
         if (IsCmd(cmd1))

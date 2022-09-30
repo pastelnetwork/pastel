@@ -43,11 +43,11 @@ string CNFTActivateTicket::ToStr() const noexcept
 }
 
 /**
- * Sign the ticket with the PastelID's private key.
+ * Sign the ticket with the Pastel ID's private key.
  * Creates a signature.
  * May throw runtime_error in case passphrase is invalid or I/O error with secure container.
  * 
- * \param strKeyPass - passphrase to access secure container (PastelID)
+ * \param strKeyPass - passphrase to access secure container (Pastel ID)
  */
 void CNFTActivateTicket::sign(SecureString&& strKeyPass)
 {
@@ -118,7 +118,7 @@ ticket_validation_t CNFTActivateTicket::IsValid(const bool bPreReg, const uint32
         if (!NFTTicket->IsCreatorPastelId(m_sPastelID))
         {
             tv.errorMsg = strprintf(
-                "The PastelID [%s] is not matching the Creator's PastelID [%s] in the NFT Reg ticket with this txid [%s]",
+                "The Pastel ID [%s] is not matching the Creator's Pastel ID [%s] in the NFT Reg ticket with this txid [%s]",
                 m_sPastelID, NFTTicket->getCreatorPastelId(), m_regTicketTxId);
             break;
         }
@@ -161,13 +161,13 @@ CAmount CNFTActivateTicket::GetExtraOutputs(vector<CTxOut>& outputs) const
         CPastelIDRegTicket mnPastelIDticket;
         if (!CPastelIDRegTicket::FindTicketInDb(mnPastelID, mnPastelIDticket))
             throw runtime_error(strprintf(
-                "The PastelID [%s] from the NFT Registration ticket with this txid [%s] is not in the blockchain or is invalid",
+                "The Pastel ID [%s] from the NFT Registration ticket with this txid [%s] is not in the blockchain or is invalid",
                 mnPastelID, m_regTicketTxId));
 
         const auto dest = keyIO.DecodeDestination(mnPastelIDticket.address);
         if (!IsValidDestination(dest))
             throw runtime_error(
-                strprintf("The PastelID [%s] from the NFT ticket with this txid [%s] has invalid MN's address", mnPastelID, m_regTicketTxId));
+                strprintf("The Pastel ID [%s] from the NFT ticket with this txid [%s] has invalid MN's address", mnPastelID, m_regTicketTxId));
 
         // caclulate MN fee in patoshis
         const CAmount nAmount = mn == CNFTRegTicket::SIGN_MAIN ? getPrincipalMNFee() : getOtherMNFee();

@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2021 The Pastel Core developers
+// Copyright (c) 2018-2022 The Pastel Core developers
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 
@@ -42,8 +42,8 @@ Arguments:
 3. fee                (int, required) The supposed fee that creator agreed to pay for the registration. 
                         This shall match the amount in the registration ticket.
                         The transaction with this ticket will pay 90% of this amount to MNs (10% were burnt prior to registration).
-4. "PastelID"         (string, required) The PastelID of creator. NOTE: PastelID must be generated and stored inside node. See "pastelid newkey".
-5. "passphrase"       (string, required) The passphrase to open secure container associated with the creator's PastelID and stored inside the node. See "pastelid newkey".
+4. "PastelID"         (string, required) The Pastel ID of creator. NOTE: Pastel ID must be generated and stored inside node. See "pastelid newkey".
+5. "passphrase"       (string, required) The passphrase to open secure container associated with the creator's Pastel ID and stored inside the node. See "pastelid newkey".
 6. "address"          (string, optional) The Pastel blockchain t-address to use for funding the registration.
 
 Activation Ticket:
@@ -101,8 +101,8 @@ Arguments:
 3. fee                (int, required) The supposed fee that Action caller agreed to pay for the registration. 
                          This shall match the amount in the registration ticket.
                          The transaction with this ticket will pay 90% of this amount to MNs (10% were burnt prior to registration).
-4. "PastelID"         (string, required) The PastelID of Action caller. NOTE: PastelID must be generated and stored inside node. See "pastelid newkey".
-5. "passphrase"       (string, required) The passphrase to open secure container associated with the Caller's PastelID and stored inside the node. See "pastelid newkey".
+4. "PastelID"         (string, required) The Pastel ID of Action caller. NOTE: Pastel ID must be generated and stored inside node. See "pastelid newkey".
+5. "passphrase"       (string, required) The passphrase to open secure container associated with the Caller's Pastel ID and stored inside the node. See "pastelid newkey".
 6. "address"          (string, optional) The Pastel blockchain t-address to use for funding the registration.
 
 Activation Ticket:
@@ -160,8 +160,8 @@ Arguments:
 3. fee                (int, required) The supposed fee that creator agreed to pay for the registration. 
                         This shall match the amount in the registration ticket.
                         The transaction with this ticket will pay 90% of this amount to MNs (10% were burnt prior to registration).
-4. "PastelID"         (string, required) The PastelID of creator. NOTE: PastelID must be generated and stored inside node. See "pastelid newkey".
-5. "passphrase"       (string, required) The passphrase to open secure container associated with the creator's PastelID and stored inside the node. See "pastelid newkey".
+4. "PastelID"         (string, required) The Pastel ID of creator. NOTE: Pastel ID must be generated and stored inside node. See "pastelid newkey".
+5. "passphrase"       (string, required) The passphrase to open secure container associated with the creator's Pastel ID and stored inside the node. See "pastelid newkey".
 6. "address"          (string, optional) The Pastel blockchain t-address to use for funding the registration.
 
 Activation Ticket:

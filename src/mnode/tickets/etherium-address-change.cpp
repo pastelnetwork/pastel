@@ -85,12 +85,12 @@ ticket_validation_t CChangeEthereumAddressTicket::IsValid(const bool bPreReg, co
         }
 
         // B Verify signature
-        // We will check that it is the correct PastelID
+        // We will check that it is the correct Pastel ID
         const string strThisTicket = ToStr();
         if (!CPastelID::Verify(strThisTicket, vector_to_string(signature), pastelID))
         {
             tv.errorMsg = strprintf(
-                "%s ticket's signature is invalid. PastelID - [%s]", 
+                "%s ticket's signature is invalid. Pastel ID - [%s]", 
                 GetTicketDescription(), pastelID);
             break;
         }
@@ -107,7 +107,7 @@ ticket_validation_t CChangeEthereumAddressTicket::IsValid(const bool bPreReg, co
             break;
         }
 
-        // D. Check if this PastelID hasn't changed Ethereum Address in last 24 hours.
+        // D. Check if this Pastel ID hasn't changed Ethereum Address in last 24 hours.
         CChangeEthereumAddressTicket _ticket;
         _ticket.pastelID = pastelID;
         const bool bFoundTicketBySecondaryKey = masterNodeCtrl.masternodeTickets.FindTicketBySecondaryKey(_ticket);
@@ -116,7 +116,7 @@ ticket_validation_t CChangeEthereumAddressTicket::IsValid(const bool bPreReg, co
             const unsigned int height = (bPreReg || IsBlock(0)) ? chainHeight : m_nBlock;
             if (height <= _ticket.m_nBlock + 24 * 24)
             { // For testing purpose, the value 24 * 24 can be lower to decrease the waiting time
-                // D.2 IF PastelID has changed Ethereum Address in last 24 hours (~24*24 blocks), do not allow them to change
+                // D.2 IF Pastel ID has changed Ethereum Address in last 24 hours (~24*24 blocks), do not allow them to change
                 tv.errorMsg = strprintf("%s ticket is invalid. Already changed in last 24 hours. Ethereum Address - [%s]", GetTicketDescription(), pastelID);
                 break;
             }
@@ -129,7 +129,7 @@ ticket_validation_t CChangeEthereumAddressTicket::IsValid(const bool bPreReg, co
         if (fee != expectedFee)
         {
             tv.errorMsg = strprintf(
-                "%s ticket's fee is invalid. PastelID - [%s], invalid fee - [%" PRId64 "], expected fee - [%" PRId64 "]",
+                "%s ticket's fee is invalid. Pastel ID - [%s], invalid fee - [%" PRId64 "], expected fee - [%" PRId64 "]",
                 GetTicketDescription(), pastelID, fee, expectedFee);
             break;
         }
@@ -142,12 +142,12 @@ CChangeEthereumAddressTicket CChangeEthereumAddressTicket::Create(string _pastel
 {
     CChangeEthereumAddressTicket ticket(move(_pastelID), move(_ethereumAddress));
 
-    // Check if PastelID already have an Ethereum Address on the blockchain.
+    // Check if Pastel ID already have an Ethereum Address on the blockchain.
     if (!masterNodeCtrl.masternodeTickets.CheckTicketExistBySecondaryKey(ticket)) {
-        // IF PastelID has no Ethereum Address yet, the fee is 100 PSL
+        // if Pastel ID has no Ethereum Address yet, the fee is 100 PSL
         ticket.fee = masterNodeCtrl.MasternodeEthereumAddressFirstChangeFee;
     } else {
-        // IF PastelID changed Ethereum Address before, fee should be 5000
+        // if Pastel ID changed Ethereum Address before, fee should be 5000
         ticket.fee = masterNodeCtrl.MasternodeEthereumAddressChangeAgainFee;
     }
 

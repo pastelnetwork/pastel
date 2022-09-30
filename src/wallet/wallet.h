@@ -887,7 +887,7 @@ public:
     void LockCoin(COutPoint& output);
     void UnlockCoin(COutPoint& output);
     void UnlockAllCoins();
-    void ListLockedCoins(std::vector<COutPoint>& vOutpts);
+    void ListLockedCoins(v_outpoints& vOutPoints);
 
     bool IsLockedNote(const SaplingOutPoint& output) const;
     void LockNote(const SaplingOutPoint& output);

@@ -42,7 +42,7 @@ bytes fields are base64 as strings
 {
     "nft_collection_ticket_version": integer  // 1
     "nft_collection_name": string,  // The name of the NFT collection
-    "creator": bytes,               // NFT collection creator (PastelID)
+    "creator": bytes,               // NFT collection creator (Pastel ID)
     "permitted_users": [            // list of Pastel IDs that are permitted to register an NFT as part of the collection
         "xxxx",
         "xxxx",

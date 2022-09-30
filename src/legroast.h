@@ -4,7 +4,7 @@
  * Based on LegRoast implementation https://github.com/WardBeullens/LegRoast
  * by Ward Beullens
  *
- * Copyright (c) 2021 The Pastel Core developers
+ * Copyright (c) 2021-2022 The Pastel Core developers
  * 
  * \date   June 2021
  *********************************************************************/
@@ -13,14 +13,16 @@
 #include <stdint.h>
 #include <memory>
 #include <array>
+
 #include <openssl/rand.h>
 #include <openssl/evp.h>
+#include <tinyformat.h>
 
 #ifdef _MSC_VER
 #include "uint128.h"
+//#include <__msvc_int128.hpp>
 #endif // _MSC_VER
-#include "tinyformat.h"
-#include "vector_types.h"
+#include <vector_types.h>
 
 #ifndef _MSC_VER
 typedef unsigned __int128 uint128_t;

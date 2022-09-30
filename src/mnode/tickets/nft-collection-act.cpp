@@ -43,11 +43,11 @@ string CNFTCollectionActivateTicket::ToStr() const noexcept
 }
 
 /**
-* Sign the ticket with the PastelID's private key.
+* Sign the ticket with the Pastel ID's private key.
 * Creates a signature.
 * May throw runtime_error in case passphrase is invalid or I/O error with secure container.
 * 
-* \param strKeyPass - passphrase to access secure container (PastelID)
+* \param strKeyPass - passphrase to access secure container (Pastel ID)
 */
 void CNFTCollectionActivateTicket::sign(SecureString&& strKeyPass)
 {
@@ -114,11 +114,11 @@ ticket_validation_t CNFTCollectionActivateTicket::IsValid(const bool bPreReg, co
             break;
         }
 
-        // 1. check creator PastelID in NFTReg ticket matches PastelID from this ticket
+        // 1. check creator Pastel ID in NFTReg ticket matches Pastel ID from this ticket
         if (!pNFTCollTicket->IsCreatorPastelId(m_sPastelID))
         {
             tv.errorMsg = strprintf(
-                "The PastelID [%s] is not matching the Creator's PastelID [%s] in the %s ticket with this txid [%s]",
+                "The Pastel ID [%s] is not matching the Creator's Pastel ID [%s] in the %s ticket with this txid [%s]",
                 m_sPastelID, pNFTCollTicket->getCreatorPastelId(), ::GetTicketDescription(TicketID::NFTCollectionReg), m_regTicketTxId);
             break;
         }
@@ -161,13 +161,13 @@ CAmount CNFTCollectionActivateTicket::GetExtraOutputs(vector<CTxOut>& outputs) c
         CPastelIDRegTicket mnPastelIDticket;
         if (!CPastelIDRegTicket::FindTicketInDb(mnPastelID, mnPastelIDticket))
             throw runtime_error(strprintf(
-                "The PastelID [%s] from the %s ticket with this txid [%s] is not in the blockchain or is invalid",
+                "The Pastel ID [%s] from the %s ticket with this txid [%s] is not in the blockchain or is invalid",
                 mnPastelID, ::GetTicketDescription(TicketID::NFTCollectionReg), m_regTicketTxId));
 
         const auto dest = keyIO.DecodeDestination(mnPastelIDticket.address);
         if (!IsValidDestination(dest))
             throw runtime_error(strprintf(
-                "The PastelID [%s] from the %s ticket with this txid [%s] has invalid MN's address", 
+                "The Pastel ID [%s] from the %s ticket with this txid [%s] has invalid MN's address", 
                 mnPastelID, ::GetTicketDescription(TicketID::NFTCollectionReg), m_regTicketTxId));
 
         // caclulate MN fee in patoshis

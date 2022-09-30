@@ -150,7 +150,7 @@ class UserNameChangeTest(PastelTestFramework):
         assert_raises_rpc(rpc.RPC_MISC_ERROR, "same username in the memory pool", 
             self.nodes[1].tickets, "register", "username", username1, self.n1_pastelid1, self.passphrase)
         # try to register another username with the same pastel id - mempool transaction exists with the same pastel id
-        assert_raises_rpc(rpc.RPC_MISC_ERROR, "same PastelID in the memory pool", 
+        assert_raises_rpc(rpc.RPC_MISC_ERROR, "same Pastel ID in the memory pool",
             self.nodes[1].tickets, "register", "username", username2, self.n1_pastelid1, self.passphrase)
         # commit transaction for username1 change
         self.generate_and_sync_inc(1)

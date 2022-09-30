@@ -2424,12 +2424,12 @@ As a json rpc call
 
     LOCK2(cs_main, pwalletMain->cs_wallet);
 
-    vector<COutPoint> vOutpts;
-    pwalletMain->ListLockedCoins(vOutpts);
+    v_outpoints vOutPoints;
+    pwalletMain->ListLockedCoins(vOutPoints);
 
     UniValue ret(UniValue::VARR);
 
-    for (const auto &outpt : vOutpts)
+    for (const auto &outpt : vOutPoints)
     {
         UniValue o(UniValue::VOBJ);
 

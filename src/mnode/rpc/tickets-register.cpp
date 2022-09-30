@@ -19,8 +19,8 @@ R"(tickets register mnid "pastelid" "passphrase" ["address"]
 Register identity of the current Masternode into the blockchain. If successful, method returns "txid"
 
 Arguments:
-1. "pastelid"      (string, required) The PastelID. NOTE: PastelID must be generated and stored inside node. See "pastelid newkey".
-2. "passphrase"    (string, required) The passphrase to the private key associated with PastelID and stored inside node. See "pastelid newkey".
+1. "pastelid"      (string, required) The Pastel ID. NOTE: Pastel ID must be generated and stored inside node. See "pastelid newkey".
+2. "passphrase"    (string, required) The passphrase to the private key associated with Pastel ID and stored inside node. See "pastelid newkey".
 3. "address"       (string, optional) The Pastel blockchain t-address to use for funding the registration.
 
 Masternode PastelID Ticket:
@@ -45,7 +45,7 @@ As json rpc:
 );
 
     if (!masterNodeCtrl.IsActiveMasterNode())
-        throw JSONRPCError(RPC_INTERNAL_ERROR, "This is not an active masternode. Only active MN can register its PastelID");
+        throw JSONRPCError(RPC_INTERNAL_ERROR, "This is not an active masternode. Only active MN can register its Pastel ID");
 
     string pastelID = params[2].get_str();
     SecureString strKeyPass(params[3].get_str());
@@ -63,11 +63,11 @@ UniValue tickets_register_id(const UniValue& params)
     if (params.size() != 5)
         throw JSONRPCError(RPC_INVALID_PARAMETER,
 R"(tickets register id "pastelid" "passphrase" "address"
-Register PastelID identity. If successful, method returns "txid".
+Register Pastel ID identity. If successful, method returns "txid".
 
 Arguments:
-1. "pastelid"      (string, required) The PastelID. NOTE: PastelID must be generated and stored inside node. See "pastelid newkey".
-2. "passphrase"    (string, required) The passphrase to the private key associated with PastelID and stored inside node. See "pastelid newkey".
+1. "pastelid"      (string, required) The Pastel ID. NOTE: Pastel ID must be generated and stored inside node. See "pastelid newkey".
+2. "passphrase"    (string, required) The passphrase to the private key associated with Pastel ID and stored inside node. See "pastelid newkey".
 3. "address"       (string, required) The Pastel blockchain t-address to use for funding the transaction.
 
 Masternode PastelID Ticket:
@@ -114,7 +114,7 @@ Arguments:
 1. "{nft-ticket}"	(string, required) Base64 encoded NFT ticket created by the creator.
     {
         "nft_ticket_version": 2,
-        "author":               "<PastelID of the author (creator)>",
+        "author":               "<Pastel ID of the author (creator)>",
         "blocknum":             <block number when the ticket was created>,
         "block_hash":           "<hash of the top block when the ticket was created>",
         "copies":               <number of copies of NFT this ticket is creating, optional in v2>,
@@ -123,14 +123,14 @@ Arguments:
         "nft_collection_txid":  "<transaction id of the NFT collection that NFT belongs to, v2 only, optional, can be empty>",
         "app_ticket":           "<application-specific-data>"
     }
-2. "{signatures}"	(string, required) Signatures (base64) and PastelIDs of the principal and verifying masternodes (MN2 and MN3) as JSON:
+2. "{signatures}"	(string, required) Signatures (base64) and Pastel IDs of the principal and verifying masternodes (MN2 and MN3) as JSON:
     {
-        "principal": { "principal PastelID": "principal Signature" },
-              "mn2": { "mn2 PastelID": "mn2 Signature" },
-              "mn3": { "mn3 PastelID": "mn3 Signature" }
+        "principal": { "principal Pastel ID": "principal Signature" },
+              "mn2": { "mn2 Pastel ID": "mn2 Signature" },
+              "mn3": { "mn3 Pastel ID": "mn3 Signature" }
     }
-3. "pastelid"   (string, required) The current, registering masternode (MN1) PastelID. NOTE: PastelID must be generated and stored inside node. See "pastelid newkey".
-4. "passphrase" (string, required) The passphrase to the private key associated with PastelID and stored inside node. See "pastelid newkey".
+3. "pastelid"   (string, required) The current, registering masternode (MN1) Pastel ID. NOTE: Pastel ID must be generated and stored inside node. See "pastelid newkey".
+4. "passphrase" (string, required) The passphrase to the private key associated with Pastel ID and stored inside node. See "pastelid newkey".
 5. "label"      (string, required) The label which can be used to search for the ticket.
 6. "fee"        (int, required) The agreed upon storage fee.
 7. "address"    (string, optional) The Pastel blockchain t-address to use for funding the registration.
@@ -144,10 +144,10 @@ NFT Registration ticket:
         "nft_ticket":      {...},
         "version":         <version>
         "signatures": {
-            "principal": { "PastelID": <"signature"> },
-                  "mn1": { "PastelID": <"signature"> },
-                  "mn2": { "PastelID": <"signature"> },
-                  "mn3": { "PastelID": <"signature"> }
+            "principal": { "principal Pastel ID": <"signature"> },
+                  "mn1": { "MN1 Pastel ID": <"signature"> },
+                  "mn2": { "MN2 Pastel ID": <"signature"> },
+                  "mn3": { "MN3 Pastel ID": <"signature"> }
         },
         "key":             "<search primary key>",
         "label":           "<search label>",
@@ -226,13 +226,13 @@ Arguments:
         "green":          boolean,
         "app_ticket":     "<application-specific-data>"
     }
-2. "signatures"	(string, required) Signatures (base64) and PastelIDs of the principal and verifying masternodes (MN2 and MN3) as JSON:
+2. "signatures"	(string, required) Signatures (base64) and Pastel IDs of the principal and verifying masternodes (MN2 and MN3) as JSON:
     {
-        "principal": { "principal PastelID": "principal Signature" },
-              "mn2": { "mn2 PastelID": "mn2 Signature" },
-              "mn3": { "mn3 PastelID": "mn3 Signature" }
+        "principal": { "principal Pastel ID": "principal Signature" },
+              "mn2": { "mn2 Pastel ID": "mn2 Signature" },
+              "mn3": { "mn3 Pastel ID": "mn3 Signature" }
     }
-3. "pastelid"   (string, required) The current, registering masternode (MN1) PastelID. NOTE: PastelID must be generated and stored inside node. See "pastelid newkey".
+3. "pastelid"   (string, required) The current, registering masternode (MN1) Pastel ID. NOTE: Pastel ID must be generated and stored inside node. See "pastelid newkey".
 4. "passphrase" (string, required) The passphrase to the private key associated with PastelID and stored inside node. See "pastelid newkey".
 5. "label"      (string, required) The label which can be used to search for the ticket.
 6. "fee"        (int, required) The agreed upon storage fee.
@@ -247,10 +247,10 @@ NFT Collection Registration Ticket:
         "nft_collection_ticket": {...},
         "version":         <version>
         "signatures": {
-            "principal": { "PastelID": <"signature"> },
-                  "mn1": { "PastelID": <"signature"> },
-                  "mn2": { "PastelID": <"signature"> },
-                  "mn3": { "PastelID": <"signature"> }
+            "principal": { "principal Pastel ID": <"signature"> },
+                  "mn1": { "mn1 Pastel ID": <"signature"> },
+                  "mn2": { "mn2 Pastel ID": <"signature"> },
+                  "mn3": { "mn3 Pastel ID": <"signature"> }
         },
         "key":             "<search primary key>",
         "label":           "<search label>",
@@ -316,7 +316,7 @@ Arguments:
 7. copy-number     (int, optional) If presented - will replace the original not yet accepted Offer ticket with this copy number.
                                    If the original has been already offered - operation will fail.
 8. "address"       (string, optional) The Pastel blockchain t-address to use for funding the registration (leave empty for default funding).
-9. "intendedFor"   (string, optional) The PastelID of the intended recipient of the offer (empty by default).
+9. "intendedFor"   (string, optional) The Pastel ID of the intended recipient of the offer (empty by default).
 Offer Ticket:
 {
 	"ticket": {
@@ -393,7 +393,7 @@ Arguments:
 1. "offer_txid"    (string, required) txid of the offer ticket to accept.
 2. price           (int, required) accepted price, shall be equal or more then asked price in the offer ticket.
 3. "PastelID"      (string, required) The Pastel ID of the new owner.
-4. "passphrase"    (string, required) The passphrase to the private key associated with creator's PastelID and stored inside node.
+4. "passphrase"    (string, required) The passphrase to the private key associated with creator's Pastel ID and stored inside node.
 5. "address"       (string, optional) The Pastel blockchain t-address to use for funding the registration.
 
 Accept Ticket:
@@ -544,8 +544,8 @@ Register take down request ticket. If successful, method returns "txid"
 
 Arguments:
 1. "txid"
-2. "pastelid"      (string, required) The PastelID. NOTE: PastelID must be generated and stored inside node. See "pastelid newkey".
-3. "passphrase"    (string, required) The passphrase to the private key associated with PastelID and stored inside node. See "pastelid newkey".
+2. "pastelid"      (string, required) The Pastel ID. NOTE: Pastel ID must be generated and stored inside node. See "pastelid newkey".
+3. "passphrase"    (string, required) The passphrase to the private key associated with Pastel ID and stored inside node. See "pastelid newkey".
 4. "address"       (string, optional) The Pastel blockchain t-address to use for funding the registration.
 
 Take Down Ticket:
@@ -560,7 +560,7 @@ Take Down Ticket:
 	"txid": ""
   }
 
-Register PastelID:
+Register Pastel ID:
 )" + HelpExampleCli("tickets register down", R"(jXYqZNPj21RVnwxnEJ654wEdzi7GZTZ5LAdiotBmPrF7pDMkpX1JegDMQZX55WZLkvy9fxNpZcbBJuE8QYUqBF "passphrase")") +
 R"(
 As json rpc:
@@ -579,16 +579,16 @@ R"(tickets register username "username" "PastelId" "passphrase" ["address"]
 Register Username Change Request ticket. If successful, method returns "txid"
 
 Arguments:
-1. "username"      (string, required) The username that will be mapped with above PastelID
-2. "PastelId"      (string, required) The PastelID. NOTE: PastelID must be generated and stored inside node. See "pastelid newkey".
-3. "passphrase"    (string, required) The passphrase to access the private key associated with PastelID and stored inside node. See "pastelid newkey".
+1. "username"      (string, required) The username that will be mapped with above Pastel ID
+2. "PastelId"      (string, required) The Pastel ID. NOTE: Pastel ID must be generated and stored inside node. See "pastelid newkey".
+3. "passphrase"    (string, required) The passphrase to access the private key associated with Pastel ID and stored inside node. See "pastelid newkey".
 4. "address"       (string, optional) The Pastel blockchain t-address to use for funding the registration.
 
 Username Change Request Ticket:
 {
     "ticket": {
 		"type": "username",
-		"pastelID": "",    // PastelID of the username
+		"pastelID": "",    // Pastel ID of the username
 		"username": "",    // new valid username
 		"fee": "",         // fee to change username
 		"signature": ""
@@ -624,17 +624,17 @@ R"(tickets register ethereumaddress "ethereumaddress" "PastelId" "passphrase" ["
 Register Ethereum Address Change Request ticket. If successful, method returns "txid"
 
 Arguments:
-1. "ethereumAddress"  (string, required) The ethereum address that will be mapped with PastelID
-2. "PastelId"         (string, required) The PastelID. NOTE: PastelID must be generated and stored inside node. See "pastelid newkey".
-3. "passphrase"       (string, required) The passphrase to the private key associated with PastelID and stored inside node. See "pastelid newkey".
+1. "ethereumAddress"  (string, required) The ethereum address that will be mapped with Pastel ID
+2. "PastelId"         (string, required) The Pastel ID. NOTE: Pastel ID must be generated and stored inside node. See "pastelid newkey".
+3. "passphrase"       (string, required) The passphrase to the private key associated with Pastel ID and stored inside node. See "pastelid newkey".
 4. "address"          (string, optional) The Pastel blockchain t-address to use for funding the registration.
 
 Ethereum Address Change Request Ticket:
 {
     "ticket": {
 		"type": "ethereumAddress",
-		"pastelID": "",         //PastelID of the ethereum address
-		"ethereumAddress": "",  //new valid ethereum address
+		"pastelID": "",         // Pastel ID of the ethereum address
+		"ethereumAddress": "",  // new valid ethereum address
 		"fee": "",              // fee to change ethereum address
 		"signature": ""
 	},
@@ -680,14 +680,14 @@ Arguments:
         "block_hash":  "<base64'ed-hash-of-the-action>",
         "app_ticket":  "<application-specific-data>",
     }
-2. "signatures"	(string, required) Signatures (base64) and PastelIDs of the principal and verifying masternodes (MN2 and MN3) as JSON:
+2. "signatures"	(string, required) Signatures (base64) and Pastel IDs of the principal and verifying masternodes (MN2 and MN3) as JSON:
     {
-        "principal": { "principal PastelID": "principal Signature" },
-              "mn2": { "mn2 PastelID": "mn2 Signature" },
-              "mn3": { "mn3 PastelID": "mn3 Signature" }
+        "principal": { "principal Pastel ID": "principal Signature" },
+              "mn2": { "mn2 Pastel ID": "mn2 Signature" },
+              "mn3": { "mn3 Pastel ID": "mn3 Signature" }
     }
-3. "pastelid"   (string, required) The current, registering masternode (MN1) PastelID. NOTE: PastelID must be generated and stored inside node. See "pastelid newkey".
-4. "passphrase" (string, required) The passphrase to the private key associated with PastelID and stored inside node. See "pastelid newkey".
+3. "pastelid"   (string, required) The current, registering masternode (MN1) Pastel ID. NOTE: Pastel ID must be generated and stored inside node. See "pastelid newkey".
+4. "passphrase" (string, required) The passphrase to the private key associated with Pastel ID and stored inside node. See "pastelid newkey".
 5. "label"      (string, required) The label which can be used to search for the ticket.
 6. "fee"        (int, required) The agreed upon storage fee.
 7. "address"    (string, optional) The Pastel blockchain t-address to use for funding the registration.
@@ -702,10 +702,10 @@ Action Reg Ticket:
         "action_type":   "<action-type>",
         "version":         <version>
         "signatures": {
-            "principal": { "PastelID": <"signature"> },
-                  "mn1": { "PastelID": <"signature"> },
-                  "mn2": { "PastelID": <"signature"> },
-                  "mn3": { "PastelID": <"signature"> }
+            "principal": { "principal Pastel ID": <"signature"> },
+                  "mn1": { "mn1 Pastel ID": <"signature"> },
+                  "mn2": { "mn2 Pastel ID": <"signature"> },
+                  "mn3": { "mn3 Pastel ID": <"signature"> }
         },
         "key":         "<search primary key>",
         "label":       "<search label>",
@@ -754,19 +754,19 @@ Set of commands to register different types of Pastel tickets.
 If successful, returns "txid" of the registered ticket.
 
 Available types:
-  mnid       - Register Masternode PastelID. If successful, returns "txid".
+  mnid       - Register Masternode Pastel ID. If successful, returns "txid".
                Ticket contains:
                    Masternode Collateral Address
                    Masternode Collateral outpoint (transaction id and index)
-                   PastelID
+                   Pastel ID
                    Timestamp
-                   Signature (above fields signed by PastelID)
-  id         - Register personal PastelID. If successful, returns "txid".
+                   Signature (above fields signed by Pastel ID)
+  id         - Register personal Pastel ID. If successful, returns "txid".
                Ticket contains:
                    Provided Address
-                   PastelID
+                   Pastel ID
                    Timestamp
-                   Signature (above fields signed by PastelID)
+                   Signature (above fields signed by Pastel ID)
   nft        - Register new NFT ticket.
   act        - Send activation for the new registered NFT ticket.
                Same as "tickets activate nft...".
@@ -786,7 +786,7 @@ Available types:
 
 UniValue tickets_register(const UniValue& params)
 {
-    RPC_CMD_PARSER2(REGISTER, params, mnid, id, nft, act, 
+    RPC_CMD_PARSER2(REGISTER, params, mnid, id, nft, act, nft__act,
         sell, offer, buy, accept, trade, transfer,
         down, royalty, username, ethereumaddress, action, action__act, nft__collection, nft__collection__act);
 
@@ -806,6 +806,7 @@ UniValue tickets_register(const UniValue& params)
             break;
 
         case RPC_CMD_REGISTER::nft:
+        case RPC_CMD_REGISTER::nft__act:
             result = tickets_register_nft(params);
             break;
 

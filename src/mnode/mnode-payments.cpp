@@ -58,12 +58,12 @@ void CMasternodePayments::FillMasterNodePayment(CMutableTransaction& txNew, int 
 
     CTxDestination dest;
     ExtractDestination(scriptPubKey, dest);
-    std::string address = keyIO.EncodeDestination(dest);
+    string address = keyIO.EncodeDestination(dest);
 
     LogPrintf("CMasternodePayments::FillMasterNodePayment -- Masternode payment %lld to %s\n", masternodePayment, address);
 }
 
-std::string CMasternodePayments::GetRequiredPaymentsString(int nBlockHeight)
+string CMasternodePayments::GetRequiredPaymentsString(int nBlockHeight)
 {
     LOCK(cs_mapMasternodeBlockPayees);
 
@@ -94,7 +94,7 @@ bool CMasternodePayments::CanVote(COutPoint outMasternode, int nBlockHeight)
     return true;
 }
 
-void CMasternodePayments::ProcessMessage(CNode* pfrom, std::string& strCommand, CDataStream& vRecv)
+void CMasternodePayments::ProcessMessage(CNode* pfrom, string& strCommand, CDataStream& vRecv)
 {
     KeyIO keyIO(Params());
     if (strCommand == NetMsgType::MASTERNODEPAYMENTSYNC) { //Masternode Payments Request Sync
@@ -152,7 +152,7 @@ void CMasternodePayments::ProcessMessage(CNode* pfrom, std::string& strCommand, 
             return;
         }
 
-        std::string strError = "";
+        string strError;
         if(!vote.IsValid(pfrom, nCachedBlockHeight, strError)) {
             LogPrint("mnpayments", "MASTERNODEPAYMENTVOTE -- invalid message, error: %s\n", strError);
             return;
@@ -191,7 +191,7 @@ void CMasternodePayments::ProcessMessage(CNode* pfrom, std::string& strCommand, 
 
         CTxDestination dest;
         ExtractDestination(vote.payee, dest);
-        std::string address = keyIO.EncodeDestination(dest);
+        string address = keyIO.EncodeDestination(dest);
 
         LogPrint("mnpayments", "MASTERNODEPAYMENTVOTE -- vote: address=%s, nBlockHeight=%d, nHeight=%d, prevout=%s, hash=%s new\n",
                     address, vote.nBlockHeight, nCachedBlockHeight, vote.vinMasternode.prevout.ToStringShort(), nHash.ToString());
@@ -205,8 +205,8 @@ void CMasternodePayments::ProcessMessage(CNode* pfrom, std::string& strCommand, 
 
 bool CMasternodePaymentVote::Sign()
 {
-    std::string strError;
-    std::string strMessage = vinMasternode.prevout.ToStringShort() +
+    string strError;
+    string strMessage = vinMasternode.prevout.ToStringShort() +
                 to_string(nBlockHeight) +
                 ScriptToAsmStr(payee);
 
@@ -475,35 +475,39 @@ bool CMasternodePayments::IsTransactionValid(const CTransaction& txNew, int nBlo
 
 void CMasternodePayments::CheckAndRemove()
 {
-    if(!masterNodeCtrl.masternodeSync.IsBlockchainSynced()) return;
+    if (!masterNodeCtrl.masternodeSync.IsBlockchainSynced())
+        return;
 
     LOCK2(cs_mapMasternodeBlockPayees, cs_mapMasternodePaymentVotes);
 
-    int nLimit = GetStorageLimit();
+    const int nLimit = GetStorageLimit();
 
-    std::map<uint256, CMasternodePaymentVote>::iterator it = mapMasternodePaymentVotes.begin();
-    while(it != mapMasternodePaymentVotes.end()) {
-        CMasternodePaymentVote vote = (*it).second;
+    auto it = mapMasternodePaymentVotes.begin();
+    while (it != mapMasternodePaymentVotes.end())
+    {
+        CMasternodePaymentVote vote = it->second;
 
-        if(nCachedBlockHeight - vote.nBlockHeight > nLimit) {
+        if (nCachedBlockHeight - vote.nBlockHeight > nLimit)
+        {
             LogPrint("mnpayments", "CMasternodePayments::CheckAndRemove -- Removing old Masternode payment: nBlockHeight=%d\n", vote.nBlockHeight);
             mapMasternodePaymentVotes.erase(it++);
             mapMasternodeBlockPayees.erase(vote.nBlockHeight);
-        } else {
+        } else
             ++it;
-        }
     }
     LogPrintf("CMasternodePayments::CheckAndRemove -- %s\n", ToString());
 }
 
-bool CMasternodePaymentVote::IsValid(CNode* pnode, int nValidationHeight, std::string& strError)
+bool CMasternodePaymentVote::IsValid(CNode* pnode, int nValidationHeight, string& strError)
 {
     masternode_info_t mnInfo;
 
-    if(!masterNodeCtrl.masternodeManager.GetMasternodeInfo(vinMasternode.prevout, mnInfo)) {
+    if (!masterNodeCtrl.masternodeManager.GetMasternodeInfo(vinMasternode.prevout, mnInfo))
+    {
         strError = strprintf("Unknown Masternode: prevout=%s", vinMasternode.prevout.ToStringShort());
         // Only ask if we are already synced and still have no idea about that Masternode
-        if(masterNodeCtrl.masternodeSync.IsMasternodeListSynced()) {
+        if (masterNodeCtrl.masternodeSync.IsMasternodeListSynced())
+        {
             masterNodeCtrl.masternodeManager.AskForMN(pnode, vinMasternode.prevout);
         }
 
@@ -511,7 +515,8 @@ bool CMasternodePaymentVote::IsValid(CNode* pnode, int nValidationHeight, std::s
     }
 
     const int nMinRequiredProtocol = masterNodeCtrl.GetSupportedProtocolVersion();
-    if(mnInfo.nProtocolVersion < nMinRequiredProtocol) {
+    if(mnInfo.nProtocolVersion < nMinRequiredProtocol)
+    {
         strError = strprintf("Masternode protocol is too old: nProtocolVersion=%d, nMinRequiredProtocol=%d", mnInfo.nProtocolVersion, nMinRequiredProtocol);
         return false;
     }
@@ -528,12 +533,14 @@ bool CMasternodePaymentVote::IsValid(CNode* pnode, int nValidationHeight, std::s
         return false;
     }
 
-    if(nRank > MNPAYMENTS_SIGNATURES_TOTAL) {
+    if (nRank > MNPAYMENTS_SIGNATURES_TOTAL)
+    {
         // It's common to have masternodes mistakenly think they are in the top 10
         // We don't want to print all of these messages in normal mode, debug mode should print though
         strError = strprintf("Masternode is not in the top %d (%d)", MNPAYMENTS_SIGNATURES_TOTAL, nRank);
         // Only ban for new mnw which is out of bounds, for old mnw MN list itself might be way too much off
-        if(nRank > MNPAYMENTS_SIGNATURES_TOTAL*2 && nBlockHeight > nValidationHeight) {
+        if(nRank > MNPAYMENTS_SIGNATURES_TOTAL*2 && nBlockHeight > nValidationHeight)
+        {
             strError = strprintf("Masternode is not in the top %d (%d)", MNPAYMENTS_SIGNATURES_TOTAL*2, nRank);
             LogPrintf("CMasternodePaymentVote::IsValid -- Error: %s\n", strError);
             Misbehaving(pnode->GetId(), 20);
@@ -548,25 +555,26 @@ bool CMasternodePaymentVote::IsValid(CNode* pnode, int nValidationHeight, std::s
 bool CMasternodePayments::ProcessBlock(int nBlockHeight)
 {
     // DETERMINE IF WE SHOULD BE VOTING FOR THE NEXT PAYEE
-
-    if(!masterNodeCtrl.IsMasterNode())
+    if (!masterNodeCtrl.IsMasterNode())
         return false;
 
     // We have little chances to pick the right winner if winners list is out of sync
     // but we have no choice, so we'll try. However it doesn't make sense to even try to do so
     // if we have not enough data about masternodes.
-    if(!masterNodeCtrl.masternodeSync.IsMasternodeListSynced())
+    if (!masterNodeCtrl.masternodeSync.IsMasternodeListSynced())
         return false;
 
     //see if we can vote - we must be in the top 20 masternode list to be allowed to vote
     int nRank = -1;
 
-    if (!masterNodeCtrl.masternodeManager.GetMasternodeRank(masterNodeCtrl.activeMasternode.outpoint, nRank, nBlockHeight + masterNodeCtrl.nMasternodePaymentsVotersIndexDelta)) {
+    if (!masterNodeCtrl.masternodeManager.GetMasternodeRank(masterNodeCtrl.activeMasternode.outpoint, nRank, nBlockHeight + masterNodeCtrl.nMasternodePaymentsVotersIndexDelta))
+    {
         LogPrint("mnpayments", "CMasternodePayments::ProcessBlock -- Unknown Masternode\n");
         return false;
     }
 
-    if (nRank > MNPAYMENTS_SIGNATURES_TOTAL) {
+    if (nRank > MNPAYMENTS_SIGNATURES_TOTAL)
+    {
         LogPrint("mnpayments", "CMasternodePayments::ProcessBlock -- Masternode not in the top %d (%d)\n", MNPAYMENTS_SIGNATURES_TOTAL, nRank);
         return false;
     }
@@ -580,7 +588,8 @@ bool CMasternodePayments::ProcessBlock(int nBlockHeight)
     uint32_t nCount = 0;
     masternode_info_t mnInfo;
 
-    if (!masterNodeCtrl.masternodeManager.GetNextMasternodeInQueueForPayment(nBlockHeight, true, nCount, mnInfo)) {
+    if (!masterNodeCtrl.masternodeManager.GetNextMasternodeInQueueForPayment(nBlockHeight, true, nCount, mnInfo))
+    {
         LogPrintf("CMasternodePayments::ProcessBlock -- ERROR: Failed to find masternode to pay\n");
         return false;
     }
@@ -595,17 +604,19 @@ bool CMasternodePayments::ProcessBlock(int nBlockHeight)
     KeyIO keyIO(Params());
     CTxDestination dest;
     ExtractDestination(payee, dest);
-    std::string address = keyIO.EncodeDestination(dest);
+    string address = keyIO.EncodeDestination(dest);
 
     LogPrintf("CMasternodePayments::ProcessBlock -- vote: payee=%s, nBlockHeight=%d\n", address, nBlockHeight);
 
     // SIGN MESSAGE TO NETWORK WITH OUR MASTERNODE KEYS
 
     LogPrintf("CMasternodePayments::ProcessBlock -- Signing vote\n");
-    if (voteNew.Sign()) {
+    if (voteNew.Sign())
+    {
         LogPrintf("CMasternodePayments::ProcessBlock -- AddPaymentVote()\n");
 
-        if (AddPaymentVote(voteNew)) {
+        if (AddPaymentVote(voteNew))
+        {
             voteNew.Relay();
             return true;
         }
@@ -616,11 +627,10 @@ bool CMasternodePayments::ProcessBlock(int nBlockHeight)
 
 void CMasternodePayments::CheckPreviousBlockVotes(int nPrevBlockHeight)
 {
-    if (!masterNodeCtrl.masternodeSync.IsWinnersListSynced()) return;
+    if (!masterNodeCtrl.masternodeSync.IsWinnersListSynced())
+        return;
 
-    std::string debugStr;
-
-    debugStr += strprintf("CMasternodePayments::CheckPreviousBlockVotes -- nPrevBlockHeight=%d, expected voting MNs:\n", nPrevBlockHeight);
+    string debugStr = strprintf("CMasternodePayments::CheckPreviousBlockVotes -- nPrevBlockHeight=%d, expected voting MNs:\n", nPrevBlockHeight);
 
     CMasternodeMan::rank_pair_vec_t mns;
     if (!masterNodeCtrl.masternodeManager.GetMasternodeRanks(mns, nPrevBlockHeight + masterNodeCtrl.nMasternodePaymentsVotersIndexDelta)) {
@@ -631,21 +641,27 @@ void CMasternodePayments::CheckPreviousBlockVotes(int nPrevBlockHeight)
 
     LOCK2(cs_mapMasternodeBlockPayees, cs_mapMasternodePaymentVotes);
 
-    for (int i = 0; i < MNPAYMENTS_SIGNATURES_TOTAL && i < (int)mns.size(); i++) {
+    for (size_t i = 0; i < MNPAYMENTS_SIGNATURES_TOTAL && i < mns.size(); ++i)
+    {
         auto mn = mns[i];
         CScript payee;
         bool found = false;
 
-        if (mapMasternodeBlockPayees.count(nPrevBlockHeight)) {
-            for (auto &p : mapMasternodeBlockPayees[nPrevBlockHeight].vecPayees) {
-                for (auto &voteHash : p.GetVoteHashes()) {
-                    if (!mapMasternodePaymentVotes.count(voteHash)) {
+        if (mapMasternodeBlockPayees.count(nPrevBlockHeight))
+        {
+            for (auto &p : mapMasternodeBlockPayees[nPrevBlockHeight].vecPayees)
+            {
+                for (auto &voteHash : p.GetVoteHashes())
+                {
+                    if (!mapMasternodePaymentVotes.count(voteHash))
+                    {
                         debugStr += strprintf("CMasternodePayments::CheckPreviousBlockVotes --   could not find vote %s\n",
                                               voteHash.ToString());
                         continue;
                     }
                     auto vote = mapMasternodePaymentVotes[voteHash];
-                    if (vote.vinMasternode.prevout == mn.second.vin.prevout) {
+                    if (vote.vinMasternode.prevout == mn.second.vin.prevout)
+                    {
                         payee = vote.payee;
                         found = true;
                         break;
@@ -654,7 +670,8 @@ void CMasternodePayments::CheckPreviousBlockVotes(int nPrevBlockHeight)
             }
         }
 
-        if (!found) {
+        if (!found)
+        {
             debugStr += strprintf("CMasternodePayments::CheckPreviousBlockVotes --   %s - no vote received\n",
                                   mn.second.vin.prevout.ToStringShort());
             mapMasternodesDidNotVote[mn.second.vin.prevout]++;
@@ -664,15 +681,14 @@ void CMasternodePayments::CheckPreviousBlockVotes(int nPrevBlockHeight)
         KeyIO keyIO(Params());
         CTxDestination dest;
         ExtractDestination(payee, dest);
-        std::string address = keyIO.EncodeDestination(dest);
+        string address = keyIO.EncodeDestination(dest);
 
         debugStr += strprintf("CMasternodePayments::CheckPreviousBlockVotes --   %s - voted for %s\n",
                               mn.second.vin.prevout.ToStringShort(), address);
     }
     debugStr += "CMasternodePayments::CheckPreviousBlockVotes -- Masternodes which missed a vote in the past:\n";
-    for (auto it : mapMasternodesDidNotVote) {
+    for (auto it : mapMasternodesDidNotVote)
         debugStr += strprintf("CMasternodePayments::CheckPreviousBlockVotes --   %s: %d\n", it.first.ToStringShort(), it.second);
-    }
 
     LogPrint("mnpayments", "%s", debugStr);
 }
@@ -680,7 +696,8 @@ void CMasternodePayments::CheckPreviousBlockVotes(int nPrevBlockHeight)
 void CMasternodePaymentVote::Relay()
 {
     // Do not relay until fully synced
-    if(!masterNodeCtrl.masternodeSync.IsSynced()) {
+    if(!masterNodeCtrl.masternodeSync.IsSynced())
+    {
         LogPrint("mnpayments", "CMasternodePayments::Relay -- won't relay until fully synced\n");
         return;
     }
@@ -699,22 +716,22 @@ bool CMasternodePaymentVote::CheckSignature(const CPubKey& pubKeyMasternode, int
                 ScriptToAsmStr(payee);
 
     string strError;
-    if (!CMessageSigner::VerifyMessage(pubKeyMasternode, vchSig, strMessage, strError)) {
+    if (!CMessageSigner::VerifyMessage(pubKeyMasternode, vchSig, strMessage, strError))
+    {
         // Only ban for future block vote when we are already synced.
         // Otherwise it could be the case when MN which signed this vote is using another key now
         // and we have no idea about the old one.
-        if(masterNodeCtrl.masternodeSync.IsMasternodeListSynced() && nBlockHeight > nValidationHeight) {
+        if (masterNodeCtrl.masternodeSync.IsMasternodeListSynced() && nBlockHeight > nValidationHeight)
             nDos = 20;
-        }
         return error("CMasternodePaymentVote::CheckSignature -- Got bad Masternode payment signature, masternode=%s, error: %s", vinMasternode.prevout.ToStringShort().c_str(), strError);
     }
 
     return true;
 }
 
-std::string CMasternodePaymentVote::ToString() const
+string CMasternodePaymentVote::ToString() const
 {
-    std::ostringstream info;
+    ostringstream info;
 
     info << vinMasternode.prevout.ToStringShort() <<
             ", " << nBlockHeight <<
@@ -734,18 +751,19 @@ void CMasternodePayments::Sync(CNode* pnode)
 
     int nInvCount = 0;
 
-    for(int h = nCachedBlockHeight; h < nCachedBlockHeight + 20; h++) {
-        if(mapMasternodeBlockPayees.count(h)) {
-            for (auto & payee : mapMasternodeBlockPayees[h].vecPayees)
+    for(int h = nCachedBlockHeight; h < nCachedBlockHeight + 20; h++)
+    {
+        if (!mapMasternodeBlockPayees.count(h))
+            continue;
+        for (auto & payee : mapMasternodeBlockPayees[h].vecPayees)
+        {
+            auto vecVoteHashes = payee.GetVoteHashes();
+            for (auto& hash : vecVoteHashes)
             {
-                auto vecVoteHashes = payee.GetVoteHashes();
-                for (auto& hash : vecVoteHashes)
-                {
-                    if(!HasVerifiedPaymentVote(hash))
-                        continue;
-                    pnode->PushInventory(CInv(MSG_MASTERNODE_PAYMENT_VOTE, hash));
-                    nInvCount++;
-                }
+                if (!HasVerifiedPaymentVote(hash))
+                    continue;
+                pnode->PushInventory(CInv(MSG_MASTERNODE_PAYMENT_VOTE, hash));
+                nInvCount++;
             }
         }
     }
@@ -760,13 +778,14 @@ void CMasternodePayments::RequestLowDataPaymentBlocks(CNode* pnode)
 
     LOCK2(cs_main, cs_mapMasternodeBlockPayees);
 
-    std::vector<CInv> vToFetch;
-    int nLimit = GetStorageLimit();
+    vector<CInv> vToFetch;
+    const int nLimit = GetStorageLimit();
 
     const CBlockIndex *pindex = chainActive.Tip();
-
-    while(nCachedBlockHeight - pindex->nHeight < nLimit) {
-        if(!mapMasternodeBlockPayees.count(pindex->nHeight)) {
+    while (nCachedBlockHeight - pindex->nHeight < nLimit)
+    {
+        if (!mapMasternodeBlockPayees.count(pindex->nHeight))
+        {
             // We have no idea about this block height, let's ask
             vToFetch.push_back(CInv(MSG_MASTERNODE_PAYMENT_BLOCK, pindex->GetBlockHash()));
             // We should not violate GETDATA rules
@@ -778,12 +797,12 @@ void CMasternodePayments::RequestLowDataPaymentBlocks(CNode* pnode)
                 vToFetch.clear();
             }
         }
-        if(!pindex->pprev) break;
+        if (!pindex->pprev)
+            break;
         pindex = pindex->pprev;
     }
 
     auto it = mapMasternodeBlockPayees.cbegin();
-
     while(it != mapMasternodeBlockPayees.cend())
     {
         size_t nTotalVotes = 0;
@@ -811,7 +830,7 @@ void CMasternodePayments::RequestLowDataPaymentBlocks(CNode* pnode)
             for (const auto& payee : it->second.vecPayees) {
                 CTxDestination dest;
                 ExtractDestination(payee.GetPayee(), dest);
-                std::string address = EncodeDestination(dest);
+                string address = EncodeDestination(dest);
                 printf("payee %s votes %d\n", address, payee.GetVoteCount());
             }
             printf("block %d votes total %d\n", it->first, nTotalVotes);
@@ -840,9 +859,9 @@ void CMasternodePayments::RequestLowDataPaymentBlocks(CNode* pnode)
     }
 }
 
-std::string CMasternodePayments::ToString() const
+string CMasternodePayments::ToString() const
 {
-    std::ostringstream info;
+    ostringstream info;
 
     info << "Votes: " << (int)mapMasternodePaymentVotes.size() <<
             ", Blocks: " << (int)mapMasternodeBlockPayees.size();
@@ -859,12 +878,13 @@ bool CMasternodePayments::IsEnoughData()
 
 int CMasternodePayments::GetStorageLimit()
 {
-    return std::max(int(masterNodeCtrl.masternodeManager.size() * nStorageCoeff), nMinBlocksToStore);
+    return max(int(masterNodeCtrl.masternodeManager.size() * nStorageCoeff), nMinBlocksToStore);
 }
 
 void CMasternodePayments::UpdatedBlockTip(const CBlockIndex *pindex)
 {
-    if(!pindex) return;
+    if(!pindex)
+        return;
 
     nCachedBlockHeight = pindex->nHeight;
     LogPrint("mnpayments", "CMasternodePayments::UpdatedBlockTip -- nCachedBlockHeight=%d\n", nCachedBlockHeight);

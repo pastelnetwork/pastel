@@ -1,10 +1,11 @@
 #pragma once
 // Copyright (c) 2011-2013 The Bitcoin Core developers
-// Copyright (c) 2018-2021 The Pastel Core developers
+// Copyright (c) 2018-2022 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 
-#include "primitives/transaction.h"
+#include <primitives/transaction.h>
+#include <script/standard.h>
 
 /** Coin Control Features. */
 class CCoinControl
@@ -52,9 +53,9 @@ public:
         setSelected.clear();
     }
 
-    void ListSelected(std::vector<COutPoint>& vOutpoints) const
+    void ListSelected(v_outpoints& vOutPoints) const
     {
-        vOutpoints.assign(setSelected.begin(), setSelected.end());
+        vOutPoints.assign(setSelected.begin(), setSelected.end());
     }
 
 private:

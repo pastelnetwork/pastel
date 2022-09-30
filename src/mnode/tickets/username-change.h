@@ -16,8 +16,8 @@ using ChangeUsernameTickets_t = std::vector<CChangeUsernameTicket>;
 /*
 	"ticket": {
 		"type": "username",
-		"pastelID": "",    //PastelID of the username
-		"username": "",    //new valid username
+		"pastelID": "",    // Pastel ID of the username
+		"username": "",    // new valid username
 		"fee": "",         // fee to change username
 		"signature": ""
 	},

@@ -14,7 +14,7 @@ using NFTActivateTickets_t = std::vector<CNFTActivateTicket>;
 /*
 	"ticket": {
 		"type": "nft-act",
-		"pastelID": "",         // PastelID of the creator
+		"pastelID": "",         // Pastel ID of the creator
 		"reg_txid": "",         // tnx with registration ticket in it
 		"creator_height": "",   // block at which creator created NFT Ticket
 		                        // is used to check if the MN that created NFT registration ticket was indeed top MN when creator create ticket
@@ -119,7 +119,7 @@ public:
     static bool CheckTicketExistByNFTTicketID(const std::string& regTicketTxId);
 
 protected:
-    std::string m_sPastelID;       //pastelID of the creator
+    std::string m_sPastelID;       // Pastel ID of the creator
     std::string m_regTicketTxId; // txid of the NFT Reg ticket
     v_uint8 m_signature;
     int m_creatorHeight{0};

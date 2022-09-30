@@ -271,6 +271,7 @@ BITCOIN_CORE_H = \
   core_memusage.h \
   datacompressor.h\
   deprecation.h \
+  enum_util.h \
   fs.h \
   hash.h \
   httprpc.h \
@@ -733,7 +734,7 @@ clean-local:
 
 .rc.o:
 	@test -f $(WINDRES)
-	$(AM_V_GEN) $(WINDRES) -DWINDRES_PREPROC -i $< -o $@
+	$(AM_V_GEN) $(WINDRES) -DWINDRES_PREPROC -I. -i $< -o $@
 
 .mm.o:
 	$(AM_V_CXX) $(OBJCXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) \

@@ -140,11 +140,11 @@ class MasterNodeTicketsTest(MasterNodeCommon):
             #  reject if fake outpoint (Unknown Masternode) (Verb = 3 - will modify outpoint to make it invalid)
             "mnid1-fakeout": self.nodes[0].tickets("makefaketicket", "mnid", mn0_pastelid1, self.passphrase, "10", "3"),
 
-            #  reject if the PastelID ticket signature is invalid (Verb = 1 - will modify pastlelid signature to make it invalid)
+            #  reject if the Pastel ID ticket signature is invalid (Verb = 1 - will modify pastlelid signature to make it invalid)
             "mnid2-psig": self.nodes[0].tickets("makefaketicket", "mnid", mn0_pastelid1, self.passphrase, "10", "1"),
             "id1-psig": self.nodes[self.non_mn3].tickets("makefaketicket", "id", nonmn3_pastelid1, self.passphrase, self.nonmn3_address1, "10", "1"),
 
-            #  reject if MN PastelID's MN signature is invalid (Verb = 2 - will modify MN signature to make it invalid)
+            #  reject if MN Pastel ID's MN signature is invalid (Verb = 2 - will modify MN signature to make it invalid)
             "mnid3-mnsig": self.nodes[0].tickets("makefaketicket", "mnid", mn0_pastelid1, self.passphrase, "10", "2"),
 
             #  reject if doesn't pay correct ticket registration fee (10PSL)
@@ -347,13 +347,13 @@ class MasterNodeTicketsTest(MasterNodeCommon):
                                                                   self.creator_pastelid1, self.passphrase,
                                                                   "10", "0"),
 
-            #       3.c.2 reject if creator's PastelID in the activation ticket is not matching creator's PastelID in the registration ticket
-            # This prevent someone else to create Act Ticket providing creator's PastelID, but wrong signature (only creator has private key to create correct signature)
+            #       3.c.2 reject if creator's Pastel ID in the activation ticket is not matching creator's Pastel ID in the registration ticket
+            # This prevent someone else to create Act Ticket providing creator's Pastel ID, but wrong signature (only creator has private key to create correct signature)
             "act2-bad-creator_sign": self.nodes[self.non_mn3].tickets("makefaketicket", "act",
                                                                   self.nft_ticket1_txid, str(self.creator_ticket_height),
                                                                   str(self.storage_fee),
                                                                   self.creator_pastelid1, self.passphrase,
-                                                                  "10", "1"), # Verb = 1 - will modify Act ticket signature to make it invalid (non matching creator's PastelID)
+                                                                  "10", "1"), # Verb = 1 - will modify Act ticket signature to make it invalid (non matching creator's Pastel ID)
 
             #       3.c.3 reject if wrong creator ticket height
             "act3-bad-creator-height": self.nodes[self.non_mn3].tickets("makefaketicket", "act",
@@ -417,12 +417,12 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         assert_true(self.nft_ticket1_act_ticket_txid, "No ticket was created")
 
         tickets = {
-            # 1. check PastelID in this ticket matches PastelID in the referred Activation ticket
+            # 1. check Pastel ID in this ticket matches Pastel ID in the referred Activation ticket
             "offer-bad-nfts-sign": self.nodes[self.non_mn3].tickets("makefaketicket", "offer",
                                                                     self.nft_ticket1_act_ticket_txid, "100000",
                                                                     self.creator_pastelid1, self.passphrase,
                                                                     "0", "0",
-                                                                    "10", "1"), # Verb = 1 - will modify Act ticket signature to make it invalid (non matchig creator's PastelID)
+                                                                    "10", "1"), # Verb = 1 - will modify Act ticket signature to make it invalid (non matchig creator's Pastel ID)
         }
 
         # sync mempools
@@ -449,7 +449,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
 
     def fake_offer_tnx_tests2(self):
         print("== Offer ticket transaction validation test (for transfer ticket) ==")
-        # 1. check PastelID in this ticket matches PastelID in the referred Transfer ticket
+        # 1. check Pastel ID in this ticket matches Pastel ID in the referred Transfer ticket
         # 2. Verify the NFT is not already transferred
         #    Verify there is no already transfer ticket referring to that offer ticket
         #    Verify the number of existing transfer tickets less then number of copies in the registration ticket

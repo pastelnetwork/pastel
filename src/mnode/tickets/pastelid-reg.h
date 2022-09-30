@@ -27,10 +27,10 @@ typedef struct _MNID_RegData
     CKey mnPrivKey; // used only if bUseActiveMN = false
 } CMNID_RegData;
 
-// PastelID Ticket //////////////////////////////////////////////////////////////////////////////////////////////////////
+// Pastel ID Ticket //////////////////////////////////////////////////////////////////////////////////////////////////////
 //
 // keys:
-//   #1: PastelID
+//   #1: Pastel ID
 //   #2: for personal ids: secondKey or funding address
 //       for mastenode ids: outpoint
 class CPastelIDRegTicket : public CPastelTicket
