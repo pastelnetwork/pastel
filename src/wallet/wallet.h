@@ -852,8 +852,8 @@ public:
 
     CPubKey vchDefaultKey;
 
-    std::set<COutPoint> setLockedCoins;
-    std::set<SaplingOutPoint> setLockedSaplingNotes;
+    std::set<COutPoint> m_setLockedCoins;
+    std::set<SaplingOutPoint> m_setLockedSaplingNotes;
 
     int64_t nTimeFirstKey;
 
@@ -884,8 +884,8 @@ public:
     bool IsSaplingSpent(const uint256& nullifier) const;
 
     bool IsLockedCoin(uint256 hash, unsigned int n) const;
-    void LockCoin(COutPoint& output);
-    void UnlockCoin(COutPoint& output);
+    void LockCoin(const COutPoint& output);
+    void UnlockCoin(const COutPoint& output);
     void UnlockAllCoins();
     void ListLockedCoins(v_outpoints& vOutPoints);
 

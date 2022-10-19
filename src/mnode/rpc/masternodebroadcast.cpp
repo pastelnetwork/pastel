@@ -92,30 +92,30 @@ Examples:
 
         statusObj.pushKV(RPC_KEY_ALIAS, strAlias);
 
-        for (const auto& mne : masterNodeCtrl.masternodeConfig.getEntries()) {
-            if (mne.getAlias() == strAlias) {
-                fFound = true;
-                string strError;
-                CMasternodeBroadcast mnb;
+        CMasternodeConfig::CMasternodeEntry mne;
+        if (masterNodeCtrl.masternodeConfig.GetEntryByAlias(strAlias, mne))
+        {
+            fFound = true;
+            string strError;
+            CMasternodeBroadcast mnb;
 
-                bool fResult = CMasternodeBroadcast::Create(mne.getIp(), mne.getPrivKey(), mne.getTxHash(), mne.getOutputIndex(),
-                                                            mne.getExtIp(), mne.getExtP2P(), mne.getExtKey(), mne.getExtCfg(),
-                                                            strError, mnb, true);
+            const bool fResult = CMasternodeBroadcast::Create(mne.getIp(), mne.getPrivKey(), mne.getTxHash(), mne.getOutputIndex(),
+                                                        mne.getExtIp(), mne.getExtP2P(), mne.getExtKey(), mne.getExtCfg(),
+                                                        strError, mnb, true);
 
-                statusObj.pushKV(RPC_KEY_RESULT, get_rpc_result(fResult));
-                if (fResult) {
-                    vecMnb.push_back(mnb);
-                    CDataStream ssVecMnb(SER_NETWORK, PROTOCOL_VERSION);
-                    ssVecMnb << vecMnb;
-                    statusObj.pushKV("hex", HexStr(ssVecMnb.begin(), ssVecMnb.end()));
-                } else {
-                    statusObj.pushKV(RPC_KEY_ERROR_MESSAGE, strError);
-                }
-                break;
-            }
+            statusObj.pushKV(RPC_KEY_RESULT, get_rpc_result(fResult));
+            if (fResult)
+            {
+                vecMnb.emplace_back(mnb);
+                CDataStream ssVecMnb(SER_NETWORK, PROTOCOL_VERSION);
+                ssVecMnb << vecMnb;
+                statusObj.pushKV("hex", HexStr(ssVecMnb.begin(), ssVecMnb.end()));
+            } else
+                statusObj.pushKV(RPC_KEY_ERROR_MESSAGE, strError);
         }
 
-        if (!fFound) {
+        if (!fFound)
+        {
             statusObj.pushKV(RPC_KEY_RESULT, "not found");
             statusObj.pushKV(RPC_KEY_ERROR_MESSAGE, "Could not find alias in config. Verify with list-conf.");
         }
@@ -123,7 +123,8 @@ Examples:
         return statusObj;
     }
 
-    if (strCommand == "create-all") {
+    if (strCommand == "create-all")
+    {
         // wait for reindex and/or import to finish
         if (fImporting || fReindex)
             throw JSONRPCError(RPC_INTERNAL_ERROR, "Wait for reindex and/or import to finish");
@@ -133,8 +134,6 @@ Examples:
             EnsureWalletIsUnlocked();
         }
 
-        vector<CMasternodeConfig::CMasternodeEntry> mnEntries;
-        mnEntries = masterNodeCtrl.masternodeConfig.getEntries();
 
         int nSuccessful = 0;
         int nFailed = 0;
@@ -142,11 +141,12 @@ Examples:
         UniValue resultsObj(UniValue::VOBJ);
         vector<CMasternodeBroadcast> vecMnb;
 
-        for (const auto& mne : masterNodeCtrl.masternodeConfig.getEntries()) {
+        for (const auto& [alias, mne] : masterNodeCtrl.masternodeConfig.getEntries())
+        {
             string strError;
             CMasternodeBroadcast mnb;
 
-            bool fResult = CMasternodeBroadcast::Create(mne.getIp(), mne.getPrivKey(), mne.getTxHash(), mne.getOutputIndex(),
+            const bool fResult = CMasternodeBroadcast::Create(mne.getIp(), mne.getPrivKey(), mne.getTxHash(), mne.getOutputIndex(),
                                                         mne.getExtIp(), mne.getExtP2P(), mne.getExtKey(), mne.getExtCfg(),
                                                         strError, mnb, true);
 
@@ -154,7 +154,8 @@ Examples:
             statusObj.pushKV(RPC_KEY_ALIAS, mne.getAlias());
             statusObj.pushKV(RPC_KEY_RESULT, get_rpc_result(fResult));
 
-            if (fResult) {
+            if (fResult)
+            {
                 nSuccessful++;
                 vecMnb.push_back(mnb);
             } else {

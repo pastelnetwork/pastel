@@ -1,45 +1,28 @@
 #!/usr/bin/env python3
-# Copyright (c) 2018-2021 The Pastel Core developers
+# Copyright (c) 2018-2022 The Pastel Core developers
 # Distributed under the MIT software license, see the accompanying
-# file COPYING or http://www.opensource.org/licenses/mit-license.php.
-
-from test_framework.test_framework import BitcoinTestFramework
-from test_framework.util import assert_equal, assert_greater_than, initialize_chain_clean, \
-    initialize_datadir, start_nodes, start_node, connect_nodes_bi, \
-    pasteld_processes, wait_and_assert_operationid_status, p2p_port, \
-    stop_node
-from mn_common import MasterNodeCommon
-import argparse
-
+# file COPYING or https://www.opensource.org/licenses/mit-license.php.
 import os
-import sys
 import time
 import json
 import random
+from decimal import getcontext
 
-from decimal import Decimal, getcontext
+from test_framework.util import (
+    assert_equal,
+    initialize_chain_clean,
+    start_node,
+    stop_node,
+    connect_nodes_bi
+)
+from mn_common import MasterNodeCommon
+
 getcontext().prec = 16
-
 
 TEST_CASE_EXEC_NR = 40300409; # ExtP2P address-change tests
 
-# 12 Master Nodes
-private_keys_list = ["91sY9h4AQ62bAhNk1aJ7uJeSnQzSFtz7QmW5imrKmiACm7QJLXe", #0 
-                     "923JtwGJqK6mwmzVkLiG6mbLkhk1ofKE1addiM8CYpCHFdHDNGo", #1
-                     "91wLgtFJxdSRLJGTtbzns5YQYFtyYLwHhqgj19qnrLCa1j5Hp5Z", #2
-                     "92XctTrjQbRwEAAMNEwKqbiSAJsBNuiR2B8vhkzDX4ZWQXrckZv", #3
-                     "923JCnYet1pNehN6Dy4Ddta1cXnmpSiZSLbtB9sMRM1r85TWym6", #4
-                     "93BdbmxmGp6EtxFEX17FNqs2rQfLD5FMPWoN1W58KEQR24p8A6j", #5
-                     "92av9uhRBgwv5ugeNDrioyDJ6TADrM6SP7xoEqGMnRPn25nzviq", #6
-                     "91oHXFR2NVpUtBiJk37i8oBMChaQRbGjhnzWjN9KQ8LeAW7JBdN", #7
-                     "92MwGh67mKTcPPTCMpBA6tPkEE5AK3ydd87VPn8rNxtzCmYf9Yb", #8
-                     "92VSXXnFgArfsiQwuzxSAjSRuDkuirE1Vf7KvSX7JE51dExXtrc", #9
-                     "91hruvJfyRFjo7JMKnAPqCXAMiJqecSfzn9vKWBck2bKJ9CCRuo", #10
-                     "92sYv5JQHzn3UDU6sYe5kWdoSWEc6B98nyY5JN7FnTTreP8UNrq"  #11
-                    ]
-
 class MasterNodeGovernanceTest (MasterNodeCommon):
-    number_of_master_nodes = len(private_keys_list)
+    number_of_master_nodes = 12
     number_of_simple_nodes = 2
     total_number_of_nodes = number_of_master_nodes+number_of_simple_nodes
     mining_node_num = number_of_master_nodes
@@ -56,14 +39,11 @@ class MasterNodeGovernanceTest (MasterNodeCommon):
     def setup_network(self, split=False):
         self.nodes = []
         self.is_network_split = False
-        self.setup_masternodes_network(private_keys_list, self.number_of_simple_nodes)
+        self.setup_masternodes_network(self.number_of_master_nodes, self.number_of_simple_nodes,
+            self.mining_node_num, self.hot_node_num, self.number_of_master_nodes)
 
     def run_test (self):
-        self.mining_enough(self.mining_node_num, self.number_of_master_nodes)
-        cold_nodes = {k: v for k, v in enumerate(private_keys_list)}
-        _, _, _ = self.start_mn(self.mining_node_num, self.hot_node_num, cold_nodes, self.total_number_of_nodes)
-
-        self.reconnect_nodes(0, self.number_of_master_nodes)
+        self.reconnect_all_nodes()
         self.sync_all()
 
         print("Run freedcamp ID specific test")
@@ -116,7 +96,7 @@ class MasterNodeGovernanceTest (MasterNodeCommon):
         
         print("Stoping and re-enabling MN hot node {}...".format(mn_hot_node))
         #Stopping hot_node
-        stop_node(self.nodes[self.hot_node_num], self.hot_node_num)
+        stop_node(self.nodes[self.hot_node_num])
 
         print(f"Starting node {self.hot_node_num}...")
         self.nodes[self.hot_node_num]=start_node(self.hot_node_num, self.options.tmpdir, ["-debug=masternode", "-txindex=1", "-reindex"], timewait=900)
@@ -597,7 +577,7 @@ class MasterNodeGovernanceTest (MasterNodeCommon):
     def generate_split_ticket(self, node_nr):
         address = self.nodes[node_nr].getnewaddress()
         tcket_amount = node_nr*10 +1
-        res1 = self.nodes[0].governance("ticket", "add", address, tcket_amount, "Splitted_by_node_{}".format(node_nr), "yes")
+        self.nodes[0].governance("ticket", "add", address, tcket_amount, "Splitted_by_node_{}".format(node_nr), "yes")
     
         #Implement "mining" actually
     def slow_mine(self, number_of_bursts, num_in_each_burst, wait_between_bursts, wait_inside_burst):

@@ -49,43 +49,73 @@ int GetUTXOConfirmations(const COutPoint& outpoint)
 }
 
 #ifdef ENABLE_WALLET
-bool GetMasternodeOutpointAndKeys(CWallet* pWalletMain, COutPoint& outpointRet, CPubKey& pubKeyRet, CKey& keyRet, std::string strTxHash, std::string strOutputIndex)
+bool GetMasternodeOutpointAndKeys(CWallet* pWalletMain, string &error, COutPoint& outpointRet, CPubKey& pubKeyRet, CKey& keyRet, std::string strTxHash, std::string strOutputIndex)
 {
+    error.clear();
     // wait for reindex and/or import to finish
-    if (fImporting || fReindex || !pWalletMain)
+    if (fImporting)
+    {
+        error = "Importing blocks";
         return false;
+    }
+    if (fReindex)
+    {
+        error = "Reindexing blocks";
+        return false;
+    }
+    if (!pWalletMain)
+    {
+        error = "Wallet is not defined";
+        return false;
+    }
 
     // Find possible candidates
     std::vector<COutput> vPossibleCoins;
     pWalletMain->AvailableCoins(vPossibleCoins, true, nullptr, false, true, masterNodeCtrl.MasternodeCollateral, true);
-    if(vPossibleCoins.empty())
+    if (vPossibleCoins.empty())
     {
-        LogPrintf("GetMasternodeOutpointAndKeys -- Could not locate any valid masternode vin\n");
+        error = "Could not locate any valid masternode vin";
+        LogFnPrintf(error.c_str());
         return false;
     }
 
     if (strTxHash.empty()) // No output specified, select the first one
-        return GetOutpointAndKeysFromOutput(pWalletMain, vPossibleCoins[0], outpointRet, pubKeyRet, keyRet);
+        return GetOutpointAndKeysFromOutput(pWalletMain, error, vPossibleCoins[0], outpointRet, pubKeyRet, keyRet);
 
     // Find specific vin
     const uint256 txHash = uint256S(strTxHash);
-    int nOutputIndex = atoi(strOutputIndex.c_str());
+    const int nOutputIndex = atoi(strOutputIndex.c_str());
 
     for (const auto& out : vPossibleCoins)
     {
         if (out.tx->GetHash() == txHash && out.i == nOutputIndex) // found it!
-            return GetOutpointAndKeysFromOutput(pWalletMain, out, outpointRet, pubKeyRet, keyRet);
+            return GetOutpointAndKeysFromOutput(pWalletMain, error, out, outpointRet, pubKeyRet, keyRet);
     }
 
-    LogPrintf("GetMasternodeOutpointAndKeys -- Could not locate specified masternode vin\n");
+    error = "Could not locate specified masternode vin";
+    LogFnPrintf(error);
     return false;
 }
 
-bool GetOutpointAndKeysFromOutput(CWallet* pWalletMain, const COutput& out, COutPoint& outpointRet, CPubKey& pubKeyRet, CKey& keyRet)
+bool GetOutpointAndKeysFromOutput(CWallet* pWalletMain, string &error, const COutput& out, COutPoint& outpointRet, CPubKey& pubKeyRet, CKey& keyRet)
 {
+    error.clear();
     // wait for reindex and/or import to finish
-    if (fImporting || fReindex || !pWalletMain)
+    if (fImporting)
+    {
+        error = "Importing blocks";
         return false;
+    }
+    if (fReindex)
+    {
+        error = "Reindexing blocks";
+        return false;
+    }
+    if (!pWalletMain)
+    {
+        error = "Wallet is not defined";
+        return false;
+    }
 
     CScript pubScript;
 
@@ -98,13 +128,15 @@ bool GetOutpointAndKeysFromOutput(CWallet* pWalletMain, const COutput& out, COut
     const CKeyID *keyID = std::get_if<CKeyID>(&dest);
     if (!keyID)
     {
-        LogPrintf("GetOutpointAndKeysFromOutput -- Address does not refer to a key\n");
+        error = "Address does not refer to a key";
+        LogFnPrintf(error.c_str());
         return false;
     }
 
     if (!pWalletMain->GetKey(*keyID, keyRet))
     {
-        LogPrintf ("GetOutpointAndKeysFromOutput -- Private key for address is not known\n");
+        error = "Private key for address is not known";
+        LogFnPrintf(error.c_str());
         return false;
     }
 
@@ -125,7 +157,7 @@ void FillOtherBlockPayments(CMutableTransaction& txNew, int nBlockHeight, CAmoun
     // FILL BLOCK PAYEE WITH MASTERNODE PAYMENT
     masterNodeCtrl.masternodePayments.FillMasterNodePayment(txNew, nBlockHeight, blockReward, txoutMasternodeRet);
 
-    LogPrint("mnpayments", "FillOtherBlockPayments -- nBlockHeight %d blockReward %lld txoutMasternodeRet %s txoutGovernanceRet %s txNew %s",
+    LogFnPrint("mnpayments", "nBlockHeight %d blockReward %" PRId64 " txoutMasternodeRet %s txoutGovernanceRet %s txNew %s",
                             nBlockHeight, blockReward, txoutMasternodeRet.ToString(), txoutGovernanceRet.ToString(), txNew.ToString());
 }
 
@@ -156,7 +188,7 @@ bool IsBlockValid(const Consensus::Params& consensusParams, const CBlock& block,
         const bool fInitialDownload = fnIsInitialBlockDownload(consensusParams);
         //there is no data to use to check anything, let's just accept the longest chain
         if (fDebug && !fInitialDownload)
-            LogPrintf("IsBlockValid -- WARNING: Client not synced, skipping block payee checks\n");
+            LogFnPrintf("WARNING: Client not synced, skipping block payee checks");
         return true;
     }
 
@@ -175,6 +207,6 @@ bool IsBlockValid(const Consensus::Params& consensusParams, const CBlock& block,
 #endif // GOVERNANCE_TICKETS
 
     // there was no MN for Governance payments on this block
-    LogPrint("mnpayments", "IsBlockValid -- Valid masternode payment at height %d: %s", nBlockHeight, block.vtx[0].ToString());
+    LogFnPrint("mnpayments", "Valid masternode payment at height %d: %s", nBlockHeight, block.vtx[0].ToString());
     return true;
 }

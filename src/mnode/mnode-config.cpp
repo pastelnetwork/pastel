@@ -12,6 +12,7 @@
 #include <netbase.h>
 #include <chainparams.h>
 #include <util.h>
+#include <str_utils.h>
 #include <port_config.h>
 
 using json = nlohmann::json;
@@ -19,20 +20,21 @@ using namespace std;
 
 /*
     {
-        "mn1": {                                //alias
-            "mnAddress": "10.10.10.10:1111",    //MN's ip and port
-            "mnPrivKey": "",                    //MN's private key
-            "txid": "",                         //collateral_output_txid
-            "outIndex": "",                     //collateral_output_index
+        "mn1": {                                 // alias
+            "mnAddress": "10.10.10.10:1111",     // MN's ip and port
+            "mnPrivKey": "",                     // MN's private key
+            "txid": "",                          // collateral_output_txid
+            "outIndex": "",                      // collateral_output_index
 
-            "extAddress": "10.10.10.10:1111",    //StoVaCore's ip and port
-            "extKey": "",                        //StoVaCore's private key
-            "extCfg": {},                        //StoVaCore's config
+            "extAddress": "10.10.10.10:1111",    // The address and port of the MN's Storage Layer
+            "extP@P:port" "10.10.10.10:1111",    // The address and port of the MN's Kademlia point
+            "extKey": "",                        // StoVaCore's private key
+            "extCfg": {},                        // StoVaCore's config
         }
     }
 */
 
-bool isOutIdxValid(string& outIdx, string alias, string& strErr)
+bool isOutIdxValid(string& outIdx, const string &alias, string& strErr)
 {
     bool retVal = false;
     char* p = nullptr;
@@ -59,7 +61,7 @@ bool isOutIdxValid(string& outIdx, string alias, string& strErr)
     return retVal;
 }
 
-bool checkIPAddressPort(string& address, string alias, bool checkPort, string& strErr)
+bool checkIPAddressPort(string& address, const string &alias, const bool checkPort, string& strErr)
 {
     uint16_t port = 0;
     string hostname;
@@ -90,27 +92,57 @@ bool checkIPAddressPort(string& address, string alias, bool checkPort, string& s
     }
     return true;
 }
-string get_string(json::iterator& it, string name)
+
+string get_json_cfg_property(const json& cfg, const string &name)
 {
-    if (it->count(name) && !it->at(name).is_null() && it->at(name).is_string())
-        return it->at(name);
-    return "";
-}
-string get_obj_as_string(json::iterator& it, string name)
-{
-    if (it->count(name) && !it->at(name).is_null() && it->at(name).is_object())
-        return it->at(name).dump();
+    if (cfg.count(name) && !cfg.at(name).is_null() && cfg.at(name).is_string())
+        return cfg.at(name);
     return "";
 }
 
-bool CMasternodeConfig::read(string& strErr)
+string get_json_cfg_obj_as_string(const json& cfg, const string &name)
+{
+    if (cfg.count(name) && !cfg.at(name).is_null() && cfg.at(name).is_object())
+        return cfg.at(name).dump();
+    return "";
+}
+
+bool CMasternodeConfig::AliasExists(const std::string& alias) const noexcept
+{
+    unique_lock<mutex> lck(m_mtx);
+    const auto it = m_CfgEntries.find(lowercase(alias));
+    return it != m_CfgEntries.cend();
+}
+
+/**
+ * Get MN entry by alias.
+ * 
+ * \param alias - MN alias to search for (case insensitive search)
+ * \param mne - output entry
+ * \return true if entry found by alias
+ */
+bool CMasternodeConfig::GetEntryByAlias(const std::string& alias, CMasternodeConfig::CMasternodeEntry &mne) const noexcept
+{
+    unique_lock<mutex> lck(m_mtx);
+
+    const auto it = m_CfgEntries.find(lowercase(alias));
+    if (it != m_CfgEntries.cend())
+    {
+        mne = it->second;
+        return true;
+    }
+    return false;
+}
+
+bool CMasternodeConfig::read(string& strErr, const bool bNewOnly)
 {
     fs::path pathMasternodeConfigFile = masterNodeCtrl.GetMasternodeConfigFile();
     fs::ifstream streamConfig(pathMasternodeConfigFile);
 
-    nlohmann::json jsonObj;
+    json jsonObj;
 
-    if (!streamConfig.good()) {
+    if (!streamConfig.good())
+    {
         jsonObj = 
         {
             {"mnAlias", {
@@ -135,6 +167,7 @@ bool CMasternodeConfig::read(string& strErr)
     {
         streamConfig >> jsonObj;
         streamConfig.close();
+        LogPrintf("Read MN config from file [%s]\n", pathMasternodeConfigFile.string());
     }
     catch(const json::exception& e)
     {
@@ -150,23 +183,33 @@ bool CMasternodeConfig::read(string& strErr)
     }
     
     string strWhat;
-    for (json::iterator it = jsonObj.begin(); it != jsonObj.end(); ++it) {
-        
-        if (it.key().empty() || !it->count("mnAddress") || !it->count("mnPrivKey") || !it->count("txid") || !it->count("outIndex")) {
-            strErr = strprintf("Invalid record - %s", jsonObj.dump());
+    string alias_lowercased, mnAddress, mnPrivKey, txid, outIndex, extAddress, extKey, extCfg, extP2P;
+
+    unique_lock<mutex> lck(m_mtx);
+    for (const auto &[alias, cfg] : jsonObj.items())
+    {
+        if (alias.empty() || !cfg.count("mnAddress") || !cfg.count("mnPrivKey") || !cfg.count("txid") || !cfg.count("outIndex"))
+        {
+            str_append_field(strErr, strprintf("Invalid record - %s", jsonObj.dump()).c_str(), "; ");
             continue;
         }
 
-        string alias, mnAddress, mnPrivKey, txid, outIndex, extAddress, extKey, extCfg, extP2P;
-        
-        alias = it.key();
+        alias_lowercased = lowercase(alias);
+        const auto it = m_CfgEntries.find(alias_lowercased);
+        if (it != m_CfgEntries.cend())
+        {
+            if (!bNewOnly)
+                str_append_field(strErr, strprintf("MasterNode alias '%s' already exists", alias).c_str(), "; ");
+            continue;
+        }
 
-        mnAddress = get_string(it, "mnAddress");
-        mnPrivKey = get_string(it, "mnPrivKey");
-        txid = get_string(it, "txid");
-        outIndex = get_string(it, "outIndex");
+        mnAddress = get_json_cfg_property(cfg, "mnAddress");
+        mnPrivKey = get_json_cfg_property(cfg, "mnPrivKey");
+        txid = get_json_cfg_property(cfg, "txid");
+        outIndex = get_json_cfg_property(cfg, "outIndex");
 
-        if (mnAddress.empty() || mnPrivKey.empty() || txid.empty() || outIndex.empty()) {
+        if (mnAddress.empty() || mnPrivKey.empty() || txid.empty() || outIndex.empty())
+        {
             strWhat = strprintf("Missing mnAddress=%s OR mnPrivKey=%s OR txid=%s OR outIndex=%s", mnAddress, mnPrivKey, txid, outIndex);
             continue;
         }
@@ -177,33 +220,39 @@ bool CMasternodeConfig::read(string& strErr)
             return false;
         }
 
-        if (!checkIPAddressPort(mnAddress, alias, true, strErr)) {
+        if (!checkIPAddressPort(mnAddress, alias, true, strErr))
+        {
             strErr += " (mnAddress)";
             return false;
         }
 
-        extAddress = get_string(it, "extAddress");
-        if (!extAddress.empty() && !checkIPAddressPort(extAddress, alias, false, strErr)) {
+        extAddress = get_json_cfg_property(cfg, "extAddress");
+        if (!extAddress.empty() && !checkIPAddressPort(extAddress, alias, false, strErr))
+        {
             strErr += " (extAddress)";
             return false;
         }
 
-        extP2P = get_string(it, "extP2P");
-        if (!extP2P.empty() && !checkIPAddressPort(extP2P, alias, false, strErr)) {
+        extP2P = get_json_cfg_property(cfg, "extP2P");
+        if (!extP2P.empty() && !checkIPAddressPort(extP2P, alias, false, strErr))
+        {
             strErr += " (extP2P)";
             return false;
         }
 
-        extKey = get_string(it, "extKey");
-        extCfg = get_obj_as_string(it, "extCfg");
+        extKey = get_json_cfg_property(cfg, "extKey");
+        extCfg = get_json_cfg_obj_as_string(cfg, "extCfg");
 
-        if (extCfg.length() > 1024) extCfg.erase(1024, string::npos);
+        if (extCfg.length() > 1024)
+            extCfg.erase(1024, string::npos);
 
-        CMasternodeEntry cme(alias, mnAddress, mnPrivKey, txid, outIndex, extAddress, extP2P, extKey, extCfg);
-        entries.push_back(cme);
+        CMasternodeEntry cme(alias, move(mnAddress), move(mnPrivKey), move(txid), move(outIndex), 
+            move(extAddress), move(extP2P), move(extKey), move(extCfg));
+        m_CfgEntries.emplace(alias_lowercased, cme);
     }
 
-    if (getCount() == 0) {
+    if (m_CfgEntries.empty())
+    {
         strErr = strprintf("Config file %s is invalid (%s) - no correct records found - %s\n", pathMasternodeConfigFile.string(), strWhat, jsonObj.dump());
         return false;
     }
@@ -214,20 +263,20 @@ bool CMasternodeConfig::read(string& strErr)
 int CMasternodeConfig::getCount() const noexcept
 {
     unique_lock<mutex> lck(m_mtx);
-    return (int)entries.size();
+    return (int)m_CfgEntries.size();
 }
 
 string CMasternodeConfig::getAlias(const COutPoint &outpoint) const noexcept
 {
     unique_lock<mutex> lck(m_mtx);
     string sAlias;
-    const auto it = find_if(entries.cbegin(), entries.cend(), [&](const CMasternodeEntry& mne)
+    const auto it = find_if(m_CfgEntries.cbegin(), m_CfgEntries.cend(), [&](const auto& pair)
         {
-            return (outpoint.hash.ToString() == mne.getTxHash()) && 
-                (to_string(outpoint.n) == mne.getOutputIndex());
+            return (outpoint.hash.ToString() == pair.second.getTxHash()) && 
+                (to_string(outpoint.n) == pair.second.getOutputIndex());
         });
-    if (it != entries.cend())
-        sAlias = it->getAlias();
+    if (it != m_CfgEntries.cend())
+        sAlias = it->second.getAlias();
     return sAlias;
 }
 

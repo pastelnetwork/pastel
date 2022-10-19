@@ -135,7 +135,7 @@ void CPastelTicketProcessor::UpdatedBlockTip(const CBlockIndex* cBlockIndex, boo
     CBlock block;
     if (!ReadBlockFromDisk(block, cBlockIndex, Params().GetConsensus()))
     {
-        LogPrintf("CPastelTicket::UpdatedBlockTip -- ERROR: Can't read block from disk\n");
+        LogFnPrintf("ERROR: Can't read block from disk");
         return;
     }
 
@@ -184,7 +184,7 @@ bool CPastelTicketProcessor::UpdateDB(CPastelTicket &ticket, string& txid, const
     if (ticket.HasMVKeyThree())
         UpdateDB_MVK(ticket, ticket.MVKeyThree());
         
-    //LogPrintf("tickets", "CPastelTicketProcessor::UpdateDB -- Ticket added into DB with key %s (txid - %s)\n", ticket.KeyOne(), ticket.ticketTnx);
+    //LogFnPrintf("tickets", "Ticket added into DB with key %s (txid - %s)", ticket.KeyOne(), ticket.ticketTnx);
     return true;
 }
 
@@ -654,7 +654,7 @@ unique_ptr<CPastelTicket> CPastelTicketProcessor::GetTicket(const uint256 &txid)
     }
 
     if (!ticket)
-        LogPrintf("CPastelTicketProcessor::GetTicket -- Invalid ticket ['%s', txid=%s]. ERROR: %s\n", 
+        LogFnPrintf("Invalid ticket ['%s', txid=%s]. ERROR: %s", 
             GetTicketDescription(ticket_id), tx.GetHash().GetHex(), error_ret);
 
     return ticket;

@@ -1,26 +1,17 @@
 #!/usr/bin/env python3
-# Copyright (c) 2018-2021 The Pastel Core developers
+# Copyright (c) 2018-2022 The Pastel Core developers
 # Distributed under the MIT software license, see the accompanying
-# file COPYING or http://www.opensource.org/licenses/mit-license.php.
-
-from test_framework.util import assert_equal, assert_greater_than, assert_true, initialize_chain_clean
-from mn_common import MasterNodeCommon
+# file COPYING or https://www.opensource.org/licenses/mit-license.php.
 import time
-from test_framework.authproxy import JSONRPCException
-
 from decimal import getcontext
+
+from test_framework.util import assert_equal, initialize_chain_clean
+from mn_common import MasterNodeCommon
+
 getcontext().prec = 16
 
-# 4 Master Nodes
-private_keys_list = ["91sY9h4AQ62bAhNk1aJ7uJeSnQzSFtz7QmW5imrKmiACm7QJLXe",  # 0
-                     "923JtwGJqK6mwmzVkLiG6mbLkhk1ofKE1addiM8CYpCHFdHDNGo",  # 1
-                     "91wLgtFJxdSRLJGTtbzns5YQYFtyYLwHhqgj19qnrLCa1j5Hp5Z",  # 2
-                     "92XctTrjQbRwEAAMNEwKqbiSAJsBNuiR2B8vhkzDX4ZWQXrckZv"  # 3
-                     ]
-
-
 class MasterNodeMessagingTest(MasterNodeCommon):
-    number_of_master_nodes = len(private_keys_list)
+    number_of_master_nodes = 4
     number_of_simple_nodes = 3
     total_number_of_nodes = number_of_master_nodes+number_of_simple_nodes
 
@@ -40,14 +31,12 @@ class MasterNodeMessagingTest(MasterNodeCommon):
     def setup_network(self, split=False):
         self.nodes = []
         self.is_network_split = False
-        self.setup_masternodes_network(private_keys_list, self.number_of_simple_nodes)
+        self.setup_masternodes_network(self.number_of_master_nodes, self.number_of_simple_nodes,
+            self.mining_node_num, self.hot_node_num, self.number_of_master_nodes)
+        
 
     def run_test(self):
-        self.mining_enough(self.mining_node_num, self.number_of_master_nodes)
-        cold_nodes = {k: v for k, v in enumerate(private_keys_list)}
-        _, _, _ = self.start_mn(self.mining_node_num, self.hot_node_num, cold_nodes, self.total_number_of_nodes)
-
-        self.reconnect_nodes(0, self.number_of_master_nodes)
+        self.reconnect_all_nodes()
         self.sync_all()
 
         mns = self.nodes[0].masternodelist("pubkey")

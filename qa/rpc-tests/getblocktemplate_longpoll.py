@@ -43,7 +43,7 @@ class LongpollThread(threading.Thread):
         self.longpollid = templat['longpollid']
         # create a new connection to the node, we can't use the same
         # connection from two threads
-        self.node = AuthServiceProxy(node.url, timeout=600)
+        self.node = AuthServiceProxy(0, node.url, timeout=600)
 
     def run(self):
         self.node.getblocktemplate({'longpollid':self.longpollid})

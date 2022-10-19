@@ -1,17 +1,17 @@
 #!/usr/bin/env python3
-# Copyright (c) 2018-2021 The Pastel Core developers
+# Copyright (c) 2018-2022 The Pastel Core developers
 # Distributed under the MIT software license, see the accompanying
-# file COPYING or http://www.opensource.org/licenses/mit-license.php.
-import math
+# file COPYING or https://www.opensource.org/licenses/mit-license.php.
 import base64
+from decimal import getcontext
 
 from test_framework.util import (
-    assert_equal, 
+    assert_equal,
     assert_raises_rpc,
-    assert_true, 
-    assert_raises, 
+    assert_true,
+    assert_raises,
     assert_raises_message,
-    assert_shows_help, 
+    assert_shows_help,
     start_nodes,
     connect_nodes_bi
 )
@@ -19,7 +19,6 @@ from pastel_test_framework import PastelTestFramework
 from test_framework.authproxy import JSONRPCException
 import test_framework.rpc_consts as rpc
 
-from decimal import Decimal, getcontext
 getcontext().prec = 16
 
 class SecureContainerTest(PastelTestFramework):
@@ -44,7 +43,7 @@ class SecureContainerTest(PastelTestFramework):
         print(" -pastelid help")
         assert_shows_help(self.nodes[0].pastelid)
 
-        coinbase_addr1 = self.nodes[1].getnewaddress()
+        self.nodes[1].getnewaddress()
         taddr1 = self.nodes[1].getnewaddress()
 
         print(" -pastelid newkey")

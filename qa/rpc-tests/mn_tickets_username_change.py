@@ -2,6 +2,8 @@
 # Copyright (c) 2021-2022 The Pastel Core developers
 # Distributed under the MIT software license, see the accompanying
 # file COPYING or https://www.opensource.org/licenses/mit-license.php.
+from decimal import getcontext
+
 from test_framework.util import (
     assert_equal,
     assert_true,
@@ -14,7 +16,6 @@ from test_framework.util import (
 from pastel_test_framework import PastelTestFramework
 import test_framework.rpc_consts as rpc
 
-from decimal import Decimal, getcontext
 getcontext().prec = 16
 
 class UserNameChangeTest(PastelTestFramework):

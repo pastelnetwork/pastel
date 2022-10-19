@@ -187,7 +187,7 @@ ticket_validation_t CPastelIDRegTicket::IsValid(const bool bPreReg, const uint32
                             outpoint.ToStringShort(), pastelID);
                         break;
                     }
-                    if (!mnInfo.IsEnabled())
+                    if (!mnInfo.IsEnabled() && !mnInfo.IsPreEnabled())
                     {
                         tv.errorMsg = strprintf(
                             "Not an active Masternode - [%s]. Pastel ID - [%s]", 

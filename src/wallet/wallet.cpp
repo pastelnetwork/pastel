@@ -3645,36 +3645,36 @@ void CWallet::UpdatedTransaction(const uint256 &hashTx)
     }
 }
 
-void CWallet::LockCoin(COutPoint& output)
+void CWallet::LockCoin(const COutPoint& output)
 {
-    AssertLockHeld(cs_wallet); // setLockedCoins
-    setLockedCoins.insert(output);
+    AssertLockHeld(cs_wallet); // m_setLockedCoins
+    m_setLockedCoins.emplace(output);
 }
 
-void CWallet::UnlockCoin(COutPoint& output)
+void CWallet::UnlockCoin(const COutPoint& output)
 {
-    AssertLockHeld(cs_wallet); // setLockedCoins
-    setLockedCoins.erase(output);
+    AssertLockHeld(cs_wallet); // m_setLockedCoins
+    m_setLockedCoins.erase(output);
 }
 
 void CWallet::UnlockAllCoins()
 {
-    AssertLockHeld(cs_wallet); // setLockedCoins
-    setLockedCoins.clear();
+    AssertLockHeld(cs_wallet); // m_setLockedCoins
+    m_setLockedCoins.clear();
 }
 
 bool CWallet::IsLockedCoin(uint256 hash, unsigned int n) const
 {
-    AssertLockHeld(cs_wallet); // setLockedCoins
+    AssertLockHeld(cs_wallet); // m_setLockedCoins
     COutPoint outpt(hash, n);
 
-    return (setLockedCoins.count(outpt) > 0);
+    return (m_setLockedCoins.count(outpt) > 0);
 }
 
 void CWallet::ListLockedCoins(v_outpoints& vOutPoints)
 {
-    AssertLockHeld(cs_wallet); // setLockedCoins
-    for (const auto &outpoint : vOutPoints)
+    AssertLockHeld(cs_wallet); // m_setLockedCoins
+    for (const auto &outpoint : m_setLockedCoins)
         vOutPoints.emplace_back(outpoint);
 }
 
@@ -3683,31 +3683,31 @@ void CWallet::ListLockedCoins(v_outpoints& vOutPoints)
 void CWallet::LockNote(const SaplingOutPoint& output)
 {
     AssertLockHeld(cs_wallet);
-    setLockedSaplingNotes.insert(output);
+    m_setLockedSaplingNotes.emplace(output);
 }
 
 void CWallet::UnlockNote(const SaplingOutPoint& output)
 {
     AssertLockHeld(cs_wallet);
-    setLockedSaplingNotes.erase(output);
+    m_setLockedSaplingNotes.erase(output);
 }
 
 void CWallet::UnlockAllSaplingNotes()
 {
     AssertLockHeld(cs_wallet);
-    setLockedSaplingNotes.clear();
+    m_setLockedSaplingNotes.clear();
 }
 
 bool CWallet::IsLockedNote(const SaplingOutPoint& output) const
 {
     AssertLockHeld(cs_wallet);
-    return (setLockedSaplingNotes.count(output) > 0);
+    return (m_setLockedSaplingNotes.count(output) > 0);
 }
 
 vector<SaplingOutPoint> CWallet::ListLockedSaplingNotes()
 {
     AssertLockHeld(cs_wallet);
-    vector<SaplingOutPoint> vOutputs(setLockedSaplingNotes.begin(), setLockedSaplingNotes.end());
+    vector<SaplingOutPoint> vOutputs(m_setLockedSaplingNotes.cbegin(), m_setLockedSaplingNotes.cend());
     return vOutputs;
 }
 

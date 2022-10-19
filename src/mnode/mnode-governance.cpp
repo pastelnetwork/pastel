@@ -46,7 +46,7 @@ bool CMasternodeGovernance::GetCurrentPaymentTicket(int nBlockHeight, CGovernanc
         LOCK(cs_mapPayments);
         if (mapPayments.empty())
         {
-            LogPrintf("CMasternodeGovernance::GetCurrentPaymentTicket -- Payment Ticket Queue is empty\n");
+            LogFnPrintf("Payment Ticket Queue is empty");
             return false;
         }
 
@@ -59,7 +59,7 @@ bool CMasternodeGovernance::GetCurrentPaymentTicket(int nBlockHeight, CGovernanc
                 ticketId = it->second;
             else {
                 if (logError)
-                    LogPrintf("CMasternodeGovernance::GetCurrentPaymentTicket -- no tickets for the height - %d\n", nBlockHeight);
+                    LogFnPrintf("no tickets for the height - %d", nBlockHeight);
                 return false;
             }
         }
@@ -101,7 +101,7 @@ void CMasternodeGovernance::FillGovernancePayment(CMutableTransaction& txNew, in
     ExtractDestination(scriptPubKey, dest);
     string address = keyIO.EncodeDestination(dest);
 
-    LogPrintf("CMasternodeGovernance::FillGovernancePayment -- Governance payment %lld to %s\n", governancePayment, address);
+    LogFnPrintf("Governance payment %" PRId64 " to %s", governancePayment, address);
 }
 
 int CMasternodeGovernance::CalculateLastPaymentBlock(CAmount amount, int nHeight)
@@ -141,7 +141,7 @@ bool CMasternodeGovernance::AddTicket(string address, CAmount totalReward, strin
     if (!masterNodeCtrl.IsActiveMasterNode())
     {
         strErrorRet = "Only Active Master Node can add governance ticket";
-        LogPrintf("CMasternodeGovernance::AddTicket -- %s\n", strErrorRet);
+        LogFnPrintf("%s", strErrorRet);
         return false;
     }
 
@@ -151,7 +151,7 @@ bool CMasternodeGovernance::AddTicket(string address, CAmount totalReward, strin
     if (totalReward > params.nMaxGovernanceAmount)
     {
         strErrorRet = strprintf("Ticket reward is too high %d vs limit %d, exceeded governance max value", totalReward/COIN, params.nMaxGovernanceAmount/COIN);
-        LogPrintf("CMasternodeGovernance::AddTicket -- %s\n", strErrorRet);
+        LogFnPrintf("%s", strErrorRet);
         return false;
     }
 
@@ -160,7 +160,7 @@ bool CMasternodeGovernance::AddTicket(string address, CAmount totalReward, strin
     if (!IsValidDestination(destination))
     {
         strErrorRet = strprintf("Invalid address - %s", address);
-        LogPrintf("CMasternodeGovernance::AddTicket -- %s\n", strErrorRet);
+        LogFnPrintf("%s", strErrorRet);
         return false;
     }
 
@@ -177,7 +177,7 @@ bool CMasternodeGovernance::AddTicket(string address, CAmount totalReward, strin
         {
             //3.b if yes...
             strErrorRet = strprintf("Ticket for this address and amount is already registered (Address: %s; Amount: %d)", address, totalReward);
-            LogPrintf("CMasternodeGovernance::AddTicket -- %s\n", strErrorRet);
+            LogFnPrintf("%s", strErrorRet);
             return false;
         }
 
@@ -197,7 +197,7 @@ bool CMasternodeGovernance::VoteForTicket(const uint256 &ticketId, bool vote, st
     if (!masterNodeCtrl.IsActiveMasterNode())
     {
         strErrorRet = strprintf("Only Active Master Node can vote");
-        LogPrintf("CMasternodeGovernance::VoteForTicket -- %s\n", strErrorRet);
+        LogFnPrintf("%s", strErrorRet);
         return false;
     }
 
@@ -209,7 +209,7 @@ bool CMasternodeGovernance::VoteForTicket(const uint256 &ticketId, bool vote, st
     {
         //3.a if not - error
         strErrorRet = strprintf("Ticket ID (%s) not found", ticketId.ToString());
-        LogPrintf("CMasternodeGovernance::VoteForTicket -- %s\n", strErrorRet);
+        LogFnPrintf("%s", strErrorRet);
         return false;
     }
     if (!ti->second.VoteOpen(nCachedBlockHeight))
@@ -221,7 +221,7 @@ bool CMasternodeGovernance::VoteForTicket(const uint256 &ticketId, bool vote, st
             ti->second.nAmountToPay,
             ti->second.nStopVoteBlockHeight,
             nCachedBlockHeight);
-        LogPrintf("CMasternodeGovernance::VoteForTicket -- %s\n", strErrorRet);
+        LogFnPrintf("%s", strErrorRet);
         return false;
     }
 
@@ -265,7 +265,7 @@ bool CMasternodeGovernance::IsTransactionValid(const CTransaction& txNew, int nH
             tnxPayment = txout.nValue;
             if (nGovernancePayment == txout.nValue)
             {
-                LogPrint("governance", "CMasternodeGovernance::IsTransactionValid -- Found required payment\n");
+                LogFnPrint("governance", "Found required payment");
                 return true;
             }
         }
@@ -276,7 +276,7 @@ bool CMasternodeGovernance::IsTransactionValid(const CTransaction& txNew, int nH
     ExtractDestination(scriptPubKey, dest);
     string address = keyIO.EncodeDestination(dest);
 
-    LogPrintf("CMasternodeGovernance::IsTransactionValid -- ERROR: %s required governance payment, possible payees: '%s', actual amount: %f PASTEL. Should be %f PASTEL\n", 
+    LogFnPrintf("ERROR: %s required governance payment, possible payees: '%s', actual amount: %f PASTEL. Should be %f PASTEL", 
             (tnxPayment == 0)? "Missing": "Invalid",
             address,
             (float)tnxPayment/COIN,
@@ -508,7 +508,7 @@ void CMasternodeGovernance::Sync(CNode* pnode)
         }
     }
 
-    LogPrintf("CMasternodeGovernance::Sync -- Sent %d votes to peer %d\n", nInvCount, pnode->id);
+    LogFnPrintf("Sent %d votes to peer %d", nInvCount, pnode->id);
     pnode->PushMessage(NetMsgType::SYNCSTATUSCOUNT, to_integral_type(CMasternodeSync::MasternodeSyncState::Governance), nInvCount);
 }
 
@@ -544,14 +544,14 @@ void CMasternodeGovernance::CheckAndRemove()
                 ticket.nLastPaymentBlockHeight = CalculateLastPaymentBlock(ticket.nAmountToPay, ticket.nFirstPaymentBlockHeight);
                 lastScheduledPaymentBlock = ticket.nLastPaymentBlockHeight;
                 mapPayments[lastScheduledPaymentBlock] = ticket.ticketId;
-                LogPrint("governance", "CMasternodeGovernance::CheckAndRemove -- Add winner ticket to payment queue: %s\n", 
+                LogFnPrint("governance", "Add winner ticket to payment queue: %s", 
                         ticket.ToString());
             } else
                 nPastWinners++;
             ++it;
         } else if(ticket.nStopVoteBlockHeight < nCachedBlockHeight) {
             //remove losers
-            LogPrint("governance", "CMasternodeGovernance::CheckAndRemove -- Removing old, not winning ticket: nStopVoteBlockHeight=%d; current Height=%d\n", 
+            LogFnPrint("governance", "Removing old, not winning ticket: nStopVoteBlockHeight=%d; current Height=%d", 
                     ticket.nStopVoteBlockHeight,
                     nCachedBlockHeight);
             it = mapTickets.erase(it);
@@ -572,7 +572,7 @@ void CMasternodeGovernance::CheckAndRemove()
             }
         }
     }
-    LogPrintf("CMasternodeGovernance::CheckAndRemove -- %s\n", ToString());
+    LogFnPrintf("%s", ToString());
 }
 
 string CMasternodeGovernance::ToString() const
@@ -598,7 +598,7 @@ void CMasternodeGovernance::UpdatedBlockTip(const CBlockIndex *pindex)
         return;
 
     nCachedBlockHeight = pindex->nHeight;
-    LogPrint("governance", "CMasternodeGovernance::UpdatedBlockTip -- nCachedBlockHeight=%d\n", nCachedBlockHeight);
+    LogFnPrint("governance", "nCachedBlockHeight=%d", nCachedBlockHeight);
 
     ProcessBlock(nCachedBlockHeight);
 }
@@ -618,7 +618,7 @@ bool CGovernanceTicket::AddVote(CGovernanceVote& voteNew, string& error)
     if (!voteNew.IsVerified() && !voteNew.Sign())
     {
         error = strprintf("Vote signing failed for ticket = %s", GetHash().ToString());
-        LogPrintf("CGovernanceTicket::AddVote -- %s\n", error);
+        LogFnPrintf("%s", error);
         return false;
     }
 
@@ -627,7 +627,7 @@ bool CGovernanceTicket::AddVote(CGovernanceVote& voteNew, string& error)
         if (m_sigVotesMap.count(voteNew.vchSig))
         {
             error = strprintf("signature already exists: MN has already voted for this ticket = %s", voteId.ToString());
-            LogPrintf("CGovernanceTicket::AddVote -- %s\n", error);
+            LogFnPrintf("%s", error);
             return false;
         }
 
@@ -636,8 +636,8 @@ bool CGovernanceTicket::AddVote(CGovernanceVote& voteNew, string& error)
     if (voteNew.bVote)
         nYesVotes++;
 
-    LogPrintf("CGovernanceTicket::AddVote -- New vote for ticket = %s - %s vote; total votes(yes votes) - %zu(%d)\n",
-                                            voteId.ToString(), voteNew.bVote? "Yes" : "No", m_sigVotesMap.size(), nYesVotes);
+    LogFnPrintf("New vote for ticket = %s - %s vote; total votes(yes votes) - %zu(%d)",
+        voteId.ToString(), voteNew.bVote? "Yes" : "No", m_sigVotesMap.size(), nYesVotes);
     return true;
 }
 
@@ -649,8 +649,8 @@ bool CGovernanceTicket::IsWinner(const int nHeight) const noexcept
     // If number of all votes for the ticket >= 10% from current number of active MN's...
     // and number of yes votes >= 51% of all votes
     const bool bVoteOpen = VoteOpen(nHeight);
-    LogPrint("governance", "CGovernanceTicket::IsWinner -- TicketID - %s, Vote is %s, Votes = %zu, Yes Votes = %d, 10 percent of MNs is = %u\n", 
-                                                GetHash().ToString(), bVoteOpen ? "open": "closed", nVoteCount, nYesVotes, tenPercent);
+    LogFnPrint("governance", "TicketID - %s, Vote is %s, Votes = %zu, Yes Votes = %d, 10 percent of MNs is = %u", 
+        GetHash().ToString(), bVoteOpen ? "open": "closed", nVoteCount, nYesVotes, tenPercent);
     return !bVoteOpen &&
            (tenPercent > 0) &&
            (nVoteCount >= tenPercent) &&
@@ -733,11 +733,11 @@ void CGovernanceTicket::Relay()
     // Do not relay until fully synced
     if(!masterNodeCtrl.masternodeSync.IsSynced())
     {
-        LogPrintf("CGovernanceTicket::Relay -- won't relay until fully synced\n");
+        LogFnPrintf("won't relay until fully synced");
         return;
     }
 
-    LogPrintf("CGovernanceTicket::Relay -- Relaying ticket %s\n", GetHash().ToString());
+    LogFnPrintf("Relaying ticket %s", GetHash().ToString());
 
     CInv inv(MSG_MASTERNODE_GOVERNANCE, GetHash());
     CNodeHelper::RelayInv(inv);
@@ -749,17 +749,17 @@ bool CGovernanceVote::Sign()
     string strMessage = vinMasternode.prevout.ToStringShort() +
                 ticketId.ToString();
 
-    LogPrintf("CGovernanceVote::Sign -- Vote to sign: %s (%s)\n", ToString(), strMessage);
+    LogFnPrintf("Vote to sign: %s (%s)", ToString(), strMessage);
 
-    if(!CMessageSigner::SignMessage(strMessage, vchSig, masterNodeCtrl.activeMasternode.keyMasternode))
+    if (!CMessageSigner::SignMessage(strMessage, vchSig, masterNodeCtrl.activeMasternode.keyMasternode))
     {
-        LogPrintf("CGovernanceVote::Sign -- SignMessage() failed\n");
+        LogFnPrintf("SignMessage() failed");
         return false;
     }
 
     if(!CMessageSigner::VerifyMessage(masterNodeCtrl.activeMasternode.pubKeyMasternode, vchSig, strMessage, strError))
     {
-        LogPrintf("CGovernanceVote::Sign -- VerifyMessage() failed, error: %s\n", strError);
+        LogFnPrintf("VerifyMessage() failed, error: %s", strError);
         return false;
     }
 
@@ -773,7 +773,7 @@ bool CGovernanceVote::CheckSignature(const CPubKey& pubKeyMasternode, int stopVo
     // message to sign: "<mn_outpoint><ticketId>"
     const string strMessage = vinMasternode.prevout.ToStringShort() + ticketId.ToString();
 
-    LogPrintf("CGovernanceVote::CheckSignature -- Vote to check: %s (%s)\n", ToString(), strMessage);
+    LogFnPrintf("Vote to check: %s (%s)", ToString(), strMessage);
 
     string strError;
     if (!CMessageSigner::VerifyMessage(pubKeyMasternode, vchSig, strMessage, strError))
@@ -809,11 +809,11 @@ void CGovernanceVote::Relay()
     // Do not relay until fully synced
     if(!masterNodeCtrl.masternodeSync.IsSynced())
     {
-        LogPrintf("CGovernanceVote::Relay -- won't relay until fully synced\n");
+        LogFnPrintf("won't relay until fully synced");
         return;
     }
 
-    LogPrintf("CGovernanceVote::Relay -- Relaying vote %s\n", ToString());
+    LogFnPrintf("Relaying vote %s", ToString());
 
     CInv inv(MSG_MASTERNODE_GOVERNANCE_VOTE, GetHash());
     CNodeHelper::RelayInv(inv);

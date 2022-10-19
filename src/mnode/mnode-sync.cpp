@@ -2,6 +2,7 @@
 // Copyright (c) 2018-2022 The Pastel Core developers
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
+#include <inttypes.h>
 
 #include <util.h>
 #include <main.h>
@@ -40,7 +41,7 @@ void CMasternodeSync::BumpAssetLastTime(string strFuncName)
     if(IsSynced() || IsFailed())
         return;
     nTimeLastBumped = GetTime();
-    LogPrint("mnsync", "CMasternodeSync::BumpAssetLastTime -- %s\n", strFuncName);
+    LogFnPrint("mnsync", "%s", strFuncName);
 }
 
 string CMasternodeSync::GetSyncStatusShort()
@@ -83,36 +84,36 @@ void CMasternodeSync::SwitchToNextAsset()
         case(MasternodeSyncState::Initial):
             ClearFulfilledRequests();
             syncState = MasternodeSyncState::Waiting;
-            LogPrintf("CMasternodeSync::SwitchToNextAsset -- Starting %s\n", GetSyncStatus());
+            LogFnPrintf("Starting %s", GetSyncStatus());
             break;
 
         case(MasternodeSyncState::Waiting):
             ClearFulfilledRequests();
-            LogPrintf("CMasternodeSync::SwitchToNextAsset -- Completed %s in %llds\n", GetSyncStatus(), GetTime() - nTimeAssetSyncStarted);
+            LogFnPrintf("Completed %s in %" PRId64 "s", GetSyncStatus(), GetTime() - nTimeAssetSyncStarted);
             syncState = MasternodeSyncState::List;
-            LogPrintf("CMasternodeSync::SwitchToNextAsset -- Starting %s\n", GetSyncStatus());
+            LogFnPrintf("Starting %s", GetSyncStatus());
             break;
 
         case(MasternodeSyncState::List):
-            LogPrintf("CMasternodeSync::SwitchToNextAsset -- Completed %s in %llds\n", GetSyncStatus(), GetTime() - nTimeAssetSyncStarted);
+            LogFnPrintf("Completed %s in %" PRId64 "s", GetSyncStatus(), GetTime() - nTimeAssetSyncStarted);
             syncState = MasternodeSyncState::Winners;
-            LogPrintf("CMasternodeSync::SwitchToNextAsset -- Starting %s\n", GetSyncStatus());
+            LogFnPrintf("Starting %s", GetSyncStatus());
             break;
 
         case(MasternodeSyncState::Winners):
-            LogPrintf("CMasternodeSync::SwitchToNextAsset -- Completed %s in %llds\n", GetSyncStatus(), GetTime() - nTimeAssetSyncStarted);
+            LogFnPrintf("Completed %s in %" PRId64 "s", GetSyncStatus(), GetTime() - nTimeAssetSyncStarted);
             syncState = MasternodeSyncState::Governance;
 #ifdef GOVERNANCE_TICKETS
-            LogPrintf("CMasternodeSync::SwitchToNextAsset -- Starting %s\n", GetSyncStatus());
+            LogFnPrintf("Starting %s", GetSyncStatus());
 #endif // GOVERNANCE_TICKETS
             break;
 
         case(MasternodeSyncState::Governance):
 #ifdef GOVERNANCE_TICKETS
-            LogPrintf("CMasternodeSync::SwitchToNextAsset -- Completed %s in %llds\n", GetSyncStatus(), GetTime() - nTimeAssetSyncStarted);
+            LogFnPrintf("Completed %s in %" PRId64 "s", GetSyncStatus(), GetTime() - nTimeAssetSyncStarted);
 #endif // GOVERNANCE_TICKETS
             syncState = MasternodeSyncState::Finished;
-            LogPrintf("CMasternodeSync::SwitchToNextAsset -- Starting %s\n", GetSyncStatus());
+            LogFnPrintf("Starting %s", GetSyncStatus());
 
             //try to activate our masternode if possible
             masterNodeCtrl.activeMasternode.ManageState();
@@ -124,7 +125,7 @@ void CMasternodeSync::SwitchToNextAsset()
             CNodeHelper::ForEachNode(CNodeHelper::AllNodes, [](CNode* pnode) {
                 masterNodeCtrl.requestTracker.AddFulfilledRequest(pnode->addr, "full-sync");
             });
-            LogPrintf("CMasternodeSync::SwitchToNextAsset -- Sync has finished\n");
+            LogFnPrintf("Sync has finished");
             break;
         default:
             break;
@@ -170,11 +171,12 @@ void CMasternodeSync::ClearFulfilledRequests()
 bool CMasternodeSync::CheckSyncTimeout(int nTick, vector<CNode*> &vNodesCopy)
 {
     // check for timeout first
-    if(GetTime() - nTimeLastBumped > MasternodeSyncTimeoutSeconds)
+    if (GetTime() - nTimeLastBumped > MasternodeSyncTimeoutSeconds)
     {
-        LogPrintf("CMasternodeSync::ProcessTick -- nTick %d syncState %d -- timeout\n", nTick, (int)syncState);
-        if (nRequestedMasternodeAttempt == 0) {
-            LogPrintf("CMasternodeSync::ProcessTick -- ERROR: failed to sync %s\n", GetSyncStatusShort());
+        LogFnPrintf("nTick %d syncState %d -- timeout", nTick, (int)syncState);
+        if (nRequestedMasternodeAttempt == 0)
+        {
+            LogFnPrintf("ERROR: failed to sync %s", GetSyncStatusShort());
             // there is no way we can continue without masternode list, fail here and try later
             Fail();
             return false;
@@ -194,7 +196,7 @@ void CMasternodeSync::ProcessTick()
     static int64_t nTimeLastProcess = GetTime();
     if (GetTime() - nTimeLastProcess > 60*60)
     {
-        LogPrintf("CMasternodeSync::HasSyncFailures -- WARNING: no actions for too long, restarting sync...\n");
+        LogFnPrintf("WARNING: no actions for too long, restarting sync...");
         Reset();
         SwitchToNextAsset();
         nTimeLastProcess = GetTime();
@@ -207,7 +209,7 @@ void CMasternodeSync::ProcessTick()
     {
         if (nTimeLastFailure + (1*60) < GetTime())
         { // 1 minute cooldown after failed sync
-            LogPrintf("CMasternodeSync::HasSyncFailures -- WARNING: failed to sync, trying again...\n");
+            LogFnPrintf("WARNING: failed to sync, trying again...");
             Reset();
             SwitchToNextAsset();
         }
@@ -221,7 +223,7 @@ void CMasternodeSync::ProcessTick()
     double nSyncProgress = double(nRequestedMasternodeAttempt + (int)syncState * 8) / (8*4);
     if (nSyncProgress < 0)
         nSyncProgress = 0;
-    LogPrintf("CMasternodeSync::ProcessTick -- nTick %d syncState %d nRequestedMasternodeAttempt %d nSyncProgress %f\n", nTick, (int)syncState, nRequestedMasternodeAttempt, nSyncProgress);
+    LogFnPrintf("nTick %d syncState %d nRequestedMasternodeAttempt %d nSyncProgress %f", nTick, (int)syncState, nRequestedMasternodeAttempt, nSyncProgress);
 /*TEMP-->
     uiInterface.NotifyAdditionalDataSyncProgressChanged(nSyncProgress);
 <--TEMP*/
@@ -268,14 +270,14 @@ void CMasternodeSync::ProcessTick()
                 // We already fully synced from this node recently,
                 // disconnect to free this connection slot for another peer.
                 pnode->fDisconnect = true;
-                LogPrintf("CMasternodeSync::ProcessTick -- disconnecting from recently synced peer %d\n", pnode->id);
+                LogFnPrintf("disconnecting from recently synced peer %d", pnode->id);
                 continue;
             }
 
             // INITIAL TIMEOUT
-            if(syncState == MasternodeSyncState::Waiting)
+            if (syncState == MasternodeSyncState::Waiting)
             {
-                if(GetTime() - nTimeLastBumped > MasternodeSyncTimeoutSeconds)
+                if (GetTime() - nTimeLastBumped > MasternodeSyncTimeoutSeconds)
                 {
                     // At this point we know that:
                     // a) there are peers (because we are looping on at least one of them);
@@ -290,9 +292,9 @@ void CMasternodeSync::ProcessTick()
             }
 
             // MNLIST : SYNC MASTERNODE LIST FROM OTHER CONNECTED CLIENTS
-            if(syncState == MasternodeSyncState::List)
+            if (syncState == MasternodeSyncState::List)
             {
-                LogPrint("masternode", "CMasternodeSync::ProcessTick -- nTick %d syncState %d nTimeLastBumped %lld GetTime() %lld diff %lld\n", nTick, (int)syncState, nTimeLastBumped, GetTime(), GetTime() - nTimeLastBumped);
+                LogFnPrint("masternode", "nTick %d syncState %d nTimeLastBumped %lld GetTime() %lld diff %" PRId64, nTick, (int)syncState, nTimeLastBumped, GetTime(), GetTime() - nTimeLastBumped);
                 // check for timeout first
                 if (!CheckSyncTimeout(nTick, vNodesCopy))
                 {
@@ -301,7 +303,8 @@ void CMasternodeSync::ProcessTick()
                 }
 
                 // only request once from each peer
-                if(masterNodeCtrl.requestTracker.HasFulfilledRequest(pnode->addr, "masternode-list-sync")) continue;
+                if (masterNodeCtrl.requestTracker.HasFulfilledRequest(pnode->addr, "masternode-list-sync"))
+                    continue;
                 masterNodeCtrl.requestTracker.AddFulfilledRequest(pnode->addr, "masternode-list-sync");
 
                 nRequestedMasternodeAttempt++;
@@ -315,7 +318,7 @@ void CMasternodeSync::ProcessTick()
             // MNW : SYNC MASTERNODE PAYMENT VOTES FROM OTHER CONNECTED CLIENTS
             if (syncState == MasternodeSyncState::Winners)
             {
-                LogPrint("mnpayments", "CMasternodeSync::ProcessTick -- nTick %d syncState %d nTimeLastBumped %lld GetTime() %lld diff %lld\n", nTick, (int)syncState, nTimeLastBumped, GetTime(), GetTime() - nTimeLastBumped);
+                LogFnPrint("mnpayments", "nTick %d syncState %d nTimeLastBumped %lld GetTime() %" PRId64 " diff %" PRId64, nTick, (int)syncState, nTimeLastBumped, GetTime(), GetTime() - nTimeLastBumped);
                 // check for timeout first
                 // This might take a lot longer than MasternodeSyncTimeoutSeconds due to new blocks,
                 // but that should be OK and it should timeout eventually.
@@ -329,7 +332,7 @@ void CMasternodeSync::ProcessTick()
                 // try to fetch data from at least two peers though
                 if (nRequestedMasternodeAttempt > 1 && masterNodeCtrl.masternodePayments.IsEnoughData())
                 {
-                    LogPrintf("CMasternodeSync::ProcessTick -- nTick %d syncState %d -- found enough data\n", nTick, (int)syncState);
+                    LogFnPrintf("nTick %d syncState %d -- found enough data", nTick, (int)syncState);
                     SwitchToNextAsset();
                     CNodeHelper::ReleaseNodeVector(vNodesCopy);
                     return;
@@ -354,7 +357,7 @@ void CMasternodeSync::ProcessTick()
 #ifdef GOVERNANCE_TICKETS
             if(syncState == MasternodeSyncState::Governance)
             {
-                LogPrint("governace", "CMasternodeSync::ProcessTick -- nTick %d syncState %d nTimeLastBumped %lld GetTime() %lld diff %lld\n", nTick, (int)syncState, nTimeLastBumped, GetTime(), GetTime() - nTimeLastBumped);
+                LogFnPrint("governance", "nTick %d syncState %d nTimeLastBumped %" PRId64 " GetTime() %" PRId64 " diff %" PRId64, nTick, (int)syncState, nTimeLastBumped, GetTime(), GetTime() - nTimeLastBumped);
                 // check for timeout first
                 if (!CheckSyncTimeout(nTick, vNodesCopy))
                 {
@@ -389,37 +392,39 @@ void CMasternodeSync::ProcessTick()
 
 void CMasternodeSync::AcceptedBlockHeader(const CBlockIndex *pindexNew)
 {
-    LogPrint("mnsync", "CMasternodeSync::AcceptedBlockHeader -- pindexNew->nHeight: %d\n", pindexNew->nHeight);
+    LogFnPrint("mnsync", "pindexNew->nHeight: %d", pindexNew->nHeight);
 
-    if (!IsBlockchainSynced()) {
+    if (!IsBlockchainSynced())
+    {
         // Postpone timeout each time new block header arrives while we are still syncing blockchain
-        BumpAssetLastTime("CMasternodeSync::AcceptedBlockHeader");
+        BumpAssetLastTime(__METHOD_NAME__);
     }
 }
 
 void CMasternodeSync::NotifyHeaderTip(const CBlockIndex *pindexNew, bool fInitialDownload)
 {
-    LogPrint("mnsync", "CMasternodeSync::NotifyHeaderTip -- pindexNew->nHeight: %d fInitialDownload=%d\n", pindexNew->nHeight, fInitialDownload);
+    LogFnPrint("mnsync", "pindexNew->nHeight: %d fInitialDownload=%d", pindexNew->nHeight, fInitialDownload);
 
     if (IsFailed() || IsSynced() || !pindexBestHeader)
         return;
 
-    if (!IsBlockchainSynced()) {
+    if (!IsBlockchainSynced())
+    {
         // Postpone timeout each time new block arrives while we are still syncing blockchain
-        BumpAssetLastTime("CMasternodeSync::NotifyHeaderTip");
+        BumpAssetLastTime(__METHOD_NAME__);
     }
 }
 
 void CMasternodeSync::UpdatedBlockTip(const CBlockIndex *pindexNew, bool fInitialDownload)
 {
-    LogPrint("mnsync", "CMasternodeSync::UpdatedBlockTip -- pindexNew->nHeight: %d fInitialDownload=%d\n", pindexNew->nHeight, fInitialDownload);
+    LogFnPrint("mnsync", "pindexNew->nHeight: %d fInitialDownload=%d", pindexNew->nHeight, fInitialDownload);
 
     if (IsFailed() || IsSynced() || !pindexBestHeader)
         return;
 
     if (!IsBlockchainSynced()) {
         // Postpone timeout each time new block arrives while we are still syncing blockchain
-        BumpAssetLastTime("CMasternodeSync::UpdatedBlockTip");
+        BumpAssetLastTime(__METHOD_NAME__);
     }
 
     if (fInitialDownload) {
@@ -447,10 +452,11 @@ void CMasternodeSync::UpdatedBlockTip(const CBlockIndex *pindexNew, bool fInitia
 
     fReachedBestHeader = fReachedBestHeaderNew;
 
-    LogPrint("mnsync", "CMasternodeSync::UpdatedBlockTip -- pindexNew->nHeight: %d pindexBestHeader->nHeight: %d fInitialDownload=%d fReachedBestHeader=%d\n",
+    LogFnPrint("mnsync", "pindexNew->nHeight: %d pindexBestHeader->nHeight: %d fInitialDownload=%d fReachedBestHeader=%d",
                 pindexNew->nHeight, pindexBestHeader->nHeight, fInitialDownload, fReachedBestHeader);
 
-    if (!IsBlockchainSynced() && fReachedBestHeader) {
+    if (!IsBlockchainSynced() && fReachedBestHeader)
+    {
         // Reached best header while being in initial mode.
         // We must be at the tip already, let's move to the next asset.
         SwitchToNextAsset();

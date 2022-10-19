@@ -6,6 +6,7 @@
 #if defined(HAVE_CONFIG_H)
 #include "config/bitcoin-config.h"
 #endif
+#include <str_utils.h>
 #include <key_io.h>
 #include <init.h>
 #include <main.h>
@@ -365,6 +366,12 @@ UniValue masternode_winner(const UniValue& params, KeyIO &keyIO, const bool bIsC
 }
 
 #ifdef ENABLE_WALLET
+/**
+ * Start Master Node by alias.
+ * 
+ * \param params - "MN alias"
+ * \return 
+ */
 UniValue masternode_start_alias(const UniValue& params)
 {
     if (params.size() < 2)
@@ -382,28 +389,38 @@ UniValue masternode_start_alias(const UniValue& params)
     UniValue statusObj(UniValue::VOBJ);
     statusObj.pushKV(RPC_KEY_ALIAS, strAlias);
 
-    for (const auto& mne : masterNodeCtrl.masternodeConfig.getEntries())
+    // refresh mn config, read new aliases only
+    string strErr;
+    if (!masterNodeCtrl.masternodeConfig.read(strErr, true))
     {
-        if (mne.getAlias() == strAlias)
-        {
-            fFound = true;
-            string strError;
-            CMasternodeBroadcast mnb;
-
-            const bool fResult = CMasternodeBroadcast::Create(mne.getIp(), mne.getPrivKey(), mne.getTxHash(), mne.getOutputIndex(),
-                mne.getExtIp(), mne.getExtP2P(), mne.getExtKey(), mne.getExtCfg(),
-                strError, mnb);
-
-            statusObj.pushKV(RPC_KEY_RESULT, get_rpc_result(fResult));
-            if (fResult)
-            {
-                masterNodeCtrl.masternodeManager.UpdateMasternodeList(mnb);
-                mnb.Relay();
-            } else
-                statusObj.pushKV(RPC_KEY_ERROR_MESSAGE, strError);
-            break;
-        }
+        LogPrintf("Failed to read MasterNode configuration file. %s", strErr);
     }
+
+    CMasternodeConfig::CMasternodeEntry mne;
+    size_t nProcessed = 0;
+    if (masterNodeCtrl.masternodeConfig.GetEntryByAlias(strAlias, mne))
+    {
+        // found MasterNode by alias
+        fFound = true;
+        string strError;
+        CMasternodeBroadcast mnb;
+
+        const bool fResult = CMasternodeBroadcast::Create(mne.getIp(), mne.getPrivKey(), mne.getTxHash(), mne.getOutputIndex(),
+            mne.getExtIp(), mne.getExtP2P(), mne.getExtKey(), mne.getExtCfg(),
+            strError, mnb);
+
+        statusObj.pushKV(RPC_KEY_RESULT, get_rpc_result(fResult));
+        if (fResult)
+        {
+            masterNodeCtrl.masternodeManager.UpdateMasternodeList(mnb);
+            mnb.Relay();
+            ++nProcessed;
+        }
+        else
+            statusObj.pushKV(RPC_KEY_ERROR_MESSAGE, strError);
+    }
+    if (nProcessed)
+        masterNodeCtrl.LockMnOutpoints(pwalletMain);
 
     if (!fFound)
     {
@@ -424,16 +441,23 @@ UniValue masternode_start_all(const UniValue& params, const bool bStartMissing, 
     if ((bStartMissing || bStartDisabled) && !masterNodeCtrl.masternodeSync.IsMasternodeListSynced())
         throw JSONRPCError(RPC_CLIENT_IN_INITIAL_DOWNLOAD, "You can't use this command until masternode list is synced");
 
-    int nSuccessful = 0;
-    int nFailed = 0;
+    size_t nSuccessful = 0;
+    size_t nFailed = 0;
+
+    // refresh mn config, read new aliases only
+    string strErr;
+    if (!masterNodeCtrl.masternodeConfig.read(strErr, true))
+    {
+        LogPrintf("Failed to read MasterNode configuration file. %s", strErr);
+    }
 
     UniValue resultsObj(UniValue::VOBJ);
 
-    for (const auto& mne : masterNodeCtrl.masternodeConfig.getEntries())
+    for (const auto& [alias, mne] : masterNodeCtrl.masternodeConfig.getEntries())
     {
         string strError;
 
-        COutPoint outpoint = mne.getOutPoint();
+        const COutPoint outpoint = mne.getOutPoint();
         CMasternode mn;
         const bool fFound = masterNodeCtrl.masternodeManager.Get(outpoint, mn);
         CMasternodeBroadcast mnb;
@@ -453,19 +477,22 @@ UniValue masternode_start_all(const UniValue& params, const bool bStartMissing, 
 
         if (fResult)
         {
-            nSuccessful++;
+            ++nSuccessful;
             masterNodeCtrl.masternodeManager.UpdateMasternodeList(mnb);
             mnb.Relay();
         } else {
-            nFailed++;
+            ++nFailed;
             statusObj.pushKV(RPC_KEY_ERROR_MESSAGE, strError);
         }
 
         resultsObj.pushKV(RPC_KEY_STATUS, move(statusObj));
     }
+    if (nSuccessful)
+        masterNodeCtrl.LockMnOutpoints(pwalletMain);
 
     UniValue returnObj(UniValue::VOBJ);
-    returnObj.pushKV("overall", strprintf("Successfully started %d masternodes, failed to start %d, total %d", nSuccessful, nFailed, nSuccessful + nFailed));
+    returnObj.pushKV("overall", strprintf("Successfully started %d masternodes, failed to start %zu, total %zu",
+        nSuccessful, nFailed, nSuccessful + nFailed));
     returnObj.pushKV("detail", resultsObj);
 
     return returnObj;
@@ -662,7 +689,7 @@ UniValue masternode_list_conf(const UniValue& params)
 {
     UniValue resultObj(UniValue::VOBJ);
 
-    for (const auto& mne : masterNodeCtrl.masternodeConfig.getEntries())
+    for (const auto& [alias, mne] : masterNodeCtrl.masternodeConfig.getEntries())
     {
         COutPoint outpoint = mne.getOutPoint();
         CMasternode mn;

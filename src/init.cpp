@@ -191,7 +191,7 @@ void Shutdown(CServiceThreadGroup& threadGroup, CScheduler &scheduler)
     /// for example if the data directory was found to be locked.
     /// Be sure that anything that writes files or flushes caches only does this if the respective
     /// module was initialized.
-    RenameThread("pastel-shutoff");
+    RenameThread("psl-shutoff");
     mempool.AddTransactionsUpdated(1);
 
     StopHTTPRPC();
@@ -624,7 +624,7 @@ void CleanupBlockRevFiles()
 
 void ThreadImport(std::vector<fs::path> vImportFiles)
 {
-    RenameThread("pastel-loadblk");
+    RenameThread("psl-loadblk");
     const auto& chainparams = Params();
     // -reindex
     if (fReindex) {

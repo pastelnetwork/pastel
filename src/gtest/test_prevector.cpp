@@ -35,7 +35,7 @@ class prevector_tester {
              EXPECT_EQ(&(pre_vector[s]) , &*(pre_vector.begin() + s));
              EXPECT_EQ(&(pre_vector[s]) , &*((pre_vector.end() + s) - real_vector.size()));
         }
-        // BOOST_CHECK(realtype(pre_vector) == real_vector);
+
         EXPECT_EQ(pretype(real_vector.begin(), real_vector.end()) , pre_vector);
         EXPECT_EQ(pretype(pre_vector.begin(), pre_vector.end()) , pre_vector);
         size_t pos = 0;

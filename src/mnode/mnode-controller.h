@@ -100,13 +100,16 @@ public:
 
     bool IsMasterNode() const noexcept { return fMasterNode; }
     bool IsActiveMasterNode() const noexcept { return fMasterNode && activeMasternode.IsStarted(); }
+    bool CanRegisterMnId() const noexcept { return fMasterNode && (activeMasternode.IsStarted() || activeMasternode.NeedMnId()); }
     int GetSupportedProtocolVersion() const noexcept;
 
 #ifdef ENABLE_WALLET
     bool EnableMasterNode(std::ostringstream& strErrors, CServiceThreadGroup& threadGroup, CWallet* pwalletMain);
+    void LockMnOutpoints(CWallet* pWalletMain); // lock MN outpoints
 #else
     bool EnableMasterNode(std::ostringstream& strErrors, CServiceThreadGroup& threadGroup);
 #endif
+
     void StartMasterNode(CServiceThreadGroup& threadGroup);
     void StopMasterNode();
 

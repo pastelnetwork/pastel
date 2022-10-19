@@ -503,7 +503,7 @@ void static BitcoinMiner()
 {
     LogPrintf("PastelMiner started\n");
     SetThreadPriority(THREAD_PRIORITY_LOWEST);
-    RenameThread("pastel-miner");
+    RenameThread("psl-miner");
 
 #ifdef ENABLE_WALLET
     // Each thread has its own key

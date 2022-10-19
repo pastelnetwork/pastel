@@ -18,8 +18,8 @@ int GetUTXOConfirmations(const COutPoint& outpoint);
 void FillOtherBlockPayments(CMutableTransaction& txNew, int nBlockHeight, CAmount blockReward, CTxOut& txoutMasternodeRet, CTxOut& txoutGovernanceRet);
 
 #ifdef ENABLE_WALLET
-    bool GetMasternodeOutpointAndKeys(CWallet* pwalletMain, COutPoint& outpointRet, CPubKey& pubKeyRet, CKey& keyRet, std::string strTxHash, std::string strOutputIndex);
-    bool GetOutpointAndKeysFromOutput(CWallet* pwalletMain, const COutput& out, COutPoint& outpointRet, CPubKey& pubKeyRet, CKey& keyRet);
+    bool GetMasternodeOutpointAndKeys(CWallet* pwalletMain, std::string &error, COutPoint& outpointRet, CPubKey& pubKeyRet, CKey& keyRet, std::string strTxHash, std::string strOutputIndex);
+    bool GetOutpointAndKeysFromOutput(CWallet* pwalletMain, std::string &error, const COutput& out, COutPoint& outpointRet, CPubKey& pubKeyRet, CKey& keyRet);
 #endif
 
 bool IsBlockValid(const Consensus::Params& consensusParams, 
