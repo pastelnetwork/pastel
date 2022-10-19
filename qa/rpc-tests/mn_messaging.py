@@ -36,9 +36,6 @@ class MasterNodeMessagingTest(MasterNodeCommon):
         
 
     def run_test(self):
-        self.reconnect_all_nodes()
-        self.sync_all()
-
         mns = self.nodes[0].masternodelist("pubkey")
         for out in mns:
             print(mns[out])

@@ -43,9 +43,6 @@ class MasterNodeGovernanceTest (MasterNodeCommon):
             self.mining_node_num, self.hot_node_num, self.number_of_master_nodes)
 
     def run_test (self):
-        self.reconnect_all_nodes()
-        self.sync_all()
-
         print("Run freedcamp ID specific test")
         
         if(TEST_CASE_EXEC_NR == 40300409):

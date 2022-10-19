@@ -20,6 +20,55 @@ from test_framework.util import (
 )
 getcontext().prec = 16
 
+class TicketData:
+    def __init__(self):
+        self.reg_ticket = None              # Registration ticket
+        self.reg_txid: str = None           # Registration ticket txid
+        self.reg_height: int = None         # Registration ticket block height
+        self.reg_node_id: int = None        # Node where ticket was registered
+        self.reg_pastelid: str = None       # Pastel ID of the Registration ticket NFT Creator/Action Caller, etc..
+        self.pastelid_node_id: int = None   # Node where reg_pastelid is created
+
+        self.act_txid: str = None           # Activation ticket txid
+        self.act_height: int = None         # Activation ticket block height
+
+        self.offer_txid: str = None         # Offer ticket txid
+        self.accept_txid: str = None        # Accept ticket txid
+        self.transfer_txid: str = None      # Transfer ticket txid
+
+        self.label: str = None              # unique label
+        self.item_price: int = 0            # item price
+        self.ticket_price: int = 10         # ticket price
+        self.royalty_address: str = None    # NFT Royalty address
+        self.address = None                 # address that can be used in a ticket
+
+
+class TopMN:
+    def __init__(self, index: int, pastelid: str = None):
+        self._index_ = index
+        self._pastelid_ = pastelid
+        self._signature_ = None
+
+    @property
+    def index(self) -> int:
+        return self._index_
+
+    @property
+    def pastelid(self) -> str:
+        return self._pastelid_
+
+    @property
+    def signature(self) -> str:
+        return self._signature_
+
+    @signature.setter
+    def signature(self, value):
+        self._signature_ = value
+
+    def __repr__(self) -> str:
+        return f"[{self.index}, {self.pastelid}]"
+
+
 class MasterNodeCommon (PastelTestFramework):
 
     """ Class to represent MasterNode.
@@ -114,11 +163,38 @@ class MasterNodeCommon (PastelTestFramework):
         self.use_masternode_init = False
 
 
-    def setup_masternodes_network(self, mn_count=1, non_mn_count: int = 2,
-                                  mining_node_num=1, hot_node_num=2, cold_node_count=1,
+    def setup_masternodes_network(self, mn_count:int = 1, non_mn_count: int = 2,
+                                  mining_node_num:int = 1, hot_node_num:int = 2,
+                                  cold_node_count: int = None,
                                   debug_flags: str = ""):
+        """ Setup MasterNode network using hot/cold method.
+            Hot node keeps all collaterals for all MNs (cold nodes).
+            Network initialization steps:
+            - simple nodes are started and connected with each other
+            - required amount is mined on miner node to be able to initialize the given number of Masternodes
+            - collateral amounts (self.collateral) sent to all collateral addresses
+            - configuration for all MNs is generated on hot node.
+            - all MNs are started and connected with each other and simple nodes
+            - Pastel IDs are created on all MNs
+            - coins required for mnid registration sent to all MNs
+            - Hot node calls "masternode start-alias" to start all MNs
+            - wait for PRE_ENABLED status for all MNs
+            - register mnids on all MNs
+            - wait for ENABLED status for all MNs
+
+        Args:
+            mn_count (int, optional): number of MasterNodes. Defaults to 1.
+            non_mn_count (int, optional): Number of simple nodes. Defaults to 2.
+            mining_node_num (int, optional): Mining node number. Defaults to 1.
+            hot_node_num (int, optional): Hot node number. Defaults to 2.
+            cold_node_count (int, optional): Cold node number. Defaults to None.
+            debug_flags (str, optional): Additional debug flags for nodes. Defaults to "".
+        """
         timer = Timer()
         timer.start()
+        
+        if cold_node_count is None:
+            cold_node_count = mn_count
         # create list of mns
         # start only non-mn nodes
         for index in range(mn_count + non_mn_count):
@@ -234,7 +310,6 @@ class MasterNodeCommon (PastelTestFramework):
                 self.sync_all(10, 3)
             self.sync_all(10, 30)
 
-
             print("Waiting for ENABLED status...")
             initial_wait = 15
             for mn in self.mn_nodes:
@@ -242,7 +317,9 @@ class MasterNodeCommon (PastelTestFramework):
                     continue
                 self.wait_for_mn_state(initial_wait, 10, "ENABLED", mn.index, 10)
                 initial_wait = 0
-     
+
+        self.reconnect_all_nodes()
+        self.sync_all()
         timer.stop()
         print(f"<<<< MasterNode network INITIALIZED in {timer.elapsed_time} secs >>>>")
 

@@ -2,7 +2,6 @@
 # Copyright (c) 2018-2022 The Pastel Core developers
 # Distributed under the MIT software license, see the accompanying
 # file COPYING or https://www.opensource.org/licenses/mit-license.php.
-from argparse import Action
 import json
 import time
 import random
@@ -19,7 +18,11 @@ from test_framework.util import (
     initialize_chain_clean,
     str_to_b64str
 )
-from mn_common import MasterNodeCommon
+from mn_common import (
+    MasterNodeCommon,
+    TicketData,
+    TopMN
+)
 from pastel_test_framework import (
     TicketType,
     ActionType,
@@ -31,55 +34,6 @@ import test_framework.rpc_consts as rpc
 getcontext().prec = 16
 
 TEST_COLLECTION_NAME = "My NFT Collection"
-
-class TicketData:
-    def __init__(self):
-        self.reg_ticket = None              # Registration ticket
-        self.reg_txid: str = None           # Registration ticket txid
-        self.reg_height: int = None         # Registration ticket block height
-        self.reg_node_id: int = None        # Node where ticket was registered
-        self.reg_pastelid: str = None       # Pastel ID of the Registration ticket NFT Creator/Action Caller, etc..
-        self.pastelid_node_id: int = None   # Node where reg_pastelid is created
-
-        self.act_txid: str = None           # Activation ticket txid
-        self.act_height: int = None         # Activation ticket block height
-
-        self.offer_txid: str = None         # Offer ticket txid
-        self.accept_txid: str = None        # Accept ticket txid
-        self.transfer_txid: str = None      # Transfer ticket txid
-
-        self.label: str = None              # unique label
-        self.item_price: int = 0            # item price
-        self.ticket_price: int = 10         # ticket price
-        self.royalty_address: str = None    # NFT Royalty address
-        self.address = None                 # address that can be used in a ticket
-
-
-class TopMN:
-    def __init__(self, index: int, pastelid: str = None):
-        self._index_ = index
-        self._pastelid_ = pastelid
-        self._signature_ = None
-
-    @property
-    def index(self) -> int:
-        return self._index_
-
-    @property
-    def pastelid(self) -> str:
-        return self._pastelid_
-
-    @property
-    def signature(self) -> str:
-        return self._signature_
-
-    @signature.setter
-    def signature(self, value):
-        self._signature_ = value
-
-    def __repr__(self) -> str:
-        return f"[{self.index}, {self.pastelid}]"
-
 
 class MasterNodeTicketsTest(MasterNodeCommon):
     number_of_master_nodes = 13
@@ -108,7 +62,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         self.storage_fee80percent = self.storage_fee*8/10
         self.is_mn_pastel_ids_initialized = False
         self.nested_ownership_transfer_txid  = None
-        self.single_offer_transfer_txids = list()
+        self.single_offer_transfer_txids = []
 
         self.mn_addresses = {}
         self.mn_pastelids = {}
@@ -146,9 +100,9 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         self.creator_nonregistered_pastelid1 = None
         self.mn2_nonregistered_pastelid1 = None     # not registered Pastel ID
         self.total_copies = None
-        self.principal_signatures_dict = dict()     # dict of all principal signatures for validation: 'principal Pastel ID' -> 'signature'
+        self.principal_signatures_dict = {}     # dict of all principal signatures for validation: 'principal Pastel ID' -> 'signature'
         self.nft_collection_name = None
-        self.tickets = dict()
+        self.tickets = {}
         for name, member in TicketType.__members__.items():
             self.tickets[member] = TicketData()
             self.tickets[member].ticket_price = member.ticket_price
@@ -174,8 +128,6 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         self.inc_ticket_counter(TicketType.MNID, self.number_of_master_nodes - 1)
 
     def run_test(self):
-        self.reconnect_all_nodes()
-        self.sync_all()
         self.miner_address = self.nodes[self.mining_node_num].getnewaddress()
 
         self.pastelid_tests()
@@ -1091,7 +1043,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         top_masternodes = self.nodes[nodeNum].masternode("top", creator_height)[str(creator_height)]
         print(f"top_masternodes ({creator_height}) - {top_masternodes}")
 
-        top_mns_indexes = list()
+        top_mns_indexes = []
         for mn in top_masternodes:
             index = self.mn_outpoints[mn["outpoint"]]
             top_mns_indexes.append(index)

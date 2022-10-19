@@ -32,9 +32,6 @@ class MasterNodePaymentTest (MasterNodeCommon):
             self.mining_node_num, self.hot_node_num, self.number_of_master_nodes)
 
     def run_test (self):
-        self.reconnect_all_nodes()
-        self.sync_all()
-        
         start_block = self.nodes[0].getinfo()["blocks"]
         next_block = start_block + 11
 
