@@ -6,11 +6,11 @@
 #include <string>
 #include <map>
 
-#include "chainparams.h"
-#include "net.h"
-#include "sync.h"
-#include "primitives/transaction.h"
-#include "key.h"
+#include <chainparams.h>
+#include <net.h>
+#include <sync.h>
+#include <primitives/transaction.h>
+#include <key.h>
 
 // Responsible for activating the Masternode and pinging the network
 class CActiveMasternode
@@ -25,11 +25,13 @@ public:
     enum class ActiveMasternodeState : uint8_t
     {
         Initial        = 0, // initial state
-        SyncInProcess  = 1,
-        InputTooNew    = 2,
-        NotCapable     = 3,
-        Started        = 4,
-        COUNT          = 5
+        SyncInProcess,
+        InputTooNew,
+        NotCapable,
+        NeedMnId,
+        Started,
+
+        COUNT
     };
 
     typedef struct _ActiveMNStateInfo
@@ -45,6 +47,7 @@ protected:
                { ActiveMasternodeState::SyncInProcess,   "SYNC_IN_PROCESS" },
                { ActiveMasternodeState::InputTooNew,     "INPUT_TOO_NEW" },
                { ActiveMasternodeState::NotCapable,      "NOT_CAPABLE" },
+               { ActiveMasternodeState::NeedMnId,        "NEED_MNID" },
                { ActiveMasternodeState::Started,         "STARTED" }
         }};
     
@@ -71,15 +74,10 @@ public:
     ActiveMasternodeState nState;
     std::string strNotCapableReason;
 
-
-    CActiveMasternode()
-        : mnType(MasternodeType::Unknown),
-          fPingerEnabled(false),
-          pubKeyMasternode(),
-          keyMasternode(),
-          outpoint(),
-          service(),
-          nState(ActiveMasternodeState::Initial)
+    CActiveMasternode() :
+        mnType(MasternodeType::Unknown),
+        fPingerEnabled(false),
+        nState(ActiveMasternodeState::Initial)
     {}
 
     /// Manage state of active Masternode
@@ -97,8 +95,11 @@ public:
     std::string GetStatus() const noexcept;
     std::string GetTypeString() const noexcept;
     bool IsStarted() const noexcept { return nState == ActiveMasternodeState::Started; }
+    bool NeedMnId() const noexcept { return nState == ActiveMasternodeState::NeedMnId; }
 
 private:
     void ManageStateInitial();
     void ManageStateRemote();
+    // check that mnid is registered
+    bool CheckMnId(const COutPoint &outPoint);
 };

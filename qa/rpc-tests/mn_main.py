@@ -3,36 +3,32 @@
 # Distributed under the MIT software license, see the accompanying
 # file COPYING or https://www.opensource.org/licenses/mit-license.php.
 
-from test_framework.test_framework import BitcoinTestFramework
+import time
+from decimal import Decimal, getcontext
+
 from test_framework.util import (
-    assert_equal, 
+    assert_equal,
+    assert_true,
     assert_greater_than,
     assert_shows_help,
     assert_raises_rpc,
     initialize_chain_clean,
-    start_node, 
-    connect_nodes_bi,
+    start_node,
     stop_node
 )
 from mn_common import MasterNodeCommon
 import test_framework.rpc_consts as rpc
 
-import os
-import sys
-import time
-
-from decimal import Decimal, getcontext
 getcontext().prec = 16
 
-private_keys_list = ["91sY9h4AQ62bAhNk1aJ7uJeSnQzSFtz7QmW5imrKmiACm7QJLXe"]
 
 class MasterNodeMainTest (MasterNodeCommon):
-    number_of_master_nodes = len(private_keys_list)
+    number_of_master_nodes = 1
     number_of_simple_nodes = 2
     total_number_of_nodes = number_of_master_nodes+number_of_simple_nodes
-    cold_node_num = 0
-    mining_node_num = 1
-    hot_node_num = 2
+    cold_node_num = 0       # master node
+    mining_node_num = 1     # mining node
+    hot_node_num = 2        # keeps all collateral for MNs
 
     def setup_chain(self):
         print(f"Initializing test directory {self.options.tmpdir}")
@@ -41,49 +37,41 @@ class MasterNodeMainTest (MasterNodeCommon):
     def setup_network(self, split=False):
         self.nodes = []
         self.is_network_split = False
-        self.setup_masternodes_network(private_keys_list, self.number_of_simple_nodes)
-        # self.setup_masternodes_network_new(self.number_of_master_nodes, self.number_of_simple_nodes, self.mining_node_num, self.hot_node_num)
+        self.setup_masternodes_network(self.number_of_master_nodes, self.number_of_simple_nodes,
+            self.mining_node_num, self.hot_node_num, self.number_of_master_nodes)
+
 
     def storagefee_tests (self):
-            print("=== Test MN Fees ===")
-            assert_shows_help(self.nodes[0].storagefee)
+        print("=== Test MN Fees ===")
+        assert_shows_help(self.nodes[0].storagefee)
 
-            nfee_mn0 = self.nodes[0].storagefee("getnetworkfee")["networkfee"]
-            nfee_mn1 = self.nodes[1].storagefee("getnetworkfee")["networkfee"]
-            nfee_mn2 = self.nodes[2].storagefee("getnetworkfee")["networkfee"]
-            assert_equal(nfee_mn0, 50)
-            assert_equal(nfee_mn1, 50)
-            assert_equal(nfee_mn2, 50)
-            print("Network fee is ", nfee_mn0)
+        nfee_mn0 = self.nodes[0].storagefee("getnetworkfee")["networkfee"]
+        nfee_mn1 = self.nodes[1].storagefee("getnetworkfee")["networkfee"]
+        nfee_mn2 = self.nodes[2].storagefee("getnetworkfee")["networkfee"]
+        assert_equal(nfee_mn0, 50)
+        assert_equal(nfee_mn1, 50)
+        assert_equal(nfee_mn2, 50)
+        print("Network fee is ", nfee_mn0)
 
-            lfee_mn0 = self.nodes[0].storagefee("getlocalfee")["localfee"]
-            assert_equal(lfee_mn0, 50)
-            print("Local fee of MN0 is ", lfee_mn0)
+        lfee_mn0 = self.nodes[0].storagefee("getlocalfee")["localfee"]
+        assert_equal(lfee_mn0, 50)
+        print("Local fee of MN0 is ", lfee_mn0)
 
-            assert_raises_rpc(rpc.RPC_INVALID_PARAMETER, "storagefee getactionfees",
-                self.nodes[0].storagefee, "getactionfees")
-            assert_raises_rpc(rpc.RPC_INVALID_PARAMETER, "negative",
-                self.nodes[0].storagefee, "getactionfees", "-10")
-            actionfees = self.nodes[0].storagefee("getactionfees", "10")
-            assert_equal(10, actionfees["datasize"])
-            sense_fee = actionfees["sensefee"]
-            cascade_fee = actionfees["cascadefee"]
-            print(f"action fee [sense]: {sense_fee}")
-            print(f"action fee [cascade]: {cascade_fee}")
-            assert_greater_than(sense_fee, 0)
-            assert_greater_than(cascade_fee, 0)
+        assert_raises_rpc(rpc.RPC_INVALID_PARAMETER, "storagefee getactionfees",
+            self.nodes[0].storagefee, "getactionfees")
+        assert_raises_rpc(rpc.RPC_INVALID_PARAMETER, "negative",
+            self.nodes[0].storagefee, "getactionfees", "-10")
+        actionfees = self.nodes[0].storagefee("getactionfees", "10")
+        assert_equal(10, actionfees["datasize"])
+        sense_fee = actionfees["sensefee"]
+        cascade_fee = actionfees["cascadefee"]
+        print(f"action fee [sense]: {sense_fee}")
+        print(f"action fee [cascade]: {cascade_fee}")
+        assert_greater_than(sense_fee, 0)
+        assert_greater_than(cascade_fee, 0)
 
     def run_test (self):
         tests = ['cache', 'sync', 'ping', 'restart', 'spent', 'fee']
-
-        print("=== Test MN basics ===")
-        self.mining_enough(1, 2)
-
-        print("=== Test MN activation ===")
-        cold_nodes = {k: v for k, v in enumerate(private_keys_list)}
-        mn_ids, mn_aliases, _ = self.start_mn(self.mining_node_num, self.hot_node_num, cold_nodes, self.total_number_of_nodes)
-        mn_id = mn_ids[self.cold_node_num]
-        mn_alias = mn_aliases[self.cold_node_num]
 
         # tests = ['cache', 'sync', 'ping', 'restart', 'spent', "fee"]
         if 'fee' in tests:
@@ -98,126 +86,128 @@ class MasterNodeMainTest (MasterNodeCommon):
         # tests = ['cache', 'sync', 'ping', 'restart', 'spent', "fee"]
         if 'cache' in tests:
             print("=== Test cache save/load ===")
-            print("Stopping node 1...")
-            stop_node(self.nodes[1],1)
-            print("Starting node 1...")
-            self.nodes.append(start_node(1, self.options.tmpdir, ["-debug=masternode"]))
-            connect_nodes_bi(self.nodes,1,0)
-            connect_nodes_bi(self.nodes,1,2)
+            print(f"Stopping node {self.mining_node_num}...")
+            stop_node(self.nodes[self.mining_node_num])
+            print(f"Starting node {self.mining_node_num}...")
+            self.nodes[self.mining_node_num] = start_node(self.mining_node_num, self.options.tmpdir, ["-debug=masternode"])
+            self.reconnect_node(self.mining_node_num)
             self.sync_all()
 
-            self.wait_for_mn_state(10, 10, "ENABLED", self.nodes[0:self.total_number_of_nodes], mn_id)
+            mn_id = 0
+            mn = self.mn_nodes[mn_id]
+            print(f"Waiting for {mn.alias} ENABLED state...")
+            self.wait_for_mn_state(10, 10, "ENABLED", mn_id)
 
+            mn_params = ["-debug=masternode", "-masternode", "-txindex=1", "-reindex", f"-masternodeprivkey={self.mn_nodes[mn_id].privKey}"]
             #Test disk cache 2
-            print("Stopping node 0 - Masternode...")
-            stop_node(self.nodes[0],0)
-            print("Starting node 0 as Masternode...")
-            self.nodes.append(start_node(0, self.options.tmpdir, ["-debug=masternode", "-masternode", "-txindex=1", "-reindex", "-masternodeprivkey=91sY9h4AQ62bAhNk1aJ7uJeSnQzSFtz7QmW5imrKmiACm7QJLXe"]))
-            connect_nodes_bi(self.nodes,0,1)
-            connect_nodes_bi(self.nodes,0,2)
+            print(f"Stopping node {self.cold_node_num}...")
+            stop_node(self.nodes[self.cold_node_num])
+            print(f"Starting node {self.cold_node_num} as Masternode...")
+            self.nodes[self.cold_node_num] = start_node(self.cold_node_num, self.options.tmpdir, mn_params)
+            self.reconnect_node(self.cold_node_num)
             self.sync_all()
 
-            self.wait_for_mn_state(20, 10, "ENABLED", self.nodes[0:self.total_number_of_nodes], mn_id)
+            print(f"Waiting for {mn.alias} ENABLED state...")
+            self.wait_for_mn_state(20, 10, "ENABLED", mn_id)
 
         # tests = ['cache', 'sync', 'ping', 'restart', 'spent', "fee"]
         if 'sync' in tests:
             print("=== Test MN list sync ===")
             print("Test new node sync")
-            print("Starting node 3...")
-            self.nodes.append(start_node(3, self.options.tmpdir, ["-debug=masternode"]))
-            connect_nodes_bi(self.nodes,3,0)
-            connect_nodes_bi(self.nodes,3,1)
-            connect_nodes_bi(self.nodes,3,2)
-            self.total_number_of_nodes = 4
+            new_node_no = len(self.nodes)
+            print(f"Starting node {new_node_no}...")
+            self.nodes.append(start_node(new_node_no, self.options.tmpdir, ["-debug=masternode"]))
+            self.reconnect_node(new_node_no)
+            self.total_number_of_nodes = len(self.nodes)
             self.sync_all()
 
-            self.wait_for_mn_state(20, 10, "ENABLED", self.nodes[0:self.total_number_of_nodes], mn_id)
+            print(f"Waiting for {mn.alias} ENABLED state...")
+            self.wait_for_mn_state(20, 10, "ENABLED", mn_id)
 
         # tests = ['cache', 'sync', 'ping', 'restart', 'spent', "fee"]
         if 'ping' in tests:
             print("=== Test Ping ===")
-            print("Stopping node 0 - Masternode...")
-            stop_node(self.nodes[0],0)
+            print(f"Stopping Masternode {self.cold_node_num}...")
+            stop_node(self.nodes[self.cold_node_num])
 
-            self.wait_for_mn_state(150, 50, "EXPIRED", self.nodes[1:self.total_number_of_nodes], mn_id)
+            print(f"Waiting for {mn.alias} EXPIRED state on all other nodes...")
+            self.wait_for_mn_state(30, 20, "EXPIRED", mn_id, 8, self.nodes[1:])
 
-            print("Starting node 0 as Masternode again...")
-            self.nodes.append(start_node(0, self.options.tmpdir, ["-debug=masternode", "-masternode", "-txindex=1", "-reindex", "-masternodeprivkey=91sY9h4AQ62bAhNk1aJ7uJeSnQzSFtz7QmW5imrKmiACm7QJLXe"]))
-            connect_nodes_bi(self.nodes,0,1)
-            connect_nodes_bi(self.nodes,0,2)
-            if self.total_number_of_nodes > 3:
-                connect_nodes_bi(self.nodes,0,3)
+            print(f"Starting node {self.cold_node_num} as Masternode again...")
+            self.nodes[self.cold_node_num] = start_node(self.cold_node_num, self.options.tmpdir, mn_params)
+            self.reconnect_node(self.cold_node_num)
             self.sync_all()
             
-            self.wait_for_mn_state(120, 20, "ENABLED", self.nodes[0:self.total_number_of_nodes], mn_id)
+            print(f"Waiting for {mn.alias} ENABLED state...")
+            self.wait_for_mn_state(30, 20, "ENABLED", mn_id, 8)
         
         # tests = ['cache', 'sync', 'ping', 'restart', 'spent', "fee"]
         if 'restart' in tests:
             print("=== Test 'restart required' ===")
-            print("Stopping node 0 - Masternode...")
-            stop_node(self.nodes[0],0)
+            print(f"Stopping Masternode {self.cold_node_num}...")
+            stop_node(self.nodes[self.cold_node_num])
 
-            self.wait_for_mn_state(150, 50, "EXPIRED", self.nodes[1:self.total_number_of_nodes], mn_id)
-            self.wait_for_mn_state(360, 30, "NEW_START_REQUIRED", self.nodes[1:self.total_number_of_nodes], mn_id)
+            print(f"Waiting for {mn.alias} EXPIRED state on all other nodes...")
+            self.wait_for_mn_state(30, 20, "EXPIRED", mn_id, 10, self.nodes[1:])
+            
+            print(f"Waiting for {mn.alias} NEW_START_REQUIRED state on all other nodes...")
+            self.wait_for_mn_state(60, 30, "NEW_START_REQUIRED", mn_id, 10, self.nodes[1:])
+            
             # regtest, the NEW_START_REQUIRED masternode is longer than 10 minutes will not be shown.
-            self.wait_for_mn_state(240, 30, "", self.nodes[1:self.total_number_of_nodes], mn_id)
+            self.wait_for_mn_state(60, 30, "", mn_id, 10, self.nodes[1:])
 
-            print("Starting node 0 as Masternode again...")
-            self.nodes.append(start_node(0, self.options.tmpdir, ["-debug=masternode", "-masternode", "-txindex=1", "-reindex", "-masternodeprivkey=91sY9h4AQ62bAhNk1aJ7uJeSnQzSFtz7QmW5imrKmiACm7QJLXe"]))
-            connect_nodes_bi(self.nodes,0,1)
-            connect_nodes_bi(self.nodes,0,2)
-            if self.total_number_of_nodes > 3:
-                connect_nodes_bi(self.nodes,0,3)
+            print(f"Starting node {self.cold_node_num} as Masternode again...")
+            self.nodes[self.cold_node_num] = start_node(self.cold_node_num, self.options.tmpdir, mn_params)
+            self.reconnect_node(self.cold_node_num)
             self.sync_all()
 
             print("Enabling node 0 as MN again (start-alias from node 2)...")
-            res = self.nodes[2].masternode("start-alias", mn_alias)
+            res = self.nodes[self.hot_node_num].masternode("start-alias", mn.alias)
             print(res)
-            assert_equal(res["alias"], mn_alias)
+            assert_equal(res["alias"], mn.alias)
             assert_equal(res["result"], "successful")
 
             # self.wait_for_mn_state(30, 10, "PRE_ENABLED", self.nodes[0:self.total_number_of_nodes], mn_id, 6)
-            self.wait_for_mn_state(120, 20, "ENABLED", self.nodes[0:self.total_number_of_nodes], mn_id, 5)
+            print(f"Waiting for {mn.alias} ENABLED state...")
+            self.wait_for_mn_state(30, 20, "ENABLED", mn_id, 9)
 
         # tests = ['cache', 'sync', 'ping', 'restart', 'spent', "fee"]
         if 'spent' in tests:
             print("=== Test MN Spent ===")
 
-            assert_equal(self.nodes[2].getbalance(), self.collateral)
-            usp = self.nodes[2].listlockunspent()
-            print("{0}-{1}".format(usp[0]['txid'],usp[0]['vout']))
-            callateral_outpoint = mn_id.split('-')
-            assert_equal(usp[0]['txid'], callateral_outpoint[0])
-            assert_equal(Decimal(usp[0]['vout']), Decimal(callateral_outpoint[1]))
+            assert_equal(self.nodes[self.hot_node_num].getbalance(), self.collateral)
+            usp = self.nodes[self.hot_node_num].listlockunspent()
+            assert_true(usp, "No locked MN outpoints found")
+            print(f"{usp[0]['txid']}-{usp[0]['vout']}")
+            assert_equal(usp[0]['txid'], mn.collateral_txid)
+            assert_equal(Decimal(usp[0]['vout']), Decimal(mn.collateral_index))
 
             print("Unlocking locked output...")
             locked = [{"txid":usp[0]['txid'], "vout":usp[0]['vout']}]
-            assert_equal(self.nodes[2].lockunspent(True, locked), True)
+            assert_equal(self.nodes[self.hot_node_num].lockunspent(True, locked), True)
 
-            print("Sending 100 coins from node 2 to node 1...")
-            newaddr = self.nodes[1].getnewaddress()
-            self.nodes[2].sendtoaddress(newaddr, 100, "", "", False)
-            self.sync_all()
-            self.nodes[1].generate(1)
-            self.sync_all()
+            print(f"Sending 100 coins from node {self.hot_node_num} to node {self.mining_node_num}...")
+            newaddr = self.nodes[self.mining_node_num].getnewaddress()
+            self.nodes[self.hot_node_num].sendtoaddress(newaddr, 100, "", "", False)
+            self.generate_and_sync_inc(1)
 
-            balance = self.nodes[2].getbalance()
+            balance = self.nodes[self.hot_node_num].getbalance()
             print(balance)
             assert_greater_than(Decimal(str(self.collateral)), Decimal(balance))
 
-            print(self.nodes[0].masternode("status")["status"])
-            # self.wait_for_mn_state(10, 10, "OUTPOINT_SPENT", self.nodes[0:self.total_number_of_nodes], mn_id, 3)
+            print(self.nodes[self.cold_node_num].masternode("status")["status"])
+            # self.wait_for_mn_state(10, 10, "OUTPOINT_SPENT", mn_id, 3)
 
             for _ in range(10):
-                result = self.nodes[0].masternode("status")["status"]
+                result = self.nodes[self.cold_node_num].masternode("status")["status"]
                 if result != "Not capable masternode: Masternode not in masternode list":
                     print(result)
                     print('Waiting 20 seconds...')
                     time.sleep(20)
                 else: break
 
-            print(self.nodes[0].masternode("status")["status"])
-            assert_equal(self.nodes[0].masternode("status")["status"], "Not capable masternode: Masternode not in masternode list")
+            print(self.nodes[self.cold_node_num].masternode("status")["status"])
+            assert_equal(self.nodes[self.cold_node_num].masternode("status")["status"], "Not capable masternode: Masternode not in masternode list")
 
         print("All set...")
 

@@ -190,7 +190,7 @@ def initialize_chain(test_dir):
         for i in range(4):
             try:
                 url = "http://rt:rt@127.0.0.1:%d"%(rpc_port(i),)
-                rpcs.append(AuthServiceProxy(url))
+                rpcs.append(AuthServiceProxy(i, url))
             except:
                 sys.stderr.write("Error connecting to "+url+"\n")
                 sys.exit(1)
@@ -256,11 +256,11 @@ def _rpchost_to_args(rpchost):
         rv += ['-rpcport=' + rpcport]
     return rv
 
-def start_node(i, dirname, extra_args=None, rpchost=None, timewait=None, binary=None):
+def start_node(node_index, dirname, extra_args=None, rpchost=None, timewait=None, binary=None):
     """
     Start a pasteld and return RPC connection to it
     """
-    datadir = str(Path(dirname, "node" +str(i)).absolute())
+    datadir = str(Path(dirname, "node" +str(node_index)).absolute())
     if binary is None:   
         binary = find_pasteld_binary()
 
@@ -271,7 +271,7 @@ def start_node(i, dirname, extra_args=None, rpchost=None, timewait=None, binary=
     ])
     if extra_args is not None:
         args.extend(extra_args)
-    pasteld_processes[i] = subprocess.Popen(args)
+    pasteld_processes[node_index] = subprocess.Popen(args)
     devnull = open("/dev/null", "w+")
     if os.getenv("PYTHON_DEBUG", ""):
         print("start_node: pasteld started, calling pastel-cli -rpcwait getblockcount")
@@ -281,11 +281,11 @@ def start_node(i, dirname, extra_args=None, rpchost=None, timewait=None, binary=
     if os.getenv("PYTHON_DEBUG", ""):
         print("start_node: calling pastel-cli -rpcwait getblockcount returned")
     devnull.close()
-    url = "http://rt:rt@%s:%d" % (rpchost or '127.0.0.1', rpc_port(i))
+    url = "http://rt:rt@%s:%d" % (rpchost or '127.0.0.1', rpc_port(node_index))
     if timewait is not None:
-        proxy = AuthServiceProxy(url, timeout=timewait, _alias=str(i))
+        proxy = AuthServiceProxy(node_index, url, timeout=timewait)
     else:
-        proxy = AuthServiceProxy(url, _alias=str(i))
+        proxy = AuthServiceProxy(node_index, url)
     proxy.url = url # store URL on proxy for info
     return proxy
 
@@ -304,17 +304,21 @@ def start_nodes(num_nodes, dirname, extra_args=None, rpchost=None, binary=None):
 def log_filename(dirname, n_node, logname):
     return os.path.join(dirname, "node"+str(n_node), "regtest", logname)
 
-def check_node(i):
-    pasteld_processes[i].poll()
-    return pasteld_processes[i].returncode
+def check_node(i) -> int:
+    process = pasteld_processes[i]
+    if process is None:
+        return None
+    process.poll()
+    return process.returncode
 
-def stop_node(node, i):
+def stop_node(node):
     try:
         node.stop()
     except http.client.CannotSendRequest as e:
         print("WARN: Unable to stop node: " + repr(e))
-    pasteld_processes[i].wait()
-    del pasteld_processes[i]
+    if node.index is not None:
+        pasteld_processes[node.index].wait()
+        pasteld_processes[node.index] = None
 
 def stop_nodes(nodes):
     for node in (n for n in nodes if n is not None):
@@ -331,7 +335,8 @@ def set_node_times(nodes, t):
 def wait_pastelds():
     # Wait for all pastelds to cleanly exit
     for pasteld in list(pasteld_processes.values()):
-        pasteld.wait()
+        if pasteld is not None:
+            pasteld.wait()
     pasteld_processes.clear()
 
 def connect_nodes(from_connection, node_num):
@@ -497,7 +502,7 @@ def assert_raises_rpc(expected_code, expected_error_substring, func, *args, **kw
         if expected_code and (expected_code != code):
             raise AssertionError(f"Invalid JSONRPCException code {code}, expected {expected_code} in {e!r}")
         if expected_error_substring and expected_error_substring not in str(e):
-            raise AssertionError(f"Invalid JSONRPCException message: Couldn't find {repr(expected_error_substring)} in {e!r}")
+            raise AssertionError(f"Invalid JSONRPCException message: Couldn't find {expected_error_substring!r} in {e!r}")
         print(f" >>> RPC Exception received:\n{e!r}.\n <<< Expected substring: [{expected_error_substring}]");
     except Exception as e:
         raise AssertionError("Unexpected exception raised: "+type(e).__name__)
@@ -610,3 +615,38 @@ def check_node_log(self, node_number, line_to_check, stop_node = True):
 
 def nuparams(branch_id, height):
     return '-nuparams=%x:%d' % (branch_id, height)
+
+
+class Timer:
+    """ Simple timer class.
+    """
+    def __init__(self):
+        self._start_time = None
+        self._elapsed_time = None
+
+
+    def start(self):
+        """ Check if the timer is running and start if not.
+        """
+        if self._start_time is None:
+            self._start_time = time.perf_counter()
+
+
+    def stop(self):
+        """ Stop the timer then report the elapsed time
+        """
+        if self._start_time is not None:
+            self._elapsed_time = time.perf_counter() - self._start_time
+            self._start_time = None
+
+
+    @property
+    def elapsed_time(self) -> float:
+        """ Calculate elapsed time since timer start.
+
+        Returns:
+            float: time since timer start
+        """
+        if self._start_time is not None:
+            return time.perf_counter() - self._start_time
+        return self._elapsed_time

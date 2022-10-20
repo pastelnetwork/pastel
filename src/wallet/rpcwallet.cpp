@@ -2435,7 +2435,7 @@ As a json rpc call
 
         o.pushKV("txid", outpt.hash.GetHex());
         o.pushKV("vout", (int)outpt.n);
-        ret.push_back(o);
+        ret.push_back(move(o));
     }
 
     return ret;

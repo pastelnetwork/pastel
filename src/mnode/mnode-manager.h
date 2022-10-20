@@ -29,20 +29,20 @@ public:
 private:
     static const std::string SERIALIZATION_VERSION_STRING;
 
-    static const int DSEG_UPDATE_SECONDS        = 3 * 60 * 60;
+    static constexpr int DSEG_UPDATE_SECONDS        = 3 * 60 * 60;
 
-    static const int LAST_PAID_SCAN_BLOCKS      = 100;
+    static constexpr int LAST_PAID_SCAN_BLOCKS      = 100;
 
-    static const int MIN_POSE_PROTO_VERSION     = 70203;
-    static const int MAX_POSE_CONNECTIONS       = 10;
-    static const int MAX_POSE_RANK              = 10;
-    static const int MAX_POSE_BLOCKS            = 10;
+    static constexpr int MIN_POSE_PROTO_VERSION     = 70203;
+    static constexpr int MAX_POSE_CONNECTIONS       = 10;
+    static constexpr int MAX_POSE_RANK              = 10;
+    static constexpr int MAX_POSE_BLOCKS            = 10;
 
-    static const int MNB_RECOVERY_QUORUM_TOTAL      = 10;
-    static const int MNB_RECOVERY_QUORUM_REQUIRED   = 6;
-    static const int MNB_RECOVERY_MAX_ASK_ENTRIES   = 10;
-    static const int MNB_RECOVERY_WAIT_SECONDS      = 60;
-    static const int MNB_RECOVERY_RETRY_SECONDS     = 3 * 60 * 60;
+    static constexpr int MNB_RECOVERY_QUORUM_TOTAL      = 10;
+    static constexpr int MNB_RECOVERY_QUORUM_REQUIRED   = 6;
+    static constexpr int MNB_RECOVERY_MAX_ASK_ENTRIES   = 10;
+    static constexpr int MNB_RECOVERY_WAIT_SECONDS      = 60;
+    static constexpr int MNB_RECOVERY_RETRY_SECONDS     = 3 * 60 * 60;
 
 
     // critical section to protect the inner data structures
@@ -186,6 +186,7 @@ public:
 
     /// Return the number of (unique) Masternodes
     size_t size() const noexcept { return mapMasternodes.size(); }
+    bool empty() const noexcept { return mapMasternodes.empty(); }
 
     std::string ToString() const;
 
@@ -198,7 +199,7 @@ public:
     void UpdateLastPaid(const CBlockIndex* pindex);
 
     bool IsWatchdogActive();
-    void UpdateWatchdogVoteTime(const COutPoint& outpoint, uint64_t nVoteTime = 0);
+    void UpdateWatchdogVoteTime(const COutPoint& outpoint, const uint64_t nVoteTime = 0);
 
     void CheckMasternode(const CPubKey& pubKeyMasternode, bool fForce);
 

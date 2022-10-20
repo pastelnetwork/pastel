@@ -217,6 +217,35 @@ double CMasterNodeController::getNetworkDifficulty(const CBlockIndex* blockindex
 }
 
 #ifdef ENABLE_WALLET
+/**
+ * Lock MN outpoints for all MNs found in masternode.conf.
+ */
+void CMasterNodeController::LockMnOutpoints(CWallet* pWalletMain)
+{
+    LogPrintf("Using masternode config file %s\n", GetMasternodeConfigFile().string());
+
+    //Prevent Wallet from accidental spending of the collateral!!!
+    if (GetBoolArg("-mnconflock", true) && pWalletMain && (masternodeConfig.getCount() > 0))
+    {
+        LOCK(pWalletMain->cs_wallet);
+        LogFnPrintf("Locking Masternodes:");
+        for (const auto & [alias, mne]: masternodeConfig.getEntries())
+        {
+            const COutPoint outpoint = mne.getOutPoint();
+            // don't lock non-spendable outpoint (i.e. it's already spent or it's not from this wallet at all)
+            if (!IsMineSpendable(pWalletMain->GetIsMine(CTxIn(outpoint))))
+            {
+                LogFnPrintf("  %s - IS NOT SPENDABLE, was not locked", outpoint.ToStringShort());
+                continue;
+            }
+            pWalletMain->LockCoin(outpoint);
+            LogFnPrintf("  %s - locked successfully", outpoint.ToStringShort());
+        }
+    }
+}
+#endif // ENABLE_WALLET
+
+#ifdef ENABLE_WALLET
 bool CMasterNodeController::EnableMasterNode(ostringstream& strErrors, CServiceThreadGroup& threadGroup, CWallet* pWalletMain)
 #else
 bool CMasterNodeController::EnableMasterNode(ostringstream& strErrors, CServiceThreadGroup& threadGroup)
@@ -226,7 +255,8 @@ bool CMasterNodeController::EnableMasterNode(ostringstream& strErrors, CServiceT
 
     // parse masternode.conf
     string strErr;
-    if(!masternodeConfig.read(strErr)) {
+    if (!masternodeConfig.read(strErr))
+    {
         strErrors << "Error reading masternode configuration file: " << strErr.c_str();
         return false;
     }
@@ -234,26 +264,28 @@ bool CMasterNodeController::EnableMasterNode(ostringstream& strErrors, CServiceT
     // NOTE: Masternode should have no wallet
     fMasterNode = GetBoolArg("-masternode", false);
 
-    if((fMasterNode || masternodeConfig.getCount() > 0) && !fTxIndex) {
+    if ((fMasterNode || masternodeConfig.getCount() > 0) && !fTxIndex)
+    {
         strErrors << _("Enabling Masternode support requires turning on transaction indexing.")
                 << _("Please add txindex=1 to your configuration and start with -reindex");
         return false;
     }
 
-    if(fMasterNode) {
+    if (fMasterNode)
+    {
         LogPrintf("MASTERNODE:\n");
 
         const string strMasterNodePrivKey = GetArg("-masternodeprivkey", "");
-        if(!strMasterNodePrivKey.empty())
+        if (!strMasterNodePrivKey.empty())
         {
-            if(!CMessageSigner::GetKeysFromSecret(strMasterNodePrivKey, activeMasternode.keyMasternode, activeMasternode.pubKeyMasternode))
+            if (!CMessageSigner::GetKeysFromSecret(strMasterNodePrivKey, activeMasternode.keyMasternode, activeMasternode.pubKeyMasternode))
             {
                 strErrors << _("Invalid masternodeprivkey. Please see documentation.");
                 return false;
             }
 
             KeyIO keyIO(Params());
-            CTxDestination dest = activeMasternode.pubKeyMasternode.GetID();
+            const CTxDestination dest = activeMasternode.pubKeyMasternode.GetID();
             string address = keyIO.EncodeDestination(dest);
 
             LogPrintf("  pubKeyMasternode: %s\n", address);
@@ -264,51 +296,34 @@ bool CMasterNodeController::EnableMasterNode(ostringstream& strErrors, CServiceT
     }
 
 #ifdef ENABLE_WALLET
-    LogPrintf("Using masternode config file %s\n", GetMasternodeConfigFile().string());
-
-    //Prevent Wallet from accidental spending of the collateral!!!
-    if(GetBoolArg("-mnconflock", true) && pWalletMain && (masternodeConfig.getCount() > 0)) {
-        LOCK(pWalletMain->cs_wallet);
-        LogPrintf("Locking Masternodes:\n");
-        for (const auto & mne : masternodeConfig.getEntries())
-        {
-            COutPoint outpoint = mne.getOutPoint();
-            // don't lock non-spendable outpoint (i.e. it's already spent or it's not from this wallet at all)
-            if (!IsMineSpendable(pWalletMain->GetIsMine(CTxIn(outpoint))))
-            {
-                LogPrintf("  %s %s - IS NOT SPENDABLE, was not locked\n", mne.getTxHash(), mne.getOutputIndex());
-                continue;
-            }
-            pWalletMain->LockCoin(outpoint);
-            LogPrintf("  %s %s - locked successfully\n", mne.getTxHash(), mne.getOutputIndex());
-        }
-    }
-#endif // ENABLE_WALLET
+    LockMnOutpoints(pWalletMain);
+#endif
 
     // LOAD SERIALIZED DAT FILES INTO DATA CACHES FOR INTERNAL USE
-
     fs::path pathDB = GetDataDir();
     string strDBName;
 
     strDBName = "mncache.dat";
     uiInterface.InitMessage(_("Loading masternode cache..."));
     CFlatDB<CMasternodeMan> flatDB1(strDBName, "magicMasternodeCache");
-    if(!flatDB1.Load(masternodeManager)) {
+    if (!flatDB1.Load(masternodeManager))
+    {
         strErrors << _("Failed to load masternode cache from") + "\n" + (pathDB / strDBName).string();
         return false;
     }
 
-    if(masternodeManager.size()) {
+    if (!masternodeManager.empty())
+    {
         strDBName = "mnpayments.dat";
         uiInterface.InitMessage(_("Loading masternode payment cache..."));
         CFlatDB<CMasternodePayments> flatDB2(strDBName, "magicMasternodePaymentsCache");
-        if(!flatDB2.Load(masternodePayments)) {
+        if (!flatDB2.Load(masternodePayments))
+        {
             strErrors << _("Failed to load masternode payments cache from") + "\n" + (pathDB / strDBName).string();
             return false;
         }
-    } else {
+    } else
         uiInterface.InitMessage(_("Masternode cache is empty, skipping payments and governance cache..."));
-    }
 
 #ifdef GOVERNANCE_TICKETS
     strDBName = "governance.dat";
@@ -324,7 +339,8 @@ bool CMasterNodeController::EnableMasterNode(ostringstream& strErrors, CServiceT
     strDBName = "netfulfilled.dat";
     uiInterface.InitMessage(_("Loading fulfilled requests cache..."));
     CFlatDB<CMasternodeRequestTracker> flatDB4(strDBName, "magicFulfilledCache");
-    if(!flatDB4.Load(requestTracker)) {
+    if (!flatDB4.Load(requestTracker))
+    {
         strErrors << _("Failed to load fulfilled requests cache from") + "\n" + (pathDB / strDBName).string();
         return false;
     }
@@ -332,7 +348,8 @@ bool CMasterNodeController::EnableMasterNode(ostringstream& strErrors, CServiceT
     strDBName = "messages.dat";
     uiInterface.InitMessage(_("Loading messages cache..."));
     CFlatDB<CMasternodeMessageProcessor> flatDB5(strDBName, "magicMessagesCache");
-    if(!flatDB5.Load(masternodeMessages)) {
+    if (!flatDB5.Load(masternodeMessages))
+    {
         strErrors << _("Failed to load messages cache from") + "\n" + (pathDB / strDBName).string();
         return false;
     }

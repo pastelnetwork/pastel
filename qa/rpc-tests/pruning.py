@@ -114,7 +114,7 @@ class PruneTest(BitcoinTestFramework):
             # Disconnect node 0 so it can mine a longer reorg chain without knowing about node 1's soon-to-be-stale chain
             # Node 2 stays connected, so it hears about the stale blocks and then reorg's when node0 reconnects
             # Stopping node 0 also clears its mempool, so it doesn't have node1's transactions to accidentally mine
-            stop_node(self.nodes[0],0)
+            stop_node(self.nodes[0])
             self.nodes[0]=start_node(0, self.options.tmpdir, ["-debug","-maxreceivebuffer=20000","-blockmaxsize=999000", "-checkblocks=5"], timewait=900)
             # Mine 24 blocks in node 1
             self.utxo = self.nodes[1].listunspent()
@@ -141,7 +141,7 @@ class PruneTest(BitcoinTestFramework):
         # This will cause Node 2 to do a reorg requiring 288 blocks of undo data to the reorg_test chain
         # Reboot node 1 to clear its mempool (hopefully make the invalidate faster)
         # Lower the block max size so we don't keep mining all our big mempool transactions (from disconnected blocks)
-        stop_node(self.nodes[1],1)
+        stop_node(self.nodes[1])
         self.nodes[1]=start_node(1, self.options.tmpdir, ["-debug","-maxreceivebuffer=20000","-blockmaxsize=5000", "-checkblocks=5", "-disablesafemode"], timewait=900)
 
         height = self.nodes[1].getblockcount()
@@ -164,7 +164,7 @@ class PruneTest(BitcoinTestFramework):
         print("New best height", self.nodes[1].getblockcount())
 
         # Reboot node1 to clear those giant tx's from mempool
-        stop_node(self.nodes[1],1)
+        stop_node(self.nodes[1])
         self.nodes[1]=start_node(1, self.options.tmpdir, ["-debug","-maxreceivebuffer=20000","-blockmaxsize=5000", "-checkblocks=5", "-disablesafemode"], timewait=900)
 
         print("Generating new longer chain of 300 more blocks")

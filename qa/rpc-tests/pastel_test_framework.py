@@ -204,10 +204,10 @@ class PastelTestFramework (BitcoinTestFramework):
         super().__init__()
 
         # registered ticket counters
-        self._ticket_counters = dict()
-        self._offer_counters = dict()
-        self._accept_counters = dict()
-        self._transfer_counters = dict()
+        self._ticket_counters = {}
+        self._offer_counters = {}
+        self._accept_counters = {}
+        self._transfer_counters = {}
 
     def ticket_counter(self, ticket_type: TicketType) -> int:
         """Get counter for registered tickets of the given type.

@@ -81,6 +81,33 @@ std::string get_tid() noexcept;
 // get thread id in hex format
 std::string get_tid_hex() noexcept;
 
+/**
+* Extract method name from __PRETTY_FUNCTION__.
+* Sample input: 
+*      int  a::sub (int)
+* 
+* \param s - __PRETTY_FUNCTION__
+* \return extracted method name (class_name::method_name)
+*/
+constexpr std::string_view method_name(const char* s)
+{
+    std::string_view prettyFunction(s);
+    // trim function parameters
+    const size_t bracket = prettyFunction.rfind("(");
+    // find the start of the method name
+    const size_t space = prettyFunction.rfind(" ", bracket) + 1;
+    return prettyFunction.substr(space, bracket - space);
+}
+
+#if defined(__GNUC__) || defined(__GNUG__) || defined(__CLANG__)
+// __PRETTY_FUNCTION__ is defined in gcc and clang
+#define __METHOD_NAME__ std::string(method_name(__PRETTY_FUNCTION__)).c_str()
+#elif defined(_MSC_VER)
+#define __METHOD_NAME__ __FUNCTION__
+#else
+#define __METHOD_NAME__ __func__
+#endif
+
 template <typename... Args>
 static inline void LogPrintf(const char* fmt, const Args&... args)
 {
@@ -97,11 +124,22 @@ static inline void LogPrintf(const char* fmt, const Args&... args)
     LogPrintStr(log_msg);
 }
 
+#define VA_ARGS(...) , ##__VA_ARGS__
+
+#define LogFnPrintf(fmt, ...) \
+    LogPrintf(tfm::format("[%s] %s\n", __METHOD_NAME__, fmt).c_str(), ##__VA_ARGS__)
+
 #define LogPrint(category, ...) do {        \
     if (LogAcceptCategory((category))) {    \
         LogPrintf(__VA_ARGS__);             \
     }                                       \
-} while(0)
+} while(false)
+
+#define LogFnPrint(category, fmt, ...) do { \
+    if (LogAcceptCategory((category))) {    \
+        LogFnPrintf(fmt, ##__VA_ARGS__);      \
+    }                                       \
+} while(false)
 
 template<typename... Args>
 bool error(const char* fmt, const Args&... args)

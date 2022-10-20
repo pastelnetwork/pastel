@@ -63,13 +63,24 @@ def EncodeDecimal(o):
 
 class AuthServiceProxy():
     __id_count = 0
-    alias = None
+    # index in nodes list
+    index: int = None
 
-    def __init__(self, service_url, service_name=None, timeout=HTTP_TIMEOUT, connection=None, _alias=None):
+    """ Return node alias based on index in node list.
+
+    Returns:
+        str: node alias
+    """
+    @property
+    def alias(self) -> str:
+        return str(self.index)
+        
+        
+    def __init__(self, index: int, service_url, service_name=None, timeout=HTTP_TIMEOUT, connection=None):
         self.__service_url = service_url
         self.__service_name = service_name
         self.__url = urlparse(service_url)
-        self.alias = _alias
+        self.index = index
         (user, passwd) = (self.__url.username, self.__url.password)
         try:
             user = user.encode('utf8')
@@ -85,6 +96,7 @@ class AuthServiceProxy():
         self.timeout = timeout
         self._set_conn(connection)
 
+
     def _set_conn(self, connection=None):
         if self.__url.port is None:
             port = 80
@@ -99,13 +111,15 @@ class AuthServiceProxy():
         else:
             self.__conn = HTTPConnection(self.__url.hostname, port, timeout=self.timeout)
 
+
     def __getattr__(self, name):
         if name.startswith('__') and name.endswith('__'):
             # Python internal stuff
             raise AttributeError
         if self.__service_name is not None:
             name = "%s.%s" % (self.__service_name, name)
-        return AuthServiceProxy(self.__service_url, name, connection=self.__conn, _alias=self.alias)
+        return AuthServiceProxy(self.index, self.__service_url, name, connection=self.__conn)
+
 
     def _request(self, method, path, postdata):
         '''
@@ -133,6 +147,7 @@ class AuthServiceProxy():
             else:
                 raise
 
+
     def __call__(self, *args):
         AuthServiceProxy.__id_count += 1
 
@@ -153,17 +168,19 @@ class AuthServiceProxy():
         else:
             return response['result']
 
+
     def _batch(self, rpc_call_list):
         postdata = json.dumps(list(rpc_call_list), default=EncodeDecimal)
         log.debug("--> "+postdata)
         return self._request('POST', self.__url.path, postdata)
+
 
     def _get_response(self):
         http_response = self.__conn.getresponse()
         if http_response is None:
             raise JSONRPCException({
                 'code': -342, 'message': 'missing HTTP response from server'})
-        
+
         content_type = http_response.getheader('Content-Type')
         if content_type != 'application/json':
             raise JSONRPCException({

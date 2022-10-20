@@ -92,7 +92,8 @@ As json rpc
     switch (FIND.cmd()) {
     case RPC_CMD_FIND::id: {
         CPastelIDRegTicket ticket;
-        if (CPastelIDRegTicket::FindTicketInDb(key, ticket)) {
+        if (CPastelIDRegTicket::FindTicketInDb(key, ticket))
+        {
             UniValue obj(UniValue::VOBJ);
             obj.read(ticket.ToJSON());
             return obj;

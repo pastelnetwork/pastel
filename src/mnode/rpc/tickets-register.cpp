@@ -44,7 +44,7 @@ As json rpc:
 )" + HelpExampleRpc("tickets", R"("register", "mnid", "jXaShWhNtatHVPWRNPsvjoVHUYes2kA7T9EJVL9i9EKPdBNo5aTYp19niWemJb2EwgYYR68jymULPtmHdETf8M", "passphrase")")
 );
 
-    if (!masterNodeCtrl.IsActiveMasterNode())
+    if (!masterNodeCtrl.CanRegisterMnId())
         throw JSONRPCError(RPC_INTERNAL_ERROR, "This is not an active masternode. Only active MN can register its Pastel ID");
 
     string pastelID = params[2].get_str();

@@ -111,9 +111,9 @@ class WalletBackupTest(BitcoinTestFramework):
         connect_nodes(self.nodes[2], 0)
 
     def stop_three(self):
-        stop_node(self.nodes[0], 0)
-        stop_node(self.nodes[1], 1)
-        stop_node(self.nodes[2], 2)
+        stop_node(self.nodes[0])
+        stop_node(self.nodes[1])
+        stop_node(self.nodes[2])
 
     def erase_three(self):
         os.remove(self.options.tmpdir + "/node0/regtest/wallet.dat")

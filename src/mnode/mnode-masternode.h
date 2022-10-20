@@ -30,7 +30,6 @@ public:
     v_uint8 vchSig;
 
     CMasternodePing() = default;
-
     CMasternodePing(const COutPoint& outpoint);
 
     ADD_SERIALIZE_METHODS;
@@ -51,6 +50,7 @@ public:
         ss << sigTime;
         return ss.GetHash();
     }
+    std::string GetDesc() const noexcept { return vin.prevout.ToStringShort(); }
 
     bool IsExpired() const;
 
@@ -70,28 +70,66 @@ inline bool operator!=(const CMasternodePing& a, const CMasternodePing& b)
     return !(a == b);
 }
 
-struct masternode_info_t
+enum class MASTERNODE_STATE : int
 {
+    PRE_ENABLED = 0,
+    ENABLED,
+    EXPIRED,
+    OUTPOINT_SPENT,
+    UPDATE_REQUIRED,
+    WATCHDOG_EXPIRED,
+    NEW_START_REQUIRED,
+    POSE_BAN,
+
+    COUNT
+};
+
+typedef struct _MNStateInfo
+{
+    const MASTERNODE_STATE state;
+    const char* szState;
+} MNStateInfo;
+
+std::string MasternodeStateToString(const MASTERNODE_STATE state) noexcept;
+
+class masternode_info_t
+{
+public:
     masternode_info_t() = default;
-    masternode_info_t(int activeState, int protoVer, int64_t sTime) :
-        nActiveState{activeState},
+    masternode_info_t(const MASTERNODE_STATE activeState, int protoVer, int64_t sTime) :
+        m_ActiveState{activeState},
         nProtocolVersion{protoVer},
         sigTime{sTime}
     {}
 
-    masternode_info_t(int activeState, int protoVer, int64_t sTime,
+    masternode_info_t(const MASTERNODE_STATE activeState, int protoVer, int64_t sTime,
                       COutPoint const& outpoint, CService const& addr,
                       CPubKey const& pkCollAddr, CPubKey const& pkMN,
                       const std::string& extAddress, const std::string& extP2P,
                       const std::string& extKey, const std::string& extCfg,
                       int64_t tWatchdogV = 0) :
-        nActiveState{activeState}, nProtocolVersion{protoVer}, sigTime{sTime},
+        m_ActiveState{activeState}, nProtocolVersion{protoVer}, sigTime{sTime},
         vin{outpoint}, addr{addr},
         pubKeyCollateralAddress{pkCollAddr}, pubKeyMasternode{pkMN},
         strExtraLayerAddress{extAddress}, strExtraLayerP2P{extP2P}, strExtraLayerKey{extKey}, strExtraLayerCfg{extCfg},
         nTimeLastWatchdogVote{tWatchdogV} {}
 
-    int nActiveState = 0;
+    MASTERNODE_STATE GetActiveState() const noexcept { return m_ActiveState; }
+    std::string GetStateString() const noexcept { return MasternodeStateToString(m_ActiveState); }
+    std::string GetDesc() const noexcept { return vin.prevout.ToStringShort(); }
+
+    // set new MasterNode's state
+    void SetState(const MASTERNODE_STATE newState, const char *szMethodName = nullptr);
+
+    bool IsEnabled() const noexcept { return m_ActiveState == MASTERNODE_STATE::ENABLED; }
+    bool IsPreEnabled() const noexcept { return m_ActiveState == MASTERNODE_STATE::PRE_ENABLED; }
+    bool IsPoSeBanned() const noexcept { return m_ActiveState == MASTERNODE_STATE::POSE_BAN; }
+    bool IsExpired() const noexcept { return m_ActiveState == MASTERNODE_STATE::EXPIRED; }
+    bool IsOutpointSpent() const noexcept { return m_ActiveState == MASTERNODE_STATE::OUTPOINT_SPENT; }
+    bool IsUpdateRequired() const noexcept { return m_ActiveState == MASTERNODE_STATE::UPDATE_REQUIRED; }
+    bool IsWatchdogExpired() const noexcept { return m_ActiveState == MASTERNODE_STATE::WATCHDOG_EXPIRED; }
+    bool IsNewStartRequired() const noexcept { return m_ActiveState == MASTERNODE_STATE::NEW_START_REQUIRED; }
+
     int nProtocolVersion = 0;
     int64_t sigTime = 0; //mnb message time
 
@@ -111,6 +149,9 @@ struct masternode_info_t
     int64_t nTimeLastPaid = 0;
     int64_t nTimeLastPing = 0; //* not in CMN
     bool fInfoValid = false; //* not in CMN
+
+protected:
+    MASTERNODE_STATE m_ActiveState = MASTERNODE_STATE::PRE_ENABLED;
 };
 
 //
@@ -124,25 +165,12 @@ private:
     mutable CCriticalSection cs;
 
 public:
-    enum state
-    {
-        MASTERNODE_PRE_ENABLED = 0,
-        MASTERNODE_ENABLED,
-        MASTERNODE_EXPIRED,
-        MASTERNODE_OUTPOINT_SPENT,
-        MASTERNODE_UPDATE_REQUIRED,
-        MASTERNODE_WATCHDOG_EXPIRED,
-        MASTERNODE_NEW_START_REQUIRED,
-        MASTERNODE_POSE_BAN
-    };
-
     enum CollateralStatus
     {
         COLLATERAL_OK,
         COLLATERAL_UTXO_NOT_FOUND,
         COLLATERAL_INVALID_AMOUNT
     };
-
 
     CMasternodePing lastPing{};
     v_uint8 vchSig;
@@ -180,7 +208,14 @@ public:
         READWRITE(nTimeLastChecked);
         READWRITE(nTimeLastPaid);
         READWRITE(nTimeLastWatchdogVote);
+        int nActiveState = to_integral_type<MASTERNODE_STATE>(GetActiveState());
         READWRITE(nActiveState);
+        if (ser_action == SERIALIZE_ACTION::Read)
+        {
+            if (!is_enum_valid<MASTERNODE_STATE>(nActiveState, MASTERNODE_STATE::PRE_ENABLED, MASTERNODE_STATE::POSE_BAN))
+                throw std::runtime_error(strprintf("Not supported MasterNode's state [%d]", nActiveState));
+            SetState(static_cast<MASTERNODE_STATE>(nActiveState));
+        }
         READWRITE(nCollateralMinConfBlockHash);
         READWRITE(nBlockLastPaid);
         READWRITE(nProtocolVersion);
@@ -211,7 +246,7 @@ public:
 
     static CollateralStatus CheckCollateral(const COutPoint& outpoint);
     static CollateralStatus CheckCollateral(const COutPoint& outpoint, int& nHeightRet);
-    void Check(bool fForce = false);
+    void Check(const bool fForce = false);
 
     bool IsBroadcastedWithin(int nSeconds) const noexcept { return GetAdjustedTime() - sigTime < nSeconds; }
 
@@ -224,30 +259,21 @@ public:
         return nTimeToCheckAt - lastPing.sigTime < nSeconds;
     }
 
-    bool IsEnabled() const noexcept { return nActiveState == MASTERNODE_ENABLED; }
-    bool IsPreEnabled() const noexcept { return nActiveState == MASTERNODE_PRE_ENABLED; }
-    bool IsPoSeBanned() const noexcept { return nActiveState == MASTERNODE_POSE_BAN; }
     // NOTE: this one relies on nPoSeBanScore, not on nActiveState as everything else here
     bool IsPoSeVerified();
-    bool IsExpired() const noexcept { return nActiveState == MASTERNODE_EXPIRED; }
-    bool IsOutpointSpent() const noexcept { return nActiveState == MASTERNODE_OUTPOINT_SPENT; }
-    bool IsUpdateRequired() const noexcept { return nActiveState == MASTERNODE_UPDATE_REQUIRED; }
-    bool IsWatchdogExpired() const noexcept { return nActiveState == MASTERNODE_WATCHDOG_EXPIRED; }
-    bool IsNewStartRequired() const noexcept { return nActiveState == MASTERNODE_NEW_START_REQUIRED; }
 
-    static bool IsValidStateForAutoStart(int nActiveStateIn) noexcept
+    static bool IsValidStateForAutoStart(const MASTERNODE_STATE state) noexcept
     {
-        return  nActiveStateIn == MASTERNODE_ENABLED ||
-                nActiveStateIn == MASTERNODE_PRE_ENABLED ||
-                nActiveStateIn == MASTERNODE_EXPIRED ||
-                nActiveStateIn == MASTERNODE_WATCHDOG_EXPIRED;
+        return  state == MASTERNODE_STATE::ENABLED ||
+                state == MASTERNODE_STATE::PRE_ENABLED ||
+                state == MASTERNODE_STATE::EXPIRED ||
+                state == MASTERNODE_STATE::WATCHDOG_EXPIRED;
     }
 
     bool IsValidForPayment() const noexcept
     {
-        if (nActiveState == MASTERNODE_ENABLED)
+        if (IsEnabled())
             return true;
-
         return false;
     }
 
@@ -263,8 +289,6 @@ public:
 
     masternode_info_t GetInfo() const noexcept;
 
-    static std::string StateToString(int nStateIn);
-    std::string GetStateString() const;
     std::string GetStatus() const;
 
     int64_t GetLastPaidTime() const noexcept { return nTimeLastPaid; }
@@ -273,7 +297,7 @@ public:
     
     bool VerifyCollateral(CollateralStatus& collateralStatus);
     
-    void UpdateWatchdogVoteTime(uint64_t nVoteTime = 0);
+    void UpdateWatchdogVoteTime(const uint64_t nVoteTime = 0);
 
     CMasternode& operator=(CMasternode const& from)
     {
@@ -300,7 +324,6 @@ inline bool operator!=(const CMasternode& a, const CMasternode& b)
     return !(a.vin == b.vin);
 }
 
-
 //
 // The Masternode Broadcast Class : Contains a different serialize method for sending masternodes through the network
 //
@@ -311,14 +334,21 @@ public:
 
     bool fRecovery;
 
-    CMasternodeBroadcast() : CMasternode(), fRecovery(false) {}
-    CMasternodeBroadcast(const CMasternode& mn) : CMasternode(mn), fRecovery(false) {}
+    CMasternodeBroadcast() :
+        fRecovery(false)
+    {}
+    CMasternodeBroadcast(const CMasternode& mn) :
+        CMasternode(mn),
+        fRecovery(false)
+    {}
     CMasternodeBroadcast(CService addrNew, COutPoint outpointNew, CPubKey pubKeyCollateralAddressNew, CPubKey pubKeyMasternodeNew, 
                             const std::string& strExtraLayerAddress, const std::string& strExtraLayerP2P, const std::string& strExtraLayerKey, const std::string& strExtraLayerCfg,
                             int nProtocolVersionIn) :
         CMasternode(addrNew, outpointNew, pubKeyCollateralAddressNew, pubKeyMasternodeNew, 
                     strExtraLayerAddress, strExtraLayerP2P, strExtraLayerKey, strExtraLayerCfg,
-                    nProtocolVersionIn), fRecovery(false) {}
+                    nProtocolVersionIn),
+        fRecovery(false)
+    {}
 
     ADD_SERIALIZE_METHODS;
 
@@ -365,8 +395,15 @@ public:
                         const std::string& strExtraLayerAddress, const std::string& strExtraLayerP2P, 
                         const std::string& strExtraLayerKey, const std::string& strExtraLayerCfg,
                         std::string &strErrorRet, CMasternodeBroadcast &mnbRet);
-    static bool Create(std::string strService, std::string strKey, std::string strTxHash, std::string strOutputIndex, 
-        std::string strExtraLayerAddress, std::string strExtraLayerP2P, std::string strExtraLayerKey, std::string strExtraLayerCfg,
+    static bool Create(
+        const std::string &strService,
+        const std::string &strKey,
+        const std::string &strTxHash,
+        const std::string &strOutputIndex, 
+        const std::string &strExtraLayerAddress,
+        const std::string &strExtraLayerP2P,
+        const std::string &strExtraLayerKey,
+        const std::string &strExtraLayerCfg,
         std::string& strErrorRet, CMasternodeBroadcast &mnbRet, bool fOffline = false);
 
     bool SimpleCheck(int& nDos);

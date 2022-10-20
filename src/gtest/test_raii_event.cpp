@@ -1,12 +1,11 @@
 // Copyright (c) 2016 The Bitcoin Core developers
-// Copyright (c) 2021 The Pastel developers
+// Copyright (c) 2021-2022 The Pastel developers
 // Distributed under the MIT software license, see the accompanying
-// file COPYING or http://www.opensource.org/licenses/mit-license.php.
+// file COPYING or https://www.opensource.org/licenses/mit-license.php.
 
 #include <event2/event.h>
 
 #ifdef EVENT_SET_MEM_FUNCTIONS_IMPLEMENTED
-// It would probably be ideal to define dummy test(s) that report skipped, but boost::test doesn't seem to make that practical (at least not in versions available with common distros)
 
 #include <map>
 #include <stdlib.h>
@@ -14,7 +13,7 @@
 
 #include <gtest/gtest.h>
 
-#include "support/events.h"
+#include <support/events.h>
 
 using namespace std;
 using namespace testing;
@@ -42,7 +41,7 @@ TEST(test_raii_event, raii_event_creation)
 {
     event_set_mem_functions(tag_malloc, realloc, tag_free);
     
-    void* base_ptr = NULL;
+    void* base_ptr = nullptr;
     {
         auto base = obtain_event_base();
         base_ptr = (void*)base.get();
@@ -50,10 +49,10 @@ TEST(test_raii_event, raii_event_creation)
     }
     EXPECT_EQ(tags[base_ptr] , 0);
     
-    void* event_ptr = NULL;
+    void* event_ptr = nullptr;
     {
         auto base = obtain_event_base();
-        auto event = obtain_event(base.get(), -1, 0, NULL, NULL);
+        auto event = obtain_event(base.get(), -1, 0, nullptr, nullptr);
 
         base_ptr = (void*)base.get();
         event_ptr = (void*)event.get();
@@ -71,11 +70,11 @@ TEST(test_raii_event, raii_event_order)
 {
     event_set_mem_functions(tag_malloc, realloc, tag_free);
     
-    void* base_ptr = NULL;
-    void* event_ptr = NULL;
+    void* base_ptr = nullptr;
+    void* event_ptr = nullptr;
     {
         auto base = obtain_event_base();
-        auto event = obtain_event(base.get(), -1, 0, NULL, NULL);
+        auto event = obtain_event(base.get(), -1, 0, nullptr, nullptr);
 
         base_ptr = (void*)base.get();
         event_ptr = (void*)event.get();
