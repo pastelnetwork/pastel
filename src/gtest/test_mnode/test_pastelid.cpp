@@ -73,7 +73,7 @@ TEST(PastelID, GetStoredPastelIDs)
         EXPECT_EQ(mapIDs.size(), 2u);
 
         // get filtered pastelid
-        mapIDs = CPastelID::GetStoredPastelIDs(false, &sPastelID);
+        mapIDs = CPastelID::GetStoredPastelIDs(false, sPastelID);
         EXPECT_EQ(mapIDs.size(), 1u);
         const auto it3 = mapIDs.find(sPastelID);
         EXPECT_NE(it3, mapIDs.cend());

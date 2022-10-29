@@ -2,11 +2,11 @@
 // Copyright (c) 2018-2022 The Pastel Core developers
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
-#include <mnode/tickets/ticket.h>
-#include <map_types.h>
-
 #include <tuple>
 #include <optional>
+
+#include <mnode/tickets/ticket.h>
+#include <map_types.h>
 
 // forward ticket class declaration
 class CTransferTicket;
@@ -17,13 +17,16 @@ using TransferTickets_t = std::vector<CTransferTicket>;
 // Transfer Ticket /////////////////////////////////////////////////////////////////////////////////////////////////////
 /*
 	"ticket": {
-		"type": "transfer",
-		"pastelID": "",     // Pastel ID of the new owner (acceptor)
-		"offer_txid": "",   // txid with offer ticket
-		"accept_txid": "",  // txid with accept ticket
-		"item_txid": "",    // txid with either 1) NFT or Action activation ticket or 2) transfer ticket txid
-		"price": "",
-		"reserved": "",
+		"type": "transfer",    // Transfer ticket type
+        "version": int,        // ticket version (0)
+		"pastelID": string,    // Pastel ID of the new owner of the item (acceptor)
+		"offer_txid": string,  // transaction id (txid) of the Offer ticket
+		"accept_txid": string, // transaction id (txid) of the Accept ticket
+		"item_txid": string,   // transaction id (txid) of either:
+                               //   1) NFT or Action Activation ticket
+                               //   2) Transfer ticket
+		"registration_txid": string, // transaction id (txid) of the item's registration ticket
+		"copy_serial_nr": "",
 		"signature": ""
 	}
 
@@ -36,17 +39,13 @@ using TransferTickets_t = std::vector<CTransferTicket>;
                 3) transfer ticket txid
   mv key #3: NFT or Action registration ticket txid
  */
+// tuple
+//   1) <item's registration txid>
+//   2) copy serial number (from Offer ticket)
 using txid_serial_tuple_t = std::tuple<std::string, std::string>;
 
 class CTransferTicket : public CPastelTicket
 {
-public:
-    unsigned int price{};
-    std::string reserved;
-
-protected:
-    v_uint8 m_signature;
-
 public:
     CTransferTicket() = default;
 
@@ -69,7 +68,7 @@ public:
         m_itemTxId.clear();
         m_itemRegTxId.clear();
         itemCopySerialNr.clear();
-        price = 0;
+        m_nPricePSL = 0;
         reserved.clear();
         m_signature.clear();
     }
@@ -99,6 +98,7 @@ public:
     const std::string getSignature() const noexcept { return vector_to_string(m_signature); }
     const std::string GetItemRegTicketTxid() const noexcept  { return m_itemRegTxId; }
     const std::string& GetCopySerialNr() const noexcept { return itemCopySerialNr; }
+    const unsigned int getPricePSL() const noexcept { return m_nPricePSL; }
 
     // setters for ticket fields
     void SetItemRegTicketTxid(const std::string& sItemRegTxId) noexcept { m_itemRegTxId = sItemRegTxId; }
@@ -117,7 +117,7 @@ public:
         READWRITE(m_offerTxId);
         READWRITE(m_acceptTxId);
         READWRITE(m_itemTxId);
-        READWRITE(price);
+        READWRITE(m_nPricePSL);
         READWRITE(reserved);
         READWRITE(m_signature);
         READWRITE(m_nTimestamp);
@@ -147,13 +147,17 @@ public:
     static std::optional<txid_serial_tuple_t> GetItemRegForMultipleTransfers(const std::string& _txid);
 
 protected:
-    std::string m_sPastelID;   // new owner (acceptor) Pastel ID
-    std::string m_offerTxId;   // Offer ticket txid
-    std::string m_acceptTxId;  // Accept ticket txid
+    std::string m_sPastelID;   // Pastel ID of the new owner of the item (acceptor)
+    std::string m_offerTxId;   // transaction id (txid) of the Offer ticket
+    std::string m_acceptTxId;  // transaction id (txid) of the Accept ticket
     std::string m_itemTxId;    // 1) NFT or Action activation ticket txid or 
                                // 2) transfer ticket txid for the NFT or Action
     std::string m_itemRegTxId; // NFT or Action registration ticket txid
     std::string itemCopySerialNr;
+    std::string reserved;
+    v_uint8 m_signature;
 
-    TicketID m_itemType{TicketID::Activate}; // item type (memory only): NFT or Action Activation or Transfer ticket
+    // memory only fields
+    TicketID m_itemType{TicketID::Activate}; // item type: NFT or Action Activation or Transfer ticket
+    unsigned int m_nPricePSL{ 0 }; // 
 };

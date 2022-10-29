@@ -224,10 +224,10 @@ bool CPastelID::Verify(const string& sText, const string& sSignature, const stri
                     if (!CPastelIDRegTicket::FindTicketInDb(sPastelID, regTicket))
                         throw runtime_error(strprintf("%sPastel ID [%s] is not stored locally and Pastel ID registration ticket was not found in the blockchain", 
                             LRERR_PREFIX, sPastelID));
-                    if (regTicket.pq_key.empty())
+                    if (regTicket.isLegRoastKeyDefined())
                         throw runtime_error(strprintf("%sPastel ID [%s] registration ticket [txid=%s] was found in the blockchain, but LegRoast public key is empty", 
                             LRERR_PREFIX, regTicket.GetTxId()));
-                    sLegRoastPubKey = move(regTicket.pq_key);
+                    regTicket.moveLegRoastKey(sLegRoastPubKey);
                 }
                 // decode base58-encoded LegRoast public key
                 string error;
@@ -263,10 +263,10 @@ bool CPastelID::Verify(const string& sText, const string& sSignature, const stri
 * 
 * \param bPastelIdOnly - return Pastel IDs only, otherwise returns PastelIDs along with associated keys
 *                        read from the secure container
-* \param psPastelID - optional parameter, can be used as a filter to retrieve only specific Pastel ID
+* \param sFilterPastelID - optional parameter, can be used as a filter to retrieve only specific Pastel ID
 * \return map of 'Pastel ID' -> associated keys (LegRoast signing public key)
 */
-pastelid_store_t CPastelID::GetStoredPastelIDs(const bool bPastelIdOnly, string* psPastelID)
+pastelid_store_t CPastelID::GetStoredPastelIDs(const bool bPastelIdOnly, const string& sFilterPastelID)
 {
     string error;
     fs::path pathPastelKeys(GetArg("-pastelkeysdir", "pastelkeys"));
@@ -281,7 +281,7 @@ pastelid_store_t CPastelID::GetStoredPastelIDs(const bool bPastelIdOnly, string*
         for (const auto& p : fs::directory_iterator(pathPastelKeys))
         {
             sPastelID = p.path().filename().string();
-            if (psPastelID && !str_icmp(*psPastelID, sPastelID))
+            if (!sFilterPastelID.empty() && !str_icmp(sFilterPastelID, sPastelID))
                 continue;
             // check if this file name is in fact encoded Pastel ID
             // if not - just skip this file

@@ -17,6 +17,36 @@ using json = nlohmann::json;
 using namespace std;
 
 /**
+ * Create UserName-Change ticket.
+ * 
+ * \param sPastelID - Pastel ID the user should be associated with
+ * \param sUserName - User name
+ * \param strKeyPass - secure passphrase to access secure container associated with the Pastel ID
+ * 
+ * \return created UserName-Change ticket
+ */
+CChangeUsernameTicket CChangeUsernameTicket::Create(string &&sPastelID, string &&sUserName, SecureString&& strKeyPass)
+{
+    CChangeUsernameTicket ticket(move(sPastelID), move(sUserName));
+
+    // Check if Pastel ID already have a username on the blockchain.
+    if (!masterNodeCtrl.masternodeTickets.CheckTicketExistBySecondaryKey(ticket)) {
+        // if Pastel ID has no Username yet, the fee is 100 PSL
+        ticket.m_fee = masterNodeCtrl.MasternodeUsernameFirstChangeFee;
+    } else {
+        // if Pastel ID changed Username before, fee should be 5000
+        ticket.m_fee = masterNodeCtrl.MasternodeUsernameChangeAgainFee;
+    }
+
+    ticket.GenerateTimestamp();
+
+    const auto strTicket = ticket.ToStr();
+    ticket.m_signature = string_to_vector(CPastelID::Sign(strTicket, ticket.m_sPastelID, move(strKeyPass)));
+
+    return ticket;
+}
+
+/**
  * Set username-change ticket signature.
  * 
  * \param sSignature - signature in a string format
@@ -31,15 +61,16 @@ string CChangeUsernameTicket::ToJSON() const noexcept
 {
     const json jsonObj
     {
-        {"txid", m_txid},
-        {"height", m_nBlock},
-        {"ticket", 
+        { "txid", m_txid },
+        { "height", m_nBlock },
+        { "ticket", 
             {
-                {"type", GetTicketName()}, 
-                {"pastelID", pastelID},
-                {"username", username},
-                {"fee", fee},
-                {"signature", ed_crypto::Hex_Encode(m_signature.data(), m_signature.size())}
+                { "type", GetTicketName() }, 
+                { "version", GetStoredVersion() },
+                { "pastelID", m_sPastelID },
+                { "username", m_sUserName },
+                { "fee", m_fee },
+                { "signature", ed_crypto::Hex_Encode(m_signature.data(), m_signature.size()) }
             }
         }
     };
@@ -50,9 +81,9 @@ string CChangeUsernameTicket::ToJSON() const noexcept
 string CChangeUsernameTicket::ToStr() const noexcept
 {
     stringstream ss;
-    ss << pastelID;
-    ss << username;
-    ss << fee;
+    ss << m_sPastelID;
+    ss << m_sUserName;
+    ss << m_fee;
     ss << m_nTimestamp;
     return ss.str();
 }
@@ -85,10 +116,10 @@ ticket_validation_t CChangeUsernameTicket::IsValid(const bool bPreReg, const uin
     TktMemPool.Initialize(mempool);
 
     CChangeUsernameTicket tktDB, tktMP;
-    const bool bTicketExistsInDB = FindTicketInDb(username, tktDB);
+    const bool bTicketExistsInDB = FindTicketInDb(m_sUserName, tktDB);
     // true if the username-change ticket found in the mempool with the same PastelId as an existing DB ticket: tktDB
     // if ticket exists - it means that user already has changed username
-    const bool bDBUserChangedName_MemPool = bTicketExistsInDB && TktMemPool.TicketExistsBySecondaryKey(tktDB.pastelID);
+    const bool bDBUserChangedName_MemPool = bTicketExistsInDB && TktMemPool.TicketExistsBySecondaryKey(tktDB.m_sPastelID);
 
     ticket_validation_t tv;
 
@@ -99,32 +130,32 @@ ticket_validation_t CChangeUsernameTicket::IsValid(const bool bPreReg, const uin
         {
             // search for username-change tickets in the mempool by username
             tktMP.Clear();
-            tktMP.username = username;
+            tktMP.m_sUserName = m_sUserName;
             const bool bFoundTicketByUserName_MemPool = TktMemPool.FindTicket(tktMP);
             // Check if the username-change ticket for the same username is in mempool.
             if (bFoundTicketByUserName_MemPool)
             {
                 tv.errorMsg = strprintf(
                     "Found '%s' ticket transaction for the same username in the memory pool. [Username=%s, txid=%s]",
-                    TICKET_NAME_USERNAME_CHANGE, username, tktMP.GetTxId());
+                    TICKET_NAME_USERNAME_CHANGE, m_sUserName, tktMP.GetTxId());
                 break;
             }
 
             // search for username-change tickets in the mempool by PastelId
             tktMP.Clear();
-            tktMP.pastelID = pastelID;
+            tktMP.m_sPastelID = m_sPastelID;
             const bool bFoundTicketByPastelID_MemPool = TktMemPool.FindTicketBySecondaryKey(tktMP);
             // do not allow multiple username-change tickets with the same Pastel ID in the mempool
             if (bFoundTicketByPastelID_MemPool)
             {
                 tv.errorMsg = strprintf(
                     "Found '%s' ticket transaction with the same Pastel ID in the memory pool. [Username=%s, txid=%s]",
-                    TICKET_NAME_USERNAME_CHANGE, username, tktMP.GetTxId());
+                    TICKET_NAME_USERNAME_CHANGE, m_sUserName, tktMP.GetTxId());
                 break;
             }
 
             // Check if the username is already registered in the blockchain.
-            if (bTicketExistsInDB && masterNodeCtrl.masternodeTickets.getValueBySecondaryKey(tktDB) == username)
+            if (bTicketExistsInDB && masterNodeCtrl.masternodeTickets.getValueBySecondaryKey(tktDB) == m_sUserName)
             {
                 // do not throw an error if the user with tktDB.pastelid has already changed username
                 // username-change transaction was found in the mempool
@@ -132,7 +163,7 @@ ticket_validation_t CChangeUsernameTicket::IsValid(const bool bPreReg, const uin
                 {
                     tv.errorMsg = strprintf(
                         "This Username is already registered in blockchain [Username=%s, txid=%s]", 
-                        username, tktDB.GetTxId());
+                        m_sUserName, tktDB.GetTxId());
                     break;
                 }
             }
@@ -151,7 +182,7 @@ ticket_validation_t CChangeUsernameTicket::IsValid(const bool bPreReg, const uin
 
         // Check if username is a bad username. For now check if it is empty only.
         string badUsernameError;
-        if (isUsernameBad(username, badUsernameError))
+        if (isUsernameBad(m_sUserName, badUsernameError))
         {
             tv.errorMsg = move(badUsernameError);
             break;
@@ -160,22 +191,22 @@ ticket_validation_t CChangeUsernameTicket::IsValid(const bool bPreReg, const uin
         // Verify signature
         // We will check that it is the correct Pastel ID
         const string strThisTicket = ToStr();
-        if (!CPastelID::Verify(strThisTicket, vector_to_string(m_signature), pastelID))
+        if (!CPastelID::Verify(strThisTicket, vector_to_string(m_signature), m_sPastelID))
         {
             tv.errorMsg = strprintf(
                 "%s ticket's signature is invalid. Pastel ID - [%s]", 
-                GetTicketDescription(), pastelID);
+                GetTicketDescription(), m_sPastelID);
             break;
         }
 
         // ticket transaction replay attack protection
         if (bTicketExistsInDB && !bDBUserChangedName_MemPool && 
             (!tktDB.IsBlock(m_nBlock) || !tktDB.IsTxId(m_txid)) &&
-            masterNodeCtrl.masternodeTickets.getValueBySecondaryKey(tktDB) == username)
+            masterNodeCtrl.masternodeTickets.getValueBySecondaryKey(tktDB) == m_sUserName)
         {
             tv.errorMsg = strprintf(
                 "This Username Change Request is already registered in blockchain [Username = %s] [%sfound ticket block=%u, txid=%s]",
-                username, 
+                m_sUserName, 
                 bPreReg ? "" : strprintf("this ticket block=%u txid=%s; ", m_nBlock, m_txid),
                 tktDB.GetBlock(), tktDB.GetTxId());
             break;
@@ -183,7 +214,7 @@ ticket_validation_t CChangeUsernameTicket::IsValid(const bool bPreReg, const uin
 
         // Check whether this Pastel ID has changed Username in the last N blocks.
         tktDB.Clear();
-        tktDB.pastelID = pastelID;
+        tktDB.m_sPastelID = m_sPastelID;
         // find username-change ticket in DB by Pastel ID
         const bool bFoundTicketByPastelID_DB = masterNodeCtrl.masternodeTickets.FindTicketBySecondaryKey(tktDB);
         if (bFoundTicketByPastelID_DB)
@@ -201,18 +232,18 @@ ticket_validation_t CChangeUsernameTicket::IsValid(const bool bPreReg, const uin
                     sTimeDiff = strprintf("%d minutes", ceil<minutes>(diffTime).count());
                 tv.errorMsg = strprintf(
                     "%s ticket is invalid. Already changed in last %s. Transaction with txid=%s is in blockchain. Pastel ID - [%s]",
-                    GetTicketDescription(), sTimeDiff, tktDB.GetTxId(), pastelID);
+                    GetTicketDescription(), sTimeDiff, tktDB.GetTxId(), m_sPastelID);
                 break;
             }
         }
 
         // Check if ticket fee is valid
         const auto expectedFee = bFoundTicketByPastelID_DB ? masterNodeCtrl.MasternodeUsernameChangeAgainFee : masterNodeCtrl.MasternodeUsernameFirstChangeFee;
-        if (fee != expectedFee)
+        if (m_fee != expectedFee)
         {
             tv.errorMsg = strprintf(
                 "%s ticket's fee is invalid. Pastel ID - [%s], invalid fee - [%" PRId64 "], expected fee - [%" PRId64 "]",
-                GetTicketDescription(), pastelID, fee, expectedFee);
+                GetTicketDescription(), m_sPastelID, m_fee, expectedFee);
             break;
         }
 
@@ -221,30 +252,9 @@ ticket_validation_t CChangeUsernameTicket::IsValid(const bool bPreReg, const uin
     return tv;
 }
 
-CChangeUsernameTicket CChangeUsernameTicket::Create(string _pastelID, string _username, SecureString&& strKeyPass)
-{
-    CChangeUsernameTicket ticket(move(_pastelID), move(_username));
-
-    // Check if Pastel ID already have a username on the blockchain.
-    if (!masterNodeCtrl.masternodeTickets.CheckTicketExistBySecondaryKey(ticket)) {
-        // if Pastel ID has no Username yet, the fee is 100 PSL
-        ticket.fee = masterNodeCtrl.MasternodeUsernameFirstChangeFee;
-    } else {
-        // if Pastel ID changed Username before, fee should be 5000
-        ticket.fee = masterNodeCtrl.MasternodeUsernameChangeAgainFee;
-    }
-
-    ticket.GenerateTimestamp();
-
-    const auto strTicket = ticket.ToStr();
-    ticket.m_signature = string_to_vector(CPastelID::Sign(strTicket, ticket.pastelID, move(strKeyPass)));
-
-    return ticket;
-}
-
 bool CChangeUsernameTicket::FindTicketInDb(const string& key, CChangeUsernameTicket& ticket)
 {
-    ticket.username = key;
+    ticket.m_sUserName = key;
     return masterNodeCtrl.masternodeTickets.FindTicket(ticket);
 }
 

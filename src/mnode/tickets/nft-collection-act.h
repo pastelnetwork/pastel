@@ -13,16 +13,18 @@ using NFTCollectionActivateTickets_t = std::vector<CNFTCollectionActivateTicket>
 // NFT Collection Activation Ticket ////////////////////////////////////////////////////////////////////////////////////////////////
 /*
 "ticket": {
-  "type": "nft-collection-act",
-  "pastelID": "",          // Pastel ID of the creator
-  "reg_txid": "",          // tnx with NFT collection registration ticket in it
-  "creator_height": "",    // block at which creator created NFT Ticket
-  // is used to check if the MN that created NFT registration ticket was indeed top MN when creator create ticket
-  "reg_fee": "",           // should match the registration fee from NFT Collection Reg Ticket
-  "signature": ""
+    "type": "nft-collection-act", // NFT Collection Activation ticket type
+    "version": int,               // ticket version (1)
+    "pastelID": string,           // Pastel ID of the NFT Collection's creator
+    "reg_txid": string,           // transaction id (txid) of the NFT Collection Registration ticket
+    "creator_height": uint,       // block height at which the ticket was created
+                                  // is used to check if the MN that created NFT Collection registration ticket 
+                                  // was indeed top MN when creator created the ticket
+    "storage_fee": int,           // should match the registration fee from NFT Collection Reg Ticket
+    "signature": bytes            // base64-encoded signature of the ticket created using the Creator's Pastel ID
 }
 
-key   #1: NFT Collection registration ticket txid
+key   #1: NFT Collection Registration ticket txid
 mvkey #1: Pastel ID
 mvkey #2: creator height (converted to string)
 */
@@ -119,9 +121,9 @@ public:
     static bool CheckTicketExistByNFTCollectionTicketID(const std::string& regTicketTxId);
 
 protected:
-    std::string m_sPastelID;       //pastelID of the creator
-    std::string m_regTicketTxId; // txid of the NFT Reg ticket
-    v_uint8 m_signature;
-    int m_creatorHeight{0};
-    int m_storageFee{0};
+    std::string m_sPastelID;     // Pastel ID of the NFT Collection's creator
+    std::string m_regTicketTxId; // transaction id (txid) of the NFT Collection Registration ticket
+    v_uint8 m_signature;         // base64-encoded signature of the ticket created using the Creator's Pastel ID
+    int m_creatorHeight{0};      // block height at which the ticket was created
+    int m_storageFee{0};         // storage fee in PSL
 };

@@ -13,16 +13,17 @@ using NFTActivateTickets_t = std::vector<CNFTActivateTicket>;
 // NFT Activation Ticket ////////////////////////////////////////////////////////////////////////////////////////////////
 /*
 	"ticket": {
-		"type": "nft-act",
-		"pastelID": "",         // Pastel ID of the creator
-		"reg_txid": "",         // tnx with registration ticket in it
-		"creator_height": "",   // block at which creator created NFT Ticket
-		                        // is used to check if the MN that created NFT registration ticket was indeed top MN when creator create ticket
-		"reg_fee": "",          // should match the registration fee from NFT Reg Ticket
-		"signature": ""
+		"type": "nft-act",      // NFT Activation ticket type
+        "version": int,         // ticket version (0)
+		"pastelID": string,     // Pastel ID of the creator
+		"reg_txid": string,     // transaction id (txid) of the NFT Registration ticket
+		"creator_height": int,  // block height at which the ticket was created
+		                        // it is used to check if the MN that created NFT Registration ticket was indeed top MN when creator create ticket
+		"storage_fee": int64,   // ticket storage fee in PSL, should match the fee from NFT Registration Ticket
+		"signature": bytes      // base64-encoded signature of the ticket created using the Creator's Pastel ID
 	}
 
-    key   #1: NFT registration ticket txid
+    key   #1: NFT Registration ticket txid
     mvkey #1: Pastel ID
     mvkey #2: creator height (converted to string)
  */
@@ -119,9 +120,9 @@ public:
     static bool CheckTicketExistByNFTTicketID(const std::string& regTicketTxId);
 
 protected:
-    std::string m_sPastelID;       // Pastel ID of the creator
-    std::string m_regTicketTxId; // txid of the NFT Reg ticket
-    v_uint8 m_signature;
-    int m_creatorHeight{0};
-    int m_storageFee{0};
+    std::string m_sPastelID;     // Pastel ID of the creator
+    std::string m_regTicketTxId; // txid of the NFT Registration ticket
+    v_uint8 m_signature;         // principal signature
+    int m_creatorHeight{0};      // block height at which the ticket was created
+    int m_storageFee{0};         // ticket storage fee in PSL, should match the fee from NFT Registration Ticket
 };

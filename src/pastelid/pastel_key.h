@@ -42,7 +42,7 @@ public:
     // Verify signature with the public key associated with PastelID.
     static bool Verify(const std::string& sText, const std::string& sSignature, const std::string& sPastelID, 
         const SIGN_ALGORITHM alg = SIGN_ALGORITHM::ed448, const bool fBase64 = false);
-    static pastelid_store_t GetStoredPastelIDs(const bool bPastelIdOnly = true, std::string *psPastelID = nullptr);
+    static pastelid_store_t GetStoredPastelIDs(const bool bPastelIdOnly = true, const std::string &sFilterPastelID = std::string(""));
     // Validate passphrase via secure container or pkcs8 format
     static bool isValidPassphrase(const std::string& sPastelId, const SecureString& strKeyPass) noexcept;
     // Change passphrase used to encrypt the secure container

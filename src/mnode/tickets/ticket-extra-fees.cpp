@@ -54,7 +54,7 @@ string CTicketSignedWithExtraFees::GetRoyaltyPayeeAddress() const
     {
         CPastelIDRegTicket ticket;
         if (CPastelIDRegTicket::FindTicketInDb(pastelID, ticket))
-            return ticket.address;
+            return ticket.getFundingAddress();
     }
     return {};
 }

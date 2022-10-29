@@ -35,35 +35,56 @@ enum class NFTCOLL_TKT_PROP : uint8_t
 
 // NFT Collection Registration Ticket /////////////////////////////////////////////////////////////////////////////////////////////
 /*
-
-nft_collection_ticket as base64(RegistrationTicket({some data}))
-
-bytes fields are base64 as strings
 {
-    "nft_collection_ticket_version": integer  // 1
+    "ticket": {
+        "type": "nft-collection-reg", // NFT Collection Registration ticket type
+        "version": int,               // ticket version (1)
+        "nft_collection_ticket": bytes, // base64-encoded NFT Collection ticket data
+        "signatures": object, // base64-encoded signatures and Pastel IDs of the signers
+        "permitted_users": [  // list of Pastel IDs that are permitted to register an NFT as part of this collection
+           "pastelID1",
+           "pastelID2",
+           ...
+        ],
+        "key": string,          // unique key (32-bytes, base32-encoded)
+        "label": string,        // label to use for searching the ticket
+        "creator_height": uint, // block height at which the ticket was created
+        "closing_height": uint, // a "closing" block height after which no new NFTs would be allowed to be added to this collection
+        "nft_max_count": uint,  // max number of NFTs allowed in this collection
+        "nft_copy_count": uint, // default number of copies for all NFTs in a collection
+        "royalty": float,       // royalty fee, how much creator should get on all future resales (common for all NFTs in a collection)
+        "royalty_address": string, // royalty payee t-address if royalty fee is defined or empty string
+        "green": bool,          // true if there is a Green NFT payment, false - otherwise (common for all NFTs in a collection)
+        "storage_fee": int64    // ticket storage fee in PSL
+    }
+}
+
+where "nft_collection_ticket" is the following JSON object, base64-encoded as a string:
+{
+    "nft_collection_ticket_version": int, // ticket version (1)
     "nft_collection_name": string,  // The name of the NFT collection
-    "creator": bytes,               // NFT collection creator (Pastel ID)
-    "permitted_users": [            // list of Pastel IDs that are permitted to register an NFT as part of the collection
-        "xxxx",
-        "xxxx",
+    "creator": string,      // Pastel ID of the NFT collection's creator
+    "permitted_users": [    // list of Pastel IDs that are permitted to register an NFT as part of this collection
+        "pastelID1",
+        "pastelID2",
         ...
     ]
-    "blocknum": integer,            // block number when the ticket was created - this is to map the ticket to the MNs that should process it
-    "block_hash": bytes             // hash of the top block when the ticket was created - this is to map the ticket to the MNs that should process it
-    "closing_height": integer,      // a "closing" block height after which no new NFTs would be allowed to be added to the collection
-    "nft_max_count": integer,       // max number of NFTs allowed in this collection
-    "nft_copy_count": integer,      // default number of copies for all NFTs in a collection
-    "royalty": float,               // royalty fee, how much creators should get on all future resales (common for all NFTs in a collection)
-    "green": boolean,               // is there Green NFT payment or not (common for all NFTs in a collection)
-    "app_ticket": bytes             // cNode parses app_ticket only for search
+    "blocknum": uint,       // block number when the ticket was created - this is to map the ticket to the MNs that should process it
+    "block_hash": string,   // hash of the top block when the ticket was created - this is to map the ticket to the MNs that should process it
+    "closing_height": uint, // a "closing" block height after which no new NFTs would be allowed to be added to this collection
+    "nft_max_count": uint,  // max number of NFTs allowed in this collection
+    "nft_copy_count": uint, // default number of copies for all NFTs in a collection
+    "royalty": float,       // royalty fee, how much creators should get on all future resales (common for all NFTs in a collection)
+    "green": boolean,       // true if there is a Green NFT payment, false - otherwise (common for all NFTs in a collection)
+    "app_ticket": bytes     // ascii85-encoded application ticket, parsed by the cnode only for search capability
       as base64: { ... }
 }
 
 signatures: {
-    "principal": { "PastelID" : "signature" },
-    "mn1": { "PastelID" : "signature" },
-    "mn2": { "PastelID" : "signature" },
-    "mn3": { "PastelID" : "signature" },
+    "principal": { "principal Pastel ID" : "principal signature" },
+    "mn1":       { "mn1 Pastel ID" : "mn1 signature" },
+    "mn2":       { "mn2 Pastel ID" : "mn2 signature" },
+    "mn3":       { "mn3 Pastel ID" : "mn3 signature" },
 }
 
 key   #1: primary key (generated)

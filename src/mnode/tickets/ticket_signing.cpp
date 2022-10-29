@@ -178,7 +178,8 @@ ticket_validation_t CTicketSigning::validate_signatures(const uint32_t nCallDept
         }
         // 3. principal Pastel ID is personal Pastel ID and MNs Pastel IDs are not personal
         const bool bIsPrincipal = mnIndex == SIGN_PRINCIPAL;
-        if (bIsPrincipal != pastelIdRegTicket.outpoint.IsNull())
+        auto outpoint = pastelIdRegTicket.getOutpoint();
+        if (bIsPrincipal != outpoint.IsNull())
         {
             tv.state = TICKET_VALIDATION_STATE::INVALID;
             tv.errorMsg = strprintf(
@@ -189,20 +190,20 @@ ticket_validation_t CTicketSigning::validate_signatures(const uint32_t nCallDept
         if (!bIsPrincipal)
         {
             // Check that MN1, MN2 and MN3 are all different = here by just PastleId
-            if (++pidCountMap[pastelIdRegTicket.pastelID] != 1)
+            if (++pidCountMap[pastelIdRegTicket.getPastelID()] != 1)
             {
                 tv.state = TICKET_VALIDATION_STATE::INVALID;
                 tv.errorMsg = strprintf(
                     "MNs Pastel IDs can not be the same - [%s]",
-                    pastelIdRegTicket.pastelID);
+                    pastelIdRegTicket.getPastelID());
                 break;
             }
-            if (++outCountMap[pastelIdRegTicket.outpoint] != 1)
+            if (++outCountMap[outpoint] != 1)
             {
                 tv.state = TICKET_VALIDATION_STATE::INVALID;
                 tv.errorMsg = strprintf(
                     "MNs Pastel ID can not be from the same MN - [%s]", 
-                    pastelIdRegTicket.outpoint.ToStringShort());
+                    outpoint.ToStringShort());
                 break;
             }
 
@@ -210,9 +211,9 @@ ticket_validation_t CTicketSigning::validate_signatures(const uint32_t nCallDept
             if (masterNodeCtrl.masternodeSync.IsSynced()) // ticket needs synced MNs
             {
                 auto topBlockMNs = masterNodeCtrl.masternodeManager.GetTopMNsForBlock(nCreatorHeight, true);
-                const auto foundIt = find_if(topBlockMNs.cbegin(), topBlockMNs.cend(), [&pastelIdRegTicket](CMasternode const& mn)
+                const auto foundIt = find_if(topBlockMNs.cbegin(), topBlockMNs.cend(), [&](CMasternode const& mn)
                     {
-                        return mn.vin.prevout == pastelIdRegTicket.outpoint;
+                        return mn.vin.prevout == outpoint;
                     });
 
                 if (foundIt == topBlockMNs.cend()) //not found

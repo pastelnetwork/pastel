@@ -26,21 +26,21 @@ using namespace std;
  * 
  * Current nft_collection_ticket !!!
  * {
- *    "nft_collection_ticket_version": integer     // 1
- *    "creator": bytes,           // Pastel ID of the NFT collection creator
+ *    "nft_collection_ticket_version": int // 1
+ *    "creator": string,    // Pastel ID of the NFT collection's creator
  *    "permitted_users": [  // list of Pastel IDs that are permitted to register an NFT as part of the collection
  *        "xxxx",
  *        "xxxx",
  *        ...
  *    ]
  *   "blocknum": integer,         // block number when the ticket was created - this is to map the ticket to the MNs that should process it
- *   "block_hash": bytes          // hash of the top block when the ticket was created - this is to map the ticket to the MNs that should process it
+ *   "block_hash": string,        // hash of the top block when the ticket was created - this is to map the ticket to the MNs that should process it
  *   "closing_height": integer,   // a "closing" block height after which no new NFTs would be allowed to be added to the collection
  *   "nft_max_count": integer,    // max number of NFTs allowed in this collection
  *   "nft_copy_count": integer,   // default number of copies for all NFTs in a collection
  *   "royalty": float,            // royalty fee, how much creators should get on all future resales (common for all NFTs in a collection)
  *   "green": boolean,            // is there Green NFT payment or not (common for all NFTs in a collection)
- *   "app_ticket": bytes          // cNode parses app_ticket only for search
+ *   "app_ticket": bytes          // ascii85-encoded application ticket, parsed by the cnode only for search capability
  *       as base64: { ... }
  * }
  * 
@@ -71,7 +71,7 @@ CNFTCollectionRegTicket CNFTCollectionRegTicket::Create(
     ticket.GenerateTimestamp();
 
     ticket.m_vPastelID[SIGN_MAIN] = move(sPastelID);
-    // sign the ticket hash using principal PastelID, ed448 algorithm
+    // sign the ticket hash using principal Pastel ID with ed448 algorithm
     string_to_vector(CPastelID::Sign(ticket.m_sNFTCollectionTicket, ticket.m_vPastelID[SIGN_MAIN], move(strKeyPass)), ticket.m_vTicketSignature[SIGN_MAIN]);
     return ticket;
 }
@@ -237,12 +237,12 @@ ticket_validation_t CNFTCollectionRegTicket::IsValid(const bool bPreReg, const u
             }
 
             // validate that address has coins to pay for registration - 10PSL (default fee)
-            const auto fullTicketPrice = TicketPricePSL(chainHeight); //10% of storage fee is paid by the 'creator' and this ticket is created by MN
-            if (pwalletMain->GetBalance() < fullTicketPrice * COIN)
+            const auto fullTicketPricePSL = TicketPricePSL(chainHeight); //10% of storage fee is paid by the 'creator' and this ticket is created by MN
+            if (pwalletMain->GetBalance() < fullTicketPricePSL * COIN)
             {
                 tv.errorMsg = strprintf(
                     "Not enough coins to cover price [%" PRId64 " PSL]", 
-                    fullTicketPrice);
+                    fullTicketPricePSL);
                 break;
             }
         }

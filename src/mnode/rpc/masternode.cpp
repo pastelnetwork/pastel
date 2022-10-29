@@ -641,7 +641,7 @@ As json rpc
     if (CPastelIDRegTicket::FindTicketInDb(mnidRegData->outpoint.ToStringShort(), ticket))
         throw runtime_error(strprintf(
             "Collateral outpoint '%s-%d' is already used by registered mnid '%s'",
-            strTxId, nTxIndex, ticket.pastelID));
+            strTxId, nTxIndex, ticket.getPastelID()));
 
     // generate masternode private key
     mnidRegData->mnPrivKey.MakeNewKey(false);

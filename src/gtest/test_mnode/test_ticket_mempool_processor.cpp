@@ -47,8 +47,8 @@ TEST_F(TestTktMemPoolProcessor, ticket_search)
     for (uint32_t i = 0; i < 10; ++i) {
         CMutableTransaction tx = CreateTicketTransaction(TicketID::Username, [&](CPastelTicket& tkt) {
             auto& userNameTicket = dynamic_cast<CChangeUsernameTicket&>(tkt);
-            userNameTicket.username = to_string(i);
-            userNameTicket.pastelID = strprintf("Pastel-ID-%u", i);
+            userNameTicket.setUserName(to_string(i));
+            userNameTicket.setPastelID(strprintf("Pastel-ID-%u", i));
         });
         vTx.push_back(tx);
         vBlockHeight.emplace_back(100 + i);
@@ -77,12 +77,12 @@ TEST_F(TestTktMemPoolProcessor, ticket_search)
     auto pTkt = CPastelTicketProcessor::CreateTicket(TicketID::Username);
     ASSERT_NE(pTkt, nullptr);
     auto &userNameTkt = dynamic_cast<CChangeUsernameTicket&>(*pTkt);
-    userNameTkt.username = "5";
+    userNameTkt.setUserName("5");
     EXPECT_TRUE(FindTicket(userNameTkt));
-    EXPECT_EQ(userNameTkt.pastelID, "Pastel-ID-5");
+    EXPECT_EQ(userNameTkt.getPastelID(), "Pastel-ID-5");
     
     userNameTkt.Clear();
-    userNameTkt.username = "not_existing";
+    userNameTkt.setUserName("not_existing");
     EXPECT_FALSE(FindTicket(userNameTkt));
 
     // TicketExists
@@ -95,12 +95,12 @@ TEST_F(TestTktMemPoolProcessor, ticket_search)
 
     // FindTicketBySecondaryKey
     userNameTkt.Clear();
-    userNameTkt.pastelID = "Pastel-ID-7";
+    userNameTkt.setPastelID("Pastel-ID-7");
     EXPECT_TRUE(FindTicketBySecondaryKey(userNameTkt));
-    EXPECT_EQ(userNameTkt.username, "7");
+    EXPECT_EQ(userNameTkt.getUserName(), "7");
 
     userNameTkt.Clear();
-    userNameTkt.pastelID = "not_existing";
+    userNameTkt.setPastelID("not_existing");
     EXPECT_FALSE(FindTicketBySecondaryKey(userNameTkt));
 }
 

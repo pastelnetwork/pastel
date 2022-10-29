@@ -19,7 +19,7 @@ using ChangeEthereumAddressTickets_t = std::vector<CChangeEthereumAddressTicket>
 		"ethereumAddress": "",  //new valid ethereum address
 		"fee": "",              // fee to change ethereum address
 		"signature": ""
-	},
+	}
  */
 class CChangeEthereumAddressTicket : public CPastelTicket
 {

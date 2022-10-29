@@ -164,7 +164,7 @@ CAmount CNFTActivateTicket::GetExtraOutputs(vector<CTxOut>& outputs) const
                 "The Pastel ID [%s] from the NFT Registration ticket with this txid [%s] is not in the blockchain or is invalid",
                 mnPastelID, m_regTicketTxId));
 
-        const auto dest = keyIO.DecodeDestination(mnPastelIDticket.address);
+        const auto dest = keyIO.DecodeDestination(mnPastelIDticket.getFundingAddress());
         if (!IsValidDestination(dest))
             throw runtime_error(
                 strprintf("The Pastel ID [%s] from the NFT ticket with this txid [%s] has invalid MN's address", mnPastelID, m_regTicketTxId));

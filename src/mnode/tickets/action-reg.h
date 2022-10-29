@@ -17,35 +17,34 @@ using ActionRegTickets_t = std::vector<CActionRegTicket>;
 * 
 {
     "ticket": {
-        "type": "action-reg",
-        "action_ticket": bytes,    // external action ticket, passed via rpc parameter as base64-encoded, see below
-        "action_type": string,     // action type (sense, cascade)
-        "version": integer,        // version of the blockchain representation of ticket, v1
-        "signatures": object,      // signatures, see below
-        "key": string,             // primary key
-        "label": string,           // search label
-        "called_at": unsigned int, // block at which action was requested,
-                                   // is used to check if the SNs that created this ticket was indeed top SN
-                                   // when that action call was made
-        "storage_fee": int,        // storage fee in PSL
+        "type": "action-reg",   // Action Registration ticket type
+        "action_ticket": bytes, // external action ticket, passed via rpc parameter as base64-encoded, see below
+        "action_type": string,  // action type (sense, cascade)
+        "version": int,         // version of the blockchain representation of ticket (1)
+        "signatures": object,   // signatures, see below
+        "key": string,          // unique key (32-bytes, base32-encoded)
+        "label": string,        // label to use for searching the ticket
+        "called_at": uint,      // block at which action was requested, is used to check if the SNs that 
+                                // created this ticket was indeed top SN when that action call was made
+        "storage_fee": int64    // storage fee in PSL
     }
 }
 
 Where action_ticket is an external base64-encoded JSON as a string:
 {
-  "action_ticket_version": integer // 1
-  "action_type": string,           // action type (sense, cascade)
-  "caller": bytes,                 // Pastel ID of the action caller
-  "blocknum": integer,             // block number when the ticket was created - this is to map the ticket to the MNs that should process it
-  "block_hash": bytes              // hash of the top block when the ticket was created - this is to map the ticket to the MNs that should process it
-  "app_ticket": bytes,             // as ascii85(app_ticket),
-                                   // actual structure of app_ticket is different for different API and is not parsed by pasteld !!!!
+  "action_ticket_version": int  // ticket version (1)
+  "action_type": string,        // action type (sense, cascade)
+  "caller": string,             // Pastel ID of the action caller
+  "blocknum": uint,             // block number when the ticket was created - this is to map the ticket to the MNs that should process it
+  "block_hash": bytes,          // hash of the top block when the ticket was created - this is to map the ticket to the MNs that should process it
+  "app_ticket": bytes           // ascii85-encoded application ticket,
+                                // actual structure of app_ticket is different for different API and is not parsed by cnode !!!!
 }
 signatures: {
-    "principal": { "principal Pastel ID" : "signature"},
-          "mn1": { "mn1 Pastel ID" : "signature"},
-          "mn2": { "mn2 Pastel ID" : "signature"},
-          "mn3": { "mn3 Pastel ID" : "signature"},
+    "principal": { "principal Pastel ID" : "principal signature"},
+          "mn1": { "mn1 Pastel ID" : "mn1 signature"},
+          "mn2": { "mn2 Pastel ID" : "mn2 signature"},
+          "mn3": { "mn3 Pastel ID" : "mn3 signature"},
 }
 
   key #1: primary key (generated)
@@ -162,8 +161,8 @@ protected:
     std::string m_sCallerPastelId;      // Pastel ID of the Action caller
     uint32_t m_nCalledAtHeight{0};      // block at which action was requested
 
-    std::string m_keyOne;               // key #1 (primary key, generated)
-    std::string m_label;                // ticket label
+    std::string m_keyOne;               // primary key #1, generated from random 32-bytes, base32-encoded
+    std::string m_label;                // label to use for searching the ticket
     CAmount m_storageFee{0};            // storage fee in PSL
 
     // parse base64-encoded action_ticket in json format, may throw runtime_error exception

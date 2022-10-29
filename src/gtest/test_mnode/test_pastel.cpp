@@ -29,8 +29,8 @@ public:
 
     void CheckData()
     {
-        EXPECT_STREQ(pastelID.c_str(), m_sPastelID.c_str());
-        EXPECT_STREQ(address.c_str(), TEST_TICKET_ADDRESS);
+        EXPECT_STREQ(m_sPastelID.c_str(), m_sTestPastelID.c_str());
+        EXPECT_STREQ(m_sFundingAddress.c_str(), TEST_TICKET_ADDRESS);
         EXPECT_EQ(GetBlock(), TEST_TICKET_BLOCK);
         EXPECT_EQ(m_nTimestamp, m_nTestTimestamp);
     }
@@ -39,24 +39,24 @@ public:
     {
         SelectParams(ChainNetwork::REGTEST);
         SecureString sPassPhrase("passphrase");
-        m_sPastelID = TEST_PASTEL_ID;
+        m_sTestPastelID = TEST_PASTEL_ID;
     }
     static void TestDownTestSuite()
     {
-        m_sPastelID.clear();
+        m_sTestPastelID.clear();
     }
 
     void SetUp() override
     {
-        pastelID = m_sPastelID;
-        address = TEST_TICKET_ADDRESS;
+        m_sPastelID = m_sTestPastelID;
+        m_sFundingAddress = TEST_TICKET_ADDRESS;
         SetTxId(TEST_TICKET_TXID);
         SetBlock(TEST_TICKET_BLOCK);
         m_nTestTimestamp = GenerateTimestamp();
         // mn_signature for string: pastelID+address+outpoint+timestamp
-        mn_signature.assign({'s', 'i', 'g', '1'});
+        m_mn_signature.assign({'s', 'i', 'g', '1'});
         // full ticket signature by pastel id key
-        pslid_signature.assign({'s', 'i', 'g', '2'});
+        m_pslid_signature.assign({'s', 'i', 'g', '2'});
         ON_CALL(*this, SerializationOp).WillByDefault([this](CDataStream& s, const SERIALIZE_ACTION ser_action)
             {
                 return this->CPastelIDRegTicket::SerializationOp(s, ser_action);
@@ -68,7 +68,7 @@ public:
 
 protected:
     CDataStream m_DataStream;
-    static inline string m_sPastelID{};
+    static inline string m_sTestPastelID{};
     int64_t m_nTestTimestamp;
 };
 

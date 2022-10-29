@@ -28,7 +28,22 @@ enum class NFT_TKT_PROP : uint8_t
 
 // NFT Registration Ticket //////////////////////////////////////////////////////////////////////////////////////////////
 /*
-
+{
+    "ticket": {
+        "type": "nft-reg",      // NFT Registration ticket type
+        "version": int,         // ticket version (1 or 2)
+        "nft_ticket": bytes,    // base64-encoded NFT ticket data
+        "signatures": object,   // base64-encoded signatures and Pastel IDs of the signers
+        "key": string,          // unique key (32-bytes, base32-encoded)
+        "label": string,        // label to use for searching the ticket
+        "creator_height": uint, // block height at which the ticket was created
+        "total_copies": int,    // number of NFT copies that can be created
+        "royalty": float,       // royalty fee, how much creator should get on all future resales
+        "royalty_address": string, // royalty payee t-address if royalty fee is defined or empty string
+        "green": bool,          // true if there is a Green NFT payment, false - otherwise
+        "storage_fee": int64    // ticket storage fee in PSL
+    }
+}
 nft_ticket as base64(RegistrationTicket({some data}))
 
 bytes fields are base64 as strings
@@ -41,7 +56,7 @@ bytes fields are base64 as strings
   "royalty": float,              // royalty fee, how much creator should get on all future resales, optional in v2
   "green": boolean,              // is there Green NFT payment or not, optional in v2
   "nft_collection_txid": bytes,  // transaction id of the NFT collection that NFT belongs to, v2 only, optional, can be empty
-  "app_ticket": bytes,           // cNode parses app_ticket only for search
+  "app_ticket": bytes,           // ascii85-encoded application ticket, parsed by the cnode only for search capability
   as base64(
   {
     "creator_name": string,
@@ -69,20 +84,20 @@ bytes fields are base64 as strings
     "rareness_score": integer,       // 0 to 1000
     "nsfw_score": integer,           // 0 to 1000 
     "seen_score": integer,           // 0 to 1000
-	},
+	}
 }
 
 signatures: {
-    "principal": { "principal Pastel ID" : "signature"},
-          "mn1": { "mn1 Pastel ID" : "signature"},
-          "mn2": { "mn2 Pastel ID" : "signature"},
-          "mn3": { "mn3 Pastel ID" : "signature"},
+    "principal": { "principal Pastel ID" : "principal signature"},
+          "mn1": { "mn1 Pastel ID" : "mn1 signature"},
+          "mn2": { "mn2 Pastel ID" : "mn2 signature"},
+          "mn3": { "mn3 Pastel ID" : "mn3 signature"},
 }
 
-  key #1: primary key (generated)
+  key #1: primary unique key (generated, random 32-bytes base32-encoded)
 mvkey #1: Creator Pastel ID
 mvkey #2: NFT Collection TxID (optional)
-mvket #3: label (optional)
+mvkey #3: label (optional)
 }
  */
 class CNFTRegTicket : public CTicketSignedWithExtraFees 
@@ -164,7 +179,7 @@ public:
 
 protected:
     uint16_t m_nNFTTicketVersion{0};
-    std::string m_sNFTTicket;         // NFT ticket
+    std::string m_sNFTTicket;         // NFT Registration ticket (nft_ticket)
     std::string m_sNFTCollectionTxid; // txid of the NFT collection - can be empty for the simple NFT
     std::string m_sCreatorPastelID;   // Pastel ID of the NFT ticket creator
     std::string m_sTopBlockHash;      // hash of the top block when the ticket was created - this is to map the ticket to the MNs that should process it
