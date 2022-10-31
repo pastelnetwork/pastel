@@ -224,9 +224,9 @@ bool CPastelID::Verify(const string& sText, const string& sSignature, const stri
                     if (!CPastelIDRegTicket::FindTicketInDb(sPastelID, regTicket))
                         throw runtime_error(strprintf("%sPastel ID [%s] is not stored locally and Pastel ID registration ticket was not found in the blockchain", 
                             LRERR_PREFIX, sPastelID));
-                    if (regTicket.isLegRoastKeyDefined())
+                    if (!regTicket.isLegRoastKeyDefined())
                         throw runtime_error(strprintf("%sPastel ID [%s] registration ticket [txid=%s] was found in the blockchain, but LegRoast public key is empty", 
-                            LRERR_PREFIX, regTicket.GetTxId()));
+                            LRERR_PREFIX, sPastelID, regTicket.GetTxId()));
                     regTicket.moveLegRoastKey(sLegRoastPubKey);
                 }
                 // decode base58-encoded LegRoast public key
