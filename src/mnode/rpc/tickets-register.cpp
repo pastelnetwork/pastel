@@ -144,10 +144,10 @@ NFT Registration ticket:
         "nft_ticket":      {...},
         "version":         <version>
         "signatures": {
-            "principal": { "principal Pastel ID": <"signature"> },
-                  "mn1": { "MN1 Pastel ID": <"signature"> },
-                  "mn2": { "MN2 Pastel ID": <"signature"> },
-                  "mn3": { "MN3 Pastel ID": <"signature"> }
+            "principal": { "principal Pastel ID": <"principal signature"> },
+                  "mn1": { "MN1 Pastel ID": <"mn1 signature"> },
+                  "mn2": { "MN2 Pastel ID": <"mn2 signature"> },
+                  "mn3": { "MN3 Pastel ID": <"mn3 signature"> }
         },
         "key":             "<search primary key>",
         "label":           "<search label>",
@@ -247,10 +247,10 @@ NFT Collection Registration Ticket:
         "nft_collection_ticket": {...},
         "version":         <version>
         "signatures": {
-            "principal": { "principal Pastel ID": <"signature"> },
-                  "mn1": { "mn1 Pastel ID": <"signature"> },
-                  "mn2": { "mn2 Pastel ID": <"signature"> },
-                  "mn3": { "mn3 Pastel ID": <"signature"> }
+            "principal": { "principal Pastel ID": <"principal signature"> },
+                  "mn1": { "mn1 Pastel ID": <"mn1 signature"> },
+                  "mn2": { "mn2 Pastel ID": <"mn2 signature"> },
+                  "mn3": { "mn3 Pastel ID": <"mn3 signature"> }
         },
         "key":             "<search primary key>",
         "label":           "<search label>",
@@ -308,13 +308,13 @@ Arguments:
 1. "txid"          (string, required) txid of the ticket to offer, this is either:
                        1) NFT Activation ticket, if current owner is original creator
                        2) Transfer ticket, if current owner is the owner of the transferred NFT
-2. price           (int, required) Offer price in PSL.
+2. price           (int64, required) Offer price in PSL.
 3. "PastelID"      (string, required) The Pastel ID of the current owner. This MUST be the same Pastel ID that was used to sign the ticket referred by the 'txid'.
 4. "passphrase"    (string, required) The passphrase to the private key associated with creator's Pastel ID and stored inside node.
-5. valid-after     (int, optional) The block height after which this offer ticket will become active (use 0 for upon registration).
-6. valid-before    (int, optional) The block height after which this offer ticket is no more valid (use 0 for never).
-7. copy-number     (int, optional) If presented - will replace the original not yet accepted Offer ticket with this copy number.
-                                   If the original has been already offered - operation will fail.
+5. valid-after     (uint, optional) The block height after which this offer ticket will become active (use 0 for upon registration).
+6. valid-before    (uint, optional) The block height after which this offer ticket is no more valid (use 0 for never).
+7. copy-number     (ushort, optional) If presented - will replace the original not yet accepted Offer ticket with this copy number.
+                                      If the original has been already offered - operation will fail.
 8. "address"       (string, optional) The Pastel blockchain t-address to use for funding the registration (leave empty for default funding).
 9. "intendedFor"   (string, optional) The Pastel ID of the intended recipient of the offer (empty by default).
 Offer Ticket:
@@ -391,7 +391,7 @@ Register Accept ticket. If successful, method returns "txid".
 
 Arguments:
 1. "offer_txid"    (string, required) txid of the offer ticket to accept.
-2. price           (int, required) accepted price, shall be equal or more then asked price in the offer ticket.
+2. price           (uint, required) accepted price in PSL, shall be equal or more then asked price in the offer ticket.
 3. "PastelID"      (string, required) The Pastel ID of the new owner.
 4. "passphrase"    (string, required) The passphrase to the private key associated with creator's Pastel ID and stored inside node.
 5. "address"       (string, optional) The Pastel blockchain t-address to use for funding the registration.
@@ -417,7 +417,8 @@ As json rpc:
 );
 
     string offerTxID = params[2].get_str();
-    int price = get_number(params[3]);
+    const int64_t nPricePSL = get_long_number(params[3]);
+    rpc_check_unsigned_param<uint32_t>("<price>", nPricePSL);
 
     string sPastelID = params[4].get_str();
     SecureString strKeyPass(params[5].get_str());
@@ -426,7 +427,7 @@ As json rpc:
     if (params.size() >= 7)
         sFundingAddress = params[6].get_str();
 
-    const auto acceptTicket = CAcceptTicket::Create(move(offerTxID), price, move(sPastelID), move(strKeyPass));
+    const auto acceptTicket = CAcceptTicket::Create(move(offerTxID), static_cast<uint32_t>(nPricePSL), move(sPastelID), move(strKeyPass));
     return GenerateSendTicketResult(CPastelTicketProcessor::SendTicket(acceptTicket, sFundingAddress));
 }
 
@@ -452,8 +453,8 @@ Transfer Ticket:
 		"pastelID": "",
 		"offer_txid": "",
 		"accept_txid": "",
-        "txid": "",
-        "price": "",
+        "item_txid": "",
+        "registration_txid": "",
 		"signature": ""
 	},
 	"height": "",
@@ -521,9 +522,9 @@ As json rpc:
     //if (!masterNodeCtrl.IsActiveMasterNode())
     //  throw JSONRPCError(RPC_INTERNAL_ERROR, "This is not an active masternode. Only active MN can register royalty ticket");
 
-    string NFTTxnId = params[2].get_str();
-    string newPastelID = params[3].get_str();
-    string pastelID = params[4].get_str();
+    string sNFTTxId = params[2].get_str();
+    string sNewPastelID = params[3].get_str();
+    string sPastelID = params[4].get_str();
 
     SecureString strKeyPass(params[5].get_str());
 
@@ -531,7 +532,7 @@ As json rpc:
     if (params.size() >= 7)
         sFundingAddress = params[6].get_str();
 
-    const auto NFTRoyaltyTicket = CNFTRoyaltyTicket::Create(NFTTxnId, newPastelID, pastelID, move(strKeyPass));
+    const auto NFTRoyaltyTicket = CNFTRoyaltyTicket::Create(move(sNFTTxId), move(sNewPastelID), move(sPastelID), move(strKeyPass));
     return GenerateSendTicketResult(CPastelTicketProcessor::SendTicket(NFTRoyaltyTicket, sFundingAddress));
 }
 
@@ -604,15 +605,15 @@ As json rpc:
 )" + HelpExampleRpc("tickets", R"("register", "username", "jXYqZNPj21RVnwxnEJ654wEdzi7GZTZ5LAdiotBmPrF7pDMkpX1JegDMQZX55WZLkvy9fxNpZcbBJuE8QYUqBF", "bsmith84", "passphrase")")
 );
 
-    string username = params[2].get_str();
-    string pastelID = params[3].get_str();
+    string sUserName = params[2].get_str();
+    string sPastelID = params[3].get_str();
     SecureString strKeyPass(params[4].get_str());
 
     opt_string_t sFundingAddress;
     if (params.size() >= 6)
         sFundingAddress = params[5].get_str();
 
-    const auto changeUsernameTicket = CChangeUsernameTicket::Create(pastelID, username, move(strKeyPass));
+    const auto changeUsernameTicket = CChangeUsernameTicket::Create(move(sPastelID), move(sUserName), move(strKeyPass));
     return GenerateSendTicketResult(CPastelTicketProcessor::SendTicket(changeUsernameTicket, sFundingAddress));
 }
 
@@ -702,10 +703,10 @@ Action Reg Ticket:
         "action_type":   "<action-type>",
         "version":         <version>
         "signatures": {
-            "principal": { "principal Pastel ID": <"signature"> },
-                  "mn1": { "mn1 Pastel ID": <"signature"> },
-                  "mn2": { "mn2 Pastel ID": <"signature"> },
-                  "mn3": { "mn3 Pastel ID": <"signature"> }
+            "principal": { "principal Pastel ID": <"principal signature"> },
+                  "mn1": { "mn1 Pastel ID": <"mn1 signature"> },
+                  "mn2": { "mn2 Pastel ID": <"mn2 signature"> },
+                  "mn3": { "mn3 Pastel ID": <"mn3 signature"> }
         },
         "key":         "<search primary key>",
         "label":       "<search label>",

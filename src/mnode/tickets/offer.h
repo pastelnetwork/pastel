@@ -25,22 +25,25 @@ typedef enum class _OFFER_TICKET_STATE : uint8_t
  *    - Action Result
  * 
 	"ticket": {
-		"type": "offer",
-		"pastelID": "",     // Pastel ID of the item owner:
-                            //   either 
-                            //      1) an original creator; 
-                            //   or
-                            //      2) a previous owner,
-		                    // should be the same in either 1) item activation ticket or 2) transfer ticket
-		"txid": "",         // either 
-                            //   1) item activation ticket txid
-                            // or 
-                            //   2) item transfer ticket txid
-		"asked_price": "",
-		"valid_after": "",
-		"valid_before": "",
-		"reserved": "",
-		"signature": ""
+		"type": "offer",       // Offer ticket type
+        "version": int,        // ticket version (0)
+		"pastelID": string,    // Pastel ID of the item owner:
+                               //   either 
+                               //      1) an original creator; 
+                               //   or
+                               //      2) a previous owner,
+		                       // should be the same in either 1) item activation ticket or 2) transfer ticket
+		"item_txid": string,   // either 
+                               //   1) item activation ticket txid
+                               // or 
+                               //   2) item transfer ticket txid
+        "copy_number": ushort, // item copy number
+                               // Offer ticket for Transfer ticket will always has copy_number = 1
+		"asked_price": uint,   // item asked price in PSL
+		"valid_after": uint,   // block height after which the item offer will be active (inclusive)
+		"valid_before": uint,  // block height when the item offer will expire (inclusive)
+		"locked_recipient": string, // Pastel ID of intended recipient of the item - new owner, "not defined" if empty
+		"signature": bytes     // base64-encoded signature of the ticket created using the item owner's Pastel ID
 	}
 
        key #1: <txid>:<copy_number>
@@ -155,8 +158,8 @@ protected:
     std::string m_sPastelID;    // Pastel ID of the offerer (current owner)
     std::string m_sIntendedForPastelID; // Pastel ID of intended recipient of the item - new owner (can be empty)
     unsigned int m_nAskedPricePSL = 0;
-    uint32_t m_nValidAfter = 0;  //as a block height
-    uint32_t m_nValidBefore = 0; //as a block height
-    unsigned short m_nCopyNumber = 0;
+    uint32_t m_nValidAfter = 0;  // block height after which the item offer will be active (inclusive)
+    uint32_t m_nValidBefore = 0; // block height after which the item offer will expire (inclusive)
+    unsigned short m_nCopyNumber = 0; // item copy number
     v_uint8 m_signature;
 };

@@ -218,7 +218,7 @@ As json rpc
     string sPastelId = params[3].get_str();
 
     //Check if pastelid is found within the stored ones
-    const auto pastelIdMap = CPastelID::GetStoredPastelIDs(true, &sPastelId);
+    const auto pastelIdMap = CPastelID::GetStoredPastelIDs(true, sPastelId);
     if (pastelIdMap.empty())
         throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY,
                            "Error: Corresponding Pastel ID not found!");

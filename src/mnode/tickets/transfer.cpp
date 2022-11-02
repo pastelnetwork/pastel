@@ -175,11 +175,11 @@ CTransferTicket CTransferTicket::Create(string &&offerTxId, string &&acceptTxId,
             ticket.m_offerTxId, ticket.m_acceptTxId));
 
     ticket.m_itemTxId = offerTicket->getItemTxId();
-    ticket.price = offerTicket->getAskedPricePSL();
+    ticket.m_nPricePSL = offerTicket->getAskedPricePSL();
 
     ticket.GenerateTimestamp();
 
-    // In case it is nested it means that we have the Transfer TxId int the Offer ticket (reffered item).
+    // In case it is nested it means that we have the Transfer txid in the Offer ticket (reffered item).
     // Returns tuple:
     //   [0]: original registration ticket's txid
     //   [1]: copy number for a given item (NFT or Action)
@@ -195,7 +195,7 @@ CTransferTicket CTransferTicket::Create(string &&offerTxId, string &&acceptTxId,
         //Copy nr.
         ticket.SetCopySerialNr(to_string(offerTicket->getCopyNumber()));
     } else {
-        //This is the re-sold case
+        //This is the multiple transfers case
         ticket.SetItemRegTicketTxid(get<0>(multipleTransfers.value()));
         ticket.SetCopySerialNr(get<1>(multipleTransfers.value()));
     }
@@ -220,7 +220,7 @@ optional<txid_serial_tuple_t> CTransferTicket::GetItemRegForMultipleTransfers(co
         }
     } catch ([[maybe_unused]] const runtime_error& error) {
         //Intentionally not throwing exception!
-        LogPrintf("DebugPrint: NFT with this txid is not resold: %s", itemTxId);
+        LogPrintf("Item with txid [%s] is not transferred multiple times\n", itemTxId);
     }
     return retVal;
 }
@@ -258,7 +258,7 @@ ticket_validation_t CTransferTicket::IsValid(const bool bPreReg, const uint32_t 
             *this, bPreReg, m_offerTxId, offerTicket,
             [](const TicketID tid) noexcept { return (tid != TicketID::Offer); },
             GetTicketDescription(), ::GetTicketDescription(TicketID::Offer), nCallDepth, 
-            price + TicketPricePSL(chainHeight));
+            m_nPricePSL + TicketPricePSL(chainHeight));
         if (commonTV.IsNotValid())
         {
             tv.errorMsg = strprintf(
@@ -273,7 +273,7 @@ ticket_validation_t CTransferTicket::IsValid(const bool bPreReg, const uint32_t 
             *this, bPreReg, m_acceptTxId, acceptTicket,
             [](const TicketID tid) noexcept { return (tid != TicketID::Accept); },
             GetTicketDescription(), ::GetTicketDescription(TicketID::Accept), nCallDepth, 
-            price + TicketPricePSL(chainHeight));
+            m_nPricePSL + TicketPricePSL(chainHeight));
         if (commonTV.IsNotValid())
         {
             tv.errorMsg = strprintf(
@@ -461,7 +461,7 @@ CAmount CTransferTicket::GetExtraOutputs(vector<CTxOut>& outputs) const
     };
 
     // add outputs
-    if (!addOutput(offererPastelIDticket.address, nPriceAmount))
+    if (!addOutput(offererPastelIDticket.getFundingAddress(), nPriceAmount))
         throw runtime_error(
             strprintf("The Pastel ID [%s] from %s ticket with this txid [%s] has invalid address",
                       offererPastelID, ::GetTicketDescription(TicketID::Offer), m_offerTxId));

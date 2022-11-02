@@ -13,22 +13,21 @@ using AcceptTickets_t = std::vector<CAcceptTicket>;
 // Accept Ticket /////////////////////////////////////////////////////////////////////////////////////////////////////
 /*
 	"ticket": {
-		"type": "accept",
-		"pastelID": "",     // Pastel ID of the new owner (acceptor)
-		"offer_txid": "",   // txid of the offer ticket
-		"price": "",
-		"reserved": "",
-		"signature": ""
+		"type": "accept",     // Accept ticket type
+        "version": int,       // ticket version (0)
+		"pastelID": string,   // Pastel ID of the new owner of the item (acceptor)
+                              // should be the same as "locked_recipient" if defined in Offer ticket
+		"offer_txid": string, // transaction id (txid) of the Offer ticket
+		"price": uint,        // accepted price of the item in PSL
+		"signature": bytes    // base64-encoded signature of the ticket created using Pastel ID of the new owner
 	}
 
-       key #1: offer ticket txid
+       key #1: Offer ticket txid
     mv key #1: Pastel ID of the new owner (acceptor)
  */
 class CAcceptTicket : public CPastelTicket
 {
 public:
-    unsigned int price{};
-    std::string reserved;
     v_uint8 m_signature;
 
 public:
@@ -50,7 +49,7 @@ public:
         CPastelTicket::Clear();
         m_sPastelID.clear();
         m_offerTxId.clear();
-        price = 0;
+        m_nPricePSL = 0;
         reserved.clear();
         m_signature.clear();
     }
@@ -63,7 +62,7 @@ public:
     void SetKeyOne(std::string&& sValue) override { m_offerTxId = std::move(sValue); }
 
     // get ticket price in PSL (1% from price)
-    CAmount TicketPricePSL(const uint32_t nHeight) const noexcept override { return std::max<CAmount>(10, price / 100); }
+    CAmount TicketPricePSL(const uint32_t nHeight) const noexcept override { return std::max<CAmount>(10, m_nPricePSL / 100); }
 
     std::string ToJSON() const noexcept override;
     std::string ToStr() const noexcept override;
@@ -85,7 +84,7 @@ public:
         READWRITE(m_nVersion);
         // v0
         READWRITE(m_offerTxId);
-        READWRITE(price);
+        READWRITE(m_nPricePSL);
         READWRITE(reserved);
         READWRITE(m_signature);
         READWRITE(m_nTimestamp);
@@ -93,7 +92,7 @@ public:
         READWRITE(m_nBlock);
     }
 
-    static CAcceptTicket Create(std::string &&offerTxId, const int price, std::string &&sPastelID, SecureString&& strKeyPass);
+    static CAcceptTicket Create(std::string &&offerTxId, const unsigned int nPricePSL, std::string &&sPastelID, SecureString&& strKeyPass);
     static bool FindTicketInDb(const std::string& key, CAcceptTicket& ticket);
 
     static bool CheckAcceptTicketExistByOfferTicket(const std::string& offerTxnId);
@@ -101,6 +100,8 @@ public:
     static AcceptTickets_t FindAllTicketByPastelID(const std::string& pastelID);
 
 protected:
-    std::string m_sPastelID; // Pastel ID of the new owner (acceptor)
-    std::string m_offerTxId;  // offer ticket txid
+    std::string m_sPastelID;      // Pastel ID of the new owner (acceptor)
+    std::string m_offerTxId;      // transaction id (txid) of the Offer ticket
+    unsigned int m_nPricePSL = 0; // accepted price of the item in PSL
+    std::string reserved;
 };

@@ -131,8 +131,8 @@ TEST_F(TestTicketTxMemPoolTracker, mempool_addremove)
     CMutableTransaction txTicket2 = CreateTicketTransaction(TicketID::Username, [](auto& tkt)
         {
             auto& userNameTicket = dynamic_cast<CChangeUsernameTicket&>(tkt);
-            userNameTicket.username = "TestUser";
-            userNameTicket.pastelID = "PastelID";
+            userNameTicket.setUserName("TestUser");
+            userNameTicket.setPastelID("PastelID");
         }
     );
     const auto& txid2 = txTicket2.GetHash();

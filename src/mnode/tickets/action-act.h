@@ -14,14 +14,14 @@ using ActionActivateTickets_t = std::vector<CActionActivateTicket>;
 /*
 {
     "ticket": {
-        "type": "action-act",
-        "version": integer,      // version of the blockchain representation of ticket, 1 now
-        "pastelID": string,      // Pastel ID of the caller
-        "reg_txid": string,      // txid of the action registration ticket
-        "called_at": int,        // block at which action was called (`action_ticket` was created)
-                                 // is used to check if the MN that created action registration ticket was indeed the top MN when the the action was called
-        "storage_fee": int,      // should match the storage fee from the Action Ticket
-        "signature": bytes       // Signature of the ticket created using the MasterNode's private key
+        "type": "action-act", // Action Activation ticket type 
+        "version": int,       // version of the blockchain representation of ticket, 1 now
+        "pastelID": string,   // Pastel ID of the Action caller
+        "reg_txid": string,   // txid of the Action Registration ticket
+        "called_at": uint,    // block at which action was called (Action Registration ticket was created)
+                              // is used to check if the MN that created Action Registration ticket was indeed the top MN when the the action was called
+        "storage_fee": int64, // ticket storage fee in PSL, should match the storage fee from the Action Registration Ticket
+        "signature": bytes    // base64-encoded signature of the ticket created using the Action Caller's Pastel ID
     }
 }
 */

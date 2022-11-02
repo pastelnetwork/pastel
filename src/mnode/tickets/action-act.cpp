@@ -195,7 +195,7 @@ CAmount CActionActivateTicket::GetExtraOutputs(vector<CTxOut>& outputs) const
                 "The Pastel ID [%s] from the %s with this txid [%s] is not in the blockchain or is invalid",
                 mnPastelID, ::GetTicketDescription(TicketID::ActionReg), m_regTicketTxId));
 
-        const auto dest = keyIO.DecodeDestination(mnPastelIDticket.address);
+        const auto dest = keyIO.DecodeDestination(mnPastelIDticket.getFundingAddress());
         if (!IsValidDestination(dest))
             throw runtime_error(strprintf(
                 "The Pastel ID [%s] from the %s ticket with this txid [%s] has invalid MN's address", 

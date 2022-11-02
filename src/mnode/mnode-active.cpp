@@ -212,7 +212,7 @@ bool CActiveMasternode::CheckMnId(const COutPoint &outPoint)
     // check for registered mnid
     // check that this MN has registered Pastel ID (mnid)
     CPastelIDRegTicket mnidTicket;
-    mnidTicket.secondKey = outPoint.ToStringShort();
+    mnidTicket.setSecondKey(outPoint.ToStringShort());
     if (!masterNodeCtrl.masternodeTickets.FindTicketBySecondaryKey(mnidTicket))
     {
         LogFnPrintf("Masternode %s does not have registered Pastel ID", outPoint.ToStringShort());

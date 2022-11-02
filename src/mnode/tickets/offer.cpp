@@ -23,8 +23,8 @@ using namespace std;
 // COfferTicket ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 COfferTicket COfferTicket::Create(string &&itemTxId, 
     const unsigned int nAskedPricePSL, 
-    const unsigned int nValidAfter, 
-    const unsigned int nValidBefore, 
+    const uint32_t nValidAfter, 
+    const uint32_t nValidBefore, 
     const unsigned short nCopyNumber, 
     string &&sIntendedForPastelID, 
     string &&pastelID, 
@@ -40,7 +40,7 @@ COfferTicket COfferTicket::Create(string &&itemTxId,
 
     ticket.GenerateTimestamp();
 
-    // NOTE: Offer ticket for Transfer ticket will always has copyNumber = 1
+    // NOTE: Offer ticket for Transfer ticket will always has copy number = 1
     ticket.m_nCopyNumber = nCopyNumber > 0 ?
         nCopyNumber :
         static_cast<decltype(ticket.m_nCopyNumber)>(COfferTicket::FindAllTicketByItemTxId(ticket.m_itemTxId).size()) + 1;

@@ -323,7 +323,7 @@ void CMasternode::Check(const bool fForce)
 
     // check that this MN has registered Pastel ID (mnid)
     CPastelIDRegTicket mnidTicket;
-    mnidTicket.secondKey = vin.prevout.ToStringShort();
+    mnidTicket.setSecondKey(vin.prevout.ToStringShort());
     if (!masterNodeCtrl.masternodeTickets.FindTicketBySecondaryKey(mnidTicket))
     {
         LogFnPrint("masternode", "Masternode %s does not have registered Pastel ID", GetDesc());
@@ -333,10 +333,10 @@ void CMasternode::Check(const bool fForce)
     if (fOurMasterNode)
     {
         // if we're running in MasterNode mode - check that MNID actually exists locally
-        const auto mapIDs = CPastelID::GetStoredPastelIDs(true, &mnidTicket.pastelID);
+        const auto mapIDs = CPastelID::GetStoredPastelIDs(true, mnidTicket.getPastelID());
         if (mapIDs.empty())
         {
-            LogFnPrint("masternode", "Masternode %s registered Pastel ID '%s' is not stored locally", GetDesc(), mnidTicket.pastelID);
+            LogFnPrint("masternode", "Masternode %s registered Pastel ID '%s' is not stored locally", GetDesc(), mnidTicket.getPastelID());
             SetState(MASTERNODE_STATE::PRE_ENABLED, __METHOD_NAME__);
             return;
         }

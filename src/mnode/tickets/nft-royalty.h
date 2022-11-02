@@ -11,13 +11,17 @@ class CNFTRoyaltyTicket;
 using NFTRoyaltyTickets_t = std::vector<CNFTRoyaltyTicket>;
 
 /*
+* NFT Royalty Ticket
+* 
+* This ticket is used to set royalty payments for the specific NFT.
+* 
   "ticket": {
-    "type": "royalty",
-    "version": "",
-    "pastelID": "",     //pastelID of the old (current at moment of creation) royalty recipient
-    "new_pastelID": "", //pastelID of the new royalty recipient
-    "nft_txid": "",     //txid of the NFT for royalty payments
-    "signature": ""
+        "type": "nft-royalty",  // NFT Royalty ticket type
+        "version": int,         // ticket version (1)
+        "pastelID": string,     // Pastel ID of the previous (current at moment of creation) royalty recipient
+        "new_pastelID": string, // Pastel ID of the new royalty recipient
+        "nft_txid": string,     // transaction id (txid) of the NFT for royalty payments
+        "signature": bytes      // base64-encoded signature of the ticket created using the previous Pastel ID
   }
 */
 
@@ -26,9 +30,9 @@ class CNFTRoyaltyTicket : public CPastelTicket
 public:
     CNFTRoyaltyTicket() = default;
 
-    explicit CNFTRoyaltyTicket(std::string _pastelID, std::string _newPastelID) : 
-        pastelID(std::move(_pastelID)), 
-        newPastelID(std::move(_newPastelID))
+    explicit CNFTRoyaltyTicket(std::string &&sPastelID, std::string &&sNewPastelID) : 
+        m_sPastelID(std::move(sPastelID)), 
+        m_sNewPastelID(std::move(sNewPastelID))
     {}
 
     TicketID ID() const noexcept final { return TicketID::Royalty; }
@@ -41,15 +45,15 @@ public:
     void Clear() noexcept override
     {
         CPastelTicket::Clear();
-        pastelID.clear();
-        newPastelID.clear();
-        NFTTxnId.clear();
+        m_sPastelID.clear();
+        m_sNewPastelID.clear();
+        m_sNFTTxId.clear();
         m_signature.clear();
         m_keyOne.clear();
     }
     std::string KeyOne() const noexcept final { return m_keyOne; }
-    std::string MVKeyOne() const noexcept final { return pastelID; }
-    std::string MVKeyTwo() const noexcept final { return NFTTxnId; }
+    std::string MVKeyOne() const noexcept final { return m_sPastelID; }
+    std::string MVKeyTwo() const noexcept final { return m_sNFTTxId; }
 
     bool HasMVKeyOne() const noexcept final { return true; }
     bool HasMVKeyTwo() const noexcept final { return true; }
@@ -62,8 +66,8 @@ public:
     bool IsSameSignature(const v_uint8& signature) const noexcept { return m_signature == signature; }
 
     // getters for ticket fields
-    const std::string& getPastelID() const noexcept { return pastelID; }
-    const std::string& getNewPastelID() const noexcept { return newPastelID; }
+    const std::string& getPastelID() const noexcept { return m_sPastelID; }
+    const std::string& getNewPastelID() const noexcept { return m_sNewPastelID; }
     const std::string getSignature() const noexcept { return vector_to_string(m_signature); }
 
     void SerializationOp(CDataStream& s, const SERIALIZE_ACTION ser_action) final
@@ -72,11 +76,11 @@ public:
         std::string error;
         if (!VersionMgmt(error, bRead))
             throw std::runtime_error(error);
-        READWRITE(pastelID);
-        READWRITE(newPastelID);
+        READWRITE(m_sPastelID);
+        READWRITE(m_sNewPastelID);
         READWRITE(m_nVersion);
-        // v0
-        READWRITE(NFTTxnId);
+        // v1
+        READWRITE(m_sNFTTxId);
         READWRITE(m_signature);
         if (bRead)
             GenerateKeyOne();
@@ -85,16 +89,16 @@ public:
         READWRITE(m_nBlock);
     }
 
-    static CNFTRoyaltyTicket Create(std::string _NFTTxnId, std::string _newPastelID, std::string _pastelID, SecureString&& strKeyPass);
+    static CNFTRoyaltyTicket Create(std::string &&sNFTTxId, std::string &&sNewPastelID, std::string &&sPastelID, SecureString&& strKeyPass);
     static bool FindTicketInDb(const std::string& key, CNFTRoyaltyTicket& ticket);
 
     static NFTRoyaltyTickets_t FindAllTicketByPastelID(const std::string& pastelID);
     static NFTRoyaltyTickets_t FindAllTicketByNFTTxID(const std::string& NFTTxnId);
 
 protected:
-    std::string pastelID;    // Pastel ID of the old (current at moment of creation) royalty recipient
-    std::string newPastelID; // Pastel ID of the new royalty recipient
-    std::string NFTTxnId;    // txid of the NFT for royalty payments
+    std::string m_sPastelID;    // Pastel ID of the old (current at moment of creation) royalty recipient
+    std::string m_sNewPastelID; // Pastel ID of the new royalty recipient
+    std::string m_sNFTTxId;    // txid of the NFT for royalty payments
     std::string m_keyOne;
     v_uint8 m_signature;
 };

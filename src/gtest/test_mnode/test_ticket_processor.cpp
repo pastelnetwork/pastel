@@ -68,11 +68,12 @@ TEST_F(TestTicketProcessor, ticket_compression)
     auto ticket = make_unique<MockChangeUserNameTicket>();
     ASSERT_NE(ticket.get(), nullptr);
     // set some ticket data
-    ticket->username = string(12, 'a');
-    ticket->pastelID = keys.begin()->first;
-    ticket->fee = 0;
+    ticket->setUserName(string(12, 'a'));
+    auto sPastelID = keys.begin()->first;
+    ticket->setPastelID(move(sPastelID));
+    ticket->setFee(0);
     const auto strTicket = ticket->ToStr();
-    ticket->set_signature(CPastelID::Sign(strTicket, ticket->pastelID, move(TEST_PASSPHRASE)));
+    ticket->set_signature(CPastelID::Sign(strTicket, ticket->getPastelID(), move(TEST_PASSPHRASE)));
 
     ticket_validation_t tvValid;
     tvValid.state = TICKET_VALIDATION_STATE::VALID;

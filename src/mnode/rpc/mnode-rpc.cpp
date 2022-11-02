@@ -84,7 +84,7 @@ Result:
     "pastelid_registration_fee"   : x.xxx,
     "username_registration_fee"   : x.xxx,
     "username_change_fee"         : x.xxx,
-},
+}
 )"
 + HelpExampleCli("getfeeschedule", "")
 + HelpExampleRpc("getfeeschedule", ""));

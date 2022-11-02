@@ -270,7 +270,7 @@ ticket_validation_t CPastelTicketProcessor::ValidateTicketFees(const uint32_t nH
                 break;
             }
             // transfer price in patoshis
-            transferPrice = pTransferTicket->price * COIN;
+            transferPrice = pTransferTicket->getPricePSL() * COIN;
 
             const auto pTicket = pTransferTicket->FindItemRegTicket();
             if (!pTicket)
@@ -914,12 +914,13 @@ string CPastelTicketProcessor::ListFilterPastelIDTickets(const uint32_t nMinHeig
     return filterTickets<CPastelIDRegTicket>(
         [&](const CPastelIDRegTicket& t, const unsigned int chainHeight) -> bool
         {
+            const bool bIsPersonal = t.isPersonal();
             if ((filter == 1 && // don't skip mn
-                    !t.outpoint.IsNull()) || 
+                    !bIsPersonal) || 
                 (filter == 2 && // don't skip personal
-                    t.outpoint.IsNull()) || 
+                    bIsPersonal) || 
                 (filter == 3 && // don't skip locally stored tickets
-                    pmapIDs && pmapIDs->find(t.pastelID) != pmapIDs->cend()))
+                    pmapIDs && pmapIDs->find(t.getPastelID()) != pmapIDs->cend()))
                 return false;
             return true;
         }, nMinHeight);
@@ -1957,16 +1958,17 @@ string CPastelTicketProcessor::CreateFakeTransaction(CPastelTicket& ticket, cons
 {
     string error;
 
-    if (ticket.ID() == TicketID::PastelID) {
+    if (ticket.ID() == TicketID::PastelID)
+    {
         if (strVerb == "1") {
             auto t = (CPastelIDRegTicket*)&ticket;
-            t->pslid_signature.clear();
+            t->clearPSLIDsignature();
         } else if (strVerb == "2") {
             auto t = (CPastelIDRegTicket*)&ticket;
-            t->mn_signature.clear();
+            t->clearMNsignature();
         } else if (strVerb == "3") {
             auto t = (CPastelIDRegTicket*)&ticket;
-            t->outpoint.SetNull();
+            t->clearOutPoint();
         }
     } else if (ticket.ID() == TicketID::NFT) {
         if (strVerb == "1") {

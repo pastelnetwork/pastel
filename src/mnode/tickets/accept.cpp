@@ -15,12 +15,12 @@ using json = nlohmann::json;
 using namespace std;
 
 // CAcceptTicket ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-CAcceptTicket CAcceptTicket::Create(string &&offerTxId, const int price, string &&sPastelID, SecureString&& strKeyPass)
+CAcceptTicket CAcceptTicket::Create(string &&offerTxId, const unsigned int nPricePSL, string &&sPastelID, SecureString&& strKeyPass)
 {
     CAcceptTicket ticket(move(sPastelID));
 
     ticket.m_offerTxId = move(offerTxId);
-    ticket.price = price;
+    ticket.m_nPricePSL = nPricePSL;
     ticket.GenerateTimestamp();
 
     const auto strTicket = ticket.ToStr();
@@ -34,7 +34,7 @@ string CAcceptTicket::ToStr() const noexcept
     stringstream ss;
     ss << m_sPastelID;
     ss << m_offerTxId;
-    ss << price;
+    ss << m_nPricePSL;
     ss << m_nTimestamp;
     return ss.str();
 }
@@ -58,7 +58,7 @@ ticket_validation_t CAcceptTicket::IsValid(const bool bPreReg, const uint32_t nC
             *this, bPreReg, m_offerTxId, offerTicket,
             [](const TicketID tid) noexcept { return (tid != TicketID::Offer); },
             GetTicketDescription(), ::GetTicketDescription(TicketID::Offer), nCallDepth, 
-            price + TicketPricePSL(chainHeight));
+            m_nPricePSL + TicketPricePSL(chainHeight));
         if (commonTV.IsNotValid())
         {
             tv.errorMsg = strprintf(
@@ -161,11 +161,11 @@ ticket_validation_t CAcceptTicket::IsValid(const bool bPreReg, const uint32_t nC
         }
         
         // Verify that the price is correct
-        if (price < pOfferTicket->getAskedPricePSL())
+        if (m_nPricePSL < pOfferTicket->getAskedPricePSL())
         {
             tv.errorMsg = strprintf(
                 "The offered price [%u] is less than asked in the %s ticket [%u]", 
-                price, ::GetTicketDescription(TicketID::Offer), pOfferTicket->getAskedPricePSL());
+                m_nPricePSL, ::GetTicketDescription(TicketID::Offer), pOfferTicket->getAskedPricePSL());
             break;
         }
 
@@ -182,12 +182,12 @@ string CAcceptTicket::ToJSON() const noexcept
         {"height", m_nBlock},
         {"ticket", 
             {
-                {"type", GetTicketName()}, 
-                {"version", GetStoredVersion()},
-                {"pastelID", m_sPastelID},
-                {"offer_txid", m_offerTxId},
-                {"price", price},
-                {"signature", ed_crypto::Hex_Encode(m_signature.data(), m_signature.size())}
+                { "type", GetTicketName() },
+                { "version", GetStoredVersion() },
+                { "pastelID", m_sPastelID },
+                { "offer_txid", m_offerTxId },
+                { "price", m_nPricePSL },
+                { "signature", ed_crypto::Hex_Encode(m_signature.data(), m_signature.size()) }
             }
         }
     };
