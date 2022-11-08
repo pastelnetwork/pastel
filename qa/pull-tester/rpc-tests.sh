@@ -113,6 +113,7 @@ declare -a testScriptsMN=(
     'mn_messaging.py'
     'mn_payment.py'
     'mn_bugs.py'
+    'mn_expiration.py'
 )
 
 declare -a testScriptsMNslow=(

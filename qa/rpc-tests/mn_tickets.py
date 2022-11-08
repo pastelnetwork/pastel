@@ -4,7 +4,6 @@
 # file COPYING or https://www.opensource.org/licenses/mit-license.php.
 import json
 import time
-import random
 import string
 import re
 from decimal import Decimal, getcontext
@@ -36,23 +35,23 @@ getcontext().prec = 16
 TEST_COLLECTION_NAME = "My NFT Collection"
 
 class MasterNodeTicketsTest(MasterNodeCommon):
-    number_of_master_nodes = 13
-    number_of_simple_nodes = 5
-    total_number_of_nodes = number_of_master_nodes+number_of_simple_nodes
-
-    non_active_mn = number_of_master_nodes-1
-
-    non_mn1 = number_of_master_nodes        # mining node - will have coins #13
-    non_mn2 = number_of_master_nodes+1      # hot node - will have collateral for all active MN #14
-    non_mn3 = number_of_master_nodes+2      # will not have coins by default #15
-    non_mn4 = number_of_master_nodes+3      # will not have coins by default #16
-    non_mn5 = number_of_master_nodes+4
-
-    mining_node_num = number_of_master_nodes    # same as non_mn1
-    hot_node_num = number_of_master_nodes+1     # same as non_mn2
-
     def __init__(self):
         super().__init__()
+
+        self.number_of_master_nodes = 13
+        self.number_of_simple_nodes = 5
+        self.number_of_cold_nodes = self.number_of_master_nodes - 1
+
+        self.non_active_mn = self.number_of_master_nodes-1
+
+        self.non_mn1 = self.number_of_master_nodes        # mining node - will have coins #13
+        self.non_mn2 = self.number_of_master_nodes+1      # hot node - will have collateral for all active MN #14
+        self.non_mn3 = self.number_of_master_nodes+2      # will not have coins by default #15
+        self.non_mn4 = self.number_of_master_nodes+3      # will not have coins by default #16
+        self.non_mn5 = self.number_of_master_nodes+4
+
+        self.mining_node_num = self.number_of_master_nodes    # same as non_mn1
+        self.hot_node_num = self.number_of_master_nodes+1     # same as non_mn2
 
         self.errorString = ""
         self.is_network_split = False
@@ -63,16 +62,6 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         self.is_mn_pastel_ids_initialized = False
         self.nested_ownership_transfer_txid  = None
         self.single_offer_transfer_txids = []
-
-        self.mn_addresses = {}
-        self.mn_pastelids = {}
-        self.mn_outpoints = {}
-        # list of 3 TopMNs
-        self.top_mns = [TopMN(i) for i in range(3)]
-
-        self.signatures_dict = None
-        self.same_mns_signatures_dict = None
-        self.not_top_mns_signatures_dict = None
 
         self.mn0_pastelid1 = None
         self.mn0_id1_lrkey = None
@@ -99,33 +88,23 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         self.creator_pastelid3 = None               # non_mn3
         self.creator_nonregistered_pastelid1 = None
         self.mn2_nonregistered_pastelid1 = None     # not registered Pastel ID
+        
         self.total_copies = None
-        self.principal_signatures_dict = {}     # dict of all principal signatures for validation: 'principal Pastel ID' -> 'signature'
         self.nft_collection_name = None
-        self.tickets = {}
-        for name, member in TicketType.__members__.items():
-            self.tickets[member] = TicketData()
-            self.tickets[member].ticket_price = member.ticket_price
-            print(f"{member.description} ticket price: {member.ticket_price}")
         self.nftcoll_closing_height_inc = 30        # closing block height increment for NFT collection
 
-        self.royalty = 0.075                        # default royalty fee 7.5%
-        self.is_green = True                        # is green fee payment?
-
         self.test_high_heights = False
-
-        self.green_address = "tPj5BfCrLfLpuviSJrD3B1yyWp3XkgtFjb6"
 
 
     def setup_chain(self):
         print(f"Initializing test directory {self.options.tmpdir}")
         initialize_chain_clean(self.options.tmpdir, self.total_number_of_nodes)
 
+
     def setup_network(self, split=False):
-        self.setup_masternodes_network(self.number_of_master_nodes, self.number_of_simple_nodes,
-            self.mining_node_num, self.hot_node_num, self.number_of_master_nodes - 1,
-            "masternode,mnpayments,governance,compress")
-        self.inc_ticket_counter(TicketType.MNID, self.number_of_master_nodes - 1)
+        self.setup_masternodes_network(self.mining_node_num, self.hot_node_num, "masternode,mnpayments,governance,compress")
+        self.inc_ticket_counter(TicketType.MNID, self.number_of_cold_nodes)
+
 
     def run_test(self):
         self.miner_address = self.nodes[self.mining_node_num].getnewaddress()
@@ -697,111 +676,6 @@ class MasterNodeTicketsTest(MasterNodeCommon):
 
 
     # ===============================================================================================================
-    def generate_nft_app_ticket_details(self):
-        # app_ticket structure
-        # {
-        #     "creator_name": string,
-        #     "nft_title": string,
-        #     "nft_series_name": string,
-        #     "nft_keyword_set": string,
-        #     "creator_website": string,
-        #     "creator_written_statement": string,
-        #     "nft_creation_video_youtube_url": string,
-        #
-        #     "preview_hash": bytes,        //hash of the preview thumbnail !!!!SHA3-256!!!!
-        #     "thumbnail1_hash": bytes,     //hash of the thumbnail !!!!SHA3-256!!!!
-        #     "thumbnail2_hash": bytes,     //hash of the thumbnail !!!!SHA3-256!!!!
-        #     "data_hash": bytes,           //hash of the image that this ticket represents !!!!SHA3-256!!!!
-        #
-        #     "fingerprints_hash": bytes,       //hash of the fingerprint !!!!SHA3-256!!!!
-        #     "fingerprints_signature": bytes,  //signature on raw image fingerprint
-        #
-        #     "rq_ids": [list of strings],      //raptorq symbol identifiers -  !!!!SHA3-256 of symbol block!!!!
-        #     "rq_oti": [array of 12 bytes],    //raptorq CommonOTI and SchemeSpecificOTI
-        #
-        #     "dupe_detection_system_version": string,  //
-        #     "pastel_rareness_score": float,            // 0 to 1
-        #
-        #     "internet_rareness_score": 0,
-        #     "matches_found_on_first_page": integer,
-        #     "number_of_pages_of_results": integer,
-        #     "url_of_first_match_in_page": string,
-        #
-        #     "open_nsfw_score": float,                     // 0 to 1
-        #     "alternate_nsfw_scores": {
-        #           "drawing": float,                       // 0 to 1
-        #           "hentai": float,                        // 0 to 1
-        #           "neutral": float,                       // 0 to 1
-        #           "porn": float,                          // 0 to 1
-        #           "sexy": float,                          // 0 to 1
-        #     },
-        #
-        #     "image_hashes": {
-        #         "pdq_hash": bytes,
-        #         "perceptual_hash": bytes,
-        #         "average_hash": bytes,
-        #         "difference_hash": bytes
-        #     },
-        # }
-        # Data for nft-ticket generation
-        creator_first_names=('John', 'Andy', 'Joe', 'Jennifer', 'August', 'Dave', 'Blanca', 'Diana', 'Tia', 'Michael')
-        creator_last_names=('Johnson', 'Smith', 'Williams', 'Ecclestone', 'Schumacher', 'Faye', 'Counts', 'Wesley')
-        letters = string.ascii_letters
-
-        rq_ids = []
-        for _ in range(5):
-            rq_ids.insert(1, self.get_random_mock_hash())
-
-        nft_ticket_json = {
-            "creator_name": "".join(random.choice(creator_first_names)+" "+random.choice(creator_last_names)),
-            "nft_title": self.get_rand_testdata(letters, 10),
-            "nft_series_name": self.get_rand_testdata(letters, 10),
-            "nft_keyword_set": self.get_rand_testdata(letters, 10),
-            "creator_website": self.get_rand_testdata(letters, 10),
-            "creator_written_statement": self.get_rand_testdata(letters, 10),
-            "nft_creation_video_youtube_url": self.get_rand_testdata(letters, 10),
-
-            "preview_hash": self.get_random_mock_hash(),
-            "thumbnail_hash": self.get_random_mock_hash(),
-            "thumbnail1_hash": self.get_random_mock_hash(),
-            "thumbnail2_hash": self.get_random_mock_hash(),
-            "data_hash": self.get_random_mock_hash(),
-
-            "fingerprints_hash": self.get_random_mock_hash(),
-            "fingerprints_signature": self.get_rand_testdata(letters, 20),
-
-            "rq_ids": rq_ids,
-            "rq_oti": self.get_rand_testdata(letters, 12),
-
-            "dupe_detection_system_version": "1",
-            "pastel_rareness_score": round(random.random(), 2),
-
-            "rareness_score": random.randint(0, 1000),
-            "internet_rareness_score": round(random.random(), 2),
-            "matches_found_on_first_page": random.randint(1, 5),
-            "number_of_pages_of_results": random.randint(1, 50),
-            "url_of_first_match_in_page": self.get_rand_testdata(letters, 10),
-
-            "open_nsfw_score": round(random.random(), 2),
-            "nsfw_score": random.randint(0, 1000),
-            "alternate_nsfw_scores": {
-                  "drawing": round(random.random(), 2),
-                  "hentai": round(random.random(), 2),
-                  "neutral": round(random.random(), 2),
-            },
-
-            "image_hashes": {
-                "pdq_hash": self.get_random_mock_hash(),
-                "perceptual_hash": self.get_random_mock_hash(),
-                "average_hash": self.get_random_mock_hash(),
-                "difference_hash": self.get_random_mock_hash()
-            },
-        }
-
-        return nft_ticket_json
-
-
-    # ===============================================================================================================
     def create_nft_collection_ticket(self, nft_collection_name, creator_node_num, closing_height_inc,
         nft_max_count, nft_copy_count, permitted_users, royalty, green, make_bad_signatures_dicts = False):
         """Create NFT collection ticket and signatures
@@ -859,59 +733,6 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         print(f"nft_collection_ticket - {ticket.reg_ticket}")
 
         self.create_signatures(TicketType.NFT_COLLECTION, creator_node_num, make_bad_signatures_dicts)
-
-
-    # ===============================================================================================================
-    def create_nft_ticket_v1(self, creator_node_num: int, total_copies: int,
-        royalty: float, green: bool, make_bad_signatures_dicts = False):
-        """Create NFT ticket v1 and signatures
-
-        Args:
-            creator_node_num (int): node that creates NFT ticket and signatures
-            total_copies (int): [number of copies]
-            royalty (float): [royalty fee, how much creator should get on all future resales]
-            green (bool): [is there Green NFT payment or not]
-            make_bad_signatures_dicts (bool): [create bad signatures]
-        """
-        # Get current height
-        ticket = self.tickets[TicketType.NFT]
-        ticket.reg_height = self.nodes[0].getblockcount()
-        ticket.reg_pastelid = self.creator_pastelid1
-        ticket.pastelid_node_id = self.non_mn3
-        print(f"creator_ticket_height - {ticket.reg_height}")
-
-        # nft_ticket - v1
-        # {
-        #   "nft_ticket_version": integer  // 1
-        #   "author": bytes,               // Pastel ID of the author (creator)
-        #   "blocknum": integer,           // block number when the ticket was created - this is to map the ticket to the MNs that should process it
-        #   "block_hash": bytes            // hash of the top block when the ticket was created - this is to map the ticket to the MNs that should process it
-        #   "copies": integer,             // number of copies
-        #   "royalty": float,              // how much creator should get on all future resales
-        #   "green": bool,                 // is green payment
-        #   "app_ticket": ...
-        # }
-
-        block_hash = self.nodes[creator_node_num].getblock(str(ticket.reg_height))["hash"]
-        app_ticket_json = self.generate_nft_app_ticket_details()
-        app_ticket = str_to_b64str(json.dumps(app_ticket_json))
-
-        json_ticket = {
-            "nft_ticket_version": 1,
-            "author": ticket.reg_pastelid,
-            "blocknum": ticket.reg_height,
-            "block_hash": block_hash,
-            "copies": total_copies,
-            "royalty": royalty,
-            "green": green,
-            "app_ticket": app_ticket
-        }
-        nft_ticket_str = json.dumps(json_ticket, indent=4)
-        ticket.reg_ticket = str_to_b64str(nft_ticket_str)
-        print(f"nft_ticket v1 - {nft_ticket_str}")
-        print(f"nft_ticket v1 (base64) - {ticket.reg_ticket}")
-
-        self.create_signatures(TicketType.NFT, creator_node_num, make_bad_signatures_dicts)
 
 
     # ===============================================================================================================
@@ -1025,107 +846,6 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         self.create_signatures(reg_ticket_type, creator_node_num, make_bad_signatures_dicts)
 
 
-    def update_mn_indexes(self, nodeNum = 0, height = -1):
-        """Get historical information about top MNs at given height.
-
-        Args:
-            nodeNum (int, optional): Use this node to get info. Defaults to 0 (mn0).
-            height (int, optional): Get historical info at this height. Defaults to -1 (current blockchain height).
-
-        Returns:
-            list(): list of top mn indexes
-        """
-        # Get current top MNs on given node
-        if height == -1:
-            creator_height = self.nodes[nodeNum].getblockcount()
-        else:
-            creator_height = height
-        top_masternodes = self.nodes[nodeNum].masternode("top", creator_height)[str(creator_height)]
-        print(f"top_masternodes ({creator_height}) - {top_masternodes}")
-
-        top_mns_indexes = []
-        for mn in top_masternodes:
-            index = self.mn_outpoints[mn["outpoint"]]
-            top_mns_indexes.append(index)
-
-        for i in range(3):
-            idx = top_mns_indexes[i]
-            self.top_mns[i] = TopMN(idx, self.mn_pastelids[idx])
-            print(f"TopMN[{i}]: {self.top_mns[i]!r}")
-
-        return top_mns_indexes
-
-
-    # ===============================================================================================================
-    def create_signatures(self, item_type: TicketType, principal_node_num: int, make_bad_signatures_dicts = False):
-        """Create ticket signatures
-
-        Args:
-            principal_node_num (int): node# for principal signer
-            make_bad_signatures_dicts (bool): if True - create invalid signatures
-        """
-        ticket = self.tickets[item_type]
-        principal_pastelid = ticket.reg_pastelid
-
-        mn_ticket_signatures = {}
-        principal_signature = self.nodes[principal_node_num].pastelid("sign", ticket.reg_ticket, principal_pastelid, self.passphrase)["signature"]
-        assert_true(principal_signature, f"Principal signer {principal_pastelid} failed to sign ticket")
-        # save this principal signature for validation
-        self.principal_signatures_dict[principal_pastelid] = principal_signature
-
-        for n in range(0, 12):
-            mn_ticket_signatures[n] = self.nodes[n].pastelid("sign", ticket.reg_ticket, self.mn_pastelids[n], self.passphrase)["signature"]
-            assert_true(mn_ticket_signatures[n], f"MN{n} signer {self.mn_pastelids[n]} failed to sign ticket")
-        print(f"principal ticket signer - {principal_signature}")
-        print(f"mn_ticket_signatures - {mn_ticket_signatures}")
-
-        # update top master nodes used for signing
-        top_mns_indexes = self.update_mn_indexes()
-
-        # update top mn signatures
-        for i in range(3):
-            top_mn = self.top_mns[i]
-            idx = top_mn.index
-            top_mn.signature = mn_ticket_signatures[idx]
-
-        self.signatures_dict = dict(
-            {
-                "principal": {principal_pastelid: principal_signature},
-                "mn2": {self.top_mns[1].pastelid: self.top_mns[1].signature},
-                "mn3": {self.top_mns[2].pastelid: self.top_mns[2].signature},
-            }
-        )
-        print(f"signatures_dict - {self.signatures_dict!r}")
-
-        if make_bad_signatures_dicts:
-            self.same_mns_signatures_dict = dict(
-                {
-                    "principal": {principal_pastelid: principal_signature},
-                    "mn2": {self.top_mns[0].pastelid: self.top_mns[0].signature},
-                    "mn3": {self.top_mns[0].pastelid: self.top_mns[0].signature},
-                }
-            )
-            print(f"same_mns_signatures_dict - {self.same_mns_signatures_dict!r}")
-
-            not_top_mns_indexes = set(self.mn_outpoints.values()) ^ set(top_mns_indexes)
-            print(not_top_mns_indexes)
-
-            not_top_mns_index1 = list(not_top_mns_indexes)[0]
-            not_top_mns_index2 = list(not_top_mns_indexes)[1]
-            not_top_mn_pastelid1 = self.mn_pastelids[not_top_mns_index1]
-            not_top_mn_pastelid2 = self.mn_pastelids[not_top_mns_index2]
-            not_top_mn_ticket_signature1 = mn_ticket_signatures[not_top_mns_index1]
-            not_top_mn_ticket_signature2 = mn_ticket_signatures[not_top_mns_index2]
-            self.not_top_mns_signatures_dict = dict(
-                {
-                    "principal": {principal_pastelid: principal_signature},
-                    "mn2": {not_top_mn_pastelid1: not_top_mn_ticket_signature1},
-                    "mn3": {not_top_mn_pastelid2: not_top_mn_ticket_signature2},
-                }
-            )
-            print(f"not_top_mns_signatures_dict - {self.not_top_mns_signatures_dict!r}")
-
-
     # ===============================================================================================================
     def register_mn_pastelid(self):
         """Create and register:
@@ -1148,16 +868,6 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         print(f'Creator Pastel ID: {self.creator_pastelid1}')
         print(f'Creator Pastel ID (not registered): {self.creator_nonregistered_pastelid1}')
         self.mn2_nonregistered_pastelid1 = self.create_pastelid(2)[0]
-        for n in range(self.number_of_master_nodes - 1):
-            mn = self.mn_nodes[n]
-            self.mn_addresses[n] = mn.mnid_reg_address
-            self.nodes[self.mining_node_num].sendtoaddress(self.mn_addresses[n], 10000, "", "", False)
-            self.mn_pastelids[n] = mn.mnid
-            self.mn_outpoints[self.nodes[n].masternode("status")["outpoint"]] = n
-
-        print(f"mn_addresses - {self.mn_addresses}")
-        print(f"mn_pastelids - {self.mn_pastelids}")
-        print(f"mn_outpoints - {self.mn_outpoints}")
 
         self.nodes[self.mining_node_num].sendtoaddress(self.miner_address, 100, "", "", False)
         self.nodes[self.mining_node_num].sendtoaddress(self.nonmn4_address1, 100, "", "", False)
@@ -1166,7 +876,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         self.__wait_for_sync_all(1)
 
         # register Pastel IDs
-        REGISTER_IDS = [
+        register_ids = [
             ( self.non_mn3, self.creator_pastelid1, self.nonmn3_address1 ),
             ( self.non_mn3, self.creator_pastelid2, self.nonmn3_address1 ),
             ( self.non_mn3, self.creator_pastelid3, self.nonmn3_address1 ),
@@ -1176,14 +886,14 @@ class MasterNodeTicketsTest(MasterNodeCommon):
             ( self.non_mn5, self.nonmn5_pastelid1, self.nonmn5_address1 ),
             ( self.mining_node_num, self.nonmn1_pastelid1, self.miner_address)
         ]
-        for idreg_info in REGISTER_IDS:
+        for idreg_info in register_ids:
             self.nodes[idreg_info[0]].tickets("register", "id", idreg_info[1], self.passphrase, idreg_info[2])
             self.generate_and_sync_inc(1, self.mining_node_num)
-        self.inc_ticket_counter(TicketType.ID, len(REGISTER_IDS))
+        self.inc_ticket_counter(TicketType.ID, len(register_ids))
         self.__wait_for_ticket_tnx(5)
 
+
     # ===============================================================================================================
-    # 
     def action_reg_ticket_tests(self, action_type: ActionType, label: str):
         """Action registration ticket tests - tested on non_mn3 node
 

@@ -21,14 +21,17 @@ import test_framework.rpc_consts as rpc
 
 getcontext().prec = 16
 
-
 class MasterNodeMainTest (MasterNodeCommon):
-    number_of_master_nodes = 1
-    number_of_simple_nodes = 2
-    total_number_of_nodes = number_of_master_nodes+number_of_simple_nodes
-    cold_node_num = 0       # master node
-    mining_node_num = 1     # mining node
-    hot_node_num = 2        # keeps all collateral for MNs
+
+    def __init__(self):
+        super().__init__()
+
+        self.number_of_master_nodes = 1
+        self.number_of_simple_nodes = 2
+        self.number_of_cold_nodes = self.number_of_master_nodes
+        self.cold_node_num = 0       # master node
+        self.mining_node_num = 1     # mining node
+        self.hot_node_num = 2        # keeps all collateral for MNs
 
     def setup_chain(self):
         print(f"Initializing test directory {self.options.tmpdir}")
@@ -37,8 +40,7 @@ class MasterNodeMainTest (MasterNodeCommon):
     def setup_network(self, split=False):
         self.nodes = []
         self.is_network_split = False
-        self.setup_masternodes_network(self.number_of_master_nodes, self.number_of_simple_nodes,
-            self.mining_node_num, self.hot_node_num, self.number_of_master_nodes)
+        self.setup_masternodes_network(self.mining_node_num, self.hot_node_num)
 
 
     def storagefee_tests (self):

@@ -55,7 +55,7 @@ public:
             COutPoint getOutPoint() const noexcept;
     };
 
-    CMasternodeConfig() noexcept = default;
+    CMasternodeConfig() noexcept {}
 
     bool read(std::string& strErr, const bool bNewOnly = false);
 

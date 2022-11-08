@@ -97,7 +97,7 @@ bool CActiveMasternode::SendMasternodePing()
         return false;
     }
 
-    CMasternodePing mnp(outpoint);
+    CMasterNodePing mnp(outpoint);
     if (!mnp.Sign(keyMasternode, pubKeyMasternode))
     {
         LogFnPrintf("ERROR: Couldn't sign Masternode Ping");
@@ -105,7 +105,7 @@ bool CActiveMasternode::SendMasternodePing()
     }
 
     // Update lastPing for our masternode in Masternode list
-    if (masterNodeCtrl.masternodeManager.IsMasternodePingedWithin(outpoint, masterNodeCtrl.MasternodeMinMNPSeconds, mnp.sigTime))
+    if (masterNodeCtrl.masternodeManager.IsMasternodePingedWithin(outpoint, masterNodeCtrl.MasternodeMinMNPSeconds, mnp.getSigTime()))
     {
         LogFnPrintf("Too early to send Masternode Ping");
         return false;

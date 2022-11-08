@@ -26,14 +26,16 @@
 #endif
 
 class CMasterNodeController
-{
-private:
-    void SetParameters();
-    void InvalidateParameters();
-    double getNetworkDifficulty(const CBlockIndex* blockindex, const bool bNetworkDifficulty) const;
-    CACNotificationInterface* pacNotificationInterface;
-    
+{  
 public:
+    CMasterNodeController() : 
+        pacNotificationInterface(nullptr),
+        semMasternodeOutbound(nullptr),
+        m_fMasterNode(false)
+    {
+        InvalidateParameters();
+    }
+
     CMasternodeConfig masternodeConfig;
     // Keep track of the active Masternode
     CActiveMasternode activeMasternode;
@@ -54,9 +56,6 @@ public:
     CMasternodeGovernance masternodeGovernance;
 #endif // GOVERNANCE_TICKETS
 
-    bool fMasterNode;
-
-public:
     int MasternodeCollateral;
     CAmount MasternodeFeePerMBDefault;
     CAmount NFTTicketFeePerKBDefault;
@@ -74,7 +73,6 @@ public:
     uint32_t ChainTrailingAverageDifficultyRange;
 
     int MasternodeCheckSeconds, MasternodeMinMNBSeconds, MasternodeMinMNPSeconds, MasternodeExpirationSeconds, MasternodeWatchdogMaxSeconds, MasternodeNewStartRequiredSeconds;
-    int MasternodePOSEBanMaxScore;
     // Timer to track if a restart required MN is expired
     int MNStartRequiredExpirationTime;
     int nGovernanceVotingPeriodBlocks;
@@ -90,18 +88,15 @@ public:
     
     std::string TicketGreenAddress;
 
-    CMasterNodeController() : 
-        pacNotificationInterface(nullptr),
-        semMasternodeOutbound(nullptr),
-        fMasterNode(false)
-    {
-        InvalidateParameters();
-    }
-
-    bool IsMasterNode() const noexcept { return fMasterNode; }
-    bool IsActiveMasterNode() const noexcept { return fMasterNode && activeMasternode.IsStarted(); }
-    bool CanRegisterMnId() const noexcept { return fMasterNode && (activeMasternode.IsStarted() || activeMasternode.NeedMnId()); }
+    // returns true if we're running in Masternode mode
+    bool IsMasterNode() const noexcept { return m_fMasterNode; }
+    // returns true if we're running in Masternode mode and started state
+    bool IsActiveMasterNode() const noexcept { return m_fMasterNode && activeMasternode.IsStarted(); }
+    // returns true if node can register mnid (should be running in masternode mode and have one of the two statuses: started or needMnId)
+    bool CanRegisterMnId() const noexcept { return m_fMasterNode && (activeMasternode.IsStarted() || activeMasternode.NeedMnId()); }
     int GetSupportedProtocolVersion() const noexcept;
+
+    int getPOSEBanMaxScore() const noexcept { return m_nMasternodePOSEBanMaxScore; }
 
 #ifdef ENABLE_WALLET
     bool EnableMasterNode(std::ostringstream& strErrors, CServiceThreadGroup& threadGroup, CWallet* pwalletMain);
@@ -132,6 +127,16 @@ public:
 
     /***** MasterNode operations *****/
     unique_ptr<CSemaphore> semMasternodeOutbound;
+
+protected:
+    bool m_fMasterNode;
+    // MasterNode PoSe (Proof of Service) Max Ban Score
+    int m_nMasternodePOSEBanMaxScore = 0;
+
+    void SetParameters();
+    void InvalidateParameters();
+    double getNetworkDifficulty(const CBlockIndex* blockindex, const bool bNetworkDifficulty) const;
+    CACNotificationInterface* pacNotificationInterface;
 };
 
 class CMnbRequestConnectionsThread : public CStoppableServiceThread

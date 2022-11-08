@@ -593,7 +593,7 @@ bool CMasternodePayments::ProcessBlock(int nBlockHeight)
         return false;
     }
 
-    LogFnPrintf("Masternode found by GetNextMasternodeInQueueForPayment(): %s", mnInfo.vin.prevout.ToStringShort());
+    LogFnPrintf("Masternode found by GetNextMasternodeInQueueForPayment(): %s", mnInfo.GetDesc());
 
 
     CScript payee = GetScriptForDestination(mnInfo.pubKeyCollateralAddress.GetID());
@@ -669,7 +669,7 @@ void CMasternodePayments::CheckPreviousBlockVotes(int nPrevBlockHeight)
 
         if (!found)
         {
-            debugStr += strprintf("%s - no vote received; ", mn.second.vin.prevout.ToStringShort());
+            debugStr += strprintf("%s - no vote received; ", mn.second.GetDesc());
             mapMasternodesDidNotVote[mn.second.vin.prevout]++;
             continue;
         }
@@ -679,7 +679,7 @@ void CMasternodePayments::CheckPreviousBlockVotes(int nPrevBlockHeight)
         ExtractDestination(payee, dest);
         string address = keyIO.EncodeDestination(dest);
 
-        debugStr += strprintf("%s - voted for %s; ", mn.second.vin.prevout.ToStringShort(), address);
+        debugStr += strprintf("%s - voted for %s; ", mn.second.GetDesc(), address);
     }
     debugStr += "Masternodes which missed a vote in the past:\n";
     for (const auto &[outpoint, count] : mapMasternodesDidNotVote)

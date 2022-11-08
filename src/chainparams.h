@@ -78,7 +78,8 @@ public:
     bool DefaultConsistencyChecks() const noexcept { return fDefaultConsistencyChecks; }
     /** Policy: Filter transactions that do not match well-defined patterns */
     bool RequireStandard() const noexcept { return fRequireStandard; }
-    int64_t PruneAfterHeight() const noexcept { return nPruneAfterHeight; }
+    int64_t PruneAfterHeight() const noexcept { return m_nPruneAfterHeight; }
+    uint32_t getOfferReplacementAllowedBlocks() const noexcept { return m_nOfferReplacementAllowedBlocks; }
     std::string CurrencyUnits() const noexcept { return strCurrencyUnits; }
     uint32_t BIP44CoinType() const noexcept { return bip44CoinType; }
     /** Make miner stop after a block is found. In RPC, don't return until nGenProcLimit blocks are generated */
@@ -113,7 +114,8 @@ protected:
     //! Raw pub key bytes for the broadcast alert signing key.
     v_uint8 vAlertPubKey;
     int nDefaultPort = 0;
-    uint64_t nPruneAfterHeight = 0;
+    uint64_t m_nPruneAfterHeight = 0;
+    uint32_t m_nOfferReplacementAllowedBlocks = 0;
     std::vector<CDNSSeedData> vSeeds;
     std::string strNetworkID;
     std::string strCurrencyUnits;

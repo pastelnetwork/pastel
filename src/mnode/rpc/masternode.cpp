@@ -33,7 +33,7 @@ UniValue formatMnsInfo(const vector<CMasternode>& topBlockMNs)
 
         objItem.pushKV("IP:port", mn.addr.ToString());
         objItem.pushKV("protocol", (int64_t)mn.nProtocolVersion);
-        objItem.pushKV("outpoint", mn.vin.prevout.ToStringShort());
+        objItem.pushKV("outpoint", mn.GetDesc());
 
         const CTxDestination dest = mn.pubKeyCollateralAddress.GetID();
         string address = keyIO.EncodeDestination(dest);
@@ -130,7 +130,7 @@ Examples:
         masterNodeCtrl.masternodeManager.GetMasternodeRanks(vMasternodeRanks);
         for (const auto& mnpair : vMasternodeRanks)
         {
-            string strOutpoint = mnpair.second.vin.prevout.ToStringShort();
+            string strOutpoint = mnpair.second.GetDesc();
             if (!strFilter.empty() && strOutpoint.find(strFilter) == string::npos)
                 continue;
             obj.pushKV(strOutpoint, mnpair.first);
@@ -154,7 +154,7 @@ Examples:
                 {
                     if (!strFilter.empty() && strOutpoint.find(strFilter) == string::npos)
                         continue;
-                    obj.pushKV(strOutpoint, (int64_t)(mn.lastPing.sigTime - mn.sigTime));
+                    obj.pushKV(strOutpoint, (int64_t)(mn.getLastPing().getSigTime() - mn.sigTime));
                 } break;
                 
                 case RPC_CMD_MNLIST::addr:
@@ -168,13 +168,14 @@ Examples:
 
                 case RPC_CMD_MNLIST::full:
                 {
+                    const auto &sigTime = mn.getLastPing().getSigTime();
                     ostringstream streamFull;
                     streamFull 
                         << setw(18) << mn.GetStatus() << " " 
                         << mn.nProtocolVersion << " " 
                         << address << " " 
-                        << (int64_t)mn.lastPing.sigTime << " " 
-                        << setw(8) << (int64_t)(mn.lastPing.sigTime - mn.sigTime) << " " 
+                        << sigTime << " " 
+                        << setw(8) << sigTime - mn.sigTime << " " 
                         << setw(10) << mn.GetLastPaidTime() << " " 
                         << setw(6) << mn.GetLastPaidBlock() << " " 
                         << mn.addr.ToString();
@@ -187,13 +188,14 @@ Examples:
 
                 case RPC_CMD_MNLIST::info: 
                 {
+                    const auto &sigTime = mn.getLastPing().getSigTime();
                     ostringstream streamInfo;
                     streamInfo 
                         << setw(18) << mn.GetStatus() << " " 
                         << mn.nProtocolVersion << " " 
                         << address << " " 
-                        << (int64_t)mn.lastPing.sigTime << " " 
-                        << setw(8) << (int64_t)(mn.lastPing.sigTime - mn.sigTime) << " " 
+                        << sigTime << " " 
+                        << setw(8) << sigTime - mn.sigTime << " " 
                         << mn.addr.ToString();
                     string strInfo = streamInfo.str();
                     if (!strFilter.empty() && strInfo.find(strFilter) == string::npos &&
@@ -220,7 +222,7 @@ Examples:
                 {
                     if (!strFilter.empty() && strOutpoint.find(strFilter) == string::npos)
                         continue;
-                    obj.pushKV(strOutpoint, (int64_t)mn.lastPing.sigTime);
+                    obj.pushKV(strOutpoint, mn.getLastPing().getSigTime());
                 } break;
 
                 case RPC_CMD_MNLIST::payee:
@@ -514,8 +516,8 @@ UniValue masternode_outputs(const UniValue& params)
     UniValue obj(UniValue::VOBJ);
 
     obj.reserve(vPossibleCoins.size());
-    for (const auto& out : vPossibleCoins)
-        obj.pushKV(out.tx->GetHash().ToString(), to_string(out.i));
+    for (const auto& output : vPossibleCoins)
+        obj.pushKV(output.tx->GetHash().ToString(), to_string(output.i));
 
     return obj;
 }
@@ -928,19 +930,117 @@ UniValue masternode_top(const UniValue& params)
     return obj;
 }
 
+/**
+ * MasterNode PoSe (Proof-Of-Service) Ban Score Management.
+ * 
+ * \param params - RPC parameters [masternode pose-ban-score [get|increase] "txid" index]
+ * \return 
+ */
+UniValue masternode_pose_ban_score(const UniValue& params, const bool fHelp)
+{
+    RPC_CMD_PARSER2(SCORE, params, get, increment);
+
+    if (fHelp || params.size() != 4 || !SCORE.IsCmdSupported())
+        throw JSONRPCError(RPC_INVALID_PARAMETER,
+            R"(masternode pose-ban-score "command" "txid" index
+
+Set of commands to manage PoSe (Proof-Of-Service) ban score for the local Node.
+
+Arguments:
+   "command"   (string)  (required) The command to execute
+   "txid"      (string)  (required) id of transaction with the collateral amount
+    index      (numeric) (required) outpoint index in the transaction with the collateral amount
+ 
+Available commands:
+  get       - Show current PoSe ban score for the MasterNode defined by txid-index
+  increment - Increment PoSe ban score for the MasterNode defined by txid-index
+
+Examples:
+Get current PoSe ban score:
+)" + HelpExampleCli("masternode pose-ban-score get",
+    R"("bc1c5243284272dbb22c301a549d112e8bc9bc454b5ff50b1e5f7959d6b56726" 1)") + R"(
+As json rpc:
+)" + HelpExampleRpc("masternode pose-ban-score get",
+    R"("bc1c5243284272dbb22c301a549d112e8bc9bc454b5ff50b1e5f7959d6b56726" 1)")
+);
+    string strTxId(params[2].get_str());
+    int nTxIndex = -1;
+    try
+    {
+        nTxIndex = params[3].get_int();
+    }
+    catch (const runtime_error& ex)
+    {
+        throw JSONRPCError(RPC_INVALID_PARAMETER, 
+            strprintf("Invalid outpoint index parameter '%s'. %s", params[3].get_str(), ex.what()));
+    }
+    string error;
+    uint256 collateral_txid;
+    // extract and validate collateral txid
+    if (!parse_uint256(error, collateral_txid, strTxId, "MasterNode collateral txid"))
+        throw JSONRPCError(RPC_INVALID_PARAMETER, 
+            strprintf("Invalid 'txid' parameter. %s", error.c_str()));
+
+    COutPoint outpoint(collateral_txid, nTxIndex);
+    CMasternode mn;
+    // this creates a copy of CMasterNode in mn
+    if (!masterNodeCtrl.masternodeManager.Get(outpoint, mn))
+        throw JSONRPCError(RPC_INTERNAL_ERROR, 
+            strprintf("MasterNode not found by collateral txid-index: %s", outpoint.ToStringShort()));
+    UniValue retVal(UniValue::VOBJ);
+    retVal.pushKV("txid", strTxId);
+    retVal.pushKV("index", nTxIndex);
+
+    try
+    {
+        switch (SCORE.cmd())
+        {
+            case RPC_CMD_SCORE::get:
+                break;
+
+            case RPC_CMD_SCORE::increment:
+            {
+                masterNodeCtrl.masternodeManager.IncrementMasterNodePoSeBanScore(outpoint);
+                // retrieve changed copy of MN
+                if (!masterNodeCtrl.masternodeManager.Get(outpoint, mn))
+                    throw JSONRPCError(RPC_INTERNAL_ERROR, 
+                        strprintf("MasterNode not found by collateral txid-index: %s", outpoint.ToStringShort()));
+            } break;
+        }
+        retVal.pushKV("pose-ban-score", mn.getPoSeBanScore());
+        const bool isBannedByScore = mn.IsPoSeBannedByScore();
+        retVal.pushKV("pose-banned", isBannedByScore || mn.IsPoSeBanned());
+        if (isBannedByScore)
+            retVal.pushKV("pose-ban-height", mn.getPoSeBanHeight());
+    }
+    catch (const exception& ex)
+    {
+        error = ex.what();
+    }
+    catch (...)
+    {
+        error = "Unknown exception occured";
+    }
+    if (!error.empty())
+        throw JSONRPCError(RPC_INTERNAL_ERROR,
+            strprintf("Exception occurred while executing [masternode pose-ban-score %s]. %s", 
+                SCORE.getCmdStr(), outpoint.ToStringShort(), error));
+    return retVal;
+}
+
 UniValue masternode_message(const UniValue& params, const bool fHelp, KeyIO &keyIO)
 {
     RPC_CMD_PARSER2(MSG, params, sign, send, print, list);
 
     if (fHelp || (params.size() < 2 || params.size() > 4) || !MSG.IsCmdSupported())
-        throw JSONRPCError(RPC_INVALID_PARAMETER, 
+        throw JSONRPCError(RPC_INVALID_PARAMETER,
 R"(Correct usage is:
     masternode message send <mnPubKey> <message> - Send <message> to masternode identified by the <mnPubKey>
     masternode message list - List received <messages>
     masternode message print <messageID> - Print received <message> by <messageID>
     masternode message sign <message> <x> - Sign <message> using masternodes key
         if x is presented and not 0 - it will also returns the public key
-        use "verifymessage" with masrternode's public key to verify signature
+        use "verifymessage" with masternode's public key to verify signature
 )");
 
     if (!masterNodeCtrl.IsMasterNode())
@@ -964,10 +1064,10 @@ R"(Correct usage is:
                 throw JSONRPCError(RPC_INTERNAL_ERROR, "This is not a masternode - only Masternode can send/receive/sign messages");
 
             UniValue arr(UniValue::VARR);
-            for (const auto& msg : masterNodeCtrl.masternodeMessages.mapOurMessages)
+            for (const auto& [msgHash, msg] : masterNodeCtrl.masternodeMessages.mapOurMessages)
             {
                 UniValue obj(UniValue::VOBJ);
-                obj.pushKV(msg.first.ToString(), messageToJson(msg.second));
+                obj.pushKV(msgHash.ToString(), messageToJson(msg));
                 arr.push_back(move(obj));
             }
             return arr;
@@ -1006,11 +1106,11 @@ UniValue masternode(const UniValue& params, bool fHelp)
 {
 #ifdef ENABLE_WALLET
     RPC_CMD_PARSER(MN, params, init, list, list__conf, count, debug, current, winner, winners,
-        genkey, connect, status, top, message, make__conf,
+        genkey, connect, status, top, message, make__conf, pose__ban__score,
         start__many, start__alias, start__all, start__missing, start__disabled, outputs);
 #else
     RPC_CMD_PARSER(MN, params, list, list__conf, count, debug, current, winner, winners,
-        genkey, connect, status, top, message, make__conf);
+        genkey, connect, status, top, message, make__conf, pose__ban__score);
 #endif // ENABLE_WALLET
 
 #ifdef ENABLE_WALLET
@@ -1034,7 +1134,6 @@ Available commands:
 )"
 #ifdef ENABLE_WALLET
 R"(
-  init         - Initialize masternode
   outputs      - Print masternode compatible outputs
   start-alias  - Start single remote masternode by assigned alias configured in masternode.conf
   start-<mode> - Start remote masternodes configured in masternode.conf (<mode>: 'all', 'missing', 'disabled')
@@ -1052,6 +1151,7 @@ R"(
                         If x presented and not 0 - method will return MNs 'calculated' based on the current list of MNs and hash of n'th block
                         (this maybe not accurate - MN existed before might not be in the current list)
   message <options> - Commands to deal with MN to MN messages - sign, send, print etc\n"
+  pose-ban-score - PoSe (Proof-of-Service) ban score management
 )"
 );
 
@@ -1092,6 +1192,9 @@ R"(
 
         case RPC_CMD_MN::message:
             return masternode_message(params, fHelp, keyIO);
+
+        case RPC_CMD_MN::pose__ban__score:
+            return masternode_pose_ban_score(params, fHelp);
 
 #ifdef ENABLE_WALLET
         case RPC_CMD_MN::init:

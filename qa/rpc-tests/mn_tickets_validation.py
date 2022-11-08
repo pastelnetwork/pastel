@@ -25,20 +25,21 @@ getcontext().prec = 16
 
 
 class MasterNodeTicketsTest(MasterNodeCommon):
-    number_of_master_nodes = 12
-    number_of_simple_nodes = 3
-    total_number_of_nodes = number_of_master_nodes+number_of_simple_nodes
-
-    non_mn1 = number_of_master_nodes        # mining node - will have coins #12
-    non_mn2 = number_of_master_nodes+1      # hot node - will have collateral for all active MN #13
-    non_mn3 = number_of_master_nodes+2      # will not have coins by default #1
-
-    mining_node_num = number_of_master_nodes    # same as non_mn1
-    hot_node_num = number_of_master_nodes+1     # same as non_mn2
 
     def __init__(self):
         super().__init__()
         
+        self.number_of_master_nodes = 12
+        self.number_of_simple_nodes = 3
+        self.number_of_cold_nodes = self.number_of_master_nodes
+
+        self.non_mn1 = self.number_of_master_nodes        # mining node - will have coins #12
+        self.non_mn2 = self.number_of_master_nodes+1      # hot node - will have collateral for all active MN #13
+        self.non_mn3 = self.number_of_master_nodes+2      # will not have coins by default #1
+
+        self.mining_node_num = self.number_of_master_nodes    # same as non_mn1
+        self.hot_node_num = self.number_of_master_nodes+1     # same as non_mn2
+
         self.errorString = ""
         self.is_network_split = False
         self.nodes = []
@@ -46,8 +47,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         self.storage_fee90percent = self.storage_fee*9/10
 
         self.mn_ticket_signatures = {}
-        self.mn_outpoints = {}
-
+ 
         self.nonmn1_pastelid1 = None
         self.creator_pastelid1 = None
         self.non_mn1_pastelid_txid = None
@@ -56,9 +56,6 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         self.top_mns = [TopMN(i) for i in range(3)]
         # list of 3 non-TopMNs
         self.non_top_mns = [TopMN(i) for i in range(3)]
-
-        self.signatures_dict = None
-        self.not_top_mns_signatures_dict = None
 
         self.ticket = None
         self.creator_ticket_height = None
@@ -69,12 +66,10 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         print(f"Initializing test directory {self.options.tmpdir}")
         initialize_chain_clean(self.options.tmpdir, self.total_number_of_nodes)
 
+
     def setup_network(self, split=False):
-        self.setup_masternodes_network(self.number_of_master_nodes, self.number_of_simple_nodes,
-            self.mining_node_num, self.hot_node_num)
-        for n in range(self.number_of_master_nodes):
-            mn = self.mn_nodes[n]
-            self.mn_outpoints[mn.collateral_id] = n
+        self.setup_masternodes_network(self.mining_node_num, self.hot_node_num)
+
 
     def run_test(self):
         self.mn0_address1 = self.nodes[0].getnewaddress()

@@ -22,25 +22,30 @@ getcontext().prec = 16
 TEST_CASE_EXEC_NR = 40300409; # ExtP2P address-change tests
 
 class MasterNodeGovernanceTest (MasterNodeCommon):
-    number_of_master_nodes = 12
-    number_of_simple_nodes = 2
-    total_number_of_nodes = number_of_master_nodes+number_of_simple_nodes
-    mining_node_num = number_of_master_nodes
-    hot_node_num = number_of_master_nodes+1
-    Test_func_dictionary = {
-        40104615: "test_40104615",
-        40104682: "test_40104682"
-    } 
+    
+    def __init__(self):
+        super().__init__()
+        
+        self.number_of_master_nodes = 12
+        self.number_of_simple_nodes = 2
+        self.number_of_cold_nodes = self.number_of_master_nodes 
+        self.mining_node_num = self.number_of_master_nodes
+        self.hot_node_num = self.number_of_master_nodes + 1
+        self.Test_func_dictionary = {
+            40104615: "test_40104615",
+            40104682: "test_40104682"
+        } 
 
     def setup_chain(self):
         print("Initializing test directory "+self.options.tmpdir)
         initialize_chain_clean(self.options.tmpdir, self.total_number_of_nodes)
 
+
     def setup_network(self, split=False):
         self.nodes = []
         self.is_network_split = False
-        self.setup_masternodes_network(self.number_of_master_nodes, self.number_of_simple_nodes,
-            self.mining_node_num, self.hot_node_num, self.number_of_master_nodes)
+        self.setup_masternodes_network(self.mining_node_num, self.hot_node_num)
+
 
     def run_test (self):
         print("Run freedcamp ID specific test")

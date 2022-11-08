@@ -81,7 +81,7 @@ public:
     // Keep track of all broadcasts I've seen
     std::map<uint256, std::pair<int64_t, CMasternodeBroadcast> > mapSeenMasternodeBroadcast;
     // Keep track of all pings I've seen
-    std::map<uint256, CMasternodePing> mapSeenMasternodePing;
+    std::map<uint256, CMasterNodePing> mapSeenMasternodePing;
     // Keep track of all verifications I've seen
     std::map<uint256, CMasternodeVerification> mapSeenMasternodeVerification;
 
@@ -204,9 +204,10 @@ public:
     void CheckMasternode(const CPubKey& pubKeyMasternode, bool fForce);
 
     bool IsMasternodePingedWithin(const COutPoint& outpoint, int nSeconds, int64_t nTimeToCheckAt = -1);
-    void SetMasternodeLastPing(const COutPoint& outpoint, const CMasternodePing& mnp);
+    void SetMasternodeLastPing(const COutPoint& outpoint, const CMasterNodePing& mnp);
 
     void SetMasternodeFee(const COutPoint& outpoint, const CAmount newFee);
+    void IncrementMasterNodePoSeBanScore(const COutPoint& outpoint);
 
     void UpdatedBlockTip(const CBlockIndex *pindex);
     

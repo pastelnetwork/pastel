@@ -36,6 +36,8 @@ public:
 
     // returns rpc command (enumeration type)
     RPC_CMD_ENUM cmd() const noexcept { return m_Cmd; }
+    // returns string representation of the rpc command 
+    std::string getCmdStr() const noexcept { return m_sCmd; }
     // returns true if command is supported
     bool IsCmdSupported() const noexcept { return m_Cmd != RPC_CMD_ENUM::unknown; }
     // returns true if cmd was passed
