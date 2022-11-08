@@ -408,10 +408,11 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         offerer_coins_expected_to_receive = nft_price
         if self.is_green: # green fee is 2% of item price
             offerer_coins_expected_to_receive -= round(nft_price / 50)
+        print(f"Current owner is expected to receive {offerer_coins_expected_to_receive} PSL")
         assert_true(math.isclose(offerer_coins_after - offerer_coins_before, offerer_coins_expected_to_receive, rel_tol=0.005))
 
         # from another node - get ticket transaction and check
-        #   - there is 1 possible output to current owner
+        #   - there are 2 possible outputs to current owner
         transfer_ticket_hash = self.nodes[0].getrawtransaction(ticket.transfer_txid)
         transfer_ticket_tx = self.nodes[0].decoderawtransaction(transfer_ticket_hash)
         offerer_amount = 0
@@ -427,7 +428,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
                     offerer_amount += amount
                     print(f"transfer transaction to current owner's address - {amount}")
         print(f"transfer transaction multisig fee_amount - {multi_fee}")
-        assert_true(math.isclose(offerer_amount, offerer_coins_expected_to_receive))
+        assert_true(math.isclose(offerer_amount, offerer_coins_expected_to_receive, rel_tol=0.005))
         assert_equal(multi_fee, self.tickets[TicketType.ID].ticket_price)
 
 
