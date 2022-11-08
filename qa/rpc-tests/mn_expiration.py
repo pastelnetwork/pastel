@@ -273,7 +273,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
 
         # fail if there is another Transfer ticket referring to that offer ticket
         assert_raises_rpc(rpc.RPC_MISC_ERROR,
-            "Transfer ticket already exists for the Offer ticket with this txid [{offer_ticket_txid}]",
+            f"Transfer ticket already exists for the Offer ticket with this txid [{offer_ticket2_txid}]",
             self.register_transfer_ticket,
             self.non_mn3, self.non_mn4, self.nonmn4_pastelid1, self.nonmn4_address1)
 
@@ -282,21 +282,21 @@ class MasterNodeTicketsTest(MasterNodeCommon):
                 f"The NFT you are trying to offer - from NFT Registration ticket [{ticket.act_txid}]"
                 " - is already offered - there are already [1] offered copies, "
                 "but only [1] copies were available",
-                self.register_offer_ticket, ticket.act_txid, 1)
+                self.register_offer_ticket, 1)
         elif self.total_copies == 2:
             # fail if not enough copies to offer
             assert_raises_rpc(rpc.RPC_MISC_ERROR,
                 "Invalid Offer ticket - copy number [3] cannot exceed the total number of available copies [2] or be 0",
-                self.register_offer_ticket, ticket.act_txid)
+                self.register_offer_ticket)
 
             assert_raises_rpc(rpc.RPC_MISC_ERROR,
-                f"Cannot replace Offer ticket - it has been already transferred, txid - [{ticket.offer_txid}] copyNumber [1]",
-                self.register_offer_ticket, ticket.act_txid, 1)
+                f"Cannot replace Offer ticket - it has been already transferred, txid - [{ticket.offer_txid}], copyNumber [1]",
+                self.register_offer_ticket, 1)
 
             # fail as the replace copy can be created after 5 days
             assert_raises_rpc(rpc.RPC_MISC_ERROR,
                 f"Can only replace Offer ticket after 5 days, txid - [{offer_ticket3_txid}] copyNumber [2]",
-                self.register_offer_ticket, ticket.act_txid, 2)
+                self.register_offer_ticket, 2)
 
 
     def register_nft_reg_ticket(self, label):
@@ -424,7 +424,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
                 amount = v["value"]
                 print(f"transfer transaction pubkeyhash vout - {amount}")
                 if v["scriptPubKey"]["addresses"][0] == offerer_address:
-                    offerer_amount = amount
+                    offerer_amount += amount
                     print(f"transfer transaction to current owner's address - {amount}")
         print(f"transfer transaction multisig fee_amount - {multi_fee}")
         assert_true(math.isclose(offerer_amount, offerer_coins_expected_to_receive))
