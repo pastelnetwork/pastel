@@ -53,7 +53,7 @@ void CMasterNodeController::InvalidateParameters()
     MasternodeNewStartRequiredSeconds = 0;
     MNStartRequiredExpirationTime = 0;
 
-    MasternodePOSEBanMaxScore = 0;
+    m_nMasternodePOSEBanMaxScore = 0;
     nMasterNodeMaximumOutboundConnections = 0;
 
     nMasternodePaymentsVotersIndexDelta = 0;
@@ -101,7 +101,9 @@ void CMasterNodeController::SetParameters()
     MasternodeNewStartRequiredSeconds   = 180 * 60;
     MNStartRequiredExpirationTime             = 7 * 24 * 60 * 60;
 
-    MasternodePOSEBanMaxScore           = 5;
+    // MasterNode PoSe (Proof of Service) Max Ban Score
+    m_nMasternodePOSEBanMaxScore           = 5;
+
     nMasterNodeMaximumOutboundConnections = 20;
 
     nMasternodePaymentsVotersIndexDelta = -101;
@@ -262,16 +264,16 @@ bool CMasterNodeController::EnableMasterNode(ostringstream& strErrors, CServiceT
     }
 
     // NOTE: Masternode should have no wallet
-    fMasterNode = GetBoolArg("-masternode", false);
+    m_fMasterNode = GetBoolArg("-masternode", false);
 
-    if ((fMasterNode || masternodeConfig.getCount() > 0) && !fTxIndex)
+    if ((m_fMasterNode || masternodeConfig.getCount() > 0) && !fTxIndex)
     {
         strErrors << _("Enabling Masternode support requires turning on transaction indexing.")
                 << _("Please add txindex=1 to your configuration and start with -reindex");
         return false;
     }
 
-    if (fMasterNode)
+    if (m_fMasterNode)
     {
         LogPrintf("MASTERNODE:\n");
 
@@ -589,7 +591,7 @@ fs::path CMasterNodeController::GetMasternodeConfigFile()
 CAmount CMasterNodeController::GetNetworkFeePerMB() const noexcept
 {
     CAmount nFee = masterNodeCtrl.MasternodeFeePerMBDefault;
-    if (fMasterNode)
+    if (m_fMasterNode)
     {
         // COutPoint => CMasternode
         const auto mapMasternodes = masternodeManager.GetFullMasternodeMap();
@@ -608,7 +610,7 @@ CAmount CMasterNodeController::GetNetworkFeePerMB() const noexcept
 
 CAmount CMasterNodeController::GetNFTTicketFeePerKB() const noexcept
 {
-    if (fMasterNode)
+    if (m_fMasterNode)
     {
         CAmount nFee = 0;
         // COutPoint => CMasternode

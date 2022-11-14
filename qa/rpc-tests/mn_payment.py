@@ -15,11 +15,16 @@ from mn_common import MasterNodeCommon
 getcontext().prec = 16
 
 class MasterNodePaymentTest (MasterNodeCommon):
-    number_of_master_nodes = 12
-    number_of_simple_nodes = 2
-    total_number_of_nodes = number_of_master_nodes+number_of_simple_nodes
-    mining_node_num = number_of_master_nodes
-    hot_node_num = number_of_master_nodes+1
+
+    def __init__(self):
+        super().__init__()
+
+        self.number_of_master_nodes = 12
+        self.number_of_simple_nodes = 2
+        self.number_of_cold_nodes = self.number_of_master_nodes
+        self.mining_node_num = self.number_of_master_nodes
+        self.hot_node_num = self.number_of_master_nodes + 1
+
 
     def setup_chain(self):
         print("Initializing test directory "+self.options.tmpdir)
@@ -28,8 +33,7 @@ class MasterNodePaymentTest (MasterNodeCommon):
     def setup_network(self, split=False):
         self.nodes = []
         self.is_network_split = False
-        self.setup_masternodes_network(self.number_of_master_nodes, self.number_of_simple_nodes,
-            self.mining_node_num, self.hot_node_num, self.number_of_master_nodes)
+        self.setup_masternodes_network(self.mining_node_num, self.hot_node_num)
 
     def run_test (self):
         start_block = self.nodes[0].getinfo()["blocks"]

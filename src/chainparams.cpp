@@ -353,7 +353,8 @@ public:
         pchMessageStart[3] = 0xfc;
         vAlertPubKey = ParseHex("0441f3821b035bc418b8fbe8e912005112826a5c51fdcf5fbac6d7dd2ab545183049e51c3f2ed2a70b1e48a59b4c3367c15d30fbff461afc6b83932fefedfe5d41");
         nDefaultPort = MAINNET_DEFAULT_PORT;
-        nPruneAfterHeight = 100'000;
+        m_nPruneAfterHeight = 100'000;
+        m_nOfferReplacementAllowedBlocks = 2'880;
         const size_t N = 200, K = 9;
         static_assert(equihash_parameters_acceptable(N, K));
         consensus.nEquihashN = N;
@@ -461,7 +462,8 @@ public:
         pchMessageStart[3] = 0x64;
         vAlertPubKey = ParseHex("0429aff40718031ed61f0166f3e33b5dfb256c78cdbfa916bf6cc9869a40ce1d66ca35b92fe874bd18b69457ecef27bc3a0f089b737b03fb889dc1420b6a6e70cb");
         nDefaultPort = TESTNET_DEFAULT_PORT;
-        nPruneAfterHeight = 1000;
+        m_nPruneAfterHeight = 1000;
+        m_nOfferReplacementAllowedBlocks = 2'880;
         const size_t N = 200, K = 9;
         static_assert(equihash_parameters_acceptable(N, K));
         consensus.nEquihashN = N;
@@ -565,7 +567,8 @@ public:
         //vAlertPubKey = ParseHex("04b985ccafe6d17ac5d84cb8c06a69cefad733ee96b4b93bcf5ef0897778c227ee7e74e7680cc219236e4c6a609dbcdeb5bf65cea9c2576c2a0fbef590657c8e7a");
         vAlertPubKey = ParseHex("04d8a5b9bf6ef2396204fc879d370c85b3ccd665b6a06b9600165ceed4233ca38d27010abd3b6e607b46663ce21e8473df0e30f1bf7e425a3bdd58d2a6d1bb2049");
         nDefaultPort = REGTEST_DEFAULT_PORT;
-        nPruneAfterHeight = 1000;
+        m_nPruneAfterHeight = 1000;
+        m_nOfferReplacementAllowedBlocks = 288;
         const size_t N = 48, K = 5;
         static_assert(equihash_parameters_acceptable(N, K));
         consensus.nEquihashN = N;

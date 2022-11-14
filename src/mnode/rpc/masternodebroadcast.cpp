@@ -196,7 +196,7 @@ Examples:
 
             if (mnb.CheckSignature(nDos)) {
                 nSuccessful++;
-                resultObj.pushKV("outpoint", mnb.vin.prevout.ToStringShort());
+                resultObj.pushKV("outpoint", mnb.GetDesc());
                 resultObj.pushKV("addr", mnb.addr.ToString());
 
                 CTxDestination dest1 = mnb.pubKeyCollateralAddress.GetID();
@@ -212,10 +212,11 @@ Examples:
                 resultObj.pushKV("protocolVersion", mnb.nProtocolVersion);
 
                 UniValue lastPingObj(UniValue::VOBJ);
-                lastPingObj.pushKV("outpoint", mnb.lastPing.vin.prevout.ToStringShort());
-                lastPingObj.pushKV("blockHash", mnb.lastPing.blockHash.ToString());
-                lastPingObj.pushKV("sigTime", mnb.lastPing.sigTime);
-                lastPingObj.pushKV("vchSig", EncodeBase64(&mnb.lastPing.vchSig[0], mnb.lastPing.vchSig.size()));
+                const auto& lastPing = mnb.getLastPing();
+                lastPingObj.pushKV("outpoint", lastPing.GetDesc());
+                lastPingObj.pushKV("blockHash", lastPing.getBlockHashString());
+                lastPingObj.pushKV("sigTime", lastPing.getSigTime());
+                lastPingObj.pushKV("vchSig", lastPing.getEncodedBase64Signature());
 
                 resultObj.pushKV("lastPing", lastPingObj);
             } else {
@@ -255,7 +256,7 @@ Arguments:
         for (auto& mnb : vecMnb) {
             UniValue resultObj(UniValue::VOBJ);
 
-            resultObj.pushKV("outpoint", mnb.vin.prevout.ToStringShort());
+            resultObj.pushKV("outpoint", mnb.GetDesc());
             resultObj.pushKV("addr", mnb.addr.ToString());
 
             int nDos = 0;

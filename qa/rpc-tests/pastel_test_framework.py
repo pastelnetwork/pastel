@@ -209,6 +209,7 @@ class PastelTestFramework (BitcoinTestFramework):
         self._accept_counters = {}
         self._transfer_counters = {}
 
+
     def ticket_counter(self, ticket_type: TicketType) -> int:
         """Get counter for registered tickets of the given type.
 
@@ -223,6 +224,7 @@ class PastelTestFramework (BitcoinTestFramework):
         else:
             return 0
 
+
     def _get_add_counter(self, ticket_type: TicketType):
         counters = None
         if ticket_type == TicketType.OFFER:
@@ -232,6 +234,7 @@ class PastelTestFramework (BitcoinTestFramework):
         elif ticket_type == TicketType.TRANSFER:
             counters = self._transfer_counters
         return counters
+
 
     def offer_counter(self, item_type: TicketType) -> int:
         """Get number of offers for the given item type.
@@ -247,6 +250,7 @@ class PastelTestFramework (BitcoinTestFramework):
         else:
             return 0
 
+
     def accept_counter(self, item_type: TicketType) -> int:
         """Get number of accepts for the given item type.
 
@@ -261,6 +265,7 @@ class PastelTestFramework (BitcoinTestFramework):
         else:
             return 0
 
+
     def transfer_counter(self, item_type: TicketType) -> int:
         """Get number of transfers for the given item type.
 
@@ -274,6 +279,7 @@ class PastelTestFramework (BitcoinTestFramework):
             return self._transfer_counters[item_type]
         else:
             return 0
+
 
     def inc_ticket_counter(self, ticket_type: TicketType, count: int = 1, item_type: TicketType = None):
         """Increase counter for the given ticket type.
@@ -297,6 +303,7 @@ class PastelTestFramework (BitcoinTestFramework):
             else:
                 counters[item_type] = count
             print(f"{ticket_type} tickets for {item_type.description}: {counters[item_type]}")
+
 
     def list_all_ticket_counters(self):
         """List all ticket counters.

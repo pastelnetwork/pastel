@@ -237,6 +237,7 @@ public:
     {}
 
     std::string ToString() const;
+    // returns outpoint in short form txid-index
     std::string ToStringShort() const;
 };
 

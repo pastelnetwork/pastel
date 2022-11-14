@@ -370,6 +370,8 @@ ticket_validation_t COfferTicket::IsValid(const bool bPreReg, const uint32_t nCa
         // If found similar ticket, replacement is possible if allowed
         // Can be a few Offer tickets
         const auto vExistingOfferTickets = COfferTicket::FindAllTicketByItemTxId(m_itemTxId);
+        ticket_validation_t tv1;
+        tv1.setValid();
         for (const auto& t : vExistingOfferTickets)
         {
             if (t.IsBlock(m_nBlock) || t.IsTxId(m_txid) || t.m_nCopyNumber != m_nCopyNumber)
@@ -377,39 +379,46 @@ ticket_validation_t COfferTicket::IsValid(const bool bPreReg, const uint32_t nCa
 
             if (CTransferTicket::CheckTransferTicketExistByOfferTicket(t.m_txid))
             {
-                tv.errorMsg = strprintf(
+                tv1.errorMsg = strprintf(
                     "Cannot replace %s ticket - it has been already transferred, txid - [%s], copyNumber [%hu].",
                     GetTicketDescription(), t.m_txid, m_nCopyNumber);
+                tv1.state = TICKET_VALIDATION_STATE::INVALID;
                 break;
             }
 
             // find if it is the old ticket
             if (m_nBlock > 0 && t.m_nBlock > m_nBlock)
             {
-                tv.errorMsg = strprintf(
+                tv1.errorMsg = strprintf(
                     "This %s ticket has been replaced with another ticket, txid - [%s], copyNumber [%hu].",
                     GetTicketDescription(), t.m_txid, m_nCopyNumber);
+                tv1.state = TICKET_VALIDATION_STATE::INVALID;
                 break;
             }
 
             // Validate only if both blockchain and MNs are synced
             if (!masterNodeCtrl.masternodeSync.IsSynced())
             {
-                tv.errorMsg = strprintf(
+                tv1.errorMsg = strprintf(
                     "Cannot replace the %s ticket as master node not is not synced, txid - [%s], copyNumber [%hu].",
                     GetTicketDescription(), t.m_txid, m_nCopyNumber);
+                tv1.state = TICKET_VALIDATION_STATE::INVALID;
                 break;
             }
-            if (t.m_nBlock + 2880 > chainHeight)
+            if (t.m_nBlock + Params().getOfferReplacementAllowedBlocks() > chainHeight)
             {
                 // 1 block per 2.5; 4 blocks per 10 min; 24 blocks per 1h; 576 blocks per 24 h;
-                tv.errorMsg = strprintf(
+                tv1.errorMsg = strprintf(
                     "Can only replace %s ticket after 5 days, txid - [%s] copyNumber [%hu].",
                     GetTicketDescription(), t.m_txid, m_nCopyNumber);
+                tv1.state = TICKET_VALIDATION_STATE::INVALID;
                 break;
             }
         }
-        tv.setValid();
+        if (tv1.IsNotValid())
+            tv = move(tv1);
+        else
+            tv.setValid();
     } while (false);
     return tv;
 }

@@ -11,18 +11,22 @@ from mn_common import MasterNodeCommon
 getcontext().prec = 16
 
 class MasterNodeMessagingTest(MasterNodeCommon):
-    number_of_master_nodes = 4
-    number_of_simple_nodes = 3
-    total_number_of_nodes = number_of_master_nodes+number_of_simple_nodes
 
-    non_active_mn = number_of_master_nodes-1
+    def __init__(self):
+        super().__init__()
+        self.number_of_master_nodes = 4
+        self.number_of_simple_nodes = 3
+        self.number_of_cold_nodes = self.number_of_master_nodes
 
-    non_mn1 = number_of_master_nodes        # mining node - will have coins #13
-    non_mn2 = number_of_master_nodes+1      # hot node - will have collateral for all active MN #14
-    non_mn3 = number_of_master_nodes+2      # will not have coins by default #15
+        self.non_active_mn = self.number_of_master_nodes - 1
 
-    mining_node_num = number_of_master_nodes    # same as non_mn1
-    hot_node_num = number_of_master_nodes+1     # same as non_mn2
+        self.non_mn1 = self.number_of_master_nodes          # mining node - will have coins #13
+        self.non_mn2 = self.number_of_master_nodes+1        # hot node - will have collateral for all active MN #14
+        self.non_mn3 = self.number_of_master_nodes+2        # will not have coins by default #15
+
+        self.mining_node_num = self.number_of_master_nodes  # same as non_mn1
+        self.hot_node_num = self.number_of_master_nodes+1   # same as non_mn2
+
 
     def setup_chain(self):
         print("Initializing test directory "+self.options.tmpdir)
@@ -31,8 +35,7 @@ class MasterNodeMessagingTest(MasterNodeCommon):
     def setup_network(self, split=False):
         self.nodes = []
         self.is_network_split = False
-        self.setup_masternodes_network(self.number_of_master_nodes, self.number_of_simple_nodes,
-            self.mining_node_num, self.hot_node_num, self.number_of_master_nodes)
+        self.setup_masternodes_network(self.mining_node_num, self.hot_node_num)
         
 
     def run_test(self):
