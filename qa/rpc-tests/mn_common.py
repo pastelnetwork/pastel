@@ -148,7 +148,6 @@ class MasterNodeCommon (PastelTestFramework):
             config[name]["outIndex"] = str(self.collateral_index)
             config[name]["extAddress"] = f"127.0.0.1:{random.randint(2000, 5000)}"
             config[name]["extP2P"] = f"127.0.0.1:{random.randint(22000, 25000)}"
-            config[name]["extKey"] = self.mnid if self.mnid else ""
             config[name]["extCfg"] = {}
             config[name]["extCfg"]["param1"] = str(random.randint(0, 9))
             config[name]["extCfg"]["param2"] = str(random.randint(0, 9))
@@ -332,6 +331,7 @@ class MasterNodeCommon (PastelTestFramework):
                 mn.create_masternode_conf(self.options.tmpdir, hot_node_num)
             self.generate_and_sync_inc(1, mining_node_num)
 
+            # send "masternode start-alias <alias>" for all cold nodes
             for mn in self.mn_nodes:
                 if mn.index >= self.number_of_cold_nodes:
                     continue
@@ -381,7 +381,7 @@ class MasterNodeCommon (PastelTestFramework):
         self.sync_all()
         timer.stop()
         print(f"<<<< MasterNode network INITIALIZED in {timer.elapsed_time} secs >>>>")
-        self.list_masternode_info()      
+        self.list_masternode_info()
 
 
     def list_masternode_info(self):

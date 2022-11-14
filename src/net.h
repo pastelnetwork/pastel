@@ -132,8 +132,8 @@ bool RemoveLocal(const CService& addr);
 bool SeenLocal(const CService& addr);
 bool IsLocal(const CService& addr);
 bool GetLocal(CService &addr, const CNetAddr *paddrPeer = nullptr);
-bool IsReachable(enum Network net);
-bool IsReachable(const CNetAddr &addr);
+bool IsReachable(enum Network net) noexcept;
+bool IsReachable(const CNetAddr &addr) noexcept;
 CAddress GetLocalAddress(const CNetAddr *paddrPeer = nullptr);
 
 

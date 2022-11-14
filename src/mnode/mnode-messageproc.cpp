@@ -131,7 +131,7 @@ string CMasternodeMessage::ToString() const
         throw runtime_error("Unknown Masternode");
     }
     
-    return make_unique<CMasternodeMessage>(masterNodeCtrl.activeMasternode.outpoint, mnInfo.vin.prevout, msgType, msg);
+    return make_unique<CMasternodeMessage>(masterNodeCtrl.activeMasternode.outpoint, mnInfo.getOutPoint(), msgType, msg);
 }
 
 void CMasternodeMessageProcessor::BroadcastNewFee(const CAmount newFee)

@@ -45,12 +45,14 @@ bool CHashSigner::SignHash(const uint256& hash, const CKey key, v_uint8& vchSigR
 bool CHashSigner::VerifyHash(const uint256& hash, const CPubKey pubkey, const v_uint8& vchSig, std::string& strErrorRet)
 {
     CPubKey pubkeyFromSig;
-    if(!pubkeyFromSig.RecoverCompact(hash, vchSig)) {
+    if (!pubkeyFromSig.RecoverCompact(hash, vchSig))
+    {
         strErrorRet = "Error recovering public key.";
         return false;
     }
 
-    if(pubkeyFromSig.GetID() != pubkey.GetID()) {
+    if (pubkeyFromSig.GetID() != pubkey.GetID())
+    {
         strErrorRet = strprintf("Keys don't match: pubkey=%s, pubkeyFromSig=%s, hash=%s, vchSig=%s",
                     pubkey.GetID().ToString(), pubkeyFromSig.GetID().ToString(), hash.ToString(),
                     EncodeBase64(&vchSig[0], vchSig.size()));

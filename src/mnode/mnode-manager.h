@@ -23,7 +23,9 @@ class CMasternodeMan
 public:
     typedef std::pair<arith_uint256, CMasternode*> score_pair_t;
     typedef std::vector<score_pair_t> score_pair_vec_t;
+    // map pair <rank> -> <Masternode>
     typedef std::pair<int, CMasternode> rank_pair_t;
+    // vector of mn-rank pairs: <rank> -> <CMasternode>
     typedef std::vector<rank_pair_t> rank_pair_vec_t;
 
 private:
@@ -75,7 +77,7 @@ private:
     /// Find an entry
     CMasternode* Find(const COutPoint& outpoint);
 
-    bool GetMasternodeScores(const uint256& nBlockHash, score_pair_vec_t& vecMasternodeScoresRet, int nMinProtocol = 0);
+    bool GetMasternodeScores(const uint256& blockHash, score_pair_vec_t& vecMasternodeScoresRet, int nMinProtocol = 0);
 
 public:
     // Keep track of all broadcasts I've seen

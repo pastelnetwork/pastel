@@ -36,12 +36,12 @@ void CMasternodeSync::Reset()
     nTimeLastFailure = 0;
 }
 
-void CMasternodeSync::BumpAssetLastTime(string strFuncName)
+void CMasternodeSync::BumpAssetLastTime(const std::string &strMethodName, const std::string &strFuncName)
 {
     if(IsSynced() || IsFailed())
         return;
     nTimeLastBumped = GetTime();
-    LogFnPrint("mnsync", "%s", strFuncName);
+    LogFnPrint("mnsync", "[%s] %s", strMethodName, strFuncName);
 }
 
 string CMasternodeSync::GetSyncStatusShort()
@@ -132,7 +132,7 @@ void CMasternodeSync::SwitchToNextAsset()
     }
     nRequestedMasternodeAttempt = 0;
     nTimeAssetSyncStarted = GetTime();
-    BumpAssetLastTime("CMasternodeSync::SwitchToNextAsset");
+    BumpAssetLastTime(__METHOD_NAME__);
 }
 
 void CMasternodeSync::ProcessMessage(CNode* pfrom, string& strCommand, CDataStream& vRecv)

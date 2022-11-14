@@ -631,7 +631,8 @@ void CMasternodePayments::CheckPreviousBlockVotes(int nPrevBlockHeight)
     string debugStr = strprintf("CMasternodePayments::CheckPreviousBlockVotes -- nPrevBlockHeight=%d, expected voting MNs: ", nPrevBlockHeight);
 
     CMasternodeMan::rank_pair_vec_t mns;
-    if (!masterNodeCtrl.masternodeManager.GetMasternodeRanks(mns, nPrevBlockHeight + masterNodeCtrl.nMasternodePaymentsVotersIndexDelta)) {
+    if (!masterNodeCtrl.masternodeManager.GetMasternodeRanks(mns, nPrevBlockHeight + masterNodeCtrl.nMasternodePaymentsVotersIndexDelta))
+    {
         debugStr += "GetMasternodeRanks failed\n";
         LogFnPrint("mnpayments", "%s", debugStr);
         return;
@@ -642,6 +643,7 @@ void CMasternodePayments::CheckPreviousBlockVotes(int nPrevBlockHeight)
     for (size_t i = 0; i < MNPAYMENTS_SIGNATURES_TOTAL && i < mns.size(); ++i)
     {
         auto mn = mns[i];
+        const auto& outpoint = mn.second.getOutPoint();
         CScript payee;
         bool found = false;
 
@@ -657,7 +659,7 @@ void CMasternodePayments::CheckPreviousBlockVotes(int nPrevBlockHeight)
                         continue;
                     }
                     auto vote = mapMasternodePaymentVotes[voteHash];
-                    if (vote.vinMasternode.prevout == mn.second.vin.prevout)
+                    if (vote.vinMasternode.prevout == outpoint)
                     {
                         payee = vote.payee;
                         found = true;
@@ -670,7 +672,7 @@ void CMasternodePayments::CheckPreviousBlockVotes(int nPrevBlockHeight)
         if (!found)
         {
             debugStr += strprintf("%s - no vote received; ", mn.second.GetDesc());
-            mapMasternodesDidNotVote[mn.second.vin.prevout]++;
+            mapMasternodesDidNotVote[outpoint]++;
             continue;
         }
 

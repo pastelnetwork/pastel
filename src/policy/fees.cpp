@@ -89,12 +89,14 @@ double TxConfirmStats::EstimateMedianVal(const size_t nConfTarget, double suffic
                                          double successBreakPoint, bool requireGreater,
                                          unsigned int nBlockHeight)
 {
+    if (buckets.empty())
+        return -1;
     // Counters for a bucket (or range of buckets)
     double nConf = 0; // Number of tx's confirmed within the confTarget
     double totalNum = 0; // Total number of tx's that were ever confirmed
     int extraNum = 0;  // Number of tx's still in mempool for confTarget or longer
 
-    int maxbucketindex = buckets.size() - 1;
+    unsigned int maxbucketindex = static_cast<unsigned int>(buckets.size() - 1);
 
     // requireGreater means we are looking for the lowest fee/priority such that all higher
     // values pass, so we start at maxbucketindex (highest fee) and look at succesively
@@ -114,10 +116,11 @@ double TxConfirmStats::EstimateMedianVal(const size_t nConfTarget, double suffic
     unsigned int bestFarBucket = startbucket;
 
     bool foundAnswer = false;
-    unsigned int bins = unconfTxs.size();
+    unsigned int bins = static_cast<unsigned int>(unconfTxs.size());
 
     // Start counting from highest(default) or lowest fee/pri transactions
-    for (int bucket = startbucket; bucket >= 0 && bucket <= maxbucketindex; bucket += step) {
+    for (unsigned int bucket = startbucket; bucket <= maxbucketindex; bucket += step)
+    {
         curFarBucket = bucket;
         nConf += confAvg[nConfTarget - 1][bucket];
         totalNum += txCtAvg[bucket];
@@ -314,17 +317,17 @@ CBlockPolicyEstimator::CBlockPolicyEstimator(const CFeeRate& _minRelayFee)
 {
     const auto nMinFeeRate = static_cast<CAmount>(MIN_FEERATE);
     minTrackedFee = _minRelayFee < CFeeRate(nMinFeeRate) ? CFeeRate(nMinFeeRate) : _minRelayFee;
+
     v_doubles vfeelist;
-    for (double bucketBoundary = minTrackedFee.GetFeePerK(); bucketBoundary <= MAX_FEERATE; bucketBoundary *= FEE_SPACING) {
+    for (double bucketBoundary = static_cast<double>(minTrackedFee.GetFeePerK()); bucketBoundary <= MAX_FEERATE; bucketBoundary *= FEE_SPACING)
         vfeelist.push_back(bucketBoundary);
-    }
     feeStats.Initialize(vfeelist, MAX_BLOCK_CONFIRMS, DEFAULT_DECAY, "FeeRate");
 
     minTrackedPriority = ALLOW_FREE_THRESHOLD < MIN_FEE_PRIORITY ? MIN_FEE_PRIORITY : ALLOW_FREE_THRESHOLD;
+
     v_doubles vprilist;
-    for (double bucketBoundary = minTrackedPriority; bucketBoundary <= MAX_FEE_PRIORITY; bucketBoundary *= PRI_SPACING) {
+    for (double bucketBoundary = minTrackedPriority; bucketBoundary <= MAX_FEE_PRIORITY; bucketBoundary *= PRI_SPACING)
         vprilist.push_back(bucketBoundary);
-    }
     priStats.Initialize(vprilist, MAX_BLOCK_CONFIRMS, DEFAULT_DECAY, "Priority");
 
     feeUnlikely = CFeeRate(0);

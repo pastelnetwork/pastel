@@ -120,7 +120,6 @@ class MasterNodeMainTest (MasterNodeCommon):
             print(f"Starting node {new_node_no}...")
             self.nodes.append(start_node(new_node_no, self.options.tmpdir, ["-debug=masternode"]))
             self.reconnect_node(new_node_no)
-            self.total_number_of_nodes = len(self.nodes)
             self.sync_all()
 
             print(f"Waiting for {mn.alias} ENABLED state...")
