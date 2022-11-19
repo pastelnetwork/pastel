@@ -56,8 +56,8 @@ static constexpr std::array<RF_NAME, to_index(RetFormat::COUNT)> rf_names =
 
 struct CCoin
 {
-    uint32_t nTxVer; // Don't call this nVersion, that name has a special meaning inside IMPLEMENT_SERIALIZE
-    uint32_t nHeight;
+    uint32_t nTxVer{}; // Don't call this nVersion, that name has a special meaning inside IMPLEMENT_SERIALIZE
+    uint32_t nHeight{};
     CTxOut out;
 
     ADD_SERIALIZE_METHODS;

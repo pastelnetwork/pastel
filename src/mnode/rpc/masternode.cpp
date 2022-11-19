@@ -31,7 +31,7 @@ UniValue formatMnsInfo(const vector<CMasternode>& topBlockMNs)
         UniValue objItem(UniValue::VOBJ);
         objItem.pushKV("rank", strprintf("%d", ++i));
 
-        objItem.pushKV("IP:port", mn.addr.ToString());
+        objItem.pushKV("IP:port", mn.get_address());
         objItem.pushKV("protocol", (int64_t)mn.nProtocolVersion);
         objItem.pushKV("outpoint", mn.GetDesc());
 
@@ -43,7 +43,7 @@ UniValue formatMnsInfo(const vector<CMasternode>& topBlockMNs)
 
         objItem.pushKV("extAddress", mn.strExtraLayerAddress);
         objItem.pushKV("extP2P", mn.strExtraLayerP2P);
-        objItem.pushKV("extKey", mn.strExtraLayerKey);
+        objItem.pushKV("extKey", mn.getMNPastelID());
         objItem.pushKV("extCfg", mn.strExtraLayerCfg);
 
         mnArray.push_back(move(objItem));
@@ -159,7 +159,7 @@ Examples:
                 
                 case RPC_CMD_MNLIST::addr:
                 {
-                    string strAddress = mn.addr.ToString();
+                    string strAddress = mn.get_address();
                     if (!strFilter.empty() && strAddress.find(strFilter) == string::npos &&
                         strOutpoint.find(strFilter) == string::npos)
                         continue; //-V1051
@@ -178,7 +178,7 @@ Examples:
                         << setw(8) << sigTime - mn.sigTime << " " 
                         << setw(10) << mn.GetLastPaidTime() << " " 
                         << setw(6) << mn.GetLastPaidBlock() << " " 
-                        << mn.addr.ToString();
+                        << mn.get_address();
                     string strFull = streamFull.str();
                     if (!strFilter.empty() && strFull.find(strFilter) == string::npos &&
                         strOutpoint.find(strFilter) == string::npos)
@@ -196,7 +196,7 @@ Examples:
                         << address << " " 
                         << sigTime << " " 
                         << setw(8) << sigTime - mn.sigTime << " " 
-                        << mn.addr.ToString();
+                        << mn.get_address();
                     string strInfo = streamInfo.str();
                     if (!strFilter.empty() && strInfo.find(strFilter) == string::npos &&
                         strOutpoint.find(strFilter) == string::npos)
@@ -262,7 +262,7 @@ Examples:
                     UniValue objItem(UniValue::VOBJ);
                     objItem.pushKV("extAddress", mn.strExtraLayerAddress);
                     objItem.pushKV("extP2P", mn.strExtraLayerP2P);
-                    objItem.pushKV("extKey", mn.strExtraLayerKey);
+                    objItem.pushKV("extKey", mn.getMNPastelID());
                     objItem.pushKV("extCfg", mn.strExtraLayerCfg);
 
                     obj.pushKV(strOutpoint, move(objItem));
@@ -354,9 +354,9 @@ UniValue masternode_winner(const UniValue& params, KeyIO &keyIO, const bool bIsC
     UniValue obj(UniValue::VOBJ);
 
     obj.pushKV("height", nHeight);
-    obj.pushKV("IP:port", mnInfo.addr.ToString());
+    obj.pushKV("IP:port", mnInfo.get_address());
     obj.pushKV("protocol", (int64_t)mnInfo.nProtocolVersion);
-    obj.pushKV("outpoint", mnInfo.vin.prevout.ToStringShort());
+    obj.pushKV("outpoint", mnInfo.GetDesc());
 
     CTxDestination dest = mnInfo.pubKeyCollateralAddress.GetID();
     string address = keyIO.EncodeDestination(dest);
@@ -369,10 +369,38 @@ UniValue masternode_winner(const UniValue& params, KeyIO &keyIO, const bool bIsC
 
 #ifdef ENABLE_WALLET
 /**
+ * Process start-alias RPC command - used from both start-alias and start-all.
+ * 
+ * \param mne - MasterNode configuration entry
+ * \param statusObj - result status object
+ * \return true if start-alias was processed successfully
+ */
+bool process_start_alias(const CMasternodeConfig::CMasternodeEntry &mne, UniValue &statusObj)
+{
+    string error;
+    CMasternodeBroadcast mnb;
+    const bool fResult = mnb.InitFromConfig(error, mne);
+
+    statusObj.pushKV(RPC_KEY_ALIAS, mne.getAlias());
+    statusObj.pushKV(RPC_KEY_RESULT, get_rpc_result(fResult));
+
+    if (fResult)
+    {
+        if (mnb.getMNPastelID().empty())
+            statusObj.pushKV(RPC_KEY_MESSAGE, "Masternode's Pastel ID is not registered");
+        masterNodeCtrl.masternodeManager.UpdateMasternodeList(mnb);
+        mnb.Relay();
+    }
+    else
+        statusObj.pushKV(RPC_KEY_ERROR_MESSAGE, error);
+    return fResult;
+}
+
+/**
  * Start Master Node by alias.
  * 
- * \param params - "MN alias"
- * \return 
+ * \param params - [1]: "MN alias"
+ * \return output UniValue json object
  */
 UniValue masternode_start_alias(const UniValue& params)
 {
@@ -389,7 +417,6 @@ UniValue masternode_start_alias(const UniValue& params)
     bool fFound = false;
 
     UniValue statusObj(UniValue::VOBJ);
-    statusObj.pushKV(RPC_KEY_ALIAS, strAlias);
 
     // refresh mn config, read new aliases only
     string strErr;
@@ -398,28 +425,15 @@ UniValue masternode_start_alias(const UniValue& params)
         LogPrintf("Failed to read MasterNode configuration file. %s", strErr);
     }
 
-    CMasternodeConfig::CMasternodeEntry mne;
     size_t nProcessed = 0;
+    CMasternodeConfig::CMasternodeEntry mne;
     if (masterNodeCtrl.masternodeConfig.GetEntryByAlias(strAlias, mne))
     {
         // found MasterNode by alias
         fFound = true;
-        string strError;
-        CMasternodeBroadcast mnb;
-
-        const bool fResult = CMasternodeBroadcast::Create(mne.getIp(), mne.getPrivKey(), mne.getTxHash(), mne.getOutputIndex(),
-            mne.getExtIp(), mne.getExtP2P(), mne.getExtKey(), mne.getExtCfg(),
-            strError, mnb);
-
-        statusObj.pushKV(RPC_KEY_RESULT, get_rpc_result(fResult));
-        if (fResult)
-        {
-            masterNodeCtrl.masternodeManager.UpdateMasternodeList(mnb);
-            mnb.Relay();
+        string error;
+        if (process_start_alias(mne, statusObj))
             ++nProcessed;
-        }
-        else
-            statusObj.pushKV(RPC_KEY_ERROR_MESSAGE, strError);
     }
     if (nProcessed)
         masterNodeCtrl.LockMnOutpoints(pwalletMain);
@@ -455,47 +469,33 @@ UniValue masternode_start_all(const UniValue& params, const bool bStartMissing, 
 
     UniValue resultsObj(UniValue::VOBJ);
 
+    string error;
     for (const auto& [alias, mne] : masterNodeCtrl.masternodeConfig.getEntries())
     {
-        string strError;
 
         const COutPoint outpoint = mne.getOutPoint();
         CMasternode mn;
         const bool fFound = masterNodeCtrl.masternodeManager.Get(outpoint, mn);
-        CMasternodeBroadcast mnb;
 
         if (bStartMissing && fFound)
             continue;
         if (bStartDisabled && fFound && mn.IsEnabled())
             continue;
 
-        bool fResult = CMasternodeBroadcast::Create(mne.getIp(), mne.getPrivKey(), mne.getTxHash(), mne.getOutputIndex(),
-            mne.getExtIp(), mne.getExtP2P(), mne.getExtKey(), mne.getExtCfg(),
-            strError, mnb);
-
         UniValue statusObj(UniValue::VOBJ);
-        statusObj.pushKV(RPC_KEY_ALIAS, mne.getAlias());
-        statusObj.pushKV(RPC_KEY_RESULT, get_rpc_result(fResult));
-
-        if (fResult)
-        {
+        if (process_start_alias(mne, statusObj))
             ++nSuccessful;
-            masterNodeCtrl.masternodeManager.UpdateMasternodeList(mnb);
-            mnb.Relay();
-        } else {
+        else
             ++nFailed;
-            statusObj.pushKV(RPC_KEY_ERROR_MESSAGE, strError);
-        }
-
         resultsObj.pushKV(RPC_KEY_STATUS, move(statusObj));
     }
     if (nSuccessful)
         masterNodeCtrl.LockMnOutpoints(pwalletMain);
 
     UniValue returnObj(UniValue::VOBJ);
-    returnObj.pushKV("overall", strprintf("Successfully started %d masternodes, failed to start %zu, total %zu",
+    returnObj.pushKV("overall", strprintf("Successfully started %zu masternodes, failed to start %zu, total %zu",
         nSuccessful, nFailed, nSuccessful + nFailed));
-    returnObj.pushKV("detail", resultsObj);
+    returnObj.pushKV("detail", move(resultsObj));
 
     return returnObj;
 }
@@ -707,7 +707,7 @@ UniValue masternode_list_conf(const UniValue& params)
         mnObj.pushKV("outputIndex", mne.getOutputIndex());
         mnObj.pushKV("extAddress", mne.getExtIp());
         mnObj.pushKV("extP2P", mne.getExtP2P());
-        mnObj.pushKV("extKey", mne.getExtKey());
+        mnObj.pushKV("extKey", mn.getMNPastelID());
         mnObj.pushKV("extCfg", mne.getExtCfg());
         mnObj.pushKV(RPC_KEY_STATUS, strStatus);
         resultObj.pushKV("masternode", move(mnObj));
@@ -880,7 +880,7 @@ UniValue masternode_status(const UniValue& params, KeyIO &keyIO)
         mnObj.pushKV("payee", move(address));
         mnObj.pushKV("extAddress", mn.strExtraLayerAddress);
         mnObj.pushKV("extP2P", mn.strExtraLayerP2P);
-        mnObj.pushKV("extKey", mn.strExtraLayerKey);
+        mnObj.pushKV("extKey", mn.getMNPastelID());
         mnObj.pushKV("extCfg", mn.strExtraLayerCfg);
     }
     string sAlias = masterNodeCtrl.masternodeConfig.getAlias(activeMN.outpoint);

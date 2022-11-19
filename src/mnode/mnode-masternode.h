@@ -13,6 +13,7 @@
 #include <arith_uint256.h>
 #include <timedata.h>
 #include <net.h>
+#include <mnode/mnode-config.h>
 
 class CMasternode;
 class CMasternodeBroadcast;
@@ -94,10 +95,10 @@ public:
     bool IsDefined() const noexcept { return m_bDefined; }
 
     bool Sign(const CKey& keyMasternode, const CPubKey& pubKeyMasternode);
-    bool CheckSignature(CPubKey& pubKeyMasternode, int &nDos);
-    bool SimpleCheck(int& nDos);
-    bool CheckAndUpdate(CMasternode* pmn, bool fFromNewBroadcast, int& nDos);
-    void Relay();
+    bool CheckSignature(CPubKey& pubKeyMasternode, int &nDos) const;
+    bool SimpleCheck(int& nDos) const noexcept;
+    bool CheckAndUpdate(CMasternode* pmn, bool fFromNewBroadcast, int& nDos) const;
+    void Relay() const;
 
     const CTxIn& getVin() const noexcept { return m_vin; }
     const uint256& getBlockHash() const noexcept { return m_blockHash; }
@@ -128,7 +129,7 @@ protected:
 class masternode_info_t
 {
 public:
-    masternode_info_t() = default;
+    masternode_info_t() {}
     masternode_info_t(const MASTERNODE_STATE activeState, int protoVer, int64_t sTime) :
         m_ActiveState{activeState},
         nProtocolVersion{protoVer},
@@ -136,27 +137,25 @@ public:
     {}
 
     masternode_info_t(const MASTERNODE_STATE activeState, const int protoVer, const int64_t sTime,
-                      const COutPoint &outpoint, const CService &addr,
-                      const CPubKey &pkCollAddr, const CPubKey &pkMN,
-                      const std::string& extAddress, const std::string& extP2P,
-                      const std::string& extKey, const std::string& extCfg,
-                      int64_t tWatchdogV = 0) :
-        m_ActiveState{activeState}, 
-        nProtocolVersion{protoVer}, 
-        sigTime{sTime},
-        vin{outpoint}, addr{addr},
-        pubKeyCollateralAddress{pkCollAddr}, pubKeyMasternode{pkMN},
-        strExtraLayerAddress{extAddress}, strExtraLayerP2P{extP2P}, strExtraLayerKey{extKey}, strExtraLayerCfg{extCfg},
-        nTimeLastWatchdogVote{tWatchdogV} {}
+        const COutPoint& outpoint, const CService& addr,
+        const CPubKey& pkCollAddr, const CPubKey& pkMN,
+        const std::string& extAddress, const std::string& extP2P, const std::string& extCfg,
+        int64_t tWatchdogV = 0);
 
     MASTERNODE_STATE GetActiveState() const noexcept { return m_ActiveState; }
     std::string GetStateString() const noexcept { return MasternodeStateToString(m_ActiveState); }
     // returns MasterNode info in a form: txid-index
-    std::string GetDesc() const noexcept { return vin.prevout.ToStringShort(); }
+    std::string GetDesc() const noexcept { return m_vin.prevout.ToStringShort(); }
+    std::string getMNPastelID() const noexcept { return m_sMNPastelID; }
+    const CTxIn& get_vin() const noexcept { return m_vin; }
+    const CService& get_addr() const noexcept { return m_addr; }
+    const COutPoint& getOutPoint() const noexcept { return m_vin.prevout; }
+    // get MN address in a form: ip:port
+    const std::string get_address() const noexcept { return m_addr.ToString(); }
 
     // set new MasterNode's state
     void SetState(const MASTERNODE_STATE newState, const char *szMethodName = nullptr);
-
+    
     bool IsEnabled() const noexcept { return m_ActiveState == MASTERNODE_STATE::ENABLED; }
     bool IsPreEnabled() const noexcept { return m_ActiveState == MASTERNODE_STATE::PRE_ENABLED; }
     bool IsPoSeBanned() const noexcept { return m_ActiveState == MASTERNODE_STATE::POSE_BAN; }
@@ -169,13 +168,10 @@ public:
     int nProtocolVersion = 0;
     int64_t sigTime = 0; //mnb message time
 
-    CTxIn vin{};
-    CService addr{};
     CPubKey pubKeyCollateralAddress{};
     CPubKey pubKeyMasternode{};
 
     std::string strExtraLayerAddress;
-    std::string strExtraLayerKey;
     std::string strExtraLayerCfg;
     std::string strExtraLayerP2P;
 
@@ -188,6 +184,9 @@ public:
 
 protected:
     MASTERNODE_STATE m_ActiveState = MASTERNODE_STATE::PRE_ENABLED;
+    std::string m_sMNPastelID; // Masternode's Pastel ID
+    CTxIn m_vin{}; // input collateral transaction
+    CService m_addr{};
 };
 
 //
@@ -206,17 +205,14 @@ public:
 
     v_uint8 vchSig;
 
-    uint256 nCollateralMinConfBlockHash;
-    int nBlockLastPaid{};
-
     CAmount aMNFeePerMB = 0; // 0 means default (masterNodeCtrl.MasternodeFeePerMBDefault)
     CAmount aNFTTicketFeePerKB = 0; // 0 means default (masterNodeCtrl.NFTTicketFeePerKBDefault)
 
     CMasternode();
     CMasternode(const CMasternode& other);
     CMasternode(const CMasternodeBroadcast& mnb);
-    CMasternode(const CService& addrNew, const COutPoint& outpointNew, const CPubKey& pubKeyCollateralAddressNew, const CPubKey& pubKeyMasternodeNew,
-        const std::string& strExtraLayerAddress, const std::string& strExtraLayerP2P, const std::string& strExtraLayerKey, const std::string& strExtraLayerCfg,
+    CMasternode(const CService& addr, const COutPoint& outpoint, const CPubKey& pubKeyCollateralAddress, const CPubKey& pubKeyMasternode,
+        const std::string& strExtraLayerAddress, const std::string& strExtraLayerP2P, const std::string& strExtraLayerCfg,
         const int nProtocolVersionIn);
     CMasternode& operator=(CMasternode const& from);
 
@@ -226,8 +222,8 @@ public:
     inline void SerializationOp(Stream& s, const SERIALIZE_ACTION ser_action)
     {
         LOCK(cs);
-        READWRITE(vin);
-        READWRITE(addr);
+        READWRITE(m_vin);
+        READWRITE(m_addr);
         READWRITE(pubKeyCollateralAddress);
         READWRITE(pubKeyMasternode);
         READWRITE(m_lastPing);
@@ -244,8 +240,8 @@ public:
                 throw std::runtime_error(strprintf("Not supported MasterNode's state [%d]", nActiveState));
             SetState(static_cast<MASTERNODE_STATE>(nActiveState));
         }
-        READWRITE(nCollateralMinConfBlockHash);
-        READWRITE(nBlockLastPaid);
+        READWRITE(m_collateralMinConfBlockHash);
+        READWRITE(m_nBlockLastPaid);
         READWRITE(nProtocolVersion);
         int nPoSeBanScore = m_nPoSeBanScore;
         READWRITE(nPoSeBanScore);
@@ -257,7 +253,7 @@ public:
             m_nPoSeBanHeight = nPoSeBanHeight;
         }
         READWRITE(fUnitTest);
-        READWRITE(strExtraLayerKey);
+        READWRITE(m_sMNPastelID);
         READWRITE(strExtraLayerAddress);
         READWRITE(strExtraLayerCfg);
         READWRITE(aMNFeePerMB);
@@ -283,11 +279,14 @@ public:
     static CollateralStatus CheckCollateral(const COutPoint& outpoint, int& nHeightRet);
     void Check(const bool fForce = false);
 
-    bool IsBroadcastedWithin(int nSeconds) const noexcept { return GetAdjustedTime() - sigTime < nSeconds; }
-
+    bool IsBroadcastedWithin(const int nSeconds) const noexcept { return GetAdjustedTime() - sigTime < nSeconds; }
     bool IsLastPingDefined() const noexcept { return m_lastPing.IsDefined(); }
-    bool CheckAndUpdateLastPing(int& nDos, const bool bSimpleCheck = false);
+    bool CheckAndUpdateLastPing(int& nDos) { return m_lastPing.CheckAndUpdate(this, true, nDos); }
+    bool CheckLastPing(int& nDos) const { return m_lastPing.SimpleCheck(nDos); }
     bool IsPingedWithin(const int nSeconds, int64_t nTimeToCheckAt = -1) const noexcept;
+
+    // check and update MasterNode's Pastel ID
+    bool CheckAndUpdateMNID(std::string &error);
 
     static bool IsValidStateForAutoStart(const MASTERNODE_STATE state) noexcept
     {
@@ -307,8 +306,8 @@ public:
     /// Is the input associated with collateral public key? (and there is 1000 PSL - checking if valid masternode)
     bool IsInputAssociatedWithPubkey();
 
-    bool IsValidNetAddr();
-    static bool IsValidNetAddr(CService addrIn);
+    bool IsValidNetAddr() const { return IsValidNetAddr(m_addr); }
+    static bool IsValidNetAddr(const CService &addrIn);
 
     // NOTE: this one relies on nPoSeBanScore, not on nActiveState as everything else here
     bool IsPoSeVerified();
@@ -328,7 +327,7 @@ public:
     std::string GetStatus() const;
 
     int64_t GetLastPaidTime() const noexcept { return nTimeLastPaid; }
-    int GetLastPaidBlock() const noexcept { return nBlockLastPaid; }
+    int GetLastPaidBlock() const noexcept { return m_nBlockLastPaid; }
     void UpdateLastPaid(const CBlockIndex *pindex, int nMaxBlocksToScanBack);
     
     bool VerifyCollateral(CollateralStatus& collateralStatus);
@@ -346,17 +345,22 @@ protected:
     std::atomic_int32_t m_nPoSeBanScore;
     // PoSe ban score 
     std::atomic_uint32_t m_nPoSeBanHeight = 0;
+    // hash of the block when MN first had minimum number of confirmations for the collateral transaction
+    // this is used to calculate MN score for the current block
+    uint256 m_collateralMinConfBlockHash;
+    // height of the last block where there was a payment to this masternode
+    int m_nBlockLastPaid{};
 
     bool fUnitTest = false;
 };
 
 inline bool operator==(const CMasternode& a, const CMasternode& b)
 {
-    return a.vin == b.vin;
+    return a.get_vin() == b.get_vin();
 }
 inline bool operator!=(const CMasternode& a, const CMasternode& b)
 {
-    return !(a.vin == b.vin);
+    return !(a.get_vin() == b.get_vin());
 }
 
 //
@@ -376,29 +380,26 @@ public:
         CMasternode(mn),
         fRecovery(false)
     {}
-    CMasternodeBroadcast(const CService &addrNew, const COutPoint &outpointNew, const CPubKey &pubKeyCollateralAddressNew, const CPubKey &pubKeyMasternodeNew, 
-                            const std::string& strExtraLayerAddress, const std::string& strExtraLayerP2P, const std::string& strExtraLayerKey, const std::string& strExtraLayerCfg,
-                            const int nProtocolVersionIn) :
-        CMasternode(addrNew, outpointNew, pubKeyCollateralAddressNew, pubKeyMasternodeNew, 
-                    strExtraLayerAddress, strExtraLayerP2P, strExtraLayerKey, strExtraLayerCfg,
-                    nProtocolVersionIn),
-        fRecovery(false)
-    {}
+
+#ifdef ENABLE_WALLET
+    // initialize from MN configuration entry
+    bool InitFromConfig(std::string &error, const CMasternodeConfig::CMasternodeEntry& mne, const bool bOffline = false);
+#endif // ENABLE_WALLET
 
     ADD_SERIALIZE_METHODS;
 
     template <typename Stream>
     inline void SerializationOp(Stream& s, const SERIALIZE_ACTION ser_action)
     {
-        READWRITE(vin);
-        READWRITE(addr);
+        READWRITE(m_vin);
+        READWRITE(m_addr);
         READWRITE(pubKeyCollateralAddress);
         READWRITE(pubKeyMasternode);
         READWRITE(vchSig);
         READWRITE(sigTime);
         READWRITE(nProtocolVersion);
         READWRITE(m_lastPing);
-        READWRITE(strExtraLayerKey);
+        READWRITE(m_sMNPastelID);
         READWRITE(strExtraLayerAddress);
         READWRITE(strExtraLayerCfg);
 
@@ -416,30 +417,11 @@ public:
     uint256 GetHash() const
     {
         CHashWriter ss(SER_GETHASH, PROTOCOL_VERSION);
-        ss << vin;
+        ss << m_vin;
         ss << pubKeyCollateralAddress;
         ss << sigTime;
         return ss.GetHash();
     }
-
-    /// Create Masternode broadcast, needs to be relayed manually after that
-    static bool Create(const COutPoint& outpoint, 
-                        const CService& service, 
-                        const CKey& keyCollateralAddressNew, const CPubKey& pubKeyCollateralAddressNew, 
-                        const CKey& keyMasternodeNew, const CPubKey& pubKeyMasternodeNew, 
-                        const std::string& strExtraLayerAddress, const std::string& strExtraLayerP2P, 
-                        const std::string& strExtraLayerKey, const std::string& strExtraLayerCfg,
-                        std::string &strErrorRet, CMasternodeBroadcast &mnbRet);
-    static bool Create(
-        const std::string &strService,
-        const std::string &strKey,
-        const std::string &strTxHash,
-        const std::string &strOutputIndex, 
-        const std::string &strExtraLayerAddress,
-        const std::string &strExtraLayerP2P,
-        const std::string &strExtraLayerKey,
-        const std::string &strExtraLayerCfg,
-        std::string& strErrorRet, CMasternodeBroadcast &mnbRet, bool fOffline = false);
 
     bool SimpleCheck(int& nDos);
     bool Update(CMasternode* pmn, int& nDos);
@@ -447,7 +429,7 @@ public:
 
     bool Sign(const CKey& keyCollateralAddress);
     bool CheckSignature(int& nDos);
-    void Relay();
+    void Relay() const;
     // check if pinged after mnb
     bool IsPingedAfter(const CMasternodeBroadcast &mnb) const noexcept;
 };

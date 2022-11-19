@@ -238,7 +238,7 @@ void CActiveMasternode::ManageStateRemote()
             LogFnPrintf("%s: %s", GetStateString(), strNotCapableReason);
             return;
         }
-        if (!Params().IsRegTest() && service != infoMn.addr)
+        if (!Params().IsRegTest() && service != infoMn.get_addr())
         {
             nState = ActiveMasternodeState::NotCapable;
             strNotCapableReason = "Broadcasted IP doesn't match our external address. Make sure you issued a new broadcast if IP of this masternode changed recently.";
@@ -255,13 +255,13 @@ void CActiveMasternode::ManageStateRemote()
         if (!IsStarted())
         {
             // can assign outpoint - will be used to register mnid
-            outpoint = infoMn.vin.prevout;
+            outpoint = infoMn.getOutPoint();
 
             // mnid should be registered to  set 'Started' status
-            if (!CheckMnId(infoMn.vin.prevout))
+            if (!CheckMnId(infoMn.getOutPoint()))
                 return;
             LogFnPrintf("STARTED!");
-            service = infoMn.addr;
+            service = infoMn.get_addr();
             fPingerEnabled = true;
             nState = ActiveMasternodeState::Started;
         }

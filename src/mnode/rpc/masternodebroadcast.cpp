@@ -96,12 +96,9 @@ Examples:
         if (masterNodeCtrl.masternodeConfig.GetEntryByAlias(strAlias, mne))
         {
             fFound = true;
-            string strError;
+            string error;
             CMasternodeBroadcast mnb;
-
-            const bool fResult = CMasternodeBroadcast::Create(mne.getIp(), mne.getPrivKey(), mne.getTxHash(), mne.getOutputIndex(),
-                                                        mne.getExtIp(), mne.getExtP2P(), mne.getExtKey(), mne.getExtCfg(),
-                                                        strError, mnb, true);
+            const bool fResult = mnb.InitFromConfig(error, mne, true);
 
             statusObj.pushKV(RPC_KEY_RESULT, get_rpc_result(fResult));
             if (fResult)
@@ -111,7 +108,7 @@ Examples:
                 ssVecMnb << vecMnb;
                 statusObj.pushKV("hex", HexStr(ssVecMnb.begin(), ssVecMnb.end()));
             } else
-                statusObj.pushKV(RPC_KEY_ERROR_MESSAGE, strError);
+                statusObj.pushKV(RPC_KEY_ERROR_MESSAGE, error);
         }
 
         if (!fFound)
@@ -143,12 +140,9 @@ Examples:
 
         for (const auto& [alias, mne] : masterNodeCtrl.masternodeConfig.getEntries())
         {
-            string strError;
+            string error;
             CMasternodeBroadcast mnb;
-
-            const bool fResult = CMasternodeBroadcast::Create(mne.getIp(), mne.getPrivKey(), mne.getTxHash(), mne.getOutputIndex(),
-                                                        mne.getExtIp(), mne.getExtP2P(), mne.getExtKey(), mne.getExtCfg(),
-                                                        strError, mnb, true);
+            const bool fResult = mnb.InitFromConfig(error, mne, true); 
 
             UniValue statusObj(UniValue::VOBJ);
             statusObj.pushKV(RPC_KEY_ALIAS, mne.getAlias());
@@ -160,7 +154,7 @@ Examples:
                 vecMnb.push_back(mnb);
             } else {
                 nFailed++;
-                statusObj.pushKV(RPC_KEY_ERROR_MESSAGE, strError);
+                statusObj.pushKV(RPC_KEY_ERROR_MESSAGE, error);
             }
 
             resultsObj.pushKV(RPC_KEY_STATUS, statusObj);
@@ -197,7 +191,7 @@ Examples:
             if (mnb.CheckSignature(nDos)) {
                 nSuccessful++;
                 resultObj.pushKV("outpoint", mnb.GetDesc());
-                resultObj.pushKV("addr", mnb.addr.ToString());
+                resultObj.pushKV("addr", mnb.get_address());
 
                 CTxDestination dest1 = mnb.pubKeyCollateralAddress.GetID();
                 string address1 = keyIO.EncodeDestination(dest1);
@@ -257,7 +251,7 @@ Arguments:
             UniValue resultObj(UniValue::VOBJ);
 
             resultObj.pushKV("outpoint", mnb.GetDesc());
-            resultObj.pushKV("addr", mnb.addr.ToString());
+            resultObj.pushKV("addr", mnb.get_address());
 
             int nDos = 0;
             bool fResult;

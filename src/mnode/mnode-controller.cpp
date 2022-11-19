@@ -234,6 +234,8 @@ void CMasterNodeController::LockMnOutpoints(CWallet* pWalletMain)
         for (const auto & [alias, mne]: masternodeConfig.getEntries())
         {
             const COutPoint outpoint = mne.getOutPoint();
+            if (outpoint.IsNull())
+                continue;
             // don't lock non-spendable outpoint (i.e. it's already spent or it's not from this wallet at all)
             if (!IsMineSpendable(pWalletMain->GetIsMine(CTxIn(outpoint))))
             {

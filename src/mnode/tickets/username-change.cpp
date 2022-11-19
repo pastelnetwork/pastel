@@ -34,7 +34,7 @@ CChangeUsernameTicket CChangeUsernameTicket::Create(string &&sPastelID, string &
         // if Pastel ID has no Username yet, the fee is 100 PSL
         ticket.m_fee = masterNodeCtrl.MasternodeUsernameFirstChangeFee;
     } else {
-        // if Pastel ID changed Username before, fee should be 5000
+        // if Pastel ID changed Username before, fee should be 5000 PSL
         ticket.m_fee = masterNodeCtrl.MasternodeUsernameChangeAgainFee;
     }
 

@@ -7,7 +7,7 @@
 #include <mutex>
 
 #include <map_types.h>
-#include <mnode/mnode-masternode.h>
+#include <primitives/transaction.h>
 
 class CMasternodeConfig
 {
@@ -23,13 +23,12 @@ public:
             std::string outputIndex;
             std::string extAddress;
             std::string extP2P;
-            std::string extKey;
             std::string extCfg;
 
         public:
             CMasternodeEntry() noexcept = default;
             CMasternodeEntry(const std::string &alias, std::string &&mnAddress, std::string &&mnPrivKey, std::string &&txHash, 
-                std::string &&outputIndex, std::string &&extAddress, std::string &&extP2P, std::string &&extKey, std::string &&extCfg) noexcept
+                std::string &&outputIndex, std::string &&extAddress, std::string &&extP2P, std::string &&extCfg) noexcept
             {
                 this->alias = alias;
                 this->mnAddress = std::move(mnAddress);
@@ -38,7 +37,6 @@ public:
                 this->outputIndex = std::move(outputIndex);
                 this->extAddress = std::move(extAddress);
                 this->extP2P = std::move(extP2P);
-                this->extKey = std::move(extKey);
                 this->extCfg = std::move(extCfg);
             }
 
@@ -49,13 +47,12 @@ public:
             const std::string& getOutputIndex() const noexcept { return outputIndex; }
             const std::string& getExtIp() const noexcept { return extAddress; }
             const std::string& getExtP2P() const noexcept { return extP2P; }
-            const std::string& getExtKey() const noexcept { return extKey; }
             const std::string& getExtCfg() const noexcept { return extCfg; }
 
             COutPoint getOutPoint() const noexcept;
     };
 
-    CMasternodeConfig() noexcept {}
+    CMasternodeConfig() noexcept = default;
 
     bool read(std::string& strErr, const bool bNewOnly = false);
 

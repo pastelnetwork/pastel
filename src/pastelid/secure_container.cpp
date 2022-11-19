@@ -142,12 +142,14 @@ bool CSecureContainer::write_to_file(const string& sFilePath, SecureString&& sPa
                                                        item.data.data(), item.data.size(), nullptr, 0, nullptr, item.nonce.data(), pw.p) != 0)
             throw runtime_error(strprintf("Failed to encrypt '%s' data", GetSecureItemTypeName(item.type)));
         const auto szTypeName = GetSecureItemTypeName(item.type);
+        const size_t nEncryptedDataSize = encrypted_data.size();
+        const size_t nItemNonceSize = item.nonce.size();
         jItems.push_back({
             {"type", szTypeName},
             {"nonce", move(item.nonce)},
             {"data", move(encrypted_data)}
         });
-        nJsonSecureSize += 50 + strlen(szTypeName) + item.nonce.size() + encrypted_data.size();
+        nJsonSecureSize += 50 + strlen(szTypeName) + nItemNonceSize + nEncryptedDataSize;
     }
     jSecure.emplace("secure_items", move(jItems));
 

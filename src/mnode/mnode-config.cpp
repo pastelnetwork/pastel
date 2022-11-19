@@ -23,13 +23,12 @@ using namespace std;
         "mn1": {                                 // alias
             "mnAddress": "10.10.10.10:1111",     // MN's ip and port
             "mnPrivKey": "",                     // MN's private key
-            "txid": "",                          // collateral_output_txid
-            "outIndex": "",                      // collateral_output_index
+            "txid": "",                          // collateral output txid
+            "outIndex": "",                      // collateral output index
 
             "extAddress": "10.10.10.10:1111",    // The address and port of the MN's Storage Layer
-            "extP@P:port" "10.10.10.10:1111",    // The address and port of the MN's Kademlia point
-            "extKey": "",                        // StoVaCore's private key
-            "extCfg": {},                        // StoVaCore's config
+            "extP2P:port" "10.10.10.10:1111",    // The address and port of the MN's Kademlia point
+            "extCfg": {},                        // Additional config
         }
     }
 */
@@ -151,7 +150,6 @@ bool CMasternodeConfig::read(string& strErr, const bool bNewOnly)
                 {"txid", ""},
                 {"outIndex", ""},
                 {"extAddress", ""},
-                {"extKey", ""},
                 {"extCfg", {}},
                 {"extP2P", ""}
             }}
@@ -183,7 +181,7 @@ bool CMasternodeConfig::read(string& strErr, const bool bNewOnly)
     }
     
     string strWhat;
-    string alias_lowercased, mnAddress, mnPrivKey, txid, outIndex, extAddress, extKey, extCfg, extP2P;
+    string alias_lowercased, mnAddress, mnPrivKey, txid, outIndex, extAddress, extCfg, extP2P;
 
     unique_lock<mutex> lck(m_mtx);
     for (const auto &[alias, cfg] : jsonObj.items())
@@ -240,14 +238,13 @@ bool CMasternodeConfig::read(string& strErr, const bool bNewOnly)
             return false;
         }
 
-        extKey = get_json_cfg_property(cfg, "extKey");
         extCfg = get_json_cfg_obj_as_string(cfg, "extCfg");
 
         if (extCfg.length() > 1024)
             extCfg.erase(1024, string::npos);
 
         CMasternodeEntry cme(alias, move(mnAddress), move(mnPrivKey), move(txid), move(outIndex), 
-            move(extAddress), move(extP2P), move(extKey), move(extCfg));
+            move(extAddress), move(extP2P), move(extCfg));
         m_CfgEntries.emplace(alias_lowercased, cme);
     }
 

@@ -52,11 +52,6 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         self.creator_pastelid1 = None
         self.non_mn1_pastelid_txid = None
 
-        # list of 3 TopMNs
-        self.top_mns = [TopMN(i) for i in range(3)]
-        # list of 3 non-TopMNs
-        self.non_top_mns = [TopMN(i) for i in range(3)]
-
         self.ticket = None
         self.creator_ticket_height = None
         self.nft_ticket1_txid = None
@@ -172,31 +167,20 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         print(self.ticket)
 
         # create ticket signature
-        self.nodes[self.non_mn1].pastelid("sign", self.ticket, self.nonmn1_pastelid1, self.passphrase)["signature"]
         ticket_signature_creator = self.nodes[self.non_mn3].pastelid("sign", self.ticket, self.creator_pastelid1, self.passphrase)["signature"]
         for n in range(self.number_of_master_nodes):
             mn = self.mn_nodes[n]
             self.mn_ticket_signatures[n] = self.nodes[n].pastelid("sign", self.ticket, mn.mnid, self.passphrase)["signature"]
 
-        top_mns_indexes = set()
-        for top_mn in top_masternodes:
-            index = self.mn_outpoints[top_mn["outpoint"]]
-            top_mns_indexes.add(index)
-        print(f"top_mns_indexes: {top_mns_indexes}")
-            
-        for i in range(3):
-            idx = top_mns_indexes.pop()
-            top_mn = TopMN(idx, self.mn_nodes[idx].mnid)
-            self.top_mns[i] = top_mn
-            top_mn.signature = self.mn_ticket_signatures[idx]
-            print(f"TopMN[{i}]: {top_mn!r}")
-            
-        for i in range(3):
-            idx = top_mns_indexes.pop()
-            non_top_mn = TopMN(idx, self.mn_nodes[idx].mnid)
-            self.non_top_mns[i] = non_top_mn
-            non_top_mn.signature = self.mn_ticket_signatures[idx]
-            print(f"NonTopMN[{i}]: {non_top_mn!r}")
+        self.update_mn_indexes(0, -1, 6)
+        # define signatures
+        for top_mn in self.top_mns:
+            top_mn.signature = self.mn_ticket_signatures[top_mn.index]
+        # slice top_mns into 2 lists:
+        #   1) top_mns[0, 1, 2]
+        #   2) non_top_mns[3, 4, 5]
+        self.non_top_mns = self.top_mns[3:6]
+        self.top_mns = self.top_mns[0:3]
 
         self.signatures_dict = dict(
             {

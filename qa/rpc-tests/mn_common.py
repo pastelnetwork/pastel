@@ -13,6 +13,7 @@ from decimal import getcontext
 from test_framework.util import (
     assert_true,
     assert_equal,
+    assert_greater_than,
     start_node,
     connect_nodes_bi,
     p2p_port,
@@ -148,7 +149,6 @@ class MasterNodeCommon (PastelTestFramework):
             config[name]["outIndex"] = str(self.collateral_index)
             config[name]["extAddress"] = f"127.0.0.1:{random.randint(2000, 5000)}"
             config[name]["extP2P"] = f"127.0.0.1:{random.randint(22000, 25000)}"
-            config[name]["extKey"] = self.mnid if self.mnid else ""
             config[name]["extCfg"] = {}
             config[name]["extCfg"]["param1"] = str(random.randint(0, 9))
             config[name]["extCfg"]["param2"] = str(random.randint(0, 9))
@@ -178,6 +178,7 @@ class MasterNodeCommon (PastelTestFramework):
         
         # list of 3 TopMNs
         self.top_mns = [TopMN(i) for i in range(3)]
+        self.non_top_mns = []
         
         self.signatures_dict = None
         self.same_mns_signatures_dict = None
@@ -283,7 +284,7 @@ class MasterNodeCommon (PastelTestFramework):
 
         # prepare parameters and create masternode.conf for all masternodes
         outputs = self.nodes[hot_node_num].masternode("outputs")
-        print(f"hot node{hot_node_num} collateral outputs\n{outputs}")
+        print(f"hot node{hot_node_num} collateral outputs\n{json.dumps(outputs, indent=4)}")
         for mn in self.mn_nodes:
             # get the collateral outpoint indexes
             if mn.index < self.number_of_cold_nodes:
@@ -332,6 +333,7 @@ class MasterNodeCommon (PastelTestFramework):
                 mn.create_masternode_conf(self.options.tmpdir, hot_node_num)
             self.generate_and_sync_inc(1, mining_node_num)
 
+            # send "masternode start-alias <alias>" for all cold nodes
             for mn in self.mn_nodes:
                 if mn.index >= self.number_of_cold_nodes:
                     continue
@@ -381,7 +383,7 @@ class MasterNodeCommon (PastelTestFramework):
         self.sync_all()
         timer.stop()
         print(f"<<<< MasterNode network INITIALIZED in {timer.elapsed_time} secs >>>>")
-        self.list_masternode_info()      
+        self.list_masternode_info()
 
 
     def list_masternode_info(self):
@@ -465,12 +467,13 @@ class MasterNodeCommon (PastelTestFramework):
         [assert_equal(node.masternode("list").get(collateral_id, ""), wait_for_state) for node in node_list]
 
 
-    def update_mn_indexes(self, node_num = 0, height = -1):
+    def update_mn_indexes(self, node_num: int = 0, height: int = -1, number_of_top_mns: int = 3):
         """Get historical information about top MNs at given height.
 
         Args:
             nodeNum (int, optional): Use this node to get info. Defaults to 0 (mn0).
             height (int, optional): Get historical info at this height. Defaults to -1 (current blockchain height).
+            number_of_top_mns (int, optional): Number of top mns to return. Defaults to 3.
 
         Returns:
             list(): list of top mn indexes
@@ -481,17 +484,20 @@ class MasterNodeCommon (PastelTestFramework):
         else:
             creator_height = height
         top_masternodes = self.nodes[node_num].masternode("top", creator_height)[str(creator_height)]
-        print(f"top_masternodes ({creator_height}) - {top_masternodes}")
+        print(f"top masternodes for height {creator_height}:\n{json.dumps(top_masternodes, indent=4)}")
+        assert_greater_than(len(top_masternodes), number_of_top_mns)
 
         top_mns_indexes = []
         for mn in top_masternodes:
             index = self.mn_outpoints[mn["outpoint"]]
             top_mns_indexes.append(index)
 
-        for i in range(3):
+        self.top_mns = []
+        for i in range(number_of_top_mns):
             idx = top_mns_indexes[i]
-            self.top_mns[i] = TopMN(idx, self.get_mnid(idx))
-            print(f"TopMN[{i}]: {self.top_mns[i]!r}")
+            top_mn = TopMN(idx, self.get_mnid(idx))
+            self.top_mns.append(top_mn)
+            print(f"TopMN[{i}]: {top_mn!r}")
 
         return top_mns_indexes
 

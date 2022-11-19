@@ -941,7 +941,7 @@ bool AppInit2(CServiceThreadGroup& threadGroup, CScheduler& scheduler)
 
     // Make sure enough file descriptors are available
     int nBind = std::max((int)mapArgs.count("-bind") + (int)mapArgs.count("-whitebind"), 1);
-    nMaxConnections = GetArg("-maxconnections", DEFAULT_MAX_PEER_CONNECTIONS);
+    nMaxConnections = static_cast<int>(GetArg("-maxconnections", DEFAULT_MAX_PEER_CONNECTIONS));
     nMaxConnections = std::max(std::min(nMaxConnections, (int)(FD_SETSIZE - nBind - MIN_CORE_FILEDESCRIPTORS)), 0);
     int nFD = RaiseFileDescriptorLimit(nMaxConnections + MIN_CORE_FILEDESCRIPTORS);
     if (nFD < MIN_CORE_FILEDESCRIPTORS)
@@ -995,7 +995,8 @@ bool AppInit2(CServiceThreadGroup& threadGroup, CScheduler& scheduler)
         InitWarning(_("Warning: Unsupported argument -benchmark ignored, use -debug=bench."));
 
     // Checkmempool and checkblockindex default to true in regtest mode
-    int ratio = std::min<int>(std::max<int>(GetArg("-checkmempool", chainparams.DefaultConsistencyChecks() ? 1 : 0), 0), 1000000);
+    const int nCheckPool = static_cast<int>(GetArg("-checkmempool", chainparams.DefaultConsistencyChecks()) ? 1 : 0);
+    int ratio = std::min<int>(std::max<int>(nCheckPool, 0), 1000000);
     if (ratio != 0) {
         mempool.setSanityCheck(1.0 / ratio);
     }
@@ -1028,7 +1029,7 @@ bool AppInit2(CServiceThreadGroup& threadGroup, CScheduler& scheduler)
         RegisterWalletRPCCommands(tableRPC);
 #endif
 
-    nConnectTimeout = GetArg("-timeout", DEFAULT_CONNECT_TIMEOUT);
+    nConnectTimeout = static_cast<int>(GetArg("-timeout", DEFAULT_CONNECT_TIMEOUT));
     if (nConnectTimeout <= 0)
         nConnectTimeout = DEFAULT_CONNECT_TIMEOUT;
 
@@ -1084,8 +1085,8 @@ bool AppInit2(CServiceThreadGroup& threadGroup, CScheduler& scheduler)
                                        mapArgs["-maxtxfee"], ::minRelayTxFee.ToString()));
         }
     }
-    nTxConfirmTarget = GetArg("-txconfirmtarget", DEFAULT_TX_CONFIRM_TARGET);
-    expiryDelta = GetArg("-txexpirydelta", DEFAULT_TX_EXPIRY_DELTA);
+    nTxConfirmTarget = static_cast<unsigned int>(GetArg("-txconfirmtarget", DEFAULT_TX_CONFIRM_TARGET));
+    expiryDelta = static_cast<unsigned int>(GetArg("-txexpirydelta", DEFAULT_TX_EXPIRY_DELTA));
     uint32_t minExpiryDelta = TX_EXPIRING_SOON_THRESHOLD + 1;
     if (expiryDelta < minExpiryDelta) {
         return InitError(strprintf(_("Invalid value for -expiryDelta='%u' (must be least %u)"), expiryDelta, minExpiryDelta));
@@ -1097,7 +1098,7 @@ bool AppInit2(CServiceThreadGroup& threadGroup, CScheduler& scheduler)
 #endif // ENABLE_WALLET
 
     fIsBareMultisigStd = GetBoolArg("-permitbaremultisig", true);
-    nMaxDatacarrierBytes = GetArg("-datacarriersize", nMaxDatacarrierBytes);
+    nMaxDatacarrierBytes = static_cast<unsigned int>(GetArg("-datacarriersize", nMaxDatacarrierBytes));
 
     fAlerts = GetBoolArg("-alerts", DEFAULT_ALERTS);
 
@@ -1535,31 +1536,37 @@ bool AppInit2(CServiceThreadGroup& threadGroup, CScheduler& scheduler)
 
                 // Check for changed -prune state.  What we are concerned about is a user who has pruned blocks
                 // in the past, but is now trying to run unpruned.
-                if (fHavePruned && !fPruneMode) {
+                if (fHavePruned && !fPruneMode)
+                {
                     strLoadError = _("You need to rebuild the database using -reindex to go back to unpruned mode.  This will redownload the entire blockchain");
                     break;
                 }
 
-                if (!fReindex) {
+                if (!fReindex)
+                {
                     uiInterface.InitMessage(_("Rewinding blocks if needed..."));
-                    if (!RewindBlockIndex(chainparams, clearWitnessCaches)) {
+                    if (!RewindBlockIndex(chainparams, clearWitnessCaches))
+                    {
                         strLoadError = _("Unable to rewind the database to a pre-upgrade state. You will need to redownload the blockchain");
                         break;
                     }
                 }
 
                 uiInterface.InitMessage(_("Verifying blocks..."));
-                if (fHavePruned && GetArg("-checkblocks", 288) > MIN_BLOCKS_TO_KEEP) {
+                if (fHavePruned && GetArg("-checkblocks", 288) > MIN_BLOCKS_TO_KEEP)
+                {
                     LogPrintf("Prune: pruned datadir may not have more than %d blocks; -checkblocks=%d may fail\n",
                         MIN_BLOCKS_TO_KEEP, GetArg("-checkblocks", 288));
                 }
-                if (!CVerifyDB().VerifyDB(chainparams, pcoinsdbview, GetArg("-checklevel", 3),
-                              GetArg("-checkblocks", 288))) {
+                if (!CVerifyDB().VerifyDB(chainparams, pcoinsdbview, static_cast<int>(GetArg("-checklevel", 3)),
+                               static_cast<int>(GetArg("-checkblocks", 288))))
+                {
                     strLoadError = _("Corrupted block database detected");
                     break;
                 }
             } catch (const std::exception& e) {
-                if (fDebug) LogPrintf("%s\n", e.what());
+                if (fDebug)
+                    LogPrintf("%s\n", e.what());
                 strLoadError = _("Error opening block database");
                 break;
             }
@@ -1666,7 +1673,7 @@ bool AppInit2(CServiceThreadGroup& threadGroup, CScheduler& scheduler)
 
         if (GetBoolArg("-upgradewallet", fFirstRun))
         {
-            int nMaxVersion = GetArg("-upgradewallet", 0);
+            int nMaxVersion = static_cast<int>(GetArg("-upgradewallet", 0));
             if (nMaxVersion == 0) // the -upgradewallet without argument case
             {
                 LogPrintf("Performing wallet upgrade to %i\n", FEATURE_LATEST);
@@ -1867,11 +1874,12 @@ bool AppInit2(CServiceThreadGroup& threadGroup, CScheduler& scheduler)
 
 #ifdef ENABLE_MINING
     // Generate coins in the background
+    const int nProcLimit = static_cast<int>(GetArg("-genproclimit", 1));
  #ifdef ENABLE_WALLET
     if (pwalletMain || !GetArg("-mineraddress", "").empty())
-        GenerateBitcoins(GetBoolArg("-gen", false), pwalletMain, GetArg("-genproclimit", 1), chainparams);
+        GenerateBitcoins(GetBoolArg("-gen", false), pwalletMain, nProcLimit, chainparams);
  #else
-    GenerateBitcoins(GetBoolArg("-gen", false), GetArg("-genproclimit", 1), chainparams);
+    GenerateBitcoins(GetBoolArg("-gen", false), nProcLimit, chainparams);
  #endif
 #endif
 

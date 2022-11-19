@@ -73,7 +73,7 @@ public:
 
     int GetAssetID() const noexcept { return (int)syncState; }
     int GetAttempt() const noexcept { return nRequestedMasternodeAttempt; }
-    void BumpAssetLastTime(std::string strFuncName);
+    void BumpAssetLastTime(const std::string &strMethodName, const std::string &strFuncName = "");
     int64_t GetAssetStartTime() const noexcept { return nTimeAssetSyncStarted; }
     std::string GetSyncStatusShort();
     std::string GetSyncStatus();

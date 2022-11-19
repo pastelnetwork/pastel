@@ -303,14 +303,14 @@ bool IsLocal(const CService& addr)
 }
 
 /** check whether a given network is one we can probably connect to */
-bool IsReachable(enum Network net)
+bool IsReachable(enum Network net) noexcept
 {
     LOCK(cs_mapLocalHost);
     return !vfLimited[net];
 }
 
 /** check whether a given address is in a network we can probably connect to */
-bool IsReachable(const CNetAddr& addr)
+bool IsReachable(const CNetAddr& addr) noexcept
 {
     enum Network net = addr.GetNetwork();
     return IsReachable(net);

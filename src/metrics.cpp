@@ -329,7 +329,7 @@ int printMetrics(size_t cols, bool mining)
         {
             LOCK2(cs_main, cs_metrics);
             boost::strict_lock_ptr<list<uint256>> u = trackedBlocks.synchronize();
-            auto consensusParams = Params().GetConsensus();
+            const auto &consensusParams = Params().GetConsensus();
             auto tipHeight = chainActive.Height();
 
             // Update orphans and calculate subsidies

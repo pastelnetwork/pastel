@@ -213,7 +213,7 @@ ticket_validation_t CTicketSigning::validate_signatures(const uint32_t nCallDept
                 auto topBlockMNs = masterNodeCtrl.masternodeManager.GetTopMNsForBlock(nCreatorHeight, true);
                 const auto foundIt = find_if(topBlockMNs.cbegin(), topBlockMNs.cend(), [&](CMasternode const& mn)
                     {
-                        return mn.vin.prevout == outpoint;
+                        return mn.getOutPoint() == outpoint;
                     });
 
                 if (foundIt == topBlockMNs.cend()) //not found
