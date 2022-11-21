@@ -81,7 +81,6 @@
 #include <sys/prctl.h>
 #endif
 
-#include <boost/algorithm/string/predicate.hpp> // for startswith() and endswith()
 #include <boost/program_options/detail/config_file.hpp>
 #include <boost/program_options/parsers.hpp>
 
@@ -361,7 +360,7 @@ void ParseParameters(int argc, const char* const argv[])
         }
 #ifdef WIN32
         lowercase(str);
-        if (boost::algorithm::starts_with(str, "/"))
+        if (str_starts_with(str, "/"))
             str = "-" + str.substr(1);
 #endif
 
@@ -474,8 +473,8 @@ fs::path GetDefaultDataDir()
     return GetSpecialFolderPath(CSIDL_APPDATA) / "Pastel";
 #else
     fs::path pathRet;
-    char* pszHome = getenv("HOME");
-    if (pszHome == NULL || strlen(pszHome) == 0)
+    const char* pszHome = getenv("HOME");
+    if (!pszHome || !*pszHome)
         pathRet = fs::path("/");
     else
         pathRet = fs::path(pszHome);
@@ -509,8 +508,8 @@ static fs::path ZC_GetBaseParamsDir()
     return GetSpecialFolderPath(CSIDL_APPDATA) / "PastelParams";
 #else
     fs::path pathRet;
-    char* pszHome = getenv("HOME");
-    if (pszHome == NULL || strlen(pszHome) == 0)
+    const char* pszHome = getenv("HOME");
+    if (!pszHome || !*pszHome)
         pathRet = fs::path("/");
     else
         pathRet = fs::path(pszHome);
@@ -797,7 +796,7 @@ void ShrinkDebugFile()
             fclose(file);
         }
     }
-    else if (file != NULL)
+    else if (file)
         fclose(file);
 }
 
@@ -806,7 +805,7 @@ fs::path GetSpecialFolderPath(int nFolder, bool fCreate)
 {
     char pszPath[MAX_PATH] = "";
 
-    if(SHGetSpecialFolderPathA(NULL, pszPath, nFolder, fCreate))
+    if(SHGetSpecialFolderPathA(nullptr, pszPath, nFolder, fCreate))
     {
         return fs::path(pszPath);
     }

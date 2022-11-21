@@ -480,7 +480,7 @@ public:
      */
     FILE* Get() const           { return file; }
 
-    /** Return true if the wrapped FILE* is NULL, false otherwise.
+    /** Return true if the wrapped FILE* is nullptr, false otherwise.
      */
     bool IsNull() const         { return (file == nullptr); }
 

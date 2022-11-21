@@ -59,7 +59,7 @@ string CActiveMasternode::GetStatus() const noexcept
         case ActiveMasternodeState::SyncInProcess:  return "Sync in progress. Must wait until sync is complete to start Masternode";
         case ActiveMasternodeState::InputTooNew:    return strprintf("Masternode input must have at least %d confirmations", masterNodeCtrl.nMasternodeMinimumConfirmations);
         case ActiveMasternodeState::NotCapable:     return "Not capable masternode: " + strNotCapableReason;
-        case ActiveMasternodeState::NeedMnId:       return "Masternode need to register Pastel ID (mnid)";
+        case ActiveMasternodeState::NeedMnId:       return "Masternode needs to register Pastel ID (mnid)";
         case ActiveMasternodeState::Started:        return "Masternode successfully started";
         default:                                    return "Unknown";
     }

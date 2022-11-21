@@ -61,7 +61,7 @@ public:
     bool HasMVKeyTwo() const noexcept override { return false; }
     void SetKeyOne(std::string&& sValue) override { m_offerTxId = std::move(sValue); }
 
-    // get ticket price in PSL (1% from price)
+    // get ticket price in PSL (1% of the NFT's asked price)
     CAmount TicketPricePSL(const uint32_t nHeight) const noexcept override { return std::max<CAmount>(10, m_nPricePSL / 100); }
 
     std::string ToJSON() const noexcept override;

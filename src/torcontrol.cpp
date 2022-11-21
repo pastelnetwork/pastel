@@ -1,24 +1,21 @@
 // Copyright (c) 2015-2017 The Bitcoin Core developers
-// Copyright (c) 2018-2021 The Pastel Core developers
 // Copyright (c) 2017 The Zcash developers
+// Copyright (c) 2018-2022 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
-// file COPYING or http://www.opensource.org/licenses/mit-license.php.
-
-#include <torcontrol.h>
-#include <utilstrencodings.h>
-#include <net.h>
-#include <util.h>
-#include <crypto/hmac_sha256.h>
-#include <map_types.h>
-
+// file COPYING or httpa://www.opensource.org/licenses/mit-license.php.
 #include <vector>
 #include <deque>
 #include <set>
 #include <stdlib.h>
 
+#include <map_types.h>
+#include <torcontrol.h>
+#include <utilstrencodings.h>
+#include <net.h>
+#include <util.h>
+#include <crypto/hmac_sha256.h>
+
 #include <boost/signals2/signal.hpp>
-#include <boost/algorithm/string/predicate.hpp>
-#include <boost/algorithm/string/split.hpp>
 #include <boost/algorithm/string/classification.hpp>
 
 #include <event2/bufferevent.h>
@@ -141,8 +138,8 @@ void TorControlConnection::readcb(struct bufferevent *bev, void *ctx)
     size_t n_read_out = 0;
     char *line;
     assert(input);
-    //  If there is not a whole line to read, evbuffer_readln returns NULL
-    while((line = evbuffer_readln(input, &n_read_out, EVBUFFER_EOL_CRLF)) != NULL)
+    //  If there is not a whole line to read, evbuffer_readln returns nullptr
+    while((line = evbuffer_readln(input, &n_read_out, EVBUFFER_EOL_CRLF)) != nullptr)
     {
         string s(line, n_read_out);
         free(line);
@@ -212,7 +209,7 @@ bool TorControlConnection::Connect(const string &target, const ConnectionCB& con
     b_conn = bufferevent_socket_new(base, -1, BEV_OPT_CLOSE_ON_FREE);
     if (!b_conn)
         return false;
-    bufferevent_setcb(b_conn, TorControlConnection::readcb, NULL, TorControlConnection::eventcb, this);
+    bufferevent_setcb(b_conn, TorControlConnection::readcb, nullptr, TorControlConnection::eventcb, this);
     bufferevent_enable(b_conn, EV_READ|EV_WRITE);
     this->connected = connected;
     this->disconnected = disconnected;
@@ -637,7 +634,7 @@ void TorController::protocolinfo_cb(TorControlConnection& conn, const TorControl
                 map<string,string> m = ParseTorReplyMapping(l.second);
                 map<string,string>::iterator i;
                 if ((i = m.find("METHODS")) != m.end())
-                    boost::split(methods, i->second, boost::is_any_of(","));
+                    str_split(methods, i->second, ',');
                 if ((i = m.find("COOKIEFILE")) != m.end())
                     cookiefile = i->second;
             } else if (l.first == "VERSION") {

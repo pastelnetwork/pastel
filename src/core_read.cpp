@@ -2,6 +2,9 @@
 // Copyright (c) 2018-2022 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
+#include <algorithm>
+
+#include <univalue.h>
 
 #include <core_io.h>
 #include <primitives/block.h>
@@ -9,14 +12,10 @@
 #include <script/script.h>
 #include <serialize.h>
 #include <streams.h>
-#include <univalue.h>
 #include <util.h>
 #include <utilstrencodings.h>
 #include <version.h>
-
-#include <boost/algorithm/string/classification.hpp>
-#include <boost/algorithm/string/predicate.hpp>
-#include <boost/algorithm/string/split.hpp>
+#include <str_utils.h>
 
 using namespace std;
 
@@ -47,28 +46,28 @@ CScript ParseScript(const string& s)
     }
 
     v_strings words;
-    boost::algorithm::split(words, s, boost::algorithm::is_any_of(" \t\n"), boost::algorithm::token_compress_on);
+    str_split(words, s, " \t\n", true);
 
     for (const auto &w : words)
     {
         if (w.empty())
         {
-            // Empty string, ignore. (boost::split given '' will return one word)
+            // Empty string, ignore. (str_split given '' will return one word)
         }
-        else if (all(w, boost::algorithm::is_digit()) ||
-            (boost::algorithm::starts_with(w, "-") && all(string(w.begin()+1, w.end()), boost::algorithm::is_digit())))
+        else if (all_of(w.cbegin(), w.cend(), ::isdigit) ||
+            (str_starts_with(w, "-") && all_of(w.cbegin() + 1, w.cend(), ::isdigit)))
         {
             // Number
             int64_t n = atoi64(w);
             result << n;
         }
-        else if (boost::algorithm::starts_with(w, "0x") && (w.begin()+2 != w.end()) && IsHex(string(w.begin()+2, w.end())))
+        else if (str_starts_with(w, "0x") && (w.begin()+2 != w.end()) && IsHex(string(w.begin()+2, w.end())))
         {
             // Raw hex data, inserted NOT pushed onto stack:
             v_uint8 raw = ParseHex(string(w.begin() + 2, w.end()));
             result.insert(result.end(), raw.begin(), raw.end());
         }
-        else if (w.size() >= 2 && boost::algorithm::starts_with(w, "'") && boost::algorithm::ends_with(w, "'"))
+        else if (w.size() >= 2 && str_starts_with(w, "'") && str_ends_with(w, "'"))
         {
             // Single-quoted string, pushed as data. NOTE: this is poor-man's
             // parsing, spaces/tabs/newlines in single-quoted strings won't work.

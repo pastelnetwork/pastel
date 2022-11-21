@@ -147,7 +147,7 @@ void DoTest(const CScript& scriptPubKey, const CScript& scriptSig, int flags, ui
     int expectedSuccessCode = expect ? 1 : 0;
     CDataStream stream(SER_NETWORK, PROTOCOL_VERSION);
     stream << tx2;
-    EXPECT_EQ(zcashconsensus_verify_script(begin_ptr(scriptPubKey), scriptPubKey.size(), (const unsigned char*)&stream[0], stream.size(), 0, flags, NULL) , expectedSuccessCode) << message);
+    EXPECT_EQ(zcashconsensus_verify_script(begin_ptr(scriptPubKey), scriptPubKey.size(), (const unsigned char*)&stream[0], stream.size(), 0, flags, nullptr) , expectedSuccessCode) << message);
 #endif
 }
 

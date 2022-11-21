@@ -1,6 +1,7 @@
 // Copyright (c) 2009-2014 The Bitcoin Core developers
+// Copyright (c) 2018-2022 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
-// file COPYING or http://www.opensource.org/licenses/mit-license.php.
+// file COPYING or https://www.opensource.org/licenses/mit-license.php.
 
 #include <fstream>
 #include <optional>
@@ -21,8 +22,8 @@
 #include <util.h>
 #include <utiltime.h>
 #include <wallet/wallet.h>
+#include <str_utils.h>
 
-#include <boost/algorithm/string.hpp>
 #include <boost/date_time/posix_time/posix_time.hpp>
 
 using namespace std;
@@ -312,6 +313,7 @@ UniValue importwallet_impl(const UniValue& params, bool fHelp, bool fImportZKeys
 
     pwalletMain->ShowProgress(_("Importing..."), 0); // show progress dialog in GUI
     string sKeyError;
+    v_strings vstr;
     while (file.good()) {
         pwalletMain->ShowProgress("", max(1, min(99, (int)(((double)file.tellg() / (double)nFilesize) * 100))));
         string line;
@@ -319,13 +321,13 @@ UniValue importwallet_impl(const UniValue& params, bool fHelp, bool fImportZKeys
         if (line.empty() || line[0] == '#')
             continue;
 
-        vector<string> vstr;
-        boost::split(vstr, line, boost::is_any_of(" "));
+        str_split(vstr, line, ' ');
         if (vstr.size() < 2)
             continue;
 
         // Let's see if the address is a valid Pastel spending key
-        if (fImportZKeys) {
+        if (fImportZKeys)
+        {
             auto spendingkey = keyIO.DecodeSpendingKey(vstr[0]);
             int64_t nTime = DecodeDumpTime(vstr[1]);
             // Only include hdKeypath and seedFpStr if we have both
@@ -353,7 +355,8 @@ UniValue importwallet_impl(const UniValue& params, bool fHelp, bool fImportZKeys
         const CPubKey pubkey = key.GetPubKey();
         assert(key.VerifyPubKey(pubkey));
         CKeyID keyid = pubkey.GetID();
-        if (pwalletMain->HaveKey(keyid)) {
+        if (pwalletMain->HaveKey(keyid))
+        {
             LogPrintf("Skipping import of %s (key already present)\n", keyIO.EncodeDestination(keyid));
             continue;
         }
@@ -361,13 +364,13 @@ UniValue importwallet_impl(const UniValue& params, bool fHelp, bool fImportZKeys
         string strLabel;
         bool fLabel = true;
         for (unsigned int nStr = 2; nStr < vstr.size(); nStr++) {
-            if (boost::algorithm::starts_with(vstr[nStr], "#"))
+            if (str_starts_with(vstr[nStr], "#"))
                 break;
             if (vstr[nStr] == "change=1")
                 fLabel = false;
             if (vstr[nStr] == "reserve=1")
                 fLabel = false;
-            if (boost::algorithm::starts_with(vstr[nStr], "label=")) {
+            if (str_starts_with(vstr[nStr], "label=")) {
                 strLabel = DecodeDumpString(vstr[nStr].substr(6));
                 fLabel = true;
             }

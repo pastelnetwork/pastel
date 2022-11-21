@@ -17,7 +17,7 @@
     <ClCompile Include="..\..\..\src\rpc\client.cpp">
       <Filter>Source Files\rpc</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\src\bitcoin-cli.cpp">
+    <ClCompile Include="..\..\..\src\pastel-cli.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
@@ -27,7 +27,7 @@
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <ResourceCompile Include="..\..\..\src\bitcoin-cli-res.rc">
+    <ResourceCompile Include="..\..\..\src\pastel-cli-res.rc">
       <Filter>Resource Files</Filter>
     </ResourceCompile>
   </ItemGroup>

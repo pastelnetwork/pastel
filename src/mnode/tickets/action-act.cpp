@@ -176,6 +176,17 @@ ticket_validation_t CActionActivateTicket::IsValid(const bool bPreReg, const uin
     return tv;
 }
 
+/**
+ * Get extra outputs for the Action Activation Ticket transaction.
+ * This includes:
+ *   - payments to 3 masternodes (80% of all storage fee):
+ *      - principal registering MN (60% of 80% - 48% of all storage fee)
+ *      - mn2 (20% of 80% - 16% of all storage fee)
+ *      - mn3 (20% of 80% - 16% of all storage fee)
+ * 
+ * \param outputs - extra outputs
+ * \return total amount of extra outputs in patoshis
+ */
 CAmount CActionActivateTicket::GetExtraOutputs(vector<CTxOut>& outputs) const
 {
     const auto ticket = CPastelTicketProcessor::GetTicket(m_regTicketTxId, TicketID::ActionReg);

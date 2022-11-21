@@ -145,6 +145,17 @@ ticket_validation_t CNFTActivateTicket::IsValid(const bool bPreReg, const uint32
     return tv;
 }
 
+/**
+ * Get extra outputs for the NFT Activation Ticket transaction.
+ * This includes:
+ *   - payments to 3 masternodes (90% of all storage fee):
+ *      - principal registering MN (60% of 90% - 54% of all storage fee)
+ *      - mn2 (20% of 90% - 18% of all storage fee)
+ *      - mn3 (20% of 90% - 18% of all storage fee)
+ * 
+ * \param outputs - extra outputs
+ * \return total amount of extra outputs in patoshis
+ */
 CAmount CNFTActivateTicket::GetExtraOutputs(vector<CTxOut>& outputs) const
 {
     const auto ticket = CPastelTicketProcessor::GetTicket(m_regTicketTxId, TicketID::NFT);

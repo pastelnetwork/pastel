@@ -382,7 +382,7 @@ CNode* FindNode(const NodeId id)
     return nullptr;
 }
 
-CNode* ConnectNode(CAddress addrConnect, const char *pszDest /*= NULL*/, bool fConnectToMasternode /*= false*/)
+CNode* ConnectNode(CAddress addrConnect, const char *pszDest, bool fConnectToMasternode /*= false*/)
 
 {
     if (!pszDest)

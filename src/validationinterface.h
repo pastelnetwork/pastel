@@ -1,21 +1,20 @@
+#pragma once
 // Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2014 The Bitcoin Core developers
+// Copyright (c) 2018-2022 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
-// file COPYING or http://www.opensource.org/licenses/mit-license.php.
-
-#ifndef BITCOIN_VALIDATIONINTERFACE_H
-#define BITCOIN_VALIDATIONINTERFACE_H
+// file COPYING or https://www.opensource.org/licenses/mit-license.php.
 
 #include <boost/signals2/signal.hpp>
 
-#include "zcash/IncrementalMerkleTree.hpp"
+#include <primitives/block.h>
+#include <consensus/validation.h>
+#include <zcash/IncrementalMerkleTree.hpp>
 
-class CBlock;
 class CBlockIndex;
 struct CBlockLocator;
 class CTransaction;
 class CValidationInterface;
-class CValidationState;
 class uint256;
 
 // These functions dispatch to one or all registered wallets
@@ -27,15 +26,16 @@ void UnregisterValidationInterface(CValidationInterface* pwalletIn);
 /** Unregister all wallets from core */
 void UnregisterAllValidationInterfaces();
 /** Push an updated transaction to all registered wallets */
-void SyncWithWallets(const CTransaction& tx, const CBlock* pblock = NULL);
+void SyncWithWallets(const CTransaction& tx, const CBlock* pblock = nullptr);
 
-class CValidationInterface {
+class CValidationInterface
+{
 protected:
-    virtual void ChainTip(const CBlockIndex *pindex, const CBlock *pblock, SaplingMerkleTree saplingTree, bool added) {}
-    virtual void EraseFromWallet(const uint256 &hash) {}
-
     virtual void AcceptedBlockHeader(const CBlockIndex *pindexNew) {}
     virtual void NotifyHeaderTip(const CBlockIndex *pindexNew, bool fInitialDownload) {}
+
+    virtual void ChainTip(const CBlockIndex *pindex, const CBlock *pblock, SaplingMerkleTree saplingTree, bool added) {}
+    virtual void EraseFromWallet(const uint256 &hash) {}
 
     virtual void UpdatedBlockTip(const CBlockIndex *pindex, bool fInitialDownload) {}
     virtual void SyncTransaction(const CTransaction &tx, const CBlock *pblock) {}
@@ -44,6 +44,7 @@ protected:
     virtual void Inventory(const uint256 &hash) {}
     virtual void ResendWalletTransactions(int64_t nBestBlockTime) {}
     virtual void BlockChecked(const CBlock&, const CValidationState&) {}
+
     friend void ::RegisterValidationInterface(CValidationInterface*);
     friend void ::UnregisterValidationInterface(CValidationInterface*);
     friend void ::UnregisterAllValidationInterfaces();
@@ -75,5 +76,3 @@ struct CMainSignals {
 };
 
 CMainSignals& GetMainSignals();
-
-#endif // BITCOIN_VALIDATIONINTERFACE_H
