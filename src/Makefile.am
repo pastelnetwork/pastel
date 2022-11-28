@@ -20,14 +20,14 @@ $(LIBLEVELDB) $(LIBMEMENV):
           OPT="$(AM_CXXFLAGS) $(PIE_FLAGS) $(CXXFLAGS) $(AM_CPPFLAGS) $(CPPFLAGS) -D__STDC_LIMIT_MACROS"
 endif
 
-BITCOIN_CONFIG_INCLUDES=-I$(builddir)/config
-BITCOIN_INCLUDES=-I$(builddir) -I$(builddir)/obj $(BDB_CPPFLAGS) $(BOOST_CPPFLAGS) $(LEVELDB_CPPFLAGS) $(CRYPTO_CFLAGS) $(SSL_CFLAGS)
+PASTEL_CONFIG_INCLUDES=-I$(builddir)/config
+PASTEL_INCLUDES=-I$(builddir) -I$(builddir)/obj $(BDB_CPPFLAGS) $(BOOST_CPPFLAGS) $(LEVELDB_CPPFLAGS) $(CRYPTO_CFLAGS) $(SSL_CFLAGS)
 
-BITCOIN_INCLUDES += -I$(srcdir)/secp256k1/include
-BITCOIN_INCLUDES += -I$(srcdir)/snark
-BITCOIN_INCLUDES += -I$(srcdir)/snark/libsnark
-BITCOIN_INCLUDES += -I$(srcdir)/univalue/include
-BITCOIN_INCLUDES += -I$(srcdir)/msgpack
+PASTEL_INCLUDES += -I$(srcdir)/secp256k1/include
+PASTEL_INCLUDES += -I$(srcdir)/snark
+PASTEL_INCLUDES += -I$(srcdir)/snark/libsnark
+PASTEL_INCLUDES += -I$(srcdir)/univalue/include
+PASTEL_INCLUDES += -I$(srcdir)/msgpack
 
 LIBBITCOIN_SERVER=libbitcoin_server.a
 LIBBITCOIN_COMMON=libbitcoin_common.a
@@ -378,7 +378,7 @@ obj/build.h: FORCE
 libbitcoin_util_a-clientversion.$(OBJEXT): obj/build.h
 
 # server: pasteld
-libbitcoin_server_a_CPPFLAGS = $(AM_CPPFLAGS) $(BITCOIN_INCLUDES) $(EVENT_CFLAGS) $(EVENT_PTHREADS_CFLAGS)
+libbitcoin_server_a_CPPFLAGS = $(AM_CPPFLAGS) $(PASTEL_INCLUDES) $(EVENT_CFLAGS) $(EVENT_PTHREADS_CFLAGS)
 libbitcoin_server_a_CXXFLAGS = $(AM_CXXFLAGS) $(PIE_FLAGS)
 libbitcoin_server_a_SOURCES = \
   sendalert.cpp \
@@ -426,7 +426,7 @@ libbitcoin_server_a_SOURCES = \
 
 
 if ENABLE_ZMQ
-libbitcoin_zmq_a_CPPFLAGS = $(BITCOIN_INCLUDES) $(ZMQ_CFLAGS)
+libbitcoin_zmq_a_CPPFLAGS = $(PASTEL_INCLUDES) $(ZMQ_CFLAGS)
 libbitcoin_zmq_a_CXXFLAGS = $(AM_CXXFLAGS) $(PIE_FLAGS)
 libbitcoin_zmq_a_SOURCES = \
   zmq/zmqabstractnotifier.cpp \
@@ -435,7 +435,7 @@ libbitcoin_zmq_a_SOURCES = \
 endif
 
 if ENABLE_PROTON
-libbitcoin_proton_a_CPPFLAGS = $(BITCOIN_INCLUDES)
+libbitcoin_proton_a_CPPFLAGS = $(PASTEL_INCLUDES)
 libbitcoin_proton_a_CXXFLAGS = $(AM_CXXFLAGS) $(PIE_FLAGS)
 libbitcoin_proton_a_SOURCES = \
   amqp/amqpabstractnotifier.cpp \
@@ -444,7 +444,7 @@ libbitcoin_proton_a_SOURCES = \
 endif
 
 # wallet: pasteld, but only linked when wallet enabled
-libbitcoin_wallet_a_CPPFLAGS = $(AM_CPPFLAGS) $(BITCOIN_INCLUDES)
+libbitcoin_wallet_a_CPPFLAGS = $(AM_CPPFLAGS) $(PASTEL_INCLUDES)
 libbitcoin_wallet_a_CXXFLAGS = $(AM_CXXFLAGS) $(PIE_FLAGS)
 libbitcoin_wallet_a_SOURCES = \
   zcbenchmarks.cpp \
@@ -463,7 +463,7 @@ libbitcoin_wallet_a_SOURCES = \
   $(LIBZCASH_H)
 
 # crypto primitives library
-crypto_libbitcoin_crypto_a_CPPFLAGS = $(AM_CPPFLAGS) $(BITCOIN_CONFIG_INCLUDES)
+crypto_libbitcoin_crypto_a_CPPFLAGS = $(AM_CPPFLAGS) $(PASTEL_CONFIG_INCLUDES)
 crypto_libbitcoin_crypto_a_CXXFLAGS = $(AM_CXXFLAGS) $(PIE_FLAGS)
 crypto_libbitcoin_crypto_a_SOURCES = \
   crypto/common.h \
@@ -496,7 +496,7 @@ crypto_libbitcoin_crypto_a_SOURCES += \
 endif
 
 # common: shared between pasteld and non-server tools
-libbitcoin_common_a_CPPFLAGS = $(AM_CPPFLAGS) $(BITCOIN_INCLUDES)
+libbitcoin_common_a_CPPFLAGS = $(AM_CPPFLAGS) $(PASTEL_INCLUDES)
 libbitcoin_common_a_CXXFLAGS = $(AM_CXXFLAGS) $(PIE_FLAGS)
 libbitcoin_common_a_SOURCES = \
   amount.cpp \
@@ -533,7 +533,7 @@ libbitcoin_common_a_SOURCES = \
 # util: shared between all executables.
 # This library *must* be included to make sure that the glibc
 # backward-compatibility objects and their sanity checks are linked.
-libbitcoin_util_a_CPPFLAGS = $(AM_CPPFLAGS) $(BITCOIN_INCLUDES)
+libbitcoin_util_a_CPPFLAGS = $(AM_CPPFLAGS) $(PASTEL_INCLUDES)
 libbitcoin_util_a_CXXFLAGS = $(AM_CXXFLAGS) $(PIE_FLAGS)
 libbitcoin_util_a_SOURCES =\
   compat/glibc_sanity.cpp\
@@ -561,7 +561,7 @@ libbitcoin_util_a_SOURCES += compat/glibc_compat.cpp
 endif
 
 # cli: pastel-cli
-libbitcoin_cli_a_CPPFLAGS = $(AM_CPPFLAGS) $(BITCOIN_INCLUDES)
+libbitcoin_cli_a_CPPFLAGS = $(AM_CPPFLAGS) $(PASTEL_INCLUDES)
 libbitcoin_cli_a_CXXFLAGS = $(AM_CXXFLAGS) $(PIE_FLAGS)
 libbitcoin_cli_a_SOURCES = \
   rpc/client.cpp \
@@ -573,7 +573,7 @@ nodist_libbitcoin_util_a_SOURCES = $(srcdir)/obj/build.h
 
 # pasteld binary #
 pasteld_SOURCES = pasteld.cpp
-pasteld_CPPFLAGS = $(AM_CPPFLAGS) $(BITCOIN_INCLUDES)
+pasteld_CPPFLAGS = $(AM_CPPFLAGS) $(PASTEL_INCLUDES)
 pasteld_CXXFLAGS = $(AM_CXXFLAGS) $(PIE_FLAGS)
 pasteld_LDFLAGS = $(RELDFLAGS) $(AM_LDFLAGS) $(LIBTOOL_APP_LDFLAGS)
 
@@ -609,14 +609,14 @@ pasteld_LDADD +=\
   $(LIBZCASH_LIBS)\
   $(ZSTD_LIBS)
 
-# bitcoin-cli binary #
-pastel_cli_SOURCES = bitcoin-cli.cpp
-pastel_cli_CPPFLAGS = $(AM_CPPFLAGS) $(BITCOIN_INCLUDES) $(EVENT_CFLAGS)
+# pastel-cli binary #
+pastel_cli_SOURCES = pastel-cli.cpp
+pastel_cli_CPPFLAGS = $(AM_CPPFLAGS) $(PASTEL_INCLUDES) $(EVENT_CFLAGS)
 pastel_cli_CXXFLAGS = $(AM_CXXFLAGS) $(PIE_FLAGS)
 pastel_cli_LDFLAGS = $(RELDFLAGS) $(AM_LDFLAGS) $(LIBTOOL_APP_LDFLAGS)
 
 if TARGET_WINDOWS
-pastel_cli_SOURCES += bitcoin-cli-res.rc
+pastel_cli_SOURCES += pastel-cli-res.rc
 endif
 
 pastel_cli_LDADD =\
@@ -635,7 +635,7 @@ pastel_cli_LDADD =\
 
 # pastel-tx binary #
 pastel_tx_SOURCES = bitcoin-tx.cpp
-pastel_tx_CPPFLAGS = $(AM_CPPFLAGS) $(BITCOIN_INCLUDES)
+pastel_tx_CPPFLAGS = $(AM_CPPFLAGS) $(PASTEL_INCLUDES)
 pastel_tx_CXXFLAGS = $(AM_CXXFLAGS) $(PIE_FLAGS)
 pastel_tx_LDFLAGS = $(RELDFLAGS) $(AM_LDFLAGS) $(LIBTOOL_APP_LDFLAGS)
 
@@ -679,7 +679,7 @@ libzcash_a_SOURCES = \
   zcash/circuit/prfs.tcc \
   zcash/circuit/utils.tcc
 
-libzcash_a_CPPFLAGS = $(AM_CPPFLAGS) $(PIC_FLAGS) -DMONTGOMERY_OUTPUT -DBINARY_OUTPUT -DCURVE_ALT_BN128 -DBOOST_SPIRIT_THREADSAFE -fvisibility=hidden -DSTATIC $(BITCOIN_INCLUDES)
+libzcash_a_CPPFLAGS = $(AM_CPPFLAGS) $(PIC_FLAGS) -DMONTGOMERY_OUTPUT -DBINARY_OUTPUT -DCURVE_ALT_BN128 -DBOOST_SPIRIT_THREADSAFE -fvisibility=hidden -DSTATIC $(PASTEL_INCLUDES)
 libzcash_a_CXXFLAGS = $(AM_CXXFLAGS) $(PIE_FLAGS)
 libzcash_a_LDFLAGS = $(AM_LDFLAGS)
 

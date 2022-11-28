@@ -12,6 +12,13 @@
 #include <deque>
 #include <thread>
 
+#include <event2/buffer.h>
+#include <event2/event.h>
+#include <event2/http.h>
+#include <event2/keyvalq_struct.h>
+#include <event2/thread.h>
+#include <event2/util.h>
+
 #include <httpserver.h>
 #include <chainparamsbase.h>
 #include <compat.h>
@@ -21,13 +28,7 @@
 #include <sync.h>
 #include <ui_interface.h>
 #include <vector_types.h>
-
-#include <event2/buffer.h>
-#include <event2/event.h>
-#include <event2/http.h>
-#include <event2/keyvalq_struct.h>
-#include <event2/thread.h>
-#include <event2/util.h>
+#include <enum_util.h>
 
 #ifdef EVENT__HAVE_NETINET_IN_H
 #include <netinet/in.h>
@@ -259,13 +260,13 @@ static void http_request_cb(struct evhttp_request* req, void* arg)
 
     // Early address-based allow check
     if (!ClientAllowed(hreq->GetPeer())) {
-        hreq->WriteReply(HTTP_FORBIDDEN);
+        hreq->WriteReply(to_integral_type(HTTPStatusCode::FORBIDDEN));
         return;
     }
 
     // Early reject unknown HTTP methods
     if (hreq->GetRequestMethod() == HTTPRequest::UNKNOWN) {
-        hreq->WriteReply(HTTP_BADMETHOD);
+        hreq->WriteReply(to_integral_type(HTTPStatusCode::BAD_METHOD));
         return;
     }
 
@@ -293,9 +294,9 @@ static void http_request_cb(struct evhttp_request* req, void* arg)
         if (workQueue->Enqueue(item.get()))
             item.release(); /* if true, queue took ownership */
         else
-            item->req->WriteReply(HTTP_INTERNAL, "Work queue depth exceeded");
+            item->req->WriteReply(to_integral_type(HTTPStatusCode::INTERNAL_SERVER_ERROR), "Work queue depth exceeded");
     } else {
-        hreq->WriteReply(HTTP_NOTFOUND);
+        hreq->WriteReply(to_integral_type(HTTPStatusCode::NOT_FOUND));
     }
 }
 
@@ -303,7 +304,7 @@ static void http_request_cb(struct evhttp_request* req, void* arg)
 static void http_reject_request_cb(struct evhttp_request* req, void*)
 {
     LogPrint("http", "Rejecting request while shutting down\n");
-    evhttp_send_error(req, HTTP_SERVUNAVAIL, NULL);
+    evhttp_send_error(req, to_integral_type(HTTPStatusCode::SERVICE_UNAVAILABLE), nullptr);
 }
 
 /** Event dispatcher thread */
@@ -489,7 +490,7 @@ void InterruptHTTPServer()
         for (auto socket : boundSockets)
             evhttp_del_accept_socket(eventHTTP, socket);
         // Reject requests on current connections
-        evhttp_set_gencb(eventHTTP, http_reject_request_cb, NULL);
+        evhttp_set_gencb(eventHTTP, http_reject_request_cb, nullptr);
     }
     if (workQueue)
         workQueue->Interrupt();
@@ -556,7 +557,7 @@ HTTPEvent::~HTTPEvent()
 }
 void HTTPEvent::trigger(struct timeval* tv)
 {
-    if (tv == NULL)
+    if (!tv)
         event_active(ev, 0, 0); // immediately trigger event in main thread
     else
         evtimer_add(ev, tv); // trigger after timeval passed
@@ -570,7 +571,7 @@ HTTPRequest::~HTTPRequest()
     if (!replySent) {
         // Keep track of whether reply was sent to avoid request leaks
         LogPrintf("%s: Unhandled request\n", __func__);
-        WriteReply(HTTP_INTERNAL, "Unhandled request");
+        WriteReply(to_integral_type(HTTPStatusCode::INTERNAL_SERVER_ERROR), "Unhandled request");
     }
     // evhttpd cleans up the request, as long as a reply was sent.
 }
@@ -599,7 +600,7 @@ std::string HTTPRequest::ReadBody()
      * abstraction to consume the evbuffer on the fly in the parsing algorithm.
      */
     const char* data = (const char*)evbuffer_pullup(buf, size);
-    if (!data) // returns NULL in case of empty buffer
+    if (!data) // returns nullptr in case of empty buffer
         return "";
     std::string rv(data, size);
     evbuffer_drain(buf, size);
@@ -626,7 +627,7 @@ void HTTPRequest::WriteReply(int nStatus, const std::string& strReply)
     assert(evb);
     evbuffer_add(evb, strReply.data(), strReply.size());
     HTTPEvent* ev = new HTTPEvent(eventBase, true,
-        boost::bind(evhttp_send_reply, req, nStatus, (const char*)NULL, (struct evbuffer *)NULL));
+        boost::bind(evhttp_send_reply, req, nStatus, (const char*)nullptr, (struct evbuffer *)nullptr));
     ev->trigger(0);
     replySent = true;
     req = 0; // transferred back to main thread

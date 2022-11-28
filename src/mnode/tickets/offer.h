@@ -157,9 +157,9 @@ protected:
     std::string m_itemTxId;  // item activation txid (NFT activation txid, Action activation txid, ...)
     std::string m_sPastelID;    // Pastel ID of the offerer (current owner)
     std::string m_sIntendedForPastelID; // Pastel ID of intended recipient of the item - new owner (can be empty)
-    unsigned int m_nAskedPricePSL = 0;
+    unsigned int m_nAskedPricePSL = 0; // asked price of the item in PSL
     uint32_t m_nValidAfter = 0;  // block height after which the item offer will be active (inclusive)
     uint32_t m_nValidBefore = 0; // block height after which the item offer will expire (inclusive)
     unsigned short m_nCopyNumber = 0; // item copy number
-    v_uint8 m_signature;
+    v_uint8 m_signature; // ticket signature
 };

@@ -147,7 +147,7 @@ pastel_gtest_SOURCES += \
 	gtest/test_rpc_wallet.cpp
 endif
 
-pastel_gtest_CPPFLAGS = $(AM_CPPFLAGS) -DBINARY_OUTPUT -DCURVE_ALT_BN128 -DSTATIC $(BITCOIN_INCLUDES) -I$(srcdir)/gtest 
+pastel_gtest_CPPFLAGS = $(AM_CPPFLAGS) -DBINARY_OUTPUT -DCURVE_ALT_BN128 -DSTATIC $(PASTEL_INCLUDES) -I$(srcdir)/gtest 
 pastel_gtest_CXXFLAGS = $(AM_CXXFLAGS) $(PIE_FLAGS) -I$(srcdir)/gtest
 
 pastel_gtest_LDADD =\

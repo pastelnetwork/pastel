@@ -5,6 +5,7 @@
 
 #include <algorithm>
 #include <vector_types.h>
+#include <set>
 
 /**
  * test if character is white space not using locale.
@@ -284,6 +285,24 @@ static inline bool str_tobool(const std::string &str, bool &bValue)
 }
 
 /**
+ * Check if the string s starts with the given string strStart.
+ * c++20 standard implements starts_with for std::string.
+ * 
+ * \param s - string to check
+ * \param strStart - a null-terminated string to search for
+ * \return true is string s starts with the provided string, false otherwise
+ */
+static bool str_starts_with(const std::string& s, const char* strStart)
+{
+    if (!strStart || !*strStart || s.empty())
+        return false;
+    const size_t nLength = strlen(strStart);
+    if (s.size() < nLength)
+        return false;
+    return std::equal(strStart, strStart + nLength, s.cbegin());
+}
+
+/**
  * Check if the string s ends with the given suffix.
  * c++20 standard implements ends_with for std::string.
  * 
@@ -334,3 +353,56 @@ static void str_split(v_strings &v, const std::string &s, const char chDelimiter
     }
     v.emplace_back(s.substr(posStart));
 }
+
+/**
+ * Split string s with any separators in szSeparators into vector v.
+ * 
+ * \param v - output vector of strings
+ * \param s - input string
+ * \param szSeparators  - string separators
+ * \param bCompressTokens - if true - adjacent separators are merged together
+ */
+static void str_split(v_strings &v, const std::string &s, const char *szSeparators, const bool bCompressTokens = false)
+{
+    v.clear();
+    std::string sToken;
+    bool bSepState = false;
+    for (const auto& ch : s)
+    {
+        if (strchr(szSeparators, ch))
+        {
+            if (bSepState && bCompressTokens)
+                continue;
+            bSepState = true;
+            v.emplace_back(sToken);
+            sToken.clear();
+        }
+        else
+        {
+            sToken += ch;
+            bSepState = false;
+        }
+    }
+    if (!bSepState)
+        v.emplace_back(sToken);
+}
+
+/**
+ * Split string s with delimiter chDelimiter into vector v.
+ * 
+ * \param v - output vector of strings
+ * \param s - input string
+ * \param chDelimiter  - string parts delimiter
+ */
+static void str_split(std::set<std::string> &strSet, const std::string &s, const char chDelimiter)
+{
+    strSet.clear();
+    std::string::size_type posStart = 0;
+    for (std::string::size_type posEnd = 0; (posEnd = s.find(chDelimiter, posEnd)) != std::string::npos; ++posEnd)
+    {
+        strSet.emplace(s.substr(posStart, posEnd - posStart));
+        posStart = posEnd + 1;
+    }
+    strSet.emplace(s.substr(posStart));
+}
+

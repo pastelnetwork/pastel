@@ -1,26 +1,29 @@
 #pragma once
 // Copyright (c) 2010 Satoshi Nakamoto
 // Copyright (c) 2009-2014 The Bitcoin Core developers
+// Copyright (c) 2018-2022 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
-// file COPYING or http://www.opensource.org/licenses/mit-license.php.
+// file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <list>
 #include <map>
 #include <stdint.h>
 #include <string>
+
 #include <univalue.h>
-#include "fs.h"
+
+#include <fs.h>
 
 //! HTTP status codes
-enum HTTPStatusCode
+enum class HTTPStatusCode : int
 {
-    HTTP_OK                    = 200,
-    HTTP_BAD_REQUEST           = 400,
-    HTTP_UNAUTHORIZED          = 401,
-    HTTP_FORBIDDEN             = 403,
-    HTTP_NOT_FOUND             = 404,
-    HTTP_BAD_METHOD            = 405,
-    HTTP_INTERNAL_SERVER_ERROR = 500,
-    HTTP_SERVICE_UNAVAILABLE   = 503,
+    OK                    = 200,
+    BAD_REQUEST           = 400,
+    UNAUTHORIZED          = 401,
+    FORBIDDEN             = 403,
+    NOT_FOUND             = 404,
+    BAD_METHOD            = 405,
+    INTERNAL_SERVER_ERROR = 500,
+    SERVICE_UNAVAILABLE   = 503,
 };
 
 //! Bitcoin RPC error codes

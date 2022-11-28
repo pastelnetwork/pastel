@@ -380,10 +380,10 @@ ticket_validation_t CTransferTicket::IsValid(const bool bPreReg, const uint32_t 
 }
 
 /**
- * Add extra outputs to the ticket.
+ * Get extra outputs for the Transfer ticket.
  * 
  * \param outputs - vector of outputs: CTxOut
- * \return - total amount of added outputs
+ * \return - total amount of extra outputs in patoshis
  */
 CAmount CTransferTicket::GetExtraOutputs(vector<CTxOut>& outputs) const
 {
@@ -412,6 +412,7 @@ CAmount CTransferTicket::GetExtraOutputs(vector<CTxOut>& outputs) const
             "The %s ticket with txid [%s] asked price should be not 0", 
             ::GetTicketDescription(TicketID::Offer), m_offerTxId));
 
+    // get asked item price in patoshis
     CAmount nPriceAmount = nAskedPricePSL * COIN;
     CAmount nRoyaltyAmount = 0;
     CAmount nGreenNFTAmount = 0;

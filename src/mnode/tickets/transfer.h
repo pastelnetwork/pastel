@@ -104,7 +104,6 @@ public:
     void SetItemRegTicketTxid(const std::string& sItemRegTxId) noexcept { m_itemRegTxId = sItemRegTxId; }
     void SetCopySerialNr(const std::string& CopySerialNr) noexcept { itemCopySerialNr = CopySerialNr; }
 
-
     void SerializationOp(CDataStream& s, const SERIALIZE_ACTION ser_action) override
     {
         const bool bRead = ser_action == SERIALIZE_ACTION::Read;
@@ -159,5 +158,5 @@ protected:
 
     // memory only fields
     TicketID m_itemType{TicketID::Activate}; // item type: NFT or Action Activation or Transfer ticket
-    unsigned int m_nPricePSL{ 0 }; // 
+    unsigned int m_nPricePSL{ 0 }; // offer price in PSL
 };

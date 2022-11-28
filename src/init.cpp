@@ -40,6 +40,7 @@
 #include <httprpc.h>
 #include <key.h>
 #include <main.h>
+#include <str_utils.h>
 #include <metrics.h>
 #include <miner.h>
 #include <net.h>
@@ -63,7 +64,6 @@
 #include <port_config.h>
 
 #include <boost/algorithm/string/classification.hpp>
-#include <boost/algorithm/string/split.hpp>
 #include <boost/interprocess/sync/file_lock.hpp>
 #include <script_check.h>
 #include <orphan-tx.h>
@@ -1127,11 +1127,11 @@ bool AppInit2(CServiceThreadGroup& threadGroup, CScheduler& scheduler)
         // Allow overriding network upgrade parameters for testing
         if (!chainparams.IsRegTest())
             return InitError("Network upgrade parameters may only be overridden on regtest.");
+        v_strings vDeploymentParams;
         const v_strings& deployments = mapMultiArgs["-nuparams"];
-        for (const auto &i : deployments)
+        for (const auto &sDeployment : deployments)
         {
-            v_strings vDeploymentParams;
-            boost::split(vDeploymentParams, i, boost::is_any_of(":"));
+            str_split(vDeploymentParams, sDeployment, ':');
             if (vDeploymentParams.size() != 2) {
                 return InitError("Network upgrade parameters malformed, expecting hexBranchId:activationHeight");
             }

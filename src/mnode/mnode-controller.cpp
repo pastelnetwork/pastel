@@ -78,7 +78,7 @@ void CMasterNodeController::SetParameters()
     MasternodeFeePerMBDefault           = 50;
     // default NFT ticket fee in PSL per KB
     NFTTicketFeePerKBDefault            = 3;
-    // default action ticket fee in PSL per KB
+    // default action ticket fee in PSL per MB
     ActionTicketFeePerMBDefault         = 10;
 
     ChainDeflationRateDefault           = 1;

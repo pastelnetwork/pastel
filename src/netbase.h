@@ -1,18 +1,17 @@
 #pragma once
 // Copyright (c) 2009-2013 The Bitcoin Core developers
-// Copyright (c) 2018-2021 The Pastel Core developers
+// Copyright (c) 2018-2022 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
-// file COPYING or http://www.opensource.org/licenses/mit-license.php.
-#if defined(HAVE_CONFIG_H)
-#include "config/bitcoin-config.h"
-#endif
-
-#include "compat.h"
-#include "serialize.h"
-
+// file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <stdint.h>
 #include <string>
 #include <vector>
+
+#if defined(HAVE_CONFIG_H)
+#include <config/bitcoin-config.h>
+#endif
+#include <compat.h>
+#include <serialize.h>
 
 extern int nConnectTimeout;
 extern bool fNameLookup;
@@ -83,7 +82,7 @@ class CNetAddr
         uint64_t GetHash() const;
         bool GetInAddr(struct in_addr* pipv4Addr) const;
         std::vector<unsigned char> GetGroup() const;
-        int GetReachabilityFrom(const CNetAddr *paddrPartner = NULL) const;
+        int GetReachabilityFrom(const CNetAddr *paddrPartner = nullptr) const;
 
         CNetAddr(const struct in6_addr& pipv6Addr);
         bool GetIn6Addr(struct in6_addr* pipv6Addr) const;

@@ -347,6 +347,35 @@ TEST(str_utils, str_ends_with)
     EXPECT_FALSE(str_ends_with(s, ""));
 }
 
+class PTest_StrUtils_str_starts_with : public TestWithParam<tuple<string, string, bool>>
+{};
+
+TEST_P(PTest_StrUtils_str_starts_with, test)
+{
+    const string& s = get<0>(GetParam());
+    const string& suffix = get<1>(GetParam());
+    const bool bExpectedResult = get<2>(GetParam());
+    EXPECT_EQ(str_starts_with(s, suffix.c_str()), bExpectedResult);
+}
+
+INSTANTIATE_TEST_SUITE_P(str_utils, PTest_StrUtils_str_starts_with,
+	Values(
+		make_tuple("Test Starts with", "Test", true),
+		make_tuple("test sfx", "Test", false), // not case insensitive
+		make_tuple("Str", "S", true),
+		make_tuple("Str", "Str1", false)
+	));
+
+// test some special cases for str_starts_with
+TEST(str_utils, str_starts_with)
+{
+    string s;
+    EXPECT_FALSE(str_starts_with(s, "a"));
+    s = "test";
+    EXPECT_FALSE(str_starts_with(s, nullptr));
+    EXPECT_FALSE(str_starts_with(s, ""));
+}
+
 TEST(str_utils, str_append_field)
 {
     string s;
@@ -362,10 +391,10 @@ TEST(str_utils, str_append_field)
     EXPECT_EQ(s, "ab,c, d");
 }
 
-class PTest_StrUtils_str_split : public TestWithParam<tuple<string, char, v_strings>>
+class PTest_StrUtils_str_split1 : public TestWithParam<tuple<string, char, v_strings>>
 {};
 
-TEST_P(PTest_StrUtils_str_split, test)
+TEST_P(PTest_StrUtils_str_split1, test)
 {
 	const string &s = get<0>(GetParam());
     const char ch = get<1>(GetParam());
@@ -375,11 +404,36 @@ TEST_P(PTest_StrUtils_str_split, test)
 	EXPECT_EQ(v, vExpected);
 }
 
-INSTANTIATE_TEST_SUITE_P(str_utils, PTest_StrUtils_str_split,
+INSTANTIATE_TEST_SUITE_P(str_utils, PTest_StrUtils_str_split1,
 	Values(
 		make_tuple("a-b-c", '-', v_strings{"a", "b", "c"}),
 		make_tuple("a--c", '-', v_strings{"a", "", "c"}),
 		make_tuple("-b-", '-', v_strings{"", "b", ""}),
 		make_tuple("a", '-', v_strings{"a"}),
 		make_tuple("", '-', v_strings{""})
+	));
+
+class PTest_StrUtils_str_split2 : public TestWithParam<tuple<string, string, bool, v_strings>>
+{};
+
+TEST_P(PTest_StrUtils_str_split2, test)
+{
+	const string &s = get<0>(GetParam());
+    const string sSeps = get<1>(GetParam());
+	const bool bCompressTokens = get<2>(GetParam());
+    const auto& vExpected = get<3>(GetParam());
+    v_strings v;
+    str_split(v, s, sSeps.c_str(), bCompressTokens);
+	EXPECT_EQ(v, vExpected);
+}
+
+INSTANTIATE_TEST_SUITE_P(str_utils, PTest_StrUtils_str_split2,
+	Values(
+		make_tuple("a-b-c", "-", false, v_strings{"a", "b", "c"}),
+		make_tuple("a--c", "-", true, v_strings{"a", "c"}),
+		make_tuple("a--c", "-", false, v_strings{"a", "", "c"}),
+		make_tuple("a+b--", "-+", true, v_strings{"a", "b"}),
+		make_tuple("--a+b", "-+", true, v_strings{"", "a", "b"}),
+		make_tuple("a=b-=-cd*ef", "-=*", true, v_strings{"a", "b", "cd", "ef"}),
+		make_tuple("", "-", false, v_strings{""})
 	));

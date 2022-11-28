@@ -1,7 +1,8 @@
 // Copyright (c) 2010 Satoshi Nakamoto
 // Copyright (c) 2009-2014 The Bitcoin Core developers
+// Copyright (c) 2018-2022 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
-// file COPYING or http://www.opensource.org/licenses/mit-license.php.
+// file COPYING or https://www.opensource.org/licenses/mit-license.php.
 
 #include <stdint.h>
 #include <regex>
@@ -30,9 +31,9 @@ double GetDifficultyINTERNAL(const CBlockIndex* blockindex, bool networkDifficul
 {
     // Floating point number that is a multiple of the minimum difficulty,
     // minimum difficulty = 1.0.
-    if (blockindex == NULL)
+    if (!blockindex)
     {
-        if (chainActive.Tip() == NULL)
+        if (!chainActive.Tip())
             return 1.0;
         else
             blockindex = chainActive.Tip();
@@ -705,7 +706,7 @@ static UniValue SoftForkMajorityDesc(int minVersion, CBlockIndex* pindex, int nR
 {
     int nFound = 0;
     CBlockIndex* pstart = pindex;
-    for (int i = 0; i < consensusParams.nMajorityWindow && pstart != NULL; i++)
+    for (int i = 0; i < consensusParams.nMajorityWindow && pstart; i++)
     {
         if (pstart->nVersion >= minVersion)
             ++nFound;

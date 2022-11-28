@@ -1,3 +1,7 @@
+// Copyright (c) 2015 The Bitcoin Core developers
+// Copyright (c) 2018-2022 The Pastel Core developers
+// Distributed under the MIT software license, see the accompanying
+// file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <httprpc.h>
 #include <chainparams.h>
 #include <httpserver.h>
@@ -7,6 +11,7 @@
 #include <random.h>
 #include <sync.h>
 #include <util.h>
+#include <enum_util.h>
 #include <utilstrencodings.h>
 #include <ui_interface.h>
 #include <str_utils.h>
@@ -61,13 +66,13 @@ static HTTPRPCTimerInterface* httpRPCTimerInterface = 0;
 static void JSONErrorReply(HTTPRequest* req, const UniValue& objError, const UniValue& id)
 {
     // Send error reply from json-rpc error object
-    int nStatus = HTTP_INTERNAL_SERVER_ERROR;
+    int nStatus = to_integral_type(HTTPStatusCode::INTERNAL_SERVER_ERROR);
     int code = find_value(objError, "code").get_int();
 
     if (code == RPC_INVALID_REQUEST)
-        nStatus = HTTP_BAD_REQUEST;
+        nStatus = to_integral_type(HTTPStatusCode::BAD_REQUEST);
     else if (code == RPC_METHOD_NOT_FOUND)
-        nStatus = HTTP_NOT_FOUND;
+        nStatus = to_integral_type(HTTPStatusCode::NOT_FOUND);
 
     string strReply = JSONRPCReply(NullUniValue, objError, id);
 
@@ -90,15 +95,16 @@ static bool RPCAuthorized(const string& strAuth)
 static bool HTTPReq_JSONRPC(HTTPRequest* req, const string &)
 {
     // JSONRPC handles only POST
-    if (req->GetRequestMethod() != HTTPRequest::POST) {
-        req->WriteReply(HTTP_BAD_METHOD, "JSONRPC server handles only POST requests");
+    if (req->GetRequestMethod() != HTTPRequest::POST)
+    {
+        req->WriteReply(to_integral_type(HTTPStatusCode::BAD_METHOD), "JSONRPC server handles only POST requests");
         return false;
     }
     // Check authorization
     pair<bool, string> authHeader = req->GetHeader("authorization");
     if (!authHeader.first) {
         req->WriteHeader("WWW-Authenticate", WWW_AUTH_HEADER_DATA);
-        req->WriteReply(HTTP_UNAUTHORIZED);
+        req->WriteReply(to_integral_type(HTTPStatusCode::UNAUTHORIZED));
         return false;
     }
 
@@ -111,7 +117,7 @@ static bool HTTPReq_JSONRPC(HTTPRequest* req, const string &)
         MilliSleep(250);
 
         req->WriteHeader("WWW-Authenticate", WWW_AUTH_HEADER_DATA);
-        req->WriteReply(HTTP_UNAUTHORIZED);
+        req->WriteReply(to_integral_type(HTTPStatusCode::UNAUTHORIZED));
         return false;
     }
 
@@ -139,7 +145,7 @@ static bool HTTPReq_JSONRPC(HTTPRequest* req, const string &)
             throw JSONRPCError(RPC_PARSE_ERROR, "Top-level object parse error");
 
         req->WriteHeader("Content-Type", "application/json");
-        req->WriteReply(HTTP_OK, strReply);
+        req->WriteReply(to_integral_type(HTTPStatusCode::OK), strReply);
     } catch (const UniValue& objError) {
         JSONErrorReply(req, objError, jreq.id);
         return false;

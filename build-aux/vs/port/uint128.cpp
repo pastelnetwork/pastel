@@ -16,7 +16,7 @@ uint128_t::uint128_t(const bool & b)
 {}
 
 void uint128_t::init(const char *s, std::size_t len, uint8_t base) {
-    if ((s == NULL) || !len || (s[0] == '\x00')){
+    if (!s || !len || (s[0] == '\x00')){
         LOWER = UPPER = 0;
         return;
     }
