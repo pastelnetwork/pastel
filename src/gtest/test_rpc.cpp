@@ -36,8 +36,7 @@ TEST(rpc, check_blockToJSON_returns_minified_solution) {
 }
 */
 
-UniValue
-createArgs(int nRequired, const char* address1=nullptr, const char* address2=nullptr)
+UniValue createArgs(int nRequired, const char* address1=nullptr, const char* address2=nullptr)
 {
     UniValue result(UniValue::VARR);
     result.push_back(nRequired);
@@ -61,10 +60,10 @@ UniValue CallRPC(string args)
     string strMethod = vArgs[0];
     vArgs.erase(vArgs.begin());
     // Handle empty strings the same way as CLI
-    for (auto i = 0; i < vArgs.size(); i++) {
-        if (vArgs[i] == "\"\"") {
+    for (auto i = 0; i < vArgs.size(); i++)
+    {
+        if (vArgs[i] == "\"\"")
             vArgs[i] = "";
-        }
     }
     UniValue params = RPCConvertValues(strMethod, vArgs);
     EXPECT_TRUE(tableRPC[strMethod] != nullptr);

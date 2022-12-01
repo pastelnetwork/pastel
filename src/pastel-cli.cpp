@@ -15,6 +15,7 @@
 #include <rpc/client.h>
 #include <rpc/protocol.h>
 #include <rpc/rpc_consts.h>
+#include <vector_types.h>
 #include <util.h>
 #include <enum_util.h>
 #include <utilstrencodings.h>
@@ -292,7 +293,7 @@ int CommandLineRPC(int argc, char *argv[])
         if (args.size() < 1)
             throw std::runtime_error("too few parameters (need at least command)");
         const std::string strMethod = args[0];
-        UniValue params = RPCConvertValues(strMethod, std::vector<std::string>(args.begin()+1, args.end()));
+        UniValue params = RPCConvertValues(strMethod, v_strings(args.begin()+1, args.end()));
 
         // Execute and handle connection failures with -rpcwait
         const bool fWait = GetBoolArg("-rpcwait", false);
