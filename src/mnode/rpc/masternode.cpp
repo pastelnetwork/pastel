@@ -963,6 +963,9 @@ As json rpc:
 )" + HelpExampleRpc("masternode pose-ban-score get",
     R"("bc1c5243284272dbb22c301a549d112e8bc9bc454b5ff50b1e5f7959d6b56726" 1)")
 );
+    if (!masterNodeCtrl.IsMasterNode())
+        throw JSONRPCError(RPC_INTERNAL_ERROR, "This is not a masternode - only Masternode can use pose-ban-score API");
+
     string strTxId(params[2].get_str());
     int nTxIndex = -1;
     try
