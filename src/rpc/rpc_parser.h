@@ -26,7 +26,7 @@ public:
         if (!ParseCmdList(error, szCmdList))
             throw JSONRPCError(RPC_MISC_ERROR, "Failed to parse the list of RPC commands. " + error);
         if (!ParseParams(error))
-            throw JSONRPCError(RPC_INVALID_PARAMS, "Failed to parse RPC parameters. " + error);
+            throw JSONRPCError(RPC_INVALID_PARAMETER, "Failed to parse RPC parameters. " + error);
     }
 
     // returns number of supported commands

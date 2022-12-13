@@ -129,7 +129,7 @@ public:
 TEST_F(CTestWalletZkeys, WriteCryptedSaplingZkeyDirectToDb)
 {
     bool fFirstRun = true;
-    fs::path tempWalletPath = fs::temp_directory_path() / "wallet_crypted_sapling.dat";
+    fs::path tempWalletPath = gl_pPastelTestEnv->GetTempDataDir() / "wallet_crypted_sapling.dat";
 
     // cleanup temp wallet after test completes
     auto guard = sg::make_scope_guard([&]() noexcept
@@ -193,9 +193,13 @@ TEST_F(CTestWalletZkeys, WriteCryptedSaplingZkeyDirectToDb)
     ASSERT_TRUE(&wallet != &wallet2);
     ASSERT_TRUE(wallet2.HaveHDSeed());
 
-    // wallet should have three addresses
+    // wallet should have three addresses: the default addresses for the two
+    // generated keys, and the added diversified address.
     wallet2.GetSaplingPaymentAddresses(addrs);
     ASSERT_EQ(3, addrs.size());
+
+    // flush the wallet to prevent race conditions
+    wallet.Flush();
 
     //check we have entries for our payment addresses
     ASSERT_TRUE(addrs.count(address));
