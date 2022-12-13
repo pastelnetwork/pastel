@@ -16,6 +16,9 @@
 using namespace std;
 using namespace testing;
 
+constexpr auto TEST_PASS1 = "passphrase1";
+constexpr auto TEST_PASS2 = "passphrase2";
+
 class PTest_PastelID_Alg : public TestWithParam<tuple<string, CPastelID::SIGN_ALGORITHM>>
 {};
 
@@ -47,9 +50,7 @@ TEST(PastelID, GetStoredPastelIDs)
     auto mapIDs = CPastelID::GetStoredPastelIDs(true);
     EXPECT_TRUE(mapIDs.empty()) << "Found some Pastel IDs in [" << sTempPath << "]";
 
-    const auto PASS1 = "passphrase1";
-    const auto PASS2 = "passphrase2";
-    const auto mapIDs_1 = CPastelID::CreateNewPastelKeys(PASS1);
+    const auto mapIDs_1 = CPastelID::CreateNewPastelKeys(TEST_PASS1);
     EXPECT_TRUE(!mapIDs_1.empty());
     const auto it = mapIDs_1.cbegin();
     EXPECT_NE(it, mapIDs_1.cend());
@@ -61,7 +62,7 @@ TEST(PastelID, GetStoredPastelIDs)
         EXPECT_NE(it1, mapIDs.cend());
         EXPECT_EQ(it1->second, it->second);
     }
-    const auto mapIDs_2 = CPastelID::CreateNewPastelKeys(PASS2);
+    const auto mapIDs_2 = CPastelID::CreateNewPastelKeys(TEST_PASS2);
     EXPECT_TRUE(!mapIDs_2.empty());
     const auto it2 = mapIDs_2.cbegin();
     EXPECT_NE(it2, mapIDs_2.cend());

@@ -89,7 +89,7 @@ Available modes:
   lastpaidblock  - Print the last block height a node was paid on the network
   lastpaidtime   - Print the last time a node was paid on the network
   lastseen       - Print timestamp of when a masternode was last seen on the network
-  payee          - Print Dash address associated with a masternode (can be additionally filtered,
+  payee          - Print Pastel address associated with a masternode (can be additionally filtered,
                    partial match)
   protocol       - Print protocol of a masternode (can be additionally filtered, exact match)
   pubkey         - Print the masternode (not collateral) public key
