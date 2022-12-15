@@ -62,18 +62,18 @@ TEST_F(TestTicketProcessor, ticket_compression)
 {
     constexpr auto TEST_PASSPHRASE = "passphrase";
     // create valid PastelID
-    auto keys = CPastelID::CreateNewPastelKeys(move(TEST_PASSPHRASE));
+    const auto keys = CPastelID::CreateNewPastelKeys(TEST_PASSPHRASE);
     ASSERT_TRUE(!keys.empty());
 
     auto ticket = make_unique<MockChangeUserNameTicket>();
     ASSERT_NE(ticket.get(), nullptr);
     // set some ticket data
     ticket->setUserName(string(12, 'a'));
-    auto sPastelID = keys.begin()->first;
+    auto sPastelID = keys.cbegin()->first;
     ticket->setPastelID(move(sPastelID));
     ticket->setFee(0);
     const auto strTicket = ticket->ToStr();
-    ticket->set_signature(CPastelID::Sign(strTicket, ticket->getPastelID(), move(TEST_PASSPHRASE)));
+    ticket->set_signature(CPastelID::Sign(strTicket, ticket->getPastelID(), TEST_PASSPHRASE));
 
     ticket_validation_t tvValid;
     tvValid.state = TICKET_VALIDATION_STATE::VALID;

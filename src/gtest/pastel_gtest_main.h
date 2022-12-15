@@ -30,6 +30,8 @@ public:
     // cleanup temp datadir
     void ClearTempDataDir();
 
+    fs::path GetTempDataDir() const noexcept { return m_TempDataDir; }
+
 protected:
     CCoinsViewDB* pcoinsdbview = nullptr;
     CServiceThreadGroup threadGroup;

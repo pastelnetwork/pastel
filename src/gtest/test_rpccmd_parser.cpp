@@ -50,10 +50,33 @@ TEST(rpc_cmd_parser, invalid)
     try
     {
         RPCCommandParser<TestEnum> tst(params, 0, "cmd1, cmd2, cmd3");
-    } catch (const UniValue& objError) {
+    }
+    catch (const UniValue& objError)
+    {
         objErr = objError;
     }
     ExpectRPCError(objErr, RPC_MISC_ERROR, "enum mismatch");
+}
+
+TEST(rpc_cmd_parser, invalid_cmd_parameter_type)
+{
+    UniValue objErr;
+    UniValue params(UniValue::VARR);
+    UniValue cmdArrayParam(UniValue::VARR);
+    cmdArrayParam.push_back("cmd2");
+    params.push_back("cmd1");
+    params.push_back(cmdArrayParam);
+    params.push_back("cmd_param3");
+
+    try
+    {
+        RPC_CMD_PARSER2(TST, params, cmd1, cmd2);
+    }
+    catch (const UniValue& objError)
+    {
+        objErr = objError;
+    }
+    ExpectRPCError(objErr, RPC_INVALID_PARAMETER, "not a string");
 }
 
 TEST(rpc_cmd_parser, test_known_parameter)

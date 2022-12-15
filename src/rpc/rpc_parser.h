@@ -25,7 +25,8 @@ public:
         std::string error;
         if (!ParseCmdList(error, szCmdList))
             throw JSONRPCError(RPC_MISC_ERROR, "Failed to parse the list of RPC commands. " + error);
-        ParseParams();
+        if (!ParseParams(error))
+            throw JSONRPCError(RPC_INVALID_PARAMETER, "Failed to parse RPC parameters. " + error);
     }
 
     // returns number of supported commands
@@ -92,18 +93,26 @@ protected:
         return bRet;
     }
 
-    void ParseParams() noexcept
+    bool ParseParams(std::string &error)
     {
+        // check if we can retrieve command from param list by index
         if (m_Params.size() <= m_nCmdIndex)
-            return;
-        m_sCmd = m_Params[m_nCmdIndex].get_str();
+            return true; // not an error - command not passed, so help message will be returned
+        const auto &cmdParam = m_Params[m_nCmdIndex];
+        if (!cmdParam.isStr())
+        {
+            error = strprintf("RPC command parameter #%zu is not a string", m_nCmdIndex + 1);
+            return false;
+        }
+        m_sCmd = cmdParam.get_str();
         trim(m_sCmd);
         lowercase(m_sCmd);
         if (m_sCmd.empty())
-            return;
+            return true;
         const auto it = m_CmdMap.find(m_sCmd);
         if (it != m_CmdMap.cend())
             m_Cmd = it->second;
+        return true;
     }
 
     map_cmdenum_t m_CmdMap;     // map <command -> cmd_enum>
