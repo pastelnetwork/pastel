@@ -84,7 +84,7 @@ bytes fields are base64 as strings
     "rareness_score": integer,       // 0 to 1000
     "nsfw_score": integer,           // 0 to 1000 
     "seen_score": integer,           // 0 to 1000
-	}
+  }
 }
 
 signatures: {
