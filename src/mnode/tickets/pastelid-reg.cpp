@@ -229,18 +229,19 @@ string CPastelIDRegTicket::ToJSON() const noexcept
 {
     json jsonObj 
     {
-        {"txid", m_txid},
-        {"height", m_nBlock},
-        {"ticket", 
+        { "txid", m_txid },
+        { "height", m_nBlock },
+        { "tx_info", get_txinfo_json() },
+        { "ticket", 
             {
-                {"type", GetTicketName()}, 
-                {"version", GetStoredVersion()}, 
-                {"pastelID", m_sPastelID}, 
-                {"pq_key", m_LegRoastKey}, 
-                {"address", m_sFundingAddress}, 
-                {"timeStamp", to_string(m_nTimestamp)}, 
-                {"signature", ed_crypto::Hex_Encode(m_pslid_signature.data(), m_pslid_signature.size())}, 
-                {"id_type", PastelIDType()}
+                { "type", GetTicketName() },
+                { "version", GetStoredVersion() },
+                { "pastelID", m_sPastelID },
+                { "pq_key", m_LegRoastKey },
+                { "address", m_sFundingAddress },
+                { "timeStamp", to_string(m_nTimestamp) },
+                { "signature", ed_crypto::Hex_Encode(m_pslid_signature.data(), m_pslid_signature.size()) },
+                { "id_type", PastelIDType() }
             }
         }
     };

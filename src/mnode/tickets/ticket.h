@@ -1,9 +1,11 @@
 #pragma once
-// Copyright (c) 2018-2022 The Pastel Core developers
+// Copyright (c) 2018-2023 The Pastel Core developers
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <string>
 #include <vector>
+
+#include <json/json.hpp>
 
 #include <amount.h>
 #include <primitives/transaction.h>
@@ -48,6 +50,25 @@ public:
     // get json representation
     virtual std::string ToJSON() const noexcept = 0;
     virtual std::string ToStr() const noexcept = 0;
+    virtual nlohmann::json get_txinfo_json() const noexcept
+    {
+        nlohmann::json::object_t j;
+        j["size"] = m_nSerializedSize;
+        const bool bCompressed = m_nCompressedSize > 0;
+        j["is_compressed"] = bCompressed;
+        if (bCompressed && m_nSerializedSize)
+        {
+            j["compressed_size"] = m_nCompressedSize;
+            j["compression_ratio"] = (double)m_nCompressedSize / m_nSerializedSize;
+        }
+        return j;
+    }
+    const size_t GetSerializedSize() const noexcept { return m_nSerializedSize; }
+    const size_t GetCompressedSize() const noexcept { return m_nCompressedSize; }
+    
+    void SetSerializedSize(const size_t nSize) noexcept { m_nSerializedSize = static_cast<uint32_t>(nSize); }
+    void SetCompressedSize(const size_t nSize) noexcept { m_nCompressedSize = static_cast<uint32_t>(nSize); }
+        
     /**
      * if preReg = true - validate pre-registration conditions.
      *   ex.: address has enough coins for registration
@@ -111,6 +132,9 @@ public:
         m_nBlock = 0;
         m_nTimestamp = 0;
         m_nVersion = -1;
+        
+        m_nSerializedSize = 0;
+        m_nCompressedSize = 0;
     }
 
     bool IsTxId(const std::string& txid) const noexcept { return m_txid == txid; }
@@ -152,6 +176,10 @@ protected:
     uint32_t m_nBlock{0};        // ticket block
     std::int64_t m_nTimestamp{}; // create timestamp
     short m_nVersion{ -1 };      // stored ticket version
+    
+    // memory only fields
+    uint32_t m_nSerializedSize{0};           // ticket data serialized size in bytes
+    uint32_t m_nCompressedSize{0}; // ticket data serialized size in bytes after compression
 
     std::int64_t GenerateTimestamp() noexcept
     {

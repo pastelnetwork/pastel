@@ -414,7 +414,7 @@ TEST(str_utils, str_join_ch_delimiter)
     v.push_back("b");
     EXPECT_EQ(str_join(v, ','), "a,b");
     EXPECT_EQ(str_join(v, ' '), "a b");
-    EXPECT_EQ(str_join(v, '\0'), "ab");
+    EXPECT_EQ(str_join(v, '\0'), "a\0b");
 }
 
 class PTest_StrUtils_str_split1 : public TestWithParam<tuple<string, char, v_strings>>

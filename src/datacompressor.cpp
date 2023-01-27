@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2021 Pastel Core developers
+// Copyright (c) 2018-2023 Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 
@@ -108,7 +108,10 @@ bool CCompressedDataStream::SetData(string& error, const bool bCompressed, const
         if (bCompressed)
             bRet = Decompress(error);
         else
+        {
+            m_nSavedDecompressedSize = vch.size();
             bRet = true;
+        }
     } while (false);
     return bRet;
 }
@@ -128,6 +131,7 @@ bool CCompressedDataStream::SetData(string& error, const bool bCompressed, const
 bool CCompressedDataStream::CompressData(std::string& error, const size_t nKeepUncompressedSize, fnUncompressedDataHandler handler)
 {
     m_nCompressorVersion = COMPRESSOR_VERSION;
+    m_nSavedDecompressedSize = vch.size();
     size_t nDataSize = vch.size();
     bool bRet = false;
     do
@@ -190,6 +194,7 @@ bool CCompressedDataStream::CompressData(std::string& error, const size_t nKeepU
         }
         // we actually have compressed data - set flag
         m_bCompressed = true;
+        m_nSavedCompressedSize = nCompressedSize + nCompressorBlockDataSize;
 
         // resize to the sum of:
         //   1) uncompressed data size
@@ -220,6 +225,7 @@ bool CCompressedDataStream::Decompress(string &error)
 {
     bool bRet = false;
     error.clear();
+    const size_t nSavedCompressedSize = vch.size();
     // read compressor version
     ::Unserialize(*this, m_nCompressorVersion);
     // read compressor data size
@@ -268,6 +274,8 @@ bool CCompressedDataStream::Decompress(string &error)
             error = strprintf("Uncompressed data size does not match [%zu] != [%zu]", nDecompressedSize, nSavedDecompressedSize);
             break;
         }
+        m_nSavedCompressedSize = nSavedCompressedSize;
+        m_nSavedDecompressedSize = nDecompressedSize;
         // now replace original vector with decompressed
         vch = move(vOut);
         nReadPos = 0; // reset stream read position

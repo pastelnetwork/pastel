@@ -151,19 +151,20 @@ string CActionRegTicket::ToJSON() const noexcept
 {
     const json jsonObj
     {
-        {"txid", m_txid},
-        {"height", m_nBlock},
-        {"ticket",
+        { "txid", m_txid },
+        { "height", m_nBlock},
+        { "tx_info", get_txinfo_json() },
+        { "ticket",
             {
-               {"type", GetTicketName()},
-               {"version", GetStoredVersion()},
-               {"action_ticket", m_sActionTicket},
-               {"action_type", m_sActionType},
+               { "type", GetTicketName() },
+               { "version", GetStoredVersion() },
+               { "action_ticket", m_sActionTicket },
+               { "action_type", m_sActionType },
                get_signatures_json(),
-               {"key", m_keyOne},
-               {"label", m_label},
-               {"called_at", m_nCalledAtHeight},
-               {"storage_fee", m_storageFee}
+               { "key", m_keyOne },
+               { "label", m_label },
+               { "called_at", m_nCalledAtHeight },
+               { "storage_fee", m_storageFee }
             }
         }
     };
