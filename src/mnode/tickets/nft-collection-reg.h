@@ -1,5 +1,5 @@
 ﻿#pragma once
-// Copyright (c) 2022 The Pastel Core Developers
+// Copyright (c) 2022-2023 The Pastel Core Developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 
@@ -140,7 +140,7 @@ public:
     */
     void SerializationOp(CDataStream& s, const SERIALIZE_ACTION ser_action) override
     {
-        const bool bRead = ser_action == SERIALIZE_ACTION::Read;
+        const bool bRead = handle_stream_read_mode(s, ser_action);
         std::string error;
         if (!VersionMgmt(error, bRead))
             throw std::runtime_error(error);

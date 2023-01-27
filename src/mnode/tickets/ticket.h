@@ -66,9 +66,30 @@ public:
         {
             j["compressed_size"] = m_nCompressedSize;
             if (m_nSerializedSize)
-                j["compression_ratio"] = (double)m_nCompressedSize / m_nSerializedSize;
+            {
+                const auto fCompressionRatio = (double)m_nCompressedSize / m_nSerializedSize;
+                std::ostringstream ss;
+                ss << std::fixed << std::setprecision(4) << fCompressionRatio;
+                j["compression_ratio"] = ss.str();
+            }
+                
         }
         return j;
+    }
+    /**
+     * Called to check if serialize action for data stream is read.
+     * Handle read mode.
+     * 
+     * \param s - data stream
+     * \param ser_action - serialize action
+     * \return true if read mode
+     */
+    virtual bool handle_stream_read_mode(const CDataStream& s, const SERIALIZE_ACTION ser_action) noexcept
+    {
+        const bool bRead = ser_action == SERIALIZE_ACTION::Read;
+        if (bRead)
+            m_nSerializedSize = static_cast<uint32_t>(s.size());
+        return bRead;
     }
     const size_t GetSerializedSize() const noexcept { return m_nSerializedSize; }
     const size_t GetCompressedSize() const noexcept { return m_nCompressedSize; }

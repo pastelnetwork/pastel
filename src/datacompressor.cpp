@@ -245,6 +245,7 @@ bool CCompressedDataStream::Decompress(string &error)
         if (vch.empty())
         {
             bRet = true;
+            m_nSavedDecompressedSize = nSavedCompressedSize;
             break;
         }
         // stream position now points to the start of the compressed data
