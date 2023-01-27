@@ -50,16 +50,23 @@ public:
     // get json representation
     virtual std::string ToJSON() const noexcept = 0;
     virtual std::string ToStr() const noexcept = 0;
+    /**
+     * Return information about ticket tx:
+     *   - compression info
+     * 
+     * \return json object
+     */
     virtual nlohmann::json get_txinfo_json() const noexcept
     {
         nlohmann::json::object_t j;
         j["size"] = m_nSerializedSize;
         const bool bCompressed = m_nCompressedSize > 0;
         j["is_compressed"] = bCompressed;
-        if (bCompressed && m_nSerializedSize)
+        if (bCompressed)
         {
             j["compressed_size"] = m_nCompressedSize;
-            j["compression_ratio"] = (double)m_nCompressedSize / m_nSerializedSize;
+            if (m_nSerializedSize)
+                j["compression_ratio"] = (double)m_nCompressedSize / m_nSerializedSize;
         }
         return j;
     }
