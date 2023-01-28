@@ -484,19 +484,20 @@ string CTransferTicket::ToJSON() const noexcept
 {
     const json jsonObj
     {
-        {"txid", m_txid},
-        {"height", m_nBlock},
-        {"ticket", 
+        { "txid", m_txid },
+        { "height", m_nBlock },
+        { "tx_info", get_txinfo_json() },
+        { "ticket", 
             {
-                {"type", GetTicketName()}, 
-                {"version", GetStoredVersion()}, 
-                {"pastelID", m_sPastelID}, 
-                {"offer_txid", m_offerTxId}, 
-                {"accept_txid", m_acceptTxId}, 
-                {"item_txid", m_itemTxId}, 
-                {"registration_txid", m_itemRegTxId}, 
-                {"copy_serial_nr", itemCopySerialNr}, 
-                {"signature", ed_crypto::Hex_Encode(m_signature.data(), m_signature.size())}
+                { "type", GetTicketName()}, 
+                { "version", GetStoredVersion()}, 
+                { "pastelID", m_sPastelID}, 
+                { "offer_txid", m_offerTxId}, 
+                { "accept_txid", m_acceptTxId}, 
+                { "item_txid", m_itemTxId}, 
+                { "registration_txid", m_itemRegTxId}, 
+                { "copy_serial_nr", itemCopySerialNr}, 
+                { "signature", ed_crypto::Hex_Encode(m_signature.data(), m_signature.size())}
             }
         }
     };

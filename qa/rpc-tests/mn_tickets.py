@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Copyright (c) 2018-2022 The Pastel Core developers
+# Copyright (c) 2018-2023 The Pastel Core developers
 # Distributed under the MIT software license, see the accompanying
 # file COPYING or https://www.opensource.org/licenses/mit-license.php.
 import json
@@ -19,10 +19,9 @@ from test_framework.util import (
 )
 from mn_common import (
     MasterNodeCommon,
-    TicketData,
-    TopMN
+    TicketData
 )
-from pastel_test_framework import (
+from ticket_type import (
     TicketType,
     ActionType,
     get_action_type,

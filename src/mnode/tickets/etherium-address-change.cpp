@@ -21,15 +21,16 @@ string CChangeEthereumAddressTicket::ToJSON() const noexcept
 {
     const json jsonObj = 
     {
-        {"txid", m_txid},
-        {"height", m_nBlock},
-        {"ticket", 
+        { "txid", m_txid },
+        { "height", m_nBlock },
+        { "tx_info", get_txinfo_json() },
+        { "ticket",
             {
-                {"type", GetTicketName()}, 
-                {"pastelID", pastelID}, 
-                {"ethereumAddress", ethereumAddress}, 
-                {"fee", fee}, 
-                {"signature", ed_crypto::Hex_Encode(signature.data(), signature.size())}
+                { "type", GetTicketName() },
+                { "pastelID", pastelID },
+                { "ethereumAddress", ethereumAddress },
+                { "fee", fee },
+                { "signature", ed_crypto::Hex_Encode(signature.data(), signature.size()) }
             }
         }
     };

@@ -335,25 +335,26 @@ string CNFTCollectionRegTicket::ToJSON() const noexcept
 {
     const json jsonObj
     {
-        {"txid", m_txid},
-        {"height", m_nBlock},
-        {"ticket", 
+        { "txid", m_txid },
+        { "height", m_nBlock },
+        { "tx_info", get_txinfo_json() },
+        { "ticket",
             {
-                {"type", GetTicketName()},
-                {"nft_collection_ticket", m_sNFTCollectionTicket},
-                {"version", GetStoredVersion()},
+                { "type", GetTicketName() },
+                { "nft_collection_ticket", m_sNFTCollectionTicket },
+                { "version", GetStoredVersion() },
                 get_signatures_json(),
-                {"permitted_users", m_PermittedUsers},
-                {"key", m_keyOne},
-                {"label", m_label},
-                {"creator_height", m_nCreatorHeight},
-                {"closing_height", m_nClosingHeight},
-                {"nft_max_count", m_nMaxNFTCount},
-                {"nft_copy_count", m_nNFTCopyCount},
-                {"royalty", m_nRoyalty},
-                {"royalty_address", GetRoyaltyPayeeAddress()},
-                {"green", !m_sGreenAddress.empty()},
-                {"storage_fee", m_storageFee}
+                { "permitted_users", m_PermittedUsers },
+                { "key", m_keyOne },
+                { "label", m_label },
+                { "creator_height", m_nCreatorHeight },
+                { "closing_height", m_nClosingHeight },
+                { "nft_max_count", m_nMaxNFTCount },
+                { "nft_copy_count", m_nNFTCopyCount },
+                { "royalty", m_nRoyalty },
+                { "royalty_address", GetRoyaltyPayeeAddress() },
+                { "green", !m_sGreenAddress.empty() },
+                { "storage_fee", m_storageFee }
             }
         }
     };

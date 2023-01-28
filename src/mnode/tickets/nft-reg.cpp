@@ -453,22 +453,23 @@ string CNFTRegTicket::ToJSON() const noexcept
 {
     const json jsonObj
     {
-        {"txid", m_txid},
-        {"height", m_nBlock},
-        {"ticket", 
+        { "txid", m_txid },
+        { "height", m_nBlock },
+        { "tx_info", get_txinfo_json() },
+        { "ticket",
             {
-                {"type", GetTicketName()},
-                {"nft_ticket", m_sNFTTicket},
-                {"version", GetStoredVersion()},
+                { "type", GetTicketName() },
+                { "nft_ticket", m_sNFTTicket },
+                { "version", GetStoredVersion() },
                 get_signatures_json(),
-                {"key", m_keyOne},
-                {"label", m_label},
-                {"creator_height", m_nCreatorHeight},
-                {"total_copies", m_nTotalCopies},
-                {"royalty", m_nRoyalty},
-                {"royalty_address", GetRoyaltyPayeeAddress()},
-                {"green", !m_sGreenAddress.empty()},
-                {"storage_fee", m_storageFee}
+                { "key", m_keyOne },
+                { "label", m_label },
+                { "creator_height", m_nCreatorHeight },
+                { "total_copies", m_nTotalCopies },
+                { "royalty", m_nRoyalty },
+                { "royalty_address", GetRoyaltyPayeeAddress() },
+                { "green", !m_sGreenAddress.empty() },
+                { "storage_fee", m_storageFee }
             }
         }
     };

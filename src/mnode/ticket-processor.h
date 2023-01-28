@@ -1,10 +1,11 @@
 #pragma once
-// Copyright (c) 2018-2022 The Pastel Core developers
+// Copyright (c) 2018-2023 The Pastel Core developers
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <memory>
 #include <tuple>
 #include <optional>
+
 #include <json/json.hpp>
 
 #include <dbwrapper.h>
@@ -14,11 +15,11 @@
 #include <numeric_range.h>
 #include <primitives/transaction.h>
 #include <txmempool_entry.h>
+#include <datacompressor.h>
 #include <pastelid/pastel_key.h>
 #include <mnode/mnode-consts.h>
 #include <mnode/tickets/ticket-types.h>
 #include <mnode/tickets/ticket.h>
-#include <datacompressor.h>
 
 constexpr int DATASTREAM_VERSION = 1;
 constexpr uint8_t TICKET_COMPRESS_ENABLE_MASK  = (1<<7); // using bit 7 to mark a ticket is compressed
@@ -194,7 +195,8 @@ public:
 #endif // FAKE_TICKET
 
     // Reads P2FMS (Pay-to-Fake-Multisig) transaction into CCompressedDataStream object.
-    static bool preParseTicket(const CMutableTransaction& tx, CCompressedDataStream& data_stream, TicketID& ticket_id, std::string& error, const bool bLog = true);
+    static bool preParseTicket(const CMutableTransaction& tx, CCompressedDataStream& data_stream, 
+        TicketID& ticket_id, std::string& error, const bool bLog = true);
 
     // Get mempool tracker for ticket transactions
     static std::shared_ptr<ITxMemPoolTracker> GetTxMemPoolTracker();
