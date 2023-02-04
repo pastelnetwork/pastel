@@ -1,4 +1,4 @@
-// Copyright (c) 2019-2022 The Pastel Core developers
+// Copyright (c) 2019-2023 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 
@@ -197,11 +197,11 @@ bool CPastelTicketProcessor::UpdateDB(CPastelTicket &ticket, string& txid, const
  * \param data_stream - compressed data stream ()
  * \param ticket_id - ticket id (first byte in the data stream)
  * \param error - returns error message if any
- * \param bCompressed - true if ticket data were compressed using zstd
  * \param bLog
  * \return 
  */
-bool CPastelTicketProcessor::preParseTicket(const CMutableTransaction& tx, CCompressedDataStream& data_stream, TicketID& ticket_id, string& error, const bool bLog)
+bool CPastelTicketProcessor::preParseTicket(const CMutableTransaction& tx, CCompressedDataStream& data_stream,
+    TicketID& ticket_id, string& error, const bool bLog)
 {
     CSerializeData vOutputData;
     bool bRet = false;
@@ -518,6 +518,9 @@ ticket_validation_t CPastelTicketProcessor::ValidateIfTicketTransaction(const ui
             tv = ticket->IsValid(false, 0);
             if (tv.IsNotValid())
                 break;
+            ticket->SetSerializedSize(data_stream.GetSavedDecompressedSize());
+            if (data_stream.IsCompressed())
+                ticket->SetCompressedSize(data_stream.GetSavedCompressedSize());
         }
         catch (const exception& ex)
         {
@@ -563,6 +566,9 @@ bool CPastelTicketProcessor::ParseTicketAndUpdateDB(CMutableTransaction& tx, con
         else
         {
             data_stream >> *ticket;
+            ticket->SetSerializedSize(data_stream.GetSavedDecompressedSize());
+            if (data_stream.IsCompressed())
+                ticket->SetCompressedSize(data_stream.GetSavedCompressedSize());           
             return UpdateDB(*ticket, txid, nBlockHeight);
         }
     }
@@ -641,6 +647,9 @@ unique_ptr<CPastelTicket> CPastelTicketProcessor::GetTicket(const uint256 &txid)
             data_stream >> *ticket;
             ticket->SetTxId(move(ticketBlockTxIdStr));
             ticket->SetBlock(nTicketHeight);
+            ticket->SetSerializedSize(data_stream.GetSavedDecompressedSize());
+            if (data_stream.IsCompressed())
+                ticket->SetCompressedSize(data_stream.GetSavedCompressedSize());
         }
         else
             error_ret = strprintf("unknown ticket_id %hhu", to_integral_type<TicketID>(ticket_id));

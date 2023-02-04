@@ -178,9 +178,10 @@ string CAcceptTicket::ToJSON(const bool bDecodeProperties) const noexcept
 {
     const json jsonObj
     {
-        {"txid", m_txid},
-        {"height", m_nBlock},
-        {"ticket", 
+        { "txid", m_txid },
+        { "height", m_nBlock },
+        { "tx_info", get_txinfo_json() },
+        { "ticket",
             {
                 { "type", GetTicketName() },
                 { "version", GetStoredVersion() },

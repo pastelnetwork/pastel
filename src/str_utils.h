@@ -406,3 +406,52 @@ static void str_split(std::set<std::string> &strSet, const std::string &s, const
     strSet.emplace(s.substr(posStart));
 }
 
+/**
+ * Join string vector to string with delimiter.
+ * 
+ * \param v - input vector of strings
+ * \param chDelimiter - delimiter to use
+ * \return joined string
+ */
+static std::string str_join(const v_strings& v, const char chDelimiter)
+{
+    std::string s;
+    // calculate reserve for string s
+    size_t nReserve = 0;
+    for (const auto& str : v)
+        nReserve += str.size() + 1;
+    s.reserve(nReserve);
+    for (const auto& str : v)
+    {
+        if (!s.empty())
+            s += chDelimiter;
+        s += str;
+    }
+    return s;
+}
+
+/**
+ * Join string vector to string with const char * delimiter.
+ * 
+ * \param v - input vector of strings
+ * \param szDelimiter - string delimiter to use
+ * \return joined string
+ */
+static std::string str_join(const v_strings& v, const char* szDelimiter)
+{
+    std::string s;
+    // calculate reserve for string s
+    size_t nReserve = 0;
+    size_t nDelimSize = strlen(SAFE_SZ(szDelimiter));
+    for (const auto& str : v)
+        nReserve += str.size() + nDelimSize;
+    s.reserve(nReserve);
+    for (const auto& str : v)
+    {
+        if (!s.empty())
+            s += SAFE_SZ(szDelimiter);
+        s += str;
+    }
+    return s;
+}
+

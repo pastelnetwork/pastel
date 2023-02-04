@@ -86,8 +86,8 @@ bHardening=1
 bProton=0
 # verbose compiler output
 bVerbose=1
-# disable ticket compression by default
-bCompress=0
+# enable ticket compression by default
+bCompress=1
 # debug mode
 bDebugMode=0
 build_mode="release"

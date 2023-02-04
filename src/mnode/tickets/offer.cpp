@@ -452,20 +452,21 @@ string COfferTicket::ToJSON(const bool bDecodeProperties) const noexcept
 {
     const json jsonObj
     {
-        {"txid", m_txid},
-        {"height", m_nBlock},
-        {"ticket", 
+        { "txid", m_txid },
+        { "height", m_nBlock },
+        { "tx_info", get_txinfo_json() },
+        { "ticket", 
             {
-                {"type", GetTicketName()}, 
-                {"version", GetStoredVersion()}, 
-                {"pastelID", m_sPastelID}, 
-                {"item_txid", m_itemTxId}, 
-                {"copy_number", m_nCopyNumber}, 
-                {"asked_price", m_nAskedPricePSL}, 
-                {"valid_before", m_nValidBefore},
-                {"valid_after", m_nValidAfter},
-                {"locked_recipient", m_sIntendedForPastelID.empty()? "not defined": m_sIntendedForPastelID},
-                {"signature", ed_crypto::Hex_Encode(m_signature.data(), m_signature.size())}
+                { "type", GetTicketName() },
+                { "version", GetStoredVersion() },
+                { "pastelID", m_sPastelID },
+                { "item_txid", m_itemTxId },
+                { "copy_number", m_nCopyNumber },
+                { "asked_price", m_nAskedPricePSL },
+                { "valid_before", m_nValidBefore },
+                { "valid_after", m_nValidAfter },
+                { "locked_recipient", m_sIntendedForPastelID.empty()? "not defined": m_sIntendedForPastelID },
+                { "signature", ed_crypto::Hex_Encode(m_signature.data(), m_signature.size()) }
             }
         }
     };

@@ -1,5 +1,5 @@
 #pragma once
-// Copyright (c) 2018-2022 The Pastel Core developers
+// Copyright (c) 2018-2023 The Pastel Core developers
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <unordered_set>
@@ -87,7 +87,7 @@ bytes fields are base64 as strings
     "rareness_score": integer,       // 0 to 1000
     "nsfw_score": integer,           // 0 to 1000 
     "seen_score": integer,           // 0 to 1000
-	}
+  }
 }
 
 signatures: {
@@ -150,7 +150,7 @@ public:
      */
     void SerializationOp(CDataStream& s, const SERIALIZE_ACTION ser_action) override
     {
-        const bool bRead = ser_action == SERIALIZE_ACTION::Read;
+        const bool bRead = handle_stream_read_mode(s, ser_action);
         std::string error;
         if (!VersionMgmt(error, bRead))
             throw std::runtime_error(error);

@@ -1,6 +1,6 @@
 // Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2014 The Bitcoin Core developers
-// Copyright (c) 2018-2022 The Pastel Core developers
+// Copyright (c) 2018-2023 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 
@@ -882,7 +882,7 @@ bool AppInit2(CServiceThreadGroup& threadGroup, CScheduler& scheduler)
     fLogTimestamps = GetBoolArg("-logtimestamps", true);
     fLogIPs = GetBoolArg("-logips", false);
 
-    LogPrintf("\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n");
+    LogPrintf("\n\n\n\n%s\n", string(120, '='));
     LogPrintf("Pastel version %s (%s), protocol version (%d)\n", FormatFullVersion(), CLIENT_DATE, PROTOCOL_VERSION);
 
     // when specifying an explicit binding address, you want to listen on it
@@ -1217,6 +1217,11 @@ bool AppInit2(CServiceThreadGroup& threadGroup, CScheduler& scheduler)
     LogPrintf("Using data directory %s\n", strDataDir);
     LogPrintf("Using config file %s\n", GetConfigFile().string());
     LogPrintf("Using at most %i connections (%i file descriptors available)\n", nMaxConnections, nFD);
+#ifdef ENABLE_TICKET_COMPRESS
+    LogPrintf("Ticket compression is enabled\n");
+#endif
+    if (!categories.empty())
+        LogPrintf("Using debug log categories: %s\n", str_join(categories, ", "));
     std::ostringstream strErrors;
 
     gl_ScriptCheckManager.create_workers(threadGroup);

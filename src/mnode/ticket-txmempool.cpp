@@ -1,8 +1,8 @@
-// Copyright (c) 2021 The Pastel Core developers
+// Copyright (c) 2021-2023 The Pastel Core developers
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
-#include "mnode/ticket-txmempool.h"
-#include "mnode/ticket-processor.h"
+#include <mnode/ticket-txmempool.h>
+#include <mnode/ticket-processor.h>
 
 using namespace std;
 

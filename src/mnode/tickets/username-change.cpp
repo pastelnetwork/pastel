@@ -63,6 +63,7 @@ string CChangeUsernameTicket::ToJSON(const bool bDecodeProperties) const noexcep
     {
         { "txid", m_txid },
         { "height", m_nBlock },
+        { "tx_info", get_txinfo_json() },
         { "ticket", 
             {
                 { "type", GetTicketName() }, 

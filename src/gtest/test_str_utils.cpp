@@ -391,6 +391,31 @@ TEST(str_utils, str_append_field)
     EXPECT_EQ(s, "ab,c, d");
 }
 
+TEST(str_utils, str_join_str_delimiter)
+{
+    v_strings v;
+    EXPECT_TRUE(str_join(v, nullptr).empty());
+    EXPECT_TRUE(str_join(v, ",").empty());
+    v.push_back("a");
+    EXPECT_EQ(str_join(v, ","), "a");
+    v.push_back("b");
+    EXPECT_EQ(str_join(v, ","), "a,b");
+    EXPECT_EQ(str_join(v, ", "), "a, b");
+    EXPECT_EQ(str_join(v, ""), "ab");
+}
+
+TEST(str_utils, str_join_ch_delimiter)
+{
+    v_strings v;
+    EXPECT_TRUE(str_join(v, '\0').empty());
+    EXPECT_TRUE(str_join(v, ',').empty());
+    v.push_back("a");
+    EXPECT_EQ(str_join(v, ','), "a");
+    v.push_back("b");
+    EXPECT_EQ(str_join(v, ','), "a,b");
+    EXPECT_EQ(str_join(v, ' '), "a b");
+}
+
 class PTest_StrUtils_str_split1 : public TestWithParam<tuple<string, char, v_strings>>
 {};
 
@@ -437,3 +462,4 @@ INSTANTIATE_TEST_SUITE_P(str_utils, PTest_StrUtils_str_split2,
 		make_tuple("a=b-=-cd*ef", "-=*", true, v_strings{"a", "b", "cd", "ef"}),
 		make_tuple("", "-", false, v_strings{""})
 	));
+

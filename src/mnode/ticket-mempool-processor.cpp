@@ -1,9 +1,9 @@
-// Copyright (c) 2021 The Pastel Core developers
+// Copyright (c) 2021-2023 The Pastel Core developers
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
-#include "txmempool.h"
-#include "mnode/ticket-mempool-processor.h"
-#include "mnode/ticket-txmempool.h"
+#include <txmempool.h>
+#include <mnode/ticket-mempool-processor.h>
+#include <mnode/ticket-txmempool.h>
 
 using namespace std;
 
@@ -72,6 +72,9 @@ void CPastelTicketMemPoolProcessor::Initialize(const CTxMemPool& pool, std::shar
         // set additional ticket transaction data
         ticket->SetTxId(tx.GetHash().ToString());
         ticket->SetBlock(vBlockHeight[i]);
+        ticket->SetSerializedSize(data_stream.GetSavedDecompressedSize());
+        if (data_stream.IsCompressed())
+            ticket->SetCompressedSize(data_stream.GetSavedCompressedSize());
         m_vTicket.emplace_back(move(ticket));
         ++i;
     }
