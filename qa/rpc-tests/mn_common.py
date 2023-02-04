@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Copyright (c) 2018-2022 The Pastel Core developers
+# Copyright (c) 2018-2023 The Pastel Core developers
 # Distributed under the MIT software license, see the accompanying
 # file COPYING or https://www.opensource.org/licenses/mit-license.php.
 from pathlib import Path
@@ -162,10 +162,12 @@ class MasterNodeCommon (PastelTestFramework):
     def __init__(self):
         super().__init__()
 
-        # this will be redefined in a child class
+        # this should be redefined in a child class
         self.number_of_master_nodes = 1
         self.number_of_cold_nodes = self.number_of_master_nodes
         self.number_of_simple_nodes = 2
+        self.mining_node_num = 1
+        self.hot_node_num = 2
 
         # list of master nodes (MasterNode)
         self.mn_nodes = []
@@ -223,7 +225,7 @@ class MasterNodeCommon (PastelTestFramework):
         return mn.mnid
 
 
-    def setup_masternodes_network(self, mining_node_num:int = 1, hot_node_num:int = 2, debug_flags: str = ""):
+    def setup_masternodes_network(self, debug_flags: str = ""):
         """ Setup MasterNode network using hot/cold method.
             Hot node keeps all collaterals for all MNs (cold nodes).
             Network initialization steps:
@@ -260,13 +262,13 @@ class MasterNodeCommon (PastelTestFramework):
             else:
                 print(f"starting non-mn{index} node")
                 self.nodes.append(start_node(index, self.options.tmpdir, [f"-debug={debug_flags}"]))
-
+       
         # connect non-mn nodes
         for pair in itertools.combinations(range(self.number_of_master_nodes, self.total_number_of_nodes), 2):
             connect_nodes_bi(self.nodes, pair[0], pair[1])
 
         # mining enough coins for collateral for mn_count nodes
-        self.mining_enough(mining_node_num, self.number_of_master_nodes)
+        self.mining_enough(self.mining_node_num, self.number_of_master_nodes)
 
         # hot node will keep all collateral amounts in its wallet to activate all master nodes
         for mn in self.mn_nodes:
@@ -274,34 +276,34 @@ class MasterNodeCommon (PastelTestFramework):
             # number of nodes to activate is defined by cold_node_count
             if mn.index >= self.number_of_cold_nodes:
                 continue
-            mn.collateral_address = self.nodes[hot_node_num].getnewaddress()
+            mn.collateral_address = self.nodes[self.hot_node_num].getnewaddress()
             # send coins to the collateral addresses on hot node
-            print(f"{mn.index}: Sending {self.collateral} coins to node{hot_node_num}; collateral address {mn.collateral_address} ...")
-            mn.collateral_txid = self.nodes[mining_node_num].sendtoaddress(mn.collateral_address, self.collateral, "", "", False)
+            print(f"{mn.index}: Sending {self.collateral} coins to node{self.hot_node_num}; collateral address {mn.collateral_address} ...")
+            mn.collateral_txid = self.nodes[self.mining_node_num].sendtoaddress(mn.collateral_address, self.collateral, "", "", False)
 
-        self.generate_and_sync_inc(1, mining_node_num)
-        assert_equal(self.nodes[hot_node_num].getbalance(), self.collateral * self.number_of_cold_nodes)
+        self.generate_and_sync_inc(1, self.mining_node_num)
+        assert_equal(self.nodes[self.hot_node_num].getbalance(), self.collateral * self.number_of_cold_nodes)
 
         # prepare parameters and create masternode.conf for all masternodes
-        outputs = self.nodes[hot_node_num].masternode("outputs")
-        print(f"hot node{hot_node_num} collateral outputs\n{json.dumps(outputs, indent=4)}")
+        outputs = self.nodes[self.hot_node_num].masternode("outputs")
+        print(f"hot node{self.hot_node_num} collateral outputs\n{json.dumps(outputs, indent=4)}")
         for mn in self.mn_nodes:
             # get the collateral outpoint indexes
             if mn.index < self.number_of_cold_nodes:
                 mn.collateral_index = int(outputs[mn.collateral_txid])
             if self.use_masternode_init:
                 # generate info for masternodes (masternode init)
-                params = self.nodes[hot_node_num].masternode("init", mn.passphrase, mn.collateral_txid, mn.collateral_index)
+                params = self.nodes[self.hot_node_num].masternode("init", mn.passphrase, mn.collateral_txid, mn.collateral_index)
                 mn.mnid = params["mnid"]
                 mn.lrKey = params["legRoastKey"]
                 mn.privKey = params["privKey"]
                 print(f"mn{index} id: {mn.mnid}")
-                mn.create_masternode_conf(self.options.tmpdir, hot_node_num)
+                mn.create_masternode_conf(self.options.tmpdir, self.hot_node_num)
             else:
-                mn.privKey = self.nodes[hot_node_num].masternode("genkey")
+                mn.privKey = self.nodes[self.hot_node_num].masternode("genkey")
                 assert_true(mn.privKey, "Failed to generate private key for Master Node")
         if self.use_masternode_init:
-            self.generate_and_sync_inc(1, mining_node_num)
+            self.generate_and_sync_inc(1, self.mining_node_num)
 
         # starting all master nodes
         for mn in self.mn_nodes:
@@ -329,16 +331,16 @@ class MasterNodeCommon (PastelTestFramework):
                     continue
                 # get new address and send some coins for mnid registration
                 mn.mnid_reg_address = self.nodes[mn.index].getnewaddress()
-                self.nodes[mining_node_num].sendtoaddress(mn.mnid_reg_address, 100, "", "", False)
-                mn.create_masternode_conf(self.options.tmpdir, hot_node_num)
-            self.generate_and_sync_inc(1, mining_node_num)
+                self.nodes[self.mining_node_num].sendtoaddress(mn.mnid_reg_address, 100, "", "", False)
+                mn.create_masternode_conf(self.options.tmpdir, self.hot_node_num)
+            self.generate_and_sync_inc(1, self.mining_node_num)
 
             # send "masternode start-alias <alias>" for all cold nodes
             for mn in self.mn_nodes:
                 if mn.index >= self.number_of_cold_nodes:
                     continue
                 print(f"Enabling master node: {mn.alias}...")
-                res = self.nodes[hot_node_num].masternode("start-alias", mn.alias)
+                res = self.nodes[self.hot_node_num].masternode("start-alias", mn.alias)
                 print(res)
                 assert_equal(res["alias"], mn.alias)
                 assert_equal(res["result"], "successful")
@@ -358,11 +360,11 @@ class MasterNodeCommon (PastelTestFramework):
                 result = self.nodes[mn.index].tickets("register", "mnid", mn.mnid,
                     self.passphrase, mn.mnid_reg_address)
                 mn.mnid_reg_txid = result["txid"]
-                self.generate_and_sync_inc(1, mining_node_num)
+                self.generate_and_sync_inc(1, self.mining_node_num)
             # wait for ticket transactions
             time.sleep(10)
             for _ in range(5):
-                self.generate_and_sync_inc(1, mining_node_num)
+                self.generate_and_sync_inc(1, self.mining_node_num)
                 self.sync_all(10, 3)
             self.sync_all(10, 30)
 
@@ -729,3 +731,34 @@ class MasterNodeCommon (PastelTestFramework):
         print(f"nft_ticket v1 (base64) - {ticket.reg_ticket}")
 
         self.create_signatures(TicketType.NFT, creator_node_num, make_bad_signatures_dicts)
+
+
+    def wait_for_confirmation(self, node: int):
+        print(f"block count - {self.nodes[node].getblockcount()}")
+        time.sleep(2)
+        self.generate_and_sync_inc(10, self.mining_node_num)
+        time.sleep(2)
+        print(f"block count - {self.nodes[node].getblockcount()}")
+
+
+    def wait_for_ticket_tnx(self, blocks_to_generate: int = 5):
+        time.sleep(10)
+        for _ in range(blocks_to_generate):
+            self.nodes[self.mining_node_num].generate(1)
+            self.sync_all(10, 3)
+        self.sync_all(10, 30)
+
+
+    def wait_for_sync_all(self, blocks: int):
+        time.sleep(2)
+        self.generate_and_sync_inc(blocks, self.mining_node_num)
+
+
+    def wait_for_sync_all10(self):
+        time.sleep(2)
+        self.sync_all(10, 30)
+        self.nodes[self.mining_node_num].generate(1)
+        self.sync_all(10, 30)
+
+    def wait_for_gen10_blocks(self):
+        self.generate_and_sync_inc(10, self.mining_node_num)

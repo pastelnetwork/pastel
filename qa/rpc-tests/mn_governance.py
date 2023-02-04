@@ -1,20 +1,17 @@
 #!/usr/bin/env python3
-# Copyright (c) 2018-2021 The Pastel Core developers
+# Copyright (c) 2018-2023 The Pastel Core developers
 # Distributed under the MIT software license, see the accompanying
-# file COPYING or http://www.opensource.org/licenses/mit-license.php.
+# file COPYING or https://www.opensource.org/licenses/mit-license.php.
 
-from test_framework.test_framework import BitcoinTestFramework
+import time
+
 from test_framework.util import assert_equal, assert_greater_than, initialize_chain_clean, \
     initialize_datadir, start_nodes, start_node, connect_nodes_bi, \
     pasteld_processes, wait_and_assert_operationid_status, p2p_port, \
     stop_node
 from mn_common import MasterNodeCommon
 
-import os
-import sys
-import time
-
-from decimal import Decimal, getcontext
+from decimal import getcontext
 getcontext().prec = 16
 
 # 12 Master Nodes
@@ -33,11 +30,15 @@ private_keys_list = ["91sY9h4AQ62bAhNk1aJ7uJeSnQzSFtz7QmW5imrKmiACm7QJLXe", #0
                     ]
 
 class MasterNodeGovernanceTest (MasterNodeCommon):
-    number_of_master_nodes = len(private_keys_list)
-    number_of_simple_nodes = 2
-    total_number_of_nodes = number_of_master_nodes+number_of_simple_nodes
-    mining_node_num = number_of_master_nodes
-    hot_node_num = number_of_master_nodes+1
+    
+    def __init__(self):
+        super().__init__()
+   
+        self.number_of_master_nodes = 12
+        self.number_of_simple_nodes = 2
+        self.total_number_of_nodes = self.number_of_master_nodes + self.number_of_simple_nodes
+        self.mining_node_num = self.number_of_master_nodes
+        self.hot_node_num = self.number_of_master_nodes + 1
 
     def setup_chain(self):
         print("Initializing test directory "+self.options.tmpdir)
@@ -46,7 +47,7 @@ class MasterNodeGovernanceTest (MasterNodeCommon):
     def setup_network(self, split=False):
         self.nodes = []
         self.is_network_split = False
-        self.setup_masternodes_network(private_keys_list, self.number_of_simple_nodes)
+        self.setup_masternodes_network()
 
     def run_test (self):
         self.mining_enough(self.mining_node_num, self.number_of_master_nodes)

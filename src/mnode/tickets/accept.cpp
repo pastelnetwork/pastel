@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2022 The Pastel Core Developers
+// Copyright (c) 2018-2023 The Pastel Core Developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <json/json.hpp>
@@ -174,7 +174,7 @@ ticket_validation_t CAcceptTicket::IsValid(const bool bPreReg, const uint32_t nC
     return tv;
 }
 
-string CAcceptTicket::ToJSON() const noexcept
+string CAcceptTicket::ToJSON(const bool bDecodeProperties) const noexcept
 {
     const json jsonObj
     {

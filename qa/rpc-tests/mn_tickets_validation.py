@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Copyright (c) 2018-2022 The Pastel Core developers
+# Copyright (c) 2018-2023 The Pastel Core developers
 # Distributed under the MIT software license, see the accompanying
 # file COPYING or https://www.opensource.org/licenses/mit-license.php.
 import json
@@ -15,8 +15,7 @@ from test_framework.util import (
 )
 import test_framework.rpc_consts as rpc
 from mn_common import (
-    MasterNodeCommon,
-    TopMN
+    MasterNodeCommon
 )
 from test_framework.authproxy import JSONRPCException
 
@@ -63,7 +62,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
 
 
     def setup_network(self, split=False):
-        self.setup_masternodes_network(self.mining_node_num, self.hot_node_num)
+        self.setup_masternodes_network()
 
 
     def run_test(self):

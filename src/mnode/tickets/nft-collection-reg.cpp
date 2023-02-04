@@ -1,4 +1,4 @@
-﻿// Copyright (c) 2022 The Pastel Core Developers
+﻿// Copyright (c) 2022-2023 The Pastel Core Developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <cinttypes>
@@ -6,6 +6,7 @@
 #include <str_utils.h>
 #include <init.h>
 #include <key_io.h>
+#include <utilstrencodings.h>
 #include <pastelid/common.h>
 #include <pastelid/pastel_key.h>
 #include <mnode/mnode-controller.h>
@@ -41,7 +42,6 @@ using namespace std;
  *   "royalty": float,            // royalty fee, how much creators should get on all future resales (common for all NFTs in a collection)
  *   "green": boolean,            // is there Green NFT payment or not (common for all NFTs in a collection)
  *   "app_ticket": bytes          // ascii85-encoded application ticket, parsed by the cnode only for search capability
- *       as base64: { ... }
  * }
  * 
  * \param nft_collection_ticket - NFT collection ticket json base64-encoded
@@ -104,10 +104,25 @@ static const std::array<NFTCollTicketInfo, 1> NFTCOLL_TICKET_INFO =
             { "nft_copy_count",                 make_tuple(NFTCOLL_TKT_PROP::nft_copy_count, true)},
             { "royalty",                        make_tuple(NFTCOLL_TKT_PROP::royalty, true) },
             { "green",                          make_tuple(NFTCOLL_TKT_PROP::green, true) },
-            { "app_ticket",                     make_tuple(NFTCOLL_TKT_PROP::app_ticket, true) }
+            { NFTCOLL_TICKET_APP_OBJ,           make_tuple(NFTCOLL_TKT_PROP::app_ticket, true) }
         }
     }
 }};
+
+/**
+ * Parses base64-encoded nft_collection_ticket to json.
+ *
+ * \return nft collection ticket object in json format
+ * \throw runtime_error in case nft_collection_ticket has invalid base64 encoding
+ */
+json CNFTCollectionRegTicket::get_nft_collection_ticket_json() const
+{
+    bool bInvalidBase64Encoding = false;
+    string sDecodedNFTCollectionTicket = DecodeBase64(m_sNFTCollectionTicket, &bInvalidBase64Encoding);
+    if (bInvalidBase64Encoding)
+        throw runtime_error("Invalid base64 encoding found in NFT collection ticket");
+    return json::parse(sDecodedNFTCollectionTicket);
+}
 
 /**
 * Parses base64-encoded nft_ticket in json format.
@@ -117,12 +132,11 @@ static const std::array<NFTCollTicketInfo, 1> NFTCOLL_TICKET_INFO =
 void CNFTCollectionRegTicket::parse_nft_collection_ticket()
 {
     // parse NFT Collection Registration Ticket json
-    json jsonTicketObj;
     try
     {
         unordered_set<NFTCOLL_TKT_PROP> props; // set of properties in the nft_collection_ticket 
 
-        const auto jsonTicketObj = json::parse(ed_crypto::Base64_Decode(m_sNFTCollectionTicket));
+        const auto jsonTicketObj = get_nft_collection_ticket_json();
         // check nft_collection_ticket version
         const int nTicketVersion = jsonTicketObj.at("nft_collection_ticket_version");
         if (nTicketVersion < 1 || nTicketVersion > static_cast<int>(NFTCOLL_TICKET_INFO.size()))
@@ -329,31 +343,50 @@ void CNFTCollectionRegTicket::Clear() noexcept
 /**
 * Get json string representation of the ticket.
 * 
+* \param bDecodeProperties - if true, then decode nft_collection_ticket and its properties
 * \return json string
 */
-string CNFTCollectionRegTicket::ToJSON() const noexcept
+string CNFTCollectionRegTicket::ToJSON(const bool bDecodeProperties) const noexcept
 {
+    json nft_collection_ticket_json;
+    if (bDecodeProperties) {
+        try {
+            nft_collection_ticket_json = get_nft_collection_ticket_json();
+            if (nft_collection_ticket_json.contains(NFTCOLL_TICKET_APP_OBJ))
+            {
+                // try to decode ascii85-encoded app_ticket
+                bool bInvalidAscii85Encoding = false;
+                string sDecodedAppTicket = DecodeAscii85(nft_collection_ticket_json[NFTCOLL_TICKET_APP_OBJ], &bInvalidAscii85Encoding);
+                if (!bInvalidAscii85Encoding)
+                        nft_collection_ticket_json[NFTCOLL_TICKET_APP_OBJ] = move(json::parse(sDecodedAppTicket));
+            }
+        } catch (...) {
+        }
+    }
+    if (nft_collection_ticket_json.empty())
+        nft_collection_ticket_json = m_sNFTCollectionTicket;
     const json jsonObj
     {
-        {"txid", m_txid},
-        {"height", m_nBlock},
-        {"ticket", 
+        { "txid", m_txid },
+        { "height", m_nBlock },
+        { "tx_info", get_txinfo_json() },
+        { "ticket",
             {
-                {"type", GetTicketName()},
-                {"nft_collection_ticket", m_sNFTCollectionTicket},
-                {"version", GetStoredVersion()},
+                { "type", GetTicketName() },
+                { "nft_collection_ticket", nft_collection_ticket_json },
+                { "version", GetStoredVersion() },
                 get_signatures_json(),
-                {"permitted_users", m_PermittedUsers},
-                {"key", m_keyOne},
-                {"label", m_label},
-                {"creator_height", m_nCreatorHeight},
-                {"closing_height", m_nClosingHeight},
-                {"nft_max_count", m_nMaxNFTCount},
-                {"nft_copy_count", m_nNFTCopyCount},
-                {"royalty", m_nRoyalty},
-                {"royalty_address", GetRoyaltyPayeeAddress()},
-                {"green", !m_sGreenAddress.empty()},
-                {"storage_fee", m_storageFee}
+                { "permitted_users", m_PermittedUsers },
+                { "key", m_keyOne },
+                { "label", m_label },
+                { "creator_height", m_nCreatorHeight },
+                { "closing_height", m_nClosingHeight },
+                { "nft_max_count", m_nMaxNFTCount },
+                { "nft_copy_count", m_nNFTCopyCount },
+                { "royalty", m_nRoyalty },
+                { "royalty_address", GetRoyaltyPayeeAddress() },
+                { "green", !m_sGreenAddress.empty() },
+                { "storage_fee", m_storageFee }
             }
         }
     };

@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2022 The Pastel Core Developers
+// Copyright (c) 2018-2023 The Pastel Core Developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <json/json.hpp>
@@ -170,14 +170,27 @@ ticket_validation_t COfferTicket::IsValid(const bool bPreReg, const uint32_t nCa
             break;
         }
 
-        bool bTicketFound = false;
+        if (bPreReg)
+        {
+            // if intended recipient is specified then Offer replacement tickets cannot be created
+            // and also means that this Offer cannot be expired - check that valid_before is 0
+            if (!m_sIntendedForPastelID.empty() && m_nValidBefore != 0)
+            {
+                tv.errorMsg = strprintf(
+                    "The %s ticket with the specified intended recipient cannot expire. Valid_before should be 0 (%u defined)",
+                    GetTicketDescription(), m_nValidBefore);
+                break;
+            }
+        }
+        // check if this Offer ticket is already in DB
+        bool bTicketFoundInDB = false;
         COfferTicket existingTicket;
         if (COfferTicket::FindTicketInDb(KeyOne(), existingTicket))
         {
             if (existingTicket.IsSameSignature(m_signature) &&
                 existingTicket.IsBlock(m_nBlock) &&
-                existingTicket.IsTxId(m_txid)) // if this ticket is already in the DB
-                bTicketFound = true;
+                existingTicket.IsTxId(m_txid))
+                bTicketFoundInDB = true;
         }
 
         size_t nTotalCopies{0};
@@ -207,7 +220,7 @@ ticket_validation_t COfferTicket::IsValid(const bool bPreReg, const uint32_t nCa
             } while (false);
             return tv;
         };
-        if (itemTicket->ID() == TicketID::ActionActivate)
+        if (itemTicket->ID() == TicketID::ActionActivate) // Action Offer
         {
             // get Action activation ticket
             const auto pActionActTicket = dynamic_cast<const CActionActivateTicket*>(itemTicket.get());
@@ -244,10 +257,10 @@ ticket_validation_t COfferTicket::IsValid(const bool bPreReg, const uint32_t nCa
                     ::GetTicketDescription(TicketID::ActionReg), pActionActTicket->getRegTxId(), ::GetTicketDescription(TicketID::ActionActivate));
                 break;
             }
-            nTotalCopies = 1; // there can be only one owner of the action
+            nTotalCopies = 1; // there can be only one owner of the action result
 
             // if this is already confirmed ticket - skip this check, otherwise it will fail
-            if (bPreReg || !bTicketFound)
+            if (bPreReg || !bTicketFoundInDB)
             {
                 ticket_validation_t actTV = fnVerifyAvailableCopies(::GetTicketDescription(TicketID::ActionReg), 1);
                 if (actTV.IsNotValid())
@@ -257,7 +270,7 @@ ticket_validation_t COfferTicket::IsValid(const bool bPreReg, const uint32_t nCa
                 }
             }
         }
-        else if (itemTicket->ID() == TicketID::Activate)
+        else if (itemTicket->ID() == TicketID::Activate) // NFT Offer
         {
             // get NFT activation ticket
             const auto pNftActTicket = dynamic_cast<const CNFTActivateTicket*>(itemTicket.get());
@@ -297,7 +310,7 @@ ticket_validation_t COfferTicket::IsValid(const bool bPreReg, const uint32_t nCa
             nTotalCopies = pNFTRegTicket->getTotalCopies();
 
             // if this is already confirmed ticket - skip this check, otherwise it will fail
-            if (bPreReg || !bTicketFound)
+            if (bPreReg || !bTicketFoundInDB)
             {
                 ticket_validation_t actTV = fnVerifyAvailableCopies(::GetTicketDescription(TicketID::NFT), nTotalCopies);
                 if (actTV.IsNotValid())
@@ -306,7 +319,8 @@ ticket_validation_t COfferTicket::IsValid(const bool bPreReg, const uint32_t nCa
                     break;
                 }
             }
-        } else if (itemTicket->ID() == TicketID::Transfer) {
+        } else if (itemTicket->ID() == TicketID::Transfer) // Transfer for NFT or Action
+        { 
             // get transfer ticket
             const auto pTransferTicket = dynamic_cast<const CTransferTicket*>(itemTicket.get());
             if (!pTransferTicket)
@@ -328,7 +342,7 @@ ticket_validation_t COfferTicket::IsValid(const bool bPreReg, const uint32_t nCa
             nTotalCopies = 1;
 
             // 3.b Verify there is no already transfer ticket referring to that transfer ticket
-            if (bPreReg || !bTicketFound)
+            if (bPreReg || !bTicketFoundInDB)
             { //else if this is already confirmed ticket - skip this check, otherwise it will failed
                 PastelTickets_t vTicketChain;
                 // walk back trading chain to find original ticket
@@ -414,6 +428,17 @@ ticket_validation_t COfferTicket::IsValid(const bool bPreReg, const uint32_t nCa
                 tv1.state = TICKET_VALIDATION_STATE::INVALID;
                 break;
             }
+            // check if intended recipient is defined in the existing offer ticket
+            const auto &sIntendedForPastelID = t.getIntendedForPastelID();
+            if (!sIntendedForPastelID.empty())
+			{
+				tv1.errorMsg = strprintf(
+					"Cannot replace %s ticket - ticket already exists with the intended recipient [%s], txid - [%s].",
+                    GetTicketDescription(), sIntendedForPastelID, t.m_txid);
+				tv1.state = TICKET_VALIDATION_STATE::INVALID;
+				break;
+			}
+            
         }
         if (tv1.IsNotValid())
             tv = move(tv1);
@@ -423,7 +448,7 @@ ticket_validation_t COfferTicket::IsValid(const bool bPreReg, const uint32_t nCa
     return tv;
 }
 
-string COfferTicket::ToJSON() const noexcept
+string COfferTicket::ToJSON(const bool bDecodeProperties) const noexcept
 {
     const json jsonObj
     {

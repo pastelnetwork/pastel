@@ -4,7 +4,11 @@
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <unordered_set>
 
+#include <json/json.hpp>
+
 #include <mnode/tickets/ticket-extra-fees.h>
+
+constexpr auto NFT_TICKET_APP_OBJ = "app_ticket";
 
 // forward ticket class declaration
 class CNFTRegTicket;
@@ -57,7 +61,6 @@ bytes fields are base64 as strings
   "green": boolean,              // is there Green NFT payment or not, optional in v2
   "nft_collection_txid": bytes,  // transaction id of the NFT collection that NFT belongs to, v2 only, optional, can be empty
   "app_ticket": bytes,           // ascii85-encoded application ticket, parsed by the cnode only for search capability
-  as base64(
   {
     "creator_name": string,
     "nft_title": string,
@@ -125,7 +128,7 @@ public:
     std::string MVKeyTwo() const noexcept override { return m_sNFTCollectionTxid; }
     std::string MVKeyThree() const noexcept override { return m_label; }
 
-    std::string ToJSON() const noexcept override;
+    std::string ToJSON(const bool bDecodeProperties = false) const noexcept override;
     std::string ToStr() const noexcept override { return m_sNFTTicket; }
     ticket_validation_t IsValid(const bool bPreReg, const uint32_t nCallDepth) const noexcept override;
 
@@ -195,4 +198,7 @@ protected:
     virtual std::unique_ptr<CPastelTicket> RetrieveCollectionTicket(std::string& error, bool &bInvalidTxId) const noexcept;
     // set missing properties from NFT collection
     void set_collection_properties() noexcept;
+
+    // parse base64-encoded nft_ticket in json format
+    nlohmann::json get_nft_ticket_json() const;
 };

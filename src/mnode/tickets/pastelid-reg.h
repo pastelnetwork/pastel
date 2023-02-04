@@ -89,7 +89,7 @@ public:
     void clearPSLIDsignature() noexcept { m_pslid_signature.clear(); }
     void clearOutPoint() noexcept { m_outpoint.SetNull(); }
 
-    std::string ToJSON() const noexcept override;
+    std::string ToJSON(const bool bDecodeProperties = false) const noexcept override;
     std::string ToStr() const noexcept override;
     void ToStrStream(std::stringstream& ss, const bool bIncludeMNsignature = true) const noexcept;
     ticket_validation_t IsValid(const bool bPreReg, const uint32_t nCallDepth) const noexcept override;

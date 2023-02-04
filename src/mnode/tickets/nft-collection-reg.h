@@ -2,6 +2,7 @@
 // Copyright (c) 2022 The Pastel Core Developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
+#include <json/json.hpp>
 
 #include <mnode/tickets/ticket-extra-fees.h>
 #include <set_types.h>
@@ -14,6 +15,8 @@ using NFTCollectionRegTickets_t = std::vector<CNFTCollectionRegTicket>;
 
 // maximum allowed number of NFTs in a collection
 constexpr uint32_t MAX_NFT_COLLECTION_SIZE = 10'000;
+
+constexpr auto NFTCOLL_TICKET_APP_OBJ = "app_ticket";
 
 // NFT ticket property names
 enum class NFTCOLL_TKT_PROP : uint8_t
@@ -77,7 +80,6 @@ where "nft_collection_ticket" is the following JSON object, base64-encoded as a 
     "royalty": float,       // royalty fee, how much creators should get on all future resales (common for all NFTs in a collection)
     "green": boolean,       // true if there is a Green NFT payment, false - otherwise (common for all NFTs in a collection)
     "app_ticket": bytes     // ascii85-encoded application ticket, parsed by the cnode only for search capability
-      as base64: { ... }
 }
 
 signatures: {
@@ -115,7 +117,7 @@ public:
     std::string MVKeyOne() const noexcept override { return getCreatorPastelId(); }
     std::string MVKeyTwo() const noexcept override { return m_label; }
 
-    std::string ToJSON() const noexcept override;
+    std::string ToJSON(const bool bDecodeProperties = false) const noexcept override;
     std::string ToStr() const noexcept override { return m_sNFTCollectionTicket; }
     ticket_validation_t IsValid(const bool bPreReg, const uint32_t nCallDepth) const noexcept override;
     // check if this user is in the permitted list
@@ -183,4 +185,6 @@ protected:
 
     // parse base64-encoded nft_collection_ticket in json format, may throw runtime_error exception
     void parse_nft_collection_ticket();
+    // parse base64-encoded nft_collection_ticket in json format
+    nlohmann::json get_nft_collection_ticket_json() const;
 };

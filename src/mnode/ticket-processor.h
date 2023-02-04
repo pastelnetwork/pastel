@@ -175,7 +175,7 @@ public:
 
     static std::unique_ptr<CPastelTicket> GetTicket(const uint256 &txid);
     static std::unique_ptr<CPastelTicket> GetTicket(const std::string& _txid, const TicketID ticketID);
-    static std::string GetTicketJSON(const uint256 &txid);
+    static std::string GetTicketJSON(const uint256 &txid, const bool bDecodeProperties = false);
 
     static ticket_validation_t ValidateIfTicketTransaction(const uint32_t nHeight, const CTransaction& tx);
     

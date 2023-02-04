@@ -1,8 +1,8 @@
 // Copyright (c) 2010 Satoshi Nakamoto
 // Copyright (c) 2009-2014 The Bitcoin Core developers
-// Copyright (c) 2018-2022 The Pastel Cor
+// Copyright (c) 2018-2023 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
-// file COPYING or http://www.opensource.org/licenses/mit-license.php.
+// file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <set>
 #include <array>
 #include <unordered_map>
@@ -21,11 +21,11 @@ class CRPCConvertParam
 {
 public:
     const char *szMethodName;     // method whose params want conversion
-    const char* szMethodExName;   //   optional method second parameter
+    const char* szMethodExName;   // optional method second parameter
     set<uint8_t> vParamIdx;       // set of 0-based indexes of the params to convert
 };
 
-static const array<CRPCConvertParam, 67> gl_vRPCConvertParams =
+static const array<CRPCConvertParam, 68> gl_vRPCConvertParams =
 {{
     { "stop", nullptr, {0} },
     { "setmocktime", nullptr, {0} },
@@ -81,6 +81,7 @@ static const array<CRPCConvertParam, 67> gl_vRPCConvertParams =
     { "zcbenchmark", nullptr, {1, 2} },
     { "getnextblocksubsidy", nullptr, {0} },
     { "getblocksubsidy", nullptr, {0} },
+    { "tickets", "get", {3} },
     { "z_listaddresses", nullptr, {0} },
     { "z_listreceivedbyaddress", nullptr, {1} },
     { "z_listunspent", nullptr, {0, 1, 2, 3} },

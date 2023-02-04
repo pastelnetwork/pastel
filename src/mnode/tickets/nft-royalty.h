@@ -60,7 +60,7 @@ public:
     void SetKeyOne(std::string&& sValue) final;
     void GenerateKeyOne() override;
 
-    std::string ToJSON() const noexcept final;
+    std::string ToJSON(const bool bDecodeProperties = false) const noexcept final;
     std::string ToStr() const noexcept final;
     ticket_validation_t IsValid(const bool bPreReg, const uint32_t nCallDepth) const noexcept override;
     bool IsSameSignature(const v_uint8& signature) const noexcept { return m_signature == signature; }

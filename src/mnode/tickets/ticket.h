@@ -46,7 +46,7 @@ public:
     // get ticket type
     virtual TicketID ID() const noexcept = 0;
     // get json representation
-    virtual std::string ToJSON() const noexcept = 0;
+    virtual std::string ToJSON(const bool bDecodeProperties = false) const noexcept = 0;
     virtual std::string ToStr() const noexcept = 0;
     /**
      * if preReg = true - validate pre-registration conditions.
