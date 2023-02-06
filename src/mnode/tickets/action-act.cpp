@@ -45,17 +45,18 @@ string CActionActivateTicket::ToJSON(const bool bDecodeProperties) const noexcep
 {
     const json jsonObj
     {
-        {"txid", m_txid},
-        {"height", m_nBlock},
-        {"ticket",
+        { "txid", m_txid },
+        { "height", m_nBlock },
+        { "tx_info", get_txinfo_json() },
+        { "ticket",
             {
-                {"type", GetTicketName()},
-                {"version", GetStoredVersion()},
-                {"pastelID", m_sCallerPastelID},
-                {"reg_txid", m_regTicketTxId},
-                {"called_at", m_nCalledAtHeight},
-                {"storage_fee", m_storageFee},
-                {"signature", ed_crypto::Hex_Encode(m_signature.data(), m_signature.size())}
+                { "type", GetTicketName() },
+                { "version", GetStoredVersion() },
+                { "pastelID", m_sCallerPastelID },
+                { "reg_txid", m_regTicketTxId },
+                { "called_at", m_nCalledAtHeight },
+                { "storage_fee", m_storageFee },
+                { "signature", ed_crypto::Hex_Encode(m_signature.data(), m_signature.size()) }
             }
         }
     };

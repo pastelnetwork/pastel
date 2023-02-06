@@ -124,7 +124,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         """ Test PoSe (Proof-of-Service) API.
             Use this API on mn2 to ban mn5.
         """
-        print("Test PoSe ban score API")
+        print("*** Test PoSe ban score API")
         # get current PoSe ban score
         mn2 = self.mn_nodes[2]
         mn5 = self.mn_nodes[5]
@@ -164,11 +164,12 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         """
         Test ticket expiration for Offers with intended recipient
         """
+        print("**** Test expiration of Offer tickets with intended recipient")
         self.register_nft_reg_ticket("nft-indended-for-label")
-        self.wait_for_confirmation(self.non_mn3)
+        self.wait_for_ticket_tnx(5)
 
         self.register_nft_act_ticket()
-        self.wait_for_confirmation(self.non_mn3)
+        self.wait_for_ticket_tnx(5)
         
         nft_ticket = self.tickets[TicketType.NFT]
         

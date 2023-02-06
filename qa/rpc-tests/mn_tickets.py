@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Copyright (c) 2018-2022 The Pastel Core developers
+# Copyright (c) 2018-2023 The Pastel Core developers
 # Distributed under the MIT software license, see the accompanying
 # file COPYING or https://www.opensource.org/licenses/mit-license.php.
 import json
@@ -19,10 +19,9 @@ from test_framework.util import (
 )
 from mn_common import (
     MasterNodeCommon,
-    TicketData,
-    TopMN
+    TicketData
 )
-from pastel_test_framework import (
+from ticket_type import (
     TicketType,
     ActionType,
     get_action_type,
@@ -2096,10 +2095,9 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         # register Offer ticket with intended recipient creator_pastelid3
         # tickets register offer "nft-txid" "price" "PastelID" "passphrase" [valid-after] [valid-before] [copy-number] ["address"] ["intendedFor"]
         ticket.item_price = 1000
-        current_height = self.nodes[self.non_mn3].getblockcount()
         offer_ticket_txid = self.nodes[self.non_mn3].tickets("register", "offer",
-            ticket.act_txid, str(ticket.item_price), ticket.reg_pastelid, self.passphrase, 0,
-            current_height + 30, 1, "", self.creator_pastelid3)["txid"]
+            ticket.act_txid, str(ticket.item_price), ticket.reg_pastelid, self.passphrase,
+            0, 0, 1, "", self.creator_pastelid3)["txid"]
         assert_true(offer_ticket_txid, "No Offer ticket was created")
         print(f' - NFT Offer ticket created [{offer_ticket_txid}] with intended recipient [{self.creator_pastelid3}]')
         self.inc_ticket_counter(TicketType.OFFER, 1, TicketType.NFT)
@@ -2159,10 +2157,9 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         # register Offer ticket with intended recipient creator_pastelid3
         # tickets register offer "item-txid" "price" "PastelID" "passphrase" [valid-after] [valid-before] [copy-number] ["address"] ["intendedFor"]
         ticket.item_price = 1000
-        current_height = self.nodes[self.non_mn3].getblockcount()
         offer_ticket_txid = self.nodes[self.non_mn3].tickets("register", "offer",
-            ticket.act_txid, str(ticket.item_price), ticket.reg_pastelid, self.passphrase, 0,
-            current_height + 30, 1, "", self.creator_pastelid3)["txid"]
+            ticket.act_txid, str(ticket.item_price), ticket.reg_pastelid, self.passphrase, 
+            0, 0, 1, "", self.creator_pastelid3)["txid"]
         assert_true(offer_ticket_txid, "No Offer ticket was created")
         print(f' - Offer ticket for {desc} created [{offer_ticket_txid}] with intended recipient [{self.creator_pastelid3}]')
         self.inc_ticket_counter(TicketType.OFFER, 1, reg_ticket_type)

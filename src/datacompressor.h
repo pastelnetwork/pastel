@@ -1,5 +1,5 @@
 #pragma once
-// Copyright (c) 2018-2021 Pastel Core developers
+// Copyright (c) 2018-2023 Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <stdexcept>
@@ -56,11 +56,15 @@ public:
     explicit CCompressedDataStream(const int nType, const int nVersion) :
         CDataStream(nType, nVersion),
         m_bCompressed(false),
-        m_nCompressorVersion(COMPRESSOR_VERSION)
+        m_nCompressorVersion(COMPRESSOR_VERSION),
+        m_nSavedCompressedSize(0),
+        m_nSavedDecompressedSize(0)
     {}
 
     bool IsCompressed() const noexcept { return m_bCompressed; }
     uint8_t GetCompressorVersion() const noexcept { return m_nVersion; }
+    size_t GetSavedCompressedSize() const noexcept { return m_nSavedCompressedSize; }
+    size_t GetSavedDecompressedSize() const noexcept { return m_nSavedDecompressedSize; }
 
     // set stream data, supports data compressed with zstd
     bool SetData(std::string &error, const bool bCompressed, const size_t nStreamPos, vector_type&& vData);
@@ -84,6 +88,8 @@ protected:
     bool LibDataDecompress(std::string& error, size_t &nDecompressedSize, 
         void* dst, const size_t nDstSize, const void* pCompressedData, const size_t nCompressedDataSize) override;
 
-    bool m_bCompressed;             // if true - stream is compressed
-    uint8_t m_nCompressorVersion;   // compressor version
+    bool m_bCompressed;                 // if true - stream is compressed
+    uint8_t m_nCompressorVersion;       // compressor version
+    size_t m_nSavedCompressedSize;      // saved compressed data size
+    size_t m_nSavedDecompressedSize;    // saved decompressed data size
 };

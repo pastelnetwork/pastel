@@ -43,7 +43,7 @@ $0 [ --enable-lcov || --disable-tests ] [ --disable-mining ] [ --enable-proton ]
   library required for AMQP support. This library is not built by default.
 
   if --enable-compress is passed, Pastel is configured to compress ticket data with
-  zstd library. This is not enabled by default.
+  zstd library. This is enabled by default.
 
   if --enable-debug is passed, Pastel will be built with the debug options
 

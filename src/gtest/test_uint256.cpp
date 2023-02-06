@@ -1,5 +1,5 @@
 // Copyright (c) 2011-2013 The Bitcoin Core developers
-// Copyright (c) 2021-2022 The Pastel developers
+// Copyright (c) 2021-2023 The Pastel developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <cmath>
@@ -299,7 +299,7 @@ INSTANTIATE_TEST_SUITE_P(uint256_tests, PTest_parse_uint256,
         make_tuple("0102030405060708090A0B0C0D0E0F101112131415161718191A1B1C1D1E1F202122", false, 
             "test_uint256", "Incorrect test_uint256 value size: 68, expected: 64."),
         make_tuple("xx02030405060708090A0B0C0D0E0F101112131415161718191A1B1C1D1E1F20", false, 
-            "test_uint256", "Invalid test_uint256 hex value"),
+            "test_uint256", "Invalid test_uint256 hexadecimal value"),
         make_tuple("0102030405060708090A0B0C0D0E0F101112131415161718191A1B1C1D1E1F20", true, 
             "", "")
 ));
