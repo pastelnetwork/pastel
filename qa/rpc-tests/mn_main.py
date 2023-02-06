@@ -170,7 +170,7 @@ class MasterNodeMainTest (MasterNodeCommon):
 
             # self.wait_for_mn_state(30, 10, "PRE_ENABLED", self.nodes[0:self.total_number_of_nodes], mn_id, 6)
             print(f"Waiting for {mn.alias} ENABLED state...")
-            self.wait_for_mn_state(30, 20, "ENABLED", mn_id, 15)
+            self.wait_for_mn_state(60, 20, "ENABLED", mn_id, 25)
 
         # tests = ['cache', 'sync', 'ping', 'restart', 'spent', "fee"]
         if 'spent' in tests:
