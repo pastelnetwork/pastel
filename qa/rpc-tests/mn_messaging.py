@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Copyright (c) 2018-2022 The Pastel Core developers
+# Copyright (c) 2018-2023 The Pastel Core developers
 # Distributed under the MIT software license, see the accompanying
 # file COPYING or https://www.opensource.org/licenses/mit-license.php.
 import time
@@ -14,6 +14,7 @@ class MasterNodeMessagingTest(MasterNodeCommon):
 
     def __init__(self):
         super().__init__()
+        
         self.number_of_master_nodes = 4
         self.number_of_simple_nodes = 3
         self.number_of_cold_nodes = self.number_of_master_nodes
@@ -35,7 +36,7 @@ class MasterNodeMessagingTest(MasterNodeCommon):
     def setup_network(self, split=False):
         self.nodes = []
         self.is_network_split = False
-        self.setup_masternodes_network(self.mining_node_num, self.hot_node_num)
+        self.setup_masternodes_network()
         
 
     def run_test(self):

@@ -1,6 +1,6 @@
 // Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2014 The Bitcoin Core developers
-// Copyright (c) 2018-2022 The Pastel Core developers
+// Copyright (c) 2018-2023 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <cstdlib>
@@ -186,9 +186,9 @@ v_uint8 DecodeAscii85(const char* ostr, bool* pfInvalid) noexcept
     return vOut;
 }
 
-string DecodeAscii85(const string& str) noexcept
+string DecodeAscii85(const string& str, bool* pfInvalid) noexcept
 {
-    return vector_to_string(DecodeAscii85(str.c_str()));
+    return vector_to_string(DecodeAscii85(str.c_str(), pfInvalid));
 }
 
 string EncodeBase64(const unsigned char* pch, size_t len)

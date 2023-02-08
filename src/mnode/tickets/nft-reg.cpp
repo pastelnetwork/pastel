@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2022 The Pastel Core Developers
+// Copyright (c) 2018-2023 The Pastel Core Developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <cinttypes>
@@ -7,7 +7,7 @@
 #include <str_utils.h>
 #include <init.h>
 #include <key_io.h>
-#include <pastelid/common.h>
+#include <utilstrencodings.h>
 #include <mnode/tickets/pastelid-reg.h>
 #include <mnode/tickets/nft-royalty.h>
 #include <mnode/tickets/nft-reg.h>
@@ -84,7 +84,7 @@ static const std::array<NFTTicketInfo, 2> NFT_TICKET_INFO =
                 { "copies",              make_tuple(NFT_TKT_PROP::copies ,true) },
                 { "royalty",             make_tuple(NFT_TKT_PROP::royalty, true) },
                 { "green",               make_tuple(NFT_TKT_PROP::green, true) },
-                { "app_ticket",          make_tuple(NFT_TKT_PROP::app_ticket, true) }
+                { NFT_TICKET_APP_OBJ,          make_tuple(NFT_TKT_PROP::app_ticket, true) }
             }
         },
         { 2,
@@ -97,10 +97,25 @@ static const std::array<NFTTicketInfo, 2> NFT_TICKET_INFO =
                 { "copies",              make_tuple(NFT_TKT_PROP::copies, false) },
                 { "royalty",             make_tuple(NFT_TKT_PROP::royalty, false) },
                 { "green",               make_tuple(NFT_TKT_PROP::green, false) },
-                { "app_ticket",          make_tuple(NFT_TKT_PROP::app_ticket, true) }
+                { NFT_TICKET_APP_OBJ,          make_tuple(NFT_TKT_PROP::app_ticket, true) }
             }
         }
 }};
+
+/**
+ * Parses base64-encoded nft_ticket to json.
+ *
+ * \return nft ticket object in json format
+ * \throw runtime_error in case nft_ticket has invalid base64 encoding
+ */
+json CNFTRegTicket::get_nft_ticket_json() const
+{
+    bool bInvalidBase64Encoding = false;
+    string sDecodedNFTTicket = DecodeBase64(m_sNFTTicket, &bInvalidBase64Encoding);
+    if (bInvalidBase64Encoding)
+        throw runtime_error("Invalid base64 encoding found in NFT ticket");
+    return json::parse(sDecodedNFTTicket);
+}
 
 /**
  * Parses base64-encoded nft_ticket in json format.
@@ -109,10 +124,9 @@ static const std::array<NFTTicketInfo, 2> NFT_TICKET_INFO =
 void CNFTRegTicket::parse_nft_ticket()
 {
     // parse NFT Ticket (nft_ticket version can be different from serialized ticket version)
-    json jsonTicketObj;
     try
     {
-        const auto jsonTicketObj = json::parse(ed_crypto::Base64_Decode(m_sNFTTicket));
+        const auto jsonTicketObj = get_nft_ticket_json();
         // check nft_ticket version
         const int nTicketVersion = jsonTicketObj.at("nft_ticket_version");
         if (nTicketVersion < 1 || nTicketVersion > static_cast<int>(NFT_TICKET_INFO.size()))
@@ -447,10 +461,29 @@ void CNFTRegTicket::Clear() noexcept
 /**
  * Get json string representation of the ticket.
  * 
+ * \param bDecodeProperties - if true, then decode nft_ticket and its properties
  * \return json string
  */
-string CNFTRegTicket::ToJSON() const noexcept
+string CNFTRegTicket::ToJSON(const bool bDecodeProperties) const noexcept
 {
+    json nft_ticket_json;
+    if (bDecodeProperties)
+    {
+        try {
+            nft_ticket_json = get_nft_ticket_json();
+            if (nft_ticket_json.contains(NFT_TICKET_APP_OBJ))
+            {
+                // try to decode ascii85-encoded app_ticket
+                bool bInvalidAscii85Encoding = false;
+                string sDecodedAppTicket = DecodeAscii85(nft_ticket_json[NFT_TICKET_APP_OBJ], &bInvalidAscii85Encoding);
+                if (!bInvalidAscii85Encoding)
+                        nft_ticket_json[NFT_TICKET_APP_OBJ] = move(json::parse(sDecodedAppTicket));
+            }
+        } catch (...) {}
+    }
+    if (nft_ticket_json.empty())
+        nft_ticket_json = m_sNFTTicket;
+
     const json jsonObj
     {
         { "txid", m_txid },
@@ -459,7 +492,7 @@ string CNFTRegTicket::ToJSON() const noexcept
         { "ticket",
             {
                 { "type", GetTicketName() },
-                { "nft_ticket", m_sNFTTicket },
+                { "nft_ticket", nft_ticket_json },
                 { "version", GetStoredVersion() },
                 get_signatures_json(),
                 { "key", m_keyOne },

@@ -1,11 +1,11 @@
-// Copyright (c) 2018-2022 The Pastel Core Developers
+// Copyright (c) 2018-2023 The Pastel Core Developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <cinttypes>
 
 #include <str_utils.h>
 #include <init.h>
-#include <pastelid/common.h>
+#include <utilstrencodings.h>
 #include <mnode/tickets/pastelid-reg.h>
 #include <mnode/tickets/action-reg.h>
 
@@ -84,15 +84,29 @@ CActionRegTicket CActionRegTicket::Create(string&& action_ticket, const string& 
 }
 
 /**
- * Parses base64-encoded nft_ticket in json format.
- * Throws runtime_error exception in case nft_ticket has invalid format
+ * Parses base64-encoded action_ticket to json.
+ * 
+ * \return action ticket object in json format
+ * \throw runtime_error in case action_ticket has invalid base64 encoding
+ */
+json CActionRegTicket::get_action_ticket_json() const
+{
+    bool bInvalidBase64Encoding = false;
+    string sDecodedActionTicket = DecodeBase64(m_sActionTicket, &bInvalidBase64Encoding);
+    if (bInvalidBase64Encoding)
+        throw runtime_error("Invalid base64 encoding found in Action ticket");
+    return json::parse(sDecodedActionTicket);
+}
+
+/**
+ * Parses base64-encoded action_ticket in json format.
+ * Throws runtime_error exception in case action_ticket has invalid format
  */
 void CActionRegTicket::parse_action_ticket()
 {
-    // parse action ticket
-    json jsonTicketObj;
-    try {
-        auto jsonTicketObj = json::parse(ed_crypto::Base64_Decode(m_sActionTicket));
+    try
+    {
+        const json jsonTicketObj = get_action_ticket_json();
         if (jsonTicketObj.size() != 6)
             throw runtime_error(strprintf("Action ticket json is incorrect (expected 6 items, but found: %zu)", jsonTicketObj.size()));
 
@@ -145,10 +159,30 @@ bool CActionRegTicket::SetActionType(const string& sActionType)
 /**
  * Get json string representation of the ticket.
  * 
+ * \param bDecodeProperties - if true, then decode action_ticket and its properties
  * \return json string
  */
-string CActionRegTicket::ToJSON() const noexcept
+string CActionRegTicket::ToJSON(const bool bDecodeProperties) const noexcept
 {
+    json action_ticket_json;
+    if (bDecodeProperties)
+    {
+        try
+        {
+            action_ticket_json = get_action_ticket_json();
+            if (action_ticket_json.contains(ACTION_TICKET_APP_OBJ))
+            {
+                // try to decode ascii85-encoded app_ticket
+                bool bInvalidAscii85Encoding = false;
+                string sDecodedAppTicket = DecodeAscii85(action_ticket_json[ACTION_TICKET_APP_OBJ], &bInvalidAscii85Encoding);
+                if (!bInvalidAscii85Encoding)
+                    action_ticket_json[ACTION_TICKET_APP_OBJ] = move(json::parse(sDecodedAppTicket));
+            }
+        } catch(...) {}
+    }
+    if (action_ticket_json.empty())
+        action_ticket_json = m_sActionTicket;
+    
     const json jsonObj
     {
         { "txid", m_txid },
@@ -158,7 +192,7 @@ string CActionRegTicket::ToJSON() const noexcept
             {
                { "type", GetTicketName() },
                { "version", GetStoredVersion() },
-               { "action_ticket", m_sActionTicket },
+               { "action_ticket", action_ticket_json },
                { "action_type", m_sActionType },
                get_signatures_json(),
                { "key", m_keyOne },

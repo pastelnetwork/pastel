@@ -93,7 +93,7 @@ public:
     bool HasMVKeyTwo() const noexcept override { return true; }
     void SetKeyOne(std::string&& sValue) override { key = std::move(sValue); }
 
-    std::string ToJSON() const noexcept override;
+    std::string ToJSON(const bool bDecodeProperties = false) const noexcept override;
     std::string ToStr() const noexcept override;
     ticket_validation_t IsValid(const bool bPreReg, const uint32_t nCallDepth) const noexcept override;
 

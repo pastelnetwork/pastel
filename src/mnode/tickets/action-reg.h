@@ -2,6 +2,7 @@
 // Copyright (c) 2018-2023 The Pastel Core Developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
+#include <json/json.hpp>
 
 #include <mnode/tickets/ticket.h>
 #include <mnode/tickets/ticket_signing.h>
@@ -56,6 +57,7 @@ mvkey #3: label (optional)
 // supported action ticket types
 constexpr auto ACTION_TICKET_TYPE_SENSE = "sense";
 constexpr auto ACTION_TICKET_TYPE_CASCADE = "cascade";
+constexpr auto ACTION_TICKET_APP_OBJ = "api_ticket";
 
 // default size of action tickets to calculate action fees
 constexpr uint32_t ACTION_SENSE_TICKET_SIZE_KB = 5;
@@ -101,7 +103,7 @@ public:
     void SetKeyOne(std::string &&sValue) override { m_keyOne = std::move(sValue); }
     void GenerateKeyOne() override;
 
-    std::string ToJSON() const noexcept override;
+    std::string ToJSON(const bool bDecodeProperties = false) const noexcept override;
     std::string ToStr() const noexcept override { return m_sActionTicket; }
     ticket_validation_t IsValid(const bool bPreReg, const uint32_t nCallDepth) const noexcept override;
     // check if sPastelID belongs to the action caller
@@ -167,4 +169,6 @@ protected:
 
     // parse base64-encoded action_ticket in json format, may throw runtime_error exception
     void parse_action_ticket();
+    // parse base64-encoded action_ticket in json format
+    nlohmann::json get_action_ticket_json() const;
 };

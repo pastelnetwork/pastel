@@ -101,7 +101,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
 
 
     def setup_network(self, split=False):
-        self.setup_masternodes_network(self.mining_node_num, self.hot_node_num, "masternode,mnpayments,governance,compress")
+        self.setup_masternodes_network("masternode,mnpayments,governance,compress")
         self.inc_ticket_counter(TicketType.MNID, self.number_of_cold_nodes)
 
 
@@ -177,7 +177,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         print(self.nodes[self.non_mn3].getblockcount())
         assert_raises_rpc(rpc.RPC_MISC_ERROR, "Royalty ticket can be created only after",
             self.nodes[self.non_mn3].tickets, "register", "royalty", ticket.reg_txid, "new_pastelid1", self.creator_pastelid1, self.passphrase)
-        self.__wait_for_gen10_blocks()
+        self.wait_for_gen10_blocks()
         print(f"Current height: {self.nodes[self.non_mn3].getblockcount()}")
 
         assert_raises_rpc(rpc.RPC_MISC_ERROR, f"The NFT Reg ticket with txid [{ticket.reg_txid}] has no royalty",
@@ -285,7 +285,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         royalty_ticket.reg_node_id = node_id
         assert_true(royalty_ticket.reg_txid, "No NFT royalty ticket was created")
         self.inc_ticket_counter(TicketType.ROYALTY)
-        self.__wait_for_ticket_tnx()
+        self.wait_for_ticket_tnx()
 
         # fail if already registered
         assert_raises_rpc(rpc.RPC_MISC_ERROR,
@@ -356,7 +356,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         royalty_ticket.reg_node_id = self.non_mn5
         assert_true(royalty_ticket.reg_txid, "No NFT royalty ticket was created")
         self.inc_ticket_counter(TicketType.ROYALTY)
-        self.__wait_for_ticket_tnx()
+        self.wait_for_ticket_tnx()
 
         # update royalty address in NFT ticket
         nft_ticket.royalty_address = royalty_ticket.address
@@ -498,7 +498,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         #       a.a.6 register without errors from active MN with enough coins
         # mn0_address1 = self.nodes[0].getnewaddress()
         # self.nodes[self.mining_node_num].sendtoaddress(mn0_address1, 100, "", "", False)
-        # self.__wait_for_sync_all(1)
+        # self.wait_for_sync_all(1)
 
         # coins_before = self.nodes[0].getbalance()
         # print(f"Coins before '{ticket_type_name}' registration: {coins_before}")
@@ -506,7 +506,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         # self.mn0_ticket1_txid = self.nodes[0].tickets("register", ticket_type_name, self.mn0_pastelid1, self.passphrase)["txid"]
         # assert_true(self.mn0_ticket1_txid, "No mnid ticket was created")
         # self.inc_ticket_counter(TicketType.MNID)
-        # self.__wait_for_ticket_tnx()
+        # self.wait_for_ticket_tnx()
 
         #       a.a.7 check correct amount of change
         # coins_after = self.nodes[0].getbalance()
@@ -587,7 +587,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
 
         #       b.a.4 register without errors from non MN with enough coins
         self.nodes[self.mining_node_num].sendtoaddress(self.nonmn3_address1, 100, "", "", False)
-        self.__wait_for_sync_all(1)
+        self.wait_for_sync_all(1)
 
         coins_before = self.nodes[self.non_mn3].getbalance()
         print(f"Coins before '{ticket_type_name}' registration: {coins_before}")
@@ -596,7 +596,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
                                                                self.nonmn3_address1)["txid"]
         assert_true(nonmn3_ticket1_txid, "No Pastel ID registration ticket was created")
         self.inc_ticket_counter(TicketType.ID)
-        self.__wait_for_ticket_tnx()
+        self.wait_for_ticket_tnx()
 
         #       a.a.5 check correct amount of change
         coins_after = self.nodes[self.non_mn3].getbalance()
@@ -872,7 +872,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         self.nodes[self.mining_node_num].sendtoaddress(self.nonmn4_address1, 100, "", "", False)
         self.nodes[self.mining_node_num].sendtoaddress(self.nonmn4_address2, 100, "", "", False)
         self.nodes[self.mining_node_num].sendtoaddress(self.nonmn5_address1, 100, "", "", False)
-        self.__wait_for_sync_all(1)
+        self.wait_for_sync_all(1)
 
         # register Pastel IDs
         register_ids = [
@@ -889,7 +889,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
             self.nodes[idreg_info[0]].tickets("register", "id", idreg_info[1], self.passphrase, idreg_info[2])
             self.generate_and_sync_inc(1, self.mining_node_num)
         self.inc_ticket_counter(TicketType.ID, len(register_ids))
-        self.__wait_for_ticket_tnx(5)
+        self.wait_for_ticket_tnx(5)
 
 
     # ===============================================================================================================
@@ -933,7 +933,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         assert_true(ticket.reg_txid, "No action ticket was created")
         print(top_mn_node.getblockcount())
         self.inc_ticket_counter(action_type.reg_ticket_type)
-        self.__wait_for_ticket_tnx()
+        self.wait_for_ticket_tnx()
 
         #       check correct amount of change and correct amount spent
         coins_after = top_mn_node.getbalance()
@@ -1052,7 +1052,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         ticket.label = label
         assert_true(ticket.reg_txid, "No nft-collection ticket was created")
         self.inc_ticket_counter(TicketType.NFT_COLLECTION)
-        self.__wait_for_ticket_tnx()
+        self.wait_for_ticket_tnx()
         print(top_mn_node.getblockcount())
 
         #       c.a.7 check correct amount of change and correct amount spent
@@ -1188,7 +1188,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
             nft_ticket.reg_ticket, json.dumps(self.signatures_dict), self.top_mns[0].pastelid, self.passphrase, label + "_1", str(self.storage_fee))["txid"]
         print(f'registered NFT ticket #1 [{nft_ticket1_txid}] in NFT collection [{self.nft_collection_name}]')
         self.inc_ticket_counter(TicketType.NFT)
-        self.__wait_for_ticket_tnx()
+        self.wait_for_ticket_tnx()
 
         # add nft-reg ticket #2 successfully (creator_pastelid2 user)
         self.creator_pastelid1 = self.creator_pastelid2
@@ -1197,7 +1197,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
             nft_ticket.reg_ticket, json.dumps(self.signatures_dict), self.top_mns[0].pastelid, self.passphrase, label + "_2", str(self.storage_fee))["txid"]
         print(f'registered NFT ticket #2 [{nft_ticket2_txid}] in NFT collection [{self.nft_collection_name}]')
         self.inc_ticket_counter(TicketType.NFT)
-        self.__wait_for_ticket_tnx()
+        self.wait_for_ticket_tnx()
 
         # cannot register more than 2 nft tickets (will exceed nft_max_count)
         self.create_nft_ticket_v2(self.non_mn3, ticket.reg_txid)
@@ -1217,8 +1217,8 @@ class MasterNodeTicketsTest(MasterNodeCommon):
             label, str(self.storage_fee))["txid"]
         assert_true(nftcoll_ticket_txid, "No NFT registration ticket was created")
         self.inc_ticket_counter(TicketType.NFT_COLLECTION)
-        self.__wait_for_sync_all(1)
-        self.__wait_for_sync_all(10)
+        self.wait_for_sync_all(1)
+        self.wait_for_sync_all(10)
         
         # cannot add NFTs to this collection any more
         self.create_nft_ticket_v2(self.non_mn3, nftcoll_ticket_txid)
@@ -1270,7 +1270,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
                 str(ticket.reg_height), str(self.storage_fee), ticket.reg_pastelid, self.passphrase)
 
         self.nodes[self.mining_node_num].sendtoaddress(self.nonmn3_address1, str(self.collateral), "", "", False)
-        self.__wait_for_sync_all10()
+        self.wait_for_sync_all10()
 
         #       d.a.3 fail if txid points to invalid ticket (not a NFT Collection Reg ticket)
         assert_raises_rpc(rpc.RPC_MISC_ERROR, "is not valid ticket type",
@@ -1287,7 +1287,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         # assert_raises_rpc(rpc.RPC_MISC_ERROR, "Activation ticket can be created only after",
         #    self.nodes[self.non_mn3].tickets, cmd, cmd_param, ticket.reg_txid,
         #    str(ticket.reg_height), str(self.storage_fee), self.ticket.reg_pastelid, self.passphrase)
-        self.__wait_for_gen10_blocks()
+        self.wait_for_gen10_blocks()
         print(f"Current height: {self.nodes[self.non_mn4].getblockcount()}")
 
         #       d.a.4 fail if Caller's Pastel ID in the activation ticket
@@ -1327,7 +1327,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
             ticket.reg_txid, ticket.reg_height,
             str(self.storage_fee), ticket.reg_pastelid, self.passphrase)["txid"]
         assert_true(ticket.act_txid, "NFT collection was not activated")
-        self.__wait_for_ticket_tnx()
+        self.wait_for_ticket_tnx()
 
         #       d.a.9 check correct amount of change and correct amount spent and correct amount of fee paid
         main_mn_fee = self.storage_fee90percent*3/5
@@ -1466,7 +1466,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         assert_true(ticket.reg_txid, "No NFT registration ticket was created")
         self.inc_ticket_counter(TicketType.NFT)
         print(f"NFT ticket created at {ticket.reg_height}")
-        self.__wait_for_ticket_tnx()
+        self.wait_for_ticket_tnx()
 
         #       c.a.7 check correct amount of change and correct amount spent
         coins_after = top_mn_node.getbalance()
@@ -1651,7 +1651,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
             ticket.reg_ticket, json.dumps(self.same_mns_signatures_dict), self.top_mns[0].pastelid, self.passphrase, label, str(self.storage_fee))
 
 
-    def make_zero_balance(self, nodeNum):
+    def make_zero_balance(self, nodeNum: int):
         """Make zero balance on the given node
 
         Args:
@@ -1701,7 +1701,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
                 str(self.storage_fee), ticket.reg_pastelid, self.passphrase)
 
         self.nodes[self.mining_node_num].sendtoaddress(self.nonmn3_address1, str(self.collateral), "", "", False)
-        self.__wait_for_sync_all10()
+        self.wait_for_sync_all10()
 
         assert_raises_rpc(rpc.RPC_MISC_ERROR, "is not valid ticket type",
             self.nodes[self.non_mn3].tickets, cmd, cmd_param, self.mn_nodes[0].mnid_reg_txid,
@@ -1719,7 +1719,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
                 self.nodes[self.non_mn3].tickets, cmd, cmd_param, ticket.reg_txid,
                 str(ticket.reg_height), str(self.storage_fee), ticket.reg_pastelid, self.passphrase)
 
-        self.__wait_for_gen10_blocks()
+        self.wait_for_gen10_blocks()
         print(f"Current height: {self.nodes[self.non_mn3].getblockcount()}")
 
         #       d.a.4 fail if creator's Pastel ID in the activation ticket
@@ -1757,7 +1757,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
             ticket.reg_txid, str(ticket.reg_height), str(self.storage_fee), ticket.reg_pastelid, self.passphrase)["txid"]
         assert_true(ticket.act_txid, "NFT was not activated")
         self.inc_ticket_counter(TicketType.ACTIVATE)
-        self.__wait_for_ticket_tnx()
+        self.wait_for_ticket_tnx()
 
         #       d.a.9 check correct amount of change and correct amount spent and correct amount of fee paid
         main_mn_fee = self.storage_fee90percent*3/5
@@ -1886,7 +1886,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
                 self.action_caller_pastelid, self.passphrase, self.nonmn3_address_nobalance)
 
         self.nodes[self.mining_node_num].sendtoaddress(self.nonmn3_address1, str(self.collateral), "", "", False)
-        self.__wait_for_sync_all10()
+        self.wait_for_sync_all10()
 
         #       d.a.3 fail if there is no ActionReg Ticket with this txid
         assert_raises_rpc(rpc.RPC_MISC_ERROR, "is not valid ticket type",
@@ -1900,7 +1900,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         print(f"Current height: {self.nodes[self.non_mn3].getblockcount()}")
         assert_raises_rpc(rpc.RPC_MISC_ERROR, "Activation ticket can be created only after",
             self.nodes[self.non_mn3].tickets, cmd, cmd_param, ticket.reg_txid, str(ticket.reg_height), str(self.storage_fee), self.action_caller_pastelid, self.passphrase)
-        self.__wait_for_gen10_blocks()
+        self.wait_for_gen10_blocks()
         print(f"Current height: {self.nodes[self.non_mn3].getblockcount()}")
 
         #       d.a.4 fail if Caller's Pastel ID in the activation ticket
@@ -1936,7 +1936,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         ticket.act_txid = self.nodes[self.non_mn3].tickets(cmd, cmd_param,
             ticket.reg_txid, str(ticket.reg_height), str(self.storage_fee), self.action_caller_pastelid, self.passphrase)["txid"]
         assert_true(ticket.act_txid, "Action was not activated")
-        self.__wait_for_ticket_tnx()
+        self.wait_for_ticket_tnx()
 
         #       d.a.9 check correct amount of change and correct amount spent and correct amount of fee paid
         main_mn_fee = self.storage_fee80percent*3/5
@@ -2058,7 +2058,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         ticket.royalty_address = self.nonmn3_address1
 
         # wait for 10 confirmations
-        self.__wait_for_ticket_tnx(10)
+        self.wait_for_ticket_tnx(10)
         print(f' - {item_type.description} [{ticket.reg_txid}] registration confirmed')
 
         # activate item
@@ -2076,7 +2076,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
 
         confirmation_count = 10 if confirm_activation else 1
         # wait for confirmations
-        self.__wait_for_ticket_tnx(confirmation_count)
+        self.wait_for_ticket_tnx(confirmation_count)
         if confirm_activation:
             print(f' - {item_type.description} [{ticket.reg_txid}] activation confirmed')
 
@@ -2089,16 +2089,15 @@ class MasterNodeTicketsTest(MasterNodeCommon):
 
         ticket = self.tickets[TicketType.NFT]
 
-        # register and activate nft
+        # register and activate nft with owner creator_pastelid1
         self.register_and_activate_item(TicketType.NFT, 1, True)
 
         # register Offer ticket with intended recipient creator_pastelid3
         # tickets register offer "nft-txid" "price" "PastelID" "passphrase" [valid-after] [valid-before] [copy-number] ["address"] ["intendedFor"]
         ticket.item_price = 1000
-        current_height = self.nodes[self.non_mn3].getblockcount()
         offer_ticket_txid = self.nodes[self.non_mn3].tickets("register", "offer",
-            ticket.act_txid, str(ticket.item_price), ticket.reg_pastelid, self.passphrase, 0,
-            current_height + 30, 1, "", self.creator_pastelid3)["txid"]
+            ticket.act_txid, str(ticket.item_price), ticket.reg_pastelid, self.passphrase,
+            0, 0, 1, "", self.creator_pastelid3)["txid"]
         assert_true(offer_ticket_txid, "No Offer ticket was created")
         print(f' - NFT Offer ticket created [{offer_ticket_txid}] with intended recipient [{self.creator_pastelid3}]')
         self.inc_ticket_counter(TicketType.OFFER, 1, TicketType.NFT)
@@ -2108,7 +2107,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
 
         # tickets register accept "offer_txid" "price" "PastelID" "passphrase" ["address"]
         # try to accept this NFT offer with different Pastel ID (creator_pastelid2)
-        assert_raises_rpc(rpc.RPC_MISC_ERROR, f"does not match new owner's Pastel ID",
+        assert_raises_rpc(rpc.RPC_MISC_ERROR, "does not match new owner's Pastel ID",
             self.nodes[self.non_mn3].tickets, "register", "accept", offer_ticket_txid, str(ticket.item_price), 
             self.creator_pastelid2, self.passphrase)
 
@@ -2136,7 +2135,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         assert_true(transfer_ticket_txid, "No Transfer ticket was created")
         print(f' - NFT Transfer ticket created [{transfer_ticket_txid}]')
         self.inc_ticket_counter(TicketType.TRANSFER, 1, TicketType.NFT)
-        self.__wait_for_ticket_tnx()
+        self.wait_for_ticket_tnx()
         print('=== intendedFor feature for NFTs tested ===')
 
 
@@ -2158,10 +2157,9 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         # register Offer ticket with intended recipient creator_pastelid3
         # tickets register offer "item-txid" "price" "PastelID" "passphrase" [valid-after] [valid-before] [copy-number] ["address"] ["intendedFor"]
         ticket.item_price = 1000
-        current_height = self.nodes[self.non_mn3].getblockcount()
         offer_ticket_txid = self.nodes[self.non_mn3].tickets("register", "offer",
-            ticket.act_txid, str(ticket.item_price), ticket.reg_pastelid, self.passphrase, 0,
-            current_height + 30, 1, "", self.creator_pastelid3)["txid"]
+            ticket.act_txid, str(ticket.item_price), ticket.reg_pastelid, self.passphrase, 
+            0, 0, 1, "", self.creator_pastelid3)["txid"]
         assert_true(offer_ticket_txid, "No Offer ticket was created")
         print(f' - Offer ticket for {desc} created [{offer_ticket_txid}] with intended recipient [{self.creator_pastelid3}]')
         self.inc_ticket_counter(TicketType.OFFER, 1, reg_ticket_type)
@@ -2200,7 +2198,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         assert_true(transfer_ticket_txid, "No Transfer ticket was created")
         print(f' - {desc} transfer ticket created [{transfer_ticket_txid}]')
         self.inc_ticket_counter(TicketType.TRANSFER, 1, reg_ticket_type)
-        self.__wait_for_ticket_tnx()
+        self.wait_for_ticket_tnx()
         print(f'=== intendedFor feature for {desc} tested ===')
 
 
@@ -2228,7 +2226,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
             ticket.act_txid, str(ticket.item_price), ticket.reg_pastelid, self.passphrase)
         
         self.nodes[self.mining_node_num].sendtoaddress(self.nonmn3_address1, 1000 + offer_ticket_fee, "", "", False)
-        self.__wait_for_sync_all(1)
+        self.wait_for_sync_all(1)
         coins_before = self.nodes[self.non_mn3].getbalance()
         print(f"{desc} coins before '{ticket_type_name}' ticket registration: {coins_before}")
 
@@ -2246,7 +2244,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         assert_raises_rpc(rpc.RPC_MISC_ERROR, "Offer ticket can be created only after",
             self.nodes[self.non_mn3].tickets, "register", ticket_type_name,
             ticket.act_txid, str(ticket.item_price), ticket.reg_pastelid, self.passphrase)
-        self.__wait_for_gen10_blocks()
+        self.wait_for_gen10_blocks()
         print(f"{desc} current height: {self.nodes[self.non_mn3].getblockcount()}")
 
         # check Pastel ID in this ticket matches Pastel ID in the referred Activation ticket
@@ -2268,7 +2266,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
             ticket.act_txid, str(ticket.item_price), ticket.reg_pastelid, self.passphrase)["txid"]
         assert_true(ticket.offer_txid, f"No {item_type.description} Offer ticket was created")
         self.inc_ticket_counter(TicketType.OFFER, 1, item_type)
-        self.__wait_for_ticket_tnx()
+        self.wait_for_ticket_tnx()
 
         # check correct amount of change and correct amount spent
         coins_after = self.nodes[self.non_mn3].getbalance()
@@ -2359,7 +2357,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         total_accept_tx_amount = ticket.item_price + accept_ticket_fee + accept_ticket_price
         print(f"{desc} estimated total amount for accept transaction - [{ticket.item_price} + {accept_ticket_fee} + {accept_ticket_price} = {total_accept_tx_amount} PSL]")
         self.nodes[self.mining_node_num].sendtoaddress(self.nonmn4_address1, 1000 + total_accept_tx_amount, "", "", False)
-        self.__wait_for_sync_all(1)
+        self.wait_for_sync_all(1)
         coins_before = self.nodes[self.non_mn4].getbalance()
         print(f"{desc} coins before '{ticket_type_name}' registration: {coins_before}")
 
@@ -2377,7 +2375,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         assert_raises_rpc(rpc.RPC_MISC_ERROR, "Accept ticket can be created only after",
             self.nodes[self.non_mn4].tickets, "register", ticket_type_name,
             ticket.offer_txid, str(ticket.item_price), self.nonmn4_pastelid1, self.passphrase)
-        self.__wait_for_gen10_blocks()
+        self.wait_for_gen10_blocks()
         print(f"{desc} current height: {self.nodes[self.non_mn4].getblockcount()}")
 
         # fail if price does not covers the offer price
@@ -2390,7 +2388,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
             ticket.offer_txid, str(ticket.item_price), self.nonmn4_pastelid1, self.passphrase)["txid"]
         assert_true(ticket.accept_txid, "No Accept ticket was created")
         self.inc_ticket_counter(TicketType.ACCEPT, 1, item_type)
-        self.__wait_for_ticket_tnx()
+        self.wait_for_ticket_tnx()
 
         # check correct amount of change and correct amount spent
         coins_after = self.nodes[self.non_mn4].getbalance()
@@ -2454,7 +2452,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         assert_raises_rpc(rpc.RPC_MISC_ERROR, "Transfer ticket can be created only after",
             self.nodes[self.non_mn4].tickets, "register", ticket_type_name,
             ticket.offer_txid, ticket.accept_txid, self.nonmn4_pastelid1, self.passphrase)
-        self.__wait_for_gen10_blocks()
+        self.wait_for_gen10_blocks()
         print(f"{desc} current height: {self.nodes[self.non_mn4].getblockcount()}")
 
         offerer_pastel_id = self.nodes[self.non_mn3].tickets("get", ticket.offer_txid)["ticket"]["pastelID"]
@@ -2468,7 +2466,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
             ticket.offer_txid, ticket.accept_txid, self.nonmn4_pastelid1, self.passphrase)["txid"]
         assert_true(ticket.transfer_txid, "No Transfer ticket was created")
         self.inc_ticket_counter(TicketType.TRANSFER, 1, item_type)
-        self.__wait_for_ticket_tnx()
+        self.wait_for_ticket_tnx()
 
         # calculate amount that current owner is expected to receive
         offerer_coins_expected_to_receive = ticket.item_price
@@ -2701,9 +2699,9 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         self.inc_ticket_counter(TicketType.OFFER, 1, item_type)
         print(f"{desc} offer_ticket_txid: {offer_ticket.reg_txid}")
 
-        self.__wait_for_ticket_tnx()
+        self.wait_for_ticket_tnx()
         balance_tracker.new_operation()
-        self.__wait_for_gen10_blocks()
+        self.wait_for_gen10_blocks()
         balance_tracker.new_operation()
 
         # create Accept ticket
@@ -2714,10 +2712,10 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         assert_true(accept_ticket.reg_txid, "No Accept ticket was created")
         self.inc_ticket_counter(TicketType.ACCEPT, 1, item_type)
         print(f"{desc} accept_ticket_txid: {accept_ticket.reg_txid}")
-        self.__wait_for_ticket_tnx()
+        self.wait_for_ticket_tnx()
 
         balance_tracker.new_operation()
-        self.__wait_for_gen10_blocks()
+        self.wait_for_gen10_blocks()
         balance_tracker.new_operation()
 
         # create transfer ticket
@@ -2738,7 +2736,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
             # This Pastel ID (and generated transfers) holds the ownership of copies (2-4)
             self.single_offer_transfer_txids.append(transfer_ticket.reg_txid)
 
-        self.__wait_for_ticket_tnx()
+        self.wait_for_ticket_tnx()
 
         balance_tracker.new_operation(True, True)
 
@@ -2803,7 +2801,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
             "nft-label3_"+str(loop_number), str(self.storage_fee))["txid"]
         assert_true(nft_ticket2_txid, "No NFT registration ticket was created")
         self.inc_ticket_counter(TicketType.NFT)
-        self.__wait_for_ticket_tnx()
+        self.wait_for_ticket_tnx()
 
         self.slow_mine(2, 10, 2, 0.5)
 
@@ -2811,7 +2809,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
             nft_ticket2_txid, str(nft_ticket.reg_height), str(self.storage_fee), nft_ticket.reg_pastelid, self.passphrase)["txid"]
         assert_true(nft_ticket2_act_ticket_txid, "NFT was not activated")
         self.inc_ticket_counter(TicketType.ACTIVATE)
-        self.__wait_for_ticket_tnx()
+        self.wait_for_ticket_tnx()
 
         self.create_nft_ticket_v1(self.non_mn3, 1, self.royalty, self.is_green, False)
         nft_ticket3_txid = self.nodes[self.top_mns[0].index].tickets("register", "nft",
@@ -2819,7 +2817,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
             "nft-label4_"+str(loop_number), str(self.storage_fee))["txid"]
         assert_true(nft_ticket3_txid, "No NFT registration ticket was created")
         self.inc_ticket_counter(TicketType.NFT)
-        self.__wait_for_ticket_tnx()
+        self.wait_for_ticket_tnx()
 
         self.slow_mine(2, 10, 2, 0.5)
 
@@ -2853,7 +2851,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         assert_true(offer_ticket1_txid, "No Offer ticket was created")
         print(offer_ticket1_txid)
         self.inc_ticket_counter(TicketType.OFFER, 1, TicketType.NFT)
-        self.__wait_for_ticket_tnx()  # cur+5 block
+        self.wait_for_ticket_tnx()  # cur+5 block
 
         offer_ticket2_txid = self.nodes[self.non_mn3].tickets("register", "offer", nft_ticket2_act_ticket_txid,
                                                              str("1000"),
@@ -2862,14 +2860,14 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         assert_true(offer_ticket2_txid, "No Offer ticket was created")
         print(offer_ticket2_txid)
         self.inc_ticket_counter(TicketType.OFFER, 1, TicketType.NFT)
-        self.__wait_for_ticket_tnx()  # cur+10 block
+        self.wait_for_ticket_tnx()  # cur+10 block
 
         offer_ticket3_txid = self.nodes[self.non_mn3].tickets("register", "offer", nft_ticket2_act_ticket_txid,
                                                              str("1000"),
                                                              nft_ticket.reg_pastelid, self.passphrase,
                                                              cur_block+30, cur_block+40)["txid"]
         assert_true(offer_ticket3_txid, "No Offer ticket was created")
-        self.__wait_for_ticket_tnx()  # +5 blocks
+        self.wait_for_ticket_tnx()  # +5 blocks
         self.slow_mine(1, 10, 2, 0.5)  # +25 blocks
         print(offer_ticket3_txid)
         self.inc_ticket_counter(TicketType.OFFER, 1, TicketType.NFT)
@@ -2893,7 +2891,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         assert_true(accept_ticket_txid, "No Accept ticket was created")
         self.inc_ticket_counter(TicketType.ACCEPT, 1, TicketType.NFT)
         print(f"accept_ticket_txid: {accept_ticket_txid}")
-        self.__wait_for_ticket_tnx()  # +5 blocks
+        self.wait_for_ticket_tnx()  # +5 blocks
         self.slow_mine(2, 10, 2, 0.5)  # +25 blocks
 
         print(' --- list accept')
@@ -2969,22 +2967,22 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         # New nonmn4_pastelid2 to test some functionalities
         self.nonmn4_address2 = self.nodes[self.non_mn4].getnewaddress()
         self.nodes[self.mining_node_num].sendtoaddress(self.nonmn4_address2, 2000, "", "", False)
-        self.__wait_for_sync_all10()
+        self.wait_for_sync_all10()
         self.nonmn4_pastelid2 = self.create_pastelid(self.non_mn4)[0]
 
         node_id = self.non_mn4
         self.nonmn8_address1 = self.nodes[node_id].getnewaddress()
-        self.__wait_for_sync_all10()
+        self.wait_for_sync_all10()
         self.nonmn8_pastelid1 = self.create_pastelid(node_id)[0]
 
         # Register first time by Pastel ID of non-masternode 3
         tickets_ethereumaddress_txid1 = self.nodes[self.non_mn3].tickets("register", "ethereumaddress", "0x863c30dd122a21f815e46ec510777fd3e3398c26",
                                                     self.creator_pastelid1, self.passphrase)
-        self.__wait_for_ticket_tnx()
+        self.wait_for_ticket_tnx()
         nonmn3_ticket_ethereumaddress_1 = self.nodes[self.non_mn4].tickets("get", tickets_ethereumaddress_txid1["txid"])
         print(nonmn3_ticket_ethereumaddress_1)
 
-        self.__wait_for_ticket_tnx()
+        self.wait_for_ticket_tnx()
         assert_equal(nonmn3_ticket_ethereumaddress_1["ticket"]["pastelID"], self.creator_pastelid1)
         assert_equal(nonmn3_ticket_ethereumaddress_1["ticket"]["ethereumAddress"], "0x863c30dd122a21f815e46ec510777fd3e3398c26")
         assert_equal(nonmn3_ticket_ethereumaddress_1["ticket"]["fee"], 100)
@@ -2995,12 +2993,12 @@ class MasterNodeTicketsTest(MasterNodeCommon):
             "0xf24C621e5108607F4EC60e9C4f91719a76c7B3C9", self.nonmn8_pastelid1, self.passphrase)
 
         self.nodes[self.mining_node_num].sendtoaddress(self.nonmn8_address1, 200, "", "", False)
-        self.__wait_for_sync_all10()
+        self.wait_for_sync_all10()
 
         # This should be success
         self.nodes[node_id].tickets("register", "ethereumaddress", "0xf24C621e5108607F4EC60e9C4f91719a76c7B3C9",
                                                         self.nonmn8_pastelid1, self.passphrase)
-        self.__wait_for_ticket_tnx()
+        self.wait_for_ticket_tnx()
 
         # Expect to get Exception that the ticket is invalid because this Pastel ID do not have enough 5000PSL to pay the rechange fee
         assert_raises_rpc(rpc.RPC_MISC_ERROR, "Ticket (ethereum-address-change) is invalid - Not enough coins to cover price [5000 PSL]",
@@ -3009,7 +3007,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
 
         # Send money to non-masternode3 to cover 5000 price
         self.nodes[self.mining_node_num].sendtoaddress(self.nonmn3_address1, 5100, "", "", False)
-        self.__wait_for_sync_all10()
+        self.wait_for_sync_all10()
 
         # Expect to get Exception that the ticket is invalid because this Pastel ID changed EthereumAddress in last 24 hours
         assert_raises_rpc(rpc.RPC_MISC_ERROR, "Ticket (ethereum-address-change) is invalid - Ethereum Address Change ticket is invalid. Already changed in last 24 hours.",
@@ -3030,11 +3028,11 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         # Expect that nonmn3 can change ethereumaddress after 24 hours, fee should be 5000
         tickets_ethereumaddress_txid1 = self.nodes[self.non_mn3].tickets("register", "ethereumaddress", "0xD2cBc412BE9D6c6c3fDBb3c8d6554CC4D5E3A13f",
                                                     self.creator_pastelid1, self.passphrase)
-        self.__wait_for_ticket_tnx()
+        self.wait_for_ticket_tnx()
         nonmn3_ticket_ethereumaddress_1 = self.nodes[self.non_mn4].tickets("get", tickets_ethereumaddress_txid1["txid"])
         print(nonmn3_ticket_ethereumaddress_1)
 
-        self.__wait_for_ticket_tnx()
+        self.wait_for_ticket_tnx()
         assert_equal(nonmn3_ticket_ethereumaddress_1["ticket"]["pastelID"], self.creator_pastelid1)
         assert_equal(nonmn3_ticket_ethereumaddress_1["ticket"]["ethereumAddress"], "0xD2cBc412BE9D6c6c3fDBb3c8d6554CC4D5E3A13f")
         assert_equal(nonmn3_ticket_ethereumaddress_1["ticket"]["fee"], 5000)
@@ -3043,7 +3041,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         try:
             tickets_ethereumaddress_txid1 = self.nodes[self.non_mn4].tickets("register", "ethereumaddress", "D2cBc412BE9D6c6c3fDBb3c8d6554CC4D5E3A13f",
                                                         self.nonmn4_pastelid2, self.passphrase)
-            self.__wait_for_ticket_tnx()
+            self.wait_for_ticket_tnx()
         except JSONRPCException as e:
             self.errorString = e.error['message']
             print(self.errorString)
@@ -3052,7 +3050,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         try:
             tickets_ethereumaddress_txid1 = self.nodes[self.non_mn4].tickets("register", "ethereumaddress", "1xD2cBc412BE9D6c6c3fDBb3c8d6554CC4D5E3A13f",
                                                         self.nonmn4_pastelid2, self.passphrase)
-            self.__wait_for_ticket_tnx()
+            self.wait_for_ticket_tnx()
         except JSONRPCException as e:
             self.errorString = e.error['message']
             print(self.errorString)
@@ -3061,7 +3059,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         try:
             tickets_ethereumaddress_txid1 = self.nodes[self.non_mn4].tickets("register", "ethereumaddress", "0xZ2cBc412BE9D6c6c3fDBb3c8d6554CC4D5E3A13f",
                                                         self.nonmn4_pastelid2, self.passphrase)
-            self.__wait_for_ticket_tnx()
+            self.wait_for_ticket_tnx()
         except JSONRPCException as e:
             self.errorString = e.error['message']
             print(self.errorString)
@@ -3174,31 +3172,12 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         print("Storage fee tested")
 
 
-    def __wait_for_sync_all(self, v):
-        time.sleep(2)
-        self.generate_and_sync_inc(v, self.mining_node_num)
-
-    def __wait_for_gen10_blocks(self):
-        self.generate_and_sync_inc(10, self.mining_node_num)
-
-    def __wait_for_sync_all10(self):
-        time.sleep(2)
-        self.sync_all(10, 30)
-        self.nodes[self.mining_node_num].generate(1)
-        self.sync_all(10, 30)
-
-    def __wait_for_ticket_tnx(self, blocks: int = 5):
-        time.sleep(10)
-        for _ in range(blocks):
-            self.nodes[self.mining_node_num].generate(1)
-            self.sync_all(10, 3)
-        self.sync_all(10, 30)
-
     def print_heights(self):
         s = ''
         for x in range(17):
             s += str(self.nodes[x].getblockcount()) + ' '
         print(f"Nodes[0..16] heights: [{s}]")
+
 
     def slow_mine(self, number_of_bursts, num_in_each_burst, wait_between_bursts, wait_inside_burst):
         for x in range(number_of_bursts):

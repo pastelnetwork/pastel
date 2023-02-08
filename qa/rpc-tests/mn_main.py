@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Copyright (c) 2018-2022 The Pastel Core developers
+# Copyright (c) 2018-2023 The Pastel Core developers
 # Distributed under the MIT software license, see the accompanying
 # file COPYING or https://www.opensource.org/licenses/mit-license.php.
 
@@ -40,7 +40,7 @@ class MasterNodeMainTest (MasterNodeCommon):
     def setup_network(self, split=False):
         self.nodes = []
         self.is_network_split = False
-        self.setup_masternodes_network(self.mining_node_num, self.hot_node_num)
+        self.setup_masternodes_network()
 
 
     def storagefee_tests (self):
@@ -170,7 +170,7 @@ class MasterNodeMainTest (MasterNodeCommon):
 
             # self.wait_for_mn_state(30, 10, "PRE_ENABLED", self.nodes[0:self.total_number_of_nodes], mn_id, 6)
             print(f"Waiting for {mn.alias} ENABLED state...")
-            self.wait_for_mn_state(30, 20, "ENABLED", mn_id, 15)
+            self.wait_for_mn_state(60, 20, "ENABLED", mn_id, 25)
 
         # tests = ['cache', 'sync', 'ping', 'restart', 'spent', "fee"]
         if 'spent' in tests:

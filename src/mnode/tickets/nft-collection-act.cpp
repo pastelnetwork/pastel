@@ -1,4 +1,4 @@
-// Copyright (c) 2022 The Pastel Core Developers
+// Copyright (c) 2022-2023 The Pastel Core Developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <json/json.hpp>
@@ -192,7 +192,7 @@ CAmount CNFTCollectionActivateTicket::GetExtraOutputs(vector<CTxOut>& outputs) c
     return nAllAmount;
 }
 
-string CNFTCollectionActivateTicket::ToJSON() const noexcept
+string CNFTCollectionActivateTicket::ToJSON(const bool bDecodeProperties) const noexcept
 {
     const json jsonObj
     {

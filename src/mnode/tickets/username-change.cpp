@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2022 The Pastel Core Developers
+// Copyright (c) 2018-2023 The Pastel Core Developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <cinttypes>
@@ -57,7 +57,7 @@ void CChangeUsernameTicket::set_signature(const std::string& sSignature)
 }
 
 // CChangeUsernameTicket ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-string CChangeUsernameTicket::ToJSON() const noexcept
+string CChangeUsernameTicket::ToJSON(const bool bDecodeProperties) const noexcept
 {
     const json jsonObj
     {

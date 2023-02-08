@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2022 The Pastel Core Developers
+// Copyright (c) 2018-2023 The Pastel Core Developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <json/json.hpp>
@@ -41,7 +41,7 @@ void CActionActivateTicket::Clear() noexcept
     m_signature.clear();
 }
 
-string CActionActivateTicket::ToJSON() const noexcept
+string CActionActivateTicket::ToJSON(const bool bDecodeProperties) const noexcept
 {
     const json jsonObj
     {

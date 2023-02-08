@@ -602,7 +602,7 @@ Result:
   "bestblock" : "hash",      (string) the block hash
   "confirmations" : n,       (numeric) The number of confirmations
   "value" : x.xxx,           (numeric) The transaction value in )" + CURRENCY_UNIT + R"(
-  "valuePat" : xxxx,           (numeric) The transaction value in )" + MINOR_CURRENCY_UNIT + R"(
+  "valuePat" : xxxx,         (numeric) The transaction value in )" + MINOR_CURRENCY_UNIT + R"(
   "scriptPubKey" : {         (json object)
      "asm" : "code",         (string)
      "hex" : "hex",          (string)
@@ -681,7 +681,7 @@ Arguments:
 2. numblocks    (numeric, optional, default=288, 0=all) The number of blocks to check.
 
 Result:
- true|false       (boolean) Verified or not
+ true|false     (boolean) Verified or not
 
 Examples:
 )"

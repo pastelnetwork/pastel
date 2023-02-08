@@ -61,7 +61,7 @@ public:
 
     void SetKeyOne(std::string&& sValue) override { ethereumAddress = std::move(sValue); }
 
-    std::string ToJSON() const noexcept override;
+    std::string ToJSON(const bool bDecodeProperties = false) const noexcept override;
     std::string ToStr() const noexcept override;
     // get ticket price in PSL
     CAmount TicketPricePSL(const uint32_t nHeight) const noexcept override { return fee; }

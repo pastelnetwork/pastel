@@ -15,6 +15,7 @@
 #include <core_io.h>
 #include <key_io.h>
 #include <init.h>
+#include <utilstrencodings.h>
 #include <mnode/tickets/ticket-types.h>
 #include <mnode/tickets/tickets-all.h>
 #include <mnode/mnode-controller.h>
@@ -586,11 +587,11 @@ bool CPastelTicketProcessor::ParseTicketAndUpdateDB(CMutableTransaction& tx, con
     return false;
 }
 
-string CPastelTicketProcessor::GetTicketJSON(const uint256 &txid)
+string CPastelTicketProcessor::GetTicketJSON(const uint256& txid, const bool bDecodeProperties)
 {
     auto ticket = GetTicket(txid);
     if (ticket)
-        return ticket->ToJSON();
+        return ticket->ToJSON(bDecodeProperties);
     return "";
 }
 
@@ -1372,7 +1373,7 @@ bool isValuePassFuzzyFilter(const json &jProp, const string &sPropFilterValue) n
         } else if (jProp.is_boolean())
         {
             bool bValue = false;
-            // filter value should be convertable to bool
+            // filter value should be convertible to bool
             if (!str_tobool(sPropFilterValue, bValue) || 
                 (jProp.get<bool>() != bValue))
                 break;
@@ -1417,7 +1418,7 @@ void CPastelTicketProcessor::SearchForNFTs(const search_thumbids_t& p, function<
     } else
         vPastelIDs.push_back(p.sCreatorPastelId);
     size_t nResultCount = 0;
-    string sDataBase64, sData;
+    string sAppTicket, sData;
     // process NFT activation tickets by PastelID (mvkey #1)
     for (const auto &sPastelID : vPastelIDs)
     {
@@ -1463,17 +1464,16 @@ void CPastelTicketProcessor::SearchForNFTs(const search_thumbids_t& p, function<
                     break;
                 }
                 json jApp; // app ticket json
-                if (j.contains("app_ticket"))
+                if (j.contains(NFT_TICKET_APP_OBJ))
                 {
-                    const json &jAppTicketBase64 = j["app_ticket"];
-                    if (jAppTicketBase64.is_string())
+                    const json& jAppTicketBase85 = j[NFT_TICKET_APP_OBJ];
+                    if (jAppTicketBase85.is_string())
                     {
                         bInvalid = false;
-                        jAppTicketBase64.get_to(sDataBase64);
-                        sData = DecodeBase64(sDataBase64, &bInvalid);
+                        sData = DecodeAscii85(jAppTicketBase85, &bInvalid);
                         if (bInvalid)
                         {
-                            LogPrintf("ERROR: failed to decode base64 encoded NFT app ticket (%s)", regTxId);
+                            LogPrintf("ERROR: failed to decode ascii85 encoded NFT app ticket (%s)", regTxId);
                             break;
                         }
                         try
