@@ -74,12 +74,12 @@ unique_ptr<CPastelTicket> CPastelTicketProcessor::CreateTicket(const TicketID ti
         ticket = make_unique<CNFTRegTicket>();
         break;
 
-    case TicketID::NFTCollectionReg:
-        ticket = make_unique<CNFTCollectionRegTicket>();
+    case TicketID::CollectionReg:
+        ticket = make_unique<CollectionRegTicket>();
         break;
 
-    case TicketID::NFTCollectionAct:
-        ticket = make_unique<CNFTCollectionActivateTicket>();
+    case TicketID::CollectionAct:
+        ticket = make_unique<CollectionActivateTicket>();
         break;
 
     case TicketID::Activate:
@@ -334,7 +334,7 @@ ticket_validation_t CPastelTicketProcessor::ValidateTicketFees(const uint32_t nH
                 TicketID::Username,
                 TicketID::EthereumAddress,
                 TicketID::ActionReg,
-                TicketID::NFTCollectionReg
+                TicketID::CollectionReg
             };
         ticket_validation_t tv1;
         tv1.state = TICKET_VALIDATION_STATE::VALID;
@@ -345,7 +345,7 @@ ticket_validation_t CPastelTicketProcessor::ValidateTicketFees(const uint32_t nH
                 break;
             const auto& txOut = tx.vout[i];
             // in these tickets last 4 outputs are: change and payments to 3 MNs
-            if (is_enum_any_of(ticket_id, TicketID::Activate, TicketID::ActionActivate, TicketID::NFTCollectionAct))
+            if (is_enum_any_of(ticket_id, TicketID::Activate, TicketID::ActionActivate, TicketID::CollectionAct))
             {
                 if (i == num - 4)
                     continue;
@@ -806,8 +806,8 @@ string CPastelTicketProcessor::getValueBySecondaryKey(const CPastelTicket& ticke
 
 template PastelIDRegTickets_t CPastelTicketProcessor::FindTicketsByMVKey<CPastelIDRegTicket>(const string&);
 template NFTRegTickets_t CPastelTicketProcessor::FindTicketsByMVKey<CNFTRegTicket>(const string&);
-template NFTCollectionRegTickets_t CPastelTicketProcessor::FindTicketsByMVKey<CNFTCollectionRegTicket>(const string&);
-template NFTCollectionActivateTickets_t CPastelTicketProcessor::FindTicketsByMVKey<CNFTCollectionActivateTicket>(const string&);
+template CollectionRegTickets_t CPastelTicketProcessor::FindTicketsByMVKey<CollectionRegTicket>(const string&);
+template CollectionActivateTickets_t CPastelTicketProcessor::FindTicketsByMVKey<CollectionActivateTicket>(const string&);
 template NFTActivateTickets_t CPastelTicketProcessor::FindTicketsByMVKey<CNFTActivateTicket>(const string&);
 template OfferTickets_t CPastelTicketProcessor::FindTicketsByMVKey<COfferTicket>(const string&);
 template AcceptTickets_t CPastelTicketProcessor::FindTicketsByMVKey<CAcceptTicket>(const string&);
@@ -877,8 +877,8 @@ string CPastelTicketProcessor::ListTickets(const uint32_t nMinHeight) const
 }
 template string CPastelTicketProcessor::ListTickets<CPastelIDRegTicket>(const uint32_t nMinHeight) const;
 template string CPastelTicketProcessor::ListTickets<CNFTRegTicket>(const uint32_t nMinHeight) const;
-template string CPastelTicketProcessor::ListTickets<CNFTCollectionRegTicket>(const uint32_t nMinHeight) const;
-template string CPastelTicketProcessor::ListTickets<CNFTCollectionActivateTicket>(const uint32_t nMinHeight) const;
+template string CPastelTicketProcessor::ListTickets<CollectionRegTicket>(const uint32_t nMinHeight) const;
+template string CPastelTicketProcessor::ListTickets<CollectionActivateTicket>(const uint32_t nMinHeight) const;
 template string CPastelTicketProcessor::ListTickets<CNFTActivateTicket>(const uint32_t nMinHeight) const;
 template string CPastelTicketProcessor::ListTickets<COfferTicket>(const uint32_t nMinHeight) const;
 template string CPastelTicketProcessor::ListTickets<CAcceptTicket>(const uint32_t nMinHeight) const;
@@ -967,13 +967,13 @@ string CPastelTicketProcessor::ListFilterNFTTickets(const uint32_t nMinHeight, c
 }
 
 // 1 - active;    2 - inactive;
-string CPastelTicketProcessor::ListFilterNFTCollectionTickets(const uint32_t nMinHeight, const short filter) const
+string CPastelTicketProcessor::ListFilterCollectionTickets(const uint32_t nMinHeight, const short filter) const
 {
-    return filterTickets<CNFTCollectionRegTicket>(
-        [&](const CNFTCollectionRegTicket& t, const unsigned int nChainHeight) -> bool
+    return filterTickets<CollectionRegTicket>(
+        [&](const CollectionRegTicket& t, const unsigned int nChainHeight) -> bool
         {
-            // check if there is nft-collection-act ticket for this nft-collection-reg ticket
-            if (CNFTCollectionActivateTicket::CheckTicketExistByNFTCollectionTicketID(t.GetTxId()))
+            // check if there is collection-act ticket for this collection-reg ticket
+            if (CollectionActivateTicket::CheckTicketExistByCollectionTicketID(t.GetTxId()))
             {
                 if (filter == 1)
                     return false; //don't skip active
@@ -1219,26 +1219,26 @@ bool CPastelTicketProcessor::WalkBackTradingChain(
                 }
             } break;
 
-            case TicketID::NFTCollectionAct:
+            case TicketID::CollectionAct:
             {
-                const auto pNftCollectionActTicket = dynamic_cast<CNFTCollectionActivateTicket *>(pastelTicket.get());
-                if (!pNftCollectionActTicket)
+                const auto pCollectionActTicket = dynamic_cast<CollectionActivateTicket *>(pastelTicket.get());
+                if (!pCollectionActTicket)
                 {
                     errRet = strprintf("The %s ticket [txid=%s] referred by ticket [txid=%s] is invalid",
-                        ::GetTicketDescription(TicketID::NFTCollectionAct), pastelTicket->GetTxId(), sTxId);
+                        ::GetTicketDescription(TicketID::CollectionAct), pastelTicket->GetTxId(), sTxId);
                     break;
                 }
-                if (!WalkBackTradingChain(pNftCollectionActTicket->getRegTxId(), chain, shortPath, errRet))
+                if (!WalkBackTradingChain(pCollectionActTicket->getRegTxId(), chain, shortPath, errRet))
                     break;
             } break;
 
-            case TicketID::NFTCollectionReg:
+            case TicketID::CollectionReg:
             {
-                const auto pNftCollectionRegTicket = dynamic_cast<CNFTCollectionRegTicket *>(pastelTicket.get());
-                if (!pNftCollectionRegTicket)
+                const auto pCollectionRegTicket = dynamic_cast<CollectionRegTicket *>(pastelTicket.get());
+                if (!pCollectionRegTicket)
                 {
                     errRet = strprintf("The %s ticket [txid=%s] referred by ticket [txid=%s] is invalid",
-                        ::GetTicketDescription(TicketID::NFTCollectionReg), pastelTicket->GetTxId(), sTxId);
+                        ::GetTicketDescription(TicketID::CollectionReg), pastelTicket->GetTxId(), sTxId);
                     break;
                 }
             } break;
@@ -1900,15 +1900,15 @@ optional<reg_transfer_txid_t> CPastelTicketProcessor::ValidateOwnership(const st
                     }
                 } break;
 
-                case TicketID::NFTCollectionReg: {
-                    const auto NFTCollectionRegTicket = dynamic_cast<const CNFTCollectionRegTicket*>(ticket.get());
-                    if (!NFTCollectionRegTicket)
+                case TicketID::CollectionReg: {
+                    const auto CollRegTicket = dynamic_cast<const CollectionRegTicket*>(ticket.get());
+                    if (!CollRegTicket)
                         break;
 
                     ticket_id = ticket->ID();
                     // Check if creator and pastelID are equal
-                    if ((NFTCollectionRegTicket->IsCreatorPastelId(sPastelID)) &&
-                        CNFTCollectionActivateTicket::CheckTicketExistByNFTCollectionTicketID(NFTCollectionRegTicket->GetTxId()))
+                    if ((CollRegTicket->IsCreatorPastelId(sPastelID)) &&
+                        CollectionActivateTicket::CheckTicketExistByCollectionTicketID(CollRegTicket->GetTxId()))
                     {
                         bOwns = true;
                         break;

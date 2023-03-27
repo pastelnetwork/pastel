@@ -151,7 +151,7 @@ ticket_validation_t CActionActivateTicket::IsValid(const bool bPreReg, const uin
         {
             tv.errorMsg = strprintf(
                 "The Pastel ID [%s] is not matching the Action Caller's Pastel ID [%s] in the Action Reg ticket with this txid [%s]",
-                m_sCallerPastelID, ActionRegTicket->getCallerPastelId(), m_regTicketTxId);
+                m_sCallerPastelID, ActionRegTicket->getCreatorPastelID_param(), m_regTicketTxId);
             break;
         }
 

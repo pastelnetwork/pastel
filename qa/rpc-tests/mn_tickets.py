@@ -24,6 +24,7 @@ from mn_common import (
 from ticket_type import (
     TicketType,
     ActionType,
+    CollectionItemType,
     get_action_type,
     get_activation_type
 )
@@ -31,7 +32,7 @@ from test_framework.authproxy import JSONRPCException
 import test_framework.rpc_consts as rpc
 getcontext().prec = 16
 
-TEST_COLLECTION_NAME = "My NFT Collection"
+TEST_COLLECTION_NAME = "My Collection"
 
 class MasterNodeTicketsTest(MasterNodeCommon):
     def __init__(self):
@@ -89,8 +90,8 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         self.mn2_nonregistered_pastelid1 = None     # not registered Pastel ID
         
         self.total_copies = None
-        self.nft_collection_name = None
-        self.nftcoll_closing_height_inc = 30        # closing block height increment for NFT collection
+        self.collection_name = None
+        self.in_process_collection_ticket_age = 30  # number of blocks until in-process collection will be closed
 
         self.test_high_heights = False
 
@@ -116,9 +117,10 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         self.action_intended_for_tests(ActionType.CASCADE)
         self.action_reg_ticket_tests(ActionType.SENSE, "sense-action-label")
         self.action_activate_ticket_tests(ActionType.SENSE, False)
-        self.nft_collection_reg_ticket_tests(TEST_COLLECTION_NAME + " #1", "coll-label")
-        self.nft_collection_tests("coll-label-v2")
-        self.nft_collection_activate_ticket_tests(False)
+        for collection_item_type in [CollectionItemType.SENSE, CollectionItemType.NFT]:
+            self.collection_reg_ticket_tests(collection_item_type, f"{TEST_COLLECTION_NAME} {collection_item_type.type_name} #1", f"{collection_item_type.type_name}-coll-label")
+            self.collection_tests(collection_item_type, f"{collection_item_type.type_name}-coll-label-v2")
+            self.collection_activate_ticket_tests(collection_item_type, False)
 
         self.nft_reg_ticket_tests("nft-label")
         self.royalty_tests(2)
@@ -152,9 +154,10 @@ class MasterNodeTicketsTest(MasterNodeCommon):
             self.action_activate_ticket_tests(ActionType.CASCADE, True)
             self.nft_reg_ticket_tests("nft-label2")
             self.nft_activate_ticket_tests(True)
-            self.nft_collection_reg_ticket_tests(TEST_COLLECTION_NAME + " #2", "coll-label2")
-            self.nft_collection_tests("coll-label2-v2")
-            self.nft_collection_activate_ticket_tests(True)
+            for collection_item_type in [CollectionItemType.SENSE, CollectionItemType.NFT]:
+                self.collection_reg_ticket_tests(collection_item_type, f"{TEST_COLLECTION_NAME} {collection_item_type.type_name} #2", f"{collection_item_type.type_name}-coll-label2")
+                self.collection_tests(collection_item_type, f"{collection_item_type.type_name}-coll-label2-v2")
+                self.collection_activate_ticket_tests(collection_item_type, True)
             for item_type in [TicketType.NFT, TicketType.CASCADE_ACTION]:
                 self.offer_ticket_tests(item_type)
                 self.accept_ticket_tests(item_type)
@@ -660,88 +663,101 @@ class MasterNodeTicketsTest(MasterNodeCommon):
 
 
     # ===============================================================================================================
-    def generate_nft_collection_app_ticket_details(self):
+    def generate_collection_app_ticket_details(self):
         # app_ticket structure
         # {
         #    "creator_website": string,
         #    "nft_collection_creation_video_youtube_url": string
         # }
         letters = string.ascii_letters
-        nft_collection_ticket_json = {
+        collection_ticket_json = {
             "creator_website": self.get_rand_testdata(letters, 10),
             "nft_collection_creation_video_youtube_url": self.get_rand_testdata(letters, 10),
         }
-        return nft_collection_ticket_json
+        return collection_ticket_json
 
 
     # ===============================================================================================================
-    def create_nft_collection_ticket(self, nft_collection_name, creator_node_num, closing_height_inc,
-        nft_max_count, nft_copy_count, permitted_users, royalty, green, make_bad_signatures_dicts = False):
-        """Create NFT collection ticket and signatures
+    def create_collection_ticket(self, item_type: CollectionItemType, collection_name: str, creator_node_num: int,
+        collection_final_allowed_block_height: int, max_collection_entries: int,
+        collection_item_copy_count: int, list_of_pastelids_of_authorized_contributors,
+        royalty, green, make_bad_signatures_dicts = False):
+        """Create collection ticket and signatures
 
         Args:
-            creator_node_num (int): node that creates NFT collection ticket and signatures
-            closing_height (int): [a "closing" block height after which no new NFTs would be allowed to be added to the collection]
-            max_nft_count (int): [max number of NFTs allowed in this collection]
-            royalty (int): [royalty fee, how much creators should get on all future resales (common for all NFTs in a collection)]
-            green (bool): [is there Green NFT payment or not (common for all NFTs in a collection)]
-            make_bad_signatures_dicts (bool): [if true - create bad signatures]
+            item_type (CollectionItemType): type of collection item
+            collection_name (str): collection name
+            creator_node_num (int): node that creates collection ticket and signatures
+            collection_final_allowed_block_height (int): a block height after which no new items would be allowed to be added to this collection
+            max_collection_entries (int): max number of items allowed in this collection
+            collection_item_copy_count (int): allowed number of copies for all items in a collection
+            list_of_pastelids_of_authorized_contributors (list): list of Pastel IDs of authorized contributors who permitted to register an item as part of this collection
+            royalty (int): [royalty fee, how much creators should get on all future resales (common for all items in a collection)]
+            green (bool): is there Green NFT payment or not (common for all items in a collection)
+            make_bad_signatures_dicts (bool): if true - create bad signatures
         """
         # Get current height
-        ticket = self.tickets[TicketType.NFT_COLLECTION]
+        ticket = self.tickets[TicketType.COLLECTION]
         ticket.reg_height = self.nodes[0].getblockcount()
         ticket.reg_pastelid = self.creator_pastelid1
         ticket.pastelid_node_id = self.non_mn3
         print(f"creator_ticket_height - {ticket.reg_height}")
 
-        # Current nft_collection_ticket!!!!
+        # Current collection_ticket!!!!
         # {
-        #   "nft_collection_ticket_version": integer  // 1
-        #   "nft_collection_name": string, // NFT collection name
-        #   "creator": bytes,              // Pastel ID of the NFT collection creator
-        #   "permitted_users": ["..", "..", ...] // list of Pastel IDs that are permitted to register an NFT as part of the collection
-        #   "blocknum": integer,           // block number when the ticket was created - this is to map the ticket to the MNs that should process it
+        #   "collection_ticket_version": uint,  // 1
+        #   "item_type": string,                // collection item type (nft, sense)
+        #   "collection_name": string,          // collection name
+        #   "creator": bytes,                   // Pastel ID of the collection's creator
+        #   // list of Pastel IDs of authorized contributors who permitted to register an item as part of this collection
+        #   "list_of_pastelids_of_authorized_contributors":
+        #   [
+        #     "Pastel ID1",
+        #     "Pastel ID2",
+        #     ...
+        #   ] 
+        #   "blocknum": uint,              // block number when the ticket was created - this is to map the ticket to the MNs that should process it
         #   "block_hash": bytes            // hash of the top block when the ticket was created - this is to map the ticket to the MNs that should process it
-        #   "closing_height": integer,     // a "closing" block height after which no new NFTs would be allowed to be added to the collection
-        #   "nft_max_count": integer,      // max number of NFTs allowed in this collection
-        #   "nft_copy_count": integer,     // default number of copies for all NFTs in a collection
-        #   "royalty": short,              // how much creator should get on all future resales
-        #   "green": bool,                 //
-        #   "app_ticket": {...}            // cNode parses app_ticket only for search
+        #   "collection_final_allowed_block_height": uint, // a block height after which no new items would be allowed to be added to this collection
+        #   "max_collection_entries": uint,      // max number of items allowed in this collection
+        #   "collection_item_copy_count": uint,  // allowed number of copies for all items in a collection
+        #   "royalty": float,                    // how much creator should get on all future resales
+        #   "green": bool,                       // true if there is a Green payment for the collection items, false - otherwise (common for all items in a collection)
+        #   "app_ticket": {...}                  // json object with application ticket, parsed by the cnode only for search capability
         # }
 
         block_hash = self.nodes[creator_node_num].getblock(str(ticket.reg_height))["hash"]
-        app_ticket_json = self.generate_nft_collection_app_ticket_details()
-        app_ticket = str_to_b64str(json.dumps(app_ticket_json))
+        app_ticket_json = self.generate_collection_app_ticket_details()
 
         json_ticket = {
-            "nft_collection_ticket_version": 1,
-            "nft_collection_name": nft_collection_name,
+            "collection_ticket_version": 1,
+            "item_type": item_type.type_name,
+            "collection_name": collection_name,
             "creator": ticket.reg_pastelid,
+            "list_of_pastelids_of_authorized_contributors": list_of_pastelids_of_authorized_contributors,
             "blocknum": ticket.reg_height,
             "block_hash": block_hash,
-            "closing_height": ticket.reg_height + closing_height_inc,
-            "nft_max_count": nft_max_count,
-            "nft_copy_count": nft_copy_count,
-            "permitted_users": permitted_users,
+            "collection_final_allowed_block_height": ticket.reg_height + collection_final_allowed_block_height,
+            "max_collection_entries": max_collection_entries,
+            "collection_item_copy_count": collection_item_copy_count,
             "royalty": royalty,
             "green": green,
-            "app_ticket": app_ticket
+            "app_ticket": app_ticket_json
         }
-        ticket.reg_ticket = str_to_b64str(json.dumps(json_ticket, indent=4))
-        print(f"nft_collection_ticket - {ticket.reg_ticket}")
+        ticket.set_reg_ticket(json.dumps(json_ticket, indent=4))
+        print(f"{item_type.type_description} collection_ticket:\n{ticket.reg_ticket}")
 
-        self.create_signatures(TicketType.NFT_COLLECTION, creator_node_num, make_bad_signatures_dicts)
+        self.create_signatures(TicketType.COLLECTION, creator_node_num, make_bad_signatures_dicts)
 
 
     # ===============================================================================================================
     def create_nft_ticket_v2(self, creator_node_num: int, collection_txid: str = None, skip_optional: bool = True,
         total_copies: int = 0, royalty: float = 0.0, green: bool = False):
-        """Create NFT ticket v2 and signatures (NFT collection support)
+        """Create NFT ticket v2 and signatures (collection support)
 
         Args:
             creator_node_num (int): node that creates NFT ticket and signatures
-            collection_txid (string, optional): transaction id of the NFT collection that NFT belongs to (optional, can be empty)
+            collection_txid (string, optional): transaction id of the collection that NFT belongs to (optional, can be empty)
             skip_optional (bool, optional): if True - skip optional properties. Defaults to True.
             total_copies (int, optional): number of copies. Defaults to 0.
             royalty (float, optional): [royalty fee, how much creator should get on all future resales]
@@ -760,7 +776,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         #   "author": bytes,               // Pastel ID of the creator
         #   "blocknum": integer,           // block number when the ticket was created - this is to map the ticket to the MNs that should process it
         #   "block_hash": bytes            // hash of the top block when the ticket was created - this is to map the ticket to the MNs that should process it
-        #   "nft_collection_txid": bytes   // transaction id of the NFT collection that NFT belongs to (optional, can be empty)
+        #   "collection_txid": bytes       // transaction id of the collection that NFT belongs to (optional, can be empty)
         #   "copies": integer,             // number of copies, optional in v2
         #   "royalty": float,              // how much creator should get on all future resales, optional in v2
         #   "green": bool,                 // is green payment, optional in v2
@@ -785,25 +801,25 @@ class MasterNodeTicketsTest(MasterNodeCommon):
                 "green": green,
             })
         if collection_txid:
-            json_ticket["nft_collection_txid"] = collection_txid
+            json_ticket["collection_txid"] = collection_txid
 
-        nft_ticket_str = json.dumps(json_ticket, indent=4)
-        ticket.reg_ticket = str_to_b64str(nft_ticket_str)
-        print(f"nft_ticket v2 - {nft_ticket_str}")
-        print(f"nft_ticket v2 (base64) - {ticket.reg_ticket}")
+        ticket.set_reg_ticket(json.dumps(json_ticket, indent=4))
+        print(f"NFT ticket v2 - {ticket.reg_ticket}")
+        print(f"NFT ticket v2 (base64-encoded) - {ticket.reg_ticket_base64_encoded}")
 
         self.create_signatures(TicketType.NFT, creator_node_num)
 
 
     # ===============================================================================================================
     def create_action_ticket(self, creator_node_num: int, action_type: ActionType,
-        caller_pastelid: str, make_bad_signatures_dicts: bool = False):
+        caller_pastelid: str, collection_txid: str = None, make_bad_signatures_dicts: bool = False):
         """Create action ticket and signatures
 
         Args:
             creator_node_num (int): node that creates an action ticket and signatures
             action_type (ActionType): action type (sense or cascade)
             caller_pastelid (str): action caller Pastel ID
+            collection_txid (str, optional): transaction id of the collection that action belongs to (optional, can be empty)
             make_bad_signatures_dicts (bool): if True - create invalid signatures
         """
         # Get current height
@@ -816,12 +832,13 @@ class MasterNodeTicketsTest(MasterNodeCommon):
 
         # Current action_ticket
         # {
-        #   "action_ticket_version": integer  // 1
+        #   "action_ticket_version": integer  // 1 or 2
         #   "action_type": string             // action type (sense, cascade)
         #   "caller": bytes,                  // Pastel ID of the action caller
         #   "blocknum": integer,              // block number when the ticket was created - this is to map the ticket to the MNs that should process it
-        #   "block_hash": bytes               // hash of the top block when the ticket was created - this is to map the ticket to the MNs that should process it
-        #   "app_ticket": bytes               // as ascii85(app_ticket),
+        #   "block_hash": bytes,              // hash of the top block when the ticket was created - this is to map the ticket to the MNs that should process it
+        #   "collection_txid": bytes,         // transaction id of the collection that action belongs to (optional, can be empty)
+        #   "api_ticket": bytes               // json object with application ticket
         #                                     // actual structure of app_ticket is different for different API and is not parsed by pasteld !!!!
         # }
 
@@ -830,17 +847,18 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         app_ticket = str_to_b64str(json.dumps(app_ticket_json))
 
         json_ticket = {
-            "action_ticket_version": 1,
+            "action_ticket_version": 1 if not collection_txid else 2,
             "action_type": action_type.name,
             "caller": ticket.reg_pastelid,
             "blocknum": ticket.reg_height,
             "block_hash": block_hash,
-            "app_ticket": app_ticket
+            "api_ticket": app_ticket
         }
-        action_ticket_str = json.dumps(json_ticket, indent=4)
-        ticket.reg_ticket = str_to_b64str(action_ticket_str)
-        print(f"action_ticket - {action_ticket_str}")
-        print(f"action_ticket (base64) - {ticket.reg_ticket}")
+        if collection_txid:
+            json_ticket["collection_txid"] = collection_txid
+        ticket.set_reg_ticket(json.dumps(json_ticket, indent=4))
+        print(f"action_ticket - {ticket.reg_ticket}")
+        print(f"action_ticket (base64) - {ticket.reg_ticket_base64_encoded}")
 
         self.create_signatures(reg_ticket_type, creator_node_num, make_bad_signatures_dicts)
 
@@ -911,20 +929,20 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         self.generate_and_sync_inc(10, self.mining_node_num)
 
         # create action ticket with bad signatures
-        self.create_action_ticket(self.non_mn3, action_type, self.action_caller_pastelid, True)
+        self.create_action_ticket(self.non_mn3, action_type, self.action_caller_pastelid, None, True)
         self.test_signatures(reg_ticket_type, label, self.creator_nonregistered_pastelid1, self.mn2_nonregistered_pastelid1)
 
         assert_shows_help(self.nodes[0].tickets, "register", ticket_type_name)
 
         # create action ticket with valid signatures
-        self.create_action_ticket(self.non_mn3, action_type, self.action_caller_pastelid)
+        self.create_action_ticket(self.non_mn3, action_type, self.action_caller_pastelid, None)
         # top mns are changed in create_signatures inside create_action_ticket
         top_mn_node = self.nodes[self.top_mns[0].index]
 
         coins_before = top_mn_node.getbalance()
         print(f"coins before ticket registration: {coins_before}")
         result = top_mn_node.tickets("register", ticket_type_name,
-            ticket.reg_ticket, json.dumps(self.signatures_dict), self.top_mns[0].pastelid, self.passphrase, 
+            ticket.reg_ticket_base64_encoded, json.dumps(self.signatures_dict), self.top_mns[0].pastelid, self.passphrase, 
             label, str(self.storage_fee))
         ticket.reg_txid = result["txid"]
         ticket.reg_node_id = self.top_mns[0].index
@@ -947,14 +965,14 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         #      2. by primary key
         tkt1 = self.nodes[self.non_mn3].tickets("find", ticket_type_name, ticket_key)["ticket"]
         assert_equal(tkt1["type"], "action-reg")
-        assert_equal(tkt1["action_ticket"], ticket.reg_ticket)
+        assert_equal(tkt1["action_ticket"], ticket.reg_ticket_base64_encoded)
         assert_equal(tkt1["key"], ticket_key)
         assert_equal(tkt1["label"], label)
         assert_equal(tkt1["called_at"], ticket.reg_height)
         assert_equal(tkt1["signatures"]["principal"][self.action_caller_pastelid], self.principal_signatures_dict[self.action_caller_pastelid])
         assert_equal(tkt1["signatures"]["mn2"][self.top_mns[1].pastelid], self.top_mns[1].signature)
         assert_equal(tkt1["signatures"]["mn3"][self.top_mns[2].pastelid], self.top_mns[2].signature)
-        result = self.nodes[self.non_mn3].pastelid("verify", ticket.reg_ticket,
+        result = self.nodes[self.non_mn3].pastelid("verify", ticket.reg_ticket_base64_encoded,
             tkt1["signatures"]["mn1"][self.top_mns[0].pastelid], self.top_mns[0].pastelid)["verification"]
         assert_equal(result, "OK")
 
@@ -963,7 +981,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         assert_equal(1, len(lblNodes), f"findbylabel {ticket_type_name} {label} was supposed to return only one ticket")
         tkt2 = lblNodes[0]["ticket"]
         assert_equal(tkt2["type"], "action-reg")
-        assert_equal(tkt2["action_ticket"], ticket.reg_ticket)
+        assert_equal(tkt2["action_ticket"], ticket.reg_ticket_base64_encoded)
         assert_equal(tkt2["key"], ticket_key)
         assert_equal(tkt2["label"], label)
         assert_equal(tkt2["called_at"], ticket.reg_height)
@@ -995,47 +1013,48 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         print(f"{desc} registration tickets tested")
 
     # ===============================================================================================================
-    # NFT collection registration ticket tests - tested on non_mn3 node
-    def nft_collection_reg_ticket_tests(self, nft_collection_name, label):
-        print("== NFT Collection registration Tickets test ==")
+    # Collection registration ticket tests - tested on non_mn3 node
+    def collection_reg_ticket_tests(self, item_type: CollectionItemType, collection_name: str, label: str):
+        
+        item_type_description = item_type.type_description
+        print(f"== {item_type_description} collection registration tickets test ==")
 
-        ticket = self.tickets[TicketType.NFT_COLLECTION]
-        ticket_type_name = TicketType.NFT_COLLECTION.type_name
+        ticket = self.tickets[TicketType.COLLECTION]
+        ticket_type_name = TicketType.COLLECTION.type_name
 
         self.generate_and_sync_inc(10, self.mining_node_num)
 
-        closing_height_inc = self.nftcoll_closing_height_inc
-        nft_max_count = 2
-        nft_copy_count = 10
-        # create nft collection
-        self.nft_collection_name = nft_collection_name
-        self.create_nft_collection_ticket(self.nft_collection_name, self.non_mn3, closing_height_inc, 
-            nft_max_count, 10, [], self.royalty, self.is_green, True)
-        self.test_signatures(TicketType.NFT_COLLECTION, label, self.creator_nonregistered_pastelid1, self.mn2_nonregistered_pastelid1)
+        max_collection_entries = 2
+        collection_item_copy_count = 10
+        # create collection
+        self.collection_name = collection_name
+        self.create_collection_ticket(item_type, self.collection_name, self.non_mn3, self.in_process_collection_ticket_age, 
+            max_collection_entries, 10, [], self.royalty, self.is_green, True)
+        self.test_signatures(TicketType.COLLECTION, label, self.creator_nonregistered_pastelid1, self.mn2_nonregistered_pastelid1)
         top_mn_node = self.nodes[self.top_mns[0].index]
 
         assert_shows_help(self.nodes[0].tickets, "register", ticket_type_name)
 
         # check royalty max value 20
-        self.create_nft_collection_ticket(self.nft_collection_name, self.non_mn3, closing_height_inc, 
-            nft_max_count, nft_copy_count, [], 0.25, self.is_green, True)
+        self.create_collection_ticket(item_type, self.collection_name, self.non_mn3, self.in_process_collection_ticket_age, 
+            max_collection_entries, collection_item_copy_count, [], 0.25, self.is_green, True)
 
         assert_raises_rpc(rpc.RPC_MISC_ERROR, "Royalty can't be 25 percent, Min is 0 and Max is 20 percent",
             top_mn_node.tickets, "register", ticket_type_name,
-            ticket.reg_ticket, json.dumps(self.signatures_dict), self.top_mns[0].pastelid, self.passphrase, label, str(self.storage_fee))
+            ticket.reg_ticket_base64_encoded, json.dumps(self.signatures_dict), self.top_mns[0].pastelid, self.passphrase, label, str(self.storage_fee))
 
         # check royalty negative value -5
-        self.create_nft_collection_ticket(self.nft_collection_name, self.non_mn3, closing_height_inc, 
-            nft_max_count, nft_copy_count, [], -5, self.is_green, True)
+        self.create_collection_ticket(item_type, self.collection_name, self.non_mn3, self.in_process_collection_ticket_age, 
+            max_collection_entries, collection_item_copy_count, [], -5, self.is_green, True)
         
         # uint16_t -> 2 ^ 16 -> 65536 - 5 = 65531
         assert_raises_rpc(rpc.RPC_MISC_ERROR, "Royalty can't be -500 percent, Min is 0 and Max is 20 percent",
             top_mn_node.tickets, "register", ticket_type_name,
-            ticket.reg_ticket, json.dumps(self.signatures_dict), self.top_mns[0].pastelid, self.passphrase, label, str(self.storage_fee))
+            ticket.reg_ticket_base64_encoded, json.dumps(self.signatures_dict), self.top_mns[0].pastelid, self.passphrase, label, str(self.storage_fee))
 
         # c.a.6 register without errors, if enough coins for tnx fee
-        self.create_nft_collection_ticket(self.nft_collection_name, self.non_mn3, closing_height_inc, 
-            nft_max_count, nft_copy_count, [self.creator_pastelid1, self.creator_pastelid2],
+        self.create_collection_ticket(item_type, self.collection_name, self.non_mn3, self.in_process_collection_ticket_age, 
+            max_collection_entries, collection_item_copy_count, [self.creator_pastelid1, self.creator_pastelid2],
             self.royalty, self.is_green)
         # make sure we have latest top mns
         top_mn_node = self.nodes[self.top_mns[0].index]
@@ -1044,14 +1063,14 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         print(f"Coins before '{ticket_type_name}' registration: {coins_before}")
 
         result = top_mn_node.tickets("register", ticket_type_name,
-            ticket.reg_ticket, json.dumps(self.signatures_dict), self.top_mns[0].pastelid, self.passphrase,
+            ticket.reg_ticket_base64_encoded, json.dumps(self.signatures_dict), self.top_mns[0].pastelid, self.passphrase,
             label, str(self.storage_fee))
         ticket.reg_txid = result["txid"]
         ticket.reg_node_id = self.top_mns[0].index
         ticket_key = result["key"]
         ticket.label = label
-        assert_true(ticket.reg_txid, "No nft-collection ticket was created")
-        self.inc_ticket_counter(TicketType.NFT_COLLECTION)
+        assert_true(ticket.reg_txid, "No collection ticket was created")
+        self.inc_ticket_counter(TicketType.COLLECTION)
         self.wait_for_ticket_tnx()
         print(top_mn_node.getblockcount())
 
@@ -1066,29 +1085,32 @@ class MasterNodeTicketsTest(MasterNodeCommon):
 
         #       c.b.2 by hash (primary key)
         tkt1 = self.nodes[self.non_mn3].tickets("find", ticket_type_name, ticket_key)["ticket"]
-        assert_equal(tkt1['type'], "nft-collection-reg")
-        assert_equal(tkt1['nft_collection_ticket'], ticket.reg_ticket)
+        assert_equal(tkt1['type'], "collection-reg")
         assert_equal(tkt1["key"], ticket_key)
         assert_equal(tkt1["label"], label)
         assert_equal(tkt1["creator_height"], ticket.reg_height)
-        assert_equal(tkt1["closing_height"], ticket.reg_height + closing_height_inc)
-        assert_equal(tkt1["nft_max_count"], nft_max_count)
-        assert_equal(tkt1["nft_copy_count"], nft_copy_count)
         assert_equal(tkt1["storage_fee"], self.storage_fee)
-        permitted_users = tkt1["permitted_users"]
-        assert_true(self.creator_pastelid1 in permitted_users, f"User {self.creator_pastelid1} not in permitted users for NFT Collection")
-        assert_true(self.creator_pastelid2 in permitted_users, f"User {self.creator_pastelid2} not in permitted users for NFT Collection")
-        r = float(round(tkt1["royalty"], 3))
+        coll_tkt1 = tkt1['collection_ticket']
+        assert_equal(coll_tkt1["item_type"], item_type.type_name)
+        list_of_pastelids_of_authorized_contributors = coll_tkt1["list_of_pastelids_of_authorized_contributors"]
+        assert_true(self.creator_pastelid1 in list_of_pastelids_of_authorized_contributors,
+                    f"User {self.creator_pastelid1} is not authorized contributor for Collection '{collection_name}'")
+        assert_true(self.creator_pastelid2 in list_of_pastelids_of_authorized_contributors,
+                    f"User {self.creator_pastelid2} is not authorized contributor for Collection '{collection_name}'")
+        assert_equal(coll_tkt1["collection_final_allowed_block_height"], ticket.reg_height + self.in_process_collection_ticket_age)
+        assert_equal(coll_tkt1["max_collection_entries"], max_collection_entries)
+        assert_equal(coll_tkt1["collection_item_copy_count"], collection_item_copy_count)
+        assert_equal(coll_tkt1["green"], self.is_green)
+        r = float(round(coll_tkt1["royalty"], 3))
         assert_equal(r, self.royalty)
         if self.royalty > 0:
             assert_equal(tkt1["royalty_address"], self.nonmn3_address1)
         else:
             assert(len(tkt1["royalty_address"]) == 0)
-        assert_equal(tkt1["green"], self.is_green)
         assert_equal(tkt1["signatures"]["principal"][self.creator_pastelid1], self.principal_signatures_dict[self.creator_pastelid1])
         assert_equal(tkt1["signatures"]["mn2"][self.top_mns[1].pastelid], self.top_mns[1].signature)
         assert_equal(tkt1["signatures"]["mn3"][self.top_mns[2].pastelid], self.top_mns[2].signature)
-        result = self.nodes[self.non_mn3].pastelid("verify", ticket.reg_ticket,
+        result = self.nodes[self.non_mn3].pastelid("verify-base64-encoded", ticket.reg_ticket_base64_encoded,
             tkt1["signatures"]["mn1"][self.top_mns[0].pastelid], self.top_mns[0].pastelid)["verification"]
         assert_equal(result, "OK")
 
@@ -1096,25 +1118,28 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         lblNodes = self.nodes[self.non_mn3].tickets("findbylabel", ticket_type_name, label)
         assert_equal(1, len(lblNodes), f"findbylabel {ticket_type_name} {label} was supposed to return only one ticket")
         tkt2 = lblNodes[0]["ticket"]
-        assert_equal(tkt2['type'], "nft-collection-reg")
-        assert_equal(tkt2['nft_collection_ticket'], ticket.reg_ticket)
+        assert_equal(tkt2['type'], "collection-reg")
         assert_equal(tkt2["key"], ticket_key)
         assert_equal(tkt2["label"], label)
         assert_equal(tkt2["creator_height"], ticket.reg_height)
-        assert_equal(tkt2["closing_height"], ticket.reg_height + closing_height_inc)
-        assert_equal(tkt2["nft_max_count"], nft_max_count)
-        assert_equal(tkt2["nft_copy_count"], nft_copy_count)
         assert_equal(tkt2["storage_fee"], self.storage_fee)
-        permitted_users = tkt2["permitted_users"]
-        assert_true(self.creator_pastelid1 in permitted_users, f"User {self.creator_pastelid1} not in permitted users for NFT Collection")
-        assert_true(self.creator_pastelid2 in permitted_users, f"User {self.creator_pastelid2} not in permitted users for NFT Collection")
-        r = float(round(tkt2["royalty"], 3))
+        coll_tkt2 = tkt2['collection_ticket']
+        assert_equal(coll_tkt2['item_type'], item_type.type_name)
+        list_of_pastelids_of_authorized_contributors = coll_tkt2["list_of_pastelids_of_authorized_contributors"]
+        assert_true(self.creator_pastelid1 in list_of_pastelids_of_authorized_contributors,
+                    f"User {self.creator_pastelid1} is not authorized contributor for Collection '{collection_name}'")
+        assert_true(self.creator_pastelid2 in list_of_pastelids_of_authorized_contributors,
+                    f"User {self.creator_pastelid2} is not authorized contributor for Collection '{collection_name}'")
+        assert_equal(coll_tkt2["collection_final_allowed_block_height"], ticket.reg_height + self.in_process_collection_ticket_age)
+        assert_equal(coll_tkt2["max_collection_entries"], max_collection_entries)
+        assert_equal(coll_tkt2["collection_item_copy_count"], collection_item_copy_count)
+        assert_equal(coll_tkt2["green"], self.is_green)
+        r = float(round(coll_tkt2["royalty"], 3))
         assert_equal(r, self.royalty)
         if self.royalty > 0:
             assert_equal(tkt2["royalty_address"], self.nonmn3_address1)
         else:
             assert(len(tkt2["royalty_address"]) == 0)
-        assert_equal(tkt2["green"], self.is_green)
         assert_equal(tkt2["signatures"]["principal"][self.creator_pastelid1],
                      tkt1["signatures"]["principal"][self.creator_pastelid1])
 
@@ -1123,11 +1148,11 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         assert_equal(tkt3["signatures"]["principal"][self.creator_pastelid1],
                      tkt1["signatures"]["principal"][self.creator_pastelid1])
 
-        #   c.d list all NFT collection registration tickets, check Pastel IDs
-        nft_tickets_list = top_mn_node.tickets("list", ticket_type_name)
+        #   c.d list all collection registration tickets, check Pastel IDs
+        collection_tickets_list = top_mn_node.tickets("list", ticket_type_name)
         f1 = False
         f2 = False
-        for t in nft_tickets_list:
+        for t in collection_tickets_list:
             if ticket_key == t["ticket"]["key"]:
                 f1 = True
             if label == t["ticket"]["label"]:
@@ -1135,152 +1160,194 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         assert_true(f1)
         assert_true(f2)
 
-        nft_tickets_by_pid = top_mn_node.tickets("find", ticket_type_name, self.creator_pastelid1)
+        collection_tickets_by_pid = top_mn_node.tickets("find", ticket_type_name, self.creator_pastelid1)
         print(self.top_mns[0].pastelid)
-        print(nft_tickets_by_pid)
+        print(collection_tickets_by_pid)
 
-        print("NFT collection registration tickets tested")
+        print(f"{item_type_description} collection registration tickets tested")
 
     # ===============================================================================================================
-    # NFT collection tests - tested on non_mn3 node
-    def nft_collection_tests(self, label):
-        print("== NFT Collection Tickets test ==")
+    # collection tests - tested on non_mn3 node
+    def collection_tests(self, item_type: CollectionItemType, label: str):
+        collection_item_type_name = item_type.type_description
+        print(f"== {collection_item_type_name} Collection Tickets test ==")
 
-        ticket = self.tickets[TicketType.NFT_COLLECTION]
-        nft_ticket_type_name = TicketType.NFT.type_name
-        nftcoll_ticket_type_name = TicketType.NFT_COLLECTION.type_name
+        collection_ticket = self.tickets[TicketType.COLLECTION]
+        collection_item = item_type.reg_ticket_type
+        reg_ticket_type_name = collection_item.type_name
+        collection_ticket_type_name = TicketType.COLLECTION.type_name
 
         self.generate_and_sync_inc(10, self.mining_node_num)
 
-        # invalid NFT collection txid (txid format)
-        self.create_nft_ticket_v2(self.non_mn3, "invalid_txid")
+        # invalid collection txid (txid format)
+        if item_type == CollectionItemType.NFT:
+            self.create_nft_ticket_v2(self.non_mn3, "invalid_collection_txid")
+        else:
+            self.create_action_ticket(self.non_mn3, ActionType.SENSE, self.creator_pastelid1, "invalid_collection_txid")
         top_mn_node = self.nodes[self.top_mns[0].index]
-        nft_ticket = self.tickets[TicketType.NFT]
-        assert_raises_rpc(rpc.RPC_MISC_ERROR, "Incorrect NFT collection txid",
-            top_mn_node.tickets, "register", nft_ticket_type_name,
-            nft_ticket.reg_ticket, json.dumps(self.signatures_dict), self.top_mns[0].pastelid, self.passphrase, label, str(self.storage_fee))
+        item_ticket = self.tickets[item_type.reg_ticket_type]
+        assert_raises_rpc(rpc.RPC_MISC_ERROR, "Incorrect collection txid",
+            top_mn_node.tickets, "register", reg_ticket_type_name,
+            item_ticket.reg_ticket_base64_encoded, json.dumps(self.signatures_dict), self.top_mns[0].pastelid, self.passphrase, label, str(self.storage_fee))
 
-        # NFT collection txid does not point to existing txid
-        self.create_nft_ticket_v2(self.non_mn3, self.get_random_txid())
+        # collection txid does not point to existing txid
+        if item_type == CollectionItemType.NFT:
+            self.create_nft_ticket_v2(self.non_mn3, self.get_random_txid())
+        else:
+            self.create_action_ticket(self.non_mn3, ActionType.SENSE, self.creator_pastelid1, self.get_random_txid())
         assert_raises_rpc(rpc.RPC_MISC_ERROR, "is not in the blockchain",
-            top_mn_node.tickets, "register", nft_ticket_type_name,
-            nft_ticket.reg_ticket, json.dumps(self.signatures_dict), self.top_mns[0].pastelid, self.passphrase, label, str(self.storage_fee))
+            top_mn_node.tickets, "register", reg_ticket_type_name,
+            item_ticket.reg_ticket_base64_encoded, json.dumps(self.signatures_dict), self.top_mns[0].pastelid, self.passphrase, label, str(self.storage_fee))
 
-        # NFT collection txid does not point to NFT collection reg ticket
-        self.create_nft_ticket_v2(self.non_mn3, self.mn_nodes[0].mnid_reg_txid)
+        # collection txid does not point to collection registration ticket
+        if item_type == CollectionItemType.NFT:
+            self.create_nft_ticket_v2(self.non_mn3, self.mn_nodes[0].mnid_reg_txid)
+        else:
+            self.create_action_ticket(self.non_mn3, ActionType.SENSE, self.creator_pastelid1, self.mn_nodes[0].mnid_reg_txid)
         assert_raises_rpc(rpc.RPC_MISC_ERROR, "has invalid type",
-            top_mn_node.tickets, "register", nft_ticket_type_name,
-            nft_ticket.reg_ticket, json.dumps(self.signatures_dict), self.top_mns[0].pastelid, self.passphrase, label, str(self.storage_fee))
+            top_mn_node.tickets, "register", reg_ticket_type_name,
+            item_ticket.reg_ticket_base64_encoded, json.dumps(self.signatures_dict), self.top_mns[0].pastelid, self.passphrase, label, str(self.storage_fee))
 
+        # adding wrong item to the collection
+        if item_type == CollectionItemType.NFT:
+            self.create_action_ticket(self.non_mn3, ActionType.SENSE, self.creator_pastelid1, collection_ticket.reg_txid)
+            test_wrong_collection_item = ActionType.SENSE.reg_ticket_type.type_name
+            wrong_item_ticket = self.tickets[ActionType.SENSE.reg_ticket_type]
+        else:
+            self.create_nft_ticket_v2(self.non_mn3, collection_ticket.reg_txid)
+            test_wrong_collection_item = TicketType.NFT.type_name
+            wrong_item_ticket = self.tickets[TicketType.NFT]
+        assert_raises_rpc(rpc.RPC_MISC_ERROR, "ticket cannot be accepted",
+            top_mn_node.tickets, "register", test_wrong_collection_item,
+            wrong_item_ticket.reg_ticket_base64_encoded, json.dumps(self.signatures_dict), self.top_mns[0].pastelid, self.passphrase, label, str(self.storage_fee))
+            
         # save creator_pastelid1 
         saved_creator_pastelid1 = self.creator_pastelid1
-        # creator_pastelid3 is not in permitted_users list
+        # creator_pastelid3 is not in list_of_pastelids_of_authorized_contributors list
         self.creator_pastelid1 = self.creator_pastelid3
-        self.create_nft_ticket_v2(self.non_mn3, ticket.reg_txid)
-        assert_raises_rpc(rpc.RPC_MISC_ERROR, f"User with Pastel ID '{self.creator_pastelid3}' is not allowed to add NFTs to the collection",
-            top_mn_node.tickets, "register", nft_ticket_type_name,
-            nft_ticket.reg_ticket, json.dumps(self.signatures_dict), self.top_mns[0].pastelid, self.passphrase, label, str(self.storage_fee))
+        if item_type == CollectionItemType.NFT:
+            self.create_nft_ticket_v2(self.non_mn3, collection_ticket.reg_txid)
+        else:
+            self.create_action_ticket(self.non_mn3, ActionType.SENSE, self.creator_pastelid1, collection_ticket.reg_txid)
+        assert_raises_rpc(rpc.RPC_MISC_ERROR, f"User with Pastel ID '{self.creator_pastelid3}' is not authorized contributor for the collection",
+            top_mn_node.tickets, "register", reg_ticket_type_name,
+            item_ticket.reg_ticket_base64_encoded, json.dumps(self.signatures_dict), self.top_mns[0].pastelid, self.passphrase, label, str(self.storage_fee))
 
-        # add nft-reg ticket #1 successfully (creator_pastelid1 user)
+        # add item reg ticket #1 successfully (creator_pastelid1 user)
         self.creator_pastelid1 = saved_creator_pastelid1
-        self.create_nft_ticket_v2(self.non_mn3, ticket.reg_txid)
-        nft_ticket1_txid = top_mn_node.tickets("register", nft_ticket_type_name,
-            nft_ticket.reg_ticket, json.dumps(self.signatures_dict), self.top_mns[0].pastelid, self.passphrase, label + "_1", str(self.storage_fee))["txid"]
-        print(f'registered NFT ticket #1 [{nft_ticket1_txid}] in NFT collection [{self.nft_collection_name}]')
-        self.inc_ticket_counter(TicketType.NFT)
+        if item_type == CollectionItemType.NFT:
+            self.create_nft_ticket_v2(self.non_mn3, collection_ticket.reg_txid)
+        else:
+            self.create_action_ticket(self.non_mn3, ActionType.SENSE, self.creator_pastelid1, collection_ticket.reg_txid)
+        item_ticket1_txid = top_mn_node.tickets("register", reg_ticket_type_name,
+            item_ticket.reg_ticket_base64_encoded, json.dumps(self.signatures_dict), self.top_mns[0].pastelid, self.passphrase, label + "_1", str(self.storage_fee))["txid"]
+        print(f'registered {collection_item.type_name} ticket #1 [{item_ticket1_txid}] in the collection [{self.collection_name}]')
+        self.inc_ticket_counter(collection_item)
         self.wait_for_ticket_tnx()
 
-        # add nft-reg ticket #2 successfully (creator_pastelid2 user)
+        # add item reg ticket #2 successfully (creator_pastelid2 user)
         self.creator_pastelid1 = self.creator_pastelid2
-        self.create_nft_ticket_v2(self.non_mn3, ticket.reg_txid)
-        nft_ticket2_txid = self.nodes[self.top_mns[0].index].tickets("register", nft_ticket_type_name,
-            nft_ticket.reg_ticket, json.dumps(self.signatures_dict), self.top_mns[0].pastelid, self.passphrase, label + "_2", str(self.storage_fee))["txid"]
-        print(f'registered NFT ticket #2 [{nft_ticket2_txid}] in NFT collection [{self.nft_collection_name}]')
-        self.inc_ticket_counter(TicketType.NFT)
+        if item_type == CollectionItemType.NFT: 
+            self.create_nft_ticket_v2(self.non_mn3, collection_ticket.reg_txid)
+        else:
+            self.create_action_ticket(self.non_mn3, ActionType.SENSE, self.creator_pastelid2, collection_ticket.reg_txid)
+        item_ticket2_txid = self.nodes[self.top_mns[0].index].tickets("register", reg_ticket_type_name,
+            item_ticket.reg_ticket_base64_encoded, json.dumps(self.signatures_dict), self.top_mns[0].pastelid, self.passphrase, label + "_2", str(self.storage_fee))["txid"]
+        print(f'registered {collection_item.type_name} ticket #2 [{item_ticket2_txid}] in the collection [{self.collection_name}]')
+        self.inc_ticket_counter(collection_item)
         self.wait_for_ticket_tnx()
 
-        # cannot register more than 2 nft tickets (will exceed nft_max_count)
-        self.create_nft_ticket_v2(self.non_mn3, ticket.reg_txid)
-        assert_raises_rpc(rpc.RPC_MISC_ERROR, f"Max number of NFTs ({2}) allowed in the collection '{self.nft_collection_name}' has been exceeded",
-            self.nodes[self.top_mns[0].index].tickets, "register", nft_ticket_type_name,
-            nft_ticket.reg_ticket, json.dumps(self.signatures_dict), self.top_mns[0].pastelid, self.passphrase, label + "_3", str(self.storage_fee))
+        # cannot register more than 2 collection item tickets (will exceed max_collection_entries)
+        if item_type == CollectionItemType.NFT: 
+            self.create_nft_ticket_v2(self.non_mn3, collection_ticket.reg_txid)
+        else:
+            self.create_action_ticket(self.non_mn3, ActionType.SENSE, self.creator_pastelid2, collection_ticket.reg_txid)
+        assert_raises_rpc(rpc.RPC_MISC_ERROR, f"Max number of items ({2}) allowed in the collection '{self.collection_name}' has been exceeded",
+            self.nodes[self.top_mns[0].index].tickets, "register", reg_ticket_type_name,
+            item_ticket.reg_ticket_base64_encoded, json.dumps(self.signatures_dict), self.top_mns[0].pastelid, self.passphrase, label + "_3", str(self.storage_fee))
 
-        # test closing height, create nft collection with closing height +10 blocks
-        # register new collection NFT collection #2
-        # existing NFT collection in self.tickets saved in ticket local var
-        new_nftcoll_ticket = TicketData()
-        self.tickets[TicketType.NFT_COLLECTION] = new_nftcoll_ticket
-        self.create_nft_collection_ticket(self.nft_collection_name + " (closing_height)", self.non_mn3, 10, 
+        # test collection final allowed block height, create collection with collection_final_allowed_block_height +10 blocks
+        # register new collection #2
+        # existing  collection in self.tickets saved in ticket local var
+        new_collection_ticket = TicketData()
+        self.tickets[TicketType.COLLECTION] = new_collection_ticket
+        self.create_collection_ticket(item_type, self.collection_name + " (closing_height)", self.non_mn3, 10, 
             2, 10, [], self.royalty, self.is_green)
-        nftcoll_ticket_txid = self.nodes[self.top_mns[0].index].tickets("register", nftcoll_ticket_type_name,
-            new_nftcoll_ticket.reg_ticket, json.dumps(self.signatures_dict), self.top_mns[0].pastelid, self.passphrase,
+        collection_ticket_txid = self.nodes[self.top_mns[0].index].tickets("register", collection_ticket_type_name,
+            new_collection_ticket.reg_ticket_base64_encoded, json.dumps(self.signatures_dict), self.top_mns[0].pastelid, self.passphrase,
             label, str(self.storage_fee))["txid"]
-        assert_true(nftcoll_ticket_txid, "No NFT registration ticket was created")
-        self.inc_ticket_counter(TicketType.NFT_COLLECTION)
+        assert_true(collection_ticket_txid, f"No {collection_item.type_name} registration ticket was created")
+        self.inc_ticket_counter(TicketType.COLLECTION)
         self.wait_for_sync_all(1)
         self.wait_for_sync_all(10)
         
-        # cannot add NFTs to this collection any more
-        self.create_nft_ticket_v2(self.non_mn3, nftcoll_ticket_txid)
-        assert_raises_rpc(rpc.RPC_MISC_ERROR, "No new NFTs are allowed to be added to the NFT Collection",
-            self.nodes[self.top_mns[0].index].tickets, "register", nft_ticket_type_name,
-            nft_ticket.reg_ticket, json.dumps(self.signatures_dict), self.top_mns[0].pastelid, self.passphrase, label + "_4", str(self.storage_fee))
-        # restore data for NFT collection #1
-        self.tickets[TicketType.NFT_COLLECTION] = ticket
+        # cannot add items to this collection any more
+        if item_type == CollectionItemType.NFT: 
+            self.create_nft_ticket_v2(self.non_mn3, collection_ticket_txid)
+        else:
+            self.create_action_ticket(self.non_mn3, ActionType.SENSE, self.creator_pastelid2, collection_ticket.reg_txid)
+        assert_raises_rpc(rpc.RPC_MISC_ERROR, "No new items are allowed to be added to the finalized collection",
+            self.nodes[self.top_mns[0].index].tickets, "register", reg_ticket_type_name,
+            item_ticket.reg_ticket_base64_encoded, json.dumps(self.signatures_dict), self.top_mns[0].pastelid, self.passphrase, label + "_4", str(self.storage_fee))
+        # restore data for collection #1
+        self.tickets[TicketType.COLLECTION] = collection_ticket
 
         # restore creator_pastelid1 
         self.creator_pastelid1 = saved_creator_pastelid1
-        print("== NFT Collection Tickets tested ==")
+        print(f"== {collection_item_type_name} collection tickets tested ==")
 
 
     # ===============================================================================================================
-    def nft_collection_activate_ticket_tests(self, skip_low_coins_tests):
-        """NFT collection activation ticket tests
+    def collection_activate_ticket_tests(self, item_type: CollectionItemType, skip_low_coins_tests: bool = False):
+        """collection activation ticket tests
 
         Args:
+            item_type (CollectionItemType): collection item type (NFT or Sense Action)
             skip_low_coins_tests (bool): True to skip low coins tests
         """
-        print("== NFT collection activation Tickets test ==")
+        
+        collection_item_type_name = item_type.type_description
+        print(f"== {collection_item_type_name} collection activation ticket tests ==")
 
         cmd = "activate"
-        cmd_param = TicketType.NFT_COLLECTION.type_name
-        nftcoll_ticket_type_name = TicketType.NFT_COLLECTION_ACTIVATE.type_name
-        ticket = self.tickets[TicketType.NFT_COLLECTION]       
-        nftcoll_act_ticket_price = self.tickets[TicketType.NFT_COLLECTION_ACTIVATE].ticket_price
+        cmd_param = TicketType.COLLECTION.type_name
+        collection_ticket_type_name = TicketType.COLLECTION_ACTIVATE.type_name
+        collection_ticket = self.tickets[TicketType.COLLECTION]       
+        collection_activate_ticket_price = self.tickets[TicketType.COLLECTION_ACTIVATE].ticket_price
 
         assert_shows_help(self.nodes[self.non_mn3].tickets, cmd, cmd_param)
         
-        # d. NFT collection activation ticket
-        #   d.a register NFT collection activation ticket (self.nftcollreg_ticket1_txid; self.storage_fee; ticket.reg_height)
+        # d. collection activation ticket
+        #   d.a register collection activation ticket
         #       d.a.1 fail if wrong Pastel ID
         assert_raises_rpc(rpc.RPC_MISC_ERROR, self.ERR_READ_PASTELID_FILE,
-            self.nodes[self.non_mn3].tickets, cmd, cmd_param, ticket.reg_txid,
-            str(ticket.reg_height), str(self.storage_fee), self.top_mns[1].pastelid, self.passphrase)
+            self.nodes[self.non_mn3].tickets, cmd, cmd_param, collection_ticket.reg_txid,
+            str(collection_ticket.reg_height), str(self.storage_fee), self.top_mns[1].pastelid, self.passphrase)
 
         #       d.a.2 fail if wrong passphrase
         assert_raises_rpc(rpc.RPC_MISC_ERROR, self.ERR_INVALID_PASS,
-            self.nodes[self.non_mn3].tickets, cmd, cmd_param, ticket.reg_txid,
-            str(ticket.reg_height), str(self.storage_fee), ticket.reg_pastelid, "wrong")
+            self.nodes[self.non_mn3].tickets, cmd, cmd_param, collection_ticket.reg_txid,
+            str(collection_ticket.reg_height), str(self.storage_fee), collection_ticket.reg_pastelid, "wrong")
 
-        #       d.a.7 fail if not enough coins to pay 90% of registration price (from NFT Collection Reg ticket) (90) + tnx fee (act ticket price)
+        #       d.a.7 fail if not enough coins to pay 90% of registration price (from Collection Reg ticket) (90) + tnx fee (act ticket price)
         self.make_zero_balance(self.non_mn3)
         if not skip_low_coins_tests:
             assert_raises_rpc(rpc.RPC_MISC_ERROR, "Not enough coins to cover price [100 PSL]",
-                self.nodes[self.non_mn3].tickets, cmd, cmd_param, ticket.reg_txid,
-                str(ticket.reg_height), str(self.storage_fee), ticket.reg_pastelid, self.passphrase)
+                self.nodes[self.non_mn3].tickets, cmd, cmd_param, collection_ticket.reg_txid,
+                str(collection_ticket.reg_height), str(self.storage_fee), collection_ticket.reg_pastelid, self.passphrase)
 
         self.nodes[self.mining_node_num].sendtoaddress(self.nonmn3_address1, str(self.collateral), "", "", False)
         self.wait_for_sync_all10()
 
-        #       d.a.3 fail if txid points to invalid ticket (not a NFT Collection Reg ticket)
+        #       d.a.3 fail if txid points to invalid ticket (not a Collection Reg ticket)
         assert_raises_rpc(rpc.RPC_MISC_ERROR, "is not valid ticket type",
             self.nodes[self.non_mn3].tickets, cmd, cmd_param,
-            self.mn_nodes[0].mnid_reg_txid, str(ticket.reg_height), str(self.storage_fee), ticket.reg_pastelid, self.passphrase)
+            self.mn_nodes[0].mnid_reg_txid, str(collection_ticket.reg_height), str(self.storage_fee), collection_ticket.reg_pastelid, self.passphrase)
 
-        #       d.a.3 fail if there is no NFT Collection Reg Ticket with this txid
+        #       d.a.3 fail if there is no Collection Reg Ticket with this txid
         assert_raises_rpc(rpc.RPC_MISC_ERROR, "is not in the blockchain",
             self.nodes[self.non_mn3].tickets, cmd, cmd_param,
-            self.get_random_txid(), str(ticket.reg_height), str(self.storage_fee), ticket.reg_pastelid, self.passphrase)
+            self.get_random_txid(), str(collection_ticket.reg_height), str(self.storage_fee), collection_ticket.reg_pastelid, self.passphrase)
 
         # not enough confirmations
         # print(self.nodes[self.non_mn3].getblockcount())
@@ -1293,21 +1360,21 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         #       d.a.4 fail if Caller's Pastel ID in the activation ticket
         #       is not matching Caller's Pastel ID in the registration ticket
         assert_raises_rpc(rpc.RPC_MISC_ERROR, "is not matching the Creator's Pastel ID",
-            self.nodes[self.non_mn3].tickets, cmd, cmd_param, ticket.reg_txid,
-            str(ticket.reg_height), str(self.storage_fee), self.nonmn3_pastelid1, self.passphrase)
+            self.nodes[self.non_mn3].tickets, cmd, cmd_param, collection_ticket.reg_txid,
+            str(collection_ticket.reg_height), str(self.storage_fee), self.nonmn3_pastelid1, self.passphrase)
 
         #       d.a.5 fail if wrong creator ticket height
         assert_raises_rpc(rpc.RPC_MISC_ERROR, "is not matching the CreatorHeight",
-            self.nodes[self.non_mn3].tickets, cmd, cmd_param, ticket.reg_txid,
-            "55", str(self.storage_fee), ticket.reg_pastelid, self.passphrase)
+            self.nodes[self.non_mn3].tickets, cmd, cmd_param, collection_ticket.reg_txid,
+            "55", str(self.storage_fee), collection_ticket.reg_pastelid, self.passphrase)
 
         #       d.a.6 fail if wrong storage fee
         assert_raises_rpc(rpc.RPC_MISC_ERROR, "is not matching the storage fee",
-            self.nodes[self.non_mn3].tickets, cmd, cmd_param, ticket.reg_txid,
-            str(ticket.reg_height), "55", ticket.reg_pastelid, self.passphrase)
+            self.nodes[self.non_mn3].tickets, cmd, cmd_param, collection_ticket.reg_txid,
+            str(collection_ticket.reg_height), "55", collection_ticket.reg_pastelid, self.passphrase)
 
-        # have to get historical top mns for NFT collection reg ticket
-        self.update_mn_indexes(self.non_mn3, ticket.reg_height)
+        # have to get historical top mns for collection reg ticket
+        self.update_mn_indexes(self.non_mn3, collection_ticket.reg_height)
 
         #       d.a.7 register without errors
         #
@@ -1321,12 +1388,12 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         mn2_coins_before = self.nodes[self.hot_node_num].getreceivedbyaddress(mn2_collateral_address)
 
         coins_before = self.nodes[self.non_mn3].getbalance()
-        print(f"Coins before '{nftcoll_ticket_type_name}' registration: {coins_before}")
+        print(f"Coins before '{collection_ticket_type_name}' registration: {coins_before}")
 
-        ticket.act_txid = self.nodes[self.non_mn3].tickets(cmd, cmd_param,
-            ticket.reg_txid, ticket.reg_height,
-            str(self.storage_fee), ticket.reg_pastelid, self.passphrase)["txid"]
-        assert_true(ticket.act_txid, "NFT collection was not activated")
+        collection_ticket.act_txid = self.nodes[self.non_mn3].tickets(cmd, cmd_param,
+            collection_ticket.reg_txid, collection_ticket.reg_height,
+            str(self.storage_fee), collection_ticket.reg_pastelid, self.passphrase)["txid"]
+        assert_true(collection_ticket.act_txid, "collection was not activated")
         self.wait_for_ticket_tnx()
 
         #       d.a.9 check correct amount of change and correct amount spent and correct amount of fee paid
@@ -1334,8 +1401,8 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         other_mn_fee = self.storage_fee90percent/5
 
         coins_after = self.nodes[self.non_mn3].getbalance()
-        print(f"Coins after '{nftcoll_ticket_type_name}' registration: {coins_after}")
-        assert_equal(coins_after, coins_before-Decimal(self.storage_fee90percent)-Decimal(nftcoll_act_ticket_price))  # no fee yet, but ticket cost act ticket price
+        print(f"Coins after '{collection_ticket_type_name}' registration: {coins_after}")
+        assert_equal(coins_after, coins_before-Decimal(self.storage_fee90percent)-Decimal(collection_activate_ticket_price))  # no fee yet, but ticket cost act ticket price
 
         # MN's collateral addresses belong to hot_node - non_mn2
         mn0_coins_after = self.nodes[self.hot_node_num].getreceivedbyaddress(mn0_collateral_address)
@@ -1353,20 +1420,20 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         assert_equal(mn2_coins_after-mn2_coins_before, other_mn_fee)
 
         #       d.a.10 fail if already registered
-        assert_raises_rpc(rpc.RPC_MISC_ERROR, f"The Activation ticket for the Collection Registration ticket with txid [{ticket.reg_txid}] already exists",
-            self.nodes[self.non_mn3].tickets, cmd, cmd_param, ticket.reg_txid, str(ticket.reg_height), 
-                str(self.storage_fee), ticket.reg_pastelid, self.passphrase)
+        assert_raises_rpc(rpc.RPC_MISC_ERROR, f"The Activation ticket for the Collection Registration ticket with txid [{collection_ticket.reg_txid}] already exists",
+            self.nodes[self.non_mn3].tickets, cmd, cmd_param, collection_ticket.reg_txid, str(collection_ticket.reg_height), 
+                str(self.storage_fee), collection_ticket.reg_pastelid, self.passphrase)
 
         #       d.a.11 from another node - get ticket transaction and check
         #           - there are 3 outputs to MN1, MN2 and MN3 with correct amounts
         #               (MN1: 60%; MN2, MN3: 20% each, of registration price)
         #           - amounts are totaling 10PSL
-        nftcoll_act_ticket1_hash = self.nodes[0].getrawtransaction(ticket.act_txid)
-        nftcoll_act_ticket1_tx = self.nodes[0].decoderawtransaction(nftcoll_act_ticket1_hash)
+        collection_activate_ticket1_hash = self.nodes[0].getrawtransaction(collection_ticket.act_txid)
+        collection_activate_ticket1_tx = self.nodes[0].decoderawtransaction(collection_activate_ticket1_hash)
         amount = 0
         fee_amount = 0
 
-        for v in nftcoll_act_ticket1_tx["vout"]:
+        for v in collection_activate_ticket1_tx["vout"]:
             if v["scriptPubKey"]["type"] == "multisig":
                 fee_amount += v["value"]
             if v["scriptPubKey"]["type"] == "pubkeyhash":
@@ -1377,7 +1444,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
                     assert_equal(v["value"], other_mn_fee)
                     amount += v["value"]
         assert_equal(amount, self.storage_fee90percent)
-        assert_equal(fee_amount, nftcoll_act_ticket_price)
+        assert_equal(fee_amount, collection_activate_ticket_price)
 
         #   d.b find activation ticket
         #       d.b.1 by creators Pastel ID (this is MultiValue key)
@@ -1388,36 +1455,36 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         #        creator_height from registration ticket (this is MultiValue key)
 
         #       d.b.2 by Registration txid - reg_txid from registration ticket, compare to ticket from d.b.2
-        nftcoll_act_ticket1 = self.nodes[self.non_mn1].tickets("find", nftcoll_ticket_type_name, ticket.reg_txid)
-        tkt1 = nftcoll_act_ticket1["ticket"]
-        assert_equal(tkt1['type'], nftcoll_ticket_type_name)
-        assert_equal(tkt1['pastelID'], ticket.reg_pastelid)
-        assert_equal(tkt1['reg_txid'], ticket.reg_txid)
-        assert_equal(tkt1['creator_height'], ticket.reg_height)
+        collection_activate_ticket1 = self.nodes[self.non_mn1].tickets("find", collection_ticket_type_name, collection_ticket.reg_txid)
+        tkt1 = collection_activate_ticket1["ticket"]
+        assert_equal(tkt1['type'], collection_ticket_type_name)
+        assert_equal(tkt1['pastelID'], collection_ticket.reg_pastelid)
+        assert_equal(tkt1['reg_txid'], collection_ticket.reg_txid)
+        assert_equal(tkt1['creator_height'], collection_ticket.reg_height)
         assert_equal(tkt1['storage_fee'], self.storage_fee)
-        assert_equal(nftcoll_act_ticket1['txid'], ticket.act_txid)
+        assert_equal(collection_activate_ticket1['txid'], collection_ticket.act_txid)
 
         #   d.c get the same ticket by txid from d.a.8 and compare with ticket from d.b.2
-        nftcoll_act_ticket2 = self.nodes[self.non_mn1].tickets("get", ticket.act_txid)
-        tkt2 = nftcoll_act_ticket2["ticket"]
+        collection_activate_ticket2 = self.nodes[self.non_mn1].tickets("get", collection_ticket.act_txid)
+        tkt2 = collection_activate_ticket2["ticket"]
         assert_equal(tkt2["signature"], tkt1["signature"])
 
         #   d.d list all Action activation tickets, check Pastel IDs
-        nftcoll_act_tickets_list = self.nodes[0].tickets("list", nftcoll_ticket_type_name)
+        collection_activate_tickets_list = self.nodes[0].tickets("list", collection_ticket_type_name)
         f1 = False
-        for t in nftcoll_act_tickets_list:
-            if ticket.reg_txid == t["ticket"]["reg_txid"]:
+        for t in collection_activate_tickets_list:
+            if collection_ticket.reg_txid == t["ticket"]["reg_txid"]:
                 f1 = True
         assert_true(f1)
 
-        nftcoll_tickets_by_pastelid = self.nodes[self.top_mns[0].index].tickets("find", nftcoll_ticket_type_name, ticket.reg_pastelid)
+        collection_tickets_by_pastelid = self.nodes[self.top_mns[0].index].tickets("find", collection_ticket_type_name, collection_ticket.reg_pastelid)
         print(self.top_mns[0].pastelid)
-        print(nftcoll_tickets_by_pastelid)
-        nftcoll_tickets_by_height = self.nodes[self.top_mns[0].index].tickets("find", nftcoll_ticket_type_name, str(ticket.reg_height))
-        print(ticket.reg_height)
-        print(nftcoll_tickets_by_height)
+        print(collection_tickets_by_pastelid)
+        collection_tickets_by_height = self.nodes[self.top_mns[0].index].tickets("find", collection_ticket_type_name, str(collection_ticket.reg_height))
+        print(collection_ticket.reg_height)
+        print(collection_tickets_by_height)
 
-        print("NFT collection activation tickets tested")
+        print(f"{collection_item_type_name} collection activation tickets tested")
 
 
     # ===============================================================================================================
@@ -1442,14 +1509,14 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         self.create_nft_ticket_v1(self.non_mn3, self.total_copies, 0.25, self.is_green, True)
         assert_raises_rpc(rpc.RPC_MISC_ERROR, "Royalty can't be 25 percent, Min is 0 and Max is 20 percent",
             top_mn_node.tickets, "register", ticket_type_name,
-            ticket.reg_ticket, json.dumps(self.signatures_dict), self.top_mns[0].pastelid, self.passphrase, label, str(self.storage_fee))
+            ticket.reg_ticket_base64_encoded, json.dumps(self.signatures_dict), self.top_mns[0].pastelid, self.passphrase, label, str(self.storage_fee))
 
         # check royalty negative value -5
         self.create_nft_ticket_v1(self.non_mn3, self.total_copies, -5, self.is_green, True)
         # uint16_t -> 2 ^ 16 -> 65536 - 5 = 65531
         assert_raises_rpc(rpc.RPC_MISC_ERROR, "Royalty can't be -500 percent, Min is 0 and Max is 20 percent",
             top_mn_node.tickets, "register", ticket_type_name,
-            ticket.reg_ticket, json.dumps(self.signatures_dict), self.top_mns[0].pastelid, self.passphrase, label, str(self.storage_fee))
+            ticket.reg_ticket_base64_encoded, json.dumps(self.signatures_dict), self.top_mns[0].pastelid, self.passphrase, label, str(self.storage_fee))
 
         # c.a.6 register without errors, if enough coins for tnx fee
         self.create_nft_ticket_v1(self.non_mn3, self.total_copies, self.royalty, self.is_green)
@@ -1457,7 +1524,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         coins_before = top_mn_node.getbalance()
         print(f"Coins before '{ticket_type_name}' registration: {coins_before}")
 
-        result = top_mn_node.tickets("register", ticket_type_name, ticket.reg_ticket, 
+        result = top_mn_node.tickets("register", ticket_type_name, ticket.reg_ticket_base64_encoded, 
             json.dumps(self.signatures_dict), self.top_mns[0].pastelid, self.passphrase, label, str(self.storage_fee))
         ticket.reg_txid = result["txid"]
         ticket.reg_node_id = self.top_mns[0].index
@@ -1480,7 +1547,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         #       c.b.2 by hash (primary key)
         tkt1 = self.nodes[self.non_mn3].tickets("find", ticket_type_name, ticket1_key)["ticket"]
         assert_equal(tkt1['type'], "nft-reg")
-        assert_equal(tkt1['nft_ticket'], ticket.reg_ticket)
+        assert_equal(tkt1['nft_ticket'], ticket.reg_ticket_base64_encoded)
         assert_equal(tkt1["key"], ticket1_key)
         assert_equal(tkt1["label"], label)
         assert_equal(tkt1["creator_height"], ticket.reg_height)
@@ -1497,7 +1564,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         assert_equal(tkt1["signatures"]["principal"][self.creator_pastelid1], self.principal_signatures_dict[self.creator_pastelid1])
         assert_equal(tkt1["signatures"]["mn2"][self.top_mns[1].pastelid], self.top_mns[1].signature)
         assert_equal(tkt1["signatures"]["mn3"][self.top_mns[2].pastelid], self.top_mns[2].signature)
-        result = self.nodes[self.non_mn3].pastelid("verify", ticket.reg_ticket, 
+        result = self.nodes[self.non_mn3].pastelid("verify", ticket.reg_ticket_base64_encoded, 
             tkt1["signatures"]["mn1"][self.top_mns[0].pastelid], self.top_mns[0].pastelid)["verification"]
         assert_equal(result, "OK")
 
@@ -1506,7 +1573,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         assert_equal(1, len(lblNodes), f"findbylabel {ticket_type_name} {label} was supposed to return only one ticket")
         tkt2 = lblNodes[0]["ticket"]
         assert_equal(tkt2['type'], "nft-reg")
-        assert_equal(tkt2['nft_ticket'], ticket.reg_ticket)
+        assert_equal(tkt2['nft_ticket'], ticket.reg_ticket_base64_encoded)
         assert_equal(tkt2["key"], ticket1_key)
         assert_equal(tkt2["label"], label)
         assert_equal(tkt2["creator_height"], ticket.reg_height)
@@ -1556,52 +1623,50 @@ class MasterNodeTicketsTest(MasterNodeCommon):
             non_registered_personal_pastelid1 (str): not registered personal Pastel ID
             non_registered_mn_pastelid1 (str): not registered MasterNode Pastel ID (mnid)
         """
-
         top_mn_node = self.nodes[self.top_mns[0].index]
 
-        #   c.a register nft registration ticket
         #       c.a.1 fail if not MN
         ticket = self.tickets[item_type]
         principal_pastelid = ticket.reg_pastelid
         ticket_type_name = item_type.type_name
         assert_raises_rpc(rpc.RPC_INTERNAL_ERROR, "This is not an active masternode", 
             self.nodes[self.non_mn1].tickets, "register", ticket_type_name, 
-            ticket.reg_ticket, json.dumps(self.signatures_dict), self.nonmn1_pastelid2, self.passphrase, label, str(self.storage_fee))
+            ticket.reg_ticket_base64_encoded, json.dumps(self.signatures_dict), self.nonmn1_pastelid2, self.passphrase, label, str(self.storage_fee))
 
         #       c.a.2 fail if not active MN
         assert_raises_rpc(rpc.RPC_INTERNAL_ERROR, "This is not an active masternode",
             self.nodes[self.non_active_mn].tickets, "register", ticket_type_name, 
-            ticket.reg_ticket, json.dumps(self.signatures_dict), self.non_active_mn_pastelid1, self.passphrase, label, str(self.storage_fee))
+            ticket.reg_ticket_base64_encoded, json.dumps(self.signatures_dict), self.non_active_mn_pastelid1, self.passphrase, label, str(self.storage_fee))
 
         #       c.a.3 fail if active MN, but wrong Pastel ID
         assert_raises_rpc(rpc.RPC_MISC_ERROR, f"Pastel ID [{self.nonmn1_pastelid2}] is not stored in this local node",
             top_mn_node.tickets, "register", ticket_type_name,
-            ticket.reg_ticket, json.dumps(self.signatures_dict), self.nonmn1_pastelid2, self.passphrase,
+            ticket.reg_ticket_base64_encoded, json.dumps(self.signatures_dict), self.nonmn1_pastelid2, self.passphrase,
             label, str(self.storage_fee))
 
         #       c.a.4 fail if active MN, but wrong passphrase
         assert_raises_rpc(rpc.RPC_MISC_ERROR, self.ERR_INVALID_PASS,
             top_mn_node.tickets, "register", ticket_type_name,
-            ticket.reg_ticket, json.dumps(self.signatures_dict), self.top_mns[0].pastelid, "wrong", label, str(self.storage_fee))
+            ticket.reg_ticket_base64_encoded, json.dumps(self.signatures_dict), self.top_mns[0].pastelid, "wrong", label, str(self.storage_fee))
 
         #       c.a.5 fail if principal's signature is not matching
         self.signatures_dict["principal"][principal_pastelid] = self.top_mns[1].signature
         assert_raises_rpc(rpc.RPC_MISC_ERROR, "Principal signature is invalid", 
             top_mn_node.tickets, "register", ticket_type_name,
-            ticket.reg_ticket, json.dumps(self.signatures_dict), self.top_mns[0].pastelid, self.passphrase, label, str(self.storage_fee))
+            ticket.reg_ticket_base64_encoded, json.dumps(self.signatures_dict), self.top_mns[0].pastelid, self.passphrase, label, str(self.storage_fee))
         self.signatures_dict["principal"][principal_pastelid] = self.principal_signatures_dict[principal_pastelid]
 
         #       c.a.6 fail if MN2 and MN3 signatures are not matching
         self.signatures_dict["mn2"][self.top_mns[1].pastelid] = self.top_mns[2].signature
         assert_raises_rpc(rpc.RPC_MISC_ERROR, "MN2 signature is invalid",
             top_mn_node.tickets, "register", ticket_type_name,
-            ticket.reg_ticket, json.dumps(self.signatures_dict), self.top_mns[0].pastelid, self.passphrase, label, str(self.storage_fee))
+            ticket.reg_ticket_base64_encoded, json.dumps(self.signatures_dict), self.top_mns[0].pastelid, self.passphrase, label, str(self.storage_fee))
         self.signatures_dict["mn2"][self.top_mns[1].pastelid] = self.top_mns[1].signature
 
         self.signatures_dict["mn3"][self.top_mns[2].pastelid] = self.top_mns[1].signature
         assert_raises_rpc(rpc.RPC_MISC_ERROR, "MN3 signature is invalid", 
             top_mn_node.tickets, "register", ticket_type_name,
-            ticket.reg_ticket, json.dumps(self.signatures_dict), self.top_mns[0].pastelid, self.passphrase, label, str(self.storage_fee))
+            ticket.reg_ticket_base64_encoded, json.dumps(self.signatures_dict), self.top_mns[0].pastelid, self.passphrase, label, str(self.storage_fee))
         self.signatures_dict["mn3"][self.top_mns[2].pastelid] = self.top_mns[2].signature
 
         #       c.a.7 fail if principal's Pastel ID is not registered
@@ -1609,7 +1674,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         del self.signatures_dict["principal"][principal_pastelid]
         assert_raises_rpc(rpc.RPC_MISC_ERROR, "Principal Pastel ID Registration ticket not found",
             top_mn_node.tickets, "register", ticket_type_name,
-            ticket.reg_ticket, json.dumps(self.signatures_dict), self.top_mns[0].pastelid, self.passphrase, label, str(self.storage_fee))
+            ticket.reg_ticket_base64_encoded, json.dumps(self.signatures_dict), self.top_mns[0].pastelid, self.passphrase, label, str(self.storage_fee))
         self.signatures_dict["principal"][principal_pastelid] = self.principal_signatures_dict[principal_pastelid]
         del self.signatures_dict["principal"][non_registered_personal_pastelid1]
 
@@ -1618,7 +1683,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         del self.signatures_dict["principal"][principal_pastelid]
         assert_raises_rpc(rpc.RPC_MISC_ERROR, "Principal Pastel ID is NOT personal Pastel ID",
             top_mn_node.tickets, "register", ticket_type_name,
-            ticket.reg_ticket, json.dumps(self.signatures_dict), self.top_mns[0].pastelid, self.passphrase, label, str(self.storage_fee))
+            ticket.reg_ticket_base64_encoded, json.dumps(self.signatures_dict), self.top_mns[0].pastelid, self.passphrase, label, str(self.storage_fee))
         self.signatures_dict["principal"][principal_pastelid] = self.principal_signatures_dict[principal_pastelid]
         del self.signatures_dict["principal"][self.top_mns[1].pastelid]
 
@@ -1627,7 +1692,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         del self.signatures_dict["mn2"][self.top_mns[1].pastelid]
         assert_raises_rpc(rpc.RPC_MISC_ERROR, "MN2 Pastel ID Registration ticket not found",
             top_mn_node.tickets, "register", ticket_type_name,
-            ticket.reg_ticket, json.dumps(self.signatures_dict), self.top_mns[0].pastelid, self.passphrase, label, str(self.storage_fee))
+            ticket.reg_ticket_base64_encoded, json.dumps(self.signatures_dict), self.top_mns[0].pastelid, self.passphrase, label, str(self.storage_fee))
         self.signatures_dict["mn2"][self.top_mns[1].pastelid] = self.top_mns[1].signature
         del self.signatures_dict["mn2"][non_registered_mn_pastelid1]
 
@@ -1636,19 +1701,19 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         del self.signatures_dict["mn2"][self.top_mns[1].pastelid]
         assert_raises_rpc(rpc.RPC_MISC_ERROR, "MN2 Pastel ID is NOT masternode Pastel ID",
             top_mn_node.tickets, "register", ticket_type_name,
-            ticket.reg_ticket, json.dumps(self.signatures_dict), self.top_mns[0].pastelid, self.passphrase, label, str(self.storage_fee))
+            ticket.reg_ticket_base64_encoded, json.dumps(self.signatures_dict), self.top_mns[0].pastelid, self.passphrase, label, str(self.storage_fee))
         self.signatures_dict["mn2"][self.top_mns[1].pastelid] = self.top_mns[1].signature
         del self.signatures_dict["mn2"][self.creator_pastelid1]
 
         #       c.a.8 fail if MN1, MN2 and MN3 are not from top 10 list at the ticket's blocknum
         assert_raises_rpc(rpc.RPC_MISC_ERROR, "was NOT in the top masternodes list for block", 
             top_mn_node.tickets, "register", ticket_type_name,
-            ticket.reg_ticket, json.dumps(self.not_top_mns_signatures_dict), self.top_mns[0].pastelid, self.passphrase, label, str(self.storage_fee))
+            ticket.reg_ticket_base64_encoded, json.dumps(self.not_top_mns_signatures_dict), self.top_mns[0].pastelid, self.passphrase, label, str(self.storage_fee))
 
         #       c.a.9 fail if MN1, MN2 and MN3 are the same
         assert_raises_rpc(rpc.RPC_MISC_ERROR, "MNs Pastel IDs can not be the same",
             top_mn_node.tickets, "register", ticket_type_name,
-            ticket.reg_ticket, json.dumps(self.same_mns_signatures_dict), self.top_mns[0].pastelid, self.passphrase, label, str(self.storage_fee))
+            ticket.reg_ticket_base64_encoded, json.dumps(self.same_mns_signatures_dict), self.top_mns[0].pastelid, self.passphrase, label, str(self.storage_fee))
 
 
     def make_zero_balance(self, nodeNum: int):
@@ -2048,7 +2113,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
 
         # register item
         ticket.reg_txid = self.nodes[self.top_mns[0].index].tickets("register", item_type.type_name,
-            ticket.reg_ticket, json.dumps(self.signatures_dict), self.top_mns[0].pastelid, self.passphrase,
+            ticket.reg_ticket_base64_encoded, json.dumps(self.signatures_dict), self.top_mns[0].pastelid, self.passphrase,
             self.get_random_txid(), str(self.storage_fee))["txid"]
         ticket.reg_node_id = self.top_mns[0].index
         ticket.pastelid_node_id = self.non_mn3
@@ -2797,7 +2862,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         nft_ticket = self.tickets[TicketType.NFT]
         self.create_nft_ticket_v1(self.non_mn3, 5, self.royalty, self.is_green)
         nft_ticket2_txid = self.nodes[self.top_mns[0].index].tickets("register", "nft",
-            nft_ticket.reg_ticket, json.dumps(self.signatures_dict), self.top_mns[0].pastelid, self.passphrase,
+            nft_ticket.reg_ticket_base64_encoded, json.dumps(self.signatures_dict), self.top_mns[0].pastelid, self.passphrase,
             "nft-label3_"+str(loop_number), str(self.storage_fee))["txid"]
         assert_true(nft_ticket2_txid, "No NFT registration ticket was created")
         self.inc_ticket_counter(TicketType.NFT)
@@ -2813,7 +2878,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
 
         self.create_nft_ticket_v1(self.non_mn3, 1, self.royalty, self.is_green, False)
         nft_ticket3_txid = self.nodes[self.top_mns[0].index].tickets("register", "nft",
-            nft_ticket.reg_ticket, json.dumps(self.signatures_dict), self.top_mns[0].pastelid, self.passphrase,
+            nft_ticket.reg_ticket_base64_encoded, json.dumps(self.signatures_dict), self.top_mns[0].pastelid, self.passphrase,
             "nft-label4_"+str(loop_number), str(self.storage_fee))["txid"]
         assert_true(nft_ticket3_txid, "No NFT registration ticket was created")
         self.inc_ticket_counter(TicketType.NFT)
@@ -3097,14 +3162,14 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         #   a.1 from non-MN without errors
         ticket = self.tickets[TicketType.NFT]
         non_mn1_total_storage_fee1 = self.nodes[self.non_mn4].tickets("tools", "gettotalstoragefee",
-            ticket.reg_ticket, json.dumps(self.signatures_dict), self.nonmn4_pastelid1, self.passphrase,
+            ticket.reg_ticket_base64_encoded, json.dumps(self.signatures_dict), self.nonmn4_pastelid1, self.passphrase,
             "key6", str(self.storage_fee), 5)["totalstoragefee"]
         #   a.2 from MN without errors
         mn0_total_storage_fee1 = self.nodes[self.top_mns[0].index].tickets("tools", "gettotalstoragefee",
-            ticket.reg_ticket, json.dumps(self.signatures_dict),  self.top_mns[0].pastelid, self.passphrase,
+            ticket.reg_ticket_base64_encoded, json.dumps(self.signatures_dict),  self.top_mns[0].pastelid, self.passphrase,
             "key6", str(self.storage_fee), 5)["totalstoragefee"]
         mn0_total_storage_fee2 = self.nodes[self.top_mns[0].index].tickets("tools", "gettotalstoragefee",
-            ticket.reg_ticket, json.dumps(self.signatures_dict), self.top_mns[0].pastelid, self.passphrase,
+            ticket.reg_ticket_base64_encoded, json.dumps(self.signatures_dict), self.top_mns[0].pastelid, self.passphrase,
             "key6", str(self.storage_fee), 4)["totalstoragefee"]
 
         #   a.3 compare a.1 and a.2

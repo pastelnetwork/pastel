@@ -23,6 +23,10 @@ using ActionActivateTickets_t = std::vector<CActionActivateTicket>;
         "storage_fee": int64, // ticket storage fee in PSL, should match the storage fee from the Action Registration Ticket
         "signature": bytes    // base64-encoded signature of the ticket created using the Action Caller's Pastel ID
     }
+
+    key   #1: Action Registration ticket txid
+    mvkey #1: Action Caller Pastel ID
+    mvkey #2: called at height (converted to string)
 }
 */
 

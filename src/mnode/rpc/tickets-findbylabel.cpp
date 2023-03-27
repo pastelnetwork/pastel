@@ -1,12 +1,10 @@
-// Copyright (c) 2022 The Pastel Core developers
+// Copyright (c) 2022-2023 The Pastel Core developers
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
-
 #include <rpc/rpc_parser.h>
 #include <mnode/tickets/tickets-all.h>
 #include <mnode/rpc/tickets-findbylabel.h>
 #include <rpc/server.h>
-
 using namespace std;
 
 template <class _TicketType>
@@ -24,7 +22,7 @@ void ListTicketsByLabel(const string& label, UniValue &vOut)
 
 UniValue tickets_findbylabel(const UniValue& params)
 {
-    RPC_CMD_PARSER2(FIND, params, nft, nft__collection, action);
+    RPC_CMD_PARSER2(FIND, params, nft, collection, action);
 
     if (!FIND.IsCmdSupported())
         throw JSONRPCError(RPC_INVALID_PARAMETER,
@@ -32,9 +30,9 @@ R"(tickets findbylabel <ticket-type> "label"
 Set of commands to find different types of Pastel tickets by label.
 
 Available ticket types:
-  nft      - Find NFT registration tickets by label.
-  nft-collection - Find NFT collection registration tickets by label.
-  action   - Find action registration tickets by label.
+  nft        - Find NFT registration tickets by label.
+  action     - Find action registration tickets by label.
+  collection - Find collection registration tickets by label.
 
 Arguments:
 1. "label"   (string, required) The label to use for ticket search. See types above...
@@ -55,8 +53,8 @@ As json rpc
             ListTicketsByLabel<CNFTRegTicket>(label, tktArray);
             break;
 
-        case RPC_CMD_FIND::nft__collection:
-            ListTicketsByLabel<CNFTCollectionRegTicket>(label, tktArray);
+        case RPC_CMD_FIND::collection:
+            ListTicketsByLabel<CollectionRegTicket>(label, tktArray);
             break;
 
         case RPC_CMD_FIND::action: 

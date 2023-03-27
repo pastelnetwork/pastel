@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2022 The Pastel Core developers
+// Copyright (c) 2018-2023 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <cinttypes>
@@ -7,6 +7,7 @@
 #include <mnode/mnode-controller.h>
 #include <mnode/tickets/ticket-types.h>
 
+using namespace std;
 /*
 Wrappers for BlockChain specific logic
 */
@@ -49,7 +50,7 @@ int GetUTXOConfirmations(const COutPoint& outpoint)
 }
 
 #ifdef ENABLE_WALLET
-bool GetMasternodeOutpointAndKeys(CWallet* pWalletMain, string &error, COutPoint& outpointRet, CPubKey& pubKeyRet, CKey& keyRet, std::string strTxHash, std::string strOutputIndex)
+bool GetMasternodeOutpointAndKeys(CWallet* pWalletMain, std::string &error, COutPoint& outpointRet, CPubKey& pubKeyRet, CKey& keyRet, std::string strTxHash, std::string strOutputIndex)
 {
     error.clear();
     // wait for reindex and/or import to finish

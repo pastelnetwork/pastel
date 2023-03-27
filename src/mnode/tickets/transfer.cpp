@@ -430,7 +430,7 @@ CAmount CTransferTicket::GetExtraOutputs(vector<CTxOut>& outputs) const
 
             if (pNFTRegTicket->getRoyalty() > 0)
             {
-                sRoyaltyAddress = pNFTRegTicket->GetRoyaltyPayeeAddress();
+                sRoyaltyAddress = pNFTRegTicket->GetRoyaltyPayeeAddress(pNFTRegTicket->GetTxId());
                 if (sRoyaltyAddress.empty())
                     throw runtime_error(strprintf(
                         "The Creator Pastel ID [%s] from %s ticket with this txid [%s] is not in the blockchain or is invalid",

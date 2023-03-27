@@ -1,14 +1,16 @@
-// Copyright (c) 2018-2022 The Pastel Core developers
+// Copyright (c) 2018-2023 The Pastel Core developers
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 
 #include <rpc/rpc_parser.h>
+#include <rpc/server.h>
 #include <mnode/tickets/tickets-all.h>
 #include <mnode/rpc/tickets-find.h>
-#include <rpc/server.h>
 
-template <class T, class T2 = const std::string&, typename Lambda = std::function<std::vector<T>(T2)>>
-static UniValue getTickets(const std::string& key, T2 key2 = "", Lambda otherFunc = nullptr)
+using namespace std;
+
+template <class T, class T2 = const string&, typename Lambda = function<vector<T>(T2)>>
+static UniValue getTickets(const string& key, T2 key2 = "", Lambda otherFunc = nullptr)
 {
     T ticket;
     if (T::FindTicketInDb(key, ticket))
@@ -36,7 +38,7 @@ static UniValue getTickets(const std::string& key, T2 key2 = "", Lambda otherFun
 
 UniValue tickets_find(const UniValue& params)
 {
-    RPC_CMD_PARSER2(FIND, params, id, nft, nft__collection, nft__collection__act, act, 
+    RPC_CMD_PARSER2(FIND, params, id, nft, collection, collection__act, act, 
         sell, offer, buy, accept, trade, transfer,
         down, royalty, username, ethereumaddress, action, action__act);
 
@@ -60,10 +62,10 @@ Available types:
              The "key" is ...
   transfer - Find transfer ticket.
              The "key" is ...
-  nft-collection - Find new NFT collection registration ticket.
+  collection - Find new collection registration ticket.
              The "key" is 'Key1' or 'Key2' OR 'creator's Pastel ID'
-  nft-collection-act - Find new NFT collection activation ticket.
-             The "key" is 'NFT Collection Reg ticket txid' OR 'creator's Pastel ID' OR 'creator's height (block height at what original NFT collection registration request was created)'
+  collection-act - Find new collection activation ticket.
+             The "key" is 'Collection Reg ticket txid' OR 'creator's Pastel ID' OR 'creator's height (block height at what original collection registration request was created)'
   down     - Find take down ticket.
              The "key" is ...
   royalty  - Find NFT royalty ticket.
@@ -86,7 +88,7 @@ Example: Find id ticket
 As json rpc
 )" + HelpExampleRpc("tickets", R"("find", "id", "jXYqZNPj21RVnwxnEJ654wEdzi7GZTZ5LAdiotBmPrF7pDMkpX1JegDMQZX55WZLkvy9fxNpZcbBJuE8QYUqBF")"));
 
-    std::string key;
+    string key;
     if (params.size() > 2)
         key = params[2].get_str();
     switch (FIND.cmd()) {
@@ -118,11 +120,11 @@ As json rpc
     case RPC_CMD_FIND::transfer:
         return getTickets<CTransferTicket>(key);
 
-    case RPC_CMD_FIND::nft__collection:
-        return getTickets<CNFTCollectionRegTicket>(key);
+    case RPC_CMD_FIND::collection:
+        return getTickets<CollectionRegTicket>(key);
 
-    case RPC_CMD_FIND::nft__collection__act:
-        return getTickets<CNFTCollectionActivateTicket, int>(key, atoi(key), CNFTCollectionActivateTicket::FindAllTicketByCreatorHeight);
+    case RPC_CMD_FIND::collection__act:
+        return getTickets<CollectionActivateTicket, int>(key, atoi(key), CollectionActivateTicket::FindAllTicketByCreatorHeight);
 
     case RPC_CMD_FIND::royalty:
         return getTickets<CNFTRoyaltyTicket>(key);
@@ -144,7 +146,8 @@ As json rpc
 
     case RPC_CMD_FIND::username: {
         CChangeUsernameTicket ticket;
-        if (CChangeUsernameTicket::FindTicketInDb(key, ticket)) {
+        if (CChangeUsernameTicket::FindTicketInDb(key, ticket))
+        {
             UniValue obj(UniValue::VOBJ);
             obj.read(ticket.ToJSON());
             return obj;

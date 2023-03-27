@@ -68,7 +68,14 @@ namespace ed_crypto {
         }
         return out;
     }
-	
+
+    /**
+     * Encode buffer into hex string.
+     * 
+     * \param in - buffer to encode
+     * \param len - buffer length
+     * \return hex string 
+     */
     inline std::string Hex_Encode(const unsigned char *in, const size_t len)
     {
         std::ostringstream hex_str_str;

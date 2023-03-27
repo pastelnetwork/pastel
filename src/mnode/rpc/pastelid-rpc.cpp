@@ -1,7 +1,8 @@
-// Copyright (c) 2018-2022 The Pastel Core developers
+// Copyright (c) 2018-2023 The Pastel Core developers
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 
+#include <utilstrencodings.h>
 #include <pastelid/pastel_key.h>
 #include <rpc/rpc_parser.h>
 #include <rpc/rpc_consts.h>
@@ -82,18 +83,37 @@ UniValue pastelid_list(const UniValue& params)
     return resultArray;
 }
 
-UniValue pastelid_sign(const UniValue& params)
+UniValue pastelid_sign(const UniValue& params, bool bBase64Encoded)
 {
     if (params.size() < 4)
-        throw JSONRPCError(RPC_INVALID_PARAMETER,
+    {
+        string sHelpText;
+        if (bBase64Encoded)
+            sHelpText =
+R"(pastelid sign-base64-encoded "base64-encoded-text" "PastelID" "passphrase" ("algorithm")
+Sign "base64-encoded-text" with the internally stored private key associated with the Pastel ID (algorithm: ed448 [default] or legroast).
+"base64-encoded-text" is decoded before signing.)";
+        else
+            sHelpText =
 R"(pastelid sign "text" "PastelID" "passphrase" ("algorithm")
-Sign "text" with the internally stored private key associated with the Pastel ID (algorithm: ed448 [default] or legroast).)");
+Sign "text" with the internally stored private key associated with the Pastel ID (algorithm: ed448 [default] or legroast).)";
+            throw JSONRPCError(RPC_INVALID_PARAMETER, sHelpText);
+    }
 
     SecureString strKeyPass(params[3].get_str());
     if (strKeyPass.empty())
-        throw runtime_error(
+    {
+        string sErrorText;
+        if (bBase64Encoded)
+            sErrorText =
+R"(pastelid sign-base64-encoded "base64-encoded-text" "PastelID" <"passphrase"> ("algorithm").
+passphrase for the private key cannot be empty!)";
+        else
+            sErrorText =
 R"(pastelid sign "text" "PastelID" <"passphrase"> ("algorithm")
-passphrase for the private key cannot be empty!)");
+passphrase for the private key cannot be empty!)";
+        throw runtime_error(sErrorText);
+    }
 
     string sAlgorithm;
     if (params.size() >= 5)
@@ -104,7 +124,17 @@ passphrase for the private key cannot be empty!)");
 
     UniValue resultObj(UniValue::VOBJ);
 
-    string sSignature = CPastelID::Sign(params[1].get_str(), params[2].get_str(), move(strKeyPass), alg, true);
+    string sSignature;
+    if (bBase64Encoded)
+    {
+        bool bInvalidBase64Encoding = false;
+		string sDecodedText = DecodeBase64(params[1].get_str(), &bInvalidBase64Encoding);
+		if (bInvalidBase64Encoding)
+            throw JSONRPCError(RPC_INVALID_PARAMETER, "Cannot decode \"base64-encoded-text\" parameter");
+		sSignature = CPastelID::Sign(sDecodedText, params[2].get_str(), move(strKeyPass), alg, true);
+	}
+    else
+        sSignature = CPastelID::Sign(params[1].get_str(), params[2].get_str(), move(strKeyPass), alg, true);
     resultObj.pushKV("signature", move(sSignature));
 
     return resultObj;
@@ -159,12 +189,22 @@ passphrase for the private key cannot be empty!)");
     return resultObj;
 }
 
-UniValue pastelid_verify(const UniValue& params)
+UniValue pastelid_verify(const UniValue& params, bool bBase64Encoded)
 {
     if (params.size() < 4)
-        throw JSONRPCError(RPC_INVALID_PARAMETER,
+    {
+        string sHelpText;
+        if (bBase64Encoded)
+            sHelpText =
+R"(pastelid verify-base64-encoded "base64-encoded-text" "signature" "PastelID" ("algorithm")
+Verify "base64-encoded-text"'s "signature" with with the private key associated with the Pastel ID (algorithm: ed448 or legroast).
+Text is decoded before signature verification.)";
+        else
+            sHelpText =
 R"(pastelid verify "text" "signature" "PastelID" ("algorithm")
-Verify "text"'s "signature" with with the private key associated with the Pastel ID (algorithm: ed448 or legroast).)");
+Verify "text"'s "signature" with with the private key associated with the Pastel ID (algorithm: ed448 or legroast).)";
+        throw JSONRPCError(RPC_INVALID_PARAMETER, sHelpText);
+    }
 
     string sAlgorithm;
     if (params.size() >= 5)
@@ -175,7 +215,17 @@ Verify "text"'s "signature" with with the private key associated with the Pastel
 
     UniValue resultObj(UniValue::VOBJ);
 
-    const bool bRes = CPastelID::Verify(params[1].get_str(), params[2].get_str(), params[3].get_str(), alg, true);
+    bool bRes = false;
+    if (bBase64Encoded)
+    {
+        bool bInvalidBase64Encoding = false;
+		string sDecodedText = DecodeBase64(params[1].get_str(), &bInvalidBase64Encoding);
+        if (bInvalidBase64Encoding)
+            throw JSONRPCError(RPC_INVALID_PARAMETER, "Cannot decode \"base64-encoded-text\" parameter");
+		bRes = CPastelID::Verify(sDecodedText, params[2].get_str(), params[3].get_str(), alg, true);
+	}
+    else
+		bRes = CPastelID::Verify(params[1].get_str(), params[2].get_str(), params[3].get_str(), alg, true);
     resultObj.pushKV("verification", bRes ? "OK" : "Failed");
 
     return resultObj;
@@ -262,7 +312,10 @@ strprintf(R"(pastelid passwd "PastelID" "old_passphrase" "new_passphrase"
  */
 UniValue pastelid(const UniValue& params, bool fHelp)
 {
-    RPC_CMD_PARSER(PASTELID, params, newkey, importkey, list, sign, sign__file, sign__by__key, verify, verify__file, passwd);
+    RPC_CMD_PARSER(PASTELID, params, newkey, importkey, list,
+        sign, sign__base64__encoded, sign__file, sign__by__key,
+        verify, verify__base64__encoded, verify__file,
+        passwd);
 
     if (fHelp || !PASTELID.IsCmdSupported())
         throw runtime_error(
@@ -282,9 +335,11 @@ Available commands:
                                                                  NOTE: without "passphrase" key cannot be validated and if key is bad (not EdDSA448) call to "sign" will fail
   list                                                         - List all internally stored Pastel IDs and associated keys.
   sign "text" "PastelID" "passphrase" ("algorithm")            - Sign "text" with the internally stored private key associated with the Pastel ID (algorithm: ed448 or legroast).
+  sign-base64-encoded "text" "PastelID" "passphrase" ("algorithm") - Sign base64-encoded "text" with the internally stored private key associated with the Pastel ID (algorithm: ed448 or legroast).
   sign-file file-path "PastelID" "passphrase" ("algorithm")    - Sign file-path with the internally stored private key associated with the Pastel ID (algorithm: ed448 or legroast).
   sign-by-key "text" "key" "passphrase"                        - Sign "text" with the private "key" (EdDSA448) as PKCS8 encrypted string in PEM format.
   verify "text" "signature" "PastelID" ("algorithm")           - Verify "text"'s "signature" with the private key associated with the Pastel ID (algorithm: ed448 or legroast).
+  verify-base64-encoded "text" "signature" "PastelID" ("algorithm") - Verify base64-encoded "text"'s "signature" with the private key associated with the Pastel ID (algorithm: ed448 or legroast).
   verify-file file-path "signature" "PastelID" ("algorithm")   - Verify file-path's "signature" with the private key associated with the Pastel ID (algorithm: ed448 or legroast).
   passwd "PastelID" "old_passphrase" "new_passphrase"          - Change passphrase used to encrypt the secure container associated with the Pastel ID.
 )");
@@ -307,7 +362,12 @@ Available commands:
 
     // sign text with the internally stored private key associated with the Pastel ID (ed448 or legroast).
     case RPC_CMD_PASTELID::sign:
-        result = pastelid_sign(params);
+        result = pastelid_sign(params, false);
+        break;
+
+    // sign text with the internally stored private key associated with the Pastel ID (ed448 or legroast).
+    case RPC_CMD_PASTELID::sign__base64__encoded:
+        result = pastelid_sign(params, true);
         break;
 
     case RPC_CMD_PASTELID::sign__file:
@@ -320,8 +380,14 @@ Available commands:
 
     // verify "text"'s "signature" with the public key associated with the Pastel ID (algorithm: ed448 or legroast)
     case RPC_CMD_PASTELID::verify:
-        result = pastelid_verify(params);
+        result = pastelid_verify(params, false);
         break;
+
+    // verify base64-encoded "text"'s "signature" with the public key associated with the Pastel ID (algorithm: ed448 or legroast)
+    case RPC_CMD_PASTELID::verify__base64__encoded:
+        result = pastelid_verify(params, true);
+        break;
+
 
     case RPC_CMD_PASTELID::verify__file:
         result = pastelid_verify_file(params);

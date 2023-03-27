@@ -16,6 +16,41 @@
 using json = nlohmann::json;
 using namespace std;
 
+// tuple:
+//    - action ticket property enum
+//    - property required (true) or optional (false)
+using ActionTicketProp = tuple<ACTION_TKT_PROP, bool>;
+// action_ticket info
+using ActionTicketInfo = struct
+{
+    // Action ticket version
+    uint32_t nVersion;
+    // action ticket version that this action ticket is based on,
+    // 0 if it is not based on any other action ticket version
+    uint32_t nBasedOnVersion; 
+    // map of supported properties (property name)->(property tuple)
+    unordered_map<string, ActionTicketProp> propMap;
+};
+
+static const std::array<ActionTicketInfo, 2> ACTION_TICKET_INFO =
+{{
+    { 1, 0,
+       {
+           {"action_ticket_version",        make_tuple(ACTION_TKT_PROP::version, true)},
+           {"action_type",                  make_tuple(ACTION_TKT_PROP::action_type, true)},
+           {"caller",                       make_tuple(ACTION_TKT_PROP::caller, true)},
+           {"blocknum",                     make_tuple(ACTION_TKT_PROP::blocknum, true)},
+           {"block_hash",                   make_tuple(ACTION_TKT_PROP::block_hash, true)},
+           {ACTION_TICKET_APP_OBJ, make_tuple(ACTION_TKT_PROP::app_ticket, true)},
+       }
+    },
+    { 2, 1,
+       {
+           {"collection_txid",              make_tuple(ACTION_TKT_PROP::collection_txid, false)},
+       }
+    }
+}};
+
 /**
  * Get Action Ticket type name.
  * 
@@ -107,45 +142,121 @@ void CActionRegTicket::parse_action_ticket()
     try
     {
         const json jsonTicketObj = get_action_ticket_json();
-        if (jsonTicketObj.size() != 6)
-            throw runtime_error(strprintf("Action ticket json is incorrect (expected 6 items, but found: %zu)", jsonTicketObj.size()));
+        // check action_ticket version
+        const int nTicketVersion = jsonTicketObj.at("action_ticket_version");
+        if (nTicketVersion < 1 || nTicketVersion > static_cast<int>(ACTION_TICKET_INFO.size()))
+            throw runtime_error(strprintf("'%s' ticket json version '%d' cannot be greater than '%zu'",
+                                          GetTicketDescription(), m_nActionTicketVersion, ACTION_TICKET_INFO.size()));
+        m_nActionTicketVersion = static_cast<uint16_t>(nTicketVersion);
 
-        if (jsonTicketObj["action_ticket_version"] != 1)
-            throw runtime_error(strprintf("Only accept version %hi of '%s' ticket json", GetTicketDescription()));
+        const auto& tktInfo = ACTION_TICKET_INFO[m_nActionTicketVersion - 1];
+        const unordered_map<string, ActionTicketProp>* pBasePropMap = nullptr;
+        if (tktInfo.nBasedOnVersion > 0 && tktInfo.nBasedOnVersion < tktInfo.nVersion)
+            pBasePropMap = &ACTION_TICKET_INFO[tktInfo.nBasedOnVersion - 1].propMap;
 
-        m_sCallerPastelId = jsonTicketObj["caller"];
-        string sActionType = jsonTicketObj["action_type"];
-        if (!SetActionType(sActionType))
-            throw runtime_error(strprintf("Action type [%s] is not supported", sActionType));
-        m_nCalledAtHeight = jsonTicketObj["blocknum"];
+        // validate all action_ticket properties and get values
+        const auto& propMap = tktInfo.propMap;
+        for (const auto& [sPropName, value] : jsonTicketObj.items())
+        {
+            ACTION_TKT_PROP prop = ACTION_TKT_PROP::unknown;
+            const auto itProp = propMap.find(sPropName);
+            if (itProp == propMap.cend())
+            {
+                if (pBasePropMap)
+                {
+                    const auto itBaseProp = pBasePropMap->find(sPropName);
+                    if (itBaseProp != pBasePropMap->end())
+                        prop = get<0>(itBaseProp->second);
+                }
+                if (prop == ACTION_TKT_PROP::unknown)
+                    throw runtime_error(strprintf(
+                        "Found unsupported property '%s' in '%s' ticket json v%hu",
+                        sPropName, GetTicketDescription(), m_nActionTicketVersion));
+            } else
+                prop = get<0>(itProp->second);
+            m_props.insert(prop);
+            // process properties
+            switch (prop)
+            {
+                case ACTION_TKT_PROP::caller:
+                    value.get_to(m_sCreatorPastelID);
+                    break;
 
-    } catch (const json::exception& ex) {
-        throw runtime_error(strprintf("Failed to parse Action ticket json. %s", SAFE_SZ(ex.what())));
+                case ACTION_TKT_PROP::action_type: {
+                    string sActionType;
+                    value.get_to(sActionType);
+                    if (!setActionType(sActionType))
+                        throw runtime_error(strprintf("Action type [%s] is not supported", sActionType));
+                } break;
+
+                case ACTION_TKT_PROP::blocknum:
+                    value.get_to(m_nCalledAtHeight);
+                    break;
+
+                case ACTION_TKT_PROP::block_hash:
+                    value.get_to(m_sTopBlockHash);
+                    break;
+
+                case ACTION_TKT_PROP::collection_txid:
+                    value.get_to(m_sCollectionTxid);
+                    break;
+            }  // switch
+        } // for
+
+        // check for missing required properties
+        string sMissingProps;
+        for (const auto& [sPropName, propInfo] : propMap)
+        {
+            const auto& [prop, bRequired] = propInfo;
+            if (bRequired && !m_props.count(prop))
+                    str_append_field(sMissingProps, sPropName.c_str(), ",");
+        }
+        if (pBasePropMap)
+        {
+            for (const auto& [sPropName, propInfo] : *pBasePropMap)
+            {
+                if (propMap.count(sPropName) > 0)
+                    continue;
+                const auto& [prop, bRequired] = propInfo;
+                if (bRequired && !m_props.count(prop))
+                    str_append_field(sMissingProps, sPropName.c_str(), ",");
+            }
+        }
+        if (!sMissingProps.empty())
+            throw runtime_error(strprintf(
+                "Missing required properties '%s' in '%s' ticket json v%hu",
+                sMissingProps, GetTicketDescription(), m_nActionTicketVersion));
+
+
+    } catch (const json::exception& ex)
+    {
+        throw runtime_error(strprintf(
+            "Failed to parse '%s' ticket json. %s",
+            GetTicketDescription(), SAFE_SZ(ex.what())));
     }
 }
 
 // Clear action registration ticket.
 void CActionRegTicket::Clear() noexcept
 {
-    CPastelTicket::Clear();
+    CollectionItem::Clear();
+    m_nActionTicketVersion = 0;
     m_sActionTicket.clear();
-    SetActionType("");
-    m_sCallerPastelId.clear();
+    setActionType("");
     m_nCalledAtHeight = 0;
-    CTicketSigning::clear_signatures();
-    m_keyOne.clear();
-    m_label.clear();
+    m_sTopBlockHash.clear();
+    clear_signatures();
+    m_props.clear();
     m_storageFee = 0;
 }
 
 /**
  * Set action type.
  * 
- * 
  * \param sActionType - sense or cascade
  * \return true if action type was set succesfully (known action type)
  */
-bool CActionRegTicket::SetActionType(const string& sActionType)
+bool CActionRegTicket::setActionType(const string& sActionType) noexcept
 {
     m_ActionType = ACTION_TICKET_TYPE::UNKNOWN;
     m_sActionType = lowercase(sActionType);
@@ -154,6 +265,19 @@ bool CActionRegTicket::SetActionType(const string& sActionType)
     else if (m_sActionType == ACTION_TICKET_TYPE_CASCADE)
         m_ActionType = ACTION_TICKET_TYPE::CASCADE;
     return (m_ActionType != ACTION_TICKET_TYPE::UNKNOWN);
+}
+
+uint32_t CActionRegTicket::CountItemsInCollection(const uint32_t currentChainHeight) const
+{
+    uint32_t nCollectionItemCount = 0;
+    masterNodeCtrl.masternodeTickets.ProcessTicketsByMVKey<CActionRegTicket>(m_sCollectionTxid,
+                                                                            [&](const CActionRegTicket& regTicket) -> bool
+                                                                            {
+                                                                                if ((regTicket.GetBlock() <= currentChainHeight))
+                                                                                    ++nCollectionItemCount;
+                                                                                return true;
+                                                                            });
+    return nCollectionItemCount;
 }
 
 /**
@@ -207,15 +331,7 @@ string CActionRegTicket::ToJSON(const bool bDecodeProperties) const noexcept
 }
 
 /**
-* Generate unique random key #1.
-*/
-void CActionRegTicket::GenerateKeyOne()
-{
-    m_keyOne = generateRandomBase32Str(RANDOM_KEY_BASE_LENGTH);
-}
-
-/**
- * Validate Pastel ticket.
+ * Validate Action Registration ticket.
  * 
  * \param bPreReg - if true: called from ticket pre-registration
  * \param nCallDepth - function call depth
@@ -261,6 +377,14 @@ ticket_validation_t CActionRegTicket::IsValid(const bool bPreReg, const uint32_t
                 m_keyOne, KeyTwo(), 
                 bPreReg ? "" : strprintf("this ticket block=%u txid=%s; ", m_nBlock, m_txid),
                 ticket.GetBlock(), ticket.m_txid);
+            break;
+        }
+
+        // validate referenced collection (for v2 only)
+        ticket_validation_t collTv = IsValidCollection(bPreReg);
+        if (collTv.IsNotValid())
+        {
+            tv = move(collTv);
             break;
         }
 

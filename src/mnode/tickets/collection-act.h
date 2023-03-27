@@ -5,30 +5,30 @@
 #include <mnode/tickets/ticket-mn-fees.h>
 
 // forward ticket class declaration
-class CNFTCollectionActivateTicket;
+class CollectionActivateTicket;
 
 // ticket vector
-using NFTCollectionActivateTickets_t = std::vector<CNFTCollectionActivateTicket>;
+using CollectionActivateTickets_t = std::vector<CollectionActivateTicket>;
 
-// NFT Collection Activation Ticket ////////////////////////////////////////////////////////////////////////////////////////////////
+// Collection Activation Ticket ////////////////////////////////////////////////////////////////////////////////////////////////
 /*
 "ticket": {
-    "type": "nft-collection-act", // NFT Collection Activation ticket type
+    "type": "collection-act",     // collection activation ticket type
     "version": int,               // ticket version (1)
-    "pastelID": string,           // Pastel ID of the NFT Collection's creator
-    "reg_txid": string,           // transaction id (txid) of the NFT Collection Registration ticket
+    "pastelID": string,           // Pastel ID of the Collection's creator
+    "reg_txid": string,           // transaction id (txid) of the Collection Registration ticket
     "creator_height": uint,       // block height at which the ticket was created
-                                  // is used to check if the MN that created NFT Collection registration ticket 
+                                  // is used to check if the MN that created Collection registration ticket 
                                   // was indeed top MN when creator created the ticket
-    "storage_fee": int,           // should match the registration fee from NFT Collection Reg Ticket
+    "storage_fee": int,           // should match the registration fee from Collection Reg Ticket
     "signature": bytes            // base64-encoded signature of the ticket created using the Creator's Pastel ID
 }
 
-key   #1: NFT Collection Registration ticket txid
+key   #1: Collection Registration ticket txid
 mvkey #1: Pastel ID
 mvkey #2: creator height (converted to string)
 */
-class CNFTCollectionActivateTicket : public CPastelTicketMNFee
+class CollectionActivateTicket : public CPastelTicketMNFee
 {
 public:
     // MN fees
@@ -36,18 +36,18 @@ public:
     static constexpr uint8_t PRINCIPAL_MN_FEE_SHARE = 60; // in percents
     static constexpr uint8_t OTHER_MN_FEE_SHARE = 20;     // in percents
 
-    CNFTCollectionActivateTicket() = default;
+    CollectionActivateTicket() = default;
 
-    explicit CNFTCollectionActivateTicket(std::string &&sPastelID)  
+    explicit CollectionActivateTicket(std::string &&sPastelID)  
     {
         setPastelID(std::move(sPastelID));
     }
 
-    TicketID ID() const noexcept override { return TicketID::NFTCollectionAct; }
-    static TicketID GetID() { return TicketID::NFTCollectionAct; }
+    TicketID ID() const noexcept override { return TicketID::CollectionAct; }
+    static TicketID GetID() { return TicketID::CollectionAct; }
     constexpr auto GetTicketDescription() const
     {
-        return TICKET_INFO[to_integral_type<TicketID>(TicketID::NFTCollectionAct)].szDescription;
+        return TICKET_INFO[to_integral_type<TicketID>(TicketID::CollectionAct)].szDescription;
     }
 
     void Clear() noexcept override
@@ -113,16 +113,16 @@ public:
 
     CAmount GetExtraOutputs(std::vector<CTxOut>& outputs) const override;
 
-    static CNFTCollectionActivateTicket Create(std::string &&regTicketTxId, int _creatorHeight, int _storageFee, std::string &&sPastelID, SecureString&& strKeyPass);
-    static bool FindTicketInDb(const std::string& key, CNFTCollectionActivateTicket& ticket);
+    static CollectionActivateTicket Create(std::string &&regTicketTxId, int _creatorHeight, int _storageFee, std::string &&sPastelID, SecureString&& strKeyPass);
+    static bool FindTicketInDb(const std::string& key, CollectionActivateTicket& ticket);
 
-    static NFTCollectionActivateTickets_t FindAllTicketByPastelID(const std::string& pastelID);
-    static NFTCollectionActivateTickets_t FindAllTicketByCreatorHeight(const unsigned int nCreatorHeight);
-    static bool CheckTicketExistByNFTCollectionTicketID(const std::string& regTicketTxId);
+    static CollectionActivateTickets_t FindAllTicketByPastelID(const std::string& pastelID);
+    static CollectionActivateTickets_t FindAllTicketByCreatorHeight(const unsigned int nCreatorHeight);
+    static bool CheckTicketExistByCollectionTicketID(const std::string& regTicketTxId);
 
 protected:
-    std::string m_sPastelID;     // Pastel ID of the NFT Collection's creator
-    std::string m_regTicketTxId; // transaction id (txid) of the NFT Collection Registration ticket
+    std::string m_sPastelID;     // Pastel ID of the Collection's creator
+    std::string m_regTicketTxId; // transaction id (txid) of the Collection Registration ticket
     v_uint8 m_signature;         // base64-encoded signature of the ticket created using the Creator's Pastel ID
     int m_creatorHeight{0};      // block height at which the ticket was created
     int m_storageFee{0};         // storage fee in PSL

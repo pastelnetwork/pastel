@@ -1,4 +1,4 @@
-// Copyright (c) 2022 The Pastel developers
+// Copyright (c) 2022-2023 The Pastel developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <gtest/gtest.h>
@@ -7,11 +7,10 @@
 #include <mnode/tickets/nft-reg.h>
 #include <mnode/mnode-controller.h>
 #include <pastel_gtest_main.h>
+#include <test_mnode/test_data.h>
 
 using namespace std;
 using namespace testing;
-
-constexpr auto TEST_GREEN_ADDRESS = "tPj5BfCrLfLpuviSJrD3B1yyWp3XkgtFjb6";
 
 class PTestNFTRegTicket_parsetkt : 
 	public CNFTRegTicket,
@@ -57,13 +56,6 @@ TEST_P(PTestNFTRegTicket_parsetkt, parse_nft_ticket)
 	if (!bExpectedResult)
 		EXPECT_NE(error.find(sExpectedError), string::npos);
 }
-
-constexpr auto TEST_CREATOR_ID = "jXYW94ge4vXUSTMyT3o86H7Pp2PAmd2UUgkUZSUTVRB16GNRNYwNgqHZqFC6zWwixghjZuVBeYrCdNXWvpGhTW";
-constexpr uint32_t TEST_BLOCK_NUM = 123;
-constexpr auto TEST_BLOCK_HASH = "03135e4e147a737b4bbd9928156280aab25eefbd2358a0f928487b635f3d329b";
-constexpr auto TEST_COLLECTION_TXID = "0101010101010101010101010101010101010101010101010101010101010101";
-constexpr uint32_t TEST_TOTAL_COPIES = 35;
-constexpr float TEST_ROYALTY_FEE = 0.25;
 
 INSTANTIATE_TEST_SUITE_P(test_nft_reg, PTestNFTRegTicket_parsetkt, Values(
 	make_tuple( // valid v1 nft_ticket (invalid royalty fee)
@@ -126,7 +118,7 @@ INSTANTIATE_TEST_SUITE_P(test_nft_reg, PTestNFTRegTicket_parsetkt, Values(
 				"author": "%s",
 				"blocknum": %u,
 				"block_hash": "%s",
-				"nft_collection_txid": "%s",
+				"collection_txid": "%s",
 				"app_ticket": ""
 		   })", TEST_CREATOR_ID, TEST_BLOCK_NUM, TEST_BLOCK_HASH, TEST_COLLECTION_TXID), true, "", 
 					[](const PTestNFTRegTicket_parsetkt &p)
@@ -135,7 +127,7 @@ INSTANTIATE_TEST_SUITE_P(test_nft_reg, PTestNFTRegTicket_parsetkt, Values(
 						EXPECT_STREQ(p.getCreatorPastelID_param().c_str(), TEST_CREATOR_ID);
 						EXPECT_EQ(p.getCreatorHeight(), TEST_BLOCK_NUM);
 						EXPECT_STREQ(p.getTopBlockHash().c_str(), TEST_BLOCK_HASH);
-						EXPECT_STREQ(p.getNFTCollectionTxId().c_str(), TEST_COLLECTION_TXID);
+						EXPECT_STREQ(p.getCollectionTxId().c_str(), TEST_COLLECTION_TXID);
 						EXPECT_EQ(p.getTotalCopies(), 0u);
 						EXPECT_EQ(p.getRoyalty(), 0.0f);
 						EXPECT_FALSE(p.hasGreenFee());
@@ -165,7 +157,7 @@ TEST_F(TestNFTRegTicket, RetrieveCollectionTicket)
 	string error;
 
 	// test invalid collection txid
-	m_sNFTCollectionTxid = "123";
+	m_sCollectionTxid = "123";
 	EXPECT_EQ(RetrieveCollectionTicket(error, bInvalidTxId), nullptr);
 	EXPECT_TRUE(bInvalidTxId);
 	EXPECT_TRUE(!error.empty());
@@ -173,7 +165,7 @@ TEST_F(TestNFTRegTicket, RetrieveCollectionTicket)
 	// valid collection txid
 	error.clear();
 	bInvalidTxId = false;
-	m_sNFTCollectionTxid = TEST_COLLECTION_TXID;
+	m_sCollectionTxid = TEST_COLLECTION_TXID;
 	EXPECT_EQ(RetrieveCollectionTicket(error, bInvalidTxId), nullptr);
 	EXPECT_FALSE(bInvalidTxId);
 	EXPECT_FALSE(error.empty());

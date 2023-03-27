@@ -1,4 +1,4 @@
-// Copyright (c) 2022 The Pastel Core developers
+// Copyright (c) 2022-2023 The Pastel Core developers
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 
@@ -10,30 +10,19 @@
 
 using namespace std;
 
-void CTicketSignedWithExtraFees::Clear() noexcept
-{
-    CPastelTicket::Clear();
-    clear_signatures();
-    m_keyOne.clear();
-    m_label.clear();
-    m_storageFee = 0;
-    m_nCreatorHeight = 0;
-    m_nRoyalty = 0.0f;
-    m_sGreenAddress.clear();
-}
-
 /**
 * Get Pastel ID to pay royalty fee.
 * 
+* \param txid - ticket transaction id (txid)
 * \return Pastel ID
 */
-string CTicketSignedWithExtraFees::GetRoyaltyPayeePastelID() const
+string CTicketSignedWithExtraFees::GetRoyaltyPayeePastelID(const string &txid) const
 {
     if (!m_nRoyalty)
         return {};
 
     // get royalty tickets by txid 
-    const auto vTickets = CNFTRoyaltyTicket::FindAllTicketByNFTTxID(m_txid);
+    const auto vTickets = CNFTRoyaltyTicket::FindAllTicketByNFTTxID(txid);
     // find the ticket with max height
     const auto it = max_element(vTickets.cbegin(), vTickets.cend(),
         [&](const auto& ticketL, const auto& ticketR) -> bool
@@ -45,11 +34,12 @@ string CTicketSignedWithExtraFees::GetRoyaltyPayeePastelID() const
 /**
 * Get royalty payee address.
 * 
+* \param txid - ticket transaction id (txid)
 * \return royalty payee address if royalty fee is defined or empty string
 */
-string CTicketSignedWithExtraFees::GetRoyaltyPayeeAddress() const
+string CTicketSignedWithExtraFees::GetRoyaltyPayeeAddress(const string &txid) const
 {
-    const string pastelID = GetRoyaltyPayeePastelID();
+    const string pastelID = GetRoyaltyPayeePastelID(txid);
     if (!pastelID.empty())
     {
         CPastelIDRegTicket ticket;
@@ -101,10 +91,11 @@ bool CTicketSignedWithExtraFees::ValidateFees(string& error) const noexcept
     return bRet;
 }
 
-/**
- * Generate unique random key #1.
- */
-void CTicketSignedWithExtraFees::GenerateKeyOne()
+void CTicketSignedWithExtraFees::clear_extra_fees() noexcept
 {
-    m_keyOne = generateRandomBase32Str(RANDOM_KEY_BASE_LENGTH);
+    clear_signatures();
+    m_storageFee = 0;
+    m_nCreatorHeight = 0;
+    m_nRoyalty = 0.0f;
+    m_sGreenAddress.clear();
 }

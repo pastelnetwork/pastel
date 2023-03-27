@@ -289,13 +289,13 @@
     <ClCompile Include="..\..\..\src\orphan-tx.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\src\mnode\tickets\nft-collection-reg.cpp">
+    <ClCompile Include="..\..\..\src\mnode\tickets\collection-reg.cpp">
       <Filter>Source Files\mnode\tickets</Filter>
     </ClCompile>
     <ClCompile Include="..\..\..\src\mnode\tickets\ticket-extra-fees.cpp">
       <Filter>Source Files\mnode\tickets</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\src\mnode\tickets\nft-collection-act.cpp">
+    <ClCompile Include="..\..\..\src\mnode\tickets\collection-act.cpp">
       <Filter>Source Files\mnode\tickets</Filter>
     </ClCompile>
     <ClCompile Include="..\..\..\src\mnode\rpc\tickets-findbylabel.cpp">
@@ -303,6 +303,12 @@
     </ClCompile>
     <ClCompile Include="..\..\..\src\mnode\rpc\governance-rpc.cpp">
       <Filter>Source Files\mnode\rpc</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\src\mnode\tickets\collection-item.cpp">
+      <Filter>Source Files\mnode\tickets</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\src\mnode\tickets\ticket-key.cpp">
+      <Filter>Source Files\mnode\tickets</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -633,7 +639,7 @@
     <ClInclude Include="..\..\..\src\orphan-tx.h">
       <Filter>Source Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\..\src\mnode\tickets\nft-collection-reg.h">
+    <ClInclude Include="..\..\..\src\mnode\tickets\collection-reg.h">
       <Filter>Source Files\mnode\tickets</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\src\mnode\tickets\ticket-extra-fees.h">
@@ -642,7 +648,7 @@
     <ClInclude Include="..\..\..\src\set_types.h">
       <Filter>Source Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\..\src\mnode\tickets\nft-collection-act.h">
+    <ClInclude Include="..\..\..\src\mnode\tickets\collection-act.h">
       <Filter>Source Files\mnode\tickets</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\src\mnode\rpc\tickets-findbylabel.h">
@@ -650,6 +656,12 @@
     </ClInclude>
     <ClInclude Include="..\..\..\src\mnode\rpc\governance-rpc.h">
       <Filter>Source Files\mnode\rpc</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\mnode\tickets\collection-item.h">
+      <Filter>Source Files\mnode\tickets</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\mnode\tickets\ticket-key.h">
+      <Filter>Source Files\mnode\tickets</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

@@ -1,8 +1,7 @@
 #pragma once
-// Copyright (c) 2018-2022 The Pastel Core Developers
+// Copyright (c) 2018-2023 The Pastel Core Developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
-#include <string>
 #include <memory>
 #include <cinttypes>
 
@@ -64,7 +63,7 @@ ticket_validation_t common_ticket_validation(
             strprintf("%s ticket txid", sReferredItemTicketDescription.c_str()).c_str()))
             break;
         // B.2 Get ticket pointed by txid. This is either Activation, Action Activation or Transfer tickets (Offer, Accept, Transfer)
-        string sGetError;
+        std::string sGetError;
         try
         {
             referredItemTicket = masterNodeCtrl.masternodeTickets.GetTicket(referredItemTxId);

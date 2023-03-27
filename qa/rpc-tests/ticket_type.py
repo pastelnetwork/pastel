@@ -30,8 +30,8 @@ class TicketType(Enum):
     SENSE_ACTION_ACTIVATE   = 13, "Sense Action Activation", "action-act", "action-act", "sense-act", 10
     CASCADE_ACTION          = 14, "Cascade Action", "action", "action-reg", "cascade-artifact", 10
     CASCADE_ACTION_ACTIVATE = 15, "Cascade Action Activation", "action-act", "action-act", "cascade-act", 10
-    NFT_COLLECTION          = 16, "NFT Collection", "nft-collection", "nft-collection-reg", None, 10
-    NFT_COLLECTION_ACTIVATE = 17, "NFT Collection Activation", "nft-collection-act", "nft-collection-act", None, 10
+    COLLECTION              = 16, "Collection", "collection", "collection-reg", None, 10
+    COLLECTION_ACTIVATE     = 17, "Collection Activation", "collection-act", "collection-act", None, 10
 
     def __new__(cls, *args, **kwds):
         obj = object.__new__(cls)
@@ -120,7 +120,6 @@ class ActionType(Enum):
     SENSE   = 1, TicketType.SENSE_ACTION,   TicketType.SENSE_ACTION_ACTIVATE
     CASCADE = 2, TicketType.CASCADE_ACTION, TicketType.CASCADE_ACTION_ACTIVATE
 
-
     def __new__(cls, *args, **kwds):
         obj = object.__new__(cls)
         obj._value_ = args[0]
@@ -193,6 +192,76 @@ def get_activation_type(item_type: TicketType) -> TicketType:
         act_type = TicketType.SENSE_ACTION_ACTIVATE
     elif item_type == TicketType.CASCADE_ACTION:
         act_type = TicketType.CASCADE_ACTION_ACTIVATE
-    elif item_type == TicketType.NFT_COLLECTION:
-        act_type = TicketType.NFT_COLLECTION_ACTIVATE
+    elif item_type == TicketType.COLLECTION:
+        act_type = TicketType.COLLECTION_ACTIVATE
     return act_type
+
+
+# ===============================================================================================================
+class CollectionItemType(Enum):
+    """Collection item types.
+    CollectionItemType | ID | TypeDescription | TypeName | RegTicketType | ActTicketType
+    """
+    NFT   = 1, "NFT",    "nft",   TicketType.NFT,          TicketType.ACTIVATE
+    SENSE = 2, "Sense",  "sense", TicketType.SENSE_ACTION, TicketType.SENSE_ACTION_ACTIVATE
+
+    def __new__(cls, *args, **kwds):
+        obj = object.__new__(cls)
+        obj._value_ = args[0]
+        return obj
+
+    def __init__(self, _: str, type_description: str, type_name: str, reg_ticket_type: TicketType, act_ticket_type: TicketType):
+        """ Initialize enum member.
+            First parameters is ingnored since it' already set by __new__.
+
+        Args:
+            _ (str): enum value, ignored
+            type_description (str): collection item type description
+            type_name (str): collection item type name
+            reg_ticket_type (TicketType): registration ticket type for this collection item
+            act_ticket_type (TicketType): activation ticket type for this collection item
+        """
+        self._type_description_ = type_description
+        self._type_name_ = type_name
+        self._reg_ticket_type_ = reg_ticket_type
+        self._act_ticket_type_ = act_ticket_type
+
+    @property
+    def type_description(self) -> str:
+        """ Returns collection item type name.
+
+        Returns:
+            str: collection item type name
+        """
+        return self._type_description_
+    
+    
+    @property
+    def type_name(self) -> str:
+        """ Returns collection item type name.
+
+        Returns:
+            str: collection item type name
+        """
+        return self._type_name_
+    
+    
+    @property
+    def reg_ticket_type(self) -> TicketType:
+        """ Returns registration ticket type for the current action.
+
+        Returns:
+            TicketType: registration ticket type
+        """
+        return self._reg_ticket_type_
+
+
+    @property
+    def act_ticket_type(self) -> TicketType:
+        """ Returns activation ticket type for the current action.
+
+        Returns:
+            TicketType: activation ticket type
+        """
+        return self._act_ticket_type_
+

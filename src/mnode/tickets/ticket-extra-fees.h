@@ -1,26 +1,20 @@
 #pragma once
-// Copyright (c) 2022 The Pastel Core developers
+// Copyright (c) 2022-2023 The Pastel Core developers
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 
 #include <mnode/tickets/ticket.h>
 #include <mnode/tickets/ticket_signing.h>
 
-class CTicketSignedWithExtraFees :
-    public CPastelTicket,
-    public CTicketSigning
+class CTicketSignedWithExtraFees : public CTicketSigning
 {
 public:
     CTicketSignedWithExtraFees() = default;
 
-    void Clear() noexcept override;
-
-    std::string KeyOne() const noexcept override { return m_keyOne; }
-    void SetKeyOne(std::string &&sValue) override { m_keyOne = std::move(sValue); }
-    void GenerateKeyOne() override;
-
     static CAmount GreenPercent(const unsigned int nHeight) { return GREEN_FEE_PERCENT; }
     static std::string GreenAddress(const unsigned int nHeight);
+
+    void clear_extra_fees() noexcept;
 
     // getters for ticket fields
     float getRoyalty() const noexcept { return m_nRoyalty; }
@@ -30,17 +24,15 @@ public:
     uint32_t getCreatorHeight() const noexcept { return m_nCreatorHeight; }
 
     // get Pastel ID to pay royalty fee
-    std::string GetRoyaltyPayeePastelID() const;
+    std::string GetRoyaltyPayeePastelID(const std::string &txid) const;
     // get royalty payee address
-    std::string GetRoyaltyPayeeAddress() const;
+    std::string GetRoyaltyPayeeAddress(const std::string &txid) const;
     // check that fees are valid
     bool ValidateFees(std::string& error) const noexcept;
 
 protected:
     uint32_t m_nCreatorHeight{}; // blocknum when the ticket was created by the wallet
 
-    std::string m_keyOne;        // key #1 (primary)
-    std::string m_label;         // label
     CAmount m_storageFee{};      // ticket storage fee in PSL
 
     float m_nRoyalty{0.0f};      // how much creator(s) should get on all future resales

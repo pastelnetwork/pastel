@@ -1,5 +1,5 @@
 #pragma once
-// Copyright (c) 2018-2022 The Pastel Core developers
+// Copyright (c) 2018-2023 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 
@@ -97,6 +97,7 @@ public:
     int GetSupportedProtocolVersion() const noexcept;
 
     int getPOSEBanMaxScore() const noexcept { return m_nMasternodePOSEBanMaxScore; }
+    uint32_t getMaxInProcessCollectionTicketAge() const noexcept { return m_nMaxInProcessCollectionTicketAge; }
 
 #ifdef ENABLE_WALLET
     bool EnableMasterNode(std::ostringstream& strErrors, CServiceThreadGroup& threadGroup, CWallet* pwalletMain);
@@ -126,12 +127,15 @@ public:
     double GetChainDeflationRate() const;
 
     /***** MasterNode operations *****/
-    unique_ptr<CSemaphore> semMasternodeOutbound;
+    std::unique_ptr<CSemaphore> semMasternodeOutbound;
 
 protected:
     bool m_fMasterNode;
     // MasterNode PoSe (Proof of Service) Max Ban Score
     int m_nMasternodePOSEBanMaxScore = 0;
+    // max age of the in-process collection ticket in blocks before it becomes finalized
+    uint32_t m_nMaxInProcessCollectionTicketAge;
+
 
     void SetParameters();
     void InvalidateParameters();
