@@ -47,7 +47,7 @@ public:
 
     TicketID ID() const noexcept override { return TicketID::ActionActivate; }
     static TicketID GetID() { return TicketID::ActionActivate; }
-    constexpr auto GetTicketDescription() const
+    static constexpr auto GetTicketDescription()
     {
         return TICKET_INFO[to_integral_type<TicketID>(TicketID::ActionActivate)].szDescription;
     }

@@ -93,7 +93,7 @@ static const std::array<NFTTicketInfo, 2> NFT_TICKET_INFO =
                 { "author",              make_tuple(NFT_TKT_PROP::creator, true) },
                 { "blocknum",            make_tuple(NFT_TKT_PROP::blocknum, true) },
                 { "block_hash",          make_tuple(NFT_TKT_PROP::block_hash, true) },
-                { "collection_txid",     make_tuple(NFT_TKT_PROP::collection_txid, false) },
+                { "collection_txid",     make_tuple(NFT_TKT_PROP::collection_act_txid, false) },
                 { "copies",              make_tuple(NFT_TKT_PROP::copies, false) },
                 { "royalty",             make_tuple(NFT_TKT_PROP::royalty, false) },
                 { "green",               make_tuple(NFT_TKT_PROP::green, false) },
@@ -164,8 +164,8 @@ void CNFTRegTicket::parse_nft_ticket()
                     value.get_to(m_nTotalCopies);
                     break;
 
-                case NFT_TKT_PROP::collection_txid:
-                    value.get_to(m_sCollectionTxid);
+                case NFT_TKT_PROP::collection_act_txid:
+                    value.get_to(m_sCollectionActTxid);
                     break;
 
                 case NFT_TKT_PROP::royalty:
@@ -208,11 +208,11 @@ void CNFTRegTicket::parse_nft_ticket()
  */
 void CNFTRegTicket::set_collection_properties() noexcept
 {
-    if (m_sCollectionTxid.empty())
+    if (m_sCollectionActTxid.empty())
         return;
     string error;
     bool bInvalidTxId = false;
-    const auto collectionTicket = RetrieveCollectionTicket(error, bInvalidTxId);
+    const auto collectionTicket = RetrieveCollectionActivateTicket(error, bInvalidTxId);
     const CollectionRegTicket *pCollTicket = dynamic_cast<const CollectionRegTicket*>(collectionTicket.get());
     if (!pCollTicket)
         return;
@@ -320,7 +320,7 @@ void CNFTRegTicket::Clear() noexcept
 uint32_t CNFTRegTicket::CountItemsInCollection(const uint32_t currentChainHeight) const
 {
     uint32_t nCollectionItemCount = 0;
-    masterNodeCtrl.masternodeTickets.ProcessTicketsByMVKey<CNFTRegTicket>(m_sCollectionTxid,
+    masterNodeCtrl.masternodeTickets.ProcessTicketsByMVKey<CNFTRegTicket>(m_sCollectionActTxid,
                                                                             [&](const CNFTRegTicket& regTicket) -> bool
                                                                             {
                                                                                 if ((regTicket.GetBlock() <= currentChainHeight))

@@ -104,7 +104,7 @@ ticket_validation_t CActionActivateTicket::IsValid(const bool bPreReg, const uin
         const ticket_validation_t commonTV = common_ticket_validation(
             *this, bPreReg, m_regTicketTxId, pastelTicket,
             [](const TicketID tid) noexcept { return (tid != TicketID::ActionReg); },
-            GetTicketDescription(), ::GetTicketDescription(TicketID::ActionReg), nCallDepth,
+            GetTicketDescription(), CActionRegTicket::GetTicketDescription(), nCallDepth,
             TicketPricePSL(chainHeight) + static_cast<CAmount>(getAllMNFeesPSL())); // fee for ticket + all MN storage fees (percent from storage fee)
 
         if (commonTV.IsNotValid())
@@ -191,7 +191,7 @@ ticket_validation_t CActionActivateTicket::IsValid(const bool bPreReg, const uin
 CAmount CActionActivateTicket::GetExtraOutputs(vector<CTxOut>& outputs) const
 {
     const auto ticket = CPastelTicketProcessor::GetTicket(m_regTicketTxId, TicketID::ActionReg);
-    const auto ActionRegTicket = dynamic_cast<CActionRegTicket*>(ticket.get());
+    const auto ActionRegTicket = dynamic_cast<const CActionRegTicket*>(ticket.get());
     if (!ActionRegTicket)
         return 0;
 
@@ -205,13 +205,13 @@ CAmount CActionActivateTicket::GetExtraOutputs(vector<CTxOut>& outputs) const
         if (!CPastelIDRegTicket::FindTicketInDb(mnPastelID, mnPastelIDticket))
             throw runtime_error(strprintf(
                 "The Pastel ID [%s] from the %s with this txid [%s] is not in the blockchain or is invalid",
-                mnPastelID, ::GetTicketDescription(TicketID::ActionReg), m_regTicketTxId));
+                mnPastelID, CActionRegTicket::GetTicketDescription(), m_regTicketTxId));
 
         const auto dest = keyIO.DecodeDestination(mnPastelIDticket.getFundingAddress());
         if (!IsValidDestination(dest))
             throw runtime_error(strprintf(
                 "The Pastel ID [%s] from the %s ticket with this txid [%s] has invalid MN's address", 
-                mnPastelID, ::GetTicketDescription(TicketID::ActionReg), m_regTicketTxId));
+                mnPastelID, CActionRegTicket::GetTicketDescription(), m_regTicketTxId));
 
         // caclulate MN fee in patoshis
         const CAmount nAmount = mn == CActionRegTicket::SIGN_MAIN ? getPrincipalMNFee() : getOtherMNFee();

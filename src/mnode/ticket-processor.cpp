@@ -264,10 +264,10 @@ ticket_validation_t CPastelTicketProcessor::ValidateTicketFees(const uint32_t nH
         const TicketID ticket_id = ticket->ID(); 
         if (ticket_id == TicketID::Transfer)
         {
-            const auto pTransferTicket = dynamic_cast<CTransferTicket*>(ticket.get());
+            const auto pTransferTicket = dynamic_cast<const CTransferTicket*>(ticket.get());
             if (!pTransferTicket)
             {
-                tv.errorMsg = strprintf("Invalid %s ticket", ::GetTicketDescription(TicketID::Transfer));
+                tv.errorMsg = strprintf("Invalid %s ticket", CTransferTicket::GetTicketDescription());
                 break;
             }
             // transfer price in patoshis
@@ -278,7 +278,7 @@ ticket_validation_t CPastelTicketProcessor::ValidateTicketFees(const uint32_t nH
             {
                 tv.errorMsg = strprintf(
                     "Registration ticket not found for the %s ticket with txid=%s", 
-                    ::GetTicketDescription(TicketID::Transfer), ticket->GetTxId());
+                    CTransferTicket::GetTicketDescription(), ticket->GetTxId());
                 break;
             }
 
@@ -286,12 +286,12 @@ ticket_validation_t CPastelTicketProcessor::ValidateTicketFees(const uint32_t nH
             {
                 case TicketID::NFT:
                 {
-                    const auto pNFTRegTicket = dynamic_cast<CNFTRegTicket*>(pTicket.get());
+                    const auto pNFTRegTicket = dynamic_cast<const CNFTRegTicket*>(pTicket.get());
                     if (!pNFTRegTicket)
                     {
                         tv.errorMsg = strprintf(
                             "Invalid %s ticket referred by the %s ticket with txid=%s",
-                            ::GetTicketDescription(TicketID::NFT), ::GetTicketDescription(TicketID::Transfer), ticket->GetTxId());
+                            CNFTRegTicket::GetTicketDescription(), CTransferTicket::GetTicketDescription(), ticket->GetTxId());
                         break;
                     }
                     if (pNFTRegTicket->getRoyalty() > 0)
@@ -302,12 +302,12 @@ ticket_validation_t CPastelTicketProcessor::ValidateTicketFees(const uint32_t nH
 
                 case TicketID::ActionReg:
                 {
-                    const auto pActionRegTicket = dynamic_cast<CActionRegTicket*>(pTicket.get());
+                    const auto pActionRegTicket = dynamic_cast<const CActionRegTicket *>(pTicket.get());
                     if (!pActionRegTicket)
                     {
                         tv.errorMsg = strprintf(
                             "Invalid %s ticket referred by the %s ticket with txid=%s",
-                            ::GetTicketDescription(TicketID::ActionReg), ::GetTicketDescription(TicketID::Transfer), ticket->GetTxId());
+                            CActionRegTicket::GetTicketDescription(), CTransferTicket::GetTicketDescription(), ticket->GetTxId());
                         break;
                     }
                 } break;
@@ -1157,11 +1157,11 @@ bool CPastelTicketProcessor::WalkBackTradingChain(
         {
             case TicketID::Transfer:
             {
-                const auto pTransferTicket = dynamic_cast<CTransferTicket *>(pastelTicket.get());
+                const auto pTransferTicket = dynamic_cast<const CTransferTicket *>(pastelTicket.get());
                 if (!pTransferTicket)
                 {
                     errRet = strprintf("The %s ticket [txid=%s] referred by this ticket [txid=%s] is invalid",
-                        ::GetTicketDescription(TicketID::Transfer), pastelTicket->GetTxId(), sTxId);
+                        CTransferTicket::GetTicketDescription(), pastelTicket->GetTxId(), sTxId);
                     break;
                 }
                 if (!WalkBackTradingChain(shortPath ? pTransferTicket->getItemTxId() : pTransferTicket->getAcceptTxId(), 
@@ -1171,11 +1171,11 @@ bool CPastelTicketProcessor::WalkBackTradingChain(
 
             case TicketID::Accept:
             {
-                const auto pAcceptTicket = dynamic_cast<CAcceptTicket *>(pastelTicket.get());
+                const auto pAcceptTicket = dynamic_cast<const CAcceptTicket *>(pastelTicket.get());
                 if (!pAcceptTicket)
                 {
                     errRet = strprintf("The %s ticket [txid=%s] referred by this ticket [txid=%s] is invalid",
-                        ::GetTicketDescription(TicketID::Accept), pastelTicket->GetTxId(), sTxId);
+                        CAcceptTicket::GetTicketDescription(), pastelTicket->GetTxId(), sTxId);
                     break;
                 }
                 if (!WalkBackTradingChain(pAcceptTicket->getOfferTxId(), chain, shortPath, errRet))
@@ -1184,11 +1184,11 @@ bool CPastelTicketProcessor::WalkBackTradingChain(
 
             case TicketID::Offer:
             {
-                const auto pOfferTicket = dynamic_cast<COfferTicket *>(pastelTicket.get());
+                const auto pOfferTicket = dynamic_cast<const COfferTicket *>(pastelTicket.get());
                 if (!pOfferTicket)
                 {
                     errRet = strprintf("The %s ticket [txid=%s] referred by this ticket [txid=%s] is invalid",
-                        ::GetTicketDescription(TicketID::Offer), pastelTicket->GetTxId(), sTxId);
+                        COfferTicket::GetTicketDescription(), pastelTicket->GetTxId(), sTxId);
                     break;
                 }
                 if (!WalkBackTradingChain(pOfferTicket->getItemTxId(), chain, shortPath, errRet))
@@ -1197,11 +1197,11 @@ bool CPastelTicketProcessor::WalkBackTradingChain(
 
             case TicketID::Activate:
             {
-                const auto pNftActTicket = dynamic_cast<CNFTActivateTicket *>(pastelTicket.get());
+                const auto pNftActTicket = dynamic_cast<const CNFTActivateTicket *>(pastelTicket.get());
                 if (!pNftActTicket)
                 {
                     errRet = strprintf("The %s ticket [txid=%s] referred by ticket [txid=%s] is invalid",
-                        ::GetTicketDescription(TicketID::Activate), pastelTicket->GetTxId(), sTxId);
+                        CNFTActivateTicket::GetTicketDescription(), pastelTicket->GetTxId(), sTxId);
                     break;
                 }
                 if (!WalkBackTradingChain(pNftActTicket->getRegTxId(), chain, shortPath, errRet))
@@ -1210,22 +1210,22 @@ bool CPastelTicketProcessor::WalkBackTradingChain(
 
             case TicketID::NFT:
             {
-                const auto pNftRegTicket = dynamic_cast<CNFTRegTicket *>(pastelTicket.get());
+                const auto pNftRegTicket = dynamic_cast<const CNFTRegTicket *>(pastelTicket.get());
                 if (!pNftRegTicket)
                 {
                     errRet = strprintf("The %s ticket [txid=%s] referred by ticket [txid=%s] is invalid",
-                        ::GetTicketDescription(TicketID::NFT), pastelTicket->GetTxId(), sTxId);
+                        CNFTRegTicket::GetTicketDescription(), pastelTicket->GetTxId(), sTxId);
                     break;
                 }
             } break;
 
             case TicketID::CollectionAct:
             {
-                const auto pCollectionActTicket = dynamic_cast<CollectionActivateTicket *>(pastelTicket.get());
+                const auto pCollectionActTicket = dynamic_cast<const CollectionActivateTicket *>(pastelTicket.get());
                 if (!pCollectionActTicket)
                 {
                     errRet = strprintf("The %s ticket [txid=%s] referred by ticket [txid=%s] is invalid",
-                        ::GetTicketDescription(TicketID::CollectionAct), pastelTicket->GetTxId(), sTxId);
+                        CollectionActivateTicket::GetTicketDescription(), pastelTicket->GetTxId(), sTxId);
                     break;
                 }
                 if (!WalkBackTradingChain(pCollectionActTicket->getRegTxId(), chain, shortPath, errRet))
@@ -1234,22 +1234,22 @@ bool CPastelTicketProcessor::WalkBackTradingChain(
 
             case TicketID::CollectionReg:
             {
-                const auto pCollectionRegTicket = dynamic_cast<CollectionRegTicket *>(pastelTicket.get());
+                const auto pCollectionRegTicket = dynamic_cast<const CollectionRegTicket *>(pastelTicket.get());
                 if (!pCollectionRegTicket)
                 {
                     errRet = strprintf("The %s ticket [txid=%s] referred by ticket [txid=%s] is invalid",
-                        ::GetTicketDescription(TicketID::CollectionReg), pastelTicket->GetTxId(), sTxId);
+                        CollectionRegTicket::GetTicketDescription(), pastelTicket->GetTxId(), sTxId);
                     break;
                 }
             } break;
 
             case TicketID::ActionActivate:
             {
-                const auto pActionActTicket = dynamic_cast<CActionActivateTicket*>(pastelTicket.get());
+                const auto pActionActTicket = dynamic_cast<const CActionActivateTicket*>(pastelTicket.get());
                 if (!pActionActTicket)
                 {
                     errRet = strprintf("The %s ticket [txid=%s] referred by ticket [txid=%s] is invalid",
-                        ::GetTicketDescription(TicketID::ActionActivate), pastelTicket->GetTxId(), sTxId);
+                        CActionActivateTicket::GetTicketDescription(), pastelTicket->GetTxId(), sTxId);
                     break;
                 }
                 if (!WalkBackTradingChain(pActionActTicket->getRegTxId(), chain, shortPath, errRet))
@@ -1258,11 +1258,11 @@ bool CPastelTicketProcessor::WalkBackTradingChain(
 
             case TicketID::ActionReg:
             {
-                const auto pActionRegTicket = dynamic_cast<CActionRegTicket*>(pastelTicket.get());
+                const auto pActionRegTicket = dynamic_cast<const CActionRegTicket*>(pastelTicket.get());
                 if (!pActionRegTicket)
                 {
                     errRet = strprintf("The %s ticket [txid=%s] referred by ticket [txid=%s] is invalid",
-                        ::GetTicketDescription(TicketID::ActionReg), pastelTicket->GetTxId(), sTxId);
+                        CActionRegTicket::GetTicketDescription(), pastelTicket->GetTxId(), sTxId);
                     break;
                 }
             } break;

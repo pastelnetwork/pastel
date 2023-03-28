@@ -72,7 +72,7 @@ ticket_validation_t CNFTActivateTicket::IsValid(const bool bPreReg, const uint32
         const ticket_validation_t commonTV = common_ticket_validation(
             *this, bPreReg, m_regTicketTxId, pastelTicket,
             [](const TicketID tid) noexcept { return (tid != TicketID::NFT); },
-            GetTicketDescription(), ::GetTicketDescription(TicketID::NFT), nCallDepth,
+            GetTicketDescription(), CNFTRegTicket::GetTicketDescription(), nCallDepth,
             TicketPricePSL(chainHeight) + static_cast<CAmount>(getAllMNFeesPSL())); // fee for ticket + all MN storage fees (percent from storage fee)
 
         if (commonTV.IsNotValid())

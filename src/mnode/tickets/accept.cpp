@@ -57,7 +57,7 @@ ticket_validation_t CAcceptTicket::IsValid(const bool bPreReg, const uint32_t nC
         const ticket_validation_t commonTV = common_ticket_validation(
             *this, bPreReg, m_offerTxId, offerTicket,
             [](const TicketID tid) noexcept { return (tid != TicketID::Offer); },
-            GetTicketDescription(), ::GetTicketDescription(TicketID::Offer), nCallDepth, 
+            GetTicketDescription(), COfferTicket::GetTicketDescription(), nCallDepth, 
             m_nPricePSL + TicketPricePSL(chainHeight));
         if (commonTV.IsNotValid())
         {
@@ -92,7 +92,7 @@ ticket_validation_t CAcceptTicket::IsValid(const bool bPreReg, const uint32_t nC
                 {
                     tv.errorMsg = strprintf(
                         "The %s ticket you are trying to accept [%s] is already processed",
-                        ::GetTicketDescription(TicketID::Offer), m_offerTxId);
+                        COfferTicket::GetTicketDescription(), m_offerTxId);
                     break;
                 }
 
@@ -123,7 +123,7 @@ ticket_validation_t CAcceptTicket::IsValid(const bool bPreReg, const uint32_t nC
         {
             tv.errorMsg = strprintf(
                 "The %s ticket with this txid [%s] referred by this %s ticket is invalid", 
-                ::GetTicketDescription(TicketID::Offer), m_offerTxId, ::GetTicketDescription(TicketID::Accept));
+                COfferTicket::GetTicketDescription(), m_offerTxId, GetTicketDescription());
             break;
         }
 
@@ -134,16 +134,16 @@ ticket_validation_t CAcceptTicket::IsValid(const bool bPreReg, const uint32_t nC
         {
             tv.errorMsg = strprintf(
                 "%s ticket [%s] is only active after [%u] block height (%s ticket block is [%u])",
-                ::GetTicketDescription(TicketID::Offer), pOfferTicket->GetTxId(), 
-                pOfferTicket->getValidAfter(), ::GetTicketDescription(TicketID::Accept), height);
+                COfferTicket::GetTicketDescription(), pOfferTicket->GetTxId(), 
+                pOfferTicket->getValidAfter(), GetTicketDescription(), height);
             break;
         }
         if (offerTicketState == OFFER_TICKET_STATE::EXPIRED)
         {
             tv.errorMsg = strprintf(
                 "%s ticket [%s] is only active before [%u] block height (%s ticket block is [%u])",
-                ::GetTicketDescription(TicketID::Offer), pOfferTicket->GetTxId(), 
-                pOfferTicket->getValidBefore(), ::GetTicketDescription(TicketID::Accept), height);
+                COfferTicket::GetTicketDescription(), pOfferTicket->GetTxId(), 
+                pOfferTicket->getValidBefore(), GetTicketDescription(), height);
             break;
         }
 
@@ -155,7 +155,7 @@ ticket_validation_t CAcceptTicket::IsValid(const bool bPreReg, const uint32_t nC
             {
                 tv.errorMsg = strprintf(
                     "%s ticket [%s] intended recipient Pastel ID [%s] does not match new owner's Pastel ID [%s]",
-                    ::GetTicketDescription(TicketID::Offer), pOfferTicket->GetTxId(), sIntendedFor, m_sPastelID);
+                    COfferTicket::GetTicketDescription(), pOfferTicket->GetTxId(), sIntendedFor, m_sPastelID);
                 break;
             }
         }
@@ -165,7 +165,7 @@ ticket_validation_t CAcceptTicket::IsValid(const bool bPreReg, const uint32_t nC
         {
             tv.errorMsg = strprintf(
                 "The offered price [%u] is less than asked in the %s ticket [%u]", 
-                m_nPricePSL, ::GetTicketDescription(TicketID::Offer), pOfferTicket->getAskedPricePSL());
+                m_nPricePSL, COfferTicket::GetTicketDescription(), pOfferTicket->getAskedPricePSL());
             break;
         }
 

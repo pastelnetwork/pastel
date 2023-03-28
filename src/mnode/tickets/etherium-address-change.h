@@ -39,7 +39,7 @@ public:
 
     TicketID ID() const noexcept override { return TicketID::EthereumAddress; }
     static TicketID GetID() { return TicketID::EthereumAddress; }
-    constexpr auto GetTicketDescription() const
+    static constexpr auto GetTicketDescription()
     {
         return TICKET_INFO[to_integral_type<TicketID>(TicketID::EthereumAddress)].szDescription;
     }

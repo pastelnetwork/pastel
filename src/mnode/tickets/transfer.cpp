@@ -60,7 +60,7 @@ ticket_validation_t transfer_copy_validation(const string& itemTxId, const v_uin
                 {
                     tv.errorMsg = strprintf(
                         "The %s ticket with txid [%s] referred by this Transfer ticket is invalid", 
-                        ::GetTicketDescription(TicketID::Activate), itemTxId);
+                        CNFTActivateTicket::GetTicketDescription(), itemTxId);
                     break;
                 }
 
@@ -69,7 +69,7 @@ ticket_validation_t transfer_copy_validation(const string& itemTxId, const v_uin
                 {
                     tv.errorMsg = strprintf(
                         "The %s ticket with txid [%s] referred by %s ticket is invalid",
-                        ::GetTicketDescription(TicketID::NFT), pNFTActTicket->getRegTxId(), ::GetTicketDescription(TicketID::Activate));
+                        CNFTRegTicket::GetTicketDescription(), pNFTActTicket->getRegTxId(), CNFTActivateTicket::GetTicketDescription());
                     break;
                 }
 
@@ -78,7 +78,7 @@ ticket_validation_t transfer_copy_validation(const string& itemTxId, const v_uin
                 {
                     tv.errorMsg = strprintf(
                         "The %s ticket with txid [%s] referred by %s ticket is invalid",
-                        ::GetTicketDescription(TicketID::NFT), pNFTActTicket->getRegTxId(), ::GetTicketDescription(TicketID::Activate));
+                        CNFTRegTicket::GetTicketDescription(), pNFTActTicket->getRegTxId(), CNFTActivateTicket::GetTicketDescription());
                     break;
                 }
 
@@ -93,7 +93,7 @@ ticket_validation_t transfer_copy_validation(const string& itemTxId, const v_uin
                 {
                     tv.errorMsg = strprintf(
                         "The %s ticket with txid [%s] referred by this Transfer ticket is invalid",
-                        ::GetTicketDescription(TicketID::ActionActivate), itemTxId);
+                        CActionActivateTicket::GetTicketDescription(), itemTxId);
                     break;
                 }
 
@@ -102,7 +102,7 @@ ticket_validation_t transfer_copy_validation(const string& itemTxId, const v_uin
                 {
                     tv.errorMsg = strprintf(
                         "The %s ticket with txid [%s] referred by %s ticket is invalid",
-                        ::GetTicketDescription(TicketID::ActionReg), pActionActTicket->getRegTxId(), ::GetTicketDescription(TicketID::ActionActivate));
+                        CActionRegTicket::GetTicketDescription(), pActionActTicket->getRegTxId(), CActionActivateTicket::GetTicketDescription());
                     break;
                 }
 
@@ -111,7 +111,7 @@ ticket_validation_t transfer_copy_validation(const string& itemTxId, const v_uin
                 {
                     tv.errorMsg = strprintf(
                         "The %s ticket with txid [%s] referred by %s ticket is invalid",
-                        ::GetTicketDescription(TicketID::ActionReg), pActionActTicket->getRegTxId(), ::GetTicketDescription(TicketID::ActionActivate));
+                        CActionRegTicket::GetTicketDescription(), pActionActTicket->getRegTxId(), CActionActivateTicket::GetTicketDescription());
                     break;
                 }
 
@@ -257,13 +257,13 @@ ticket_validation_t CTransferTicket::IsValid(const bool bPreReg, const uint32_t 
         ticket_validation_t commonTV = common_ticket_validation(
             *this, bPreReg, m_offerTxId, offerTicket,
             [](const TicketID tid) noexcept { return (tid != TicketID::Offer); },
-            GetTicketDescription(), ::GetTicketDescription(TicketID::Offer), nCallDepth, 
+            GetTicketDescription(), COfferTicket::GetTicketDescription(), nCallDepth, 
             m_nPricePSL + TicketPricePSL(chainHeight));
         if (commonTV.IsNotValid())
         {
             tv.errorMsg = strprintf(
                 "The %s ticket with %s txid [%s] is not validated. %s", 
-                ::GetTicketDescription(TicketID::Transfer), ::GetTicketDescription(TicketID::Offer), m_offerTxId, commonTV.errorMsg);
+                GetTicketDescription(), COfferTicket::GetTicketDescription(), m_offerTxId, commonTV.errorMsg);
             tv.state = commonTV.state;
             break;
         }
@@ -272,13 +272,13 @@ ticket_validation_t CTransferTicket::IsValid(const bool bPreReg, const uint32_t 
         commonTV = common_ticket_validation(
             *this, bPreReg, m_acceptTxId, acceptTicket,
             [](const TicketID tid) noexcept { return (tid != TicketID::Accept); },
-            GetTicketDescription(), ::GetTicketDescription(TicketID::Accept), nCallDepth, 
+            GetTicketDescription(), CAcceptTicket::GetTicketDescription(), nCallDepth, 
             m_nPricePSL + TicketPricePSL(chainHeight));
         if (commonTV.IsNotValid())
         {
             tv.errorMsg = strprintf(
                 "The %s ticket with %s ticket txid [%s] is not validated. %s", 
-                ::GetTicketDescription(TicketID::Transfer), ::GetTicketDescription(TicketID::Accept), 
+                GetTicketDescription(), CAcceptTicket::GetTicketDescription(), 
                 m_acceptTxId, commonTV.errorMsg);
             tv.state = commonTV.state;
             break;
@@ -295,7 +295,7 @@ ticket_validation_t CTransferTicket::IsValid(const bool bPreReg, const uint32_t 
             {
                 tv.errorMsg = strprintf(
                     "%s ticket already exists for the %s ticket with this txid [%s]. Signature - our=%s; their=%s [%sfound ticket block=%u, txid=%s]",
-                    ::GetTicketDescription(TicketID::Transfer), ::GetTicketDescription(TicketID::Offer), m_offerTxId,
+                    GetTicketDescription(), COfferTicket::GetTicketDescription(), m_offerTxId,
                     ed_crypto::Hex_Encode(m_signature.data(), m_signature.size()),
                     ed_crypto::Hex_Encode(transferTicket.m_signature.data(), transferTicket.m_signature.size()),
                     bPreReg ? "" : strprintf("this ticket block=%u txid=%s; ", m_nBlock, m_txid),
@@ -314,7 +314,7 @@ ticket_validation_t CTransferTicket::IsValid(const bool bPreReg, const uint32_t 
             {
                 tv.errorMsg = strprintf(
                     "%s ticket already exists for the %s ticket with this txid [%s]", 
-                    ::GetTicketDescription(TicketID::Transfer), ::GetTicketDescription(TicketID::Accept), m_acceptTxId);
+                    GetTicketDescription(), CAcceptTicket::GetTicketDescription(), m_acceptTxId);
                 break;
             }
         }
@@ -325,14 +325,14 @@ ticket_validation_t CTransferTicket::IsValid(const bool bPreReg, const uint32_t 
         {
             tv.errorMsg = strprintf(
                 "The %s ticket with txid [%s] referred by this %s ticket is invalid", 
-                ::GetTicketDescription(TicketID::Offer), m_offerTxId, ::GetTicketDescription(TicketID::Transfer));
+                COfferTicket::GetTicketDescription(), m_offerTxId, GetTicketDescription());
             break;
         }
         if (!pOfferTicket->getAskedPricePSL())
         {
             tv.errorMsg = strprintf(
                 "The %s ticket with txid [%s] asked price should be not 0", 
-                ::GetTicketDescription(TicketID::Offer), m_offerTxId);
+                COfferTicket::GetTicketDescription(), m_offerTxId);
             break;
         }
 
@@ -342,7 +342,7 @@ ticket_validation_t CTransferTicket::IsValid(const bool bPreReg, const uint32_t 
         {
             tv.errorMsg = strprintf(
                 "The %s ticket with this txid [%s] referred by this %s ticket is invalid", 
-                ::GetTicketDescription(TicketID::Accept), m_acceptTxId, ::GetTicketDescription(TicketID::Transfer));
+                CAcceptTicket::GetTicketDescription(), m_acceptTxId, GetTicketDescription());
             break;
         }
         const string& acceptorPastelID = pAcceptTicket->getPastelID();
@@ -350,8 +350,8 @@ ticket_validation_t CTransferTicket::IsValid(const bool bPreReg, const uint32_t 
         {
             tv.errorMsg = strprintf(
                 "The Pastel ID [%s] in this %s ticket is not matching the Pastel ID [%s] in the %s ticket with this txid [%s]",
-                m_sPastelID, ::GetTicketDescription(TicketID::Transfer), 
-                acceptorPastelID, ::GetTicketDescription(TicketID::Accept), m_acceptTxId);
+                m_sPastelID, GetTicketDescription(), 
+                acceptorPastelID, CAcceptTicket::GetTicketDescription(), m_acceptTxId);
             break;
         }
 
@@ -366,8 +366,8 @@ ticket_validation_t CTransferTicket::IsValid(const bool bPreReg, const uint32_t 
                 tv.errorMsg = strprintf(
                     "The intended recipient's Pastel ID [%s] in the %s ticket [%s] referred by this %s ticket is not matching new owner's Pastel ID [%s]",
                     sIntendedFor, 
-                    ::GetTicketDescription(TicketID::Offer), pOfferTicket->GetTxId(), 
-                    ::GetTicketDescription(TicketID::Transfer), acceptorPastelID);
+                    COfferTicket::GetTicketDescription(), pOfferTicket->GetTxId(), 
+                    GetTicketDescription(), acceptorPastelID);
                 break;
             }
         }
@@ -391,26 +391,26 @@ CAmount CTransferTicket::GetExtraOutputs(vector<CTxOut>& outputs) const
     if (!pOfferTicket)
         throw runtime_error(strprintf(
             "The %s ticket with this txid [%s] is not in the blockchain", 
-            ::GetTicketDescription(TicketID::Offer), m_offerTxId));
+            COfferTicket::GetTicketDescription(), m_offerTxId));
 
     const auto offerTicket = dynamic_cast<const COfferTicket*>(pOfferTicket.get());
     if (!offerTicket)
         throw runtime_error(strprintf(
             "The %s ticket with this txid [%s] is not in the blockchain",
-            ::GetTicketDescription(TicketID::Offer), m_offerTxId));
+            COfferTicket::GetTicketDescription(), m_offerTxId));
 
     const auto offererPastelID = offerTicket->getPastelID();
     CPastelIDRegTicket offererPastelIDticket;
     if (!CPastelIDRegTicket::FindTicketInDb(offererPastelID, offererPastelIDticket))
         throw runtime_error(strprintf(
             "The Pastel ID [%s] from %s ticket with this txid [%s] is not in the blockchain or is invalid",
-            offererPastelID, ::GetTicketDescription(TicketID::Offer), m_offerTxId));
+            offererPastelID, COfferTicket::GetTicketDescription(), m_offerTxId));
 
     const auto nAskedPricePSL = offerTicket->getAskedPricePSL();
     if (!nAskedPricePSL)
         throw runtime_error(strprintf(
             "The %s ticket with txid [%s] asked price should be not 0", 
-            ::GetTicketDescription(TicketID::Offer), m_offerTxId));
+            COfferTicket::GetTicketDescription(), m_offerTxId));
 
     // get asked item price in patoshis
     CAmount nPriceAmount = nAskedPricePSL * COIN;
@@ -426,7 +426,7 @@ CAmount CTransferTicket::GetExtraOutputs(vector<CTxOut>& outputs) const
             if (!pNFTRegTicket)
                 throw runtime_error(strprintf(
                     "Can't find %s ticket for this %s ticket [txid=%s]",
-                    ::GetTicketDescription(TicketID::NFT), ::GetTicketDescription(TicketID::Transfer), GetTxId()));
+                    CNFTRegTicket::GetTicketDescription(), GetTicketDescription(), GetTxId()));
 
             if (pNFTRegTicket->getRoyalty() > 0)
             {
@@ -434,7 +434,7 @@ CAmount CTransferTicket::GetExtraOutputs(vector<CTxOut>& outputs) const
                 if (sRoyaltyAddress.empty())
                     throw runtime_error(strprintf(
                         "The Creator Pastel ID [%s] from %s ticket with this txid [%s] is not in the blockchain or is invalid",
-                        pNFTRegTicket->getCreatorPastelId(), ::GetTicketDescription(TicketID::NFT), pNFTRegTicket->GetTxId()));
+                        pNFTRegTicket->getCreatorPastelId(), CNFTRegTicket::GetTicketDescription(), pNFTRegTicket->GetTxId()));
                 nRoyaltyAmount = static_cast<CAmount>(nPriceAmount * pNFTRegTicket->getRoyalty());
             }
 
@@ -465,17 +465,17 @@ CAmount CTransferTicket::GetExtraOutputs(vector<CTxOut>& outputs) const
     if (!addOutput(offererPastelIDticket.getFundingAddress(), nPriceAmount))
         throw runtime_error(
             strprintf("The Pastel ID [%s] from %s ticket with this txid [%s] has invalid address",
-                      offererPastelID, ::GetTicketDescription(TicketID::Offer), m_offerTxId));
+                      offererPastelID, COfferTicket::GetTicketDescription(), m_offerTxId));
 
     if (!sRoyaltyAddress.empty() && !addOutput(sRoyaltyAddress, nRoyaltyAmount))
         throw runtime_error(
             strprintf("The Pastel ID [%s] from %s ticket with this txid [%s] has invalid address",
-                      offererPastelID, ::GetTicketDescription(TicketID::Offer), m_offerTxId));
+                      offererPastelID, COfferTicket::GetTicketDescription(), m_offerTxId));
 
     if (!sGreenAddress.empty() && !addOutput(sGreenAddress, nGreenNFTAmount))
         throw runtime_error(
             strprintf("The Pastel ID [%s] from %s ticket with this txid [%s] has invalid address",
-                      offererPastelID, ::GetTicketDescription(TicketID::Offer), m_offerTxId));
+                      offererPastelID, COfferTicket::GetTicketDescription(), m_offerTxId));
 
     return nPriceAmount + nRoyaltyAmount + nGreenNFTAmount;
 }
@@ -622,7 +622,7 @@ unique_ptr<CPastelTicket> CTransferTicket::FindItemRegTicket() const
             {
                 throw runtime_error(strprintf(
                     "This is not a %s ticket [txid=%s]",
-                        ::GetTicketDescription(TicketID::NFT), pPastelTicket->GetTxId()));
+                        CNFTRegTicket::GetTicketDescription(), pPastelTicket->GetTxId()));
             }
         } break;
 
@@ -633,7 +633,7 @@ unique_ptr<CPastelTicket> CTransferTicket::FindItemRegTicket() const
             {
                 throw runtime_error(strprintf(
                     "This is not a %s ticket [txid=%s]",
-                        ::GetTicketDescription(TicketID::ActionReg), pPastelTicket->GetTxId()));
+                        CActionRegTicket::GetTicketDescription(), pPastelTicket->GetTxId()));
             }
 
         }  break;
@@ -641,7 +641,7 @@ unique_ptr<CPastelTicket> CTransferTicket::FindItemRegTicket() const
         default:
             throw runtime_error(strprintf(
                 "Expected %s or %s ticket but found %s [txid=%s]", 
-                    ::GetTicketDescription(TicketID::NFT), ::GetTicketDescription(TicketID::ActionReg),
+                    CNFTRegTicket::GetTicketDescription(), CActionRegTicket::GetTicketDescription(),
                     ::GetTicketDescription(pPastelTicket->ID()), pPastelTicket->GetTxId()));
     }
     return move(chain.front());

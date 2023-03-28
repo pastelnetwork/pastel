@@ -163,7 +163,7 @@ UniValue pastelid_sign_file(const UniValue& params)
 {
     if (params.size() < 4)
         throw JSONRPCError(RPC_INVALID_PARAMETER,
-                           R"(pastelid sign-file file-path "PastelID" "passphrase" ("algorithm")
+R"(pastelid sign-file file-path "PastelID" "passphrase" ("algorithm")
 Sign file at file-path with the internally stored private key associated with the Pastel ID (algorithm: ed448 [default] or legroast).)");
     
     SecureString strKeyPass(params[3].get_str());

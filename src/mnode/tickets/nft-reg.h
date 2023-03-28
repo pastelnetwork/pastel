@@ -24,7 +24,7 @@ enum class NFT_TKT_PROP : uint8_t
     creator = 2,
     blocknum = 3,
     block_hash = 4,
-    collection_txid = 5,
+    collection_act_txid = 5,
     copies = 6,
     royalty = 7,
     green = 8,
@@ -60,7 +60,7 @@ bytes fields are base64 as strings
   "copies": integer,             // number of copies of NFT this ticket is creating, optional in v2
   "royalty": float,              // royalty fee, how much creator should get on all future resales, optional in v2
   "green": boolean,              // is there Green NFT payment or not, optional in v2
-  "collection_txid": bytes,      // transaction id of the collection that NFT belongs to (v2 only, optional, can be empty)
+  "collection_txid": bytes,      // transaction id of the collection activation ticket that NFT belongs to (v2 only, optional, can be empty)
   "app_ticket": bytes,           // json object with application ticket, parsed by the cnode only for search capability
   {
     "creator_name": string,
@@ -116,7 +116,7 @@ public:
 
     TicketID ID() const noexcept override { return TicketID::NFT; }
     static TicketID GetID() { return TicketID::NFT; }
-    constexpr auto GetTicketDescription() const
+    static constexpr auto GetTicketDescription()
     {
         return TICKET_INFO[to_integral_type<TicketID>(TicketID::NFT)].szDescription;
     }
@@ -124,11 +124,11 @@ public:
     void Clear() noexcept override;
 
     bool HasMVKeyOne() const noexcept override { return true; }
-    bool HasMVKeyTwo() const noexcept override { return !m_sCollectionTxid.empty(); }
+    bool HasMVKeyTwo() const noexcept override { return !m_sCollectionActTxid.empty(); }
     bool HasMVKeyThree() const noexcept override { return !m_label.empty(); }
 
     std::string MVKeyOne() const noexcept override { return getCreatorPastelId(); }
-    std::string MVKeyTwo() const noexcept override { return m_sCollectionTxid; }
+    std::string MVKeyTwo() const noexcept override { return m_sCollectionActTxid; }
     std::string MVKeyThree() const noexcept override { return m_label; }
 
     std::string ToJSON(const bool bDecodeProperties = false) const noexcept override;

@@ -39,7 +39,7 @@ Where action_ticket is an external base64-encoded JSON as a string:
   "caller": string,             // Pastel ID of the action caller
   "blocknum": uint,             // block number when the ticket was created - this is to map the ticket to the MNs that should process it
   "block_hash": bytes,          // hash of the top block when the ticket was created - this is to map the ticket to the MNs that should process it
-  "collection_txid": bytes,     // transaction id of the collection that action belongs to (v2 only, optional, can be empty)
+  "collection_txid": bytes,     // transaction id of the collection activation ticket that action belongs to (v2 only, optional, can be empty)
   "app_ticket": object          // json object with application ticket,
                                 // actual structure of app_ticket is different for different API and is not parsed by cnode !!!!
 }
@@ -78,7 +78,7 @@ enum class ACTION_TKT_PROP : uint8_t {
     caller = 3,
     blocknum = 4,
     block_hash = 5,
-    collection_txid = 6,
+    collection_act_txid = 6,
     app_ticket = 7
 };
 
@@ -97,7 +97,7 @@ public:
 
     TicketID ID() const noexcept override { return TicketID::ActionReg; }
     static TicketID GetID() { return TicketID::ActionReg; }
-    constexpr auto GetTicketDescription() const
+    static constexpr auto GetTicketDescription()
     {
         return TICKET_INFO[to_integral_type<TicketID>(TicketID::ActionReg)].szDescription;
     }
@@ -108,11 +108,11 @@ public:
     ACTION_TICKET_TYPE getActionType() const noexcept { return m_ActionType; }
 
     bool HasMVKeyOne() const noexcept override { return true; }
-    bool HasMVKeyTwo() const noexcept override { return !m_sCollectionTxid.empty(); }
+    bool HasMVKeyTwo() const noexcept override { return !m_sCollectionActTxid.empty(); }
     bool HasMVKeyThree() const noexcept override { return !m_label.empty(); }
 
     std::string MVKeyOne() const noexcept override { return m_sCreatorPastelID; }
-    std::string MVKeyTwo() const noexcept override { return m_sCollectionTxid; }
+    std::string MVKeyTwo() const noexcept override { return m_sCollectionActTxid; }
     std::string MVKeyThree() const noexcept override { return m_label; }
 
     std::string ToJSON(const bool bDecodeProperties = false) const noexcept override;

@@ -127,7 +127,7 @@ INSTANTIATE_TEST_SUITE_P(test_nft_reg, PTestNFTRegTicket_parsetkt, Values(
 						EXPECT_STREQ(p.getCreatorPastelID_param().c_str(), TEST_CREATOR_ID);
 						EXPECT_EQ(p.getCreatorHeight(), TEST_BLOCK_NUM);
 						EXPECT_STREQ(p.getTopBlockHash().c_str(), TEST_BLOCK_HASH);
-						EXPECT_STREQ(p.getCollectionTxId().c_str(), TEST_COLLECTION_TXID);
+						EXPECT_STREQ(p.getCollectionActTxId().c_str(), TEST_COLLECTION_TXID);
 						EXPECT_EQ(p.getTotalCopies(), 0u);
 						EXPECT_EQ(p.getRoyalty(), 0.0f);
 						EXPECT_FALSE(p.hasGreenFee());
@@ -157,16 +157,16 @@ TEST_F(TestNFTRegTicket, RetrieveCollectionTicket)
 	string error;
 
 	// test invalid collection txid
-	m_sCollectionTxid = "123";
-	EXPECT_EQ(RetrieveCollectionTicket(error, bInvalidTxId), nullptr);
+	m_sCollectionActTxid = "123";
+	EXPECT_EQ(RetrieveCollectionActivateTicket(error, bInvalidTxId), nullptr);
 	EXPECT_TRUE(bInvalidTxId);
 	EXPECT_TRUE(!error.empty());
 
 	// valid collection txid
 	error.clear();
 	bInvalidTxId = false;
-	m_sCollectionTxid = TEST_COLLECTION_TXID;
-	EXPECT_EQ(RetrieveCollectionTicket(error, bInvalidTxId), nullptr);
+	m_sCollectionActTxid = TEST_COLLECTION_TXID;
+	EXPECT_EQ(RetrieveCollectionActivateTicket(error, bInvalidTxId), nullptr);
 	EXPECT_FALSE(bInvalidTxId);
 	EXPECT_FALSE(error.empty());
 }

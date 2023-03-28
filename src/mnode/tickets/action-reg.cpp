@@ -46,7 +46,7 @@ static const std::array<ActionTicketInfo, 2> ACTION_TICKET_INFO =
     },
     { 2, 1,
        {
-           {"collection_txid",              make_tuple(ACTION_TKT_PROP::collection_txid, false)},
+           {"collection_txid",              make_tuple(ACTION_TKT_PROP::collection_act_txid, false)},
        }
     }
 }};
@@ -197,8 +197,8 @@ void CActionRegTicket::parse_action_ticket()
                     value.get_to(m_sTopBlockHash);
                     break;
 
-                case ACTION_TKT_PROP::collection_txid:
-                    value.get_to(m_sCollectionTxid);
+                case ACTION_TKT_PROP::collection_act_txid:
+                    value.get_to(m_sCollectionActTxid);
                     break;
             }  // switch
         } // for
@@ -270,7 +270,7 @@ bool CActionRegTicket::setActionType(const string& sActionType) noexcept
 uint32_t CActionRegTicket::CountItemsInCollection(const uint32_t currentChainHeight) const
 {
     uint32_t nCollectionItemCount = 0;
-    masterNodeCtrl.masternodeTickets.ProcessTicketsByMVKey<CActionRegTicket>(m_sCollectionTxid,
+    masterNodeCtrl.masternodeTickets.ProcessTicketsByMVKey<CActionRegTicket>(m_sCollectionActTxid,
                                                                             [&](const CActionRegTicket& regTicket) -> bool
                                                                             {
                                                                                 if ((regTicket.GetBlock() <= currentChainHeight))

@@ -3,6 +3,7 @@
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <mnode/tickets/ticket-mn-fees.h>
+#include <mnode/tickets/collection-reg.h>
 
 // forward ticket class declaration
 class CollectionActivateTicket;
@@ -45,7 +46,7 @@ public:
 
     TicketID ID() const noexcept override { return TicketID::CollectionAct; }
     static TicketID GetID() { return TicketID::CollectionAct; }
-    constexpr auto GetTicketDescription() const
+    static constexpr auto GetTicketDescription()
     {
         return TICKET_INFO[to_integral_type<TicketID>(TicketID::CollectionAct)].szDescription;
     }

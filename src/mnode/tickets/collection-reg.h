@@ -102,7 +102,7 @@ public:
 
     TicketID ID() const noexcept override { return TicketID::CollectionReg; }
     static TicketID GetID() { return TicketID::CollectionReg; }
-    constexpr auto GetTicketDescription() const
+    static constexpr auto GetTicketDescription()
     {
         return TICKET_INFO[to_integral_type<TicketID>(TicketID::CollectionReg)].szDescription;
     }

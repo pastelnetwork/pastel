@@ -72,7 +72,7 @@ ticket_validation_t CollectionActivateTicket::IsValid(const bool bPreReg, const 
         const ticket_validation_t commonTV = common_ticket_validation(
             *this, bPreReg, m_regTicketTxId, pastelTicket,
             [](const TicketID tid) noexcept { return (tid != TicketID::CollectionReg); },
-            GetTicketDescription(), ::GetTicketDescription(TicketID::CollectionReg), nCallDepth,
+            GetTicketDescription(), CollectionRegTicket::GetTicketDescription(), nCallDepth,
             TicketPricePSL(chainHeight) + static_cast<CAmount>(getAllMNFeesPSL())); // fee for ticket + all MN storage fees (percent from storage fee)
 
         if (commonTV.IsNotValid())
@@ -110,7 +110,7 @@ ticket_validation_t CollectionActivateTicket::IsValid(const bool bPreReg, const 
         {
             tv.errorMsg = strprintf(
                 "The %s ticket with this txid [%s] is not in the blockchain or is invalid",
-                ::GetTicketDescription(TicketID::CollectionReg), m_regTicketTxId);
+                CollectionRegTicket::GetTicketDescription(), m_regTicketTxId);
             break;
         }
 
@@ -119,7 +119,7 @@ ticket_validation_t CollectionActivateTicket::IsValid(const bool bPreReg, const 
         {
             tv.errorMsg = strprintf(
                 "The Pastel ID [%s] is not matching the Creator's Pastel ID [%s] in the %s ticket with this txid [%s]",
-                m_sPastelID, pCollTicket->getCreatorPastelId(), ::GetTicketDescription(TicketID::CollectionReg), m_regTicketTxId);
+                m_sPastelID, pCollTicket->getCreatorPastelId(), CollectionRegTicket::GetTicketDescription(), m_regTicketTxId);
             break;
         }
 
@@ -128,7 +128,7 @@ ticket_validation_t CollectionActivateTicket::IsValid(const bool bPreReg, const 
         {
             tv.errorMsg = strprintf(
                 "The CreatorHeight [%d] is not matching the CreatorHeight [%d] in the %s ticket with this txid [%s]",
-                m_creatorHeight, pCollTicket->getCreatorHeight(), ::GetTicketDescription(TicketID::CollectionReg), m_regTicketTxId);
+                m_creatorHeight, pCollTicket->getCreatorHeight(), CollectionRegTicket::GetTicketDescription(), m_regTicketTxId);
             break;
         }
 
@@ -137,7 +137,7 @@ ticket_validation_t CollectionActivateTicket::IsValid(const bool bPreReg, const 
         {
             tv.errorMsg = strprintf(
                 "The storage fee [%d] is not matching the storage fee [%" PRIi64 "] in the %s ticket with this txid [%s]",
-                m_storageFee, pCollTicket->getStorageFee(), ::GetTicketDescription(TicketID::CollectionReg), m_regTicketTxId);
+                m_storageFee, pCollTicket->getStorageFee(), CollectionRegTicket::GetTicketDescription(), m_regTicketTxId);
             break;
         }
         tv.setValid();
@@ -174,13 +174,13 @@ CAmount CollectionActivateTicket::GetExtraOutputs(vector<CTxOut>& outputs) const
         if (!CPastelIDRegTicket::FindTicketInDb(mnPastelID, mnPastelIDticket))
             throw runtime_error(strprintf(
                 "The Pastel ID [%s] from the %s ticket with this txid [%s] is not in the blockchain or is invalid",
-                mnPastelID, ::GetTicketDescription(TicketID::CollectionReg), m_regTicketTxId));
+                mnPastelID, CollectionRegTicket::GetTicketDescription(), m_regTicketTxId));
 
         const auto dest = keyIO.DecodeDestination(mnPastelIDticket.getFundingAddress());
         if (!IsValidDestination(dest))
             throw runtime_error(strprintf(
                 "The Pastel ID [%s] from the %s ticket with this txid [%s] has invalid MN's address", 
-                mnPastelID, ::GetTicketDescription(TicketID::CollectionReg), m_regTicketTxId));
+                mnPastelID, CollectionRegTicket::GetTicketDescription(), m_regTicketTxId));
 
         // caclulate MN fee in patoshis
         const CAmount nAmount = mn == CollectionRegTicket::SIGN_MAIN ? getPrincipalMNFee() : getOtherMNFee();
