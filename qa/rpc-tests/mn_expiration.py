@@ -339,7 +339,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
                 self.register_offer_ticket, TicketType.NFT, 2)
 
     def generate_blocks(self, block_count: int):
-        chunk_size = 10
+        chunk_size = 5
         chunk_count = int(block_count/chunk_size)
         print(f"Generate {block_count} blocks. 1 chunk is {chunk_size} blocks, total {chunk_count} chunks")
         for ind in range(chunk_count):

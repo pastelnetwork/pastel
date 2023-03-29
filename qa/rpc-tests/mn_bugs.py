@@ -121,11 +121,13 @@ class MasterNodeGovernanceTest (MasterNodeCommon):
 
         print("Waiting 90 seconds...")
         time.sleep(90)
-        print("Hopefully we have be then new P2PAddresses")
+        print("Checking that we have new P2PAddresses")
         mns = self.nodes[self.hot_node_num].masternodelist("extra")
-        for out in mns:
-            if (mns[out]["extAddress"] in mn_ext_add_to_modified_p2p):
-                assert_equal(mns[out]["extP2P"], mn_ext_add_to_modified_p2p[mns[out]["extAddress"]])
+        for _, cfg in mns.items():
+            extAddress = cfg["extAddress"]
+            extP2P = cfg["extP2P"]
+            if (extAddress in mn_ext_add_to_modified_p2p):                
+                assert_equal(extP2P, mn_ext_add_to_modified_p2p[extAddress])
 
 
     def test_40104615 (self):

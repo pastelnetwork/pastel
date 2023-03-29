@@ -1002,7 +1002,7 @@ string CPastelTicketProcessor::ListFilterActionTickets(const uint32_t nMinHeight
                         return false; //don't skip transferred
                 }
             }
-            // check if there is Act ticket for this Reg ticket
+            // check if there is an Action Activation ticket for this Action Registration ticket
             if (CActionActivateTicket::CheckTicketExistByActionRegTicketID(t.GetTxId()))
             {
                 if (filter == 1)
