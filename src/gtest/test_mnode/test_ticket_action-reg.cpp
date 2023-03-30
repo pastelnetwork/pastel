@@ -1,24 +1,23 @@
-// Copyright (c) 2022-2023 The Pastel developers
+// Copyright (c) 2023 The Pastel developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <gtest/gtest.h>
 
-#include <utilstrencodings.h>
-#include <mnode/tickets/nft-reg.h>
-#include <mnode/mnode-controller.h>
+#include <mnode/tickets/action-reg.h>
+
 #include <pastel_gtest_main.h>
 #include <test_mnode/test_data.h>
 
 using namespace std;
 using namespace testing;
 
-class PTestNFTRegTicket_parsetkt : 
-	public CNFTRegTicket,
+class PTestActionRegTicket_parsetkt : 
+	public CActionRegTicket,
 	public TestWithParam<tuple<
-		string, // nft_ticket - not base64-encoded
+		string, // action_ticket - not base64-encoded
 		bool,   // expected result
 		string, // expected error substring
-		function<void(const PTestNFTRegTicket_parsetkt &p)> // validation function
+		function<void(const PTestActionRegTicket_parsetkt &p)> // validation function
 	>>
 {
 public:
@@ -33,10 +32,10 @@ public:
 	}
 };
 
-TEST_P(PTestNFTRegTicket_parsetkt, parse_nft_ticket)
+TEST_P(PTestActionRegTicket_parsetkt, parse_action_ticket)
 {
 	const auto& params = GetParam();
-	m_sNFTTicket = EncodeBase64(get<0>(params));
+	m_sActionTicket = EncodeBase64(get<0>(params));
 	const bool bExpectedResult = get<1>(params);
 	const auto& sExpectedError = get<2>(params);
 	const auto& fnValidateResult = get<3>(params);
@@ -44,99 +43,83 @@ TEST_P(PTestNFTRegTicket_parsetkt, parse_nft_ticket)
 	string error;
 	try
 	{
-		parse_nft_ticket();
-		EXPECT_TRUE(bExpectedResult) << "nft_ticket was successfully parsed, expected failure";
+		parse_action_ticket();
+		EXPECT_TRUE(bExpectedResult) << "action_ticket was successfully parsed, expected failure";
 		fnValidateResult(*this);
 	}
 	catch (const exception& ex)
 	{
 		error = ex.what();
-		EXPECT_FALSE(bExpectedResult) << "nft_ticket parsing failed with [" << error << "]";
+		EXPECT_FALSE(bExpectedResult) << "action_ticket parsing failed with [" << error << "]";
 	}
 	if (!bExpectedResult)
 		EXPECT_NE(error.find(sExpectedError), string::npos);
 }
 
-INSTANTIATE_TEST_SUITE_P(test_nft_reg, PTestNFTRegTicket_parsetkt, Values(
-	make_tuple( // valid v1 nft_ticket (invalid royalty fee)
+INSTANTIATE_TEST_SUITE_P(test_action_reg, PTestActionRegTicket_parsetkt, Values(
+	make_tuple( // valid v1 action_ticket
 		strprintf(R"({
-				"nft_ticket_version": 1,
-				"author": "%s",
+				"action_ticket_version": 1,
+				"action_type": "sense",
+				"caller": "%s",
 				"blocknum": %u,
 				"block_hash": "%s",
-				"copies": %u,
-				"royalty": %f,
-				"green": true,
-				"app_ticket": ""
-		   })", TEST_CREATOR_ID, TEST_BLOCK_NUM, TEST_BLOCK_HASH, TEST_TOTAL_COPIES, TEST_ROYALTY_FEE), true, "", 
-			[](const PTestNFTRegTicket_parsetkt &p)
+				"api_ticket": ""
+		   })", TEST_CREATOR_ID, TEST_BLOCK_NUM, TEST_BLOCK_HASH), true, "", 
+			[](const PTestActionRegTicket_parsetkt &p)
 			{
 				EXPECT_EQ(p.getTicketVersion(), 1u);
 				EXPECT_STREQ(p.getCreatorPastelID_param().c_str(), TEST_CREATOR_ID);
-				EXPECT_EQ(p.getCreatorHeight(), TEST_BLOCK_NUM);
+				EXPECT_EQ(p.getCalledAtHeight(), TEST_BLOCK_NUM);
 				EXPECT_STREQ(p.getTopBlockHash().c_str(), TEST_BLOCK_HASH);
-				EXPECT_EQ(p.getTotalCopies(), TEST_TOTAL_COPIES);
-				EXPECT_EQ(p.getRoyalty(), TEST_ROYALTY_FEE);
-				EXPECT_TRUE(p.hasGreenFee());
-				EXPECT_STREQ(p.getGreenAddress().c_str(), TEST_GREEN_ADDRESS);
-
-				string error;
-				EXPECT_FALSE(p.ValidateFees(error));
-				EXPECT_TRUE(!error.empty());
 			}),
 	make_tuple(
-		"{}", false, "key 'nft_ticket_version' not found", [](const PTestNFTRegTicket_parsetkt& p) {}),
+		"{}", false, "key 'action_ticket_version' not found", [](const PTestActionRegTicket_parsetkt& p) {}),
 	make_tuple( // unsupported property
-		R"({ "nft_ticket_version": 1,
+		R"({ "action_ticket_version": 1,
 			 "unknown_ticket_property": "abcd"
-		})", false, "Found unsupported property 'unknown_ticket_property'", [](const PTestNFTRegTicket_parsetkt& p) {}),
+		})", false, "Found unsupported property 'unknown_ticket_property'", [](const PTestActionRegTicket_parsetkt& p) {}),
 	make_tuple( // duplicate property - json implementation does not throw an error: uses second value
-		R"({ "nft_ticket_version": 1,
-			 "author": "nft_creator_1",
-			 "author": "nft_creator_2",
+		R"({ "action_ticket_version": 1,
+  		     "action_type": "sense",
+			 "caller": "action_caller_1",
+			 "caller": "action_caller_2",
 			 "blocknum": 1,
 			 "block_hash": "123",
-			 "copies": 5,
-			 "royalty": 0.1,
-			 "green": true,
-			 "app_ticket": ""
-		})", true, "", [](const PTestNFTRegTicket_parsetkt& p)
+			 "api_ticket": ""
+		})", true, "", [](const PTestActionRegTicket_parsetkt& p)
 			{
-				EXPECT_STREQ(p.getCreatorPastelID_param().c_str(), "nft_creator_2");
+				EXPECT_STREQ(p.getCreatorPastelID_param().c_str(), "action_caller_2");
 			}),
 	make_tuple( // missing required property
-		R"({ "nft_ticket_version": 1,
-			 "author": "123",
+		R"({ "action_ticket_version": 1,
+			 "caller": "123",
 			 "blocknum": 1,
 			 "block_hash": "aaaa",
-			 "royalty": 0.2,
-			 "app_ticket": ""
-		})", false, "Missing required properties", [](const PTestNFTRegTicket_parsetkt& p) {}),
-	make_tuple( // valid v2 nft_ticket - no optional royalty, green & copies properties
+			 "api_ticket": ""
+		})", false, "Missing required properties", [](const PTestActionRegTicket_parsetkt& p) {}),
+	make_tuple( // valid v2 action_ticket - with collection_txid property
 		strprintf(R"({
-				"nft_ticket_version": 2,
-				"author": "%s",
+				"action_ticket_version": 2,
+   		        "action_type": "sense",
+				"caller": "%s",
 				"blocknum": %u,
 				"block_hash": "%s",
 				"collection_txid": "%s",
-				"app_ticket": ""
+				"api_ticket": ""
 		   })", TEST_CREATOR_ID, TEST_BLOCK_NUM, TEST_BLOCK_HASH, TEST_COLLECTION_TXID), true, "", 
-					[](const PTestNFTRegTicket_parsetkt &p)
+					[](const PTestActionRegTicket_parsetkt &p)
 					{
 						EXPECT_EQ(p.getTicketVersion(), 2u);
 						EXPECT_STREQ(p.getCreatorPastelID_param().c_str(), TEST_CREATOR_ID);
-						EXPECT_EQ(p.getCreatorHeight(), TEST_BLOCK_NUM);
+						EXPECT_EQ(p.getCalledAtHeight(), TEST_BLOCK_NUM);
 						EXPECT_STREQ(p.getTopBlockHash().c_str(), TEST_BLOCK_HASH);
 						EXPECT_STREQ(p.getCollectionActTxId().c_str(), TEST_COLLECTION_TXID);
-						EXPECT_EQ(p.getTotalCopies(), 0u);
-						EXPECT_EQ(p.getRoyalty(), 0.0f);
-						EXPECT_FALSE(p.hasGreenFee());
-						EXPECT_TRUE(p.getGreenAddress().empty());
 					})
 ));
 
-class TestNFTRegTicket : 
-	public CNFTRegTicket,
+class TestActionRegTicket : 
+	public CActionRegTicket,
 	public Test
 {
 public:
@@ -151,7 +134,7 @@ public:
 	}
 };
 
-TEST_F(TestNFTRegTicket, RetrieveCollectionTicket)
+TEST_F(TestActionRegTicket, RetrieveCollectionTicket)
 {
 	bool bInvalidTxId = false;
 	string error;
@@ -170,3 +153,4 @@ TEST_F(TestNFTRegTicket, RetrieveCollectionTicket)
 	EXPECT_FALSE(bInvalidTxId);
 	EXPECT_FALSE(error.empty());
 }
+

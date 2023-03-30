@@ -88,7 +88,7 @@ ticket_validation_t CNFTRoyaltyTicket::IsValid(const bool bPreReg, const uint32_
         const ticket_validation_t commonTV = common_ticket_validation(
             *this, bPreReg, m_sNFTTxId, pastelTicket,
             [](const TicketID tid) noexcept { return (tid != TicketID::NFT); },
-            GetTicketDescription(), ::GetTicketDescription(TicketID::NFT), nCallDepth, 
+            GetTicketDescription(), CNFTRegTicket::GetTicketDescription(), nCallDepth, 
             TicketPricePSL(chainHeight));
         if (commonTV.IsNotValid())
         {

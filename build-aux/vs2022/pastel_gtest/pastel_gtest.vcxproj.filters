@@ -319,10 +319,16 @@
     <ClCompile Include="..\..\..\src\gtest\test_mnode\test_ticket_nft-reg.cpp">
       <Filter>UnitTest Files\test_mnode</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\src\gtest\test_mnode\test_ticket_nft-collection-reg.cpp">
+    <ClCompile Include="..\..\..\src\gtest\test_mnode\test_ticket_collection-reg.cpp">
       <Filter>UnitTest Files\test_mnode</Filter>
     </ClCompile>
     <ClCompile Include="..\..\..\src\gtest\test_mnode\test_ticket_offer.cpp">
+      <Filter>UnitTest Files\test_mnode</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\src\gtest\test_mnode\test_ticket_action-reg.cpp">
+      <Filter>UnitTest Files\test_mnode</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\src\gtest\test_mnode\test_ticket_types.cpp">
       <Filter>UnitTest Files\test_mnode</Filter>
     </ClCompile>
   </ItemGroup>
@@ -362,6 +368,9 @@
     </ClInclude>
     <ClInclude Include="..\..\..\src\gtest\mock_validation_state.h">
       <Filter>UnitTest Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\gtest\test_mnode\test_data.h">
+      <Filter>UnitTest Files\test_mnode</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

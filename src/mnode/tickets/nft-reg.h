@@ -7,6 +7,7 @@
 #include <json/json.hpp>
 
 #include <mnode/tickets/ticket-extra-fees.h>
+#include <mnode/tickets/collection-item.h>
 
 constexpr auto NFT_TICKET_APP_OBJ = "app_ticket";
 
@@ -23,7 +24,7 @@ enum class NFT_TKT_PROP : uint8_t
     creator = 2,
     blocknum = 3,
     block_hash = 4,
-    nft_collection_txid = 5,
+    collection_act_txid = 5,
     copies = 6,
     royalty = 7,
     green = 8,
@@ -36,8 +37,8 @@ enum class NFT_TKT_PROP : uint8_t
     "ticket": {
         "type": "nft-reg",      // NFT Registration ticket type
         "version": int,         // ticket version (1 or 2)
-        "nft_ticket": bytes,    // base64-encoded NFT ticket data
-        "signatures": object,   // base64-encoded signatures and Pastel IDs of the signers
+        "nft_ticket": bytes,    // json object with NFT ticket
+        "signatures": object,   // json object with base64-encoded signatures and Pastel IDs of the signers
         "key": string,          // unique key (32-bytes, base32-encoded)
         "label": string,        // label to use for searching the ticket
         "creator_height": uint, // block height at which the ticket was created
@@ -59,8 +60,8 @@ bytes fields are base64 as strings
   "copies": integer,             // number of copies of NFT this ticket is creating, optional in v2
   "royalty": float,              // royalty fee, how much creator should get on all future resales, optional in v2
   "green": boolean,              // is there Green NFT payment or not, optional in v2
-  "nft_collection_txid": bytes,  // transaction id of the NFT collection that NFT belongs to, v2 only, optional, can be empty
-  "app_ticket": bytes,           // ascii85-encoded application ticket, parsed by the cnode only for search capability
+  "collection_txid": bytes,      // transaction id of the collection activation ticket that NFT belongs to (v2 only, optional, can be empty)
+  "app_ticket": bytes,           // json object with application ticket, parsed by the cnode only for search capability
   {
     "creator_name": string,
     "nft_title": string,
@@ -99,11 +100,13 @@ signatures: {
 
   key #1: primary unique key (generated, random 32-bytes base32-encoded)
 mvkey #1: Creator Pastel ID
-mvkey #2: NFT Collection TxID (optional)
+mvkey #2: collection txid (optional)
 mvkey #3: label (optional)
 }
  */
-class CNFTRegTicket : public CTicketSignedWithExtraFees 
+class CNFTRegTicket : 
+    public CTicketSignedWithExtraFees,
+    public CollectionItem
 {
 public:
     CNFTRegTicket() = default;
@@ -113,7 +116,7 @@ public:
 
     TicketID ID() const noexcept override { return TicketID::NFT; }
     static TicketID GetID() { return TicketID::NFT; }
-    constexpr auto GetTicketDescription() const
+    static constexpr auto GetTicketDescription()
     {
         return TICKET_INFO[to_integral_type<TicketID>(TicketID::NFT)].szDescription;
     }
@@ -121,11 +124,11 @@ public:
     void Clear() noexcept override;
 
     bool HasMVKeyOne() const noexcept override { return true; }
-    bool HasMVKeyTwo() const noexcept override { return !m_sNFTCollectionTxid.empty(); }
+    bool HasMVKeyTwo() const noexcept override { return !m_sCollectionActTxid.empty(); }
     bool HasMVKeyThree() const noexcept override { return !m_label.empty(); }
 
     std::string MVKeyOne() const noexcept override { return getCreatorPastelId(); }
-    std::string MVKeyTwo() const noexcept override { return m_sNFTCollectionTxid; }
+    std::string MVKeyTwo() const noexcept override { return m_sCollectionActTxid; }
     std::string MVKeyThree() const noexcept override { return m_label; }
 
     std::string ToJSON(const bool bDecodeProperties = false) const noexcept override;
@@ -135,8 +138,6 @@ public:
     // getters for ticket fields
     uint16_t getTicketVersion() const noexcept { return m_nNFTTicketVersion; }
     uint32_t getTotalCopies() const noexcept { return m_nTotalCopies; }
-    std::string getNFTCollectionTxId() const noexcept { return m_sNFTCollectionTxid; }
-    std::string getCreatorPastelID_param() const noexcept { return m_sCreatorPastelID; }
     std::string getTopBlockHash() const noexcept { return m_sTopBlockHash; }
 
     // setters for ticket fields
@@ -179,24 +180,18 @@ public:
     static bool FindTicketInDb(const std::string& key, CNFTRegTicket& ticket);
     static bool CheckIfTicketInDb(const std::string& key);
     static NFTRegTickets_t FindAllTicketByPastelID(const std::string& pastelID);
+    uint32_t CountItemsInCollection(const uint32_t currentChainHeight) const override;
 
 protected:
     uint16_t m_nNFTTicketVersion{0};
     std::string m_sNFTTicket;         // NFT Registration ticket (nft_ticket)
-    std::string m_sNFTCollectionTxid; // txid of the NFT collection - can be empty for the simple NFT
-    std::string m_sCreatorPastelID;   // Pastel ID of the NFT ticket creator
     std::string m_sTopBlockHash;      // hash of the top block when the ticket was created - this is to map the ticket to the MNs that should process it
     uint32_t m_nTotalCopies{};        // total copies allowed for this NFT
     std::unordered_set<NFT_TKT_PROP> m_props; // set of properties in the nft_ticket 
 
     // parse base64-encoded nft_ticket in json format, may throw runtime_error exception
     void parse_nft_ticket();
-    // validate referred NFT collection
-    ticket_validation_t IsValidCollection(const bool bPreReg) const noexcept;
-    virtual std::unique_ptr<CPastelTicket> GetTicket(const uint256 &txid) const;
-    // retrieve referred NFT collection
-    virtual std::unique_ptr<CPastelTicket> RetrieveCollectionTicket(std::string& error, bool &bInvalidTxId) const noexcept;
-    // set missing properties from NFT collection
+    // set missing properties from collection
     void set_collection_properties() noexcept;
 
     // parse base64-encoded nft_ticket in json format

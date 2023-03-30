@@ -8,8 +8,8 @@
 #include <pastelid/common.h>
 #include <pastelid/pastel_key.h>
 #include <mnode/tickets/pastelid-reg.h>
-#include <mnode/tickets/nft-collection-reg.h>
-#include <mnode/tickets/nft-collection-act.h>
+#include <mnode/tickets/collection-reg.h>
+#include <mnode/tickets/collection-act.h>
 #include <mnode/tickets/ticket-utils.h>
 #ifdef ENABLE_WALLET
 #include <wallet/wallet.h>
@@ -18,10 +18,10 @@
 using json = nlohmann::json;
 using namespace std;
 
-// CNFTCollectionActivateTicket ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-CNFTCollectionActivateTicket CNFTCollectionActivateTicket::Create(string&& regTicketTxId, int _creatorHeight, int _storageFee, string&& sPastelID, SecureString&& strKeyPass)
+// CollectionActivateTicket ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+CollectionActivateTicket CollectionActivateTicket::Create(string&& regTicketTxId, int _creatorHeight, int _storageFee, string&& sPastelID, SecureString&& strKeyPass)
 {
-    CNFTCollectionActivateTicket ticket(move(sPastelID));
+    CollectionActivateTicket ticket(move(sPastelID));
 
     ticket.setRegTxId(move(regTicketTxId));
     ticket.m_creatorHeight = _creatorHeight;
@@ -31,7 +31,7 @@ CNFTCollectionActivateTicket CNFTCollectionActivateTicket::Create(string&& regTi
     return ticket;
 }
 
-string CNFTCollectionActivateTicket::ToStr() const noexcept
+string CollectionActivateTicket::ToStr() const noexcept
 {
     stringstream ss;
     ss << m_sPastelID;
@@ -49,7 +49,7 @@ string CNFTCollectionActivateTicket::ToStr() const noexcept
 * 
 * \param strKeyPass - passphrase to access secure container (Pastel ID)
 */
-void CNFTCollectionActivateTicket::sign(SecureString&& strKeyPass)
+void CollectionActivateTicket::sign(SecureString&& strKeyPass)
 {
     string_to_vector(CPastelID::Sign(ToStr(), m_sPastelID, move(strKeyPass)), m_signature);
 }
@@ -61,7 +61,7 @@ void CNFTCollectionActivateTicket::sign(SecureString&& strKeyPass)
 * \param nCallDepth - function call depth
 * \return ticket validation state and error message if any
 */
-ticket_validation_t CNFTCollectionActivateTicket::IsValid(const bool bPreReg, const uint32_t nCallDepth) const noexcept
+ticket_validation_t CollectionActivateTicket::IsValid(const bool bPreReg, const uint32_t nCallDepth) const noexcept
 {
     const auto chainHeight = GetActiveChainHeight();
     ticket_validation_t tv;
@@ -71,8 +71,8 @@ ticket_validation_t CNFTCollectionActivateTicket::IsValid(const bool bPreReg, co
         unique_ptr<CPastelTicket> pastelTicket;
         const ticket_validation_t commonTV = common_ticket_validation(
             *this, bPreReg, m_regTicketTxId, pastelTicket,
-            [](const TicketID tid) noexcept { return (tid != TicketID::NFTCollectionReg); },
-            GetTicketDescription(), ::GetTicketDescription(TicketID::NFTCollectionReg), nCallDepth,
+            [](const TicketID tid) noexcept { return (tid != TicketID::CollectionReg); },
+            GetTicketDescription(), CollectionRegTicket::GetTicketDescription(), nCallDepth,
             TicketPricePSL(chainHeight) + static_cast<CAmount>(getAllMNFeesPSL())); // fee for ticket + all MN storage fees (percent from storage fee)
 
         if (commonTV.IsNotValid())
@@ -87,7 +87,7 @@ ticket_validation_t CNFTCollectionActivateTicket::IsValid(const bool bPreReg, co
 
         // Check the Activation ticket for that Registration ticket is already in the database
         // (ticket transaction replay attack protection)
-        CNFTCollectionActivateTicket existingTicket;
+        CollectionActivateTicket existingTicket;
         if (FindTicketInDb(m_regTicketTxId, existingTicket))
         {
             if (bPreReg || // if pre reg - this is probably repeating call, so signatures can be the same
@@ -104,40 +104,40 @@ ticket_validation_t CNFTCollectionActivateTicket::IsValid(const bool bPreReg, co
             }
         }
 
-        const auto pNFTCollTicket = dynamic_cast<const CNFTCollectionRegTicket*>(pastelTicket.get());
+        const auto pCollTicket = dynamic_cast<const CollectionRegTicket*>(pastelTicket.get());
         // this is already validated in common_ticket_validation, but just double check that we retrieved a parent activation reg ticket
-        if (!pNFTCollTicket)
+        if (!pCollTicket)
         {
             tv.errorMsg = strprintf(
                 "The %s ticket with this txid [%s] is not in the blockchain or is invalid",
-                ::GetTicketDescription(TicketID::NFTCollectionReg), m_regTicketTxId);
+                CollectionRegTicket::GetTicketDescription(), m_regTicketTxId);
             break;
         }
 
-        // 1. check creator Pastel ID in NFTReg ticket matches Pastel ID from this ticket
-        if (!pNFTCollTicket->IsCreatorPastelId(m_sPastelID))
+        // 1. check creator Pastel ID in Collection Reg ticket matches Pastel ID from this ticket
+        if (!pCollTicket->IsCreatorPastelId(m_sPastelID))
         {
             tv.errorMsg = strprintf(
                 "The Pastel ID [%s] is not matching the Creator's Pastel ID [%s] in the %s ticket with this txid [%s]",
-                m_sPastelID, pNFTCollTicket->getCreatorPastelId(), ::GetTicketDescription(TicketID::NFTCollectionReg), m_regTicketTxId);
+                m_sPastelID, pCollTicket->getCreatorPastelId(), CollectionRegTicket::GetTicketDescription(), m_regTicketTxId);
             break;
         }
 
-        // 2. check NFTReg ticket is at the assumed height
-        if (pNFTCollTicket->getCreatorHeight() != m_creatorHeight)
+        // 2. check Collection Reg ticket is at the assumed height
+        if (pCollTicket->getCreatorHeight() != m_creatorHeight)
         {
             tv.errorMsg = strprintf(
                 "The CreatorHeight [%d] is not matching the CreatorHeight [%d] in the %s ticket with this txid [%s]",
-                m_creatorHeight, pNFTCollTicket->getCreatorHeight(), ::GetTicketDescription(TicketID::NFTCollectionReg), m_regTicketTxId);
+                m_creatorHeight, pCollTicket->getCreatorHeight(), CollectionRegTicket::GetTicketDescription(), m_regTicketTxId);
             break;
         }
 
-        // 3. check NFTReg ticket fee is same as storageFee
-        if (pNFTCollTicket->getStorageFee() != m_storageFee)
+        // 3. check Collection Reg ticket fee is same as storageFee
+        if (pCollTicket->getStorageFee() != m_storageFee)
         {
             tv.errorMsg = strprintf(
                 "The storage fee [%d] is not matching the storage fee [%" PRIi64 "] in the %s ticket with this txid [%s]",
-                m_storageFee, pNFTCollTicket->getStorageFee(), ::GetTicketDescription(TicketID::NFTCollectionReg), m_regTicketTxId);
+                m_storageFee, pCollTicket->getStorageFee(), CollectionRegTicket::GetTicketDescription(), m_regTicketTxId);
             break;
         }
         tv.setValid();
@@ -157,33 +157,33 @@ ticket_validation_t CNFTCollectionActivateTicket::IsValid(const bool bPreReg, co
  * \param outputs - vector of outputs: CTxOut
  * \return - total amount of extra outputs in patoshis
  */
-CAmount CNFTCollectionActivateTicket::GetExtraOutputs(vector<CTxOut>& outputs) const
+CAmount CollectionActivateTicket::GetExtraOutputs(vector<CTxOut>& outputs) const
 {
-    const auto ticket = CPastelTicketProcessor::GetTicket(m_regTicketTxId, TicketID::NFTCollectionReg);
-    const auto pNFTCollRegTicket = dynamic_cast<const CNFTCollectionRegTicket*>(ticket.get());
-    if (!pNFTCollRegTicket)
+    const auto ticket = CPastelTicketProcessor::GetTicket(m_regTicketTxId, TicketID::CollectionReg);
+    const auto pCollRegTicket = dynamic_cast<const CollectionRegTicket*>(ticket.get());
+    if (!pCollRegTicket)
         return 0;
 
     CAmount nAllAmount = 0;
 
     KeyIO keyIO(Params());
-    for (auto mn = CNFTCollectionRegTicket::SIGN_MAIN; mn < CNFTCollectionRegTicket::SIGN_COUNT; ++mn)
+    for (auto mn = CollectionRegTicket::SIGN_MAIN; mn < CollectionRegTicket::SIGN_COUNT; ++mn)
     {
-        const auto mnPastelID = pNFTCollRegTicket->getPastelID(mn);
+        const auto mnPastelID = pCollRegTicket->getPastelID(mn);
         CPastelIDRegTicket mnPastelIDticket;
         if (!CPastelIDRegTicket::FindTicketInDb(mnPastelID, mnPastelIDticket))
             throw runtime_error(strprintf(
                 "The Pastel ID [%s] from the %s ticket with this txid [%s] is not in the blockchain or is invalid",
-                mnPastelID, ::GetTicketDescription(TicketID::NFTCollectionReg), m_regTicketTxId));
+                mnPastelID, CollectionRegTicket::GetTicketDescription(), m_regTicketTxId));
 
         const auto dest = keyIO.DecodeDestination(mnPastelIDticket.getFundingAddress());
         if (!IsValidDestination(dest))
             throw runtime_error(strprintf(
                 "The Pastel ID [%s] from the %s ticket with this txid [%s] has invalid MN's address", 
-                mnPastelID, ::GetTicketDescription(TicketID::NFTCollectionReg), m_regTicketTxId));
+                mnPastelID, CollectionRegTicket::GetTicketDescription(), m_regTicketTxId));
 
         // caclulate MN fee in patoshis
-        const CAmount nAmount = mn == CNFTCollectionRegTicket::SIGN_MAIN ? getPrincipalMNFee() : getOtherMNFee();
+        const CAmount nAmount = mn == CollectionRegTicket::SIGN_MAIN ? getPrincipalMNFee() : getOtherMNFee();
         nAllAmount += nAmount;
 
         outputs.emplace_back(nAmount, GetScriptForDestination(dest));
@@ -192,7 +192,7 @@ CAmount CNFTCollectionActivateTicket::GetExtraOutputs(vector<CTxOut>& outputs) c
     return nAllAmount;
 }
 
-string CNFTCollectionActivateTicket::ToJSON(const bool bDecodeProperties) const noexcept
+string CollectionActivateTicket::ToJSON(const bool bDecodeProperties) const noexcept
 {
     const json jsonObj
     {
@@ -215,25 +215,25 @@ string CNFTCollectionActivateTicket::ToJSON(const bool bDecodeProperties) const 
     return jsonObj.dump(4);
 }
 
-bool CNFTCollectionActivateTicket::FindTicketInDb(const string& key, CNFTCollectionActivateTicket& ticket)
+bool CollectionActivateTicket::FindTicketInDb(const string& key, CollectionActivateTicket& ticket)
 {
     ticket.setRegTxId(key);
     return masterNodeCtrl.masternodeTickets.FindTicket(ticket);
 }
 
-NFTCollectionActivateTickets_t CNFTCollectionActivateTicket::FindAllTicketByPastelID(const std::string& pastelID)
+CollectionActivateTickets_t CollectionActivateTicket::FindAllTicketByPastelID(const std::string& pastelID)
 {
-    return masterNodeCtrl.masternodeTickets.FindTicketsByMVKey<CNFTCollectionActivateTicket>(pastelID);
+    return masterNodeCtrl.masternodeTickets.FindTicketsByMVKey<CollectionActivateTicket>(pastelID);
 }
 
-NFTCollectionActivateTickets_t CNFTCollectionActivateTicket::FindAllTicketByCreatorHeight(const unsigned int nCreatorHeight)
+CollectionActivateTickets_t CollectionActivateTicket::FindAllTicketByCreatorHeight(const unsigned int nCreatorHeight)
 {
-    return masterNodeCtrl.masternodeTickets.FindTicketsByMVKey<CNFTCollectionActivateTicket>(std::to_string(nCreatorHeight));
+    return masterNodeCtrl.masternodeTickets.FindTicketsByMVKey<CollectionActivateTicket>(std::to_string(nCreatorHeight));
 }
 
-bool CNFTCollectionActivateTicket::CheckTicketExistByNFTCollectionTicketID(const std::string& regTicketTxId)
+bool CollectionActivateTicket::CheckTicketExistByCollectionTicketID(const std::string& regTicketTxId)
 {
-    CNFTCollectionActivateTicket ticket;
+    CollectionActivateTicket ticket;
     ticket.setRegTxId(regTicketTxId);
     return masterNodeCtrl.masternodeTickets.CheckTicketExist(ticket);
 }

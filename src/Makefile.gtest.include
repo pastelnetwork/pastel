@@ -51,13 +51,15 @@ pastel_gtest_SOURCES +=\
 	gtest/test_mnode/test_pastel.cpp\
 	gtest/test_mnode/test_pastelid.cpp\
 	gtest/test_mnode/test_secure_container.cpp\
+	gtest/test_mnode/test_ticket_action-reg.cpp\
 	gtest/test_mnode/test_ticket_mempool.cpp\
 	gtest/test_mnode/test_ticket_mempool.h\
 	gtest/test_mnode/test_ticket_mempool_processor.cpp\
-	gtest/test_mnode/test_ticket_nft-collection-reg.cpp\
+	gtest/test_mnode/test_ticket_collection-reg.cpp\
 	gtest/test_mnode/test_ticket_nft-reg.cpp\
 	gtest/test_mnode/test_ticket_offer.cpp\
 	gtest/test_mnode/test_ticket_processor.cpp\
+	gtest/test_mnode/test_ticket_types.cpp\
 	gtest/test_addrman.cpp\
 	gtest/test_alert.cpp\
 	gtest/test_allocator.cpp\

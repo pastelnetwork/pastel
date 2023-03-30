@@ -14,7 +14,7 @@ UniValue tickets_get(const UniValue& params)
 {
     if (params.size() < 2 || params.size() > 3)
         throw JSONRPCError(RPC_INVALID_PARAMETER,
-                           R"(tickets get "txid" [decode_properties]
+R"(tickets get "txid" [decode_properties]
 
 Get (any) Pastel ticket by txid
 
@@ -29,7 +29,7 @@ As json rpc
 
     string error;
     uint256 txid;
-    // extract and validate collateral txid
+    // extract and validate txid
     if (!parse_uint256(error, txid, params[1].get_str(), "'txid' parameter"))
         throw JSONRPCError(RPC_INVALID_PARAMETER, error);
     

@@ -56,6 +56,10 @@ public:
 
     TicketID ID() const noexcept override { return TicketID::PastelID; }
     static TicketID GetID() { return TicketID::PastelID; }
+    static constexpr auto GetTicketDescription()
+    {
+        return TICKET_INFO[to_integral_type<TicketID>(TicketID::PastelID)].szDescription;
+    }
 
     void Clear() noexcept override
     {

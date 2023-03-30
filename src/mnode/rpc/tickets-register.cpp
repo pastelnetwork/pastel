@@ -120,7 +120,7 @@ Arguments:
         "copies":               <number of copies of NFT this ticket is creating, optional in v2>,
         "royalty":              <royalty fee, how much creator should get on all future resales, optional in v2>,
         "green":                <boolean, is there Green NFT payment or not, optional in v2>,
-        "nft_collection_txid":  "<transaction id of the NFT collection that NFT belongs to, v2 only, optional, can be empty>",
+        "collection_txid":      "<transaction id of the collection that NFT belongs to, v2 only, optional, can be empty>",
         "app_ticket":           "<application-specific-data>"
     }
 2. "{signatures}"	(string, required) Signatures (base64) and Pastel IDs of the principal and verifying masternodes (MN2 and MN3) as JSON:
@@ -194,39 +194,41 @@ As json rpc:
 }
 
 /**
- * Register NFT collection ticket.
+ * Register collection ticket.
  * 
  * \param params - RPC params
  * \return rpc result in json format
  */
-UniValue tickets_register_nft_collection(const UniValue& params)
+UniValue tickets_register_collection(const UniValue& params)
 {
     if (params.size() < 8)
         throw JSONRPCError(RPC_INVALID_PARAMETER,
-R"(tickets register nft-collection "{nft-collection-ticket}" "{signatures}" "pastelid" "passphrase" "label" "fee" ["address"]
-Register new NFT collection ticket. If successful, method returns "txid".
+R"(tickets register collection "{collection-ticket}" "{signatures}" "pastelid" "passphrase" "label" "fee" ["address"]
+Register new collection ticket. If successful, method returns "txid".
 
 Arguments:
-1. "{nft-collection-ticket}"  (string, required) Base64 encoded NFT ticket created by the creator.
+1. "{collection-ticket}"  (string, required) Base64 encoded ticket created by the creator.
     {
-        "nft_collection_ticket_version": 1,
-        "nft_collection_name": "<NFT collection name>",
-        "creator":             "<Pastel ID of the NFT collection creator>",
-        "permitted_users": [
+        "collection_ticket_version": 1,
+        "collection_name": "<collection name>",
+        "creator":             "<Pastel ID of the collection creator>",
+        // list of Pastel IDs of authorized contributors who permitted to register an item as part of this collection
+        "list_of_pastelids_of_authorized_contributors":
+        [
            "<Pastel ID of the user 1>",
            "<Pastel ID of the user 2>", 
            ...
         ],
-        "blocknum":       <block number when the ticket was created by the creator>,
-        "block_hash":     "<base64'ed hash of the NFT collection>",
-        "closing_height": <a closing block height after which no new NFTs would be allowed>,
-        "nft_max_count":  <max number of NFTs allowed in this collection>,
-        "nft_copy_count": <number of copies for NFTs in a collection>,
-        "royalty":        <how much creator should get on all future resales>,
-        "green":          boolean,
-        "app_ticket":     "<application-specific-data>"
+        "blocknum": uint,      // block number when the ticket was created - this is to map the ticket to the MNs that should process it
+        "block_hash": string,  // hash of the top block when the ticket was created - this is to map the ticket to the MNs that should process it
+        "collection_final_allowed_block_height": uint, // a block height after which no new items would be allowed to be added to this collection
+        "max_collection_entries": uint, // max number of items allowed in this collection
+        "collection_item_copy_count": uint, // allowed number of copies for all items in a collection
+        "royalty": float,      // royalty fee, how much creators should get on all future resales (common for all items in a collection)
+        "green": boolean,      // true if there is a Green payment for the collection items, false - otherwise
+        "app_ticket": object   // json object with application's specific data
     }
-2. "signatures"	(string, required) Signatures (base64) and Pastel IDs of the principal and verifying masternodes (MN2 and MN3) as JSON:
+2. "signatures"	(string, required) Signatures (base64-encoded) and Pastel IDs of the principal and verifying masternodes (MN2 and MN3) as JSON:
     {
         "principal": { "principal Pastel ID": "principal Signature" },
               "mn2": { "mn2 Pastel ID": "mn2 Signature" },
@@ -238,13 +240,13 @@ Arguments:
 6. "fee"        (int, required) The agreed upon storage fee.
 7. "address"    (string, optional) The Pastel blockchain t-address to use for funding the registration.
 
-NFT Collection Registration Ticket:
+Collection Registration Ticket:
 {
     "txid":   <"ticket transaction id">
     "height": <ticket block>,
     "ticket": {
-        "type":            "nft-collection-reg",
-        "nft_collection_ticket": {...},
+        "type":            "collection-reg",
+        "collection_ticket": {...},
         "version":         <version>
         "signatures": {
             "principal": { "principal Pastel ID": <"principal signature"> },
@@ -255,8 +257,8 @@ NFT Collection Registration Ticket:
         "key":             "<search primary key>",
         "label":           "<search label>",
         "creator_height":  <creator height>,
-        "closing_height":  <closing height>,
-        "nft_max_count":   <nft max count>,
+        "collection_final_allowed_block_height":  <closing height>,
+        "max_collection_entries":   <nft max max_collection_entries>,
         "royalty":         <royalty fee>,
         "royalty_address": <"address for royalty payment">,
         "green":           boolean,
@@ -264,20 +266,20 @@ NFT Collection Registration Ticket:
     }
 }
 
-Register NFT collection ticket:
-)" + HelpExampleCli("tickets register nft-collection", R"(""ticket-blob" "{signatures}" jXYqZNPj21RVnwxnEJ654wEdzi7GZTZ5LAdiotBmPrF7pDMkpX1JegDMQZX55WZLkvy9fxNpZcbBJuE8QYUqBF "passphrase", "label", 100)") +
+Register collection ticket:
+)" + HelpExampleCli("tickets register collection", R"(""ticket-blob" "{signatures}" jXYqZNPj21RVnwxnEJ654wEdzi7GZTZ5LAdiotBmPrF7pDMkpX1JegDMQZX55WZLkvy9fxNpZcbBJuE8QYUqBF "passphrase", "label", 100)") +
 R"(
 As json rpc:
-)" + HelpExampleRpc("tickets", R"("register", "nft-collection", "ticket" "{signatures}" "jXYqZNPj21RVnwxnEJ654wEdzi7GZTZ5LAdiotBmPrF7pDMkpX1JegDMQZX55WZLkvy9fxNpZcbBJuE8QYUqBF" "passphrase", "label", 100)")
+)" + HelpExampleRpc("tickets", R"("register", "collection", "ticket" "{signatures}" "jXYqZNPj21RVnwxnEJ654wEdzi7GZTZ5LAdiotBmPrF7pDMkpX1JegDMQZX55WZLkvy9fxNpZcbBJuE8QYUqBF" "passphrase", "label", 100)")
 );
 
     if (!masterNodeCtrl.IsActiveMasterNode())
-        throw JSONRPCError(RPC_INTERNAL_ERROR, "This is not an active masternode. Only an active MN can register an NFT collection ticket");
+        throw JSONRPCError(RPC_INTERNAL_ERROR, "This is not an active masternode. Only an active MN can register an collection ticket");
 
     if (fImporting || fReindex)
         throw JSONRPCError(RPC_INVALID_PARAMETER, "Initial blocks download. Re-try later");
 
-    string nft_collection_ticket = params[2].get_str();
+    string collection_ticket_base64_encoded = params[2].get_str();
     string signatures = params[3].get_str();
     string sPastelID = params[4].get_str();
 
@@ -291,10 +293,10 @@ As json rpc:
     if (params.size() >= 9)
         sFundingAddress = params[8].get_str();
 
-    const auto NFTCollectionRegTicket = CNFTCollectionRegTicket::Create(
-        move(nft_collection_ticket), signatures, move(sPastelID), move(strKeyPass),
+    const auto CollectionRegTicket = CollectionRegTicket::Create(
+        move(collection_ticket_base64_encoded), signatures, move(sPastelID), move(strKeyPass),
         move(label), nStorageFee);
-    return GenerateSendTicketResult(CPastelTicketProcessor::SendTicket(NFTCollectionRegTicket, sFundingAddress));
+    return GenerateSendTicketResult(CPastelTicketProcessor::SendTicket(CollectionRegTicket, sFundingAddress));
 }
 
 UniValue tickets_register_offer(const UniValue& params)
@@ -771,8 +773,8 @@ Available types:
   nft        - Register new NFT ticket.
   act        - Send activation for the new registered NFT ticket.
                Same as "tickets activate nft...".
-  nft-collection - Register new NFT collection ticket.
-  nft-collection-act - Activate NFT collection. Same as "activate nft-collection".
+  collection - Register new collection ticket.
+  collection-act - Activate collection. Same as "activate collection".
   offer      - Register Offer ticket.
   accept     - Register Accept ticket.
   transfer   - Register Transfer ticket. 
@@ -789,7 +791,7 @@ UniValue tickets_register(const UniValue& params)
 {
     RPC_CMD_PARSER2(REGISTER, params, mnid, id, nft, act, nft__act,
         sell, offer, buy, accept, trade, transfer,
-        down, royalty, username, ethereumaddress, action, action__act, nft__collection, nft__collection__act);
+        down, royalty, username, ethereumaddress, action, action__act, collection, collection__act);
 
     if (!REGISTER.IsCmdSupported())
         tickets_register_help();
@@ -854,12 +856,12 @@ UniValue tickets_register(const UniValue& params)
             result = tickets_activate_action(params, true);
             break;
 
-        case RPC_CMD_REGISTER::nft__collection:
-            result = tickets_register_nft_collection(params);
+        case RPC_CMD_REGISTER::collection:
+            result = tickets_register_collection(params);
             break;
 
-        case RPC_CMD_REGISTER::nft__collection__act:
-            result = tickets_activate_nft_collection(params, true);
+        case RPC_CMD_REGISTER::collection__act:
+            result = tickets_activate_collection(params, true);
             break;
 
         default:

@@ -2,6 +2,7 @@
 # Copyright (c) 2018-2023 The Pastel Core developers
 # Distributed under the MIT software license, see the accompanying
 # file COPYING or https://www.opensource.org/licenses/mit-license.php.
+from typing import Dict
 from pathlib import Path
 import time
 import itertools
@@ -29,25 +30,30 @@ getcontext().prec = 16
 
 class TicketData:
     def __init__(self):
-        self.reg_ticket = None              # Registration ticket
-        self.reg_txid: str = None           # Registration ticket txid
-        self.reg_height: int = None         # Registration ticket block height
-        self.reg_node_id: int = None        # Node where ticket was registered
-        self.reg_pastelid: str = None       # Pastel ID of the Registration ticket NFT Creator/Action Caller, etc..
-        self.pastelid_node_id: int = None   # Node where reg_pastelid is created
+        self.reg_ticket = None                  # Registration ticket json (not encoded)
+        self.reg_ticket_base64_encoded = None   # Registration ticket json base64-encoded
+        self.reg_txid: str = None               # Registration ticket txid
+        self.reg_height: int = None             # Registration ticket block height
+        self.reg_node_id: int = None            # Node where ticket was registered
+        self.reg_pastelid: str = None           # Pastel ID of the Registration ticket NFT Creator/Action Caller, etc..
+        self.pastelid_node_id: int = None       # Node where reg_pastelid is created
 
-        self.act_txid: str = None           # Activation ticket txid
-        self.act_height: int = None         # Activation ticket block height
+        self.act_txid: str = None               # Activation ticket txid
+        self.act_height: int = None             # Activation ticket block height
 
-        self.offer_txid: str = None         # Offer ticket txid
-        self.accept_txid: str = None        # Accept ticket txid
-        self.transfer_txid: str = None      # Transfer ticket txid
+        self.offer_txid: str = None             # Offer ticket txid
+        self.accept_txid: str = None            # Accept ticket txid
+        self.transfer_txid: str = None          # Transfer ticket txid
 
-        self.label: str = None              # unique label
-        self.item_price: int = 0            # item price
-        self.ticket_price: int = 10         # ticket price
-        self.royalty_address: str = None    # NFT Royalty address
-        self.address = None                 # address that can be used in a ticket
+        self.label: str = None                  # unique label
+        self.item_price: int = 0                # item price
+        self.ticket_price: int = 10             # ticket price
+        self.royalty_address: str = None        # NFT Royalty address
+        self.address = None                     # address that can be used in a ticket
+
+    def set_reg_ticket(self, reg_ticket: str):
+        self.reg_ticket = reg_ticket
+        self.reg_ticket_base64_encoded = str_to_b64str(reg_ticket)
 
 
 class TopMN:
@@ -193,7 +199,7 @@ class MasterNodeCommon (PastelTestFramework):
         self.green_address = "tPj5BfCrLfLpuviSJrD3B1yyWp3XkgtFjb6"
 
         # storage for all ticket types used in tests
-        self.tickets = {}
+        self.tickets: Dict[TicketType, TicketData] = {}
         for _, member in TicketType.__members__.items():
             self.tickets[member] = TicketData()
             self.tickets[member].ticket_price = member.ticket_price
@@ -509,6 +515,7 @@ class MasterNodeCommon (PastelTestFramework):
         """Create ticket signatures
 
         Args:
+            item_type (TicketType): ticket type
             principal_node_num (int): node# for principal signer
             make_bad_signatures_dicts (bool): if True - create invalid signatures
         """
@@ -516,14 +523,21 @@ class MasterNodeCommon (PastelTestFramework):
         principal_pastelid = ticket.reg_pastelid
 
         mn_ticket_signatures = {}
-        principal_signature = self.nodes[principal_node_num].pastelid("sign", ticket.reg_ticket, principal_pastelid, self.passphrase)["signature"]
+        # for now, only collection ticket will be signed not base64-encoded
+        # later on, this will be changed for all tickets
+        sign_decoded_ticket: bool = item_type == TicketType.COLLECTION
+        principal_signature = self.nodes[principal_node_num].pastelid(
+            "sign-base64-encoded" if sign_decoded_ticket else "sign", ticket.reg_ticket_base64_encoded,
+            principal_pastelid, self.passphrase)["signature"]
         assert_true(principal_signature, f"Principal signer {principal_pastelid} failed to sign ticket")
         # save this principal signature for validation
         self.principal_signatures_dict[principal_pastelid] = principal_signature
 
         for n in range(self.number_of_cold_nodes):
             mnid = self.get_mnid(n)
-            mn_ticket_signatures[n] = self.nodes[n].pastelid("sign", ticket.reg_ticket, mnid, self.passphrase)["signature"]
+            mn_ticket_signatures[n] = self.nodes[n].pastelid(
+                "sign-base64-encoded" if sign_decoded_ticket else "sign", ticket.reg_ticket_base64_encoded,
+                mnid, self.passphrase)["signature"]
             assert_true(mn_ticket_signatures[n], f"MN{n} signer {mnid} failed to sign ticket")
         print(f"principal ticket signer - {principal_signature}")
         print(f"mn_ticket_signatures - {mn_ticket_signatures}")
@@ -693,11 +707,11 @@ class MasterNodeCommon (PastelTestFramework):
             make_bad_signatures_dicts (bool): [create bad signatures]
         """
         # Get current height
-        ticket = self.tickets[TicketType.NFT]
-        ticket.reg_height = self.nodes[0].getblockcount()
-        ticket.reg_pastelid = self.creator_pastelid1
-        ticket.pastelid_node_id = self.non_mn3
-        print(f"creator_ticket_height - {ticket.reg_height}")
+        nft_ticket = self.tickets[TicketType.NFT]
+        nft_ticket.reg_height = self.nodes[0].getblockcount()
+        nft_ticket.reg_pastelid = self.creator_pastelid1
+        nft_ticket.pastelid_node_id = self.non_mn3
+        print(f"creator_ticket_height - {nft_ticket.reg_height}")
 
         # nft_ticket - v1
         # {
@@ -711,24 +725,23 @@ class MasterNodeCommon (PastelTestFramework):
         #   "app_ticket": ...
         # }
 
-        block_hash = self.nodes[creator_node_num].getblock(str(ticket.reg_height))["hash"]
+        block_hash = self.nodes[creator_node_num].getblock(str(nft_ticket.reg_height))["hash"]
         app_ticket_json = self.generate_nft_app_ticket_details()
         app_ticket = str_to_b64str(json.dumps(app_ticket_json))
 
         json_ticket = {
             "nft_ticket_version": 1,
-            "author": ticket.reg_pastelid,
-            "blocknum": ticket.reg_height,
+            "author": nft_ticket.reg_pastelid,
+            "blocknum": nft_ticket.reg_height,
             "block_hash": block_hash,
             "copies": total_copies,
             "royalty": royalty,
             "green": green,
             "app_ticket": app_ticket
         }
-        nft_ticket_str = json.dumps(json_ticket, indent=4)
-        ticket.reg_ticket = str_to_b64str(nft_ticket_str)
-        print(f"nft_ticket v1 - {nft_ticket_str}")
-        print(f"nft_ticket v1 (base64) - {ticket.reg_ticket}")
+        nft_ticket.set_reg_ticket(json.dumps(json_ticket, indent=4))
+        print(f"nft_ticket v1 - {nft_ticket.reg_ticket}")
+        print(f"nft_ticket v1 (base64) - {nft_ticket.reg_ticket_base64_encoded}")
 
         self.create_signatures(TicketType.NFT, creator_node_num, make_bad_signatures_dicts)
 

@@ -147,7 +147,7 @@ public:
     std::string ListFilterPastelIDTickets(const uint32_t nMinHeight, const short filter = 0, // 1 - mn;        2 - personal;     3 - mine
                                           const pastelid_store_t* pmapIDs = nullptr) const;
     std::string ListFilterNFTTickets(const uint32_t nMinHeight, const short filter = 0) const;   // 1 - active;    2 - inactive;     3 - transferred
-    std::string ListFilterNFTCollectionTickets(const uint32_t nMinHeight, const short filter = 0) const;   // 1 - active;    2 - inactive;
+    std::string ListFilterCollectionTickets(const uint32_t nMinHeight, const short filter = 0) const;   // 1 - active;    2 - inactive;
     std::string ListFilterActTickets(const uint32_t nMinHeight, const short filter = 0) const;   // 1 - available; 2 - transferred
     std::string ListFilterOfferTickets(const uint32_t nMinHeight, const short filter = 0, const std::string& pastelID = "") const;  // 0 - all, 1 - available; 2 - unavailable;  3 - expired; 4 - transferred
     std::string ListFilterAcceptTickets(const uint32_t nMinHeight, const short filter = 0, const std::string& pastelID = "") const;   // 0 - all, 1 - transferred; 2 - expired

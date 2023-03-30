@@ -228,7 +228,7 @@ ticket_validation_t COfferTicket::IsValid(const bool bPreReg, const uint32_t nCa
             {
                 tv.errorMsg = strprintf(
                     "The %s ticket with this txid [%s] referred by this %s ticket is invalid",
-                    ::GetTicketDescription(TicketID::ActionActivate), m_itemTxId, ::GetTicketDescription(TicketID::Offer));
+                    CActionActivateTicket::GetTicketDescription(), m_itemTxId, GetTicketDescription());
                 break;
             }
             // Check that Pastel ID in this Offer ticket matches Pastel ID in the referred Action Activation ticket
@@ -237,7 +237,7 @@ ticket_validation_t COfferTicket::IsValid(const bool bPreReg, const uint32_t nCa
             {
                 tv.errorMsg = strprintf(
                     "The Pastel ID [%s] in this ticket is not matching the Action Caller's Pastel ID [%s] in the %s ticket with this txid [%s]",
-                    m_sPastelID, actionCallerPastelID, ::GetTicketDescription(TicketID::ActionActivate), m_itemTxId);
+                    m_sPastelID, actionCallerPastelID, CActionActivateTicket::GetTicketDescription(), m_itemTxId);
                 break;
             }
             //  Get ticket pointed by Action Registration txid
@@ -246,7 +246,7 @@ ticket_validation_t COfferTicket::IsValid(const bool bPreReg, const uint32_t nCa
             {
                 tv.errorMsg = strprintf(
                     "The %s ticket with this txid [%s] referred by this %s ticket is invalid",
-                    ::GetTicketDescription(TicketID::ActionReg), pActionActTicket->getRegTxId(), ::GetTicketDescription(TicketID::ActionActivate));
+                    CActionRegTicket::GetTicketDescription(), pActionActTicket->getRegTxId(), CActionActivateTicket::GetTicketDescription());
                 break;
             }
             const auto pActionRegTicket = dynamic_cast<const CActionRegTicket*>(ticket.get());
@@ -254,7 +254,7 @@ ticket_validation_t COfferTicket::IsValid(const bool bPreReg, const uint32_t nCa
             {
                 tv.errorMsg = strprintf(
                     "The $s ticket with this txid [%s] referred by this %s ticket is invalid",
-                    ::GetTicketDescription(TicketID::ActionReg), pActionActTicket->getRegTxId(), ::GetTicketDescription(TicketID::ActionActivate));
+                    CActionRegTicket::GetTicketDescription(), pActionActTicket->getRegTxId(), CActionActivateTicket::GetTicketDescription());
                 break;
             }
             nTotalCopies = 1; // there can be only one owner of the action result
@@ -278,7 +278,7 @@ ticket_validation_t COfferTicket::IsValid(const bool bPreReg, const uint32_t nCa
             {
                 tv.errorMsg = strprintf(
                     "The %s ticket with this txid [%s] referred by this %s ticket is invalid",
-                    ::GetTicketDescription(TicketID::Activate), m_itemTxId, ::GetTicketDescription(TicketID::Offer));
+                    CNFTActivateTicket::GetTicketDescription(), m_itemTxId, GetTicketDescription());
                 break;
             }
             // Check that Pastel ID in this Offer ticket matches Pastel ID in the referred NFT Activation ticket
@@ -287,7 +287,7 @@ ticket_validation_t COfferTicket::IsValid(const bool bPreReg, const uint32_t nCa
             {
                 tv.errorMsg = strprintf(
                     "The Pastel ID [%s] in this ticket is not matching the Creator's Pastel ID [%s] in the %s ticket with this txid [%s]",
-                    m_sPastelID, creatorPastelID, ::GetTicketDescription(TicketID::Activate), m_itemTxId);
+                    m_sPastelID, creatorPastelID, CNFTActivateTicket::GetTicketDescription(), m_itemTxId);
                 break;
             }
             //  Get ticket pointed by NFT Registration txid
@@ -327,7 +327,7 @@ ticket_validation_t COfferTicket::IsValid(const bool bPreReg, const uint32_t nCa
             {
                 tv.errorMsg = strprintf(
                     "The %s ticket with this txid [%s] referred by this %s ticket is invalid", 
-                    ::GetTicketDescription(TicketID::Transfer), m_itemTxId, GetTicketDescription());
+                    CTransferTicket::GetTicketDescription(), m_itemTxId, GetTicketDescription());
                 break;
             }
             // Check that Pastel ID in this ticket matches Pastel ID in the referred Transfer ticket
@@ -336,7 +336,7 @@ ticket_validation_t COfferTicket::IsValid(const bool bPreReg, const uint32_t nCa
             {
                 tv.errorMsg = strprintf(
                     "The Pastel ID [%s] in this ticket is not matching the Pastel ID [%s] in the %s ticket with this txid [%s]",
-                    m_sPastelID, ownersPastelID, ::GetTicketDescription(TicketID::Transfer), m_itemTxId);
+                    m_sPastelID, ownersPastelID, CTransferTicket::GetTicketDescription(), m_itemTxId);
                 break;
             }
             nTotalCopies = 1;

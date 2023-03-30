@@ -6,6 +6,7 @@
 
 #include <mnode/tickets/ticket.h>
 #include <mnode/tickets/ticket_signing.h>
+#include <mnode/tickets/collection-item.h>
 #include <mnode/mnode-controller.h>
 
 // forward ticket class declaration
@@ -21,8 +22,8 @@ using ActionRegTickets_t = std::vector<CActionRegTicket>;
         "type": "action-reg",   // Action Registration ticket type
         "action_ticket": bytes, // external action ticket, passed via rpc parameter as base64-encoded, see below
         "action_type": string,  // action type (sense, cascade)
-        "version": int,         // version of the blockchain representation of ticket (1)
-        "signatures": object,   // signatures, see below
+        "version": int,         // version of the blockchain representation of ticket (1 or 2)
+        "signatures": object,   // json object with base64-encoded signatures and Pastel IDs of the signers, see below
         "key": string,          // unique key (32-bytes, base32-encoded)
         "label": string,        // label to use for searching the ticket
         "called_at": uint,      // block at which action was requested, is used to check if the SNs that 
@@ -38,7 +39,8 @@ Where action_ticket is an external base64-encoded JSON as a string:
   "caller": string,             // Pastel ID of the action caller
   "blocknum": uint,             // block number when the ticket was created - this is to map the ticket to the MNs that should process it
   "block_hash": bytes,          // hash of the top block when the ticket was created - this is to map the ticket to the MNs that should process it
-  "app_ticket": bytes           // ascii85-encoded application ticket,
+  "collection_txid": bytes,     // transaction id of the collection activation ticket that action belongs to (v2 only, optional, can be empty)
+  "app_ticket": object          // json object with application ticket,
                                 // actual structure of app_ticket is different for different API and is not parsed by cnode !!!!
 }
 signatures: {
@@ -50,8 +52,8 @@ signatures: {
 
   key #1: primary key (generated)
 mvkey #1: action caller Pastel ID
+mvkey #2: collection txid (optional)
 mvkey #3: label (optional)
-
 */
 
 // supported action ticket types
@@ -68,12 +70,24 @@ constexpr uint32_t ACTION_STORAGE_MULTIPLIER = 50;
 
 using action_fee_map_t = std::unordered_map<ACTION_TICKET_TYPE, CAmount>;
 
+// Action ticket property names
+enum class ACTION_TKT_PROP : uint8_t {
+    unknown = 0,
+    version = 1,
+    action_type = 2,
+    caller = 3,
+    blocknum = 4,
+    block_hash = 5,
+    collection_act_txid = 6,
+    app_ticket = 7
+};
+
 // get action type name
 const char *GetActionTypeName(const ACTION_TICKET_TYPE actionTicketType) noexcept;
 
 class CActionRegTicket : 
-    public CPastelTicket,
-    public CTicketSigning
+    public CTicketSigning,
+    public CollectionItem
 {
 public:
     CActionRegTicket() = default;
@@ -83,36 +97,35 @@ public:
 
     TicketID ID() const noexcept override { return TicketID::ActionReg; }
     static TicketID GetID() { return TicketID::ActionReg; }
-    constexpr auto GetTicketDescription() const
+    static constexpr auto GetTicketDescription()
     {
         return TICKET_INFO[to_integral_type<TicketID>(TicketID::ActionReg)].szDescription;
     }
 
     void Clear() noexcept override;
 
-    bool SetActionType(const std::string& sActionType);
-    ACTION_TICKET_TYPE GetActionType() const noexcept { return m_ActionType; }
+    bool setActionType(const std::string& sActionType) noexcept;
+    ACTION_TICKET_TYPE getActionType() const noexcept { return m_ActionType; }
 
     bool HasMVKeyOne() const noexcept override { return true; }
-    bool HasMVKeyTwo() const noexcept override { return !m_label.empty(); }
+    bool HasMVKeyTwo() const noexcept override { return !m_sCollectionActTxid.empty(); }
+    bool HasMVKeyThree() const noexcept override { return !m_label.empty(); }
 
-    std::string KeyOne() const noexcept override { return m_keyOne; }
-    std::string MVKeyOne() const noexcept override { return m_sCallerPastelId; }
-    std::string MVKeyTwo() const noexcept override { return m_label; }
-
-    void SetKeyOne(std::string &&sValue) override { m_keyOne = std::move(sValue); }
-    void GenerateKeyOne() override;
+    std::string MVKeyOne() const noexcept override { return m_sCreatorPastelID; }
+    std::string MVKeyTwo() const noexcept override { return m_sCollectionActTxid; }
+    std::string MVKeyThree() const noexcept override { return m_label; }
 
     std::string ToJSON(const bool bDecodeProperties = false) const noexcept override;
     std::string ToStr() const noexcept override { return m_sActionTicket; }
     ticket_validation_t IsValid(const bool bPreReg, const uint32_t nCallDepth) const noexcept override;
-    // check if sPastelID belongs to the action caller
-    bool IsCallerPastelId(const std::string& sCallerPastelID) const noexcept { return m_sCallerPastelId == sCallerPastelID; }
+    // check if given Pastel ID is the action caller
+    bool IsCallerPastelId(const std::string& sPastelID) const noexcept { return m_sCreatorPastelID == sPastelID; }
 
     // getters for ticket fields
+    uint16_t getTicketVersion() const noexcept { return m_nActionTicketVersion; }
     CAmount getStorageFee() const noexcept { return m_storageFee; }
     uint32_t getCalledAtHeight() const noexcept { return m_nCalledAtHeight; }
-    const std::string getCallerPastelId() const noexcept { return m_sCallerPastelId; }
+    std::string getTopBlockHash() const noexcept { return m_sTopBlockHash; }
 
     /**
      * Serialize/Deserialize action registration ticket.
@@ -133,7 +146,7 @@ public:
         if (bRead) // parse base64-encoded action registration ticket (m_sActionTicket) after reading from blockchain
             parse_action_ticket();
         READWRITE(m_sActionType);
-        const bool bValidActionType = SetActionType(m_sActionType);
+        const bool bValidActionType = setActionType(m_sActionType);
         serialize_signatures(s, ser_action);
         READWRITE(m_keyOne);
         READWRITE(m_label);
@@ -155,16 +168,17 @@ public:
     static ActionRegTickets_t FindAllTicketByPastelID(const std::string& pastelID);
     // get action storage fees in PSL
     static action_fee_map_t GetActionFees(const size_t nDataSizeInMB);
+    uint32_t CountItemsInCollection(const uint32_t currentChainHeight) const override;
 
 protected:
+    uint16_t m_nActionTicketVersion{0};
     std::string m_sActionTicket;        // action reg ticket json (encoded with base64 when passed via rpc parameter)
     std::string m_sActionType;          // action type: sense (dupe detection), cascade (storage)
     ACTION_TICKET_TYPE m_ActionType{ACTION_TICKET_TYPE::UNKNOWN};
-    std::string m_sCallerPastelId;      // Pastel ID of the Action caller
     uint32_t m_nCalledAtHeight{0};      // block at which action was requested
+    std::string m_sTopBlockHash;        // hash of the top block when the ticket was created - this is to map the ticket to the MNs that should process it
+    std::unordered_set<ACTION_TKT_PROP> m_props; // set of properties in the action_ticket 
 
-    std::string m_keyOne;               // primary key #1, generated from random 32-bytes, base32-encoded
-    std::string m_label;                // label to use for searching the ticket
     CAmount m_storageFee{0};            // storage fee in PSL
 
     // parse base64-encoded action_ticket in json format, may throw runtime_error exception

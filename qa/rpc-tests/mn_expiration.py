@@ -339,7 +339,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
                 self.register_offer_ticket, TicketType.NFT, 2)
 
     def generate_blocks(self, block_count: int):
-        chunk_size = 10
+        chunk_size = 5
         chunk_count = int(block_count/chunk_size)
         print(f"Generate {block_count} blocks. 1 chunk is {chunk_size} blocks, total {chunk_count} chunks")
         for ind in range(chunk_count):
@@ -356,7 +356,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         
         top_mn_node = self.nodes[self.top_mns[0].index]
         ticket.reg_txid = top_mn_node.tickets("register", "nft",
-            ticket.reg_ticket, json.dumps(self.signatures_dict), self.top_mns[0].pastelid, self.passphrase,
+            ticket.reg_ticket_base64_encoded, json.dumps(self.signatures_dict), self.top_mns[0].pastelid, self.passphrase,
             label, str(self.storage_fee))["txid"]
         print(ticket.reg_txid)
         assert_true(ticket.reg_txid, "No NFT registration ticket was created")

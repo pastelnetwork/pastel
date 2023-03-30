@@ -1,8 +1,14 @@
 // Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2014 The Bitcoin Core developers
-// Copyright (c) 2018-2022 Pastel Core developers
+// Copyright (c) 2018-2023 Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
+#include <algorithm>
+#include <assert.h>
+#include <random>
+#include <thread>
+#include <variant>
+#include <inttypes.h>
 
 #include <wallet/wallet.h>
 
@@ -27,12 +33,6 @@
 #include <zcash/Note.hpp>
 #include <wallet/crypter.h>
 #include <zcash/Address.hpp>
-
-#include <algorithm>
-#include <assert.h>
-#include <random>
-#include <variant>
-#include <thread>
 
 using namespace std;
 using namespace libzcash;
@@ -343,8 +343,8 @@ bool CWallet::LoadCScript(const CScript& redeemScript)
     if (redeemScript.size() > MAX_SCRIPT_ELEMENT_SIZE)
     {
         string strAddr = keyIO.EncodeDestination(CScriptID(redeemScript));
-        LogPrintf("%s: Warning: This wallet contains a redeemScript of size %i which exceeds maximum size %i thus can never be redeemed. Do not use address %s.\n",
-            __func__, redeemScript.size(), MAX_SCRIPT_ELEMENT_SIZE, strAddr);
+        LogFnPrintf("Warning: This wallet contains a redeemScript of size %i which exceeds maximum size %i thus can never be redeemed. Do not use address %s.",
+            redeemScript.size(), MAX_SCRIPT_ELEMENT_SIZE, strAddr);
         return true;
     }
 
@@ -445,7 +445,7 @@ bool CWallet::ChangeWalletPassphrase(const SecureString& strOldWalletPassphrase,
                 if (mKey.nDeriveIterations < 25000)
                     mKey.nDeriveIterations = 25000;
 
-                LogPrintf("Wallet passphrase changed to an nDeriveIterations of %i\n", mKey.nDeriveIterations);
+                LogFnPrintf("Wallet passphrase changed to an nDeriveIterations of %i", mKey.nDeriveIterations);
 
                 if (!crypter.SetKeyFromPassphrase(strNewWalletPassphrase, mKey.vchSalt, mKey.nDeriveIterations, mKey.nDerivationMethod))
                     return false;
@@ -621,7 +621,7 @@ bool CWallet::Verify(const string& walletFile, string& warningString, string& er
         fs::path pathDatabaseBak = GetDataDir() / strprintf("database.%d.bak", GetTime());
         try {
             fs::rename(pathDatabase, pathDatabaseBak);
-            LogPrintf("Moved old %s to %s. Retrying.\n", pathDatabase.string(), pathDatabaseBak.string());
+            LogFnPrintf("Moved old %s to %s. Retrying.", pathDatabase.string(), pathDatabaseBak.string());
         } catch (const fs::filesystem_error&) {
             // failure is ok (well, not really, but it's not worse than what we started with)
         }
@@ -1260,7 +1260,7 @@ bool CWallet::AddToWallet(const CWalletTx& wtxIn, bool fFromLoadWallet, CWalletD
                     wtx.nTimeSmart = max(latestEntry, min(blocktime, latestNow));
                 }
                 else
-                    LogPrintf("AddToWallet(): found %s in block %s not in index\n",
+                    LogFnPrintf("found %s in block %s not in index",
                              wtxIn.GetHash().ToString(),
                              wtxIn.hashBlock.ToString());
             }
@@ -1293,7 +1293,7 @@ bool CWallet::AddToWallet(const CWalletTx& wtxIn, bool fFromLoadWallet, CWalletD
         }
 
         //// debug print
-        LogPrintf("AddToWallet %s  %s%s\n", wtxIn.GetHash().ToString(), (fInsertedNew ? "new" : ""), (fUpdated ? "update" : ""));
+        LogFnPrintf("%s  %s%s", wtxIn.GetHash().ToString(), (fInsertedNew ? "new" : ""), (fUpdated ? "update" : ""));
 
         // Write to disk
         if (fInsertedNew || fUpdated)
@@ -1987,7 +1987,7 @@ void CWalletTx::GetAmounts(list<COutputEntry>& listReceived,
         CTxDestination address;
         if (!ExtractDestination(txout.scriptPubKey, address))
         {
-            LogPrintf("CWalletTx::GetAmounts: Unknown transaction type found, txid %s\n",
+            LogFnPrintf("Unknown transaction type found, txid '%s'",
                      this->GetHash().ToString());
             address = CNoDestination();
         }
@@ -3120,7 +3120,7 @@ bool CWallet::CommitTransaction(CWalletTx& wtxNew, CReserveKey& reservekey)
 {
     {
         LOCK2(cs_main, cs_wallet);
-        LogPrintf("CommitTransaction:\n%s", wtxNew.ToString());
+        LogFnPrintf("\n%s", wtxNew.ToString());
         {
             // This is only to keep the database open to defeat the auto-flush for the
             // duration of this scope.  This is the only place where this optimization
@@ -3156,7 +3156,7 @@ bool CWallet::CommitTransaction(CWalletTx& wtxNew, CReserveKey& reservekey)
             if (!wtxNew.AcceptToMemoryPool(false))
             {
                 // This must not fail. The transaction has already been signed and recorded.
-                LogPrintf("CommitTransaction(): Error: Transaction not valid\n");
+                LogFnPrintf("Error: Transaction not valid");
                 return false;
             }
             wtxNew.RelayWalletTransaction();
@@ -3324,7 +3324,7 @@ bool CWallet::NewKeyPool()
             walletdb.WritePool(nIndex, CKeyPool(GenerateNewKey()));
             setKeyPool.insert(nIndex);
         }
-        LogPrintf("CWallet::NewKeyPool wrote %d new keys\n", nKeys);
+        LogFnPrintf("wrote %" PRId64 " new keys", nKeys);
     }
     return true;
 }

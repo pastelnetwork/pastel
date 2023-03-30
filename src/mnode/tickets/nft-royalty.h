@@ -37,7 +37,7 @@ public:
 
     TicketID ID() const noexcept final { return TicketID::Royalty; }
     static TicketID GetID() { return TicketID::Royalty; }
-    constexpr auto GetTicketDescription() const
+    static constexpr auto GetTicketDescription()
     {
         return TICKET_INFO[to_integral_type<TicketID>(TicketID::Royalty)].szDescription;
     }

@@ -163,7 +163,7 @@ ticket_validation_t CTicketSigning::validate_signatures(const uint32_t nCallDept
             tv.state = TICKET_VALIDATION_STATE::MISSING_INPUTS;
             tv.errorMsg = strprintf(
                 "%s %s ticket not found [%s]",
-                sigDesc, ::GetTicketDescription(TicketID::PastelID), m_vPastelID[mnIndex]);
+                sigDesc, CPastelIDRegTicket::GetTicketDescription(), m_vPastelID[mnIndex]);
             break;
         }
             
@@ -173,7 +173,7 @@ ticket_validation_t CTicketSigning::validate_signatures(const uint32_t nCallDept
         {
             tv.errorMsg = strprintf(
                 "%s %s ticket is invalid [%s]. %s", 
-                sigDesc, ::GetTicketDescription(TicketID::PastelID), m_vPastelID[mnIndex], tv.errorMsg);
+                sigDesc, CPastelIDRegTicket::GetTicketDescription(), m_vPastelID[mnIndex], tv.errorMsg);
             break;
         }
         // 3. principal Pastel ID is personal Pastel ID and MNs Pastel IDs are not personal

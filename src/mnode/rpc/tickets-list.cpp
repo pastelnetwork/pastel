@@ -13,7 +13,7 @@ using namespace std;
 
 UniValue tickets_list(const UniValue& params)
 {
-    RPC_CMD_PARSER2(LIST, params, id, nft, nft__collection, nft__collection__act, act, 
+    RPC_CMD_PARSER2(LIST, params, id, nft, collection, collection__act, act, 
         sell, offer, buy, accept, trade, transfer,
         down, royalty, username, ethereumaddress, action, action__act);
     if ((params.size() < 2 || params.size() > 4) || !LIST.IsCmdSupported())
@@ -58,14 +58,14 @@ Available types:
               transferred - lists only processed Transfer tickets (with Offer tickets).
             Optional parameters:
               <pastelID> - apply filter on Transfer ticket that belongs to the given Pastel ID only
-  nft-collection - List ALL new NFT collection registration tickets. Without filter parameter lists ALL NFT collection tickets.
+  collection - List ALL new collection registration tickets. Without filter parameter lists ALL collection tickets.
             Filter:
-              all      - lists all NFT collection tickets (including non-confirmed). Default.
-              active   - lists only activated NFT collection tickets - with act-collection ticket.
-              inactive - lists only non-activated NFT collection tickets - without act-collection ticket created (confirmed).
-  nft-collection-act - List ALL new NFT collection activation tickets. Without filter parameter lists ALL activation tickets.
+              all      - lists all collection tickets (including non-confirmed). Default.
+              active   - lists only activated collection tickets - with act-collection ticket.
+              inactive - lists only non-activated collection tickets - without act-collection ticket created (confirmed).
+  collection-act - List ALL new collection activation tickets. Without filter parameter lists ALL collection activation tickets.
             Filter:
-              all      - lists all NFT collection activation tickets (including non-confirmed). Default.
+              all      - lists all collection activation tickets (including non-confirmed). Default.
   royalty - List ALL NFT royalty tickets. Without filter parameter lists ALL royalty tickets.
             Filter:
               all       - list all Royalty tickets. Default.
@@ -81,7 +81,7 @@ Available types:
               active   - lists only activated Action tickets - with Action-Act ticket.
               inactive - lists only non-activated Action tickets - without Action-Act ticket created (confirmed).
               transferred - lists only transferred Action tickets - with Transfer ticket created.
-action-act - List action activation tickets. Without filter parameter lists ALL activation tickets.
+  action-act - List action activation tickets. Without filter parameter lists ALL activation tickets.
             Filter:
               all       - lists all Act tickets (including non-confirmed). Default.
 
@@ -147,18 +147,18 @@ As json rpc
             obj.read(masterNodeCtrl.masternodeTickets.ListFilterActTickets(minheight, 2));
     } break;
 
-    case RPC_CMD_LIST::nft__collection: {
+    case RPC_CMD_LIST::collection: {
         if (filter == "all")
-            obj.read(masterNodeCtrl.masternodeTickets.ListTickets<CNFTCollectionRegTicket>(minheight));
+            obj.read(masterNodeCtrl.masternodeTickets.ListTickets<CollectionRegTicket>(minheight));
         else if (filter == "active")
-            obj.read(masterNodeCtrl.masternodeTickets.ListFilterNFTCollectionTickets(1));
+            obj.read(masterNodeCtrl.masternodeTickets.ListFilterCollectionTickets(1));
         else if (filter == "inactive")
-            obj.read(masterNodeCtrl.masternodeTickets.ListFilterNFTCollectionTickets(2));
+            obj.read(masterNodeCtrl.masternodeTickets.ListFilterCollectionTickets(2));
     } break;
 
-    case RPC_CMD_LIST::nft__collection__act: {
+    case RPC_CMD_LIST::collection__act: {
         if (filter == "all")
-            obj.read(masterNodeCtrl.masternodeTickets.ListTickets<CNFTCollectionActivateTicket>(minheight));
+            obj.read(masterNodeCtrl.masternodeTickets.ListTickets<CollectionActivateTicket>(minheight));
     } break;
 
     case RPC_CMD_LIST::sell:

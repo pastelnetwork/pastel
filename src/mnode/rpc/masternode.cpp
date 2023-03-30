@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2022 The Pastel Core developers
+// Copyright (c) 2018-2023 The Pastel Core developers
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <iomanip>
@@ -1150,9 +1150,9 @@ R"(
   winner       - Print info on next masternode winner to vote for
   winners      - Print list of masternode winners
   top <n> <x>  - Print 10 top masternodes for the current or n-th block.
-                        By default, method will only return historical masternodes (when n is specified) if they were seen by the node
-                        If x presented and not 0 - method will return MNs 'calculated' based on the current list of MNs and hash of n'th block
-                        (this maybe not accurate - MN existed before might not be in the current list)
+                 By default, method will only return historical masternodes (when n is specified) if they were seen by the node.
+                 If x presented and not 0 - method will return MNs 'calculated' based on the current list of MNs and hash of n'th block
+                 (this maybe not accurate - MN existed before might not be in the current list)
   message <options> - Commands to deal with MN to MN messages - sign, send, print etc\n"
   pose-ban-score - PoSe (Proof-of-Service) ban score management
 )"

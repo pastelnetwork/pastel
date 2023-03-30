@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2022 The Pastel Core developers
+// Copyright (c) 2018-2023 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 
@@ -22,6 +22,10 @@ using namespace std;
 
 constexpr const CNodeHelper::CFullyConnectedOnly CNodeHelper::FullyConnectedOnly;
 constexpr const CNodeHelper::CAllNodes CNodeHelper::AllNodes;
+
+// 7 days, 1 block per 2.5 minutes -> 4032
+constexpr uint32_t MAX_IN_PROCESS_COLLECTION_TICKET_AGE = 7 * 24 * static_cast<uint32_t>(60 / 2.5);
+
 /*
 MasterNode specific logic and initializations
 */
@@ -71,6 +75,8 @@ void CMasterNodeController::InvalidateParameters()
     nMasternodePaymentsIncreaseBlock = 0;
     nMasternodePaymentsIncreasePeriod = 0;
     nFulfilledRequestExpireTime = 0;
+
+    m_nMaxInProcessCollectionTicketAge = 0;
 }
 
 void CMasterNodeController::SetParameters()
@@ -128,6 +134,8 @@ void CMasterNodeController::SetParameters()
         nFulfilledRequestExpireTime = 60*60; // 60 minutes
         
         TicketGreenAddress = "PtoySpxXAE3V6XR239AqGzCfKNrJcX6n52L";
+        m_nMaxInProcessCollectionTicketAge = MAX_IN_PROCESS_COLLECTION_TICKET_AGE;
+
     } else if (chainparams.IsTestNet()) {
         MasternodeCollateral                = 1'000'000; // PSL
     
@@ -136,6 +144,8 @@ void CMasterNodeController::SetParameters()
         nMasternodePaymentsIncreasePeriod = 10;
         
         TicketGreenAddress = "tPj5BfCrLfLpuviSJrD3B1yyWp3XkgtFjb6";
+
+        m_nMaxInProcessCollectionTicketAge = MAX_IN_PROCESS_COLLECTION_TICKET_AGE;
     } else if (chainparams.IsRegTest()) {
         nMasternodeMinimumConfirmations = 1;
         nMasternodePaymentsIncreaseBlock = 350;
@@ -152,6 +162,8 @@ void CMasterNodeController::SetParameters()
         
         TicketGreenAddress = "tPj5BfCrLfLpuviSJrD3B1yyWp3XkgtFjb6";
     
+        // for regtest we set 200 blocks for collection ticket age
+        m_nMaxInProcessCollectionTicketAge = 200;
         LogPrintf("Regtest Mode: MNP = %d sec; Expiration = %d sec; Restart = %d sec \n", MasternodeMinMNPSeconds, MasternodeExpirationSeconds, MasternodeNewStartRequiredSeconds);
     }
     else{

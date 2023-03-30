@@ -8,7 +8,7 @@
 #include <mnode/rpc/mnode-rpc-utils.h>
 #include <mnode/tickets/nft-act.h>
 #include <mnode/tickets/action-act.h>
-#include <mnode/tickets/nft-collection-act.h>
+#include <mnode/tickets/collection-act.h>
 #include <mnode/ticket-processor.h>
 
 using namespace std;
@@ -145,18 +145,18 @@ As json rpc:
     return GenerateSendTicketResult(CPastelTicketProcessor::SendTicket(ActionActivateTicket, sFundingAddress));
 }
 
-UniValue tickets_activate_nft_collection(const UniValue& params, const bool bRegisterAPI)
+UniValue tickets_activate_collection(const UniValue& params, const bool bRegisterAPI)
 {
-    const char* CMD_PARAMS = bRegisterAPI ? "register nft-collection-act" : "activate nft-collection";
+    const char* CMD_PARAMS = bRegisterAPI ? "register collection-act" : "activate collection";
 
     if (params.size() < 7)
         throw JSONRPCError(RPC_INVALID_PARAMETER, 
             strprintf("tickets %s ", CMD_PARAMS) + R"("reg-ticket-txid" "creator-height" "fee" "PastelID" "passphrase" ["address"]
-Activate the registered NFT collection ticket. If successful, method returns "txid" of the activation ticket.
+Activate the registered Collection ticket. If successful, method returns "txid" of the activation ticket.
 
 Arguments:
-1. "reg-ticket-txid"  (string, required) txid of the registered NFT collection ticket to activate.
-2. "creator-height"   (string, required) Height where the NFT collection registration ticket was created by the creator.
+1. "reg-ticket-txid"  (string, required) txid of the registered Collection ticket to activate.
+2. "creator-height"   (string, required) Height where the Collection registration ticket was created by the creator.
 3. fee                (int, required) The supposed fee that creator agreed to pay for the registration. 
                         This shall match the amount in the registration ticket.
                         The transaction with this ticket will pay 90% of this amount to MNs (10% were burnt prior to registration).
@@ -167,7 +167,7 @@ Arguments:
 Activation Ticket:
 {
 	"ticket": {
-		"type": "nft-collection-act",
+		"type": "collection-act",
         "version", "",
 		"pastelID": "",
 		"reg_txid": "",
@@ -179,7 +179,7 @@ Activation Ticket:
 	"txid": ""
   }
 
-Activate NFT collection ticket:
+Activate Collection ticket:
 )" + HelpExampleCli(strprintf("tickets %s", CMD_PARAMS), 
     R"("907e5e4c6fc4d14660a22afe2bdf6d27a3c8762abf0a89355bb19b7d9e7dc440 213 100 jXYqZNPj21RVnwxnEJ654wEdzi7GZTZ5LAdiotBmPrF7pDMkpX1JegDMQZX55WZLkvy9fxNpZcbBJuE8QYUqBF "passphrase")") +
             R"(
@@ -187,7 +187,7 @@ As json rpc:
 )" 
 + HelpExampleRpc("tickets", 
     strprintf(R"(%s, "907e5e4c6fc4d14660a22afe2bdf6d27a3c8762abf0a89355bb19b7d9e7dc440", 213, 100, "jXYqZNPj21RVnwxnEJ654wEdzi7GZTZ5LAdiotBmPrF7pDMkpX1JegDMQZX55WZLkvy9fxNpZcbBJuE8QYUqBF", "passphrase")", 
-        bRegisterAPI ? R"("register", "nft-collection-act")" : R"("activate", "nft-collection")")));
+        bRegisterAPI ? R"("register", "collection-act")" : R"("activate", "collection")")));
 
     string regTicketTxID = params[2].get_str();
     int height = get_number(params[3]);
@@ -200,13 +200,13 @@ As json rpc:
     if (params.size() >= 8)
         sFundingAddress = params[7].get_str();
 
-    const auto NFTCollectionActTicket = CNFTCollectionActivateTicket::Create(move(regTicketTxID), height, fee, move(pastelID), move(strKeyPass));
-    return GenerateSendTicketResult(CPastelTicketProcessor::SendTicket(NFTCollectionActTicket, sFundingAddress));
+    const auto CollectionActTicket = CollectionActivateTicket::Create(move(regTicketTxID), height, fee, move(pastelID), move(strKeyPass));
+    return GenerateSendTicketResult(CPastelTicketProcessor::SendTicket(CollectionActTicket, sFundingAddress));
 }
 
 UniValue tickets_activate(const UniValue& params)
 {
-    RPC_CMD_PARSER2(ACTIVATE, params, nft, action, nft__collection);
+    RPC_CMD_PARSER2(ACTIVATE, params, nft, action, collection);
 
     if (!ACTIVATE.IsCmdSupported())
         tickets_activate_help();
@@ -223,8 +223,8 @@ UniValue tickets_activate(const UniValue& params)
             result = tickets_activate_action(params, false);
             break;
 
-        case RPC_CMD_ACTIVATE::nft__collection:
-            result = tickets_activate_nft_collection(params, false);
+        case RPC_CMD_ACTIVATE::collection:
+            result = tickets_activate_collection(params, false);
             break;
 
         default:
