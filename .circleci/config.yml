@@ -1,6 +1,6 @@
 # Use the latest 2.1 version of CircleCI pipeline process engine. See: https://circleci.com/docs/2.0/configuration-reference
 orbs:
-  go: circleci/go@1.5.0
+  gh: circleci/github-cli@2.2.0
   aws-cli: circleci/aws-cli@2.0.3
   aws-s3: circleci/aws-s3@3.0.0
 version: 2.1
@@ -46,6 +46,31 @@ commands:
             --acl public-read \
             --cache-control "max-age=86400"
       - run: aws cloudfront create-invalidation --distribution-id $CLOUDFRONT_ID --paths /beta/pasteld/\* 
+
+  github-create-release:
+    parameters:
+      root_directory:
+        type: string
+        default: /pastel
+      release_title:
+        type: string
+      release_notes:
+        type: string
+    steps:
+      - run:
+          name: Check if GitHub release for pasteld already exists
+          working_directory: << parameters.root_directory >>
+          command: |
+            if gh release view ${CIRCLE_TAG} > /dev/null 2>&1; then
+              echo "pasteld Github release ${CIRCLE_TAG} already exists"
+              exit 0
+            fi
+      - run:
+          name: Creating GitHub release for pasteld
+          working_directory: << parameters.root_directory >>
+          command: |
+            echo gh release create ${CIRCLE_TAG} --title \"<< parameters.release_title >>\" --notes \"<< parameters.release_notes >>\"
+            gh release create ${CIRCLE_TAG} --title "<< parameters.release_title >>" --notes "<< parameters.release_notes >>"
   
   github-upload:
     parameters:
@@ -66,10 +91,6 @@ commands:
           name: Uploading executables to Pastel GitHub repo (<< parameters.platform >>)
           working_directory: << parameters.root_directory >>
           command: |
-            wget https://github.com/github-release/github-release/releases/download/v0.10.0/linux-amd64-github-release.bz2
-            bzip2 -d ./linux-amd64-github-release.bz2
-            mv linux-amd64-github-release github-release
-            chmod u+r+x github-release
             export EXPORT_ARTIFACT=src/<< parameters.binaryName >><< parameters.ext >>
             echo "Check existence of [${EXPORT_ARTIFACT}] build and upload to GitHub, tag ${CIRCLE_TAG}"
             if test -z "${CIRCLE_TAG}"; then
@@ -80,8 +101,8 @@ commands:
                echo "Artifact [$EXPORT_ARTIFACT] not found"
                exit 2
             fi
-            echo ./github-release --verbose upload --user pastelnetwork --repo pastel --tag $CIRCLE_TAG --name << parameters.binaryName >>-<< parameters.platform >>-amd64 --file $EXPORT_ARTIFACT
-            ./github-release --verbose upload --user pastelnetwork --repo pastel --tag $CIRCLE_TAG --name << parameters.binaryName >>-<< parameters.platform >>-amd64 --file $EXPORT_ARTIFACT
+            echo gh release upload --clobber --repo pastel ${CIRCLE_TAG} ${EXPORT_ARTIFACT}#<< parameters.binaryName >>-<< parameters.platform >>-amd64
+            gh release upload --clobber --repo pastel ${CIRCLE_TAG} ${EXPORT_ARTIFACT}#<< parameters.binaryName >>-<< parameters.platform >>-amd64
 
 jobs:
   build_platform:
@@ -194,6 +215,10 @@ jobs:
       - when:
           condition: << parameters.deploy >>
           steps:
+            - gh/install
+            - github-create-release:
+                release_title: ${PASTEL_RELEASE} - $CIRCLE_TAG
+                release_notes: Pastel Utility Release - $CIRCLE_TAG
             - github-upload:
                 binaryName: pasteld
                 ext: << parameters.ext >>
@@ -308,7 +333,9 @@ workflows:
               branches:
                 ignore: /.*/
               tags:
-                only: /^v.*/
+                only:
+                  - /^v.*/
+                  - circleci_test
             context:
               - Release
               - weekly-beta-builds
@@ -324,7 +351,9 @@ workflows:
               branches:
                 ignore: /.*/
               tags:
-                only: /^v.*/
+                only:
+                  - /^v.*/
+                  - circleci_test
             context:
               - Release
               - weekly-beta-builds
@@ -339,7 +368,9 @@ workflows:
               branches:
                 ignore: /.*/
               tags:
-                only: /^v.*/
+                only:
+                  - /^v.*/
+                  - circleci_test
             context:
               - Release
               - weekly-beta-builds
