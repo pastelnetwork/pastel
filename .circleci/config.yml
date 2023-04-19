@@ -77,6 +77,9 @@ commands:
       root_directory:
         type: string
         default: /pastel
+      repo:
+        type: string
+        default: pastel
       binaryName:
         type: string
       ext:
@@ -101,8 +104,8 @@ commands:
                echo "Artifact [$EXPORT_ARTIFACT] not found"
                exit 2
             fi
-            echo gh release upload --clobber --repo pastel ${CIRCLE_TAG} ${EXPORT_ARTIFACT}#<< parameters.binaryName >>-<< parameters.platform >>-amd64
-            gh release upload --clobber --repo pastel ${CIRCLE_TAG} ${EXPORT_ARTIFACT}#<< parameters.binaryName >>-<< parameters.platform >>-amd64
+            echo gh release upload --clobber --repo pastelnetwork/<< parameters.repo >> ${CIRCLE_TAG} ${EXPORT_ARTIFACT}#<< parameters.binaryName >>-<< parameters.platform >>-amd64
+            gh release upload --clobber --repo pastelnetwork/<< parameters.repo >> ${CIRCLE_TAG} ${EXPORT_ARTIFACT}#<< parameters.binaryName >>-<< parameters.platform >>-amd64
 
 jobs:
   build_platform:
