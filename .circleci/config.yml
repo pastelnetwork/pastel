@@ -307,7 +307,9 @@ workflows:
             run_tests: true
             filters:
               tags:
-                ignore: /^v.*/
+                ignore:
+                  - /^v.*/
+                  - circleci_test
         - build_platform:
             name: Build Pastel for Windows platform (debug)
             platform: windows
@@ -315,14 +317,18 @@ workflows:
             ext: .exe
             filters:
               tags:
-                ignore: /^v.*/
+                ignore:
+                  - /^v.*/
+                  - circleci_test
         - build_platform:
             name: Build Pastel for macOS platform (debug)
             platform: darwin
             host: x86_64-apple-darwin14
             filters:
               tags:
-                ignore: /^v.*/
+                ignore:
+                  - /^v.*/
+                  - circleci_test
         - build_platform:
             name: Build Pastel for Linux platform (release)
             platform: linux
