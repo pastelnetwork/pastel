@@ -58,19 +58,15 @@ commands:
         type: string
     steps:
       - run:
-          name: Check if GitHub release for pasteld already exists
+          name: Create GitHub release for pasteld if not exists
           working_directory: << parameters.root_directory >>
           command: |
             if gh release view ${CIRCLE_TAG} > /dev/null 2>&1; then
               echo "pasteld Github release ${CIRCLE_TAG} already exists"
-              exit 0
+            else
+              echo gh release create ${CIRCLE_TAG} --title \"<< parameters.release_title >>\" --notes \"<< parameters.release_notes >>\"
+              gh release create ${CIRCLE_TAG} --title "<< parameters.release_title >>" --notes "<< parameters.release_notes >>"
             fi
-      - run:
-          name: Creating GitHub release for pasteld
-          working_directory: << parameters.root_directory >>
-          command: |
-            echo gh release create ${CIRCLE_TAG} --title \"<< parameters.release_title >>\" --notes \"<< parameters.release_notes >>\"
-            gh release create ${CIRCLE_TAG} --title "<< parameters.release_title >>" --notes "<< parameters.release_notes >>"
   
   github-upload:
     parameters:
