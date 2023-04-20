@@ -1,13 +1,14 @@
-// Copyright (c) 2018-2022 The Pastel Core developers
+// Copyright (c) 2018-2023 The Pastel Core developers
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 
-#include "rpc/rpc_parser.h"
-#include "rpc/server.h"
+#include <enum_util.h>
+#include <rpc/rpc_parser.h>
+#include <rpc/server.h>
 #include <mnode/tickets/tickets-all.h>
-#include "mnode/mnode-controller.h"
-#include "mnode/rpc/mnode-rpc-utils.h"
-#include "mnode/rpc/tickets-list.h"
+#include <mnode/mnode-controller.h>
+#include <mnode/rpc/mnode-rpc-utils.h>
+#include <mnode/rpc/tickets-list.h>
 
 using namespace std;
 
@@ -110,6 +111,12 @@ As json rpc
     uint32_t minheight = 0;
     if (params.size() > 3 && !bSpecialParsingLogic)
         minheight = get_number(params[3]);
+
+    // limit minheight for testnet for NFT & Action tickets
+    if (Params().IsTestNet() && !minheight && 
+        is_enum_any_of(LIST.cmd(), RPC_CMD_LIST::nft, RPC_CMD_LIST::act,
+            RPC_CMD_LIST::action, RPC_CMD_LIST::action__act))
+        minheight = 265'000;
 
     UniValue obj(UniValue::VARR);
     switch (LIST.cmd())
