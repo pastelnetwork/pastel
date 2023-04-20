@@ -15,7 +15,8 @@ from test_framework.util import (
     assert_shows_help,
     assert_true,
     initialize_chain_clean,
-    str_to_b64str
+    str_to_b64str,
+    DecimalEncoder,
 )
 from mn_common import (
     MasterNodeCommon,
@@ -744,7 +745,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
             "green": green,
             "app_ticket": app_ticket_json
         }
-        collection_ticket.set_reg_ticket(json.dumps(json_ticket, indent=4))
+        collection_ticket.set_reg_ticket(json.dumps(json_ticket, cls=DecimalEncoder, indent=4))
         print(f"{item_type.type_description} collection_ticket:\n{collection_ticket.reg_ticket}")
 
         self.create_signatures(TicketType.COLLECTION, creator_node_num, make_bad_signatures_dicts)
@@ -803,7 +804,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         if collection_act_txid:
             json_ticket["collection_txid"] = collection_act_txid
 
-        ticket.set_reg_ticket(json.dumps(json_ticket, indent=4))
+        ticket.set_reg_ticket(json.dumps(json_ticket, cls=DecimalEncoder, indent=4))
         print(f"NFT ticket v2 - {ticket.reg_ticket}")
         print(f"NFT ticket v2 (base64-encoded) - {ticket.reg_ticket_base64_encoded}")
 
@@ -844,7 +845,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
 
         block_hash = self.nodes[creator_node_num].getblock(str(ticket.reg_height))["hash"]
         app_ticket_json = self.generate_action_app_ticket_details()
-        app_ticket = str_to_b64str(json.dumps(app_ticket_json))
+        app_ticket = str_to_b64str(json.dumps(app_ticket_json, cls=DecimalEncoder, indent=4))
 
         json_ticket = {
             "action_ticket_version": 1 if not collection_act_txid else 2,
@@ -856,7 +857,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         }
         if collection_act_txid:
             json_ticket["collection_txid"] = collection_act_txid
-        ticket.set_reg_ticket(json.dumps(json_ticket, indent=4))
+        ticket.set_reg_ticket(json.dumps(json_ticket, cls=DecimalEncoder, indent=4))
         print(f"action_ticket - {ticket.reg_ticket}")
         print(f"action_ticket (base64) - {ticket.reg_ticket_base64_encoded}")
 
@@ -1063,6 +1064,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         print(f"Coins before '{ticket_type_name}' registration: {coins_before}")
 
         # register collection successfully
+        print(f"Registering '{ticket_type_name}' ticket:\n{collection_ticket.reg_ticket}")
         result = top_mn_node.tickets("register", ticket_type_name,
             collection_ticket.reg_ticket_base64_encoded, json.dumps(self.signatures_dict),
             self.top_mns[0].pastelid, self.passphrase, label, str(self.storage_fee))
@@ -1074,6 +1076,8 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         self.inc_ticket_counter(TicketType.COLLECTION)
         self.wait_for_ticket_tnx()
         print(top_mn_node.getblockcount())
+        tkt = top_mn_node.tickets("get", collection_ticket.reg_txid)
+        print(f"Collection registration ticket:\n{json.dumps(tkt, cls=DecimalEncoder, indent=4)}")
 
         #       c.a.7 check correct amount of change and correct amount spent
         coins_after = top_mn_node.getbalance()
@@ -1423,6 +1427,8 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         self.wait_for_ticket_tnx()
         collection_act_ticket.act_txid = collection_reg_ticket.act_txid
         self.inc_ticket_counter(TicketType.COLLECTION_ACTIVATE)
+        tkt = self.nodes[self.non_mn3].tickets("get", collection_reg_ticket.act_txid)
+        print(f"Collection activate ticket:\n{json.dumps(tkt, cls=DecimalEncoder, indent=4)}")
 
         #       d.a.9 check correct amount of change and correct amount spent and correct amount of fee paid
         main_mn_fee = self.storage_fee90percent*3/5
@@ -2780,7 +2786,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
 
         # first check item we're trying to offer
         item_ticket = self.nodes[offerer_node].tickets("get", item_to_offer_txid)
-        print(f'{desc} ticket:\n{json.dumps(item_ticket, indent=4)}')
+        print(f'{desc} ticket:\n{json.dumps(item_ticket, cls=DecimalEncoder, indent=4)}')
 
         balance_tracker = self.TransferBalanceTracker(self.nodes, desc, offerer_node, acceptor_node)
 

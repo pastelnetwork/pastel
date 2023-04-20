@@ -339,13 +339,14 @@ class MasterNodeTicketsTest(MasterNodeCommon):
                 self.register_offer_ticket, TicketType.NFT, 2)
 
     def generate_blocks(self, block_count: int):
-        chunk_size = 5
+        chunk_size = 2
         chunk_count = int(block_count/chunk_size)
+        time.sleep(5)
         print(f"Generate {block_count} blocks. 1 chunk is {chunk_size} blocks, total {chunk_count} chunks")
         for ind in range(chunk_count):
             print(f"chunk - {ind + 1}")
             self.generate_and_sync_inc(chunk_size, self.mining_node_num)
-            time.sleep(5)
+            time.sleep(2)
 
 
     def register_nft_reg_ticket(self, label):

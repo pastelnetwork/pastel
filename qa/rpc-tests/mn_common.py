@@ -558,7 +558,7 @@ class MasterNodeCommon (PastelTestFramework):
                 "mn3": {self.top_mns[2].pastelid: self.top_mns[2].signature},
             }
         )
-        print(f"signatures_dict - {self.signatures_dict!r}")
+        print(f"signatures_dict:\n{json.dumps(self.signatures_dict, indent=4)}")
 
         if make_bad_signatures_dicts:
             self.same_mns_signatures_dict = dict(
@@ -568,7 +568,7 @@ class MasterNodeCommon (PastelTestFramework):
                     "mn3": {self.top_mns[0].pastelid: self.top_mns[0].signature},
                 }
             )
-            print(f"same_mns_signatures_dict - {self.same_mns_signatures_dict!r}")
+            print(f"same_mns_signatures_dict:\n{json.dumps(self.same_mns_signatures_dict, indent=4)}")
 
             not_top_mns_indexes = set(self.mn_outpoints.values()) ^ set(top_mns_indexes)
             print(not_top_mns_indexes)
@@ -586,7 +586,7 @@ class MasterNodeCommon (PastelTestFramework):
                     "mn3": {not_top_mn_pastelid2: not_top_mn_ticket_signature2},
                 }
             )
-            print(f"not_top_mns_signatures_dict - {self.not_top_mns_signatures_dict!r}")
+            print(f"not_top_mns_signatures_dict:\n{json.dumps(self.not_top_mns_signatures_dict, indent=4)}")
 
 
     # ===============================================================================================================
