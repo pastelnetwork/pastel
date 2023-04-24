@@ -21,7 +21,7 @@ bool CMasternodeRequestTracker::HasFulfilledRequest(CAddress addr, std::string s
 
     return  it != mapFulfilledRequests.end() &&
             it->second.find(strRequest) != it->second.end() &&
-            it->second[strRequest] > GetTime();
+            it->second[strRequest] >= GetTime();
 }
 
 void CMasternodeRequestTracker::RemoveFulfilledRequest(CAddress addr, std::string strRequest)
