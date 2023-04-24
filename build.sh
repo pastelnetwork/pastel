@@ -53,8 +53,9 @@ EOF
 
 OS=`uname | cut -f1 -d_`
 # get number of cpus
-NCPUS=`nproc`
-JOBCOUNT=$NCPUS
+#NCPUS=`nproc`
+NCPUS=4
+#JOBCOUNT=$NCPUS
 
 gprefix READLINK readlink
 BUILDDIR=`dirname $($READLINK -f $0)`
