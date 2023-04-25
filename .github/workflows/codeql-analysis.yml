@@ -64,7 +64,7 @@ jobs:
     #    uses a compiled language
 
     - run: |
-       build.sh -j4 --enable-debug
+       ./build.sh -j4 --enable-debug
 
     - name: Perform CodeQL Analysis
       uses: github/codeql-action/analyze@v2
