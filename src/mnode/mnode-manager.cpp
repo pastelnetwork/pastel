@@ -1083,7 +1083,7 @@ bool CMasternodeMan::SendVerifyRequest(const CAddress& addr, const vector<CMaste
     mWeAskedForVerification[addr] = mnv;
     LogFnPrintf("verifying node using nonce %d addr=%s [fulfilled request map time - %d]",
                 mnv.nonce, addr.ToString(),
-                masterNodeCtrl.requestTracker.GetFulfilledRequestTime(addr, strprintf("%s", NetMsgType::MNVERIFY)+"-request").ToString());
+                masterNodeCtrl.requestTracker.GetFulfilledRequestTime(addr, strprintf("%s", NetMsgType::MNVERIFY)+"-request"));
     pnode->PushMessage(NetMsgType::MNVERIFY, mnv);
 
     return true;
@@ -1146,8 +1146,7 @@ void CMasternodeMan::ProcessVerifyReply(CNode* pnode, CMasternodeVerification& m
     {
         LogFnPrintf("ERROR: we didn't ask for verification of %s, peer=%d [fulfilled request map time - %d]",
                     pnode->addr.ToString(), pnode->id,
-                    masterNodeCtrl.requestTracker.GetFulfilledRequestTime(addr, strprintf("%s", NetMsgType::MNVERIFY)+"-request").ToString());
-);
+                    masterNodeCtrl.requestTracker.GetFulfilledRequestTime(pnode->addr, strprintf("%s", NetMsgType::MNVERIFY)+"-request"));
         Misbehaving(pnode->id, 20);
         return;
     }

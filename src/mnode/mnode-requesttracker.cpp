@@ -29,8 +29,8 @@ int64_t CMasternodeRequestTracker::GetFulfilledRequestTime(CAddress addr, std::s
     LOCK(cs_mapFulfilledRequests);
     fulfilledreqmap_t::iterator it = mapFulfilledRequests.find(addr);
 
-    if it != mapFulfilledRequests.end() &&
-       it->second.find(strRequest) != it->second.end()
+    if (it != mapFulfilledRequests.end() &&
+       it->second.find(strRequest) != it->second.end())
         return it->second[strRequest];
     return -1;
 }
