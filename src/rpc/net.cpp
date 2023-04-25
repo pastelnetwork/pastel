@@ -157,7 +157,7 @@ Examples:
         // their ver message.
         obj.pushKV("subver", stats.cleanSubVer);
         obj.pushKV("inbound", stats.fInbound);
-        obj.pushKV("startingheight", static_cast<uint64_t>(stats.nStartingHeight));
+        obj.pushKV("startingheight", static_cast<int64_t>(stats.nStartingHeight));
         if (fStateStats)
         {
             obj.pushKV("banscore", statestats.nMisbehavior);

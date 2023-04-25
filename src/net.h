@@ -187,7 +187,7 @@ public:
     int nVersion;
     std::string cleanSubVer;
     bool fInbound;
-    uint32_t nStartingHeight;
+    int32_t nStartingHeight;
     uint64_t nSendBytes;
     uint64_t nRecvBytes;
     bool fWhitelisted;
@@ -308,7 +308,7 @@ protected:
 
 public:
     uint256 hashContinue;
-    std::atomic_uint32_t nStartingHeight;
+    std::atomic_int32_t nStartingHeight;
 
     // flood relay
     std::vector<CAddress> vAddrToSend;

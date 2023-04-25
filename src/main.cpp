@@ -5248,7 +5248,7 @@ static bool ProcessMessage(const CChainParams& chainparams, CNode* pfrom, string
         }
         if (!vRecv.empty())
         {
-            uint32_t nStartingHeight;
+            int32_t nStartingHeight = 0;
             vRecv >> nStartingHeight;
             pfrom->nStartingHeight = nStartingHeight;
         }
@@ -5329,7 +5329,7 @@ static bool ProcessMessage(const CChainParams& chainparams, CNode* pfrom, string
         if (fLogIPs)
             remoteAddr = ", peeraddr=" + pfrom->addr.ToString();
 
-        LogPrintf("receive version message: %s: version %d, blocks=%u, us=%s, peer=%d%s\n",
+        LogPrintf("receive version message: %s: version %d, blocks=%d, us=%s, peer=%d%s\n",
                   pfrom->cleanSubVer, pfrom->nVersion,
                   pfrom->nStartingHeight, addrMe.ToString(), pfrom->id,
                   remoteAddr);
@@ -5762,7 +5762,7 @@ static bool ProcessMessage(const CChainParams& chainparams, CNode* pfrom, string
                 // Headers message had its maximum size; the peer may have more headers.
                 // TODO: optimize: if pindexLast is an ancestor of chainActive.Tip or pindexBestHeader, continue
                 // from there instead.
-                LogPrint("net", "more getheaders from height=%d (max: %zu) to peer=%d (startheight=%u)\n",
+                LogPrint("net", "more getheaders from height=%d (max: %zu) to peer=%d (startheight=%d)\n",
                     pindexLast->nHeight, MAX_HEADERS_RESULTS, pfrom->id, pfrom->nStartingHeight);
                 pfrom->PushMessage("getheaders", chainActive.GetLocator(pindexLast), uint256());
             }
@@ -6336,7 +6336,7 @@ bool SendMessages(const CChainParams& chainparams, CNode* pto, bool fSendTrickle
                 state.fSyncStarted = true;
                 nSyncStarted++;
                 const auto pindexStart = pindexBestHeader->pprev ? pindexBestHeader->pprev : pindexBestHeader;
-                LogPrint("net", "initial getheaders (height=%d) to peer=%d (startheight=%u)\n",
+                LogPrint("net", "initial getheaders (height=%d) to peer=%d (startheight=%d)\n",
                     pindexStart->nHeight, nodeId, pto->nStartingHeight);
                 pto->PushMessage("getheaders", chainActive.GetLocator(pindexStart), uint256());
             }
