@@ -24,7 +24,7 @@ bool CMasternodeRequestTracker::HasFulfilledRequest(CAddress addr, std::string s
             it->second[strRequest] > GetTime();
 }
 
-std:string CMasternodeRequestTracker::GetFulfilledRequest(CAddress addr, std::string strRequest)
+int64_t CMasternodeRequestTracker::GetFulfilledRequestTime(CAddress addr, std::string strRequest)
 {
     LOCK(cs_mapFulfilledRequests);
     fulfilledreqmap_t::iterator it = mapFulfilledRequests.find(addr);
@@ -32,7 +32,7 @@ std:string CMasternodeRequestTracker::GetFulfilledRequest(CAddress addr, std::st
     if it != mapFulfilledRequests.end() &&
        it->second.find(strRequest) != it->second.end()
         return it->second[strRequest];
-    return "Not found";
+    return -1;
 }
 
 void CMasternodeRequestTracker::RemoveFulfilledRequest(CAddress addr, std::string strRequest)

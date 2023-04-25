@@ -1081,9 +1081,9 @@ bool CMasternodeMan::SendVerifyRequest(const CAddress& addr, const vector<CMaste
     // use random nonce, store it and require node to reply with correct one later
     CMasternodeVerification mnv(addr, GetRandInt(999999), nCachedBlockHeight - 1);
     mWeAskedForVerification[addr] = mnv;
-    LogFnPrintf("verifying node using nonce %d addr=%s [fulfilled request map time - %s]",
+    LogFnPrintf("verifying node using nonce %d addr=%s [fulfilled request map time - %d]",
                 mnv.nonce, addr.ToString(),
-                masterNodeCtrl.requestTracker.GetFulfilledRequest(addr, strprintf("%s", NetMsgType::MNVERIFY)+"-request").ToString());
+                masterNodeCtrl.requestTracker.GetFulfilledRequestTime(addr, strprintf("%s", NetMsgType::MNVERIFY)+"-request").ToString());
     pnode->PushMessage(NetMsgType::MNVERIFY, mnv);
 
     return true;
@@ -1144,9 +1144,9 @@ void CMasternodeMan::ProcessVerifyReply(CNode* pnode, CMasternodeVerification& m
     // did we even ask for it? if that's the case we should have matching fulfilled request
     if (!masterNodeCtrl.requestTracker.HasFulfilledRequest(pnode->addr, strprintf("%s", NetMsgType::MNVERIFY)+"-request"))
     {
-        LogFnPrintf("ERROR: we didn't ask for verification of %s, peer=%d [fulfilled request map time - %s]",
+        LogFnPrintf("ERROR: we didn't ask for verification of %s, peer=%d [fulfilled request map time - %d]",
                     pnode->addr.ToString(), pnode->id,
-                    masterNodeCtrl.requestTracker.GetFulfilledRequest(addr, strprintf("%s", NetMsgType::MNVERIFY)+"-request").ToString());
+                    masterNodeCtrl.requestTracker.GetFulfilledRequestTime(addr, strprintf("%s", NetMsgType::MNVERIFY)+"-request").ToString());
 );
         Misbehaving(pnode->id, 20);
         return;
