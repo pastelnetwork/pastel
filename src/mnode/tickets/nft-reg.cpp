@@ -179,6 +179,11 @@ void CNFTRegTicket::parse_nft_ticket()
                     if (bHasGreen)
                         m_sGreenAddress = GreenAddress(GetActiveChainHeight());
                 } break;
+
+                case NFT_TKT_PROP::version:
+                case NFT_TKT_PROP::app_ticket:
+                case NFT_TKT_PROP::unknown:
+                    break;
             } // switch
         } // for 
 

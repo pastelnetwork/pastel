@@ -1,11 +1,12 @@
 #pragma once
 // Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2014 The Bitcoin Core developers
-// Copyright (c) 2018-2022 The Pastel Core developers
+// Copyright (c) 2018-2023 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 
 #include <deque>
+#include <atomic>
 #include <stdint.h>
 
 #ifndef WIN32
@@ -35,23 +36,23 @@ class CScheduler;
 class CNode;
 
 /** Time between pings automatically sent out for latency probing and keepalive (in seconds). */
-static const int PING_INTERVAL = 2 * 60;
+static constexpr int PING_INTERVAL = 2 * 60;
 /** Time after which to disconnect, after waiting for a ping response (or inactivity). */
-static const int TIMEOUT_INTERVAL = 20 * 60;
+static constexpr int DISCONNECT_TIMEOUT_INTERVAL_SECS = 20 * 60;
 /** The maximum number of entries in an 'inv' protocol message */
-constexpr size_t MAX_INV_SZ = 50'000;
+static constexpr size_t MAX_INV_SZ = 50'000;
 /** The maximum number of new addresses to accumulate before announcing. */
-static const unsigned int MAX_ADDR_TO_SEND = 1000;
+static constexpr unsigned int MAX_ADDR_TO_SEND = 1000;
 /** Maximum length of incoming protocol messages (no message over 2 MiB is currently acceptable). */
-static const unsigned int MAX_PROTOCOL_MESSAGE_LENGTH = 2 * 1024 * 1024;
+static constexpr unsigned int MAX_PROTOCOL_MESSAGE_LENGTH = 2 * 1024 * 1024;
 /** Maximum length of strSubVer in `version` message */
-static const unsigned int MAX_SUBVERSION_LENGTH = 256;
+static constexpr unsigned int MAX_SUBVERSION_LENGTH = 256;
 /** -listen default */
-static const bool DEFAULT_LISTEN = true;
+static constexpr bool DEFAULT_LISTEN = true;
 /** The maximum number of entries in mapAskFor */
-static const size_t MAPASKFOR_MAX_SZ = MAX_INV_SZ;
+static constexpr size_t MAPASKFOR_MAX_SZ = MAX_INV_SZ;
 /** The maximum number of entries in setAskFor (larger due to getdata latency)*/
-static const size_t SETASKFOR_MAX_SZ = 2 * MAX_INV_SZ;
+static constexpr size_t SETASKFOR_MAX_SZ = 2 * MAX_INV_SZ;
 /** The maximum number of peer connections to maintain. */
 static constexpr unsigned int DEFAULT_MAX_PEER_CONNECTIONS = 125;
 // The period before a network upgrade activates, where connections to upgrading peers are preferred (in blocks).
@@ -80,6 +81,10 @@ void StartNode(CServiceThreadGroup& threadGroup, CScheduler &scheduler);
 bool StopNode();
 void SocketSendData(CNode *pnode);
 
+// returns true if we have at least one active network interface
+bool hasActiveNetworkInterface();
+// returns true if we have internet connectivity
+bool hasInternetConnectivity();
 
 struct CombinerAll
 {
@@ -136,7 +141,6 @@ bool IsReachable(enum Network net) noexcept;
 bool IsReachable(const CNetAddr &addr) noexcept;
 CAddress GetLocalAddress(const CNetAddr *paddrPeer = nullptr);
 
-
 extern bool fDiscover;
 extern bool fListen;
 extern uint64_t nLocalServices;
@@ -183,7 +187,7 @@ public:
     int nVersion;
     std::string cleanSubVer;
     bool fInbound;
-    int nStartingHeight;
+    uint32_t nStartingHeight;
     uint64_t nSendBytes;
     uint64_t nRecvBytes;
     bool fWhitelisted;
@@ -237,7 +241,7 @@ class CNode
 {
 public:
     // socket
-    uint64_t nServices;
+    std::atomic_uint64_t nServices;
     SOCKET hSocket;
     CDataStream ssSend;
     size_t nSendSize; // total size of all vSendMsg entries
@@ -252,10 +256,10 @@ public:
     uint64_t nRecvBytes;
     int nRecvVersion;
 
-    int64_t nLastSend;
-    int64_t nLastRecv;
+    std::atomic_int64_t nLastSend;
+    std::atomic_int64_t nLastRecv;
     int64_t nTimeConnected;
-    int64_t nTimeOffset;
+    std::atomic_int64_t nTimeOffset;
     CAddress addr;
     std::string addrName;
     CService addrLocal;
@@ -304,7 +308,7 @@ protected:
 
 public:
     uint256 hashContinue;
-    int nStartingHeight;
+    std::atomic_uint32_t nStartingHeight;
 
     // flood relay
     std::vector<CAddress> vAddrToSend;
@@ -321,15 +325,15 @@ public:
 
     // Ping time measurement:
     // The pong reply we're expecting, or 0 if no pong expected.
-    uint64_t nPingNonceSent;
+    std::atomic_uint64_t nPingNonceSent;
     // Time (in usec) the last ping was sent, or 0 if no ping was ever sent.
-    int64_t nPingUsecStart;
+    std::atomic_int64_t nPingUsecStart;
     // Last measured round-trip time.
-    int64_t nPingUsecTime;
+    std::atomic_int64_t nPingUsecTime;
     // Best measured round-trip time.
-    int64_t nMinPingUsecTime;
+    std::atomic_int64_t nMinPingUsecTime;
     // Whether a ping is requested.
-    bool fPingQueued;
+    std::atomic_bool fPingQueued;
 
     CNode(SOCKET hSocketIn, const CAddress &addrIn, const std::string &addrNameIn = "", bool fInboundIn = false, bool fNetworkNodeIn = false);
     ~CNode();
@@ -386,8 +390,6 @@ public:
     {
         nRefCount--;
     }
-
-
 
     void AddAddressKnown(const CAddress& addr)
     {

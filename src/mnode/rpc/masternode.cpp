@@ -1009,6 +1009,10 @@ As json rpc:
                     throw JSONRPCError(RPC_INTERNAL_ERROR, 
                         strprintf("MasterNode not found by collateral txid-index: %s", outpoint.ToStringShort()));
             } break;
+
+            case RPC_CMD_SCORE::rpc_command_count:
+            case RPC_CMD_SCORE::unknown:
+                break;
         }
         retVal.pushKV("pose-ban-score", mn.getPoSeBanScore());
         const bool isBannedByScore = mn.IsPoSeBannedByScore();

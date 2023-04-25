@@ -1,6 +1,7 @@
 // Copyright (c) 2009-2014 The Bitcoin Core developers
+// Copyright (c) 2018-2023 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
-// file COPYING or http://www.opensource.org/licenses/mit-license.php.
+// file COPYING or https://www.opensource.org/licenses/mit-license.php.
 
 #include <univalue.h>
 
@@ -156,8 +157,9 @@ Examples:
         // their ver message.
         obj.pushKV("subver", stats.cleanSubVer);
         obj.pushKV("inbound", stats.fInbound);
-        obj.pushKV("startingheight", stats.nStartingHeight);
-        if (fStateStats) {
+        obj.pushKV("startingheight", static_cast<uint64_t>(stats.nStartingHeight));
+        if (fStateStats)
+        {
             obj.pushKV("banscore", statestats.nMisbehavior);
             obj.pushKV("synced_headers", statestats.nSyncHeight);
             obj.pushKV("synced_blocks", statestats.nCommonHeight);

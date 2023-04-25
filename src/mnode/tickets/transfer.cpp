@@ -445,6 +445,9 @@ CAmount CTransferTicket::GetExtraOutputs(vector<CTxOut>& outputs) const
                 nGreenNFTAmount = nPriceAmount * CNFTRegTicket::GreenPercent(chainHeight) / 100;
             }
         } break;
+
+        default:
+            break;
     }
 
     nPriceAmount -= (nRoyaltyAmount + nGreenNFTAmount);

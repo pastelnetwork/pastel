@@ -1,6 +1,6 @@
 #pragma once
 // Copyright (c) 2017 The Zcash developers
-// Copyright (c) 2018-2022 The Pastel Core developers
+// Copyright (c) 2018-2023 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <unordered_map>
@@ -52,9 +52,9 @@ public:
     AsyncRPCOperation_shieldcoinbase& operator=(AsyncRPCOperation_shieldcoinbase const&) = delete;  // Copy assign
     AsyncRPCOperation_shieldcoinbase& operator=(AsyncRPCOperation_shieldcoinbase &&) = delete;      // Move assign
 
-    virtual void main();
+    void main() override;
 
-    virtual UniValue getStatus() const;
+    UniValue getStatus() const override;
 
     bool testmode = false;  // Set to true to disable sending txs and generating proofs
 

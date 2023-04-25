@@ -176,6 +176,12 @@ void CollectionRegTicket::parse_collection_ticket()
                     if (bHasGreen)
                         m_sGreenAddress = GreenAddress(GetActiveChainHeight());
                 } break;
+
+                case COLL_TKT_PROP::version:
+                case COLL_TKT_PROP::app_ticket:
+                case COLL_TKT_PROP::unknown:
+                    break;
+
             } //switch
         } // for
 
