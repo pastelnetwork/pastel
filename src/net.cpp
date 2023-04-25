@@ -1984,7 +1984,6 @@ bool hasActiveNetworkInterface()
             continue;
         if (strcmp(ifa->ifa_name, "lo") == 0 || strcmp(ifa->ifa_name, "lo0") == 0)
             continue;
-        LogFnPrintf("%s is %s", ifa->ifa_name, ifa->ifa_flags & IFF_UP ? "UP" : "DOWN");
         if (!(ifa->ifa_flags & IFF_UP))
             continue;
 

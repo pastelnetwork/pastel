@@ -63,7 +63,9 @@ jobs:
     #    and modify them (or add more) to build your code if your project
     #    uses a compiled language
 
-    - run: |
+    - name: Build Pastel cNode project (C++ only)
+      if: contains(steps.init.outputs.languages, 'cpp') 
+      run: |
        ./build.sh -j4 --enable-debug
 
     - name: Perform CodeQL Analysis

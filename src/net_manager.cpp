@@ -18,6 +18,7 @@ CNetManagerThread::CNetManagerThread() :
 {
     m_bNetworkActive = true;
     m_nNetworkActiveStartTime = GetTime();
+    m_nNetworkInactiveStartTime = 0;
 }
 
 void CNetManagerThread::NotifyNetworkConnected()
@@ -73,7 +74,7 @@ void CNetManagerThread::execute()
 
 bool CNetManagerThread::IsNetworkConnectedRecently() const noexcept
 {
-    if (!m_bNetworkActive)
+    if (!m_bNetworkActive || !m_nNetworkInactiveStartTime)
         return false;
     if (GetTime() - m_nNetworkActiveStartTime < INACTIVITY_CHECK_GRACE_PERIOD_SECS)
         return true;
