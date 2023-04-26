@@ -157,6 +157,9 @@ bool warning_msg(const char* fmt, const Args&... args)
 
 const fs::path& ZC_GetParamsDir();
 
+/** Return readable error string for a system error code */
+std::string GetErrorString(const int err);
+
 void PrintExceptionContinue(const std::exception *pex, const char* pszThread);
 void ParseParameters(int argc, const char*const argv[]);
 void FileCommit(FILE *fileout);

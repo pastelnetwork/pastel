@@ -1,7 +1,7 @@
 // Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2014 The Bitcoin Core developers
 // Copyright (c) 2015-2018 The Zcash developers
-// Copyright (c) 2018-2022 The Pastel Core developers
+// Copyright (c) 2018-2023 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 
@@ -5213,7 +5213,9 @@ static bool ProcessMessage(const CChainParams& chainparams, CNode* pfrom, string
         CAddress addrMe;
         CAddress addrFrom;
         uint64_t nNonce = 1;
-        vRecv >> pfrom->nVersion >> pfrom->nServices >> nTime >> addrMe;
+        uint64_t nServices;
+        vRecv >> pfrom->nVersion >> nServices >> nTime >> addrMe;
+        pfrom->nServices = nServices;
         if (pfrom->nVersion < MIN_PEER_PROTO_VERSION)
         {
             // disconnect from peers older than this proto version
@@ -5245,7 +5247,11 @@ static bool ProcessMessage(const CChainParams& chainparams, CNode* pfrom, string
             pfrom->cleanSubVer = SanitizeString(pfrom->strSubVer);
         }
         if (!vRecv.empty())
-            vRecv >> pfrom->nStartingHeight;
+        {
+            int32_t nStartingHeight = 0;
+            vRecv >> nStartingHeight;
+            pfrom->nStartingHeight = nStartingHeight;
+        }
         if (!vRecv.empty())
             vRecv >> pfrom->fRelayTxes; // set to true after we get the first filter* message
         else
@@ -5756,7 +5762,8 @@ static bool ProcessMessage(const CChainParams& chainparams, CNode* pfrom, string
                 // Headers message had its maximum size; the peer may have more headers.
                 // TODO: optimize: if pindexLast is an ancestor of chainActive.Tip or pindexBestHeader, continue
                 // from there instead.
-                LogPrint("net", "more getheaders from height=%d (max: %zu) to peer=%d (startheight=%d)\n", pindexLast->nHeight, MAX_HEADERS_RESULTS, pfrom->id, pfrom->nStartingHeight);
+                LogPrint("net", "more getheaders from height=%d (max: %zu) to peer=%d (startheight=%d)\n",
+                    pindexLast->nHeight, MAX_HEADERS_RESULTS, pfrom->id, pfrom->nStartingHeight);
                 pfrom->PushMessage("getheaders", chainActive.GetLocator(pindexLast), uint256());
             }
 
@@ -5892,19 +5899,23 @@ static bool ProcessMessage(const CChainParams& chainparams, CNode* pfrom, string
         bool bPingFinished = false;
         string sProblem;
 
-        if (nAvail >= sizeof(nonce)) {
+        if (nAvail >= sizeof(nonce))
+        {
             vRecv >> nonce;
 
             // Only process pong message if there is an outstanding ping (old ping without nonce should never pong)
-            if (pfrom->nPingNonceSent != 0) {
-                if (nonce == pfrom->nPingNonceSent) {
+            if (pfrom->nPingNonceSent != 0)
+            {
+                if (nonce == pfrom->nPingNonceSent)
+                {
                     // Matching pong received, this ping is no longer outstanding
                     bPingFinished = true;
                     int64_t pingUsecTime = pingUsecEnd - pfrom->nPingUsecStart;
-                    if (pingUsecTime > 0) {
+                    if (pingUsecTime > 0)
+                    {
                         // Successful ping time measurement, replace previous
                         pfrom->nPingUsecTime = pingUsecTime;
-                        pfrom->nMinPingUsecTime = min(pfrom->nMinPingUsecTime, pingUsecTime);
+                        pfrom->nMinPingUsecTime = min(pfrom->nMinPingUsecTime.load(), pingUsecTime);
                     } else {
                         // This should never happen
                         sProblem = "Timing mishap";
@@ -5912,22 +5923,23 @@ static bool ProcessMessage(const CChainParams& chainparams, CNode* pfrom, string
                 } else {
                     // Nonce mismatches are normal when pings are overlapping
                     sProblem = "Nonce mismatch";
-                    if (nonce == 0) {
+                    if (nonce == 0)
+                    {
                         // This is most likely a bug in another implementation somewhere; cancel this ping
                         bPingFinished = true;
                         sProblem = "Nonce zero";
                     }
                 }
-            } else {
+            } else
                 sProblem = "Unsolicited pong without ping";
-            }
         } else {
             // This is most likely a bug in another implementation somewhere; cancel this ping
             bPingFinished = true;
             sProblem = "Short payload";
         }
 
-        if (!(sProblem.empty())) {
+        if (!(sProblem.empty()))
+        {
             LogPrint("net", "pong peer=%d %s: %s, %x expected, %x received, %u bytes\n",
                 pfrom->id,
                 pfrom->cleanSubVer,
@@ -5936,9 +5948,8 @@ static bool ProcessMessage(const CChainParams& chainparams, CNode* pfrom, string
                 nonce,
                 nAvail);
         }
-        if (bPingFinished) {
+        if (bPingFinished)
             pfrom->nPingNonceSent = 0;
-        }
     }
 
     else if (fAlerts && strCommand == "alert")
@@ -6213,22 +6224,21 @@ bool SendMessages(const CChainParams& chainparams, CNode* pto, bool fSendTrickle
         // Message: ping
         //
         bool pingSend = false;
-        if (pto->fPingQueued) {
-            // RPC ping request by user
-            pingSend = true;
-        }
-        if (pto->nPingNonceSent == 0 && pto->nPingUsecStart + PING_INTERVAL * 1000000 < GetTimeMicros()) {
-            // Ping automatically sent as a latency probe & keepalive.
-            pingSend = true;
-        }
-        if (pingSend) {
+        if (pto->fPingQueued)
+            pingSend = true; // RPC ping request by user
+        if (pto->nPingNonceSent == 0 && pto->nPingUsecStart + PING_INTERVAL * 1000000 < GetTimeMicros())
+            pingSend = true; // Ping automatically sent as a latency probe & keepalive.
+        if (pingSend)
+        {
             uint64_t nonce = 0;
-            while (nonce == 0) {
+            while (nonce == 0)
+            {
                 GetRandBytes((unsigned char*)&nonce, sizeof(nonce));
             }
             pto->fPingQueued = false;
             pto->nPingUsecStart = GetTimeMicros();
-            if (pto->nVersion > BIP0031_VERSION) {
+            if (pto->nVersion > BIP0031_VERSION)
+            {
                 pto->nPingNonceSent = nonce;
                 pto->PushMessage("ping", nonce);
             } else {
@@ -6326,7 +6336,8 @@ bool SendMessages(const CChainParams& chainparams, CNode* pto, bool fSendTrickle
                 state.fSyncStarted = true;
                 nSyncStarted++;
                 const auto pindexStart = pindexBestHeader->pprev ? pindexBestHeader->pprev : pindexBestHeader;
-                LogPrint("net", "initial getheaders (height=%d) to peer=%d (startheight=%d)\n", pindexStart->nHeight, nodeId, pto->nStartingHeight);
+                LogPrint("net", "initial getheaders (height=%d) to peer=%d (startheight=%d)\n",
+                    pindexStart->nHeight, nodeId, pto->nStartingHeight);
                 pto->PushMessage("getheaders", chainActive.GetLocator(pindexStart), uint256());
             }
         }

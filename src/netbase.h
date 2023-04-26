@@ -195,8 +195,6 @@ bool Lookup(const char *pszName, std::vector<CService>& vAddr, const uint16_t po
 bool LookupNumeric(const char *pszName, CService& addr, const uint16_t portDefault = 0);
 bool ConnectSocket(const CService &addr, SOCKET& hSocketRet, int nTimeout, bool *outProxyConnectionFailed = 0);
 bool ConnectSocketByName(CService &addr, SOCKET& hSocketRet, const char *pszDest, uint16_t portDefault, int nTimeout, bool *outProxyConnectionFailed = 0);
-/** Return readable error string for a network error code */
-std::string NetworkErrorString(int err);
 /** Close socket and set hSocket to INVALID_SOCKET */
 bool CloseSocket(SOCKET& hSocket);
 /** Disable or enable blocking-mode for a socket */

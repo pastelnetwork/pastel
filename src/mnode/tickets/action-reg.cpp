@@ -200,6 +200,11 @@ void CActionRegTicket::parse_action_ticket()
                 case ACTION_TKT_PROP::collection_act_txid:
                     value.get_to(m_sCollectionActTxid);
                     break;
+
+                case ACTION_TKT_PROP::version:
+                case ACTION_TKT_PROP::app_ticket:
+                case ACTION_TKT_PROP::unknown:
+                    break;
             }  // switch
         } // for
 
