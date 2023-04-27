@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2022 The PASTELCoin Developers
+// Copyright (c) 2018-2022 The Pastel Core Developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -429,13 +429,14 @@ bool CMasternodeBlockPayees::IsTransactionValid(const CTransaction& txNew) const
     {
         LogFnPrintf("ERROR: Missing required payment, possible payees: '%s', amount: %" PRId64 " PSL",
             strPayeesPossible, nMasternodePayment);
+        size_t i = 1;
         for (const auto& txout : txNew.vout)
         {
             CTxDestination dest;
             if (!ExtractDestination(txout.scriptPubKey, dest))
                 continue;
-            LogPrintf("\t%s -- %" PRId64 " \n", keyIO.EncodeDestination(dest), txout.nValue);
-            LogPrintf("\t%s\n", txout.scriptPubKey.ToString());
+            LogFnPrintf("\t%zu) %s -- %" PRId64, i++, keyIO.EncodeDestination(dest), txout.nValue);
+            LogFnPrintf("\t  %s", txout.scriptPubKey.ToString());
         }
     }
     return bFound;
@@ -628,12 +629,14 @@ void CMasternodePayments::CheckPreviousBlockVotes(int nPrevBlockHeight)
     if (!masterNodeCtrl.masternodeSync.IsWinnersListSynced())
         return;
 
-    string debugStr = strprintf("CMasternodePayments::CheckPreviousBlockVotes -- nPrevBlockHeight=%d, expected voting MNs: ", nPrevBlockHeight);
+    string debugStr = strprintf("nPrevBlockHeight=%d, expected voting MNs: ", nPrevBlockHeight);
 
     CMasternodeMan::rank_pair_vec_t mns;
-    if (!masterNodeCtrl.masternodeManager.GetMasternodeRanks(mns, nPrevBlockHeight + masterNodeCtrl.nMasternodePaymentsVotersIndexDelta))
+    string error;
+    auto status = masterNodeCtrl.masternodeManager.GetMasternodeRanks(error, mns, nPrevBlockHeight + masterNodeCtrl.nMasternodePaymentsVotersIndexDelta);
+    if (status != GetTopMasterNodeStatus::SUCCEEDED)
     {
-        debugStr += "GetMasternodeRanks failed\n";
+        debugStr += strprintf("GetMasternodeRanks failed - %s\n", error);
         LogFnPrint("mnpayments", "%s", debugStr);
         return;
     }
@@ -687,7 +690,7 @@ void CMasternodePayments::CheckPreviousBlockVotes(int nPrevBlockHeight)
     for (const auto &[outpoint, count] : mapMasternodesDidNotVote)
         debugStr += strprintf("   %s: %d\n", outpoint.ToStringShort(), count);
 
-    LogPrint("mnpayments", "%s", debugStr);
+    LogFnPrint("mnpayments", "%s", debugStr);
 }
 
 void CMasternodePaymentVote::Relay()

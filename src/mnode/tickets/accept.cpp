@@ -97,7 +97,7 @@ ticket_validation_t CAcceptTicket::IsValid(const bool bPreReg, const uint32_t nC
                 }
 
                 // find if it is the old ticket
-                if (m_nBlock > 0 && existingAcceptTicket.m_nBlock > m_nBlock)
+                if (m_nBlock > 0 && existingAcceptTicket.GetBlock() > m_nBlock)
                 {
                     tv.errorMsg = strprintf(
                         "This %s ticket has been replaced with another ticket, txid - [%s]",
@@ -106,13 +106,13 @@ ticket_validation_t CAcceptTicket::IsValid(const bool bPreReg, const uint32_t nC
                 }
 
                 //check age
-                if (existingAcceptTicket.m_nBlock + masterNodeCtrl.MaxAcceptTicketAge > chainHeight)
+                if (existingAcceptTicket.GetBlock() + masterNodeCtrl.MaxAcceptTicketAge > chainHeight)
                 {
                     tv.errorMsg = strprintf(
                         "%s ticket [%s] already exists and is not yet 1h old for this Offer ticket [%s] [%sfound ticket block=%u, txid=%s]",
-                        GetTicketDescription(), existingAcceptTicket.m_txid, m_offerTxId, 
+                        GetTicketDescription(), existingAcceptTicket.GetTxId(), m_offerTxId,
                         bPreReg ? "" : strprintf("this ticket block=%u txid=%s; ", m_nBlock, m_txid),
-                        existingAcceptTicket.m_nBlock, existingAcceptTicket.m_txid);
+                        existingAcceptTicket.GetBlock(), existingAcceptTicket.GetTxId());
                     break;
                 }
             }

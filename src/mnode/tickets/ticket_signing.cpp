@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2022 The Pastel Core developers
+// Copyright (c) 2018-2023 The Pastel Core developers
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <unordered_map>
@@ -210,7 +210,17 @@ ticket_validation_t CTicketSigning::validate_signatures(const uint32_t nCallDept
             // 4. Masternodes beyond these Pastel IDs, were in the top 10 at the block when the registration happened
             if (masterNodeCtrl.masternodeSync.IsSynced()) // ticket needs synced MNs
             {
-                auto topBlockMNs = masterNodeCtrl.masternodeManager.GetTopMNsForBlock(nCreatorHeight, true);
+                vector<CMasternode> topBlockMNs;
+                string error;
+                auto status = masterNodeCtrl.masternodeManager.GetTopMNsForBlock(error, topBlockMNs, nCreatorHeight, true);
+                if (status != GetTopMasterNodeStatus::SUCCEEDED && status != GetTopMasterNodeStatus::SUCCEEDED_FROM_HISTORY)
+                {
+					tv.state = TICKET_VALIDATION_STATE::MISSING_INPUTS;
+                    tv.errorMsg = strprintf(
+						"Failed to get top masternodes for block %u. %s", 
+						nCreatorHeight, error);
+					break;
+				}
                 const auto foundIt = find_if(topBlockMNs.cbegin(), topBlockMNs.cend(), [&](CMasternode const& mn)
                     {
                         return mn.getOutPoint() == outpoint;

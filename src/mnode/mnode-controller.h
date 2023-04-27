@@ -79,7 +79,6 @@ public:
 
     uint32_t nMasternodeMinimumConfirmations, nMasternodePaymentsIncreaseBlock, nMasternodePaymentsIncreasePeriod;
     int nMasternodePaymentsVotersIndexDelta, nMasternodePaymentsFeatureWinnerBlockIndexDelta;
-    int nMasternodeTopMNsNumber, nMasternodeTopMNsNumberMin;
     int nMasterNodeMaximumOutboundConnections;
     int nFulfilledRequestExpireTime;
 
@@ -98,6 +97,8 @@ public:
 
     int getPOSEBanMaxScore() const noexcept { return m_nMasternodePOSEBanMaxScore; }
     uint32_t getMaxInProcessCollectionTicketAge() const noexcept { return m_nMaxInProcessCollectionTicketAge; }
+    size_t getMasternodeTopMNsNumberMin() const noexcept { return m_nMasternodeTopMNsNumberMin; }
+    size_t getMasternodeTopMNsNumber() const noexcept { return m_nMasternodeTopMNsNumber; }
 
 #ifdef ENABLE_WALLET
     bool EnableMasterNode(std::ostringstream& strErrors, CServiceThreadGroup& threadGroup, CWallet* pwalletMain);
@@ -135,6 +136,10 @@ protected:
     int m_nMasternodePOSEBanMaxScore = 0;
     // max age of the in-process collection ticket in blocks before it becomes finalized
     uint32_t m_nMaxInProcessCollectionTicketAge;
+    // min required number of masternodes
+    size_t m_nMasternodeTopMNsNumberMin;
+    // number of top masternodes
+    size_t m_nMasternodeTopMNsNumber;
 
 
     void SetParameters();

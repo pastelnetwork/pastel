@@ -1,5 +1,5 @@
 #pragma once
-// Copyright (c) 2022 The Pastel Core developers
+// Copyright (c) 2022-2023 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <map>
@@ -49,9 +49,11 @@ protected:
         time_t nTimeAdded;           // time in secs when the block was cached
         time_t nTimeValidated;       // time in secs of the last revalidation attempt
         bool bRevalidating;          // true if block is being revalidated
+        uint32_t nBlockHeight;	     // block height (0 - not defined)
 
-        _BLOCK_CACHE_ITEM(const NodeId id, CBlock &&block_in) noexcept : 
+        _BLOCK_CACHE_ITEM(const NodeId id, uint32_t nHeight, CBlock &&block_in) noexcept : 
             nodeId(id),
+            nBlockHeight(nHeight),
             block(std::move(block_in))
         {
             Added();
