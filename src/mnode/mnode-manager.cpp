@@ -1,5 +1,5 @@
 // Copyright (c) 2014-2017 The Dash Core developers
-// Copyright (c) 2018-2022 The Pastel Core developers
+// Copyright (c) 2018-2023 The Pastel Core developers
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 
@@ -168,7 +168,8 @@ void CMasternodeMan::CheckAndRemove(bool bCheckAndRemove)
                     if (vecMasternodeRanks.empty())
                     {
                         int nRandomBlockHeight = GetRandInt(nCachedBlockHeight);
-                        GetMasternodeRanks(vecMasternodeRanks, nRandomBlockHeight);
+                        string error;
+                        GetMasternodeRanks(error, vecMasternodeRanks, nRandomBlockHeight);
                     }
                     bool fAskedForMnbRecovery = false;
                     // ask first MNB_RECOVERY_QUORUM_TOTAL masternodes we can connect to and we haven't asked recently
@@ -612,7 +613,6 @@ masternode_info_t CMasternodeMan::FindRandomNotInVec(const v_outpoints &vecToExc
 bool CMasternodeMan::GetMasternodeScores(const uint256& blockHash, CMasternodeMan::score_pair_vec_t& vecMasternodeScoresRet, int nMinProtocol)
 {
     vecMasternodeScoresRet.clear();
-
     if (!masterNodeCtrl.masternodeSync.IsMasternodeListSynced())
         return false;
 
@@ -627,7 +627,6 @@ bool CMasternodeMan::GetMasternodeScores(const uint256& blockHash, CMasternodeMa
         if (mn.nProtocolVersion >= nMinProtocol)
             vecMasternodeScoresRet.emplace_back(mn.CalculateScore(blockHash), &mn);
     }
-
     sort(vecMasternodeScoresRet.rbegin(), vecMasternodeScoresRet.rend(), CompareScoreMN());
     return !vecMasternodeScoresRet.empty();
 }
@@ -667,26 +666,42 @@ bool CMasternodeMan::GetMasternodeRank(const COutPoint& outpoint, int& nRankRet,
     return false;
 }
 
-bool CMasternodeMan::GetMasternodeRanks(CMasternodeMan::rank_pair_vec_t& vecMasternodeRanksRet, int nBlockHeight, int nMinProtocol)
+/**
+ * Get masternode ranks.
+ * 
+ * \param error - error message
+ * \param vecMasternodeRanksRet - vector of masternode ranks
+ * \param nBlockHeight - block height to get mn ranks for
+ * \param nMinProtocol - minimum protocol version
+ * \return GetTopMasterNodeStatus - status of the operation
+ */
+GetTopMasterNodeStatus CMasternodeMan::GetMasternodeRanks(string &error, CMasternodeMan::rank_pair_vec_t& vecMasternodeRanksRet, int nBlockHeight, int nMinProtocol)
 {
     vecMasternodeRanksRet.clear();
 
     if (!masterNodeCtrl.masternodeSync.IsMasternodeListSynced())
-        return false;
+    {
+        error = "Masternode list is not synced";
+        return GetTopMasterNodeStatus::MN_NOT_SYNCED;
+    }
 
     // make sure we know about this block
     uint256 blockHash;
     if (!GetBlockHash(blockHash, nBlockHeight))
     {
+        error = strprintf("Block %d not found", nBlockHeight);
         LogFnPrintf("ERROR: GetBlockHash() failed at nBlockHeight %d", nBlockHeight);
-        return false;
+        return GetTopMasterNodeStatus::BLOCK_NOT_FOUND;
     }
 
     LOCK(cs);
 
     score_pair_vec_t vecMasternodeScores;
     if (!GetMasternodeScores(blockHash, vecMasternodeScores, nMinProtocol))
-        return false;
+    {
+        error = strprintf("Failed to get masternode scores for block %d", nBlockHeight);
+        return GetTopMasterNodeStatus::GET_MN_SCORES_FAILED;
+    }
 
     int nRank = 0;
     for (auto& scorePair : vecMasternodeScores)
@@ -694,8 +709,7 @@ bool CMasternodeMan::GetMasternodeRanks(CMasternodeMan::rank_pair_vec_t& vecMast
         nRank++;
         vecMasternodeRanksRet.emplace_back(nRank, *scorePair.second);
     }
-
-    return true;
+    return GetTopMasterNodeStatus::SUCCEEDED;
 }
 
 void CMasternodeMan::ProcessMasternodeConnections()
@@ -915,7 +929,8 @@ void CMasternodeMan::DoFullVerificationStep()
         return;
 
     rank_pair_vec_t vecMasternodeRanks;
-    GetMasternodeRanks(vecMasternodeRanks, nCachedBlockHeight - 1, MIN_POSE_PROTO_VERSION);
+    string error;
+    const auto status = GetMasternodeRanks(error, vecMasternodeRanks, nCachedBlockHeight - 1, MIN_POSE_PROTO_VERSION);
 
     // Need LOCK2 here to ensure consistent locking order because the SendVerifyRequest call below locks cs_main
     // through GetHeight() signal in ConnectNode
@@ -1624,52 +1639,68 @@ void CMasternodeMan::UpdatedBlockTip(const CBlockIndex *pindex)
 
     CheckSameAddr();
 
-    if(masterNodeCtrl.IsMasterNode()) {
-        // normal wallet does not need to update this every block, doing update on rpc call should be enough
+    // normal wallet does not need to update this every block, doing update on rpc call should be enough
+    if (masterNodeCtrl.IsMasterNode())
         UpdateLastPaid(pindex);
-    }
-    
     
     // SELECT AND STORE TOP MASTERNODEs
-    auto topMNs = CalculateTopMNsForBlock(nCachedBlockHeight);
-    if (topMNs.size() < masterNodeCtrl.nMasternodeTopMNsNumberMin) {
-        LogFnPrintf("ERROR: Failed to find enough Top MasterNodes");
-    } else {
+    string error;
+    vector<CMasternode> topMNs;
+    GetTopMasterNodeStatus status = CalculateTopMNsForBlock(error, topMNs, nCachedBlockHeight);
+    if (status == GetTopMasterNodeStatus::SUCCEEDED)
         mapHistoricalTopMNs[nCachedBlockHeight] = topMNs;
-    }
+    else if (status != GetTopMasterNodeStatus::SUCCEEDED_FROM_HISTORY)
+        LogFnPrintf("ERROR: Failed to find enough Top MasterNodes. %s", error);
 }
 
-vector<CMasternode> CMasternodeMan::CalculateTopMNsForBlock(int nBlockHeight)
+/**
+ * Calculate top masternodes for the given block.
+ * 
+ * \param error - error message
+ * \param topMNs - vector of top masternodes
+ * \param nBlockHeight - block height
+ * \return - status of the operation
+ */
+GetTopMasterNodeStatus CMasternodeMan::CalculateTopMNsForBlock(string &error, vector<CMasternode> &topMNs, int nBlockHeight)
 {
+    topMNs.clear();
+    error.clear();
     rank_pair_vec_t vMasternodeRanks;
-    if (!GetMasternodeRanks(vMasternodeRanks, nBlockHeight) ||
-        vMasternodeRanks.size() < masterNodeCtrl.nMasternodeTopMNsNumberMin)
+    GetTopMasterNodeStatus status = GetMasternodeRanks(error, vMasternodeRanks, nBlockHeight);
+    if ((status == GetTopMasterNodeStatus::SUCCEEDED) && (vMasternodeRanks.size() < masterNodeCtrl.getMasternodeTopMNsNumberMin()))
     {
-        LogFnPrintf("ERROR: Failed to find Top MasterNodes");
-        return vector<CMasternode>{};
+        error = strprintf("Not enough masternodes found for block %d, min required %d but found %zu",
+            nBlockHeight, masterNodeCtrl.getMasternodeTopMNsNumberMin(), vMasternodeRanks.size());
+        status = GetTopMasterNodeStatus::NOT_ENOUGH_MNS;
+        return status;
     }
+    if (status != GetTopMasterNodeStatus::SUCCEEDED)
+        return status;
     
-    vector<CMasternode> topMNs;
-    for (auto mn : vMasternodeRanks)
+    for (auto mn: vMasternodeRanks)
     {
         if (mn.second.IsValidForPayment())
             topMNs.push_back(mn.second);
-        if (topMNs.size() == masterNodeCtrl.nMasternodeTopMNsNumber)
+        if (topMNs.size() == masterNodeCtrl.getMasternodeTopMNsNumber())
             break;
     }
-
-    return topMNs;
+    return GetTopMasterNodeStatus::SUCCEEDED;
 }
 
-vector<CMasternode> CMasternodeMan::GetTopMNsForBlock(int nBlockHeight, bool bCalculateIfNotSeen)
+GetTopMasterNodeStatus CMasternodeMan::GetTopMNsForBlock(string &error, vector<CMasternode> &topMNs, int nBlockHeight, bool bCalculateIfNotSeen)
 {
     if (nBlockHeight == -1)
         nBlockHeight = chainActive.Height();
-    
-    auto it = mapHistoricalTopMNs.find(nBlockHeight);
-    if (it != mapHistoricalTopMNs.end())
-        return it->second;
+
+    error.clear();
+    const auto it = mapHistoricalTopMNs.find(nBlockHeight);
+    if (it != mapHistoricalTopMNs.cend())
+    {
+        topMNs = it->second;
+        return GetTopMasterNodeStatus::SUCCEEDED_FROM_HISTORY;
+    }
     if (bCalculateIfNotSeen)
-        return CalculateTopMNsForBlock(nBlockHeight);
-    return vector<CMasternode>{};
+        return CalculateTopMNsForBlock(error, topMNs, nBlockHeight);
+    error = strprintf("Top MNs historical ranks for block %d not found", nBlockHeight);
+    return GetTopMasterNodeStatus::HISTORY_NOT_FOUND;
 }

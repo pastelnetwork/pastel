@@ -63,8 +63,8 @@ void CMasterNodeController::InvalidateParameters()
     nMasternodePaymentsVotersIndexDelta = 0;
     nMasternodePaymentsFeatureWinnerBlockIndexDelta = 0;
 
-    nMasternodeTopMNsNumberMin = 0;
-    nMasternodeTopMNsNumber = 0;
+    m_nMasternodeTopMNsNumberMin = 0;
+    m_nMasternodeTopMNsNumber = 0;
 
     nGovernanceVotingPeriodBlocks = 0;
     MinTicketConfirmations = 0;
@@ -115,8 +115,8 @@ void CMasterNodeController::SetParameters()
     nMasternodePaymentsVotersIndexDelta = -101;
     nMasternodePaymentsFeatureWinnerBlockIndexDelta = 10;
     
-    nMasternodeTopMNsNumberMin = 3;
-    nMasternodeTopMNsNumber = 10;
+    m_nMasternodeTopMNsNumberMin = 3;
+    m_nMasternodeTopMNsNumber = 10;
 
     nGovernanceVotingPeriodBlocks = 576; //24 hours, 1 block per 2.5 minutes
     
