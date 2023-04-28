@@ -29,7 +29,9 @@ constexpr uint8_t TICKET_COMPRESS_DISABLE_MASK = 0x7F;
 using reg_transfer_txid_t = std::tuple<TicketID, std::string, std::string>;
 
 // Get height of the active blockchain + 1
-unsigned int GetActiveChainHeight();
+uint32_t GetActiveChainHeight();
+// Get height of the active blockchain
+uint32_t GetCurrentChainHeight();
 
 // structure used by 'tickets tools searchthumbids' rpc
 typedef struct _search_thumbids_t
@@ -120,12 +122,12 @@ public:
             return;
         // read primary keys for the given MV key
         itDB->second->Read(realMVKey, vMainKeys);
-        const auto nActiveChainHeight = GetActiveChainHeight();
+        const auto nCurrentChainHeight = GetCurrentChainHeight();
         for (const auto& key : vMainKeys)
         {
             // read ticket & call the functor
             _TicketType ticket;
-            if (itDB->second->Read(key, ticket) && !ticket.IsBlockNewerThan(nActiveChainHeight))
+            if (itDB->second->Read(key, ticket) && !ticket.IsBlockNewerThan(nCurrentChainHeight))
             {
                 if (!f(ticket))
                     break; // stop processing tickets if functor returned false

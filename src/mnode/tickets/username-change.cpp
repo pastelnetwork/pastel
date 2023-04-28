@@ -123,7 +123,6 @@ ticket_validation_t CChangeUsernameTicket::IsValid(const bool bPreReg, const uin
     const bool bDBUserChangedName_MemPool = bTicketExistsInDB && TktMemPool.TicketExistsBySecondaryKey(tktDB.m_sPastelID);
 
     ticket_validation_t tv;
-
     do
     {
         // These checks executed ONLY before ticket made into transaction
@@ -226,7 +225,7 @@ ticket_validation_t CChangeUsernameTicket::IsValid(const bool bPreReg, const uin
                 string sTimeDiff;
                 // If Pastel ID has changed Username in last 24 hours (~24*24 blocks), do not allow them to change (for mainnet & testnet)
                 // For regtest - number of blocks is 10
-                const seconds diffTime(time(nullptr) - tktDB.m_nTimestamp);
+                const seconds diffTime(time(nullptr) - tktDB.GetTimestamp());
                 if (diffTime > 1h)
                     sTimeDiff = strprintf("%d hours", ceil<hours>(diffTime).count());
                 else

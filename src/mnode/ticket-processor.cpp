@@ -35,8 +35,24 @@ static shared_ptr<ITxMemPoolTracker> TicketTxMemPoolTracker;
 uint32_t GetActiveChainHeight()
 {
     LOCK(cs_main);
-    return static_cast<uint32_t>(chainActive.Height()) + 1;
+    return static_cast<uint32_t>(chainActive.Height() + 1);
 }
+
+/**
+ * Get height of the active blockchain
+ * 
+ * \return 0 if chain is not initialized or height of the active chain
+ */
+uint32_t GetCurrentChainHeight()
+{
+    int nCurrentChainHeight;
+    {
+        LOCK(cs_main);
+        nCurrentChainHeight = chainActive.Height();
+    }
+    return nCurrentChainHeight <= 0 ? 0 : static_cast<uint32_t>(nCurrentChainHeight);
+}
+
 
 void CPastelTicketProcessor::InitTicketDB()
 {
@@ -730,8 +746,8 @@ bool CPastelTicketProcessor::FindTicket(CPastelTicket& ticket) const
     bool bRet = itDB->second->Read(sKey, ticket);
     if (bRet)
     {
-        const auto nActiveChainHeight = GetActiveChainHeight();
-        if (ticket.IsBlockNewerThan(nActiveChainHeight))
+        const auto nCurrentChainHeight = GetCurrentChainHeight();
+        if (ticket.IsBlockNewerThan(nCurrentChainHeight))
         {
             bRet = false;
             ticket.Clear();
@@ -761,8 +777,8 @@ bool CPastelTicketProcessor::FindTicketBySecondaryKey(CPastelTicket& ticket) con
         {
             if (itDB->second->Read(sMainKey, ticket))
             {
-                const auto nActiveChainHeight = GetActiveChainHeight();
-                if (!ticket.IsBlockNewerThan(nActiveChainHeight))
+                const auto nCurrentChainHeight = GetCurrentChainHeight();
+                if (!ticket.IsBlockNewerThan(nCurrentChainHeight))
     				return true;
 				ticket.Clear();
             }
@@ -790,12 +806,12 @@ vector<_TicketType> CPastelTicketProcessor::FindTicketsByMVKey(const string& mvK
     // find primary keys of the tickets with mvKey
     if (itDB != dbs.cend() && itDB->second->Read(realMVKey, vMainKeys))
     {
-        const auto nActiveChainHeight = GetActiveChainHeight();
+        const auto nCurrentChainHeight = GetCurrentChainHeight();
         // read all tickets
         for (const auto& key : vMainKeys)
         {
             _TicketType ticket;
-            if (itDB->second->Read(key, ticket) && !ticket.IsBlockNewerThan(nActiveChainHeight))
+            if (itDB->second->Read(key, ticket) && !ticket.IsBlockNewerThan(nCurrentChainHeight))
                 tickets.emplace_back(ticket);
         }
     }
