@@ -681,14 +681,14 @@ unique_ptr<CPastelTicket> CPastelTicketProcessor::GetTicket(const string& _txid,
 }
 
 /**
- * Check whether ticket exists (use keyOne as a key).
+ * Check whether ticket exists in TicketDB (use keyOne as a key).
  *
  * \param ticket - ticket to search (ID and keyOne are used for search)
  * \return true if ticket with the given parameters was found in ticket DB
  */
-bool CPastelTicketProcessor::CheckTicketExist(const CPastelTicket& ticket)
+bool CPastelTicketProcessor::CheckTicketExist(const CPastelTicket& ticket) const
 {
-    auto key = ticket.KeyOne();
+    const auto key = ticket.KeyOne();
     const auto itDB = dbs.find(ticket.ID());
     if (itDB == dbs.cend())
         return false;
@@ -696,12 +696,12 @@ bool CPastelTicketProcessor::CheckTicketExist(const CPastelTicket& ticket)
 }
 
 /**
-* Check whether ticket exists (use keyTwo as a key).
+* Check whether ticket exists in TicketDB (use keyTwo as a key).
 *
 * \param ticket - ticket to search (ID and keyTwo are used for search)
 * \return true if ticket with the given parameters was found in ticket DB
 */
-bool CPastelTicketProcessor::CheckTicketExistBySecondaryKey(const CPastelTicket& ticket)
+bool CPastelTicketProcessor::CheckTicketExistBySecondaryKey(const CPastelTicket& ticket) const
 {
     if (ticket.HasKeyTwo())
     {
@@ -715,27 +715,39 @@ bool CPastelTicketProcessor::CheckTicketExistBySecondaryKey(const CPastelTicket&
 }
 
 /**
- * Find ticket in DB by primary key.
+ * Find ticket in TicketDB by primary key.
+ * Is ticket height returned by DB is higher than active chain height - ticket is considered invalid.
  * 
  * \param ticket - ticket object to return
- * \return true if ticket was found
+ * \return true if ticket was found and successfully read from DB
  */
 bool CPastelTicketProcessor::FindTicket(CPastelTicket& ticket) const
 {
     const auto sKey = ticket.KeyOne();
     const auto itDB = dbs.find(ticket.ID());
-    if (itDB != dbs.cend())
-        return itDB->second->Read(sKey, ticket);
-    return false;
+    if (itDB == dbs.cend())
+        return false;
+    bool bRet = itDB->second->Read(sKey, ticket);
+    if (bRet)
+    {
+        const auto nActiveChainHeight = GetActiveChainHeight();
+        if (ticket.IsBlockNewerThan(nActiveChainHeight))
+        {
+            bRet = false;
+            ticket.Clear();
+        }
+    }
+    return bRet;
 }
 
 /**
- * Find ticket in DB by secondary key.
+ * Find ticket in TicketDB by secondary key.
+ * If ticket height returned by DB is higher than active chain height - ticket is considered invalid.
  * 
  * \param ticket - ticket object to return
  * \return true if ticket has secondary key and the ticket was found
  */
-bool CPastelTicketProcessor::FindTicketBySecondaryKey(CPastelTicket& ticket)
+bool CPastelTicketProcessor::FindTicketBySecondaryKey(CPastelTicket& ticket) const
 {
     // check if this ticket type supports secondary key
     if (ticket.HasKeyTwo())
@@ -746,13 +758,22 @@ bool CPastelTicketProcessor::FindTicketBySecondaryKey(CPastelTicket& ticket)
         // find in DB record: <real_secondary_key> -> <primary_key>
         const auto itDB = dbs.find(ticket.ID());
         if (itDB != dbs.cend() && itDB->second->Read(sRealKeyTwo, sMainKey))
-            return itDB->second->Read(sMainKey, ticket);
+        {
+            if (itDB->second->Read(sMainKey, ticket))
+            {
+                const auto nActiveChainHeight = GetActiveChainHeight();
+                if (!ticket.IsBlockNewerThan(nActiveChainHeight))
+    				return true;
+				ticket.Clear();
+            }
+        }
     }
     return false;
 }
 
 /**
- * Find all tickets by mvKey.
+ * Find all tickets in TicketDB by mvKey.
+ * If ticket height returned by DB is higher than active chain height - ticket is considered invalid.
  * 
  * \param mvKey - key to search for. Tickets support up to 3 mvkeys.
  * \return vector of found tickets with the given mvKey
@@ -763,18 +784,18 @@ vector<_TicketType> CPastelTicketProcessor::FindTicketsByMVKey(const string& mvK
     vector<_TicketType> tickets;
     v_strings vMainKeys;
     // get real MV key stored in DB: "@M@" + key
-    auto realMVKey = RealMVKey(mvKey);
+    const auto realMVKey = RealMVKey(mvKey);
     // get DB for the given ticket type
     const auto itDB = dbs.find(_TicketType::GetID());
-    if (itDB != dbs.cend())
+    // find primary keys of the tickets with mvKey
+    if (itDB != dbs.cend() && itDB->second->Read(realMVKey, vMainKeys))
     {
-        // find primary keys of the tickets with mvKey
-        itDB->second->Read(realMVKey, vMainKeys);
+        const auto nActiveChainHeight = GetActiveChainHeight();
         // read all tickets
         for (const auto& key : vMainKeys)
         {
             _TicketType ticket;
-            if (itDB->second->Read(key, ticket))
+            if (itDB->second->Read(key, ticket) && !ticket.IsBlockNewerThan(nActiveChainHeight))
                 tickets.emplace_back(ticket);
         }
     }
@@ -782,11 +803,11 @@ vector<_TicketType> CPastelTicketProcessor::FindTicketsByMVKey(const string& mvK
 }
 
 /**
- * Find ticket in DB by secondary key.
+ * Find ticket in TicketDB by secondary key.
  * Returns primary key if ticket was found or empty value.
  * 
- * \param ticket - used to g
- * \return 
+ * \param ticket - ticket to get secondary key from
+ * \return - primary key of the ticket or empty value
  */
 string CPastelTicketProcessor::getValueBySecondaryKey(const CPastelTicket& ticket) const
 {
