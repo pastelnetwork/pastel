@@ -191,10 +191,10 @@ ticket_validation_t CollectionItem::IsValidCollection(const bool bPreReg) const 
             break;
         }
 
-        const auto chainHeight = GetActiveChainHeight();
+        const auto nActiveChainHeight = gl_nChainHeight + 1;
 
         // check that ticket height is less than final allowed block height for the collection
-        if (bPreReg && (chainHeight > pCollRegTicket->getCollectionFinalAllowedBlockHeight()))
+        if (bPreReg && (nActiveChainHeight > pCollRegTicket->getCollectionFinalAllowedBlockHeight()))
         {
             // a "final allowed" block height after which no new items will be allowed to add to the collection
             tv.errorMsg = strprintf(
@@ -205,7 +205,7 @@ ticket_validation_t CollectionItem::IsValidCollection(const bool bPreReg) const 
 
         // count all registered items in a collection up to the current height
         // don't count current reg ticket
-        const uint32_t nCollectionItemCount = CountItemsInCollection(chainHeight);
+        const uint32_t nCollectionItemCount = CountItemsInCollection(nActiveChainHeight);
 
         // check if we have more than allowed number of items in the collection
         if (nCollectionItemCount + (bPreReg ? 1 : 0) > pCollRegTicket->getMaxCollectionEntries())

@@ -133,7 +133,7 @@ OFFER_TICKET_STATE COfferTicket::checkValidState(const uint32_t nHeight) const n
  */
 ticket_validation_t COfferTicket::IsValid(const bool bPreReg, const uint32_t nCallDepth) const noexcept
 {
-    const auto chainHeight = GetActiveChainHeight();
+    const auto nActiveChainHeight = gl_nChainHeight + 1;
     ticket_validation_t tv;
     do
     {
@@ -152,7 +152,7 @@ ticket_validation_t COfferTicket::IsValid(const bool bPreReg, const uint32_t nCa
                 */
                 return !is_enum_any_of(tid, TicketID::Activate, TicketID::ActionActivate, TicketID::Transfer);
             },
-            GetTicketDescription(), "activation or transfer", nCallDepth, TicketPricePSL(chainHeight));
+            GetTicketDescription(), "activation or transfer", nCallDepth, TicketPricePSL(nActiveChainHeight));
         if (commonTV.IsNotValid())
         {
             tv.errorMsg = strprintf(
@@ -419,7 +419,7 @@ ticket_validation_t COfferTicket::IsValid(const bool bPreReg, const uint32_t nCa
                 tv1.state = TICKET_VALIDATION_STATE::INVALID;
                 break;
             }
-            if (t.m_nBlock + Params().getOfferReplacementAllowedBlocks() > chainHeight)
+            if (t.m_nBlock + Params().getOfferReplacementAllowedBlocks() > nActiveChainHeight)
             {
                 // 1 block per 2.5; 4 blocks per 10 min; 24 blocks per 1h; 576 blocks per 24 h;
                 tv1.errorMsg = strprintf(

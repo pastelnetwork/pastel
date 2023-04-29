@@ -9,6 +9,7 @@
 #include "config/bitcoin-config.h"
 #endif
 #include <str_utils.h>
+#include <chain.h>
 #include <main.h>
 #include <deprecation.h>
 #include <script/sign.h>
@@ -26,33 +27,6 @@ using json = nlohmann::json;
 using namespace std;
 
 static shared_ptr<ITxMemPoolTracker> TicketTxMemPoolTracker;
-
-/**
- * Get height of the active blockchain + 1.
- * 
- * \return 0 if chain is not initialized or height of the active chain
- */
-uint32_t GetActiveChainHeight()
-{
-    LOCK(cs_main);
-    return static_cast<uint32_t>(chainActive.Height() + 1);
-}
-
-/**
- * Get height of the active blockchain
- * 
- * \return 0 if chain is not initialized or height of the active chain
- */
-uint32_t GetCurrentChainHeight()
-{
-    int nCurrentChainHeight;
-    {
-        LOCK(cs_main);
-        nCurrentChainHeight = chainActive.Height();
-    }
-    return nCurrentChainHeight <= 0 ? 0 : static_cast<uint32_t>(nCurrentChainHeight);
-}
-
 
 void CPastelTicketProcessor::InitTicketDB()
 {
@@ -746,8 +720,7 @@ bool CPastelTicketProcessor::FindTicket(CPastelTicket& ticket) const
     bool bRet = itDB->second->Read(sKey, ticket);
     if (bRet)
     {
-        const auto nCurrentChainHeight = GetCurrentChainHeight();
-        if (ticket.IsBlockNewerThan(nCurrentChainHeight))
+        if (ticket.IsBlockNewerThan(gl_nChainHeight))
         {
             bRet = false;
             ticket.Clear();
@@ -777,8 +750,7 @@ bool CPastelTicketProcessor::FindTicketBySecondaryKey(CPastelTicket& ticket) con
         {
             if (itDB->second->Read(sMainKey, ticket))
             {
-                const auto nCurrentChainHeight = GetCurrentChainHeight();
-                if (!ticket.IsBlockNewerThan(nCurrentChainHeight))
+                if (!ticket.IsBlockNewerThan(gl_nChainHeight))
     				return true;
 				ticket.Clear();
             }
@@ -806,7 +778,7 @@ vector<_TicketType> CPastelTicketProcessor::FindTicketsByMVKey(const string& mvK
     // find primary keys of the tickets with mvKey
     if (itDB != dbs.cend() && itDB->second->Read(realMVKey, vMainKeys))
     {
-        const auto nCurrentChainHeight = GetCurrentChainHeight();
+        const uint32_t nCurrentChainHeight = gl_nChainHeight;
         // read all tickets
         for (const auto& key : vMainKeys)
         {
@@ -930,15 +902,15 @@ template <class _TicketType, typename F>
 string CPastelTicketProcessor::filterTickets(F f, const uint32_t nMinHeight, const bool bCheckConfirmation) const
 {
     json jArray = json::array();
-    const auto nChainHeight = GetActiveChainHeight();
+    const auto nActiveChainHeight = gl_nChainHeight + 1;
     // list tickets with the specific type (_TicketType) and add to json array if functor f applies
     listTickets<_TicketType>([&](const _TicketType& ticket) -> bool
     {
         //check if the ticket is confirmed
-        if (bCheckConfirmation && (nChainHeight - ticket.GetBlock() < masterNodeCtrl.MinTicketConfirmations))
+        if (bCheckConfirmation && (nActiveChainHeight - ticket.GetBlock() < masterNodeCtrl.MinTicketConfirmations))
             return true;
         // apply functor to the current ticket
-        if (f(ticket, nChainHeight))
+        if (f(ticket, nActiveChainHeight))
             return true;
         jArray.push_back(json::parse(ticket.ToJSON()));
         return true;
@@ -1360,11 +1332,9 @@ tuple<string, string> CPastelTicketProcessor::SendTicket(const CPastelTicket& ti
         LogPrint("compress", "Ticket (%hhu) data [%zu bytes] was not compressed due to size or bad compression ratio\n", to_integral_type<TicketID>(ticket.ID()), nUncompressedSize);
 #endif
 
-    const auto chainHeight = GetActiveChainHeight();
-
     CMutableTransaction tx;
     if (!CreateP2FMSTransactionWithExtra(data_stream, extraOutputs, extraAmount, tx, 
-        ticket.TicketPricePSL(chainHeight), sFundingAddress, error))
+        ticket.TicketPricePSL(gl_nChainHeight + 1), sFundingAddress, error))
         throw runtime_error(strprintf("Failed to create P2FMS from data provided - %s", error));
 
     if (!StoreP2FMSTransaction(tx, error))
@@ -1679,13 +1649,13 @@ bool CPastelTicketProcessor::CreateP2FMSTransactionWithExtra(const CDataStream& 
     // total amount to spend in patoshis
     const CAmount allSpentAmount = (pricePSL * COIN) + nAproxFeeNeeded + extraAmount;
 
-    auto chainHeight = GetActiveChainHeight();
+    auto nActiveChainHeight = gl_nChainHeight + 1;
     if (!chainParams.IsRegTest())
-        chainHeight = max(chainHeight, APPROX_RELEASE_HEIGHT);
-    auto consensusBranchId = CurrentEpochBranchId(chainHeight, chainParams.GetConsensus());
+        nActiveChainHeight = max(nActiveChainHeight, APPROX_RELEASE_HEIGHT);
+    auto consensusBranchId = CurrentEpochBranchId(nActiveChainHeight, chainParams.GetConsensus());
 
     // Create empty transaction
-    tx_out = CreateNewContextualCMutableTransaction(chainParams.GetConsensus(), chainHeight);
+    tx_out = CreateNewContextualCMutableTransaction(chainParams.GetConsensus(), nActiveChainHeight);
 
     // Find funding (unspent) transaction with enough coins to cover all outputs (single - for simplicity)
     bool bOk = false;

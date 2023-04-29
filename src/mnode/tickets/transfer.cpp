@@ -247,7 +247,7 @@ string CTransferTicket::ToStr() const noexcept
  */
 ticket_validation_t CTransferTicket::IsValid(const bool bPreReg, const uint32_t nCallDepth) const noexcept
 {
-    const auto chainHeight = GetActiveChainHeight();
+    const auto nActiveChainHeight = gl_nChainHeight + 1;
     ticket_validation_t tv;
 
     do
@@ -258,7 +258,7 @@ ticket_validation_t CTransferTicket::IsValid(const bool bPreReg, const uint32_t 
             *this, bPreReg, m_offerTxId, offerTicket,
             [](const TicketID tid) noexcept { return (tid != TicketID::Offer); },
             GetTicketDescription(), COfferTicket::GetTicketDescription(), nCallDepth, 
-            m_nPricePSL + TicketPricePSL(chainHeight));
+            m_nPricePSL + TicketPricePSL(nActiveChainHeight));
         if (commonTV.IsNotValid())
         {
             tv.errorMsg = strprintf(
@@ -273,7 +273,7 @@ ticket_validation_t CTransferTicket::IsValid(const bool bPreReg, const uint32_t 
             *this, bPreReg, m_acceptTxId, acceptTicket,
             [](const TicketID tid) noexcept { return (tid != TicketID::Accept); },
             GetTicketDescription(), CAcceptTicket::GetTicketDescription(), nCallDepth, 
-            m_nPricePSL + TicketPricePSL(chainHeight));
+            m_nPricePSL + TicketPricePSL(nActiveChainHeight));
         if (commonTV.IsNotValid())
         {
             tv.errorMsg = strprintf(
@@ -441,8 +441,7 @@ CAmount CTransferTicket::GetExtraOutputs(vector<CTxOut>& outputs) const
             if (pNFTRegTicket->hasGreenFee())
             {
                 sGreenAddress = pNFTRegTicket->getGreenAddress();
-                const auto chainHeight = GetActiveChainHeight();
-                nGreenNFTAmount = nPriceAmount * CNFTRegTicket::GreenPercent(chainHeight) / 100;
+                nGreenNFTAmount = nPriceAmount * CNFTRegTicket::GreenPercent(gl_nChainHeight + 1) / 100;
             }
         } break;
 

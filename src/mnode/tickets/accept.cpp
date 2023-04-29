@@ -48,7 +48,7 @@ string CAcceptTicket::ToStr() const noexcept
 */
 ticket_validation_t CAcceptTicket::IsValid(const bool bPreReg, const uint32_t nCallDepth) const noexcept
 {
-    const auto chainHeight = GetActiveChainHeight();
+    const auto nActiveChainHeight = gl_nChainHeight + 1;
     ticket_validation_t tv;
     do
     {
@@ -58,7 +58,7 @@ ticket_validation_t CAcceptTicket::IsValid(const bool bPreReg, const uint32_t nC
             *this, bPreReg, m_offerTxId, offerTicket,
             [](const TicketID tid) noexcept { return (tid != TicketID::Offer); },
             GetTicketDescription(), COfferTicket::GetTicketDescription(), nCallDepth, 
-            m_nPricePSL + TicketPricePSL(chainHeight));
+            m_nPricePSL + TicketPricePSL(nActiveChainHeight));
         if (commonTV.IsNotValid())
         {
             tv.errorMsg = strprintf(
@@ -106,7 +106,7 @@ ticket_validation_t CAcceptTicket::IsValid(const bool bPreReg, const uint32_t nC
                 }
 
                 //check age
-                if (existingAcceptTicket.GetBlock() + masterNodeCtrl.MaxAcceptTicketAge > chainHeight)
+                if (existingAcceptTicket.GetBlock() + masterNodeCtrl.MaxAcceptTicketAge > nActiveChainHeight)
                 {
                     tv.errorMsg = strprintf(
                         "%s ticket [%s] already exists and is not yet 1h old for this Offer ticket [%s] [%sfound ticket block=%u, txid=%s]",
@@ -128,7 +128,7 @@ ticket_validation_t CAcceptTicket::IsValid(const bool bPreReg, const uint32_t nC
         }
 
         // Verify Offer ticket is already or still active
-        const unsigned int height = (bPreReg || IsBlock(0)) ? chainHeight : m_nBlock;
+        const unsigned int height = (bPreReg || IsBlock(0)) ? nActiveChainHeight : m_nBlock;
         const auto offerTicketState = pOfferTicket->checkValidState(height);
         if (offerTicketState == OFFER_TICKET_STATE::NOT_ACTIVE)
         {

@@ -177,7 +177,7 @@ void CNFTRegTicket::parse_nft_ticket()
                     bool bHasGreen = false;
                     value.get_to(bHasGreen);
                     if (bHasGreen)
-                        m_sGreenAddress = GreenAddress(GetActiveChainHeight());
+                        m_sGreenAddress = GreenAddress(gl_nChainHeight + 1);
                 } break;
 
                 case NFT_TKT_PROP::version:
@@ -244,7 +244,7 @@ void CNFTRegTicket::set_collection_properties() noexcept
  */
 ticket_validation_t CNFTRegTicket::IsValid(const bool bPreReg, const uint32_t nCallDepth) const noexcept
 {
-    const auto chainHeight = GetActiveChainHeight();
+    const auto nActiveChainHeight = gl_nChainHeight + 1;
     ticket_validation_t tv;
     do
     {
@@ -263,7 +263,7 @@ ticket_validation_t CNFTRegTicket::IsValid(const bool bPreReg, const uint32_t nC
             }
 
             // A.2 validate that address has coins to pay for registration - 10PSL
-            const auto fullTicketPrice = TicketPricePSL(chainHeight); //10% of storage fee is paid by the 'creator' and this ticket is created by MN
+            const auto fullTicketPrice = TicketPricePSL(nActiveChainHeight); //10% of storage fee is paid by the 'creator' and this ticket is created by MN
             if (pwalletMain->GetBalance() < fullTicketPrice * COIN)
             {
                 tv.errorMsg = strprintf(

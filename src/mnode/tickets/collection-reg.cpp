@@ -174,7 +174,7 @@ void CollectionRegTicket::parse_collection_ticket()
                     bool bHasGreen = false;
                     value.get_to(bHasGreen);
                     if (bHasGreen)
-                        m_sGreenAddress = GreenAddress(GetActiveChainHeight());
+                        m_sGreenAddress = GreenAddress(gl_nChainHeight + 1);
                 } break;
 
                 case COLL_TKT_PROP::version:
@@ -247,7 +247,7 @@ bool CollectionRegTicket::CanAcceptTicket(const CPastelTicket &ticket) const noe
 */
 ticket_validation_t CollectionRegTicket::IsValid(const bool bPreReg, const uint32_t nCallDepth) const noexcept
 {
-    const auto chainHeight = GetActiveChainHeight();
+    const auto nActiveChainHeight = gl_nChainHeight + 1;
     ticket_validation_t tv;
     do
     {
@@ -283,7 +283,7 @@ ticket_validation_t CollectionRegTicket::IsValid(const bool bPreReg, const uint3
             }
 
             // validate that address has coins to pay for registration - 10 PSL (default fee)
-            const auto fullTicketPricePSL = TicketPricePSL(chainHeight); //10% of storage fee is paid by the 'creator' and this ticket is created by MN
+            const auto fullTicketPricePSL = TicketPricePSL(nActiveChainHeight); //10% of storage fee is paid by the 'creator' and this ticket is created by MN
             if (pwalletMain->GetBalance() < fullTicketPricePSL * COIN)
             {
                 tv.errorMsg = strprintf(

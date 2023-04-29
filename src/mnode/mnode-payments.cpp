@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2022 The Pastel Core Developers
+// Copyright (c) 2018-2023 The Pastel Core Developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -524,12 +524,15 @@ bool CMasternodePaymentVote::IsValid(CNode* pnode, int nValidationHeight, string
 
     // Only masternodes should try to check masternode rank for old votes - they need to pick the right winner for future blocks.
     // Regular clients (miners included) need to verify masternode rank for future block votes only.
-    if(!masterNodeCtrl.IsMasterNode() && nBlockHeight < nValidationHeight) return true;
+    if (!masterNodeCtrl.IsMasterNode() && nBlockHeight < nValidationHeight)
+        return true;
 
     int nRank = -1;
 
-    if(!masterNodeCtrl.masternodeManager.GetMasternodeRank(vinMasternode.prevout, nRank, nBlockHeight + masterNodeCtrl.nMasternodePaymentsVotersIndexDelta, nMinRequiredProtocol)) {
-        LogFnPrint("mnpayments", "Can't calculate rank for masternode %s", vinMasternode.prevout.ToStringShort());
+    if(!masterNodeCtrl.masternodeManager.GetMasternodeRank(strError, vinMasternode.prevout, nRank, nBlockHeight + masterNodeCtrl.nMasternodePaymentsVotersIndexDelta, nMinRequiredProtocol))
+    {
+        strError = strprintf("Can't calculate rank for masternode %s. %s", vinMasternode.prevout.ToStringShort(), strError);
+        LogFnPrint("mnpayments", strError);
         return false;
     }
 
@@ -542,7 +545,7 @@ bool CMasternodePaymentVote::IsValid(CNode* pnode, int nValidationHeight, string
         if(nRank > MNPAYMENTS_SIGNATURES_TOTAL*2 && nBlockHeight > nValidationHeight)
         {
             strError = strprintf("Masternode is not in the top %d (%d)", MNPAYMENTS_SIGNATURES_TOTAL*2, nRank);
-            LogFnPrintf("Error: %s", strError);
+            LogFnPrintf("ERROR: %s", strError);
             Misbehaving(pnode->GetId(), 20);
         }
         // Still invalid however
@@ -566,10 +569,10 @@ bool CMasternodePayments::ProcessBlock(int nBlockHeight)
 
     //see if we can vote - we must be in the top 20 masternode list to be allowed to vote
     int nRank = -1;
-
-    if (!masterNodeCtrl.masternodeManager.GetMasternodeRank(masterNodeCtrl.activeMasternode.outpoint, nRank, nBlockHeight + masterNodeCtrl.nMasternodePaymentsVotersIndexDelta))
+    string error;
+    if (!masterNodeCtrl.masternodeManager.GetMasternodeRank(error, masterNodeCtrl.activeMasternode.outpoint, nRank, nBlockHeight + masterNodeCtrl.nMasternodePaymentsVotersIndexDelta))
     {
-        LogFnPrint("mnpayments", "Unknown Masternode");
+        LogFnPrint("mnpayments", "Can't get Masternode %s rank. %s", masterNodeCtrl.activeMasternode.outpoint.ToStringShort(), error);
         return false;
     }
 

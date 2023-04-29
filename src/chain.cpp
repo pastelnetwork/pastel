@@ -12,6 +12,8 @@ using namespace std;
 
 constexpr size_t CHAIN_RESERVE_SIZE = 500;
 
+atomic_uint32_t gl_nChainHeight;
+
 /**
  * CChain implementation
  */
@@ -20,6 +22,7 @@ void CChain::SetTip(CBlockIndex *pindex)
     if (!pindex)
     {
         vChain.clear();
+        gl_nChainHeight = 0;
         return;
     }
     const size_t nRequiredSize = pindex->nHeight + 1;
@@ -33,6 +36,7 @@ void CChain::SetTip(CBlockIndex *pindex)
         vChain[pindex->nHeight] = pindex;
         pindex = pindex->pprev;
     }
+    gl_nChainHeight = vChain.size() - 1;
 }
 
 CBlockLocator CChain::GetLocator(const CBlockIndex *pindex) const {

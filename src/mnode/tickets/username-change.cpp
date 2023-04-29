@@ -109,7 +109,7 @@ ticket_validation_t CChangeUsernameTicket::IsValid(const bool bPreReg, const uin
     // username-change ticket keys:
     // 1) username
     // 2) pastelid
-    const auto chainHeight = GetActiveChainHeight();
+    const auto nActiveChainHeight = gl_nChainHeight + 1;
 
     // initialize Pastel Ticket mempool processor for username-change tickets
     // retrieve mempool transactions with TicketID::Username tickets
@@ -169,7 +169,7 @@ ticket_validation_t CChangeUsernameTicket::IsValid(const bool bPreReg, const uin
             }
 
             // Check if address has coins to pay for Username Change Ticket
-            const auto fullTicketPrice = TicketPricePSL(chainHeight);
+            const auto fullTicketPrice = TicketPricePSL(nActiveChainHeight);
 
             if (pwalletMain->GetBalance() < fullTicketPrice * COIN)
             {
@@ -219,7 +219,7 @@ ticket_validation_t CChangeUsernameTicket::IsValid(const bool bPreReg, const uin
         const bool bFoundTicketByPastelID_DB = masterNodeCtrl.masternodeTickets.FindTicketBySecondaryKey(tktDB);
         if (bFoundTicketByPastelID_DB)
         {
-            const unsigned int height = (bPreReg || IsBlock(0)) ? chainHeight : m_nBlock;
+            const unsigned int height = (bPreReg || IsBlock(0)) ? nActiveChainHeight : m_nBlock;
             if (height <= tktDB.GetBlock() + CChangeUsernameTicket::GetDisablePeriodInBlocks())
             {
                 string sTimeDiff;

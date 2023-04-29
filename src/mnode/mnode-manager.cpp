@@ -28,6 +28,11 @@ using namespace std;
 
 const string CMasternodeMan::SERIALIZATION_VERSION_STRING = "CMasternodeMan-Version-7";
 
+constexpr auto ERRMSG_MNLIST_NOT_SYNCED = "Masternode list is not synced";
+constexpr auto ERRMSG_MNLIST_EMPTY = "Masternode list is empty";
+constexpr auto ERRMSG_MN_BLOCK_NOT_FOUND = "Block %d not found";
+constexpr auto ERRMSG_MN_GET_SCORES = "Failed to get masternode scores for block %d. %s";
+
 struct CompareLastPaidBlock
 {
     bool operator()(const pair<int, CMasternode*>& t1,
@@ -437,7 +442,7 @@ bool CMasternodeMan::GetMasternodeInfo(const COutPoint& outpoint, masternode_inf
 bool CMasternodeMan::GetMasternodeInfo(const CPubKey& pubKeyMasternode, masternode_info_t& mnInfoRet) const noexcept
 {
     LOCK(cs);
-    for (const auto& [outpoint, mn] : mapMasternodes)
+    for (const auto& [outpoint, mn]: mapMasternodes)
     {
         if (mn.pubKeyMasternode == pubKeyMasternode)
         {
@@ -610,38 +615,53 @@ masternode_info_t CMasternodeMan::FindRandomNotInVec(const v_outpoints &vecToExc
     return masternode_info_t();
 }
 
-bool CMasternodeMan::GetMasternodeScores(const uint256& blockHash, CMasternodeMan::score_pair_vec_t& vecMasternodeScoresRet, int nMinProtocol)
+bool CMasternodeMan::GetMasternodeScores(string &error, const uint256& blockHash, CMasternodeMan::score_pair_vec_t& vecMasternodeScoresRet, int nMinProtocol)
 {
     vecMasternodeScoresRet.clear();
     if (!masterNodeCtrl.masternodeSync.IsMasternodeListSynced())
+    {
+        error = ERRMSG_MNLIST_NOT_SYNCED;
         return false;
+    }
 
     AssertLockHeld(cs);
 
     if (mapMasternodes.empty())
+    {
+        error = ERRMSG_MNLIST_EMPTY;
         return false;
+    }
 
     // calculate scores
-    for (auto& [outpoint, mn] : mapMasternodes)
+    for (auto& [outpoint, mn]: mapMasternodes)
     {
         if (mn.nProtocolVersion >= nMinProtocol)
             vecMasternodeScoresRet.emplace_back(mn.CalculateScore(blockHash), &mn);
     }
     sort(vecMasternodeScoresRet.rbegin(), vecMasternodeScoresRet.rend(), CompareScoreMN());
-    return !vecMasternodeScoresRet.empty();
+    if (vecMasternodeScoresRet.empty())
+    {
+		error = strprintf("No Masternodes found that supports protocol %d", nMinProtocol);
+		return false;
+	}
+    return true;
 }
 
-bool CMasternodeMan::GetMasternodeRank(const COutPoint& outpoint, int& nRankRet, int nBlockHeight, int nMinProtocol)
+bool CMasternodeMan::GetMasternodeRank(string &error, const COutPoint& outpoint, int& nRankRet, int nBlockHeight, int nMinProtocol)
 {
     nRankRet = -1;
-
+    error.clear();
     if (!masterNodeCtrl.masternodeSync.IsMasternodeListSynced())
+    {
+        error = ERRMSG_MNLIST_NOT_SYNCED;
         return false;
+    }
 
     // make sure we know about this block
-    uint256 nBlockHash;
-    if (!GetBlockHash(nBlockHash, nBlockHeight))
+    uint256 blockHash;
+    if (!GetBlockHash(blockHash, nBlockHeight))
     {
+        error = strprintf(ERRMSG_MN_BLOCK_NOT_FOUND, nBlockHeight);
         LogFnPrintf("ERROR: GetBlockHash() failed at nBlockHeight %d", nBlockHeight);
         return false;
     }
@@ -649,11 +669,14 @@ bool CMasternodeMan::GetMasternodeRank(const COutPoint& outpoint, int& nRankRet,
     LOCK(cs);
 
     score_pair_vec_t vecMasternodeScores;
-    if (!GetMasternodeScores(nBlockHash, vecMasternodeScores, nMinProtocol))
+    if (!GetMasternodeScores(error, blockHash, vecMasternodeScores, nMinProtocol))
+    {
+        error = strprintf(ERRMSG_MN_GET_SCORES, nBlockHeight, error);
         return false;
+    }
 
     int nRank = 0;
-    for (const auto& scorePair : vecMasternodeScores)
+    for (const auto& scorePair: vecMasternodeScores)
     {
         nRank++;
         if (scorePair.second->getOutPoint() == outpoint)
@@ -678,10 +701,10 @@ bool CMasternodeMan::GetMasternodeRank(const COutPoint& outpoint, int& nRankRet,
 GetTopMasterNodeStatus CMasternodeMan::GetMasternodeRanks(string &error, CMasternodeMan::rank_pair_vec_t& vecMasternodeRanksRet, int nBlockHeight, int nMinProtocol)
 {
     vecMasternodeRanksRet.clear();
-
+    error.clear();
     if (!masterNodeCtrl.masternodeSync.IsMasternodeListSynced())
     {
-        error = "Masternode list is not synced";
+        error = ERRMSG_MNLIST_NOT_SYNCED;
         return GetTopMasterNodeStatus::MN_NOT_SYNCED;
     }
 
@@ -689,17 +712,16 @@ GetTopMasterNodeStatus CMasternodeMan::GetMasternodeRanks(string &error, CMaster
     uint256 blockHash;
     if (!GetBlockHash(blockHash, nBlockHeight))
     {
-        error = strprintf("Block %d not found", nBlockHeight);
-        LogFnPrintf("ERROR: GetBlockHash() failed at nBlockHeight %d", nBlockHeight);
+        error = strprintf(ERRMSG_MN_BLOCK_NOT_FOUND, nBlockHeight);
         return GetTopMasterNodeStatus::BLOCK_NOT_FOUND;
     }
 
     LOCK(cs);
 
     score_pair_vec_t vecMasternodeScores;
-    if (!GetMasternodeScores(blockHash, vecMasternodeScores, nMinProtocol))
+    if (!GetMasternodeScores(error, blockHash, vecMasternodeScores, nMinProtocol))
     {
-        error = strprintf("Failed to get masternode scores for block %d", nBlockHeight);
+        error = strprintf(ERRMSG_MN_GET_SCORES, nBlockHeight, error);
         return GetTopMasterNodeStatus::GET_MN_SCORES_FAILED;
     }
 
@@ -715,10 +737,12 @@ GetTopMasterNodeStatus CMasternodeMan::GetMasternodeRanks(string &error, CMaster
 void CMasternodeMan::ProcessMasternodeConnections()
 {
     //we don't care about this for regtest
-    if(Params().IsRegTest()) return;
+    if (Params().IsRegTest())
+        return;
 
-    CNodeHelper::ForEachNode(CNodeHelper::AllNodes, [](CNode* pnode) {
-        if(pnode->fMasternode)
+    CNodeHelper::ForEachNode(CNodeHelper::AllNodes, [](CNode* pnode)
+    {
+        if (pnode->fMasternode)
         {
             LogFnPrintf("Closing Masternode connection: peer=%d, addr=%s", pnode->id, pnode->addr.ToString());
             pnode->fDisconnect = true;
@@ -1310,10 +1334,10 @@ void CMasternodeMan::ProcessVerifyBroadcast(CNode* pnode, const CMasternodeVerif
     }
 
     int nRank;
-
-    if (!GetMasternodeRank(mnv.vin2.prevout, nRank, mnv.nBlockHeight, MIN_POSE_PROTO_VERSION))
+    string error;
+    if (!GetMasternodeRank(error, mnv.vin2.prevout, nRank, mnv.nBlockHeight, MIN_POSE_PROTO_VERSION))
     {
-        LogFnPrint("masternode", "Can't calculate rank for masternode %s", mnv.vin2.prevout.ToStringShort());
+        LogFnPrint("masternode", "Can't calculate rank for masternode %s. %s", mnv.vin2.prevout.ToStringShort(), error);
         return;
     }
 

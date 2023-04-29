@@ -104,16 +104,16 @@ ticket_validation_t common_ticket_validation(
         // C.1 Something to validate only if NOT Initial Download
         if (masterNodeCtrl.masternodeSync.IsSynced())
         {
-            const auto chainHeight = GetActiveChainHeight();
+            const auto nActiveChainHeight = gl_nChainHeight + 1;
 
             // C.2 Verify Min Confirmations
-            const auto height = ticket.IsBlock(0) ? chainHeight : ticket.GetBlock();
-            if (chainHeight - referredItemTicket->GetBlock() < masterNodeCtrl.MinTicketConfirmations)
+            const auto height = ticket.IsBlock(0) ? nActiveChainHeight : ticket.GetBlock();
+            if (nActiveChainHeight - referredItemTicket->GetBlock() < masterNodeCtrl.MinTicketConfirmations)
             {
                 tv.errorMsg = strprintf(
                     "%s ticket can be created only after [%s] confirmations of the %s ticket. chainHeight=%u, block=%u",
                     sThisTicketDescription, masterNodeCtrl.MinTicketConfirmations, 
-                    sReferredItemTicketDescription, chainHeight, ticket.GetBlock());
+                    sReferredItemTicketDescription, nActiveChainHeight, ticket.GetBlock());
                 break;
             }
         }

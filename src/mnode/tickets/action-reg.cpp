@@ -344,7 +344,7 @@ string CActionRegTicket::ToJSON(const bool bDecodeProperties) const noexcept
  */
 ticket_validation_t CActionRegTicket::IsValid(const bool bPreReg, const uint32_t nCallDepth) const noexcept
 {
-    const auto chainHeight = GetActiveChainHeight();
+    const auto nActiveChainHeight = gl_nChainHeight + 1;
     ticket_validation_t tv;
     do
     {
@@ -363,7 +363,7 @@ ticket_validation_t CActionRegTicket::IsValid(const bool bPreReg, const uint32_t
             }
 
             // A.2 validate that address has coins to pay for registration - 10PSL
-            const auto fullTicketPrice = TicketPricePSL(chainHeight); //10% of storage fee is paid by the 'caller' and this ticket is created by MN
+            const auto fullTicketPrice = TicketPricePSL(nActiveChainHeight); //10% of storage fee is paid by the 'caller' and this ticket is created by MN
             if (pwalletMain->GetBalance() < fullTicketPrice * COIN)
             {
                 tv.errorMsg = strprintf(
