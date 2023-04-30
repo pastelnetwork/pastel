@@ -67,7 +67,7 @@ string CNFTRoyaltyTicket::ToStr() const noexcept
  */
 ticket_validation_t CNFTRoyaltyTicket::IsValid(const bool bPreReg, const uint32_t nCallDepth) const noexcept
 {
-    const auto chainHeight = GetActiveChainHeight();
+    const auto nActiveChainHeight = gl_nChainHeight + 1;
     ticket_validation_t tv;
     do
     {
@@ -89,7 +89,7 @@ ticket_validation_t CNFTRoyaltyTicket::IsValid(const bool bPreReg, const uint32_
             *this, bPreReg, m_sNFTTxId, pastelTicket,
             [](const TicketID tid) noexcept { return (tid != TicketID::NFT); },
             GetTicketDescription(), CNFTRegTicket::GetTicketDescription(), nCallDepth, 
-            TicketPricePSL(chainHeight));
+            TicketPricePSL(nActiveChainHeight));
         if (commonTV.IsNotValid())
         {
             // enrich the error message

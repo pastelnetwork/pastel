@@ -1,9 +1,10 @@
 #pragma once
 // Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2014 The Bitcoin Core developers
-// Copyright (c) 2018-2022 Pastel Core developers
+// Copyright (c) 2018-2023 Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
+#include <atomic>
 
 #include <arith_uint256.h>
 #include <primitives/block.h>
@@ -14,6 +15,9 @@
 
 constexpr int SPROUT_VALUE_VERSION = 1001400;
 constexpr int SAPLING_VALUE_VERSION = 1010100;
+
+// cached current blockchain height - reflects chainActive.Height()
+extern std::atomic_uint32_t gl_nChainHeight;
 
 struct CDiskBlockPos
 {
@@ -420,7 +424,8 @@ public:
     }
 
     /** Return the maximal height in the chain. Is equal to chain.Tip() ? chain.Tip()->nHeight : -1. */
-    int Height() const {
+    int Height() const noexcept
+    {
         return int(vChain.size()) - 1;
     }
 

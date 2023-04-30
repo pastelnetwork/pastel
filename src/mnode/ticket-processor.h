@@ -5,6 +5,7 @@
 #include <memory>
 #include <tuple>
 #include <optional>
+#include <atomic>
 
 #include <json/json.hpp>
 
@@ -27,9 +28,6 @@ constexpr uint8_t TICKET_COMPRESS_DISABLE_MASK = 0x7F;
 
 // tuple <item id, item registration txid, transfer ticket txid>
 using reg_transfer_txid_t = std::tuple<TicketID, std::string, std::string>;
-
-// Get height of the active blockchain + 1
-unsigned int GetActiveChainHeight();
 
 // structure used by 'tickets tools searchthumbids' rpc
 typedef struct _search_thumbids_t
@@ -93,12 +91,12 @@ public:
     void UpdateDB_MVK(const CPastelTicket& ticket, const std::string& mvKey);
 
     // check whether ticket exists (use keyOne as a key)
-    bool CheckTicketExist(const CPastelTicket& ticket);
+    bool CheckTicketExist(const CPastelTicket& ticket) const;
     bool FindTicket(CPastelTicket& ticket) const;
 
     // Check whether ticket exists (use keyTwo as a key).
-    bool CheckTicketExistBySecondaryKey(const CPastelTicket& ticket);
-    bool FindTicketBySecondaryKey(CPastelTicket& ticket);
+    bool CheckTicketExistBySecondaryKey(const CPastelTicket& ticket) const;
+    bool FindTicketBySecondaryKey(CPastelTicket& ticket) const;
 
     /**
     * Process tickets of the specified type using functor F.
@@ -120,11 +118,12 @@ public:
             return;
         // read primary keys for the given MV key
         itDB->second->Read(realMVKey, vMainKeys);
+        const uint32_t nCurrentChainHeight = gl_nChainHeight;
         for (const auto& key : vMainKeys)
         {
             // read ticket & call the functor
             _TicketType ticket;
-            if (itDB->second->Read(key, ticket))
+            if (itDB->second->Read(key, ticket) && !ticket.IsBlockNewerThan(nCurrentChainHeight))
             {
                 if (!f(ticket))
                     break; // stop processing tickets if functor returned false
