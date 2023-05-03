@@ -6,7 +6,7 @@
 
 #include <init.h>
 #include <pastelid/common.h>
-#include <mnode/tickets/etherium-address-change.h>
+#include <mnode/tickets/ethereum-address-change.h>
 #include <mnode/ticket-processor.h>
 #include <mnode/mnode-controller.h>
 #ifdef ENABLE_WALLET
@@ -164,6 +164,11 @@ bool CChangeEthereumAddressTicket::FindTicketInDb(const string& key, CChangeEthe
 {
     ticket.ethereumAddress = key;
     return masterNodeCtrl.masternodeTickets.FindTicket(ticket);
+}
+
+ChangeEthereumAddressTickets_t CChangeEthereumAddressTicket::FindAllTicketByMVKey(const string& sMVKey)
+{
+    return masterNodeCtrl.masternodeTickets.FindTicketsByMVKey<CChangeEthereumAddressTicket>(sMVKey);
 }
 
 bool CChangeEthereumAddressTicket::isEthereumAddressInvalid(const string& ethereumAddress, string& error)

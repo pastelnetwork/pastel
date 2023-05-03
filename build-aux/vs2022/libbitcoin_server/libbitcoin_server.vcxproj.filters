@@ -244,7 +244,7 @@
     <ClCompile Include="..\..\..\src\mnode\tickets\username-change.cpp">
       <Filter>Source Files\mnode\tickets</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\src\mnode\tickets\etherium-address-change.cpp">
+    <ClCompile Include="..\..\..\src\mnode\tickets\ethereum-address-change.cpp">
       <Filter>Source Files\mnode\tickets</Filter>
     </ClCompile>
     <ClCompile Include="..\..\..\src\mnode\tickets\transfer.cpp">
@@ -588,7 +588,7 @@
     <ClInclude Include="..\..\..\src\mnode\tickets\username-change.h">
       <Filter>Source Files\mnode\tickets</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\..\src\mnode\tickets\etherium-address-change.h">
+    <ClInclude Include="..\..\..\src\mnode\tickets\ethereum-address-change.h">
       <Filter>Source Files\mnode\tickets</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\src\mnode\tickets\ticket-utils.h">

@@ -1,7 +1,7 @@
 #pragma once
 // Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2014 The Bitcoin Core developers
-// Copyright (c) 2018-2021 The Pastel Core developers
+// Copyright (c) 2018-2023 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 
@@ -13,11 +13,6 @@
 #include "config/bitcoin-config.h"
 #endif
 
-#include "compat.h"
-#include "tinyformat.h"
-#include "utiltime.h"
-#include "fs.h"
-
 #include <atomic>
 #include <exception>
 #include <map>
@@ -25,9 +20,15 @@
 #include <string>
 #include <vector>
 #include <optional>
+#include <thread>
 
 #include <boost/signals2.hpp>
-#include <thread>
+
+#include <compat.h>
+#include <tinyformat.h>
+#include <utiltime.h>
+#include <fs.h>
+
 
 static const bool DEFAULT_LOGTIMEMICROS = false;
 static const bool DEFAULT_LOGIPS        = false;
@@ -71,7 +72,7 @@ bool SetupNetworking();
 /** Return true if log accepts specified category */
 bool LogAcceptCategory(const char* category);
 /** Send a string to the log output */
-int LogPrintStr(const std::string &str);
+size_t LogPrintStr(const std::string &str);
 
 #ifdef __linux__
 extern thread_local pid_t gl_LinuxTID;
@@ -303,3 +304,12 @@ public:
     }
 };
 
+template <typename _T>
+inline void safe_delete_obj(_T*& obj)
+{
+    if (obj)
+    {
+        delete obj;
+        obj = nullptr;
+    }
+}

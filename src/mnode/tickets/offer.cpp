@@ -43,7 +43,7 @@ COfferTicket COfferTicket::Create(string &&itemTxId,
     // NOTE: Offer ticket for Transfer ticket will always has copy number = 1
     ticket.m_nCopyNumber = nCopyNumber > 0 ?
         nCopyNumber :
-        static_cast<decltype(ticket.m_nCopyNumber)>(COfferTicket::FindAllTicketByItemTxId(ticket.m_itemTxId).size()) + 1;
+        static_cast<decltype(ticket.m_nCopyNumber)>(COfferTicket::FindAllTicketByMVKey(ticket.m_itemTxId).size()) + 1;
     // set primary search key to <txid>:<copy_number>
     ticket.key = ticket.m_itemTxId + ":" + to_string(ticket.m_nCopyNumber);
     ticket.sign(move(strKeyPass));
@@ -199,7 +199,7 @@ ticket_validation_t COfferTicket::IsValid(const bool bPreReg, const uint32_t nCa
         const auto fnVerifyAvailableCopies = [this, &originalItemType](const string& strTicket, const size_t nTotalCopies) -> ticket_validation_t
         {
             ticket_validation_t tv;
-            const auto vExistingTransferTickets = CTransferTicket::FindAllTicketByItemTxID(m_itemTxId);
+            const auto vExistingTransferTickets = CTransferTicket::FindAllTicketByMVKey(m_itemTxId);
             const size_t nTransferredCopies = vExistingTransferTickets.size();
             do
             {
@@ -383,7 +383,7 @@ ticket_validation_t COfferTicket::IsValid(const bool bPreReg, const uint32_t nCa
         // (ticket transaction replay attack protection)
         // If found similar ticket, replacement is possible if allowed
         // Can be a few Offer tickets
-        const auto vExistingOfferTickets = COfferTicket::FindAllTicketByItemTxId(m_itemTxId);
+        const auto vExistingOfferTickets = COfferTicket::FindAllTicketByMVKey(m_itemTxId);
         ticket_validation_t tv1;
         tv1.setValid();
         for (const auto& t : vExistingOfferTickets)
@@ -479,12 +479,7 @@ bool COfferTicket::FindTicketInDb(const string& key, COfferTicket& ticket)
     return masterNodeCtrl.masternodeTickets.FindTicket(ticket);
 }
 
-OfferTickets_t COfferTicket::FindAllTicketByPastelID(const string& pastelID)
+OfferTickets_t COfferTicket::FindAllTicketByMVKey(const string& sMVKey)
 {
-    return masterNodeCtrl.masternodeTickets.FindTicketsByMVKey<COfferTicket>(pastelID);
-}
-
-OfferTickets_t COfferTicket::FindAllTicketByItemTxId(const string& itemTxId)
-{
-    return masterNodeCtrl.masternodeTickets.FindTicketsByMVKey<COfferTicket>(itemTxId);
+    return masterNodeCtrl.masternodeTickets.FindTicketsByMVKey<COfferTicket>(sMVKey);
 }

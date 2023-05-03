@@ -2775,7 +2775,7 @@ void static UpdateTip(const CChainParams& chainparams, CBlockIndex* pindexNew)
     nTimeBestReceived = GetTime();
     mempool.AddTransactionsUpdated(1);
     const auto pChainTip = chainActive.Tip();
-    LogFnPrintf("new best=%s  height=%d  log2_work=%.8g  tx=%lu  date=%s progress=%f  cache=%.1fMiB(%zutx)", __func__,
+    LogFnPrintf("new best=%s  height=%d  log2_work=%.8g  tx=%lu  date=%s progress=%f  cache=%.1fMiB(%zutx)",
               pChainTip->GetBlockHash().ToString(), chainActive.Height(), log(pChainTip->nChainWork.getdouble()) / log(2.0), (unsigned long)pChainTip->nChainTx,
               DateTimeStrFormat("%Y-%m-%d %H:%M:%S", pChainTip->GetBlockTime()),
               Checkpoints::GuessVerificationProgress(chainparams.Checkpoints(), pChainTip), pcoinsTip->DynamicMemoryUsage() * (1.0 / (1 << 20)), pcoinsTip->GetCacheSize());

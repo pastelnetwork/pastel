@@ -45,6 +45,11 @@ public:
     std::string strStatusBar;
     std::string strRPCError;
 
+    CUnsignedAlert()
+    {
+		SetNull();
+	}
+
     ADD_SERIALIZE_METHODS;
 
     template <typename Stream>

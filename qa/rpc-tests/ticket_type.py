@@ -13,7 +13,7 @@ USE_OAT = True
 # ===============================================================================================================
 class TicketType(Enum):
     """ Pastel ticket types.
-    TicketTypeName    | ID | Description | TypeName | TicketName | FolderName | Ticket Price
+    TicketTypeName          | ID | Description | TypeName | TicketName | FolderName | Ticket Price
     """
     ID                      = 1, "Pastel ID", "id", "pastelid", None, 10
     MNID                    = 2, "MasterNode's Pastel ID", "mnid", "pastelid", None, 10
@@ -25,7 +25,7 @@ class TicketType(Enum):
     DOWN                    = 8, "TakeDown", "take-down", "take-down", None, 10
     ROYALTY                 = 9, "Royalty", "nft-royalty", "nft-royalty", None, 10
     USERNAME                = 10, "UserName Change", "username-change", "username-change", None, 10
-    ETHERIUM_ADDRESS        = 11, "Etherium Address", "ethereum-address-change", "ethereum-address-change", None, 10
+    ETHEREUM_ADDRESS        = 11, "Ethereum Address", "ethereum-address-change", "ethereum-address-change", None, 10
     SENSE_ACTION            = 12, "Sense Action", "action", "action-reg", "sense-result", 10
     SENSE_ACTION_ACTIVATE   = 13, "Sense Action Activation", "action-act", "action-act", "sense-act", 10
     CASCADE_ACTION          = 14, "Cascade Action", "action", "action-reg", "cascade-artifact", 10

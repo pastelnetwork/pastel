@@ -33,10 +33,10 @@ using MapCheckpoints = std::map<uint32_t, uint256>;
 struct CCheckpointData
 {
     MapCheckpoints mapCheckpoints;
-    int64_t nTimeLastCheckpoint;          // UNIX timestamp of last checkpoint block  
-    int64_t nTransactionsLastCheckpoint;  // total number of transactions between genesis and last checkpoint
-    double fTransactionsPerDay;           // estimated number of transactions per day after checkpoint
-                                          // > total number of tx / (checkpoint block height / (24 * 24))
+    int64_t nTimeLastCheckpoint = 0;          // UNIX timestamp of last checkpoint block  
+    int64_t nTransactionsLastCheckpoint = 0;  // total number of transactions between genesis and last checkpoint
+    double fTransactionsPerDay = 0.0f;        // estimated number of transactions per day after checkpoint
+                                              // > total number of tx / (checkpoint block height / (24 * 24))
 };
 
 class CBaseKeyConstants : public KeyConstants

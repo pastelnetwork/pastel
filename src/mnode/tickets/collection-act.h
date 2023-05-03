@@ -26,7 +26,7 @@ using CollectionActivateTickets_t = std::vector<CollectionActivateTicket>;
 }
 
 key   #1: Collection Registration ticket txid
-mvkey #1: Pastel ID
+mvkey #1: Collection creator's Pastel ID
 mvkey #2: creator height (converted to string)
 */
 class CollectionActivateTicket : public CPastelTicketMNFee
@@ -37,7 +37,7 @@ public:
     static constexpr uint8_t PRINCIPAL_MN_FEE_SHARE = 60; // in percents
     static constexpr uint8_t OTHER_MN_FEE_SHARE = 20;     // in percents
 
-    CollectionActivateTicket() = default;
+    CollectionActivateTicket() noexcept = default;
 
     explicit CollectionActivateTicket(std::string &&sPastelID)  
     {
@@ -111,15 +111,19 @@ public:
     {
         return {ALL_MN_FEE, PRINCIPAL_MN_FEE_SHARE, OTHER_MN_FEE_SHARE};
     }
-
     CAmount GetExtraOutputs(std::vector<CTxOut>& outputs) const override;
 
     static CollectionActivateTicket Create(std::string &&regTicketTxId, int _creatorHeight, int _storageFee, std::string &&sPastelID, SecureString&& strKeyPass);
     static bool FindTicketInDb(const std::string& key, CollectionActivateTicket& ticket);
 
-    static CollectionActivateTickets_t FindAllTicketByPastelID(const std::string& pastelID);
-    static CollectionActivateTickets_t FindAllTicketByCreatorHeight(const unsigned int nCreatorHeight);
+    static CollectionActivateTickets_t FindAllTicketByMVKey(const std::string& sMVKey);
+    static CollectionActivateTickets_t FindAllTicketByCreatorHeight(const uint32_t nCreatorHeight);
     static bool CheckTicketExistByCollectionTicketID(const std::string& regTicketTxId);
+    static uint32_t CountItemsInCollection(const std::string& sCollectionActTxid, const COLLECTION_ITEM_TYPE itemType, bool bActivatedOnly = true);
+    // retrieve referred collection registration ticket
+    static std::unique_ptr<CPastelTicket> RetrieveCollectionRegTicket(std::string& error, const std::string& sRegTxId, bool& bInvalidTxId) noexcept;
+    // get collection ticket by txid
+    static std::unique_ptr<CPastelTicket> GetCollectionTicket(const uint256& txid);
 
 protected:
     std::string m_sPastelID;     // Pastel ID of the Collection's creator

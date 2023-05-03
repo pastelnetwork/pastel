@@ -47,7 +47,7 @@ using txid_serial_tuple_t = std::tuple<std::string, std::string>;
 class CTransferTicket : public CPastelTicket
 {
 public:
-    CTransferTicket() = default;
+    CTransferTicket() noexcept = default;
 
     explicit CTransferTicket(std::string &&sPastelID) : 
         m_sPastelID(std::move(sPastelID))
@@ -131,9 +131,7 @@ public:
     static CTransferTicket Create(std::string &&offerTxId, std::string &&acceptTxId, std::string &&sPastelID, SecureString&& strKeyPass);
     static bool FindTicketInDb(const std::string& key, CTransferTicket& ticket);
 
-    static TransferTickets_t FindAllTicketByPastelID(const std::string& pastelID);
-    static TransferTickets_t FindAllTicketByItemTxID(const std::string& ItemTxId);
-    static TransferTickets_t FindAllTicketByItemRegTxID(const std::string& itemRegTxId);
+    static TransferTickets_t FindAllTicketByMVKey(const std::string& sMVKey);
 
     static bool CheckTransferTicketExistByOfferTicket(const std::string& offerTxId);
     static bool CheckTransferTicketExistByAcceptTicket(const std::string& acceptTxId);

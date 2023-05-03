@@ -100,7 +100,7 @@ signatures: {
 
   key #1: primary unique key (generated, random 32-bytes base32-encoded)
 mvkey #1: Creator Pastel ID
-mvkey #2: collection txid (optional)
+mvkey #2: collection activate txid (optional)
 mvkey #3: label (optional)
 }
  */
@@ -109,7 +109,7 @@ class CNFTRegTicket :
     public CollectionItem
 {
 public:
-    CNFTRegTicket() = default;
+    CNFTRegTicket() noexcept = default;
     explicit CNFTRegTicket(std::string &&nft_ticket) : 
         m_sNFTTicket(std::move(nft_ticket))
     {}
@@ -179,14 +179,14 @@ public:
         SecureString&& strKeyPass, std::string &&label, const CAmount storageFee);
     static bool FindTicketInDb(const std::string& key, CNFTRegTicket& ticket);
     static bool CheckIfTicketInDb(const std::string& key);
-    static NFTRegTickets_t FindAllTicketByPastelID(const std::string& pastelID);
-    uint32_t CountItemsInCollection(const uint32_t currentChainHeight) const override;
+    static NFTRegTickets_t FindAllTicketByMVKey(const std::string& sMVKey);
+    uint32_t CountItemsInCollection() const override;
 
 protected:
     uint16_t m_nNFTTicketVersion{0};
     std::string m_sNFTTicket;         // NFT Registration ticket (nft_ticket)
     std::string m_sTopBlockHash;      // hash of the top block when the ticket was created - this is to map the ticket to the MNs that should process it
-    uint32_t m_nTotalCopies{};        // total copies allowed for this NFT
+    uint32_t m_nTotalCopies{0};       // total copies allowed for this NFT
     std::unordered_set<NFT_TKT_PROP> m_props; // set of properties in the nft_ticket 
 
     // parse base64-encoded nft_ticket in json format, may throw runtime_error exception

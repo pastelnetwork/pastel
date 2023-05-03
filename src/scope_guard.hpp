@@ -90,7 +90,11 @@ namespace sg
       scope_guard(scope_guard&& other)
       noexcept(std::is_nothrow_constructible<Callback, Callback&&>::value);
 
-      ~scope_guard() noexcept; // highlight noexcept dtor
+      ~scope_guard() noexcept // highlight noexcept dtor
+      {
+        if (m_active)
+            m_callback();
+      }
 
       void dismiss() noexcept;
 
@@ -135,14 +139,6 @@ noexcept(std::is_nothrow_constructible<Callback, Callback&&>::value)
     https://is.gd/Tsmh8G) */
   , m_active{true}
 {}
-
-////////////////////////////////////////////////////////////////////////////////
-template<typename Callback>
-sg::detail::scope_guard<Callback>::~scope_guard<Callback>() noexcept
-{
-  if(m_active)
-    m_callback();
-}
 
 ////////////////////////////////////////////////////////////////////////////////
 template<typename Callback>

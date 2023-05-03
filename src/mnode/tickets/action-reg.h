@@ -52,7 +52,7 @@ signatures: {
 
   key #1: primary key (generated)
 mvkey #1: action caller Pastel ID
-mvkey #2: collection txid (optional)
+mvkey #2: collection activate txid (optional)
 mvkey #3: label (optional)
 */
 
@@ -90,7 +90,7 @@ class CActionRegTicket :
     public CollectionItem
 {
 public:
-    CActionRegTicket() = default;
+    CActionRegTicket() noexcept = default;
     explicit CActionRegTicket(std::string &&actionTicket) :
         m_sActionTicket(std::move(actionTicket))
     {}
@@ -165,10 +165,10 @@ public:
         std::string && sPastelID, SecureString&& strKeyPass, std::string &&label, const CAmount storageFee);
     static bool FindTicketInDb(const std::string& key, CActionRegTicket& _ticket);
     static bool CheckIfTicketInDb(const std::string& key);
-    static ActionRegTickets_t FindAllTicketByPastelID(const std::string& pastelID);
+    static ActionRegTickets_t FindAllTicketByMVKey(const std::string& sMVKey);
     // get action storage fees in PSL
     static action_fee_map_t GetActionFees(const size_t nDataSizeInMB);
-    uint32_t CountItemsInCollection(const uint32_t currentChainHeight) const override;
+    uint32_t CountItemsInCollection() const override;
 
 protected:
     uint16_t m_nActionTicketVersion{0};

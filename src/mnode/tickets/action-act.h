@@ -38,7 +38,7 @@ public:
     static constexpr uint8_t PRINCIPAL_MN_FEE_SHARE = 60; // in percents
     static constexpr uint8_t OTHER_MN_FEE_SHARE = 20;     // in percents
 
-    CActionActivateTicket() = default;
+    CActionActivateTicket() noexcept = default;
 
     explicit CActionActivateTicket(std::string &&sCallerPastelID)
     {
@@ -112,8 +112,8 @@ public:
     static CActionActivateTicket Create(std::string &&regTicketTxId, const unsigned int nCalledAtHeight, const CAmount storageFee, std::string &&sCallerPastelID, SecureString&& strKeyPass);
     static bool FindTicketInDb(const std::string& key, CActionActivateTicket& ticket);
 
-    static ActionActivateTickets_t FindAllTicketByPastelID(const std::string& pastelID);
-    static ActionActivateTickets_t FindAllTicketByCalledAtHeight(const unsigned int nCalledAtHeight);
+    static ActionActivateTickets_t FindAllTicketByMVKey(const std::string& sMVKey);
+    static ActionActivateTickets_t FindAllTicketByCalledAtHeight(const uint32_t nCalledAtHeight);
     static bool CheckTicketExistByActionRegTicketID(const std::string& regTicketTxnId);
 
 protected:

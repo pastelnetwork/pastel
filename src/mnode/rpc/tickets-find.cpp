@@ -9,31 +9,39 @@
 
 using namespace std;
 
+constexpr auto MSG_KEY_NOT_FOUND = "Key is not found";
+
+template <class TicketType>
+static UniValue getJSONforTickets(const vector<TicketType> &vTickets)
+{
+    if (vTickets.empty())
+        return NullUniValue;
+	UniValue tArray(UniValue::VARR);
+    for (const auto& tkt : vTickets)
+    {
+		UniValue obj(UniValue::VOBJ);
+		obj.read(tkt.ToJSON());
+		tArray.push_back(obj);
+	}
+	return tArray;
+}
+
 template <class T, class T2 = const string&, typename Lambda = function<vector<T>(T2)>>
 static UniValue getTickets(const string& key, T2 key2 = "", Lambda otherFunc = nullptr)
 {
     T ticket;
+    // search TicketID by primary key (unique generated key)
     if (T::FindTicketInDb(key, ticket))
     {
         UniValue obj(UniValue::VOBJ);
         obj.read(ticket.ToJSON());
         return obj;
     }
-    auto tickets = T::FindAllTicketByPastelID(key);
-    if (tickets.empty() && otherFunc)
-        tickets = otherFunc(key2);
-    if (!tickets.empty())
-    {
-        UniValue tArray(UniValue::VARR);
-        for (const auto &t : tickets)
-        {
-            UniValue obj(UniValue::VOBJ);
-            obj.read(t.ToJSON());
-            tArray.push_back(move(obj));
-        }
-        return tArray;
-    }
-    return "Key is not found";
+    auto vTickets = T::FindAllTicketByMVKey(key);
+    if (vTickets.empty() && otherFunc)
+        vTickets = otherFunc(key2);
+    UniValue tArray = getJSONforTickets<T>(vTickets);
+    return tArray.isNull() ? MSG_KEY_NOT_FOUND : tArray;
 }
 
 UniValue tickets_find(const UniValue& params)
@@ -52,9 +60,12 @@ Available types:
              The "key" is Pastel ID or Collateral tnx outpoint for Masternode
              OR PastelID or Address for Personal PastelID
   nft      - Find new NFT registration ticket.
-             The "key" is 'Key1' or 'Key2' OR 'creator's Pastel ID'
+             The "key" is 'Primary Key' OR 'label' OR 'creator's Pastel ID' OR
+             'Collection Activation ticket txid'
   act      - Find NFT confirmation ticket.
-             The "key" is 'NFT Registration ticket txid' OR 'creator's Pastel ID' OR 'creator's height (block height at what original NFT registration request was created)'
+             The "key" is 'NFT Registration ticket txid' OR 'creator's Pastel ID' OR 
+             'creator's height (block height at what original NFT registration request was created)' OR
+             'Collection Activate ticket txid'
   offer    - Find offer ticket.
              The "key" is either Activation OR Transfer txid PLUS number of copy - "txid:number"
              ex.: 907e5e4c6fc4d14660a22afe2bdf6d27a3c8762abf0a89355bb19b7d9e7dc440:1
@@ -63,11 +74,10 @@ Available types:
   transfer - Find transfer ticket.
              The "key" is ...
   collection - Find new collection registration ticket.
-             The "key" is 'Key1' or 'Key2' OR 'creator's Pastel ID'
+             The "key" is 'Primary key' OR 'label' OR 'creator's Pastel ID' OR 'collection name'
   collection-act - Find new collection activation ticket.
-             The "key" is 'Collection Reg ticket txid' OR 'creator's Pastel ID' OR 'creator's height (block height at what original collection registration request was created)'
-  down     - Find take down ticket.
-             The "key" is ...
+             The "key" is 'Collection Registration ticket txid' OR 'creator's Pastel ID' OR 
+             'creator's height (block height at which original collection registration request was created)'
   royalty  - Find NFT royalty ticket.
              The "key" is ...
   username - Find username change ticket.
@@ -75,9 +85,12 @@ Available types:
   ethereumaddress  - Find ethereumaddress change ticket.
              The "key" is 'ethereumaddress'
   action   - Find action registration ticket.
-             The "key" is 'Key1' or 'Key2' OR 'action caller's Pastel ID'
+             The "key" is 'Primary Key' OR 'Action Caller's Pastel ID' OR
+             'Collection Activation ticket txid'
   action-act - Find action activation ticket.
-             The "key" is 'ActionReg ticket txid' OR 'Caller's Pastel ID' OR 'called-At height (block height at what original Action registration ticket was created)'
+             The "key" is 'Action Registration ticket txid' OR 'Caller's Pastel ID' OR
+             'called-At height (block height at what original Action registration ticket was created)' OR
+             'Collection Activation ticket txid'
 
 Arguments:
 1. "key"    (string, required) The Key to use for ticket search. See types above...
@@ -106,11 +119,33 @@ As json rpc
         return getTickets<CNFTRegTicket>(key);
 
     case RPC_CMD_FIND::act:
-        return getTickets<CNFTActivateTicket, int>(key, atoi(key), CNFTActivateTicket::FindAllTicketByCreatorHeight);
+    {
+        UniValue obj = getTickets<CNFTActivateTicket, int>(key, atoi(key), CNFTActivateTicket::FindAllTicketByCreatorHeight);
+        if (obj.isStr() && obj.get_str() == MSG_KEY_NOT_FOUND)
+        {
+            // this could be also collection activation ticket txid
+            // search for all NFT registration tickets that belongs to this collection
+            NFTActivateTickets_t vTickets;
+            masterNodeCtrl.masternodeTickets.ProcessTicketsByMVKey<CNFTRegTicket>(key,
+                [&](const CNFTRegTicket& regTicket) -> bool
+                {
+                    CNFTActivateTicket actTicket;
+                    string sRegTxId = regTicket.GetTxId();
+                    actTicket.SetKeyOne(move(sRegTxId));
+                    if (masterNodeCtrl.masternodeTickets.FindTicket(actTicket))
+                        vTickets.push_back(actTicket);
+                    return true;
+                });
+            obj = getJSONforTickets<CNFTActivateTicket>(vTickets);
+            if (obj.isNull())
+                obj = MSG_KEY_NOT_FOUND;
+        }
+        return obj;
+    }
 
     case RPC_CMD_FIND::sell:
     case RPC_CMD_FIND::offer:
-        return getTickets<COfferTicket>(key, key, COfferTicket::FindAllTicketByItemTxId);
+        return getTickets<COfferTicket>(key);
 
     case RPC_CMD_FIND::buy:
     case RPC_CMD_FIND::accept:
@@ -121,7 +156,17 @@ As json rpc
         return getTickets<CTransferTicket>(key);
 
     case RPC_CMD_FIND::collection:
-        return getTickets<CollectionRegTicket>(key);
+        return getTickets<CollectionRegTicket>(key, key, 
+            [](const string& sCollectionName) -> CollectionRegTickets_t
+            {
+                CollectionRegTickets_t vTickets;
+                CollectionRegTicket ticket;
+                if (CollectionRegTicket::FindTicketInDbByCollectionName(sCollectionName, ticket))
+                {
+                    vTickets.push_back(ticket);
+                }
+                return vTickets;
+            });
 
     case RPC_CMD_FIND::collection__act:
         return getTickets<CollectionActivateTicket, int>(key, atoi(key), CollectionActivateTicket::FindAllTicketByCreatorHeight);
@@ -135,33 +180,42 @@ As json rpc
         //              return ticket.ToJSON();
     } break;
 
-    case RPC_CMD_FIND::ethereumaddress: {
-        CChangeEthereumAddressTicket ticket;
-        if (CChangeEthereumAddressTicket::FindTicketInDb(key, ticket)) {
-            UniValue obj(UniValue::VOBJ);
-            obj.read(ticket.ToJSON());
-            return obj;
-        }
-    } break;
+    case RPC_CMD_FIND::ethereumaddress:
+        return getTickets<CChangeEthereumAddressTicket>(key);
 
-    case RPC_CMD_FIND::username: {
-        CChangeUsernameTicket ticket;
-        if (CChangeUsernameTicket::FindTicketInDb(key, ticket))
-        {
-            UniValue obj(UniValue::VOBJ);
-            obj.read(ticket.ToJSON());
-            return obj;
-        }
-    } break;
+    case RPC_CMD_FIND::username:
+        return getTickets<CChangeUsernameTicket>(key);
 
     case RPC_CMD_FIND::action: 
         return getTickets<CActionRegTicket>(key);
 
     case RPC_CMD_FIND::action__act:
-        return getTickets<CActionActivateTicket, int>(key, atoi(key), CActionActivateTicket::FindAllTicketByCalledAtHeight);
+    {
+        UniValue obj = getTickets<CActionActivateTicket, int>(key, atoi(key), CActionActivateTicket::FindAllTicketByCalledAtHeight);
+        if (obj.isStr() && obj.get_str() == MSG_KEY_NOT_FOUND)
+        {
+            // this could be also collection activation ticket txid
+            // search for all Action registration tickets that belongs to this collection
+            ActionActivateTickets_t vTickets;
+            masterNodeCtrl.masternodeTickets.ProcessTicketsByMVKey<CActionRegTicket>(key,
+                [&](const CActionRegTicket& regTicket) -> bool
+                {
+                    CActionActivateTicket actTicket;
+                    string sRegTxId = regTicket.GetTxId();
+                    actTicket.SetKeyOne(move(sRegTxId));
+                    if (masterNodeCtrl.masternodeTickets.FindTicket(actTicket))
+                        vTickets.push_back(actTicket);
+                    return true;
+                });
+            obj = getJSONforTickets<CActionActivateTicket>(vTickets);
+            if (obj.isNull())
+                obj = MSG_KEY_NOT_FOUND;
+        }
+        return obj;
+    }
 
     default:
         break;
     }
-    return "Key is not found";
+    return MSG_KEY_NOT_FOUND;
 }

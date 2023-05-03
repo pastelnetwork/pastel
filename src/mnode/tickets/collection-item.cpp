@@ -18,17 +18,6 @@ void CollectionItem::Clear() noexcept
 }
 
 /**
- * Get collection ticket by txid.
- *
- * \param txid - collection ticket transaction id
- * \return collection ticket
- */
-unique_ptr<CPastelTicket> CollectionItem::GetCollectionTicket(const uint256& txid)
-{
-    return masterNodeCtrl.masternodeTickets.GetTicket(txid);
-}
-
-/**
  * Retrieve referred collection activation ticket.
  *
  * \param error - return error if collection not found
@@ -52,7 +41,7 @@ unique_ptr<CPastelTicket> CollectionItem::RetrieveCollectionActivateTicket(strin
         // get the collection activation ticket pointed by txid
         try
         {
-            collectionActTicket = GetCollectionTicket(collection_act_txid);
+            collectionActTicket = CollectionActivateTicket::GetCollectionTicket(collection_act_txid);
         }
         catch (const std::exception& ex)
         {
@@ -60,41 +49,6 @@ unique_ptr<CPastelTicket> CollectionItem::RetrieveCollectionActivateTicket(strin
         }
     } while (false);
     return collectionActTicket;
-}
-
-/**
- * Retrieve referred collection registration ticket.
- *
- * \param error - return error if collection not found
- * \param sRegTxId - collection registration ticket txid
- * \param bInvalidTxId - set to true if collection txid is invalid
- * \return nullopt if collection txid is invalid, false - if collection ticket not found
- */
-unique_ptr<CPastelTicket> CollectionItem::RetrieveCollectionRegTicket(string& error, const string& sRegTxId, bool& bInvalidTxId) noexcept
-{
-    unique_ptr<CPastelTicket> collectionRegTicket;
-    bInvalidTxId = false;
-    do
-    {
-        uint256 collection_reg_txid;
-        // extract and validate collection txid
-        if (!parse_uint256(error, collection_reg_txid, sRegTxId, "collection registration ticket txid"))
-        {
-            bInvalidTxId = true;
-            break;
-        }
-
-        // get the collection registration ticket pointed by txid
-        try
-        {
-            collectionRegTicket = GetCollectionTicket(collection_reg_txid);
-        }
-        catch (const std::exception& ex)
-        {
-            error = ex.what();
-        }
-    } while (false);
-    return collectionRegTicket;
 }
 
 /**
@@ -146,7 +100,7 @@ ticket_validation_t CollectionItem::IsValidCollection(const bool bPreReg) const 
             break;
         }
         // get collection registration ticket
-        const auto collectionRegTicket = RetrieveCollectionRegTicket(error, pCollActTicket->getRegTxId(), bInvalidTxId);
+        const auto collectionRegTicket = CollectionActivateTicket::RetrieveCollectionRegTicket(error, pCollActTicket->getRegTxId(), bInvalidTxId);
         if (bInvalidTxId)
         {
             tv.errorMsg = move(error);
@@ -168,7 +122,7 @@ ticket_validation_t CollectionItem::IsValidCollection(const bool bPreReg) const 
                 "The %s ticket [txid=%s] referred by this %s ticket [txid=%s] has invalid type '%s'",
                 CollectionRegTicket::GetTicketDescription(), pCollActTicket->getRegTxId(), 
                 CollectionActivateTicket::GetTicketDescription(), m_sCollectionActTxid,
-                ::GetTicketDescription(collectionActTicket->ID()));
+                ::GetTicketDescription(collectionRegTicket->ID()));
             break;
         }
 
@@ -205,7 +159,7 @@ ticket_validation_t CollectionItem::IsValidCollection(const bool bPreReg) const 
 
         // count all registered items in a collection up to the current height
         // don't count current reg ticket
-        const uint32_t nCollectionItemCount = CountItemsInCollection(nActiveChainHeight);
+        const uint32_t nCollectionItemCount = CountItemsInCollection();
 
         // check if we have more than allowed number of items in the collection
         if (nCollectionItemCount + (bPreReg ? 1 : 0) > pCollRegTicket->getMaxCollectionEntries())

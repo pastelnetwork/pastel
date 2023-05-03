@@ -1,6 +1,6 @@
 // Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2014 The Bitcoin Core developers
-// Copyright (c) 2018-2022 The Pastel Core developers
+// Copyright (c) 2018-2023 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 
@@ -14,6 +14,7 @@
 #include <stdio.h>
 #include <thread>
 #include <unistd.h>
+#include <errno.h>
 
 #if (defined(__FreeBSD__) || defined(__OpenBSD__) || defined(__DragonFly__))
 #include <pthread.h>
@@ -140,7 +141,7 @@ static list<string> *vMsgsBeforeOpenLog;
     terminate();
 };
 
-static int FileWriteStr(const string &str, FILE *fp)
+static size_t FileWriteStr(const string &str, FILE *fp)
 {
     return fwrite(str.data(), 1, str.size(), fp);
 }
@@ -160,13 +161,18 @@ void OpenDebugLog()
     assert(fileout == nullptr);
     assert(vMsgsBeforeOpenLog);
     const fs::path pathDebugLog = GetDataDir() / "debug.log";
+#if defined(_MSC_VER) && (_MSC_VER >= 1400)
+    const errno_t err = fopen_s(&fileout, pathDebugLog.string().c_str(), "a");
+#else
     fileout = fopen(pathDebugLog.string().c_str(), "a");
+    const int err = fileout ? 0 : errno;
+#endif
     if (!fileout)
     {
-        printf("ERROR: failed to open debug log file [%s]. %s", pathDebugLog.string().c_str(), strerror(errno));
+        printf("ERROR: failed to open debug log file [%s]. %s", pathDebugLog.string().c_str(), GetErrorString(err).c_str());
         return;
     }
-    setbuf(fileout, nullptr); // unbuffered
+    setvbuf(fileout, nullptr, _IONBF, 0); // unbuffered
 
     // dump buffered messages from before we opened the log
     while (!vMsgsBeforeOpenLog->empty())
@@ -287,14 +293,14 @@ static string LogTimestampStr(const string &str, bool *fStartedNewLine)
     return strStamped;
 }
 
-int LogPrintStr(const string &str)
+size_t LogPrintStr(const string &str)
 {
-    int ret = 0; // Returns total number of characters written
+    size_t nCharsWritten = 0; // Returns total number of characters written
     static bool fStartedNewLine = true;
     if (fPrintToConsole)
     {
         // print to console
-        ret = fwrite(str.data(), 1, str.size(), stdout);
+        nCharsWritten = fwrite(str.data(), 1, str.size(), stdout);
         fflush(stdout);
     }
     else if (fPrintToDebugLog)
@@ -308,7 +314,7 @@ int LogPrintStr(const string &str)
         if (!fileout)
         {
             assert(vMsgsBeforeOpenLog);
-            ret = strTimestamped.length();
+            nCharsWritten = strTimestamped.length();
             vMsgsBeforeOpenLog->push_back(strTimestamped);
         }
         else
@@ -318,14 +324,19 @@ int LogPrintStr(const string &str)
             {
                 fReopenDebugLog = false;
                 fs::path pathDebug = GetDataDir() / "debug.log";
-                if (freopen(pathDebug.string().c_str(), "a", fileout) != nullptr)
-                    setbuf(fileout, nullptr); // unbuffered
+#if defined(_MSC_VER) && (_MSC_VER >= 1400)
+                const errno_t err = freopen_s(&fileout, pathDebug.string().c_str(), "a", fileout);
+#else
+                fileout = freopen(pathDebug.string().c_str(), "a", fileout);
+#endif
+                if (fileout)
+                    setvbuf(fileout, nullptr, _IONBF, 0); // unbuffered
             }
 
-            ret = FileWriteStr(strTimestamped, fileout);
+            nCharsWritten = FileWriteStr(strTimestamped, fileout);
         }
     }
-    return ret;
+    return nCharsWritten;
 }
 
 static void InterpretNegativeSetting(string name, map<string, string>& mapSettingsRet)
@@ -811,16 +822,26 @@ void ShrinkDebugFile()
 {
     // Scroll debug.log if it's getting too big
     fs::path pathLog = GetDataDir() / "debug.log";
-    FILE* file = fopen(pathLog.string().c_str(), "r");
+
+    FILE* file = nullptr;
+#if defined(_MSC_VER) && (_MSC_VER >= 1400)
+    errno_t err = fopen_s(&file, pathLog.string().c_str(), "r");
+#else
+    file = fopen(pathLog.string().c_str(), "r");
+#endif
     if (file && fs::file_size(pathLog) > 10 * 1000000)
     {
         // Restart the file with some of the end
         vector <char> vch(200000,0);
         fseek(file, -((long)vch.size()), SEEK_END);
-        int nBytes = fread(begin_ptr(vch), 1, vch.size(), file);
+        size_t nBytes = fread(begin_ptr(vch), 1, vch.size(), file);
         fclose(file);
 
+#if defined(_MSC_VER) && (_MSC_VER >= 1400)
+        err = fopen_s(&file, pathLog.string().c_str(), "w");
+#else
         file = fopen(pathLog.string().c_str(), "w");
+#endif
         if (file)
         {
             fwrite(begin_ptr(vch), 1, nBytes, file);

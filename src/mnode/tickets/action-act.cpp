@@ -10,9 +10,10 @@
 #include <mnode/tickets/pastelid-reg.h>
 #include <mnode/tickets/action-reg.h>
 #include <mnode/tickets/action-act.h>
+#include <mnode/tickets/collection-act.h>
 #include <mnode/tickets/ticket-utils.h>
 #ifdef ENABLE_WALLET
-#include "wallet/wallet.h"
+#include <wallet/wallet.h>
 #endif // ENABLE_WALLET
 
 using json = nlohmann::json;
@@ -136,9 +137,9 @@ ticket_validation_t CActionActivateTicket::IsValid(const bool bPreReg, const uin
             }
         }
 
-        auto ActionRegTicket = dynamic_cast<CActionRegTicket*>(pastelTicket.get());
+        auto pActionRegTicket = dynamic_cast<CActionRegTicket*>(pastelTicket.get());
         // this is already validated in common_ticket_validation, but just double check that we retrieved a parent activation reg ticket
-        if (!ActionRegTicket)
+        if (!pActionRegTicket)
         {
             tv.errorMsg = strprintf(
                 "The Action registration ticket with this txid [%s] is not in the blockchain or is invalid", 
@@ -146,31 +147,97 @@ ticket_validation_t CActionActivateTicket::IsValid(const bool bPreReg, const uin
             break;
         }
 
-        // 1. check that caller PastelID in ActionReg ticket matches Pastel ID from this ticket
-        if (!ActionRegTicket->IsCallerPastelId(m_sCallerPastelID))
+        // check that caller PastelID in ActionReg ticket matches Pastel ID from this ticket
+        if (!pActionRegTicket->IsCallerPastelId(m_sCallerPastelID))
         {
             tv.errorMsg = strprintf(
                 "The Pastel ID [%s] is not matching the Action Caller's Pastel ID [%s] in the Action Reg ticket with this txid [%s]",
-                m_sCallerPastelID, ActionRegTicket->getCreatorPastelID_param(), m_regTicketTxId);
+                m_sCallerPastelID, pActionRegTicket->getCreatorPastelID_param(), m_regTicketTxId);
             break;
         }
 
-        // 2. check ActionReg ticket is at the assumed height
-        if (ActionRegTicket->getCalledAtHeight() != m_nCalledAtHeight)
+        // check ActionReg ticket is at the assumed height
+        if (pActionRegTicket->getCalledAtHeight() != m_nCalledAtHeight)
         {
             tv.errorMsg = strprintf(
                 "The CalledAtHeight [%u] is not matching the CalledAtHeight [%u] in the Action Reg ticket with this txid [%s]",
-                m_nCalledAtHeight, ActionRegTicket->getCalledAtHeight(), m_regTicketTxId);
+                m_nCalledAtHeight, pActionRegTicket->getCalledAtHeight(), m_regTicketTxId);
             break;
         }
 
-        // 3. check ActionReg ticket fee is same as storageFee
-        if (ActionRegTicket->getStorageFee() != m_storageFee)
+        // check ActionReg ticket fee is same as storageFee
+        if (pActionRegTicket->getStorageFee() != m_storageFee)
         {
             tv.errorMsg = strprintf(
                 "The storage fee [%" PRIi64 "] is not matching the storage fee [%" PRIi64 "] in the Action Reg ticket with this txid [%s]",
-                m_storageFee, ActionRegTicket->getStorageFee(), m_regTicketTxId);
+                m_storageFee, pActionRegTicket->getStorageFee(), m_regTicketTxId);
             break;
+        }
+
+        // if action belongs to collection - check if we reached max number of items in that collection
+        if (pActionRegTicket->IsCollectionItem() && bPreReg)
+        {
+            string error;
+            bool bInvalidTxId = false;
+            const string sCollectionActTxId = pActionRegTicket->getCollectionActTxId();
+            const auto collectionActTicket = pActionRegTicket->RetrieveCollectionActivateTicket(error, bInvalidTxId);
+            if (bInvalidTxId)
+            {
+                tv.errorMsg = move(error);
+                break;
+            }
+            // check that we've got collection ticket
+            if (!collectionActTicket)
+            {
+                tv.errorMsg = strprintf(
+                    "The %s ticket [txid=%s] referred by this %s ticket [txid=%s] is not in the blockchain. %s",
+                    CollectionActivateTicket::GetTicketDescription(), sCollectionActTxId,
+                    pActionRegTicket->GetTicketDescription(), pActionRegTicket->GetTxId(), error);
+                tv.state = TICKET_VALIDATION_STATE::MISSING_INPUTS;
+                break;
+            }
+            const auto pCollActTicket = dynamic_cast<const CollectionActivateTicket*>(collectionActTicket.get());
+            if (collectionActTicket->ID() != TicketID::CollectionAct || !pCollActTicket)
+            {
+                tv.errorMsg = strprintf(
+                    "The %s ticket [txid=%s] referred by this %s ticket [txid=%s] has invalid type '%s'",
+                    CollectionActivateTicket::GetTicketDescription(), sCollectionActTxId,
+                    pActionRegTicket->GetTicketDescription(), pActionRegTicket->GetTxId(), ::GetTicketDescription(collectionActTicket->ID()));
+				break;
+			}
+            const string sCollectionRegTxId = pCollActTicket->getRegTxId();
+            auto collectionRegTicket = CollectionActivateTicket::RetrieveCollectionRegTicket(error, sCollectionRegTxId, bInvalidTxId);
+            if (!collectionRegTicket)
+            {
+                // collection registration ticket should have been validated by this point, but double check it to make sure
+                if (bInvalidTxId)
+                {
+                    tv.errorMsg = move(error);
+                    break;
+                }
+                tv.errorMsg = strprintf(
+					"The %s ticket with this txid [%s] is not in the blockchain or is invalid", 
+					CollectionRegTicket::GetTicketDescription(), sCollectionRegTxId);
+				break;
+			}
+            const auto pCollRegTicket = dynamic_cast<const CollectionRegTicket*>(collectionRegTicket.get());
+            if (collectionRegTicket->ID() != TicketID::CollectionReg || !pCollRegTicket)
+            {
+                tv.errorMsg = strprintf(
+                    "The %s ticket [txid=%s] referred by this %s ticket [txid=%s] has invalid type '%s'",
+                    CollectionRegTicket::GetTicketDescription(), sCollectionRegTxId,
+                    GetTicketDescription(), GetTxId(), ::GetTicketDescription(collectionRegTicket->ID()));
+				break;
+			}
+            const size_t nCollectionItemCount = pActionRegTicket->CountItemsInCollection();
+            // check if we will have more than allowed number of items in the collection if we register this item
+            if (nCollectionItemCount + 1 > pCollRegTicket->getMaxCollectionEntries())
+            {
+                tv.errorMsg = strprintf(
+					"Collection '%s' with this txid [%s] has reached the maximum number of items [%u] allowed in the collection",
+					pCollRegTicket->getName(), sCollectionRegTxId, pCollRegTicket->getMaxCollectionEntries());
+                break;
+            }
         }
         tv.setValid();
     } while (false);
@@ -229,14 +296,14 @@ bool CActionActivateTicket::FindTicketInDb(const string& key, CActionActivateTic
     return masterNodeCtrl.masternodeTickets.FindTicket(ticket);
 }
 
-ActionActivateTickets_t CActionActivateTicket::FindAllTicketByPastelID(const std::string& pastelID)
+ActionActivateTickets_t CActionActivateTicket::FindAllTicketByMVKey(const std::string& sMVKey)
 {
-    return masterNodeCtrl.masternodeTickets.FindTicketsByMVKey<CActionActivateTicket>(pastelID);
+    return masterNodeCtrl.masternodeTickets.FindTicketsByMVKey<CActionActivateTicket>(sMVKey);
 }
 
-ActionActivateTickets_t CActionActivateTicket::FindAllTicketByCalledAtHeight(const unsigned int nCalledAtHeight)
+ActionActivateTickets_t CActionActivateTicket::FindAllTicketByCalledAtHeight(const uint32_t nCalledAtHeight)
 {
-    return masterNodeCtrl.masternodeTickets.FindTicketsByMVKey<CActionActivateTicket>(std::to_string(nCalledAtHeight));
+    return FindAllTicketByMVKey(std::to_string(nCalledAtHeight));
 }
 
 bool CActionActivateTicket::CheckTicketExistByActionRegTicketID(const std::string& regTicketTxId)

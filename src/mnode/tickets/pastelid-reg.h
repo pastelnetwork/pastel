@@ -49,7 +49,7 @@ keys:
 class CPastelIDRegTicket : public CPastelTicket
 {
 public:
-    CPastelIDRegTicket() = default;
+    CPastelIDRegTicket() noexcept = default;
     explicit CPastelIDRegTicket(std::string&& _pastelID) : 
         m_sPastelID(std::move(_pastelID))
     {}
