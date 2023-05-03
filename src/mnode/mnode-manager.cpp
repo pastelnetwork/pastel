@@ -1132,6 +1132,21 @@ void CMasternodeMan::SendVerifyReply(CNode* pnode, CMasternodeVerification& mnv)
         return;
     }
 
+#define USE_DELAY_MESSAGE_SENDING
+#ifdef USE_DELAY_MESSAGE_SENDING
+    // delay sending reply to make it harder to correlate request and reply
+    // and to make it harder to spoof reply
+    // this is not a perfect solution, but it's better than nothing
+    // and it's not a big deal if we fail to send it
+    // (we will try again later)
+    // we will sleep random amount of time between 0 and 1 second
+    // (we don't want to sleep too long, because we don't want to delay
+    //  other messages)
+    const int64_t nSleepTime = GetRandInt(1000);
+    LogFnPrintf("INFO: delaying sending reply for %d ms", nSleepTime);
+    MilliSleep(nSleepTime);
+#endif
+
     pnode->PushMessage(NetMsgType::MNVERIFY, mnv);
     masterNodeCtrl.requestTracker.AddFulfilledRequest(pnode->addr, strprintf("%s", NetMsgType::MNVERIFY)+"-reply");
 }
