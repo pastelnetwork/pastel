@@ -3021,7 +3021,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         tickets_list = self.nodes[self.non_mn3].tickets("list", "nft", "inactive")
         assert_equal(len(tickets_list), self.ticket_counter(TicketType.NFT) - self.ticket_counter(TicketType.ACTIVATE))
         tickets_list = self.nodes[self.non_mn3].tickets("list", "nft", "transferred")
-        assert_equal(len(tickets_list), loop_number + 1)
+        assert_equal(len(tickets_list), loop_number + 2)
 
         print(' --- list act')
         tickets_list = self.nodes[self.non_mn3].tickets("list", "act")
@@ -3031,7 +3031,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         tickets_list = self.nodes[self.non_mn3].tickets("list", "act", "available")
         assert_equal(len(tickets_list), loop_number + 1)
         tickets_list = self.nodes[self.non_mn3].tickets("list", "act", "transferred")
-        assert_equal(len(tickets_list), loop_number + 1)
+        assert_equal(len(tickets_list), loop_number + 2)
 
         cur_block = self.nodes[self.non_mn3].getblockcount()
         offer_ticket1_txid = self.nodes[self.non_mn3].tickets("register", "offer", nft_ticket2_act_ticket_txid,
@@ -3101,7 +3101,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         tickets_list = self.nodes[self.non_mn3].tickets("list", "transfer", "all")
         assert_equal(len(tickets_list), self.ticket_counter(TicketType.TRANSFER))
         tickets_list = self.nodes[self.non_mn3].tickets("list", "transfer", "available")
-        available_transfer_tickets = 8*(loop_number + 1)
+        available_transfer_tickets = 10*(loop_number + 1)
         assert_equal(len(tickets_list), available_transfer_tickets)
         tickets_list = self.nodes[self.non_mn3].tickets("list", "transfer", "transferred")
         assert_equal(len(tickets_list), self.ticket_counter(TicketType.TRANSFER) - available_transfer_tickets)
