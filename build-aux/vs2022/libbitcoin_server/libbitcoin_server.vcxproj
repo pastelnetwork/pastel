@@ -140,7 +140,7 @@
     <ClCompile Include="..\..\..\src\mnode\tickets\action-act.cpp" />
     <ClCompile Include="..\..\..\src\mnode\tickets\action-reg.cpp" />
     <ClCompile Include="..\..\..\src\mnode\tickets\collection-item.cpp" />
-    <ClCompile Include="..\..\..\src\mnode\tickets\etherium-address-change.cpp" />
+    <ClCompile Include="..\..\..\src\mnode\tickets\ethereum-address-change.cpp" />
     <ClCompile Include="..\..\..\src\mnode\tickets\nft-act.cpp" />
     <ClCompile Include="..\..\..\src\mnode\tickets\accept.cpp" />
     <ClCompile Include="..\..\..\src\mnode\tickets\collection-act.cpp" />
@@ -250,7 +250,7 @@
     <ClInclude Include="..\..\..\src\mnode\tickets\action-act.h" />
     <ClInclude Include="..\..\..\src\mnode\tickets\action-reg.h" />
     <ClInclude Include="..\..\..\src\mnode\tickets\collection-item.h" />
-    <ClInclude Include="..\..\..\src\mnode\tickets\etherium-address-change.h" />
+    <ClInclude Include="..\..\..\src\mnode\tickets\ethereum-address-change.h" />
     <ClInclude Include="..\..\..\src\mnode\tickets\collection-act.h" />
     <ClInclude Include="..\..\..\src\mnode\tickets\collection-reg.h" />
     <ClInclude Include="..\..\..\src\mnode\tickets\ticket-extra-fees.h" />

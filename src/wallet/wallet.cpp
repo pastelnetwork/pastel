@@ -1819,7 +1819,8 @@ optional<pair<
 {
     auto output = this->vShieldedOutput[op.n];
 
-    for (auto ovk : ovks) {
+    for (const auto &ovk : ovks)
+    {
         auto outPt = SaplingOutgoingPlaintext::decrypt(
             output.outCiphertext,
             ovk,
@@ -1855,7 +1856,8 @@ optional<pair<
 {
     auto output = this->vShieldedOutput[op.n];
 
-    for (auto ovk : ovks) {
+    for (const auto &ovk : ovks)
+    {
         auto outPt = SaplingOutgoingPlaintext::decrypt(
             output.outCiphertext,
             ovk,
@@ -3012,7 +3014,7 @@ bool CWallet::CreateTransaction(const vector<CRecipient>& vecSend, CWalletTx& wt
                     else
                     {
                         // Insert change txn at random position:
-                        nChangePosRet = GetRandInt(txNew.vout.size()+1);
+                        nChangePosRet = GetRandInt(static_cast<int>(txNew.vout.size()) + 1);
                         const auto position = txNew.vout.cbegin() + nChangePosRet;
                         txNew.vout.insert(position, newTxOut);
                     }

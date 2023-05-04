@@ -86,7 +86,7 @@ signatures: {
 
 key   #1: unique primary key (generated)
 key   #2: lowercased collection name (for case insensitive search)
-mvkey #1: creator PastelID
+mvkey #1: creator Pastel ID
 mvkey #2: label (optional)
 }
 */
@@ -95,7 +95,7 @@ class CollectionRegTicket :
     public CTicketSignedWithExtraFees
 {
 public:
-    CollectionRegTicket() = default;
+    CollectionRegTicket() noexcept = default;
     explicit CollectionRegTicket(std::string &&collection_ticket) : 
         m_sCollectionTicket(std::move(collection_ticket))
     {}
@@ -175,7 +175,7 @@ public:
     static bool FindTicketInDb(const std::string& key, CollectionRegTicket& ticket);
     static bool FindTicketInDbByCollectionName(const std::string& sCollectionName, CollectionRegTicket& ticket);
     static bool CheckIfTicketInDb(const std::string& key);
-    static CollectionRegTickets_t FindAllTicketByPastelID(const std::string& pastelID);
+    static CollectionRegTickets_t FindAllTicketByMVKey(const std::string& sMVKey);
 
 protected:
     std::string m_sCollectionTicket;     // collection registration ticket (json format)

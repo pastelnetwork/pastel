@@ -8,6 +8,7 @@
 #include <utilstrencodings.h>
 #include <mnode/tickets/pastelid-reg.h>
 #include <mnode/tickets/action-reg.h>
+#include <mnode/tickets/collection-act.h>
 
 #ifdef ENABLE_WALLET
 #include <wallet/wallet.h>
@@ -272,17 +273,11 @@ bool CActionRegTicket::setActionType(const string& sActionType) noexcept
     return (m_ActionType != ACTION_TICKET_TYPE::UNKNOWN);
 }
 
-uint32_t CActionRegTicket::CountItemsInCollection(const uint32_t currentChainHeight) const
+uint32_t CActionRegTicket::CountItemsInCollection() const
 {
-    uint32_t nCollectionItemCount = 0;
-    masterNodeCtrl.masternodeTickets.ProcessTicketsByMVKey<CActionRegTicket>(m_sCollectionActTxid,
-                                                                            [&](const CActionRegTicket& regTicket) -> bool
-                                                                            {
-                                                                                if ((regTicket.GetBlock() <= currentChainHeight))
-                                                                                    ++nCollectionItemCount;
-                                                                                return true;
-                                                                            });
-    return nCollectionItemCount;
+    if (m_ActionType == ACTION_TICKET_TYPE::SENSE)
+        return CollectionActivateTicket::CountItemsInCollection(m_sCollectionActTxid, COLLECTION_ITEM_TYPE::SENSE, true);
+    return 0;
 }
 
 /**
@@ -435,9 +430,9 @@ bool CActionRegTicket::CheckIfTicketInDb(const string& key)
     return masterNodeCtrl.masternodeTickets.CheckTicketExist(ticket);
 }
 
-ActionRegTickets_t CActionRegTicket::FindAllTicketByPastelID(const string& pastelID)
+ActionRegTickets_t CActionRegTicket::FindAllTicketByMVKey(const string& sMVKey)
 {
-    return masterNodeCtrl.masternodeTickets.FindTicketsByMVKey<CActionRegTicket>(pastelID);
+    return masterNodeCtrl.masternodeTickets.FindTicketsByMVKey<CActionRegTicket>(sMVKey);
 }
 
 /**

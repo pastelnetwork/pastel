@@ -36,7 +36,7 @@ void CChain::SetTip(CBlockIndex *pindex)
         vChain[pindex->nHeight] = pindex;
         pindex = pindex->pprev;
     }
-    gl_nChainHeight = vChain.size() - 1;
+    gl_nChainHeight = static_cast<uint32_t>(vChain.size()) - 1;
 }
 
 CBlockLocator CChain::GetLocator(const CBlockIndex *pindex) const {

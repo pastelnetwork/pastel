@@ -225,9 +225,9 @@ bool CNFTRoyaltyTicket::FindTicketInDb(const string& key, CNFTRoyaltyTicket& tic
     return masterNodeCtrl.masternodeTickets.FindTicket(ticket);
 }
 
-NFTRoyaltyTickets_t CNFTRoyaltyTicket::FindAllTicketByPastelID(const string& pastelID)
+NFTRoyaltyTickets_t CNFTRoyaltyTicket::FindAllTicketByMVKey(const string& sMVKey)
 {
-    return masterNodeCtrl.masternodeTickets.FindTicketsByMVKey<CNFTRoyaltyTicket>(pastelID);
+    return masterNodeCtrl.masternodeTickets.FindTicketsByMVKey<CNFTRoyaltyTicket>(sMVKey);
 }
 
 NFTRoyaltyTickets_t CNFTRoyaltyTicket::FindAllTicketByNFTTxID(const string& NFTTxnId)

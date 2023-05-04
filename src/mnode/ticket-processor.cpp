@@ -958,8 +958,8 @@ string CPastelTicketProcessor::ListFilterNFTTickets(const uint32_t nMinHeight, c
                 if (CNFTActivateTicket::FindTicketInDb(t.GetTxId(), actTicket))
                 {
                     // find Transfer tickets listing that NFT Activate ticket txid as NFT ticket
-                    const auto vTransferTickets = CTransferTicket::FindAllTicketByItemTxID(actTicket.GetTxId());
-                    if (vTransferTickets.size() >= t.getTotalCopies())
+                    const auto vTransferTickets = CTransferTicket::FindAllTicketByMVKey(actTicket.GetTxId());
+                    if (!vTransferTickets.empty() && (vTransferTickets.size() >= t.getTotalCopies()))
                         return false; //don't skip transferred|sold
                 }
             }
@@ -1006,7 +1006,7 @@ string CPastelTicketProcessor::ListFilterActionTickets(const uint32_t nMinHeight
                 if (CActionActivateTicket::FindTicketInDb(t.GetTxId(), actionActTicket))
                 {
                     // find Transfer tickets listing that Action Activate ticket txid
-                    const auto vTransferTickets = CTransferTicket::FindAllTicketByItemTxID(actionActTicket.GetTxId());
+                    const auto vTransferTickets = CTransferTicket::FindAllTicketByMVKey(actionActTicket.GetTxId());
                     if (!vTransferTickets.empty())
                         return false; //don't skip transferred
                 }
@@ -1028,11 +1028,11 @@ string CPastelTicketProcessor::ListFilterActTickets(const uint32_t nMinHeight, c
     return filterTickets<CNFTActivateTicket>(
         [&](const CNFTActivateTicket& t, const unsigned int chainHeight) -> bool
         {
-            // find Transfer tickets listing this Act ticket txid as NFT ticket
-            const auto vTransferTickets = CTransferTicket::FindAllTicketByItemTxID(t.GetTxId());
+            // find Transfer tickets listing this NFT Activation ticket txid as NFT ticket
+            const auto vTransferTickets = CTransferTicket::FindAllTicketByMVKey(t.GetTxId());
             const auto ticket = GetTicket(t.getRegTxId(), TicketID::NFT);
             const auto NFTRegTicket = dynamic_cast<CNFTRegTicket*>(ticket.get());
-            if (!NFTRegTicket)
+            if (!NFTRegTicket || vTransferTickets.empty())
                 return true;
             if (vTransferTickets.size() < NFTRegTicket->getTotalCopies())
             {
@@ -1124,7 +1124,7 @@ string CPastelTicketProcessor::ListFilterTransferTickets(const uint32_t nMinHeig
         [&](const CTransferTicket& t, const unsigned int chainHeight) -> bool
         {
             // find Transfer tickets listing this Transfer ticket txid as NFT ticket
-            const auto vTransferTickets = CTransferTicket::FindAllTicketByItemTxID(t.GetTxId());
+            const auto vTransferTickets = CTransferTicket::FindAllTicketByMVKey(t.GetTxId());
             if (!pastelID.empty() && t.getPastelID() != pastelID)
                 return true; // ignore tickets that do not belong to this pastelID
             if (filter == 0)
@@ -1953,7 +1953,7 @@ optional<reg_transfer_txid_t> CPastelTicketProcessor::ValidateOwnership(const st
 
     // If we are here it means it is a nested transfer ticket 
     // List transfer tickets by reg txID and rearrange them by blockheight
-    const auto vTransferTickets = CTransferTicket::FindAllTicketByItemRegTxID(item_txid);
+    const auto vTransferTickets = CTransferTicket::FindAllTicketByMVKey(item_txid);
     
     // Go through each if not empty and rearrange them by block-height
     if (!vTransferTickets.empty())

@@ -58,7 +58,7 @@ public:
     std::string key; // primary key to search for the offer ticket
 
 public:
-    COfferTicket() = default;
+    COfferTicket() noexcept = default;
 
     explicit COfferTicket(std::string _pastelID) : 
         m_sPastelID(std::move(_pastelID))
@@ -150,8 +150,7 @@ public:
         SecureString&& strKeyPass);
     static bool FindTicketInDb(const std::string& key, COfferTicket& ticket);
 
-    static OfferTickets_t FindAllTicketByPastelID(const std::string& pastelID);
-    static OfferTickets_t FindAllTicketByItemTxId(const std::string& itemTxId);
+    static OfferTickets_t FindAllTicketByMVKey(const std::string& sMVKey);
 
 protected:
     std::string m_itemTxId;  // item activation txid (NFT activation txid, Action activation txid, ...)

@@ -12,6 +12,7 @@
 #include <mnode/tickets/nft-royalty.h>
 #include <mnode/tickets/nft-reg.h>
 #include <mnode/tickets/collection-reg.h>
+#include <mnode/tickets/collection-act.h>
 #include <mnode/mnode-controller.h>
 
 #ifdef ENABLE_WALLET
@@ -322,17 +323,9 @@ void CNFTRegTicket::Clear() noexcept
     m_props.clear();
 }
 
-uint32_t CNFTRegTicket::CountItemsInCollection(const uint32_t currentChainHeight) const
+uint32_t CNFTRegTicket::CountItemsInCollection() const
 {
-    uint32_t nCollectionItemCount = 0;
-    masterNodeCtrl.masternodeTickets.ProcessTicketsByMVKey<CNFTRegTicket>(m_sCollectionActTxid,
-                                                                            [&](const CNFTRegTicket& regTicket) -> bool
-                                                                            {
-                                                                                if ((regTicket.GetBlock() <= currentChainHeight))
-                                                                                    ++nCollectionItemCount;
-                                                                                return true;
-                                                                            });
-    return nCollectionItemCount;
+    return CollectionActivateTicket::CountItemsInCollection(m_sCollectionActTxid, COLLECTION_ITEM_TYPE::NFT, true);
 }
 
 /**
@@ -413,7 +406,7 @@ bool CNFTRegTicket::CheckIfTicketInDb(const string& key)
     return masterNodeCtrl.masternodeTickets.CheckTicketExist(ticket);
 }
 
-NFTRegTickets_t CNFTRegTicket::FindAllTicketByPastelID(const string& pastelID)
+NFTRegTickets_t CNFTRegTicket::FindAllTicketByMVKey(const string& sMVKey)
 {
-    return masterNodeCtrl.masternodeTickets.FindTicketsByMVKey<CNFTRegTicket>(pastelID);
+    return masterNodeCtrl.masternodeTickets.FindTicketsByMVKey<CNFTRegTicket>(sMVKey);
 }

@@ -1,7 +1,7 @@
 #pragma once
 // Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2014 The Bitcoin Core developers
-// Copyright (c) 2018-2022 The Pastel Core developers
+// Copyright (c) 2018-2023 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <optional>
@@ -39,12 +39,12 @@ struct NetworkUpgrade
     /**
      * The first protocol version which will understand the new consensus rules
      */
-    int nProtocolVersion;
+    int nProtocolVersion = 0;
 
     /**
      * Height of the first block for which the new consensus rules will be active
      */
-    uint32_t nActivationHeight;
+    uint32_t nActivationHeight = 0;
 
     /**
      * Special value for nActivationHeight indicating that the upgrade is always active.
@@ -72,34 +72,36 @@ struct Params
 {
     uint256 hashGenesisBlock;
 
-    int nSubsidyHalvingInterval;
+    int nSubsidyHalvingInterval = 0;
     /** Used to check majorities for block version upgrade */
-    int nMajorityEnforceBlockUpgrade;
-    int nMajorityRejectBlockOutdated;
-    int nMajorityWindow;
+    int nMajorityEnforceBlockUpgrade = 0;
+    int nMajorityRejectBlockOutdated = 0;
+    int nMajorityWindow = 0;
     NetworkUpgrade vUpgrades[to_integral_type(UpgradeIndex::MAX_NETWORK_UPGRADES)];
     /** Proof of work parameters */
     unsigned int nEquihashN = 0;
     unsigned int nEquihashK = 0;
     uint256 powLimit;
     std::optional<uint32_t> nPowAllowMinDifficultyBlocksAfterHeight;
-    int64_t nPowAveragingWindow;
-    int64_t nPowMaxAdjustDown;
-    int64_t nPowMaxAdjustUp;
-    int64_t nPowTargetSpacing;
+    int64_t nPowAveragingWindow = 0;
+    int64_t nPowMaxAdjustDown = 0;
+    int64_t nPowMaxAdjustUp = 0;
+    int64_t nPowTargetSpacing = 0;
 
     int64_t AveragingWindowTimespan() const noexcept { return nPowAveragingWindow * nPowTargetSpacing; }
     int64_t MinActualTimespan() const noexcept { return (AveragingWindowTimespan() * (100 - nPowMaxAdjustUp  )) / 100; }
     int64_t MaxActualTimespan() const noexcept { return (AveragingWindowTimespan() * (100 + nPowMaxAdjustDown)) / 100; }
     uint256 nMinimumChainWork;
-    int64_t nMaxGovernanceAmount;
+    int64_t nMaxGovernanceAmount = 0;
     // The period before a network upgrade activates, where connections to upgrading peers are preferred (in blocks)
     uint32_t nNetworkUpgradePeerPreferenceBlockPeriod = 0;
     ChainNetwork network;
 
     Params(const ChainNetwork aNetwork) :
         network(aNetwork)
-    {}
+    {
+
+    }
 
     /**
      * Add network upgrade.

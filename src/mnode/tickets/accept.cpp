@@ -208,7 +208,7 @@ bool CAcceptTicket::CheckAcceptTicketExistByOfferTicket(const string& offerTxnId
     return masterNodeCtrl.masternodeTickets.CheckTicketExist(ticket);
 }
 
-AcceptTickets_t CAcceptTicket::FindAllTicketByPastelID(const string& pastelID)
+AcceptTickets_t CAcceptTicket::FindAllTicketByMVKey(const string& sMVKey)
 {
-    return masterNodeCtrl.masternodeTickets.FindTicketsByMVKey<CAcceptTicket>(pastelID);
+    return masterNodeCtrl.masternodeTickets.FindTicketsByMVKey<CAcceptTicket>(sMVKey);
 }

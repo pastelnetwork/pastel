@@ -8,6 +8,10 @@
 #include <pastelid/common.h>
 #include <pastelid/pastel_key.h>
 #include <mnode/tickets/pastelid-reg.h>
+#include <mnode/tickets/action-reg.h>
+#include <mnode/tickets/action-act.h>
+#include <mnode/tickets/nft-reg.h>
+#include <mnode/tickets/nft-act.h>
 #include <mnode/tickets/collection-reg.h>
 #include <mnode/tickets/collection-act.h>
 #include <mnode/tickets/ticket-utils.h>
@@ -194,6 +198,27 @@ CAmount CollectionActivateTicket::GetExtraOutputs(vector<CTxOut>& outputs) const
 
 string CollectionActivateTicket::ToJSON(const bool bDecodeProperties) const noexcept
 {
+    string error;
+    bool bInvalidTxId = false;
+    // get collection registration ticket
+    size_t nCollectionItemCount = 0;
+    string sCollectionState;
+    bool bIsCollectionFull = false;
+    bool bIsCollectionExpiredByHeight = false;
+    const auto collectionRegTicket = RetrieveCollectionRegTicket(error, m_regTicketTxId, bInvalidTxId);
+    if (!bInvalidTxId && collectionRegTicket && (collectionRegTicket->ID() == TicketID::CollectionReg))
+    {
+        const auto pCollRegTicket = dynamic_cast<const CollectionRegTicket*>(collectionRegTicket.get());
+        if (pCollRegTicket)
+        {
+            const auto nActiveChainHeight = gl_nChainHeight + 1;
+            nCollectionItemCount = CountItemsInCollection(GetTxId(), pCollRegTicket->getItemType(), true);
+            bIsCollectionFull = nCollectionItemCount >= pCollRegTicket->getMaxCollectionEntries();
+            bIsCollectionExpiredByHeight = nActiveChainHeight > pCollRegTicket->getCollectionFinalAllowedBlockHeight();
+			sCollectionState = bIsCollectionFull || bIsCollectionExpiredByHeight ? "finalized" : "in-process";
+		}
+    }
+    
     const json jsonObj
     {
         { "txid", m_txid },
@@ -207,6 +232,10 @@ string CollectionActivateTicket::ToJSON(const bool bDecodeProperties) const noex
                 { "reg_txid", m_regTicketTxId },
                 { "creator_height", m_creatorHeight },
                 { "storage_fee", m_storageFee },
+                { "activated_item_count", nCollectionItemCount },
+                { "collection_state", sCollectionState.empty() ? "not-defined" : sCollectionState },
+                { "is_expired_by_height", bIsCollectionExpiredByHeight },
+                { "is_full", bIsCollectionFull },
                 { "signature", ed_crypto::Hex_Encode(m_signature.data(), m_signature.size()) }
             }
         }
@@ -221,14 +250,14 @@ bool CollectionActivateTicket::FindTicketInDb(const string& key, CollectionActiv
     return masterNodeCtrl.masternodeTickets.FindTicket(ticket);
 }
 
-CollectionActivateTickets_t CollectionActivateTicket::FindAllTicketByPastelID(const std::string& pastelID)
+CollectionActivateTickets_t CollectionActivateTicket::FindAllTicketByMVKey(const std::string& sMVKey)
 {
-    return masterNodeCtrl.masternodeTickets.FindTicketsByMVKey<CollectionActivateTicket>(pastelID);
+    return masterNodeCtrl.masternodeTickets.FindTicketsByMVKey<CollectionActivateTicket>(sMVKey);
 }
 
-CollectionActivateTickets_t CollectionActivateTicket::FindAllTicketByCreatorHeight(const unsigned int nCreatorHeight)
+CollectionActivateTickets_t CollectionActivateTicket::FindAllTicketByCreatorHeight(const uint32_t nCreatorHeight)
 {
-    return masterNodeCtrl.masternodeTickets.FindTicketsByMVKey<CollectionActivateTicket>(std::to_string(nCreatorHeight));
+    return FindAllTicketByMVKey(std::to_string(nCreatorHeight));
 }
 
 bool CollectionActivateTicket::CheckTicketExistByCollectionTicketID(const std::string& regTicketTxId)
@@ -236,4 +265,99 @@ bool CollectionActivateTicket::CheckTicketExistByCollectionTicketID(const std::s
     CollectionActivateTicket ticket;
     ticket.setRegTxId(regTicketTxId);
     return masterNodeCtrl.masternodeTickets.CheckTicketExist(ticket);
+}
+
+/**
+ * Calcalate number of items in the collection.
+ * 
+ * \param sCollectionActTxid - txid of the collection activate ticket
+ * \param itemType - collection item type
+ * \param bActivatedOnly - count only activated items (items with activation ticket)
+ * \return number of items in the collection
+ */
+uint32_t CollectionActivateTicket::CountItemsInCollection(const std::string& sCollectionActTxid, const COLLECTION_ITEM_TYPE itemType, bool bActivatedOnly)
+{
+    uint32_t nCollectionItemCount = 0;
+    const uint32_t nActiveChainHeight = gl_nChainHeight + 1;
+    if (itemType == COLLECTION_ITEM_TYPE::SENSE)
+    {
+        masterNodeCtrl.masternodeTickets.ProcessTicketsByMVKey<CActionRegTicket>(sCollectionActTxid,
+            [&](const CActionRegTicket& regTicket) -> bool
+            {
+                if (bActivatedOnly)
+                {
+                    CActionActivateTicket actTicket;
+                    string sRegTxId = regTicket.GetTxId();
+                    actTicket.SetKeyOne(move(sRegTxId));
+                    if (masterNodeCtrl.masternodeTickets.CheckTicketExist(actTicket))
+                        ++nCollectionItemCount;
+                } else
+                    ++nCollectionItemCount;
+                return true;
+            });
+    } 
+    else if (itemType == COLLECTION_ITEM_TYPE::NFT)
+    {
+        masterNodeCtrl.masternodeTickets.ProcessTicketsByMVKey<CNFTRegTicket>(sCollectionActTxid,
+            [&](const CNFTRegTicket& regTicket) -> bool
+            {
+                if (bActivatedOnly)
+                {
+                    CNFTActivateTicket actTicket;
+                    string sRegTxId = regTicket.GetTxId();
+                    actTicket.SetKeyOne(move(sRegTxId));
+                    if (masterNodeCtrl.masternodeTickets.CheckTicketExist(actTicket))
+                        ++nCollectionItemCount;
+                } else
+                    ++nCollectionItemCount;
+                return true;
+            });
+    }
+    return nCollectionItemCount;
+}
+
+/**
+ * Get collection ticket by txid.
+ *
+ * \param txid - collection ticket transaction id
+ * \return collection ticket
+ */
+unique_ptr<CPastelTicket> CollectionActivateTicket::GetCollectionTicket(const uint256& txid)
+{
+    return masterNodeCtrl.masternodeTickets.GetTicket(txid);
+}
+
+/**
+ * Retrieve referred collection registration ticket.
+ *
+ * \param error - return error if collection not found
+ * \param sRegTxId - collection registration ticket txid
+ * \param bInvalidTxId - set to true if collection txid is invalid
+ * \return nullopt if collection txid is invalid, false - if collection ticket not found
+ */
+unique_ptr<CPastelTicket> CollectionActivateTicket::RetrieveCollectionRegTicket(string& error, const string& sRegTxId, bool& bInvalidTxId) noexcept
+{
+    unique_ptr<CPastelTicket> collectionRegTicket;
+    bInvalidTxId = false;
+    do
+    {
+        uint256 collection_reg_txid;
+        // extract and validate collection txid
+        if (!parse_uint256(error, collection_reg_txid, sRegTxId, "collection registration ticket txid"))
+        {
+            bInvalidTxId = true;
+            break;
+        }
+
+        // get the collection registration ticket pointed by txid
+        try
+        {
+            collectionRegTicket = GetCollectionTicket(collection_reg_txid);
+        }
+        catch (const std::exception& ex)
+        {
+            error = ex.what();
+        }
+    } while (false);
+    return collectionRegTicket;
 }

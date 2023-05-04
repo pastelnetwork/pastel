@@ -258,6 +258,11 @@ bool CChangeUsernameTicket::FindTicketInDb(const string& key, CChangeUsernameTic
     return masterNodeCtrl.masternodeTickets.FindTicket(ticket);
 }
 
+ChangeUsernameTickets_t CChangeUsernameTicket::FindAllTicketByMVKey(const string& sMVKey)
+{
+    return masterNodeCtrl.masternodeTickets.FindTicketsByMVKey<CChangeUsernameTicket>(sMVKey);
+}
+
 bool CChangeUsernameTicket::isUsernameBad(const string& username, string& error)
 {
     // Check if has only <4, or has more than 12 characters

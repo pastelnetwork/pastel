@@ -6,6 +6,7 @@
 #include <utilstrencodings.h>
 #include <mnode/tickets/collection-reg.h>
 #include <mnode/mnode-controller.h>
+
 #include <test_mnode/test_data.h>
 
 using namespace std;

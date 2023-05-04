@@ -35,7 +35,7 @@ public:
     static constexpr uint8_t PRINCIPAL_MN_FEE_SHARE = 60; // in percents
     static constexpr uint8_t OTHER_MN_FEE_SHARE = 20;     // in percents
 
-    CNFTActivateTicket() = default;
+    CNFTActivateTicket() noexcept = default;
 
     explicit CNFTActivateTicket(std::string &&sPastelID)  
     {
@@ -115,8 +115,8 @@ public:
     static CNFTActivateTicket Create(std::string &&regTicketTxId, int _creatorHeight, int _storageFee, std::string &&sPastelID, SecureString&& strKeyPass);
     static bool FindTicketInDb(const std::string& key, CNFTActivateTicket& ticket);
 
-    static NFTActivateTickets_t FindAllTicketByPastelID(const std::string& pastelID);
-    static NFTActivateTickets_t FindAllTicketByCreatorHeight(const unsigned int nCreatorHeight);
+    static NFTActivateTickets_t FindAllTicketByMVKey(const std::string& sMVKey);
+    static NFTActivateTickets_t FindAllTicketByCreatorHeight(const uint32_t nCreatorHeight);
     static bool CheckTicketExistByNFTTicketID(const std::string& regTicketTxId);
 
 protected:

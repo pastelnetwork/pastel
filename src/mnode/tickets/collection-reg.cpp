@@ -465,7 +465,7 @@ bool CollectionRegTicket::CheckIfTicketInDb(const string& key)
     return masterNodeCtrl.masternodeTickets.CheckTicketExist(ticket);
 }
 
-CollectionRegTickets_t CollectionRegTicket::FindAllTicketByPastelID(const string& pastelID)
+CollectionRegTickets_t CollectionRegTicket::FindAllTicketByMVKey(const string& sMVKey)
 {
-    return masterNodeCtrl.masternodeTickets.FindTicketsByMVKey<CollectionRegTicket>(pastelID);
+    return masterNodeCtrl.masternodeTickets.FindTicketsByMVKey<CollectionRegTicket>(sMVKey);
 }
