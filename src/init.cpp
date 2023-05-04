@@ -235,26 +235,10 @@ void Shutdown(CServiceThreadGroup& threadGroup, CScheduler &scheduler)
         LOCK(cs_main);
         if (pcoinsTip)
             FlushStateToDisk();
-        if (pcoinsTip)
-        {
-            delete pcoinsTip;
-            pcoinsTip = nullptr;
-        }
-        if (pcoinscatcher)
-        {
-            delete pcoinscatcher;
-            pcoinscatcher = nullptr;
-        }
-        if (pcoinsdbview)
-        {
-            delete pcoinsdbview;
-            pcoinsdbview = nullptr;
-        }
-        if (pblocktree)
-        {
-            delete pblocktree;
-            pblocktree = nullptr;
-        }
+        safe_delete_obj(pcoinsTip);
+        safe_delete_obj(pcoinscatcher);
+        safe_delete_obj(pcoinsdbview);
+        safe_delete_obj(pblocktree);
     }
 #ifdef ENABLE_WALLET
     if (pwalletMain)
@@ -1499,10 +1483,10 @@ bool AppInit2(CServiceThreadGroup& threadGroup, CScheduler& scheduler)
         do {
             try {
                 UnloadBlockIndex();
-                delete pcoinsTip;
-                delete pcoinsdbview;
-                delete pcoinscatcher;
-                delete pblocktree;
+                safe_delete_obj(pcoinsTip);
+                safe_delete_obj(pcoinsdbview);
+                safe_delete_obj(pcoinscatcher);
+                safe_delete_obj(pblocktree);
 
                 pblocktree = new CBlockTreeDB(nBlockTreeDBCache, false, fReindex);
                 pcoinsdbview = new CCoinsViewDB(nCoinDBCache, false, fReindex);

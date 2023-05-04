@@ -1,6 +1,6 @@
 // Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2014 The Bitcoin Core developers
-// Copyright (c) 2018-2022 The Pastel Core developers
+// Copyright (c) 2018-2023 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <deque>
@@ -10,6 +10,10 @@
 
 using namespace std;
 
+constexpr size_t CHAIN_RESERVE_SIZE = 500;
+
+atomic_uint32_t gl_nChainHeight;
+
 /**
  * CChain implementation
  */
@@ -18,14 +22,21 @@ void CChain::SetTip(CBlockIndex *pindex)
     if (!pindex)
     {
         vChain.clear();
+        gl_nChainHeight = 0;
         return;
     }
-    vChain.resize(pindex->nHeight + 1);
+    const size_t nRequiredSize = pindex->nHeight + 1;
+    if (vChain.capacity() < nRequiredSize + CHAIN_RESERVE_SIZE)
+    {
+        vChain.reserve(nRequiredSize + CHAIN_RESERVE_SIZE);
+    }
+    vChain.resize(nRequiredSize);
     while (pindex && vChain[pindex->nHeight] != pindex)
     {
         vChain[pindex->nHeight] = pindex;
         pindex = pindex->pprev;
     }
+    gl_nChainHeight = static_cast<uint32_t>(vChain.size()) - 1;
 }
 
 CBlockLocator CChain::GetLocator(const CBlockIndex *pindex) const {

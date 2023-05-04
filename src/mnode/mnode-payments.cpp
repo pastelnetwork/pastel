@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2022 The PASTELCoin Developers
+// Copyright (c) 2018-2023 The Pastel Core Developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -429,13 +429,14 @@ bool CMasternodeBlockPayees::IsTransactionValid(const CTransaction& txNew) const
     {
         LogFnPrintf("ERROR: Missing required payment, possible payees: '%s', amount: %" PRId64 " PSL",
             strPayeesPossible, nMasternodePayment);
+        size_t i = 1;
         for (const auto& txout : txNew.vout)
         {
             CTxDestination dest;
             if (!ExtractDestination(txout.scriptPubKey, dest))
                 continue;
-            LogPrintf("\t%s -- %" PRId64 " \n", keyIO.EncodeDestination(dest), txout.nValue);
-            LogPrintf("\t%s\n", txout.scriptPubKey.ToString());
+            LogFnPrintf("\t%zu) %s -- %" PRId64, i++, keyIO.EncodeDestination(dest), txout.nValue);
+            LogFnPrintf("\t  %s", txout.scriptPubKey.ToString());
         }
     }
     return bFound;
@@ -523,12 +524,15 @@ bool CMasternodePaymentVote::IsValid(CNode* pnode, int nValidationHeight, string
 
     // Only masternodes should try to check masternode rank for old votes - they need to pick the right winner for future blocks.
     // Regular clients (miners included) need to verify masternode rank for future block votes only.
-    if(!masterNodeCtrl.IsMasterNode() && nBlockHeight < nValidationHeight) return true;
+    if (!masterNodeCtrl.IsMasterNode() && nBlockHeight < nValidationHeight)
+        return true;
 
     int nRank = -1;
 
-    if(!masterNodeCtrl.masternodeManager.GetMasternodeRank(vinMasternode.prevout, nRank, nBlockHeight + masterNodeCtrl.nMasternodePaymentsVotersIndexDelta, nMinRequiredProtocol)) {
-        LogFnPrint("mnpayments", "Can't calculate rank for masternode %s", vinMasternode.prevout.ToStringShort());
+    if(!masterNodeCtrl.masternodeManager.GetMasternodeRank(strError, vinMasternode.prevout, nRank, nBlockHeight + masterNodeCtrl.nMasternodePaymentsVotersIndexDelta, nMinRequiredProtocol))
+    {
+        strError = strprintf("Can't calculate rank for masternode %s. %s", vinMasternode.prevout.ToStringShort(), strError);
+        LogFnPrint("mnpayments", strError);
         return false;
     }
 
@@ -541,7 +545,7 @@ bool CMasternodePaymentVote::IsValid(CNode* pnode, int nValidationHeight, string
         if(nRank > MNPAYMENTS_SIGNATURES_TOTAL*2 && nBlockHeight > nValidationHeight)
         {
             strError = strprintf("Masternode is not in the top %d (%d)", MNPAYMENTS_SIGNATURES_TOTAL*2, nRank);
-            LogFnPrintf("Error: %s", strError);
+            LogFnPrintf("ERROR: %s", strError);
             Misbehaving(pnode->GetId(), 20);
         }
         // Still invalid however
@@ -565,10 +569,10 @@ bool CMasternodePayments::ProcessBlock(int nBlockHeight)
 
     //see if we can vote - we must be in the top 20 masternode list to be allowed to vote
     int nRank = -1;
-
-    if (!masterNodeCtrl.masternodeManager.GetMasternodeRank(masterNodeCtrl.activeMasternode.outpoint, nRank, nBlockHeight + masterNodeCtrl.nMasternodePaymentsVotersIndexDelta))
+    string error;
+    if (!masterNodeCtrl.masternodeManager.GetMasternodeRank(error, masterNodeCtrl.activeMasternode.outpoint, nRank, nBlockHeight + masterNodeCtrl.nMasternodePaymentsVotersIndexDelta))
     {
-        LogFnPrint("mnpayments", "Unknown Masternode");
+        LogFnPrint("mnpayments", "Can't get Masternode %s rank. %s", masterNodeCtrl.activeMasternode.outpoint.ToStringShort(), error);
         return false;
     }
 
@@ -628,12 +632,14 @@ void CMasternodePayments::CheckPreviousBlockVotes(int nPrevBlockHeight)
     if (!masterNodeCtrl.masternodeSync.IsWinnersListSynced())
         return;
 
-    string debugStr = strprintf("CMasternodePayments::CheckPreviousBlockVotes -- nPrevBlockHeight=%d, expected voting MNs: ", nPrevBlockHeight);
+    string debugStr = strprintf("nPrevBlockHeight=%d, expected voting MNs: ", nPrevBlockHeight);
 
     CMasternodeMan::rank_pair_vec_t mns;
-    if (!masterNodeCtrl.masternodeManager.GetMasternodeRanks(mns, nPrevBlockHeight + masterNodeCtrl.nMasternodePaymentsVotersIndexDelta))
+    string error;
+    auto status = masterNodeCtrl.masternodeManager.GetMasternodeRanks(error, mns, nPrevBlockHeight + masterNodeCtrl.nMasternodePaymentsVotersIndexDelta);
+    if (status != GetTopMasterNodeStatus::SUCCEEDED)
     {
-        debugStr += "GetMasternodeRanks failed\n";
+        debugStr += strprintf("GetMasternodeRanks failed - %s\n", error);
         LogFnPrint("mnpayments", "%s", debugStr);
         return;
     }
@@ -687,7 +693,7 @@ void CMasternodePayments::CheckPreviousBlockVotes(int nPrevBlockHeight)
     for (const auto &[outpoint, count] : mapMasternodesDidNotVote)
         debugStr += strprintf("   %s: %d\n", outpoint.ToStringShort(), count);
 
-    LogPrint("mnpayments", "%s", debugStr);
+    LogFnPrint("mnpayments", "%s", debugStr);
 }
 
 void CMasternodePaymentVote::Relay()

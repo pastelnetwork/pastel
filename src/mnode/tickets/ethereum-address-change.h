@@ -30,7 +30,7 @@ public:
     v_uint8 signature;
 
 public:
-    CChangeEthereumAddressTicket() = default;
+    CChangeEthereumAddressTicket() noexcept = default;
 
     explicit CChangeEthereumAddressTicket(std::string _pastelID, std::string _ethereumAddress) : 
         pastelID(std::move(_pastelID)), 
@@ -94,4 +94,5 @@ public:
     * return: true if bad, false if good to use
     */
     static bool isEthereumAddressInvalid(const std::string& ethereumAddress, std::string& error);
+    static ChangeEthereumAddressTickets_t FindAllTicketByMVKey(const std::string& sMVKey);
 };

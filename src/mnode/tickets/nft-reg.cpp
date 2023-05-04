@@ -12,6 +12,7 @@
 #include <mnode/tickets/nft-royalty.h>
 #include <mnode/tickets/nft-reg.h>
 #include <mnode/tickets/collection-reg.h>
+#include <mnode/tickets/collection-act.h>
 #include <mnode/mnode-controller.h>
 
 #ifdef ENABLE_WALLET
@@ -177,8 +178,13 @@ void CNFTRegTicket::parse_nft_ticket()
                     bool bHasGreen = false;
                     value.get_to(bHasGreen);
                     if (bHasGreen)
-                        m_sGreenAddress = GreenAddress(GetActiveChainHeight());
+                        m_sGreenAddress = GreenAddress(gl_nChainHeight + 1);
                 } break;
+
+                case NFT_TKT_PROP::version:
+                case NFT_TKT_PROP::app_ticket:
+                case NFT_TKT_PROP::unknown:
+                    break;
             } // switch
         } // for 
 
@@ -239,7 +245,7 @@ void CNFTRegTicket::set_collection_properties() noexcept
  */
 ticket_validation_t CNFTRegTicket::IsValid(const bool bPreReg, const uint32_t nCallDepth) const noexcept
 {
-    const auto chainHeight = GetActiveChainHeight();
+    const auto nActiveChainHeight = gl_nChainHeight + 1;
     ticket_validation_t tv;
     do
     {
@@ -258,7 +264,7 @@ ticket_validation_t CNFTRegTicket::IsValid(const bool bPreReg, const uint32_t nC
             }
 
             // A.2 validate that address has coins to pay for registration - 10PSL
-            const auto fullTicketPrice = TicketPricePSL(chainHeight); //10% of storage fee is paid by the 'creator' and this ticket is created by MN
+            const auto fullTicketPrice = TicketPricePSL(nActiveChainHeight); //10% of storage fee is paid by the 'creator' and this ticket is created by MN
             if (pwalletMain->GetBalance() < fullTicketPrice * COIN)
             {
                 tv.errorMsg = strprintf(
@@ -317,17 +323,9 @@ void CNFTRegTicket::Clear() noexcept
     m_props.clear();
 }
 
-uint32_t CNFTRegTicket::CountItemsInCollection(const uint32_t currentChainHeight) const
+uint32_t CNFTRegTicket::CountItemsInCollection() const
 {
-    uint32_t nCollectionItemCount = 0;
-    masterNodeCtrl.masternodeTickets.ProcessTicketsByMVKey<CNFTRegTicket>(m_sCollectionActTxid,
-                                                                            [&](const CNFTRegTicket& regTicket) -> bool
-                                                                            {
-                                                                                if ((regTicket.GetBlock() <= currentChainHeight))
-                                                                                    ++nCollectionItemCount;
-                                                                                return true;
-                                                                            });
-    return nCollectionItemCount;
+    return CollectionActivateTicket::CountItemsInCollection(m_sCollectionActTxid, COLLECTION_ITEM_TYPE::NFT, true);
 }
 
 /**
@@ -408,7 +406,7 @@ bool CNFTRegTicket::CheckIfTicketInDb(const string& key)
     return masterNodeCtrl.masternodeTickets.CheckTicketExist(ticket);
 }
 
-NFTRegTickets_t CNFTRegTicket::FindAllTicketByPastelID(const string& pastelID)
+NFTRegTickets_t CNFTRegTicket::FindAllTicketByMVKey(const string& sMVKey)
 {
-    return masterNodeCtrl.masternodeTickets.FindTicketsByMVKey<CNFTRegTicket>(pastelID);
+    return masterNodeCtrl.masternodeTickets.FindTicketsByMVKey<CNFTRegTicket>(sMVKey);
 }

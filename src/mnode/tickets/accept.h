@@ -31,7 +31,7 @@ public:
     v_uint8 m_signature;
 
 public:
-    CAcceptTicket() = default;
+    CAcceptTicket() noexcept = default;
 
     explicit CAcceptTicket(std::string &&sPastelID) : 
         m_sPastelID(std::move(sPastelID))
@@ -97,7 +97,7 @@ public:
 
     static bool CheckAcceptTicketExistByOfferTicket(const std::string& offerTxnId);
 
-    static AcceptTickets_t FindAllTicketByPastelID(const std::string& pastelID);
+    static AcceptTickets_t FindAllTicketByMVKey(const std::string& sMVKey);
 
 protected:
     std::string m_sPastelID;      // Pastel ID of the new owner (acceptor)

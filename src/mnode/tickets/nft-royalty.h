@@ -28,7 +28,7 @@ using NFTRoyaltyTickets_t = std::vector<CNFTRoyaltyTicket>;
 class CNFTRoyaltyTicket : public CPastelTicket
 {
 public:
-    CNFTRoyaltyTicket() = default;
+    CNFTRoyaltyTicket() noexcept = default;
 
     explicit CNFTRoyaltyTicket(std::string &&sPastelID, std::string &&sNewPastelID) : 
         m_sPastelID(std::move(sPastelID)), 
@@ -92,7 +92,7 @@ public:
     static CNFTRoyaltyTicket Create(std::string &&sNFTTxId, std::string &&sNewPastelID, std::string &&sPastelID, SecureString&& strKeyPass);
     static bool FindTicketInDb(const std::string& key, CNFTRoyaltyTicket& ticket);
 
-    static NFTRoyaltyTickets_t FindAllTicketByPastelID(const std::string& pastelID);
+    static NFTRoyaltyTickets_t FindAllTicketByMVKey(const std::string& sMVKey);
     static NFTRoyaltyTickets_t FindAllTicketByNFTTxID(const std::string& NFTTxnId);
 
 protected:

@@ -10,6 +10,7 @@
 #include <mnode/tickets/pastelid-reg.h>
 #include <mnode/tickets/nft-reg.h>
 #include <mnode/tickets/nft-act.h>
+#include <mnode/tickets/collection-act.h>
 #include <mnode/tickets/ticket-utils.h>
 #ifdef ENABLE_WALLET
 #include <wallet/wallet.h>
@@ -63,7 +64,7 @@ void CNFTActivateTicket::sign(SecureString&& strKeyPass)
  */
 ticket_validation_t CNFTActivateTicket::IsValid(const bool bPreReg, const uint32_t nCallDepth) const noexcept
 {
-    const auto chainHeight = GetActiveChainHeight();
+    const auto nActiveChainHeight = gl_nChainHeight + 1;
     ticket_validation_t tv;
     do
     {
@@ -73,7 +74,7 @@ ticket_validation_t CNFTActivateTicket::IsValid(const bool bPreReg, const uint32
             *this, bPreReg, m_regTicketTxId, pastelTicket,
             [](const TicketID tid) noexcept { return (tid != TicketID::NFT); },
             GetTicketDescription(), CNFTRegTicket::GetTicketDescription(), nCallDepth,
-            TicketPricePSL(chainHeight) + static_cast<CAmount>(getAllMNFeesPSL())); // fee for ticket + all MN storage fees (percent from storage fee)
+            TicketPricePSL(nActiveChainHeight) + static_cast<CAmount>(getAllMNFeesPSL())); // fee for ticket + all MN storage fees (percent from storage fee)
 
         if (commonTV.IsNotValid())
         {
@@ -104,9 +105,9 @@ ticket_validation_t CNFTActivateTicket::IsValid(const bool bPreReg, const uint32
             }
         }
 
-        auto NFTTicket = dynamic_cast<CNFTRegTicket*>(pastelTicket.get());
+        auto pNFTRegTicket = dynamic_cast<CNFTRegTicket*>(pastelTicket.get());
         // this is already validated in common_ticket_validation, but just double check that we retrieved a parent activation reg ticket
-        if (!NFTTicket)
+        if (!pNFTRegTicket)
         {
             tv.errorMsg = strprintf(
                 "The NFT Reg ticket with this txid [%s] is not in the blockchain or is invalid",
@@ -114,31 +115,96 @@ ticket_validation_t CNFTActivateTicket::IsValid(const bool bPreReg, const uint32
             break;
         }
 
-        // 1. check creator PastelID in NFTReg ticket matches PastelID from this ticket
-        if (!NFTTicket->IsCreatorPastelId(m_sPastelID))
+        // check creator PastelID in NFTReg ticket matches PastelID from this ticket
+        if (!pNFTRegTicket->IsCreatorPastelId(m_sPastelID))
         {
             tv.errorMsg = strprintf(
                 "The Pastel ID [%s] is not matching the Creator's Pastel ID [%s] in the NFT Reg ticket with this txid [%s]",
-                m_sPastelID, NFTTicket->getCreatorPastelId(), m_regTicketTxId);
+                m_sPastelID, pNFTRegTicket->getCreatorPastelId(), m_regTicketTxId);
             break;
         }
 
-        // 2. check NFTReg ticket is at the assumed height
-        if (NFTTicket->getCreatorHeight() != m_creatorHeight)
+        // check NFTReg ticket is at the assumed height
+        if (pNFTRegTicket->getCreatorHeight() != m_creatorHeight)
         {
             tv.errorMsg = strprintf(
                 "The CreatorHeight [%d] is not matching the CreatorHeight [%d] in the NFT Reg ticket with this txid [%s]",
-                m_creatorHeight, NFTTicket->getCreatorHeight(), m_regTicketTxId);
+                m_creatorHeight, pNFTRegTicket->getCreatorHeight(), m_regTicketTxId);
             break;
         }
 
-        // 3. check NFTReg ticket fee is same as storageFee
-        if (NFTTicket->getStorageFee() != m_storageFee)
+        // check NFTReg ticket fee is same as storageFee
+        if (pNFTRegTicket->getStorageFee() != m_storageFee)
         {
             tv.errorMsg = strprintf(
                 "The storage fee [%d] is not matching the storage fee [%" PRIi64 "] in the NFT Reg ticket with this txid [%s]",
-                m_storageFee, NFTTicket->getStorageFee(), m_regTicketTxId);
+                m_storageFee, pNFTRegTicket->getStorageFee(), m_regTicketTxId);
             break;
+        }
+        // if action belongs to collection - check if we reached max number of items in that collection
+        if (pNFTRegTicket->IsCollectionItem() && bPreReg)
+        {
+            string error;
+            bool bInvalidTxId = false;
+            const string sCollectionActTxId = pNFTRegTicket->getCollectionActTxId();
+            const auto collectionActTicket = pNFTRegTicket->RetrieveCollectionActivateTicket(error, bInvalidTxId);
+            if (bInvalidTxId)
+            {
+                tv.errorMsg = move(error);
+                break;
+            }
+            // check that we've got collection ticket
+            if (!collectionActTicket)
+            {
+                tv.errorMsg = strprintf(
+                    "The %s ticket [txid=%s] referred by this %s ticket [txid=%s] is not in the blockchain. %s",
+                    CollectionActivateTicket::GetTicketDescription(), sCollectionActTxId,
+                    pNFTRegTicket->GetTicketDescription(), pNFTRegTicket->GetTxId(), error);
+                tv.state = TICKET_VALIDATION_STATE::MISSING_INPUTS;
+                break;
+            }
+            const auto pCollActTicket = dynamic_cast<const CollectionActivateTicket*>(collectionActTicket.get());
+            if (collectionActTicket->ID() != TicketID::CollectionAct|| !pCollActTicket)
+            {
+                tv.errorMsg = strprintf(
+                    "The %s ticket [txid=%s] referred by this %s ticket [txid=%s] has invalid type '%s'",
+                    CollectionActivateTicket::GetTicketDescription(), sCollectionActTxId,
+                    pNFTRegTicket->GetTicketDescription(), pNFTRegTicket->GetTxId(), ::GetTicketDescription(collectionActTicket->ID()));
+				break;
+			}
+            const string sCollectionRegTxId = pCollActTicket->getRegTxId();
+            auto collectionRegTicket = CollectionActivateTicket::RetrieveCollectionRegTicket(error, sCollectionRegTxId, bInvalidTxId);
+            if (!collectionRegTicket)
+            {
+                // collection registration ticket should have been validated by this point, but double check it to make sure
+                if (bInvalidTxId)
+                {
+                    tv.errorMsg = move(error);
+                    break;
+                }
+                tv.errorMsg = strprintf(
+					"The %s ticket with this txid [%s] is not in the blockchain or is invalid", 
+					CollectionRegTicket::GetTicketDescription(), sCollectionRegTxId);
+				break;
+			}
+            const auto pCollRegTicket = dynamic_cast<const CollectionRegTicket*>(collectionRegTicket.get());
+            if (collectionRegTicket->ID() != TicketID::CollectionReg || !pCollRegTicket)
+            {
+                tv.errorMsg = strprintf(
+                    "The %s ticket [txid=%s] referred by this %s ticket [txid=%s] has invalid type '%s'",
+                    CollectionRegTicket::GetTicketDescription(), sCollectionRegTxId,
+                    GetTicketDescription(), GetTxId(), ::GetTicketDescription(collectionRegTicket->ID()));
+				break;
+			}
+            const size_t nCollectionItemCount = pNFTRegTicket->CountItemsInCollection();
+            // check if we will have more than allowed number of items in the collection if we register this item
+            if (nCollectionItemCount + 1 > pCollRegTicket->getMaxCollectionEntries())
+            {
+                tv.errorMsg = strprintf(
+					"Collection '%s' with this txid [%s] has reached the maximum number of items [%u] allowed in the collection",
+					pCollRegTicket->getName(), sCollectionRegTxId, pCollRegTicket->getMaxCollectionEntries());
+                break;
+            }
         }
         tv.setValid();
     } while (false);
@@ -219,14 +285,14 @@ bool CNFTActivateTicket::FindTicketInDb(const string& key, CNFTActivateTicket& t
     return masterNodeCtrl.masternodeTickets.FindTicket(ticket);
 }
 
-NFTActivateTickets_t CNFTActivateTicket::FindAllTicketByPastelID(const std::string& pastelID)
+NFTActivateTickets_t CNFTActivateTicket::FindAllTicketByMVKey(const std::string& sMVKey)
 {
-    return masterNodeCtrl.masternodeTickets.FindTicketsByMVKey<CNFTActivateTicket>(pastelID);
+    return masterNodeCtrl.masternodeTickets.FindTicketsByMVKey<CNFTActivateTicket>(sMVKey);
 }
 
-NFTActivateTickets_t CNFTActivateTicket::FindAllTicketByCreatorHeight(const unsigned int nCreatorHeight)
+NFTActivateTickets_t CNFTActivateTicket::FindAllTicketByCreatorHeight(const uint32_t nCreatorHeight)
 {
-    return masterNodeCtrl.masternodeTickets.FindTicketsByMVKey<CNFTActivateTicket>(std::to_string(nCreatorHeight));
+    return FindAllTicketByMVKey(std::to_string(nCreatorHeight));
 }
 
 bool CNFTActivateTicket::CheckTicketExistByNFTTicketID(const std::string& regTicketTxId)

@@ -276,7 +276,7 @@ bool CMasternodeGovernance::IsTransactionValid(const CTransaction& txNew, int nH
     ExtractDestination(scriptPubKey, dest);
     string address = keyIO.EncodeDestination(dest);
 
-    LogFnPrintf("ERROR: %s required governance payment, possible payees: '%s', actual amount: %f PASTEL. Should be %f PASTEL", 
+    LogFnPrintf("ERROR: %s required governance payment, possible payees: '%s', actual amount: %f PSL. Should be %f PSL", 
             (tnxPayment == 0)? "Missing": "Invalid",
             address,
             (float)tnxPayment/COIN,

@@ -9,6 +9,7 @@
 #include "config/bitcoin-config.h"
 #endif
 #include <str_utils.h>
+#include <chain.h>
 #include <main.h>
 #include <deprecation.h>
 #include <script/sign.h>
@@ -26,17 +27,6 @@ using json = nlohmann::json;
 using namespace std;
 
 static shared_ptr<ITxMemPoolTracker> TicketTxMemPoolTracker;
-
-/**
- * Get height of the active blockchain + 1.
- * 
- * \return 0 if chain is not initialized or height of the active chain
- */
-uint32_t GetActiveChainHeight()
-{
-    LOCK(cs_main);
-    return static_cast<uint32_t>(chainActive.Height()) + 1;
-}
 
 void CPastelTicketProcessor::InitTicketDB()
 {
@@ -681,14 +671,14 @@ unique_ptr<CPastelTicket> CPastelTicketProcessor::GetTicket(const string& _txid,
 }
 
 /**
- * Check whether ticket exists (use keyOne as a key).
+ * Check whether ticket exists in TicketDB (use keyOne as a key).
  *
  * \param ticket - ticket to search (ID and keyOne are used for search)
  * \return true if ticket with the given parameters was found in ticket DB
  */
-bool CPastelTicketProcessor::CheckTicketExist(const CPastelTicket& ticket)
+bool CPastelTicketProcessor::CheckTicketExist(const CPastelTicket& ticket) const
 {
-    auto key = ticket.KeyOne();
+    const auto key = ticket.KeyOne();
     const auto itDB = dbs.find(ticket.ID());
     if (itDB == dbs.cend())
         return false;
@@ -696,12 +686,12 @@ bool CPastelTicketProcessor::CheckTicketExist(const CPastelTicket& ticket)
 }
 
 /**
-* Check whether ticket exists (use keyTwo as a key).
+* Check whether ticket exists in TicketDB (use keyTwo as a key).
 *
 * \param ticket - ticket to search (ID and keyTwo are used for search)
 * \return true if ticket with the given parameters was found in ticket DB
 */
-bool CPastelTicketProcessor::CheckTicketExistBySecondaryKey(const CPastelTicket& ticket)
+bool CPastelTicketProcessor::CheckTicketExistBySecondaryKey(const CPastelTicket& ticket) const
 {
     if (ticket.HasKeyTwo())
     {
@@ -715,27 +705,38 @@ bool CPastelTicketProcessor::CheckTicketExistBySecondaryKey(const CPastelTicket&
 }
 
 /**
- * Find ticket in DB by primary key.
+ * Find ticket in TicketDB by primary key.
+ * Is ticket height returned by DB is higher than active chain height - ticket is considered invalid.
  * 
  * \param ticket - ticket object to return
- * \return true if ticket was found
+ * \return true if ticket was found and successfully read from DB
  */
 bool CPastelTicketProcessor::FindTicket(CPastelTicket& ticket) const
 {
     const auto sKey = ticket.KeyOne();
     const auto itDB = dbs.find(ticket.ID());
-    if (itDB != dbs.cend())
-        return itDB->second->Read(sKey, ticket);
-    return false;
+    if (itDB == dbs.cend())
+        return false;
+    bool bRet = itDB->second->Read(sKey, ticket);
+    if (bRet)
+    {
+        if (ticket.IsBlockNewerThan(gl_nChainHeight))
+        {
+            bRet = false;
+            ticket.Clear();
+        }
+    }
+    return bRet;
 }
 
 /**
- * Find ticket in DB by secondary key.
+ * Find ticket in TicketDB by secondary key.
+ * If ticket height returned by DB is higher than active chain height - ticket is considered invalid.
  * 
  * \param ticket - ticket object to return
  * \return true if ticket has secondary key and the ticket was found
  */
-bool CPastelTicketProcessor::FindTicketBySecondaryKey(CPastelTicket& ticket)
+bool CPastelTicketProcessor::FindTicketBySecondaryKey(CPastelTicket& ticket) const
 {
     // check if this ticket type supports secondary key
     if (ticket.HasKeyTwo())
@@ -746,13 +747,21 @@ bool CPastelTicketProcessor::FindTicketBySecondaryKey(CPastelTicket& ticket)
         // find in DB record: <real_secondary_key> -> <primary_key>
         const auto itDB = dbs.find(ticket.ID());
         if (itDB != dbs.cend() && itDB->second->Read(sRealKeyTwo, sMainKey))
-            return itDB->second->Read(sMainKey, ticket);
+        {
+            if (itDB->second->Read(sMainKey, ticket))
+            {
+                if (!ticket.IsBlockNewerThan(gl_nChainHeight))
+    				return true;
+				ticket.Clear();
+            }
+        }
     }
     return false;
 }
 
 /**
- * Find all tickets by mvKey.
+ * Find all tickets in TicketDB by mvKey.
+ * If ticket height returned by DB is higher than active chain height - ticket is considered invalid.
  * 
  * \param mvKey - key to search for. Tickets support up to 3 mvkeys.
  * \return vector of found tickets with the given mvKey
@@ -763,18 +772,18 @@ vector<_TicketType> CPastelTicketProcessor::FindTicketsByMVKey(const string& mvK
     vector<_TicketType> tickets;
     v_strings vMainKeys;
     // get real MV key stored in DB: "@M@" + key
-    auto realMVKey = RealMVKey(mvKey);
+    const auto realMVKey = RealMVKey(mvKey);
     // get DB for the given ticket type
     const auto itDB = dbs.find(_TicketType::GetID());
-    if (itDB != dbs.cend())
+    // find primary keys of the tickets with mvKey
+    if (itDB != dbs.cend() && itDB->second->Read(realMVKey, vMainKeys))
     {
-        // find primary keys of the tickets with mvKey
-        itDB->second->Read(realMVKey, vMainKeys);
+        const uint32_t nCurrentChainHeight = gl_nChainHeight;
         // read all tickets
         for (const auto& key : vMainKeys)
         {
             _TicketType ticket;
-            if (itDB->second->Read(key, ticket))
+            if (itDB->second->Read(key, ticket) && !ticket.IsBlockNewerThan(nCurrentChainHeight))
                 tickets.emplace_back(ticket);
         }
     }
@@ -782,11 +791,11 @@ vector<_TicketType> CPastelTicketProcessor::FindTicketsByMVKey(const string& mvK
 }
 
 /**
- * Find ticket in DB by secondary key.
+ * Find ticket in TicketDB by secondary key.
  * Returns primary key if ticket was found or empty value.
  * 
- * \param ticket - used to g
- * \return 
+ * \param ticket - ticket to get secondary key from
+ * \return - primary key of the ticket or empty value
  */
 string CPastelTicketProcessor::getValueBySecondaryKey(const CPastelTicket& ticket) const
 {
@@ -893,15 +902,15 @@ template <class _TicketType, typename F>
 string CPastelTicketProcessor::filterTickets(F f, const uint32_t nMinHeight, const bool bCheckConfirmation) const
 {
     json jArray = json::array();
-    const auto nChainHeight = GetActiveChainHeight();
+    const auto nActiveChainHeight = gl_nChainHeight + 1;
     // list tickets with the specific type (_TicketType) and add to json array if functor f applies
     listTickets<_TicketType>([&](const _TicketType& ticket) -> bool
     {
         //check if the ticket is confirmed
-        if (bCheckConfirmation && (nChainHeight - ticket.GetBlock() < masterNodeCtrl.MinTicketConfirmations))
+        if (bCheckConfirmation && (nActiveChainHeight - ticket.GetBlock() < masterNodeCtrl.MinTicketConfirmations))
             return true;
         // apply functor to the current ticket
-        if (f(ticket, nChainHeight))
+        if (f(ticket, nActiveChainHeight))
             return true;
         jArray.push_back(json::parse(ticket.ToJSON()));
         return true;
@@ -949,8 +958,8 @@ string CPastelTicketProcessor::ListFilterNFTTickets(const uint32_t nMinHeight, c
                 if (CNFTActivateTicket::FindTicketInDb(t.GetTxId(), actTicket))
                 {
                     // find Transfer tickets listing that NFT Activate ticket txid as NFT ticket
-                    const auto vTransferTickets = CTransferTicket::FindAllTicketByItemTxID(actTicket.GetTxId());
-                    if (vTransferTickets.size() >= t.getTotalCopies())
+                    const auto vTransferTickets = CTransferTicket::FindAllTicketByMVKey(actTicket.GetTxId());
+                    if (!vTransferTickets.empty() && (vTransferTickets.size() >= t.getTotalCopies()))
                         return false; //don't skip transferred|sold
                 }
             }
@@ -997,7 +1006,7 @@ string CPastelTicketProcessor::ListFilterActionTickets(const uint32_t nMinHeight
                 if (CActionActivateTicket::FindTicketInDb(t.GetTxId(), actionActTicket))
                 {
                     // find Transfer tickets listing that Action Activate ticket txid
-                    const auto vTransferTickets = CTransferTicket::FindAllTicketByItemTxID(actionActTicket.GetTxId());
+                    const auto vTransferTickets = CTransferTicket::FindAllTicketByMVKey(actionActTicket.GetTxId());
                     if (!vTransferTickets.empty())
                         return false; //don't skip transferred
                 }
@@ -1019,11 +1028,11 @@ string CPastelTicketProcessor::ListFilterActTickets(const uint32_t nMinHeight, c
     return filterTickets<CNFTActivateTicket>(
         [&](const CNFTActivateTicket& t, const unsigned int chainHeight) -> bool
         {
-            // find Transfer tickets listing this Act ticket txid as NFT ticket
-            const auto vTransferTickets = CTransferTicket::FindAllTicketByItemTxID(t.GetTxId());
+            // find Transfer tickets listing this NFT Activation ticket txid as NFT ticket
+            const auto vTransferTickets = CTransferTicket::FindAllTicketByMVKey(t.GetTxId());
             const auto ticket = GetTicket(t.getRegTxId(), TicketID::NFT);
             const auto NFTRegTicket = dynamic_cast<CNFTRegTicket*>(ticket.get());
-            if (!NFTRegTicket)
+            if (!NFTRegTicket || vTransferTickets.empty())
                 return true;
             if (vTransferTickets.size() < NFTRegTicket->getTotalCopies())
             {
@@ -1115,7 +1124,7 @@ string CPastelTicketProcessor::ListFilterTransferTickets(const uint32_t nMinHeig
         [&](const CTransferTicket& t, const unsigned int chainHeight) -> bool
         {
             // find Transfer tickets listing this Transfer ticket txid as NFT ticket
-            const auto vTransferTickets = CTransferTicket::FindAllTicketByItemTxID(t.GetTxId());
+            const auto vTransferTickets = CTransferTicket::FindAllTicketByMVKey(t.GetTxId());
             if (!pastelID.empty() && t.getPastelID() != pastelID)
                 return true; // ignore tickets that do not belong to this pastelID
             if (filter == 0)
@@ -1323,11 +1332,9 @@ tuple<string, string> CPastelTicketProcessor::SendTicket(const CPastelTicket& ti
         LogPrint("compress", "Ticket (%hhu) data [%zu bytes] was not compressed due to size or bad compression ratio\n", to_integral_type<TicketID>(ticket.ID()), nUncompressedSize);
 #endif
 
-    const auto chainHeight = GetActiveChainHeight();
-
     CMutableTransaction tx;
     if (!CreateP2FMSTransactionWithExtra(data_stream, extraOutputs, extraAmount, tx, 
-        ticket.TicketPricePSL(chainHeight), sFundingAddress, error))
+        ticket.TicketPricePSL(gl_nChainHeight + 1), sFundingAddress, error))
         throw runtime_error(strprintf("Failed to create P2FMS from data provided - %s", error));
 
     if (!StoreP2FMSTransaction(tx, error))
@@ -1642,13 +1649,13 @@ bool CPastelTicketProcessor::CreateP2FMSTransactionWithExtra(const CDataStream& 
     // total amount to spend in patoshis
     const CAmount allSpentAmount = (pricePSL * COIN) + nAproxFeeNeeded + extraAmount;
 
-    auto chainHeight = GetActiveChainHeight();
+    auto nActiveChainHeight = gl_nChainHeight + 1;
     if (!chainParams.IsRegTest())
-        chainHeight = max(chainHeight, APPROX_RELEASE_HEIGHT);
-    auto consensusBranchId = CurrentEpochBranchId(chainHeight, chainParams.GetConsensus());
+        nActiveChainHeight = max(nActiveChainHeight, APPROX_RELEASE_HEIGHT);
+    auto consensusBranchId = CurrentEpochBranchId(nActiveChainHeight, chainParams.GetConsensus());
 
     // Create empty transaction
-    tx_out = CreateNewContextualCMutableTransaction(chainParams.GetConsensus(), chainHeight);
+    tx_out = CreateNewContextualCMutableTransaction(chainParams.GetConsensus(), nActiveChainHeight);
 
     // Find funding (unspent) transaction with enough coins to cover all outputs (single - for simplicity)
     bool bOk = false;
@@ -1946,7 +1953,7 @@ optional<reg_transfer_txid_t> CPastelTicketProcessor::ValidateOwnership(const st
 
     // If we are here it means it is a nested transfer ticket 
     // List transfer tickets by reg txID and rearrange them by blockheight
-    const auto vTransferTickets = CTransferTicket::FindAllTicketByItemRegTxID(item_txid);
+    const auto vTransferTickets = CTransferTicket::FindAllTicketByMVKey(item_txid);
     
     // Go through each if not empty and rearrange them by block-height
     if (!vTransferTickets.empty())

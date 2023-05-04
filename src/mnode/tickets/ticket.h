@@ -109,6 +109,7 @@ public:
     unsigned int GetBlock() const noexcept { return m_nBlock; }
     std::int64_t GetTimestamp() const noexcept { return m_nTimestamp; }
     bool IsBlock(const unsigned int nBlock) const noexcept { return m_nBlock == nBlock; }
+    bool IsBlockNewerThan(const uint32_t nBlockHeight) const noexcept { return m_nBlock > nBlockHeight; }
     auto GetTicketName() const noexcept
     {
         return TICKET_INFO[to_integral_type<TicketID>(ID())].szName;

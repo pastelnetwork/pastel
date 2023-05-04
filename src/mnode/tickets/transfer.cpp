@@ -2,6 +2,7 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <optional>
+
 #include <json/json.hpp>
 
 #include <init.h>
@@ -140,8 +141,8 @@ ticket_validation_t transfer_copy_validation(const string& itemTxId, const v_uin
         }
 
         size_t nTransferredCopies{0};
-        const auto vExistingTransferTickets = CTransferTicket::FindAllTicketByItemTxID(itemTxId);
-        for (const auto& t : vExistingTransferTickets)
+        const auto vExistingTransferTickets = CTransferTicket::FindAllTicketByMVKey(itemTxId);
+        for (const auto& t: vExistingTransferTickets)
         {
             if (!t.IsSameSignature(signature))
                 ++nTransferredCopies;
@@ -247,7 +248,7 @@ string CTransferTicket::ToStr() const noexcept
  */
 ticket_validation_t CTransferTicket::IsValid(const bool bPreReg, const uint32_t nCallDepth) const noexcept
 {
-    const auto chainHeight = GetActiveChainHeight();
+    const auto nActiveChainHeight = gl_nChainHeight + 1;
     ticket_validation_t tv;
 
     do
@@ -258,7 +259,7 @@ ticket_validation_t CTransferTicket::IsValid(const bool bPreReg, const uint32_t 
             *this, bPreReg, m_offerTxId, offerTicket,
             [](const TicketID tid) noexcept { return (tid != TicketID::Offer); },
             GetTicketDescription(), COfferTicket::GetTicketDescription(), nCallDepth, 
-            m_nPricePSL + TicketPricePSL(chainHeight));
+            m_nPricePSL + TicketPricePSL(nActiveChainHeight));
         if (commonTV.IsNotValid())
         {
             tv.errorMsg = strprintf(
@@ -273,7 +274,7 @@ ticket_validation_t CTransferTicket::IsValid(const bool bPreReg, const uint32_t 
             *this, bPreReg, m_acceptTxId, acceptTicket,
             [](const TicketID tid) noexcept { return (tid != TicketID::Accept); },
             GetTicketDescription(), CAcceptTicket::GetTicketDescription(), nCallDepth, 
-            m_nPricePSL + TicketPricePSL(chainHeight));
+            m_nPricePSL + TicketPricePSL(nActiveChainHeight));
         if (commonTV.IsNotValid())
         {
             tv.errorMsg = strprintf(
@@ -441,10 +442,12 @@ CAmount CTransferTicket::GetExtraOutputs(vector<CTxOut>& outputs) const
             if (pNFTRegTicket->hasGreenFee())
             {
                 sGreenAddress = pNFTRegTicket->getGreenAddress();
-                const auto chainHeight = GetActiveChainHeight();
-                nGreenNFTAmount = nPriceAmount * CNFTRegTicket::GreenPercent(chainHeight) / 100;
+                nGreenNFTAmount = nPriceAmount * CNFTRegTicket::GreenPercent(gl_nChainHeight + 1) / 100;
             }
         } break;
+
+        default:
+            break;
     }
 
     nPriceAmount -= (nRoyaltyAmount + nGreenNFTAmount);
@@ -512,19 +515,9 @@ bool CTransferTicket::FindTicketInDb(const string& key, CTransferTicket& ticket)
            masterNodeCtrl.masternodeTickets.FindTicketBySecondaryKey(ticket);
 }
 
-TransferTickets_t CTransferTicket::FindAllTicketByPastelID(const string& pastelID)
+TransferTickets_t CTransferTicket::FindAllTicketByMVKey(const string& sMVKey)
 {
-    return masterNodeCtrl.masternodeTickets.FindTicketsByMVKey<CTransferTicket>(pastelID);
-}
-
-TransferTickets_t CTransferTicket::FindAllTicketByItemTxID(const string& ItemTxId)
-{
-    return masterNodeCtrl.masternodeTickets.FindTicketsByMVKey<CTransferTicket>(ItemTxId);
-}
-
-TransferTickets_t CTransferTicket::FindAllTicketByItemRegTxID(const string& itemRegTxnd)
-{
-    return masterNodeCtrl.masternodeTickets.FindTicketsByMVKey<CTransferTicket>(itemRegTxnd);
+    return masterNodeCtrl.masternodeTickets.FindTicketsByMVKey<CTransferTicket>(sMVKey);
 }
 
 mu_strings CTransferTicket::GetPastelIdAndTxIdWithTopHeightPerCopy(const TransferTickets_t& filteredTickets)

@@ -1,5 +1,5 @@
 // Copyright (c) 2014-2017 The Dash Core developers
-// Copyright (c) 2018-2022 The Pastel Core developers
+// Copyright (c) 2018-2023 The Pastel Core developers
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 
@@ -27,6 +27,11 @@
 using namespace std;
 
 const string CMasternodeMan::SERIALIZATION_VERSION_STRING = "CMasternodeMan-Version-7";
+
+constexpr auto ERRMSG_MNLIST_NOT_SYNCED = "Masternode list is not synced";
+constexpr auto ERRMSG_MNLIST_EMPTY = "Masternode list is empty";
+constexpr auto ERRMSG_MN_BLOCK_NOT_FOUND = "Block %d not found";
+constexpr auto ERRMSG_MN_GET_SCORES = "Failed to get masternode scores for block %d. %s";
 
 struct CompareLastPaidBlock
 {
@@ -168,7 +173,8 @@ void CMasternodeMan::CheckAndRemove(bool bCheckAndRemove)
                     if (vecMasternodeRanks.empty())
                     {
                         int nRandomBlockHeight = GetRandInt(nCachedBlockHeight);
-                        GetMasternodeRanks(vecMasternodeRanks, nRandomBlockHeight);
+                        string error;
+                        GetMasternodeRanks(error, vecMasternodeRanks, nRandomBlockHeight);
                     }
                     bool fAskedForMnbRecovery = false;
                     // ask first MNB_RECOVERY_QUORUM_TOTAL masternodes we can connect to and we haven't asked recently
@@ -436,7 +442,7 @@ bool CMasternodeMan::GetMasternodeInfo(const COutPoint& outpoint, masternode_inf
 bool CMasternodeMan::GetMasternodeInfo(const CPubKey& pubKeyMasternode, masternode_info_t& mnInfoRet) const noexcept
 {
     LOCK(cs);
-    for (const auto& [outpoint, mn] : mapMasternodes)
+    for (const auto& [outpoint, mn]: mapMasternodes)
     {
         if (mn.pubKeyMasternode == pubKeyMasternode)
         {
@@ -609,40 +615,53 @@ masternode_info_t CMasternodeMan::FindRandomNotInVec(const v_outpoints &vecToExc
     return masternode_info_t();
 }
 
-bool CMasternodeMan::GetMasternodeScores(const uint256& blockHash, CMasternodeMan::score_pair_vec_t& vecMasternodeScoresRet, int nMinProtocol)
+bool CMasternodeMan::GetMasternodeScores(string &error, const uint256& blockHash, CMasternodeMan::score_pair_vec_t& vecMasternodeScoresRet, int nMinProtocol)
 {
     vecMasternodeScoresRet.clear();
-
     if (!masterNodeCtrl.masternodeSync.IsMasternodeListSynced())
+    {
+        error = ERRMSG_MNLIST_NOT_SYNCED;
         return false;
+    }
 
     AssertLockHeld(cs);
 
     if (mapMasternodes.empty())
+    {
+        error = ERRMSG_MNLIST_EMPTY;
         return false;
+    }
 
     // calculate scores
-    for (auto& [outpoint, mn] : mapMasternodes)
+    for (auto& [outpoint, mn]: mapMasternodes)
     {
         if (mn.nProtocolVersion >= nMinProtocol)
             vecMasternodeScoresRet.emplace_back(mn.CalculateScore(blockHash), &mn);
     }
-
     sort(vecMasternodeScoresRet.rbegin(), vecMasternodeScoresRet.rend(), CompareScoreMN());
-    return !vecMasternodeScoresRet.empty();
+    if (vecMasternodeScoresRet.empty())
+    {
+		error = strprintf("No Masternodes found that supports protocol %d", nMinProtocol);
+		return false;
+	}
+    return true;
 }
 
-bool CMasternodeMan::GetMasternodeRank(const COutPoint& outpoint, int& nRankRet, int nBlockHeight, int nMinProtocol)
+bool CMasternodeMan::GetMasternodeRank(string &error, const COutPoint& outpoint, int& nRankRet, int nBlockHeight, int nMinProtocol)
 {
     nRankRet = -1;
-
+    error.clear();
     if (!masterNodeCtrl.masternodeSync.IsMasternodeListSynced())
+    {
+        error = ERRMSG_MNLIST_NOT_SYNCED;
         return false;
+    }
 
     // make sure we know about this block
-    uint256 nBlockHash;
-    if (!GetBlockHash(nBlockHash, nBlockHeight))
+    uint256 blockHash;
+    if (!GetBlockHash(blockHash, nBlockHeight))
     {
+        error = strprintf(ERRMSG_MN_BLOCK_NOT_FOUND, nBlockHeight);
         LogFnPrintf("ERROR: GetBlockHash() failed at nBlockHeight %d", nBlockHeight);
         return false;
     }
@@ -650,11 +669,14 @@ bool CMasternodeMan::GetMasternodeRank(const COutPoint& outpoint, int& nRankRet,
     LOCK(cs);
 
     score_pair_vec_t vecMasternodeScores;
-    if (!GetMasternodeScores(nBlockHash, vecMasternodeScores, nMinProtocol))
+    if (!GetMasternodeScores(error, blockHash, vecMasternodeScores, nMinProtocol))
+    {
+        error = strprintf(ERRMSG_MN_GET_SCORES, nBlockHeight, error);
         return false;
+    }
 
     int nRank = 0;
-    for (const auto& scorePair : vecMasternodeScores)
+    for (const auto& scorePair: vecMasternodeScores)
     {
         nRank++;
         if (scorePair.second->getOutPoint() == outpoint)
@@ -667,26 +689,41 @@ bool CMasternodeMan::GetMasternodeRank(const COutPoint& outpoint, int& nRankRet,
     return false;
 }
 
-bool CMasternodeMan::GetMasternodeRanks(CMasternodeMan::rank_pair_vec_t& vecMasternodeRanksRet, int nBlockHeight, int nMinProtocol)
+/**
+ * Get masternode ranks.
+ * 
+ * \param error - error message
+ * \param vecMasternodeRanksRet - vector of masternode ranks
+ * \param nBlockHeight - block height to get mn ranks for
+ * \param nMinProtocol - minimum protocol version
+ * \return GetTopMasterNodeStatus - status of the operation
+ */
+GetTopMasterNodeStatus CMasternodeMan::GetMasternodeRanks(string &error, CMasternodeMan::rank_pair_vec_t& vecMasternodeRanksRet, int nBlockHeight, int nMinProtocol)
 {
     vecMasternodeRanksRet.clear();
-
+    error.clear();
     if (!masterNodeCtrl.masternodeSync.IsMasternodeListSynced())
-        return false;
+    {
+        error = ERRMSG_MNLIST_NOT_SYNCED;
+        return GetTopMasterNodeStatus::MN_NOT_SYNCED;
+    }
 
     // make sure we know about this block
     uint256 blockHash;
     if (!GetBlockHash(blockHash, nBlockHeight))
     {
-        LogFnPrintf("ERROR: GetBlockHash() failed at nBlockHeight %d", nBlockHeight);
-        return false;
+        error = strprintf(ERRMSG_MN_BLOCK_NOT_FOUND, nBlockHeight);
+        return GetTopMasterNodeStatus::BLOCK_NOT_FOUND;
     }
 
     LOCK(cs);
 
     score_pair_vec_t vecMasternodeScores;
-    if (!GetMasternodeScores(blockHash, vecMasternodeScores, nMinProtocol))
-        return false;
+    if (!GetMasternodeScores(error, blockHash, vecMasternodeScores, nMinProtocol))
+    {
+        error = strprintf(ERRMSG_MN_GET_SCORES, nBlockHeight, error);
+        return GetTopMasterNodeStatus::GET_MN_SCORES_FAILED;
+    }
 
     int nRank = 0;
     for (auto& scorePair : vecMasternodeScores)
@@ -694,17 +731,18 @@ bool CMasternodeMan::GetMasternodeRanks(CMasternodeMan::rank_pair_vec_t& vecMast
         nRank++;
         vecMasternodeRanksRet.emplace_back(nRank, *scorePair.second);
     }
-
-    return true;
+    return GetTopMasterNodeStatus::SUCCEEDED;
 }
 
 void CMasternodeMan::ProcessMasternodeConnections()
 {
     //we don't care about this for regtest
-    if(Params().IsRegTest()) return;
+    if (Params().IsRegTest())
+        return;
 
-    CNodeHelper::ForEachNode(CNodeHelper::AllNodes, [](CNode* pnode) {
-        if(pnode->fMasternode)
+    CNodeHelper::ForEachNode(CNodeHelper::AllNodes, [](CNode* pnode)
+    {
+        if (pnode->fMasternode)
         {
             LogFnPrintf("Closing Masternode connection: peer=%d, addr=%s", pnode->id, pnode->addr.ToString());
             pnode->fDisconnect = true;
@@ -915,7 +953,8 @@ void CMasternodeMan::DoFullVerificationStep()
         return;
 
     rank_pair_vec_t vecMasternodeRanks;
-    GetMasternodeRanks(vecMasternodeRanks, nCachedBlockHeight - 1, MIN_POSE_PROTO_VERSION);
+    string error;
+    const auto status = GetMasternodeRanks(error, vecMasternodeRanks, nCachedBlockHeight - 1, MIN_POSE_PROTO_VERSION);
 
     // Need LOCK2 here to ensure consistent locking order because the SendVerifyRequest call below locks cs_main
     // through GetHeight() signal in ConnectNode
@@ -1063,7 +1102,7 @@ void CMasternodeMan::CheckSameAddr()
 
 bool CMasternodeMan::SendVerifyRequest(const CAddress& addr, const vector<CMasternode*>& vSortedByAddr)
 {
-     if (masterNodeCtrl.requestTracker.HasFulfilledRequest(addr, strprintf("%s", NetMsgType::MNVERIFY)+"-request"))
+    if (masterNodeCtrl.requestTracker.HasFulfilledRequest(addr, strprintf("%s", NetMsgType::MNVERIFY)+"-request"))
     {
         // we already asked for verification, not a good idea to do this too often, skip it
         LogFnPrint("masternode", "too many requests, skipping... addr=%s", addr.ToString());
@@ -1083,7 +1122,7 @@ bool CMasternodeMan::SendVerifyRequest(const CAddress& addr, const vector<CMaste
     mWeAskedForVerification[addr] = mnv;
     LogFnPrintf("verifying node using nonce %d addr=%s [fulfilled request map time - %d]",
                 mnv.nonce, addr.ToString(),
-                masterNodeCtrl.requestTracker.GetFulfilledRequestTime(addr, strprintf("%s", NetMsgType::MNVERIFY)+"-request").ToString());
+                masterNodeCtrl.requestTracker.GetFulfilledRequestTime(addr, strprintf("%s", NetMsgType::MNVERIFY)+"-request"));
     pnode->PushMessage(NetMsgType::MNVERIFY, mnv);
 
     return true;
@@ -1161,8 +1200,7 @@ void CMasternodeMan::ProcessVerifyReply(CNode* pnode, CMasternodeVerification& m
     {
         LogFnPrintf("ERROR: we didn't ask for verification of %s, peer=%d [fulfilled request map time - %d]",
                     pnode->addr.ToString(), pnode->id,
-                    masterNodeCtrl.requestTracker.GetFulfilledRequestTime(addr, strprintf("%s", NetMsgType::MNVERIFY)+"-request").ToString());
-);
+                    masterNodeCtrl.requestTracker.GetFulfilledRequestTime(pnode->addr, strprintf("%s", NetMsgType::MNVERIFY)+"-request"));
         Misbehaving(pnode->id, 20);
         return;
     }
@@ -1311,10 +1349,10 @@ void CMasternodeMan::ProcessVerifyBroadcast(CNode* pnode, const CMasternodeVerif
     }
 
     int nRank;
-
-    if (!GetMasternodeRank(mnv.vin2.prevout, nRank, mnv.nBlockHeight, MIN_POSE_PROTO_VERSION))
+    string error;
+    if (!GetMasternodeRank(error, mnv.vin2.prevout, nRank, mnv.nBlockHeight, MIN_POSE_PROTO_VERSION))
     {
-        LogFnPrint("masternode", "Can't calculate rank for masternode %s", mnv.vin2.prevout.ToStringShort());
+        LogFnPrint("masternode", "Can't calculate rank for masternode %s. %s", mnv.vin2.prevout.ToStringShort(), error);
         return;
     }
 
@@ -1640,52 +1678,68 @@ void CMasternodeMan::UpdatedBlockTip(const CBlockIndex *pindex)
 
     CheckSameAddr();
 
-    if(masterNodeCtrl.IsMasterNode()) {
-        // normal wallet does not need to update this every block, doing update on rpc call should be enough
+    // normal wallet does not need to update this every block, doing update on rpc call should be enough
+    if (masterNodeCtrl.IsMasterNode())
         UpdateLastPaid(pindex);
-    }
-    
     
     // SELECT AND STORE TOP MASTERNODEs
-    auto topMNs = CalculateTopMNsForBlock(nCachedBlockHeight);
-    if (topMNs.size() < masterNodeCtrl.nMasternodeTopMNsNumberMin) {
-        LogFnPrintf("ERROR: Failed to find enough Top MasterNodes");
-    } else {
+    string error;
+    vector<CMasternode> topMNs;
+    GetTopMasterNodeStatus status = CalculateTopMNsForBlock(error, topMNs, nCachedBlockHeight);
+    if (status == GetTopMasterNodeStatus::SUCCEEDED)
         mapHistoricalTopMNs[nCachedBlockHeight] = topMNs;
-    }
+    else if (status != GetTopMasterNodeStatus::SUCCEEDED_FROM_HISTORY)
+        LogFnPrintf("ERROR: Failed to find enough Top MasterNodes. %s", error);
 }
 
-vector<CMasternode> CMasternodeMan::CalculateTopMNsForBlock(int nBlockHeight)
+/**
+ * Calculate top masternodes for the given block.
+ * 
+ * \param error - error message
+ * \param topMNs - vector of top masternodes
+ * \param nBlockHeight - block height
+ * \return - status of the operation
+ */
+GetTopMasterNodeStatus CMasternodeMan::CalculateTopMNsForBlock(string &error, vector<CMasternode> &topMNs, int nBlockHeight)
 {
+    topMNs.clear();
+    error.clear();
     rank_pair_vec_t vMasternodeRanks;
-    if (!GetMasternodeRanks(vMasternodeRanks, nBlockHeight) ||
-        vMasternodeRanks.size() < masterNodeCtrl.nMasternodeTopMNsNumberMin)
+    GetTopMasterNodeStatus status = GetMasternodeRanks(error, vMasternodeRanks, nBlockHeight);
+    if ((status == GetTopMasterNodeStatus::SUCCEEDED) && (vMasternodeRanks.size() < masterNodeCtrl.getMasternodeTopMNsNumberMin()))
     {
-        LogFnPrintf("ERROR: Failed to find Top MasterNodes");
-        return vector<CMasternode>{};
+        error = strprintf("Not enough masternodes found for block %d, min required %d but found %zu",
+            nBlockHeight, masterNodeCtrl.getMasternodeTopMNsNumberMin(), vMasternodeRanks.size());
+        status = GetTopMasterNodeStatus::NOT_ENOUGH_MNS;
+        return status;
     }
+    if (status != GetTopMasterNodeStatus::SUCCEEDED)
+        return status;
     
-    vector<CMasternode> topMNs;
-    for (auto mn : vMasternodeRanks)
+    for (auto mn: vMasternodeRanks)
     {
         if (mn.second.IsValidForPayment())
             topMNs.push_back(mn.second);
-        if (topMNs.size() == masterNodeCtrl.nMasternodeTopMNsNumber)
+        if (topMNs.size() == masterNodeCtrl.getMasternodeTopMNsNumber())
             break;
     }
-
-    return topMNs;
+    return GetTopMasterNodeStatus::SUCCEEDED;
 }
 
-vector<CMasternode> CMasternodeMan::GetTopMNsForBlock(int nBlockHeight, bool bCalculateIfNotSeen)
+GetTopMasterNodeStatus CMasternodeMan::GetTopMNsForBlock(string &error, vector<CMasternode> &topMNs, int nBlockHeight, bool bCalculateIfNotSeen)
 {
     if (nBlockHeight == -1)
         nBlockHeight = chainActive.Height();
-    
-    auto it = mapHistoricalTopMNs.find(nBlockHeight);
-    if (it != mapHistoricalTopMNs.end())
-        return it->second;
+
+    error.clear();
+    const auto it = mapHistoricalTopMNs.find(nBlockHeight);
+    if (it != mapHistoricalTopMNs.cend())
+    {
+        topMNs = it->second;
+        return GetTopMasterNodeStatus::SUCCEEDED_FROM_HISTORY;
+    }
     if (bCalculateIfNotSeen)
-        return CalculateTopMNsForBlock(nBlockHeight);
-    return vector<CMasternode>{};
+        return CalculateTopMNsForBlock(error, topMNs, nBlockHeight);
+    error = strprintf("Top MNs historical ranks for block %d not found", nBlockHeight);
+    return GetTopMasterNodeStatus::HISTORY_NOT_FOUND;
 }

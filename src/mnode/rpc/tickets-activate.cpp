@@ -24,6 +24,7 @@ If successful, returns "txid" of the activation ticket.
 Available types of tickets to activate:
   "nft"      - NFT ticket. 
   "action"   - Action ticket.
+  "collection" - Collection ticket.
 )");
 }
 

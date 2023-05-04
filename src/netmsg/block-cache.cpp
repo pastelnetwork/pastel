@@ -1,4 +1,4 @@
-// Copyright (c) 2022 The Pastel Core developers
+// Copyright (c) 2022-2023 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 
@@ -33,7 +33,21 @@ bool CBlockCache::add_block(const uint256& hash, const NodeId& nodeId, CBlock&& 
         it->second.Added();
         return false;
     }
-    m_BlockCacheMap.emplace(hash, BLOCK_CACHE_ITEM(nodeId, move(block)));
+    uint32_t nBlockHeight = 0;
+    {
+        LOCK(cs_main);
+        const auto itBlock = mapBlockIndex.find(hash);
+        if (itBlock != mapBlockIndex.cend())
+        {
+            const CBlockIndex* pindex = itBlock->second;
+            if (pindex)
+            {
+                if (pindex->nHeight >= 0)
+                    nBlockHeight = static_cast<uint32_t>(pindex->nHeight);
+            }
+        }
+    }
+    m_BlockCacheMap.emplace(hash, BLOCK_CACHE_ITEM(nodeId, nBlockHeight, move(block)));
     return true;
 }
 
@@ -100,6 +114,9 @@ size_t CBlockCache::revalidate_blocks(const CChainParams& chainparams)
     static const string strCommand("block"); // for PushMessage serialization
     string sHash; // block hash
     time_t nNow = time(nullptr);
+    // prepare list of blocks to revalidate, sorted by height
+    vector<tuple<uint256, CNode*, BLOCK_CACHE_ITEM*>> vToRevalidate;
+    vToRevalidate.reserve(m_BlockCacheMap.size());
     for (auto& [hash, item] : m_BlockCacheMap)
     {
         // skip items that being processed
@@ -110,19 +127,36 @@ size_t CBlockCache::revalidate_blocks(const CChainParams& chainparams)
         if (difftime(nNow, item.GetLastUpdateTime()) < BLOCK_REVALIDATION_WAIT_TIME)
             continue;
 
-        CValidationState state;
-        sHash = hash.ToString();
         // get the node from which the cached block was downloaded
         CNode* pfrom = FindNode(item.nodeId);
         if (!pfrom)
         {
-            LogPrintf("could not find node by peer id=%d, revalidating block %s\n", item.nodeId, sHash);
+            LogFnPrintf("could not find node by peer id=%d for block %s", item.nodeId, hash.ToString());
             vToDelete.push_back(hash);
             continue;
         }
+
+        // create the tuple
+        auto blockTuple = make_tuple(hash, pfrom, &item);
+
+        // find the insertion point in the sorted vector
+        const auto insertionPoint = lower_bound(vToRevalidate.cbegin(), vToRevalidate.cend(), blockTuple,
+            [](const auto& a, const auto& b)
+            {
+                return get<2>(a)->nBlockHeight < get<2>(b)->nBlockHeight;
+            });
+
+        // insert the tuple at the correct position
+        vToRevalidate.insert(insertionPoint, blockTuple);
+    }
+    // try to revalidate blocks
+    for (auto& [hash, pfrom, pItem] : vToRevalidate)
+    {
+        sHash = hash.ToString();
+        CValidationState state;
         // revalidation attempt counter
-        ++item.nValidationCounter;
-        uint32_t nBlockHeight = numeric_limits<uint32_t>::max();
+        ++pItem->nValidationCounter;
+        uint32_t nBlockHeight = pItem->nBlockHeight;
         {
             LOCK(cs_main);
             // reconsider this block
@@ -135,19 +169,19 @@ size_t CBlockCache::revalidate_blocks(const CChainParams& chainparams)
                 {
                     if (pindex->nHeight >= 0)
                         nBlockHeight = static_cast<uint32_t>(pindex->nHeight);
-                    LogPrintf("revalidating block %s from peer=%d at height=%u, attempt #%u\n", sHash, item.nodeId, nBlockHeight, item.nValidationCounter);
-                    // remove invalidity status from a block and its descendants
-                    ReconsiderBlock(state, pindex);
                 }
+                LogPrintf("revalidating block %s from peer=%d at height=%u, attempt #%u\n", sHash, pItem->nodeId, nBlockHeight, pItem->nValidationCounter);
+                // remove invalidity status from a block and its descendants
+                ReconsiderBlock(state, pindex);
             }
         }
-        item.bRevalidating = true;
+        pItem->bRevalidating = true;
         {
             reverse_lock<unique_lock<mutex> > rlock(lck);
             // try to reprocess the block
             //   - try to revalidate block and update blockchain tip (connect newly accepted block)
             //   - calls ActivateBestChain in case block is validated
-            ProcessNewBlock(state, chainparams, pfrom, &item.block, true);
+            ProcessNewBlock(state, chainparams, pfrom, &pItem->block, true);
         }
         int nDoS = 0; // denial-of-service code
         bool bReject = false;
@@ -155,14 +189,14 @@ size_t CBlockCache::revalidate_blocks(const CChainParams& chainparams)
         {
             // block failed revalidation again
             // increase revalidation counter and try again after some time
-            if (item.nValidationCounter < MAX_REVALIDATION_COUNT)
+            if (pItem->nValidationCounter < MAX_REVALIDATION_COUNT)
             {
-                item.nTimeValidated = time(nullptr);
+                pItem->nTimeValidated = time(nullptr);
                 // clear revalidating flag for this item to be processed again
-                item.bRevalidating = false;
+                pItem->bRevalidating = false;
                 continue;
             }
-            LogPrintf("max revalidation attempts reached (%u) for block %s (height %u) from peer=%d\n", MAX_REVALIDATION_COUNT, sHash, nBlockHeight, item.nodeId);
+            LogPrintf("max revalidation attempts reached (%u) for block %s (height %u) from peer=%d\n", MAX_REVALIDATION_COUNT, sHash, nBlockHeight, pItem->nodeId);
             nDoS = 10;
             // we have to reject the block - max number of revalidation attempts has been reached
             bReject = true;
@@ -184,7 +218,7 @@ size_t CBlockCache::revalidate_blocks(const CChainParams& chainparams)
         }
         else
         {
-            LogPrintf("block %s revalidated at height %u, peer=%d\n", sHash, nBlockHeight, item.nodeId);
+            LogPrintf("block %s revalidated at height %u, peer=%d\n", sHash, nBlockHeight, pItem->nodeId);
             // we have successfully processed this block and can safely remove it from the cache map
             vToDelete.push_back(hash);
             ++nCount;
@@ -198,19 +232,18 @@ size_t CBlockCache::revalidate_blocks(const CChainParams& chainparams)
                 ActivateBestChain(state, chainparams);
             }
         } 
-        nNow = time(nullptr);
     }
     // delete processed blocks
     for (const auto &hash: vToDelete)
     {
         m_BlockCacheMap.erase(hash);
-        LogPrint("net", "block %s removed from revalidation cache\n", hash.ToString());
+        LogFnPrint("net", "block %s removed from revalidation cache", hash.ToString());
     }
     // delete rejected blocks
     for (const auto &hash : vRejected)
     {
         m_BlockCacheMap.erase(hash);
-        LogPrint("net", "rejected block %s removed from revalidation cache\n", hash.ToString());
+        LogFnPrint("net", "rejected block %s removed from revalidation cache", hash.ToString());
     }
     return nCount;
 }

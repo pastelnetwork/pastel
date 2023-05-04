@@ -14,6 +14,17 @@
 #include <vector_types.h>
 #include <mnode/mnode-masternode.h>
 
+enum class GetTopMasterNodeStatus: int
+{
+    SUCCEEDED = 0,              // successfully got top masternodes
+    SUCCEEDED_FROM_HISTORY = 1, // successfully got top masternodes from historical top mn data
+    MN_NOT_SYNCED = -1,         // masternode is not synced
+    BLOCK_NOT_FOUND = -2,       // block not found
+    GET_MN_SCORES_FAILED = -3,  // failed to get masternode scores
+    NOT_ENOUGH_MNS = -4,        // not enough top masternodes
+    HISTORY_NOT_FOUND = -5,	    // historical top mn data not found
+};
+
 class CMasternodeMan
 {
 public:
@@ -65,7 +76,7 @@ private:
     std::map<uint256, std::vector<CMasternodeBroadcast> > mMnbRecoveryGoodReplies;
     std::list< std::pair<CService, uint256> > listScheduledMnbRequestConnections;
     
-    std::map<int, std::vector<CMasternode>> mapHistoricalTopMNs;
+    std::map<uint32_t, std::vector<CMasternode>> mapHistoricalTopMNs;
     
     int64_t nLastWatchdogVoteTime;
 
@@ -73,7 +84,7 @@ private:
     /// Find an entry
     CMasternode* Find(const COutPoint& outpoint);
 
-    bool GetMasternodeScores(const uint256& blockHash, score_pair_vec_t& vecMasternodeScoresRet, int nMinProtocol = 0);
+    bool GetMasternodeScores(std::string &error, const uint256& blockHash, score_pair_vec_t& vecMasternodeScoresRet, int nMinProtocol = 0);
 
 public:
     // Keep track of all broadcasts I've seen
@@ -167,8 +178,8 @@ public:
 
     auto GetFullMasternodeMap() const noexcept { return mapMasternodes; }
 
-    bool GetMasternodeRanks(rank_pair_vec_t& vecMasternodeRanksRet, int nBlockHeight = -1, int nMinProtocol = 0);
-    bool GetMasternodeRank(const COutPoint &outpoint, int& nRankRet, int nBlockHeight = -1, int nMinProtocol = 0);
+    GetTopMasterNodeStatus GetMasternodeRanks(std::string &error, rank_pair_vec_t& vecMasternodeRanksRet, int nBlockHeight = -1, int nMinProtocol = 0);
+    bool GetMasternodeRank(std::string &error, const COutPoint &outpoint, int& nRankRet, int nBlockHeight = -1, int nMinProtocol = 0);
 
     void ProcessMasternodeConnections();
     std::pair<CService, std::set<uint256> > PopScheduledMnbRequestConnection();
@@ -209,6 +220,6 @@ public:
 
     void UpdatedBlockTip(const CBlockIndex *pindex);
     
-    std::vector<CMasternode> GetTopMNsForBlock(int nBlockHeight = -1, bool bCalculateIfNotSeen = false);
-    std::vector<CMasternode> CalculateTopMNsForBlock(int nBlockHeight = -1);
+    GetTopMasterNodeStatus GetTopMNsForBlock(std::string &error, std::vector<CMasternode> &topMNs, int nBlockHeight = -1, bool bCalculateIfNotSeen = false);
+    GetTopMasterNodeStatus CalculateTopMNsForBlock(std::string &error, std::vector<CMasternode> &topMNs, int nBlockHeight = -1);
 };

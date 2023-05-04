@@ -19,4 +19,4 @@
 #include <mnode/tickets/nft-take-down.h>
 #include <mnode/tickets/nft-royalty.h>
 #include <mnode/tickets/username-change.h>
-#include <mnode/tickets/etherium-address-change.h>
+#include <mnode/tickets/ethereum-address-change.h>

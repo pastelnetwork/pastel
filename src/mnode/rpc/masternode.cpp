@@ -127,7 +127,8 @@ Examples:
     if (MNLIST.IsCmd(RPC_CMD_MNLIST::rank)) 
     {
         CMasternodeMan::rank_pair_vec_t vMasternodeRanks;
-        masterNodeCtrl.masternodeManager.GetMasternodeRanks(vMasternodeRanks);
+        string error;
+        const auto status = masterNodeCtrl.masternodeManager.GetMasternodeRanks(error, vMasternodeRanks);
         for (const auto& mnpair : vMasternodeRanks)
         {
             string strOutpoint = mnpair.second.GetDesc();
@@ -923,8 +924,11 @@ UniValue masternode_top(const UniValue& params)
     if (params.size() == 3)
         bCalculateIfNotSeen = params[2].get_str() == "1";
 
-    auto topBlockMNs = masterNodeCtrl.masternodeManager.GetTopMNsForBlock(nHeight, bCalculateIfNotSeen);
-
+    string error;
+    vector<CMasternode> topBlockMNs;
+    auto status = masterNodeCtrl.masternodeManager.GetTopMNsForBlock(error, topBlockMNs, nHeight, bCalculateIfNotSeen);
+    if (status != GetTopMasterNodeStatus::SUCCEEDED && status != GetTopMasterNodeStatus::SUCCEEDED_FROM_HISTORY)
+        LogFnPrintf("%s", error);
     UniValue mnsArray = formatMnsInfo(topBlockMNs);
     obj.pushKV(strprintf("%d", nHeight), move(mnsArray));
     return obj;
@@ -1009,6 +1013,10 @@ As json rpc:
                     throw JSONRPCError(RPC_INTERNAL_ERROR, 
                         strprintf("MasterNode not found by collateral txid-index: %s", outpoint.ToStringShort()));
             } break;
+
+            case RPC_CMD_SCORE::rpc_command_count:
+            case RPC_CMD_SCORE::unknown:
+                break;
         }
         retVal.pushKV("pose-ban-score", mn.getPoSeBanScore());
         const bool isBannedByScore = mn.IsPoSeBannedByScore();

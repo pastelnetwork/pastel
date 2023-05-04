@@ -11,7 +11,7 @@
 #include "mnode/rpc/mnode-rpc-utils.h"
 #include <mnode/tickets/nft-reg.h>
 #include <mnode/tickets/username-change.h>
-#include <mnode/tickets/etherium-address-change.h>
+#include <mnode/tickets/ethereum-address-change.h>
 #include "mnode/tickets/ticket.h"
 #include "mnode/ticket-processor.h"
 #include "mnode/mnode-controller.h"

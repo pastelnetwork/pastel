@@ -6,7 +6,7 @@
 
 #include <init.h>
 #include <pastelid/common.h>
-#include <mnode/tickets/etherium-address-change.h>
+#include <mnode/tickets/ethereum-address-change.h>
 #include <mnode/ticket-processor.h>
 #include <mnode/mnode-controller.h>
 #ifdef ENABLE_WALLET
@@ -57,7 +57,7 @@ string CChangeEthereumAddressTicket::ToStr() const noexcept
  */
 ticket_validation_t CChangeEthereumAddressTicket::IsValid(const bool bPreReg, const uint32_t nCallDepth) const noexcept
 {
-    const auto chainHeight = GetActiveChainHeight();
+    const auto nActiveChainHeight = gl_nChainHeight + 1;
     ticket_validation_t tv;
     do
     {
@@ -67,7 +67,7 @@ ticket_validation_t CChangeEthereumAddressTicket::IsValid(const bool bPreReg, co
         if (bPreReg)
         {
             // A2. Check if address has coins to pay for Ethereum Address Change Ticket
-            const auto fullTicketPrice = TicketPricePSL(chainHeight);
+            const auto fullTicketPrice = TicketPricePSL(nActiveChainHeight);
             if (pwalletMain->GetBalance() < fullTicketPrice * COIN)
             {
                 tv.errorMsg = strprintf(
@@ -114,7 +114,7 @@ ticket_validation_t CChangeEthereumAddressTicket::IsValid(const bool bPreReg, co
         const bool bFoundTicketBySecondaryKey = masterNodeCtrl.masternodeTickets.FindTicketBySecondaryKey(_ticket);
         if (bFoundTicketBySecondaryKey)
         {
-            const unsigned int height = (bPreReg || IsBlock(0)) ? chainHeight : m_nBlock;
+            const unsigned int height = (bPreReg || IsBlock(0)) ? nActiveChainHeight : m_nBlock;
             if (height <= _ticket.m_nBlock + 24 * 24)
             { // For testing purpose, the value 24 * 24 can be lower to decrease the waiting time
                 // D.2 IF Pastel ID has changed Ethereum Address in last 24 hours (~24*24 blocks), do not allow them to change
@@ -164,6 +164,11 @@ bool CChangeEthereumAddressTicket::FindTicketInDb(const string& key, CChangeEthe
 {
     ticket.ethereumAddress = key;
     return masterNodeCtrl.masternodeTickets.FindTicket(ticket);
+}
+
+ChangeEthereumAddressTickets_t CChangeEthereumAddressTicket::FindAllTicketByMVKey(const string& sMVKey)
+{
+    return masterNodeCtrl.masternodeTickets.FindTicketsByMVKey<CChangeEthereumAddressTicket>(sMVKey);
 }
 
 bool CChangeEthereumAddressTicket::isEthereumAddressInvalid(const string& ethereumAddress, string& error)

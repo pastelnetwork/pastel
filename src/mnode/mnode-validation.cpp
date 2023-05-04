@@ -19,8 +19,9 @@ bool GetBlockHash(uint256& hashRet, int nBlockHeight)
         return false;
     if (nBlockHeight < -1 || nBlockHeight > chainActive.Height())
         return false;
-    if (nBlockHeight == -1) nBlockHeight = chainActive.Height();
-        hashRet = chainActive[nBlockHeight]->GetBlockHash();
+    if (nBlockHeight == -1)
+        nBlockHeight = chainActive.Height();
+    hashRet = chainActive[nBlockHeight]->GetBlockHash();
     return true;
 }
 

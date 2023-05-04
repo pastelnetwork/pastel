@@ -8,6 +8,7 @@
 #include <utilstrencodings.h>
 #include <mnode/tickets/pastelid-reg.h>
 #include <mnode/tickets/action-reg.h>
+#include <mnode/tickets/collection-act.h>
 
 #ifdef ENABLE_WALLET
 #include <wallet/wallet.h>
@@ -200,6 +201,11 @@ void CActionRegTicket::parse_action_ticket()
                 case ACTION_TKT_PROP::collection_act_txid:
                     value.get_to(m_sCollectionActTxid);
                     break;
+
+                case ACTION_TKT_PROP::version:
+                case ACTION_TKT_PROP::app_ticket:
+                case ACTION_TKT_PROP::unknown:
+                    break;
             }  // switch
         } // for
 
@@ -267,17 +273,11 @@ bool CActionRegTicket::setActionType(const string& sActionType) noexcept
     return (m_ActionType != ACTION_TICKET_TYPE::UNKNOWN);
 }
 
-uint32_t CActionRegTicket::CountItemsInCollection(const uint32_t currentChainHeight) const
+uint32_t CActionRegTicket::CountItemsInCollection() const
 {
-    uint32_t nCollectionItemCount = 0;
-    masterNodeCtrl.masternodeTickets.ProcessTicketsByMVKey<CActionRegTicket>(m_sCollectionActTxid,
-                                                                            [&](const CActionRegTicket& regTicket) -> bool
-                                                                            {
-                                                                                if ((regTicket.GetBlock() <= currentChainHeight))
-                                                                                    ++nCollectionItemCount;
-                                                                                return true;
-                                                                            });
-    return nCollectionItemCount;
+    if (m_ActionType == ACTION_TICKET_TYPE::SENSE)
+        return CollectionActivateTicket::CountItemsInCollection(m_sCollectionActTxid, COLLECTION_ITEM_TYPE::SENSE, true);
+    return 0;
 }
 
 /**
@@ -339,7 +339,7 @@ string CActionRegTicket::ToJSON(const bool bDecodeProperties) const noexcept
  */
 ticket_validation_t CActionRegTicket::IsValid(const bool bPreReg, const uint32_t nCallDepth) const noexcept
 {
-    const auto chainHeight = GetActiveChainHeight();
+    const auto nActiveChainHeight = gl_nChainHeight + 1;
     ticket_validation_t tv;
     do
     {
@@ -358,7 +358,7 @@ ticket_validation_t CActionRegTicket::IsValid(const bool bPreReg, const uint32_t
             }
 
             // A.2 validate that address has coins to pay for registration - 10PSL
-            const auto fullTicketPrice = TicketPricePSL(chainHeight); //10% of storage fee is paid by the 'caller' and this ticket is created by MN
+            const auto fullTicketPrice = TicketPricePSL(nActiveChainHeight); //10% of storage fee is paid by the 'caller' and this ticket is created by MN
             if (pwalletMain->GetBalance() < fullTicketPrice * COIN)
             {
                 tv.errorMsg = strprintf(
@@ -430,9 +430,9 @@ bool CActionRegTicket::CheckIfTicketInDb(const string& key)
     return masterNodeCtrl.masternodeTickets.CheckTicketExist(ticket);
 }
 
-ActionRegTickets_t CActionRegTicket::FindAllTicketByPastelID(const string& pastelID)
+ActionRegTickets_t CActionRegTicket::FindAllTicketByMVKey(const string& sMVKey)
 {
-    return masterNodeCtrl.masternodeTickets.FindTicketsByMVKey<CActionRegTicket>(pastelID);
+    return masterNodeCtrl.masternodeTickets.FindTicketsByMVKey<CActionRegTicket>(sMVKey);
 }
 
 /**

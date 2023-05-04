@@ -1,6 +1,6 @@
 // Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2014 The Bitcoin Core developers
-// Copyright (c) 2018-2022 The Pastel Core developers
+// Copyright (c) 2018-2023 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 
@@ -14,6 +14,7 @@
 #include <stdio.h>
 #include <thread>
 #include <unistd.h>
+#include <errno.h>
 
 #if (defined(__FreeBSD__) || defined(__OpenBSD__) || defined(__DragonFly__))
 #include <pthread.h>
@@ -97,7 +98,7 @@ string strMiscWarning;
 bool fLogTimestamps = DEFAULT_LOGTIMESTAMPS;
 bool fLogTimeMicros = DEFAULT_LOGTIMEMICROS;
 bool fLogIPs = DEFAULT_LOGIPS;
-std::atomic<bool> fReopenDebugLog(false);
+atomic<bool> fReopenDebugLog(false);
 CTranslationInterface translationInterface;
 
 /**
@@ -111,10 +112,10 @@ CTranslationInterface translationInterface;
  * the mutex).
  */
 
-static std::once_flag debugPrintInitFlag;
+static once_flag debugPrintInitFlag;
 
 /**
- * We use std::call_once() to make sure mutexDebugLog and
+ * We use call_once() to make sure mutexDebugLog and
  * vMsgsBeforeOpenLog are initialized in a thread-safe manner.
  *
  * NOTE: fileout, mutexDebugLog and sometimes vMsgsBeforeOpenLog
@@ -123,24 +124,24 @@ static std::once_flag debugPrintInitFlag;
  * tested, explicit destruction of these objects can be implemented.
  */
 static FILE* fileout = nullptr;
-static std::mutex* mutexDebugLog = nullptr;
+static mutex* mutexDebugLog = nullptr;
 static list<string> *vMsgsBeforeOpenLog;
 
 [[noreturn]] void new_handler_terminate()
 {
-    // Rather than throwing std::bad-alloc if allocation fails, terminate
+    // Rather than throwing bad-alloc if allocation fails, terminate
     // immediately to (try to) avoid chain corruption.
     // Since LogPrintf may itself allocate memory, set the handler directly
     // to terminate first.
-    std::set_new_handler(std::terminate);
+    set_new_handler(terminate);
     fputs("Error: Out of memory. Terminating.\n", stderr);
     LogPrintf("Error: Out of memory. Terminating.\n");
 
     // The log was successful, terminate now.
-    std::terminate();
+    terminate();
 };
 
-static int FileWriteStr(const std::string &str, FILE *fp)
+static size_t FileWriteStr(const string &str, FILE *fp)
 {
     return fwrite(str.data(), 1, str.size(), fp);
 }
@@ -148,7 +149,7 @@ static int FileWriteStr(const std::string &str, FILE *fp)
 static void DebugPrintInit()
 {
     assert(mutexDebugLog == nullptr);
-    mutexDebugLog = new std::mutex();
+    mutexDebugLog = new mutex();
     vMsgsBeforeOpenLog = new list<string>;
 }
 
@@ -160,13 +161,18 @@ void OpenDebugLog()
     assert(fileout == nullptr);
     assert(vMsgsBeforeOpenLog);
     const fs::path pathDebugLog = GetDataDir() / "debug.log";
+#if defined(_MSC_VER) && (_MSC_VER >= 1400)
+    const errno_t err = fopen_s(&fileout, pathDebugLog.string().c_str(), "a");
+#else
     fileout = fopen(pathDebugLog.string().c_str(), "a");
+    const int err = fileout ? 0 : errno;
+#endif
     if (!fileout)
     {
-        printf("ERROR: failed to open debug log file [%s]. %s", pathDebugLog.string().c_str(), strerror(errno));
+        printf("ERROR: failed to open debug log file [%s]. %s", pathDebugLog.string().c_str(), GetErrorString(err).c_str());
         return;
     }
-    setbuf(fileout, nullptr); // unbuffered
+    setvbuf(fileout, nullptr, _IONBF, 0); // unbuffered
 
     // dump buffered messages from before we opened the log
     while (!vMsgsBeforeOpenLog->empty())
@@ -238,7 +244,7 @@ string get_tid() noexcept
 #else
     auto tid = this_thread::get_id();
 #endif
-    std::ostringstream s;
+    ostringstream s;
     s << tid;
     return s.str();
 }
@@ -265,7 +271,7 @@ inline string get_tid_hex() noexcept
  * suppress printing of the timestamp when multiple calls are made that don't
  * end in a newline. Initialize it to true, and hold it, in the calling context.
  */
-static std::string LogTimestampStr(const std::string &str, bool *fStartedNewLine)
+static string LogTimestampStr(const string &str, bool *fStartedNewLine)
 {
     string strStamped;
     strStamped.reserve(30 + str.size());
@@ -287,20 +293,20 @@ static std::string LogTimestampStr(const std::string &str, bool *fStartedNewLine
     return strStamped;
 }
 
-int LogPrintStr(const std::string &str)
+size_t LogPrintStr(const string &str)
 {
-    int ret = 0; // Returns total number of characters written
+    size_t nCharsWritten = 0; // Returns total number of characters written
     static bool fStartedNewLine = true;
     if (fPrintToConsole)
     {
         // print to console
-        ret = fwrite(str.data(), 1, str.size(), stdout);
+        nCharsWritten = fwrite(str.data(), 1, str.size(), stdout);
         fflush(stdout);
     }
     else if (fPrintToDebugLog)
     {
-        std::call_once(debugPrintInitFlag, &DebugPrintInit);
-        std::scoped_lock scoped_lock(*mutexDebugLog);
+        call_once(debugPrintInitFlag, &DebugPrintInit);
+        scoped_lock scoped_lock(*mutexDebugLog);
 
         string strTimestamped = LogTimestampStr(str, &fStartedNewLine);
 
@@ -308,7 +314,7 @@ int LogPrintStr(const std::string &str)
         if (!fileout)
         {
             assert(vMsgsBeforeOpenLog);
-            ret = strTimestamped.length();
+            nCharsWritten = strTimestamped.length();
             vMsgsBeforeOpenLog->push_back(strTimestamped);
         }
         else
@@ -318,14 +324,19 @@ int LogPrintStr(const std::string &str)
             {
                 fReopenDebugLog = false;
                 fs::path pathDebug = GetDataDir() / "debug.log";
-                if (freopen(pathDebug.string().c_str(), "a", fileout) != nullptr)
-                    setbuf(fileout, nullptr); // unbuffered
+#if defined(_MSC_VER) && (_MSC_VER >= 1400)
+                const errno_t err = freopen_s(&fileout, pathDebug.string().c_str(), "a", fileout);
+#else
+                fileout = freopen(pathDebug.string().c_str(), "a", fileout);
+#endif
+                if (fileout)
+                    setvbuf(fileout, nullptr, _IONBF, 0); // unbuffered
             }
 
-            ret = FileWriteStr(strTimestamped, fileout);
+            nCharsWritten = FileWriteStr(strTimestamped, fileout);
         }
     }
-    return ret;
+    return nCharsWritten;
 }
 
 static void InterpretNegativeSetting(string name, map<string, string>& mapSettingsRet)
@@ -333,7 +344,7 @@ static void InterpretNegativeSetting(string name, map<string, string>& mapSettin
     // interpret -nofoo as -foo=0 (and -nofoo=0 as -foo=1) as long as -foo not set
     if (name.find("-no") == 0)
     {
-        std::string positive("-");
+        string positive("-");
         positive.append(name.begin()+3, name.end());
         if (mapSettingsRet.count(positive) == 0)
         {
@@ -350,10 +361,10 @@ void ParseParameters(int argc, const char* const argv[])
 
     for (int i = 1; i < argc; i++)
     {
-        std::string str(argv[i]);
-        std::string strValue;
+        string str(argv[i]);
+        string strValue;
         size_t is_index = str.find('=');
-        if (is_index != std::string::npos)
+        if (is_index != string::npos)
         {
             strValue = str.substr(is_index+1);
             str = str.substr(0, is_index);
@@ -382,21 +393,21 @@ void ParseParameters(int argc, const char* const argv[])
         InterpretNegativeSetting(entry.first, mapArgs);
 }
 
-std::string GetArg(const std::string& strArg, const std::string& strDefault)
+string GetArg(const string& strArg, const string& strDefault)
 {
     if (mapArgs.count(strArg))
         return mapArgs[strArg];
     return strDefault;
 }
 
-int64_t GetArg(const std::string& strArg, int64_t nDefault)
+int64_t GetArg(const string& strArg, int64_t nDefault)
 {
     if (mapArgs.count(strArg))
         return atoi64(mapArgs[strArg]);
     return nDefault;
 }
 
-bool GetBoolArg(const std::string& strArg, bool fDefault)
+bool GetBoolArg(const string& strArg, bool fDefault)
 {
     if (mapArgs.count(strArg))
     {
@@ -407,7 +418,7 @@ bool GetBoolArg(const std::string& strArg, bool fDefault)
     return fDefault;
 }
 
-bool SoftSetArg(const std::string& strArg, const std::string& strValue)
+bool SoftSetArg(const string& strArg, const string& strValue)
 {
     if (mapArgs.count(strArg))
         return false;
@@ -415,30 +426,61 @@ bool SoftSetArg(const std::string& strArg, const std::string& strValue)
     return true;
 }
 
-bool SoftSetBoolArg(const std::string& strArg, bool fValue)
+bool SoftSetBoolArg(const string& strArg, bool fValue)
 {
     if (fValue)
-        return SoftSetArg(strArg, std::string("1"));
+        return SoftSetArg(strArg, string("1"));
     else
-        return SoftSetArg(strArg, std::string("0"));
+        return SoftSetArg(strArg, string("0"));
 }
 
 static const int screenWidth = 79;
 static const int optIndent = 2;
 static const int msgIndent = 7;
 
-std::string HelpMessageGroup(const std::string &message) {
-    return std::string(message) + std::string("\n\n");
+string HelpMessageGroup(const string &message)
+{
+    return string(message) + string("\n\n");
 }
 
-std::string HelpMessageOpt(const std::string &option, const std::string &message) {
-    return std::string(optIndent,' ') + std::string(option) +
-           std::string("\n") + std::string(msgIndent,' ') +
+string HelpMessageOpt(const string &option, const string &message)
+{
+    return string(optIndent,' ') + string(option) +
+           string("\n") + string(msgIndent,' ') +
            FormatParagraph(message, screenWidth - msgIndent, msgIndent) +
-           std::string("\n\n");
+           string("\n\n");
 }
 
-static std::string FormatException(const std::exception* pex, const char* pszThread)
+#ifdef WIN32
+string GetErrorString(const int err)
+{
+    char buf[256];
+    buf[0] = 0;
+    if (FormatMessageA(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS | FORMAT_MESSAGE_MAX_WIDTH_MASK,
+            nullptr, err, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
+            buf, sizeof(buf), nullptr))
+        return strprintf("%s (%d)", buf, err);
+    return strprintf("Unknown error (%d)", err);
+}
+#else
+string GetErrorString(const int err)
+{
+    char buf[256];
+    const char *s = buf;
+    buf[0] = 0;
+    /* Too bad there are two incompatible implementations of the
+     * thread-safe strerror. */
+#ifdef STRERROR_R_CHAR_P /* GNU variant can return a pointer outside the passed buffer */
+    s = strerror_r(err, buf, sizeof(buf));
+#else /* POSIX variant always returns message in buffer */
+    if (strerror_r(err, buf, sizeof(buf)))
+        buf[0] = 0;
+#endif
+    return strprintf("%s (%d)", s, err);
+}
+#endif
+
+static string FormatException(const exception* pex, const char* pszThread)
 {
 #ifdef WIN32
     char pszModule[MAX_PATH] = "";
@@ -454,9 +496,9 @@ static std::string FormatException(const std::exception* pex, const char* pszThr
             "UNKNOWN EXCEPTION       \n%s in %s       \n", pszModule, pszThread);
 }
 
-void PrintExceptionContinue(const std::exception* pex, const char* pszThread)
+void PrintExceptionContinue(const exception* pex, const char* pszThread)
 {
-    std::string message = FormatException(pex, pszThread);
+    string message = FormatException(pex, pszThread);
     LogPrintf("\n\n************************\n%s\n", message);
     fprintf(stderr, "\n\n************************\n%s\n", message.c_str());
     strMiscWarning = message;
@@ -550,10 +592,10 @@ const fs::path GetExportDir()
     if (mapArgs.count("-exportdir")) {
         path = fs::absolute(mapArgs["-exportdir"]);
         if (fs::exists(path) && !fs::is_directory(path)) {
-            throw std::runtime_error(strprintf("The -exportdir '%s' already exists and is not a directory", path.string()));
+            throw runtime_error(strprintf("The -exportdir '%s' already exists and is not a directory", path.string()));
         }
         if (!fs::exists(path) && !fs::create_directories(path)) {
-            throw std::runtime_error(strprintf("Failed to create directory at -exportdir '%s'", path.string()));
+            throw runtime_error(strprintf("Failed to create directory at -exportdir '%s'", path.string()));
         }
     }
     return path;
@@ -658,7 +700,7 @@ bool RenameOver(fs::path src, fs::path dest)
     return MoveFileExA(src.string().c_str(), dest.string().c_str(),
                        MOVEFILE_REPLACE_EXISTING) != 0;
 #else
-    int rc = std::rename(src.string().c_str(), dest.string().c_str());
+    int rc = rename(src.string().c_str(), dest.string().c_str());
     return (rc == 0);
 #endif /* WIN32 */
 }
@@ -780,16 +822,26 @@ void ShrinkDebugFile()
 {
     // Scroll debug.log if it's getting too big
     fs::path pathLog = GetDataDir() / "debug.log";
-    FILE* file = fopen(pathLog.string().c_str(), "r");
+
+    FILE* file = nullptr;
+#if defined(_MSC_VER) && (_MSC_VER >= 1400)
+    errno_t err = fopen_s(&file, pathLog.string().c_str(), "r");
+#else
+    file = fopen(pathLog.string().c_str(), "r");
+#endif
     if (file && fs::file_size(pathLog) > 10 * 1000000)
     {
         // Restart the file with some of the end
-        std::vector <char> vch(200000,0);
+        vector <char> vch(200000,0);
         fseek(file, -((long)vch.size()), SEEK_END);
-        int nBytes = fread(begin_ptr(vch), 1, vch.size(), file);
+        size_t nBytes = fread(begin_ptr(vch), 1, vch.size(), file);
         fclose(file);
 
+#if defined(_MSC_VER) && (_MSC_VER >= 1400)
+        err = fopen_s(&file, pathLog.string().c_str(), "w");
+#else
         file = fopen(pathLog.string().c_str(), "w");
+#endif
         if (file)
         {
             fwrite(begin_ptr(vch), 1, nBytes, file);
@@ -820,7 +872,7 @@ fs::path GetTempPath()
     return fs::temp_directory_path();
 }
 
-void runCommand(const std::string& strCommand)
+void runCommand(const string& strCommand)
 {
     int nErr = ::system(strCommand.c_str());
     if (nErr)
@@ -862,8 +914,8 @@ void SetupEnvironment()
     // may be invalid, in which case the "C" locale is used as fallback.
 #if !defined(WIN32) && !defined(MAC_OSX) && !defined(__FreeBSD__) && !defined(__OpenBSD__)
     try {
-        std::locale(""); // Raises a runtime error if current locale is invalid
-    } catch (const std::runtime_error&) {
+        locale(""); // Raises a runtime error if current locale is invalid
+    } catch (const runtime_error&) {
         setenv("LC_ALL", "C", 1);
     }
 #endif
@@ -871,7 +923,7 @@ void SetupEnvironment()
     // in multithreading environments, it is set explicitly by the main thread.
     // A dummy locale is used to extract the internal default locale, used by
     // fs::path, which is then used to explicitly imbue the path.
-    std::locale loc = fs::path::imbue(std::locale::classic());
+    locale loc = fs::path::imbue(locale::classic());
     fs::path::imbue(loc);
 }
 
@@ -900,14 +952,14 @@ void SetThreadPriority(int nPriority)
 #endif // WIN32
 }
 
-std::string PrivacyInfo()
+string PrivacyInfo()
 {
     return "\n" +
            FormatParagraph(strprintf(_("In order to ensure you are adequately protecting your privacy when using Pastel, please see <%s>."),
                                      "")) + "\n";
 }
 
-std::string LicenseInfo()
+string LicenseInfo()
 {
     return "\n" +
            FormatParagraph(strprintf(_("Copyright (C) 2009-%i The Bitcoin Core Developers"), COPYRIGHT_YEAR)) + "\n" +
@@ -924,7 +976,7 @@ std::string LicenseInfo()
 
 int GetNumCores()
 {
-    return std::thread::hardware_concurrency();
+    return thread::hardware_concurrency();
 }
 
 InsecureRand::InsecureRand(bool _fDeterministic)

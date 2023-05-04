@@ -3,7 +3,6 @@
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <chainparams.h>
-
 #include <mnode/tickets/ticket.h>
 
 // forward ticket class declaration
@@ -26,7 +25,7 @@ using ChangeUsernameTickets_t = std::vector<CChangeUsernameTicket>;
 class CChangeUsernameTicket : public CPastelTicket
 {
 public:
-    CChangeUsernameTicket() = default;
+    CChangeUsernameTicket() noexcept = default;
 
     explicit CChangeUsernameTicket(std::string &&sPastelID, std::string &&sUserName) : 
         m_sPastelID(std::move(sPastelID)),
@@ -102,6 +101,8 @@ public:
 
     static CChangeUsernameTicket Create(std::string &&sPastelID, std::string &&sUserName, SecureString&& strKeyPass);
     static bool FindTicketInDb(const std::string& key, CChangeUsernameTicket& ticket);
+    static ChangeUsernameTickets_t FindAllTicketByMVKey(const std::string& sMVKey);
+
 
     /** Some general checks to see if the username is bad. Below cases will be considered as bad Username
     *     - Contains characters that is different than upper and lowercase Latin characters and numbers

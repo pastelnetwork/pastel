@@ -1,6 +1,6 @@
 // Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2014 The Bitcoin Core developers
-// Copyright (c) 2018-2022 The Pastel Core developers
+// Copyright (c) 2018-2023 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 
@@ -8,14 +8,24 @@
 #include "config/bitcoin-config.h"
 #endif
 
+#include <cinttypes>
 #ifdef WIN32
 #include <string.h>
+#include <winsock2.h>
+#include <ws2tcpip.h>
+#include <iphlpapi.h>
+#include <wininet.h>
 #else
 #include <fcntl.h>
+#include <ifaddrs.h>
 #endif
+
+#include <scope_guard.hpp>
 
 #include <main.h>
 #include <net.h>
+#include <net_manager.h>
+#include <util.h>
 #include <addrman.h>
 #include <chainparams.h>
 #include <clientversion.h>
@@ -24,7 +34,7 @@
 #include <ui_interface.h>
 #include <crypto/common.h>
 #include <svc_thread.h>
-
+#include <util.h>
 //MasterNode
 #include <mnode/mnode-controller.h>
 
@@ -625,9 +635,8 @@ void CNode::copyStats(CNodeStats &stats)
     // So, if a ping is taking an unusually long time in flight,
     // the caller can immediately detect that this is happening.
     int64_t nPingUsecWait = 0;
-    if ((0 != nPingNonceSent) && (0 != nPingUsecStart)) {
+    if ((0 != nPingNonceSent) && (0 != nPingUsecStart))
         nPingUsecWait = GetTimeMicros() - nPingUsecStart;
-    }
 
     // Raw ping time is in microseconds, but show it to user as whole seconds (Bitcoin users should be well used to small numbers with many decimal places by now :)
     stats.dPingTime = (((double)nPingUsecTime) / 1e6);
@@ -727,9 +736,9 @@ int CNetMessage::readData(const char *pch, unsigned int nBytes)
 // requires LOCK(cs_vSend)
 void SocketSendData(CNode *pnode)
 {
-    std::deque<CSerializeData>::iterator it = pnode->vSendMsg.begin();
-
-    while (it != pnode->vSendMsg.end()) {
+    auto it = pnode->vSendMsg.begin();
+    while (it != pnode->vSendMsg.end())
+    {
         const CSerializeData &data = *it;
         assert(data.size() > pnode->nSendOffset);
         const int nBytes = send(pnode->hSocket, &data[pnode->nSendOffset], static_cast<int>(data.size() - pnode->nSendOffset), MSG_NOSIGNAL | MSG_DONTWAIT);
@@ -739,7 +748,8 @@ void SocketSendData(CNode *pnode)
             pnode->nSendBytes += nBytes;
             pnode->nSendOffset += nBytes;
             pnode->RecordBytesSent(nBytes);
-            if (pnode->nSendOffset == data.size()) {
+            if (pnode->nSendOffset == data.size())
+            {
                 pnode->nSendOffset = 0;
                 pnode->nSendSize -= data.size();
                 it++;
@@ -754,7 +764,7 @@ void SocketSendData(CNode *pnode)
                 int nErr = WSAGetLastError();
                 if (nErr != WSAEWOULDBLOCK && nErr != WSAEMSGSIZE && nErr != WSAEINTR && nErr != WSAEINPROGRESS)
                 {
-                    LogPrintf("socket send error %s\n", NetworkErrorString(nErr));
+                    LogFnPrintf("socket send error %s", GetErrorString(nErr));
                     pnode->CloseSocketDisconnect();
                 }
             }
@@ -978,7 +988,7 @@ static void AcceptConnection(const ListenSocket& hListenSocket)
 
     if (hSocket != INVALID_SOCKET)
         if (!addr.SetSockAddr((const struct sockaddr*)&sockaddr))
-            LogPrintf("Warning: Unknown socket family\n");
+            LogFnPrintf("Warning: Unknown socket family");
 
     bool whitelisted = hListenSocket.whitelisted || CNode::IsWhitelistedRange(addr);
     {
@@ -994,29 +1004,30 @@ static void AcceptConnection(const ListenSocket& hListenSocket)
     {
         int nErr = WSAGetLastError();
         if (nErr != WSAEWOULDBLOCK)
-            LogPrintf("socket error accept failed: %s\n", NetworkErrorString(nErr));
+            LogFnPrintf("socket error accept failed: %s", GetErrorString(nErr));
         return;
     }
 
     if (!IsSelectableSocket(hSocket))
     {
-        LogPrintf("connection from %s dropped: non-selectable socket\n", addr.ToString());
+        LogFnPrintf("connection from %s dropped: non-selectable socket", addr.ToString());
         CloseSocket(hSocket);
         return;
     }
 
     if (CNode::IsBanned(addr) && !whitelisted)
     {
-        LogPrintf("connection from %s dropped (banned)\n", addr.ToString());
+        LogFnPrintf("connection from %s dropped (banned)", addr.ToString());
         CloseSocket(hSocket);
         return;
     }
 
     if (nInbound >= nMaxInbound)
     {
-        if (!AttemptToEvictConnection(whitelisted)) {
+        if (!AttemptToEvictConnection(whitelisted))
+        {
             // No connection to evict, disconnect the new connection
-            LogPrint("net", "failed to find an eviction candidate - connection dropped (full)\n");
+            LogFnPrint("net", "failed to find an eviction candidate - connection dropped (full)");
             CloseSocket(hSocket);
             return;
         }
@@ -1024,8 +1035,9 @@ static void AcceptConnection(const ListenSocket& hListenSocket)
 
     //MasterNode
     // // don't accept incoming connections until fully synced
-    if(masterNodeCtrl.IsMasterNode() && !masterNodeCtrl.IsSynced()) {
-        LogPrintf("AcceptConnection -- masternode is not synced yet, skipping inbound connection attempt\n");
+    if (masterNodeCtrl.IsMasterNode() && !masterNodeCtrl.IsSynced())
+    {
+        LogFnPrintf("AcceptConnection -- masternode is not synced yet, skipping inbound connection attempt");
         CloseSocket(hSocket);
         return;
     }
@@ -1043,7 +1055,7 @@ static void AcceptConnection(const ListenSocket& hListenSocket)
     CNode* pnode = new CNode(hSocket, addr, "", true);
     pnode->fWhitelisted = whitelisted;
 
-    LogPrint("net", "connection from %s accepted\n", addr.ToString());
+    LogFnPrint("net", "connection from %s accepted", addr.ToString());
 
     {
         LOCK(cs_vNodes);
@@ -1068,7 +1080,7 @@ void CSocketHandlerThread::execute()
                 if (pnode->fDisconnect ||
                     (pnode->GetRefCount() <= 0 && pnode->vRecvMsg.empty() && pnode->nSendSize == 0 && pnode->ssSend.empty()))
                 {
-                    LogPrintf("ThreadSocketHandler -- removing node: peer=%d addr=%s nRefCount=%d fNetworkNode=%d fInbound=%d fMasternode=%d\n",
+                    LogFnPrintf("ThreadSocketHandler -- removing node: peer=%d addr=%s nRefCount=%d fNetworkNode=%d fInbound=%d fMasternode=%d",
                               pnode->id, pnode->addr.ToString(), pnode->GetRefCount(), pnode->fNetworkNode, pnode->fInbound, pnode->fMasternode);
                     
                     // remove from vNodes
@@ -1214,7 +1226,7 @@ void CSocketHandlerThread::execute()
             if (have_fds)
             {
                 int nErr = WSAGetLastError();
-                LogPrintf("socket select error %s\n", NetworkErrorString(nErr));
+                LogFnPrintf("socket select error %s", GetErrorString(nErr));
                 for (unsigned int i = 0; i <= hSocketMax; i++)
                     FD_SET(i, &fdsetRecv);
             }
@@ -1292,7 +1304,7 @@ void CSocketHandlerThread::execute()
                             if (nErr != WSAEWOULDBLOCK && nErr != WSAEMSGSIZE && nErr != WSAEINTR && nErr != WSAEINPROGRESS)
                             {
                                 if (!pnode->fDisconnect)
-                                    LogPrintf("socket recv error %s\n", NetworkErrorString(nErr));
+                                    LogFnPrintf("socket recv error %s", GetErrorString(nErr));
                                 pnode->CloseSocketDisconnect();
                             }
                         }
@@ -1314,29 +1326,42 @@ void CSocketHandlerThread::execute()
 
             //
             // Inactivity checking
+            // if network disconnected - do not check for inactivity
+            // if network was connected recently - wait for some time before checking for inactivity
             //
             int64_t nTime = GetTime();
-            if (nTime - pnode->nTimeConnected > 60)
-            {
-                if (pnode->nLastRecv == 0 || pnode->nLastSend == 0)
+            if (gl_NetMgr.IsNetworkConnected() && (nTime - pnode->nTimeConnected > 60))
+            {   
+                if (gl_NetMgr.IsNetworkConnectedRecently())
                 {
-                    LogPrint("net", "socket no message in first 60 seconds, %d %d from %d\n", pnode->nLastRecv != 0, pnode->nLastSend != 0, pnode->id);
-                    pnode->fDisconnect = true;
+                    if (!pnode->fPingQueued)
+                    {
+                        pnode->fPingQueued = true;
+                        LogFnPrintf("Node %d ping queued after %" PRId64 "s of network inactivity", pnode->id, gl_NetMgr.GetNetworkInactivityTime(nTime));
+                    }
                 }
-                else if (nTime - pnode->nLastSend > TIMEOUT_INTERVAL)
+                else
                 {
-                    LogPrintf("socket sending timeout: %is\n", nTime - pnode->nLastSend);
-                    pnode->fDisconnect = true;
-                }
-                else if (nTime - pnode->nLastRecv > (pnode->nVersion > BIP0031_VERSION ? TIMEOUT_INTERVAL : 90*60))
-                {
-                    LogPrintf("socket receive timeout: %is\n", nTime - pnode->nLastRecv);
-                    pnode->fDisconnect = true;
-                }
-                else if (pnode->nPingNonceSent && pnode->nPingUsecStart + TIMEOUT_INTERVAL * 1000000 < GetTimeMicros())
-                {
-                    LogPrintf("ping timeout: %fs\n", 0.000001 * (GetTimeMicros() - pnode->nPingUsecStart));
-                    pnode->fDisconnect = true;
+                    if (pnode->nLastRecv == 0 || pnode->nLastSend == 0)
+                    {
+                        LogFnPrint("net", "socket no message in first 60 seconds, %d %d from %d", pnode->nLastRecv != 0, pnode->nLastSend != 0, pnode->id);
+                        pnode->fDisconnect = true;
+                    }
+                    else if (nTime - pnode->nLastSend > DISCONNECT_TIMEOUT_INTERVAL_SECS)
+                    {
+                        LogFnPrintf("socket sending timeout: %" PRId64 "s", nTime - pnode->nLastSend);
+                        pnode->fDisconnect = true;
+                    }
+                    else if (nTime - pnode->nLastRecv > (pnode->nVersion > BIP0031_VERSION ? DISCONNECT_TIMEOUT_INTERVAL_SECS : 90 * 60))
+                    {
+                        LogFnPrintf("socket receive timeout: %" PRId64 "s", nTime - pnode->nLastRecv);
+                        pnode->fDisconnect = true;
+                    }
+                    else if (pnode->nPingNonceSent && pnode->nPingUsecStart + DISCONNECT_TIMEOUT_INTERVAL_SECS * 1000000 < GetTimeMicros())
+                    {
+                        LogFnPrintf("ping timeout: %fs", 0.000001 * (GetTimeMicros() - pnode->nPingUsecStart));
+                        pnode->fDisconnect = true;
+                    }
                 }
             }
         }
@@ -1371,7 +1396,7 @@ public:
             LOCK(cs_vNodes);
             if (vNodes.size() >= 2)
             {
-                LogPrintf("P2P peers available. Skipped DNS seeding.\n");
+                LogFnPrintf("P2P peers available. Skipped DNS seeding.");
                 return;
             }
         }
@@ -1381,7 +1406,7 @@ public:
         const vector<CDNSSeedData> &vSeeds = Params().DNSSeeds();
         int found = 0;
 
-        LogPrintf("Loading addresses from DNS seeds (could take a while)\n");
+        LogFnPrintf("Loading addresses from DNS seeds (could take a while)");
 
         for (const auto &seed : vSeeds)
         {
@@ -1408,7 +1433,7 @@ public:
             }
         }
 
-        LogPrintf("%d addresses found from DNS seeds\n", found);
+        LogFnPrintf("%d addresses found from DNS seeds", found);
     }
 };
 
@@ -1419,7 +1444,7 @@ void DumpAddresses()
     CAddrDB adb;
     adb.Write(addrman);
 
-    LogPrint("net", "Flushed %d addresses to peers.dat  %dms\n",
+    LogFnPrint("net", "Flushed %zu addresses to peers.dat  %zums",
            addrman.size(), GetTimeMillis() - nStart);
 }
 
@@ -1803,22 +1828,22 @@ bool BindListenPort(const CService &addrBind, string& strError, bool fWhiteliste
     socklen_t len = sizeof(sockaddr);
     if (!addrBind.GetSockAddr((struct sockaddr*)&sockaddr, &len))
     {
-        strError = strprintf("Error: Bind address family for %s not supported", addrBind.ToString());
-        LogPrintf("%s\n", strError);
+        strError = strprintf("ERROR: Bind address family for %s not supported", addrBind.ToString());
+        LogFnPrintf("%s", strError);
         return false;
     }
 
     SOCKET hListenSocket = socket(((struct sockaddr*)&sockaddr)->sa_family, SOCK_STREAM, IPPROTO_TCP);
     if (hListenSocket == INVALID_SOCKET)
     {
-        strError = strprintf("Error: Couldn't open socket for incoming connections (socket returned error %s)", NetworkErrorString(WSAGetLastError()));
-        LogPrintf("%s\n", strError);
+        strError = strprintf("ERROR: Couldn't open socket for incoming connections (socket returned error %s)", GetErrorString(WSAGetLastError()));
+        LogFnPrintf("%s", strError);
         return false;
     }
     if (!IsSelectableSocket(hListenSocket))
     {
-        strError = "Error: Couldn't create a listenable socket for incoming connections";
-        LogPrintf("%s\n", strError);
+        strError = "ERROR: Couldn't create a listenable socket for incoming connections";
+        LogFnPrintf("%s", strError);
         return false;
     }
 
@@ -1839,15 +1864,17 @@ bool BindListenPort(const CService &addrBind, string& strError, bool fWhiteliste
 #endif
 
     // Set to non-blocking, incoming connections will also inherit this
-    if (!SetSocketNonBlocking(hListenSocket, true)) {
-        strError = strprintf("BindListenPort: Setting listening socket to non-blocking failed, error %s\n", NetworkErrorString(WSAGetLastError()));
-        LogPrintf("%s\n", strError);
+    if (!SetSocketNonBlocking(hListenSocket, true))
+    {
+        strError = strprintf("Setting listening socket to non-blocking failed, error %s", GetErrorString(WSAGetLastError()));
+        LogFnPrintf("%s", strError);
         return false;
     }
 
     // some systems don't have IPV6_V6ONLY but are always v6only; others do have the option
     // and enable it by default or not. Try to enable it, if possible.
-    if (addrBind.IsIPv6()) {
+    if (addrBind.IsIPv6())
+    {
 #ifdef IPV6_V6ONLY
 #ifdef WIN32
         setsockopt(hListenSocket, IPPROTO_IPV6, IPV6_V6ONLY, (const char*)&nOne, sizeof(int));
@@ -1867,18 +1894,18 @@ bool BindListenPort(const CService &addrBind, string& strError, bool fWhiteliste
         if (nErr == WSAEADDRINUSE)
             strError = strprintf(_("Unable to bind to %s on this computer. Pastel is probably already running."), addrBind.ToString());
         else
-            strError = strprintf(_("Unable to bind to %s on this computer (bind returned error %s)"), addrBind.ToString(), NetworkErrorString(nErr));
-        LogPrintf("%s\n", strError);
+            strError = strprintf(_("Unable to bind to %s on this computer (bind returned error %s)"), addrBind.ToString(), GetErrorString(nErr));
+        LogFnPrintf("%s", strError);
         CloseSocket(hListenSocket);
         return false;
     }
-    LogPrintf("Bound to %s\n", addrBind.ToString());
+    LogFnPrintf("Bound to %s", addrBind.ToString());
 
     // Listen for incoming connections
     if (listen(hListenSocket, SOMAXCONN) == SOCKET_ERROR)
     {
-        strError = strprintf(_("Error: Listening for incoming connections failed (listen returned error %s)"), NetworkErrorString(WSAGetLastError()));
-        LogPrintf("%s\n", strError);
+        strError = strprintf(_("ERROR: Listening for incoming connections failed (listen returned error %s)"), GetErrorString(WSAGetLastError()));
+        LogFnPrintf("%s", strError);
         CloseSocket(hListenSocket);
         return false;
     }
@@ -1889,6 +1916,104 @@ bool BindListenPort(const CService &addrBind, string& strError, bool fWhiteliste
         AddLocal(addrBind, LOCAL_BIND);
 
     return true;
+}
+
+#ifdef WIN32
+bool hasWinActiveNetworkInterface()
+{
+    ULONG bufferSize = 0;
+    PIP_ADAPTER_ADDRESSES adapterAddresses = nullptr;
+    ULONG result = GetAdaptersAddresses(AF_UNSPEC, GAA_FLAG_INCLUDE_PREFIX, nullptr, adapterAddresses, &bufferSize);
+    if (result == ERROR_BUFFER_OVERFLOW)
+    {
+        adapterAddresses = static_cast<PIP_ADAPTER_ADDRESSES>(malloc(bufferSize));
+        if (!adapterAddresses)
+        {
+            LogFnPrintf("ERROR: Memory allocation failed for IP_ADAPTER_ADDRESSES struct.");
+            return false;
+        }
+        // AF_UNSPEC: unspecified address family (both)
+        // GAA_FLAG_INCLUDE_PREFIX: return a list of both IPv6 and IPv4 IP address prefixes on this adapter.
+        result = GetAdaptersAddresses(AF_UNSPEC, GAA_FLAG_INCLUDE_PREFIX, nullptr, adapterAddresses, &bufferSize);
+    }
+    auto adapterAddressesGuard = sg::make_scope_guard([&]() noexcept  { free(adapterAddresses); });
+
+    if (result != NO_ERROR)
+    {
+        LogFnPrintf("ERROR: GetAdaptersAddresses failed with error: ");
+        return false;
+    }
+
+    for (PIP_ADAPTER_ADDRESSES adapter = adapterAddresses; adapter != nullptr; adapter = adapter->Next)
+    {
+        if (adapter->OperStatus != IfOperStatusUp)
+            continue;
+        for (PIP_ADAPTER_UNICAST_ADDRESS addr = adapter->FirstUnicastAddress; addr != nullptr; addr = addr->Next)
+        {
+            if (addr->Address.lpSockaddr->sa_family == AF_INET ||
+                addr->Address.lpSockaddr->sa_family == AF_INET6)
+                return true;
+        }
+    }
+    return false;
+}
+#endif // WIN32
+
+bool hasActiveNetworkInterface()
+{
+#ifdef WIN32
+    DWORD dwConnectionFlags = 0;
+    const BOOL bIsConnected = InternetGetConnectedState(&dwConnectionFlags, 0);
+    if (bIsConnected && ((dwConnectionFlags & INTERNET_CONNECTION_OFFLINE) == 0))
+		return true;
+#else
+    struct ifaddrs* ifaddr = nullptr;
+    struct ifaddrs* ifa = nullptr;
+    int family, result;
+
+    if (getifaddrs(&ifaddr) == -1)
+    {
+        LogFnPrintf("ERROR: getifaddrs failed %s", GetErrorString(errno));
+        return false;
+    }
+    auto ifaddr_guard = sg::make_scope_guard([&]() noexcept { freeifaddrs(ifaddr); });
+
+    for (ifa = ifaddr; ifa != nullptr; ifa = ifa->ifa_next)
+    {
+        if (!ifa->ifa_addr)
+            continue;
+        if (strcmp(ifa->ifa_name, "lo") == 0 || strcmp(ifa->ifa_name, "lo0") == 0)
+            continue;
+        if (!(ifa->ifa_flags & IFF_UP))
+            continue;
+
+        family = ifa->ifa_addr->sa_family;
+        if (family == AF_INET || family == AF_INET6)
+        {
+            char host[NI_MAXHOST];
+            result = getnameinfo(ifa->ifa_addr,
+                                 (family == AF_INET) ? sizeof(struct sockaddr_in) : sizeof(struct sockaddr_in6),
+                                 host, NI_MAXHOST,
+                                 nullptr, 0, NI_NUMERICHOST);
+            if (result == 0)
+                return true;
+        }
+    }
+#endif
+    return false;
+}
+
+bool hasInternetConnectivity()
+{
+    const v_strings vHosts = { "google.com", "microsoft.com", "amazon.com", "8.8.8.8", "1.1.1.1" };
+
+    for (const auto& sHost : vHosts)
+    {
+        std::string cmd = "ping -c 1 " + sHost + " >/dev/null 2>&1";
+        if (std::system(cmd.c_str()) == 0)
+            return true;
+    }
+    return false;
 }
 
 void static Discover()
@@ -1954,11 +2079,14 @@ void StartNode(CServiceThreadGroup& threadGroup, CScheduler &scheduler)
     {
         CAddrDB adb;
         if (!adb.Read(addrman))
-            LogPrintf("Invalid or missing peers.dat; recreating\n");
+            LogFnPrintf("Invalid or missing peers.dat; recreating");
     }
-    LogPrintf("Loaded %i addresses from peers.dat  %dms\n",
+    LogFnPrintf("Loaded %i addresses from peers.dat  %dms",
            addrman.size(), GetTimeMillis() - nStart);
     fAddressesInitialized = true;
+
+    // Network Manager thread, check network connectivity
+    gl_NetMgr.start();
 
     if (!semOutbound)
     {
@@ -1977,7 +2105,7 @@ void StartNode(CServiceThreadGroup& threadGroup, CScheduler &scheduler)
     //
 
     if (!GetBoolArg("-dnsseed", true))
-        LogPrintf("DNS seeding disabled\n");
+        LogFnPrintf("DNS seeding disabled");
     else
         threadGroup.add_thread(make_shared<CDNSAddressSeedThread>());
 
@@ -2003,13 +2131,15 @@ void StartNode(CServiceThreadGroup& threadGroup, CScheduler &scheduler)
 
 bool StopNode()
 {
-    LogPrintf("StopNode()\n");
+    LogFnPrintf("StopNode()");
     if (semOutbound)
         for (int i=0; i<MAX_OUTBOUND_CONNECTIONS; i++)
             semOutbound->post();
 
     //MasterNode
     masterNodeCtrl.StopMasterNode();
+
+    gl_NetMgr.stop();
 
     if (fAddressesInitialized)
     {
@@ -2038,7 +2168,7 @@ public:
             if (hListenSocket.socket != INVALID_SOCKET)
             {
                 if (!CloseSocket(hListenSocket.socket))
-                    LogPrintf("CloseSocket(hListenSocket) failed with error %s\n", NetworkErrorString(WSAGetLastError()));
+                    LogFnPrintf("CloseSocket(hListenSocket) failed with error %s", GetErrorString(WSAGetLastError()));
             }
         }
 

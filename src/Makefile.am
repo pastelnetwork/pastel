@@ -132,7 +132,7 @@ MNODE_CPP =\
   mnode/tickets/accept.cpp\
   mnode/tickets/action-reg.cpp\
   mnode/tickets/action-act.cpp\
-  mnode/tickets/etherium-address-change.cpp\
+  mnode/tickets/ethereum-address-change.cpp\
   mnode/tickets/nft-act.cpp\
   mnode/tickets/collection-act.cpp\
   mnode/tickets/collection-reg.cpp\
@@ -184,7 +184,7 @@ MNODE_H = \
   mnode/rpc/tickets-tools.h\
   mnode/tickets/action-reg.h\
   mnode/tickets/action-act.h\
-  mnode/tickets/etherium-address-change.h\
+  mnode/tickets/ethereum-address-change.h\
   mnode/tickets/accept.h\
   mnode/tickets/ticket.h\
   mnode/tickets/ticket-extra-fees.h\
@@ -297,6 +297,7 @@ BITCOIN_CORE_H = \
   mruset.h \
   netmsg/block-cache.h\
   net.h \
+  net_manager.h \
   nodehelper.h \
   netbase.h \
   noui.h \
@@ -405,6 +406,7 @@ libbitcoin_server_a_SOURCES = \
   miner.cpp \
   netmsg/block-cache.cpp\
   net.cpp \
+  net_manager.cpp \
   noui.cpp \
   orphan-tx.cpp \
   policy/fees.cpp \
