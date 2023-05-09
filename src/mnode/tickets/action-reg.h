@@ -34,12 +34,14 @@ using ActionRegTickets_t = std::vector<CActionRegTicket>;
 
 Where action_ticket is an external base64-encoded JSON as a string:
 {
-  "action_ticket_version": int  // ticket version (1)
+  "action_ticket_version": int  // ticket version (1 or 2)
   "action_type": string,        // action type (sense, cascade)
   "caller": string,             // Pastel ID of the action caller
   "blocknum": uint,             // block number when the ticket was created - this is to map the ticket to the MNs that should process it
   "block_hash": bytes,          // hash of the top block when the ticket was created - this is to map the ticket to the MNs that should process it
-  "collection_txid": bytes,     // transaction id of the collection activation ticket that action belongs to (v2 only, optional, can be empty)
+  "collection_txid": string,    // transaction id of the collection activation ticket that action belongs to
+                                // v2 only, optional, can be empty
+                                // hex-encoded 64-byte txid as returned in collection activate ticket json response
   "app_ticket": object          // json object with application ticket,
                                 // actual structure of app_ticket is different for different API and is not parsed by cnode !!!!
 }

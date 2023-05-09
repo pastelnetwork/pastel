@@ -366,10 +366,9 @@ void CMasternodeSync::ProcessTick()
                 }
 
                 // only request once from each peer
-                if(masterNodeCtrl.requestTracker.HasFulfilledRequest(pnode->addr, "governance-payment-sync"))
+                if (masterNodeCtrl.requestTracker.HasFulfilledRequest(pnode->addr, "governance-payment-sync"))
                     continue;
                 masterNodeCtrl.requestTracker.AddFulfilledRequest(pnode->addr, "governance-payment-sync");
-
                 nRequestedMasternodeAttempt++;
 
                 // ask node for all governance info it has
@@ -422,16 +421,17 @@ void CMasternodeSync::UpdatedBlockTip(const CBlockIndex *pindexNew, bool fInitia
     if (IsFailed() || IsSynced() || !pindexBestHeader)
         return;
 
-    if (!IsBlockchainSynced()) {
+    if (!IsBlockchainSynced())
+    {
         // Postpone timeout each time new block arrives while we are still syncing blockchain
         BumpAssetLastTime(__METHOD_NAME__);
     }
 
-    if (fInitialDownload) {
+    if (fInitialDownload)
+    {
         // switched too early
-        if (IsBlockchainSynced()) {
+        if (IsBlockchainSynced())
             Reset();
-        }
 
         // no need to check any further while still in IBD mode
         return;
@@ -441,7 +441,8 @@ void CMasternodeSync::UpdatedBlockTip(const CBlockIndex *pindexNew, bool fInitia
     static bool fReachedBestHeader = false;
     bool fReachedBestHeaderNew = pindexNew->GetBlockHash() == pindexBestHeader->GetBlockHash();
 
-    if (fReachedBestHeader && !fReachedBestHeaderNew) {
+    if (fReachedBestHeader && !fReachedBestHeaderNew)
+    {
         // Switching from true to false means that we previously stuck syncing headers for some reason,
         // probably initial timeout was not enough,
         // because there is no way we can update tip not having best header

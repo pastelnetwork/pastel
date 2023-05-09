@@ -181,7 +181,7 @@ void Interrupt(CServiceThreadGroup& threadGroup, CScheduler &scheduler)
 
 void Shutdown(CServiceThreadGroup& threadGroup, CScheduler &scheduler)
 {
-    LogPrintf("%s: In progress...\n", __func__);
+    LogFnPrintf("In progress...");
     static CCriticalSection cs_Shutdown;
     TRY_LOCK(cs_Shutdown, lockShutdown);
     if (!lockShutdown)
@@ -227,7 +227,7 @@ void Shutdown(CServiceThreadGroup& threadGroup, CScheduler &scheduler)
         if (!est_fileout.IsNull())
             mempool.WriteFeeEstimates(est_fileout);
         else
-            LogPrintf("%s: Failed to write fee estimates to %s\n", __func__, est_path.string());
+            LogFnPrintf("Failed to write fee estimates to %s", est_path.string());
         fFeeEstimatesInitialized = false;
     }
 
@@ -267,17 +267,16 @@ void Shutdown(CServiceThreadGroup& threadGroup, CScheduler &scheduler)
     try {
         fs::remove(GetPidFile());
     } catch (const fs::filesystem_error& e) {
-        LogPrintf("%s: Unable to remove pidfile: %s\n", __func__, e.what());
+        LogFnPrintf("Unable to remove pidfile: %s", e.what());
     }
 #endif
     UnregisterAllValidationInterfaces();
 #ifdef ENABLE_WALLET
-    delete pwalletMain;
-    pwalletMain = nullptr;
+    safe_delete_obj(pwalletMain);
 #endif
     globalVerifyHandle.reset();
     ECC_Stop();
-    LogPrintf("%s: done\n", __func__);
+    LogFnPrintf("done");
 }
 
 /**

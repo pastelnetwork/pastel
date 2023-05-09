@@ -910,7 +910,7 @@ void CMasternodeMan::ProcessMessage(CNode* pfrom, string& strCommand, CDataStrea
 
         if (vin == CTxIn())
         {
-            pfrom->PushMessage(NetMsgType::SYNCSTATUSCOUNT, (int)CMasternodeSync::MasternodeSyncState::List, nInvCount);
+            pfrom->PushMessage(NetMsgType::SYNCSTATUSCOUNT, to_integral_type(CMasternodeSync::MasternodeSyncState::List), nInvCount);
             LogFnPrintf("DSEG -- Sent %d Masternode invs to peer %d", nInvCount, pfrom->id);
             return;
         }

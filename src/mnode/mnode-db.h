@@ -1,10 +1,13 @@
 #pragma once
 // Copyright (c) 2014-2017 The Dash Core developers
-// Copyright (c) 2019-2021 The Pastel Core developers
+// Copyright (c) 2019-2023 The Pastel Core developers
 // Distributed under the MIT/X11 software license, see the accompanying
-// file COPYING or http://www.opensource.org/licenses/mit-license.php.
+// file COPYING or https://www.opensource.org/licenses/mit-license.php.
 
-#include "clientversion.h"
+#include <clientversion.h>
+#include <fs.h>
+#include <util.h>
+#include <serialize.h>
 
 /** 
 *   Generic Dumping and Loading
@@ -34,7 +37,7 @@ private:
     {
         // LOCK(objToSave.cs);
 
-        int64_t nStart = GetTimeMillis();
+        const int64_t nStart = GetTimeMillis();
 
         // serialize, checksum data up to that point, then append checksum
         CDataStream ssObj(SER_DISK, CLIENT_VERSION);
@@ -64,17 +67,18 @@ private:
         }
         fileout.fclose();
 
-        LogPrintf("Written info to %s  %dms\n", strFilename, GetTimeMillis() - nStart);
-        LogPrintf("     %s\n", objToSave.ToString());
+        LogFnPrintf("Written info to %s  %dms", strFilename, GetTimeMillis() - nStart);
+        LogFnPrintf("     %s", objToSave.ToString());
 
         return true;
     }
 
-    ReadResult Read(T& objToLoad, bool fDryRun = false)
+    ReadResult Read(T& objToLoad, std::string &error, bool fDryRun = false)
     {
         //LOCK(objToLoad.cs);
 
-        int64_t nStart = GetTimeMillis();
+        error.clear();
+        const int64_t nStart = GetTimeMillis();
         // open input file, and associate with CAutoFile
         FILE* file = nullptr;
 #if defined(_MSC_VER) && (_MSC_VER >= 1400)
@@ -85,7 +89,7 @@ private:
         CAutoFile filein(file, SER_DISK, CLIENT_VERSION);
         if (filein.IsNull())
         {
-            error("%s: Failed to open file %s", __func__, pathDB.string());
+            error = strprintf("Failed to open file %s", pathDB.string());
             return FileError;
         }
 
@@ -103,7 +107,7 @@ private:
         }
         catch (const std::exception &e)
         {
-            error("%s: Deserialize or I/O error - %s", __func__, e.what());
+            error = strprintf("Deserialize or I/O error - %s", e.what());
             return HashReadError;
         }
         filein.fclose();
@@ -114,10 +118,9 @@ private:
         uint256 hashTmp = Hash(ssObj.begin(), ssObj.end());
         if (hashIn != hashTmp)
         {
-            error("%s: Checksum mismatch, data corrupted", __func__);
+            error = "Checksum mismatch, data corrupted";
             return IncorrectHash;
         }
-
 
         unsigned char pchMsgTmp[4];
         std::string strMagicMessageTmp;
@@ -128,7 +131,7 @@ private:
             // ... verify the message matches predefined one
             if (strMagicMessage != strMagicMessageTmp)
             {
-                error("%s: Invalid magic message", __func__);
+                error = "Invalid magic message";
                 return IncorrectMagicMessage;
             }
 
@@ -139,7 +142,7 @@ private:
             // ... verify the network matches ours
             if (memcmp(pchMsgTmp, Params().MessageStart(), sizeof(pchMsgTmp)))
             {
-                error("%s: Invalid network magic number", __func__);
+                error = "Invalid network magic number";
                 return IncorrectMagicNumber;
             }
 
@@ -149,16 +152,18 @@ private:
         catch (const std::exception &e)
         {
             objToLoad.Clear();
-            error("%s: Deserialize or I/O error - %s", __func__, e.what());
+            error = strprintf("Deserialize or I/O error at pos %zu/%zu - %s", 
+                ssObj.getReadPos(), nDataSize, e.what());
             return IncorrectFormat;
         }
 
-        LogPrintf("Loaded info from %s  %dms\n", strFilename, GetTimeMillis() - nStart);
-        LogPrintf("     %s\n", objToLoad.ToString());
-        if(!fDryRun) {
-            LogPrintf("%s: Cleaning....\n", __func__);
+        LogFnPrintf("Loaded info from %s  %dms", strFilename, GetTimeMillis() - nStart);
+        LogFnPrintf("     %s", objToLoad.ToString());
+        if (!fDryRun)
+        {
+            LogFnPrintf("Cleaning...");
             objToLoad.CheckAndRemove();
-            LogPrintf("     %s\n", objToLoad.ToString());
+            LogFnPrintf("     %s", objToLoad.ToString());
         }
 
         return Ok;
@@ -173,58 +178,62 @@ public:
         strMagicMessage = strMagicMessageIn;
     }
 
+    std::string getFilePath() const noexcept
+    {
+        return pathDB.string();
+    }
+
     bool Load(T& objToLoad)
     {
-        LogPrintf("Reading info from %s...\n", strFilename);
-        ReadResult readResult = Read(objToLoad);
+        std::string error;
+        LogFnPrintf("Reading info from %s...", strFilename);
+        const ReadResult readResult = Read(objToLoad, error);
         if (readResult == FileError)
-            LogPrintf("Missing file %s, will try to recreate\n", strFilename);
+            LogFnPrintf("Missing file %s, will try to recreate", strFilename);
         else if (readResult != Ok)
         {
-            LogPrintf("Error reading %s: ", strFilename);
-            if(readResult == IncorrectFormat)
-            {
-                LogPrintf("%s: Magic is ok but data has invalid format, will try to recreate\n", __func__);
-            }
-            else {
-                LogPrintf("%s: File format is unknown or invalid, please fix it manually\n", __func__);
-                // program should exit with an error
+            error = strprintf("Error reading %s. %s. ", strFilename, error);
+            if (readResult == IncorrectFormat)
+                error += "Magic is ok, but data has invalid format, will try to recreate";
+            else
+                error += "File format is unknown or invalid, please fix it manually";
+            LogFnPrintf(error);
+            if (readResult != IncorrectFormat)
                 return false;
-            }
         }
         return true;
     }
 
     bool Dump(T& objToSave)
     {
-        int64_t nStart = GetTimeMillis();
+        std::string error;
+        const int64_t nStart = GetTimeMillis();
 
-        LogPrintf("Verifying %s format...\n", strFilename);
+        LogFnPrintf("Verifying %s format...", strFilename);
         T tmpObjToLoad;
-        ReadResult readResult = Read(tmpObjToLoad, true);
+        const ReadResult readResult = Read(tmpObjToLoad, error, true);
 
         // there was an error and it was not an error on file opening => do not proceed
         if (readResult == FileError)
-            LogPrintf("Missing file %s, will try to recreate\n", strFilename);
+            LogFnPrintf("Missing file %s, will try to recreate", strFilename);
         else if (readResult != Ok)
         {
-            LogPrintf("Error reading %s: ", strFilename);
-            if(readResult == IncorrectFormat)
-                LogPrintf("%s: Magic is ok but data has invalid format, will try to recreate\n", __func__);
+            error = strprintf("Error reading %s. %s. ", strFilename, error);
+            if (readResult == IncorrectFormat)
+                error += "Magic is ok, but data has invalid format, will try to recreate";
             else
-            {
-                LogPrintf("%s: File format is unknown or invalid, please fix it manually\n", __func__);
+                error += "File format is unknown or invalid, please fix it manually";
+            LogFnPrintf(error);
+            if (readResult != IncorrectFormat)
                 return false;
-            }
         }
 
-        LogPrintf("Writing info to %s...\n", strFilename);
+        LogFnPrintf("Writing info to %s...", strFilename);
         Write(objToSave);
-        LogPrintf("%s dump finished  %dms\n", strFilename, GetTimeMillis() - nStart);
+        LogFnPrintf("%s dump finished  %dms", strFilename, GetTimeMillis() - nStart);
 
         return true;
     }
-
 };
 
 

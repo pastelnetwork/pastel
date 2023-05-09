@@ -87,11 +87,11 @@ public:
     
     std::string TicketGreenAddress;
 
-    // returns true if we're running in Masternode mode
+    // returns true if we're running in "Masternode" mode
     bool IsMasterNode() const noexcept { return m_fMasterNode; }
-    // returns true if we're running in Masternode mode and started state
+    // returns true if we're running in "Masternode" mode and in "started" state
     bool IsActiveMasterNode() const noexcept { return m_fMasterNode && activeMasternode.IsStarted(); }
-    // returns true if node can register mnid (should be running in masternode mode and have one of the two statuses: started or needMnId)
+    // returns true if node can register mnid (should be running in Masternode mode and have one of the two statuses: Started or NeedMnId)
     bool CanRegisterMnId() const noexcept { return m_fMasterNode && (activeMasternode.IsStarted() || activeMasternode.NeedMnId()); }
     int GetSupportedProtocolVersion() const noexcept;
 
@@ -134,7 +134,7 @@ protected:
     bool m_fMasterNode;
     // MasterNode PoSe (Proof of Service) Max Ban Score
     int m_nMasternodePOSEBanMaxScore = 0;
-    // max age of the in-process collection ticket in blocks before it becomes finalized
+    // max age of the in_process collection ticket in blocks before it becomes finalized
     uint32_t m_nMaxInProcessCollectionTicketAge;
     // min required number of masternodes
     size_t m_nMasternodeTopMNsNumberMin;

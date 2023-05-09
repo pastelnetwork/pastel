@@ -92,7 +92,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         
         self.total_copies = None
         self.collection_name = None
-        self.in_process_collection_ticket_age = 60  # number of blocks until in-process collection will be finalized
+        self.in_process_collection_ticket_age = 60  # number of blocks until in_process collection will be finalized
 
         self.test_high_heights = False
 
@@ -1350,7 +1350,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         assert_equal(tkt1['creator_height'], collection_reg_ticket.reg_height)
         assert_equal(tkt1['storage_fee'], self.storage_fee)
         assert_equal(tkt1['activated_item_count'], 0)
-        assert_equal(tkt1['collection_state'], 'in-process')
+        assert_equal(tkt1['collection_state'], 'in_process')
         assert_equal(tkt1['is_expired_by_height'], False)
         assert_equal(tkt1['is_full'], False)
         assert_equal(collection_activate_ticket1['txid'], collection_reg_ticket.act_txid)
@@ -1501,16 +1501,16 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         # collection reg ticket creator-height + 47
         
         # check that collection activate ticket returns only one activated collection item ticket
-        # and collection state is 'in-process'
+        # and collection state is 'in_process'
         coll_act_tkt1 = self.nodes[0].tickets("get", collection_reg_ticket.act_txid)
         tkt1 = coll_act_tkt1['ticket']
         assert_equal(coll_act_tkt1['txid'], collection_reg_ticket.act_txid)
         assert_equal(tkt1['activated_item_count'], 1)
-        assert_equal(tkt1['collection_state'], 'in-process')
+        assert_equal(tkt1['collection_state'], 'in_process')
         assert_equal(tkt1['is_expired_by_height'], False)
         assert_equal(tkt1['is_full'], False)
         
-        # we still should be able to register item ticket #3, because collection is still in-process and not finalized
+        # we still should be able to register item ticket #3, because collection is still in_process and not finalized
         if item_type == CollectionItemType.NFT: 
             self.create_nft_ticket_v2(self.non_mn3, collection_reg_ticket.act_txid)
         else:
