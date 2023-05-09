@@ -88,9 +88,9 @@ commands:
     steps:
       - run:
           name: Uploading executables to Pastel GitHub repo (<< parameters.platform >>)
-          working_directory: << parameters.root_directory >>
+          working_directory: << parameters.root_directory >>/src
           command: |
-            export EXPORT_ARTIFACT=src/<< parameters.binaryName >><< parameters.ext >>
+            export EXPORT_ARTIFACT=<< parameters.binaryName >><< parameters.ext >>
             echo "Check existence of [${EXPORT_ARTIFACT}] build and upload to GitHub, tag ${CIRCLE_TAG}"
             if test -z "${CIRCLE_TAG}"; then
                echo "Git tag is not defined"
@@ -100,8 +100,10 @@ commands:
                echo "Artifact [$EXPORT_ARTIFACT] not found"
                exit 2
             fi
-            echo gh release upload --clobber --repo pastelnetwork/<< parameters.repo >> ${CIRCLE_TAG} ${EXPORT_ARTIFACT}#<< parameters.binaryName >>-<< parameters.platform >>-amd64
-            gh release upload --clobber --repo pastelnetwork/<< parameters.repo >> ${CIRCLE_TAG} ${EXPORT_ARTIFACT}#<< parameters.binaryName >>-<< parameters.platform >>-amd64
+            artifact_name="<< parameters.binaryName >>-<< parameters.platform >>-amd64<< parameters.ext >>"
+            cp -fvp "$EXPORT_ARTIFACT" "${artifact_name}"
+            echo gh release upload --clobber --repo pastelnetwork/<< parameters.repo >> ${CIRCLE_TAG} ${artifact_name}#${artifact_name}
+            gh release upload --clobber --repo pastelnetwork/<< parameters.repo >> ${CIRCLE_TAG} ${artifact_name}#${artifact_name}
 
 jobs:
   build_platform:

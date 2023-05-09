@@ -35,6 +35,7 @@ using ActionTicketInfo = struct
 
 static const std::array<ActionTicketInfo, 2> ACTION_TICKET_INFO =
 {{
+    // version, based-on-version, map of supported properties
     { 1, 0,
        {
            {"action_ticket_version",        make_tuple(ACTION_TKT_PROP::version, true)},
@@ -80,7 +81,7 @@ const char* GetActionTypeName(const ACTION_TICKET_TYPE actionTicketType) noexcep
 // ----Action Registration Ticket-- -- ////////////////////////////////////////////////////////////////////////////////////////////////////////
 /* current action_ticket passed base64-encoded
 {
-  "action_ticket_version": integer // 1
+  "action_ticket_version": integer // 1 or 2
   "caller": string,                // Pastel ID of the caller
   "blocknum": integer,             // block number when the ticket was created - this is to map the ticket to the MNs that should process it
   "block_hash": bytes              // hash of the top block when the ticket was created - this is to map the ticket to the MNs that should process it

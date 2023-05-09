@@ -189,6 +189,7 @@ public:
     void clear() noexcept                            { vch.clear(); nReadPos = 0; }
     iterator insert(iterator it, const char& x=char()) { return vch.insert(it, x); }
     void insert(iterator it, size_type n, const char& x) { vch.insert(it, n, x); }
+    size_t getReadPos() const noexcept               { return nReadPos; }
 
     void insert(iterator it, std::vector<char>::const_iterator first, std::vector<char>::const_iterator last)
     {
@@ -383,7 +384,7 @@ public:
 class CDataStream : public CBaseDataStream<CSerializeData>
 {
 public:
-    explicit CDataStream(const int nType, const int nVersion) : 
+    explicit CDataStream(const int nType, const int nVersion) :
         CBaseDataStream(nType, nVersion)
     {}
 
@@ -428,7 +429,8 @@ public:
         // Unserialize from this stream
         ::Unserialize(*this, obj);
         return (*this);
-    } };
+    }
+};
 
 /** Non-refcounted RAII wrapper for FILE*
  *

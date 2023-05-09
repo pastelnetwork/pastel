@@ -215,7 +215,7 @@ string CollectionActivateTicket::ToJSON(const bool bDecodeProperties) const noex
             nCollectionItemCount = CountItemsInCollection(GetTxId(), pCollRegTicket->getItemType(), true);
             bIsCollectionFull = nCollectionItemCount >= pCollRegTicket->getMaxCollectionEntries();
             bIsCollectionExpiredByHeight = nActiveChainHeight > pCollRegTicket->getCollectionFinalAllowedBlockHeight();
-			sCollectionState = bIsCollectionFull || bIsCollectionExpiredByHeight ? "finalized" : "in-process";
+			sCollectionState = bIsCollectionFull || bIsCollectionExpiredByHeight ? "finalized" : "in_process";
 		}
     }
     
@@ -233,7 +233,7 @@ string CollectionActivateTicket::ToJSON(const bool bDecodeProperties) const noex
                 { "creator_height", m_creatorHeight },
                 { "storage_fee", m_storageFee },
                 { "activated_item_count", nCollectionItemCount },
-                { "collection_state", sCollectionState.empty() ? "not-defined" : sCollectionState },
+                { "collection_state", sCollectionState.empty() ? "not_defined" : sCollectionState },
                 { "is_expired_by_height", bIsCollectionExpiredByHeight },
                 { "is_full", bIsCollectionFull },
                 { "signature", ed_crypto::Hex_Encode(m_signature.data(), m_signature.size()) }

@@ -662,7 +662,7 @@ string CMasternode::GetStatus() const
 
 void CMasternode::UpdateLastPaid(const CBlockIndex *pindex, int nMaxBlocksToScanBack)
 {
-    if(!pindex)
+    if (!pindex)
         return;
 
     const CBlockIndex *BlockReading = pindex;
@@ -673,8 +673,9 @@ void CMasternode::UpdateLastPaid(const CBlockIndex *pindex, int nMaxBlocksToScan
     LOCK(cs_mapMasternodeBlockPayees);
 
     const auto &consensusParams = m_chainparams.GetConsensus();
-    for (int i = 0; BlockReading && BlockReading->nHeight > m_nBlockLastPaid && i < nMaxBlocksToScanBack; i++) {
-        if(masterNodeCtrl.masternodePayments.mapMasternodeBlockPayees.count(BlockReading->nHeight) &&
+    for (int i = 0; BlockReading && BlockReading->nHeight > m_nBlockLastPaid && i < nMaxBlocksToScanBack; i++)
+    {
+        if (masterNodeCtrl.masternodePayments.mapMasternodeBlockPayees.count(BlockReading->nHeight) &&
             masterNodeCtrl.masternodePayments.mapMasternodeBlockPayees[BlockReading->nHeight].HasPayeeWithVotes(mnpayee, 2))
         {
             CBlock block;

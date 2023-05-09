@@ -324,18 +324,17 @@ bool CMasterNodeController::EnableMasterNode(ostringstream& strErrors, CServiceT
     CFlatDB<CMasternodeMan> flatDB1(strDBName, "magicMasternodeCache");
     if (!flatDB1.Load(masternodeManager))
     {
-        strErrors << _("Failed to load masternode cache from") + "\n" + (pathDB / strDBName).string();
+        strErrors << _("Failed to load masternode cache from") + "\n" + flatDB1.getFilePath();
         return false;
     }
 
     if (!masternodeManager.empty())
     {
-        strDBName = "mnpayments.dat";
         uiInterface.InitMessage(_("Loading masternode payment cache..."));
-        CFlatDB<CMasternodePayments> flatDB2(strDBName, "magicMasternodePaymentsCache");
+        CFlatDB<CMasternodePayments> flatDB2(MNPAYMENTS_CACHE_FILENAME, MNPAYMENTS_CACHE_MAGIC_STR);
         if (!flatDB2.Load(masternodePayments))
         {
-            strErrors << _("Failed to load masternode payments cache from") + "\n" + (pathDB / strDBName).string();
+            strErrors << _("Failed to load masternode payments cache from") + "\n" + flatDB2.getFilePath();
             return false;
         }
     } else
@@ -347,7 +346,7 @@ bool CMasterNodeController::EnableMasterNode(ostringstream& strErrors, CServiceT
     CFlatDB<CMasternodeGovernance> flatDB3(strDBName, "magicGovernanceCache");
     if (!flatDB3.Load(masternodeGovernance))
     {
-        strErrors << _("Failed to load governance cache from") + "\n" + (pathDB / strDBName).string();
+        strErrors << _("Failed to load governance cache from") + "\n" + flatDB3.getFilePath();
         return false;
     }
 #endif // GOVERNANCE_TICKETS
@@ -357,7 +356,7 @@ bool CMasterNodeController::EnableMasterNode(ostringstream& strErrors, CServiceT
     CFlatDB<CMasternodeRequestTracker> flatDB4(strDBName, "magicFulfilledCache");
     if (!flatDB4.Load(requestTracker))
     {
-        strErrors << _("Failed to load fulfilled requests cache from") + "\n" + (pathDB / strDBName).string();
+        strErrors << _("Failed to load fulfilled requests cache from") + "\n" + flatDB4.getFilePath();
         return false;
     }
 
@@ -366,7 +365,7 @@ bool CMasterNodeController::EnableMasterNode(ostringstream& strErrors, CServiceT
     CFlatDB<CMasternodeMessageProcessor> flatDB5(strDBName, "magicMessagesCache");
     if (!flatDB5.Load(masternodeMessages))
     {
-        strErrors << _("Failed to load messages cache from") + "\n" + (pathDB / strDBName).string();
+        strErrors << _("Failed to load messages cache from") + "\n" + flatDB5.getFilePath();
         return false;
     }
 	
@@ -437,7 +436,7 @@ bool CMasterNodeController::AlreadyHave(const CInv& inv)
 #endif // GOVERNANCE_TICKETS
 
     case MSG_MASTERNODE_PAYMENT_VOTE:
-        return masternodePayments.mapMasternodePaymentVotes.count(inv.hash);
+        return masternodePayments.mapMasternodePaymentVotes.count(inv.hash) > 0;
 
     case MSG_MASTERNODE_PAYMENT_BLOCK:
         {
@@ -447,13 +446,13 @@ bool CMasterNodeController::AlreadyHave(const CInv& inv)
         }
 
     case MSG_MASTERNODE_ANNOUNCE:
-        return masternodeManager.mapSeenMasternodeBroadcast.count(inv.hash) && !masternodeManager.IsMnbRecoveryRequested(inv.hash);
+        return masternodeManager.mapSeenMasternodeBroadcast.count(inv.hash) > 0 && !masternodeManager.IsMnbRecoveryRequested(inv.hash);
 
     case MSG_MASTERNODE_PING:
-        return masternodeManager.mapSeenMasternodePing.count(inv.hash);
+        return masternodeManager.mapSeenMasternodePing.count(inv.hash) > 0;
 
     case MSG_MASTERNODE_VERIFY:
-        return masternodeManager.mapSeenMasternodeVerification.count(inv.hash);
+        return masternodeManager.mapSeenMasternodeVerification.count(inv.hash) > 0;
     }
 
     return true;
@@ -528,7 +527,7 @@ bool CMasterNodeController::ProcessGetData(CNode* pfrom, const CInv& inv)
                 for (const auto & payee : masternodePayments.mapMasternodeBlockPayees[mi->second->nHeight].vecPayees)
                 {
                     const auto vecVoteHashes = payee.GetVoteHashes();
-                    for (const auto& hash : vecVoteHashes)
+                    for (const auto& hash: vecVoteHashes)
                     {
                         if (masternodePayments.HasVerifiedPaymentVote(hash))
                         {
@@ -573,7 +572,8 @@ bool CMasterNodeController::ProcessGetData(CNode* pfrom, const CInv& inv)
 
 void CMasterNodeController::ShutdownMasterNode()
 {
-    if (pacNotificationInterface) {
+    if (pacNotificationInterface)
+    {
         UnregisterValidationInterface(pacNotificationInterface);
         delete pacNotificationInterface;
         pacNotificationInterface = nullptr;
@@ -582,15 +582,15 @@ void CMasterNodeController::ShutdownMasterNode()
     // STORE DATA CACHES INTO SERIALIZED DAT FILES
     CFlatDB<CMasternodeMan> flatDB1("mncache.dat", "magicMasternodeCache");
     flatDB1.Dump(masternodeManager);
-    CFlatDB<CMasternodePayments> flatDB2("mnpayments.dat", "magicMasternodePaymentsCache");
+    CFlatDB<CMasternodePayments> flatDB2(MNPAYMENTS_CACHE_FILENAME, MNPAYMENTS_CACHE_MAGIC_STR);
     flatDB2.Dump(masternodePayments);
-    CFlatDB<CMasternodeRequestTracker> flatDB4("netfulfilled.dat", "magicFulfilledCache");
-    flatDB4.Dump(requestTracker);
-    CFlatDB<CMasternodeMessageProcessor> flatDB5("messages.dat", "magicMessagesCache");
-    flatDB5.Dump(masternodeMessages);
+    CFlatDB<CMasternodeRequestTracker> flatDB3("netfulfilled.dat", "magicFulfilledCache");
+    flatDB3.Dump(requestTracker);
+    CFlatDB<CMasternodeMessageProcessor> flatDB4("messages.dat", "magicMessagesCache");
+    flatDB4.Dump(masternodeMessages);
 #ifdef GOVERNANCE_TICKETS
-    CFlatDB<CMasternodeGovernance> flatDB3("governance.dat", "magicGovernanceCache");
-    flatDB3.Dump(masternodeGovernance);
+    CFlatDB<CMasternodeGovernance> flatDB5("governance.dat", "magicGovernanceCache");
+    flatDB5.Dump(masternodeGovernance);
 #endif // GOVERNANCE_TICKETS
 }
 

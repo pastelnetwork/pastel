@@ -454,8 +454,7 @@ string HelpMessageOpt(const string &option, const string &message)
 #ifdef WIN32
 string GetErrorString(const int err)
 {
-    char buf[256];
-    buf[0] = 0;
+    char buf[256] = {};
     if (FormatMessageA(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS | FORMAT_MESSAGE_MAX_WIDTH_MASK,
             nullptr, err, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
             buf, sizeof(buf), nullptr))
@@ -979,14 +978,15 @@ int GetNumCores()
     return thread::hardware_concurrency();
 }
 
-InsecureRand::InsecureRand(bool _fDeterministic)
-    : nRz(11),
-      nRw(11),
-      fDeterministic(_fDeterministic)
+InsecureRand::InsecureRand(bool _fDeterministic) :
+    nRz(11),
+    nRw(11),
+    fDeterministic(_fDeterministic)
 {
     // The seed values have some unlikely fixed points which we avoid.
-    if(fDeterministic) return;
-    uint32_t nTmp;
+    if (fDeterministic)
+        return;
+    uint32_t nTmp {};
     do {
         GetRandBytes((unsigned char*)&nTmp, 4);
     } while (nTmp == 0 || nTmp == 0x9068ffffU);

@@ -17,6 +17,8 @@ class CMasternodePaymentVote;
 
 static constexpr size_t MNPAYMENTS_SIGNATURES_REQUIRED  = 6;
 static constexpr size_t MNPAYMENTS_SIGNATURES_TOTAL     = 20;
+constexpr auto MNPAYMENTS_CACHE_MAGIC_STR = "magicMasternodePaymentsCache";
+constexpr auto MNPAYMENTS_CACHE_FILENAME = "mnpayments.dat";
 
 class CMasternodePayee
 {
@@ -75,8 +77,8 @@ public:
     }
 
     void AddPayee(const CMasternodePaymentVote& vote);
-    bool GetBestPayee(CScript& payeeRet);
-    bool HasPayeeWithVotes(const CScript& payeeIn, int nVotesReq);
+    bool GetBestPayee(CScript& payeeRet) const noexcept;
+    bool HasPayeeWithVotes(const CScript& payeeIn, const int nVotesReq) const noexcept;
 
     bool IsTransactionValid(const CTransaction& txNew) const;
 
@@ -97,7 +99,7 @@ public:
         nBlockHeight(0)
      {}
 
-    CMasternodePaymentVote(COutPoint outpointMasternode, int nBlockHeight, CScript payee) :
+    CMasternodePaymentVote(COutPoint outpointMasternode, int nBlockHeight, CScript payee) noexcept:
         vinMasternode(outpointMasternode),
         nBlockHeight(nBlockHeight),
         payee(payee)
@@ -148,10 +150,16 @@ class CMasternodePayments
 public:
     std::map<uint256, CMasternodePaymentVote> mapMasternodePaymentVotes;
     std::map<int, CMasternodeBlockPayees> mapMasternodeBlockPayees;
+
+    // memory only
     std::map<COutPoint, int> mapMasternodesLastVote;
     std::map<COutPoint, int> mapMasternodesDidNotVote;
 
-    CMasternodePayments() : nStorageCoeff(1.25), nMinBlocksToStore(5000), nCachedBlockHeight(0) {}
+    CMasternodePayments() : 
+        nStorageCoeff(1.25),
+        nMinBlocksToStore(5000),
+        nCachedBlockHeight(0)
+    {}
 
     ADD_SERIALIZE_METHODS;
 
@@ -165,7 +173,7 @@ public:
     void Clear();
 
     bool AddPaymentVote(const CMasternodePaymentVote& vote);
-    bool HasVerifiedPaymentVote(const uint256 &hashIn);
+    bool HasVerifiedPaymentVote(const uint256 &hashIn) const noexcept;
     bool ProcessBlock(int nBlockHeight);
     void CheckPreviousBlockVotes(int nPrevBlockHeight);
 

@@ -1,6 +1,6 @@
-// Copyright (c) 2021 The Pastel developers
+// Copyright (c) 2021-2023 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
-// file COPYING or httpa://www.opensource.org/licenses/mit-license.php.
+// file COPYING or https://www.opensource.org/licenses/mit-license.php.
 
 #include <pastel_gtest_utils.h>
 #include <fs.h>
@@ -43,13 +43,37 @@ string generateRandomId(const size_t nLength)
     return s;
 }
 
+string generateRandomTxId()
+{
+    static std::random_device rd;
+    static std::mt19937_64 gen(rd());
+    static std::uniform_int_distribution<uint64_t> dist;
+
+    string sTxId;
+    sTxId.reserve(64);
+
+    for (int i = 0; i < 4; ++i)
+    {
+        const uint64_t rand_value = dist(gen);
+        for (int j = 60; j >= 0; j -= 4)
+            sTxId.push_back("0123456789abcdef"[(rand_value >> j) & 0xF]);
+    }
+    return sTxId;
+}
+
+// generate random uint256
+uint256 generateRandomUint256()
+{
+    return uint256S(generateRandomTxId());
+}
+
 /**
  * Generate temporary file name with extension.
  * 
  * \param szFileExt - optional extension
  * \return generated filename
  */
-std::string generateTempFileName(const char* szFileExt)
+string generateTempFileName(const char* szFileExt)
 {
     string s = generateRandomId(50);
     if (szFileExt)
