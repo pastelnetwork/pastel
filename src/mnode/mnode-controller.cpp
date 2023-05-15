@@ -142,11 +142,13 @@ void CMasterNodeController::SetParameters()
         nMasternodeMinimumConfirmations = 1;
         nMasternodePaymentsIncreaseBlock = 4030;
         nMasternodePaymentsIncreasePeriod = 10;
+        nFulfilledRequestExpireTime = 60*60; // 60 minutes
         
         TicketGreenAddress = "tPj5BfCrLfLpuviSJrD3B1yyWp3XkgtFjb6";
-
         m_nMaxInProcessCollectionTicketAge = MAX_IN_PROCESS_COLLECTION_TICKET_AGE;
     } else if (chainparams.IsRegTest()) {
+        MasternodeCollateral                = 1000; // PSL
+
         nMasternodeMinimumConfirmations = 1;
         nMasternodePaymentsIncreaseBlock = 350;
         nMasternodePaymentsIncreasePeriod = 10;
@@ -158,8 +160,6 @@ void CMasterNodeController::SetParameters()
 
         MNStartRequiredExpirationTime             =  10 * 60;
 
-        MasternodeCollateral                = 1000; // PSL
-        
         TicketGreenAddress = "tPj5BfCrLfLpuviSJrD3B1yyWp3XkgtFjb6";
     
         // for regtest we set 200 blocks for collection ticket age

@@ -1,71 +1,73 @@
 // Copyright (c) 2014-2017 The Dash Core developers
+// Copyright (c) 2018-2023 The Pastel Core developers
 // Distributed under the MIT/X11 software license, see the accompanying
-// file COPYING or http://www.opensource.org/licenses/mit-license.php.
+// file COPYING or https://www.opensource.org/licenses/mit-license.php.
 
-#include "util.h"
-#include "main.h"
+#include <util.h>
+#include <main.h>
 
-#include "mnode/mnode-controller.h"
-#include "mnode/mnode-requesttracker.h"
+#include <mnode/mnode-controller.h>
+#include <mnode/mnode-requesttracker.h>
 
-void CMasternodeRequestTracker::AddFulfilledRequest(CAddress addr, std::string strRequest)
+using namespace std;
+
+void CMasternodeRequestTracker::AddFulfilledRequest(CAddress addr, string strRequest)
 {
     LOCK(cs_mapFulfilledRequests);
     mapFulfilledRequests[addr][strRequest] = GetTime() + masterNodeCtrl.nFulfilledRequestExpireTime;
 }
 
-bool CMasternodeRequestTracker::HasFulfilledRequest(CAddress addr, std::string strRequest)
+bool CMasternodeRequestTracker::HasFulfilledRequest(CAddress addr, string strRequest)
 {
     LOCK(cs_mapFulfilledRequests);
-    fulfilledreqmap_t::iterator it = mapFulfilledRequests.find(addr);
+    const auto it = mapFulfilledRequests.find(addr);
 
-    return  it != mapFulfilledRequests.end() &&
-            it->second.find(strRequest) != it->second.end() &&
+    return  it != mapFulfilledRequests.cend() &&
+            it->second.find(strRequest) != it->second.cend() &&
             it->second[strRequest] > GetTime();
 }
 
-int64_t CMasternodeRequestTracker::GetFulfilledRequestTime(CAddress addr, std::string strRequest)
+int64_t CMasternodeRequestTracker::GetFulfilledRequestTime(CAddress addr, string strRequest)
 {
     LOCK(cs_mapFulfilledRequests);
-    fulfilledreqmap_t::iterator it = mapFulfilledRequests.find(addr);
+    const auto it = mapFulfilledRequests.find(addr);
 
-    if (it != mapFulfilledRequests.end() &&
-       it->second.find(strRequest) != it->second.end())
+    if (it != mapFulfilledRequests.cend() &&
+       it->second.find(strRequest) != it->second.cend())
         return it->second[strRequest];
     return -1;
 }
 
-void CMasternodeRequestTracker::RemoveFulfilledRequest(CAddress addr, std::string strRequest)
+void CMasternodeRequestTracker::RemoveFulfilledRequest(CAddress addr, string strRequest)
 {
     LOCK(cs_mapFulfilledRequests);
-    fulfilledreqmap_t::iterator it = mapFulfilledRequests.find(addr);
+    auto it = mapFulfilledRequests.find(addr);
 
-    if (it != mapFulfilledRequests.end()) {
+    if (it != mapFulfilledRequests.end())
         it->second.erase(strRequest);
-    }
 }
 
 void CMasternodeRequestTracker::CheckAndRemove()
 {
     LOCK(cs_mapFulfilledRequests);
 
-    int64_t now = GetTime();
-    fulfilledreqmap_t::iterator it = mapFulfilledRequests.begin();
+    const int64_t now = GetTime();
+    auto it = mapFulfilledRequests.begin();
 
-    while(it != mapFulfilledRequests.end()) {
-        fulfilledreqmapentry_t::iterator it_entry = it->second.begin();
-        while(it_entry != it->second.end()) {
-            if(now > it_entry->second) {
+    while (it != mapFulfilledRequests.end())
+    {
+        auto it_entry = it->second.begin();
+        while(it_entry != it->second.end())
+        {
+            if (now > it_entry->second)
                 it->second.erase(it_entry++);
-            } else {
+            else
                 ++it_entry;
-            }
         }
-        if(it->second.size() == 0) {
+        if (it->second.empty())
             mapFulfilledRequests.erase(it++);
-        } else {
+        else
             ++it;
-        }
     }
 }
 
@@ -75,9 +77,9 @@ void CMasternodeRequestTracker::Clear()
     mapFulfilledRequests.clear();
 }
 
-std::string CMasternodeRequestTracker::ToString() const
+string CMasternodeRequestTracker::ToString() const
 {
-    std::ostringstream info;
+    ostringstream info;
     info << "Nodes with fulfilled requests: " << (int)mapFulfilledRequests.size();
     return info.str();
 }

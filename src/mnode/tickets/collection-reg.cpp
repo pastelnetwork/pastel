@@ -291,6 +291,15 @@ ticket_validation_t CollectionRegTicket::IsValid(const bool bPreReg, const uint3
                     fullTicketPricePSL);
                 break;
             }
+
+            // check if we exceed maximum number of authorized contributors
+            if (m_AuthorizedContributors.size() > MAX_ALLOWED_AUTHORIZED_CONTRIBUTORS)
+            {
+                tv.errorMsg = strprintf(
+					"Exceeded the maximum number of authorized contributors in the %s collection. %zu defined, but only %zu are allowed",
+					getCollectionItemDesc(), m_AuthorizedContributors.size(), MAX_ALLOWED_AUTHORIZED_CONTRIBUTORS);
+				break;
+			}
         }
 
         // validate max collection entries
