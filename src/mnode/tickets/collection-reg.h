@@ -17,6 +17,8 @@ using CollectionRegTickets_t = std::vector<CollectionRegTicket>;
 
 // maximum allowed number of items in a collection
 constexpr uint32_t MAX_ALLOWED_COLLECTION_ENTRIES = 10'000;
+// maximum allowed number of authorized contributors in a collection
+constexpr size_t MAX_ALLOWED_AUTHORIZED_CONTRIBUTORS = 250;
 
 constexpr auto COLL_TICKET_APP_OBJ = "app_ticket";
 
