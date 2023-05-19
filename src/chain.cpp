@@ -14,6 +14,11 @@ constexpr size_t CHAIN_RESERVE_SIZE = 500;
 
 atomic_uint32_t gl_nChainHeight;
 
+CChain::CChain()
+{
+    gl_nChainHeight = 0;
+}
+
 /**
  * CChain implementation
  */

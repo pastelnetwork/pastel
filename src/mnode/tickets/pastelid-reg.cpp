@@ -171,13 +171,8 @@ ticket_validation_t CPastelIDRegTicket::IsValid(const bool bPreReg, const uint32
                 // 2. Check outpoint belongs to active MN
                 // However! If this is validation of an old ticket, MN can be not active or even alive anymore
                 // So will skip the MN validation if ticket is fully confirmed (older then MinTicketConfirmations blocks)
-                unsigned int currentHeight;
-                {
-                    LOCK(cs_main);
-                    currentHeight = static_cast<unsigned int>(chainActive.Height());
-                }
                 //during transaction validation before ticket made in to the block_ticket.ticketBlock will == 0
-                if (_ticket.IsBlock(0) || currentHeight - _ticket.GetBlock() < masterNodeCtrl.MinTicketConfirmations)
+                if (_ticket.IsBlock(0) || gl_nChainHeight - _ticket.GetBlock() < masterNodeCtrl.MinTicketConfirmations)
                 {
                     CMasternode mnInfo;
                     if (!masterNodeCtrl.masternodeManager.Get(m_outpoint, mnInfo))

@@ -1,5 +1,5 @@
 // Copyright (c) 2013 The Bitcoin Core developers
-// Copyright (c) 2021-2022 The Pastel developers
+// Copyright (c) 2021-2023 The Pastel developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 
@@ -12,21 +12,21 @@
 
 #include <gtest/gtest.h>
 
-#include "alert.h"
-#include "chain.h"
-#include "chainparams.h"
-#include "clientversion.h"
-#include "data/alertTests.raw.h"
+#include <alert.h>
+#include <chain.h>
+#include <chainparams.h>
+#include <clientversion.h>
+#include <data/alertTests.raw.h>
 
-#include "main.h"
-#include "rpc/protocol.h"
-#include "rpc/server.h"
-#include "serialize.h"
-#include "streams.h"
-#include "util.h"
-#include "utilstrencodings.h"
-#include "key.h"
-#include "alertkeys.h"
+#include <main.h>
+#include <rpc/protocol.h>
+#include <rpc/server.h>
+#include <serialize.h>
+#include <streams.h>
+#include <util.h>
+#include <utilstrencodings.h>
+#include <key.h>
+#include <alertkeys.h>
 
 using namespace std;
 using namespace testing;
@@ -42,7 +42,7 @@ using namespace testing;
  * 2. Set the GENERATE_ALERTS_FLAG to true.
  *
  * 3. Build and run:
- *    test_bitcoin -t Generate_Alert_Test_Data
+ *    pastel_gtest -t Generate_Alert_Test_Data
  *
  * 4. Test data is saved in your current directory as alertTests.raw.NEW
  *    Copy this file to: src/test/data/alertTests.raw

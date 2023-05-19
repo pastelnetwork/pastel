@@ -48,7 +48,7 @@ chrono::seconds CNetManagerThread::checkNetworkConnectivity()
         }
         return INACTIVE_CHECK_PERIOD_SECS;
     }
-    const bool bHasInternetConnectivity = hasInternetConnectivity();
+    const bool bHasInternetConnectivity = hasInternetConnectivity([this]() { return this->shouldStop(); });
     if (bHasInternetConnectivity)
     {
         if (!bPrevNetworkState)

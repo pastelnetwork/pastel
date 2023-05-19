@@ -120,7 +120,7 @@ void CMasterNodeController::SetParameters()
 
     nGovernanceVotingPeriodBlocks = 576; //24 hours, 1 block per 2.5 minutes
     
-    MinTicketConfirmations = 10; //blocks
+    MinTicketConfirmations = 5; //blocks
     MaxAcceptTicketAge = 24; //1 hour, 1 block per 2.5 minutes
     
     const auto& chainparams = Params();

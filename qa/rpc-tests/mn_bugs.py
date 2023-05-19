@@ -165,7 +165,7 @@ class MasterNodeGovernanceTest (MasterNodeCommon):
         assert_equal(res1['result'], 'failed')
         
         #MINIG
-        print ("Minig...")
+        print ("Mining...")
         self.slow_mine(2, 10, 2, 0.5)
         #This is a failed TICKET VOTE with NO - one-time change shall be possible
         print("NODE #0: This is a failed TICKET VOTE with NO - already voted no in another block")
