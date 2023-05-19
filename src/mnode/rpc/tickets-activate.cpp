@@ -101,7 +101,7 @@ Arguments:
 2. "called-at-height" (string, required) Block height at which action was called ('action_ticket' was created).
 3. fee                (int, required) The supposed fee that Action caller agreed to pay for the registration. 
                          This shall match the amount in the registration ticket.
-                         The transaction with this ticket will pay 90% of this amount to MNs (10% were burnt prior to registration).
+                         The transaction with this ticket will pay 80% of this amount to MNs (20% were burnt prior to registration).
 4. "PastelID"         (string, required) The Pastel ID of Action caller. NOTE: Pastel ID must be generated and stored inside node. See "pastelid newkey".
 5. "passphrase"       (string, required) The passphrase to open secure container associated with the Caller's Pastel ID and stored inside the node. See "pastelid newkey".
 6. "address"          (string, optional) The Pastel blockchain t-address to use for funding the registration.

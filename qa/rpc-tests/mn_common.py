@@ -26,6 +26,7 @@ from pastel_test_framework import (
     TicketType
 )
 
+MIN_TICKET_CONFIRMATIONS = 5
 getcontext().prec = 16
 
 class TicketData:
@@ -746,15 +747,17 @@ class MasterNodeCommon (PastelTestFramework):
         self.create_signatures(TicketType.NFT, creator_node_num, make_bad_signatures_dicts)
 
 
-    def wait_for_confirmation(self, node: int):
-        print(f"block count - {self.nodes[node].getblockcount()}")
+    def wait_for_min_confirmations(self, node_no: int = -1):
+        if node_no == -1:
+            node_no = self.mining_node_num
+        print(f"block count - {self.nodes[node_no].getblockcount()}")
         time.sleep(2)
-        self.generate_and_sync_inc(10, self.mining_node_num)
+        self.generate_and_sync_inc(MIN_TICKET_CONFIRMATIONS, self.mining_node_num)
         time.sleep(2)
-        print(f"block count - {self.nodes[node].getblockcount()}")
+        print(f"block count - {self.nodes[node_no].getblockcount()}")
 
 
-    def wait_for_ticket_tnx(self, blocks_to_generate: int = 5):
+    def wait_for_ticket_tnx(self, blocks_to_generate: int = 2):
         time.sleep(10)
         for _ in range(blocks_to_generate):
             self.nodes[self.mining_node_num].generate(1)
@@ -772,6 +775,3 @@ class MasterNodeCommon (PastelTestFramework):
         self.sync_all(10, 30)
         self.nodes[self.mining_node_num].generate(1)
         self.sync_all(10, 30)
-
-    def wait_for_gen10_blocks(self):
-        self.generate_and_sync_inc(10, self.mining_node_num)

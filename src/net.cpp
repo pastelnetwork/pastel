@@ -2003,15 +2003,22 @@ bool hasActiveNetworkInterface()
     return false;
 }
 
-bool hasInternetConnectivity()
+bool pingHost(const string& sHostName)
+{
+    string sPingCommand = strprintf("ping -c 1 %s >/dev/null 2>&1", sHostName);
+    return std::system(sPingCommand.c_str()) == 0;
+}
+
+bool hasInternetConnectivity(function<bool()> shouldStop)
 {
     const v_strings vHosts = { "google.com", "microsoft.com", "amazon.com", "8.8.8.8", "1.1.1.1" };
 
     for (const auto& sHost : vHosts)
     {
-        std::string cmd = "ping -c 1 " + sHost + " >/dev/null 2>&1";
-        if (std::system(cmd.c_str()) == 0)
+        if (pingHost(sHost ))
             return true;
+        if (shouldStop())
+            break;
     }
     return false;
 }

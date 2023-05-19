@@ -205,20 +205,14 @@ Generate 11 blocks
     if (!Params().MineBlocksOnDemand())
         throw JSONRPCError(RPC_METHOD_NOT_FOUND, "This method can only be used on regtest");
 
-    int nHeightStart = 0;
-    int nHeightEnd = 0;
-    int nHeight = 0;
     int nGenerate = params[0].get_int();
 #ifdef ENABLE_WALLET
     CReserveKey reservekey(pwalletMain);
 #endif
 
-    {   // Don't keep cs_main locked
-        LOCK(cs_main);
-        nHeightStart = chainActive.Height();
-        nHeight = nHeightStart;
-        nHeightEnd = nHeightStart+nGenerate;
-    }
+    const uint32_t nHeightStart = gl_nChainHeight;
+    const uint32_t nHeightEnd = nHeightStart + nGenerate;
+    uint32_t nHeight = nHeightStart;
     unsigned int nExtraNonce = 0;
     UniValue blockHashes(UniValue::VARR);
     const auto& chainparams = Params();
@@ -252,7 +246,8 @@ Generate 11 blocks
         // H(I||...
         crypto_generichash_blake2b_update(&eh_state, (unsigned char*)&ss[0], ss.size());
 
-        while (true) {
+        while (true)
+        {
             // Yes, there is a chance every nonce could fail to satisfy the -regtest
             // target -- 1 in 2^(2^256). That ain't gonna happen
             pblock->nNonce = ArithToUint256(UintToArith256(pblock->nNonce) + 1);

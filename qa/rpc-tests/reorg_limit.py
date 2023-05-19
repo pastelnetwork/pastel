@@ -15,7 +15,7 @@ from test_framework.util import (
 )
 from time import sleep
 
-def check_stopped(i, timeout=10):
+def check_stopped(i, timeout=15):
     stopped = False
     for x in range(1, timeout):
         ret = check_node(i)

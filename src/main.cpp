@@ -5035,7 +5035,6 @@ static bool AlreadyHave(const CInv& inv) EXCLUSIVE_LOCKS_REQUIRED(cs_main)
  */
 void static ProcessGetData(CNode* pfrom, const Consensus::Params& consensusParams)
 {
-    const int currentHeight = GetChainHeight();
     vector<CInv> vNotFound;
 
     LOCK(cs_main);
@@ -5131,7 +5130,7 @@ void static ProcessGetData(CNode* pfrom, const Consensus::Params& consensusParam
                 CTransaction tx;
                 const bool isInMempool = mempool.lookup(inv.hash, tx);
                 if (isInMempool)
-                    isExpiringSoon = IsExpiringSoonTx(tx, currentHeight + 1);
+                    isExpiringSoon = IsExpiringSoonTx(tx, gl_nChainHeight + 1);
 
                 if (!isExpiringSoon)
                 {
@@ -5228,7 +5227,7 @@ static bool ProcessMessage(const CChainParams& chainparams, CNode* pfrom, string
         }
 
         // Reject incoming connections from nodes that don't know about the current epoch
-        auto currentEpoch = CurrentEpoch(GetChainHeight(), consensusParams);
+        auto currentEpoch = CurrentEpoch(gl_nChainHeight, consensusParams);
         if (pfrom->nVersion < consensusParams.vUpgrades[currentEpoch].nProtocolVersion)
         {
             LogPrintf("peer=%d using obsolete version %i; disconnecting\n", pfrom->id, pfrom->nVersion);
@@ -5364,12 +5363,12 @@ static bool ProcessMessage(const CChainParams& chainparams, CNode* pfrom, string
     // 1. The version message has been received
     // 2. Peer version is below the minimum version for the current epoch
     else if (pfrom->nVersion < consensusParams.vUpgrades[
-        CurrentEpoch(GetChainHeight(), consensusParams)].nProtocolVersion)
+        CurrentEpoch(gl_nChainHeight, consensusParams)].nProtocolVersion)
     {
         LogPrintf("peer=%d using obsolete version %i; disconnecting\n", pfrom->id, pfrom->nVersion);
         pfrom->PushMessage("reject", strCommand, REJECT_OBSOLETE,
                             strprintf("Version must be %d or greater",
-                            consensusParams.vUpgrades[CurrentEpoch(GetChainHeight(), consensusParams)].nProtocolVersion));
+                            consensusParams.vUpgrades[CurrentEpoch(gl_nChainHeight, consensusParams)].nProtocolVersion));
         pfrom->fDisconnect = true;
         return false;
     }
@@ -5838,18 +5837,16 @@ static bool ProcessMessage(const CChainParams& chainparams, CNode* pfrom, string
 
     else if (strCommand == "mempool")
     {
-        const int currentHeight = GetChainHeight();
-
         LOCK2(cs_main, pfrom->cs_filter);
 
-        v_uint256 vtxid;
-        mempool.queryHashes(vtxid);
+        v_uint256 vTxId;
+        mempool.queryHashes(vTxId);
         vector<CInv> vInv;
-        for (auto &hash : vtxid)
+        for (const auto &hash : vTxId)
         {
             CTransaction tx;
             const bool fInMemPool = mempool.lookup(hash, tx);
-            if (fInMemPool && IsExpiringSoonTx(tx, currentHeight + 1))
+            if (fInMemPool && IsExpiringSoonTx(tx, gl_nChainHeight + 1))
                 continue;
 
             CInv inv(MSG_TX, hash);

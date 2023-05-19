@@ -19,7 +19,8 @@ from pastel_test_framework import (
     TicketType
 )
 from mn_common import (
-    MasterNodeCommon
+    MasterNodeCommon,
+    MIN_TICKET_CONFIRMATIONS,
 )
 
 getcontext().prec = 16
@@ -166,10 +167,10 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         """
         print("**** Test expiration of Offer tickets with intended recipient")
         self.register_nft_reg_ticket("nft-indended-for-label")
-        self.wait_for_ticket_tnx(5)
+        self.wait_for_min_confirmations()
 
         self.register_nft_act_ticket()
-        self.wait_for_ticket_tnx(5)
+        self.wait_for_min_confirmations()
         
         nft_ticket = self.tickets[TicketType.NFT]
         
@@ -206,16 +207,16 @@ class MasterNodeTicketsTest(MasterNodeCommon):
 
     def ticket_expiration_tests(self):
         self.register_nft_reg_ticket("nft-label")
-        self.wait_for_confirmation(self.non_mn3)
+        self.wait_for_min_confirmations(self.non_mn3)
 
         self.register_nft_act_ticket()
-        self.wait_for_confirmation(self.non_mn3)
+        self.wait_for_min_confirmations(self.non_mn3)
 
         nft_ticket = self.tickets[TicketType.NFT]
         self.register_offer_ticket(TicketType.NFT)
         offer_ticket1_txid = nft_ticket.offer_txid
         print(f"offer ticket 1 txid {offer_ticket1_txid}")
-        self.wait_for_confirmation(self.non_mn3)
+        self.wait_for_min_confirmations(self.non_mn3)
 
         if (self.total_nft_copies == 1):
             # fail if not enough copies to offer
@@ -398,7 +399,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         cover_price = nft_price + max(10, int(nft_price / 100)) + 5
 
         self.nodes[self.mining_node_num].sendtoaddress(address, num * cover_price, "", "", False)
-        self.wait_for_confirmation(node)
+        self.wait_for_min_confirmations(node)
 
 
     def register_accept_ticket(self, acceptor_node, acceptor_pastelid1):
@@ -429,7 +430,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         assert_true(acceptor_coins_before > 0 and acceptor_coins_before < 1)
 
         self.nodes[self.mining_node_num].sendtoaddress(acceptor_address1, cover_price, "", "", False)
-        self.wait_for_confirmation(acceptor_node)
+        self.wait_for_min_confirmations(acceptor_node)
 
         acceptor_coins_before = self.nodes[acceptor_node].getbalance()
         print(acceptor_coins_before)
@@ -447,7 +448,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         ticket.transfer_txid = self.nodes[acceptor_node].tickets("register", "transfer", ticket.offer_txid, ticket.accept_txid,
                                            acceptor_pastelid1, self.passphrase)["txid"]
         assert_true(ticket.transfer_txid, "No Transfer ticket was created")
-        self.wait_for_ticket_tnx(10)
+        self.wait_for_min_confirmations()
 
         # check correct amount of change and correct amount spent
         acceptor_coins_after = self.nodes[acceptor_node].getbalance()

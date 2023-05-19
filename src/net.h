@@ -8,6 +8,7 @@
 #include <deque>
 #include <atomic>
 #include <stdint.h>
+#include <functional>
 
 #ifndef WIN32
 #include <arpa/inet.h>
@@ -84,7 +85,7 @@ void SocketSendData(CNode *pnode);
 // returns true if we have at least one active network interface
 bool hasActiveNetworkInterface();
 // returns true if we have internet connectivity
-bool hasInternetConnectivity();
+bool hasInternetConnectivity(std::function<bool()> shouldStop);
 
 struct CombinerAll
 {
