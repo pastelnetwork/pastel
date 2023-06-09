@@ -1044,7 +1044,7 @@ Examples:
 
     string strHash = params[0].get_str();
     uint256 hash(uint256S(strHash));
-    CValidationState state;
+    CValidationState state(TxOrigin::UNKNOWN);
     const auto& chainparams = Params();
     {
         LOCK(cs_main);
@@ -1086,7 +1086,7 @@ Examples:
 
     string strHash = params[0].get_str();
     uint256 hash(uint256S(strHash));
-    CValidationState state;
+    CValidationState state(TxOrigin::MSG_BLOCK);
 
     const auto& chainparams = Params();
     {

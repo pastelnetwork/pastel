@@ -181,7 +181,7 @@ bool CMasterNodePing::CheckAndUpdate(CMasternode* pmn, bool fFromNewBroadcast, i
     {
         LOCK(cs_main);
         const auto mi = mapBlockIndex.find(m_blockHash);
-        if (mi->second && mi->second->nHeight < chainActive.Height() - 24)
+        if (mi->second && static_cast<uint32_t>(mi->second->nHeight) < gl_nChainHeight - 24)
         {
             LogFnPrintf("Masternode ping is invalid, block hash is too old: masternode=%s  blockHash=%s", GetDesc(), m_blockHash.ToString());
             // nDos = 1;
@@ -399,11 +399,9 @@ bool CMasternode::UpdateFromNewBroadcast(CMasternodeBroadcast& mnb)
     return true;
 }
 
-//
 // Deterministically calculate a given "score" for a Masternode depending on how close it's hash is to
 // the proof of work for that block. The further away they are the better, the furthest will win the election
 // and get paid this block
-//
 arith_uint256 CMasternode::CalculateScore(const uint256& blockHash)
 {
     if (m_collateralMinConfBlockHash.IsNull())
@@ -837,6 +835,15 @@ bool CMasternode::VerifyCollateral(CollateralStatus& collateralStatus)
     
     LogFnPrint("masternode", "Masternode UTXO verified");
     return true;
+}
+
+string GetListOfMasterNodes(const vector<CMasternode>& mnList)
+{
+    string s;
+    s.reserve(mnList.size() * 75);
+    for (const auto& mn : mnList)
+        str_append_field(s, mn.GetDesc().c_str(), ", ");
+	return s;
 }
 
 #ifdef ENABLE_WALLET

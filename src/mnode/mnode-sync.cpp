@@ -76,31 +76,31 @@ string CMasternodeSync::GetSyncStatus()
 
 void CMasternodeSync::SwitchToNextAsset()
 {
-    switch(syncState)
+    switch (syncState)
     {
-        case(MasternodeSyncState::Failed):
+        case (MasternodeSyncState::Failed):
             throw runtime_error("Can't switch to next asset from failed, should use Reset() first!");
 
-        case(MasternodeSyncState::Initial):
+        case (MasternodeSyncState::Initial):
             ClearFulfilledRequests();
             syncState = MasternodeSyncState::Waiting;
             LogFnPrintf("Starting %s", GetSyncStatus());
             break;
 
-        case(MasternodeSyncState::Waiting):
+        case (MasternodeSyncState::Waiting):
             ClearFulfilledRequests();
             LogFnPrintf("Completed %s in %" PRId64 "s", GetSyncStatus(), GetTime() - nTimeAssetSyncStarted);
             syncState = MasternodeSyncState::List;
             LogFnPrintf("Starting %s", GetSyncStatus());
             break;
 
-        case(MasternodeSyncState::List):
+        case (MasternodeSyncState::List):
             LogFnPrintf("Completed %s in %" PRId64 "s", GetSyncStatus(), GetTime() - nTimeAssetSyncStarted);
             syncState = MasternodeSyncState::Winners;
             LogFnPrintf("Starting %s", GetSyncStatus());
             break;
 
-        case(MasternodeSyncState::Winners):
+        case (MasternodeSyncState::Winners):
             LogFnPrintf("Completed %s in %" PRId64 "s", GetSyncStatus(), GetTime() - nTimeAssetSyncStarted);
             syncState = MasternodeSyncState::Governance;
 #ifdef GOVERNANCE_TICKETS
@@ -108,12 +108,12 @@ void CMasternodeSync::SwitchToNextAsset()
 #endif // GOVERNANCE_TICKETS
             break;
 
-        case(MasternodeSyncState::Governance):
+        case (MasternodeSyncState::Governance):
 #ifdef GOVERNANCE_TICKETS
             LogFnPrintf("Completed %s in %" PRId64 "s", GetSyncStatus(), GetTime() - nTimeAssetSyncStarted);
 #endif // GOVERNANCE_TICKETS
             syncState = MasternodeSyncState::Finished;
-            LogFnPrintf("Starting %s", GetSyncStatus());
+            LogFnPrintf("MasterNode %s", GetSyncStatus());
 
             //try to activate our masternode if possible
             masterNodeCtrl.activeMasternode.ManageState();

@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2022 The Pastel developers
+// Copyright (c) 2018-2023 The Pastel developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 
@@ -18,7 +18,7 @@ TEST(CheckBlock, VersionTooLow)
     CBlock block;
     block.nVersion = 1;
 
-    MockCValidationState state;
+    MockCValidationState state(TxOrigin::UNKNOWN);
     EXPECT_CALL(state, DoS(100, false, REJECT_INVALID, "version-too-low", false)).Times(1);
     EXPECT_FALSE(CheckBlock(block, state, Params(), verifier, false, false));
 }
@@ -50,7 +50,7 @@ TEST(CheckBlock, BlockSproutRejectsBadVersion)
     CBlock block;
     block.vtx.push_back(tx);
 
-    MockCValidationState state;
+    MockCValidationState state(TxOrigin::UNKNOWN);
     CBlockIndex indexPrev{chainparams.GenesisBlock()};
 
     auto verifier = libzcash::ProofVerifier::Strict();
@@ -117,7 +117,7 @@ protected:
         CBlockIndex indexPrev{chainparams.GenesisBlock()};
 
         // We now expect this to be a valid block.
-        MockCValidationState state;
+        MockCValidationState state(TxOrigin::MINED_BLOCK);
         EXPECT_TRUE(ContextualCheckBlock(block, state, chainparams, &indexPrev));
     }
 
@@ -136,7 +136,7 @@ protected:
         CBlockIndex indexPrev{chainparams.GenesisBlock()};
 
         // We now expect this to be an invalid block, for the given reason.
-        MockCValidationState state;
+        MockCValidationState state(TxOrigin::MINED_BLOCK);
         EXPECT_CALL(state, DoS(level, false, REJECT_INVALID, reason, false));
         EXPECT_FALSE(ContextualCheckBlock(block, state, chainparams, &indexPrev));
     }
@@ -156,7 +156,7 @@ TEST_F(ContextualCheckBlockTest, BadCoinbaseHeight)
     const auto& chainparams = Params();
 
     // Treating block as genesis should pass
-    MockCValidationState state;
+    MockCValidationState state(TxOrigin::MSG_TX);
     EXPECT_TRUE(ContextualCheckBlock(block, state, chainparams, nullptr));
 
     KeyIO keyIO(chainparams);
@@ -365,7 +365,7 @@ TEST(test_checkblock, May15)
     CBlock forkingBlock;
     if (read_block("Mar12Fork.dat", forkingBlock))
     {
-        CValidationState state;
+        CValidationState state(TxOrigin::MSG_TX);
 
         // After May 15'th, big blocks are OK:
         forkingBlock.nTime = tMay15; // Invalidates PoW

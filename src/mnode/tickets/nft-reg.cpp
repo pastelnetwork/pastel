@@ -272,6 +272,16 @@ ticket_validation_t CNFTRegTicket::IsValid(const bool bPreReg, const uint32_t nC
                     fullTicketPrice);
                 break;
             }
+
+            // A.3 check that the NFT creator height is not in the future
+            if (m_nCreatorHeight > nActiveChainHeight)
+            {
+                tv.state = TICKET_VALIDATION_STATE::MISSING_INPUTS;
+                tv.errorMsg = strprintf(
+					"This NFT creator height is in the future [creator_height=%u, active chain height=%u]", 
+					m_nCreatorHeight, nActiveChainHeight);
+                break;
+            }
         }
         // (ticket transaction replay attack protection)
         CNFTRegTicket ticket;
@@ -294,7 +304,7 @@ ticket_validation_t CNFTRegTicket::IsValid(const bool bPreReg, const uint32_t nC
         }
 
         // B. Something to validate always
-        const ticket_validation_t sigTv = validate_signatures(nCallDepth, m_nCreatorHeight, m_sNFTTicket);
+        const ticket_validation_t sigTv = validate_signatures(bPreReg, nCallDepth, m_nCreatorHeight, m_sNFTTicket);
         if (sigTv.IsNotValid())
         {
             tv.state = sigTv.state;
@@ -344,10 +354,17 @@ string CNFTRegTicket::ToJSON(const bool bDecodeProperties) const noexcept
             if (nft_ticket_json.contains(NFT_TICKET_APP_OBJ))
             {
                 // try to decode ascii85-encoded app_ticket
-                bool bInvalidAscii85Encoding = false;
-                string sDecodedAppTicket = DecodeAscii85(nft_ticket_json[NFT_TICKET_APP_OBJ], &bInvalidAscii85Encoding);
-                if (!bInvalidAscii85Encoding)
+                bool bInvalidEncoding = false;
+                string sDecodedAppTicket = DecodeAscii85(nft_ticket_json[NFT_TICKET_APP_OBJ], &bInvalidEncoding);
+                if (!bInvalidEncoding)
                         nft_ticket_json[NFT_TICKET_APP_OBJ] = move(json::parse(sDecodedAppTicket));
+                else
+                {
+                    // this can be base64-encoded app_ticket as well
+                    sDecodedAppTicket = DecodeBase64(nft_ticket_json[NFT_TICKET_APP_OBJ], &bInvalidEncoding);
+                    if (!bInvalidEncoding)
+						nft_ticket_json[NFT_TICKET_APP_OBJ] = move(json::parse(sDecodedAppTicket));
+                }
             }
         } catch (...) {}
     }

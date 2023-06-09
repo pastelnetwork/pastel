@@ -91,12 +91,12 @@ Result:
 
     UniValue ret(UniValue::VOBJ);
 
-    double chainDeflationRate = masterNodeCtrl.GetChainDeflationRate();
-    double pastelidRegistrationFee = kPastelidRegistrationFeeBase * chainDeflationRate;
-    double usernameRegistrationFee = kUsernameRegistrationFeeBase * chainDeflationRate;
-    double usernameChangeFee = kUsernameChangeFeeBase * chainDeflationRate;
+    double chainDeflatorFactor = masterNodeCtrl.GetChainDeflatorFactor();
+    double pastelidRegistrationFee = kPastelidRegistrationFeeBase * chainDeflatorFactor;
+    double usernameRegistrationFee = kUsernameRegistrationFeeBase * chainDeflatorFactor;
+    double usernameChangeFee = kUsernameChangeFeeBase * chainDeflatorFactor;
 
-    ret.pushKV("fee_deflation_rate", chainDeflationRate);
+    ret.pushKV("fee_deflator_factor", chainDeflatorFactor);
     ret.pushKV("pastelid_registration_fee", pastelidRegistrationFee);
     ret.pushKV("username_registration_fee", usernameRegistrationFee);
     ret.pushKV("username_change_fee", usernameChangeFee);

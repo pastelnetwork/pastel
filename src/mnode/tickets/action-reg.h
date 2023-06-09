@@ -42,8 +42,8 @@ Where action_ticket is an external base64-encoded JSON as a string:
   "collection_txid": string,    // transaction id of the collection activation ticket that action belongs to
                                 // v2 only, optional, can be empty
                                 // hex-encoded 64-byte txid as returned in collection activate ticket json response
-  "app_ticket": object          // json object with application ticket,
-                                // actual structure of app_ticket is different for different API and is not parsed by cnode !!!!
+  "api_ticket": object          // json object with application ticket,
+                                // actual structure of api_ticket is different for different API and is not parsed by cnode !!!!
 }
 signatures: {
     "principal": { "principal Pastel ID" : "principal signature"},

@@ -135,7 +135,7 @@ TEST(test_transaction, tx_valid)
             CTransaction tx;
             stream >> tx;
 
-            CValidationState state;
+            CValidationState state(TxOrigin::MSG_TX);
             EXPECT_TRUE(CheckTransaction(tx, state, verifier)) <<  strTest + comment;
             EXPECT_TRUE(state.IsValid()) << comment;
 
@@ -223,7 +223,7 @@ TEST(test_transaction, tx_invalid)
             CTransaction tx;
             stream >> tx;
 
-            CValidationState state;
+            CValidationState state(TxOrigin::MSG_TX);
             fValid = CheckTransaction(tx, state, verifier) && state.IsValid();
 
             PrecomputedTransactionData txdata(tx);
@@ -261,7 +261,7 @@ TEST(test_transaction, basic_transaction_tests)
     CDataStream stream(vch, SER_DISK, CLIENT_VERSION);
     CMutableTransaction tx;
     stream >> tx;
-    CValidationState state;
+    CValidationState state(TxOrigin::MSG_TX);
     auto verifier = libzcash::ProofVerifier::Strict();
     EXPECT_TRUE(CheckTransaction(tx, state, verifier) && state.IsValid()) << "Simple deserialized transaction should be valid.";
 
@@ -312,14 +312,14 @@ void test_simple_sapling_invalidity(uint32_t consensusBranchId, CMutableTransact
 {
     {
         CMutableTransaction newTx(tx);
-        CValidationState state;
+        CValidationState state(TxOrigin::MSG_TX);
 
         EXPECT_TRUE(!CheckTransactionWithoutProofVerification(newTx, state));
         EXPECT_EQ(state.GetRejectReason() , "bad-txns-vin-empty");
     }
     {
         CMutableTransaction newTx(tx);
-        CValidationState state;
+        CValidationState state(TxOrigin::MSG_TX);
 
         newTx.vShieldedSpend.push_back(SpendDescription());
         newTx.vShieldedSpend[0].nullifier = GetRandHash();
@@ -330,7 +330,7 @@ void test_simple_sapling_invalidity(uint32_t consensusBranchId, CMutableTransact
     {
         // Ensure that nullifiers are never duplicated within a transaction.
         CMutableTransaction newTx(tx);
-        CValidationState state;
+        CValidationState state(TxOrigin::MSG_TX);
 
         newTx.vShieldedSpend.push_back(SpendDescription());
         newTx.vShieldedSpend[0].nullifier = GetRandHash();
@@ -349,7 +349,7 @@ void test_simple_sapling_invalidity(uint32_t consensusBranchId, CMutableTransact
     }
     {
         CMutableTransaction newTx(tx);
-        CValidationState state;
+        CValidationState state(TxOrigin::MSG_TX);
 
         // Create a coinbase transaction
         CTxIn vin;

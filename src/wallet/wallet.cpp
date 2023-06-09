@@ -3942,7 +3942,7 @@ int CMerkleTx::GetBlocksToMaturity() const
 
 bool CMerkleTx::AcceptToMemoryPool(bool fLimitFree, bool fRejectAbsurdFee)
 {
-    CValidationState state;
+    CValidationState state(TxOrigin::MSG_TX);
     return ::AcceptToMemoryPool(Params(), mempool, state, *this, fLimitFree, nullptr, fRejectAbsurdFee);
 }
 

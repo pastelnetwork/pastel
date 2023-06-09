@@ -1,5 +1,5 @@
 // Copyright (c) 2014 The Bitcoin Core developers
-// Copyright (c) 2018-2022 The Pastel Core Developers
+// Copyright (c) 2018-2023 The Pastel Core Developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <cinttypes>
@@ -14,7 +14,7 @@
 using namespace std;
 
 static CCriticalSection cs_nTimeOffset;
-static int64_t nTimeOffset = 0;
+static int64_t gl_nTimeOffset = 0;
 
 /**
  * "Never go to sea with two chronometers; take one or three."
@@ -26,7 +26,7 @@ static int64_t nTimeOffset = 0;
 int64_t GetTimeOffset() noexcept
 {
     LOCK(cs_nTimeOffset);
-    return nTimeOffset;
+    return gl_nTimeOffset;
 }
 
 int64_t GetAdjustedTime() noexcept
@@ -80,11 +80,11 @@ void AddTimeData(const CNetAddr& ip, int64_t nOffsetSample)
         // Only let other nodes change our time by so much
         if (abs64(nMedian) < 70 * 60)
         {
-            nTimeOffset = nMedian;
+            gl_nTimeOffset = nMedian;
         }
         else
         {
-            nTimeOffset = 0;
+            gl_nTimeOffset = 0;
 
             static bool fDone;
             if (!fDone)
@@ -112,6 +112,6 @@ void AddTimeData(const CNetAddr& ip, int64_t nOffsetSample)
                 LogPrintf("%+d  ", n);
             LogPrintf("|  ");
         }
-        LogPrintf("nTimeOffset = %+d  (%+d minutes)\n", nTimeOffset, nTimeOffset/60);
+        LogPrintf("nTimeOffset = %+d  (%+d minutes)\n", gl_nTimeOffset, gl_nTimeOffset/60);
     }
 }

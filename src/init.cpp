@@ -1802,7 +1802,7 @@ bool AppInit2(CServiceThreadGroup& threadGroup, CScheduler& scheduler)
 
     uiInterface.InitMessage(_("Activating best chain..."));
     // scan for better chains in the block chain database, that are not yet connected in the active best chain
-    CValidationState state;
+    CValidationState state(TxOrigin::UNKNOWN);
     if (!ActivateBestChain(state, chainparams))
         strErrors << "Failed to connect best block";
 

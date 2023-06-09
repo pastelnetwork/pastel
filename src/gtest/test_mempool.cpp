@@ -1,22 +1,20 @@
 // Copyright (c) 2011-2014 The Bitcoin Core developers
-// Copyright (c) 2018-2021 The Pastel Core developers
+// Copyright (c) 2018-2023 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
-
 #include <limits>
-#include <gtest/gtest.h>
-#include <gtest/gtest-spi.h>
 
-#include "consensus/upgrades.h"
-#include "consensus/validation.h"
-#include "core_io.h"
-#include "main.h"
-#include "primitives/transaction.h"
-#include "txmempool.h"
-#include "policy/fees.h"
-#include "util.h"
-#include "pastel_gtest_main.h"
-#include "test_mempool_entryhelper.h"
+#include <consensus/upgrades.h>
+#include <consensus/validation.h>
+#include <core_io.h>
+#include <main.h>
+#include <primitives/transaction.h>
+#include <txmempool.h>
+#include <policy/fees.h>
+#include <util.h>
+
+#include <pastel_gtest_main.h>
+#include <test_mempool_entryhelper.h>
 
 using namespace testing;
 using namespace std;
@@ -96,11 +94,11 @@ TEST(Mempool, OverwinterNotActiveYet)
     mtx.nVersion = OVERWINTER_TX_VERSION;
     mtx.nVersionGroupId = OVERWINTER_VERSION_GROUP_ID;
     mtx.nExpiryHeight = 0;
-    CValidationState state1;
+    CValidationState state(TxOrigin::MSG_TX);
 
     CTransaction tx1(mtx);
-    EXPECT_FALSE(AcceptToMemoryPool(Params(), pool, state1, tx1, false, &missingInputs));
-    EXPECT_EQ(state1.GetRejectReason(), "tx-overwinter-not-active");
+    EXPECT_FALSE(AcceptToMemoryPool(Params(), pool, state, tx1, false, &missingInputs));
+    EXPECT_EQ(state.GetRejectReason(), "tx-overwinter-not-active");
 
     // Revert to default
     UpdateNetworkUpgradeParameters(Consensus::UpgradeIndex::UPGRADE_OVERWINTER, Consensus::NetworkUpgrade::NO_ACTIVATION_HEIGHT);
@@ -119,11 +117,11 @@ TEST(Mempool, SproutV3TxFailsAsExpected)
     CMutableTransaction mtx = GetValidTransaction();
     mtx.fOverwintered = false;
     mtx.nVersion = 3;
-    CValidationState state1;
+    CValidationState state(TxOrigin::MSG_TX);
     CTransaction tx1(mtx);
 
-    EXPECT_FALSE(AcceptToMemoryPool(Params(), pool, state1, tx1, false, &missingInputs));
-    EXPECT_EQ(state1.GetRejectReason(), "version");
+    EXPECT_FALSE(AcceptToMemoryPool(Params(), pool, state, tx1, false, &missingInputs));
+    EXPECT_EQ(state.GetRejectReason(), "version");
 }
 
 
@@ -140,11 +138,11 @@ TEST(Mempool, SproutV3TxWhenOverwinterActive)
     CMutableTransaction mtx = GetValidTransaction();
     mtx.fOverwintered = false;
     mtx.nVersion = 3;
-    CValidationState state1;
+    CValidationState state(TxOrigin::MSG_TX);
     CTransaction tx1(mtx);
 
-    EXPECT_FALSE(AcceptToMemoryPool(Params(), pool, state1, tx1, false, &missingInputs));
-    EXPECT_EQ(state1.GetRejectReason(), "tx-overwintered-flag-not-set");
+    EXPECT_FALSE(AcceptToMemoryPool(Params(), pool, state, tx1, false, &missingInputs));
+    EXPECT_EQ(state.GetRejectReason(), "tx-overwintered-flag-not-set");
 
     // Revert to default
     UpdateNetworkUpgradeParameters(Consensus::UpgradeIndex::UPGRADE_OVERWINTER, Consensus::NetworkUpgrade::NO_ACTIVATION_HEIGHT);
@@ -176,9 +174,9 @@ TEST(Mempool, SproutNegativeVersionTxWhenOverwinterActive)
         CTransaction tx1(mtx);
         EXPECT_EQ(tx1.nVersion, -3);
 
-        CValidationState state1;
-        EXPECT_FALSE(AcceptToMemoryPool(Params(), pool, state1, tx1, false, &missingInputs));
-        EXPECT_EQ(state1.GetRejectReason(), "bad-txns-version-too-low");
+        CValidationState state(TxOrigin::MSG_TX);
+        EXPECT_FALSE(AcceptToMemoryPool(Params(), pool, state, tx1, false, &missingInputs));
+        EXPECT_EQ(state.GetRejectReason(), "bad-txns-version-too-low");
     }
 
     // A Sprout transaction with version -3 created using Overwinter code (as found in zcashd >= 1.0.15).
@@ -192,9 +190,9 @@ TEST(Mempool, SproutNegativeVersionTxWhenOverwinterActive)
         CTransaction tx1(mtx);
         EXPECT_EQ(tx1.nVersion, -2147483645);
 
-        CValidationState state1;
-        EXPECT_FALSE(AcceptToMemoryPool(Params(), pool, state1, tx1, false, &missingInputs));
-        EXPECT_EQ(state1.GetRejectReason(), "bad-txns-version-too-low");
+        CValidationState state(TxOrigin::MSG_TX);
+        EXPECT_FALSE(AcceptToMemoryPool(Params(), pool, state, tx1, false, &missingInputs));
+        EXPECT_EQ(state.GetRejectReason(), "bad-txns-version-too-low");
     }
 
     // Revert to default
@@ -221,11 +219,11 @@ TEST(Mempool, ExpiringSoonTxRejection)
     {
         mtx.nExpiryHeight = i;
 
-        CValidationState state1;
+        CValidationState state(TxOrigin::MSG_TX);
         CTransaction tx1(mtx);
 
-        EXPECT_FALSE(AcceptToMemoryPool(Params(), pool, state1, tx1, false, &missingInputs));
-        EXPECT_EQ(state1.GetRejectReason(), "tx-expiring-soon");
+        EXPECT_FALSE(AcceptToMemoryPool(Params(), pool, state, tx1, false, &missingInputs));
+        EXPECT_EQ(state.GetRejectReason(), "tx-expiring-soon");
     }
 
     // Revert to default

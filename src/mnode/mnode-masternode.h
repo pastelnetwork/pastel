@@ -363,6 +363,8 @@ inline bool operator!=(const CMasternode& a, const CMasternode& b)
     return !(a.get_vin() == b.get_vin());
 }
 
+std::string GetListOfMasterNodes(const std::vector<CMasternode>& mnList);
+
 //
 // The Masternode Broadcast Class : Contains a different serialize method for sending masternodes through the network
 //

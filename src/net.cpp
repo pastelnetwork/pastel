@@ -508,7 +508,7 @@ void CNode::PushVersion()
 {
     int nBestHeight = g_signals.GetHeight().get_value_or(0);
 
-    int64_t nTime = (fInbound ? GetAdjustedTime() : GetTime());
+    const int64_t nTime = (fInbound ? GetAdjustedTime() : GetTime());
     CAddress addrYou = (addr.IsRoutable() && !IsProxy(addr) ? addr : CAddress(CService("0.0.0.0",0)));
     CAddress addrMe = GetLocalAddress(&addr);
     GetRandBytes((unsigned char*)&nLocalHostNonce, sizeof(nLocalHostNonce));
@@ -1787,7 +1787,7 @@ public:
                         if (pnode->nSendSize < SendBufferSize())
                         {
                             if (!pnode->vRecvGetData.empty() || 
-                                (!pnode->vRecvMsg.empty() && pnode->vRecvMsg[0].complete()))
+                               (!pnode->vRecvMsg.empty() && pnode->vRecvMsg[0].complete()))
                                 fSleep = false;
                         }
                     }

@@ -260,20 +260,19 @@ Generate 11 blocks
                                               pblock->nNonce.size());
 
             // (x_1, x_2, ...) = A(I, V, n, k)
-            std::function<bool(v_uint8)> validBlock =
-                [&pblock](v_uint8 soln) {
+            std::function<bool(v_uint8)> validBlock = [&pblock](v_uint8 soln)
+            {
                 pblock->nSolution = soln;
                 solutionTargetChecks.increment();
                 return CheckProofOfWork(pblock->GetHash(), pblock->nBits, Params().GetConsensus());
             };
-            bool found = EhBasicSolveUncancellable(n, k, curr_state, validBlock);
+            const bool bFound = EhBasicSolveUncancellable(n, k, curr_state, validBlock);
             ehSolverRuns.increment();
-            if (found) {
-                goto endloop;
-            }
+            if (bFound)
+                break;
         }
-endloop:
-        CValidationState state;
+
+        CValidationState state(TxOrigin::GENERATED);
         if (!ProcessNewBlock(state, chainparams, nullptr, pblock, true, nullptr))
             throw JSONRPCError(RPC_INTERNAL_ERROR, "ProcessNewBlock, block not accepted");
         ++nHeight;
@@ -572,7 +571,7 @@ Examples:
             if (block.hashPrevBlock != pindexPrev->GetBlockHash())
                 return "inconclusive-not-best-prevblk";
 
-            CValidationState state;
+            CValidationState state(TxOrigin::MINED_BLOCK);
             TestBlockValidity(state, chainparams, block, pindexPrev, false, true);
             return BIP22ValidationResult(state);
         }
@@ -793,7 +792,7 @@ public:
     bool found;
     CValidationState state;
 
-    submitblock_StateCatcher(const uint256 &hashIn) : hash(hashIn), found(false), state() {};
+    submitblock_StateCatcher(const uint256 &hashIn) : hash(hashIn), found(false), state(TxOrigin::MINED_BLOCK) {};
 
 protected:
     void BlockChecked(const CBlock& block, const CValidationState& stateIn) override
@@ -857,7 +856,7 @@ Examples:
         }
     }
 
-    CValidationState state;
+    CValidationState state(TxOrigin::MINED_BLOCK);
     submitblock_StateCatcher sc(block.GetHash());
     RegisterValidationInterface(&sc);
     bool fAccepted = ProcessNewBlock(state, Params(), nullptr, &block, true, nullptr);

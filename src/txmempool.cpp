@@ -407,8 +407,9 @@ void CTxMemPool::check(const CCoinsViewCache *pcoins) const
         }
         if (fDependsWait)
             waitingOnDependants.push_back(&(*it));
-        else {
-            CValidationState state;
+        else
+        {
+            CValidationState state(TxOrigin::MSG_TX);
             const bool fCheckResult = tx.IsCoinBase() ||
                 Consensus::CheckTxInputs(tx, state, mempoolDuplicate, nSpendHeight, Params().GetConsensus());
             assert(fCheckResult);
@@ -416,11 +417,13 @@ void CTxMemPool::check(const CCoinsViewCache *pcoins) const
         }
     }
     unsigned int stepsSinceLastRemove = 0;
-    while (!waitingOnDependants.empty()) {
+    while (!waitingOnDependants.empty())
+    {
         const CTxMemPoolEntry* entry = waitingOnDependants.front();
         waitingOnDependants.pop_front();
-        CValidationState state;
-        if (!mempoolDuplicate.HaveInputs(entry->GetTx())) {
+        CValidationState state(TxOrigin::MSG_TX);
+        if (!mempoolDuplicate.HaveInputs(entry->GetTx()))
+        {
             waitingOnDependants.push_back(entry);
             stepsSinceLastRemove++;
             assert(stepsSinceLastRemove < waitingOnDependants.size());

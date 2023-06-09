@@ -125,7 +125,7 @@ public:
     // get fee in PSL for the given action ticket type
     CAmount GetActionTicketFeePerMB(const ACTION_TICKET_TYPE actionTicketType) const noexcept;
 
-    double GetChainDeflationRate() const;
+    double GetChainDeflatorFactor() const;
 
     /***** MasterNode operations *****/
     std::unique_ptr<CSemaphore> semMasternodeOutbound;

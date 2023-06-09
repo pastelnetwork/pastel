@@ -1840,7 +1840,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
             ticket.reg_ticket_base64_encoded, json.dumps(self.not_top_mns_signatures_dict), self.top_mns[0].pastelid, self.passphrase, label, str(self.storage_fee))
 
         #       c.a.9 fail if MN1, MN2 and MN3 are the same
-        assert_raises_rpc(rpc.RPC_MISC_ERROR, "MNs Pastel IDs can not be the same",
+        assert_raises_rpc(rpc.RPC_MISC_ERROR, "MNs Pastel IDs cannot be the same",
             top_mn_node.tickets, "register", ticket_type_name,
             ticket.reg_ticket_base64_encoded, json.dumps(self.same_mns_signatures_dict), self.top_mns[0].pastelid, self.passphrase, label, str(self.storage_fee))
 

@@ -300,6 +300,16 @@ ticket_validation_t CollectionRegTicket::IsValid(const bool bPreReg, const uint3
 					getCollectionItemDesc(), m_AuthorizedContributors.size(), MAX_ALLOWED_AUTHORIZED_CONTRIBUTORS);
 				break;
 			}
+
+            // check that the collection creator height is not in the future
+            if (m_nCreatorHeight > nActiveChainHeight)
+            {
+                tv.state = TICKET_VALIDATION_STATE::MISSING_INPUTS;
+                tv.errorMsg = strprintf(
+					"This NFT creator height is in the future [creator_height=%u, active chain height=%u]", 
+					m_nCreatorHeight, nActiveChainHeight);
+                break;
+            }
         }
 
         // validate max collection entries
@@ -341,7 +351,7 @@ ticket_validation_t CollectionRegTicket::IsValid(const bool bPreReg, const uint3
         }
 
         // B. Something to validate always
-        const ticket_validation_t sigTv = validate_signatures(nCallDepth, m_nCreatorHeight, m_sCollectionTicket);
+        const ticket_validation_t sigTv = validate_signatures(bPreReg, nCallDepth, m_nCreatorHeight, m_sCollectionTicket);
         if (sigTv.IsNotValid())
         {
             tv.state = sigTv.state;

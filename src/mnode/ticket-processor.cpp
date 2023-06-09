@@ -187,8 +187,8 @@ bool CPastelTicketProcessor::UpdateDB(CPastelTicket &ticket, string& txid, const
  * \param data_stream - compressed data stream ()
  * \param ticket_id - ticket id (first byte in the data stream)
  * \param error - returns error message if any
- * \param bLog
- * \return 
+ * \param bLog - log flag
+ * \return - true if ticket was parsed successfully
  */
 bool CPastelTicketProcessor::preParseTicket(const CMutableTransaction& tx, CCompressedDataStream& data_stream,
     TicketID& ticket_id, string& error, const bool bLog)
@@ -446,21 +446,24 @@ ticket_validation_t CPastelTicketProcessor::ValidateTicketFees(const uint32_t nH
 
  /**
  * Called for contextual validation of ticket transactions in the blocks (new or not).
+ *                   
  *                   generate --+
- *                              |
- *          ProcessBlockFound --+                  TestBlockValidity --+
- *                              |                                      |
- *    ProcessMessages (block) --+--> ProcessNewBlock --> AcceptBlock --+-> ContextualCheckBlock --+--> ContextualCheckTransaction -> ValidateIfTicketTransaction
- *                                                                                                |
- *                               SendTicket -> StoreP2FMSTransaction --+-> AcceptToMemoryPool ----+
- *                                                                     | 
- *                                              ProcessMessages (tx) --+
+ *  BitcoinMiner                |
+ *      |                       |
+ *      +-- ProcessBlockFound --+  TestBlockValidity --+
+ *                              |                      |
+ *    ProcessMessages (block) --+--> ProcessNewBlock --+--> AcceptBlock --+-> ContextualCheckBlock --+--> ContextualCheckTransaction -> ValidateIfTicketTransaction
+ *                              |                                                                    |
+ *     LoadExternalBlockFile ---+   SendTicket -> StoreP2FMSTransaction --+-> AcceptToMemoryPool ----+
+ *                                                                        | 
+ *                                                 ProcessMessages (tx) --+
  * 
  * ContextualCheckBlock calls for all transactions in a block ContextualCheckTransaction.
  * AcceptToMemoryPool calls both CheckTransaction and ContextualCheckTransaction to validation transaction.
  * TestBlockValidity called from miner only.
- * generate RPC API is used only in regtest network.
+ * "generate" RPC API is used only in regtest network.
  * 
+ * \param state - validation state
  * \param nHeight - current block height
  * \param tx - transaction to validate
  * \return ticket validation status (TICKET_VALIDATION_STATE enum)
@@ -469,7 +472,7 @@ ticket_validation_t CPastelTicketProcessor::ValidateTicketFees(const uint32_t nH
  *    MISSING_INPUTS - ticket is missing some dependent data (for example, nft-act ticket can't find nft-reg ticket)
  *    INVALID        - ticket validation failed, error message is returned in errorMsg
  */
-ticket_validation_t CPastelTicketProcessor::ValidateIfTicketTransaction(const uint32_t nHeight, const CTransaction& tx)
+ticket_validation_t CPastelTicketProcessor::ValidateIfTicketTransaction(CValidationState &state, const uint32_t nHeight, const CTransaction& tx)
 {
     ticket_validation_t tv;
     CCompressedDataStream data_stream(SER_NETWORK, DATASTREAM_VERSION);
@@ -505,7 +508,7 @@ ticket_validation_t CPastelTicketProcessor::ValidateIfTicketTransaction(const ui
             ticket->SetTxId(move(ticketBlockTxIdStr));
             ticket->SetBlock(nHeight);
             // ticket validation
-            tv = ticket->IsValid(false, 0);
+            tv = ticket->IsValid(is_enum_any_of(state.getTxOrigin(), TxOrigin::MSG_TX), 0);
             if (tv.IsNotValid())
                 break;
             ticket->SetSerializedSize(data_stream.GetSavedDecompressedSize());
@@ -1742,7 +1745,7 @@ bool CPastelTicketProcessor::CreateP2FMSTransactionWithExtra(const CDataStream& 
 bool CPastelTicketProcessor::StoreP2FMSTransaction(const CMutableTransaction& tx_out, string& error_ret)
 {
     bool bRet = false;
-    CValidationState state;
+    CValidationState state(TxOrigin::NEW_TX);
     do
     {
         error_ret.clear();

@@ -65,7 +65,7 @@ static constexpr unsigned int MAX_STANDARD_TX_SIGOPS = MAX_BLOCK_SIGOPS/5;
 /** Default for -minrelaytxfee, minimum relay fee for transactions */
 static constexpr unsigned int DEFAULT_MIN_RELAY_TX_FEE = 100;
 /** Default for -txexpirydelta, in number of blocks */
-static constexpr unsigned int DEFAULT_TX_EXPIRY_DELTA = 20;
+static constexpr uint32_t DEFAULT_TX_EXPIRY_DELTA = 20;
 /** The number of blocks within expiry height when a tx is considered to be expiring soon */
 static constexpr uint32_t TX_EXPIRING_SOON_THRESHOLD = 3;
 /** The maximum size of a blk?????.dat file (since 0.8) */
@@ -383,8 +383,8 @@ bool ContextualCheckTransaction(
     CValidationState &state,
     const CChainParams& chainparams,
     const int nHeight,
-    const bool isMined,
     funcIsInitialBlockDownload_t isInitBlockDownload = fnIsInitialBlockDownload);
+
 
 /** Apply the effects of this transaction on the UTXO set represented by view */
 void UpdateCoins(const CTransaction& tx, CCoinsViewCache& inputs, int nHeight);

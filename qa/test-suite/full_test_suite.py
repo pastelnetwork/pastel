@@ -139,7 +139,9 @@ STAGES = [
     'univalue',
     'rpc-common',
     'rpc-ext',
-    'rpc-mn'
+    'rpc-mn',
+    'rpc-mn-main',
+    'rpc-mn-tickets'
 ]
 
 STAGE_COMMANDS = {
@@ -153,6 +155,8 @@ STAGE_COMMANDS = {
     'rpc-common': [repofile('qa/pull-tester/rpc-tests.sh'), '--group=testScripts'],
     'rpc-ext': [repofile('qa/pull-tester/rpc-tests.sh'), '--group=testScriptsExt'],
     'rpc-mn': [repofile('qa/pull-tester/rpc-tests.sh'), '--group=testScriptsMN'],
+    'rpc-mn-main': [repofile('qa/pull-tester/rpc-tests.sh'), '--name=mn_main.py'],
+    'rpc-mn-tickets': [repofile('qa/pull-tester/rpc-tests.sh'), '--name=mn_tickets.py'],
 }
 
 

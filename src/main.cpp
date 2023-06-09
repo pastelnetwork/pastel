@@ -33,6 +33,7 @@
 #include <ui_interface.h>
 #include <undo.h>
 #include <util.h>
+#include <enum_util.h>
 #include <utilmoneystr.h>
 #include <validationinterface.h>
 #include <wallet/asyncrpcoperation_sendmany.h>
@@ -90,7 +91,7 @@ bool fAlerts = DEFAULT_ALERTS;
  */
 int64_t nMaxTipAge = DEFAULT_MAX_TIP_AGE;
 
-unsigned int expiryDelta = DEFAULT_TX_EXPIRY_DELTA;
+uint32_t expiryDelta = DEFAULT_TX_EXPIRY_DELTA;
 
 /** Fees smaller than this (in patoshi) are considered zero fee (for relaying and mining) */
 CFeeRate minRelayTxFee = CFeeRate(DEFAULT_MIN_RELAY_TX_FEE);
@@ -864,11 +865,10 @@ unsigned int GetP2SHSigOpCount(const CTransaction& tx, const CCoinsViewCache& in
  *    can become valid at a later height N), we make the bans conditional on not being in Initial
  *    Block Download (IBD) mode.
  * 
- * \param tx
- * \param state
- * \param chainparams
- * \param nHeight
- * \param isMined
+ * \param tx - transaction to check
+ * \param state - validation state
+ * \param chainparams - chain parameters
+ * \param nHeight - height of the block being evaluated
  * \param isInitBlockDownload - functor to check IBD mode
  * \return 
  */
@@ -877,7 +877,6 @@ bool ContextualCheckTransaction(
     CValidationState &state,
     const CChainParams& chainparams,
     const int nHeight,
-    const bool isMined,
     funcIsInitialBlockDownload_t isInitBlockDownload)
 {
     const auto& consensusParams = chainparams.GetConsensus();
@@ -891,10 +890,10 @@ bool ContextualCheckTransaction(
     const int DOS_LEVEL_MEMPOOL = 10;
 
     // For constricting rules, we don't need to account for IBD mode.
-    auto dosLevelConstricting = isMined ? DOS_LEVEL_BLOCK : DOS_LEVEL_MEMPOOL;
-    // For rules that are relaxing (or might become relaxing when a future
-    // network upgrade is implemented), we need to account for IBD mode.
-    auto dosLevelPotentiallyRelaxing = isMined ? DOS_LEVEL_BLOCK : 
+    const bool isMined = is_enum_any_of(state.getTxOrigin(), TxOrigin::MINED_BLOCK, TxOrigin::GENERATED, TxOrigin::LOADED_BLOCK);
+    const auto dosLevelConstricting = isMined ? DOS_LEVEL_BLOCK : DOS_LEVEL_MEMPOOL;
+    // For rules that are relaxing (or might become relaxing when a future network upgrade is implemented), we need to account for IBD mode.
+    const auto dosLevelPotentiallyRelaxing = isMined ? DOS_LEVEL_BLOCK : 
                                                     (isInitBlockDownload(consensusParams) ? 0 : DOS_LEVEL_MEMPOOL);
 
     // Rules that apply only to Sprout
@@ -1069,13 +1068,13 @@ bool ContextualCheckTransaction(
     }
     
     // Check Pastel Ticket transactions
-    const auto tv = CPastelTicketProcessor::ValidateIfTicketTransaction(nHeight, tx);
+    const auto tv = CPastelTicketProcessor::ValidateIfTicketTransaction(state, nHeight, tx);
     if (tv.state == TICKET_VALIDATION_STATE::NOT_TICKET || tv.state == TICKET_VALIDATION_STATE::VALID)
         return true;
     if (tv.state == TICKET_VALIDATION_STATE::MISSING_INPUTS) 
         return state.DoS(0, warning_msg("ValidateIfTicketTransaction(): missing dependent transactions. %s", tv.errorMsg),
                          REJECT_MISSING_INPUTS, "tx-missing-inputs");
-    return state.DoS(100, error("ValidateIfTicketTransaction(): invalid ticket transaction. %s", tv.errorMsg),
+    return state.DoS(10, error("ValidateIfTicketTransaction(): invalid ticket transaction. %s", tv.errorMsg),
                      REJECT_INVALID, "bad-tx-invalid-ticket");
 }
 
@@ -1291,8 +1290,7 @@ bool AcceptToMemoryPool(
         return error("AcceptToMemoryPool [%s]: CheckTransaction failed", hash.ToString());
 
     // Check transaction contextually against the set of consensus rules which apply in the next block to be mined.
-    // isMined flag is false
-    if (!ContextualCheckTransaction(tx, state, chainparams, nextBlockHeight, false))
+    if (!ContextualCheckTransaction(tx, state, chainparams, nextBlockHeight))
     {
         if (state.IsRejectCode(REJECT_MISSING_INPUTS))
         {
@@ -2755,13 +2753,13 @@ static bool FlushStateToDisk(
 
 void FlushStateToDisk()
 {
-    CValidationState state;
+    CValidationState state(TxOrigin::UNKNOWN);
     FlushStateToDisk(Params(), state, FLUSH_STATE_ALWAYS);
 }
 
 void PruneAndFlush()
 {
-    CValidationState state;
+    CValidationState state(TxOrigin::UNKNOWN);
     fCheckForPruning = true;
     FlushStateToDisk(Params(), state, FLUSH_STATE_NONE);
 }
@@ -2840,7 +2838,7 @@ static bool DisconnectTip(CValidationState &state, const CChainParams& chainpara
         for (const auto &tx : block.vtx)
         {
             // ignore validation errors in resurrected transactions
-            CValidationState stateDummy;
+            CValidationState stateDummy(TxOrigin::UNKNOWN);
             if (tx.IsCoinBase() || !AcceptToMemoryPool(chainparams, mempool, stateDummy, tx, false, nullptr))
                 mempool.remove(tx);
         }
@@ -3097,7 +3095,7 @@ static bool ActivateBestChainStep(CValidationState &state, const CChainParams& c
                     // The block violates a consensus rule.
                     if (!state.CorruptionPossible())
                         InvalidChainFound(vpindexToConnect.back(), chainparams);
-                    state = CValidationState();
+                    state = CValidationState(state.getTxOrigin());
                     fInvalidFound = true;
                     fContinue = false;
                     break;
@@ -3698,10 +3696,8 @@ bool ContextualCheckBlock(
     // Check that all transactions are finalized
     for (const auto& tx : block.vtx)
     {
-
         // Check transaction contextually against consensus rules at block height
-        // isMined flag is true
-        if (!ContextualCheckTransaction(tx, state, chainparams, nHeight, true))
+        if (!ContextualCheckTransaction(tx, state, chainparams, nHeight))
             return false; // Failure reason has been set in validation state object
 
         int nLockTimeFlags = 0;
@@ -3744,7 +3740,7 @@ bool AcceptBlockHeader(
         if (ppindex)
             *ppindex = pindex;
         if (pindex->nStatus & BLOCK_FAILED_MASK)
-            return state.Invalid(error("%s: block is marked invalid", __func__), 0, "duplicate");
+            return state.Invalid(error("%s: block (height=%d) is marked invalid", __func__, pindex->nHeight), 0, "duplicate");
         // if previous block has failed contextual validation - add it to unlinked block map as well
         if (gl_BlockCache.check_prev_block(pindex))
             LogPrint("net", "block %s (height=%d) added to cached unlinked map\n", hash.ToString(), pindex->nHeight);
@@ -3764,7 +3760,7 @@ bool AcceptBlockHeader(
             return state.DoS(10, error("%s: prev block not found", __func__), 0, "bad-prevblk");
         pindexPrev = mi->second;
         if (pindexPrev->nStatus & BLOCK_FAILED_MASK)
-            return state.DoS(100, error("%s: prev block invalid", __func__), REJECT_INVALID, "bad-prevblk");
+            return state.DoS(100, error("%s: prev block (height=%d) invalid", __func__, pindexPrev->nHeight), REJECT_INVALID, "bad-prevblk");
     }
 
     if (!ContextualCheckBlockHeader(block, state, chainparams, pindexPrev))
@@ -4291,7 +4287,7 @@ bool CVerifyDB::VerifyDB(const CChainParams& chainparams, CCoinsView *coinsview,
     CBlockIndex* pindexState = chainActive.Tip();
     CBlockIndex* pindexFailure = nullptr;
     size_t nGoodTransactions = 0;
-    CValidationState state;
+    CValidationState state(TxOrigin::LOADED_BLOCK);
     // No need to verify JoinSplits twice
     auto verifier = libzcash::ProofVerifier::Disabled();
     const auto &consensusParams = chainparams.GetConsensus();
@@ -4430,10 +4426,12 @@ bool RewindBlockIndex(const CChainParams& chainparams, bool& clearWitnessCaches)
         }
     }
 
-    CValidationState state;
+    CValidationState state(TxOrigin::UNKNOWN);
     CBlockIndex* pindex = chainActive.Tip();
-    while (chainActive.Height() >= nHeight) {
-        if (fPruneMode && !(chainActive.Tip()->nStatus & BLOCK_HAVE_DATA)) {
+    while (chainActive.Height() >= nHeight)
+    {
+        if (fPruneMode && !(chainActive.Tip()->nStatus & BLOCK_HAVE_DATA))
+        {
             // If pruning, don't try rewinding past the HAVE_DATA point;
             // since older blocks can't be served anyway, there's
             // no need to walk further, and trying to DisconnectTip()
@@ -4441,9 +4439,8 @@ bool RewindBlockIndex(const CChainParams& chainparams, bool& clearWitnessCaches)
             // of the blockchain).
             break;
         }
-        if (!DisconnectTip(state, chainparams, true)) {
+        if (!DisconnectTip(state, chainparams, true))
             return error("RewindBlockIndex: unable to disconnect block at height %i", pindex->nHeight);
-        }
         // Occasionally flush state to disk.
         if (!FlushStateToDisk(chainparams, state, FLUSH_STATE_PERIODIC))
             return false;
@@ -4573,16 +4570,18 @@ bool InitBlockIndex(const CChainParams& chainparams)
     fSpentIndex = fInsightExplorer;
     fTimestampIndex = fInsightExplorer;
 
-    LogPrintf("Initializing databases...\n");
+    LogFnPrintf("Initializing databases...");
 
     // Only add the genesis block if not reindexing (in which case we reuse the one already on disk)
-    if (!fReindex) {
-        try {
+    if (!fReindex)
+    {
+        try
+        {
             const CBlock& block = chainparams.GenesisBlock();
             // Start new block file
             const unsigned int nBlockSize = static_cast<unsigned int>(::GetSerializeSize(block, SER_DISK, CLIENT_VERSION));
             CDiskBlockPos blockPos;
-            CValidationState state;
+            CValidationState state(TxOrigin::LOADED_BLOCK);
             if (!FindBlockPos(state, blockPos, nBlockSize + 8, 0, block.GetBlockTime()))
                 return error("LoadBlockIndex(): FindBlockPos failed");
             if (!WriteBlockToDisk(block, blockPos, chainparams.MessageStart()))
@@ -4671,7 +4670,7 @@ bool LoadExternalBlockFile(const CChainParams& chainparams, FILE* fileIn, CDiskB
                 // process in case the block isn't known yet
                 if (mapBlockIndex.count(hash) == 0 || (mapBlockIndex[hash]->nStatus & BLOCK_HAVE_DATA) == 0)
                 {
-                    CValidationState state;
+                    CValidationState state(TxOrigin::LOADED_BLOCK);
                     if (ProcessNewBlock(state, chainparams, nullptr, &block, true, dbp))
                         nLoaded++;
                     if (state.IsError())
@@ -4696,7 +4695,7 @@ bool LoadExternalBlockFile(const CChainParams& chainparams, FILE* fileIn, CDiskB
                         if (ReadBlockFromDisk(block, it->second, consensusParams))
                         {
                             LogPrintf("%s: Processing out of order child %s of %s\n", __func__, block.GetHash().ToString(), head.ToString());
-                            CValidationState dummy;
+                            CValidationState dummy(TxOrigin::LOADED_BLOCK);
                             if (ProcessNewBlock(dummy, chainparams, nullptr, &block, true, &it->second))
                             {
                                 nLoaded++;
@@ -5634,7 +5633,7 @@ static bool ProcessMessage(const CChainParams& chainparams, CNode* pfrom, string
             LOCK(cs_main);
 
             bool fMissingInputs = false;
-            CValidationState state;
+            CValidationState state(TxOrigin::MSG_TX);
 
             pfrom->setAskFor.erase(inv.hash);
             mapAlreadyAskedFor.erase(inv);
@@ -5732,7 +5731,7 @@ static bool ProcessMessage(const CChainParams& chainparams, CNode* pfrom, string
             LOCK(cs_main);
             for (const auto& header : headers)
             {
-                CValidationState state;
+                CValidationState state(TxOrigin::MSG_HEADERS);
                 if (pindexLast && header.hashPrevBlock != pindexLast->GetBlockHash())
                 {
                     Misbehaving(pfrom->GetId(), 20);
@@ -5781,7 +5780,7 @@ static bool ProcessMessage(const CChainParams& chainparams, CNode* pfrom, string
 
         pfrom->AddInventoryKnown(inv);
 
-        CValidationState state;
+        CValidationState state(TxOrigin::MSG_BLOCK);
         // Process all blocks from whitelisted peers, even if not requested,
         // unless we're still syncing with the network.
         // Such an unrequested block may still be processed, subject to the
@@ -5793,7 +5792,7 @@ static bool ProcessMessage(const CChainParams& chainparams, CNode* pfrom, string
         if (state.IsRejectCode(REJECT_MISSING_INPUTS))
         {
             // add block to cache to revalidate later on periodically
-            if (gl_BlockCache.add_block(inv.hash, pfrom->id, move(block)))
+            if (gl_BlockCache.add_block(inv.hash, pfrom->id, state.getTxOrigin(), move(block)))
                 LogPrintf("block %s cached for revalidation, peer=%d\n", inv.hash.ToString(), pfrom->id);
             else
                 LogPrint("net", "block %s already exists in a revalidation cache, peer=%d\n", inv.hash.ToString(), pfrom->id);
@@ -6221,12 +6220,11 @@ bool SendMessages(const CChainParams& chainparams, CNode* pto, bool fSendTrickle
         //
         // Message: ping
         //
-        bool pingSend = false;
-        if (pto->fPingQueued)
-            pingSend = true; // RPC ping request by user
+        // check if RPC ping requested by user
+        bool bSendPing = pto->fPingQueued;
         if (pto->nPingNonceSent == 0 && pto->nPingUsecStart + PING_INTERVAL * 1000000 < GetTimeMicros())
-            pingSend = true; // Ping automatically sent as a latency probe & keepalive.
-        if (pingSend)
+            bSendPing = true; // Ping automatically sent as a latency probe & keepalive.
+        if (bSendPing)
         {
             uint64_t nonce = 0;
             while (nonce == 0)
@@ -6493,7 +6491,15 @@ bool SendMessages(const CChainParams& chainparams, CNode* pto, bool fSendTrickle
         // revalidate cached blocks if any
         const size_t nBlocksRevalidated = gl_BlockCache.revalidate_blocks(chainparams);
         if (nBlocksRevalidated)
-            LogPrintf("%zu block%s revalidated (block cache size=%zu)\n", nBlocksRevalidated, nBlocksRevalidated > 1 ? "s" : "", gl_BlockCache.size());
+        {
+            const size_t nBlockCacheSize = gl_BlockCache.size();
+            string sBlockCacheSize;
+            if (nBlockCacheSize)
+                sBlockCacheSize = strprintf("remaining block cache size=%zu", nBlockCacheSize);
+            else
+                sBlockCacheSize = "block cache is empty";
+            LogPrintf("%zu block%s revalidated (%s)\n", nBlocksRevalidated, nBlocksRevalidated > 1 ? "s" : "", sBlockCacheSize);
+        }
     }
     return true;
 }

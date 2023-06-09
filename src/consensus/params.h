@@ -99,9 +99,7 @@ struct Params
 
     Params(const ChainNetwork aNetwork) :
         network(aNetwork)
-    {
-
-    }
+    {}
 
     /**
      * Add network upgrade.
@@ -123,5 +121,16 @@ struct Params
         vUpgrades[nUpgradeIndex].nActivationHeight = nActivationHeight;
     }
 
+    /**
+     * Get network upgrade activation height.
+     * 
+     * \param idx - index of the upgrade
+     * \return - activation height of the upgrade
+     */
+    uint32_t GetNetworkUpgradeActivationHeight(const UpgradeIndex idx) const noexcept
+    {
+		return vUpgrades[to_integral_type(idx)].nActivationHeight;
+    }
 };
+
 } // namespace Consensus

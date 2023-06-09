@@ -20,11 +20,13 @@ TEST(TransactionBuilder, Invoke)
     SelectParams(ChainNetwork::REGTEST);
     UpdateNetworkUpgradeParameters(Consensus::UpgradeIndex::UPGRADE_OVERWINTER, Consensus::NetworkUpgrade::ALWAYS_ACTIVE);
     UpdateNetworkUpgradeParameters(Consensus::UpgradeIndex::UPGRADE_SAPLING, Consensus::NetworkUpgrade::ALWAYS_ACTIVE);
-    auto consensusParams = Params().GetConsensus();
+
+    const auto &chainparams = Params();
+    const auto &consensusParams = chainparams.GetConsensus();
 
     string sKeyError;
     CBasicKeyStore keystore;
-    KeyIO keyIO(Params());
+    KeyIO keyIO(chainparams);
     const CKey tsk = keyIO.DecodeSecret(tSecretRegtest, sKeyError);
     EXPECT_TRUE(tsk.IsValid());
     EXPECT_TRUE(sKeyError.empty());
@@ -54,8 +56,8 @@ TEST(TransactionBuilder, Invoke)
     EXPECT_EQ(tx1.vShieldedOutput.size(), 1);
     EXPECT_EQ(tx1.valueBalance, -40000);
 
-    CValidationState state;
-    EXPECT_TRUE(ContextualCheckTransaction(tx1, state, Params(), 2, true));
+    CValidationState state(TxOrigin::MINED_BLOCK);
+    EXPECT_TRUE(ContextualCheckTransaction(tx1, state, chainparams, 2));
     EXPECT_EQ(state.GetRejectReason(), "");
 
     // Prepare to spend the note that was just created
@@ -87,7 +89,7 @@ TEST(TransactionBuilder, Invoke)
     EXPECT_EQ(tx2.vShieldedOutput.size(), 2);
     EXPECT_EQ(tx2.valueBalance, 10000);
 
-    EXPECT_TRUE(ContextualCheckTransaction(tx2, state, Params(), 3, true));
+    EXPECT_TRUE(ContextualCheckTransaction(tx2, state, chainparams, 3));
     EXPECT_EQ(state.GetRejectReason(), "");
 
     // Revert to default
@@ -131,7 +133,8 @@ TEST(TransactionBuilder, FailsWithNegativeChange)
     SelectParams(ChainNetwork::REGTEST);
     UpdateNetworkUpgradeParameters(Consensus::UpgradeIndex::UPGRADE_OVERWINTER, Consensus::NetworkUpgrade::ALWAYS_ACTIVE);
     UpdateNetworkUpgradeParameters(Consensus::UpgradeIndex::UPGRADE_SAPLING, Consensus::NetworkUpgrade::ALWAYS_ACTIVE);
-    auto consensusParams = Params().GetConsensus();
+    const auto &chainparams = Params();
+    const auto &consensusParams = chainparams.GetConsensus();
 
     // Generate dummy Sapling address
     auto sk = libzcash::SaplingSpendingKey::random();
@@ -142,7 +145,7 @@ TEST(TransactionBuilder, FailsWithNegativeChange)
     // Set up dummy transparent address
     string sKeyError;
     CBasicKeyStore keystore;
-    KeyIO keyIO(Params());
+    KeyIO keyIO(chainparams);
     const CKey tsk = keyIO.DecodeSecret(tSecretRegtest, sKeyError);
     EXPECT_TRUE(tsk.IsValid());
     EXPECT_TRUE(sKeyError.empty());
@@ -190,7 +193,8 @@ TEST(TransactionBuilder, ChangeOutput)
     SelectParams(ChainNetwork::REGTEST);
     UpdateNetworkUpgradeParameters(Consensus::UpgradeIndex::UPGRADE_OVERWINTER, Consensus::NetworkUpgrade::ALWAYS_ACTIVE);
     UpdateNetworkUpgradeParameters(Consensus::UpgradeIndex::UPGRADE_SAPLING, Consensus::NetworkUpgrade::ALWAYS_ACTIVE);
-    auto consensusParams = Params().GetConsensus();
+    const auto &chainparams = Params();
+    const auto &consensusParams = chainparams.GetConsensus();
 
     // Generate dummy Sapling address
     auto sk = libzcash::SaplingSpendingKey::random();
@@ -213,7 +217,7 @@ TEST(TransactionBuilder, ChangeOutput)
     // Set up dummy transparent address
     string sKeyError;
     CBasicKeyStore keystore;
-    KeyIO keyIO(Params());
+    KeyIO keyIO(chainparams);
     const CKey tsk = keyIO.DecodeSecret(tSecretRegtest, sKeyError);
     EXPECT_TRUE(tsk.IsValid());
     EXPECT_TRUE(sKeyError.empty());
@@ -282,7 +286,8 @@ TEST(TransactionBuilder, SetFee)
     SelectParams(ChainNetwork::REGTEST);
     UpdateNetworkUpgradeParameters(Consensus::UpgradeIndex::UPGRADE_OVERWINTER, Consensus::NetworkUpgrade::ALWAYS_ACTIVE);
     UpdateNetworkUpgradeParameters(Consensus::UpgradeIndex::UPGRADE_SAPLING, Consensus::NetworkUpgrade::ALWAYS_ACTIVE);
-    auto consensusParams = Params().GetConsensus();
+    const auto &chainparams = Params();
+    const auto &consensusParams = chainparams.GetConsensus();
 
     // Generate dummy Sapling address
     auto sk = libzcash::SaplingSpendingKey::random();
