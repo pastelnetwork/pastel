@@ -75,7 +75,7 @@ ticket_validation_t CollectionActivateTicket::IsValid(const TxOrigin txOrigin, c
         // 0. Common validations
         unique_ptr<CPastelTicket> pastelTicket;
         const ticket_validation_t commonTV = common_ticket_validation(
-            *this, bPreReg, m_regTicketTxId, pastelTicket,
+            *this, txOrigin, m_regTicketTxId, pastelTicket,
             [](const TicketID tid) noexcept { return (tid != TicketID::CollectionReg); },
             GetTicketDescription(), CollectionRegTicket::GetTicketDescription(), nCallDepth,
             TicketPricePSL(nActiveChainHeight) + static_cast<CAmount>(getAllMNFeesPSL())); // fee for ticket + all MN storage fees (percent from storage fee)

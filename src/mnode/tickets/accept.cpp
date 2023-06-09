@@ -56,7 +56,7 @@ ticket_validation_t CAcceptTicket::IsValid(const TxOrigin txOrigin, const uint32
         // 0. Common validations
         unique_ptr<CPastelTicket> offerTicket;
         const ticket_validation_t commonTV = common_ticket_validation(
-            *this, isPreReg(txOrigin), m_offerTxId, offerTicket,
+            *this, txOrigin, m_offerTxId, offerTicket,
             [](const TicketID tid) noexcept { return (tid != TicketID::Offer); },
             GetTicketDescription(), COfferTicket::GetTicketDescription(), nCallDepth, 
             m_nPricePSL + TicketPricePSL(nActiveChainHeight));

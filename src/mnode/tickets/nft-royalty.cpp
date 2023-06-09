@@ -87,7 +87,7 @@ ticket_validation_t CNFTRoyaltyTicket::IsValid(const TxOrigin txOrigin, const ui
         // 0. Common validations
         unique_ptr<CPastelTicket> pastelTicket;
         const ticket_validation_t commonTV = common_ticket_validation(
-            *this, bPreReg, m_sNFTTxId, pastelTicket,
+            *this, txOrigin, m_sNFTTxId, pastelTicket,
             [](const TicketID tid) noexcept { return (tid != TicketID::NFT); },
             GetTicketDescription(), CNFTRegTicket::GetTicketDescription(), nCallDepth, 
             TicketPricePSL(nActiveChainHeight));

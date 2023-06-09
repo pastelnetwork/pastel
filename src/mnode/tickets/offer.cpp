@@ -141,7 +141,7 @@ ticket_validation_t COfferTicket::IsValid(const TxOrigin txOrigin, const uint32_
         // 0. Common validations
         unique_ptr<CPastelTicket> itemTicket;
         const ticket_validation_t commonTV = common_ticket_validation(
-            *this, bPreReg, m_itemTxId, itemTicket,
+            *this, txOrigin, m_itemTxId, itemTicket,
             [](const TicketID tid) noexcept
             {
                 /* validate item ticket

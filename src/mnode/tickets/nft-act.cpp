@@ -72,7 +72,7 @@ ticket_validation_t CNFTActivateTicket::IsValid(const TxOrigin txOrigin, const u
         // 0. Common validations
         unique_ptr<CPastelTicket> pastelTicket;
         const ticket_validation_t commonTV = common_ticket_validation(
-            *this, bPreReg, m_regTicketTxId, pastelTicket,
+            *this, txOrigin, m_regTicketTxId, pastelTicket,
             [](const TicketID tid) noexcept { return (tid != TicketID::NFT); },
             GetTicketDescription(), CNFTRegTicket::GetTicketDescription(), nCallDepth,
             TicketPricePSL(nActiveChainHeight) + static_cast<CAmount>(getAllMNFeesPSL())); // fee for ticket + all MN storage fees (percent from storage fee)
