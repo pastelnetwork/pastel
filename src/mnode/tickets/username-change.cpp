@@ -13,6 +13,10 @@
 #include <mnode/mnode-controller.h>
 #include <mnode/mnode-badwords.h>
 
+#ifdef ENABLE_WALLET
+#include <wallet/wallet.h>
+#endif // ENABLE_WALLET
+
 using json = nlohmann::json;
 using namespace std;
 
@@ -101,7 +105,7 @@ string CChangeUsernameTicket::ToStr() const noexcept
  * \param nCallDepth - current function call depth
  * \return true if ticket is valid
  */
-ticket_validation_t CChangeUsernameTicket::IsValid(const bool bPreReg, const uint32_t nCallDepth) const noexcept
+ticket_validation_t CChangeUsernameTicket::IsValid(const TxOrigin txOrigin, const uint32_t nCallDepth) const noexcept
 {
     using namespace chrono;
     using namespace literals::chrono_literals;
@@ -125,6 +129,7 @@ ticket_validation_t CChangeUsernameTicket::IsValid(const bool bPreReg, const uin
     ticket_validation_t tv;
     do
     {
+        const bool bPreReg = isPreReg(txOrigin);
         // These checks executed ONLY before ticket made into transaction
         if (bPreReg)
         {
@@ -167,17 +172,20 @@ ticket_validation_t CChangeUsernameTicket::IsValid(const bool bPreReg, const uin
                     break;
                 }
             }
-
-            // Check if address has coins to pay for Username Change Ticket
-            const auto fullTicketPrice = TicketPricePSL(nActiveChainHeight);
-
-            if (pwalletMain->GetBalance() < fullTicketPrice * COIN)
+#ifdef ENABLE_WALLET
+            if (isLocalPreReg(txOrigin))
             {
-                tv.errorMsg = strprintf(
-                    "Not enough coins to cover price [%" PRId64 " PSL]", 
-                    fullTicketPrice);
-                break;
+                // Check if address has coins to pay for Username Change Ticket
+                const auto fullTicketPrice = TicketPricePSL(nActiveChainHeight);
+                if (pwalletMain->GetBalance() < fullTicketPrice * COIN)
+                {
+                    tv.errorMsg = strprintf(
+                        "Not enough coins to cover price [%" PRId64 " PSL]",
+                        fullTicketPrice);
+                    break;
+                }
             }
+#endif // ENABLE_WALLET
         }
 
         // Check if username is a bad username. For now check if it is empty only.
@@ -266,7 +274,8 @@ ChangeUsernameTickets_t CChangeUsernameTicket::FindAllTicketByMVKey(const string
 bool CChangeUsernameTicket::isUsernameBad(const string& username, string& error)
 {
     // Check if has only <4, or has more than 12 characters
-    if ((username.size() < 4) || (username.size() > 12)) {
+    if ((username.size() < 4) || (username.size() > 12))
+    {
         error = "Invalid size of username, the size should have at least 4 characters, and at most 12 characters";
         return true;
     }
@@ -277,7 +286,8 @@ bool CChangeUsernameTicket::isUsernameBad(const string& username, string& error)
         return true;
     }
     // Check if contains characters that is different than upper and lowercase Latin characters and numbers
-    if (!all_of(username.begin(), username.end(), [&](unsigned char c) {
+    if (!all_of(username.begin(), username.end(), [&](unsigned char c)
+        {
             return (isalphaex(c) || isdigitex(c));
         })) {
         error = "Invalid username, should contains letters A-Z a-z, or digits 0-9 only";
@@ -286,8 +296,10 @@ bool CChangeUsernameTicket::isUsernameBad(const string& username, string& error)
     // Check if contains bad words (swear, racist,...)
     string lowercaseUsername = username;
     lowercase(lowercaseUsername);
-    for (const auto& elem : UsernameBadWords::Singleton().wordSet) {
-        if (lowercaseUsername.find(elem) != string::npos) {
+    for (const auto& elem : UsernameBadWords::Singleton().wordSet)
+    {
+        if (lowercaseUsername.find(elem) != string::npos)
+        {
             error = "Invalid username, should NOT contains swear, racist... words";
             return true;
         }

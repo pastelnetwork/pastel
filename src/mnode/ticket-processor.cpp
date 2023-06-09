@@ -508,7 +508,7 @@ ticket_validation_t CPastelTicketProcessor::ValidateIfTicketTransaction(CValidat
             ticket->SetTxId(move(ticketBlockTxIdStr));
             ticket->SetBlock(nHeight);
             // ticket validation
-            tv = ticket->IsValid(is_enum_any_of(state.getTxOrigin(), TxOrigin::MSG_TX), 0);
+            tv = ticket->IsValid(state.getTxOrigin(), 0);
             if (tv.IsNotValid())
                 break;
             ticket->SetSerializedSize(data_stream.GetSavedDecompressedSize());
@@ -1304,7 +1304,7 @@ tuple<string, string> CPastelTicketProcessor::SendTicket(const CPastelTicket& ti
 {
     string error;
 
-    const ticket_validation_t tv = ticket.IsValid(true, 0);
+    const ticket_validation_t tv = ticket.IsValid(TxOrigin::NEW_TX, 0);
     if (tv.IsNotValid())
         throw runtime_error(strprintf("Ticket (%s) is invalid. %s", ticket.GetTicketName(), tv.errorMsg));
 
@@ -1349,7 +1349,7 @@ tuple<string, string> CPastelTicketProcessor::SendTicket(const CPastelTicket& ti
 bool CPastelTicketProcessor::CreateP2FMSTransaction(const string& input_string, CMutableTransaction& tx_out, 
     const CAmount pricePSL, const opt_string_t& sFundingAddress, string& error_ret)
 {
-    //Convert string data into binary buffer
+    // Convert string data into binary buffer
     CDataStream data_stream(SER_NETWORK, DATASTREAM_VERSION);
     data_stream << input_string;
     return CreateP2FMSTransaction(data_stream, tx_out, pricePSL, sFundingAddress, error_ret);

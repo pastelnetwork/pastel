@@ -239,16 +239,17 @@ void CNFTRegTicket::set_collection_properties() noexcept
 /**
  * Validate NFT ticket.
  * 
- * \param bPreReg - if true: called from ticket pre-registration
+ * \param txOrigin - ticket transaction origin (used to determine pre-registration mode)
  * \param nCallDepth - function call depth
  * \return true if the ticket is valid
  */
-ticket_validation_t CNFTRegTicket::IsValid(const bool bPreReg, const uint32_t nCallDepth) const noexcept
+ticket_validation_t CNFTRegTicket::IsValid(const TxOrigin txOrigin, const uint32_t nCallDepth) const noexcept
 {
     const auto nActiveChainHeight = gl_nChainHeight + 1;
     ticket_validation_t tv;
     do
     {
+        const bool bPreReg = isPreReg(txOrigin);
         if (bPreReg)
         {
             // A. Something to check ONLY before the ticket made into transaction.
@@ -263,16 +264,20 @@ ticket_validation_t CNFTRegTicket::IsValid(const bool bPreReg, const uint32_t nC
                 break;
             }
 
-            // A.2 validate that address has coins to pay for registration - 10PSL
-            const auto fullTicketPrice = TicketPricePSL(nActiveChainHeight); //10% of storage fee is paid by the 'creator' and this ticket is created by MN
-            if (pwalletMain->GetBalance() < fullTicketPrice * COIN)
+#ifdef ENABLE_WALLET
+            if (isLocalPreReg(txOrigin))
             {
-                tv.errorMsg = strprintf(
-                    "Not enough coins to cover price [%" PRId64 " PSL]", 
-                    fullTicketPrice);
-                break;
+                // A.2 validate that address has coins to pay for registration - 10PSL
+                const auto fullTicketPrice = TicketPricePSL(nActiveChainHeight); //10% of storage fee is paid by the 'creator' and this ticket is created by MN
+                if (pwalletMain->GetBalance() < fullTicketPrice * COIN)
+                {
+                    tv.errorMsg = strprintf(
+                        "Not enough coins to cover price [%" PRId64 " PSL]",
+                        fullTicketPrice);
+                    break;
+                }
             }
-
+#endif // ENABLE_WALLET
             // A.3 check that the NFT creator height is not in the future
             if (m_nCreatorHeight > nActiveChainHeight)
             {
@@ -304,7 +309,7 @@ ticket_validation_t CNFTRegTicket::IsValid(const bool bPreReg, const uint32_t nC
         }
 
         // B. Something to validate always
-        const ticket_validation_t sigTv = validate_signatures(bPreReg, nCallDepth, m_nCreatorHeight, m_sNFTTicket);
+        const ticket_validation_t sigTv = validate_signatures(txOrigin, nCallDepth, m_nCreatorHeight, m_sNFTTicket);
         if (sigTv.IsNotValid())
         {
             tv.state = sigTv.state;

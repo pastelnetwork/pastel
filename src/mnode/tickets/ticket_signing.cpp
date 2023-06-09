@@ -138,12 +138,14 @@ string CTicketSigning::getPastelID(const short sigId) const noexcept
 /**
  * Validate ticket signatures.
  * 
+ * \param txOrigin - ticket tx origin
  * \param nCallDepth - current function call depth
  * \param nCreatorHeight - Pastel ID registration ticket height for the principal signature creator
  * \param sTicketToValidate - ticket content to validate
+ * 
  * \return ticket validation state and error message if any
  */
-ticket_validation_t CTicketSigning::validate_signatures(const bool bPreReg, const uint32_t nCallDepth, const uint32_t nCreatorHeight, const string& sTicketToValidate) const noexcept
+ticket_validation_t CTicketSigning::validate_signatures(const TxOrigin txOrigin, const uint32_t nCallDepth, const uint32_t nCreatorHeight, const string& sTicketToValidate) const noexcept
 {
     uint32_t nCurrentCallDepth = nCallDepth;
     unordered_map<string, int> pidCountMap;
@@ -168,7 +170,7 @@ ticket_validation_t CTicketSigning::validate_signatures(const bool bPreReg, cons
         }
             
         // Pastel IDs are valid
-        tv = pastelIdRegTicket.IsValid(false, ++nCurrentCallDepth);
+        tv = pastelIdRegTicket.IsValid(TxOrigin::UNKNOWN, ++nCurrentCallDepth);
         if (tv.IsNotValid())
         {
             tv.errorMsg = strprintf(

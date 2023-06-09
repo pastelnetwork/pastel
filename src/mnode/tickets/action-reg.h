@@ -119,7 +119,7 @@ public:
 
     std::string ToJSON(const bool bDecodeProperties = false) const noexcept override;
     std::string ToStr() const noexcept override { return m_sActionTicket; }
-    ticket_validation_t IsValid(const bool bPreReg, const uint32_t nCallDepth) const noexcept override;
+    ticket_validation_t IsValid(const TxOrigin txOrigin, const uint32_t nCallDepth) const noexcept override;
     // check if given Pastel ID is the action caller
     bool IsCallerPastelId(const std::string& sPastelID) const noexcept { return m_sCreatorPastelID == sPastelID; }
 

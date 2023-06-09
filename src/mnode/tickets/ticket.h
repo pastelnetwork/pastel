@@ -7,7 +7,9 @@
 
 #include <json/json.hpp>
 
+#include <enum_util.h>
 #include <amount.h>
+#include <consensus/validation.h>
 #include <primitives/transaction.h>
 #include <mnode/tickets/ticket-types.h>
 
@@ -102,7 +104,7 @@ public:
      *   ex.: address has enough coins for registration
      * else - validate ticket in general
      */
-    virtual ticket_validation_t IsValid(const bool bPreReg, const uint32_t nCallDepth) const noexcept = 0; 
+    virtual ticket_validation_t IsValid(const TxOrigin txOrigin, const uint32_t nCallDepth) const noexcept = 0; 
     // stored ticket version
     short GetStoredVersion() const noexcept { return m_nVersion; }
     const std::string GetTxId() const noexcept { return m_txid; }
@@ -199,6 +201,18 @@ public:
 
     virtual void SetKeyOne(std::string &&sValue) = 0;
     virtual void GenerateKeyOne() {}
+
+    // check if ticket is in pre-registration mode (being accepted to mempool)
+    static bool isPreReg(const TxOrigin txOrigin) noexcept
+    {
+		return is_enum_any_of(txOrigin, TxOrigin::MSG_TX, TxOrigin::NEW_TX);
+	}
+
+    // check if ticket is created on local node and it is pre-registration (being accepted to mempool)
+    static bool isLocalPreReg(const TxOrigin txOrigin) noexcept
+    {
+        return txOrigin == TxOrigin::NEW_TX;
+    }
 
 protected:
     std::string m_txid;          // ticket transaction id

@@ -31,7 +31,6 @@ typedef enum class _TxOriginEnum: uint8_t
     NEW_TX = 7,		    // new transaction created by this node
 } TxOrigin;
 
-
 /** Capture information about block/transaction validation */
 class CValidationState
 {

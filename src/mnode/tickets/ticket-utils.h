@@ -10,6 +10,7 @@
 #include <mnode/tickets/ticket.h>
 #include <mnode/ticket-processor.h>
 #include <mnode/mnode-controller.h>
+
 #ifdef ENABLE_WALLET
 #include <wallet/wallet.h>
 #endif // ENABLE_WALLET
@@ -45,6 +46,7 @@ ticket_validation_t common_ticket_validation(
         // A. Something to check ONLY before the ticket made into transaction
         if (bPreReg)
         {
+#ifdef ENABLE_WALLET
             // A. Validate that address has coins to pay for registration - 10PSL + fee
             if (pwalletMain->GetBalance() < ticketPriceInPSL * COIN)
             {
@@ -53,6 +55,7 @@ ticket_validation_t common_ticket_validation(
                     ticketPriceInPSL);
                 break;
             }
+#endif // ENABLE_WALLET
         }
 
         // B. Something to validate always
@@ -139,7 +142,7 @@ ticket_validation_t common_ticket_validation(
         }
 
         // D.3 Validate referred item ticket
-        const auto referredItemTV = referredItemTicket->IsValid(false, nCallDepth + 1);
+        const auto referredItemTV = referredItemTicket->IsValid(TxOrigin::UNKNOWN, nCallDepth + 1);
         if (referredItemTV.IsNotValid())
         {
             tv.state = referredItemTV.state;

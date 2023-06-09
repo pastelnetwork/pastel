@@ -54,7 +54,7 @@ unique_ptr<CPastelTicket> CollectionItem::RetrieveCollectionActivateTicket(strin
 /**
  * Validate Collection reference.
  *
- * \param bPreReg - if true: called from ticket pre-registration
+ * \param txOrigin - ticket transaction origin (used to determine pre-registration mode)
  * \return ticket validation result structure
  */
 ticket_validation_t CollectionItem::IsValidCollection(const bool bPreReg) const noexcept
