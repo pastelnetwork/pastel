@@ -3088,7 +3088,10 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         print(f"accept_ticket_txid: {accept_ticket_txid}")
         self.wait_for_min_confirmations()  # +5 blocks (cur+16)
         # need at least 24 blocks for accept ticket to expire
-        self.generate_and_sync_inc(20, self.mining_node_num) # +20 blocks (cur+36)
+        for _ in range(0, 4):
+            self.generate_and_sync_inc(5, self.mining_node_num) 
+            time.sleep(2)
+        # +20 blocks (cur+36)
 
         print(' --- list accept')
         tickets_list = self.nodes[self.non_mn3].tickets("list", "accept")

@@ -168,20 +168,20 @@ enum {
 
 namespace NetMsgType
 {
-    constexpr auto MNANNOUNCE               = "mnb";  //MasterNode Announce
-    constexpr auto MNPING                   = "mnp";  //MasterNode Ping
-    constexpr auto MNVERIFY                 = "mnv";  //
-    constexpr auto DSEG                     = "dseg"; //MasterNode Sync request
-    constexpr auto SYNCSTATUSCOUNT          = "ssc";  //MasterNode Sync status
+    constexpr auto MNANNOUNCE               = "mnb";    // MasterNode Announce
+    constexpr auto MNPING                   = "mnp";    // MasterNode Ping
+    constexpr auto MNVERIFY                 = "mnv";    // MasterNode Verify
+    constexpr auto DSEG                     = "dseg";   // MasterNode Sync request
+    constexpr auto SYNCSTATUSCOUNT          = "ssc";    // MasterNode Sync status
 
     // const char *TXLOCKREQUEST="ix";
     // const char *TXLOCKVOTE="txlvote";
-    constexpr auto MASTERNODEPAYMENTVOTE    = "mnw";
-    constexpr auto MASTERNODEPAYMENTBLOCK   = "mnwb";
-    constexpr auto MASTERNODEPAYMENTSYNC    = "mnget";
-    constexpr auto GOVERNANCESYNC           = "gvget";
-    constexpr auto GOVERNANCE               = "gov";
-    constexpr auto GOVERNANCEVOTE           = "gvt";
-    constexpr auto DSTX                     = "dstx";
-    constexpr auto MASTERNODEMESSAGE        = "mnmsg";
+    constexpr auto MASTERNODEPAYMENTVOTE    = "mnw";    // MasterNode payment vote
+    constexpr auto MASTERNODEPAYMENTBLOCK   = "mnwb";   // MasterNode payment block
+    constexpr auto MASTERNODEPAYMENTSYNC    = "mnget";  // MasterNode payment sync
+    constexpr auto GOVERNANCESYNC           = "gvget";  // Governance sync
+    constexpr auto GOVERNANCE               = "gov";    // Governance
+    constexpr auto GOVERNANCEVOTE           = "gvt";    // Governance vote
+    constexpr auto DSTX                     = "dstx";    
+    constexpr auto MASTERNODEMESSAGE        = "mnmsg";  // MasterNode message
 };

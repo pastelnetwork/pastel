@@ -31,6 +31,31 @@ typedef enum class _TxOriginEnum: uint8_t
     NEW_TX = 7,		    // new transaction created by this node
 } TxOrigin;
 
+inline const char* GetTxOriginName(const TxOrigin txOrigin) noexcept
+{
+    switch (txOrigin)
+    {
+        case TxOrigin::UNKNOWN:
+            return "UNKNOWN";
+        case TxOrigin::MINED_BLOCK:
+            return "MINED_BLOCK";
+        case TxOrigin::GENERATED:
+            return "GENERATED";
+        case TxOrigin::MSG_BLOCK:
+            return "MSG_BLOCK";
+        case TxOrigin::MSG_TX:
+            return "MSG_TX";
+        case TxOrigin::MSG_HEADERS:
+            return "MSG_HEADERS";
+        case TxOrigin::LOADED_BLOCK:
+            return "LOADED_BLOCK";
+        case TxOrigin::NEW_TX:
+            return "NEW_TX";
+        default:    
+            return "UNKNOWN";
+    }
+}
+
 /** Capture information about block/transaction validation */
 class CValidationState
 {

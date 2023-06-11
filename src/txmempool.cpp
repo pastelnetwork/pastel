@@ -360,7 +360,7 @@ void CTxMemPool::check(const CCoinsViewCache *pcoins) const
     if (insecure_rand() >= nCheckFrequency)
         return;
 
-    LogPrint("mempool", "Checking mempool with %zu transactions and %zu inputs\n", mapTx.size(), mapNextTx.size());
+    LogFnPrint("mempool", "Checking mempool with %zu transactions and %zu inputs", mapTx.size(), mapNextTx.size());
 
     uint64_t checkTotal = 0;
     uint64_t innerUsage = 0;

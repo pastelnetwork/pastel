@@ -1576,7 +1576,7 @@ void CMasternodeMan::UpdateLastPaid(const CBlockIndex* pindex)
 {
     LOCK(cs);
 
-    if(!masterNodeCtrl.masternodeSync.IsWinnersListSynced() || mapMasternodes.empty())
+    if (!masterNodeCtrl.masternodeSync.IsWinnersListSynced() || mapMasternodes.empty())
         return;
 
     static bool IsFirstRun = true;

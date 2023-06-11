@@ -493,8 +493,11 @@ ticket_validation_t CPastelTicketProcessor::ValidateIfTicketTransaction(CValidat
         try
         {
             string ticketBlockTxIdStr = tx.GetHash().GetHex();
-            LogPrintf("ValidateIfTicketTransaction -- Processing ticket ['%s', txid=%s, nHeight=%u, size=%zu]\n", 
-               GetTicketDescription(ticket_id), ticketBlockTxIdStr, nHeight, data_stream.size());
+            string sTxOrigin;
+            if (state.getTxOrigin() != TxOrigin::UNKNOWN)
+                sTxOrigin = strprintf(", tx origin: %s", GetTxOriginName(state.getTxOrigin()));
+            LogFnPrintf("Processing ticket ['%s', txid=%s, nHeight=%u, size=%zu%s]", 
+               GetTicketDescription(ticket_id), ticketBlockTxIdStr, nHeight, data_stream.size(), sTxOrigin);
 
             // create ticket by id
             ticket = CreateTicket(ticket_id);
@@ -528,7 +531,7 @@ ticket_validation_t CPastelTicketProcessor::ValidateIfTicketTransaction(CValidat
         tv = ValidateTicketFees(nHeight, tx, move(ticket));
         if (tv.IsNotValid())
         {
-            LogPrintf("ValidateIfTicketTransaction -- Invalid ticket ['%s', txid=%s, nHeight=%u]. ERROR: %s\n",
+            LogFnPrintf("Invalid ticket ['%s', txid=%s, nHeight=%u]. ERROR: %s",
                       GetTicketDescription(ticket_id), tx.GetHash().GetHex(), nHeight, tv.errorMsg);
             break;
         }
@@ -550,7 +553,7 @@ bool CPastelTicketProcessor::ParseTicketAndUpdateDB(CMutableTransaction& tx, con
     try {
         string txid = tx.GetHash().GetHex();
 
-        LogPrintf("ParseTicketAndUpdateDB -- Processing ticket ['%s', txid=%s, nBlockHeight=%u]\n", 
+        LogFnPrintf("Processing ticket ['%s', txid=%s, nBlockHeight=%u]",
             GetTicketDescription(ticket_id), txid, nBlockHeight);
 
         auto ticket = CreateTicket(ticket_id);
@@ -574,7 +577,7 @@ bool CPastelTicketProcessor::ParseTicketAndUpdateDB(CMutableTransaction& tx, con
         error_ret = "Failed to parse and unpack ticket - Unknown exception";
     }
 
-    LogPrintf("ParseTicketAndUpdateDB -- Invalid ticket ['%s', txid=%s, nBlockHeight=%u]. ERROR: %s\n", 
+    LogFnPrintf("Invalid ticket ['%s', txid=%s, nBlockHeight=%u]. ERROR: %s", 
         GetTicketDescription(ticket_id), tx.GetHash().GetHex(), nBlockHeight, error_ret);
 
     return false;
@@ -653,7 +656,7 @@ unique_ptr<CPastelTicket> CPastelTicketProcessor::GetTicket(const uint256 &txid)
     }
     catch (...)
     {
-        error_ret = strprintf("Failed to parse and unpack ticket - Unknown exception");
+        error_ret = "Failed to parse and unpack ticket - Unknown exception";
     }
 
     if (!ticket)
@@ -669,7 +672,8 @@ unique_ptr<CPastelTicket> CPastelTicketProcessor::GetTicket(const string& _txid,
     txid.SetHex(_txid);
     auto ticket = GetTicket(txid);
     if (!ticket || ticketID != ticket->ID())
-        throw runtime_error(strprintf("The ticket with this txid [%s] is not in the blockchain", _txid));
+        throw runtime_error(strprintf(
+            "The ticket with this txid [%s] is not in the blockchain", _txid));
     return ticket;
 }
 

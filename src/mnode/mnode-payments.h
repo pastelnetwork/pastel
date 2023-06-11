@@ -78,7 +78,7 @@ public:
 
     void AddPayee(const CMasternodePaymentVote& vote);
     bool GetBestPayee(CScript& payeeRet) const noexcept;
-    bool HasPayeeWithVotes(const CScript& payeeIn, const int nVotesReq) const noexcept;
+    bool HasPayeeWithVotes(const CScript& payeeIn, const size_t nVotesRequired, const int nHeight) const noexcept;
 
     bool IsTransactionValid(const CTransaction& txNew) const;
 
@@ -175,7 +175,7 @@ public:
     bool AddPaymentVote(const CMasternodePaymentVote& vote);
     bool HasVerifiedPaymentVote(const uint256 &hashIn) const noexcept;
     bool ProcessBlock(int nBlockHeight);
-    void CheckPreviousBlockVotes(int nPrevBlockHeight);
+    void CheckPreviousBlockVotes(const int nPrevBlockHeight);
 
     void Sync(CNode* node);
     void RequestLowDataPaymentBlocks(CNode* pnode);
@@ -200,6 +200,6 @@ public:
 
     void UpdatedBlockTip(const CBlockIndex *pindex);
     
-    CAmount GetMasternodePayment(int nHeight, CAmount blockValue);
+    CAmount GetMasternodePayment(const int nHeight, const CAmount blockValue) const noexcept;
 };
 

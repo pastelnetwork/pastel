@@ -80,7 +80,7 @@ Returns chain deflation rate + related fees
 
 Result:
 {
-    "fee_deflation_rate"          : x.xxx,
+    "fee_deflator_factor"         : x.xxx,
     "pastelid_registration_fee"   : x.xxx,
     "username_registration_fee"   : x.xxx,
     "username_change_fee"         : x.xxx,
