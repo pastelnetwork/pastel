@@ -20,11 +20,14 @@ static constexpr size_t MNPAYMENTS_SIGNATURES_TOTAL     = 20;
 constexpr auto MNPAYMENTS_CACHE_MAGIC_STR = "magicMasternodePaymentsCache";
 constexpr auto MNPAYMENTS_CACHE_FILENAME = "mnpayments.dat";
 
+/**
+ * Class represents a single Masternode payee.
+ */
 class CMasternodePayee
 {
 private:
-    CScript scriptPubKey;
-    v_uint256 vecVoteHashes;
+    CScript scriptPubKey;       // payee address
+    v_uint256 vecVoteHashes;	// hashes of votes for this payee
 
 public:
     CMasternodePayee() noexcept :
@@ -53,7 +56,10 @@ public:
     size_t GetVoteCount() const noexcept { return vecVoteHashes.size(); }
 };
 
-// Keep track of votes for payees from masternodes
+/**
+ * This class represents a block and its associated payees.
+ * Keeps track of votes for payees from masternodes.
+ */
 class CMasternodeBlockPayees
 {
 public:
@@ -85,15 +91,17 @@ public:
     std::string GetRequiredPaymentsString() const;
 };
 
-// vote for the winning payment
+/**
+ * This class represents a vote for a Masternode winning payment.
+ */
 class CMasternodePaymentVote
 {
 public:
-    CTxIn vinMasternode;
+    CTxIn vinMasternode; // masternode vin
 
-    int nBlockHeight;
-    CScript payee;
-    v_uint8 vchSig;
+    int nBlockHeight;    // block height of the payment
+    CScript payee;	     // payee address
+    v_uint8 vchSig;      // masternode signature for the vote
 
     CMasternodePaymentVote() noexcept :
         nBlockHeight(0)
@@ -137,6 +145,9 @@ public:
     std::string ToString() const;
 };
 
+/**
+ * This class manages all Masternode payments.
+ */
 class CMasternodePayments
 {
     // masternode count times nStorageCoeff payments blocks should be stored ...
@@ -148,7 +159,9 @@ class CMasternodePayments
     int nCachedBlockHeight;
 
 public:
+    // map of masternode payment votes
     std::map<uint256, CMasternodePaymentVote> mapMasternodePaymentVotes;
+    // map of masternode payment blocks
     std::map<int, CMasternodeBlockPayees> mapMasternodeBlockPayees;
 
     // memory only

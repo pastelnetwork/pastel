@@ -40,6 +40,7 @@
 #include <wallet/asyncrpcoperation_shieldcoinbase.h>
 #include <netmsg/block-cache.h>
 #include <orphan-tx.h>
+#include <netmsg/nodestate.h>
 
 //MasterNode
 #include <mnode/mnode-controller.h>
@@ -51,7 +52,7 @@ using namespace std;
 # error "Pastel cannot be compiled without assertions."
 #endif
 
-#include "librustzcash.h"
+#include <librustzcash.h>
 #include <script_check.h>
 
 string STR_MSG_MAGIC("Zcash Signed Message:\n");
@@ -158,6 +159,7 @@ namespace {
       */
     unordered_multimap<CBlockIndex*, CBlockIndex*> mapBlocksUnlinked;
 
+    CChainWorkTracker chainWorkTracker;
     CCriticalSection cs_LastBlockFile;
     vector<CBlockFileInfo> vinfoBlockFile;
     int nLastBlockFile = 0;
@@ -204,18 +206,10 @@ namespace {
     unique_ptr<CRollingBloomFilter> recentRejects;
     uint256 hashRecentRejectsChainTip;
 
-    /** Blocks that are in flight, and that are in the queue to be downloaded. Protected by cs_main. */
-    struct QueuedBlock {
-        uint256 hash;
-        CBlockIndex *pindex;  //! Optional.
-        int64_t nTime;  //! Time of "getdata" request in microseconds.
-        bool fValidatedHeaders;  //! Whether this block has validated headers at the time of request.
-        int64_t nTimeDisconnect; //! The timeout in microseconds for this block request (for disconnecting a slow peer)
-    };
-    unordered_map<uint256, pair<NodeId, list<QueuedBlock>::iterator> > mapBlocksInFlight;
+    T_mapBlocksInFlight mapBlocksInFlight;
 
     /** Number of blocks in flight with validated headers. */
-    int nQueuedValidatedHeaders = 0;
+    uint32_t nQueuedValidatedHeaders = 0;
 
     /** Number of preferable block download peers. */
     int nPreferredDownload = 0;
@@ -233,95 +227,6 @@ namespace {
 //
 
 namespace {
-
-struct CBlockReject
-{
-    unsigned char chRejectCode;
-    string strRejectReason;
-    uint256 hashBlock;
-};
-
-/**
- * Maintain validation-specific state about nodes, protected by cs_main, instead
- * by CNode's own locks. This simplifies asynchronous operation, where
- * processing of incoming data is done after the ProcessMessage call returns,
- * and we're no longer holding the node's locks.
- */
-struct CNodeState
-{
-    //! The peer's address
-    CService address;
-    //! Whether we have a fully established connection.
-    bool fCurrentlyConnected;
-    //! Accumulated misbehaviour score for this peer.
-    int nMisbehavior;
-    //! Whether this peer should be disconnected and banned (unless whitelisted).
-    bool fShouldBan;
-    //! String name of this peer (debugging/logging purposes).
-    string name;
-    //! List of asynchronously-determined block rejections to notify this peer about.
-    vector<CBlockReject> rejects;
-    //! The best known block we know this peer has announced.
-    CBlockIndex *pindexBestKnownBlock;
-    //! The hash of the last unknown block this peer has announced.
-    uint256 hashLastUnknownBlock;
-    //! The last full block we both have.
-    CBlockIndex *pindexLastCommonBlock;
-    //! Whether we've started headers synchronization with this peer.
-    bool fSyncStarted;
-    //! Since when we're stalling block download progress (in microseconds), or 0.
-    int64_t nStallingSince;
-    list<QueuedBlock> vBlocksInFlight;
-    int nBlocksInFlight;
-    int nBlocksInFlightValidHeaders;
-    //! Whether we consider this a preferred download peer.
-    bool fPreferredDownload;
-
-    CNodeState() noexcept
-    {
-        fCurrentlyConnected = false;
-        nMisbehavior = 0;
-        fShouldBan = false;
-        pindexBestKnownBlock = nullptr;
-        hashLastUnknownBlock.SetNull();
-        pindexLastCommonBlock = nullptr;
-        fSyncStarted = false;
-        nStallingSince = 0;
-        nBlocksInFlight = 0;
-        nBlocksInFlightValidHeaders = 0;
-        fPreferredDownload = false;
-    }
-
-    void BlocksInFlightCleanup(const NodeId nodeid)
-    {
-        string s;
-        const size_t nBlockCount = vBlocksInFlight.size();
-        const bool bLogNetCategory = LogAcceptCategory("net");
-        if (bLogNetCategory && nBlockCount)
-            s.reserve(nBlockCount * 42);
-        for (const auto& entry : vBlocksInFlight)
-        {
-            if (bLogNetCategory)
-            {
-                str_append_field(s, entry.hash.ToString().c_str(), ", ");
-                if (entry.pindex)
-                {
-                    int nHeight = entry.pindex->nHeight;
-                    if (nHeight >= 0)
-                        s += strprintf("(%d)", nHeight);
-                }
-            }
-
-            mapBlocksInFlight.erase(entry.hash);
-        }
-        if (bLogNetCategory && nBlockCount)
-            LogPrint("net", "Peer %d had %zu blocks in-flight [%s]\n", nodeid, nBlockCount, s.c_str());
-        nBlocksInFlight = 0;
-        nBlocksInFlightValidHeaders = 0;
-        pindexBestKnownBlock = nullptr;
-        hashLastUnknownBlock.SetNull();
-    }
-};
 
 /** Map maintaining per-node state. Requires cs_main. */
 unordered_map<NodeId, CNodeState> mapNodeState;
@@ -346,7 +251,7 @@ void UpdatePreferredDownload(CNode* node, CNodeState* state)
 }
 
 // Returns time at which to timeout block request (nTime in microseconds)
-int64_t GetBlockTimeout(int64_t nTime, int nValidatedQueuedBefore, const Consensus::Params &consensusParams)
+int64_t GetBlockTimeout(int64_t nTime, uint32_t nValidatedQueuedBefore, const Consensus::Params &consensusParams)
 {
     return nTime + 500'000 * consensusParams.nPowTargetSpacing * (4 + nValidatedQueuedBefore);
 }
@@ -354,7 +259,7 @@ int64_t GetBlockTimeout(int64_t nTime, int nValidatedQueuedBefore, const Consens
 void InitializeNode(NodeId nodeid, const CNode *pnode)
 {
     LOCK(cs_main);
-    CNodeState &state = mapNodeState.emplace(nodeid, CNodeState()).first->second;
+    CNodeState &state = mapNodeState.emplace(nodeid, CNodeState(nodeid)).first->second;
     state.name = pnode->addrName;
     state.address = pnode->addr;
 }
@@ -370,12 +275,29 @@ void FinalizeNode(NodeId nodeid)
     if (state->nMisbehavior == 0 && state->fCurrentlyConnected)
         AddressCurrentlyConnected(state->address);
 
-    state->BlocksInFlightCleanup(nodeid);
+    state->BlocksInFlightCleanup(nodeid, mapBlocksInFlight);
     if (gl_pOrphanTxManager)
         gl_pOrphanTxManager->EraseOrphansFor(nodeid);
     nPreferredDownload -= state->fPreferredDownload;
 
     mapNodeState.erase(nodeid);
+}
+
+void AllNodesProcessed()
+{
+    LOCK(cs_main);
+
+    if (chainWorkTracker.hasChanged())
+    {
+        const NodeId nodeId = chainWorkTracker.get();
+        if (nodeId != -1)
+        {
+            CNodeState *state = State(nodeId);
+            if (state && state->pindexBestKnownBlock)
+                LogPrint("net", "chain work for peer=%d [%s]\n", nodeId, state->pindexBestKnownBlock->nChainWork.ToString());
+        }
+    }
+    chainWorkTracker.checkPoint();
 }
 
 // Requires cs_main.
@@ -474,24 +396,31 @@ CBlockIndex* LastCommonAncestor(CBlockIndex* pa, CBlockIndex* pb) {
 
 /** Update pindexLastCommonBlock and add not-in-flight missing successors to vBlocks, until it has
  *  at most count entries. */
-void FindNextBlocksToDownload(NodeId nodeid, unsigned int count, vector<CBlockIndex*>& vBlocks, NodeId& nodeStaller)
+void FindNextBlocksToDownload(NodeId nodeid, uint32_t count, vector<CBlockIndex*>& vBlocks, NodeId& nodeStaller)
 {
     if (count == 0)
         return;
 
-    vBlocks.reserve(vBlocks.size() + count);
     CNodeState *state = State(nodeid);
     assert(state != nullptr);
 
     // Make sure pindexBestKnownBlock is up to date, we'll need it.
     ProcessBlockAvailability(nodeid);
 
-    if (!state->pindexBestKnownBlock || state->pindexBestKnownBlock->nChainWork < chainActive.Tip()->nChainWork) {
+    if (!state->pindexBestKnownBlock)
+        return; // peer does not have best known block
+    // If the peer has less chain work than us, we don't want to download from it.
+    // Unless we tried all connected peers and nobody has more work than us.
+    state->fHasLessChainWork = (state->pindexBestKnownBlock->nChainWork < chainActive.Tip()->nChainWork);
+    if (state->fHasLessChainWork)
+    {
+        chainWorkTracker.update(*state);
         // This peer has nothing interesting.
         return;
     }
 
-    if (!state->pindexLastCommonBlock) {
+    if (!state->pindexLastCommonBlock)
+    {
         // Bootstrap quickly by guessing a parent of our best tip is the forking point.
         // Guessing wrong in either direction is not a problem.
         state->pindexLastCommonBlock = chainActive[min(state->pindexBestKnownBlock->nHeight, chainActive.Height())];
@@ -503,13 +432,15 @@ void FindNextBlocksToDownload(NodeId nodeid, unsigned int count, vector<CBlockIn
     if (state->pindexLastCommonBlock == state->pindexBestKnownBlock)
         return;
 
+    vBlocks.reserve(vBlocks.size() + count);
+
     vector<CBlockIndex*> vToFetch;
     CBlockIndex *pindexWalk = state->pindexLastCommonBlock;
     // Never fetch further than the best block we know the peer has, or more than BLOCK_DOWNLOAD_WINDOW + 1 beyond the last
     // linked block we have in common with this peer. The +1 is so we can detect stalling, namely if we would be able to
     // download that next block if the window were 1 larger.
-    int nWindowEnd = state->pindexLastCommonBlock->nHeight + BLOCK_DOWNLOAD_WINDOW;
-    int nMaxHeight = min<int>(state->pindexBestKnownBlock->nHeight, nWindowEnd + 1);
+    const int nWindowEnd = state->pindexLastCommonBlock->nHeight + BLOCK_DOWNLOAD_WINDOW;
+    const int nMaxHeight = min<int>(state->pindexBestKnownBlock->nHeight, nWindowEnd + 1);
     NodeId waitingfor = -1;
     while (pindexWalk->nHeight < nMaxHeight)
     {
@@ -531,27 +462,27 @@ void FindNextBlocksToDownload(NodeId nodeid, unsigned int count, vector<CBlockIn
         // already part of our chain (and therefore don't need it even if pruned).
         for (auto pindex : vToFetch)
         {
-            if (!pindex->IsValid(BLOCK_VALID_TREE)) {
-                // We consider the chain that this peer is on invalid.
-                return;
-            }
-            if (pindex->nStatus & BLOCK_HAVE_DATA || chainActive.Contains(pindex)) {
+            if (!pindex->IsValid(BLOCK_VALID_TREE))
+                return; // We consider the chain that this peer is on invalid.
+            if (pindex->nStatus & BLOCK_HAVE_DATA || chainActive.Contains(pindex))
+            {
                 if (pindex->nChainTx)
                     state->pindexLastCommonBlock = pindex;
             } else if (mapBlocksInFlight.count(pindex->GetBlockHash()) == 0) {
                 // The block is not already downloaded, and not yet in flight.
-                if (pindex->nHeight > nWindowEnd) {
+                if (pindex->nHeight > nWindowEnd)
+                {
                     // We reached the end of the window.
-                    if (vBlocks.size() == 0 && waitingfor != nodeid) {
+                    if (vBlocks.empty() && waitingfor != nodeid)
+                    {
                         // We aren't able to fetch anything, but we would be if the download window was one larger.
                         nodeStaller = waitingfor;
                     }
                     return;
                 }
                 vBlocks.push_back(pindex);
-                if (vBlocks.size() == count) {
+                if (vBlocks.size() == count)
                     return;
-                }
             } else if (waitingfor == -1) {
                 // This is the first already-in-flight block.
                 waitingfor = mapBlocksInFlight[pindex->GetBlockHash()].first;
@@ -586,6 +517,7 @@ void RegisterNodeSignals(CNodeSignals& nodeSignals)
     nodeSignals.SendMessages.connect(&SendMessages);
     nodeSignals.InitializeNode.connect(&InitializeNode);
     nodeSignals.FinalizeNode.connect(&FinalizeNode);
+    nodeSignals.AllNodesProcessed.connect(&AllNodesProcessed);
 }
 
 void UnregisterNodeSignals(CNodeSignals& nodeSignals)
@@ -595,6 +527,7 @@ void UnregisterNodeSignals(CNodeSignals& nodeSignals)
     nodeSignals.SendMessages.disconnect(&SendMessages);
     nodeSignals.InitializeNode.disconnect(&InitializeNode);
     nodeSignals.FinalizeNode.disconnect(&FinalizeNode);
+    nodeSignals.AllNodesProcessed.disconnect(&AllNodesProcessed);
 }
 
 CBlockIndex* FindForkInGlobalIndex(const CChain& chain, const CBlockLocator& locator)
@@ -1556,7 +1489,7 @@ bool GetTransaction(const uint256 &txid, CTransaction &txOut, const Consensus::P
                     CAutoFile file(OpenBlockFile(postx, true), SER_DISK, CLIENT_VERSION);
                     if (file.IsNull())
                     {
-                        bRet = error("%s: OpenBlockFile failed", __func__);
+                        bRet = errorFn("OpenBlockFile failed");
                         break;
                     }
 
@@ -1570,14 +1503,14 @@ bool GetTransaction(const uint256 &txid, CTransaction &txOut, const Consensus::P
                         file >> txOut;
                         bReadFromTxIndex = true;
                     } catch (const exception& e) {
-                        error("%s: Deserialize or I/O error - %s", __func__, e.what());
+                        errorFn("Deserialize or I/O error - %s", e.what());
                     }
                     if (!bReadFromTxIndex)
                         break;
                     hashBlock = header.GetHash();
                     if (txOut.GetHash() != txid)
                     {
-                        bRet = error("%s: txid mismatch", __func__);
+                        bRet = errorFn("txid mismatch");
                         break;
                     }
                     // block height is not defined in this case
@@ -2193,6 +2126,17 @@ static bool ApplyTxInUndo(const CTxInUndo& undo, CCoinsViewCache& view, const CO
     return fClean;
 }
 
+/**
+ * Disconnects a block from the blockchain in the event of a reorganization.
+ * 
+ * \param block - The block to disconnect.
+ * \param state - The validation state.
+ * \param chainparams - The chain parameters.
+ * \param pindex - the block index   
+ * \param view - The coins view to which to apply the changes.
+ * \param pfClean - Set to true if the block was cleanly disconnected.
+ * \return true on success.
+ */
 bool DisconnectBlock(
     const CBlock& block, 
     CValidationState& state, 
@@ -2201,6 +2145,7 @@ bool DisconnectBlock(
     CCoinsViewCache& view, 
     bool* pfClean)
 {
+    // check that the block hash is the same as the best block in the view
     assert(pindex->GetBlockHash() == view.GetBestBlock());
 
     if (pfClean)
@@ -2211,12 +2156,13 @@ bool DisconnectBlock(
     CBlockUndo blockUndo;
     CDiskBlockPos pos = pindex->GetUndoPos();
     if (pos.IsNull())
-        return error("DisconnectBlock(): no undo data available");
+        return errorFn("no undo data available");
+    // retrieve the undo data for the block: a record of the information needed to reverse the effects of a block
     if (!UndoReadFromDisk(blockUndo, pos, pindex->pprev->GetBlockHash()))
-        return error("DisconnectBlock(): failure reading undo data");
+        return errorFn("failure reading undo data");
 
     if (blockUndo.vtxundo.size() + 1 != block.vtx.size())
-        return error("DisconnectBlock(): block and undo data inconsistent");
+        return errorFn("height=%d, block and undo data inconsistent", pindex->nHeight);
 
     // undo transactions in reverse order
     if (!block.vtx.empty())
@@ -2224,12 +2170,13 @@ bool DisconnectBlock(
         for (size_t i = block.vtx.size() - 1; i >= 0; i--)
         {
             const CTransaction& tx = block.vtx[i];
-            uint256 hash = tx.GetHash();
+            const uint256 &hash = tx.GetHash();
 
             // Check that all outputs are available and match the outputs in the block itself
             // exactly.
             {
                 CCoinsModifier outs = view.ModifyCoins(hash);
+                // mark the outputs as unspendable
                 outs->ClearUnspendable();
 
                 CCoins outsBlock(tx, pindex->nHeight);
@@ -2239,7 +2186,7 @@ bool DisconnectBlock(
                 if (outsBlock.nVersion < 0)
                     outs->nVersion = outsBlock.nVersion;
                 if (*outs != outsBlock)
-                    fClean = fClean && error("DisconnectBlock(): added transaction mismatch? database corrupted");
+                    fClean = fClean && errorFn("height=%s, added transaction mismatch? database corrupted", pindex->nHeight);
 
                 // remove outputs
                 outs->Clear();
@@ -2253,7 +2200,7 @@ bool DisconnectBlock(
             // restore inputs, not coinbases
             const CTxUndo& txundo = blockUndo.vtxundo[i - 1];
             if (txundo.vprevout.size() != tx.vin.size())
-                return error("DisconnectBlock(): transaction and undo data inconsistent");
+                return errorFn("height=%d, transaction and undo data inconsistent", pindex->nHeight);
             for (unsigned int j = static_cast<unsigned int>(tx.vin.size()); j-- > 0;)
             {
                 const COutPoint& out = tx.vin[j].prevout;
@@ -2280,7 +2227,8 @@ bool DisconnectBlock(
     // move best block pointer to prevout block
     view.SetBestBlock(pindex->pprev->GetBlockHash());
 
-    if (pfClean) {
+    if (pfClean)
+    {
         *pfClean = fClean;
         return true;
     }
@@ -4077,25 +4025,28 @@ FILE* OpenDiskFile(const CDiskBlockPos &pos, const char *prefix, bool fReadOnly)
     fs::create_directories(path.parent_path());
     FILE* file = nullptr;
 #if defined(_MSC_VER) && (_MSC_VER >= 1400)
-    errno_t err = fopen_s(&file, path.string().c_str(), "rb+");
+    file = _fsopen(path.string().c_str(), "rb+", _SH_DENYNO);
 #else
     file = fopen(path.string().c_str(), "rb+");
 #endif
     if (!file && !fReadOnly)
     {
 #if defined(_MSC_VER) && (_MSC_VER >= 1400)
-        err = fopen_s(&file, path.string().c_str(), "wb+");
+        file = _fsopen(path.string().c_str(), "wb+", _SH_DENYWR);
 #else
         file = fopen(path.string().c_str(), "wb+");
 #endif
     }
-    if (!file) {
-        LogPrintf("Unable to open file %s\n", path.string());
+    if (!file)
+    {
+        LogFnPrintf("Unable to open file %s", path.string());
         return nullptr;
     }
-    if (pos.nPos) {
-        if (fseek(file, pos.nPos, SEEK_SET)) {
-            LogPrintf("Unable to seek to position %u of %s\n", pos.nPos, path.string());
+    if (pos.nPos)
+    {
+        if (fseek(file, pos.nPos, SEEK_SET))
+        {
+            LogFnPrintf("Unable to seek to position %u of %s", pos.nPos, path.string());
             fclose(file);
             return nullptr;
         }
@@ -4103,11 +4054,13 @@ FILE* OpenDiskFile(const CDiskBlockPos &pos, const char *prefix, bool fReadOnly)
     return file;
 }
 
-FILE* OpenBlockFile(const CDiskBlockPos &pos, bool fReadOnly) {
+FILE* OpenBlockFile(const CDiskBlockPos &pos, bool fReadOnly)
+{
     return OpenDiskFile(pos, "blk", fReadOnly);
 }
 
-FILE* OpenUndoFile(const CDiskBlockPos &pos, bool fReadOnly) {
+FILE* OpenUndoFile(const CDiskBlockPos &pos, bool fReadOnly)
+{
     return OpenDiskFile(pos, "rev", fReadOnly);
 }
 
@@ -4282,7 +4235,7 @@ bool CVerifyDB::VerifyDB(const CChainParams& chainparams, CCoinsView *coinsview,
     if (nCheckDepth > chainActive.Height())
         nCheckDepth = chainActive.Height();
     nCheckLevel = max(0, min(4, nCheckLevel));
-    LogPrintf("Verifying last %i blocks at level %i\n", nCheckDepth, nCheckLevel);
+    LogFnPrintf("Verifying last %i blocks at level %i", nCheckDepth, nCheckLevel);
     CCoinsViewCache coins(coinsview);
     CBlockIndex* pindexState = chainActive.Tip();
     CBlockIndex* pindexFailure = nullptr;
@@ -4301,26 +4254,30 @@ bool CVerifyDB::VerifyDB(const CChainParams& chainparams, CCoinsView *coinsview,
         CBlock block;
         // check level 0: read from disk
         if (!ReadBlockFromDisk(block, pindex, consensusParams))
-            return error("VerifyDB(): *** ReadBlockFromDisk failed at %d, hash=%s", pindex->nHeight, pindex->GetBlockHash().ToString());
+            return errorFn("*** ReadBlockFromDisk failed at %d, hash=%s", pindex->nHeight, pindex->GetBlockHash().ToString());
         // check level 1: verify block validity
         if (nCheckLevel >= 1 && !CheckBlock(block, state, chainparams, verifier))
-            return error("VerifyDB(): *** found bad block at %d, hash=%s\n", pindex->nHeight, pindex->GetBlockHash().ToString());
+            return errorFn("*** found bad block at %d, hash=%s", pindex->nHeight, pindex->GetBlockHash().ToString());
         // check level 2: verify undo validity
-        if (nCheckLevel >= 2 && pindex) {
+        if (nCheckLevel >= 2 && pindex)
+        {
             CBlockUndo undo;
             CDiskBlockPos pos = pindex->GetUndoPos();
-            if (!pos.IsNull()) {
+            if (!pos.IsNull())
+            {
                 if (!UndoReadFromDisk(undo, pos, pindex->pprev->GetBlockHash()))
-                    return error("VerifyDB(): *** found bad undo data at %d, hash=%s\n", pindex->nHeight, pindex->GetBlockHash().ToString());
+                    return errorFn("*** found bad undo data at %d, hash=%s", pindex->nHeight, pindex->GetBlockHash().ToString());
             }
         }
         // check level 3: check for inconsistencies during memory-only disconnect of tip blocks
-        if (nCheckLevel >= 3 && pindex == pindexState && (coins.DynamicMemoryUsage() + pcoinsTip->DynamicMemoryUsage()) <= nCoinCacheUsage) {
+        if (nCheckLevel >= 3 && pindex == pindexState && (coins.DynamicMemoryUsage() + pcoinsTip->DynamicMemoryUsage()) <= nCoinCacheUsage)
+        {
             bool fClean = true;
             if (!DisconnectBlock(block, state, chainparams, pindex, coins, &fClean))
-                return error("VerifyDB(): *** irrecoverable inconsistency in block data at %d, hash=%s", pindex->nHeight, pindex->GetBlockHash().ToString());
+                return errorFn("*** irrecoverable inconsistency in block data at %d, hash=%s", pindex->nHeight, pindex->GetBlockHash().ToString());
             pindexState = pindex->pprev;
-            if (!fClean) {
+            if (!fClean)
+            {
                 nGoodTransactions = 0;
                 pindexFailure = pindex;
             } else
@@ -4330,10 +4287,12 @@ bool CVerifyDB::VerifyDB(const CChainParams& chainparams, CCoinsView *coinsview,
             return true;
     }
     if (pindexFailure)
-        return error("VerifyDB(): *** coin database inconsistencies found (last %i blocks, %i good transactions before that)\n", chainActive.Height() - pindexFailure->nHeight + 1, nGoodTransactions);
+        return errorFn("*** coin database inconsistencies found (last %i blocks, %i good transactions before that)",
+            chainActive.Height() - pindexFailure->nHeight + 1, nGoodTransactions);
 
     // check level 4: try reconnecting blocks
-    if (nCheckLevel >= 4) {
+    if (nCheckLevel >= 4)
+    {
         CBlockIndex *pindex = pindexState;
         while (pindex != chainActive.Tip())
         {
@@ -4342,14 +4301,13 @@ bool CVerifyDB::VerifyDB(const CChainParams& chainparams, CCoinsView *coinsview,
             pindex = chainActive.Next(pindex);
             CBlock block;
             if (!ReadBlockFromDisk(block, pindex, consensusParams))
-                return error("VerifyDB(): *** ReadBlockFromDisk failed at %d, hash=%s", pindex->nHeight, pindex->GetBlockHash().ToString());
+                return errorFn("*** ReadBlockFromDisk failed at %d, hash=%s", pindex->nHeight, pindex->GetBlockHash().ToString());
             if (!ConnectBlock(block, state, chainparams, pindex, coins))
-                return error("VerifyDB(): *** found unconnectable block at %d, hash=%s", pindex->nHeight, pindex->GetBlockHash().ToString());
+                return errorFn("*** found unconnectable block at %d, hash=%s", pindex->nHeight, pindex->GetBlockHash().ToString());
         }
     }
 
-    LogPrintf("No coin database inconsistencies in last %i blocks (%zu transactions)\n", chainActive.Height() - pindexState->nHeight, nGoodTransactions);
-
+    LogFnPrintf("No coin database inconsistencies in last %i blocks (%zu transactions)", chainActive.Height() - pindexState->nHeight, nGoodTransactions);
     return true;
 }
 
@@ -6206,7 +6164,7 @@ bool ProcessMessages(const CChainParams& chainparams, CNode* pfrom)
  * 
  * \param consensusParams network consensus parameters
  * \param pto blockchain node
- * \param fSendTrickle
+ * \param fSendTrickle true if trickle messages should be sent
  * \return 
  */
 bool SendMessages(const CChainParams& chainparams, CNode* pto, bool fSendTrickle)
@@ -6401,9 +6359,9 @@ bool SendMessages(const CChainParams& chainparams, CNode* pto, bool fSendTrickle
             // Stalling only triggers when the block download window cannot move. During normal steady state,
             // the download window should be much larger than the to-be-downloaded set of blocks, so disconnection
             // should only happen during initial block download.
-            LogPrintf("Peer=%d is stalling block download (%d blocks in-flight), disconnecting\n", nodeId, state.nBlocksInFlight);
+            LogPrintf("Peer=%d is stalling block download (%u blocks in-flight), disconnecting\n", nodeId, state.nBlocksInFlight);
             pto->fDisconnect = true;
-            state.BlocksInFlightCleanup(nodeId);
+            state.BlocksInFlightCleanup(nodeId, mapBlocksInFlight);
         }
         // In case there is a block that has been in flight from this peer for (2 + 0.5 * N) times the block interval
         // (with N the number of validated blocks that were in flight at the time it was requested), disconnect due to

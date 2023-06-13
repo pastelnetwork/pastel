@@ -67,7 +67,7 @@ constexpr auto ACTION_TICKET_APP_OBJ = "api_ticket";
 constexpr uint32_t ACTION_SENSE_TICKET_SIZE_KB = 5;
 constexpr uint32_t ACTION_CASCADE_TICKET_SIZE_KB = 5;
 
-constexpr uint32_t ACTION_DUPE_DATA_SIZE_MB = 5;
+constexpr uint32_t ACTION_DUPE_DATA_SIZE_MB = 10;
 constexpr uint32_t ACTION_STORAGE_MULTIPLIER = 50;
 
 using action_fee_map_t = std::unordered_map<ACTION_TICKET_TYPE, CAmount>;

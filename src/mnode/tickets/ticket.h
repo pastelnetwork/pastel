@@ -202,17 +202,19 @@ public:
     virtual void SetKeyOne(std::string &&sValue) = 0;
     virtual void GenerateKeyOne() {}
 
-    // check if ticket is in pre-registration mode (being accepted to mempool)
-    static bool isPreReg(const TxOrigin txOrigin) noexcept
-    {
-		return is_enum_any_of(txOrigin, TxOrigin::MSG_TX, TxOrigin::NEW_TX);
-	}
-
     // check if ticket is created on local node and it is pre-registration (being accepted to mempool)
     static bool isLocalPreReg(const TxOrigin txOrigin) noexcept
     {
         return txOrigin == TxOrigin::NEW_TX;
     }
+
+    // check if ticket is in pre-registration mode (being accepted to mempool)
+    static bool isPreReg(const TxOrigin txOrigin) noexcept
+    {
+        return txOrigin == TxOrigin::NEW_TX;
+        // TODO: enable prereg checks for all transactions that go to mempool
+		// return is_enum_any_of(txOrigin, TxOrigin::MSG_TX, TxOrigin::NEW_TX);
+	}
 
 protected:
     std::string m_txid;          // ticket transaction id

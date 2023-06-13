@@ -313,6 +313,9 @@
     <ClCompile Include="..\..\..\src\net_manager.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\..\src\netmsg\nodestate.cpp">
+      <Filter>Source Files\netmsg</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\..\src\addrman.h">
@@ -668,6 +671,9 @@
     </ClInclude>
     <ClInclude Include="..\..\..\src\net_manager.h">
       <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\netmsg\nodestate.h">
+      <Filter>Source Files\netmsg</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

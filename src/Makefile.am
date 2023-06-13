@@ -296,6 +296,7 @@ BITCOIN_CORE_H = \
   miner.h \
   mruset.h \
   netmsg/block-cache.h\
+  netmsg/nodestate.h\
   net.h \
   net_manager.h \
   nodehelper.h \
@@ -405,6 +406,7 @@ libbitcoin_server_a_SOURCES = \
   metrics.cpp \
   miner.cpp \
   netmsg/block-cache.cpp\
+  netmsg/nodestate.cpp\
   net.cpp \
   net_manager.cpp \
   noui.cpp \

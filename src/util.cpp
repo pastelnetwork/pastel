@@ -162,11 +162,11 @@ void OpenDebugLog()
     assert(vMsgsBeforeOpenLog);
     const fs::path pathDebugLog = GetDataDir() / "debug.log";
 #if defined(_MSC_VER) && (_MSC_VER >= 1400)
-    const errno_t err = fopen_s(&fileout, pathDebugLog.string().c_str(), "a");
+    fileout = _fsopen(pathDebugLog.string().c_str(), "a+", _SH_DENYWR);
 #else
     fileout = fopen(pathDebugLog.string().c_str(), "a");
-    const int err = fileout ? 0 : errno;
 #endif
+    const int err = fileout ? 0 : errno;
     if (!fileout)
     {
         printf("ERROR: failed to open debug log file [%s]. %s", pathDebugLog.string().c_str(), GetErrorString(err).c_str());

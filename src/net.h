@@ -110,11 +110,10 @@ struct CNodeSignals
     boost::signals2::signal<bool (const CChainParams&, CNode*, bool), CombinerAll> SendMessages;
     boost::signals2::signal<void (NodeId, const CNode*)> InitializeNode;
     boost::signals2::signal<void (NodeId)> FinalizeNode;
+    boost::signals2::signal<void()> AllNodesProcessed;
 };
 
-
 CNodeSignals& GetNodeSignals();
-
 
 enum
 {

@@ -75,7 +75,7 @@ static constexpr unsigned int BLOCKFILE_CHUNK_SIZE = 0x1000000; // 16 MiB
 /** The pre-allocation chunk size for rev?????.dat files (since 0.8) */
 static constexpr unsigned int UNDOFILE_CHUNK_SIZE = 0x100000; // 1 MiB
 /** Number of blocks that can be requested at any given time from a single peer. */
-static constexpr int MAX_BLOCKS_IN_TRANSIT_PER_PEER = 16;
+static constexpr uint32_t MAX_BLOCKS_IN_TRANSIT_PER_PEER = 16;
 /** Timeout in seconds during which a peer must stall block download progress before being disconnected. */
 static constexpr unsigned int BLOCK_STALLING_TIMEOUT_SECS = 2;
 /** Timeout in micro-seconds during which a peer must stall block download progress before being disconnected. */
@@ -327,7 +327,6 @@ struct CDiskTxPos : public CDiskBlockPos
         nTxOffset = 0;
     }
 };
-
 
 CAmount GetMinRelayFee(const CTransaction& tx, const size_t nBytes, bool fAllowFree);
 

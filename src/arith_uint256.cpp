@@ -1,15 +1,15 @@
 // Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2014 The Bitcoin developers
+// Copyright (c) 2018-2023 The Pastel developers
 // Distributed under the MIT software license, see the accompanying
-// file COPYING or http://www.opensource.org/licenses/mit-license.php.
+// file COPYING or https://www.opensource.org/licenses/mit-license.php.
+#include <stdio.h>
+#include <string.h>
 
 #include <arith_uint256.h>
 #include <uint256.h>
 #include <utilstrencodings.h>
 #include <crypto/common.h>
-
-#include <stdio.h>
-#include <string.h>
 
 using namespace std;
 

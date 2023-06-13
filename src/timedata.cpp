@@ -54,7 +54,7 @@ void AddTimeData(const CNetAddr& ip, int64_t nOffsetSample)
     // Add data
     static CMedianFilter<int64_t> vTimeOffsets(PASTEL_TIMEDATA_MAX_SAMPLES, 0);
     vTimeOffsets.input(nOffsetSample);
-    LogPrintf("Added time data, samples %zu, offset %+" PRId64 " (%+" PRId64 " minutes)\n", vTimeOffsets.size(), nOffsetSample, nOffsetSample/60);
+    LogFnPrintf("Added time data, samples %zu, offset %+" PRId64 " (%+" PRId64 " minutes)", vTimeOffsets.size(), nOffsetSample, nOffsetSample/60);
 
     // There is a known issue here (see issue #4521):
     //
@@ -102,16 +102,19 @@ void AddTimeData(const CNetAddr& ip, int64_t nOffsetSample)
                     fDone = true;
                     string strMessage = _("Warning: Please check that your computer's date and time are correct! If your clock is wrong Pastel will not work properly.");
                     strMiscWarning = strMessage;
-                    LogPrintf("*** %s\n", strMessage);
+                    LogFnPrintf("*** %s", strMessage);
                     uiInterface.ThreadSafeMessageBox(strMessage, "", CClientUIInterface::MSG_WARNING);
                 }
             }
         }
-        if (fDebug) {
+        string s;
+        if (fDebug)
+        {
             for (const auto &n : vSorted)
-                LogPrintf("%+d  ", n);
-            LogPrintf("|  ");
+                s += strprintf("%+d  ", n);
+            s += "|  ";
         }
-        LogPrintf("nTimeOffset = %+d  (%+d minutes)\n", gl_nTimeOffset, gl_nTimeOffset/60);
+        s += strprintf("nTimeOffset = %+d  (%+d minutes)", gl_nTimeOffset, gl_nTimeOffset/60);
+        LogFnPrintf(s);
     }
 }

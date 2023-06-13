@@ -631,7 +631,7 @@ CAmount CMasterNodeController::GetNFTTicketFeePerKB() const noexcept
         // COutPoint => CMasternode
         const auto mapMasternodes = masternodeManager.GetFullMasternodeMap();
         for (const auto& [op, mn] : mapMasternodes)
-            nFee += mn.aNFTTicketFeePerKB > 0? mn.aNFTTicketFeePerKB: masterNodeCtrl.NFTTicketFeePerKBDefault;
+            nFee += mn.aNFTTicketFeePerKB > 0? mn.aNFTTicketFeePerKB : masterNodeCtrl.NFTTicketFeePerKBDefault;
         nFee /= mapMasternodes.size();
         return nFee;
     }
@@ -639,7 +639,7 @@ CAmount CMasterNodeController::GetNFTTicketFeePerKB() const noexcept
 }
 
 /**
- * Get fee in PSL for the given action ticket type per KB.
+ * Get fee in PSL for the given action ticket type per MB.
  * 
  * \param actionTicketType - action ticket type (sense, cascade)
  * \return fee for the given action ticket type

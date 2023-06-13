@@ -189,6 +189,7 @@ bool CMasternodeSync::CheckSyncTimeout(int nTick, vector<CNode*> &vNodesCopy)
 void CMasternodeSync::ProcessTick()
 {
     static int nTick = 0;
+    static double nLastSyncProgress = 0;
     if (nTick++ % MasternodeSyncTickSeconds != 0)
         return;
 
@@ -223,7 +224,11 @@ void CMasternodeSync::ProcessTick()
     double nSyncProgress = double(nRequestedMasternodeAttempt + (int)syncState * 8) / (8*4);
     if (nSyncProgress < 0)
         nSyncProgress = 0;
-    LogFnPrintf("nTick %d syncState %d nRequestedMasternodeAttempt %d nSyncProgress %f", nTick, (int)syncState, nRequestedMasternodeAttempt, nSyncProgress);
+    if (nSyncProgress != nLastSyncProgress)
+    {
+        LogFnPrintf("nTick %d syncState %d nRequestedMasternodeAttempt %d nSyncProgress %f", nTick, (int)syncState, nRequestedMasternodeAttempt, nSyncProgress);
+        nLastSyncProgress = nSyncProgress;
+    }
 /*TEMP-->
     uiInterface.NotifyAdditionalDataSyncProgressChanged(nSyncProgress);
 <--TEMP*/
@@ -294,7 +299,7 @@ void CMasternodeSync::ProcessTick()
             // MNLIST : SYNC MASTERNODE LIST FROM OTHER CONNECTED CLIENTS
             if (syncState == MasternodeSyncState::List)
             {
-                LogFnPrint("masternode", "nTick %d syncState %d nTimeLastBumped %lld GetTime() %lld diff %" PRId64, nTick, (int)syncState, nTimeLastBumped, GetTime(), GetTime() - nTimeLastBumped);
+                LogFnPrint("masternode", "nTick %d syncState %d nTimeLastBumped %" PRId64 " GetTime() %" PRId64 " diff %" PRId64, nTick, (int)syncState, nTimeLastBumped, GetTime(), GetTime() - nTimeLastBumped);
                 // check for timeout first
                 if (!CheckSyncTimeout(nTick, vNodesCopy))
                 {
@@ -318,7 +323,7 @@ void CMasternodeSync::ProcessTick()
             // MNW : SYNC MASTERNODE PAYMENT VOTES FROM OTHER CONNECTED CLIENTS
             if (syncState == MasternodeSyncState::Winners)
             {
-                LogFnPrint("mnpayments", "nTick %d syncState %d nTimeLastBumped %lld GetTime() %" PRId64 " diff %" PRId64, nTick, (int)syncState, nTimeLastBumped, GetTime(), GetTime() - nTimeLastBumped);
+                LogFnPrint("mnpayments", "nTick %d syncState %d nTimeLastBumped %" PRId64 " GetTime() %" PRId64 " diff %" PRId64, nTick, (int)syncState, nTimeLastBumped, GetTime(), GetTime() - nTimeLastBumped);
                 // check for timeout first
                 // This might take a lot longer than MasternodeSyncTimeoutSeconds due to new blocks,
                 // but that should be OK and it should timeout eventually.

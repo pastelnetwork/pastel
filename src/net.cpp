@@ -5,7 +5,7 @@
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 
 #if defined(HAVE_CONFIG_H)
-#include "config/bitcoin-config.h"
+#include <config/bitcoin-config.h>
 #endif
 
 #include <cinttypes>
@@ -35,6 +35,7 @@
 #include <crypto/common.h>
 #include <svc_thread.h>
 #include <util.h>
+#include <netmsg/nodestate.h>
 //MasterNode
 #include <mnode/mnode-controller.h>
 
@@ -1798,11 +1799,15 @@ public:
                 {
                     TRY_LOCK(pnode->cs_vSend, lockSend);
                     if (lockSend)
-                        g_signals.SendMessages(chainparams, pnode, pnode == pnodeTrickle || pnode->fWhitelisted);
+                    {
+                        const bool bSendTrickle = pnode == pnodeTrickle || pnode->fWhitelisted;
+                        g_signals.SendMessages(chainparams, pnode, bSendTrickle);
+                    }
                 }
                 if (shouldStop())
                     break;
             }
+            g_signals.AllNodesProcessed();
 
             {
                 LOCK(cs_vNodes);
