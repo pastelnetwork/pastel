@@ -42,8 +42,8 @@ Where action_ticket is an external base64-encoded JSON as a string:
   "collection_txid": string,    // transaction id of the collection activation ticket that action belongs to
                                 // v2 only, optional, can be empty
                                 // hex-encoded 64-byte txid as returned in collection activate ticket json response
-  "app_ticket": object          // json object with application ticket,
-                                // actual structure of app_ticket is different for different API and is not parsed by cnode !!!!
+  "api_ticket": object          // json object with application ticket,
+                                // actual structure of api_ticket is different for different API and is not parsed by cnode !!!!
 }
 signatures: {
     "principal": { "principal Pastel ID" : "principal signature"},
@@ -67,7 +67,7 @@ constexpr auto ACTION_TICKET_APP_OBJ = "api_ticket";
 constexpr uint32_t ACTION_SENSE_TICKET_SIZE_KB = 5;
 constexpr uint32_t ACTION_CASCADE_TICKET_SIZE_KB = 5;
 
-constexpr uint32_t ACTION_DUPE_DATA_SIZE_MB = 5;
+constexpr uint32_t ACTION_DUPE_DATA_SIZE_MB = 10;
 constexpr uint32_t ACTION_STORAGE_MULTIPLIER = 50;
 
 using action_fee_map_t = std::unordered_map<ACTION_TICKET_TYPE, CAmount>;
@@ -119,7 +119,7 @@ public:
 
     std::string ToJSON(const bool bDecodeProperties = false) const noexcept override;
     std::string ToStr() const noexcept override { return m_sActionTicket; }
-    ticket_validation_t IsValid(const bool bPreReg, const uint32_t nCallDepth) const noexcept override;
+    ticket_validation_t IsValid(const TxOrigin txOrigin, const uint32_t nCallDepth) const noexcept override;
     // check if given Pastel ID is the action caller
     bool IsCallerPastelId(const std::string& sPastelID) const noexcept { return m_sCreatorPastelID == sPastelID; }
 

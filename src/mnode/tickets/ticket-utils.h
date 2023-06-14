@@ -10,6 +10,7 @@
 #include <mnode/tickets/ticket.h>
 #include <mnode/ticket-processor.h>
 #include <mnode/mnode-controller.h>
+
 #ifdef ENABLE_WALLET
 #include <wallet/wallet.h>
 #endif // ENABLE_WALLET
@@ -19,7 +20,7 @@
  * Does not throw exceptions.
  * 
  * \param ticket - ticket to validate
- * \param bPreReg - if true - pre-registration
+ * \param txOrigin - ticket tx origin - used to determin pre-registration mode
  * \param strReferredItemTxId - txid of the referred item ticket 
  * \param referredItemTicket - ticket return by txid=strReferredItemTxId
  * \param fValidation - custom validation functor for the parent ticket of the referred item ticket (for example: NFT Activation -> NFT Registration)
@@ -32,7 +33,7 @@
  */
 template <class T, typename F>
 ticket_validation_t common_ticket_validation(
-    const T& ticket, bool bPreReg, const std::string& strReferredItemTxId, 
+    const T& ticket, const TxOrigin txOrigin, const std::string& strReferredItemTxId, 
     std::unique_ptr<CPastelTicket>& referredItemTicket, F fValidation,
     const std::string& sThisTicketDescription, 
     const std::string& sReferredItemTicketDescription, 
@@ -42,9 +43,11 @@ ticket_validation_t common_ticket_validation(
     ticket_validation_t tv;
     do
     {
+        const bool bPreReg = CPastelTicket::isPreReg(txOrigin);
         // A. Something to check ONLY before the ticket made into transaction
-        if (bPreReg)
+        if (CPastelTicket::isLocalPreReg(txOrigin))
         {
+#ifdef ENABLE_WALLET
             // A. Validate that address has coins to pay for registration - 10PSL + fee
             if (pwalletMain->GetBalance() < ticketPriceInPSL * COIN)
             {
@@ -53,6 +56,7 @@ ticket_validation_t common_ticket_validation(
                     ticketPriceInPSL);
                 break;
             }
+#endif // ENABLE_WALLET
         }
 
         // B. Something to validate always
@@ -139,7 +143,7 @@ ticket_validation_t common_ticket_validation(
         }
 
         // D.3 Validate referred item ticket
-        const auto referredItemTV = referredItemTicket->IsValid(false, nCallDepth + 1);
+        const auto referredItemTV = referredItemTicket->IsValid(TxOrigin::UNKNOWN, nCallDepth + 1);
         if (referredItemTV.IsNotValid())
         {
             tv.state = referredItemTV.state;

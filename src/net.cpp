@@ -5,7 +5,7 @@
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 
 #if defined(HAVE_CONFIG_H)
-#include "config/bitcoin-config.h"
+#include <config/bitcoin-config.h>
 #endif
 
 #include <cinttypes>
@@ -35,6 +35,7 @@
 #include <crypto/common.h>
 #include <svc_thread.h>
 #include <util.h>
+#include <netmsg/nodestate.h>
 //MasterNode
 #include <mnode/mnode-controller.h>
 
@@ -508,7 +509,7 @@ void CNode::PushVersion()
 {
     int nBestHeight = g_signals.GetHeight().get_value_or(0);
 
-    int64_t nTime = (fInbound ? GetAdjustedTime() : GetTime());
+    const int64_t nTime = (fInbound ? GetAdjustedTime() : GetTime());
     CAddress addrYou = (addr.IsRoutable() && !IsProxy(addr) ? addr : CAddress(CService("0.0.0.0",0)));
     CAddress addrMe = GetLocalAddress(&addr);
     GetRandBytes((unsigned char*)&nLocalHostNonce, sizeof(nLocalHostNonce));
@@ -1787,7 +1788,7 @@ public:
                         if (pnode->nSendSize < SendBufferSize())
                         {
                             if (!pnode->vRecvGetData.empty() || 
-                                (!pnode->vRecvMsg.empty() && pnode->vRecvMsg[0].complete()))
+                               (!pnode->vRecvMsg.empty() && pnode->vRecvMsg[0].complete()))
                                 fSleep = false;
                         }
                     }
@@ -1798,11 +1799,15 @@ public:
                 {
                     TRY_LOCK(pnode->cs_vSend, lockSend);
                     if (lockSend)
-                        g_signals.SendMessages(chainparams, pnode, pnode == pnodeTrickle || pnode->fWhitelisted);
+                    {
+                        const bool bSendTrickle = pnode == pnodeTrickle || pnode->fWhitelisted;
+                        g_signals.SendMessages(chainparams, pnode, bSendTrickle);
+                    }
                 }
                 if (shouldStop())
                     break;
             }
+            g_signals.AllNodesProcessed();
 
             {
                 LOCK(cs_vNodes);

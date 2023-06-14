@@ -81,7 +81,7 @@ TEST(Validation, ContextualCheckInputsPassesWithCoinbase)
     for (auto idx = to_integral_type(Consensus::UpgradeIndex::BASE_SPROUT); idx < to_integral_type(Consensus::UpgradeIndex::MAX_NETWORK_UPGRADES); ++idx)
     {
         auto consensusBranchId = NetworkUpgradeInfo[idx].nBranchId;
-        CValidationState state;
+        CValidationState state(TxOrigin::MSG_TX);
         PrecomputedTransactionData txdata(tx);
         EXPECT_TRUE(ContextualCheckInputs(tx, state, view, false, 0, false, txdata, pMainNetParams->GetConsensus(), consensusBranchId));
     }

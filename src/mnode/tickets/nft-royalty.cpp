@@ -61,16 +61,17 @@ string CNFTRoyaltyTicket::ToStr() const noexcept
 /**
  * Validate Pastel ticket.
  * 
- * \param bPreReg - if true: called from ticket pre-registration
+ * \param txOrigin - ticket transaction origin (used to determine pre-registration mode)
  * \param nCallDepth - function call depth
  * \return true if the ticket is valid
  */
-ticket_validation_t CNFTRoyaltyTicket::IsValid(const bool bPreReg, const uint32_t nCallDepth) const noexcept
+ticket_validation_t CNFTRoyaltyTicket::IsValid(const TxOrigin txOrigin, const uint32_t nCallDepth) const noexcept
 {
     const auto nActiveChainHeight = gl_nChainHeight + 1;
     ticket_validation_t tv;
     do
     {
+        const bool bPreReg = isPreReg(txOrigin);
         if (m_sNewPastelID.empty())
         {
             tv.errorMsg = "The Change Royalty ticket new_pastelID is empty";
@@ -86,7 +87,7 @@ ticket_validation_t CNFTRoyaltyTicket::IsValid(const bool bPreReg, const uint32_
         // 0. Common validations
         unique_ptr<CPastelTicket> pastelTicket;
         const ticket_validation_t commonTV = common_ticket_validation(
-            *this, bPreReg, m_sNFTTxId, pastelTicket,
+            *this, txOrigin, m_sNFTTxId, pastelTicket,
             [](const TicketID tid) noexcept { return (tid != TicketID::NFT); },
             GetTicketDescription(), CNFTRegTicket::GetTicketDescription(), nCallDepth, 
             TicketPricePSL(nActiveChainHeight));

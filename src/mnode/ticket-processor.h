@@ -17,6 +17,7 @@
 #include <primitives/transaction.h>
 #include <txmempool_entry.h>
 #include <datacompressor.h>
+#include <consensus/validation.h>
 #include <pastelid/pastel_key.h>
 #include <mnode/mnode-consts.h>
 #include <mnode/tickets/ticket-types.h>
@@ -177,7 +178,7 @@ public:
     static std::unique_ptr<CPastelTicket> GetTicket(const std::string& _txid, const TicketID ticketID);
     static std::string GetTicketJSON(const uint256 &txid, const bool bDecodeProperties = false);
 
-    static ticket_validation_t ValidateIfTicketTransaction(const uint32_t nHeight, const CTransaction& tx);
+    static ticket_validation_t ValidateIfTicketTransaction(CValidationState &state, const uint32_t nHeight, const CTransaction& tx);
     
     static bool WalkBackTradingChain(
             const std::string& sTxId,   // txid of the starting ticket

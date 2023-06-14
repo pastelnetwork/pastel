@@ -17,6 +17,7 @@ constexpr int SPROUT_VALUE_VERSION = 1001400;
 constexpr int SAPLING_VALUE_VERSION = 1010100;
 
 // cached current blockchain height - reflects chainActive.Height()
+// except that it can't be negative (-1)
 extern std::atomic_uint32_t gl_nChainHeight;
 
 struct CDiskBlockPos

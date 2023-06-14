@@ -73,7 +73,7 @@ uint64_t nLastBlockTx = 0;
 uint64_t nLastBlockSize = 0;
 
 // We want to sort transactions by priority and fee rate, so:
-typedef std::tuple<double, CFeeRate, const CTransaction*> TxPriority;
+typedef tuple<double, CFeeRate, const CTransaction*> TxPriority;
 class TxPriorityCompare
 {
     bool byFee;
@@ -85,22 +85,22 @@ public:
     {
         if (byFee)
         {
-            if (std::get<1>(a) == std::get<1>(b))
-                return std::get<0>(a) < std::get<0>(b);
-            return std::get<1>(a) < std::get<1>(b);
+            if (get<1>(a) == get<1>(b))
+                return get<0>(a) < get<0>(b);
+            return get<1>(a) < get<1>(b);
         }
         else
         {
-            if (std::get<0>(a) == std::get<0>(b))
-                return std::get<1>(a) < std::get<1>(b);
-            return std::get<0>(a) < std::get<0>(b);
+            if (get<0>(a) == get<0>(b))
+                return get<1>(a) < get<1>(b);
+            return get<0>(a) < get<0>(b);
         }
     }
 };
 
 void UpdateTime(CBlockHeader* pblock, const Consensus::Params& consensusParams, const CBlockIndex* pindexPrev)
 {
-    pblock->nTime = std::max(pindexPrev->GetMedianTimePast()+1, GetAdjustedTime());
+    pblock->nTime = static_cast<uint32_t>(max(pindexPrev->GetMedianTimePast()+1, GetAdjustedTime()));
 
     // Updating time can change work required on testnet:
     if (consensusParams.nPowAllowMinDifficultyBlocksAfterHeight.has_value())
@@ -110,7 +110,7 @@ void UpdateTime(CBlockHeader* pblock, const Consensus::Params& consensusParams, 
 CBlockTemplate* CreateNewBlock(const CChainParams& chainparams, const CScript& scriptPubKeyIn)
 {
     // Create new block
-    auto pblocktemplate = std::make_unique<CBlockTemplate>();
+    auto pblocktemplate = make_unique<CBlockTemplate>();
     if (!pblocktemplate)
         return nullptr;
     auto pblock = &pblocktemplate->block; // pointer for convenience
@@ -128,17 +128,17 @@ CBlockTemplate* CreateNewBlock(const CChainParams& chainparams, const CScript& s
     // Largest block you're willing to create:
     unsigned int nBlockMaxSize = static_cast<unsigned int>(GetArg("-blockmaxsize", DEFAULT_BLOCK_MAX_SIZE));
     // Limit to betweeen 1K and MAX_BLOCK_SIZE-1K for sanity:
-    nBlockMaxSize = std::max<unsigned int>(1000, std::min<unsigned int>(MAX_BLOCK_SIZE-1000, nBlockMaxSize));
+    nBlockMaxSize = max<unsigned int>(1000, min<unsigned int>(MAX_BLOCK_SIZE-1000, nBlockMaxSize));
 
     // How much of the block should be dedicated to high-priority transactions,
     // included regardless of the fees they pay
     unsigned int nBlockPrioritySize = static_cast<unsigned int>(GetArg("-blockprioritysize", DEFAULT_BLOCK_PRIORITY_SIZE));
-    nBlockPrioritySize = std::min(nBlockMaxSize, nBlockPrioritySize);
+    nBlockPrioritySize = min(nBlockMaxSize, nBlockPrioritySize);
 
     // Minimum block size you want to create; block will be filled with free transactions
     // until there are no more or the block reaches this size:
     unsigned int nBlockMinSize = static_cast<unsigned int>(GetArg("-blockminsize", DEFAULT_BLOCK_MIN_SIZE));
-    nBlockMinSize = std::min(nBlockMaxSize, nBlockMinSize);
+    nBlockMinSize = min(nBlockMaxSize, nBlockMinSize);
 
     // Collect memory pool transactions into the block
     CAmount nFees = 0;
@@ -249,17 +249,17 @@ CBlockTemplate* CreateNewBlock(const CChainParams& chainparams, const CScript& s
         bool fSortedByFee = (nBlockPrioritySize <= 0);
 
         TxPriorityCompare comparer(fSortedByFee);
-        std::make_heap(vecPriority.begin(), vecPriority.end(), comparer);
+        make_heap(vecPriority.begin(), vecPriority.end(), comparer);
 
         const auto &consensusParams = chainparams.GetConsensus();
         while (!vecPriority.empty())
         {
             // Take highest priority transaction off the priority queue:
-            double dPriority = std::get<0>(vecPriority.front());
-            CFeeRate feeRate = std::get<1>(vecPriority.front());
-            const CTransaction& tx = *(std::get<2>(vecPriority.front()));
+            double dPriority = get<0>(vecPriority.front());
+            CFeeRate feeRate = get<1>(vecPriority.front());
+            const CTransaction& tx = *(get<2>(vecPriority.front()));
 
-            std::pop_heap(vecPriority.begin(), vecPriority.end(), comparer);
+            pop_heap(vecPriority.begin(), vecPriority.end(), comparer);
             vecPriority.pop_back();
 
             // Size limits
@@ -287,7 +287,7 @@ CBlockTemplate* CreateNewBlock(const CChainParams& chainparams, const CScript& s
             {
                 fSortedByFee = true;
                 comparer = TxPriorityCompare(fSortedByFee);
-                std::make_heap(vecPriority.begin(), vecPriority.end(), comparer);
+                make_heap(vecPriority.begin(), vecPriority.end(), comparer);
             }
 
             if (!view.HaveInputs(tx))
@@ -302,8 +302,9 @@ CBlockTemplate* CreateNewBlock(const CChainParams& chainparams, const CScript& s
             // Note that flags: we don't want to set mempool/IsStandard()
             // policy here, but we still have to ensure that the block we
             // create only contains transactions that are valid in new blocks.
-            CValidationState state;
             PrecomputedTransactionData txdata(tx);
+
+            CValidationState state(TxOrigin::MINED_BLOCK);
             if (!ContextualCheckInputs(tx, state, view, true, MANDATORY_SCRIPT_VERIFY_FLAGS, true, txdata, consensusParams, consensusBranchId))
                 continue;
 
@@ -338,7 +339,7 @@ CBlockTemplate* CreateNewBlock(const CChainParams& chainparams, const CScript& s
                     if (porphan->setDependsOn.empty())
                     {
                         vecPriority.emplace_back(porphan->dPriority, porphan->feeRate, porphan->ptx);
-                        std::push_heap(vecPriority.begin(), vecPriority.end(), comparer);
+                        push_heap(vecPriority.begin(), vecPriority.end(), comparer);
                     }
                 }
             }
@@ -380,9 +381,9 @@ CBlockTemplate* CreateNewBlock(const CChainParams& chainparams, const CScript& s
         pblock->nSolution.clear();
         pblocktemplate->vTxSigOps[0] = GetLegacySigOpCount(pblock->vtx[0]);
 
-        CValidationState state;
+        CValidationState state(TxOrigin::MINED_BLOCK);
         if (!TestBlockValidity(state, chainparams, *pblock, pindexPrev, false, false))
-            throw std::runtime_error("CreateNewBlock(): TestBlockValidity failed");
+            throw runtime_error("CreateNewBlock(): TestBlockValidity failed");
     }
 
     return pblocktemplate.release();
@@ -486,7 +487,7 @@ static bool ProcessBlockFound(const CBlock* pblock, const CChainParams& chainpar
 #endif
 
     // Process this block the same as if we had received it from another node
-    CValidationState state;
+    CValidationState state(TxOrigin::MINED_BLOCK);
     if (!ProcessNewBlock(state, chainparams, nullptr, pblock, true, nullptr))
         return error("PastelMiner: ProcessNewBlock, block not accepted");
 

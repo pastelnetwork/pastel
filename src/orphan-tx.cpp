@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2022 The Pastel Core developers
+// Copyright (c) 2018-2023 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <mutex>
@@ -224,7 +224,7 @@ void COrphanTxManager::ProcessOrphanTxs(const CChainParams& chainparams,
             // Use a dummy CValidationState so someone can't setup nodes to counter-DoS based on orphan
             // resolution (that is, feeding people an invalid transaction based on LegitTxX in order to get
             // anyone relaying LegitTxX banned)
-            CValidationState stateDummy;
+            CValidationState stateDummy(TxOrigin::MSG_TX);
 
             if (setMisbehaving.count(fromPeer))
                 continue;

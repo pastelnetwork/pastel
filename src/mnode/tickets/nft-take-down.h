@@ -26,7 +26,7 @@ public:
 
     std::string ToJSON(const bool bDecodeProperties = false) const noexcept override { return "{}"; }
     std::string ToStr() const noexcept override { return ""; }
-    ticket_validation_t IsValid(const bool bPreReg, const uint32_t nCallDepth) const noexcept override
+    ticket_validation_t IsValid(const TxOrigin txOrigin, const uint32_t nCallDepth) const noexcept override
     {
         ticket_validation_t tv;
         return tv;

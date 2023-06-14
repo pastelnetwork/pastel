@@ -1,11 +1,14 @@
-#ifndef ZC_UTIL_H_
-#define ZC_UTIL_H_
-
+#pragma once
+// Copyright (c) 2015-2018 The Zcash developers
+// Copyright (c) 2018-2023 The Pastel Core developers
+// Distributed under the MIT software license, see the accompanying
+// file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <vector>
 #include <cstdint>
 
-std::vector<unsigned char> convertIntToVectorLE(const uint64_t val_int);
-std::vector<bool> convertBytesVectorToVector(const std::vector<unsigned char>& bytes);
-uint64_t convertVectorToInt(const std::vector<bool>& v);
+#include <vector_types.h>
 
-#endif // ZC_UTIL_H_
+v_uint8 convertIntToVectorLE(const uint64_t val_int);
+std::vector<bool> convertBytesVectorToVector(const v_uint8& bytes);
+uint64_t convertVectorToInt(const v_bools& v);
+

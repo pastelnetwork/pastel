@@ -610,7 +610,8 @@ void ThreadImport(std::vector<fs::path> vImportFiles)
     RenameThread("psl-loadblk");
     const auto& chainparams = Params();
     // -reindex
-    if (fReindex) {
+    if (fReindex)
+    {
         CImportingNow imp;
         int nFile = 0;
         while (true)
@@ -621,14 +622,14 @@ void ThreadImport(std::vector<fs::path> vImportFiles)
             FILE *file = OpenBlockFile(pos, true);
             if (!file)
                 break; // This error is logged in OpenBlockFile
-            LogPrintf("Reindexing block file blk%05u.dat...\n", (unsigned int)nFile);
+            LogFnPrintf("Reindexing block file blk%05u.dat...", (unsigned int)nFile);
             // file is autoclosed in LoadExternalBlockFile
             LoadExternalBlockFile(chainparams, file, &pos);
             nFile++;
         }
         pblocktree->WriteReindexing(false);
         fReindex = false;
-        LogPrintf("Reindexing finished\n");
+        LogFnPrintf("Reindexing finished");
         // To avoid ending up in a situation without genesis block, re-try initializing (no-op if reindexing worked):
         InitBlockIndex(chainparams);
     }
@@ -647,12 +648,12 @@ void ThreadImport(std::vector<fs::path> vImportFiles)
         {
             CImportingNow imp;
             fs::path pathBootstrapOld = GetDataDir() / "bootstrap.dat.old";
-            LogPrintf("Importing bootstrap.dat...\n");
+            LogFnPrintf("Importing bootstrap.dat...");
             // file is autoclosed in LoadExternalBlockFile
             LoadExternalBlockFile(chainparams, file);
             RenameOver(pathBootstrap, pathBootstrapOld);
         } else {
-            LogPrintf("Warning: Could not open bootstrap file %s\n", pathBootstrap.string());
+            LogFnPrintf("Warning: Could not open bootstrap file %s", pathBootstrap.string());
         }
     }
 
@@ -668,16 +669,17 @@ void ThreadImport(std::vector<fs::path> vImportFiles)
         if (file)
         {
             CImportingNow imp;
-            LogPrintf("Importing blocks file %s...\n", path.string());
+            LogFnPrintf("Importing blocks file %s...", path.string());
             // file is autoclosed in LoadExternalBlockFile
             LoadExternalBlockFile(chainparams, file);
         } else {
-            LogPrintf("Warning: Could not open blocks file %s\n", path.string());
+            LogFnPrintf("Warning: Could not open blocks file %s", path.string());
         }
     }
 
-    if (GetBoolArg("-stopafterblockimport", false)) {
-        LogPrintf("Stopping after block import\n");
+    if (GetBoolArg("-stopafterblockimport", false))
+    {
+        LogFnPrintf("Stopping after block import");
         StartShutdown();
     }
 }
@@ -1802,7 +1804,7 @@ bool AppInit2(CServiceThreadGroup& threadGroup, CScheduler& scheduler)
 
     uiInterface.InitMessage(_("Activating best chain..."));
     // scan for better chains in the block chain database, that are not yet connected in the active best chain
-    CValidationState state;
+    CValidationState state(TxOrigin::UNKNOWN);
     if (!ActivateBestChain(state, chainparams))
         strErrors << "Failed to connect best block";
 

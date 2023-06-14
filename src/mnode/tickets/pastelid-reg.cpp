@@ -115,15 +115,16 @@ string CPastelIDRegTicket::ToStr() const noexcept
 /**
  * Validate Pastel ticket.
  * 
- * \param bPreReg - if true: called from ticket pre-registration
+ * \param txOrigin - ticket transaction origin (used to determine pre-registration mode)
  * \param nCallDepth - function call depth
  * \return true if the ticket is valid
  */
-ticket_validation_t CPastelIDRegTicket::IsValid(const bool bPreReg, const uint32_t nCallDepth) const noexcept
+ticket_validation_t CPastelIDRegTicket::IsValid(const TxOrigin txOrigin, const uint32_t nCallDepth) const noexcept
 {
     ticket_validation_t tv;
     do
     {
+        const bool bPreReg = isPreReg(txOrigin);
         // Something to check ONLY before ticket made into transaction
         if (bPreReg)
         { 

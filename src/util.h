@@ -149,10 +149,24 @@ bool error(const char* fmt, const Args&... args)
     return false;
 }
 
+template<typename... Args>
+bool errorFn(const char* fmt, const Args&... args)
+{
+    LogPrintStr(tfm::format("[%s] ", __METHOD_NAME__) + "ERROR: " + tfm::format(fmt, args...) + "\n");
+    return false;
+}
+
 template <typename... Args>
 bool warning_msg(const char* fmt, const Args&... args)
 {
     LogPrintStr("WARNING: " + tfm::format(fmt, args...) + "\n");
+    return false;
+}
+
+template <typename... Args>
+bool warning_msgFn(const char* fmt, const Args&... args)
+{
+    LogPrintStr(tfm::format("[%s] ", __METHOD_NAME__) + "WARNING: " + tfm::format(fmt, args...) + "\n");
     return false;
 }
 

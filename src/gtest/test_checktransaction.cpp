@@ -40,7 +40,7 @@ TEST(checktransaction_tests, valid_transaction)
 {
     CMutableTransaction mtx = GetValidTransaction();
     CTransaction tx(mtx);
-    MockCValidationState state;
+    MockCValidationState state(TxOrigin::UNKNOWN);
     EXPECT_TRUE(CheckTransactionWithoutProofVerification(tx, state));
 }
 
@@ -50,7 +50,7 @@ TEST(checktransaction_tests, bad_txns_version_too_low)
     mtx.nVersion = 0;
 
     UNSAFE_CTransaction tx(mtx);
-    MockCValidationState state;
+    MockCValidationState state(TxOrigin::UNKNOWN);
     EXPECT_CALL(state, DoS(100, false, REJECT_INVALID, "bad-txns-version-too-low", false)).Times(1);
     CheckTransactionWithoutProofVerification(tx, state);
 }
@@ -61,7 +61,7 @@ TEST(checktransaction_tests, bad_txns_vin_empty)
     mtx.vin.resize(0);
 
     CTransaction tx(mtx);
-    MockCValidationState state;
+    MockCValidationState state(TxOrigin::UNKNOWN);
     EXPECT_CALL(state, DoS(10, false, REJECT_INVALID, "bad-txns-vin-empty", false)).Times(1);
     CheckTransactionWithoutProofVerification(tx, state);
 }
@@ -73,7 +73,7 @@ TEST(checktransaction_tests, bad_txns_vout_empty)
 
     CTransaction tx(mtx);
 
-    MockCValidationState state;
+    MockCValidationState state(TxOrigin::UNKNOWN);
     EXPECT_CALL(state, DoS(10, false, REJECT_INVALID, "bad-txns-vout-empty", false)).Times(1);
     CheckTransactionWithoutProofVerification(tx, state);
 }
@@ -92,7 +92,7 @@ TEST(checktransaction_tests, bad_txns_oversize)
     {
         // Transaction is just under the limit...
         CTransaction tx(mtx);
-        CValidationState state;
+        CValidationState state(TxOrigin::UNKNOWN);
         ASSERT_TRUE(CheckTransactionWithoutProofVerification(tx, state));
     }
 
@@ -105,12 +105,12 @@ TEST(checktransaction_tests, bad_txns_oversize)
         ASSERT_EQ(::GetSerializeSize(tx, SER_NETWORK, PROTOCOL_VERSION), 100202);
 
         // Passes non-contextual checks...
-        MockCValidationState state;
+        MockCValidationState state(TxOrigin::MINED_BLOCK);
         EXPECT_TRUE(CheckTransactionWithoutProofVerification(tx, state));
 
         // ... but fails contextual ones!
         EXPECT_CALL(state, DoS(100, false, REJECT_INVALID, "bad-txns-oversize", false)).Times(1);
-        EXPECT_FALSE(ContextualCheckTransaction(tx, state, Params(), 1, true));
+        EXPECT_FALSE(ContextualCheckTransaction(tx, state, Params(), 1));
     }
 
     {
@@ -125,9 +125,9 @@ TEST(checktransaction_tests, bad_txns_oversize)
         CTransaction tx(mtx);
         EXPECT_EQ(::GetSerializeSize(tx, SER_NETWORK, PROTOCOL_VERSION), 100221);
 
-        MockCValidationState state;
+        MockCValidationState state(TxOrigin::UNKNOWN);
         EXPECT_TRUE(CheckTransactionWithoutProofVerification(tx, state));
-        EXPECT_TRUE(ContextualCheckTransaction(tx, state, Params(), 1, true));
+        EXPECT_TRUE(ContextualCheckTransaction(tx, state, Params(), 1));
 
         // Revert to default
         UpdateNetworkUpgradeParameters(Consensus::UpgradeIndex::UPGRADE_SAPLING, Consensus::NetworkUpgrade::NO_ACTIVATION_HEIGHT);
@@ -157,7 +157,7 @@ TEST(checktransaction_tests, oversize_sapling_txns)
         CTransaction tx(mtx);
         EXPECT_EQ(::GetSerializeSize(tx, SER_NETWORK, PROTOCOL_VERSION), MAX_TX_SIZE_AFTER_SAPLING - 1);
 
-        CValidationState state;
+        CValidationState state(TxOrigin::UNKNOWN);
         EXPECT_TRUE(CheckTransactionWithoutProofVerification(tx, state));
     }
 
@@ -168,7 +168,7 @@ TEST(checktransaction_tests, oversize_sapling_txns)
         CTransaction tx(mtx);
         EXPECT_EQ(::GetSerializeSize(tx, SER_NETWORK, PROTOCOL_VERSION), MAX_TX_SIZE_AFTER_SAPLING);
 
-        CValidationState state;
+        CValidationState state(TxOrigin::UNKNOWN);
         EXPECT_TRUE(CheckTransactionWithoutProofVerification(tx, state));
     }
 
@@ -179,7 +179,7 @@ TEST(checktransaction_tests, oversize_sapling_txns)
         CTransaction tx(mtx);
         EXPECT_EQ(::GetSerializeSize(tx, SER_NETWORK, PROTOCOL_VERSION), MAX_TX_SIZE_AFTER_SAPLING + 1);
 
-        MockCValidationState state;
+        MockCValidationState state(TxOrigin::UNKNOWN);
         EXPECT_CALL(state, DoS(100, false, REJECT_INVALID, "bad-txns-oversize", false)).Times(1);
         EXPECT_FALSE(CheckTransactionWithoutProofVerification(tx, state));
     }
@@ -195,7 +195,7 @@ TEST(checktransaction_tests, bad_txns_vout_negative)
 
     UNSAFE_CTransaction tx(mtx);
 
-    MockCValidationState state;
+    MockCValidationState state(TxOrigin::UNKNOWN);
     EXPECT_CALL(state, DoS(100, false, REJECT_INVALID, "bad-txns-vout-negative", false)).Times(1);
     CheckTransactionWithoutProofVerification(tx, state);
 }
@@ -207,7 +207,7 @@ TEST(checktransaction_tests, bad_txns_vout_toolarge)
 
     UNSAFE_CTransaction tx(mtx);
 
-    MockCValidationState state;
+    MockCValidationState state(TxOrigin::UNKNOWN);
     EXPECT_CALL(state, DoS(100, false, REJECT_INVALID, "bad-txns-vout-toolarge", false)).Times(1);
     CheckTransactionWithoutProofVerification(tx, state);
 }
@@ -220,7 +220,7 @@ TEST(checktransaction_tests, bad_txns_txouttotal_toolarge_outputs)
 
     CTransaction tx(mtx);
 
-    MockCValidationState state;
+    MockCValidationState state(TxOrigin::UNKNOWN);
     EXPECT_CALL(state, DoS(100, false, REJECT_INVALID, "bad-txns-txouttotal-toolarge", false)).Times(1);
     CheckTransactionWithoutProofVerification(tx, state);
 }
@@ -232,7 +232,7 @@ TEST(checktransaction_tests, value_balance_non_zero)
 
     CTransaction tx(mtx);
 
-    MockCValidationState state;
+    MockCValidationState state(TxOrigin::UNKNOWN);
     EXPECT_CALL(state, DoS(100, false, REJECT_INVALID, "bad-txns-valuebalance-nonzero", false)).Times(1);
     CheckTransactionWithoutProofVerification(tx, state);
 }
@@ -245,7 +245,7 @@ TEST(checktransaction_tests, positive_value_balance_too_large)
 
     CTransaction tx(mtx);
 
-    MockCValidationState state;
+    MockCValidationState state(TxOrigin::UNKNOWN);
     EXPECT_CALL(state, DoS(100, false, REJECT_INVALID, "bad-txns-valuebalance-toolarge", false)).Times(1);
     CheckTransactionWithoutProofVerification(tx, state);
 }
@@ -258,7 +258,7 @@ TEST(checktransaction_tests, negative_value_balance_too_large)
 
     CTransaction tx(mtx);
 
-    MockCValidationState state;
+    MockCValidationState state(TxOrigin::UNKNOWN);
     EXPECT_CALL(state, DoS(100, false, REJECT_INVALID, "bad-txns-valuebalance-toolarge", false)).Times(1);
     CheckTransactionWithoutProofVerification(tx, state);
 }
@@ -272,7 +272,7 @@ TEST(checktransaction_tests, value_balance_overflows_total)
 
     CTransaction tx(mtx);
 
-    MockCValidationState state;
+    MockCValidationState state(TxOrigin::UNKNOWN);
     EXPECT_CALL(state, DoS(100, false, REJECT_INVALID, "bad-txns-txouttotal-toolarge", false)).Times(1);
     CheckTransactionWithoutProofVerification(tx, state);
 }
@@ -285,7 +285,7 @@ TEST(checktransaction_tests, bad_txns_inputs_duplicate)
 
     CTransaction tx(mtx);
 
-    MockCValidationState state;
+    MockCValidationState state(TxOrigin::UNKNOWN);
     EXPECT_CALL(state, DoS(100, false, REJECT_INVALID, "bad-txns-inputs-duplicate", false)).Times(1);
     CheckTransactionWithoutProofVerification(tx, state);
 }
@@ -300,7 +300,7 @@ TEST(checktransaction_tests, bad_cb_empty_scriptsig)
     CTransaction tx(mtx);
     EXPECT_TRUE(tx.IsCoinBase());
 
-    MockCValidationState state;
+    MockCValidationState state(TxOrigin::UNKNOWN);
     EXPECT_CALL(state, DoS(100, false, REJECT_INVALID, "bad-cb-length", false)).Times(1);
     CheckTransactionWithoutProofVerification(tx, state);
 }
@@ -313,7 +313,7 @@ TEST(checktransaction_tests, bad_txns_prevout_null)
     CTransaction tx(mtx);
     EXPECT_FALSE(tx.IsCoinBase());
 
-    MockCValidationState state;
+    MockCValidationState state(TxOrigin::UNKNOWN);
     EXPECT_CALL(state, DoS(10, false, REJECT_INVALID, "bad-txns-prevout-null", false)).Times(1);
     CheckTransactionWithoutProofVerification(tx, state);
 }
@@ -423,7 +423,7 @@ TEST(checktransaction_tests, overwinter_valid_tx)
     mtx.nVersionGroupId = OVERWINTER_VERSION_GROUP_ID;
     mtx.nExpiryHeight = 0;
     CTransaction tx(mtx);
-    MockCValidationState state;
+    MockCValidationState state(TxOrigin::UNKNOWN);
     EXPECT_TRUE(CheckTransactionWithoutProofVerification(tx, state));
 }
 
@@ -437,21 +437,21 @@ TEST(checktransaction_tests, overwinter_expiry_height)
 
     {
         CTransaction tx(mtx);
-        MockCValidationState state;
+        MockCValidationState state(TxOrigin::UNKNOWN);
         EXPECT_TRUE(CheckTransactionWithoutProofVerification(tx, state));
     }
 
     {
         mtx.nExpiryHeight = TX_EXPIRY_HEIGHT_THRESHOLD - 1;
         CTransaction tx(mtx);
-        MockCValidationState state;
+        MockCValidationState state(TxOrigin::UNKNOWN);
         EXPECT_TRUE(CheckTransactionWithoutProofVerification(tx, state));
     }
 
     {
         mtx.nExpiryHeight = TX_EXPIRY_HEIGHT_THRESHOLD;
         CTransaction tx(mtx);
-        MockCValidationState state;
+        MockCValidationState state(TxOrigin::UNKNOWN);
         EXPECT_CALL(state, DoS(100, false, REJECT_INVALID, "bad-tx-expiry-height-too-high", false)).Times(1);
         CheckTransactionWithoutProofVerification(tx, state);
     }
@@ -459,7 +459,7 @@ TEST(checktransaction_tests, overwinter_expiry_height)
     {
         mtx.nExpiryHeight = std::numeric_limits<uint32_t>::max();
         CTransaction tx(mtx);
-        MockCValidationState state;
+        MockCValidationState state(TxOrigin::UNKNOWN);
         EXPECT_CALL(state, DoS(100, false, REJECT_INVALID, "bad-tx-expiry-height-too-high", false)).Times(1);
         CheckTransactionWithoutProofVerification(tx, state);
     }
@@ -475,7 +475,7 @@ TEST(checktransaction_tests, sprout_TxVersion_too_low)
     mtx.nVersion = -1;
 
     UNSAFE_CTransaction tx(mtx);
-    MockCValidationState state;
+    MockCValidationState state(TxOrigin::UNKNOWN);
     EXPECT_CALL(state, DoS(100, false, REJECT_INVALID, "bad-txns-version-too-low", false)).Times(1);
     CheckTransactionWithoutProofVerification(tx, state);
 }
@@ -490,7 +490,7 @@ TEST(checktransaction_tests, overwinter_version_low)
     mtx.nExpiryHeight = 0;
 
     UNSAFE_CTransaction tx(mtx);
-    MockCValidationState state;
+    MockCValidationState state(TxOrigin::UNKNOWN);
     EXPECT_CALL(state, DoS(100, false, REJECT_INVALID, "bad-tx-overwinter-version-too-low", false)).Times(1);
     CheckTransactionWithoutProofVerification(tx, state);
 }
@@ -509,9 +509,9 @@ TEST(checktransaction_tests, overwinter_version_high)
 
     EXPECT_THROW((CTransaction(mtx)), std::ios_base::failure);
     UNSAFE_CTransaction tx(mtx);
-    MockCValidationState state;
+    MockCValidationState state(TxOrigin::MINED_BLOCK);
     EXPECT_CALL(state, DoS(100, false, REJECT_INVALID, "bad-tx-overwinter-version-too-high", false)).Times(1);
-    ContextualCheckTransaction(tx, state, Params(), 1, true);
+    ContextualCheckTransaction(tx, state, Params(), 1);
 
     // Revert to default
     UpdateNetworkUpgradeParameters(Consensus::UpgradeIndex::UPGRADE_OVERWINTER, Consensus::NetworkUpgrade::NO_ACTIVATION_HEIGHT);
@@ -529,7 +529,7 @@ TEST(checktransaction_tests, overwinter_bad_VersionGroupId)
 
     EXPECT_THROW((CTransaction(mtx)), std::ios_base::failure);
     UNSAFE_CTransaction tx(mtx);
-    MockCValidationState state;
+    MockCValidationState state(TxOrigin::UNKNOWN);
     EXPECT_CALL(state, DoS(100, false, REJECT_INVALID, "bad-tx-version-group-id", false)).Times(1);
     CheckTransactionWithoutProofVerification(tx, state);
 }
@@ -546,19 +546,21 @@ TEST(checktransaction_tests, overwinter_not_active)
     mtx.nExpiryHeight = 0;
 
     CTransaction tx(mtx);
-    MockCValidationState state;
+    MockCValidationState state(TxOrigin::NEW_TX);
     // during initial block download, for transactions being accepted into the
     // mempool (and thus not mined), DoS ban score should be zero, else 10
     const auto& chainparams = Params();
     EXPECT_CALL(state, DoS(0, false, REJECT_INVALID, "tx-overwinter-not-active", false)).Times(1);
-    ContextualCheckTransaction(tx, state, chainparams, 0, false, [](const Consensus::Params &) { return true; });
+    ContextualCheckTransaction(tx, state, chainparams, 0, [](const Consensus::Params &) { return true; });
     EXPECT_CALL(state, DoS(10, false, REJECT_INVALID, "tx-overwinter-not-active", false)).Times(1);
-    ContextualCheckTransaction(tx, state, chainparams, 0, false, [](const Consensus::Params&) { return false; });
+    ContextualCheckTransaction(tx, state, chainparams, 0, [](const Consensus::Params&) { return false; });
+
+    MockCValidationState state1(TxOrigin::MINED_BLOCK);
     // for transactions that have been mined in a block, DoS ban score should always be 100.
-    EXPECT_CALL(state, DoS(100, false, REJECT_INVALID, "tx-overwinter-not-active", false)).Times(1);
-    ContextualCheckTransaction(tx, state, chainparams, 0, true, [](const Consensus::Params&) { return true; });
-    EXPECT_CALL(state, DoS(100, false, REJECT_INVALID, "tx-overwinter-not-active", false)).Times(1);
-    ContextualCheckTransaction(tx, state, chainparams, 0, true, [](const Consensus::Params&) { return false; });
+    EXPECT_CALL(state1, DoS(100, false, REJECT_INVALID, "tx-overwinter-not-active", false)).Times(1);
+    ContextualCheckTransaction(tx, state1, chainparams, 0, [](const Consensus::Params&) { return true; });
+    EXPECT_CALL(state1, DoS(100, false, REJECT_INVALID, "tx-overwinter-not-active", false)).Times(1);
+    ContextualCheckTransaction(tx, state1, chainparams, 0, [](const Consensus::Params&) { return false; });
 }
 
 // This tests a transaction without the fOverwintered flag set, against the Overwinter consensus rule set.
@@ -574,9 +576,9 @@ TEST(checktransaction_tests, overwinter_flag_not_set)
     mtx.nExpiryHeight = 0;
 
     CTransaction tx(mtx);
-    MockCValidationState state;
+    MockCValidationState state(TxOrigin::MINED_BLOCK);
     EXPECT_CALL(state, DoS(100, false, REJECT_INVALID, "tx-overwintered-flag-not-set", false)).Times(1);
-    ContextualCheckTransaction(tx, state, Params(), 1, true);
+    ContextualCheckTransaction(tx, state, Params(), 1);
 
     // Revert to default
     UpdateNetworkUpgradeParameters(Consensus::UpgradeIndex::UPGRADE_OVERWINTER, Consensus::NetworkUpgrade::NO_ACTIVATION_HEIGHT);

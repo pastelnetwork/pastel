@@ -262,6 +262,12 @@ jobs:
           no_output_timeout: 30m
           command: |
             ./full_test_suite.py rpc-ext
+      - run:
+          name: Tests - rpc-mn-main
+          working_directory: qa/pull-tester
+          no_output_timeout: 30m
+          command: |
+            ./rpc-tests.sh --name=mn_main.py
   test_group_mn:
     executor: pastel-builder    
     working_directory: /pastel

@@ -121,7 +121,7 @@ public:
 
     std::string ToJSON(const bool bDecodeProperties = false) const noexcept override;
     std::string ToStr() const noexcept override { return m_sCollectionTicket; }
-    ticket_validation_t IsValid(const bool bPreReg, const uint32_t nCallDepth) const noexcept override;
+    ticket_validation_t IsValid(const TxOrigin txOrigin, const uint32_t nCallDepth) const noexcept override;
     // check if this user is authorized collection contributor
     bool IsAuthorizedContributor(const std::string &sPastelID) const noexcept;
     std::string getCollectionItemDesc() const noexcept;

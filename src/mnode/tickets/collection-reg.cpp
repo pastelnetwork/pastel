@@ -241,16 +241,17 @@ bool CollectionRegTicket::CanAcceptTicket(const CPastelTicket &ticket) const noe
 /**
 * Validate collection ticket.
 * 
-* \param bPreReg - if true: called from ticket pre-registration
+* \param txOrigin - ticket transaction origin (used to determine pre-registration mode)
 * \param nCallDepth - function call depth
 * \return true if the ticket is valid
 */
-ticket_validation_t CollectionRegTicket::IsValid(const bool bPreReg, const uint32_t nCallDepth) const noexcept
+ticket_validation_t CollectionRegTicket::IsValid(const TxOrigin txOrigin, const uint32_t nCallDepth) const noexcept
 {
     const auto nActiveChainHeight = gl_nChainHeight + 1;
     ticket_validation_t tv;
     do
     {
+        const bool bPreReg = isPreReg(txOrigin);
         // check collection name
         if (m_sCollectionName.empty())
         {
@@ -282,16 +283,20 @@ ticket_validation_t CollectionRegTicket::IsValid(const bool bPreReg, const uint3
                 break;
             }
 
-            // validate that address has coins to pay for registration - 10 PSL (default fee)
-            const auto fullTicketPricePSL = TicketPricePSL(nActiveChainHeight); //10% of storage fee is paid by the 'creator' and this ticket is created by MN
-            if (pwalletMain->GetBalance() < fullTicketPricePSL * COIN)
+#ifdef ENABLE_WALLET
+            if (isLocalPreReg(txOrigin))
             {
-                tv.errorMsg = strprintf(
-                    "Not enough coins to cover price [%" PRId64 " PSL]", 
-                    fullTicketPricePSL);
-                break;
+                // validate that address has coins to pay for registration - 10 PSL (default fee)
+                const auto fullTicketPricePSL = TicketPricePSL(nActiveChainHeight); //10% of storage fee is paid by the 'creator' and this ticket is created by MN
+                if (pwalletMain->GetBalance() < fullTicketPricePSL * COIN)
+                {
+                    tv.errorMsg = strprintf(
+                        "Not enough coins to cover price [%" PRId64 " PSL]",
+                        fullTicketPricePSL);
+                    break;
+                }
             }
-
+#endif // ENABLE_WALLET
             // check if we exceed maximum number of authorized contributors
             if (m_AuthorizedContributors.size() > MAX_ALLOWED_AUTHORIZED_CONTRIBUTORS)
             {
@@ -300,6 +305,16 @@ ticket_validation_t CollectionRegTicket::IsValid(const bool bPreReg, const uint3
 					getCollectionItemDesc(), m_AuthorizedContributors.size(), MAX_ALLOWED_AUTHORIZED_CONTRIBUTORS);
 				break;
 			}
+
+            // check that the collection creator height is not in the future
+            if (m_nCreatorHeight > nActiveChainHeight)
+            {
+                tv.state = TICKET_VALIDATION_STATE::MISSING_INPUTS;
+                tv.errorMsg = strprintf(
+					"This NFT creator height is in the future [creator_height=%u, active chain height=%u]", 
+					m_nCreatorHeight, nActiveChainHeight);
+                break;
+            }
         }
 
         // validate max collection entries
@@ -341,7 +356,7 @@ ticket_validation_t CollectionRegTicket::IsValid(const bool bPreReg, const uint3
         }
 
         // B. Something to validate always
-        const ticket_validation_t sigTv = validate_signatures(nCallDepth, m_nCreatorHeight, m_sCollectionTicket);
+        const ticket_validation_t sigTv = validate_signatures(txOrigin, nCallDepth, m_nCreatorHeight, m_sCollectionTicket);
         if (sigTv.IsNotValid())
         {
             tv.state = sigTv.state;

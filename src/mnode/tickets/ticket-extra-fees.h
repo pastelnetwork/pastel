@@ -9,7 +9,7 @@
 class CTicketSignedWithExtraFees : public CTicketSigning
 {
 public:
-    CTicketSignedWithExtraFees() = default;
+    CTicketSignedWithExtraFees() noexcept = default;
 
     static CAmount GreenPercent(const unsigned int nHeight) { return GREEN_FEE_PERCENT; }
     static std::string GreenAddress(const unsigned int nHeight);

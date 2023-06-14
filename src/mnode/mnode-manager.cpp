@@ -577,7 +577,7 @@ masternode_info_t CMasternodeMan::FindRandomNotInVec(const v_outpoints &vecToExc
     const size_t nCountNotExcluded = nCountEnabled - vecToExclude.size();
 
     LogFnPrintf("%zu enabled masternodes, %zu masternodes to choose from", nCountEnabled, nCountNotExcluded);
-    if(nCountNotExcluded < 1)
+    if (nCountNotExcluded < 1)
         return masternode_info_t();
 
     // fill a vector of pointers
@@ -599,7 +599,8 @@ masternode_info_t CMasternodeMan::FindRandomNotInVec(const v_outpoints &vecToExc
         fExclude = false;
         for (const auto &outpointToExclude : vecToExclude)
         {
-            if (pmn->getOutPoint() == outpointToExclude) {
+            if (pmn->getOutPoint() == outpointToExclude)
+            {
                 fExclude = true;
                 break;
             }
@@ -1575,7 +1576,7 @@ void CMasternodeMan::UpdateLastPaid(const CBlockIndex* pindex)
 {
     LOCK(cs);
 
-    if(!masterNodeCtrl.masternodeSync.IsWinnersListSynced() || mapMasternodes.empty())
+    if (!masterNodeCtrl.masternodeSync.IsWinnersListSynced() || mapMasternodes.empty())
         return;
 
     static bool IsFirstRun = true;
@@ -1685,9 +1686,9 @@ void CMasternodeMan::UpdatedBlockTip(const CBlockIndex *pindex)
     // SELECT AND STORE TOP MASTERNODEs
     string error;
     vector<CMasternode> topMNs;
-    GetTopMasterNodeStatus status = CalculateTopMNsForBlock(error, topMNs, nCachedBlockHeight);
+    const GetTopMasterNodeStatus status = CalculateTopMNsForBlock(error, topMNs, nCachedBlockHeight);
     if (status == GetTopMasterNodeStatus::SUCCEEDED)
-        mapHistoricalTopMNs[nCachedBlockHeight] = topMNs;
+        mapHistoricalTopMNs.emplace(nCachedBlockHeight, move(topMNs));
     else if (status != GetTopMasterNodeStatus::SUCCEEDED_FROM_HISTORY)
         LogFnPrintf("ERROR: Failed to find enough Top MasterNodes. %s", error);
 }
@@ -1710,8 +1711,7 @@ GetTopMasterNodeStatus CMasternodeMan::CalculateTopMNsForBlock(string &error, ve
     {
         error = strprintf("Not enough masternodes found for block %d, min required %d but found %zu",
             nBlockHeight, masterNodeCtrl.getMasternodeTopMNsNumberMin(), vMasternodeRanks.size());
-        status = GetTopMasterNodeStatus::NOT_ENOUGH_MNS;
-        return status;
+        return GetTopMasterNodeStatus::NOT_ENOUGH_MNS;
     }
     if (status != GetTopMasterNodeStatus::SUCCEEDED)
         return status;
@@ -1729,7 +1729,7 @@ GetTopMasterNodeStatus CMasternodeMan::CalculateTopMNsForBlock(string &error, ve
 GetTopMasterNodeStatus CMasternodeMan::GetTopMNsForBlock(string &error, vector<CMasternode> &topMNs, int nBlockHeight, bool bCalculateIfNotSeen)
 {
     if (nBlockHeight == -1)
-        nBlockHeight = chainActive.Height();
+        nBlockHeight = gl_nChainHeight;
 
     error.clear();
     const auto it = mapHistoricalTopMNs.find(nBlockHeight);

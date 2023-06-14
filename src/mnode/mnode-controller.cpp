@@ -201,14 +201,15 @@ double CMasterNodeController::getNetworkDifficulty(const CBlockIndex* blockindex
             return 1.0;
         blockindex = chainActive.Tip();
     }
+    const auto &consensusParams = Params().GetConsensus();
 
     uint32_t bits;
     if (bNetworkDifficulty)
-        bits = GetNextWorkRequired(blockindex, nullptr, Params().GetConsensus());
+        bits = GetNextWorkRequired(blockindex, nullptr, consensusParams);
     else
         bits = blockindex->nBits;
 
-    uint32_t powLimit = UintToArith256(Params().GetConsensus().powLimit).GetCompact();
+    const uint32_t powLimit = UintToArith256(consensusParams.powLimit).GetCompact();
     int nShift = (bits >> 24) & 0xff;
     int nShiftAmount = (powLimit >> 24) & 0xff;
 
@@ -630,7 +631,7 @@ CAmount CMasterNodeController::GetNFTTicketFeePerKB() const noexcept
         // COutPoint => CMasternode
         const auto mapMasternodes = masternodeManager.GetFullMasternodeMap();
         for (const auto& [op, mn] : mapMasternodes)
-            nFee += mn.aNFTTicketFeePerKB > 0? mn.aNFTTicketFeePerKB: masterNodeCtrl.NFTTicketFeePerKBDefault;
+            nFee += mn.aNFTTicketFeePerKB > 0? mn.aNFTTicketFeePerKB : masterNodeCtrl.NFTTicketFeePerKBDefault;
         nFee /= mapMasternodes.size();
         return nFee;
     }
@@ -638,7 +639,7 @@ CAmount CMasterNodeController::GetNFTTicketFeePerKB() const noexcept
 }
 
 /**
- * Get fee in PSL for the given action ticket type per KB.
+ * Get fee in PSL for the given action ticket type per MB.
  * 
  * \param actionTicketType - action ticket type (sense, cascade)
  * \return fee for the given action ticket type
@@ -649,11 +650,11 @@ CAmount CMasterNodeController::GetActionTicketFeePerMB(const ACTION_TICKET_TYPE 
     return ActionTicketFeePerMBDefault;
 }
 
-double CMasterNodeController::GetChainDeflationRate() const
+double CMasterNodeController::GetChainDeflatorFactor() const
 {
-    const int nChainHeight = chainActive.Height();
+    const uint32_t nChainHeight = gl_nChainHeight;
 
-    if (nChainHeight < 0 || static_cast<uint32_t>(nChainHeight) <= ChainBaselineDifficultyUpperIndex + ChainTrailingAverageDifficultyRange)
+    if (static_cast<uint32_t>(nChainHeight) <= ChainBaselineDifficultyUpperIndex + ChainTrailingAverageDifficultyRange)
         return ChainDeflationRateDefault;
 
     // Get baseline average difficulty
@@ -665,8 +666,8 @@ double CMasterNodeController::GetChainDeflationRate() const
     }
     const double averageBaselineDifficulty = totalBaselineDifficulty/(ChainBaselineDifficultyUpperIndex - ChainBaselineDifficultyLowerIndex);
     // Get trailing average difficulty
-    uint32_t endTrailingIndex = ChainBaselineDifficultyUpperIndex + ChainTrailingAverageDifficultyRange*((chainActive.Height() - ChainBaselineDifficultyUpperIndex)/ChainTrailingAverageDifficultyRange );
-    uint32_t startTrailingIndex = endTrailingIndex - ChainTrailingAverageDifficultyRange;
+    const uint32_t endTrailingIndex = ChainBaselineDifficultyUpperIndex + ChainTrailingAverageDifficultyRange*((gl_nChainHeight - ChainBaselineDifficultyUpperIndex)/ChainTrailingAverageDifficultyRange);
+    const uint32_t startTrailingIndex = endTrailingIndex - ChainTrailingAverageDifficultyRange;
         
         
     double totalTrailingDifficulty = 0.0;
@@ -676,8 +677,7 @@ double CMasterNodeController::GetChainDeflationRate() const
         totalTrailingDifficulty += getNetworkDifficulty(index, true);
     }
     const double averageTrailingDifficulty = totalTrailingDifficulty/ChainTrailingAverageDifficultyRange;
-
-    return averageTrailingDifficulty/averageBaselineDifficulty;
+    return averageBaselineDifficulty/averageTrailingDifficulty;
 }
 
 /*
@@ -748,9 +748,8 @@ void CMasterNodeMaintenanceThread::execute()
         // try to sync from all available nodes, one step at a time
         masterNodeCtrl.masternodeSync.ProcessTick();
 
-        if(masterNodeCtrl.masternodeSync.IsBlockchainSynced() && !ShutdownRequested())
+        if (masterNodeCtrl.masternodeSync.IsBlockchainSynced() && !ShutdownRequested())
         {
-
             nTick++;
 
             // make sure to check all masternodes first
@@ -758,7 +757,7 @@ void CMasterNodeMaintenanceThread::execute()
 
             // check if we should activate or ping every few minutes,
             // slightly postpone first run to give net thread a chance to connect to some peers
-            if(nTick % masterNodeCtrl.MasternodeMinMNPSeconds == 15)
+            if (nTick % masterNodeCtrl.MasternodeMinMNPSeconds == 15)
                 masterNodeCtrl.activeMasternode.ManageState();
 
             if (nTick % 60 == 0)
@@ -771,9 +770,8 @@ void CMasterNodeMaintenanceThread::execute()
                 masterNodeCtrl.masternodeGovernance.CheckAndRemove();
 #endif // GOVERNANCE_TICKETS
             }
-            if(masterNodeCtrl.IsMasterNode() && (nTick % (60 * 5) == 0)) {
+            if (masterNodeCtrl.IsMasterNode() && (nTick % (60 * 5) == 0))
                 masterNodeCtrl.masternodeManager.DoFullVerificationStep();
-            }
         }
     }
 }

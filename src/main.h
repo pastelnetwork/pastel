@@ -65,7 +65,7 @@ static constexpr unsigned int MAX_STANDARD_TX_SIGOPS = MAX_BLOCK_SIGOPS/5;
 /** Default for -minrelaytxfee, minimum relay fee for transactions */
 static constexpr unsigned int DEFAULT_MIN_RELAY_TX_FEE = 100;
 /** Default for -txexpirydelta, in number of blocks */
-static constexpr unsigned int DEFAULT_TX_EXPIRY_DELTA = 20;
+static constexpr uint32_t DEFAULT_TX_EXPIRY_DELTA = 20;
 /** The number of blocks within expiry height when a tx is considered to be expiring soon */
 static constexpr uint32_t TX_EXPIRING_SOON_THRESHOLD = 3;
 /** The maximum size of a blk?????.dat file (since 0.8) */
@@ -75,7 +75,7 @@ static constexpr unsigned int BLOCKFILE_CHUNK_SIZE = 0x1000000; // 16 MiB
 /** The pre-allocation chunk size for rev?????.dat files (since 0.8) */
 static constexpr unsigned int UNDOFILE_CHUNK_SIZE = 0x100000; // 1 MiB
 /** Number of blocks that can be requested at any given time from a single peer. */
-static constexpr int MAX_BLOCKS_IN_TRANSIT_PER_PEER = 16;
+static constexpr uint32_t MAX_BLOCKS_IN_TRANSIT_PER_PEER = 16;
 /** Timeout in seconds during which a peer must stall block download progress before being disconnected. */
 static constexpr unsigned int BLOCK_STALLING_TIMEOUT_SECS = 2;
 /** Timeout in micro-seconds during which a peer must stall block download progress before being disconnected. */
@@ -328,7 +328,6 @@ struct CDiskTxPos : public CDiskBlockPos
     }
 };
 
-
 CAmount GetMinRelayFee(const CTransaction& tx, const size_t nBytes, bool fAllowFree);
 
 /**
@@ -383,8 +382,8 @@ bool ContextualCheckTransaction(
     CValidationState &state,
     const CChainParams& chainparams,
     const int nHeight,
-    const bool isMined,
     funcIsInitialBlockDownload_t isInitBlockDownload = fnIsInitialBlockDownload);
+
 
 /** Apply the effects of this transaction on the UTXO set represented by view */
 void UpdateCoins(const CTransaction& tx, CCoinsViewCache& inputs, int nHeight);

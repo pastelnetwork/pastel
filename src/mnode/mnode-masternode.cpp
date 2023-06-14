@@ -1,5 +1,5 @@
 // Copyright (c) 2014-2017 The Dash Core developers
-// Copyright (c) 2018-2022 The Pastel Core developers
+// Copyright (c) 2018-2023 The Pastel Core developers
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <inttypes.h>
@@ -181,7 +181,7 @@ bool CMasterNodePing::CheckAndUpdate(CMasternode* pmn, bool fFromNewBroadcast, i
     {
         LOCK(cs_main);
         const auto mi = mapBlockIndex.find(m_blockHash);
-        if (mi->second && mi->second->nHeight < chainActive.Height() - 24)
+        if (mi->second && static_cast<uint32_t>(mi->second->nHeight) < gl_nChainHeight - 24)
         {
             LogFnPrintf("Masternode ping is invalid, block hash is too old: masternode=%s  blockHash=%s", GetDesc(), m_blockHash.ToString());
             // nDos = 1;
@@ -399,11 +399,9 @@ bool CMasternode::UpdateFromNewBroadcast(CMasternodeBroadcast& mnb)
     return true;
 }
 
-//
 // Deterministically calculate a given "score" for a Masternode depending on how close it's hash is to
 // the proof of work for that block. The further away they are the better, the furthest will win the election
 // and get paid this block
-//
 arith_uint256 CMasternode::CalculateScore(const uint256& blockHash)
 {
     if (m_collateralMinConfBlockHash.IsNull())
@@ -660,6 +658,14 @@ string CMasternode::GetStatus() const
     return GetStateString();
 }
 
+/**
+ * Update the most recent block where this masternode received a payment.
+ * Scan the blockchain backward from a given point, looking for the most recent block where this masternode got paid.
+ * Update the masternode's last paid information when it finds such a block.
+ * 
+ * \param pindex - the block to start scanning from
+ * \param nMaxBlocksToScanBack - the maximum number of blocks to scan back
+ */
 void CMasternode::UpdateLastPaid(const CBlockIndex *pindex, int nMaxBlocksToScanBack)
 {
     if (!pindex)
@@ -667,22 +673,23 @@ void CMasternode::UpdateLastPaid(const CBlockIndex *pindex, int nMaxBlocksToScan
 
     const CBlockIndex *BlockReading = pindex;
 
-    CScript mnpayee = GetScriptForDestination(pubKeyCollateralAddress.GetID());
+    const CScript mnpayee = GetScriptForDestination(pubKeyCollateralAddress.GetID());
     LogFnPrint("masternode", "searching for block with payment to %s", GetDesc());
 
     LOCK(cs_mapMasternodeBlockPayees);
 
     const auto &consensusParams = m_chainparams.GetConsensus();
+    const auto &mnPayments = masterNodeCtrl.masternodePayments;
     for (int i = 0; BlockReading && BlockReading->nHeight > m_nBlockLastPaid && i < nMaxBlocksToScanBack; i++)
     {
-        if (masterNodeCtrl.masternodePayments.mapMasternodeBlockPayees.count(BlockReading->nHeight) &&
-            masterNodeCtrl.masternodePayments.mapMasternodeBlockPayees[BlockReading->nHeight].HasPayeeWithVotes(mnpayee, 2))
+        if (mnPayments.mapMasternodeBlockPayees.count(BlockReading->nHeight) &&
+            mnPayments.mapMasternodeBlockPayees.at(BlockReading->nHeight).HasPayeeWithVotes(mnpayee, 2, BlockReading->nHeight))
         {
             CBlock block;
             if (!ReadBlockFromDisk(block, BlockReading, consensusParams)) // shouldn't really happen
                 continue;
 
-            CAmount nMasternodePayment = masterNodeCtrl.masternodePayments.GetMasternodePayment(BlockReading->nHeight, block.vtx[0].GetValueOut());
+            const CAmount nMasternodePayment = mnPayments.GetMasternodePayment(BlockReading->nHeight, block.vtx[0].GetValueOut());
 
             for (const auto & txout : block.vtx[0].vout)
             {
@@ -837,6 +844,15 @@ bool CMasternode::VerifyCollateral(CollateralStatus& collateralStatus)
     
     LogFnPrint("masternode", "Masternode UTXO verified");
     return true;
+}
+
+string GetListOfMasterNodes(const vector<CMasternode>& mnList)
+{
+    string s;
+    s.reserve(mnList.size() * 75);
+    for (const auto& mn : mnList)
+        str_append_field(s, mn.GetDesc().c_str(), ", ");
+	return s;
 }
 
 #ifdef ENABLE_WALLET

@@ -135,7 +135,7 @@ public:
 
     std::string ToJSON(const bool bDecodeProperties = false) const noexcept override;
     std::string ToStr() const noexcept override { return m_sNFTTicket; }
-    ticket_validation_t IsValid(const bool bPreReg, const uint32_t nCallDepth) const noexcept override;
+    ticket_validation_t IsValid(const TxOrigin txOrigin, const uint32_t nCallDepth) const noexcept override;
 
     // getters for ticket fields
     uint16_t getTicketVersion() const noexcept { return m_nNFTTicketVersion; }

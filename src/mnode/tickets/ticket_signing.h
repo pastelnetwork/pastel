@@ -28,6 +28,8 @@ public:
         const char* desc;       // signer description - used for logging
     } signer;
 
+    CTicketSigning() noexcept = default;
+
     // clear all signatures and pastel ids
     void clear_signatures() noexcept;
     // clear specific signature
@@ -65,5 +67,5 @@ protected:
     nlohmann::json get_signatures_json() const;
 
     // validate ticket signatures
-    ticket_validation_t validate_signatures(const uint32_t nCallDepth, const uint32_t nCreatorHeight, const std::string &sTicketToValidate) const noexcept;
+    ticket_validation_t validate_signatures(const TxOrigin txOrigin, const uint32_t nCallDepth, const uint32_t nCreatorHeight, const std::string &sTicketToValidate) const noexcept;
 };

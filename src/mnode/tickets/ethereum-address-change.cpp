@@ -9,8 +9,9 @@
 #include <mnode/tickets/ethereum-address-change.h>
 #include <mnode/ticket-processor.h>
 #include <mnode/mnode-controller.h>
+
 #ifdef ENABLE_WALLET
-#include "wallet/wallet.h"
+#include <wallet/wallet.h>
 #endif // ENABLE_WALLET
 
 using json = nlohmann::json;
@@ -51,21 +52,23 @@ string CChangeEthereumAddressTicket::ToStr() const noexcept
 /**
  * Validate Pastel ticket.
  * 
- * \param bPreReg - if true: called from ticket pre-registration
+ * \param txOrigin - ticket transaction origin (used to determine pre-registration mode)
  * \param nCallDepth - function call depth
  * \return ticket validation state and error message if any
  */
-ticket_validation_t CChangeEthereumAddressTicket::IsValid(const bool bPreReg, const uint32_t nCallDepth) const noexcept
+ticket_validation_t CChangeEthereumAddressTicket::IsValid(const TxOrigin txOrigin, const uint32_t nCallDepth) const noexcept
 {
     const auto nActiveChainHeight = gl_nChainHeight + 1;
     ticket_validation_t tv;
     do
     {
+        const bool bPreReg = isPreReg(txOrigin);
         CChangeEthereumAddressTicket existingTicket;
         const bool bTicketExists = FindTicketInDb(ethereumAddress, existingTicket);
         // A. Something to check ONLY before the ticket made into transaction
-        if (bPreReg)
+        if (isLocalPreReg(txOrigin))
         {
+#ifdef ENABLE_WALLET
             // A2. Check if address has coins to pay for Ethereum Address Change Ticket
             const auto fullTicketPrice = TicketPricePSL(nActiveChainHeight);
             if (pwalletMain->GetBalance() < fullTicketPrice * COIN)
@@ -75,6 +78,7 @@ ticket_validation_t CChangeEthereumAddressTicket::IsValid(const bool bPreReg, co
                     fullTicketPrice);
                 break;
             }
+#endif // ENABLE_WALLET
         }
 
         // Check if Ethereum Address is an invalid address. For now check if it is empty only.

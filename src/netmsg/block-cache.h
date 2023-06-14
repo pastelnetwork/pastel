@@ -6,6 +6,7 @@
 #include <ctime>
 
 #include <primitives/block.h>
+#include <consensus/validation.h>
 #include <chainparams.h>
 #include <net.h>
 
@@ -30,7 +31,7 @@ public:
     CBlockCache() noexcept;
 
     // add block to cache for revalidation
-    bool add_block(const uint256& hash, const NodeId& nodeId, CBlock && block) noexcept;
+    bool add_block(const uint256& hash, const NodeId& nodeId, const TxOrigin txOrigin, CBlock && block) noexcept;
     // try to revalidate cached blocks
     size_t revalidate_blocks(const CChainParams& chainparams);
     // get number of blocks in a cache
@@ -50,10 +51,12 @@ protected:
         time_t nTimeValidated;       // time in secs of the last revalidation attempt
         bool bRevalidating;          // true if block is being revalidated
         uint32_t nBlockHeight;	     // block height (0 - not defined)
+        TxOrigin txOrigin;           // block origin
 
-        _BLOCK_CACHE_ITEM(const NodeId id, uint32_t nHeight, CBlock &&block_in) noexcept : 
+        _BLOCK_CACHE_ITEM(const NodeId id, uint32_t nHeight, TxOrigin txOrigin, CBlock &&block_in) noexcept : 
             nodeId(id),
             nBlockHeight(nHeight),
+            txOrigin(txOrigin),
             block(std::move(block_in))
         {
             Added();

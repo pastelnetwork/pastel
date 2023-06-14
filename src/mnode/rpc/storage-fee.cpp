@@ -54,7 +54,7 @@ Examples:
                 fee = get_long_number(params[1]);
             else
                 // If no additional parameter (fee) added, that means we use fee levels bound to PSL deflation
-                fee = static_cast<CAmount>(masterNodeCtrl.GetNetworkFeePerMB() / masterNodeCtrl.GetChainDeflationRate());
+                fee = static_cast<CAmount>(masterNodeCtrl.GetNetworkFeePerMB() * masterNodeCtrl.GetChainDeflatorFactor());
 
             CMasternode masternode;
             if (!masterNodeCtrl.masternodeManager.Get(masterNodeCtrl.activeMasternode.outpoint, masternode))

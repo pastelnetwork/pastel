@@ -1,6 +1,6 @@
 #pragma once
 // Copyright (c) 2014-2017 The Dash Core developers
-// Copyright (c) 2018-2022 The Pastel Core developers
+// Copyright (c) 2018-2023 The Pastel Core developers
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <string>
@@ -362,6 +362,8 @@ inline bool operator!=(const CMasternode& a, const CMasternode& b)
 {
     return !(a.get_vin() == b.get_vin());
 }
+
+std::string GetListOfMasterNodes(const std::vector<CMasternode>& mnList);
 
 //
 // The Masternode Broadcast Class : Contains a different serialize method for sending masternodes through the network

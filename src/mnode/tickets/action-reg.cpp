@@ -298,10 +298,17 @@ string CActionRegTicket::ToJSON(const bool bDecodeProperties) const noexcept
             if (action_ticket_json.contains(ACTION_TICKET_APP_OBJ))
             {
                 // try to decode ascii85-encoded app_ticket
-                bool bInvalidAscii85Encoding = false;
-                string sDecodedAppTicket = DecodeAscii85(action_ticket_json[ACTION_TICKET_APP_OBJ], &bInvalidAscii85Encoding);
-                if (!bInvalidAscii85Encoding)
+                bool bInvalidEncoding = false;
+                string sDecodedAppTicket = DecodeAscii85(action_ticket_json[ACTION_TICKET_APP_OBJ], &bInvalidEncoding);
+                if (!bInvalidEncoding)
                     action_ticket_json[ACTION_TICKET_APP_OBJ] = move(json::parse(sDecodedAppTicket));
+                else
+                {
+                    // this can be base64-encoded app_ticket as well
+                    sDecodedAppTicket = DecodeBase64(action_ticket_json[ACTION_TICKET_APP_OBJ], &bInvalidEncoding);
+                    if (!bInvalidEncoding)
+						action_ticket_json[ACTION_TICKET_APP_OBJ] = move(json::parse(sDecodedAppTicket));
+                }
             }
         } catch(...) {}
     }
@@ -334,16 +341,17 @@ string CActionRegTicket::ToJSON(const bool bDecodeProperties) const noexcept
 /**
  * Validate Action Registration ticket.
  * 
- * \param bPreReg - if true: called from ticket pre-registration
+ * \param txOrigin - ticket transaction origin (used to determine pre-registration mode)
  * \param nCallDepth - function call depth
  * \return ticket validation state and error message if any
  */
-ticket_validation_t CActionRegTicket::IsValid(const bool bPreReg, const uint32_t nCallDepth) const noexcept
+ticket_validation_t CActionRegTicket::IsValid(const TxOrigin txOrigin, const uint32_t nCallDepth) const noexcept
 {
     const auto nActiveChainHeight = gl_nChainHeight + 1;
     ticket_validation_t tv;
     do
     {
+        const bool bPreReg = isPreReg(txOrigin);
         if (bPreReg)
         {
             // A. Something to check ONLY before the ticket made into transaction.
@@ -358,13 +366,28 @@ ticket_validation_t CActionRegTicket::IsValid(const bool bPreReg, const uint32_t
                 break;
             }
 
-            // A.2 validate that address has coins to pay for registration - 10PSL
-            const auto fullTicketPrice = TicketPricePSL(nActiveChainHeight); //10% of storage fee is paid by the 'caller' and this ticket is created by MN
-            if (pwalletMain->GetBalance() < fullTicketPrice * COIN)
+#ifdef ENABLE_WALLET
+            if (isLocalPreReg(txOrigin))
             {
+                // A.2 validate that address has coins to pay for registration - 10PSL
+                const auto fullTicketPrice = TicketPricePSL(nActiveChainHeight); //10% of storage fee is paid by the 'caller' and this ticket is created by MN
+                if (pwalletMain->GetBalance() < fullTicketPrice * COIN)
+                {
+                    tv.errorMsg = strprintf(
+                        "Not enough coins to cover price [%" PRId64 " PSL]",
+                        fullTicketPrice);
+                    break;
+                }
+            }
+#endif // ENABLE_WALLET
+
+            // A.3 check that called_at_height is not in the future
+            if (m_nCalledAtHeight > nActiveChainHeight)
+            {
+                tv.state = TICKET_VALIDATION_STATE::MISSING_INPUTS;
                 tv.errorMsg = strprintf(
-                    "Not enough coins to cover price [%" PRId64 " PSL]", 
-                    fullTicketPrice);
+					"This Action called_at height is in the future [called_at=%u, active chain height=%u]", 
+					m_nCalledAtHeight, nActiveChainHeight);
                 break;
             }
         }
@@ -390,7 +413,7 @@ ticket_validation_t CActionRegTicket::IsValid(const bool bPreReg, const uint32_t
         }
 
         // B. Something to validate always
-        const ticket_validation_t sigTv = validate_signatures(nCallDepth, m_nCalledAtHeight, m_sActionTicket);
+        const ticket_validation_t sigTv = validate_signatures(txOrigin, nCallDepth, m_nCalledAtHeight, m_sActionTicket);
         if (sigTv.IsNotValid())
         {
             tv.state = sigTv.state;

@@ -138,12 +138,14 @@ string CTicketSigning::getPastelID(const short sigId) const noexcept
 /**
  * Validate ticket signatures.
  * 
+ * \param txOrigin - ticket tx origin
  * \param nCallDepth - current function call depth
  * \param nCreatorHeight - Pastel ID registration ticket height for the principal signature creator
  * \param sTicketToValidate - ticket content to validate
+ * 
  * \return ticket validation state and error message if any
  */
-ticket_validation_t CTicketSigning::validate_signatures(const uint32_t nCallDepth, const uint32_t nCreatorHeight, const string& sTicketToValidate) const noexcept
+ticket_validation_t CTicketSigning::validate_signatures(const TxOrigin txOrigin, const uint32_t nCallDepth, const uint32_t nCreatorHeight, const string& sTicketToValidate) const noexcept
 {
     uint32_t nCurrentCallDepth = nCallDepth;
     unordered_map<string, int> pidCountMap;
@@ -153,7 +155,7 @@ ticket_validation_t CTicketSigning::validate_signatures(const uint32_t nCallDept
 
     for (auto mnIndex = SIGN_PRINCIPAL; mnIndex < SIGN_COUNT; ++mnIndex)
     {
-        // 1. Pastel IDs are registered and are in the TicketDB - Pastel ID tnx can be in the blockchain and valid as tnx,
+        // Pastel IDs are registered and are in the TicketDB - Pastel ID tnx can be in the blockchain and valid as tnx,
         // but the ticket this tnx represents can be invalid as ticket, in this case it will not be in the TicketDB!!!
         // and this will mark ticket tnx from being valid!!!
         CPastelIDRegTicket pastelIdRegTicket;
@@ -167,8 +169,8 @@ ticket_validation_t CTicketSigning::validate_signatures(const uint32_t nCallDept
             break;
         }
             
-        // 2. Pastel IDs are valid
-        tv = pastelIdRegTicket.IsValid(false, ++nCurrentCallDepth);
+        // Pastel IDs are valid
+        tv = pastelIdRegTicket.IsValid(TxOrigin::UNKNOWN, ++nCurrentCallDepth);
         if (tv.IsNotValid())
         {
             tv.errorMsg = strprintf(
@@ -176,9 +178,9 @@ ticket_validation_t CTicketSigning::validate_signatures(const uint32_t nCallDept
                 sigDesc, CPastelIDRegTicket::GetTicketDescription(), m_vPastelID[mnIndex], tv.errorMsg);
             break;
         }
-        // 3. principal Pastel ID is personal Pastel ID and MNs Pastel IDs are not personal
+        // Principal Pastel ID is personal Pastel ID and MNs Pastel IDs are not personal
         const bool bIsPrincipal = mnIndex == SIGN_PRINCIPAL;
-        auto outpoint = pastelIdRegTicket.getOutpoint();
+        const auto outpoint = pastelIdRegTicket.getOutpoint();
         if (bIsPrincipal != outpoint.IsNull())
         {
             tv.state = TICKET_VALIDATION_STATE::INVALID;
@@ -194,7 +196,7 @@ ticket_validation_t CTicketSigning::validate_signatures(const uint32_t nCallDept
             {
                 tv.state = TICKET_VALIDATION_STATE::INVALID;
                 tv.errorMsg = strprintf(
-                    "MNs Pastel IDs can not be the same - [%s]",
+                    "MNs Pastel IDs cannot be the same - [%s]",
                     pastelIdRegTicket.getPastelID());
                 break;
             }
@@ -202,17 +204,17 @@ ticket_validation_t CTicketSigning::validate_signatures(const uint32_t nCallDept
             {
                 tv.state = TICKET_VALIDATION_STATE::INVALID;
                 tv.errorMsg = strprintf(
-                    "MNs Pastel ID can not be from the same MN - [%s]", 
+                    "MNs Pastel ID cannot be from the same MN - [%s]", 
                     outpoint.ToStringShort());
                 break;
             }
 
-            // 4. Masternodes beyond these Pastel IDs, were in the top 10 at the block when the registration happened
+            // Masternodes beyond these Pastel IDs, were in the top 10 at the block when the registration happened
             if (masterNodeCtrl.masternodeSync.IsSynced()) // ticket needs synced MNs
             {
                 vector<CMasternode> topBlockMNs;
                 string error;
-                auto status = masterNodeCtrl.masternodeManager.GetTopMNsForBlock(error, topBlockMNs, nCreatorHeight, true);
+                const auto status = masterNodeCtrl.masternodeManager.GetTopMNsForBlock(error, topBlockMNs, nCreatorHeight, true);
                 if (status != GetTopMasterNodeStatus::SUCCEEDED && status != GetTopMasterNodeStatus::SUCCEEDED_FROM_HISTORY)
                 {
 					tv.state = TICKET_VALIDATION_STATE::MISSING_INPUTS;
@@ -228,6 +230,7 @@ ticket_validation_t CTicketSigning::validate_signatures(const uint32_t nCallDept
 
                 if (foundIt == topBlockMNs.cend()) //not found
                 {
+                    LogFnPrintf("Top MNs for height=%u (status=%d): [%s]", nCreatorHeight, to_integral_type(status), GetListOfMasterNodes(topBlockMNs));
                     tv.state = TICKET_VALIDATION_STATE::INVALID;
                     tv.errorMsg = strprintf(
                         "MN%hi was NOT in the top masternodes list for block %u", 
@@ -240,7 +243,7 @@ ticket_validation_t CTicketSigning::validate_signatures(const uint32_t nCallDept
     if (tv.IsNotValid())
         return tv;
 
-    // 5. Signatures matches included Pastel IDs (signature verification is slower - hence separate loop)
+    // Signatures matches included Pastel IDs (signature verification is slower - hence separate loop)
     for (auto mnIndex = SIGN_PRINCIPAL; mnIndex < SIGN_COUNT; ++mnIndex)
     {
         if (!CPastelID::Verify(sTicketToValidate, vector_to_string(m_vTicketSignature[mnIndex]), m_vPastelID[mnIndex]))

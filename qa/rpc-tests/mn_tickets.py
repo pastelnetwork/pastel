@@ -1840,7 +1840,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
             ticket.reg_ticket_base64_encoded, json.dumps(self.not_top_mns_signatures_dict), self.top_mns[0].pastelid, self.passphrase, label, str(self.storage_fee))
 
         #       c.a.9 fail if MN1, MN2 and MN3 are the same
-        assert_raises_rpc(rpc.RPC_MISC_ERROR, "MNs Pastel IDs can not be the same",
+        assert_raises_rpc(rpc.RPC_MISC_ERROR, "MNs Pastel IDs cannot be the same",
             top_mn_node.tickets, "register", ticket_type_name,
             ticket.reg_ticket_base64_encoded, json.dumps(self.same_mns_signatures_dict), self.top_mns[0].pastelid, self.passphrase, label, str(self.storage_fee))
 
@@ -3088,7 +3088,10 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         print(f"accept_ticket_txid: {accept_ticket_txid}")
         self.wait_for_min_confirmations()  # +5 blocks (cur+16)
         # need at least 24 blocks for accept ticket to expire
-        self.generate_and_sync_inc(20, self.mining_node_num) # +20 blocks (cur+36)
+        for _ in range(0, 4):
+            self.generate_and_sync_inc(5, self.mining_node_num) 
+            time.sleep(2)
+        # +20 blocks (cur+36)
 
         print(' --- list accept')
         tickets_list = self.nodes[self.non_mn3].tickets("list", "accept")

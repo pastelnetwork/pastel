@@ -290,7 +290,7 @@ double benchmark_connectblock_slow()
     index.pprev = &indexPrev;
     mapBlockIndex.insert(make_pair(hashPrev, &indexPrev));
 
-    CValidationState state;
+    CValidationState state(TxOrigin::GENERATED);
     struct timeval tv_start;
     timer_start(tv_start);
     assert(ConnectBlock(block, state, Params(), &index, view, true));
