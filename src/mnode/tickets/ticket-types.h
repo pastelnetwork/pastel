@@ -1,5 +1,5 @@
 #pragma once
-// Copyright (c) 2021-2022 The Pastel Core developers
+// Copyright (c) 2021-2023 The Pastel Core developers
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 
@@ -112,6 +112,14 @@ inline std::string GetTicketDescription(const TicketID id) noexcept
 
 // default ticket fees
 constexpr CAmount GREEN_FEE_PERCENT = 2;
+
+// default size of action tickets to calculate action fees
+constexpr uint32_t ACTION_SENSE_TICKET_SIZE_KB = 5;
+constexpr uint32_t ACTION_CASCADE_TICKET_SIZE_KB = 5;
+constexpr uint32_t AVERAGE_SENSE_DUPE_DATA_SIZE_MB = 10;
+
+// discount in % for NFT tickets registration fee
+constexpr double NFT_DISCOUNT_MULTIPLIER = 0.45;
 
 constexpr float MAX_ROYALTY = 0.2f;
 constexpr uint16_t MAX_ROYALTY_PERCENT = 20;

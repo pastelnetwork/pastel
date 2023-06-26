@@ -25,7 +25,7 @@ public:
     set<uint8_t> vParamIdx;       // set of 0-based indexes of the params to convert
 };
 
-static const array<CRPCConvertParam, 68> gl_vRPCConvertParams =
+static const array<CRPCConvertParam, 75> gl_vRPCConvertParams =
 {{
     { "stop", nullptr, {0} },
     { "setmocktime", nullptr, {0} },
@@ -50,6 +50,13 @@ static const array<CRPCConvertParam, 68> gl_vRPCConvertParams =
     { "walletpassphrase", nullptr, {1} },
     { "getblocktemplate", nullptr, {0} },
     { "listsinceblock", nullptr, {1, 2} },
+    { "storagefee", "setfee", {1} },
+    { "storagefee", "getnetworkfee", {1} },
+    { "storagefee", "getnftticketfee", {1} },
+    { "storagefee", "getsensecomputefee", {1} },
+    { "storagefee", "getsenseprocessingfee", {1} },
+    { "storagefee", "getlocalfee", {1} },
+    { "storagefee", "getactionfees", {1,2} },
     { "sendmany", nullptr, {1, 2, 4} },
     { "addmultisigaddress", nullptr, {0, 1} },
     { "createmultisig", nullptr, {0, 1} },
@@ -77,11 +84,10 @@ static const array<CRPCConvertParam, 68> gl_vRPCConvertParams =
     { "setban", nullptr, {2, 3} },
     { "getaddressmempool", nullptr, {0} },
     { "getblockdeltas", nullptr, {0} },
-    { "zcrawjoinsplit", nullptr, {1, 2, 3, 4} },
     { "zcbenchmark", nullptr, {1, 2} },
     { "getnextblocksubsidy", nullptr, {0} },
     { "getblocksubsidy", nullptr, {0} },
-    { "tickets", "get", {3} },
+    { "tickets", "get", {2} },
     { "z_listaddresses", nullptr, {0} },
     { "z_listreceivedbyaddress", nullptr, {1} },
     { "z_listunspent", nullptr, {0, 1, 2, 3} },

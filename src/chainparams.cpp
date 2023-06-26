@@ -1,6 +1,6 @@
 // Copyright (c) 2010 Satoshi Nakamoto
 // Copyright (c) 2009-2014 The Bitcoin Core developers
-// Copyright (c) 2018-2022 The Pastel Core developers
+// Copyright (c) 2018-2023 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -339,7 +339,8 @@ public:
         consensus.AddNetworkUpgrade(Consensus::UpgradeIndex::UPGRADE_CEZANNE, 170009, MAINNET_CEZANNE_UPGRADE_STARTING_BLOCK);
         // The period before a network upgrade activates, where connections to upgrading peers are preferred (in blocks).
         consensus.nNetworkUpgradePeerPreferenceBlockPeriod = MAINNET_NETWORK_UPGRADE_PEER_PREFERENCE_BLOCK_PERIOD;
-        consensus.nMaxGovernanceAmount = 100'000'000*COIN;
+        consensus.nMaxGovernanceAmount = 100'000'000 * COIN;
+        consensus.nGlobalFeeAdjustmentMultiplier = 1.0;
 
         // The best chain should have at least this much work.
         consensus.nMinimumChainWork = uint256S("000000000000000000000000000000000000000000000000000000000624f116"); //2702
@@ -448,7 +449,8 @@ public:
         consensus.AddNetworkUpgrade(Consensus::UpgradeIndex::UPGRADE_CEZANNE, 170009, TESTNET_CEZANNE_UPGRADE_STARTING_BLOCK);
         // The period before a network upgrade activates, where connections to upgrading peers are preferred (in blocks).
         consensus.nNetworkUpgradePeerPreferenceBlockPeriod = TESTNET_NETWORK_UPGRADE_PEER_PREFERENCE_BLOCK_PERIOD;
-        consensus.nMaxGovernanceAmount = 1'000'000*COIN;
+        consensus.nMaxGovernanceAmount = 1'000'000 * COIN;
+        consensus.nGlobalFeeAdjustmentMultiplier = 1.0;
 
         // The best chain should have at least this much work.
         consensus.nMinimumChainWork = uint256S("0x00");
@@ -552,7 +554,8 @@ public:
         consensus.AddNetworkUpgrade(Consensus::UpgradeIndex::UPGRADE_CEZANNE, 170009, Consensus::NetworkUpgrade::NO_ACTIVATION_HEIGHT);
         // The period before a network upgrade activates, where connections to upgrading peers are preferred (in blocks).
         consensus.nNetworkUpgradePeerPreferenceBlockPeriod = REGTEST_NETWORK_UPGRADE_PEER_PREFERENCE_BLOCK_PERIOD;
-        consensus.nMaxGovernanceAmount = 1'000'000*COIN;
+        consensus.nMaxGovernanceAmount = 1'000'000 * COIN;
+        consensus.nGlobalFeeAdjustmentMultiplier = 1.0;
 
         // The best chain should have at least this much work.
         consensus.nMinimumChainWork = uint256S("0x00");

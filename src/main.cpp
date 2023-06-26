@@ -836,7 +836,7 @@ bool ContextualCheckTransaction(
         if (tx.fOverwintered)
             return state.DoS(
                 dosLevelPotentiallyRelaxing,
-                error("ContextualCheckTransaction(): overwinter is not active yet"),
+                error("ContextualCheckTransaction(): overwinter is not active yet, height=%d", nHeight),
                 REJECT_INVALID, "tx-overwinter-not-active");
     }
 
@@ -847,7 +847,7 @@ bool ContextualCheckTransaction(
         if (!tx.fOverwintered)
             return state.DoS(
                 dosLevelConstricting,
-                error("ContextualCheckTransaction: fOverwintered flag must be set when Overwinter is active"),
+                error("ContextualCheckTransaction: fOverwintered flag must be set when Overwinter is active, height=%d", nHeight),
                 REJECT_INVALID, "tx-overwintered-flag-not-set");
 
         // Check that all transactions are unexpired
@@ -857,7 +857,7 @@ bool ContextualCheckTransaction(
             const int expiredDosLevel = IsExpiredTx(tx, nHeight - 1) ? dosLevelConstricting : 0;
             return state.DoS(
                 expiredDosLevel,
-                error("ContextualCheckTransaction(): transaction is expired"), 
+                error("ContextualCheckTransaction(): transaction is expired at %u, height=%d", tx.nExpiryHeight, nHeight), 
                 REJECT_INVALID, "tx-overwinter-expired");
         }
 
@@ -869,14 +869,14 @@ bool ContextualCheckTransaction(
             if (tx.nVersion > OVERWINTER_MAX_TX_VERSION)
                 return state.DoS(
                     dosLevelPotentiallyRelaxing,
-                    error("ContextualCheckTransaction(): overwinter version too high"),
+                    error("ContextualCheckTransaction(): overwinter version too high, height=%d", nHeight),
                     REJECT_INVALID, "bad-tx-overwinter-version-too-high");
 
             // Reject transactions with non-Overwinter version group ID
             if (tx.nVersionGroupId != OVERWINTER_VERSION_GROUP_ID)
                 return state.DoS(
                     dosLevelPotentiallyRelaxing,
-                    error("ContextualCheckTransaction(): invalid Overwinter tx version"),
+                    error("ContextualCheckTransaction(): invalid Overwinter tx version, height=%d", nHeight),
                     REJECT_INVALID, "bad-overwinter-tx-version-group-id");
         }
     }
@@ -890,14 +890,14 @@ bool ContextualCheckTransaction(
             if (tx.fOverwintered && tx.nVersion < SAPLING_MIN_TX_VERSION)
                 return state.DoS(
                     dosLevelConstricting,
-                    error("CheckTransaction(): Sapling version too low"),
+                    error("CheckTransaction(): Sapling version too low, height=%d", nHeight),
                     REJECT_INVALID, "bad-tx-sapling-version-too-low");
 
             // Reject transactions with invalid version
             if (tx.fOverwintered && tx.nVersion > SAPLING_MAX_TX_VERSION)
                 return state.DoS(
                     dosLevelPotentiallyRelaxing,
-                    error("CheckTransaction(): Sapling version too high"),
+                    error("CheckTransaction(): Sapling version too high, height=%d", nHeight),
                     REJECT_INVALID, "bad-tx-sapling-version-too-high");
         }
         else
@@ -918,7 +918,7 @@ bool ContextualCheckTransaction(
         if (::GetSerializeSize(tx, SER_NETWORK, PROTOCOL_VERSION) > MAX_TX_SIZE_BEFORE_SAPLING)
             return state.DoS(
                 dosLevelPotentiallyRelaxing,
-                error("ContextualCheckTransaction(): size limits failed"),
+                error("ContextualCheckTransaction(): size limits failed, height=%d", nHeight),
                 REJECT_INVALID, "bad-txns-oversize");
     }
 
@@ -936,7 +936,7 @@ bool ContextualCheckTransaction(
         {
             return state.DoS(
                 DOS_LEVEL_BLOCK,
-                error("CheckTransaction(): error computing signature hash"),
+                error("CheckTransaction(): error computing signature hash, height=%d", nHeight),
                 REJECT_INVALID, "error-computing-signature-hash");
         }
 
@@ -957,7 +957,7 @@ bool ContextualCheckTransaction(
                 librustzcash_sapling_verification_ctx_free(ctx);
                 return state.DoS(
                     dosLevelPotentiallyRelaxing,
-                    error("ContextualCheckTransaction(): Sapling spend description invalid"),
+                    error("ContextualCheckTransaction(): Sapling spend description invalid, height=%d", nHeight),
                     REJECT_INVALID, "bad-txns-sapling-spend-description-invalid");
             }
         }
@@ -978,7 +978,7 @@ bool ContextualCheckTransaction(
                 // call librustzcash_sapling_final_check().
                 return state.DoS(
                     DOS_LEVEL_BLOCK,
-                    error("ContextualCheckTransaction(): Sapling output description invalid"),
+                    error("ContextualCheckTransaction(): Sapling output description invalid, height=%d", nHeight),
                     REJECT_INVALID, "bad-txns-sapling-output-description-invalid");
             }
         }
@@ -993,7 +993,7 @@ bool ContextualCheckTransaction(
             librustzcash_sapling_verification_ctx_free(ctx);
             return state.DoS(
                 dosLevelPotentiallyRelaxing,
-                error("ContextualCheckTransaction(): Sapling binding signature invalid"),
+                error("ContextualCheckTransaction(): Sapling binding signature invalid, height=%d", nHeight),
                 REJECT_INVALID, "bad-txns-sapling-binding-signature-invalid");
         }
 
@@ -1005,9 +1005,9 @@ bool ContextualCheckTransaction(
     if (tv.state == TICKET_VALIDATION_STATE::NOT_TICKET || tv.state == TICKET_VALIDATION_STATE::VALID)
         return true;
     if (tv.state == TICKET_VALIDATION_STATE::MISSING_INPUTS) 
-        return state.DoS(0, warning_msg("ValidateIfTicketTransaction(): missing dependent transactions. %s", tv.errorMsg),
+        return state.DoS(0, warning_msg("ValidateIfTicketTransaction(): missing dependent transactions, height=%d. %s", nHeight, tv.errorMsg),
                          REJECT_MISSING_INPUTS, "tx-missing-inputs");
-    return state.DoS(10, error("ValidateIfTicketTransaction(): invalid ticket transaction. %s", tv.errorMsg),
+    return state.DoS(10, error("ValidateIfTicketTransaction(): invalid ticket transaction, height=%d. %s", nHeight, tv.errorMsg),
                      REJECT_INVALID, "bad-tx-invalid-ticket");
 }
 

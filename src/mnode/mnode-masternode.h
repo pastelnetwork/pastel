@@ -196,6 +196,8 @@ protected:
 class CMasternode : public masternode_info_t
 {
 public:
+    constexpr static int64_t MASTERNODE_VERSION = 1;
+
     enum class CollateralStatus
     {
         OK,
@@ -205,8 +207,10 @@ public:
 
     v_uint8 vchSig;
 
-    CAmount aMNFeePerMB = 0; // 0 means default (masterNodeCtrl.MasternodeFeePerMBDefault)
-    CAmount aNFTTicketFeePerKB = 0; // 0 means default (masterNodeCtrl.NFTTicketFeePerKBDefault)
+    CAmount aMNFeePerMB = 0;          // 0 means default (masterNodeCtrl.m_nMasternodeFeePerMBDefault)
+    CAmount aTicketFeePerKB = 0;      // 0 means default (masterNodeCtrl.m_nTicketFeePerKBDefault)
+    CAmount aSenseComputeFee = 0;     // 0 means default (masterNodeCtrl.m_nSenseComputeFeeDefault)
+    CAmount aSenseProcessingFeePerMB = 0; // 0 means default (masterNodeCtrl.m_nSenseProcessingFeePerMB)
 
     CMasternode();
     CMasternode(const CMasternode& other);
@@ -221,6 +225,8 @@ public:
     template <typename Stream>
     inline void SerializationOp(Stream& s, const SERIALIZE_ACTION ser_action)
     {
+        const bool bRead = (ser_action == SERIALIZE_ACTION::Read);
+
         LOCK(cs);
         READWRITE(m_vin);
         READWRITE(m_addr);
@@ -234,7 +240,7 @@ public:
         READWRITE(nTimeLastWatchdogVote);
         int nActiveState = to_integral_type<MASTERNODE_STATE>(GetActiveState());
         READWRITE(nActiveState);
-        if (ser_action == SERIALIZE_ACTION::Read)
+        if (bRead)
         {
             if (!is_enum_valid<MASTERNODE_STATE>(nActiveState, MASTERNODE_STATE::PRE_ENABLED, MASTERNODE_STATE::POSE_BAN))
                 throw std::runtime_error(strprintf("Not supported MasterNode's state [%d]", nActiveState));
@@ -247,7 +253,7 @@ public:
         READWRITE(nPoSeBanScore);
         uint32_t nPoSeBanHeight = m_nPoSeBanHeight;
         READWRITE(nPoSeBanHeight);
-        if (ser_action == SERIALIZE_ACTION::Read)
+        if (bRead)
         {
             m_nPoSeBanScore = nPoSeBanScore;
             m_nPoSeBanHeight = nPoSeBanHeight;
@@ -257,16 +263,33 @@ public:
         READWRITE(strExtraLayerAddress);
         READWRITE(strExtraLayerCfg);
         READWRITE(aMNFeePerMB);
-        READWRITE(aNFTTicketFeePerKB);
-
-        //For backward compatibility
-        try
+        READWRITE(aTicketFeePerKB);
+        if (bRead)
         {
-            READWRITE(strExtraLayerP2P);
+            if (!s.eof())
+                READWRITE(strExtraLayerP2P);
+            if (!s.eof())
+                READWRITE(m_nVersion);
+            else
+                m_nVersion = 0;
         }
-        catch ([[maybe_unused]] const std::ios_base::failure& e)
+        else // write mode
         {
-            LogPrintf("CMasternode: missing extP2P!\n");
+            m_nVersion = MASTERNODE_VERSION;
+            READWRITE(strExtraLayerP2P);
+            READWRITE(m_nVersion);
+        }
+        // if (v1 or higher) and ( (writing to stream) or (reading but not at the end of the stream yet))
+        const bool bVersion = (m_nVersion >= 1) && (!bRead || !s.eof());
+        if (bVersion)
+        {
+			READWRITE(aSenseComputeFee);
+            READWRITE(aSenseProcessingFeePerMB);
+        }
+        else
+        {
+            aSenseComputeFee = 0;
+            aSenseProcessingFeePerMB = 0;
         }
     }
 
@@ -337,6 +360,8 @@ public:
 protected:
     // critical section to protect the inner data structures
     mutable CCriticalSection cs;
+
+    short m_nVersion = -1; // stored masternode serialization version
 
     const CChainParams& m_chainparams;
     // last MasterNode ping

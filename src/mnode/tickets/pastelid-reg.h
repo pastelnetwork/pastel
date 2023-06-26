@@ -119,8 +119,9 @@ public:
         READWRITE(m_nBlock);
         // v1
         const bool bVersion = (GetVersion() >= 1) && (!bRead || !s.eof());
-        if (bVersion) {
-            //if (v1 or higher) and ( (writing to stream) or (reading but not end of the stream yet))
+        if (bVersion)
+        {
+            //if (v1 or higher) and ( (writing to stream) or (reading but not at the end of the stream yet))
             READWRITE(m_nVersion);
             READWRITE(m_LegRoastKey);
         } else if (bRead) { // reading v0

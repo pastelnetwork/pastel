@@ -63,13 +63,6 @@ constexpr auto ACTION_TICKET_TYPE_SENSE = "sense";
 constexpr auto ACTION_TICKET_TYPE_CASCADE = "cascade";
 constexpr auto ACTION_TICKET_APP_OBJ = "api_ticket";
 
-// default size of action tickets to calculate action fees
-constexpr uint32_t ACTION_SENSE_TICKET_SIZE_KB = 5;
-constexpr uint32_t ACTION_CASCADE_TICKET_SIZE_KB = 5;
-
-constexpr uint32_t ACTION_DUPE_DATA_SIZE_MB = 10;
-constexpr uint32_t ACTION_STORAGE_MULTIPLIER = 50;
-
 using action_fee_map_t = std::unordered_map<ACTION_TICKET_TYPE, CAmount>;
 
 // Action ticket property names
@@ -169,7 +162,9 @@ public:
     static bool CheckIfTicketInDb(const std::string& key);
     static ActionRegTickets_t FindAllTicketByMVKey(const std::string& sMVKey);
     // get action storage fees in PSL
-    static action_fee_map_t GetActionFees(const size_t nDataSizeInMB);
+    static action_fee_map_t GetActionFees(const size_t nDataSizeInMB,
+        const uint32_t nChainHeight = std::numeric_limits<uint32_t>::max(),
+        const bool bIncludeTicketFee = true, const bool bUseAdjustmentMultiplier = true) noexcept;
     uint32_t CountItemsInCollection() const override;
 
 protected:

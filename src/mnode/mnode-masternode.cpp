@@ -335,7 +335,9 @@ CMasternode::CMasternode(const CMasternode& other) :
     m_nBlockLastPaid(other.m_nBlockLastPaid),
     fUnitTest(other.fUnitTest),
     aMNFeePerMB(other.aMNFeePerMB),
-    aNFTTicketFeePerKB(other.aNFTTicketFeePerKB)
+    aTicketFeePerKB(other.aTicketFeePerKB),
+    aSenseComputeFee(other.aSenseComputeFee),
+    aSenseProcessingFeePerMB(other.aSenseProcessingFeePerMB)
 {
     setLastPing(other.getLastPing());
     m_nPoSeBanScore.store(other.m_nPoSeBanScore.load());
@@ -371,7 +373,9 @@ bool CMasternode::UpdateFromNewBroadcast(CMasternodeBroadcast& mnb)
     strExtraLayerP2P = mnb.strExtraLayerP2P;
     strExtraLayerCfg = mnb.strExtraLayerCfg;
     aMNFeePerMB = 0;
-    aNFTTicketFeePerKB = 0;
+    aTicketFeePerKB = 0;
+    aSenseComputeFee = 0;
+    aSenseProcessingFeePerMB = 0;
     m_nPoSeBanScore = 0;
     m_nPoSeBanHeight = 0;
     nTimeLastChecked = 0;
@@ -743,7 +747,9 @@ CMasternode& CMasternode::operator=(CMasternode const& from)
     m_nPoSeBanHeight.store(from.m_nPoSeBanHeight.load());
     fUnitTest = from.fUnitTest;
     aMNFeePerMB = from.aMNFeePerMB;
-    aNFTTicketFeePerKB = from.aNFTTicketFeePerKB;
+    aTicketFeePerKB = from.aTicketFeePerKB;
+    aSenseComputeFee = from.aSenseComputeFee;
+    aSenseProcessingFeePerMB = from.aSenseProcessingFeePerMB;
     return *this;
 }
 

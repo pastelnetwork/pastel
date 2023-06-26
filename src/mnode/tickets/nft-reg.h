@@ -183,6 +183,8 @@ public:
     static bool CheckIfTicketInDb(const std::string& key);
     static NFTRegTickets_t FindAllTicketByMVKey(const std::string& sMVKey);
     uint32_t CountItemsInCollection() const override;
+    static CAmount GetNftFee(const size_t nImageDataSizeInMB, const size_t nTicketDataSizeInBytes,
+        const uint32_t nChainHeight = std::numeric_limits<uint32_t>::max()) noexcept;
 
 protected:
     uint16_t m_nNFTTicketVersion{0};
