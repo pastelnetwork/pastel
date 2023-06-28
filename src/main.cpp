@@ -84,7 +84,7 @@ bool fPruneMode = false;
 bool fIsBareMultisigStd = true;
 bool fCheckBlockIndex = false;
 bool fCheckpointsEnabled = true;
-// bool fCoinbaseEnforcedProtectionEnabled = true;
+
 size_t nCoinCacheUsage = 5000 * 300;
 uint64_t nPruneTarget = 0;
 bool fAlerts = DEFAULT_ALERTS;
@@ -1984,7 +1984,8 @@ bool ContextualCheckInputs(
 
                 // Verify signature
                 CScriptCheck check(*coins, tx, i, flags, cacheStore, consensusBranchId, &txdata);
-                if (pvChecks) {
+                if (pvChecks)
+                {
                     pvChecks->push_back(CScriptCheck());
                     check.swap(pvChecks->back());
                 } else if (!check()) {

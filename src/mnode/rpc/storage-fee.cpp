@@ -40,88 +40,91 @@ UniValue storagefee_setfee(const UniValue& params)
         fee = get_long_number(params[1]);
     else
         // If no additional parameter (fee) added, that means we use fee levels bound to PSL deflation
-        fee = static_cast<CAmount>(masterNodeCtrl.GetNetworkFeePerMB() * masterNodeCtrl.GetChainDeflatorFactor());
+        fee = static_cast<CAmount>(masterNodeCtrl.GetNetworkMedianMNFee(MN_FEE::StorageFeePerMB) * masterNodeCtrl.GetChainDeflatorFactor());
 
     CMasternode masternode;
     if (!masterNodeCtrl.masternodeManager.Get(masterNodeCtrl.activeMasternode.outpoint, masternode))
         throw JSONRPCError(RPC_INTERNAL_ERROR, ERRMSG_MASTER_NODE_NOT_FOUND);
     // Update masternode localfee
-    masterNodeCtrl.masternodeManager.SetMasternodeFee(masterNodeCtrl.activeMasternode.outpoint, fee);
+    masterNodeCtrl.masternodeManager.SetMasternodeStorageFee(masterNodeCtrl.activeMasternode.outpoint, fee);
 
     // Send message to inform other masternodes
     masterNodeCtrl.masternodeMessages.BroadcastNewFee(fee);
     return UniValue(true);
 }
 
-UniValue storagefee_getnetworkfee(const UniValue& params)
+typedef struct _MNFeeInfo
 {
-    UniValue retObj(UniValue::VOBJ);
-    const uint32_t nChainHeight = get_height_param(params);
-    const auto &consensusParams = Params().GetConsensus();
-    const auto nGlobalFeeAdjustmentMultiplier = consensusParams.nGlobalFeeAdjustmentMultiplier;
-    const double fChainDeflatorFactor = masterNodeCtrl.GetChainDeflatorFactor(nChainHeight);
-    const double nFeeAdjustmentMultiplier = nGlobalFeeAdjustmentMultiplier * fChainDeflatorFactor;
-    const CAmount nFee = static_cast<CAmount>(masterNodeCtrl.GetNetworkFeePerMB() * nFeeAdjustmentMultiplier);
+    MN_FEE mnFeeType;
+    const char* szOptionName;
+    const char* szLocalOptionName;
+} MNFeeInfo;
 
-    retObj.pushKV("networkfee", nFee);
-    retObj.pushKV("networkfeePat", nFee * COIN);
-    retObj.pushKV(RPC_KEY_HEIGHT, static_cast<uint64_t>(nChainHeight));
-    retObj.pushKV(RPC_KEY_CHAIN_DEFLATOR_FACTOR, fChainDeflatorFactor);
-    return retObj;
-}
+static constexpr std::array<MNFeeInfo, to_integral_type<MN_FEE>(MN_FEE::COUNT)> MN_FEE_INFO =
+{{
+    { MN_FEE::StorageFeePerMB,            "storageFeePerMb",            "localStorageFeePerMb" },
+    { MN_FEE::TicketChainStorageFeePerKB, "ticketChainStorageFeePerKb", "localTicketChainStorageFeePerKb" },
+    { MN_FEE::SenseComputeFee,            "senseComputeFee",            "localSenseComputeFee" },
+    { MN_FEE::SenseProcessingFeePerMB,    "senseProcessingFeePerMb",    "localSenseProcessingFeePerMb" },
+}};
 
-UniValue storagefee_getsensecomputefee(const UniValue& params)
-{
-    if (!masterNodeCtrl.IsActiveMasterNode())
-        throw JSONRPCError(RPC_INTERNAL_ERROR, "This is not an active masternode.");
+// for backward compatilibity
+static constexpr std::array<MNFeeInfo, to_integral_type<MN_FEE>(MN_FEE::COUNT)> MN_FEE_INFO_OLD =
+{{
+    { MN_FEE::StorageFeePerMB,            "networkfee",         "localfee" },
+    { MN_FEE::TicketChainStorageFeePerKB, "nftticketfee",         nullptr },
+    { MN_FEE::SenseComputeFee,            nullptr, nullptr },
+    { MN_FEE::SenseProcessingFeePerMB,    nullptr, nullptr },
+}};
 
-    CMasternode masternode;
-    if (!masterNodeCtrl.masternodeManager.Get(masterNodeCtrl.activeMasternode.outpoint, masternode))
-        throw JSONRPCError(RPC_INTERNAL_ERROR, ERRMSG_MASTER_NODE_NOT_FOUND);
-
-    UniValue retObj(UniValue::VOBJ);
-    const uint32_t nChainHeight = get_height_param(params);
-    const auto &consensusParams = Params().GetConsensus();
-    const auto nGlobalFeeAdjustmentMultiplier = consensusParams.nGlobalFeeAdjustmentMultiplier;
-    const double fChainDeflatorFactor = masterNodeCtrl.GetChainDeflatorFactor(nChainHeight);
-    const double nFeeAdjustmentMultiplier = nGlobalFeeAdjustmentMultiplier * fChainDeflatorFactor;
-
-	const CAmount nSenseComputeFee = static_cast<CAmount>((masternode.aSenseComputeFee == 0 ?
-        masterNodeCtrl.GetSenseComputeFee() : masternode.aSenseComputeFee) * nFeeAdjustmentMultiplier);
-
-	retObj.pushKV("sensecomputefee", nSenseComputeFee);
-	retObj.pushKV("sensecomputefeePat", nSenseComputeFee * COIN);
-    retObj.pushKV(RPC_KEY_HEIGHT, static_cast<uint64_t>(nChainHeight));
-    retObj.pushKV(RPC_KEY_CHAIN_DEFLATOR_FACTOR, fChainDeflatorFactor);
-    return retObj;
-}
-
-UniValue storagefee_getnftticketfee(const UniValue& params)
-{
-    UniValue retObj(UniValue::VOBJ);
-    const uint32_t nChainHeight = get_height_param(params);
-    const auto &consensusParams = Params().GetConsensus();
-    const auto nGlobalFeeAdjustmentMultiplier = consensusParams.nGlobalFeeAdjustmentMultiplier;
-    const double fChainDeflatorFactor = masterNodeCtrl.GetChainDeflatorFactor(nChainHeight);
-    const double nFeeAdjustmentMultiplier = nGlobalFeeAdjustmentMultiplier * fChainDeflatorFactor;
-    const CAmount nFee = static_cast<CAmount>(masterNodeCtrl.GetTicketChainStorageFeePerKB() * nFeeAdjustmentMultiplier);
-
-    retObj.pushKV("nftticketfee", nFee);
-    retObj.pushKV("nftticketfeePat", nFee * COIN);
-    retObj.pushKV(RPC_KEY_HEIGHT, static_cast<uint64_t>(nChainHeight));
-    retObj.pushKV(RPC_KEY_CHAIN_DEFLATOR_FACTOR, fChainDeflatorFactor);
-    return retObj;
-}
-
-UniValue storagefee_getlocalfee(const UniValue& params)
+/**
+ * storagefee API helper.
+ * Check if current cNode is an active masternode and retrieve MN instance.
+ * 
+ * \param masternode - masternode instance to retrieve
+ * \param bThrowExceptionIfFailed - throw exception if masternode is not active
+ * \return true if masternode is active and got MN instance, false otherwise
+ */
+bool check_active_master_node(CMasternode& masternode, const bool bThrowExceptionIfFailed = true)
 {
     if (!masterNodeCtrl.IsActiveMasterNode())
-        throw JSONRPCError(RPC_INTERNAL_ERROR, "This is not an active masternode.");
+    {
+        if (bThrowExceptionIfFailed)
+            throw JSONRPCError(RPC_INTERNAL_ERROR, "This is not an active masternode.");
+        return false;
+    }
 
-    CMasternode masternode;
     if (!masterNodeCtrl.masternodeManager.Get(masterNodeCtrl.activeMasternode.outpoint, masternode))
-        throw JSONRPCError(RPC_INTERNAL_ERROR, ERRMSG_MASTER_NODE_NOT_FOUND);
+    {
+        if (bThrowExceptionIfFailed)
+            throw JSONRPCError(RPC_INTERNAL_ERROR, ERRMSG_MASTER_NODE_NOT_FOUND);
+        return false;
+    }
+    return true;
+}
 
+bool IsOldStorageFeeGetFeeName(const string &sMethodName, bool &bIsLocal)
+{
+    if (sMethodName == "getnetworkfee")
+    {
+        bIsLocal = false;
+        return true;
+    }
+    if (sMethodName == "getnftticketfee")
+    {
+        bIsLocal = false;
+        return true;
+    }
+    if (sMethodName == "getlocalfee")
+    {
+        bIsLocal = true;
+        return true;
+    }
+    return false;
+}
+
+UniValue storagefee_getfee(const UniValue& params, const MN_FEE mnFee)
+{
     UniValue retObj(UniValue::VOBJ);
     const uint32_t nChainHeight = get_height_param(params);
     const auto &consensusParams = Params().GetConsensus();
@@ -129,25 +132,37 @@ UniValue storagefee_getlocalfee(const UniValue& params)
     const double fChainDeflatorFactor = masterNodeCtrl.GetChainDeflatorFactor(nChainHeight);
     const double nFeeAdjustmentMultiplier = nGlobalFeeAdjustmentMultiplier * fChainDeflatorFactor;
 
-    const CAmount nStorageFeePerMB = static_cast<CAmount>((masternode.aMNFeePerMB == 0 ? 
-        masterNodeCtrl.GetMasternodeFeePerMBDefault() : masternode.aMNFeePerMB) * nFeeAdjustmentMultiplier);
+    // for backward compatibility suppport old names
+    bool bIsLocalFee = false;
+    const bool bIsOldRPCMethodName = IsOldStorageFeeGetFeeName(params[0].get_str(), bIsLocalFee);
+    const auto &mnFeeInfo = bIsOldRPCMethodName ? 
+        MN_FEE_INFO_OLD[to_integral_type(mnFee)] : MN_FEE_INFO[to_integral_type(mnFee)];
+    if (!bIsOldRPCMethodName)
+    {
+        // get bIsLocalFee from 3rd parameter:
+        // <feetype> (<height>) (<is_local>)
+        if (params.size() >= 2)
+			bIsLocalFee = get_bool_value(params[2]);
+    }
+    CMasternode masternode;
+    const bool bIsActiveMN = check_active_master_node(masternode, bIsLocalFee);
 
-    retObj.pushKV("localfee", nStorageFeePerMB);
-    retObj.pushKV("localfeePat", nStorageFeePerMB * COIN);
+    const char *szOptionName = bIsLocalFee ? mnFeeInfo.szLocalOptionName : mnFeeInfo.szOptionName;
+    const CAmount nFee = static_cast<CAmount>(
+		(bIsLocalFee ? masternode.GetMNFee(mnFee) : masterNodeCtrl.GetNetworkMedianMNFee(mnFee)) * nFeeAdjustmentMultiplier);
+    if (!szOptionName)
+        throw JSONRPCError(RPC_INTERNAL_ERROR, "This fee is not supported by this RPC call.");
+    string sOptionName(szOptionName);
+
+    retObj.pushKV(sOptionName, nFee);
+    retObj.pushKV(sOptionName + "Pat", nFee * COIN);
     retObj.pushKV(RPC_KEY_HEIGHT, static_cast<uint64_t>(nChainHeight));
     retObj.pushKV(RPC_KEY_CHAIN_DEFLATOR_FACTOR, fChainDeflatorFactor);
     return retObj;
 }
 
-UniValue storagefee_getsenseprocessingfee(const UniValue& params)
+UniValue storagefee_getfees(const UniValue& params)
 {
-    if (!masterNodeCtrl.IsActiveMasterNode())
-        throw JSONRPCError(RPC_INTERNAL_ERROR, "This is not an active masternode.");
-
-    CMasternode masternode;
-    if (!masterNodeCtrl.masternodeManager.Get(masterNodeCtrl.activeMasternode.outpoint, masternode))
-        throw JSONRPCError(RPC_INTERNAL_ERROR, ERRMSG_MASTER_NODE_NOT_FOUND);
-
     UniValue retObj(UniValue::VOBJ);
     const uint32_t nChainHeight = get_height_param(params);
     const auto &consensusParams = Params().GetConsensus();
@@ -155,11 +170,27 @@ UniValue storagefee_getsenseprocessingfee(const UniValue& params)
     const double fChainDeflatorFactor = masterNodeCtrl.GetChainDeflatorFactor(nChainHeight);
     const double nFeeAdjustmentMultiplier = nGlobalFeeAdjustmentMultiplier * fChainDeflatorFactor;
 
-    const CAmount nSenseProcessingFeePerMB = static_cast<CAmount>((masternode.aSenseProcessingFeePerMB == 0 ? 
-        masterNodeCtrl.GetSenseProcessingFeePerMB() : masternode.aSenseProcessingFeePerMB) * nFeeAdjustmentMultiplier);
+    CMasternode masternode;
+    const bool bIsActiveMN = check_active_master_node(masternode, false);
 
-    retObj.pushKV("localfee", nSenseProcessingFeePerMB);
-    retObj.pushKV("localfeePat", nSenseProcessingFeePerMB * COIN);
+    string sOptionName;
+    for (uint32_t mnFeeId = 0; mnFeeId < to_integral_type(MN_FEE::COUNT); ++mnFeeId)
+    {
+        const MN_FEE mnFee = static_cast<MN_FEE>(mnFeeId);
+        const auto &mnFeeInfo = MN_FEE_INFO[to_integral_type(mnFee)];
+
+        // network median fee
+        sOptionName = mnFeeInfo.szOptionName;
+        CAmount nFee = static_cast<CAmount>(masterNodeCtrl.GetNetworkMedianMNFee(mnFee) * nFeeAdjustmentMultiplier);
+        retObj.pushKV(sOptionName, nFee);
+        retObj.pushKV(sOptionName + "Pat", nFee * COIN);
+
+        // local fee
+        sOptionName = mnFeeInfo.szLocalOptionName;
+        nFee = static_cast<CAmount>(masternode.GetMNFee(mnFee) * nFeeAdjustmentMultiplier);
+        retObj.pushKV(sOptionName, nFee);
+        retObj.pushKV(sOptionName + "Pat", nFee * COIN);
+    }
     retObj.pushKV(RPC_KEY_HEIGHT, static_cast<uint64_t>(nChainHeight));
     retObj.pushKV(RPC_KEY_CHAIN_DEFLATOR_FACTOR, fChainDeflatorFactor);
     return retObj;
@@ -219,7 +250,10 @@ Returns:
 
 UniValue storagefee(const UniValue& params, bool fHelp)
 {
-    RPC_CMD_PARSER(STORAGE_FEE, params, setfee, getnetworkfee, getsensecomputefee, getsenseprocessingfee, getnftticketfee, getlocalfee, getactionfees);
+    RPC_CMD_PARSER(STORAGE_FEE, params, setfee,
+        getnetworkfee, getlocalfee, getnftticketfee,
+        getstoragefee, getticketfee, getsensecomputefee, getsenseprocessingfee, 
+        getfees, getactionfees);
 
     if (fHelp || !STORAGE_FEE.IsCmdSupported())
         throw runtime_error(
@@ -230,13 +264,13 @@ Arguments:
 1. "command"        (string or set of strings, required) The command to execute
 
 Available commands:
-  setfee <n>                           - Set storage fee for MN.
-  getnetworkfee	(<height>)             - Get Network median storage fee (per MB).
-  getnftticketfee (<height>)           - Get Network median NFT ticket fee (per KB).
-  getsensecomputefee (<height>)        - Get Network median Sense Compute fee.
-  getsenseprocessingfee (<height>)     - Get Network median Sense Processing fee (per MB).
-  getlocalfee (<height>)               - Get local masternode storage fee (per MB).
-  getactionfees <data_size> (<height>) - Get action fee by data size (in MB)
+  setfee <n>                                    - Set storage fee for MN.
+  getfees (<height>) (<is_local>)               - Get various Network median or local fees.
+  getstoragefee	(<height>) (<is_local>)         - Get Network median or local storage fee (per MB).
+  getticketfee (<height>) (<is_local>)          - Get Network median or local ticket blockain storage fee (per KB).
+  getsensecomputefee (<height>) (<is_local>)    - Get Network median or local sense compute fee.
+  getsenseprocessingfee (<height>) (<is_local>) - Get Network median Sense Processing fee (per MB).
+  getactionfees <data_size> (<height>)          - Get action fees by data size (in MB)
 
 Examples:
 )"
@@ -250,29 +284,43 @@ Examples:
         case RPC_CMD_STORAGE_FEE::setfee:
 			retObj = storagefee_setfee(params);
 			break;
-        
+
+        // obsolete commands - kept for backward compatibility only
         case RPC_CMD_STORAGE_FEE::getnetworkfee:
-            retObj = storagefee_getnetworkfee(params);
-            break;
-
-        case RPC_CMD_STORAGE_FEE::getsensecomputefee:
-            retObj = storagefee_getsensecomputefee(params);
-            break;
-
-        case RPC_CMD_STORAGE_FEE::getnftticketfee:
-            retObj = storagefee_getnftticketfee(params);
+            retObj = storagefee_getfee(params, MN_FEE::StorageFeePerMB);
             break;
 
         case RPC_CMD_STORAGE_FEE::getlocalfee:
-            retObj = storagefee_getlocalfee(params);
+            retObj = storagefee_getfee(params, MN_FEE::StorageFeePerMB);
+            break;
+
+        case RPC_CMD_STORAGE_FEE::getnftticketfee:
+            retObj = storagefee_getfee(params, MN_FEE::TicketChainStorageFeePerKB);
+            break;
+
+        // new commands
+        case RPC_CMD_STORAGE_FEE::getstoragefee:
+            retObj = storagefee_getfee(params, MN_FEE::StorageFeePerMB);
+			break;
+
+        case RPC_CMD_STORAGE_FEE::getticketfee:
+            retObj = storagefee_getfee(params, MN_FEE::TicketChainStorageFeePerKB);
+            break;
+
+        case RPC_CMD_STORAGE_FEE::getsensecomputefee:
+            retObj = storagefee_getfee(params, MN_FEE::SenseComputeFee);
+            break;
+
+        case RPC_CMD_STORAGE_FEE::getsenseprocessingfee:
+            retObj = storagefee_getfee(params, MN_FEE::SenseProcessingFeePerMB);
+            break;
+
+        case RPC_CMD_STORAGE_FEE::getfees:
+            retObj = storagefee_getfees(params);
             break;
 
         case RPC_CMD_STORAGE_FEE::getactionfees:
             retObj = storagefee_getactionfees(params);
-            break;
-
-        case RPC_CMD_STORAGE_FEE::getsenseprocessingfee:
-            retObj = storagefee_getsenseprocessingfee(params);
             break;
 
         default:

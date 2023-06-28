@@ -33,7 +33,7 @@ MasterNode specific logic and initializations
 void CMasterNodeController::InvalidateParameters()
 {
     m_nMasternodeFeePerMBDefault = 0;
-    m_nTicketFeePerKBDefault = 0;
+    m_nTicketChainStorageFeePerKBDefault = 0;
     m_nSenseProcessingFeePerMBDefault = 0;
     m_nSenseComputeFeeDefault = 0;
 
@@ -85,7 +85,7 @@ void CMasterNodeController::SetParameters()
     // data storage fee per MB
     m_nMasternodeFeePerMBDefault            = 5'000;
     // default ticket blockchain storage fee in PSL per KB
-    m_nTicketFeePerKBDefault                = 200;
+    m_nTicketChainStorageFeePerKBDefault    = 200;
     // default action ticket fee in PSL per MB
     m_nSenseProcessingFeePerMBDefault       = 50;
     // default flat sense compute fee in PSL
@@ -607,9 +607,36 @@ fs::path CMasterNodeController::GetMasternodeConfigFile()
     return pathConfigFile;
 }
 
-CAmount CMasterNodeController::GetNetworkFeePerMB() const noexcept
+CAmount CMasterNodeController::GetDefaultMNFee(const MN_FEE mnFee) const noexcept
 {
-    CAmount nFee = masterNodeCtrl.m_nMasternodeFeePerMBDefault;
+    CAmount nFee = 0;
+    switch (mnFee)
+    {
+        case MN_FEE::StorageFeePerMB:
+            nFee = m_nMasternodeFeePerMBDefault;
+            break;
+
+        case MN_FEE::TicketChainStorageFeePerKB:
+            nFee = m_nTicketChainStorageFeePerKBDefault;
+			break;
+
+        case MN_FEE::SenseComputeFee:
+            nFee = m_nSenseComputeFeeDefault;
+			break;
+
+        case MN_FEE::SenseProcessingFeePerMB:
+            nFee = m_nSenseProcessingFeePerMBDefault;
+            break;
+
+        default:
+            break;
+    }
+    return nFee;
+}
+
+CAmount CMasterNodeController::GetNetworkMedianMNFee(const MN_FEE mnFee) const noexcept
+{
+    CAmount nFee = GetDefaultMNFee(mnFee);
     if (m_fMasterNode)
     {
         // COutPoint => CMasternode
@@ -619,67 +646,12 @@ CAmount CMasterNodeController::GetNetworkFeePerMB() const noexcept
             vector<CAmount> vFee(mapMasternodes.size());
             size_t cnt = 0;
             for (const auto& [op, mn] : mapMasternodes)
-                vFee[cnt++] = mn.aMNFeePerMB > 0 ? mn.aMNFeePerMB : masterNodeCtrl.m_nMasternodeFeePerMBDefault;
+                vFee[cnt++] = mn.GetMNFee(mnFee);
             // Use trimmean to calculate the value with fixed 25% percentage
             nFee = static_cast<CAmount>(ceil(TRIMMEAN(vFee, 0.25)));
         }
     }
     return nFee;
-}
-
-CAmount CMasterNodeController::GetSenseComputeFee() const noexcept
-{
-    CAmount nFee = masterNodeCtrl.m_nSenseComputeFeeDefault;
-    if (m_fMasterNode)
-    {
-        // COutPoint => CMasternode
-        const auto mapMasternodes = masternodeManager.GetFullMasternodeMap();
-        if (!mapMasternodes.empty())
-        {
-            vector<CAmount> vFee(mapMasternodes.size());
-            size_t cnt = 0;
-            for (const auto& [op, mn] : mapMasternodes)
-                vFee[cnt++] = mn.aSenseComputeFee > 0 ? mn.aSenseComputeFee : masterNodeCtrl.m_nSenseComputeFeeDefault;
-            // Use trimmean to calculate the value with fixed 25% percentage
-            nFee = static_cast<CAmount>(ceil(TRIMMEAN(vFee, 0.25)));
-        }
-    }
-    return nFee;
-}
-
-CAmount CMasterNodeController::GetSenseProcessingFeePerMB() const noexcept
-{
-    CAmount nFee = masterNodeCtrl.m_nSenseProcessingFeePerMBDefault;
-    if (m_fMasterNode)
-    {
-        // COutPoint => CMasternode
-        const auto mapMasternodes = masternodeManager.GetFullMasternodeMap();
-        if (!mapMasternodes.empty())
-        {
-            vector<CAmount> vFee(mapMasternodes.size());
-            size_t cnt = 0;
-            for (const auto& [op, mn] : mapMasternodes)
-                vFee[cnt++] = mn.aSenseProcessingFeePerMB > 0 ? mn.aSenseProcessingFeePerMB : masterNodeCtrl.m_nSenseProcessingFeePerMBDefault;
-            // Use trimmean to calculate the value with fixed 25% percentage
-            nFee = static_cast<CAmount>(ceil(TRIMMEAN(vFee, 0.25)));
-        }
-    }
-    return nFee;
-}
-
-CAmount CMasterNodeController::GetTicketChainStorageFeePerKB() const noexcept
-{
-    if (m_fMasterNode)
-    {
-        CAmount nFee = 0;
-        // COutPoint => CMasternode
-        const auto mapMasternodes = masternodeManager.GetFullMasternodeMap();
-        for (const auto& [op, mn] : mapMasternodes)
-            nFee += mn.aTicketFeePerKB > 0? mn.aTicketFeePerKB : masterNodeCtrl.m_nTicketFeePerKBDefault;
-        nFee /= mapMasternodes.size();
-        return nFee;
-    }
-    return m_nTicketFeePerKBDefault;
 }
 
 /**
@@ -692,7 +664,7 @@ CAmount CMasterNodeController::GetActionTicketFeePerMB(const ACTION_TICKET_TYPE 
 {
     // this should use median fees for actions fee reported by SNs
     if (actionTicketType == ACTION_TICKET_TYPE::SENSE)
-        return GetSenseProcessingFeePerMB();
+        return GetNetworkMedianMNFee(MN_FEE::SenseProcessingFeePerMB);
     return 0;
 }
 

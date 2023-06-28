@@ -229,7 +229,7 @@ void CMasternodeMessageProcessor::ProcessMessage(CNode* pFrom, string& strComman
                     throw runtime_error("Unknown Masternode");
 
                 // Update masternode fee
-                masterNodeCtrl.masternodeManager.SetMasternodeFee(message.vinMasternodeFrom.prevout, atol(message.message.c_str()));
+                masterNodeCtrl.masternodeManager.SetMasternodeStorageFee(message.vinMasternodeFrom.prevout, atol(message.message.c_str()));
             }
         }
 

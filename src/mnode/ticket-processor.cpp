@@ -1,4 +1,4 @@
-// Copyright (c) 2019-2023 The Pastel Core developers
+// Copyright (c) 2018-2023 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 
@@ -1643,10 +1643,10 @@ bool CPastelTicketProcessor::CreateP2FMSTransactionWithExtra(const CDataStream& 
         bUseFundingAddress = true;
     }
 
-    //calculate aprox required amount
-    CAmount nAproxFeeNeeded = payTxFee.GetFee(nInputDataSize) * 2;
-    if (nAproxFeeNeeded < payTxFee.GetFeePerK())
-        nAproxFeeNeeded = payTxFee.GetFeePerK();
+    // calculate approximate required amount
+    CAmount nApproxFeeNeeded = payTxFee.GetFee(nInputDataSize) * 2;
+    if (nApproxFeeNeeded < payTxFee.GetFeePerK())
+        nApproxFeeNeeded = payTxFee.GetFeePerK();
 
     const size_t nFakeTxCount = vOutScripts.size();
     // Amount in patoshis per output
@@ -1654,7 +1654,7 @@ bool CPastelTicketProcessor::CreateP2FMSTransactionWithExtra(const CDataStream& 
     // MUST be precise!!! in patoshis
     const CAmount lost = (pricePSL * COIN) - perOutputAmount * nFakeTxCount;
     // total amount to spend in patoshis
-    const CAmount allSpentAmount = (pricePSL * COIN) + nAproxFeeNeeded + extraAmount;
+    const CAmount allSpentAmount = (pricePSL * COIN) + nApproxFeeNeeded + extraAmount;
 
     auto nActiveChainHeight = gl_nChainHeight + 1;
     if (!chainParams.IsRegTest())
@@ -1705,26 +1705,29 @@ bool CPastelTicketProcessor::CreateP2FMSTransactionWithExtra(const CDataStream& 
                 tx_out.vout[0].nValue = perOutputAmount + lost;
 
                 if (extraAmount != 0)
+                {
                     for (const auto& extra : extraOutputs)
                         tx_out.vout.emplace_back(extra);
+                }
 
                 // Send change output back to input address
                 tx_out.vout[nFakeTxCount].nValue = prevAmount - static_cast<CAmount>(pricePSL * COIN) - extraAmount;
                 tx_out.vout[nFakeTxCount].scriptPubKey = prevPubKey;
 
+                // Calculate correct fee
+                const size_t nTxSize = EncodeHexTx(tx_out).length();
+                CAmount nFeeNeeded = payTxFee.GetFee(nTxSize);
+                //CAmount nFeeNeeded = pwalletMain->GetMinimumFee(nTxSize, nTxConfirmTarget, mempool);
+                //if (nFeeNeeded < payTxFee.GetFeePerK())
+                //    nFeeNeeded = payTxFee.GetFeePerK();
+
+                // nFakeTxCount is index of the change output
+                tx_out.vout[nFakeTxCount].nValue -= nFeeNeeded;
+
                 // sign transaction - unlock input
                 SignatureData sigdata;
                 ProduceSignature(MutableTransactionSignatureCreator(pwalletMain, &tx_out, 0, prevAmount, to_integral_type(SIGHASH::ALL)), prevPubKey, sigdata, consensusBranchId);
                 UpdateTransaction(tx_out, 0, sigdata);
-
-                // Calculate correct fee
-                size_t tx_size = EncodeHexTx(tx_out).length();
-                CAmount nFeeNeeded = payTxFee.GetFee(tx_size);
-                if (nFeeNeeded < payTxFee.GetFeePerK())
-                    nFeeNeeded = payTxFee.GetFeePerK();
-
-                // nFakeTxCount is index of the change output
-                tx_out.vout[nFakeTxCount].nValue -= nFeeNeeded;
 
                 bOk = true;
                 break;
@@ -1754,6 +1757,8 @@ bool CPastelTicketProcessor::StoreP2FMSTransaction(const CMutableTransaction& tx
     {
         error_ret.clear();
         bool fMissingInputs = false;
+
+        LOCK(cs_main);
         if (AcceptToMemoryPool(Params(), mempool, state, tx_out, false, &fMissingInputs, true))
         {
             RelayTransaction(tx_out);

@@ -2680,25 +2680,31 @@ bool CWallet::SelectCoinsMinConf(const CAmount& nTargetValue, int nConfMine, int
         setCoinsRet.insert(coinLowestLarger.second);
         nValueRet += coinLowestLarger.first;
     }
-    else {
+    else
+    {
         for (unsigned int i = 0; i < vValue.size(); i++)
+        {
             if (vfBest[i])
             {
                 setCoinsRet.insert(vValue[i].second);
                 nValueRet += vValue[i].first;
             }
+        }
 
         LogPrint("selectcoins", "SelectCoins() best subset: ");
         for (unsigned int i = 0; i < vValue.size(); i++)
+        {
             if (vfBest[i])
                 LogPrint("selectcoins", "%s ", FormatMoney(vValue[i].first));
+        }
         LogPrint("selectcoins", "total %s\n", FormatMoney(nBest));
     }
 
     return true;
 }
 
-bool CWallet::SelectCoins(const CAmount& nTargetValue, set<pair<const CWalletTx*,unsigned int> >& setCoinsRet, CAmount& nValueRet,  bool& fOnlyCoinbaseCoinsRet, bool& fNeedCoinbaseCoinsRet, const CCoinControl* coinControl) const
+bool CWallet::SelectCoins(const CAmount& nTargetValue, set<pair<const CWalletTx*,unsigned int> >& setCoinsRet, CAmount& nValueRet,
+    bool& fOnlyCoinbaseCoinsRet, bool& fNeedCoinbaseCoinsRet, const CCoinControl* coinControl) const
 {
     // Output parameter fOnlyCoinbaseCoinsRet is set to true when the only available coins are coinbase utxos.
     vector<COutput> vCoinsNoCoinbase, vCoinsWithCoinbase;
@@ -2840,8 +2846,10 @@ bool CWallet::CreateTransaction(const vector<CRecipient>& vecSend, CWalletTx& wt
     CMutableTransaction txNew = CreateNewContextualCMutableTransaction(consensus, nextBlockHeight);
 
     // Activates after Overwinter network upgrade
-    if (NetworkUpgradeActive(nextBlockHeight, consensus, Consensus::UpgradeIndex::UPGRADE_OVERWINTER)) {
-        if (txNew.nExpiryHeight >= TX_EXPIRY_HEIGHT_THRESHOLD){
+    if (NetworkUpgradeActive(nextBlockHeight, consensus, Consensus::UpgradeIndex::UPGRADE_OVERWINTER))
+    {
+        if (txNew.nExpiryHeight >= TX_EXPIRY_HEIGHT_THRESHOLD)
+        {
             strFailReason = _("nExpiryHeight must be less than TX_EXPIRY_HEIGHT_THRESHOLD.");
             return false;
         }
@@ -3049,14 +3057,13 @@ bool CWallet::CreateTransaction(const vector<CRecipient>& vecSend, CWalletTx& wt
                     {
                         strFailReason = _("Signing transaction failed");
                         return false;
-                    } else {
+                    } else
                         UpdateTransaction(txNew, nIn, sigdata);
-                    }
 
                     nIn++;
                 }
 
-                unsigned int nBytes = static_cast<unsigned int>(::GetSerializeSize(txNew, SER_NETWORK, PROTOCOL_VERSION));
+                const size_t nBytes = ::GetSerializeSize(txNew, SER_NETWORK, PROTOCOL_VERSION);
 
                 // Remove scriptSigs if we used dummy signatures for fee calculation
                 if (!sign)
@@ -3069,7 +3076,7 @@ bool CWallet::CreateTransaction(const vector<CRecipient>& vecSend, CWalletTx& wt
                 *static_cast<CTransaction*>(&wtxNew) = CTransaction(txNew);
 
                 // Limit size
-                if (nBytes >= max_tx_size)
+                if (nBytes >= static_cast<size_t>(max_tx_size))
                 {
                     strFailReason = _("Transaction too large");
                     return false;
@@ -3097,7 +3104,7 @@ bool CWallet::CreateTransaction(const vector<CRecipient>& vecSend, CWalletTx& wt
                 // because we must be at the maximum allowed fee.
                 if (nFeeNeeded < ::minRelayTxFee.GetFee(nBytes))
                 {
-                    strFailReason = strprintf("Transaction too large for fee policy: fee needed = %s; minRelayTxFee for %d bytes is set to %s",
+                    strFailReason = strprintf("Transaction too large for fee policy: fee needed = %s; minRelayTxFee for %zu bytes is set to %s",
                                               FormatMoney(nFeeNeeded), nBytes, FormatMoney(::minRelayTxFee.GetFee(nBytes)));
                     return false;
                 }
@@ -3167,7 +3174,7 @@ bool CWallet::CommitTransaction(CWalletTx& wtxNew, CReserveKey& reservekey)
     return true;
 }
 
-CAmount CWallet::GetMinimumFee(unsigned int nTxBytes, unsigned int nConfirmTarget, const CTxMemPool& pool)
+CAmount CWallet::GetMinimumFee(const size_t nTxBytes, unsigned int nConfirmTarget, const CTxMemPool& pool)
 {
     // payTxFee is user-set "I want to pay this much"
     CAmount nFeeNeeded = payTxFee.GetFee(nTxBytes);
@@ -3177,8 +3184,7 @@ CAmount CWallet::GetMinimumFee(unsigned int nTxBytes, unsigned int nConfirmTarge
     // User didn't set: use -txconfirmtarget to estimate...
     if (nFeeNeeded == 0)
         nFeeNeeded = pool.estimateFee(nConfirmTarget).GetFee(nTxBytes);
-    // ... unless we don't have enough mempool data, in which case fall
-    // back to a hard-coded fee
+    // ... unless we don't have enough mempool data, in which case fall back to a hard-coded fee
     if (nFeeNeeded == 0)
         nFeeNeeded = minTxFee.GetFee(nTxBytes);
     // prevent user from paying a non-sense fee (like 1 patoshi): 0 < fee < minRelayFee
@@ -3189,9 +3195,6 @@ CAmount CWallet::GetMinimumFee(unsigned int nTxBytes, unsigned int nConfirmTarge
         nFeeNeeded = maxTxFee;
     return nFeeNeeded;
 }
-
-
-
 
 DBErrors CWallet::LoadWallet(bool& fFirstRunRet)
 {
@@ -3222,7 +3225,6 @@ DBErrors CWallet::LoadWallet(bool& fFirstRunRet)
     return DB_LOAD_OK;
 }
 
-
 DBErrors CWallet::ZapWalletTx(vector<CWalletTx>& vWtx)
 {
     if (!fFileBacked)
@@ -3245,7 +3247,6 @@ DBErrors CWallet::ZapWalletTx(vector<CWalletTx>& vWtx)
 
     return DB_LOAD_OK;
 }
-
 
 bool CWallet::SetAddressBook(const CTxDestination& address, const string& strName, const string& strPurpose)
 {

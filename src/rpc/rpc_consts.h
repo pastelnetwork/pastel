@@ -16,7 +16,7 @@ constexpr auto RPC_KEY_MESSAGE					= "message";
 constexpr auto RPC_KEY_KEY						= "key";
 constexpr auto RPC_KEY_PRIVKEY					= "privKey";
 constexpr auto RPC_KEY_HEIGHT					= "height";
-constexpr auto RPC_KEY_CHAIN_DEFLATOR_FACTOR    = "fee_deflator_factor";
+constexpr auto RPC_KEY_CHAIN_DEFLATOR_FACTOR    = "feeDeflatorFactor";
 
 // rpc response object key values
 constexpr auto RPC_RESULT_FAILED				= "failed";

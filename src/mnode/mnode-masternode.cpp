@@ -334,10 +334,10 @@ CMasternode::CMasternode(const CMasternode& other) :
     m_collateralMinConfBlockHash(other.m_collateralMinConfBlockHash),
     m_nBlockLastPaid(other.m_nBlockLastPaid),
     fUnitTest(other.fUnitTest),
-    aMNFeePerMB(other.aMNFeePerMB),
-    aTicketFeePerKB(other.aTicketFeePerKB),
-    aSenseComputeFee(other.aSenseComputeFee),
-    aSenseProcessingFeePerMB(other.aSenseProcessingFeePerMB)
+    m_nMNFeePerMB(other.m_nMNFeePerMB),
+    m_nTicketChainStorageFeePerKB(other.m_nTicketChainStorageFeePerKB),
+    m_nSenseComputeFee(other.m_nSenseComputeFee),
+    m_nSenseProcessingFeePerMB(other.m_nSenseProcessingFeePerMB)
 {
     setLastPing(other.getLastPing());
     m_nPoSeBanScore.store(other.m_nPoSeBanScore.load());
@@ -372,10 +372,10 @@ bool CMasternode::UpdateFromNewBroadcast(CMasternodeBroadcast& mnb)
     strExtraLayerAddress = mnb.strExtraLayerAddress;
     strExtraLayerP2P = mnb.strExtraLayerP2P;
     strExtraLayerCfg = mnb.strExtraLayerCfg;
-    aMNFeePerMB = 0;
-    aTicketFeePerKB = 0;
-    aSenseComputeFee = 0;
-    aSenseProcessingFeePerMB = 0;
+    m_nMNFeePerMB = 0;
+    m_nTicketChainStorageFeePerKB = 0;
+    m_nSenseComputeFee = 0;
+    m_nSenseProcessingFeePerMB = 0;
     m_nPoSeBanScore = 0;
     m_nPoSeBanHeight = 0;
     nTimeLastChecked = 0;
@@ -746,11 +746,63 @@ CMasternode& CMasternode::operator=(CMasternode const& from)
     m_nPoSeBanScore.store(from.m_nPoSeBanScore.load());
     m_nPoSeBanHeight.store(from.m_nPoSeBanHeight.load());
     fUnitTest = from.fUnitTest;
-    aMNFeePerMB = from.aMNFeePerMB;
-    aTicketFeePerKB = from.aTicketFeePerKB;
-    aSenseComputeFee = from.aSenseComputeFee;
-    aSenseProcessingFeePerMB = from.aSenseProcessingFeePerMB;
+    m_nMNFeePerMB = from.m_nMNFeePerMB;
+    m_nTicketChainStorageFeePerKB = from.m_nTicketChainStorageFeePerKB;
+    m_nSenseComputeFee = from.m_nSenseComputeFee;
+    m_nSenseProcessingFeePerMB = from.m_nSenseProcessingFeePerMB;
     return *this;
+}
+
+CAmount CMasternode::GetMNFee(const MN_FEE mnFee) const noexcept
+{
+    CAmount nFee = 0;
+    switch (mnFee)
+	{
+        case MN_FEE::StorageFeePerMB:
+            nFee = m_nMNFeePerMB == 0 ? masterNodeCtrl.GetDefaultMNFee(mnFee) : m_nMNFeePerMB;
+            break;
+
+        case MN_FEE::TicketChainStorageFeePerKB:
+            nFee = m_nTicketChainStorageFeePerKB == 0 ? masterNodeCtrl.GetDefaultMNFee(mnFee) : m_nTicketChainStorageFeePerKB;
+            break;
+
+        case MN_FEE::SenseComputeFee:
+            nFee = m_nSenseComputeFee == 0 ? masterNodeCtrl.GetDefaultMNFee(mnFee) : m_nSenseComputeFee;
+            break;
+
+        case MN_FEE::SenseProcessingFeePerMB:
+            nFee = m_nSenseProcessingFeePerMB == 0 ? masterNodeCtrl.GetDefaultMNFee(mnFee) : m_nSenseProcessingFeePerMB;
+            break;
+
+        default:
+            break;
+    }
+    return nFee;
+}
+
+void CMasternode::SetMNFee(const MN_FEE mnFee, const CAmount nNewFee) noexcept
+{
+    switch (mnFee)
+    {
+        case MN_FEE::StorageFeePerMB:
+            m_nMNFeePerMB = nNewFee;
+            break;
+
+        case MN_FEE::TicketChainStorageFeePerKB:
+            m_nTicketChainStorageFeePerKB = nNewFee;
+            break;
+
+        case MN_FEE::SenseComputeFee:
+            m_nSenseComputeFee = nNewFee;
+            break;
+
+        case MN_FEE::SenseProcessingFeePerMB:
+            m_nSenseProcessingFeePerMB = nNewFee;
+            break;
+
+        default:
+            break;
+    }
 }
 
 bool CMasternode::IsPoSeVerified()

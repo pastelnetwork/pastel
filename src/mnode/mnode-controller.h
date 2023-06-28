@@ -113,11 +113,9 @@ public:
     bool AlreadyHave(const CInv& inv);
     bool ProcessGetData(CNode* pfrom, const CInv& inv);
 
-    CAmount GetMasternodeFeePerMBDefault() const noexcept { return m_nMasternodeFeePerMBDefault; }
-    CAmount GetNetworkFeePerMB() const noexcept;
-    CAmount GetSenseComputeFee() const noexcept;
-    CAmount GetSenseProcessingFeePerMB() const noexcept;
-    CAmount GetTicketChainStorageFeePerKB() const noexcept;
+    CAmount GetDefaultMNFee(const MN_FEE mnFee) const noexcept;
+    CAmount GetNetworkMedianMNFee(const MN_FEE mnFee) const noexcept;
+
     // get fee in PSL for the given action ticket type
     CAmount GetActionTicketFeePerMB(const ACTION_TICKET_TYPE actionTicketType) const noexcept;
     // get network blockchain deflator factor for the given block height
@@ -138,13 +136,15 @@ protected:
     size_t m_nMasternodeTopMNsNumberMin;
     // number of top masternodes
     size_t m_nMasternodeTopMNsNumber;
-    CAmount m_nTicketFeePerKBDefault;
+
+    // MasterNode default storage fee per MB
+    CAmount m_nMasternodeFeePerMBDefault;
+    // MasterNode default ticket chain storage fee per KB
+    CAmount m_nTicketChainStorageFeePerKBDefault;
     // flat fee for DupeDetection processing
     CAmount m_nSenseComputeFeeDefault;
     // Sense image-size dependent processing fee per MB
     CAmount m_nSenseProcessingFeePerMBDefault;
-    // MasterNode default storage fee per MB
-    CAmount m_nMasternodeFeePerMBDefault;
 
     // default chain deflation rate
     double m_fChainDeflationRateDefault;
@@ -164,6 +164,7 @@ protected:
     double getNetworkDifficulty(const CBlockIndex* blockindex, const bool bNetworkDifficulty) const;
     CACNotificationInterface* pacNotificationInterface;
 };
+
 
 class CMnbRequestConnectionsThread : public CStoppableServiceThread
 {

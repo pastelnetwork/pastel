@@ -473,9 +473,9 @@ action_fee_map_t CActionRegTicket::GetActionFees(const size_t nDataSizeInMB, con
     const bool bIncludeTicketFee, const bool bUseAdjustmentMultiplier) noexcept
 {
     action_fee_map_t feeMap;
-    const CAmount nStorageFeePerMB = masterNodeCtrl.GetNetworkFeePerMB();
+    const CAmount nStorageFeePerMB = masterNodeCtrl.GetNetworkMedianMNFee(MN_FEE::StorageFeePerMB);
     const CAmount nSenseFeePerMB = masterNodeCtrl.GetActionTicketFeePerMB(ACTION_TICKET_TYPE::SENSE);
-    const CAmount nSenseComputeFee = masterNodeCtrl.GetSenseComputeFee();
+    const CAmount nSenseComputeFee = masterNodeCtrl.GetNetworkMedianMNFee(MN_FEE::SenseComputeFee);
 
     // calculate sense fee
     CAmount nSenseFee = 
@@ -488,7 +488,7 @@ action_fee_map_t CActionRegTicket::GetActionFees(const size_t nDataSizeInMB, con
 
     if (bIncludeTicketFee)
     {
-        const CAmount nTicketFeePerKB = masterNodeCtrl.GetTicketChainStorageFeePerKB();
+        const CAmount nTicketFeePerKB = masterNodeCtrl.GetNetworkMedianMNFee(MN_FEE::TicketChainStorageFeePerKB);
 
         nSenseFee += nTicketFeePerKB * ACTION_SENSE_TICKET_SIZE_KB;
         nCascadeFee += nTicketFeePerKB * ACTION_CASCADE_TICKET_SIZE_KB;

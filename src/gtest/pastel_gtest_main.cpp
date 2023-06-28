@@ -142,14 +142,20 @@ string CPastelTest_Environment::GenerateTempDataDir()
     ClearTempDataDir();
 
     // generate temporary unique datadir
-    auto sTempDataDir = generateTempFileName(nullptr);
+    const auto sTempDataDir = generateTempFileName(nullptr);
     m_TempDataDir = fs::path(sTempDataDir);
     if (!fs::exists(m_TempDataDir))
         fs::create_directories(m_TempDataDir);
+
+    SetTempDataDir(sTempDataDir);
+    return sTempDataDir;
+}
+
+void CPastelTest_Environment::SetTempDataDir(const string& sDataDir)
+{
     // clear cached data dirs
     ClearDatadirCache();
-    mapArgs["-datadir"] = sTempDataDir;
-    return sTempDataDir;
+    mapArgs["-datadir"] = sDataDir;
 }
 
 /**

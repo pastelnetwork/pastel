@@ -14,6 +14,7 @@
 #include <timedata.h>
 #include <net.h>
 #include <mnode/mnode-config.h>
+#include <mnode/mnode-consts.h>
 
 class CMasternode;
 class CMasternodeBroadcast;
@@ -207,11 +208,6 @@ public:
 
     v_uint8 vchSig;
 
-    CAmount aMNFeePerMB = 0;          // 0 means default (masterNodeCtrl.m_nMasternodeFeePerMBDefault)
-    CAmount aTicketFeePerKB = 0;      // 0 means default (masterNodeCtrl.m_nTicketFeePerKBDefault)
-    CAmount aSenseComputeFee = 0;     // 0 means default (masterNodeCtrl.m_nSenseComputeFeeDefault)
-    CAmount aSenseProcessingFeePerMB = 0; // 0 means default (masterNodeCtrl.m_nSenseProcessingFeePerMB)
-
     CMasternode();
     CMasternode(const CMasternode& other);
     CMasternode(const CMasternodeBroadcast& mnb);
@@ -262,8 +258,8 @@ public:
         READWRITE(m_sMNPastelID);
         READWRITE(strExtraLayerAddress);
         READWRITE(strExtraLayerCfg);
-        READWRITE(aMNFeePerMB);
-        READWRITE(aTicketFeePerKB);
+        READWRITE(m_nMNFeePerMB);
+        READWRITE(m_nTicketChainStorageFeePerKB);
         if (bRead)
         {
             if (!s.eof())
@@ -283,13 +279,13 @@ public:
         const bool bVersion = (m_nVersion >= 1) && (!bRead || !s.eof());
         if (bVersion)
         {
-			READWRITE(aSenseComputeFee);
-            READWRITE(aSenseProcessingFeePerMB);
+			READWRITE(m_nSenseComputeFee);
+            READWRITE(m_nSenseProcessingFeePerMB);
         }
         else
         {
-            aSenseComputeFee = 0;
-            aSenseProcessingFeePerMB = 0;
+            m_nSenseComputeFee = 0;
+            m_nSenseProcessingFeePerMB = 0;
         }
     }
 
@@ -307,6 +303,9 @@ public:
     bool CheckAndUpdateLastPing(int& nDos) { return m_lastPing.CheckAndUpdate(this, true, nDos); }
     bool CheckLastPing(int& nDos) const { return m_lastPing.SimpleCheck(nDos); }
     bool IsPingedWithin(const int nSeconds, int64_t nTimeToCheckAt = -1) const noexcept;
+
+    CAmount GetMNFee(const MN_FEE mnFee) const noexcept;
+    void SetMNFee(const MN_FEE mnFee, const CAmount nNewFee) noexcept;
 
     // check and update MasterNode's Pastel ID
     bool CheckAndUpdateMNID(std::string &error);
@@ -375,6 +374,11 @@ protected:
     uint256 m_collateralMinConfBlockHash;
     // height of the last block where there was a payment to this masternode
     int m_nBlockLastPaid{};
+
+    CAmount m_nMNFeePerMB = 0;                 // 0 means default (masterNodeCtrl.m_nMasternodeFeePerMBDefault)
+    CAmount m_nTicketChainStorageFeePerKB = 0; // 0 means default (masterNodeCtrl.m_nTicketChainStorageFeePerKBDefault)
+    CAmount m_nSenseComputeFee = 0;            // 0 means default (masterNodeCtrl.m_nSenseComputeFeeDefault)
+    CAmount m_nSenseProcessingFeePerMB = 0;    // 0 means default (masterNodeCtrl.m_nSenseProcessingFeePerMB)
 
     bool fUnitTest = false;
 };

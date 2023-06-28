@@ -1,8 +1,8 @@
 // Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2014 The Bitcoin Core developers
-// Copyright (c) 2018-2021 The Pastel Core developers
+// Copyright (c) 2018-2023 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
-// file COPYING or http://www.opensource.org/licenses/mit-license.php.
+// file COPYING or https://www.opensource.org/licenses/mit-license.php.
 
 #include <txmempool.h>
 #include <clientversion.h>
@@ -536,6 +536,7 @@ CFeeRate CTxMemPool::estimateFee(int nBlocks) const
     LOCK(cs);
     return minerPolicyEstimator->estimateFee(nBlocks);
 }
+
 double CTxMemPool::estimatePriority(int nBlocks) const
 {
     LOCK(cs);

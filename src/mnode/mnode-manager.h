@@ -215,7 +215,7 @@ public:
     bool IsMasternodePingedWithin(const COutPoint& outpoint, int nSeconds, int64_t nTimeToCheckAt = -1);
     void SetMasternodeLastPing(const COutPoint& outpoint, const CMasterNodePing& mnp);
 
-    void SetMasternodeFee(const COutPoint& outpoint, const CAmount newFee);
+    void SetMasternodeStorageFee(const COutPoint& outpoint, const CAmount newFee);
     void IncrementMasterNodePoSeBanScore(const COutPoint& outpoint);
 
     void UpdatedBlockTip(const CBlockIndex *pindex);

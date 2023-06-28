@@ -1,11 +1,13 @@
 #pragma once
 // Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2014 The Bitcoin Core developers
+// Copyright (c) 2018-2023 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
-// file COPYING or http://www.opensource.org/licenses/mit-license.php.
-#include <serialize.h>
+// file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <stdlib.h>
 #include <string>
+
+#include <serialize.h>
 
 typedef int64_t CAmount;
 
@@ -41,21 +43,22 @@ inline bool MoneyRange(const CAmount& nValue) { return (nValue >= 0 && nValue <=
 class CFeeRate
 {
 private:
-    CAmount nPatoshisPerK; // unit is patoshis-per-1,000-bytes
+    CAmount m_nPatoshisPerK; // unit is patoshis-per-1,000-bytes
+
 public:
-    CFeeRate() : nPatoshisPerK(0) { }
-    explicit CFeeRate(const CAmount& _nPatoshisPerK): nPatoshisPerK(_nPatoshisPerK) { }
+    CFeeRate() : m_nPatoshisPerK(0) { }
+    explicit CFeeRate(const CAmount& _nPatoshisPerK): m_nPatoshisPerK(_nPatoshisPerK) { }
     CFeeRate(const CAmount& nFeePaid, size_t nSize);
-    CFeeRate(const CFeeRate& other) { nPatoshisPerK = other.nPatoshisPerK; }
+    CFeeRate(const CFeeRate& other) { m_nPatoshisPerK = other.m_nPatoshisPerK; }
 
     CAmount GetFee(const size_t size) const noexcept; // unit returned is patoshis
     CAmount GetFeePerK() const noexcept { return GetFee(1000); } // patoshis-per-1000-bytes
 
-    friend bool operator<(const CFeeRate& a, const CFeeRate& b) noexcept { return a.nPatoshisPerK < b.nPatoshisPerK; }
-    friend bool operator>(const CFeeRate& a, const CFeeRate& b) noexcept { return a.nPatoshisPerK > b.nPatoshisPerK; }
-    friend bool operator==(const CFeeRate& a, const CFeeRate& b) noexcept { return a.nPatoshisPerK == b.nPatoshisPerK; }
-    friend bool operator<=(const CFeeRate& a, const CFeeRate& b) noexcept { return a.nPatoshisPerK <= b.nPatoshisPerK; }
-    friend bool operator>=(const CFeeRate& a, const CFeeRate& b) noexcept { return a.nPatoshisPerK >= b.nPatoshisPerK; }
+    friend bool operator<(const CFeeRate& a, const CFeeRate& b) noexcept { return a.m_nPatoshisPerK < b.m_nPatoshisPerK; }
+    friend bool operator>(const CFeeRate& a, const CFeeRate& b) noexcept { return a.m_nPatoshisPerK > b.m_nPatoshisPerK; }
+    friend bool operator==(const CFeeRate& a, const CFeeRate& b) noexcept { return a.m_nPatoshisPerK == b.m_nPatoshisPerK; }
+    friend bool operator<=(const CFeeRate& a, const CFeeRate& b) noexcept { return a.m_nPatoshisPerK <= b.m_nPatoshisPerK; }
+    friend bool operator>=(const CFeeRate& a, const CFeeRate& b) noexcept { return a.m_nPatoshisPerK >= b.m_nPatoshisPerK; }
     std::string ToString() const;
 
     ADD_SERIALIZE_METHODS;
@@ -63,6 +66,6 @@ public:
     template <typename Stream>
     inline void SerializationOp(Stream& s, const SERIALIZE_ACTION ser_action)
     {
-        READWRITE(nPatoshisPerK);
+        READWRITE(m_nPatoshisPerK);
     }
 };

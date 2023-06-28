@@ -93,11 +93,11 @@ Examples:
         obj.pushKV("balance",       ValueFromAmount(pwalletMain->GetBalance()));
     }
 #endif
-    obj.pushKV("blocks",        (int)chainActive.Height());
+    obj.pushKV("blocks",        static_cast<uint64_t>(gl_nChainHeight.load()));
     obj.pushKV("timeoffset",    GetTimeOffset());
-    obj.pushKV("connections",   (int)vNodes.size());
+    obj.pushKV("connections",   static_cast<uint64_t>(vNodes.size()));
     obj.pushKV("proxy",         (proxy.IsValid() ? proxy.proxy.ToStringIPPort() : string()));
-    obj.pushKV("difficulty",    (double)GetDifficulty());
+    obj.pushKV("difficulty",    GetDifficulty());
     obj.pushKV("testnet",       Params().TestnetToBeDeprecatedFieldRPC());
 #ifdef ENABLE_WALLET
     if (pwalletMain) {

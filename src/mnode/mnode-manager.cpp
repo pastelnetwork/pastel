@@ -1647,12 +1647,12 @@ void CMasternodeMan::SetMasternodeLastPing(const COutPoint& outpoint, const CMas
         mapSeenMasternodeBroadcast[hash].second.setLastPing(mnp);
 }
 
-void CMasternodeMan::SetMasternodeFee(const COutPoint& outpoint, const CAmount newFee)
+void CMasternodeMan::SetMasternodeStorageFee(const COutPoint& outpoint, const CAmount newFee)
 {
     LOCK(cs);
     CMasternode* pmn = Find(outpoint);
     if (pmn)
-        pmn->aMNFeePerMB = newFee;
+        pmn->SetMNFee(MN_FEE::StorageFeePerMB, newFee);
 }
 
 /**

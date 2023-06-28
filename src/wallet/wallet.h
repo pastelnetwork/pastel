@@ -55,7 +55,7 @@ static constexpr unsigned int DEFAULT_TX_CONFIRM_TARGET = 2;
 //! -maxtxfee will warn if called with a higher fee than this amount (in patoshis)
 static constexpr CAmount nHighTransactionMaxFeeWarning = 100 * nHighTransactionFeeWarning;
 //! Largest (in bytes) free transaction we're willing to create
-static constexpr unsigned int MAX_FREE_TRANSACTION_CREATE_SIZE = 1000;
+static constexpr size_t MAX_FREE_TRANSACTION_CREATE_SIZE = 1000;
 //! Size of witness cache
 //  Should be large enough that we can expect not to reorg beyond our cache
 //  unless there is some exceptional network disruption.
@@ -1027,7 +1027,7 @@ public:
      * Estimate the minimum fee considering user set parameters
      * and the required fee
      */
-    static CAmount GetMinimumFee(unsigned int nTxBytes, unsigned int nConfirmTarget, const CTxMemPool& pool);
+    static CAmount GetMinimumFee(const size_t nTxBytes, unsigned int nConfirmTarget, const CTxMemPool& pool);
 
     bool NewKeyPool();
     bool TopUpKeyPool(unsigned int kpSize = 0);

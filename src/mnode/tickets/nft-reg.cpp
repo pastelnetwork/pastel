@@ -440,8 +440,8 @@ CAmount CNFTRegTicket::GetNftFee(const size_t nImageDataSizeInMB, const size_t n
     const auto nGlobalFeeAdjustmentMultiplier = consensusParams.nGlobalFeeAdjustmentMultiplier;
     const double nFeeAdjustmentMultiplier = nGlobalFeeAdjustmentMultiplier * masterNodeCtrl.GetChainDeflatorFactor(nChainHeight);
 
-    const CAmount nStorageFeePerMB = masterNodeCtrl.GetNetworkFeePerMB();
-    const CAmount nTicketFeePerKB = masterNodeCtrl.GetTicketChainStorageFeePerKB();
+    const CAmount nStorageFeePerMB = masterNodeCtrl.GetNetworkMedianMNFee(MN_FEE::StorageFeePerMB);
+    const CAmount nTicketChainStorageFeePerKB = masterNodeCtrl.GetNetworkMedianMNFee(MN_FEE::TicketChainStorageFeePerKB);
 
     // get sense and cascade fees not including ticket blockchain storage fee
     const action_fee_map_t action_fees = CActionRegTicket::GetActionFees(nImageDataSizeInMB, nChainHeight, false);
@@ -451,6 +451,6 @@ CAmount CNFTRegTicket::GetNftFee(const size_t nImageDataSizeInMB, const size_t n
             (action_fees.at(ACTION_TICKET_TYPE::SENSE) + 
              action_fees.at(ACTION_TICKET_TYPE::CASCADE)) * NFT_DISCOUNT_MULTIPLIER) +
         static_cast<CAmount>(
-            ceil(nTicketDataSizeInBytes * nTicketFeePerKB / 1024) * nFeeAdjustmentMultiplier);
+            ceil(nTicketDataSizeInBytes * nTicketChainStorageFeePerKB / 1024) * nFeeAdjustmentMultiplier);
     return nNftFee;
 }

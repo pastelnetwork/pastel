@@ -1,21 +1,21 @@
 #pragma once
 // Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2014 The Bitcoin Core developers
-// Copyright (c) 2018-2021 The Pastel Core developers
+// Copyright (c) 2018-2023 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
-// file COPYING or http://www.opensource.org/licenses/mit-license.php.
+// file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <list>
 #include <limits>
 #include <unordered_map>
 
-#include "vector_types.h"
-#include "coins.h"
-#include "sync.h"
-#include "addressindex.h"
-#include "spentindex.h"
-#include "script/script.h"
-#include "txmempool_entry.h"
-#include "policy/fees.h"
+#include <vector_types.h>
+#include <coins.h>
+#include <sync.h>
+#include <addressindex.h>
+#include <spentindex.h>
+#include <script/script.h>
+#include <txmempool_entry.h>
+#include <policy/fees.h>
 
 #include "boost/multi_index_container.hpp"
 #include "boost/multi_index/ordered_index.hpp"

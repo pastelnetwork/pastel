@@ -514,7 +514,7 @@ Examples:
     obj.pushKV("protocolversion",PROTOCOL_VERSION);
     obj.pushKV("localservices",       strprintf("%016x", nLocalServices));
     obj.pushKV("timeoffset",    GetTimeOffset());
-    obj.pushKV("connections",   (int)vNodes.size());
+    obj.pushKV("connections",   static_cast<uint64_t>(vNodes.size()));
     obj.pushKV("networks",      GetNetworksInfo());
     obj.pushKV("relayfee",      ValueFromAmount(::minRelayTxFee.GetFeePerK()));
     UniValue localAddresses(UniValue::VARR);
