@@ -609,8 +609,8 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         assert_equal(coins_after, coins_before - ticket.ticket_price)  # no fee yet
 
         #       b.a.6 from another node - get ticket transaction and check
-        #           - there are P2MS outputs with non-zero amounts
-        #           - amounts is totaling 10PSL
+        #           - there are P2FMS outputs with non-zero amounts
+        #           - amounts is totaling 10 PSL
         nonmn3_ticket1_tx_hash = self.nodes[0].getrawtransaction(nonmn3_ticket1_txid)
         nonmn3_ticket1_tx = self.nodes[0].decoderawtransaction(nonmn3_ticket1_tx_hash)
         amount = 0

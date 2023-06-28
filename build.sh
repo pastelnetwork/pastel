@@ -132,7 +132,7 @@ while (( "$#" )); do
       ;;
     --enable-debug)
       # PARAMS+=" $1"
-      PARAMS+=" CXXFLAGS=-g"
+      PARAMS+=" --enable-debug=yes"
       bDebugMode=1
       build_mode="debug"
       shift

@@ -4,6 +4,7 @@
 # file COPYING or https://www.opensource.org/licenses/mit-license.php.
 from typing import Dict
 from pathlib import Path
+from enum import Enum
 import time
 import itertools
 import json
@@ -26,9 +27,54 @@ from pastel_test_framework import (
     TicketType
 )
 
-MIN_TICKET_CONFIRMATIONS = 5
 getcontext().prec = 16
 
+MIN_TICKET_CONFIRMATIONS = 5
+NFT_DISCOUNT_MULTIPLIER = 0.45
+GLOBAL_FEE_ADJUSTMENT_MULTIPLIER = 1.0
+MIN_TX_RELAY_FEE = 0.001 # PSL, 100 patoshis
+
+class MnFeeType(Enum):
+    """
+    Masternode fees.
+    Fee name                   | ID | fee in PSL | rpc command name  | fee option name (network median) | local fee option name
+    """
+    STORAGE_FEE_PER_MB              = 1, 5000, "getstoragefee",         "storageFeePerMb",              "localStorageFeePerMb"
+    TICKET_CHAIN_STORAGE_FEE_PER_KB = 2,  200, "getticketfee",          "ticketChainStorageFeePerKb", "localTicketChainStorageFeePerKb"
+    SENSE_COMPUTE_FEE               = 3, 5000, "getsensecomputefee",    "senseComputeFee",               "localSenseComputeFee"
+    SENSE_PROCESSING_FEE_PER_MB     = 4,   50, "getsenseprocessingfee", "senseProcessingFeePerMb",     "localSenseProcessingFeePerMb"
+    
+    def __init__(self, _: str, fee: int, rpc_command: str, option_name: str, local_option_name: str):
+        self._fee = fee
+        self._rpc_command = rpc_command
+        self._option_name = option_name
+        self._local_option_name = local_option_name
+    
+    def __new__(cls, *args, **kwds):
+        obj = object.__new__(cls)
+        obj._value_ = args[0]
+        return obj
+    
+    def __str__(self):
+        return self.name
+
+    @property
+    def fee(self) -> int:
+        return self._fee
+    
+    @property
+    def rpc_command(self) -> str:
+        return self._rpc_command
+    
+    @property
+    def option_name(self) -> str:
+        return self._option_name
+    
+    @property
+    def local_option_name(self) -> str:
+        return self._local_option_name
+
+    
 class TicketData:
     def __init__(self):
         self.reg_ticket = None                  # Registration ticket json (not encoded)
