@@ -506,7 +506,7 @@ TEST_F(test_bloom, rolling_bloom)
         if (rb1.contains(RandomData()))
             ++nHits;
     }
-    // Run test_bitcoin with --log_level=message to see BOOST_TEST_MESSAGEs:
+    // Run gtest_pasteld with --log_level=message to see test messages:
     GTEST_COUT << "RollingBloomFilter got " << nHits << " false positives (~100 expected)" << endl;
 
     // Insanely unlikely to get a fp count outside this range:

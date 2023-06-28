@@ -421,7 +421,10 @@ int printInitMessage()
 }
 
 #ifdef WIN32
+
+#ifndef
 #define ENABLE_VIRTUAL_TERMINAL_PROCESSING 0x0004
+#endif
 
 bool enableVTMode()
 {

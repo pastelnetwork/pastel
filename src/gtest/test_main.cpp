@@ -63,8 +63,8 @@ TEST(test_main, subsidy_limit_test)
     // 11th), decreasing the total monetary supply by 0.0693 PSL. If the
     // transaction output field is widened, this discrepancy will become smaller
     // or disappear entirely.
-    //BOOST_CHECK_EQUAL(nSum, 2099999997690000ULL);
-    //BOOST_CHECK_EQUAL(nSum, 2099999990760000ULL);
+    // CHECK_EQUAL(nSum, 2099999997690000ULL);
+    // CHECK_EQUAL(nSum, 2099999990760000ULL);
 
     /*Pastel: 
     1. Height = 0; Subsidy = 625000000; Sum = 525000000000000

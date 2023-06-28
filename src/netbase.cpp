@@ -265,7 +265,7 @@ struct timeval MillisToTimeval(int64_t nTimeout)
 /**
  * Read bytes from socket. This will either read the full number of bytes requested
  * or return False on error or timeout.
- * This function can be interrupted by boost thread interrupt.
+ * This function can be interrupted by thread interrupt.
  *
  * @param data Buffer to receive into
  * @param len  Length of data to receive
