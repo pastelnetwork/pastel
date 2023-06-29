@@ -39,10 +39,10 @@ class MnFeeType(Enum):
     Masternode fees.
     Fee name                   | ID | fee in PSL | rpc command name  | fee option name (network median) | local fee option name
     """
-    STORAGE_FEE_PER_MB              = 1, 5000, "getstoragefee",         "storageFeePerMb",              "localStorageFeePerMb"
+    STORAGE_FEE_PER_MB              = 1, 5000, "getstoragefee",         "storageFeePerMb",            "localStorageFeePerMb"
     TICKET_CHAIN_STORAGE_FEE_PER_KB = 2,  200, "getticketfee",          "ticketChainStorageFeePerKb", "localTicketChainStorageFeePerKb"
-    SENSE_COMPUTE_FEE               = 3, 5000, "getsensecomputefee",    "senseComputeFee",               "localSenseComputeFee"
-    SENSE_PROCESSING_FEE_PER_MB     = 4,   50, "getsenseprocessingfee", "senseProcessingFeePerMb",     "localSenseProcessingFeePerMb"
+    SENSE_COMPUTE_FEE               = 3, 5000, "getsensecomputefee",    "senseComputeFee",            "localSenseComputeFee"
+    SENSE_PROCESSING_FEE_PER_MB     = 4,   50, "getsenseprocessingfee", "senseProcessingFeePerMb",    "localSenseProcessingFeePerMb"
     
     def __init__(self, _: str, fee: int, rpc_command: str, option_name: str, local_option_name: str):
         self._fee = fee

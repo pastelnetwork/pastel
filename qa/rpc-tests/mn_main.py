@@ -19,7 +19,6 @@ from test_framework.util import (
 from mn_common import (
     MasterNodeCommon,
     MnFeeType,
-    NFT_DISCOUNT_MULTIPLIER,
     GLOBAL_FEE_ADJUSTMENT_MULTIPLIER,
 )
 import test_framework.rpc_consts as rpc
@@ -49,7 +48,7 @@ class MasterNodeMainTest (MasterNodeCommon):
         self.setup_masternodes_network()
 
 
-    def storagefee_tests (self):
+    def storagefee_tests(self):
         print("=== Test MN Fees ===")
         assert_shows_help(self.nodes[0].storagefee)
 
@@ -94,6 +93,7 @@ class MasterNodeMainTest (MasterNodeCommon):
         print(f"action fee [cascade]: {cascade_fee}")
         assert_greater_than(sense_fee, 0)
         assert_greater_than(cascade_fee, 0)
+
 
     def run_test (self):
         tests = ['cache', 'sync', 'ping', 'restart', 'spent', 'fee']
