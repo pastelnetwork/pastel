@@ -136,7 +136,7 @@ while (( "$#" )); do
         PARAMS+=" CFLAGS=-ggdb"
 #      else
 #        PARAMS+=" --enable-debug=yes"
-      fi
+#      fi
       bDebugMode=1
       build_mode="debug"
       shift
