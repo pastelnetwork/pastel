@@ -559,8 +559,8 @@ Examples:
     
     UniValue jsonBalances(UniValue::VOBJ);
     KeyIO keyIO(Params());
-    const auto balances = pwalletMain->GetAddressBalances(isMineFilter);
-    for (const auto &[txDestination, amount] : balances)
+    const auto balanceMap = pwalletMain->GetAddressBalances(isMineFilter);
+    for (const auto &[txDestination, amount] : balanceMap)
     {
         if (!bIncludeEmpty && amount == 0)
             continue;
@@ -604,22 +604,24 @@ Examples:
 
     KeyIO keyIO(Params());
     UniValue jsonGroupings(UniValue::VARR);
-    auto balances = pwalletMain->GetAddressBalances(isminetype::ALL);
-    for (const set<CTxDestination>& grouping : pwalletMain->GetAddressGroupings()) {
+    const auto balanceMap = pwalletMain->GetAddressBalances(isminetype::ALL);
+    for (const set<CTxDestination>& grouping : pwalletMain->GetAddressGroupings())
+    {
         UniValue jsonGrouping(UniValue::VARR);
         for (const CTxDestination& address : grouping)
         {
+            if (balanceMap.count(address) == 0)
+                continue;
             UniValue addressInfo(UniValue::VARR);
             addressInfo.push_back(keyIO.EncodeDestination(address));
-            addressInfo.push_back(ValueFromAmount(balances[address]));
+            addressInfo.push_back(ValueFromAmount(balanceMap.at(address)));
             {
-                if (pwalletMain->mapAddressBook.find(address) != pwalletMain->mapAddressBook.end()) {
+                if (pwalletMain->mapAddressBook.find(address) != pwalletMain->mapAddressBook.cend())
                     addressInfo.push_back(pwalletMain->mapAddressBook.find(address)->second.name);
-                }
             }
-            jsonGrouping.push_back(addressInfo);
+            jsonGrouping.push_back(move(addressInfo));
         }
-        jsonGroupings.push_back(jsonGrouping);
+        jsonGroupings.push_back(move(jsonGrouping));
     }
     return jsonGroupings;
 }
@@ -663,19 +665,16 @@ As json rpc
 
     KeyIO keyIO(Params());
     CTxDestination dest = keyIO.DecodeDestination(strAddress);
-    if (!IsValidDestination(dest)) {
+    if (!IsValidDestination(dest))
         throw JSONRPCError(RPC_TYPE_ERROR, "Invalid address");
-    }
 
     const CKeyID *keyID = get_if<CKeyID>(&dest);
-    if (!keyID) {
+    if (!keyID)
         throw JSONRPCError(RPC_TYPE_ERROR, "Address does not refer to key");
-    }
 
     CKey key;
-    if (!pwalletMain->GetKey(*keyID, key)) {
+    if (!pwalletMain->GetKey(*keyID, key))
         throw JSONRPCError(RPC_WALLET_ERROR, "Private key not available");
-    }
 
     CHashWriter ss(SER_GETHASH, 0);
     ss << STR_MSG_MAGIC;
@@ -693,7 +692,7 @@ UniValue getreceivedbyaddress(const UniValue& params, bool fHelp)
     if (!EnsureWalletIsAvailable(fHelp))
         return NullUniValue;
 
-    if (fHelp || params.size() < 1 || params.size() > 2)
+    if (fHelp || params.empty() || params.size() > 2)
         throw runtime_error(
 R"(getreceivedbyaddress "zcashaddress" ( minconf )
 
@@ -722,9 +721,8 @@ As a json rpc call
     KeyIO keyIO(Params());
     // Bitcoin address
     CTxDestination dest = keyIO.DecodeDestination(params[0].get_str());
-    if (!IsValidDestination(dest)) {
+    if (!IsValidDestination(dest))
         throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid Pastel address");
-    }
     CScript scriptPubKey = GetScriptForDestination(dest);
     if (!IsMine(*pwalletMain, scriptPubKey))
         return ValueFromAmount(0);
@@ -756,7 +754,7 @@ UniValue getreceivedbyaccount(const UniValue& params, bool fHelp)
     if (!EnsureWalletIsAvailable(fHelp))
         return NullUniValue;
 
-    if (fHelp || params.size() < 1 || params.size() > 2)
+    if (fHelp || params.empty() || params.size() > 2)
         throw runtime_error(
 R"(getreceivedbyaccount "account" ( minconf )
 
@@ -1152,15 +1150,14 @@ As a json rpc call
     KeyIO keyIO(Params());
     CAmount totalAmount = 0;
     vector<string> keys = sendTo.getKeys();
-    for (const string& name_ : keys) {
+    for (const string& name_ : keys)
+    {
         CTxDestination dest = keyIO.DecodeDestination(name_);
-        if (!IsValidDestination(dest)) {
+        if (!IsValidDestination(dest))
             throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, string("Invalid Pastel address: ") + name_);
-        }
 
-        if (destinations.count(dest)) {
+        if (destinations.count(dest))
             throw JSONRPCError(RPC_INVALID_PARAMETER, string("Invalid parameter, duplicated address: ") + name_);
-        }
         destinations.insert(dest);
 
         CScript scriptPubKey = GetScriptForDestination(dest);
@@ -1170,7 +1167,8 @@ As a json rpc call
         totalAmount += nAmount;
 
         bool fSubtractFeeFromAmount = false;
-        for (size_t idx = 0; idx < subtractFeeFromAmount.size(); idx++) {
+        for (size_t idx = 0; idx < subtractFeeFromAmount.size(); idx++)
+        {
             const UniValue& addr = subtractFeeFromAmount[idx];
             if (addr.get_str() == name_)
                 fSubtractFeeFromAmount = true;

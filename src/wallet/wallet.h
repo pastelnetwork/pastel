@@ -5,27 +5,25 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <algorithm>
-#include <map>
 #include <optional>
 #include <set>
 #include <stdexcept>
 #include <stdint.h>
-#include <string>
 #include <utility>
 #include <vector>
 
 #include <amount.h>
 #include <coins.h>
 #include <key.h>
+#include <map_types.h>
 #include <keystore.h>
+#include <util.h>
 #include <main.h>
 #include <base58.h>
-#include <map_types.h>
 #include <primitives/block.h>
 #include <primitives/transaction.h>
 #include <tinyformat.h>
 #include <ui_interface.h>
-#include <util.h>
 #include <utilstrencodings.h>
 #include <validationinterface.h>
 #include <wallet/crypter.h>
@@ -613,6 +611,7 @@ private:
 
 
 using wallet_txmap_t = std::unordered_map<uint256, CWalletTx>;
+using BalanceMap_t = std::map<CTxDestination, CAmount> ;
 
 /** 
  * A CWallet is an extension of a keystore, which also maintains a set of transactions and balances,
@@ -880,8 +879,8 @@ public:
      */
     bool SelectCoinsMinConf(const CAmount& nTargetValue, int nConfMine, int nConfTheirs, std::vector<COutput> vCoins, std::set<std::pair<const CWalletTx*,unsigned int> >& setCoinsRet, CAmount& nValueRet) const;
 
-    bool IsSpent(const uint256& hash, const uint32_t n) const;
-    bool IsSaplingSpent(const uint256& nullifier) const;
+    bool IsSpent(const uint256& hash, const uint32_t n) const noexcept;
+    bool IsSaplingSpent(const uint256& nullifier) const noexcept;
 
     bool IsLockedCoin(const uint256 &hash, const uint32_t n) const;
     void LockCoin(const COutPoint& output);
@@ -1039,7 +1038,7 @@ public:
     void GetAllReserveKeys(std::set<CKeyID>& setAddress) const;
 
     std::set< std::set<CTxDestination> > GetAddressGroupings();
-    std::map<CTxDestination, CAmount> GetAddressBalances(const isminetype &isMineFilter);
+    BalanceMap_t GetAddressBalances(const isminetype &isMineFilter);
 
     std::set<CTxDestination> GetAccountAddresses(const std::string& strAccount) const;
 

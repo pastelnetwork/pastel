@@ -702,21 +702,21 @@ void CWallet::SyncMetaData(pair<typename TxSpendMap<T>::iterator, typename TxSpe
 /**
  * Outpoint is spent if any non-conflicted transaction spends it.
  */
-bool CWallet::IsSpent(const uint256& hash, const uint32_t n) const
+bool CWallet::IsSpent(const uint256& hash, const uint32_t n) const noexcept
 {
     const COutPoint outpoint(hash, n);
-    auto range = mapTxSpends.equal_range(outpoint);
+    const auto range = mapTxSpends.equal_range(outpoint);
     for (auto it = range.first; it != range.second; ++it)
     {
         const uint256& wtxid = it->second;
-        auto mit = mapWallet.find(wtxid);
-        if (mit != mapWallet.end() && mit->second.GetDepthInMainChain() >= 0)
+        const auto mit = mapWallet.find(wtxid);
+        if (mit != mapWallet.cend() && mit->second.GetDepthInMainChain() >= 0)
             return true; // Spent
     }
     return false;
 }
 
-bool CWallet::IsSaplingSpent(const uint256& nullifier) const
+bool CWallet::IsSaplingSpent(const uint256& nullifier) const noexcept
 {
     LOCK(cs_main);
 
@@ -733,7 +733,7 @@ bool CWallet::IsSaplingSpent(const uint256& nullifier) const
 
 void CWallet::AddToTransparentSpends(const COutPoint& outpoint, const uint256& wtxid)
 {
-    mapTxSpends.insert(make_pair(outpoint, wtxid));
+    mapTxSpends.emplace(outpoint, wtxid);
 
     auto range = mapTxSpends.equal_range(outpoint);
     SyncMetaData<COutPoint>(range);
@@ -741,7 +741,7 @@ void CWallet::AddToTransparentSpends(const COutPoint& outpoint, const uint256& w
 
 void CWallet::AddToSaplingSpends(const uint256& nullifier, const uint256& wtxid)
 {
-    mapTxSaplingNullifiers.insert(make_pair(nullifier, wtxid));
+    mapTxSaplingNullifiers.emplace(nullifier, wtxid);
 
     auto range = mapTxSaplingNullifiers.equal_range(nullifier);
     SyncMetaData<uint256>(range);
@@ -777,10 +777,12 @@ void CWallet::ClearNoteWitnessCache()
 template<typename NoteDataMap>
 void CopyPreviousWitnesses(NoteDataMap& noteDataMap, int indexHeight, const uint64_t nWitnessCacheSize)
 {
-    for (auto& item : noteDataMap) {
+    for (auto& item : noteDataMap)
+    {
         auto* nd = &(item.second);
         // Only increment witnesses that are behind the current height
-        if (nd->witnessHeight < indexHeight) {
+        if (nd->witnessHeight < indexHeight)
+        {
             // Check the validity of the cache
             // The only time a note witnessed above the current height
             // would be invalid here is during a reindex when blocks
@@ -887,7 +889,8 @@ void CWallet::IncrementNoteWitnesses(const CBlockIndex* pindex,
         const auto &hash = tx.GetHash();
         bool txIsOurs = mapWallet.count(hash);
         // Sapling
-        for (uint32_t i = 0; i < tx.vShieldedOutput.size(); i++) {
+        for (uint32_t i = 0; i < tx.vShieldedOutput.size(); i++)
+        {
             const auto& note_commitment = tx.vShieldedOutput[i].cm;
             saplingTree.append(note_commitment);
 
@@ -896,7 +899,8 @@ void CWallet::IncrementNoteWitnesses(const CBlockIndex* pindex,
                 ::AppendNoteCommitment(wtxItem.second.mapSaplingNoteData, pindex->nHeight, nWitnessCacheSize, note_commitment);
 
             // If this is our note, witness it
-            if (txIsOurs) {
+            if (txIsOurs)
+            {
                 SaplingOutPoint outPoint {hash, i};
                 ::WitnessNoteIfMine(mapWallet[hash].mapSaplingNoteData, pindex->nHeight, nWitnessCacheSize, outPoint, saplingTree.witness());
             }
@@ -929,9 +933,8 @@ void DecrementNoteWitnesses(NoteDataMap& noteDataMap, int indexHeight, const uin
             // (never incremented or decremented) or equal to the height
             // of the block being removed (indexHeight)
             assert((nd->witnessHeight == -1) || (nd->witnessHeight == indexHeight));
-            if (nd->witnesses.size() > 0) {
+            if (nd->witnesses.size() > 0)
                 nd->witnesses.pop_front();
-            }
             // indexHeight is the height of the block being removed, so 
             // the new witness cache height is one below it.
             nd->witnessHeight = indexHeight - 1;
@@ -3442,9 +3445,9 @@ int64_t CWallet::GetOldestKeyPoolTime()
     return keypool.nTime;
 }
 
-map<CTxDestination, CAmount> CWallet::GetAddressBalances(const isminetype& isMineFilter)
+BalanceMap_t CWallet::GetAddressBalances(const isminetype& isMineFilter)
 {
-    map<CTxDestination, CAmount> balances;
+    BalanceMap_t balanceMap;
     {
         LOCK(cs_wallet);
         for (const auto &[hash, coin] : mapWallet)
@@ -3468,14 +3471,14 @@ map<CTxDestination, CAmount> CWallet::GetAddressBalances(const isminetype& isMin
                 if (!ExtractDestination(txOut.scriptPubKey, addr))
                     continue;
 
-                const CAmount n = IsSpent(hash, i) ? 0 : txOut.nValue;
-                if (!balances.count(addr))
-                    balances[addr] = 0;
-                balances[addr] += n;
+                const CAmount nValue = IsSpent(hash, i) ? 0 : txOut.nValue;
+                if (!balanceMap.count(addr))
+                    balanceMap[addr] = 0;
+                balanceMap[addr] += nValue;
             }
         }
     }
-    return balances;
+    return balanceMap;
 }
 
 set< set<CTxDestination> > CWallet::GetAddressGroupings()
