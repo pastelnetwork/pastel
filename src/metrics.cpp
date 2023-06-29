@@ -422,7 +422,7 @@ int printInitMessage()
 
 #ifdef WIN32
 
-#ifndef
+#ifndef ENABLE_VIRTUAL_TERMINAL_PROCESSING
 #define ENABLE_VIRTUAL_TERMINAL_PROCESSING 0x0004
 #endif
 
