@@ -880,10 +880,10 @@ public:
      */
     bool SelectCoinsMinConf(const CAmount& nTargetValue, int nConfMine, int nConfTheirs, std::vector<COutput> vCoins, std::set<std::pair<const CWalletTx*,unsigned int> >& setCoinsRet, CAmount& nValueRet) const;
 
-    bool IsSpent(const uint256& hash, const unsigned int n) const;
+    bool IsSpent(const uint256& hash, const uint32_t n) const;
     bool IsSaplingSpent(const uint256& nullifier) const;
 
-    bool IsLockedCoin(uint256 hash, unsigned int n) const;
+    bool IsLockedCoin(const uint256 &hash, const uint32_t n) const;
     void LockCoin(const COutPoint& output);
     void UnlockCoin(const COutPoint& output);
     void UnlockAllCoins();

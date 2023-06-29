@@ -22,7 +22,8 @@ uint32_t get_height_param(const UniValue& params, size_t no = 1)
         const int64_t nHeight = get_long_number(params[no]);
         if (nHeight < 0 || nHeight >= numeric_limits<uint32_t>::max())
             throw JSONRPCError(RPC_INVALID_PARAMETER, "<height> parameter cannot be negative or greater than " + to_string(numeric_limits<uint32_t>::max()));
-        nChainHeight = static_cast<uint32_t>(nHeight);
+        if (nHeight != 0)
+            nChainHeight = static_cast<uint32_t>(nHeight);
     }
     return nChainHeight;
 }

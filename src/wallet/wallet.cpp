@@ -702,7 +702,7 @@ void CWallet::SyncMetaData(pair<typename TxSpendMap<T>::iterator, typename TxSpe
 /**
  * Outpoint is spent if any non-conflicted transaction spends it.
  */
-bool CWallet::IsSpent(const uint256& hash, const unsigned int n) const
+bool CWallet::IsSpent(const uint256& hash, const uint32_t n) const
 {
     const COutPoint outpoint(hash, n);
     auto range = mapTxSpends.equal_range(outpoint);
@@ -3457,7 +3457,7 @@ map<CTxDestination, CAmount> CWallet::GetAddressBalances(const isminetype& isMin
             if (nDepth < (coin.IsFromMe(isminetype::ALL) ? 0 : 1))
                 continue;
 
-            for (unsigned int i = 0; i < coin.vout.size(); ++i)
+            for (uint32_t i = 0; i < coin.vout.size(); ++i)
             {
                 const auto& txOut = coin.vout[i];
                 CTxDestination addr;
@@ -3666,7 +3666,7 @@ void CWallet::UnlockAllCoins()
     m_setLockedCoins.clear();
 }
 
-bool CWallet::IsLockedCoin(uint256 hash, unsigned int n) const
+bool CWallet::IsLockedCoin(const uint256 &hash, const uint32_t n) const
 {
     AssertLockHeld(cs_wallet); // m_setLockedCoins
     COutPoint outpt(hash, n);
