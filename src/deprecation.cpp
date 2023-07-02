@@ -19,7 +19,7 @@ void EnforceNodeDeprecation(int nHeight, bool forceLogging, bool fThread) {
     std::string networkID = Params().NetworkIDString();
     if (networkID != "main") return;
 
-    int blocksToDeprecation = DEPRECATION_HEIGHT - nHeight;
+    const int blocksToDeprecation = DEPRECATION_HEIGHT - nHeight;
     if (blocksToDeprecation <= 0) {
         // In order to ensure we only log once per process when deprecation is
         // disabled (to avoid log spam), we only need to log in two cases:
