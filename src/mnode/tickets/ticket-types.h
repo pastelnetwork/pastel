@@ -75,7 +75,7 @@ using TicketInfo = struct
 /**
  * Ticket information (ID, name, current supported version, DB subfolder).
  */
-static constexpr std::array<TicketInfo, to_integral_type<TicketID>(TicketID::COUNT)> TICKET_INFO =
+static constexpr std::array<TicketInfo, to_integral_type(TicketID::COUNT)> TICKET_INFO =
     {{
         //     ticket id            |   ticket description       |        ticket name                 | version | DB subfolder  |  default fee
         { TicketID::PastelID,          "Pastel ID Registration",       TICKET_NAME_ID_REG,                  1,       "pslids",       10   },
@@ -98,7 +98,7 @@ inline std::string GetTicketName(const TicketID id) noexcept
 {
     std::string sName;
     if (id != TicketID::COUNT)
-        sName = TICKET_INFO[to_integral_type<TicketID>(id)].szName;
+        sName = TICKET_INFO[to_integral_type(id)].szName;
     return sName;
 }
 
@@ -106,7 +106,7 @@ inline std::string GetTicketDescription(const TicketID id) noexcept
 {
     std::string sDesc;
     if (id != TicketID::COUNT)
-        sDesc = TICKET_INFO[to_integral_type<TicketID>(id)].szDescription;
+        sDesc = TICKET_INFO[to_integral_type(id)].szDescription;
     return sDesc;
 }
 
@@ -151,7 +151,7 @@ using CollectionItemType = struct
     const char* szItemType;             // collection item type description
 };
 
-static constexpr std::array<CollectionItemType, to_integral_type<COLLECTION_ITEM_TYPE>(COLLECTION_ITEM_TYPE::COUNT)> COLLECTION_ITEM_TYPE_INFO =
+static constexpr std::array<CollectionItemType, to_integral_type(COLLECTION_ITEM_TYPE::COUNT)> COLLECTION_ITEM_TYPE_INFO =
     {{//              item_type               |             ticket id            |             item_type_description
          { COLLECTION_ITEM_TYPE::NFT,                 TicketID::Activate,               COLLECTION_ITEM_TYPE_NFT     }, 
          { COLLECTION_ITEM_TYPE::SENSE,               TicketID::CollectionAct,          COLLECTION_ITEM_TYPE_SENSE   },
@@ -162,7 +162,7 @@ inline std::string GetCollectionItemType(const COLLECTION_ITEM_TYPE itemType) no
     std::string sItemType;
     // actual COLLECTION_ITEM_TYPE items start with 1
     if ((itemType != COLLECTION_ITEM_TYPE::COUNT) && (itemType != COLLECTION_ITEM_TYPE::UNKNOWN))
-        sItemType = COLLECTION_ITEM_TYPE_INFO[to_integral_type<COLLECTION_ITEM_TYPE>(itemType) - 1].szItemType;
+        sItemType = COLLECTION_ITEM_TYPE_INFO[to_integral_type(itemType) - 1].szItemType;
     return sItemType;
 }
 

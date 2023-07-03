@@ -220,7 +220,7 @@ TEST(test_util, util_seed_insecure_rand)
     {
         int mask = 1;
         // Really rough binomal confidence approximation.
-        int err = 30*10000./mod*sqrt((1./mod*(1-1./mod))/10000.);
+        int err = static_cast<int>(std::round((30*10000./mod*sqrt((1./mod*(1-1./mod))/10000.))));
         //mask is 2^ceil(log2(mod))-1
         while(mask<mod-1)mask=(mask<<1)+1;
 

@@ -13,6 +13,7 @@
 
 int get_number(const UniValue& v);
 int64_t get_long_number(const UniValue& v);
+int64_t get_long_number_checked(const UniValue& v, const std::string& sParamName);
 // convert UniValue to bool
 bool get_bool_value(const UniValue& v);
 

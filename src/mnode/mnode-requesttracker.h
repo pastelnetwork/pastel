@@ -5,6 +5,9 @@
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <protocol.h>
 
+constexpr auto MN_REQUEST_TRACKER_FILENAME = "netfulfilled.dat";
+constexpr auto MN_REQUEST_TRACKER_MAGIC_CACHE_STR = "magicFulfilledCache";
+
 // Fulfilled requests are used to prevent nodes from asking for the same data on sync
 // and from being banned for doing so too often.
 class CMasternodeRequestTracker

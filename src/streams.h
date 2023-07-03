@@ -5,7 +5,6 @@
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
 #include <support/allocators/zeroafterfree.h>
-#include <serialize.h>
 
 #include <algorithm>
 #include <assert.h>
@@ -15,10 +14,11 @@
 #include <set>
 #include <stdint.h>
 #include <stdio.h>
-#include <string>
 #include <string.h>
 #include <utility>
-#include <vector>
+
+#include <vector_types.h>
+#include <serialize.h>
 
 template<typename Stream>
 class OverrideStream
@@ -193,7 +193,8 @@ public:
 
     void insert(iterator it, std::vector<char>::const_iterator first, std::vector<char>::const_iterator last)
     {
-        if (last == first) return;
+        if (last == first)
+            return;
         assert(last - first > 0);
         if (it == vch.begin() + nReadPos && (unsigned int)(last - first) <= nReadPos)
         {
@@ -208,7 +209,8 @@ public:
 #if !defined(_MSC_VER) || _MSC_VER >= 1300
     void insert(iterator it, const char* first, const char* last)
     {
-        if (last == first) return;
+        if (last == first)
+            return;
         assert(last - first > 0);
         if (it == vch.begin() + nReadPos && (unsigned int)(last - first) <= nReadPos)
         {
@@ -264,9 +266,9 @@ public:
         nReadPos = 0;
     }
 
-    bool Rewind(size_type n)
+    bool rewind(size_type n)
     {
-        // Rewind by n characters if the buffer hasn't been compacted yet
+        // rewind by n characters if the buffer hasn't been compacted yet
         if (n > nReadPos)
             return false;
         nReadPos -= n;
@@ -278,7 +280,6 @@ public:
     //
     bool eof() const noexcept     { return size() == 0; }
     CBaseDataStream* rdbuf()      { return this; }
-    size_type in_avail() const noexcept { return size(); }
 
     void SetType(const int nType) noexcept    { m_nType = nType; }
     int GetType() const noexcept          { return m_nType; }
@@ -298,7 +299,7 @@ public:
             return;
 
         if (!pch)
-            throw std::ios_base::failure("CBaseDataStream::read(): cannot read from null pointer");
+            throw std::ios_base::failure("CBaseDataStream::read(): cannot write from null pointer");
 
         // Read from the beginning of the buffer
         const size_t nReadPosNext = nReadPos + nSize;
@@ -312,6 +313,26 @@ public:
             return;
         }
         memcpy(pch, &vch[nReadPos], nSize);
+        nReadPos = nReadPosNext;
+    }
+
+    void read(CBaseDataStream &os, const size_t nSize)
+    {
+        if (nSize == 0) 
+            return;
+
+        // Read from the beginning of the buffer
+        const size_t nReadPosNext = nReadPos + nSize;
+        if (nReadPosNext >= vch.size())
+        {
+            if (nReadPosNext > vch.size())
+                throw std::ios_base::failure("CBaseDataStream::read(): end of data");
+            os.write(&vch[nReadPos], nSize);
+            nReadPos = 0;
+            vch.clear();
+            return;
+        }
+        os.write(&vch[nReadPos], nSize);
         nReadPos = nReadPosNext;
     }
 

@@ -18,8 +18,8 @@ template<typename T>
 class CFlatDB
 {
 private:
-
-    enum ReadResult {
+    enum class ReadResult
+    {
         Ok,
         FileError,
         HashReadError,
@@ -30,6 +30,7 @@ private:
     };
 
     fs::path pathDB;
+    fs::path pathDBNew;
     std::string strFilename;
     std::string strMagicMessage;
 
@@ -47,22 +48,24 @@ private:
         uint256 hash = Hash(ssObj.begin(), ssObj.end());
         ssObj << hash;
 
+        pathDBNew = pathDB.replace_extension(".new ");
         // open output file, and associate with CAutoFile
         FILE* file = nullptr;
 #if defined(_MSC_VER) && (_MSC_VER >= 1400)
-        const errno_t err = fopen_s(&file, pathDB.string().c_str(), "wb");
+        const errno_t err = fopen_s(&file, pathDBNew.string().c_str(), "wb");
 #else
-        file = fopen(pathDB.string().c_str(), "wb");
+        file = fopen(pathDBNew.string().c_str(), "wb");
 #endif
         CAutoFile fileout(file, SER_DISK, CLIENT_VERSION);
         if (fileout.IsNull())
-            return error("%s: Failed to open file %s", __func__, pathDB.string());
+            return error("%s: Failed to open file %s", __func__, pathDBNew.string());
 
         // Write and commit header, data
-        try {
+        try
+        {
             fileout << ssObj;
-        }
-        catch (const std::exception &e) {
+        } catch (const std::exception &e)
+        {
             return error("%s: Serialize or I/O error - %s", __func__, e.what());
         }
         fileout.fclose();
@@ -90,7 +93,7 @@ private:
         if (filein.IsNull())
         {
             error = strprintf("Failed to open file %s", pathDB.string());
-            return FileError;
+            return ReadResult::FileError;
         }
 
         // use file size to size memory buffer
@@ -108,7 +111,7 @@ private:
         catch (const std::exception &e)
         {
             error = strprintf("Deserialize or I/O error - %s", e.what());
-            return HashReadError;
+            return ReadResult::HashReadError;
         }
         filein.fclose();
 
@@ -119,7 +122,7 @@ private:
         if (hashIn != hashTmp)
         {
             error = "Checksum mismatch, data corrupted";
-            return IncorrectHash;
+            return ReadResult::IncorrectHash;
         }
 
         unsigned char pchMsgTmp[4];
@@ -132,7 +135,7 @@ private:
             if (strMagicMessage != strMagicMessageTmp)
             {
                 error = "Invalid magic message";
-                return IncorrectMagicMessage;
+                return ReadResult::IncorrectMagicMessage;
             }
 
 
@@ -143,7 +146,7 @@ private:
             if (memcmp(pchMsgTmp, Params().MessageStart(), sizeof(pchMsgTmp)))
             {
                 error = "Invalid network magic number";
-                return IncorrectMagicNumber;
+                return ReadResult::IncorrectMagicNumber;
             }
 
             // de-serialize data into T object
@@ -154,7 +157,7 @@ private:
             objToLoad.Clear();
             error = strprintf("Deserialize or I/O error at pos %zu/%zu - %s", 
                 ssObj.getReadPos(), nDataSize, e.what());
-            return IncorrectFormat;
+            return ReadResult::IncorrectFormat;
         }
 
         LogFnPrintf("Loaded info from %s  %dms", strFilename, GetTimeMillis() - nStart);
@@ -166,15 +169,16 @@ private:
             LogFnPrintf("     %s", objToLoad.ToString());
         }
 
-        return Ok;
+        return ReadResult::Ok;
     }
 
 
 public:
-    CFlatDB(std::string strFilenameIn, std::string strMagicMessageIn)
+    CFlatDB(const std::string &strFilenameIn, const std::string &strMagicMessageIn)
     {
-        pathDB = GetDataDir() / strFilenameIn;
         strFilename = strFilenameIn;
+        pathDB = GetDataDir() / strFilenameIn;
+
         strMagicMessage = strMagicMessageIn;
     }
 
@@ -188,17 +192,17 @@ public:
         std::string error;
         LogFnPrintf("Reading info from %s...", strFilename);
         const ReadResult readResult = Read(objToLoad, error);
-        if (readResult == FileError)
+        if (readResult == ReadResult::FileError)
             LogFnPrintf("Missing file %s, will try to recreate", strFilename);
-        else if (readResult != Ok)
+        else if (readResult != ReadResult::Ok)
         {
             error = strprintf("Error reading %s. %s. ", strFilename, error);
-            if (readResult == IncorrectFormat)
+            if (readResult == ReadResult::IncorrectFormat)
                 error += "Magic is ok, but data has invalid format, will try to recreate";
             else
                 error += "File format is unknown or invalid, please fix it manually";
             LogFnPrintf(error);
-            if (readResult != IncorrectFormat)
+            if (readResult != ReadResult::IncorrectFormat)
                 return false;
         }
         return true;
@@ -214,26 +218,43 @@ public:
         const ReadResult readResult = Read(tmpObjToLoad, error, true);
 
         // there was an error and it was not an error on file opening => do not proceed
-        if (readResult == FileError)
+        if (readResult == ReadResult::FileError)
             LogFnPrintf("Missing file %s, will try to recreate", strFilename);
-        else if (readResult != Ok)
+        else if (readResult != ReadResult::Ok)
         {
             error = strprintf("Error reading %s. %s. ", strFilename, error);
-            if (readResult == IncorrectFormat)
+            if (readResult == ReadResult::IncorrectFormat)
                 error += "Magic is ok, but data has invalid format, will try to recreate";
             else
                 error += "File format is unknown or invalid, please fix it manually";
             LogFnPrintf(error);
-            if (readResult != IncorrectFormat)
+            if (readResult != ReadResult::IncorrectFormat)
                 return false;
         }
 
         LogFnPrintf("Writing info to %s...", strFilename);
-        Write(objToSave);
-        LogFnPrintf("%s dump finished  %dms", strFilename, GetTimeMillis() - nStart);
+        if (Write(objToSave))
+        {
+            try
+            {
+                bool bBackup = false;
+                fs::path pathDBbackup = pathDB.replace_extension(".bak");
+                if (fs::exists(pathDB))
+                {
+                    fs::rename(pathDB, pathDBbackup);
+                    bBackup = true;
+                }
+                fs::rename(pathDBNew, pathDB);
+                if (bBackup)
+                    fs::remove(pathDBbackup);
+                LogFnPrintf("%s dump finished  %dms", strFilename, GetTimeMillis() - nStart);
+            } catch (const std::exception& ex)
+            {
+                LogFnPrintf("Error writing to file %s. %s", strFilename, ex.what());
+                return false;
+            }
+        }
 
         return true;
     }
 };
-
-

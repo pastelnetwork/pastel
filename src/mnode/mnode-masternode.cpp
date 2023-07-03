@@ -315,7 +315,6 @@ CMasternode::CMasternode() :
 CMasternode::CMasternode(const CService &addr, const COutPoint &outpoint, const CPubKey &pubKeyCollateralAddress, const CPubKey &pubKeyMasternode, 
                             const string& strExtraLayerAddress, const string& strExtraLayerP2P, const string& strExtraLayerCfg,
                             const int nProtocolVersionIn) :
-
     masternode_info_t
     { 
         MASTERNODE_STATE::ENABLED, nProtocolVersionIn, GetAdjustedTime(),
@@ -324,7 +323,7 @@ CMasternode::CMasternode(const CService &addr, const COutPoint &outpoint, const 
     },
     m_chainparams(Params())
 {
-    m_nPoSeBanScore.store(0);
+    m_nPoSeBanScore = 0;
 }
 
 CMasternode::CMasternode(const CMasternode& other) :
@@ -372,10 +371,20 @@ bool CMasternode::UpdateFromNewBroadcast(CMasternodeBroadcast& mnb)
     strExtraLayerAddress = mnb.strExtraLayerAddress;
     strExtraLayerP2P = mnb.strExtraLayerP2P;
     strExtraLayerCfg = mnb.strExtraLayerCfg;
-    m_nMNFeePerMB = 0;
-    m_nTicketChainStorageFeePerKB = 0;
-    m_nSenseComputeFee = 0;
-    m_nSenseProcessingFeePerMB = 0;
+    if (mnb.GetVersion() >= 1)
+    {
+        m_nMNFeePerMB = mnb.m_nMNFeePerMB;
+        m_nTicketChainStorageFeePerKB = mnb.m_nTicketChainStorageFeePerKB;
+        m_nSenseComputeFee = mnb.m_nSenseComputeFee;
+        m_nSenseProcessingFeePerMB = mnb.m_nSenseProcessingFeePerMB;
+    }
+    else
+    {
+        m_nMNFeePerMB = 0;
+        m_nTicketChainStorageFeePerKB = 0;
+        m_nSenseComputeFee = 0;
+        m_nSenseProcessingFeePerMB = 0;
+    }
     m_nPoSeBanScore = 0;
     m_nPoSeBanHeight = 0;
     nTimeLastChecked = 0;
@@ -680,42 +689,12 @@ void CMasternode::UpdateLastPaid(const CBlockIndex *pindex, int nMaxBlocksToScan
     const CScript mnpayee = GetScriptForDestination(pubKeyCollateralAddress.GetID());
     LogFnPrint("masternode", "searching for block with payment to %s", GetDesc());
 
-    LOCK(cs_mapMasternodeBlockPayees);
-
-    const auto &consensusParams = m_chainparams.GetConsensus();
-    const auto &mnPayments = masterNodeCtrl.masternodePayments;
-    for (int i = 0; BlockReading && BlockReading->nHeight > m_nBlockLastPaid && i < nMaxBlocksToScanBack; i++)
+    if (masterNodeCtrl.masternodePayments.SearchForPaymentBlock(m_nBlockLastPaid, nTimeLastPaid,
+        pindex, nMaxBlocksToScanBack, mnpayee))
     {
-        if (mnPayments.mapMasternodeBlockPayees.count(BlockReading->nHeight) &&
-            mnPayments.mapMasternodeBlockPayees.at(BlockReading->nHeight).HasPayeeWithVotes(mnpayee, 2, BlockReading->nHeight))
-        {
-            CBlock block;
-            if (!ReadBlockFromDisk(block, BlockReading, consensusParams)) // shouldn't really happen
-                continue;
-
-            const CAmount nMasternodePayment = mnPayments.GetMasternodePayment(BlockReading->nHeight, block.vtx[0].GetValueOut());
-
-            for (const auto & txout : block.vtx[0].vout)
-            {
-                if (mnpayee == txout.scriptPubKey && nMasternodePayment == txout.nValue)
-                {
-                    m_nBlockLastPaid = BlockReading->nHeight;
-                    nTimeLastPaid = BlockReading->nTime;
-                    LogFnPrint("masternode", "searching for block with payment to %s -- found new %d",
-                        GetDesc(), m_nBlockLastPaid);
-                    return;
-                }
-            }
-        }
-
-        if (!BlockReading->pprev)
-        { 
-            assert(BlockReading); 
-            break;
-        }
-        BlockReading = BlockReading->pprev;
+        LogFnPrint("masternode", "searching for block with payment to %s -- found new %d",
+            GetDesc(), m_nBlockLastPaid);
     }
-
     // Last payment for this masternode wasn't found in latest mnpayments blocks
     // or it was found in mnpayments blocks but wasn't found in the blockchain.
     // LogFnPrint("masternode", "searching for block with payment to %s -- keeping old %d", GetDesc(), nBlockLastPaid);

@@ -21,7 +21,7 @@ public:
     static TicketID GetID() { return TicketID::Down; }
     static constexpr auto GetTicketDescription()
     {
-        return TICKET_INFO[to_integral_type<TicketID>(TicketID::Down)].szDescription;
+        return TICKET_INFO[to_integral_type(TicketID::Down)].szDescription;
     }
 
     std::string ToJSON(const bool bDecodeProperties = false) const noexcept override { return "{}"; }

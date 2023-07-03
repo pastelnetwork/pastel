@@ -5851,11 +5851,11 @@ static bool ProcessMessage(const CChainParams& chainparams, CNode* pfrom, string
     {
         int64_t pingUsecEnd = nTimeReceived;
         uint64_t nonce = 0;
-        size_t nAvail = vRecv.in_avail();
+        const size_t nAvailableBytes = vRecv.size();
         bool bPingFinished = false;
         string sProblem;
 
-        if (nAvail >= sizeof(nonce))
+        if (nAvailableBytes >= sizeof(nonce))
         {
             vRecv >> nonce;
 
@@ -5902,7 +5902,7 @@ static bool ProcessMessage(const CChainParams& chainparams, CNode* pfrom, string
                 sProblem,
                 pfrom->nPingNonceSent,
                 nonce,
-                nAvail);
+                nAvailableBytes);
         }
         if (bPingFinished)
             pfrom->nPingNonceSent = 0;

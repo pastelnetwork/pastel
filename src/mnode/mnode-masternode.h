@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 // Copyright (c) 2014-2017 The Dash Core developers
 // Copyright (c) 2018-2023 The Pastel Core developers
 // Distributed under the MIT/X11 software license, see the accompanying
@@ -260,7 +260,7 @@ public:
         READWRITE(strExtraLayerCfg);
         READWRITE(m_nMNFeePerMB);
         READWRITE(m_nTicketChainStorageFeePerKB);
-        if (bRead)
+        if (bRead) // read mode
         {
             if (!s.eof())
                 READWRITE(strExtraLayerP2P);
@@ -288,6 +288,8 @@ public:
             m_nSenseProcessingFeePerMB = 0;
         }
     }
+
+    short GetVersion() const noexcept { return m_nVersion; }
 
     // CALCULATE A RANK AGAINST OF GIVEN BLOCK
     arith_uint256 CalculateScore(const uint256& blockHash);
@@ -360,7 +362,7 @@ protected:
     // critical section to protect the inner data structures
     mutable CCriticalSection cs;
 
-    short m_nVersion = -1; // stored masternode serialization version
+    short m_nVersion = 0; // stored masternode serialization version
 
     const CChainParams& m_chainparams;
     // last MasterNode ping
@@ -401,7 +403,6 @@ std::string GetListOfMasterNodes(const std::vector<CMasternode>& mnList);
 class CMasternodeBroadcast : public CMasternode
 {
 public:
-
     bool fRecovery;
 
     CMasternodeBroadcast() :
@@ -422,6 +423,9 @@ public:
     template <typename Stream>
     inline void SerializationOp(Stream& s, const SERIALIZE_ACTION ser_action)
     {
+        const bool bRead = (ser_action == SERIALIZE_ACTION::Read);
+
+        LOCK(cs);
         READWRITE(m_vin);
         READWRITE(m_addr);
         READWRITE(pubKeyCollateralAddress);
@@ -434,14 +438,36 @@ public:
         READWRITE(strExtraLayerAddress);
         READWRITE(strExtraLayerCfg);
 
-        //For backward compatibility
-        try
+        if (bRead) // read mode
         {
-            READWRITE(strExtraLayerP2P);
+            if (!s.eof())
+                READWRITE(strExtraLayerP2P);
+            if (!s.eof())
+                READWRITE(m_nVersion);
+            else
+                m_nVersion = 0;
         }
-        catch ([[maybe_unused]] const std::ios_base::failure& e)
+        else // write mode
         {
-            LogPrintf("CMasternodeBroadcast: missing extP2P!\n");
+            m_nVersion = MASTERNODE_VERSION;
+            READWRITE(strExtraLayerP2P);
+            READWRITE(m_nVersion);
+        }
+        // if (v1 or higher) and ( (writing to stream) or (reading but not at the end of the stream yet))
+        const bool bVersion = (m_nVersion >= 1) && (!bRead || !s.eof());
+        if (bVersion)
+        {
+            READWRITE(m_nMNFeePerMB);
+            READWRITE(m_nTicketChainStorageFeePerKB);
+			READWRITE(m_nSenseComputeFee);
+            READWRITE(m_nSenseProcessingFeePerMB);
+        }
+        else
+        {
+            m_nMNFeePerMB = 0;
+            m_nTicketChainStorageFeePerKB = 0;
+            m_nSenseComputeFee = 0;
+            m_nSenseProcessingFeePerMB = 0;
         }
     }
 

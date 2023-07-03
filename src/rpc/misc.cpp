@@ -19,6 +19,7 @@
 #include <timedata.h>
 #include <txmempool.h>
 #include <util.h>
+#include <script/scripttype.h>
 #ifdef ENABLE_WALLET
 #include <wallet/wallet.h>
 #include <wallet/walletdb.h>
@@ -545,12 +546,12 @@ Examples:
 
 // insightexplorer
 static bool getAddressFromIndex(
-    CScript::ScriptType type, const uint160 &hash, std::string &address)
+    ScriptType type, const uint160 &hash, std::string &address)
 {
     KeyIO keyIO(Params());
-    if (type == CScript::ScriptType::P2SH) {
+    if (type == ScriptType::P2SH) {
         address = keyIO.EncodeDestination(CScriptID(hash));
-    } else if (type == CScript::ScriptType::P2PKH) {
+    } else if (type == ScriptType::P2PKH) {
         address = keyIO.EncodeDestination(CKeyID(hash));
     } else {
         return false;
@@ -560,21 +561,22 @@ static bool getAddressFromIndex(
 
 // This function accepts an address and returns in the output parameters
 // the version and raw bytes for the RIPEMD-160 hash.
-static bool getIndexKey(const CTxDestination& dest, uint160& hashBytes, CScript::ScriptType& type)
+static bool getIndexKey(const CTxDestination& dest, uint160& hashBytes, ScriptType& type)
 {
-    if (!IsValidDestination(dest)) {
+    if (!IsValidDestination(dest))
         return false;
-    }
-    if (IsKeyDestination(dest)) {
+    if (IsKeyDestination(dest))
+    {
         auto x = std::get_if<CKeyID>(&dest);
         memcpy(&hashBytes, x->begin(), 20);
-        type = CScript::ScriptType::P2PKH;
+        type = ScriptType::P2PKH;
         return true;
     }
-    if (IsScriptDestination(dest)) {
+    if (IsScriptDestination(dest))
+    {
         auto x = std::get_if<CScriptID>(&dest);
         memcpy(&hashBytes, x->begin(), 20);
-        type = CScript::ScriptType::P2SH;
+        type = ScriptType::P2SH;
         return true;
     }
     return false;
@@ -583,9 +585,9 @@ static bool getIndexKey(const CTxDestination& dest, uint160& hashBytes, CScript:
 // insightexplorer
 static bool getAddressesFromParams(
     const UniValue& params,
-    std::vector<std::pair<uint160, CScript::ScriptType>> &addresses)
+    std::vector<std::pair<uint160, ScriptType>> &addresses)
 {
-    std::vector<std::string> param_addresses;
+    v_strings param_addresses;
     if (params[0].isStr()) {
         param_addresses.push_back(params[0].get_str());
     } else if (params[0].isObject()) {
@@ -597,19 +599,17 @@ static bool getAddressesFromParams(
         for (const auto& it : addressValues.getValues()) {
             param_addresses.push_back(it.get_str());
         }
-
-    } else {
+    } else
         throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid address");
-    }
 
     KeyIO keyIO(Params());
-    for (const auto& it : param_addresses) {
+    for (const auto& it : param_addresses)
+    {
         CTxDestination address = keyIO.DecodeDestination(it);
         uint160 hashBytes;
-        CScript::ScriptType type = CScript::ScriptType::UNKNOWN;
-        if (!getIndexKey(address, hashBytes, type)) {
+        ScriptType type = ScriptType::UNKNOWN;
+        if (!getIndexKey(address, hashBytes, type))
             throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid address" + params[0].get_str());
-        }
         addresses.push_back(std::make_pair(std::move(hashBytes), std::move(type)));
     }
     return true;
@@ -662,11 +662,11 @@ Examples:)"
             "Run './pastel-cli help getaddressmempool' for instructions on how to enable this feature.");
     }
 
-    std::vector<std::pair<uint160, CScript::ScriptType>> addresses;
+    std::vector<std::pair<uint160, ScriptType>> addresses;
 
-    if (!getAddressesFromParams(params, addresses)) {
+    if (!getAddressesFromParams(params, addresses))
         throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid address");
-    }
+
     std::vector<std::pair<CMempoolAddressDeltaKey, CMempoolAddressDelta>> indexes;
     mempool.getAddressIndex(addresses, indexes);
     std::sort(indexes.begin(), indexes.end(),

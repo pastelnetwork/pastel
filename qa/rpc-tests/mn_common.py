@@ -37,18 +37,19 @@ MIN_TX_RELAY_FEE = 0.001 # PSL, 100 patoshis
 class MnFeeType(Enum):
     """
     Masternode fees.
-    Fee name                   | ID | fee in PSL | rpc command name  | fee option name (network median) | local fee option name
+    Fee name                   | ID | fee in PSL | get rpc command name  | fee option name (network median) | local fee option name    |   setfee rpc command
     """
-    STORAGE_FEE_PER_MB              = 1, 5000, "getstoragefee",         "storageFeePerMb",            "localStorageFeePerMb"
-    TICKET_CHAIN_STORAGE_FEE_PER_KB = 2,  200, "getticketfee",          "ticketChainStorageFeePerKb", "localTicketChainStorageFeePerKb"
-    SENSE_COMPUTE_FEE               = 3, 5000, "getsensecomputefee",    "senseComputeFee",            "localSenseComputeFee"
-    SENSE_PROCESSING_FEE_PER_MB     = 4,   50, "getsenseprocessingfee", "senseProcessingFeePerMb",    "localSenseProcessingFeePerMb"
+    STORAGE_FEE_PER_MB              = 1, 5000, "getstoragefee",         "storageFeePerMb",            "localStorageFeePerMb",            "storage"
+    TICKET_CHAIN_STORAGE_FEE_PER_KB = 2,  200, "getticketfee",          "ticketChainStorageFeePerKb", "localTicketChainStorageFeePerKb", "ticket"
+    SENSE_COMPUTE_FEE               = 3, 5000, "getsensecomputefee",    "senseComputeFee",            "localSenseComputeFee",            "sense-compute"
+    SENSE_PROCESSING_FEE_PER_MB     = 4,   50, "getsenseprocessingfee", "senseProcessingFeePerMb",    "localSenseProcessingFeePerMb",    "sense-processing"
     
-    def __init__(self, _: str, fee: int, rpc_command: str, option_name: str, local_option_name: str):
+    def __init__(self, _: str, fee: int, getfee_rpc_command: str, option_name: str, local_option_name: str, setfee_rpc_command: str):
         self._fee = fee
-        self._rpc_command = rpc_command
+        self._getfee_rpc_command = getfee_rpc_command
         self._option_name = option_name
         self._local_option_name = local_option_name
+        self._setfee_rpc_command = setfee_rpc_command
     
     def __new__(cls, *args, **kwds):
         obj = object.__new__(cls)
@@ -63,8 +64,8 @@ class MnFeeType(Enum):
         return self._fee
     
     @property
-    def rpc_command(self) -> str:
-        return self._rpc_command
+    def getfee_rpc_command(self) -> str:
+        return self._getfee_rpc_command
     
     @property
     def option_name(self) -> str:
@@ -74,6 +75,10 @@ class MnFeeType(Enum):
     def local_option_name(self) -> str:
         return self._local_option_name
 
+    @property
+    def setfee_rpc_command(self) -> str:
+        return self._setfee_rpc_command
+    
     
 class TicketData:
     def __init__(self):

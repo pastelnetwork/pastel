@@ -12,12 +12,12 @@ using namespace std;
 
 TEST(mnode_cache, load)
 {
-    //SelectParams(ChainNetwork::TESTNET);
-    //gl_pPastelTestEnv->SetTempDataDir("c:\\temp\\");
+//    SelectParams(ChainNetwork::TESTNET);
+//    gl_pPastelTestEnv->SetTempDataDir("c:\\temp\\");
 
-    //CMasternodeMan masternodeManager;
-    //string strErrors;
-    //CFlatDB<CMasternodeMan> flatDB1("mncache.dat", "magicMasternodeCache");
-    //EXPECT_TRUE(flatDB1.Load(masternodeManager)) << _("Failed to load masternode cache from") + "\n" + flatDB1.getFilePath();
+//    CMasternodeMan masternodeManager;
+//    string strErrors;
+//    CFlatDB<CMasternodeMan> flatDB1(MNCACHE_FILENAME, "magicMasternodeCache");
+//    EXPECT_TRUE(flatDB1.Load(masternodeManager)) << _("Failed to load masternode cache from") + "\n" + flatDB1.getFilePath();
 }
 

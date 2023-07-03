@@ -1,6 +1,6 @@
 // Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2014 The Bitcoin Core developers
-// Copyright (c) 2018-2022 The Pastel Core developers
+// Copyright (c) 2018-2023 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <stdint.h>
@@ -11,6 +11,7 @@
 #include <main.h>
 #include <pow.h>
 #include <uint256.h>
+#include <script/scripttype.h>
 
 using namespace std;
 
@@ -41,7 +42,6 @@ CCoinsViewDB::CCoinsViewDB(std::string dbName, size_t nCacheSize, bool fMemory, 
 CCoinsViewDB::CCoinsViewDB(size_t nCacheSize, bool fMemory, bool fWipe) : db(GetDataDir() / "chainstate", nCacheSize, fMemory, fWipe) 
 {
 }
-
 
 bool CCoinsViewDB::GetSproutAnchorAt(const uint256 &rt, SproutMerkleTree &tree) const {
     if (rt == SproutMerkleTree::empty_root()) {

@@ -56,7 +56,6 @@ class MasterNodeMainTest (MasterNodeCommon):
         chain_deflator_factor = 1.0
         fee_adjustment_multiplier = chain_deflator_factor * GLOBAL_FEE_ADJUSTMENT_MULTIPLIER
 
-        current_height = self.nodes[0].getblockcount()
         for fee_type in MnFeeType:
             # network median trimmean with fixed 25%
             expected_fee = int(fee_type.fee * fee_adjustment_multiplier)
@@ -65,20 +64,20 @@ class MasterNodeMainTest (MasterNodeCommon):
                 for i in range(3):
                     if is_local_fee:
                         option_name = fee_type.local_option_name
-                        fee_response = self.nodes[0].storagefee(fee_type.rpc_command, current_height, True)
+                        fee_response = self.nodes[0].storagefee(fee_type.getfee_rpc_command, True)
                     else:
                         option_name = fee_type.option_name
-                        fee_response = self.nodes[0].storagefee(fee_type.rpc_command)
+                        fee_response = self.nodes[0].storagefee(fee_type.getfee_rpc_command)
                     assert_true(fee_response, "No storagefee returned")
                     assert_true(option_name in fee_response,
-                                f"Fee option '{option_name}' not found in 'storagefee {fee_type.rpc_command}' response")
+                                f"Fee option '{option_name}' not found in 'storagefee {fee_type.getfee_rpc_command}' response")
                     fee = fee_response[option_name]
                     if is_local_fee:
                         assert_equal(expected_local_fee, fee)
-                        print(f"MN{i} {str(fee_type)} local fee: {fee} PSL")
+                        print(f"MN{i} {fee_type.name} local fee: {fee} PSL")
                     else:
                         assert_equal(expected_fee, fee)
-                        print(f"MN{i} {str(fee_type)} network median fee: {fee} PSL")
+                        print(f"MN{i} {fee_type.name} network median fee: {fee} PSL")
                         
 
         assert_raises_rpc(rpc.RPC_INVALID_PARAMETER, "storagefee getactionfees",

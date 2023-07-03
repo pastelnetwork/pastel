@@ -1,22 +1,22 @@
 // Copyright (c) 2012-2013 The Bitcoin Core developers
-// Copyright (c) 2021 The Pastel developers
+// Copyright (c) 2021-2023 The Pastel developers
 // Distributed under the MIT software license, see the accompanying
-// file COPYING or http://www.opensource.org/licenses/mit-license.php.
-
-#include "serialize.h"
-#include "streams.h"
-#include "hash.h"
-#include "utilstrencodings.h"
-#include "primitives/transaction.h"
-#include "vector_types.h"
-
+// file COPYING or httpd://www.opensource.org/licenses/mit-license.php.
 #include <array>
 #include <stdint.h>
+
 #include <gtest/gtest.h>
+
+#include <serialize.h>
+#include <streams.h>
+#include <hash.h>
+#include <utilstrencodings.h>
+#include <primitives/transaction.h>
+#include <vector_types.h>
+#include <enum_util.h>
 
 using namespace std;
 using namespace testing;
-
 
 template<typename T>
 void check_ser_rep(T thing, v_uint8 expected)
@@ -36,18 +36,20 @@ void check_ser_rep(T thing, v_uint8 expected)
     EXPECT_EQ(thing_deserialized , thing);
 }
 
-
 class CSerializeMethodsTestSingle
 {
 protected:
-    int intval;
-    bool boolval;
+    int intval = 0;
+    bool boolval = 0;
     string stringval;
-    const char* charstrval;
+    const char* charstrval = nullptr;
     CTransaction txval;
 public:
     CSerializeMethodsTestSingle() = default;
-    CSerializeMethodsTestSingle(int intvalin, bool boolvalin, string stringvalin, const char* charstrvalin, CTransaction txvalin) : intval(intvalin), boolval(boolvalin), stringval(move(stringvalin)), charstrval(charstrvalin), txval(txvalin){}
+    CSerializeMethodsTestSingle(int intvalin, bool boolvalin, string stringvalin, 
+        const char* charstrvalin, CTransaction txvalin) : 
+        intval(intvalin), boolval(boolvalin), stringval(move(stringvalin)), 
+        charstrval(charstrvalin), txval(txvalin){}
     ADD_SERIALIZE_METHODS;
 
     template <typename Stream>
@@ -442,4 +444,205 @@ TEST(test_serialize, class_methods)
     CDataStream ss2(SER_DISK, PROTOCOL_VERSION, intval, boolval, stringval, FLATDATA(charstrval), txval);
     ss2 >> methodtest3;
     EXPECT_TRUE(methodtest3 == methodtest4);
+}
+
+// protected serialization
+TEST(test_serialize, protected_data_type)
+{
+    CDataStream ss(SER_DISK, PROTOCOL_VERSION);
+    ss << PROTECTED_DATA_TYPE::MAP;
+    EXPECT_EQ(2U, ss.size());
+
+    EXPECT_NO_THROW(ReadProtectedSerializeMarker(ss, PROTECTED_DATA_TYPE::MAP));
+
+    ss << PROTECTED_DATA_TYPE::MAP;
+    EXPECT_THROW(ReadProtectedSerializeMarker(ss, PROTECTED_DATA_TYPE::LIST), ios_base::failure);
+
+    ss.clear();
+    EXPECT_THROW(ReadProtectedSerializeMarker(ss, PROTECTED_DATA_TYPE::LIST), ios_base::failure);
+
+    ss.clear();
+    ss << uint8_t(1) << to_integral_type(PROTECTED_DATA_TYPE::LIST);
+    EXPECT_THROW(ReadProtectedSerializeMarker(ss, PROTECTED_DATA_TYPE::LIST), ios_base::failure);
+
+    ss.clear();
+    ss << PROTECTED_SERIALIZE_MARKER;
+    EXPECT_THROW(ReadProtectedSerializeMarker(ss, PROTECTED_DATA_TYPE::LIST), ios_base::failure);
+
+    ss.clear();
+    ss << PROTECTED_DATA_TYPE::LIST;
+    WriteCompactSize(ss, 12345);
+    EXPECT_NO_THROW(ReadProtectedSerializeMarker(ss, PROTECTED_DATA_TYPE::LIST));
+    const size_t nSize = ReadCompactSize(ss);
+    EXPECT_EQ(12345U, nSize);
+}
+
+class CPSerObjV1
+{
+public:
+    string str1;
+    uint64_t num1;
+
+    CPSerObjV1() : num1(0) {}
+    CPSerObjV1(const string& s, uint64_t n) :
+        str1(s), num1(n)
+    {}
+
+    ADD_SERIALIZE_METHODS;
+
+    template <typename Stream>
+    inline void SerializationOp(Stream& s, const SERIALIZE_ACTION ser_action)
+    {
+        READWRITE(str1);
+        READWRITE(num1);
+    }
+};
+
+class CPSerObjV2 : public CPSerObjV1
+{
+public:
+    string str2;
+    uint64_t num2;
+
+    CPSerObjV2() : num2(0) {}
+    CPSerObjV2(const string& s1, uint64_t n1, const string& s2, uint64_t n2) :
+        CPSerObjV1(s1, n1),
+        str2(s2), num2(n2)
+    {}
+
+    ADD_SERIALIZE_METHODS;
+
+    template <typename Stream>
+    inline void SerializationOp(Stream& s, const SERIALIZE_ACTION ser_action)
+    {
+        READWRITE(str1);
+        READWRITE(num1);
+        READWRITE(str2);
+        READWRITE(num2);
+    }
+};
+
+class CProtectedSerializationTest
+{
+public:
+    string str1;
+    uint64_t num1;
+    map<string, CPSerObjV1> map1;
+    string str2;
+    list<CPSerObjV1> list1;
+    uint64_t num2;
+    unordered_map<string, CPSerObjV1> map2;
+    string str3;
+    set<string> set1;
+    uint64_t num3;
+
+    ADD_SERIALIZE_METHODS;
+
+    template <typename Stream>
+    inline void SerializationOp(Stream& s, const SERIALIZE_ACTION ser_action)
+    {
+        READWRITE(str1);
+		READWRITE(num1);
+		READWRITE_PROTECTED(map1);
+		READWRITE(str2);
+        READWRITE_PROTECTED(list1);
+		READWRITE(num2);
+        READWRITE_PROTECTED(map2);
+        READWRITE(str3);
+        READWRITE_PROTECTED(set1);
+        READWRITE(num3);
+    }
+};
+
+TEST(test_serialize, protected_serialization)
+{
+    CProtectedSerializationTest objWrite, objRead;
+    objWrite.str1 = "str1";
+    objWrite.num1 = 100123;
+    objWrite.map1["key1"] = CPSerObjV1("value1_1", 11);
+    objWrite.map1["key2"] = CPSerObjV2("value2_1", 21, "value_2_2", 22);
+    objWrite.map1["key3"] = CPSerObjV1("value3_1", 31);
+    objWrite.str2 = "str2";
+    objWrite.list1.push_back(CPSerObjV1("value4_1", 41));
+    objWrite.list1.push_back(CPSerObjV2("value5_1", 51, "value5_2", 52));
+    objWrite.list1.push_back(CPSerObjV1("value6_1", 61));
+    objWrite.num2 = 200123;
+    objWrite.map2["key4"] = CPSerObjV1("value7_1", 71);
+    objWrite.map2["key5"] = CPSerObjV2("value8_1", 81, "value8_2", 82);
+    objWrite.map2["key6"] = CPSerObjV1("value9_1", 91);
+    objWrite.str3 = "str3";
+    objWrite.set1.insert("value10_1");
+    objWrite.set1.insert("value10_2");
+    objWrite.set1.insert("value10_3");
+    objWrite.num3 = 300123;
+
+    CDataStream ss(SER_DISK, PROTOCOL_VERSION);
+    ss << objWrite;
+    ss >> objRead;
+
+    EXPECT_EQ(objWrite.str1, objRead.str1);
+    EXPECT_EQ(objWrite.num1, objRead.num1);
+    EXPECT_EQ(objWrite.map1.size(), objRead.map1.size());
+
+    auto s1 = objWrite.map1["key1"];
+    auto s2 = objRead.map1["key1"];
+    EXPECT_EQ(s1.str1, s2.str1);
+    EXPECT_EQ(s1.num1, s2.num1);
+
+    s1 = objWrite.map1["key2"];
+    s2 = objRead.map1["key2"];
+    EXPECT_EQ(s1.str1, s2.str1);
+    EXPECT_EQ(s1.num1, s2.num1);
+
+    s1 = objWrite.map1["key3"];
+    s2 = objRead.map1["key3"];
+    EXPECT_EQ(s1.str1, s2.str1);
+    EXPECT_EQ(s1.num1, s2.num1);
+
+    EXPECT_EQ(objWrite.str2, objRead.str2);
+    EXPECT_EQ(objWrite.list1.size(), objRead.list1.size());
+    s1 = objWrite.list1.front();
+    s2 = objRead.list1.front();
+    EXPECT_EQ(s1.str1, s2.str1);
+    EXPECT_EQ(s1.num1, s2.num1);
+    objWrite.list1.pop_front();
+    objRead.list1.pop_front();
+    s1 = objWrite.list1.front();
+    s2 = objRead.list1.front();
+    EXPECT_EQ(s1.str1, s2.str1);
+    EXPECT_EQ(s1.num1, s2.num1);
+    objWrite.list1.pop_front();
+    objRead.list1.pop_front();
+    s1 = objWrite.list1.front();
+    s2 = objRead.list1.front();
+    EXPECT_EQ(s1.str1, s2.str1);
+    EXPECT_EQ(s1.num1, s2.num1);
+    EXPECT_EQ(objWrite.num2, objRead.num2);
+
+    EXPECT_EQ(objWrite.map2.size(), objRead.map2.size());
+    s1 = objWrite.map2["key4"];
+    s2 = objRead.map2["key4"];
+    EXPECT_EQ(s1.str1, s2.str1);
+    EXPECT_EQ(s1.num1, s2.num1);
+
+    s1 = objWrite.map2["key5"];
+    s2 = objRead.map2["key5"];
+    EXPECT_EQ(s1.str1, s2.str1);
+    EXPECT_EQ(s1.num1, s2.num1);
+
+    s1 = objWrite.map2["key6"];
+    s2 = objRead.map2["key6"];
+    EXPECT_EQ(s1.str1, s2.str1);
+    EXPECT_EQ(s1.num1, s2.num1);
+        
+    EXPECT_EQ(objWrite.str3, objRead.str3);
+    EXPECT_EQ(objWrite.set1.size(), objRead.set1.size());
+    auto it1 = objWrite.set1.begin();
+    auto it2 = objRead.set1.begin();
+    for (; it1 != objWrite.set1.end(); ++it1, ++it2)
+    {
+		EXPECT_EQ(*it1, *it2);
+	}
+
+    EXPECT_EQ(objWrite.num3, objRead.num3);
 }

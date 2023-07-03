@@ -89,7 +89,7 @@ bool CTxMemPool::addUnchecked(const uint256& hash, const CTxMemPoolEntry &entry,
 }
 
 void CTxMemPool::getAddressIndex(
-    const vector<pair<uint160, CScript::ScriptType>>& vAddresses,
+    const vector<pair<uint160, ScriptType>>& vAddresses,
     vector<pair<CMempoolAddressDeltaKey, CMempoolAddressDelta>>& results)
 {
     LOCK(cs);

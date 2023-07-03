@@ -14,6 +14,9 @@ extern CCriticalSection cs_mapPayments;
 extern CCriticalSection cs_mapTickets;
 extern CCriticalSection cs_mapVotes;
 
+constexpr auto MN_GOVERNANCE_FILENAME = "governance.dat";
+constexpr auto MN_GOVERNANCE_MAGIC_CACHE_STR = "magicGovernanceCache";
+
 class CGovernanceVote
 {
 public:

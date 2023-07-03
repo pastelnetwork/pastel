@@ -13,7 +13,7 @@
 #include <sync.h>
 #include <addressindex.h>
 #include <spentindex.h>
-#include <script/script.h>
+#include <script/scripttype.h>
 #include <txmempool_entry.h>
 #include <policy/fees.h>
 
@@ -136,7 +136,7 @@ public:
     void check(const CCoinsViewCache *pcoins) const;
     void setSanityCheck(const double dFrequency = 1.0) noexcept { nCheckFrequency = static_cast<uint32_t>(dFrequency * 4294967295.0); }
 
-	void getAddressIndex(const std::vector<std::pair<uint160, CScript::ScriptType>>& addresses,
+	void getAddressIndex(const std::vector<std::pair<uint160, ScriptType>>& addresses,
                          std::vector<std::pair<CMempoolAddressDeltaKey, CMempoolAddressDelta>>& results);
 
     bool getSpentIndex(const CSpentIndexKey &key, CSpentIndexValue &value);

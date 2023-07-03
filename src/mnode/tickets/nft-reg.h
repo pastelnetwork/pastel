@@ -120,7 +120,7 @@ public:
     static TicketID GetID() { return TicketID::NFT; }
     static constexpr auto GetTicketDescription()
     {
-        return TICKET_INFO[to_integral_type<TicketID>(TicketID::NFT)].szDescription;
+        return TICKET_INFO[to_integral_type(TicketID::NFT)].szDescription;
     }
 
     void Clear() noexcept override;

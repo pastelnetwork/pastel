@@ -26,7 +26,8 @@
 
 using namespace std;
 
-const string CMasternodeMan::SERIALIZATION_VERSION_STRING = "CMasternodeMan-Version-7";
+const string CMasternodeMan::SERIALIZATION_VERSION_STRING_PREV = "CMasternodeMan-Version-7";
+const string CMasternodeMan::SERIALIZATION_VERSION_STRING = "CMasternodeMan-Version-8";
 
 constexpr auto ERRMSG_MNLIST_NOT_SYNCED = "Masternode list is not synced";
 constexpr auto ERRMSG_MNLIST_EMPTY = "Masternode list is empty";
@@ -1614,7 +1615,7 @@ bool CMasternodeMan::IsWatchdogActive()
 void CMasternodeMan::CheckMasternode(const CPubKey& pubKeyMasternode, bool fForce)
 {
     LOCK(cs);
-    for (auto& mnpair : mapMasternodes)
+    for (auto& mnpair: mapMasternodes)
     {
         if (mnpair.second.pubKeyMasternode == pubKeyMasternode)
         {
@@ -1647,12 +1648,12 @@ void CMasternodeMan::SetMasternodeLastPing(const COutPoint& outpoint, const CMas
         mapSeenMasternodeBroadcast[hash].second.setLastPing(mnp);
 }
 
-void CMasternodeMan::SetMasternodeStorageFee(const COutPoint& outpoint, const CAmount newFee)
+void CMasternodeMan::SetMasternodeFee(const COutPoint& outpoint, const MN_FEE mnFeeType, const CAmount newFee)
 {
     LOCK(cs);
     CMasternode* pmn = Find(outpoint);
     if (pmn)
-        pmn->SetMNFee(MN_FEE::StorageFeePerMB, newFee);
+        pmn->SetMNFee(mnFeeType, newFee);
 }
 
 /**

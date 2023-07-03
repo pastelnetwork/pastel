@@ -41,7 +41,7 @@ public:
     static TicketID GetID() { return TicketID::EthereumAddress; }
     static constexpr auto GetTicketDescription()
     {
-        return TICKET_INFO[to_integral_type<TicketID>(TicketID::EthereumAddress)].szDescription;
+        return TICKET_INFO[to_integral_type(TicketID::EthereumAddress)].szDescription;
     }
 
     void Clear() noexcept override

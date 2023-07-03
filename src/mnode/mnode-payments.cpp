@@ -13,11 +13,9 @@
 #include <mnode/mnode-validation.h>
 #include <mnode/mnode-msgsigner.h>
 
-CCriticalSection cs_vecPayees;
-CCriticalSection cs_mapMasternodeBlockPayees;
-CCriticalSection cs_mapMasternodePaymentVotes;
-
 using namespace std;
+
+const string CMasternodePayments::SERIALIZATION_VERSION_STRING = "CMasternodePayments-Version-1";
 
 CAmount CMasternodePayments::GetMasternodePayment(const int nHeight, const CAmount blockValue) const noexcept
 {
@@ -635,6 +633,71 @@ bool CMasternodePayments::ProcessBlock(int nBlockHeight)
         }
     }
 
+    return false;
+}
+
+bool CMasternodePayments::PushPaymentVotes(const CBlockIndex* pindex, CNode* pNodeFrom) const
+{
+    LOCK(cs_mapMasternodeBlockPayees);
+
+    if (mapMasternodeBlockPayees.count(pindex->nHeight) == 0)
+        return false;
+
+    CDataStream ss(SER_NETWORK, PROTOCOL_VERSION);
+    ss.reserve(1000);
+    for (const auto& payee : mapMasternodeBlockPayees.at(pindex->nHeight).vecPayees)
+    {
+        const auto vecVoteHashes = payee.GetVoteHashes();
+        for (const auto& hash : vecVoteHashes)
+        {
+            if (mapMasternodePaymentVotes.count(hash) == 0)
+                continue;
+            if (HasVerifiedPaymentVote(hash))
+            {
+                ss.clear();
+                ss << mapMasternodePaymentVotes.at(hash);
+                pNodeFrom->PushMessage(NetMsgType::MASTERNODEPAYMENTVOTE, ss);
+            }
+        }
+    }
+    return true;
+}
+
+bool CMasternodePayments::SearchForPaymentBlock(int &nBlockLastPaid, int64_t &nTimeLastPaid,
+    const CBlockIndex* pindex, const size_t nMaxBlocksToScanBack, const CScript &mnpayee)
+{
+    const CBlockIndex *pBlockReading = pindex;
+    const auto &consensusParams = Params().GetConsensus();
+
+    LOCK(cs_mapMasternodeBlockPayees);
+    for (size_t i = 0; pBlockReading && pBlockReading->nHeight > nBlockLastPaid && i < nMaxBlocksToScanBack; i++)
+    {
+        if (mapMasternodeBlockPayees.count(pBlockReading->nHeight) &&
+            mapMasternodeBlockPayees.at(pBlockReading->nHeight).HasPayeeWithVotes(mnpayee, 2, pBlockReading->nHeight))
+        {
+            CBlock block;
+            if (!ReadBlockFromDisk(block, pBlockReading, consensusParams)) // shouldn't really happen
+                continue;
+
+            const CAmount nMasternodePayment = GetMasternodePayment(pBlockReading->nHeight, block.vtx[0].GetValueOut());
+            for (const auto& txout : block.vtx[0].vout)
+            {
+                if (mnpayee == txout.scriptPubKey && (nMasternodePayment == txout.nValue))
+                {
+                    nBlockLastPaid = pBlockReading->nHeight;
+                    nTimeLastPaid = pBlockReading->nTime;
+                    return true;
+                }
+            }
+        }
+
+        if (!pBlockReading->pprev)
+        {
+            assert(pBlockReading);
+            break;
+        }
+        pBlockReading = pBlockReading->pprev;
+    }
     return false;
 }
 

@@ -14,6 +14,9 @@
 #include <vector_types.h>
 #include <mnode/mnode-masternode.h>
 
+constexpr auto MNCACHE_FILENAME = "mncache.dat";
+constexpr auto MNCACHE_CACHE_MAGIC_STR = "magicMasternodeCache";
+
 enum class GetTopMasterNodeStatus: int
 {
     SUCCEEDED = 0,              // successfully got top masternodes
@@ -36,6 +39,7 @@ public:
     typedef std::vector<rank_pair_t> rank_pair_vec_t;
 
 private:
+    static const std::string SERIALIZATION_VERSION_STRING_PREV;
     static const std::string SERIALIZATION_VERSION_STRING;
 
     static constexpr int DSEG_UPDATE_SECONDS        = 3 * 60 * 60;
@@ -100,31 +104,65 @@ public:
     template <typename Stream>
     inline void SerializationOp(Stream& s, const SERIALIZE_ACTION ser_action)
     {
-        LOCK(cs);
         std::string strVersion;
         const bool bRead = ser_action == SERIALIZE_ACTION::Read;
+        bool bProtectedMode = !bRead;
         if (bRead)
+        {
             READWRITE(strVersion);
-        else {
+            if (strVersion == SERIALIZATION_VERSION_STRING_PREV)
+                bProtectedMode = false;
+            else if (strVersion == SERIALIZATION_VERSION_STRING)
+                bProtectedMode = true;
+            else
+                throw unexpected_serialization_version(strprintf("CMasternodeManager: unexpected serialization version: '%s'", strVersion));
+        }
+        else
+        {
             strVersion = SERIALIZATION_VERSION_STRING; 
             READWRITE(strVersion);
         }
+        try
+        {
+            LOCK(cs);
+            if (bProtectedMode)
+            {
+                READWRITE_PROTECTED(mapMasternodes);
+                READWRITE_PROTECTED(mAskedUsForMasternodeList);
+                READWRITE_PROTECTED(mWeAskedForMasternodeList);
+                READWRITE_PROTECTED(mWeAskedForMasternodeListEntry);
+                READWRITE_PROTECTED(mMnbRecoveryRequests);
+                READWRITE_PROTECTED(mMnbRecoveryGoodReplies);
+            }
+            else
+            {
+                READWRITE(mapMasternodes);
+                READWRITE(mAskedUsForMasternodeList);
+                READWRITE(mWeAskedForMasternodeList);
+                READWRITE(mWeAskedForMasternodeListEntry);
+                READWRITE(mMnbRecoveryRequests);
+                READWRITE(mMnbRecoveryGoodReplies);
+            }
+            READWRITE(nLastWatchdogVoteTime);
 
-        READWRITE(mapMasternodes);
-        READWRITE(mAskedUsForMasternodeList);
-        READWRITE(mWeAskedForMasternodeList);
-        READWRITE(mWeAskedForMasternodeListEntry);
-        READWRITE(mMnbRecoveryRequests);
-        READWRITE(mMnbRecoveryGoodReplies);
-        READWRITE(nLastWatchdogVoteTime);
-        
-        READWRITE(mapSeenMasternodeBroadcast);
-        READWRITE(mapSeenMasternodePing);
-        
-        READWRITE(mapHistoricalTopMNs);
-        
-        if(bRead && (strVersion != SERIALIZATION_VERSION_STRING))
+            if (bProtectedMode)
+            {
+                READWRITE_PROTECTED(mapSeenMasternodeBroadcast);
+                READWRITE_PROTECTED(mapSeenMasternodePing);
+                READWRITE_PROTECTED(mapHistoricalTopMNs);
+            }
+            else
+            {
+                READWRITE(mapSeenMasternodeBroadcast);
+                READWRITE(mapSeenMasternodePing);
+                READWRITE(mapHistoricalTopMNs);
+            }
+        } catch (const std::exception& e)
+        {
+			LogPrintf("CMasternodeManager: serialization error: %s\n", e.what());
             Clear();
+			throw;
+        }
     }
 
     CMasternodeMan();
@@ -215,7 +253,7 @@ public:
     bool IsMasternodePingedWithin(const COutPoint& outpoint, int nSeconds, int64_t nTimeToCheckAt = -1);
     void SetMasternodeLastPing(const COutPoint& outpoint, const CMasterNodePing& mnp);
 
-    void SetMasternodeStorageFee(const COutPoint& outpoint, const CAmount newFee);
+    void SetMasternodeFee(const COutPoint& outpoint, const MN_FEE mnFeeType, const CAmount newFee);
     void IncrementMasterNodePoSeBanScore(const COutPoint& outpoint);
 
     void UpdatedBlockTip(const CBlockIndex *pindex);
