@@ -301,6 +301,7 @@ void masternode_info_t::SetState(const MASTERNODE_STATE newState, const char *sz
     LogPrintf("%s\n", sMsg);
 }
 
+bool CMasternode::fCompatibilityReadMode = false;
 
 //
 //  ----------------- CMasternode  ------------------------------------------------------------------------------
@@ -315,7 +316,6 @@ CMasternode::CMasternode() :
 CMasternode::CMasternode(const CService &addr, const COutPoint &outpoint, const CPubKey &pubKeyCollateralAddress, const CPubKey &pubKeyMasternode, 
                             const string& strExtraLayerAddress, const string& strExtraLayerP2P, const string& strExtraLayerCfg,
                             const int nProtocolVersionIn) :
-
     masternode_info_t
     { 
         MASTERNODE_STATE::ENABLED, nProtocolVersionIn, GetAdjustedTime(),
@@ -324,7 +324,7 @@ CMasternode::CMasternode(const CService &addr, const COutPoint &outpoint, const 
     },
     m_chainparams(Params())
 {
-    m_nPoSeBanScore.store(0);
+    m_nPoSeBanScore = 0;
 }
 
 CMasternode::CMasternode(const CMasternode& other) :
@@ -334,8 +334,10 @@ CMasternode::CMasternode(const CMasternode& other) :
     m_collateralMinConfBlockHash(other.m_collateralMinConfBlockHash),
     m_nBlockLastPaid(other.m_nBlockLastPaid),
     fUnitTest(other.fUnitTest),
-    aMNFeePerMB(other.aMNFeePerMB),
-    aNFTTicketFeePerKB(other.aNFTTicketFeePerKB)
+    m_nMNFeePerMB(other.m_nMNFeePerMB),
+    m_nTicketChainStorageFeePerKB(other.m_nTicketChainStorageFeePerKB),
+    m_nSenseComputeFee(other.m_nSenseComputeFee),
+    m_nSenseProcessingFeePerMB(other.m_nSenseProcessingFeePerMB)
 {
     setLastPing(other.getLastPing());
     m_nPoSeBanScore.store(other.m_nPoSeBanScore.load());
@@ -370,8 +372,20 @@ bool CMasternode::UpdateFromNewBroadcast(CMasternodeBroadcast& mnb)
     strExtraLayerAddress = mnb.strExtraLayerAddress;
     strExtraLayerP2P = mnb.strExtraLayerP2P;
     strExtraLayerCfg = mnb.strExtraLayerCfg;
-    aMNFeePerMB = 0;
-    aNFTTicketFeePerKB = 0;
+    if (mnb.GetVersion() >= 1)
+    {
+        m_nMNFeePerMB = mnb.m_nMNFeePerMB;
+        m_nTicketChainStorageFeePerKB = mnb.m_nTicketChainStorageFeePerKB;
+        m_nSenseComputeFee = mnb.m_nSenseComputeFee;
+        m_nSenseProcessingFeePerMB = mnb.m_nSenseProcessingFeePerMB;
+    }
+    else
+    {
+        m_nMNFeePerMB = 0;
+        m_nTicketChainStorageFeePerKB = 0;
+        m_nSenseComputeFee = 0;
+        m_nSenseProcessingFeePerMB = 0;
+    }
     m_nPoSeBanScore = 0;
     m_nPoSeBanHeight = 0;
     nTimeLastChecked = 0;
@@ -676,42 +690,12 @@ void CMasternode::UpdateLastPaid(const CBlockIndex *pindex, int nMaxBlocksToScan
     const CScript mnpayee = GetScriptForDestination(pubKeyCollateralAddress.GetID());
     LogFnPrint("masternode", "searching for block with payment to %s", GetDesc());
 
-    LOCK(cs_mapMasternodeBlockPayees);
-
-    const auto &consensusParams = m_chainparams.GetConsensus();
-    const auto &mnPayments = masterNodeCtrl.masternodePayments;
-    for (int i = 0; BlockReading && BlockReading->nHeight > m_nBlockLastPaid && i < nMaxBlocksToScanBack; i++)
+    if (masterNodeCtrl.masternodePayments.SearchForPaymentBlock(m_nBlockLastPaid, nTimeLastPaid,
+        pindex, nMaxBlocksToScanBack, mnpayee))
     {
-        if (mnPayments.mapMasternodeBlockPayees.count(BlockReading->nHeight) &&
-            mnPayments.mapMasternodeBlockPayees.at(BlockReading->nHeight).HasPayeeWithVotes(mnpayee, 2, BlockReading->nHeight))
-        {
-            CBlock block;
-            if (!ReadBlockFromDisk(block, BlockReading, consensusParams)) // shouldn't really happen
-                continue;
-
-            const CAmount nMasternodePayment = mnPayments.GetMasternodePayment(BlockReading->nHeight, block.vtx[0].GetValueOut());
-
-            for (const auto & txout : block.vtx[0].vout)
-            {
-                if (mnpayee == txout.scriptPubKey && nMasternodePayment == txout.nValue)
-                {
-                    m_nBlockLastPaid = BlockReading->nHeight;
-                    nTimeLastPaid = BlockReading->nTime;
-                    LogFnPrint("masternode", "searching for block with payment to %s -- found new %d",
-                        GetDesc(), m_nBlockLastPaid);
-                    return;
-                }
-            }
-        }
-
-        if (!BlockReading->pprev)
-        { 
-            assert(BlockReading); 
-            break;
-        }
-        BlockReading = BlockReading->pprev;
+        LogFnPrint("masternode", "searching for block with payment to %s -- found new %d",
+            GetDesc(), m_nBlockLastPaid);
     }
-
     // Last payment for this masternode wasn't found in latest mnpayments blocks
     // or it was found in mnpayments blocks but wasn't found in the blockchain.
     // LogFnPrint("masternode", "searching for block with payment to %s -- keeping old %d", GetDesc(), nBlockLastPaid);
@@ -742,9 +726,63 @@ CMasternode& CMasternode::operator=(CMasternode const& from)
     m_nPoSeBanScore.store(from.m_nPoSeBanScore.load());
     m_nPoSeBanHeight.store(from.m_nPoSeBanHeight.load());
     fUnitTest = from.fUnitTest;
-    aMNFeePerMB = from.aMNFeePerMB;
-    aNFTTicketFeePerKB = from.aNFTTicketFeePerKB;
+    m_nMNFeePerMB = from.m_nMNFeePerMB;
+    m_nTicketChainStorageFeePerKB = from.m_nTicketChainStorageFeePerKB;
+    m_nSenseComputeFee = from.m_nSenseComputeFee;
+    m_nSenseProcessingFeePerMB = from.m_nSenseProcessingFeePerMB;
     return *this;
+}
+
+CAmount CMasternode::GetMNFee(const MN_FEE mnFee) const noexcept
+{
+    CAmount nFee = 0;
+    switch (mnFee)
+	{
+        case MN_FEE::StorageFeePerMB:
+            nFee = m_nMNFeePerMB == 0 ? masterNodeCtrl.GetDefaultMNFee(mnFee) : m_nMNFeePerMB;
+            break;
+
+        case MN_FEE::TicketChainStorageFeePerKB:
+            nFee = m_nTicketChainStorageFeePerKB == 0 ? masterNodeCtrl.GetDefaultMNFee(mnFee) : m_nTicketChainStorageFeePerKB;
+            break;
+
+        case MN_FEE::SenseComputeFee:
+            nFee = m_nSenseComputeFee == 0 ? masterNodeCtrl.GetDefaultMNFee(mnFee) : m_nSenseComputeFee;
+            break;
+
+        case MN_FEE::SenseProcessingFeePerMB:
+            nFee = m_nSenseProcessingFeePerMB == 0 ? masterNodeCtrl.GetDefaultMNFee(mnFee) : m_nSenseProcessingFeePerMB;
+            break;
+
+        default:
+            break;
+    }
+    return nFee;
+}
+
+void CMasternode::SetMNFee(const MN_FEE mnFee, const CAmount nNewFee) noexcept
+{
+    switch (mnFee)
+    {
+        case MN_FEE::StorageFeePerMB:
+            m_nMNFeePerMB = nNewFee;
+            break;
+
+        case MN_FEE::TicketChainStorageFeePerKB:
+            m_nTicketChainStorageFeePerKB = nNewFee;
+            break;
+
+        case MN_FEE::SenseComputeFee:
+            m_nSenseComputeFee = nNewFee;
+            break;
+
+        case MN_FEE::SenseProcessingFeePerMB:
+            m_nSenseProcessingFeePerMB = nNewFee;
+            break;
+
+        default:
+            break;
+    }
 }
 
 bool CMasternode::IsPoSeVerified()

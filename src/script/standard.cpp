@@ -337,17 +337,20 @@ bool IsScriptDestination(const CTxDestination& dest) noexcept
 }
 
 // insightexplorer
-CTxDestination DestFromAddressHash(CScript::ScriptType scriptType, uint160& addressHash)
+CTxDestination DestFromAddressHash(ScriptType scriptType, uint160& addressHash)
 {
-    switch (scriptType) {
-    case CScript::ScriptType::P2PKH:
-        return CTxDestination(CKeyID(addressHash));
-    case CScript::ScriptType::P2SH:
-        return CTxDestination(CScriptID(addressHash));
-    default:
-        // This probably won't ever happen, because it would mean that
-        // the addressindex contains a type (say, 3) that we (currently)
-        // don't recognize; maybe we "dropped support" for it?
-        return CNoDestination();
+    switch (scriptType)
+    {
+        case ScriptType::P2PKH:
+            return CTxDestination(CKeyID(addressHash));
+
+        case ScriptType::P2SH:
+            return CTxDestination(CScriptID(addressHash));
+
+        default:
+            // This probably won't ever happen, because it would mean that
+            // the addressindex contains a type (say, 3) that we (currently)
+            // don't recognize; maybe we "dropped support" for it?
+            return CNoDestination();
     }
 }

@@ -32,7 +32,7 @@ static void ResetArgs(const string& strArg)
     for (const auto& s : vecArg)
         vecChar.push_back(s.c_str());
 
-    ParseParameters(vecChar.size(), &vecChar[0]);
+    ParseParameters(static_cast<int>(vecChar.size()), &vecChar[0]);
 }
 
 TEST(test_getarg, boolarg)

@@ -49,7 +49,7 @@ public:
     static TicketID GetID() { return TicketID::ActionActivate; }
     static constexpr auto GetTicketDescription()
     {
-        return TICKET_INFO[to_integral_type<TicketID>(TicketID::ActionActivate)].szDescription;
+        return TICKET_INFO[to_integral_type(TicketID::ActionActivate)].szDescription;
     }
 
     void Clear() noexcept override;

@@ -16,7 +16,11 @@ from test_framework.util import (
     start_node,
     stop_node
 )
-from mn_common import MasterNodeCommon
+from mn_common import (
+    MasterNodeCommon,
+    MnFeeType,
+    GLOBAL_FEE_ADJUSTMENT_MULTIPLIER,
+)
 import test_framework.rpc_consts as rpc
 
 getcontext().prec = 16
@@ -37,27 +41,44 @@ class MasterNodeMainTest (MasterNodeCommon):
         print(f"Initializing test directory {self.options.tmpdir}")
         initialize_chain_clean(self.options.tmpdir, self.total_number_of_nodes+1) # three now, 1 later
 
+
     def setup_network(self, split=False):
         self.nodes = []
         self.is_network_split = False
         self.setup_masternodes_network()
 
 
-    def storagefee_tests (self):
+    def storagefee_tests(self):
         print("=== Test MN Fees ===")
         assert_shows_help(self.nodes[0].storagefee)
 
-        nfee_mn0 = self.nodes[0].storagefee("getnetworkfee")["networkfee"]
-        nfee_mn1 = self.nodes[1].storagefee("getnetworkfee")["networkfee"]
-        nfee_mn2 = self.nodes[2].storagefee("getnetworkfee")["networkfee"]
-        assert_equal(nfee_mn0, 50)
-        assert_equal(nfee_mn1, 50)
-        assert_equal(nfee_mn2, 50)
-        print("Network fee is ", nfee_mn0)
+        # for test this will be always 1 (height is even less that baseline)
+        chain_deflator_factor = 1.0
+        fee_adjustment_multiplier = chain_deflator_factor * GLOBAL_FEE_ADJUSTMENT_MULTIPLIER
 
-        lfee_mn0 = self.nodes[0].storagefee("getlocalfee")["localfee"]
-        assert_equal(lfee_mn0, 50)
-        print("Local fee of MN0 is ", lfee_mn0)
+        for fee_type in MnFeeType:
+            # network median trimmean with fixed 25%
+            expected_fee = int(fee_type.fee * fee_adjustment_multiplier)
+            expected_local_fee = expected_fee
+            for is_local_fee in [False, True]:
+                for i in range(3):
+                    if is_local_fee:
+                        option_name = fee_type.local_option_name
+                        fee_response = self.nodes[0].storagefee(fee_type.getfee_rpc_command, True)
+                    else:
+                        option_name = fee_type.option_name
+                        fee_response = self.nodes[0].storagefee(fee_type.getfee_rpc_command)
+                    assert_true(fee_response, "No storagefee returned")
+                    assert_true(option_name in fee_response,
+                                f"Fee option '{option_name}' not found in 'storagefee {fee_type.getfee_rpc_command}' response")
+                    fee = fee_response[option_name]
+                    if is_local_fee:
+                        assert_equal(expected_local_fee, fee)
+                        print(f"MN{i} {fee_type.name} local fee: {fee} PSL")
+                    else:
+                        assert_equal(expected_fee, fee)
+                        print(f"MN{i} {fee_type.name} network median fee: {fee} PSL")
+                        
 
         assert_raises_rpc(rpc.RPC_INVALID_PARAMETER, "storagefee getactionfees",
             self.nodes[0].storagefee, "getactionfees")
@@ -71,6 +92,7 @@ class MasterNodeMainTest (MasterNodeCommon):
         print(f"action fee [cascade]: {cascade_fee}")
         assert_greater_than(sense_fee, 0)
         assert_greater_than(cascade_fee, 0)
+
 
     def run_test (self):
         tests = ['cache', 'sync', 'ping', 'restart', 'spent', 'fee']

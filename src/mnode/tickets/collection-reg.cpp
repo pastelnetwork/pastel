@@ -311,7 +311,7 @@ ticket_validation_t CollectionRegTicket::IsValid(const TxOrigin txOrigin, const 
             {
                 tv.state = TICKET_VALIDATION_STATE::MISSING_INPUTS;
                 tv.errorMsg = strprintf(
-					"This NFT creator height is in the future [creator_height=%u, active chain height=%u]", 
+					"This collection creator height is in the future [creator_height=%u, active chain height=%u]", 
 					m_nCreatorHeight, nActiveChainHeight);
                 break;
             }

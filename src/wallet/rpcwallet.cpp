@@ -1,6 +1,6 @@
 // Copyright (c) 2010 Satoshi Nakamoto
 // Copyright (c) 2009-2014 The Bitcoin Core developers
-// Copyright (c) 2018-2022 Pastel Core developers
+// Copyright (c) 2018-2023 Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php .
 
@@ -559,8 +559,8 @@ Examples:
     
     UniValue jsonBalances(UniValue::VOBJ);
     KeyIO keyIO(Params());
-    const auto balances = pwalletMain->GetAddressBalances(isMineFilter);
-    for (const auto &[txDestination, amount] : balances)
+    const auto balanceMap = pwalletMain->GetAddressBalances(isMineFilter);
+    for (const auto &[txDestination, amount] : balanceMap)
     {
         if (!bIncludeEmpty && amount == 0)
             continue;
@@ -604,22 +604,24 @@ Examples:
 
     KeyIO keyIO(Params());
     UniValue jsonGroupings(UniValue::VARR);
-    auto balances = pwalletMain->GetAddressBalances(isminetype::ALL);
-    for (const set<CTxDestination>& grouping : pwalletMain->GetAddressGroupings()) {
+    const auto balanceMap = pwalletMain->GetAddressBalances(isminetype::ALL);
+    for (const set<CTxDestination>& grouping : pwalletMain->GetAddressGroupings())
+    {
         UniValue jsonGrouping(UniValue::VARR);
         for (const CTxDestination& address : grouping)
         {
+            if (balanceMap.count(address) == 0)
+                continue;
             UniValue addressInfo(UniValue::VARR);
             addressInfo.push_back(keyIO.EncodeDestination(address));
-            addressInfo.push_back(ValueFromAmount(balances[address]));
+            addressInfo.push_back(ValueFromAmount(balanceMap.at(address)));
             {
-                if (pwalletMain->mapAddressBook.find(address) != pwalletMain->mapAddressBook.end()) {
+                if (pwalletMain->mapAddressBook.find(address) != pwalletMain->mapAddressBook.cend())
                     addressInfo.push_back(pwalletMain->mapAddressBook.find(address)->second.name);
-                }
             }
-            jsonGrouping.push_back(addressInfo);
+            jsonGrouping.push_back(move(addressInfo));
         }
-        jsonGroupings.push_back(jsonGrouping);
+        jsonGroupings.push_back(move(jsonGrouping));
     }
     return jsonGroupings;
 }
@@ -663,19 +665,16 @@ As json rpc
 
     KeyIO keyIO(Params());
     CTxDestination dest = keyIO.DecodeDestination(strAddress);
-    if (!IsValidDestination(dest)) {
+    if (!IsValidDestination(dest))
         throw JSONRPCError(RPC_TYPE_ERROR, "Invalid address");
-    }
 
     const CKeyID *keyID = get_if<CKeyID>(&dest);
-    if (!keyID) {
+    if (!keyID)
         throw JSONRPCError(RPC_TYPE_ERROR, "Address does not refer to key");
-    }
 
     CKey key;
-    if (!pwalletMain->GetKey(*keyID, key)) {
+    if (!pwalletMain->GetKey(*keyID, key))
         throw JSONRPCError(RPC_WALLET_ERROR, "Private key not available");
-    }
 
     CHashWriter ss(SER_GETHASH, 0);
     ss << STR_MSG_MAGIC;
@@ -693,7 +692,7 @@ UniValue getreceivedbyaddress(const UniValue& params, bool fHelp)
     if (!EnsureWalletIsAvailable(fHelp))
         return NullUniValue;
 
-    if (fHelp || params.size() < 1 || params.size() > 2)
+    if (fHelp || params.empty() || params.size() > 2)
         throw runtime_error(
 R"(getreceivedbyaddress "zcashaddress" ( minconf )
 
@@ -722,9 +721,8 @@ As a json rpc call
     KeyIO keyIO(Params());
     // Bitcoin address
     CTxDestination dest = keyIO.DecodeDestination(params[0].get_str());
-    if (!IsValidDestination(dest)) {
+    if (!IsValidDestination(dest))
         throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid Pastel address");
-    }
     CScript scriptPubKey = GetScriptForDestination(dest);
     if (!IsMine(*pwalletMain, scriptPubKey))
         return ValueFromAmount(0);
@@ -756,7 +754,7 @@ UniValue getreceivedbyaccount(const UniValue& params, bool fHelp)
     if (!EnsureWalletIsAvailable(fHelp))
         return NullUniValue;
 
-    if (fHelp || params.size() < 1 || params.size() > 2)
+    if (fHelp || params.empty() || params.size() > 2)
         throw runtime_error(
 R"(getreceivedbyaccount "account" ( minconf )
 
@@ -1152,15 +1150,14 @@ As a json rpc call
     KeyIO keyIO(Params());
     CAmount totalAmount = 0;
     vector<string> keys = sendTo.getKeys();
-    for (const string& name_ : keys) {
+    for (const string& name_ : keys)
+    {
         CTxDestination dest = keyIO.DecodeDestination(name_);
-        if (!IsValidDestination(dest)) {
+        if (!IsValidDestination(dest))
             throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, string("Invalid Pastel address: ") + name_);
-        }
 
-        if (destinations.count(dest)) {
+        if (destinations.count(dest))
             throw JSONRPCError(RPC_INVALID_PARAMETER, string("Invalid parameter, duplicated address: ") + name_);
-        }
         destinations.insert(dest);
 
         CScript scriptPubKey = GetScriptForDestination(dest);
@@ -1170,7 +1167,8 @@ As a json rpc call
         totalAmount += nAmount;
 
         bool fSubtractFeeFromAmount = false;
-        for (size_t idx = 0; idx < subtractFeeFromAmount.size(); idx++) {
+        for (size_t idx = 0; idx < subtractFeeFromAmount.size(); idx++)
+        {
             const UniValue& addr = subtractFeeFromAmount[idx];
             if (addr.get_str() == name_)
                 fSubtractFeeFromAmount = true;
@@ -3044,61 +3042,58 @@ Examples:
     LOCK2(cs_main, pwalletMain->cs_wallet);
 
     bool fIncludeWatchonly = false;
-    if (params.size() > 0) {
+    if (params.size() > 0)
         fIncludeWatchonly = params[0].get_bool();
-    }
 
     KeyIO keyIO(Params());
     UniValue ret(UniValue::VARR);
     {
         set<libzcash::SaplingPaymentAddress> addresses;
         pwalletMain->GetSaplingPaymentAddresses(addresses);
-        for (auto addr : addresses) {
-            if (fIncludeWatchonly || HaveSpendingKeyForPaymentAddress(pwalletMain)(addr)) {
+        for (auto addr : addresses)
+        {
+            if (fIncludeWatchonly || HaveSpendingKeyForPaymentAddress(pwalletMain)(addr))
                 ret.push_back(keyIO.EncodePaymentAddress(addr));
-            }
         }
     }
     return ret;
 }
 
-CAmount getBalanceTaddr(string transparentAddress, int minDepth=1, bool ignoreUnspendable=true) {
+CAmount getBalanceTaddr(const string &transparentAddress, int minDepth=1, bool ignoreUnspendable=true)
+{
     set<CTxDestination> destinations;
-    vector<COutput> vecOutputs;
     CAmount balance = 0;
 
     KeyIO keyIO(Params());
-    if (transparentAddress.length() > 0) {
+    if (!transparentAddress.empty())
+    {
         CTxDestination taddr = keyIO.DecodeDestination(transparentAddress);
-        if (!IsValidDestination(taddr)) {
+        if (!IsValidDestination(taddr))
             throw runtime_error("invalid transparent address");
-        }
         destinations.insert(taddr);
     }
 
     LOCK2(cs_main, pwalletMain->cs_wallet);
 
+    vector<COutput> vecOutputs;
     pwalletMain->AvailableCoins(vecOutputs, false, nullptr, true);
 
     for (const auto& out : vecOutputs)
     {
-        if (out.nDepth < minDepth) {
+        if (out.nDepth < minDepth)
             continue;
-        }
 
-        if (ignoreUnspendable && !out.fSpendable) {
+        if (ignoreUnspendable && !out.fSpendable)
             continue;
-        }
 
-        if (destinations.size()) {
+        if (destinations.size())
+        {
             CTxDestination address;
-            if (!ExtractDestination(out.tx->vout[out.i].scriptPubKey, address)) {
+            if (!ExtractDestination(out.tx->vout[out.i].scriptPubKey, address))
                 continue;
-            }
 
-            if (!destinations.count(address)) {
+            if (!destinations.count(address))
                 continue;
-            }
         }
 
         CAmount nValue = out.tx->vout[out.i].nValue;
@@ -3107,14 +3102,16 @@ CAmount getBalanceTaddr(string transparentAddress, int minDepth=1, bool ignoreUn
     return balance;
 }
 
-CAmount getBalanceZaddr(string address, int minDepth = 1, bool ignoreUnspendable=true) {
+CAmount getBalanceZaddr(const string &address, int minDepth = 1, bool ignoreUnspendable=true)
+{
     CAmount balance = 0;
-    vector<SaplingNoteEntry> saplingEntries;
+
     LOCK2(cs_main, pwalletMain->cs_wallet);
+
+    vector<SaplingNoteEntry> saplingEntries;
     pwalletMain->GetFilteredNotes(saplingEntries, address, minDepth, true, ignoreUnspendable);
-    for (auto & entry : saplingEntries) {
+    for (const auto & entry : saplingEntries)
         balance += CAmount(entry.note.value());
-    }
     return balance;
 }
 
@@ -3144,7 +3141,7 @@ UniValue z_listreceivedbyaddress(const UniValue& params, bool fHelp)
     if (!EnsureWalletIsAvailable(fHelp))
         return NullUniValue;
 
-    if (fHelp || params.size()==0 || params.size() >2)
+    if (fHelp || params.empty() || params.size() > 2)
         throw runtime_error(
 R"(z_listreceivedbyaddress "address" ( minconf )
 Return a list of amounts received by a zaddr belonging to the node's wallet.
@@ -3199,13 +3196,13 @@ Examples:
 
     set<pair<PaymentAddress, uint256>> nullifierSet;
     auto hasSpendingKey = visit(HaveSpendingKeyForPaymentAddress(pwalletMain), zaddr);
-    if (hasSpendingKey) {
+    if (hasSpendingKey)
         nullifierSet = pwalletMain->GetNullifiersForAddresses({zaddr});
-    }
 
     if (get_if<libzcash::SaplingPaymentAddress>(&zaddr))
     {
-        for (SaplingNoteEntry & entry : saplingEntries) {
+        for (const auto &entry : saplingEntries)
+        {
             UniValue obj(UniValue::VOBJ);
             obj.pushKV("txid", entry.op.hash.ToString());
             obj.pushKV("amount", ValueFromAmount(CAmount(entry.note.value())));
@@ -3219,10 +3216,9 @@ Examples:
             obj.pushKV("blockindex", BlockData.index);
             obj.pushKV("blocktime", BlockData.time);
 
-            if (hasSpendingKey) {
-              obj.pushKV("change", pwalletMain->IsNoteSaplingChange(nullifierSet, entry.address, entry.op));
-            }
-            result.push_back(obj);
+            if (hasSpendingKey)
+                obj.pushKV("change", pwalletMain->IsNoteSaplingChange(nullifierSet, entry.address, entry.op));
+            result.push_back(move(obj));
         }
     }
     return result;
@@ -3233,7 +3229,7 @@ UniValue z_getbalance(const UniValue& params, bool fHelp)
     if (!EnsureWalletIsAvailable(fHelp))
         return NullUniValue;
 
-    if (fHelp || params.size()==0 || params.size() >2)
+    if (fHelp || params.empty() || params.size() > 2)
         throw runtime_error(
 R"(z_getbalance "address" ( minconf )
 
@@ -3257,38 +3253,34 @@ As a json rpc call
 )" + HelpExampleRpc("z_getbalance", "\"myaddress\", 5")
 );
 
-    LOCK2(cs_main, pwalletMain->cs_wallet);
-
     int nMinDepth = 1;
-    if (params.size() > 1) {
+    if (params.size() > 1)
         nMinDepth = params[1].get_int();
-    }
-    if (nMinDepth < 0) {
+    if (nMinDepth < 0)
         throw JSONRPCError(RPC_INVALID_PARAMETER, "Minimum number of confirmations cannot be less than 0");
-    }
 
     KeyIO keyIO(Params());
     // Check that the from address is valid.
-    auto fromaddress = params[0].get_str();
+    const auto sFromAddress = params[0].get_str();
     bool fromTaddr = false;
-    CTxDestination taddr = keyIO.DecodeDestination(fromaddress);
+    CTxDestination taddr = keyIO.DecodeDestination(sFromAddress);
     fromTaddr = IsValidDestination(taddr);
-    if (!fromTaddr) {
-        auto res = keyIO.DecodePaymentAddress(fromaddress);
-        if (!IsValidPaymentAddress(res)) {
+    if (!fromTaddr)
+    {
+        auto res = keyIO.DecodePaymentAddress(sFromAddress);
+        if (!IsValidPaymentAddress(res))
             throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid from address, should be a taddr or zaddr.");
-        }
-        if (!visit(PaymentAddressBelongsToWallet(pwalletMain), res)) {
+        if (!visit(PaymentAddressBelongsToWallet(pwalletMain), res))
              throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "From address does not belong to this node, spending key or viewing key not found.");
-        }
     }
 
+    LOCK2(cs_main, pwalletMain->cs_wallet);
+
     CAmount nBalance = 0;
-    if (fromTaddr) {
-        nBalance = getBalanceTaddr(fromaddress, nMinDepth, false);
-    } else {
-        nBalance = getBalanceZaddr(fromaddress, nMinDepth, false);
-    }
+    if (fromTaddr)
+        nBalance = getBalanceTaddr(sFromAddress, nMinDepth, false);
+    else
+        nBalance = getBalanceZaddr(sFromAddress, nMinDepth, false);
 
     return ValueFromAmount(nBalance);
 }
@@ -3331,25 +3323,22 @@ As a json rpc call
     LOCK2(cs_main, pwalletMain->cs_wallet);
 
     int nMinDepth = 1;
-    if (params.size() > 0) {
+    if (params.size() > 0)
         nMinDepth = params[0].get_int();
-    }
-    if (nMinDepth < 0) {
+    if (nMinDepth < 0)
         throw JSONRPCError(RPC_INVALID_PARAMETER, "Minimum number of confirmations cannot be less than 0");
-    }
 
     bool fIncludeWatchonly = false;
-    if (params.size() > 1) {
+    if (params.size() > 1)
         fIncludeWatchonly = params[1].get_bool();
-    }
 
     // getbalance and "getbalance * 1 true" should return the same number
     // but they don't because wtx.GetAmounts() does not handle tx where there are no outputs
     // pwalletMain->GetBalance() does not accept min depth parameter
     // so we use our own method to get balance of utxos.
-    CAmount nBalance = getBalanceTaddr("", nMinDepth, !fIncludeWatchonly);
-    CAmount nPrivateBalance = getBalanceZaddr("", nMinDepth, !fIncludeWatchonly);
-    CAmount nTotalBalance = nBalance + nPrivateBalance;
+    const CAmount nBalance = getBalanceTaddr("", nMinDepth, !fIncludeWatchonly);
+    const CAmount nPrivateBalance = getBalanceZaddr("", nMinDepth, !fIncludeWatchonly);
+    const CAmount nTotalBalance = nBalance + nPrivateBalance;
     UniValue result(UniValue::VOBJ);
     result.pushKV("transparent", FormatMoney(nBalance));
     result.pushKV("private", FormatMoney(nPrivateBalance));

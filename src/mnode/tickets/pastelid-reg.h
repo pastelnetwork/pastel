@@ -58,7 +58,7 @@ public:
     static TicketID GetID() { return TicketID::PastelID; }
     static constexpr auto GetTicketDescription()
     {
-        return TICKET_INFO[to_integral_type<TicketID>(TicketID::PastelID)].szDescription;
+        return TICKET_INFO[to_integral_type(TicketID::PastelID)].szDescription;
     }
 
     void Clear() noexcept override
@@ -119,8 +119,9 @@ public:
         READWRITE(m_nBlock);
         // v1
         const bool bVersion = (GetVersion() >= 1) && (!bRead || !s.eof());
-        if (bVersion) {
-            //if (v1 or higher) and ( (writing to stream) or (reading but not end of the stream yet))
+        if (bVersion)
+        {
+            //if (v1 or higher) and ( (writing to stream) or (reading but not at the end of the stream yet))
             READWRITE(m_nVersion);
             READWRITE(m_LegRoastKey);
         } else if (bRead) { // reading v0

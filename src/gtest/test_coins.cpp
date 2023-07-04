@@ -252,8 +252,6 @@ template<typename Tree> bool GetAnchorAt(const CCoinsViewCacheTest &cache, const
 template<> bool GetAnchorAt(const CCoinsViewCacheTest &cache, const uint256 &rt, SproutMerkleTree &tree) { return cache.GetSproutAnchorAt(rt, tree); }
 template<> bool GetAnchorAt(const CCoinsViewCacheTest &cache, const uint256 &rt, SaplingMerkleTree &tree) { return cache.GetSaplingAnchorAt(rt, tree); }
 
-// BOOST_FIXTURE_TEST_SUITE(coins_tests, BasicTestingSetup)
-
 void checkNullifierCache(const CCoinsViewCacheTest &cache, const TxWithNullifiers &txWithNullifiers, bool shouldBeInCache) {
     // Make sure the nullifiers have not gotten mixed up
     EXPECT_TRUE(!cache.GetNullifier(txWithNullifiers.saplingNullifier, SPROUT));
@@ -1024,7 +1022,6 @@ TEST(test_coins, ccoins_serialization)
         CCoins cc5;
         ss5 >> cc5;
         EXPECT_FALSE(false) << "We should have thrown";
-        // BOOST_CHECK_MESSAGE(false, "We should have thrown");
     } catch ([[maybe_unused]] const ios_base::failure& e) {
     }
 }

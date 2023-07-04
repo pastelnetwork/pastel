@@ -36,7 +36,7 @@ TEST(mnpayments, test_cache_file)
     mnPayments.mapMasternodeBlockPayees[10] = mnBlockPayees;
 
     CFlatDB<CMasternodePayments> flatDB(MNPAYMENTS_CACHE_FILENAME, MNPAYMENTS_CACHE_MAGIC_STR);
-    EXPECT_TRUE(flatDB.Dump(mnPayments));
+    EXPECT_TRUE(flatDB.Dump(mnPayments, false));
 
     CMasternodePayments mnPaymentsLoaded;
     EXPECT_TRUE(flatDB.Load(mnPaymentsLoaded));

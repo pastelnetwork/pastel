@@ -14,7 +14,29 @@ int get_number(const UniValue& v)
 
 int64_t get_long_number(const UniValue& v)
 {
-    return v.isStr() ? std::stoll(v.get_str()) : (long long)v.get_int64();
+    return v.isStr() ? std::stoll(v.get_str()) : v.get_int64();
+}
+
+int64_t get_long_number_checked(const UniValue& v, const string& sParamName)
+{
+    if (v.isStr())
+    {
+        try
+        {
+			return std::stoll(v.get_str());
+		}
+        catch (const std::exception&)
+        {
+			throw JSONRPCError(RPC_INVALID_PARAMETER,
+                strprintf("Failed to convert parameter '%s' to number [%s]", sParamName, v.get_str()));
+		}
+    }
+    else if (v.isNum())
+    {
+    	return v.get_int64();
+    } else
+        throw JSONRPCError(RPC_INVALID_PARAMETER,
+            strprintf("Invalid parameter '%s' type, expected string or number", sParamName));
 }
 
 /**

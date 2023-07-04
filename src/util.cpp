@@ -612,20 +612,20 @@ const fs::path& GetDataDir(bool fNetSpecific)
     if (!path.empty())
         return path;
 
-    if (mapArgs.count("-datadir")) {
+    if (mapArgs.count("-datadir"))
+    {
         path = fs::absolute(mapArgs["-datadir"]);
         if (!fs::is_directory(path)) {
             path = "";
             return path;
         }
-    } else {
+    } else
         path = GetDefaultDataDir();
-    }
+
     if (fNetSpecific)
         path /= BaseParams().DataDir();
 
     fs::create_directories(path);
-
     return path;
 }
 

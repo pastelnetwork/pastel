@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 // Copyright (c) 2014-2017 The Dash Core developers
 // Copyright (c) 2018-2023 The Pastel Core developers
 // Distributed under the MIT/X11 software license, see the accompanying
@@ -14,6 +14,7 @@
 #include <timedata.h>
 #include <net.h>
 #include <mnode/mnode-config.h>
+#include <mnode/mnode-consts.h>
 
 class CMasternode;
 class CMasternodeBroadcast;
@@ -196,6 +197,9 @@ protected:
 class CMasternode : public masternode_info_t
 {
 public:
+    constexpr static int64_t MASTERNODE_VERSION = 1;
+    static bool fCompatibilityReadMode;
+
     enum class CollateralStatus
     {
         OK,
@@ -204,9 +208,6 @@ public:
     };
 
     v_uint8 vchSig;
-
-    CAmount aMNFeePerMB = 0; // 0 means default (masterNodeCtrl.MasternodeFeePerMBDefault)
-    CAmount aNFTTicketFeePerKB = 0; // 0 means default (masterNodeCtrl.NFTTicketFeePerKBDefault)
 
     CMasternode();
     CMasternode(const CMasternode& other);
@@ -221,6 +222,8 @@ public:
     template <typename Stream>
     inline void SerializationOp(Stream& s, const SERIALIZE_ACTION ser_action)
     {
+        const bool bRead = (ser_action == SERIALIZE_ACTION::Read);
+
         LOCK(cs);
         READWRITE(m_vin);
         READWRITE(m_addr);
@@ -234,7 +237,7 @@ public:
         READWRITE(nTimeLastWatchdogVote);
         int nActiveState = to_integral_type<MASTERNODE_STATE>(GetActiveState());
         READWRITE(nActiveState);
-        if (ser_action == SERIALIZE_ACTION::Read)
+        if (bRead)
         {
             if (!is_enum_valid<MASTERNODE_STATE>(nActiveState, MASTERNODE_STATE::PRE_ENABLED, MASTERNODE_STATE::POSE_BAN))
                 throw std::runtime_error(strprintf("Not supported MasterNode's state [%d]", nActiveState));
@@ -247,7 +250,7 @@ public:
         READWRITE(nPoSeBanScore);
         uint32_t nPoSeBanHeight = m_nPoSeBanHeight;
         READWRITE(nPoSeBanHeight);
-        if (ser_action == SERIALIZE_ACTION::Read)
+        if (bRead)
         {
             m_nPoSeBanScore = nPoSeBanScore;
             m_nPoSeBanHeight = nPoSeBanHeight;
@@ -256,19 +259,38 @@ public:
         READWRITE(m_sMNPastelID);
         READWRITE(strExtraLayerAddress);
         READWRITE(strExtraLayerCfg);
-        READWRITE(aMNFeePerMB);
-        READWRITE(aNFTTicketFeePerKB);
-
-        //For backward compatibility
-        try
+        READWRITE(m_nMNFeePerMB);
+        READWRITE(m_nTicketChainStorageFeePerKB);
+        if (bRead) // read mode
         {
-            READWRITE(strExtraLayerP2P);
+            if (!s.eof())
+                READWRITE(strExtraLayerP2P);
+            if (!fCompatibilityReadMode && !s.eof())
+                READWRITE(m_nVersion);
+            else
+                m_nVersion = 0;
         }
-        catch ([[maybe_unused]] const std::ios_base::failure& e)
+        else // write mode
         {
-            LogPrintf("CMasternode: missing extP2P!\n");
+            m_nVersion = MASTERNODE_VERSION;
+            READWRITE(strExtraLayerP2P);
+            READWRITE(m_nVersion);
+        }
+        // if (v1 or higher) and ( (writing to stream) or (reading but not at the end of the stream yet))
+        const bool bVersion = (m_nVersion >= 1) && (!bRead || !s.eof());
+        if (bVersion)
+        {
+			READWRITE(m_nSenseComputeFee);
+            READWRITE(m_nSenseProcessingFeePerMB);
+        }
+        else
+        {
+            m_nSenseComputeFee = 0;
+            m_nSenseProcessingFeePerMB = 0;
         }
     }
+
+    short GetVersion() const noexcept { return m_nVersion; }
 
     // CALCULATE A RANK AGAINST OF GIVEN BLOCK
     arith_uint256 CalculateScore(const uint256& blockHash);
@@ -284,6 +306,9 @@ public:
     bool CheckAndUpdateLastPing(int& nDos) { return m_lastPing.CheckAndUpdate(this, true, nDos); }
     bool CheckLastPing(int& nDos) const { return m_lastPing.SimpleCheck(nDos); }
     bool IsPingedWithin(const int nSeconds, int64_t nTimeToCheckAt = -1) const noexcept;
+
+    CAmount GetMNFee(const MN_FEE mnFee) const noexcept;
+    void SetMNFee(const MN_FEE mnFee, const CAmount nNewFee) noexcept;
 
     // check and update MasterNode's Pastel ID
     bool CheckAndUpdateMNID(std::string &error);
@@ -338,6 +363,8 @@ protected:
     // critical section to protect the inner data structures
     mutable CCriticalSection cs;
 
+    uint16_t m_nVersion = 0; // stored masternode serialization version
+
     const CChainParams& m_chainparams;
     // last MasterNode ping
     CMasterNodePing m_lastPing;
@@ -350,6 +377,11 @@ protected:
     uint256 m_collateralMinConfBlockHash;
     // height of the last block where there was a payment to this masternode
     int m_nBlockLastPaid{};
+
+    CAmount m_nMNFeePerMB = 0;                 // 0 means default (masterNodeCtrl.m_nMasternodeFeePerMBDefault)
+    CAmount m_nTicketChainStorageFeePerKB = 0; // 0 means default (masterNodeCtrl.m_nTicketChainStorageFeePerKBDefault)
+    CAmount m_nSenseComputeFee = 0;            // 0 means default (masterNodeCtrl.m_nSenseComputeFeeDefault)
+    CAmount m_nSenseProcessingFeePerMB = 0;    // 0 means default (masterNodeCtrl.m_nSenseProcessingFeePerMB)
 
     bool fUnitTest = false;
 };
@@ -372,7 +404,6 @@ std::string GetListOfMasterNodes(const std::vector<CMasternode>& mnList);
 class CMasternodeBroadcast : public CMasternode
 {
 public:
-
     bool fRecovery;
 
     CMasternodeBroadcast() :
@@ -393,6 +424,9 @@ public:
     template <typename Stream>
     inline void SerializationOp(Stream& s, const SERIALIZE_ACTION ser_action)
     {
+        const bool bRead = (ser_action == SERIALIZE_ACTION::Read);
+
+        LOCK(cs);
         READWRITE(m_vin);
         READWRITE(m_addr);
         READWRITE(pubKeyCollateralAddress);
@@ -405,14 +439,36 @@ public:
         READWRITE(strExtraLayerAddress);
         READWRITE(strExtraLayerCfg);
 
-        //For backward compatibility
-        try
+        if (bRead) // read mode
         {
-            READWRITE(strExtraLayerP2P);
+            if (!s.eof())
+                READWRITE(strExtraLayerP2P);
+            if (!fCompatibilityReadMode && !s.eof())
+                READWRITE(m_nVersion);
+            else
+                m_nVersion = 0;
         }
-        catch ([[maybe_unused]] const std::ios_base::failure& e)
+        else // write mode
         {
-            LogPrintf("CMasternodeBroadcast: missing extP2P!\n");
+            m_nVersion = MASTERNODE_VERSION;
+            READWRITE(strExtraLayerP2P);
+            READWRITE(m_nVersion);
+        }
+        // if (v1 or higher) and ( (writing to stream) or (reading but not at the end of the stream yet))
+        const bool bVersion = (m_nVersion >= 1) && (!bRead || !s.eof());
+        if (bVersion)
+        {
+            READWRITE(m_nMNFeePerMB);
+            READWRITE(m_nTicketChainStorageFeePerKB);
+			READWRITE(m_nSenseComputeFee);
+            READWRITE(m_nSenseProcessingFeePerMB);
+        }
+        else
+        {
+            m_nMNFeePerMB = 0;
+            m_nTicketChainStorageFeePerKB = 0;
+            m_nSenseComputeFee = 0;
+            m_nSenseProcessingFeePerMB = 0;
         }
     }
 

@@ -1,13 +1,12 @@
 #pragma once
 // Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2014 The Bitcoin Core developers
-// Copyright (c) 2018-2021 The Pastel Core developers
+// Copyright (c) 2018-2023 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 
-#include "compat.h"
-#include "compat/endian.h"
-#include "script/script.h"
+#include <compat.h>
+#include <compat/endian.h>
 
 #include <algorithm>
 #include <array>
@@ -25,11 +24,38 @@
 #include <utility>
 #include <vector>
 #include <optional>
+#include <stdexcept>
 
-#include "prevector.h"
+#include <prevector.h>
+#include <enum_util.h>
 
 static constexpr uint32_t MAX_DATA_SIZE = 0x02000000;       // 33,554,432
-static constexpr uint32_t MAX_CONTAINER_SIZE = 0x10000;     // 65536
+static constexpr uint32_t MAX_CONTAINER_SIZE = 0x20000;     // 65536
+static constexpr uint8_t PROTECTED_SERIALIZE_MARKER = 0x55; // 01010101
+
+typedef enum class _PROTECTED_DATA_TYPE : uint8_t
+{
+    PAIR_KEY = 0,
+    PAIR_VALUE = 1,
+    MAP = 2,
+    UNORDERED_MAP = 3,
+    SET = 4,
+    SET_ITEM = 5,
+    LIST = 6,
+    LIST_ITEM = 7,
+} PROTECTED_DATA_TYPE;
+
+class unexpected_serialization_version : public std::runtime_error
+{
+public:
+    explicit unexpected_serialization_version (const std::string& _Message) :
+        std::runtime_error(_Message.c_str())
+    {}
+
+    explicit unexpected_serialization_version(const char* _Message) :
+        std::runtime_error(_Message)
+    {}
+};
 
 /**
  * Dummy data type to identify deserializing constructors.
@@ -183,8 +209,9 @@ enum
     SER_GETHASH         = (1 << 2),
 };
 
-#define READWRITE(obj)      (::SerReadWrite(s, (obj), ser_action))
-#define READWRITEMANY(...)      (::SerReadWriteMany(s, ser_action, __VA_ARGS__))
+#define READWRITE(obj)              (::SerReadWrite(s, (obj), ser_action))
+#define READWRITE_PROTECTED(obj)    (::SerReadWriteProtected(s, (obj), ser_action))
+#define READWRITEMANY(...)          (::SerReadWriteMany(s, ser_action, __VA_ARGS__))
 
 /** 
  * Implement three methods for serializable objects. These are actually wrappers over
@@ -224,11 +251,6 @@ template<typename Stream> inline void Unserialize(Stream& s, double& a  ) { a = 
 
 template<typename Stream> inline void Serialize(Stream& s, bool a)    { char f=a; ser_writedata8(s, f); }
 template<typename Stream> inline void Unserialize(Stream& s, bool& a) { char f=ser_readdata8(s); a=f; }
-
-
-template<typename Stream> inline void Serialize(Stream& s, CScript::ScriptType a ) { ser_writedata32(s, (int32_t)a); }
-template<typename Stream> inline void Unserialize(Stream& s, CScript::ScriptType& a ) { a = (CScript::ScriptType)ser_readdata32(s); }
-
 
 
 /**
@@ -771,17 +793,37 @@ void Unserialize(Stream& is, std::optional<T>& item)
 template<typename Stream, typename T, std::size_t N>
 void Serialize(Stream& os, const std::array<T, N>& item)
 {
-    for (size_t i = 0; i < N; i++) {
+    for (size_t i = 0; i < N; i++)
         Serialize(os, item[i]);
-    }
 }
 
 template<typename Stream, typename T, std::size_t N>
 void Unserialize(Stream& is, std::array<T, N>& item)
 {
-    for (size_t i = 0; i < N; i++) {
+    for (size_t i = 0; i < N; i++)
         Unserialize(is, item[i]);
-    }
+}
+
+template<typename Stream>
+void ReadProtectedSerializeMarker(Stream& is, const PROTECTED_DATA_TYPE expectedDataType)
+{
+    if (is.empty())
+        throw std::ios_base::failure("protected serialization marker not found (eof)");
+    uint8_t ch = 0;
+    is >> ch;
+    if (ch != PROTECTED_SERIALIZE_MARKER)
+        throw std::ios_base::failure(strprintf("protected serialization marker not found, expected-0x%X, found-0x%X", PROTECTED_SERIALIZE_MARKER, static_cast<uint8_t>(ch)));
+    if (is.empty())
+        throw std::ios_base::failure("protected serialization data type not found (eof)");
+    is >> ch;
+    if (ch != to_integral_type(expectedDataType))
+		throw std::ios_base::failure(strprintf("protected serialization data type mismatch, expected-0x%X, found-0x%X", to_integral_type(expectedDataType), static_cast<uint8_t>(ch)));
+}
+
+template<typename Stream>
+void Serialize(Stream& os, const PROTECTED_DATA_TYPE protectedDataType)
+{
+	os << PROTECTED_SERIALIZE_MARKER << to_integral_type(protectedDataType);
 }
 
 /**
@@ -795,13 +837,47 @@ void Serialize(Stream& os, const std::pair<K, T>& item)
 }
 
 template<typename Stream, typename K, typename T>
+void Serialize_Protected(Stream& os, const std::pair<K, T>& item)
+{
+    // serialize and write pair key
+    Stream helperStream(os.GetType(), os.GetVersion());
+    Serialize(helperStream, item.first);
+    os << PROTECTED_DATA_TYPE::PAIR_KEY;
+    WriteCompactSize(os, helperStream.size());
+    os << helperStream;
+
+    // serialize and write pair value
+    helperStream.clear();
+    Serialize(helperStream, item.second);
+    os << PROTECTED_DATA_TYPE::PAIR_VALUE;
+    WriteCompactSize(os, helperStream.size());
+    os << helperStream;
+}
+
+template<typename Stream, typename K, typename T>
 void Unserialize(Stream& is, std::pair<K, T>& item)
 {
     Unserialize(is, item.first);
     Unserialize(is, item.second);
 }
 
+template<typename Stream, typename K, typename T>
+void Unserialize_Protected(Stream& is, std::pair<K, T>& item)
+{
+    Stream helperStream(is.GetType(), is.GetVersion());
 
+    ReadProtectedSerializeMarker(is, PROTECTED_DATA_TYPE::PAIR_KEY);
+	uint64_t nSize = ReadCompactSize(is);
+    helperStream.reserve(nSize);
+    is.read(helperStream, nSize);
+	Unserialize(helperStream, item.first);
+
+    helperStream.clear();
+    ReadProtectedSerializeMarker(is, PROTECTED_DATA_TYPE::PAIR_VALUE);
+    nSize = ReadCompactSize(is);
+    helperStream.reserve(nSize);
+    Unserialize(is, item.second);
+}
 
 /**
  * map
@@ -812,6 +888,20 @@ void Serialize(Stream& os, const std::map<K, T, Pred, A>& m)
     WriteCompactSize(os, m.size());
     for (const auto &mapPair : m)
         Serialize(os, mapPair);
+}
+
+template<typename Stream, typename K, typename T, typename Pred, typename A>
+void Serialize_Protected(Stream& os, const std::map<K, T, Pred, A>& m)
+{
+    Stream helperStream(os.GetType(), os.GetVersion());
+
+    WriteCompactSize(helperStream, m.size());
+    for (const auto &mapPair : m)
+        Serialize_Protected(helperStream, mapPair);
+
+    os << PROTECTED_DATA_TYPE::MAP;
+    WriteCompactSize(os, helperStream.size());
+    os << helperStream;
 }
 
 template<typename Stream, typename K, typename T, typename Pred, typename A>
@@ -828,6 +918,27 @@ void Unserialize(Stream& is, std::map<K, T, Pred, A>& m)
     }
 }
 
+template<typename Stream, typename K, typename T, typename Pred, typename A>
+void Unserialize_Protected(Stream& is, std::map<K, T, Pred, A>& m)
+{
+    m.clear();
+    ReadProtectedSerializeMarker(is, PROTECTED_DATA_TYPE::MAP);
+
+    Stream helperStream(is.GetType(), is.GetVersion());
+    uint64_t nSize = ReadCompactSize(is);
+    helperStream.reserve(nSize);
+    is.read(helperStream, nSize);
+
+    nSize = ReadCompactSize(helperStream, MAX_CONTAINER_SIZE);
+    auto mi = m.begin();
+    for (uint64_t i = 0; i < nSize; i++)
+    {
+        std::pair<K, T> item;
+        Unserialize_Protected(helperStream, item);
+        mi = m.insert(mi, item);
+    }
+}
+
 /**
  * unordered_map
  */
@@ -840,15 +951,50 @@ void Serialize(Stream& os, const std::unordered_map<K, T, Pred, A>& m)
 }
 
 template <typename Stream, typename K, typename T, typename Pred, typename A>
+void Serialize_Protected(Stream& os, const std::unordered_map<K, T, Pred, A>& m)
+{
+    Stream helperStream(os.GetType(), os.GetVersion());
+
+    WriteCompactSize(helperStream, m.size());
+    for (const auto &mapPair : m)
+        Serialize_Protected(helperStream, mapPair);
+
+    os << PROTECTED_DATA_TYPE::UNORDERED_MAP;
+    WriteCompactSize(os, helperStream.size());
+    os << helperStream;
+}
+
+template <typename Stream, typename K, typename T, typename Pred, typename A>
 void Unserialize(Stream& is, std::unordered_map<K, T, Pred, A>& m)
 {
     m.clear();
-    const uint64_t nSize = ReadCompactSize(is);
+    const uint64_t nSize = ReadCompactSize(is, MAX_CONTAINER_SIZE);
     auto mi = m.begin();
     for (uint64_t i = 0; i < nSize; i++)
     {
         std::pair<K, T> item;
         Unserialize(is, item);
+        mi = m.insert(mi, item);
+    }
+}
+
+template <typename Stream, typename K, typename T, typename Pred, typename A>
+void Unserialize_Protected(Stream& is, std::unordered_map<K, T, Pred, A>& m)
+{
+    m.clear();
+    ReadProtectedSerializeMarker(is, PROTECTED_DATA_TYPE::UNORDERED_MAP);
+    uint64_t nSize = ReadCompactSize(is);
+
+    Stream helperStream(is.GetType(), is.GetVersion());
+    helperStream.reserve(nSize);
+    is.read(helperStream, nSize);
+
+    nSize = ReadCompactSize(helperStream, MAX_CONTAINER_SIZE);
+    auto mi = m.begin();
+    for (uint64_t i = 0; i < nSize; i++)
+    {
+        std::pair<K, T> item;
+        Unserialize_Protected(helperStream, item);
         mi = m.insert(mi, item);
     }
 }
@@ -865,6 +1011,28 @@ void Serialize(Stream& os, const std::set<K, Pred, A>& m)
 }
 
 template<typename Stream, typename K, typename Pred, typename A>
+void Serialize_Protected(Stream& os, const std::set<K, Pred, A>& m)
+{
+    Stream helperStream(os.GetType(), os.GetVersion());
+    Stream helperItemStream(os.GetType(), os.GetVersion());
+
+    WriteCompactSize(helperStream, m.size());
+    for (typename std::set<K, Pred, A>::const_iterator it = m.begin(); it != m.end(); ++it)
+    {
+        helperItemStream.clear();
+        Serialize(helperItemStream, (*it));
+
+        helperStream << PROTECTED_DATA_TYPE::SET_ITEM;
+        WriteCompactSize(helperStream, helperItemStream.size());
+        helperStream << helperItemStream;
+    }
+
+    os << PROTECTED_DATA_TYPE::SET;
+    WriteCompactSize(os, helperStream.size());
+    os << helperStream;
+}
+
+template<typename Stream, typename K, typename Pred, typename A>
 void Unserialize(Stream& is, std::set<K, Pred, A>& m)
 {
     m.clear();
@@ -874,6 +1042,33 @@ void Unserialize(Stream& is, std::set<K, Pred, A>& m)
     {
         K key;
         Unserialize(is, key);
+        it = m.insert(it, key);
+    }
+}
+
+template<typename Stream, typename K, typename Pred, typename A>
+void Unserialize_Protected(Stream& is, std::set<K, Pred, A>& m)
+{
+    m.clear();
+    ReadProtectedSerializeMarker(is, PROTECTED_DATA_TYPE::SET);
+    uint64_t nSize = ReadCompactSize(is);
+
+    Stream helperStream(is.GetType(), is.GetVersion());
+    Stream helperItemStream(is.GetType(), is.GetVersion());
+    helperStream.reserve(nSize);
+    is.read(helperStream, nSize);
+
+    nSize = ReadCompactSize(helperStream, MAX_CONTAINER_SIZE); // nSize here is number of items in the list
+    typename std::set<K, Pred, A>::iterator it = m.begin();
+    for (uint64_t i = 0; i < nSize; i++)
+    {
+        K key;
+        helperItemStream.clear();
+        ReadProtectedSerializeMarker(helperStream, PROTECTED_DATA_TYPE::SET_ITEM);
+        uint64_t nItemSize = ReadCompactSize(helperStream);
+        helperItemStream.reserve(nItemSize);
+        helperStream.read(helperItemStream, nItemSize);
+        Unserialize(helperItemStream, key);
         it = m.insert(it, key);
     }
 }
@@ -890,6 +1085,27 @@ void Serialize(Stream& os, const std::list<T, A>& l)
 }
 
 template<typename Stream, typename T, typename A>
+void Serialize_Protected(Stream& os, const std::list<T, A>& l)
+{
+    Stream helperStream(os.GetType(), os.GetVersion());
+    Stream helperItemStream(os.GetType(), os.GetVersion());
+
+    WriteCompactSize(helperStream, l.size());
+    for (typename std::list<T, A>::const_iterator it = l.begin(); it != l.end(); ++it)
+    {
+        helperItemStream.clear();
+        Serialize(helperItemStream, (*it));
+        helperStream << PROTECTED_DATA_TYPE::LIST_ITEM;
+        WriteCompactSize(helperStream, helperItemStream.size());
+        helperStream << helperItemStream;
+    }
+
+    os << PROTECTED_DATA_TYPE::LIST;
+    WriteCompactSize(os, helperStream.size());
+    os << helperStream;
+}
+
+template<typename Stream, typename T, typename A>
 void Unserialize(Stream& is, std::list<T, A>& l)
 {
     l.clear();
@@ -899,6 +1115,33 @@ void Unserialize(Stream& is, std::list<T, A>& l)
     {
         T item;
         Unserialize(is, item);
+        l.push_back(item);
+    }
+}
+
+template<typename Stream, typename T, typename A>
+void Unserialize_Protected(Stream& is, std::list<T, A>& l)
+{
+    l.clear();
+    ReadProtectedSerializeMarker(is, PROTECTED_DATA_TYPE::LIST);
+    uint64_t nSize = ReadCompactSize(is);
+
+    Stream helperStream(is.GetType(), is.GetVersion());
+    Stream helperItemStream(is.GetType(), is.GetVersion());
+    helperStream.reserve(nSize);
+    is.read(helperStream, nSize);
+
+    nSize = ReadCompactSize(helperStream, MAX_CONTAINER_SIZE); // nSize here is number of items in the list
+    typename std::list<T, A>::iterator it = l.begin();
+    for (uint64_t i = 0; i < nSize; i++)
+    {
+        T item;
+        helperItemStream.clear();
+        ReadProtectedSerializeMarker(helperStream, PROTECTED_DATA_TYPE::LIST_ITEM);
+        uint64_t nItemSize = ReadCompactSize(helperStream);
+        helperItemStream.reserve(nItemSize);
+        helperStream.read(helperItemStream, nItemSize);
+        Unserialize(helperItemStream, item);
         l.push_back(item);
     }
 }
@@ -954,6 +1197,24 @@ inline void SerReadWrite(Stream& s, _T& obj, const SERIALIZE_ACTION ser_action)
 
     case SERIALIZE_ACTION::Write:
         ::Serialize(s, obj);
+        break;
+
+    default:
+        break;
+    }
+}
+
+template <typename Stream, typename _T>
+inline void SerReadWriteProtected(Stream& s, _T& obj, const SERIALIZE_ACTION ser_action)
+{
+    switch (ser_action)
+    {
+    case SERIALIZE_ACTION::Read:
+        ::Unserialize_Protected(s, obj);
+        break;
+
+    case SERIALIZE_ACTION::Write:
+        ::Serialize_Protected(s, obj);
         break;
 
     default:

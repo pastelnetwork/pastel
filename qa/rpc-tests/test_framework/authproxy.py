@@ -42,7 +42,7 @@ from urllib.parse import urlparse
 
 USER_AGENT = "AuthServiceProxy/0.1"
 
-HTTP_TIMEOUT = 900
+HTTP_TIMEOUT_IN_SECS = 900
 
 log = logging.getLogger("PastelRPC")
 
@@ -76,7 +76,7 @@ class AuthServiceProxy():
         return str(self.index)
         
         
-    def __init__(self, index: int, service_url, service_name=None, timeout=HTTP_TIMEOUT, connection=None):
+    def __init__(self, index: int, service_url, service_name=None, timeout=HTTP_TIMEOUT_IN_SECS, connection=None):
         self.__service_url = service_url
         self.__service_name = service_name
         self.__url = urlparse(service_url)

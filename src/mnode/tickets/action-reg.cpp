@@ -463,23 +463,49 @@ ActionRegTickets_t CActionRegTicket::FindAllTicketByMVKey(const string& sMVKey)
  * Get action fees based on data size in PSL.
  * 
  * \param nDataSizeInMB - data size in MB
+ * \param nChainHeight - chain height to get action fees for
+ * \param bIncludeTicketFee - include action ticket blockchain storage fee in the result, default is true
+ * \param bUseAdjustmentMultiplier - use global adjustment multiplier and fee deflator factor, default is true
+ * 
  * \return map of <actionTicketType> -> <fee_in_psl>
  */
-action_fee_map_t CActionRegTicket::GetActionFees(const size_t nDataSizeInMB)
+action_fee_map_t CActionRegTicket::GetActionFees(const size_t nDataSizeInMB, const uint32_t nChainHeight,
+    const bool bIncludeTicketFee, const bool bUseAdjustmentMultiplier) noexcept
 {
     action_fee_map_t feeMap;
-    const CAmount nStorageFeePerMB = masterNodeCtrl.GetNetworkFeePerMB();
-    const CAmount nTicketFeePerKB = masterNodeCtrl.GetNFTTicketFeePerKB();
-    
-    const CAmount nActionFeePerMB = masterNodeCtrl.GetActionTicketFeePerMB(ACTION_TICKET_TYPE::SENSE);
+    const CAmount nStorageFeePerMB = masterNodeCtrl.GetNetworkMedianMNFee(MN_FEE::StorageFeePerMB);
+    const CAmount nSenseFeePerMB = masterNodeCtrl.GetActionTicketFeePerMB(ACTION_TICKET_TYPE::SENSE);
+    const CAmount nSenseComputeFee = masterNodeCtrl.GetNetworkMedianMNFee(MN_FEE::SenseComputeFee);
 
     // calculate sense fee
-    CAmount nFee = nDataSizeInMB * nActionFeePerMB + nStorageFeePerMB * ACTION_DUPE_DATA_SIZE_MB + nTicketFeePerKB * ACTION_SENSE_TICKET_SIZE_KB;
-    feeMap.emplace(ACTION_TICKET_TYPE::SENSE, nFee);
+    CAmount nSenseFee = 
+        nStorageFeePerMB * AVERAGE_SENSE_DUPE_DATA_SIZE_MB +
+        nDataSizeInMB * nSenseFeePerMB +
+        nSenseComputeFee;
 
     // calculate cascade fee
-    nFee = nStorageFeePerMB * nDataSizeInMB * ACTION_STORAGE_MULTIPLIER + nTicketFeePerKB * ACTION_CASCADE_TICKET_SIZE_KB;
-    feeMap.emplace(ACTION_TICKET_TYPE::CASCADE, nFee);
+    CAmount nCascadeFee = nStorageFeePerMB * nDataSizeInMB;
+
+    if (bIncludeTicketFee)
+    {
+        const CAmount nTicketFeePerKB = masterNodeCtrl.GetNetworkMedianMNFee(MN_FEE::TicketChainStorageFeePerKB);
+
+        nSenseFee += nTicketFeePerKB * ACTION_SENSE_TICKET_SIZE_KB;
+        nCascadeFee += nTicketFeePerKB * ACTION_CASCADE_TICKET_SIZE_KB;
+    }
+
+    if (bUseAdjustmentMultiplier)
+    {
+        const auto& consensusParams = Params().GetConsensus();
+        const auto nGlobalFeeAdjustmentMultiplier = consensusParams.nGlobalFeeAdjustmentMultiplier;
+        const double nFeeAdjustmentMultiplier = nGlobalFeeAdjustmentMultiplier * masterNodeCtrl.GetChainDeflatorFactor(nChainHeight);
+
+        nSenseFee = static_cast<CAmount>(nSenseFee * nFeeAdjustmentMultiplier);
+        nCascadeFee = static_cast<CAmount>(nCascadeFee * nFeeAdjustmentMultiplier);
+    }
+
+    feeMap.emplace(ACTION_TICKET_TYPE::SENSE, nSenseFee);
+    feeMap.emplace(ACTION_TICKET_TYPE::CASCADE, nCascadeFee);
 
     return feeMap;
 }

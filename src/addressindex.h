@@ -1,33 +1,35 @@
 // Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2015 The Bitcoin Core developers
+// Copyright (c) 2018-2023 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php .
+#pragma once
+#include <uint256.h>
+#include <amount.h>
+#include <script/scripttype.h>
 
-#ifndef BITCOIN_ADDRESSINDEX_H
-#define BITCOIN_ADDRESSINDEX_H
-
-#include "uint256.h"
-#include "amount.h"
-#include "script/script.h"
-
-struct CAddressUnspentKey {
+struct CAddressUnspentKey
+{
     unsigned int type;
     uint160 hashBytes;
     uint256 txhash;
     size_t index;
 
-    size_t GetSerializeSize(int nType, int nVersion) const {
+    size_t GetSerializeSize(int nType, int nVersion) const
+    {
         return 57;
     }
     template<typename Stream>
-    void Serialize(Stream& s) const {
+    void Serialize(Stream& s) const
+    {
         ser_writedata8(s, type);
         hashBytes.Serialize(s);
         txhash.Serialize(s);
         ser_writedata32(s, index);
     }
     template<typename Stream>
-    void Unserialize(Stream& s) {
+    void Unserialize(Stream& s)
+    {
         type = ser_readdata8(s);
         hashBytes.Unserialize(s);
         txhash.Unserialize(s);
@@ -61,29 +63,34 @@ struct CAddressUnspentValue {
     ADD_SERIALIZE_METHODS;
 
     template <typename Stream, typename Operation>
-    inline void SerializationOp(Stream& s, Operation ser_action) {
+    inline void SerializationOp(Stream& s, Operation ser_action)
+    {
         READWRITE(patoshis);
         READWRITE(*(CScriptBase*)(&script));
         READWRITE(blockHeight);
     }
 
-    CAddressUnspentValue(CAmount sats, CScript scriptPubKey, int height) {
+    CAddressUnspentValue(CAmount sats, CScript scriptPubKey, int height)
+    {
         patoshis = sats;
         script = scriptPubKey;
         blockHeight = height;
     }
 
-    CAddressUnspentValue() {
+    CAddressUnspentValue()
+    {
         SetNull();
     }
 
-    void SetNull() {
+    void SetNull()
+    {
         patoshis = -1;
         script.clear();
         blockHeight = 0;
     }
 
-    bool IsNull() const {
+    bool IsNull() const
+    {
         return (patoshis == -1);
     }
 };
@@ -246,13 +253,14 @@ struct CMempoolAddressDelta
 
 struct CMempoolAddressDeltaKey
 {
-    CScript::ScriptType type;
+    ScriptType type;
     uint160 addressBytes;
     uint256 txhash;
     unsigned int index;
     int spending;
 
-    CMempoolAddressDeltaKey(CScript::ScriptType addressType, uint160 addressHash, uint256 hash, unsigned int i, int s) {
+    CMempoolAddressDeltaKey(ScriptType addressType, uint160 addressHash, uint256 hash, unsigned int i, int s)
+    {
         type = addressType;
         addressBytes = addressHash;
         txhash = hash;
@@ -260,7 +268,8 @@ struct CMempoolAddressDeltaKey
         spending = s;
     }
 
-    CMempoolAddressDeltaKey(CScript::ScriptType addressType, uint160 addressHash) {
+    CMempoolAddressDeltaKey(ScriptType addressType, uint160 addressHash)
+    {
         type = addressType;
         addressBytes = addressHash;
         txhash.SetNull();
@@ -271,7 +280,8 @@ struct CMempoolAddressDeltaKey
 
 struct CMempoolAddressDeltaKeyCompare
 {
-    bool operator()(const CMempoolAddressDeltaKey& a, const CMempoolAddressDeltaKey& b) const {
+    bool operator()(const CMempoolAddressDeltaKey& a, const CMempoolAddressDeltaKey& b) const
+    {
         if (a.type != b.type)
             return a.type < b.type;
         if (a.addressBytes != b.addressBytes)
@@ -283,5 +293,3 @@ struct CMempoolAddressDeltaKeyCompare
         return a.spending < b.spending;
     }
 };
-
-#endif // BITCOIN_ADDRESSINDEX_H

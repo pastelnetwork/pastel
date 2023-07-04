@@ -118,8 +118,8 @@ As json rpc
 
     string label = params[6].get_str();
 
-    CAmount nStorageFee = get_long_number(params[7]);
-    CAmount imageSize = get_long_number(params[8]);
+    CAmount nNftRegTicketStorageFee = get_long_number(params[7]);
+    const CAmount nImageDataSizeInMB = get_long_number(params[8]);
 
     const auto NFTRegTicket = CNFTRegTicket::Create(
         move(ticket),
@@ -127,16 +127,15 @@ As json rpc
         move(pastelID),
         move(strKeyPass),
         move(label),
-        nStorageFee);
+        nNftRegTicketStorageFee);
     CDataStream data_stream(SER_NETWORK, DATASTREAM_VERSION);
     data_stream << to_integral_type(NFTRegTicket.ID());
     data_stream << NFTRegTicket;
     v_uint8 input_bytes{data_stream.cbegin(), data_stream.cend()};
-    const CAmount totalFee = imageSize * masterNodeCtrl.GetNetworkFeePerMB() +
-                             static_cast<CAmount>(ceil(input_bytes.size() * masterNodeCtrl.GetNFTTicketFeePerKB() / 1024));
+    const CAmount nNftRegFee = CNFTRegTicket::GetNftFee(nImageDataSizeInMB, input_bytes.size());
 
     UniValue mnObj(UniValue::VOBJ);
-    mnObj.pushKV("totalstoragefee", totalFee);
+    mnObj.pushKV("totalstoragefee", nNftRegFee);
     return mnObj;
 }
 

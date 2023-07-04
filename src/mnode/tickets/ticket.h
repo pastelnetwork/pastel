@@ -114,13 +114,13 @@ public:
     bool IsBlockNewerThan(const uint32_t nBlockHeight) const noexcept { return m_nBlock > nBlockHeight; }
     auto GetTicketName() const noexcept
     {
-        return TICKET_INFO[to_integral_type<TicketID>(ID())].szName;
+        return TICKET_INFO[to_integral_type(ID())].szName;
     }
 
     // get current ticket version
     virtual short GetVersion() const noexcept
     {
-        return TICKET_INFO[to_integral_type<TicketID>(ID())].nVersion;
+        return TICKET_INFO[to_integral_type(ID())].nVersion;
     }
     /**
      * Get ticket price in PSL.
@@ -132,7 +132,7 @@ public:
      */
     virtual CAmount TicketPricePSL(const uint32_t nHeight) const noexcept
     {
-        return TICKET_INFO[to_integral_type<TicketID>(ID())].defaultFee;
+        return TICKET_INFO[to_integral_type(ID())].defaultFee;
     }
 
     /**

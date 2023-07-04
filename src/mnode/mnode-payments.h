@@ -9,10 +9,6 @@
 #include <main.h>
 #include <mnode/mnode-masternode.h>
 
-extern CCriticalSection cs_vecPayees;
-extern CCriticalSection cs_mapMasternodeBlockPayees;
-extern CCriticalSection cs_mapMasternodePayeeVotes;
-
 class CMasternodePaymentVote;
 
 static constexpr size_t MNPAYMENTS_SIGNATURES_REQUIRED  = 6;
@@ -65,6 +61,7 @@ class CMasternodeBlockPayees
 public:
     int nBlockHeight;
     std::vector<CMasternodePayee> vecPayees;
+    mutable CCriticalSection cs_vecPayees;
 
     CMasternodeBlockPayees() noexcept:
         nBlockHeight(0)
@@ -72,6 +69,17 @@ public:
     CMasternodeBlockPayees(int nBlockHeightIn) noexcept:
         nBlockHeight(nBlockHeightIn)
     {}
+    CMasternodeBlockPayees(const CMasternodeBlockPayees& other) noexcept
+    {
+        nBlockHeight = other.nBlockHeight;
+		vecPayees = other.vecPayees;
+    }
+    CMasternodeBlockPayees& operator=(const CMasternodeBlockPayees& other) noexcept
+    {
+		nBlockHeight = other.nBlockHeight;
+		vecPayees = other.vecPayees;
+		return *this;
+	}
 
     ADD_SERIALIZE_METHODS;
 
@@ -150,15 +158,9 @@ public:
  */
 class CMasternodePayments
 {
-    // masternode count times nStorageCoeff payments blocks should be stored ...
-    const float nStorageCoeff;
-    // ... but at least nMinBlocksToStore (payments blocks)
-    const int nMinBlocksToStore;
-
-    // Keep track of current block height
-    int nCachedBlockHeight;
-
 public:
+    static const std::string SERIALIZATION_VERSION_STRING;
+
     // map of masternode payment votes
     std::map<uint256, CMasternodePaymentVote> mapMasternodePaymentVotes;
     // map of masternode payment blocks
@@ -179,8 +181,52 @@ public:
     template <typename Stream>
     inline void SerializationOp(Stream& s, const SERIALIZE_ACTION ser_action)
     {
-        READWRITE(mapMasternodePaymentVotes);
-        READWRITE(mapMasternodeBlockPayees);
+        std::string strVersion;
+        const bool bRead = ser_action == SERIALIZE_ACTION::Read;
+        bool bProtected = true;
+
+        LOCK2(cs_mapMasternodeBlockPayees, cs_mapMasternodePaymentVotes);
+        if (bRead)
+        {
+            bProtected = false;
+            do
+            {
+                // special handling for read mode - old version didn't have version string
+                const size_t nSerializedVersionSize = SERIALIZATION_VERSION_STRING.length() + 1;
+                if (s.size() < nSerializedVersionSize)
+                    break;
+                const size_t nSize = static_cast<size_t>(ser_readdata8(s));
+                if (nSize != nSerializedVersionSize)
+                {
+                    s.rewind(1);
+                    break;
+                }
+                strVersion.resize(nSize);
+                s.read((char*)&strVersion[0], nSize * sizeof(strVersion[0]));
+                if (strVersion != SERIALIZATION_VERSION_STRING)
+                {
+                    s.rewind(nSerializedVersionSize);
+                    break;
+                }
+				bProtected = true;
+            } while (false);
+        }
+        else
+        {
+            strVersion = SERIALIZATION_VERSION_STRING;
+            READWRITE(strVersion);
+        }
+
+        if (bProtected)
+        {
+            READWRITE_PROTECTED(mapMasternodePaymentVotes);
+            READWRITE_PROTECTED(mapMasternodeBlockPayees);
+        }
+        else
+        {
+            READWRITE(mapMasternodePaymentVotes);
+            READWRITE(mapMasternodeBlockPayees);
+        }
     }
 
     void Clear();
@@ -189,6 +235,9 @@ public:
     bool HasVerifiedPaymentVote(const uint256 &hashIn) const noexcept;
     bool ProcessBlock(int nBlockHeight);
     void CheckPreviousBlockVotes(const int nPrevBlockHeight);
+    bool PushPaymentVotes(const CBlockIndex* pindex, CNode* pNodeFrom) const;
+    bool SearchForPaymentBlock(int &nBlockLastPaid, int64_t &nTimeLastPaid,
+        const CBlockIndex* pindex, const size_t nMaxBlocksToScanBack, const CScript &mnpayee);
 
     void Sync(CNode* node);
     void RequestLowDataPaymentBlocks(CNode* pnode);
@@ -214,5 +263,17 @@ public:
     void UpdatedBlockTip(const CBlockIndex *pindex);
     
     CAmount GetMasternodePayment(const int nHeight, const CAmount blockValue) const noexcept;
+
+protected:
+    mutable CCriticalSection cs_mapMasternodeBlockPayees;
+    mutable CCriticalSection cs_mapMasternodePaymentVotes;
+
+    // masternode count times nStorageCoeff payments blocks should be stored ...
+    const float nStorageCoeff;
+    // ... but at least nMinBlocksToStore (payments blocks)
+    const int nMinBlocksToStore;
+
+    // Keep track of current block height
+    int nCachedBlockHeight;
 };
 

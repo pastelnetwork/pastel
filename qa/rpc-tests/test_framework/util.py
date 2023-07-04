@@ -488,7 +488,11 @@ def assert_false(condition, message = ""):
 
 def assert_greater_than(thing1, thing2):
     if thing1 <= thing2:
-        raise AssertionError("%s <= %s"%(str(thing1),str(thing2)))
+        raise AssertionError("%s > %s"%(str(thing1),str(thing2)))
+    
+def assert_less_than(thing1, thing2):
+    if thing1 >= thing2:
+        raise AssertionError("%s < %s"%(str(thing1),str(thing2)))
 
 def assert_raises(exc, func, *args, **kwargs):
     assert_raises_message(exc, None, func, *args, **kwargs)

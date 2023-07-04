@@ -4,6 +4,7 @@
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 
 #include <string>
+#include <shared_mutex>
 
 #include <coins.h>
 #include <nodehelper.h>
@@ -57,20 +58,12 @@ public:
 #endif // GOVERNANCE_TICKETS
 
     int MasternodeCollateral;
-    CAmount MasternodeFeePerMBDefault;
-    CAmount NFTTicketFeePerKBDefault;
-    CAmount ActionTicketFeePerMBDefault;
 
     CAmount MasternodeUsernameFirstChangeFee;
     CAmount MasternodeUsernameChangeAgainFee;
 
     CAmount MasternodeEthereumAddressFirstChangeFee;
     CAmount MasternodeEthereumAddressChangeAgainFee;
-
-    double ChainDeflationRateDefault;
-    uint32_t ChainBaselineDifficultyLowerIndex;
-    uint32_t ChainBaselineDifficultyUpperIndex;
-    uint32_t ChainTrailingAverageDifficultyRange;
 
     int MasternodeCheckSeconds, MasternodeMinMNBSeconds, MasternodeMinMNPSeconds, MasternodeExpirationSeconds, MasternodeWatchdogMaxSeconds, MasternodeNewStartRequiredSeconds;
     // Timer to track if a restart required MN is expired
@@ -120,12 +113,15 @@ public:
     bool AlreadyHave(const CInv& inv);
     bool ProcessGetData(CNode* pfrom, const CInv& inv);
 
-    CAmount GetNetworkFeePerMB() const noexcept;
-    CAmount GetNFTTicketFeePerKB() const noexcept;
+    CAmount GetDefaultMNFee(const MN_FEE mnFee) const noexcept;
+    CAmount GetNetworkMedianMNFee(const MN_FEE mnFee) const noexcept;
+
     // get fee in PSL for the given action ticket type
     CAmount GetActionTicketFeePerMB(const ACTION_TICKET_TYPE actionTicketType) const noexcept;
-
-    double GetChainDeflatorFactor() const;
+    // get network blockchain deflator factor for the given block height
+    double GetChainDeflatorFactor(uint32_t nChainHeight = std::numeric_limits<uint32_t>::max()) const;
+    // calculate network blockchain deflator factor for the given block height
+    double CalculateChainDeflatorFactor(uint32_t nChainHeight = std::numeric_limits<uint32_t>::max()) const;
 
     /***** MasterNode operations *****/
     std::unique_ptr<CSemaphore> semMasternodeOutbound;
@@ -141,12 +137,34 @@ protected:
     // number of top masternodes
     size_t m_nMasternodeTopMNsNumber;
 
+    // MasterNode default storage fee per MB
+    CAmount m_nMasternodeFeePerMBDefault;
+    // MasterNode default ticket chain storage fee per KB
+    CAmount m_nTicketChainStorageFeePerKBDefault;
+    // flat fee for DupeDetection processing
+    CAmount m_nSenseComputeFeeDefault;
+    // Sense image-size dependent processing fee per MB
+    CAmount m_nSenseProcessingFeePerMBDefault;
+
+    // default chain deflation rate
+    double m_fChainDeflationRateDefault;
+    // chain baseline difficulty lower index
+    uint32_t m_nChainBaselineDifficultyLowerIndex;
+    // chain baseline difficulty upper index
+    uint32_t m_nChainBaselineDifficultyUpperIndex;
+    // chain trailing average difficulty range
+    uint32_t m_nChainTrailingAverageDifficultyRange;
+
+    // cache for the network blockchain deflator factor for the difficulty range
+    mutable std::unordered_map<uint32_t, double> m_deflatorFactorCacheMap;
+    mutable std::shared_mutex m_deflatorFactorCacheMutex;
 
     void SetParameters();
     void InvalidateParameters();
     double getNetworkDifficulty(const CBlockIndex* blockindex, const bool bNetworkDifficulty) const;
     CACNotificationInterface* pacNotificationInterface;
 };
+
 
 class CMnbRequestConnectionsThread : public CStoppableServiceThread
 {

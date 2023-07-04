@@ -216,5 +216,8 @@
     <ClInclude Include="..\..\..\src\str_utils.h">
       <Filter>Source Files</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\..\src\script\scripttype.h">
+      <Filter>Source Files\script</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

@@ -702,21 +702,21 @@ void CWallet::SyncMetaData(pair<typename TxSpendMap<T>::iterator, typename TxSpe
 /**
  * Outpoint is spent if any non-conflicted transaction spends it.
  */
-bool CWallet::IsSpent(const uint256& hash, const unsigned int n) const
+bool CWallet::IsSpent(const uint256& hash, const uint32_t n) const noexcept
 {
     const COutPoint outpoint(hash, n);
-    auto range = mapTxSpends.equal_range(outpoint);
+    const auto range = mapTxSpends.equal_range(outpoint);
     for (auto it = range.first; it != range.second; ++it)
     {
         const uint256& wtxid = it->second;
-        auto mit = mapWallet.find(wtxid);
-        if (mit != mapWallet.end() && mit->second.GetDepthInMainChain() >= 0)
+        const auto mit = mapWallet.find(wtxid);
+        if (mit != mapWallet.cend() && mit->second.GetDepthInMainChain() >= 0)
             return true; // Spent
     }
     return false;
 }
 
-bool CWallet::IsSaplingSpent(const uint256& nullifier) const
+bool CWallet::IsSaplingSpent(const uint256& nullifier) const noexcept
 {
     LOCK(cs_main);
 
@@ -733,7 +733,7 @@ bool CWallet::IsSaplingSpent(const uint256& nullifier) const
 
 void CWallet::AddToTransparentSpends(const COutPoint& outpoint, const uint256& wtxid)
 {
-    mapTxSpends.insert(make_pair(outpoint, wtxid));
+    mapTxSpends.emplace(outpoint, wtxid);
 
     auto range = mapTxSpends.equal_range(outpoint);
     SyncMetaData<COutPoint>(range);
@@ -741,7 +741,7 @@ void CWallet::AddToTransparentSpends(const COutPoint& outpoint, const uint256& w
 
 void CWallet::AddToSaplingSpends(const uint256& nullifier, const uint256& wtxid)
 {
-    mapTxSaplingNullifiers.insert(make_pair(nullifier, wtxid));
+    mapTxSaplingNullifiers.emplace(nullifier, wtxid);
 
     auto range = mapTxSaplingNullifiers.equal_range(nullifier);
     SyncMetaData<uint256>(range);
@@ -777,10 +777,12 @@ void CWallet::ClearNoteWitnessCache()
 template<typename NoteDataMap>
 void CopyPreviousWitnesses(NoteDataMap& noteDataMap, int indexHeight, const uint64_t nWitnessCacheSize)
 {
-    for (auto& item : noteDataMap) {
+    for (auto& item : noteDataMap)
+    {
         auto* nd = &(item.second);
         // Only increment witnesses that are behind the current height
-        if (nd->witnessHeight < indexHeight) {
+        if (nd->witnessHeight < indexHeight)
+        {
             // Check the validity of the cache
             // The only time a note witnessed above the current height
             // would be invalid here is during a reindex when blocks
@@ -887,7 +889,8 @@ void CWallet::IncrementNoteWitnesses(const CBlockIndex* pindex,
         const auto &hash = tx.GetHash();
         bool txIsOurs = mapWallet.count(hash);
         // Sapling
-        for (uint32_t i = 0; i < tx.vShieldedOutput.size(); i++) {
+        for (uint32_t i = 0; i < tx.vShieldedOutput.size(); i++)
+        {
             const auto& note_commitment = tx.vShieldedOutput[i].cm;
             saplingTree.append(note_commitment);
 
@@ -896,7 +899,8 @@ void CWallet::IncrementNoteWitnesses(const CBlockIndex* pindex,
                 ::AppendNoteCommitment(wtxItem.second.mapSaplingNoteData, pindex->nHeight, nWitnessCacheSize, note_commitment);
 
             // If this is our note, witness it
-            if (txIsOurs) {
+            if (txIsOurs)
+            {
                 SaplingOutPoint outPoint {hash, i};
                 ::WitnessNoteIfMine(mapWallet[hash].mapSaplingNoteData, pindex->nHeight, nWitnessCacheSize, outPoint, saplingTree.witness());
             }
@@ -929,9 +933,8 @@ void DecrementNoteWitnesses(NoteDataMap& noteDataMap, int indexHeight, const uin
             // (never incremented or decremented) or equal to the height
             // of the block being removed (indexHeight)
             assert((nd->witnessHeight == -1) || (nd->witnessHeight == indexHeight));
-            if (nd->witnesses.size() > 0) {
+            if (nd->witnesses.size() > 0)
                 nd->witnesses.pop_front();
-            }
             // indexHeight is the height of the block being removed, so 
             // the new witness cache height is one below it.
             nd->witnessHeight = indexHeight - 1;
@@ -2680,25 +2683,31 @@ bool CWallet::SelectCoinsMinConf(const CAmount& nTargetValue, int nConfMine, int
         setCoinsRet.insert(coinLowestLarger.second);
         nValueRet += coinLowestLarger.first;
     }
-    else {
+    else
+    {
         for (unsigned int i = 0; i < vValue.size(); i++)
+        {
             if (vfBest[i])
             {
                 setCoinsRet.insert(vValue[i].second);
                 nValueRet += vValue[i].first;
             }
+        }
 
         LogPrint("selectcoins", "SelectCoins() best subset: ");
         for (unsigned int i = 0; i < vValue.size(); i++)
+        {
             if (vfBest[i])
                 LogPrint("selectcoins", "%s ", FormatMoney(vValue[i].first));
+        }
         LogPrint("selectcoins", "total %s\n", FormatMoney(nBest));
     }
 
     return true;
 }
 
-bool CWallet::SelectCoins(const CAmount& nTargetValue, set<pair<const CWalletTx*,unsigned int> >& setCoinsRet, CAmount& nValueRet,  bool& fOnlyCoinbaseCoinsRet, bool& fNeedCoinbaseCoinsRet, const CCoinControl* coinControl) const
+bool CWallet::SelectCoins(const CAmount& nTargetValue, set<pair<const CWalletTx*,unsigned int> >& setCoinsRet, CAmount& nValueRet,
+    bool& fOnlyCoinbaseCoinsRet, bool& fNeedCoinbaseCoinsRet, const CCoinControl* coinControl) const
 {
     // Output parameter fOnlyCoinbaseCoinsRet is set to true when the only available coins are coinbase utxos.
     vector<COutput> vCoinsNoCoinbase, vCoinsWithCoinbase;
@@ -2840,8 +2849,10 @@ bool CWallet::CreateTransaction(const vector<CRecipient>& vecSend, CWalletTx& wt
     CMutableTransaction txNew = CreateNewContextualCMutableTransaction(consensus, nextBlockHeight);
 
     // Activates after Overwinter network upgrade
-    if (NetworkUpgradeActive(nextBlockHeight, consensus, Consensus::UpgradeIndex::UPGRADE_OVERWINTER)) {
-        if (txNew.nExpiryHeight >= TX_EXPIRY_HEIGHT_THRESHOLD){
+    if (NetworkUpgradeActive(nextBlockHeight, consensus, Consensus::UpgradeIndex::UPGRADE_OVERWINTER))
+    {
+        if (txNew.nExpiryHeight >= TX_EXPIRY_HEIGHT_THRESHOLD)
+        {
             strFailReason = _("nExpiryHeight must be less than TX_EXPIRY_HEIGHT_THRESHOLD.");
             return false;
         }
@@ -3049,14 +3060,13 @@ bool CWallet::CreateTransaction(const vector<CRecipient>& vecSend, CWalletTx& wt
                     {
                         strFailReason = _("Signing transaction failed");
                         return false;
-                    } else {
+                    } else
                         UpdateTransaction(txNew, nIn, sigdata);
-                    }
 
                     nIn++;
                 }
 
-                unsigned int nBytes = static_cast<unsigned int>(::GetSerializeSize(txNew, SER_NETWORK, PROTOCOL_VERSION));
+                const size_t nBytes = ::GetSerializeSize(txNew, SER_NETWORK, PROTOCOL_VERSION);
 
                 // Remove scriptSigs if we used dummy signatures for fee calculation
                 if (!sign)
@@ -3069,7 +3079,7 @@ bool CWallet::CreateTransaction(const vector<CRecipient>& vecSend, CWalletTx& wt
                 *static_cast<CTransaction*>(&wtxNew) = CTransaction(txNew);
 
                 // Limit size
-                if (nBytes >= max_tx_size)
+                if (nBytes >= static_cast<size_t>(max_tx_size))
                 {
                     strFailReason = _("Transaction too large");
                     return false;
@@ -3097,7 +3107,7 @@ bool CWallet::CreateTransaction(const vector<CRecipient>& vecSend, CWalletTx& wt
                 // because we must be at the maximum allowed fee.
                 if (nFeeNeeded < ::minRelayTxFee.GetFee(nBytes))
                 {
-                    strFailReason = strprintf("Transaction too large for fee policy: fee needed = %s; minRelayTxFee for %d bytes is set to %s",
+                    strFailReason = strprintf("Transaction too large for fee policy: fee needed = %s; minRelayTxFee for %zu bytes is set to %s",
                                               FormatMoney(nFeeNeeded), nBytes, FormatMoney(::minRelayTxFee.GetFee(nBytes)));
                     return false;
                 }
@@ -3167,7 +3177,7 @@ bool CWallet::CommitTransaction(CWalletTx& wtxNew, CReserveKey& reservekey)
     return true;
 }
 
-CAmount CWallet::GetMinimumFee(unsigned int nTxBytes, unsigned int nConfirmTarget, const CTxMemPool& pool)
+CAmount CWallet::GetMinimumFee(const size_t nTxBytes, unsigned int nConfirmTarget, const CTxMemPool& pool)
 {
     // payTxFee is user-set "I want to pay this much"
     CAmount nFeeNeeded = payTxFee.GetFee(nTxBytes);
@@ -3177,8 +3187,7 @@ CAmount CWallet::GetMinimumFee(unsigned int nTxBytes, unsigned int nConfirmTarge
     // User didn't set: use -txconfirmtarget to estimate...
     if (nFeeNeeded == 0)
         nFeeNeeded = pool.estimateFee(nConfirmTarget).GetFee(nTxBytes);
-    // ... unless we don't have enough mempool data, in which case fall
-    // back to a hard-coded fee
+    // ... unless we don't have enough mempool data, in which case fall back to a hard-coded fee
     if (nFeeNeeded == 0)
         nFeeNeeded = minTxFee.GetFee(nTxBytes);
     // prevent user from paying a non-sense fee (like 1 patoshi): 0 < fee < minRelayFee
@@ -3189,9 +3198,6 @@ CAmount CWallet::GetMinimumFee(unsigned int nTxBytes, unsigned int nConfirmTarge
         nFeeNeeded = maxTxFee;
     return nFeeNeeded;
 }
-
-
-
 
 DBErrors CWallet::LoadWallet(bool& fFirstRunRet)
 {
@@ -3222,7 +3228,6 @@ DBErrors CWallet::LoadWallet(bool& fFirstRunRet)
     return DB_LOAD_OK;
 }
 
-
 DBErrors CWallet::ZapWalletTx(vector<CWalletTx>& vWtx)
 {
     if (!fFileBacked)
@@ -3245,7 +3250,6 @@ DBErrors CWallet::ZapWalletTx(vector<CWalletTx>& vWtx)
 
     return DB_LOAD_OK;
 }
-
 
 bool CWallet::SetAddressBook(const CTxDestination& address, const string& strName, const string& strPurpose)
 {
@@ -3441,9 +3445,9 @@ int64_t CWallet::GetOldestKeyPoolTime()
     return keypool.nTime;
 }
 
-map<CTxDestination, CAmount> CWallet::GetAddressBalances(const isminetype& isMineFilter)
+BalanceMap_t CWallet::GetAddressBalances(const isminetype& isMineFilter)
 {
-    map<CTxDestination, CAmount> balances;
+    BalanceMap_t balanceMap;
     {
         LOCK(cs_wallet);
         for (const auto &[hash, coin] : mapWallet)
@@ -3456,7 +3460,7 @@ map<CTxDestination, CAmount> CWallet::GetAddressBalances(const isminetype& isMin
             if (nDepth < (coin.IsFromMe(isminetype::ALL) ? 0 : 1))
                 continue;
 
-            for (unsigned int i = 0; i < coin.vout.size(); ++i)
+            for (uint32_t i = 0; i < coin.vout.size(); ++i)
             {
                 const auto& txOut = coin.vout[i];
                 CTxDestination addr;
@@ -3467,14 +3471,14 @@ map<CTxDestination, CAmount> CWallet::GetAddressBalances(const isminetype& isMin
                 if (!ExtractDestination(txOut.scriptPubKey, addr))
                     continue;
 
-                const CAmount n = IsSpent(hash, i) ? 0 : txOut.nValue;
-                if (!balances.count(addr))
-                    balances[addr] = 0;
-                balances[addr] += n;
+                const CAmount nValue = IsSpent(hash, i) ? 0 : txOut.nValue;
+                if (!balanceMap.count(addr))
+                    balanceMap[addr] = 0;
+                balanceMap[addr] += nValue;
             }
         }
     }
-    return balances;
+    return balanceMap;
 }
 
 set< set<CTxDestination> > CWallet::GetAddressGroupings()
@@ -3665,7 +3669,7 @@ void CWallet::UnlockAllCoins()
     m_setLockedCoins.clear();
 }
 
-bool CWallet::IsLockedCoin(uint256 hash, unsigned int n) const
+bool CWallet::IsLockedCoin(const uint256 &hash, const uint32_t n) const
 {
     AssertLockHeld(cs_wallet); // m_setLockedCoins
     COutPoint outpt(hash, n);

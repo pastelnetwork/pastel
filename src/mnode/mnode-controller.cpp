@@ -32,15 +32,16 @@ MasterNode specific logic and initializations
 
 void CMasterNodeController::InvalidateParameters()
 {
-    MasternodeFeePerMBDefault = 0;
-    NFTTicketFeePerKBDefault = 0;
-    ActionTicketFeePerMBDefault = 0;
+    m_nMasternodeFeePerMBDefault = 0;
+    m_nTicketChainStorageFeePerKBDefault = 0;
+    m_nSenseProcessingFeePerMBDefault = 0;
+    m_nSenseComputeFeeDefault = 0;
 
-    ChainDeflationRateDefault = 0.0;
+    m_fChainDeflationRateDefault = 0.0;
 
-    ChainBaselineDifficultyLowerIndex = 0;
-    ChainBaselineDifficultyUpperIndex = 0;
-    ChainTrailingAverageDifficultyRange = 0;
+    m_nChainBaselineDifficultyLowerIndex = 0;
+    m_nChainBaselineDifficultyUpperIndex = 0;
+    m_nChainTrailingAverageDifficultyRange = 0;
 
     MasternodeUsernameFirstChangeFee = 0;
     MasternodeUsernameChangeAgainFee = 0;
@@ -81,38 +82,41 @@ void CMasterNodeController::InvalidateParameters()
 
 void CMasterNodeController::SetParameters()
 {  
-    MasternodeFeePerMBDefault           = 50;
-    // default NFT ticket fee in PSL per KB
-    NFTTicketFeePerKBDefault            = 3;
+    // data storage fee per MB
+    m_nMasternodeFeePerMBDefault            = 5'000;
+    // default ticket blockchain storage fee in PSL per KB
+    m_nTicketChainStorageFeePerKBDefault    = 200;
     // default action ticket fee in PSL per MB
-    ActionTicketFeePerMBDefault         = 10;
+    m_nSenseProcessingFeePerMBDefault       = 50;
+    // default flat sense compute fee in PSL
+    m_nSenseComputeFeeDefault		        = 5'000;
 
-    ChainDeflationRateDefault           = 1;
+    m_fChainDeflationRateDefault            = 1;
 
-    ChainBaselineDifficultyLowerIndex   = 100'000;
-    ChainBaselineDifficultyUpperIndex   = 150'000;
-    ChainTrailingAverageDifficultyRange = 10'000;
+    m_nChainBaselineDifficultyLowerIndex    = 100'000;
+    m_nChainBaselineDifficultyUpperIndex    = 150'000;
+    m_nChainTrailingAverageDifficultyRange  = 10'000;
 
-    MasternodeUsernameFirstChangeFee   = 100;
-    MasternodeUsernameChangeAgainFee   = 5000;
+    MasternodeUsernameFirstChangeFee        = 100;
+    MasternodeUsernameChangeAgainFee        = 5000;
 
-    MasternodeEthereumAddressFirstChangeFee   = 100;
-    MasternodeEthereumAddressChangeAgainFee   = 5000;
+    MasternodeEthereumAddressFirstChangeFee = 100;
+    MasternodeEthereumAddressChangeAgainFee = 5'000;
 
-    MasternodeCheckSeconds              =   5;
-    MasternodeMinMNBSeconds             =   5 * 60;
-    MasternodeMinMNPSeconds             =  10 * 60;
-    MasternodeExpirationSeconds         =  65 * 60;
-    MasternodeWatchdogMaxSeconds        = 120 * 60;
-    MasternodeNewStartRequiredSeconds   = 180 * 60;
-    MNStartRequiredExpirationTime             = 7 * 24 * 60 * 60;
+    MasternodeCheckSeconds                  =   5;
+    MasternodeMinMNBSeconds                 =   5 * 60;
+    MasternodeMinMNPSeconds                 =  10 * 60;
+    MasternodeExpirationSeconds             =  65 * 60;
+    MasternodeWatchdogMaxSeconds            = 120 * 60;
+    MasternodeNewStartRequiredSeconds       = 180 * 60;
+    MNStartRequiredExpirationTime           = 7 * 24 * 60 * 60;
 
     // MasterNode PoSe (Proof of Service) Max Ban Score
-    m_nMasternodePOSEBanMaxScore           = 5;
+    m_nMasternodePOSEBanMaxScore            = 5;
 
-    nMasterNodeMaximumOutboundConnections = 20;
+    nMasterNodeMaximumOutboundConnections   = 20;
 
-    nMasternodePaymentsVotersIndexDelta = -101;
+    nMasternodePaymentsVotersIndexDelta     = -101;
     nMasternodePaymentsFeatureWinnerBlockIndexDelta = 10;
     
     m_nMasternodeTopMNsNumberMin = 3;
@@ -318,15 +322,12 @@ bool CMasterNodeController::EnableMasterNode(ostringstream& strErrors, CServiceT
 
     // LOAD SERIALIZED DAT FILES INTO DATA CACHES FOR INTERNAL USE
     fs::path pathDB = GetDataDir();
-    string strDBName;
 
-    strDBName = "mncache.dat";
     uiInterface.InitMessage(_("Loading masternode cache..."));
-    CFlatDB<CMasternodeMan> flatDB1(strDBName, "magicMasternodeCache");
+    CFlatDB<CMasternodeMan> flatDB1(MNCACHE_FILENAME, MNCACHE_CACHE_MAGIC_STR);
     if (!flatDB1.Load(masternodeManager))
     {
-        strErrors << _("Failed to load masternode cache from") + "\n" + flatDB1.getFilePath();
-        return false;
+        LogFnPrintf("WARNING ! Could not load masternode cache from [%s]", flatDB1.getFilePath());
     }
 
     if (!masternodeManager.empty())
@@ -335,16 +336,14 @@ bool CMasterNodeController::EnableMasterNode(ostringstream& strErrors, CServiceT
         CFlatDB<CMasternodePayments> flatDB2(MNPAYMENTS_CACHE_FILENAME, MNPAYMENTS_CACHE_MAGIC_STR);
         if (!flatDB2.Load(masternodePayments))
         {
-            strErrors << _("Failed to load masternode payments cache from") + "\n" + flatDB2.getFilePath();
-            return false;
+            LogFnPrintf("WARNING ! Could not load masternode payments cache from [%s]", flatDB2.getFilePath());
         }
     } else
         uiInterface.InitMessage(_("Masternode cache is empty, skipping payments and governance cache..."));
 
 #ifdef GOVERNANCE_TICKETS
-    strDBName = "governance.dat";
     uiInterface.InitMessage(_("Loading governance cache..."));
-    CFlatDB<CMasternodeGovernance> flatDB3(strDBName, "magicGovernanceCache");
+    CFlatDB<CMasternodeGovernance> flatDB3(MN_GOVERNANCE_FILENAME, MN_GOVERNANCE_MAGIC_CACHE_STR);
     if (!flatDB3.Load(masternodeGovernance))
     {
         strErrors << _("Failed to load governance cache from") + "\n" + flatDB3.getFilePath();
@@ -352,18 +351,16 @@ bool CMasterNodeController::EnableMasterNode(ostringstream& strErrors, CServiceT
     }
 #endif // GOVERNANCE_TICKETS
 
-    strDBName = "netfulfilled.dat";
     uiInterface.InitMessage(_("Loading fulfilled requests cache..."));
-    CFlatDB<CMasternodeRequestTracker> flatDB4(strDBName, "magicFulfilledCache");
+    CFlatDB<CMasternodeRequestTracker> flatDB4(MN_REQUEST_TRACKER_FILENAME, MN_REQUEST_TRACKER_MAGIC_CACHE_STR);
     if (!flatDB4.Load(requestTracker))
     {
         strErrors << _("Failed to load fulfilled requests cache from") + "\n" + flatDB4.getFilePath();
         return false;
     }
 
-    strDBName = "messages.dat";
     uiInterface.InitMessage(_("Loading messages cache..."));
-    CFlatDB<CMasternodeMessageProcessor> flatDB5(strDBName, "magicMessagesCache");
+    CFlatDB<CMasternodeMessageProcessor> flatDB5(MN_MESSAGES_FILENAME, MN_MESSAGES_MAGIC_CACHE_STR);
     if (!flatDB5.Load(masternodeMessages))
     {
         strErrors << _("Failed to load messages cache from") + "\n" + flatDB5.getFilePath();
@@ -522,25 +519,8 @@ bool CMasterNodeController::ProcessGetData(CNode* pfrom, const CInv& inv)
         case MSG_MASTERNODE_PAYMENT_BLOCK:
         {
             const auto mi = mapBlockIndex.find(inv.hash);
-            LOCK(cs_mapMasternodeBlockPayees);
-            if (mi != mapBlockIndex.cend() && masternodePayments.mapMasternodeBlockPayees.count(mi->second->nHeight))
-            {
-                for (const auto & payee : masternodePayments.mapMasternodeBlockPayees[mi->second->nHeight].vecPayees)
-                {
-                    const auto vecVoteHashes = payee.GetVoteHashes();
-                    for (const auto& hash: vecVoteHashes)
-                    {
-                        if (masternodePayments.HasVerifiedPaymentVote(hash))
-                        {
-                            CDataStream ss(SER_NETWORK, PROTOCOL_VERSION);
-                            ss.reserve(1000);
-                            ss << masternodePayments.mapMasternodePaymentVotes[hash];
-                            pfrom->PushMessage(NetMsgType::MASTERNODEPAYMENTVOTE, ss);
-                        }
-                    }
-                }
+            if (mi != mapBlockIndex.cend() && masternodePayments.PushPaymentVotes(mi->second, pfrom))
                 bPushed = true;
-            }
         } break;
 
         case MSG_MASTERNODE_ANNOUNCE:
@@ -581,17 +561,17 @@ void CMasterNodeController::ShutdownMasterNode()
     }
 
     // STORE DATA CACHES INTO SERIALIZED DAT FILES
-    CFlatDB<CMasternodeMan> flatDB1("mncache.dat", "magicMasternodeCache");
-    flatDB1.Dump(masternodeManager);
+    CFlatDB<CMasternodeMan> flatDB1(MNCACHE_FILENAME, MNCACHE_CACHE_MAGIC_STR);
+    flatDB1.Dump(masternodeManager, false);
     CFlatDB<CMasternodePayments> flatDB2(MNPAYMENTS_CACHE_FILENAME, MNPAYMENTS_CACHE_MAGIC_STR);
-    flatDB2.Dump(masternodePayments);
-    CFlatDB<CMasternodeRequestTracker> flatDB3("netfulfilled.dat", "magicFulfilledCache");
-    flatDB3.Dump(requestTracker);
-    CFlatDB<CMasternodeMessageProcessor> flatDB4("messages.dat", "magicMessagesCache");
-    flatDB4.Dump(masternodeMessages);
+    flatDB2.Dump(masternodePayments, false);
+    CFlatDB<CMasternodeRequestTracker> flatDB3(MN_REQUEST_TRACKER_FILENAME, MN_REQUEST_TRACKER_MAGIC_CACHE_STR);
+    flatDB3.Dump(requestTracker, false);
+    CFlatDB<CMasternodeMessageProcessor> flatDB4(MN_MESSAGES_FILENAME, MN_MESSAGES_MAGIC_CACHE_STR);
+    flatDB4.Dump(masternodeMessages, false);
 #ifdef GOVERNANCE_TICKETS
-    CFlatDB<CMasternodeGovernance> flatDB5("governance.dat", "magicGovernanceCache");
-    flatDB5.Dump(masternodeGovernance);
+    CFlatDB<CMasternodeGovernance> flatDB5(MN_GOVERNANCE_FILENAME, MN_GOVERNANCE_MAGIC_CACHE_STR);
+    flatDB5.Dump(masternodeGovernance, false);
 #endif // GOVERNANCE_TICKETS
 }
 
@@ -603,9 +583,36 @@ fs::path CMasterNodeController::GetMasternodeConfigFile()
     return pathConfigFile;
 }
 
-CAmount CMasterNodeController::GetNetworkFeePerMB() const noexcept
+CAmount CMasterNodeController::GetDefaultMNFee(const MN_FEE mnFee) const noexcept
 {
-    CAmount nFee = masterNodeCtrl.MasternodeFeePerMBDefault;
+    CAmount nFee = 0;
+    switch (mnFee)
+    {
+        case MN_FEE::StorageFeePerMB:
+            nFee = m_nMasternodeFeePerMBDefault;
+            break;
+
+        case MN_FEE::TicketChainStorageFeePerKB:
+            nFee = m_nTicketChainStorageFeePerKBDefault;
+			break;
+
+        case MN_FEE::SenseComputeFee:
+            nFee = m_nSenseComputeFeeDefault;
+			break;
+
+        case MN_FEE::SenseProcessingFeePerMB:
+            nFee = m_nSenseProcessingFeePerMBDefault;
+            break;
+
+        default:
+            break;
+    }
+    return nFee;
+}
+
+CAmount CMasterNodeController::GetNetworkMedianMNFee(const MN_FEE mnFee) const noexcept
+{
+    CAmount nFee = GetDefaultMNFee(mnFee);
     if (m_fMasterNode)
     {
         // COutPoint => CMasternode
@@ -615,7 +622,7 @@ CAmount CMasterNodeController::GetNetworkFeePerMB() const noexcept
             vector<CAmount> vFee(mapMasternodes.size());
             size_t cnt = 0;
             for (const auto& [op, mn] : mapMasternodes)
-                vFee[cnt++] = mn.aMNFeePerMB > 0 ? mn.aMNFeePerMB : masterNodeCtrl.MasternodeFeePerMBDefault;
+                vFee[cnt++] = mn.GetMNFee(mnFee);
             // Use trimmean to calculate the value with fixed 25% percentage
             nFee = static_cast<CAmount>(ceil(TRIMMEAN(vFee, 0.25)));
         }
@@ -623,23 +630,8 @@ CAmount CMasterNodeController::GetNetworkFeePerMB() const noexcept
     return nFee;
 }
 
-CAmount CMasterNodeController::GetNFTTicketFeePerKB() const noexcept
-{
-    if (m_fMasterNode)
-    {
-        CAmount nFee = 0;
-        // COutPoint => CMasternode
-        const auto mapMasternodes = masternodeManager.GetFullMasternodeMap();
-        for (const auto& [op, mn] : mapMasternodes)
-            nFee += mn.aNFTTicketFeePerKB > 0? mn.aNFTTicketFeePerKB : masterNodeCtrl.NFTTicketFeePerKBDefault;
-        nFee /= mapMasternodes.size();
-        return nFee;
-    }
-    return NFTTicketFeePerKBDefault;
-}
-
 /**
- * Get fee in PSL for the given action ticket type per MB.
+ * Get fee in PSL for the given action ticket type per MB (not adjusted).
  * 
  * \param actionTicketType - action ticket type (sense, cascade)
  * \return fee for the given action ticket type
@@ -647,36 +639,81 @@ CAmount CMasterNodeController::GetNFTTicketFeePerKB() const noexcept
 CAmount CMasterNodeController::GetActionTicketFeePerMB(const ACTION_TICKET_TYPE actionTicketType) const noexcept
 {
     // this should use median fees for actions fee reported by SNs
-    return ActionTicketFeePerMBDefault;
+    if (actionTicketType == ACTION_TICKET_TYPE::SENSE)
+        return GetNetworkMedianMNFee(MN_FEE::SenseProcessingFeePerMB);
+    return 0;
 }
 
-double CMasterNodeController::GetChainDeflatorFactor() const
+/**
+ * Get network blockchain deflator factor for the given block height.
+ * Uses deflatorFactorCacheMap to retrieve cached deflator factor.
+ * If not in cache, calculates and stores in cache.
+ * 
+ * \param nChainHeight - block height
+ * \return chain deflator factor
+ */
+double CMasterNodeController::GetChainDeflatorFactor(uint32_t chainHeight) const
 {
-    const uint32_t nChainHeight = gl_nChainHeight;
+    const uint32_t nChainHeight = (chainHeight == numeric_limits<uint32_t>::max()) ? gl_nChainHeight.load() : chainHeight;
 
-    if (static_cast<uint32_t>(nChainHeight) <= ChainBaselineDifficultyUpperIndex + ChainTrailingAverageDifficultyRange)
-        return ChainDeflationRateDefault;
+    const uint32_t nCacheKey = (nChainHeight / m_nChainTrailingAverageDifficultyRange) * m_nChainTrailingAverageDifficultyRange;
+    
+    // Access shared data with shared lock (read lock)
+    {
+        shared_lock lock(m_deflatorFactorCacheMutex);
+        const auto it = m_deflatorFactorCacheMap.find(nCacheKey);
+        if (it != m_deflatorFactorCacheMap.cend())
+            return it->second;
+    }
+
+    // If not in cache, calculate and store in cache
+    // Access shared data with unique lock (write lock)
+    {
+        unique_lock lock(m_deflatorFactorCacheMutex);
+        // Double-check whether another thread has already calculated the value after we released the shared lock
+        const auto it = m_deflatorFactorCacheMap.find(nCacheKey);
+        if (it != m_deflatorFactorCacheMap.cend())
+            return it->second;
+
+        double deflatorFactor = CalculateChainDeflatorFactor(nCacheKey);
+        m_deflatorFactorCacheMap[nCacheKey] = deflatorFactor;
+        return deflatorFactor;
+    }
+}
+
+/**
+ * Calculate network blockchain deflator factor for the given block height.
+ * 
+ * \param nChainHeight - block height
+ * \return chain deflator factor
+ */
+double CMasterNodeController::CalculateChainDeflatorFactor(uint32_t chainHeight) const
+{
+    const uint32_t nChainHeight = (chainHeight == numeric_limits<uint32_t>::max()) ? gl_nChainHeight.load() : chainHeight;
+
+    if (static_cast<uint32_t>(nChainHeight) <= m_nChainBaselineDifficultyUpperIndex + m_nChainTrailingAverageDifficultyRange)
+        return m_fChainDeflationRateDefault;
 
     // Get baseline average difficulty
     double totalBaselineDifficulty = 0.0;
-    for (uint32_t i = ChainBaselineDifficultyLowerIndex; i < ChainBaselineDifficultyUpperIndex; i++)
+    for (uint32_t i = m_nChainBaselineDifficultyLowerIndex; i < m_nChainBaselineDifficultyUpperIndex; i++)
     {
         const CBlockIndex* index = chainActive[i];
         totalBaselineDifficulty += getNetworkDifficulty(index, true);
     }
-    const double averageBaselineDifficulty = totalBaselineDifficulty/(ChainBaselineDifficultyUpperIndex - ChainBaselineDifficultyLowerIndex);
+    const double averageBaselineDifficulty = totalBaselineDifficulty/(m_nChainBaselineDifficultyUpperIndex - m_nChainBaselineDifficultyLowerIndex);
     // Get trailing average difficulty
-    const uint32_t endTrailingIndex = ChainBaselineDifficultyUpperIndex + ChainTrailingAverageDifficultyRange*((gl_nChainHeight - ChainBaselineDifficultyUpperIndex)/ChainTrailingAverageDifficultyRange);
-    const uint32_t startTrailingIndex = endTrailingIndex - ChainTrailingAverageDifficultyRange;
+    const uint32_t nEndTrailingIndex = m_nChainBaselineDifficultyUpperIndex + 
+        m_nChainTrailingAverageDifficultyRange * ((nChainHeight - m_nChainBaselineDifficultyUpperIndex) / m_nChainTrailingAverageDifficultyRange);
+    const uint32_t nStartTrailingIndex = nEndTrailingIndex - m_nChainTrailingAverageDifficultyRange;
         
-        
-    double totalTrailingDifficulty = 0.0;
-    for (uint32_t i = startTrailingIndex; i < endTrailingIndex; i++)
+    double fTotalTrailingDifficulty = 0.0;
+    for (uint32_t i = nStartTrailingIndex; i < nEndTrailingIndex; i++)
     {
         const CBlockIndex* index = chainActive[i];
-        totalTrailingDifficulty += getNetworkDifficulty(index, true);
+        fTotalTrailingDifficulty += getNetworkDifficulty(index, true);
     }
-    const double averageTrailingDifficulty = totalTrailingDifficulty/ChainTrailingAverageDifficultyRange;
+    const double averageTrailingDifficulty = fTotalTrailingDifficulty/m_nChainTrailingAverageDifficultyRange;
     return averageBaselineDifficulty/averageTrailingDifficulty;
 }
 

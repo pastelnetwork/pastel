@@ -1,11 +1,9 @@
 #pragma once
 // Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2014 The Bitcoin Core developers
+// Copyright (c) 2018-2023 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
-// file COPYING or http://www.opensource.org/licenses/mit-license.php.
-
-#include <crypto/common.h>
-#include <prevector.h>
+// file COPYING or https://www.opensource.org/licenses/mit-license.php.
 
 #include <assert.h>
 #include <climits>
@@ -14,8 +12,12 @@
 #include <stdint.h>
 #include <string.h>
 
+#include <crypto/common.h>
+#include <prevector.h>
 #include <uint256.h>
 #include <vector_types.h>
+#include <serialize.h>
+#include <script/scripttype.h>
 
 #ifdef _MSC_VER
 #pragma warning(push)
@@ -579,13 +581,6 @@ public:
      */
     unsigned int GetSigOpCount(const CScript& scriptSig) const;
 
-    // insightexplorer, there may be more script types in the future
-    enum class ScriptType : int {
-        UNKNOWN = 0,
-        P2PKH = 1,
-        P2SH = 2,
-    };
-
     bool IsPayToPublicKeyHash() const;
     bool IsPayToScriptHash() const;
 
@@ -612,6 +607,16 @@ public:
         CScriptBase().swap(*this);
     }
 };
+
+template<typename Stream> inline void Serialize(Stream& s, ScriptType a )
+{
+    ser_writedata32(s, (int32_t)a);
+}
+
+template<typename Stream> inline void Unserialize(Stream& s, ScriptType& a )
+{
+    a = (ScriptType)ser_readdata32(s);
+}
 
 #ifdef _MSC_VER
 #pragma warning(pop)

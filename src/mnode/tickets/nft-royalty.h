@@ -39,7 +39,7 @@ public:
     static TicketID GetID() { return TicketID::Royalty; }
     static constexpr auto GetTicketDescription()
     {
-        return TICKET_INFO[to_integral_type<TicketID>(TicketID::Royalty)].szDescription;
+        return TICKET_INFO[to_integral_type(TicketID::Royalty)].szDescription;
     }
 
     void Clear() noexcept override

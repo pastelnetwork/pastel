@@ -1,16 +1,16 @@
 #pragma once
 // Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2014 The Bitcoin Core developers
-// Copyright (c) 2018-2021 Pastel Core developers
+// Copyright (c) 2018-2023 Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
-
-#include <script/interpreter.h>
-#include <uint256.h>
-#include <chainparams.h>
-
 #include <stdint.h>
 #include <variant>
+
+#include <script/interpreter.h>
+#include <script/scripttype.h>
+#include <uint256.h>
+#include <chainparams.h>
 
 class CKeyID;
 class CScript;
@@ -134,4 +134,4 @@ CScript GetScriptForDestination(const CTxDestination& dest);
 CScript GetScriptForMultisig(int nRequired, const std::vector<CPubKey>& keys);
 
 // insightexplorer
-CTxDestination DestFromAddressHash(CScript::ScriptType scriptType, uint160& addressHash);
+CTxDestination DestFromAddressHash(ScriptType scriptType, uint160& addressHash);

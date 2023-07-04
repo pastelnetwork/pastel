@@ -334,6 +334,9 @@
     <ClCompile Include="..\..\..\src\gtest\test_mnode\test_mnode_payments.cpp">
       <Filter>UnitTest Files\test_mnode</Filter>
     </ClCompile>
+    <ClCompile Include="test_mnode_cache.cpp">
+      <Filter>UnitTest Files\test_mnode</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\..\src\gtest\json_test_vectors.h">

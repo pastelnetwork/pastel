@@ -11,6 +11,7 @@
 #include <mnode/tickets/pastelid-reg.h>
 #include <mnode/tickets/nft-royalty.h>
 #include <mnode/tickets/nft-reg.h>
+#include <mnode/tickets/action-reg.h>
 #include <mnode/tickets/collection-reg.h>
 #include <mnode/tickets/collection-act.h>
 #include <mnode/mnode-controller.h>
@@ -431,4 +432,25 @@ bool CNFTRegTicket::CheckIfTicketInDb(const string& key)
 NFTRegTickets_t CNFTRegTicket::FindAllTicketByMVKey(const string& sMVKey)
 {
     return masterNodeCtrl.masternodeTickets.FindTicketsByMVKey<CNFTRegTicket>(sMVKey);
+}
+
+CAmount CNFTRegTicket::GetNftFee(const size_t nImageDataSizeInMB, const size_t nTicketDataSizeInBytes, const uint32_t nChainHeight) noexcept
+{
+    const auto &consensusParams = Params().GetConsensus();
+    const auto nGlobalFeeAdjustmentMultiplier = consensusParams.nGlobalFeeAdjustmentMultiplier;
+    const double nFeeAdjustmentMultiplier = nGlobalFeeAdjustmentMultiplier * masterNodeCtrl.GetChainDeflatorFactor(nChainHeight);
+
+    const CAmount nStorageFeePerMB = masterNodeCtrl.GetNetworkMedianMNFee(MN_FEE::StorageFeePerMB);
+    const CAmount nTicketChainStorageFeePerKB = masterNodeCtrl.GetNetworkMedianMNFee(MN_FEE::TicketChainStorageFeePerKB);
+
+    // get sense and cascade fees not including ticket blockchain storage fee
+    const action_fee_map_t action_fees = CActionRegTicket::GetActionFees(nImageDataSizeInMB, nChainHeight, false);
+
+	const CAmount nNftFee =
+        static_cast<CAmount>(
+            (action_fees.at(ACTION_TICKET_TYPE::SENSE) + 
+             action_fees.at(ACTION_TICKET_TYPE::CASCADE)) * NFT_DISCOUNT_MULTIPLIER) +
+        static_cast<CAmount>(
+            ceil(nTicketDataSizeInBytes * nTicketChainStorageFeePerKB / 1024) * nFeeAdjustmentMultiplier);
+    return nNftFee;
 }

@@ -324,6 +324,7 @@ BITCOIN_CORE_H = \
   script_check.h \
   script/interpreter.h \
   script/script.h \
+  script/scripttype.h \
   script/script_error.h \
   script/sigcache.h \
   script/sign.h \

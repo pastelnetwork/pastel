@@ -57,7 +57,7 @@ public:
     static TicketID GetID() { return TicketID::Transfer; }
     static constexpr auto GetTicketDescription()
     {
-        return TICKET_INFO[to_integral_type<TicketID>(TicketID::Transfer)].szDescription;
+        return TICKET_INFO[to_integral_type(TicketID::Transfer)].szDescription;
     }
 
     void Clear() noexcept override

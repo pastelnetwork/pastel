@@ -21,6 +21,7 @@ from test_framework.util import (
 from mn_common import (
     MasterNodeCommon,
     TicketData,
+    MnFeeType,
     MIN_TICKET_CONFIRMATIONS,
 )
 from ticket_type import (
@@ -117,6 +118,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         self.register_mn_pastelid()
         self.nft_intended_for_tests()
         self.action_intended_for_tests(ActionType.CASCADE)
+        self.storage_fee_tests()
         self.action_reg_ticket_tests(ActionType.SENSE, "sense-action-label")
         self.action_activate_ticket_tests(ActionType.SENSE, False)
         for collection_item_type in [CollectionItemType.SENSE, CollectionItemType.NFT]:
@@ -136,7 +138,6 @@ class MasterNodeTicketsTest(MasterNodeCommon):
             self.list_and_validate_ticket_ownerships(item_type)
 
         self.takedown_ticket_tests()
-        self.storage_fee_tests()
         self.tickets_list_filter_tests(0)
 
         if self.test_high_heights:
@@ -156,6 +157,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
             self.action_activate_ticket_tests(ActionType.CASCADE, True)
             self.nft_reg_ticket_tests("nft-label2")
             self.nft_activate_ticket_tests(True)
+            self.storage_fee_tests()
             for collection_item_type in [CollectionItemType.SENSE, CollectionItemType.NFT]:
                 self.collection_reg_ticket_tests(collection_item_type, f"{TEST_COLLECTION_NAME} {collection_item_type.type_name} #2", f"{collection_item_type.type_name}-coll-label2")
                 self.collection_activate_ticket_tests(collection_item_type, True)
@@ -167,7 +169,6 @@ class MasterNodeTicketsTest(MasterNodeCommon):
                 self.offer_accept_transfer_tests(item_type)
                 self.list_and_validate_ticket_ownerships(item_type)
             self.takedown_ticket_tests()
-            self.storage_fee_tests()
             self.tickets_list_filter_tests(1)
 
 
@@ -609,8 +610,8 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         assert_equal(coins_after, coins_before - ticket.ticket_price)  # no fee yet
 
         #       b.a.6 from another node - get ticket transaction and check
-        #           - there are P2MS outputs with non-zero amounts
-        #           - amounts is totaling 10PSL
+        #           - there are P2FMS outputs with non-zero amounts
+        #           - amounts is totaling 10 PSL
         nonmn3_ticket1_tx_hash = self.nodes[0].getrawtransaction(nonmn3_ticket1_txid)
         nonmn3_ticket1_tx = self.nodes[0].decoderawtransaction(nonmn3_ticket1_tx_hash)
         amount = 0
@@ -3295,6 +3296,8 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         # a. Get Network median storage fee
         #   a.1 from non-MN without errors
         ticket = self.tickets[TicketType.NFT]
+        if not ticket or not ticket.reg_ticket_base64_encoded:
+            self.register_and_activate_item(TicketType.NFT, 1, True)
         non_mn1_total_storage_fee1 = self.nodes[self.non_mn4].tickets("tools", "gettotalstoragefee",
             ticket.reg_ticket_base64_encoded, json.dumps(self.signatures_dict), self.nonmn4_pastelid1, self.passphrase,
             "key6", str(self.storage_fee), 5)["totalstoragefee"]
@@ -3307,9 +3310,9 @@ class MasterNodeTicketsTest(MasterNodeCommon):
             "key6", str(self.storage_fee), 4)["totalstoragefee"]
 
         #   a.3 compare a.1 and a.2
-        print(non_mn1_total_storage_fee1)
-        print(mn0_total_storage_fee1)
-        print(mn0_total_storage_fee2)
+        print(f"non_mn1_total_storage_fee1: {non_mn1_total_storage_fee1}")
+        print(f"mn0_total_storage_fee1: {mn0_total_storage_fee1}")
+        print(f"mn0_total_storage_fee2: {mn0_total_storage_fee2}")
         assert_equal(int(non_mn1_total_storage_fee1), int(mn0_total_storage_fee1))
         assert_greater_than(int(non_mn1_total_storage_fee1), int(mn0_total_storage_fee2))
 
@@ -3322,51 +3325,52 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         #   c.1 fail on non-MN
         #   c.2 on MN without errors
         #   c.3 get local MN storage fee and compare it with c.2
+        for fee_type in MnFeeType:
+            print(f"Testing MN fee '{fee_type.name}'")
+            lfee_mn0_response = self.nodes[0].storagefee(fee_type.getfee_rpc_command, True)
+            lfee_mn0 = lfee_mn0_response[fee_type.local_option_name]
+            assert_equal(fee_type.fee, int(lfee_mn0))
+            print(f"Local MN fee '{fee_type.name}' of MN0 is {lfee_mn0}")
 
-        # Test if storagefee works properly
-        nfee_mn0 = self.nodes[0].storagefee("getnetworkfee")["networkfee"]
-        nfee_mn1 = self.nodes[1].storagefee("getnetworkfee")["networkfee"]
-        nfee_mn2 = self.nodes[2].storagefee("getnetworkfee")["networkfee"]
-        assert_equal(nfee_mn0, 50)
-        assert_equal(nfee_mn1, 50)
-        assert_equal(nfee_mn2, 50)
-        print(f"Network fee is {nfee_mn0}")
+            newfee = fee_type.fee * 10
+            print(f"Setting new MN fee '{fee_type.name}' on node0 to [{newfee}]")
 
-        lfee_mn0 = self.nodes[0].storagefee("getlocalfee")["localfee"]
-        assert_equal(lfee_mn0, 50)
-        print(f"Local fee of MN0 is {lfee_mn0}")
+            # Check if the TRIM MEAN do NOT care the 25%
+            self.nodes[0].storagefee("setfee", fee_type.setfee_rpc_command, newfee)
+            self.nodes[2].storagefee("setfee", fee_type.setfee_rpc_command, 0)
+            self.sync_all()
+        
+            time.sleep(30)
+            lfee_mn0_response = self.nodes[0].storagefee(fee_type.getfee_rpc_command, True)
+            lfee_mn0 = lfee_mn0_response[fee_type.local_option_name]
+            print(f"Local mn0 fee for '{fee_type.name}' after setfee is {lfee_mn0}")
+            assert_equal(newfee, int(lfee_mn0))
 
-        # Check if the TRIM MEAN do NOT care the 25%
-        self.nodes[0].storagefee("setfee", "1000")
-        self.nodes[2].storagefee("setfee", "0")
-        self.sync_all()
+            nfee_mn2_response = self.nodes[2].storagefee(fee_type.getfee_rpc_command, False)
+            nfee_mn2 = nfee_mn2_response[fee_type.option_name]
+            print(f"Network median mn fee '{fee_type.name}' after setfee is {nfee_mn2}")
+            assert_equal(fee_type.fee, int(nfee_mn2))
 
-        time.sleep(30)
-        lfee_mn0 = self.nodes[0].storagefee("getlocalfee")["localfee"]
-        print("Local fee of MN0 after setfee is ", lfee_mn0)
-        assert_equal(lfee_mn0, 1000)
+            # Check if the TRIM MEAN do care the middle 50%
+            print(f"Setting new MN fee '{fee_type.name}' on nodes mn3..mn8 to [{newfee}]")
+            self.nodes[3].storagefee("setfee", fee_type.setfee_rpc_command, newfee)
+            self.nodes[4].storagefee("setfee", fee_type.setfee_rpc_command, newfee)
+            self.nodes[5].storagefee("setfee", fee_type.setfee_rpc_command, newfee)
+            self.nodes[6].storagefee("setfee", fee_type.setfee_rpc_command, newfee)
+            self.nodes[7].storagefee("setfee", fee_type.setfee_rpc_command, newfee)
+            self.nodes[8].storagefee("setfee", fee_type.setfee_rpc_command, newfee)
+            self.sync_all()
 
-        nfee_mn4 = self.nodes[2].storagefee("getnetworkfee")["networkfee"]
-        print("Network fee after setfee is ", nfee_mn4)
-        assert_equal(nfee_mn4, 50)
+            time.sleep(30)
+            lfee_mn0_response = self.nodes[0].storagefee(fee_type.getfee_rpc_command, True)
+            lfee_mn0 = lfee_mn0_response[fee_type.local_option_name]
+            print(f"Local mn0 fee '{fee_type.name}' after setfee on 6 other nodes is {lfee_mn0}")
+            assert_equal(newfee, int(lfee_mn0))
 
-        # Check if the TRIM MEAN do care the middle 50%
-        self.nodes[3].storagefee("setfee", "1000")
-        self.nodes[4].storagefee("setfee", "1000")
-        self.nodes[5].storagefee("setfee", "1000")
-        self.nodes[6].storagefee("setfee", "1000")
-        self.nodes[7].storagefee("setfee", "1000")
-        self.nodes[8].storagefee("setfee", "1000")
-        self.sync_all()
-
-        time.sleep(30)
-        lfee_mn0 = self.nodes[0].storagefee("getlocalfee")["localfee"]
-        print("Local fee of MN0 after setfee is ", lfee_mn0)
-        assert_equal(lfee_mn0, 1000)
-
-        nfee_mn4 = self.nodes[2].storagefee("getnetworkfee")["networkfee"]
-        print("Network fee after setfee is ", nfee_mn4)
-        assert_greater_than(nfee_mn4, 50)
+            nfee_mn2_response = self.nodes[2].storagefee(fee_type.getfee_rpc_command, False)
+            nfee_mn2 = nfee_mn2_response[fee_type.option_name]
+            print(f"Network mn fee '{fee_type.name}' after setfee on 6 other nodes is {nfee_mn2}")
+            assert_greater_than(int(nfee_mn2), fee_type.fee)
 
         print("Storage fee tested")
 

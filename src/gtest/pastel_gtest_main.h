@@ -27,6 +27,8 @@ public:
     void generate_coins(const size_t N);
     // generate unique temp directory and set it as a datadir
     std::string GenerateTempDataDir();
+    void SetTempDataDir(const std::string& sDataDir);
+
     // cleanup temp datadir
     void ClearTempDataDir();
 

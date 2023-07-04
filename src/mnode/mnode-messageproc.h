@@ -1,5 +1,5 @@
 #pragma once
-// Copyright (c) 2018-2022 The Pastel Core developers
+// Copyright (c) 2018-2023 The Pastel Core developers
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <map>
@@ -11,6 +11,9 @@ extern CCriticalSection cs_mapSeenMessages;
 extern CCriticalSection cs_mapOurMessages;
 //extern CCriticalSection cs_mapLatestSender;
 
+constexpr auto MN_MESSAGES_FILENAME = "messages.dat";
+constexpr auto MN_MESSAGES_MAGIC_CACHE_STR = "magicMessagesCache";
+
 bool Sign(const std::string& message, std::string& signatureBase64, std::string& error_ret);
 bool Sign(const std::string& message, v_uint8& signature, std::string& error_ret);
 
@@ -18,7 +21,8 @@ bool Sign(const std::string& message, v_uint8& signature, std::string& error_ret
 enum class CMasternodeMessageType: uint8_t
 {
     PLAINTEXT = 0,
-    SETFEE
+    SETFEE = 1,
+    SET_MN_FEE = 2, // set masternode fee
 };
 
 class CMasternodeMessage
@@ -78,7 +82,8 @@ public:
     static std::unique_ptr<CMasternodeMessage> Create(const CPubKey& pubKeyTo, CMasternodeMessageType msgType, const std::string& msg);
 };
 
-class CMasternodeMessageProcessor {
+class CMasternodeMessageProcessor
+{
 public:
     std::map<uint256, CMasternodeMessage> mapSeenMessages;
     std::map<uint256, CMasternodeMessage> mapOurMessages;
@@ -100,7 +105,7 @@ public:
     }
 
 public:
-    void BroadcastNewFee(const CAmount newFee);
+    void BroadcastNewFee(const MN_FEE mnFeeType, const CAmount newFee);
     void ProcessMessage(CNode *pFrom, std::string &strCommand, CDataStream &vRecv);
     void CheckAndRemove();
     void Clear();

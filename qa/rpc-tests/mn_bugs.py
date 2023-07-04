@@ -48,8 +48,6 @@ class MasterNodeGovernanceTest (MasterNodeCommon):
 
 
     def run_test (self):
-        print("Run freedcamp ID specific test")
-        
         if(TEST_CASE_EXEC_NR == 40300409):
             self.test_40300409()
     
@@ -293,15 +291,12 @@ class MasterNodeGovernanceTest (MasterNodeCommon):
         time.sleep(60)
 
         #Mining to have a winner ticket :)
-        print ("Minig...")
         self.slow_mine(2, 10, 2, 0.5)
-        print ("Minig...")
         self.slow_mine(2, 10, 2, 0.5)
 
         #Currently disable to check the status of a possible bug!
         #Mining to have everyone in 'synch'. (qucik and slow)
         self.nodes[self.mining_node_num].generate(150)
-        print ("Minig...")
         self.slow_mine(2, 10, 2, 0.5)
 
         #Simply print all nodes ticket list
@@ -311,7 +306,7 @@ class MasterNodeGovernanceTest (MasterNodeCommon):
             print ("\n\nNode : {}. tickets are: \n\n".format(i))
             res1 = self.nodes[i].governance("list", "tickets")
 
-        print("\n\nTesting  tickets votes\n")
+        print("\n\nTesting tickets votes\n")
         #3. Preliminary test, should be 2 tickets: 1st ticket - 3 votes, 2 yes; 2nd ticket - 1 vote, 1 yes
         for i in range(0, self.total_number_of_nodes):
             blocckount=self.nodes[i].getblockcount()

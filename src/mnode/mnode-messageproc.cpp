@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2022 The Pastel Developers
+// Copyright (c) 2018-2023 The Pastel Developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <main.h>
@@ -122,23 +122,36 @@ string CMasternodeMessage::ToString() const
 /*static*/ unique_ptr<CMasternodeMessage> CMasternodeMessage::Create(const CPubKey& pubKeyTo, CMasternodeMessageType msgType, const string& msg)
 {
     if(!masterNodeCtrl.masternodeSync.IsMasternodeListSynced())
-        throw runtime_error(strprintf("Masternode list must be synced to create message"));
+        throw runtime_error("Masternode list must be synced to create message");
     if(!masterNodeCtrl.IsMasterNode())
-        throw runtime_error(strprintf("Only Masternode can create message"));
+        throw runtime_error("Only Masternode can create message");
     
     masternode_info_t mnInfo;
-    if(!masterNodeCtrl.masternodeManager.GetMasternodeInfo(pubKeyTo, mnInfo)) {
+    if(!masterNodeCtrl.masternodeManager.GetMasternodeInfo(pubKeyTo, mnInfo))
         throw runtime_error("Unknown Masternode");
-    }
     
     return make_unique<CMasternodeMessage>(masterNodeCtrl.activeMasternode.outpoint, mnInfo.getOutPoint(), msgType, msg);
 }
 
-void CMasternodeMessageProcessor::BroadcastNewFee(const CAmount newFee)
+void CMasternodeMessageProcessor::BroadcastNewFee(const MN_FEE mnFeeType, const CAmount newFee)
 {
     const auto mapMasternodes = masterNodeCtrl.masternodeManager.GetFullMasternodeMap();
-    for (const auto& [op, mn] : mapMasternodes) {
-        masterNodeCtrl.masternodeMessages.SendMessage(mn.pubKeyMasternode, CMasternodeMessageType::SETFEE, to_string(newFee));
+    string sMessage;
+    CMasternodeMessageType msgType;
+    if (mnFeeType == MN_FEE::StorageFeePerMB)
+    {
+        msgType = CMasternodeMessageType::SETFEE;
+        sMessage = to_string(newFee);
+    }
+    else
+    {
+        msgType = CMasternodeMessageType::SET_MN_FEE;
+        sMessage = to_string(to_integral_type(mnFeeType)) + " " + to_string(newFee);
+    }
+    
+    for (const auto& [op, mn] : mapMasternodes)
+    {
+        masterNodeCtrl.masternodeMessages.SendMessage(mn.pubKeyMasternode, msgType, sMessage);
     }
 }
 
@@ -222,14 +235,52 @@ void CMasternodeMessageProcessor::ProcessMessage(CNode* pFrom, string& strComman
             mapOurMessages[messageId] = message;
             bOurMessage = true;
             // Update new fee of the sender masternode
+            bool bSetFee = false;
+            MN_FEE mnFeeType = MN_FEE::COUNT;
+            CAmount fee = 0;
             if (message.messageType == to_integral_type(CMasternodeMessageType::SETFEE))
+            {
+                mnFeeType = MN_FEE::StorageFeePerMB;
+                try
+                {
+                    fee = stoll(message.message.c_str());
+                    bSetFee = true;
+                } catch (const std::exception& e)
+                {
+					LogFnPrintf("MASTERNODEMESSAGE -- ERROR: invalid fee '%s'. %s", message.message, e.what());
+	            }
+            }
+            else if (message.messageType == to_integral_type(CMasternodeMessageType::SET_MN_FEE))
+            {
+                // message format: "mnFeeType fee"
+                v_strings v;
+                str_split(v, message.message, ' ');
+                if (v.size() != 2)
+					LogFnPrintf("MASTERNODEMESSAGE -- ERROR: invalid SET_MN_FEE message '%s'", message.message);
+                else
+                {
+                    try
+                    {
+                        const uint32_t nMNFeeType = stoi(v[0]);
+						mnFeeType = static_cast<MN_FEE>(nMNFeeType);
+						fee = stoll(v[1]);
+                        bSetFee = true;
+					}
+                    catch (const std::exception& e)
+                    {
+						LogFnPrintf("MASTERNODEMESSAGE -- ERROR: invalid SET_MN_FEE message '%s'. %s", message.message, e.what());
+						bSetFee = false;
+					}
+				}
+            }
+            if (bSetFee && mnFeeType != MN_FEE::COUNT)
             {
                 CMasternode masternode;
                 if (!masterNodeCtrl.masternodeManager.Get(masterNodeCtrl.activeMasternode.outpoint, masternode))
                     throw runtime_error("Unknown Masternode");
 
                 // Update masternode fee
-                masterNodeCtrl.masternodeManager.SetMasternodeFee(message.vinMasternodeFrom.prevout, atol(message.message.c_str()));
+                masterNodeCtrl.masternodeManager.SetMasternodeFee(message.vinMasternodeFrom.prevout, mnFeeType, fee);
             }
         }
 
@@ -239,7 +290,7 @@ void CMasternodeMessageProcessor::ProcessMessage(CNode* pFrom, string& strComman
         //this is only if synchronization of messages is needed
         //masterNodeCtrl.masternodeSync.BumpAssetLastTime("MASTERNODEMESSAGE");
 
-        LogFnPrintf("MASTERNODEMESSAGE -- %s message %s from %d.", bOurMessage? "Got": "Relaid", message.ToString(), pFrom->id);
+        LogFnPrintf("MASTERNODEMESSAGE -- %s message %s from %d.", bOurMessage? "Got": "Relayed", message.ToString(), pFrom->id);
     }
 }
 

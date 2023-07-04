@@ -204,6 +204,7 @@
     <ClCompile Include="..\..\..\src\wallet\gtest\test_wallet_ismine.cpp" />
     <ClCompile Include="..\..\..\src\wallet\gtest\test_wallet_zkeys.cpp" />
     <ClCompile Include="..\..\vs\port\uint128.cpp" />
+    <ClCompile Include="test_mnode_cache.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\..\src\gtest\bignum.h" />

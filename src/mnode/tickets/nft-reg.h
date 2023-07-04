@@ -120,7 +120,7 @@ public:
     static TicketID GetID() { return TicketID::NFT; }
     static constexpr auto GetTicketDescription()
     {
-        return TICKET_INFO[to_integral_type<TicketID>(TicketID::NFT)].szDescription;
+        return TICKET_INFO[to_integral_type(TicketID::NFT)].szDescription;
     }
 
     void Clear() noexcept override;
@@ -183,6 +183,8 @@ public:
     static bool CheckIfTicketInDb(const std::string& key);
     static NFTRegTickets_t FindAllTicketByMVKey(const std::string& sMVKey);
     uint32_t CountItemsInCollection() const override;
+    static CAmount GetNftFee(const size_t nImageDataSizeInMB, const size_t nTicketDataSizeInBytes,
+        const uint32_t nChainHeight = std::numeric_limits<uint32_t>::max()) noexcept;
 
 protected:
     uint16_t m_nNFTTicketVersion{0};
