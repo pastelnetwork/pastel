@@ -45,10 +45,11 @@ private:
         ssObj << strMagicMessage; // specific magic message for this type of object
         ssObj << FLATDATA(Params().MessageStart()); //-V568 network specific magic number
         ssObj << objToSave;
-        uint256 hash = Hash(ssObj.begin(), ssObj.end());
+        const uint256 hash = Hash(ssObj.begin(), ssObj.end());
         ssObj << hash;
 
-        pathDBNew = pathDB.replace_extension(".new ");
+        pathDBNew = pathDB;
+        pathDBNew.replace_extension(".new");
         // open output file, and associate with CAutoFile
         FILE* file = nullptr;
 #if defined(_MSC_VER) && (_MSC_VER >= 1400)
@@ -208,37 +209,41 @@ public:
         return true;
     }
 
-    bool Dump(T& objToSave)
+    bool Dump(const T& objToSave, const bool bCheckPrevFileFormat)
     {
         std::string error;
         const int64_t nStart = GetTimeMillis();
 
-        LogFnPrintf("Verifying %s format...", strFilename);
-        T tmpObjToLoad;
-        const ReadResult readResult = Read(tmpObjToLoad, error, true);
-
-        // there was an error and it was not an error on file opening => do not proceed
-        if (readResult == ReadResult::FileError)
-            LogFnPrintf("Missing file %s, will try to recreate", strFilename);
-        else if (readResult != ReadResult::Ok)
+        if (bCheckPrevFileFormat)
         {
-            error = strprintf("Error reading %s. %s. ", strFilename, error);
-            if (readResult == ReadResult::IncorrectFormat)
-                error += "Magic is ok, but data has invalid format, will try to recreate";
-            else
-                error += "File format is unknown or invalid, please fix it manually";
-            LogFnPrintf(error);
-            if (readResult != ReadResult::IncorrectFormat)
-                return false;
+            LogFnPrintf("Verifying [%s] format...", pathDB.string());
+            T tmpObjToLoad;
+            const ReadResult readResult = Read(tmpObjToLoad, error, true);
+
+            // there was an error and it was not an error on file opening => do not proceed
+            if (readResult == ReadResult::FileError)
+                LogFnPrintf("Missing file %s, will try to recreate", strFilename);
+            else if (readResult != ReadResult::Ok)
+            {
+                error = strprintf("Error reading %s. %s. ", strFilename, error);
+                if (readResult == ReadResult::IncorrectFormat)
+                    error += "Magic is ok, but data has invalid format, will try to recreate";
+                else
+                    error += "File format is unknown or invalid, please fix it manually";
+                LogFnPrintf(error);
+                if (readResult != ReadResult::IncorrectFormat)
+                    return false;
+            }
         }
 
-        LogFnPrintf("Writing info to %s...", strFilename);
+        LogFnPrintf("Writing [%s]...", pathDB.string());
         if (Write(objToSave))
         {
             try
             {
                 bool bBackup = false;
-                fs::path pathDBbackup = pathDB.replace_extension(".bak");
+                fs::path pathDBbackup = pathDB;
+                pathDBbackup.replace_extension(".bak");
                 if (fs::exists(pathDB))
                 {
                     fs::rename(pathDB, pathDBbackup);
@@ -247,10 +252,10 @@ public:
                 fs::rename(pathDBNew, pathDB);
                 if (bBackup)
                     fs::remove(pathDBbackup);
-                LogFnPrintf("%s dump finished  %dms", strFilename, GetTimeMillis() - nStart);
+                LogFnPrintf("%s dump finished, %dms", strFilename, GetTimeMillis() - nStart);
             } catch (const std::exception& ex)
             {
-                LogFnPrintf("Error writing to file %s. %s", strFilename, ex.what());
+                LogFnPrintf("Error writing to file [%s]. %s", pathDB.string(), ex.what());
                 return false;
             }
         }

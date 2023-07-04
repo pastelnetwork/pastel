@@ -198,6 +198,7 @@ class CMasternode : public masternode_info_t
 {
 public:
     constexpr static int64_t MASTERNODE_VERSION = 1;
+    static bool fCompatibilityReadMode;
 
     enum class CollateralStatus
     {
@@ -264,7 +265,7 @@ public:
         {
             if (!s.eof())
                 READWRITE(strExtraLayerP2P);
-            if (!s.eof())
+            if (!fCompatibilityReadMode && !s.eof())
                 READWRITE(m_nVersion);
             else
                 m_nVersion = 0;
@@ -362,7 +363,7 @@ protected:
     // critical section to protect the inner data structures
     mutable CCriticalSection cs;
 
-    short m_nVersion = 0; // stored masternode serialization version
+    uint16_t m_nVersion = 0; // stored masternode serialization version
 
     const CChainParams& m_chainparams;
     // last MasterNode ping
@@ -442,7 +443,7 @@ public:
         {
             if (!s.eof())
                 READWRITE(strExtraLayerP2P);
-            if (!s.eof())
+            if (!fCompatibilityReadMode && !s.eof())
                 READWRITE(m_nVersion);
             else
                 m_nVersion = 0;

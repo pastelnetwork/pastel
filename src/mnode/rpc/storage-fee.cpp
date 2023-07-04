@@ -295,7 +295,7 @@ Arguments:
 1. "command"        (string or set of strings, required) The command to execute
 
 Available commands:
-  setfee [storage|ticket|sense-compute|sense-processing] <newfee> - Set MasterNode fee.
+  setfee [storage|ticket|sense-compute|sense-processing] <newfee> - Set local MasterNode fee.
   getfees (<is_local>) (<height>)               - Get various Network median or local fees.
   getstoragefee	(<is_local>) (<height>)         - Get Network median or local storage fee (per MB).
   getticketfee (<is_local>) (<height>)          - Get Network median or local ticket blockain storage fee (per KB).

@@ -301,6 +301,7 @@ void masternode_info_t::SetState(const MASTERNODE_STATE newState, const char *sz
     LogPrintf("%s\n", sMsg);
 }
 
+bool CMasternode::fCompatibilityReadMode = false;
 
 //
 //  ----------------- CMasternode  ------------------------------------------------------------------------------

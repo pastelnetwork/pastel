@@ -8,6 +8,8 @@
 #include <set>
 #include <atomic>
 
+#include <scope_guard.hpp>
+
 #include <net.h>
 #include <sync.h>
 #include <map_types.h>
@@ -107,11 +109,18 @@ public:
         std::string strVersion;
         const bool bRead = ser_action == SERIALIZE_ACTION::Read;
         bool bProtectedMode = !bRead;
+        auto guardMNReadMode = sg::make_scope_guard([&]() noexcept 
+        {
+            CMasternode::fCompatibilityReadMode = false;
+		});
         if (bRead)
         {
             READWRITE(strVersion);
             if (strVersion == SERIALIZATION_VERSION_STRING_PREV)
+            {
                 bProtectedMode = false;
+                CMasternode::fCompatibilityReadMode = true;
+            }
             else if (strVersion == SERIALIZATION_VERSION_STRING)
                 bProtectedMode = true;
             else

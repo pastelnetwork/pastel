@@ -562,16 +562,16 @@ void CMasterNodeController::ShutdownMasterNode()
 
     // STORE DATA CACHES INTO SERIALIZED DAT FILES
     CFlatDB<CMasternodeMan> flatDB1(MNCACHE_FILENAME, MNCACHE_CACHE_MAGIC_STR);
-    flatDB1.Dump(masternodeManager);
+    flatDB1.Dump(masternodeManager, false);
     CFlatDB<CMasternodePayments> flatDB2(MNPAYMENTS_CACHE_FILENAME, MNPAYMENTS_CACHE_MAGIC_STR);
-    flatDB2.Dump(masternodePayments);
+    flatDB2.Dump(masternodePayments, false);
     CFlatDB<CMasternodeRequestTracker> flatDB3(MN_REQUEST_TRACKER_FILENAME, MN_REQUEST_TRACKER_MAGIC_CACHE_STR);
-    flatDB3.Dump(requestTracker);
+    flatDB3.Dump(requestTracker, false);
     CFlatDB<CMasternodeMessageProcessor> flatDB4(MN_MESSAGES_FILENAME, MN_MESSAGES_MAGIC_CACHE_STR);
-    flatDB4.Dump(masternodeMessages);
+    flatDB4.Dump(masternodeMessages, false);
 #ifdef GOVERNANCE_TICKETS
     CFlatDB<CMasternodeGovernance> flatDB5(MN_GOVERNANCE_FILENAME, MN_GOVERNANCE_MAGIC_CACHE_STR);
-    flatDB5.Dump(masternodeGovernance);
+    flatDB5.Dump(masternodeGovernance, false);
 #endif // GOVERNANCE_TICKETS
 }
 
