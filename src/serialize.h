@@ -29,7 +29,7 @@
 #include <prevector.h>
 #include <enum_util.h>
 
-static constexpr uint32_t MAX_DATA_SIZE = 0x20000000;       // 536'870'912
+static constexpr uint32_t MAX_DATA_SIZE = 0x02000000;       // 33'554'432
 static constexpr uint32_t MAX_CONTAINER_SIZE = 0x100000;     // 1'048'576
 static constexpr uint8_t PROTECTED_SERIALIZE_MARKER = 0x55; // 01010101
 
@@ -295,7 +295,7 @@ void WriteCompactSize(Stream& os, const uint64_t nSize)
 }
 
 template<typename Stream>
-uint64_t ReadCompactSize(Stream& is, uint64_t max_size = MAX_DATA_SIZE)
+uint64_t ReadCompactSize(Stream& is, uint64_t max_size = std::numeric_limits<uint64_t>::max())
 {
     uint8_t chSize = ser_readdata8(is);
     uint64_t nSizeRet = 0;
@@ -321,7 +321,7 @@ uint64_t ReadCompactSize(Stream& is, uint64_t max_size = MAX_DATA_SIZE)
         if (nSizeRet < 0x100000000ULL)
             throw std::ios_base::failure("non-canonical ReadCompactSize()");
     }
-    if (nSizeRet > max_size)
+    if ((max_size < std::numeric_limits<uint64_t>::max()) && (nSizeRet > max_size))
         throw std::ios_base::failure("ReadCompactSize(): size too large");
     return nSizeRet;
 }
