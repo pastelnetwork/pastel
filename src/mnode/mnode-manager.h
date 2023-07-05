@@ -82,7 +82,7 @@ private:
     std::map<uint256, std::vector<CMasternodeBroadcast> > mMnbRecoveryGoodReplies;
     std::list< std::pair<CService, uint256> > listScheduledMnbRequestConnections;
     
-    std::map<uint32_t, std::vector<CMasternode>> mapHistoricalTopMNs;
+    std::unordered_map<uint32_t, std::vector<CMasternode>> mapHistoricalTopMNs;
     
     int64_t nLastWatchdogVoteTime;
 

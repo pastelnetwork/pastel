@@ -29,8 +29,8 @@
 #include <prevector.h>
 #include <enum_util.h>
 
-static constexpr uint32_t MAX_DATA_SIZE = 0x02000000;       // 33,554,432
-static constexpr uint32_t MAX_CONTAINER_SIZE = 0x20000;     // 65536
+static constexpr uint32_t MAX_DATA_SIZE = 0x20000000;       // 536'870'912
+static constexpr uint32_t MAX_CONTAINER_SIZE = 0x100000;     // 1'048'576
 static constexpr uint8_t PROTECTED_SERIALIZE_MARKER = 0x55; // 01010101
 
 typedef enum class _PROTECTED_DATA_TYPE : uint8_t
@@ -821,6 +821,23 @@ void ReadProtectedSerializeMarker(Stream& is, const PROTECTED_DATA_TYPE expected
 }
 
 template<typename Stream>
+void ReadProtectedSerializeMarkerAlt(Stream& is, const PROTECTED_DATA_TYPE expectedDataType, const PROTECTED_DATA_TYPE altDataType)
+{
+    if (is.empty())
+        throw std::ios_base::failure("protected serialization marker not found (eof)");
+    uint8_t ch = 0;
+    is >> ch;
+    if (ch != PROTECTED_SERIALIZE_MARKER)
+        throw std::ios_base::failure(strprintf("protected serialization marker not found, expected-0x%X, found-0x%X", PROTECTED_SERIALIZE_MARKER, static_cast<uint8_t>(ch)));
+    if (is.empty())
+        throw std::ios_base::failure("protected serialization data type not found (eof)");
+    is >> ch;
+    if ((ch != to_integral_type(expectedDataType)) && (ch != to_integral_type(altDataType)))
+		throw std::ios_base::failure(strprintf("protected serialization data type mismatch, expected-0x%X or 0x%X, found-0x%X",
+            to_integral_type(expectedDataType), to_integral_type(altDataType), static_cast<uint8_t>(ch)));
+}
+
+template<typename Stream>
 void Serialize(Stream& os, const PROTECTED_DATA_TYPE protectedDataType)
 {
 	os << PROTECTED_SERIALIZE_MARKER << to_integral_type(protectedDataType);
@@ -922,7 +939,7 @@ template<typename Stream, typename K, typename T, typename Pred, typename A>
 void Unserialize_Protected(Stream& is, std::map<K, T, Pred, A>& m)
 {
     m.clear();
-    ReadProtectedSerializeMarker(is, PROTECTED_DATA_TYPE::MAP);
+    ReadProtectedSerializeMarkerAlt(is, PROTECTED_DATA_TYPE::MAP, PROTECTED_DATA_TYPE::UNORDERED_MAP);
 
     Stream helperStream(is.GetType(), is.GetVersion());
     uint64_t nSize = ReadCompactSize(is);
@@ -982,7 +999,7 @@ template <typename Stream, typename K, typename T, typename Pred, typename A>
 void Unserialize_Protected(Stream& is, std::unordered_map<K, T, Pred, A>& m)
 {
     m.clear();
-    ReadProtectedSerializeMarker(is, PROTECTED_DATA_TYPE::UNORDERED_MAP);
+    ReadProtectedSerializeMarkerAlt(is, PROTECTED_DATA_TYPE::UNORDERED_MAP, PROTECTED_DATA_TYPE::MAP);
     uint64_t nSize = ReadCompactSize(is);
 
     Stream helperStream(is.GetType(), is.GetVersion());
