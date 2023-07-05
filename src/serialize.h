@@ -802,7 +802,6 @@ void Unserialize(Stream& is, std::array<T, N>& item)
 {
     for (size_t i = 0; i < N; i++)
         Unserialize(is, item[i]);
-    }
 }
 
 /**
