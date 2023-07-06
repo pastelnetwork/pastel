@@ -163,9 +163,6 @@ public:
         const CAmount pricePSL, const opt_string_t& sFundingAddress, std::string& error_ret);
     static bool CreateP2FMSTransaction(const CDataStream& input_stream, CMutableTransaction& tx_out, 
         const CAmount pricePSL, const opt_string_t& sFundingAddress, std::string& error_ret);
-    static bool CreateP2FMSTransactionWithExtra(const CDataStream& input_data, 
-        const std::vector<CTxOut>& extraOutputs, const CAmount extraAmount, CMutableTransaction& tx_out, 
-        const CAmount pricePSL, const opt_string_t& sFundingAddress, std::string& error_ret);
 #endif // ENABLE_WALLET
     static bool ParseP2FMSTransaction(const CMutableTransaction& tx_in, CSerializeData& output_data, std::string& error_ret);
     static bool ParseP2FMSTransaction(const CMutableTransaction& tx_in, std::string& output_string, std::string& error_ret);
@@ -201,6 +198,9 @@ public:
     // Get mempool tracker for ticket transactions
     static std::shared_ptr<ITxMemPoolTracker> GetTxMemPoolTracker();
 
-private:
+protected:
+    static bool CreateP2FMSTransactionWithExtra(const CDataStream& input_data, 
+        const std::vector<CTxOut>& extraOutputs, const CAmount extraAmount, CMutableTransaction& tx_out, 
+        const CAmount pricePSL, const opt_string_t& sFundingAddress, std::string& error_ret);
     static ticket_validation_t ValidateTicketFees(const uint32_t nHeight, const CTransaction& tx, std::unique_ptr<CPastelTicket>&& ticket) noexcept;
 };

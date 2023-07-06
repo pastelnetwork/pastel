@@ -1602,7 +1602,7 @@ size_t CPastelTicketProcessor::CreateP2FMSScripts(const CDataStream& input_strea
 
 bool CPastelTicketProcessor::CreateP2FMSTransactionWithExtra(const CDataStream& input_stream, 
     const vector<CTxOut>& extraOutputs, const CAmount extraAmount, CMutableTransaction& tx_out, 
-    const CAmount pricePSL, const opt_string_t& sFundingAddress, string& error_ret)
+    const CAmount priceInPSL, const opt_string_t& sFundingAddress, string& error_ret)
 {
     assert(pwalletMain != nullptr);
 
@@ -1650,11 +1650,11 @@ bool CPastelTicketProcessor::CreateP2FMSTransactionWithExtra(const CDataStream& 
 
     const size_t nFakeTxCount = vOutScripts.size();
     // Amount in patoshis per output
-    const CAmount perOutputAmount = (pricePSL * COIN) / nFakeTxCount;
+    const CAmount perOutputAmount = (priceInPSL * COIN) / nFakeTxCount;
     // MUST be precise!!! in patoshis
-    const CAmount lost = (pricePSL * COIN) - perOutputAmount * nFakeTxCount;
+    const CAmount lost = (priceInPSL * COIN) - perOutputAmount * nFakeTxCount;
     // total amount to spend in patoshis
-    const CAmount allSpentAmount = (pricePSL * COIN) + nApproxFeeNeeded + extraAmount;
+    const CAmount allSpentAmount = (priceInPSL * COIN) + nApproxFeeNeeded + extraAmount;
 
     auto nActiveChainHeight = gl_nChainHeight + 1;
     if (!chainParams.IsRegTest())
@@ -1711,15 +1711,14 @@ bool CPastelTicketProcessor::CreateP2FMSTransactionWithExtra(const CDataStream& 
                 }
 
                 // Send change output back to input address
-                tx_out.vout[nFakeTxCount].nValue = prevAmount - static_cast<CAmount>(pricePSL * COIN) - extraAmount;
+                tx_out.vout[nFakeTxCount].nValue = prevAmount - static_cast<CAmount>(priceInPSL * COIN) - extraAmount;
                 tx_out.vout[nFakeTxCount].scriptPubKey = prevPubKey;
 
                 // Calculate correct fee
                 const size_t nTxSize = EncodeHexTx(tx_out).length();
-                CAmount nFeeNeeded = payTxFee.GetFee(nTxSize);
-                //CAmount nFeeNeeded = pwalletMain->GetMinimumFee(nTxSize, nTxConfirmTarget, mempool);
-                //if (nFeeNeeded < payTxFee.GetFeePerK())
-                //    nFeeNeeded = payTxFee.GetFeePerK();
+                CAmount nFeeNeeded = pwalletMain->GetMinimumFee(nTxSize, nTxConfirmTarget, mempool);
+                if (nFeeNeeded < payTxFee.GetFeePerK())
+                    nFeeNeeded = payTxFee.GetFeePerK();
 
                 // nFakeTxCount is index of the change output
                 tx_out.vout[nFakeTxCount].nValue -= nFeeNeeded;
