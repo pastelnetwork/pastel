@@ -1,8 +1,8 @@
 package=zstd
-$(package)_version=1.5.0
+$(package)_version=1.5.5
 $(package)_download_path=https://github.com/facebook/zstd/releases/download/v$($(package)_version)/
 $(package)_file_name=$(package)-$($(package)_version).tar.gz
-$(package)_sha256_hash=5194fbfa781fcf45b98c5e849651aa7b3b0a008c6b72d4a0db760f3002291e94
+$(package)_sha256_hash=9c4396cc829cfae319a6e2615202e82aad41372073482fce286fac78646d3ee4
 
 define $(package)_preprocess_cmds
   mkdir -p bld

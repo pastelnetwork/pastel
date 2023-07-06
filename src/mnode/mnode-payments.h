@@ -192,8 +192,8 @@ public:
             do
             {
                 // special handling for read mode - old version didn't have version string
-                const size_t nSerializedVersionSize = SERIALIZATION_VERSION_STRING.length() + 1;
-                if (s.size() < nSerializedVersionSize)
+                const size_t nSerializedVersionSize = SERIALIZATION_VERSION_STRING.length();
+                if (s.size() < nSerializedVersionSize + 1)
                     break;
                 const size_t nSize = static_cast<size_t>(ser_readdata8(s));
                 if (nSize != nSerializedVersionSize)
@@ -202,7 +202,7 @@ public:
                     break;
                 }
                 strVersion.resize(nSize);
-                s.read((char*)&strVersion[0], nSize * sizeof(strVersion[0]));
+                s.read(strVersion.data(), nSize);
                 if (strVersion != SERIALIZATION_VERSION_STRING)
                 {
                     s.rewind(nSerializedVersionSize);

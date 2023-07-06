@@ -854,10 +854,10 @@ void Serialize(Stream& os, const std::pair<K, T>& item)
 }
 
 template<typename Stream, typename K, typename T>
-void Serialize_Protected(Stream& os, const std::pair<K, T>& item)
+void Serialize_Protected(Stream& os, const std::pair<K, T>& item, Stream &helperStream)
 {
     // serialize and write pair key
-    Stream helperStream(os.GetType(), os.GetVersion());
+    helperStream.clear();
     Serialize(helperStream, item.first);
     os << PROTECTED_DATA_TYPE::PAIR_KEY;
     WriteCompactSize(os, helperStream.size());
@@ -879,10 +879,9 @@ void Unserialize(Stream& is, std::pair<K, T>& item)
 }
 
 template<typename Stream, typename K, typename T>
-void Unserialize_Protected(Stream& is, std::pair<K, T>& item)
+void Unserialize_Protected(Stream& is, std::pair<K, T>& item, Stream &helperStream)
 {
-    Stream helperStream(is.GetType(), is.GetVersion());
-
+    helperStream.clear();
     ReadProtectedSerializeMarker(is, PROTECTED_DATA_TYPE::PAIR_KEY);
 	uint64_t nSize = ReadCompactSize(is);
     helperStream.reserve(nSize);
@@ -893,7 +892,8 @@ void Unserialize_Protected(Stream& is, std::pair<K, T>& item)
     ReadProtectedSerializeMarker(is, PROTECTED_DATA_TYPE::PAIR_VALUE);
     nSize = ReadCompactSize(is);
     helperStream.reserve(nSize);
-    Unserialize(is, item.second);
+    is.read(helperStream, nSize);
+    Unserialize(helperStream, item.second);
 }
 
 /**
@@ -911,10 +911,11 @@ template<typename Stream, typename K, typename T, typename Pred, typename A>
 void Serialize_Protected(Stream& os, const std::map<K, T, Pred, A>& m)
 {
     Stream helperStream(os.GetType(), os.GetVersion());
+    Stream helperItemStream(os.GetType(), os.GetVersion());
 
     WriteCompactSize(helperStream, m.size());
     for (const auto &mapPair : m)
-        Serialize_Protected(helperStream, mapPair);
+        Serialize_Protected(helperStream, mapPair, helperItemStream);
 
     os << PROTECTED_DATA_TYPE::MAP;
     WriteCompactSize(os, helperStream.size());
@@ -942,6 +943,8 @@ void Unserialize_Protected(Stream& is, std::map<K, T, Pred, A>& m)
     ReadProtectedSerializeMarkerAlt(is, PROTECTED_DATA_TYPE::MAP, PROTECTED_DATA_TYPE::UNORDERED_MAP);
 
     Stream helperStream(is.GetType(), is.GetVersion());
+    Stream helperItemStream(is.GetType(), is.GetVersion());
+    
     uint64_t nSize = ReadCompactSize(is);
     helperStream.reserve(nSize);
     is.read(helperStream, nSize);
@@ -951,7 +954,7 @@ void Unserialize_Protected(Stream& is, std::map<K, T, Pred, A>& m)
     for (uint64_t i = 0; i < nSize; i++)
     {
         std::pair<K, T> item;
-        Unserialize_Protected(helperStream, item);
+        Unserialize_Protected(helperStream, item, helperItemStream);
         mi = m.insert(mi, item);
     }
 }
@@ -971,10 +974,11 @@ template <typename Stream, typename K, typename T, typename Pred, typename A>
 void Serialize_Protected(Stream& os, const std::unordered_map<K, T, Pred, A>& m)
 {
     Stream helperStream(os.GetType(), os.GetVersion());
+    Stream helperItemStream(os.GetType(), os.GetVersion());
 
     WriteCompactSize(helperStream, m.size());
     for (const auto &mapPair : m)
-        Serialize_Protected(helperStream, mapPair);
+        Serialize_Protected(helperStream, mapPair, helperItemStream);
 
     os << PROTECTED_DATA_TYPE::UNORDERED_MAP;
     WriteCompactSize(os, helperStream.size());
@@ -1003,6 +1007,7 @@ void Unserialize_Protected(Stream& is, std::unordered_map<K, T, Pred, A>& m)
     uint64_t nSize = ReadCompactSize(is);
 
     Stream helperStream(is.GetType(), is.GetVersion());
+    Stream helperItemStream(is.GetType(), is.GetVersion());
     helperStream.reserve(nSize);
     is.read(helperStream, nSize);
 
@@ -1011,7 +1016,7 @@ void Unserialize_Protected(Stream& is, std::unordered_map<K, T, Pred, A>& m)
     for (uint64_t i = 0; i < nSize; i++)
     {
         std::pair<K, T> item;
-        Unserialize_Protected(helperStream, item);
+        Unserialize_Protected(helperStream, item, helperItemStream);
         mi = m.insert(mi, item);
     }
 }
